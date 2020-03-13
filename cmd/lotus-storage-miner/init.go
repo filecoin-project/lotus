@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/lotus/storage/sealmgr/stores"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -187,8 +188,8 @@ var initCmd = &cli.Command{
 			}
 
 			if !cctx.Bool("no-local-storage") {
-				b, err := json.MarshalIndent(&config.StorageMeta{
-					ID:       uuid.New().String(),
+				b, err := json.MarshalIndent(&stores.StorageMeta{
+					ID:       stores.ID(uuid.New().String()),
 					Weight:   10,
 					CanSeal:  true,
 					CanStore: true,

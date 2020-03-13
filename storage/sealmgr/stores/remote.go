@@ -15,15 +15,14 @@ import (
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/lib/tarutil"
 	"github.com/filecoin-project/lotus/storage/sealmgr/sectorutil"
 )
 
 type Remote struct {
-	local *Local
+	local  *Local
 	remote SectorIndex
-	auth http.Header
+	auth   http.Header
 
 	fetchLk sync.Mutex // TODO: this can be much smarter
 	// TODO: allow multiple parallel fetches
@@ -32,15 +31,10 @@ type Remote struct {
 
 func NewRemote(local *Local, remote SectorIndex, auth http.Header) *Remote {
 	return &Remote{
-		local:   local,
-		remote:  remote,
-		auth:    auth,
+		local:  local,
+		remote: remote,
+		auth:   auth,
 	}
-}
-
-type SectorIndex interface {
-	StorageDeclareSector(ctx context.Context, storageId string, s abi.SectorID) error
-	StorageFindSector(context.Context, abi.SectorID, sectorbuilder.SectorFileType) ([]api.StorageInfo, error)
 }
 
 func (r *Remote) AcquireSector(ctx context.Context, s abi.SectorID, existing sectorbuilder.SectorFileType, allocate sectorbuilder.SectorFileType, sealing bool) (sectorbuilder.SectorPaths, func(), error) {
@@ -74,7 +68,7 @@ func (r *Remote) AcquireSector(ctx context.Context, s abi.SectorID, existing sec
 		done = mergeDone(done, rdone)
 		sectorutil.SetPathByType(&paths, fileType, ap)
 
-		if err := r.remote.StorageDeclareSector(ctx, storageID, s); err != nil {
+		if err := r.remote.StorageDeclareSector(ctx, storageID, s, fileType); err != nil {
 			log.Warnf("declaring sector %v in %s failed: %+v", s, storageID, err)
 		}
 	}
@@ -82,7 +76,7 @@ func (r *Remote) AcquireSector(ctx context.Context, s abi.SectorID, existing sec
 	return paths, done, nil
 }
 
-func (r *Remote) acquireFromRemote(ctx context.Context, s abi.SectorID, fileType sectorbuilder.SectorFileType, sealing bool) (string, string, func(), error) {
+func (r *Remote) acquireFromRemote(ctx context.Context, s abi.SectorID, fileType sectorbuilder.SectorFileType, sealing bool) (string, ID, func(), error) {
 	si, err := r.remote.StorageFindSector(ctx, s, fileType)
 	if err != nil {
 		return "", "", nil, err
@@ -111,14 +105,13 @@ func (r *Remote) acquireFromRemote(ctx context.Context, s abi.SectorID, fileType
 			if merr != nil {
 				log.Warnw("acquireFromRemote encountered errors when fetching sector from remote", "errors", merr)
 			}
-			return dest, storageID, done, nil
+			return dest, ID(storageID), done, nil
 		}
 	}
 
 	done()
 	return "", "", nil, xerrors.Errorf("failed to acquire sector %v from remote: %w", s, merr)
 }
-
 
 func (r *Remote) fetch(url, outname string) error {
 	log.Infof("Fetch %s -> %s", url, outname)

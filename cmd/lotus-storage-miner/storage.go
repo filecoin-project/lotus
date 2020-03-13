@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"github.com/filecoin-project/lotus/storage/sealmgr/stores"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -12,7 +13,6 @@ import (
 	"gopkg.in/urfave/cli.v2"
 
 	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/lotus/node/config"
 )
 
 const metaFile = "sectorstore.json"
@@ -79,8 +79,8 @@ var storageAttachCmd = &cli.Command{
 				return err
 			}
 
-			cfg := &config.StorageMeta{
-				ID:       uuid.New().String(),
+			cfg := &stores.StorageMeta{
+				ID:       stores.ID(uuid.New().String()),
 				Weight:   cctx.Uint64("weight"),
 				CanSeal:  cctx.Bool("seal"),
 				CanStore: cctx.Bool("store"),

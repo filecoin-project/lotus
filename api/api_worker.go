@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/storage/sealmgr/stores"
 
 	"github.com/filecoin-project/specs-storage/storage"
 
@@ -14,7 +15,7 @@ type WorkerApi interface {
 	// TODO: Info() (name, ...) ?
 
 	TaskTypes(context.Context) (map[sealmgr.TaskType]struct{}, error) // TaskType -> Weight
-	Paths(context.Context) ([]StoragePath, error)
+	Paths(context.Context) ([]stores.StoragePath, error)
 
 	storage.Sealer
 }

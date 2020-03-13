@@ -21,7 +21,7 @@ func (l *readonlyProvider) AcquireSector(ctx context.Context, id abi.SectorNumbe
 	}
 
 	return l.stor.AcquireSector(ctx, abi.SectorID{
-		Miner: l.miner,
+		Miner:  l.miner,
 		Number: id,
 	}, existing, allocate, sealing)
 }

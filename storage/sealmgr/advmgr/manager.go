@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/go-address"
 
 	"github.com/filecoin-project/go-sectorbuilder"
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/storage/sealmgr/stores"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -33,7 +32,7 @@ type Worker interface {
 	sectorbuilder.Sealer
 
 	TaskTypes(context.Context) (map[sealmgr.TaskType]struct{}, error)
-	Paths(context.Context) ([]api.StoragePath, error)
+	Paths(context.Context) ([]stores.StoragePath, error)
 }
 
 type Manager struct {
@@ -41,8 +40,8 @@ type Manager struct {
 	scfg    *sectorbuilder.Config
 	sc      SectorIDCounter
 
-	ls stores.LocalStorage
-	storage *stores.Local
+	ls        stores.LocalStorage
+	storage   *stores.Local
 	remoteHnd *stores.FetchHandler
 
 	storage2.Prover
@@ -71,8 +70,8 @@ func New(ls stores.LocalStorage, cfg *sectorbuilder.Config, sc SectorIDCounter) 
 		scfg: cfg,
 		sc:   sc,
 
-		ls: ls,
-		storage: stor,
+		ls:        ls,
+		storage:   stor,
 		remoteHnd: &stores.FetchHandler{Store: stor},
 
 		Prover: prover,
@@ -116,9 +115,9 @@ func (m *Manager) ReadPieceFromSealedSector(context.Context, abi.SectorNumber, s
 	panic("implement me")
 }
 
-func (m *Manager) getWorkersByPaths(task sealmgr.TaskType, inPaths []config.StorageMeta) ([]Worker, map[int]config.StorageMeta) {
+func (m *Manager) getWorkersByPaths(task sealmgr.TaskType, inPaths []stores.StorageMeta) ([]Worker, map[int]stores.StorageMeta) {
 	var workers []Worker
-	paths := map[int]config.StorageMeta{}
+	paths := map[int]stores.StorageMeta{}
 
 	for i, worker := range m.workers {
 		tt, err := worker.TaskTypes(context.TODO())
@@ -137,7 +136,7 @@ func (m *Manager) getWorkersByPaths(task sealmgr.TaskType, inPaths []config.Stor
 		}
 
 		// check if the worker has access to the path we selected
-		var st *config.StorageMeta
+		var st *stores.StorageMeta
 		for _, p := range phs {
 			for _, meta := range inPaths {
 				if p.ID == meta.ID {
@@ -164,7 +163,7 @@ func (m *Manager) getWorkersByPaths(task sealmgr.TaskType, inPaths []config.Stor
 func (m *Manager) AddPiece(ctx context.Context, sn abi.SectorNumber, existingPieces []abi.UnpaddedPieceSize, sz abi.UnpaddedPieceSize, r io.Reader) (abi.PieceInfo, error) {
 	// TODO: consider multiple paths vs workers when initially allocating
 
-	var best []config.StorageMeta
+	var best []stores.StorageMeta
 	var err error
 	if len(existingPieces) == 0 { // new
 		best, err = m.storage.FindBestAllocStorage(sectorbuilder.FTUnsealed, true)

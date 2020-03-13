@@ -50,7 +50,7 @@ func defConfForType(t RepoType) interface{} {
 	case StorageMiner:
 		return config.DefaultStorageMiner()
 	case Worker:
-		return &struct {}{}
+		return &struct{}{}
 	default:
 		panic(fmt.Sprintf("unknown RepoType(%d)", int(t)))
 	}

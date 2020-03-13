@@ -3,6 +3,7 @@ package impl
 import (
 	"context"
 	"encoding/json"
+	"github.com/filecoin-project/lotus/storage/sealmgr/stores"
 	"net/http"
 	"os"
 	"strconv"
@@ -151,15 +152,15 @@ func (sm *StorageMinerAPI) WorkerConnect(ctx context.Context, url string) error 
 	panic("todo register ")
 }
 
-func (sm *StorageMinerAPI) WorkerAttachStorage(ctx context.Context, si api.StorageInfo) error {
+func (sm *StorageMinerAPI) StorageAttach(ctx context.Context, si stores.StorageInfo) error {
 	panic("implement me")
 }
 
-func (sm *StorageMinerAPI) WorkerDeclareSector(ctx context.Context, storageId string, s abi.SectorID) error {
+func (sm *StorageMinerAPI) StorageDeclareSector(ctx context.Context, storageId stores.ID, s abi.SectorID, ft sectorbuilder.SectorFileType) error {
 	panic("implement me")
 }
 
-func (sm *StorageMinerAPI) FindSector(ctx context.Context, si abi.SectorID, types sectorbuilder.SectorFileType) ([]api.StorageInfo, error) {
+func (sm *StorageMinerAPI) StorageFindSector(ctx context.Context, si abi.SectorID, types sectorbuilder.SectorFileType) ([]stores.StorageInfo, error) {
 	panic("implement me")
 }
 

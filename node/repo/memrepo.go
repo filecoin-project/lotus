@@ -2,6 +2,7 @@ package repo
 
 import (
 	"encoding/json"
+	"github.com/filecoin-project/lotus/storage/sealmgr/stores"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -81,8 +82,8 @@ func (lmem *lockedMemRepo) Path() string {
 			panic(err)
 		}
 
-		b, err := json.MarshalIndent(&config.StorageMeta{
-			ID:       uuid.New().String(),
+		b, err := json.MarshalIndent(&stores.StorageMeta{
+			ID:       stores.ID(uuid.New().String()),
 			Weight:   10,
 			CanSeal:  true,
 			CanStore: true,

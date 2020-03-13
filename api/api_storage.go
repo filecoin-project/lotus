@@ -7,11 +7,11 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
-	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/storage/sealmgr/stores"
 )
 
 // alias because cbor-gen doesn't like non-alias types
@@ -110,9 +110,7 @@ type StorageMiner interface {
 
 	// WorkerConnect tells the node to connect to workers RPC
 	WorkerConnect(context.Context, string) error
-	WorkerAttachStorage(context.Context, StorageInfo) error
-	StorageDeclareSector(ctx context.Context, storageId string, s abi.SectorID) error
-	StorageFindSector(context.Context, abi.SectorID, sectorbuilder.SectorFileType) ([]StorageInfo, error)
+	stores.SectorIndex
 
 	MarketImportDealData(ctx context.Context, propcid cid.Cid, path string) error
 	MarketListDeals(ctx context.Context) ([]storagemarket.StorageDeal, error)
@@ -123,25 +121,6 @@ type StorageMiner interface {
 	DealsList(ctx context.Context) ([]storagemarket.StorageDeal, error)
 
 	StorageAddLocal(ctx context.Context, path string) error
-}
-
-type StorageInfo struct {
-	ID             string
-	URLs []string // TODO: Support non-http transports
-	Cost int
-
-	CanSeal bool
-	CanStore bool
-}
-
-type StoragePath struct {
-	ID     string
-	Weight uint64
-
-	LocalPath string
-
-	CanSeal  bool
-	CanStore bool
 }
 
 type SealRes struct {

@@ -18,15 +18,6 @@ type StorageConfig struct {
 	StoragePaths []LocalPath
 }
 
-// [path]/metadata.json
-type StorageMeta struct {
-	ID     string
-	Weight uint64 // 0 = readonly
-
-	CanSeal  bool
-	CanStore bool
-}
-
 func StorageFromFile(path string, def *StorageConfig) (*StorageConfig, error) {
 	file, err := os.Open(path)
 	switch {
