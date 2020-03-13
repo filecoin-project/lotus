@@ -1,6 +1,7 @@
 package stores
 
 import (
+	"context"
 	"encoding/json"
 	"io/ioutil"
 	"os"
@@ -114,7 +115,7 @@ func (st *Local) open() error {
 	return nil
 }
 
-func (st *Local) AcquireSector(sid abi.SectorID, existing sectorbuilder.SectorFileType, allocate sectorbuilder.SectorFileType, sealing bool) (sectorbuilder.SectorPaths, func(), error) {
+func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, existing sectorbuilder.SectorFileType, allocate sectorbuilder.SectorFileType, sealing bool) (sectorbuilder.SectorPaths, func(), error) {
 	if existing|allocate != existing^allocate {
 		return sectorbuilder.SectorPaths{}, nil, xerrors.New("can't both find and allocate a sector")
 	}

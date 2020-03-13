@@ -30,6 +30,14 @@ type Remote struct {
 	//  (make sure to not fetch the same sector data twice)
 }
 
+func NewRemote(local Store, remote SectorIndex, auth http.Header) *Remote {
+	return &Remote{
+		local:   local,
+		remote:  remote,
+		auth:    auth,
+	}
+}
+
 type SectorIndex interface {
 	FindSector(context.Context, abi.SectorID, sectorbuilder.SectorFileType) ([]api.StorageInfo, error)
 }

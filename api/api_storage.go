@@ -112,7 +112,7 @@ type StorageMiner interface {
 	WorkerConnect(context.Context, string) error
 	WorkerAttachStorage(context.Context, StorageInfo) error
 	WorkerDeclareSector(ctx context.Context, storageId string, s abi.SectorID) error
-	WorkerFindSector(context.Context, abi.SectorID, sectorbuilder.SectorFileType) ([]StorageInfo, error)
+	FindSector(context.Context, abi.SectorID, sectorbuilder.SectorFileType) ([]StorageInfo, error)
 
 	MarketImportDealData(ctx context.Context, propcid cid.Cid, path string) error
 	MarketListDeals(ctx context.Context) ([]storagemarket.StorageDeal, error)

@@ -20,7 +20,24 @@ import (
 
 type LocalWorker struct {
 	scfg    *sectorbuilder.Config
-	storage *stores.Local
+	storage stores.Store
+	localStore *stores.Local
+}
+
+func NewLocalWorker(ma address.Address, spt abi.RegisteredProof, store stores.Store, local *stores.Local) *LocalWorker {
+	ppt, err := spt.RegisteredPoStProof()
+	if err != nil {
+		panic(err)
+	}
+	return &LocalWorker{
+		scfg:       &sectorbuilder.Config{
+			SealProofType: spt,
+			PoStProofType: ppt,
+			Miner:         ma,
+		},
+		storage:    store,
+		localStore: local,
+	}
 }
 
 type localWorkerPathProvider struct {
@@ -33,7 +50,7 @@ func (l *localWorkerPathProvider) AcquireSector(ctx context.Context, id abi.Sect
 		return sectorbuilder.SectorPaths{}, nil, xerrors.Errorf("get miner ID: %w", err)
 	}
 
-	return l.w.storage.AcquireSector(abi.SectorID{
+	return l.w.storage.AcquireSector(ctx, abi.SectorID{
 		Miner: abi.ActorID(mid),
 		Number: id,
 	}, existing, allocate, sealing)
@@ -107,7 +124,7 @@ func (l *LocalWorker) TaskTypes(context.Context) (map[sealmgr.TaskType]struct{},
 }
 
 func (l *LocalWorker) Paths(context.Context) ([]api.StoragePath, error) {
-	return l.storage.Local(), nil
+	return l.localStore.Local(), nil
 }
 
 var _ Worker = &LocalWorker{}

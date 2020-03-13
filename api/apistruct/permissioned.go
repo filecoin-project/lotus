@@ -43,6 +43,12 @@ func PermissionedFullAPI(a api.FullNode) api.FullNode {
 	return &out
 }
 
+func PermissionedWorkerAPI(a api.WorkerApi) api.WorkerApi {
+	var out WorkerStruct
+	permissionedAny(a, &out.Internal)
+	return &out
+}
+
 func HasPerm(ctx context.Context, perm api.Permission) bool {
 	callerPerms, ok := ctx.Value(permCtxKey).([]api.Permission)
 	if !ok {
