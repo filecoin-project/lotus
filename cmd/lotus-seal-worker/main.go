@@ -4,7 +4,6 @@ import (
 	"os"
 
 	logging "github.com/ipfs/go-log/v2"
-	manet "github.com/multiformats/go-multiaddr-net"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
@@ -118,47 +117,7 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("get params: %w", err)
 		}
 
-		ainfo, err := lcli.GetAPIInfo(cctx, repo.StorageMiner)
-		if err != nil {
-			return xerrors.Errorf("could not get api info: %w", err)
-		}
-		_, storageAddr, err := manet.DialArgs(ainfo.Addr)
 
-
-
-		/*
-		/*ppt, spt, err := api.ProofTypeFromSectorSize(ssize)
-			if err != nil {
-				return err
-			}
-
-			/*sb, err := sectorbuilder.NewStandalone(&sectorbuilder.Config{
-				SealProofType: spt,
-				PoStProofType: ppt,
-				Miner:         act,
-				WorkerThreads: workers,
-				Paths:         sectorbuilder.SimplePath(r),
-			})
-			if err != nil {
-				return err
-			}
-
-			nQueues := workers + transfers
-			var wg sync.WaitGroup
-			wg.Add(nQueues)
-
-			for i := 0; i < nQueues; i++ {
-				go func() {
-					defer wg.Done()
-
-				/*	if err := acceptJobs(ctx, nodeApi, sb, limiter, "http://"+storageAddr, ainfo.AuthHeader(), r, cctx.Bool("no-precommit"), cctx.Bool("no-commit")); err != nil {
-						log.Warnf("%+v", err)
-						return
-					}
-				}()
-			}
-
-			wg.Wait()*/
 		return nil
 	},
 }

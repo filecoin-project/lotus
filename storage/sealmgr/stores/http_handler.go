@@ -50,15 +50,7 @@ func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Requ
 	}
 	defer done()
 
-	var path string
-	switch ft {
-	case sectorbuilder.FTUnsealed:
-		path = paths.Unsealed
-	case sectorbuilder.FTSealed:
-		path = paths.Sealed
-	case sectorbuilder.FTCache:
-		path = paths.Cache
-	}
+	path := sectorutil.PathByType(paths, ft)
 	if path == "" {
 		log.Error("acquired path was empty")
 		w.WriteHeader(500)

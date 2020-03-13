@@ -143,15 +143,7 @@ func (st *Local) AcquireSector(sid abi.SectorID, existing sectorbuilder.SectorFi
 			}
 
 			spath := filepath.Join(p.local, fileType.String(), sectorutil.SectorName(sid))
-
-			switch fileType {
-			case sectorbuilder.FTUnsealed:
-				out.Unsealed = spath
-			case sectorbuilder.FTSealed:
-				out.Sealed = spath
-			case sectorbuilder.FTCache:
-				out.Cache = spath
-			}
+			sectorutil.SetPathByType(&out, fileType, spath)
 
 			existing ^= fileType
 		}
@@ -188,15 +180,7 @@ func (st *Local) AcquireSector(sid abi.SectorID, existing sectorbuilder.SectorFi
 			return sectorbuilder.SectorPaths{}, nil, xerrors.Errorf("couldn't find a suitable path for a sector")
 		}
 
-		switch fileType {
-		case sectorbuilder.FTUnsealed:
-			out.Unsealed = best
-		case sectorbuilder.FTSealed:
-			out.Sealed = best
-		case sectorbuilder.FTCache:
-			out.Cache = best
-		}
-
+		sectorutil.SetPathByType(&out, fileType, best)
 		allocate ^= fileType
 	}
 
