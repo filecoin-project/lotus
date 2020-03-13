@@ -20,8 +20,10 @@ func (l *readonlyProvider) AcquireSector(ctx context.Context, id abi.SectorNumbe
 		return sectorbuilder.SectorPaths{}, nil, xerrors.New("read-only storage")
 	}
 
-	return l.stor.AcquireSector(ctx, abi.SectorID{
+	p, _, done, err := l.stor.AcquireSector(ctx, abi.SectorID{
 		Miner:  l.miner,
 		Number: id,
 	}, existing, allocate, sealing)
+
+	return p, done, err
 }

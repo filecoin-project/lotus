@@ -39,6 +39,7 @@ type StorageMinerAPI struct {
 	BlockMiner      *miner.Miner
 	Full            api.FullNode
 	StorageMgr      *advmgr.Manager `optional:"true"`
+	*stores.Index
 }
 
 func (sm *StorageMinerAPI) ServeRemote(w http.ResponseWriter, r *http.Request) {
@@ -150,18 +151,6 @@ func (sm *StorageMinerAPI) WorkerConnect(ctx context.Context, url string) error 
 	}
 
 	panic("todo register ")
-}
-
-func (sm *StorageMinerAPI) StorageAttach(ctx context.Context, si stores.StorageInfo) error {
-	panic("implement me")
-}
-
-func (sm *StorageMinerAPI) StorageDeclareSector(ctx context.Context, storageId stores.ID, s abi.SectorID, ft sectorbuilder.SectorFileType) error {
-	panic("implement me")
-}
-
-func (sm *StorageMinerAPI) StorageFindSector(ctx context.Context, si abi.SectorID, types sectorbuilder.SectorFileType) ([]stores.StorageInfo, error) {
-	panic("implement me")
 }
 
 func (sm *StorageMinerAPI) MarketImportDealData(ctx context.Context, propCid cid.Cid, path string) error {

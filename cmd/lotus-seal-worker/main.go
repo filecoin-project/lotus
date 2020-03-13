@@ -167,7 +167,7 @@ var runCmd = &cli.Command{
 		remote := stores.NewRemote(localStore, nodeApi, sminfo.AuthHeader())
 
 		workerApi := &worker{
-			LocalWorker: advmgr.NewLocalWorker(act, spt, remote, localStore),
+			LocalWorker: advmgr.NewLocalWorker(act, spt, remote, localStore, stores.NewIndex()),
 		}
 
 		mux := mux.NewRouter()
