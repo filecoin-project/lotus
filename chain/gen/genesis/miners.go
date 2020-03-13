@@ -46,11 +46,6 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 		return cid.Undef, xerrors.Errorf("failed to create NewVM: %w", err)
 	}
 
-	err = vm.MutateState(ctx, builtin.StoragePowerActorAddr, func(cst cbor.IpldStore, st *power.State) error {
-		st.TotalNetworkPower = networkPower
-		return nil
-	})
-
 	if len(miners) == 0 {
 		return cid.Undef, xerrors.New("no genesis miners")
 	}
@@ -143,7 +138,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 				return cid.Undef, err
 			}
 			params := &power.EnrollCronEventParams{
-				EventEpoch: miner.ProvingPeriod,
+				EventEpoch: miner.ProvingPeriod + power.WindowedPostChallengeDuration,
 				Payload:    payload,
 			}
 
@@ -185,11 +180,12 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 					}
 
 					spower := power.ConsensusPowerForWeight(weight)
-					pledge = power.PledgeForWeight(weight, big.Sub(st.TotalNetworkPower, spower))
+					pledge = power.PledgeForWeight(weight, st.TotalNetworkPower)
 					err := st.AddToClaim(&state.AdtStore{cst}, maddr, spower, pledge)
 					if err != nil {
 						return xerrors.Errorf("add to claim: %w", err)
 					}
+					fmt.Println("Added weight to claim: ", st.TotalNetworkPower)
 					return nil
 				})
 				if err != nil {
@@ -208,9 +204,11 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 						DealIDs:         []abi.DealID{dealIDs[pi]},
 						Expiration:      preseal.Deal.EndEpoch,
 					},
-					ActivationEpoch:   0,
-					DealWeight:        dealWeight,
-					PledgeRequirement: pledge,
+					ActivationEpoch:       0,
+					DealWeight:            dealWeight,
+					PledgeRequirement:     pledge,
+					DeclaredFaultEpoch:    -1,
+					DeclaredFaultDuration: -1,
 				}
 
 				err = vm.MutateState(ctx, maddr, func(cst cbor.IpldStore, st *miner.State) error {
@@ -252,6 +250,12 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 		}
 
 	}
+
+	// TODO: to avoid division by zero, we set the initial power actor power to 1, this adjusts that back down so the accounting is accurate.
+	err = vm.MutateState(ctx, builtin.StoragePowerActorAddr, func(cst cbor.IpldStore, st *power.State) error {
+		st.TotalNetworkPower = big.Sub(st.TotalNetworkPower, big.NewInt(1))
+		return nil
+	})
 
 	c, err := vm.Flush(ctx)
 	return c, err

@@ -8,8 +8,10 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"golang.org/x/xerrors"
@@ -36,7 +38,7 @@ import (
 
 func init() {
 	build.SectorSizes = []abi.SectorSize{2048}
-	build.MinimumMinerPower = 2048
+	power.ConsensusMinerMinPower = big.NewInt(2048)
 }
 
 const testForkHeight = 40
