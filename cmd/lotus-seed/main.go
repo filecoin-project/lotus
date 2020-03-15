@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/docker/go-units"
 	"io/ioutil"
 	"os"
 
@@ -62,9 +63,9 @@ var preSealCmd = &cli.Command{
 			Value: "t01000",
 			Usage: "specify the future address of your miner",
 		},
-		&cli.Uint64Flag{
+		&cli.StringFlag{
 			Name:  "sector-size",
-			Value: uint64(build.SectorSizes[0]),
+			Value: "2KiB",
 			Usage: "specify size of sectors to pre-seal",
 		},
 		&cli.StringFlag{
@@ -113,7 +114,13 @@ var preSealCmd = &cli.Command{
 			}
 		}
 
-		rp, _, err := lapi.ProofTypeFromSectorSize(abi.SectorSize(c.Uint64("sector-size")))
+		sectorSizeInt, err := units.RAMInBytes(c.String("sector-size"))
+		if err != nil {
+			return err
+		}
+		sectorSize := abi.SectorSize(sectorSizeInt)
+
+		rp, _, err := lapi.ProofTypeFromSectorSize(sectorSize)
 		if err != nil {
 			return err
 		}
