@@ -2,12 +2,16 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
@@ -21,6 +25,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/auth"
 	"github.com/filecoin-project/lotus/lib/jsonrpc"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
+	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage/sealmgr/advmgr"
 	"github.com/filecoin-project/lotus/storage/sealmgr/stores"
@@ -79,6 +84,10 @@ var runCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:  "address",
 			Usage: "Locally reachable address",
+		},
+		&cli.BoolFlag{
+			Name:  "no-local-storage",
+			Usage: "don't use storageminer repo for sector storage",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -141,7 +150,46 @@ var runCmd = &cli.Command{
 			return err
 		}
 		if !ok {
-			return xerrors.Errorf("repo at '%s' is not initialized, run 'lotus-seal-worker init' to set it up", repoPath)
+			if err := r.Init(repo.Worker); err != nil {
+				return err
+			}
+
+			lr, err := r.Lock(repo.Worker)
+			if err != nil {
+				return err
+			}
+
+			var localPaths []config.LocalPath
+
+			if !cctx.Bool("no-local-storage") {
+				b, err := json.MarshalIndent(&stores.StorageMeta{
+					ID:       stores.ID(uuid.New().String()),
+					Weight:   10,
+					CanSeal:  true,
+					CanStore: false,
+				}, "", "  ")
+				if err != nil {
+					return xerrors.Errorf("marshaling storage config: %w", err)
+				}
+
+				if err := ioutil.WriteFile(filepath.Join(lr.Path(), "sectorstore.json"), b, 0644); err != nil {
+					return xerrors.Errorf("persisting storage metadata (%s): %w", filepath.Join(lr.Path(), "sectorstore.json"), err)
+				}
+
+				localPaths = append(localPaths, config.LocalPath{
+					Path: lr.Path(),
+				})
+			}
+
+			if err := lr.SetStorage(func(sc *config.StorageConfig) {
+				sc.StoragePaths = append(sc.StoragePaths, localPaths...)
+			}); err != nil {
+				return xerrors.Errorf("set storage config: %w", err)
+			}
+
+			if err := lr.Close(); err != nil {
+				return xerrors.Errorf("close repo: %w", err)
+			}
 		}
 
 		lr, err := r.Lock(repo.Worker)

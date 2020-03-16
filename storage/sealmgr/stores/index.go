@@ -176,7 +176,7 @@ func DeclareLocalStorage(ctx context.Context, idx SectorIndex, localStore *Local
 			CanStore: path.CanStore,
 		})
 		if err != nil {
-			log.Errorf("attaching local storage to remote: %+v")
+			log.Errorf("attaching local storage to remote: %+v", err)
 			continue
 		}
 
