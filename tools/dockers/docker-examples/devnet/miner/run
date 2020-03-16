@@ -1,0 +1,19 @@
+#!/bin/bash
+set -e
+# Wait for seed peer to start
+s6-svwait -u -t 360000 ../seed
+# Initialize miner
+if [ ! -d "$HOME/.lotusstorage" ]
+then
+    echo "Initializing storage miner"
+    lotus-storage-miner init \
+        --genesis-miner \
+        --actor=t0101 \
+        --sector-size 1024 \
+        --pre-sealed-sectors=/mnt/genesis-sectors \
+        --nosync
+fi
+# Run miner
+echo "Running miner"
+exec lotus-storage-miner run \
+    --nosync

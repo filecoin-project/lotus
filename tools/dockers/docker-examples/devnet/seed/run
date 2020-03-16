@@ -1,0 +1,7 @@
+#!/bin/bash
+set -e
+# Run seed node
+exec lotus daemon \
+    --lotus-make-random-genesis=/lotus/dev.gen \
+    --genesis-presealed-sectors=/mnt/genesis-sectors/pre-seal-t0101.json \
+    --bootstrap=false
