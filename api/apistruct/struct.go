@@ -182,7 +182,7 @@ type StorageMinerStruct struct {
 		SectorsUpdate func(context.Context, abi.SectorNumber, api.SectorState) error  `perm:"write"`
 
 		WorkerConnect        func(context.Context, string) error                                                             `perm:"admin"` // TODO: worker perm
-		WorkerAttachStorage  func(context.Context, stores.StorageInfo) error                                                 `perm:"admin"`
+		StorageAttach        func(context.Context, stores.StorageInfo) error                                                 `perm:"admin"`
 		StorageDeclareSector func(context.Context, stores.ID, abi.SectorID, sectorbuilder.SectorFileType) error              `perm:"admin"`
 		StorageFindSector    func(context.Context, abi.SectorID, sectorbuilder.SectorFileType) ([]stores.StorageInfo, error) `perm:"admin"`
 		StorageList          func(ctx context.Context) (map[stores.ID][]stores.Decl, error)                                  `perm:"admin"`
@@ -655,7 +655,7 @@ func (c *StorageMinerStruct) WorkerConnect(ctx context.Context, url string) erro
 }
 
 func (c *StorageMinerStruct) StorageAttach(ctx context.Context, si stores.StorageInfo) error {
-	return c.Internal.WorkerAttachStorage(ctx, si)
+	return c.Internal.StorageAttach(ctx, si)
 }
 
 func (c *StorageMinerStruct) StorageDeclareSector(ctx context.Context, storageId stores.ID, s abi.SectorID, ft sectorbuilder.SectorFileType) error {
