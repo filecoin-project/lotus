@@ -16,6 +16,7 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	record "github.com/libp2p/go-libp2p-record"
 	"github.com/multiformats/go-multiaddr"
+	manet "github.com/multiformats/go-multiaddr-net"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -318,15 +319,22 @@ func StorageMiner(out *api.StorageMiner) Option {
 func ConfigCommon(cfg *config.Common) Option {
 	return Options(
 		func(s *Settings) error { s.Config = true; return nil },
-
-		Override(SetApiEndpointKey, func(lr repo.LockedRepo) error {
-			apima, err := multiaddr.NewMultiaddr(cfg.API.ListenAddress)
-			if err != nil {
-				return err
-			}
-			return lr.SetAPIEndpoint(apima)
+		Override(new(dtypes.APIEndpoint), func() (dtypes.APIEndpoint, error) {
+			return multiaddr.NewMultiaddr(cfg.API.ListenAddress)
 		}),
+		Override(SetApiEndpointKey, func(lr repo.LockedRepo, e dtypes.APIEndpoint) error {
+			return lr.SetAPIEndpoint(e)
+		}),
+		Override(new(advmgr.URLs), func(e dtypes.APIEndpoint) (advmgr.URLs, error) {
+			_, ip, err := manet.DialArgs(e)
+			if err != nil {
+				return nil, xerrors.Errorf("getting api endpoint dial args: %w", err)
+			}
 
+			var urls advmgr.URLs
+			urls = append(urls, "http://"+ip+"/remote") // TODO: This makes assumptions, and probably bad ones too
+			return urls, nil
+		}),
 		ApplyIf(func(s *Settings) bool { return s.Online },
 			Override(StartListeningKey, lp2p.StartListening(cfg.Libp2p.ListenAddresses)),
 			Override(ConnectionManagerKey, lp2p.ConnectionManager(

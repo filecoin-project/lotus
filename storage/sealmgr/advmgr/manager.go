@@ -24,6 +24,8 @@ import (
 
 var log = logging.Logger("advmgr")
 
+type URLs []string
+
 type SectorIDCounter interface {
 	Next() (abi.SectorNumber, error)
 }
@@ -47,10 +49,14 @@ type Manager struct {
 	storage2.Prover
 }
 
-func New(ls stores.LocalStorage, cfg *sectorbuilder.Config, sc SectorIDCounter) (*Manager, error) {
+func New(ls stores.LocalStorage, si *stores.Index, cfg *sectorbuilder.Config, sc SectorIDCounter, urls URLs) (*Manager, error) {
 	stor, err := stores.NewLocal(ls)
 	if err != nil {
 		return nil, err
+	}
+
+	if err := stores.DeclareLocalStorage(context.TODO(), si, stor, urls, 10); err != nil {
+		log.Errorf("Declaring local storage failed: %+v")
 	}
 
 	mid, err := address.IDFromAddress(cfg.Miner)

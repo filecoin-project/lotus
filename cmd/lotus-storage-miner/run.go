@@ -22,6 +22,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/jsonrpc"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/impl"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -29,10 +30,6 @@ var runCmd = &cli.Command{
 	Name:  "run",
 	Usage: "Start a lotus storage miner process",
 	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:  "api",
-			Value: "2345",
-		},
 		&cli.BoolFlag{
 			Name:  "enable-gpu-proving",
 			Usage: "enable use of GPU for mining operations",
@@ -93,13 +90,8 @@ var runCmd = &cli.Command{
 			node.Repo(r),
 
 			node.ApplyIf(func(s *node.Settings) bool { return cctx.IsSet("api") },
-				node.Override(node.SetApiEndpointKey, func(lr repo.LockedRepo) error {
-					apima, err := multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/" +
-						cctx.String("api"))
-					if err != nil {
-						return err
-					}
-					return lr.SetAPIEndpoint(apima)
+				node.Override(new(dtypes.APIEndpoint), func() (dtypes.APIEndpoint, error) {
+					return multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/" + cctx.String("api"))
 				})),
 			node.Override(new(api.FullNode), nodeApi),
 		)
