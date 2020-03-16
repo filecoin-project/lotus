@@ -454,7 +454,6 @@ func main() {
 				bo.VerifyEPostHot = verifypost2.Sub(verifypost1)
 			}
 
-
 			if c.Bool("json-out") {
 				data, err := json.MarshalIndent(bo, "", "  ")
 				if err != nil {
