@@ -34,7 +34,7 @@ type SectorIndex interface { // part of storage-miner api
 	StorageFindSector(context.Context, abi.SectorID, sectorbuilder.SectorFileType) ([]StorageInfo, error)
 }
 
-type decl struct {
+type Decl struct {
 	abi.SectorID
 	sectorbuilder.SectorFileType
 }
@@ -42,15 +42,40 @@ type decl struct {
 type Index struct {
 	lk sync.Mutex
 
-	sectors map[decl][]ID
+	sectors map[Decl][]ID
 	stores  map[ID]*StorageInfo
 }
 
 func NewIndex() *Index {
 	return &Index{
-		sectors: map[decl][]ID{},
+		sectors: map[Decl][]ID{},
 		stores:  map[ID]*StorageInfo{},
 	}
+}
+
+func (i *Index) StorageList(ctx context.Context) (map[ID][]Decl, error) {
+	byID := map[ID]map[abi.SectorID]sectorbuilder.SectorFileType{}
+
+	for id := range i.stores {
+		byID[id] = map[abi.SectorID]sectorbuilder.SectorFileType{}
+	}
+	for decl, ids := range i.sectors {
+		for _, id := range ids {
+			byID[id][decl.SectorID] |= decl.SectorFileType
+		}
+	}
+
+	out := map[ID][]Decl{}
+	for id, m := range byID {
+		for sectorID, fileType := range m {
+			out[id] = append(out[id], Decl{
+				SectorID:       sectorID,
+				SectorFileType: fileType,
+			})
+		}
+	}
+
+	return out, nil
 }
 
 func (i *Index) StorageAttach(ctx context.Context, si StorageInfo) error {
@@ -80,7 +105,7 @@ func (i *Index) StorageDeclareSector(ctx context.Context, storageId ID, s abi.Se
 			continue
 		}
 
-		d := decl{s, fileType}
+		d := Decl{s, fileType}
 
 		for _, sid := range i.sectors[d] {
 			if sid == storageId {
@@ -99,7 +124,7 @@ func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft sector
 	i.lk.Lock()
 	defer i.lk.Unlock()
 
-	storageIDs := i.sectors[decl{s, ft}]
+	storageIDs := i.sectors[Decl{s, ft}]
 	out := make([]StorageInfo, len(storageIDs))
 
 	for j, id := range storageIDs {
@@ -130,6 +155,39 @@ func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft sector
 	}
 
 	return out, nil
+}
+
+func (i *Index) StorageInfo(ctx context.Context, id ID) (StorageInfo, error) {
+	si, found := i.stores[id]
+	if !found {
+		return StorageInfo{}, xerrors.Errorf("sector store not found")
+	}
+
+	return *si, nil
+}
+
+func DeclareLocalStorage(ctx context.Context, idx SectorIndex, localStore *Local, urls []string, cost int) error {
+	for _, path := range localStore.Local() {
+		err := idx.StorageAttach(ctx, StorageInfo{
+			ID:       path.ID,
+			URLs:     urls,
+			Cost:     cost,
+			CanSeal:  path.CanSeal,
+			CanStore: path.CanStore,
+		})
+		if err != nil {
+			log.Errorf("attaching local storage to remote: %+v")
+			continue
+		}
+
+		for id, fileType := range localStore.List(path.ID) {
+			if err := idx.StorageDeclareSector(ctx, path.ID, id, fileType); err != nil {
+				log.Errorf("declaring sector: %+v")
+			}
+		}
+	}
+
+	return nil
 }
 
 var _ SectorIndex = &Index{}

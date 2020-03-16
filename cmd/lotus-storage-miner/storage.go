@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/filecoin-project/lotus/storage/sealmgr/stores"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -12,7 +12,10 @@ import (
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
+	"github.com/filecoin-project/go-sectorbuilder"
+
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/storage/sealmgr/stores"
 )
 
 const metaFile = "sectorstore.json"
@@ -22,6 +25,7 @@ var storageCmd = &cli.Command{
 	Usage: "manage sector storage",
 	Subcommands: []*cli.Command{
 		storageAttachCmd,
+		storageListCmd,
 	},
 }
 
@@ -101,5 +105,51 @@ var storageAttachCmd = &cli.Command{
 		}
 
 		return nodeApi.StorageAddLocal(ctx, p)
+	},
+}
+
+var storageListCmd = &cli.Command{
+	Name: "list",
+	Action: func(cctx *cli.Context) error {
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		st, err := nodeApi.StorageList(ctx)
+		if err != nil {
+			return err
+		}
+
+		for id, sectors := range st {
+			var u, s, c int
+			for _, decl := range sectors {
+				if decl.SectorFileType&sectorbuilder.FTUnsealed > 0 {
+					u++
+				}
+				if decl.SectorFileType&sectorbuilder.FTSealed > 0 {
+					s++
+				}
+				if decl.SectorFileType&sectorbuilder.FTCache > 0 {
+					c++
+				}
+			}
+
+			fmt.Printf("%s:\n", id)
+			fmt.Printf("\tUnsealed: %d; Sealed: %d; Caches: %d\n", u, s, c)
+
+			si, err := nodeApi.StorageInfo(ctx, id)
+			if err != nil {
+				return err
+			}
+			fmt.Printf("\tSeal: %t; Store: %t; Cost: %d\n", si.CanSeal, si.CanStore, si.Cost)
+			for _, l := range si.URLs {
+				fmt.Printf("\tReachable %s\n", l) // TODO; try pinging maybe?? print latency?
+			}
+		}
+
+		return nil
 	},
 }

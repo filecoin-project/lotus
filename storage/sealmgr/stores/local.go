@@ -274,3 +274,17 @@ func (st *Local) Local() []StoragePath {
 
 	return out
 }
+
+func (st *Local) List(id ID) map[abi.SectorID]sectorbuilder.SectorFileType {
+	out := map[abi.SectorID]sectorbuilder.SectorFileType{}
+	for _, p := range st.paths {
+		if p.meta.ID != id { // TODO: not very efficient
+			continue
+		}
+
+		for id, fileType := range p.sectors {
+			out[id] |= fileType
+		}
+	}
+	return out
+}

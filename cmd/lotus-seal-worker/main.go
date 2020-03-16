@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -13,8 +14,6 @@ import (
 	"gopkg.in/urfave/cli.v2"
 
 	paramfetch "github.com/filecoin-project/go-paramfetch"
-	manet "github.com/multiformats/go-multiaddr-net"
-
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/apistruct"
 	"github.com/filecoin-project/lotus/build"
@@ -30,11 +29,6 @@ import (
 var log = logging.Logger("main")
 
 const FlagStorageRepo = "workerrepo"
-
-const (
-	workers   = 1 // TODO: Configurability
-	transfers = 1
-)
 
 func main() {
 	lotuslog.SetupLogLevels()
@@ -81,10 +75,22 @@ func main() {
 var runCmd = &cli.Command{
 	Name:  "run",
 	Usage: "Start lotus worker",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "address",
+			Usage: "Locally reachable address",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Bool("enable-gpu-proving") {
 			os.Setenv("BELLMAN_NO_GPU", "true")
 		}
+
+		if cctx.String("address") == "" {
+			return xerrors.Errorf("--address flag is required")
+		}
+
+		// Connect to storage-miner
 
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
@@ -107,6 +113,8 @@ var runCmd = &cli.Command{
 			log.Warn("Shutting down..")
 		}()
 
+		// Check params
+
 		act, err := nodeApi.ActorAddress(ctx)
 		if err != nil {
 			return err
@@ -119,6 +127,8 @@ var runCmd = &cli.Command{
 		if err := paramfetch.GetParams(build.ParametersJson(), uint64(ssize)); err != nil {
 			return xerrors.Errorf("get params: %w", err)
 		}
+
+		// Open repo
 
 		repoPath := cctx.String(FlagStorageRepo)
 		r, err := repo.NewFS(repoPath)
@@ -144,16 +154,15 @@ var runCmd = &cli.Command{
 			return err
 		}
 
-		endpoint, err := r.APIEndpoint()
-		if err != nil {
+		if err := stores.DeclareLocalStorage(
+			ctx,
+			nodeApi,
+			localStore,
+			[]string{"http://" + cctx.String("address") + "/remote"}, // TODO: Less hardcoded
+			1); err != nil {
 			return err
 		}
-
-		lst, err := manet.Listen(endpoint)
-		if err != nil {
-			return xerrors.Errorf("could not listen: %w", err)
-		}
-
+		// Setup remote sector store
 		_, spt, err := api.ProofTypeFromSectorSize(ssize)
 		if err != nil {
 			return xerrors.Errorf("getting proof type: %w", err)
@@ -165,6 +174,8 @@ var runCmd = &cli.Command{
 		}
 
 		remote := stores.NewRemote(localStore, nodeApi, sminfo.AuthHeader())
+
+		// Create / expose the worker
 
 		workerApi := &worker{
 			LocalWorker: advmgr.NewLocalWorker(act, spt, remote, localStore, stores.NewIndex()),
@@ -195,8 +206,14 @@ var runCmd = &cli.Command{
 			}
 			log.Warn("Graceful shutdown successful")
 		}()
+
 		signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
 
-		return srv.Serve(manet.NetListener(lst))
+		nl, err := net.Listen("tcp4", cctx.String("address"))
+		if err != nil {
+			return err
+		}
+
+		return srv.Serve(nl)
 	},
 }
