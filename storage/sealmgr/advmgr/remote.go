@@ -16,7 +16,11 @@ type remote struct {
 	api.WorkerApi
 }
 
-func (r *remote) AddPiece(ctx context.Context, sector abi.SectorNumber, pieceSizes []abi.UnpaddedPieceSize, newPieceSize abi.UnpaddedPieceSize, pieceData storage2.Data) (abi.PieceInfo, error) {
+func (r *remote) NewSector(ctx context.Context, sector abi.SectorID) error {
+	return xerrors.New("unsupported")
+}
+
+func (r *remote) AddPiece(ctx context.Context, sector abi.SectorID, pieceSizes []abi.UnpaddedPieceSize, newPieceSize abi.UnpaddedPieceSize, pieceData storage2.Data) (abi.PieceInfo, error) {
 	return abi.PieceInfo{}, xerrors.New("unsupported")
 }
 

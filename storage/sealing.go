@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"github.com/filecoin-project/go-address"
 	"io"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -11,6 +12,10 @@ import (
 )
 
 // TODO: refactor this to be direct somehow
+
+func (m *Miner) Address() address.Address {
+	return m.sealing.Address()
+}
 
 func (m *Miner) AllocatePiece(size abi.UnpaddedPieceSize) (sectorID abi.SectorNumber, offset uint64, err error) {
 	return m.sealing.AllocatePiece(size)

@@ -121,10 +121,11 @@ func (m *Miner) runPreflightChecks(ctx context.Context) error {
 
 type SectorBuilderEpp struct {
 	prover storage.Prover
+	miner abi.ActorID
 }
 
-func NewElectionPoStProver(sb storage.Prover) *SectorBuilderEpp {
-	return &SectorBuilderEpp{sb}
+func NewElectionPoStProver(sb storage.Prover, miner abi.ActorID) *SectorBuilderEpp {
+	return &SectorBuilderEpp{sb, miner}
 }
 
 var _ gen.ElectionPoStProver = (*SectorBuilderEpp)(nil)
@@ -133,7 +134,7 @@ func (epp *SectorBuilderEpp) GenerateCandidates(ctx context.Context, ssi []abi.S
 	start := time.Now()
 	var faults []abi.SectorNumber // TODO
 
-	cds, err := epp.prover.GenerateEPostCandidates(ssi, rand, faults)
+	cds, err := epp.prover.GenerateEPostCandidates(ctx, epp.miner, ssi, rand, faults)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to generate candidates: %w", err)
 	}
@@ -153,7 +154,7 @@ func (epp *SectorBuilderEpp) ComputeProof(ctx context.Context, ssi []abi.SectorI
 	}
 
 	start := time.Now()
-	proof, err := epp.prover.ComputeElectionPoSt(ssi, rand, owins)
+	proof, err := epp.prover.ComputeElectionPoSt(ctx, epp.miner, ssi, rand, owins)
 	if err != nil {
 		return nil, err
 	}

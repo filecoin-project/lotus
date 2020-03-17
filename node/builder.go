@@ -262,7 +262,7 @@ func Online() Option {
 			Override(new(*stores.Index), stores.NewIndex()),
 			Override(new(*sectorbuilder.Config), modules.SectorBuilderConfig),
 			Override(new(stores.LocalStorage), From(new(repo.LockedRepo))),
-			Override(new(advmgr.SectorIDCounter), modules.SectorIDCounter),
+			Override(new(sealing.SectorIDCounter), modules.SectorIDCounter),
 			Override(new(*advmgr.Manager), advmgr.New),
 
 			Override(new(sealmgr.Manager), From(new(*advmgr.Manager))),

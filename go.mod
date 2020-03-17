@@ -22,11 +22,11 @@ require (
 	github.com/filecoin-project/go-fil-markets v0.0.0-20200304003055-d449a980d4bd
 	github.com/filecoin-project/go-padreader v0.0.0-20200210211231-548257017ca6
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200218225740-47c639bab663
-	github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200314022627-38af9db49ba2
+	github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200317165603-bd9e7cb04d81
 	github.com/filecoin-project/go-statemachine v0.0.0-20200226041606-2074af6d51d9
 	github.com/filecoin-project/go-statestore v0.1.0
 	github.com/filecoin-project/specs-actors v0.0.0-20200311215506-e95895452888
-	github.com/filecoin-project/specs-storage v0.0.0-20200303233430-1a5a408f7513
+	github.com/filecoin-project/specs-storage v0.0.0-20200317133846-063ba163b217
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/google/uuid v1.1.1

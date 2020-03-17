@@ -30,6 +30,10 @@ var log = logging.Logger("sectors")
 
 type TicketFn func(context.Context) (*api.SealTicket, error)
 
+type SectorIDCounter interface {
+	Next() (abi.SectorNumber, error)
+}
+
 type sealingApi interface { // TODO: trim down
 	// Call a read only method on actors (no interaction with the chain required)
 	StateCall(context.Context, *types.Message, types.TipSetKey) (*api.InvocResult, error)
@@ -68,6 +72,7 @@ type Sealing struct {
 	sealer  sealmgr.Manager
 	sectors *statemachine.StateGroup
 	tktFn   TicketFn
+	sc      SectorIDCounter
 }
 
 func New(api sealingApi, events *events.Events, maddr address.Address, worker address.Address, ds datastore.Batching, sealer sealmgr.Manager, tktFn TicketFn) *Sealing {
@@ -104,9 +109,14 @@ func (m *Sealing) AllocatePiece(size abi.UnpaddedPieceSize) (sectorID abi.Sector
 		return 0, 0, xerrors.Errorf("cannot allocate unpadded piece")
 	}
 
-	sid, err := m.sealer.NewSector() // TODO: Put more than one thing in a sector
+	sid, err := m.sc.Next()
 	if err != nil {
-		return 0, 0, xerrors.Errorf("acquiring sector ID: %w", err)
+		return 0, 0, xerrors.Errorf("getting sector number: %w", err)
+	}
+
+	err = m.sealer.NewSector(context.TODO(), m.minerSector(sid)) // TODO: Put more than one thing in a sector
+	if err != nil {
+		return 0, 0, xerrors.Errorf("initializing sector: %w", err)
 	}
 
 	// offset hard-coded to 0 since we only put one thing in a sector for now
@@ -116,7 +126,7 @@ func (m *Sealing) AllocatePiece(size abi.UnpaddedPieceSize) (sectorID abi.Sector
 func (m *Sealing) SealPiece(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, sectorID abi.SectorNumber, dealID abi.DealID) error {
 	log.Infof("Seal piece for deal %d", dealID)
 
-	ppi, err := m.sealer.AddPiece(ctx, sectorID, []abi.UnpaddedPieceSize{}, size, r)
+	ppi, err := m.sealer.AddPiece(ctx, m.minerSector(sectorID), []abi.UnpaddedPieceSize{}, size, r)
 	if err != nil {
 		return xerrors.Errorf("adding piece to sector: %w", err)
 	}
@@ -143,4 +153,20 @@ func (m *Sealing) newSector(sid abi.SectorNumber, rt abi.RegisteredProof, pieces
 		pieces:     pieces,
 		sectorType: rt,
 	})
+}
+
+func (m *Sealing) minerSector(num abi.SectorNumber) abi.SectorID {
+	mid, err := address.IDFromAddress(m.maddr)
+	if err != nil {
+		panic(err)
+	}
+
+	return abi.SectorID{
+		Number: num,
+		Miner: abi.ActorID(mid),
+	}
+}
+
+func (m *Sealing) Address() address.Address {
+	return m.maddr
 }
