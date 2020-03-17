@@ -315,35 +315,34 @@ func (rt *Runtime) internalSend(to address.Address, method abi.MethodNum, value 
 	}
 	defer st.ClearSnapshot()
 
-	ret, err, subrt := rt.vm.send(ctx, msg, rt, 0)
-	if err != nil {
-		if err := st.Revert(); err != nil {
-			return nil, aerrors.Escalate(err, "failed to revert state tree after failed subcall")
+	ret, errSend, subrt := rt.vm.send(ctx, msg, rt, 0)
+	if errSend != nil {
+		if errRevert := st.Revert(); errRevert != nil {
+			return nil, aerrors.Escalate(errRevert, "failed to revert state tree after failed subcall")
 		}
 	}
 
 	mr := types.MessageReceipt{
-		ExitCode: exitcode.ExitCode(aerrors.RetCode(err)),
+		ExitCode: exitcode.ExitCode(aerrors.RetCode(errSend)),
 		Return:   ret,
 		GasUsed:  types.EmptyInt,
 	}
 
-	var es = ""
-	if err != nil {
-		es = err.Error()
-	}
 	er := ExecutionResult{
-		Msg:      msg,
-		MsgRct:   &mr,
-		Error:    es,
-		Subcalls: subrt.internalExecutions,
+		Msg:    msg,
+		MsgRct: &mr,
+	}
+
+	if errSend != nil {
+		er.Error = errSend.Error()
 	}
 
 	if subrt != nil {
+		er.Subcalls = subrt.internalExecutions
 		rt.internalCallCounter = subrt.internalCallCounter
 	}
 	rt.internalExecutions = append(rt.internalExecutions, &er)
-	return ret, err
+	return ret, errSend
 }
 
 func (rs *Runtime) State() vmr.StateHandle {
