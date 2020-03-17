@@ -40,9 +40,12 @@ type Runtime struct {
 	sys runtime.Syscalls
 
 	// address that started invoke chain
-	origin address.Address
+	origin      address.Address
+	originNonce uint64
 
 	internalExecutions []*ExecutionResult
+	// the first internal call has a value of 1 for this field
+	internalCallCounter int64
 }
 
 func (rs *Runtime) ResolveAddress(address address.Address) (ret address.Address, ok bool) {
@@ -158,19 +161,14 @@ func (rs *Runtime) Store() vmr.Store {
 
 func (rt *Runtime) NewActorAddress() address.Address {
 	var b bytes.Buffer
-	if err := rt.Message().Caller().MarshalCBOR(&b); err != nil { // todo: spec says cbor; why not just bytes?
+	if err := rt.origin.MarshalCBOR(&b); err != nil { // todo: spec says cbor; why not just bytes?
 		rt.Abortf(exitcode.ErrSerialization, "writing caller address into a buffer: %v", err)
 	}
 
-	act, err := rt.state.GetActor(rt.origin)
-	if err != nil {
-		rt.Abortf(exitcode.SysErrInternal, "getting top level actor: %v", err)
-	}
-
-	if err := binary.Write(&b, binary.BigEndian, act.Nonce); err != nil {
+	if err := binary.Write(&b, binary.BigEndian, rt.originNonce); err != nil {
 		rt.Abortf(exitcode.ErrSerialization, "writing nonce address into a buffer: %v", err)
 	}
-	if err := binary.Write(&b, binary.BigEndian, uint64(0)); err != nil { // TODO: expose on vm
+	if err := binary.Write(&b, binary.BigEndian, rt.internalCallCounter); err != nil { // TODO: expose on vm
 		rt.Abortf(exitcode.ErrSerialization, "writing callSeqNum address into a buffer: %v", err)
 	}
 	addr, err := address.NewActorAddress(b.Bytes())
@@ -341,6 +339,9 @@ func (rt *Runtime) internalSend(to address.Address, method abi.MethodNum, value 
 		Subcalls: subrt.internalExecutions,
 	}
 
+	if subrt != nil {
+		rt.internalCallCounter = subrt.internalCallCounter
+	}
 	rt.internalExecutions = append(rt.internalExecutions, &er)
 	return ret, err
 }
