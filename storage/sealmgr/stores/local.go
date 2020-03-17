@@ -235,14 +235,11 @@ func (st *Local) FindBestAllocStorage(allocate sectorbuilder.SectorFileType, sea
 	return out, nil
 }
 
-func (st *Local) FindSector(mid abi.ActorID, sn abi.SectorNumber, typ sectorbuilder.SectorFileType) ([]StorageMeta, error) {
+func (st *Local) FindSector(id abi.SectorID, typ sectorbuilder.SectorFileType) ([]StorageMeta, error) {
 	var out []StorageMeta
 	for _, p := range st.paths {
 		p.lk.Lock()
-		t := p.sectors[abi.SectorID{
-			Miner:  mid,
-			Number: sn,
-		}]
+		t := p.sectors[id]
 		if t|typ == 0 {
 			continue
 		}
@@ -250,7 +247,7 @@ func (st *Local) FindSector(mid abi.ActorID, sn abi.SectorNumber, typ sectorbuil
 		out = append(out, p.meta)
 	}
 	if len(out) == 0 {
-		return nil, xerrors.Errorf("sector %s/s-t0%d-%d not found", typ, mid, sn)
+		return nil, xerrors.Errorf("sector %s/s-t0%d-%d not found", typ, id.Miner, id.Number)
 	}
 
 	return out, nil

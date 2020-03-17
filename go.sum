@@ -126,6 +126,8 @@ github.com/filecoin-project/go-paramfetch v0.0.2-0.20200218225740-47c639bab663/g
 github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200226210935-4739f8749f56/go.mod h1:tzTc9BxxSbjlIzhFwm5h9oBkXKkRuLxeiWspntwnKyw=
 github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200314022627-38af9db49ba2 h1:4RjDynwobd/UYlZUprRg/GMEsMP6fAfVRTXgFs4XNfo=
 github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200314022627-38af9db49ba2/go.mod h1:NcE+iL0bbYnamGmYQgCPVGbSaf8VF2/CLra/61B3I3I=
+github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200317165603-bd9e7cb04d81 h1:W5yekTpVTUiB86rSDiZo6rTI3lrLKrsrdY0tx/IqgJA=
+github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200317165603-bd9e7cb04d81/go.mod h1:3c3MEU9GHLlau37+MmefFNunTo9sVEKfjaJuHBgksdY=
 github.com/filecoin-project/go-statemachine v0.0.0-20200226041606-2074af6d51d9 h1:k9qVR9ItcziSB2rxtlkN/MDWNlbsI6yzec+zjUatLW0=
 github.com/filecoin-project/go-statemachine v0.0.0-20200226041606-2074af6d51d9/go.mod h1:FGwQgZAt2Gh5mjlwJUlVB62JeYdo+if0xWxSEfBD9ig=
 github.com/filecoin-project/go-statestore v0.1.0 h1:t56reH59843TwXHkMcwyuayStBIiWBRilQjQ+5IiwdQ=
@@ -138,6 +140,8 @@ github.com/filecoin-project/specs-actors v0.0.0-20200311215506-e95895452888 h1:V
 github.com/filecoin-project/specs-actors v0.0.0-20200311215506-e95895452888/go.mod h1:5WngRgTN5Eo4+0SjCBqLzEr2l6Mj45DrP2606gBhqI0=
 github.com/filecoin-project/specs-storage v0.0.0-20200303233430-1a5a408f7513 h1:okBx3lPomwDxlPmRvyP078BwivDfdxNUlpCDhDD0ia8=
 github.com/filecoin-project/specs-storage v0.0.0-20200303233430-1a5a408f7513/go.mod h1:sC2Ck2l1G8hXI5Do/3sp0yxbMRMnukbFwP9KF1CRFLw=
+github.com/filecoin-project/specs-storage v0.0.0-20200317133846-063ba163b217 h1:doPA79fSLg5TnY2rJhXs5dIZHP3IoCcIiCLKFGfgrY8=
+github.com/filecoin-project/specs-storage v0.0.0-20200317133846-063ba163b217/go.mod h1:dUmzHS7izOD6HW3/JpzFrjxnptxbsHXBlO8puK2UzBk=
 github.com/fsnotify/fsnotify v1.4.7 h1:IXs+QLmnXW2CcXuY+8Mzv/fWEsPGWxqefPtCP5CnV9I=
 github.com/fsnotify/fsnotify v1.4.7/go.mod h1:jwhsz4b93w/PPRr/qN1Yymfu8t87LnFCMoQvtojpjFo=
 github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1 h1:EzDjxMg43q1tA2c0MV3tNbaontnHLplHyFF6M5KiVP0=

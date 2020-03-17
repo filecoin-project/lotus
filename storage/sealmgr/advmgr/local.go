@@ -4,9 +4,6 @@ import (
 	"context"
 	"io"
 
-	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -35,7 +32,6 @@ func NewLocalWorker(ma address.Address, spt abi.RegisteredProof, store stores.St
 		scfg: &sectorbuilder.Config{
 			SealProofType: spt,
 			PoStProofType: ppt,
-			Miner:         ma,
 		},
 		storage:    store,
 		localStore: local,
@@ -47,17 +43,7 @@ type localWorkerPathProvider struct {
 	w *LocalWorker
 }
 
-func (l *localWorkerPathProvider) AcquireSector(ctx context.Context, id abi.SectorNumber, existing sectorbuilder.SectorFileType, allocate sectorbuilder.SectorFileType, sealing bool) (sectorbuilder.SectorPaths, func(), error) {
-	mid, err := address.IDFromAddress(l.w.scfg.Miner)
-	if err != nil {
-		return sectorbuilder.SectorPaths{}, nil, xerrors.Errorf("get miner ID: %w", err)
-	}
-
-	sector := abi.SectorID{
-		Miner:  abi.ActorID(mid),
-		Number: id,
-	}
-
+func (l *localWorkerPathProvider) AcquireSector(ctx context.Context, sector abi.SectorID, existing sectorbuilder.SectorFileType, allocate sectorbuilder.SectorFileType, sealing bool) (sectorbuilder.SectorPaths, func(), error) {
 	paths, storageIDs, done, err := l.w.storage.AcquireSector(ctx, sector, existing, allocate, sealing)
 	if err != nil {
 		return sectorbuilder.SectorPaths{}, nil, err
@@ -84,58 +70,68 @@ func (l *LocalWorker) sb() (sectorbuilder.Basic, error) {
 	return sectorbuilder.New(&localWorkerPathProvider{w: l}, l.scfg)
 }
 
-func (l *LocalWorker) AddPiece(ctx context.Context, sn abi.SectorNumber, epcs []abi.UnpaddedPieceSize, sz abi.UnpaddedPieceSize, r io.Reader) (abi.PieceInfo, error) {
-	sb, err := l.sb()
-	if err != nil {
-		return abi.PieceInfo{}, err
-	}
 
-	return sb.AddPiece(ctx, sn, epcs, sz, r)
-}
-
-func (l *LocalWorker) SealPreCommit1(ctx context.Context, sectorNum abi.SectorNumber, ticket abi.SealRandomness, pieces []abi.PieceInfo) (out storage2.PreCommit1Out, err error) {
-	sb, err := l.sb()
-	if err != nil {
-		return nil, err
-	}
-
-	return sb.SealPreCommit1(ctx, sectorNum, ticket, pieces)
-}
-
-func (l *LocalWorker) SealPreCommit2(ctx context.Context, sectorNum abi.SectorNumber, phase1Out storage2.PreCommit1Out) (sealedCID cid.Cid, unsealedCID cid.Cid, err error) {
-	sb, err := l.sb()
-	if err != nil {
-		return cid.Undef, cid.Undef, err
-	}
-
-	return sb.SealPreCommit2(ctx, sectorNum, phase1Out)
-}
-
-func (l *LocalWorker) SealCommit1(ctx context.Context, sectorNum abi.SectorNumber, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, sealedCID cid.Cid, unsealedCID cid.Cid) (output storage2.Commit1Out, err error) {
-	sb, err := l.sb()
-	if err != nil {
-		return nil, err
-	}
-
-	return sb.SealCommit1(ctx, sectorNum, ticket, seed, pieces, sealedCID, unsealedCID)
-}
-
-func (l *LocalWorker) SealCommit2(ctx context.Context, sectorNum abi.SectorNumber, phase1Out storage2.Commit1Out) (proof storage2.Proof, err error) {
-	sb, err := l.sb()
-	if err != nil {
-		return nil, err
-	}
-
-	return sb.SealCommit2(ctx, sectorNum, phase1Out)
-}
-
-func (l *LocalWorker) FinalizeSector(ctx context.Context, sectorNum abi.SectorNumber) error {
+func (l *LocalWorker) NewSector(ctx context.Context, sector abi.SectorID) error {
 	sb, err := l.sb()
 	if err != nil {
 		return err
 	}
 
-	return sb.FinalizeSector(ctx, sectorNum)
+	return sb.NewSector(ctx, sector)
+}
+
+func (l *LocalWorker) AddPiece(ctx context.Context, sector abi.SectorID, epcs []abi.UnpaddedPieceSize, sz abi.UnpaddedPieceSize, r io.Reader) (abi.PieceInfo, error) {
+	sb, err := l.sb()
+	if err != nil {
+		return abi.PieceInfo{}, err
+	}
+
+	return sb.AddPiece(ctx, sector, epcs, sz, r)
+}
+
+func (l *LocalWorker) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, pieces []abi.PieceInfo) (out storage2.PreCommit1Out, err error) {
+	sb, err := l.sb()
+	if err != nil {
+		return nil, err
+	}
+
+	return sb.SealPreCommit1(ctx, sector, ticket, pieces)
+}
+
+func (l *LocalWorker) SealPreCommit2(ctx context.Context, sector abi.SectorID, phase1Out storage2.PreCommit1Out) (cids storage2.SectorCids, err error) {
+	sb, err := l.sb()
+	if err != nil {
+		return storage2.SectorCids{}, err
+	}
+
+	return sb.SealPreCommit2(ctx, sector, phase1Out)
+}
+
+func (l *LocalWorker) SealCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storage2.SectorCids) (output storage2.Commit1Out, err error) {
+	sb, err := l.sb()
+	if err != nil {
+		return nil, err
+	}
+
+	return sb.SealCommit1(ctx, sector, ticket, seed, pieces, cids)
+}
+
+func (l *LocalWorker) SealCommit2(ctx context.Context, sector abi.SectorID, phase1Out storage2.Commit1Out) (proof storage2.Proof, err error) {
+	sb, err := l.sb()
+	if err != nil {
+		return nil, err
+	}
+
+	return sb.SealCommit2(ctx, sector, phase1Out)
+}
+
+func (l *LocalWorker) FinalizeSector(ctx context.Context, sector abi.SectorID) error {
+	sb, err := l.sb()
+	if err != nil {
+		return err
+	}
+
+	return sb.FinalizeSector(ctx, sector)
 }
 
 func (l *LocalWorker) TaskTypes(context.Context) (map[sealmgr.TaskType]struct{}, error) {

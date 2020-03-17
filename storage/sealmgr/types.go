@@ -19,15 +19,11 @@ type Worker interface {
 type Manager interface {
 	SectorSize() abi.SectorSize
 
-	// NewSector allocates staging area for data
-	// Storage manager forwards proof-related calls
-	NewSector() (abi.SectorNumber, error)
-
 	// TODO: Can[Pre]Commit[1,2]
 	// TODO: Scrub() []Faults
 
 	// TODO: Separate iface
-	ReadPieceFromSealedSector(context.Context, abi.SectorNumber, sectorbuilder.UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) (io.ReadCloser, error)
+	ReadPieceFromSealedSector(context.Context, abi.SectorID, sectorbuilder.UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) (io.ReadCloser, error)
 
 	sectorbuilder.Sealer
 	storage.Prover

@@ -204,11 +204,11 @@ type WorkerStruct struct {
 		TaskTypes func(context.Context) (map[sealmgr.TaskType]struct{}, error) `perm:"admin"`
 		Paths     func(context.Context) ([]stores.StoragePath, error)          `perm:"admin"`
 
-		SealPreCommit1 func(ctx context.Context, sectorNum abi.SectorNumber, ticket abi.SealRandomness, pieces []abi.PieceInfo) (storage.PreCommit1Out, error)                                                                          `perm:"admin"`
-		SealPreCommit2 func(context.Context, abi.SectorNumber, storage.PreCommit1Out) (sealedCID cid.Cid, unsealedCID cid.Cid, err error)                                                                                               `perm:"admin"`
-		SealCommit1    func(ctx context.Context, sectorNum abi.SectorNumber, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, sealedCID cid.Cid, unsealedCID cid.Cid) (storage.Commit1Out, error) `perm:"admin"`
-		SealCommit2    func(context.Context, abi.SectorNumber, storage.Commit1Out) (storage.Proof, error)                                                                                                                               `perm:"admin"`
-		FinalizeSector func(context.Context, abi.SectorNumber) error                                                                                                                                                                    `perm:"admin"`
+		SealPreCommit1 func(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, pieces []abi.PieceInfo) (storage.PreCommit1Out, error)                                                                          `perm:"admin"`
+		SealPreCommit2 func(context.Context, abi.SectorID, storage.PreCommit1Out) (cids storage.SectorCids, err error)                                                                                               `perm:"admin"`
+		SealCommit1    func(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storage.SectorCids) (storage.Commit1Out, error) `perm:"admin"`
+		SealCommit2    func(context.Context, abi.SectorID, storage.Commit1Out) (storage.Proof, error)                                                                                                                               `perm:"admin"`
+		FinalizeSector func(context.Context, abi.SectorID) error                                                                                                                                                                    `perm:"admin"`
 	}
 }
 
@@ -714,24 +714,24 @@ func (w *WorkerStruct) Paths(ctx context.Context) ([]stores.StoragePath, error) 
 	return w.Internal.Paths(ctx)
 }
 
-func (w *WorkerStruct) SealPreCommit1(ctx context.Context, sectorNum abi.SectorNumber, ticket abi.SealRandomness, pieces []abi.PieceInfo) (storage.PreCommit1Out, error) {
-	return w.Internal.SealPreCommit1(ctx, sectorNum, ticket, pieces)
+func (w *WorkerStruct) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, pieces []abi.PieceInfo) (storage.PreCommit1Out, error) {
+	return w.Internal.SealPreCommit1(ctx, sector, ticket, pieces)
 }
 
-func (w *WorkerStruct) SealPreCommit2(ctx context.Context, sectorNum abi.SectorNumber, p1o storage.PreCommit1Out) (sealedCID cid.Cid, unsealedCID cid.Cid, err error) {
-	return w.Internal.SealPreCommit2(ctx, sectorNum, p1o)
+func (w *WorkerStruct) SealPreCommit2(ctx context.Context, sector abi.SectorID, p1o storage.PreCommit1Out) (storage.SectorCids, error) {
+	return w.Internal.SealPreCommit2(ctx, sector, p1o)
 }
 
-func (w *WorkerStruct) SealCommit1(ctx context.Context, sectorNum abi.SectorNumber, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, sealedCID cid.Cid, unsealedCID cid.Cid) (storage.Commit1Out, error) {
-	return w.Internal.SealCommit1(ctx, sectorNum, ticket, seed, pieces, sealedCID, unsealedCID)
+func (w *WorkerStruct) SealCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storage.SectorCids) (storage.Commit1Out, error) {
+	return w.Internal.SealCommit1(ctx, sector, ticket, seed, pieces, cids)
 }
 
-func (w *WorkerStruct) SealCommit2(ctx context.Context, sectorNum abi.SectorNumber, c1o storage.Commit1Out) (storage.Proof, error) {
-	return w.Internal.SealCommit2(ctx, sectorNum, c1o)
+func (w *WorkerStruct) SealCommit2(ctx context.Context, sector abi.SectorID, c1o storage.Commit1Out) (storage.Proof, error) {
+	return w.Internal.SealCommit2(ctx, sector, c1o)
 }
 
-func (w *WorkerStruct) FinalizeSector(ctx context.Context, sectorNum abi.SectorNumber) error {
-	return w.Internal.FinalizeSector(ctx, sectorNum)
+func (w *WorkerStruct) FinalizeSector(ctx context.Context, sector abi.SectorID) error {
+	return w.Internal.FinalizeSector(ctx, sector)
 }
 
 var _ api.Common = &CommonStruct{}

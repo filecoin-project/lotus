@@ -11,19 +11,15 @@ import (
 )
 
 type readonlyProvider struct {
-	miner abi.ActorID
 	stor  *stores.Local
 }
 
-func (l *readonlyProvider) AcquireSector(ctx context.Context, id abi.SectorNumber, existing sectorbuilder.SectorFileType, allocate sectorbuilder.SectorFileType, sealing bool) (sectorbuilder.SectorPaths, func(), error) {
+func (l *readonlyProvider) AcquireSector(ctx context.Context, id abi.SectorID, existing sectorbuilder.SectorFileType, allocate sectorbuilder.SectorFileType, sealing bool) (sectorbuilder.SectorPaths, func(), error) {
 	if allocate != 0 {
 		return sectorbuilder.SectorPaths{}, nil, xerrors.New("read-only storage")
 	}
 
-	p, _, done, err := l.stor.AcquireSector(ctx, abi.SectorID{
-		Miner:  l.miner,
-		Number: id,
-	}, existing, allocate, sealing)
+	p, _, done, err := l.stor.AcquireSector(ctx, id, existing, allocate, sealing)
 
 	return p, done, err
 }

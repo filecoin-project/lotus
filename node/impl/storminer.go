@@ -59,7 +59,7 @@ func (sm *StorageMinerAPI) WorkerStats(context.Context) (sectorbuilder.WorkerSta
 }*/
 
 func (sm *StorageMinerAPI) ActorAddress(context.Context) (address.Address, error) {
-	return sm.SectorBuilderConfig.Miner, nil
+	return sm.Miner.Address(), nil
 }
 
 func (sm *StorageMinerAPI) ActorSectorSize(ctx context.Context, addr address.Address) (abi.SectorSize, error) {

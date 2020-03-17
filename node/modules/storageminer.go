@@ -49,7 +49,6 @@ import (
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sealing"
 	"github.com/filecoin-project/lotus/storage/sealmgr"
-	"github.com/filecoin-project/lotus/storage/sealmgr/advmgr"
 )
 
 func minerAddrFromDS(ds dtypes.MetadataDS) (address.Address, error) {
@@ -91,7 +90,6 @@ func SectorBuilderConfig(ds dtypes.MetadataDS, fnapi lapi.FullNode) (*sectorbuil
 	}
 
 	sb := &sectorbuilder.Config{
-		Miner:         minerAddr,
 		SealProofType: spt,
 		PoStProofType: ppt,
 	}
@@ -108,7 +106,7 @@ func (s *sidsc) Next() (abi.SectorNumber, error) {
 	return abi.SectorNumber(i), err
 }
 
-func SectorIDCounter(ds dtypes.MetadataDS) advmgr.SectorIDCounter {
+func SectorIDCounter(ds dtypes.MetadataDS) sealing.SectorIDCounter {
 	sc := storedcounter.New(ds, datastore.NewKey("/storage/nextid"))
 	return &sidsc{sc}
 }
