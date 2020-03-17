@@ -357,12 +357,23 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 	}
 
 	gasReward := types.BigMul(msg.GasPrice, gasUsed)
-	if err := Transfer(gasHolder, rwAct, gasReward); err != nil {
-		return nil, xerrors.Errorf("failed to give miner gas reward: %w", err)
-	}
 
-	if types.BigCmp(types.NewInt(0), gasHolder.Balance) != 0 {
-		return nil, xerrors.Errorf("gas handling math is wrong")
+	if errcode != 0 {
+		// deduct the gasReward directly from sender
+		fromActor, err = st.GetActor(msg.From)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to deduct gas cost after revert: %w", err)
+		}
+		if err := Transfer(fromActor, rwAct, gasReward); err != nil {
+			return nil, xerrors.Errorf("failed to deduct gas cost after revert: %w", err)
+		}
+	} else {
+		if err := Transfer(gasHolder, rwAct, gasReward); err != nil {
+			return nil, xerrors.Errorf("failed to give miner gas reward: %w", err)
+		}
+		if types.BigCmp(types.NewInt(0), gasHolder.Balance) != 0 {
+			return nil, xerrors.Errorf("gas handling math is wrong")
+		}
 	}
 
 	return &ApplyRet{
