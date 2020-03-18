@@ -26,8 +26,8 @@ func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate 
 		return nil, xerrors.Errorf("failed to set up vm: %w", err)
 	}
 
-	if msg.GasLimit == types.EmptyInt {
-		msg.GasLimit = types.NewInt(10000000000)
+	if msg.GasLimit == 0 {
+		msg.GasLimit = 10000000000
 	}
 	if msg.GasPrice == types.EmptyInt {
 		msg.GasPrice = types.NewInt(0)
@@ -38,7 +38,7 @@ func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate 
 
 	if span.IsRecordingEvents() {
 		span.AddAttributes(
-			trace.Int64Attribute("gas_limit", int64(msg.GasLimit.Uint64())),
+			trace.Int64Attribute("gas_limit", msg.GasLimit),
 			trace.Int64Attribute("gas_price", int64(msg.GasPrice.Uint64())),
 			trace.StringAttribute("value", msg.Value.String()),
 		)

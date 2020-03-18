@@ -127,7 +127,7 @@ func (n *ClientNodeAdapter) AddFunds(ctx context.Context, addr address.Address, 
 		From:     addr,
 		Value:    amount,
 		GasPrice: types.NewInt(0),
-		GasLimit: types.NewInt(1000000),
+		GasLimit: 1000000,
 		Method:   builtin.MethodsMarket.AddBalance,
 	})
 	if err != nil {

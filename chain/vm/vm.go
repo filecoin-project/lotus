@@ -91,7 +91,7 @@ func ResolveToKeyAddr(state types.StateTree, cst cbor.IpldStore, addr address.Ad
 var _ cbor.IpldBlockstore = (*gasChargingBlocks)(nil)
 
 type gasChargingBlocks struct {
-	chargeGas func(uint64)
+	chargeGas func(int64)
 	under     cbor.IpldBlockstore
 }
 
@@ -101,13 +101,13 @@ func (bs *gasChargingBlocks) Get(c cid.Cid) (block.Block, error) {
 	if err != nil {
 		return nil, aerrors.Escalate(err, "failed to get block from blockstore")
 	}
-	bs.chargeGas(uint64(len(blk.RawData())) * gasGetPerByte)
+	bs.chargeGas(int64(len(blk.RawData())) * gasGetPerByte)
 
 	return blk, nil
 }
 
 func (bs *gasChargingBlocks) Put(blk block.Block) error {
-	bs.chargeGas(gasPutObj + uint64(len(blk.RawData()))*gasPutPerByte)
+	bs.chargeGas(gasPutObj + int64(len(blk.RawData()))*gasPutPerByte)
 
 	if err := bs.under.Put(blk); err != nil {
 		return aerrors.Escalate(err, "failed to write data to disk")
@@ -115,7 +115,7 @@ func (bs *gasChargingBlocks) Put(blk block.Block) error {
 	return nil
 }
 
-func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, origin address.Address, originNonce uint64, usedGas types.BigInt, icc int64) *Runtime {
+func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, origin address.Address, originNonce uint64, usedGas int64, icc int64) *Runtime {
 	rt := &Runtime{
 		ctx:         ctx,
 		vm:          vm,
@@ -184,7 +184,7 @@ type ApplyRet struct {
 }
 
 func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
-	gasCharge uint64) ([]byte, aerrors.ActorError, *Runtime) {
+	gasCharge int64) ([]byte, aerrors.ActorError, *Runtime) {
 
 	st := vm.cstate
 
@@ -206,12 +206,12 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 		}
 	}
 
-	gasUsed := types.NewInt(gasCharge)
+	gasUsed := gasCharge
 	origin := msg.From
 	on := msg.Nonce
 	var icc int64 = 0
 	if parent != nil {
-		gasUsed = types.BigAdd(parent.gasUsed, gasUsed)
+		gasUsed = parent.gasUsed + gasUsed
 		origin = parent.origin
 		on = parent.originNonce
 		icc = parent.internalCallCounter + 1
@@ -240,8 +240,11 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 }
 
 func checkMessage(msg *types.Message) error {
-	if msg.GasLimit == types.EmptyInt {
-		return xerrors.Errorf("message gas no gas limit set")
+	if msg.GasLimit == 0 {
+		return xerrors.Errorf("message has no gas limit set")
+	}
+	if msg.GasLimit < 0 {
+		return xerrors.Errorf("message has negative gas limit")
 	}
 
 	if msg.GasPrice == types.EmptyInt {
@@ -274,8 +277,8 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 	if err != nil {
 		return nil, xerrors.Errorf("could not serialize message: %w", err)
 	}
-	msgGasCost := uint64(len(serMsg)) * gasPerMessageByte
-	if msgGasCost > msg.GasLimit.Uint64() {
+	msgGasCost := int64(len(serMsg)) * gasPerMessageByte
+	if msgGasCost > msg.GasLimit {
 		return &ApplyRet{
 			MessageReceipt: types.MessageReceipt{
 				ExitCode: exitcode.SysErrOutOfGas,
@@ -312,7 +315,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 		}, nil
 	}
 
-	gascost := types.BigMul(msg.GasLimit, msg.GasPrice)
+	gascost := types.BigMul(types.NewInt(uint64(msg.GasLimit)), msg.GasPrice)
 	totalCost := types.BigAdd(gascost, msg.Value)
 	if fromActor.Balance.LessThan(totalCost) {
 		return &ApplyRet{
@@ -340,7 +343,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 	}
 
 	var errcode uint8
-	var gasUsed types.BigInt
+	var gasUsed int64
 
 	if errcode = aerrors.RetCode(actorErr); errcode != 0 {
 		gasUsed = msg.GasLimit
@@ -351,7 +354,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 	} else {
 		gasUsed = rt.gasUsed
 		// refund unused gas
-		refund := types.BigMul(types.BigSub(msg.GasLimit, gasUsed), msg.GasPrice)
+		refund := types.BigMul(types.NewInt(uint64(msg.GasLimit-gasUsed)), msg.GasPrice)
 		if err := Transfer(gasHolder, fromActor, refund); err != nil {
 			return nil, xerrors.Errorf("failed to refund gas")
 		}
@@ -362,7 +365,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 		return nil, xerrors.Errorf("getting burnt funds actor failed: %w", err)
 	}
 
-	gasReward := types.BigMul(msg.GasPrice, gasUsed)
+	gasReward := types.BigMul(msg.GasPrice, types.NewInt(uint64(gasUsed)))
 	if err := Transfer(gasHolder, rwAct, gasReward); err != nil {
 		return nil, xerrors.Errorf("failed to give miner gas reward: %w", err)
 	}
