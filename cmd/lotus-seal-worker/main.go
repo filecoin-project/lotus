@@ -7,9 +7,7 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"os/signal"
 	"path/filepath"
-	"syscall"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -117,11 +115,6 @@ var runCmd = &cli.Command{
 		}
 		log.Infof("Remote version %s", v)
 
-		go func() {
-			<-ctx.Done()
-			log.Warn("Shutting down..")
-		}()
-
 		// Check params
 
 		act, err := nodeApi.ActorAddress(ctx)
@@ -202,6 +195,8 @@ var runCmd = &cli.Command{
 			return err
 		}
 
+		log.Info("Connecting local storage to master")
+
 		if err := stores.DeclareLocalStorage(
 			ctx,
 			nodeApi,
@@ -231,6 +226,8 @@ var runCmd = &cli.Command{
 
 		mux := mux.NewRouter()
 
+		log.Info("Setting up control endpoint at " + "http://" + cctx.String("address"))
+
 		rpcServer := jsonrpc.NewServer()
 		rpcServer.Register("Filecoin", apistruct.PermissionedWorkerAPI(workerApi))
 
@@ -245,9 +242,8 @@ var runCmd = &cli.Command{
 
 		srv := &http.Server{Handler: ah}
 
-		sigChan := make(chan os.Signal, 2)
 		go func() {
-			<-sigChan
+			<-ctx.Done()
 			log.Warn("Shutting down..")
 			if err := srv.Shutdown(context.TODO()); err != nil {
 				log.Errorf("shutting down RPC server failed: %s", err)
@@ -255,12 +251,14 @@ var runCmd = &cli.Command{
 			log.Warn("Graceful shutdown successful")
 		}()
 
-		signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
-
 		nl, err := net.Listen("tcp4", cctx.String("address"))
 		if err != nil {
 			return err
 		}
+
+		log.Info("Waiting for tasks")
+
+		// todo go register
 
 		return srv.Serve(nl)
 	},

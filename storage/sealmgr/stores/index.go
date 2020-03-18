@@ -67,6 +67,7 @@ func (i *Index) StorageList(ctx context.Context) (map[ID][]Decl, error) {
 
 	out := map[ID][]Decl{}
 	for id, m := range byID {
+		out[id] = []Decl{}
 		for sectorID, fileType := range m {
 			out[id] = append(out[id], Decl{
 				SectorID:       sectorID,
@@ -81,6 +82,8 @@ func (i *Index) StorageList(ctx context.Context) (map[ID][]Decl, error) {
 func (i *Index) StorageAttach(ctx context.Context, si StorageInfo) error {
 	i.lk.Lock()
 	defer i.lk.Unlock()
+
+	log.Infof("New sector storage: %s", si.ID)
 
 	if _, ok := i.stores[si.ID]; ok {
 		for _, u := range si.URLs {
