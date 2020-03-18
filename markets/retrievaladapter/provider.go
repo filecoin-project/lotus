@@ -45,7 +45,7 @@ func (rpn *retrievalProviderNode) UnsealSector(ctx context.Context, sectorID uin
 	}
 
 	sid := abi.SectorID{
-		Miner: abi.ActorID(mid),
+		Miner:  abi.ActorID(mid),
 		Number: abi.SectorNumber(sectorID),
 	}
 	return rpn.sealer.ReadPieceFromSealedSector(ctx, sid, sectorbuilder.UnpaddedByteIndex(offset), abi.UnpaddedPieceSize(length), si.Ticket.Value, *si.CommD)

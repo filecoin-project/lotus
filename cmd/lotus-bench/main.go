@@ -168,7 +168,6 @@ func main() {
 			}
 
 			cfg := &sectorbuilder.Config{
-				Miner:         maddr,
 				SealProofType: spt,
 				PoStProofType: ppt,
 			}
@@ -186,8 +185,7 @@ func main() {
 			}
 
 			sbfs := &fs.Basic{
-				Miner: maddr,
-				Root:  sbdir,
+				Root: sbdir,
 			}
 
 			sb, err := sectorbuilder.New(sbfs, cfg)
@@ -206,12 +204,17 @@ func main() {
 			var sealedSectors []abi.SectorInfo
 			numSectors := abi.SectorNumber(1)
 			for i := abi.SectorNumber(1); i <= numSectors && robench == ""; i++ {
+				sid := abi.SectorID{
+					Miner:  mid,
+					Number: i,
+				}
+
 				start := time.Now()
 				log.Info("Writing piece into sector...")
 
 				r := rand.New(rand.NewSource(100 + int64(i)))
 
-				pi, err := sb.AddPiece(context.TODO(), i, nil, abi.PaddedPieceSize(sectorSize).Unpadded(), r)
+				pi, err := sb.AddPiece(context.TODO(), sid, nil, abi.PaddedPieceSize(sectorSize).Unpadded(), r)
 				if err != nil {
 					return err
 				}
@@ -223,7 +226,7 @@ func main() {
 
 				log.Info("Running replication(1)...")
 				pieces := []abi.PieceInfo{pi}
-				pc1o, err := sb.SealPreCommit1(context.TODO(), i, ticket, pieces)
+				pc1o, err := sb.SealPreCommit1(context.TODO(), sid, ticket, pieces)
 				if err != nil {
 					return xerrors.Errorf("commit: %w", err)
 				}
@@ -231,7 +234,7 @@ func main() {
 				precommit1 := time.Now()
 
 				log.Info("Running replication(2)...")
-				commR, commD, err := sb.SealPreCommit2(context.TODO(), i, pc1o)
+				cids, err := sb.SealPreCommit2(context.TODO(), sid, pc1o)
 				if err != nil {
 					return xerrors.Errorf("commit: %w", err)
 				}
@@ -241,7 +244,7 @@ func main() {
 				sealedSectors = append(sealedSectors, abi.SectorInfo{
 					RegisteredProof: spt,
 					SectorNumber:    i,
-					SealedCID:       commR,
+					SealedCID:       cids.Sealed,
 				})
 
 				seed := lapi.SealSeed{
@@ -250,7 +253,7 @@ func main() {
 				}
 
 				log.Info("Generating PoRep for sector (1)")
-				c1o, err := sb.SealCommit1(context.TODO(), i, ticket, seed.Value, pieces, commR, commD)
+				c1o, err := sb.SealCommit1(context.TODO(), sid, ticket, seed.Value, pieces, cids)
 				if err != nil {
 					return err
 				}
@@ -278,7 +281,7 @@ func main() {
 
 				var proof storage.Proof
 				if !c.Bool("skip-commit2") {
-					proof, err = sb.SealCommit2(context.TODO(), i, c1o)
+					proof, err = sb.SealCommit2(context.TODO(), sid, c1o)
 					if err != nil {
 						return err
 					}
@@ -291,7 +294,7 @@ func main() {
 					svi := abi.SealVerifyInfo{
 						SectorID: abi.SectorID{Miner: mid, Number: i},
 						OnChain: abi.OnChainSealVerifyInfo{
-							SealedCID:        commR,
+							SealedCID:        cids.Sealed,
 							InteractiveEpoch: seed.Epoch,
 							RegisteredProof:  spt,
 							Proof:            proof,
@@ -301,7 +304,7 @@ func main() {
 						},
 						Randomness:            ticket,
 						InteractiveRandomness: seed.Value,
-						UnsealedCID:           commD,
+						UnsealedCID:           cids.Unsealed,
 					}
 
 					ok, err := sectorbuilder.ProofVerifier.VerifySeal(svi)
@@ -318,7 +321,7 @@ func main() {
 				if !c.Bool("skip-unseal") {
 					log.Info("Unsealing sector")
 					// TODO: RM unsealed sector first
-					rc, err := sb.ReadPieceFromSealedSector(context.TODO(), 1, 0, abi.UnpaddedPieceSize(sectorSize), ticket, commD)
+					rc, err := sb.ReadPieceFromSealedSector(context.TODO(), abi.SectorID{Miner: mid, Number: 1}, 0, abi.UnpaddedPieceSize(sectorSize), ticket, cids.Unsealed)
 					if err != nil {
 						return err
 					}
@@ -380,7 +383,7 @@ func main() {
 
 			if !c.Bool("skip-commit2") {
 				log.Info("generating election post candidates")
-				fcandidates, err := sb.GenerateEPostCandidates(sealedSectors, challenge[:], []abi.SectorNumber{})
+				fcandidates, err := sb.GenerateEPostCandidates(context.TODO(), mid, sealedSectors, challenge[:], []abi.SectorNumber{})
 				if err != nil {
 					return err
 				}
@@ -394,7 +397,7 @@ func main() {
 				gencandidates := time.Now()
 
 				log.Info("computing election post snark (cold)")
-				proof1, err := sb.ComputeElectionPoSt(sealedSectors, challenge[:], candidates[:1])
+				proof1, err := sb.ComputeElectionPoSt(context.TODO(), mid, sealedSectors, challenge[:], candidates[:1])
 				if err != nil {
 					return err
 				}
@@ -402,7 +405,7 @@ func main() {
 				epost1 := time.Now()
 
 				log.Info("computing election post snark (hot)")
-				proof2, err := sb.ComputeElectionPoSt(sealedSectors, challenge[:], candidates[:1])
+				proof2, err := sb.ComputeElectionPoSt(context.TODO(), mid, sealedSectors, challenge[:], candidates[:1])
 				if err != nil {
 					return err
 				}
@@ -528,6 +531,10 @@ var proveCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
+		mid, err := address.IDFromAddress(maddr)
+		if err != nil {
+			return err
+		}
 
 		ppt, spt, err := lapi.ProofTypeFromSectorSize(abi.SectorSize(c2in.SectorSize))
 		if err != nil {
@@ -535,7 +542,6 @@ var proveCmd = &cli.Command{
 		}
 
 		cfg := &sectorbuilder.Config{
-			Miner:         maddr,
 			SealProofType: spt,
 			PoStProofType: ppt,
 		}
@@ -547,7 +553,7 @@ var proveCmd = &cli.Command{
 
 		start := time.Now()
 
-		proof, err := sb.SealCommit2(context.TODO(), abi.SectorNumber(c2in.SectorNum), c2in.Phase1Out)
+		proof, err := sb.SealCommit2(context.TODO(), abi.SectorID{Miner: abi.ActorID(mid), Number: abi.SectorNumber(c2in.SectorNum)}, c2in.Phase1Out)
 		if err != nil {
 			return err
 		}

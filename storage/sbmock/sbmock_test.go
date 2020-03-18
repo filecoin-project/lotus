@@ -11,7 +11,7 @@ import (
 func TestOpFinish(t *testing.T) {
 	sb := NewMockSectorBuilder(1, 2048)
 
-	sid, pieces, err := sb.StageFakeData()
+	sid, pieces, err := sb.StageFakeData(123)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -59,7 +59,7 @@ func PreSeal(maddr address.Address, pt abi.RegisteredProof, offset abi.SectorNum
 	next := offset
 
 	sbfs := &fs.Basic{
-		Root:  sbroot,
+		Root: sbroot,
 	}
 
 	sb, err := sectorbuilder.New(sbfs, cfg)

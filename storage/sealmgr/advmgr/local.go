@@ -70,7 +70,6 @@ func (l *LocalWorker) sb() (sectorbuilder.Basic, error) {
 	return sectorbuilder.New(&localWorkerPathProvider{w: l}, l.scfg)
 }
 
-
 func (l *LocalWorker) NewSector(ctx context.Context, sector abi.SectorID) error {
 	sb, err := l.sb()
 	if err != nil {

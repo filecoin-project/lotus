@@ -75,7 +75,7 @@ type Sealing struct {
 	sc      SectorIDCounter
 }
 
-func New(api sealingApi, events *events.Events, maddr address.Address, worker address.Address, ds datastore.Batching, sealer sealmgr.Manager, tktFn TicketFn) *Sealing {
+func New(api sealingApi, events *events.Events, maddr address.Address, worker address.Address, ds datastore.Batching, sealer sealmgr.Manager, sc SectorIDCounter, tktFn TicketFn) *Sealing {
 	s := &Sealing{
 		api:    api,
 		events: events,
@@ -84,6 +84,7 @@ func New(api sealingApi, events *events.Events, maddr address.Address, worker ad
 		worker: worker,
 		sealer: sealer,
 		tktFn:  tktFn,
+		sc:     sc,
 	}
 
 	s.sectors = statemachine.New(namespace.Wrap(ds, datastore.NewKey(SectorStorePrefix)), s, SectorInfo{})
@@ -163,7 +164,7 @@ func (m *Sealing) minerSector(num abi.SectorNumber) abi.SectorID {
 
 	return abi.SectorID{
 		Number: num,
-		Miner: abi.ActorID(mid),
+		Miner:  abi.ActorID(mid),
 	}
 }
 

@@ -73,13 +73,18 @@ func GetParams(sbc *sectorbuilder.Config) error {
 	return nil
 }
 
-func SectorBuilderConfig(ds dtypes.MetadataDS, fnapi lapi.FullNode) (*sectorbuilder.Config, error) {
-	minerAddr, err := minerAddrFromDS(ds)
-	if err != nil {
-		return nil, err
-	}
+func MinerAddress(ds dtypes.MetadataDS) (dtypes.MinerAddress, error) {
+	ma, err := minerAddrFromDS(ds)
+	return dtypes.MinerAddress(ma), err
+}
 
-	ssize, err := fnapi.StateMinerSectorSize(context.TODO(), minerAddr, types.EmptyTSK)
+func MinerID(ma dtypes.MinerAddress) (dtypes.MinerID, error) {
+	id, err := address.IDFromAddress(address.Address(ma))
+	return dtypes.MinerID(id), err
+}
+
+func SectorBuilderConfig(maddr dtypes.MinerAddress, fnapi lapi.FullNode) (*sectorbuilder.Config, error) {
+	ssize, err := fnapi.StateMinerSectorSize(context.TODO(), address.Address(maddr), types.EmptyTSK)
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +116,7 @@ func SectorIDCounter(ds dtypes.MetadataDS) sealing.SectorIDCounter {
 	return &sidsc{sc}
 }
 
-func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api lapi.FullNode, h host.Host, ds dtypes.MetadataDS, sealer sealmgr.Manager, tktFn sealing.TicketFn) (*storage.Miner, error) {
+func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api lapi.FullNode, h host.Host, ds dtypes.MetadataDS, sealer sealmgr.Manager, sc sealing.SectorIDCounter, tktFn sealing.TicketFn) (*storage.Miner, error) {
 	maddr, err := minerAddrFromDS(ds)
 	if err != nil {
 		return nil, err
@@ -131,7 +136,7 @@ func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api lapi.FullNode, h
 
 	fps := storage.NewFPoStScheduler(api, sealer, maddr, worker, ppt)
 
-	sm, err := storage.NewMiner(api, maddr, worker, h, ds, sealer, tktFn)
+	sm, err := storage.NewMiner(api, maddr, worker, h, ds, sealer, sc, tktFn)
 	if err != nil {
 		return nil, err
 	}

@@ -80,6 +80,7 @@ func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, a
 	for i := 0; i < nPreseal; i++ {
 		nic.Next()
 	}
+	nic.Next()
 
 	err = lr.Close()
 	require.NoError(t, err)
@@ -256,7 +257,7 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 
 		storers[i] = testStorageNode(ctx, t, wa, genMiner, pk, f, mn, node.Options())
 		if err := storers[i].StorageAddLocal(ctx, presealDirs[i]); err != nil {
-			t.Fatal(err)
+			t.Fatalf("%+v", err)
 		}
 		/*
 			sma := storers[i].StorageMiner.(*impl.StorageMinerAPI)
@@ -386,7 +387,7 @@ func mockSbBuilder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []t
 
 		storers[i] = testStorageNode(ctx, t, wa, genMiner, pk, f, mn, node.Options(
 			node.Override(new(sealmgr.Manager), func() (sealmgr.Manager, error) {
-				return sealmgr.NewSimpleManager(storedcounter.New(datastore.NewMapDatastore(), datastore.NewKey("/potato")), genMiner, sbmock.NewMockSectorBuilder(5, build.SectorSizes[0]))
+				return sealmgr.NewSimpleManager(genMiner, sbmock.NewMockSectorBuilder(5, build.SectorSizes[0]))
 			}),
 			node.Unset(new(*advmgr.Manager)),
 		))
