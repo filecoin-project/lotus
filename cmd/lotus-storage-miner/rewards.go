@@ -100,7 +100,7 @@ var rewardsRedeemCmd = &cli.Command{
 			Nonce:    workerNonce,
 			Value:    types.NewInt(0),
 			GasPrice: types.NewInt(1),
-			GasLimit: types.NewInt(100000),
+			GasLimit: 100000,
 			Method:   builtin.MethodsReward.WithdrawReward,
 			Params:   params,
 		})

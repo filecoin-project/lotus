@@ -125,7 +125,7 @@ func (a *PaychAPI) PaychClose(ctx context.Context, addr address.Address) (cid.Ci
 		Method: builtin.MethodsPaych.Settle,
 		Nonce:  nonce,
 
-		GasLimit: types.NewInt(500),
+		GasLimit: 500,
 		GasPrice: types.NewInt(0),
 	}
 
@@ -240,7 +240,7 @@ func (a *PaychAPI) PaychVoucherSubmit(ctx context.Context, ch address.Address, s
 		Nonce:    nonce,
 		Method:   builtin.MethodsPaych.UpdateChannelState,
 		Params:   enc,
-		GasLimit: types.NewInt(100000),
+		GasLimit: 100000,
 		GasPrice: types.NewInt(0),
 	}
 
