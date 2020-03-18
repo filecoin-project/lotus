@@ -5,6 +5,12 @@ import (
 	"path/filepath"
 	"reflect"
 
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	"github.com/ipfs/go-merkledag"
+	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/routing"
+	"go.uber.org/fx"
+
 	graphsyncimpl "github.com/filecoin-project/go-data-transfer/impl/graphsync"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/discovery"
@@ -22,11 +28,6 @@ import (
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	"github.com/ipfs/go-filestore"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	"github.com/ipfs/go-merkledag"
-	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/routing"
-	"go.uber.org/fx"
 
 	"github.com/filecoin-project/lotus/markets/retrievaladapter"
 	"github.com/filecoin-project/lotus/node/impl/full"
