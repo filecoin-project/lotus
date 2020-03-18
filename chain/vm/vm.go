@@ -300,10 +300,6 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 	}
 
 	st := vm.cstate
-	if err := st.Snapshot(ctx); err != nil {
-		return nil, xerrors.Errorf("snapshot failed: %w", err)
-	}
-	defer st.ClearSnapshot()
 
 	fromActor, err := st.GetActor(msg.From)
 	if err != nil {
@@ -344,6 +340,11 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 	}
 
 	fromActor.Nonce++
+
+	if err := st.Snapshot(ctx); err != nil {
+		return nil, xerrors.Errorf("snapshot failed: %w", err)
+	}
+	defer st.ClearSnapshot()
 
 	ret, actorErr, rt := vm.send(ctx, msg, nil, msgGasCost)
 
