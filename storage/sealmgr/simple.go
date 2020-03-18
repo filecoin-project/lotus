@@ -31,6 +31,10 @@ type sszgetter interface {
 	SectorSize() abi.SectorSize
 }
 
+func (s *LocalWorker) SectorSize() abi.SectorSize {
+	return s.Basic.(sszgetter).SectorSize()
+}
+
 func (s *Simple) SectorSize() abi.SectorSize {
 	return s.worker.(sszgetter).SectorSize()
 }

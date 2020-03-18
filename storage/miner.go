@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"errors"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -36,6 +37,7 @@ type Miner struct {
 	sealer sealmgr.Manager
 	ds     datastore.Batching
 	tktFn  sealing.TicketFn
+	sc     sealing.SectorIDCounter
 
 	maddr  address.Address
 	worker address.Address
@@ -72,13 +74,14 @@ type storageMinerApi interface {
 	WalletHas(context.Context, address.Address) (bool, error)
 }
 
-func NewMiner(api storageMinerApi, maddr, worker address.Address, h host.Host, ds datastore.Batching, sealer sealmgr.Manager, tktFn sealing.TicketFn) (*Miner, error) {
+func NewMiner(api storageMinerApi, maddr, worker address.Address, h host.Host, ds datastore.Batching, sealer sealmgr.Manager, sc sealing.SectorIDCounter, tktFn sealing.TicketFn) (*Miner, error) {
 	m := &Miner{
 		api:    api,
 		h:      h,
 		sealer: sealer,
 		ds:     ds,
 		tktFn:  tktFn,
+		sc:     sc,
 
 		maddr:  maddr,
 		worker: worker,
@@ -93,7 +96,7 @@ func (m *Miner) Run(ctx context.Context) error {
 	}
 
 	evts := events.NewEvents(ctx, m.api)
-	m.sealing = sealing.New(m.api, evts, m.maddr, m.worker, m.ds, m.sealer, m.tktFn)
+	m.sealing = sealing.New(m.api, evts, m.maddr, m.worker, m.ds, m.sealer, m.sc, m.tktFn)
 
 	go m.sealing.Run(ctx)
 
@@ -121,11 +124,11 @@ func (m *Miner) runPreflightChecks(ctx context.Context) error {
 
 type SectorBuilderEpp struct {
 	prover storage.Prover
-	miner abi.ActorID
+	miner  abi.ActorID
 }
 
-func NewElectionPoStProver(sb storage.Prover, miner abi.ActorID) *SectorBuilderEpp {
-	return &SectorBuilderEpp{sb, miner}
+func NewElectionPoStProver(sb storage.Prover, miner dtypes.MinerID) *SectorBuilderEpp {
+	return &SectorBuilderEpp{sb, abi.ActorID(miner)}
 }
 
 var _ gen.ElectionPoStProver = (*SectorBuilderEpp)(nil)

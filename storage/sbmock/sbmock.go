@@ -304,25 +304,27 @@ func (sb *SBMock) ReadPieceFromSealedSector(ctx context.Context, sectorID abi.Se
 	return ioutil.NopCloser(io.LimitReader(bytes.NewReader(sb.sectors[sectorID].pieces[0].Bytes()[offset:]), int64(size))), nil
 }
 
-func (sb *SBMock) StageFakeData(mid abi.ActorID) (abi.SectorNumber, []abi.PieceInfo, error) {
+func (sb *SBMock) StageFakeData(mid abi.ActorID) (abi.SectorID, []abi.PieceInfo, error) {
 	usize := abi.PaddedPieceSize(sb.sectorSize).Unpadded()
 	sid, err := sb.AcquireSectorNumber()
 	if err != nil {
-		return 0, nil, err
+		return abi.SectorID{}, nil, err
 	}
 
 	buf := make([]byte, usize)
 	rand.Read(buf)
 
-	pi, err := sb.AddPiece(context.TODO(), abi.SectorID{
+	id := abi.SectorID{
 		Miner:  mid,
 		Number: sid,
-	}, nil, usize, bytes.NewReader(buf))
-	if err != nil {
-		return 0, nil, err
 	}
 
-	return sid, []abi.PieceInfo{pi}, nil
+	pi, err := sb.AddPiece(context.TODO(), id, nil, usize, bytes.NewReader(buf))
+	if err != nil {
+		return abi.SectorID{}, nil, err
+	}
+
+	return id, []abi.PieceInfo{pi}, nil
 }
 
 func (sb *SBMock) FinalizeSector(context.Context, abi.SectorID) error {

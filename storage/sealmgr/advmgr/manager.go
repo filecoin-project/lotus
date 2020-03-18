@@ -42,7 +42,7 @@ type Manager struct {
 	storage2.Prover
 }
 
-func New(ls stores.LocalStorage, si *stores.Index, cfg *sectorbuilder.Config, urls URLs) (*Manager, error) {
+func New(ls stores.LocalStorage, si *stores.Index, cfg *sectorbuilder.Config, urls URLs, sindex stores.SectorIndex) (*Manager, error) {
 	stor, err := stores.NewLocal(ls)
 	if err != nil {
 		return nil, err
@@ -59,7 +59,7 @@ func New(ls stores.LocalStorage, si *stores.Index, cfg *sectorbuilder.Config, ur
 
 	m := &Manager{
 		workers: []Worker{
-			&LocalWorker{scfg: cfg, storage: stor},
+			&LocalWorker{scfg: cfg, localStore: stor, storage: stor, sindex: sindex},
 		},
 		scfg: cfg,
 

@@ -11,7 +11,7 @@ import (
 )
 
 type readonlyProvider struct {
-	stor  *stores.Local
+	stor *stores.Local
 }
 
 func (l *readonlyProvider) AcquireSector(ctx context.Context, id abi.SectorID, existing sectorbuilder.SectorFileType, allocate sectorbuilder.SectorFileType, sealing bool) (sectorbuilder.SectorPaths, func(), error) {
