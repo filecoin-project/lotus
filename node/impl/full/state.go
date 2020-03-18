@@ -587,7 +587,7 @@ func (a *StateAPI) MsigGetAvailableBalance(ctx context.Context, addr address.Add
 	return types.BigSub(act.Balance, minBalance), nil
 }
 
-func (a *StateAPI) StateListRewards(ctx context.Context, miner address.Address, tsk types.TipSetKey) ([]reward.Reward, error) {
+func (a *StateAPI) StateListRewards(ctx context.Context, miner address.Address, skip uint64, tsk types.TipSetKey) ([]reward.Reward, error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, err
@@ -609,10 +609,22 @@ func (a *StateAPI) StateListRewards(ctx context.Context, miner address.Address, 
 		return nil, xerrors.Errorf("no rewards found for miner")
 	}
 
+	l, err := rewards.Length()
+	if err != nil {
+		return nil, err
+	}
+	if l <= skip {
+		return nil, nil
+	}
+
 	var out []reward.Reward
 
 	var r reward.Reward
 	err = rewards.ForEach(&r, func(i int64) error {
+		if skip > 0 {
+			skip--
+			return nil
+		}
 		or := r
 		out = append(out, or)
 		return nil
@@ -622,4 +634,41 @@ func (a *StateAPI) StateListRewards(ctx context.Context, miner address.Address, 
 	}
 
 	return out, nil
+}
+
+func (a *StateAPI) StateListRewardsPath(ctx context.Context, miner address.Address, start_stk, end_stk types.TipSetKey) ([]reward.Reward, error) {
+	if start_stk == end_stk {
+		return nil, nil
+	}
+	var end_ts *types.TipSet
+	var err error
+
+	if start_stk == types.EmptyTSK {
+		return a.StateListRewards(ctx, miner, 0, end_stk)
+	}
+
+	if end_ts, err = a.Chain.GetTipSetFromKey(end_stk); err != nil {
+		return nil, err
+	}
+
+	for end_ts.Key() != start_stk && len(end_ts.Parents().Cids()) > 0 {
+		if end_ts, err = a.Chain.GetTipSetFromKey(end_ts.Parents()); err != nil {
+			return nil, err
+		}
+	}
+
+	if start_stk != end_ts.Key() {
+		return nil, xerrors.Errorf("specified tipsets dosen't on the same chain")
+	}
+
+	var start_rewards, end_rewards []reward.Reward
+	if start_rewards, err = a.StateListRewards(ctx, miner, 0, start_stk); err != nil {
+		return nil, err
+	}
+
+	if end_rewards, err = a.StateListRewards(ctx, miner, uint64(len(start_rewards)), end_stk); err != nil {
+		return nil, err
+	}
+
+	return end_rewards, nil
 }

@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-
 	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -23,6 +22,11 @@ var rewardsCmd = &cli.Command{
 var rewardsListCmd = &cli.Command{
 	Name:  "list",
 	Usage: "Print unclaimed block rewards earned",
+	Flags:[]cli.Flag {
+		&cli.Uint64Flag{
+			Name:"skip",
+			Usage:"number of front 'rewards' to skip", },
+	},
 	Action: func(cctx *cli.Context) error {
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
@@ -43,7 +47,7 @@ var rewardsListCmd = &cli.Command{
 			return err
 		}
 
-		rewards, err := api.StateListRewards(ctx, maddr, types.EmptyTSK)
+		rewards, err := api.StateListRewards(ctx, maddr, cctx.Uint64("skip"), types.EmptyTSK)
 		if err != nil {
 			return err
 		}
@@ -55,6 +59,7 @@ var rewardsListCmd = &cli.Command{
 		return nil
 	},
 }
+
 
 var rewardsRedeemCmd = &cli.Command{
 	Name:  "redeem",

@@ -3,6 +3,7 @@ package types
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/ipfs/go-cid"
@@ -48,6 +49,23 @@ func TipSetKeyFromBytes(encoded []byte) (TipSetKey, error) {
 		return TipSetKey{}, err
 	}
 	return TipSetKey{string(encoded)}, nil
+}
+
+func TipSetKeyFromString(k string) (TipSetKey, error) {
+	if len(k) <= 2 {
+		return TipSetKey{}, fmt.Errorf("invalid tipset key string")
+	}
+	k = k[1 : len(k)-1]
+	ks := strings.Split(k, ",")
+	cids := make([]cid.Cid, len(ks))
+	for i, e := range ks {
+		if id, err := cid.Decode(e); err != nil {
+			return TipSetKey{}, nil
+		} else {
+			cids[i] = id
+		}
+	}
+	return NewTipSetKey(cids[:]...), nil
 }
 
 // Cids returns a slice of the CIDs comprising this key.
