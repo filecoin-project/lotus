@@ -7,17 +7,19 @@ import (
 	"context"
 	"io"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/market"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -51,7 +53,7 @@ func NewProviderNodeAdapter(dag dtypes.StagingDAG, secb *sectorblocks.SectorBloc
 	}
 }
 
-func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemarket.MinerDeal) (storagemarket.DealID, cid.Cid, error) {
+func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemarket.MinerDeal) (abi.DealID, cid.Cid, error) {
 	log.Info("publishing deal")
 
 	worker, err := n.StateMinerWorker(ctx, deal.Proposal.Provider, types.EmptyTSK)
@@ -96,11 +98,11 @@ func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemark
 	}
 
 	// TODO: bad types here
-	return storagemarket.DealID(resp.IDs[0]), smsg.Cid(), nil
+	return resp.IDs[0], smsg.Cid(), nil
 }
 
 func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagemarket.MinerDeal, pieceSize abi.UnpaddedPieceSize, pieceData io.Reader) error {
-	_, err := n.secb.AddPiece(ctx, abi.UnpaddedPieceSize(pieceSize), pieceData, abi.DealID(deal.DealID))
+	_, err := n.secb.AddPiece(ctx, abi.UnpaddedPieceSize(pieceSize), pieceData, deal.DealID)
 	if err != nil {
 		return xerrors.Errorf("AddPiece failed: %s", err)
 	}
@@ -132,9 +134,13 @@ func (n *ProviderNodeAdapter) ListProviderDeals(ctx context.Context, addr addres
 	return out, nil
 }
 
-func (n *ProviderNodeAdapter) GetMinerWorker(ctx context.Context, miner address.Address) (address.Address, error) {
-	addr, err := n.StateMinerWorker(ctx, miner, types.EmptyTSK)
-	return addr, err
+func (n *ProviderNodeAdapter) GetMinerWorkerAddress(ctx context.Context, miner address.Address, tok shared.TipSetToken) (address.Address, error) {
+	tsk, err := types.TipSetKeyFromBytes(tok)
+	if err != nil {
+		return address.Undef, err
+	}
+
+	return n.StateMinerWorker(ctx, miner, tsk)
 }
 
 func (n *ProviderNodeAdapter) SignBytes(ctx context.Context, signer address.Address, b []byte) (*crypto.Signature, error) {
@@ -147,10 +153,6 @@ func (n *ProviderNodeAdapter) SignBytes(ctx context.Context, signer address.Addr
 
 func (n *ProviderNodeAdapter) EnsureFunds(ctx context.Context, addr, wallet address.Address, amt abi.TokenAmount) error {
 	return n.MarketEnsureAvailable(ctx, addr, wallet, amt)
-}
-
-func (n *ProviderNodeAdapter) MostRecentStateId(ctx context.Context) (storagemarket.StateKey, error) {
-	return n.ChainHead(ctx)
 }
 
 // Adds funds with the StorageMinerActor for a storage participant.  Used by both providers and clients.
@@ -189,9 +191,8 @@ func (n *ProviderNodeAdapter) GetBalance(ctx context.Context, addr address.Addre
 	return utils.ToSharedBalance(bal), nil
 }
 
-func (n *ProviderNodeAdapter) LocatePieceForDealWithinSector(ctx context.Context, dealID uint64) (sectorID uint64, offset uint64, length uint64, err error) {
-
-	refs, err := n.secb.GetRefs(abi.DealID(dealID))
+func (n *ProviderNodeAdapter) LocatePieceForDealWithinSector(ctx context.Context, dealID abi.DealID) (sectorID uint64, offset uint64, length uint64, err error) {
+	refs, err := n.secb.GetRefs(dealID)
 	if err != nil {
 		return 0, 0, 0, err
 	}
@@ -219,9 +220,9 @@ func (n *ProviderNodeAdapter) LocatePieceForDealWithinSector(ctx context.Context
 	return uint64(best.SectorID), best.Offset, uint64(best.Size), nil
 }
 
-func (n *ProviderNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID uint64, cb storagemarket.DealSectorCommittedCallback) error {
+func (n *ProviderNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, cb storagemarket.DealSectorCommittedCallback) error {
 	checkFunc := func(ts *types.TipSet) (done bool, more bool, err error) {
-		sd, err := n.StateMarketStorageDeal(ctx, abi.DealID(dealID), ts.Key())
+		sd, err := n.StateMarketStorageDeal(ctx, dealID, ts.Key())
 
 		if err != nil {
 			// TODO: This may be fine for some errors
@@ -320,6 +321,15 @@ func (n *ProviderNodeAdapter) OnDealSectorCommitted(ctx context.Context, provide
 	}
 
 	return nil
+}
+
+func (n *ProviderNodeAdapter) GetChainHead(ctx context.Context) (shared.TipSetToken, abi.ChainEpoch, error) {
+	head, err := n.ChainHead(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return head.Key().Bytes(), head.Height(), nil
 }
 
 var _ storagemarket.StorageProviderNode = &ProviderNodeAdapter{}

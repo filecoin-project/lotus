@@ -1,8 +1,6 @@
 package dtypes
 
 import (
-	datatransfer "github.com/filecoin-project/go-data-transfer"
-	"github.com/filecoin-project/go-fil-markets/piecestore"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-filestore"
@@ -12,6 +10,8 @@ import (
 	format "github.com/ipfs/go-ipld-format"
 	"github.com/ipld/go-ipld-prime"
 
+	datatransfer "github.com/filecoin-project/go-data-transfer"
+	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-statestore"
 )
 
@@ -30,6 +30,7 @@ type ClientFilestore *filestore.Filestore
 type ClientBlockstore blockstore.Blockstore
 type ClientDAG format.DAGService
 type ClientDealStore *statestore.StateStore
+type ClientDatastore datastore.Batching
 
 type GraphsyncLoader ipld.Loader
 type GraphsyncStorer ipld.Storer
