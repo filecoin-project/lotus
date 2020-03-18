@@ -13,16 +13,17 @@ import (
 	"time"
 
 	"github.com/docker/go-units"
-	paramfetch "github.com/filecoin-project/go-paramfetch"
-	"github.com/filecoin-project/go-sectorbuilder/fs"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/go-address"
+	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/go-sectorbuilder/fs"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-storage/storage"
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -103,6 +104,10 @@ func main() {
 				Usage: "output results in json format",
 			},
 			&cli.BoolFlag{
+				Name:  "skip-commit2",
+				Usage: "skip the commit2 (snark) portion of the benchmark",
+			},
+			&cli.BoolFlag{
 				Name:  "skip-unseal",
 				Usage: "skip the unseal portion of the benchmark",
 			},
@@ -174,8 +179,10 @@ func main() {
 				}
 			}
 
-			if err := paramfetch.GetParams(build.ParametersJson(), uint64(sectorSize)); err != nil {
-				return xerrors.Errorf("getting params: %w", err)
+			if !c.Bool("skip-commit2") {
+				if err := paramfetch.GetParams(build.ParametersJson(), uint64(sectorSize)); err != nil {
+					return xerrors.Errorf("getting params: %w", err)
+				}
 			}
 
 			sbfs := &fs.Basic{
@@ -269,41 +276,48 @@ func main() {
 					}
 				}
 
-				proof, err := sb.SealCommit2(context.TODO(), i, c1o)
-				if err != nil {
-					return err
+				var proof storage.Proof
+				if !c.Bool("skip-commit2") {
+					proof, err = sb.SealCommit2(context.TODO(), i, c1o)
+					if err != nil {
+						return err
+					}
 				}
 
 				sealcommit2 := time.Now()
 
-				svi := abi.SealVerifyInfo{
-					SectorID: abi.SectorID{Miner: mid, Number: i},
-					OnChain: abi.OnChainSealVerifyInfo{
-						SealedCID:        commR,
-						InteractiveEpoch: seed.Epoch,
-						RegisteredProof:  spt,
-						Proof:            proof,
-						DealIDs:          nil,
-						SectorNumber:     i,
-						SealRandEpoch:    0,
-					},
-					Randomness:            ticket,
-					InteractiveRandomness: seed.Value,
-					UnsealedCID:           commD,
-				}
+				if !c.Bool("skip-commit2") {
 
-				ok, err := sectorbuilder.ProofVerifier.VerifySeal(svi)
-				if err != nil {
-					return err
-				}
-				if !ok {
-					return xerrors.Errorf("porep proof for sector %d was invalid", i)
+					svi := abi.SealVerifyInfo{
+						SectorID: abi.SectorID{Miner: mid, Number: i},
+						OnChain: abi.OnChainSealVerifyInfo{
+							SealedCID:        commR,
+							InteractiveEpoch: seed.Epoch,
+							RegisteredProof:  spt,
+							Proof:            proof,
+							DealIDs:          nil,
+							SectorNumber:     i,
+							SealRandEpoch:    0,
+						},
+						Randomness:            ticket,
+						InteractiveRandomness: seed.Value,
+						UnsealedCID:           commD,
+					}
+
+					ok, err := sectorbuilder.ProofVerifier.VerifySeal(svi)
+					if err != nil {
+						return err
+					}
+					if !ok {
+						return xerrors.Errorf("porep proof for sector %d was invalid", i)
+					}
 				}
 
 				verifySeal := time.Now()
 
 				if !c.Bool("skip-unseal") {
 					log.Info("Unsealing sector")
+					// TODO: RM unsealed sector first
 					rc, err := sb.ReadPieceFromSealedSector(context.TODO(), 1, 0, abi.UnpaddedPieceSize(sectorSize), ticket, commD)
 					if err != nil {
 						return err
@@ -359,84 +373,86 @@ func main() {
 				}
 			}
 
-			log.Info("generating election post candidates")
-			fcandidates, err := sb.GenerateEPostCandidates(sealedSectors, challenge[:], []abi.SectorNumber{})
-			if err != nil {
-				return err
-			}
-
-			var candidates []abi.PoStCandidate
-			for _, c := range fcandidates {
-				c.Candidate.RegisteredProof = ppt
-				candidates = append(candidates, c.Candidate)
-			}
-
-			gencandidates := time.Now()
-
-			log.Info("computing election post snark (cold)")
-			proof1, err := sb.ComputeElectionPoSt(sealedSectors, challenge[:], candidates[:1])
-			if err != nil {
-				return err
-			}
-
-			epost1 := time.Now()
-
-			log.Info("computing election post snark (hot)")
-			proof2, err := sb.ComputeElectionPoSt(sealedSectors, challenge[:], candidates[:1])
-			if err != nil {
-				return err
-			}
-
-			epost2 := time.Now()
-
-			ccount := sectorbuilder.ElectionPostChallengeCount(uint64(len(sealedSectors)), 0)
-
-			pvi1 := abi.PoStVerifyInfo{
-				Randomness:      abi.PoStRandomness(challenge[:]),
-				Candidates:      candidates[:1],
-				Proofs:          proof1,
-				EligibleSectors: sealedSectors,
-				Prover:          mid,
-				ChallengeCount:  ccount,
-			}
-			ok, err := sectorbuilder.ProofVerifier.VerifyElectionPost(context.TODO(), pvi1)
-			if err != nil {
-				return err
-			}
-			if !ok {
-				log.Error("post verification failed")
-			}
-
-			verifypost1 := time.Now()
-
-			pvi2 := abi.PoStVerifyInfo{
-				Randomness:      abi.PoStRandomness(challenge[:]),
-				Candidates:      candidates[:1],
-				Proofs:          proof2,
-				EligibleSectors: sealedSectors,
-				Prover:          mid,
-				ChallengeCount:  ccount,
-			}
-
-			ok, err = sectorbuilder.ProofVerifier.VerifyElectionPost(context.TODO(), pvi2)
-			if err != nil {
-				return err
-			}
-			if !ok {
-				log.Error("post verification failed")
-			}
-			verifypost2 := time.Now()
-
 			bo := BenchResults{
 				SectorSize:     sectorSize,
 				SealingResults: sealTimings,
+			}
 
-				PostGenerateCandidates: gencandidates.Sub(beforePost),
-				PostEProofCold:         epost1.Sub(gencandidates),
-				PostEProofHot:          epost2.Sub(epost1),
-				VerifyEPostCold:        verifypost1.Sub(epost2),
-				VerifyEPostHot:         verifypost2.Sub(verifypost1),
-			} // TODO: optionally write this as json to a file
+			if !c.Bool("skip-commit2") {
+				log.Info("generating election post candidates")
+				fcandidates, err := sb.GenerateEPostCandidates(sealedSectors, challenge[:], []abi.SectorNumber{})
+				if err != nil {
+					return err
+				}
+
+				var candidates []abi.PoStCandidate
+				for _, c := range fcandidates {
+					c.Candidate.RegisteredProof = ppt
+					candidates = append(candidates, c.Candidate)
+				}
+
+				gencandidates := time.Now()
+
+				log.Info("computing election post snark (cold)")
+				proof1, err := sb.ComputeElectionPoSt(sealedSectors, challenge[:], candidates[:1])
+				if err != nil {
+					return err
+				}
+
+				epost1 := time.Now()
+
+				log.Info("computing election post snark (hot)")
+				proof2, err := sb.ComputeElectionPoSt(sealedSectors, challenge[:], candidates[:1])
+				if err != nil {
+					return err
+				}
+
+				epost2 := time.Now()
+
+				ccount := sectorbuilder.ElectionPostChallengeCount(uint64(len(sealedSectors)), 0)
+
+				pvi1 := abi.PoStVerifyInfo{
+					Randomness:      abi.PoStRandomness(challenge[:]),
+					Candidates:      candidates[:1],
+					Proofs:          proof1,
+					EligibleSectors: sealedSectors,
+					Prover:          mid,
+					ChallengeCount:  ccount,
+				}
+				ok, err := sectorbuilder.ProofVerifier.VerifyElectionPost(context.TODO(), pvi1)
+				if err != nil {
+					return err
+				}
+				if !ok {
+					log.Error("post verification failed")
+				}
+
+				verifypost1 := time.Now()
+
+				pvi2 := abi.PoStVerifyInfo{
+					Randomness:      abi.PoStRandomness(challenge[:]),
+					Candidates:      candidates[:1],
+					Proofs:          proof2,
+					EligibleSectors: sealedSectors,
+					Prover:          mid,
+					ChallengeCount:  ccount,
+				}
+
+				ok, err = sectorbuilder.ProofVerifier.VerifyElectionPost(context.TODO(), pvi2)
+				if err != nil {
+					return err
+				}
+				if !ok {
+					log.Error("post verification failed")
+				}
+				verifypost2 := time.Now()
+
+				bo.PostGenerateCandidates = gencandidates.Sub(beforePost)
+				bo.PostEProofCold = epost1.Sub(gencandidates)
+				bo.PostEProofHot = epost2.Sub(epost1)
+				bo.VerifyEPostCold = verifypost1.Sub(epost2)
+				bo.VerifyEPostHot = verifypost2.Sub(verifypost1)
+			}
 
 			if c.Bool("json-out") {
 				data, err := json.MarshalIndent(bo, "", "  ")
@@ -446,7 +462,7 @@ func main() {
 
 				fmt.Println(string(data))
 			} else {
-				fmt.Printf("----\nresults (v23) (%d)\n", sectorSize)
+				fmt.Printf("----\nresults (v24) (%d)\n", sectorSize)
 				if robench == "" {
 					fmt.Printf("seal: addPiece: %s (%s)\n", bo.SealingResults[0].AddPiece, bps(bo.SectorSize, bo.SealingResults[0].AddPiece)) // TODO: average across multiple sealings
 					fmt.Printf("seal: preCommit phase 1: %s (%s)\n", bo.SealingResults[0].PreCommit1, bps(bo.SectorSize, bo.SealingResults[0].PreCommit1))
@@ -458,11 +474,13 @@ func main() {
 						fmt.Printf("unseal: %s  (%s)\n", bo.SealingResults[0].Unseal, bps(bo.SectorSize, bo.SealingResults[0].Unseal))
 					}
 				}
-				fmt.Printf("generate candidates: %s (%s)\n", bo.PostGenerateCandidates, bps(bo.SectorSize*abi.SectorSize(len(bo.SealingResults)), bo.PostGenerateCandidates))
-				fmt.Printf("compute epost proof (cold): %s\n", bo.PostEProofCold)
-				fmt.Printf("compute epost proof (hot): %s\n", bo.PostEProofHot)
-				fmt.Printf("verify epost proof (cold): %s\n", bo.VerifyEPostCold)
-				fmt.Printf("verify epost proof (hot): %s\n", bo.VerifyEPostHot)
+				if !c.Bool("skip-commit2") {
+					fmt.Printf("generate candidates: %s (%s)\n", bo.PostGenerateCandidates, bps(bo.SectorSize*abi.SectorSize(len(bo.SealingResults)), bo.PostGenerateCandidates))
+					fmt.Printf("compute epost proof (cold): %s\n", bo.PostEProofCold)
+					fmt.Printf("compute epost proof (hot): %s\n", bo.PostEProofHot)
+					fmt.Printf("verify epost proof (cold): %s\n", bo.VerifyEPostCold)
+					fmt.Printf("verify epost proof (hot): %s\n", bo.VerifyEPostHot)
+				}
 			}
 			return nil
 		},
