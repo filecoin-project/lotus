@@ -4,10 +4,14 @@ package build
 
 import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 )
 
 func init() {
 	InsecurePoStValidation = true
+
+	power.ConsensusMinerMinPower = big.NewInt(2048)
 }
 
 var SectorSizes = []abi.SectorSize{2048}
