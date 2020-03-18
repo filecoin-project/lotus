@@ -25,7 +25,7 @@ require (
 	github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200314022627-38af9db49ba2
 	github.com/filecoin-project/go-statemachine v0.0.0-20200226041606-2074af6d51d9
 	github.com/filecoin-project/go-statestore v0.1.0
-	github.com/filecoin-project/specs-actors v0.0.0-20200311215506-e95895452888
+	github.com/filecoin-project/specs-actors v0.0.0-20200312030511-3f5510bf6130
 	github.com/filecoin-project/specs-storage v0.0.0-20200303233430-1a5a408f7513
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/go-ole/go-ole v1.2.4 // indirect
