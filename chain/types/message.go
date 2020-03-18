@@ -21,7 +21,7 @@ type Message struct {
 	Value BigInt
 
 	GasPrice BigInt
-	GasLimit BigInt
+	GasLimit int64
 
 	Method abi.MethodNum
 	Params []byte
@@ -87,7 +87,7 @@ func (m *Message) Cid() cid.Cid {
 func (m *Message) RequiredFunds() BigInt {
 	return BigAdd(
 		m.Value,
-		BigMul(m.GasPrice, m.GasLimit),
+		BigMul(m.GasPrice, NewInt(uint64(m.GasLimit))),
 	)
 }
 

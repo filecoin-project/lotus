@@ -656,9 +656,15 @@ func (t *Message) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.GasLimit (big.Int) (struct)
-	if err := t.GasLimit.MarshalCBOR(w); err != nil {
-		return err
+	// t.GasLimit (int64) (int64)
+	if t.GasLimit >= 0 {
+		if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.GasLimit))); err != nil {
+			return err
+		}
+	} else {
+		if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajNegativeInt, uint64(-t.GasLimit)-1)); err != nil {
+			return err
+		}
 	}
 
 	// t.Method (abi.MethodNum) (uint64)
@@ -746,14 +752,30 @@ func (t *Message) UnmarshalCBOR(r io.Reader) error {
 		}
 
 	}
-	// t.GasLimit (big.Int) (struct)
-
+	// t.GasLimit (int64) (int64)
 	{
-
-		if err := t.GasLimit.UnmarshalCBOR(br); err != nil {
+		maj, extra, err := cbg.CborReadHeader(br)
+		var extraI int64
+		if err != nil {
 			return err
 		}
+		switch maj {
+		case cbg.MajUnsignedInt:
+			extraI = int64(extra)
+			if extraI < 0 {
+				return fmt.Errorf("int64 positive overflow")
+			}
+		case cbg.MajNegativeInt:
+			extraI = int64(extra)
+			if extraI < 0 {
+				return fmt.Errorf("int64 negative oveflow")
+			}
+			extraI = -1 - extraI
+		default:
+			return fmt.Errorf("wrong type for int64 field: %d", maj)
+		}
 
+		t.GasLimit = int64(extraI)
 	}
 	// t.Method (abi.MethodNum) (uint64)
 
@@ -1043,9 +1065,15 @@ func (t *MessageReceipt) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.GasUsed (big.Int) (struct)
-	if err := t.GasUsed.MarshalCBOR(w); err != nil {
-		return err
+	// t.GasUsed (int64) (int64)
+	if t.GasUsed >= 0 {
+		if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.GasUsed))); err != nil {
+			return err
+		}
+	} else {
+		if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajNegativeInt, uint64(-t.GasUsed)-1)); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -1107,14 +1135,30 @@ func (t *MessageReceipt) UnmarshalCBOR(r io.Reader) error {
 	if _, err := io.ReadFull(br, t.Return); err != nil {
 		return err
 	}
-	// t.GasUsed (big.Int) (struct)
-
+	// t.GasUsed (int64) (int64)
 	{
-
-		if err := t.GasUsed.UnmarshalCBOR(br); err != nil {
+		maj, extra, err := cbg.CborReadHeader(br)
+		var extraI int64
+		if err != nil {
 			return err
 		}
+		switch maj {
+		case cbg.MajUnsignedInt:
+			extraI = int64(extra)
+			if extraI < 0 {
+				return fmt.Errorf("int64 positive overflow")
+			}
+		case cbg.MajNegativeInt:
+			extraI = int64(extra)
+			if extraI < 0 {
+				return fmt.Errorf("int64 negative oveflow")
+			}
+			extraI = -1 - extraI
+		default:
+			return fmt.Errorf("wrong type for int64 field: %d", maj)
+		}
 
+		t.GasUsed = int64(extraI)
 	}
 	return nil
 }

@@ -228,7 +228,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, pstate cid.Cid, bms []B
 			Nonce:    sysAct.Nonce,
 			Value:    types.NewInt(0),
 			GasPrice: types.NewInt(0),
-			GasLimit: types.NewInt(1 << 30),
+			GasLimit: 1 << 30,
 			Method:   builtin.MethodsReward.AwardBlockReward,
 			Params:   params,
 		}
@@ -260,7 +260,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, pstate cid.Cid, bms []B
 		Nonce:    ca.Nonce,
 		Value:    types.NewInt(0),
 		GasPrice: types.NewInt(0),
-		GasLimit: types.NewInt(1 << 30), // Make super sure this is never too little
+		GasLimit: 1 << 30, // Make super sure this is never too little
 		Method:   builtin.MethodsCron.EpochTick,
 		Params:   nil,
 	}

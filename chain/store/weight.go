@@ -77,8 +77,8 @@ func (cs *ChainStore) call(ctx context.Context, msg *types.Message, ts *types.Ti
 		return nil, xerrors.Errorf("failed to set up vm: %w", err)
 	}
 
-	if msg.GasLimit == types.EmptyInt {
-		msg.GasLimit = types.NewInt(10000000000)
+	if msg.GasLimit == 0 {
+		msg.GasLimit = 10000000000
 	}
 	if msg.GasPrice == types.EmptyInt {
 		msg.GasPrice = types.NewInt(0)

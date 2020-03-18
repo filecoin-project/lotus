@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
@@ -53,7 +54,7 @@ func (a *Applier) ApplyMessage(eCtx *vtypes.ExecutionContext, state vstate.VMWra
 	mr := vtypes.MessageReceipt{
 		ExitCode:    exitcode.ExitCode(ret.ExitCode),
 		ReturnValue: ret.Return,
-		GasUsed:     ret.GasUsed,
+		GasUsed:     big.NewInt(ret.GasUsed),
 	}
 
 	return mr, nil
@@ -91,7 +92,7 @@ func (a *Applier) ApplyTipSetMessages(state vstate.VMWrapper, blocks []vtypes.Bl
 			ExitCode:    exitcode.ExitCode(ret.ExitCode),
 			ReturnValue: ret.Return,
 
-			GasUsed: ret.GasUsed,
+			GasUsed: big.NewInt(ret.GasUsed),
 		})
 		return nil
 	})
@@ -130,7 +131,7 @@ func toLotusMsg(msg *vtypes.Message) *types.Message {
 
 		Value:    types.BigInt{Int: msg.Value.Int},
 		GasPrice: types.BigInt{Int: msg.GasPrice.Int},
-		GasLimit: types.NewInt(uint64(msg.GasLimit)),
+		GasLimit: msg.GasLimit,
 
 		Params: msg.Params,
 	}

@@ -796,7 +796,7 @@ var slashConsensusFault = &cli.Command{
 			From:     def,
 			Value:    types.NewInt(0),
 			GasPrice: types.NewInt(1),
-			GasLimit: types.NewInt(10000000),
+			GasLimit: 10000000,
 			Method:   builtin.MethodsPower.ReportConsensusFault,
 			Params:   params,
 		}
