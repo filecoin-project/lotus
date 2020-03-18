@@ -230,9 +230,12 @@ func Online() Option {
 			Override(new(*blocksync.BlockSyncService), blocksync.NewBlockSyncService),
 			Override(new(*peermgr.PeerMgr), peermgr.NewPeerMgr),
 
+			Override(new(dtypes.GraphsyncLoader), modules.GraphsyncLoader),
+			Override(new(dtypes.GraphsyncStorer), modules.GraphsyncStorer),
+			Override(new(dtypes.Graphsync), modules.Graphsync),
+
 			Override(RunHelloKey, modules.RunHello),
 			Override(RunBlockSyncKey, modules.RunBlockSync),
-			Override(RunChainGraphsync, modules.ChainGraphsync),
 			Override(RunPeerMgrKey, modules.RunPeerMgr),
 			Override(HandleIncomingBlocksKey, modules.HandleIncomingBlocks),
 
@@ -241,7 +244,7 @@ func Online() Option {
 
 			Override(new(retrievalmarket.RetrievalClient), modules.RetrievalClient),
 			Override(new(dtypes.ClientDealStore), modules.NewClientDealStore),
-			Override(new(dtypes.ClientDataTransfer), modules.NewClientDAGServiceDataTransfer),
+			Override(new(dtypes.ClientDataTransfer), modules.NewClientGraphsyncDataTransfer),
 			Override(new(*deals.ClientRequestValidator), modules.NewClientRequestValidator),
 			Override(new(storagemarket.StorageClient), modules.StorageClient),
 			Override(new(storagemarket.StorageClientNode), storageadapter.NewClientNodeAdapter),
@@ -387,7 +390,6 @@ func Repo(r repo.Repo) Option {
 			Override(new(dtypes.ClientFilestore), modules.ClientFstore),
 			Override(new(dtypes.ClientBlockstore), modules.ClientBlockstore),
 			Override(new(dtypes.ClientDAG), modules.ClientDAG),
-			Override(new(dtypes.ClientGraphsync), modules.ClientGraphsync),
 
 			Override(new(ci.PrivKey), lp2p.PrivKey),
 			Override(new(ci.PubKey), ci.PrivKey.GetPublic),
