@@ -119,11 +119,14 @@ github.com/filecoin-project/go-fil-commcid v0.0.0-20200208005934-2b8bd03caca5 h1
 github.com/filecoin-project/go-fil-commcid v0.0.0-20200208005934-2b8bd03caca5/go.mod h1:JbkIgFF/Z9BDlvrJO1FuKkaWsH673/UdFaiVS6uIHlA=
 github.com/filecoin-project/go-fil-markets v0.0.0-20200304003055-d449a980d4bd h1:tLOl4GWJKQjpjqvSYSW0FoIjhoAzJSEoRibqkVFlaCE=
 github.com/filecoin-project/go-fil-markets v0.0.0-20200304003055-d449a980d4bd/go.mod h1:rfRwhd3ujcCXnD4N9oEM2wjh8GRZGoeNXME+UPG/9ts=
+github.com/filecoin-project/go-fil-markets v0.0.0-20200318012938-6403a5bda668 h1:856ZUIBb2K8+C5nepxi4FQ/yeTSWdr4mWbjs1JbByGU=
+github.com/filecoin-project/go-fil-markets v0.0.0-20200318012938-6403a5bda668/go.mod h1:7EGCMycMpwICVzckXUfNL44HfIxG7pwoAVeOuZFGX/4=
 github.com/filecoin-project/go-padreader v0.0.0-20200210211231-548257017ca6 h1:92PET+sx1Hb4W/8CgFwGuxaKbttwY+UNspYZTvXY0vs=
 github.com/filecoin-project/go-padreader v0.0.0-20200210211231-548257017ca6/go.mod h1:0HgYnrkeSU4lu1p+LEOeDpFsNBssa0OGGriWdA4hvaE=
 github.com/filecoin-project/go-paramfetch v0.0.2-0.20200218225740-47c639bab663 h1:eYxi6vI5CyeXD15X1bB3bledDXbqKxqf0wQzTLgwYwA=
 github.com/filecoin-project/go-paramfetch v0.0.2-0.20200218225740-47c639bab663/go.mod h1:fZzmf4tftbwf9S37XRifoJlz7nCjRdIrMGLR07dKLCc=
 github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200226210935-4739f8749f56/go.mod h1:tzTc9BxxSbjlIzhFwm5h9oBkXKkRuLxeiWspntwnKyw=
+github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200311224656-7d83652bdbed/go.mod h1:xAd/X905Ncgj8kkHsP2pmQUf6MQT2qJTDcOEfkwCjYc=
 github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200314022627-38af9db49ba2 h1:4RjDynwobd/UYlZUprRg/GMEsMP6fAfVRTXgFs4XNfo=
 github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200314022627-38af9db49ba2/go.mod h1:NcE+iL0bbYnamGmYQgCPVGbSaf8VF2/CLra/61B3I3I=
 github.com/filecoin-project/go-statemachine v0.0.0-20200226041606-2074af6d51d9 h1:k9qVR9ItcziSB2rxtlkN/MDWNlbsI6yzec+zjUatLW0=
@@ -335,6 +338,7 @@ github.com/ipfs/go-unixfs v0.2.2-0.20190827150610-868af2e9e5cb h1:tmWYgjltxwM7PD
 github.com/ipfs/go-unixfs v0.2.2-0.20190827150610-868af2e9e5cb/go.mod h1:IwAAgul1UQIcNZzKPYZWOCijryFBeCV79cNubPzol+k=
 github.com/ipfs/go-verifcid v0.0.1 h1:m2HI7zIuR5TFyQ1b79Da5N9dnnCP1vcu2QqawmWlK2E=
 github.com/ipfs/go-verifcid v0.0.1/go.mod h1:5Hrva5KBeIog4A+UpqlaIU+DEstipcJYQQZc0g37pY0=
+github.com/ipld/go-car v0.0.5-0.20200316204026-3e2cf7af0fab/go.mod h1:yR5AsJ38xTwwgwGpbh60ICtdLPp5lGfuH28PAAzaEhM=
 github.com/ipld/go-ipld-prime v0.0.2-0.20191108012745-28a82f04c785 h1:fASnkvtR+SmB2y453RxmDD3Uvd4LonVUgFGk9JoDaZs=
 github.com/ipld/go-ipld-prime v0.0.2-0.20191108012745-28a82f04c785/go.mod h1:bDDSvVz7vaK12FNvMeRYnpRFkSUPNQOiCYQezMD/P3w=
 github.com/ipld/go-ipld-prime-proto v0.0.0-20191113031812-e32bd156a1e5 h1:lSip43rAdyGA+yRQuy6ju0ucZkWpYc1F2CTQtZTVW/4=
