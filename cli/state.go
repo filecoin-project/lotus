@@ -58,6 +58,7 @@ var stateCmd = &cli.Command{
 		stateCallCmd,
 		stateGetDealSetCmd,
 		stateWaitMsgCmd,
+		stateSearchMsgCmd,
 		stateMinerInfo,
 	},
 }
@@ -851,6 +852,45 @@ var stateWaitMsgCmd = &cli.Command{
 		fmt.Printf("Exit Code: %d", mw.Receipt.ExitCode)
 		fmt.Printf("Gas Used: %d", mw.Receipt.GasUsed)
 		fmt.Printf("Return: %x", mw.Receipt.Return)
+		return nil
+	},
+}
+
+var stateSearchMsgCmd = &cli.Command{
+	Name:      "search-msg",
+	Usage:     "Search to see whether a message has appeared on chain",
+	ArgsUsage: "[messageCid]",
+	Action: func(cctx *cli.Context) error {
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must specify message cid to search for")
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		msg, err := cid.Decode(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		mw, err := api.StateSearchMsg(ctx, msg)
+		if err != nil {
+			return err
+		}
+
+		if mw != nil {
+			fmt.Printf("message was executed in tipset: %s", mw.TipSet.Cids())
+			fmt.Printf("\nExit Code: %d", mw.Receipt.ExitCode)
+			fmt.Printf("\nGas Used: %d", mw.Receipt.GasUsed)
+			fmt.Printf("\nReturn: %x", mw.Receipt.Return)
+		} else {
+			fmt.Print("message was not found on chain")
+		}
 		return nil
 	},
 }
