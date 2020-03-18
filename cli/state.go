@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	"reflect"
 	"strconv"
 	"strings"
@@ -58,6 +59,7 @@ var stateCmd = &cli.Command{
 		stateCallCmd,
 		stateGetDealSetCmd,
 		stateWaitMsgCmd,
+		stateRewardsListPathCmd,
 		stateMinerInfo,
 	},
 }
@@ -232,6 +234,68 @@ var stateSectorsCmd = &cli.Command{
 
 		for _, s := range sectors {
 			fmt.Printf("%d: %x\n", s.Info.Info.SectorNumber, s.Info.Info.SealedCID)
+		}
+
+		return nil
+	},
+}
+var stateRewardsListPathCmd = &cli.Command{
+	Name:  "rewards",
+	Usage: "Print unclaimed block rewards earned in tipset path",
+	SkipFlagParsing:false,
+	Flags: []cli.Flag{
+		&cli.StringFlag{Name:"miner"},
+		&cli.Int64Flag{Name: "start"},
+		&cli.Int64Flag{Name: "end"},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		maddr, err := address.NewFromString(cctx.String("miner"))
+		if err != nil {
+			return err
+		}
+
+		var (
+			start, end int64
+			rewards    []reward.Reward
+
+			/*head,*/ start_ts, end_ts *types.TipSet
+		)
+
+		start = cctx.Int64("start")
+		end = cctx.Int64("end")
+		if start < 0 || end < 0 || start > end {
+			return fmt.Errorf("invalid tipset height")
+		}
+
+		// head, err = api.ChainHead(ctx)
+		// if err != nil {
+		// 	return err
+		// }
+		start_ts, err = api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(start), types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		end_ts, err = api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(end), types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		rewards, err = api.StateListRewardsPath(ctx, maddr, start_ts.Key(), end_ts.Key())
+		if err != nil {
+			return err
+		}
+
+		for _, r := range rewards {
+			fmt.Printf("%d\t%d\t%s\n", r.StartEpoch, r.EndEpoch, r.Value)
 		}
 
 		return nil
