@@ -190,7 +190,7 @@ func (h *handler) send(w http.ResponseWriter, r *http.Request) {
 		To:    to,
 
 		GasPrice: types.NewInt(0),
-		GasLimit: types.NewInt(1000),
+		GasLimit: 1000,
 	})
 	if err != nil {
 		w.WriteHeader(400)
@@ -256,7 +256,7 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 		To:    owner,
 
 		GasPrice: types.NewInt(0),
-		GasLimit: types.NewInt(1000),
+		GasLimit: 1000,
 	})
 	if err != nil {
 		w.WriteHeader(400)
@@ -285,7 +285,7 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 		Method: builtin.MethodsPower.CreateMiner,
 		Params: params,
 
-		GasLimit: types.NewInt(10000000),
+		GasLimit: 10000000,
 		GasPrice: types.NewInt(0),
 	}
 

@@ -34,8 +34,8 @@ type Runtime struct {
 	height abi.ChainEpoch
 	cst    cbor.IpldStore
 
-	gasAvailable types.BigInt
-	gasUsed      types.BigInt
+	gasAvailable int64
+	gasUsed      int64
 
 	sys runtime.Syscalls
 
@@ -325,7 +325,7 @@ func (rt *Runtime) internalSend(to address.Address, method abi.MethodNum, value 
 	mr := types.MessageReceipt{
 		ExitCode: exitcode.ExitCode(aerrors.RetCode(errSend)),
 		Return:   ret,
-		GasUsed:  types.EmptyInt,
+		GasUsed:  0,
 	}
 
 	er := ExecutionResult{
@@ -421,10 +421,9 @@ func (rt *Runtime) stateCommit(oldh, newh cid.Cid) aerrors.ActorError {
 	return nil
 }
 
-func (rt *Runtime) ChargeGas(amount uint64) {
-	toUse := types.NewInt(amount)
-	rt.gasUsed = types.BigAdd(rt.gasUsed, toUse)
-	if rt.gasUsed.GreaterThan(rt.gasAvailable) {
-		rt.Abortf(exitcode.SysErrOutOfGas, "not enough gas: used=%s, available=%s", rt.gasUsed, rt.gasAvailable)
+func (rt *Runtime) ChargeGas(toUse int64) {
+	rt.gasUsed = rt.gasUsed + toUse
+	if rt.gasUsed > rt.gasAvailable {
+		rt.Abortf(exitcode.SysErrOutOfGas, "not enough gas: used=%d, available=%d", rt.gasUsed, rt.gasAvailable)
 	}
 }
