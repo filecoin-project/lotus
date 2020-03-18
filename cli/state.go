@@ -240,45 +240,40 @@ var stateSectorsCmd = &cli.Command{
 	},
 }
 var stateRewardsListPathCmd = &cli.Command{
-	Name:  "rewards",
-	Usage: "Print unclaimed block rewards earned in tipset path",
-	SkipFlagParsing:false,
+	Name:            "rewards",
+	Usage:           "Print unclaimed block rewards earned in tipset path",
+	SkipFlagParsing: false,
 	Flags: []cli.Flag{
-		&cli.StringFlag{Name:"miner"},
+		&cli.StringFlag{Name: "miner"},
 		&cli.Int64Flag{Name: "start"},
 		&cli.Int64Flag{Name: "end"},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer closer()
-
 		ctx := ReqContext(cctx)
-
 		maddr, err := address.NewFromString(cctx.String("miner"))
 		if err != nil {
 			return err
 		}
 
 		var (
-			start, end int64
-			rewards    []reward.Reward
+			start, end       int64
+			start_ts, end_ts *types.TipSet
 
-			/*head,*/ start_ts, end_ts *types.TipSet
+			rewards []reward.Reward
 		)
 
 		start = cctx.Int64("start")
 		end = cctx.Int64("end")
-		if start < 0 || end < 0 || start > end {
-			return fmt.Errorf("invalid tipset height")
+		if start < 0 || end < 0 || start >= end {
+			cli.ShowSubcommandHelp(cctx)
+			return nil
 		}
 
-		// head, err = api.ChainHead(ctx)
-		// if err != nil {
-		// 	return err
-		// }
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
 		start_ts, err = api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(start), types.EmptyTSK)
 		if err != nil {
 			return err
