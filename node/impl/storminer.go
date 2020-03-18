@@ -145,12 +145,14 @@ func (sm *StorageMinerAPI) SectorsUpdate(ctx context.Context, id abi.SectorNumbe
 }
 
 func (sm *StorageMinerAPI) WorkerConnect(ctx context.Context, url string) error {
-	_, err := advmgr.ConnectRemote(ctx, sm.Full, url)
+	w, err := advmgr.ConnectRemote(ctx, sm, url)
 	if err != nil {
-		return err
+		return xerrors.Errorf("connecting remote storage failed: %w", err)
 	}
 
-	panic("todo register ")
+	log.Infof("Connected to a remote worker at %s", url)
+
+	return sm.StorageMgr.AddWorker(w)
 }
 
 func (sm *StorageMinerAPI) MarketImportDealData(ctx context.Context, propCid cid.Cid, path string) error {

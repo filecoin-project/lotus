@@ -14,5 +14,7 @@ func SetupLogLevels() {
 		logging.SetLogLevel("bitswap", "WARN")
 		//logging.SetLogLevel("pubsub", "WARN")
 		logging.SetLogLevel("connmgr", "WARN")
+		logging.SetLogLevel("advmgr", "DEBUG")
+		logging.SetLogLevel("stores", "DEBUG")
 	}
 }
