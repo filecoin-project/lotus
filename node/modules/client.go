@@ -11,8 +11,8 @@ import (
 	retrievalimpl "github.com/filecoin-project/go-fil-markets/retrievalmarket/impl"
 	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	deals "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
 	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
+	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/requestvalidation"
 	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-fil-markets/storedcounter"
 	"github.com/filecoin-project/go-statestore"
@@ -29,6 +29,7 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/lotus/markets/retrievaladapter"
+	"github.com/filecoin-project/lotus/node/impl/full"
 	payapi "github.com/filecoin-project/lotus/node/impl/paych"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
@@ -58,8 +59,8 @@ func ClientBlockstore(fstore dtypes.ClientFilestore) dtypes.ClientBlockstore {
 // RegisterClientValidator is an initialization hook that registers the client
 // request validator with the data transfer module as the validator for
 // StorageDataTransferVoucher types
-func RegisterClientValidator(crv *deals.ClientRequestValidator, dtm dtypes.ClientDataTransfer) {
-	if err := dtm.RegisterVoucherType(reflect.TypeOf(&deals.StorageDataTransferVoucher{}), crv); err != nil {
+func RegisterClientValidator(crv *requestvalidation.ClientRequestValidator, dtm dtypes.ClientDataTransfer) {
+	if err := dtm.RegisterVoucherType(reflect.TypeOf(&requestvalidation.StorageDataTransferVoucher{}), crv); err != nil {
 		panic(err)
 	}
 }
@@ -71,8 +72,13 @@ func NewClientGraphsyncDataTransfer(h host.Host, gs dtypes.Graphsync) dtypes.Cli
 }
 
 // NewClientDealStore creates a statestore for the client to store its deals
-func NewClientDealStore(ds dtypes.MetadataDS) dtypes.ClientDealStore {
-	return statestore.New(namespace.Wrap(ds, datastore.NewKey("/deals/client")))
+func NewClientDealStore(ds dtypes.ClientDatastore) dtypes.ClientDealStore {
+	return statestore.New(ds)
+}
+
+// NewClientDatastore creates a datastore for the client to store its deals
+func NewClientDatastore(ds dtypes.MetadataDS) dtypes.ClientDatastore {
+	return namespace.Wrap(ds, datastore.NewKey("/deals/client"))
 }
 
 // ClientDAG is a DAGService for the ClientBlockstore
@@ -92,18 +98,18 @@ func ClientDAG(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.ClientBlocks
 	return dag
 }
 
-func NewClientRequestValidator(deals dtypes.ClientDealStore) *storageimpl.ClientRequestValidator {
-	return storageimpl.NewClientRequestValidator(deals)
+func NewClientRequestValidator(deals dtypes.ClientDealStore) *requestvalidation.ClientRequestValidator {
+	return requestvalidation.NewClientRequestValidator(deals)
 }
 
-func StorageClient(h host.Host, ibs dtypes.ClientBlockstore, r repo.LockedRepo, dataTransfer dtypes.ClientDataTransfer, discovery *discovery.Local, deals dtypes.ClientDealStore, scn storagemarket.StorageClientNode) storagemarket.StorageClient {
+func StorageClient(h host.Host, ibs dtypes.ClientBlockstore, r repo.LockedRepo, dataTransfer dtypes.ClientDataTransfer, discovery *discovery.Local, deals dtypes.ClientDatastore, scn storagemarket.StorageClientNode) (storagemarket.StorageClient, error) {
 	net := smnet.NewFromLibp2pHost(h)
 	return storageimpl.NewClient(net, ibs, dataTransfer, discovery, deals, scn)
 }
 
 // RetrievalClient creates a new retrieval client attached to the client blockstore
-func RetrievalClient(h host.Host, bs dtypes.ClientBlockstore, pmgr *paychmgr.Manager, payapi payapi.PaychAPI, resolver retrievalmarket.PeerResolver, ds dtypes.MetadataDS) (retrievalmarket.RetrievalClient, error) {
-	adapter := retrievaladapter.NewRetrievalClientNode(pmgr, payapi)
+func RetrievalClient(h host.Host, bs dtypes.ClientBlockstore, pmgr *paychmgr.Manager, payapi payapi.PaychAPI, resolver retrievalmarket.PeerResolver, ds dtypes.MetadataDS, chainapi full.ChainAPI) (retrievalmarket.RetrievalClient, error) {
+	adapter := retrievaladapter.NewRetrievalClientNode(pmgr, payapi, chainapi)
 	network := rmnet.NewFromLibp2pHost(h)
 	sc := storedcounter.New(ds, datastore.NewKey("/retr"))
 	return retrievalimpl.NewClient(network, bs, adapter, resolver, ds, sc)
