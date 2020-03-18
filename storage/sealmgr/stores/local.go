@@ -212,13 +212,18 @@ func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, existing s
 }
 
 func (st *Local) FindBestAllocStorage(allocate sectorbuilder.SectorFileType, sealing bool) ([]StorageMeta, error) {
+	st.localLk.RLock()
+	defer st.localLk.RUnlock()
+
 	var out []StorageMeta
 
 	for _, p := range st.paths {
 		if sealing && !p.meta.CanSeal {
+			log.Debugf("alloc: not considering %s; can't seal", p.meta.ID)
 			continue
 		}
 		if !sealing && !p.meta.CanStore {
+			log.Debugf("alloc: not considering %s; can't store", p.meta.ID)
 			continue
 		}
 
@@ -236,6 +241,9 @@ func (st *Local) FindBestAllocStorage(allocate sectorbuilder.SectorFileType, sea
 }
 
 func (st *Local) FindSector(id abi.SectorID, typ sectorbuilder.SectorFileType) ([]StorageMeta, error) {
+	st.localLk.RLock()
+	defer st.localLk.RUnlock()
+
 	var out []StorageMeta
 	for _, p := range st.paths {
 		p.lk.Lock()
@@ -254,6 +262,9 @@ func (st *Local) FindSector(id abi.SectorID, typ sectorbuilder.SectorFileType) (
 }
 
 func (st *Local) Local() []StoragePath {
+	st.localLk.RLock()
+	defer st.localLk.RUnlock()
+
 	var out []StoragePath
 	for _, p := range st.paths {
 		if p.local == "" {

@@ -105,6 +105,8 @@ var runCmd = &cli.Command{
 		}
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
 
 		v, err := nodeApi.Version(ctx)
 		if err != nil {
@@ -180,6 +182,13 @@ var runCmd = &cli.Command{
 				return xerrors.Errorf("set storage config: %w", err)
 			}
 
+			{
+				// init datastore for r.Exists
+				_, err := lr.Datastore("/")
+				if err != nil {
+					return err
+				}
+			}
 			if err := lr.Close(); err != nil {
 				return xerrors.Errorf("close repo: %w", err)
 			}
@@ -240,7 +249,12 @@ var runCmd = &cli.Command{
 			Next:   mux.ServeHTTP,
 		}
 
-		srv := &http.Server{Handler: ah}
+		srv := &http.Server{
+			Handler: ah,
+			BaseContext: func(listener net.Listener) context.Context {
+				return ctx
+			},
+		}
 
 		go func() {
 			<-ctx.Done()
@@ -257,6 +271,14 @@ var runCmd = &cli.Command{
 		}
 
 		log.Info("Waiting for tasks")
+
+		go func() {
+			if err := nodeApi.WorkerConnect(ctx, "ws://"+cctx.String("address")+"/rpc/v0"); err != nil {
+				log.Errorf("Registering worker failed: %+v", err)
+				cancel()
+				return
+			}
+		}()
 
 		// todo go register
 

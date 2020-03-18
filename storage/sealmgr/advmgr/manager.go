@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"sync"
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
@@ -40,6 +41,8 @@ type Manager struct {
 	remoteHnd *stores.FetchHandler
 
 	storage2.Prover
+
+	lk sync.Mutex
 }
 
 func New(ls stores.LocalStorage, si *stores.Index, cfg *sectorbuilder.Config, urls URLs, sindex stores.SectorIndex) (*Manager, error) {
@@ -59,7 +62,7 @@ func New(ls stores.LocalStorage, si *stores.Index, cfg *sectorbuilder.Config, ur
 
 	m := &Manager{
 		workers: []Worker{
-			&LocalWorker{scfg: cfg, localStore: stor, storage: stor, sindex: sindex},
+			//&LocalWorker{scfg: cfg, localStore: stor, storage: stor, sindex: sindex},
 		},
 		scfg: cfg,
 
@@ -91,6 +94,14 @@ func (m *Manager) AddLocalStorage(path string) error {
 	return nil
 }
 
+func (m *Manager) AddWorker(w Worker) error {
+	m.lk.Lock()
+	defer m.lk.Unlock()
+
+	m.workers = append(m.workers, w)
+	return nil
+}
+
 func (m *Manager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	m.remoteHnd.ServeHTTP(w, r)
 }
@@ -115,6 +126,7 @@ func (m *Manager) getWorkersByPaths(task sealmgr.TaskType, inPaths []stores.Stor
 			continue
 		}
 		if _, ok := tt[task]; !ok {
+			log.Debugf("dropping worker %d; task %s not supported (supports %v)", i, task, tt)
 			continue
 		}
 
@@ -139,6 +151,8 @@ func (m *Manager) getWorkersByPaths(task sealmgr.TaskType, inPaths []stores.Stor
 			}
 		}
 		if st == nil {
+			log.Debugf("skipping worker %d; doesn't have any of %v", i, inPaths)
+			log.Debugf("skipping worker %d; only has %v", i, phs)
 			continue
 		}
 
@@ -168,6 +182,7 @@ func (m *Manager) AddPiece(ctx context.Context, sector abi.SectorID, existingPie
 		return abi.PieceInfo{}, xerrors.Errorf("finding sector path: %w", err)
 	}
 
+	log.Debugf("find workers for %v", best)
 	candidateWorkers, _ := m.getWorkersByPaths(sealmgr.TTAddPiece, best)
 
 	if len(candidateWorkers) == 0 {
