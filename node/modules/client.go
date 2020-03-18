@@ -22,10 +22,6 @@ import (
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	"github.com/ipfs/go-filestore"
-	graphsync "github.com/ipfs/go-graphsync/impl"
-	"github.com/ipfs/go-graphsync/ipldbridge"
-	gsnet "github.com/ipfs/go-graphsync/network"
-	"github.com/ipfs/go-graphsync/storeutil"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/ipfs/go-merkledag"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -68,9 +64,9 @@ func RegisterClientValidator(crv *deals.ClientRequestValidator, dtm dtypes.Clien
 	}
 }
 
-// NewClientDAGServiceDataTransfer returns a data transfer manager that just
+// NewClientGraphsyncDataTransfer returns a data transfer manager that just
 // uses the clients's Client DAG service for transfers
-func NewClientDAGServiceDataTransfer(h host.Host, gs dtypes.ClientGraphsync) dtypes.ClientDataTransfer {
+func NewClientGraphsyncDataTransfer(h host.Host, gs dtypes.Graphsync) dtypes.ClientDataTransfer {
 	return graphsyncimpl.NewGraphSyncDataTransfer(h, gs)
 }
 
@@ -94,18 +90,6 @@ func ClientDAG(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.ClientBlocks
 	})
 
 	return dag
-}
-
-// ClientGraphsync creates a graphsync instance which reads and writes blocks
-// to the ClientBlockstore
-func ClientGraphsync(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.ClientBlockstore, h host.Host) dtypes.ClientGraphsync {
-	graphsyncNetwork := gsnet.NewFromLibp2pHost(h)
-	ipldBridge := ipldbridge.NewIPLDBridge()
-	loader := storeutil.LoaderForBlockstore(ibs)
-	storer := storeutil.StorerForBlockstore(ibs)
-	gs := graphsync.New(helpers.LifecycleCtx(mctx, lc), graphsyncNetwork, ipldBridge, loader, storer)
-
-	return gs
 }
 
 func NewClientRequestValidator(deals dtypes.ClientDealStore) *storageimpl.ClientRequestValidator {
