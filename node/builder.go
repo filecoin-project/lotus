@@ -22,7 +22,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/discovery"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	deals "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
+	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/requestvalidation"
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	storage2 "github.com/filecoin-project/specs-storage/storage"
@@ -244,8 +244,9 @@ func Online() Option {
 
 			Override(new(retrievalmarket.RetrievalClient), modules.RetrievalClient),
 			Override(new(dtypes.ClientDealStore), modules.NewClientDealStore),
+			Override(new(dtypes.ClientDatastore), modules.NewClientDatastore),
 			Override(new(dtypes.ClientDataTransfer), modules.NewClientGraphsyncDataTransfer),
-			Override(new(*deals.ClientRequestValidator), modules.NewClientRequestValidator),
+			Override(new(*requestvalidation.ClientRequestValidator), modules.NewClientRequestValidator),
 			Override(new(storagemarket.StorageClient), modules.StorageClient),
 			Override(new(storagemarket.StorageClientNode), storageadapter.NewClientNodeAdapter),
 			Override(RegisterClientValidatorKey, modules.RegisterClientValidator),
@@ -276,7 +277,7 @@ func Online() Option {
 			Override(new(retrievalmarket.RetrievalProvider), modules.RetrievalProvider),
 			Override(new(dtypes.ProviderDealStore), modules.NewProviderDealStore),
 			Override(new(dtypes.ProviderDataTransfer), modules.NewProviderDAGServiceDataTransfer),
-			Override(new(*deals.ProviderRequestValidator), modules.NewProviderRequestValidator),
+			Override(new(*requestvalidation.ProviderRequestValidator), modules.NewProviderRequestValidator),
 			Override(new(dtypes.ProviderPieceStore), modules.NewProviderPieceStore),
 			Override(new(storagemarket.StorageProvider), modules.StorageProvider),
 			Override(new(storagemarket.StorageProviderNode), storageadapter.NewProviderNodeAdapter),

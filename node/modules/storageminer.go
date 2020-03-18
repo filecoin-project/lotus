@@ -4,23 +4,6 @@ import (
 	"context"
 	"reflect"
 
-	"github.com/filecoin-project/go-address"
-	dtgraphsync "github.com/filecoin-project/go-data-transfer/impl/graphsync"
-	piecefilestore "github.com/filecoin-project/go-fil-markets/filestore"
-	"github.com/filecoin-project/go-fil-markets/piecestore"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	retrievalimpl "github.com/filecoin-project/go-fil-markets/retrievalmarket/impl"
-	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
-	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	deals "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
-	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
-	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
-	"github.com/filecoin-project/go-fil-markets/storedcounter"
-	paramfetch "github.com/filecoin-project/go-paramfetch"
-	"github.com/filecoin-project/go-sectorbuilder"
-	"github.com/filecoin-project/go-statestore"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
 	"github.com/ipfs/go-blockservice"
@@ -36,6 +19,24 @@ import (
 	"github.com/libp2p/go-libp2p-core/routing"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-address"
+	dtgraphsync "github.com/filecoin-project/go-data-transfer/impl/graphsync"
+	piecefilestore "github.com/filecoin-project/go-fil-markets/filestore"
+	"github.com/filecoin-project/go-fil-markets/piecestore"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	retrievalimpl "github.com/filecoin-project/go-fil-markets/retrievalmarket/impl"
+	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
+	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/requestvalidation"
+	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
+	"github.com/filecoin-project/go-fil-markets/storedcounter"
+	paramfetch "github.com/filecoin-project/go-paramfetch"
+	"github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/go-statestore"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -180,8 +181,8 @@ func HandleDeals(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, h sto
 // RegisterProviderValidator is an initialization hook that registers the provider
 // request validator with the data transfer module as the validator for
 // StorageDataTransferVoucher types
-func RegisterProviderValidator(mrv *deals.ProviderRequestValidator, dtm dtypes.ProviderDataTransfer) {
-	if err := dtm.RegisterVoucherType(reflect.TypeOf(&deals.StorageDataTransferVoucher{}), mrv); err != nil {
+func RegisterProviderValidator(mrv *requestvalidation.ProviderRequestValidator, dtm dtypes.ProviderDataTransfer) {
+	if err := dtm.RegisterVoucherType(reflect.TypeOf(&requestvalidation.StorageDataTransferVoucher{}), mrv); err != nil {
 		panic(err)
 	}
 }
@@ -289,8 +290,8 @@ func SealTicketGen(fapi lapi.FullNode) sealing.TicketFn {
 	}
 }
 
-func NewProviderRequestValidator(deals dtypes.ProviderDealStore) *storageimpl.ProviderRequestValidator {
-	return storageimpl.NewProviderRequestValidator(deals)
+func NewProviderRequestValidator(deals dtypes.ProviderDealStore) *requestvalidation.ProviderRequestValidator {
+	return requestvalidation.NewProviderRequestValidator(deals)
 }
 
 func StorageProvider(ctx helpers.MetricsCtx, fapi lapi.FullNode, h host.Host, ds dtypes.MetadataDS, ibs dtypes.StagingBlockstore, r repo.LockedRepo, pieceStore dtypes.ProviderPieceStore, dataTransfer dtypes.ProviderDataTransfer, spn storagemarket.StorageProviderNode) (storagemarket.StorageProvider, error) {
