@@ -2,14 +2,17 @@ package stores
 
 import (
 	"context"
+	"math/bits"
 	"net/url"
 	gopath "path"
+	"sort"
 	"sync"
 
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 
 	"github.com/filecoin-project/lotus/storage/sealmgr/sectorutil"
 )
@@ -19,19 +22,23 @@ import (
 type ID string
 
 type StorageInfo struct {
-	ID   ID
-	URLs []string // TODO: Support non-http transports
-	Cost int
+	ID     ID
+	URLs   []string // TODO: Support non-http transports
+	Weight uint64
 
 	CanSeal  bool
 	CanStore bool
 }
 
 type SectorIndex interface { // part of storage-miner api
-	StorageAttach(context.Context, StorageInfo) error
+	StorageAttach(context.Context, StorageInfo, FsStat) error
+	StorageInfo(context.Context, ID) (StorageInfo, error)
+	// TODO: StorageUpdateStats(FsStat)
 
 	StorageDeclareSector(ctx context.Context, storageId ID, s abi.SectorID, ft sectorbuilder.SectorFileType) error
 	StorageFindSector(context.Context, abi.SectorID, sectorbuilder.SectorFileType) ([]StorageInfo, error)
+
+	StorageBestAlloc(ctx context.Context, allocate sectorbuilder.SectorFileType, sealing bool) ([]StorageInfo, error)
 }
 
 type Decl struct {
@@ -39,17 +46,22 @@ type Decl struct {
 	sectorbuilder.SectorFileType
 }
 
+type storageEntry struct {
+	info *StorageInfo
+	fsi  FsStat
+}
+
 type Index struct {
-	lk sync.Mutex
+	lk sync.RWMutex
 
 	sectors map[Decl][]ID
-	stores  map[ID]*StorageInfo
+	stores  map[ID]*storageEntry
 }
 
 func NewIndex() *Index {
 	return &Index{
 		sectors: map[Decl][]ID{},
-		stores:  map[ID]*StorageInfo{},
+		stores:  map[ID]*storageEntry{},
 	}
 }
 
@@ -79,7 +91,7 @@ func (i *Index) StorageList(ctx context.Context) (map[ID][]Decl, error) {
 	return out, nil
 }
 
-func (i *Index) StorageAttach(ctx context.Context, si StorageInfo) error {
+func (i *Index) StorageAttach(ctx context.Context, si StorageInfo, st FsStat) error {
 	i.lk.Lock()
 	defer i.lk.Unlock()
 
@@ -92,10 +104,13 @@ func (i *Index) StorageAttach(ctx context.Context, si StorageInfo) error {
 			}
 		}
 
-		i.stores[si.ID].URLs = append(i.stores[si.ID].URLs, si.URLs...)
+		i.stores[si.ID].info.URLs = append(i.stores[si.ID].info.URLs, si.URLs...)
 		return nil
 	}
-	i.stores[si.ID] = &si
+	i.stores[si.ID] = &storageEntry{
+		info: &si,
+		fsi:  st,
+	}
 	return nil
 }
 
@@ -124,8 +139,12 @@ func (i *Index) StorageDeclareSector(ctx context.Context, storageId ID, s abi.Se
 }
 
 func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft sectorbuilder.SectorFileType) ([]StorageInfo, error) {
-	i.lk.Lock()
-	defer i.lk.Unlock()
+	if bits.OnesCount(uint(ft)) != 1 {
+		return nil, xerrors.Errorf("findSector only works for a single file type")
+	}
+
+	i.lk.RLock()
+	defer i.lk.RUnlock()
 
 	storageIDs := i.sectors[Decl{s, ft}]
 	out := make([]StorageInfo, len(storageIDs))
@@ -137,8 +156,8 @@ func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft sector
 			continue
 		}
 
-		urls := make([]string, len(st.URLs))
-		for k, u := range st.URLs {
+		urls := make([]string, len(st.info.URLs))
+		for k, u := range st.info.URLs {
 			rl, err := url.Parse(u)
 			if err != nil {
 				return nil, xerrors.Errorf("failed to parse url: %w", err)
@@ -151,9 +170,9 @@ func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft sector
 		out[j] = StorageInfo{
 			ID:       id,
 			URLs:     nil,
-			Cost:     st.Cost,
-			CanSeal:  st.CanSeal,
-			CanStore: st.CanStore,
+			Weight:   st.info.Weight,
+			CanSeal:  st.info.CanSeal,
+			CanStore: st.info.CanStore,
 		}
 	}
 
@@ -161,36 +180,65 @@ func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft sector
 }
 
 func (i *Index) StorageInfo(ctx context.Context, id ID) (StorageInfo, error) {
+	i.lk.RLock()
+	defer i.lk.RUnlock()
+
 	si, found := i.stores[id]
 	if !found {
 		return StorageInfo{}, xerrors.Errorf("sector store not found")
 	}
 
-	return *si, nil
+	return *si.info, nil
 }
 
-func DeclareLocalStorage(ctx context.Context, idx SectorIndex, localStore *Local, urls []string, cost int) error {
-	for _, path := range localStore.Local() {
-		err := idx.StorageAttach(ctx, StorageInfo{
-			ID:       path.ID,
-			URLs:     urls,
-			Cost:     cost,
-			CanSeal:  path.CanSeal,
-			CanStore: path.CanStore,
-		})
-		if err != nil {
-			log.Errorf("attaching local storage to remote: %+v", err)
+func (i *Index) StorageBestAlloc(ctx context.Context, allocate sectorbuilder.SectorFileType, sealing bool) ([]StorageInfo, error) {
+	i.lk.RLock()
+	defer i.lk.RUnlock()
+
+	var candidates []storageEntry
+
+	for _, p := range i.stores {
+		if sealing && !p.info.CanSeal {
+			log.Debugf("alloc: not considering %s; can't seal", p.info.ID)
+			continue
+		}
+		if !sealing && !p.info.CanStore {
+			log.Debugf("alloc: not considering %s; can't store", p.info.ID)
 			continue
 		}
 
-		for id, fileType := range localStore.List(path.ID) {
-			if err := idx.StorageDeclareSector(ctx, path.ID, id, fileType); err != nil {
-				log.Errorf("declaring sector: %+v")
-			}
-		}
+		// TODO: filter out of space
+
+		candidates = append(candidates, *p)
 	}
 
-	return nil
+	if len(candidates) == 0 {
+		return nil, xerrors.New("no good path found")
+	}
+
+	sort.Slice(candidates, func(i, j int) bool {
+		iw := big.Mul(big.NewInt(int64(candidates[i].fsi.Free)), big.NewInt(int64(candidates[i].info.Weight)))
+		jw := big.Mul(big.NewInt(int64(candidates[j].fsi.Free)), big.NewInt(int64(candidates[j].info.Weight)))
+
+		return iw.GreaterThan(jw)
+	})
+
+	out := make([]StorageInfo, len(candidates))
+	for i, candidate := range candidates {
+		out[i] = *candidate.info
+	}
+
+	return out, nil
+}
+
+func (i *Index) FindSector(id abi.SectorID, typ sectorbuilder.SectorFileType) ([]ID, error) {
+	i.lk.RLock()
+	defer i.lk.RUnlock()
+
+	return i.sectors[Decl{
+		SectorID:       id,
+		SectorFileType: typ,
+	}], nil
 }
 
 var _ SectorIndex = &Index{}

@@ -82,7 +82,7 @@ func (lmem *lockedMemRepo) Path() string {
 			panic(err)
 		}
 
-		b, err := json.MarshalIndent(&stores.StorageMeta{
+		b, err := json.MarshalIndent(&stores.LocalStorageMeta{
 			ID:       stores.ID(uuid.New().String()),
 			Weight:   10,
 			CanSeal:  true,

@@ -142,8 +142,8 @@ func (l *LocalWorker) TaskTypes(context.Context) (map[sealmgr.TaskType]struct{},
 	}, nil
 }
 
-func (l *LocalWorker) Paths(context.Context) ([]stores.StoragePath, error) {
-	return l.localStore.Local(), nil
+func (l *LocalWorker) Paths(ctx context.Context) ([]stores.StoragePath, error) {
+	return l.localStore.Local(ctx)
 }
 
 var _ Worker = &LocalWorker{}

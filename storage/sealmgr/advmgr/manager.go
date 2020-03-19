@@ -17,7 +17,6 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/node/config"
-	"github.com/filecoin-project/lotus/node/impl/common"
 	"github.com/filecoin-project/lotus/storage/sealmgr"
 	"github.com/filecoin-project/lotus/storage/sealmgr/stores"
 )
@@ -43,20 +42,19 @@ type Manager struct {
 	storage    *stores.Remote
 	localStore *stores.Local
 	remoteHnd  *stores.FetchHandler
+	index      stores.SectorIndex
 
 	storage2.Prover
 
 	lk sync.Mutex
 }
 
-func New(ls stores.LocalStorage, si stores.SectorIndex, cfg *sectorbuilder.Config, urls URLs, ca common.CommonAPI) (*Manager, error) {
-	lstor, err := stores.NewLocal(ls)
+func New(ls stores.LocalStorage, si stores.SectorIndex, cfg *sectorbuilder.Config, urls URLs, ca api.Common) (*Manager, error) {
+	ctx := context.TODO()
+
+	lstor, err := stores.NewLocal(ctx, ls, si, urls)
 	if err != nil {
 		return nil, err
-	}
-
-	if err := stores.DeclareLocalStorage(context.TODO(), si, lstor, urls, 10); err != nil {
-		log.Errorf("Declaring local storage failed: %+v")
 	}
 
 	prover, err := sectorbuilder.New(&readonlyProvider{stor: lstor}, cfg)
@@ -79,6 +77,7 @@ func New(ls stores.LocalStorage, si stores.SectorIndex, cfg *sectorbuilder.Confi
 		storage:    stor,
 		localStore: lstor,
 		remoteHnd:  &stores.FetchHandler{Store: lstor},
+		index:      si,
 
 		Prover: prover,
 	}
@@ -86,13 +85,13 @@ func New(ls stores.LocalStorage, si stores.SectorIndex, cfg *sectorbuilder.Confi
 	return m, nil
 }
 
-func (m *Manager) AddLocalStorage(path string) error {
+func (m *Manager) AddLocalStorage(ctx context.Context, path string) error {
 	path, err := homedir.Expand(path)
 	if err != nil {
 		return xerrors.Errorf("expanding local path: %w", err)
 	}
 
-	if err := m.localStore.OpenPath(path); err != nil {
+	if err := m.localStore.OpenPath(ctx, path); err != nil {
 		return xerrors.Errorf("opening local path: %w", err)
 	}
 
@@ -125,9 +124,9 @@ func (m *Manager) ReadPieceFromSealedSector(context.Context, abi.SectorID, secto
 	panic("implement me")
 }
 
-func (m *Manager) getWorkersByPaths(task sealmgr.TaskType, inPaths []stores.StorageMeta) ([]Worker, map[int]stores.StorageMeta) {
+func (m *Manager) getWorkersByPaths(task sealmgr.TaskType, inPaths []stores.StorageInfo) ([]Worker, map[int]stores.StorageInfo) {
 	var workers []Worker
-	paths := map[int]stores.StorageMeta{}
+	paths := map[int]stores.StorageInfo{}
 
 	for i, worker := range m.workers {
 		tt, err := worker.TaskTypes(context.TODO())
@@ -147,7 +146,7 @@ func (m *Manager) getWorkersByPaths(task sealmgr.TaskType, inPaths []stores.Stor
 		}
 
 		// check if the worker has access to the path we selected
-		var st *stores.StorageMeta
+		var st *stores.StorageInfo
 		for _, p := range phs {
 			for _, meta := range inPaths {
 				if p.ID == meta.ID {
@@ -181,12 +180,12 @@ func (m *Manager) NewSector(ctx context.Context, sector abi.SectorID) error {
 func (m *Manager) AddPiece(ctx context.Context, sector abi.SectorID, existingPieces []abi.UnpaddedPieceSize, sz abi.UnpaddedPieceSize, r io.Reader) (abi.PieceInfo, error) {
 	// TODO: consider multiple paths vs workers when initially allocating
 
-	var best []stores.StorageMeta
+	var best []stores.StorageInfo
 	var err error
 	if len(existingPieces) == 0 { // new
-		best, err = m.storage.FindBestAllocStorage(sectorbuilder.FTUnsealed, true)
+		best, err = m.index.StorageBestAlloc(ctx, sectorbuilder.FTUnsealed, true)
 	} else { // append to existing
-		best, err = m.storage.FindSector(sector, sectorbuilder.FTUnsealed)
+		best, err = m.index.StorageFindSector(ctx, sector, sectorbuilder.FTUnsealed)
 	}
 	if err != nil {
 		return abi.PieceInfo{}, xerrors.Errorf("finding sector path: %w", err)
@@ -207,7 +206,7 @@ func (m *Manager) AddPiece(ctx context.Context, sector abi.SectorID, existingPie
 func (m *Manager) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, pieces []abi.PieceInfo) (out storage2.PreCommit1Out, err error) {
 	// TODO: also consider where the unsealed data sits
 
-	best, err := m.storage.FindBestAllocStorage(sectorbuilder.FTCache|sectorbuilder.FTSealed, true)
+	best, err := m.index.StorageBestAlloc(ctx, sectorbuilder.FTCache|sectorbuilder.FTSealed, true)
 	if err != nil {
 		return nil, xerrors.Errorf("finding path for sector sealing: %w", err)
 	}
@@ -222,7 +221,7 @@ func (m *Manager) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticke
 func (m *Manager) SealPreCommit2(ctx context.Context, sector abi.SectorID, phase1Out storage2.PreCommit1Out) (cids storage2.SectorCids, err error) {
 	// TODO: allow workers to fetch the sectors
 
-	best, err := m.storage.FindSector(sector, sectorbuilder.FTCache|sectorbuilder.FTSealed)
+	best, err := m.index.StorageFindSector(ctx, sector, sectorbuilder.FTCache|sectorbuilder.FTSealed)
 	if err != nil {
 		return storage2.SectorCids{}, xerrors.Errorf("finding path for sector sealing: %w", err)
 	}
@@ -235,7 +234,7 @@ func (m *Manager) SealPreCommit2(ctx context.Context, sector abi.SectorID, phase
 }
 
 func (m *Manager) SealCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storage2.SectorCids) (output storage2.Commit1Out, err error) {
-	best, err := m.storage.FindSector(sector, sectorbuilder.FTCache|sectorbuilder.FTSealed)
+	best, err := m.index.StorageFindSector(ctx, sector, sectorbuilder.FTCache|sectorbuilder.FTSealed)
 	if err != nil {
 		return nil, xerrors.Errorf("finding path for sector sealing: %w", err)
 	}
@@ -265,7 +264,7 @@ func (m *Manager) SealCommit2(ctx context.Context, sector abi.SectorID, phase1Ou
 }
 
 func (m *Manager) FinalizeSector(ctx context.Context, sector abi.SectorID) error {
-	best, err := m.storage.FindSector(sector, sectorbuilder.FTCache|sectorbuilder.FTSealed|sectorbuilder.FTUnsealed)
+	best, err := m.index.StorageFindSector(ctx, sector, sectorbuilder.FTCache|sectorbuilder.FTSealed|sectorbuilder.FTUnsealed)
 	if err != nil {
 		return xerrors.Errorf("finding sealed sector: %w", err)
 	}

@@ -110,8 +110,6 @@ type StorageMiner interface {
 
 	StorageList(ctx context.Context) (map[stores.ID][]stores.Decl, error)
 
-	StorageInfo(context.Context, stores.ID) (stores.StorageInfo, error)
-
 	// WorkerConnect tells the node to connect to workers RPC
 	WorkerConnect(context.Context, string) error
 	stores.SectorIndex

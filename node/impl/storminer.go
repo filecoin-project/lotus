@@ -195,7 +195,7 @@ func (sm *StorageMinerAPI) StorageAddLocal(ctx context.Context, path string) err
 		return xerrors.Errorf("no storage manager")
 	}
 
-	return sm.StorageMgr.AddLocalStorage(path)
+	return sm.StorageMgr.AddLocalStorage(ctx, path)
 }
 
 var _ api.StorageMiner = &StorageMinerAPI{}
