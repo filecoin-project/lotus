@@ -72,12 +72,12 @@ func (m *Sealing) handleUnsealed(ctx statemachine.Context, sector SectorInfo) er
 
 	pc1o, err := m.sealer.SealPreCommit1(ctx.Context(), m.minerSector(sector.SectorID), ticket.Value, sector.pieceInfos())
 	if err != nil {
-		return ctx.Send(SectorSealFailed{xerrors.Errorf("seal pre commit failed: %w", err)})
+		return ctx.Send(SectorSealFailed{xerrors.Errorf("seal pre commit(1) failed: %w", err)})
 	}
 
 	cids, err := m.sealer.SealPreCommit2(ctx.Context(), m.minerSector(sector.SectorID), pc1o)
 	if err != nil {
-		return ctx.Send(SectorSealFailed{xerrors.Errorf("seal pre commit failed: %w", err)})
+		return ctx.Send(SectorSealFailed{xerrors.Errorf("seal pre commit(2) failed: %w", err)})
 	}
 
 	return ctx.Send(SectorSealed{
