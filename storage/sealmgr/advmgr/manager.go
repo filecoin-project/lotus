@@ -17,7 +17,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/node/config"
-	"github.com/filecoin-project/lotus/node/impl"
+	"github.com/filecoin-project/lotus/node/impl/common"
 	"github.com/filecoin-project/lotus/storage/sealmgr"
 	"github.com/filecoin-project/lotus/storage/sealmgr/stores"
 )
@@ -49,7 +49,7 @@ type Manager struct {
 	lk sync.Mutex
 }
 
-func New(ls stores.LocalStorage, si stores.SectorIndex, cfg *sectorbuilder.Config, urls URLs, ca impl.CommonAPI) (*Manager, error) {
+func New(ls stores.LocalStorage, si stores.SectorIndex, cfg *sectorbuilder.Config, urls URLs, ca common.CommonAPI) (*Manager, error) {
 	lstor, err := stores.NewLocal(ls)
 	if err != nil {
 		return nil, err
