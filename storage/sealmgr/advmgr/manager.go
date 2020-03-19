@@ -69,7 +69,10 @@ func New(ls stores.LocalStorage, si stores.SectorIndex, cfg *sectorbuilder.Confi
 
 	m := &Manager{
 		workers: []Worker{
-			//&LocalWorker{scfg: cfg, localStore: lstor, storage: lstor, sindex: sindex},
+			NewLocalWorker(WorkerConfig{
+				SealProof: cfg.SealProofType,
+				TaskTypes: []sealmgr.TaskType{sealmgr.TTAddPiece},
+			}, stor, lstor, si),
 		},
 		scfg: cfg,
 
@@ -212,6 +215,9 @@ func (m *Manager) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticke
 	}
 
 	candidateWorkers, _ := m.getWorkersByPaths(sealmgr.TTPreCommit1, best)
+	if len(candidateWorkers) == 0 {
+		return nil, xerrors.New("no suitable workers found") // TODO: wait?
+	}
 
 	// TODO: select(candidateWorkers, ...)
 	// TODO: remove the sectorbuilder abstraction, pass path directly
@@ -227,6 +233,9 @@ func (m *Manager) SealPreCommit2(ctx context.Context, sector abi.SectorID, phase
 	}
 
 	candidateWorkers, _ := m.getWorkersByPaths(sealmgr.TTPreCommit2, best)
+	if len(candidateWorkers) == 0 {
+		return storage2.SectorCids{}, xerrors.New("no suitable workers found") // TODO: wait?
+	}
 
 	// TODO: select(candidateWorkers, ...)
 	// TODO: remove the sectorbuilder abstraction, pass path directly
@@ -240,6 +249,9 @@ func (m *Manager) SealCommit1(ctx context.Context, sector abi.SectorID, ticket a
 	}
 
 	candidateWorkers, _ := m.getWorkersByPaths(sealmgr.TTPreCommit2, best)
+	if len(candidateWorkers) == 0 {
+		return nil, xerrors.New("no suitable workers found") // TODO: wait?
+	}
 
 	// TODO: select(candidateWorkers, ...)
 	// TODO: remove the sectorbuilder abstraction, pass path directly

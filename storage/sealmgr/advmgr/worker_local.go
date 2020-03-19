@@ -4,7 +4,6 @@ import (
 	"context"
 	"io"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	storage2 "github.com/filecoin-project/specs-storage/storage"
@@ -16,26 +15,41 @@ import (
 
 var pathTypes = []sectorbuilder.SectorFileType{sectorbuilder.FTUnsealed, sectorbuilder.FTSealed, sectorbuilder.FTCache}
 
+type WorkerConfig struct {
+	SealProof abi.RegisteredProof
+	TaskTypes []sealmgr.TaskType
+}
+
 type LocalWorker struct {
 	scfg       *sectorbuilder.Config
 	storage    stores.Store
 	localStore *stores.Local
 	sindex     stores.SectorIndex
+
+	acceptTasks map[sealmgr.TaskType]struct{}
 }
 
-func NewLocalWorker(ma address.Address, spt abi.RegisteredProof, store stores.Store, local *stores.Local, sindex stores.SectorIndex) *LocalWorker {
-	ppt, err := spt.RegisteredPoStProof()
+func NewLocalWorker(wcfg WorkerConfig, store stores.Store, local *stores.Local, sindex stores.SectorIndex) *LocalWorker {
+	ppt, err := wcfg.SealProof.RegisteredPoStProof()
 	if err != nil {
 		panic(err)
 	}
+
+	acceptTasks := map[sealmgr.TaskType]struct{}{}
+	for _, taskType := range wcfg.TaskTypes {
+		acceptTasks[taskType] = struct{}{}
+	}
+
 	return &LocalWorker{
 		scfg: &sectorbuilder.Config{
-			SealProofType: spt,
+			SealProofType: wcfg.SealProof,
 			PoStProofType: ppt,
 		},
 		storage:    store,
 		localStore: local,
 		sindex:     sindex,
+
+		acceptTasks: acceptTasks,
 	}
 }
 
@@ -48,6 +62,8 @@ func (l *localWorkerPathProvider) AcquireSector(ctx context.Context, sector abi.
 	if err != nil {
 		return sectorbuilder.SectorPaths{}, nil, err
 	}
+
+	log.Debugf("acquired sector %d (e:%d; a:%d): %v", sector, existing, allocate, paths)
 
 	return paths, func() {
 		done()
@@ -134,12 +150,7 @@ func (l *LocalWorker) FinalizeSector(ctx context.Context, sector abi.SectorID) e
 }
 
 func (l *LocalWorker) TaskTypes(context.Context) (map[sealmgr.TaskType]struct{}, error) {
-	return map[sealmgr.TaskType]struct{}{
-		sealmgr.TTAddPiece:   {},
-		sealmgr.TTPreCommit1: {},
-		sealmgr.TTPreCommit2: {},
-		sealmgr.TTCommit2:    {},
-	}, nil
+	return l.acceptTasks, nil
 }
 
 func (l *LocalWorker) Paths(ctx context.Context) ([]stores.StoragePath, error) {

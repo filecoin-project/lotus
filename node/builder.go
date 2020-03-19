@@ -51,6 +51,7 @@ import (
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/hello"
 	"github.com/filecoin-project/lotus/node/impl"
+	"github.com/filecoin-project/lotus/node/impl/common"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
@@ -263,6 +264,8 @@ func Online() Option {
 
 		// Storage miner
 		ApplyIf(func(s *Settings) bool { return s.nodeType == repo.StorageMiner },
+			Override(new(api.Common), From(new(common.CommonAPI))),
+
 			Override(new(*stores.Index), stores.NewIndex()),
 			Override(new(stores.SectorIndex), From(new(*stores.Index))),
 			Override(new(dtypes.MinerID), modules.MinerID),
