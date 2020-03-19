@@ -288,4 +288,18 @@ func (m *Manager) FinalizeSector(ctx context.Context, sector abi.SectorID) error
 	return candidateWorkers[0].FinalizeSector(ctx, sector)
 }
 
+func (m *Manager) StorageLocal(ctx context.Context) (map[stores.ID]string, error) {
+	l, err := m.localStore.Local(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	out := map[stores.ID]string{}
+	for _, st := range l {
+		out[st.ID] = st.LocalPath
+	}
+
+	return out, nil
+}
+
 var _ sealmgr.Manager = &Manager{}

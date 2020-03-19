@@ -123,6 +123,10 @@ func (sm *StorageMinerAPI) SectorsList(context.Context) ([]abi.SectorNumber, err
 	return out, nil
 }
 
+func (sm *StorageMinerAPI) StorageLocal(ctx context.Context) (map[stores.ID]string, error) {
+	return sm.StorageMgr.StorageLocal(ctx)
+}
+
 func (sm *StorageMinerAPI) SectorsRefs(context.Context) (map[string][]api.SealedRef, error) {
 	// json can't handle cids as map keys
 	out := map[string][]api.SealedRef{}

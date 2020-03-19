@@ -109,6 +109,7 @@ type StorageMiner interface {
 	SectorsUpdate(context.Context, abi.SectorNumber, SectorState) error
 
 	StorageList(ctx context.Context) (map[stores.ID][]stores.Decl, error)
+	StorageLocal(ctx context.Context) (map[stores.ID]string, error)
 
 	// WorkerConnect tells the node to connect to workers RPC
 	WorkerConnect(context.Context, string) error

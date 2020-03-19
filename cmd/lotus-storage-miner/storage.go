@@ -3,15 +3,18 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/google/uuid"
 	"github.com/mitchellh/go-homedir"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-sectorbuilder"
 
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -26,6 +29,7 @@ var storageCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		storageAttachCmd,
 		storageListCmd,
+		storageFindCmd,
 	},
 }
 
@@ -109,7 +113,8 @@ var storageAttachCmd = &cli.Command{
 }
 
 var storageListCmd = &cli.Command{
-	Name: "list",
+	Name:  "list",
+	Usage: "list local storage paths",
 	Action: func(cctx *cli.Context) error {
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
@@ -119,6 +124,11 @@ var storageListCmd = &cli.Command{
 		ctx := lcli.ReqContext(cctx)
 
 		st, err := nodeApi.StorageList(ctx)
+		if err != nil {
+			return err
+		}
+
+		local, err := nodeApi.StorageLocal(ctx)
 		if err != nil {
 			return err
 		}
@@ -145,8 +155,119 @@ var storageListCmd = &cli.Command{
 				return err
 			}
 			fmt.Printf("\tSeal: %t; Store: %t; Weight: %d\n", si.CanSeal, si.CanStore, si.Weight)
+			if localPath, ok := local[id]; ok {
+				fmt.Printf("\tLocal: %s\n", localPath)
+			}
 			for _, l := range si.URLs {
-				fmt.Printf("\tReachable %s\n", l) // TODO; try pinging maybe?? print latency?
+				fmt.Printf("\tURL: %s\n", l) // TODO; try pinging maybe?? print latency?
+			}
+		}
+
+		return nil
+	},
+}
+
+type storedSector struct {
+	store                   stores.StorageInfo
+	unsealed, sealed, cache bool
+}
+
+var storageFindCmd = &cli.Command{
+	Name:      "find",
+	Usage:     "find sector in the storage system",
+	ArgsUsage: "[sector number]",
+	Action: func(cctx *cli.Context) error {
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		ma, err := nodeApi.ActorAddress(ctx)
+		if err != nil {
+			return err
+		}
+
+		mid, err := address.IDFromAddress(ma)
+		if err != nil {
+			return err
+		}
+
+		if !cctx.Args().Present() {
+			return xerrors.New("Usage: lotus-storage-miner storage find [sector number]")
+		}
+
+		snum, err := strconv.ParseUint(cctx.Args().First(), 10, 64)
+		if err != nil {
+			return err
+		}
+
+		sid := abi.SectorID{
+			Miner:  abi.ActorID(mid),
+			Number: abi.SectorNumber(snum),
+		}
+
+		u, err := nodeApi.StorageFindSector(ctx, sid, sectorbuilder.FTUnsealed)
+		if err != nil {
+			return xerrors.Errorf("finding unsealed: %w", err)
+		}
+
+		s, err := nodeApi.StorageFindSector(ctx, sid, sectorbuilder.FTSealed)
+		if err != nil {
+			return xerrors.Errorf("finding sealed: %w", err)
+		}
+
+		c, err := nodeApi.StorageFindSector(ctx, sid, sectorbuilder.FTCache)
+		if err != nil {
+			return xerrors.Errorf("finding cache: %w", err)
+		}
+
+		byId := map[stores.ID]*storedSector{}
+		for _, info := range u {
+			sts, ok := byId[info.ID]
+			if !ok {
+				sts = &storedSector{
+					store: info,
+				}
+				byId[info.ID] = sts
+			}
+			sts.unsealed = true
+		}
+		for _, info := range s {
+			sts, ok := byId[info.ID]
+			if !ok {
+				sts = &storedSector{
+					store: info,
+				}
+				byId[info.ID] = sts
+			}
+			sts.sealed = true
+		}
+		for _, info := range c {
+			sts, ok := byId[info.ID]
+			if !ok {
+				sts = &storedSector{
+					store: info,
+				}
+				byId[info.ID] = sts
+			}
+			sts.cache = true
+		}
+
+		local, err := nodeApi.StorageLocal(ctx)
+		if err != nil {
+			return err
+		}
+
+		for id, info := range byId {
+			fmt.Printf("In %s (Unsealed: %t; Sealed: %t; Cache: %t)\n", id, info.unsealed, info.sealed, info.cache)
+			fmt.Printf("\tSealing: %t; Storage: %t\n", info.store.CanSeal, info.store.CanSeal)
+			if localPath, ok := local[id]; ok {
+				fmt.Printf("\tLocal: %s\n", localPath)
+			}
+			for _, l := range info.store.URLs {
+				fmt.Printf("\tURL: %s\n", l)
 			}
 		}
 
