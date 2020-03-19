@@ -3,7 +3,6 @@ package impl
 import (
 	"context"
 	"encoding/json"
-	"github.com/filecoin-project/lotus/storage/sealmgr/stores"
 	"net/http"
 	"os"
 	"strconv"
@@ -13,22 +12,22 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	storagemarket "github.com/filecoin-project/go-fil-markets/storagemarket"
-
 	"github.com/filecoin-project/go-sectorbuilder"
-
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/apistruct"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/miner"
+	"github.com/filecoin-project/lotus/node/impl/common"
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sealmgr/advmgr"
+	"github.com/filecoin-project/lotus/storage/sealmgr/stores"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
 type StorageMinerAPI struct {
-	CommonAPI
+	common.CommonAPI
 
 	SectorBuilderConfig *sectorbuilder.Config
 	//SectorBuilder       sectorbuilder.Interface
