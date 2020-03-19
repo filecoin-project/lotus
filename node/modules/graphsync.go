@@ -15,8 +15,8 @@ import (
 )
 
 // GraphsyncStorer creates a storer that stores data in the client blockstore
-func GraphsyncStorer(clientBs dtypes.ClientBlockstore) dtypes.GraphsyncStorer {
-	return dtypes.GraphsyncStorer(storeutil.StorerForBlockstore(clientBs))
+func GraphsyncStorer(chainBs dtypes.ChainBlockstore) dtypes.GraphsyncStorer {
+	return dtypes.GraphsyncStorer(storeutil.StorerForBlockstore(chainBs))
 }
 
 // GraphsyncLoader creates a loader that reads from both the chain blockstore and the client blockstore
