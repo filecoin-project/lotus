@@ -2,7 +2,6 @@ package stores
 
 import (
 	"context"
-	"math/bits"
 	"net/url"
 	gopath "path"
 	"sort"
@@ -139,17 +138,24 @@ func (i *Index) StorageDeclareSector(ctx context.Context, storageId ID, s abi.Se
 }
 
 func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft sectorbuilder.SectorFileType) ([]StorageInfo, error) {
-	if bits.OnesCount(uint(ft)) != 1 {
-		return nil, xerrors.Errorf("findSector only works for a single file type")
-	}
-
 	i.lk.RLock()
 	defer i.lk.RUnlock()
 
-	storageIDs := i.sectors[Decl{s, ft}]
-	out := make([]StorageInfo, len(storageIDs))
+	storageIDs := map[ID]uint64{}
 
-	for j, id := range storageIDs {
+	for _, pathType := range pathTypes {
+		if ft&pathType == 0 {
+			continue
+		}
+
+		for _, id := range i.sectors[Decl{s, ft}] {
+			storageIDs[id]++
+		}
+	}
+
+	out := make([]StorageInfo, 0, len(storageIDs))
+
+	for id, n := range storageIDs {
 		st, ok := i.stores[id]
 		if !ok {
 			log.Warnf("storage %s is not present in sector index (referenced by sector %v)", id, s)
@@ -167,13 +173,13 @@ func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft sector
 			urls[k] = rl.String()
 		}
 
-		out[j] = StorageInfo{
+		out = append(out, StorageInfo{
 			ID:       id,
 			URLs:     urls,
-			Weight:   st.info.Weight,
+			Weight:   st.info.Weight * n, // storage with more sector types is better
 			CanSeal:  st.info.CanSeal,
 			CanStore: st.info.CanStore,
-		}
+		})
 	}
 
 	return out, nil

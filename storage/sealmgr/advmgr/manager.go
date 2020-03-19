@@ -71,7 +71,7 @@ func New(ls stores.LocalStorage, si stores.SectorIndex, cfg *sectorbuilder.Confi
 		workers: []Worker{
 			NewLocalWorker(WorkerConfig{
 				SealProof: cfg.SealProofType,
-				TaskTypes: []sealmgr.TaskType{sealmgr.TTAddPiece},
+				TaskTypes: []sealmgr.TaskType{sealmgr.TTAddPiece, sealmgr.TTCommit1, sealmgr.TTFinalize},
 			}, stor, lstor, si),
 		},
 		scfg: cfg,
@@ -248,7 +248,7 @@ func (m *Manager) SealCommit1(ctx context.Context, sector abi.SectorID, ticket a
 		return nil, xerrors.Errorf("finding path for sector sealing: %w", err)
 	}
 
-	candidateWorkers, _ := m.getWorkersByPaths(sealmgr.TTPreCommit2, best)
+	candidateWorkers, _ := m.getWorkersByPaths(sealmgr.TTCommit1, best)
 	if len(candidateWorkers) == 0 {
 		return nil, xerrors.New("no suitable workers found") // TODO: wait?
 	}
@@ -281,8 +281,9 @@ func (m *Manager) FinalizeSector(ctx context.Context, sector abi.SectorID) error
 		return xerrors.Errorf("finding sealed sector: %w", err)
 	}
 
-	candidateWorkers, _ := m.getWorkersByPaths(sealmgr.TTPreCommit2, best) // find last worker with the sector
+	candidateWorkers, _ := m.getWorkersByPaths(sealmgr.TTCommit1, best)
 
+	// TODO: Remove sector from sealing stores
 	// TODO: Move the sector to long-term storage
 	return candidateWorkers[0].FinalizeSector(ctx, sector)
 }
