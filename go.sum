@@ -98,8 +98,8 @@ github.com/eapache/go-xerial-snappy v0.0.0-20180814174437-776d5712da21/go.mod h1
 github.com/eapache/queue v1.1.0/go.mod h1:6eCeP0CKFpHLu8blIFXhExK/dRa7WDZfr6jVFPTqq+I=
 github.com/fatih/color v1.8.0 h1:5bzFgL+oy7JITMTxUPJ00n7VxmYd/PdMp5mHFX40/RY=
 github.com/fatih/color v1.8.0/go.mod h1:3l45GVGkyrnYNl9HoIjnp2NnNWvh6hLAqD8yTfGjnw8=
-github.com/filecoin-project/chain-validation v0.0.6-0.20200318065243-0ccb5ec3afc5 h1:cr9+8iX+u9fDV53MWqqZw820EyeWVX+h/HCz56JUWb0=
-github.com/filecoin-project/chain-validation v0.0.6-0.20200318065243-0ccb5ec3afc5/go.mod h1:7HoEkq8OWN3vGcCZ4SRGxAPeL/mLckS+PNV3F0XmrCs=
+github.com/filecoin-project/chain-validation v0.0.6-0.20200320065847-72b36edba0fd h1:4sf6dbvA/ZmCcU834shF9hEuHeC+CXoEnT+EIiZ95/0=
+github.com/filecoin-project/chain-validation v0.0.6-0.20200320065847-72b36edba0fd/go.mod h1:YTLxUr6gOZpkUaXzLe7OZ4s1dpfJGp2FY/J2/K5DJqc=
 github.com/filecoin-project/go-address v0.0.0-20200107215422-da8eea2842b5 h1:/MmWluswvDIbuPvBct4q6HeQgVm62O2DzWYTB38kt4A=
 github.com/filecoin-project/go-address v0.0.0-20200107215422-da8eea2842b5/go.mod h1:SAOwJoakQ8EPjwNIsiakIQKsoKdkcbx8U3IapgCg9R0=
 github.com/filecoin-project/go-address v0.0.2-0.20200218010043-eb9bb40ed5be h1:TooKBwR/g8jG0hZ3lqe9S5sy2vTUcLOZLlz3M5wGn2E=
@@ -133,8 +133,6 @@ github.com/filecoin-project/specs-actors v0.0.0-20200210130641-2d1fbd8672cf/go.m
 github.com/filecoin-project/specs-actors v0.0.0-20200226200336-94c9b92b2775/go.mod h1:0HAWYrvajFHDgRaKbF0rl+IybVLZL5z4gQ8koCMPhoU=
 github.com/filecoin-project/specs-actors v0.0.0-20200302223606-0eaf97b10aaf/go.mod h1:0HAWYrvajFHDgRaKbF0rl+IybVLZL5z4gQ8koCMPhoU=
 github.com/filecoin-project/specs-actors v0.0.0-20200306000749-99e98e61e2a0/go.mod h1:0HAWYrvajFHDgRaKbF0rl+IybVLZL5z4gQ8koCMPhoU=
-github.com/filecoin-project/specs-actors v0.0.0-20200311215506-e95895452888 h1:VCrkpFmZuQRyHrUpFTS3K/09cCQDMi/ZJUQ6c4zr1g4=
-github.com/filecoin-project/specs-actors v0.0.0-20200311215506-e95895452888/go.mod h1:5WngRgTN5Eo4+0SjCBqLzEr2l6Mj45DrP2606gBhqI0=
 github.com/filecoin-project/specs-actors v0.0.0-20200312030511-3f5510bf6130 h1:atiWEDtI/gzSm89fL+NyneLN3eHfBd1QPgOZyXPjA5M=
 github.com/filecoin-project/specs-actors v0.0.0-20200312030511-3f5510bf6130/go.mod h1:5WngRgTN5Eo4+0SjCBqLzEr2l6Mj45DrP2606gBhqI0=
 github.com/filecoin-project/specs-storage v0.0.0-20200303233430-1a5a408f7513 h1:okBx3lPomwDxlPmRvyP078BwivDfdxNUlpCDhDD0ia8=
