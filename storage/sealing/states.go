@@ -122,7 +122,7 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 		Method:   builtin.MethodsMiner.PreCommitSector,
 		Params:   enc,
 		Value:    types.NewInt(0), // TODO: need to ensure sufficient collateral
-		GasLimit: types.NewInt(1000000 /* i dont know help */),
+		GasLimit: 1000000,         /* i dont know help */
 		GasPrice: types.NewInt(1),
 	}
 
@@ -217,7 +217,7 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 		Method:   builtin.MethodsMiner.ProveCommitSector,
 		Params:   enc,
 		Value:    types.NewInt(0), // TODO: need to ensure sufficient collateral
-		GasLimit: types.NewInt(1000000 /* i dont know help */),
+		GasLimit: 1000000,         /* i dont know help */
 		GasPrice: types.NewInt(1),
 	}
 
@@ -283,7 +283,7 @@ func (m *Sealing) handleFaulty(ctx statemachine.Context, sector SectorInfo) erro
 		Method:   builtin.MethodsMiner.DeclareTemporaryFaults,
 		Params:   enc,
 		Value:    types.NewInt(0), // TODO: need to ensure sufficient collateral
-		GasLimit: types.NewInt(1000000 /* i dont know help */),
+		GasLimit: 1000000,         /* i dont know help */
 		GasPrice: types.NewInt(1),
 	}
 

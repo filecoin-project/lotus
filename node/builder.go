@@ -23,7 +23,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/discovery"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	deals "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
+	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/requestvalidation"
 
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/lotus/storage/sealmgr/stores"
@@ -234,9 +234,12 @@ func Online() Option {
 			Override(new(*blocksync.BlockSyncService), blocksync.NewBlockSyncService),
 			Override(new(*peermgr.PeerMgr), peermgr.NewPeerMgr),
 
+			Override(new(dtypes.GraphsyncLoader), modules.GraphsyncLoader),
+			Override(new(dtypes.GraphsyncStorer), modules.GraphsyncStorer),
+			Override(new(dtypes.Graphsync), modules.Graphsync),
+
 			Override(RunHelloKey, modules.RunHello),
 			Override(RunBlockSyncKey, modules.RunBlockSync),
-			Override(RunChainGraphsync, modules.ChainGraphsync),
 			Override(RunPeerMgrKey, modules.RunPeerMgr),
 			Override(HandleIncomingBlocksKey, modules.HandleIncomingBlocks),
 
@@ -245,8 +248,9 @@ func Online() Option {
 
 			Override(new(retrievalmarket.RetrievalClient), modules.RetrievalClient),
 			Override(new(dtypes.ClientDealStore), modules.NewClientDealStore),
-			Override(new(dtypes.ClientDataTransfer), modules.NewClientDAGServiceDataTransfer),
-			Override(new(*deals.ClientRequestValidator), modules.NewClientRequestValidator),
+			Override(new(dtypes.ClientDatastore), modules.NewClientDatastore),
+			Override(new(dtypes.ClientDataTransfer), modules.NewClientGraphsyncDataTransfer),
+			Override(new(*requestvalidation.ClientRequestValidator), modules.NewClientRequestValidator),
 			Override(new(storagemarket.StorageClient), modules.StorageClient),
 			Override(new(storagemarket.StorageClientNode), storageadapter.NewClientNodeAdapter),
 			Override(RegisterClientValidatorKey, modules.RegisterClientValidator),
@@ -281,7 +285,7 @@ func Online() Option {
 			Override(new(retrievalmarket.RetrievalProvider), modules.RetrievalProvider),
 			Override(new(dtypes.ProviderDealStore), modules.NewProviderDealStore),
 			Override(new(dtypes.ProviderDataTransfer), modules.NewProviderDAGServiceDataTransfer),
-			Override(new(*deals.ProviderRequestValidator), modules.NewProviderRequestValidator),
+			Override(new(*requestvalidation.ProviderRequestValidator), modules.NewProviderRequestValidator),
 			Override(new(dtypes.ProviderPieceStore), modules.NewProviderPieceStore),
 			Override(new(storagemarket.StorageProvider), modules.StorageProvider),
 			Override(new(storagemarket.StorageProviderNode), storageadapter.NewProviderNodeAdapter),
@@ -402,7 +406,6 @@ func Repo(r repo.Repo) Option {
 			Override(new(dtypes.ClientFilestore), modules.ClientFstore),
 			Override(new(dtypes.ClientBlockstore), modules.ClientBlockstore),
 			Override(new(dtypes.ClientDAG), modules.ClientDAG),
-			Override(new(dtypes.ClientGraphsync), modules.ClientGraphsync),
 
 			Override(new(ci.PrivKey), lp2p.PrivKey),
 			Override(new(ci.PubKey), ci.PrivKey.GetPublic),

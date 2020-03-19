@@ -90,7 +90,7 @@ func checkSeal(ctx context.Context, maddr address.Address, si SectorInfo, api se
 		From:     maddr,
 		Value:    types.NewInt(0),
 		GasPrice: types.NewInt(0),
-		GasLimit: types.NewInt(9999999999),
+		GasLimit: 9999999999,
 		Method:   builtin.MethodsMarket.ComputeDataCommitment,
 		Params:   ccparams,
 	}

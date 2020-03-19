@@ -1,16 +1,17 @@
 package dtypes
 
 import (
-	datatransfer "github.com/filecoin-project/go-data-transfer"
-	"github.com/filecoin-project/go-fil-markets/piecestore"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-filestore"
 	"github.com/ipfs/go-graphsync"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	exchange "github.com/ipfs/go-ipfs-exchange-interface"
-	ipld "github.com/ipfs/go-ipld-format"
+	format "github.com/ipfs/go-ipld-format"
+	"github.com/ipld/go-ipld-prime"
 
+	datatransfer "github.com/filecoin-project/go-data-transfer"
+	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-statestore"
 )
 
@@ -24,13 +25,16 @@ type ChainGCLocker blockstore.GCLocker
 type ChainGCBlockstore blockstore.GCBlockstore
 type ChainExchange exchange.Interface
 type ChainBlockService bserv.BlockService
-type ChainGraphsync graphsync.GraphExchange
 
 type ClientFilestore *filestore.Filestore
 type ClientBlockstore blockstore.Blockstore
-type ClientDAG ipld.DAGService
-type ClientGraphsync graphsync.GraphExchange
+type ClientDAG format.DAGService
 type ClientDealStore *statestore.StateStore
+type ClientDatastore datastore.Batching
+
+type GraphsyncLoader ipld.Loader
+type GraphsyncStorer ipld.Storer
+type Graphsync graphsync.GraphExchange
 
 // ClientDataTransfer is a data transfer manager for the client
 type ClientDataTransfer datatransfer.Manager
@@ -41,6 +45,6 @@ type ProviderPieceStore piecestore.PieceStore
 // ProviderDataTransfer is a data transfer manager for the provider
 type ProviderDataTransfer datatransfer.Manager
 
-type StagingDAG ipld.DAGService
+type StagingDAG format.DAGService
 type StagingBlockstore blockstore.Blockstore
 type StagingGraphsync graphsync.GraphExchange

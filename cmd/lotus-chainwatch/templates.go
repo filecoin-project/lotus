@@ -279,7 +279,7 @@ type Message struct {
 	Value sbig
 
 	GasPrice sbig
-	GasLimit sbig
+	GasLimit int64
 
 	Method abi.MethodNum
 	Params []byte
@@ -324,7 +324,7 @@ func (h *handler) messages(filter string, args ...interface{}) (out []types.Mess
 			Nonce:    r.Nonce,
 			Value:    types.BigInt(r.Value),
 			GasPrice: types.BigInt(r.GasPrice),
-			GasLimit: types.BigInt(r.GasLimit),
+			GasLimit: r.GasLimit,
 			Method:   r.Method,
 			Params:   r.Params,
 		}

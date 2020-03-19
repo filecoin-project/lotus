@@ -349,7 +349,7 @@ var stateReplaySetCmd = &cli.Command{
 		fmt.Println("Replay receipt:")
 		fmt.Printf("Exit code: %d\n", res.MsgRct.ExitCode)
 		fmt.Printf("Return: %x\n", res.MsgRct.Return)
-		fmt.Printf("Gas Used: %s\n", res.MsgRct.GasUsed)
+		fmt.Printf("Gas Used: %d\n", res.MsgRct.GasUsed)
 		if res.MsgRct.ExitCode != 0 {
 			fmt.Printf("Error message: %q\n", res.Error)
 		}
@@ -849,7 +849,7 @@ var stateWaitMsgCmd = &cli.Command{
 
 		fmt.Printf("message was executed in tipset: %s", mw.TipSet.Cids())
 		fmt.Printf("Exit Code: %d", mw.Receipt.ExitCode)
-		fmt.Printf("Gas Used: %s", mw.Receipt.GasUsed)
+		fmt.Printf("Gas Used: %d", mw.Receipt.GasUsed)
 		fmt.Printf("Return: %x", mw.Receipt.Return)
 		return nil
 	},
@@ -928,7 +928,7 @@ var stateCallCmd = &cli.Command{
 			From:     froma,
 			To:       toa,
 			Value:    types.BigInt(value),
-			GasLimit: types.NewInt(10000000000),
+			GasLimit: 10000000000,
 			GasPrice: types.NewInt(0),
 			Method:   abi.MethodNum(method),
 			Params:   params,
