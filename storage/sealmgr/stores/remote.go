@@ -47,7 +47,7 @@ func (r *Remote) AcquireSector(ctx context.Context, s abi.SectorID, existing sec
 
 	paths, stores, done, err := r.local.AcquireSector(ctx, s, existing, allocate, sealing)
 	if err != nil {
-		return sectorbuilder.SectorPaths{}, sectorbuilder.SectorPaths{}, nil, err
+		return sectorbuilder.SectorPaths{}, sectorbuilder.SectorPaths{}, nil, xerrors.Errorf("local acquire error: %w", err)
 	}
 
 	for _, fileType := range pathTypes {
