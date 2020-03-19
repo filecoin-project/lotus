@@ -10,6 +10,7 @@ require (
 	github.com/Gurpartap/async v0.0.0-20180927173644-4f7f499dd9ee
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
 	github.com/coreos/go-systemd/v22 v22.0.0
+	github.com/davidlazar/go-crypto v0.0.0-20190912175916-7055855a373f // indirect
 	github.com/docker/go-units v0.4.0
 	github.com/filecoin-project/chain-validation v0.0.6-0.20200320210432-2793319e9867
 	github.com/filecoin-project/filecoin-ffi v0.0.0-20200304181354-4446ff8a1bb9
@@ -40,7 +41,7 @@ require (
 	github.com/ipfs/go-blockservice v0.1.3-0.20190908200855-f22eea50656c
 	github.com/ipfs/go-car v0.0.3-0.20200304012825-b6769248bfef
 	github.com/ipfs/go-cid v0.0.5
-	github.com/ipfs/go-datastore v0.4.2
+	github.com/ipfs/go-datastore v0.4.4
 	github.com/ipfs/go-ds-badger2 v0.0.0-20200211201106-609c9d2a39c7
 	github.com/ipfs/go-filestore v0.0.2
 	github.com/ipfs/go-fs-lock v0.0.1
@@ -61,16 +62,19 @@ require (
 	github.com/ipfs/go-path v0.0.7
 	github.com/ipfs/go-unixfs v0.2.2-0.20190827150610-868af2e9e5cb
 	github.com/ipld/go-ipld-prime v0.0.2-0.20191108012745-28a82f04c785
+	github.com/jackpal/go-nat-pmp v1.0.2 // indirect
+	github.com/jbenet/go-temp-err-catcher v0.1.0 // indirect
 	github.com/lib/pq v1.2.0
-	github.com/libp2p/go-libp2p v0.5.2
+	github.com/libp2p/go-eventbus v0.1.0
+	github.com/libp2p/go-libp2p v0.6.0
 	github.com/libp2p/go-libp2p-circuit v0.1.4
 	github.com/libp2p/go-libp2p-connmgr v0.1.0
-	github.com/libp2p/go-libp2p-core v0.3.0
+	github.com/libp2p/go-libp2p-core v0.5.0
 	github.com/libp2p/go-libp2p-discovery v0.2.0
 	github.com/libp2p/go-libp2p-kad-dht v0.1.1
-	github.com/libp2p/go-libp2p-mplex v0.2.1
+	github.com/libp2p/go-libp2p-mplex v0.2.2
 	github.com/libp2p/go-libp2p-peer v0.2.0
-	github.com/libp2p/go-libp2p-peerstore v0.1.4
+	github.com/libp2p/go-libp2p-peerstore v0.2.0
 	github.com/libp2p/go-libp2p-pubsub v0.2.6
 	github.com/libp2p/go-libp2p-quic-transport v0.1.1
 	github.com/libp2p/go-libp2p-record v0.1.1
@@ -78,15 +82,15 @@ require (
 	github.com/libp2p/go-libp2p-secio v0.2.1
 	github.com/libp2p/go-libp2p-swarm v0.2.2
 	github.com/libp2p/go-libp2p-tls v0.1.0
-	github.com/libp2p/go-libp2p-yamux v0.2.1
+	github.com/libp2p/go-libp2p-yamux v0.2.5
 	github.com/libp2p/go-maddr-filter v0.0.5
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1
 	github.com/minio/sha256-simd v0.1.1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-base32 v0.0.3
-	github.com/multiformats/go-multiaddr v0.2.0
+	github.com/multiformats/go-multiaddr v0.2.1
 	github.com/multiformats/go-multiaddr-dns v0.2.0
-	github.com/multiformats/go-multiaddr-net v0.1.2
+	github.com/multiformats/go-multiaddr-net v0.1.3
 	github.com/multiformats/go-multihash v0.0.13
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/prometheus/common v0.4.0 // indirect
@@ -95,16 +99,22 @@ require (
 	github.com/whyrusleeping/cbor-gen v0.0.0-20200222160900-51052a1e8191
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
 	github.com/whyrusleeping/pubsub v0.0.0-20131020042734-02de8aa2db3d
-	go.opencensus.io v0.22.2
+	go.opencensus.io v0.22.3
 	go.uber.org/dig v1.8.0 // indirect
 	go.uber.org/fx v1.9.0
 	go.uber.org/goleak v1.0.0 // indirect
-	go.uber.org/multierr v1.4.0
-	go.uber.org/zap v1.13.0
+	go.uber.org/multierr v1.5.0
+	go.uber.org/zap v1.14.1
+	golang.org/x/crypto v0.0.0-20200317142112-1b76d66859c6 // indirect
+	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
+	golang.org/x/net v0.0.0-20200301022130-244492dfa37a // indirect
+	golang.org/x/sys v0.0.0-20200317113312-5766fd39f98d // indirect
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
+	golang.org/x/tools v0.0.0-20200318150045-ba25ddc85566 // indirect
 	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543
 	gopkg.in/urfave/cli.v2 v2.0.0-20180128182452-d3ae77c26ac8
 	gotest.tools v2.2.0+incompatible
+	honnef.co/go/tools v0.0.1-2020.1.3 // indirect
 	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
 )
 
