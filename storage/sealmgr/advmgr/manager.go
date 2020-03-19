@@ -12,13 +12,14 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-sectorbuilder"
-	"github.com/filecoin-project/lotus/storage/sealmgr/stores"
-
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	storage2 "github.com/filecoin-project/specs-storage/storage"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/filecoin-project/lotus/storage/sealmgr"
+	"github.com/filecoin-project/lotus/storage/sealmgr/stores"
 )
 
 var log = logging.Logger("advmgr")
@@ -29,6 +30,8 @@ type Worker interface {
 	sectorbuilder.Sealer
 
 	TaskTypes(context.Context) (map[sealmgr.TaskType]struct{}, error)
+
+	// Returns paths accessible to the worker
 	Paths(context.Context) ([]stores.StoragePath, error)
 }
 
@@ -36,39 +39,46 @@ type Manager struct {
 	workers []Worker
 	scfg    *sectorbuilder.Config
 
-	ls        stores.LocalStorage
-	storage   *stores.Local
-	remoteHnd *stores.FetchHandler
+	ls         stores.LocalStorage
+	storage    *stores.Remote
+	localStore *stores.Local
+	remoteHnd  *stores.FetchHandler
 
 	storage2.Prover
 
 	lk sync.Mutex
 }
 
-func New(ls stores.LocalStorage, si *stores.Index, cfg *sectorbuilder.Config, urls URLs, sindex stores.SectorIndex) (*Manager, error) {
-	stor, err := stores.NewLocal(ls)
+func New(ls stores.LocalStorage, si stores.SectorIndex, cfg *sectorbuilder.Config, urls URLs, ca impl.CommonAPI) (*Manager, error) {
+	lstor, err := stores.NewLocal(ls)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := stores.DeclareLocalStorage(context.TODO(), si, stor, urls, 10); err != nil {
+	if err := stores.DeclareLocalStorage(context.TODO(), si, lstor, urls, 10); err != nil {
 		log.Errorf("Declaring local storage failed: %+v")
 	}
 
-	prover, err := sectorbuilder.New(&readonlyProvider{stor: stor}, cfg)
+	prover, err := sectorbuilder.New(&readonlyProvider{stor: lstor}, cfg)
 	if err != nil {
 		return nil, xerrors.Errorf("creating prover instance: %w", err)
 	}
 
+	token, err := ca.AuthNew(context.TODO(), []api.Permission{"admin"})
+	headers := http.Header{}
+	headers.Add("Authorization", "Bearer "+string(token))
+	stor := stores.NewRemote(lstor, si, headers)
+
 	m := &Manager{
 		workers: []Worker{
-			//&LocalWorker{scfg: cfg, localStore: stor, storage: stor, sindex: sindex},
+			//&LocalWorker{scfg: cfg, localStore: lstor, storage: lstor, sindex: sindex},
 		},
 		scfg: cfg,
 
-		ls:        ls,
-		storage:   stor,
-		remoteHnd: &stores.FetchHandler{Store: stor},
+		ls:         ls,
+		storage:    stor,
+		localStore: lstor,
+		remoteHnd:  &stores.FetchHandler{Store: lstor},
 
 		Prover: prover,
 	}
@@ -82,7 +92,7 @@ func (m *Manager) AddLocalStorage(path string) error {
 		return xerrors.Errorf("expanding local path: %w", err)
 	}
 
-	if err := m.storage.OpenPath(path); err != nil {
+	if err := m.localStore.OpenPath(path); err != nil {
 		return xerrors.Errorf("opening local path: %w", err)
 	}
 

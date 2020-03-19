@@ -163,6 +163,14 @@ func (r *Remote) fetch(url, outname string) error {
 
 }
 
+func (r *Remote) FindBestAllocStorage(allocate sectorbuilder.SectorFileType, sealing bool) ([]StorageMeta, error) {
+	panic("todo")
+}
+
+func (r *Remote) FindSector(id abi.SectorID, typ sectorbuilder.SectorFileType) ([]StorageMeta, error) {
+	panic("todo")
+}
+
 func mergeDone(a func(), b func()) func() {
 	return func() {
 		a()

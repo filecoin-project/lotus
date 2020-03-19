@@ -400,7 +400,7 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 			smgr, err := advmgr.New(lr, stores.NewIndex(), &sectorbuilder.Config{
 				SealProofType: spt,
 				PoStProofType: ppt,
-			}, nil, stores.NewIndex())
+			}, nil)
 			if err != nil {
 				return err
 			}
