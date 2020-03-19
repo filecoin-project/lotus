@@ -89,7 +89,7 @@ var noncefix = &cli.Command{
 				From:     addr,
 				To:       addr,
 				Value:    types.NewInt(1),
-				GasLimit: types.NewInt(1000),
+				GasLimit: 1000,
 				GasPrice: types.NewInt(1),
 				Nonce:    i,
 			}

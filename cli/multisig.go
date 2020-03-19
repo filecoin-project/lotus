@@ -123,7 +123,7 @@ var msigCreateCmd = &cli.Command{
 			Method:   builtin.MethodsInit.Exec,
 			Params:   enc,
 			GasPrice: types.NewInt(1),
-			GasLimit: types.NewInt(1000000),
+			GasLimit: 1000000,
 			Value:    types.BigInt(filval),
 		}
 
@@ -353,7 +353,7 @@ var msigProposeCmd = &cli.Command{
 			Value:    types.NewInt(0),
 			Method:   builtin.MethodsMultisig.Propose,
 			Params:   enc,
-			GasLimit: types.NewInt(100000),
+			GasLimit: 100000,
 			GasPrice: types.NewInt(1),
 		}
 
@@ -439,7 +439,7 @@ var msigApproveCmd = &cli.Command{
 			Value:    types.NewInt(0),
 			Method:   builtin.MethodsMultisig.Approve,
 			Params:   enc,
-			GasLimit: types.NewInt(100000),
+			GasLimit: 100000,
 			GasPrice: types.NewInt(1),
 		}
 

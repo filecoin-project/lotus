@@ -662,7 +662,7 @@ create temp table msgs (like messages excluding constraints) on commit drop;
 			m.Nonce,
 			m.Value.String(),
 			m.GasPrice.String(),
-			m.GasLimit.String(),
+			m.GasLimit,
 			m.Method,
 			m.Params,
 		); err != nil {
@@ -706,7 +706,7 @@ create temp table recs (like receipts excluding constraints) on commit drop;
 			c.state.String(),
 			c.idx,
 			m.ExitCode,
-			m.GasUsed.String(),
+			m.GasUsed,
 			m.Return,
 		); err != nil {
 			return err

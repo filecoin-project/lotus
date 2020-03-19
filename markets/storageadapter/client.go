@@ -6,16 +6,17 @@ import (
 	"bytes"
 	"context"
 
+	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-address"
+	cborutil "github.com/filecoin-project/go-cbor-util"
+	"github.com/filecoin-project/go-fil-markets/shared"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	samarket "github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
-	"golang.org/x/xerrors"
-
-	"github.com/filecoin-project/go-address"
-	cborutil "github.com/filecoin-project/go-cbor-util"
-	"github.com/filecoin-project/go-fil-markets/storagemarket"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/events"
@@ -115,10 +116,6 @@ func (n *ClientNodeAdapter) ListClientDeals(ctx context.Context, addr address.Ad
 	return out, nil
 }
 
-func (n *ClientNodeAdapter) MostRecentStateId(ctx context.Context) (storagemarket.StateKey, error) {
-	return n.ChainHead(ctx)
-}
-
 // Adds funds with the StorageMinerActor for a storage participant.  Used by both providers and clients.
 func (n *ClientNodeAdapter) AddFunds(ctx context.Context, addr address.Address, amount abi.TokenAmount) error {
 	// (Provider Node API)
@@ -127,7 +124,7 @@ func (n *ClientNodeAdapter) AddFunds(ctx context.Context, addr address.Address, 
 		From:     addr,
 		Value:    amount,
 		GasPrice: types.NewInt(0),
-		GasLimit: types.NewInt(1000000),
+		GasLimit: 1000000,
 		Method:   builtin.MethodsMarket.AddBalance,
 	})
 	if err != nil {
@@ -161,7 +158,7 @@ func (n *ClientNodeAdapter) GetBalance(ctx context.Context, addr address.Address
 
 // ValidatePublishedDeal validates that the provided deal has appeared on chain and references the same ClientDeal
 // returns the Deal id if there is no error
-func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal storagemarket.ClientDeal) (uint64, error) {
+func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal storagemarket.ClientDeal) (abi.DealID, error) {
 	log.Infow("DEAL ACCEPTED!")
 
 	pubmsg, err := c.cs.GetMessage(*deal.PublishMessage)
@@ -223,12 +220,12 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 		return 0, err
 	}
 
-	return uint64(res.IDs[dealIdx]), nil
+	return res.IDs[dealIdx], nil
 }
 
-func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealId uint64, cb storagemarket.DealSectorCommittedCallback) error {
+func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealId abi.DealID, cb storagemarket.DealSectorCommittedCallback) error {
 	checkFunc := func(ts *types.TipSet) (done bool, more bool, err error) {
-		sd, err := stmgr.GetStorageDeal(ctx, c.StateManager, abi.DealID(dealId), ts)
+		sd, err := stmgr.GetStorageDeal(ctx, c.StateManager, dealId, ts)
 
 		if err != nil {
 			// TODO: This may be fine for some errors
@@ -365,6 +362,15 @@ func (n *ClientNodeAdapter) ValidateAskSignature(ask *storagemarket.SignedStorag
 
 	return sigs.Verify(ask.Signature, w, sigb)
 
+}
+
+func (n *ClientNodeAdapter) GetChainHead(ctx context.Context) (shared.TipSetToken, abi.ChainEpoch, error) {
+	head, err := n.ChainHead(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return head.Key().Bytes(), head.Height(), nil
 }
 
 var _ storagemarket.StorageClientNode = &ClientNodeAdapter{}

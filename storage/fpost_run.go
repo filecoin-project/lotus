@@ -68,7 +68,7 @@ func (s *FPoStScheduler) declareFaults(ctx context.Context, fc uint64, params *m
 		Method:   builtin.MethodsMiner.DeclareTemporaryFaults,
 		Params:   enc,
 		Value:    types.NewInt(0),
-		GasLimit: types.NewInt(10000000), // i dont know help
+		GasLimit: 10000000, // i dont know help
 		GasPrice: types.NewInt(1),
 	}
 
@@ -264,8 +264,8 @@ func (s *FPoStScheduler) submitPost(ctx context.Context, proof *abi.OnChainPoStV
 		From:     s.worker,
 		Method:   builtin.MethodsMiner.SubmitWindowedPoSt,
 		Params:   enc,
-		Value:    types.NewInt(1000),     // currently hard-coded late fee in actor, returned if not late
-		GasLimit: types.NewInt(10000000), // i dont know help
+		Value:    types.NewInt(1000), // currently hard-coded late fee in actor, returned if not late
+		GasLimit: 10000000,           // i dont know help
 		GasPrice: types.NewInt(1),
 	}
 
