@@ -100,10 +100,10 @@ var infoCmd = &cli.Command{
 			lastEps := int64(head.Height() - eps)
 			lastEpsS := lastEps * build.BlockDelay
 
-			fallback := lastEps + build.FallbackPoStDelay
+			fallback := build.FallbackPoStDelay - lastEps
 			fallbackS := fallback * build.BlockDelay
 
-			next := lastEps + build.SlashablePowerDelay
+			next := build.SlashablePowerDelay - lastEps
 			nextS := next * build.BlockDelay
 
 			fmt.Printf("PoSt Submissions:\n")
