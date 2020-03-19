@@ -20,10 +20,10 @@ type FetchHandler struct {
 	Store
 }
 
-func (handler *FetchHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) { // /storage/
+func (handler *FetchHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) { // /remote/
 	mux := mux.NewRouter()
 
-	mux.HandleFunc("/{type}/{id}", handler.remoteGetSector).Methods("GET")
+	mux.HandleFunc("/remote/{type}/{id}", handler.remoteGetSector).Methods("GET")
 
 	log.Infof("SERVEGETREMOTE %s", r.URL)
 

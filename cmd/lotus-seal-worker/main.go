@@ -25,6 +25,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/repo"
+	"github.com/filecoin-project/lotus/storage/sealmgr"
 	"github.com/filecoin-project/lotus/storage/sealmgr/advmgr"
 	"github.com/filecoin-project/lotus/storage/sealmgr/stores"
 )
@@ -222,7 +223,10 @@ var runCmd = &cli.Command{
 		// Create / expose the worker
 
 		workerApi := &worker{
-			LocalWorker: advmgr.NewLocalWorker(act, spt, remote, localStore, nodeApi),
+			LocalWorker: advmgr.NewLocalWorker(advmgr.WorkerConfig{
+				SealProof: spt,
+				TaskTypes: []sealmgr.TaskType{sealmgr.TTPreCommit1, sealmgr.TTPreCommit2, sealmgr.TTCommit2},
+			}, remote, localStore, nodeApi),
 		}
 
 		mux := mux.NewRouter()

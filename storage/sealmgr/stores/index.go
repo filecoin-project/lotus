@@ -169,7 +169,7 @@ func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft sector
 
 		out[j] = StorageInfo{
 			ID:       id,
-			URLs:     nil,
+			URLs:     urls,
 			Weight:   st.info.Weight,
 			CanSeal:  st.info.CanSeal,
 			CanStore: st.info.CanStore,

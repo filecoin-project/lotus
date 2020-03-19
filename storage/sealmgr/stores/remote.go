@@ -20,20 +20,20 @@ import (
 )
 
 type Remote struct {
-	local  *Local
-	remote SectorIndex
-	auth   http.Header
+	local *Local
+	index SectorIndex
+	auth  http.Header
 
 	fetchLk sync.Mutex // TODO: this can be much smarter
 	// TODO: allow multiple parallel fetches
 	//  (make sure to not fetch the same sector data twice)
 }
 
-func NewRemote(local *Local, remote SectorIndex, auth http.Header) *Remote {
+func NewRemote(local *Local, index SectorIndex, auth http.Header) *Remote {
 	return &Remote{
-		local:  local,
-		remote: remote,
-		auth:   auth,
+		local: local,
+		index: index,
+		auth:  auth,
 	}
 }
 
@@ -69,7 +69,7 @@ func (r *Remote) AcquireSector(ctx context.Context, s abi.SectorID, existing sec
 		sectorutil.SetPathByType(&paths, fileType, ap)
 		sectorutil.SetPathByType(&stores, fileType, string(storageID))
 
-		if err := r.remote.StorageDeclareSector(ctx, storageID, s, fileType); err != nil {
+		if err := r.index.StorageDeclareSector(ctx, storageID, s, fileType); err != nil {
 			log.Warnf("declaring sector %v in %s failed: %+v", s, storageID, err)
 		}
 	}
@@ -78,7 +78,7 @@ func (r *Remote) AcquireSector(ctx context.Context, s abi.SectorID, existing sec
 }
 
 func (r *Remote) acquireFromRemote(ctx context.Context, s abi.SectorID, fileType sectorbuilder.SectorFileType, sealing bool) (string, ID, func(), error) {
-	si, err := r.remote.StorageFindSector(ctx, s, fileType)
+	si, err := r.index.StorageFindSector(ctx, s, fileType)
 	if err != nil {
 		return "", "", nil, err
 	}
@@ -111,7 +111,7 @@ func (r *Remote) acquireFromRemote(ctx context.Context, s abi.SectorID, fileType
 	}
 
 	done()
-	return "", "", nil, xerrors.Errorf("failed to acquire sector %v from remote: %w", s, merr)
+	return "", "", nil, xerrors.Errorf("failed to acquire sector %v from remote (tried %v): %w", s, si, merr)
 }
 
 func (r *Remote) fetch(url, outname string) error {
