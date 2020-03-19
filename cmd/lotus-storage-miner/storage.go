@@ -83,7 +83,7 @@ var storageAttachCmd = &cli.Command{
 				return err
 			}
 
-			cfg := &stores.StorageMeta{
+			cfg := &stores.LocalStorageMeta{
 				ID:       stores.ID(uuid.New().String()),
 				Weight:   cctx.Uint64("weight"),
 				CanSeal:  cctx.Bool("seal"),
@@ -144,7 +144,7 @@ var storageListCmd = &cli.Command{
 			if err != nil {
 				return err
 			}
-			fmt.Printf("\tSeal: %t; Store: %t; Cost: %d\n", si.CanSeal, si.CanStore, si.Cost)
+			fmt.Printf("\tSeal: %t; Store: %t; Weight: %d\n", si.CanSeal, si.CanStore, si.Weight)
 			for _, l := range si.URLs {
 				fmt.Printf("\tReachable %s\n", l) // TODO; try pinging maybe?? print latency?
 			}

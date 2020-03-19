@@ -157,7 +157,7 @@ var runCmd = &cli.Command{
 			var localPaths []config.LocalPath
 
 			if !cctx.Bool("no-local-storage") {
-				b, err := json.MarshalIndent(&stores.StorageMeta{
+				b, err := json.MarshalIndent(&stores.LocalStorageMeta{
 					ID:       stores.ID(uuid.New().String()),
 					Weight:   10,
 					CanSeal:  true,
@@ -199,21 +199,13 @@ var runCmd = &cli.Command{
 			return err
 		}
 
-		localStore, err := stores.NewLocal(lr)
+		log.Info("Opening local storage; connecting to master")
+
+		localStore, err := stores.NewLocal(ctx, lr, nodeApi, []string{"http://" + cctx.String("address") + "/remote"})
 		if err != nil {
 			return err
 		}
 
-		log.Info("Connecting local storage to master")
-
-		if err := stores.DeclareLocalStorage(
-			ctx,
-			nodeApi,
-			localStore,
-			[]string{"http://" + cctx.String("address") + "/remote"}, // TODO: Less hardcoded
-			1); err != nil {
-			return err
-		}
 		// Setup remote sector store
 		_, spt, err := api.ProofTypeFromSectorSize(ssize)
 		if err != nil {
@@ -230,12 +222,12 @@ var runCmd = &cli.Command{
 		// Create / expose the worker
 
 		workerApi := &worker{
-			LocalWorker: advmgr.NewLocalWorker(act, spt, remote, localStore, stores.NewIndex()),
+			LocalWorker: advmgr.NewLocalWorker(act, spt, remote, localStore, nodeApi),
 		}
 
 		mux := mux.NewRouter()
 
-		log.Info("Setting up control endpoint at " + "http://" + cctx.String("address"))
+		log.Info("Setting up control endpoint at " + cctx.String("address"))
 
 		rpcServer := jsonrpc.NewServer()
 		rpcServer.Register("Filecoin", apistruct.PermissionedWorkerAPI(workerApi))

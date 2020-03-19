@@ -137,7 +137,7 @@ func PreSeal(maddr address.Address, pt abi.RegisteredProof, offset abi.SectorNum
 	}
 
 	{
-		b, err := json.MarshalIndent(&stores.StorageMeta{
+		b, err := json.MarshalIndent(&stores.LocalStorageMeta{
 			ID:       stores.ID(uuid.New().String()),
 			Weight:   0, // read-only
 			CanSeal:  false,

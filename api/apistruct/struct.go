@@ -181,12 +181,13 @@ type StorageMinerStruct struct {
 		SectorsRefs   func(context.Context) (map[string][]api.SealedRef, error)       `perm:"read"`
 		SectorsUpdate func(context.Context, abi.SectorNumber, api.SectorState) error  `perm:"write"`
 
-		WorkerConnect        func(context.Context, string) error                                                             `perm:"admin"` // TODO: worker perm
-		StorageAttach        func(context.Context, stores.StorageInfo) error                                                 `perm:"admin"`
-		StorageDeclareSector func(context.Context, stores.ID, abi.SectorID, sectorbuilder.SectorFileType) error              `perm:"admin"`
-		StorageFindSector    func(context.Context, abi.SectorID, sectorbuilder.SectorFileType) ([]stores.StorageInfo, error) `perm:"admin"`
-		StorageList          func(ctx context.Context) (map[stores.ID][]stores.Decl, error)                                  `perm:"admin"`
-		StorageInfo          func(context.Context, stores.ID) (stores.StorageInfo, error)                                    `perm:"admin"`
+		WorkerConnect        func(context.Context, string) error                                                                          `perm:"admin"` // TODO: worker perm
+		StorageAttach        func(context.Context, stores.StorageInfo, stores.FsStat) error                                               `perm:"admin"`
+		StorageDeclareSector func(context.Context, stores.ID, abi.SectorID, sectorbuilder.SectorFileType) error                           `perm:"admin"`
+		StorageFindSector    func(context.Context, abi.SectorID, sectorbuilder.SectorFileType) ([]stores.StorageInfo, error)              `perm:"admin"`
+		StorageList          func(context.Context) (map[stores.ID][]stores.Decl, error)                                                   `perm:"admin"`
+		StorageInfo          func(context.Context, stores.ID) (stores.StorageInfo, error)                                                 `perm:"admin"`
+		StorageBestAlloc     func(ctx context.Context, allocate sectorbuilder.SectorFileType, sealing bool) ([]stores.StorageInfo, error) `perm:"admin"`
 
 		DealsImportData func(ctx context.Context, dealPropCid cid.Cid, file string) error `perm:"write"`
 		DealsList       func(ctx context.Context) ([]storagemarket.StorageDeal, error)    `perm:"read"`
@@ -654,8 +655,8 @@ func (c *StorageMinerStruct) WorkerConnect(ctx context.Context, url string) erro
 	return c.Internal.WorkerConnect(ctx, url)
 }
 
-func (c *StorageMinerStruct) StorageAttach(ctx context.Context, si stores.StorageInfo) error {
-	return c.Internal.StorageAttach(ctx, si)
+func (c *StorageMinerStruct) StorageAttach(ctx context.Context, si stores.StorageInfo, st stores.FsStat) error {
+	return c.Internal.StorageAttach(ctx, si, st)
 }
 
 func (c *StorageMinerStruct) StorageDeclareSector(ctx context.Context, storageId stores.ID, s abi.SectorID, ft sectorbuilder.SectorFileType) error {
@@ -672,6 +673,10 @@ func (c *StorageMinerStruct) StorageList(ctx context.Context) (map[stores.ID][]s
 
 func (c *StorageMinerStruct) StorageInfo(ctx context.Context, id stores.ID) (stores.StorageInfo, error) {
 	return c.Internal.StorageInfo(ctx, id)
+}
+
+func (c *StorageMinerStruct) StorageBestAlloc(ctx context.Context, allocate sectorbuilder.SectorFileType, sealing bool) ([]stores.StorageInfo, error) {
+	return c.Internal.StorageBestAlloc(ctx, allocate, sealing)
 }
 
 func (c *StorageMinerStruct) MarketImportDealData(ctx context.Context, propcid cid.Cid, path string) error {

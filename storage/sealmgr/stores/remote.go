@@ -84,7 +84,7 @@ func (r *Remote) acquireFromRemote(ctx context.Context, s abi.SectorID, fileType
 	}
 
 	sort.Slice(si, func(i, j int) bool {
-		return si[i].Cost < si[j].Cost
+		return si[i].Weight < si[j].Weight
 	})
 
 	apaths, ids, done, err := r.local.AcquireSector(ctx, s, 0, fileType, sealing)
@@ -161,14 +161,6 @@ func (r *Remote) fetch(url, outname string) error {
 		return xerrors.Errorf("unknown content type: '%s'", mediatype)
 	}
 
-}
-
-func (r *Remote) FindBestAllocStorage(allocate sectorbuilder.SectorFileType, sealing bool) ([]StorageMeta, error) {
-	panic("todo")
-}
-
-func (r *Remote) FindSector(id abi.SectorID, typ sectorbuilder.SectorFileType) ([]StorageMeta, error) {
-	panic("todo")
 }
 
 func mergeDone(a func(), b func()) func() {

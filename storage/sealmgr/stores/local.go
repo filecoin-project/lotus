@@ -27,7 +27,7 @@ type StoragePath struct {
 }
 
 // [path]/sectorstore.json
-type StorageMeta struct {
+type LocalStorageMeta struct {
 	ID     ID
 	Weight uint64 // 0 = readonly
 
@@ -45,35 +45,40 @@ const MetaFile = "sectorstore.json"
 var pathTypes = []sectorbuilder.SectorFileType{sectorbuilder.FTUnsealed, sectorbuilder.FTSealed, sectorbuilder.FTCache}
 
 type Local struct {
-	localLk      sync.RWMutex
 	localStorage LocalStorage
+	index        SectorIndex
+	urls         []string
 
-	paths []*path
+	paths map[ID]*path
+
+	localLk sync.RWMutex
 }
 
 type path struct {
-	lk sync.Mutex
-
-	meta  StorageMeta
-	local string
-
-	sectors map[abi.SectorID]sectorbuilder.SectorFileType
+	local string // absolute local path
 }
 
-func NewLocal(ls LocalStorage) (*Local, error) {
+func NewLocal(ctx context.Context, ls LocalStorage, index SectorIndex, urls []string) (*Local, error) {
 	l := &Local{
 		localStorage: ls,
+		index:        index,
+		urls:         urls,
+
+		paths: map[ID]*path{},
 	}
-	return l, l.open()
+	return l, l.open(ctx)
 }
 
-func (st *Local) OpenPath(p string) error {
+func (st *Local) OpenPath(ctx context.Context, p string) error {
+	st.localLk.Lock()
+	defer st.localLk.Unlock()
+
 	mb, err := ioutil.ReadFile(filepath.Join(p, MetaFile))
 	if err != nil {
 		return xerrors.Errorf("reading storage metadata for %s: %w", p, err)
 	}
 
-	var meta StorageMeta
+	var meta LocalStorageMeta
 	if err := json.Unmarshal(mb, &meta); err != nil {
 		return xerrors.Errorf("unmarshalling storage metadata for %s: %w", p, err)
 	}
@@ -81,9 +86,23 @@ func (st *Local) OpenPath(p string) error {
 	// TODO: Check existing / dedupe
 
 	out := &path{
-		meta:    meta,
-		local:   p,
-		sectors: map[abi.SectorID]sectorbuilder.SectorFileType{},
+		local: p,
+	}
+
+	fst, err := Stat(p)
+	if err != nil {
+		return err
+	}
+
+	err = st.index.StorageAttach(ctx, StorageInfo{
+		ID:       meta.ID,
+		URLs:     st.urls,
+		Weight:   meta.Weight,
+		CanSeal:  meta.CanSeal,
+		CanStore: meta.CanStore,
+	}, fst)
+	if err != nil {
+		return xerrors.Errorf("declaring storage in index: %w", err)
 	}
 
 	for _, t := range pathTypes {
@@ -105,26 +124,25 @@ func (st *Local) OpenPath(p string) error {
 				return xerrors.Errorf("parse sector id %s: %w", ent.Name(), err)
 			}
 
-			out.sectors[sid] |= t
+			if err := st.index.StorageDeclareSector(ctx, meta.ID, sid, t); err != nil {
+				return xerrors.Errorf("declare sector %d(t:%d) -> %s: %w", sid, t, meta.ID, err)
+			}
 		}
 	}
 
-	st.paths = append(st.paths, out)
+	st.paths[meta.ID] = out
 
 	return nil
 }
 
-func (st *Local) open() error {
-	st.localLk.Lock()
-	defer st.localLk.Unlock()
-
+func (st *Local) open(ctx context.Context) error {
 	cfg, err := st.localStorage.GetStorage()
 	if err != nil {
 		return xerrors.Errorf("getting local storage config: %w", err)
 	}
 
 	for _, path := range cfg.StoragePaths {
-		err := st.OpenPath(path.Path)
+		err := st.OpenPath(ctx, path.Path)
 		if err != nil {
 			return xerrors.Errorf("opening path %s: %w", path.Path, err)
 		}
@@ -148,23 +166,25 @@ func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, existing s
 			continue
 		}
 
-		for _, p := range st.paths {
-			p.lk.Lock()
-			s, ok := p.sectors[sid]
-			p.lk.Unlock()
+		si, err := st.index.StorageFindSector(ctx, sid, fileType)
+		if err != nil {
+			log.Warnf("finding existing sector %d(t:%d) failed: %+v", sid, fileType, err)
+			continue
+		}
+
+		for _, info := range si {
+			p, ok := st.paths[info.ID]
 			if !ok {
 				continue
 			}
-			if s&fileType == 0 {
-				continue
-			}
-			if p.local == "" {
+
+			if p.local == "" { // TODO: can that even be the case?
 				continue
 			}
 
 			spath := filepath.Join(p.local, fileType.String(), sectorutil.SectorName(sid))
 			sectorutil.SetPathByType(&out, fileType, spath)
-			sectorutil.SetPathByType(&storageIDs, fileType, string(p.meta.ID))
+			sectorutil.SetPathByType(&storageIDs, fileType, string(info.ID))
 
 			existing ^= fileType
 		}
@@ -175,27 +195,37 @@ func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, existing s
 			continue
 		}
 
+		sis, err := st.index.StorageBestAlloc(ctx, fileType, sealing)
+		if err != nil {
+			st.localLk.RUnlock()
+			return sectorbuilder.SectorPaths{}, sectorbuilder.SectorPaths{}, nil, xerrors.Errorf("finding best storage for allocating : %w", err)
+		}
+
 		var best string
 		var bestID ID
 
-		for _, p := range st.paths {
-			if sealing && !p.meta.CanSeal {
-				continue
-			}
-			if !sealing && !p.meta.CanStore {
+		for _, si := range sis {
+			p, ok := st.paths[si.ID]
+			if !ok {
 				continue
 			}
 
-			p.lk.Lock()
-			p.sectors[sid] |= fileType
-			p.lk.Unlock()
+			if p.local == "" { // TODO: can that even be the case?
+				continue
+			}
+
+			if sealing && !si.CanSeal {
+				continue
+			}
+
+			if !sealing && !si.CanStore {
+				continue
+			}
 
 			// TODO: Check free space
-			// TODO: Calc weights
 
 			best = filepath.Join(p.local, fileType.String(), sectorutil.SectorName(sid))
-			bestID = p.meta.ID
-			break // todo: the first path won't always be the best
+			bestID = si.ID
 		}
 
 		if best == "" {
@@ -211,88 +241,41 @@ func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, existing s
 	return out, storageIDs, st.localLk.RUnlock, nil
 }
 
-func (st *Local) FindBestAllocStorage(allocate sectorbuilder.SectorFileType, sealing bool) ([]StorageMeta, error) {
-	st.localLk.RLock()
-	defer st.localLk.RUnlock()
-
-	var out []StorageMeta
-
-	for _, p := range st.paths {
-		if sealing && !p.meta.CanSeal {
-			log.Debugf("alloc: not considering %s; can't seal", p.meta.ID)
-			continue
-		}
-		if !sealing && !p.meta.CanStore {
-			log.Debugf("alloc: not considering %s; can't store", p.meta.ID)
-			continue
-		}
-
-		// TODO: filter out of space
-
-		out = append(out, p.meta)
-	}
-
-	if len(out) == 0 {
-		return nil, xerrors.New("no good path found")
-	}
-
-	// todo: sort by some kind of preference
-	return out, nil
-}
-
-func (st *Local) FindSector(id abi.SectorID, typ sectorbuilder.SectorFileType) ([]StorageMeta, error) {
-	st.localLk.RLock()
-	defer st.localLk.RUnlock()
-
-	var out []StorageMeta
-	for _, p := range st.paths {
-		p.lk.Lock()
-		t := p.sectors[id]
-		if t|typ == 0 {
-			continue
-		}
-		p.lk.Unlock()
-		out = append(out, p.meta)
-	}
-	if len(out) == 0 {
-		return nil, xerrors.Errorf("sector %s/s-t0%d-%d not found", typ, id.Miner, id.Number)
-	}
-
-	return out, nil
-}
-
-func (st *Local) Local() []StoragePath {
+func (st *Local) Local(ctx context.Context) ([]StoragePath, error) {
 	st.localLk.RLock()
 	defer st.localLk.RUnlock()
 
 	var out []StoragePath
-	for _, p := range st.paths {
+	for id, p := range st.paths {
 		if p.local == "" {
 			continue
 		}
 
+		si, err := st.index.StorageInfo(ctx, id)
+		if err != nil {
+			return nil, xerrors.Errorf("get storage info for %s: %w", id, err)
+		}
+
 		out = append(out, StoragePath{
-			ID:        p.meta.ID,
-			Weight:    p.meta.Weight,
+			ID:        id,
+			Weight:    si.Weight,
 			LocalPath: p.local,
-			CanSeal:   p.meta.CanSeal,
-			CanStore:  p.meta.CanStore,
+			CanSeal:   si.CanSeal,
+			CanStore:  si.CanStore,
 		})
 	}
 
-	return out
+	return out, nil
 }
 
-func (st *Local) List(id ID) map[abi.SectorID]sectorbuilder.SectorFileType {
-	out := map[abi.SectorID]sectorbuilder.SectorFileType{}
-	for _, p := range st.paths {
-		if p.meta.ID != id { // TODO: not very efficient
-			continue
-		}
+func (st *Local) FsStat(id ID) (FsStat, error) {
+	st.localLk.RLock()
+	defer st.localLk.RUnlock()
 
-		for id, fileType := range p.sectors {
-			out[id] |= fileType
-		}
+	p, ok := st.paths[id]
+	if !ok {
+		return FsStat{}, xerrors.Errorf("fsstat: path not found")
 	}
-	return out
+
+	return Stat(p.local)
 }

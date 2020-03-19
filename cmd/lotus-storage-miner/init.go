@@ -188,7 +188,7 @@ var initCmd = &cli.Command{
 			}
 
 			if !cctx.Bool("no-local-storage") {
-				b, err := json.MarshalIndent(&stores.StorageMeta{
+				b, err := json.MarshalIndent(&stores.LocalStorageMeta{
 					ID:       stores.ID(uuid.New().String()),
 					Weight:   10,
 					CanSeal:  true,
@@ -400,7 +400,7 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 			smgr, err := advmgr.New(lr, stores.NewIndex(), &sectorbuilder.Config{
 				SealProofType: spt,
 				PoStProofType: ppt,
-			}, nil)
+			}, nil, api)
 			if err != nil {
 				return err
 			}
