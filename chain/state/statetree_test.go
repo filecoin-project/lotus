@@ -2,12 +2,14 @@ package state
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 
 	address "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 )
 
@@ -225,5 +227,47 @@ func assertNotHas(t *testing.T, st *StateTree, addr address.Address) {
 	_, err := st.GetActor(addr)
 	if err == nil {
 		t.Fatal("shouldnt have found actor", addr)
+	}
+}
+
+func TestStateTreeConsistency(t *testing.T) {
+	cst := cbor.NewMemCborStore()
+	st, err := NewStateTree(cst)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var addrs []address.Address
+	for i := 100; i < 150; i++ {
+		a, err := address.NewIDAddress(uint64(i))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		addrs = append(addrs, a)
+	}
+
+	randomCid, err := cid.Decode("bafy2bzacecu7n7wbtogznrtuuvf73dsz7wasgyneqasksdblxupnyovmtwxxu")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for i, a := range addrs {
+		st.SetActor(a, &types.Actor{
+			Code:    randomCid,
+			Head:    randomCid,
+			Balance: types.NewInt(uint64(10000 + i)),
+			Nonce:   uint64(1000 - i),
+		})
+	}
+
+	root, err := st.Flush(context.TODO())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	fmt.Println("root is: ", root)
+	if root.String() != "bafy2bzacec6igwshty4qqexix6iffzdawp5e4ke7mamfn35g3ga6rc3dyhgnc" {
+		t.Fatal("MISMATCH!")
 	}
 }
