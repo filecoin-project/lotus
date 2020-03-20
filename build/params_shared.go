@@ -64,7 +64,7 @@ const MaxSealLookback = SealRandomnessLookbackLimit + 2000
 // Mining
 
 // Epochs
-const EcRandomnessLookback = 300
+const EcRandomnessLookback = 1
 
 // /////
 // Devnet settings
