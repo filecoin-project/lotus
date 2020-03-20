@@ -103,7 +103,6 @@ require (
 	go.uber.org/multierr v1.4.0
 	go.uber.org/zap v1.13.0
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
-	golang.org/x/tools v0.0.0-20191216173652-a0e659d51361
 	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543
 	gopkg.in/urfave/cli.v2 v2.0.0-20180128182452-d3ae77c26ac8
 	gotest.tools v2.2.0+incompatible
