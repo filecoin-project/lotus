@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"runtime"
+	"strings"
 	"testing"
 
 	suites "github.com/filecoin-project/chain-validation/suites"
@@ -46,7 +47,9 @@ func TestChainValidationMessageSuite(t *testing.T) {
 		if TestSuiteSkipper.Skip(testCase) {
 			continue
 		}
-		testCase(t, f)
+		t.Run(caseName(testCase), func(t *testing.T) {
+			testCase(t, f)
+		})
 	}
 }
 
@@ -56,6 +59,14 @@ func TestChainValidationTipSetSuite(t *testing.T) {
 		if TestSuiteSkipper.Skip(testCase) {
 			continue
 		}
-		testCase(t, f)
+		t.Run(caseName(testCase), func(t *testing.T) {
+			testCase(t, f)
+		})
 	}
+}
+
+func caseName(testCase suites.TestCase) string {
+	fqName := runtime.FuncForPC(reflect.ValueOf(testCase).Pointer()).Name()
+	toks := strings.Split(fqName, ".")
+	return toks[len(toks)-1]
 }
