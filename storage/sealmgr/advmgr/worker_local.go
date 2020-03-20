@@ -3,11 +3,17 @@ package advmgr
 import (
 	"context"
 	"io"
+	"os"
 
+	"github.com/elastic/go-sysinfo"
+	"golang.org/x/xerrors"
+
+	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	storage2 "github.com/filecoin-project/specs-storage/storage"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/storage/sealmgr"
 	"github.com/filecoin-project/lotus/storage/sealmgr/sectorutil"
 	"github.com/filecoin-project/lotus/storage/sealmgr/stores"
@@ -155,6 +161,38 @@ func (l *LocalWorker) TaskTypes(context.Context) (map[sealmgr.TaskType]struct{},
 
 func (l *LocalWorker) Paths(ctx context.Context) ([]stores.StoragePath, error) {
 	return l.localStore.Local(ctx)
+}
+
+func (l *LocalWorker) Info(context.Context) (api.WorkerInfo, error) {
+	hostname, err := os.Hostname() // TODO: allow overriding from config
+	if err != nil {
+		panic(err)
+	}
+
+	gpus, err := ffi.GetGPUDevices()
+	if err != nil {
+		log.Errorf("getting gpu devices failed: %+v", err)
+	}
+
+	h, err := sysinfo.Host()
+	if err != nil {
+		return api.WorkerInfo{}, xerrors.Errorf("getting host info: %w", err)
+	}
+
+	mem, err := h.Memory()
+	if err != nil {
+		return api.WorkerInfo{}, xerrors.Errorf("getting memory info: %w", err)
+	}
+
+	return api.WorkerInfo{
+		Hostname: hostname,
+		Resources: api.WorkerResources{
+			MemPhysical: mem.Total,
+			MemSwap:     mem.VirtualTotal,
+			MemReserved: mem.VirtualUsed + mem.Total - mem.Available, // TODO: sub this process
+			GPUs:        gpus,
+		},
+	}, nil
 }
 
 var _ Worker = &LocalWorker{}

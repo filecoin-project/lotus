@@ -11,6 +11,7 @@ require (
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
 	github.com/coreos/go-systemd/v22 v22.0.0
 	github.com/docker/go-units v0.4.0
+	github.com/elastic/go-sysinfo v1.3.0
 	github.com/filecoin-project/chain-validation v0.0.6-0.20200318065243-0ccb5ec3afc5
 	github.com/filecoin-project/filecoin-ffi v0.0.0-20200304181354-4446ff8a1bb9
 	github.com/filecoin-project/go-address v0.0.2-0.20200218010043-eb9bb40ed5be
