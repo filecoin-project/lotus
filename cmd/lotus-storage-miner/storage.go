@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -16,6 +15,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/storage/sealmgr/stores"
@@ -264,7 +264,9 @@ var storageFindCmd = &cli.Command{
 			fmt.Printf("In %s (Unsealed: %t; Sealed: %t; Cache: %t)\n", id, info.unsealed, info.sealed, info.cache)
 			fmt.Printf("\tSealing: %t; Storage: %t\n", info.store.CanSeal, info.store.CanSeal)
 			if localPath, ok := local[id]; ok {
-				fmt.Printf("\tLocal: %s\n", localPath)
+				fmt.Printf("\tLocal (%s)\n", localPath)
+			} else {
+				fmt.Printf("\tRemote\n")
 			}
 			for _, l := range info.store.URLs {
 				fmt.Printf("\tURL: %s\n", l)

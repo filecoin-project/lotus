@@ -148,7 +148,7 @@ func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft sector
 			continue
 		}
 
-		for _, id := range i.sectors[Decl{s, ft}] {
+		for _, id := range i.sectors[Decl{s, pathType}] {
 			storageIDs[id]++
 		}
 	}
