@@ -92,22 +92,22 @@ var _ cbor.IpldBlockstore = (*gasChargingBlocks)(nil)
 
 type gasChargingBlocks struct {
 	chargeGas func(int64)
+	pricelist Pricelist
 	under     cbor.IpldBlockstore
 }
 
 func (bs *gasChargingBlocks) Get(c cid.Cid) (block.Block, error) {
-	bs.chargeGas(gasGetObj)
 	blk, err := bs.under.Get(c)
 	if err != nil {
 		return nil, aerrors.Escalate(err, "failed to get block from blockstore")
 	}
-	bs.chargeGas(int64(len(blk.RawData())) * gasGetPerByte)
+	bs.chargeGas(bs.pricelist.OnIpldGet(len(blk.RawData())))
 
 	return blk, nil
 }
 
 func (bs *gasChargingBlocks) Put(blk block.Block) error {
-	bs.chargeGas(gasPutObj + int64(len(blk.RawData()))*gasPutPerByte)
+	bs.chargeGas(bs.pricelist.OnIpldPut(len(blk.RawData())))
 
 	if err := bs.under.Put(blk); err != nil {
 		return aerrors.Escalate(err, "failed to write data to disk")
@@ -115,7 +115,7 @@ func (bs *gasChargingBlocks) Put(blk block.Block) error {
 	return nil
 }
 
-func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, origin address.Address, originNonce uint64, usedGas int64, icc int64) *Runtime {
+func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, origin address.Address, originNonce uint64, usedGas int64, nac uint64) *Runtime {
 	rt := &Runtime{
 		ctx:         ctx,
 		vm:          vm,
@@ -124,15 +124,20 @@ func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, origin addres
 		origin:      origin,
 		originNonce: originNonce,
 		height:      vm.blockHeight,
-		sys:         vm.Syscalls,
 
-		gasUsed:             usedGas,
-		gasAvailable:        msg.GasLimit,
-		internalCallCounter: icc,
+		gasUsed:          usedGas,
+		gasAvailable:     msg.GasLimit,
+		numActorsCreated: nac,
+		pricelist:        PricelistByEpoch(vm.blockHeight),
 	}
 	rt.cst = &cbor.BasicIpldStore{
-		Blocks: &gasChargingBlocks{rt.ChargeGas, vm.cst.Blocks},
+		Blocks: &gasChargingBlocks{rt.ChargeGas, rt.pricelist, vm.cst.Blocks},
 		Atlas:  vm.cst.Atlas,
+	}
+	rt.sys = pricedSyscalls{
+		under:     vm.Syscalls,
+		chargeGas: rt.ChargeGas,
+		pl:        rt.pricelist,
 	}
 
 	return rt
@@ -193,6 +198,8 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 		return nil, aerrors.Absorb(err, 1, "could not find source actor"), nil
 	}
 
+	gasUsed := gasCharge
+
 	toActor, err := st.GetActor(msg.To)
 	if err != nil {
 		if xerrors.Is(err, init_.ErrAddressNotFound) {
@@ -201,31 +208,34 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 				return nil, aerrors.Absorb(err, 1, "could not create account"), nil
 			}
 			toActor = a
+			gasUsed += PricelistByEpoch(vm.blockHeight).OnCreateActor()
 		} else {
 			return nil, aerrors.Escalate(err, "getting actor"), nil
 		}
 	}
 
-	gasUsed := gasCharge
 	origin := msg.From
 	on := msg.Nonce
-	var icc int64 = 0
+	var nac uint64 = 0
 	if parent != nil {
 		gasUsed = parent.gasUsed + gasUsed
 		origin = parent.origin
 		on = parent.originNonce
-		icc = parent.internalCallCounter + 1
+		nac = parent.numActorsCreated
 	}
-	rt := vm.makeRuntime(ctx, msg, origin, on, gasUsed, icc)
+	rt := vm.makeRuntime(ctx, msg, origin, on, gasUsed, nac)
 	if parent != nil {
 		defer func() {
 			parent.gasUsed = rt.gasUsed
 		}()
 	}
 
-	if types.BigCmp(msg.Value, types.NewInt(0)) != 0 {
-		rt.ChargeGas(gasFundTransfer)
+	aerr := rt.chargeGasSafe(rt.Pricelist().OnMethodInvocation(msg.Value, msg.Method))
+	if aerr != nil {
+		return nil, aerr, rt
+	}
 
+	if types.BigCmp(msg.Value, types.NewInt(0)) != 0 {
 		if err := Transfer(fromActor, toActor, msg.Value); err != nil {
 			return nil, aerrors.Absorb(err, 1, "failed to transfer funds"), nil
 		}
@@ -273,11 +283,13 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 		return nil, err
 	}
 
+	pl := PricelistByEpoch(vm.blockHeight)
 	serMsg, err := msg.Serialize()
 	if err != nil {
 		return nil, xerrors.Errorf("could not serialize message: %w", err)
 	}
-	msgGasCost := int64(len(serMsg)) * gasPerMessageByte
+	msgGasCost := pl.OnChainMessage(len(serMsg))
+	// TODO: charge miner??
 	if msgGasCost > msg.GasLimit {
 		return &ApplyRet{
 			MessageReceipt: types.MessageReceipt{
@@ -288,10 +300,6 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 	}
 
 	st := vm.cstate
-	if err := st.Snapshot(ctx); err != nil {
-		return nil, xerrors.Errorf("snapshot failed: %w", err)
-	}
-	defer st.ClearSnapshot()
 
 	fromActor, err := st.GetActor(msg.From)
 	if err != nil {
@@ -310,7 +318,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 		return &ApplyRet{
 			MessageReceipt: types.MessageReceipt{
 				ExitCode: exitcode.SysErrInvalidCallSeqNum,
-				GasUsed:  msg.GasLimit,
+				GasUsed:  0,
 			},
 		}, nil
 	}
@@ -333,7 +341,20 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 
 	fromActor.Nonce++
 
+	if err := st.Snapshot(ctx); err != nil {
+		return nil, xerrors.Errorf("snapshot failed: %w", err)
+	}
+	defer st.ClearSnapshot()
+
 	ret, actorErr, rt := vm.send(ctx, msg, nil, msgGasCost)
+
+	{
+		actorErr2 := rt.chargeGasSafe(rt.Pricelist().OnChainReturnValue(len(ret)))
+		if actorErr == nil {
+			//TODO: Ambigous what to do in this case
+			actorErr = actorErr2
+		}
+	}
 
 	if aerrors.IsFatal(actorErr) {
 		return nil, xerrors.Errorf("[from=%s,to=%s,n=%d,m=%d,h=%d] fatal error: %w", msg.From, msg.To, msg.Nonce, msg.Method, vm.blockHeight, actorErr)
@@ -353,6 +374,9 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 		}
 	} else {
 		gasUsed = rt.gasUsed
+		if gasUsed < 0 {
+			gasUsed = 0
+		}
 		// refund unused gas
 		refund := types.BigMul(types.NewInt(uint64(msg.GasLimit-gasUsed)), msg.GasPrice)
 		if err := Transfer(gasHolder, fromActor, refund); err != nil {
@@ -547,7 +571,6 @@ func (vm *VM) Invoke(act *types.Actor, rt *Runtime, method abi.MethodNum, params
 	defer func() {
 		rt.ctx = oldCtx
 	}()
-	rt.ChargeGas(gasInvoke)
 	ret, err := vm.inv.Invoke(act, rt, method, params)
 	if err != nil {
 		return nil, err

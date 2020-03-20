@@ -3,8 +3,8 @@ package gen
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
 	"fmt"
+	"github.com/minio/blake2b-simd"
 	"io/ioutil"
 	"sync/atomic"
 
@@ -276,8 +276,12 @@ func CarWalkFunc(nd format.Node) (out []*format.Link, err error) {
 func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m address.Address, round int64) (*types.EPostProof, *types.Ticket, error) {
 	mc := &mca{w: cg.w, sm: cg.sm}
 
-	// TODO: REVIEW: Am I doing this correctly?
-	ticketRand, err := mc.ChainGetRandomness(ctx, pts.Key(), crypto.DomainSeparationTag_TicketProduction, pts.Height(), m.Bytes())
+	buf := new(bytes.Buffer)
+	if err := m.MarshalCBOR(buf); err != nil {
+		return nil, nil, xerrors.Errorf("failed to cbor marshal address: %w", err)
+	}
+
+	ticketRand, err := mc.ChainGetRandomness(ctx, pts.Key(), crypto.DomainSeparationTag_TicketProduction, abi.ChainEpoch(round-build.EcRandomnessLookback), buf.Bytes())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -549,7 +553,11 @@ type ProofInput struct {
 }
 
 func IsRoundWinner(ctx context.Context, ts *types.TipSet, round int64, miner address.Address, epp ElectionPoStProver, a MiningCheckAPI) (*ProofInput, error) {
-	epostRand, err := a.ChainGetRandomness(ctx, ts.Key(), crypto.DomainSeparationTag_ElectionPoStChallengeSeed, abi.ChainEpoch(round-build.EcRandomnessLookback), miner.Bytes())
+	buf := new(bytes.Buffer)
+	if err := miner.MarshalCBOR(buf); err != nil {
+		return nil, xerrors.Errorf("failed to cbor marshal address: %w")
+	}
+	epostRand, err := a.ChainGetRandomness(ctx, ts.Key(), crypto.DomainSeparationTag_ElectionPoStChallengeSeed, abi.ChainEpoch(round-build.EcRandomnessLookback), buf.Bytes())
 	if err != nil {
 		return nil, xerrors.Errorf("chain get randomness: %w", err)
 	}
@@ -584,7 +592,7 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, round int64, miner add
 		})
 	}
 
-	hvrf := sha256.Sum256(vrfout)
+	hvrf := blake2b.Sum256(vrfout)
 	candidates, err := epp.GenerateCandidates(ctx, sinfos, hvrf[:])
 	if err != nil {
 		return nil, xerrors.Errorf("failed to generate electionPoSt candidates: %w", err)
