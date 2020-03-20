@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 
 	"github.com/google/uuid"
@@ -168,7 +169,9 @@ var storageListCmd = &cli.Command{
 }
 
 type storedSector struct {
-	store                   stores.StorageInfo
+	id    stores.ID
+	store stores.StorageInfo
+
 	unsealed, sealed, cache bool
 }
 
@@ -228,6 +231,7 @@ var storageFindCmd = &cli.Command{
 			sts, ok := byId[info.ID]
 			if !ok {
 				sts = &storedSector{
+					id:    info.ID,
 					store: info,
 				}
 				byId[info.ID] = sts
@@ -238,6 +242,7 @@ var storageFindCmd = &cli.Command{
 			sts, ok := byId[info.ID]
 			if !ok {
 				sts = &storedSector{
+					id:    info.ID,
 					store: info,
 				}
 				byId[info.ID] = sts
@@ -248,6 +253,7 @@ var storageFindCmd = &cli.Command{
 			sts, ok := byId[info.ID]
 			if !ok {
 				sts = &storedSector{
+					id:    info.ID,
 					store: info,
 				}
 				byId[info.ID] = sts
@@ -260,10 +266,29 @@ var storageFindCmd = &cli.Command{
 			return err
 		}
 
-		for id, info := range byId {
-			fmt.Printf("In %s (Unsealed: %t; Sealed: %t; Cache: %t)\n", id, info.unsealed, info.sealed, info.cache)
+		var out []*storedSector
+		for _, sector := range byId {
+			out = append(out, sector)
+		}
+		sort.Slice(out, func(i, j int) bool {
+			return out[i].id < out[j].id
+		})
+
+		for _, info := range out {
+			var types string
+			if info.unsealed {
+				types += "Unsealed, "
+			}
+			if info.sealed {
+				types += "Sealed, "
+			}
+			if info.cache {
+				types += "Cache, "
+			}
+
+			fmt.Printf("In %s (%s)\n", info.id, types[:len(types)-2])
 			fmt.Printf("\tSealing: %t; Storage: %t\n", info.store.CanSeal, info.store.CanSeal)
-			if localPath, ok := local[id]; ok {
+			if localPath, ok := local[info.id]; ok {
 				fmt.Printf("\tLocal (%s)\n", localPath)
 			} else {
 				fmt.Printf("\tRemote\n")
