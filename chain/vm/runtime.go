@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"runtime/debug"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -28,11 +27,12 @@ import (
 type Runtime struct {
 	ctx context.Context
 
-	vm     *VM
-	state  *state.StateTree
-	msg    *types.Message
-	height abi.ChainEpoch
-	cst    cbor.IpldStore
+	vm        *VM
+	state     *state.StateTree
+	msg       *types.Message
+	height    abi.ChainEpoch
+	cst       cbor.IpldStore
+	pricelist Pricelist
 
 	gasAvailable int64
 	gasUsed      int64
@@ -78,13 +78,11 @@ func (rs *Runtime) shimCall(f func() interface{}) (rval []byte, aerr aerrors.Act
 	defer func() {
 		if r := recover(); r != nil {
 			if ar, ok := r.(aerrors.ActorError); ok {
-				log.Warn("VM.Call failure: ", ar)
-				debug.PrintStack()
+				log.Errorf("VM.Call failure: %+v", ar)
 				aerr = ar
 				return
 			}
-			debug.PrintStack()
-			log.Errorf("ERROR")
+			log.Errorf("spec actors failure: %s", r)
 			aerr = aerrors.Newf(1, "spec actors failure: %s", r)
 		}
 	}()
@@ -180,6 +178,7 @@ func (rt *Runtime) NewActorAddress() address.Address {
 }
 
 func (rt *Runtime) CreateActor(codeId cid.Cid, address address.Address) {
+	rt.ChargeGas(rt.Pricelist().OnCreateActor())
 	var err error
 
 	err = rt.state.SetActor(address, &types.Actor{
@@ -194,6 +193,7 @@ func (rt *Runtime) CreateActor(codeId cid.Cid, address address.Address) {
 }
 
 func (rt *Runtime) DeleteActor() {
+	rt.ChargeGas(rt.Pricelist().OnDeleteActor())
 	act, err := rt.state.GetActor(rt.Message().Receiver())
 	if err != nil {
 		rt.Abortf(exitcode.SysErrInternal, "failed to load actor in delete actor: %s", err)
@@ -314,6 +314,7 @@ func (rt *Runtime) internalSend(to address.Address, method abi.MethodNum, value 
 		return nil, aerrors.Fatalf("snapshot failed: %s", err)
 	}
 	defer st.ClearSnapshot()
+	rt.ChargeGas(rt.Pricelist().OnMethodInvocation(value, method))
 
 	ret, errSend, subrt := rt.vm.send(ctx, msg, rt, 0)
 	if errSend != nil {
@@ -400,8 +401,6 @@ func (rt *Runtime) GetBalance(a address.Address) (types.BigInt, aerrors.ActorErr
 }
 
 func (rt *Runtime) stateCommit(oldh, newh cid.Cid) aerrors.ActorError {
-	rt.ChargeGas(gasCommit)
-
 	// TODO: we can make this more efficient in the future...
 	act, err := rt.state.GetActor(rt.Message().Receiver())
 	if err != nil {
@@ -422,8 +421,20 @@ func (rt *Runtime) stateCommit(oldh, newh cid.Cid) aerrors.ActorError {
 }
 
 func (rt *Runtime) ChargeGas(toUse int64) {
-	rt.gasUsed = rt.gasUsed + toUse
-	if rt.gasUsed > rt.gasAvailable {
-		rt.Abortf(exitcode.SysErrOutOfGas, "not enough gas: used=%d, available=%d", rt.gasUsed, rt.gasAvailable)
+	err := rt.chargeGasSafe(toUse)
+	if err != nil {
+		panic(err)
 	}
+}
+
+func (rt *Runtime) chargeGasSafe(toUse int64) aerrors.ActorError {
+	rt.gasUsed += toUse
+	if rt.gasUsed > rt.gasAvailable {
+		return aerrors.Newf(uint8(exitcode.SysErrOutOfGas), "not enough gas: used=%d, available=%d", rt.gasUsed, rt.gasAvailable)
+	}
+	return nil
+}
+
+func (rt *Runtime) Pricelist() Pricelist {
+	return rt.pricelist
 }

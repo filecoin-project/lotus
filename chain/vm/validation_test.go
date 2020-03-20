@@ -38,6 +38,9 @@ func init() {
 		/* tests to skip go here */
 		tipset.TestInternalMessageApplicationFailure,
 		tipset.TestInvalidSenderAddress,
+		tipset.TestBlockMessageDeduplication,
+		tipset.TestMinerSubmitFallbackPoSt,
+		tipset.TestMinerMissPoStChallengeWindow,
 	}}
 }
 
