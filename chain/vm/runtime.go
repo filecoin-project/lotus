@@ -44,8 +44,7 @@ type Runtime struct {
 	originNonce uint64
 
 	internalExecutions []*ExecutionResult
-	// the first internal call has a value of 1 for this field
-	internalCallCounter int64
+	numActorsCreated   uint64
 }
 
 func (rs *Runtime) ResolveAddress(address address.Address) (ret address.Address, ok bool) {
@@ -166,7 +165,7 @@ func (rt *Runtime) NewActorAddress() address.Address {
 	if err := binary.Write(&b, binary.BigEndian, rt.originNonce); err != nil {
 		rt.Abortf(exitcode.ErrSerialization, "writing nonce address into a buffer: %v", err)
 	}
-	if err := binary.Write(&b, binary.BigEndian, rt.internalCallCounter); err != nil { // TODO: expose on vm
+	if err := binary.Write(&b, binary.BigEndian, rt.numActorsCreated); err != nil { // TODO: expose on vm
 		rt.Abortf(exitcode.ErrSerialization, "writing callSeqNum address into a buffer: %v", err)
 	}
 	addr, err := address.NewActorAddress(b.Bytes())
@@ -174,6 +173,7 @@ func (rt *Runtime) NewActorAddress() address.Address {
 		rt.Abortf(exitcode.ErrSerialization, "create actor address: %v", err)
 	}
 
+	rt.incrementNumActorsCreated()
 	return addr
 }
 
@@ -340,7 +340,7 @@ func (rt *Runtime) internalSend(to address.Address, method abi.MethodNum, value 
 
 	if subrt != nil {
 		er.Subcalls = subrt.internalExecutions
-		rt.internalCallCounter = subrt.internalCallCounter
+		rt.numActorsCreated = subrt.numActorsCreated
 	}
 	rt.internalExecutions = append(rt.internalExecutions, &er)
 	return ret, errSend
@@ -437,4 +437,8 @@ func (rt *Runtime) chargeGasSafe(toUse int64) aerrors.ActorError {
 
 func (rt *Runtime) Pricelist() Pricelist {
 	return rt.pricelist
+}
+
+func (rt *Runtime) incrementNumActorsCreated() {
+	rt.numActorsCreated++
 }
