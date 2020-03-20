@@ -188,7 +188,7 @@ func (m *Manager) AddPiece(ctx context.Context, sector abi.SectorID, existingPie
 	if len(existingPieces) == 0 { // new
 		best, err = m.index.StorageBestAlloc(ctx, sectorbuilder.FTUnsealed, true)
 	} else { // append to existing
-		best, err = m.index.StorageFindSector(ctx, sector, sectorbuilder.FTUnsealed)
+		best, err = m.index.StorageFindSector(ctx, sector, sectorbuilder.FTUnsealed, false)
 	}
 	if err != nil {
 		return abi.PieceInfo{}, xerrors.Errorf("finding sector path: %w", err)
@@ -227,7 +227,7 @@ func (m *Manager) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticke
 func (m *Manager) SealPreCommit2(ctx context.Context, sector abi.SectorID, phase1Out storage2.PreCommit1Out) (cids storage2.SectorCids, err error) {
 	// TODO: allow workers to fetch the sectors
 
-	best, err := m.index.StorageFindSector(ctx, sector, sectorbuilder.FTCache|sectorbuilder.FTSealed)
+	best, err := m.index.StorageFindSector(ctx, sector, sectorbuilder.FTCache|sectorbuilder.FTSealed, true)
 	if err != nil {
 		return storage2.SectorCids{}, xerrors.Errorf("finding path for sector sealing: %w", err)
 	}
@@ -243,7 +243,7 @@ func (m *Manager) SealPreCommit2(ctx context.Context, sector abi.SectorID, phase
 }
 
 func (m *Manager) SealCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storage2.SectorCids) (output storage2.Commit1Out, err error) {
-	best, err := m.index.StorageFindSector(ctx, sector, sectorbuilder.FTCache|sectorbuilder.FTSealed)
+	best, err := m.index.StorageFindSector(ctx, sector, sectorbuilder.FTCache|sectorbuilder.FTSealed, true)
 	if err != nil {
 		return nil, xerrors.Errorf("finding path for sector sealing: %w", err)
 	}
@@ -276,7 +276,7 @@ func (m *Manager) SealCommit2(ctx context.Context, sector abi.SectorID, phase1Ou
 }
 
 func (m *Manager) FinalizeSector(ctx context.Context, sector abi.SectorID) error {
-	best, err := m.index.StorageFindSector(ctx, sector, sectorbuilder.FTCache|sectorbuilder.FTSealed|sectorbuilder.FTUnsealed)
+	best, err := m.index.StorageFindSector(ctx, sector, sectorbuilder.FTCache|sectorbuilder.FTSealed|sectorbuilder.FTUnsealed, true)
 	if err != nil {
 		return xerrors.Errorf("finding sealed sector: %w", err)
 	}

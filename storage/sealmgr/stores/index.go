@@ -35,7 +35,7 @@ type SectorIndex interface { // part of storage-miner api
 	// TODO: StorageUpdateStats(FsStat)
 
 	StorageDeclareSector(ctx context.Context, storageId ID, s abi.SectorID, ft sectorbuilder.SectorFileType) error
-	StorageFindSector(context.Context, abi.SectorID, sectorbuilder.SectorFileType) ([]StorageInfo, error)
+	StorageFindSector(ctx context.Context, s abi.SectorID, ft sectorbuilder.SectorFileType, allowFetch bool) ([]StorageInfo, error)
 
 	StorageBestAlloc(ctx context.Context, allocate sectorbuilder.SectorFileType, sealing bool) ([]StorageInfo, error)
 }
@@ -137,7 +137,7 @@ func (i *Index) StorageDeclareSector(ctx context.Context, storageId ID, s abi.Se
 	return nil
 }
 
-func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft sectorbuilder.SectorFileType) ([]StorageInfo, error) {
+func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft sectorbuilder.SectorFileType, allowFetch bool) ([]StorageInfo, error) {
 	i.lk.RLock()
 	defer i.lk.RUnlock()
 
@@ -180,6 +180,33 @@ func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft sector
 			CanSeal:  st.info.CanSeal,
 			CanStore: st.info.CanStore,
 		})
+	}
+
+	if allowFetch {
+		for id, st := range i.stores {
+			if _, ok := storageIDs[id]; ok {
+				continue
+			}
+
+			urls := make([]string, len(st.info.URLs))
+			for k, u := range st.info.URLs {
+				rl, err := url.Parse(u)
+				if err != nil {
+					return nil, xerrors.Errorf("failed to parse url: %w", err)
+				}
+
+				rl.Path = gopath.Join(rl.Path, ft.String(), sectorutil.SectorName(s))
+				urls[k] = rl.String()
+			}
+
+			out = append(out, StorageInfo{
+				ID:       id,
+				URLs:     urls,
+				Weight:   st.info.Weight * 0, // TODO: something better than just '0'
+				CanSeal:  st.info.CanSeal,
+				CanStore: st.info.CanStore,
+			})
+		}
 	}
 
 	return out, nil
