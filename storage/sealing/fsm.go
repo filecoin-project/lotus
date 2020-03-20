@@ -85,7 +85,7 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 	for _, event := range events {
 		l := Log{
 			Timestamp: uint64(time.Now().Unix()),
-			Message:   fmt.Sprintf("%+v", event),
+			Message:   fmt.Sprintf("%s", event),
 			Kind:      fmt.Sprintf("event;%T", event.User),
 		}
 

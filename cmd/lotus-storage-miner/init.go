@@ -174,7 +174,7 @@ var initCmd = &cli.Command{
 			var localPaths []config.LocalPath
 
 			if pssb := cctx.StringSlice("pre-sealed-sectors"); len(pssb) != 0 {
-				log.Infof("Setting up storage config with presealed sector: %v", pssb)
+				log.Infof("Setting up storage config with presealed sectors: %v", pssb)
 
 				for _, psp := range pssb {
 					psp, err := homedir.Expand(psp)
@@ -249,9 +249,14 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, metadata string,
 		return xerrors.Errorf("reading preseal metadata: %w", err)
 	}
 
-	meta := genesis.Miner{}
-	if err := json.Unmarshal(b, &meta); err != nil {
+	psm := map[string]genesis.Miner{}
+	if err := json.Unmarshal(b, &psm); err != nil {
 		return xerrors.Errorf("unmarshaling preseal metadata: %w", err)
+	}
+
+	meta, ok := psm[maddr.String()]
+	if !ok {
+		return xerrors.Errorf("preseal file didn't contain metadata for miner %s", maddr)
 	}
 
 	maxSectorID := abi.SectorNumber(0)
@@ -326,6 +331,8 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, metadata string,
 			return err
 		}*/
 	}
+
+	log.Infof("Setting next sector ID to %d", maxSectorID+1)
 
 	buf := make([]byte, binary.MaxVarintLen64)
 	size := binary.PutUvarint(buf, uint64(maxSectorID+1))
@@ -412,14 +419,27 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 					return xerrors.Errorf("failed to start up genesis miner: %w", err)
 				}
 
-				defer func() {
-					if err := m.Unregister(ctx, a); err != nil {
-						log.Error("failed to shut down storage miner: ", err)
-					}
-				}()
+				cerr := configureStorageMiner(ctx, api, a, peerid)
 
-				if err := configureStorageMiner(ctx, api, a, peerid); err != nil {
+				if err := m.Unregister(ctx, a); err != nil {
+					log.Error("failed to shut down storage miner: ", err)
+				}
+
+				if cerr != nil {
 					return xerrors.Errorf("failed to configure storage miner: %w", err)
+				}
+			}
+
+			if pssb := cctx.String("pre-sealed-metadata"); pssb != "" {
+				pssb, err := homedir.Expand(pssb)
+				if err != nil {
+					return err
+				}
+
+				log.Infof("Importing pre-sealed sector metadata for %s", a)
+
+				if err := migratePreSealMeta(ctx, api, pssb, a, mds); err != nil {
+					return xerrors.Errorf("migrating presealed sector metadata: %w", err)
 				}
 			}
 
