@@ -137,11 +137,11 @@ func main() {
 				if err != nil {
 					return err
 				}
-				defer func() {
+				/*defer func() {
 					if err := os.RemoveAll(tsdir); err != nil {
 						log.Warn("remove all: ", err)
 					}
-				}()
+				}()*/
 				sbdir = tsdir
 			} else {
 				exp, err := homedir.Expand(robench)
