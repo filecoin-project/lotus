@@ -1,12 +1,13 @@
 package miner
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/go-address"
+	address "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	lru "github.com/hashicorp/golang-lru"
@@ -348,7 +349,12 @@ func (m *Miner) computeTicket(ctx context.Context, addr address.Address, base *M
 		return nil, err
 	}
 
-	input, err := m.api.ChainGetRandomness(ctx, base.ts.Key(), crypto.DomainSeparationTag_TicketProduction, base.ts.Height(), addr.Bytes())
+	buf := new(bytes.Buffer)
+	if err := addr.MarshalCBOR(buf); err != nil {
+		return nil, xerrors.Errorf("failed to marshal address to cbor: %w", err)
+	}
+
+	input, err := m.api.ChainGetRandomness(ctx, base.ts.Key(), crypto.DomainSeparationTag_TicketProduction, base.ts.Height(), buf.Bytes())
 	if err != nil {
 		return nil, err
 	}
