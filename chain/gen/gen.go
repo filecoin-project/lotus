@@ -3,8 +3,8 @@ package gen
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
 	"fmt"
+	"github.com/minio/blake2b-simd"
 	"io/ioutil"
 	"sync/atomic"
 
@@ -584,7 +584,7 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, round int64, miner add
 		})
 	}
 
-	hvrf := sha256.Sum256(vrfout)
+	hvrf := blake2b.Sum256(vrfout)
 	candidates, err := epp.GenerateCandidates(ctx, sinfos, hvrf[:])
 	if err != nil {
 		return nil, xerrors.Errorf("failed to generate electionPoSt candidates: %w", err)
