@@ -78,7 +78,7 @@ func (r *Remote) AcquireSector(ctx context.Context, s abi.SectorID, existing sec
 }
 
 func (r *Remote) acquireFromRemote(ctx context.Context, s abi.SectorID, fileType sectorbuilder.SectorFileType, sealing bool) (string, ID, func(), error) {
-	si, err := r.index.StorageFindSector(ctx, s, fileType)
+	si, err := r.index.StorageFindSector(ctx, s, fileType, false)
 	if err != nil {
 		return "", "", nil, err
 	}

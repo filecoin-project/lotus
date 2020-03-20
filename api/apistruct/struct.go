@@ -186,7 +186,7 @@ type StorageMinerStruct struct {
 		StorageLocal         func(context.Context) (map[stores.ID]string, error)                                                          `perm:"admin"`
 		StorageAttach        func(context.Context, stores.StorageInfo, stores.FsStat) error                                               `perm:"admin"`
 		StorageDeclareSector func(context.Context, stores.ID, abi.SectorID, sectorbuilder.SectorFileType) error                           `perm:"admin"`
-		StorageFindSector    func(context.Context, abi.SectorID, sectorbuilder.SectorFileType) ([]stores.StorageInfo, error)              `perm:"admin"`
+		StorageFindSector    func(context.Context, abi.SectorID, sectorbuilder.SectorFileType, bool) ([]stores.StorageInfo, error)        `perm:"admin"`
 		StorageInfo          func(context.Context, stores.ID) (stores.StorageInfo, error)                                                 `perm:"admin"`
 		StorageBestAlloc     func(ctx context.Context, allocate sectorbuilder.SectorFileType, sealing bool) ([]stores.StorageInfo, error) `perm:"admin"`
 
@@ -664,8 +664,8 @@ func (c *StorageMinerStruct) StorageDeclareSector(ctx context.Context, storageId
 	return c.Internal.StorageDeclareSector(ctx, storageId, s, ft)
 }
 
-func (c *StorageMinerStruct) StorageFindSector(ctx context.Context, si abi.SectorID, types sectorbuilder.SectorFileType) ([]stores.StorageInfo, error) {
-	return c.Internal.StorageFindSector(ctx, si, types)
+func (c *StorageMinerStruct) StorageFindSector(ctx context.Context, si abi.SectorID, types sectorbuilder.SectorFileType, allowFetch bool) ([]stores.StorageInfo, error) {
+	return c.Internal.StorageFindSector(ctx, si, types, allowFetch)
 }
 
 func (c *StorageMinerStruct) StorageList(ctx context.Context) (map[stores.ID][]stores.Decl, error) {

@@ -166,7 +166,7 @@ func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, existing s
 			continue
 		}
 
-		si, err := st.index.StorageFindSector(ctx, sid, fileType)
+		si, err := st.index.StorageFindSector(ctx, sid, fileType, false)
 		if err != nil {
 			log.Warnf("finding existing sector %d(t:%d) failed: %+v", sid, fileType, err)
 			continue
