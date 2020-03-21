@@ -1,6 +1,7 @@
 package store_test
 
 import (
+	"bytes"
 	"context"
 	"testing"
 
@@ -13,6 +14,8 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
+
+	datastore "github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 )
 
@@ -68,5 +71,39 @@ func BenchmarkGetRandomness(b *testing.B) {
 		if err != nil {
 			b.Fatal(err)
 		}
+	}
+}
+
+func TestChainExportImport(t *testing.T) {
+	cg, err := gen.NewGenerator()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var last *types.TipSet
+	for i := 0; i < 100; i++ {
+		ts, err := cg.NextTipSet()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		last = ts.TipSet.TipSet()
+	}
+
+	buf := new(bytes.Buffer)
+	if err := cg.ChainStore().Export(context.TODO(), last, buf); err != nil {
+		t.Fatal(err)
+	}
+
+	nbs := blockstore.NewBlockstore(datastore.NewMapDatastore())
+	cs := store.NewChainStore(nbs, datastore.NewMapDatastore(), nil)
+
+	root, err := cs.Import(buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !root.Equals(last) {
+		t.Fatal("imported chain differed from exported chain")
 	}
 }
