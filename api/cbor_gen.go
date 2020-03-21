@@ -124,7 +124,7 @@ func (t *PaymentInfo) UnmarshalCBOR(r io.Reader) error {
 			{
 
 				if err := t.Channel.UnmarshalCBOR(br); err != nil {
-					return err
+					return xerrors.Errorf("unmarshaling t.Channel: %w", err)
 				}
 
 			}

@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
-	"github.com/ipfs/go-cid"
+	cid "github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 )
@@ -133,7 +133,7 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 	{
 
 		if err := t.Miner.UnmarshalCBOR(br); err != nil {
-			return err
+			return xerrors.Errorf("unmarshaling t.Miner: %w", err)
 		}
 
 	}
@@ -153,7 +153,7 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 		} else {
 			t.Ticket = new(Ticket)
 			if err := t.Ticket.UnmarshalCBOR(br); err != nil {
-				return err
+				return xerrors.Errorf("unmarshaling t.Ticket pointer: %w", err)
 			}
 		}
 
@@ -163,7 +163,7 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 	{
 
 		if err := t.EPostProof.UnmarshalCBOR(br); err != nil {
-			return err
+			return xerrors.Errorf("unmarshaling t.EPostProof: %w", err)
 		}
 
 	}
@@ -198,7 +198,7 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 	{
 
 		if err := t.ParentWeight.UnmarshalCBOR(br); err != nil {
-			return err
+			return xerrors.Errorf("unmarshaling t.ParentWeight: %w", err)
 		}
 
 	}
@@ -268,7 +268,7 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 	{
 
 		if err := t.BLSAggregate.UnmarshalCBOR(br); err != nil {
-			return err
+			return xerrors.Errorf("unmarshaling t.BLSAggregate: %w", err)
 		}
 
 	}
@@ -302,7 +302,7 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 		} else {
 			t.BlockSig = new(crypto.Signature)
 			if err := t.BlockSig.UnmarshalCBOR(br); err != nil {
-				return err
+				return xerrors.Errorf("unmarshaling t.BlockSig pointer: %w", err)
 			}
 		}
 
@@ -707,7 +707,7 @@ func (t *Message) UnmarshalCBOR(r io.Reader) error {
 	{
 
 		if err := t.To.UnmarshalCBOR(br); err != nil {
-			return err
+			return xerrors.Errorf("unmarshaling t.To: %w", err)
 		}
 
 	}
@@ -716,7 +716,7 @@ func (t *Message) UnmarshalCBOR(r io.Reader) error {
 	{
 
 		if err := t.From.UnmarshalCBOR(br); err != nil {
-			return err
+			return xerrors.Errorf("unmarshaling t.From: %w", err)
 		}
 
 	}
@@ -739,7 +739,7 @@ func (t *Message) UnmarshalCBOR(r io.Reader) error {
 	{
 
 		if err := t.Value.UnmarshalCBOR(br); err != nil {
-			return err
+			return xerrors.Errorf("unmarshaling t.Value: %w", err)
 		}
 
 	}
@@ -748,7 +748,7 @@ func (t *Message) UnmarshalCBOR(r io.Reader) error {
 	{
 
 		if err := t.GasPrice.UnmarshalCBOR(br); err != nil {
-			return err
+			return xerrors.Errorf("unmarshaling t.GasPrice: %w", err)
 		}
 
 	}
@@ -852,7 +852,7 @@ func (t *SignedMessage) UnmarshalCBOR(r io.Reader) error {
 	{
 
 		if err := t.Message.UnmarshalCBOR(br); err != nil {
-			return err
+			return xerrors.Errorf("unmarshaling t.Message: %w", err)
 		}
 
 	}
@@ -861,7 +861,7 @@ func (t *SignedMessage) UnmarshalCBOR(r io.Reader) error {
 	{
 
 		if err := t.Signature.UnmarshalCBOR(br); err != nil {
-			return err
+			return xerrors.Errorf("unmarshaling t.Signature: %w", err)
 		}
 
 	}
@@ -1026,7 +1026,7 @@ func (t *Actor) UnmarshalCBOR(r io.Reader) error {
 	{
 
 		if err := t.Balance.UnmarshalCBOR(br); err != nil {
-			return err
+			return xerrors.Errorf("unmarshaling t.Balance: %w", err)
 		}
 
 	}
@@ -1238,7 +1238,7 @@ func (t *BlockMsg) UnmarshalCBOR(r io.Reader) error {
 		} else {
 			t.Header = new(BlockHeader)
 			if err := t.Header.UnmarshalCBOR(br); err != nil {
-				return err
+				return xerrors.Errorf("unmarshaling t.Header pointer: %w", err)
 			}
 		}
 

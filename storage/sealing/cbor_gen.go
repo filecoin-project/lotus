@@ -694,7 +694,7 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 			{
 
 				if err := t.Ticket.UnmarshalCBOR(br); err != nil {
-					return err
+					return xerrors.Errorf("unmarshaling t.Ticket: %w", err)
 				}
 
 			}
@@ -729,7 +729,7 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 			{
 
 				if err := t.Seed.UnmarshalCBOR(br); err != nil {
-					return err
+					return xerrors.Errorf("unmarshaling t.Seed: %w", err)
 				}
 
 			}
