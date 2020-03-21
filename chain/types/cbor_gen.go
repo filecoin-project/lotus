@@ -267,8 +267,20 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 
 	{
 
-		if err := t.BLSAggregate.UnmarshalCBOR(br); err != nil {
-			return xerrors.Errorf("unmarshaling t.BLSAggregate: %w", err)
+		pb, err := br.PeekByte()
+		if err != nil {
+			return err
+		}
+		if pb == cbg.CborNull[0] {
+			var nbuf [1]byte
+			if _, err := br.Read(nbuf[:]); err != nil {
+				return err
+			}
+		} else {
+			t.BLSAggregate = new(crypto.Signature)
+			if err := t.BLSAggregate.UnmarshalCBOR(br); err != nil {
+				return xerrors.Errorf("unmarshaling t.BLSAggregate pointer: %w", err)
+			}
 		}
 
 	}
