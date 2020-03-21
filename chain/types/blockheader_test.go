@@ -36,7 +36,7 @@ func testBlockHeader(t testing.TB) *BlockHeader {
 		},
 		Parents:               []cid.Cid{c, c},
 		ParentMessageReceipts: c,
-		BLSAggregate:          crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte("boo! im a signature")},
+		BLSAggregate:          &crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte("boo! im a signature")},
 		ParentWeight:          NewInt(123125126212),
 		Messages:              c,
 		Height:                85919298723,
