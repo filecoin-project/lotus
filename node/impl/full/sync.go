@@ -8,7 +8,6 @@ import (
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/types"
 	cid "github.com/ipfs/go-cid"
-	"github.com/prometheus/common/log"
 
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"go.uber.org/fx"
