@@ -83,7 +83,6 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 	/////
 	// First process all events
 
-
 	for _, event := range events {
 		e, err := json.Marshal(event)
 		if err != nil {
