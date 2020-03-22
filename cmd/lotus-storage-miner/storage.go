@@ -135,27 +135,37 @@ var storageListCmd = &cli.Command{
 		}
 
 		for id, sectors := range st {
-			var u, s, c int
+			var cnt [3]int
 			for _, decl := range sectors {
-				if decl.SectorFileType&sectorbuilder.FTUnsealed > 0 {
-					u++
-				}
-				if decl.SectorFileType&sectorbuilder.FTSealed > 0 {
-					s++
-				}
-				if decl.SectorFileType&sectorbuilder.FTCache > 0 {
-					c++
+				for i := range cnt {
+					if decl.SectorFileType&(1<<i) != 0 {
+						cnt[i]++
+					}
 				}
 			}
 
 			fmt.Printf("%s:\n", id)
-			fmt.Printf("\tUnsealed: %d; Sealed: %d; Caches: %d\n", u, s, c)
+			fmt.Printf("\tUnsealed: %d; Sealed: %d; Caches: %d\n", cnt[0], cnt[1], cnt[2])
 
 			si, err := nodeApi.StorageInfo(ctx, id)
 			if err != nil {
 				return err
 			}
-			fmt.Printf("\tSeal: %t; Store: %t; Weight: %d\n", si.CanSeal, si.CanStore, si.Weight)
+
+			fmt.Print("\t")
+			if si.CanSeal || si.CanStore {
+				fmt.Printf("Weight: %d; Use: ", si.Weight)
+				if si.CanSeal {
+					fmt.Print("Seal ")
+				}
+				if si.CanStore {
+					fmt.Print("Store")
+				}
+				fmt.Println("")
+			} else {
+				fmt.Println("Use: ReadOnly")
+			}
+
 			if localPath, ok := local[id]; ok {
 				fmt.Printf("\tLocal: %s\n", localPath)
 			}
