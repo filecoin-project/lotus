@@ -16,7 +16,7 @@ func TestManageFdLimit(t *testing.T) {
 		t.Errorf("Cannot manage file descriptors")
 	}
 
-	if maxFds != uint64(16 << 10) {
+	if maxFds != uint64(16<<10) {
 		t.Errorf("Maximum file descriptors default value changed")
 	}
 }
