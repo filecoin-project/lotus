@@ -47,7 +47,7 @@ func (rpn *retrievalProviderNode) UnsealSector(ctx context.Context, sectorID uin
 
 	mid, err := address.IDFromAddress(rpn.miner.Address())
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	sid := abi.SectorID{

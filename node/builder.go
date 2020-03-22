@@ -266,7 +266,7 @@ func Online() Option {
 		ApplyIf(func(s *Settings) bool { return s.nodeType == repo.StorageMiner },
 			Override(new(api.Common), From(new(common.CommonAPI))),
 
-			Override(new(*stores.Index), stores.NewIndex()),
+			Override(new(*stores.Index), stores.NewIndex),
 			Override(new(stores.SectorIndex), From(new(*stores.Index))),
 			Override(new(dtypes.MinerID), modules.MinerID),
 			Override(new(dtypes.MinerAddress), modules.MinerAddress),

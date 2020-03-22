@@ -49,7 +49,7 @@ func main() {
 		Version: build.UserVersion,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:    "workerrepo",
+				Name:    FlagStorageRepo,
 				EnvVars: []string{"WORKER_PATH"},
 				Value:   "~/.lotusworker", // TODO: Consider XDG_DATA_HOME
 			},
@@ -261,7 +261,7 @@ var runCmd = &cli.Command{
 			log.Warn("Graceful shutdown successful")
 		}()
 
-		nl, err := net.Listen("tcp4", cctx.String("address"))
+		nl, err := net.Listen("tcp", cctx.String("address"))
 		if err != nil {
 			return err
 		}
