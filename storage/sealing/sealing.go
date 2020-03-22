@@ -150,9 +150,9 @@ func (m *Sealing) SealPiece(ctx context.Context, size abi.UnpaddedPieceSize, r i
 func (m *Sealing) newSector(sid abi.SectorNumber, rt abi.RegisteredProof, pieces []Piece) error {
 	log.Infof("Start sealing %d", sid)
 	return m.sectors.Send(uint64(sid), SectorStart{
-		id:         sid,
-		pieces:     pieces,
-		sectorType: rt,
+		ID:         sid,
+		Pieces:     pieces,
+		SectorType: rt,
 	})
 }
 

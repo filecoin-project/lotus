@@ -76,12 +76,12 @@ func TestSeedRevert(t *testing.T) {
 	m.planSingle(SectorSeedReady{})
 	require.Equal(m.t, m.state.State, api.Committing)
 
-	_, err := m.s.plan([]statemachine.Event{{SectorSeedReady{seed: api.SealSeed{Epoch: 5}}}, {SectorCommitted{}}}, m.state)
+	_, err := m.s.plan([]statemachine.Event{{SectorSeedReady{Seed: api.SealSeed{Epoch: 5}}}, {SectorCommitted{}}}, m.state)
 	require.NoError(t, err)
 	require.Equal(m.t, m.state.State, api.Committing)
 
 	// not changing the seed this time
-	_, err = m.s.plan([]statemachine.Event{{SectorSeedReady{seed: api.SealSeed{Epoch: 5}}}, {SectorCommitted{}}}, m.state)
+	_, err = m.s.plan([]statemachine.Event{{SectorSeedReady{Seed: api.SealSeed{Epoch: 5}}}, {SectorCommitted{}}}, m.state)
 	require.Equal(m.t, m.state.State, api.CommitWait)
 
 	m.planSingle(SectorProving{})
