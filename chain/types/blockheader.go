@@ -53,7 +53,7 @@ type BlockHeader struct {
 
 	Messages cid.Cid // 8
 
-	BLSAggregate crypto.Signature // 9
+	BLSAggregate *crypto.Signature // 9
 
 	Timestamp uint64 // 10
 

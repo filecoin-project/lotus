@@ -92,7 +92,7 @@ require (
 	github.com/prometheus/common v0.4.0 // indirect
 	github.com/stretchr/testify v1.4.0
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
-	github.com/whyrusleeping/cbor-gen v0.0.0-20200222160900-51052a1e8191
+	github.com/whyrusleeping/cbor-gen v0.0.0-20200321164527-9340289d0ca7
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
 	github.com/whyrusleeping/pubsub v0.0.0-20131020042734-02de8aa2db3d
 	go.opencensus.io v0.22.2

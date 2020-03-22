@@ -133,7 +133,7 @@ func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wal
 	return fullBlock, nil
 }
 
-func aggregateSignatures(sigs []crypto.Signature) (crypto.Signature, error) {
+func aggregateSignatures(sigs []crypto.Signature) (*crypto.Signature, error) {
 	var blsSigs []bls.Signature
 	for _, s := range sigs {
 		var bsig bls.Signature
@@ -142,7 +142,7 @@ func aggregateSignatures(sigs []crypto.Signature) (crypto.Signature, error) {
 	}
 
 	aggSig := bls.Aggregate(blsSigs)
-	return crypto.Signature{
+	return &crypto.Signature{
 		Type: crypto.SigTypeBLS,
 		Data: aggSig[:],
 	}, nil
