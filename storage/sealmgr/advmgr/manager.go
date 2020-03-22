@@ -59,7 +59,7 @@ type Manager struct {
 	workerFree chan workerID
 	closing    chan struct{}
 
-	schedQueue list.List // List[*workerRequest]
+	schedQueue *list.List // List[*workerRequest]
 }
 
 func New(ls stores.LocalStorage, si stores.SectorIndex, cfg *sectorbuilder.Config, urls URLs, ca api.Common) (*Manager, error) {
@@ -96,6 +96,8 @@ func New(ls stores.LocalStorage, si stores.SectorIndex, cfg *sectorbuilder.Confi
 		schedule:   make(chan *workerRequest),
 		workerFree: make(chan workerID),
 		closing:    make(chan struct{}),
+
+		schedQueue: list.New(),
 
 		Prover: prover,
 	}
