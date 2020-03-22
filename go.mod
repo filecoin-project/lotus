@@ -102,6 +102,7 @@ require (
 	go.uber.org/goleak v1.0.0 // indirect
 	go.uber.org/multierr v1.4.0
 	go.uber.org/zap v1.13.0
+	golang.org/x/sys v0.0.0-20191210023423-ac6580df4449
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
 	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543
 	gopkg.in/urfave/cli.v2 v2.0.0-20180128182452-d3ae77c26ac8

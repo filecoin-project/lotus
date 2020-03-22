@@ -20,6 +20,7 @@ import (
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/auth"
 	"github.com/filecoin-project/lotus/lib/jsonrpc"
+	"github.com/filecoin-project/lotus/lib/ulimit"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -55,6 +56,10 @@ var runCmd = &cli.Command{
 		v, err := nodeApi.Version(ctx)
 		if err != nil {
 			return err
+		}
+
+		if _, _, err := ulimit.ManageFdLimit(); err != nil {
+			log.Errorf("setting file descriptor limit: %s", err)
 		}
 
 		if v.APIVersion != build.APIVersion {
