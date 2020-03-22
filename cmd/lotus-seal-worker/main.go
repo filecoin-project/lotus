@@ -237,7 +237,7 @@ var runCmd = &cli.Command{
 		rpcServer.Register("Filecoin", apistruct.PermissionedWorkerAPI(workerApi))
 
 		mux.Handle("/rpc/v0", rpcServer)
-		mux.PathPrefix("/remote").HandlerFunc((&stores.FetchHandler{Store: localStore}).ServeHTTP)
+		mux.PathPrefix("/remote").HandlerFunc((&stores.FetchHandler{Local: localStore}).ServeHTTP)
 		mux.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
 
 		ah := &auth.Handler{

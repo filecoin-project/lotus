@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"io/ioutil"
+	"math/bits"
 	"os"
 	"path/filepath"
 	"sync"
@@ -187,6 +188,7 @@ func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, existing s
 			sectorutil.SetPathByType(&storageIDs, fileType, string(info.ID))
 
 			existing ^= fileType
+			break
 		}
 	}
 
@@ -266,6 +268,37 @@ func (st *Local) Local(ctx context.Context) ([]StoragePath, error) {
 	}
 
 	return out, nil
+}
+
+func (st *Local) delete(ctx context.Context, sid abi.SectorID, typ sectorbuilder.SectorFileType) error {
+	if bits.OnesCount(uint(typ)) != 1 {
+		return xerrors.New("delete expects one file type")
+	}
+
+	si, err := st.index.StorageFindSector(ctx, sid, typ, false)
+	if err != nil {
+		return xerrors.Errorf("finding existing sector %d(t:%d) failed: %w", sid, typ, err)
+	}
+
+	for _, info := range si {
+		p, ok := st.paths[info.ID]
+		if !ok {
+			continue
+		}
+
+		if p.local == "" { // TODO: can that even be the case?
+			continue
+		}
+
+		spath := filepath.Join(p.local, typ.String(), sectorutil.SectorName(sid))
+		log.Infof("remove %s", spath)
+
+		if err := os.RemoveAll(spath); err != nil {
+			log.Errorf("removing sector (%v) from %s: %+v", sid, spath, err)
+		}
+	}
+
+	return nil
 }
 
 func (st *Local) FsStat(id ID) (FsStat, error) {

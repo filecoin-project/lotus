@@ -35,7 +35,8 @@ type SectorIndex interface { // part of storage-miner api
 	// TODO: StorageUpdateStats(FsStat)
 
 	StorageDeclareSector(ctx context.Context, storageId ID, s abi.SectorID, ft sectorbuilder.SectorFileType) error
-	StorageFindSector(ctx context.Context, s abi.SectorID, ft sectorbuilder.SectorFileType, allowFetch bool) ([]StorageInfo, error)
+	StorageDropSector(ctx context.Context, storageId ID, s abi.SectorID, ft sectorbuilder.SectorFileType) error
+	StorageFindSector(ctx context.Context, sector abi.SectorID, ft sectorbuilder.SectorFileType, allowFetch bool) ([]StorageInfo, error)
 
 	StorageBestAlloc(ctx context.Context, allocate sectorbuilder.SectorFileType, sealing bool) ([]StorageInfo, error)
 }
@@ -132,6 +133,40 @@ func (i *Index) StorageDeclareSector(ctx context.Context, storageId ID, s abi.Se
 		}
 
 		i.sectors[d] = append(i.sectors[d], storageId)
+	}
+
+	return nil
+}
+
+func (i *Index) StorageDropSector(ctx context.Context, storageId ID, s abi.SectorID, ft sectorbuilder.SectorFileType) error {
+	i.lk.Lock()
+	defer i.lk.Unlock()
+
+	for _, fileType := range pathTypes {
+		if fileType&ft == 0 {
+			continue
+		}
+
+		d := Decl{s, fileType}
+
+		if len(i.sectors[d]) == 0 {
+			return nil
+		}
+
+		rewritten := make([]ID, 0, len(i.sectors[d])-1)
+		for _, sid := range i.sectors[d] {
+			if sid == storageId {
+				continue
+			}
+
+			rewritten = append(rewritten, sid)
+		}
+		if len(rewritten) == 0 {
+			delete(i.sectors, d)
+			return nil
+		}
+
+		i.sectors[d] = rewritten
 	}
 
 	return nil
