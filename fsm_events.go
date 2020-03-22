@@ -26,7 +26,8 @@ type SectorRestart struct{}
 func (evt SectorRestart) applyGlobal(*SectorInfo) bool { return false }
 
 type SectorFatalError struct{ error }
-func (evt SectorFatalError) FormatError(xerrors.Printer) (next error) {return evt.error}
+
+func (evt SectorFatalError) FormatError(xerrors.Printer) (next error) { return evt.error }
 
 func (evt SectorFatalError) applyGlobal(state *SectorInfo) bool {
 	log.Errorf("Fatal error on sector %d: %+v", state.SectorID, evt.error)
@@ -84,12 +85,14 @@ func (evt SectorSealed) apply(state *SectorInfo) {
 }
 
 type SectorSealFailed struct{ error }
-func (evt SectorSealFailed) FormatError(xerrors.Printer) (next error) {return evt.error}
-func (evt SectorSealFailed) apply(*SectorInfo) {}
+
+func (evt SectorSealFailed) FormatError(xerrors.Printer) (next error) { return evt.error }
+func (evt SectorSealFailed) apply(*SectorInfo)                        {}
 
 type SectorPreCommitFailed struct{ error }
-func (evt SectorPreCommitFailed) FormatError(xerrors.Printer) (next error) {return evt.error}
-func (evt SectorPreCommitFailed) apply(*SectorInfo) {}
+
+func (evt SectorPreCommitFailed) FormatError(xerrors.Printer) (next error) { return evt.error }
+func (evt SectorPreCommitFailed) apply(*SectorInfo)                        {}
 
 type SectorPreCommitted struct {
 	Message cid.Cid
@@ -108,12 +111,14 @@ func (evt SectorSeedReady) apply(state *SectorInfo) {
 }
 
 type SectorComputeProofFailed struct{ error }
-func (evt SectorComputeProofFailed) FormatError(xerrors.Printer) (next error) {return evt.error}
-func (evt SectorComputeProofFailed) apply(*SectorInfo) {}
+
+func (evt SectorComputeProofFailed) FormatError(xerrors.Printer) (next error) { return evt.error }
+func (evt SectorComputeProofFailed) apply(*SectorInfo)                        {}
 
 type SectorCommitFailed struct{ error }
-func (evt SectorCommitFailed) FormatError(xerrors.Printer) (next error) {return evt.error}
-func (evt SectorCommitFailed) apply(*SectorInfo) {}
+
+func (evt SectorCommitFailed) FormatError(xerrors.Printer) (next error) { return evt.error }
+func (evt SectorCommitFailed) apply(*SectorInfo)                        {}
 
 type SectorCommitted struct {
 	Message cid.Cid
@@ -134,8 +139,9 @@ type SectorFinalized struct{}
 func (evt SectorFinalized) apply(*SectorInfo) {}
 
 type SectorFinalizeFailed struct{ error }
-func (evt SectorFinalizeFailed) FormatError(xerrors.Printer) (next error) {return evt.error}
-func (evt SectorFinalizeFailed) apply(*SectorInfo) {}
+
+func (evt SectorFinalizeFailed) FormatError(xerrors.Printer) (next error) { return evt.error }
+func (evt SectorFinalizeFailed) apply(*SectorInfo)                        {}
 
 // Failed state recovery
 
