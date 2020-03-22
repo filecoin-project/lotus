@@ -17,35 +17,37 @@ import (
 var log = logging.Logger("stores")
 
 type FetchHandler struct {
-	Store
+	*Local
 }
 
 func (handler *FetchHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) { // /remote/
 	mux := mux.NewRouter()
 
 	mux.HandleFunc("/remote/{type}/{id}", handler.remoteGetSector).Methods("GET")
-
-	log.Infof("SERVEGETREMOTE %s", r.URL)
+	mux.HandleFunc("/remote/{type}/{id}", handler.remoteDeleteSector).Methods("DELETE")
 
 	mux.ServeHTTP(w, r)
 }
 
 func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Request) {
+	log.Infof("SERVE GET %s", r.URL)
 	vars := mux.Vars(r)
 
 	id, err := sectorutil.ParseSectorID(vars["id"])
 	if err != nil {
-		log.Error(err)
+		log.Error("%+v", err)
 		w.WriteHeader(500)
 		return
 	}
 
 	ft, err := ftFromString(vars["type"])
 	if err != nil {
+		log.Error("%+v", err)
 		return
 	}
-	paths, _, done, err := handler.Store.AcquireSector(r.Context(), id, ft, 0, false)
+	paths, _, done, err := handler.Local.AcquireSector(r.Context(), id, ft, 0, false)
 	if err != nil {
+		log.Error("%+v", err)
 		return
 	}
 	defer done()
@@ -59,7 +61,7 @@ func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Requ
 
 	stat, err := os.Stat(path)
 	if err != nil {
-		log.Error(err)
+		log.Error("%+v", err)
 		w.WriteHeader(500)
 		return
 	}
@@ -73,14 +75,38 @@ func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Requ
 		w.Header().Set("Content-Type", "application/octet-stream")
 	}
 	if err != nil {
-		log.Error(err)
+		log.Error("%+v", err)
 		w.WriteHeader(500)
 		return
 	}
 
 	w.WriteHeader(200)
 	if _, err := io.Copy(w, rd); err != nil { // TODO: default 32k buf may be too small
-		log.Error(err)
+		log.Error("%+v", err)
+		return
+	}
+}
+
+func (handler *FetchHandler) remoteDeleteSector(w http.ResponseWriter, r *http.Request) {
+	log.Infof("SERVE DELETE %s", r.URL)
+	vars := mux.Vars(r)
+
+	id, err := sectorutil.ParseSectorID(vars["id"])
+	if err != nil {
+		log.Error("%+v", err)
+		w.WriteHeader(500)
+		return
+	}
+
+	ft, err := ftFromString(vars["type"])
+	if err != nil {
+		log.Error("%+v", err)
+		return
+	}
+
+	if err := handler.delete(r.Context(), id, ft); err != nil {
+		log.Error("%+v", err)
+		w.WriteHeader(500)
 		return
 	}
 }

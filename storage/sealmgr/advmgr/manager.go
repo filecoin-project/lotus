@@ -86,7 +86,7 @@ func New(ls stores.LocalStorage, si stores.SectorIndex, cfg *sectorbuilder.Confi
 		ls:         ls,
 		storage:    stor,
 		localStore: lstor,
-		remoteHnd:  &stores.FetchHandler{Store: lstor},
+		remoteHnd:  &stores.FetchHandler{Local: lstor},
 		index:      si,
 
 		nextWorker: 0,
