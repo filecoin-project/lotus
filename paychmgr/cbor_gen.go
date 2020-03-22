@@ -110,7 +110,7 @@ func (t *VoucherInfo) UnmarshalCBOR(r io.Reader) error {
 				} else {
 					t.Voucher = new(paych.SignedVoucher)
 					if err := t.Voucher.UnmarshalCBOR(br); err != nil {
-						return err
+						return xerrors.Errorf("unmarshaling t.Voucher pointer: %w", err)
 					}
 				}
 
@@ -294,7 +294,7 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) error {
 			{
 
 				if err := t.Channel.UnmarshalCBOR(br); err != nil {
-					return err
+					return xerrors.Errorf("unmarshaling t.Channel: %w", err)
 				}
 
 			}
@@ -304,7 +304,7 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) error {
 			{
 
 				if err := t.Control.UnmarshalCBOR(br); err != nil {
-					return err
+					return xerrors.Errorf("unmarshaling t.Control: %w", err)
 				}
 
 			}
@@ -314,7 +314,7 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) error {
 			{
 
 				if err := t.Target.UnmarshalCBOR(br); err != nil {
-					return err
+					return xerrors.Errorf("unmarshaling t.Target: %w", err)
 				}
 
 			}

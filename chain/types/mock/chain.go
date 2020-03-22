@@ -68,7 +68,7 @@ func MkBlock(parents *types.TipSet, weightInc uint64, ticketNonce uint64) *types
 		},
 		Parents:               pcids,
 		ParentMessageReceipts: c,
-		BLSAggregate:          crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte("boo! im a signature")},
+		BLSAggregate:          &crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte("boo! im a signature")},
 		ParentWeight:          weight,
 		Messages:              c,
 		Height:                height,
