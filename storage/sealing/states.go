@@ -46,7 +46,7 @@ func (m *Sealing) handlePacking(ctx statemachine.Context, sector SectorInfo) err
 		return xerrors.Errorf("filling up the sector (%v): %w", fillerSizes, err)
 	}
 
-	return ctx.Send(SectorPacked{pieces: pieces})
+	return ctx.Send(SectorPacked{Pieces: pieces})
 }
 
 func (m *Sealing) handleUnsealed(ctx statemachine.Context, sector SectorInfo) error {
@@ -81,9 +81,9 @@ func (m *Sealing) handleUnsealed(ctx statemachine.Context, sector SectorInfo) er
 	}
 
 	return ctx.Send(SectorSealed{
-		commD:  cids.Unsealed,
-		commR:  cids.Sealed,
-		ticket: *ticket,
+		Unsealed: cids.Unsealed,
+		Sealed:   cids.Sealed,
+		Ticket:   *ticket,
 	})
 }
 
@@ -132,7 +132,7 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 		return ctx.Send(SectorPreCommitFailed{xerrors.Errorf("pushing message to mpool: %w", err)})
 	}
 
-	return ctx.Send(SectorPreCommitted{message: smsg.Cid()})
+	return ctx.Send(SectorPreCommitted{Message: smsg.Cid()})
 }
 
 func (m *Sealing) handleWaitSeed(ctx statemachine.Context, sector SectorInfo) error {
@@ -162,7 +162,7 @@ func (m *Sealing) handleWaitSeed(ctx statemachine.Context, sector SectorInfo) er
 			return err
 		}
 
-		ctx.Send(SectorSeedReady{seed: api.SealSeed{
+		ctx.Send(SectorSeedReady{Seed: api.SealSeed{
 			Epoch: randHeight,
 			Value: abi.InteractiveSealRandomness(rand),
 		}})
@@ -229,8 +229,8 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 	}
 
 	return ctx.Send(SectorCommitted{
-		proof:   proof,
-		message: smsg.Cid(),
+		Proof:   proof,
+		Message: smsg.Cid(),
 	})
 }
 

@@ -2,6 +2,7 @@ package sealing
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"time"
@@ -82,10 +83,17 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 	/////
 	// First process all events
 
+
 	for _, event := range events {
+		e, err := json.Marshal(event)
+		if err != nil {
+			log.Errorf("marshaling event for logging: %+v", err)
+			continue
+		}
+
 		l := Log{
 			Timestamp: uint64(time.Now().Unix()),
-			Message:   fmt.Sprintf("%s", event),
+			Message:   string(e),
 			Kind:      fmt.Sprintf("event;%T", event.User),
 		}
 
@@ -201,7 +209,7 @@ func planCommitting(events []statemachine.Event, state *SectorInfo) error {
 			e.apply(state)
 			state.State = api.CommitWait
 		case SectorSeedReady: // seed changed :/
-			if e.seed.Equals(&state.Seed) {
+			if e.Seed.Equals(&state.Seed) {
 				log.Warnf("planCommitting: got SectorSeedReady, but the seed didn't change")
 				continue // or it didn't!
 			}
