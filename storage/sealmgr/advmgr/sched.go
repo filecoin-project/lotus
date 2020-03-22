@@ -99,6 +99,9 @@ func (m *Manager) onWorkerFreed(wid workerID) {
 			if pe == nil {
 				pe = m.schedQueue.Front()
 			}
+			if pe == nil {
+				break
+			}
 			e = pe
 			continue
 		}
