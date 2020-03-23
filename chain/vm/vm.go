@@ -192,30 +192,14 @@ type ApplyRet struct {
 func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 	gasCharge int64) ([]byte, aerrors.ActorError, *Runtime) {
 
-	st := vm.cstate
-
-	fromActor, err := st.GetActor(msg.From)
-	if err != nil {
-		return nil, aerrors.Absorb(err, 1, "could not find source actor"), nil
+	origin, aerr := ResolveToKeyAddr(vm.cstate, vm.cst, msg.From)
+	if aerr != nil {
+		return nil, aerr, nil
 	}
 
+	st := vm.cstate
 	gasUsed := gasCharge
 
-	toActor, err := st.GetActor(msg.To)
-	if err != nil {
-		if xerrors.Is(err, init_.ErrAddressNotFound) {
-			a, err := TryCreateAccountActor(st, msg.To)
-			if err != nil {
-				return nil, aerrors.Absorb(err, 1, "could not create account"), nil
-			}
-			toActor = a
-			gasUsed += PricelistByEpoch(vm.blockHeight).OnCreateActor()
-		} else {
-			return nil, aerrors.Escalate(err, "getting actor"), nil
-		}
-	}
-
-	origin := msg.From
 	on := msg.Nonce
 	var nac uint64 = 0
 	if parent != nil {
@@ -231,7 +215,26 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 		}()
 	}
 
-	aerr := rt.chargeGasSafe(rt.Pricelist().OnMethodInvocation(msg.Value, msg.Method))
+	fromActor, err := st.GetActor(msg.From)
+	if err != nil {
+		return nil, aerrors.Absorb(err, 1, "could not find source actor"), rt
+	}
+
+	toActor, err := st.GetActor(msg.To)
+	if err != nil {
+		if xerrors.Is(err, init_.ErrAddressNotFound) {
+			a, err := TryCreateAccountActor(st, msg.To)
+			if err != nil {
+				return nil, aerrors.Absorb(err, 1, "could not create account"), rt
+			}
+			toActor = a
+			gasUsed += PricelistByEpoch(vm.blockHeight).OnCreateActor()
+		} else {
+			return nil, aerrors.Escalate(err, "getting actor"), rt
+		}
+	}
+
+	aerr = rt.chargeGasSafe(rt.Pricelist().OnMethodInvocation(msg.Value, msg.Method))
 	if aerr != nil {
 		return nil, aerr, rt
 	}
@@ -348,6 +351,9 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 	defer st.ClearSnapshot()
 
 	ret, actorErr, rt := vm.send(ctx, msg, nil, msgGasCost)
+	if aerrors.IsFatal(actorErr) {
+		return nil, xerrors.Errorf("[from=%s,to=%s,n=%d,m=%d,h=%d] fatal error: %w", msg.From, msg.To, msg.Nonce, msg.Method, vm.blockHeight, actorErr)
+	}
 
 	{
 		actorErr2 := rt.chargeGasSafe(rt.Pricelist().OnChainReturnValue(len(ret)))
@@ -357,9 +363,6 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 		}
 	}
 
-	if aerrors.IsFatal(actorErr) {
-		return nil, xerrors.Errorf("[from=%s,to=%s,n=%d,m=%d,h=%d] fatal error: %w", msg.From, msg.To, msg.Nonce, msg.Method, vm.blockHeight, actorErr)
-	}
 	if actorErr != nil {
 		log.Warnw("Send actor error", "from", msg.From, "to", msg.To, "nonce", msg.Nonce, "method", msg.Method, "height", vm.blockHeight, "error", fmt.Sprintf("%+v", actorErr))
 	}
