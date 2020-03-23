@@ -229,7 +229,7 @@ func (rt *Runtime) ValidateImmediateCallerIs(as ...address.Address) {
 			return
 		}
 	}
-	rt.Abortf(exitcode.ErrForbidden, "caller %s is not one of %s", rt.Message().Caller(), as)
+	rt.Abortf(exitcode.SysErrForbidden, "caller %s is not one of %s", rt.Message().Caller(), as)
 }
 
 func (rt *Runtime) Context() context.Context {
@@ -255,7 +255,7 @@ func (rt *Runtime) ValidateImmediateCallerType(ts ...cid.Cid) {
 			return
 		}
 	}
-	rt.Abortf(exitcode.ErrForbidden, "caller cid type %q was not one of %v", callerCid, ts)
+	rt.Abortf(exitcode.SysErrForbidden, "caller cid type %q was not one of %v", callerCid, ts)
 }
 
 func (rs *Runtime) CurrEpoch() abi.ChainEpoch {

@@ -209,6 +209,7 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 			return nil, aerr, nil
 		}
 	}
+
 	rt := vm.makeRuntime(ctx, msg, origin, on, gasUsed, nac)
 	if parent != nil {
 		defer func() {
