@@ -66,6 +66,14 @@ type ExecutionResult struct {
 
 // Send allows the current execution context to invoke methods on other actors in the system
 
+func ResolveToStableAddr(state types.StateTree, cst cbor.IpldStore, addr address.Address) (address.Address, aerrors.ActorError) {
+	if addr == builtin.SystemActorAddr {
+		return addr, nil
+	}
+
+	return ResolveToKeyAddr(state, cst, addr)
+}
+
 // ResolveToKeyAddr returns the public key type of address (`BLS`/`SECP256K1`) of an account actor identified by `addr`.
 func ResolveToKeyAddr(state types.StateTree, cst cbor.IpldStore, addr address.Address) (address.Address, aerrors.ActorError) {
 	if addr.Protocol() == address.BLS || addr.Protocol() == address.SECP256K1 {
@@ -74,11 +82,11 @@ func ResolveToKeyAddr(state types.StateTree, cst cbor.IpldStore, addr address.Ad
 
 	act, err := state.GetActor(addr)
 	if err != nil {
-		return address.Undef, aerrors.Newf(1, "failed to find actor: %s", addr)
+		return address.Undef, aerrors.Newf(byte(exitcode.SysErrActorNotFound), "failed to find actor: %s", addr)
 	}
 
 	if act.Code != builtin.AccountActorCodeID {
-		return address.Undef, aerrors.New(1, "address was not for an account actor")
+		return address.Undef, aerrors.Fatalf("address %s was not for an account actor", addr)
 	}
 
 	var aast account.State
@@ -204,7 +212,7 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 		nac = parent.numActorsCreated
 	} else {
 		var aerr aerrors.ActorError
-		origin, aerr = ResolveToKeyAddr(vm.cstate, vm.cst, msg.From)
+		origin, aerr = ResolveToStableAddr(vm.cstate, vm.cst, msg.From)
 		if aerr != nil {
 			return nil, aerr, nil
 		}
@@ -358,6 +366,9 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 	}
 
 	{
+		if rt == nil {
+			return nil, xerrors.Errorf("send returned nil runtime, send error was: %s", actorErr)
+		}
 		actorErr2 := rt.chargeGasSafe(rt.Pricelist().OnChainReturnValue(len(ret)))
 		if actorErr == nil {
 			//TODO: Ambigous what to do in this case
