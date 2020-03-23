@@ -115,7 +115,10 @@ func New(ls stores.LocalStorage, si stores.SectorIndex, cfg *sectorbuilder.Confi
 
 	err = m.AddWorker(ctx, NewLocalWorker(WorkerConfig{
 		SealProof: cfg.SealProofType,
-		TaskTypes: []sealtasks.TaskType{sealtasks.TTAddPiece, sealtasks.TTCommit1, sealtasks.TTFinalize},
+		TaskTypes: []sealtasks.TaskType{
+			sealtasks.TTAddPiece, sealtasks.TTCommit1, sealtasks.TTFinalize,
+			sealtasks.TTPreCommit1, sealtasks.TTPreCommit2, sealtasks.TTCommit2, // TODO: Config
+		},
 	}, stor, lstor, si))
 	if err != nil {
 		return nil, xerrors.Errorf("adding local worker: %w", err)
