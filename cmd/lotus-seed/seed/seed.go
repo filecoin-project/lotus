@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/lotus/storage/sealmgr/stores"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -27,6 +26,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/genesis"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/stores"
 )
 
 var log = logging.Logger("preseal")

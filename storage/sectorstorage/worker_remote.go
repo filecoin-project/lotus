@@ -1,4 +1,4 @@
-package advmgr
+package sectorstorage
 
 import (
 	"context"

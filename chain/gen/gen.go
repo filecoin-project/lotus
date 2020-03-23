@@ -36,7 +36,7 @@ import (
 	"github.com/filecoin-project/lotus/genesis"
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/filecoin-project/lotus/storage/sbmock"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/mock"
 
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
@@ -690,7 +690,7 @@ func (m genFakeVerifier) VerifyElectionPost(ctx context.Context, pvi abi.PoStVer
 	panic("nyi")
 }
 func (m genFakeVerifier) GenerateDataCommitment(ssize abi.PaddedPieceSize, pieces []abi.PieceInfo) (cid.Cid, error) {
-	return sbmock.MockVerifier.GenerateDataCommitment(ssize, pieces)
+	return mock.MockVerifier.GenerateDataCommitment(ssize, pieces)
 }
 
 func (m genFakeVerifier) VerifySeal(svi abi.SealVerifyInfo) (bool, error) {

@@ -16,6 +16,7 @@ import (
 	"gopkg.in/urfave/cli.v2"
 
 	paramfetch "github.com/filecoin-project/go-paramfetch"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/apistruct"
 	"github.com/filecoin-project/lotus/build"
@@ -25,9 +26,9 @@ import (
 	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/filecoin-project/lotus/storage/sealmgr"
-	"github.com/filecoin-project/lotus/storage/sealmgr/advmgr"
-	"github.com/filecoin-project/lotus/storage/sealmgr/stores"
+	"github.com/filecoin-project/lotus/storage/sectorstorage"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/sealtasks"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/stores"
 )
 
 var log = logging.Logger("main")
@@ -223,9 +224,9 @@ var runCmd = &cli.Command{
 		// Create / expose the worker
 
 		workerApi := &worker{
-			LocalWorker: advmgr.NewLocalWorker(advmgr.WorkerConfig{
+			LocalWorker: sectorstorage.NewLocalWorker(sectorstorage.WorkerConfig{
 				SealProof: spt,
-				TaskTypes: []sealmgr.TaskType{sealmgr.TTPreCommit1, sealmgr.TTPreCommit2, sealmgr.TTCommit2},
+				TaskTypes: []sealtasks.TaskType{sealtasks.TTPreCommit1, sealtasks.TTPreCommit2, sealtasks.TTCommit2},
 			}, remote, localStore, nodeApi),
 		}
 

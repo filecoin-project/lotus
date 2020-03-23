@@ -1,17 +1,17 @@
-package advmgr
+package sectorstorage
 
 import (
+	"github.com/filecoin-project/lotus/storage/sectorstorage/sealtasks"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/storage/sealmgr"
 )
 
 const mib = 1 << 20
 
 type workerRequest struct {
-	taskType sealmgr.TaskType
+	taskType sealtasks.TaskType
 	accept   []workerID // ordered by preference
 
 	ret    chan<- workerResponse

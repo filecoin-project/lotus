@@ -2,7 +2,6 @@ package repo
 
 import (
 	"encoding/json"
-	"github.com/filecoin-project/lotus/storage/sealmgr/stores"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -17,6 +16,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/stores"
 )
 
 type MemRepo struct {

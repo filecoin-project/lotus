@@ -43,8 +43,8 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sealing"
-	"github.com/filecoin-project/lotus/storage/sealmgr/advmgr"
-	"github.com/filecoin-project/lotus/storage/sealmgr/stores"
+	"github.com/filecoin-project/lotus/storage/sectorstorage"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/stores"
 )
 
 var initCmd = &cli.Command{
@@ -404,7 +404,7 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 				return xerrors.Errorf("getting id address: %w", err)
 			}
 
-			smgr, err := advmgr.New(lr, stores.NewIndex(), &sectorbuilder.Config{
+			smgr, err := sectorstorage.New(lr, stores.NewIndex(), &sectorbuilder.Config{
 				SealProofType: spt,
 				PoStProofType: ppt,
 			}, nil, api)

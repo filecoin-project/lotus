@@ -14,7 +14,7 @@ import (
 
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/lotus/node/config"
-	"github.com/filecoin-project/lotus/storage/sealmgr/sectorutil"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/sectorutil"
 )
 
 type StoragePath struct {

@@ -1,4 +1,4 @@
-package sealmgr
+package sealtasks
 
 type TaskType string
 

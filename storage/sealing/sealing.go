@@ -21,7 +21,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/storage/sealmgr"
+	"github.com/filecoin-project/lotus/storage/sectorstorage"
 )
 
 const SectorStorePrefix = "/sectors"
@@ -69,13 +69,13 @@ type Sealing struct {
 	maddr  address.Address
 	worker address.Address
 
-	sealer  sealmgr.Manager
+	sealer  sectorstorage.SectorManager
 	sectors *statemachine.StateGroup
 	tktFn   TicketFn
 	sc      SectorIDCounter
 }
 
-func New(api sealingApi, events *events.Events, maddr address.Address, worker address.Address, ds datastore.Batching, sealer sealmgr.Manager, sc SectorIDCounter, tktFn TicketFn) *Sealing {
+func New(api sealingApi, events *events.Events, maddr address.Address, worker address.Address, ds datastore.Batching, sealer sectorstorage.SectorManager, sc SectorIDCounter, tktFn TicketFn) *Sealing {
 	s := &Sealing{
 		api:    api,
 		events: events,

@@ -21,9 +21,9 @@ import (
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/impl/common"
 	"github.com/filecoin-project/lotus/storage"
-	"github.com/filecoin-project/lotus/storage/sealmgr/advmgr"
-	"github.com/filecoin-project/lotus/storage/sealmgr/stores"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
+	"github.com/filecoin-project/lotus/storage/sectorstorage"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/stores"
 )
 
 type StorageMinerAPI struct {
@@ -37,7 +37,7 @@ type StorageMinerAPI struct {
 	Miner           *storage.Miner
 	BlockMiner      *miner.Miner
 	Full            api.FullNode
-	StorageMgr      *advmgr.Manager `optional:"true"`
+	StorageMgr      *sectorstorage.Manager `optional:"true"`
 	*stores.Index
 }
 
@@ -148,7 +148,7 @@ func (sm *StorageMinerAPI) SectorsUpdate(ctx context.Context, id abi.SectorNumbe
 }
 
 func (sm *StorageMinerAPI) WorkerConnect(ctx context.Context, url string) error {
-	w, err := advmgr.ConnectRemote(ctx, sm, url)
+	w, err := sectorstorage.ConnectRemote(ctx, sm, url)
 	if err != nil {
 		return xerrors.Errorf("connecting remote storage failed: %w", err)
 	}
