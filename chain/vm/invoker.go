@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	"reflect"
 
 	"github.com/ipfs/go-cid"
@@ -53,15 +54,12 @@ func NewInvoker() *invoker {
 	inv.Register(builtin.StorageMinerActorCodeID, miner.Actor{}, miner.State{})
 	inv.Register(builtin.MultisigActorCodeID, multisig.Actor{}, multisig.State{})
 	inv.Register(builtin.PaymentChannelActorCodeID, paych.Actor{}, paych.State{})
+	inv.Register(builtin.AccountActorCodeID, account.Actor{}, account.State{})
 
 	return inv
 }
 
 func (inv *invoker) Invoke(act *types.Actor, rt runtime.Runtime, method abi.MethodNum, params []byte) ([]byte, aerrors.ActorError) {
-
-	if act.Code == builtin.AccountActorCodeID {
-		return nil, aerrors.Newf(254, "cannot invoke methods on account actors")
-	}
 
 	code, ok := inv.builtInCode[act.Code]
 	if !ok {
