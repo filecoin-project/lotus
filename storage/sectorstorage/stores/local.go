@@ -280,6 +280,10 @@ func (st *Local) delete(ctx context.Context, sid abi.SectorID, typ sectorbuilder
 		return xerrors.Errorf("finding existing sector %d(t:%d) failed: %w", sid, typ, err)
 	}
 
+	if len(si) == 0 {
+		return xerrors.Errorf("can't delete sector %v(%d), not found", sid, typ)
+	}
+
 	for _, info := range si {
 		p, ok := st.paths[info.ID]
 		if !ok {
@@ -288,6 +292,10 @@ func (st *Local) delete(ctx context.Context, sid abi.SectorID, typ sectorbuilder
 
 		if p.local == "" { // TODO: can that even be the case?
 			continue
+		}
+
+		if err := st.index.StorageDropSector(ctx, info.ID, sid, typ); err != nil {
+			return xerrors.Errorf("dropping sector from index: %w", err)
 		}
 
 		spath := filepath.Join(p.local, typ.String(), sectorutil.SectorName(sid))
