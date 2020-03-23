@@ -410,4 +410,8 @@ func (m *Manager) StorageLocal(ctx context.Context) (map[stores.ID]string, error
 	return out, nil
 }
 
+func (m *Manager) FsStat(ctx context.Context, id stores.ID) (stores.FsStat, error) {
+	return m.storage.FsStat(ctx, id)
+}
+
 var _ SectorManager = &Manager{}

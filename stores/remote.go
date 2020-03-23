@@ -2,9 +2,13 @@ package stores
 
 import (
 	"context"
+	"encoding/json"
+	"io/ioutil"
 	"mime"
 	"net/http"
+	"net/url"
 	"os"
+	gopath "path"
 	"sort"
 	"sync"
 
@@ -75,7 +79,7 @@ func (r *Remote) AcquireSector(ctx context.Context, s abi.SectorID, existing sec
 		}
 
 		// TODO: some way to allow having duplicated sectors in the system for perf
-		if err := r.deleteFromRemote(url); err != nil {
+		if err := r.deleteFromRemote(ctx, url); err != nil {
 			log.Warnf("deleting sector %v from %s (delete %s): %+v", s, storageID, url, err)
 		}
 	}
@@ -103,7 +107,7 @@ func (r *Remote) acquireFromRemote(ctx context.Context, s abi.SectorID, fileType
 	var merr error
 	for _, info := range si {
 		for _, url := range info.URLs {
-			err := r.fetch(url, dest)
+			err := r.fetch(ctx, url, dest)
 			if err != nil {
 				merr = multierror.Append(merr, xerrors.Errorf("fetch error %s (storage %s) -> %s: %w", url, info.ID, dest, err))
 				continue
@@ -120,7 +124,7 @@ func (r *Remote) acquireFromRemote(ctx context.Context, s abi.SectorID, fileType
 	return "", "", "", nil, xerrors.Errorf("failed to acquire sector %v from remote (tried %v): %w", s, si, merr)
 }
 
-func (r *Remote) fetch(url, outname string) error {
+func (r *Remote) fetch(ctx context.Context, url, outname string) error {
 	log.Infof("Fetch %s -> %s", url, outname)
 
 	req, err := http.NewRequest("GET", url, nil)
@@ -128,6 +132,7 @@ func (r *Remote) fetch(url, outname string) error {
 		return xerrors.Errorf("request: %w", err)
 	}
 	req.Header = r.auth
+	req = req.WithContext(ctx)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -168,7 +173,7 @@ func (r *Remote) fetch(url, outname string) error {
 	}
 }
 
-func (r *Remote) deleteFromRemote(url string) error {
+func (r *Remote) deleteFromRemote(ctx context.Context, url string) error {
 	log.Infof("Delete %s", url)
 
 	req, err := http.NewRequest("DELETE", url, nil)
@@ -176,6 +181,7 @@ func (r *Remote) deleteFromRemote(url string) error {
 		return xerrors.Errorf("request: %w", err)
 	}
 	req.Header = r.auth
+	req = req.WithContext(ctx)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -188,6 +194,68 @@ func (r *Remote) deleteFromRemote(url string) error {
 	}
 
 	return nil
+}
+
+func (r *Remote) FsStat(ctx context.Context, id ID) (FsStat, error) {
+	st, err := r.local.FsStat(id)
+	switch err {
+	case nil:
+		return st, nil
+	case errPathNotFound:
+		break
+	default:
+		return FsStat{}, xerrors.Errorf("local stat: %w", err)
+	}
+
+	si, err := r.index.StorageInfo(ctx, id)
+	if err != nil {
+		return FsStat{}, xerrors.Errorf("getting remote storage info: %w", err)
+	}
+
+	if len(si.URLs) == 0 {
+		return FsStat{}, xerrors.Errorf("no known URLs for remote storage %s", id)
+	}
+
+	rl, err := url.Parse(si.URLs[0])
+	if err != nil {
+		return FsStat{}, xerrors.Errorf("failed to parse url: %w", err)
+	}
+
+	rl.Path = gopath.Join(rl.Path, "stat", string(id))
+
+	req, err := http.NewRequest("GET", rl.String(), nil)
+	if err != nil {
+		return FsStat{}, xerrors.Errorf("request: %w", err)
+	}
+	req.Header = r.auth
+	req = req.WithContext(ctx)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return FsStat{}, xerrors.Errorf("do request: %w", err)
+	}
+	switch resp.StatusCode {
+	case 200:
+		break
+	case 404:
+		return FsStat{}, errPathNotFound
+	case 500:
+		b, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return FsStat{}, xerrors.Errorf("fsstat: got http 500, then failed to read the error: %w", err)
+		}
+
+		return FsStat{}, xerrors.New(string(b))
+	}
+
+	var out FsStat
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return FsStat{}, xerrors.Errorf("decoding fsstat: %w", err)
+	}
+
+	defer resp.Body.Close()
+
+	return out, nil
 }
 
 func mergeDone(a func(), b func()) func() {
