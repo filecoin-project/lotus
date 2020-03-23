@@ -191,15 +191,10 @@ type ApplyRet struct {
 
 func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 	gasCharge int64) ([]byte, aerrors.ActorError, *Runtime) {
-
-	origin, aerr := ResolveToKeyAddr(vm.cstate, vm.cst, msg.From)
-	if aerr != nil {
-		return nil, aerr, nil
-	}
-
 	st := vm.cstate
 	gasUsed := gasCharge
 
+	var origin address.Address
 	on := msg.Nonce
 	var nac uint64 = 0
 	if parent != nil {
@@ -207,6 +202,12 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 		origin = parent.origin
 		on = parent.originNonce
 		nac = parent.numActorsCreated
+	} else {
+		var aerr aerrors.ActorError
+		origin, aerr = ResolveToKeyAddr(vm.cstate, vm.cst, msg.From)
+		if aerr != nil {
+			return nil, aerr, nil
+		}
 	}
 	rt := vm.makeRuntime(ctx, msg, origin, on, gasUsed, nac)
 	if parent != nil {
@@ -234,7 +235,7 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 		}
 	}
 
-	aerr = rt.chargeGasSafe(rt.Pricelist().OnMethodInvocation(msg.Value, msg.Method))
+	aerr := rt.chargeGasSafe(rt.Pricelist().OnMethodInvocation(msg.Value, msg.Method))
 	if aerr != nil {
 		return nil, aerr, rt
 	}
