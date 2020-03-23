@@ -25,7 +25,6 @@ func main() {
 		dealsCmd,
 		infoCmd,
 		initCmd,
-		pledgeSectorCmd,
 		rewardsCmd,
 		runCmd,
 		sectorsCmd,
@@ -71,7 +70,7 @@ func main() {
 			},
 		},
 
-		Commands: append(local, lcli.Commands...),
+		Commands: append(local, lcli.CommonCommands...),
 	}
 	app.Setup()
 	app.Metadata["repoType"] = repo.StorageMiner
