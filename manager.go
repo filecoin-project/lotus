@@ -46,7 +46,7 @@ type SectorManager interface {
 	storage.Prover
 }
 
-type workerID uint64
+type WorkerID uint64
 
 type Manager struct {
 	scfg *sectorbuilder.Config
@@ -60,12 +60,12 @@ type Manager struct {
 	storage.Prover
 
 	workersLk  sync.Mutex
-	nextWorker workerID
-	workers    map[workerID]*workerHandle
+	nextWorker WorkerID
+	workers    map[WorkerID]*workerHandle
 
 	newWorkers chan *workerHandle
 	schedule   chan *workerRequest
-	workerFree chan workerID
+	workerFree chan WorkerID
 	closing    chan struct{}
 
 	schedQueue *list.List // List[*workerRequest]
@@ -99,11 +99,11 @@ func New(ls stores.LocalStorage, si stores.SectorIndex, cfg *sectorbuilder.Confi
 		index:      si,
 
 		nextWorker: 0,
-		workers:    map[workerID]*workerHandle{},
+		workers:    map[WorkerID]*workerHandle{},
 
 		newWorkers: make(chan *workerHandle),
 		schedule:   make(chan *workerRequest),
-		workerFree: make(chan workerID),
+		workerFree: make(chan WorkerID),
 		closing:    make(chan struct{}),
 
 		schedQueue: list.New(),
@@ -168,12 +168,12 @@ func (m *Manager) ReadPieceFromSealedSector(context.Context, abi.SectorID, secto
 	panic("implement me")
 }
 
-func (m *Manager) getWorkersByPaths(task sealtasks.TaskType, inPaths []stores.StorageInfo) ([]workerID, map[workerID]stores.StorageInfo) {
+func (m *Manager) getWorkersByPaths(task sealtasks.TaskType, inPaths []stores.StorageInfo) ([]WorkerID, map[WorkerID]stores.StorageInfo) {
 	m.workersLk.Lock()
 	defer m.workersLk.Unlock()
 
-	var workers []workerID
-	paths := map[workerID]stores.StorageInfo{}
+	var workers []WorkerID
+	paths := map[WorkerID]stores.StorageInfo{}
 
 	for i, worker := range m.workers {
 		tt, err := worker.w.TaskTypes(context.TODO())
@@ -219,7 +219,7 @@ func (m *Manager) getWorkersByPaths(task sealtasks.TaskType, inPaths []stores.St
 	return workers, paths
 }
 
-func (m *Manager) getWorker(ctx context.Context, taskType sealtasks.TaskType, accept []workerID) (Worker, func(), error) {
+func (m *Manager) getWorker(ctx context.Context, taskType sealtasks.TaskType, accept []WorkerID) (Worker, func(), error) {
 	ret := make(chan workerResponse)
 
 	select {
@@ -355,7 +355,7 @@ func (m *Manager) SealCommit1(ctx context.Context, sector abi.SectorID, ticket a
 }
 
 func (m *Manager) SealCommit2(ctx context.Context, sector abi.SectorID, phase1Out storage.Commit1Out) (proof storage.Proof, err error) {
-	var candidateWorkers []workerID
+	var candidateWorkers []WorkerID
 
 	m.workersLk.Lock()
 	for id, worker := range m.workers {
