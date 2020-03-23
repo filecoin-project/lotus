@@ -19,7 +19,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/lotus/storage/sealmgr/stores"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/stores"
 )
 
 const metaFile = "sectorstore.json"

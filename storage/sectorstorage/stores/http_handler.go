@@ -11,7 +11,7 @@ import (
 
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/lotus/lib/tarutil"
-	"github.com/filecoin-project/lotus/storage/sealmgr/sectorutil"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/sectorutil"
 )
 
 var log = logging.Logger("stores")

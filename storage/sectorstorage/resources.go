@@ -1,8 +1,8 @@
-package advmgr
+package sectorstorage
 
 import (
 	"github.com/filecoin-project/go-sectorbuilder"
-	"github.com/filecoin-project/lotus/storage/sealmgr"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/sealtasks"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
@@ -30,8 +30,8 @@ type Resources struct {
 
 const MaxCachingOverhead = 32 << 30
 
-var ResourceTable = map[sealmgr.TaskType]map[abi.RegisteredProof]Resources{
-	sealmgr.TTAddPiece: {
+var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
+	sealtasks.TTAddPiece: {
 		abi.RegisteredProof_StackedDRG32GiBSeal: Resources{ // This is probably a bit conservative
 			MaxMemory: 32 << 30,
 			MinMemory: 32 << 30,
@@ -49,7 +49,7 @@ var ResourceTable = map[sealmgr.TaskType]map[abi.RegisteredProof]Resources{
 			BaseMinMemory: 1 << 30,
 		},
 	},
-	sealmgr.TTPreCommit1: {
+	sealtasks.TTPreCommit1: {
 		abi.RegisteredProof_StackedDRG32GiBSeal: Resources{
 			MaxMemory: 64 << 30,
 			MinMemory: 32 << 30,
@@ -67,7 +67,7 @@ var ResourceTable = map[sealmgr.TaskType]map[abi.RegisteredProof]Resources{
 			BaseMinMemory: 1 << 30,
 		},
 	},
-	sealmgr.TTPreCommit2: {
+	sealtasks.TTPreCommit2: {
 		abi.RegisteredProof_StackedDRG32GiBSeal: Resources{
 			MaxMemory: 96 << 30,
 			MinMemory: 64 << 30,
@@ -85,7 +85,7 @@ var ResourceTable = map[sealmgr.TaskType]map[abi.RegisteredProof]Resources{
 			BaseMinMemory: 1 << 30,
 		},
 	},
-	sealmgr.TTCommit1: { // Very short (~100ms), so params are very light
+	sealtasks.TTCommit1: { // Very short (~100ms), so params are very light
 		abi.RegisteredProof_StackedDRG32GiBSeal: Resources{
 			MaxMemory: 1 << 30,
 			MinMemory: 1 << 30,
@@ -103,7 +103,7 @@ var ResourceTable = map[sealmgr.TaskType]map[abi.RegisteredProof]Resources{
 			BaseMinMemory: 1 << 30,
 		},
 	},
-	sealmgr.TTCommit2: { // TODO: Measure more accurately
+	sealtasks.TTCommit2: { // TODO: Measure more accurately
 		abi.RegisteredProof_StackedDRG32GiBSeal: Resources{
 			MaxMemory: 110 << 30,
 			MinMemory: 60 << 30,

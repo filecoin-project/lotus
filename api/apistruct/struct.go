@@ -2,28 +2,28 @@ package apistruct
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/storage/sealmgr/stores"
 
-	"github.com/filecoin-project/specs-storage/storage"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/specs-storage/storage"
 
-	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/storage/sealmgr"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/sealtasks"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/stores"
 )
 
 // All permissions are listed in permissioned.go
@@ -204,9 +204,9 @@ type WorkerStruct struct {
 
 		Version func(context.Context) (build.Version, error) `perm:"admin"`
 
-		TaskTypes func(context.Context) (map[sealmgr.TaskType]struct{}, error) `perm:"admin"`
-		Paths     func(context.Context) ([]stores.StoragePath, error)          `perm:"admin"`
-		Info      func(context.Context) (api.WorkerInfo, error)                `perm:"admin"`
+		TaskTypes func(context.Context) (map[sealtasks.TaskType]struct{}, error) `perm:"admin"`
+		Paths     func(context.Context) ([]stores.StoragePath, error)            `perm:"admin"`
+		Info      func(context.Context) (api.WorkerInfo, error)                  `perm:"admin"`
 
 		SealPreCommit1 func(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, pieces []abi.PieceInfo) (storage.PreCommit1Out, error)                                                           `perm:"admin"`
 		SealPreCommit2 func(context.Context, abi.SectorID, storage.PreCommit1Out) (cids storage.SectorCids, err error)                                                                                            `perm:"admin"`
@@ -722,7 +722,7 @@ func (w *WorkerStruct) Version(ctx context.Context) (build.Version, error) {
 	return w.Internal.Version(ctx)
 }
 
-func (w *WorkerStruct) TaskTypes(ctx context.Context) (map[sealmgr.TaskType]struct{}, error) {
+func (w *WorkerStruct) TaskTypes(ctx context.Context) (map[sealtasks.TaskType]struct{}, error) {
 	return w.Internal.TaskTypes(ctx)
 }
 

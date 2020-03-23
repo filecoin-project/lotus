@@ -13,7 +13,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 
-	"github.com/filecoin-project/lotus/storage/sealmgr/sectorutil"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/sectorutil"
 )
 
 // ID identifies sector storage by UUID. One sector storage should map to one

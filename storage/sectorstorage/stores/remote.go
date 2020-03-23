@@ -16,7 +16,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	"github.com/filecoin-project/lotus/lib/tarutil"
-	"github.com/filecoin-project/lotus/storage/sealmgr/sectorutil"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/sectorutil"
 )
 
 type Remote struct {

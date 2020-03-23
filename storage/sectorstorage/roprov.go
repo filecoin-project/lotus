@@ -1,10 +1,10 @@
-package advmgr
+package sectorstorage
 
 import (
 	"context"
 
 	"github.com/filecoin-project/go-sectorbuilder"
-	"github.com/filecoin-project/lotus/storage/sealmgr/stores"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/stores"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"golang.org/x/xerrors"

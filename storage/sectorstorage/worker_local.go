@@ -1,4 +1,4 @@
-package advmgr
+package sectorstorage
 
 import (
 	"context"
@@ -14,16 +14,16 @@ import (
 	storage2 "github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/storage/sealmgr"
-	"github.com/filecoin-project/lotus/storage/sealmgr/sectorutil"
-	"github.com/filecoin-project/lotus/storage/sealmgr/stores"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/sealtasks"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/sectorutil"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/stores"
 )
 
 var pathTypes = []sectorbuilder.SectorFileType{sectorbuilder.FTUnsealed, sectorbuilder.FTSealed, sectorbuilder.FTCache}
 
 type WorkerConfig struct {
 	SealProof abi.RegisteredProof
-	TaskTypes []sealmgr.TaskType
+	TaskTypes []sealtasks.TaskType
 }
 
 type LocalWorker struct {
@@ -32,7 +32,7 @@ type LocalWorker struct {
 	localStore *stores.Local
 	sindex     stores.SectorIndex
 
-	acceptTasks map[sealmgr.TaskType]struct{}
+	acceptTasks map[sealtasks.TaskType]struct{}
 }
 
 func NewLocalWorker(wcfg WorkerConfig, store stores.Store, local *stores.Local, sindex stores.SectorIndex) *LocalWorker {
@@ -41,7 +41,7 @@ func NewLocalWorker(wcfg WorkerConfig, store stores.Store, local *stores.Local, 
 		panic(err)
 	}
 
-	acceptTasks := map[sealmgr.TaskType]struct{}{}
+	acceptTasks := map[sealtasks.TaskType]struct{}{}
 	for _, taskType := range wcfg.TaskTypes {
 		acceptTasks[taskType] = struct{}{}
 	}
@@ -155,7 +155,7 @@ func (l *LocalWorker) FinalizeSector(ctx context.Context, sector abi.SectorID) e
 	return sb.FinalizeSector(ctx, sector)
 }
 
-func (l *LocalWorker) TaskTypes(context.Context) (map[sealmgr.TaskType]struct{}, error) {
+func (l *LocalWorker) TaskTypes(context.Context) (map[sealtasks.TaskType]struct{}, error) {
 	return l.acceptTasks, nil
 }
 

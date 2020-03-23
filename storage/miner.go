@@ -14,7 +14,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/storage/sealmgr"
+	"github.com/filecoin-project/lotus/storage/sectorstorage"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
@@ -34,7 +34,7 @@ var log = logging.Logger("storageminer")
 type Miner struct {
 	api    storageMinerApi
 	h      host.Host
-	sealer sealmgr.Manager
+	sealer sectorstorage.SectorManager
 	ds     datastore.Batching
 	tktFn  sealing.TicketFn
 	sc     sealing.SectorIDCounter
@@ -74,7 +74,7 @@ type storageMinerApi interface {
 	WalletHas(context.Context, address.Address) (bool, error)
 }
 
-func NewMiner(api storageMinerApi, maddr, worker address.Address, h host.Host, ds datastore.Batching, sealer sealmgr.Manager, sc sealing.SectorIDCounter, tktFn sealing.TicketFn) (*Miner, error) {
+func NewMiner(api storageMinerApi, maddr, worker address.Address, h host.Host, ds datastore.Batching, sealer sectorstorage.SectorManager, sc sealing.SectorIDCounter, tktFn sealing.TicketFn) (*Miner, error) {
 	m := &Miner{
 		api:    api,
 		h:      h,

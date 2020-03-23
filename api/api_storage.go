@@ -11,7 +11,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/storage/sealmgr/stores"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/stores"
 )
 
 // alias because cbor-gen doesn't like non-alias types

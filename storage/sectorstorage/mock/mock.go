@@ -1,9 +1,10 @@
-package sbmock
+package mock
 
 import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/filecoin-project/lotus/storage/sectorstorage"
 	"io"
 	"io/ioutil"
 	"math/big"
@@ -23,7 +24,7 @@ import (
 
 var log = logging.Logger("sbmock")
 
-type SBMock struct {
+type SectorMgr struct {
 	sectors      map[abi.SectorID]*sectorState
 	sectorSize   abi.SectorSize
 	nextSectorID abi.SectorNumber
@@ -35,13 +36,13 @@ type SBMock struct {
 
 type mockVerif struct{}
 
-func NewMockSectorBuilder(threads int, ssize abi.SectorSize) *SBMock {
+func NewMockSectorMgr(threads int, ssize abi.SectorSize) *SectorMgr {
 	rt, _, err := api.ProofTypeFromSectorSize(ssize)
 	if err != nil {
 		panic(err)
 	}
 
-	return &SBMock{
+	return &SectorMgr{
 		sectors:      make(map[abi.SectorID]*sectorState),
 		sectorSize:   ssize,
 		nextSectorID: 5,
@@ -65,7 +66,7 @@ type sectorState struct {
 	lk sync.Mutex
 }
 
-func (sb *SBMock) RateLimit() func() {
+func (sb *SectorMgr) RateLimit() func() {
 	sb.rateLimit <- struct{}{}
 
 	// TODO: probably want to copy over rate limit code
@@ -74,11 +75,11 @@ func (sb *SBMock) RateLimit() func() {
 	}
 }
 
-func (sb *SBMock) NewSector(ctx context.Context, sector abi.SectorID) error {
+func (sb *SectorMgr) NewSector(ctx context.Context, sector abi.SectorID) error {
 	return nil
 }
 
-func (sb *SBMock) AddPiece(ctx context.Context, sectorId abi.SectorID, existingPieces []abi.UnpaddedPieceSize, size abi.UnpaddedPieceSize, r io.Reader) (abi.PieceInfo, error) {
+func (sb *SectorMgr) AddPiece(ctx context.Context, sectorId abi.SectorID, existingPieces []abi.UnpaddedPieceSize, size abi.UnpaddedPieceSize, r io.Reader) (abi.PieceInfo, error) {
 	log.Warn("Add piece: ", sectorId, size, sb.proofType)
 	sb.lk.Lock()
 	ss, ok := sb.sectors[sectorId]
@@ -106,11 +107,11 @@ func (sb *SBMock) AddPiece(ctx context.Context, sectorId abi.SectorID, existingP
 	}, nil
 }
 
-func (sb *SBMock) SectorSize() abi.SectorSize {
+func (sb *SectorMgr) SectorSize() abi.SectorSize {
 	return sb.sectorSize
 }
 
-func (sb *SBMock) AcquireSectorNumber() (abi.SectorNumber, error) {
+func (sb *SectorMgr) AcquireSectorNumber() (abi.SectorNumber, error) {
 	sb.lk.Lock()
 	defer sb.lk.Unlock()
 	id := sb.nextSectorID
@@ -118,7 +119,7 @@ func (sb *SBMock) AcquireSectorNumber() (abi.SectorNumber, error) {
 	return id, nil
 }
 
-func (sb *SBMock) SealPreCommit1(ctx context.Context, sid abi.SectorID, ticket abi.SealRandomness, pieces []abi.PieceInfo) (out storage.PreCommit1Out, err error) {
+func (sb *SectorMgr) SealPreCommit1(ctx context.Context, sid abi.SectorID, ticket abi.SealRandomness, pieces []abi.PieceInfo) (out storage.PreCommit1Out, err error) {
 	sb.lk.Lock()
 	ss, ok := sb.sectors[sid]
 	sb.lk.Unlock()
@@ -173,7 +174,7 @@ func (sb *SBMock) SealPreCommit1(ctx context.Context, sid abi.SectorID, ticket a
 	return cc, nil
 }
 
-func (sb *SBMock) SealPreCommit2(ctx context.Context, sid abi.SectorID, phase1Out storage.PreCommit1Out) (cids storage.SectorCids, err error) {
+func (sb *SectorMgr) SealPreCommit2(ctx context.Context, sid abi.SectorID, phase1Out storage.PreCommit1Out) (cids storage.SectorCids, err error) {
 	db := []byte(string(phase1Out))
 	db[0] ^= 'd'
 
@@ -192,7 +193,7 @@ func (sb *SBMock) SealPreCommit2(ctx context.Context, sid abi.SectorID, phase1Ou
 	}, nil
 }
 
-func (sb *SBMock) SealCommit1(ctx context.Context, sid abi.SectorID, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storage.SectorCids) (output storage.Commit1Out, err error) {
+func (sb *SectorMgr) SealCommit1(ctx context.Context, sid abi.SectorID, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storage.SectorCids) (output storage.Commit1Out, err error) {
 	sb.lk.Lock()
 	ss, ok := sb.sectors[sid]
 	sb.lk.Unlock()
@@ -220,7 +221,7 @@ func (sb *SBMock) SealCommit1(ctx context.Context, sid abi.SectorID, ticket abi.
 	return out[:], nil
 }
 
-func (sb *SBMock) SealCommit2(ctx context.Context, sid abi.SectorID, phase1Out storage.Commit1Out) (proof storage.Proof, err error) {
+func (sb *SectorMgr) SealCommit2(ctx context.Context, sid abi.SectorID, phase1Out storage.Commit1Out) (proof storage.Proof, err error) {
 	var out [32]byte
 	for i := range out {
 		out[i] = phase1Out[i] ^ byte(sid.Number&0xff)
@@ -231,7 +232,7 @@ func (sb *SBMock) SealCommit2(ctx context.Context, sid abi.SectorID, phase1Out s
 
 // Test Instrumentation Methods
 
-func (sb *SBMock) FailSector(sid abi.SectorID) error {
+func (sb *SectorMgr) FailSector(sid abi.SectorID) error {
 	sb.lk.Lock()
 	defer sb.lk.Unlock()
 	ss, ok := sb.sectors[sid]
@@ -259,15 +260,15 @@ func AddOpFinish(ctx context.Context) (context.Context, func()) {
 	}
 }
 
-func (sb *SBMock) GenerateFallbackPoSt(context.Context, abi.ActorID, []abi.SectorInfo, abi.PoStRandomness, []abi.SectorNumber) (storage.FallbackPostOut, error) {
+func (sb *SectorMgr) GenerateFallbackPoSt(context.Context, abi.ActorID, []abi.SectorInfo, abi.PoStRandomness, []abi.SectorNumber) (storage.FallbackPostOut, error) {
 	panic("implement me")
 }
 
-func (sb *SBMock) ComputeElectionPoSt(ctx context.Context, mid abi.ActorID, sectorInfo []abi.SectorInfo, challengeSeed abi.PoStRandomness, winners []abi.PoStCandidate) ([]abi.PoStProof, error) {
+func (sb *SectorMgr) ComputeElectionPoSt(ctx context.Context, mid abi.ActorID, sectorInfo []abi.SectorInfo, challengeSeed abi.PoStRandomness, winners []abi.PoStCandidate) ([]abi.PoStProof, error) {
 	panic("implement me")
 }
 
-func (sb *SBMock) GenerateEPostCandidates(ctx context.Context, mid abi.ActorID, sectorInfo []abi.SectorInfo, challengeSeed abi.PoStRandomness, faults []abi.SectorNumber) ([]storage.PoStCandidateWithTicket, error) {
+func (sb *SectorMgr) GenerateEPostCandidates(ctx context.Context, mid abi.ActorID, sectorInfo []abi.SectorInfo, challengeSeed abi.PoStRandomness, faults []abi.SectorNumber) ([]storage.PoStCandidateWithTicket, error) {
 	if len(faults) > 0 {
 		panic("todo")
 	}
@@ -297,14 +298,14 @@ func (sb *SBMock) GenerateEPostCandidates(ctx context.Context, mid abi.ActorID, 
 	return out, nil
 }
 
-func (sb *SBMock) ReadPieceFromSealedSector(ctx context.Context, sectorID abi.SectorID, offset sectorbuilder.UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, commD cid.Cid) (io.ReadCloser, error) {
+func (sb *SectorMgr) ReadPieceFromSealedSector(ctx context.Context, sectorID abi.SectorID, offset sectorbuilder.UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, commD cid.Cid) (io.ReadCloser, error) {
 	if len(sb.sectors[sectorID].pieces) > 1 {
 		panic("implme")
 	}
 	return ioutil.NopCloser(io.LimitReader(bytes.NewReader(sb.sectors[sectorID].pieces[0].Bytes()[offset:]), int64(size))), nil
 }
 
-func (sb *SBMock) StageFakeData(mid abi.ActorID) (abi.SectorID, []abi.PieceInfo, error) {
+func (sb *SectorMgr) StageFakeData(mid abi.ActorID) (abi.SectorID, []abi.PieceInfo, error) {
 	usize := abi.PaddedPieceSize(sb.sectorSize).Unpadded()
 	sid, err := sb.AcquireSectorNumber()
 	if err != nil {
@@ -327,7 +328,7 @@ func (sb *SBMock) StageFakeData(mid abi.ActorID) (abi.SectorID, []abi.PieceInfo,
 	return id, []abi.PieceInfo{pi}, nil
 }
 
-func (sb *SBMock) FinalizeSector(context.Context, abi.SectorID) error {
+func (sb *SectorMgr) FinalizeSector(context.Context, abi.SectorID) error {
 	return nil
 }
 
@@ -367,4 +368,4 @@ func (m mockVerif) GenerateDataCommitment(ssize abi.PaddedPieceSize, pieces []ab
 var MockVerifier = mockVerif{}
 
 var _ sectorbuilder.Verifier = MockVerifier
-var _ sectorbuilder.Basic = &SBMock{}
+var _ sectorstorage.SectorManager = &SectorMgr{}
