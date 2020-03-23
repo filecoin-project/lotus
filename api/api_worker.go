@@ -35,3 +35,12 @@ type WorkerInfo struct {
 
 	Resources WorkerResources
 }
+
+type WorkerStats struct {
+	Info WorkerInfo
+
+	MemUsedMin uint64
+	MemUsedMax uint64
+	GpuUsed    bool
+	CpuUse     int
+}

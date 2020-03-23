@@ -113,6 +113,8 @@ type StorageMiner interface {
 
 	// WorkerConnect tells the node to connect to workers RPC
 	WorkerConnect(context.Context, string) error
+	WorkerStats(context.Context) (map[uint64]WorkerStats, error)
+
 	stores.SectorIndex
 
 	MarketImportDealData(ctx context.Context, propcid cid.Cid, path string) error

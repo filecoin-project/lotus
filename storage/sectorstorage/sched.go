@@ -12,7 +12,7 @@ const mib = 1 << 20
 
 type workerRequest struct {
 	taskType sealtasks.TaskType
-	accept   []workerID // ordered by preference
+	accept   []WorkerID // ordered by preference
 
 	ret    chan<- workerResponse
 	cancel <-chan struct{}
@@ -71,7 +71,7 @@ func (m *Manager) runSched() {
 	}
 }
 
-func (m *Manager) onWorkerFreed(wid workerID) {
+func (m *Manager) onWorkerFreed(wid WorkerID) {
 	for e := m.schedQueue.Front(); e != nil; e = e.Next() {
 		req := e.Value.(*workerRequest)
 		var ok bool
@@ -140,7 +140,7 @@ func (m *Manager) maybeSchedRequest(req *workerRequest) (*workerResponse, error)
 	return nil, nil // put in waiting queue
 }
 
-func (m *Manager) makeResponse(wid workerID, w *workerHandle, req *workerRequest) *workerResponse {
+func (m *Manager) makeResponse(wid WorkerID, w *workerHandle, req *workerRequest) *workerResponse {
 	needRes := ResourceTable[req.taskType][m.scfg.SealProofType]
 
 	w.gpuUsed = needRes.CanGPU
@@ -186,7 +186,7 @@ func (m *Manager) makeResponse(wid workerID, w *workerHandle, req *workerRequest
 	}
 }
 
-func (m *Manager) canHandleRequest(wid workerID, w *workerHandle, req *workerRequest) (bool, error) {
+func (m *Manager) canHandleRequest(wid WorkerID, w *workerHandle, req *workerRequest) (bool, error) {
 	needRes, ok := ResourceTable[req.taskType][m.scfg.SealProofType]
 	if !ok {
 		return false, xerrors.Errorf("canHandleRequest: missing ResourceTable entry for %s/%d", req.taskType, m.scfg.SealProofType)

@@ -30,6 +30,7 @@ func main() {
 		sectorsCmd,
 		storageCmd,
 		setPriceCmd,
+		workersCmd,
 	}
 	jaeger := tracing.SetupJaegerTracing("lotus")
 	defer func() {
