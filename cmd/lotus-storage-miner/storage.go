@@ -134,9 +134,19 @@ var storageListCmd = &cli.Command{
 			return err
 		}
 
-		for id, sectors := range st {
+		sorted := make([]struct{stores.ID; sectors []stores.Decl}, 0, len(st))
+		for id, decls := range st {
+			sorted = append(sorted, struct{stores.ID; sectors []stores.Decl}{id, decls})
+		}
+
+		sort.Slice(sorted, func(i, j int) bool {
+			return sorted[i].ID < sorted[j].ID
+		})
+
+		for _, s := range sorted {
+
 			var cnt [3]int
-			for _, decl := range sectors {
+			for _, decl := range s.sectors {
 				for i := range cnt {
 					if decl.SectorFileType&(1<<i) != 0 {
 						cnt[i]++
@@ -144,10 +154,10 @@ var storageListCmd = &cli.Command{
 				}
 			}
 
-			fmt.Printf("%s:\n", id)
+			fmt.Printf("%s:\n", s.ID)
 			fmt.Printf("\tUnsealed: %d; Sealed: %d; Caches: %d\n", cnt[0], cnt[1], cnt[2])
 
-			si, err := nodeApi.StorageInfo(ctx, id)
+			si, err := nodeApi.StorageInfo(ctx, s.ID)
 			if err != nil {
 				return err
 			}
@@ -166,7 +176,7 @@ var storageListCmd = &cli.Command{
 				fmt.Println("Use: ReadOnly")
 			}
 
-			if localPath, ok := local[id]; ok {
+			if localPath, ok := local[s.ID]; ok {
 				fmt.Printf("\tLocal: %s\n", localPath)
 			}
 			for _, l := range si.URLs {

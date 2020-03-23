@@ -51,11 +51,10 @@ func (sm *StorageMinerAPI) ServeRemote(w http.ResponseWriter, r *http.Request) {
 	sm.StorageMgr.ServeHTTP(w, r)
 }
 
-/*
-func (sm *StorageMinerAPI) WorkerStats(context.Context) (sectorbuilder.WorkerStats, error) {
-	stat := sm.SectorBuilder.WorkerStats()
-	return stat, nil
-}*/
+
+func (sm *StorageMinerAPI) WorkerStats(context.Context) (map[uint64]api.WorkerStats, error) {
+	return sm.StorageMgr.WorkerStats(), nil
+}
 
 func (sm *StorageMinerAPI) ActorAddress(context.Context) (address.Address, error) {
 	return sm.Miner.Address(), nil
