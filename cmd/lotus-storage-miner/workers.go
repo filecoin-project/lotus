@@ -35,9 +35,15 @@ var workersListCmd = &cli.Command{
 			return err
 		}
 
-		st := make([]struct{id uint64; api.WorkerStats}, 0, len(stats))
+		st := make([]struct {
+			id uint64
+			api.WorkerStats
+		}, 0, len(stats))
 		for id, stat := range stats {
-			st = append(st, struct{id uint64; api.WorkerStats}{id, stat})
+			st = append(st, struct {
+				id uint64
+				api.WorkerStats
+			}{id, stat})
 		}
 
 		sort.Slice(st, func(i, j int) bool {
@@ -66,14 +72,14 @@ var workersListCmd = &cli.Command{
 				types.SizeStr(types.NewInt(stat.Info.Resources.MemPhysical)),
 				types.SizeStr(types.NewInt(stat.Info.Resources.MemSwap)),
 				types.SizeStr(types.NewInt(stat.Info.Resources.MemReserved)),
-				stat.Info.Resources.MemReserved * 100 / stat.Info.Resources.MemPhysical)
+				stat.Info.Resources.MemReserved*100/stat.Info.Resources.MemPhysical)
 
 			fmt.Printf("\t\tUsed: Physical %s (%d%% phys), Virtual %s (%d%% phys, %d%% virt)\n",
 				types.SizeStr(types.NewInt(stat.MemUsedMin)),
-				stat.MemUsedMin * 100 / stat.Info.Resources.MemPhysical,
+				stat.MemUsedMin*100/stat.Info.Resources.MemPhysical,
 				types.SizeStr(types.NewInt(stat.MemUsedMax)),
-				stat.MemUsedMax * 100 / stat.Info.Resources.MemPhysical,
-				stat.MemUsedMax * 100 / (stat.Info.Resources.MemPhysical + stat.Info.Resources.MemSwap))
+				stat.MemUsedMax*100/stat.Info.Resources.MemPhysical,
+				stat.MemUsedMax*100/(stat.Info.Resources.MemPhysical+stat.Info.Resources.MemSwap))
 		}
 
 		return nil

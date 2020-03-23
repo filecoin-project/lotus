@@ -309,13 +309,15 @@ func (st *Local) delete(ctx context.Context, sid abi.SectorID, typ sectorbuilder
 	return nil
 }
 
+var errPathNotFound = xerrors.Errorf("fsstat: path not found")
+
 func (st *Local) FsStat(id ID) (FsStat, error) {
 	st.localLk.RLock()
 	defer st.localLk.RUnlock()
 
 	p, ok := st.paths[id]
 	if !ok {
-		return FsStat{}, xerrors.Errorf("fsstat: path not found")
+		return FsStat{}, errPathNotFound
 	}
 
 	return Stat(p.local)

@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/mitchellh/go-homedir"
@@ -18,6 +19,7 @@ import (
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
+	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/storage/sectorstorage/stores"
 )
@@ -134,9 +136,15 @@ var storageListCmd = &cli.Command{
 			return err
 		}
 
-		sorted := make([]struct{stores.ID; sectors []stores.Decl}, 0, len(st))
+		sorted := make([]struct {
+			stores.ID
+			sectors []stores.Decl
+		}, 0, len(st))
 		for id, decls := range st {
-			sorted = append(sorted, struct{stores.ID; sectors []stores.Decl}{id, decls})
+			sorted = append(sorted, struct {
+				stores.ID
+				sectors []stores.Decl
+			}{id, decls})
 		}
 
 		sort.Slice(sorted, func(i, j int) bool {
@@ -154,8 +162,20 @@ var storageListCmd = &cli.Command{
 				}
 			}
 
+			pingStart := time.Now()
+			st, err := nodeApi.StorageStat(ctx, s.ID)
+			if err != nil {
+				return err
+			}
+			ping := time.Now().Sub(pingStart)
+
 			fmt.Printf("%s:\n", s.ID)
 			fmt.Printf("\tUnsealed: %d; Sealed: %d; Caches: %d\n", cnt[0], cnt[1], cnt[2])
+			fmt.Printf("\tSpace Used: %s/%s %d%% (%s avail)\n",
+				types.SizeStr(types.NewInt(st.Capacity-st.Available)),
+				types.SizeStr(types.NewInt(st.Capacity)),
+				(st.Capacity-st.Available)*100/st.Capacity,
+				types.SizeStr(types.NewInt(st.Available)))
 
 			si, err := nodeApi.StorageInfo(ctx, s.ID)
 			if err != nil {
@@ -179,8 +199,13 @@ var storageListCmd = &cli.Command{
 			if localPath, ok := local[s.ID]; ok {
 				fmt.Printf("\tLocal: %s\n", localPath)
 			}
-			for _, l := range si.URLs {
-				fmt.Printf("\tURL: %s\n", l) // TODO; try pinging maybe?? print latency?
+			for i, l := range si.URLs {
+				var rtt string
+				if _, ok := local[s.ID]; !ok && i == 0 {
+					rtt = " (latency: " + ping.Truncate(time.Microsecond*100).String() + ")"
+				}
+
+				fmt.Printf("\tURL: %s%s\n", l, rtt) // TODO; try pinging maybe?? print latency?
 			}
 		}
 

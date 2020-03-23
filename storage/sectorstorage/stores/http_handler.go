@@ -1,6 +1,7 @@
 package stores
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 	"os"
@@ -23,10 +24,34 @@ type FetchHandler struct {
 func (handler *FetchHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) { // /remote/
 	mux := mux.NewRouter()
 
+	mux.HandleFunc("/remote/stat/{id}", handler.remoteStatFs).Methods("GET")
 	mux.HandleFunc("/remote/{type}/{id}", handler.remoteGetSector).Methods("GET")
 	mux.HandleFunc("/remote/{type}/{id}", handler.remoteDeleteSector).Methods("DELETE")
 
 	mux.ServeHTTP(w, r)
+}
+
+func (handler *FetchHandler) remoteStatFs(w http.ResponseWriter, r *http.Request) {
+	log.Debugf("SERVE STAT %s", r.URL)
+	vars := mux.Vars(r)
+	id := ID(vars["id"])
+
+	st, err := handler.Local.FsStat(id)
+	switch err {
+	case errPathNotFound:
+		w.WriteHeader(404)
+		return
+	case nil:
+		break
+	default:
+		w.WriteHeader(500)
+		log.Errorf("%+v", err)
+		return
+	}
+
+	if err := json.NewEncoder(w).Encode(&st); err != nil {
+		log.Warnf("error writing stat response: %+v", err)
+	}
 }
 
 func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Request) {
