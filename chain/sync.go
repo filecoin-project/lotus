@@ -798,6 +798,7 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 		}
 
 		if _, ok := nonces[m.From]; !ok {
+			// `GetActor` does not validate that this is an account actor.
 			act, err := st.GetActor(m.From)
 			if err != nil {
 				return xerrors.Errorf("failed to get actor: %w", err)
@@ -836,6 +837,8 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 			return xerrors.Errorf("block had invalid secpk message at index %d: %w", i, err)
 		}
 
+		// `From` being an account actor is only validated inside the `vm.ResolveToKeyAddr` call
+		// in `StateManager.ResolveToKeyAddress` here (and not in `checkMsg`).
 		kaddr, err := syncer.sm.ResolveToKeyAddress(ctx, m.Message.From, baseTs)
 		if err != nil {
 			return xerrors.Errorf("failed to resolve key addr: %w", err)

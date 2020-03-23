@@ -21,10 +21,12 @@ import (
 
 var log = logging.Logger("statetree")
 
+// Stores actors state by their ID.
 type StateTree struct {
 	root  *hamt.Node
 	Store cbor.IpldStore
 
+	// Maps ID addresses to actors.
 	actorcache map[address.Address]*types.Actor
 	snapshots  []cid.Cid
 }
@@ -70,6 +72,7 @@ func (st *StateTree) SetActor(addr address.Address, act *types.Actor) error {
 	return st.root.Set(context.TODO(), string(addr.Bytes()), act)
 }
 
+// `LookupID` gets the ID address of this actor's `addr` stored in the `InitActor`.
 func (st *StateTree) LookupID(addr address.Address) (address.Address, error) {
 	if addr.Protocol() == address.ID {
 		return addr, nil
@@ -92,11 +95,13 @@ func (st *StateTree) LookupID(addr address.Address) (address.Address, error) {
 	return a, nil
 }
 
+// GetActor returns the actor from any type of `addr` provided.
 func (st *StateTree) GetActor(addr address.Address) (*types.Actor, error) {
 	if addr == address.Undef {
 		return nil, fmt.Errorf("GetActor called on undefined address")
 	}
 
+	// Transform `addr` to its ID format.
 	iaddr, err := st.LookupID(addr)
 	if err != nil {
 		if xerrors.Is(err, init_.ErrAddressNotFound) {
