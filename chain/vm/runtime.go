@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"fmt"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -47,10 +48,10 @@ type Runtime struct {
 	numActorsCreated   uint64
 }
 
-func (rs *Runtime) ResolveAddress(address address.Address) (ret address.Address, ok bool) {
-	r, err := rs.LookupID(address)
+func (rt *Runtime) ResolveAddress(address address.Address) (ret address.Address, ok bool) {
+	r, err := rt.state.LookupID(address)
 	if err != nil { // TODO: check notfound
-		rs.Abortf(exitcode.ErrPlaceholder, "resolve address: %v", err)
+		rt.Abortf(exitcode.ErrPlaceholder, "resolve address: %v", err)
 	}
 	return r, true
 }
@@ -106,17 +107,17 @@ func (rs *Runtime) shimCall(f func() interface{}) (rval []byte, aerr aerrors.Act
 }
 
 func (rs *Runtime) Message() vmr.Message {
-	var err error
+	var ok bool
 
 	rawm := *rs.msg
-	rawm.From, err = rs.LookupID(rawm.From)
-	if err != nil {
-		rs.Abortf(exitcode.ErrPlaceholder, "resolve from address: %v", err)
+	rawm.From, ok = rs.ResolveAddress(rawm.From)
+	if !ok {
+		rs.Abortf(exitcode.ErrPlaceholder, "resolve from address failed")
 	}
 
-	rawm.To, err = rs.LookupID(rawm.To)
-	if err != nil {
-		rs.Abortf(exitcode.ErrPlaceholder, "resolve to address: %v", err)
+	rawm.To, ok = rs.ResolveAddress(rawm.To)
+	if !ok {
+		rs.Abortf(exitcode.ErrPlaceholder, "resolve to address failed")
 	}
 
 	return &rawm
@@ -218,8 +219,8 @@ func (rs *Runtime) StartSpan(name string) vmr.TraceSpan {
 }
 
 func (rt *Runtime) ValidateImmediateCallerIs(as ...address.Address) {
-	imm, err := rt.LookupID(rt.Message().Caller())
-	if err != nil {
+	imm, ok := rt.ResolveAddress(rt.Message().Caller())
+	if !ok {
 		rt.Abortf(exitcode.ErrIllegalState, "couldn't resolve immediate caller")
 	}
 
@@ -236,6 +237,7 @@ func (rt *Runtime) Context() context.Context {
 }
 
 func (rs *Runtime) Abortf(code exitcode.ExitCode, msg string, args ...interface{}) {
+	log.Error("Abortf: ", fmt.Sprintf(msg, args...))
 	panic(aerrors.NewfSkip(2, uint8(code), msg, args...))
 }
 
@@ -382,10 +384,6 @@ func (ssh *shimStateHandle) Transaction(obj vmr.CBORer, f func() interface{}) in
 	ssh.rs.stateCommit(baseState, c)
 
 	return out
-}
-
-func (rt *Runtime) LookupID(a address.Address) (address.Address, error) {
-	return rt.state.LookupID(a)
 }
 
 func (rt *Runtime) GetBalance(a address.Address) (types.BigInt, aerrors.ActorError) {
