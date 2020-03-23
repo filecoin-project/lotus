@@ -181,11 +181,12 @@ type StorageMinerStruct struct {
 		SectorsRefs   func(context.Context) (map[string][]api.SealedRef, error)       `perm:"read"`
 		SectorsUpdate func(context.Context, abi.SectorNumber, api.SectorState) error  `perm:"write"`
 
-		WorkerConnect        func(context.Context, string) error                                                                          `perm:"admin"` // TODO: worker perm
-		WorkerStats func(context.Context) (map[uint64]api.WorkerStats, error) `perm:"admin"`
+		WorkerConnect func(context.Context, string) error                       `perm:"admin"` // TODO: worker perm
+		WorkerStats   func(context.Context) (map[uint64]api.WorkerStats, error) `perm:"admin"`
 
 		StorageList          func(context.Context) (map[stores.ID][]stores.Decl, error)                                                   `perm:"admin"`
 		StorageLocal         func(context.Context) (map[stores.ID]string, error)                                                          `perm:"admin"`
+		StorageStat          func(context.Context, stores.ID) (stores.FsStat, error)                                                      `perm:"admin"`
 		StorageAttach        func(context.Context, stores.StorageInfo, stores.FsStat) error                                               `perm:"admin"`
 		StorageDeclareSector func(context.Context, stores.ID, abi.SectorID, sectorbuilder.SectorFileType) error                           `perm:"admin"`
 		StorageDropSector    func(context.Context, stores.ID, abi.SectorID, sectorbuilder.SectorFileType) error                           `perm:"admin"`
@@ -686,6 +687,10 @@ func (c *StorageMinerStruct) StorageList(ctx context.Context) (map[stores.ID][]s
 
 func (c *StorageMinerStruct) StorageLocal(ctx context.Context) (map[stores.ID]string, error) {
 	return c.Internal.StorageLocal(ctx)
+}
+
+func (c *StorageMinerStruct) StorageStat(ctx context.Context, id stores.ID) (stores.FsStat, error) {
+	return c.Internal.StorageStat(ctx, id)
 }
 
 func (c *StorageMinerStruct) StorageInfo(ctx context.Context, id stores.ID) (stores.StorageInfo, error) {
