@@ -104,7 +104,17 @@ func (i *Index) StorageAttach(ctx context.Context, si StorageInfo, st FsStat) er
 			}
 		}
 
-		i.stores[si.ID].info.URLs = append(i.stores[si.ID].info.URLs, si.URLs...)
+	uloop:
+		for _, u := range si.URLs {
+			for _, l := range i.stores[si.ID].info.URLs {
+				if u == l {
+					continue uloop
+				}
+			}
+
+			i.stores[si.ID].info.URLs = append(i.stores[si.ID].info.URLs, u)
+		}
+
 		return nil
 	}
 	i.stores[si.ID] = &storageEntry{
@@ -127,7 +137,7 @@ func (i *Index) StorageDeclareSector(ctx context.Context, storageId ID, s abi.Se
 
 		for _, sid := range i.sectors[d] {
 			if sid == storageId {
-				log.Warnf("sector %v redeclared in %s", storageId)
+				log.Warnf("sector %v redeclared in %s", s, storageId)
 				return nil
 			}
 		}
