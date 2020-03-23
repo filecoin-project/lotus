@@ -245,7 +245,7 @@ func (bs *BlockSync) sendRequestToPeer(ctx context.Context, p peer.ID, req *Bloc
 	}
 
 	gsproto := string(gsnet.ProtocolGraphsync)
-	supp, err := bs.host.Peerstore().SupportsProtocols(p /*, BlockSyncProtocolID, */, gsproto)
+	supp, err := bs.host.Peerstore().SupportsProtocols(p, BlockSyncProtocolID, gsproto)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get protocols for peer: %w", err)
 	}
