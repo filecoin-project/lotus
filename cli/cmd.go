@@ -209,6 +209,14 @@ func ReqContext(cctx *cli.Context) context.Context {
 	return ctx
 }
 
+var CommonCommands = []*cli.Command{
+	authCmd,
+	fetchParamCmd,
+	netCmd,
+	versionCmd,
+	logCmd,
+}
+
 var Commands = []*cli.Command{
 	authCmd,
 	chainCmd,
