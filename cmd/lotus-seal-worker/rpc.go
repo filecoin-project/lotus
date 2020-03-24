@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/lotus/storage/sectorstorage"
 )
 
-type worker struct { // TODO: use advmgr.LocalWorker here
+type worker struct {
 	*sectorstorage.LocalWorker
 }
 

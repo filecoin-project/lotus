@@ -68,11 +68,13 @@ func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Requ
 	ft, err := ftFromString(vars["type"])
 	if err != nil {
 		log.Error("%+v", err)
+		w.WriteHeader(500)
 		return
 	}
 	paths, _, done, err := handler.Local.AcquireSector(r.Context(), id, ft, 0, false)
 	if err != nil {
 		log.Error("%+v", err)
+		w.WriteHeader(500)
 		return
 	}
 	defer done()
@@ -126,6 +128,7 @@ func (handler *FetchHandler) remoteDeleteSector(w http.ResponseWriter, r *http.R
 	ft, err := ftFromString(vars["type"])
 	if err != nil {
 		log.Error("%+v", err)
+		w.WriteHeader(500)
 		return
 	}
 
