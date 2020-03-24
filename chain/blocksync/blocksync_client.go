@@ -12,6 +12,8 @@ import (
 	blocks "github.com/ipfs/go-block-format"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
+	graphsync "github.com/ipfs/go-graphsync"
+	gsnet "github.com/ipfs/go-graphsync/network"
 	host "github.com/libp2p/go-libp2p-core/host"
 	inet "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -28,18 +30,20 @@ import (
 
 type BlockSync struct {
 	bserv bserv.BlockService
+	gsync graphsync.GraphExchange
 	host  host.Host
 
 	syncPeers *bsPeerTracker
 	peerMgr   *peermgr.PeerMgr
 }
 
-func NewBlockSyncClient(bserv dtypes.ChainBlockService, h host.Host, pmgr peermgr.MaybePeerMgr) *BlockSync {
+func NewBlockSyncClient(bserv dtypes.ChainBlockService, h host.Host, pmgr peermgr.MaybePeerMgr, gs dtypes.Graphsync) *BlockSync {
 	return &BlockSync{
 		bserv:     bserv,
 		host:      h,
 		syncPeers: newPeerTracker(pmgr.Mgr),
 		peerMgr:   pmgr.Mgr,
+		gsync:     gs,
 	}
 }
 
@@ -234,14 +238,45 @@ func (bs *BlockSync) sendRequestToPeer(ctx context.Context, p peer.ID, req *Bloc
 		}
 	}()
 
-	start := time.Now()
-
 	if span.IsRecordingEvents() {
 		span.AddAttributes(
 			trace.StringAttribute("peer", p.Pretty()),
 		)
 	}
 
+	gsproto := string(gsnet.ProtocolGraphsync)
+	supp, err := bs.host.Peerstore().SupportsProtocols(p, BlockSyncProtocolID, gsproto)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get protocols for peer: %w", err)
+	}
+
+	if len(supp) == 0 {
+		return nil, xerrors.Errorf("peer %s supports no known sync protocols", p)
+	}
+
+	switch supp[0] {
+	case BlockSyncProtocolID:
+		res, err := bs.fetchBlocksBlockSync(ctx, p, req)
+		if err != nil {
+			return nil, xerrors.Errorf("blocksync req failed: %w", err)
+		}
+		return res, nil
+	case gsproto:
+		res, err := bs.fetchBlocksGraphSync(ctx, p, req)
+		if err != nil {
+			return nil, xerrors.Errorf("graphsync req failed: %w", err)
+		}
+		return res, nil
+	default:
+		return nil, xerrors.Errorf("peerstore somehow returned unexpected protocols: %v", supp)
+	}
+
+}
+func (bs *BlockSync) fetchBlocksBlockSync(ctx context.Context, p peer.ID, req *BlockSyncRequest) (*BlockSyncResponse, error) {
+	ctx, span := trace.StartSpan(ctx, "blockSyncFetch")
+	defer span.End()
+
+	start := time.Now()
 	s, err := bs.host.NewStream(inet.WithNoDial(ctx, "should already have connection"), p, BlockSyncProtocolID)
 	if err != nil {
 		bs.RemovePeer(p)
@@ -272,7 +307,6 @@ func (bs *BlockSync) sendRequestToPeer(ctx context.Context, p peer.ID, req *Bloc
 	}
 
 	bs.syncPeers.logSuccess(p, time.Since(start))
-
 	return &res, nil
 }
 

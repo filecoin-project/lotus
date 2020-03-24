@@ -5,9 +5,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/minio/blake2b-simd"
 	"sync"
 	"time"
+
+	"github.com/minio/blake2b-simd"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -779,7 +780,6 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 	}
 
 	nonces := make(map[address.Address]uint64)
-	balances := make(map[address.Address]types.BigInt)
 
 	stateroot, _, err := syncer.sm.TipSetState(ctx, baseTs)
 	if err != nil {
@@ -798,12 +798,12 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 		}
 
 		if _, ok := nonces[m.From]; !ok {
+			// `GetActor` does not validate that this is an account actor.
 			act, err := st.GetActor(m.From)
 			if err != nil {
 				return xerrors.Errorf("failed to get actor: %w", err)
 			}
 			nonces[m.From] = act.Nonce
-			balances[m.From] = act.Balance
 		}
 
 		if nonces[m.From] != m.Nonce {
@@ -811,11 +811,6 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 		}
 		nonces[m.From]++
 
-		if balances[m.From].LessThan(m.RequiredFunds()) {
-			return xerrors.Errorf("not enough funds for message execution")
-		}
-
-		balances[m.From] = types.BigSub(balances[m.From], m.RequiredFunds())
 		return nil
 	}
 
@@ -836,6 +831,8 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 			return xerrors.Errorf("block had invalid secpk message at index %d: %w", i, err)
 		}
 
+		// `From` being an account actor is only validated inside the `vm.ResolveToKeyAddr` call
+		// in `StateManager.ResolveToKeyAddress` here (and not in `checkMsg`).
 		kaddr, err := syncer.sm.ResolveToKeyAddress(ctx, m.Message.From, baseTs)
 		if err != nil {
 			return xerrors.Errorf("failed to resolve key addr: %w", err)
@@ -874,7 +871,7 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 	return nil
 }
 
-func (syncer *Syncer) verifyBlsAggregate(ctx context.Context, sig crypto.Signature, msgs []cid.Cid, pubks []bls.PublicKey) error {
+func (syncer *Syncer) verifyBlsAggregate(ctx context.Context, sig *crypto.Signature, msgs []cid.Cid, pubks []bls.PublicKey) error {
 	_, span := trace.StartSpan(ctx, "syncer.verifyBlsAggregate")
 	defer span.End()
 	span.AddAttributes(

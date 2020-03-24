@@ -174,7 +174,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, pstate cid.Cid, bms []B
 		vmi.SetBlockMiner(b.Miner)
 
 		penalty := types.NewInt(0)
-		gasReward := types.NewInt(0)
+		gasReward := big.Zero()
 
 		for _, cm := range append(b.BlsMessages, b.SecpkMessages...) {
 			m := cm.VMMessage()
@@ -198,6 +198,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, pstate cid.Cid, bms []B
 			}
 
 			receipts = append(receipts, &r.MessageReceipt)
+			gasReward = big.Add(gasReward, big.NewInt(r.GasUsed))
 
 			if cb != nil {
 				if err := cb(cm.Cid(), m, r); err != nil {
@@ -429,6 +430,8 @@ func (sm *StateManager) LoadActorStateRaw(ctx context.Context, a address.Address
 	return act, nil
 }
 
+// Similar to `vm.ResolveToKeyAddr` but does not allow `Actor` type of addresses. Uses the `TipSet` `ts`
+// to generate the VM state.
 func (sm *StateManager) ResolveToKeyAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
 	switch addr.Protocol() {
 	case address.BLS, address.SECP256K1:

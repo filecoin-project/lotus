@@ -26,6 +26,7 @@ func init() {
 
 var EmptyObjectCid cid.Cid
 
+// Creates account actors from only BLS/SECP256K1 addresses.
 func TryCreateAccountActor(st *state.StateTree, addr address.Address) (*types.Actor, aerrors.ActorError) {
 	act, err := makeActor(st, addr)
 	if err != nil {
@@ -73,10 +74,18 @@ func NewBLSAccountActor(st *state.StateTree, addr address.Address) (*types.Actor
 }
 
 func NewSecp256k1AccountActor(st *state.StateTree, addr address.Address) (*types.Actor, aerrors.ActorError) {
+	var acstate account.State
+	acstate.Address = addr
+
+	c, err := st.Store.Put(context.TODO(), &acstate)
+	if err != nil {
+		return nil, aerrors.Escalate(err, "serializing account actor state")
+	}
+
 	nact := &types.Actor{
 		Code:    builtin.AccountActorCodeID,
 		Balance: types.NewInt(0),
-		Head:    EmptyObjectCid,
+		Head:    c,
 	}
 
 	return nact, nil

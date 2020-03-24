@@ -21,6 +21,7 @@ type Storage interface {
 
 type StateTree interface {
 	SetActor(addr address.Address, act *Actor) error
+	// GetActor returns the actor from any type of `addr` provided.
 	GetActor(addr address.Address) (*Actor, error)
 }
 
