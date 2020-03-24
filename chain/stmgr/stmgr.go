@@ -584,6 +584,37 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid) (*type
 	}
 }
 
+func (sm *StateManager) SearchForMessage(ctx context.Context, mcid cid.Cid) (*types.TipSet, *types.MessageReceipt, error) {
+	msg, err := sm.cs.GetCMessage(mcid)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to load message: %w", err)
+	}
+
+	head := sm.cs.GetHeaviestTipSet()
+
+	r, err := sm.tipsetExecutedMessage(head, mcid, msg.VMMessage())
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if r != nil {
+		return head, r, nil
+	}
+
+	fts, r, err := sm.searchBackForMsg(ctx, head, msg)
+
+	if err != nil {
+		log.Warnf("failed to look back through chain for message %s", mcid)
+		return nil, nil, err
+	}
+
+	if fts == nil {
+		return nil, nil, nil
+	}
+
+	return fts, r, nil
+}
+
 func (sm *StateManager) searchBackForMsg(ctx context.Context, from *types.TipSet, m store.ChainMsg) (*types.TipSet, *types.MessageReceipt, error) {
 
 	cur := from
