@@ -281,7 +281,7 @@ func (a *StateAPI) MinerCreateBlock(ctx context.Context, addr address.Address, p
 	return &out, nil
 }
 
-func (a *StateAPI) StateWaitMsg(ctx context.Context, msg cid.Cid) (*api.MsgWait, error) {
+func (a *StateAPI) StateWaitMsg(ctx context.Context, msg cid.Cid) (*api.MsgLookup, error) {
 	// TODO: consider using event system for this, expose confidence
 
 	ts, recpt, err := a.StateManager.WaitForMessage(ctx, msg)
@@ -289,10 +289,26 @@ func (a *StateAPI) StateWaitMsg(ctx context.Context, msg cid.Cid) (*api.MsgWait,
 		return nil, err
 	}
 
-	return &api.MsgWait{
+	return &api.MsgLookup{
 		Receipt: *recpt,
 		TipSet:  ts,
 	}, nil
+}
+
+func (a *StateAPI) StateSearchMsg(ctx context.Context, msg cid.Cid) (*api.MsgLookup, error) {
+	ts, recpt, err := a.StateManager.SearchForMessage(ctx, msg)
+	if err != nil {
+		return nil, err
+	}
+
+	if ts != nil {
+		return &api.MsgLookup{
+			Receipt: *recpt,
+			TipSet:  ts,
+		}, nil
+	} else {
+		return nil, nil
+	}
 }
 
 func (a *StateAPI) StateGetReceipt(ctx context.Context, msg cid.Cid, tsk types.TipSetKey) (*types.MessageReceipt, error) {
