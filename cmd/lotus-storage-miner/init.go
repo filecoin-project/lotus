@@ -404,7 +404,7 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 				return xerrors.Errorf("getting id address: %w", err)
 			}
 
-			smgr, err := sectorstorage.New(lr, stores.NewIndex(), &sectorbuilder.Config{
+			smgr, err := sectorstorage.New(ctx, lr, stores.NewIndex(), &sectorbuilder.Config{
 				SealProofType: spt,
 				PoStProofType: ppt,
 			}, nil, api)

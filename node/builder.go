@@ -272,7 +272,7 @@ func Online() Option {
 			Override(new(*sectorbuilder.Config), modules.SectorBuilderConfig),
 			Override(new(stores.LocalStorage), From(new(repo.LockedRepo))),
 			Override(new(sealing.SectorIDCounter), modules.SectorIDCounter),
-			Override(new(*sectorstorage.Manager), sectorstorage.New),
+			Override(new(*sectorstorage.Manager), modules.SectorStorage),
 
 			Override(new(sectorstorage.SectorManager), From(new(*sectorstorage.Manager))),
 			Override(new(storage2.Prover), From(new(sectorstorage.SectorManager))),

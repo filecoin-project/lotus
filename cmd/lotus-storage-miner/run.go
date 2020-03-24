@@ -40,6 +40,11 @@ var runCmd = &cli.Command{
 			Name:  "nosync",
 			Usage: "don't check full-node sync status",
 		},
+		&cli.BoolFlag{
+			Name:  "manage-fdlimit",
+			Usage: "manage open file limit",
+			Value: true,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Bool("enable-gpu-proving") {
@@ -58,8 +63,10 @@ var runCmd = &cli.Command{
 			return err
 		}
 
-		if _, _, err := ulimit.ManageFdLimit(); err != nil {
-			log.Errorf("setting file descriptor limit: %s", err)
+		if cctx.Bool("manage-fdlimit") {
+			if _, _, err := ulimit.ManageFdLimit(); err != nil {
+				log.Errorf("setting file descriptor limit: %s", err)
+			}
 		}
 
 		if v.APIVersion != build.APIVersion {
