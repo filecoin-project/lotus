@@ -171,8 +171,8 @@ func (a *actorWrapper) Head() cid.Cid {
 	return a.Actor.Head
 }
 
-func (a *actorWrapper) CallSeqNum() int64 {
-	return int64(a.Actor.Nonce)
+func (a *actorWrapper) CallSeqNum() uint64 {
+	return a.Actor.Nonce
 }
 
 func (a *actorWrapper) Balance() big.Int {
