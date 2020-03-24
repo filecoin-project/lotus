@@ -38,6 +38,8 @@ type Worker interface {
 	Paths(context.Context) ([]stores.StoragePath, error)
 
 	Info(context.Context) (api.WorkerInfo, error)
+
+	Close() error
 }
 
 type SectorManager interface {
@@ -423,6 +425,11 @@ func (m *Manager) StorageLocal(ctx context.Context) (map[stores.ID]string, error
 
 func (m *Manager) FsStat(ctx context.Context, id stores.ID) (stores.FsStat, error) {
 	return m.storage.FsStat(ctx, id)
+}
+
+func (m *Manager) Close() error {
+	close(m.closing)
+	return nil
 }
 
 var _ SectorManager = &Manager{}

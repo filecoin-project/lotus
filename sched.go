@@ -67,6 +67,9 @@ func (m *Manager) runSched() {
 			m.schedQueue.PushBack(req)
 		case wid := <-m.workerFree:
 			m.onWorkerFreed(wid)
+		case <-m.closing:
+			m.schedClose()
+			return
 		}
 	}
 }
@@ -239,4 +242,15 @@ func (m *Manager) schedNewWorker(w *workerHandle) {
 	id := m.nextWorker
 	m.workers[id] = w
 	m.nextWorker++
+}
+
+func (m *Manager) schedClose() {
+	m.workersLk.Lock()
+	defer m.workersLk.Unlock()
+
+	for i, w := range m.workers {
+		if err := w.w.Close(); err != nil {
+			log.Errorf("closing worker %d: %+v", i, err)
+		}
+	}
 }
