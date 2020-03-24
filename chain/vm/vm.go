@@ -225,11 +225,6 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 		}()
 	}
 
-	fromActor, err := st.GetActor(msg.From)
-	if err != nil {
-		return nil, aerrors.Absorb(err, 1, "could not find source actor"), rt
-	}
-
 	toActor, err := st.GetActor(msg.To)
 	if err != nil {
 		if xerrors.Is(err, init_.ErrAddressNotFound) {
@@ -250,7 +245,7 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 	}
 
 	if types.BigCmp(msg.Value, types.NewInt(0)) != 0 {
-		if err := Transfer(fromActor, toActor, msg.Value); err != nil {
+		if err := vm.transfer(msg.From, msg.To, msg.Value); err != nil {
 			return nil, aerrors.Absorb(err, 1, "failed to transfer funds"), nil
 		}
 	}
@@ -349,11 +344,13 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 	}
 
 	gasHolder := &types.Actor{Balance: types.NewInt(0)}
-	if err := Transfer(fromActor, gasHolder, gascost); err != nil {
+	if err := vm.transferToGasHolder(msg.From, gasHolder, gascost); err != nil {
 		return nil, xerrors.Errorf("failed to withdraw gas funds: %w", err)
 	}
 
-	fromActor.Nonce++
+	if err := vm.incrementNonce(msg.From); err != nil {
+		return nil, err
+	}
 
 	if err := st.Snapshot(ctx); err != nil {
 		return nil, xerrors.Errorf("snapshot failed: %w", err)
@@ -396,18 +393,13 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 		}
 		// refund unused gas
 		refund := types.BigMul(types.NewInt(uint64(msg.GasLimit-gasUsed)), msg.GasPrice)
-		if err := Transfer(gasHolder, fromActor, refund); err != nil {
+		if err := vm.transferFromGasHolder(msg.From, gasHolder, refund); err != nil {
 			return nil, xerrors.Errorf("failed to refund gas")
 		}
 	}
 
-	rwAct, err := st.GetActor(builtin.RewardActorAddr)
-	if err != nil {
-		return nil, xerrors.Errorf("getting burnt funds actor failed: %w", err)
-	}
-
 	gasReward := types.BigMul(msg.GasPrice, types.NewInt(uint64(gasUsed)))
-	if err := Transfer(gasHolder, rwAct, gasReward); err != nil {
+	if err := vm.transferFromGasHolder(builtin.RewardActorAddr, gasHolder, gasReward); err != nil {
 		return nil, xerrors.Errorf("failed to give miner gas reward: %w", err)
 	}
 
@@ -595,7 +587,21 @@ func (vm *VM) Invoke(act *types.Actor, rt *Runtime, method abi.MethodNum, params
 	return ret, nil
 }
 
-func Transfer(from, to *types.Actor, amt types.BigInt) error {
+func (vm *VM) SetInvoker(i *invoker) {
+	vm.inv = i
+}
+
+func (vm *VM) incrementNonce(addr address.Address) error {
+	a, err := vm.cstate.GetActor(addr)
+	if err != nil {
+		return xerrors.Errorf("nonce increment of sender failed")
+	}
+
+	a.Nonce++
+	return nil
+}
+
+func (vm *VM) transfer(from, to address.Address, amt types.BigInt) error {
 	if from == to {
 		return nil
 	}
@@ -604,15 +610,55 @@ func Transfer(from, to *types.Actor, amt types.BigInt) error {
 		return xerrors.Errorf("attempted to transfer negative value")
 	}
 
-	if err := deductFunds(from, amt); err != nil {
+	f, err := vm.cstate.GetActor(from)
+	if err != nil {
+		return xerrors.Errorf("transfer failed when retrieving sender actor")
+	}
+
+	t, err := vm.cstate.GetActor(to)
+	if err != nil {
+		return xerrors.Errorf("transfer failed when retrieving receiver actor")
+	}
+
+	if err := deductFunds(f, amt); err != nil {
 		return err
 	}
-	depositFunds(to, amt)
+	depositFunds(t, amt)
 	return nil
 }
 
-func (vm *VM) SetInvoker(i *invoker) {
-	vm.inv = i
+func (vm *VM) transferToGasHolder(addr address.Address, gasHolder *types.Actor, amt types.BigInt) error {
+	if amt.LessThan(types.NewInt(0)) {
+		return xerrors.Errorf("attempted to transfer negative value to gas holder")
+	}
+
+	a, err := vm.cstate.GetActor(addr)
+	if err != nil {
+		return xerrors.Errorf("transfer to gas holder failed when retrieving sender actor")
+	}
+
+	if err := deductFunds(a, amt); err != nil {
+		return err
+	}
+	depositFunds(gasHolder, amt)
+	return nil
+}
+
+func (vm *VM) transferFromGasHolder(addr address.Address, gasHolder *types.Actor, amt types.BigInt) error {
+	if amt.LessThan(types.NewInt(0)) {
+		return xerrors.Errorf("attempted to transfer negative value from gas holder")
+	}
+
+	a, err := vm.cstate.GetActor(addr)
+	if err != nil {
+		return xerrors.Errorf("transfer from gas holder failed when retrieving receiver actor")
+	}
+
+	if err := deductFunds(gasHolder, amt); err != nil {
+		return err
+	}
+	depositFunds(a, amt)
+	return nil
 }
 
 func deductFunds(act *types.Actor, amt types.BigInt) error {
