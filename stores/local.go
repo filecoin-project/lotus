@@ -270,7 +270,7 @@ func (st *Local) Local(ctx context.Context) ([]StoragePath, error) {
 	return out, nil
 }
 
-func (st *Local) delete(ctx context.Context, sid abi.SectorID, typ sectorbuilder.SectorFileType) error {
+func (st *Local) Remove(ctx context.Context, sid abi.SectorID, typ sectorbuilder.SectorFileType) error {
 	if bits.OnesCount(uint(typ)) != 1 {
 		return xerrors.New("delete expects one file type")
 	}
@@ -311,7 +311,7 @@ func (st *Local) delete(ctx context.Context, sid abi.SectorID, typ sectorbuilder
 
 var errPathNotFound = xerrors.Errorf("fsstat: path not found")
 
-func (st *Local) FsStat(id ID) (FsStat, error) {
+func (st *Local) FsStat(ctx context.Context, id ID) (FsStat, error) {
 	st.localLk.RLock()
 	defer st.localLk.RUnlock()
 
@@ -322,3 +322,5 @@ func (st *Local) FsStat(id ID) (FsStat, error) {
 
 	return Stat(p.local)
 }
+
+var _ Store = &Local{}

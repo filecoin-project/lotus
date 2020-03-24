@@ -152,7 +152,15 @@ func (l *LocalWorker) FinalizeSector(ctx context.Context, sector abi.SectorID) e
 		return err
 	}
 
-	return sb.FinalizeSector(ctx, sector)
+	if err := sb.FinalizeSector(ctx, sector); err != nil {
+		return xerrors.Errorf("finalizing sector: %w", err)
+	}
+
+	if err := l.storage.Remove(ctx, sector, sectorbuilder.FTUnsealed); err != nil {
+		return xerrors.Errorf("removing unsealed data: %w", err)
+	}
+
+	return nil
 }
 
 func (l *LocalWorker) TaskTypes(context.Context) (map[sealtasks.TaskType]struct{}, error) {
