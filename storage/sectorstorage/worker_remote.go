@@ -10,10 +10,12 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
+	"github.com/filecoin-project/lotus/lib/jsonrpc"
 )
 
 type remote struct {
 	api.WorkerApi
+	closer jsonrpc.ClientCloser
 }
 
 func (r *remote) NewSector(ctx context.Context, sector abi.SectorID) error {
@@ -33,13 +35,17 @@ func ConnectRemote(ctx context.Context, fa api.Common, url string) (*remote, err
 	headers := http.Header{}
 	headers.Add("Authorization", "Bearer "+string(token))
 
-	wapi, close, err := client.NewWorkerRPC(url, headers)
+	wapi, closer, err := client.NewWorkerRPC(url, headers)
 	if err != nil {
 		return nil, xerrors.Errorf("creating jsonrpc client: %w", err)
 	}
-	_ = close // TODO
 
-	return &remote{wapi}, nil
+	return &remote{wapi, closer}, nil
+}
+
+func (r *remote) Close() error {
+	r.closer()
+	return nil
 }
 
 var _ Worker = &remote{}
