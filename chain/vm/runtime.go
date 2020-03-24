@@ -159,7 +159,8 @@ func (rs *Runtime) Store() vmr.Store {
 
 func (rt *Runtime) NewActorAddress() address.Address {
 	var b bytes.Buffer
-	if err := rt.origin.MarshalCBOR(&b); err != nil { // todo: spec says cbor; why not just bytes?
+	oa, _ := ResolveToKeyAddr(rt.vm.cstate, rt.vm.cst, rt.origin)
+	if err := oa.MarshalCBOR(&b); err != nil { // todo: spec says cbor; why not just bytes?
 		rt.Abortf(exitcode.ErrSerialization, "writing caller address into a buffer: %v", err)
 	}
 

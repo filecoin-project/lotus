@@ -66,14 +66,6 @@ type ExecutionResult struct {
 
 // Send allows the current execution context to invoke methods on other actors in the system
 
-func ResolveToStableAddr(state types.StateTree, cst cbor.IpldStore, addr address.Address) (address.Address, aerrors.ActorError) {
-	if addr == builtin.SystemActorAddr {
-		return addr, nil
-	}
-
-	return ResolveToKeyAddr(state, cst, addr)
-}
-
 // ResolveToKeyAddr returns the public key type of address (`BLS`/`SECP256K1`) of an account actor identified by `addr`.
 func ResolveToKeyAddr(state types.StateTree, cst cbor.IpldStore, addr address.Address) (address.Address, aerrors.ActorError) {
 	if addr.Protocol() == address.BLS || addr.Protocol() == address.SECP256K1 {
@@ -202,7 +194,7 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 	st := vm.cstate
 	gasUsed := gasCharge
 
-	var origin address.Address
+	origin := msg.From
 	on := msg.Nonce
 	var nac uint64 = 0
 	if parent != nil {
@@ -210,12 +202,6 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 		origin = parent.origin
 		on = parent.originNonce
 		nac = parent.numActorsCreated
-	} else {
-		var aerr aerrors.ActorError
-		origin, aerr = ResolveToStableAddr(vm.cstate, vm.cst, msg.From)
-		if aerr != nil {
-			return nil, aerr, nil
-		}
 	}
 
 	rt := vm.makeRuntime(ctx, msg, origin, on, gasUsed, nac)
