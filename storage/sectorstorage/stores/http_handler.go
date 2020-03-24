@@ -36,7 +36,7 @@ func (handler *FetchHandler) remoteStatFs(w http.ResponseWriter, r *http.Request
 	vars := mux.Vars(r)
 	id := ID(vars["id"])
 
-	st, err := handler.Local.FsStat(id)
+	st, err := handler.Local.FsStat(r.Context(), id)
 	switch err {
 	case errPathNotFound:
 		w.WriteHeader(404)
@@ -129,7 +129,7 @@ func (handler *FetchHandler) remoteDeleteSector(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	if err := handler.delete(r.Context(), id, ft); err != nil {
+	if err := handler.Remove(r.Context(), id, ft); err != nil {
 		log.Error("%+v", err)
 		w.WriteHeader(500)
 		return
