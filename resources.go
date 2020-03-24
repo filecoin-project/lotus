@@ -20,7 +20,7 @@ var FsOverheadFinalized = map[sectorbuilder.SectorFileType]int{
 
 type Resources struct {
 	MinMemory uint64 // What Must be in RAM for decent perf
-	MaxMemory uint64 // Mamory required (swap + ram)
+	MaxMemory uint64 // Memory required (swap + ram)
 
 	MultiThread bool
 	CanGPU      bool
