@@ -39,7 +39,7 @@ func (f *Factories) NewRandomnessSource() vstate.RandomnessSource {
 }
 
 func (f *Factories) NewValidationConfig() vstate.ValidationConfig {
-	trackGas := false
+	trackGas := true
 	checkExit := true
 	checkRet := true
 	// ignore gas and return value assertions
