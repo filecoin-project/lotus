@@ -46,6 +46,11 @@ func (a *Applier) ApplyMessage(eCtx *vtypes.ExecutionContext, state vstate.VMWra
 		return vtypes.MessageReceipt{}, err
 	}
 
+	rval := ret.Return
+	if rval == nil {
+		rval = []byte{}
+	}
+
 	st.stateRoot, err = lotusVM.Flush(ctx)
 	if err != nil {
 		return vtypes.MessageReceipt{}, err
@@ -53,7 +58,7 @@ func (a *Applier) ApplyMessage(eCtx *vtypes.ExecutionContext, state vstate.VMWra
 
 	mr := vtypes.MessageReceipt{
 		ExitCode:    exitcode.ExitCode(ret.ExitCode),
-		ReturnValue: ret.Return,
+		ReturnValue: rval,
 		GasUsed:     big.NewInt(ret.GasUsed),
 	}
 
@@ -88,9 +93,13 @@ func (a *Applier) ApplyTipSetMessages(state vstate.VMWrapper, blocks []vtypes.Bl
 		if msg.From == builtin.SystemActorAddr {
 			return nil // ignore reward and cron calls
 		}
+		rval := ret.Return
+		if rval == nil {
+			rval = []byte{} // chain validation tests expect empty arrays to not be nil...
+		}
 		receipts = append(receipts, vtypes.MessageReceipt{
 			ExitCode:    exitcode.ExitCode(ret.ExitCode),
-			ReturnValue: ret.Return,
+			ReturnValue: rval,
 
 			GasUsed: big.NewInt(ret.GasUsed),
 		})

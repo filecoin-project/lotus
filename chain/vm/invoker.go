@@ -127,7 +127,6 @@ func (*invoker) transform(instance Invokee) (nativeCode, error) {
 		o0 := t.Out(0)
 		if !o0.Implements(reflect.TypeOf((*cbg.CBORMarshaler)(nil)).Elem()) {
 			return nil, newErr("output needs to implement cgb.CBORMarshaler")
-
 		}
 	}
 	code := make(nativeCode, len(exports))
