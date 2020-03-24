@@ -5,10 +5,8 @@ import (
 	"encoding/json"
 
 	"github.com/filecoin-project/go-amt-ipld/v2"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -254,10 +252,9 @@ func MakeGenesisBlock(ctx context.Context, bs bstore.Blockstore, sys runtime.Sys
 	}
 
 	b := &types.BlockHeader{
-		Miner:  builtin.InitActorAddr,
+		Miner:  builtin.SystemActorAddr,
 		Ticket: genesisticket,
 		EPostProof: types.EPostProof{
-			Proofs:   []abi.PoStProof{{ProofBytes: []byte("not a real proof")}},
 			PostRand: []byte("i guess this is kinda random"),
 		},
 		Parents:               []cid.Cid{},
@@ -266,8 +263,8 @@ func MakeGenesisBlock(ctx context.Context, bs bstore.Blockstore, sys runtime.Sys
 		ParentStateRoot:       stateroot,
 		Messages:              mmb.Cid(),
 		ParentMessageReceipts: emptyroot,
-		BLSAggregate:          crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte("signatureeee")},
-		BlockSig:              &crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte("block signatureeee")},
+		BLSAggregate:          nil,
+		BlockSig:              nil,
 		Timestamp:             template.Timestamp,
 	}
 

@@ -36,11 +36,7 @@ func init() {
 	// initialize the test skipper with tests being skipped
 	TestSuiteSkipper = TestSkipper{testSkips: []suites.TestCase{
 		/* tests to skip go here */
-		tipset.TestInternalMessageApplicationFailure,
-		tipset.TestInvalidSenderAddress,
-		tipset.TestBlockMessageDeduplication,
-		tipset.TestMinerSubmitFallbackPoSt,
-		tipset.TestMinerMissPoStChallengeWindow,
+		tipset.TestMinerRewardsAndPenalties,
 	}}
 }
 

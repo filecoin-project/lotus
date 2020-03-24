@@ -66,6 +66,7 @@ type ExecutionResult struct {
 
 // Send allows the current execution context to invoke methods on other actors in the system
 
+// ResolveToKeyAddr returns the public key type of address (`BLS`/`SECP256K1`) of an account actor identified by `addr`.
 func ResolveToKeyAddr(state types.StateTree, cst cbor.IpldStore, addr address.Address) (address.Address, aerrors.ActorError) {
 	if addr.Protocol() == address.BLS || addr.Protocol() == address.SECP256K1 {
 		return addr, nil
@@ -73,11 +74,11 @@ func ResolveToKeyAddr(state types.StateTree, cst cbor.IpldStore, addr address.Ad
 
 	act, err := state.GetActor(addr)
 	if err != nil {
-		return address.Undef, aerrors.Newf(1, "failed to find actor: %s", addr)
+		return address.Undef, aerrors.Newf(byte(exitcode.SysErrActorNotFound), "failed to find actor: %s", addr)
 	}
 
 	if act.Code != builtin.AccountActorCodeID {
-		return address.Undef, aerrors.New(1, "address was not for an account actor")
+		return address.Undef, aerrors.Fatalf("address %s was not for an account actor", addr)
 	}
 
 	var aast account.State
@@ -190,29 +191,8 @@ type ApplyRet struct {
 
 func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 	gasCharge int64) ([]byte, aerrors.ActorError, *Runtime) {
-
 	st := vm.cstate
-
-	fromActor, err := st.GetActor(msg.From)
-	if err != nil {
-		return nil, aerrors.Absorb(err, 1, "could not find source actor"), nil
-	}
-
 	gasUsed := gasCharge
-
-	toActor, err := st.GetActor(msg.To)
-	if err != nil {
-		if xerrors.Is(err, init_.ErrAddressNotFound) {
-			a, err := TryCreateAccountActor(st, msg.To)
-			if err != nil {
-				return nil, aerrors.Absorb(err, 1, "could not create account"), nil
-			}
-			toActor = a
-			gasUsed += PricelistByEpoch(vm.blockHeight).OnCreateActor()
-		} else {
-			return nil, aerrors.Escalate(err, "getting actor"), nil
-		}
-	}
 
 	origin := msg.From
 	on := msg.Nonce
@@ -223,11 +203,26 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 		on = parent.originNonce
 		nac = parent.numActorsCreated
 	}
+
 	rt := vm.makeRuntime(ctx, msg, origin, on, gasUsed, nac)
 	if parent != nil {
 		defer func() {
 			parent.gasUsed = rt.gasUsed
 		}()
+	}
+
+	toActor, err := st.GetActor(msg.To)
+	if err != nil {
+		if xerrors.Is(err, init_.ErrAddressNotFound) {
+			a, err := TryCreateAccountActor(st, msg.To)
+			if err != nil {
+				return nil, aerrors.Absorb(err, 1, "could not create account"), rt
+			}
+			toActor = a
+			gasUsed += PricelistByEpoch(vm.blockHeight).OnCreateActor()
+		} else {
+			return nil, aerrors.Escalate(err, "getting actor"), rt
+		}
 	}
 
 	aerr := rt.chargeGasSafe(rt.Pricelist().OnMethodInvocation(msg.Value, msg.Method))
@@ -236,7 +231,7 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 	}
 
 	if types.BigCmp(msg.Value, types.NewInt(0)) != 0 {
-		if err := Transfer(fromActor, toActor, msg.Value); err != nil {
+		if err := vm.transfer(msg.From, msg.To, msg.Value); err != nil {
 			return nil, aerrors.Absorb(err, 1, "failed to transfer funds"), nil
 		}
 	}
@@ -335,11 +330,13 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 	}
 
 	gasHolder := &types.Actor{Balance: types.NewInt(0)}
-	if err := Transfer(fromActor, gasHolder, gascost); err != nil {
+	if err := vm.transferToGasHolder(msg.From, gasHolder, gascost); err != nil {
 		return nil, xerrors.Errorf("failed to withdraw gas funds: %w", err)
 	}
 
-	fromActor.Nonce++
+	if err := vm.incrementNonce(msg.From); err != nil {
+		return nil, err
+	}
 
 	if err := st.Snapshot(ctx); err != nil {
 		return nil, xerrors.Errorf("snapshot failed: %w", err)
@@ -347,8 +344,14 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 	defer st.ClearSnapshot()
 
 	ret, actorErr, rt := vm.send(ctx, msg, nil, msgGasCost)
+	if aerrors.IsFatal(actorErr) {
+		return nil, xerrors.Errorf("[from=%s,to=%s,n=%d,m=%d,h=%d] fatal error: %w", msg.From, msg.To, msg.Nonce, msg.Method, vm.blockHeight, actorErr)
+	}
 
 	{
+		if rt == nil {
+			return nil, xerrors.Errorf("send returned nil runtime, send error was: %s", actorErr)
+		}
 		actorErr2 := rt.chargeGasSafe(rt.Pricelist().OnChainReturnValue(len(ret)))
 		if actorErr == nil {
 			//TODO: Ambigous what to do in this case
@@ -356,9 +359,6 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 		}
 	}
 
-	if aerrors.IsFatal(actorErr) {
-		return nil, xerrors.Errorf("[from=%s,to=%s,n=%d,m=%d,h=%d] fatal error: %w", msg.From, msg.To, msg.Nonce, msg.Method, vm.blockHeight, actorErr)
-	}
 	if actorErr != nil {
 		log.Warnw("Send actor error", "from", msg.From, "to", msg.To, "nonce", msg.Nonce, "method", msg.Method, "height", vm.blockHeight, "error", fmt.Sprintf("%+v", actorErr))
 	}
@@ -379,18 +379,13 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 		}
 		// refund unused gas
 		refund := types.BigMul(types.NewInt(uint64(msg.GasLimit-gasUsed)), msg.GasPrice)
-		if err := Transfer(gasHolder, fromActor, refund); err != nil {
+		if err := vm.transferFromGasHolder(msg.From, gasHolder, refund); err != nil {
 			return nil, xerrors.Errorf("failed to refund gas")
 		}
 	}
 
-	rwAct, err := st.GetActor(builtin.RewardActorAddr)
-	if err != nil {
-		return nil, xerrors.Errorf("getting burnt funds actor failed: %w", err)
-	}
-
 	gasReward := types.BigMul(msg.GasPrice, types.NewInt(uint64(gasUsed)))
-	if err := Transfer(gasHolder, rwAct, gasReward); err != nil {
+	if err := vm.transferFromGasHolder(builtin.RewardActorAddr, gasHolder, gasReward); err != nil {
 		return nil, xerrors.Errorf("failed to give miner gas reward: %w", err)
 	}
 
@@ -578,7 +573,21 @@ func (vm *VM) Invoke(act *types.Actor, rt *Runtime, method abi.MethodNum, params
 	return ret, nil
 }
 
-func Transfer(from, to *types.Actor, amt types.BigInt) error {
+func (vm *VM) SetInvoker(i *invoker) {
+	vm.inv = i
+}
+
+func (vm *VM) incrementNonce(addr address.Address) error {
+	a, err := vm.cstate.GetActor(addr)
+	if err != nil {
+		return xerrors.Errorf("nonce increment of sender failed")
+	}
+
+	a.Nonce++
+	return nil
+}
+
+func (vm *VM) transfer(from, to address.Address, amt types.BigInt) error {
 	if from == to {
 		return nil
 	}
@@ -587,15 +596,55 @@ func Transfer(from, to *types.Actor, amt types.BigInt) error {
 		return xerrors.Errorf("attempted to transfer negative value")
 	}
 
-	if err := deductFunds(from, amt); err != nil {
+	f, err := vm.cstate.GetActor(from)
+	if err != nil {
+		return xerrors.Errorf("transfer failed when retrieving sender actor")
+	}
+
+	t, err := vm.cstate.GetActor(to)
+	if err != nil {
+		return xerrors.Errorf("transfer failed when retrieving receiver actor")
+	}
+
+	if err := deductFunds(f, amt); err != nil {
 		return err
 	}
-	depositFunds(to, amt)
+	depositFunds(t, amt)
 	return nil
 }
 
-func (vm *VM) SetInvoker(i *invoker) {
-	vm.inv = i
+func (vm *VM) transferToGasHolder(addr address.Address, gasHolder *types.Actor, amt types.BigInt) error {
+	if amt.LessThan(types.NewInt(0)) {
+		return xerrors.Errorf("attempted to transfer negative value to gas holder")
+	}
+
+	a, err := vm.cstate.GetActor(addr)
+	if err != nil {
+		return xerrors.Errorf("transfer to gas holder failed when retrieving sender actor")
+	}
+
+	if err := deductFunds(a, amt); err != nil {
+		return err
+	}
+	depositFunds(gasHolder, amt)
+	return nil
+}
+
+func (vm *VM) transferFromGasHolder(addr address.Address, gasHolder *types.Actor, amt types.BigInt) error {
+	if amt.LessThan(types.NewInt(0)) {
+		return xerrors.Errorf("attempted to transfer negative value from gas holder")
+	}
+
+	a, err := vm.cstate.GetActor(addr)
+	if err != nil {
+		return xerrors.Errorf("transfer from gas holder failed when retrieving receiver actor")
+	}
+
+	if err := deductFunds(gasHolder, amt); err != nil {
+		return err
+	}
+	depositFunds(a, amt)
+	return nil
 }
 
 func deductFunds(act *types.Actor, amt types.BigInt) error {
