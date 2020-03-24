@@ -126,7 +126,8 @@ type FullNode interface {
 	StateMinerSectorSize(context.Context, address.Address, types.TipSetKey) (abi.SectorSize, error)
 	StateMinerFaults(context.Context, address.Address, types.TipSetKey) ([]abi.SectorNumber, error)
 	StatePledgeCollateral(context.Context, types.TipSetKey) (types.BigInt, error)
-	StateWaitMsg(context.Context, cid.Cid) (*MsgWait, error)
+	StateWaitMsg(context.Context, cid.Cid) (*MsgLookup, error)
+	StateSearchMsg(context.Context, cid.Cid) (*MsgLookup, error)
 	StateListMiners(context.Context, types.TipSetKey) ([]address.Address, error)
 	StateListActors(context.Context, types.TipSetKey) ([]address.Address, error)
 	StateMarketBalance(context.Context, address.Address, types.TipSetKey) (MarketBalance, error)
@@ -188,7 +189,7 @@ type DealInfo struct {
 	Duration      uint64
 }
 
-type MsgWait struct {
+type MsgLookup struct {
 	Receipt types.MessageReceipt
 	TipSet  *types.TipSet
 }
