@@ -273,7 +273,7 @@ func (r *Remote) FsStat(ctx context.Context, id ID) (FsStat, error) {
 			return FsStat{}, xerrors.Errorf("fsstat: got http 500, then failed to read the error: %w", err)
 		}
 
-		return FsStat{}, xerrors.New(string(b))
+		return FsStat{}, xerrors.Errorf("fsstat: got http 500: %s", string(b))
 	}
 
 	var out FsStat
