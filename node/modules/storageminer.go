@@ -342,5 +342,20 @@ func RetrievalProvider(h host.Host, miner *storage.Miner, sealer sectorstorage.S
 func SectorStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, ls stores.LocalStorage, si stores.SectorIndex, cfg *sectorbuilder.Config, sc config.Storage, urls sectorstorage.URLs, ca lapi.Common) (*sectorstorage.Manager, error) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
-	return sectorstorage.New(ctx, ls, si, cfg, sc, urls, ca)
+	sst, err := sectorstorage.New(ctx, ls, si, cfg, sc, urls, ca)
+	if err != nil {
+		return nil, err
+	}
+
+	lc.Append(fx.Hook{
+		OnStop: func(_ context.Context) error {
+			if err := sst.Close(); err != nil {
+				log.Errorf("%+v", err)
+			}
+
+			return nil
+		},
+	})
+
+	return sst, nil
 }

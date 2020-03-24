@@ -203,4 +203,8 @@ func (l *LocalWorker) Info(context.Context) (api.WorkerInfo, error) {
 	}, nil
 }
 
+func (l *LocalWorker) Close() error {
+	return nil
+}
+
 var _ Worker = &LocalWorker{}

@@ -35,15 +35,14 @@ var workersListCmd = &cli.Command{
 			return err
 		}
 
-		st := make([]struct {
+		type sortableStat struct {
 			id uint64
 			api.WorkerStats
-		}, 0, len(stats))
+		}
+
+		st := make([]sortableStat, 0, len(stats))
 		for id, stat := range stats {
-			st = append(st, struct {
-				id uint64
-				api.WorkerStats
-			}{id, stat})
+			st = append(st, sortableStat{id, stat})
 		}
 
 		sort.Slice(st, func(i, j int) bool {
