@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"io/ioutil"
+	"math/bits"
 	"mime"
 	"net/http"
 	"net/url"
@@ -173,6 +174,33 @@ func (r *Remote) fetch(ctx context.Context, url, outname string) error {
 	}
 }
 
+func (r *Remote) Remove(ctx context.Context, sid abi.SectorID, typ sectorbuilder.SectorFileType) error {
+	if bits.OnesCount(uint(typ)) != 1 {
+		return xerrors.New("delete expects one file type")
+	}
+
+	if err := r.local.Remove(ctx, sid, typ); err != nil {
+		return xerrors.Errorf("remove from local: %w", err)
+	}
+
+	si, err := r.index.StorageFindSector(ctx, sid, typ, false)
+	if err != nil {
+		return xerrors.Errorf("finding existing sector %d(t:%d) failed: %w", sid, typ, err)
+	}
+
+	for _, info := range si {
+		for _, url := range info.URLs {
+			if err := r.deleteFromRemote(ctx, url); err != nil {
+				log.Warnf("remove %s: %+v", url, err)
+				continue
+			}
+			break
+		}
+	}
+
+	return nil
+}
+
 func (r *Remote) deleteFromRemote(ctx context.Context, url string) error {
 	log.Infof("Delete %s", url)
 
@@ -197,7 +225,7 @@ func (r *Remote) deleteFromRemote(ctx context.Context, url string) error {
 }
 
 func (r *Remote) FsStat(ctx context.Context, id ID) (FsStat, error) {
-	st, err := r.local.FsStat(id)
+	st, err := r.local.FsStat(ctx, id)
 	switch err {
 	case nil:
 		return st, nil

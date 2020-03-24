@@ -12,6 +12,7 @@ import (
 
 type Store interface {
 	AcquireSector(ctx context.Context, s abi.SectorID, existing sectorbuilder.SectorFileType, allocate sectorbuilder.SectorFileType, sealing bool) (paths sectorbuilder.SectorPaths, stores sectorbuilder.SectorPaths, done func(), err error)
+	Remove(ctx context.Context, s abi.SectorID, types sectorbuilder.SectorFileType) error
 	FsStat(ctx context.Context, id ID) (FsStat, error)
 }
 
