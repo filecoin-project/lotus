@@ -74,7 +74,7 @@ type Manager struct {
 	schedQueue *list.List // List[*workerRequest]
 }
 
-func New(ctx context.Context, ls stores.LocalStorage, si stores.SectorIndex, cfg *sectorbuilder.Config, urls URLs, ca api.Common) (*Manager, error) {
+func New(ctx context.Context, ls stores.LocalStorage, si stores.SectorIndex, cfg *sectorbuilder.Config, sc config.Storage, urls URLs, ca api.Common) (*Manager, error) {
 	lstor, err := stores.NewLocal(ctx, ls, si, urls)
 	if err != nil {
 		return nil, err
@@ -114,12 +114,16 @@ func New(ctx context.Context, ls stores.LocalStorage, si stores.SectorIndex, cfg
 
 	go m.runSched()
 
+	localTasks := []sealtasks.TaskType{
+		sealtasks.TTAddPiece, sealtasks.TTCommit1, sealtasks.TTFinalize,
+	}
+	if sc.AllowPreCommit1 { localTasks = append(localTasks, sealtasks.TTPreCommit1)}
+	if sc.AllowPreCommit2 { localTasks = append(localTasks, sealtasks.TTPreCommit2)}
+	if sc.AllowCommit { localTasks = append(localTasks, sealtasks.TTCommit2)}
+
 	err = m.AddWorker(ctx, NewLocalWorker(WorkerConfig{
 		SealProof: cfg.SealProofType,
-		TaskTypes: []sealtasks.TaskType{
-			sealtasks.TTAddPiece, sealtasks.TTCommit1, sealtasks.TTFinalize,
-			sealtasks.TTPreCommit1, sealtasks.TTPreCommit2, sealtasks.TTCommit2, // TODO: Config
-		},
+		TaskTypes: localTasks,
 	}, stor, lstor, si))
 	if err != nil {
 		return nil, xerrors.Errorf("adding local worker: %w", err)

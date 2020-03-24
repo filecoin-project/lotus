@@ -382,7 +382,11 @@ func ConfigStorageMiner(c interface{}) Option {
 		return Error(xerrors.Errorf("invalid config from repo, got: %T", c))
 	}
 
-	return Options(ConfigCommon(&cfg.Common))
+	return Options(
+		ConfigCommon(&cfg.Common),
+
+		Override(new(config.Storage), cfg.Storage),
+	)
 }
 
 func Repo(r repo.Repo) Option {

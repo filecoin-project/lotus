@@ -407,7 +407,7 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 			smgr, err := sectorstorage.New(ctx, lr, stores.NewIndex(), &sectorbuilder.Config{
 				SealProofType: spt,
 				PoStProofType: ppt,
-			}, nil, api)
+			}, config.Storage{true, true, true}, nil, api)
 			if err != nil {
 				return err
 			}
