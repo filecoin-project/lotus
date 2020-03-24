@@ -277,8 +277,6 @@ var runCmd = &cli.Command{
 			}
 		}()
 
-		// todo go register
-
 		return srv.Serve(nl)
 	},
 }

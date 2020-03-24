@@ -50,6 +50,7 @@ import (
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sealing"
 	"github.com/filecoin-project/lotus/storage/sectorstorage"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/stores"
 )
 
 func minerAddrFromDS(ds dtypes.MetadataDS) (address.Address, error) {
@@ -335,4 +336,10 @@ func RetrievalProvider(h host.Host, miner *storage.Miner, sealer sectorstorage.S
 	}
 	network := rmnet.NewFromLibp2pHost(h)
 	return retrievalimpl.NewProvider(address, adapter, network, pieceStore, ibs, ds)
+}
+
+func SectorStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, ls stores.LocalStorage, si stores.SectorIndex, cfg *sectorbuilder.Config, urls sectorstorage.URLs, ca lapi.Common) (*sectorstorage.Manager, error) {
+	ctx := helpers.LifecycleCtx(mctx, lc)
+
+	return sectorstorage.New(ctx, ls, si, cfg, urls, ca)
 }

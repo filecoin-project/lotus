@@ -178,7 +178,7 @@ func (sm *StorageMinerAPI) MarketListIncompleteDeals(ctx context.Context) ([]sto
 	return sm.StorageProvider.ListIncompleteDeals()
 }
 
-func (sm *StorageMinerAPI) SetPrice(ctx context.Context, p types.BigInt) error {
+func (sm *StorageMinerAPI) MarketSetPrice(ctx context.Context, p types.BigInt) error {
 	return sm.StorageProvider.AddAsk(abi.TokenAmount(p), 60*60*24*100) // lasts for 100 days?
 }
 
