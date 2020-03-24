@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/filecoin-project/specs-actors/actors/builtin/account"
+	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
+
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
@@ -53,23 +56,20 @@ func NewInvoker() *invoker {
 	inv.Register(builtin.StorageMinerActorCodeID, miner.Actor{}, miner.State{})
 	inv.Register(builtin.MultisigActorCodeID, multisig.Actor{}, multisig.State{})
 	inv.Register(builtin.PaymentChannelActorCodeID, paych.Actor{}, paych.State{})
+	inv.Register(builtin.AccountActorCodeID, account.Actor{}, account.State{})
 
 	return inv
 }
 
 func (inv *invoker) Invoke(act *types.Actor, rt runtime.Runtime, method abi.MethodNum, params []byte) ([]byte, aerrors.ActorError) {
 
-	if act.Code == builtin.AccountActorCodeID {
-		return nil, aerrors.Newf(254, "cannot invoke methods on account actors")
-	}
-
 	code, ok := inv.builtInCode[act.Code]
 	if !ok {
 		log.Errorf("no code for actor %s (Addr: %s)", act.Code, rt.Message().Receiver())
-		return nil, aerrors.Newf(255, "no code for actor %s(%d)(%s)", act.Code, method, hex.EncodeToString(params))
+		return nil, aerrors.Newf(byte(exitcode.SysErrorIllegalActor), "no code for actor %s(%d)(%s)", act.Code, method, hex.EncodeToString(params))
 	}
 	if method >= abi.MethodNum(len(code)) || code[method] == nil {
-		return nil, aerrors.Newf(255, "no method %d on actor", method)
+		return nil, aerrors.Newf(byte(exitcode.SysErrInvalidMethod), "no method %d on actor", method)
 	}
 	return code[method](act, rt, params)
 

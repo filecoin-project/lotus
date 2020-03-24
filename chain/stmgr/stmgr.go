@@ -174,7 +174,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, pstate cid.Cid, bms []B
 		vmi.SetBlockMiner(b.Miner)
 
 		penalty := types.NewInt(0)
-		gasReward := types.NewInt(0)
+		gasReward := big.Zero()
 
 		for _, cm := range append(b.BlsMessages, b.SecpkMessages...) {
 			m := cm.VMMessage()
@@ -198,6 +198,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, pstate cid.Cid, bms []B
 			}
 
 			receipts = append(receipts, &r.MessageReceipt)
+			gasReward = big.Add(gasReward, big.NewInt(r.GasUsed))
 
 			if cb != nil {
 				if err := cb(cm.Cid(), m, r); err != nil {

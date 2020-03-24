@@ -5,9 +5,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/minio/blake2b-simd"
 	"sync"
 	"time"
+
+	"github.com/minio/blake2b-simd"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -779,7 +780,6 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 	}
 
 	nonces := make(map[address.Address]uint64)
-	balances := make(map[address.Address]types.BigInt)
 
 	stateroot, _, err := syncer.sm.TipSetState(ctx, baseTs)
 	if err != nil {
@@ -804,7 +804,6 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 				return xerrors.Errorf("failed to get actor: %w", err)
 			}
 			nonces[m.From] = act.Nonce
-			balances[m.From] = act.Balance
 		}
 
 		if nonces[m.From] != m.Nonce {
@@ -812,11 +811,6 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 		}
 		nonces[m.From]++
 
-		if balances[m.From].LessThan(m.RequiredFunds()) {
-			return xerrors.Errorf("not enough funds for message execution")
-		}
-
-		balances[m.From] = types.BigSub(balances[m.From], m.RequiredFunds())
 		return nil
 	}
 
