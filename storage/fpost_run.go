@@ -3,6 +3,7 @@ package storage
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/go-address"
 	"time"
 
 	"github.com/filecoin-project/specs-actors/actors/crypto"
@@ -187,19 +188,24 @@ func (s *FPoStScheduler) runPost(ctx context.Context, eps abi.ChainEpoch, ts *ty
 		"sectors", len(ssi),
 		"faults", len(faults))
 
-	scandidates, proof, err := s.sb.GenerateFallbackPoSt(ssi, abi.PoStRandomness(rand), faults)
+	mid, err := address.IDFromAddress(s.actor)
+	if err != nil {
+		return nil, err
+	}
+
+	postOut, err := s.sb.GenerateFallbackPoSt(ctx, abi.ActorID(mid), ssi, abi.PoStRandomness(rand), faults)
 	if err != nil {
 		return nil, xerrors.Errorf("running post failed: %w", err)
 	}
 
-	if len(scandidates) == 0 {
+	if len(postOut.PoStInputs) == 0 {
 		return nil, xerrors.Errorf("received zero candidates back from generate fallback post")
 	}
 
 	// TODO: until we figure out how fallback post is really supposed to work,
 	// let's just pass a single candidate...
-	scandidates = scandidates[:1]
-	proof = proof[:1]
+	scandidates := postOut.PoStInputs[:1]
+	proof := postOut.Proof[:1]
 
 	elapsed := time.Since(tsStart)
 	log.Infow("submitting PoSt", "pLen", len(proof), "elapsed", elapsed)

@@ -16,6 +16,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/stores"
 )
 
 type MemRepo struct {
@@ -81,8 +82,8 @@ func (lmem *lockedMemRepo) Path() string {
 			panic(err)
 		}
 
-		b, err := json.MarshalIndent(&config.StorageMeta{
-			ID:       uuid.New().String(),
+		b, err := json.MarshalIndent(&stores.LocalStorageMeta{
+			ID:       stores.ID(uuid.New().String()),
 			Weight:   10,
 			CanSeal:  true,
 			CanStore: true,

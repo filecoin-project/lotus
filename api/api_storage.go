@@ -7,10 +7,11 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
-	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/stores"
 )
 
 // alias because cbor-gen doesn't like non-alias types
@@ -107,20 +108,20 @@ type StorageMiner interface {
 
 	SectorsUpdate(context.Context, abi.SectorNumber, SectorState) error
 
-	/*WorkerStats(context.Context) (sealsched.WorkerStats, error)*/
+	StorageList(ctx context.Context) (map[stores.ID][]stores.Decl, error)
+	StorageLocal(ctx context.Context) (map[stores.ID]string, error)
+	StorageStat(ctx context.Context, id stores.ID) (stores.FsStat, error)
 
-	/*// WorkerQueue registers a remote worker
-	WorkerQueue(context.Context, WorkerCfg) (<-chan WorkerTask, error)
+	// WorkerConnect tells the node to connect to workers RPC
+	WorkerConnect(context.Context, string) error
+	WorkerStats(context.Context) (map[uint64]WorkerStats, error)
 
-	// WorkerQueue registers a remote worker
-	WorkerQueue(context.Context, sectorbuilder.WorkerCfg) (<-chan sectorbuilder.WorkerTask, error)
+	stores.SectorIndex
 
-	WorkerDone(ctx context.Context, task uint64, res sectorbuilder.SealRes) error
-	*/
 	MarketImportDealData(ctx context.Context, propcid cid.Cid, path string) error
 	MarketListDeals(ctx context.Context) ([]storagemarket.StorageDeal, error)
 	MarketListIncompleteDeals(ctx context.Context) ([]storagemarket.MinerDeal, error)
-	SetPrice(context.Context, types.BigInt) error
+	MarketSetPrice(context.Context, types.BigInt) error
 
 	DealsImportData(ctx context.Context, dealPropCid cid.Cid, file string) error
 	DealsList(ctx context.Context) ([]storagemarket.StorageDeal, error)

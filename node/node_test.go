@@ -41,9 +41,8 @@ import (
 	"github.com/filecoin-project/lotus/node/modules"
 	modtest "github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/filecoin-project/lotus/storage/sbmock"
-	"github.com/filecoin-project/lotus/storage/sealmgr"
-	"github.com/filecoin-project/lotus/storage/sealmgr/advmgr"
+	"github.com/filecoin-project/lotus/storage/sectorstorage"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/mock"
 )
 
 func init() {
@@ -80,6 +79,7 @@ func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, a
 	for i := 0; i < nPreseal; i++ {
 		nic.Next()
 	}
+	nic.Next()
 
 	err = lr.Close()
 	require.NoError(t, err)
@@ -256,7 +256,7 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 
 		storers[i] = testStorageNode(ctx, t, wa, genMiner, pk, f, mn, node.Options())
 		if err := storers[i].StorageAddLocal(ctx, presealDirs[i]); err != nil {
-			t.Fatal(err)
+			t.Fatalf("%+v", err)
 		}
 		/*
 			sma := storers[i].StorageMiner.(*impl.StorageMinerAPI)
@@ -309,7 +309,7 @@ func mockSbBuilder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []t
 		if err != nil {
 			t.Fatal(err)
 		}
-		genm, k, err := sbmock.PreSeal(2048, maddr, nPreseal)
+		genm, k, err := mock.PreSeal(2048, maddr, nPreseal)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -355,7 +355,7 @@ func mockSbBuilder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []t
 			node.MockHost(mn),
 			node.Test(),
 
-			node.Override(new(sectorbuilder.Verifier), sbmock.MockVerifier),
+			node.Override(new(sectorbuilder.Verifier), mock.MockVerifier),
 
 			genesis,
 		)
@@ -385,10 +385,10 @@ func mockSbBuilder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []t
 		wa := genms[i].Worker
 
 		storers[i] = testStorageNode(ctx, t, wa, genMiner, pk, f, mn, node.Options(
-			node.Override(new(sealmgr.Manager), func() (sealmgr.Manager, error) {
-				return sealmgr.NewSimpleManager(storedcounter.New(datastore.NewMapDatastore(), datastore.NewKey("/potato")), genMiner, sbmock.NewMockSectorBuilder(5, build.SectorSizes[0]))
+			node.Override(new(sectorstorage.SectorManager), func() (sectorstorage.SectorManager, error) {
+				return mock.NewMockSectorMgr(5, build.SectorSizes[0]), nil
 			}),
-			node.Unset(new(*advmgr.Manager)),
+			node.Unset(new(*sectorstorage.Manager)),
 		))
 	}
 

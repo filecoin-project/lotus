@@ -1,4 +1,4 @@
-package sbmock
+package mock
 
 import (
 	"crypto/rand"

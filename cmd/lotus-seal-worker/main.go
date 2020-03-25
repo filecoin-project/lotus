@@ -1,22 +1,39 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
+	"io/ioutil"
+	"net"
+	"net/http"
 	"os"
+	"path/filepath"
 
+	"github.com/google/uuid"
+	"github.com/gorilla/mux"
 	logging "github.com/ipfs/go-log/v2"
+	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
+	paramfetch "github.com/filecoin-project/go-paramfetch"
+
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/apistruct"
 	"github.com/filecoin-project/lotus/build"
+	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/lib/auth"
+	"github.com/filecoin-project/lotus/lib/jsonrpc"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
+	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/repo"
+	"github.com/filecoin-project/lotus/storage/sectorstorage"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/sealtasks"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/stores"
 )
 
 var log = logging.Logger("main")
 
-const (
-	workers   = 1 // TODO: Configurability
-	transfers = 1
-)
+const FlagStorageRepo = "workerrepo"
 
 func main() {
 	lotuslog.SetupLogLevels()
@@ -33,7 +50,7 @@ func main() {
 		Version: build.UserVersion,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:    "repo",
+				Name:    FlagStorageRepo,
 				EnvVars: []string{"WORKER_PATH"},
 				Value:   "~/.lotusworker", // TODO: Consider XDG_DATA_HOME
 			},
@@ -46,12 +63,6 @@ func main() {
 				Name:  "enable-gpu-proving",
 				Usage: "enable use of GPU for mining operations",
 				Value: true,
-			},
-			&cli.BoolFlag{
-				Name: "no-precommit",
-			},
-			&cli.BoolFlag{
-				Name: "no-commit",
 			},
 		},
 
@@ -66,100 +77,206 @@ func main() {
 	}
 }
 
-type limits struct {
-	workLimit     chan struct{}
-	transferLimit chan struct{}
-}
-
 var runCmd = &cli.Command{
 	Name:  "run",
 	Usage: "Start lotus worker",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "address",
+			Usage: "Locally reachable address",
+		},
+		&cli.BoolFlag{
+			Name:  "no-local-storage",
+			Usage: "don't use storageminer repo for sector storage",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
-		/*	if !cctx.Bool("enable-gpu-proving") {
-				os.Setenv("BELLMAN_NO_GPU", "true")
+		if !cctx.Bool("enable-gpu-proving") {
+			os.Setenv("BELLMAN_NO_GPU", "true")
+		}
+
+		if cctx.String("address") == "" {
+			return xerrors.Errorf("--address flag is required")
+		}
+
+		// Connect to storage-miner
+
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return xerrors.Errorf("getting miner api: %w", err)
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+
+		v, err := nodeApi.Version(ctx)
+		if err != nil {
+			return err
+		}
+		if v.APIVersion != build.APIVersion {
+			return xerrors.Errorf("lotus-storage-miner API version doesn't match: local: ", api.Version{APIVersion: build.APIVersion})
+		}
+		log.Infof("Remote version %s", v)
+
+		// Check params
+
+		act, err := nodeApi.ActorAddress(ctx)
+		if err != nil {
+			return err
+		}
+		ssize, err := nodeApi.ActorSectorSize(ctx, act)
+		if err != nil {
+			return err
+		}
+
+		if err := paramfetch.GetParams(build.ParametersJson(), uint64(ssize)); err != nil {
+			return xerrors.Errorf("get params: %w", err)
+		}
+
+		// Open repo
+
+		repoPath := cctx.String(FlagStorageRepo)
+		r, err := repo.NewFS(repoPath)
+		if err != nil {
+			return err
+		}
+
+		ok, err := r.Exists()
+		if err != nil {
+			return err
+		}
+		if !ok {
+			if err := r.Init(repo.Worker); err != nil {
+				return err
 			}
 
-			nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
-			if err != nil {
-				return xerrors.Errorf("getting miner api: %w", err)
-			}
-			defer closer()
-			ctx := lcli.ReqContext(cctx)
-
-			ainfo, err := lcli.GetAPIInfo(cctx, repo.StorageMiner)
-			if err != nil {
-				return xerrors.Errorf("could not get api info: %w", err)
-			}
-			_, storageAddr, err := manet.DialArgs(ainfo.Addr)
-
-			r, err := homedir.Expand(cctx.String("repo"))
+			lr, err := r.Lock(repo.Worker)
 			if err != nil {
 				return err
 			}
 
-			v, err := nodeApi.Version(ctx)
-			if err != nil {
-				return err
-			}
-			if v.APIVersion != build.APIVersion {
-				return xerrors.Errorf("lotus-storage-miner API version doesn't match: local: ", api.Version{APIVersion: build.APIVersion})
-			}
+			var localPaths []config.LocalPath
 
-			go func() {
-				<-ctx.Done()
-				log.Warn("Shutting down..")
-			}()
+			if !cctx.Bool("no-local-storage") {
+				b, err := json.MarshalIndent(&stores.LocalStorageMeta{
+					ID:       stores.ID(uuid.New().String()),
+					Weight:   10,
+					CanSeal:  true,
+					CanStore: false,
+				}, "", "  ")
+				if err != nil {
+					return xerrors.Errorf("marshaling storage config: %w", err)
+				}
 
-			limiter := &limits{
-				workLimit:     make(chan struct{}, workers),
-				transferLimit: make(chan struct{}, transfers),
-			}
+				if err := ioutil.WriteFile(filepath.Join(lr.Path(), "sectorstore.json"), b, 0644); err != nil {
+					return xerrors.Errorf("persisting storage metadata (%s): %w", filepath.Join(lr.Path(), "sectorstore.json"), err)
+				}
 
-			act, err := nodeApi.ActorAddress(ctx)
-			if err != nil {
-				return err
-			}
-			ssize, err := nodeApi.ActorSectorSize(ctx, act)
-			if err != nil {
-				return err
+				localPaths = append(localPaths, config.LocalPath{
+					Path: lr.Path(),
+				})
 			}
 
-			if err := paramfetch.GetParams(build.ParametersJson(), uint64(ssize)); err != nil {
-				return xerrors.Errorf("get params: %w", err)
+			if err := lr.SetStorage(func(sc *config.StorageConfig) {
+				sc.StoragePaths = append(sc.StoragePaths, localPaths...)
+			}); err != nil {
+				return xerrors.Errorf("set storage config: %w", err)
 			}
 
-			/*ppt, spt, err := api.ProofTypeFromSectorSize(ssize)
-			if err != nil {
-				return err
+			{
+				// init datastore for r.Exists
+				_, err := lr.Datastore("/")
+				if err != nil {
+					return err
+				}
 			}
-
-			/*sb, err := sectorbuilder.NewStandalone(&sectorbuilder.Config{
-				SealProofType: spt,
-				PoStProofType: ppt,
-				Miner:         act,
-				WorkerThreads: workers,
-				Paths:         sectorbuilder.SimplePath(r),
-			})
-			if err != nil {
-				return err
+			if err := lr.Close(); err != nil {
+				return xerrors.Errorf("close repo: %w", err)
 			}
+		}
 
-			nQueues := workers + transfers
-			var wg sync.WaitGroup
-			wg.Add(nQueues)
+		lr, err := r.Lock(repo.Worker)
+		if err != nil {
+			return err
+		}
 
-			for i := 0; i < nQueues; i++ {
-				go func() {
-					defer wg.Done()
+		log.Info("Opening local storage; connecting to master")
 
-				/*	if err := acceptJobs(ctx, nodeApi, sb, limiter, "http://"+storageAddr, ainfo.AuthHeader(), r, cctx.Bool("no-precommit"), cctx.Bool("no-commit")); err != nil {
-						log.Warnf("%+v", err)
-						return
-					}
-				}()
+		localStore, err := stores.NewLocal(ctx, lr, nodeApi, []string{"http://" + cctx.String("address") + "/remote"})
+		if err != nil {
+			return err
+		}
+
+		// Setup remote sector store
+		_, spt, err := api.ProofTypeFromSectorSize(ssize)
+		if err != nil {
+			return xerrors.Errorf("getting proof type: %w", err)
+		}
+
+		sminfo, err := lcli.GetAPIInfo(cctx, repo.StorageMiner)
+		if err != nil {
+			return xerrors.Errorf("could not get api info: %w", err)
+		}
+
+		remote := stores.NewRemote(localStore, nodeApi, sminfo.AuthHeader())
+
+		// Create / expose the worker
+
+		workerApi := &worker{
+			LocalWorker: sectorstorage.NewLocalWorker(sectorstorage.WorkerConfig{
+				SealProof: spt,
+				TaskTypes: []sealtasks.TaskType{sealtasks.TTPreCommit1, sealtasks.TTPreCommit2, sealtasks.TTCommit2},
+			}, remote, localStore, nodeApi),
+		}
+
+		mux := mux.NewRouter()
+
+		log.Info("Setting up control endpoint at " + cctx.String("address"))
+
+		rpcServer := jsonrpc.NewServer()
+		rpcServer.Register("Filecoin", apistruct.PermissionedWorkerAPI(workerApi))
+
+		mux.Handle("/rpc/v0", rpcServer)
+		mux.PathPrefix("/remote").HandlerFunc((&stores.FetchHandler{Local: localStore}).ServeHTTP)
+		mux.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
+
+		ah := &auth.Handler{
+			Verify: nodeApi.AuthVerify,
+			Next:   mux.ServeHTTP,
+		}
+
+		srv := &http.Server{
+			Handler: ah,
+			BaseContext: func(listener net.Listener) context.Context {
+				return ctx
+			},
+		}
+
+		go func() {
+			<-ctx.Done()
+			log.Warn("Shutting down..")
+			if err := srv.Shutdown(context.TODO()); err != nil {
+				log.Errorf("shutting down RPC server failed: %s", err)
 			}
+			log.Warn("Graceful shutdown successful")
+		}()
 
-			wg.Wait()*/
-		return nil
+		nl, err := net.Listen("tcp", cctx.String("address"))
+		if err != nil {
+			return err
+		}
+
+		log.Info("Waiting for tasks")
+
+		go func() {
+			if err := nodeApi.WorkerConnect(ctx, "ws://"+cctx.String("address")+"/rpc/v0"); err != nil {
+				log.Errorf("Registering worker failed: %+v", err)
+				cancel()
+				return
+			}
+		}()
+
+		return srv.Serve(nl)
 	},
 }

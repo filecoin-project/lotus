@@ -14,18 +14,18 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/storage"
-	"github.com/filecoin-project/lotus/storage/sealmgr"
+	"github.com/filecoin-project/lotus/storage/sectorstorage"
 )
 
 type retrievalProviderNode struct {
 	miner  *storage.Miner
-	sealer sealmgr.Manager
+	sealer sectorstorage.SectorManager
 	full   api.FullNode
 }
 
 // NewRetrievalProviderNode returns a new node adapter for a retrieval provider that talks to the
 // Lotus Node
-func NewRetrievalProviderNode(miner *storage.Miner, sealer sealmgr.Manager, full api.FullNode) retrievalmarket.RetrievalProviderNode {
+func NewRetrievalProviderNode(miner *storage.Miner, sealer sectorstorage.SectorManager, full api.FullNode) retrievalmarket.RetrievalProviderNode {
 	return &retrievalProviderNode{miner, sealer, full}
 }
 
@@ -44,7 +44,17 @@ func (rpn *retrievalProviderNode) UnsealSector(ctx context.Context, sectorID uin
 	if err != nil {
 		return nil, err
 	}
-	return rpn.sealer.ReadPieceFromSealedSector(ctx, abi.SectorNumber(sectorID), sectorbuilder.UnpaddedByteIndex(offset), abi.UnpaddedPieceSize(length), si.Ticket.Value, *si.CommD)
+
+	mid, err := address.IDFromAddress(rpn.miner.Address())
+	if err != nil {
+		return nil, err
+	}
+
+	sid := abi.SectorID{
+		Miner:  abi.ActorID(mid),
+		Number: abi.SectorNumber(sectorID),
+	}
+	return rpn.sealer.ReadPieceFromSealedSector(ctx, sid, sectorbuilder.UnpaddedByteIndex(offset), abi.UnpaddedPieceSize(length), si.Ticket.Value, *si.CommD)
 }
 
 func (rpn *retrievalProviderNode) SavePaymentVoucher(ctx context.Context, paymentChannel address.Address, voucher *paych.SignedVoucher, proof []byte, expectedAmount abi.TokenAmount, tok shared.TipSetToken) (abi.TokenAmount, error) {

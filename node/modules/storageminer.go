@@ -44,13 +44,14 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/markets/retrievaladapter"
 	"github.com/filecoin-project/lotus/miner"
+	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sealing"
-	"github.com/filecoin-project/lotus/storage/sealmgr"
-	"github.com/filecoin-project/lotus/storage/sealmgr/advmgr"
+	"github.com/filecoin-project/lotus/storage/sectorstorage"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/stores"
 )
 
 func minerAddrFromDS(ds dtypes.MetadataDS) (address.Address, error) {
@@ -75,13 +76,18 @@ func GetParams(sbc *sectorbuilder.Config) error {
 	return nil
 }
 
-func SectorBuilderConfig(ds dtypes.MetadataDS, fnapi lapi.FullNode) (*sectorbuilder.Config, error) {
-	minerAddr, err := minerAddrFromDS(ds)
-	if err != nil {
-		return nil, err
-	}
+func MinerAddress(ds dtypes.MetadataDS) (dtypes.MinerAddress, error) {
+	ma, err := minerAddrFromDS(ds)
+	return dtypes.MinerAddress(ma), err
+}
 
-	ssize, err := fnapi.StateMinerSectorSize(context.TODO(), minerAddr, types.EmptyTSK)
+func MinerID(ma dtypes.MinerAddress) (dtypes.MinerID, error) {
+	id, err := address.IDFromAddress(address.Address(ma))
+	return dtypes.MinerID(id), err
+}
+
+func SectorBuilderConfig(maddr dtypes.MinerAddress, fnapi lapi.FullNode) (*sectorbuilder.Config, error) {
+	ssize, err := fnapi.StateMinerSectorSize(context.TODO(), address.Address(maddr), types.EmptyTSK)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +98,6 @@ func SectorBuilderConfig(ds dtypes.MetadataDS, fnapi lapi.FullNode) (*sectorbuil
 	}
 
 	sb := &sectorbuilder.Config{
-		Miner:         minerAddr,
 		SealProofType: spt,
 		PoStProofType: ppt,
 	}
@@ -109,12 +114,12 @@ func (s *sidsc) Next() (abi.SectorNumber, error) {
 	return abi.SectorNumber(i), err
 }
 
-func SectorIDCounter(ds dtypes.MetadataDS) advmgr.SectorIDCounter {
+func SectorIDCounter(ds dtypes.MetadataDS) sealing.SectorIDCounter {
 	sc := storedcounter.New(ds, datastore.NewKey("/storage/nextid"))
 	return &sidsc{sc}
 }
 
-func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api lapi.FullNode, h host.Host, ds dtypes.MetadataDS, sealer sealmgr.Manager, tktFn sealing.TicketFn) (*storage.Miner, error) {
+func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api lapi.FullNode, h host.Host, ds dtypes.MetadataDS, sealer sectorstorage.SectorManager, sc sealing.SectorIDCounter, tktFn sealing.TicketFn) (*storage.Miner, error) {
 	maddr, err := minerAddrFromDS(ds)
 	if err != nil {
 		return nil, err
@@ -134,7 +139,7 @@ func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api lapi.FullNode, h
 
 	fps := storage.NewFPoStScheduler(api, sealer, maddr, worker, ppt)
 
-	sm, err := storage.NewMiner(api, maddr, worker, h, ds, sealer, tktFn)
+	sm, err := storage.NewMiner(api, maddr, worker, h, ds, sealer, sc, tktFn)
 	if err != nil {
 		return nil, err
 	}
@@ -324,7 +329,7 @@ func StorageProvider(ctx helpers.MetricsCtx, fapi lapi.FullNode, h host.Host, ds
 }
 
 // RetrievalProvider creates a new retrieval provider attached to the provider blockstore
-func RetrievalProvider(h host.Host, miner *storage.Miner, sealer sealmgr.Manager, full lapi.FullNode, ds dtypes.MetadataDS, pieceStore dtypes.ProviderPieceStore, ibs dtypes.StagingBlockstore) (retrievalmarket.RetrievalProvider, error) {
+func RetrievalProvider(h host.Host, miner *storage.Miner, sealer sectorstorage.SectorManager, full lapi.FullNode, ds dtypes.MetadataDS, pieceStore dtypes.ProviderPieceStore, ibs dtypes.StagingBlockstore) (retrievalmarket.RetrievalProvider, error) {
 	adapter := retrievaladapter.NewRetrievalProviderNode(miner, sealer, full)
 	address, err := minerAddrFromDS(ds)
 	if err != nil {
@@ -332,4 +337,25 @@ func RetrievalProvider(h host.Host, miner *storage.Miner, sealer sealmgr.Manager
 	}
 	network := rmnet.NewFromLibp2pHost(h)
 	return retrievalimpl.NewProvider(address, adapter, network, pieceStore, ibs, ds)
+}
+
+func SectorStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, ls stores.LocalStorage, si stores.SectorIndex, cfg *sectorbuilder.Config, sc config.Storage, urls sectorstorage.URLs, ca lapi.Common) (*sectorstorage.Manager, error) {
+	ctx := helpers.LifecycleCtx(mctx, lc)
+
+	sst, err := sectorstorage.New(ctx, ls, si, cfg, sc, urls, ca)
+	if err != nil {
+		return nil, err
+	}
+
+	lc.Append(fx.Hook{
+		OnStop: func(_ context.Context) error {
+			if err := sst.Close(); err != nil {
+				log.Errorf("%+v", err)
+			}
+
+			return nil
+		},
+	})
+
+	return sst, nil
 }

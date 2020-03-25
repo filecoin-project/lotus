@@ -19,7 +19,7 @@ GOFLAGS+=-ldflags=-X="github.com/filecoin-project/lotus/build".CurrentCommit="+g
 ## FFI
 
 FFI_PATH:=extern/filecoin-ffi/
-FFI_DEPS:=libfilecoin.a filecoin.pc filecoin.h
+FFI_DEPS:=.install-filcrypto
 FFI_DEPS:=$(addprefix $(FFI_PATH),$(FFI_DEPS))
 
 $(FFI_DEPS): build/.filecoin-install ;

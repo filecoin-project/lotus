@@ -2,6 +2,7 @@ package sealing
 
 import (
 	"context"
+	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 
@@ -40,12 +41,12 @@ func (m *Sealing) handlePacking(ctx statemachine.Context, sector SectorInfo) err
 		log.Warnf("Creating %d filler pieces for sector %d", len(fillerSizes), sector.SectorID)
 	}
 
-	pieces, err := m.pledgeSector(ctx.Context(), sector.SectorID, sector.existingPieces(), fillerSizes...)
+	pieces, err := m.pledgeSector(ctx.Context(), m.minerSector(sector.SectorID), sector.existingPieces(), fillerSizes...)
 	if err != nil {
 		return xerrors.Errorf("filling up the sector (%v): %w", fillerSizes, err)
 	}
 
-	return ctx.Send(SectorPacked{pieces: pieces})
+	return ctx.Send(SectorPacked{Pieces: pieces})
 }
 
 func (m *Sealing) handleUnsealed(ctx statemachine.Context, sector SectorInfo) error {
@@ -69,20 +70,20 @@ func (m *Sealing) handleUnsealed(ctx statemachine.Context, sector SectorInfo) er
 		return ctx.Send(SectorSealFailed{xerrors.Errorf("getting ticket failed: %w", err)})
 	}
 
-	pc1o, err := m.sealer.SealPreCommit1(ctx.Context(), sector.SectorID, ticket.Value, sector.pieceInfos())
+	pc1o, err := m.sealer.SealPreCommit1(ctx.Context(), m.minerSector(sector.SectorID), ticket.Value, sector.pieceInfos())
 	if err != nil {
-		return ctx.Send(SectorSealFailed{xerrors.Errorf("seal pre commit failed: %w", err)})
+		return ctx.Send(SectorSealFailed{xerrors.Errorf("seal pre commit(1) failed: %w", err)})
 	}
 
-	sealed, unsealed, err := m.sealer.SealPreCommit2(ctx.Context(), sector.SectorID, pc1o)
+	cids, err := m.sealer.SealPreCommit2(ctx.Context(), m.minerSector(sector.SectorID), pc1o)
 	if err != nil {
-		return ctx.Send(SectorSealFailed{xerrors.Errorf("seal pre commit failed: %w", err)})
+		return ctx.Send(SectorSealFailed{xerrors.Errorf("seal pre commit(2) failed: %w", err)})
 	}
 
 	return ctx.Send(SectorSealed{
-		commD:  unsealed,
-		commR:  sealed,
-		ticket: *ticket,
+		Unsealed: cids.Unsealed,
+		Sealed:   cids.Sealed,
+		Ticket:   *ticket,
 	})
 }
 
@@ -131,7 +132,7 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 		return ctx.Send(SectorPreCommitFailed{xerrors.Errorf("pushing message to mpool: %w", err)})
 	}
 
-	return ctx.Send(SectorPreCommitted{message: smsg.Cid()})
+	return ctx.Send(SectorPreCommitted{Message: smsg.Cid()})
 }
 
 func (m *Sealing) handleWaitSeed(ctx statemachine.Context, sector SectorInfo) error {
@@ -161,7 +162,7 @@ func (m *Sealing) handleWaitSeed(ctx statemachine.Context, sector SectorInfo) er
 			return err
 		}
 
-		ctx.Send(SectorSeedReady{seed: api.SealSeed{
+		ctx.Send(SectorSeedReady{Seed: api.SealSeed{
 			Epoch: randHeight,
 			Value: abi.InteractiveSealRandomness(rand),
 		}})
@@ -184,12 +185,16 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 
 	log.Infof("KOMIT %d %x(%d); %x(%d); %v; r:%x; d:%x", sector.SectorID, sector.Ticket.Value, sector.Ticket.Epoch, sector.Seed.Value, sector.Seed.Epoch, sector.pieceInfos(), sector.CommR, sector.CommD)
 
-	c2in, err := m.sealer.SealCommit1(ctx.Context(), sector.SectorID, sector.Ticket.Value, sector.Seed.Value, sector.pieceInfos(), *sector.CommR, *sector.CommD)
+	cids := storage.SectorCids{
+		Unsealed: *sector.CommD,
+		Sealed:   *sector.CommR,
+	}
+	c2in, err := m.sealer.SealCommit1(ctx.Context(), m.minerSector(sector.SectorID), sector.Ticket.Value, sector.Seed.Value, sector.pieceInfos(), cids)
 	if err != nil {
 		return ctx.Send(SectorComputeProofFailed{xerrors.Errorf("computing seal proof failed: %w", err)})
 	}
 
-	proof, err := m.sealer.SealCommit2(ctx.Context(), sector.SectorID, c2in)
+	proof, err := m.sealer.SealCommit2(ctx.Context(), m.minerSector(sector.SectorID), c2in)
 	if err != nil {
 		return ctx.Send(SectorComputeProofFailed{xerrors.Errorf("computing seal proof failed: %w", err)})
 	}
@@ -224,8 +229,8 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 	}
 
 	return ctx.Send(SectorCommitted{
-		proof:   proof,
-		message: smsg.Cid(),
+		Proof:   proof,
+		Message: smsg.Cid(),
 	})
 }
 
@@ -250,7 +255,7 @@ func (m *Sealing) handleCommitWait(ctx statemachine.Context, sector SectorInfo) 
 func (m *Sealing) handleFinalizeSector(ctx statemachine.Context, sector SectorInfo) error {
 	// TODO: Maybe wait for some finality
 
-	if err := m.sealer.FinalizeSector(ctx.Context(), sector.SectorID); err != nil {
+	if err := m.sealer.FinalizeSector(ctx.Context(), m.minerSector(sector.SectorID)); err != nil {
 		return ctx.Send(SectorFinalizeFailed{xerrors.Errorf("finalize sector: %w", err)})
 	}
 
