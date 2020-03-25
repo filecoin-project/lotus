@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"errors"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -13,7 +14,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/storage/sealmgr"
+	"github.com/filecoin-project/lotus/storage/sectorstorage"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
@@ -33,9 +34,10 @@ var log = logging.Logger("storageminer")
 type Miner struct {
 	api    storageMinerApi
 	h      host.Host
-	sealer sealmgr.Manager
+	sealer sectorstorage.SectorManager
 	ds     datastore.Batching
 	tktFn  sealing.TicketFn
+	sc     sealing.SectorIDCounter
 
 	maddr  address.Address
 	worker address.Address
@@ -72,13 +74,14 @@ type storageMinerApi interface {
 	WalletHas(context.Context, address.Address) (bool, error)
 }
 
-func NewMiner(api storageMinerApi, maddr, worker address.Address, h host.Host, ds datastore.Batching, sealer sealmgr.Manager, tktFn sealing.TicketFn) (*Miner, error) {
+func NewMiner(api storageMinerApi, maddr, worker address.Address, h host.Host, ds datastore.Batching, sealer sectorstorage.SectorManager, sc sealing.SectorIDCounter, tktFn sealing.TicketFn) (*Miner, error) {
 	m := &Miner{
 		api:    api,
 		h:      h,
 		sealer: sealer,
 		ds:     ds,
 		tktFn:  tktFn,
+		sc:     sc,
 
 		maddr:  maddr,
 		worker: worker,
@@ -93,7 +96,7 @@ func (m *Miner) Run(ctx context.Context) error {
 	}
 
 	evts := events.NewEvents(ctx, m.api)
-	m.sealing = sealing.New(m.api, evts, m.maddr, m.worker, m.ds, m.sealer, m.tktFn)
+	m.sealing = sealing.New(m.api, evts, m.maddr, m.worker, m.ds, m.sealer, m.sc, m.tktFn)
 
 	go m.sealing.Run(ctx)
 
@@ -121,10 +124,11 @@ func (m *Miner) runPreflightChecks(ctx context.Context) error {
 
 type SectorBuilderEpp struct {
 	prover storage.Prover
+	miner  abi.ActorID
 }
 
-func NewElectionPoStProver(sb storage.Prover) *SectorBuilderEpp {
-	return &SectorBuilderEpp{sb}
+func NewElectionPoStProver(sb storage.Prover, miner dtypes.MinerID) *SectorBuilderEpp {
+	return &SectorBuilderEpp{sb, abi.ActorID(miner)}
 }
 
 var _ gen.ElectionPoStProver = (*SectorBuilderEpp)(nil)
@@ -133,7 +137,7 @@ func (epp *SectorBuilderEpp) GenerateCandidates(ctx context.Context, ssi []abi.S
 	start := time.Now()
 	var faults []abi.SectorNumber // TODO
 
-	cds, err := epp.prover.GenerateEPostCandidates(ssi, rand, faults)
+	cds, err := epp.prover.GenerateEPostCandidates(ctx, epp.miner, ssi, rand, faults)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to generate candidates: %w", err)
 	}
@@ -153,7 +157,7 @@ func (epp *SectorBuilderEpp) ComputeProof(ctx context.Context, ssi []abi.SectorI
 	}
 
 	start := time.Now()
-	proof, err := epp.prover.ComputeElectionPoSt(ssi, rand, owins)
+	proof, err := epp.prover.ComputeElectionPoSt(ctx, epp.miner, ssi, rand, owins)
 	if err != nil {
 		return nil, err
 	}

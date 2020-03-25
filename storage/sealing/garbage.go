@@ -16,7 +16,7 @@ func (m *Sealing) pledgeReader(size abi.UnpaddedPieceSize) io.Reader {
 	return io.LimitReader(&nullreader.Reader{}, int64(size))
 }
 
-func (m *Sealing) pledgeSector(ctx context.Context, sectorID abi.SectorNumber, existingPieceSizes []abi.UnpaddedPieceSize, sizes ...abi.UnpaddedPieceSize) ([]Piece, error) {
+func (m *Sealing) pledgeSector(ctx context.Context, sectorID abi.SectorID, existingPieceSizes []abi.UnpaddedPieceSize, sizes ...abi.UnpaddedPieceSize) ([]Piece, error) {
 	if len(sizes) == 0 {
 		return nil, nil
 	}
@@ -55,13 +55,18 @@ func (m *Sealing) PledgeSector() error {
 			return
 		}
 
-		sid, err := m.sealer.NewSector()
+		sid, err := m.sc.Next()
+		if err != nil {
+			log.Errorf("%+v", err)
+			return
+		}
+		err = m.sealer.NewSector(ctx, m.minerSector(sid))
 		if err != nil {
 			log.Errorf("%+v", err)
 			return
 		}
 
-		pieces, err := m.pledgeSector(ctx, sid, []abi.UnpaddedPieceSize{}, size)
+		pieces, err := m.pledgeSector(ctx, m.minerSector(sid), []abi.UnpaddedPieceSize{}, size)
 		if err != nil {
 			log.Errorf("%+v", err)
 			return

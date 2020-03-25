@@ -53,6 +53,10 @@ type Metrics struct {
 
 // // Storage Miner
 type Storage struct {
+	// Local worker config
+	AllowPreCommit1 bool
+	AllowPreCommit2 bool
+	AllowCommit bool
 }
 
 func defCommon() Common {
@@ -86,7 +90,11 @@ func DefaultStorageMiner() *StorageMiner {
 	cfg := &StorageMiner{
 		Common: defCommon(),
 
-		Storage: Storage{},
+		Storage: Storage{
+			AllowPreCommit1: true,
+			AllowPreCommit2: true,
+			AllowCommit:     true,
+		},
 	}
 	cfg.Common.API.ListenAddress = "/ip4/127.0.0.1/tcp/2345/http"
 	return cfg

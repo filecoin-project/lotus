@@ -16,6 +16,7 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	record "github.com/libp2p/go-libp2p-record"
 	"github.com/multiformats/go-multiaddr"
+	manet "github.com/multiformats/go-multiaddr-net"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -23,7 +24,9 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/discovery"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/requestvalidation"
+
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
+
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	storage2 "github.com/filecoin-project/specs-storage/storage"
 
@@ -47,6 +50,7 @@ import (
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/hello"
 	"github.com/filecoin-project/lotus/node/impl"
+	"github.com/filecoin-project/lotus/node/impl/common"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
@@ -56,9 +60,9 @@ import (
 	"github.com/filecoin-project/lotus/paychmgr"
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sealing"
-	"github.com/filecoin-project/lotus/storage/sealmgr"
-	"github.com/filecoin-project/lotus/storage/sealmgr/advmgr"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
+	"github.com/filecoin-project/lotus/storage/sectorstorage"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/stores"
 )
 
 var log = logging.Logger("builder")
@@ -259,13 +263,19 @@ func Online() Option {
 
 		// Storage miner
 		ApplyIf(func(s *Settings) bool { return s.nodeType == repo.StorageMiner },
-			Override(new(*sectorbuilder.Config), modules.SectorBuilderConfig),
-			Override(new(advmgr.LocalStorage), From(new(repo.LockedRepo))),
-			Override(new(advmgr.SectorIDCounter), modules.SectorIDCounter),
-			Override(new(*advmgr.Manager), advmgr.New),
+			Override(new(api.Common), From(new(common.CommonAPI))),
 
-			Override(new(sealmgr.Manager), From(new(*advmgr.Manager))),
-			Override(new(storage2.Prover), From(new(sealmgr.Manager))),
+			Override(new(*stores.Index), stores.NewIndex),
+			Override(new(stores.SectorIndex), From(new(*stores.Index))),
+			Override(new(dtypes.MinerID), modules.MinerID),
+			Override(new(dtypes.MinerAddress), modules.MinerAddress),
+			Override(new(*sectorbuilder.Config), modules.SectorBuilderConfig),
+			Override(new(stores.LocalStorage), From(new(repo.LockedRepo))),
+			Override(new(sealing.SectorIDCounter), modules.SectorIDCounter),
+			Override(new(*sectorstorage.Manager), modules.SectorStorage),
+
+			Override(new(sectorstorage.SectorManager), From(new(*sectorstorage.Manager))),
+			Override(new(storage2.Prover), From(new(sectorstorage.SectorManager))),
 
 			Override(new(*sectorblocks.SectorBlocks), sectorblocks.NewSectorBlocks),
 			Override(new(sealing.TicketFn), modules.SealTicketGen),
@@ -318,15 +328,22 @@ func StorageMiner(out *api.StorageMiner) Option {
 func ConfigCommon(cfg *config.Common) Option {
 	return Options(
 		func(s *Settings) error { s.Config = true; return nil },
-
-		Override(SetApiEndpointKey, func(lr repo.LockedRepo) error {
-			apima, err := multiaddr.NewMultiaddr(cfg.API.ListenAddress)
-			if err != nil {
-				return err
-			}
-			return lr.SetAPIEndpoint(apima)
+		Override(new(dtypes.APIEndpoint), func() (dtypes.APIEndpoint, error) {
+			return multiaddr.NewMultiaddr(cfg.API.ListenAddress)
 		}),
+		Override(SetApiEndpointKey, func(lr repo.LockedRepo, e dtypes.APIEndpoint) error {
+			return lr.SetAPIEndpoint(e)
+		}),
+		Override(new(sectorstorage.URLs), func(e dtypes.APIEndpoint) (sectorstorage.URLs, error) {
+			_, ip, err := manet.DialArgs(e)
+			if err != nil {
+				return nil, xerrors.Errorf("getting api endpoint dial args: %w", err)
+			}
 
+			var urls sectorstorage.URLs
+			urls = append(urls, "http://"+ip+"/remote") // TODO: This makes assumptions, and probably bad ones too
+			return urls, nil
+		}),
 		ApplyIf(func(s *Settings) bool { return s.Online },
 			Override(StartListeningKey, lp2p.StartListening(cfg.Libp2p.ListenAddresses)),
 			Override(ConnectionManagerKey, lp2p.ConnectionManager(
@@ -365,7 +382,11 @@ func ConfigStorageMiner(c interface{}) Option {
 		return Error(xerrors.Errorf("invalid config from repo, got: %T", c))
 	}
 
-	return Options(ConfigCommon(&cfg.Common))
+	return Options(
+		ConfigCommon(&cfg.Common),
+
+		Override(new(config.Storage), cfg.Storage),
+	)
 }
 
 func Repo(r repo.Repo) Option {

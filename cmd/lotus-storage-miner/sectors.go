@@ -18,8 +18,20 @@ import (
 	lcli "github.com/filecoin-project/lotus/cli"
 )
 
-var pledgeSectorCmd = &cli.Command{
-	Name:  "pledge-sector",
+var sectorsCmd = &cli.Command{
+	Name:  "sectors",
+	Usage: "interact with sector store",
+	Subcommands: []*cli.Command{
+		sectorsStatusCmd,
+		sectorsListCmd,
+		sectorsRefsCmd,
+		sectorsUpdateCmd,
+		sectorsPledgeCmd,
+	},
+}
+
+var sectorsPledgeCmd = &cli.Command{
+	Name:  "pledge",
 	Usage: "store random data in a sector",
 	Action: func(cctx *cli.Context) error {
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
@@ -30,17 +42,6 @@ var pledgeSectorCmd = &cli.Command{
 		ctx := lcli.ReqContext(cctx)
 
 		return nodeApi.PledgeSector(ctx)
-	},
-}
-
-var sectorsCmd = &cli.Command{
-	Name:  "sectors",
-	Usage: "interact with sector store",
-	Subcommands: []*cli.Command{
-		sectorsStatusCmd,
-		sectorsListCmd,
-		sectorsRefsCmd,
-		sectorsUpdateCmd,
 	},
 }
 

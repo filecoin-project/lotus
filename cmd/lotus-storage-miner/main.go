@@ -25,12 +25,12 @@ func main() {
 		dealsCmd,
 		infoCmd,
 		initCmd,
-		pledgeSectorCmd,
 		rewardsCmd,
 		runCmd,
 		sectorsCmd,
 		storageCmd,
 		setPriceCmd,
+		workersCmd,
 	}
 	jaeger := tracing.SetupJaegerTracing("lotus")
 	defer func() {
@@ -71,7 +71,7 @@ func main() {
 			},
 		},
 
-		Commands: append(local, lcli.Commands...),
+		Commands: append(local, lcli.CommonCommands...),
 	}
 	app.Setup()
 	app.Metadata["repoType"] = repo.StorageMiner

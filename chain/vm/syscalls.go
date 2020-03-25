@@ -5,13 +5,14 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/ipfs/go-cid"
 	mh "github.com/multiformats/go-multihash"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-sectorbuilder"
 )
 
 func init() {

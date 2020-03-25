@@ -32,7 +32,7 @@ var setPriceCmd = &cli.Command{
 			return err
 		}
 
-		return api.SetPrice(ctx, types.BigInt(fp))
+		return api.MarketSetPrice(ctx, types.BigInt(fp))
 	},
 }
 

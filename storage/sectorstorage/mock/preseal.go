@@ -1,4 +1,4 @@
-package sbmock
+package mock
 
 import (
 	"github.com/filecoin-project/go-address"
