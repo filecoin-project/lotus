@@ -187,6 +187,8 @@ type DealInfo struct {
 
 	PricePerEpoch types.BigInt
 	Duration      uint64
+
+	DealID abi.DealID
 }
 
 type MsgLookup struct {
