@@ -154,6 +154,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, pstate cid.Cid, bms []B
 	}
 
 	var receipts []cbg.CBORMarshaler
+	processedMsgs := map[cid.Cid]bool{}
 	for _, b := range bms {
 		vmi.SetBlockMiner(b.Miner)
 
@@ -162,7 +163,9 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, pstate cid.Cid, bms []B
 
 		for _, cm := range append(b.BlsMessages, b.SecpkMessages...) {
 			m := cm.VMMessage()
-
+			if _, found := processedMsgs[m.Cid()]; found {
+				continue
+			}
 			r, err := vmi.ApplyMessage(ctx, m)
 			if err != nil {
 				return cid.Undef, cid.Undef, err
@@ -177,6 +180,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, pstate cid.Cid, bms []B
 					return cid.Undef, cid.Undef, err
 				}
 			}
+			processedMsgs[m.Cid()] = true
 		}
 
 		var err error
