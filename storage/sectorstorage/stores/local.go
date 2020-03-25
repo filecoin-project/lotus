@@ -310,13 +310,13 @@ func (st *Local) Remove(ctx context.Context, sid abi.SectorID, typ sectorbuilder
 }
 
 func (st *Local) MoveStorage(ctx context.Context, s abi.SectorID, types sectorbuilder.SectorFileType) error {
-	dest, destIds, sdone, err := st.AcquireSector(ctx, s, 0, types, false)
+	dest, destIds, sdone, err := st.AcquireSector(ctx, s, FTNone, types, false)
 	if err != nil {
 		return xerrors.Errorf("acquire dest storage: %w", err)
 	}
 	defer sdone()
 
-	src, srcIds, ddone, err := st.AcquireSector(ctx, s, types, 0, false)
+	src, srcIds, ddone, err := st.AcquireSector(ctx, s, types, FTNone, false)
 	if err != nil {
 		return xerrors.Errorf("acquire src storage: %w", err)
 	}
