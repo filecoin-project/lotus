@@ -159,7 +159,7 @@ func (sb *SectorMgr) SealPreCommit1(ctx context.Context, sid abi.SectorID, ticke
 		}
 	}
 
-	commd, err := MockVerifier.GenerateDataCommitment(abi.PaddedPieceSize(sb.sectorSize), pis)
+	commd, err := MockVerifier.GenerateDataCommitment(sb.proofType, pis)
 	if err != nil {
 		return nil, err
 	}
@@ -354,15 +354,8 @@ func (m mockVerif) VerifySeal(svi abi.SealVerifyInfo) (bool, error) {
 	return true, nil
 }
 
-func (m mockVerif) GenerateDataCommitment(ssize abi.PaddedPieceSize, pieces []abi.PieceInfo) (cid.Cid, error) {
-	if len(pieces) != 1 {
-		panic("todo")
-	}
-	if pieces[0].Size != ssize {
-		fmt.Println("wrong sizes? ", pieces[0].Size, ssize)
-		panic("todo")
-	}
-	return pieces[0].PieceCID, nil
+func (m mockVerif) GenerateDataCommitment(pt abi.RegisteredProof, pieces []abi.PieceInfo) (cid.Cid, error) {
+	return sectorbuilder.GenerateUnsealedCID(pt, pieces)
 }
 
 var MockVerifier = mockVerif{}
