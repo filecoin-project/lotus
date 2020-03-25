@@ -211,23 +211,22 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 		}()
 	}
 
+	aerr := rt.chargeGasSafe(rt.Pricelist().OnMethodInvocation(msg.Value, msg.Method))
+	if aerr != nil {
+		return nil, aerr, rt
+	}
+
 	toActor, err := st.GetActor(msg.To)
 	if err != nil {
 		if xerrors.Is(err, init_.ErrAddressNotFound) {
-			a, err := TryCreateAccountActor(st, msg.To)
+			a, err := TryCreateAccountActor(ctx, rt, msg.To)
 			if err != nil {
 				return nil, aerrors.Absorb(err, 1, "could not create account"), rt
 			}
 			toActor = a
-			gasUsed += PricelistByEpoch(vm.blockHeight).OnCreateActor()
 		} else {
 			return nil, aerrors.Escalate(err, "getting actor"), rt
 		}
-	}
-
-	aerr := rt.chargeGasSafe(rt.Pricelist().OnMethodInvocation(msg.Value, msg.Method))
-	if aerr != nil {
-		return nil, aerr, rt
 	}
 
 	if types.BigCmp(msg.Value, types.NewInt(0)) != 0 {

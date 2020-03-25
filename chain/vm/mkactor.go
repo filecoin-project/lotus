@@ -2,9 +2,10 @@ package vm
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
@@ -27,25 +28,46 @@ func init() {
 var EmptyObjectCid cid.Cid
 
 // Creates account actors from only BLS/SECP256K1 addresses.
-func TryCreateAccountActor(st *state.StateTree, addr address.Address) (*types.Actor, aerrors.ActorError) {
-	act, err := makeActor(st, addr)
+func TryCreateAccountActor(ctx context.Context, rt *Runtime, addr address.Address) (*types.Actor, aerrors.ActorError) {
+	addrID, err := rt.state.RegisterNewAddress(addr)
 	if err != nil {
-		return nil, err
-	}
-
-	if _, err := st.RegisterNewAddress(addr, act); err != nil {
 		return nil, aerrors.Escalate(err, "registering actor address")
 	}
+	rt.gasUsed += PricelistByEpoch(rt.height).OnCreateActor()
+	act, aerr := makeActor(rt.state, addr)
+	if aerr != nil {
+		return nil, aerr
+	}
 
+	if err := rt.state.SetActor(addrID, act); err != nil {
+		return nil, aerrors.Escalate(err, "creating new actor failed")
+	}
+
+	p, err := actors.SerializeParams(&addr)
+	if err != nil {
+		return nil, aerrors.Escalate(err, "registering actor address")
+	}
+	// call constructor on account
+
+	_, aerr = rt.internalSend(builtin.SystemActorAddr, addrID, builtin.MethodsAccount.Constructor, big.Zero(), p)
+
+	if aerr != nil {
+		return nil, aerrors.Fatal("failed to invoke account constructor")
+	}
+
+	act, err = rt.state.GetActor(addrID)
+	if err != nil {
+		return nil, aerrors.Escalate(err, "loading newly created actor failed")
+	}
 	return act, nil
 }
 
 func makeActor(st *state.StateTree, addr address.Address) (*types.Actor, aerrors.ActorError) {
 	switch addr.Protocol() {
 	case address.BLS:
-		return NewBLSAccountActor(st, addr)
+		return NewBLSAccountActor()
 	case address.SECP256K1:
-		return NewSecp256k1AccountActor(st, addr)
+		return NewSecp256k1AccountActor()
 	case address.ID:
 		return nil, aerrors.Newf(1, "no actor with given ID: %s", addr)
 	case address.Actor:
@@ -55,37 +77,21 @@ func makeActor(st *state.StateTree, addr address.Address) (*types.Actor, aerrors
 	}
 }
 
-func NewBLSAccountActor(st *state.StateTree, addr address.Address) (*types.Actor, aerrors.ActorError) {
-	var acstate account.State
-	acstate.Address = addr
-
-	c, err := st.Store.Put(context.TODO(), &acstate)
-	if err != nil {
-		return nil, aerrors.Escalate(err, "serializing account actor state")
-	}
-
+func NewBLSAccountActor() (*types.Actor, aerrors.ActorError) {
 	nact := &types.Actor{
 		Code:    builtin.AccountActorCodeID,
 		Balance: types.NewInt(0),
-		Head:    c,
+		Head:    EmptyObjectCid,
 	}
 
 	return nact, nil
 }
 
-func NewSecp256k1AccountActor(st *state.StateTree, addr address.Address) (*types.Actor, aerrors.ActorError) {
-	var acstate account.State
-	acstate.Address = addr
-
-	c, err := st.Store.Put(context.TODO(), &acstate)
-	if err != nil {
-		return nil, aerrors.Escalate(err, "serializing account actor state")
-	}
-
+func NewSecp256k1AccountActor() (*types.Actor, aerrors.ActorError) {
 	nact := &types.Actor{
 		Code:    builtin.AccountActorCodeID,
 		Balance: types.NewInt(0),
-		Head:    c,
+		Head:    EmptyObjectCid,
 	}
 
 	return nact, nil
