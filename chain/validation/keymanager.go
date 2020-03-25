@@ -87,7 +87,8 @@ func (k *KeyManager) newBLSKey() *wallet.Key {
 	//sk := ffi.PrivateKeyGenerate(s.blsSeed)
 	// s.blsSeed++
 	sk := [32]byte{}
-	sk[0] = uint8(k.blsSeed + 1) // hack to keep gas values determinist
+	sk[0] = uint8(k.blsSeed) // hack to keep gas values determinist
+	k.blsSeed++
 	key, err := wallet.NewKey(types.KeyInfo{
 		Type:       wallet.KTBLS,
 		PrivateKey: sk[:],
