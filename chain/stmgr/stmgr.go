@@ -153,22 +153,6 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, pstate cid.Cid, bms []B
 		return cid.Undef, cid.Undef, xerrors.Errorf("instantiating VM failed: %w", err)
 	}
 
-	applied := make(map[address.Address]uint64)
-	balances := make(map[address.Address]types.BigInt)
-
-	preloadAddr := func(a address.Address) error {
-		if _, ok := applied[a]; !ok {
-			act, err := vmi.StateTree().GetActor(a)
-			if err != nil {
-				return err
-			}
-
-			applied[a] = act.Nonce
-			balances[a] = act.Balance
-		}
-		return nil
-	}
-
 	var receipts []cbg.CBORMarshaler
 	for _, b := range bms {
 		vmi.SetBlockMiner(b.Miner)
@@ -178,19 +162,6 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, pstate cid.Cid, bms []B
 
 		for _, cm := range append(b.BlsMessages, b.SecpkMessages...) {
 			m := cm.VMMessage()
-			if err := preloadAddr(m.From); err != nil {
-				return cid.Undef, cid.Undef, err
-			}
-
-			if applied[m.From] != m.Nonce {
-				continue
-			}
-			applied[m.From]++
-
-			if balances[m.From].LessThan(m.RequiredFunds()) {
-				continue
-			}
-			balances[m.From] = types.BigSub(balances[m.From], m.RequiredFunds())
 
 			r, err := vmi.ApplyMessage(ctx, m)
 			if err != nil {
