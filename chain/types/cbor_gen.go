@@ -21,7 +21,7 @@ func (t *BlockHeader) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{141}); err != nil {
+	if _, err := w.Write([]byte{142}); err != nil {
 		return err
 	}
 
@@ -38,6 +38,20 @@ func (t *BlockHeader) MarshalCBOR(w io.Writer) error {
 	// t.EPostProof (types.EPostProof) (struct)
 	if err := t.EPostProof.MarshalCBOR(w); err != nil {
 		return err
+	}
+
+	// t.BeaconEntries ([]*types.BeaconEntry) (slice)
+	if len(t.BeaconEntries) > cbg.MaxLength {
+		return xerrors.Errorf("Slice value in field t.BeaconEntries was too long")
+	}
+
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajArray, uint64(len(t.BeaconEntries)))); err != nil {
+		return err
+	}
+	for _, v := range t.BeaconEntries {
+		if err := v.MarshalCBOR(w); err != nil {
+			return err
+		}
 	}
 
 	// t.Parents ([]cid.Cid) (slice)
@@ -124,7 +138,7 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 13 {
+	if extra != 14 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -167,6 +181,33 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 		}
 
 	}
+	// t.BeaconEntries ([]*types.BeaconEntry) (slice)
+
+	maj, extra, err = cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+
+	if extra > cbg.MaxLength {
+		return fmt.Errorf("t.BeaconEntries: array too large (%d)", extra)
+	}
+
+	if maj != cbg.MajArray {
+		return fmt.Errorf("expected cbor array")
+	}
+	if extra > 0 {
+		t.BeaconEntries = make([]*BeaconEntry, extra)
+	}
+	for i := 0; i < int(extra); i++ {
+
+		var v BeaconEntry
+		if err := v.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
+		t.BeaconEntries[i] = &v
+	}
+
 	// t.Parents ([]cid.Cid) (slice)
 
 	maj, extra, err = cbg.CborReadHeader(br)
@@ -1452,6 +1493,69 @@ func (t *ExpTipSet) UnmarshalCBOR(r io.Reader) error {
 		}
 
 		t.Height = abi.ChainEpoch(extraI)
+	}
+	return nil
+}
+
+func (t *BeaconEntry) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+	if _, err := w.Write([]byte{130}); err != nil {
+		return err
+	}
+
+	// t.Index (uint64) (uint64)
+
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.Index))); err != nil {
+		return err
+	}
+
+	// t.Signature (crypto.Signature) (struct)
+	if err := t.Signature.MarshalCBOR(w); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *BeaconEntry) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
+
+	maj, extra, err := cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+	if maj != cbg.MajArray {
+		return fmt.Errorf("cbor input should be of type array")
+	}
+
+	if extra != 2 {
+		return fmt.Errorf("cbor input had wrong number of fields")
+	}
+
+	// t.Index (uint64) (uint64)
+
+	{
+
+		maj, extra, err = cbg.CborReadHeader(br)
+		if err != nil {
+			return err
+		}
+		if maj != cbg.MajUnsignedInt {
+			return fmt.Errorf("wrong type for uint64 field")
+		}
+		t.Index = uint64(extra)
+
+	}
+	// t.Signature (crypto.Signature) (struct)
+
+	{
+
+		if err := t.Signature.UnmarshalCBOR(br); err != nil {
+			return xerrors.Errorf("unmarshaling t.Signature: %w", err)
+		}
+
 	}
 	return nil
 }

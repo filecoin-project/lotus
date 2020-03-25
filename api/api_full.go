@@ -73,7 +73,7 @@ type FullNode interface {
 	// miner
 
 	MinerGetBaseInfo(context.Context, address.Address, types.TipSetKey) (*MiningBaseInfo, error)
-	MinerCreateBlock(context.Context, address.Address, types.TipSetKey, *types.Ticket, *types.EPostProof, []*types.SignedMessage, abi.ChainEpoch, uint64) (*types.BlockMsg, error)
+	MinerCreateBlock(context.Context, address.Address, types.TipSetKey, *types.Ticket, *types.EPostProof, []*types.BeaconEntry, []*types.SignedMessage, abi.ChainEpoch, uint64) (*types.BlockMsg, error)
 
 	// // UX ?
 
