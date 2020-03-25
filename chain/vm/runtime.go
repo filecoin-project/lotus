@@ -281,7 +281,7 @@ func (rs *Runtime) Send(to address.Address, method abi.MethodNum, m vmr.CBORMars
 		params = buf.Bytes()
 	}
 
-	ret, err := rs.internalSend(to, method, types.BigInt(value), params)
+	ret, err := rs.internalSend(rs.Message().Receiver(), to, method, types.BigInt(value), params)
 	if err != nil {
 		if err.IsFatal() {
 			panic(err)
@@ -292,7 +292,7 @@ func (rs *Runtime) Send(to address.Address, method abi.MethodNum, m vmr.CBORMars
 	return &dumbWrapperType{ret}, 0
 }
 
-func (rt *Runtime) internalSend(to address.Address, method abi.MethodNum, value types.BigInt, params []byte) ([]byte, aerrors.ActorError) {
+func (rt *Runtime) internalSend(from, to address.Address, method abi.MethodNum, value types.BigInt, params []byte) ([]byte, aerrors.ActorError) {
 	ctx, span := trace.StartSpan(rt.ctx, "vmc.Send")
 	defer span.End()
 	if span.IsRecordingEvents() {
@@ -304,7 +304,7 @@ func (rt *Runtime) internalSend(to address.Address, method abi.MethodNum, value 
 	}
 
 	msg := &types.Message{
-		From:     rt.Message().Receiver(),
+		From:     from,
 		To:       to,
 		Method:   method,
 		Value:    value,
@@ -317,7 +317,6 @@ func (rt *Runtime) internalSend(to address.Address, method abi.MethodNum, value 
 		return nil, aerrors.Fatalf("snapshot failed: %s", err)
 	}
 	defer st.ClearSnapshot()
-	rt.ChargeGas(rt.Pricelist().OnMethodInvocation(value, method))
 
 	ret, errSend, subrt := rt.vm.send(ctx, msg, rt, 0)
 	if errSend != nil {

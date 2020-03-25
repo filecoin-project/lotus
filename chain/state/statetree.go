@@ -188,7 +188,7 @@ func (st *StateTree) ClearSnapshot() {
 	st.snapshots = st.snapshots[:len(st.snapshots)-1]
 }
 
-func (st *StateTree) RegisterNewAddress(addr address.Address, act *types.Actor) (address.Address, error) {
+func (st *StateTree) RegisterNewAddress(addr address.Address) (address.Address, error) {
 	var out address.Address
 	err := st.MutateActor(builtin.InitActorAddr, func(initact *types.Actor) error {
 		var ias init_.State
@@ -211,10 +211,6 @@ func (st *StateTree) RegisterNewAddress(addr address.Address, act *types.Actor) 
 		return nil
 	})
 	if err != nil {
-		return address.Undef, err
-	}
-
-	if err := st.SetActor(out, act); err != nil {
 		return address.Undef, err
 	}
 

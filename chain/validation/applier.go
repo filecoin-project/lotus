@@ -41,7 +41,8 @@ func (a *Applier) ApplyMessage(eCtx *vtypes.ExecutionContext, state vstate.VMWra
 		return vtypes.MessageReceipt{}, err
 	}
 
-	ret, err := lotusVM.ApplyMessage(ctx, toLotusMsg(message))
+	lm := toLotusMsg(message)
+	ret, err := lotusVM.ApplyMessage(ctx, lm)
 	if err != nil {
 		return vtypes.MessageReceipt{}, err
 	}
@@ -82,7 +83,7 @@ func (a *Applier) ApplyTipSetMessages(state vstate.VMWrapper, blocks []vtypes.Bl
 		}
 
 		for _, m := range b.SECPMessages {
-			bm.SecpkMessages = append(bm.SecpkMessages, toLotusMsg(&m.Message))
+			bm.SecpkMessages = append(bm.SecpkMessages, toLotusSignedMsg(m))
 		}
 
 		bms = append(bms, bm)
@@ -143,5 +144,12 @@ func toLotusMsg(msg *vtypes.Message) *types.Message {
 		GasLimit: msg.GasLimit,
 
 		Params: msg.Params,
+	}
+}
+
+func toLotusSignedMsg(msg *vtypes.SignedMessage) *types.SignedMessage {
+	return &types.SignedMessage{
+		Message:   *toLotusMsg(&msg.Message),
+		Signature: msg.Signature,
 	}
 }

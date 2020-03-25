@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/mock"
 	"github.com/filecoin-project/lotus/chain/wallet"
@@ -60,7 +59,7 @@ func (tma *testMpoolApi) SubscribeHeadChanges(cb func(rev, app []*types.TipSet) 
 	return nil
 }
 
-func (tma *testMpoolApi) PutMessage(m store.ChainMsg) (cid.Cid, error) {
+func (tma *testMpoolApi) PutMessage(m types.ChainMsg) (cid.Cid, error) {
 	return cid.Undef, nil
 }
 
@@ -79,7 +78,7 @@ func (tma *testMpoolApi) MessagesForBlock(h *types.BlockHeader) ([]*types.Messag
 	return nil, tma.bmsgs[h.Cid()], nil
 }
 
-func (tma *testMpoolApi) MessagesForTipset(ts *types.TipSet) ([]store.ChainMsg, error) {
+func (tma *testMpoolApi) MessagesForTipset(ts *types.TipSet) ([]types.ChainMsg, error) {
 	if len(ts.Blocks()) != 1 {
 		panic("cant deal with multiblock tipsets in this test")
 	}
@@ -89,7 +88,7 @@ func (tma *testMpoolApi) MessagesForTipset(ts *types.TipSet) ([]store.ChainMsg, 
 		return nil, err
 	}
 
-	var out []store.ChainMsg
+	var out []types.ChainMsg
 	for _, m := range bm {
 		out = append(out, m)
 	}

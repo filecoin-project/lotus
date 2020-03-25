@@ -5,11 +5,10 @@ import (
 
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-func (e *calledEvents) CheckMsg(ctx context.Context, smsg store.ChainMsg, hnd CalledHandler) CheckFunc {
+func (e *calledEvents) CheckMsg(ctx context.Context, smsg types.ChainMsg, hnd CalledHandler) CheckFunc {
 	msg := smsg.VMMessage()
 
 	return func(ts *types.TipSet) (done bool, more bool, err error) {
