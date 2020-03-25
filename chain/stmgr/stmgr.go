@@ -140,8 +140,8 @@ func (sm *StateManager) ExecutionTrace(ctx context.Context, ts *types.TipSet) (c
 
 type BlockMessages struct {
 	Miner         address.Address
-	BlsMessages   []store.ChainMsg
-	SecpkMessages []store.ChainMsg
+	BlsMessages   []types.ChainMsg
+	SecpkMessages []types.ChainMsg
 	TicketCount   int64
 }
 
@@ -166,7 +166,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, pstate cid.Cid, bms []B
 			if _, found := processedMsgs[m.Cid()]; found {
 				continue
 			}
-			r, err := vmi.ApplyMessage(ctx, m, cm.ChainLength())
+			r, err := vmi.ApplyMessage(ctx, cm)
 			if err != nil {
 				return cid.Undef, cid.Undef, err
 			}
@@ -311,8 +311,8 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 
 		bm := BlockMessages{
 			Miner:         b.Miner,
-			BlsMessages:   make([]store.ChainMsg, 0, len(bms)),
-			SecpkMessages: make([]store.ChainMsg, 0, len(sms)),
+			BlsMessages:   make([]types.ChainMsg, 0, len(bms)),
+			SecpkMessages: make([]types.ChainMsg, 0, len(sms)),
 			TicketCount:   int64(len(b.EPostProof.Proofs)),
 		}
 
@@ -591,7 +591,7 @@ func (sm *StateManager) SearchForMessage(ctx context.Context, mcid cid.Cid) (*ty
 	return fts, r, nil
 }
 
-func (sm *StateManager) searchBackForMsg(ctx context.Context, from *types.TipSet, m store.ChainMsg) (*types.TipSet, *types.MessageReceipt, error) {
+func (sm *StateManager) searchBackForMsg(ctx context.Context, from *types.TipSet, m types.ChainMsg) (*types.TipSet, *types.MessageReceipt, error) {
 
 	cur := from
 	for {

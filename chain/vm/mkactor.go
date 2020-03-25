@@ -2,6 +2,7 @@ package vm
 
 import (
 	"context"
+
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -33,7 +34,11 @@ func TryCreateAccountActor(ctx context.Context, rt *Runtime, addr address.Addres
 	if err != nil {
 		return nil, aerrors.Escalate(err, "registering actor address")
 	}
-	rt.gasUsed += PricelistByEpoch(rt.height).OnCreateActor()
+
+	if err := rt.chargeGasSafe(PricelistByEpoch(rt.height).OnCreateActor()); err != nil {
+		return nil, err
+	}
+
 	act, aerr := makeActor(rt.state, addr)
 	if aerr != nil {
 		return nil, aerr

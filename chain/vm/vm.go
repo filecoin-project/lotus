@@ -275,9 +275,10 @@ func (vm *VM) ApplyImplicitMessage(ctx context.Context, msg *types.Message) (*Ap
 	}, actorErr
 }
 
-func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message, chainLen int) (*ApplyRet, error) {
+func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet, error) {
 	ctx, span := trace.StartSpan(ctx, "vm.ApplyMessage")
 	defer span.End()
+	msg := cmsg.VMMessage()
 	if span.IsRecordingEvents() {
 		span.AddAttributes(
 			trace.StringAttribute("to", msg.To.String()),
@@ -291,7 +292,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message, chainLen int
 	}
 
 	pl := PricelistByEpoch(vm.blockHeight)
-	msgGasCost := pl.OnChainMessage(chainLen)
+	msgGasCost := pl.OnChainMessage(cmsg.ChainLength())
 	// TODO: charge miner??
 	if msgGasCost > msg.GasLimit {
 		return &ApplyRet{
@@ -305,6 +306,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message, chainLen int
 
 	st := vm.cstate
 
+	minerPenaltyAmount := types.BigMul(msg.GasPrice, types.NewInt(uint64(msgGasCost)))
 	fromActor, err := st.GetActor(msg.From)
 	if err != nil {
 		if xerrors.Is(err, types.ErrActorNotFound) {
@@ -313,7 +315,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message, chainLen int
 					ExitCode: exitcode.SysErrActorNotFound,
 					GasUsed:  0,
 				},
-				Penalty: types.BigMul(msg.GasPrice, types.NewInt(uint64(msgGasCost))),
+				Penalty: minerPenaltyAmount,
 			}, nil
 		}
 		return nil, xerrors.Errorf("failed to look up from actor: %w", err)
@@ -325,7 +327,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message, chainLen int
 				ExitCode: exitcode.SysErrForbidden,
 				GasUsed:  0,
 			},
-			Penalty: types.BigMul(msg.GasPrice, types.NewInt(uint64(msgGasCost))),
+			Penalty: minerPenaltyAmount,
 		}, nil
 	}
 
@@ -335,7 +337,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message, chainLen int
 				ExitCode: exitcode.SysErrInvalidCallSeqNum,
 				GasUsed:  0,
 			},
-			Penalty: types.BigMul(msg.GasPrice, types.NewInt(uint64(msgGasCost))),
+			Penalty: minerPenaltyAmount,
 		}, nil
 	}
 
@@ -347,7 +349,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message, chainLen int
 				ExitCode: exitcode.SysErrInsufficientFunds,
 				GasUsed:  0,
 			},
-			Penalty: types.BigMul(msg.GasPrice, types.NewInt(uint64(msgGasCost))),
+			Penalty: minerPenaltyAmount,
 		}, nil
 	}
 

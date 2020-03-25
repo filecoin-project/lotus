@@ -96,7 +96,7 @@ func (cs *ChainStore) call(ctx context.Context, msg *types.Message, ts *types.Ti
 
 	// TODO: maybe just use the invoker directly?
 	// TODO: use signed message length for secp messages
-	ret, err := vmi.ApplyMessage(ctx, msg, msg.ChainLength())
+	ret, err := vmi.ApplyMessage(ctx, msg)
 	if err != nil {
 		return nil, xerrors.Errorf("apply message failed: %w", err)
 	}

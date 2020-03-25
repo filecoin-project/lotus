@@ -12,6 +12,13 @@ import (
 	"github.com/filecoin-project/go-address"
 )
 
+type ChainMsg interface {
+	Cid() cid.Cid
+	VMMessage() *Message
+	ToStorageBlock() (block.Block, error)
+	ChainLength() int
+}
+
 type Message struct {
 	To   address.Address
 	From address.Address
