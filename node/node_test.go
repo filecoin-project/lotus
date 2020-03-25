@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"io/ioutil"
 	"net/http/httptest"
 	"testing"
@@ -454,6 +455,7 @@ func TestAPIDealFlowReal(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode")
 	}
+	lotuslog.SetupLogLevels()
 	logging.SetLogLevel("miner", "ERROR")
 	logging.SetLogLevel("chainstore", "ERROR")
 	logging.SetLogLevel("chain", "ERROR")

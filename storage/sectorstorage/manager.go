@@ -119,9 +119,15 @@ func New(ctx context.Context, ls stores.LocalStorage, si stores.SectorIndex, cfg
 	localTasks := []sealtasks.TaskType{
 		sealtasks.TTAddPiece, sealtasks.TTCommit1, sealtasks.TTFinalize,
 	}
-	if sc.AllowPreCommit1 { localTasks = append(localTasks, sealtasks.TTPreCommit1)}
-	if sc.AllowPreCommit2 { localTasks = append(localTasks, sealtasks.TTPreCommit2)}
-	if sc.AllowCommit { localTasks = append(localTasks, sealtasks.TTCommit2)}
+	if sc.AllowPreCommit1 {
+		localTasks = append(localTasks, sealtasks.TTPreCommit1)
+	}
+	if sc.AllowPreCommit2 {
+		localTasks = append(localTasks, sealtasks.TTPreCommit2)
+	}
+	if sc.AllowCommit {
+		localTasks = append(localTasks, sealtasks.TTCommit2)
+	}
 
 	err = m.AddWorker(ctx, NewLocalWorker(WorkerConfig{
 		SealProof: cfg.SealProofType,

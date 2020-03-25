@@ -309,6 +309,63 @@ func (st *Local) Remove(ctx context.Context, sid abi.SectorID, typ sectorbuilder
 	return nil
 }
 
+func (st *Local) MoveStorage(ctx context.Context, s abi.SectorID, types sectorbuilder.SectorFileType) error {
+	dest, destIds, sdone, err := st.AcquireSector(ctx, s, FTNone, types, false)
+	if err != nil {
+		return xerrors.Errorf("acquire dest storage: %w", err)
+	}
+	defer sdone()
+
+	src, srcIds, ddone, err := st.AcquireSector(ctx, s, types, FTNone, false)
+	if err != nil {
+		return xerrors.Errorf("acquire src storage: %w", err)
+	}
+	defer ddone()
+
+	for _, fileType := range pathTypes {
+		if fileType&types == 0 {
+			continue
+		}
+
+		sst, err := st.index.StorageInfo(ctx, ID(sectorutil.PathByType(srcIds, fileType)))
+		if err != nil {
+			return xerrors.Errorf("failed to get source storage info: %w", err)
+		}
+
+		dst, err := st.index.StorageInfo(ctx, ID(sectorutil.PathByType(destIds, fileType)))
+		if err != nil {
+			return xerrors.Errorf("failed to get source storage info: %w", err)
+		}
+
+		if sst.ID == dst.ID {
+			log.Debugf("not moving %v(%d); src and dest are the same", s, fileType)
+			continue
+		}
+
+		if sst.CanStore {
+			log.Debugf("not moving %v(%d); source supports storage", s, fileType)
+			continue
+		}
+
+		log.Debugf("moving %v(%d) to storage: %s(se:%t; st:%t) -> %s(se:%t; st:%t)", s, fileType, sst.ID, sst.CanSeal, sst.CanStore, dst.ID, dst.CanSeal, dst.CanStore)
+
+		if err := st.index.StorageDropSector(ctx, ID(sectorutil.PathByType(srcIds, fileType)), s, fileType); err != nil {
+			return xerrors.Errorf("dropping source sector from index: %w", err)
+		}
+
+		if err := move(sectorutil.PathByType(src, fileType), sectorutil.PathByType(dest, fileType)); err != nil {
+			// TODO: attempt some recovery (check if src is still there, re-declare)
+			return xerrors.Errorf("moving sector %v(%d): %w", s, fileType, err)
+		}
+
+		if err := st.index.StorageDeclareSector(ctx, ID(sectorutil.PathByType(destIds, fileType)), s, fileType); err != nil {
+			return xerrors.Errorf("declare sector %d(t:%d) -> %s: %w", s, fileType, ID(sectorutil.PathByType(destIds, fileType)), err)
+		}
+	}
+
+	return nil
+}
+
 var errPathNotFound = xerrors.Errorf("fsstat: path not found")
 
 func (st *Local) FsStat(ctx context.Context, id ID) (FsStat, error) {

@@ -98,7 +98,7 @@ func (r *Remote) acquireFromRemote(ctx context.Context, s abi.SectorID, fileType
 		return si[i].Weight < si[j].Weight
 	})
 
-	apaths, ids, done, err := r.local.AcquireSector(ctx, s, 0, fileType, sealing)
+	apaths, ids, done, err := r.local.AcquireSector(ctx, s, FTNone, fileType, sealing)
 	if err != nil {
 		return "", "", "", nil, xerrors.Errorf("allocate local sector for fetching: %w", err)
 	}
@@ -107,6 +107,8 @@ func (r *Remote) acquireFromRemote(ctx context.Context, s abi.SectorID, fileType
 
 	var merr error
 	for _, info := range si {
+		// TODO: see what we have local, prefer that
+
 		for _, url := range info.URLs {
 			err := r.fetch(ctx, url, dest)
 			if err != nil {
@@ -172,6 +174,17 @@ func (r *Remote) fetch(ctx context.Context, url, outname string) error {
 	default:
 		return xerrors.Errorf("unknown content type: '%s'", mediatype)
 	}
+}
+
+func (r *Remote) MoveStorage(ctx context.Context, s abi.SectorID, types sectorbuilder.SectorFileType) error {
+	// Make sure we have the data local
+	_, _, ddone, err := r.AcquireSector(ctx, s, types, FTNone, false)
+	if err != nil {
+		return xerrors.Errorf("acquire src storage (remote): %w", err)
+	}
+	ddone()
+
+	return r.local.MoveStorage(ctx, s, types)
 }
 
 func (r *Remote) Remove(ctx context.Context, sid abi.SectorID, typ sectorbuilder.SectorFileType) error {
