@@ -137,7 +137,7 @@ func (s *StateWrapper) CreateActor(code cid.Cid, addr address.Address, balance a
 		Balance: balance,
 	}}
 
-	idAddr, err := tree.RegisterNewAddress(addr, &actr.Actor)
+	idAddr, err := tree.RegisterNewAddress(addr)
 	if err != nil {
 		return nil, address.Undef, xerrors.Errorf("register new address for actor: %w", err)
 	}
