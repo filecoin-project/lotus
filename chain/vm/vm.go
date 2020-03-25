@@ -275,7 +275,7 @@ func (vm *VM) ApplyImplicitMessage(ctx context.Context, msg *types.Message) (*Ap
 	}, actorErr
 }
 
-func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, error) {
+func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message, chainLen int) (*ApplyRet, error) {
 	ctx, span := trace.StartSpan(ctx, "vm.ApplyMessage")
 	defer span.End()
 	if span.IsRecordingEvents() {
@@ -291,11 +291,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 	}
 
 	pl := PricelistByEpoch(vm.blockHeight)
-	serMsg, err := msg.Serialize()
-	if err != nil {
-		return nil, xerrors.Errorf("could not serialize message: %w", err)
-	}
-	msgGasCost := pl.OnChainMessage(len(serMsg))
+	msgGasCost := pl.OnChainMessage(chainLen)
 	// TODO: charge miner??
 	if msgGasCost > msg.GasLimit {
 		return &ApplyRet{

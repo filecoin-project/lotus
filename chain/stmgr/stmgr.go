@@ -166,7 +166,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, pstate cid.Cid, bms []B
 			if _, found := processedMsgs[m.Cid()]; found {
 				continue
 			}
-			r, err := vmi.ApplyMessage(ctx, m)
+			r, err := vmi.ApplyMessage(ctx, m, cm.ChainLength())
 			if err != nil {
 				return cid.Undef, cid.Undef, err
 			}
