@@ -52,7 +52,7 @@ func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate 
 	msg.Nonce = fromActor.Nonce
 
 	// TODO: maybe just use the invoker directly?
-	ret, err := vmi.ApplyMessage(ctx, msg)
+	ret, err := vmi.ApplyImplicitMessage(ctx, msg)
 	if err != nil {
 		return nil, xerrors.Errorf("apply message failed: %w", err)
 	}

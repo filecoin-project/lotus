@@ -199,6 +199,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, pstate cid.Cid, bms []B
 
 			receipts = append(receipts, &r.MessageReceipt)
 			gasReward = big.Add(gasReward, big.NewInt(r.GasUsed))
+			penalty = big.Add(penalty, r.Penalty)
 
 			if cb != nil {
 				if err := cb(cm.Cid(), m, r); err != nil {
@@ -233,7 +234,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, pstate cid.Cid, bms []B
 			Method:   builtin.MethodsReward.AwardBlockReward,
 			Params:   params,
 		}
-		ret, err := vmi.ApplyMessage(ctx, rwMsg)
+		ret, err := vmi.ApplyImplicitMessage(ctx, rwMsg)
 		if err != nil {
 			return cid.Undef, cid.Undef, xerrors.Errorf("failed to apply reward message for miner %s: %w", b.Miner, err)
 		}
@@ -265,7 +266,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, pstate cid.Cid, bms []B
 		Method:   builtin.MethodsCron.EpochTick,
 		Params:   nil,
 	}
-	ret, err := vmi.ApplyMessage(ctx, cronMsg)
+	ret, err := vmi.ApplyImplicitMessage(ctx, cronMsg)
 	if err != nil {
 		return cid.Undef, cid.Undef, err
 	}
