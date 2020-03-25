@@ -42,7 +42,7 @@ func (a *Applier) ApplyMessage(eCtx *vtypes.ExecutionContext, state vstate.VMWra
 	}
 
 	lm := toLotusMsg(message)
-	ret, err := lotusVM.ApplyMessage(ctx, toLotusMsg(message), lm.ChainLength())
+	ret, err := lotusVM.ApplyMessage(ctx, lm)
 	if err != nil {
 		return vtypes.MessageReceipt{}, err
 	}

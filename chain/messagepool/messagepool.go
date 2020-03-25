@@ -25,7 +25,6 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/stmgr"
-	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -109,11 +108,11 @@ func (ms *msgSet) add(m *types.SignedMessage) error {
 
 type Provider interface {
 	SubscribeHeadChanges(func(rev, app []*types.TipSet) error) *types.TipSet
-	PutMessage(m store.ChainMsg) (cid.Cid, error)
+	PutMessage(m types.ChainMsg) (cid.Cid, error)
 	PubSubPublish(string, []byte) error
 	StateGetActor(address.Address, *types.TipSet) (*types.Actor, error)
 	MessagesForBlock(*types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error)
-	MessagesForTipset(*types.TipSet) ([]store.ChainMsg, error)
+	MessagesForTipset(*types.TipSet) ([]types.ChainMsg, error)
 	LoadTipSet(tsk types.TipSetKey) (*types.TipSet, error)
 }
 
@@ -131,7 +130,7 @@ func (mpp *mpoolProvider) SubscribeHeadChanges(cb func(rev, app []*types.TipSet)
 	return mpp.sm.ChainStore().GetHeaviestTipSet()
 }
 
-func (mpp *mpoolProvider) PutMessage(m store.ChainMsg) (cid.Cid, error) {
+func (mpp *mpoolProvider) PutMessage(m types.ChainMsg) (cid.Cid, error) {
 	return mpp.sm.ChainStore().PutMessage(m)
 }
 
@@ -147,7 +146,7 @@ func (mpp *mpoolProvider) MessagesForBlock(h *types.BlockHeader) ([]*types.Messa
 	return mpp.sm.ChainStore().MessagesForBlock(h)
 }
 
-func (mpp *mpoolProvider) MessagesForTipset(ts *types.TipSet) ([]store.ChainMsg, error) {
+func (mpp *mpoolProvider) MessagesForTipset(ts *types.TipSet) ([]types.ChainMsg, error) {
 	return mpp.sm.ChainStore().MessagesForTipset(ts)
 }
 
