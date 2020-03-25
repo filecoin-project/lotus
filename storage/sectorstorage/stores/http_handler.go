@@ -32,7 +32,6 @@ func (handler *FetchHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (handler *FetchHandler) remoteStatFs(w http.ResponseWriter, r *http.Request) {
-	log.Debugf("SERVE STAT %s", r.URL)
 	vars := mux.Vars(r)
 	id := ID(vars["id"])
 
