@@ -261,6 +261,20 @@ func checkMessage(msg *types.Message) error {
 	return nil
 }
 
+func (vm *VM) ApplyImplicitMessage(ctx context.Context, msg *types.Message) (*ApplyRet, error) {
+	ret, actorErr, _ := vm.send(ctx, msg, nil, 0)
+	return &ApplyRet{
+		MessageReceipt: types.MessageReceipt{
+			ExitCode: exitcode.ExitCode(aerrors.RetCode(actorErr)),
+			Return:   ret,
+			GasUsed:  0,
+		},
+		ActorErr:           actorErr,
+		InternalExecutions: nil,
+		Penalty:            types.NewInt(0),
+	}, actorErr
+}
+
 func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, error) {
 	ctx, span := trace.StartSpan(ctx, "vm.ApplyMessage")
 	defer span.End()
