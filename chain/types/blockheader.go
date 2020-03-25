@@ -34,12 +34,19 @@ type EPostProof struct {
 	Candidates []EPostTicket
 }
 
+type BeaconEntry struct {
+	Index     uint64
+	Signature crypto.Signature
+}
+
 type BlockHeader struct {
 	Miner address.Address // 0
 
 	Ticket *Ticket // 1
 
 	EPostProof EPostProof // 2
+
+	BeaconEntries []*BeaconEntry
 
 	Parents []cid.Cid // 3
 
