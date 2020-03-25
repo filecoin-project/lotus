@@ -95,7 +95,8 @@ func (cs *ChainStore) call(ctx context.Context, msg *types.Message, ts *types.Ti
 	msg.Nonce = fromActor.Nonce
 
 	// TODO: maybe just use the invoker directly?
-	ret, err := vmi.ApplyMessage(ctx, msg)
+	// TODO: use signed message length for secp messages
+	ret, err := vmi.ApplyMessage(ctx, msg, msg.ChainLength())
 	if err != nil {
 		return nil, xerrors.Errorf("apply message failed: %w", err)
 	}

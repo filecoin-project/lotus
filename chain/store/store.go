@@ -654,6 +654,7 @@ type ChainMsg interface {
 	Cid() cid.Cid
 	VMMessage() *types.Message
 	ToStorageBlock() (block.Block, error)
+	ChainLength() int
 }
 
 func (cs *ChainStore) MessagesForTipset(ts *types.TipSet) ([]ChainMsg, error) {

@@ -60,6 +60,14 @@ func (m *Message) Serialize() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+func (m *Message) ChainLength() int {
+	ser, err := m.Serialize()
+	if err != nil {
+		panic(err)
+	}
+	return len(ser)
+}
+
 func (m *Message) ToStorageBlock() (block.Block, error) {
 	data, err := m.Serialize()
 	if err != nil {

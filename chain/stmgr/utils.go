@@ -330,7 +330,8 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 	}
 
 	for i, msg := range msgs {
-		ret, err := vmi.ApplyMessage(ctx, msg)
+		// TODO: Use the signed message length for secp messages
+		ret, err := vmi.ApplyMessage(ctx, msg, msg.ChainLength())
 		if err != nil {
 			return cid.Undef, nil, xerrors.Errorf("applying message %s: %w", msg.Cid(), err)
 		}
