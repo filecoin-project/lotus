@@ -118,16 +118,16 @@ var authApiInfoToken = &cli.Command{
 			log.Errorf("repoType type does not match the type of repo.RepoType")
 		}
 
-		addr, _, err := GetRawAPI(cctx, t)
+		ainfo, err := GetAPIInfo(cctx, t)
 		if err != nil {
-			return xerrors.Errorf("getting raw API: %w", err)
+			return xerrors.Errorf("could not get API info: %w", err)
 		}
 
 		envVar := envForRepo(t)
 
 		// TODO: Log in audit log when it is implemented
 
-		fmt.Printf("%s=%s:%s\n", envVar, string(token), addr)
+		fmt.Printf("%s=%s:%s\n", envVar, string(token), ainfo.Addr)
 		return nil
 	},
 }
