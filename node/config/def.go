@@ -56,7 +56,7 @@ type Storage struct {
 	// Local worker config
 	AllowPreCommit1 bool
 	AllowPreCommit2 bool
-	AllowCommit bool
+	AllowCommit     bool
 }
 
 func defCommon() Common {
