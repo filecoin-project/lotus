@@ -69,7 +69,7 @@ func main() {
 		Commands: local,
 	}
 	app.Setup()
-	app.Metadata["repoType"] = repo.StorageMiner
+	app.Metadata["repoType"] = repo.Worker
 
 	if err := app.Run(os.Args); err != nil {
 		log.Warnf("%+v", err)
@@ -88,6 +88,21 @@ var runCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name:  "no-local-storage",
 			Usage: "don't use storageminer repo for sector storage",
+		},
+		&cli.BoolFlag{
+			Name:  "precommit1",
+			Usage: "enable precommit1 (32G sectors: 1 core, 128GiB Memory)",
+			Value: true,
+		},
+		&cli.BoolFlag{
+			Name:  "precommit2",
+			Usage: "enable precommit2 (32G sectors: all cores, 96GiB Memory)",
+			Value: true,
+		},
+		&cli.BoolFlag{
+			Name:  "commit",
+			Usage: "enable commit (32G sectors: all cores or GPUs, 128GiB Memory + 64GiB swap)",
+			Value: true,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -130,8 +145,26 @@ var runCmd = &cli.Command{
 			return err
 		}
 
-		if err := paramfetch.GetParams(build.ParametersJson(), uint64(ssize)); err != nil {
-			return xerrors.Errorf("get params: %w", err)
+		if cctx.Bool("commit") {
+			if err := paramfetch.GetParams(build.ParametersJson(), uint64(ssize)); err != nil {
+				return xerrors.Errorf("get params: %w", err)
+			}
+		}
+
+		var taskTypes []sealtasks.TaskType
+
+		if cctx.Bool("precommit1") {
+			taskTypes = append(taskTypes, sealtasks.TTPreCommit1)
+		}
+		if cctx.Bool("precommit2") {
+			taskTypes = append(taskTypes, sealtasks.TTPreCommit2)
+		}
+		if cctx.Bool("commit") {
+			taskTypes = append(taskTypes, sealtasks.TTCommit2)
+		}
+
+		if len(taskTypes) == 0 {
+			return xerrors.Errorf("no task types specified")
 		}
 
 		// Open repo
@@ -226,7 +259,7 @@ var runCmd = &cli.Command{
 		workerApi := &worker{
 			LocalWorker: sectorstorage.NewLocalWorker(sectorstorage.WorkerConfig{
 				SealProof: spt,
-				TaskTypes: []sealtasks.TaskType{sealtasks.TTPreCommit1, sealtasks.TTPreCommit2, sealtasks.TTCommit2},
+				TaskTypes: taskTypes,
 			}, remote, localStore, nodeApi),
 		}
 
