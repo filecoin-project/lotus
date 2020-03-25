@@ -337,7 +337,6 @@ func (st *Local) MoveStorage(ctx context.Context, s abi.SectorID, types sectorbu
 			return xerrors.Errorf("failed to get source storage info: %w", err)
 		}
 
-
 		if sst.ID == dst.ID {
 			log.Debugf("not moving %v(%d); src and dest are the same", s, fileType)
 			continue
