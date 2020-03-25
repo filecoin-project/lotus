@@ -140,8 +140,8 @@ func (sm *StateManager) ExecutionTrace(ctx context.Context, ts *types.TipSet) (c
 
 type BlockMessages struct {
 	Miner         address.Address
-	BlsMessages   []store.ChainMsg
-	SecpkMessages []store.ChainMsg
+	BlsMessages   []types.ChainMsg
+	SecpkMessages []types.ChainMsg
 	TicketCount   int64
 }
 
@@ -153,23 +153,8 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, pstate cid.Cid, bms []B
 		return cid.Undef, cid.Undef, xerrors.Errorf("instantiating VM failed: %w", err)
 	}
 
-	applied := make(map[address.Address]uint64)
-	balances := make(map[address.Address]types.BigInt)
-
-	preloadAddr := func(a address.Address) error {
-		if _, ok := applied[a]; !ok {
-			act, err := vmi.StateTree().GetActor(a)
-			if err != nil {
-				return err
-			}
-
-			applied[a] = act.Nonce
-			balances[a] = act.Balance
-		}
-		return nil
-	}
-
 	var receipts []cbg.CBORMarshaler
+	processedMsgs := map[cid.Cid]bool{}
 	for _, b := range bms {
 		vmi.SetBlockMiner(b.Miner)
 
@@ -178,33 +163,24 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, pstate cid.Cid, bms []B
 
 		for _, cm := range append(b.BlsMessages, b.SecpkMessages...) {
 			m := cm.VMMessage()
-			if err := preloadAddr(m.From); err != nil {
-				return cid.Undef, cid.Undef, err
-			}
-
-			if applied[m.From] != m.Nonce {
+			if _, found := processedMsgs[m.Cid()]; found {
 				continue
 			}
-			applied[m.From]++
-
-			if balances[m.From].LessThan(m.RequiredFunds()) {
-				continue
-			}
-			balances[m.From] = types.BigSub(balances[m.From], m.RequiredFunds())
-
-			r, err := vmi.ApplyMessage(ctx, m)
+			r, err := vmi.ApplyMessage(ctx, cm)
 			if err != nil {
 				return cid.Undef, cid.Undef, err
 			}
 
 			receipts = append(receipts, &r.MessageReceipt)
 			gasReward = big.Add(gasReward, big.NewInt(r.GasUsed))
+			penalty = big.Add(penalty, r.Penalty)
 
 			if cb != nil {
 				if err := cb(cm.Cid(), m, r); err != nil {
 					return cid.Undef, cid.Undef, err
 				}
 			}
+			processedMsgs[m.Cid()] = true
 		}
 
 		var err error
@@ -233,7 +209,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, pstate cid.Cid, bms []B
 			Method:   builtin.MethodsReward.AwardBlockReward,
 			Params:   params,
 		}
-		ret, err := vmi.ApplyMessage(ctx, rwMsg)
+		ret, err := vmi.ApplyImplicitMessage(ctx, rwMsg)
 		if err != nil {
 			return cid.Undef, cid.Undef, xerrors.Errorf("failed to apply reward message for miner %s: %w", b.Miner, err)
 		}
@@ -265,7 +241,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, pstate cid.Cid, bms []B
 		Method:   builtin.MethodsCron.EpochTick,
 		Params:   nil,
 	}
-	ret, err := vmi.ApplyMessage(ctx, cronMsg)
+	ret, err := vmi.ApplyImplicitMessage(ctx, cronMsg)
 	if err != nil {
 		return cid.Undef, cid.Undef, err
 	}
@@ -335,8 +311,8 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 
 		bm := BlockMessages{
 			Miner:         b.Miner,
-			BlsMessages:   make([]store.ChainMsg, 0, len(bms)),
-			SecpkMessages: make([]store.ChainMsg, 0, len(sms)),
+			BlsMessages:   make([]types.ChainMsg, 0, len(bms)),
+			SecpkMessages: make([]types.ChainMsg, 0, len(sms)),
 			TicketCount:   int64(len(b.EPostProof.Proofs)),
 		}
 
@@ -615,7 +591,7 @@ func (sm *StateManager) SearchForMessage(ctx context.Context, mcid cid.Cid) (*ty
 	return fts, r, nil
 }
 
-func (sm *StateManager) searchBackForMsg(ctx context.Context, from *types.TipSet, m store.ChainMsg) (*types.TipSet, *types.MessageReceipt, error) {
+func (sm *StateManager) searchBackForMsg(ctx context.Context, from *types.TipSet, m types.ChainMsg) (*types.TipSet, *types.MessageReceipt, error) {
 
 	cur := from
 	for {

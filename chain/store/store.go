@@ -597,7 +597,7 @@ func (cs *ChainStore) GetGenesis() (*types.BlockHeader, error) {
 	return types.DecodeBlock(genb.RawData())
 }
 
-func (cs *ChainStore) GetCMessage(c cid.Cid) (ChainMsg, error) {
+func (cs *ChainStore) GetCMessage(c cid.Cid) (types.ChainMsg, error) {
 	m, err := cs.GetMessage(c)
 	if err == nil {
 		return m, nil
@@ -650,13 +650,7 @@ func (cs *ChainStore) readAMTCids(root cid.Cid) ([]cid.Cid, error) {
 	return cids, nil
 }
 
-type ChainMsg interface {
-	Cid() cid.Cid
-	VMMessage() *types.Message
-	ToStorageBlock() (block.Block, error)
-}
-
-func (cs *ChainStore) MessagesForTipset(ts *types.TipSet) ([]ChainMsg, error) {
+func (cs *ChainStore) MessagesForTipset(ts *types.TipSet) ([]types.ChainMsg, error) {
 	applied := make(map[address.Address]uint64)
 	balances := make(map[address.Address]types.BigInt)
 
@@ -679,14 +673,14 @@ func (cs *ChainStore) MessagesForTipset(ts *types.TipSet) ([]ChainMsg, error) {
 		return nil
 	}
 
-	var out []ChainMsg
+	var out []types.ChainMsg
 	for _, b := range ts.Blocks() {
 		bms, sms, err := cs.MessagesForBlock(b)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to get messages for block: %w", err)
 		}
 
-		cmsgs := make([]ChainMsg, 0, len(bms)+len(sms))
+		cmsgs := make([]types.ChainMsg, 0, len(bms)+len(sms))
 		for _, m := range bms {
 			cmsgs = append(cmsgs, m)
 		}

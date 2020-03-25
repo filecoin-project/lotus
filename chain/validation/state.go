@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -18,7 +17,6 @@ import (
 
 	vstate "github.com/filecoin-project/chain-validation/state"
 
-	"github.com/filecoin-project/lotus/chain/gen/genesis"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -116,37 +114,50 @@ func (s *StateWrapper) SetActorState(addr address.Address, balance abi.TokenAmou
 }
 
 func (s *StateWrapper) CreateActor(code cid.Cid, addr address.Address, balance abi.TokenAmount, actorState runtime.CBORMarshaler) (vstate.Actor, address.Address, error) {
-	if addr == builtin.InitActorAddr || addr == builtin.StoragePowerActorAddr || addr == builtin.StorageMarketActorAddr {
-		act, err := s.SetupSingletonActor(addr)
+	idAddr := addr
+	tree, err := state.LoadStateTree(s.cst, s.stateRoot)
+	if err != nil {
+		return nil, address.Undef, err
+	}
+	if addr.Protocol() != address.ID {
+
+		actHead, err := tree.Store.Put(context.Background(), actorState)
 		if err != nil {
 			return nil, address.Undef, err
 		}
-		return act, addr, nil
+		actr := &actorWrapper{types.Actor{
+			Code:    code,
+			Head:    actHead,
+			Balance: balance,
+		}}
+
+		idAddr, err = tree.RegisterNewAddress(addr)
+		if err != nil {
+			return nil, address.Undef, xerrors.Errorf("register new address for actor: %w", err)
+		}
+
+		if err := tree.SetActor(addr, &actr.Actor); err != nil {
+			return nil, address.Undef, xerrors.Errorf("setting new actor for actor: %w", err)
+		}
 	}
-	tree, err := state.LoadStateTree(s.cst, s.Root())
+
+	// store newState
+	head, err := tree.Store.Put(context.Background(), actorState)
 	if err != nil {
 		return nil, address.Undef, err
 	}
-	actHead, err := tree.Store.Put(context.Background(), actorState)
-	if err != nil {
-		return nil, address.Undef, err
-	}
-	actr := &actorWrapper{types.Actor{
+
+	// create and store actor object
+	a := types.Actor{
 		Code:    code,
-		Head:    actHead,
+		Head:    head,
 		Balance: balance,
-	}}
-
-	idAddr, err := tree.RegisterNewAddress(addr, &actr.Actor)
-	if err != nil {
-		return nil, address.Undef, xerrors.Errorf("register new address for actor: %w", err)
+	}
+	if err := tree.SetActor(idAddr, &a); err != nil {
+		return nil, address.Undef, err
 	}
 
-	if err := tree.SetActor(addr, &actr.Actor); err != nil {
-		return nil, address.Undef, xerrors.Errorf("setting new actor for actor: %w", err)
-	}
-
-	return actr, idAddr, s.flush(tree)
+	return &actorWrapper{a}, idAddr, s.flush(tree)
 }
 
 // Flushes a state tree to storage and sets this state's root to that tree's root CID.
@@ -191,47 +202,4 @@ type contextStore struct {
 
 func (s *contextStore) Context() context.Context {
 	return s.ctx
-}
-
-func (s *StateWrapper) SetupSingletonActor(addr address.Address) (vstate.Actor, error) {
-	tree, err := state.LoadStateTree(s.cst, s.stateRoot)
-	if err != nil {
-		return nil, err
-	}
-	switch addr {
-	case builtin.InitActorAddr:
-		// FIXME this is going to be a problem if go-filecoin and lotus setup their init actors with different netnames
-		// ideally lotus should use the init actor constructor
-		initact, err := genesis.SetupInitActor(s.bs, "chain-validation", nil)
-		if err != nil {
-			return nil, xerrors.Errorf("setup init actor: %w", err)
-		}
-		if err := tree.SetActor(builtin.InitActorAddr, initact); err != nil {
-			return nil, xerrors.Errorf("set init actor: %w", err)
-		}
-
-		return &actorWrapper{*initact}, s.flush(tree)
-	case builtin.StorageMarketActorAddr:
-		smact, err := genesis.SetupStorageMarketActor(s.bs)
-		if err != nil {
-			return nil, xerrors.Errorf("setup storage marker actor: %w", err)
-		}
-
-		if err := tree.SetActor(builtin.StorageMarketActorAddr, smact); err != nil {
-			return nil, xerrors.Errorf("set storage marker actor: %w", err)
-		}
-
-		return &actorWrapper{*smact}, s.flush(tree)
-	case builtin.StoragePowerActorAddr:
-		spact, err := genesis.SetupStoragePowerActor(s.bs)
-		if err != nil {
-			return nil, xerrors.Errorf("setup storage power actor: %w", err)
-		}
-		if err := tree.SetActor(builtin.StoragePowerActorAddr, spact); err != nil {
-			return nil, xerrors.Errorf("set storage power actor: %w", err)
-		}
-		return &actorWrapper{*spact}, s.flush(tree)
-	default:
-		return nil, xerrors.Errorf("%v is not a singleton actor address", addr)
-	}
 }

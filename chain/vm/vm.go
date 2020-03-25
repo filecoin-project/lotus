@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"math/big"
 	"reflect"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -185,7 +184,7 @@ type Rand interface {
 type ApplyRet struct {
 	types.MessageReceipt
 	ActorErr           aerrors.ActorError
-	Penalty            big.Int
+	Penalty            types.BigInt
 	InternalExecutions []*ExecutionResult
 }
 
@@ -211,23 +210,22 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 		}()
 	}
 
+	aerr := rt.chargeGasSafe(rt.Pricelist().OnMethodInvocation(msg.Value, msg.Method))
+	if aerr != nil {
+		return nil, aerr, rt
+	}
+
 	toActor, err := st.GetActor(msg.To)
 	if err != nil {
 		if xerrors.Is(err, init_.ErrAddressNotFound) {
-			a, err := TryCreateAccountActor(st, msg.To)
+			a, err := TryCreateAccountActor(ctx, rt, msg.To)
 			if err != nil {
 				return nil, aerrors.Absorb(err, 1, "could not create account"), rt
 			}
 			toActor = a
-			gasUsed += PricelistByEpoch(vm.blockHeight).OnCreateActor()
 		} else {
 			return nil, aerrors.Escalate(err, "getting actor"), rt
 		}
-	}
-
-	aerr := rt.chargeGasSafe(rt.Pricelist().OnMethodInvocation(msg.Value, msg.Method))
-	if aerr != nil {
-		return nil, aerr, rt
 	}
 
 	if types.BigCmp(msg.Value, types.NewInt(0)) != 0 {
@@ -263,9 +261,24 @@ func checkMessage(msg *types.Message) error {
 	return nil
 }
 
-func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, error) {
+func (vm *VM) ApplyImplicitMessage(ctx context.Context, msg *types.Message) (*ApplyRet, error) {
+	ret, actorErr, _ := vm.send(ctx, msg, nil, 0)
+	return &ApplyRet{
+		MessageReceipt: types.MessageReceipt{
+			ExitCode: exitcode.ExitCode(aerrors.RetCode(actorErr)),
+			Return:   ret,
+			GasUsed:  0,
+		},
+		ActorErr:           actorErr,
+		InternalExecutions: nil,
+		Penalty:            types.NewInt(0),
+	}, actorErr
+}
+
+func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet, error) {
 	ctx, span := trace.StartSpan(ctx, "vm.ApplyMessage")
 	defer span.End()
+	msg := cmsg.VMMessage()
 	if span.IsRecordingEvents() {
 		span.AddAttributes(
 			trace.StringAttribute("to", msg.To.String()),
@@ -279,34 +292,43 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 	}
 
 	pl := PricelistByEpoch(vm.blockHeight)
-	serMsg, err := msg.Serialize()
-	if err != nil {
-		return nil, xerrors.Errorf("could not serialize message: %w", err)
-	}
-	msgGasCost := pl.OnChainMessage(len(serMsg))
+	msgGasCost := pl.OnChainMessage(cmsg.ChainLength())
 	// TODO: charge miner??
 	if msgGasCost > msg.GasLimit {
 		return &ApplyRet{
 			MessageReceipt: types.MessageReceipt{
 				ExitCode: exitcode.SysErrOutOfGas,
-				GasUsed:  msg.GasLimit,
+				GasUsed:  0,
 			},
+			Penalty: types.BigMul(msg.GasPrice, types.NewInt(uint64(msgGasCost))),
 		}, nil
 	}
 
 	st := vm.cstate
 
+	minerPenaltyAmount := types.BigMul(msg.GasPrice, types.NewInt(uint64(msgGasCost)))
 	fromActor, err := st.GetActor(msg.From)
 	if err != nil {
 		if xerrors.Is(err, types.ErrActorNotFound) {
 			return &ApplyRet{
 				MessageReceipt: types.MessageReceipt{
 					ExitCode: exitcode.SysErrActorNotFound,
-					GasUsed:  msg.GasLimit,
+					GasUsed:  0,
 				},
+				Penalty: minerPenaltyAmount,
 			}, nil
 		}
 		return nil, xerrors.Errorf("failed to look up from actor: %w", err)
+	}
+
+	if !fromActor.Code.Equals(builtin.AccountActorCodeID) {
+		return &ApplyRet{
+			MessageReceipt: types.MessageReceipt{
+				ExitCode: exitcode.SysErrForbidden,
+				GasUsed:  0,
+			},
+			Penalty: minerPenaltyAmount,
+		}, nil
 	}
 
 	if msg.Nonce != fromActor.Nonce {
@@ -315,6 +337,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 				ExitCode: exitcode.SysErrInvalidCallSeqNum,
 				GasUsed:  0,
 			},
+			Penalty: minerPenaltyAmount,
 		}, nil
 	}
 
@@ -324,8 +347,9 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 		return &ApplyRet{
 			MessageReceipt: types.MessageReceipt{
 				ExitCode: exitcode.SysErrInsufficientFunds,
-				GasUsed:  msg.GasLimit,
+				GasUsed:  0,
 			},
+			Penalty: minerPenaltyAmount,
 		}, nil
 	}
 
@@ -367,21 +391,19 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 	var gasUsed int64
 
 	if errcode = aerrors.RetCode(actorErr); errcode != 0 {
-		gasUsed = msg.GasLimit
 		// revert all state changes since snapshot
 		if err := st.Revert(); err != nil {
 			return nil, xerrors.Errorf("revert state failed: %w", err)
 		}
-	} else {
-		gasUsed = rt.gasUsed
-		if gasUsed < 0 {
-			gasUsed = 0
-		}
-		// refund unused gas
-		refund := types.BigMul(types.NewInt(uint64(msg.GasLimit-gasUsed)), msg.GasPrice)
-		if err := vm.transferFromGasHolder(msg.From, gasHolder, refund); err != nil {
-			return nil, xerrors.Errorf("failed to refund gas")
-		}
+	}
+	gasUsed = rt.gasUsed
+	if gasUsed < 0 {
+		gasUsed = 0
+	}
+	// refund unused gas
+	refund := types.BigMul(types.NewInt(uint64(msg.GasLimit-gasUsed)), msg.GasPrice)
+	if err := vm.transferFromGasHolder(msg.From, gasHolder, refund); err != nil {
+		return nil, xerrors.Errorf("failed to refund gas")
 	}
 
 	gasReward := types.BigMul(msg.GasPrice, types.NewInt(uint64(gasUsed)))
@@ -401,6 +423,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 		},
 		ActorErr:           actorErr,
 		InternalExecutions: rt.internalExecutions,
+		Penalty:            types.NewInt(0),
 	}, nil
 }
 

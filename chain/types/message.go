@@ -12,6 +12,13 @@ import (
 	"github.com/filecoin-project/go-address"
 )
 
+type ChainMsg interface {
+	Cid() cid.Cid
+	VMMessage() *Message
+	ToStorageBlock() (block.Block, error)
+	ChainLength() int
+}
+
 type Message struct {
 	To   address.Address
 	From address.Address
@@ -58,6 +65,14 @@ func (m *Message) Serialize() ([]byte, error) {
 		return nil, err
 	}
 	return buf.Bytes(), nil
+}
+
+func (m *Message) ChainLength() int {
+	ser, err := m.Serialize()
+	if err != nil {
+		panic(err)
+	}
+	return len(ser)
 }
 
 func (m *Message) ToStorageBlock() (block.Block, error) {
