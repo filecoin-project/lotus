@@ -15,7 +15,7 @@ type readonlyProvider struct {
 }
 
 func (l *readonlyProvider) AcquireSector(ctx context.Context, id abi.SectorID, existing sectorbuilder.SectorFileType, allocate sectorbuilder.SectorFileType, sealing bool) (sectorbuilder.SectorPaths, func(), error) {
-	if allocate != 0 { // 0 - don't allocate anything
+	if allocate != stores.FTNone {
 		return sectorbuilder.SectorPaths{}, nil, xerrors.New("read-only storage")
 	}
 

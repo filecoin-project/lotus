@@ -71,7 +71,7 @@ func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Requ
 		w.WriteHeader(500)
 		return
 	}
-	paths, _, done, err := handler.Local.AcquireSector(r.Context(), id, ft, 0, false)
+	paths, _, done, err := handler.Local.AcquireSector(r.Context(), id, ft, FTNone, false)
 	if err != nil {
 		log.Error("%+v", err)
 		w.WriteHeader(500)
