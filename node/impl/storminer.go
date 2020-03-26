@@ -3,7 +3,6 @@ package impl
 import (
 	"context"
 	"encoding/json"
-	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
 	"net/http"
 	"os"
 	"strconv"
@@ -23,14 +22,14 @@ import (
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 	"github.com/filecoin-project/lotus/storage/sectorstorage"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sectorstorage/stores"
 )
 
 type StorageMinerAPI struct {
 	common.CommonAPI
 
-	SectorBuilderConfig *ffiwrapper.Config
-	//SectorBuilder       sectorbuilder.Interface
+	ProofsConfig *ffiwrapper.Config
 	SectorBlocks *sectorblocks.SectorBlocks
 
 	StorageProvider storagemarket.StorageProvider

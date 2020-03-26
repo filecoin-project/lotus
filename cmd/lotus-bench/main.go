@@ -5,8 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
-	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper/basicfs"
 	"io/ioutil"
 	"math/big"
 	"math/rand"
@@ -29,6 +27,8 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/genesis"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper/basicfs"
 )
 
 var log = logging.Logger("lotus-bench")

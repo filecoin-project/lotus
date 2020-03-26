@@ -2,7 +2,6 @@ package modules
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
 	"reflect"
 
 	"github.com/ipfs/go-bitswap"
@@ -51,6 +50,7 @@ import (
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sealing"
 	"github.com/filecoin-project/lotus/storage/sectorstorage"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sectorstorage/stores"
 )
 
@@ -86,7 +86,7 @@ func MinerID(ma dtypes.MinerAddress) (dtypes.MinerID, error) {
 	return dtypes.MinerID(id), err
 }
 
-func SectorBuilderConfig(maddr dtypes.MinerAddress, fnapi lapi.FullNode) (*ffiwrapper.Config, error) {
+func ProofsConfig(maddr dtypes.MinerAddress, fnapi lapi.FullNode) (*ffiwrapper.Config, error) {
 	ssize, err := fnapi.StateMinerSectorSize(context.TODO(), address.Address(maddr), types.EmptyTSK)
 	if err != nil {
 		return nil, err

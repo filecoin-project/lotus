@@ -3,7 +3,6 @@ package node
 import (
 	"context"
 	"errors"
-	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
 	"time"
 
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -61,6 +60,7 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealing"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 	"github.com/filecoin-project/lotus/storage/sectorstorage"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sectorstorage/stores"
 )
 
@@ -268,7 +268,7 @@ func Online() Option {
 			Override(new(stores.SectorIndex), From(new(*stores.Index))),
 			Override(new(dtypes.MinerID), modules.MinerID),
 			Override(new(dtypes.MinerAddress), modules.MinerAddress),
-			Override(new(*ffiwrapper.Config), modules.SectorBuilderConfig),
+			Override(new(*ffiwrapper.Config), modules.ProofsConfig),
 			Override(new(stores.LocalStorage), From(new(repo.LockedRepo))),
 			Override(new(sealing.SectorIDCounter), modules.SectorIDCounter),
 			Override(new(*sectorstorage.Manager), modules.SectorStorage),

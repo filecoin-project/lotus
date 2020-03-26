@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
-	"github.com/minio/blake2b-simd"
 	"io/ioutil"
 	"sync/atomic"
 
@@ -23,6 +21,9 @@ import (
 	format "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/ipfs/go-merkledag"
+	"github.com/minio/blake2b-simd"
+	"go.opencensus.io/trace"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -36,8 +37,7 @@ import (
 	"github.com/filecoin-project/lotus/genesis"
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/node/repo"
-	"go.opencensus.io/trace"
-	"golang.org/x/xerrors"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
 )
 
 var log = logging.Logger("gen")

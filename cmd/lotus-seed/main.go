@@ -41,7 +41,7 @@ func main() {
 		Version: build.UserVersion,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:  "sectorbuilder-dir",
+				Name:  "sector-dir",
 				Value: "~/.genesis-sectors",
 			},
 		},
@@ -90,7 +90,7 @@ var preSealCmd = &cli.Command{
 		},
 	},
 	Action: func(c *cli.Context) error {
-		sdir := c.String("sectorbuilder-dir")
+		sdir := c.String("sector-dir")
 		sbroot, err := homedir.Expand(sdir)
 		if err != nil {
 			return err

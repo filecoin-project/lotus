@@ -2,7 +2,6 @@ package sectorstorage
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
 	"io"
 	"os"
 
@@ -14,6 +13,7 @@ import (
 	storage2 "github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sectorstorage/sealtasks"
 	"github.com/filecoin-project/lotus/storage/sectorstorage/stores"
 )
@@ -87,7 +87,7 @@ func (l *localWorkerPathProvider) AcquireSector(ctx context.Context, sector abi.
 	}, nil
 }
 
-func (l *LocalWorker) sb() (ffiwrapper.Basic, error) {
+func (l *LocalWorker) sb() (ffiwrapper.Storage, error) {
 	return ffiwrapper.New(&localWorkerPathProvider{w: l}, l.scfg)
 }
 

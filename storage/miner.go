@@ -122,18 +122,18 @@ func (m *Miner) runPreflightChecks(ctx context.Context) error {
 	return nil
 }
 
-type SectorBuilderEpp struct {
+type StorageEpp struct {
 	prover storage.Prover
 	miner  abi.ActorID
 }
 
-func NewElectionPoStProver(sb storage.Prover, miner dtypes.MinerID) *SectorBuilderEpp {
-	return &SectorBuilderEpp{sb, abi.ActorID(miner)}
+func NewElectionPoStProver(sb storage.Prover, miner dtypes.MinerID) *StorageEpp {
+	return &StorageEpp{sb, abi.ActorID(miner)}
 }
 
-var _ gen.ElectionPoStProver = (*SectorBuilderEpp)(nil)
+var _ gen.ElectionPoStProver = (*StorageEpp)(nil)
 
-func (epp *SectorBuilderEpp) GenerateCandidates(ctx context.Context, ssi []abi.SectorInfo, rand abi.PoStRandomness) ([]storage.PoStCandidateWithTicket, error) {
+func (epp *StorageEpp) GenerateCandidates(ctx context.Context, ssi []abi.SectorInfo, rand abi.PoStRandomness) ([]storage.PoStCandidateWithTicket, error) {
 	start := time.Now()
 	var faults []abi.SectorNumber // TODO
 
@@ -145,7 +145,7 @@ func (epp *SectorBuilderEpp) GenerateCandidates(ctx context.Context, ssi []abi.S
 	return cds, nil
 }
 
-func (epp *SectorBuilderEpp) ComputeProof(ctx context.Context, ssi []abi.SectorInfo, rand []byte, winners []storage.PoStCandidateWithTicket) ([]abi.PoStProof, error) {
+func (epp *StorageEpp) ComputeProof(ctx context.Context, ssi []abi.SectorInfo, rand []byte, winners []storage.PoStCandidateWithTicket) ([]abi.PoStProof, error) {
 	if build.InsecurePoStValidation {
 		log.Warn("Generating fake EPost proof! You should only see this while running tests!")
 		return []abi.PoStProof{{ProofBytes: []byte("valid proof")}}, nil
