@@ -4,6 +4,7 @@ import (
 	"container/list"
 	"context"
 	"errors"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
 	"io"
 	"net/http"
 	"sync"
@@ -13,7 +14,6 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-storage/storage"
 
@@ -30,7 +30,7 @@ var ErrNoWorkers = errors.New("no suitable workers found")
 type URLs []string
 
 type Worker interface {
-	sectorbuilder.Sealer
+	ffiwrapper.Sealer
 
 	TaskTypes(context.Context) (map[sealtasks.TaskType]struct{}, error)
 
@@ -45,16 +45,16 @@ type Worker interface {
 type SectorManager interface {
 	SectorSize() abi.SectorSize
 
-	ReadPieceFromSealedSector(context.Context, abi.SectorID, sectorbuilder.UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) (io.ReadCloser, error)
+	ReadPieceFromSealedSector(context.Context, abi.SectorID, ffiwrapper.UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) (io.ReadCloser, error)
 
-	sectorbuilder.Sealer
+	ffiwrapper.Sealer
 	storage.Prover
 }
 
 type WorkerID uint64
 
 type Manager struct {
-	scfg *sectorbuilder.Config
+	scfg *ffiwrapper.Config
 
 	ls         stores.LocalStorage
 	storage    *stores.Remote
@@ -76,13 +76,13 @@ type Manager struct {
 	schedQueue *list.List // List[*workerRequest]
 }
 
-func New(ctx context.Context, ls stores.LocalStorage, si stores.SectorIndex, cfg *sectorbuilder.Config, sc config.Storage, urls URLs, ca api.Common) (*Manager, error) {
+func New(ctx context.Context, ls stores.LocalStorage, si stores.SectorIndex, cfg *ffiwrapper.Config, sc config.Storage, urls URLs, ca api.Common) (*Manager, error) {
 	lstor, err := stores.NewLocal(ctx, ls, si, urls)
 	if err != nil {
 		return nil, err
 	}
 
-	prover, err := sectorbuilder.New(&readonlyProvider{stor: lstor}, cfg)
+	prover, err := ffiwrapper.New(&readonlyProvider{stor: lstor}, cfg)
 	if err != nil {
 		return nil, xerrors.Errorf("creating prover instance: %w", err)
 	}
@@ -180,7 +180,7 @@ func (m *Manager) SectorSize() abi.SectorSize {
 	return sz
 }
 
-func (m *Manager) ReadPieceFromSealedSector(context.Context, abi.SectorID, sectorbuilder.UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) (io.ReadCloser, error) {
+func (m *Manager) ReadPieceFromSealedSector(context.Context, abi.SectorID, ffiwrapper.UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) (io.ReadCloser, error) {
 	panic("implement me")
 }
 
@@ -273,9 +273,9 @@ func (m *Manager) AddPiece(ctx context.Context, sector abi.SectorID, existingPie
 	var best []stores.StorageInfo
 	var err error
 	if len(existingPieces) == 0 { // new
-		best, err = m.index.StorageBestAlloc(ctx, sectorbuilder.FTUnsealed, true)
+		best, err = m.index.StorageBestAlloc(ctx, stores.FTUnsealed, true)
 	} else { // append to existing
-		best, err = m.index.StorageFindSector(ctx, sector, sectorbuilder.FTUnsealed, false)
+		best, err = m.index.StorageFindSector(ctx, sector, stores.FTUnsealed, false)
 	}
 	if err != nil {
 		return abi.PieceInfo{}, xerrors.Errorf("finding sector path: %w", err)
@@ -302,7 +302,7 @@ func (m *Manager) AddPiece(ctx context.Context, sector abi.SectorID, existingPie
 func (m *Manager) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, pieces []abi.PieceInfo) (out storage.PreCommit1Out, err error) {
 	// TODO: also consider where the unsealed data sits
 
-	best, err := m.index.StorageBestAlloc(ctx, sectorbuilder.FTCache|sectorbuilder.FTSealed, true)
+	best, err := m.index.StorageBestAlloc(ctx, stores.FTCache|stores.FTSealed, true)
 	if err != nil {
 		return nil, xerrors.Errorf("finding path for sector sealing: %w", err)
 	}
@@ -326,7 +326,7 @@ func (m *Manager) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticke
 func (m *Manager) SealPreCommit2(ctx context.Context, sector abi.SectorID, phase1Out storage.PreCommit1Out) (cids storage.SectorCids, err error) {
 	// TODO: allow workers to fetch the sectors
 
-	best, err := m.index.StorageFindSector(ctx, sector, sectorbuilder.FTCache|sectorbuilder.FTSealed, true)
+	best, err := m.index.StorageFindSector(ctx, sector, stores.FTCache|stores.FTSealed, true)
 	if err != nil {
 		return storage.SectorCids{}, xerrors.Errorf("finding path for sector sealing: %w", err)
 	}
@@ -348,7 +348,7 @@ func (m *Manager) SealPreCommit2(ctx context.Context, sector abi.SectorID, phase
 }
 
 func (m *Manager) SealCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storage.SectorCids) (output storage.Commit1Out, err error) {
-	best, err := m.index.StorageFindSector(ctx, sector, sectorbuilder.FTCache|sectorbuilder.FTSealed, true)
+	best, err := m.index.StorageFindSector(ctx, sector, stores.FTCache|stores.FTSealed, true)
 	if err != nil {
 		return nil, xerrors.Errorf("finding path for sector sealing: %w", err)
 	}
@@ -400,7 +400,7 @@ func (m *Manager) SealCommit2(ctx context.Context, sector abi.SectorID, phase1Ou
 }
 
 func (m *Manager) FinalizeSector(ctx context.Context, sector abi.SectorID) error {
-	best, err := m.index.StorageFindSector(ctx, sector, sectorbuilder.FTCache|sectorbuilder.FTSealed|sectorbuilder.FTUnsealed, true)
+	best, err := m.index.StorageFindSector(ctx, sector, stores.FTCache|stores.FTSealed|stores.FTUnsealed, true)
 	if err != nil {
 		return xerrors.Errorf("finding sealed sector: %w", err)
 	}

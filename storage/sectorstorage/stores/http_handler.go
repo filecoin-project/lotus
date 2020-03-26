@@ -10,9 +10,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/lotus/lib/tarutil"
-	"github.com/filecoin-project/lotus/storage/sectorstorage/sectorutil"
 )
 
 var log = logging.Logger("stores")
@@ -57,7 +55,7 @@ func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Requ
 	log.Infof("SERVE GET %s", r.URL)
 	vars := mux.Vars(r)
 
-	id, err := sectorutil.ParseSectorID(vars["id"])
+	id, err := ParseSectorID(vars["id"])
 	if err != nil {
 		log.Error("%+v", err)
 		w.WriteHeader(500)
@@ -78,7 +76,7 @@ func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Requ
 	}
 	defer done()
 
-	path := sectorutil.PathByType(paths, ft)
+	path := PathByType(paths, ft)
 	if path == "" {
 		log.Error("acquired path was empty")
 		w.WriteHeader(500)
@@ -117,7 +115,7 @@ func (handler *FetchHandler) remoteDeleteSector(w http.ResponseWriter, r *http.R
 	log.Infof("SERVE DELETE %s", r.URL)
 	vars := mux.Vars(r)
 
-	id, err := sectorutil.ParseSectorID(vars["id"])
+	id, err := ParseSectorID(vars["id"])
 	if err != nil {
 		log.Error("%+v", err)
 		w.WriteHeader(500)
@@ -138,14 +136,14 @@ func (handler *FetchHandler) remoteDeleteSector(w http.ResponseWriter, r *http.R
 	}
 }
 
-func ftFromString(t string) (sectorbuilder.SectorFileType, error) {
+func ftFromString(t string) (SectorFileType, error) {
 	switch t {
-	case sectorbuilder.FTUnsealed.String():
-		return sectorbuilder.FTUnsealed, nil
-	case sectorbuilder.FTSealed.String():
-		return sectorbuilder.FTSealed, nil
-	case sectorbuilder.FTCache.String():
-		return sectorbuilder.FTCache, nil
+	case FTUnsealed.String():
+		return FTUnsealed, nil
+	case FTSealed.String():
+		return FTSealed, nil
+	case FTCache.String():
+		return FTCache, nil
 	default:
 		return 0, xerrors.Errorf("unknown sector file type: '%s'", t)
 	}
