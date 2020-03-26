@@ -2,7 +2,6 @@ package retrievaladapter
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
 	"io"
 
 	"github.com/filecoin-project/go-address"
@@ -15,6 +14,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sectorstorage"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
 )
 
 type retrievalProviderNode struct {

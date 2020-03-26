@@ -4,7 +4,6 @@ import (
 	"container/list"
 	"context"
 	"errors"
-	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
 	"io"
 	"net/http"
 	"sync"
@@ -19,6 +18,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sectorstorage/sealtasks"
 	"github.com/filecoin-project/lotus/storage/sectorstorage/stores"
 )
@@ -30,7 +30,7 @@ var ErrNoWorkers = errors.New("no suitable workers found")
 type URLs []string
 
 type Worker interface {
-	ffiwrapper.Sealer
+	ffiwrapper.StorageSealer
 
 	TaskTypes(context.Context) (map[sealtasks.TaskType]struct{}, error)
 
@@ -47,7 +47,7 @@ type SectorManager interface {
 
 	ReadPieceFromSealedSector(context.Context, abi.SectorID, ffiwrapper.UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) (io.ReadCloser, error)
 
-	ffiwrapper.Sealer
+	ffiwrapper.StorageSealer
 	storage.Prover
 }
 

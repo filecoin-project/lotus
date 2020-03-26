@@ -3,7 +3,6 @@ package zerocomm_test
 import (
 	"bytes"
 	"fmt"
-	"github.com/filecoin-project/lotus/storage/sectorstorage/zerocomm"
 	"io"
 	"testing"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/zerocomm"
 )
 
 func TestComms(t *testing.T) {

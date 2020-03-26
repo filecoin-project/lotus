@@ -19,15 +19,15 @@ import (
 	"github.com/filecoin-project/lotus/storage/sectorstorage/zerocomm"
 )
 
-var _ Basic = &SectorBuilder{}
+var _ Storage = &Sealer{}
 
-func New(sectors SectorProvider, cfg *Config) (*SectorBuilder, error) {
+func New(sectors SectorProvider, cfg *Config) (*Sealer, error) {
 	sectorSize, err := sizeFromConfig(*cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	sb := &SectorBuilder{
+	sb := &Sealer{
 		sealProofType: cfg.SealProofType,
 		postProofType: cfg.PoStProofType,
 		ssize:         sectorSize,
@@ -40,47 +40,13 @@ func New(sectors SectorProvider, cfg *Config) (*SectorBuilder, error) {
 	return sb, nil
 }
 
-func (sb *SectorBuilder) pubSectorToPriv(ctx context.Context, mid abi.ActorID, sectorInfo []abi.SectorInfo, faults []abi.SectorNumber) (ffi.SortedPrivateSectorInfo, error) {
-	fmap := map[abi.SectorNumber]struct{}{}
-	for _, fault := range faults {
-		fmap[fault] = struct{}{}
-	}
-
-	var out []ffi.PrivateSectorInfo
-	for _, s := range sectorInfo {
-		if _, faulty := fmap[s.SectorNumber]; faulty {
-			continue
-		}
-
-		paths, done, err := sb.sectors.AcquireSector(ctx, abi.SectorID{Miner: mid, Number: s.SectorNumber}, stores.FTCache|stores.FTSealed, 0, false)
-		if err != nil {
-			return ffi.SortedPrivateSectorInfo{}, xerrors.Errorf("acquire sector paths: %w", err)
-		}
-		done() // TODO: This is a tiny bit suboptimal
-
-		postProofType, err := s.RegisteredProof.RegisteredPoStProof()
-		if err != nil {
-			return ffi.SortedPrivateSectorInfo{}, xerrors.Errorf("acquiring registered PoSt proof from sector info %+v: %w", s, err)
-		}
-
-		out = append(out, ffi.PrivateSectorInfo{
-			CacheDirPath:     paths.Cache,
-			PoStProofType:    postProofType,
-			SealedSectorPath: paths.Sealed,
-			SectorInfo:       s,
-		})
-	}
-
-	return ffi.NewSortedPrivateSectorInfo(out...), nil
-}
-
-func (sb *SectorBuilder) NewSector(ctx context.Context, sector abi.SectorID) error {
+func (sb *Sealer) NewSector(ctx context.Context, sector abi.SectorID) error {
 	// TODO: Allocate the sector here instead of in addpiece
 
 	return nil
 }
 
-func (sb *SectorBuilder) AddPiece(ctx context.Context, sector abi.SectorID, existingPieceSizes []abi.UnpaddedPieceSize, pieceSize abi.UnpaddedPieceSize, file storage.Data) (abi.PieceInfo, error) {
+func (sb *Sealer) AddPiece(ctx context.Context, sector abi.SectorID, existingPieceSizes []abi.UnpaddedPieceSize, pieceSize abi.UnpaddedPieceSize, file storage.Data) (abi.PieceInfo, error) {
 	f, werr, err := toReadableFile(file, int64(pieceSize))
 	if err != nil {
 		return abi.PieceInfo{}, err
@@ -143,7 +109,7 @@ func (sb *SectorBuilder) AddPiece(ctx context.Context, sector abi.SectorID, exis
 	}, werr()
 }
 
-func (sb *SectorBuilder) ReadPieceFromSealedSector(ctx context.Context, sector abi.SectorID, offset UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, unsealedCID cid.Cid) (io.ReadCloser, error) {
+func (sb *Sealer) ReadPieceFromSealedSector(ctx context.Context, sector abi.SectorID, offset UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, unsealedCID cid.Cid) (io.ReadCloser, error) {
 	path, doneUnsealed, err := sb.sectors.AcquireSector(ctx, sector, stores.FTUnsealed, stores.FTUnsealed, false)
 	if err != nil {
 		return nil, xerrors.Errorf("acquire unsealed sector path: %w", err)
@@ -212,7 +178,7 @@ func (sb *SectorBuilder) ReadPieceFromSealedSector(ctx context.Context, sector a
 	}, nil
 }
 
-func (sb *SectorBuilder) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, pieces []abi.PieceInfo) (out storage.PreCommit1Out, err error) {
+func (sb *Sealer) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, pieces []abi.PieceInfo) (out storage.PreCommit1Out, err error) {
 	paths, done, err := sb.sectors.AcquireSector(ctx, sector, stores.FTUnsealed, stores.FTSealed|stores.FTCache, true)
 	if err != nil {
 		return nil, xerrors.Errorf("acquiring sector paths: %w", err)
@@ -269,7 +235,7 @@ func (sb *SectorBuilder) SealPreCommit1(ctx context.Context, sector abi.SectorID
 	return p1o, nil
 }
 
-func (sb *SectorBuilder) SealPreCommit2(ctx context.Context, sector abi.SectorID, phase1Out storage.PreCommit1Out) (storage.SectorCids, error) {
+func (sb *Sealer) SealPreCommit2(ctx context.Context, sector abi.SectorID, phase1Out storage.PreCommit1Out) (storage.SectorCids, error) {
 	paths, done, err := sb.sectors.AcquireSector(ctx, sector, stores.FTSealed|stores.FTCache, 0, true)
 	if err != nil {
 		return storage.SectorCids{}, xerrors.Errorf("acquiring sector paths: %w", err)
@@ -287,7 +253,7 @@ func (sb *SectorBuilder) SealPreCommit2(ctx context.Context, sector abi.SectorID
 	}, nil
 }
 
-func (sb *SectorBuilder) SealCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storage.SectorCids) (storage.Commit1Out, error) {
+func (sb *Sealer) SealCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storage.SectorCids) (storage.Commit1Out, error) {
 	paths, done, err := sb.sectors.AcquireSector(ctx, sector, stores.FTSealed|stores.FTCache, 0, true)
 	if err != nil {
 		return nil, xerrors.Errorf("acquire sector paths: %w", err)
@@ -314,37 +280,11 @@ func (sb *SectorBuilder) SealCommit1(ctx context.Context, sector abi.SectorID, t
 	return output, nil
 }
 
-func (sb *SectorBuilder) SealCommit2(ctx context.Context, sector abi.SectorID, phase1Out storage.Commit1Out) (storage.Proof, error) {
+func (sb *Sealer) SealCommit2(ctx context.Context, sector abi.SectorID, phase1Out storage.Commit1Out) (storage.Proof, error) {
 	return ffi.SealCommitPhase2(phase1Out, sector.Number, sector.Miner)
 }
 
-func (sb *SectorBuilder) GenerateFallbackPoSt(ctx context.Context, miner abi.ActorID, sectorInfo []abi.SectorInfo, challengeSeed abi.PoStRandomness, faults []abi.SectorNumber) (storage.FallbackPostOut, error) {
-	privsectors, err := sb.pubSectorToPriv(ctx, miner, sectorInfo, faults)
-	if err != nil {
-		return storage.FallbackPostOut{}, err
-	}
-
-	challengeCount := fallbackPostChallengeCount(uint64(len(sectorInfo)), uint64(len(faults)))
-	challengeSeed[31] = 0
-
-	candidates, err := ffi.GenerateCandidates(miner, challengeSeed, challengeCount, privsectors)
-	if err != nil {
-		return storage.FallbackPostOut{}, err
-	}
-
-	winners := make([]abi.PoStCandidate, len(candidates))
-	for idx := range winners {
-		winners[idx] = candidates[idx].Candidate
-	}
-
-	proof, err := ffi.GeneratePoSt(miner, privsectors, challengeSeed, winners)
-	return storage.FallbackPostOut{
-		PoStInputs: ffiToStorageCandidates(candidates),
-		Proof:      proof,
-	}, err
-}
-
-func (sb *SectorBuilder) FinalizeSector(ctx context.Context, sector abi.SectorID) error {
+func (sb *Sealer) FinalizeSector(ctx context.Context, sector abi.SectorID) error {
 	paths, done, err := sb.sectors.AcquireSector(ctx, sector, stores.FTCache, 0, false)
 	if err != nil {
 		return xerrors.Errorf("acquiring sector cache path: %w", err)
