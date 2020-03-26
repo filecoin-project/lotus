@@ -43,7 +43,7 @@ func TestDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration) {
 	}
 	time.Sleep(time.Second)
 
-	data := make([]byte, 1600)
+	data := make([]byte, 600)
 	rand.New(rand.NewSource(5)).Read(data)
 
 	r := bytes.NewReader(data)
