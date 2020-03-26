@@ -624,7 +624,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		if err := h.Miner.MarshalCBOR(buf); err != nil {
 			return xerrors.Errorf("failed to marshal miner address to cbor: %w", err)
 		}
-		vrfBase, err := syncer.sm.ChainStore().GetRandomness(ctx, baseTs.Cids(), crypto.DomainSeparationTag_TicketProduction, int64(baseTs.Height()), buf.Bytes())
+		vrfBase, err := syncer.sm.ChainStore().GetRandomness(ctx, baseTs.Cids(), crypto.DomainSeparationTag_TicketProduction, int64(h.Height)-1, buf.Bytes())
 		if err != nil {
 			return xerrors.Errorf("failed to get randomness for verifying election proof: %w", err)
 		}
