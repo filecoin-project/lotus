@@ -73,7 +73,7 @@ func ResolveToKeyAddr(state types.StateTree, cst cbor.IpldStore, addr address.Ad
 
 	act, err := state.GetActor(addr)
 	if err != nil {
-		return address.Undef, aerrors.Newf(byte(exitcode.SysErrSenderInvalid), "failed to find actor: %s", addr)
+		return address.Undef, aerrors.Newf(byte(exitcode.SysErrInternal), "failed to find actor: %s", addr)
 	}
 
 	if act.Code != builtin.AccountActorCodeID {
@@ -292,12 +292,12 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 	}
 
 	pl := PricelistByEpoch(vm.blockHeight)
+
 	msgGasCost := pl.OnChainMessage(cmsg.ChainLength())
-	// TODO: charge miner??
 	if msgGasCost > msg.GasLimit {
 		return &ApplyRet{
 			MessageReceipt: types.MessageReceipt{
-				ExitCode: exitcode.SysErrOutOfGas,
+				ExitCode: exitcode.SysErrSenderStateInvalid,
 				GasUsed:  0,
 			},
 			Penalty: types.BigMul(msg.GasPrice, types.NewInt(uint64(msgGasCost))),
