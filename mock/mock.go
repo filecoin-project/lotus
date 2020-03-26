@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/filecoin-project/lotus/storage/sectorstorage"
-	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
 	"io"
 	"io/ioutil"
 	"math/big"
@@ -20,6 +18,8 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/storage/sectorstorage"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
 )
 
 var log = logging.Logger("sbmock")
@@ -124,7 +124,7 @@ func (sb *SectorMgr) SealPreCommit1(ctx context.Context, sid abi.SectorID, ticke
 	ss, ok := sb.sectors[sid]
 	sb.lk.Unlock()
 	if !ok {
-		return nil, xerrors.Errorf("no sector with id %d in sectorbuilder", sid)
+		return nil, xerrors.Errorf("no sector with id %d in storage", sid)
 	}
 
 	ss.lk.Lock()
@@ -237,7 +237,7 @@ func (sb *SectorMgr) FailSector(sid abi.SectorID) error {
 	defer sb.lk.Unlock()
 	ss, ok := sb.sectors[sid]
 	if !ok {
-		return fmt.Errorf("no such sector in sectorbuilder")
+		return fmt.Errorf("no such sector in storage")
 	}
 
 	ss.failed = true

@@ -7,7 +7,7 @@ import (
 
 var log = logging.Logger("ffiwrapper")
 
-type SectorBuilder struct {
+type Sealer struct {
 	sealProofType abi.RegisteredProof
 	postProofType abi.RegisteredProof
 	ssize         abi.SectorSize // a function of sealProofType and postProofType
@@ -24,18 +24,18 @@ func fallbackPostChallengeCount(sectors uint64, faults uint64) uint64 {
 	return challengeCount
 }
 
-func (sb *SectorBuilder) Stop() {
+func (sb *Sealer) Stop() {
 	close(sb.stopping)
 }
 
-func (sb *SectorBuilder) SectorSize() abi.SectorSize {
+func (sb *Sealer) SectorSize() abi.SectorSize {
 	return sb.ssize
 }
 
-func (sb *SectorBuilder) SealProofType() abi.RegisteredProof {
+func (sb *Sealer) SealProofType() abi.RegisteredProof {
 	return sb.sealProofType
 }
 
-func (sb *SectorBuilder) PoStProofType() abi.RegisteredProof {
+func (sb *Sealer) PoStProofType() abi.RegisteredProof {
 	return sb.postProofType
 }

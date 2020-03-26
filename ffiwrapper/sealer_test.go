@@ -37,7 +37,7 @@ type seal struct {
 	ticket abi.SealRandomness
 }
 
-func (s *seal) precommit(t *testing.T, sb *SectorBuilder, id abi.SectorID, done func()) {
+func (s *seal) precommit(t *testing.T, sb *Sealer, id abi.SectorID, done func()) {
 	defer done()
 	dlen := abi.PaddedPieceSize(sectorSize).Unpadded()
 
@@ -61,7 +61,7 @@ func (s *seal) precommit(t *testing.T, sb *SectorBuilder, id abi.SectorID, done 
 	s.cids = cids
 }
 
-func (s *seal) commit(t *testing.T, sb *SectorBuilder, done func()) {
+func (s *seal) commit(t *testing.T, sb *Sealer, done func()) {
 	defer done()
 	seed := abi.InteractiveSealRandomness{0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 9, 8, 7, 6, 45, 3, 2, 1, 0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 9}
 
@@ -95,7 +95,7 @@ func (s *seal) commit(t *testing.T, sb *SectorBuilder, done func()) {
 	}
 }
 
-func post(t *testing.T, sb *SectorBuilder, seals ...seal) time.Time {
+func post(t *testing.T, sb *Sealer, seals ...seal) time.Time {
 	randomness := abi.PoStRandomness{0, 9, 2, 7, 6, 5, 4, 3, 2, 1, 0, 9, 8, 7, 6, 45, 3, 2, 1, 0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 9, 7}
 
 	sis := make([]abi.SectorInfo, len(seals))

@@ -3,8 +3,9 @@ package ffiwrapper
 import (
 	"context"
 	"errors"
-	"github.com/ipfs/go-cid"
 	"io"
+
+	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-storage/storage"
@@ -20,14 +21,14 @@ type Validator interface {
 	CanProve(sector stores.SectorPaths) (bool, error)
 }
 
-type Sealer interface {
+type StorageSealer interface {
 	storage.Sealer
 	storage.Storage
 }
 
-type Basic interface {
+type Storage interface {
 	storage.Prover
-	Sealer
+	StorageSealer
 
 	ReadPieceFromSealedSector(context.Context, abi.SectorID, UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) (io.ReadCloser, error)
 }
