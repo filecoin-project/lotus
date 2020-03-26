@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -655,6 +656,23 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	for _, fut := range await {
 		if err := fut.AwaitContext(ctx); err != nil {
 			merr = multierror.Append(merr, err)
+		}
+	}
+	if merr != nil {
+		mulErr := merr.(*multierror.Error)
+		mulErr.ErrorFormat = func(es []error) string {
+			if len(es) == 1 {
+				return fmt.Sprintf("1 error occurred:\n\t* %+v\n\n", es[0])
+			}
+
+			points := make([]string, len(es))
+			for i, err := range es {
+				points[i] = fmt.Sprintf("* %+v", err)
+			}
+
+			return fmt.Sprintf(
+				"%d errors occurred:\n\t%s\n\n",
+				len(es), strings.Join(points, "\n\t"))
 		}
 	}
 

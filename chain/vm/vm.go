@@ -73,7 +73,7 @@ func ResolveToKeyAddr(state types.StateTree, cst cbor.IpldStore, addr address.Ad
 
 	act, err := state.GetActor(addr)
 	if err != nil {
-		return address.Undef, aerrors.Newf(byte(exitcode.SysErrActorNotFound), "failed to find actor: %s", addr)
+		return address.Undef, aerrors.Newf(byte(exitcode.SysErrSenderInvalid), "failed to find actor: %s", addr)
 	}
 
 	if act.Code != builtin.AccountActorCodeID {
@@ -312,7 +312,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 		if xerrors.Is(err, types.ErrActorNotFound) {
 			return &ApplyRet{
 				MessageReceipt: types.MessageReceipt{
-					ExitCode: exitcode.SysErrActorNotFound,
+					ExitCode: exitcode.SysErrSenderInvalid,
 					GasUsed:  0,
 				},
 				Penalty: minerPenaltyAmount,
@@ -324,7 +324,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 	if !fromActor.Code.Equals(builtin.AccountActorCodeID) {
 		return &ApplyRet{
 			MessageReceipt: types.MessageReceipt{
-				ExitCode: exitcode.SysErrForbidden,
+				ExitCode: exitcode.SysErrSenderInvalid,
 				GasUsed:  0,
 			},
 			Penalty: minerPenaltyAmount,
@@ -334,7 +334,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 	if msg.Nonce != fromActor.Nonce {
 		return &ApplyRet{
 			MessageReceipt: types.MessageReceipt{
-				ExitCode: exitcode.SysErrInvalidCallSeqNum,
+				ExitCode: exitcode.SysErrSenderStateInvalid,
 				GasUsed:  0,
 			},
 			Penalty: minerPenaltyAmount,
@@ -346,7 +346,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 	if fromActor.Balance.LessThan(totalCost) {
 		return &ApplyRet{
 			MessageReceipt: types.MessageReceipt{
-				ExitCode: exitcode.SysErrInsufficientFunds,
+				ExitCode: exitcode.SysErrSenderStateInvalid,
 				GasUsed:  0,
 			},
 			Penalty: minerPenaltyAmount,
