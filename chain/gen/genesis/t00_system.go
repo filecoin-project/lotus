@@ -2,6 +2,7 @@ package genesis
 
 import (
 	"context"
+
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
@@ -10,11 +11,10 @@ import (
 )
 
 func SetupSystemActor(bs bstore.Blockstore) (*types.Actor, error) {
-	var st adt.EmptyValue
 
 	cst := cbor.NewCborStore(bs)
 
-	statecid, err := cst.Put(context.TODO(), &st)
+	statecid, err := cst.Put(context.TODO(), adt.Empty)
 	if err != nil {
 		return nil, err
 	}
