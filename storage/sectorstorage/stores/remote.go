@@ -17,11 +17,9 @@ import (
 	files "github.com/ipfs/go-ipfs-files"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	"github.com/filecoin-project/lotus/lib/tarutil"
-	"github.com/filecoin-project/lotus/storage/sectorstorage/sectorutil"
 )
 
 type Remote struct {
@@ -42,9 +40,9 @@ func NewRemote(local *Local, index SectorIndex, auth http.Header) *Remote {
 	}
 }
 
-func (r *Remote) AcquireSector(ctx context.Context, s abi.SectorID, existing sectorbuilder.SectorFileType, allocate sectorbuilder.SectorFileType, sealing bool) (sectorbuilder.SectorPaths, sectorbuilder.SectorPaths, func(), error) {
+func (r *Remote) AcquireSector(ctx context.Context, s abi.SectorID, existing SectorFileType, allocate SectorFileType, sealing bool) (SectorPaths, SectorPaths, func(), error) {
 	if existing|allocate != existing^allocate {
-		return sectorbuilder.SectorPaths{}, sectorbuilder.SectorPaths{}, nil, xerrors.New("can't both find and allocate a sector")
+		return SectorPaths{}, SectorPaths{}, nil, xerrors.New("can't both find and allocate a sector")
 	}
 
 	r.fetchLk.Lock()
@@ -52,7 +50,7 @@ func (r *Remote) AcquireSector(ctx context.Context, s abi.SectorID, existing sec
 
 	paths, stores, done, err := r.local.AcquireSector(ctx, s, existing, allocate, sealing)
 	if err != nil {
-		return sectorbuilder.SectorPaths{}, sectorbuilder.SectorPaths{}, nil, xerrors.Errorf("local acquire error: %w", err)
+		return SectorPaths{}, SectorPaths{}, nil, xerrors.Errorf("local acquire error: %w", err)
 	}
 
 	for _, fileType := range pathTypes {
@@ -60,19 +58,19 @@ func (r *Remote) AcquireSector(ctx context.Context, s abi.SectorID, existing sec
 			continue
 		}
 
-		if sectorutil.PathByType(paths, fileType) != "" {
+		if PathByType(paths, fileType) != "" {
 			continue
 		}
 
 		ap, storageID, url, rdone, err := r.acquireFromRemote(ctx, s, fileType, sealing)
 		if err != nil {
 			done()
-			return sectorbuilder.SectorPaths{}, sectorbuilder.SectorPaths{}, nil, err
+			return SectorPaths{}, SectorPaths{}, nil, err
 		}
 
 		done = mergeDone(done, rdone)
-		sectorutil.SetPathByType(&paths, fileType, ap)
-		sectorutil.SetPathByType(&stores, fileType, string(storageID))
+		SetPathByType(&paths, fileType, ap)
+		SetPathByType(&stores, fileType, string(storageID))
 
 		if err := r.index.StorageDeclareSector(ctx, storageID, s, fileType); err != nil {
 			log.Warnf("declaring sector %v in %s failed: %+v", s, storageID, err)
@@ -88,7 +86,7 @@ func (r *Remote) AcquireSector(ctx context.Context, s abi.SectorID, existing sec
 	return paths, stores, done, nil
 }
 
-func (r *Remote) acquireFromRemote(ctx context.Context, s abi.SectorID, fileType sectorbuilder.SectorFileType, sealing bool) (string, ID, string, func(), error) {
+func (r *Remote) acquireFromRemote(ctx context.Context, s abi.SectorID, fileType SectorFileType, sealing bool) (string, ID, string, func(), error) {
 	si, err := r.index.StorageFindSector(ctx, s, fileType, false)
 	if err != nil {
 		return "", "", "", nil, err
@@ -102,8 +100,8 @@ func (r *Remote) acquireFromRemote(ctx context.Context, s abi.SectorID, fileType
 	if err != nil {
 		return "", "", "", nil, xerrors.Errorf("allocate local sector for fetching: %w", err)
 	}
-	dest := sectorutil.PathByType(apaths, fileType)
-	storageID := sectorutil.PathByType(ids, fileType)
+	dest := PathByType(apaths, fileType)
+	storageID := PathByType(ids, fileType)
 
 	var merr error
 	for _, info := range si {
@@ -176,7 +174,7 @@ func (r *Remote) fetch(ctx context.Context, url, outname string) error {
 	}
 }
 
-func (r *Remote) MoveStorage(ctx context.Context, s abi.SectorID, types sectorbuilder.SectorFileType) error {
+func (r *Remote) MoveStorage(ctx context.Context, s abi.SectorID, types SectorFileType) error {
 	// Make sure we have the data local
 	_, _, ddone, err := r.AcquireSector(ctx, s, types, FTNone, false)
 	if err != nil {
@@ -187,7 +185,7 @@ func (r *Remote) MoveStorage(ctx context.Context, s abi.SectorID, types sectorbu
 	return r.local.MoveStorage(ctx, s, types)
 }
 
-func (r *Remote) Remove(ctx context.Context, sid abi.SectorID, typ sectorbuilder.SectorFileType) error {
+func (r *Remote) Remove(ctx context.Context, sid abi.SectorID, typ SectorFileType) error {
 	if bits.OnesCount(uint(typ)) != 1 {
 		return xerrors.New("delete expects one file type")
 	}

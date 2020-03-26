@@ -5,6 +5,8 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper/basicfs"
 	"io/ioutil"
 	"math/big"
 	"math/rand"
@@ -20,8 +22,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	paramfetch "github.com/filecoin-project/go-paramfetch"
-	"github.com/filecoin-project/go-sectorbuilder"
-	"github.com/filecoin-project/go-sectorbuilder/fs"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-storage/storage"
 
@@ -167,7 +167,7 @@ func main() {
 				return err
 			}
 
-			cfg := &sectorbuilder.Config{
+			cfg := &ffiwrapper.Config{
 				SealProofType: spt,
 				PoStProofType: ppt,
 			}
@@ -184,11 +184,11 @@ func main() {
 				}
 			}
 
-			sbfs := &fs.Basic{
+			sbfs := &basicfs.Provider{
 				Root: sbdir,
 			}
 
-			sb, err := sectorbuilder.New(sbfs, cfg)
+			sb, err := ffiwrapper.New(sbfs, cfg)
 			if err != nil {
 				return err
 			}
@@ -307,7 +307,7 @@ func main() {
 						UnsealedCID:           cids.Unsealed,
 					}
 
-					ok, err := sectorbuilder.ProofVerifier.VerifySeal(svi)
+					ok, err := ffiwrapper.ProofVerifier.VerifySeal(svi)
 					if err != nil {
 						return err
 					}
@@ -412,7 +412,7 @@ func main() {
 
 				epost2 := time.Now()
 
-				ccount := sectorbuilder.ElectionPostChallengeCount(uint64(len(sealedSectors)), 0)
+				ccount := ffiwrapper.ElectionPostChallengeCount(uint64(len(sealedSectors)), 0)
 
 				pvi1 := abi.PoStVerifyInfo{
 					Randomness:      abi.PoStRandomness(challenge[:]),
@@ -422,7 +422,7 @@ func main() {
 					Prover:          mid,
 					ChallengeCount:  ccount,
 				}
-				ok, err := sectorbuilder.ProofVerifier.VerifyElectionPost(context.TODO(), pvi1)
+				ok, err := ffiwrapper.ProofVerifier.VerifyElectionPost(context.TODO(), pvi1)
 				if err != nil {
 					return err
 				}
@@ -441,7 +441,7 @@ func main() {
 					ChallengeCount:  ccount,
 				}
 
-				ok, err = sectorbuilder.ProofVerifier.VerifyElectionPost(context.TODO(), pvi2)
+				ok, err = ffiwrapper.ProofVerifier.VerifyElectionPost(context.TODO(), pvi2)
 				if err != nil {
 					return err
 				}
@@ -541,12 +541,12 @@ var proveCmd = &cli.Command{
 			return err
 		}
 
-		cfg := &sectorbuilder.Config{
+		cfg := &ffiwrapper.Config{
 			SealProofType: spt,
 			PoStProofType: ppt,
 		}
 
-		sb, err := sectorbuilder.New(nil, cfg)
+		sb, err := ffiwrapper.New(nil, cfg)
 		if err != nil {
 			return err
 		}

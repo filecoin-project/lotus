@@ -3,6 +3,7 @@ package vm
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -11,8 +12,6 @@ import (
 	"github.com/ipfs/go-cid"
 	mh "github.com/multiformats/go-multihash"
 	"golang.org/x/xerrors"
-
-	"github.com/filecoin-project/go-sectorbuilder"
 )
 
 func init() {
@@ -21,12 +20,12 @@ func init() {
 
 // Actual type is defined in chain/types/vmcontext.go because the VMContext interface is there
 
-func Syscalls(verifier sectorbuilder.Verifier) runtime.Syscalls {
+func Syscalls(verifier ffiwrapper.Verifier) runtime.Syscalls {
 	return &syscallShim{verifier}
 }
 
 type syscallShim struct {
-	verifier sectorbuilder.Verifier
+	verifier ffiwrapper.Verifier
 }
 
 func (ss *syscallShim) ComputeUnsealedSectorCID(st abi.RegisteredProof, pieces []abi.PieceInfo) (cid.Cid, error) {
@@ -35,7 +34,7 @@ func (ss *syscallShim) ComputeUnsealedSectorCID(st abi.RegisteredProof, pieces [
 		sum += p.Size
 	}
 
-	commd, err := sectorbuilder.GenerateUnsealedCID(st, pieces)
+	commd, err := ffiwrapper.GenerateUnsealedCID(st, pieces)
 	if err != nil {
 		log.Errorf("generate data commitment failed: %s", err)
 		return cid.Undef, err

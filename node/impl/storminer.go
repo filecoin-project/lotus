@@ -3,6 +3,7 @@ package impl
 import (
 	"context"
 	"encoding/json"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
 	"net/http"
 	"os"
 	"strconv"
@@ -12,7 +13,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	storagemarket "github.com/filecoin-project/go-fil-markets/storagemarket"
-	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	"github.com/filecoin-project/lotus/api"
@@ -29,7 +29,7 @@ import (
 type StorageMinerAPI struct {
 	common.CommonAPI
 
-	SectorBuilderConfig *sectorbuilder.Config
+	SectorBuilderConfig *ffiwrapper.Config
 	//SectorBuilder       sectorbuilder.Interface
 	SectorBlocks *sectorblocks.SectorBlocks
 

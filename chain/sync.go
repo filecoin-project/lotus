@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
 	"sync"
 	"time"
 
@@ -15,7 +16,6 @@ import (
 
 	"github.com/Gurpartap/async"
 	amt "github.com/filecoin-project/go-amt-ipld/v2"
-	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
@@ -733,7 +733,7 @@ func (syncer *Syncer) VerifyElectionPoStProof(ctx context.Context, h *types.Bloc
 	}
 
 	// TODO: why do we need this here?
-	challengeCount := sectorbuilder.ElectionPostChallengeCount(uint64(len(sectorInfo)), 0)
+	challengeCount := ffiwrapper.ElectionPostChallengeCount(uint64(len(sectorInfo)), 0)
 
 	hvrf := blake2b.Sum256(h.EPostProof.PostRand)
 	pvi := abi.PoStVerifyInfo{
@@ -745,7 +745,7 @@ func (syncer *Syncer) VerifyElectionPoStProof(ctx context.Context, h *types.Bloc
 		ChallengeCount:  challengeCount,
 	}
 
-	ok, err := sectorbuilder.ProofVerifier.VerifyElectionPost(ctx, pvi)
+	ok, err := ffiwrapper.ProofVerifier.VerifyElectionPost(ctx, pvi)
 	if err != nil {
 		return xerrors.Errorf("failed to verify election post: %w", err)
 	}

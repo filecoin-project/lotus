@@ -7,6 +7,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper/basicfs"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -16,8 +18,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
-	"github.com/filecoin-project/go-sectorbuilder/fs"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
@@ -47,7 +47,7 @@ func PreSeal(maddr address.Address, pt abi.RegisteredProof, offset abi.SectorNum
 		return nil, nil, err
 	}
 
-	cfg := &sectorbuilder.Config{
+	cfg := &ffiwrapper.Config{
 		SealProofType: spt,
 		PoStProofType: ppt,
 	}
@@ -58,11 +58,11 @@ func PreSeal(maddr address.Address, pt abi.RegisteredProof, offset abi.SectorNum
 
 	next := offset
 
-	sbfs := &fs.Basic{
+	sbfs := &basicfs.Provider{
 		Root: sbroot,
 	}
 
-	sb, err := sectorbuilder.New(sbfs, cfg)
+	sb, err := ffiwrapper.New(sbfs, cfg)
 	if err != nil {
 		return nil, nil, err
 	}
