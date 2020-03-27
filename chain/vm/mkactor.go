@@ -6,6 +6,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -32,7 +33,7 @@ var EmptyObjectCid cid.Cid
 func TryCreateAccountActor(ctx context.Context, rt *Runtime, addr address.Address) (*types.Actor, aerrors.ActorError) {
 	addrID, err := rt.state.RegisterNewAddress(addr)
 	if err != nil {
-		return nil, aerrors.Escalate(err, "registering actor address")
+		return nil, aerrors.Absorb(err, byte(exitcode.SysErrInternal), "registering actor address")
 	}
 
 	if err := rt.chargeGasSafe(PricelistByEpoch(rt.height).OnCreateActor()); err != nil {
@@ -45,24 +46,23 @@ func TryCreateAccountActor(ctx context.Context, rt *Runtime, addr address.Addres
 	}
 
 	if err := rt.state.SetActor(addrID, act); err != nil {
-		return nil, aerrors.Escalate(err, "creating new actor failed")
+		return nil, aerrors.Absorb(err, byte(exitcode.SysErrInternal), "creating new actor failed")
 	}
 
 	p, err := actors.SerializeParams(&addr)
 	if err != nil {
-		return nil, aerrors.Escalate(err, "registering actor address")
+		return nil, aerrors.Absorb(err, byte(exitcode.SysErrInternal), "registering actor address")
 	}
 	// call constructor on account
 
 	_, aerr = rt.internalSend(builtin.SystemActorAddr, addrID, builtin.MethodsAccount.Constructor, big.Zero(), p)
-
 	if aerr != nil {
-		return nil, aerrors.Fatal("failed to invoke account constructor")
+		return nil, aerrors.Wrap(aerr, "failed to invoke account constructor")
 	}
 
 	act, err = rt.state.GetActor(addrID)
 	if err != nil {
-		return nil, aerrors.Escalate(err, "loading newly created actor failed")
+		return nil, aerrors.Absorb(err, byte(exitcode.SysErrInternal), "loading newly created actor failed")
 	}
 	return act, nil
 }
