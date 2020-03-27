@@ -13,7 +13,7 @@ require (
 	github.com/davidlazar/go-crypto v0.0.0-20190912175916-7055855a373f // indirect
 	github.com/docker/go-units v0.4.0
 	github.com/elastic/go-sysinfo v1.3.0
-	github.com/filecoin-project/chain-validation v0.0.6-0.20200324185232-f581621b7fbf
+	github.com/filecoin-project/chain-validation v0.0.6-0.20200325210556-5a3014759d9c
 	github.com/filecoin-project/filecoin-ffi v0.0.0-20200304181354-4446ff8a1bb9
 	github.com/filecoin-project/go-address v0.0.2-0.20200218010043-eb9bb40ed5be
 	github.com/filecoin-project/go-amt-ipld/v2 v2.0.1-0.20200131012142-05d80eeccc5e
@@ -27,7 +27,7 @@ require (
 	github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200325225948-053034f69825
 	github.com/filecoin-project/go-statemachine v0.0.0-20200226041606-2074af6d51d9
 	github.com/filecoin-project/go-statestore v0.1.0
-	github.com/filecoin-project/specs-actors v0.0.0-20200321055844-54fa2e8da1c2
+	github.com/filecoin-project/specs-actors v0.0.0-20200324235424-aef9b20a9fb1
 	github.com/filecoin-project/specs-storage v0.0.0-20200317133846-063ba163b217
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/go-ole/go-ole v1.2.4 // indirect

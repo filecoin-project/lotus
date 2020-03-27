@@ -30,7 +30,7 @@ func NewApplier() *Applier {
 	return &Applier{}
 }
 
-func (a *Applier) ApplyMessage(eCtx *vtypes.ExecutionContext, state vstate.VMWrapper, message *vtypes.Message) (vtypes.MessageReceipt, error) {
+func (a *Applier) ApplyMessage(eCtx *vtypes.ExecutionContext, state vstate.VMWrapper, message *vtypes.Message) (vtypes.MessageReceipt, abi.TokenAmount, abi.TokenAmount, error) {
 	ctx := context.TODO()
 	st := state.(*StateWrapper)
 
@@ -38,13 +38,13 @@ func (a *Applier) ApplyMessage(eCtx *vtypes.ExecutionContext, state vstate.VMWra
 	randSrc := &vmRand{eCtx}
 	lotusVM, err := vm.NewVM(base, abi.ChainEpoch(eCtx.Epoch), randSrc, eCtx.Miner, st.bs, vdrivers.NewChainValidationSyscalls())
 	if err != nil {
-		return vtypes.MessageReceipt{}, err
+		return vtypes.MessageReceipt{}, big.Zero(), big.Zero(), err
 	}
 
 	lm := toLotusMsg(message)
 	ret, err := lotusVM.ApplyMessage(ctx, lm)
 	if err != nil {
-		return vtypes.MessageReceipt{}, err
+		return vtypes.MessageReceipt{}, big.Zero(), big.Zero(), err
 	}
 
 	rval := ret.Return
@@ -54,16 +54,16 @@ func (a *Applier) ApplyMessage(eCtx *vtypes.ExecutionContext, state vstate.VMWra
 
 	st.stateRoot, err = lotusVM.Flush(ctx)
 	if err != nil {
-		return vtypes.MessageReceipt{}, err
+		return vtypes.MessageReceipt{}, big.Zero(), big.Zero(), err
 	}
 
 	mr := vtypes.MessageReceipt{
-		ExitCode:    exitcode.ExitCode(ret.ExitCode),
+		ExitCode:    ret.ExitCode,
 		ReturnValue: rval,
-		GasUsed:     big.NewInt(ret.GasUsed),
+		GasUsed:     vtypes.GasUnits(ret.GasUsed),
 	}
 
-	return mr, nil
+	return mr, ret.Penalty, abi.NewTokenAmount(ret.GasUsed), nil
 }
 
 func (a *Applier) ApplyTipSetMessages(state vstate.VMWrapper, blocks []vtypes.BlockMessagesInfo, epoch abi.ChainEpoch, rnd vstate.RandomnessSource) ([]vtypes.MessageReceipt, error) {
@@ -102,7 +102,7 @@ func (a *Applier) ApplyTipSetMessages(state vstate.VMWrapper, blocks []vtypes.Bl
 			ExitCode:    exitcode.ExitCode(ret.ExitCode),
 			ReturnValue: rval,
 
-			GasUsed: big.NewInt(ret.GasUsed),
+			GasUsed: vtypes.GasUnits(ret.GasUsed),
 		})
 		return nil
 	})
