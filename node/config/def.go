@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding"
+	"github.com/filecoin-project/lotus/storage/sectorstorage"
 	"time"
 )
 
@@ -23,7 +24,7 @@ type FullNode struct {
 type StorageMiner struct {
 	Common
 
-	Storage Storage
+	Storage sectorstorage.SealerConfig
 }
 
 // API contains configs for API endpoint
@@ -49,14 +50,6 @@ type Metrics struct {
 	Nickname      string
 	HeadNotifs    bool
 	PubsubTracing bool
-}
-
-// // Storage Miner
-type Storage struct {
-	// Local worker config
-	AllowPreCommit1 bool
-	AllowPreCommit2 bool
-	AllowCommit     bool
 }
 
 func defCommon() Common {
@@ -90,7 +83,7 @@ func DefaultStorageMiner() *StorageMiner {
 	cfg := &StorageMiner{
 		Common: defCommon(),
 
-		Storage: Storage{
+		Storage: sectorstorage.SealerConfig{
 			AllowPreCommit1: true,
 			AllowPreCommit2: true,
 			AllowCommit:     true,

@@ -1,11 +1,11 @@
 package sectorstorage
 
 import (
-	"github.com/filecoin-project/lotus/storage/sectorstorage/sealtasks"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+
+	"github.com/filecoin-project/lotus/storage/sectorstorage/sealtasks"
 )
 
 const mib = 1 << 20
@@ -39,7 +39,7 @@ func (r *workerRequest) respond(resp workerResponse) {
 type workerHandle struct {
 	w Worker
 
-	info api.WorkerInfo
+	info WorkerInfo
 
 	memUsedMin uint64
 	memUsedMax uint64

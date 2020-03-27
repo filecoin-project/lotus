@@ -1,9 +1,10 @@
 package sectorstorage
 
 import (
+	"github.com/filecoin-project/specs-actors/actors/abi"
+
 	"github.com/filecoin-project/lotus/storage/sectorstorage/sealtasks"
 	"github.com/filecoin-project/lotus/storage/sectorstorage/stores"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
 var FSOverheadSeal = map[stores.SectorFileType]int{ // 10x overheads

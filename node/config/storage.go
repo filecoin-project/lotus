@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/stores"
 	"io"
 	"io/ioutil"
 	"os"
@@ -9,16 +10,7 @@ import (
 	"golang.org/x/xerrors"
 )
 
-type LocalPath struct {
-	Path string
-}
-
-// .lotusstorage/storage.json
-type StorageConfig struct {
-	StoragePaths []LocalPath
-}
-
-func StorageFromFile(path string, def *StorageConfig) (*StorageConfig, error) {
+func StorageFromFile(path string, def *stores.StorageConfig) (*stores.StorageConfig, error) {
 	file, err := os.Open(path)
 	switch {
 	case os.IsNotExist(err):
@@ -34,8 +26,8 @@ func StorageFromFile(path string, def *StorageConfig) (*StorageConfig, error) {
 	return StorageFromReader(file)
 }
 
-func StorageFromReader(reader io.Reader) (*StorageConfig, error) {
-	var cfg StorageConfig
+func StorageFromReader(reader io.Reader) (*stores.StorageConfig, error) {
+	var cfg stores.StorageConfig
 	err := json.NewDecoder(reader).Decode(&cfg)
 	if err != nil {
 		return nil, err
@@ -44,7 +36,7 @@ func StorageFromReader(reader io.Reader) (*StorageConfig, error) {
 	return &cfg, nil
 }
 
-func WriteStorageFile(path string, config StorageConfig) error {
+func WriteStorageFile(path string, config stores.StorageConfig) error {
 	b, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
 		return xerrors.Errorf("marshaling storage config: %w", err)

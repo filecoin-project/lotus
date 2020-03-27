@@ -9,10 +9,9 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
 type StoragePath struct {
@@ -34,9 +33,18 @@ type LocalStorageMeta struct {
 	CanStore bool
 }
 
+// .lotusstorage/storage.json
+type StorageConfig struct {
+	StoragePaths []LocalPath
+}
+
+type LocalPath struct {
+	Path string
+}
+
 type LocalStorage interface {
-	GetStorage() (config.StorageConfig, error)
-	SetStorage(func(*config.StorageConfig)) error
+	GetStorage() (StorageConfig, error)
+	SetStorage(func(*StorageConfig)) error
 }
 
 const MetaFile = "sectorstore.json"
