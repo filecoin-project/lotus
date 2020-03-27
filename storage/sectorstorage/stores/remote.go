@@ -53,7 +53,7 @@ func (r *Remote) AcquireSector(ctx context.Context, s abi.SectorID, existing Sec
 		return SectorPaths{}, SectorPaths{}, nil, xerrors.Errorf("local acquire error: %w", err)
 	}
 
-	for _, fileType := range pathTypes {
+	for _, fileType := range PathTypes {
 		if fileType&existing == 0 {
 			continue
 		}
