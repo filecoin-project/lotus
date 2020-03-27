@@ -6,7 +6,7 @@ import (
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/storage/sectorstorage"
+	"github.com/filecoin-project/sector-storage"
 )
 
 type worker struct {

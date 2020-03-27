@@ -2,7 +2,7 @@ package config
 
 import (
 	"encoding"
-	"github.com/filecoin-project/lotus/storage/sectorstorage"
+	"github.com/filecoin-project/sector-storage"
 	"time"
 )
 
