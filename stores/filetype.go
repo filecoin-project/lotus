@@ -32,6 +32,10 @@ func (t SectorFileType) String() string {
 	}
 }
 
+func (t SectorFileType) Has(singleType SectorFileType) bool {
+	return t&singleType == singleType
+}
+
 type SectorPaths struct {
 	Id abi.SectorID
 

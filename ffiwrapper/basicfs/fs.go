@@ -2,7 +2,6 @@ package basicfs
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
@@ -25,14 +24,24 @@ type Provider struct {
 }
 
 func (b *Provider) AcquireSector(ctx context.Context, id abi.SectorID, existing stores.SectorFileType, allocate stores.SectorFileType, sealing bool) (stores.SectorPaths, func(), error) {
-	os.Mkdir(filepath.Join(b.Root, stores.FTUnsealed.String()), 0755)
-	os.Mkdir(filepath.Join(b.Root, stores.FTSealed.String()), 0755)
-	os.Mkdir(filepath.Join(b.Root, stores.FTCache.String()), 0755)
+	if err := os.Mkdir(filepath.Join(b.Root, stores.FTUnsealed.String()), 0755); err != nil && !os.IsExist(err) {
+		return stores.SectorPaths{}, nil, err
+	}
+	if err := os.Mkdir(filepath.Join(b.Root, stores.FTSealed.String()), 0755); err != nil && !os.IsExist(err) {
+		return stores.SectorPaths{}, nil, err
+	}
+	if err := os.Mkdir(filepath.Join(b.Root, stores.FTCache.String()), 0755); err != nil && !os.IsExist(err) {
+		return stores.SectorPaths{}, nil, err
+	}
 
 	done := func() {}
 
-	for i := 0; i < 3; i++ {
-		if (existing|allocate)&(1<<i) == 0 {
+	out := stores.SectorPaths{
+		Id: id,
+	}
+
+	for _, fileType := range stores.PathTypes {
+		if !existing.Has(fileType) && !allocate.Has(fileType) {
 			continue
 		}
 
@@ -40,10 +49,10 @@ func (b *Provider) AcquireSector(ctx context.Context, id abi.SectorID, existing 
 		if b.waitSector == nil {
 			b.waitSector = map[sectorFile]chan struct{}{}
 		}
-		ch, found := b.waitSector[sectorFile{id, 1 << i}]
+		ch, found := b.waitSector[sectorFile{id, fileType}]
 		if !found {
 			ch = make(chan struct{}, 1)
-			b.waitSector[sectorFile{id, 1 << i}] = ch
+			b.waitSector[sectorFile{id, fileType}] = ch
 		}
 		b.lk.Unlock()
 
@@ -59,12 +68,9 @@ func (b *Provider) AcquireSector(ctx context.Context, id abi.SectorID, existing 
 			prevDone()
 			<-ch
 		}
+
+		stores.SetPathByType(&out, fileType, filepath.Join(b.Root, fileType.String(), stores.SectorName(id)))
 	}
 
-	return stores.SectorPaths{
-		Id:       id,
-		Unsealed: filepath.Join(b.Root, stores.FTUnsealed.String(), fmt.Sprintf("s-t0%d-%d", id.Miner, id.Number)),
-		Sealed:   filepath.Join(b.Root, stores.FTSealed.String(), fmt.Sprintf("s-t0%d-%d", id.Miner, id.Number)),
-		Cache:    filepath.Join(b.Root, stores.FTCache.String(), fmt.Sprintf("s-t0%d-%d", id.Miner, id.Number)),
-	}, done, nil
+	return out, done, nil
 }

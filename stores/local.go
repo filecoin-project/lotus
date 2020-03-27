@@ -41,7 +41,7 @@ type LocalStorage interface {
 
 const MetaFile = "sectorstore.json"
 
-var pathTypes = []SectorFileType{FTUnsealed, FTSealed, FTCache}
+var PathTypes = []SectorFileType{FTUnsealed, FTSealed, FTCache}
 
 type Local struct {
 	localStorage LocalStorage
@@ -104,7 +104,7 @@ func (st *Local) OpenPath(ctx context.Context, p string) error {
 		return xerrors.Errorf("declaring storage in index: %w", err)
 	}
 
-	for _, t := range pathTypes {
+	for _, t := range PathTypes {
 		ents, err := ioutil.ReadDir(filepath.Join(p, t.String()))
 		if err != nil {
 			if os.IsNotExist(err) {
@@ -160,7 +160,7 @@ func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, existing S
 	var out SectorPaths
 	var storageIDs SectorPaths
 
-	for _, fileType := range pathTypes {
+	for _, fileType := range PathTypes {
 		if fileType&existing == 0 {
 			continue
 		}
@@ -190,7 +190,7 @@ func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, existing S
 		}
 	}
 
-	for _, fileType := range pathTypes {
+	for _, fileType := range PathTypes {
 		if fileType&allocate == 0 {
 			continue
 		}
@@ -320,7 +320,7 @@ func (st *Local) MoveStorage(ctx context.Context, s abi.SectorID, types SectorFi
 	}
 	defer ddone()
 
-	for _, fileType := range pathTypes {
+	for _, fileType := range PathTypes {
 		if fileType&types == 0 {
 			continue
 		}

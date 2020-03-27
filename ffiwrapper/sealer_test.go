@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-storage/storage"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper/basicfs"
 )
 
@@ -149,12 +150,9 @@ func post(t *testing.T, sb *Sealer, seals ...seal) time.Time {
 }
 
 func getGrothParamFileAndVerifyingKeys(s abi.SectorSize) {
-	dat, err := ioutil.ReadFile("./parameters.json")
-	if err != nil {
-		panic(xerrors.Errorf("failed to read contents of ./parameters.json: %w", err))
-	}
+	dat := build.ParametersJson()
 
-	err = paramfetch.GetParams(dat, uint64(s))
+	err := paramfetch.GetParams(dat, uint64(s))
 	if err != nil {
 		panic(xerrors.Errorf("failed to acquire Groth parameters for 2KiB sectors: %w", err))
 	}

@@ -23,12 +23,12 @@ func sizeFromConfig(cfg Config) (abi.SectorSize, error) {
 		return abi.SectorSize(0), xerrors.New("must specify a PoSt proof type from abi.RegisteredProof")
 	}
 
-	s1, err := sizeFromProofType(cfg.SealProofType)
+	s1, err := SectorSizeForRegisteredProof(cfg.SealProofType)
 	if err != nil {
 		return abi.SectorSize(0), err
 	}
 
-	s2, err := sizeFromProofType(cfg.PoStProofType)
+	s2, err := SectorSizeForRegisteredProof(cfg.PoStProofType)
 	if err != nil {
 		return abi.SectorSize(0), err
 	}
@@ -38,28 +38,6 @@ func sizeFromConfig(cfg Config) (abi.SectorSize, error) {
 	}
 
 	return s1, nil
-}
-
-func sizeFromProofType(p abi.RegisteredProof) (abi.SectorSize, error) {
-	x, err := p.RegisteredPoStProof()
-	if err != nil {
-		return 0, err
-	}
-
-	// values taken from https://github.com/filecoin-project/rust-fil-proofs/blob/master/filecoin-proofs/src/constants.rs#L11
-
-	switch x {
-	case abi.RegisteredProof_StackedDRG32GiBPoSt:
-		return 1 << 35, nil
-	case abi.RegisteredProof_StackedDRG2KiBPoSt:
-		return 2048, nil
-	case abi.RegisteredProof_StackedDRG8MiBPoSt:
-		return 1 << 23, nil
-	case abi.RegisteredProof_StackedDRG512MiBPoSt:
-		return 1 << 29, nil
-	default:
-		return abi.SectorSize(0), xerrors.Errorf("unsupported proof type: %+v", p)
-	}
 }
 
 // TODO: remove this method after implementing it along side the registered proofs and importing it from there.
