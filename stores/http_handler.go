@@ -10,7 +10,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/lib/tarutil"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/tarutil"
 )
 
 var log = logging.Logger("stores")
