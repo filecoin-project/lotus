@@ -55,3 +55,18 @@ func SectorSizeForRegisteredProof(p abi.RegisteredProof) (abi.SectorSize, error)
 		return 0, fmt.Errorf("unsupported registered proof %d", p)
 	}
 }
+
+func ProofTypeFromSectorSize(ssize abi.SectorSize) (abi.RegisteredProof, abi.RegisteredProof, error) {
+	switch ssize {
+	case 2 << 10:
+		return abi.RegisteredProof_StackedDRG2KiBPoSt, abi.RegisteredProof_StackedDRG2KiBSeal, nil
+	case 8 << 20:
+		return abi.RegisteredProof_StackedDRG8MiBPoSt, abi.RegisteredProof_StackedDRG8MiBSeal, nil
+	case 512 << 20:
+		return abi.RegisteredProof_StackedDRG512MiBPoSt, abi.RegisteredProof_StackedDRG512MiBSeal, nil
+	case 32 << 30:
+		return abi.RegisteredProof_StackedDRG32GiBPoSt, abi.RegisteredProof_StackedDRG32GiBSeal, nil
+	default:
+		return 0, 0, xerrors.Errorf("unsupported sector size for miner: %v", ssize)
+	}
+}

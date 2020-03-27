@@ -2,12 +2,12 @@ package repo
 
 import (
 	"errors"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/stores"
 
 	"github.com/ipfs/go-datastore"
 	"github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/node/config"
 )
 
 var (
@@ -38,8 +38,8 @@ type LockedRepo interface {
 	// Returns config in this repo
 	Config() (interface{}, error)
 
-	GetStorage() (config.StorageConfig, error)
-	SetStorage(func(*config.StorageConfig)) error
+	GetStorage() (stores.StorageConfig, error)
+	SetStorage(func(*stores.StorageConfig)) error
 
 	// SetAPIEndpoint sets the endpoint of the current API
 	// so it can be read by API clients

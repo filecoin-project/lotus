@@ -162,7 +162,7 @@ func main() {
 			}
 			sectorSize := abi.SectorSize(sectorSizeInt)
 
-			ppt, spt, err := lapi.ProofTypeFromSectorSize(sectorSize)
+			ppt, spt, err := ffiwrapper.ProofTypeFromSectorSize(sectorSize)
 			if err != nil {
 				return err
 			}
@@ -536,7 +536,7 @@ var proveCmd = &cli.Command{
 			return err
 		}
 
-		ppt, spt, err := lapi.ProofTypeFromSectorSize(abi.SectorSize(c2in.SectorSize))
+		ppt, spt, err := ffiwrapper.ProofTypeFromSectorSize(abi.SectorSize(c2in.SectorSize))
 		if err != nil {
 			return err
 		}

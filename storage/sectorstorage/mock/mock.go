@@ -17,7 +17,6 @@ import (
 	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/storage/sectorstorage"
 	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
 )
@@ -37,7 +36,7 @@ type SectorMgr struct {
 type mockVerif struct{}
 
 func NewMockSectorMgr(threads int, ssize abi.SectorSize) *SectorMgr {
-	rt, _, err := api.ProofTypeFromSectorSize(ssize)
+	rt, _, err := ffiwrapper.ProofTypeFromSectorSize(ssize)
 	if err != nil {
 		panic(err)
 	}

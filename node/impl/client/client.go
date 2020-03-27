@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"errors"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
 	"io"
 	"os"
 
@@ -83,7 +84,7 @@ func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) 
 		return nil, xerrors.Errorf("failed checking miners sector size: %w", err)
 	}
 
-	rt, _, err := api.ProofTypeFromSectorSize(ssize)
+	rt, _, err := ffiwrapper.ProofTypeFromSectorSize(ssize)
 	if err != nil {
 		return nil, xerrors.Errorf("bad sector size: %w", err)
 	}
