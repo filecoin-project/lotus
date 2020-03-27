@@ -62,7 +62,7 @@ var sendCmd = &cli.Command{
 			From:     fromAddr,
 			To:       toAddr,
 			Value:    types.BigInt(val),
-			GasLimit: 1000,
+			GasLimit: 10000,
 			GasPrice: types.NewInt(0),
 		}
 
