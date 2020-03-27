@@ -210,7 +210,9 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 		}()
 	}
 
-	rt.ChargeGas(rt.Pricelist().OnMethodInvocation(msg.Value, msg.Method))
+	if aerr := rt.chargeGasSafe(rt.Pricelist().OnMethodInvocation(msg.Value, msg.Method)); aerr != nil {
+		return nil, aerrors.Wrap(aerr, "not enough gas for method invocation"), rt
+	}
 
 	toActor, err := st.GetActor(msg.To)
 	if err != nil {
