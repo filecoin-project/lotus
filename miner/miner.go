@@ -354,7 +354,7 @@ func (m *Miner) computeTicket(ctx context.Context, addr address.Address, base *M
 		return nil, xerrors.Errorf("failed to marshal address to cbor: %w", err)
 	}
 
-	input, err := m.api.ChainGetRandomness(ctx, base.ts.Key(), crypto.DomainSeparationTag_TicketProduction, base.ts.Height(), buf.Bytes())
+	input, err := m.api.ChainGetRandomness(ctx, base.ts.Key(), crypto.DomainSeparationTag_TicketProduction, (base.ts.Height()+base.nullRounds+1)-1, buf.Bytes())
 	if err != nil {
 		return nil, err
 	}

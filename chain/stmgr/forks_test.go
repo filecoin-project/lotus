@@ -78,7 +78,7 @@ func (ta *testActor) Constructor(rt runtime.Runtime, params *adt.EmptyValue) *ad
 	rt.State().Create(&testActorState{11})
 	fmt.Println("NEW ACTOR ADDRESS IS: ", rt.Message().Receiver())
 
-	return &adt.EmptyValue{}
+	return adt.Empty
 }
 
 func (ta *testActor) TestMethod(rt runtime.Runtime, params *adt.EmptyValue) *adt.EmptyValue {
@@ -95,7 +95,7 @@ func (ta *testActor) TestMethod(rt runtime.Runtime, params *adt.EmptyValue) *adt
 		}
 	}
 
-	return &adt.EmptyValue{}
+	return adt.Empty
 }
 
 func TestForkHeightTriggers(t *testing.T) {
