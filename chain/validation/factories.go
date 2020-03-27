@@ -42,6 +42,6 @@ func (f *Factories) NewValidationConfig() vstate.ValidationConfig {
 	trackGas := true
 	checkExit := true
 	checkRet := true
-	// ignore gas and return value assertions
-	return NewConfig(trackGas, checkExit, checkRet)
+	checkState := true
+	return NewConfig(trackGas, checkExit, checkRet, checkState)
 }
