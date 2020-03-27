@@ -9,17 +9,16 @@ import (
 	"golang.org/x/xerrors"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
-	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	storage2 "github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sectorstorage/sealtasks"
-	"github.com/filecoin-project/lotus/storage/sectorstorage/sectorutil"
 	"github.com/filecoin-project/lotus/storage/sectorstorage/stores"
 )
 
-var pathTypes = []sectorbuilder.SectorFileType{sectorbuilder.FTUnsealed, sectorbuilder.FTSealed, sectorbuilder.FTCache}
+var pathTypes = []stores.SectorFileType{stores.FTUnsealed, stores.FTSealed, stores.FTCache}
 
 type WorkerConfig struct {
 	SealProof abi.RegisteredProof
@@ -27,7 +26,7 @@ type WorkerConfig struct {
 }
 
 type LocalWorker struct {
-	scfg       *sectorbuilder.Config
+	scfg       *ffiwrapper.Config
 	storage    stores.Store
 	localStore *stores.Local
 	sindex     stores.SectorIndex
@@ -47,7 +46,7 @@ func NewLocalWorker(wcfg WorkerConfig, store stores.Store, local *stores.Local, 
 	}
 
 	return &LocalWorker{
-		scfg: &sectorbuilder.Config{
+		scfg: &ffiwrapper.Config{
 			SealProofType: wcfg.SealProof,
 			PoStProofType: ppt,
 		},
@@ -63,10 +62,10 @@ type localWorkerPathProvider struct {
 	w *LocalWorker
 }
 
-func (l *localWorkerPathProvider) AcquireSector(ctx context.Context, sector abi.SectorID, existing sectorbuilder.SectorFileType, allocate sectorbuilder.SectorFileType, sealing bool) (sectorbuilder.SectorPaths, func(), error) {
+func (l *localWorkerPathProvider) AcquireSector(ctx context.Context, sector abi.SectorID, existing stores.SectorFileType, allocate stores.SectorFileType, sealing bool) (stores.SectorPaths, func(), error) {
 	paths, storageIDs, done, err := l.w.storage.AcquireSector(ctx, sector, existing, allocate, sealing)
 	if err != nil {
-		return sectorbuilder.SectorPaths{}, nil, err
+		return stores.SectorPaths{}, nil, err
 	}
 
 	log.Debugf("acquired sector %d (e:%d; a:%d): %v", sector, existing, allocate, paths)
@@ -79,7 +78,7 @@ func (l *localWorkerPathProvider) AcquireSector(ctx context.Context, sector abi.
 				continue
 			}
 
-			sid := sectorutil.PathByType(storageIDs, fileType)
+			sid := stores.PathByType(storageIDs, fileType)
 
 			if err := l.w.sindex.StorageDeclareSector(ctx, stores.ID(sid), sector, fileType); err != nil {
 				log.Errorf("declare sector error: %+v", err)
@@ -88,8 +87,8 @@ func (l *localWorkerPathProvider) AcquireSector(ctx context.Context, sector abi.
 	}, nil
 }
 
-func (l *LocalWorker) sb() (sectorbuilder.Basic, error) {
-	return sectorbuilder.New(&localWorkerPathProvider{w: l}, l.scfg)
+func (l *LocalWorker) sb() (ffiwrapper.Storage, error) {
+	return ffiwrapper.New(&localWorkerPathProvider{w: l}, l.scfg)
 }
 
 func (l *LocalWorker) NewSector(ctx context.Context, sector abi.SectorID) error {
@@ -156,11 +155,11 @@ func (l *LocalWorker) FinalizeSector(ctx context.Context, sector abi.SectorID) e
 		return xerrors.Errorf("finalizing sector: %w", err)
 	}
 
-	if err := l.storage.Remove(ctx, sector, sectorbuilder.FTUnsealed); err != nil {
+	if err := l.storage.Remove(ctx, sector, stores.FTUnsealed); err != nil {
 		return xerrors.Errorf("removing unsealed data: %w", err)
 	}
 
-	if err := l.storage.MoveStorage(ctx, sector, sectorbuilder.FTSealed|sectorbuilder.FTCache); err != nil {
+	if err := l.storage.MoveStorage(ctx, sector, stores.FTSealed|stores.FTCache); err != nil {
 		return xerrors.Errorf("moving sealed data to storage: %w", err)
 	}
 

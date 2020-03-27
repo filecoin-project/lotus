@@ -1,21 +1,21 @@
 package sectorstorage
 
 import (
-	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/lotus/storage/sectorstorage/sealtasks"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/stores"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
-var FSOverheadSeal = map[sectorbuilder.SectorFileType]int{ // 10x overheads
-	sectorbuilder.FTUnsealed: 10,
-	sectorbuilder.FTSealed:   10,
-	sectorbuilder.FTCache:    70, // TODO: confirm for 32G
+var FSOverheadSeal = map[stores.SectorFileType]int{ // 10x overheads
+	stores.FTUnsealed: 10,
+	stores.FTSealed:   10,
+	stores.FTCache:    70, // TODO: confirm for 32G
 }
 
-var FsOverheadFinalized = map[sectorbuilder.SectorFileType]int{
-	sectorbuilder.FTUnsealed: 10,
-	sectorbuilder.FTSealed:   10,
-	sectorbuilder.FTCache:    2,
+var FsOverheadFinalized = map[stores.SectorFileType]int{
+	stores.FTUnsealed: 10,
+	stores.FTSealed:   10,
+	stores.FTCache:    2,
 }
 
 type Resources struct {

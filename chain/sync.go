@@ -9,17 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/minio/blake2b-simd"
-
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-
 	"github.com/Gurpartap/async"
-	amt "github.com/filecoin-project/go-amt-ipld/v2"
-	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-cid"
 	dstore "github.com/ipfs/go-datastore"
@@ -28,6 +18,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/connmgr"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/minio/blake2b-simd"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"github.com/whyrusleeping/pubsub"
 	"go.opencensus.io/stats"
@@ -35,8 +26,13 @@ import (
 	"golang.org/x/xerrors"
 
 	bls "github.com/filecoin-project/filecoin-ffi"
-
 	"github.com/filecoin-project/go-address"
+	amt "github.com/filecoin-project/go-amt-ipld/v2"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -48,6 +44,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/metrics"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
 )
 
 var log = logging.Logger("chain")
@@ -751,7 +748,7 @@ func (syncer *Syncer) VerifyElectionPoStProof(ctx context.Context, h *types.Bloc
 	}
 
 	// TODO: why do we need this here?
-	challengeCount := sectorbuilder.ElectionPostChallengeCount(uint64(len(sectorInfo)), 0)
+	challengeCount := ffiwrapper.ElectionPostChallengeCount(uint64(len(sectorInfo)), 0)
 
 	hvrf := blake2b.Sum256(h.EPostProof.PostRand)
 	pvi := abi.PoStVerifyInfo{
@@ -763,7 +760,7 @@ func (syncer *Syncer) VerifyElectionPoStProof(ctx context.Context, h *types.Bloc
 		ChallengeCount:  challengeCount,
 	}
 
-	ok, err := sectorbuilder.ProofVerifier.VerifyElectionPost(ctx, pvi)
+	ok, err := ffiwrapper.ProofVerifier.VerifyElectionPost(ctx, pvi)
 	if err != nil {
 		return xerrors.Errorf("failed to verify election post: %w", err)
 	}

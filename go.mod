@@ -24,7 +24,6 @@ require (
 	github.com/filecoin-project/go-fil-markets v0.0.0-20200318012938-6403a5bda668
 	github.com/filecoin-project/go-padreader v0.0.0-20200210211231-548257017ca6
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200218225740-47c639bab663
-	github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200325225948-053034f69825
 	github.com/filecoin-project/go-statemachine v0.0.0-20200226041606-2074af6d51d9
 	github.com/filecoin-project/go-statestore v0.1.0
 	github.com/filecoin-project/specs-actors v0.0.0-20200324235424-aef9b20a9fb1
@@ -94,7 +93,6 @@ require (
 	github.com/multiformats/go-multiaddr-net v0.1.3
 	github.com/multiformats/go-multihash v0.0.13
 	github.com/opentracing/opentracing-go v1.1.0
-	github.com/prometheus/common v0.4.0 // indirect
 	github.com/stretchr/testify v1.4.0
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
 	github.com/whyrusleeping/cbor-gen v0.0.0-20200321164527-9340289d0ca7

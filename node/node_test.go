@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
 	"io/ioutil"
 	"net/http/httptest"
 	"testing"
@@ -19,7 +20,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
-	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -356,7 +356,7 @@ func mockSbBuilder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []t
 			node.MockHost(mn),
 			node.Test(),
 
-			node.Override(new(sectorbuilder.Verifier), mock.MockVerifier),
+			node.Override(new(ffiwrapper.Verifier), mock.MockVerifier),
 
 			genesis,
 		)

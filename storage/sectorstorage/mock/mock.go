@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/filecoin-project/lotus/storage/sectorstorage"
 	"io"
 	"io/ioutil"
 	"math/big"
@@ -12,7 +11,6 @@ import (
 	"sync"
 
 	commcid "github.com/filecoin-project/go-fil-commcid"
-	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-storage/storage"
 	"github.com/ipfs/go-cid"
@@ -20,6 +18,8 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/storage/sectorstorage"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
 )
 
 var log = logging.Logger("sbmock")
@@ -93,7 +93,7 @@ func (sb *SectorMgr) AddPiece(ctx context.Context, sectorId abi.SectorID, existi
 	ss.lk.Lock()
 	defer ss.lk.Unlock()
 
-	c, err := sectorbuilder.GeneratePieceCIDFromFile(sb.proofType, r, size)
+	c, err := ffiwrapper.GeneratePieceCIDFromFile(sb.proofType, r, size)
 	if err != nil {
 		return abi.PieceInfo{}, xerrors.Errorf("failed to generate piece cid: %w", err)
 	}
@@ -124,7 +124,7 @@ func (sb *SectorMgr) SealPreCommit1(ctx context.Context, sid abi.SectorID, ticke
 	ss, ok := sb.sectors[sid]
 	sb.lk.Unlock()
 	if !ok {
-		return nil, xerrors.Errorf("no sector with id %d in sectorbuilder", sid)
+		return nil, xerrors.Errorf("no sector with id %d in storage", sid)
 	}
 
 	ss.lk.Lock()
@@ -237,7 +237,7 @@ func (sb *SectorMgr) FailSector(sid abi.SectorID) error {
 	defer sb.lk.Unlock()
 	ss, ok := sb.sectors[sid]
 	if !ok {
-		return fmt.Errorf("no such sector in sectorbuilder")
+		return fmt.Errorf("no such sector in storage")
 	}
 
 	ss.failed = true
@@ -273,7 +273,7 @@ func (sb *SectorMgr) GenerateEPostCandidates(ctx context.Context, mid abi.ActorI
 		panic("todo")
 	}
 
-	n := sectorbuilder.ElectionPostChallengeCount(uint64(len(sectorInfo)), uint64(len(faults)))
+	n := ffiwrapper.ElectionPostChallengeCount(uint64(len(sectorInfo)), uint64(len(faults)))
 	if n > uint64(len(sectorInfo)) {
 		n = uint64(len(sectorInfo))
 	}
@@ -298,7 +298,7 @@ func (sb *SectorMgr) GenerateEPostCandidates(ctx context.Context, mid abi.ActorI
 	return out, nil
 }
 
-func (sb *SectorMgr) ReadPieceFromSealedSector(ctx context.Context, sectorID abi.SectorID, offset sectorbuilder.UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, commD cid.Cid) (io.ReadCloser, error) {
+func (sb *SectorMgr) ReadPieceFromSealedSector(ctx context.Context, sectorID abi.SectorID, offset ffiwrapper.UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, commD cid.Cid) (io.ReadCloser, error) {
 	if len(sb.sectors[sectorID].pieces) > 1 {
 		panic("implme")
 	}
@@ -355,10 +355,10 @@ func (m mockVerif) VerifySeal(svi abi.SealVerifyInfo) (bool, error) {
 }
 
 func (m mockVerif) GenerateDataCommitment(pt abi.RegisteredProof, pieces []abi.PieceInfo) (cid.Cid, error) {
-	return sectorbuilder.GenerateUnsealedCID(pt, pieces)
+	return ffiwrapper.GenerateUnsealedCID(pt, pieces)
 }
 
 var MockVerifier = mockVerif{}
 
-var _ sectorbuilder.Verifier = MockVerifier
+var _ ffiwrapper.Verifier = MockVerifier
 var _ sectorstorage.SectorManager = &SectorMgr{}

@@ -14,9 +14,9 @@ staging=$(mktemp -d)
 
 make debug
 
-./lotus-seed --sectorbuilder-dir="${sdt0111}" pre-seal --miner-addr=t0111 --sector-offset=0 --sector-size=${SECTOR_SIZE} --num-sectors=${NUM_SECTORS} &
-./lotus-seed --sectorbuilder-dir="${sdt0222}" pre-seal --miner-addr=t0222 --sector-offset=0 --sector-size=${SECTOR_SIZE} --num-sectors=${NUM_SECTORS} &
-./lotus-seed --sectorbuilder-dir="${sdt0333}" pre-seal --miner-addr=t0333 --sector-offset=0 --sector-size=${SECTOR_SIZE} --num-sectors=${NUM_SECTORS} &
+./lotus-seed --sector-dir="${sdt0111}" pre-seal --miner-addr=t0111 --sector-offset=0 --sector-size=${SECTOR_SIZE} --num-sectors=${NUM_SECTORS} &
+./lotus-seed --sector-dir="${sdt0222}" pre-seal --miner-addr=t0222 --sector-offset=0 --sector-size=${SECTOR_SIZE} --num-sectors=${NUM_SECTORS} &
+./lotus-seed --sector-dir="${sdt0333}" pre-seal --miner-addr=t0333 --sector-offset=0 --sector-size=${SECTOR_SIZE} --num-sectors=${NUM_SECTORS} &
 
 wait
 

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 
-	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
@@ -16,6 +15,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/zerocomm"
 )
 
 // TODO: For now we handle this by halting state execution, when we get jsonrpc reconnecting
@@ -42,7 +42,7 @@ func checkPieces(ctx context.Context, si SectorInfo, api sealingApi) error {
 
 	for i, piece := range si.Pieces {
 		if piece.DealID == nil {
-			exp := sectorbuilder.ZeroPieceCommitment(piece.Size)
+			exp := zerocomm.ZeroPieceCommitment(piece.Size)
 			if piece.CommP != exp {
 				return &ErrInvalidPiece{xerrors.Errorf("deal %d piece %d had non-zero CommP %+v", piece.DealID, i, piece.CommP)}
 			}

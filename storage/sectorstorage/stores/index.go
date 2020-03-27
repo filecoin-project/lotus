@@ -9,11 +9,8 @@ import (
 
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
-
-	"github.com/filecoin-project/lotus/storage/sectorstorage/sectorutil"
 )
 
 // ID identifies sector storage by UUID. One sector storage should map to one
@@ -34,16 +31,16 @@ type SectorIndex interface { // part of storage-miner api
 	StorageInfo(context.Context, ID) (StorageInfo, error)
 	// TODO: StorageUpdateStats(FsStat)
 
-	StorageDeclareSector(ctx context.Context, storageId ID, s abi.SectorID, ft sectorbuilder.SectorFileType) error
-	StorageDropSector(ctx context.Context, storageId ID, s abi.SectorID, ft sectorbuilder.SectorFileType) error
-	StorageFindSector(ctx context.Context, sector abi.SectorID, ft sectorbuilder.SectorFileType, allowFetch bool) ([]StorageInfo, error)
+	StorageDeclareSector(ctx context.Context, storageId ID, s abi.SectorID, ft SectorFileType) error
+	StorageDropSector(ctx context.Context, storageId ID, s abi.SectorID, ft SectorFileType) error
+	StorageFindSector(ctx context.Context, sector abi.SectorID, ft SectorFileType, allowFetch bool) ([]StorageInfo, error)
 
-	StorageBestAlloc(ctx context.Context, allocate sectorbuilder.SectorFileType, sealing bool) ([]StorageInfo, error)
+	StorageBestAlloc(ctx context.Context, allocate SectorFileType, sealing bool) ([]StorageInfo, error)
 }
 
 type Decl struct {
 	abi.SectorID
-	sectorbuilder.SectorFileType
+	SectorFileType
 }
 
 type storageEntry struct {
@@ -66,10 +63,10 @@ func NewIndex() *Index {
 }
 
 func (i *Index) StorageList(ctx context.Context) (map[ID][]Decl, error) {
-	byID := map[ID]map[abi.SectorID]sectorbuilder.SectorFileType{}
+	byID := map[ID]map[abi.SectorID]SectorFileType{}
 
 	for id := range i.stores {
-		byID[id] = map[abi.SectorID]sectorbuilder.SectorFileType{}
+		byID[id] = map[abi.SectorID]SectorFileType{}
 	}
 	for decl, ids := range i.sectors {
 		for _, id := range ids {
@@ -124,11 +121,11 @@ func (i *Index) StorageAttach(ctx context.Context, si StorageInfo, st FsStat) er
 	return nil
 }
 
-func (i *Index) StorageDeclareSector(ctx context.Context, storageId ID, s abi.SectorID, ft sectorbuilder.SectorFileType) error {
+func (i *Index) StorageDeclareSector(ctx context.Context, storageId ID, s abi.SectorID, ft SectorFileType) error {
 	i.lk.Lock()
 	defer i.lk.Unlock()
 
-	for _, fileType := range pathTypes {
+	for _, fileType := range PathTypes {
 		if fileType&ft == 0 {
 			continue
 		}
@@ -148,11 +145,11 @@ func (i *Index) StorageDeclareSector(ctx context.Context, storageId ID, s abi.Se
 	return nil
 }
 
-func (i *Index) StorageDropSector(ctx context.Context, storageId ID, s abi.SectorID, ft sectorbuilder.SectorFileType) error {
+func (i *Index) StorageDropSector(ctx context.Context, storageId ID, s abi.SectorID, ft SectorFileType) error {
 	i.lk.Lock()
 	defer i.lk.Unlock()
 
-	for _, fileType := range pathTypes {
+	for _, fileType := range PathTypes {
 		if fileType&ft == 0 {
 			continue
 		}
@@ -182,13 +179,13 @@ func (i *Index) StorageDropSector(ctx context.Context, storageId ID, s abi.Secto
 	return nil
 }
 
-func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft sectorbuilder.SectorFileType, allowFetch bool) ([]StorageInfo, error) {
+func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft SectorFileType, allowFetch bool) ([]StorageInfo, error) {
 	i.lk.RLock()
 	defer i.lk.RUnlock()
 
 	storageIDs := map[ID]uint64{}
 
-	for _, pathType := range pathTypes {
+	for _, pathType := range PathTypes {
 		if ft&pathType == 0 {
 			continue
 		}
@@ -214,7 +211,7 @@ func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft sector
 				return nil, xerrors.Errorf("failed to parse url: %w", err)
 			}
 
-			rl.Path = gopath.Join(rl.Path, ft.String(), sectorutil.SectorName(s))
+			rl.Path = gopath.Join(rl.Path, ft.String(), SectorName(s))
 			urls[k] = rl.String()
 		}
 
@@ -240,7 +237,7 @@ func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft sector
 					return nil, xerrors.Errorf("failed to parse url: %w", err)
 				}
 
-				rl.Path = gopath.Join(rl.Path, ft.String(), sectorutil.SectorName(s))
+				rl.Path = gopath.Join(rl.Path, ft.String(), SectorName(s))
 				urls[k] = rl.String()
 			}
 
@@ -269,7 +266,7 @@ func (i *Index) StorageInfo(ctx context.Context, id ID) (StorageInfo, error) {
 	return *si.info, nil
 }
 
-func (i *Index) StorageBestAlloc(ctx context.Context, allocate sectorbuilder.SectorFileType, sealing bool) ([]StorageInfo, error) {
+func (i *Index) StorageBestAlloc(ctx context.Context, allocate SectorFileType, sealing bool) ([]StorageInfo, error) {
 	i.lk.RLock()
 	defer i.lk.RUnlock()
 
@@ -309,7 +306,7 @@ func (i *Index) StorageBestAlloc(ctx context.Context, allocate sectorbuilder.Sec
 	return out, nil
 }
 
-func (i *Index) FindSector(id abi.SectorID, typ sectorbuilder.SectorFileType) ([]ID, error) {
+func (i *Index) FindSector(id abi.SectorID, typ SectorFileType) ([]ID, error) {
 	i.lk.RLock()
 	defer i.lk.RUnlock()
 
