@@ -16,7 +16,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/config"
-	"github.com/filecoin-project/lotus/storage/sectorstorage/stores"
+	"github.com/filecoin-project/sector-storage/stores"
 )
 
 type MemRepo struct {

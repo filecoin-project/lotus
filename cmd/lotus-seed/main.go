@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/docker/go-units"
-	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"io/ioutil"
 	"os"
 

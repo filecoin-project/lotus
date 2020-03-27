@@ -6,9 +6,9 @@ import (
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/storage/sectorstorage"
-	"github.com/filecoin-project/lotus/storage/sectorstorage/sealtasks"
-	"github.com/filecoin-project/lotus/storage/sectorstorage/stores"
+	"github.com/filecoin-project/sector-storage"
+	"github.com/filecoin-project/sector-storage/sealtasks"
+	"github.com/filecoin-project/sector-storage/stores"
 )
 
 type WorkerApi interface {

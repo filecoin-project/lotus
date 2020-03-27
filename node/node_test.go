@@ -6,7 +6,7 @@ import (
 	"crypto/rand"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/storage/mockstorage"
-	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"io/ioutil"
 	"net/http/httptest"
 	"testing"
@@ -43,8 +43,8 @@ import (
 	"github.com/filecoin-project/lotus/node/modules"
 	modtest "github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/filecoin-project/lotus/storage/sectorstorage"
-	"github.com/filecoin-project/lotus/storage/sectorstorage/mock"
+	"github.com/filecoin-project/sector-storage"
+	"github.com/filecoin-project/sector-storage/mock"
 )
 
 func init() {
