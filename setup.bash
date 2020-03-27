@@ -114,6 +114,7 @@ done
 EOF
 
 cat > "${BASEDIR}/scripts/monitor.bash" <<EOF
+#!/usr/bin/env bash
 
 while true; do
   clear
@@ -130,6 +131,9 @@ while true; do
   lotus-storage-miner sectors list | tail -n4
 
   sleep 25
+
+  lotus-shed noncefix --addr \$(lotus wallet list) --auto
+
 done
 EOF
 
@@ -166,7 +170,7 @@ tmux send-keys -t $session:$wdaemon "lotus daemon --api 48010 daemon 2>&1 | tee 
 sleep 30
 
 tmux send-keys -t $session:$wminer   "${BASEDIR}/scripts/create_miner.bash" C-m
-tmux send-keys -t $session:$wminer   "lotus-storage-miner run --api 48020 | tee -a ${BASEDIR}/miner.log" C-m
+tmux send-keys -t $session:$wminer   "lotus-storage-miner run --api 48020 2>&1 | tee -a ${BASEDIR}/miner.log" C-m
 tmux send-keys -t $session:$wcli     "${BASEDIR}/scripts/monitor.bash" C-m
 tmux send-keys -t $session:$wpleding "${BASEDIR}/scripts/pledge_sectors.bash" C-m
 
