@@ -297,7 +297,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 	if msgGasCost > msg.GasLimit {
 		return &ApplyRet{
 			MessageReceipt: types.MessageReceipt{
-				ExitCode: exitcode.SysErrSenderStateInvalid,
+				ExitCode: exitcode.SysErrOutOfGas,
 				GasUsed:  0,
 			},
 			Penalty: types.BigMul(msg.GasPrice, types.NewInt(uint64(msgGasCost))),
