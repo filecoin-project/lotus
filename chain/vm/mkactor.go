@@ -30,7 +30,7 @@ func init() {
 var EmptyObjectCid cid.Cid
 
 // Creates account actors from only BLS/SECP256K1 addresses.
-func TryCreateAccountActor(ctx context.Context, rt *Runtime, addr address.Address) (*types.Actor, aerrors.ActorError) {
+func TryCreateAccountActor(rt *Runtime, addr address.Address) (*types.Actor, aerrors.ActorError) {
 	addrID, err := rt.state.RegisterNewAddress(addr)
 	if err != nil {
 		return nil, aerrors.Absorb(err, byte(exitcode.SysErrInternal), "registering actor address")

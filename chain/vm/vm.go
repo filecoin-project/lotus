@@ -210,15 +210,12 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 		}()
 	}
 
-	aerr := rt.chargeGasSafe(rt.Pricelist().OnMethodInvocation(msg.Value, msg.Method))
-	if aerr != nil {
-		return nil, aerr, rt
-	}
+	rt.ChargeGas(rt.Pricelist().OnMethodInvocation(msg.Value, msg.Method))
 
 	toActor, err := st.GetActor(msg.To)
 	if err != nil {
 		if xerrors.Is(err, init_.ErrAddressNotFound) {
-			a, err := TryCreateAccountActor(ctx, rt, msg.To)
+			a, err := TryCreateAccountActor(rt, msg.To)
 			if err != nil {
 				return nil, aerrors.Absorb(err, 1, "could not create account"), rt
 			}
