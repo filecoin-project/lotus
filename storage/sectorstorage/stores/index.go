@@ -125,7 +125,7 @@ func (i *Index) StorageDeclareSector(ctx context.Context, storageId ID, s abi.Se
 	i.lk.Lock()
 	defer i.lk.Unlock()
 
-	for _, fileType := range pathTypes {
+	for _, fileType := range PathTypes {
 		if fileType&ft == 0 {
 			continue
 		}
@@ -149,7 +149,7 @@ func (i *Index) StorageDropSector(ctx context.Context, storageId ID, s abi.Secto
 	i.lk.Lock()
 	defer i.lk.Unlock()
 
-	for _, fileType := range pathTypes {
+	for _, fileType := range PathTypes {
 		if fileType&ft == 0 {
 			continue
 		}
@@ -185,7 +185,7 @@ func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft Sector
 
 	storageIDs := map[ID]uint64{}
 
-	for _, pathType := range pathTypes {
+	for _, pathType := range PathTypes {
 		if ft&pathType == 0 {
 			continue
 		}
