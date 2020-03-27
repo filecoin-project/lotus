@@ -20,7 +20,7 @@ import (
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper/basicfs"
+	"github.com/filecoin-project/sector-storage/ffiwrapper/basicfs"
 )
 
 func init() {

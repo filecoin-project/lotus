@@ -19,7 +19,7 @@ import (
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
-	"github.com/filecoin-project/lotus/storage/sectorstorage/tarutil"
+	"github.com/filecoin-project/sector-storage/tarutil"
 )
 
 type Remote struct {

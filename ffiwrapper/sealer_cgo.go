@@ -15,8 +15,8 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-storage/storage"
 
-	"github.com/filecoin-project/lotus/storage/sectorstorage/stores"
-	"github.com/filecoin-project/lotus/storage/sectorstorage/zerocomm"
+	"github.com/filecoin-project/sector-storage/stores"
+	"github.com/filecoin-project/sector-storage/zerocomm"
 )
 
 var _ Storage = &Sealer{}
