@@ -263,6 +263,7 @@ func Online() Option {
 		// Storage miner
 		ApplyIf(func(s *Settings) bool { return s.nodeType == repo.StorageMiner },
 			Override(new(api.Common), From(new(common.CommonAPI))),
+			Override(new(sectorstorage.StorageAuth), modules.StorageAuth),
 
 			Override(new(*stores.Index), stores.NewIndex),
 			Override(new(stores.SectorIndex), From(new(*stores.Index))),
@@ -384,7 +385,7 @@ func ConfigStorageMiner(c interface{}) Option {
 	return Options(
 		ConfigCommon(&cfg.Common),
 
-		Override(new(config.Storage), cfg.Storage),
+		Override(new(sectorstorage.SealerConfig), cfg.Storage),
 	)
 }
 

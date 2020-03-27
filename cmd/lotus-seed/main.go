@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/docker/go-units"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
 	"io/ioutil"
 	"os"
 
@@ -16,7 +17,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 
-	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
@@ -120,7 +120,7 @@ var preSealCmd = &cli.Command{
 		}
 		sectorSize := abi.SectorSize(sectorSizeInt)
 
-		rp, _, err := lapi.ProofTypeFromSectorSize(sectorSize)
+		rp, _, err := ffiwrapper.ProofTypeFromSectorSize(sectorSize)
 		if err != nil {
 			return err
 		}

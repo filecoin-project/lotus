@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/storage/sectorstorage"
 	"github.com/filecoin-project/lotus/storage/sectorstorage/stores"
 )
 
@@ -114,7 +115,7 @@ type StorageMiner interface {
 
 	// WorkerConnect tells the node to connect to workers RPC
 	WorkerConnect(context.Context, string) error
-	WorkerStats(context.Context) (map[uint64]WorkerStats, error)
+	WorkerStats(context.Context) (map[uint64]sectorstorage.WorkerStats, error)
 
 	stores.SectorIndex
 

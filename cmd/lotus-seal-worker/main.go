@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -24,7 +25,6 @@ import (
 	"github.com/filecoin-project/lotus/lib/auth"
 	"github.com/filecoin-project/lotus/lib/jsonrpc"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
-	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage/sectorstorage"
 	"github.com/filecoin-project/lotus/storage/sectorstorage/sealtasks"
@@ -189,7 +189,7 @@ var runCmd = &cli.Command{
 				return err
 			}
 
-			var localPaths []config.LocalPath
+			var localPaths []stores.LocalPath
 
 			if !cctx.Bool("no-local-storage") {
 				b, err := json.MarshalIndent(&stores.LocalStorageMeta{
@@ -206,12 +206,12 @@ var runCmd = &cli.Command{
 					return xerrors.Errorf("persisting storage metadata (%s): %w", filepath.Join(lr.Path(), "sectorstore.json"), err)
 				}
 
-				localPaths = append(localPaths, config.LocalPath{
+				localPaths = append(localPaths, stores.LocalPath{
 					Path: lr.Path(),
 				})
 			}
 
-			if err := lr.SetStorage(func(sc *config.StorageConfig) {
+			if err := lr.SetStorage(func(sc *stores.StorageConfig) {
 				sc.StoragePaths = append(sc.StoragePaths, localPaths...)
 			}); err != nil {
 				return xerrors.Errorf("set storage config: %w", err)
@@ -242,7 +242,7 @@ var runCmd = &cli.Command{
 		}
 
 		// Setup remote sector store
-		_, spt, err := api.ProofTypeFromSectorSize(ssize)
+		_, spt, err := ffiwrapper.ProofTypeFromSectorSize(ssize)
 		if err != nil {
 			return xerrors.Errorf("getting proof type: %w", err)
 		}

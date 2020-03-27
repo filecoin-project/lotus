@@ -3,10 +3,11 @@ package sectorstorage
 import (
 	"context"
 
-	"github.com/filecoin-project/lotus/storage/sectorstorage/stores"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/lotus/storage/sectorstorage/stores"
 )
 
 type readonlyProvider struct {

@@ -50,7 +50,7 @@ func (sm *StorageMinerAPI) ServeRemote(w http.ResponseWriter, r *http.Request) {
 	sm.StorageMgr.ServeHTTP(w, r)
 }
 
-func (sm *StorageMinerAPI) WorkerStats(context.Context) (map[uint64]api.WorkerStats, error) {
+func (sm *StorageMinerAPI) WorkerStats(context.Context) (map[uint64]sectorstorage.WorkerStats, error) {
 	return sm.StorageMgr.WorkerStats(), nil
 }
 
@@ -149,7 +149,7 @@ func (sm *StorageMinerAPI) SectorsUpdate(ctx context.Context, id abi.SectorNumbe
 }
 
 func (sm *StorageMinerAPI) WorkerConnect(ctx context.Context, url string) error {
-	w, err := sectorstorage.ConnectRemote(ctx, sm, url)
+	w, err := connectRemoteWorker(ctx, sm, url)
 	if err != nil {
 		return xerrors.Errorf("connecting remote storage failed: %w", err)
 	}
