@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
+	"github.com/filecoin-project/lotus/storage/mockstorage"
 	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
 	"io/ioutil"
 	"net/http/httptest"
@@ -310,7 +311,7 @@ func mockSbBuilder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []t
 		if err != nil {
 			t.Fatal(err)
 		}
-		genm, k, err := mock.PreSeal(2048, maddr, nPreseal)
+		genm, k, err := mockstorage.PreSeal(2048, maddr, nPreseal)
 		if err != nil {
 			t.Fatal(err)
 		}

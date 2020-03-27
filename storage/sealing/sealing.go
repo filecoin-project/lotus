@@ -2,6 +2,7 @@ package sealing
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
 	"io"
 
 	"github.com/filecoin-project/go-address"
@@ -132,7 +133,7 @@ func (m *Sealing) SealPiece(ctx context.Context, size abi.UnpaddedPieceSize, r i
 		return xerrors.Errorf("adding piece to sector: %w", err)
 	}
 
-	_, rt, err := api.ProofTypeFromSectorSize(m.sealer.SectorSize())
+	_, rt, err := ffiwrapper.ProofTypeFromSectorSize(m.sealer.SectorSize())
 	if err != nil {
 		return xerrors.Errorf("bad sector size: %w", err)
 	}

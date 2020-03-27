@@ -16,8 +16,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-storage/storage"
 
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sectorstorage/sealtasks"
 	"github.com/filecoin-project/lotus/storage/sectorstorage/stores"
@@ -37,9 +35,24 @@ type Worker interface {
 	// Returns paths accessible to the worker
 	Paths(context.Context) ([]stores.StoragePath, error)
 
-	Info(context.Context) (api.WorkerInfo, error)
+	Info(context.Context) (WorkerInfo, error)
 
 	Close() error
+}
+
+type WorkerInfo struct {
+	Hostname string
+
+	Resources WorkerResources
+}
+
+type WorkerResources struct {
+	MemPhysical uint64
+	MemSwap     uint64
+
+	MemReserved uint64 // Used by system / other processes
+
+	GPUs []string
 }
 
 type SectorManager interface {
@@ -76,7 +89,16 @@ type Manager struct {
 	schedQueue *list.List // List[*workerRequest]
 }
 
-func New(ctx context.Context, ls stores.LocalStorage, si stores.SectorIndex, cfg *ffiwrapper.Config, sc config.Storage, urls URLs, ca api.Common) (*Manager, error) {
+type SealerConfig struct {
+	// Local worker config
+	AllowPreCommit1 bool
+	AllowPreCommit2 bool
+	AllowCommit     bool
+}
+
+type StorageAuth http.Header
+
+func New(ctx context.Context, ls stores.LocalStorage, si stores.SectorIndex, cfg *ffiwrapper.Config, sc SealerConfig, urls URLs, sa StorageAuth) (*Manager, error) {
 	lstor, err := stores.NewLocal(ctx, ls, si, urls)
 	if err != nil {
 		return nil, err
@@ -87,10 +109,7 @@ func New(ctx context.Context, ls stores.LocalStorage, si stores.SectorIndex, cfg
 		return nil, xerrors.Errorf("creating prover instance: %w", err)
 	}
 
-	token, err := ca.AuthNew(ctx, []api.Permission{"admin"})
-	headers := http.Header{}
-	headers.Add("Authorization", "Bearer "+string(token))
-	stor := stores.NewRemote(lstor, si, headers)
+	stor := stores.NewRemote(lstor, si, http.Header(sa))
 
 	m := &Manager{
 		scfg: cfg,
@@ -150,8 +169,8 @@ func (m *Manager) AddLocalStorage(ctx context.Context, path string) error {
 		return xerrors.Errorf("opening local path: %w", err)
 	}
 
-	if err := m.ls.SetStorage(func(sc *config.StorageConfig) {
-		sc.StoragePaths = append(sc.StoragePaths, config.LocalPath{Path: path})
+	if err := m.ls.SetStorage(func(sc *stores.StorageConfig) {
+		sc.StoragePaths = append(sc.StoragePaths, stores.LocalPath{Path: path})
 	}); err != nil {
 		return xerrors.Errorf("get storage config: %w", err)
 	}

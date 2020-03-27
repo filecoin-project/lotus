@@ -1,18 +1,19 @@
-package mock
+package mockstorage
 
 import (
 	"github.com/filecoin-project/go-address"
 	commcid "github.com/filecoin-project/go-fil-commcid"
-	"github.com/filecoin-project/lotus/storage/sectorstorage/zerocomm"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/mock"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/genesis"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/zerocomm"
 )
 
 func PreSeal(ssize abi.SectorSize, maddr address.Address, sectors int) (*genesis.Miner, *types.KeyInfo, error) {
@@ -30,7 +31,7 @@ func PreSeal(ssize abi.SectorSize, maddr address.Address, sectors int) (*genesis
 		Sectors:       make([]*genesis.PreSeal, sectors),
 	}
 
-	_, st, err := api.ProofTypeFromSectorSize(ssize)
+	_, st, err := ffiwrapper.ProofTypeFromSectorSize(ssize)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -41,7 +42,7 @@ func PreSeal(ssize abi.SectorSize, maddr address.Address, sectors int) (*genesis
 		preseal.ProofType = st
 		preseal.CommD = zerocomm.ZeroPieceCommitment(abi.PaddedPieceSize(ssize).Unpadded())
 		d, _ := commcid.CIDToPieceCommitmentV1(preseal.CommD)
-		r := commDR(d)
+		r := mock.CommDR(d)
 		preseal.CommR = commcid.ReplicaCommitmentV1ToCID(r[:])
 		preseal.SectorID = abi.SectorNumber(i + 1)
 		preseal.Deal = market.DealProposal{

@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	storage2 "github.com/filecoin-project/specs-storage/storage"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sectorstorage/sealtasks"
 	"github.com/filecoin-project/lotus/storage/sectorstorage/stores"
@@ -174,7 +173,7 @@ func (l *LocalWorker) Paths(ctx context.Context) ([]stores.StoragePath, error) {
 	return l.localStore.Local(ctx)
 }
 
-func (l *LocalWorker) Info(context.Context) (api.WorkerInfo, error) {
+func (l *LocalWorker) Info(context.Context) (WorkerInfo, error) {
 	hostname, err := os.Hostname() // TODO: allow overriding from config
 	if err != nil {
 		panic(err)
@@ -187,17 +186,17 @@ func (l *LocalWorker) Info(context.Context) (api.WorkerInfo, error) {
 
 	h, err := sysinfo.Host()
 	if err != nil {
-		return api.WorkerInfo{}, xerrors.Errorf("getting host info: %w", err)
+		return WorkerInfo{}, xerrors.Errorf("getting host info: %w", err)
 	}
 
 	mem, err := h.Memory()
 	if err != nil {
-		return api.WorkerInfo{}, xerrors.Errorf("getting memory info: %w", err)
+		return WorkerInfo{}, xerrors.Errorf("getting memory info: %w", err)
 	}
 
-	return api.WorkerInfo{
+	return WorkerInfo{
 		Hostname: hostname,
-		Resources: api.WorkerResources{
+		Resources: WorkerResources{
 			MemPhysical: mem.Total,
 			MemSwap:     mem.VirtualTotal,
 			MemReserved: mem.VirtualUsed + mem.Total - mem.Available, // TODO: sub this process
