@@ -31,6 +31,10 @@ var runCmd = &cli.Command{
 	Name:  "run",
 	Usage: "Start a lotus storage miner process",
 	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "api",
+			Usage: "2345",
+		},
 		&cli.BoolFlag{
 			Name:  "enable-gpu-proving",
 			Usage: "enable use of GPU for mining operations",
