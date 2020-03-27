@@ -15,7 +15,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 
 	paramfetch "github.com/filecoin-project/go-paramfetch"
-	"github.com/filecoin-project/go-sectorbuilder"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/mitchellh/go-homedir"
 	"github.com/multiformats/go-multiaddr"
@@ -36,6 +35,7 @@ import (
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
 )
 
 const (
@@ -266,7 +266,7 @@ func ImportChain(r repo.Repo, fname string) error {
 
 	bs := blockstore.NewBlockstore(ds)
 
-	cst := store.NewChainStore(bs, mds, vm.Syscalls(sectorbuilder.ProofVerifier))
+	cst := store.NewChainStore(bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier))
 
 	log.Info("importing chain from file...")
 	ts, err := cst.Import(fi)

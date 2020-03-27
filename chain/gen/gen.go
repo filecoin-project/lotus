@@ -4,13 +4,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/minio/blake2b-simd"
 	"io/ioutil"
 	"sync/atomic"
 
 	"github.com/filecoin-project/go-address"
 	commcid "github.com/filecoin-project/go-fil-commcid"
-	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-storage/storage"
@@ -23,6 +21,9 @@ import (
 	format "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/ipfs/go-merkledag"
+	"github.com/minio/blake2b-simd"
+	"go.opencensus.io/trace"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -36,8 +37,7 @@ import (
 	"github.com/filecoin-project/lotus/genesis"
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/node/repo"
-	"go.opencensus.io/trace"
-	"golang.org/x/xerrors"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
 )
 
 var log = logging.Logger("gen")
@@ -682,7 +682,7 @@ func ComputeVRF(ctx context.Context, sign SignFunc, worker address.Address, sigI
 
 type genFakeVerifier struct{}
 
-var _ sectorbuilder.Verifier = (*genFakeVerifier)(nil)
+var _ ffiwrapper.Verifier = (*genFakeVerifier)(nil)
 
 func (m genFakeVerifier) VerifyElectionPost(ctx context.Context, pvi abi.PoStVerifyInfo) (bool, error) {
 	panic("nyi")

@@ -25,8 +25,6 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/requestvalidation"
 
-	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
-
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	storage2 "github.com/filecoin-project/specs-storage/storage"
 
@@ -62,6 +60,7 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealing"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 	"github.com/filecoin-project/lotus/storage/sectorstorage"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sectorstorage/stores"
 )
 
@@ -210,7 +209,7 @@ func Online() Option {
 
 			Override(HandleIncomingMessagesKey, modules.HandleIncomingMessages),
 
-			Override(new(sectorbuilder.Verifier), sectorbuilder.ProofVerifier),
+			Override(new(ffiwrapper.Verifier), ffiwrapper.ProofVerifier),
 			Override(new(runtime.Syscalls), vm.Syscalls),
 			Override(new(*store.ChainStore), modules.ChainStore),
 			Override(new(*stmgr.StateManager), stmgr.NewStateManager),
@@ -269,7 +268,7 @@ func Online() Option {
 			Override(new(stores.SectorIndex), From(new(*stores.Index))),
 			Override(new(dtypes.MinerID), modules.MinerID),
 			Override(new(dtypes.MinerAddress), modules.MinerAddress),
-			Override(new(*sectorbuilder.Config), modules.SectorBuilderConfig),
+			Override(new(*ffiwrapper.Config), modules.ProofsConfig),
 			Override(new(stores.LocalStorage), From(new(repo.LockedRepo))),
 			Override(new(sealing.SectorIDCounter), modules.SectorIDCounter),
 			Override(new(*sectorstorage.Manager), modules.SectorStorage),

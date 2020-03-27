@@ -6,16 +6,15 @@ import (
 
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
 type Store interface {
-	AcquireSector(ctx context.Context, s abi.SectorID, existing sectorbuilder.SectorFileType, allocate sectorbuilder.SectorFileType, sealing bool) (paths sectorbuilder.SectorPaths, stores sectorbuilder.SectorPaths, done func(), err error)
-	Remove(ctx context.Context, s abi.SectorID, types sectorbuilder.SectorFileType) error
+	AcquireSector(ctx context.Context, s abi.SectorID, existing SectorFileType, allocate SectorFileType, sealing bool) (paths SectorPaths, stores SectorPaths, done func(), err error)
+	Remove(ctx context.Context, s abi.SectorID, types SectorFileType) error
 
 	// move sectors into storage
-	MoveStorage(ctx context.Context, s abi.SectorID, types sectorbuilder.SectorFileType) error
+	MoveStorage(ctx context.Context, s abi.SectorID, types SectorFileType) error
 
 	FsStat(ctx context.Context, id ID) (FsStat, error)
 }

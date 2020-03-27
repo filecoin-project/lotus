@@ -12,7 +12,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	storagemarket "github.com/filecoin-project/go-fil-markets/storagemarket"
-	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	"github.com/filecoin-project/lotus/api"
@@ -23,14 +22,14 @@ import (
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 	"github.com/filecoin-project/lotus/storage/sectorstorage"
+	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sectorstorage/stores"
 )
 
 type StorageMinerAPI struct {
 	common.CommonAPI
 
-	SectorBuilderConfig *sectorbuilder.Config
-	//SectorBuilder       sectorbuilder.Interface
+	ProofsConfig *ffiwrapper.Config
 	SectorBlocks *sectorblocks.SectorBlocks
 
 	StorageProvider storagemarket.StorageProvider

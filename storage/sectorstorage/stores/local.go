@@ -12,9 +12,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/lotus/node/config"
-	"github.com/filecoin-project/lotus/storage/sectorstorage/sectorutil"
 )
 
 type StoragePath struct {
@@ -43,7 +41,7 @@ type LocalStorage interface {
 
 const MetaFile = "sectorstore.json"
 
-var pathTypes = []sectorbuilder.SectorFileType{sectorbuilder.FTUnsealed, sectorbuilder.FTSealed, sectorbuilder.FTCache}
+var PathTypes = []SectorFileType{FTUnsealed, FTSealed, FTCache}
 
 type Local struct {
 	localStorage LocalStorage
@@ -106,7 +104,7 @@ func (st *Local) OpenPath(ctx context.Context, p string) error {
 		return xerrors.Errorf("declaring storage in index: %w", err)
 	}
 
-	for _, t := range pathTypes {
+	for _, t := range PathTypes {
 		ents, err := ioutil.ReadDir(filepath.Join(p, t.String()))
 		if err != nil {
 			if os.IsNotExist(err) {
@@ -120,7 +118,7 @@ func (st *Local) OpenPath(ctx context.Context, p string) error {
 		}
 
 		for _, ent := range ents {
-			sid, err := sectorutil.ParseSectorID(ent.Name())
+			sid, err := ParseSectorID(ent.Name())
 			if err != nil {
 				return xerrors.Errorf("parse sector id %s: %w", ent.Name(), err)
 			}
@@ -152,17 +150,17 @@ func (st *Local) open(ctx context.Context) error {
 	return nil
 }
 
-func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, existing sectorbuilder.SectorFileType, allocate sectorbuilder.SectorFileType, sealing bool) (sectorbuilder.SectorPaths, sectorbuilder.SectorPaths, func(), error) {
+func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, existing SectorFileType, allocate SectorFileType, sealing bool) (SectorPaths, SectorPaths, func(), error) {
 	if existing|allocate != existing^allocate {
-		return sectorbuilder.SectorPaths{}, sectorbuilder.SectorPaths{}, nil, xerrors.New("can't both find and allocate a sector")
+		return SectorPaths{}, SectorPaths{}, nil, xerrors.New("can't both find and allocate a sector")
 	}
 
 	st.localLk.RLock()
 
-	var out sectorbuilder.SectorPaths
-	var storageIDs sectorbuilder.SectorPaths
+	var out SectorPaths
+	var storageIDs SectorPaths
 
-	for _, fileType := range pathTypes {
+	for _, fileType := range PathTypes {
 		if fileType&existing == 0 {
 			continue
 		}
@@ -183,16 +181,16 @@ func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, existing s
 				continue
 			}
 
-			spath := filepath.Join(p.local, fileType.String(), sectorutil.SectorName(sid))
-			sectorutil.SetPathByType(&out, fileType, spath)
-			sectorutil.SetPathByType(&storageIDs, fileType, string(info.ID))
+			spath := filepath.Join(p.local, fileType.String(), SectorName(sid))
+			SetPathByType(&out, fileType, spath)
+			SetPathByType(&storageIDs, fileType, string(info.ID))
 
 			existing ^= fileType
 			break
 		}
 	}
 
-	for _, fileType := range pathTypes {
+	for _, fileType := range PathTypes {
 		if fileType&allocate == 0 {
 			continue
 		}
@@ -200,7 +198,7 @@ func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, existing s
 		sis, err := st.index.StorageBestAlloc(ctx, fileType, sealing)
 		if err != nil {
 			st.localLk.RUnlock()
-			return sectorbuilder.SectorPaths{}, sectorbuilder.SectorPaths{}, nil, xerrors.Errorf("finding best storage for allocating : %w", err)
+			return SectorPaths{}, SectorPaths{}, nil, xerrors.Errorf("finding best storage for allocating : %w", err)
 		}
 
 		var best string
@@ -226,17 +224,17 @@ func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, existing s
 
 			// TODO: Check free space
 
-			best = filepath.Join(p.local, fileType.String(), sectorutil.SectorName(sid))
+			best = filepath.Join(p.local, fileType.String(), SectorName(sid))
 			bestID = si.ID
 		}
 
 		if best == "" {
 			st.localLk.RUnlock()
-			return sectorbuilder.SectorPaths{}, sectorbuilder.SectorPaths{}, nil, xerrors.Errorf("couldn't find a suitable path for a sector")
+			return SectorPaths{}, SectorPaths{}, nil, xerrors.Errorf("couldn't find a suitable path for a sector")
 		}
 
-		sectorutil.SetPathByType(&out, fileType, best)
-		sectorutil.SetPathByType(&storageIDs, fileType, string(bestID))
+		SetPathByType(&out, fileType, best)
+		SetPathByType(&storageIDs, fileType, string(bestID))
 		allocate ^= fileType
 	}
 
@@ -270,7 +268,7 @@ func (st *Local) Local(ctx context.Context) ([]StoragePath, error) {
 	return out, nil
 }
 
-func (st *Local) Remove(ctx context.Context, sid abi.SectorID, typ sectorbuilder.SectorFileType) error {
+func (st *Local) Remove(ctx context.Context, sid abi.SectorID, typ SectorFileType) error {
 	if bits.OnesCount(uint(typ)) != 1 {
 		return xerrors.New("delete expects one file type")
 	}
@@ -298,7 +296,7 @@ func (st *Local) Remove(ctx context.Context, sid abi.SectorID, typ sectorbuilder
 			return xerrors.Errorf("dropping sector from index: %w", err)
 		}
 
-		spath := filepath.Join(p.local, typ.String(), sectorutil.SectorName(sid))
+		spath := filepath.Join(p.local, typ.String(), SectorName(sid))
 		log.Infof("remove %s", spath)
 
 		if err := os.RemoveAll(spath); err != nil {
@@ -309,7 +307,7 @@ func (st *Local) Remove(ctx context.Context, sid abi.SectorID, typ sectorbuilder
 	return nil
 }
 
-func (st *Local) MoveStorage(ctx context.Context, s abi.SectorID, types sectorbuilder.SectorFileType) error {
+func (st *Local) MoveStorage(ctx context.Context, s abi.SectorID, types SectorFileType) error {
 	dest, destIds, sdone, err := st.AcquireSector(ctx, s, FTNone, types, false)
 	if err != nil {
 		return xerrors.Errorf("acquire dest storage: %w", err)
@@ -322,17 +320,17 @@ func (st *Local) MoveStorage(ctx context.Context, s abi.SectorID, types sectorbu
 	}
 	defer ddone()
 
-	for _, fileType := range pathTypes {
+	for _, fileType := range PathTypes {
 		if fileType&types == 0 {
 			continue
 		}
 
-		sst, err := st.index.StorageInfo(ctx, ID(sectorutil.PathByType(srcIds, fileType)))
+		sst, err := st.index.StorageInfo(ctx, ID(PathByType(srcIds, fileType)))
 		if err != nil {
 			return xerrors.Errorf("failed to get source storage info: %w", err)
 		}
 
-		dst, err := st.index.StorageInfo(ctx, ID(sectorutil.PathByType(destIds, fileType)))
+		dst, err := st.index.StorageInfo(ctx, ID(PathByType(destIds, fileType)))
 		if err != nil {
 			return xerrors.Errorf("failed to get source storage info: %w", err)
 		}
@@ -349,17 +347,17 @@ func (st *Local) MoveStorage(ctx context.Context, s abi.SectorID, types sectorbu
 
 		log.Debugf("moving %v(%d) to storage: %s(se:%t; st:%t) -> %s(se:%t; st:%t)", s, fileType, sst.ID, sst.CanSeal, sst.CanStore, dst.ID, dst.CanSeal, dst.CanStore)
 
-		if err := st.index.StorageDropSector(ctx, ID(sectorutil.PathByType(srcIds, fileType)), s, fileType); err != nil {
+		if err := st.index.StorageDropSector(ctx, ID(PathByType(srcIds, fileType)), s, fileType); err != nil {
 			return xerrors.Errorf("dropping source sector from index: %w", err)
 		}
 
-		if err := move(sectorutil.PathByType(src, fileType), sectorutil.PathByType(dest, fileType)); err != nil {
+		if err := move(PathByType(src, fileType), PathByType(dest, fileType)); err != nil {
 			// TODO: attempt some recovery (check if src is still there, re-declare)
 			return xerrors.Errorf("moving sector %v(%d): %w", s, fileType, err)
 		}
 
-		if err := st.index.StorageDeclareSector(ctx, ID(sectorutil.PathByType(destIds, fileType)), s, fileType); err != nil {
-			return xerrors.Errorf("declare sector %d(t:%d) -> %s: %w", s, fileType, ID(sectorutil.PathByType(destIds, fileType)), err)
+		if err := st.index.StorageDeclareSector(ctx, ID(PathByType(destIds, fileType)), s, fileType); err != nil {
+			return xerrors.Errorf("declare sector %d(t:%d) -> %s: %w", s, fileType, ID(PathByType(destIds, fileType)), err)
 		}
 	}
 
