@@ -2,7 +2,7 @@ package sealing
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"io"
 
 	"github.com/filecoin-project/go-address"
@@ -22,7 +22,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/storage/sectorstorage"
+	"github.com/filecoin-project/sector-storage"
 )
 
 const SectorStorePrefix = "/sectors"

@@ -59,9 +59,9 @@ import (
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sealing"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
-	"github.com/filecoin-project/lotus/storage/sectorstorage"
-	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
-	"github.com/filecoin-project/lotus/storage/sectorstorage/stores"
+	"github.com/filecoin-project/sector-storage"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/sector-storage/stores"
 )
 
 var log = logging.Logger("builder")

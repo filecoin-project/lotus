@@ -3,7 +3,7 @@ package client
 import (
 	"context"
 	"errors"
-	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"io"
 	"os"
 

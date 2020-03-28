@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/storage/sectorstorage"
+	"github.com/filecoin-project/sector-storage"
 	"gopkg.in/urfave/cli.v2"
 	"sort"
 

@@ -13,8 +13,8 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/storage"
-	"github.com/filecoin-project/lotus/storage/sectorstorage"
-	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
+	"github.com/filecoin-project/sector-storage"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
 )
 
 type retrievalProviderNode struct {

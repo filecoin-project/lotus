@@ -24,9 +24,9 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/genesis"
-	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
-	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper/basicfs"
-	"github.com/filecoin-project/lotus/storage/sectorstorage/stores"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/sector-storage/ffiwrapper/basicfs"
+	"github.com/filecoin-project/sector-storage/stores"
 )
 
 var log = logging.Logger("preseal")

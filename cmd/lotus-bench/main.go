@@ -27,8 +27,8 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/genesis"
-	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
-	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper/basicfs"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/sector-storage/ffiwrapper/basicfs"
 )
 
 var log = logging.Logger("lotus-bench")
