@@ -2,7 +2,7 @@ package config
 
 import (
 	"encoding/json"
-	"github.com/filecoin-project/lotus/storage/sectorstorage/stores"
+	"github.com/filecoin-project/sector-storage/stores"
 	"io"
 	"io/ioutil"
 	"os"

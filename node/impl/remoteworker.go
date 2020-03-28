@@ -12,7 +12,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
 	"github.com/filecoin-project/lotus/lib/jsonrpc"
-	"github.com/filecoin-project/lotus/storage/sectorstorage"
+	"github.com/filecoin-project/sector-storage"
 )
 
 type remoteWorker struct {

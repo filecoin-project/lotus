@@ -35,7 +35,7 @@ import (
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
 )
 
 const (

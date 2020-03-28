@@ -2,7 +2,7 @@ package sealing
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/storage/sectorstorage/ffiwrapper"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"io"
 
 	"golang.org/x/xerrors"

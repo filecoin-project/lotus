@@ -3,7 +3,7 @@ package repo
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/lotus/storage/sectorstorage/stores"
+	"github.com/filecoin-project/sector-storage/stores"
 	"io"
 	"io/ioutil"
 	"os"
