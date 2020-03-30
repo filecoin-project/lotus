@@ -377,7 +377,7 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 	unsubscribe()
 
 	if ref.IsCAR {
-		f, err := os.Open(ref.Path)
+		f, err := os.OpenFile(ref.Path, os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			return err
 		}
