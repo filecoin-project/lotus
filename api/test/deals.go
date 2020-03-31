@@ -50,8 +50,67 @@ func TestDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, carExport
 	}
 	time.Sleep(time.Second)
 
-	data := make([]byte, 600)
-	rand.New(rand.NewSource(5)).Read(data)
+	mine := true
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for mine {
+			time.Sleep(blocktime)
+			if err := sn[0].MineOne(ctx); err != nil {
+				t.Error(err)
+			}
+		}
+	}()
+
+	makeDeal(t, ctx, 6, client, miner)
+
+	mine = false
+	fmt.Println("shutting down mining")
+	<-done
+}
+
+func TestDoubleDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration) {
+	os.Setenv("BELLMAN_NO_GPU", "1")
+
+	ctx := context.Background()
+	n, sn := b(t, 1, []int{0})
+	client := n[0].FullNode.(*impl.FullNodeAPI)
+	miner := sn[0]
+
+	addrinfo, err := client.NetAddrsListen(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := miner.NetConnect(ctx, addrinfo); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(time.Second)
+
+	mine := true
+	done := make(chan struct{})
+
+	go func() {
+		defer close(done)
+		for mine {
+			time.Sleep(blocktime)
+			if err := sn[0].MineOne(ctx); err != nil {
+				t.Error(err)
+			}
+		}
+	}()
+
+	makeDeal(t, ctx, 6, client, miner)
+	makeDeal(t, ctx, 7, client, miner)
+
+	mine = false
+	fmt.Println("shutting down mining")
+	<-done
+}
+
+func makeDeal(t *testing.T, ctx context.Context, rseed int, client *impl.FullNodeAPI, miner TestStorageNode) {
+	data := make([]byte, 1600)
+	rand.New(rand.NewSource(6)).Read(data)
 
 	r := bytes.NewReader(data)
 	fcid, err := client.ClientImportLocal(ctx, r)
@@ -66,18 +125,6 @@ func TestDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, carExport
 
 	fmt.Println("FILE CID: ", fcid)
 
-	mine := true
-	done := make(chan struct{})
-
-	go func() {
-		defer close(done)
-		for mine {
-			time.Sleep(blocktime)
-			if err := sn[0].MineOne(ctx); err != nil {
-				t.Error(err)
-			}
-		}
-	}()
 	addr, err := client.WalletDefaultAddress(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -95,7 +142,7 @@ func TestDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, carExport
 
 	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
 	time.Sleep(time.Second)
-loop:
+loop2:
 	for {
 		di, err := client.ClientGetDealInfo(ctx, *deal)
 		if err != nil {
@@ -110,7 +157,7 @@ loop:
 			t.Fatal("deal errored", di.Message)
 		case storagemarket.StorageDealActive:
 			fmt.Println("COMPLETE", di)
-			break loop
+			break loop2
 		}
 		fmt.Println("Deal state: ", storagemarket.DealStates[di.State])
 		time.Sleep(time.Second / 2)
@@ -184,8 +231,4 @@ loop:
 	if !bytes.Equal(rdata, data) {
 		t.Fatal("wrong data retrieved")
 	}
-
-	mine = false
-	fmt.Println("shutting down mining")
-	<-done
 }
