@@ -86,7 +86,7 @@ var dealsListCmd = &cli.Command{
 
 		ctx := lcli.DaemonContext(cctx)
 
-		deals, err := api.DealsList(ctx)
+		deals, err := api.MarketListIncompleteDeals(ctx)
 		if err != nil {
 			return err
 		}
