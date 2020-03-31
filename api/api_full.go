@@ -178,9 +178,10 @@ type Import struct {
 type DealInfo struct {
 	ProposalCid cid.Cid
 	State       storagemarket.StorageDealStatus
+	Message     string // more information about deal state, particularly errors
 	Provider    address.Address
 
-	PieceRef []byte // cid bytes
+	PieceCID cid.Cid
 	Size     uint64
 
 	PricePerEpoch types.BigInt
