@@ -58,7 +58,7 @@ var dealsImportDataCmd = &cli.Command{
 
 		ctx := lcli.DaemonContext(cctx)
 
-		if cctx.Args().Len() == 2 {
+		if cctx.Args().Len() < 2 {
 			return fmt.Errorf("must specify proposal CID and file path")
 		}
 
