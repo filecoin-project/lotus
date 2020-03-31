@@ -453,8 +453,12 @@ func TestAPIDealFlow(t *testing.T) {
 	logging.SetLogLevel("sub", "ERROR")
 	logging.SetLogLevel("storageminer", "ERROR")
 
-	test.TestDealFlow(t, mockSbBuilder, 10*time.Millisecond, false)
-
+	t.Run("TestDealFlow", func(t *testing.T) {
+		test.TestDealFlow(t, mockSbBuilder, 10*time.Millisecond, false)
+	})
+	t.Run("TestDoubleDealFlow", func(t *testing.T) {
+		test.TestDoubleDealFlow(t, mockSbBuilder, 10*time.Millisecond, false)
+	})
 	t.Run("WithExportedCAR", func(t *testing.T) {
 		test.TestDealFlow(t, mockSbBuilder, 10*time.Millisecond, true)
 	})
