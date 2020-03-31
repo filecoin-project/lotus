@@ -142,7 +142,7 @@ func makeDeal(t *testing.T, ctx context.Context, rseed int, client *impl.FullNod
 
 	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
 	time.Sleep(time.Second)
-loop2:
+loop:
 	for {
 		di, err := client.ClientGetDealInfo(ctx, *deal)
 		if err != nil {
@@ -157,7 +157,7 @@ loop2:
 			t.Fatal("deal errored", di.Message)
 		case storagemarket.StorageDealActive:
 			fmt.Println("COMPLETE", di)
-			break loop2
+			break loop
 		}
 		fmt.Println("Deal state: ", storagemarket.DealStates[di.State])
 		time.Sleep(time.Second / 2)
