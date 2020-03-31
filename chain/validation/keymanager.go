@@ -2,6 +2,7 @@ package validation
 
 import (
 	"fmt"
+	"github.com/minio/blake2b-simd"
 	"math/rand"
 
 	"github.com/filecoin-project/go-address"
@@ -46,22 +47,24 @@ func (k *KeyManager) Sign(addr address.Address, data []byte) (acrypto.Signature,
 	if !ok {
 		return acrypto.Signature{}, fmt.Errorf("unknown address %v", addr)
 	}
-	sig, err := crypto.Sign(ki.PrivateKey, data)
-	if err != nil {
-		return acrypto.Signature{}, err
-	}
 	var sigType acrypto.SigType
-	if ki.Type == wallet.KTBLS {
+	if ki.Type == wallet.KTSecp256k1 {
 		sigType = acrypto.SigTypeBLS
-	} else if ki.Type == wallet.KTSecp256k1 {
-		sigType = acrypto.SigTypeSecp256k1
+		hashed := blake2b.Sum256(data)
+		sig, err := crypto.Sign(ki.PrivateKey, hashed[:])
+		if err != nil {
+			return acrypto.Signature{}, err
+		}
+
+		return acrypto.Signature{
+			Type: sigType,
+			Data: sig,
+		}, nil
+	} else if ki.Type == wallet.KTBLS {
+		panic("lotus validator cannot sign BLS messages")
 	} else {
 		panic("unknown signature type")
 	}
-	return acrypto.Signature{
-		Type: sigType,
-		Data: sig,
-	}, nil
 
 }
 
