@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
-	"github.com/filecoin-project/lotus/lib/lotuslog"
-	"github.com/filecoin-project/lotus/storage/mockstorage"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"io/ioutil"
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/filecoin-project/lotus/lib/lotuslog"
+	"github.com/filecoin-project/lotus/storage/mockstorage"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
 
 	"github.com/filecoin-project/go-fil-markets/storedcounter"
 	"github.com/ipfs/go-datastore"
@@ -43,7 +44,7 @@ import (
 	"github.com/filecoin-project/lotus/node/modules"
 	modtest "github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/filecoin-project/sector-storage"
+	sectorstorage "github.com/filecoin-project/sector-storage"
 	"github.com/filecoin-project/sector-storage/mock"
 )
 
@@ -449,7 +450,11 @@ func TestAPIDealFlow(t *testing.T) {
 	logging.SetLogLevel("sub", "ERROR")
 	logging.SetLogLevel("storageminer", "ERROR")
 
-	test.TestDealFlow(t, mockSbBuilder, 10*time.Millisecond)
+	test.TestDealFlow(t, mockSbBuilder, 10*time.Millisecond, false)
+
+	t.Run("WithExportedCAR", func(t *testing.T) {
+		test.TestDealFlow(t, mockSbBuilder, 10*time.Millisecond, true)
+	})
 }
 
 func TestAPIDealFlowReal(t *testing.T) {
@@ -463,5 +468,5 @@ func TestAPIDealFlowReal(t *testing.T) {
 	logging.SetLogLevel("sub", "ERROR")
 	logging.SetLogLevel("storageminer", "ERROR")
 
-	test.TestDealFlow(t, builder, time.Second)
+	test.TestDealFlow(t, builder, time.Second, false)
 }
