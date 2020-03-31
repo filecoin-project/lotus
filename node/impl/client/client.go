@@ -3,9 +3,10 @@ package client
 import (
 	"context"
 	"errors"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"io"
 	"os"
+
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
 
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"golang.org/x/xerrors"
@@ -125,9 +126,10 @@ func (a *API) ClientListDeals(ctx context.Context) ([]api.DealInfo, error) {
 		out[k] = api.DealInfo{
 			ProposalCid: v.ProposalCid,
 			State:       v.State,
+			Message:     v.Message,
 			Provider:    v.Proposal.Provider,
 
-			PieceRef: v.Proposal.PieceCID.Bytes(),
+			PieceCID: v.Proposal.PieceCID,
 			Size:     uint64(v.Proposal.PieceSize.Unpadded()),
 
 			PricePerEpoch: v.Proposal.StoragePricePerEpoch,
@@ -148,8 +150,9 @@ func (a *API) ClientGetDealInfo(ctx context.Context, d cid.Cid) (*api.DealInfo, 
 	return &api.DealInfo{
 		ProposalCid:   v.ProposalCid,
 		State:         v.State,
+		Message:       v.Message,
 		Provider:      v.Proposal.Provider,
-		PieceRef:      v.Proposal.PieceCID.Bytes(),
+		PieceCID:      v.Proposal.PieceCID,
 		Size:          uint64(v.Proposal.PieceSize.Unpadded()),
 		PricePerEpoch: v.Proposal.StoragePricePerEpoch,
 		Duration:      uint64(v.Proposal.Duration()),
