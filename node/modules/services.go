@@ -55,10 +55,10 @@ func RunBlockSync(h host.Host, svc *blocksync.BlockSyncService) {
 	h.SetStreamHandler(blocksync.BlockSyncProtocolID, svc.HandleStream)
 }
 
-func HandleIncomingBlocks(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.PubSub, s *chain.Syncer, h host.Host) {
+func HandleIncomingBlocks(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.PubSub, s *chain.Syncer, h host.Host, nn dtypes.NetworkName) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
-	blocksub, err := ps.Subscribe(build.BlocksTopic)
+	blocksub, err := ps.Subscribe(build.BlocksTopic(nn))
 	if err != nil {
 		panic(err)
 	}
@@ -68,24 +68,24 @@ func HandleIncomingBlocks(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.P
 		h.ConnManager().TagPeer(p, "badblock", -1000)
 	})
 
-	if err := ps.RegisterTopicValidator(build.BlocksTopic, v.Validate); err != nil {
+	if err := ps.RegisterTopicValidator(build.BlocksTopic(nn), v.Validate); err != nil {
 		panic(err)
 	}
 
 	go sub.HandleIncomingBlocks(ctx, blocksub, s, h.ConnManager())
 }
 
-func HandleIncomingMessages(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.PubSub, mpool *messagepool.MessagePool) {
+func HandleIncomingMessages(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.PubSub, mpool *messagepool.MessagePool, nn dtypes.NetworkName) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
-	msgsub, err := ps.Subscribe(build.MessagesTopic)
+	msgsub, err := ps.Subscribe(build.MessagesTopic(nn))
 	if err != nil {
 		panic(err)
 	}
 
 	v := sub.NewMessageValidator(mpool)
 
-	if err := ps.RegisterTopicValidator(build.MessagesTopic, v.Validate); err != nil {
+	if err := ps.RegisterTopicValidator(build.MessagesTopic(nn), v.Validate); err != nil {
 		panic(err)
 	}
 
