@@ -11,13 +11,20 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ipfs/go-car"
+	files "github.com/ipfs/go-ipfs-files"
 	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	dag "github.com/ipfs/go-merkledag"
+	dstest "github.com/ipfs/go-merkledag/test"
+	unixfile "github.com/ipfs/go-unixfs/file"
+
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/impl"
+	ipld "github.com/ipfs/go-ipld-format"
 )
 
 func init() {
@@ -25,7 +32,7 @@ func init() {
 	build.InsecurePoStValidation = true
 }
 
-func TestDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration) {
+func TestDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, carExport bool) {
 	os.Setenv("BELLMAN_NO_GPU", "1")
 
 	ctx := context.Background()
@@ -133,7 +140,7 @@ loop:
 
 	ref := api.FileRef{
 		Path:  filepath.Join(rpath, "ret"),
-		IsCAR: false,
+		IsCAR: carExport,
 	}
 	err = client.ClientRetrieve(ctx, offers[0].Order(caddr), ref)
 	if err != nil {
@@ -143,6 +150,35 @@ loop:
 	rdata, err := ioutil.ReadFile(filepath.Join(rpath, "ret"))
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	if carExport {
+		bserv := dstest.Bserv()
+		ch, err := car.LoadCar(bserv.Blockstore(), bytes.NewReader(rdata))
+		if err != nil {
+			t.Fatal(err)
+		}
+		b, err := bserv.GetBlock(ctx, ch.Roots[0])
+		if err != nil {
+			t.Fatal(err)
+		}
+		nd, err := ipld.Decode(b)
+		if err != nil {
+			t.Fatal(err)
+		}
+		dserv := dag.NewDAGService(bserv)
+		fil, err := unixfile.NewUnixfsFile(ctx, dserv, nd)
+		if err != nil {
+			t.Fatal(err)
+		}
+		outPath := filepath.Join(rpath, "retLoadedCAR")
+		if err := files.WriteTo(fil, outPath); err != nil {
+			t.Fatal(err)
+		}
+		rdata, err = ioutil.ReadFile(outPath)
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	if !bytes.Equal(rdata, data) {
