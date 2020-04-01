@@ -35,15 +35,39 @@ commands:
           paths:
             - /var/tmp/filecoin-proof-parameters/
 jobs:
-  mod-tidy-check:
+  test:
     executor: golang
+    environment:
+      RUST_LOG: info
     steps:
       - install-build-dependencies
       - download-groth-params-and-verifying-keys
+      - run: go test -v -timeout 10m ./...
+  mod-tidy-check:
+    executor: golang
+    steps:
       - go/mod-download
       - go/mod-tidy-check
+  gofmt-check:
+    executor: golang
+    steps:
+      - go/mod-download
+      - run:
+          command: "! go fmt ./... 2>&1 | read"
+  lint-check:
+    executor: golang
+    steps:
+      - go/mod-download
+      - go/install-golangci-lint:
+          gobin: $HOME/.local/bin
+          version: 1.23.8
+      - run:
+          command: $HOME/.local/bin/golangci-lint run -v --concurrency 2
 workflows:
   version: 2.1
   build_and_test:
     jobs:
       - mod-tidy-check
+      - lint-check
+      - gofmt-check
+      - test
