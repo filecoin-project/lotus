@@ -14,6 +14,7 @@ import (
 
 	"github.com/filecoin-project/lotus/node/modules"
 
+	"github.com/docker/go-units"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p-core/crypto"
@@ -75,10 +76,10 @@ var initCmd = &cli.Command{
 			Aliases: []string{"o"},
 			Usage:   "owner key to use",
 		},
-		&cli.Uint64Flag{
+		&cli.StringFlag{
 			Name:  "sector-size",
 			Usage: "specify sector size to use",
-			Value: uint64(build.SectorSizes[0]),
+			Value: fmt.Sprint(build.SectorSizes[0]),
 		},
 		&cli.StringSliceFlag{
 			Name:  "pre-sealed-sectors",
@@ -109,7 +110,11 @@ var initCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		log.Info("Initializing lotus storage miner")
 
-		ssize := abi.SectorSize(cctx.Uint64("sector-size"))
+		sectorSizeInt, err := units.RAMInBytes(cctx.String("sector-size"))
+		if err != nil {
+			return err
+		}
+		ssize := abi.SectorSize(sectorSizeInt)
 
 		gasPrice, err := types.BigFromString(cctx.String("gas-price"))
 		if err != nil {
