@@ -3,7 +3,6 @@ package chain
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -43,6 +42,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/metrics"
+	"github.com/filecoin-project/lotus/validation"
 )
 
 var log = logging.Logger("chain")
@@ -442,8 +442,15 @@ func (syncer *Syncer) Sync(ctx context.Context, maybeHead *types.TipSet) error {
 	return nil
 }
 
+// FIXME: Document.
 func isPermanent(err error) bool {
-	return !errors.Is(err, ErrTemporal)
+	if errorWithCategory, ok := err.(validation.ErrorWithCategory); ok {
+		return errorWithCategory.Category() != validation.BlockFutureTimestamp
+	}
+	// FIXME: Include this in `ErrorWithCategory` if it makes sense, it could allow
+	//  us to extend the logic and traverse the hierarchy.
+
+	return false
 }
 
 func (syncer *Syncer) ValidateTipSet(ctx context.Context, fts *store.FullTipSet) error {
@@ -491,8 +498,6 @@ func (syncer *Syncer) minerIsValid(ctx context.Context, maddr address.Address, b
 	return nil
 }
 
-var ErrTemporal = errors.New("temporal error")
-
 // Should match up with 'Semantical Validation' in validation.md in the spec
 func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) error {
 	ctx, span := trace.StartSpan(ctx, "validateBlock")
@@ -506,6 +511,8 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	baseTs, err := syncer.store.LoadTipSet(types.NewTipSetKey(h.Parents...))
 	if err != nil {
 		return xerrors.Errorf("load parent tipset failed (%s): %w", h.Parents, err)
+		// FIXME: If the block is referencing unknown parents we may want to add this to the
+		//  validation package, but probably there's an early point where that is discovered.
 	}
 
 	prevBeacon, err := syncer.store.GetLatestBeaconEntry(baseTs)
@@ -517,14 +524,15 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 
 	// fast checks first
 	if h.BlockSig == nil {
-		return xerrors.Errorf("block had nil signature")
+		return validation.NilSignature.Error()
 	}
 
-	now := uint64(time.Now().Unix())
-	if h.Timestamp > now+build.AllowableClockDrift {
-		return xerrors.Errorf("block was from the future (now=%d, blk=%d): %w", now, h.Timestamp, ErrTemporal)
+	maxTimeDrift := time.Now().Add(build.AllowableClockDrift)
+	if h.Timestamp > uint64(maxTimeDrift.Unix()) {
+		return validation.BlockFutureTimestamp.FromString(fmt.Sprintf("%s > %s", time.Unix(int64(h.Timestamp), 0).Format("%FT%T"), maxTimeDrift.Format("%FT%T")))
+		// FIXME: There surely is a simpler way to format these times.
 	}
-	if h.Timestamp > now {
+	if h.Timestamp > uint64(time.Now().Unix()) {
 		log.Warn("Got block from the future, but within threshold", h.Timestamp, time.Now().Unix())
 	}
 
@@ -532,19 +540,20 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		log.Warn("timestamp funtimes: ", h.Timestamp, baseTs.MinTimestamp(), h.Height, baseTs.Height())
 		diff := (baseTs.MinTimestamp() + (build.BlockDelay * uint64(h.Height-baseTs.Height()))) - h.Timestamp
 
-		return xerrors.Errorf("block was generated too soon (h.ts:%d < base.mints:%d + BLOCK_DELAY:%d * deltaH:%d; diff %d)", h.Timestamp, baseTs.MinTimestamp(), build.BlockDelay, h.Height-baseTs.Height(), diff)
+		return validation.Timestamp.FromString(fmt.Sprintf("h.ts:%d < base.mints:%d + BLOCK_DELAY:%d * deltaH:%d; diff %d",
+			h.Timestamp, baseTs.MinTimestamp(), build.BlockDelay, h.Height-baseTs.Height(), diff))
 	}
 
 	msgsCheck := async.Err(func() error {
 		if err := syncer.checkBlockMessages(ctx, b, baseTs); err != nil {
-			return xerrors.Errorf("block had invalid messages: %w", err)
+			return err
 		}
 		return nil
 	})
 
 	minerCheck := async.Err(func() error {
 		if err := syncer.minerIsValid(ctx, h.Miner, baseTs); err != nil {
-			return xerrors.Errorf("minerIsValid failed: %w", err)
+			return validation.Miner.WrapError(err)
 		}
 		return nil
 	})
@@ -804,6 +813,7 @@ func (syncer *Syncer) VerifyElectionPoStProof(ctx context.Context, h *types.Bloc
 }
 */
 
+// Returns validation errors from the `InvalidMessage` category.
 func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock, baseTs *types.TipSet) error {
 	{
 		var sigCids []cid.Cid // this is what we get for people not wanting the marshalcbor method on the cid type
@@ -815,13 +825,14 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 			pubk, err := syncer.sm.GetBlsPublicKey(ctx, m.From, baseTs)
 			if err != nil {
 				return xerrors.Errorf("failed to load bls public to validate block: %w", err)
+				// FIXME: Is there a validation error here?
 			}
 
 			pubks = append(pubks, pubk)
 		}
 
 		if err := syncer.verifyBlsAggregate(ctx, b.Header.BLSAggregate, sigCids, pubks); err != nil {
-			return xerrors.Errorf("bls aggregate signature was invalid: %w", err)
+			return validation.InvalidMessage.WrapError(err)
 		}
 	}
 
@@ -840,7 +851,7 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 
 	checkMsg := func(m *types.Message) error {
 		if m.To == address.Undef {
-			return xerrors.New("'To' address cannot be empty")
+			return validation.EmptyRecipient.Error()
 		}
 
 		if _, ok := nonces[m.From]; !ok {
@@ -848,12 +859,14 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 			act, err := st.GetActor(m.From)
 			if err != nil {
 				return xerrors.Errorf("failed to get actor: %w", err)
+				// FIXME: Some of `GetActor` errors should be in the validation package (it
+				// does many checks besides retrieving information).
 			}
 			nonces[m.From] = act.Nonce
 		}
 
 		if nonces[m.From] != m.Nonce {
-			return xerrors.Errorf("wrong nonce (exp: %d, got: %d)", nonces[m.From], m.Nonce)
+			return validation.WrongNonce.FromString(fmt.Sprintf("exp: %d, got: %d", nonces[m.From], m.Nonce))
 		}
 		nonces[m.From]++
 
@@ -864,7 +877,7 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 
 	for i, m := range b.BlsMessages {
 		if err := checkMsg(m); err != nil {
-			return xerrors.Errorf("block had invalid bls message at index %d: %w", i, err)
+			return validation.InvalidMessage.FromString(fmt.Sprintf("invalid bls message at index %d: %s", i, err))
 		}
 
 		c := cbg.CborCid(m.Cid())
@@ -874,7 +887,7 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 	var secpkCids []cbg.CBORMarshaler
 	for i, m := range b.SecpkMessages {
 		if err := checkMsg(&m.Message); err != nil {
-			return xerrors.Errorf("block had invalid secpk message at index %d: %w", i, err)
+			return validation.InvalidMessage.FromString(fmt.Sprintf("invalid secpk message at index %d: %s", i, err))
 		}
 
 		// `From` being an account actor is only validated inside the `vm.ResolveToKeyAddr` call
@@ -885,7 +898,7 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 		}
 
 		if err := sigs.Verify(&m.Signature, kaddr, m.Message.Cid().Bytes()); err != nil {
-			return xerrors.Errorf("secpk message %s has invalid signature: %w", m.Cid(), err)
+			return validation.InvalidSecpkSignature.FromString(fmt.Sprintf("%s: %s", err.Error(), m.Cid()))
 		}
 
 		c := cbg.CborCid(m.Cid())
@@ -911,7 +924,8 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 	}
 
 	if b.Header.Messages != mrcid {
-		return fmt.Errorf("messages didnt match message root in header")
+		return validation.InvalidMessagesCID.Error()
+		// FIXME: This is more of a block check than a message check.
 	}
 
 	return nil
