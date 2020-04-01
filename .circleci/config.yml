@@ -57,8 +57,7 @@ jobs:
     steps:
       - prepare-git-checkout
       - go/mod-download
-      - run:
-          command: "! go fmt ./... 2>&1 | read"
+      - run: "! go fmt ./... 2>&1 | read"
   lint-check:
     executor: golang
     steps:
