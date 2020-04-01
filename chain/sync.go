@@ -511,10 +511,11 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		return xerrors.Errorf("block had nil signature")
 	}
 
-	if h.Timestamp > uint64(time.Now().Unix()+build.AllowableClockDrift) {
-		return xerrors.Errorf("block was from the future: %w", ErrTemporal)
+	now := uint64(time.Now().Unix())
+	if h.Timestamp > now+build.AllowableClockDrift {
+		return xerrors.Errorf("block was from the future (now=%d, blk=%d): %w", now, h.Timestamp, ErrTemporal)
 	}
-	if h.Timestamp > uint64(time.Now().Unix()) {
+	if h.Timestamp > now {
 		log.Warn("Got block from the future, but within threshold", h.Timestamp, time.Now().Unix())
 	}
 

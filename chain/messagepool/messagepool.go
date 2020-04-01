@@ -462,7 +462,7 @@ func (mp *MessagePool) PushWithNonce(addr address.Address, cb func(uint64) (*typ
 
 	nonce, err := mp.getNonceLocked(addr, mp.curTs)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("get nonce locked failed: %w", err)
 	}
 
 	msg, err := cb(nonce)
@@ -476,7 +476,7 @@ func (mp *MessagePool) PushWithNonce(addr address.Address, cb func(uint64) (*typ
 	}
 
 	if err := mp.addLocked(msg); err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("add locked failed: %w", err)
 	}
 	if err := mp.addLocal(msg, msgb); err != nil {
 		log.Errorf("addLocal failed: %+v", err)
