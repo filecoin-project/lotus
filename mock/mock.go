@@ -53,7 +53,7 @@ func NewMockSectorMgr(threads int, ssize abi.SectorSize) *SectorMgr {
 const (
 	statePacking = iota
 	statePreCommit
-	stateCommit
+	stateCommit // nolint
 )
 
 type sectorState struct {
