@@ -227,8 +227,10 @@ func Online() Option {
 			Override(new(*messagepool.MessagePool), modules.MessagePool),
 
 			Override(new(modules.Genesis), modules.ErrorGenesis),
-			Override(SetGenesisKey, modules.SetGenesis),
+			Override(new(dtypes.AfterGenesisSet), modules.SetGenesis),
+			Override(SetGenesisKey, modules.DoSetGenesis),
 
+			Override(new(dtypes.NetworkName), modules.NetworkName),
 			Override(new(*hello.Service), hello.NewHelloService),
 			Override(new(*blocksync.BlockSyncService), blocksync.NewBlockSyncService),
 			Override(new(*peermgr.PeerMgr), peermgr.NewPeerMgr),
@@ -280,6 +282,7 @@ func Online() Option {
 			Override(new(*sectorblocks.SectorBlocks), sectorblocks.NewSectorBlocks),
 			Override(new(sealing.TicketFn), modules.SealTicketGen),
 			Override(new(*storage.Miner), modules.StorageMiner),
+			Override(new(dtypes.NetworkName), modules.StorageNetworkName),
 
 			Override(new(dtypes.StagingBlockstore), modules.StagingBlockstore),
 			Override(new(dtypes.StagingDAG), modules.StagingDAG),
