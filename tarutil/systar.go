@@ -11,7 +11,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 )
 
-var log = logging.Logger("tarutil")
+var log = logging.Logger("tarutil") // nolint
 
 func ExtractTar(body io.Reader, dir string) error {
 	if err := os.MkdirAll(dir, 0755); err != nil {
@@ -73,7 +73,7 @@ func writeTarDirectory(dir string, w io.Writer) error {
 			return xerrors.Errorf("wiritng header for file %s: %w", file.Name(), err)
 		}
 
-		f, err := os.OpenFile(filepath.Join(dir, file.Name()), os.O_RDONLY, 644)
+		f, err := os.OpenFile(filepath.Join(dir, file.Name()), os.O_RDONLY, 644) // nolint
 		if err != nil {
 			return xerrors.Errorf("opening %s for reading: %w", file.Name(), err)
 		}
