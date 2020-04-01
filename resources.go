@@ -58,12 +58,12 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 			BaseMinMemory: 2 << 10,
 		},
 		abi.RegisteredProof_StackedDRG8MiBSeal: Resources{
-			MaxMemory: 2 << 22,
-			MinMemory: 2 << 22,
+			MaxMemory: 8 << 20,
+			MinMemory: 8 << 20,
 
 			MultiThread: false,
 
-			BaseMinMemory: 2 << 22,
+			BaseMinMemory: 8 << 20,
 		},
 	},
 	sealtasks.TTPreCommit1: {
@@ -92,12 +92,12 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 			BaseMinMemory: 2 << 10,
 		},
 		abi.RegisteredProof_StackedDRG8MiBSeal: Resources{
-			MaxMemory: 2 << 22,
-			MinMemory: 2 << 22,
+			MaxMemory: 8 << 20,
+			MinMemory: 8 << 20,
 
 			MultiThread: false,
 
-			BaseMinMemory: 2 << 22,
+			BaseMinMemory: 8 << 20,
 		},
 	},
 	sealtasks.TTPreCommit2: {
@@ -126,12 +126,12 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 			BaseMinMemory: 2 << 10,
 		},
 		abi.RegisteredProof_StackedDRG8MiBSeal: Resources{
-			MaxMemory: 2 << 22,
-			MinMemory: 2 << 22,
+			MaxMemory: 8 << 20,
+			MinMemory: 8 << 20,
 
 			MultiThread: true,
 
-			BaseMinMemory: 2 << 22,
+			BaseMinMemory: 8 << 20,
 		},
 	},
 	sealtasks.TTCommit1: { // Very short (~100ms), so params are very light
@@ -160,12 +160,12 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 			BaseMinMemory: 2 << 10,
 		},
 		abi.RegisteredProof_StackedDRG8MiBSeal: Resources{
-			MaxMemory: 2 << 22,
-			MinMemory: 2 << 22,
+			MaxMemory: 8 << 20,
+			MinMemory: 8 << 20,
 
 			MultiThread: false,
 
-			BaseMinMemory: 2 << 22,
+			BaseMinMemory: 8 << 20,
 		},
 	},
 	sealtasks.TTCommit2: { // TODO: Measure more accurately
@@ -197,13 +197,13 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 			BaseMinMemory: 2 << 10,
 		},
 		abi.RegisteredProof_StackedDRG8MiBSeal: Resources{
-			MaxMemory: 2 << 22,
-			MinMemory: 2 << 22,
+			MaxMemory: 8 << 20,
+			MinMemory: 8 << 20,
 
 			MultiThread: false,
 			CanGPU: true,
 
-			BaseMinMemory: 2 << 22,
+			BaseMinMemory: 8 << 20,
 		},
 	},
 }
