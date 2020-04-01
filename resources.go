@@ -50,20 +50,20 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 			BaseMinMemory: 1 << 30,
 		},
 		abi.RegisteredProof_StackedDRG2KiBSeal: Resources{
-			MaxMemory: 1 << 11,
-			MinMemory: 1 << 11,
+			MaxMemory: 2 << 10,
+			MinMemory: 2 << 10,
 
 			MultiThread: false,
 
-			BaseMinMemory: 1 << 11,
+			BaseMinMemory: 2 << 10,
 		},
 		abi.RegisteredProof_StackedDRG8MiBSeal: Resources{
-			MaxMemory: 1 << 23,
-			MinMemory: 1 << 23,
+			MaxMemory: 8 << 20,
+			MinMemory: 8 << 20,
 
 			MultiThread: false,
 
-			BaseMinMemory: 1 << 23,
+			BaseMinMemory: 8 << 20,
 		},
 	},
 	sealtasks.TTPreCommit1: {
@@ -84,20 +84,20 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 			BaseMinMemory: 1 << 30,
 		},
 		abi.RegisteredProof_StackedDRG2KiBSeal: Resources{
-			MaxMemory: 1 << 11,
-			MinMemory: 1 << 11,
+			MaxMemory: 2 << 10,
+			MinMemory: 2 << 10,
 
 			MultiThread: false,
 
-			BaseMinMemory: 1 << 11,
+			BaseMinMemory: 2 << 10,
 		},
 		abi.RegisteredProof_StackedDRG8MiBSeal: Resources{
-			MaxMemory: 1 << 23,
-			MinMemory: 1 << 23,
+			MaxMemory: 8 << 20,
+			MinMemory: 8 << 20,
 
 			MultiThread: false,
 
-			BaseMinMemory: 1 << 23,
+			BaseMinMemory: 8 << 20,
 		},
 	},
 	sealtasks.TTPreCommit2: {
@@ -118,20 +118,20 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 			BaseMinMemory: 1 << 30,
 		},
 		abi.RegisteredProof_StackedDRG2KiBSeal: Resources{
-			MaxMemory: 1 << 11,
-			MinMemory: 1 << 11,
+			MaxMemory: 2 << 10,
+			MinMemory: 2 << 10,
 
 			MultiThread: true,
 
-			BaseMinMemory: 1 << 11,
+			BaseMinMemory: 2 << 10,
 		},
 		abi.RegisteredProof_StackedDRG8MiBSeal: Resources{
-			MaxMemory: 1 << 23,
-			MinMemory: 1 << 23,
+			MaxMemory: 8 << 20,
+			MinMemory: 8 << 20,
 
 			MultiThread: true,
 
-			BaseMinMemory: 1 << 23,
+			BaseMinMemory: 8 << 20,
 		},
 	},
 	sealtasks.TTCommit1: { // Very short (~100ms), so params are very light
@@ -152,20 +152,20 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 			BaseMinMemory: 1 << 30,
 		},
 		abi.RegisteredProof_StackedDRG2KiBSeal: Resources{
-			MaxMemory: 1 << 11,
-			MinMemory: 1 << 11,
+			MaxMemory: 2 << 10,
+			MinMemory: 2 << 10,
 
 			MultiThread: false,
 
-			BaseMinMemory: 1 << 11,
+			BaseMinMemory: 2 << 10,
 		},
 		abi.RegisteredProof_StackedDRG8MiBSeal: Resources{
-			MaxMemory: 1 << 23,
-			MinMemory: 1 << 23,
+			MaxMemory: 8 << 20,
+			MinMemory: 8 << 20,
 
 			MultiThread: false,
 
-			BaseMinMemory: 1 << 23,
+			BaseMinMemory: 8 << 20,
 		},
 	},
 	sealtasks.TTCommit2: { // TODO: Measure more accurately
@@ -188,22 +188,22 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 			BaseMinMemory: 10 << 30,
 		},
 		abi.RegisteredProof_StackedDRG2KiBSeal: Resources{
-			MaxMemory: 1 << 11,
-			MinMemory: 1 << 11,
+			MaxMemory: 2 << 10,
+			MinMemory: 2 << 10,
 
 			MultiThread: false,
 			CanGPU:      true,
 
-			BaseMinMemory: 1 << 11,
+			BaseMinMemory: 2 << 10,
 		},
 		abi.RegisteredProof_StackedDRG8MiBSeal: Resources{
-			MaxMemory: 1 << 23,
-			MinMemory: 1 << 23,
+			MaxMemory: 8 << 20,
+			MinMemory: 8 << 20,
 
 			MultiThread: false,
 			CanGPU:      true,
 
-			BaseMinMemory: 1 << 23,
+			BaseMinMemory: 8 << 20,
 		},
 	},
 }
