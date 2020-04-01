@@ -105,7 +105,7 @@ func (bs *BlockSync) GetBlocks(ctx context.Context, tsk types.TipSetKey, count i
 			continue
 		}
 
-		if res.Status == 0 {
+		if res.Status == StatusOK || res.Status == StatusPartial {
 			resp, err := bs.processBlocksResponse(req, res)
 			if err != nil {
 				return nil, xerrors.Errorf("success response from peer failed to process: %w", err)
@@ -114,6 +114,7 @@ func (bs *BlockSync) GetBlocks(ctx context.Context, tsk types.TipSetKey, count i
 			bs.host.ConnManager().TagPeer(p, "bsync", 25)
 			return resp, nil
 		}
+
 		oerr = bs.processStatus(req, res)
 		if oerr != nil {
 			log.Warnf("BlockSync peer %s response was an error: %s", p.String(), oerr)
@@ -145,7 +146,7 @@ func (bs *BlockSync) GetFullTipSet(ctx context.Context, p peer.ID, tsk types.Tip
 
 		return bstsToFullTipSet(bts)
 	case 101: // Partial Response
-		return nil, xerrors.Errorf("partial responses are not handled")
+		return nil, xerrors.Errorf("partial responses are not handled for single tipset fetching")
 	case 201: // req.Start not found
 		return nil, fmt.Errorf("not found")
 	case 202: // Go Away
@@ -185,7 +186,7 @@ func (bs *BlockSync) GetChainMessages(ctx context.Context, h *types.TipSet, coun
 	req := &BlockSyncRequest{
 		Start:         h.Cids(),
 		RequestLength: count,
-		Options:       BSOptMessages | BSOptBlocks,
+		Options:       BSOptMessages,
 	}
 
 	var err error
@@ -205,8 +206,8 @@ func (bs *BlockSync) GetChainMessages(ctx context.Context, h *types.TipSet, coun
 		}
 
 		if res.Status == StatusPartial {
-			log.Warn("dont yet handle partial responses")
-			continue
+			// TODO: track partial response sizes to ensure we don't overrequest too often
+			return res.Chain, nil
 		}
 
 		err = bs.processStatus(req, res)
