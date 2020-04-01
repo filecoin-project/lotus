@@ -1,0 +1,49 @@
+version: 2.1
+orbs:
+  go: gotest/tools@0.0.9
+executors:
+  golang:
+    docker:
+      - image: circleci/golang:1.13
+    resource_class: 2xlarge
+commands:
+  install-build-dependencies:
+    steps:
+      - checkout
+      - run: sudo apt-get update
+      - run: sudo apt-get install -y jq ocl-icd-opencl-dev
+      - run: git submodule sync
+      - run: git submodule update --init --recursive
+      - run: ./extern/filecoin-ffi/install-filcrypto
+  download-groth-params-and-verifying-keys:
+    steps:
+      - restore_cache:
+          name: Restore parameters cache
+          keys:
+            - 'v24-2k-lotus-params'
+          paths:
+            - /var/tmp/filecoin-proof-parameters/
+      - run: |
+          DIR=$(pwd)
+          cd $(mktemp -d)
+          go get github.com/filecoin-project/go-paramfetch/paramfetch
+          go build -o go-paramfetch github.com/filecoin-project/go-paramfetch/paramfetch
+          ./go-paramfetch 2048 "${DIR}/parameters.json"
+      - save_cache:
+          name: Save parameters cache
+          key: 'v24-2k-lotus-params'
+          paths:
+            - /var/tmp/filecoin-proof-parameters/
+jobs:
+  mod-tidy-check:
+    executor: golang
+    steps:
+      - install-build-dependencies
+      - download-groth-params-and-verifying-keys
+      - go/mod-download
+      - go/mod-tidy-check
+workflows:
+  version: 2.1
+  build_and_test:
+    jobs:
+      - mod-tidy-check
