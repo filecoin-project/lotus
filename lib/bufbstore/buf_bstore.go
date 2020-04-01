@@ -2,12 +2,16 @@ package bufbstore
 
 import (
 	"context"
+	"os"
 
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
+	logging "github.com/ipfs/go-log/v2"
 )
+
+var log = logging.Logger("bufbs")
 
 type BufferedBS struct {
 	read  bstore.Blockstore
@@ -16,6 +20,11 @@ type BufferedBS struct {
 
 func NewBufferedBstore(base bstore.Blockstore) *BufferedBS {
 	buf := bstore.NewBlockstore(ds.NewMapDatastore())
+	if os.Getenv("LOTUS_DISABLE_VM_BUF") == "iknowitsabadidea" {
+		log.Warn("VM BLOCKSTORE BUFFERING IS DISABLED")
+		buf = base
+	}
+
 	return &BufferedBS{
 		read:  base,
 		write: buf,
