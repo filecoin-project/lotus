@@ -6,53 +6,33 @@ import (
 	"testing"
 )
 
-func Benchmark_blsSigner_Sign(b *testing.B) {
+func BenchmarkBLSSign(b *testing.B) {
 	signer := blsSigner{}
-	b.ResetTimer()
-	for i:=0;i<b.N;i++{
+	for i := 0; i < b.N; i++ {
 		b.StopTimer()
-		pk, err := signer.GenPrivate()
-		if err != nil {
-			b.Error(err)
-		}
+		pk, _ := signer.GenPrivate()
 		randMsg := make([]byte, 32)
 		rand.Read(randMsg)
-
 		b.StartTimer()
-		_, err = signer.Sign(pk, randMsg)
-		if err != nil {
-			b.Error(err)
-		}
+
+		_, _ = signer.Sign(pk, randMsg)
 	}
 }
 
-func Benchmark_blsSigner_Verify(b *testing.B) {
+func BenchmarkBLSVerify(b *testing.B) {
 	signer := blsSigner{}
-	b.ResetTimer()
-	for i:=0;i<b.N;i++{
+	for i := 0; i < b.N; i++ {
 		b.StopTimer()
-		priv, err := signer.GenPrivate()
-		if err != nil {
-			b.Error(err)
-		}
 		randMsg := make([]byte, 32)
 		rand.Read(randMsg)
-		sig, err := signer.Sign(priv, randMsg)
-		if err != nil {
-			b.Error(err)
-		}
-		pk, err := signer.ToPublic(priv)
-		if err != nil {
-			b.Error(err)
-		}
-		addr, err  := address.NewBLSAddress(pk)
-		if err != nil {
-			b.Error(err)
-		}
+
+		priv, _ := signer.GenPrivate()
+		pk, _ := signer.ToPublic(priv)
+		addr, _ := address.NewBLSAddress(pk)
+		sig, _ := signer.Sign(priv, randMsg)
+
 		b.StartTimer()
-		err = signer.Verify(sig, addr, randMsg)
-		if err != nil {
-			b.Error(err)
-		}
+
+		_ = signer.Verify(sig, addr, randMsg)
 	}
 }
