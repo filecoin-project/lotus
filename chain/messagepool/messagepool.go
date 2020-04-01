@@ -34,6 +34,13 @@ var log = logging.Logger("messagepool")
 
 const futureDebug = false
 
+const ReplaceByFeeRatio = 1.25
+
+var (
+	rbfNum   = types.NewInt(uint64((ReplaceByFeeRatio - 1) * 256))
+	rbfDenom = types.NewInt(256)
+)
+
 var (
 	ErrMessageTooBig = errors.New("message too big")
 
@@ -97,10 +104,20 @@ func (ms *msgSet) add(m *types.SignedMessage) error {
 	if len(ms.msgs) == 0 || m.Message.Nonce >= ms.nextNonce {
 		ms.nextNonce = m.Message.Nonce + 1
 	}
-	if _, has := ms.msgs[m.Message.Nonce]; has {
-		if m.Cid() != ms.msgs[m.Message.Nonce].Cid() {
-			log.Info("add with duplicate nonce")
-			return xerrors.Errorf("message to %s with nonce %d already in mpool", m.Message.To, m.Message.Nonce)
+	exms, has := ms.msgs[m.Message.Nonce]
+	if has {
+		if m.Cid() != exms.Cid() {
+			// check if RBF passes
+			minPrice := exms.Message.GasPrice
+			minPrice = types.BigAdd(minPrice, types.BigDiv(types.BigMul(minPrice, rbfNum), rbfDenom))
+			minPrice = types.BigAdd(minPrice, types.NewInt(1))
+			if types.BigCmp(m.Message.GasPrice, minPrice) > 0 {
+				log.Infow("add with RBF", "oldprice", exms.Message.GasPrice,
+					"newprice", m.Message.GasPrice, "addr", m.Message.From, "nonce", m.Message.Nonce)
+			} else {
+				log.Info("add with duplicate nonce")
+				return xerrors.Errorf("message to %s with nonce %d already in mpool", m.Message.To, m.Message.Nonce)
+			}
 		}
 	}
 	ms.msgs[m.Message.Nonce] = m
