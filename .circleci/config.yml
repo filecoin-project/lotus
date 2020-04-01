@@ -9,7 +9,6 @@ executors:
 commands:
   install-build-dependencies:
     steps:
-      - checkout
       - run: sudo apt-get update
       - run: sudo apt-get install -y jq ocl-icd-opencl-dev
       - run: git submodule sync
@@ -40,23 +39,27 @@ jobs:
     environment:
       RUST_LOG: info
     steps:
+      - checkout
       - install-build-dependencies
       - download-groth-params-and-verifying-keys
       - run: go test -v -timeout 10m ./...
   mod-tidy-check:
     executor: golang
     steps:
+      - checkout
       - go/mod-download
       - go/mod-tidy-check
   gofmt-check:
     executor: golang
     steps:
+      - checkout
       - go/mod-download
       - run:
           command: "! go fmt ./... 2>&1 | read"
   lint-check:
     executor: golang
     steps:
+      - checkout
       - go/mod-download
       - go/install-golangci-lint:
           gobin: $HOME/.local/bin
