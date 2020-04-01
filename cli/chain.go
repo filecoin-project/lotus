@@ -17,6 +17,7 @@ import (
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	cid "github.com/ipfs/go-cid"
@@ -491,6 +492,8 @@ var chainGetCmd = &cli.Command{
 			return handleHamtAddress(ctx, api, obj.Cid)
 		case "cronevent":
 			cbu = new(power.CronEvent)
+		case "account-state":
+			cbu = new(account.State)
 		default:
 			return fmt.Errorf("unknown type: %q", t)
 		}

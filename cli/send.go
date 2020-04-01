@@ -17,6 +17,11 @@ var sendCmd = &cli.Command{
 			Name:  "source",
 			Usage: "optionally specify the account to send funds from",
 		},
+		&cli.StringFlag{
+			Name:  "gas-price",
+			Usage: "specify gas price to use in AttoFIL",
+			Value: "0",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -58,12 +63,17 @@ var sendCmd = &cli.Command{
 			fromAddr = addr
 		}
 
+		gp, err := types.BigFromString(cctx.String("gas-price"))
+		if err != nil {
+			return err
+		}
+
 		msg := &types.Message{
 			From:     fromAddr,
 			To:       toAddr,
 			Value:    types.BigInt(val),
 			GasLimit: 10000,
-			GasPrice: types.NewInt(0),
+			GasPrice: gp,
 		}
 
 		_, err = api.MpoolPushMessage(ctx, msg)
