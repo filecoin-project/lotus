@@ -2,8 +2,9 @@ package sub
 
 import (
 	"context"
-	"golang.org/x/xerrors"
 	"time"
+
+	"golang.org/x/xerrors"
 
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/ipfs/go-cid"
