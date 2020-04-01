@@ -1,6 +1,7 @@
 # sector-storage
 
 [![](https://img.shields.io/badge/made%20by-Protocol%20Labs-blue.svg?style=flat-square)](http://ipn.io)
+[![CircleCI](https://circleci.com/gh/filecoin-project/sector-storage.svg?style=svg)](https://circleci.com/gh/filecoin-project/sector-storage)
 [![standard-readme compliant](https://img.shields.io/badge/standard--readme-OK-green.svg?style=flat-square)](https://github.com/RichardLitt/standard-readme)
 
 > a concrete implementation of the [specs-storage](https://github.com/filecoin-project/specs-storage) interface
