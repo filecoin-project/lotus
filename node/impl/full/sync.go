@@ -3,22 +3,24 @@ package full
 import (
 	"context"
 
+	cid "github.com/ipfs/go-cid"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"go.uber.org/fx"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/types"
-	cid "github.com/ipfs/go-cid"
-
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	"go.uber.org/fx"
-	"golang.org/x/xerrors"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
 type SyncAPI struct {
 	fx.In
 
-	Syncer *chain.Syncer
-	PubSub *pubsub.PubSub
+	Syncer  *chain.Syncer
+	PubSub  *pubsub.PubSub
+	NetName dtypes.NetworkName
 }
 
 func (a *SyncAPI) SyncState(ctx context.Context) (*api.SyncState, error) {
@@ -77,7 +79,7 @@ func (a *SyncAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) erro
 	}
 
 	// TODO: anything else to do here?
-	return a.PubSub.Publish(build.BlocksTopic, b)
+	return a.PubSub.Publish(build.BlocksTopic(a.NetName), b)
 }
 
 func (a *SyncAPI) SyncIncomingBlocks(ctx context.Context) (<-chan *types.BlockHeader, error) {
