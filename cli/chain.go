@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -415,10 +416,18 @@ var chainGetCmd = &cli.Command{
 			Name:  "as-type",
 			Usage: "specify type to interpret output as",
 		},
+		&cli.BoolFlag{
+				Name: "verbose",
+				Value: false,
+		},
 	},
 	Description: `Get ipld node under a specified path:
 
    lotus chain get /ipfs/[cid]/some/path
+
+   Path prefixes:
+   - /ipfs/[cid], /ipld/[cid] - traverse IPLD path
+   - /pstate - traverse from head.ParentStateRoot
 
    Note:
    You can use special path elements to traverse through some data structures:
@@ -434,7 +443,20 @@ var chainGetCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		obj, err := api.ChainGetNode(ctx, cctx.Args().First())
+		p := path.Clean(cctx.Args().First())
+		if strings.HasPrefix(p, "/pstate") {
+			p = p[len("/pstate"):]
+			head, err := api.ChainHead(ctx)
+			if err != nil {
+				return err
+			}
+			p = "/ipfs/" + head.ParentState().String() + p
+			if cctx.Bool("verbose") {
+				fmt.Println(p)
+			}
+		}
+
+		obj, err := api.ChainGetNode(ctx, p)
 		if err != nil {
 			return err
 		}
