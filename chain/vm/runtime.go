@@ -426,10 +426,11 @@ func (rt *Runtime) ChargeGas(toUse int64) {
 }
 
 func (rt *Runtime) chargeGasSafe(toUse int64) aerrors.ActorError {
-	rt.gasUsed += toUse
-	if rt.gasUsed > rt.gasAvailable {
+	if rt.gasUsed+toUse > rt.gasAvailable {
+		rt.gasUsed = rt.gasAvailable
 		return aerrors.Newf(uint8(exitcode.SysErrOutOfGas), "not enough gas: used=%d, available=%d", rt.gasUsed, rt.gasAvailable)
 	}
+	rt.gasUsed += toUse
 	return nil
 }
 
