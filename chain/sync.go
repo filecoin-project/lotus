@@ -321,7 +321,7 @@ func zipTipSetAndMessages(bs cbor.IpldStore, ts *types.TipSet, allbmsgs []*types
 		}
 
 		if b.Messages != mrcid {
-			return nil, fmt.Errorf("messages didnt match message root in header")
+			return nil, fmt.Errorf("messages didnt match message root in header for ts %s", ts.Key())
 		}
 
 		fb := &types.FullBlock{
@@ -1133,25 +1133,35 @@ func (syncer *Syncer) iterFullTipsets(ctx context.Context, headers []*types.TipS
 			batchSize = i
 		}
 
-		next := headers[i-batchSize]
-		bstips, err := syncer.Bsync.GetChainMessages(ctx, next, uint64(batchSize+1))
-		if err != nil {
-			return xerrors.Errorf("message processing failed: %w", err)
+		nextI := (i + 1) - batchSize // want to fetch batchSize values, 'i' points to last one we want to fetch, so its 'inclusive' of our request, thus we need to add one to our request start index
+
+		var bstout []*blocksync.BSTipSet
+		for len(bstout) < batchSize {
+			next := headers[nextI]
+
+			nreq := batchSize - len(bstout)
+			bstips, err := syncer.Bsync.GetChainMessages(ctx, next, uint64(nreq))
+			if err != nil {
+				return xerrors.Errorf("message processing failed: %w", err)
+			}
+
+			bstout = append(bstout, bstips...)
+			nextI += len(bstips)
 		}
 
-		for bsi := 0; bsi < len(bstips); bsi++ {
+		for bsi := 0; bsi < len(bstout); bsi++ {
 			// temp storage so we don't persist data we dont want to
 			ds := dstore.NewMapDatastore()
 			bs := bstore.NewBlockstore(ds)
 			blks := cbor.NewCborStore(bs)
 
 			this := headers[i-bsi]
-			bstip := bstips[len(bstips)-(bsi+1)]
+			bstip := bstout[len(bstout)-(bsi+1)]
 			fts, err := zipTipSetAndMessages(blks, this, bstip.BlsMessages, bstip.SecpkMessages, bstip.BlsMsgIncludes, bstip.SecpkMsgIncludes)
 			if err != nil {
 				log.Warnw("zipping failed", "error", err, "bsi", bsi, "i", i,
 					"height", this.Height(), "bstip-height", bstip.Blocks[0].Height,
-					"bstips", bstips, "next-height", i+batchSize)
+					"next-height", i+batchSize)
 				return xerrors.Errorf("message processing failed: %w", err)
 			}
 
@@ -1167,7 +1177,7 @@ func (syncer *Syncer) iterFullTipsets(ctx context.Context, headers []*types.TipS
 				return xerrors.Errorf("message processing failed: %w", err)
 			}
 		}
-		i -= windowSize
+		i -= batchSize
 	}
 
 	return nil
