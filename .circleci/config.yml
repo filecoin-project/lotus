@@ -63,6 +63,7 @@ jobs:
     executor: golang
     steps:
       - prepare-git-checkout
+      - install-build-dependencies
       - go/mod-download
       - go/install-golangci-lint:
           gobin: $HOME/.local/bin
