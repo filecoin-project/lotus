@@ -78,6 +78,8 @@ type MessagePool struct {
 	changes *lps.PubSub
 
 	localMsgs datastore.Datastore
+
+	netName dtypes.NetworkName
 }
 
 type msgSet struct {
@@ -154,7 +156,7 @@ func (mpp *mpoolProvider) LoadTipSet(tsk types.TipSetKey) (*types.TipSet, error)
 	return mpp.sm.ChainStore().LoadTipSet(tsk)
 }
 
-func New(api Provider, ds dtypes.MetadataDS) (*MessagePool, error) {
+func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName) (*MessagePool, error) {
 	cache, _ := lru.New2Q(build.BlsSignatureCacheSize)
 	mp := &MessagePool{
 		closer:        make(chan struct{}),
@@ -167,6 +169,7 @@ func New(api Provider, ds dtypes.MetadataDS) (*MessagePool, error) {
 		changes:       lps.New(50),
 		localMsgs:     namespace.Wrap(ds, datastore.NewKey(localMsgsDs)),
 		api:           api,
+		netName:       netName,
 	}
 
 	if err := mp.loadLocal(); err != nil {
@@ -239,7 +242,7 @@ func (mp *MessagePool) repubLocal() {
 					continue
 				}
 
-				err = mp.api.PubSubPublish(build.MessagesTopic, msgb)
+				err = mp.api.PubSubPublish(build.MessagesTopic(mp.netName), msgb)
 				if err != nil {
 					errout = multierr.Append(errout, xerrors.Errorf("could not publish: %w", err))
 					continue
@@ -284,7 +287,7 @@ func (mp *MessagePool) Push(m *types.SignedMessage) (cid.Cid, error) {
 	}
 	mp.lk.Unlock()
 
-	return m.Cid(), mp.api.PubSubPublish(build.MessagesTopic, msgb)
+	return m.Cid(), mp.api.PubSubPublish(build.MessagesTopic(mp.netName), msgb)
 }
 
 func (mp *MessagePool) Add(m *types.SignedMessage) error {
@@ -482,7 +485,7 @@ func (mp *MessagePool) PushWithNonce(addr address.Address, cb func(uint64) (*typ
 		log.Errorf("addLocal failed: %+v", err)
 	}
 
-	return msg, mp.api.PubSubPublish(build.MessagesTopic, msgb)
+	return msg, mp.api.PubSubPublish(build.MessagesTopic(mp.netName), msgb)
 }
 
 func (mp *MessagePool) Remove(from address.Address, nonce uint64) {
