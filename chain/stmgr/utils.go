@@ -80,14 +80,16 @@ func GetPower(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr add
 		return big.Zero(), big.Zero(), xerrors.Errorf("(get sset) failed to load power actor state: %w", err)
 	}
 
-	var mpow big.Int
+	mpow := big.Zero()
 	if maddr != address.Undef {
 		var claim power.Claim
 		if _, err := adt.AsMap(sm.cs.Store(ctx), ps.Claims).Get(adt.AddrKey(maddr), &claim); err != nil {
 			return big.Zero(), big.Zero(), err
 		}
 
-		mpow = claim.Power
+		if !claim.Power.LessThan(power.ConsensusMinerMinPower) {
+			mpow = claim.Power
+		}
 	}
 
 	return mpow, ps.TotalNetworkPower, nil
