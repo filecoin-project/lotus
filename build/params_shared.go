@@ -2,14 +2,19 @@ package build
 
 import (
 	"math/big"
+
+	"github.com/libp2p/go-libp2p-core/protocol"
+
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
 // Core network constants
 
-const NetworkName = "interop"
-const BlocksTopic = "/fil/blocks/" + NetworkName
-const MessagesTopic = "/fil/msgs/" + NetworkName
-const DhtProtocolName = "/fil/kad/" + NetworkName
+func BlocksTopic(netName dtypes.NetworkName) string   { return "/fil/blocks/" + string(netName) }
+func MessagesTopic(netName dtypes.NetworkName) string { return "/fil/msgs/" + string(netName) }
+func DhtProtocolName(netName dtypes.NetworkName) protocol.ID {
+	return protocol.ID("/fil/kad/" + string(netName))
+}
 
 // /////
 // Storage

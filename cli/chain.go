@@ -417,8 +417,8 @@ var chainGetCmd = &cli.Command{
 			Usage: "specify type to interpret output as",
 		},
 		&cli.BoolFlag{
-				Name: "verbose",
-				Value: false,
+			Name:  "verbose",
+			Value: false,
 		},
 	},
 	Description: `Get ipld node under a specified path:
