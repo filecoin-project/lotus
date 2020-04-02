@@ -22,6 +22,7 @@ func main() {
 		noncefix,
 		bigIntParseCmd,
 		staterootStatsCmd,
+		importCarCmd,
 	}
 
 	app := &cli.App{
