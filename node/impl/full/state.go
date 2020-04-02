@@ -264,6 +264,11 @@ func (a *StateAPI) StateReadState(ctx context.Context, act *types.Actor, tsk typ
 }
 
 // This is on StateAPI because miner.Miner requires this, and MinerAPI requires miner.Miner
+func (a *StateAPI) MinerGetBaseInfo(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (*api.MiningBaseInfo, error) {
+	return stmgr.MinerGetBaseInfo(ctx, a.StateManager, tsk, maddr)
+}
+
+// This is on StateAPI because miner.Miner requires this, and MinerAPI requires miner.Miner
 func (a *StateAPI) MinerCreateBlock(ctx context.Context, addr address.Address, parentsTSK types.TipSetKey, ticket *types.Ticket, proof *types.EPostProof, msgs []*types.SignedMessage, height abi.ChainEpoch, ts uint64) (*types.BlockMsg, error) {
 	parents, err := a.Chain.GetTipSetFromKey(parentsTSK)
 	if err != nil {
