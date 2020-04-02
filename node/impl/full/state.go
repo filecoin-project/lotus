@@ -193,6 +193,7 @@ func (a *StateAPI) StateReplay(ctx context.Context, tsk types.TipSetKey, mc cid.
 		MsgRct:             &r.MessageReceipt,
 		InternalExecutions: r.InternalExecutions,
 		Error:              errstr,
+		Duration:           r.Duration,
 	}, nil
 }
 

@@ -124,6 +124,7 @@ func (sm *StateManager) ExecutionTrace(ctx context.Context, ts *types.TipSet) (c
 			Msg:                msg,
 			MsgRct:             &ret.MessageReceipt,
 			InternalExecutions: ret.InternalExecutions,
+			Duration:           ret.Duration,
 		}
 		if ret.ActorErr != nil {
 			ir.Error = ret.ActorErr.Error()

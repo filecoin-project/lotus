@@ -314,6 +314,7 @@ type InvocResult struct {
 	MsgRct             *types.MessageReceipt
 	InternalExecutions []*vm.ExecutionResult
 	Error              string
+	Duration           time.Duration
 }
 
 type MethodCall struct {
