@@ -102,7 +102,7 @@ while true; do
     esac
   done
 
-  lotus-storage-miner pledge-sector
+  lotus-storage-miner sectors pledge
 
   while [ "\$current" == "\$sector" ]; do
     sector=\$(lotus-storage-miner sectors list | tail -n1 | awk '{print \$1}' | tr -d ':')
