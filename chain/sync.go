@@ -635,7 +635,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	})
 
 	eproofCheck := async.Err(func() error {
-		if err := syncer.VerifyElectionPoStProof(ctx, h, baseTs, waddr); err != nil {
+		if err := syncer.VerifyElectionPoStProof(ctx, h, waddr); err != nil {
 			return xerrors.Errorf("invalid election post: %w", err)
 		}
 		return nil
@@ -677,12 +677,17 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	return merr
 }
 
-func (syncer *Syncer) VerifyElectionPoStProof(ctx context.Context, h *types.BlockHeader, baseTs *types.TipSet, waddr address.Address) error {
+func (syncer *Syncer) VerifyElectionPoStProof(ctx context.Context, h *types.BlockHeader, waddr address.Address) error {
+	curTs, err := types.NewTipSet([]*types.BlockHeader{h})
+	if err != nil {
+		return err
+	}
+
 	buf := new(bytes.Buffer)
 	if err := h.Miner.MarshalCBOR(buf); err != nil {
 		return xerrors.Errorf("failed to marshal miner to cbor: %w", err)
 	}
-	rand, err := syncer.sm.ChainStore().GetRandomness(ctx, baseTs.Cids(), crypto.DomainSeparationTag_ElectionPoStChallengeSeed, int64(h.Height-build.EcRandomnessLookback), buf.Bytes())
+	rand, err := syncer.sm.ChainStore().GetRandomness(ctx, curTs.Cids(), crypto.DomainSeparationTag_ElectionPoStChallengeSeed, int64(h.Height-build.EcRandomnessLookback), buf.Bytes())
 	if err != nil {
 		return xerrors.Errorf("failed to get randomness for verifying election proof: %w", err)
 	}
@@ -691,7 +696,7 @@ func (syncer *Syncer) VerifyElectionPoStProof(ctx context.Context, h *types.Bloc
 		return xerrors.Errorf("checking eproof failed: %w", err)
 	}
 
-	ssize, err := stmgr.GetMinerSectorSize(ctx, syncer.sm, baseTs, h.Miner)
+	ssize, err := stmgr.GetMinerSectorSize(ctx, syncer.sm, curTs, h.Miner)
 	if err != nil {
 		return xerrors.Errorf("failed to get sector size for miner: %w", err)
 	}
@@ -717,7 +722,7 @@ func (syncer *Syncer) VerifyElectionPoStProof(ctx context.Context, h *types.Bloc
 		return xerrors.Errorf("no candidates")
 	}
 
-	sectorInfo, err := stmgr.GetSectorsForElectionPost(ctx, syncer.sm, baseTs, h.Miner)
+	sectorInfo, err := stmgr.GetSectorsForElectionPost(ctx, syncer.sm, curTs, h.Miner)
 	if err != nil {
 		return xerrors.Errorf("getting election post sector set: %w", err)
 	}

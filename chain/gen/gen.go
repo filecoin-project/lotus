@@ -446,13 +446,7 @@ func (cg *ChainGen) YieldRepo() (repo.Repo, error) {
 type MiningCheckAPI interface {
 	ChainGetRandomness(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
 
-	StateMinerPower(context.Context, address.Address, types.TipSetKey) (*api.MinerPower, error)
-
-	StateMinerWorker(context.Context, address.Address, types.TipSetKey) (address.Address, error)
-
-	StateMinerSectorSize(context.Context, address.Address, types.TipSetKey) (abi.SectorSize, error)
-
-	StateMinerProvingSet(context.Context, address.Address, types.TipSetKey) ([]*api.ChainSectorInfo, error)
+	MinerGetBaseInfo(context.Context, address.Address, types.TipSetKey) (*api.MiningBaseInfo, error)
 
 	WalletSign(context.Context, address.Address, []byte) (*crypto.Signature, error)
 }
@@ -471,44 +465,8 @@ func (mca mca) ChainGetRandomness(ctx context.Context, tsk types.TipSetKey, pers
 	return mca.sm.ChainStore().GetRandomness(ctx, pts.Cids(), personalization, int64(randEpoch), entropy)
 }
 
-func (mca mca) StateMinerPower(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (*api.MinerPower, error) {
-	ts, err := mca.sm.ChainStore().LoadTipSet(tsk)
-	if err != nil {
-		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
-	}
-	mpow, tpow, err := stmgr.GetPower(ctx, mca.sm, ts, maddr)
-	if err != nil {
-		return nil, err
-	}
-
-	return &api.MinerPower{
-		MinerPower: mpow,
-		TotalPower: tpow,
-	}, err
-}
-
-func (mca mca) StateMinerWorker(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (address.Address, error) {
-	ts, err := mca.sm.ChainStore().LoadTipSet(tsk)
-	if err != nil {
-		return address.Undef, xerrors.Errorf("loading tipset %s: %w", tsk, err)
-	}
-	return stmgr.GetMinerWorkerRaw(ctx, mca.sm, ts.ParentState(), maddr)
-}
-
-func (mca mca) StateMinerSectorSize(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (abi.SectorSize, error) {
-	ts, err := mca.sm.ChainStore().LoadTipSet(tsk)
-	if err != nil {
-		return 0, xerrors.Errorf("loading tipset %s: %w", tsk, err)
-	}
-	return stmgr.GetMinerSectorSize(ctx, mca.sm, ts, maddr)
-}
-
-func (mca mca) StateMinerProvingSet(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]*api.ChainSectorInfo, error) {
-	ts, err := mca.sm.ChainStore().LoadTipSet(tsk)
-	if err != nil {
-		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
-	}
-	return stmgr.GetMinerProvingSet(ctx, mca.sm, ts, maddr)
+func (mca mca) MinerGetBaseInfo(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (*api.MiningBaseInfo, error) {
+	return stmgr.MinerGetBaseInfo(ctx, mca.sm, tsk, maddr)
 }
 
 func (mca mca) WalletSign(ctx context.Context, a address.Address, v []byte) (*crypto.Signature, error) {
@@ -560,26 +518,22 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, round int64, miner add
 		return nil, xerrors.Errorf("chain get randomness: %w", err)
 	}
 
-	mworker, err := a.StateMinerWorker(ctx, miner, ts.Key())
+	mbi, err := a.MinerGetBaseInfo(ctx, miner, ts.Key())
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get miner worker: %w", err)
+		return nil, xerrors.Errorf("failed to get mining base info: %w", err)
 	}
 
-	vrfout, err := ComputeVRF(ctx, a.WalletSign, mworker, epostRand)
+	vrfout, err := ComputeVRF(ctx, a.WalletSign, mbi.Worker, epostRand)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to compute VRF: %w", err)
 	}
 
-	pset, err := a.StateMinerProvingSet(ctx, miner, ts.Key())
-	if err != nil {
-		return nil, xerrors.Errorf("failed to load proving set for miner: %w", err)
-	}
-	if len(pset) == 0 {
+	if len(mbi.Sectors) == 0 {
 		return nil, nil
 	}
 
 	var sinfos []abi.SectorInfo
-	for _, s := range pset {
+	for _, s := range mbi.Sectors {
 		if s.Info.Info.RegisteredProof == 0 {
 			return nil, xerrors.Errorf("sector %d in proving set had registered type of zero", s.ID)
 		}
@@ -596,19 +550,9 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, round int64, miner add
 		return nil, xerrors.Errorf("failed to generate electionPoSt candidates: %w", err)
 	}
 
-	pow, err := a.StateMinerPower(ctx, miner, ts.Key())
-	if err != nil {
-		return nil, xerrors.Errorf("failed to check power: %w", err)
-	}
-
-	ssize, err := a.StateMinerSectorSize(ctx, miner, ts.Key())
-	if err != nil {
-		return nil, xerrors.Errorf("failed to look up miners sector size: %w", err)
-	}
-
 	var winners []storage.PoStCandidateWithTicket
 	for _, c := range candidates {
-		if types.IsTicketWinner(c.Candidate.PartialTicket, ssize, uint64(len(sinfos)), pow.TotalPower) {
+		if types.IsTicketWinner(c.Candidate.PartialTicket, mbi.SectorSize, uint64(len(sinfos)), mbi.NetworkPower) {
 			winners = append(winners, c)
 		}
 	}

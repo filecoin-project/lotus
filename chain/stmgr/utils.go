@@ -74,8 +74,12 @@ func GetMinerOwner(ctx context.Context, sm *StateManager, st cid.Cid, maddr addr
 }
 
 func GetPower(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (types.BigInt, types.BigInt, error) {
+	return getPowerRaw(ctx, sm, ts.ParentState(), maddr)
+}
+
+func getPowerRaw(ctx context.Context, sm *StateManager, st cid.Cid, maddr address.Address) (types.BigInt, types.BigInt, error) {
 	var ps power.State
-	_, err := sm.LoadActorState(ctx, builtin.StoragePowerActorAddr, &ps, ts)
+	_, err := sm.LoadActorStateRaw(ctx, builtin.StoragePowerActorAddr, &ps, st)
 	if err != nil {
 		return big.Zero(), big.Zero(), xerrors.Errorf("(get sset) failed to load power actor state: %w", err)
 	}
@@ -142,8 +146,12 @@ func SectorSetSizes(ctx context.Context, sm *StateManager, maddr address.Address
 }
 
 func GetMinerProvingSet(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) ([]*api.ChainSectorInfo, error) {
+	return getMinerProvingSetRaw(ctx, sm, ts.ParentState(), maddr)
+}
+
+func getMinerProvingSetRaw(ctx context.Context, sm *StateManager, st cid.Cid, maddr address.Address) ([]*api.ChainSectorInfo, error) {
 	var mas miner.State
-	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
+	_, err := sm.LoadActorStateRaw(ctx, maddr, &mas, st)
 	if err != nil {
 		return nil, xerrors.Errorf("(get pset) failed to load miner actor state: %w", err)
 	}
@@ -180,8 +188,12 @@ func GetSectorsForElectionPost(ctx context.Context, sm *StateManager, ts *types.
 }
 
 func GetMinerSectorSize(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (abi.SectorSize, error) {
+	return getMinerSectorSizeRaw(ctx, sm, ts.ParentState(), maddr)
+}
+
+func getMinerSectorSizeRaw(ctx context.Context, sm *StateManager, st cid.Cid, maddr address.Address) (abi.SectorSize, error) {
 	var mas miner.State
-	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
+	_, err := sm.LoadActorStateRaw(ctx, maddr, &mas, st)
 	if err != nil {
 		return 0, xerrors.Errorf("(get ssize) failed to load miner actor state: %w", err)
 	}
@@ -356,4 +368,44 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 	}
 
 	return root, trace, nil
+}
+
+func MinerGetBaseInfo(ctx context.Context, sm *StateManager, tsk types.TipSetKey, maddr address.Address) (*api.MiningBaseInfo, error) {
+	ts, err := sm.ChainStore().LoadTipSet(tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load tipset for mining base: %w", err)
+	}
+
+	st, _, err := sm.TipSetState(ctx, ts)
+	if err != nil {
+		return nil, err
+	}
+
+	provset, err := getMinerProvingSetRaw(ctx, sm, st, maddr)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get proving set: %w", err)
+	}
+
+	mpow, tpow, err := getPowerRaw(ctx, sm, st, maddr)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get power: %w", err)
+	}
+
+	worker, err := GetMinerWorkerRaw(ctx, sm, st, maddr)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get miner worker: %w", err)
+	}
+
+	ssize, err := getMinerSectorSizeRaw(ctx, sm, st, maddr)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get miner sector size: %w", err)
+	}
+
+	return &api.MiningBaseInfo{
+		MinerPower:   mpow,
+		NetworkPower: tpow,
+		Sectors:      provset,
+		Worker:       worker,
+		SectorSize:   ssize,
+	}, nil
 }
