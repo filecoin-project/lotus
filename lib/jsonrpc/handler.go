@@ -192,7 +192,7 @@ func (h handlers) handle(ctx context.Context, req request, w func(func(io.Writer
 	for i := 0; i < handler.nParams; i++ {
 		rp := reflect.New(handler.paramReceivers[i])
 		if err := json.NewDecoder(bytes.NewReader(req.Params[i].data)).Decode(rp.Interface()); err != nil {
-			rpcError(w, &req, rpcParseError, xerrors.Errorf("unmarshaling params for '%s': %w", handler.handlerFunc, err))
+			rpcError(w, &req, rpcParseError, xerrors.Errorf("unmarshaling params for '%s' (param: %T): %w", req.Method, rp.Interface(), err))
 			stats.Record(ctx, metrics.RPCRequestError.M(1))
 			return
 		}

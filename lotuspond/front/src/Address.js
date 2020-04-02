@@ -50,11 +50,11 @@ class Address extends React.Component {
 
     try {
       balance = await this.props.client.call('Filecoin.WalletBalance', [this.props.addr])
-      actor = await this.props.client.call('Filecoin.StateGetActor', [this.props.addr, this.props.ts || null])
+      actor = await this.props.client.call('Filecoin.StateGetActor', [this.props.addr, (this.props.ts || {}).Cids])
 
       actorInfo = await this.actorInfo(actor)
       if(this.props.miner) {
-        minerInfo = await this.props.client.call('Filecoin.StateMinerPower', [this.props.addr, this.props.ts || null])
+        minerInfo = await this.props.client.call('Filecoin.StateMinerPower', [this.props.addr, (this.props.ts || {}).Cids])
       }
       if(this.props.nonce) {
         nonce = await this.props.client.call('Filecoin.MpoolGetNonce', [this.props.addr])
@@ -82,7 +82,7 @@ class Address extends React.Component {
     let info = <span>({mh.digest.toString()}{method})</span>
     switch(mh.digest.toString()) {
       case 'paych':
-        const actstate = await this.props.client.call('Filecoin.StateReadState', [actor, this.props.ts || null])
+        const actstate = await this.props.client.call('Filecoin.StateReadState', [actor, (this.props.ts || {}).Cids])
         info = <span>({mh.digest.toString()}{method} to <Address nobalance={true} client={this.props.client} addr={actstate.State.To} mountWindow={this.props.mountWindow}/>)</span>
     }
 
