@@ -172,7 +172,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, pstate cid.Cid, bms []B
 			}
 
 			receipts = append(receipts, &r.MessageReceipt)
-			gasReward = big.Add(gasReward, big.NewInt(r.GasUsed))
+			gasReward = big.Add(gasReward, big.Mul(m.GasPrice, big.NewInt(r.GasUsed)))
 			penalty = big.Add(penalty, r.Penalty)
 
 			if cb != nil {
