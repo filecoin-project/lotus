@@ -33,7 +33,7 @@ var EmptyObjectCid cid.Cid
 func TryCreateAccountActor(rt *Runtime, addr address.Address) (*types.Actor, aerrors.ActorError) {
 	addrID, err := rt.state.RegisterNewAddress(addr)
 	if err != nil {
-		return nil, aerrors.Absorb(err, byte(exitcode.SysErrInternal), "registering actor address")
+		return nil, aerrors.Absorb(err, exitcode.SysErrInternal, "registering actor address")
 	}
 
 	if err := rt.chargeGasSafe(PricelistByEpoch(rt.height).OnCreateActor()); err != nil {
@@ -46,12 +46,12 @@ func TryCreateAccountActor(rt *Runtime, addr address.Address) (*types.Actor, aer
 	}
 
 	if err := rt.state.SetActor(addrID, act); err != nil {
-		return nil, aerrors.Absorb(err, byte(exitcode.SysErrInternal), "creating new actor failed")
+		return nil, aerrors.Absorb(err, exitcode.SysErrInternal, "creating new actor failed")
 	}
 
 	p, err := actors.SerializeParams(&addr)
 	if err != nil {
-		return nil, aerrors.Absorb(err, byte(exitcode.SysErrInternal), "registering actor address")
+		return nil, aerrors.Absorb(err, exitcode.SysErrInternal, "registering actor address")
 	}
 	// call constructor on account
 
@@ -62,7 +62,7 @@ func TryCreateAccountActor(rt *Runtime, addr address.Address) (*types.Actor, aer
 
 	act, err = rt.state.GetActor(addrID)
 	if err != nil {
-		return nil, aerrors.Absorb(err, byte(exitcode.SysErrInternal), "loading newly created actor failed")
+		return nil, aerrors.Absorb(err, exitcode.SysErrInternal, "loading newly created actor failed")
 	}
 	return act, nil
 }
