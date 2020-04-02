@@ -86,7 +86,7 @@ func TestInvokerBasic(t *testing.T) {
 
 		_, aerr := code[0](nil, &Runtime{}, bParam)
 
-		assert.Equal(t, byte(1), aerrors.RetCode(aerr), "return code should be 1")
+		assert.Equal(t, exitcode.ExitCode(1), aerrors.RetCode(aerr), "return code should be 1")
 		if aerrors.IsFatal(aerr) {
 			t.Fatal("err should not be fatal")
 		}
@@ -97,7 +97,7 @@ func TestInvokerBasic(t *testing.T) {
 		assert.NoError(t, err)
 
 		_, aerr := code[10](nil, &Runtime{}, bParam)
-		assert.Equal(t, byte(12), aerrors.RetCode(aerr), "return code should be 12")
+		assert.Equal(t, exitcode.ExitCode(12), aerrors.RetCode(aerr), "return code should be 12")
 		if aerrors.IsFatal(aerr) {
 			t.Fatal("err should not be fatal")
 		}
@@ -107,6 +107,6 @@ func TestInvokerBasic(t *testing.T) {
 	if aerrors.IsFatal(aerr) {
 		t.Fatal("err should not be fatal")
 	}
-	assert.Equal(t, byte(1), aerrors.RetCode(aerr), "return code should be 1")
+	assert.Equal(t, exitcode.ExitCode(1), aerrors.RetCode(aerr), "return code should be 1")
 
 }
