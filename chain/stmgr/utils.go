@@ -357,3 +357,58 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 
 	return root, trace, nil
 }
+
+func MinerGetBaseInfo(ctx context.Context, sm *StateManager, tsk types.TipSetKey, maddr address.Address) (*api.MiningBaseInfo, error) {
+	ts, err := sm.ChainStore().LoadTipSet(tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load tipset for mining base: %w", err)
+	}
+
+	st, mr, err := sm.TipSetState(ctx, ts)
+	if err != nil {
+		return nil, err
+	}
+
+	// HAXX: we want to use this tipsets evaluated state for all the information
+	nb := &types.BlockHeader{
+		Miner:                 maddr,
+		Parents:               ts.Cids(),
+		ParentStateRoot:       st,
+		ParentMessageReceipts: mr,
+		Messages:              ts.Blocks()[0].Messages, // TODO: horribly wrong, can't take a cid without it though
+		Height:                ts.Height() + 1,
+	}
+
+	nts, err := types.NewTipSet([]*types.BlockHeader{nb})
+	if err != nil {
+		return nil, xerrors.Errorf("failed to make 'next' tipset for getting base info: %w", err)
+	}
+
+	provset, err := GetMinerProvingSet(ctx, sm, nts, maddr)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get proving set: %w", err)
+	}
+
+	mpow, tpow, err := GetPower(ctx, sm, nts, maddr)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get power: %w", err)
+	}
+
+	worker, err := GetMinerWorker(ctx, sm, nts, maddr)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get miner worker: %w", err)
+	}
+
+	ssize, err := GetMinerSectorSize(ctx, sm, nts, maddr)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get miner sector size: %w", err)
+	}
+
+	return &api.MiningBaseInfo{
+		MinerPower:   mpow,
+		NetworkPower: tpow,
+		Sectors:      provset,
+		Worker:       worker,
+		SectorSize:   ssize,
+	}, nil
+}
