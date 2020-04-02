@@ -68,6 +68,7 @@ func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate 
 		MsgRct:             &ret.MessageReceipt,
 		InternalExecutions: ret.InternalExecutions,
 		Error:              errs,
+		Duration:           ret.Duration,
 	}, nil
 
 }
