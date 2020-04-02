@@ -66,10 +66,10 @@ func (inv *invoker) Invoke(act *types.Actor, rt runtime.Runtime, method abi.Meth
 	code, ok := inv.builtInCode[act.Code]
 	if !ok {
 		log.Errorf("no code for actor %s (Addr: %s)", act.Code, rt.Message().Receiver())
-		return nil, aerrors.Newf(byte(exitcode.SysErrorIllegalActor), "no code for actor %s(%d)(%s)", act.Code, method, hex.EncodeToString(params))
+		return nil, aerrors.Newf(exitcode.SysErrorIllegalActor, "no code for actor %s(%d)(%s)", act.Code, method, hex.EncodeToString(params))
 	}
 	if method >= abi.MethodNum(len(code)) || code[method] == nil {
-		return nil, aerrors.Newf(byte(exitcode.SysErrInvalidMethod), "no method %d on actor", method)
+		return nil, aerrors.Newf(exitcode.SysErrInvalidMethod, "no method %d on actor", method)
 	}
 	return code[method](act, rt, params)
 

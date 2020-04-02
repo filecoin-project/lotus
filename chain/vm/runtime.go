@@ -239,7 +239,7 @@ func (rt *Runtime) Context() context.Context {
 
 func (rs *Runtime) Abortf(code exitcode.ExitCode, msg string, args ...interface{}) {
 	log.Error("Abortf: ", fmt.Sprintf(msg, args...))
-	panic(aerrors.NewfSkip(2, uint8(code), msg, args...))
+	panic(aerrors.NewfSkip(2, code, msg, args...))
 }
 
 func (rs *Runtime) AbortStateMsg(msg string) {
@@ -428,7 +428,7 @@ func (rt *Runtime) ChargeGas(toUse int64) {
 func (rt *Runtime) chargeGasSafe(toUse int64) aerrors.ActorError {
 	if rt.gasUsed+toUse > rt.gasAvailable {
 		rt.gasUsed = rt.gasAvailable
-		return aerrors.Newf(uint8(exitcode.SysErrOutOfGas), "not enough gas: used=%d, available=%d", rt.gasUsed, rt.gasAvailable)
+		return aerrors.Newf(exitcode.SysErrOutOfGas, "not enough gas: used=%d, available=%d", rt.gasUsed, rt.gasAvailable)
 	}
 	rt.gasUsed += toUse
 	return nil

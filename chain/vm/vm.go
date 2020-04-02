@@ -73,7 +73,7 @@ func ResolveToKeyAddr(state types.StateTree, cst cbor.IpldStore, addr address.Ad
 
 	act, err := state.GetActor(addr)
 	if err != nil {
-		return address.Undef, aerrors.Newf(byte(exitcode.SysErrInternal), "failed to find actor: %s", addr)
+		return address.Undef, aerrors.Newf(exitcode.SysErrInternal, "failed to find actor: %s", addr)
 	}
 
 	if act.Code != builtin.AccountActorCodeID {
@@ -386,7 +386,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 		log.Warnw("Send actor error", "from", msg.From, "to", msg.To, "nonce", msg.Nonce, "method", msg.Method, "height", vm.blockHeight, "error", fmt.Sprintf("%+v", actorErr))
 	}
 
-	var errcode uint8
+	var errcode exitcode.ExitCode
 	var gasUsed int64
 
 	if errcode = aerrors.RetCode(actorErr); errcode != 0 {
