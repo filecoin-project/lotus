@@ -12,7 +12,7 @@ export class BlockLinks extends React.Component {
         block = this.props.blocks[k]
       }
 
-      return <span><BlockLink key={c + '-' + k} block={block} conn={this.props.conn} cid={c} mountWindow={this.props.mountWindow}/> </span>
+      return <span key={c + '-' + k}><BlockLink block={block} conn={this.props.conn} cid={c} mountWindow={this.props.mountWindow}/> </span>
     })
   }
 }
