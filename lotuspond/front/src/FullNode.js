@@ -45,7 +45,7 @@ class FullNode extends React.Component {
       return this.props.client.call('Filecoin.PaychVoucherList', [paych])
     }))
 
-    let mpoolPending = (await this.props.client.call('Filecoin.MpoolPending', [tipset])).length
+    let mpoolPending = (await this.props.client.call('Filecoin.MpoolPending', [tipset.Cids])).length
 
     this.setState(() => ({
       id: id,
@@ -64,13 +64,13 @@ class FullNode extends React.Component {
   }
 
   async newSecpAddr() {
-    const t = "secp256k1"
+    const t = 1
     await this.props.client.call("Filecoin.WalletNew", [t])
     this.loadInfo()
   }
 
   async newBLSAddr() {
-    const t = "bls"
+    const t = 2
     await this.props.client.call("Filecoin.WalletNew", [t])
     this.loadInfo()
   }
