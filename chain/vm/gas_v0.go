@@ -130,8 +130,7 @@ func (pl *pricelistV0) OnDeleteActor() int64 {
 func (pl *pricelistV0) OnVerifySignature(sigType crypto.SigType, planTextSize int) int64 {
 	costFn, ok := pl.verifySignature[sigType]
 	if !ok {
-		// TODO: fix retcode to be int64
-		panic(aerrors.Newf(uint8(exitcode.SysErrInternal&0xff), "Cost function for signature type %d not supported", sigType))
+		panic(aerrors.Newf(exitcode.SysErrInternal, "Cost function for signature type %d not supported", sigType))
 	}
 	return costFn(int64(planTextSize))
 }

@@ -3,13 +3,14 @@ package aerrors
 import (
 	"fmt"
 
+	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"golang.org/x/xerrors"
 )
 
 func IsFatal(err ActorError) bool {
 	return err != nil && err.IsFatal()
 }
-func RetCode(err ActorError) uint8 {
+func RetCode(err ActorError) exitcode.ExitCode {
 	if err == nil {
 		return 0
 	}
@@ -25,12 +26,12 @@ type internalActorError interface {
 type ActorError interface {
 	error
 	IsFatal() bool
-	RetCode() uint8
+	RetCode() exitcode.ExitCode
 }
 
 type actorError struct {
 	fatal   bool
-	retCode uint8
+	retCode exitcode.ExitCode
 
 	msg   string
 	frame xerrors.Frame
@@ -41,7 +42,7 @@ func (e *actorError) IsFatal() bool {
 	return e.fatal
 }
 
-func (e *actorError) RetCode() uint8 {
+func (e *actorError) RetCode() exitcode.ExitCode {
 	return e.retCode
 }
 
