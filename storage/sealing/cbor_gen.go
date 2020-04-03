@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
@@ -181,7 +182,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.State (uint64) (uint64)
+	// t.State (api.SectorState) (string)
 	if len("State") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"State\" was too long")
 	}
@@ -193,7 +194,14 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.State))); err != nil {
+	if len(t.State) > cbg.MaxLength {
+		return xerrors.Errorf("Value in field t.State was too long")
+	}
+
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len(t.State)))); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte(t.State)); err != nil {
 		return err
 	}
 
@@ -521,20 +529,16 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 		}
 
 		switch name {
-		// t.State (uint64) (uint64)
+		// t.State (api.SectorState) (string)
 		case "State":
 
 			{
-
-				maj, extra, err = cbg.CborReadHeader(br)
+				sval, err := cbg.ReadString(br)
 				if err != nil {
 					return err
 				}
-				if maj != cbg.MajUnsignedInt {
-					return fmt.Errorf("wrong type for uint64 field")
-				}
-				t.State = uint64(extra)
 
+				t.State = api.SectorState(sval)
 			}
 			// t.SectorID (abi.SectorNumber) (uint64)
 		case "SectorID":

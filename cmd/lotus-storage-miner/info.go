@@ -127,13 +127,13 @@ var infoCmd = &cli.Command{
 	},
 }
 
-func sectorsInfo(ctx context.Context, napi api.StorageMiner) (map[string]int, error) {
+func sectorsInfo(ctx context.Context, napi api.StorageMiner) (map[api.SectorState]int, error) {
 	sectors, err := napi.SectorsList(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	out := map[string]int{
+	out := map[api.SectorState]int{
 		"Total": len(sectors),
 	}
 	for _, s := range sectors {
@@ -142,7 +142,7 @@ func sectorsInfo(ctx context.Context, napi api.StorageMiner) (map[string]int, er
 			return nil, err
 		}
 
-		out[api.SectorStates[st.State]]++
+		out[st.State]++
 	}
 
 	return out, nil
