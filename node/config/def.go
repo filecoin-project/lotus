@@ -57,9 +57,8 @@ type Metrics struct {
 func defCommon() Common {
 	return Common{
 		API: API{
-			ListenAddress:       "/ip4/127.0.0.1/tcp/1234/http",
-			RemoteListenAddress: "127.0.0.1:1234",
-			Timeout:             Duration(30 * time.Second),
+			ListenAddress: "/ip4/127.0.0.1/tcp/1234/http",
+			Timeout:       Duration(30 * time.Second),
 		},
 		Libp2p: Libp2p{
 			ListenAddresses: []string{
@@ -75,7 +74,7 @@ func defCommon() Common {
 
 }
 
-// Default returns the default config
+// DefaultFullNode returns the default config
 func DefaultFullNode() *FullNode {
 	return &FullNode{
 		Common: defCommon(),
@@ -93,6 +92,7 @@ func DefaultStorageMiner() *StorageMiner {
 		},
 	}
 	cfg.Common.API.ListenAddress = "/ip4/127.0.0.1/tcp/2345/http"
+	cfg.Common.API.RemoteListenAddress = "127.0.0.1:2345"
 	return cfg
 }
 
