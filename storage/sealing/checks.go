@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -28,6 +29,8 @@ type ErrExpiredDeals struct{ error }
 
 type ErrBadCommD struct{ error }
 type ErrExpiredTicket struct{ error }
+
+type ErrBadSeed struct{ error }
 
 // checkPieces validates that:
 //  - Each piece han a corresponding on chain deal
@@ -69,9 +72,9 @@ func checkPieces(ctx context.Context, si SectorInfo, api sealingApi) error {
 	return nil
 }
 
-// checkSeal checks that data commitment generated in the sealing process
+// checkPrecommit checks that data commitment generated in the sealing process
 //  matches pieces, and that the seal ticket isn't expired
-func checkSeal(ctx context.Context, maddr address.Address, si SectorInfo, api sealingApi) (err error) {
+func checkPrecommit(ctx context.Context, maddr address.Address, si SectorInfo, api sealingApi) (err error) {
 	head, err := api.ChainHead(ctx)
 	if err != nil {
 		return &ErrApi{xerrors.Errorf("getting chain head: %w", err)}
@@ -116,5 +119,26 @@ func checkSeal(ctx context.Context, maddr address.Address, si SectorInfo, api se
 	}
 
 	return nil
+}
 
+func checkCommit(ctx context.Context, si SectorInfo, api sealingApi) (err error) {
+	head, err := api.ChainHead(ctx)
+	if err != nil {
+		return &ErrApi{xerrors.Errorf("getting chain head: %w", err)}
+	}
+
+	if si.Seed.Epoch == 0 {
+		return &ErrBadSeed{xerrors.Errorf("seed epoch was not set")}
+	}
+
+	rand, err := api.ChainGetRandomness(ctx, head.Key(), crypto.DomainSeparationTag_InteractiveSealChallengeSeed, si.Seed.Epoch, nil)
+	if err != nil {
+		return &ErrApi{xerrors.Errorf("failed to get randomness for computing seal proof: %w", err)}
+	}
+
+	if string(rand) != string(si.Seed.Value) {
+		return &ErrBadSeed{xerrors.Errorf("seed has changed")}
+	}
+
+	return nil
 }

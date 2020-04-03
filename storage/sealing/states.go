@@ -94,7 +94,7 @@ func (m *Sealing) handlePreCommit2(ctx statemachine.Context, sector SectorInfo) 
 }
 
 func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInfo) error {
-	if err := checkSeal(ctx.Context(), m.maddr, sector, m.api); err != nil {
+	if err := checkPrecommit(ctx.Context(), m.maddr, sector, m.api); err != nil {
 		switch err.(type) {
 		case *ErrApi:
 			log.Errorf("handlePreCommitting: api error, not proceeding: %+v", err)
@@ -104,7 +104,7 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 		case *ErrExpiredTicket:
 			return ctx.Send(SectorSealPreCommitFailed{xerrors.Errorf("ticket expired: %w", err)})
 		default:
-			return xerrors.Errorf("checkSeal sanity check error: %w", err)
+			return xerrors.Errorf("checkPrecommit sanity check error: %w", err)
 		}
 	}
 

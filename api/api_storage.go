@@ -35,7 +35,7 @@ const (
 	FailedUnrecoverable SectorState = "FailedUnrecoverable"
 	SealFailed          SectorState = "SealFailed"
 	PreCommitFailed     SectorState = "PreCommitFailed"
-	SealCommitFailed    SectorState = "SealCommitFailed"
+	ComputeProofFailed  SectorState = "ComputeProofFailed"
 	CommitFailed        SectorState = "CommitFailed"
 	PackingFailed       SectorState = "PackingFailed"
 	Faulty              SectorState = "Faulty"        // sector is corrupted or gone for some reason
