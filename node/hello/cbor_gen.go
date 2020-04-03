@@ -7,7 +7,7 @@ import (
 	"io"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/ipfs/go-cid"
+	cid "github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 )
