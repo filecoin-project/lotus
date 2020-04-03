@@ -50,6 +50,7 @@ func (ss *stateSnaps) addLayer() {
 }
 
 func (ss *stateSnaps) dropLayer() {
+	ss.layers[len(ss.layers)-1] = nil // allow it to be GCed
 	ss.layers = ss.layers[:len(ss.layers)-1]
 }
 
