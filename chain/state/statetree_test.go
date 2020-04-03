@@ -143,8 +143,8 @@ func TestSetCache(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if outact.Nonce != act.Nonce {
-		t.Error("nonce didn't match")
+	if outact.Nonce == 1 {
+		t.Error("nonce should not have updated")
 	}
 }
 
@@ -205,6 +205,8 @@ func TestSnapshots(t *testing.T) {
 
 		st.ClearSnapshot()
 	}
+
+	st.ClearSnapshot()
 
 	if _, err := st.Flush(ctx); err != nil {
 		t.Fatal(err)

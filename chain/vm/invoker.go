@@ -29,7 +29,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
-	"github.com/filecoin-project/lotus/chain/types"
 )
 
 type invoker struct {
@@ -37,7 +36,7 @@ type invoker struct {
 	builtInState map[cid.Cid]reflect.Type
 }
 
-type invokeFunc func(act *types.Actor, rt runtime.Runtime, params []byte) ([]byte, aerrors.ActorError)
+type invokeFunc func(rt runtime.Runtime, params []byte) ([]byte, aerrors.ActorError)
 type nativeCode []invokeFunc
 
 func NewInvoker() *invoker {
@@ -61,17 +60,17 @@ func NewInvoker() *invoker {
 	return inv
 }
 
-func (inv *invoker) Invoke(act *types.Actor, rt runtime.Runtime, method abi.MethodNum, params []byte) ([]byte, aerrors.ActorError) {
+func (inv *invoker) Invoke(codeCid cid.Cid, rt runtime.Runtime, method abi.MethodNum, params []byte) ([]byte, aerrors.ActorError) {
 
-	code, ok := inv.builtInCode[act.Code]
+	code, ok := inv.builtInCode[codeCid]
 	if !ok {
-		log.Errorf("no code for actor %s (Addr: %s)", act.Code, rt.Message().Receiver())
-		return nil, aerrors.Newf(exitcode.SysErrorIllegalActor, "no code for actor %s(%d)(%s)", act.Code, method, hex.EncodeToString(params))
+		log.Errorf("no code for actor %s (Addr: %s)", codeCid, rt.Message().Receiver())
+		return nil, aerrors.Newf(exitcode.SysErrorIllegalActor, "no code for actor %s(%d)(%s)", codeCid, method, hex.EncodeToString(params))
 	}
 	if method >= abi.MethodNum(len(code)) || code[method] == nil {
 		return nil, aerrors.Newf(exitcode.SysErrInvalidMethod, "no method %d on actor", method)
 	}
-	return code[method](act, rt, params)
+	return code[method](rt, params)
 
 }
 
@@ -137,7 +136,7 @@ func (*invoker) transform(instance Invokee) (nativeCode, error) {
 				paramT := meth.Type().In(1).Elem()
 				param := reflect.New(paramT)
 
-				inBytes := in[2].Interface().([]byte)
+				inBytes := in[1].Interface().([]byte)
 				if len(inBytes) > 0 {
 					if err := DecodeParams(inBytes, param.Interface()); err != nil {
 						aerr := aerrors.Absorb(err, 1, "failed to decode parameters")
@@ -149,7 +148,7 @@ func (*invoker) transform(instance Invokee) (nativeCode, error) {
 						}
 					}
 				}
-				rt := in[1].Interface().(*Runtime)
+				rt := in[0].Interface().(*Runtime)
 				rval, aerror := rt.shimCall(func() interface{} {
 					ret := meth.Call([]reflect.Value{
 						reflect.ValueOf(rt),
