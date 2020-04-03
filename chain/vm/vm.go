@@ -599,7 +599,7 @@ func (vm *VM) Invoke(act *types.Actor, rt *Runtime, method abi.MethodNum, params
 	defer func() {
 		rt.ctx = oldCtx
 	}()
-	ret, err := vm.inv.Invoke(act, rt, method, params)
+	ret, err := vm.inv.Invoke(act.Code, rt, method, params)
 	if err != nil {
 		return nil, err
 	}
@@ -611,13 +611,10 @@ func (vm *VM) SetInvoker(i *invoker) {
 }
 
 func (vm *VM) incrementNonce(addr address.Address) error {
-	a, err := vm.cstate.GetActor(addr)
-	if err != nil {
-		return xerrors.Errorf("nonce increment of sender failed")
-	}
-
-	a.Nonce++
-	return nil
+	return vm.cstate.MutateActor(addr, func(a *types.Actor) error {
+		a.Nonce++
+		return nil
+	})
 }
 
 func (vm *VM) transfer(from, to address.Address, amt types.BigInt) error {
@@ -643,6 +640,15 @@ func (vm *VM) transfer(from, to address.Address, amt types.BigInt) error {
 		return err
 	}
 	depositFunds(t, amt)
+
+	if err := vm.cstate.SetActor(from, f); err != nil {
+		return err
+	}
+
+	if err := vm.cstate.SetActor(to, t); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -651,16 +657,13 @@ func (vm *VM) transferToGasHolder(addr address.Address, gasHolder *types.Actor, 
 		return xerrors.Errorf("attempted to transfer negative value to gas holder")
 	}
 
-	a, err := vm.cstate.GetActor(addr)
-	if err != nil {
-		return xerrors.Errorf("transfer to gas holder failed when retrieving sender actor")
-	}
-
-	if err := deductFunds(a, amt); err != nil {
-		return err
-	}
-	depositFunds(gasHolder, amt)
-	return nil
+	return vm.cstate.MutateActor(addr, func(a *types.Actor) error {
+		if err := deductFunds(a, amt); err != nil {
+			return err
+		}
+		depositFunds(gasHolder, amt)
+		return nil
+	})
 }
 
 func (vm *VM) transferFromGasHolder(addr address.Address, gasHolder *types.Actor, amt types.BigInt) error {
@@ -668,16 +671,13 @@ func (vm *VM) transferFromGasHolder(addr address.Address, gasHolder *types.Actor
 		return xerrors.Errorf("attempted to transfer negative value from gas holder")
 	}
 
-	a, err := vm.cstate.GetActor(addr)
-	if err != nil {
-		return xerrors.Errorf("transfer from gas holder failed when retrieving receiver actor")
-	}
-
-	if err := deductFunds(gasHolder, amt); err != nil {
-		return err
-	}
-	depositFunds(a, amt)
-	return nil
+	return vm.cstate.MutateActor(addr, func(a *types.Actor) error {
+		if err := deductFunds(gasHolder, amt); err != nil {
+			return err
+		}
+		depositFunds(a, amt)
+		return nil
+	})
 }
 
 func deductFunds(act *types.Actor, amt types.BigInt) error {
