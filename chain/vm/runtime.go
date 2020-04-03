@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	sainit "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	vmr "github.com/filecoin-project/specs-actors/actors/runtime"
@@ -19,6 +20,7 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/trace"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/state"
@@ -31,6 +33,7 @@ type Runtime struct {
 	vm        *VM
 	state     *state.StateTree
 	msg       *types.Message
+	vmsg      vmr.Message
 	height    abi.ChainEpoch
 	cst       cbor.IpldStore
 	pricelist Pricelist
@@ -48,18 +51,29 @@ type Runtime struct {
 	numActorsCreated   uint64
 }
 
-func (rt *Runtime) ResolveAddress(address address.Address) (ret address.Address, ok bool) {
-	r, err := rt.state.LookupID(address)
+func (rt *Runtime) ResolveAddress(addr address.Address) (ret address.Address, ok bool) {
+	r, err := rt.state.LookupID(addr)
 	if err != nil { // TODO: check notfound
-		rt.Abortf(exitcode.ErrPlaceholder, "resolve address: %v", err)
+		if xerrors.Is(err, sainit.ErrAddressNotFound) {
+			return address.Undef, false
+		}
+		panic(aerrors.Fatalf("failed to resolve address %s: %s", addr, err))
 	}
 	return r, true
 }
 
+type notFoundErr interface {
+	IsNotFound() bool
+}
+
 func (rs *Runtime) Get(c cid.Cid, o vmr.CBORUnmarshaler) bool {
 	if err := rs.cst.Get(context.TODO(), c, o); err != nil {
-		// TODO: err not found?
-		rs.Abortf(exitcode.ErrPlaceholder, "storage get: %v", err)
+		var nfe notFoundErr
+		if xerrors.As(err, &nfe) && nfe.IsNotFound() {
+			return false
+		}
+
+		panic(aerrors.Fatalf("failed to get cbor object %s: %s", c, err))
 	}
 	return true
 }
@@ -67,7 +81,7 @@ func (rs *Runtime) Get(c cid.Cid, o vmr.CBORUnmarshaler) bool {
 func (rs *Runtime) Put(x vmr.CBORMarshaler) cid.Cid {
 	c, err := rs.cst.Put(context.TODO(), x)
 	if err != nil {
-		rs.Abortf(exitcode.ErrPlaceholder, "storage put: %v", err) // todo: spec code?
+		panic(aerrors.Fatalf("failed to put cbor object: %s", err))
 	}
 	return c
 }
@@ -107,20 +121,7 @@ func (rs *Runtime) shimCall(f func() interface{}) (rval []byte, aerr aerrors.Act
 }
 
 func (rs *Runtime) Message() vmr.Message {
-	var ok bool
-
-	rawm := *rs.msg
-	rawm.From, ok = rs.ResolveAddress(rawm.From)
-	if !ok {
-		rs.Abortf(exitcode.ErrPlaceholder, "resolve from address failed")
-	}
-
-	rawm.To, ok = rs.ResolveAddress(rawm.To)
-	if !ok {
-		rs.Abortf(exitcode.ErrPlaceholder, "resolve to address failed")
-	}
-
-	return &rawm
+	return rs.vmsg
 }
 
 func (rs *Runtime) ValidateImmediateCallerAcceptAny() {
@@ -138,8 +139,11 @@ func (rs *Runtime) CurrentBalance() abi.TokenAmount {
 func (rs *Runtime) GetActorCodeCID(addr address.Address) (ret cid.Cid, ok bool) {
 	act, err := rs.state.GetActor(addr)
 	if err != nil {
-		// todo: notfound
-		rs.Abortf(exitcode.ErrPlaceholder, "%v", err)
+		if xerrors.Is(err, types.ErrActorNotFound) {
+			return cid.Undef, false
+		}
+
+		panic(aerrors.Fatalf("failed to get actor: %s", err))
 	}
 
 	return act.Code, true
@@ -148,7 +152,7 @@ func (rs *Runtime) GetActorCodeCID(addr address.Address) (ret cid.Cid, ok bool) 
 func (rt *Runtime) GetRandomness(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
 	res, err := rt.vm.rand.GetRandomness(rt.ctx, personalization, int64(randEpoch), entropy)
 	if err != nil {
-		rt.Abortf(exitcode.SysErrInternal, "could not get randomness: %s", err)
+		panic(aerrors.Fatalf("could not get randomness: %s", err))
 	}
 	return res
 }

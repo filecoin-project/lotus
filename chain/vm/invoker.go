@@ -137,15 +137,13 @@ func (*invoker) transform(instance Invokee) (nativeCode, error) {
 				param := reflect.New(paramT)
 
 				inBytes := in[1].Interface().([]byte)
-				if len(inBytes) > 0 {
-					if err := DecodeParams(inBytes, param.Interface()); err != nil {
-						aerr := aerrors.Absorb(err, 1, "failed to decode parameters")
-						return []reflect.Value{
-							reflect.ValueOf([]byte{}),
-							// Below is a hack, fixed in Go 1.13
-							// https://git.io/fjXU6
-							reflect.ValueOf(&aerr).Elem(),
-						}
+				if err := DecodeParams(inBytes, param.Interface()); err != nil {
+					aerr := aerrors.Absorb(err, 1, "failed to decode parameters")
+					return []reflect.Value{
+						reflect.ValueOf([]byte{}),
+						// Below is a hack, fixed in Go 1.13
+						// https://git.io/fjXU6
+						reflect.ValueOf(&aerr).Elem(),
 					}
 				}
 				rt := in[0].Interface().(*Runtime)
