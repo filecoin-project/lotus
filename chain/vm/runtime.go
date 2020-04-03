@@ -54,7 +54,7 @@ type Runtime struct {
 
 func (rt *Runtime) ResolveAddress(addr address.Address) (ret address.Address, ok bool) {
 	r, err := rt.state.LookupID(addr)
-	if err != nil { // TODO: check notfound
+	if err != nil {
 		if xerrors.Is(err, sainit.ErrAddressNotFound) {
 			return address.Undef, false
 		}
