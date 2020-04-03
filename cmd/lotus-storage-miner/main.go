@@ -57,6 +57,7 @@ func main() {
 		Name:    "lotus-storage-miner",
 		Usage:   "Filecoin decentralized storage network storage miner",
 		Version: build.UserVersion,
+		EnableShellCompletion: true,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    "repo",
