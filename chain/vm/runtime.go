@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	sainit "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
@@ -165,18 +166,18 @@ func (rt *Runtime) NewActorAddress() address.Address {
 	var b bytes.Buffer
 	oa, _ := ResolveToKeyAddr(rt.vm.cstate, rt.vm.cst, rt.origin)
 	if err := oa.MarshalCBOR(&b); err != nil { // todo: spec says cbor; why not just bytes?
-		rt.Abortf(exitcode.ErrSerialization, "writing caller address into a buffer: %v", err)
+		panic(aerrors.Fatalf("writing caller address into a buffer: %v", err))
 	}
 
 	if err := binary.Write(&b, binary.BigEndian, rt.originNonce); err != nil {
-		rt.Abortf(exitcode.ErrSerialization, "writing nonce address into a buffer: %v", err)
+		panic(aerrors.Fatalf("writing nonce address into a buffer: %v", err))
 	}
 	if err := binary.Write(&b, binary.BigEndian, rt.numActorsCreated); err != nil { // TODO: expose on vm
-		rt.Abortf(exitcode.ErrSerialization, "writing callSeqNum address into a buffer: %v", err)
+		panic(aerrors.Fatalf("writing callSeqNum address into a buffer: %v", err))
 	}
 	addr, err := address.NewActorAddress(b.Bytes())
 	if err != nil {
-		rt.Abortf(exitcode.ErrSerialization, "create actor address: %v", err)
+		panic(aerrors.Fatalf("create actor address: %v", err))
 	}
 
 	rt.incrementNumActorsCreated()
@@ -194,7 +195,7 @@ func (rt *Runtime) CreateActor(codeId cid.Cid, address address.Address) {
 		Balance: big.Zero(),
 	})
 	if err != nil {
-		rt.Abortf(exitcode.SysErrInternal, "creating actor entry: %v", err)
+		panic(aerrors.Fatalf("creating actor entry: %v", err))
 	}
 }
 
@@ -202,13 +203,17 @@ func (rt *Runtime) DeleteActor() {
 	rt.ChargeGas(rt.Pricelist().OnDeleteActor())
 	act, err := rt.state.GetActor(rt.Message().Receiver())
 	if err != nil {
-		rt.Abortf(exitcode.SysErrInternal, "failed to load actor in delete actor: %s", err)
+		if xerrors.Is(err, types.ErrActorNotFound) {
+			rt.Abortf(exitcode.SysErrorIllegalActor, "failed to load actor in delete actor: %s", err)
+		}
+		panic(aerrors.Fatalf("failed to get actor: %s", err))
 	}
 	if !act.Balance.IsZero() {
-		rt.Abortf(exitcode.SysErrInternal, "cannot delete actor with non-zero balance")
+		rt.vm.transfer(rt.Message().Receiver(), builtin.BurntFundsActorAddr, act.Balance)
 	}
+
 	if err := rt.state.DeleteActor(rt.Message().Receiver()); err != nil {
-		rt.Abortf(exitcode.SysErrInternal, "failed to delete actor: %s", err)
+		panic(aerrors.Fatalf("failed to delete actor: %s", err))
 	}
 }
 
@@ -224,10 +229,7 @@ func (rs *Runtime) StartSpan(name string) vmr.TraceSpan {
 }
 
 func (rt *Runtime) ValidateImmediateCallerIs(as ...address.Address) {
-	imm, ok := rt.ResolveAddress(rt.Message().Caller())
-	if !ok {
-		rt.Abortf(exitcode.ErrIllegalState, "couldn't resolve immediate caller")
-	}
+	imm := rt.Message().Caller()
 
 	for _, a := range as {
 		if imm == a {
@@ -253,7 +255,7 @@ func (rs *Runtime) AbortStateMsg(msg string) {
 func (rt *Runtime) ValidateImmediateCallerType(ts ...cid.Cid) {
 	callerCid, ok := rt.GetActorCodeCID(rt.Message().Caller())
 	if !ok {
-		rt.Abortf(exitcode.ErrIllegalArgument, "failed to lookup code cid for caller")
+		panic(aerrors.Fatalf("failed to lookup code cid for caller"))
 	}
 	for _, t := range ts {
 		if t == callerCid {
