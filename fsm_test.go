@@ -36,9 +36,9 @@ func TestHappyPath(t *testing.T) {
 	}
 
 	m.planSingle(SectorPacked{})
-	require.Equal(m.t, m.state.State, api.Unsealed)
+	require.Equal(m.t, m.state.State, api.PreCommit1)
 
-	m.planSingle(SectorSealed{})
+	m.planSingle(SectorPreCommit2{})
 	require.Equal(m.t, m.state.State, api.PreCommitting)
 
 	m.planSingle(SectorPreCommitted{})
@@ -65,9 +65,9 @@ func TestSeedRevert(t *testing.T) {
 	}
 
 	m.planSingle(SectorPacked{})
-	require.Equal(m.t, m.state.State, api.Unsealed)
+	require.Equal(m.t, m.state.State, api.PreCommit1)
 
-	m.planSingle(SectorSealed{})
+	m.planSingle(SectorPreCommit2{})
 	require.Equal(m.t, m.state.State, api.PreCommitting)
 
 	m.planSingle(SectorPreCommitted{})
