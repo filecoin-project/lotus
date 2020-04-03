@@ -178,7 +178,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{175}); err != nil {
+	if _, err := w.Write([]byte{176}); err != nil {
 		return err
 	}
 
@@ -284,6 +284,45 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
+	// t.Ticket (api.SealTicket) (struct)
+	if len("Ticket") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"Ticket\" was too long")
+	}
+
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("Ticket")))); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("Ticket")); err != nil {
+		return err
+	}
+
+	if err := t.Ticket.MarshalCBOR(w); err != nil {
+		return err
+	}
+
+	// t.PreCommit1Out (storage.PreCommit1Out) (slice)
+	if len("PreCommit1Out") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"PreCommit1Out\" was too long")
+	}
+
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("PreCommit1Out")))); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("PreCommit1Out")); err != nil {
+		return err
+	}
+
+	if len(t.PreCommit1Out) > cbg.ByteArrayMaxLen {
+		return xerrors.Errorf("Byte array in field t.PreCommit1Out was too long")
+	}
+
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.PreCommit1Out)))); err != nil {
+		return err
+	}
+	if _, err := w.Write(t.PreCommit1Out); err != nil {
+		return err
+	}
+
 	// t.CommD (cid.Cid) (struct)
 	if len("CommD") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"CommD\" was too long")
@@ -348,22 +387,6 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 	if _, err := w.Write(t.Proof); err != nil {
-		return err
-	}
-
-	// t.Ticket (api.SealTicket) (struct)
-	if len("Ticket") > cbg.MaxLength {
-		return xerrors.Errorf("Value in field \"Ticket\" was too long")
-	}
-
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("Ticket")))); err != nil {
-		return err
-	}
-	if _, err := w.Write([]byte("Ticket")); err != nil {
-		return err
-	}
-
-	if err := t.Ticket.MarshalCBOR(w); err != nil {
 		return err
 	}
 
@@ -624,6 +647,34 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 				t.Pieces[i] = v
 			}
 
+			// t.Ticket (api.SealTicket) (struct)
+		case "Ticket":
+
+			{
+
+				if err := t.Ticket.UnmarshalCBOR(br); err != nil {
+					return xerrors.Errorf("unmarshaling t.Ticket: %w", err)
+				}
+
+			}
+			// t.PreCommit1Out (storage.PreCommit1Out) (slice)
+		case "PreCommit1Out":
+
+			maj, extra, err = cbg.CborReadHeader(br)
+			if err != nil {
+				return err
+			}
+
+			if extra > cbg.ByteArrayMaxLen {
+				return fmt.Errorf("t.PreCommit1Out: byte array too large (%d)", extra)
+			}
+			if maj != cbg.MajByteString {
+				return fmt.Errorf("expected byte array")
+			}
+			t.PreCommit1Out = make([]byte, extra)
+			if _, err := io.ReadFull(br, t.PreCommit1Out); err != nil {
+				return err
+			}
 			// t.CommD (cid.Cid) (struct)
 		case "CommD":
 
@@ -691,16 +742,6 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 			t.Proof = make([]byte, extra)
 			if _, err := io.ReadFull(br, t.Proof); err != nil {
 				return err
-			}
-			// t.Ticket (api.SealTicket) (struct)
-		case "Ticket":
-
-			{
-
-				if err := t.Ticket.UnmarshalCBOR(br); err != nil {
-					return xerrors.Errorf("unmarshaling t.Ticket: %w", err)
-				}
-
 			}
 			// t.PreCommitMessage (cid.Cid) (struct)
 		case "PreCommitMessage":
