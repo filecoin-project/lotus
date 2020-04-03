@@ -49,7 +49,7 @@ var rewardsListCmd = &cli.Command{
 		}
 
 		for _, r := range rewards {
-			fmt.Printf("%d\t%d\t%s\n", r.StartEpoch, r.EndEpoch, r.Value)
+			fmt.Printf("%d\t%d\t%s\n", r.StartEpoch, r.EndEpoch, types.FIL(r.Value))
 		}
 
 		return nil
