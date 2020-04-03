@@ -23,7 +23,8 @@ const (
 	// happy path
 	Empty          SectorState = "Empty"
 	Packing        SectorState = "Packing"       // sector not in sealStore, and not on chain
-	Unsealed       SectorState = "Unsealed"      // sealing / queued
+	PreCommit1     SectorState = "PreCommit1"    // do PreCommit1
+	PreCommit2     SectorState = "PreCommit2"    // do PreCommit1
 	PreCommitting  SectorState = "PreCommitting" // on chain pre-commit
 	WaitSeed       SectorState = "WaitSeed"      // waiting for seed
 	Committing     SectorState = "Committing"
