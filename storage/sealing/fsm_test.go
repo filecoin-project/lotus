@@ -102,5 +102,5 @@ func TestPlanCommittingHandlesSectorCommitFailed(t *testing.T) {
 
 	require.NoError(t, planCommitting(events, m.state))
 
-	require.Equal(t, api.SectorStates[api.CommitFailed], api.SectorStates[m.state.State])
+	require.Equal(t, api.CommitFailed, m.state.State)
 }
