@@ -32,7 +32,7 @@ func (m *Sealing) Plan(events []statemachine.Event, user interface{}) (interface
 	}, uint64(len(events)), nil // TODO: This processed event count is not very correct
 }
 
-var fsmPlanners = []func(events []statemachine.Event, state *SectorInfo) error{
+var fsmPlanners = map[api.SectorState]func(events []statemachine.Event, state *SectorInfo) error{
 	api.UndefinedSectorState: planOne(on(SectorStart{}, api.Packing)),
 	api.Packing:              planOne(on(SectorPacked{}, api.Unsealed)),
 	api.Unsealed: planOne(
@@ -105,11 +105,11 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 
 	p := fsmPlanners[state.State]
 	if p == nil {
-		return nil, xerrors.Errorf("planner for state %s not found", api.SectorStates[state.State])
+		return nil, xerrors.Errorf("planner for state %s not found", state.State)
 	}
 
 	if err := p(events, state); err != nil {
-		return nil, xerrors.Errorf("running planner for state %s failed: %w", api.SectorStates[state.State], err)
+		return nil, xerrors.Errorf("running planner for state %s failed: %w", state.State, err)
 	}
 
 	/////
@@ -251,7 +251,7 @@ func (m *Sealing) ForceSectorState(ctx context.Context, id abi.SectorNumber, sta
 }
 
 func final(events []statemachine.Event, state *SectorInfo) error {
-	return xerrors.Errorf("didn't expect any events in state %s, got %+v", api.SectorStates[state.State], events)
+	return xerrors.Errorf("didn't expect any events in state %s, got %+v", state.State, events)
 }
 
 func on(mut mutator, next api.SectorState) func() (mutator, api.SectorState) {
@@ -269,7 +269,7 @@ func planOne(ts ...func() (mut mutator, next api.SectorState)) func(events []sta
 					return nil
 				}
 			}
-			return xerrors.Errorf("planner for state %s only has a plan for a single event only, got %+v", api.SectorStates[state.State], events)
+			return xerrors.Errorf("planner for state %s only has a plan for a single event only, got %+v", state.State, events)
 		}
 
 		if gm, ok := events[0].User.(globalMutator); ok {
@@ -293,6 +293,6 @@ func planOne(ts ...func() (mut mutator, next api.SectorState)) func(events []sta
 			return nil
 		}
 
-		return xerrors.Errorf("planner for state %s received unexpected event %T (%+v)", api.SectorStates[state.State], events[0].User, events[0])
+		return xerrors.Errorf("planner for state %s received unexpected event %T (%+v)", state.State, events[0].User, events[0])
 	}
 }
