@@ -17,6 +17,8 @@ import (
 const minRetryTime = 1 * time.Minute
 
 func failedCooldown(ctx statemachine.Context, sector SectorInfo) error {
+	// TODO: Exponential backoff when we see consecutive failures
+
 	retryStart := time.Unix(int64(sector.Log[len(sector.Log)-1].Timestamp), 0).Add(minRetryTime)
 	if len(sector.Log) > 0 && !time.Now().After(retryStart) {
 		log.Infof("%s(%d), waiting %s before retrying", sector.State, sector.SectorID, time.Until(retryStart))
@@ -74,7 +76,7 @@ func (m *Sealing) handleSealFailed(ctx statemachine.Context, sector SectorInfo) 
 }
 
 func (m *Sealing) handlePreCommitFailed(ctx statemachine.Context, sector SectorInfo) error {
-	if err := checkSeal(ctx.Context(), m.maddr, sector, m.api); err != nil {
+	if err := checkPrecommit(ctx.Context(), m.maddr, sector, m.api); err != nil {
 		switch err.(type) {
 		case *ErrApi:
 			log.Errorf("handlePreCommitFailed: api error, not proceeding: %+v", err)
@@ -84,7 +86,7 @@ func (m *Sealing) handlePreCommitFailed(ctx statemachine.Context, sector SectorI
 		case *ErrExpiredTicket:
 			return ctx.Send(SectorSealPreCommitFailed{xerrors.Errorf("ticket expired error: %w", err)})
 		default:
-			return xerrors.Errorf("checkSeal sanity check error: %w", err)
+			return xerrors.Errorf("checkPrecommit sanity check error: %w", err)
 		}
 	}
 
@@ -118,4 +120,51 @@ func (m *Sealing) handlePreCommitFailed(ctx statemachine.Context, sector SectorI
 	}
 
 	return ctx.Send(SectorRetryPreCommit{})
+}
+
+func (m *Sealing) handleComputeProofFailed(ctx statemachine.Context, sector SectorInfo) error {
+	// TODO: Check sector files
+
+	if err := failedCooldown(ctx, sector); err != nil {
+		return err
+	}
+
+	return ctx.Send(SectorRetryComputeProof{})
+}
+
+func (m *Sealing) handleCommitFailed(ctx statemachine.Context, sector SectorInfo) error {
+	if err := checkPrecommit(ctx.Context(), m.maddr, sector, m.api); err != nil {
+		switch err.(type) {
+		case *ErrApi:
+			log.Errorf("handleCommitFailed: api error, not proceeding: %+v", err)
+			return nil
+		case *ErrBadCommD:
+			return ctx.Send(SectorSealPreCommitFailed{xerrors.Errorf("bad CommD error: %w", err)})
+		case *ErrExpiredTicket:
+			return ctx.Send(SectorSealPreCommitFailed{xerrors.Errorf("ticket expired error: %w", err)})
+		default:
+			return xerrors.Errorf("checkPrecommit sanity check error: %w", err)
+		}
+	}
+
+	if err := checkCommit(ctx.Context(), sector, m.api); err != nil {
+		switch err.(type) {
+		case *ErrApi:
+			log.Errorf("handleCommitFailed: api error, not proceeding: %+v", err)
+			return nil
+		case *ErrBadSeed:
+			log.Errorf("seed changed, will retry: %+v", err)
+			return ctx.Send(SectorRetryWaitSeed{})
+		default:
+			return xerrors.Errorf("checkCommit sanity check error: %w", err)
+		}
+	}
+
+	// TODO: Check sector files
+
+	if err := failedCooldown(ctx, sector); err != nil {
+		return err
+	}
+
+	return ctx.Send(SectorRetryComputeProof{})
 }

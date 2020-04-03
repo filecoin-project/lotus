@@ -77,6 +77,14 @@ var fsmPlanners = map[api.SectorState]func(events []statemachine.Event, state *S
 		on(SectorRetryWaitSeed{}, api.WaitSeed),
 		on(SectorSealPreCommitFailed{}, api.SealFailed),
 	),
+	api.ComputeProofFailed: planOne(
+		on(SectorRetryComputeProof{}, api.Committing),
+	),
+	api.CommitFailed: planOne(
+		on(SectorSealPreCommitFailed{}, api.SealFailed),
+		on(SectorRetryWaitSeed{}, api.WaitSeed),
+		on(SectorRetryComputeProof{}, api.Committing),
+	),
 
 	api.Faulty: planOne(
 		on(SectorFaultReported{}, api.FaultReported),
@@ -129,15 +137,20 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		|   |
 		|   v
 		*<- PreCommit1 <--> SealFailed
-		|   |
-		|   v
-		*   PreCommitting <--> PreCommitFailed
-		|   |                  ^
-		|   v                  |
-		*<- WaitSeed ----------/
-		|   |||
-		|   vvv      v--> SealCommitFailed
-		*<- Committing
+		|   |                 ^^^
+		|   v                 |||
+		*<- PreCommit2 -------/||
+		|   |                  ||
+		|   v          /-------/|
+		*   PreCommitting <-----+---> PreCommitFailed
+		|   |                   |     ^
+		|   v                   |     |
+		*<- WaitSeed -----------+-----/
+		|   |||  ^              |
+		|   |||  \--------*-----/
+		|   |||           |
+		|   vvv      v----+----> ComputeProofFailed
+		*<- Committing    |
 		|   |        ^--> CommitFailed
 		|   v             ^
 		*<- CommitWait ---/
@@ -181,10 +194,10 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		return m.handleSealFailed, nil
 	case api.PreCommitFailed:
 		return m.handlePreCommitFailed, nil
-	case api.SealCommitFailed:
-		log.Warnf("sector %d entered unimplemented state 'SealCommitFailed'", state.SectorID)
+	case api.ComputeProofFailed:
+		return m.handleComputeProofFailed, nil
 	case api.CommitFailed:
-		log.Warnf("sector %d entered unimplemented state 'CommitFailed'", state.SectorID)
+		return m.handleCommitFailed, nil
 
 		// Faults
 	case api.Faulty:
@@ -224,7 +237,7 @@ func planCommitting(events []statemachine.Event, state *SectorInfo) error {
 			state.State = api.Committing
 			return nil
 		case SectorComputeProofFailed:
-			state.State = api.SealCommitFailed
+			state.State = api.ComputeProofFailed
 		case SectorSealPreCommitFailed:
 			state.State = api.CommitFailed
 		case SectorCommitFailed:
