@@ -84,7 +84,7 @@ func TestInvokerBasic(t *testing.T) {
 		bParam, err := actors.SerializeParams(&basicParams{B: 1})
 		assert.NoError(t, err)
 
-		_, aerr := code[0](nil, &Runtime{}, bParam)
+		_, aerr := code[0](&Runtime{}, bParam)
 
 		assert.Equal(t, exitcode.ExitCode(1), aerrors.RetCode(aerr), "return code should be 1")
 		if aerrors.IsFatal(aerr) {
@@ -96,14 +96,14 @@ func TestInvokerBasic(t *testing.T) {
 		bParam, err := actors.SerializeParams(&basicParams{B: 2})
 		assert.NoError(t, err)
 
-		_, aerr := code[10](nil, &Runtime{}, bParam)
+		_, aerr := code[10](&Runtime{}, bParam)
 		assert.Equal(t, exitcode.ExitCode(12), aerrors.RetCode(aerr), "return code should be 12")
 		if aerrors.IsFatal(aerr) {
 			t.Fatal("err should not be fatal")
 		}
 	}
 
-	_, aerr := code[1](nil, &Runtime{}, []byte{99})
+	_, aerr := code[1](&Runtime{}, []byte{99})
 	if aerrors.IsFatal(aerr) {
 		t.Fatal("err should not be fatal")
 	}
