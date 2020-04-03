@@ -340,7 +340,7 @@ func ConfigCommon(cfg *config.Common) Option {
 			ip := cfg.API.RemoteListenAddress
 
 			var urls sectorstorage.URLs
-			urls = append(urls, "http://"+ip+"/remote") // TODO: This makes assumptions, and probably bad ones too
+			urls = append(urls, "http://"+ip+"/remote") // TODO: This makes no assumptions, and probably could...
 			return urls, nil
 		}),
 		ApplyIf(func(s *Settings) bool { return s.Online },
