@@ -26,7 +26,6 @@ type StateTree struct {
 	root  *hamt.Node
 	Store cbor.IpldStore
 
-	// Maps ID addresses to actors, layered by snapshots
 	snaps *stateSnaps
 }
 
