@@ -2,8 +2,9 @@ package config
 
 import (
 	"encoding"
-	"github.com/filecoin-project/sector-storage"
 	"time"
+
+	sectorstorage "github.com/filecoin-project/sector-storage"
 )
 
 // Common is common config between full node and miner
@@ -29,8 +30,9 @@ type StorageMiner struct {
 
 // API contains configs for API endpoint
 type API struct {
-	ListenAddress string
-	Timeout       Duration
+	ListenAddress       string
+	RemoteListenAddress string
+	Timeout             Duration
 }
 
 // Libp2p contains configs for libp2p
@@ -55,8 +57,9 @@ type Metrics struct {
 func defCommon() Common {
 	return Common{
 		API: API{
-			ListenAddress: "/ip4/127.0.0.1/tcp/1234/http",
-			Timeout:       Duration(30 * time.Second),
+			ListenAddress:       "/ip4/127.0.0.1/tcp/1234/http",
+			RemoteListenAddress: "127.0.0.1:1234",
+			Timeout:             Duration(30 * time.Second),
 		},
 		Libp2p: Libp2p{
 			ListenAddresses: []string{
