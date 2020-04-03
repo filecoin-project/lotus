@@ -2,6 +2,7 @@ package sealing
 
 import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-storage/storage"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -70,29 +71,37 @@ type SectorPackingFailed struct{ error }
 
 func (evt SectorPackingFailed) apply(*SectorInfo) {}
 
-type SectorSealed struct {
-	Sealed   cid.Cid
-	Unsealed cid.Cid
-	Ticket   api.SealTicket
+type SectorPreCommit1 struct {
+	PreCommit1Out storage.PreCommit1Out
+	Ticket        api.SealTicket
 }
 
-func (evt SectorSealed) apply(state *SectorInfo) {
+func (evt SectorPreCommit1) apply(state *SectorInfo) {
+	state.PreCommit1Out = evt.PreCommit1Out
+	state.Ticket = evt.Ticket
+}
+
+type SectorPreCommit2 struct {
+	Sealed   cid.Cid
+	Unsealed cid.Cid
+}
+
+func (evt SectorPreCommit2) apply(state *SectorInfo) {
 	commd := evt.Unsealed
 	state.CommD = &commd
 	commr := evt.Sealed
 	state.CommR = &commr
-	state.Ticket = evt.Ticket
 }
 
-type SectorSealFailed struct{ error }
+type SectorSealPreCommitFailed struct{ error }
 
-func (evt SectorSealFailed) FormatError(xerrors.Printer) (next error) { return evt.error }
-func (evt SectorSealFailed) apply(*SectorInfo)                        {}
+func (evt SectorSealPreCommitFailed) FormatError(xerrors.Printer) (next error) { return evt.error }
+func (evt SectorSealPreCommitFailed) apply(*SectorInfo)                        {}
 
-type SectorPreCommitFailed struct{ error }
+type SectorChainPreCommitFailed struct{ error }
 
-func (evt SectorPreCommitFailed) FormatError(xerrors.Printer) (next error) { return evt.error }
-func (evt SectorPreCommitFailed) apply(*SectorInfo)                        {}
+func (evt SectorChainPreCommitFailed) FormatError(xerrors.Printer) (next error) { return evt.error }
+func (evt SectorChainPreCommitFailed) apply(*SectorInfo)                        {}
 
 type SectorPreCommitted struct {
 	Message cid.Cid
