@@ -101,6 +101,8 @@ type FullNode interface {
 	ClientFindData(ctx context.Context, root cid.Cid) ([]QueryOffer, error)
 	ClientRetrieve(ctx context.Context, order RetrievalOrder, ref FileRef) error
 	ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.SignedStorageAsk, error)
+	ClientCalcCommP(ctx context.Context, inpath string, miner address.Address) (*CommPRet, error)
+	ClientGenCar(ctx context.Context, ref FileRef, outpath string) error
 
 	// ClientUnimport removes references to the specified file from filestore
 	//ClientUnimport(path string)
@@ -397,4 +399,9 @@ type BlockTemplate struct {
 	Messages     []*types.SignedMessage
 	Epoch        abi.ChainEpoch
 	Timestamp    uint64
+}
+
+type CommPRet struct {
+	Root cid.Cid
+	Size abi.UnpaddedPieceSize
 }

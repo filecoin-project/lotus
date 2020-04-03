@@ -25,12 +25,14 @@ var clientCmd = &cli.Command{
 	Usage: "Make deals, store data, retrieve data",
 	Subcommands: []*cli.Command{
 		clientImportCmd,
+		clientCommPCmd,
 		clientLocalCmd,
 		clientDealCmd,
 		clientFindCmd,
 		clientRetrieveCmd,
 		clientQueryAskCmd,
 		clientListDeals,
+		clientCarGenCmd,
 	},
 }
 
@@ -41,7 +43,7 @@ var clientImportCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:  "car",
-			Usage: "export to a car file instead of a regular file",
+			Usage: "import from a car file instead of a regular file",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -65,6 +67,68 @@ var clientImportCmd = &cli.Command{
 			return err
 		}
 		fmt.Println(c.String())
+		return nil
+	},
+}
+
+var clientCommPCmd = &cli.Command{
+	Name:      "commP",
+	Usage:     "calculate the piece-cid (commP) of a CAR file",
+	ArgsUsage: "[inputFile minerAddress]",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		if cctx.Args().Len() != 2 {
+			return fmt.Errorf("usage: commP <inputPath> <minerAddr>")
+		}
+
+		miner, err := address.NewFromString(cctx.Args().Get(1))
+		if err != nil {
+			return err
+		}
+
+		ret, err := api.ClientCalcCommP(ctx, cctx.Args().Get(0), miner)
+
+		if err != nil {
+			return err
+		}
+		fmt.Println("CID: ", ret.Root)
+		fmt.Println("Piece size: ", ret.Size)
+		return nil
+	},
+}
+
+var clientCarGenCmd = &cli.Command{
+	Name:      "generate-car",
+	Usage:     "generate a car file from input",
+	ArgsUsage: "[inputPath outputPath]",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		if cctx.Args().Len() != 2 {
+			return fmt.Errorf("usage: generate-car <inputPath> <outputPath>")
+		}
+
+		ref := lapi.FileRef{
+			Path:  cctx.Args().First(),
+			IsCAR: false,
+		}
+
+		op := cctx.Args().Get(1)
+
+		if err = api.ClientGenCar(ctx, ref, op); err != nil {
+			return err
+		}
 		return nil
 	},
 }
