@@ -205,6 +205,10 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 		return ctx.Send(SectorComputeProofFailed{xerrors.Errorf("computing seal proof failed: %w", err)})
 	}
 
+	if err := m.checkCommit(ctx.Context(), sector); err != nil {
+		return ctx.Send(SectorCommitFailed{xerrors.Errorf("commit check error: %w", err)})
+	}
+
 	// TODO: Consider splitting states and persist proof for faster recovery
 
 	params := &miner.ProveCommitSectorParams{

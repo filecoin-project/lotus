@@ -147,7 +147,7 @@ func (m *Sealing) handleCommitFailed(ctx statemachine.Context, sector SectorInfo
 		}
 	}
 
-	if err := checkCommit(ctx.Context(), sector, m.api); err != nil {
+	if err := m.checkCommit(ctx.Context(), sector); err != nil {
 		switch err.(type) {
 		case *ErrApi:
 			log.Errorf("handleCommitFailed: api error, not proceeding: %+v", err)
@@ -155,6 +155,16 @@ func (m *Sealing) handleCommitFailed(ctx statemachine.Context, sector SectorInfo
 		case *ErrBadSeed:
 			log.Errorf("seed changed, will retry: %+v", err)
 			return ctx.Send(SectorRetryWaitSeed{})
+		case *ErrInvalidProof:
+			if err := failedCooldown(ctx, sector); err != nil {
+				return err
+			}
+
+			if sector.InvalidProofs > 0 {
+				return ctx.Send(SectorSealPreCommitFailed{xerrors.Errorf("consecutive invalid proofs")})
+			}
+
+			return ctx.Send(SectorRetryInvalidProof{})
 		default:
 			return xerrors.Errorf("checkCommit sanity check error: %w", err)
 		}

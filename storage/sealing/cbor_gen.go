@@ -178,7 +178,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{176}); err != nil {
+	if _, err := w.Write([]byte{177}); err != nil {
 		return err
 	}
 
@@ -448,6 +448,22 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		if err := cbg.WriteCid(w, *t.CommitMessage); err != nil {
 			return xerrors.Errorf("failed to write cid field t.CommitMessage: %w", err)
 		}
+	}
+
+	// t.InvalidProofs (uint64) (uint64)
+	if len("InvalidProofs") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"InvalidProofs\" was too long")
+	}
+
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("InvalidProofs")))); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("InvalidProofs")); err != nil {
+		return err
+	}
+
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.InvalidProofs))); err != nil {
+		return err
 	}
 
 	// t.FaultReportMsg (cid.Cid) (struct)
@@ -801,6 +817,21 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 
 					t.CommitMessage = &c
 				}
+
+			}
+			// t.InvalidProofs (uint64) (uint64)
+		case "InvalidProofs":
+
+			{
+
+				maj, extra, err = cbg.CborReadHeader(br)
+				if err != nil {
+					return err
+				}
+				if maj != cbg.MajUnsignedInt {
+					return fmt.Errorf("wrong type for uint64 field")
+				}
+				t.InvalidProofs = uint64(extra)
 
 			}
 			// t.FaultReportMsg (cid.Cid) (struct)
