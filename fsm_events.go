@@ -96,7 +96,9 @@ func (evt SectorPreCommit2) apply(state *SectorInfo) {
 type SectorSealPreCommitFailed struct{ error }
 
 func (evt SectorSealPreCommitFailed) FormatError(xerrors.Printer) (next error) { return evt.error }
-func (evt SectorSealPreCommitFailed) apply(*SectorInfo)                        {}
+func (evt SectorSealPreCommitFailed) apply(si *SectorInfo) {
+	si.InvalidProofs = 0 // reset counter
+}
 
 type SectorChainPreCommitFailed struct{ error }
 
@@ -169,6 +171,13 @@ func (evt SectorRetryWaitSeed) apply(state *SectorInfo) {}
 type SectorRetryComputeProof struct{}
 
 func (evt SectorRetryComputeProof) apply(state *SectorInfo) {}
+
+type SectorRetryInvalidProof struct{}
+
+func (evt SectorRetryInvalidProof) apply(state *SectorInfo) {
+	state.InvalidProofs++
+}
+
 
 // Faults
 
