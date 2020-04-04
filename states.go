@@ -156,7 +156,12 @@ func (m *Sealing) handleWaitSeed(ctx statemachine.Context, sector SectorInfo) er
 	}
 	log.Info("precommit message landed on chain: ", sector.SectorID)
 
-	randHeight := mw.TipSet.Height() + miner.PreCommitChallengeDelay - 1 // -1 because of how the messages are applied
+	pci, err := m.api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, sector.SectorID, mw.TipSet.Key())
+	if err != nil {
+		return xerrors.Errorf("getting precommit info: %w", err)
+	}
+
+	randHeight := pci.PreCommitEpoch + miner.PreCommitChallengeDelay
 	log.Infof("precommit for sector %d made it on chain, will start proof computation at height %d", sector.SectorID, randHeight)
 
 	err = m.events.ChainAt(func(ectx context.Context, ts *types.TipSet, curH abi.ChainEpoch) error {
@@ -178,7 +183,7 @@ func (m *Sealing) handleWaitSeed(ctx statemachine.Context, sector SectorInfo) er
 		log.Warn("revert in interactive commit sector step")
 		// TODO: need to cancel running process and restart...
 		return nil
-	}, build.InteractivePoRepConfidence, mw.TipSet.Height()+miner.PreCommitChallengeDelay)
+	}, build.InteractivePoRepConfidence, randHeight)
 	if err != nil {
 		log.Warn("waitForPreCommitMessage ChainAt errored: ", err)
 	}
@@ -205,7 +210,7 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 		return ctx.Send(SectorComputeProofFailed{xerrors.Errorf("computing seal proof failed: %w", err)})
 	}
 
-	if err := m.checkCommit(ctx.Context(), sector); err != nil {
+	if err := m.checkCommit(ctx.Context(), sector, proof); err != nil {
 		return ctx.Send(SectorCommitFailed{xerrors.Errorf("commit check error: %w", err)})
 	}
 
