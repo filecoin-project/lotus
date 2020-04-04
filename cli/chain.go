@@ -433,6 +433,8 @@ var chainGetCmd = &cli.Command{
    Note:
    You can use special path elements to traverse through some data structures:
    - /ipfs/[cid]/@H:elem - get 'elem' from hamt
+   - /ipfs/[cid]/@Hi:123 - get varint elem 123 from hamt
+   - /ipfs/[cid]/@Hu:123 - get uvarint elem 123 from hamt
    - /ipfs/[cid]/@Ha:t01 - get element under Addr(t01).Bytes
    - /ipfs/[cid]/@A:10 - get 10th amt element
 `,
