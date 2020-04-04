@@ -43,6 +43,7 @@ type sealingApi interface { // TODO: trim down
 	StateMinerSectors(context.Context, address.Address, types.TipSetKey) ([]*api.ChainSectorInfo, error)
 	StateMinerProvingSet(context.Context, address.Address, types.TipSetKey) ([]*api.ChainSectorInfo, error)
 	StateMinerSectorSize(context.Context, address.Address, types.TipSetKey) (abi.SectorSize, error)
+	StateSectorPreCommitInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error)
 	StateWaitMsg(context.Context, cid.Cid) (*api.MsgLookup, error) // TODO: removeme eventually
 	StateGetActor(ctx context.Context, actor address.Address, ts types.TipSetKey) (*types.Actor, error)
 	StateGetReceipt(context.Context, cid.Cid, types.TipSetKey) (*types.MessageReceipt, error)
@@ -72,11 +73,12 @@ type Sealing struct {
 
 	sealer  sectorstorage.SectorManager
 	sectors *statemachine.StateGroup
-	tktFn   TicketFn
 	sc      SectorIDCounter
+	verif   ffiwrapper.Verifier
+	tktFn   TicketFn
 }
 
-func New(api sealingApi, events *events.Events, maddr address.Address, worker address.Address, ds datastore.Batching, sealer sectorstorage.SectorManager, sc SectorIDCounter, tktFn TicketFn) *Sealing {
+func New(api sealingApi, events *events.Events, maddr address.Address, worker address.Address, ds datastore.Batching, sealer sectorstorage.SectorManager, sc SectorIDCounter, verif ffiwrapper.Verifier, tktFn TicketFn) *Sealing {
 	s := &Sealing{
 		api:    api,
 		events: events,
@@ -84,8 +86,9 @@ func New(api sealingApi, events *events.Events, maddr address.Address, worker ad
 		maddr:  maddr,
 		worker: worker,
 		sealer: sealer,
-		tktFn:  tktFn,
 		sc:     sc,
+		verif:  verif,
+		tktFn:  tktFn,
 	}
 
 	s.sectors = statemachine.New(namespace.Wrap(ds, datastore.NewKey(SectorStorePrefix)), s, SectorInfo{})

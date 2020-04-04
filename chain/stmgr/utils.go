@@ -2,7 +2,6 @@ package stmgr
 
 import (
 	"context"
-
 	amt "github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
@@ -143,6 +142,24 @@ func SectorSetSizes(ctx context.Context, sm *StateManager, maddr address.Address
 		Pset: ps.Count,
 		Sset: ss.Count,
 	}, nil
+}
+
+func PreCommitInfo(ctx context.Context, sm *StateManager, maddr address.Address, sid abi.SectorNumber, ts *types.TipSet) (miner.SectorPreCommitOnChainInfo, error) {
+	var mas miner.State
+	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
+	if err != nil {
+		return miner.SectorPreCommitOnChainInfo{}, xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
+	}
+
+	i, ok, err := mas.GetPrecommittedSector(sm.cs.Store(ctx), sid)
+	if err != nil {
+		return miner.SectorPreCommitOnChainInfo{}, err
+	}
+	if !ok {
+		return miner.SectorPreCommitOnChainInfo{}, xerrors.New("precommit not found")
+	}
+
+	return *i, nil
 }
 
 func GetMinerProvingSet(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) ([]*api.ChainSectorInfo, error) {

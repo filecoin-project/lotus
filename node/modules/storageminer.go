@@ -123,7 +123,7 @@ func SectorIDCounter(ds dtypes.MetadataDS) sealing.SectorIDCounter {
 	return &sidsc{sc}
 }
 
-func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api lapi.FullNode, h host.Host, ds dtypes.MetadataDS, sealer sectorstorage.SectorManager, sc sealing.SectorIDCounter, tktFn sealing.TicketFn) (*storage.Miner, error) {
+func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api lapi.FullNode, h host.Host, ds dtypes.MetadataDS, sealer sectorstorage.SectorManager, sc sealing.SectorIDCounter, verif ffiwrapper.Verifier, tktFn sealing.TicketFn) (*storage.Miner, error) {
 	maddr, err := minerAddrFromDS(ds)
 	if err != nil {
 		return nil, err
@@ -143,7 +143,7 @@ func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api lapi.FullNode, h
 
 	fps := storage.NewFPoStScheduler(api, sealer, maddr, worker, ppt)
 
-	sm, err := storage.NewMiner(api, maddr, worker, h, ds, sealer, sc, tktFn)
+	sm, err := storage.NewMiner(api, maddr, worker, h, ds, sealer, sc, verif, tktFn)
 	if err != nil {
 		return nil, err
 	}
