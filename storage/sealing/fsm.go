@@ -84,6 +84,7 @@ var fsmPlanners = map[api.SectorState]func(events []statemachine.Event, state *S
 		on(SectorSealPreCommitFailed{}, api.SealFailed),
 		on(SectorRetryWaitSeed{}, api.WaitSeed),
 		on(SectorRetryComputeProof{}, api.Committing),
+		on(SectorRetryInvalidProof{}, api.Committing),
 	),
 
 	api.Faulty: planOne(

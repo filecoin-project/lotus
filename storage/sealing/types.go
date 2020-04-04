@@ -52,6 +52,7 @@ type SectorInfo struct {
 
 	// Committing
 	CommitMessage *cid.Cid
+	InvalidProofs uint64 // failed proof computations (doesn't validate with proof inputs)
 
 	// Faults
 	FaultReportMsg *cid.Cid
