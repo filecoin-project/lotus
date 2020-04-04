@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 
 	"github.com/filecoin-project/lotus/build"
@@ -124,7 +125,7 @@ func checkPrecommit(ctx context.Context, maddr address.Address, si SectorInfo, a
 	return nil
 }
 
-func (m *Sealing) checkCommit(ctx context.Context, si SectorInfo) (err error) {
+func (m *Sealing) checkCommit(ctx context.Context, si SectorInfo, proof []byte) (err error) {
 	head, err := m.api.ChainHead(ctx)
 	if err != nil {
 		return &ErrApi{xerrors.Errorf("getting chain head: %w", err)}
@@ -132,6 +133,15 @@ func (m *Sealing) checkCommit(ctx context.Context, si SectorInfo) (err error) {
 
 	if si.Seed.Epoch == 0 {
 		return &ErrBadSeed{xerrors.Errorf("seed epoch was not set")}
+	}
+
+	pci, err := m.api.StateSectorPreCommitInfo(ctx, m.maddr, si.SectorID, types.EmptyTSK)
+	if err != nil {
+		return xerrors.Errorf("getting precommit info: %w", err)
+	}
+
+	if pci.PreCommitEpoch+miner.PreCommitChallengeDelay != si.Seed.Epoch {
+		return &ErrBadSeed{xerrors.Errorf("seed epoch doesn't match on chain info: %d != %d", pci.PreCommitEpoch+miner.PreCommitChallengeDelay, si.Seed.Epoch)}
 	}
 
 	seed, err := m.api.ChainGetRandomness(ctx, head.Key(), crypto.DomainSeparationTag_InteractiveSealChallengeSeed, si.Seed.Epoch, nil)
@@ -152,13 +162,17 @@ func (m *Sealing) checkCommit(ctx context.Context, si SectorInfo) (err error) {
 		return err
 	}
 
-	ok, err := ffiwrapper.ProofVerifier.VerifySeal(abi.SealVerifyInfo{
-		SectorID:              m.minerSector(si.SectorID),
-		OnChain:               abi.OnChainSealVerifyInfo{
-			SealedCID:        *si.CommR,
+	if *si.CommR != pci.Info.SealedCID {
+		log.Warn("on-chain sealed CID doesn't match!")
+	}
+
+	ok, err := m.verif.VerifySeal(abi.SealVerifyInfo{
+		SectorID: m.minerSector(si.SectorID),
+		OnChain: abi.OnChainSealVerifyInfo{
+			SealedCID:        pci.Info.SealedCID,
 			InteractiveEpoch: si.Seed.Epoch,
 			RegisteredProof:  spt,
-			Proof:            si.Proof,
+			Proof:            proof,
 			SectorNumber:     si.SectorID,
 			SealRandEpoch:    si.Ticket.Epoch,
 		},
@@ -172,7 +186,6 @@ func (m *Sealing) checkCommit(ctx context.Context, si SectorInfo) (err error) {
 	if !ok {
 		return &ErrInvalidProof{xerrors.New("invalid proof (compute error?)")}
 	}
-
 
 	return nil
 }

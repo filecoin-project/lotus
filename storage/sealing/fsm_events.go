@@ -178,7 +178,6 @@ func (evt SectorRetryInvalidProof) apply(state *SectorInfo) {
 	state.InvalidProofs++
 }
 
-
 // Faults
 
 type SectorFaulty struct{}

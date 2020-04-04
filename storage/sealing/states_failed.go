@@ -147,7 +147,7 @@ func (m *Sealing) handleCommitFailed(ctx statemachine.Context, sector SectorInfo
 		}
 	}
 
-	if err := m.checkCommit(ctx.Context(), sector); err != nil {
+	if err := m.checkCommit(ctx.Context(), sector, sector.Proof); err != nil {
 		switch err.(type) {
 		case *ErrApi:
 			log.Errorf("handleCommitFailed: api error, not proceeding: %+v", err)

@@ -514,6 +514,14 @@ func (a *StateAPI) StateMinerSectorCount(ctx context.Context, addr address.Addre
 	return stmgr.SectorSetSizes(ctx, a.StateManager, addr, ts)
 }
 
+func (a *StateAPI) StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error) {
+	ts, err := a.Chain.GetTipSetFromKey(tsk)
+	if err != nil {
+		return miner.SectorPreCommitOnChainInfo{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+	return stmgr.PreCommitInfo(ctx, a.StateManager, maddr, n, ts)
+}
+
 func (a *StateAPI) StateListMessages(ctx context.Context, match *types.Message, tsk types.TipSetKey, toheight abi.ChainEpoch) ([]cid.Cid, error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
