@@ -4,8 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"gopkg.in/urfave/cli.v2"
+
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
