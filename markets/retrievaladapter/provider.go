@@ -7,14 +7,14 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/shared"
+	sectorstorage "github.com/filecoin-project/sector-storage"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/storage"
-	"github.com/filecoin-project/sector-storage"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
 )
 
 type retrievalProviderNode struct {
@@ -54,7 +54,7 @@ func (rpn *retrievalProviderNode) UnsealSector(ctx context.Context, sectorID uin
 		Miner:  abi.ActorID(mid),
 		Number: abi.SectorNumber(sectorID),
 	}
-	return rpn.sealer.ReadPieceFromSealedSector(ctx, sid, ffiwrapper.UnpaddedByteIndex(offset), abi.UnpaddedPieceSize(length), si.Ticket.Value, *si.CommD)
+	return rpn.sealer.ReadPieceFromSealedSector(ctx, sid, ffiwrapper.UnpaddedByteIndex(offset), abi.UnpaddedPieceSize(length), si.TicketValue, *si.CommD)
 }
 
 func (rpn *retrievalProviderNode) SavePaymentVoucher(ctx context.Context, paymentChannel address.Address, voucher *paych.SignedVoucher, proof []byte, expectedAmount abi.TokenAmount, tok shared.TipSetToken) (abi.TokenAmount, error) {

@@ -2,11 +2,11 @@ package sealing
 
 import (
 	"context"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"io"
 
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	"github.com/filecoin-project/lotus/lib/nullreader"

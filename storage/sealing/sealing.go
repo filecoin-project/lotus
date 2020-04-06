@@ -2,71 +2,45 @@ package sealing
 
 import (
 	"context"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"io"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-padreader"
-	"github.com/filecoin-project/go-statemachine"
+	"github.com/filecoin-project/go-address"
+	padreader "github.com/filecoin-project/go-padreader"
+	statemachine "github.com/filecoin-project/go-statemachine"
+	sectorstorage "github.com/filecoin-project/sector-storage"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
-
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/events"
-	"github.com/filecoin-project/lotus/chain/store"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/sector-storage"
 )
 
 const SectorStorePrefix = "/sectors"
 
 var log = logging.Logger("sectors")
 
-type TicketFn func(context.Context) (*api.SealTicket, error)
-
-type SectorIDCounter interface {
-	Next() (abi.SectorNumber, error)
-}
-
-type sealingApi interface { // TODO: trim down
-	// Call a read only method on actors (no interaction with the chain required)
-	StateCall(context.Context, *types.Message, types.TipSetKey) (*api.InvocResult, error)
-	StateMinerWorker(context.Context, address.Address, types.TipSetKey) (address.Address, error)
-	StateMinerPostState(ctx context.Context, actor address.Address, ts types.TipSetKey) (*miner.PoStState, error)
-	StateMinerSectors(context.Context, address.Address, types.TipSetKey) ([]*api.ChainSectorInfo, error)
-	StateMinerProvingSet(context.Context, address.Address, types.TipSetKey) ([]*api.ChainSectorInfo, error)
-	StateMinerSectorSize(context.Context, address.Address, types.TipSetKey) (abi.SectorSize, error)
-	StateSectorPreCommitInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error)
-	StateWaitMsg(context.Context, cid.Cid) (*api.MsgLookup, error) // TODO: removeme eventually
-	StateGetActor(ctx context.Context, actor address.Address, ts types.TipSetKey) (*types.Actor, error)
-	StateGetReceipt(context.Context, cid.Cid, types.TipSetKey) (*types.MessageReceipt, error)
-	StateMarketStorageDeal(context.Context, abi.DealID, types.TipSetKey) (*api.MarketDeal, error)
-
-	MpoolPushMessage(context.Context, *types.Message) (*types.SignedMessage, error)
-
-	ChainHead(context.Context) (*types.TipSet, error)
-	ChainNotify(context.Context) (<-chan []*store.HeadChange, error)
-	ChainGetRandomness(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
-	ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error)
-	ChainGetBlockMessages(context.Context, cid.Cid) (*api.BlockMessages, error)
+type SealingAPI interface {
+	StateWaitMsg(context.Context, cid.Cid) (MsgLookup, error)
+	StateComputeDataCommitment(ctx context.Context, maddr address.Address, sectorType abi.RegisteredProof, deals []abi.DealID, tok TipSetToken) (cid.Cid, error)
+	StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok TipSetToken) (*miner.SectorPreCommitOnChainInfo, error)
+	StateMinerSectorSize(context.Context, address.Address, TipSetToken) (abi.SectorSize, error)
+	StateMarketStorageDeal(context.Context, abi.DealID, TipSetToken) (market.DealProposal, market.DealState, error)
+	SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, gasPrice big.Int, gasLimit int64, params []byte) (cid.Cid, error)
+	ChainHead(ctx context.Context) (TipSetToken, abi.ChainEpoch, error)
+	ChainGetRandomness(ctx context.Context, tok TipSetToken, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
-	ChainHasObj(context.Context, cid.Cid) (bool, error)
-
-	WalletSign(context.Context, address.Address, []byte) (*crypto.Signature, error)
-	WalletBalance(context.Context, address.Address) (types.BigInt, error)
-	WalletHas(context.Context, address.Address) (bool, error)
 }
 
 type Sealing struct {
-	api    sealingApi
-	events *events.Events
+	api    SealingAPI
+	events Events
 
 	maddr  address.Address
 	worker address.Address
@@ -78,7 +52,7 @@ type Sealing struct {
 	tktFn   TicketFn
 }
 
-func New(api sealingApi, events *events.Events, maddr address.Address, worker address.Address, ds datastore.Batching, sealer sectorstorage.SectorManager, sc SectorIDCounter, verif ffiwrapper.Verifier, tktFn TicketFn) *Sealing {
+func New(api SealingAPI, events Events, maddr address.Address, worker address.Address, ds datastore.Batching, sealer sectorstorage.SectorManager, sc SectorIDCounter, verif ffiwrapper.Verifier, tktFn TicketFn) *Sealing {
 	s := &Sealing{
 		api:    api,
 		events: events,

@@ -1,6 +1,7 @@
 package sealing
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -9,10 +10,8 @@ import (
 
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-statemachine"
+	statemachine "github.com/filecoin-project/go-statemachine"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-
-	"github.com/filecoin-project/lotus/api"
 )
 
 func (m *Sealing) Plan(events []statemachine.Event, user interface{}) (interface{}, uint64, error) {
@@ -24,7 +23,7 @@ func (m *Sealing) Plan(events []statemachine.Event, user interface{}) (interface
 	return func(ctx statemachine.Context, si SectorInfo) error {
 		err := next(ctx, si)
 		if err != nil {
-			log.Errorf("unhandled sector error (%d): %+v", si.SectorID, err)
+			log.Errorf("unhandled sector error (%d): %+v", si.SectorNumber, err)
 			return nil
 		}
 
@@ -32,65 +31,65 @@ func (m *Sealing) Plan(events []statemachine.Event, user interface{}) (interface
 	}, uint64(len(events)), nil // TODO: This processed event count is not very correct
 }
 
-var fsmPlanners = map[api.SectorState]func(events []statemachine.Event, state *SectorInfo) error{
-	api.UndefinedSectorState: planOne(on(SectorStart{}, api.Packing)),
-	api.Packing:              planOne(on(SectorPacked{}, api.PreCommit1)),
-	api.PreCommit1: planOne(
-		on(SectorPreCommit1{}, api.PreCommit2),
-		on(SectorSealPreCommitFailed{}, api.SealFailed),
-		on(SectorPackingFailed{}, api.PackingFailed),
+var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *SectorInfo) error{
+	UndefinedSectorState: planOne(on(SectorStart{}, Packing)),
+	Packing:              planOne(on(SectorPacked{}, PreCommit1)),
+	PreCommit1: planOne(
+		on(SectorPreCommit1{}, PreCommit2),
+		on(SectorSealPreCommitFailed{}, SealFailed),
+		on(SectorPackingFailed{}, PackingFailed),
 	),
-	api.PreCommit2: planOne(
-		on(SectorPreCommit2{}, api.PreCommitting),
-		on(SectorSealPreCommitFailed{}, api.SealFailed),
-		on(SectorPackingFailed{}, api.PackingFailed),
+	PreCommit2: planOne(
+		on(SectorPreCommit2{}, PreCommitting),
+		on(SectorSealPreCommitFailed{}, SealFailed),
+		on(SectorPackingFailed{}, PackingFailed),
 	),
-	api.PreCommitting: planOne(
-		on(SectorSealPreCommitFailed{}, api.SealFailed),
-		on(SectorPreCommitted{}, api.WaitSeed),
-		on(SectorChainPreCommitFailed{}, api.PreCommitFailed),
+	PreCommitting: planOne(
+		on(SectorSealPreCommitFailed{}, SealFailed),
+		on(SectorPreCommitted{}, WaitSeed),
+		on(SectorChainPreCommitFailed{}, PreCommitFailed),
 	),
-	api.WaitSeed: planOne(
-		on(SectorSeedReady{}, api.Committing),
-		on(SectorChainPreCommitFailed{}, api.PreCommitFailed),
+	WaitSeed: planOne(
+		on(SectorSeedReady{}, Committing),
+		on(SectorChainPreCommitFailed{}, PreCommitFailed),
 	),
-	api.Committing: planCommitting,
-	api.CommitWait: planOne(
-		on(SectorProving{}, api.FinalizeSector),
-		on(SectorCommitFailed{}, api.CommitFailed),
-	),
-
-	api.FinalizeSector: planOne(
-		on(SectorFinalized{}, api.Proving),
+	Committing: planCommitting,
+	CommitWait: planOne(
+		on(SectorProving{}, FinalizeSector),
+		on(SectorCommitFailed{}, CommitFailed),
 	),
 
-	api.Proving: planOne(
-		on(SectorFaultReported{}, api.FaultReported),
-		on(SectorFaulty{}, api.Faulty),
+	FinalizeSector: planOne(
+		on(SectorFinalized{}, Proving),
 	),
 
-	api.SealFailed: planOne(
-		on(SectorRetrySeal{}, api.PreCommit1),
-	),
-	api.PreCommitFailed: planOne(
-		on(SectorRetryPreCommit{}, api.PreCommitting),
-		on(SectorRetryWaitSeed{}, api.WaitSeed),
-		on(SectorSealPreCommitFailed{}, api.SealFailed),
-	),
-	api.ComputeProofFailed: planOne(
-		on(SectorRetryComputeProof{}, api.Committing),
-	),
-	api.CommitFailed: planOne(
-		on(SectorSealPreCommitFailed{}, api.SealFailed),
-		on(SectorRetryWaitSeed{}, api.WaitSeed),
-		on(SectorRetryComputeProof{}, api.Committing),
-		on(SectorRetryInvalidProof{}, api.Committing),
+	Proving: planOne(
+		on(SectorFaultReported{}, FaultReported),
+		on(SectorFaulty{}, Faulty),
 	),
 
-	api.Faulty: planOne(
-		on(SectorFaultReported{}, api.FaultReported),
+	SealFailed: planOne(
+		on(SectorRetrySeal{}, PreCommit1),
 	),
-	api.FaultedFinal: final,
+	PreCommitFailed: planOne(
+		on(SectorRetryPreCommit{}, PreCommitting),
+		on(SectorRetryWaitSeed{}, WaitSeed),
+		on(SectorSealPreCommitFailed{}, SealFailed),
+	),
+	ComputeProofFailed: planOne(
+		on(SectorRetryComputeProof{}, Committing),
+	),
+	CommitFailed: planOne(
+		on(SectorSealPreCommitFailed{}, SealFailed),
+		on(SectorRetryWaitSeed{}, WaitSeed),
+		on(SectorRetryComputeProof{}, Committing),
+		on(SectorRetryInvalidProof{}, Committing),
+	),
+
+	Faulty: planOne(
+		on(SectorFaultReported{}, FaultReported),
+	),
+	FaultedFinal: final,
 }
 
 func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(statemachine.Context, SectorInfo) error, error) {
@@ -170,47 +169,47 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 
 	switch state.State {
 	// Happy path
-	case api.Packing:
+	case Packing:
 		return m.handlePacking, nil
-	case api.PreCommit1:
+	case PreCommit1:
 		return m.handlePreCommit1, nil
-	case api.PreCommit2:
+	case PreCommit2:
 		return m.handlePreCommit2, nil
-	case api.PreCommitting:
+	case PreCommitting:
 		return m.handlePreCommitting, nil
-	case api.WaitSeed:
+	case WaitSeed:
 		return m.handleWaitSeed, nil
-	case api.Committing:
+	case Committing:
 		return m.handleCommitting, nil
-	case api.CommitWait:
+	case CommitWait:
 		return m.handleCommitWait, nil
-	case api.FinalizeSector:
+	case FinalizeSector:
 		return m.handleFinalizeSector, nil
-	case api.Proving:
+	case Proving:
 		// TODO: track sector health / expiration
-		log.Infof("Proving sector %d", state.SectorID)
+		log.Infof("Proving sector %d", state.SectorNumber)
 
 	// Handled failure modes
-	case api.SealFailed:
+	case SealFailed:
 		return m.handleSealFailed, nil
-	case api.PreCommitFailed:
+	case PreCommitFailed:
 		return m.handlePreCommitFailed, nil
-	case api.ComputeProofFailed:
+	case ComputeProofFailed:
 		return m.handleComputeProofFailed, nil
-	case api.CommitFailed:
+	case CommitFailed:
 		return m.handleCommitFailed, nil
 
 		// Faults
-	case api.Faulty:
+	case Faulty:
 		return m.handleFaulty, nil
-	case api.FaultReported:
+	case FaultReported:
 		return m.handleFaultReported, nil
 
 	// Fatal errors
-	case api.UndefinedSectorState:
+	case UndefinedSectorState:
 		log.Error("sector update with undefined state!")
-	case api.FailedUnrecoverable:
-		log.Errorf("sector %d failed unrecoverably", state.SectorID)
+	case FailedUnrecoverable:
+		log.Errorf("sector %d failed unrecoverably", state.SectorNumber)
 	default:
 		log.Errorf("unexpected sector update state: %d", state.State)
 	}
@@ -227,22 +226,22 @@ func planCommitting(events []statemachine.Event, state *SectorInfo) error {
 			}
 		case SectorCommitted: // the normal case
 			e.apply(state)
-			state.State = api.CommitWait
+			state.State = CommitWait
 		case SectorSeedReady: // seed changed :/
-			if e.Seed.Equals(&state.Seed) {
+			if e.SeedEpoch == state.SeedEpoch && bytes.Equal(e.SeedValue, state.SeedValue) {
 				log.Warnf("planCommitting: got SectorSeedReady, but the seed didn't change")
 				continue // or it didn't!
 			}
 			log.Warnf("planCommitting: commit Seed changed")
 			e.apply(state)
-			state.State = api.Committing
+			state.State = Committing
 			return nil
 		case SectorComputeProofFailed:
-			state.State = api.ComputeProofFailed
+			state.State = ComputeProofFailed
 		case SectorSealPreCommitFailed:
-			state.State = api.CommitFailed
+			state.State = CommitFailed
 		case SectorCommitFailed:
-			state.State = api.CommitFailed
+			state.State = CommitFailed
 		default:
 			return xerrors.Errorf("planCommitting got event of unknown type %T, events: %+v", event.User, events)
 		}
@@ -257,8 +256,8 @@ func (m *Sealing) restartSectors(ctx context.Context) error {
 	}
 
 	for _, sector := range trackedSectors {
-		if err := m.sectors.Send(uint64(sector.SectorID), SectorRestart{}); err != nil {
-			log.Errorf("restarting sector %d: %+v", sector.SectorID, err)
+		if err := m.sectors.Send(uint64(sector.SectorNumber), SectorRestart{}); err != nil {
+			log.Errorf("restarting sector %d: %+v", sector.SectorNumber, err)
 		}
 	}
 
@@ -267,7 +266,7 @@ func (m *Sealing) restartSectors(ctx context.Context) error {
 	return nil
 }
 
-func (m *Sealing) ForceSectorState(ctx context.Context, id abi.SectorNumber, state api.SectorState) error {
+func (m *Sealing) ForceSectorState(ctx context.Context, id abi.SectorNumber, state SectorState) error {
 	return m.sectors.Send(id, SectorForceState{state})
 }
 
@@ -275,13 +274,13 @@ func final(events []statemachine.Event, state *SectorInfo) error {
 	return xerrors.Errorf("didn't expect any events in state %s, got %+v", state.State, events)
 }
 
-func on(mut mutator, next api.SectorState) func() (mutator, api.SectorState) {
-	return func() (mutator, api.SectorState) {
+func on(mut mutator, next SectorState) func() (mutator, SectorState) {
+	return func() (mutator, SectorState) {
 		return mut, next
 	}
 }
 
-func planOne(ts ...func() (mut mutator, next api.SectorState)) func(events []statemachine.Event, state *SectorInfo) error {
+func planOne(ts ...func() (mut mutator, next SectorState)) func(events []statemachine.Event, state *SectorInfo) error {
 	return func(events []statemachine.Event, state *SectorInfo) error {
 		if len(events) != 1 {
 			for _, event := range events {
@@ -306,7 +305,7 @@ func planOne(ts ...func() (mut mutator, next api.SectorState)) func(events []sta
 			}
 
 			if err, iserr := events[0].User.(error); iserr {
-				log.Warnf("sector %d got error event %T: %+v", state.SectorID, events[0].User, err)
+				log.Warnf("sector %d got error event %T: %+v", state.SectorNumber, events[0].User, err)
 			}
 
 			events[0].User.(mutator).apply(state)
