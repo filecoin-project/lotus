@@ -4,9 +4,10 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-storage/storage"
 	"github.com/ipfs/go-cid"
+	"github.com/prometheus/common/log"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
 type mutator interface {
@@ -39,7 +40,7 @@ func (evt SectorFatalError) applyGlobal(state *SectorInfo) bool {
 }
 
 type SectorForceState struct {
-	State api.SectorState
+	State SectorState
 }
 
 func (evt SectorForceState) applyGlobal(state *SectorInfo) bool {
@@ -73,12 +74,14 @@ func (evt SectorPackingFailed) apply(*SectorInfo) {}
 
 type SectorPreCommit1 struct {
 	PreCommit1Out storage.PreCommit1Out
-	Ticket        api.SealTicket
+	TicketValue   abi.SealRandomness
+	TicketEpoch   abi.ChainEpoch
 }
 
 func (evt SectorPreCommit1) apply(state *SectorInfo) {
 	state.PreCommit1Out = evt.PreCommit1Out
-	state.Ticket = evt.Ticket
+	state.TicketEpoch = evt.TicketEpoch
+	state.TicketValue = evt.TicketValue
 }
 
 type SectorPreCommit2 struct {
@@ -114,11 +117,13 @@ func (evt SectorPreCommitted) apply(state *SectorInfo) {
 }
 
 type SectorSeedReady struct {
-	Seed api.SealSeed
+	SeedValue abi.InteractiveSealRandomness
+	SeedEpoch abi.ChainEpoch
 }
 
 func (evt SectorSeedReady) apply(state *SectorInfo) {
-	state.Seed = evt.Seed
+	state.SeedEpoch = evt.SeedEpoch
+	state.SeedValue = evt.SeedValue
 }
 
 type SectorComputeProofFailed struct{ error }
