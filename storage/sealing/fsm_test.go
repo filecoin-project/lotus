@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-statemachine"
-	"github.com/filecoin-project/lotus/api"
 )
 
 func init() {
@@ -35,13 +34,13 @@ func TestHappyPath(t *testing.T) {
 	}
 
 	m.planSingle(SectorPacked{})
-	require.Equal(m.t, m.state.State, api.PreCommit1)
+	require.Equal(m.t, m.state.State, PreCommit1)
 
 	m.planSingle(SectorPreCommit1{})
-	require.Equal(m.t, m.state.State, api.PreCommit2)
+	require.Equal(m.t, m.state.State, PreCommit2)
 
 	m.planSingle(SectorPreCommit2{})
-	require.Equal(m.t, m.state.State, api.PreCommitting)
+	require.Equal(m.t, m.state.State, PreCommitting)
 
 	m.planSingle(SectorPreCommitted{})
 	require.Equal(m.t, m.state.State, WaitSeed)
@@ -67,13 +66,13 @@ func TestSeedRevert(t *testing.T) {
 	}
 
 	m.planSingle(SectorPacked{})
-	require.Equal(m.t, m.state.State, api.PreCommit1)
+	require.Equal(m.t, m.state.State, PreCommit1)
 
 	m.planSingle(SectorPreCommit1{})
-	require.Equal(m.t, m.state.State, api.PreCommit2)
+	require.Equal(m.t, m.state.State, PreCommit2)
 
 	m.planSingle(SectorPreCommit2{})
-	require.Equal(m.t, m.state.State, api.PreCommitting)
+	require.Equal(m.t, m.state.State, PreCommitting)
 
 	m.planSingle(SectorPreCommitted{})
 	require.Equal(m.t, m.state.State, WaitSeed)
@@ -81,12 +80,12 @@ func TestSeedRevert(t *testing.T) {
 	m.planSingle(SectorSeedReady{})
 	require.Equal(m.t, m.state.State, Committing)
 
-	_, err := m.s.plan([]statemachine.Event{{SectorSeedReady{Seed: SealSeed{Epoch: 5}}}, {SectorCommitted{}}}, m.state)
+	_, err := m.s.plan([]statemachine.Event{{SectorSeedReady{SeedValue: nil, SeedEpoch: 5}}, {SectorCommitted{}}}, m.state)
 	require.NoError(t, err)
 	require.Equal(m.t, m.state.State, Committing)
 
 	// not changing the seed this time
-	_, err = m.s.plan([]statemachine.Event{{SectorSeedReady{Seed: SealSeed{Epoch: 5}}}, {SectorCommitted{}}}, m.state)
+	_, err = m.s.plan([]statemachine.Event{{SectorSeedReady{SeedValue: nil, SeedEpoch: 5}}, {SectorCommitted{}}}, m.state)
 	require.Equal(m.t, m.state.State, CommitWait)
 
 	m.planSingle(SectorProving{})
@@ -107,5 +106,5 @@ func TestPlanCommittingHandlesSectorCommitFailed(t *testing.T) {
 
 	require.NoError(t, planCommitting(events, m.state))
 
-	require.Equal(t, api.CommitFailed, m.state.State)
+	require.Equal(t, CommitFailed, m.state.State)
 }

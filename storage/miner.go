@@ -5,7 +5,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"

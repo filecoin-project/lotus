@@ -1,7 +1,6 @@
 package sealing
 
 import (
-	"bytes"
 	"context"
 	"io"
 
@@ -21,46 +20,17 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
-	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 )
 
 const SectorStorePrefix = "/sectors"
 
 var log = logging.Logger("sectors")
 
-type TicketFn func(context.Context) (abi.SealRandomness, abi.ChainEpoch, error)
-
-type SectorIDCounter interface {
-	Next() (abi.SectorNumber, error)
-}
-
-type TipSetToken []byte
-
-type MsgLookup struct {
-	Receipt   MessageReceipt
-	TipSetTok TipSetToken
-	Height    abi.ChainEpoch
-}
-
-type MessageReceipt struct {
-	ExitCode exitcode.ExitCode
-	Return   []byte
-	GasUsed  int64
-}
-
-func (mr *MessageReceipt) Equals(o *MessageReceipt) bool {
-	return mr.ExitCode == o.ExitCode && bytes.Equal(mr.Return, o.Return) && mr.GasUsed == o.GasUsed
-}
-
-type MarketDeal struct {
-	Proposal market.DealProposal
-	State    market.DealState
-}
-
 type SealingAPI interface {
 	StateWaitMsg(context.Context, cid.Cid) (MsgLookup, error)
 	StateComputeDataCommitment(ctx context.Context, maddr address.Address, sectorType abi.RegisteredProof, deals []abi.DealID, tok TipSetToken) (cid.Cid, error)
 	StateGetSectorPreCommitOnChainInfo(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok TipSetToken) (*miner.SectorPreCommitOnChainInfo, error)
+	StateMinerSectorSize(context.Context, address.Address, TipSetToken) (abi.SectorSize, error)
 	StateMarketStorageDeal(context.Context, abi.DealID, TipSetToken) (market.DealProposal, market.DealState, error)
 	SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, gasPrice big.Int, gasLimit int64, params []byte) (cid.Cid, error)
 	ChainHead(ctx context.Context) (TipSetToken, abi.ChainEpoch, error)

@@ -6,13 +6,11 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/sector-storage/zerocomm"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
-	log "github.com/mgutz/logxi/v1"
 )
 
 // TODO: For now we handle this by halting state execution, when we get jsonrpc reconnecting
@@ -94,34 +92,34 @@ func checkPrecommit(ctx context.Context, maddr address.Address, si SectorInfo, a
 }
 
 func (m *Sealing) checkCommit(ctx context.Context, si SectorInfo, proof []byte) (err error) {
-	tok, height, err := m.api.ChainHead(ctx)
+	tok, _, err := m.api.ChainHead(ctx)
 	if err != nil {
 		return &ErrApi{xerrors.Errorf("getting chain head: %w", err)}
 	}
 
-	if si.Seed.Epoch == 0 {
+	if si.SeedEpoch == 0 {
 		return &ErrBadSeed{xerrors.Errorf("seed epoch was not set")}
 	}
 
-	pci, err := m.api.StateSectorPreCommitInfo(ctx, m.maddr, si.SectorID, types.EmptyTSK)
+	pci, err := m.api.StateGetSectorPreCommitOnChainInfo(ctx, m.maddr, si.SectorID, tok)
 	if err != nil {
 		return xerrors.Errorf("getting precommit info: %w", err)
 	}
 
-	if pci.PreCommitEpoch+miner.PreCommitChallengeDelay != si.Seed.Epoch {
-		return &ErrBadSeed{xerrors.Errorf("seed epoch doesn't match on chain info: %d != %d", pci.PreCommitEpoch+miner.PreCommitChallengeDelay, si.Seed.Epoch)}
+	if pci.PreCommitEpoch+miner.PreCommitChallengeDelay != si.SeedEpoch {
+		return &ErrBadSeed{xerrors.Errorf("seed epoch doesn't match on chain info: %d != %d", pci.PreCommitEpoch+miner.PreCommitChallengeDelay, si.SeedEpoch)}
 	}
 
-	seed, err := m.api.ChainGetRandomness(ctx, head.Key(), crypto.DomainSeparationTag_InteractiveSealChallengeSeed, si.Seed.Epoch, nil)
+	seed, err := m.api.ChainGetRandomness(ctx, tok, crypto.DomainSeparationTag_InteractiveSealChallengeSeed, si.SeedEpoch, nil)
 	if err != nil {
 		return &ErrApi{xerrors.Errorf("failed to get randomness for computing seal proof: %w", err)}
 	}
 
-	if string(seed) != string(si.Seed.Value) {
+	if string(seed) != string(si.SeedValue) {
 		return &ErrBadSeed{xerrors.Errorf("seed has changed")}
 	}
 
-	ss, err := m.api.StateMinerSectorSize(ctx, m.maddr, head.Key())
+	ss, err := m.api.StateMinerSectorSize(ctx, m.maddr, tok)
 	if err != nil {
 		return &ErrApi{err}
 	}
@@ -138,14 +136,14 @@ func (m *Sealing) checkCommit(ctx context.Context, si SectorInfo, proof []byte) 
 		SectorID: m.minerSector(si.SectorID),
 		OnChain: abi.OnChainSealVerifyInfo{
 			SealedCID:        pci.Info.SealedCID,
-			InteractiveEpoch: si.Seed.Epoch,
+			InteractiveEpoch: si.SeedEpoch,
 			RegisteredProof:  spt,
 			Proof:            proof,
 			SectorNumber:     si.SectorID,
-			SealRandEpoch:    si.Ticket.Epoch,
+			SealRandEpoch:    si.TicketEpoch,
 		},
-		Randomness:            si.Ticket.Value,
-		InteractiveRandomness: si.Seed.Value,
+		Randomness:            si.TicketValue,
+		InteractiveRandomness: si.SeedValue,
 		UnsealedCID:           *si.CommD,
 	})
 	if err != nil {

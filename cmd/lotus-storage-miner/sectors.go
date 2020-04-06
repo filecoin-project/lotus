@@ -9,12 +9,12 @@ import (
 	"time"
 
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/storage/sealing"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
-	"github.com/filecoin-project/lotus/api"
 	lcli "github.com/filecoin-project/lotus/cli"
 )
 
@@ -236,7 +236,7 @@ var sectorsUpdateCmd = &cli.Command{
 			return xerrors.Errorf("could not parse sector ID: %w", err)
 		}
 
-		return nodeApi.SectorsUpdate(ctx, abi.SectorNumber(id), api.SectorState(cctx.Args().Get(1)))
+		return nodeApi.SectorsUpdate(ctx, abi.SectorNumber(id), sealing.SectorState(cctx.Args().Get(1)))
 	},
 }
 

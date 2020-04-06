@@ -2,12 +2,12 @@ package storage
 
 import (
 	"context"
-	"github.com/filecoin-project/go-address"
 	"io"
+
+	"github.com/filecoin-project/go-address"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/storage/sealing"
 )
 
@@ -37,6 +37,6 @@ func (m *Miner) PledgeSector() error {
 	return m.sealing.PledgeSector()
 }
 
-func (m *Miner) ForceSectorState(ctx context.Context, id abi.SectorNumber, state api.SectorState) error {
+func (m *Miner) ForceSectorState(ctx context.Context, id abi.SectorNumber, state sealing.SectorState) error {
 	return m.sealing.ForceSectorState(ctx, id, state)
 }

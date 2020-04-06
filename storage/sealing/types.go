@@ -1,11 +1,14 @@
 package sealing
 
 import (
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-storage/storage"
-	"github.com/ipfs/go-cid"
+	"bytes"
+	"context"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
+	"github.com/filecoin-project/specs-storage/storage"
+	"github.com/ipfs/go-cid"
 )
 
 type Piece struct {
@@ -93,4 +96,33 @@ func (t *SectorInfo) existingPieces() []abi.UnpaddedPieceSize {
 		out[i] = piece.Size
 	}
 	return out
+}
+
+type TicketFn func(context.Context) (abi.SealRandomness, abi.ChainEpoch, error)
+
+type SectorIDCounter interface {
+	Next() (abi.SectorNumber, error)
+}
+
+type TipSetToken []byte
+
+type MsgLookup struct {
+	Receipt   MessageReceipt
+	TipSetTok TipSetToken
+	Height    abi.ChainEpoch
+}
+
+type MessageReceipt struct {
+	ExitCode exitcode.ExitCode
+	Return   []byte
+	GasUsed  int64
+}
+
+func (mr *MessageReceipt) Equals(o *MessageReceipt) bool {
+	return mr.ExitCode == o.ExitCode && bytes.Equal(mr.Return, o.Return) && mr.GasUsed == o.GasUsed
+}
+
+type MarketDeal struct {
+	Proposal market.DealProposal
+	State    market.DealState
 }

@@ -208,13 +208,13 @@ func (n *ProviderNodeAdapter) LocatePieceForDealWithinSector(ctx context.Context
 		if err != nil {
 			return 0, 0, 0, xerrors.Errorf("getting sector info: %w", err)
 		}
-		if si.State == api.Proving {
+		if si.State == sealing.Proving {
 			best = r
 			bestSi = si
 			break
 		}
 	}
-	if bestSi.State == api.UndefinedSectorState {
+	if bestSi.State == sealing.UndefinedSectorState {
 		return 0, 0, 0, xerrors.New("no sealed sector found")
 	}
 	return uint64(best.SectorID), best.Offset, uint64(best.Size), nil
