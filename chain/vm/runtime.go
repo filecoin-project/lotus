@@ -9,6 +9,8 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	sainit "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	vmr "github.com/filecoin-project/specs-actors/actors/runtime"
@@ -19,6 +21,7 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/trace"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/state"
@@ -31,6 +34,7 @@ type Runtime struct {
 	vm        *VM
 	state     *state.StateTree
 	msg       *types.Message
+	vmsg      vmr.Message
 	height    abi.ChainEpoch
 	cst       cbor.IpldStore
 	pricelist Pricelist
@@ -48,18 +52,29 @@ type Runtime struct {
 	numActorsCreated   uint64
 }
 
-func (rt *Runtime) ResolveAddress(address address.Address) (ret address.Address, ok bool) {
-	r, err := rt.state.LookupID(address)
-	if err != nil { // TODO: check notfound
-		rt.Abortf(exitcode.ErrPlaceholder, "resolve address: %v", err)
+func (rt *Runtime) ResolveAddress(addr address.Address) (ret address.Address, ok bool) {
+	r, err := rt.state.LookupID(addr)
+	if err != nil {
+		if xerrors.Is(err, sainit.ErrAddressNotFound) {
+			return address.Undef, false
+		}
+		panic(aerrors.Fatalf("failed to resolve address %s: %s", addr, err))
 	}
 	return r, true
 }
 
+type notFoundErr interface {
+	IsNotFound() bool
+}
+
 func (rs *Runtime) Get(c cid.Cid, o vmr.CBORUnmarshaler) bool {
 	if err := rs.cst.Get(context.TODO(), c, o); err != nil {
-		// TODO: err not found?
-		rs.Abortf(exitcode.ErrPlaceholder, "storage get: %v", err)
+		var nfe notFoundErr
+		if xerrors.As(err, &nfe) && nfe.IsNotFound() {
+			return false
+		}
+
+		panic(aerrors.Fatalf("failed to get cbor object %s: %s", c, err))
 	}
 	return true
 }
@@ -67,7 +82,7 @@ func (rs *Runtime) Get(c cid.Cid, o vmr.CBORUnmarshaler) bool {
 func (rs *Runtime) Put(x vmr.CBORMarshaler) cid.Cid {
 	c, err := rs.cst.Put(context.TODO(), x)
 	if err != nil {
-		rs.Abortf(exitcode.ErrPlaceholder, "storage put: %v", err) // todo: spec code?
+		panic(aerrors.Fatalf("failed to put cbor object: %s", err))
 	}
 	return c
 }
@@ -107,20 +122,7 @@ func (rs *Runtime) shimCall(f func() interface{}) (rval []byte, aerr aerrors.Act
 }
 
 func (rs *Runtime) Message() vmr.Message {
-	var ok bool
-
-	rawm := *rs.msg
-	rawm.From, ok = rs.ResolveAddress(rawm.From)
-	if !ok {
-		rs.Abortf(exitcode.ErrPlaceholder, "resolve from address failed")
-	}
-
-	rawm.To, ok = rs.ResolveAddress(rawm.To)
-	if !ok {
-		rs.Abortf(exitcode.ErrPlaceholder, "resolve to address failed")
-	}
-
-	return &rawm
+	return rs.vmsg
 }
 
 func (rs *Runtime) ValidateImmediateCallerAcceptAny() {
@@ -138,8 +140,11 @@ func (rs *Runtime) CurrentBalance() abi.TokenAmount {
 func (rs *Runtime) GetActorCodeCID(addr address.Address) (ret cid.Cid, ok bool) {
 	act, err := rs.state.GetActor(addr)
 	if err != nil {
-		// todo: notfound
-		rs.Abortf(exitcode.ErrPlaceholder, "%v", err)
+		if xerrors.Is(err, types.ErrActorNotFound) {
+			return cid.Undef, false
+		}
+
+		panic(aerrors.Fatalf("failed to get actor: %s", err))
 	}
 
 	return act.Code, true
@@ -148,7 +153,7 @@ func (rs *Runtime) GetActorCodeCID(addr address.Address) (ret cid.Cid, ok bool) 
 func (rt *Runtime) GetRandomness(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
 	res, err := rt.vm.rand.GetRandomness(rt.ctx, personalization, int64(randEpoch), entropy)
 	if err != nil {
-		rt.Abortf(exitcode.SysErrInternal, "could not get randomness: %s", err)
+		panic(aerrors.Fatalf("could not get randomness: %s", err))
 	}
 	return res
 }
@@ -161,18 +166,18 @@ func (rt *Runtime) NewActorAddress() address.Address {
 	var b bytes.Buffer
 	oa, _ := ResolveToKeyAddr(rt.vm.cstate, rt.vm.cst, rt.origin)
 	if err := oa.MarshalCBOR(&b); err != nil { // todo: spec says cbor; why not just bytes?
-		rt.Abortf(exitcode.ErrSerialization, "writing caller address into a buffer: %v", err)
+		panic(aerrors.Fatalf("writing caller address into a buffer: %v", err))
 	}
 
 	if err := binary.Write(&b, binary.BigEndian, rt.originNonce); err != nil {
-		rt.Abortf(exitcode.ErrSerialization, "writing nonce address into a buffer: %v", err)
+		panic(aerrors.Fatalf("writing nonce address into a buffer: %v", err))
 	}
 	if err := binary.Write(&b, binary.BigEndian, rt.numActorsCreated); err != nil { // TODO: expose on vm
-		rt.Abortf(exitcode.ErrSerialization, "writing callSeqNum address into a buffer: %v", err)
+		panic(aerrors.Fatalf("writing callSeqNum address into a buffer: %v", err))
 	}
 	addr, err := address.NewActorAddress(b.Bytes())
 	if err != nil {
-		rt.Abortf(exitcode.ErrSerialization, "create actor address: %v", err)
+		panic(aerrors.Fatalf("create actor address: %v", err))
 	}
 
 	rt.incrementNumActorsCreated()
@@ -190,7 +195,7 @@ func (rt *Runtime) CreateActor(codeId cid.Cid, address address.Address) {
 		Balance: big.Zero(),
 	})
 	if err != nil {
-		rt.Abortf(exitcode.SysErrInternal, "creating actor entry: %v", err)
+		panic(aerrors.Fatalf("creating actor entry: %v", err))
 	}
 }
 
@@ -198,13 +203,17 @@ func (rt *Runtime) DeleteActor() {
 	rt.ChargeGas(rt.Pricelist().OnDeleteActor())
 	act, err := rt.state.GetActor(rt.Message().Receiver())
 	if err != nil {
-		rt.Abortf(exitcode.SysErrInternal, "failed to load actor in delete actor: %s", err)
+		if xerrors.Is(err, types.ErrActorNotFound) {
+			rt.Abortf(exitcode.SysErrorIllegalActor, "failed to load actor in delete actor: %s", err)
+		}
+		panic(aerrors.Fatalf("failed to get actor: %s", err))
 	}
 	if !act.Balance.IsZero() {
-		rt.Abortf(exitcode.SysErrInternal, "cannot delete actor with non-zero balance")
+		rt.vm.transfer(rt.Message().Receiver(), builtin.BurntFundsActorAddr, act.Balance)
 	}
+
 	if err := rt.state.DeleteActor(rt.Message().Receiver()); err != nil {
-		rt.Abortf(exitcode.SysErrInternal, "failed to delete actor: %s", err)
+		panic(aerrors.Fatalf("failed to delete actor: %s", err))
 	}
 }
 
@@ -220,10 +229,7 @@ func (rs *Runtime) StartSpan(name string) vmr.TraceSpan {
 }
 
 func (rt *Runtime) ValidateImmediateCallerIs(as ...address.Address) {
-	imm, ok := rt.ResolveAddress(rt.Message().Caller())
-	if !ok {
-		rt.Abortf(exitcode.ErrIllegalState, "couldn't resolve immediate caller")
-	}
+	imm := rt.Message().Caller()
 
 	for _, a := range as {
 		if imm == a {
@@ -249,7 +255,7 @@ func (rs *Runtime) AbortStateMsg(msg string) {
 func (rt *Runtime) ValidateImmediateCallerType(ts ...cid.Cid) {
 	callerCid, ok := rt.GetActorCodeCID(rt.Message().Caller())
 	if !ok {
-		rt.Abortf(exitcode.ErrIllegalArgument, "failed to lookup code cid for caller")
+		panic(aerrors.Fatalf("failed to lookup code cid for caller"))
 	}
 	for _, t := range ts {
 		if t == callerCid {

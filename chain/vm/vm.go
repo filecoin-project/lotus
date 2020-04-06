@@ -131,6 +131,7 @@ func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, origin addres
 		numActorsCreated: nac,
 		pricelist:        PricelistByEpoch(vm.blockHeight),
 	}
+
 	rt.cst = &cbor.BasicIpldStore{
 		Blocks: &gasChargingBlocks{rt.ChargeGas, rt.pricelist, vm.cst.Blocks},
 		Atlas:  vm.cst.Atlas,
@@ -140,6 +141,14 @@ func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, origin addres
 		chargeGas: rt.ChargeGas,
 		pl:        rt.pricelist,
 	}
+
+	vmm := *msg
+	resF, ok := rt.ResolveAddress(msg.From)
+	if !ok {
+		rt.Abortf(exitcode.SysErrInvalidReceiver, "resolve msg.From address failed")
+	}
+	vmm.From = resF
+	rt.vmsg = &vmm
 
 	return rt
 }
