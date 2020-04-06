@@ -378,7 +378,8 @@ func (m *Miner) computeTicket(ctx context.Context, addr address.Address, base *M
 	}, nil
 }
 
-func (m *Miner) createBlock(base *MiningBase, addr address.Address, ticket *types.Ticket, proof *types.EPostProof, bvals []*types.BeaconEntry, pending []*types.SignedMessage) (*types.BlockMsg, error) {
+func (m *Miner) createBlock(base *MiningBase, addr address.Address, ticket *types.Ticket,
+	proof *types.EPostProof, bvals []types.BeaconEntry, pending []*types.SignedMessage) (*types.BlockMsg, error) {
 	msgs, err := SelectMessages(context.TODO(), m.api.StateGetActor, base.ts, pending)
 	if err != nil {
 		return nil, xerrors.Errorf("message filtering failed: %w", err)

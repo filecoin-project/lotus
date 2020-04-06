@@ -269,7 +269,7 @@ func (a *StateAPI) MinerGetBaseInfo(ctx context.Context, maddr address.Address, 
 	return stmgr.MinerGetBaseInfo(ctx, a.StateManager, tsk, maddr)
 }
 
-func (a *StateAPI) MinerCreateBlock(ctx context.Context, addr address.Address, parentsTSK types.TipSetKey, ticket *types.Ticket, proof *types.EPostProof, bvals []*types.BeaconEntry, msgs []*types.SignedMessage, height abi.ChainEpoch, ts uint64) (*types.BlockMsg, error) {
+func (a *StateAPI) MinerCreateBlock(ctx context.Context, addr address.Address, parentsTSK types.TipSetKey, ticket *types.Ticket, proof *types.EPostProof, bvals []types.BeaconEntry, msgs []*types.SignedMessage, height abi.ChainEpoch, ts uint64) (*types.BlockMsg, error) {
 	parents, err := a.Chain.GetTipSetFromKey(parentsTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", parentsTSK, err)

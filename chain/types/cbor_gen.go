@@ -40,7 +40,7 @@ func (t *BlockHeader) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.BeaconEntries ([]*types.BeaconEntry) (slice)
+	// t.BeaconEntries ([]types.BeaconEntry) (slice)
 	if len(t.BeaconEntries) > cbg.MaxLength {
 		return xerrors.Errorf("Slice value in field t.BeaconEntries was too long")
 	}
@@ -181,7 +181,7 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 		}
 
 	}
-	// t.BeaconEntries ([]*types.BeaconEntry) (slice)
+	// t.BeaconEntries ([]types.BeaconEntry) (slice)
 
 	maj, extra, err = cbg.CborReadHeader(br)
 	if err != nil {
@@ -196,7 +196,7 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("expected cbor array")
 	}
 	if extra > 0 {
-		t.BeaconEntries = make([]*BeaconEntry, extra)
+		t.BeaconEntries = make([]BeaconEntry, extra)
 	}
 	for i := 0; i < int(extra); i++ {
 
@@ -205,7 +205,7 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 			return err
 		}
 
-		t.BeaconEntries[i] = &v
+		t.BeaconEntries[i] = v
 	}
 
 	// t.Parents ([]cid.Cid) (slice)
@@ -1512,8 +1512,15 @@ func (t *BeaconEntry) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.Signature (crypto.Signature) (struct)
-	if err := t.Signature.MarshalCBOR(w); err != nil {
+	// t.Data ([]uint8) (slice)
+	if len(t.Data) > cbg.ByteArrayMaxLen {
+		return xerrors.Errorf("Byte array in field t.Data was too long")
+	}
+
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.Data)))); err != nil {
+		return err
+	}
+	if _, err := w.Write(t.Data); err != nil {
 		return err
 	}
 	return nil
@@ -1548,14 +1555,22 @@ func (t *BeaconEntry) UnmarshalCBOR(r io.Reader) error {
 		t.Index = uint64(extra)
 
 	}
-	// t.Signature (crypto.Signature) (struct)
+	// t.Data ([]uint8) (slice)
 
-	{
+	maj, extra, err = cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
 
-		if err := t.Signature.UnmarshalCBOR(br); err != nil {
-			return xerrors.Errorf("unmarshaling t.Signature: %w", err)
-		}
-
+	if extra > cbg.ByteArrayMaxLen {
+		return fmt.Errorf("t.Data: byte array too large (%d)", extra)
+	}
+	if maj != cbg.MajByteString {
+		return fmt.Errorf("expected byte array")
+	}
+	t.Data = make([]byte, extra)
+	if _, err := io.ReadFull(br, t.Data); err != nil {
+		return err
 	}
 	return nil
 }

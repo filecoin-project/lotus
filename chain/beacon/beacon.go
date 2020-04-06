@@ -8,7 +8,6 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
 	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
 
@@ -18,30 +17,28 @@ import (
 var log = logging.Logger("beacon")
 
 type Response struct {
-	Entry *types.BeaconEntry
+	Entry types.BeaconEntry
 	Err   error
 }
 
 type DrandBeacon interface {
 	RoundTime() time.Duration
-	LastEntry() (*types.BeaconEntry, error)
+	LastEntry() (types.BeaconEntry, error)
 	Entry(context.Context, uint64) <-chan Response
-	VerifyEntry(*types.BeaconEntry) (bool, error)
+	VerifyEntry(types.BeaconEntry) (bool, error)
 	BeaconIndexesForEpoch(abi.ChainEpoch, int) []uint64
+	IsEntryForEpoch(e types.BeaconEntry, epoch abi.ChainEpoch, nulls int) (bool, error)
 }
 
 func ValidateBlockValues(b DrandBeacon, h *types.BlockHeader, nulls int) error {
-	indexes := b.BeaconIndexesForEpoch(h.Height, nulls)
-
-	if len(h.BeaconEntries) != len(indexes) {
-		return xerrors.Errorf("incorrect number of beacon entries, exp:%d got:%d", len(indexes), len(h.BeaconEntries))
-	}
-
-	for i, ix := range indexes {
-		if h.BeaconEntries[i].Index != ix {
-			return xerrors.Errorf("beacon entry at [%d] had wrong index, exp:%d got:%d", i, ix, h.BeaconEntries[i].Index)
+	for i, be := range h.BeaconEntries {
+		if ok, err := b.IsEntryForEpoch(be, h.Height, nulls); err != nil {
+			return xerrors.Errorf("failed to check if beacon belongs: %w")
+		} else if !ok {
+			return xerrors.Errorf("beacon does not belong in this block: %d", i)
 		}
-		if ok, err := b.VerifyEntry(h.BeaconEntries[i]); err != nil {
+
+		if ok, err := b.VerifyEntry(be); err != nil {
 			return xerrors.Errorf("failed to verify beacon entry %d: %w", i, err)
 		} else if !ok {
 			return xerrors.Errorf("beacon entry %d was invalid", i)
@@ -51,10 +48,10 @@ func ValidateBlockValues(b DrandBeacon, h *types.BlockHeader, nulls int) error {
 	return nil
 }
 
-func BeaconEntriesForBlock(ctx context.Context, beacon DrandBeacon, round abi.ChainEpoch, nulls int) ([]*types.BeaconEntry, error) {
+func BeaconEntriesForBlock(ctx context.Context, beacon DrandBeacon, round abi.ChainEpoch, nulls int) ([]types.BeaconEntry, error) {
 	start := time.Now()
 
-	var out []*types.BeaconEntry
+	var out []types.BeaconEntry
 	for _, ei := range beacon.BeaconIndexesForEpoch(round, nulls) {
 		rch := beacon.Entry(ctx, ei)
 		select {
@@ -87,17 +84,17 @@ func (mb *mockBeacon) RoundTime() time.Duration {
 	return mb.interval
 }
 
-func (mb *mockBeacon) LastEntry() (*types.BeaconEntry, error) {
+func (mb *mockBeacon) LastEntry() (types.BeaconEntry, error) {
 	panic("NYI")
 }
 
-func (mb *mockBeacon) entryForIndex(index uint64) *types.BeaconEntry {
+func (mb *mockBeacon) entryForIndex(index uint64) types.BeaconEntry {
 	buf := make([]byte, 8)
 	binary.BigEndian.PutUint64(buf, index)
 	rval := blake2b.Sum256(buf)
-	return &types.BeaconEntry{
-		Index:     index,
-		Signature: crypto.Signature{Type: crypto.SigTypeBLS, Data: rval[:]},
+	return types.BeaconEntry{
+		Index: index,
+		Data:  rval[:],
 	}
 }
 
@@ -108,18 +105,23 @@ func (mb *mockBeacon) Entry(ctx context.Context, index uint64) <-chan Response {
 	return out
 }
 
-func (mb *mockBeacon) VerifyEntry(e *types.BeaconEntry) (bool, error) {
+func (mb *mockBeacon) VerifyEntry(e types.BeaconEntry) (bool, error) {
+	// TODO: cache this, especially for bls
 	oe := mb.entryForIndex(e.Index)
-	return bytes.Equal(e.Signature.Data, oe.Signature.Data), nil
+	return bytes.Equal(e.Data, oe.Data), nil
+}
+
+func (mb *mockBeacon) IsEntryForEpoch(e types.BeaconEntry, epoch abi.ChainEpoch, nulls int) (bool, error) {
+	return int64(e.Index) <= int64(epoch) && int64(epoch)-int64(nulls) >= int64(e.Index), nil
 }
 
 func (mb *mockBeacon) BeaconIndexesForEpoch(epoch abi.ChainEpoch, nulls int) []uint64 {
 	var out []uint64
-	for i := nulls; i > 0; i-- {
+	out = append(out, uint64(epoch))
+	for i := 0; i < nulls; i++ {
 		out = append(out, uint64(epoch)-uint64(i))
 	}
-	out = append(out, uint64(epoch))
-	return []uint64{uint64(epoch)}
+	return out
 }
 
 var _ DrandBeacon = (*mockBeacon)(nil)

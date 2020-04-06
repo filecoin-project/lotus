@@ -35,8 +35,8 @@ type EPostProof struct {
 }
 
 type BeaconEntry struct {
-	Index     uint64
-	Signature crypto.Signature
+	Index uint64
+	Data  []byte
 }
 
 type BlockHeader struct {
@@ -46,7 +46,7 @@ type BlockHeader struct {
 
 	EPostProof EPostProof // 2
 
-	BeaconEntries []*BeaconEntry
+	BeaconEntries []BeaconEntry
 
 	Parents []cid.Cid // 3
 
