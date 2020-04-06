@@ -29,7 +29,7 @@ type SectorFatalError struct{ error }
 func (evt SectorFatalError) FormatError(xerrors.Printer) (next error) { return evt.error }
 
 func (evt SectorFatalError) applyGlobal(state *SectorInfo) bool {
-	log.Errorf("Fatal error on sector %d: %+v", state.SectorID, evt.error)
+	log.Errorf("Fatal error on sector %d: %+v", state.SectorNumber, evt.error)
 	// TODO: Do we want to mark the state as unrecoverable?
 	//  I feel like this should be a softer error, where the user would
 	//  be able to send a retry event of some kind
@@ -54,7 +54,7 @@ type SectorStart struct {
 }
 
 func (evt SectorStart) apply(state *SectorInfo) {
-	state.SectorID = evt.ID
+	state.SectorNumber = evt.ID
 	state.Pieces = evt.Pieces
 	state.SectorType = evt.SectorType
 }

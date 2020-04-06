@@ -16,7 +16,7 @@ import (
 )
 
 func (m *Sealing) handlePacking(ctx statemachine.Context, sector SectorInfo) error {
-	log.Infow("performing filling up rest of the sector...", "sector", sector.SectorID)
+	log.Infow("performing filling up rest of the sector...", "sector", sector.SectorNumber)
 
 	var allocated abi.UnpaddedPieceSize
 	for _, piece := range sector.Pieces {
@@ -35,10 +35,10 @@ func (m *Sealing) handlePacking(ctx statemachine.Context, sector SectorInfo) err
 	}
 
 	if len(fillerSizes) > 0 {
-		log.Warnf("Creating %d filler pieces for sector %d", len(fillerSizes), sector.SectorID)
+		log.Warnf("Creating %d filler pieces for sector %d", len(fillerSizes), sector.SectorNumber)
 	}
 
-	pieces, err := m.pledgeSector(ctx.Context(), m.minerSector(sector.SectorID), sector.existingPieces(), fillerSizes...)
+	pieces, err := m.pledgeSector(ctx.Context(), m.minerSector(sector.SectorNumber), sector.existingPieces(), fillerSizes...)
 	if err != nil {
 		return xerrors.Errorf("filling up the sector (%v): %w", fillerSizes, err)
 	}
@@ -61,13 +61,13 @@ func (m *Sealing) handlePreCommit1(ctx statemachine.Context, sector SectorInfo) 
 		}
 	}
 
-	log.Infow("performing sector replication...", "sector", sector.SectorID)
+	log.Infow("performing sector replication...", "sector", sector.SectorNumber)
 	ticketValue, ticketEpoch, err := m.tktFn(ctx.Context())
 	if err != nil {
 		return ctx.Send(SectorSealPreCommitFailed{xerrors.Errorf("getting ticket failed: %w", err)})
 	}
 
-	pc1o, err := m.sealer.SealPreCommit1(ctx.Context(), m.minerSector(sector.SectorID), ticketValue, sector.pieceInfos())
+	pc1o, err := m.sealer.SealPreCommit1(ctx.Context(), m.minerSector(sector.SectorNumber), ticketValue, sector.pieceInfos())
 	if err != nil {
 		return ctx.Send(SectorSealPreCommitFailed{xerrors.Errorf("seal pre commit(1) failed: %w", err)})
 	}
@@ -80,7 +80,7 @@ func (m *Sealing) handlePreCommit1(ctx statemachine.Context, sector SectorInfo) 
 }
 
 func (m *Sealing) handlePreCommit2(ctx statemachine.Context, sector SectorInfo) error {
-	cids, err := m.sealer.SealPreCommit2(ctx.Context(), m.minerSector(sector.SectorID), sector.PreCommit1Out)
+	cids, err := m.sealer.SealPreCommit2(ctx.Context(), m.minerSector(sector.SectorNumber), sector.PreCommit1Out)
 	if err != nil {
 		return ctx.Send(SectorSealPreCommitFailed{xerrors.Errorf("seal pre commit(2) failed: %w", err)})
 	}
@@ -108,7 +108,7 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 
 	params := &miner.SectorPreCommitInfo{
 		Expiration:      10000000, // TODO: implement
-		SectorNumber:    sector.SectorID,
+		SectorNumber:    sector.SectorNumber,
 		RegisteredProof: sector.SectorType,
 
 		SealedCID:     *sector.CommR,
@@ -121,7 +121,7 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("could not serialize pre-commit sector parameters: %w", err)})
 	}
 
-	log.Info("submitting precommit for sector: ", sector.SectorID)
+	log.Info("submitting precommit for sector: ", sector.SectorNumber)
 	mcid, err := m.api.SendMsg(ctx.Context(), m.worker, m.maddr, builtin.MethodsMiner.PreCommitSector, big.NewInt(0), big.NewInt(1), 1000000, enc.Bytes())
 	if err != nil {
 		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("pushing message to mpool: %w", err)})
@@ -132,7 +132,7 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 
 func (m *Sealing) handleWaitSeed(ctx statemachine.Context, sector SectorInfo) error {
 	// would be ideal to just use the events.Called handler, but it wouldnt be able to handle individual message timeouts
-	log.Info("Sector precommitted: ", sector.SectorID)
+	log.Info("Sector precommitted: ", sector.SectorNumber)
 	mw, err := m.api.StateWaitMsg(ctx.Context(), *sector.PreCommitMessage)
 	if err != nil {
 		return ctx.Send(SectorChainPreCommitFailed{err})
@@ -143,9 +143,9 @@ func (m *Sealing) handleWaitSeed(ctx statemachine.Context, sector SectorInfo) er
 		err := xerrors.Errorf("sector precommit failed: %d", mw.Receipt.ExitCode)
 		return ctx.Send(SectorChainPreCommitFailed{err})
 	}
-	log.Info("precommit message landed on chain: ", sector.SectorID)
+	log.Info("precommit message landed on chain: ", sector.SectorNumber)
 
-	pci, err := m.api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, sector.SectorID, mw.TipSetTok)
+	pci, err := m.api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, sector.SectorNumber, mw.TipSetTok)
 	if err != nil {
 		return xerrors.Errorf("getting precommit info: %w", err)
 	}
@@ -179,18 +179,18 @@ func (m *Sealing) handleWaitSeed(ctx statemachine.Context, sector SectorInfo) er
 func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) error {
 	log.Info("scheduling seal proof computation...")
 
-	log.Infof("KOMIT %d %x(%d); %x(%d); %v; r:%x; d:%x", sector.SectorID, sector.TicketValue, sector.TicketEpoch, sector.SeedValue, sector.SeedEpoch, sector.pieceInfos(), sector.CommR, sector.CommD)
+	log.Infof("KOMIT %d %x(%d); %x(%d); %v; r:%x; d:%x", sector.SectorNumber, sector.TicketValue, sector.TicketEpoch, sector.SeedValue, sector.SeedEpoch, sector.pieceInfos(), sector.CommR, sector.CommD)
 
 	cids := storage.SectorCids{
 		Unsealed: *sector.CommD,
 		Sealed:   *sector.CommR,
 	}
-	c2in, err := m.sealer.SealCommit1(ctx.Context(), m.minerSector(sector.SectorID), sector.TicketValue, sector.SeedValue, sector.pieceInfos(), cids)
+	c2in, err := m.sealer.SealCommit1(ctx.Context(), m.minerSector(sector.SectorNumber), sector.TicketValue, sector.SeedValue, sector.pieceInfos(), cids)
 	if err != nil {
 		return ctx.Send(SectorComputeProofFailed{xerrors.Errorf("computing seal proof failed: %w", err)})
 	}
 
-	proof, err := m.sealer.SealCommit2(ctx.Context(), m.minerSector(sector.SectorID), c2in)
+	proof, err := m.sealer.SealCommit2(ctx.Context(), m.minerSector(sector.SectorNumber), c2in)
 	if err != nil {
 		return ctx.Send(SectorComputeProofFailed{xerrors.Errorf("computing seal proof failed: %w", err)})
 	}
@@ -202,7 +202,7 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 	// TODO: Consider splitting states and persist proof for faster recovery
 
 	params := &miner.ProveCommitSectorParams{
-		SectorNumber: sector.SectorID,
+		SectorNumber: sector.SectorNumber,
 		Proof:        proof,
 	}
 
@@ -225,7 +225,7 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 
 func (m *Sealing) handleCommitWait(ctx statemachine.Context, sector SectorInfo) error {
 	if sector.CommitMessage == nil {
-		log.Errorf("sector %d entered commit wait state without a message cid", sector.SectorID)
+		log.Errorf("sector %d entered commit wait state without a message cid", sector.SectorNumber)
 		return ctx.Send(SectorCommitFailed{xerrors.Errorf("entered commit wait with no commit cid")})
 	}
 
@@ -244,7 +244,7 @@ func (m *Sealing) handleCommitWait(ctx statemachine.Context, sector SectorInfo) 
 func (m *Sealing) handleFinalizeSector(ctx statemachine.Context, sector SectorInfo) error {
 	// TODO: Maybe wait for some finality
 
-	if err := m.sealer.FinalizeSector(ctx.Context(), m.minerSector(sector.SectorID)); err != nil {
+	if err := m.sealer.FinalizeSector(ctx.Context(), m.minerSector(sector.SectorNumber)); err != nil {
 		return ctx.Send(SectorFinalizeFailed{xerrors.Errorf("finalize sector: %w", err)})
 	}
 
@@ -256,7 +256,7 @@ func (m *Sealing) handleFaulty(ctx statemachine.Context, sector SectorInfo) erro
 
 	// TODO: coalesce faulty sector reporting
 	bf := abi.NewBitField()
-	bf.Set(uint64(sector.SectorID))
+	bf.Set(uint64(sector.SectorNumber))
 
 	params := &miner.DeclareTemporaryFaultsParams{
 		SectorNumbers: bf,
@@ -287,7 +287,7 @@ func (m *Sealing) handleFaultReported(ctx statemachine.Context, sector SectorInf
 	}
 
 	if mw.Receipt.ExitCode != 0 {
-		log.Errorf("UNHANDLED: declaring sector fault failed (exit=%d, msg=%s) (id: %d)", mw.Receipt.ExitCode, *sector.FaultReportMsg, sector.SectorID)
+		log.Errorf("UNHANDLED: declaring sector fault failed (exit=%d, msg=%s) (id: %d)", mw.Receipt.ExitCode, *sector.FaultReportMsg, sector.SectorNumber)
 		return xerrors.Errorf("UNHANDLED: submitting fault declaration failed (exit %d)", mw.Receipt.ExitCode)
 	}
 

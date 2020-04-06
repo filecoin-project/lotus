@@ -52,15 +52,15 @@ func checkPieces(ctx context.Context, si SectorInfo, api SealingAPI) error {
 		}
 
 		if proposal.PieceCID != piece.CommP {
-			return &ErrInvalidDeals{xerrors.Errorf("piece %d (or %d) of sector %d refers deal %d with wrong CommP: %x != %x", i, len(si.Pieces), si.SectorID, piece.DealID, piece.CommP, proposal.PieceCID)}
+			return &ErrInvalidDeals{xerrors.Errorf("piece %d (or %d) of sector %d refers deal %d with wrong CommP: %x != %x", i, len(si.Pieces), si.SectorNumber, piece.DealID, piece.CommP, proposal.PieceCID)}
 		}
 
 		if piece.Size != proposal.PieceSize.Unpadded() {
-			return &ErrInvalidDeals{xerrors.Errorf("piece %d (or %d) of sector %d refers deal %d with different size: %d != %d", i, len(si.Pieces), si.SectorID, piece.DealID, piece.Size, proposal.PieceSize)}
+			return &ErrInvalidDeals{xerrors.Errorf("piece %d (or %d) of sector %d refers deal %d with different size: %d != %d", i, len(si.Pieces), si.SectorNumber, piece.DealID, piece.Size, proposal.PieceSize)}
 		}
 
 		if height >= proposal.StartEpoch {
-			return &ErrExpiredDeals{xerrors.Errorf("piece %d (or %d) of sector %d refers expired deal %d - should start at %d, head %d", i, len(si.Pieces), si.SectorID, piece.DealID, proposal.StartEpoch, height)}
+			return &ErrExpiredDeals{xerrors.Errorf("piece %d (or %d) of sector %d refers expired deal %d - should start at %d, head %d", i, len(si.Pieces), si.SectorNumber, piece.DealID, proposal.StartEpoch, height)}
 		}
 	}
 
@@ -101,7 +101,7 @@ func (m *Sealing) checkCommit(ctx context.Context, si SectorInfo, proof []byte) 
 		return &ErrBadSeed{xerrors.Errorf("seed epoch was not set")}
 	}
 
-	pci, err := m.api.StateSectorPreCommitInfo(ctx, m.maddr, si.SectorID, tok)
+	pci, err := m.api.StateSectorPreCommitInfo(ctx, m.maddr, si.SectorNumber, tok)
 	if err != nil {
 		return xerrors.Errorf("getting precommit info: %w", err)
 	}
@@ -133,13 +133,13 @@ func (m *Sealing) checkCommit(ctx context.Context, si SectorInfo, proof []byte) 
 	}
 
 	ok, err := m.verif.VerifySeal(abi.SealVerifyInfo{
-		SectorID: m.minerSector(si.SectorID),
+		SectorID: m.minerSector(si.SectorNumber),
 		OnChain: abi.OnChainSealVerifyInfo{
 			SealedCID:        pci.Info.SealedCID,
 			InteractiveEpoch: si.SeedEpoch,
 			RegisteredProof:  spt,
 			Proof:            proof,
-			SectorNumber:     si.SectorID,
+			SectorNumber:     si.SectorNumber,
 			SealRandEpoch:    si.TicketEpoch,
 		},
 		Randomness:            si.TicketValue,

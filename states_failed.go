@@ -16,7 +16,7 @@ func failedCooldown(ctx statemachine.Context, sector SectorInfo) error {
 
 	retryStart := time.Unix(int64(sector.Log[len(sector.Log)-1].Timestamp), 0).Add(minRetryTime)
 	if len(sector.Log) > 0 && !time.Now().After(retryStart) {
-		log.Infof("%s(%d), waiting %s before retrying", sector.State, sector.SectorID, time.Until(retryStart))
+		log.Infof("%s(%d), waiting %s before retrying", sector.State, sector.SectorNumber, time.Until(retryStart))
 		select {
 		case <-time.After(time.Until(retryStart)):
 		case <-ctx.Context().Done():
@@ -30,13 +30,13 @@ func failedCooldown(ctx statemachine.Context, sector SectorInfo) error {
 func (m *Sealing) checkPreCommitted(ctx statemachine.Context, sector SectorInfo) (*miner.SectorPreCommitOnChainInfo, bool) {
 	tok, _, err := m.api.ChainHead(ctx.Context())
 	if err != nil {
-		log.Errorf("handleSealFailed(%d): temp error: %+v", sector.SectorID, err)
+		log.Errorf("handleSealFailed(%d): temp error: %+v", sector.SectorNumber, err)
 		return nil, true
 	}
 
-	info, err := m.api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, sector.SectorID, tok)
+	info, err := m.api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, sector.SectorNumber, tok)
 	if err != nil {
-		log.Errorf("handleSealFailed(%d): temp error: %+v", sector.SectorID, err)
+		log.Errorf("handleSealFailed(%d): temp error: %+v", sector.SectorNumber, err)
 		return nil, true
 	}
 
@@ -73,12 +73,12 @@ func (m *Sealing) handlePreCommitFailed(ctx statemachine.Context, sector SectorI
 
 	if pci, is := m.checkPreCommitted(ctx, sector); is && pci != nil {
 		if sector.PreCommitMessage != nil {
-			log.Warn("sector %d is precommitted on chain, but we don't have precommit message", sector.SectorID)
+			log.Warn("sector %d is precommitted on chain, but we don't have precommit message", sector.SectorNumber)
 			return nil // TODO: SeedWait needs this currently
 		}
 
 		if pci.Info.SealedCID != *sector.CommR {
-			log.Warn("sector %d is precommitted on chain, with different CommR: %x != %x", sector.SectorID, pci.Info.SealedCID, sector.CommR)
+			log.Warn("sector %d is precommitted on chain, with different CommR: %x != %x", sector.SectorNumber, pci.Info.SealedCID, sector.CommR)
 			return nil // TODO: remove when the actor allows re-precommit
 		}
 
