@@ -5,7 +5,6 @@ import (
 	"io"
 
 	"github.com/filecoin-project/go-address"
-
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	"github.com/filecoin-project/lotus/storage/sealing"
