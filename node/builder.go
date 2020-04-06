@@ -16,7 +16,6 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	record "github.com/libp2p/go-libp2p-record"
 	"github.com/multiformats/go-multiaddr"
-	manet "github.com/multiformats/go-multiaddr-net"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -338,13 +337,10 @@ func ConfigCommon(cfg *config.Common) Option {
 			return lr.SetAPIEndpoint(e)
 		}),
 		Override(new(sectorstorage.URLs), func(e dtypes.APIEndpoint) (sectorstorage.URLs, error) {
-			_, ip, err := manet.DialArgs(e)
-			if err != nil {
-				return nil, xerrors.Errorf("getting api endpoint dial args: %w", err)
-			}
+			ip := cfg.API.RemoteListenAddress
 
 			var urls sectorstorage.URLs
-			urls = append(urls, "http://"+ip+"/remote") // TODO: This makes assumptions, and probably bad ones too
+			urls = append(urls, "http://"+ip+"/remote") // TODO: This makes no assumptions, and probably could...
 			return urls, nil
 		}),
 		ApplyIf(func(s *Settings) bool { return s.Online },
