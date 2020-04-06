@@ -13,10 +13,10 @@ import (
 var _ sealing.Events = new(EventsAdapter)
 
 type EventsAdapter struct {
-	delegate events.Events
+	delegate *events.Events
 }
 
-func NewEventsAdapter(api events.Events) EventsAdapter {
+func NewEventsAdapter(api *events.Events) EventsAdapter {
 	return EventsAdapter{delegate: api}
 }
 

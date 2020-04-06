@@ -34,7 +34,7 @@ func (m *Sealing) checkPreCommitted(ctx statemachine.Context, sector SectorInfo)
 		return nil, true
 	}
 
-	info, err := m.api.StateGetSectorPreCommitOnChainInfo(ctx.Context(), m.maddr, sector.SectorID, tok)
+	info, err := m.api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, sector.SectorID, tok)
 	if err != nil {
 		log.Errorf("handleSealFailed(%d): temp error: %+v", sector.SectorID, err)
 		return nil, true

@@ -99,7 +99,7 @@ func (s SealingAPIAdapter) StateComputeDataCommitment(ctx context.Context, maddr
 	return cid.Cid(c), nil
 }
 
-func (s SealingAPIAdapter) StateGetSectorPreCommitOnChainInfo(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok sealing.TipSetToken) (*miner.SectorPreCommitOnChainInfo, error) {
+func (s SealingAPIAdapter) StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok sealing.TipSetToken) (*miner.SectorPreCommitOnChainInfo, error) {
 	tsk, err := types.TipSetKeyFromBytes(tok)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to unmarshal TipSetToken to TipSetKey: %w", err)

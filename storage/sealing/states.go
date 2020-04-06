@@ -145,7 +145,7 @@ func (m *Sealing) handleWaitSeed(ctx statemachine.Context, sector SectorInfo) er
 	}
 	log.Info("precommit message landed on chain: ", sector.SectorID)
 
-	pci, err := m.api.StateGetSectorPreCommitOnChainInfo(ctx.Context(), m.maddr, sector.SectorID, mw.TipSetTok)
+	pci, err := m.api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, sector.SectorID, mw.TipSetTok)
 	if err != nil {
 		return xerrors.Errorf("getting precommit info: %w", err)
 	}

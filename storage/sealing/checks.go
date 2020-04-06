@@ -101,7 +101,7 @@ func (m *Sealing) checkCommit(ctx context.Context, si SectorInfo, proof []byte) 
 		return &ErrBadSeed{xerrors.Errorf("seed epoch was not set")}
 	}
 
-	pci, err := m.api.StateGetSectorPreCommitOnChainInfo(ctx, m.maddr, si.SectorID, tok)
+	pci, err := m.api.StateSectorPreCommitInfo(ctx, m.maddr, si.SectorID, tok)
 	if err != nil {
 		return xerrors.Errorf("getting precommit info: %w", err)
 	}
