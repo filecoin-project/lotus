@@ -127,6 +127,7 @@ type FullNode interface {
 	StateMinerPostState(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*miner.PoStState, error)
 	StateMinerSectorSize(context.Context, address.Address, types.TipSetKey) (abi.SectorSize, error)
 	StateMinerFaults(context.Context, address.Address, types.TipSetKey) ([]abi.SectorNumber, error)
+	StateSectorPreCommitInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error)
 	StatePledgeCollateral(context.Context, types.TipSetKey) (types.BigInt, error)
 	StateWaitMsg(context.Context, cid.Cid) (*MsgLookup, error)
 	StateSearchMsg(context.Context, cid.Cid) (*MsgLookup, error)

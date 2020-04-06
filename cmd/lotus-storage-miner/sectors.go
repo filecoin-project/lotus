@@ -77,7 +77,7 @@ var sectorsStatusCmd = &cli.Command{
 		}
 
 		fmt.Printf("SectorID:\t%d\n", status.SectorID)
-		fmt.Printf("Status:\t%s\n", api.SectorStates[status.State])
+		fmt.Printf("Status:\t%s\n", status.State)
 		fmt.Printf("CommD:\t\t%x\n", status.CommD)
 		fmt.Printf("CommR:\t\t%x\n", status.CommR)
 		fmt.Printf("Ticket:\t\t%x\n", status.Ticket.Value)
@@ -169,7 +169,7 @@ var sectorsListCmd = &cli.Command{
 
 			fmt.Fprintf(w, "%d: %s\tsSet: %s\tpSet: %s\ttktH: %d\tseedH: %d\tdeals: %v\n",
 				s,
-				api.SectorStates[st.State],
+				st.State,
 				yesno(inSSet),
 				yesno(inPSet),
 				st.Ticket.Epoch,
@@ -236,14 +236,7 @@ var sectorsUpdateCmd = &cli.Command{
 			return xerrors.Errorf("could not parse sector ID: %w", err)
 		}
 
-		var st api.SectorState
-		for i, s := range api.SectorStates {
-			if cctx.Args().Get(1) == s {
-				st = api.SectorState(i)
-			}
-		}
-
-		return nodeApi.SectorsUpdate(ctx, abi.SectorNumber(id), st)
+		return nodeApi.SectorsUpdate(ctx, abi.SectorNumber(id), api.SectorState(cctx.Args().Get(1)))
 	},
 }
 

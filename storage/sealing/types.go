@@ -2,6 +2,7 @@ package sealing
 
 import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-storage/storage"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/lotus/api"
@@ -35,11 +36,14 @@ type SectorInfo struct {
 
 	Pieces []Piece
 
-	// PreCommit
-	CommD  *cid.Cid
-	CommR  *cid.Cid
-	Proof  []byte
-	Ticket api.SealTicket
+	// PreCommit1
+	Ticket        api.SealTicket
+	PreCommit1Out storage.PreCommit1Out
+
+	// PreCommit2
+	CommD *cid.Cid
+	CommR *cid.Cid
+	Proof []byte
 
 	PreCommitMessage *cid.Cid
 
@@ -48,6 +52,7 @@ type SectorInfo struct {
 
 	// Committing
 	CommitMessage *cid.Cid
+	InvalidProofs uint64 // failed proof computations (doesn't validate with proof inputs)
 
 	// Faults
 	FaultReportMsg *cid.Cid
