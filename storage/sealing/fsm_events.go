@@ -5,8 +5,6 @@ import (
 	"github.com/filecoin-project/specs-storage/storage"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
-
-	"github.com/filecoin-project/lotus/api"
 )
 
 type mutator interface {
@@ -31,7 +29,7 @@ type SectorFatalError struct{ error }
 func (evt SectorFatalError) FormatError(xerrors.Printer) (next error) { return evt.error }
 
 func (evt SectorFatalError) applyGlobal(state *SectorInfo) bool {
-	log.Errorf("Fatal error on sector %d: %+v", state.SectorID, evt.error)
+	log.Errorf("Fatal error on sector %d: %+v", state.SectorNumber, evt.error)
 	// TODO: Do we want to mark the state as unrecoverable?
 	//  I feel like this should be a softer error, where the user would
 	//  be able to send a retry event of some kind
@@ -39,7 +37,7 @@ func (evt SectorFatalError) applyGlobal(state *SectorInfo) bool {
 }
 
 type SectorForceState struct {
-	State api.SectorState
+	State SectorState
 }
 
 func (evt SectorForceState) applyGlobal(state *SectorInfo) bool {
@@ -56,7 +54,7 @@ type SectorStart struct {
 }
 
 func (evt SectorStart) apply(state *SectorInfo) {
-	state.SectorID = evt.ID
+	state.SectorNumber = evt.ID
 	state.Pieces = evt.Pieces
 	state.SectorType = evt.SectorType
 }
@@ -73,12 +71,14 @@ func (evt SectorPackingFailed) apply(*SectorInfo) {}
 
 type SectorPreCommit1 struct {
 	PreCommit1Out storage.PreCommit1Out
-	Ticket        api.SealTicket
+	TicketValue   abi.SealRandomness
+	TicketEpoch   abi.ChainEpoch
 }
 
 func (evt SectorPreCommit1) apply(state *SectorInfo) {
 	state.PreCommit1Out = evt.PreCommit1Out
-	state.Ticket = evt.Ticket
+	state.TicketEpoch = evt.TicketEpoch
+	state.TicketValue = evt.TicketValue
 }
 
 type SectorPreCommit2 struct {
@@ -114,11 +114,13 @@ func (evt SectorPreCommitted) apply(state *SectorInfo) {
 }
 
 type SectorSeedReady struct {
-	Seed api.SealSeed
+	SeedValue abi.InteractiveSealRandomness
+	SeedEpoch abi.ChainEpoch
 }
 
 func (evt SectorSeedReady) apply(state *SectorInfo) {
-	state.Seed = evt.Seed
+	state.SeedEpoch = evt.SeedEpoch
+	state.SeedValue = evt.SeedValue
 }
 
 type SectorComputeProofFailed struct{ error }
