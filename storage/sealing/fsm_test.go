@@ -36,9 +36,12 @@ func TestHappyPath(t *testing.T) {
 	}
 
 	m.planSingle(SectorPacked{})
-	require.Equal(m.t, m.state.State, api.Unsealed)
+	require.Equal(m.t, m.state.State, api.PreCommit1)
 
-	m.planSingle(SectorSealed{})
+	m.planSingle(SectorPreCommit1{})
+	require.Equal(m.t, m.state.State, api.PreCommit2)
+
+	m.planSingle(SectorPreCommit2{})
 	require.Equal(m.t, m.state.State, api.PreCommitting)
 
 	m.planSingle(SectorPreCommitted{})
@@ -65,9 +68,12 @@ func TestSeedRevert(t *testing.T) {
 	}
 
 	m.planSingle(SectorPacked{})
-	require.Equal(m.t, m.state.State, api.Unsealed)
+	require.Equal(m.t, m.state.State, api.PreCommit1)
 
-	m.planSingle(SectorSealed{})
+	m.planSingle(SectorPreCommit1{})
+	require.Equal(m.t, m.state.State, api.PreCommit2)
+
+	m.planSingle(SectorPreCommit2{})
 	require.Equal(m.t, m.state.State, api.PreCommitting)
 
 	m.planSingle(SectorPreCommitted{})
@@ -102,5 +108,5 @@ func TestPlanCommittingHandlesSectorCommitFailed(t *testing.T) {
 
 	require.NoError(t, planCommitting(events, m.state))
 
-	require.Equal(t, api.SectorStates[api.CommitFailed], api.SectorStates[m.state.State])
+	require.Equal(t, api.CommitFailed, m.state.State)
 }

@@ -285,6 +285,17 @@ func resolveOnce(bs blockstore.Blockstore) func(ctx context.Context, ds ipld.Nod
 			names[0] = "@H:" + ik.Key()
 		}
 
+		if strings.HasPrefix(names[0], "@Hu:") {
+			i, err := strconv.ParseUint(names[0][4:], 10, 64)
+			if err != nil {
+				return nil, nil, xerrors.Errorf("parsing int64: %w", err)
+			}
+
+			ik := adt.UIntKey(i)
+
+			names[0] = "@H:" + ik.Key()
+		}
+
 		if strings.HasPrefix(names[0], "@H:") {
 			cst := cbor.NewCborStore(bs)
 

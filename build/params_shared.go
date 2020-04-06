@@ -60,10 +60,10 @@ const FallbackPoStConfidence = 6
 const SealRandomnessLookback = Finality
 
 // Epochs
-const SealRandomnessLookbackLimit = SealRandomnessLookback + 2000
+const SealRandomnessLookbackLimit = SealRandomnessLookback + 2000 // TODO: Get from spec specs-actors
 
 // Maximum lookback that randomness can be sourced from for a seal proof submission
-const MaxSealLookback = SealRandomnessLookbackLimit + 2000
+const MaxSealLookback = SealRandomnessLookbackLimit + 2000 // TODO: Get from specs-actors
 
 // /////
 // Mining

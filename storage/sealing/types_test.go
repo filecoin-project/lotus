@@ -18,7 +18,7 @@ func TestSectorInfoSelialization(t *testing.T) {
 	dummyCid := builtin.AccountActorCodeID
 
 	si := &SectorInfo{
-		State:    123,
+		State:    "stateful",
 		SectorID: 234,
 		Nonce:    345,
 		Pieces: []Piece{{

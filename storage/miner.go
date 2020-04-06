@@ -3,11 +3,9 @@ package storage
 import (
 	"context"
 	"errors"
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"time"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-storage/storage"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
@@ -15,6 +13,8 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/sector-storage"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
@@ -26,6 +26,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/storage/sealing"
 )
 
@@ -38,6 +39,7 @@ type Miner struct {
 	ds     datastore.Batching
 	tktFn  sealing.TicketFn
 	sc     sealing.SectorIDCounter
+	verif  ffiwrapper.Verifier
 
 	maddr  address.Address
 	worker address.Address
@@ -53,6 +55,7 @@ type storageMinerApi interface {
 	StateMinerSectors(context.Context, address.Address, types.TipSetKey) ([]*api.ChainSectorInfo, error)
 	StateMinerProvingSet(context.Context, address.Address, types.TipSetKey) ([]*api.ChainSectorInfo, error)
 	StateMinerSectorSize(context.Context, address.Address, types.TipSetKey) (abi.SectorSize, error)
+	StateSectorPreCommitInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error)
 	StateWaitMsg(context.Context, cid.Cid) (*api.MsgLookup, error) // TODO: removeme eventually
 	StateGetActor(ctx context.Context, actor address.Address, ts types.TipSetKey) (*types.Actor, error)
 	StateGetReceipt(context.Context, cid.Cid, types.TipSetKey) (*types.MessageReceipt, error)
@@ -74,7 +77,7 @@ type storageMinerApi interface {
 	WalletHas(context.Context, address.Address) (bool, error)
 }
 
-func NewMiner(api storageMinerApi, maddr, worker address.Address, h host.Host, ds datastore.Batching, sealer sectorstorage.SectorManager, sc sealing.SectorIDCounter, tktFn sealing.TicketFn) (*Miner, error) {
+func NewMiner(api storageMinerApi, maddr, worker address.Address, h host.Host, ds datastore.Batching, sealer sectorstorage.SectorManager, sc sealing.SectorIDCounter, verif ffiwrapper.Verifier, tktFn sealing.TicketFn) (*Miner, error) {
 	m := &Miner{
 		api:    api,
 		h:      h,
@@ -82,6 +85,7 @@ func NewMiner(api storageMinerApi, maddr, worker address.Address, h host.Host, d
 		ds:     ds,
 		tktFn:  tktFn,
 		sc:     sc,
+		verif:  verif,
 
 		maddr:  maddr,
 		worker: worker,
@@ -96,7 +100,7 @@ func (m *Miner) Run(ctx context.Context) error {
 	}
 
 	evts := events.NewEvents(ctx, m.api)
-	m.sealing = sealing.New(m.api, evts, m.maddr, m.worker, m.ds, m.sealer, m.sc, m.tktFn)
+	m.sealing = sealing.New(m.api, evts, m.maddr, m.worker, m.ds, m.sealer, m.sc, m.verif, m.tktFn)
 
 	go m.sealing.Run(ctx)
 
