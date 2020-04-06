@@ -1,74 +1,29 @@
 package sealing
 
-// alias because cbor-gen doesn't like non-alias types
-type SectorState = uint64
+type SectorState string
 
 const (
-	UndefinedSectorState SectorState = iota
+	UndefinedSectorState SectorState = ""
 
 	// happy path
-	Empty
-	Packing // sector not in sealStore, and not on chain
-
-	Unsealed      // sealing / queued
-	PreCommitting // on chain pre-commit
-	WaitSeed      // waiting for seed
-	Committing
-	CommitWait // waiting for message to land on chain
-	FinalizeSector
-	Proving
-	_ // reserved
-	_
-	_
-
-	// recovery handling
-	// Reseal
-	_
-	_
-	_
-	_
-	_
-	_
-	_
-
+	Empty          SectorState = "Empty"
+	Packing        SectorState = "Packing"       // sector not in sealStore, and not on chain
+	PreCommit1     SectorState = "PreCommit1"    // do PreCommit1
+	PreCommit2     SectorState = "PreCommit2"    // do PreCommit1
+	PreCommitting  SectorState = "PreCommitting" // on chain pre-commit
+	WaitSeed       SectorState = "WaitSeed"      // waiting for seed
+	Committing     SectorState = "Committing"
+	CommitWait     SectorState = "CommitWait" // waiting for message to land on chain
+	FinalizeSector SectorState = "FinalizeSector"
+	Proving        SectorState = "Proving"
 	// error modes
-	FailedUnrecoverable
-
-	SealFailed
-	PreCommitFailed
-	SealCommitFailed
-	CommitFailed
-	PackingFailed
-	_
-	_
-	_
-
-	Faulty        // sector is corrupted or gone for some reason
-	FaultReported // sector has been declared as a fault on chain
-	FaultedFinal  // fault declared on chain
+	FailedUnrecoverable SectorState = "FailedUnrecoverable"
+	SealFailed          SectorState = "SealFailed"
+	PreCommitFailed     SectorState = "PreCommitFailed"
+	ComputeProofFailed  SectorState = "ComputeProofFailed"
+	CommitFailed        SectorState = "CommitFailed"
+	PackingFailed       SectorState = "PackingFailed"
+	Faulty              SectorState = "Faulty"        // sector is corrupted or gone for some reason
+	FaultReported       SectorState = "FaultReported" // sector has been declared as a fault on chain
+	FaultedFinal        SectorState = "FaultedFinal"  // fault declared on chain
 )
-
-var SectorStates = []string{
-	UndefinedSectorState: "UndefinedSectorState",
-	Empty:                "Empty",
-	Packing:              "Packing",
-	Unsealed:             "Unsealed",
-	PreCommitting:        "PreCommitting",
-	WaitSeed:             "WaitSeed",
-	Committing:           "Committing",
-	CommitWait:           "CommitWait",
-	FinalizeSector:       "FinalizeSector",
-	Proving:              "Proving",
-
-	SealFailed:       "SealFailed",
-	PreCommitFailed:  "PreCommitFailed",
-	SealCommitFailed: "SealCommitFailed",
-	CommitFailed:     "CommitFailed",
-	PackingFailed:    "PackingFailed",
-
-	FailedUnrecoverable: "FailedUnrecoverable",
-
-	Faulty:        "Faulty",
-	FaultReported: "FaultReported",
-	FaultedFinal:  "FaultedFinal",
-}

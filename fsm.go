@@ -11,9 +11,7 @@ import (
 	"golang.org/x/xerrors"
 
 	statemachine "github.com/filecoin-project/go-statemachine"
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/prometheus/common/log"
 )
 
 func (m *Sealing) Plan(events []statemachine.Event, user interface{}) (interface{}, uint64, error) {
@@ -33,27 +31,27 @@ func (m *Sealing) Plan(events []statemachine.Event, user interface{}) (interface
 	}, uint64(len(events)), nil // TODO: This processed event count is not very correct
 }
 
-var fsmPlanners = map[api.SectorState]func(events []statemachine.Event, state *SectorInfo) error{
-	api.UndefinedSectorState: planOne(on(SectorStart{}, api.Packing)),
-	api.Packing:              planOne(on(SectorPacked{}, api.PreCommit1)),
-	api.PreCommit1: planOne(
-		on(SectorPreCommit1{}, api.PreCommit2),
-		on(SectorSealPreCommitFailed{}, api.SealFailed),
-		on(SectorPackingFailed{}, api.PackingFailed),
+var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *SectorInfo) error{
+	UndefinedSectorState: planOne(on(SectorStart{}, Packing)),
+	Packing:              planOne(on(SectorPacked{}, PreCommit1)),
+	PreCommit1: planOne(
+		on(SectorPreCommit1{}, PreCommit2),
+		on(SectorSealPreCommitFailed{}, SealFailed),
+		on(SectorPackingFailed{}, PackingFailed),
 	),
-	api.PreCommit2: planOne(
-		on(SectorPreCommit2{}, api.PreCommitting),
-		on(SectorSealPreCommitFailed{}, api.SealFailed),
-		on(SectorPackingFailed{}, api.PackingFailed),
+	PreCommit2: planOne(
+		on(SectorPreCommit2{}, PreCommitting),
+		on(SectorSealPreCommitFailed{}, SealFailed),
+		on(SectorPackingFailed{}, PackingFailed),
 	),
-	api.PreCommitting: planOne(
-		on(SectorSealPreCommitFailed{}, api.SealFailed),
-		on(SectorPreCommitted{}, api.WaitSeed),
-		on(SectorChainPreCommitFailed{}, api.PreCommitFailed),
+	PreCommitting: planOne(
+		on(SectorSealPreCommitFailed{}, SealFailed),
+		on(SectorPreCommitted{}, WaitSeed),
+		on(SectorChainPreCommitFailed{}, PreCommitFailed),
 	),
-	api.WaitSeed: planOne(
-		on(SectorSeedReady{}, api.Committing),
-		on(SectorChainPreCommitFailed{}, api.PreCommitFailed),
+	WaitSeed: planOne(
+		on(SectorSeedReady{}, Committing),
+		on(SectorChainPreCommitFailed{}, PreCommitFailed),
 	),
 	Committing: planCommitting,
 	CommitWait: planOne(
@@ -70,22 +68,22 @@ var fsmPlanners = map[api.SectorState]func(events []statemachine.Event, state *S
 		on(SectorFaulty{}, Faulty),
 	),
 
-	api.SealFailed: planOne(
-		on(SectorRetrySeal{}, api.PreCommit1),
+	SealFailed: planOne(
+		on(SectorRetrySeal{}, PreCommit1),
 	),
-	api.PreCommitFailed: planOne(
-		on(SectorRetryPreCommit{}, api.PreCommitting),
-		on(SectorRetryWaitSeed{}, api.WaitSeed),
-		on(SectorSealPreCommitFailed{}, api.SealFailed),
+	PreCommitFailed: planOne(
+		on(SectorRetryPreCommit{}, PreCommitting),
+		on(SectorRetryWaitSeed{}, WaitSeed),
+		on(SectorSealPreCommitFailed{}, SealFailed),
 	),
-	api.ComputeProofFailed: planOne(
-		on(SectorRetryComputeProof{}, api.Committing),
+	ComputeProofFailed: planOne(
+		on(SectorRetryComputeProof{}, Committing),
 	),
-	api.CommitFailed: planOne(
-		on(SectorSealPreCommitFailed{}, api.SealFailed),
-		on(SectorRetryWaitSeed{}, api.WaitSeed),
-		on(SectorRetryComputeProof{}, api.Committing),
-		on(SectorRetryInvalidProof{}, api.Committing),
+	CommitFailed: planOne(
+		on(SectorSealPreCommitFailed{}, SealFailed),
+		on(SectorRetryWaitSeed{}, WaitSeed),
+		on(SectorRetryComputeProof{}, Committing),
+		on(SectorRetryInvalidProof{}, Committing),
 	),
 
 	Faulty: planOne(
@@ -173,11 +171,11 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 	// Happy path
 	case Packing:
 		return m.handlePacking, nil
-	case api.PreCommit1:
+	case PreCommit1:
 		return m.handlePreCommit1, nil
-	case api.PreCommit2:
+	case PreCommit2:
 		return m.handlePreCommit2, nil
-	case api.PreCommitting:
+	case PreCommitting:
 		return m.handlePreCommitting, nil
 	case WaitSeed:
 		return m.handleWaitSeed, nil
@@ -196,9 +194,9 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		return m.handleSealFailed, nil
 	case PreCommitFailed:
 		return m.handlePreCommitFailed, nil
-	case api.ComputeProofFailed:
+	case ComputeProofFailed:
 		return m.handleComputeProofFailed, nil
-	case api.CommitFailed:
+	case CommitFailed:
 		return m.handleCommitFailed, nil
 
 		// Faults
@@ -239,9 +237,9 @@ func planCommitting(events []statemachine.Event, state *SectorInfo) error {
 			state.State = Committing
 			return nil
 		case SectorComputeProofFailed:
-			state.State = api.ComputeProofFailed
+			state.State = ComputeProofFailed
 		case SectorSealPreCommitFailed:
-			state.State = api.CommitFailed
+			state.State = CommitFailed
 		case SectorCommitFailed:
 			state.State = CommitFailed
 		default:

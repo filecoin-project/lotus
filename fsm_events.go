@@ -4,10 +4,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-storage/storage"
 	"github.com/ipfs/go-cid"
-	"github.com/prometheus/common/log"
 	"golang.org/x/xerrors"
-
-	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
 type mutator interface {
