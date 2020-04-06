@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 
+	"github.com/filecoin-project/lotus/storage/sealing"
+
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
@@ -11,36 +13,8 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/sector-storage"
+	sectorstorage "github.com/filecoin-project/sector-storage"
 	"github.com/filecoin-project/sector-storage/stores"
-)
-
-type SectorState string
-
-const (
-	UndefinedSectorState SectorState = ""
-
-	// happy path
-	Empty          SectorState = "Empty"
-	Packing        SectorState = "Packing"       // sector not in sealStore, and not on chain
-	PreCommit1     SectorState = "PreCommit1"    // do PreCommit1
-	PreCommit2     SectorState = "PreCommit2"    // do PreCommit1
-	PreCommitting  SectorState = "PreCommitting" // on chain pre-commit
-	WaitSeed       SectorState = "WaitSeed"      // waiting for seed
-	Committing     SectorState = "Committing"
-	CommitWait     SectorState = "CommitWait" // waiting for message to land on chain
-	FinalizeSector SectorState = "FinalizeSector"
-	Proving        SectorState = "Proving"
-	// error modes
-	FailedUnrecoverable SectorState = "FailedUnrecoverable"
-	SealFailed          SectorState = "SealFailed"
-	PreCommitFailed     SectorState = "PreCommitFailed"
-	ComputeProofFailed  SectorState = "ComputeProofFailed"
-	CommitFailed        SectorState = "CommitFailed"
-	PackingFailed       SectorState = "PackingFailed"
-	Faulty              SectorState = "Faulty"        // sector is corrupted or gone for some reason
-	FaultReported       SectorState = "FaultReported" // sector has been declared as a fault on chain
-	FaultedFinal        SectorState = "FaultedFinal"  // fault declared on chain
 )
 
 // StorageMiner is a low-level interface to the Filecoin network storage miner node
@@ -62,7 +36,7 @@ type StorageMiner interface {
 
 	SectorsRefs(context.Context) (map[string][]SealedRef, error)
 
-	SectorsUpdate(context.Context, abi.SectorNumber, SectorState) error
+	SectorsUpdate(context.Context, abi.SectorNumber, sealing.SectorState) error
 
 	StorageList(ctx context.Context) (map[stores.ID][]stores.Decl, error)
 	StorageLocal(ctx context.Context) (map[stores.ID]string, error)
@@ -103,7 +77,7 @@ type SectorLog struct {
 
 type SectorInfo struct {
 	SectorID abi.SectorNumber
-	State    SectorState
+	State    sealing.SectorState
 	CommD    *cid.Cid
 	CommR    *cid.Cid
 	Proof    []byte

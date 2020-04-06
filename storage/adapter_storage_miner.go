@@ -34,6 +34,15 @@ func NewSealingAPIAdapter(api storageMinerApi) SealingAPIAdapter {
 	return SealingAPIAdapter{delegate: api}
 }
 
+func (s SealingAPIAdapter) StateMinerSectorSize(ctx context.Context, maddr address.Address, tok sealing.TipSetToken) (abi.SectorSize, error) {
+	tsk, err := types.TipSetKeyFromBytes(tok)
+	if err != nil {
+		return 0, xerrors.Errorf("failed to unmarshal TipSetToken to TipSetKey: %w", err)
+	}
+
+	return s.delegate.StateMinerSectorSize(ctx, maddr, tsk)
+}
+
 func (s SealingAPIAdapter) StateWaitMsg(ctx context.Context, mcid cid.Cid) (sealing.MsgLookup, error) {
 	wmsg, err := s.delegate.StateWaitMsg(ctx, mcid)
 	if err != nil {

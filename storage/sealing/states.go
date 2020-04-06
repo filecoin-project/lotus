@@ -6,8 +6,7 @@ import (
 
 	"golang.org/x/xerrors"
 
-	statemachine "github.com/filecoin-project/go-statemachine"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/go-statemachine"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -146,7 +145,7 @@ func (m *Sealing) handleWaitSeed(ctx statemachine.Context, sector SectorInfo) er
 	}
 	log.Info("precommit message landed on chain: ", sector.SectorID)
 
-	pci, err := m.api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, sector.SectorID, mw.TipSet.Key())
+	pci, err := m.api.StateGetSectorPreCommitOnChainInfo(ctx.Context(), m.maddr, sector.SectorID, mw.TipSetTok)
 	if err != nil {
 		return xerrors.Errorf("getting precommit info: %w", err)
 	}
@@ -158,18 +157,18 @@ func (m *Sealing) handleWaitSeed(ctx statemachine.Context, sector SectorInfo) er
 		if err != nil {
 			err = xerrors.Errorf("failed to get randomness for computing seal proof: %w", err)
 
-			ctx.Send(SectorFatalError{error: err})
+			_ = ctx.Send(SectorFatalError{error: err})
 			return err
 		}
 
-		ctx.Send(SectorSeedReady{SeedValue: abi.InteractiveSealRandomness(rand), SeedEpoch: randHeight})
+		_ = ctx.Send(SectorSeedReady{SeedValue: abi.InteractiveSealRandomness(rand), SeedEpoch: randHeight})
 
 		return nil
 	}, func(ctx context.Context, ts TipSetToken) error {
 		log.Warn("revert in interactive commit sector step")
 		// TODO: need to cancel running process and restart...
 		return nil
-	}, build.InteractivePoRepConfidence, randHeight)
+	}, InteractivePoRepConfidence, randHeight)
 	if err != nil {
 		log.Warn("waitForPreCommitMessage ChainAt errored: ", err)
 	}

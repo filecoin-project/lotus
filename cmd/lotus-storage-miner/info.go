@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/storage/sealing"
 )
 
 var infoCmd = &cli.Command{
@@ -127,13 +128,13 @@ var infoCmd = &cli.Command{
 	},
 }
 
-func sectorsInfo(ctx context.Context, napi api.StorageMiner) (map[api.SectorState]int, error) {
+func sectorsInfo(ctx context.Context, napi api.StorageMiner) (map[sealing.SectorState]int, error) {
 	sectors, err := napi.SectorsList(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	out := map[api.SectorState]int{
+	out := map[sealing.SectorState]int{
 		"Total": len(sectors),
 	}
 	for _, s := range sectors {
