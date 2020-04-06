@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
@@ -182,7 +181,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.State (api.SectorState) (string)
+	// t.State (uint64) (uint64)
 	if len("State") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"State\" was too long")
 	}
@@ -194,14 +193,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.State) > cbg.MaxLength {
-		return xerrors.Errorf("Value in field t.State was too long")
-	}
-
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len(t.State)))); err != nil {
-		return err
-	}
-	if _, err := w.Write([]byte(t.State)); err != nil {
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.State))); err != nil {
 		return err
 	}
 
@@ -284,45 +276,6 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
-	// t.Ticket (api.SealTicket) (struct)
-	if len("Ticket") > cbg.MaxLength {
-		return xerrors.Errorf("Value in field \"Ticket\" was too long")
-	}
-
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("Ticket")))); err != nil {
-		return err
-	}
-	if _, err := w.Write([]byte("Ticket")); err != nil {
-		return err
-	}
-
-	if err := t.Ticket.MarshalCBOR(w); err != nil {
-		return err
-	}
-
-	// t.PreCommit1Out (storage.PreCommit1Out) (slice)
-	if len("PreCommit1Out") > cbg.MaxLength {
-		return xerrors.Errorf("Value in field \"PreCommit1Out\" was too long")
-	}
-
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("PreCommit1Out")))); err != nil {
-		return err
-	}
-	if _, err := w.Write([]byte("PreCommit1Out")); err != nil {
-		return err
-	}
-
-	if len(t.PreCommit1Out) > cbg.ByteArrayMaxLen {
-		return xerrors.Errorf("Byte array in field t.PreCommit1Out was too long")
-	}
-
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.PreCommit1Out)))); err != nil {
-		return err
-	}
-	if _, err := w.Write(t.PreCommit1Out); err != nil {
-		return err
-	}
-
 	// t.CommD (cid.Cid) (struct)
 	if len("CommD") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"CommD\" was too long")
@@ -390,6 +343,51 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
+	// t.TicketValue (abi.SealRandomness) (slice)
+	if len("TicketValue") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"TicketValue\" was too long")
+	}
+
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("TicketValue")))); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("TicketValue")); err != nil {
+		return err
+	}
+
+	if len(t.TicketValue) > cbg.ByteArrayMaxLen {
+		return xerrors.Errorf("Byte array in field t.TicketValue was too long")
+	}
+
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.TicketValue)))); err != nil {
+		return err
+	}
+	if _, err := w.Write(t.TicketValue); err != nil {
+		return err
+	}
+
+	// t.TicketEpoch (abi.ChainEpoch) (int64)
+	if len("TicketEpoch") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"TicketEpoch\" was too long")
+	}
+
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("TicketEpoch")))); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("TicketEpoch")); err != nil {
+		return err
+	}
+
+	if t.TicketEpoch >= 0 {
+		if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.TicketEpoch))); err != nil {
+			return err
+		}
+	} else {
+		if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajNegativeInt, uint64(-t.TicketEpoch)-1)); err != nil {
+			return err
+		}
+	}
+
 	// t.PreCommitMessage (cid.Cid) (struct)
 	if len("PreCommitMessage") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"PreCommitMessage\" was too long")
@@ -412,20 +410,49 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
-	// t.Seed (api.SealSeed) (struct)
-	if len("Seed") > cbg.MaxLength {
-		return xerrors.Errorf("Value in field \"Seed\" was too long")
+	// t.SeedValue (abi.InteractiveSealRandomness) (slice)
+	if len("SeedValue") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"SeedValue\" was too long")
 	}
 
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("Seed")))); err != nil {
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("SeedValue")))); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte("Seed")); err != nil {
+	if _, err := w.Write([]byte("SeedValue")); err != nil {
 		return err
 	}
 
-	if err := t.Seed.MarshalCBOR(w); err != nil {
+	if len(t.SeedValue) > cbg.ByteArrayMaxLen {
+		return xerrors.Errorf("Byte array in field t.SeedValue was too long")
+	}
+
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.SeedValue)))); err != nil {
 		return err
+	}
+	if _, err := w.Write(t.SeedValue); err != nil {
+		return err
+	}
+
+	// t.SeedEpoch (abi.ChainEpoch) (int64)
+	if len("SeedEpoch") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"SeedEpoch\" was too long")
+	}
+
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("SeedEpoch")))); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("SeedEpoch")); err != nil {
+		return err
+	}
+
+	if t.SeedEpoch >= 0 {
+		if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.SeedEpoch))); err != nil {
+			return err
+		}
+	} else {
+		if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajNegativeInt, uint64(-t.SeedEpoch)-1)); err != nil {
+			return err
+		}
 	}
 
 	// t.CommitMessage (cid.Cid) (struct)
@@ -448,22 +475,6 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		if err := cbg.WriteCid(w, *t.CommitMessage); err != nil {
 			return xerrors.Errorf("failed to write cid field t.CommitMessage: %w", err)
 		}
-	}
-
-	// t.InvalidProofs (uint64) (uint64)
-	if len("InvalidProofs") > cbg.MaxLength {
-		return xerrors.Errorf("Value in field \"InvalidProofs\" was too long")
-	}
-
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("InvalidProofs")))); err != nil {
-		return err
-	}
-	if _, err := w.Write([]byte("InvalidProofs")); err != nil {
-		return err
-	}
-
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.InvalidProofs))); err != nil {
-		return err
 	}
 
 	// t.FaultReportMsg (cid.Cid) (struct)
@@ -568,16 +579,20 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 		}
 
 		switch name {
-		// t.State (api.SectorState) (string)
+		// t.State (uint64) (uint64)
 		case "State":
 
 			{
-				sval, err := cbg.ReadString(br)
+
+				maj, extra, err = cbg.CborReadHeader(br)
 				if err != nil {
 					return err
 				}
+				if maj != cbg.MajUnsignedInt {
+					return fmt.Errorf("wrong type for uint64 field")
+				}
+				t.State = uint64(extra)
 
-				t.State = api.SectorState(sval)
 			}
 			// t.SectorID (abi.SectorNumber) (uint64)
 		case "SectorID":
@@ -663,34 +678,6 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 				t.Pieces[i] = v
 			}
 
-			// t.Ticket (api.SealTicket) (struct)
-		case "Ticket":
-
-			{
-
-				if err := t.Ticket.UnmarshalCBOR(br); err != nil {
-					return xerrors.Errorf("unmarshaling t.Ticket: %w", err)
-				}
-
-			}
-			// t.PreCommit1Out (storage.PreCommit1Out) (slice)
-		case "PreCommit1Out":
-
-			maj, extra, err = cbg.CborReadHeader(br)
-			if err != nil {
-				return err
-			}
-
-			if extra > cbg.ByteArrayMaxLen {
-				return fmt.Errorf("t.PreCommit1Out: byte array too large (%d)", extra)
-			}
-			if maj != cbg.MajByteString {
-				return fmt.Errorf("expected byte array")
-			}
-			t.PreCommit1Out = make([]byte, extra)
-			if _, err := io.ReadFull(br, t.PreCommit1Out); err != nil {
-				return err
-			}
 			// t.CommD (cid.Cid) (struct)
 		case "CommD":
 
@@ -759,6 +746,50 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 			if _, err := io.ReadFull(br, t.Proof); err != nil {
 				return err
 			}
+			// t.TicketValue (abi.SealRandomness) (slice)
+		case "TicketValue":
+
+			maj, extra, err = cbg.CborReadHeader(br)
+			if err != nil {
+				return err
+			}
+
+			if extra > cbg.ByteArrayMaxLen {
+				return fmt.Errorf("t.TicketValue: byte array too large (%d)", extra)
+			}
+			if maj != cbg.MajByteString {
+				return fmt.Errorf("expected byte array")
+			}
+			t.TicketValue = make([]byte, extra)
+			if _, err := io.ReadFull(br, t.TicketValue); err != nil {
+				return err
+			}
+			// t.TicketEpoch (abi.ChainEpoch) (int64)
+		case "TicketEpoch":
+			{
+				maj, extra, err := cbg.CborReadHeader(br)
+				var extraI int64
+				if err != nil {
+					return err
+				}
+				switch maj {
+				case cbg.MajUnsignedInt:
+					extraI = int64(extra)
+					if extraI < 0 {
+						return fmt.Errorf("int64 positive overflow")
+					}
+				case cbg.MajNegativeInt:
+					extraI = int64(extra)
+					if extraI < 0 {
+						return fmt.Errorf("int64 negative oveflow")
+					}
+					extraI = -1 - extraI
+				default:
+					return fmt.Errorf("wrong type for int64 field: %d", maj)
+				}
+
+				t.TicketEpoch = abi.ChainEpoch(extraI)
+			}
 			// t.PreCommitMessage (cid.Cid) (struct)
 		case "PreCommitMessage":
 
@@ -784,15 +815,49 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 				}
 
 			}
-			// t.Seed (api.SealSeed) (struct)
-		case "Seed":
+			// t.SeedValue (abi.InteractiveSealRandomness) (slice)
+		case "SeedValue":
 
+			maj, extra, err = cbg.CborReadHeader(br)
+			if err != nil {
+				return err
+			}
+
+			if extra > cbg.ByteArrayMaxLen {
+				return fmt.Errorf("t.SeedValue: byte array too large (%d)", extra)
+			}
+			if maj != cbg.MajByteString {
+				return fmt.Errorf("expected byte array")
+			}
+			t.SeedValue = make([]byte, extra)
+			if _, err := io.ReadFull(br, t.SeedValue); err != nil {
+				return err
+			}
+			// t.SeedEpoch (abi.ChainEpoch) (int64)
+		case "SeedEpoch":
 			{
-
-				if err := t.Seed.UnmarshalCBOR(br); err != nil {
-					return xerrors.Errorf("unmarshaling t.Seed: %w", err)
+				maj, extra, err := cbg.CborReadHeader(br)
+				var extraI int64
+				if err != nil {
+					return err
+				}
+				switch maj {
+				case cbg.MajUnsignedInt:
+					extraI = int64(extra)
+					if extraI < 0 {
+						return fmt.Errorf("int64 positive overflow")
+					}
+				case cbg.MajNegativeInt:
+					extraI = int64(extra)
+					if extraI < 0 {
+						return fmt.Errorf("int64 negative oveflow")
+					}
+					extraI = -1 - extraI
+				default:
+					return fmt.Errorf("wrong type for int64 field: %d", maj)
 				}
 
+				t.SeedEpoch = abi.ChainEpoch(extraI)
 			}
 			// t.CommitMessage (cid.Cid) (struct)
 		case "CommitMessage":
@@ -817,21 +882,6 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 
 					t.CommitMessage = &c
 				}
-
-			}
-			// t.InvalidProofs (uint64) (uint64)
-		case "InvalidProofs":
-
-			{
-
-				maj, extra, err = cbg.CborReadHeader(br)
-				if err != nil {
-					return err
-				}
-				if maj != cbg.MajUnsignedInt {
-					return fmt.Errorf("wrong type for uint64 field")
-				}
-				t.InvalidProofs = uint64(extra)
 
 			}
 			// t.FaultReportMsg (cid.Cid) (struct)

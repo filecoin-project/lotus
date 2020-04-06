@@ -1,8 +1,9 @@
 package sealing
 
 import (
-	"github.com/filecoin-project/specs-actors/actors/abi"
 	"math/bits"
+
+	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
 func fillersFromRem(in abi.UnpaddedPieceSize) ([]abi.UnpaddedPieceSize, error) {

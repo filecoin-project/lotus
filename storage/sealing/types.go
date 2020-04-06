@@ -5,7 +5,7 @@ import (
 	"github.com/filecoin-project/specs-storage/storage"
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
 type Piece struct {
@@ -26,9 +26,9 @@ type Log struct {
 }
 
 type SectorInfo struct {
-	State    api.SectorState
-	SectorID abi.SectorNumber
-	Nonce    uint64 // TODO: remove
+	State    SectorState
+	SectorID abi.SectorNumber // TODO: this field's name should be changed to SectorNumber
+	Nonce    uint64           // TODO: remove
 
 	SectorType abi.RegisteredProof
 
@@ -37,7 +37,8 @@ type SectorInfo struct {
 	Pieces []Piece
 
 	// PreCommit1
-	Ticket        api.SealTicket
+	TicketValue   abi.SealRandomness
+	TicketEpoch   abi.ChainEpoch
 	PreCommit1Out storage.PreCommit1Out
 
 	// PreCommit2
@@ -48,7 +49,8 @@ type SectorInfo struct {
 	PreCommitMessage *cid.Cid
 
 	// WaitSeed
-	Seed api.SealSeed
+	SeedValue abi.InteractiveSealRandomness
+	SeedEpoch abi.ChainEpoch
 
 	// Committing
 	CommitMessage *cid.Cid

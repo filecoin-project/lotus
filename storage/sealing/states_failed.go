@@ -1,17 +1,12 @@
 package sealing
 
 import (
-	"bytes"
 	"time"
+
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-statemachine"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
-	"golang.org/x/xerrors"
-
-	"github.com/filecoin-project/lotus/api/apibstore"
-	"github.com/filecoin-project/lotus/chain/store"
-	"github.com/filecoin-project/lotus/chain/types"
 )
 
 const minRetryTime = 1 * time.Minute
@@ -33,36 +28,22 @@ func failedCooldown(ctx statemachine.Context, sector SectorInfo) error {
 }
 
 func (m *Sealing) checkPreCommitted(ctx statemachine.Context, sector SectorInfo) (*miner.SectorPreCommitOnChainInfo, bool) {
-	act, err := m.api.StateGetActor(ctx.Context(), m.maddr, types.EmptyTSK)
+	tok, _, err := m.api.ChainHead(ctx.Context())
 	if err != nil {
 		log.Errorf("handleSealFailed(%d): temp error: %+v", sector.SectorID, err)
 		return nil, true
 	}
 
-	st, err := m.api.ChainReadObj(ctx.Context(), act.Head)
+	info, err := m.api.StateGetSectorPreCommitOnChainInfo(ctx.Context(), m.maddr, sector.SectorID, tok)
 	if err != nil {
 		log.Errorf("handleSealFailed(%d): temp error: %+v", sector.SectorID, err)
 		return nil, true
 	}
 
-	var state miner.State
-	if err := state.UnmarshalCBOR(bytes.NewReader(st)); err != nil {
-		log.Errorf("handleSealFailed(%d): temp error: unmarshaling miner state: %+v", sector.SectorID, err)
-		return nil, true
-	}
-
-	var pci miner.SectorPreCommitOnChainInfo
-	precommits := adt.AsMap(store.ActorStore(ctx.Context(), apibstore.NewAPIBlockstore(m.api)), state.PreCommittedSectors)
-	if _, err := precommits.Get(adt.UIntKey(uint64(sector.SectorID)), &pci); err != nil {
-		log.Error(err)
-		return nil, true
-	}
-
-	return &pci, false
+	return info, false
 }
 
 func (m *Sealing) handleSealFailed(ctx statemachine.Context, sector SectorInfo) error {
-
 	if _, is := m.checkPreCommitted(ctx, sector); is {
 		// TODO: Remove this after we can re-precommit
 		return nil // noop, for now
@@ -76,7 +57,7 @@ func (m *Sealing) handleSealFailed(ctx statemachine.Context, sector SectorInfo) 
 }
 
 func (m *Sealing) handlePreCommitFailed(ctx statemachine.Context, sector SectorInfo) error {
-	if err := checkPrecommit(ctx.Context(), m.maddr, sector, m.api); err != nil {
+	if err := checkPrecommit(ctx.Context(), m.Address(), sector, m.api); err != nil {
 		switch err.(type) {
 		case *ErrApi:
 			log.Errorf("handlePreCommitFailed: api error, not proceeding: %+v", err)
