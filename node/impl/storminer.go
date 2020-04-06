@@ -122,7 +122,7 @@ func (sm *StorageMinerAPI) SectorsList(context.Context) ([]abi.SectorNumber, err
 
 	out := make([]abi.SectorNumber, len(sectors))
 	for i, sector := range sectors {
-		out[i] = sector.SectorID
+		out[i] = sector.SectorNumber
 	}
 	return out, nil
 }

@@ -204,19 +204,19 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.SectorID (abi.SectorNumber) (uint64)
-	if len("SectorID") > cbg.MaxLength {
-		return xerrors.Errorf("Value in field \"SectorID\" was too long")
+	// t.SectorNumber (abi.SectorNumber) (uint64)
+	if len("SectorNumber") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"SectorNumber\" was too long")
 	}
 
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("SectorID")))); err != nil {
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("SectorNumber")))); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte("SectorID")); err != nil {
+	if _, err := w.Write([]byte("SectorNumber")); err != nil {
 		return err
 	}
 
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.SectorID))); err != nil {
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.SectorNumber))); err != nil {
 		return err
 	}
 
@@ -636,8 +636,8 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 
 				t.State = SectorState(sval)
 			}
-			// t.SectorID (abi.SectorNumber) (uint64)
-		case "SectorID":
+			// t.SectorNumber (abi.SectorNumber) (uint64)
+		case "SectorNumber":
 
 			{
 
@@ -648,7 +648,7 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 				if maj != cbg.MajUnsignedInt {
 					return fmt.Errorf("wrong type for uint64 field")
 				}
-				t.SectorID = abi.SectorNumber(extra)
+				t.SectorNumber = abi.SectorNumber(extra)
 
 			}
 			// t.Nonce (uint64) (uint64)

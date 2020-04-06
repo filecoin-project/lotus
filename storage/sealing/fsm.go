@@ -23,7 +23,7 @@ func (m *Sealing) Plan(events []statemachine.Event, user interface{}) (interface
 	return func(ctx statemachine.Context, si SectorInfo) error {
 		err := next(ctx, si)
 		if err != nil {
-			log.Errorf("unhandled sector error (%d): %+v", si.SectorID, err)
+			log.Errorf("unhandled sector error (%d): %+v", si.SectorNumber, err)
 			return nil
 		}
 
@@ -187,7 +187,7 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		return m.handleFinalizeSector, nil
 	case Proving:
 		// TODO: track sector health / expiration
-		log.Infof("Proving sector %d", state.SectorID)
+		log.Infof("Proving sector %d", state.SectorNumber)
 
 	// Handled failure modes
 	case SealFailed:
@@ -209,7 +209,7 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 	case UndefinedSectorState:
 		log.Error("sector update with undefined state!")
 	case FailedUnrecoverable:
-		log.Errorf("sector %d failed unrecoverably", state.SectorID)
+		log.Errorf("sector %d failed unrecoverably", state.SectorNumber)
 	default:
 		log.Errorf("unexpected sector update state: %d", state.State)
 	}
@@ -256,8 +256,8 @@ func (m *Sealing) restartSectors(ctx context.Context) error {
 	}
 
 	for _, sector := range trackedSectors {
-		if err := m.sectors.Send(uint64(sector.SectorID), SectorRestart{}); err != nil {
-			log.Errorf("restarting sector %d: %+v", sector.SectorID, err)
+		if err := m.sectors.Send(uint64(sector.SectorNumber), SectorRestart{}); err != nil {
+			log.Errorf("restarting sector %d: %+v", sector.SectorNumber, err)
 		}
 	}
 
@@ -305,7 +305,7 @@ func planOne(ts ...func() (mut mutator, next SectorState)) func(events []statema
 			}
 
 			if err, iserr := events[0].User.(error); iserr {
-				log.Warnf("sector %d got error event %T: %+v", state.SectorID, events[0].User, err)
+				log.Warnf("sector %d got error event %T: %+v", state.SectorNumber, events[0].User, err)
 			}
 
 			events[0].User.(mutator).apply(state)

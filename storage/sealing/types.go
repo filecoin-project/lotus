@@ -29,9 +29,9 @@ type Log struct {
 }
 
 type SectorInfo struct {
-	State    SectorState
-	SectorID abi.SectorNumber // TODO: this field's name should be changed to SectorNumber
-	Nonce    uint64           // TODO: remove
+	State        SectorState
+	SectorNumber abi.SectorNumber // TODO: this field's name should be changed to SectorNumber
+	Nonce        uint64           // TODO: remove
 
 	SectorType abi.RegisteredProof
 

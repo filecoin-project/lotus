@@ -286,8 +286,8 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, metadata string,
 		commR := sector.CommR
 
 		info := &sealing.SectorInfo{
-			State:    sealing.Proving,
-			SectorID: sector.SectorID,
+			State:        sealing.Proving,
+			SectorNumber: sector.SectorID,
 			Pieces: []sealing.Piece{
 				{
 					DealID: &dealID,
