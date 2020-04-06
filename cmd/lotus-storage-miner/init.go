@@ -12,8 +12,6 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/filecoin-project/lotus/node/modules"
-
 	"github.com/docker/go-units"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-datastore"
@@ -26,6 +24,9 @@ import (
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	paramfetch "github.com/filecoin-project/go-paramfetch"
+	sectorstorage "github.com/filecoin-project/sector-storage"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/sector-storage/stores"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
@@ -40,13 +41,11 @@ import (
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/genesis"
 	"github.com/filecoin-project/lotus/miner"
+	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sealing"
-	sectorstorage "github.com/filecoin-project/sector-storage"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/sector-storage/stores"
 )
 
 var initCmd = &cli.Command{
@@ -299,9 +298,11 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, metadata string,
 			CommD:            &commD,
 			CommR:            &commR,
 			Proof:            nil,
-			Ticket:           lapi.SealTicket{},
+			TicketValue:      abi.SealRandomness{},
+			TicketEpoch:      0,
 			PreCommitMessage: nil,
-			Seed:             lapi.SealSeed{},
+			SeedValue:        abi.InteractiveSealRandomness{},
+			SeedEpoch:        0,
 			CommitMessage:    nil,
 		}
 

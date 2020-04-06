@@ -4,12 +4,11 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"gotest.tools/assert"
 
 	cborutil "github.com/filecoin-project/go-cbor-util"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 )
 
 func TestSectorInfoSelialization(t *testing.T) {
@@ -26,15 +25,14 @@ func TestSectorInfoSelialization(t *testing.T) {
 			Size:   5,
 			CommP:  dummyCid,
 		}},
-		CommD: &dummyCid,
-		CommR: nil,
-		Proof: nil,
-		Ticket: api.SealTicket{
-			Epoch: 345,
-			Value: []byte{87, 78, 7, 87},
-		},
+		CommD:            &dummyCid,
+		CommR:            nil,
+		Proof:            nil,
+		TicketValue:      []byte{87, 78, 7, 87},
+		TicketEpoch:      345,
 		PreCommitMessage: nil,
-		Seed:             api.SealSeed{},
+		SeedValue:        []byte{},
+		SeedEpoch:        0,
 		CommitMessage:    nil,
 		FaultReportMsg:   nil,
 		LastErr:          "hi",
@@ -56,7 +54,8 @@ func TestSectorInfoSelialization(t *testing.T) {
 
 	assert.Equal(t, si.Pieces, si2.Pieces)
 	assert.Equal(t, si.CommD, si2.CommD)
-	assert.Equal(t, si.Ticket, si2.Ticket)
+	assert.Equal(t, si.TicketValue, si2.TicketValue)
+	assert.Equal(t, si.TicketEpoch, si2.TicketEpoch)
 
 	assert.Equal(t, si, si2)
 
