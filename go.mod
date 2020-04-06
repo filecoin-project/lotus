@@ -82,7 +82,6 @@ require (
 	github.com/libp2p/go-libp2p-tls v0.1.0
 	github.com/libp2p/go-libp2p-yamux v0.2.5
 	github.com/libp2p/go-maddr-filter v0.0.5
-	github.com/mgutz/logxi v0.0.0-20161027140823-aebf8a7d67ab
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1
 	github.com/minio/sha256-simd v0.1.1
 	github.com/mitchellh/go-homedir v1.1.0
@@ -92,7 +91,6 @@ require (
 	github.com/multiformats/go-multiaddr-net v0.1.3
 	github.com/multiformats/go-multihash v0.0.13
 	github.com/opentracing/opentracing-go v1.1.0
-	github.com/prometheus/common v0.2.0
 	github.com/stretchr/testify v1.4.0
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
 	github.com/whyrusleeping/cbor-gen v0.0.0-20200321164527-9340289d0ca7
