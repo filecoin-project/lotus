@@ -17,9 +17,9 @@ func TestSectorInfoSelialization(t *testing.T) {
 	dummyCid := builtin.AccountActorCodeID
 
 	si := &SectorInfo{
-		State:    "stateful",
-		SectorID: 234,
-		Nonce:    345,
+		State:        "stateful",
+		SectorNumber: 234,
+		Nonce:        345,
 		Pieces: []Piece{{
 			DealID: &d,
 			Size:   5,
@@ -50,7 +50,7 @@ func TestSectorInfoSelialization(t *testing.T) {
 
 	assert.Equal(t, si.State, si2.State)
 	assert.Equal(t, si.Nonce, si2.Nonce)
-	assert.Equal(t, si.SectorID, si2.SectorID)
+	assert.Equal(t, si.SectorNumber, si2.SectorNumber)
 
 	assert.Equal(t, si.Pieces, si2.Pieces)
 	assert.Equal(t, si.CommD, si2.CommD)
