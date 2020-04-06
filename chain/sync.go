@@ -957,12 +957,44 @@ func (syncer *Syncer) collectHeaders(ctx context.Context, from *types.TipSet, to
 		trace.Int64Attribute("toHeight", int64(to.Height())),
 	)
 
+	markBad := func(fmts string, args ...interface{}) {
+		for _, b := range from.Cids() {
+			syncer.bad.Add(b, fmt.Sprintf(fmts, args...))
+		}
+	}
+
 	for _, pcid := range from.Parents().Cids() {
 		if reason, ok := syncer.bad.Has(pcid); ok {
-			for _, b := range from.Cids() {
-				syncer.bad.Add(b, fmt.Sprintf("linked to %s", pcid))
-			}
+			markBad("linked to %s", pcid)
 			return nil, xerrors.Errorf("chain linked to block marked previously as bad (%s, %s) (reason: %s)", from.Cids(), pcid, reason)
+		}
+	}
+
+	{
+		targetBE := from.Blocks()[0].BeaconEntries
+		if len(targetBE) != 0 {
+			cur := targetBE[0].Index
+
+			for _, e := range targetBE[1:] {
+				if cur <= e.Index {
+					markBad("wrong order of beacon entires")
+					return nil, xerrors.Errorf("wrong order of beacon entires")
+				}
+			}
+
+		}
+		for _, bh := range from.Blocks()[1:] {
+			if len(targetBE) != len(bh.BeaconEntries) {
+				markBad("different number of beacon entires")
+				return nil, xerrors.Errorf("tipset contained different number for beacon entires")
+			}
+			for i, be := range bh.BeaconEntries {
+				if targetBE[i].Index != be.Index || !bytes.Equal(targetBE[i].Data, be.Data) {
+					markBad("different beacon eintires in epoch")
+					return nil, xerrors.Errorf("tipset contained different number for beacon entires")
+				}
+			}
+
 		}
 	}
 
