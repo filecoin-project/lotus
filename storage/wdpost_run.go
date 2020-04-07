@@ -18,7 +18,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-func (s *FPoStScheduler) failPost(eps abi.ChainEpoch) {
+func (s *WindowPoStScheduler) failPost(eps abi.ChainEpoch) {
 	s.failLk.Lock()
 	if eps > s.failed {
 		s.failed = eps
@@ -26,7 +26,7 @@ func (s *FPoStScheduler) failPost(eps abi.ChainEpoch) {
 	s.failLk.Unlock()
 }
 
-func (s *FPoStScheduler) doPost(ctx context.Context, eps abi.ChainEpoch, ts *types.TipSet) {
+func (s *WindowPoStScheduler) doPost(ctx context.Context, eps abi.ChainEpoch, ts *types.TipSet) {
 	ctx, abort := context.WithCancel(ctx)
 
 	s.abort = abort
@@ -35,7 +35,7 @@ func (s *FPoStScheduler) doPost(ctx context.Context, eps abi.ChainEpoch, ts *typ
 	go func() {
 		defer abort()
 
-		ctx, span := trace.StartSpan(ctx, "FPoStScheduler.doPost")
+		ctx, span := trace.StartSpan(ctx, "WindowPoStScheduler.doPost")
 		defer span.End()
 
 		proof, err := s.runPost(ctx, eps, ts)
@@ -54,7 +54,7 @@ func (s *FPoStScheduler) doPost(ctx context.Context, eps abi.ChainEpoch, ts *typ
 	}()
 }
 
-func (s *FPoStScheduler) declareFaults(ctx context.Context, fc uint64, params *miner.DeclareTemporaryFaultsParams) error {
+func (s *WindowPoStScheduler) declareFaults(ctx context.Context, fc uint64, params *miner.DeclareTemporaryFaultsParams) error {
 	log.Warnf("DECLARING %d FAULTS", fc)
 
 	enc, aerr := actors.SerializeParams(params)
@@ -90,7 +90,7 @@ func (s *FPoStScheduler) declareFaults(ctx context.Context, fc uint64, params *m
 	return nil
 }
 
-func (s *FPoStScheduler) checkFaults(ctx context.Context, ssi []abi.SectorNumber) ([]abi.SectorNumber, error) {
+func (s *WindowPoStScheduler) checkFaults(ctx context.Context, ssi []abi.SectorNumber) ([]abi.SectorNumber, error) {
 	//faults := s.sb.Scrub(ssi)
 	log.Warnf("Stub checkFaults")
 	var faults []struct {
@@ -143,7 +143,7 @@ func (s *FPoStScheduler) checkFaults(ctx context.Context, ssi []abi.SectorNumber
 	return faultIDs, nil
 }
 
-func (s *FPoStScheduler) runPost(ctx context.Context, eps abi.ChainEpoch, ts *types.TipSet) (*abi.OnChainPoStVerifyInfo, error) {
+func (s *WindowPoStScheduler) runPost(ctx context.Context, eps abi.ChainEpoch, ts *types.TipSet) (*abi.OnChainPoStVerifyInfo, error) {
 	ctx, span := trace.StartSpan(ctx, "storage.runPost")
 	defer span.End()
 
@@ -155,7 +155,7 @@ func (s *FPoStScheduler) runPost(ctx context.Context, eps abi.ChainEpoch, ts *ty
 	}
 	rand, err := s.api.ChainGetRandomness(ctx, ts.Key(), crypto.DomainSeparationTag_WindowedPoStChallengeSeed, challengeRound, buf.Bytes())
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get chain randomness for fpost (ts=%d; eps=%d): %w", ts.Height(), eps, err)
+		return nil, xerrors.Errorf("failed to get chain randomness for windowPost (ts=%d; eps=%d): %w", ts.Height(), eps, err)
 	}
 
 	ssi, err := s.sortedSectorInfo(ctx, ts)
@@ -163,11 +163,11 @@ func (s *FPoStScheduler) runPost(ctx context.Context, eps abi.ChainEpoch, ts *ty
 		return nil, xerrors.Errorf("getting sorted sector info: %w", err)
 	}
 	if len(ssi) == 0 {
-		log.Warn("attempted to run fpost without any sectors...")
-		return nil, xerrors.Errorf("no sectors to run fpost on")
+		log.Warn("attempted to run windowPost without any sectors...")
+		return nil, xerrors.Errorf("no sectors to run windowPost on")
 	}
 
-	log.Infow("running fPoSt",
+	log.Infow("running windowPost",
 		"chain-random", rand,
 		"eps", eps,
 		"height", ts.Height())
@@ -184,7 +184,7 @@ func (s *FPoStScheduler) runPost(ctx context.Context, eps abi.ChainEpoch, ts *ty
 
 	tsStart := time.Now()
 
-	log.Infow("generating fPoSt",
+	log.Infow("generating windowPost",
 		"sectors", len(ssi),
 		"faults", len(faults))
 
@@ -228,7 +228,7 @@ func (s *FPoStScheduler) runPost(ctx context.Context, eps abi.ChainEpoch, ts *ty
 	}, nil
 }
 
-func (s *FPoStScheduler) sortedSectorInfo(ctx context.Context, ts *types.TipSet) ([]abi.SectorInfo, error) {
+func (s *WindowPoStScheduler) sortedSectorInfo(ctx context.Context, ts *types.TipSet) ([]abi.SectorInfo, error) {
 	sset, err := s.api.StateMinerProvingSet(ctx, s.actor, ts.Key())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get proving set for miner (tsH: %d): %w", ts.Height(), err)
@@ -250,7 +250,7 @@ func (s *FPoStScheduler) sortedSectorInfo(ctx context.Context, ts *types.TipSet)
 	return sbsi, nil
 }
 
-func (s *FPoStScheduler) submitPost(ctx context.Context, proof *abi.OnChainPoStVerifyInfo) error {
+func (s *WindowPoStScheduler) submitPost(ctx context.Context, proof *abi.OnChainPoStVerifyInfo) error {
 	ctx, span := trace.StartSpan(ctx, "storage.commitPost")
 	defer span.End()
 
