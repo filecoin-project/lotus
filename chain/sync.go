@@ -628,6 +628,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		if err := beacon.ValidateBlockValues(syncer.beacon, h, int(nulls)); err != nil {
 			return xerrors.Errorf("failed to validate blocks random beacon values: %w", err)
 		}
+		// TODO: check if first value links to value from previous block/previous block containing a value
 		return nil
 	})
 
@@ -971,13 +972,17 @@ func (syncer *Syncer) collectHeaders(ctx context.Context, from *types.TipSet, to
 	}
 
 	{
+		// ensure consistency of beacon entires
 		targetBE := from.Blocks()[0].BeaconEntries
-		if len(targetBE) != 0 {
+		if len(targetBE) == 0 {
+			syncer.bad.Add(from.Cids()[0], "no beacon entires")
+			return nil, xerrors.Errorf("block (%s) contained no drand entires", from.Cids()[0])
+		}
 			cur := targetBE[0].Index
 
 			for _, e := range targetBE[1:] {
-				if cur <= e.Index {
-					markBad("wrong order of beacon entires")
+				if cur >= e.Index {
+					syncer.bad.Add(from.Cids()[0], "wrong order of beacon entires")
 					return nil, xerrors.Errorf("wrong order of beacon entires")
 				}
 			}
@@ -985,12 +990,12 @@ func (syncer *Syncer) collectHeaders(ctx context.Context, from *types.TipSet, to
 		}
 		for _, bh := range from.Blocks()[1:] {
 			if len(targetBE) != len(bh.BeaconEntries) {
-				markBad("different number of beacon entires")
+				// cannot mark bad, I think @Kubuxu
 				return nil, xerrors.Errorf("tipset contained different number for beacon entires")
 			}
 			for i, be := range bh.BeaconEntries {
 				if targetBE[i].Index != be.Index || !bytes.Equal(targetBE[i].Data, be.Data) {
-					markBad("different beacon eintires in epoch")
+					// cannot mark bad, I think @Kubuxu
 					return nil, xerrors.Errorf("tipset contained different number for beacon entires")
 				}
 			}

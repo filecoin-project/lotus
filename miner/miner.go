@@ -317,7 +317,7 @@ func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningB
 		return nil, xerrors.Errorf("scratching ticket failed: %w", err)
 	}
 
-	proofin, err := gen.IsRoundWinner(ctx, base.ts, int64(round), addr, m.epp, m.api)
+	proofin, err := gen.IsRoundWinner(ctx, base.ts, int64(round), addr, m.epp, bvals[len(bvals)-1] m.api)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to check if we win next round: %w", err)
 	}

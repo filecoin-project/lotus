@@ -22,7 +22,6 @@ import (
 	format "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/ipfs/go-merkledag"
-	"github.com/minio/blake2b-simd"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
@@ -307,7 +306,8 @@ func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m add
 		VRFProof: vrfout,
 	}
 
-	eproofin, err := IsRoundWinner(ctx, pts, round, m, cg.eppProvs[m], mc)
+	// TODO beacon
+	eproofin, err := IsRoundWinner(ctx, pts, round, m, cg.eppProvs[m], types.BeaconEntry{}, mc)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("checking round winner failed: %w", err)
 	}
@@ -521,11 +521,17 @@ type ProofInput struct {
 	vrfout  []byte
 }
 
-func IsRoundWinner(ctx context.Context, ts *types.TipSet, round int64, miner address.Address, epp ElectionPoStProver, a MiningCheckAPI) (*ProofInput, error) {
+func IsRoundWinner(ctx context.Context, ts *types.TipSet, round int64,
+	miner address.Address, epp ElectionPoStProver, brand types.BeaconEntry, a MiningCheckAPI) (*ProofInput, error) {
 	buf := new(bytes.Buffer)
+
+	_, _ = buf.Write(brand.Data) // a bit hacky, would be better if it was insidce ChainGetRanomness,
+	// but chain has no idea about the block we are in progress of producing
+
 	if err := miner.MarshalCBOR(buf); err != nil {
 		return nil, xerrors.Errorf("failed to cbor marshal address: %w")
 	}
+
 	epostRand, err := a.ChainGetRandomness(ctx, ts.Key(), crypto.DomainSeparationTag_ElectionPoStChallengeSeed, abi.ChainEpoch(round-build.EcRandomnessLookback), buf.Bytes())
 	if err != nil {
 		return nil, xerrors.Errorf("chain get randomness: %w", err)
@@ -541,46 +547,57 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, round int64, miner add
 		return nil, xerrors.Errorf("failed to compute VRF: %w", err)
 	}
 
-	if len(mbi.Sectors) == 0 {
-		return nil, nil
-	}
-
-	var sinfos []abi.SectorInfo
-	for _, s := range mbi.Sectors {
-		if s.Info.Info.RegisteredProof == 0 {
-			return nil, xerrors.Errorf("sector %d in proving set had registered type of zero", s.ID)
+	/*
+		if len(mbi.Sectors) == 0 {
+			return nil, nil
 		}
-		sinfos = append(sinfos, abi.SectorInfo{
-			SectorNumber:    s.ID,
-			SealedCID:       s.Info.Info.SealedCID,
-			RegisteredProof: s.Info.Info.RegisteredProof,
-		})
-	}
 
-	hvrf := blake2b.Sum256(vrfout)
-	candidates, err := epp.GenerateCandidates(ctx, sinfos, hvrf[:])
-	if err != nil {
-		return nil, xerrors.Errorf("failed to generate electionPoSt candidates: %w", err)
-	}
-
-	var winners []storage.PoStCandidateWithTicket
-	for _, c := range candidates {
-		if types.IsTicketWinner(c.Candidate.PartialTicket, mbi.SectorSize, uint64(len(sinfos)), mbi.NetworkPower) {
-			winners = append(winners, c)
+		var sinfos []abi.SectorInfo
+		for _, s := range mbi.Sectors {
+			if s.Info.Info.RegisteredProof == 0 {
+				return nil, xerrors.Errorf("sector %d in proving set had registered type of zero", s.ID)
+			}
+			sinfos = append(sinfos, abi.SectorInfo{
+				SectorNumber:    s.ID,
+				SealedCID:       s.Info.Info.SealedCID,
+				RegisteredProof: s.Info.Info.RegisteredProof,
+			})
 		}
+
+		hvrf := blake2b.Sum256(vrfout)
+		candidates, err := epp.GenerateCandidates(ctx, sinfos, hvrf[:])
+		if err != nil {
+			return nil, xerrors.Errorf("failed to generate electionPoSt candidates: %w", err)
+		}
+
+		var winners []storage.PoStCandidateWithTicket
+		for _, c := range candidates {
+			if types.IsTicketWinner(c.Candidate.PartialTicket, mbi.SectorSize, uint64(len(sinfos)), mbi.NetworkPower) {
+				winners = append(winners, c)
+			}
+		}
+
+		// no winners, sad
+		if len(winners) == 0 {
+			return nil, nil
+		}
+	*/
+	// TODO: wire in real power
+	myPower := types.BigMul(types.NewInt(uint64(len(mbi.Sectors))), types.NewInt(uint64(mbi.SectorSize)))
+	if types.IsTicketWinner(vrfout, myPower, mbi.NetworkPower) {
+		panic("TODO what to do when we win")
+		// yey winner
 	}
 
-	// no winners, sad
-	if len(winners) == 0 {
-		return nil, nil
-	}
-
-	return &ProofInput{
-		sectors: sinfos,
-		hvrf:    hvrf[:],
-		winners: winners,
-		vrfout:  vrfout,
-	}, nil
+	/*
+		return &ProofInput{
+			sectors: sinfos,
+			hvrf:    hvrf[:],
+			winners: winners,
+			vrfout:  vrfout,
+		}, nil
+	*/
+	return nil, nil
 }
 
 func ComputeProof(ctx context.Context, epp ElectionPoStProver, pi *ProofInput) (*types.EPostProof, error) {

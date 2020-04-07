@@ -892,7 +892,7 @@ func (cs *ChainStore) TryFillTipSet(ts *types.TipSet) (*FullTipSet, error) {
 	return NewFullTipSet(out), nil
 }
 
-func drawRandomness(t *types.Ticket, pers crypto.DomainSeparationTag, round int64, drandRng []byte, entropy []byte) ([]byte, error) {
+func drawRandomness(t *types.Ticket, pers crypto.DomainSeparationTag, round int64, entropy []byte) ([]byte, error) {
 	h := blake2b.New256()
 	if err := binary.Write(h, binary.BigEndian, int64(pers)); err != nil {
 		return nil, xerrors.Errorf("deriving randomness: %w", err)
@@ -902,7 +902,6 @@ func drawRandomness(t *types.Ticket, pers crypto.DomainSeparationTag, round int6
 	if err := binary.Write(h, binary.BigEndian, round); err != nil {
 		return nil, xerrors.Errorf("deriving randomness: %w", err)
 	}
-	h.Write(drandRng)
 	h.Write(entropy)
 
 	return h.Sum(nil), nil
@@ -918,17 +917,6 @@ func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, pers cr
 			log.Infof("getRand %v %d %d %x -> %x", blks, pers, round, entropy, out)
 		}()
 	*/
-	var drandRng []byte
-	if pers == crypto.DomainSeparationTag_ElectionPoStChallengeSeed {
-		// special case, use lates beacon
-		nts, err := cs.LoadTipSet(types.NewTipSetKey(blks...))
-		if err != nil {
-			return nil, err
-		}
-
-		drandRng = nts.Blocks()[0].BeaconEntries[0].Data
-	}
-
 	for {
 		nts, err := cs.LoadTipSet(types.NewTipSetKey(blks...))
 		if err != nil {
@@ -940,10 +928,7 @@ func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, pers cr
 		// if at (or just past -- for null epochs) appropriate epoch
 		// or at genesis (works for negative epochs)
 		if int64(nts.Height()) <= round || mtb.Height == 0 {
-			if len(drandRng) == 0 {
-				drandRng = nts.Blocks()[0].BeaconEntries[0].Data
-			}
-			return drawRandomness(nts.MinTicketBlock().Ticket, pers, round, drandRng, entropy)
+			return drawRandomness(nts.MinTicketBlock().Ticket, pers, round, entropy)
 		}
 
 		blks = mtb.Parents
