@@ -22,11 +22,11 @@ require (
 	github.com/filecoin-project/go-fil-markets v0.0.0-20200318012938-6403a5bda668
 	github.com/filecoin-project/go-padreader v0.0.0-20200210211231-548257017ca6
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200218225740-47c639bab663
-	github.com/filecoin-project/go-statemachine v0.0.0-20200226041606-2074af6d51d9
 	github.com/filecoin-project/go-statestore v0.1.0
 	github.com/filecoin-project/sector-storage v0.0.0-20200406195014-a6d093838576
 	github.com/filecoin-project/specs-actors v0.0.0-20200324235424-aef9b20a9fb1
 	github.com/filecoin-project/specs-storage v0.0.0-20200317225704-7420bc655c38
+	github.com/filecoin-project/storage-fsm v0.0.0-20200407163248-25993479b13f
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/mux v1.7.4
@@ -102,16 +102,12 @@ require (
 	go.uber.org/goleak v1.0.0 // indirect
 	go.uber.org/multierr v1.5.0
 	go.uber.org/zap v1.14.1
-	golang.org/x/crypto v0.0.0-20200317142112-1b76d66859c6 // indirect
-	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
 	golang.org/x/net v0.0.0-20200301022130-244492dfa37a // indirect
 	golang.org/x/sys v0.0.0-20200317113312-5766fd39f98d
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
-	golang.org/x/tools v0.0.0-20200318150045-ba25ddc85566 // indirect
 	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543
 	gopkg.in/urfave/cli.v2 v2.0.0-20180128182452-d3ae77c26ac8
 	gotest.tools v2.2.0+incompatible
-	honnef.co/go/tools v0.0.1-2020.1.3 // indirect
 )
 
 replace github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v1.18.0

@@ -28,8 +28,8 @@ import (
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/markets/utils"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	"github.com/filecoin-project/lotus/storage/sealing"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
+	sealing "github.com/filecoin-project/storage-fsm"
 )
 
 var log = logging.Logger("provideradapter")
