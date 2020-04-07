@@ -20,7 +20,7 @@ const Inactive = 0
 
 const StartConfidence = 4 // TODO: config
 
-type FPoStScheduler struct {
+type WindowPoStScheduler struct {
 	api       storageMinerApi
 	sb        storage.Prover
 	proofType abi.RegisteredProof
@@ -38,11 +38,11 @@ type FPoStScheduler struct {
 	failLk sync.Mutex
 }
 
-func NewFPoStScheduler(api storageMinerApi, sb storage.Prover, actor address.Address, worker address.Address, rt abi.RegisteredProof) *FPoStScheduler {
-	return &FPoStScheduler{api: api, sb: sb, actor: actor, worker: worker, proofType: rt}
+func NewWindowedPoStScheduler(api storageMinerApi, sb storage.Prover, actor address.Address, worker address.Address, rt abi.RegisteredProof) *WindowPoStScheduler {
+	return &WindowPoStScheduler{api: api, sb: sb, actor: actor, worker: worker, proofType: rt}
 }
 
-func (s *FPoStScheduler) Run(ctx context.Context) {
+func (s *WindowPoStScheduler) Run(ctx context.Context) {
 	notifs, err := s.api.ChainNotify(ctx)
 	if err != nil {
 		return
@@ -67,11 +67,11 @@ func (s *FPoStScheduler) Run(ctx context.Context) {
 		select {
 		case changes, ok := <-notifs:
 			if !ok {
-				log.Warn("FPoStScheduler notifs channel closed")
+				log.Warn("WindowPoStScheduler notifs channel closed")
 				return
 			}
 
-			ctx, span := trace.StartSpan(ctx, "FPoStScheduler.headChange")
+			ctx, span := trace.StartSpan(ctx, "WindowPoStScheduler.headChange")
 
 			var lowest, highest *types.TipSet = s.cur, nil
 
@@ -101,7 +101,7 @@ func (s *FPoStScheduler) Run(ctx context.Context) {
 	}
 }
 
-func (s *FPoStScheduler) revert(ctx context.Context, newLowest *types.TipSet) error {
+func (s *WindowPoStScheduler) revert(ctx context.Context, newLowest *types.TipSet) error {
 	if s.cur == newLowest {
 		return nil
 	}
@@ -119,9 +119,9 @@ func (s *FPoStScheduler) revert(ctx context.Context, newLowest *types.TipSet) er
 	return nil
 }
 
-func (s *FPoStScheduler) update(ctx context.Context, new *types.TipSet) error {
+func (s *WindowPoStScheduler) update(ctx context.Context, new *types.TipSet) error {
 	if new == nil {
-		return xerrors.Errorf("no new tipset in FPoStScheduler.update")
+		return xerrors.Errorf("no new tipset in WindowPoStScheduler.update")
 	}
 	newEPS, start, err := s.shouldFallbackPost(ctx, new)
 	if err != nil {
@@ -148,7 +148,7 @@ func (s *FPoStScheduler) update(ctx context.Context, new *types.TipSet) error {
 	return nil
 }
 
-func (s *FPoStScheduler) abortActivePoSt() {
+func (s *WindowPoStScheduler) abortActivePoSt() {
 	if s.activeEPS == Inactive {
 		return // noop
 	}
@@ -163,7 +163,7 @@ func (s *FPoStScheduler) abortActivePoSt() {
 	s.abort = nil
 }
 
-func (s *FPoStScheduler) shouldFallbackPost(ctx context.Context, ts *types.TipSet) (abi.ChainEpoch, bool, error) {
+func (s *WindowPoStScheduler) shouldFallbackPost(ctx context.Context, ts *types.TipSet) (abi.ChainEpoch, bool, error) {
 	ps, err := s.api.StateMinerPostState(ctx, s.actor, ts.Key())
 	if err != nil {
 		return 0, false, xerrors.Errorf("getting ElectionPeriodStart: %w", err)
