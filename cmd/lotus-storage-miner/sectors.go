@@ -15,7 +15,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/lotus/storage/sealing"
+	sealing "github.com/filecoin-project/storage-fsm"
 )
 
 var sectorsCmd = &cli.Command{
