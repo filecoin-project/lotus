@@ -23,8 +23,8 @@ import (
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/impl/common"
 	"github.com/filecoin-project/lotus/storage"
-	"github.com/filecoin-project/lotus/storage/sealing"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
+	sealing "github.com/filecoin-project/storage-fsm"
 )
 
 type StorageMinerAPI struct {
