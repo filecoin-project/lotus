@@ -27,40 +27,38 @@ type ErrExpiredTicket struct{ error }
 type ErrBadSeed struct{ error }
 type ErrInvalidProof struct{ error }
 
-// checkPieces validates that:
-//  - Each piece han a corresponding on chain deal
-//  - Piece commitments match with on chain deals
-//  - Piece sizes match
-//  - Deals aren't expired
 func checkPieces(ctx context.Context, si SectorInfo, api SealingAPI) error {
 	tok, height, err := api.ChainHead(ctx)
 	if err != nil {
 		return &ErrApi{xerrors.Errorf("getting chain head: %w", err)}
 	}
 
-	for i, piece := range si.Pieces {
-		if piece.DealID == nil {
-			exp := zerocomm.ZeroPieceCommitment(piece.Size)
-			if piece.CommP != exp {
-				return &ErrInvalidPiece{xerrors.Errorf("deal %d piece %d had non-zero CommP %+v", piece.DealID, i, piece.CommP)}
+	for i, pdi := range si.PiecesWithOptionalDealInfo {
+		// if no deal is associated with the piece, ensure that we added it as
+		// filler (i.e. ensure that it has a zero PieceCID)
+		if pdi.DealInfo == nil {
+			exp := zerocomm.ZeroPieceCommitment(pdi.Piece.Size.Unpadded())
+			if !pdi.Piece.PieceCID.Equals(exp) {
+				return &ErrInvalidPiece{xerrors.Errorf("sector %d piece %d had non-zero PieceCID %+v", si.SectorNumber, i, pdi.Piece.PieceCID)}
 			}
 			continue
 		}
-		proposal, _, err := api.StateMarketStorageDeal(ctx, *piece.DealID, tok)
+
+		proposal, _, err := api.StateMarketStorageDeal(ctx, pdi.DealInfo.DealID, tok)
 		if err != nil {
-			return &ErrApi{xerrors.Errorf("getting deal %d for piece %d: %w", piece.DealID, i, err)}
+			return &ErrApi{xerrors.Errorf("getting deal %d for piece %d: %w", pdi.DealInfo.DealID, i, err)}
 		}
 
-		if proposal.PieceCID != piece.CommP {
-			return &ErrInvalidDeals{xerrors.Errorf("piece %d (or %d) of sector %d refers deal %d with wrong CommP: %x != %x", i, len(si.Pieces), si.SectorNumber, piece.DealID, piece.CommP, proposal.PieceCID)}
+		if proposal.PieceCID != pdi.Piece.PieceCID {
+			return &ErrInvalidDeals{xerrors.Errorf("piece %d (or %d) of sector %d refers deal %d with wrong PieceCID: %x != %x", i, len(si.PiecesWithOptionalDealInfo), si.SectorNumber, pdi.DealInfo.DealID, pdi.Piece.PieceCID, proposal.PieceCID)}
 		}
 
-		if piece.Size != proposal.PieceSize.Unpadded() {
-			return &ErrInvalidDeals{xerrors.Errorf("piece %d (or %d) of sector %d refers deal %d with different size: %d != %d", i, len(si.Pieces), si.SectorNumber, piece.DealID, piece.Size, proposal.PieceSize)}
+		if pdi.Piece.Size != proposal.PieceSize {
+			return &ErrInvalidDeals{xerrors.Errorf("piece %d (or %d) of sector %d refers deal %d with different size: %d != %d", i, len(si.PiecesWithOptionalDealInfo), si.SectorNumber, pdi.DealInfo.DealID, pdi.Piece.Size, proposal.PieceSize)}
 		}
 
 		if height >= proposal.StartEpoch {
-			return &ErrExpiredDeals{xerrors.Errorf("piece %d (or %d) of sector %d refers expired deal %d - should start at %d, head %d", i, len(si.Pieces), si.SectorNumber, piece.DealID, proposal.StartEpoch, height)}
+			return &ErrExpiredDeals{xerrors.Errorf("piece %d (or %d) of sector %d refers expired deal %d - should start at %d, head %d", i, len(si.PiecesWithOptionalDealInfo), si.SectorNumber, pdi.DealInfo.DealID, proposal.StartEpoch, height)}
 		}
 	}
 
@@ -75,7 +73,7 @@ func checkPrecommit(ctx context.Context, maddr address.Address, si SectorInfo, a
 		return &ErrApi{xerrors.Errorf("getting chain head: %w", err)}
 	}
 
-	commD, err := api.StateComputeDataCommitment(ctx, maddr, si.SectorType, si.deals(), tok)
+	commD, err := api.StateComputeDataCommitment(ctx, maddr, si.SectorType, si.dealIDs(), tok)
 	if err != nil {
 		return &ErrApi{xerrors.Errorf("calling StateComputeDataCommitment: %w", err)}
 	}

@@ -11,11 +11,30 @@ import (
 	"github.com/filecoin-project/specs-storage/storage"
 )
 
-type Piece struct {
-	DealID *abi.DealID
+// PieceWithOptionalDealInfo is a tuple of piece and deal info
+type PieceWithDealInfo struct {
+	Piece    abi.PieceInfo
+	DealInfo DealInfo
+}
 
-	Size  abi.UnpaddedPieceSize
-	CommP cid.Cid
+// PieceWithOptionalDealInfo is a tuple of piece info and optional deal
+type PieceWithOptionalDealInfo struct {
+	Piece    abi.PieceInfo
+	DealInfo *DealInfo // nil for pieces which do not yet appear in self-deals
+}
+
+// DealInfo is a tuple of deal identity and its schedule
+type DealInfo struct {
+	DealID       abi.DealID
+	DealSchedule DealSchedule
+}
+
+// DealSchedule communicates the time interval of a storage deal. The deal must
+// appear in a sealed (proven) sector no later than StartEpoch, otherwise it
+// is invalid.
+type DealSchedule struct {
+	StartEpoch abi.ChainEpoch
+	EndEpoch   abi.ChainEpoch
 }
 
 type Log struct {
@@ -36,8 +55,7 @@ type SectorInfo struct {
 	SectorType abi.RegisteredProof
 
 	// Packing
-
-	Pieces []Piece
+	PiecesWithOptionalDealInfo []PieceWithOptionalDealInfo
 
 	// PreCommit1
 	TicketValue   abi.SealRandomness
@@ -69,31 +87,31 @@ type SectorInfo struct {
 }
 
 func (t *SectorInfo) pieceInfos() []abi.PieceInfo {
-	out := make([]abi.PieceInfo, len(t.Pieces))
-	for i, piece := range t.Pieces {
+	out := make([]abi.PieceInfo, len(t.PiecesWithOptionalDealInfo))
+	for i, pdi := range t.PiecesWithOptionalDealInfo {
 		out[i] = abi.PieceInfo{
-			Size:     piece.Size.Padded(),
-			PieceCID: piece.CommP,
+			Size:     pdi.Piece.Size,
+			PieceCID: pdi.Piece.PieceCID,
 		}
 	}
 	return out
 }
 
-func (t *SectorInfo) deals() []abi.DealID {
-	out := make([]abi.DealID, 0, len(t.Pieces))
-	for _, piece := range t.Pieces {
-		if piece.DealID == nil {
+func (t *SectorInfo) dealIDs() []abi.DealID {
+	out := make([]abi.DealID, 0, len(t.PiecesWithOptionalDealInfo))
+	for _, pdi := range t.PiecesWithOptionalDealInfo {
+		if pdi.DealInfo == nil {
 			continue
 		}
-		out = append(out, *piece.DealID)
+		out = append(out, pdi.DealInfo.DealID)
 	}
 	return out
 }
 
-func (t *SectorInfo) existingPieces() []abi.UnpaddedPieceSize {
-	out := make([]abi.UnpaddedPieceSize, len(t.Pieces))
-	for i, piece := range t.Pieces {
-		out[i] = piece.Size
+func (t *SectorInfo) existingPieceSizes() []abi.UnpaddedPieceSize {
+	out := make([]abi.UnpaddedPieceSize, len(t.PiecesWithOptionalDealInfo))
+	for i, pdi := range t.PiecesWithOptionalDealInfo {
+		out[i] = pdi.Piece.Size.Unpadded()
 	}
 	return out
 }

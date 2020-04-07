@@ -14,16 +14,26 @@ import (
 func TestSectorInfoSelialization(t *testing.T) {
 	d := abi.DealID(1234)
 
+	dealInfo := DealInfo{
+		DealID: d,
+		DealSchedule: DealSchedule{
+			StartEpoch: 0,
+			EndEpoch:   100,
+		},
+	}
+
 	dummyCid := builtin.AccountActorCodeID
 
 	si := &SectorInfo{
 		State:        "stateful",
 		SectorNumber: 234,
 		Nonce:        345,
-		Pieces: []Piece{{
-			DealID: &d,
-			Size:   5,
-			CommP:  dummyCid,
+		PiecesWithOptionalDealInfo: []PieceWithOptionalDealInfo{{
+			Piece: abi.PieceInfo{
+				Size:     5,
+				PieceCID: dummyCid,
+			},
+			DealInfo: &dealInfo,
 		}},
 		CommD:            &dummyCid,
 		CommR:            nil,
@@ -52,7 +62,7 @@ func TestSectorInfoSelialization(t *testing.T) {
 	assert.Equal(t, si.Nonce, si2.Nonce)
 	assert.Equal(t, si.SectorNumber, si2.SectorNumber)
 
-	assert.Equal(t, si.Pieces, si2.Pieces)
+	assert.Equal(t, si.PiecesWithOptionalDealInfo, si2.PiecesWithOptionalDealInfo)
 	assert.Equal(t, si.CommD, si2.CommD)
 	assert.Equal(t, si.TicketValue, si2.TicketValue)
 	assert.Equal(t, si.TicketEpoch, si2.TicketEpoch)

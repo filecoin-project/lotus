@@ -19,8 +19,8 @@ func (m *Sealing) handlePacking(ctx statemachine.Context, sector SectorInfo) err
 	log.Infow("performing filling up rest of the sector...", "sector", sector.SectorNumber)
 
 	var allocated abi.UnpaddedPieceSize
-	for _, piece := range sector.Pieces {
-		allocated += piece.Size
+	for _, piece := range sector.PiecesWithOptionalDealInfo {
+		allocated += piece.Piece.Size.Unpadded()
 	}
 
 	ubytes := abi.PaddedPieceSize(m.sealer.SectorSize()).Unpadded()
@@ -38,12 +38,12 @@ func (m *Sealing) handlePacking(ctx statemachine.Context, sector SectorInfo) err
 		log.Warnf("Creating %d filler pieces for sector %d", len(fillerSizes), sector.SectorNumber)
 	}
 
-	pieces, err := m.pledgeSector(ctx.Context(), m.minerSector(sector.SectorNumber), sector.existingPieces(), fillerSizes...)
+	fillerPieces, err := m.pledgeSector(ctx.Context(), m.minerSector(sector.SectorNumber), sector.existingPieceSizes(), fillerSizes...)
 	if err != nil {
 		return xerrors.Errorf("filling up the sector (%v): %w", fillerSizes, err)
 	}
 
-	return ctx.Send(SectorPacked{Pieces: pieces})
+	return ctx.Send(SectorPacked{FillerPieces: fillerPieces})
 }
 
 func (m *Sealing) handlePreCommit1(ctx statemachine.Context, sector SectorInfo) error {
@@ -59,9 +59,9 @@ func (m *Sealing) handlePreCommit1(ctx statemachine.Context, sector SectorInfo) 
 			log.Errorf("handlePreCommit1: api error, not proceeding: %+v", err)
 			return nil
 		case *ErrInvalidDeals:
-			return ctx.Send(SectorPackingFailed{xerrors.Errorf("invalid deals in sector: %w", err)})
+			return ctx.Send(SectorPackingFailed{xerrors.Errorf("invalid dealIDs in sector: %w", err)})
 		case *ErrExpiredDeals: // Probably not much we can do here, maybe re-pack the sector?
-			return ctx.Send(SectorPackingFailed{xerrors.Errorf("expired deals in sector: %w", err)})
+			return ctx.Send(SectorPackingFailed{xerrors.Errorf("expired dealIDs in sector: %w", err)})
 		default:
 			return xerrors.Errorf("checkPieces sanity check error: %w", err)
 		}
@@ -113,13 +113,13 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 	}
 
 	params := &miner.SectorPreCommitInfo{
-		Expiration:      10000000, // TODO: implement
+		Expiration:      10000000, // TODO: implement expiration
 		SectorNumber:    sector.SectorNumber,
 		RegisteredProof: sector.SectorType,
 
 		SealedCID:     *sector.CommR,
 		SealRandEpoch: sector.TicketEpoch,
-		DealIDs:       sector.deals(),
+		DealIDs:       sector.dealIDs(),
 	}
 
 	enc := new(bytes.Buffer)

@@ -101,8 +101,8 @@ func (m *Sealing) AllocatePiece(size abi.UnpaddedPieceSize) (sectorID abi.Sector
 	return sid, 0, nil
 }
 
-func (m *Sealing) SealPiece(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, sectorID abi.SectorNumber, dealID abi.DealID) error {
-	log.Infof("Seal piece for deal %d", dealID)
+func (m *Sealing) SealPiece(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, sectorID abi.SectorNumber, pdi PieceWithDealInfo) error {
+	log.Infof("Seal piece for deal %d", pdi.DealInfo.DealID)
 
 	ppi, err := m.sealer.AddPiece(ctx, m.minerSector(sectorID), []abi.UnpaddedPieceSize{}, size, r)
 	if err != nil {
@@ -114,17 +114,18 @@ func (m *Sealing) SealPiece(ctx context.Context, size abi.UnpaddedPieceSize, r i
 		return xerrors.Errorf("bad sector size: %w", err)
 	}
 
-	return m.newSector(sectorID, rt, []Piece{
+	return m.newSector(sectorID, rt, []PieceWithOptionalDealInfo{
 		{
-			DealID: &dealID,
-
-			Size:  ppi.Size.Unpadded(),
-			CommP: ppi.PieceCID,
+			Piece:    ppi,
+			DealInfo: &pdi.DealInfo,
 		},
 	})
 }
 
-func (m *Sealing) newSector(sid abi.SectorNumber, rt abi.RegisteredProof, pieces []Piece) error {
+// newSector accepts a slice of pieces which will have a deal associated with
+// them (in the event of a storage deal) or no deal (in the event of sealing
+// garbage data)
+func (m *Sealing) newSector(sid abi.SectorNumber, rt abi.RegisteredProof, pieces []PieceWithOptionalDealInfo) error {
 	log.Infof("Start sealing %d", sid)
 	return m.sectors.Send(uint64(sid), SectorStart{
 		ID:         sid,
