@@ -20,8 +20,8 @@ func (m *Miner) AllocatePiece(size abi.UnpaddedPieceSize) (sectorID abi.SectorNu
 	return m.sealing.AllocatePiece(size)
 }
 
-func (m *Miner) SealPiece(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, sectorID abi.SectorNumber, dealID abi.DealID) error {
-	return m.sealing.SealPiece(ctx, size, r, sectorID, dealID)
+func (m *Miner) SealPiece(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, sectorID abi.SectorNumber, d sealing.DealInfo) error {
+	return m.sealing.SealPiece(ctx, size, r, sectorID, d)
 }
 
 func (m *Miner) ListSectors() ([]sealing.SectorInfo, error) {

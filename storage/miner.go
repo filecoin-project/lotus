@@ -99,7 +99,9 @@ func (m *Miner) Run(ctx context.Context) error {
 	}
 
 	evts := events.NewEvents(ctx, m.api)
-	m.sealing = sealing.New(NewSealingAPIAdapter(m.api), NewEventsAdapter(evts), m.maddr, m.worker, m.ds, m.sealer, m.sc, m.verif, m.tktFn)
+	adaptedAPI := NewSealingAPIAdapter(m.api)
+	pcp := sealing.NewBasicPreCommitPolicy(adaptedAPI, 100)
+	m.sealing = sealing.New(adaptedAPI, NewEventsAdapter(evts), m.maddr, m.worker, m.ds, m.sealer, m.sc, m.verif, m.tktFn, &pcp)
 
 	go m.sealing.Run(ctx)
 
