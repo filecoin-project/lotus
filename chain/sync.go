@@ -543,33 +543,37 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 			return xerrors.Errorf("received block was from slashed or invalid miner")
 		}
 
-		mpow, tpow, err := stmgr.GetPower(ctx, syncer.sm, baseTs, h.Miner)
-		if err != nil {
-			return xerrors.Errorf("failed getting power: %w", err)
-		}
+		// TODO fix winners
+		/*
 
-		ssize, err := stmgr.GetMinerSectorSize(ctx, syncer.sm, baseTs, h.Miner)
-		if err != nil {
-			return xerrors.Errorf("failed to get sector size for block miner: %w", err)
-		}
-
-		snum := types.BigDiv(mpow, types.NewInt(uint64(ssize)))
-
-		if len(h.EPostProof.Candidates) == 0 {
-			return xerrors.Errorf("no candidates")
-		}
-
-		wins := make(map[uint64]bool)
-		for _, t := range h.EPostProof.Candidates {
-			if wins[t.ChallengeIndex] {
-				return xerrors.Errorf("block had duplicate epost candidates")
+			mpow, tpow, err := stmgr.GetPower(ctx, syncer.sm, baseTs, h.Miner)
+			if err != nil {
+				return xerrors.Errorf("failed getting power: %w", err)
 			}
-			wins[t.ChallengeIndex] = true
 
-			if !types.IsTicketWinner(t.Partial, ssize, snum.Uint64(), tpow) {
-				return xerrors.Errorf("miner created a block but was not a winner")
+			ssize, err := stmgr.GetMinerSectorSize(ctx, syncer.sm, baseTs, h.Miner)
+			if err != nil {
+				return xerrors.Errorf("failed to get sector size for block miner: %w", err)
 			}
-		}
+
+			snum := types.BigDiv(mpow, types.NewInt(uint64(ssize)))
+
+			if len(h.EPostProof.Candidates) == 0 {
+				return xerrors.Errorf("no candidates")
+			}
+			wins := make(map[uint64]bool)
+			for _, t := range h.EPostProof.Candidates {
+				if wins[t.ChallengeIndex] {
+					return xerrors.Errorf("block had duplicate epost candidates")
+				}
+				wins[t.ChallengeIndex] = true
+
+				if !types.IsTicketWinner(t.Partial, ssize, snum.Uint64(), tpow) {
+					return xerrors.Errorf("miner created a block but was not a winner")
+				}
+			}
+		*/
+
 		return nil
 	})
 
@@ -978,13 +982,12 @@ func (syncer *Syncer) collectHeaders(ctx context.Context, from *types.TipSet, to
 			syncer.bad.Add(from.Cids()[0], "no beacon entires")
 			return nil, xerrors.Errorf("block (%s) contained no drand entires", from.Cids()[0])
 		}
-			cur := targetBE[0].Index
+		cur := targetBE[0].Index
 
-			for _, e := range targetBE[1:] {
-				if cur >= e.Index {
-					syncer.bad.Add(from.Cids()[0], "wrong order of beacon entires")
-					return nil, xerrors.Errorf("wrong order of beacon entires")
-				}
+		for _, e := range targetBE[1:] {
+			if cur >= e.Index {
+				syncer.bad.Add(from.Cids()[0], "wrong order of beacon entires")
+				return nil, xerrors.Errorf("wrong order of beacon entires")
 			}
 
 		}
