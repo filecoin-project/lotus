@@ -47,6 +47,12 @@ func (m *Sealing) handlePacking(ctx statemachine.Context, sector SectorInfo) err
 }
 
 func (m *Sealing) handlePreCommit1(ctx statemachine.Context, sector SectorInfo) error {
+	tok, _, err := m.api.ChainHead(ctx.Context())
+	if err != nil {
+		log.Errorf("handlePreCommit1: api error, not proceeding: %+v", err)
+		return nil
+	}
+
 	if err := checkPieces(ctx.Context(), sector, m.api); err != nil { // Sanity check state
 		switch err.(type) {
 		case *ErrApi:
@@ -62,7 +68,7 @@ func (m *Sealing) handlePreCommit1(ctx statemachine.Context, sector SectorInfo) 
 	}
 
 	log.Infow("performing sector replication...", "sector", sector.SectorNumber)
-	ticketValue, ticketEpoch, err := m.tktFn(ctx.Context())
+	ticketValue, ticketEpoch, err := m.tktFn(ctx.Context(), tok)
 	if err != nil {
 		return ctx.Send(SectorSealPreCommitFailed{xerrors.Errorf("getting ticket failed: %w", err)})
 	}
