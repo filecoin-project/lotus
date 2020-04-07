@@ -136,7 +136,7 @@ func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api lapi.FullNode, h
 		return nil, err
 	}
 
-	ppt, _, err := ffiwrapper.ProofTypeFromSectorSize(sealer.SectorSize())
+	ppt, _, err := ffiwrapper.ProofTypeFromSectorSize(sealer.SectorSize()) // TODO: this changes
 	if err != nil {
 		return nil, xerrors.Errorf("bad sector size: %w", err)
 	}
