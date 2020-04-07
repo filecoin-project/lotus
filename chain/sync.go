@@ -511,6 +511,11 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		return xerrors.Errorf("load parent tipset failed (%s): %w", h.Parents, err)
 	}
 
+	prevBeacon, err := syncer.getLatestBeaconEntry(baseTs)
+	if err != nil {
+		return xerrors.Errorf("failed to get latest beacon entry: %w", err)
+	}
+
 	nulls := h.Height - (baseTs.Height() + 1)
 
 	// fast checks first
@@ -543,36 +548,16 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 			return xerrors.Errorf("received block was from slashed or invalid miner")
 		}
 
-		// TODO fix winners
-		/*
+		mpow, tpow, err := stmgr.GetPower(ctx, syncer.sm, baseTs, h.Miner)
+		if err != nil {
+			return xerrors.Errorf("failed getting power: %w", err)
+		}
 
-			mpow, tpow, err := stmgr.GetPower(ctx, syncer.sm, baseTs, h.Miner)
-			if err != nil {
-				return xerrors.Errorf("failed getting power: %w", err)
-			}
+		if !types.IsTicketWinner(h.Ticket.VRFProof, mpow, tpow) {
+			return xerrors.Errorf("miner created a block but was not a winner")
+		}
 
-			ssize, err := stmgr.GetMinerSectorSize(ctx, syncer.sm, baseTs, h.Miner)
-			if err != nil {
-				return xerrors.Errorf("failed to get sector size for block miner: %w", err)
-			}
-
-			snum := types.BigDiv(mpow, types.NewInt(uint64(ssize)))
-
-			if len(h.EPostProof.Candidates) == 0 {
-				return xerrors.Errorf("no candidates")
-			}
-			wins := make(map[uint64]bool)
-			for _, t := range h.EPostProof.Candidates {
-				if wins[t.ChallengeIndex] {
-					return xerrors.Errorf("block had duplicate epost candidates")
-				}
-				wins[t.ChallengeIndex] = true
-
-				if !types.IsTicketWinner(t.Partial, ssize, snum.Uint64(), tpow) {
-					return xerrors.Errorf("miner created a block but was not a winner")
-				}
-			}
-		*/
+		// TODO: validate winning post proof
 
 		return nil
 	})
@@ -641,9 +626,15 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		if err := h.Miner.MarshalCBOR(buf); err != nil {
 			return xerrors.Errorf("failed to marshal miner address to cbor: %w", err)
 		}
+
 		vrfBase, err := syncer.sm.ChainStore().GetRandomness(ctx, baseTs.Cids(), crypto.DomainSeparationTag_TicketProduction, int64(h.Height)-1, buf.Bytes())
 		if err != nil {
 			return xerrors.Errorf("failed to get randomness for verifying election proof: %w", err)
+		}
+
+		baseBeacon := prevBeacon
+		if len(h.BeaconEntries) > 0 {
+			baseBeacon = h.BeaconEntries[len(h.BeaconEntries)-1]
 		}
 
 		err = gen.VerifyVRF(ctx, waddr, vrfBase, h.Ticket.VRFProof)
