@@ -75,10 +75,10 @@ func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid abi.SectorNumb
 
 	deals := make([]abi.DealID, len(info.Pieces))
 	for i, piece := range info.Pieces {
-		if piece.DealID == nil {
+		if piece.DealInfo == nil {
 			continue
 		}
-		deals[i] = *piece.DealID
+		deals[i] = piece.DealInfo.DealID
 	}
 
 	log := make([]api.SectorLog, len(info.Log))
