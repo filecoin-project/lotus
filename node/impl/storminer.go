@@ -181,7 +181,7 @@ func (sm *StorageMinerAPI) MarketListDeals(ctx context.Context) ([]storagemarket
 }
 
 func (sm *StorageMinerAPI) MarketListIncompleteDeals(ctx context.Context) ([]storagemarket.MinerDeal, error) {
-	return sm.StorageProvider.ListIncompleteDeals()
+	return sm.StorageProvider.ListLocalDeals()
 }
 
 func (sm *StorageMinerAPI) MarketSetPrice(ctx context.Context, p types.BigInt) error {
