@@ -45,6 +45,12 @@ func ValidateBlockValues(b DrandBeacon, h *types.BlockHeader, nulls int) error {
 		}
 	}
 
+	// validate that block contains entry for its own epoch
+	should := b.BeaconIndexesForEpoch(h.Height, 0)
+	if should[len(should)-1] != h.BeaconEntries[len(h.BeaconEntries)-1].Index {
+		return xerrors.Errorf("missing beacon entry for this block")
+	}
+
 	return nil
 }
 
@@ -117,10 +123,10 @@ func (mb *mockBeacon) IsEntryForEpoch(e types.BeaconEntry, epoch abi.ChainEpoch,
 
 func (mb *mockBeacon) BeaconIndexesForEpoch(epoch abi.ChainEpoch, nulls int) []uint64 {
 	var out []uint64
-	out = append(out, uint64(epoch))
-	for i := 0; i < nulls; i++ {
+	for i := nulls; i > 0; i-- {
 		out = append(out, uint64(epoch)-uint64(i))
 	}
+	out = append(out, uint64(epoch))
 	return out
 }
 
