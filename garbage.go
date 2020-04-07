@@ -32,10 +32,7 @@ func (m *Sealing) pledgeSector(ctx context.Context, sectorID abi.SectorID, exist
 
 		existingPieceSizes = append(existingPieceSizes, size)
 
-		out[i] = abi.PieceInfo{
-			Size:     ppi.Size,
-			PieceCID: ppi.PieceCID,
-		}
+		out[i] = ppi
 	}
 
 	return out, nil
