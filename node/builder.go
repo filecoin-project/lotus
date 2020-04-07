@@ -234,8 +234,6 @@ func Online() Option {
 			Override(new(*blocksync.BlockSyncService), blocksync.NewBlockSyncService),
 			Override(new(*peermgr.PeerMgr), peermgr.NewPeerMgr),
 
-			Override(new(dtypes.GraphsyncLoader), modules.GraphsyncLoader),
-			Override(new(dtypes.GraphsyncStorer), modules.GraphsyncStorer),
 			Override(new(dtypes.Graphsync), modules.Graphsync),
 
 			Override(RunHelloKey, modules.RunHello),

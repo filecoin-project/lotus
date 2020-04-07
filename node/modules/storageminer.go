@@ -11,7 +11,6 @@ import (
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	graphsync "github.com/ipfs/go-graphsync/impl"
-	"github.com/ipfs/go-graphsync/ipldbridge"
 	gsnet "github.com/ipfs/go-graphsync/network"
 	"github.com/ipfs/go-graphsync/storeutil"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -249,10 +248,9 @@ func StagingDAG(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.StagingBloc
 // to the StagingBlockstore
 func StagingGraphsync(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.StagingBlockstore, h host.Host) dtypes.StagingGraphsync {
 	graphsyncNetwork := gsnet.NewFromLibp2pHost(h)
-	ipldBridge := ipldbridge.NewIPLDBridge()
 	loader := storeutil.LoaderForBlockstore(ibs)
 	storer := storeutil.StorerForBlockstore(ibs)
-	gs := graphsync.New(helpers.LifecycleCtx(mctx, lc), graphsyncNetwork, ipldBridge, loader, storer)
+	gs := graphsync.New(helpers.LifecycleCtx(mctx, lc), graphsyncNetwork, loader, storer, graphsync.RejectAllRequestsByDefault())
 
 	return gs
 }
