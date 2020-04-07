@@ -112,8 +112,13 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 		}
 	}
 
+	expiration, err := m.pcp.Expiration(ctx.Context(), sector.PiecesWithOptionalDealInfo...)
+	if err != nil {
+		return ctx.Send(SectorSealPreCommitFailed{xerrors.Errorf("handlePreCommitting: failed to compute pre-commit expiry: %w", err)})
+	}
+
 	params := &miner.SectorPreCommitInfo{
-		Expiration:      10000000, // TODO: implement expiration
+		Expiration:      expiration,
 		SectorNumber:    sector.SectorNumber,
 		RegisteredProof: sector.SectorType,
 
