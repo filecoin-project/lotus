@@ -2,7 +2,6 @@ package storage
 
 import (
 	"context"
-	"sync"
 	"time"
 
 	"go.opencensus.io/trace"
@@ -17,13 +16,11 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-const Inactive = 0
-
 const StartConfidence = 4 // TODO: config
 
 type WindowPoStScheduler struct {
 	api       storageMinerApi
-	sb        storage.Prover
+	prover    storage.Prover
 	proofType abi.RegisteredProof
 
 	actor  address.Address
@@ -32,15 +29,44 @@ type WindowPoStScheduler struct {
 	cur *types.TipSet
 
 	// if a post is in progress, this indicates for which ElectionPeriodStart
-	activeEPS abi.ChainEpoch
+	activeDeadline *Deadline
 	abort     context.CancelFunc
 
-	failed abi.ChainEpoch // eps
-	failLk sync.Mutex
+	//failed abi.ChainEpoch // eps
+	//failLk sync.Mutex
 }
 
 func NewWindowedPoStScheduler(api storageMinerApi, sb storage.Prover, actor address.Address, worker address.Address, rt abi.RegisteredProof) *WindowPoStScheduler {
-	return &WindowPoStScheduler{api: api, sb: sb, actor: actor, worker: worker, proofType: rt}
+	return &WindowPoStScheduler{api: api, prover: sb, actor: actor, worker: worker, proofType: rt}
+}
+
+const ProvingDeadlineEpochs = (30*60) / build.BlockDelay
+const ProvingPeriodDeadlines = 48
+const ProvingPeriodEpochs = ProvingDeadlineEpochs * ProvingDeadlineEpochs
+
+type Deadline struct {
+	// ID
+	start abi.ChainEpoch
+
+}
+
+func (Deadline) Equals(other Deadline) bool {
+	panic("maybe equal")
+}
+
+type abiPartition uint64
+
+func (s *WindowPoStScheduler) getCurrentDeadline(ts *types.TipSet) (Deadline, error) {
+	return Deadline{}, nil
+}
+
+func (s *WindowPoStScheduler) getDeadlinePartitions(ts *types.TipSet, d Deadline) ([]abiPartition, error) {
+	return nil, nil
+}
+
+func (s *WindowPoStScheduler) getPartitionSectors(ts *types.TipSet, partition []abiPartition) ([]abi.SectorInfo, error) {
+	// TODO: maybe make this per partition
+	return nil, nil
 }
 
 func (s *WindowPoStScheduler) Run(ctx context.Context) {
@@ -126,12 +152,12 @@ func (s *WindowPoStScheduler) revert(ctx context.Context, newLowest *types.TipSe
 	}
 	s.cur = newLowest
 
-	newEPS, _, err := s.shouldFallbackPost(ctx, newLowest)
+	newDeadline, err := s.getCurrentDeadline(newLowest)
 	if err != nil {
 		return err
 	}
 
-	if newEPS != s.activeEPS {
+	if !s.activeDeadline.Equals(newDeadline) {
 		s.abortActivePoSt()
 	}
 
@@ -142,33 +168,34 @@ func (s *WindowPoStScheduler) update(ctx context.Context, new *types.TipSet) err
 	if new == nil {
 		return xerrors.Errorf("no new tipset in WindowPoStScheduler.update")
 	}
-	newEPS, start, err := s.shouldFallbackPost(ctx, new)
+	shouldPost, newDeadline, err := s.shouldPost(ctx, new)
 	if err != nil {
 		return err
 	}
+	if !shouldPost {
+		return nil
+	}
 
-	s.failLk.Lock()
+	/*s.failLk.Lock()
 	if s.failed > 0 {
 		s.failed = 0
 		s.activeEPS = 0
 	}
-	s.failLk.Unlock()
+	s.failLk.Unlock()*/
 
-	if newEPS == s.activeEPS {
-		return nil
-	}
+
 
 	s.abortActivePoSt()
 
-	if newEPS != Inactive && start {
-		s.doPost(ctx, newEPS, new)
+	if newDeadline != nil {
+		s.doPost(ctx, newDeadline, new)
 	}
 
 	return nil
 }
 
 func (s *WindowPoStScheduler) abortActivePoSt() {
-	if s.activeEPS == Inactive {
+	if s.activeDeadline == nil {
 		return // noop
 	}
 
@@ -176,20 +203,14 @@ func (s *WindowPoStScheduler) abortActivePoSt() {
 		s.abort()
 	}
 
-	log.Warnf("Aborting Fallback PoSt (EPS: %d)", s.activeEPS)
+	log.Warnf("Aborting Fallback PoSt (Deadline: %+v)", s.activeDeadline)
 
-	s.activeEPS = Inactive
+	s.activeDeadline = nil
 	s.abort = nil
 }
 
-func (s *WindowPoStScheduler) shouldFallbackPost(ctx context.Context, ts *types.TipSet) (abi.ChainEpoch, bool, error) {
-	ps, err := s.api.StateMinerPostState(ctx, s.actor, ts.Key())
-	if err != nil {
-		return 0, false, xerrors.Errorf("getting ElectionPeriodStart: %w", err)
-	}
-
-	if ts.Height() >= ps.ProvingPeriodStart {
-		return ps.ProvingPeriodStart, ts.Height() >= ps.ProvingPeriodStart+build.FallbackPoStConfidence, nil
-	}
-	return 0, false, nil
+func (s *WindowPoStScheduler) shouldPost(ctx context.Context, ts *types.TipSet) (bool, *Deadline, error) {
+	// call getCurrentDeadline, set activeDeadline if needed
+	panic("todo check actor state for post in the deadline")
+	return true, nil, nil
 }

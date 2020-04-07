@@ -18,19 +18,20 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-func (s *WindowPoStScheduler) failPost(eps abi.ChainEpoch) {
-	s.failLk.Lock()
+func (s *WindowPoStScheduler) failPost(deadline *Deadline) {
+	log.Errorf("TODO")
+	/*s.failLk.Lock()
 	if eps > s.failed {
 		s.failed = eps
 	}
-	s.failLk.Unlock()
+	s.failLk.Unlock()*/
 }
 
-func (s *WindowPoStScheduler) doPost(ctx context.Context, eps abi.ChainEpoch, ts *types.TipSet) {
+func (s *WindowPoStScheduler) doPost(ctx context.Context, deadline *Deadline, ts *types.TipSet) {
 	ctx, abort := context.WithCancel(ctx)
 
 	s.abort = abort
-	s.activeEPS = eps
+	s.activeDeadline = deadline
 
 	go func() {
 		defer abort()
@@ -38,16 +39,16 @@ func (s *WindowPoStScheduler) doPost(ctx context.Context, eps abi.ChainEpoch, ts
 		ctx, span := trace.StartSpan(ctx, "WindowPoStScheduler.doPost")
 		defer span.End()
 
-		proof, err := s.runPost(ctx, eps, ts)
+		proof, err := s.runPost(ctx, deadline, ts)
 		if err != nil {
 			log.Errorf("runPost failed: %+v", err)
-			s.failPost(eps)
+			s.failPost(deadline)
 			return
 		}
 
 		if err := s.submitPost(ctx, proof); err != nil {
 			log.Errorf("submitPost failed: %+v", err)
-			s.failPost(eps)
+			s.failPost(deadline)
 			return
 		}
 
@@ -91,7 +92,7 @@ func (s *WindowPoStScheduler) declareFaults(ctx context.Context, fc uint64, para
 }
 
 func (s *WindowPoStScheduler) checkFaults(ctx context.Context, ssi []abi.SectorNumber) ([]abi.SectorNumber, error) {
-	//faults := s.sb.Scrub(ssi)
+	//faults := s.prover.Scrub(ssi)
 	log.Warnf("Stub checkFaults")
 	var faults []struct {
 		SectorNum abi.SectorNumber
@@ -143,11 +144,11 @@ func (s *WindowPoStScheduler) checkFaults(ctx context.Context, ssi []abi.SectorN
 	return faultIDs, nil
 }
 
-func (s *WindowPoStScheduler) runPost(ctx context.Context, eps abi.ChainEpoch, ts *types.TipSet) (*abi.OnChainPoStVerifyInfo, error) {
+func (s *WindowPoStScheduler) runPost(ctx context.Context, deadline Deadline, ts *types.TipSet) (*abi.OnChainPoStVerifyInfo, error) {
 	ctx, span := trace.StartSpan(ctx, "storage.runPost")
 	defer span.End()
 
-	challengeRound := eps
+	challengeRound := deadline.start // TODO: check with spec
 
 	buf := new(bytes.Buffer)
 	if err := s.actor.MarshalCBOR(buf); err != nil {
@@ -155,10 +156,15 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, eps abi.ChainEpoch, t
 	}
 	rand, err := s.api.ChainGetRandomness(ctx, ts.Key(), crypto.DomainSeparationTag_WindowedPoStChallengeSeed, challengeRound, buf.Bytes())
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get chain randomness for windowPost (ts=%d; eps=%d): %w", ts.Height(), eps, err)
+		return nil, xerrors.Errorf("failed to get chain randomness for windowPost (ts=%d; deadline=%d): %w", ts.Height(), deadline, err)
 	}
 
-	ssi, err := s.sortedSectorInfo(ctx, ts)
+	partitions, err := s.getDeadlinePartitions(ts, deadline)
+	if err != nil {
+		return nil, err
+	}
+
+	ssi, err := s.sortedSectorInfo(ctx, partitions, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("getting sorted sector info: %w", err)
 	}
@@ -169,7 +175,7 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, eps abi.ChainEpoch, t
 
 	log.Infow("running windowPost",
 		"chain-random", rand,
-		"eps", eps,
+		"deadline", deadline,
 		"height", ts.Height())
 
 	var snums []abi.SectorNumber
@@ -193,7 +199,7 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, eps abi.ChainEpoch, t
 		return nil, err
 	}
 
-	postOut, err := s.sb.GenerateFallbackPoSt(ctx, abi.ActorID(mid), ssi, abi.PoStRandomness(rand), faults)
+	postOut, err := s.prover.GenerateFallbackPoSt(ctx, abi.ActorID(mid), ssi, abi.PoStRandomness(rand), faults)
 	if err != nil {
 		return nil, xerrors.Errorf("running post failed: %w", err)
 	}
@@ -228,22 +234,18 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, eps abi.ChainEpoch, t
 	}, nil
 }
 
-func (s *WindowPoStScheduler) sortedSectorInfo(ctx context.Context, ts *types.TipSet) ([]abi.SectorInfo, error) {
-	sset, err := s.api.StateMinerProvingSet(ctx, s.actor, ts.Key())
+func (s *WindowPoStScheduler) sortedSectorInfo(ctx context.Context, partitions []abiPartition, ts *types.TipSet) ([]abi.SectorInfo, error) {
+	sset, err := s.getPartitionSectors(ts, partitions)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get proving set for miner (tsH: %d): %w", ts.Height(), err)
-	}
-	if len(sset) == 0 {
-		log.Warn("empty proving set! (ts.H: %d)", ts.Height())
+		return nil, err
 	}
 
 	sbsi := make([]abi.SectorInfo, len(sset))
 	for k, sector := range sset {
-
 		sbsi[k] = abi.SectorInfo{
-			SectorNumber:    sector.Info.Info.SectorNumber,
-			SealedCID:       sector.Info.Info.SealedCID,
-			RegisteredProof: sector.Info.Info.RegisteredProof,
+			SectorNumber:    sector.SectorNumber,
+			SealedCID:       sector.SealedCID,
+			RegisteredProof: sector.RegisteredProof,
 		}
 	}
 
