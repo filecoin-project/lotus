@@ -159,6 +159,8 @@ github.com/filecoin-project/specs-actors v0.0.0-20200324235424-aef9b20a9fb1 h1:I
 github.com/filecoin-project/specs-actors v0.0.0-20200324235424-aef9b20a9fb1/go.mod h1:5WngRgTN5Eo4+0SjCBqLzEr2l6Mj45DrP2606gBhqI0=
 github.com/filecoin-project/specs-storage v0.0.0-20200317225704-7420bc655c38 h1:ky+rfX3bG1TjOBLn14V674q+iwZpalyKzZxGRNzA11I=
 github.com/filecoin-project/specs-storage v0.0.0-20200317225704-7420bc655c38/go.mod h1:dUmzHS7izOD6HW3/JpzFrjxnptxbsHXBlO8puK2UzBk=
+github.com/filecoin-project/storage-fsm v0.0.0-20200407163248-25993479b13f h1:WPA4Lj1PLBVKFe8nKs8UdJ7fj4luFKR62eRDpVNo9CU=
+github.com/filecoin-project/storage-fsm v0.0.0-20200407163248-25993479b13f/go.mod h1:t3dyEJiCkdQjo0h75mir3x5a0vSPHi9woQO7UkkZpFg=
 github.com/fsnotify/fsnotify v1.4.7 h1:IXs+QLmnXW2CcXuY+8Mzv/fWEsPGWxqefPtCP5CnV9I=
 github.com/fsnotify/fsnotify v1.4.7/go.mod h1:jwhsz4b93w/PPRr/qN1Yymfu8t87LnFCMoQvtojpjFo=
 github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1 h1:EzDjxMg43q1tA2c0MV3tNbaontnHLplHyFF6M5KiVP0=
