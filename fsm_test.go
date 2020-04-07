@@ -14,7 +14,7 @@ func init() {
 }
 
 func (t *test) planSingle(evt interface{}) {
-	_, err := t.s.plan([]statemachine.Event{{evt}}, t.state)
+	_, err := t.s.plan([]statemachine.Event{{User: evt}}, t.state)
 	require.NoError(t.t, err)
 }
 
@@ -22,8 +22,6 @@ type test struct {
 	s     *Sealing
 	t     *testing.T
 	state *SectorInfo
-
-	next func(statemachine.Context, SectorInfo) error
 }
 
 func TestHappyPath(t *testing.T) {
@@ -80,12 +78,13 @@ func TestSeedRevert(t *testing.T) {
 	m.planSingle(SectorSeedReady{})
 	require.Equal(m.t, m.state.State, Committing)
 
-	_, err := m.s.plan([]statemachine.Event{{SectorSeedReady{SeedValue: nil, SeedEpoch: 5}}, {SectorCommitted{}}}, m.state)
+	_, err := m.s.plan([]statemachine.Event{{User: SectorSeedReady{SeedValue: nil, SeedEpoch: 5}}, {User: SectorCommitted{}}}, m.state)
 	require.NoError(t, err)
 	require.Equal(m.t, m.state.State, Committing)
 
 	// not changing the seed this time
-	_, err = m.s.plan([]statemachine.Event{{SectorSeedReady{SeedValue: nil, SeedEpoch: 5}}, {SectorCommitted{}}}, m.state)
+	_, err = m.s.plan([]statemachine.Event{{User: SectorSeedReady{SeedValue: nil, SeedEpoch: 5}}, {User: SectorCommitted{}}}, m.state)
+	require.NoError(t, err)
 	require.Equal(m.t, m.state.State, CommitWait)
 
 	m.planSingle(SectorProving{})
@@ -102,7 +101,7 @@ func TestPlanCommittingHandlesSectorCommitFailed(t *testing.T) {
 		state: &SectorInfo{State: Committing},
 	}
 
-	events := []statemachine.Event{{SectorCommitFailed{}}}
+	events := []statemachine.Event{{User: SectorCommitFailed{}}}
 
 	require.NoError(t, planCommitting(events, m.state))
 

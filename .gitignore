@@ -13,3 +13,12 @@
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
+
+# filecoin-ffi assets
+*.a
+*.h
+*.pc
+
+# build artifacts
+build/.filecoin-ffi-install
+build/.update-submodules

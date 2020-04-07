@@ -9,11 +9,11 @@ import (
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
-	"github.com/filecoin-project/lotus/lib/nullreader"
+	nr "github.com/filecoin-project/storage-fsm/lib/nullreader"
 )
 
 func (m *Sealing) pledgeReader(size abi.UnpaddedPieceSize) io.Reader {
-	return io.LimitReader(&nullreader.Reader{}, int64(size))
+	return io.LimitReader(&nr.Reader{}, int64(size))
 }
 
 func (m *Sealing) pledgeSector(ctx context.Context, sectorID abi.SectorID, existingPieceSizes []abi.UnpaddedPieceSize, sizes ...abi.UnpaddedPieceSize) ([]Piece, error) {
