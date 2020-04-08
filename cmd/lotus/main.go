@@ -50,9 +50,10 @@ func main() {
 	defer span.End()
 
 	app := &cli.App{
-		Name:    "lotus",
-		Usage:   "Filecoin decentralized storage network client",
-		Version: build.UserVersion,
+		Name:                  "lotus",
+		Usage:                 "Filecoin decentralized storage network client",
+		Version:               build.UserVersion,
+		EnableShellCompletion: true,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    "repo",
