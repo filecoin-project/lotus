@@ -9,7 +9,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/miner"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"golang.org/x/xerrors"
 
@@ -67,37 +66,11 @@ func init() {
 				}
 
 			}
-
-			epostp := &types.EPostProof{
-				Proofs: []abi.PoStProof{{ProofBytes: []byte("valid proof")}},
-				Candidates: []types.EPostTicket{
-					{
-						ChallengeIndex: 0,
-						SectorID:       1,
-					},
-				},
-			}
-
-			{
-				r, err := api.ChainGetRandomness(ctx, head.Key(), crypto.DomainSeparationTag_ElectionPoStChallengeSeed, (head.Height()+1)-build.EcRandomnessLookback, addr.Bytes())
-				if err != nil {
-					return xerrors.Errorf("chain get randomness: %w", err)
-				}
-				mworker, err := api.StateMinerWorker(ctx, addr, head.Key())
-				if err != nil {
-					return xerrors.Errorf("failed to get miner worker: %w", err)
-				}
-
-				vrfout, err := gen.ComputeVRF(ctx, api.WalletSign, mworker, r)
-				if err != nil {
-					return xerrors.Errorf("failed to compute VRF: %w", err)
-				}
-				epostp.PostRand = vrfout
-			}
+			// TODO: beacon
 
 			uts := head.MinTimestamp() + uint64(build.BlockDelay)
 			nheight := head.Height() + 1
-			blk, err := api.MinerCreateBlock(ctx, addr, head.Key(), ticket, epostp, nil, msgs, nheight, uts)
+			blk, err := api.MinerCreateBlock(ctx, addr, head.Key(), ticket, nil, nil, msgs, nheight, uts)
 			if err != nil {
 				return xerrors.Errorf("creating block: %w", err)
 			}
