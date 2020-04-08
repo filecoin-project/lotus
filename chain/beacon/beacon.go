@@ -96,7 +96,7 @@ type mockBeacon struct {
 	interval time.Duration
 }
 
-func NewMockBeacon(interval time.Duration) *mockBeacon {
+func NewMockBeacon(interval time.Duration) DrandBeacon {
 	mb := &mockBeacon{interval: interval}
 
 	return mb

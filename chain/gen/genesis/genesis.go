@@ -264,7 +264,7 @@ func MakeGenesisBlock(ctx context.Context, bs bstore.Blockstore, sys runtime.Sys
 		BlockSig:              nil,
 		Timestamp:             template.Timestamp,
 		BeaconEntries: []types.BeaconEntry{
-			types.BeaconEntry{
+			{
 				Round: 0,
 				Data:  make([]byte, 32),
 			},

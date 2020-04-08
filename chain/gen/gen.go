@@ -284,7 +284,7 @@ func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m add
 		return nil, nil, nil, xerrors.Errorf("getLatestBeaconEntry: %w", err)
 	}
 
-	entries, err := beacon.BeaconEntriesForBlock(ctx, cg.beacon, abi.ChainEpoch(round), *prev)
+	entries, err := beacon.BeaconEntriesForBlock(ctx, cg.beacon, round, *prev)
 	if err != nil {
 		return nil, nil, nil, xerrors.Errorf("get beacon entries for block: %w", err)
 	}
@@ -366,7 +366,7 @@ func (cg *ChainGen) NextTipSetFromMiners(base *types.TipSet, miners []address.Ad
 			if et != nil {
 				// TODO: winning post proof
 				_ = ticket
-				fblk, err := cg.makeBlock(base, m, ticket, et, bvals, abi.ChainEpoch(round), msgs)
+				fblk, err := cg.makeBlock(base, m, ticket, et, bvals, round, msgs)
 				if err != nil {
 					return nil, xerrors.Errorf("making a block for next tipset failed: %w", err)
 				}
