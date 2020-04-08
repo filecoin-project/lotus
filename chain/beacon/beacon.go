@@ -22,43 +22,40 @@ type Response struct {
 }
 
 type DrandBeacon interface {
-	RoundTime() time.Duration
+	//RoundTime() uint64
+	//StartTime() uint64
 	LastEntry() (types.BeaconEntry, error)
 	Entry(context.Context, uint64) <-chan Response
-	VerifyEntry(types.BeaconEntry) (bool, error)
-	BeaconIndexesForEpoch(abi.ChainEpoch, int) []uint64
+	VerifyEntry(types.BeaconEntry, types.BeaconEntry) error
+	BeaconRoundsForEpoch(abi.ChainEpoch, types.BeaconEntry) []uint64
 	IsEntryForEpoch(e types.BeaconEntry, epoch abi.ChainEpoch, nulls int) (bool, error)
 }
 
-func ValidateBlockValues(b DrandBeacon, h *types.BlockHeader, nulls int) error {
-	for i, be := range h.BeaconEntries {
-		if ok, err := b.IsEntryForEpoch(be, h.Height, nulls); err != nil {
-			return xerrors.Errorf("failed to check if beacon belongs: %w")
-		} else if !ok {
-			return xerrors.Errorf("beacon does not belong in this block: %d", i)
-		}
-
-		if ok, err := b.VerifyEntry(be); err != nil {
-			return xerrors.Errorf("failed to verify beacon entry %d: %w", i, err)
-		} else if !ok {
-			return xerrors.Errorf("beacon entry %d was invalid", i)
-		}
+func ValidateBlockValues(b DrandBeacon, h *types.BlockHeader, prevEntry types.BeaconEntry) error {
+	rounds := b.BeaconRoundsForEpoch(h.Height, prevEntry)
+	if len(rounds) != len(h.BeaconEntries) {
+		return xerrors.Errorf("mismatch in number of expected beacon entries (exp %d, got %d)", len(rounds), len(h.BeaconEntries))
 	}
 
-	// validate that block contains entry for its own epoch
-	should := b.BeaconIndexesForEpoch(h.Height, 0)
-	if should[len(should)-1] != h.BeaconEntries[len(h.BeaconEntries)-1].Index {
-		return xerrors.Errorf("missing beacon entry for this block")
+	for i, e := range h.BeaconEntries {
+		if e.Round != rounds[i] {
+			return xerrors.Errorf("entry at index %d did not match expected round (exp %d, got %d)", i, rounds[i], e.Round)
+		}
+
+		if err := b.VerifyEntry(e, prevEntry); err != nil {
+			return xerrors.Errorf("beacon entry %d was invalid: %w", i, err)
+		}
+		prevEntry = e
 	}
 
 	return nil
 }
 
-func BeaconEntriesForBlock(ctx context.Context, beacon DrandBeacon, round abi.ChainEpoch, nulls int) ([]types.BeaconEntry, error) {
+func BeaconEntriesForBlock(ctx context.Context, beacon DrandBeacon, round abi.ChainEpoch, prev types.BeaconEntry) ([]types.BeaconEntry, error) {
 	start := time.Now()
 
 	var out []types.BeaconEntry
-	for _, ei := range beacon.BeaconIndexesForEpoch(round, nulls) {
+	for _, ei := range beacon.BeaconRoundsForEpoch(round, prev) {
 		rch := beacon.Entry(ctx, ei)
 		select {
 		case resp := <-rch:
@@ -76,6 +73,7 @@ func BeaconEntriesForBlock(ctx context.Context, beacon DrandBeacon, round abi.Ch
 	return out, nil
 }
 
+// Mock beacon assumes that filecoin rounds are 1:1 mapped with the beacon rounds
 type mockBeacon struct {
 	interval time.Duration
 }
@@ -99,7 +97,7 @@ func (mb *mockBeacon) entryForIndex(index uint64) types.BeaconEntry {
 	binary.BigEndian.PutUint64(buf, index)
 	rval := blake2b.Sum256(buf)
 	return types.BeaconEntry{
-		Index: index,
+		Round: index,
 		Data:  rval[:],
 	}
 }
@@ -111,22 +109,24 @@ func (mb *mockBeacon) Entry(ctx context.Context, index uint64) <-chan Response {
 	return out
 }
 
-func (mb *mockBeacon) VerifyEntry(e types.BeaconEntry) (bool, error) {
+func (mb *mockBeacon) VerifyEntry(from types.BeaconEntry, to types.BeaconEntry) error {
 	// TODO: cache this, especially for bls
-	oe := mb.entryForIndex(e.Index)
-	return bytes.Equal(e.Data, oe.Data), nil
+	oe := mb.entryForIndex(from.Round)
+	if !bytes.Equal(from.Data, oe.Data) {
+		return xerrors.Errorf("mock beacon entry was invalid!")
+	}
+	return nil
 }
 
 func (mb *mockBeacon) IsEntryForEpoch(e types.BeaconEntry, epoch abi.ChainEpoch, nulls int) (bool, error) {
-	return int64(e.Index) <= int64(epoch) && int64(epoch)-int64(nulls) >= int64(e.Index), nil
+	return int64(e.Round) <= int64(epoch) && int64(epoch)-int64(nulls) >= int64(e.Round), nil
 }
 
-func (mb *mockBeacon) BeaconIndexesForEpoch(epoch abi.ChainEpoch, nulls int) []uint64 {
+func (mb *mockBeacon) BeaconRoundsForEpoch(epoch abi.ChainEpoch, prevEntry types.BeaconEntry) []uint64 {
 	var out []uint64
-	for i := nulls; i > 0; i-- {
-		out = append(out, uint64(epoch)-uint64(i))
+	for i := prevEntry.Round + 1; i < uint64(epoch); i++ {
+		out = append(out, i)
 	}
-	out = append(out, uint64(epoch))
 	return out
 }
 

@@ -290,12 +290,40 @@ func (m *Miner) hasPower(ctx context.Context, addr address.Address, ts *types.Ti
 	return !power.MinerPower.Equals(types.NewInt(0)), nil
 }
 
+// Note: copied from the chainstore method. Maybe we should expose this over the api?
+func (m *Miner) getLatestBeaconEntry(ctx context.Context, ts *types.TipSet) (*types.BeaconEntry, error) {
+	cur := ts
+	for i := 0; i < 20; i++ {
+		cbe := cur.Blocks()[0].BeaconEntries
+		if len(cbe) > 0 {
+			return &cbe[len(cbe)-1], nil
+		}
+
+		if cur.Height() == 0 {
+			return nil, xerrors.Errorf("made it back to genesis block without finding beacon entry")
+		}
+
+		next, err := m.api.ChainGetTipSet(ctx, cur.Parents())
+		if err != nil {
+			return nil, xerrors.Errorf("failed to load parents when searching back for latest beacon entry: %w", err)
+		}
+		cur = next
+	}
+
+	return nil, xerrors.Errorf("found NO beacon entries in the 20 blocks prior to given tipset")
+}
+
 func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningBase) (*types.BlockMsg, error) {
 	log.Debugw("attempting to mine a block", "tipset", types.LogCids(base.ts.Cids()))
 	start := time.Now()
 
+	beaconPrev, err := m.getLatestBeaconEntry(ctx, base.ts)
+	if err != nil {
+		return nil, xerrors.Errorf("getLatestBeaconEntry: %w", err)
+	}
+
 	round := base.ts.Height() + base.nullRounds + 1
-	bvals, err := beacon.BeaconEntriesForBlock(ctx, m.beacon, round, int(base.nullRounds))
+	bvals, err := beacon.BeaconEntriesForBlock(ctx, m.beacon, round, *beaconPrev)
 	if err != nil {
 		return nil, xerrors.Errorf("get beacon entries failed: %w", err)
 	}
@@ -317,12 +345,17 @@ func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningB
 		return nil, xerrors.Errorf("scratching ticket failed: %w", err)
 	}
 
-	proofin, err := gen.IsRoundWinner(ctx, base.ts, int64(round), addr, m.epp, bvals[len(bvals)-1], m.api)
+	rbase := *beaconPrev
+	if len(bvals) > 0 {
+		rbase = bvals[len(bvals)-1]
+	}
+
+	winner, err := gen.IsRoundWinner(ctx, base.ts, round, addr, rbase, m.api)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to check if we win next round: %w", err)
 	}
 
-	if proofin == nil {
+	if !winner {
 		base.nullRounds++
 		return nil, nil
 	}
@@ -333,12 +366,8 @@ func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningB
 		return nil, xerrors.Errorf("failed to get pending messages: %w", err)
 	}
 
-	proof, err := gen.ComputeProof(ctx, m.epp, proofin)
-	if err != nil {
-		return nil, xerrors.Errorf("computing election proof: %w", err)
-	}
-
-	b, err := m.createBlock(base, addr, ticket, proof, bvals, pending)
+	// TODO: winning post proof
+	b, err := m.createBlock(base, addr, ticket, nil, bvals, pending)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to create block: %w", err)
 	}

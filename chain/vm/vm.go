@@ -188,7 +188,7 @@ func NewVM(base cid.Cid, height abi.ChainEpoch, r Rand, maddr address.Address, c
 }
 
 type Rand interface {
-	GetRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round int64, entropy []byte) ([]byte, error)
+	GetRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
 }
 
 type ApplyRet struct {

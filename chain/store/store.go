@@ -892,12 +892,12 @@ func (cs *ChainStore) TryFillTipSet(ts *types.TipSet) (*FullTipSet, error) {
 	return NewFullTipSet(out), nil
 }
 
-func drawRandomness(t *types.Ticket, pers crypto.DomainSeparationTag, round int64, entropy []byte) ([]byte, error) {
+func DrawRandomness(rbase []byte, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	h := blake2b.New256()
 	if err := binary.Write(h, binary.BigEndian, int64(pers)); err != nil {
 		return nil, xerrors.Errorf("deriving randomness: %w", err)
 	}
-	VRFDigest := blake2b.Sum256(t.VRFProof)
+	VRFDigest := blake2b.Sum256(rbase)
 	h.Write(VRFDigest[:])
 	if err := binary.Write(h, binary.BigEndian, round); err != nil {
 		return nil, xerrors.Errorf("deriving randomness: %w", err)
@@ -907,10 +907,10 @@ func drawRandomness(t *types.Ticket, pers crypto.DomainSeparationTag, round int6
 	return h.Sum(nil), nil
 }
 
-func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, pers crypto.DomainSeparationTag, round int64, entropy []byte) (out []byte, err error) {
+func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) (out []byte, err error) {
 	_, span := trace.StartSpan(ctx, "store.GetRandomness")
 	defer span.End()
-	span.AddAttributes(trace.Int64Attribute("round", round))
+	span.AddAttributes(trace.Int64Attribute("round", int64(round)))
 
 	/*
 		defer func() {
@@ -927,8 +927,8 @@ func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, pers cr
 
 		// if at (or just past -- for null epochs) appropriate epoch
 		// or at genesis (works for negative epochs)
-		if int64(nts.Height()) <= round || mtb.Height == 0 {
-			return drawRandomness(nts.MinTicketBlock().Ticket, pers, round, entropy)
+		if nts.Height() <= round || mtb.Height == 0 {
+			return DrawRandomness(nts.MinTicketBlock().Ticket.VRFProof, pers, round, entropy)
 		}
 
 		blks = mtb.Parents
@@ -1090,6 +1090,28 @@ func (cs *ChainStore) Import(r io.Reader) (*types.TipSet, error) {
 	return root, nil
 }
 
+func (cs *ChainStore) GetLatestBeaconEntry(ts *types.TipSet) (*types.BeaconEntry, error) {
+	cur := ts
+	for i := 0; i < 20; i++ {
+		cbe := cur.Blocks()[0].BeaconEntries
+		if len(cbe) > 0 {
+			return &cbe[len(cbe)-1], nil
+		}
+
+		if cur.Height() == 0 {
+			return nil, xerrors.Errorf("made it back to genesis block without finding beacon entry")
+		}
+
+		next, err := cs.LoadTipSet(cur.Parents())
+		if err != nil {
+			return nil, xerrors.Errorf("failed to load parents when searching back for latest beacon entry: %w", err)
+		}
+		cur = next
+	}
+
+	return nil, xerrors.Errorf("found NO beacon entries in the 20 blocks prior to given tipset")
+}
+
 type chainRand struct {
 	cs   *ChainStore
 	blks []cid.Cid
@@ -1104,7 +1126,7 @@ func NewChainRand(cs *ChainStore, blks []cid.Cid, bheight abi.ChainEpoch) vm.Ran
 	}
 }
 
-func (cr *chainRand) GetRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round int64, entropy []byte) ([]byte, error) {
+func (cr *chainRand) GetRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	return cr.cs.GetRandomness(ctx, cr.blks, pers, round, entropy)
 }
 
