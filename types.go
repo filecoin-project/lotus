@@ -98,7 +98,7 @@ func (t *SectorInfo) existingPieces() []abi.UnpaddedPieceSize {
 	return out
 }
 
-type TicketFn func(context.Context) (abi.SealRandomness, abi.ChainEpoch, error)
+type TicketFn func(ctx context.Context, tok TipSetToken) (abi.SealRandomness, abi.ChainEpoch, error)
 
 type SectorIDCounter interface {
 	Next() (abi.SectorNumber, error)
