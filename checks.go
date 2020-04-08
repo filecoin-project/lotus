@@ -33,32 +33,32 @@ func checkPieces(ctx context.Context, si SectorInfo, api SealingAPI) error {
 		return &ErrApi{xerrors.Errorf("getting chain head: %w", err)}
 	}
 
-	for i, pdi := range si.Pieces {
+	for i, p := range si.Pieces {
 		// if no deal is associated with the piece, ensure that we added it as
 		// filler (i.e. ensure that it has a zero PieceCID)
-		if pdi.DealInfo == nil {
-			exp := zerocomm.ZeroPieceCommitment(pdi.Piece.Size.Unpadded())
-			if !pdi.Piece.PieceCID.Equals(exp) {
-				return &ErrInvalidPiece{xerrors.Errorf("sector %d piece %d had non-zero PieceCID %+v", si.SectorNumber, i, pdi.Piece.PieceCID)}
+		if p.DealInfo == nil {
+			exp := zerocomm.ZeroPieceCommitment(p.Piece.Size.Unpadded())
+			if !p.Piece.PieceCID.Equals(exp) {
+				return &ErrInvalidPiece{xerrors.Errorf("sector %d piece %d had non-zero PieceCID %+v", si.SectorNumber, i, p.Piece.PieceCID)}
 			}
 			continue
 		}
 
-		proposal, _, err := api.StateMarketStorageDeal(ctx, pdi.DealInfo.DealID, tok)
+		proposal, _, err := api.StateMarketStorageDeal(ctx, p.DealInfo.DealID, tok)
 		if err != nil {
-			return &ErrApi{xerrors.Errorf("getting deal %d for piece %d: %w", pdi.DealInfo.DealID, i, err)}
+			return &ErrApi{xerrors.Errorf("getting deal %d for piece %d: %w", p.DealInfo.DealID, i, err)}
 		}
 
-		if proposal.PieceCID != pdi.Piece.PieceCID {
-			return &ErrInvalidDeals{xerrors.Errorf("piece %d (of %d) of sector %d refers deal %d with wrong PieceCID: %x != %x", i, len(si.Pieces), si.SectorNumber, pdi.DealInfo.DealID, pdi.Piece.PieceCID, proposal.PieceCID)}
+		if proposal.PieceCID != p.Piece.PieceCID {
+			return &ErrInvalidDeals{xerrors.Errorf("piece %d (of %d) of sector %d refers deal %d with wrong PieceCID: %x != %x", i, len(si.Pieces), si.SectorNumber, p.DealInfo.DealID, p.Piece.PieceCID, proposal.PieceCID)}
 		}
 
-		if pdi.Piece.Size != proposal.PieceSize {
-			return &ErrInvalidDeals{xerrors.Errorf("piece %d (of %d) of sector %d refers deal %d with different size: %d != %d", i, len(si.Pieces), si.SectorNumber, pdi.DealInfo.DealID, pdi.Piece.Size, proposal.PieceSize)}
+		if p.Piece.Size != proposal.PieceSize {
+			return &ErrInvalidDeals{xerrors.Errorf("piece %d (of %d) of sector %d refers deal %d with different size: %d != %d", i, len(si.Pieces), si.SectorNumber, p.DealInfo.DealID, p.Piece.Size, proposal.PieceSize)}
 		}
 
 		if height >= proposal.StartEpoch {
-			return &ErrExpiredDeals{xerrors.Errorf("piece %d (of %d) of sector %d refers expired deal %d - should start at %d, head %d", i, len(si.Pieces), si.SectorNumber, pdi.DealInfo.DealID, proposal.StartEpoch, height)}
+			return &ErrExpiredDeals{xerrors.Errorf("piece %d (of %d) of sector %d refers expired deal %d - should start at %d, head %d", i, len(si.Pieces), si.SectorNumber, p.DealInfo.DealID, proposal.StartEpoch, height)}
 		}
 	}
 

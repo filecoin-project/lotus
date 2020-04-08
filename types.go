@@ -88,30 +88,27 @@ type SectorInfo struct {
 
 func (t *SectorInfo) pieceInfos() []abi.PieceInfo {
 	out := make([]abi.PieceInfo, len(t.Pieces))
-	for i, pdi := range t.Pieces {
-		out[i] = abi.PieceInfo{
-			Size:     pdi.Piece.Size,
-			PieceCID: pdi.Piece.PieceCID,
-		}
+	for i, p := range t.Pieces {
+		out[i] = p.Piece
 	}
 	return out
 }
 
 func (t *SectorInfo) dealIDs() []abi.DealID {
 	out := make([]abi.DealID, 0, len(t.Pieces))
-	for _, pdi := range t.Pieces {
-		if pdi.DealInfo == nil {
+	for _, p := range t.Pieces {
+		if p.DealInfo == nil {
 			continue
 		}
-		out = append(out, pdi.DealInfo.DealID)
+		out = append(out, p.DealInfo.DealID)
 	}
 	return out
 }
 
 func (t *SectorInfo) existingPieceSizes() []abi.UnpaddedPieceSize {
 	out := make([]abi.UnpaddedPieceSize, len(t.Pieces))
-	for i, pdi := range t.Pieces {
-		out[i] = pdi.Piece.Size.Unpadded()
+	for i, p := range t.Pieces {
+		out[i] = p.Piece.Size.Unpadded()
 	}
 	return out
 }

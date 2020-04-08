@@ -69,15 +69,15 @@ func (m *Sealing) PledgeSector() error {
 			return
 		}
 
-		pdis := make([]Piece, len(pieces))
-		for idx := range pdis {
-			pdis[idx] = Piece{
+		ps := make([]Piece, len(pieces))
+		for idx := range ps {
+			ps[idx] = Piece{
 				Piece:    pieces[idx],
 				DealInfo: nil,
 			}
 		}
 
-		if err := m.newSector(sid, rt, pdis); err != nil {
+		if err := m.newSector(sid, rt, ps); err != nil {
 			log.Errorf("%+v", err)
 			return
 		}
