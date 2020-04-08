@@ -280,12 +280,30 @@ func CarWalkFunc(nd format.Node) (out []*format.Link, err error) {
 func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m address.Address, round abi.ChainEpoch) ([]types.BeaconEntry, *types.Ticket, error) {
 	mc := &mca{w: cg.w, sm: cg.sm}
 
+	prev, err := cg.cs.GetLatestBeaconEntry(pts)
+	if err != nil {
+		return nil, nil, xerrors.Errorf("getLatestBeaconEntry: %w", err)
+	}
+
+	entries, err := beacon.BeaconEntriesForBlock(ctx, cg.beacon, abi.ChainEpoch(round), *prev)
+	if err != nil {
+		return nil, nil, xerrors.Errorf("get beacon entries for block: %w", err)
+	}
+	if len(entries) == 0 {
+		panic("no drand")
+	}
+
+	rbase := *prev
+	if len(entries) > 0 {
+		rbase = entries[len(entries)-1]
+	}
+
 	buf := new(bytes.Buffer)
 	if err := m.MarshalCBOR(buf); err != nil {
 		return nil, nil, xerrors.Errorf("failed to cbor marshal address: %w", err)
 	}
 
-	ticketRand, err := mc.ChainGetRandomness(ctx, pts.Key(), crypto.DomainSeparationTag_TicketProduction, abi.ChainEpoch(round-build.EcRandomnessLookback), buf.Bytes())
+	ticketRand, err := store.DrawRandomness(rbase.Data, 17, round, buf.Bytes())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -304,21 +322,6 @@ func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m add
 
 	tick := &types.Ticket{
 		VRFProof: vrfout,
-	}
-
-	prev, err := cg.cs.GetLatestBeaconEntry(pts)
-	if err != nil {
-		return nil, nil, xerrors.Errorf("getLatestBeaconEntry: %w", err)
-	}
-
-	entries, err := beacon.BeaconEntriesForBlock(ctx, cg.beacon, abi.ChainEpoch(round), *prev)
-	if err != nil {
-		return nil, nil, xerrors.Errorf("get beacon entries for block: %w", err)
-	}
-
-	rbase := *prev
-	if len(entries) > 0 {
-		rbase = entries[len(entries)-1]
 	}
 
 	// TODO winning post return?
@@ -358,6 +361,9 @@ func (cg *ChainGen) NextTipSetFromMiners(base *types.TipSet, miners []address.Ad
 			bvals, t, err := cg.nextBlockProof(context.TODO(), base, m, round)
 			if err != nil {
 				return nil, xerrors.Errorf("next block proof: %w", err)
+			}
+			if len(bvals) == 0 {
+				panic("no drand")
 			}
 
 			if t != nil {

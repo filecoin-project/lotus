@@ -511,12 +511,12 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		return xerrors.Errorf("load parent tipset failed (%s): %w", h.Parents, err)
 	}
 
-	prevBeacon, err := syncer.getLatestBeaconEntry(baseTs)
+	prevBeacon, err := syncer.store.GetLatestBeaconEntry(baseTs)
 	if err != nil {
 		return xerrors.Errorf("failed to get latest beacon entry: %w", err)
 	}
 
-	nulls := h.Height - (baseTs.Height() + 1)
+	//nulls := h.Height - (baseTs.Height() + 1)
 
 	// fast checks first
 	if h.BlockSig == nil {
@@ -614,7 +614,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	})
 
 	beaconValuesCheck := async.Err(func() error {
-		if err := beacon.ValidateBlockValues(syncer.beacon, h, int(nulls)); err != nil {
+		if err := beacon.ValidateBlockValues(syncer.beacon, h, *prevBeacon); err != nil {
 			return xerrors.Errorf("failed to validate blocks random beacon values: %w", err)
 		}
 		// TODO: check if first value links to value from previous block/previous block containing a value
@@ -622,14 +622,9 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	})
 
 	tktsCheck := async.Err(func() error {
-		buf := new(bytes.Buffer)
-		if err := h.Miner.MarshalCBOR(buf); err != nil {
-			return xerrors.Errorf("failed to marshal miner address to cbor: %w", err)
-		}
-
 		baseBeacon := prevBeacon
 		if len(h.BeaconEntries) > 0 {
-			baseBeacon = h.BeaconEntries[len(h.BeaconEntries)-1]
+			baseBeacon = &h.BeaconEntries[len(h.BeaconEntries)-1]
 		}
 
 		buf := new(bytes.Buffer)
@@ -638,7 +633,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		}
 
 		// TODO: use real DST from specs actors when it lands
-		vrfBase, err := store.DrawRandomness(baseBeacon.Data, 17, int64(h.Height), buf.Bytes())
+		vrfBase, err := store.DrawRandomness(baseBeacon.Data, 17, h.Height, buf.Bytes())
 		if err != nil {
 			return xerrors.Errorf("failed to compute vrf base for ticket: %w", err)
 		}
@@ -650,19 +645,19 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		return nil
 	})
 
-	eproofCheck := async.Err(func() error {
-		if err := syncer.VerifyElectionPoStProof(ctx, h, waddr); err != nil {
-			return xerrors.Errorf("invalid election post: %w", err)
-		}
-		return nil
-	})
+	//eproofCheck := async.Err(func() error {
+	//if err := syncer.VerifyElectionPoStProof(ctx, h, waddr); err != nil {
+	//return xerrors.Errorf("invalid election post: %w", err)
+	//}
+	//return nil
+	//})
 
 	await := []async.ErrorFuture{
 		minerCheck,
 		tktsCheck,
 		blockSigCheck,
 		beaconValuesCheck,
-		eproofCheck,
+		//eproofCheck,
 		winnerCheck,
 		msgsCheck,
 	}
@@ -704,7 +699,7 @@ func (syncer *Syncer) VerifyElectionPoStProof(ctx context.Context, h *types.Bloc
 	if err := h.Miner.MarshalCBOR(buf); err != nil {
 		return xerrors.Errorf("failed to marshal miner to cbor: %w", err)
 	}
-	rand, err := syncer.sm.ChainStore().GetRandomness(ctx, curTs.Cids(), crypto.DomainSeparationTag_ElectionPoStChallengeSeed, int64(h.Height-build.EcRandomnessLookback), buf.Bytes())
+	rand, err := syncer.sm.ChainStore().GetRandomness(ctx, curTs.Cids(), crypto.DomainSeparationTag_ElectionPoStChallengeSeed, h.Height-build.EcRandomnessLookback, buf.Bytes())
 	if err != nil {
 		return xerrors.Errorf("failed to get randomness for verifying election proof: %w", err)
 	}
@@ -979,10 +974,10 @@ func (syncer *Syncer) collectHeaders(ctx context.Context, from *types.TipSet, to
 			syncer.bad.Add(from.Cids()[0], "no beacon entires")
 			return nil, xerrors.Errorf("block (%s) contained no drand entires", from.Cids()[0])
 		}
-		cur := targetBE[0].Index
+		cur := targetBE[0].Round
 
 		for _, e := range targetBE[1:] {
-			if cur >= e.Index {
+			if cur >= e.Round {
 				syncer.bad.Add(from.Cids()[0], "wrong order of beacon entires")
 				return nil, xerrors.Errorf("wrong order of beacon entires")
 			}
@@ -994,7 +989,7 @@ func (syncer *Syncer) collectHeaders(ctx context.Context, from *types.TipSet, to
 				return nil, xerrors.Errorf("tipset contained different number for beacon entires")
 			}
 			for i, be := range bh.BeaconEntries {
-				if targetBE[i].Index != be.Index || !bytes.Equal(targetBE[i].Data, be.Data) {
+				if targetBE[i].Round != be.Round || !bytes.Equal(targetBE[i].Data, be.Data) {
 					// cannot mark bad, I think @Kubuxu
 					return nil, xerrors.Errorf("tipset contained different number for beacon entires")
 				}
@@ -1330,4 +1325,25 @@ func (syncer *Syncer) MarkBad(blk cid.Cid) {
 
 func (syncer *Syncer) CheckBadBlockCache(blk cid.Cid) (string, bool) {
 	return syncer.bad.Has(blk)
+}
+func (syncer *Syncer) getLatestBeaconEntry(ctx context.Context, ts *types.TipSet) (*types.BeaconEntry, error) {
+	cur := ts
+	for i := 0; i < 20; i++ {
+		cbe := cur.Blocks()[0].BeaconEntries
+		if len(cbe) > 0 {
+			return &cbe[len(cbe)-1], nil
+		}
+
+		if cur.Height() == 0 {
+			return nil, xerrors.Errorf("made it back to genesis block without finding beacon entry")
+		}
+
+		next, err := syncer.store.LoadTipSet(cur.Parents())
+		if err != nil {
+			return nil, xerrors.Errorf("failed to load parents when searching back for latest beacon entry: %w", err)
+		}
+		cur = next
+	}
+
+	return nil, xerrors.Errorf("found NO beacon entries in the 20 blocks prior to given tipset")
 }

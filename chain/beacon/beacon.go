@@ -124,7 +124,7 @@ func (mb *mockBeacon) IsEntryForEpoch(e types.BeaconEntry, epoch abi.ChainEpoch,
 
 func (mb *mockBeacon) BeaconRoundsForEpoch(epoch abi.ChainEpoch, prevEntry types.BeaconEntry) []uint64 {
 	var out []uint64
-	for i := prevEntry.Round + 1; i < uint64(epoch); i++ {
+	for i := prevEntry.Round + 1; i <= uint64(epoch); i++ {
 		out = append(out, i)
 	}
 	return out
