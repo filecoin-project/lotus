@@ -9,13 +9,13 @@ import (
 
 	address "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 	lru "github.com/hashicorp/golang-lru"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/gen"
-	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -355,7 +355,7 @@ func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningB
 		return nil, xerrors.Errorf("failed to check if we win next round: %w", err)
 	}
 
-	if !winner {
+	if winner == nil {
 		base.nullRounds++
 		return nil, nil
 	}
@@ -367,7 +367,7 @@ func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningB
 	}
 
 	// TODO: winning post proof
-	b, err := m.createBlock(base, addr, ticket, nil, bvals, pending)
+	b, err := m.createBlock(base, addr, ticket, winner, bvals, pending)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to create block: %w", err)
 	}
@@ -391,7 +391,8 @@ func (m *Miner) computeTicket(ctx context.Context, addr address.Address, brand *
 	if err := addr.MarshalCBOR(buf); err != nil {
 		return nil, xerrors.Errorf("failed to marshal address to cbor: %w", err)
 	}
-	input, err := store.DrawRandomness(brand.Data, 17, (base.ts.Height() + base.nullRounds + 1), buf.Bytes())
+	input, err := m.api.ChainGetRandomness(ctx, base.ts.Key(), crypto.DomainSeparationTag_TicketProduction,
+		base.ts.Height()+base.nullRounds+1-build.TicketRandomnessLookback, buf.Bytes())
 	if err != nil {
 		return nil, err
 	}
@@ -407,7 +408,7 @@ func (m *Miner) computeTicket(ctx context.Context, addr address.Address, brand *
 }
 
 func (m *Miner) createBlock(base *MiningBase, addr address.Address, ticket *types.Ticket,
-	proof *types.EPostProof, bvals []types.BeaconEntry, pending []*types.SignedMessage) (*types.BlockMsg, error) {
+	eproof *types.ElectionProof, bvals []types.BeaconEntry, pending []*types.SignedMessage) (*types.BlockMsg, error) {
 	msgs, err := SelectMessages(context.TODO(), m.api.StateGetActor, base.ts, pending)
 	if err != nil {
 		return nil, xerrors.Errorf("message filtering failed: %w", err)
@@ -423,7 +424,7 @@ func (m *Miner) createBlock(base *MiningBase, addr address.Address, ticket *type
 	nheight := base.ts.Height() + base.nullRounds + 1
 
 	// why even return this? that api call could just submit it for us
-	return m.api.MinerCreateBlock(context.TODO(), addr, base.ts.Key(), ticket, proof, bvals, msgs, nheight, uint64(uts))
+	return m.api.MinerCreateBlock(context.TODO(), addr, base.ts.Key(), ticket, eproof, bvals, msgs, nheight, uint64(uts))
 }
 
 type ActorLookup func(context.Context, address.Address, types.TipSetKey) (*types.Actor, error)

@@ -22,16 +22,8 @@ type Ticket struct {
 	VRFProof []byte
 }
 
-type EPostTicket struct {
-	Partial        []byte
-	SectorID       abi.SectorNumber
-	ChallengeIndex uint64
-}
-
-type EPostProof struct {
-	Proofs     []abi.PoStProof
-	PostRand   []byte
-	Candidates []EPostTicket
+type ElectionProof struct {
+	VRFProof []byte
 }
 
 type BeaconEntry struct {
@@ -44,7 +36,7 @@ type BlockHeader struct {
 
 	Ticket *Ticket // 1
 
-	EPostProof EPostProof // 2
+	ElectionProof *ElectionProof
 
 	BeaconEntries []BeaconEntry
 
@@ -173,7 +165,7 @@ var blocksPerEpoch = NewInt(build.BlocksPerEpoch)
 
 const sha256bits = 256
 
-func IsTicketWinner(partialTicket []byte, mypow BigInt, totpow BigInt) bool {
+func IsTicketWinner(vrfTicket []byte, mypow BigInt, totpow BigInt) bool {
 	/*
 		Need to check that
 		(h(vrfout) + 1) / (max(h) + 1) <= e * myPower / totalPower
@@ -185,7 +177,7 @@ func IsTicketWinner(partialTicket []byte, mypow BigInt, totpow BigInt) bool {
 
 	*/
 
-	h := sha256.Sum256(partialTicket)
+	h := sha256.Sum256(vrfTicket)
 
 	lhs := BigFromBytes(h[:]).Int
 	lhs = lhs.Mul(lhs, totpow.Int)
@@ -197,14 +189,6 @@ func IsTicketWinner(partialTicket []byte, mypow BigInt, totpow BigInt) bool {
 
 	// h(vrfout) * totalPower < e * sectorSize * 2^256?
 	return lhs.Cmp(rhs) < 0
-}
-
-func ElectionPostChallengeCount(sectors uint64, faults uint64) uint64 {
-	if sectors-faults == 0 {
-		return 0
-	}
-	// ceil(sectors / SectorChallengeRatioDiv)
-	return (sectors-faults-1)/build.SectorChallengeRatioDiv + 1
 }
 
 func (t *Ticket) Equals(ot *Ticket) bool {

@@ -11,15 +11,13 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/hello"
 	"github.com/filecoin-project/lotus/paychmgr"
-	sealing "github.com/filecoin-project/storage-fsm"
 )
 
 func main() {
 	err := gen.WriteTupleEncodersToFile("./chain/types/cbor_gen.go", "types",
 		types.BlockHeader{},
 		types.Ticket{},
-		types.EPostProof{},
-		types.EPostTicket{},
+		types.ElectionProof{},
 		types.Message{},
 		types.SignedMessage{},
 		types.MsgMeta{},
@@ -74,13 +72,4 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = gen.WriteMapEncodersToFile("./storage/sealing/cbor_gen.go", "sealing",
-		sealing.Piece{},
-		sealing.SectorInfo{},
-		sealing.Log{},
-	)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
 }
