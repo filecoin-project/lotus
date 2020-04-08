@@ -48,7 +48,7 @@ type Runtime struct {
 	origin      address.Address
 	originNonce uint64
 
-	internalExecutions []*ExecutionResult
+	internalExecutions []*types.ExecutionResult
 	numActorsCreated   uint64
 }
 
@@ -337,7 +337,7 @@ func (rt *Runtime) internalSend(from, to address.Address, method abi.MethodNum, 
 		GasUsed:  0,
 	}
 
-	er := ExecutionResult{
+	er := types.ExecutionResult{
 		Msg:    msg,
 		MsgRct: &mr,
 	}
