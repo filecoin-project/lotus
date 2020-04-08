@@ -23,7 +23,6 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/miner"
 
 	"github.com/docker/go-units"
@@ -808,7 +807,7 @@ var stateComputeStateCmd = &cli.Command{
 	},
 }
 
-func printInternalExecutions(prefix string, trace []*vm.ExecutionResult) {
+func printInternalExecutions(prefix string, trace []*types.ExecutionResult) {
 	for _, im := range trace {
 		fmt.Printf("%s%s\t%s\t%s\t%d\t%x\t%d\t%x\n", prefix, im.Msg.From, im.Msg.To, im.Msg.Value, im.Msg.Method, im.Msg.Params, im.MsgRct.ExitCode, im.MsgRct.Return)
 		printInternalExecutions(prefix+"\t", im.Subcalls)
