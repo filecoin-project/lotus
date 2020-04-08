@@ -35,6 +35,7 @@ type SealingAPI interface {
 	SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, gasPrice big.Int, gasLimit int64, params []byte) (cid.Cid, error)
 	ChainHead(ctx context.Context) (TipSetToken, abi.ChainEpoch, error)
 	ChainGetRandomness(ctx context.Context, tok TipSetToken, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
+	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 }
 
 type Sealing struct {
@@ -104,8 +105,8 @@ func (m *Sealing) AllocatePiece(size abi.UnpaddedPieceSize) (sectorID abi.Sector
 	return sid, 0, nil
 }
 
-func (m *Sealing) SealPiece(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, sectorID abi.SectorNumber, pdi PieceWithDealInfo) error {
-	log.Infof("Seal piece for deal %d", pdi.DealInfo.DealID)
+func (m *Sealing) SealPiece(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, sectorID abi.SectorNumber, d DealInfo) error {
+	log.Infof("Seal piece for deal %d", d.DealID)
 
 	ppi, err := m.sealer.AddPiece(ctx, m.minerSector(sectorID), []abi.UnpaddedPieceSize{}, size, r)
 	if err != nil {
@@ -117,10 +118,10 @@ func (m *Sealing) SealPiece(ctx context.Context, size abi.UnpaddedPieceSize, r i
 		return xerrors.Errorf("bad sector size: %w", err)
 	}
 
-	return m.newSector(sectorID, rt, []PieceWithOptionalDealInfo{
+	return m.newSector(sectorID, rt, []Piece{
 		{
 			Piece:    ppi,
-			DealInfo: &pdi.DealInfo,
+			DealInfo: &d,
 		},
 	})
 }
@@ -128,7 +129,7 @@ func (m *Sealing) SealPiece(ctx context.Context, size abi.UnpaddedPieceSize, r i
 // newSector accepts a slice of pieces which will have a deal associated with
 // them (in the event of a storage deal) or no deal (in the event of sealing
 // garbage data)
-func (m *Sealing) newSector(sid abi.SectorNumber, rt abi.RegisteredProof, pieces []PieceWithOptionalDealInfo) error {
+func (m *Sealing) newSector(sid abi.SectorNumber, rt abi.RegisteredProof, pieces []Piece) error {
 	log.Infof("Start sealing %d", sid)
 	return m.sectors.Send(uint64(sid), SectorStart{
 		ID:         sid,

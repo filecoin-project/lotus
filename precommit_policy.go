@@ -7,7 +7,7 @@ import (
 )
 
 type PreCommitPolicy interface {
-	Expiration(ctx context.Context, pdis ...PieceWithOptionalDealInfo) (abi.ChainEpoch, error)
+	Expiration(ctx context.Context, pdis ...Piece) (abi.ChainEpoch, error)
 }
 
 type Chain interface {
@@ -44,7 +44,7 @@ func NewBasicPreCommitPolicy(api Chain, duration abi.ChainEpoch) BasicPreCommitP
 
 // Expiration produces the pre-commit sector expiration epoch for an encoded
 // replica containing the provided enumeration of pieces and deals.
-func (p *BasicPreCommitPolicy) Expiration(ctx context.Context, pdis ...PieceWithOptionalDealInfo) (abi.ChainEpoch, error) {
+func (p *BasicPreCommitPolicy) Expiration(ctx context.Context, pdis ...Piece) (abi.ChainEpoch, error) {
 	_, epoch, err := p.api.ChainHead(ctx)
 	if err != nil {
 		return 0, nil

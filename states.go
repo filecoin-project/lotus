@@ -19,7 +19,7 @@ func (m *Sealing) handlePacking(ctx statemachine.Context, sector SectorInfo) err
 	log.Infow("performing filling up rest of the sector...", "sector", sector.SectorNumber)
 
 	var allocated abi.UnpaddedPieceSize
-	for _, piece := range sector.PiecesWithOptionalDealInfo {
+	for _, piece := range sector.Pieces {
 		allocated += piece.Piece.Size.Unpadded()
 	}
 
@@ -112,7 +112,7 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 		}
 	}
 
-	expiration, err := m.pcp.Expiration(ctx.Context(), sector.PiecesWithOptionalDealInfo...)
+	expiration, err := m.pcp.Expiration(ctx.Context(), sector.Pieces...)
 	if err != nil {
 		return ctx.Send(SectorSealPreCommitFailed{xerrors.Errorf("handlePreCommitting: failed to compute pre-commit expiry: %w", err)})
 	}

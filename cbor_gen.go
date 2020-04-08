@@ -13,7 +13,7 @@ import (
 
 var _ = xerrors.Errorf
 
-func (t *PieceWithOptionalDealInfo) MarshalCBOR(w io.Writer) error {
+func (t *Piece) MarshalCBOR(w io.Writer) error {
 	if t == nil {
 		_, err := w.Write(cbg.CborNull)
 		return err
@@ -56,7 +56,7 @@ func (t *PieceWithOptionalDealInfo) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *PieceWithOptionalDealInfo) UnmarshalCBOR(r io.Reader) error {
+func (t *Piece) UnmarshalCBOR(r io.Reader) error {
 	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
@@ -68,7 +68,7 @@ func (t *PieceWithOptionalDealInfo) UnmarshalCBOR(r io.Reader) error {
 	}
 
 	if extra > cbg.MaxLength {
-		return fmt.Errorf("PieceWithOptionalDealInfo: map struct too large (%d)", extra)
+		return fmt.Errorf("Piece: map struct too large (%d)", extra)
 	}
 
 	var name string
@@ -463,26 +463,26 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
-	// t.PiecesWithOptionalDealInfo ([]sealing.PieceWithOptionalDealInfo) (slice)
-	if len("PiecesWithOptionalDealInfo") > cbg.MaxLength {
-		return xerrors.Errorf("Value in field \"PiecesWithOptionalDealInfo\" was too long")
+	// t.Pieces ([]sealing.Piece) (slice)
+	if len("Pieces") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"Pieces\" was too long")
 	}
 
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("PiecesWithOptionalDealInfo")))); err != nil {
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("Pieces")))); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte("PiecesWithOptionalDealInfo")); err != nil {
+	if _, err := w.Write([]byte("Pieces")); err != nil {
 		return err
 	}
 
-	if len(t.PiecesWithOptionalDealInfo) > cbg.MaxLength {
-		return xerrors.Errorf("Slice value in field t.PiecesWithOptionalDealInfo was too long")
+	if len(t.Pieces) > cbg.MaxLength {
+		return xerrors.Errorf("Slice value in field t.Pieces was too long")
 	}
 
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajArray, uint64(len(t.PiecesWithOptionalDealInfo)))); err != nil {
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajArray, uint64(len(t.Pieces)))); err != nil {
 		return err
 	}
-	for _, v := range t.PiecesWithOptionalDealInfo {
+	for _, v := range t.Pieces {
 		if err := v.MarshalCBOR(w); err != nil {
 			return err
 		}
@@ -897,8 +897,8 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 
 				t.SectorType = abi.RegisteredProof(extraI)
 			}
-			// t.PiecesWithOptionalDealInfo ([]sealing.PieceWithOptionalDealInfo) (slice)
-		case "PiecesWithOptionalDealInfo":
+			// t.Pieces ([]sealing.Piece) (slice)
+		case "Pieces":
 
 			maj, extra, err = cbg.CborReadHeader(br)
 			if err != nil {
@@ -906,23 +906,23 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 			}
 
 			if extra > cbg.MaxLength {
-				return fmt.Errorf("t.PiecesWithOptionalDealInfo: array too large (%d)", extra)
+				return fmt.Errorf("t.Pieces: array too large (%d)", extra)
 			}
 
 			if maj != cbg.MajArray {
 				return fmt.Errorf("expected cbor array")
 			}
 			if extra > 0 {
-				t.PiecesWithOptionalDealInfo = make([]PieceWithOptionalDealInfo, extra)
+				t.Pieces = make([]Piece, extra)
 			}
 			for i := 0; i < int(extra); i++ {
 
-				var v PieceWithOptionalDealInfo
+				var v Piece
 				if err := v.UnmarshalCBOR(br); err != nil {
 					return err
 				}
 
-				t.PiecesWithOptionalDealInfo[i] = v
+				t.Pieces[i] = v
 			}
 
 			// t.TicketValue (abi.SealRandomness) (slice)

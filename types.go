@@ -11,16 +11,16 @@ import (
 	"github.com/filecoin-project/specs-storage/storage"
 )
 
-// PieceWithOptionalDealInfo is a tuple of piece and deal info
+// Piece is a tuple of piece and deal info
 type PieceWithDealInfo struct {
 	Piece    abi.PieceInfo
 	DealInfo DealInfo
 }
 
-// PieceWithOptionalDealInfo is a tuple of piece info and optional deal
-type PieceWithOptionalDealInfo struct {
+// Piece is a tuple of piece info and optional deal
+type Piece struct {
 	Piece    abi.PieceInfo
-	DealInfo *DealInfo // nil for pieces which do not yet appear in self-deals
+	DealInfo *DealInfo // nil for pieces which do not appear in deals (e.g. filler pieces)
 }
 
 // DealInfo is a tuple of deal identity and its schedule
@@ -55,7 +55,7 @@ type SectorInfo struct {
 	SectorType abi.RegisteredProof
 
 	// Packing
-	PiecesWithOptionalDealInfo []PieceWithOptionalDealInfo
+	Pieces []Piece
 
 	// PreCommit1
 	TicketValue   abi.SealRandomness
@@ -87,8 +87,8 @@ type SectorInfo struct {
 }
 
 func (t *SectorInfo) pieceInfos() []abi.PieceInfo {
-	out := make([]abi.PieceInfo, len(t.PiecesWithOptionalDealInfo))
-	for i, pdi := range t.PiecesWithOptionalDealInfo {
+	out := make([]abi.PieceInfo, len(t.Pieces))
+	for i, pdi := range t.Pieces {
 		out[i] = abi.PieceInfo{
 			Size:     pdi.Piece.Size,
 			PieceCID: pdi.Piece.PieceCID,
@@ -98,8 +98,8 @@ func (t *SectorInfo) pieceInfos() []abi.PieceInfo {
 }
 
 func (t *SectorInfo) dealIDs() []abi.DealID {
-	out := make([]abi.DealID, 0, len(t.PiecesWithOptionalDealInfo))
-	for _, pdi := range t.PiecesWithOptionalDealInfo {
+	out := make([]abi.DealID, 0, len(t.Pieces))
+	for _, pdi := range t.Pieces {
 		if pdi.DealInfo == nil {
 			continue
 		}
@@ -109,8 +109,8 @@ func (t *SectorInfo) dealIDs() []abi.DealID {
 }
 
 func (t *SectorInfo) existingPieceSizes() []abi.UnpaddedPieceSize {
-	out := make([]abi.UnpaddedPieceSize, len(t.PiecesWithOptionalDealInfo))
-	for i, pdi := range t.PiecesWithOptionalDealInfo {
+	out := make([]abi.UnpaddedPieceSize, len(t.Pieces))
+	for i, pdi := range t.Pieces {
 		out[i] = pdi.Piece.Size.Unpadded()
 	}
 	return out

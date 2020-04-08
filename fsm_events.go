@@ -50,12 +50,12 @@ func (evt SectorForceState) applyGlobal(state *SectorInfo) bool {
 type SectorStart struct {
 	ID         abi.SectorNumber
 	SectorType abi.RegisteredProof
-	Pieces     []PieceWithOptionalDealInfo
+	Pieces     []Piece
 }
 
 func (evt SectorStart) apply(state *SectorInfo) {
 	state.SectorNumber = evt.ID
-	state.PiecesWithOptionalDealInfo = evt.Pieces
+	state.Pieces = evt.Pieces
 	state.SectorType = evt.SectorType
 }
 
@@ -63,7 +63,7 @@ type SectorPacked struct{ FillerPieces []abi.PieceInfo }
 
 func (evt SectorPacked) apply(state *SectorInfo) {
 	for idx := range evt.FillerPieces {
-		state.PiecesWithOptionalDealInfo = append(state.PiecesWithOptionalDealInfo, PieceWithOptionalDealInfo{
+		state.Pieces = append(state.Pieces, Piece{
 			Piece:    evt.FillerPieces[idx],
 			DealInfo: nil, // filler pieces don't have deals associated with them
 		})

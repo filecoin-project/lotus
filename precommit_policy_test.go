@@ -37,7 +37,7 @@ func TestBasicPolicyMostConstrictiveSchedule(t *testing.T) {
 		h: abi.ChainEpoch(55),
 	}, 100)
 
-	pieces := []sealing.PieceWithOptionalDealInfo{
+	pieces := []sealing.Piece{
 		{
 			Piece: abi.PieceInfo{
 				Size:     abi.PaddedPieceSize(1024),
@@ -77,7 +77,7 @@ func TestBasicPolicyIgnoresExistingScheduleIfExpired(t *testing.T) {
 		h: abi.ChainEpoch(55),
 	}, 100)
 
-	pieces := []sealing.PieceWithOptionalDealInfo{
+	pieces := []sealing.Piece{
 		{
 			Piece: abi.PieceInfo{
 				Size:     abi.PaddedPieceSize(1024),
@@ -104,7 +104,7 @@ func TestMissingDealIsIgnored(t *testing.T) {
 		h: abi.ChainEpoch(55),
 	}, 100)
 
-	pieces := []sealing.PieceWithOptionalDealInfo{
+	pieces := []sealing.Piece{
 		{
 			Piece: abi.PieceInfo{
 				Size:     abi.PaddedPieceSize(1024),

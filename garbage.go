@@ -69,9 +69,9 @@ func (m *Sealing) PledgeSector() error {
 			return
 		}
 
-		pdis := make([]PieceWithOptionalDealInfo, len(pieces))
+		pdis := make([]Piece, len(pieces))
 		for idx := range pdis {
-			pdis[idx] = PieceWithOptionalDealInfo{
+			pdis[idx] = Piece{
 				Piece:    pieces[idx],
 				DealInfo: nil,
 			}
