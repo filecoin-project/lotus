@@ -54,7 +54,7 @@ type Syncer struct {
 	store *store.ChainStore
 
 	// handle to the random beacon for verification
-	beacon beacon.DrandBeacon
+	beacon beacon.RandomBeacon
 
 	// the state manager handles making state queries
 	sm *stmgr.StateManager
@@ -79,7 +79,7 @@ type Syncer struct {
 	receiptTracker *blockReceiptTracker
 }
 
-func NewSyncer(sm *stmgr.StateManager, bsync *blocksync.BlockSync, connmgr connmgr.ConnManager, self peer.ID, beacon beacon.DrandBeacon) (*Syncer, error) {
+func NewSyncer(sm *stmgr.StateManager, bsync *blocksync.BlockSync, connmgr connmgr.ConnManager, self peer.ID, beacon beacon.RandomBeacon) (*Syncer, error) {
 	gen, err := sm.ChainStore().GetGenesis()
 	if err != nil {
 		return nil, err

@@ -142,7 +142,7 @@ func NetworkName(mctx helpers.MetricsCtx, lc fx.Lifecycle, cs *store.ChainStore,
 	return netName, err
 }
 
-func NewSyncer(lc fx.Lifecycle, sm *stmgr.StateManager, bsync *blocksync.BlockSync, h host.Host, beacon beacon.DrandBeacon) (*chain.Syncer, error) {
+func NewSyncer(lc fx.Lifecycle, sm *stmgr.StateManager, bsync *blocksync.BlockSync, h host.Host, beacon beacon.RandomBeacon) (*chain.Syncer, error) {
 	syncer, err := chain.NewSyncer(sm, bsync, h.ConnManager(), h.ID(), beacon)
 	if err != nil {
 		return nil, err
