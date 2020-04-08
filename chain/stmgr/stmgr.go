@@ -314,7 +314,7 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 			Miner:         b.Miner,
 			BlsMessages:   make([]types.ChainMsg, 0, len(bms)),
 			SecpkMessages: make([]types.ChainMsg, 0, len(sms)),
-			TicketCount:   int64(len(b.EPostProof.Proofs)),
+			TicketCount:   1, //int64(len(b.EPostProof.Proofs)), // TODO fix this
 		}
 
 		for _, m := range bms {

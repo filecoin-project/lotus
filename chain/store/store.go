@@ -23,6 +23,7 @@ import (
 	"go.opencensus.io/stats"
 	"go.opencensus.io/trace"
 	"go.uber.org/multierr"
+	"go.uber.org/zap"
 
 	amt "github.com/filecoin-project/go-amt-ipld/v2"
 
@@ -893,7 +894,7 @@ func (cs *ChainStore) TryFillTipSet(ts *types.TipSet) (*FullTipSet, error) {
 }
 
 func DrawRandomness(rbase []byte, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	//	log.Desugar().WithOptions(zap.AddCallerSkip(2)).Sugar().Warnw("DrawRandomness", "base", rbase, "dsep", pers, "round", round, "entropy", entropy)
+	log.Desugar().WithOptions(zap.AddCallerSkip(2)).Sugar().Warnw("DrawRandomness", "base", rbase, "dsep", pers, "round", round, "entropy", entropy)
 	h := blake2b.New256()
 	if err := binary.Write(h, binary.BigEndian, int64(pers)); err != nil {
 		return nil, xerrors.Errorf("deriving randomness: %w", err)
@@ -913,11 +914,9 @@ func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, pers cr
 	defer span.End()
 	span.AddAttributes(trace.Int64Attribute("round", int64(round)))
 
-	/*
-		defer func() {
-			log.Infof("getRand %v %d %d %x -> %x", blks, pers, round, entropy, out)
-		}()
-	*/
+	//defer func() {
+	//log.Infof("getRand %v %d %d %x -> %x", blks, pers, round, entropy, out)
+	//}()
 	for {
 		nts, err := cs.LoadTipSet(types.NewTipSetKey(blks...))
 		if err != nil {

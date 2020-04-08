@@ -60,8 +60,8 @@ func MkBlock(parents *types.TipSet, weightInc uint64, ticketNonce uint64) *types
 
 	return &types.BlockHeader{
 		Miner: addr,
-		EPostProof: types.EPostProof{
-			Proofs: []abi.PoStProof{{ProofBytes: []byte("election post proof proof")}},
+		ElectionProof: &types.ElectionProof{
+			VRFProof: []byte(fmt.Sprintf("====%d=====", ticketNonce)),
 		},
 		Ticket: &types.Ticket{
 			VRFProof: []byte(fmt.Sprintf("====%d=====", ticketNonce)),

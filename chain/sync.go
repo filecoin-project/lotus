@@ -18,7 +18,6 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/connmgr"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/minio/blake2b-simd"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"github.com/whyrusleeping/pubsub"
 	"go.opencensus.io/stats"
@@ -28,7 +27,6 @@ import (
 	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
 	amt "github.com/filecoin-project/go-amt-ipld/v2"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
@@ -45,7 +43,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/metrics"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
 )
 
 var log = logging.Logger("chain")
@@ -538,30 +535,6 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		return xerrors.Errorf("block was generated too soon (h.ts:%d < base.mints:%d + BLOCK_DELAY:%d * deltaH:%d; diff %d)", h.Timestamp, baseTs.MinTimestamp(), build.BlockDelay, h.Height-baseTs.Height(), diff)
 	}
 
-	winnerCheck := async.Err(func() error {
-		slashed, err := stmgr.GetMinerSlashed(ctx, syncer.sm, baseTs, h.Miner)
-		if err != nil {
-			return xerrors.Errorf("failed to check if block miner was slashed: %w", err)
-		}
-
-		if slashed {
-			return xerrors.Errorf("received block was from slashed or invalid miner")
-		}
-
-		mpow, tpow, err := stmgr.GetPower(ctx, syncer.sm, baseTs, h.Miner)
-		if err != nil {
-			return xerrors.Errorf("failed getting power: %w", err)
-		}
-
-		if !types.IsTicketWinner(h.Ticket.VRFProof, mpow, tpow) {
-			return xerrors.Errorf("miner created a block but was not a winner")
-		}
-
-		// TODO: validate winning post proof
-
-		return nil
-	})
-
 	msgsCheck := async.Err(func() error {
 		if err := syncer.checkBlockMessages(ctx, b, baseTs); err != nil {
 			return xerrors.Errorf("block had invalid messages: %w", err)
@@ -606,6 +579,50 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		return xerrors.Errorf("GetMinerWorkerRaw failed: %w", err)
 	}
 
+	winnerCheck := async.Err(func() error {
+		rBeacon := *prevBeacon
+		if len(h.BeaconEntries) != 0 {
+			rBeacon = h.BeaconEntries[len(h.BeaconEntries)-1]
+		}
+		buf := new(bytes.Buffer)
+		if err := h.Miner.MarshalCBOR(buf); err != nil {
+			return xerrors.Errorf("failed to marshal miner address to cbor: %w", err)
+		}
+
+		//TODO: DST from spec actors when it is there
+		vrfBase, err := store.DrawRandomness(rBeacon.Data, 17, h.Height, buf.Bytes())
+		if err != nil {
+			return xerrors.Errorf("could not draw randomness: %w", err)
+		}
+
+		err = gen.VerifyVRF(ctx, waddr, vrfBase, h.ElectionProof.VRFProof)
+		if err != nil {
+			return xerrors.Errorf("validating block election proof failed: %w", err)
+		}
+
+		slashed, err := stmgr.GetMinerSlashed(ctx, syncer.sm, baseTs, h.Miner)
+		if err != nil {
+			return xerrors.Errorf("failed to check if block miner was slashed: %w", err)
+		}
+
+		if slashed {
+			return xerrors.Errorf("received block was from slashed or invalid miner")
+		}
+
+		mpow, tpow, err := stmgr.GetPower(ctx, syncer.sm, baseTs, h.Miner)
+		if err != nil {
+			return xerrors.Errorf("failed getting power: %w", err)
+		}
+
+		if !types.IsTicketWinner(h.ElectionProof.VRFProof, mpow, tpow) {
+			return xerrors.Errorf("miner created a block but was not a winner")
+		}
+
+		// TODO: validate winning post proof
+
+		return nil
+	})
+
 	blockSigCheck := async.Err(func() error {
 		if err := sigs.CheckBlockSignature(h, ctx, waddr); err != nil {
 			return xerrors.Errorf("check block signature failed: %w", err)
@@ -622,18 +639,13 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	})
 
 	tktsCheck := async.Err(func() error {
-		baseBeacon := prevBeacon
-		if len(h.BeaconEntries) > 0 {
-			baseBeacon = &h.BeaconEntries[len(h.BeaconEntries)-1]
-		}
-
 		buf := new(bytes.Buffer)
 		if err := h.Miner.MarshalCBOR(buf); err != nil {
 			return xerrors.Errorf("failed to marshal miner address to cbor: %w", err)
 		}
 
-		// TODO: use real DST from specs actors when it lands
-		vrfBase, err := store.DrawRandomness(baseBeacon.Data, 17, h.Height, buf.Bytes())
+		vrfBase, err := syncer.sm.ChainStore().GetRandomness(ctx, baseTs.Cids(),
+			crypto.DomainSeparationTag_TicketProduction, h.Height-build.TicketRandomnessLookback, buf.Bytes())
 		if err != nil {
 			return xerrors.Errorf("failed to compute vrf base for ticket: %w", err)
 		}
@@ -689,6 +701,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	return merr
 }
 
+/*
 func (syncer *Syncer) VerifyElectionPoStProof(ctx context.Context, h *types.BlockHeader, waddr address.Address) error {
 	curTs, err := types.NewTipSet([]*types.BlockHeader{h})
 	if err != nil {
@@ -790,6 +803,7 @@ func (syncer *Syncer) VerifyElectionPoStProof(ctx context.Context, h *types.Bloc
 
 	return nil
 }
+*/
 
 func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock, baseTs *types.TipSet) error {
 	{

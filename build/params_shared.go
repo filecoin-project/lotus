@@ -69,7 +69,7 @@ const MaxSealLookback = SealRandomnessLookbackLimit + 2000 // TODO: Get from spe
 // Mining
 
 // Epochs
-const EcRandomnessLookback = Finality
+const TicketRandomnessLookback = 1
 
 // /////
 // Devnet settings
