@@ -97,7 +97,7 @@ func init() {
 
 			uts := head.MinTimestamp() + uint64(build.BlockDelay)
 			nheight := head.Height() + 1
-			blk, err := api.MinerCreateBlock(ctx, addr, head.Key(), ticket, epostp, msgs, nheight, uts)
+			blk, err := api.MinerCreateBlock(ctx, addr, head.Key(), ticket, epostp, nil, msgs, nheight, uts)
 			if err != nil {
 				return xerrors.Errorf("creating block: %w", err)
 			}
