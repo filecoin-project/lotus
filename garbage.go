@@ -16,14 +16,14 @@ func (m *Sealing) pledgeReader(size abi.UnpaddedPieceSize) io.Reader {
 	return io.LimitReader(&nr.Reader{}, int64(size))
 }
 
-func (m *Sealing) pledgeSector(ctx context.Context, sectorID abi.SectorID, existingPieceSizes []abi.UnpaddedPieceSize, sizes ...abi.UnpaddedPieceSize) ([]Piece, error) {
+func (m *Sealing) pledgeSector(ctx context.Context, sectorID abi.SectorID, existingPieceSizes []abi.UnpaddedPieceSize, sizes ...abi.UnpaddedPieceSize) ([]abi.PieceInfo, error) {
 	if len(sizes) == 0 {
 		return nil, nil
 	}
 
 	log.Infof("Pledge %d, contains %+v", sectorID, existingPieceSizes)
 
-	out := make([]Piece, len(sizes))
+	out := make([]abi.PieceInfo, len(sizes))
 	for i, size := range sizes {
 		ppi, err := m.sealer.AddPiece(ctx, sectorID, existingPieceSizes, size, m.pledgeReader(size))
 		if err != nil {
@@ -32,10 +32,7 @@ func (m *Sealing) pledgeSector(ctx context.Context, sectorID abi.SectorID, exist
 
 		existingPieceSizes = append(existingPieceSizes, size)
 
-		out[i] = Piece{
-			Size:  ppi.Size.Unpadded(),
-			CommP: ppi.PieceCID,
-		}
+		out[i] = ppi
 	}
 
 	return out, nil
@@ -72,7 +69,15 @@ func (m *Sealing) PledgeSector() error {
 			return
 		}
 
-		if err := m.newSector(sid, rt, pieces); err != nil {
+		ps := make([]Piece, len(pieces))
+		for idx := range ps {
+			ps[idx] = Piece{
+				Piece:    pieces[idx],
+				DealInfo: nil,
+			}
+		}
+
+		if err := m.newSector(sid, rt, ps); err != nil {
 			log.Errorf("%+v", err)
 			return
 		}

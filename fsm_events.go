@@ -59,10 +59,15 @@ func (evt SectorStart) apply(state *SectorInfo) {
 	state.SectorType = evt.SectorType
 }
 
-type SectorPacked struct{ Pieces []Piece }
+type SectorPacked struct{ FillerPieces []abi.PieceInfo }
 
 func (evt SectorPacked) apply(state *SectorInfo) {
-	state.Pieces = append(state.Pieces, evt.Pieces...)
+	for idx := range evt.FillerPieces {
+		state.Pieces = append(state.Pieces, Piece{
+			Piece:    evt.FillerPieces[idx],
+			DealInfo: nil, // filler pieces don't have deals associated with them
+		})
+	}
 }
 
 type SectorPackingFailed struct{ error }

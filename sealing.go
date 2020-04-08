@@ -49,9 +49,11 @@ type Sealing struct {
 	sc      SectorIDCounter
 	verif   ffiwrapper.Verifier
 	tktFn   TicketFn
+
+	pcp PreCommitPolicy
 }
 
-func New(api SealingAPI, events Events, maddr address.Address, worker address.Address, ds datastore.Batching, sealer sectorstorage.SectorManager, sc SectorIDCounter, verif ffiwrapper.Verifier, tktFn TicketFn) *Sealing {
+func New(api SealingAPI, events Events, maddr address.Address, worker address.Address, ds datastore.Batching, sealer sectorstorage.SectorManager, sc SectorIDCounter, verif ffiwrapper.Verifier, tktFn TicketFn, pcp PreCommitPolicy) *Sealing {
 	s := &Sealing{
 		api:    api,
 		events: events,
@@ -62,6 +64,7 @@ func New(api SealingAPI, events Events, maddr address.Address, worker address.Ad
 		sc:     sc,
 		verif:  verif,
 		tktFn:  tktFn,
+		pcp:    pcp,
 	}
 
 	s.sectors = statemachine.New(namespace.Wrap(ds, datastore.NewKey(SectorStorePrefix)), s, SectorInfo{})
@@ -101,8 +104,8 @@ func (m *Sealing) AllocatePiece(size abi.UnpaddedPieceSize) (sectorID abi.Sector
 	return sid, 0, nil
 }
 
-func (m *Sealing) SealPiece(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, sectorID abi.SectorNumber, dealID abi.DealID) error {
-	log.Infof("Seal piece for deal %d", dealID)
+func (m *Sealing) SealPiece(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, sectorID abi.SectorNumber, d DealInfo) error {
+	log.Infof("Seal piece for deal %d", d.DealID)
 
 	ppi, err := m.sealer.AddPiece(ctx, m.minerSector(sectorID), []abi.UnpaddedPieceSize{}, size, r)
 	if err != nil {
@@ -116,14 +119,15 @@ func (m *Sealing) SealPiece(ctx context.Context, size abi.UnpaddedPieceSize, r i
 
 	return m.newSector(sectorID, rt, []Piece{
 		{
-			DealID: &dealID,
-
-			Size:  ppi.Size.Unpadded(),
-			CommP: ppi.PieceCID,
+			Piece:    ppi,
+			DealInfo: &d,
 		},
 	})
 }
 
+// newSector accepts a slice of pieces which will have a deal associated with
+// them (in the event of a storage deal) or no deal (in the event of sealing
+// garbage data)
 func (m *Sealing) newSector(sid abi.SectorNumber, rt abi.RegisteredProof, pieces []Piece) error {
 	log.Infof("Start sealing %d", sid)
 	return m.sectors.Send(uint64(sid), SectorStart{

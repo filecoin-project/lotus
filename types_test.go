@@ -14,6 +14,14 @@ import (
 func TestSectorInfoSelialization(t *testing.T) {
 	d := abi.DealID(1234)
 
+	dealInfo := DealInfo{
+		DealID: d,
+		DealSchedule: DealSchedule{
+			StartEpoch: 0,
+			EndEpoch:   100,
+		},
+	}
+
 	dummyCid := builtin.AccountActorCodeID
 
 	si := &SectorInfo{
@@ -21,9 +29,11 @@ func TestSectorInfoSelialization(t *testing.T) {
 		SectorNumber: 234,
 		Nonce:        345,
 		Pieces: []Piece{{
-			DealID: &d,
-			Size:   5,
-			CommP:  dummyCid,
+			Piece: abi.PieceInfo{
+				Size:     5,
+				PieceCID: dummyCid,
+			},
+			DealInfo: &dealInfo,
 		}},
 		CommD:            &dummyCid,
 		CommR:            nil,

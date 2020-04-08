@@ -11,11 +11,30 @@ import (
 	"github.com/filecoin-project/specs-storage/storage"
 )
 
-type Piece struct {
-	DealID *abi.DealID
+// Piece is a tuple of piece and deal info
+type PieceWithDealInfo struct {
+	Piece    abi.PieceInfo
+	DealInfo DealInfo
+}
 
-	Size  abi.UnpaddedPieceSize
-	CommP cid.Cid
+// Piece is a tuple of piece info and optional deal
+type Piece struct {
+	Piece    abi.PieceInfo
+	DealInfo *DealInfo // nil for pieces which do not appear in deals (e.g. filler pieces)
+}
+
+// DealInfo is a tuple of deal identity and its schedule
+type DealInfo struct {
+	DealID       abi.DealID
+	DealSchedule DealSchedule
+}
+
+// DealSchedule communicates the time interval of a storage deal. The deal must
+// appear in a sealed (proven) sector no later than StartEpoch, otherwise it
+// is invalid.
+type DealSchedule struct {
+	StartEpoch abi.ChainEpoch
+	EndEpoch   abi.ChainEpoch
 }
 
 type Log struct {
@@ -36,7 +55,6 @@ type SectorInfo struct {
 	SectorType abi.RegisteredProof
 
 	// Packing
-
 	Pieces []Piece
 
 	// PreCommit1
@@ -70,30 +88,27 @@ type SectorInfo struct {
 
 func (t *SectorInfo) pieceInfos() []abi.PieceInfo {
 	out := make([]abi.PieceInfo, len(t.Pieces))
-	for i, piece := range t.Pieces {
-		out[i] = abi.PieceInfo{
-			Size:     piece.Size.Padded(),
-			PieceCID: piece.CommP,
-		}
+	for i, p := range t.Pieces {
+		out[i] = p.Piece
 	}
 	return out
 }
 
-func (t *SectorInfo) deals() []abi.DealID {
+func (t *SectorInfo) dealIDs() []abi.DealID {
 	out := make([]abi.DealID, 0, len(t.Pieces))
-	for _, piece := range t.Pieces {
-		if piece.DealID == nil {
+	for _, p := range t.Pieces {
+		if p.DealInfo == nil {
 			continue
 		}
-		out = append(out, *piece.DealID)
+		out = append(out, p.DealInfo.DealID)
 	}
 	return out
 }
 
-func (t *SectorInfo) existingPieces() []abi.UnpaddedPieceSize {
+func (t *SectorInfo) existingPieceSizes() []abi.UnpaddedPieceSize {
 	out := make([]abi.UnpaddedPieceSize, len(t.Pieces))
-	for i, piece := range t.Pieces {
-		out[i] = piece.Size
+	for i, p := range t.Pieces {
+		out[i] = p.Piece.Size.Unpadded()
 	}
 	return out
 }
