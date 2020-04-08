@@ -36,36 +36,6 @@ import (
 
 var log = logging.Logger("vm")
 
-const (
-	gasFundTransfer = 10
-	gasInvoke       = 5
-
-	gasGetObj         = 10
-	gasGetPerByte     = 1
-	gasPutObj         = 20
-	gasPutPerByte     = 2
-	gasCommit         = 50
-	gasPerMessageByte = 2
-)
-
-const (
-	outOfGasErrCode = 200
-)
-
-type ExecutionResult struct {
-	Msg    *types.Message
-	MsgRct *types.MessageReceipt
-	Error  string
-
-	Subcalls []*ExecutionResult
-}
-
-// Storage interface
-
-// End of storage interface
-
-// Send allows the current execution context to invoke methods on other actors in the system
-
 // ResolveToKeyAddr returns the public key type of address (`BLS`/`SECP256K1`) of an account actor identified by `addr`.
 func ResolveToKeyAddr(state types.StateTree, cst cbor.IpldStore, addr address.Address) (address.Address, aerrors.ActorError) {
 	if addr.Protocol() == address.BLS || addr.Protocol() == address.SECP256K1 {
@@ -195,7 +165,7 @@ type ApplyRet struct {
 	types.MessageReceipt
 	ActorErr           aerrors.ActorError
 	Penalty            types.BigInt
-	InternalExecutions []*ExecutionResult
+	InternalExecutions []*types.ExecutionResult
 	Duration           time.Duration
 }
 
