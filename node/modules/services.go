@@ -2,7 +2,6 @@ package modules
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	eventbus "github.com/libp2p/go-eventbus"
@@ -118,7 +117,6 @@ func RetrievalResolver(l *discovery.Local) retrievalmarket.PeerResolver {
 	return discovery.Multi(l)
 }
 
-func RandomBeacon() beacon.DrandBeacon {
-	fmt.Println("RANDOM BEACON!")
+func RandomBeacon() beacon.RandomBeacon {
 	return beacon.NewMockBeacon(build.BlockDelay * time.Second)
 }

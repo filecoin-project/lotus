@@ -52,7 +52,7 @@ type ChainGen struct {
 
 	cs *store.ChainStore
 
-	beacon beacon.DrandBeacon
+	beacon beacon.RandomBeacon
 
 	sm *stmgr.StateManager
 
