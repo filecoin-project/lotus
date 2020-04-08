@@ -35,7 +35,7 @@ type EPostProof struct {
 }
 
 type BeaconEntry struct {
-	Index uint64
+	Round uint64
 	Data  []byte
 }
 

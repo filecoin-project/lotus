@@ -264,8 +264,8 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 // TODO: copied from actors test harness, deduplicate or remove from here
 type fakeRand struct{}
 
-func (fr *fakeRand) GetRandomness(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch int64, entropy []byte) ([]byte, error) {
+func (fr *fakeRand) GetRandomness(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	out := make([]byte, 32)
-	rand.New(rand.NewSource(randEpoch)).Read(out)
+	rand.New(rand.NewSource(int64(randEpoch))).Read(out)
 	return out, nil
 }

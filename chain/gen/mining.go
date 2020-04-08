@@ -34,13 +34,13 @@ func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wal
 	}
 
 	next := &types.BlockHeader{
-		Miner:                 miner,
-		Parents:               parents.Cids(),
-		Ticket:                ticket,
-		BeaconEntries:         bvals,
-		Height:                height,
-		Timestamp:             timestamp,
-		EPostProof:            *proof,
+		Miner:         miner,
+		Parents:       parents.Cids(),
+		Ticket:        ticket,
+		BeaconEntries: bvals,
+		Height:        height,
+		Timestamp:     timestamp,
+		//EPostProof:            *proof,
 		ParentStateRoot:       st,
 		ParentMessageReceipts: recpts,
 	}

@@ -627,14 +627,20 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 			return xerrors.Errorf("failed to marshal miner address to cbor: %w", err)
 		}
 
-		vrfBase, err := syncer.sm.ChainStore().GetRandomness(ctx, baseTs.Cids(), crypto.DomainSeparationTag_TicketProduction, int64(h.Height)-1, buf.Bytes())
-		if err != nil {
-			return xerrors.Errorf("failed to get randomness for verifying election proof: %w", err)
-		}
-
 		baseBeacon := prevBeacon
 		if len(h.BeaconEntries) > 0 {
 			baseBeacon = h.BeaconEntries[len(h.BeaconEntries)-1]
+		}
+
+		buf := new(bytes.Buffer)
+		if err := h.Miner.MarshalCBOR(buf); err != nil {
+			return xerrors.Errorf("failed to marshal miner address to cbor: %w", err)
+		}
+
+		// TODO: use real DST from specs actors when it lands
+		vrfBase, err := store.DrawRandomness(baseBeacon.Data, 17, int64(h.Height), buf.Bytes())
+		if err != nil {
+			return xerrors.Errorf("failed to compute vrf base for ticket: %w", err)
 		}
 
 		err = gen.VerifyVRF(ctx, waddr, vrfBase, h.Ticket.VRFProof)
