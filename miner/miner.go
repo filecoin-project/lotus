@@ -9,13 +9,13 @@ import (
 
 	address "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
 	lru "github.com/hashicorp/golang-lru"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/gen"
+	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -340,14 +340,14 @@ func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningB
 
 	log.Infof("Time delta between now and our mining base: %ds (nulls: %d)", uint64(time.Now().Unix())-base.ts.MinTimestamp(), base.nullRounds)
 
-	ticket, err := m.computeTicket(ctx, addr, base)
-	if err != nil {
-		return nil, xerrors.Errorf("scratching ticket failed: %w", err)
-	}
-
 	rbase := *beaconPrev
 	if len(bvals) > 0 {
 		rbase = bvals[len(bvals)-1]
+	}
+
+	ticket, err := m.computeTicket(ctx, addr, &rbase, base)
+	if err != nil {
+		return nil, xerrors.Errorf("scratching ticket failed: %w", err)
 	}
 
 	winner, err := gen.IsRoundWinner(ctx, base.ts, round, addr, rbase, m.api)
@@ -381,7 +381,7 @@ func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningB
 	return b, nil
 }
 
-func (m *Miner) computeTicket(ctx context.Context, addr address.Address, base *MiningBase) (*types.Ticket, error) {
+func (m *Miner) computeTicket(ctx context.Context, addr address.Address, brand *types.BeaconEntry, base *MiningBase) (*types.Ticket, error) {
 	w, err := m.api.StateMinerWorker(ctx, addr, types.EmptyTSK)
 	if err != nil {
 		return nil, err
@@ -391,8 +391,7 @@ func (m *Miner) computeTicket(ctx context.Context, addr address.Address, base *M
 	if err := addr.MarshalCBOR(buf); err != nil {
 		return nil, xerrors.Errorf("failed to marshal address to cbor: %w", err)
 	}
-
-	input, err := m.api.ChainGetRandomness(ctx, base.ts.Key(), crypto.DomainSeparationTag_TicketProduction, (base.ts.Height()+base.nullRounds+1)-1, buf.Bytes())
+	input, err := store.DrawRandomness(brand.Data, 17, (base.ts.Height() + base.nullRounds + 1), buf.Bytes())
 	if err != nil {
 		return nil, err
 	}
