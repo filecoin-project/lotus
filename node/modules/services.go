@@ -2,6 +2,7 @@ package modules
 
 import (
 	"context"
+	"time"
 
 	eventbus "github.com/libp2p/go-eventbus"
 	event "github.com/libp2p/go-libp2p-core/event"
@@ -16,6 +17,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
+	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/blocksync"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/sub"
@@ -113,4 +115,8 @@ func NewLocalDiscovery(ds dtypes.MetadataDS) *discovery.Local {
 
 func RetrievalResolver(l *discovery.Local) retrievalmarket.PeerResolver {
 	return discovery.Multi(l)
+}
+
+func RandomBeacon() beacon.RandomBeacon {
+	return beacon.NewMockBeacon(build.BlockDelay * time.Second)
 }

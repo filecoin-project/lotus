@@ -252,11 +252,8 @@ func MakeGenesisBlock(ctx context.Context, bs bstore.Blockstore, sys runtime.Sys
 	}
 
 	b := &types.BlockHeader{
-		Miner:  builtin.SystemActorAddr,
-		Ticket: genesisticket,
-		EPostProof: types.EPostProof{
-			PostRand: []byte("i guess this is kinda random"),
-		},
+		Miner:                 builtin.SystemActorAddr,
+		Ticket:                genesisticket,
 		Parents:               []cid.Cid{},
 		Height:                0,
 		ParentWeight:          types.NewInt(0),
@@ -266,6 +263,12 @@ func MakeGenesisBlock(ctx context.Context, bs bstore.Blockstore, sys runtime.Sys
 		BLSAggregate:          nil,
 		BlockSig:              nil,
 		Timestamp:             template.Timestamp,
+		BeaconEntries: []types.BeaconEntry{
+			{
+				Round: 0,
+				Data:  make([]byte, 32),
+			},
+		},
 	}
 
 	sb, err := b.ToStorageBlock()
