@@ -4,6 +4,7 @@ package main
 
 import (
 	"github.com/filecoin-project/go-address"
+	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -70,7 +71,9 @@ func init() {
 
 			uts := head.MinTimestamp() + uint64(build.BlockDelay)
 			nheight := head.Height() + 1
-			blk, err := api.MinerCreateBlock(ctx, addr, head.Key(), ticket, nil, nil, msgs, nheight, uts)
+			blk, err := api.MinerCreateBlock(ctx, &lapi.BlockTemplate{
+				addr, head.Key(), ticket, nil, nil, msgs, nheight, uts,
+			})
 			if err != nil {
 				return xerrors.Errorf("creating block: %w", err)
 			}

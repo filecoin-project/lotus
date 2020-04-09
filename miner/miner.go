@@ -290,29 +290,6 @@ func (m *Miner) hasPower(ctx context.Context, addr address.Address, ts *types.Ti
 	return !power.MinerPower.Equals(types.NewInt(0)), nil
 }
 
-// Note: copied from the chainstore method. Maybe we should expose this over the api?
-func (m *Miner) getLatestBeaconEntry(ctx context.Context, ts *types.TipSet) (*types.BeaconEntry, error) {
-	cur := ts
-	for i := 0; i < 20; i++ {
-		cbe := cur.Blocks()[0].BeaconEntries
-		if len(cbe) > 0 {
-			return &cbe[len(cbe)-1], nil
-		}
-
-		if cur.Height() == 0 {
-			return nil, xerrors.Errorf("made it back to genesis block without finding beacon entry")
-		}
-
-		next, err := m.api.ChainGetTipSet(ctx, cur.Parents())
-		if err != nil {
-			return nil, xerrors.Errorf("failed to load parents when searching back for latest beacon entry: %w", err)
-		}
-		cur = next
-	}
-
-	return nil, xerrors.Errorf("found NO beacon entries in the 20 blocks prior to given tipset")
-}
-
 func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningBase) (*types.BlockMsg, error) {
 	log.Debugw("attempting to mine a block", "tipset", types.LogCids(base.ts.Cids()))
 	start := time.Now()
