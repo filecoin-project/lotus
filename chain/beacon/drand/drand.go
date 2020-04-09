@@ -2,6 +2,7 @@ package drand
 
 import (
 	"context"
+	"sync"
 
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -14,27 +15,34 @@ import (
 type DrandBeacon struct {
 	client dnet.Client
 
-	cacheLk sync.Mutex
+	cacheLk    sync.Mutex
 	localCache map[int64]types.BeaconEntry
 }
 
 func NewDrandBeacon() *DrandBeacon {
-	return &DrandBeacon{dnet.NewGrpcClient()}
+	return &DrandBeacon{
+		client:     dnet.NewGrpcClient(),
+		localCache: make(map[int64]types.BeaconEntry),
+	}
 }
 
-func (db *DrandBeacon) 
+//func (db *DrandBeacon)
 
 func (db *DrandBeacon) Entry(ctx context.Context, round uint64) <-chan beacon.Response {
 	// check cache, it it if there, otherwise query the endpoint
-	resp, err := db.client.PublicRand(ctx, &dproto.PublicRandRequest{round})
+	resp, err := db.client.PublicRand(nil, &dproto.PublicRandRequest{Round: round})
+	_, _ = resp, err
 
+	return nil
 }
 
 func (db *DrandBeacon) VerifyEntry(types.BeaconEntry, types.BeaconEntry) error {
+	return nil
 }
 
 func (db *DrandBeacon) MaxBeaconRoundForEpoch(abi.ChainEpoch, types.BeaconEntry) uint64 {
 	// this is just some local math
+	return 0
 }
 
 var _ beacon.RandomBeacon = (*DrandBeacon)(nil)
