@@ -70,12 +70,7 @@ create table if not exists blocks
 	miner text not null,
 	timestamp bigint not null,
 	vrfproof bytea,
-	tickets bigint not null,
 	eprof bytea,
-	prand bytea,
-	ep0partial bytea,
-	ep0sector numeric not null,
-	ep0challangei numeric not null
 );
 
 create unique index if not exists block_cid_uindex

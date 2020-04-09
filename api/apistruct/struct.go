@@ -88,8 +88,8 @@ type FullNodeStruct struct {
 		MpoolGetNonce    func(context.Context, address.Address) (uint64, error)                 `perm:"read"`
 		MpoolSub         func(context.Context) (<-chan api.MpoolUpdate, error)                  `perm:"read"`
 
-		MinerGetBaseInfo func(context.Context, address.Address, types.TipSetKey) (*api.MiningBaseInfo, error)                                                                                                       `perm:"read"`
-		MinerCreateBlock func(context.Context, address.Address, types.TipSetKey, *types.Ticket, *types.ElectionProof, []types.BeaconEntry, []*types.SignedMessage, abi.ChainEpoch, uint64) (*types.BlockMsg, error) `perm:"write"`
+		MinerGetBaseInfo func(context.Context, address.Address, types.TipSetKey) (*api.MiningBaseInfo, error) `perm:"read"`
+		MinerCreateBlock func(context.Context, *api.BlockTemplate) (*types.BlockMsg, error)                   `perm:"write"`
 
 		WalletNew            func(context.Context, crypto.SigType) (address.Address, error)                       `perm:"write"`
 		WalletHas            func(context.Context, address.Address) (bool, error)                                 `perm:"write"`
@@ -330,8 +330,8 @@ func (c *FullNodeStruct) MinerGetBaseInfo(ctx context.Context, maddr address.Add
 	return c.Internal.MinerGetBaseInfo(ctx, maddr, tsk)
 }
 
-func (c *FullNodeStruct) MinerCreateBlock(ctx context.Context, addr address.Address, base types.TipSetKey, ticket *types.Ticket, eproof *types.ElectionProof, bvals []types.BeaconEntry, msgs []*types.SignedMessage, height abi.ChainEpoch, ts uint64) (*types.BlockMsg, error) {
-	return c.Internal.MinerCreateBlock(ctx, addr, base, ticket, eproof, bvals, msgs, height, ts)
+func (c *FullNodeStruct) MinerCreateBlock(ctx context.Context, bt *api.BlockTemplate) (*types.BlockMsg, error) {
+	return c.Internal.MinerCreateBlock(ctx, bt)
 }
 
 func (c *FullNodeStruct) ChainHead(ctx context.Context) (*types.TipSet, error) {

@@ -73,7 +73,7 @@ type FullNode interface {
 	// miner
 
 	MinerGetBaseInfo(context.Context, address.Address, types.TipSetKey) (*MiningBaseInfo, error)
-	MinerCreateBlock(context.Context, address.Address, types.TipSetKey, *types.Ticket, *types.ElectionProof, []types.BeaconEntry, []*types.SignedMessage, abi.ChainEpoch, uint64) (*types.BlockMsg, error)
+	MinerCreateBlock(context.Context, *BlockTemplate) (*types.BlockMsg, error)
 
 	// // UX ?
 
@@ -386,4 +386,15 @@ type MiningBaseInfo struct {
 	Sectors      []*ChainSectorInfo
 	Worker       address.Address
 	SectorSize   abi.SectorSize
+}
+
+type BlockTemplate struct {
+	Miner        address.Address
+	Parents      types.TipSetKey
+	Ticket       *types.Ticket
+	Eproof       *types.ElectionProof
+	BeaconValues []types.BeaconEntry
+	Messages     []*types.SignedMessage
+	Epoch        abi.ChainEpoch
+	Timestamp    uint64
 }

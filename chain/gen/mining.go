@@ -5,14 +5,13 @@ import (
 
 	bls "github.com/filecoin-project/filecoin-ffi"
 	amt "github.com/filecoin-project/go-amt-ipld/v2"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	cid "github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -20,30 +19,32 @@ import (
 	"github.com/filecoin-project/lotus/chain/wallet"
 )
 
-func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wallet, miner address.Address,
-	parents *types.TipSet, vrfticket *types.Ticket, eproof *types.ElectionProof,
-	bvals []types.BeaconEntry, msgs []*types.SignedMessage, height abi.ChainEpoch,
-	timestamp uint64) (*types.FullBlock, error) {
+func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wallet, bt *api.BlockTemplate) (*types.FullBlock, error) {
 
-	st, recpts, err := sm.TipSetState(ctx, parents)
+	pts, err := sm.ChainStore().LoadTipSet(bt.Parents)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load parent tipset: %w", err)
+	}
+
+	st, recpts, err := sm.TipSetState(ctx, pts)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load tipset state: %w", err)
 	}
 
-	worker, err := stmgr.GetMinerWorkerRaw(ctx, sm, st, miner)
+	worker, err := stmgr.GetMinerWorkerRaw(ctx, sm, st, bt.Miner)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get miner worker: %w", err)
 	}
 
 	next := &types.BlockHeader{
-		Miner:         miner,
-		Parents:       parents.Cids(),
-		Ticket:        vrfticket,
-		ElectionProof: eproof,
+		Miner:         bt.Miner,
+		Parents:       bt.Parents.Cids(),
+		Ticket:        bt.Ticket,
+		ElectionProof: bt.Eproof,
 
-		BeaconEntries: bvals,
-		Height:        height,
-		Timestamp:     timestamp,
+		BeaconEntries: bt.BeaconValues,
+		Height:        bt.Epoch,
+		Timestamp:     bt.Timestamp,
 		//EPostProof:            *proof,
 		ParentStateRoot:       st,
 		ParentMessageReceipts: recpts,
@@ -54,7 +55,7 @@ func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wal
 
 	var blsMsgCids, secpkMsgCids []cid.Cid
 	var blsSigs []crypto.Signature
-	for _, msg := range msgs {
+	for _, msg := range bt.Messages {
 		if msg.Signature.Type == crypto.SigTypeBLS {
 			blsSigs = append(blsSigs, msg.Signature)
 			blsMessages = append(blsMessages, &msg.Message)
@@ -102,7 +103,7 @@ func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wal
 	}
 
 	next.BLSAggregate = aggSig
-	pweight, err := sm.ChainStore().Weight(ctx, parents)
+	pweight, err := sm.ChainStore().Weight(ctx, pts)
 	if err != nil {
 		return nil, err
 	}
