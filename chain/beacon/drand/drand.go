@@ -31,9 +31,19 @@ func NewDrandBeacon() *DrandBeacon {
 func (db *DrandBeacon) Entry(ctx context.Context, round uint64) <-chan beacon.Response {
 	// check cache, it it if there, otherwise query the endpoint
 	resp, err := db.client.PublicRand(nil, &dproto.PublicRandRequest{Round: round})
-	_, _ = resp, err
 
-	return nil
+	var br beacon.Response
+	if err != nil {
+		br.Err = err
+	} else {
+		br.Entry.Round = resp.GetRound()
+		br.Entry.Data = resp.GetSignature()
+	}
+
+	out := make(chan beacon.Response, 1)
+	out <- br
+
+	return out
 }
 
 func (db *DrandBeacon) VerifyEntry(types.BeaconEntry, types.BeaconEntry) error {

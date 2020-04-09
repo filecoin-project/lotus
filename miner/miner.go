@@ -317,13 +317,15 @@ func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningB
 	log.Debugw("attempting to mine a block", "tipset", types.LogCids(base.ts.Cids()))
 	start := time.Now()
 
-	beaconPrev, err := m.getLatestBeaconEntry(ctx, base.ts)
+	mbi, err := m.api.MinerGetBaseInfo(ctx, addr, base.ts.Key())
 	if err != nil {
-		return nil, xerrors.Errorf("getLatestBeaconEntry: %w", err)
+		return nil, xerrors.Errorf("failed to get mining base info: %w", err)
 	}
 
+	beaconPrev := mbi.PrevBeaconEntry
+
 	round := base.ts.Height() + base.nullRounds + 1
-	bvals, err := beacon.BeaconEntriesForBlock(ctx, m.beacon, round, *beaconPrev)
+	bvals, err := beacon.BeaconEntriesForBlock(ctx, m.beacon, round, beaconPrev)
 	if err != nil {
 		return nil, xerrors.Errorf("get beacon entries failed: %w", err)
 	}
@@ -340,7 +342,7 @@ func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningB
 
 	log.Infof("Time delta between now and our mining base: %ds (nulls: %d)", uint64(time.Now().Unix())-base.ts.MinTimestamp(), base.nullRounds)
 
-	rbase := *beaconPrev
+	rbase := beaconPrev
 	if len(bvals) > 0 {
 		rbase = bvals[len(bvals)-1]
 	}
@@ -350,7 +352,7 @@ func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningB
 		return nil, xerrors.Errorf("scratching ticket failed: %w", err)
 	}
 
-	winner, err := gen.IsRoundWinner(ctx, base.ts, round, addr, rbase, m.api)
+	winner, err := gen.IsRoundWinner(ctx, base.ts, round, addr, rbase, mbi, m.api)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to check if we win next round: %w", err)
 	}
