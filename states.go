@@ -305,13 +305,13 @@ func (m *Sealing) handleFaulty(ctx statemachine.Context, sector SectorInfo) erro
 
 	tok, _, err := m.api.ChainHead(ctx.Context())
 	if err != nil {
-		log.Errorf("handlePreCommitFailed: api error, not proceeding: %+v", err)
+		log.Errorf("handleFaulty: api error, not proceeding: %+v", err)
 		return nil
 	}
 
 	waddr, err := m.api.StateMinerWorkerAddress(ctx.Context(), m.maddr, tok)
 	if err != nil {
-		log.Errorf("handlePreCommitting: api error, not proceeding: %+v", err)
+		log.Errorf("handleFaulty: api error, not proceeding: %+v", err)
 		return nil
 	}
 
