@@ -477,7 +477,7 @@ var sealBenchCmd = &cli.Command{
 
 			fmt.Println(string(data))
 		} else {
-			fmt.Printf("----\nresults (v24) (%d)\n", sectorSize)
+			fmt.Printf("----\nresults (v25) (%d)\n", sectorSize)
 			if robench == "" {
 				fmt.Printf("seal: addPiece: %s (%s)\n", bo.SealingResults[0].AddPiece, bps(bo.SectorSize, bo.SealingResults[0].AddPiece)) // TODO: average across multiple sealings
 				fmt.Printf("seal: preCommit phase 1: %s (%s)\n", bo.SealingResults[0].PreCommit1, bps(bo.SectorSize, bo.SealingResults[0].PreCommit1))
