@@ -424,7 +424,16 @@ func (m *Miner) createBlock(base *MiningBase, addr address.Address, ticket *type
 	nheight := base.ts.Height() + base.nullRounds + 1
 
 	// why even return this? that api call could just submit it for us
-	return m.api.MinerCreateBlock(context.TODO(), addr, base.ts.Key(), ticket, eproof, bvals, msgs, nheight, uts)
+	return m.api.MinerCreateBlock(context.TODO(), &api.BlockTemplate{
+		Miner:        addr,
+		Parents:      base.ts.Key(),
+		Ticket:       ticket,
+		Eproof:       eproof,
+		BeaconValues: bvals,
+		Messages:     msgs,
+		Epoch:        nheight,
+		Timestamp:    uts,
+	})
 }
 
 type ActorLookup func(context.Context, address.Address, types.TipSetKey) (*types.Actor, error)

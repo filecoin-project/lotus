@@ -618,7 +618,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 			return xerrors.Errorf("miner created a block but was not a winner")
 		}
 
-		// TODO: validate winning post proof
+		log.Warn("TODO: validate winning post proof") // TODO: validate winning post proof
 
 		return nil
 	})
@@ -634,7 +634,6 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		if err := beacon.ValidateBlockValues(syncer.beacon, h, *prevBeacon); err != nil {
 			return xerrors.Errorf("failed to validate blocks random beacon values: %w", err)
 		}
-		// TODO: check if first value links to value from previous block/previous block containing a value
 		return nil
 	})
 

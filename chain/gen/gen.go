@@ -288,9 +288,6 @@ func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m add
 	if err != nil {
 		return nil, nil, nil, xerrors.Errorf("get beacon entries for block: %w", err)
 	}
-	if len(entries) == 0 {
-		panic("no drand")
-	}
 
 	rbase := *prev
 	if len(entries) > 0 {
@@ -359,9 +356,6 @@ func (cg *ChainGen) NextTipSetFromMiners(base *types.TipSet, miners []address.Ad
 			if err != nil {
 				return nil, xerrors.Errorf("next block proof: %w", err)
 			}
-			if len(bvals) == 0 {
-				panic("no drand")
-			}
 
 			if et != nil {
 				// TODO: winning post proof
@@ -399,7 +393,16 @@ func (cg *ChainGen) makeBlock(parents *types.TipSet, m address.Address, vrfticke
 		ts = parents.MinTimestamp() + uint64((height-parents.Height())*build.BlockDelay)
 	}
 
-	fblk, err := MinerCreateBlock(context.TODO(), cg.sm, cg.w, m, parents, vrfticket, eticket, bvals, msgs, height, ts)
+	fblk, err := MinerCreateBlock(context.TODO(), cg.sm, cg.w, &api.BlockTemplate{
+		Miner:        m,
+		Parents:      parents.Key(),
+		Ticket:       vrfticket,
+		Eproof:       eticket,
+		BeaconValues: bvals,
+		Messages:     msgs,
+		Epoch:        height,
+		Timestamp:    ts,
+	})
 	if err != nil {
 		return nil, err
 	}
