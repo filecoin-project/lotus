@@ -70,12 +70,7 @@ create table if not exists blocks
 	miner text not null,
 	timestamp bigint not null,
 	vrfproof bytea,
-	tickets bigint not null,
 	eprof bytea,
-	prand bytea,
-	ep0partial bytea,
-	ep0sector numeric not null,
-	ep0challangei numeric not null
 );
 
 create unique index if not exists block_cid_uindex
@@ -564,16 +559,12 @@ create temp table c (like blocks_challenges excluding constraints) on commit dro
 		}
 	}
 
-	stmt2, err := tx.Prepare(`copy b (cid, parentWeight, parentStateRoot, height, miner, "timestamp", vrfproof, tickets, prand, ep0partial, ep0sector, ep0challangei) from stdin`)
+	stmt2, err := tx.Prepare(`copy b (cid, parentWeight, parentStateRoot, height, miner, "timestamp", vrfproof) from stdin`)
 	if err != nil {
 		return err
 	}
 
 	for _, bh := range bhs {
-		l := len(bh.EPostProof.Candidates)
-		if len(bh.EPostProof.Candidates) == 0 {
-			bh.EPostProof.Candidates = append(bh.EPostProof.Candidates, types.EPostTicket{})
-		}
 
 		if _, err := stmt2.Exec(
 			bh.Cid().String(),
@@ -582,13 +573,7 @@ create temp table c (like blocks_challenges excluding constraints) on commit dro
 			bh.Height,
 			bh.Miner.String(),
 			bh.Timestamp,
-			bh.Ticket.VRFProof,
-			l,
-			//bh.EPostProof.Proof,
-			bh.EPostProof.PostRand,
-			bh.EPostProof.Candidates[0].Partial,
-			bh.EPostProof.Candidates[0].SectorID,
-			bh.EPostProof.Candidates[0].ChallengeIndex); err != nil {
+			bh.Ticket.VRFProof); err != nil {
 			log.Error(err)
 		}
 	}
@@ -599,36 +584,6 @@ create temp table c (like blocks_challenges excluding constraints) on commit dro
 
 	if _, err := tx.Exec(`insert into blocks select * from b on conflict do nothing `); err != nil {
 		return xerrors.Errorf("blk put: %w", err)
-	}
-
-	stmt3, err := tx.Prepare(`copy c (block, index, sector_id, partial, candidate) from stdin`)
-	if err != nil {
-		return xerrors.Errorf("s3 create: %w", err)
-	}
-	for _, bh := range bhs {
-		for index, c := range bh.EPostProof.Candidates {
-			if _, err := stmt3.Exec(
-				bh.Cid().String(),
-				index,
-				c.SectorID,
-				c.Partial,
-				c.ChallengeIndex); err != nil {
-				log.Error(err)
-			}
-		}
-	}
-
-	if err := stmt3.Close(); err != nil {
-		return xerrors.Errorf("s2 close: %w", err)
-	}
-
-	if _, err := tx.Exec(`insert into blocks_challenges select * from c on conflict do nothing `); err != nil {
-		return xerrors.Errorf("blk put: %w", err)
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		return xerrors.Errorf("commit: %w", err)
 	}
 
 	return nil

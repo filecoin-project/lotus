@@ -23,11 +23,11 @@ func TestMessageFiltering(t *testing.T) {
 	a2 := mustIDAddr(2)
 
 	actors := map[address.Address]*types.Actor{
-		a1: &types.Actor{
+		a1: {
 			Nonce:   3,
 			Balance: types.NewInt(1200),
 		},
-		a2: &types.Actor{
+		a2: {
 			Nonce:   1,
 			Balance: types.NewInt(1000),
 		},
@@ -38,7 +38,7 @@ func TestMessageFiltering(t *testing.T) {
 	}
 
 	msgs := []types.Message{
-		types.Message{
+		{
 			From:     a1,
 			To:       a1,
 			Nonce:    3,
@@ -46,7 +46,7 @@ func TestMessageFiltering(t *testing.T) {
 			GasLimit: 50,
 			GasPrice: types.NewInt(1),
 		},
-		types.Message{
+		{
 			From:     a1,
 			To:       a1,
 			Nonce:    4,
@@ -54,7 +54,7 @@ func TestMessageFiltering(t *testing.T) {
 			GasLimit: 50,
 			GasPrice: types.NewInt(1),
 		},
-		types.Message{
+		{
 			From:     a2,
 			To:       a1,
 			Nonce:    1,
@@ -62,7 +62,7 @@ func TestMessageFiltering(t *testing.T) {
 			GasLimit: 100,
 			GasPrice: types.NewInt(1),
 		},
-		types.Message{
+		{
 			From:     a2,
 			To:       a1,
 			Nonce:    0,
@@ -70,7 +70,7 @@ func TestMessageFiltering(t *testing.T) {
 			GasLimit: 100,
 			GasPrice: types.NewInt(1),
 		},
-		types.Message{
+		{
 			From:     a2,
 			To:       a1,
 			Nonce:    2,

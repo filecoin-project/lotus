@@ -189,7 +189,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, pstate cid.Cid, bms []B
 			Miner:       b.Miner,
 			Penalty:     penalty,
 			GasReward:   gasReward,
-			TicketCount: b.TicketCount,
+			TicketCount: 1, // TODO: no longer need ticket count here.
 		})
 		if err != nil {
 			return cid.Undef, cid.Undef, xerrors.Errorf("failed to serialize award params: %w", err)
@@ -314,7 +314,7 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 			Miner:         b.Miner,
 			BlsMessages:   make([]types.ChainMsg, 0, len(bms)),
 			SecpkMessages: make([]types.ChainMsg, 0, len(sms)),
-			TicketCount:   int64(len(b.EPostProof.Proofs)),
+			TicketCount:   1, //int64(len(b.EPostProof.Proofs)), // TODO fix this
 		}
 
 		for _, m := range bms {
