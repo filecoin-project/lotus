@@ -31,6 +31,7 @@ type SealingAPI interface {
 	StateComputeDataCommitment(ctx context.Context, maddr address.Address, sectorType abi.RegisteredProof, deals []abi.DealID, tok TipSetToken) (cid.Cid, error)
 	StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok TipSetToken) (*miner.SectorPreCommitOnChainInfo, error)
 	StateMinerSectorSize(context.Context, address.Address, TipSetToken) (abi.SectorSize, error)
+	StateMinerWorkerAddress(ctx context.Context, maddr address.Address, tok TipSetToken) (address.Address, error)
 	StateMarketStorageDeal(context.Context, abi.DealID, TipSetToken) (market.DealProposal, market.DealState, error)
 	SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, gasPrice big.Int, gasLimit int64, params []byte) (cid.Cid, error)
 	ChainHead(ctx context.Context) (TipSetToken, abi.ChainEpoch, error)
@@ -41,8 +42,7 @@ type Sealing struct {
 	api    SealingAPI
 	events Events
 
-	maddr  address.Address
-	worker address.Address
+	maddr address.Address
 
 	sealer  sectorstorage.SectorManager
 	sectors *statemachine.StateGroup
@@ -53,13 +53,12 @@ type Sealing struct {
 	pcp PreCommitPolicy
 }
 
-func New(api SealingAPI, events Events, maddr address.Address, worker address.Address, ds datastore.Batching, sealer sectorstorage.SectorManager, sc SectorIDCounter, verif ffiwrapper.Verifier, tktFn TicketFn, pcp PreCommitPolicy) *Sealing {
+func New(api SealingAPI, events Events, maddr address.Address, ds datastore.Batching, sealer sectorstorage.SectorManager, sc SectorIDCounter, verif ffiwrapper.Verifier, tktFn TicketFn, pcp PreCommitPolicy) *Sealing {
 	s := &Sealing{
 		api:    api,
 		events: events,
 
 		maddr:  maddr,
-		worker: worker,
 		sealer: sealer,
 		sc:     sc,
 		verif:  verif,

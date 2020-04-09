@@ -57,7 +57,13 @@ func (m *Sealing) handleSealFailed(ctx statemachine.Context, sector SectorInfo) 
 }
 
 func (m *Sealing) handlePreCommitFailed(ctx statemachine.Context, sector SectorInfo) error {
-	if err := checkPrecommit(ctx.Context(), m.Address(), sector, m.api); err != nil {
+	tok, height, err := m.api.ChainHead(ctx.Context())
+	if err != nil {
+		log.Errorf("handlePreCommitFailed: api error, not proceeding: %+v", err)
+		return nil
+	}
+
+	if err := checkPrecommit(ctx.Context(), m.Address(), sector, tok, height, m.api); err != nil {
 		switch err.(type) {
 		case *ErrApi:
 			log.Errorf("handlePreCommitFailed: api error, not proceeding: %+v", err)
@@ -114,7 +120,13 @@ func (m *Sealing) handleComputeProofFailed(ctx statemachine.Context, sector Sect
 }
 
 func (m *Sealing) handleCommitFailed(ctx statemachine.Context, sector SectorInfo) error {
-	if err := checkPrecommit(ctx.Context(), m.maddr, sector, m.api); err != nil {
+	tok, height, err := m.api.ChainHead(ctx.Context())
+	if err != nil {
+		log.Errorf("handleCommitting: api error, not proceeding: %+v", err)
+		return nil
+	}
+
+	if err := checkPrecommit(ctx.Context(), m.maddr, sector, tok, height, m.api); err != nil {
 		switch err.(type) {
 		case *ErrApi:
 			log.Errorf("handleCommitFailed: api error, not proceeding: %+v", err)
@@ -128,7 +140,7 @@ func (m *Sealing) handleCommitFailed(ctx statemachine.Context, sector SectorInfo
 		}
 	}
 
-	if err := m.checkCommit(ctx.Context(), sector, sector.Proof); err != nil {
+	if err := m.checkCommit(ctx.Context(), sector, sector.Proof, tok); err != nil {
 		switch err.(type) {
 		case *ErrApi:
 			log.Errorf("handleCommitFailed: api error, not proceeding: %+v", err)
