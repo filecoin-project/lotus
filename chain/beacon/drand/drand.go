@@ -42,6 +42,7 @@ func (db *DrandBeacon) Entry(ctx context.Context, round uint64) <-chan beacon.Re
 
 	out := make(chan beacon.Response, 1)
 	out <- br
+	close(out)
 
 	return out
 }
