@@ -59,7 +59,7 @@ func NewState() *StateWrapper {
 }
 
 func (s *StateWrapper) NewVM() {
-	panic("NYI")
+	return
 }
 
 func (s *StateWrapper) Root() cid.Cid {
