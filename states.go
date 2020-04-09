@@ -98,7 +98,19 @@ func (m *Sealing) handlePreCommit2(ctx statemachine.Context, sector SectorInfo) 
 }
 
 func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInfo) error {
-	if err := checkPrecommit(ctx.Context(), m.Address(), sector, m.api); err != nil {
+	tok, height, err := m.api.ChainHead(ctx.Context())
+	if err != nil {
+		log.Errorf("handlePreCommitting: api error, not proceeding: %+v", err)
+		return nil
+	}
+
+	waddr, err := m.api.StateMinerWorkerAddress(ctx.Context(), m.maddr, tok)
+	if err != nil {
+		log.Errorf("handlePreCommitting: api error, not proceeding: %+v", err)
+		return nil
+	}
+
+	if err := checkPrecommit(ctx.Context(), m.Address(), sector, tok, height, m.api); err != nil {
 		switch err.(type) {
 		case *ErrApi:
 			log.Errorf("handlePreCommitting: api error, not proceeding: %+v", err)
@@ -133,7 +145,7 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 	}
 
 	log.Info("submitting precommit for sector: ", sector.SectorNumber)
-	mcid, err := m.api.SendMsg(ctx.Context(), m.worker, m.maddr, builtin.MethodsMiner.PreCommitSector, big.NewInt(0), big.NewInt(1), 1000000, enc.Bytes())
+	mcid, err := m.api.SendMsg(ctx.Context(), waddr, m.maddr, builtin.MethodsMiner.PreCommitSector, big.NewInt(0), big.NewInt(1), 1000000, enc.Bytes())
 	if err != nil {
 		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("pushing message to mpool: %w", err)})
 	}
@@ -206,7 +218,13 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 		return ctx.Send(SectorComputeProofFailed{xerrors.Errorf("computing seal proof failed: %w", err)})
 	}
 
-	if err := m.checkCommit(ctx.Context(), sector, proof); err != nil {
+	tok, _, err := m.api.ChainHead(ctx.Context())
+	if err != nil {
+		log.Errorf("handleCommitting: api error, not proceeding: %+v", err)
+		return nil
+	}
+
+	if err := m.checkCommit(ctx.Context(), sector, proof, tok); err != nil {
 		return ctx.Send(SectorCommitFailed{xerrors.Errorf("commit check error: %w", err)})
 	}
 
@@ -222,8 +240,14 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 		return ctx.Send(SectorCommitFailed{xerrors.Errorf("could not serialize commit sector parameters: %w", err)})
 	}
 
+	waddr, err := m.api.StateMinerWorkerAddress(ctx.Context(), m.maddr, tok)
+	if err != nil {
+		log.Errorf("handleCommitting: api error, not proceeding: %+v", err)
+		return nil
+	}
+
 	// TODO: check seed / ticket are up to date
-	mcid, err := m.api.SendMsg(ctx.Context(), m.worker, m.maddr, builtin.MethodsMiner.ProveCommitSector, big.NewInt(0), big.NewInt(1), 1000000, enc.Bytes())
+	mcid, err := m.api.SendMsg(ctx.Context(), waddr, m.maddr, builtin.MethodsMiner.ProveCommitSector, big.NewInt(0), big.NewInt(1), 1000000, enc.Bytes())
 	if err != nil {
 		return ctx.Send(SectorCommitFailed{xerrors.Errorf("pushing message to mpool: %w", err)})
 	}
@@ -279,7 +303,19 @@ func (m *Sealing) handleFaulty(ctx statemachine.Context, sector SectorInfo) erro
 		return ctx.Send(SectorCommitFailed{xerrors.Errorf("failed to serialize declare fault params: %w", err)})
 	}
 
-	mcid, err := m.api.SendMsg(ctx.Context(), m.worker, m.maddr, builtin.MethodsMiner.DeclareTemporaryFaults, big.NewInt(0), big.NewInt(1), 1000000, enc.Bytes())
+	tok, _, err := m.api.ChainHead(ctx.Context())
+	if err != nil {
+		log.Errorf("handleFaulty: api error, not proceeding: %+v", err)
+		return nil
+	}
+
+	waddr, err := m.api.StateMinerWorkerAddress(ctx.Context(), m.maddr, tok)
+	if err != nil {
+		log.Errorf("handleFaulty: api error, not proceeding: %+v", err)
+		return nil
+	}
+
+	mcid, err := m.api.SendMsg(ctx.Context(), waddr, m.maddr, builtin.MethodsMiner.DeclareTemporaryFaults, big.NewInt(0), big.NewInt(1), 1000000, enc.Bytes())
 	if err != nil {
 		return xerrors.Errorf("failed to push declare faults message to network: %w", err)
 	}
