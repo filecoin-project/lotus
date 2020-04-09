@@ -381,11 +381,12 @@ type ComputeStateOutput struct {
 }
 
 type MiningBaseInfo struct {
-	MinerPower   types.BigInt
-	NetworkPower types.BigInt
-	Sectors      []*ChainSectorInfo
-	Worker       address.Address
-	SectorSize   abi.SectorSize
+	MinerPower      types.BigInt
+	NetworkPower    types.BigInt
+	Sectors         []*ChainSectorInfo
+	Worker          address.Address
+	SectorSize      abi.SectorSize
+	PrevBeaconEntry types.BeaconEntry
 }
 
 type BlockTemplate struct {

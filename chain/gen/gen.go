@@ -279,22 +279,25 @@ func CarWalkFunc(nd format.Node) (out []*format.Link, err error) {
 
 func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m address.Address, round abi.ChainEpoch) ([]types.BeaconEntry, *types.ElectionProof, *types.Ticket, error) {
 	mc := &mca{w: cg.w, sm: cg.sm}
-	prev, err := cg.cs.GetLatestBeaconEntry(pts)
+
+	mbi, err := mc.MinerGetBaseInfo(ctx, m, pts.Key())
 	if err != nil {
-		return nil, nil, nil, xerrors.Errorf("getLatestBeaconEntry: %w", err)
+		return nil, nil, nil, xerrors.Errorf("get miner base info: %w", err)
 	}
 
-	entries, err := beacon.BeaconEntriesForBlock(ctx, cg.beacon, round, *prev)
+	prev := mbi.PrevBeaconEntry
+
+	entries, err := beacon.BeaconEntriesForBlock(ctx, cg.beacon, round, prev)
 	if err != nil {
 		return nil, nil, nil, xerrors.Errorf("get beacon entries for block: %w", err)
 	}
 
-	rbase := *prev
+	rbase := prev
 	if len(entries) > 0 {
 		rbase = entries[len(entries)-1]
 	}
 
-	eproof, err := IsRoundWinner(ctx, pts, round, m, rbase, mc)
+	eproof, err := IsRoundWinner(ctx, pts, round, m, rbase, mbi, mc)
 	if err != nil {
 		return nil, nil, nil, xerrors.Errorf("checking round winner failed: %w", err)
 	}
@@ -534,7 +537,7 @@ type ProofInput struct {
 }
 
 func IsRoundWinner(ctx context.Context, ts *types.TipSet, round abi.ChainEpoch,
-	miner address.Address, brand types.BeaconEntry, a MiningCheckAPI) (*types.ElectionProof, error) {
+	miner address.Address, brand types.BeaconEntry, mbi *api.MiningBaseInfo, a MiningCheckAPI) (*types.ElectionProof, error) {
 
 	buf := new(bytes.Buffer)
 	if err := miner.MarshalCBOR(buf); err != nil {
@@ -544,11 +547,6 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, round abi.ChainEpoch,
 	electionRand, err := store.DrawRandomness(brand.Data, 17, round, buf.Bytes())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to draw randomness: %w", err)
-	}
-
-	mbi, err := a.MinerGetBaseInfo(ctx, miner, ts.Key())
-	if err != nil {
-		return nil, xerrors.Errorf("failed to get mining base info: %w", err)
 	}
 
 	vrfout, err := ComputeVRF(ctx, a.WalletSign, mbi.Worker, electionRand)
