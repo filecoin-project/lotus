@@ -9,7 +9,6 @@ import (
 
 type Config struct {
 	SealProofType abi.RegisteredProof
-	PoStProofType abi.RegisteredProof
 
 	_ struct{} // guard against nameless init
 }
@@ -19,25 +18,8 @@ func sizeFromConfig(cfg Config) (abi.SectorSize, error) {
 		return abi.SectorSize(0), xerrors.New("must specify a seal proof type from abi.RegisteredProof")
 	}
 
-	if cfg.PoStProofType == abi.RegisteredProof(0) {
-		return abi.SectorSize(0), xerrors.New("must specify a PoSt proof type from abi.RegisteredProof")
-	}
 
-	s1, err := SectorSizeForRegisteredProof(cfg.SealProofType)
-	if err != nil {
-		return abi.SectorSize(0), err
-	}
-
-	s2, err := SectorSizeForRegisteredProof(cfg.PoStProofType)
-	if err != nil {
-		return abi.SectorSize(0), err
-	}
-
-	if s1 != s2 {
-		return abi.SectorSize(0), xerrors.Errorf("seal sector size %d does not equal PoSt sector size %d", s1, s2)
-	}
-
-	return s1, nil
+	return SectorSizeForRegisteredProof(cfg.SealProofType)
 }
 
 // TODO: remove this method after implementing it along side the registered proofs and importing it from there.

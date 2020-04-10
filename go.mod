@@ -8,7 +8,7 @@ require (
 	github.com/filecoin-project/go-fil-commcid v0.0.0-20200208005934-2b8bd03caca5
 	github.com/filecoin-project/go-paramfetch v0.0.1
 	github.com/filecoin-project/lotus v0.2.10
-	github.com/filecoin-project/specs-actors v0.0.0-20200324235424-aef9b20a9fb1
+	github.com/filecoin-project/specs-actors v0.0.0-20200409043918-e569f4a2f504
 	github.com/filecoin-project/specs-storage v0.0.0-20200317225704-7420bc655c38
 	github.com/gorilla/mux v1.7.4
 	github.com/hashicorp/go-multierror v1.0.0

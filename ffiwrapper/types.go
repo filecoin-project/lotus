@@ -35,8 +35,8 @@ type Storage interface {
 
 type Verifier interface {
 	VerifySeal(abi.SealVerifyInfo) (bool, error)
-	VerifyElectionPost(ctx context.Context, info abi.PoStVerifyInfo) (bool, error)
-	VerifyFallbackPost(ctx context.Context, info abi.PoStVerifyInfo) (bool, error)
+	VerifyWinningPoSt(ctx context.Context, info abi.WinningPoStVerifyInfo) (bool, error)
+	VerifyWindowPoSt(ctx context.Context, info abi.WindowPoStVerifyInfo) (bool, error)
 }
 
 var ErrSectorNotFound = errors.New("sector not found")

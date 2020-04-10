@@ -10,78 +10,36 @@ import (
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/sector-storage/stores"
 )
 
-func (sb *Sealer) ComputeElectionPoSt(ctx context.Context, miner abi.ActorID, sectorInfo []abi.SectorInfo, challengeSeed abi.PoStRandomness, winners []abi.PoStCandidate) ([]abi.PoStProof, error) {
-	challengeSeed[31] = 0
+func (sb *Sealer) GenerateWinningPoStSectorChallenge(ctx context.Context, proofType abi.RegisteredProof, minerID abi.ActorID, randomness abi.PoStRandomness, eligibleSectorCount uint64) ([]uint64, error) {
+	randomness[31] = 0 // TODO: Not correct, fixme
+	return ffi.GenerateWinningPoStSectorChallenge(proofType, minerID, randomness, eligibleSectorCount)
+}
 
-	privsects, err := sb.pubSectorToPriv(ctx, miner, sectorInfo, nil) // TODO: faults
+func (sb *Sealer) GenerateWinningPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []abi.SectorInfo, randomness abi.PoStRandomness) ([]abi.PoStProof, error) {
+	randomness[31] = 0 // TODO: Not correct, fixme
+	privsectors, err := sb.pubSectorToPriv(ctx, minerID, sectorInfo, nil, abi.RegisteredProof.RegisteredWinningPoStProof) // TODO: FAULTS?
 	if err != nil {
 		return nil, err
 	}
 
-	return ffi.GeneratePoSt(miner, privsects, challengeSeed, winners)
+	return ffi.GenerateWinningPoSt(minerID, privsectors, randomness)
 }
 
-func (sb *Sealer) GenerateFallbackPoSt(ctx context.Context, miner abi.ActorID, sectorInfo []abi.SectorInfo, challengeSeed abi.PoStRandomness, faults []abi.SectorNumber) (storage.FallbackPostOut, error) {
-	privsectors, err := sb.pubSectorToPriv(ctx, miner, sectorInfo, faults)
-	if err != nil {
-		return storage.FallbackPostOut{}, err
-	}
-
-	challengeCount := fallbackPostChallengeCount(uint64(len(sectorInfo)), uint64(len(faults)))
-	challengeSeed[31] = 0
-
-	candidates, err := ffi.GenerateCandidates(miner, challengeSeed, challengeCount, privsectors)
-	if err != nil {
-		return storage.FallbackPostOut{}, err
-	}
-
-	winners := make([]abi.PoStCandidate, len(candidates))
-	for idx := range winners {
-		winners[idx] = candidates[idx].Candidate
-	}
-
-	proof, err := ffi.GeneratePoSt(miner, privsectors, challengeSeed, winners)
-	return storage.FallbackPostOut{
-		PoStInputs: ffiToStorageCandidates(candidates),
-		Proof:      proof,
-	}, err
-}
-
-func (sb *Sealer) GenerateEPostCandidates(ctx context.Context, miner abi.ActorID, sectorInfo []abi.SectorInfo, challengeSeed abi.PoStRandomness, faults []abi.SectorNumber) ([]storage.PoStCandidateWithTicket, error) {
-	privsectors, err := sb.pubSectorToPriv(ctx, miner, sectorInfo, faults)
+func (sb *Sealer) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []abi.SectorInfo, randomness abi.PoStRandomness) ([]abi.PoStProof, error) {
+	randomness[31] = 0 // TODO: Not correct, fixme
+	privsectors, err := sb.pubSectorToPriv(ctx, minerID, sectorInfo, nil, abi.RegisteredProof.RegisteredWindowPoStProof) // TODO: FAULTS?
 	if err != nil {
 		return nil, err
 	}
 
-	challengeSeed[31] = 0
-
-	challengeCount := ElectionPostChallengeCount(uint64(len(sectorInfo)), uint64(len(faults)))
-	pc, err := ffi.GenerateCandidates(miner, challengeSeed, challengeCount, privsectors)
-	if err != nil {
-		return nil, err
-	}
-
-	return ffiToStorageCandidates(pc), nil
+	return ffi.GenerateWindowPoSt(minerID, privsectors, randomness)
 }
 
-func ffiToStorageCandidates(pc []ffi.PoStCandidateWithTicket) []storage.PoStCandidateWithTicket {
-	out := make([]storage.PoStCandidateWithTicket, len(pc))
-	for i := range out {
-		out[i] = storage.PoStCandidateWithTicket{
-			Candidate: pc[i].Candidate,
-			Ticket:    pc[i].Ticket,
-		}
-	}
-
-	return out
-}
-
-func (sb *Sealer) pubSectorToPriv(ctx context.Context, mid abi.ActorID, sectorInfo []abi.SectorInfo, faults []abi.SectorNumber) (ffi.SortedPrivateSectorInfo, error) {
+func (sb *Sealer) pubSectorToPriv(ctx context.Context, mid abi.ActorID, sectorInfo []abi.SectorInfo, faults []abi.SectorNumber, rpt func(abi.RegisteredProof) (abi.RegisteredProof, error)) (ffi.SortedPrivateSectorInfo, error) {
 	fmap := map[abi.SectorNumber]struct{}{}
 	for _, fault := range faults {
 		fmap[fault] = struct{}{}
@@ -99,7 +57,7 @@ func (sb *Sealer) pubSectorToPriv(ctx context.Context, mid abi.ActorID, sectorIn
 		}
 		done() // TODO: This is a tiny bit suboptimal
 
-		postProofType, err := s.RegisteredProof.RegisteredPoStProof()
+		postProofType, err := rpt(s.RegisteredProof)
 		if err != nil {
 			return ffi.SortedPrivateSectorInfo{}, xerrors.Errorf("acquiring registered PoSt proof from sector info %+v: %w", s, err)
 		}
@@ -125,19 +83,18 @@ func (proofVerifier) VerifySeal(info abi.SealVerifyInfo) (bool, error) {
 	return ffi.VerifySeal(info)
 }
 
-func (proofVerifier) VerifyElectionPost(ctx context.Context, info abi.PoStVerifyInfo) (bool, error) {
-	return verifyPost(ctx, info)
-}
-
-func (proofVerifier) VerifyFallbackPost(ctx context.Context, info abi.PoStVerifyInfo) (bool, error) {
-	return verifyPost(ctx, info)
-}
-
-func verifyPost(ctx context.Context, info abi.PoStVerifyInfo) (bool, error) {
-	_, span := trace.StartSpan(ctx, "VerifyPoSt")
+func (proofVerifier) VerifyWinningPoSt(ctx context.Context, info abi.WinningPoStVerifyInfo) (bool, error) {
+	info.Randomness[31] = 0 // TODO: Not correct, fixme
+	_, span := trace.StartSpan(ctx, "VerifyWinningPoSt")
 	defer span.End()
 
-	info.Randomness[31] = 0
+	return ffi.VerifyWinningPoSt(info)
+}
 
-	return ffi.VerifyPoSt(info)
+func (proofVerifier) VerifyWindowPoSt(ctx context.Context, info abi.WindowPoStVerifyInfo) (bool, error) {
+	info.Randomness[31] = 0 // TODO: Not correct, fixme
+	_, span := trace.StartSpan(ctx, "VerifyWindowPoSt")
+	defer span.End()
+
+	return ffi.VerifyWindowPoSt(info)
 }
