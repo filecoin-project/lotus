@@ -421,7 +421,12 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 				return err
 			}
 
-			ppt, spt, err := ffiwrapper.SealProofTypeFromSectorSize(ssize)
+			spt, err := ffiwrapper.SealProofTypeFromSectorSize(ssize)
+			if err != nil {
+				return err
+			}
+
+			winPt, err := spt.RegisteredWinningPoStProof()
 			if err != nil {
 				return err
 			}
@@ -438,12 +443,11 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 
 			smgr, err := sectorstorage.New(ctx, lr, stores.NewIndex(), &ffiwrapper.Config{
 				SealProofType: spt,
-				PoStProofType: ppt,
 			}, sectorstorage.SealerConfig{true, true, true}, nil, sa)
 			if err != nil {
 				return err
 			}
-			epp := storage.NewElectionPoStProver(smgr, dtypes.MinerID(mid))
+			epp := storage.NewElectionPoStProver(smgr, dtypes.MinerID(mid), winPt)
 
 			beacon := beacon.NewMockBeacon(build.BlockDelay * time.Second)
 

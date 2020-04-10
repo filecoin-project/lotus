@@ -96,7 +96,7 @@ func ProofsConfig(maddr dtypes.MinerAddress, fnapi lapi.FullNode) (*ffiwrapper.C
 		return nil, err
 	}
 
-	_, spt, err := ffiwrapper.SealProofTypeFromSectorSize(ssize)
+	spt, err := ffiwrapper.SealProofTypeFromSectorSize(ssize)
 	if err != nil {
 		return nil, xerrors.Errorf("bad sector size: %w", err)
 	}
@@ -135,9 +135,14 @@ func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api lapi.FullNode, h
 		return nil, err
 	}
 
-	ppt, _, err := ffiwrapper.SealProofTypeFromSectorSize(sealer.SectorSize()) // TODO: this changes
+	spt, err := ffiwrapper.SealProofTypeFromSectorSize(sealer.SectorSize()) // TODO: this changes
 	if err != nil {
 		return nil, xerrors.Errorf("bad sector size: %w", err)
+	}
+
+	ppt, err := spt.RegisteredWindowPoStProof()
+	if err != nil {
+		return nil, err
 	}
 
 	fps := storage.NewWindowedPoStScheduler(api, sealer, maddr, worker, ppt)
@@ -324,7 +329,7 @@ func StorageProvider(ctx helpers.MetricsCtx, fapi lapi.FullNode, h host.Host, ds
 		return nil, err
 	}
 
-	rt, _, err := ffiwrapper.SealProofTypeFromSectorSize(ssize)
+	rt, err := ffiwrapper.SealProofTypeFromSectorSize(ssize)
 	if err != nil {
 		return nil, err
 	}
