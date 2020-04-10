@@ -20,8 +20,10 @@ import (
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/genesis"
 )
@@ -179,13 +181,19 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 						DealWeight: dealWeight,
 					}
 
-					spower := power.ConsensusPowerForWeight(weight)
-					pledge = power.PledgeForWeight(weight, st.TotalNetworkPower)
-					err := st.AddToClaim(&state.AdtStore{cst}, maddr, spower, pledge)
+					// TODO: This is almost definitely not correct
+					circSupply := types.BigMul(types.NewInt(build.TotalFilecoin - build.MiningRewardTotal), types.NewInt(build.FilecoinPrecision))
+					totalPledge := types.NewInt(3)
+					perEpochReward := types.NewInt(9)
+
+					qapower := power.QAPowerForWeight(weight)
+					pledge = power.InitialPledgeForWeight(qapower, st.TotalQualityAdjPower, circSupply, totalPledge, perEpochReward)
+
+					err := st.AddToClaim(&state.AdtStore{cst}, maddr, types.NewInt(uint64(weight.SectorSize)), qapower, pledge)
 					if err != nil {
 						return xerrors.Errorf("add to claim: %w", err)
 					}
-					fmt.Println("Added weight to claim: ", st.TotalNetworkPower)
+					fmt.Println("Added weight to claim: ", st.TotalRawBytePower, st.TotalQualityAdjPower)
 					return nil
 				})
 				if err != nil {
@@ -253,7 +261,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 
 	// TODO: to avoid division by zero, we set the initial power actor power to 1, this adjusts that back down so the accounting is accurate.
 	err = vm.MutateState(ctx, builtin.StoragePowerActorAddr, func(cst cbor.IpldStore, st *power.State) error {
-		st.TotalNetworkPower = big.Sub(st.TotalNetworkPower, big.NewInt(1))
+		st.TotalQualityAdjPower = big.Sub(st.TotalQualityAdjPower, big.NewInt(1))
 		return nil
 	})
 
