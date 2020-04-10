@@ -10,13 +10,13 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/minio/blake2b-simd"
 	mh "github.com/multiformats/go-multihash"
-	"github.com/pkg/errors"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 
@@ -30,7 +30,7 @@ func init() {
 // Actual type is defined in chain/types/vmcontext.go because the VMContext interface is there
 
 func Syscalls(verifier ffiwrapper.Verifier) runtime.Syscalls {
-	return &syscallShim{verifier}
+	return &syscallShim{verifier: verifier}
 }
 
 type syscallShim struct {
@@ -77,19 +77,13 @@ func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte, epoch abi.ChainE
 	}
 
 	// can blocks be decoded properly?
-	var blockA, blockB, blockC types.BlockHeader
+	var blockA, blockB types.BlockHeader
 	if decodeErr := blockA.UnmarshalCBOR(bytes.NewReader(a)); decodeErr != nil {
-		return nil, errors.Wrapf(decodeErr, "cannot decode first block header")
+		return nil, xerrors.Errorf("cannot decode first block header: %w", decodeErr)
 	}
 
 	if decodeErr := blockB.UnmarshalCBOR(bytes.NewReader(b)); decodeErr != nil {
-		return nil, errors.Wrapf(decodeErr, "cannot decode second block header")
-	}
-
-	if len(extra) > 0 {
-		if decodeErr := blockC.UnmarshalCBOR(bytes.NewReader(extra)); decodeErr != nil {
-			return nil, errors.Wrapf(decodeErr, "cannot decode extra")
-		}
+		return nil, xerrors.Errorf("cannot decode second block header: %f", decodeErr)
 	}
 
 	// (1) check conditions necessary to any consensus fault
@@ -104,7 +98,7 @@ func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte, epoch abi.ChainE
 		return nil, fmt.Errorf("first block must not be of higher height than second")
 	}
 
-	// (2) check the consensus faults themselves
+	// (2) check for the consensus faults themselves
 	var consensusFault *runtime.ConsensusFault
 
 	// (a) double-fork mining fault
@@ -128,30 +122,42 @@ func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte, epoch abi.ChainE
 	}
 
 	// (c) parent-grinding fault
-	// TODO HS: check is the blockB.height == blockA.height + 1 cond nec?
-	// Here extra is the "witness", a third block that shows the connection between A and B
+	// Here extra is the "witness", a third block that shows the connection between A and B as
+	// A's sibling and B's parent.
 	// Specifically, since A is of lower height, it must be that B was mined omitting A from its tipset
-	// so there must be a block C such that A and C are siblings and C is B's parent
-	if types.CidArrsEqual(blockA.Parents, blockC.Parents) && types.CidArrsContains(blockB.Parents, blockC.Cid()) &&
-		!types.CidArrsContains(blockB.Parents, blockA.Cid()) && blockB.Height == blockA.Height+1 {
-		consensusFault = &runtime.ConsensusFault{
-			Target: blockA.Miner,
-			Epoch:  blockB.Height,
-			Type:   runtime.ConsensusFaultParentGrinding,
+	var blockC types.BlockHeader
+	if len(extra) > 0 {
+		if decodeErr := blockC.UnmarshalCBOR(bytes.NewReader(extra)); decodeErr != nil {
+			return nil, xerrors.Errorf("cannot decode extra: %w", decodeErr)
+		}
+
+		if types.CidArrsEqual(blockA.Parents, blockC.Parents) && types.CidArrsContains(blockB.Parents, blockC.Cid()) &&
+			!types.CidArrsContains(blockB.Parents, blockA.Cid()) {
+			consensusFault = &runtime.ConsensusFault{
+				Target: blockA.Miner,
+				Epoch:  blockB.Height,
+				Type:   runtime.ConsensusFaultParentGrinding,
+			}
 		}
 	}
 
-	// (3) expensive final checks
+	// (3) return if no consensus fault by now
+	if consensusFault == nil {
+		return consensusFault, nil
+	}
+
+	// else
+	// (4) expensive final checks
 
 	// check blocks are properly signed by their respective miner
 	// note we do not need to check extra's: it is a parent to block b
 	// which itself is signed, so it was willingly included by the miner
 	if sigErr := ss.VerifyBlockSig(&blockA); sigErr != nil {
-		return nil, errors.Wrapf(sigErr, "cannot verify first block sig")
+		return nil, xerrors.Errorf("cannot verify first block sig: %w", sigErr)
 	}
 
 	if sigErr := ss.VerifyBlockSig(&blockB); sigErr != nil {
-		return nil, errors.Wrapf(sigErr, "cannot verify first block sig")
+		return nil, xerrors.Errorf("cannot verify first block sig: %w", sigErr)
 	}
 
 	return consensusFault, nil
@@ -159,10 +165,23 @@ func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte, epoch abi.ChainE
 
 func (ss *syscallShim) VerifyBlockSig(blk *types.BlockHeader) error {
 
-	// // load actorState
+	// get appropriate miner actor
+	act, err := ss.cstate.GetActor(blk.Miner)
+	if err != nil {
+		return err
+	}
 
-	// // get publicKeyAddr
-	// waddr :=  ss.ResolveToKeyAddr(ss.cstate, ss.cst, mas.Info.Worker)
+	// use that to get the miner state
+	var mas miner.State
+	if err = ss.cst.Get(ss.ctx, act.Head, &mas); err != nil {
+		return err
+	}
+
+	// and use to get resolved workerKey
+	waddr, err := ResolveToKeyAddr(ss.cstate, ss.cst, mas.Info.Worker)
+	if err != nil {
+		return err
+	}
 
 	if err := sigs.CheckBlockSignature(blk, ss.ctx, waddr); err != nil {
 		return err
