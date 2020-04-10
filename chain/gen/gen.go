@@ -12,7 +12,6 @@ import (
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
-	"github.com/filecoin-project/specs-storage/storage"
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-car"
@@ -65,7 +64,7 @@ type ChainGen struct {
 
 	w *wallet.Wallet
 
-	eppProvs    map[address.Address]ElectionPoStProver
+	eppProvs    map[address.Address]WinningPoStProver
 	Miners      []address.Address
 	receivers   []address.Address
 	banker      address.Address
@@ -205,9 +204,9 @@ func NewGenerator() (*ChainGen, error) {
 		return nil, xerrors.Errorf("set genesis failed: %w", err)
 	}
 
-	mgen := make(map[address.Address]ElectionPoStProver)
+	mgen := make(map[address.Address]WinningPoStProver)
 	for i := range tpl.Miners {
-		mgen[genesis2.MinerAddress(uint64(i))] = &eppProvider{}
+		mgen[genesis2.MinerAddress(uint64(i))] = &wppProvider{}
 	}
 
 	sm := stmgr.NewStateManager(cs)
@@ -501,39 +500,28 @@ func (mca mca) WalletSign(ctx context.Context, a address.Address, v []byte) (*cr
 	return mca.w.Sign(ctx, a, v)
 }
 
-type ElectionPoStProver interface {
-	GenerateCandidates(context.Context, []abi.SectorInfo, abi.PoStRandomness) ([]storage.PoStCandidateWithTicket, error)
-	ComputeProof(context.Context, []abi.SectorInfo, []byte, []storage.PoStCandidateWithTicket) ([]abi.PoStProof, error)
+type WinningPoStProver interface {
+	GenerateCandidates(context.Context, abi.PoStRandomness, uint64) ([]uint64, error)
+	ComputeProof(context.Context, []abi.SectorInfo, []byte) ([]abi.PoStProof, error)
 }
 
-type eppProvider struct{}
+type wppProvider struct{}
 
-func (epp *eppProvider) GenerateCandidates(ctx context.Context, _ []abi.SectorInfo, eprand abi.PoStRandomness) ([]storage.PoStCandidateWithTicket, error) {
-	return []storage.PoStCandidateWithTicket{
-		{
-			Candidate: abi.PoStCandidate{
-				RegisteredProof: abi.RegisteredProof_StackedDRG2KiBPoSt,
-				SectorID:        abi.SectorID{Number: 1},
-				PartialTicket:   abi.PartialTicket{},
-				PrivateProof:    abi.PrivatePoStCandidateProof{},
-				ChallengeIndex:  1,
-			},
-		},
-	}, nil
+func (wpp *wppProvider) GenerateCandidates(ctx context.Context, _ abi.PoStRandomness, _ uint64) ([]uint64, error) {
+	return []uint64{0}, nil
 }
 
-func (epp *eppProvider) ComputeProof(ctx context.Context, _ []abi.SectorInfo, eprand []byte, winners []storage.PoStCandidateWithTicket) ([]abi.PoStProof, error) {
-
+func (wpp *wppProvider) ComputeProof(context.Context, []abi.SectorInfo, []byte) ([]abi.PoStProof, error) {
 	return []abi.PoStProof{{
 		ProofBytes: []byte("valid proof"),
 	}}, nil
 }
 
 type ProofInput struct {
-	sectors []abi.SectorInfo
-	hvrf    []byte
-	winners []storage.PoStCandidateWithTicket
-	vrfout  []byte
+	sectors           []abi.SectorInfo
+	hvrf              []byte
+	challengedSectors []uint64
+	vrfout            []byte
 }
 
 func IsRoundWinner(ctx context.Context, ts *types.TipSet, round abi.ChainEpoch,
@@ -563,8 +551,8 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, round abi.ChainEpoch,
 }
 
 /*
-func ComputeProof(ctx context.Context, epp ElectionPoStProver, pi *ProofInput) (*types.EPostProof, error) {
-	proof, err := epp.ComputeProof(ctx, pi.sectors, pi.hvrf, pi.winners)
+func ComputeProof(ctx context.Context, epp WinningPoStProver, pi *ProofInput) (*types.EPostProof, error) {
+	proof, err := epp.ComputeProof(ctx, pi.sectors, pi.hvrf, pi.challengedSectors)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to compute snark for election proof: %w", err)
 	}
@@ -573,7 +561,7 @@ func ComputeProof(ctx context.Context, epp ElectionPoStProver, pi *ProofInput) (
 		Proofs:   proof,
 		PostRand: pi.vrfout,
 	}
-	for _, win := range pi.winners {
+	for _, win := range pi.challengedSectors {
 		part := make([]byte, 32)
 		copy(part, win.Candidate.PartialTicket)
 		ept.Candidates = append(ept.Candidates, types.EPostTicket{
@@ -622,14 +610,14 @@ type genFakeVerifier struct{}
 
 var _ ffiwrapper.Verifier = (*genFakeVerifier)(nil)
 
-func (m genFakeVerifier) VerifyElectionPost(ctx context.Context, pvi abi.PoStVerifyInfo) (bool, error) {
-	panic("nyi")
-}
-
 func (m genFakeVerifier) VerifySeal(svi abi.SealVerifyInfo) (bool, error) {
 	return true, nil
 }
 
-func (m genFakeVerifier) VerifyFallbackPost(ctx context.Context, pvi abi.PoStVerifyInfo) (bool, error) {
-	panic("nyi")
+func (m genFakeVerifier) VerifyWinningPoSt(ctx context.Context, info abi.WinningPoStVerifyInfo) (bool, error) {
+	panic("implement me")
+}
+
+func (m genFakeVerifier) VerifyWindowPoSt(ctx context.Context, info abi.WindowPoStVerifyInfo) (bool, error) {
+	panic("implement me")
 }

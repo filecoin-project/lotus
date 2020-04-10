@@ -242,7 +242,7 @@ var runCmd = &cli.Command{
 		}
 
 		// Setup remote sector store
-		_, spt, err := ffiwrapper.ProofTypeFromSectorSize(ssize)
+		_, spt, err := ffiwrapper.SealProofTypeFromSectorSize(ssize)
 		if err != nil {
 			return xerrors.Errorf("getting proof type: %w", err)
 		}

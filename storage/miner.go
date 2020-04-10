@@ -125,22 +125,22 @@ func (m *Miner) runPreflightChecks(ctx context.Context) error {
 	return nil
 }
 
-type StorageEpp struct {
-	prover storage.Prover
-	miner  abi.ActorID
+type StorageWpp struct {
+	prover  storage.Prover
+	miner   abi.ActorID
+	winnRpt abi.RegisteredProof
 }
 
-func NewElectionPoStProver(sb storage.Prover, miner dtypes.MinerID) *StorageEpp {
-	return &StorageEpp{sb, abi.ActorID(miner)}
+func NewElectionPoStProver(sb storage.Prover, miner dtypes.MinerID, winnRpt abi.RegisteredProof) *StorageWpp {
+	return &StorageWpp{sb, abi.ActorID(miner), winnRpt}
 }
 
-var _ gen.ElectionPoStProver = (*StorageEpp)(nil)
+var _ gen.WinningPoStProver = (*StorageWpp)(nil)
 
-func (epp *StorageEpp) GenerateCandidates(ctx context.Context, ssi []abi.SectorInfo, rand abi.PoStRandomness) ([]storage.PoStCandidateWithTicket, error) {
+func (wpp *StorageWpp) GenerateCandidates(ctx context.Context, randomness abi.PoStRandomness, eligibleSectorCount uint64) ([]uint64, error) {
 	start := time.Now()
-	var faults []abi.SectorNumber // TODO
 
-	cds, err := epp.prover.GenerateEPostCandidates(ctx, epp.miner, ssi, rand, faults)
+	cds, err := wpp.prover.GenerateWinningPoStSectorChallenge(ctx, wpp.winnRpt, wpp.miner, randomness, eligibleSectorCount)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to generate candidates: %w", err)
 	}
@@ -148,19 +148,14 @@ func (epp *StorageEpp) GenerateCandidates(ctx context.Context, ssi []abi.SectorI
 	return cds, nil
 }
 
-func (epp *StorageEpp) ComputeProof(ctx context.Context, ssi []abi.SectorInfo, rand []byte, winners []storage.PoStCandidateWithTicket) ([]abi.PoStProof, error) {
+func (wpp *StorageWpp) ComputeProof(ctx context.Context, ssi []abi.SectorInfo, rand []byte) ([]abi.PoStProof, error) {
 	if build.InsecurePoStValidation {
 		log.Warn("Generating fake EPost proof! You should only see this while running tests!")
 		return []abi.PoStProof{{ProofBytes: []byte("valid proof")}}, nil
 	}
 
-	owins := make([]abi.PoStCandidate, 0, len(winners))
-	for _, w := range winners {
-		owins = append(owins, w.Candidate)
-	}
-
 	start := time.Now()
-	proof, err := epp.prover.ComputeElectionPoSt(ctx, epp.miner, ssi, rand, owins)
+	proof, err := wpp.prover.GenerateWinningPoSt(ctx, wpp.miner, ssi, rand)
 	if err != nil {
 		return nil, err
 	}
