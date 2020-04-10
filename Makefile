@@ -161,6 +161,18 @@ BINS+=health
 
 buildall: $(BINS)
 
+completions:
+	./scripts/make-completions.sh lotus
+	./scripts/make-completions.sh lotus-storage-miner
+.PHONY: completions
+
+install-completions:
+	mkdir -p /usr/share/bash-completion/completions /usr/local/share/zsh/site-functions/
+	install -C ./scripts/bash-completion/lotus /usr/share/bash-completion/completions/lotus
+	install -C ./scripts/bash-completion/lotus-storage-miner /usr/share/bash-completion/completions/lotus-storage-miner
+	install -C ./scripts/zsh-completion/lotus /usr/local/share/zsh/site-functions/_lotus
+	install -C ./scripts/zsh-completion/lotus-storage-miner /usr/local/share/zsh/site-functions/_lotus-storage-miner
+
 clean:
 	rm -rf $(CLEAN) $(BINS)
 	-$(MAKE) -C $(FFI_PATH) clean

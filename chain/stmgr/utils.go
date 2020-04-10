@@ -2,6 +2,7 @@ package stmgr
 
 import (
 	"context"
+
 	amt "github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
@@ -418,11 +419,17 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, tsk types.TipSetKey
 		return nil, xerrors.Errorf("failed to get miner sector size: %w", err)
 	}
 
+	prev, err := sm.ChainStore().GetLatestBeaconEntry(ts)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get latest beacon entry: %w", err)
+	}
+
 	return &api.MiningBaseInfo{
-		MinerPower:   mpow,
-		NetworkPower: tpow,
-		Sectors:      provset,
-		Worker:       worker,
-		SectorSize:   ssize,
+		MinerPower:      mpow,
+		NetworkPower:    tpow,
+		Sectors:         provset,
+		Worker:          worker,
+		SectorSize:      ssize,
+		PrevBeaconEntry: *prev,
 	}, nil
 }

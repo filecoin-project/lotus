@@ -8,7 +8,6 @@ import (
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	exchange "github.com/ipfs/go-ipfs-exchange-interface"
 	format "github.com/ipfs/go-ipld-format"
-	"github.com/ipld/go-ipld-prime"
 
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
@@ -32,8 +31,6 @@ type ClientDAG format.DAGService
 type ClientDealStore *statestore.StateStore
 type ClientDatastore datastore.Batching
 
-type GraphsyncLoader ipld.Loader
-type GraphsyncStorer ipld.Storer
 type Graphsync graphsync.GraphExchange
 
 // ClientDataTransfer is a data transfer manager for the client
