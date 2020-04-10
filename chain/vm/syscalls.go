@@ -53,8 +53,8 @@ func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte, epoch abi.ChainE
 	panic("NYI")
 }
 
-func (ss *syscallShim) VerifyPoSt(proof abi.PoStVerifyInfo) error {
-	ok, err := ss.verifier.VerifyFallbackPost(context.TODO(), proof)
+func (ss *syscallShim) VerifyPoSt(proof abi.WindowPoStVerifyInfo) error {
+	ok, err := ss.verifier.VerifyWindowPoSt(context.TODO(), proof)
 	if err != nil {
 		return err
 	}

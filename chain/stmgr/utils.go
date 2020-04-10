@@ -90,10 +90,10 @@ func getPowerRaw(ctx context.Context, sm *StateManager, st cid.Cid, maddr addres
 			return big.Zero(), big.Zero(), err
 		}
 
-		mpow = claim.Power
+		mpow = claim.QualityAdjPower // TODO: is quality adjusted power what we want here?
 	}
 
-	return mpow, ps.TotalNetworkPower, nil
+	return mpow, ps.TotalQualityAdjPower, nil
 }
 
 func GetMinerPeerID(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (peer.ID, error) {
