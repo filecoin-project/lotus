@@ -161,6 +161,15 @@ func CidArrsEqual(a, b []cid.Cid) bool {
 	return true
 }
 
+func CidArrsContains(a []cid.Cid, b cid.Cid) bool {
+	for _, elem := range a {
+		if elem.Equals(b) {
+			return true
+		}
+	}
+	return false
+}
+
 var blocksPerEpoch = NewInt(build.BlocksPerEpoch)
 
 const sha256bits = 256
