@@ -279,10 +279,15 @@ func SetupBlockProducer(lc fx.Lifecycle, ds dtypes.MetadataDS, api lapi.FullNode
 }
 
 func SealTicketGen(fapi lapi.FullNode) sealing.TicketFn {
-	return func(ctx context.Context) (abi.SealRandomness, abi.ChainEpoch, error) {
-		ts, err := fapi.ChainHead(ctx)
+	return func(ctx context.Context, tok sealing.TipSetToken) (abi.SealRandomness, abi.ChainEpoch, error) {
+		tsk, err := types.TipSetKeyFromBytes(tok)
 		if err != nil {
-			return nil, 0, xerrors.Errorf("getting head ts for SealTicket failed: %w", err)
+			return nil, 0, xerrors.Errorf("could not unmarshal TipSetToken to TipSetKey: %w", err)
+		}
+
+		ts, err := fapi.ChainGetTipSet(ctx, tsk)
+		if err != nil {
+			return nil, 0, xerrors.Errorf("getting TipSet for key failed: %w", err)
 		}
 
 		r, err := fapi.ChainGetRandomness(ctx, ts.Key(), crypto.DomainSeparationTag_SealRandomness, ts.Height()-build.SealRandomnessLookback, nil)
