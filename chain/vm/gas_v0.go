@@ -153,7 +153,7 @@ func (pl *pricelistV0) OnVerifySeal(info abi.SealVerifyInfo) int64 {
 }
 
 // OnVerifyPost
-func (pl *pricelistV0) OnVerifyPost(info abi.PoStVerifyInfo) int64 {
+func (pl *pricelistV0) OnVerifyPost(info abi.WindowPoStVerifyInfo) int64 {
 	// TODO: this needs more cost tunning, check with @lotus
 	return pl.verifyPostBase
 }

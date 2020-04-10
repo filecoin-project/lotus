@@ -37,7 +37,7 @@ type Pricelist interface {
 	OnHashing(dataSize int) int64
 	OnComputeUnsealedSectorCid(proofType abi.RegisteredProof, pieces []abi.PieceInfo) int64
 	OnVerifySeal(info abi.SealVerifyInfo) int64
-	OnVerifyPost(info abi.PoStVerifyInfo) int64
+	OnVerifyPost(info abi.WindowPoStVerifyInfo) int64
 	OnVerifyConsensusFault() int64
 }
 
@@ -120,7 +120,7 @@ func (ps pricedSyscalls) VerifySeal(vi abi.SealVerifyInfo) error {
 }
 
 // Verifies a proof of spacetime.
-func (ps pricedSyscalls) VerifyPoSt(vi abi.PoStVerifyInfo) error {
+func (ps pricedSyscalls) VerifyPoSt(vi abi.WindowPoStVerifyInfo) error {
 	ps.chargeGas(ps.pl.OnVerifyPost(vi))
 	return ps.under.VerifyPoSt(vi)
 }

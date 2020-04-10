@@ -44,7 +44,7 @@ func (cs *ChainStore) Weight(ctx context.Context, ts *types.TipSet) (types.BigIn
 		if err := cst.Get(ctx, act.Head, &st); err != nil {
 			return types.NewInt(0), xerrors.Errorf("get power actor head: %w", err)
 		}
-		tpow = st.TotalNetworkPower
+		tpow = st.TotalQualityAdjPower // TODO: REVIEW: Is this correct?
 	}
 
 	log2P := int64(0)

@@ -52,6 +52,10 @@ type Runtime struct {
 	numActorsCreated   uint64
 }
 
+func (rt *Runtime) TotalFilCircSupply() abi.TokenAmount {
+	panic("implement me")
+}
+
 func (rt *Runtime) ResolveAddress(addr address.Address) (ret address.Address, ok bool) {
 	r, err := rt.state.LookupID(addr)
 	if err != nil {
@@ -199,7 +203,7 @@ func (rt *Runtime) CreateActor(codeId cid.Cid, address address.Address) {
 	}
 }
 
-func (rt *Runtime) DeleteActor() {
+func (rt *Runtime) DeleteActor(addr address.Address) {
 	rt.ChargeGas(rt.Pricelist().OnDeleteActor())
 	act, err := rt.state.GetActor(rt.Message().Receiver())
 	if err != nil {
