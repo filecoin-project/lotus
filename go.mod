@@ -124,3 +124,5 @@ replace github.com/filecoin-project/sector-storage => /home/magik6k/gohack/githu
 replace github.com/filecoin-project/go-fil-markets => /home/magik6k/gohack/github.com/filecoin-project/go-fil-markets
 
 replace github.com/filecoin-project/storage-fsm => /home/magik6k/gohack/github.com/filecoin-project/storage-fsm
+
+replace github.com/filecoin-project/specs-actors => /home/magik6k/gohack/github.com/filecoin-project/specs-actors

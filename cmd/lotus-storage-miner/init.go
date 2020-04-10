@@ -447,7 +447,7 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 			if err != nil {
 				return err
 			}
-			epp := storage.NewElectionPoStProver(smgr, dtypes.MinerID(mid), winPt)
+			epp := storage.NewWinningPoStProver(smgr, dtypes.MinerID(mid), winPt)
 
 			beacon := beacon.NewMockBeacon(build.BlockDelay * time.Second)
 

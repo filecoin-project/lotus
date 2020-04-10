@@ -133,7 +133,7 @@ type StorageWpp struct {
 	winnRpt abi.RegisteredProof
 }
 
-func NewElectionPoStProver(sb storage.Prover, miner dtypes.MinerID, winnRpt abi.RegisteredProof) *StorageWpp {
+func NewWinningPoStProver(sb storage.Prover, miner dtypes.MinerID, winnRpt abi.RegisteredProof) *StorageWpp {
 	return &StorageWpp{sb, abi.ActorID(miner), winnRpt}
 }
 
@@ -161,6 +161,6 @@ func (wpp *StorageWpp) ComputeProof(ctx context.Context, ssi []abi.SectorInfo, r
 	if err != nil {
 		return nil, err
 	}
-	log.Infof("ComputeElectionPost took %s", time.Since(start))
+	log.Infof("GenerateWinningPoSt took %s", time.Since(start))
 	return proof, nil
 }

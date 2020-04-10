@@ -120,7 +120,7 @@ var preSealCmd = &cli.Command{
 		}
 		sectorSize := abi.SectorSize(sectorSizeInt)
 
-		rp, _, err := ffiwrapper.SealProofTypeFromSectorSize(sectorSize)
+		rp, err := ffiwrapper.SealProofTypeFromSectorSize(sectorSize)
 		if err != nil {
 			return err
 		}
