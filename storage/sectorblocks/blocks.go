@@ -8,8 +8,6 @@ import (
 	"io"
 	"sync"
 
-	"github.com/filecoin-project/go-padreader"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	"github.com/ipfs/go-datastore/query"
@@ -17,6 +15,9 @@ import (
 	"golang.org/x/xerrors"
 
 	cborutil "github.com/filecoin-project/go-cbor-util"
+	"github.com/filecoin-project/go-padreader"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	sealing "github.com/filecoin-project/storage-fsm"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -96,18 +97,18 @@ func (st *SectorBlocks) writeRef(dealID abi.DealID, sectorID abi.SectorNumber, o
 	return st.keys.Put(DealIDToDsKey(dealID), newRef) // TODO: batch somehow
 }
 
-func (st *SectorBlocks) AddPiece(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, dealID abi.DealID) (sectorID abi.SectorNumber, err error) {
+func (st *SectorBlocks) AddPiece(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, d sealing.DealInfo) (sectorID abi.SectorNumber, err error) {
 	sectorID, pieceOffset, err := st.Miner.AllocatePiece(padreader.PaddedSize(uint64(size)))
 	if err != nil {
 		return 0, err
 	}
 
-	err = st.writeRef(dealID, sectorID, pieceOffset, size)
+	err = st.writeRef(d.DealID, sectorID, pieceOffset, size)
 	if err != nil {
 		return 0, err
 	}
 
-	return sectorID, st.Miner.SealPiece(ctx, size, r, sectorID, dealID)
+	return sectorID, st.Miner.SealPiece(ctx, size, r, sectorID, d)
 }
 
 func (st *SectorBlocks) List() (map[uint64][]api.SealedRef, error) {
