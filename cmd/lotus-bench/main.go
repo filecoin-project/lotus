@@ -195,8 +195,6 @@ var sealBenchCmd = &cli.Command{
 			}
 		}
 
-		panic("don")
-
 		sbfs := &basicfs.Provider{
 			Root: sbdir,
 		}

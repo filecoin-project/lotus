@@ -32,11 +32,6 @@ import (
 var log = logging.Logger("preseal")
 
 func PreSeal(maddr address.Address, pt abi.RegisteredProof, offset abi.SectorNumber, sectors int, sbroot string, preimage []byte, key *types.KeyInfo) (*genesis.Miner, *types.KeyInfo, error) {
-	ppt, err := pt.RegisteredPoStProof()
-	if err != nil {
-		return nil, nil, err
-	}
-
 	spt, err := pt.RegisteredSealProof()
 	if err != nil {
 		return nil, nil, err
@@ -49,7 +44,6 @@ func PreSeal(maddr address.Address, pt abi.RegisteredProof, offset abi.SectorNum
 
 	cfg := &ffiwrapper.Config{
 		SealProofType: spt,
-		PoStProofType: ppt,
 	}
 
 	if err := os.MkdirAll(sbroot, 0775); err != nil {
