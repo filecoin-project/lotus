@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"math/big"
 	"math/rand"
 	"sync"
 
@@ -65,34 +64,34 @@ type sectorState struct {
 	lk sync.Mutex
 }
 
-func (sb *SectorMgr) RateLimit() func() {
-	sb.rateLimit <- struct{}{}
+func (mgr *SectorMgr) RateLimit() func() {
+	mgr.rateLimit <- struct{}{}
 
 	// TODO: probably want to copy over rate limit code
 	return func() {
-		<-sb.rateLimit
+		<-mgr.rateLimit
 	}
 }
 
-func (sb *SectorMgr) NewSector(ctx context.Context, sector abi.SectorID) error {
+func (mgr *SectorMgr) NewSector(ctx context.Context, sector abi.SectorID) error {
 	return nil
 }
 
-func (sb *SectorMgr) AddPiece(ctx context.Context, sectorId abi.SectorID, existingPieces []abi.UnpaddedPieceSize, size abi.UnpaddedPieceSize, r io.Reader) (abi.PieceInfo, error) {
-	log.Warn("Add piece: ", sectorId, size, sb.proofType)
-	sb.lk.Lock()
-	ss, ok := sb.sectors[sectorId]
+func (mgr *SectorMgr) AddPiece(ctx context.Context, sectorId abi.SectorID, existingPieces []abi.UnpaddedPieceSize, size abi.UnpaddedPieceSize, r io.Reader) (abi.PieceInfo, error) {
+	log.Warn("Add piece: ", sectorId, size, mgr.proofType)
+	mgr.lk.Lock()
+	ss, ok := mgr.sectors[sectorId]
 	if !ok {
 		ss = &sectorState{
 			state: statePacking,
 		}
-		sb.sectors[sectorId] = ss
+		mgr.sectors[sectorId] = ss
 	}
-	sb.lk.Unlock()
+	mgr.lk.Unlock()
 	ss.lk.Lock()
 	defer ss.lk.Unlock()
 
-	c, err := ffiwrapper.GeneratePieceCIDFromFile(sb.proofType, r, size)
+	c, err := ffiwrapper.GeneratePieceCIDFromFile(mgr.proofType, r, size)
 	if err != nil {
 		return abi.PieceInfo{}, xerrors.Errorf("failed to generate piece cid: %w", err)
 	}
@@ -106,22 +105,22 @@ func (sb *SectorMgr) AddPiece(ctx context.Context, sectorId abi.SectorID, existi
 	}, nil
 }
 
-func (sb *SectorMgr) SectorSize() abi.SectorSize {
-	return sb.sectorSize
+func (mgr *SectorMgr) SectorSize() abi.SectorSize {
+	return mgr.sectorSize
 }
 
-func (sb *SectorMgr) AcquireSectorNumber() (abi.SectorNumber, error) {
-	sb.lk.Lock()
-	defer sb.lk.Unlock()
-	id := sb.nextSectorID
-	sb.nextSectorID++
+func (mgr *SectorMgr) AcquireSectorNumber() (abi.SectorNumber, error) {
+	mgr.lk.Lock()
+	defer mgr.lk.Unlock()
+	id := mgr.nextSectorID
+	mgr.nextSectorID++
 	return id, nil
 }
 
-func (sb *SectorMgr) SealPreCommit1(ctx context.Context, sid abi.SectorID, ticket abi.SealRandomness, pieces []abi.PieceInfo) (out storage.PreCommit1Out, err error) {
-	sb.lk.Lock()
-	ss, ok := sb.sectors[sid]
-	sb.lk.Unlock()
+func (mgr *SectorMgr) SealPreCommit1(ctx context.Context, sid abi.SectorID, ticket abi.SealRandomness, pieces []abi.PieceInfo) (out storage.PreCommit1Out, err error) {
+	mgr.lk.Lock()
+	ss, ok := mgr.sectors[sid]
+	mgr.lk.Unlock()
 	if !ok {
 		return nil, xerrors.Errorf("no sector with id %d in storage", sid)
 	}
@@ -129,7 +128,7 @@ func (sb *SectorMgr) SealPreCommit1(ctx context.Context, sid abi.SectorID, ticke
 	ss.lk.Lock()
 	defer ss.lk.Unlock()
 
-	ussize := abi.PaddedPieceSize(sb.sectorSize).Unpadded()
+	ussize := abi.PaddedPieceSize(mgr.sectorSize).Unpadded()
 
 	// TODO: verify pieces in sinfo.pieces match passed in pieces
 
@@ -158,7 +157,7 @@ func (sb *SectorMgr) SealPreCommit1(ctx context.Context, sid abi.SectorID, ticke
 		}
 	}
 
-	commd, err := MockVerifier.GenerateDataCommitment(sb.proofType, pis)
+	commd, err := MockVerifier.GenerateDataCommitment(mgr.proofType, pis)
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +172,7 @@ func (sb *SectorMgr) SealPreCommit1(ctx context.Context, sid abi.SectorID, ticke
 	return cc, nil
 }
 
-func (sb *SectorMgr) SealPreCommit2(ctx context.Context, sid abi.SectorID, phase1Out storage.PreCommit1Out) (cids storage.SectorCids, err error) {
+func (mgr *SectorMgr) SealPreCommit2(ctx context.Context, sid abi.SectorID, phase1Out storage.PreCommit1Out) (cids storage.SectorCids, err error) {
 	db := []byte(string(phase1Out))
 	db[0] ^= 'd'
 
@@ -192,10 +191,10 @@ func (sb *SectorMgr) SealPreCommit2(ctx context.Context, sid abi.SectorID, phase
 	}, nil
 }
 
-func (sb *SectorMgr) SealCommit1(ctx context.Context, sid abi.SectorID, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storage.SectorCids) (output storage.Commit1Out, err error) {
-	sb.lk.Lock()
-	ss, ok := sb.sectors[sid]
-	sb.lk.Unlock()
+func (mgr *SectorMgr) SealCommit1(ctx context.Context, sid abi.SectorID, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storage.SectorCids) (output storage.Commit1Out, err error) {
+	mgr.lk.Lock()
+	ss, ok := mgr.sectors[sid]
+	mgr.lk.Unlock()
 	if !ok {
 		return nil, xerrors.Errorf("no such sector %d", sid)
 	}
@@ -220,7 +219,7 @@ func (sb *SectorMgr) SealCommit1(ctx context.Context, sid abi.SectorID, ticket a
 	return out[:], nil
 }
 
-func (sb *SectorMgr) SealCommit2(ctx context.Context, sid abi.SectorID, phase1Out storage.Commit1Out) (proof storage.Proof, err error) {
+func (mgr *SectorMgr) SealCommit2(ctx context.Context, sid abi.SectorID, phase1Out storage.Commit1Out) (proof storage.Proof, err error) {
 	var out [32]byte
 	for i := range out {
 		out[i] = phase1Out[i] ^ byte(sid.Number&0xff)
@@ -231,10 +230,10 @@ func (sb *SectorMgr) SealCommit2(ctx context.Context, sid abi.SectorID, phase1Ou
 
 // Test Instrumentation Methods
 
-func (sb *SectorMgr) FailSector(sid abi.SectorID) error {
-	sb.lk.Lock()
-	defer sb.lk.Unlock()
-	ss, ok := sb.sectors[sid]
+func (mgr *SectorMgr) FailSector(sid abi.SectorID) error {
+	mgr.lk.Lock()
+	defer mgr.lk.Unlock()
+	ss, ok := mgr.sectors[sid]
 	if !ok {
 		return fmt.Errorf("no such sector in storage")
 	}
@@ -259,54 +258,28 @@ func AddOpFinish(ctx context.Context) (context.Context, func()) {
 	}
 }
 
-func (sb *SectorMgr) GenerateFallbackPoSt(context.Context, abi.ActorID, []abi.SectorInfo, abi.PoStRandomness, []abi.SectorNumber) (storage.FallbackPostOut, error) {
+func (mgr *SectorMgr) GenerateWinningPoStSectorChallenge(ctx context.Context, proofType abi.RegisteredProof, minerID abi.ActorID, randomness abi.PoStRandomness, eligibleSectorCount uint64) ([]uint64, error) {
 	panic("implement me")
 }
 
-func (sb *SectorMgr) ComputeElectionPoSt(ctx context.Context, mid abi.ActorID, sectorInfo []abi.SectorInfo, challengeSeed abi.PoStRandomness, winners []abi.PoStCandidate) ([]abi.PoStProof, error) {
+func (mgr *SectorMgr) GenerateWinningPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []abi.SectorInfo, randomness abi.PoStRandomness) ([]abi.PoStProof, error) {
 	panic("implement me")
 }
 
-func (sb *SectorMgr) GenerateEPostCandidates(ctx context.Context, mid abi.ActorID, sectorInfo []abi.SectorInfo, challengeSeed abi.PoStRandomness, faults []abi.SectorNumber) ([]storage.PoStCandidateWithTicket, error) {
-	if len(faults) > 0 {
-		panic("todo")
-	}
-
-	n := ffiwrapper.ElectionPostChallengeCount(uint64(len(sectorInfo)), uint64(len(faults)))
-	if n > uint64(len(sectorInfo)) {
-		n = uint64(len(sectorInfo))
-	}
-
-	out := make([]storage.PoStCandidateWithTicket, n)
-
-	seed := big.NewInt(0).SetBytes(challengeSeed[:])
-	start := seed.Mod(seed, big.NewInt(int64(len(sectorInfo)))).Int64()
-
-	for i := range out {
-		out[i] = storage.PoStCandidateWithTicket{
-			Candidate: abi.PoStCandidate{
-				SectorID: abi.SectorID{
-					Number: abi.SectorNumber((int(start) + i) % len(sectorInfo)),
-					Miner:  mid,
-				},
-				PartialTicket: abi.PartialTicket(challengeSeed),
-			},
-		}
-	}
-
-	return out, nil
+func (mgr *SectorMgr) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []abi.SectorInfo, randomness abi.PoStRandomness) ([]abi.PoStProof, error) {
+	panic("implement me")
 }
 
-func (sb *SectorMgr) ReadPieceFromSealedSector(ctx context.Context, sectorID abi.SectorID, offset ffiwrapper.UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, commD cid.Cid) (io.ReadCloser, error) {
-	if len(sb.sectors[sectorID].pieces) > 1 {
+func (mgr *SectorMgr) ReadPieceFromSealedSector(ctx context.Context, sectorID abi.SectorID, offset ffiwrapper.UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, commD cid.Cid) (io.ReadCloser, error) {
+	if len(mgr.sectors[sectorID].pieces) > 1 {
 		panic("implme")
 	}
-	return ioutil.NopCloser(io.LimitReader(bytes.NewReader(sb.sectors[sectorID].pieces[0].Bytes()[offset:]), int64(size))), nil
+	return ioutil.NopCloser(io.LimitReader(bytes.NewReader(mgr.sectors[sectorID].pieces[0].Bytes()[offset:]), int64(size))), nil
 }
 
-func (sb *SectorMgr) StageFakeData(mid abi.ActorID) (abi.SectorID, []abi.PieceInfo, error) {
-	usize := abi.PaddedPieceSize(sb.sectorSize).Unpadded()
-	sid, err := sb.AcquireSectorNumber()
+func (mgr *SectorMgr) StageFakeData(mid abi.ActorID) (abi.SectorID, []abi.PieceInfo, error) {
+	usize := abi.PaddedPieceSize(mgr.sectorSize).Unpadded()
+	sid, err := mgr.AcquireSectorNumber()
 	if err != nil {
 		return abi.SectorID{}, nil, err
 	}
@@ -319,7 +292,7 @@ func (sb *SectorMgr) StageFakeData(mid abi.ActorID) (abi.SectorID, []abi.PieceIn
 		Number: sid,
 	}
 
-	pi, err := sb.AddPiece(context.TODO(), id, nil, usize, bytes.NewReader(buf))
+	pi, err := mgr.AddPiece(context.TODO(), id, nil, usize, bytes.NewReader(buf))
 	if err != nil {
 		return abi.SectorID{}, nil, err
 	}
@@ -327,16 +300,8 @@ func (sb *SectorMgr) StageFakeData(mid abi.ActorID) (abi.SectorID, []abi.PieceIn
 	return id, []abi.PieceInfo{pi}, nil
 }
 
-func (sb *SectorMgr) FinalizeSector(context.Context, abi.SectorID) error {
+func (mgr *SectorMgr) FinalizeSector(context.Context, abi.SectorID) error {
 	return nil
-}
-
-func (m mockVerif) VerifyElectionPost(ctx context.Context, pvi abi.PoStVerifyInfo) (bool, error) {
-	panic("implement me")
-}
-
-func (m mockVerif) VerifyFallbackPost(ctx context.Context, pvi abi.PoStVerifyInfo) (bool, error) {
-	panic("implement me")
 }
 
 func (m mockVerif) VerifySeal(svi abi.SealVerifyInfo) (bool, error) {
@@ -351,6 +316,14 @@ func (m mockVerif) VerifySeal(svi abi.SealVerifyInfo) (bool, error) {
 	}
 
 	return true, nil
+}
+
+func (m mockVerif) VerifyWinningPoSt(ctx context.Context, info abi.WinningPoStVerifyInfo) (bool, error) {
+	panic("implement me")
+}
+
+func (m mockVerif) VerifyWindowPoSt(ctx context.Context, info abi.WindowPoStVerifyInfo) (bool, error) {
+	panic("implement me")
 }
 
 func (m mockVerif) GenerateDataCommitment(pt abi.RegisteredProof, pieces []abi.PieceInfo) (cid.Cid, error) {
