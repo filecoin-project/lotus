@@ -85,7 +85,7 @@ func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) 
 		return nil, xerrors.Errorf("failed checking miners sector size: %w", err)
 	}
 
-	rt, _, err := ffiwrapper.SealProofTypeFromSectorSize(ssize)
+	rt, err := ffiwrapper.SealProofTypeFromSectorSize(ssize)
 	if err != nil {
 		return nil, xerrors.Errorf("bad sector size: %w", err)
 	}

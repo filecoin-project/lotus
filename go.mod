@@ -24,7 +24,7 @@ require (
 	github.com/filecoin-project/go-padreader v0.0.0-20200210211231-548257017ca6
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200218225740-47c639bab663
 	github.com/filecoin-project/go-statestore v0.1.0
-	github.com/filecoin-project/sector-storage v0.0.0-20200410191347-65efbfce12e9
+	github.com/filecoin-project/sector-storage v0.0.0-20200410210142-c0d619cd8616
 	github.com/filecoin-project/specs-actors v0.0.0-20200409043918-e569f4a2f504
 	github.com/filecoin-project/specs-storage v0.0.0-20200410185809-9fbaaa08f275
 	github.com/filecoin-project/storage-fsm v0.0.0-20200408153957-1c356922353f
@@ -122,3 +122,5 @@ replace github.com/filecoin-project/specs-storage => /home/magik6k/gohack/github
 replace github.com/filecoin-project/sector-storage => /home/magik6k/gohack/github.com/filecoin-project/sector-storage
 
 replace github.com/filecoin-project/go-fil-markets => /home/magik6k/gohack/github.com/filecoin-project/go-fil-markets
+
+replace github.com/filecoin-project/storage-fsm => /home/magik6k/gohack/github.com/filecoin-project/storage-fsm
