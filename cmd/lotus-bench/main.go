@@ -174,7 +174,7 @@ var sealBenchCmd = &cli.Command{
 		}
 		sectorSize := abi.SectorSize(sectorSizeInt)
 
-		_, spt, err := ffiwrapper.ProofTypeFromSectorSize(sectorSize)
+		_, spt, err := ffiwrapper.SealProofTypeFromSectorSize(sectorSize)
 		if err != nil {
 			return err
 		}
@@ -401,7 +401,8 @@ var sealBenchCmd = &cli.Command{
 
 			candidates := make([]abi.SectorInfo, len(fcandidates))
 			for i, fcandidate := range fcandidates {
-				candidates[i] = sealedSectors[i]; _ = fcandidate // todo: I have no idea what is under fcandidate, but it's a large number
+				candidates[i] = sealedSectors[i]
+				_ = fcandidate // todo: I have no idea what is under fcandidate, but it's a large number
 			}
 
 			gencandidates := time.Now()
@@ -423,10 +424,10 @@ var sealBenchCmd = &cli.Command{
 			epost2 := time.Now()
 
 			pvi1 := abi.WinningPoStVerifyInfo{
-				Randomness:      abi.PoStRandomness(challenge[:]),
-				Proofs:          proof1,
+				Randomness:        abi.PoStRandomness(challenge[:]),
+				Proofs:            proof1,
 				ChallengedSectors: candidates,
-				Prover:          mid,
+				Prover:            mid,
 			}
 			ok, err := ffiwrapper.ProofVerifier.VerifyWinningPoSt(context.TODO(), pvi1)
 			if err != nil {
@@ -439,10 +440,10 @@ var sealBenchCmd = &cli.Command{
 			verifypost1 := time.Now()
 
 			pvi2 := abi.WinningPoStVerifyInfo{
-				Randomness:      abi.PoStRandomness(challenge[:]),
-				Proofs:          proof2,
+				Randomness:        abi.PoStRandomness(challenge[:]),
+				Proofs:            proof2,
 				ChallengedSectors: candidates,
-				Prover:          mid,
+				Prover:            mid,
 			}
 
 			ok, err = ffiwrapper.ProofVerifier.VerifyWinningPoSt(context.TODO(), pvi2)
@@ -534,7 +535,7 @@ var proveCmd = &cli.Command{
 			return err
 		}
 
-		_, spt, err := ffiwrapper.ProofTypeFromSectorSize(abi.SectorSize(c2in.SectorSize))
+		_, spt, err := ffiwrapper.SealProofTypeFromSectorSize(abi.SectorSize(c2in.SectorSize))
 		if err != nil {
 			return err
 		}

@@ -39,7 +39,7 @@ func (s *WindowPoStScheduler) doPost(ctx context.Context, deadline *Deadline, ts
 		ctx, span := trace.StartSpan(ctx, "WindowPoStScheduler.doPost")
 		defer span.End()
 
-		proof, err := s.runPost(ctx, deadline, ts)
+		proof, err := s.runPost(ctx, *deadline, ts)
 		if err != nil {
 			log.Errorf("runPost failed: %+v", err)
 			s.failPost(deadline)
@@ -144,7 +144,7 @@ func (s *WindowPoStScheduler) checkFaults(ctx context.Context, ssi []abi.SectorN
 	return faultIDs, nil
 }
 
-func (s *WindowPoStScheduler) runPost(ctx context.Context, deadline Deadline, ts *types.TipSet) (*abi.OnChainPoStVerifyInfo, error) {
+func (s *WindowPoStScheduler) runPost(ctx context.Context, deadline Deadline, ts *types.TipSet) (*abi.OnChainWindowPoStVerifyInfo, error) {
 	ctx, span := trace.StartSpan(ctx, "storage.runPost")
 	defer span.End()
 
@@ -199,38 +199,21 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, deadline Deadline, ts
 		return nil, err
 	}
 
-	postOut, err := s.prover.GenerateFallbackPoSt(ctx, abi.ActorID(mid), ssi, abi.PoStRandomness(rand), faults)
+	// TODO: Faults!
+	postOut, err := s.prover.GenerateWindowPoSt(ctx, abi.ActorID(mid), ssi, abi.PoStRandomness(rand))
 	if err != nil {
 		return nil, xerrors.Errorf("running post failed: %w", err)
 	}
 
-	if len(postOut.PoStInputs) == 0 {
-		return nil, xerrors.Errorf("received zero candidates back from generate fallback post")
+	if len(postOut) == 0 {
+		return nil, xerrors.Errorf("received proofs back from generate window post")
 	}
-
-	// TODO: until we figure out how fallback post is really supposed to work,
-	// let's just pass a single candidate...
-	scandidates := postOut.PoStInputs[:1]
-	proof := postOut.Proof[:1]
 
 	elapsed := time.Since(tsStart)
-	log.Infow("submitting PoSt", "pLen", len(proof), "elapsed", elapsed)
+	log.Infow("submitting PoSt", "elapsed", elapsed)
 
-	candidates := make([]abi.PoStCandidate, len(scandidates))
-	for i, sc := range scandidates {
-		part := make([]byte, 32)
-		copy(part, sc.Candidate.PartialTicket[:])
-		candidates[i] = abi.PoStCandidate{
-			RegisteredProof: s.proofType,
-			PartialTicket:   part,
-			SectorID:        sc.Candidate.SectorID,
-			ChallengeIndex:  sc.Candidate.ChallengeIndex,
-		}
-	}
-
-	return &abi.OnChainPoStVerifyInfo{
-		Proofs:     proof,
-		Candidates: candidates,
+	return &abi.OnChainWindowPoStVerifyInfo{
+		Proofs: postOut,
 	}, nil
 }
 
@@ -252,7 +235,7 @@ func (s *WindowPoStScheduler) sortedSectorInfo(ctx context.Context, partitions [
 	return sbsi, nil
 }
 
-func (s *WindowPoStScheduler) submitPost(ctx context.Context, proof *abi.OnChainPoStVerifyInfo) error {
+func (s *WindowPoStScheduler) submitPost(ctx context.Context, proof *abi.OnChainWindowPoStVerifyInfo) error {
 	ctx, span := trace.StartSpan(ctx, "storage.commitPost")
 	defer span.End()
 

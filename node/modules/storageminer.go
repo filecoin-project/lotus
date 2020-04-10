@@ -96,14 +96,13 @@ func ProofsConfig(maddr dtypes.MinerAddress, fnapi lapi.FullNode) (*ffiwrapper.C
 		return nil, err
 	}
 
-	ppt, spt, err := ffiwrapper.ProofTypeFromSectorSize(ssize)
+	_, spt, err := ffiwrapper.SealProofTypeFromSectorSize(ssize)
 	if err != nil {
 		return nil, xerrors.Errorf("bad sector size: %w", err)
 	}
 
 	sb := &ffiwrapper.Config{
 		SealProofType: spt,
-		PoStProofType: ppt,
 	}
 
 	return sb, nil
@@ -136,7 +135,7 @@ func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api lapi.FullNode, h
 		return nil, err
 	}
 
-	ppt, _, err := ffiwrapper.ProofTypeFromSectorSize(sealer.SectorSize()) // TODO: this changes
+	ppt, _, err := ffiwrapper.SealProofTypeFromSectorSize(sealer.SectorSize()) // TODO: this changes
 	if err != nil {
 		return nil, xerrors.Errorf("bad sector size: %w", err)
 	}
@@ -256,7 +255,7 @@ func StagingGraphsync(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.Stagi
 	return gs
 }
 
-func SetupBlockProducer(lc fx.Lifecycle, ds dtypes.MetadataDS, api lapi.FullNode, epp gen.ElectionPoStProver, beacon beacon.RandomBeacon) (*miner.Miner, error) {
+func SetupBlockProducer(lc fx.Lifecycle, ds dtypes.MetadataDS, api lapi.FullNode, epp gen.WinningPoStProver, beacon beacon.RandomBeacon) (*miner.Miner, error) {
 	minerAddr, err := minerAddrFromDS(ds)
 	if err != nil {
 		return nil, err
@@ -320,7 +319,7 @@ func StorageProvider(ctx helpers.MetricsCtx, fapi lapi.FullNode, h host.Host, ds
 		return nil, err
 	}
 
-	rt, _, err := ffiwrapper.ProofTypeFromSectorSize(ssize)
+	rt, _, err := ffiwrapper.SealProofTypeFromSectorSize(ssize)
 	if err != nil {
 		return nil, err
 	}

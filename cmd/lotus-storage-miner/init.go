@@ -413,7 +413,7 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 				return err
 			}
 
-			ppt, spt, err := ffiwrapper.ProofTypeFromSectorSize(ssize)
+			ppt, spt, err := ffiwrapper.SealProofTypeFromSectorSize(ssize)
 			if err != nil {
 				return err
 			}

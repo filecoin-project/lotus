@@ -24,7 +24,7 @@ func SetupStoragePowerActor(bs bstore.Blockstore) (*types.Actor, error) {
 	}
 
 	sms := &power.State{
-		TotalQualityAdjPower:        big.NewInt(1), // TODO: has to be 1 initially to avoid div by zero. Kinda annoying, should find a way to fix
+		TotalQualityAdjPower:     big.NewInt(1), // TODO: has to be 1 initially to avoid div by zero. Kinda annoying, should find a way to fix
 		MinerCount:               0,
 		EscrowTable:              emptyhamt,
 		CronEventQueue:           emptyhamt,

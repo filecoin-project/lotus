@@ -27,7 +27,7 @@ var log = logging.Logger("miner")
 
 type waitFunc func(ctx context.Context, baseTime uint64) error
 
-func NewMiner(api api.FullNode, epp gen.ElectionPoStProver, beacon beacon.RandomBeacon) *Miner {
+func NewMiner(api api.FullNode, epp gen.WinningPoStProver, beacon beacon.RandomBeacon) *Miner {
 	arc, err := lru.NewARC(10000)
 	if err != nil {
 		panic(err)
@@ -51,7 +51,7 @@ func NewMiner(api api.FullNode, epp gen.ElectionPoStProver, beacon beacon.Random
 type Miner struct {
 	api api.FullNode
 
-	epp    gen.ElectionPoStProver
+	epp    gen.WinningPoStProver
 	beacon beacon.RandomBeacon
 
 	lk        sync.Mutex

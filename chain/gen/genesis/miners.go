@@ -6,19 +6,19 @@ import (
 	"fmt"
 	"math/rand"
 
-	cborutil "github.com/filecoin-project/go-cbor-util"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
-	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/state"
@@ -182,7 +182,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 					}
 
 					// TODO: This is almost definitely not correct
-					circSupply := types.BigMul(types.NewInt(build.TotalFilecoin - build.MiningRewardTotal), types.NewInt(build.FilecoinPrecision))
+					circSupply := types.BigMul(types.NewInt(build.TotalFilecoin-build.MiningRewardTotal), types.NewInt(build.FilecoinPrecision))
 					totalPledge := types.NewInt(3)
 					perEpochReward := types.NewInt(9)
 

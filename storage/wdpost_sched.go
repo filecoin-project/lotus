@@ -30,7 +30,7 @@ type WindowPoStScheduler struct {
 
 	// if a post is in progress, this indicates for which ElectionPeriodStart
 	activeDeadline *Deadline
-	abort     context.CancelFunc
+	abort          context.CancelFunc
 
 	//failed abi.ChainEpoch // eps
 	//failLk sync.Mutex
@@ -40,14 +40,13 @@ func NewWindowedPoStScheduler(api storageMinerApi, sb storage.Prover, actor addr
 	return &WindowPoStScheduler{api: api, prover: sb, actor: actor, worker: worker, proofType: rt}
 }
 
-const ProvingDeadlineEpochs = (30*60) / build.BlockDelay
+const ProvingDeadlineEpochs = (30 * 60) / build.BlockDelay
 const ProvingPeriodDeadlines = 48
 const ProvingPeriodEpochs = ProvingDeadlineEpochs * ProvingDeadlineEpochs
 
 type Deadline struct {
 	// ID
 	start abi.ChainEpoch
-
 }
 
 func (Deadline) Equals(other Deadline) bool {
@@ -182,8 +181,6 @@ func (s *WindowPoStScheduler) update(ctx context.Context, new *types.TipSet) err
 		s.activeEPS = 0
 	}
 	s.failLk.Unlock()*/
-
-
 
 	s.abortActivePoSt()
 
