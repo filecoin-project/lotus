@@ -20,7 +20,7 @@ func (sb *Sealer) GenerateWinningPoStSectorChallenge(ctx context.Context, proofT
 }
 
 func (sb *Sealer) GenerateWinningPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []abi.SectorInfo, randomness abi.PoStRandomness) ([]abi.PoStProof, error) {
-	randomness[31] = 0 // TODO: Not correct, fixme
+	randomness[31] = 0                                                                                                    // TODO: Not correct, fixme
 	privsectors, err := sb.pubSectorToPriv(ctx, minerID, sectorInfo, nil, abi.RegisteredProof.RegisteredWinningPoStProof) // TODO: FAULTS?
 	if err != nil {
 		return nil, err
@@ -30,7 +30,7 @@ func (sb *Sealer) GenerateWinningPoSt(ctx context.Context, minerID abi.ActorID, 
 }
 
 func (sb *Sealer) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []abi.SectorInfo, randomness abi.PoStRandomness) ([]abi.PoStProof, error) {
-	randomness[31] = 0 // TODO: Not correct, fixme
+	randomness[31] = 0                                                                                                   // TODO: Not correct, fixme
 	privsectors, err := sb.pubSectorToPriv(ctx, minerID, sectorInfo, nil, abi.RegisteredProof.RegisteredWindowPoStProof) // TODO: FAULTS?
 	if err != nil {
 		return nil, err

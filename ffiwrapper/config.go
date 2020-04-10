@@ -17,7 +17,6 @@ func sizeFromConfig(cfg Config) (abi.SectorSize, error) {
 		return abi.SectorSize(0), xerrors.New("must specify a seal proof type from abi.RegisteredProof")
 	}
 
-
 	return cfg.SealProofType.SectorSize()
 }
 

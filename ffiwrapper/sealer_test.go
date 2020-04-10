@@ -146,7 +146,7 @@ func post(t *testing.T, sealer *Sealer, seals ...seal) time.Time {
 	if !ok {
 		t.Fatal("bad post")
 	}
-*/
+	*/
 	return genCandidates
 }
 
