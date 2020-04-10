@@ -27,7 +27,7 @@ require (
 	github.com/filecoin-project/sector-storage v0.0.0-20200410191347-65efbfce12e9
 	github.com/filecoin-project/specs-actors v0.0.0-20200409043918-e569f4a2f504
 	github.com/filecoin-project/specs-storage v0.0.0-20200410185809-9fbaaa08f275
-	github.com/filecoin-project/storage-fsm v0.0.0-20200407163248-25993479b13f
+	github.com/filecoin-project/storage-fsm v0.0.0-20200408153957-1c356922353f
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/mux v1.7.4
