@@ -131,8 +131,8 @@ func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte, epoch abi.ChainE
 			return nil, xerrors.Errorf("cannot decode extra: %w", decodeErr)
 		}
 
-		if types.CidArrsEqual(blockA.Parents, blockC.Parents) && types.CidArrsContains(blockB.Parents, blockC.Cid()) &&
-			!types.CidArrsContains(blockB.Parents, blockA.Cid()) {
+		if types.CidArrsEqual(blockA.Parents, blockC.Parents) && blockA.Height == blockB.Height &&
+			types.CidArrsContains(blockB.Parents, blockC.Cid()) && !types.CidArrsContains(blockB.Parents, blockA.Cid()) {
 			consensusFault = &runtime.ConsensusFault{
 				Target: blockA.Miner,
 				Epoch:  blockB.Height,
