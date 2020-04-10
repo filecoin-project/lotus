@@ -219,7 +219,7 @@ func TestForkHeightTriggers(t *testing.T) {
 		}
 
 		return []*types.SignedMessage{
-			&types.SignedMessage{
+			{
 				Signature: *sig,
 				Message:   *m,
 			},

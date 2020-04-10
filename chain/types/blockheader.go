@@ -22,16 +22,13 @@ type Ticket struct {
 	VRFProof []byte
 }
 
-type EPostTicket struct {
-	Partial        []byte
-	SectorID       abi.SectorNumber
-	ChallengeIndex uint64
+type ElectionProof struct {
+	VRFProof []byte
 }
 
-type EPostProof struct {
-	Proofs     []abi.PoStProof
-	PostRand   []byte
-	Candidates []EPostTicket
+type BeaconEntry struct {
+	Round uint64
+	Data  []byte
 }
 
 type BlockHeader struct {
@@ -39,7 +36,9 @@ type BlockHeader struct {
 
 	Ticket *Ticket // 1
 
-	EPostProof EPostProof // 2
+	ElectionProof *ElectionProof
+
+	BeaconEntries []BeaconEntry
 
 	Parents []cid.Cid // 3
 
@@ -166,51 +165,30 @@ var blocksPerEpoch = NewInt(build.BlocksPerEpoch)
 
 const sha256bits = 256
 
-func IsTicketWinner(partialTicket []byte, ssizeI abi.SectorSize, snum uint64, totpow BigInt) bool {
-	ssize := NewInt(uint64(ssizeI))
-	ssampled := ElectionPostChallengeCount(snum, 0) // TODO: faults in epost?
+func IsTicketWinner(vrfTicket []byte, mypow BigInt, totpow BigInt) bool {
 	/*
 		Need to check that
-		(h(vrfout) + 1) / (max(h) + 1) <= e * sectorSize / totalPower
+		(h(vrfout) + 1) / (max(h) + 1) <= e * myPower / totalPower
 		max(h) == 2^256-1
 		which in terms of integer math means:
-		(h(vrfout) + 1) * totalPower <= e * sectorSize * 2^256
+		(h(vrfout) + 1) * totalPower <= e * myPower * 2^256
 		in 2^256 space, it is equivalent to:
-		h(vrfout) * totalPower < e * sectorSize * 2^256
+		h(vrfout) * totalPower < e * myPower * 2^256
 
-		Because of SectorChallengeRatioDiv sampling for proofs
-		we need to scale this appropriately.
-
-		Let c = ceil(numSectors/SectorChallengeRatioDiv)
-		(c is the number of tickets a miner requests)
-		Accordingly we check
-		(h(vrfout) + 1) / 2^256 <= e * sectorSize / totalPower * snum / c
-		or
-		h(vrfout) * totalPower * c < e * sectorSize * 2^256 * snum
 	*/
 
-	h := sha256.Sum256(partialTicket)
+	h := sha256.Sum256(vrfTicket)
 
 	lhs := BigFromBytes(h[:]).Int
 	lhs = lhs.Mul(lhs, totpow.Int)
-	lhs = lhs.Mul(lhs, new(big.Int).SetUint64(ssampled))
 
 	// rhs = sectorSize * 2^256
 	// rhs = sectorSize << 256
-	rhs := new(big.Int).Lsh(ssize.Int, sha256bits)
-	rhs = rhs.Mul(rhs, new(big.Int).SetUint64(snum))
+	rhs := new(big.Int).Lsh(mypow.Int, sha256bits)
 	rhs = rhs.Mul(rhs, blocksPerEpoch.Int)
 
 	// h(vrfout) * totalPower < e * sectorSize * 2^256?
 	return lhs.Cmp(rhs) < 0
-}
-
-func ElectionPostChallengeCount(sectors uint64, faults uint64) uint64 {
-	if sectors-faults == 0 {
-		return 0
-	}
-	// ceil(sectors / SectorChallengeRatioDiv)
-	return (sectors-faults-1)/build.SectorChallengeRatioDiv + 1
 }
 
 func (t *Ticket) Equals(ot *Ticket) bool {

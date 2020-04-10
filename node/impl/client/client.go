@@ -116,7 +116,7 @@ func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) 
 }
 
 func (a *API) ClientListDeals(ctx context.Context) ([]api.DealInfo, error) {
-	deals, err := a.SMDealClient.ListInProgressDeals(ctx)
+	deals, err := a.SMDealClient.ListLocalDeals(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +142,7 @@ func (a *API) ClientListDeals(ctx context.Context) ([]api.DealInfo, error) {
 }
 
 func (a *API) ClientGetDealInfo(ctx context.Context, d cid.Cid) (*api.DealInfo, error) {
-	v, err := a.SMDealClient.GetInProgressDeal(ctx, d)
+	v, err := a.SMDealClient.GetLocalDeal(ctx, d)
 	if err != nil {
 		return nil, err
 	}

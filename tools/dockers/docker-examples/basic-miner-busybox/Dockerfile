@@ -1,9 +1,9 @@
-FROM golang:1.13-buster
+FROM golang:1.14.1-buster
 MAINTAINER ldoublewood <ldoublewood@gmail.com>
 
 ENV SRC_DIR /lotus
 
-RUN apt-get update && apt-get install -y && apt-get install -y ca-certificates llvm clang mesa-opencl-icd ocl-icd-opencl-dev
+RUN apt-get update && apt-get install -y ca-certificates llvm clang mesa-opencl-icd ocl-icd-opencl-dev jq
 
 RUN curl -sSf https://sh.rustup.rs | sh -s -- -y
 

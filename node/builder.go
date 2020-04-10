@@ -29,6 +29,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain"
+	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/blocksync"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/market"
@@ -234,8 +235,6 @@ func Online() Option {
 			Override(new(*blocksync.BlockSyncService), blocksync.NewBlockSyncService),
 			Override(new(*peermgr.PeerMgr), peermgr.NewPeerMgr),
 
-			Override(new(dtypes.GraphsyncLoader), modules.GraphsyncLoader),
-			Override(new(dtypes.GraphsyncStorer), modules.GraphsyncStorer),
 			Override(new(dtypes.Graphsync), modules.Graphsync),
 
 			Override(RunHelloKey, modules.RunHello),
@@ -255,6 +254,7 @@ func Online() Option {
 			Override(new(storagemarket.StorageClientNode), storageadapter.NewClientNodeAdapter),
 			Override(RegisterClientValidatorKey, modules.RegisterClientValidator),
 			Override(RunDealClientKey, modules.RunDealClient),
+			Override(new(beacon.RandomBeacon), modules.RandomBeacon),
 
 			Override(new(*paychmgr.Store), paychmgr.NewStore),
 			Override(new(*paychmgr.Manager), paychmgr.NewManager),
