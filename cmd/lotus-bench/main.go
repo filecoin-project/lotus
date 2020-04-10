@@ -109,7 +109,7 @@ var sealBenchCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:  "benchmark-existing-sectorbuilder",
-			Usage: "pass a directory to run election-post timings on an existing sectorbuilder",
+			Usage: "pass a directory to run post timings on an existing sectorbuilder",
 		},
 		&cli.BoolFlag{
 			Name:  "json-out",
@@ -174,7 +174,7 @@ var sealBenchCmd = &cli.Command{
 		}
 		sectorSize := abi.SectorSize(sectorSizeInt)
 
-		_, spt, err := ffiwrapper.SealProofTypeFromSectorSize(sectorSize)
+		spt, err := ffiwrapper.SealProofTypeFromSectorSize(sectorSize)
 		if err != nil {
 			return err
 		}
@@ -535,7 +535,7 @@ var proveCmd = &cli.Command{
 			return err
 		}
 
-		_, spt, err := ffiwrapper.SealProofTypeFromSectorSize(abi.SectorSize(c2in.SectorSize))
+		spt, err := ffiwrapper.SealProofTypeFromSectorSize(abi.SectorSize(c2in.SectorSize))
 		if err != nil {
 			return err
 		}

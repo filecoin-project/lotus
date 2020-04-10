@@ -187,24 +187,6 @@ func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, 
 	return LoadSectorsFromSet(ctx, sm.ChainStore().Blockstore(), mas.Sectors)
 }
 
-func GetSectorsForElectionPost(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) ([]abi.SectorInfo, error) {
-	sectors, err := GetMinerProvingSet(ctx, sm, ts, maddr)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to get sector set for miner: %w", err)
-	}
-
-	var uselessOtherArray []abi.SectorInfo
-	for _, s := range sectors {
-		uselessOtherArray = append(uselessOtherArray, abi.SectorInfo{
-			RegisteredProof: s.Info.Info.RegisteredProof,
-			SectorNumber:    s.ID,
-			SealedCID:       s.Info.Info.SealedCID,
-		})
-	}
-
-	return uselessOtherArray, nil
-}
-
 func GetMinerSectorSize(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (abi.SectorSize, error) {
 	return getMinerSectorSizeRaw(ctx, sm, ts.ParentState(), maddr)
 }
