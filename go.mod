@@ -18,9 +18,9 @@ require (
 	github.com/filecoin-project/go-amt-ipld/v2 v2.0.1-0.20200131012142-05d80eeccc5e
 	github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
-	github.com/filecoin-project/go-data-transfer v0.0.0-20191219005021-4accf56bd2ce
+	github.com/filecoin-project/go-data-transfer v0.0.0-20200408061858-82c58b423ca6
 	github.com/filecoin-project/go-fil-commcid v0.0.0-20200208005934-2b8bd03caca5
-	github.com/filecoin-project/go-fil-markets v0.0.0-20200318012938-6403a5bda668
+	github.com/filecoin-project/go-fil-markets v0.0.0-20200408062434-d92f329a6428
 	github.com/filecoin-project/go-padreader v0.0.0-20200210211231-548257017ca6
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200218225740-47c639bab663
 	github.com/filecoin-project/go-statestore v0.1.0
@@ -35,16 +35,16 @@ require (
 	github.com/hashicorp/go-multierror v1.0.0
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/influxdata/influxdb1-client v0.0.0-20190809212627-fc22c7df067e
-	github.com/ipfs/go-bitswap v0.1.8
+	github.com/ipfs/go-bitswap v0.2.8
 	github.com/ipfs/go-block-format v0.0.2
-	github.com/ipfs/go-blockservice v0.1.3-0.20190908200855-f22eea50656c
+	github.com/ipfs/go-blockservice v0.1.3
 	github.com/ipfs/go-car v0.0.3-0.20200304012825-b6769248bfef
 	github.com/ipfs/go-cid v0.0.5
 	github.com/ipfs/go-datastore v0.4.4
 	github.com/ipfs/go-ds-badger2 v0.0.0-20200211201106-609c9d2a39c7
 	github.com/ipfs/go-filestore v0.0.2
 	github.com/ipfs/go-fs-lock v0.0.1
-	github.com/ipfs/go-graphsync v0.0.4
+	github.com/ipfs/go-graphsync v0.0.6-0.20200408061628-e1a98fc64c42
 	github.com/ipfs/go-hamt-ipld v0.0.15-0.20200204200533-99b8553ef242
 	github.com/ipfs/go-ipfs-blockstore v0.1.4
 	github.com/ipfs/go-ipfs-chunker v0.0.1
@@ -65,7 +65,7 @@ require (
 	github.com/jbenet/go-temp-err-catcher v0.1.0 // indirect
 	github.com/lib/pq v1.2.0
 	github.com/libp2p/go-eventbus v0.1.0
-	github.com/libp2p/go-libp2p v0.6.0
+	github.com/libp2p/go-libp2p v0.6.1
 	github.com/libp2p/go-libp2p-circuit v0.1.4
 	github.com/libp2p/go-libp2p-connmgr v0.1.0
 	github.com/libp2p/go-libp2p-core v0.5.0
@@ -94,7 +94,7 @@ require (
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/stretchr/testify v1.4.0
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
-	github.com/whyrusleeping/cbor-gen v0.0.0-20200321164527-9340289d0ca7
+	github.com/whyrusleeping/cbor-gen v0.0.0-20200402171437-3d27c146c105
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
 	github.com/whyrusleeping/pubsub v0.0.0-20131020042734-02de8aa2db3d
 	go.opencensus.io v0.22.3

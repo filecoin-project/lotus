@@ -5,6 +5,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-graphsync"
 	"github.com/ipld/go-ipld-prime"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"golang.org/x/xerrors"
@@ -99,7 +100,11 @@ func firstTipsetSelector(req *BlockSyncRequest) ipld.Node {
 }
 
 func (bs *BlockSync) executeGsyncSelector(ctx context.Context, p peer.ID, root cid.Cid, sel ipld.Node) error {
-	_, errs := bs.gsync.Request(ctx, p, cidlink.Link{Cid: root}, sel)
+	extension := graphsync.ExtensionData{
+		Name: "chainsync",
+		Data: nil,
+	}
+	_, errs := bs.gsync.Request(ctx, p, cidlink.Link{Cid: root}, sel, extension)
 
 	for err := range errs {
 		return xerrors.Errorf("failed to complete graphsync request: %w", err)
