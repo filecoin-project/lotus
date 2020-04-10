@@ -35,7 +35,7 @@ type SectorMgr struct {
 type mockVerif struct{}
 
 func NewMockSectorMgr(threads int, ssize abi.SectorSize) *SectorMgr {
-	rt, _, err := ffiwrapper.ProofTypeFromSectorSize(ssize)
+	rt, err := ffiwrapper.SealProofTypeFromSectorSize(ssize)
 	if err != nil {
 		panic(err)
 	}

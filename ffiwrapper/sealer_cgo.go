@@ -313,7 +313,7 @@ func GenerateUnsealedCID(proofType abi.RegisteredProof, pieces []abi.PieceInfo) 
 		sum += p.Size
 	}
 
-	ssize, err := SectorSizeForRegisteredProof(proofType)
+	ssize, err := proofType.SectorSize()
 	if err != nil {
 		return cid.Undef, err
 	}
