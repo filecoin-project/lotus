@@ -29,7 +29,6 @@ func New(sectors SectorProvider, cfg *Config) (*Sealer, error) {
 
 	sb := &Sealer{
 		sealProofType: cfg.SealProofType,
-		postProofType: cfg.PoStProofType,
 		ssize:         sectorSize,
 
 		sectors: sectors,
@@ -291,7 +290,7 @@ func (sb *Sealer) FinalizeSector(ctx context.Context, sector abi.SectorID) error
 	}
 	defer done()
 
-	return ffi.ClearCache(paths.Cache)
+	return ffi.ClearCache(uint64(sb.ssize), paths.Cache)
 }
 
 func GeneratePieceCIDFromFile(proofType abi.RegisteredProof, piece io.Reader, pieceSize abi.UnpaddedPieceSize) (cid.Cid, error) {
@@ -314,7 +313,7 @@ func GenerateUnsealedCID(proofType abi.RegisteredProof, pieces []abi.PieceInfo) 
 		sum += p.Size
 	}
 
-	ssize, err := SectorSizeForRegisteredProof(proofType)
+	ssize, err := proofType.SectorSize()
 	if err != nil {
 		return cid.Undef, err
 	}

@@ -34,11 +34,6 @@ type LocalWorker struct {
 }
 
 func NewLocalWorker(wcfg WorkerConfig, store stores.Store, local *stores.Local, sindex stores.SectorIndex) *LocalWorker {
-	ppt, err := wcfg.SealProof.RegisteredPoStProof()
-	if err != nil {
-		panic(err)
-	}
-
 	acceptTasks := map[sealtasks.TaskType]struct{}{}
 	for _, taskType := range wcfg.TaskTypes {
 		acceptTasks[taskType] = struct{}{}
@@ -47,7 +42,6 @@ func NewLocalWorker(wcfg WorkerConfig, store stores.Store, local *stores.Local, 
 	return &LocalWorker{
 		scfg: &ffiwrapper.Config{
 			SealProofType: wcfg.SealProof,
-			PoStProofType: ppt,
 		},
 		storage:    store,
 		localStore: local,
