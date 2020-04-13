@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	cid "github.com/ipfs/go-cid"
@@ -555,7 +556,11 @@ func (ht *apiIpldStore) Put(ctx context.Context, v interface{}) (cid.Cid, error)
 
 func handleAmt(ctx context.Context, api api.FullNode, r cid.Cid) error {
 	s := &apiIpldStore{ctx, api}
-	mp := adt.AsArray(s, r)
+	mp, err := adt.AsArray(s, r)
+	if err != nil {
+		return err
+	}
+
 	return mp.ForEach(nil, func(key int64) error {
 		fmt.Printf("%d\n", key)
 		return nil
@@ -564,7 +569,11 @@ func handleAmt(ctx context.Context, api api.FullNode, r cid.Cid) error {
 
 func handleHamtEpoch(ctx context.Context, api api.FullNode, r cid.Cid) error {
 	s := &apiIpldStore{ctx, api}
-	mp := adt.AsMap(s, r)
+	mp, err := adt.AsMap(s, r)
+	if err != nil {
+		return err
+	}
+
 	return mp.ForEach(nil, func(key string) error {
 		ik, err := adt.ParseIntKey(key)
 		if err != nil {
@@ -578,7 +587,11 @@ func handleHamtEpoch(ctx context.Context, api api.FullNode, r cid.Cid) error {
 
 func handleHamtAddress(ctx context.Context, api api.FullNode, r cid.Cid) error {
 	s := &apiIpldStore{ctx, api}
-	mp := adt.AsMap(s, r)
+	mp, err := adt.AsMap(s, r)
+	if err != nil {
+		return err
+	}
+
 	return mp.ForEach(nil, func(key string) error {
 		addr, err := address.NewFromBytes([]byte(key))
 		if err != nil {
@@ -770,6 +783,12 @@ var slashConsensusFault = &cli.Command{
 	Name:      "slash-consensus",
 	Usage:     "Report consensus fault",
 	ArgsUsage: "[blockCid1 blockCid2]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name: "miner",
+			Usage: "Miner address",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -813,18 +832,27 @@ var slashConsensusFault = &cli.Command{
 			return err
 		}
 
-		params, err := actors.SerializeParams(&power.ReportConsensusFaultParams{
+		params, err := actors.SerializeParams(&miner.ReportConsensusFaultParams{
 			BlockHeader1: bh1,
 			BlockHeader2: bh2,
 		})
 
+		if cctx.String("miner") == "" {
+			return xerrors.Errorf("--miner flag is required")
+		}
+
+		maddr, err := address.NewFromString(cctx.String("miner"))
+		if err != nil {
+			return err
+		}
+
 		msg := &types.Message{
-			To:       builtin.StoragePowerActorAddr,
+			To:       maddr,
 			From:     def,
 			Value:    types.NewInt(0),
 			GasPrice: types.NewInt(1),
 			GasLimit: 10000000,
-			Method:   builtin.MethodsPower.ReportConsensusFault,
+			Method:   builtin.MethodsMiner.ReportConsensusFault,
 			Params:   params,
 		}
 
