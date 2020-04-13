@@ -20,7 +20,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -173,7 +172,6 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 			}
 
 			// update power claims
-			pledge := big.Zero()
 			{
 				err = vm.MutateState(ctx, builtin.StoragePowerActorAddr, func(cst cbor.IpldStore, st *power.State) error {
 					weight := &power.SectorStorageWeightDesc{
@@ -182,15 +180,9 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 						DealWeight: dealWeight,
 					}
 
-					// TODO: This is almost definitely not correct
-					circSupply := types.BigMul(types.NewInt(build.TotalFilecoin-build.MiningRewardTotal), types.NewInt(build.FilecoinPrecision))
-					totalPledge := types.NewInt(3)
-					perEpochReward := types.NewInt(9)
-
 					qapower := power.QAPowerForWeight(weight)
-					pledge = power.InitialPledgeForWeight(qapower, st.TotalQualityAdjPower, circSupply, totalPledge, perEpochReward)
 
-					err := st.AddToClaim(&state.AdtStore{cst}, maddr, types.NewInt(uint64(weight.SectorSize)), qapower, pledge)
+					err := st.AddToClaim(&state.AdtStore{cst}, maddr, types.NewInt(uint64(weight.SectorSize)), qapower)
 					if err != nil {
 						return xerrors.Errorf("add to claim: %w", err)
 					}
@@ -215,7 +207,6 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 					},
 					ActivationEpoch:       0,
 					DealWeight:            dealWeight,
-					PledgeRequirement:     pledge,
 					DeclaredFaultEpoch:    -1,
 					DeclaredFaultDuration: -1,
 				}

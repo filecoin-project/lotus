@@ -480,8 +480,13 @@ func (syncer *Syncer) minerIsValid(ctx context.Context, maddr address.Address, b
 		return err
 	}
 
+	cm, err := adt.AsMap(syncer.store.Store(ctx), spast.Claims)
+	if err != nil {
+		return err
+	}
+
 	var claim power.Claim
-	exist, err := adt.AsMap(syncer.store.Store(ctx), spast.Claims).Get(adt.AddrKey(maddr), &claim)
+	exist, err := cm.Get(adt.AddrKey(maddr), &claim)
 	if err != nil {
 		return err
 	}

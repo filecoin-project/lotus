@@ -129,8 +129,12 @@ func (s SealingAPIAdapter) StateSectorPreCommitInfo(ctx context.Context, maddr a
 		return nil, xerrors.Errorf("handleSealFailed(%d): temp error: unmarshaling miner state: %+v", sectorNumber, err)
 	}
 
+	precommits, err := adt.AsMap(store.ActorStore(ctx, apibstore.NewAPIBlockstore(s.delegate)), state.PreCommittedSectors)
+	if err != nil {
+		return nil, err
+	}
+
 	var pci miner.SectorPreCommitOnChainInfo
-	precommits := adt.AsMap(store.ActorStore(ctx, apibstore.NewAPIBlockstore(s.delegate)), state.PreCommittedSectors)
 	if _, err := precommits.Get(adt.UIntKey(uint64(sectorNumber)), &pci); err != nil {
 		return nil, err
 	}
