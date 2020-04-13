@@ -39,10 +39,15 @@ type BenchResults struct {
 	SealingResults []SealingResult
 
 	PostGenerateCandidates time.Duration
-	PostEProofCold         time.Duration
-	PostEProofHot          time.Duration
-	VerifyEPostCold        time.Duration
-	VerifyEPostHot         time.Duration
+	PostWinningProofCold   time.Duration
+	PostWinningProofHot    time.Duration
+	VerifyWinningPostCold  time.Duration
+	VerifyWinningPostHot   time.Duration
+
+	PostWindowProofCold  time.Duration
+	PostWindowProofHot   time.Duration
+	VerifyWindowPostCold time.Duration
+	VerifyWindowPostHot  time.Duration
 }
 
 type SealingResult struct {
@@ -401,8 +406,7 @@ var sealBenchCmd = &cli.Command{
 
 			candidates := make([]abi.SectorInfo, len(fcandidates))
 			for i, fcandidate := range fcandidates {
-				candidates[i] = sealedSectors[i]
-				_ = fcandidate // todo: I have no idea what is under fcandidate, but it's a large number
+				candidates[i] = sealedSectors[fcandidate]
 			}
 
 			gencandidates := time.Now()
@@ -413,7 +417,7 @@ var sealBenchCmd = &cli.Command{
 				return err
 			}
 
-			epost1 := time.Now()
+			winnnigpost1 := time.Now()
 
 			log.Info("computing winning post snark (hot)")
 			proof2, err := sb.GenerateWinningPoSt(context.TODO(), mid, candidates, challenge[:])
@@ -421,7 +425,7 @@ var sealBenchCmd = &cli.Command{
 				return err
 			}
 
-			epost2 := time.Now()
+			winnningpost2 := time.Now()
 
 			pvi1 := abi.WinningPoStVerifyInfo{
 				Randomness:        abi.PoStRandomness(challenge[:]),
@@ -437,7 +441,7 @@ var sealBenchCmd = &cli.Command{
 				log.Error("post verification failed")
 			}
 
-			verifypost1 := time.Now()
+			verifyWinnnigPost1 := time.Now()
 
 			pvi2 := abi.WinningPoStVerifyInfo{
 				Randomness:        abi.PoStRandomness(challenge[:]),
@@ -453,13 +457,66 @@ var sealBenchCmd = &cli.Command{
 			if !ok {
 				log.Error("post verification failed")
 			}
-			verifypost2 := time.Now()
+			verifyWinningPost2 := time.Now()
+
+			log.Info("computing window post snark (cold)")
+			wproof1, err := sb.GenerateWindowPoSt(context.TODO(), mid, sealedSectors, challenge[:])
+			if err != nil {
+				return err
+			}
+
+			windowpost1 := time.Now()
+
+			log.Info("computing window post snark (hot)")
+			wproof2, err := sb.GenerateWindowPoSt(context.TODO(), mid, sealedSectors, challenge[:])
+			if err != nil {
+				return err
+			}
+
+			windowpost2 := time.Now()
+
+			wpvi1 := abi.WindowPoStVerifyInfo{
+				Randomness:        challenge[:],
+				Proofs:            wproof1,
+				ChallengedSectors: sealedSectors,
+				Prover:            mid,
+			}
+			ok, err = ffiwrapper.ProofVerifier.VerifyWindowPoSt(context.TODO(), wpvi1)
+			if err != nil {
+				return err
+			}
+			if !ok {
+				log.Error("post verification failed")
+			}
+
+			verifyWindowpost1 := time.Now()
+
+			wpvi2 := abi.WindowPoStVerifyInfo{
+				Randomness:        challenge[:],
+				Proofs:            wproof2,
+				ChallengedSectors: sealedSectors,
+				Prover:            mid,
+			}
+			ok, err = ffiwrapper.ProofVerifier.VerifyWindowPoSt(context.TODO(), wpvi2)
+			if err != nil {
+				return err
+			}
+			if !ok {
+				log.Error("post verification failed")
+			}
+
+			verifyWindowpost2 := time.Now()
 
 			bo.PostGenerateCandidates = gencandidates.Sub(beforePost)
-			bo.PostEProofCold = epost1.Sub(gencandidates)
-			bo.PostEProofHot = epost2.Sub(epost1)
-			bo.VerifyEPostCold = verifypost1.Sub(epost2)
-			bo.VerifyEPostHot = verifypost2.Sub(verifypost1)
+			bo.PostWinningProofCold = winnnigpost1.Sub(gencandidates)
+			bo.PostWinningProofHot = winnningpost2.Sub(winnnigpost1)
+			bo.VerifyWinningPostCold = verifyWinnnigPost1.Sub(winnningpost2)
+			bo.VerifyWinningPostHot = verifyWinningPost2.Sub(verifyWinnnigPost1)
+
+			bo.PostWindowProofCold = windowpost1.Sub(verifyWinningPost2)
+			bo.PostWindowProofHot = windowpost2.Sub(windowpost1)
+			bo.VerifyWindowPostCold = verifyWindowpost1.Sub(windowpost2)
+			bo.VerifyWindowPostHot = verifyWindowpost2.Sub(verifyWindowpost1)
 		}
 
 		if c.Bool("json-out") {
@@ -481,13 +538,19 @@ var sealBenchCmd = &cli.Command{
 				if !c.Bool("skip-unseal") {
 					fmt.Printf("unseal: %s  (%s)\n", bo.SealingResults[0].Unseal, bps(bo.SectorSize, bo.SealingResults[0].Unseal))
 				}
+				fmt.Println("")
 			}
 			if !c.Bool("skip-commit2") {
 				fmt.Printf("generate candidates: %s (%s)\n", bo.PostGenerateCandidates, bps(bo.SectorSize*abi.SectorSize(len(bo.SealingResults)), bo.PostGenerateCandidates))
-				fmt.Printf("compute epost proof (cold): %s\n", bo.PostEProofCold)
-				fmt.Printf("compute epost proof (hot): %s\n", bo.PostEProofHot)
-				fmt.Printf("verify epost proof (cold): %s\n", bo.VerifyEPostCold)
-				fmt.Printf("verify epost proof (hot): %s\n", bo.VerifyEPostHot)
+				fmt.Printf("compute winnnig post proof (cold): %s\n", bo.PostWinningProofCold)
+				fmt.Printf("compute winnnig post proof (hot): %s\n", bo.PostWinningProofHot)
+				fmt.Printf("verify winnnig post proof (cold): %s\n", bo.VerifyWinningPostCold)
+				fmt.Printf("verify winnnig post proof (hot): %s\n\n", bo.VerifyWinningPostHot)
+
+				fmt.Printf("compute window post proof (cold): %s\n", bo.PostWindowProofCold)
+				fmt.Printf("compute window post proof (hot): %s\n", bo.PostWindowProofHot)
+				fmt.Printf("verify window post proof (cold): %s\n", bo.VerifyWindowPostCold)
+				fmt.Printf("verify window post proof (hot): %s\n", bo.VerifyWindowPostHot)
 			}
 		}
 		return nil
