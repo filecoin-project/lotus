@@ -16,16 +16,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-amt-ipld/v2"
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/market"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	samsig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
-	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
-
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/state"
@@ -35,6 +25,13 @@ import (
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/lib/bufbstore"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	samsig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 )
 
 type StateAPI struct {
@@ -614,41 +611,4 @@ func (a *StateAPI) MsigGetAvailableBalance(ctx context.Context, addr address.Add
 	minBalance := types.BigDiv(types.BigInt(st.InitialBalance), types.NewInt(uint64(st.UnlockDuration)))
 	minBalance = types.BigMul(minBalance, types.NewInt(uint64(offset)))
 	return types.BigSub(act.Balance, minBalance), nil
-}
-
-func (a *StateAPI) StateListRewards(ctx context.Context, miner address.Address, tsk types.TipSetKey) ([]reward.Reward, error) {
-	ts, err := a.Chain.GetTipSetFromKey(tsk)
-	if err != nil {
-		return nil, err
-	}
-
-	var st reward.State
-	if _, err := a.StateManager.LoadActorState(ctx, builtin.RewardActorAddr, &st, ts); err != nil {
-		return nil, xerrors.Errorf("failed to load reward actor state: %w", err)
-	}
-
-	as := store.ActorStore(ctx, a.Chain.Blockstore())
-	rmap := adt.AsMultimap(as, st.RewardMap)
-	rewards, found, err := rmap.Get(adt.AddrKey(miner))
-	if err != nil {
-		return nil, xerrors.Errorf("failed to get rewards set for miner: %w", err)
-	}
-
-	if !found {
-		return nil, xerrors.Errorf("no rewards found for miner")
-	}
-
-	var out []reward.Reward
-
-	var r reward.Reward
-	err = rewards.ForEach(&r, func(i int64) error {
-		or := r
-		out = append(out, or)
-		return nil
-	})
-	if err != nil {
-		return nil, xerrors.Errorf("rewards.ForEach failed: %w", err)
-	}
-
-	return out, nil
 }

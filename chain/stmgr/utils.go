@@ -86,8 +86,13 @@ func getPowerRaw(ctx context.Context, sm *StateManager, st cid.Cid, maddr addres
 
 	var mpow big.Int
 	if maddr != address.Undef {
+		cm, err := adt.AsMap(sm.cs.Store(ctx), ps.Claims)
+		if err != nil {
+			return types.BigInt{}, types.BigInt{}, err
+		}
+
 		var claim power.Claim
-		if _, err := adt.AsMap(sm.cs.Store(ctx), ps.Claims).Get(adt.AddrKey(maddr), &claim); err != nil {
+		if _, err := cm.Get(adt.AddrKey(maddr), &claim); err != nil {
 			return big.Zero(), big.Zero(), err
 		}
 
@@ -219,7 +224,12 @@ func GetMinerSlashed(ctx context.Context, sm *StateManager, ts *types.TipSet, ma
 	}
 
 	store := sm.cs.Store(ctx)
-	claims := adt.AsMap(store, spas.Claims)
+
+	claims, err := adt.AsMap(store, spas.Claims)
+	if err != nil {
+		return false, err
+	}
+
 	ok, err := claims.Get(power.AddrKey(maddr), nil)
 	if err != nil {
 		return false, err
@@ -272,7 +282,11 @@ func GetStorageDeal(ctx context.Context, sm *StateManager, dealId abi.DealID, ts
 		return nil, err
 	}
 
-	sa := market.AsDealStateArray(sm.ChainStore().Store(ctx), state.States)
+	sa, err := market.AsDealStateArray(sm.ChainStore().Store(ctx), state.States)
+	if err != nil {
+		return nil, err
+	}
+
 	st, err := sa.Get(dealId)
 	if err != nil {
 		return nil, err
@@ -290,8 +304,13 @@ func ListMinerActors(ctx context.Context, sm *StateManager, ts *types.TipSet) ([
 		return nil, err
 	}
 
+	m, err := adt.AsMap(sm.cs.Store(ctx), state.Claims)
+	if err != nil {
+		return nil, err
+	}
+
 	var miners []address.Address
-	err := adt.AsMap(sm.cs.Store(ctx), state.Claims).ForEach(nil, func(k string) error {
+	err = m.ForEach(nil, func(k string) error {
 		a, err := address.NewFromBytes([]byte(k))
 		if err != nil {
 			return err

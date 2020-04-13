@@ -785,7 +785,7 @@ var slashConsensusFault = &cli.Command{
 	ArgsUsage: "[blockCid1 blockCid2]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name: "miner",
+			Name:  "miner",
 			Usage: "Miner address",
 		},
 	},

@@ -721,7 +721,10 @@ func (sm *StateManager) MarketBalance(ctx context.Context, addr address.Address,
 
 	var out api.MarketBalance
 
-	et := adt.AsBalanceTable(sm.cs.Store(ctx), state.EscrowTable)
+	et, err := adt.AsBalanceTable(sm.cs.Store(ctx), state.EscrowTable)
+	if err != nil {
+		return api.MarketBalance{}, err
+	}
 	ehas, err := et.Has(addr)
 	if err != nil {
 		return api.MarketBalance{}, err
@@ -735,7 +738,10 @@ func (sm *StateManager) MarketBalance(ctx context.Context, addr address.Address,
 		out.Escrow = big.Zero()
 	}
 
-	lt := adt.AsBalanceTable(sm.cs.Store(ctx), state.LockedTable)
+	lt, err := adt.AsBalanceTable(sm.cs.Store(ctx), state.LockedTable)
+	if err != nil {
+		return api.MarketBalance{}, err
+	}
 	lhas, err := lt.Has(addr)
 	if err != nil {
 		return api.MarketBalance{}, err
