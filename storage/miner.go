@@ -133,8 +133,28 @@ type StorageWpp struct {
 	winnRpt abi.RegisteredProof
 }
 
-func NewWinningPoStProver(sb storage.Prover, miner dtypes.MinerID, winnRpt abi.RegisteredProof) *StorageWpp {
-	return &StorageWpp{sb, abi.ActorID(miner), winnRpt}
+func NewWinningPoStProver(api api.FullNode, sb storage.Prover, miner dtypes.MinerID) (*StorageWpp, error) {
+	ma, err := address.NewIDAddress(uint64(miner))
+	if err != nil {
+		return nil, err
+	}
+
+	mss, err := api.StateMinerSectorSize(context.TODO(), ma, types.EmptyTSK)
+	if err != nil {
+		return nil, xerrors.Errorf("getting sector size: %w", err)
+	}
+
+	spt, err := ffiwrapper.SealProofTypeFromSectorSize(mss)
+	if err != nil {
+		return nil, err
+	}
+
+	wpt, err := spt.RegisteredWinningPoStProof()
+	if err != nil {
+		return nil, err
+	}
+
+	return &StorageWpp{sb, abi.ActorID(miner), wpt}, nil
 }
 
 var _ gen.WinningPoStProver = (*StorageWpp)(nil)
