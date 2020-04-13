@@ -20,14 +20,14 @@ require (
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
 	github.com/filecoin-project/go-data-transfer v0.0.0-20200408061858-82c58b423ca6
 	github.com/filecoin-project/go-fil-commcid v0.0.0-20200208005934-2b8bd03caca5
-	github.com/filecoin-project/go-fil-markets v0.0.0-20200408062434-d92f329a6428
+	github.com/filecoin-project/go-fil-markets v0.0.0-20200413201123-731e6ca89984
 	github.com/filecoin-project/go-padreader v0.0.0-20200210211231-548257017ca6
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200218225740-47c639bab663
 	github.com/filecoin-project/go-statestore v0.1.0
-	github.com/filecoin-project/sector-storage v0.0.0-20200410210142-c0d619cd8616
-	github.com/filecoin-project/specs-actors v0.0.0-20200409043918-e569f4a2f504
+	github.com/filecoin-project/sector-storage v0.0.0-20200411000242-61616264b16d
+	github.com/filecoin-project/specs-actors v0.0.0-20200413173219-041b36c0a9f9
 	github.com/filecoin-project/specs-storage v0.0.0-20200410185809-9fbaaa08f275
-	github.com/filecoin-project/storage-fsm v0.0.0-20200408153957-1c356922353f
+	github.com/filecoin-project/storage-fsm v0.0.0-20200413200947-069c3b2468ca
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/mux v1.7.4
@@ -116,13 +116,3 @@ replace github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v
 replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 
 replace github.com/coreos/go-systemd => github.com/coreos/go-systemd/v22 v22.0.0
-
-replace github.com/filecoin-project/specs-storage => /home/magik6k/gohack/github.com/filecoin-project/specs-storage
-
-replace github.com/filecoin-project/sector-storage => /home/magik6k/gohack/github.com/filecoin-project/sector-storage
-
-replace github.com/filecoin-project/go-fil-markets => /home/magik6k/gohack/github.com/filecoin-project/go-fil-markets
-
-replace github.com/filecoin-project/storage-fsm => /home/magik6k/gohack/github.com/filecoin-project/storage-fsm
-
-replace github.com/filecoin-project/specs-actors => /home/magik6k/gohack/github.com/filecoin-project/specs-actors
