@@ -15,44 +15,7 @@ import (
 var rewardsCmd = &cli.Command{
 	Name: "rewards",
 	Subcommands: []*cli.Command{
-		rewardsListCmd,
 		rewardsRedeemCmd,
-	},
-}
-
-var rewardsListCmd = &cli.Command{
-	Name:  "list",
-	Usage: "Print unclaimed block rewards earned",
-	Action: func(cctx *cli.Context) error {
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer closer()
-
-		api, acloser, err := lcli.GetFullNodeAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer acloser()
-
-		ctx := lcli.ReqContext(cctx)
-
-		maddr, err := nodeApi.ActorAddress(ctx)
-		if err != nil {
-			return err
-		}
-
-		rewards, err := api.StateListRewards(ctx, maddr, types.EmptyTSK)
-		if err != nil {
-			return err
-		}
-
-		for _, r := range rewards {
-			fmt.Printf("%d\t%d\t%s\n", r.StartEpoch, r.EndEpoch, types.FIL(r.Value))
-		}
-
-		return nil
 	},
 }
 
@@ -94,6 +57,8 @@ var rewardsRedeemCmd = &cli.Command{
 			return err
 		}
 
+		panic("todo correct method; call miner actor")
+
 		smsg, err := api.WalletSignMessage(ctx, worker, &types.Message{
 			To:       builtin.RewardActorAddr,
 			From:     worker,
@@ -101,7 +66,7 @@ var rewardsRedeemCmd = &cli.Command{
 			Value:    types.NewInt(0),
 			GasPrice: types.NewInt(1),
 			GasLimit: 100000,
-			Method:   builtin.MethodsReward.WithdrawReward,
+			Method:   0,
 			Params:   params,
 		})
 		if err != nil {

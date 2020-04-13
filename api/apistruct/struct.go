@@ -16,7 +16,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
-	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-storage/storage"
 
@@ -141,7 +140,6 @@ type FullNodeStruct struct {
 		StateGetReceipt          func(context.Context, cid.Cid, types.TipSetKey) (*types.MessageReceipt, error)                                      `perm:"read"`
 		StateMinerSectorCount    func(context.Context, address.Address, types.TipSetKey) (api.MinerSectors, error)                                   `perm:"read"`
 		StateListMessages        func(ctx context.Context, match *types.Message, tsk types.TipSetKey, toht abi.ChainEpoch) ([]cid.Cid, error)        `perm:"read"`
-		StateListRewards         func(context.Context, address.Address, types.TipSetKey) ([]reward.Reward, error)                                    `perm:"read"`
 		StateCompute             func(context.Context, abi.ChainEpoch, []*types.Message, types.TipSetKey) (*api.ComputeStateOutput, error)           `perm:"read"`
 
 		MsigGetAvailableBalance func(context.Context, address.Address, types.TipSetKey) (types.BigInt, error) `perm:"read"`
@@ -584,10 +582,6 @@ func (c *FullNodeStruct) StateGetReceipt(ctx context.Context, msg cid.Cid, tsk t
 
 func (c *FullNodeStruct) StateListMessages(ctx context.Context, match *types.Message, tsk types.TipSetKey, toht abi.ChainEpoch) ([]cid.Cid, error) {
 	return c.Internal.StateListMessages(ctx, match, tsk, toht)
-}
-
-func (c *FullNodeStruct) StateListRewards(ctx context.Context, miner address.Address, tsk types.TipSetKey) ([]reward.Reward, error) {
-	return c.Internal.StateListRewards(ctx, miner, tsk)
 }
 
 func (c *FullNodeStruct) StateCompute(ctx context.Context, height abi.ChainEpoch, msgs []*types.Message, tsk types.TipSetKey) (*api.ComputeStateOutput, error) {

@@ -15,7 +15,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
-	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 
 	"github.com/filecoin-project/lotus/chain/store"
@@ -140,7 +139,6 @@ type FullNode interface {
 	StateChangedActors(context.Context, cid.Cid, cid.Cid) (map[string]types.Actor, error)
 	StateGetReceipt(context.Context, cid.Cid, types.TipSetKey) (*types.MessageReceipt, error)
 	StateMinerSectorCount(context.Context, address.Address, types.TipSetKey) (MinerSectors, error)
-	StateListRewards(context.Context, address.Address, types.TipSetKey) ([]reward.Reward, error)
 	StateCompute(context.Context, abi.ChainEpoch, []*types.Message, types.TipSetKey) (*ComputeStateOutput, error)
 
 	MsigGetAvailableBalance(context.Context, address.Address, types.TipSetKey) (types.BigInt, error)
