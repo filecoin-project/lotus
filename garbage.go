@@ -46,7 +46,7 @@ func (m *Sealing) PledgeSector() error {
 
 		size := abi.PaddedPieceSize(m.sealer.SectorSize()).Unpadded()
 
-		_, rt, err := ffiwrapper.ProofTypeFromSectorSize(m.sealer.SectorSize())
+		rt, err := ffiwrapper.SealProofTypeFromSectorSize(m.sealer.SectorSize())
 		if err != nil {
 			log.Error(err)
 			return

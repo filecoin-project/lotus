@@ -111,7 +111,7 @@ func (m *Sealing) checkCommit(ctx context.Context, si SectorInfo, proof []byte, 
 	if err != nil {
 		return &ErrApi{err}
 	}
-	_, spt, err := ffiwrapper.ProofTypeFromSectorSize(ss)
+	spt, err := ffiwrapper.SealProofTypeFromSectorSize(ss)
 	if err != nil {
 		return err
 	}
