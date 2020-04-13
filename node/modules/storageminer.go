@@ -135,17 +135,10 @@ func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api lapi.FullNode, h
 		return nil, err
 	}
 
-	spt, err := ffiwrapper.SealProofTypeFromSectorSize(sealer.SectorSize()) // TODO: this changes
-	if err != nil {
-		return nil, xerrors.Errorf("bad sector size: %w", err)
-	}
-
-	ppt, err := spt.RegisteredWindowPoStProof()
+	fps, err := storage.NewWindowedPoStScheduler(api, sealer, maddr, worker)
 	if err != nil {
 		return nil, err
 	}
-
-	fps := storage.NewWindowedPoStScheduler(api, sealer, maddr, worker, ppt)
 
 	sm, err := storage.NewMiner(api, maddr, worker, h, ds, sealer, sc, verif, tktFn)
 	if err != nil {

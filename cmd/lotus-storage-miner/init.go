@@ -426,11 +426,6 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 				return err
 			}
 
-			winPt, err := spt.RegisteredWinningPoStProof()
-			if err != nil {
-				return err
-			}
-
 			mid, err := address.IDFromAddress(a)
 			if err != nil {
 				return xerrors.Errorf("getting id address: %w", err)
@@ -447,7 +442,10 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 			if err != nil {
 				return err
 			}
-			epp := storage.NewWinningPoStProver(smgr, dtypes.MinerID(mid), winPt)
+			epp, err := storage.NewWinningPoStProver(api, smgr, dtypes.MinerID(mid))
+			if err != nil {
+				return err
+			}
 
 			beacon := beacon.NewMockBeacon(build.BlockDelay * time.Second)
 

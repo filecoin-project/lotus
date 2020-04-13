@@ -8,6 +8,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-storage/storage"
 
@@ -36,8 +37,23 @@ type WindowPoStScheduler struct {
 	//failLk sync.Mutex
 }
 
-func NewWindowedPoStScheduler(api storageMinerApi, sb storage.Prover, actor address.Address, worker address.Address, rt abi.RegisteredProof) *WindowPoStScheduler {
-	return &WindowPoStScheduler{api: api, prover: sb, actor: actor, worker: worker, proofType: rt}
+func NewWindowedPoStScheduler(api storageMinerApi, sb storage.Prover, actor address.Address, worker address.Address) (*WindowPoStScheduler, error) {
+	mss, err := api.StateMinerSectorSize(context.TODO(), actor, types.EmptyTSK)
+	if err != nil {
+		return nil, xerrors.Errorf("getting sector size: %w", err)
+	}
+
+	spt, err := ffiwrapper.SealProofTypeFromSectorSize(mss)
+	if err != nil {
+		return nil, err
+	}
+
+	rt, err := spt.RegisteredWindowPoStProof()
+	if err != nil {
+		return nil, err
+	}
+
+	return &WindowPoStScheduler{api: api, prover: sb, actor: actor, worker: worker, proofType: rt}, nil
 }
 
 const ProvingDeadlineEpochs = (30 * 60) / build.BlockDelay
