@@ -13,6 +13,7 @@ import (
 
 	logging "github.com/ipfs/go-log"
 
+	dbeacon "github.com/drand/drand/beacon"
 	"github.com/drand/drand/core"
 	dkey "github.com/drand/drand/key"
 	dnet "github.com/drand/drand/net"
@@ -149,10 +150,19 @@ func (db *DrandBeacon) getCachedValue(round uint64) *types.BeaconEntry {
 	return &v
 }
 
-func (db *DrandBeacon) VerifyEntry(from types.BeaconEntry, to types.BeaconEntry) error {
-	return nil
-	// TODO: this doesnt work for some reason
-	//return dbeacon.Verify(db.pubkey.Key(), from.Data, to.Round, from.Round)
+func (db *DrandBeacon) VerifyEntry(curr types.BeaconEntry, prev types.BeaconEntry) error {
+	if prev.Round == 0 {
+		// TODO handle genesis better
+		return nil
+	}
+	b := &dbeacon.Beacon{
+		PreviousRound: prev.Round,
+		PreviousSig:   prev.Data,
+		Round:         curr.Round,
+		Signature:     curr.Data,
+	}
+	//log.Warnw("VerifyEntry", "beacon", b)
+	return dbeacon.VerifyBeacon(db.pubkey.Key(), b)
 }
 
 func (db *DrandBeacon) MaxBeaconRoundForEpoch(filEpoch abi.ChainEpoch, prevEntry types.BeaconEntry) uint64 {
