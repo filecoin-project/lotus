@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -980,35 +981,32 @@ func (syncer *Syncer) collectHeaders(ctx context.Context, from *types.TipSet, to
 		}
 	}
 
-	/*
-		{
-			// TODO: Not sure what this check is aiming to do exactly, but it doesnt quite work
-			// ensure consistency of beacon entires
-			targetBE := from.Blocks()[0].BeaconEntries
-
-			for _, e := range targetBE[1:] {
-				if cur >= e.Round {
-					syncer.bad.Add(from.Cids()[0], "wrong order of beacon entires")
-					return nil, xerrors.Errorf("wrong order of beacon entires")
-				}
-
-			}
-			for _, bh := range from.Blocks()[1:] {
-				beacon.ValidateBlockValues()
-				if len(targetBE) != len(bh.BeaconEntries) {
-					// cannot mark bad, I think @Kubuxu
-					return nil, xerrors.Errorf("tipset contained different number for beacon entires")
-				}
-				for i, be := range bh.BeaconEntries {
-					if targetBE[i].Round != be.Round || !bytes.Equal(targetBE[i].Data, be.Data) {
-						// cannot mark bad, I think @Kubuxu
-						return nil, xerrors.Errorf("tipset contained different number for beacon entires")
-					}
-				}
-
-			}
+	{
+		// TODO: Not sure what this check is aiming to do exactly, but it doesnt quite work
+		// ensure consistency of beacon entires
+		targetBE := from.Blocks()[0].BeaconEntries
+		sorted := sort.SliceIsSorted(targetBE, func(i, j int) bool {
+			return targetBE[i].Round < targetBE[j].Round
+		})
+		if !sorted {
+			syncer.bad.Add(from.Cids()[0], "wrong order of beacon entires")
+			return nil, xerrors.Errorf("wrong order of beacon entires")
 		}
-	*/
+
+		for _, bh := range from.Blocks()[1:] {
+			if len(targetBE) != len(bh.BeaconEntries) {
+				// cannot mark bad, I think @Kubuxu
+				return nil, xerrors.Errorf("tipset contained different number for beacon entires")
+			}
+			for i, be := range bh.BeaconEntries {
+				if targetBE[i].Round != be.Round || !bytes.Equal(targetBE[i].Data, be.Data) {
+					// cannot mark bad, I think @Kubuxu
+					return nil, xerrors.Errorf("tipset contained different beacon entires")
+				}
+			}
+
+		}
+	}
 
 	blockSet := []*types.TipSet{from}
 
