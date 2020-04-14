@@ -486,5 +486,6 @@ func Test() Option {
 	return Options(
 		Unset(RunPeerMgrKey),
 		Unset(new(*peermgr.PeerMgr)),
+		Override(new(beacon.RandomBeacon), testing.RandomBeacon),
 	)
 }
