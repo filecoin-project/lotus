@@ -982,7 +982,6 @@ func (syncer *Syncer) collectHeaders(ctx context.Context, from *types.TipSet, to
 	}
 
 	{
-		// TODO: Not sure what this check is aiming to do exactly, but it doesnt quite work
 		// ensure consistency of beacon entires
 		targetBE := from.Blocks()[0].BeaconEntries
 		sorted := sort.SliceIsSorted(targetBE, func(i, j int) bool {
