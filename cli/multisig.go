@@ -144,14 +144,22 @@ var msigCreateCmd = &cli.Command{
 			fmt.Println("actor creation failed!")
 			return err
 		}
+		
 
 		// get address of newly created miner
-		msigaddr, err := address.NewFromBytes(wait.Receipt.Return)
-		if err != nil {
+		// msigaddr, err := address.NewFromBytes(wait.Receipt.Return)
+		// if err != nil {
+		// 	return err
+		// }
+
+		// fmt.Println("Created new multisig: ", msigaddr.String())
+
+		var execreturn init_.ExecReturn
+		if err := execreturn.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return)); err != nil {
 			return err
 		}
-
-		fmt.Println("Created new multisig: ", msigaddr.String())
+		fmt.Println("Created new multisig: ", execreturn.IDAddress, execreturn.RobustAddress)
+		
 		// TODO: maybe register this somewhere
 		return nil
 	},
