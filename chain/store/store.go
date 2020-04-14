@@ -893,7 +893,6 @@ func (cs *ChainStore) TryFillTipSet(ts *types.TipSet) (*FullTipSet, error) {
 }
 
 func DrawRandomness(rbase []byte, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	//log.Desugar().WithOptions(zap.AddCallerSkip(2)).Sugar().Warnw("DrawRandomness", "base", rbase, "dsep", pers, "round", round, "entropy", entropy)
 	h := blake2b.New256()
 	if err := binary.Write(h, binary.BigEndian, int64(pers)); err != nil {
 		return nil, xerrors.Errorf("deriving randomness: %w", err)
