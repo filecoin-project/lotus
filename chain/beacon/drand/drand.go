@@ -2,7 +2,6 @@ package drand
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
@@ -118,7 +117,6 @@ func (db *DrandBeacon) handleStreamingUpdates() {
 		}
 
 		for e := range ch {
-			fmt.Println("Entry: ", e.Round, e.Signature)
 			db.cacheValue(types.BeaconEntry{
 				Round: e.Round,
 				Data:  e.Signature,
@@ -130,7 +128,7 @@ func (db *DrandBeacon) handleStreamingUpdates() {
 }
 
 func (db *DrandBeacon) Entry(ctx context.Context, round uint64) <-chan beacon.Response {
-	fmt.Println("requesting drand entry: ", round)
+	// check cache, it it if there, otherwise query the endpoint
 	cres := db.getCachedValue(round)
 	if cres != nil {
 		out := make(chan beacon.Response, 1)
@@ -142,7 +140,6 @@ func (db *DrandBeacon) Entry(ctx context.Context, round uint64) <-chan beacon.Re
 	out := make(chan beacon.Response, 1)
 
 	go func() {
-		// check cache, it it if there, otherwise query the endpoint
 		resp, err := db.client.PublicRand(ctx, db.peers[0], &dproto.PublicRandRequest{Round: round})
 
 		var br beacon.Response
@@ -196,13 +193,9 @@ func (db *DrandBeacon) VerifyEntry(curr types.BeaconEntry, prev types.BeaconEntr
 }
 
 func (db *DrandBeacon) MaxBeaconRoundForEpoch(filEpoch abi.ChainEpoch, prevEntry types.BeaconEntry) uint64 {
-	fmt.Println("MAX BEACON ROUND FOR EPOCH: ", filEpoch)
-	fmt.Println("filecoin genesis time: ", db.filGenTime)
-	fmt.Println("drand genesis time: ", db.drandGenTime)
 	// TODO: sometimes the genesis time for filecoin is zero and this goes negative
 	latestTs := ((uint64(filEpoch) * db.filRoundTime) + db.filGenTime) - db.filRoundTime
 	dround := (latestTs - db.drandGenTime) / uint64(db.interval.Seconds())
-	fmt.Println("max beacon round will be: ", dround)
 	return dround
 }
 

@@ -2,7 +2,6 @@ package modules
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"reflect"
 
@@ -384,8 +383,5 @@ func MinerRandomBeacon(api lapi.FullNode) (beacon.RandomBeacon, error) {
 		return nil, err
 	}
 
-	fmt.Println("Making miner random beacon: ", gents.Blocks()[0].Timestamp)
-
-	//return beacon.NewMockBeacon(build.BlockDelay * time.Second)
 	return drand.NewDrandBeacon(gents.Blocks()[0].Timestamp, build.BlockDelay)
 }
