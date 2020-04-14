@@ -999,7 +999,8 @@ func (syncer *Syncer) collectHeaders(ctx context.Context, from *types.TipSet, to
 				return nil, xerrors.Errorf("tipset contained different number for beacon entires")
 			}
 			for i, be := range bh.BeaconEntries {
-				if targetBE[i].Round != be.Round || !bytes.Equal(targetBE[i].Data, be.Data) {
+				if targetBE[i].Round != be.Round || !bytes.Equal(targetBE[i].Data, be.Data) ||
+					targetBE[i].PrevRound() != be.PrevRound() {
 					// cannot mark bad, I think @Kubuxu
 					return nil, xerrors.Errorf("tipset contained different beacon entires")
 				}
