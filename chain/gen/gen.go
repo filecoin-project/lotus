@@ -28,6 +28,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/beacon"
+	"github.com/filecoin-project/lotus/chain/beacon/drand"
 	genesis2 "github.com/filecoin-project/lotus/chain/gen/genesis"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -188,7 +189,7 @@ func NewGenerator() (*ChainGen, error) {
 			*genm2,
 		},
 		NetworkName: "",
-		Timestamp:   100000,
+		Timestamp:   uint64(time.Now().Add(-500 * build.BlockDelay * time.Second).Unix()),
 	}
 
 	genb, err := genesis2.MakeGenesisBlock(context.TODO(), bs, sys, tpl)
@@ -214,7 +215,11 @@ func NewGenerator() (*ChainGen, error) {
 
 	miners := []address.Address{maddr1, maddr2}
 
-	beac := beacon.NewMockBeacon(time.Second)
+	//beac := beacon.NewMockBeacon(time.Second)
+	beac, err := drand.NewDrandBeacon(tpl.Timestamp, build.BlockDelay)
+	if err != nil {
+		return nil, xerrors.Errorf("could not create beacon: %w", err)
+	}
 
 	gen := &ChainGen{
 		bs:           bs,
