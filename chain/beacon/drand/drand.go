@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -24,6 +25,16 @@ var log = logging.Logger("drand")
 
 var drandServers = []string{
 	"drand-test1.nikkolasg.xyz:5001",
+}
+
+var drandPubKey *dkey.DistPublic
+
+func init() {
+	drandPubKey = new(dkey.DistPublic)
+	err := drandPubKey.FromTOML(&dkey.DistPublicTOML{build.DrandCoeffs})
+	if err != nil {
+		panic(err)
+	}
 }
 
 type drandPeer struct {
@@ -79,7 +90,11 @@ func NewDrandBeacon(genesisTs, interval uint64) (*DrandBeacon, error) {
 	}
 
 	// TODO: verify these values are what we expect them to be
-	db.pubkey = kgroup.PublicKey
+	if !kgroup.PublicKey.Equal(drandPubKey) {
+		return nil, xerrors.Errorf("public key does not match")
+	}
+	// fmt.Printf("Drand Pubkey:\n%#v\n", kgroup.PublicKey.TOML()) // use to print public key
+	db.pubkey = drandPubKey
 	db.interval = kgroup.Period
 	db.drandGenTime = uint64(kgroup.GenesisTime)
 	db.filRoundTime = interval
