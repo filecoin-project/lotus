@@ -104,7 +104,7 @@ func (db *DrandBeacon) handleStreamingUpdates() {
 
 		for e := range ch {
 			fmt.Println("Entry: ", e.Round, e.Signature)
-			db.cacheValue(e.Round, types.BeaconEntry{
+			db.cacheValue(types.BeaconEntry{
 				Round: e.Round,
 				Data:  e.Signature,
 			})
@@ -116,28 +116,39 @@ func (db *DrandBeacon) handleStreamingUpdates() {
 
 func (db *DrandBeacon) Entry(ctx context.Context, round uint64) <-chan beacon.Response {
 	fmt.Println("requesting drand entry: ", round)
-	// check cache, it it if there, otherwise query the endpoint
-	resp, err := db.client.PublicRand(ctx, db.peers[0], &dproto.PublicRandRequest{Round: round})
-
-	var br beacon.Response
-	if err != nil {
-		br.Err = err
-	} else {
-		br.Entry.Round = resp.GetRound()
-		br.Entry.Data = resp.GetSignature()
+	cres := db.getCachedValue(round)
+	if cres != nil {
+		out := make(chan beacon.Response, 1)
+		out <- beacon.Response{Entry: *cres}
+		close(out)
+		return out
 	}
 
 	out := make(chan beacon.Response, 1)
-	out <- br
-	close(out)
+
+	go func() {
+		// check cache, it it if there, otherwise query the endpoint
+		resp, err := db.client.PublicRand(ctx, db.peers[0], &dproto.PublicRandRequest{Round: round})
+
+		var br beacon.Response
+		if err != nil {
+			br.Err = err
+		} else {
+			br.Entry.Round = resp.GetRound()
+			br.Entry.Data = resp.GetSignature()
+		}
+
+		out <- br
+		close(out)
+	}()
 
 	return out
 }
 
-func (db *DrandBeacon) cacheValue(round uint64, e types.BeaconEntry) {
+func (db *DrandBeacon) cacheValue(e types.BeaconEntry) {
 	db.cacheLk.Lock()
 	defer db.cacheLk.Unlock()
-	db.localCache[round] = e
+	db.localCache[e.Round] = e
 }
 
 func (db *DrandBeacon) getCachedValue(round uint64) *types.BeaconEntry {
@@ -162,7 +173,11 @@ func (db *DrandBeacon) VerifyEntry(curr types.BeaconEntry, prev types.BeaconEntr
 		Signature:     curr.Data,
 	}
 	//log.Warnw("VerifyEntry", "beacon", b)
-	return dbeacon.VerifyBeacon(db.pubkey.Key(), b)
+	err := dbeacon.VerifyBeacon(db.pubkey.Key(), b)
+	if err == nil {
+		db.cacheValue(curr)
+	}
+	return err
 }
 
 func (db *DrandBeacon) MaxBeaconRoundForEpoch(filEpoch abi.ChainEpoch, prevEntry types.BeaconEntry) uint64 {
