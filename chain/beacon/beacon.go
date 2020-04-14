@@ -39,7 +39,7 @@ func ValidateBlockValues(b RandomBeacon, h *types.BlockHeader, prevEntry types.B
 
 	for i, e := range h.BeaconEntries {
 		if err := b.VerifyEntry(e, prevEntry); err != nil {
-			return xerrors.Errorf("beacon entry %d was invalid: %w", i, err)
+			return xerrors.Errorf("beacon entry %d (%d - %x (%d)) was invalid: %w", i, e.Round, e.Data, len(e.Data), err)
 		}
 		prevEntry = e
 	}
@@ -53,6 +53,11 @@ func BeaconEntriesForBlock(ctx context.Context, beacon RandomBeacon, round abi.C
 	maxRound := beacon.MaxBeaconRoundForEpoch(round, prev)
 	if maxRound == prev.Round {
 		return nil, nil
+	}
+
+	// TODO: this is a sketchy way to handle the genesis block not having a beacon entry
+	if prev.Round == 0 {
+		prev.Round = maxRound - 1
 	}
 
 	cur := maxRound

@@ -2,7 +2,6 @@ package modules
 
 import (
 	"context"
-	"time"
 
 	eventbus "github.com/libp2p/go-eventbus"
 	event "github.com/libp2p/go-libp2p-core/event"
@@ -18,8 +17,10 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/beacon"
+	"github.com/filecoin-project/lotus/chain/beacon/drand"
 	"github.com/filecoin-project/lotus/chain/blocksync"
 	"github.com/filecoin-project/lotus/chain/messagepool"
+	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/sub"
 	"github.com/filecoin-project/lotus/lib/peermgr"
 	"github.com/filecoin-project/lotus/node/hello"
@@ -117,6 +118,12 @@ func RetrievalResolver(l *discovery.Local) retrievalmarket.PeerResolver {
 	return discovery.Multi(l)
 }
 
-func RandomBeacon() beacon.RandomBeacon {
-	return beacon.NewMockBeacon(build.BlockDelay * time.Second)
+func RandomBeacon(cs *store.ChainStore, _ dtypes.AfterGenesisSet) (beacon.RandomBeacon, error) {
+	gen, err := cs.GetGenesis()
+	if err != nil {
+		return nil, err
+	}
+
+	//return beacon.NewMockBeacon(build.BlockDelay * time.Second)
+	return drand.NewDrandBeacon(gen.Timestamp, build.BlockDelay)
 }
