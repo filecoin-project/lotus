@@ -27,7 +27,7 @@ require (
 	github.com/filecoin-project/sector-storage v0.0.0-20200411000242-61616264b16d
 	github.com/filecoin-project/specs-actors v0.0.0-20200415170224-54c7b2a42e71
 	github.com/filecoin-project/specs-storage v0.0.0-20200410185809-9fbaaa08f275
-	github.com/filecoin-project/storage-fsm v0.0.0-20200413200947-069c3b2468ca
+	github.com/filecoin-project/storage-fsm v0.0.0-20200415180041-afc45d4b6e8b
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/mux v1.7.4
@@ -116,5 +116,3 @@ replace github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v
 replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 
 replace github.com/coreos/go-systemd => github.com/coreos/go-systemd/v22 v22.0.0
-
-replace github.com/filecoin-project/storage-fsm => /home/magik6k/gohack/github.com/filecoin-project/storage-fsm

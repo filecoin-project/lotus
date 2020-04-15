@@ -167,6 +167,7 @@ type FileRef struct {
 
 type MinerSectors struct {
 	Sset uint64
+	Pset uint64
 }
 
 type Import struct {
