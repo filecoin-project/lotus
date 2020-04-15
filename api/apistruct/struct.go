@@ -118,6 +118,7 @@ type FullNodeStruct struct {
 		StateMinerWorker         func(context.Context, address.Address, types.TipSetKey) (address.Address, error)                                    `perm:"read"`
 		StateMinerPeerID         func(ctx context.Context, m address.Address, tsk types.TipSetKey) (peer.ID, error)                                  `perm:"read"`
 		StateMinerSectorSize     func(context.Context, address.Address, types.TipSetKey) (abi.SectorSize, error)                                     `perm:"read"`
+		StateMinerDeadlines      func(context.Context, address.Address, types.TipSetKey) (*miner.Deadlines, error)
 		StateMinerFaults         func(context.Context, address.Address, types.TipSetKey) ([]abi.SectorNumber, error)                                 `perm:"read"`
 		StateSectorPreCommitInfo func(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error) `perm:"read"`
 		StateCall                func(context.Context, *types.Message, types.TipSetKey) (*api.InvocResult, error)                                    `perm:"read"`
@@ -496,6 +497,10 @@ func (c *FullNodeStruct) StateMinerPeerID(ctx context.Context, m address.Address
 
 func (c *FullNodeStruct) StateMinerSectorSize(ctx context.Context, actor address.Address, tsk types.TipSetKey) (abi.SectorSize, error) {
 	return c.Internal.StateMinerSectorSize(ctx, actor, tsk)
+}
+
+func (c *FullNodeStruct) StateMinerDeadlines(ctx context.Context, m address.Address, tsk types.TipSetKey) (*miner.Deadlines, error) {
+	return c.Internal.StateMinerDeadlines(ctx, m, tsk)
 }
 
 func (c *FullNodeStruct) StateMinerFaults(ctx context.Context, actor address.Address, tsk types.TipSetKey) ([]abi.SectorNumber, error) {
