@@ -188,7 +188,7 @@ func NewGenerator() (*ChainGen, error) {
 			*genm2,
 		},
 		NetworkName: "",
-		Timestamp:   100000,
+		Timestamp:   uint64(time.Now().Add(-500 * build.BlockDelay * time.Second).Unix()),
 	}
 
 	genb, err := genesis2.MakeGenesisBlock(context.TODO(), bs, sys, tpl)
