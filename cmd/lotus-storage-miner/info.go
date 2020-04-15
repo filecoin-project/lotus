@@ -6,10 +6,7 @@ import (
 
 	"gopkg.in/urfave/cli.v2"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
-
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	sealing "github.com/filecoin-project/storage-fsm"
@@ -91,7 +88,7 @@ var infoCmd = &cli.Command{
 		fmt.Printf("\tCommit: %d\n", wstat.CommitWait)
 		fmt.Printf("\tUnseal: %d\n", wstat.UnsealWait)*/
 
-		ps, err := api.StateMinerPostState(ctx, maddr, types.EmptyTSK)
+		/*ps, err := api.StateMinerPostState(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
@@ -113,7 +110,7 @@ var infoCmd = &cli.Command{
 			fmt.Printf("\tConsecutive Failures: %d\n", ps.NumConsecutiveFailures)
 		} else {
 			fmt.Printf("Proving Period: Not Proving\n")
-		}
+		}*/
 
 		sinfo, err := sectorsInfo(ctx, nodeApi)
 		if err != nil {
