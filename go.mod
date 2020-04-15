@@ -8,12 +8,10 @@ require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/GeertJohan/go.rice v1.0.0
 	github.com/Gurpartap/async v0.0.0-20180927173644-4f7f499dd9ee
-	github.com/benbjohnson/clock v1.0.0 // indirect
 	github.com/coreos/go-systemd/v22 v22.0.0
 	github.com/davidlazar/go-crypto v0.0.0-20190912175916-7055855a373f // indirect
 	github.com/docker/go-units v0.4.0
 	github.com/drand/drand v0.7.2
-	github.com/drand/kyber v1.0.1-0.20200331114745-30e90cc60f99
 	github.com/filecoin-project/chain-validation v0.0.6-0.20200331143132-15970e639ac2
 	github.com/filecoin-project/filecoin-ffi v0.0.0-20200326153646-e899cc1dd072
 	github.com/filecoin-project/go-address v0.0.2-0.20200218010043-eb9bb40ed5be
@@ -65,7 +63,6 @@ require (
 	github.com/ipld/go-ipld-prime v0.0.2-0.20191108012745-28a82f04c785
 	github.com/jackpal/go-nat-pmp v1.0.2 // indirect
 	github.com/jbenet/go-temp-err-catcher v0.1.0 // indirect
-	github.com/kilic/bls12-381 v0.0.0-20191103193557-038659eaa189 // indirect
 	github.com/lib/pq v1.2.0
 	github.com/libp2p/go-eventbus v0.1.0
 	github.com/libp2p/go-libp2p v0.6.1
@@ -96,7 +93,6 @@ require (
 	github.com/multiformats/go-multihash v0.0.13
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/stretchr/testify v1.4.0
-	github.com/urfave/cli v1.22.2 // indirect
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
 	github.com/whyrusleeping/cbor-gen v0.0.0-20200402171437-3d27c146c105
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
