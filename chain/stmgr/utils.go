@@ -16,7 +16,6 @@ import (
 	"github.com/filecoin-project/go-address"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -116,16 +115,6 @@ func GetMinerWorker(ctx context.Context, sm *StateManager, ts *types.TipSet, mad
 	return GetMinerWorkerRaw(ctx, sm, sm.parentState(ts), maddr)
 }
 
-func GetMinerPostState(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (*miner.PoStState, error) {
-	var mas miner.State
-	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
-	if err != nil {
-		return nil, xerrors.Errorf("(get eps) failed to load miner actor state: %w", err)
-	}
-
-	return &mas.PoStState, nil
-}
-
 func SectorSetSizes(ctx context.Context, sm *StateManager, maddr address.Address, ts *types.TipSet) (api.MinerSectors, error) {
 	var mas miner.State
 	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
@@ -139,13 +128,7 @@ func SectorSetSizes(ctx context.Context, sm *StateManager, maddr address.Address
 		return api.MinerSectors{}, err
 	}
 
-	ps, err := amt.LoadAMT(ctx, blks, mas.ProvingSet)
-	if err != nil {
-		return api.MinerSectors{}, err
-	}
-
 	return api.MinerSectors{
-		Pset: ps.Count,
 		Sset: ss.Count,
 	}, nil
 }
@@ -168,28 +151,14 @@ func PreCommitInfo(ctx context.Context, sm *StateManager, maddr address.Address,
 	return *i, nil
 }
 
-func GetMinerProvingSet(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) ([]*api.ChainSectorInfo, error) {
-	return getMinerProvingSetRaw(ctx, sm, ts.ParentState(), maddr)
-}
-
-func getMinerProvingSetRaw(ctx context.Context, sm *StateManager, st cid.Cid, maddr address.Address) ([]*api.ChainSectorInfo, error) {
-	var mas miner.State
-	_, err := sm.LoadActorStateRaw(ctx, maddr, &mas, st)
-	if err != nil {
-		return nil, xerrors.Errorf("(get pset) failed to load miner actor state: %w", err)
-	}
-
-	return LoadSectorsFromSet(ctx, sm.ChainStore().Blockstore(), mas.ProvingSet)
-}
-
-func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) ([]*api.ChainSectorInfo, error) {
+func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address, filter *abi.BitField) ([]*api.ChainSectorInfo, error) {
 	var mas miner.State
 	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
 	}
 
-	return LoadSectorsFromSet(ctx, sm.ChainStore().Blockstore(), mas.Sectors)
+	return LoadSectorsFromSet(ctx, sm.ChainStore().Blockstore(), mas.Sectors, filter)
 }
 
 func GetMinerSectorSize(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (abi.SectorSize, error) {
@@ -213,9 +182,7 @@ func GetMinerSlashed(ctx context.Context, sm *StateManager, ts *types.TipSet, ma
 		return false, xerrors.Errorf("(get miner slashed) failed to load miner actor state")
 	}
 
-	if mas.PoStState.HasFailedPost() {
-		return true, nil
-	}
+	panic("update this")
 
 	var spas power.State
 	_, err = sm.LoadActorState(ctx, builtin.StoragePowerActorAddr, &spas, ts)
@@ -248,12 +215,7 @@ func GetMinerFaults(ctx context.Context, sm *StateManager, ts *types.TipSet, mad
 		return nil, xerrors.Errorf("(get ssize) failed to load miner actor state: %w", err)
 	}
 
-	ss, lerr := amt.LoadAMT(ctx, cbor.NewCborStore(sm.cs.Blockstore()), mas.Sectors)
-	if lerr != nil {
-		return nil, aerrors.HandleExternalError(lerr, "could not load proving set node")
-	}
-
-	faults, err := mas.FaultSet.All(2 * ss.Count)
+	faults, err := mas.Faults.All(miner.MaxFaultsCount)
 	if err != nil {
 		return nil, xerrors.Errorf("reading fault bit set: %w", err)
 	}
@@ -325,7 +287,7 @@ func ListMinerActors(ctx context.Context, sm *StateManager, ts *types.TipSet) ([
 	return miners, nil
 }
 
-func LoadSectorsFromSet(ctx context.Context, bs blockstore.Blockstore, ssc cid.Cid) ([]*api.ChainSectorInfo, error) {
+func LoadSectorsFromSet(ctx context.Context, bs blockstore.Blockstore, ssc cid.Cid, filter *abi.BitField) ([]*api.ChainSectorInfo, error) {
 	a, err := amt.LoadAMT(ctx, cbor.NewCborStore(bs), ssc)
 	if err != nil {
 		return nil, err
@@ -333,6 +295,16 @@ func LoadSectorsFromSet(ctx context.Context, bs blockstore.Blockstore, ssc cid.C
 
 	var sset []*api.ChainSectorInfo
 	if err := a.ForEach(ctx, func(i uint64, v *cbg.Deferred) error {
+		if filter != nil {
+			set, err := filter.IsSet(i)
+			if err != nil {
+				return xerrors.Errorf("filter check error: %w", err)
+			}
+			if set {
+				return nil
+			}
+		}
+
 		var oci miner.SectorOnChainInfo
 		if err := cbor.DecodeInto(v.Raw, &oci); err != nil {
 			return err
@@ -400,7 +372,18 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, tsk types.TipSetKey
 		return nil, err
 	}
 
-	provset, err := getMinerProvingSetRaw(ctx, sm, st, maddr)
+	var mas miner.State
+	_, err = sm.LoadActorState(ctx, maddr, &mas, ts)
+	if err != nil {
+		return nil, xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
+	}
+
+	notProving, err := abi.BitFieldUnion(mas.Faults, mas.Recoveries, mas.NewSectors)
+	if err != nil {
+		return nil, err
+	}
+
+	provset, err := LoadSectorsFromSet(ctx, sm.cs.Blockstore(), mas.Sectors, &notProving)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get proving set: %w", err)
 	}
@@ -408,16 +391,6 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, tsk types.TipSetKey
 	mpow, tpow, err := getPowerRaw(ctx, sm, st, maddr)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get power: %w", err)
-	}
-
-	worker, err := GetMinerWorkerRaw(ctx, sm, st, maddr)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to get miner worker: %w", err)
-	}
-
-	ssize, err := getMinerSectorSizeRaw(ctx, sm, st, maddr)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to get miner sector size: %w", err)
 	}
 
 	prev, err := sm.ChainStore().GetLatestBeaconEntry(ts)
@@ -429,8 +402,8 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, tsk types.TipSetKey
 		MinerPower:      mpow,
 		NetworkPower:    tpow,
 		Sectors:         provset,
-		Worker:          worker,
-		SectorSize:      ssize,
+		Worker:          mas.GetWorker(),
+		SectorSize:      mas.Info.SectorSize,
 		PrevBeaconEntry: *prev,
 	}, nil
 }

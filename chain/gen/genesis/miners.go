@@ -126,20 +126,23 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 
 		// setup windowed post
 		{
+			provingPeriodBoundary := abi.ChainEpoch(0)
+
 			err = vm.MutateState(ctx, maddr, func(cst cbor.IpldStore, st *miner.State) error {
-				// TODO: Randomize so all genesis miners don't fall on the same epoch
-				st.PoStState.ProvingPeriodStart = miner.ProvingPeriod
+				panic("from some randomness")
+				st.ProvingPeriodBoundary = 0
 				return nil
 			})
 
+			panic("todo, probably more cron stuff")
 			payload, err := cborutil.Dump(&miner.CronEventPayload{
-				EventType: miner.CronEventWindowedPoStExpiration,
+				EventType: miner.CronEventProvingPeriod,
 			})
 			if err != nil {
 				return cid.Undef, err
 			}
 			params := &power.EnrollCronEventParams{
-				EventEpoch: miner.ProvingPeriod + power.WindowedPostChallengeDuration,
+				EventEpoch: miner.WPoStProvingPeriod + provingPeriodBoundary, // TODO: correct ???
 				Payload:    payload,
 			}
 
@@ -207,8 +210,6 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 					},
 					ActivationEpoch:       0,
 					DealWeight:            dealWeight,
-					DeclaredFaultEpoch:    -1,
-					DeclaredFaultDuration: -1,
 				}
 
 				err = vm.MutateState(ctx, maddr, func(cst cbor.IpldStore, st *miner.State) error {
@@ -218,7 +219,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 						return xerrors.Errorf("failed to prove commit: %v", err)
 					}
 
-					st.ProvingSet = st.Sectors
+					panic("assign deadlines")
 					return nil
 				})
 				if err != nil {
@@ -231,7 +232,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 				sectorBf.Set(uint64(preseal.SectorID))
 
 				payload, err := cborutil.Dump(&miner.CronEventPayload{
-					EventType: miner.CronEventSectorExpiry,
+					EventType: miner.CronEventPreCommitExpiry, // TODO: Review: Is this correct?
 					Sectors:   &sectorBf,
 				})
 				if err != nil {

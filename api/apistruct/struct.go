@@ -113,12 +113,10 @@ type FullNodeStruct struct {
 		ClientQueryAsk    func(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.SignedStorageAsk, error) `perm:"read"`
 
 		StateNetworkName         func(context.Context) (dtypes.NetworkName, error)                                                                   `perm:"read"`
-		StateMinerSectors        func(context.Context, address.Address, types.TipSetKey) ([]*api.ChainSectorInfo, error)                             `perm:"read"`
-		StateMinerProvingSet     func(context.Context, address.Address, types.TipSetKey) ([]*api.ChainSectorInfo, error)                             `perm:"read"`
+		StateMinerSectors        func(context.Context, address.Address, *abi.BitField, types.TipSetKey) ([]*api.ChainSectorInfo, error)                             `perm:"read"`
 		StateMinerPower          func(context.Context, address.Address, types.TipSetKey) (*api.MinerPower, error)                                    `perm:"read"`
 		StateMinerWorker         func(context.Context, address.Address, types.TipSetKey) (address.Address, error)                                    `perm:"read"`
 		StateMinerPeerID         func(ctx context.Context, m address.Address, tsk types.TipSetKey) (peer.ID, error)                                  `perm:"read"`
-		StateMinerPostState      func(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*miner.PoStState, error)                     `perm:"read"`
 		StateMinerSectorSize     func(context.Context, address.Address, types.TipSetKey) (abi.SectorSize, error)                                     `perm:"read"`
 		StateMinerFaults         func(context.Context, address.Address, types.TipSetKey) ([]abi.SectorNumber, error)                                 `perm:"read"`
 		StateSectorPreCommitInfo func(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error) `perm:"read"`
@@ -480,12 +478,8 @@ func (c *FullNodeStruct) StateNetworkName(ctx context.Context) (dtypes.NetworkNa
 	return c.Internal.StateNetworkName(ctx)
 }
 
-func (c *FullNodeStruct) StateMinerSectors(ctx context.Context, addr address.Address, tsk types.TipSetKey) ([]*api.ChainSectorInfo, error) {
-	return c.Internal.StateMinerSectors(ctx, addr, tsk)
-}
-
-func (c *FullNodeStruct) StateMinerProvingSet(ctx context.Context, addr address.Address, tsk types.TipSetKey) ([]*api.ChainSectorInfo, error) {
-	return c.Internal.StateMinerProvingSet(ctx, addr, tsk)
+func (c *FullNodeStruct) StateMinerSectors(ctx context.Context, addr address.Address, filter *abi.BitField, tsk types.TipSetKey) ([]*api.ChainSectorInfo, error) {
+	return c.Internal.StateMinerSectors(ctx, addr, filter, tsk)
 }
 
 func (c *FullNodeStruct) StateMinerPower(ctx context.Context, a address.Address, tsk types.TipSetKey) (*api.MinerPower, error) {
@@ -498,10 +492,6 @@ func (c *FullNodeStruct) StateMinerWorker(ctx context.Context, m address.Address
 
 func (c *FullNodeStruct) StateMinerPeerID(ctx context.Context, m address.Address, tsk types.TipSetKey) (peer.ID, error) {
 	return c.Internal.StateMinerPeerID(ctx, m, tsk)
-}
-
-func (c *FullNodeStruct) StateMinerPostState(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*miner.PoStState, error) {
-	return c.Internal.StateMinerPostState(ctx, actor, tsk)
 }
 
 func (c *FullNodeStruct) StateMinerSectorSize(ctx context.Context, actor address.Address, tsk types.TipSetKey) (abi.SectorSize, error) {

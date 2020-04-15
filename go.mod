@@ -25,7 +25,7 @@ require (
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200218225740-47c639bab663
 	github.com/filecoin-project/go-statestore v0.1.0
 	github.com/filecoin-project/sector-storage v0.0.0-20200411000242-61616264b16d
-	github.com/filecoin-project/specs-actors v0.0.0-20200413173219-041b36c0a9f9
+	github.com/filecoin-project/specs-actors v0.0.0-20200415170224-54c7b2a42e71
 	github.com/filecoin-project/specs-storage v0.0.0-20200410185809-9fbaaa08f275
 	github.com/filecoin-project/storage-fsm v0.0.0-20200413200947-069c3b2468ca
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
@@ -94,7 +94,7 @@ require (
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/stretchr/testify v1.4.0
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
-	github.com/whyrusleeping/cbor-gen v0.0.0-20200402171437-3d27c146c105
+	github.com/whyrusleeping/cbor-gen v0.0.0-20200414195334-429a0b5e922e
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
 	github.com/whyrusleeping/pubsub v0.0.0-20131020042734-02de8aa2db3d
 	go.opencensus.io v0.22.3
@@ -116,3 +116,5 @@ replace github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v
 replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 
 replace github.com/coreos/go-systemd => github.com/coreos/go-systemd/v22 v22.0.0
+
+replace github.com/filecoin-project/storage-fsm => /home/magik6k/gohack/github.com/filecoin-project/storage-fsm

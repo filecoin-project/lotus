@@ -141,6 +141,8 @@ github.com/filecoin-project/go-amt-ipld/v2 v2.0.1-0.20200131012142-05d80eeccc5e 
 github.com/filecoin-project/go-amt-ipld/v2 v2.0.1-0.20200131012142-05d80eeccc5e/go.mod h1:boRtQhzmxNocrMxOXo1NYn4oUc1NGvR8tEa79wApNXg=
 github.com/filecoin-project/go-bitfield v0.0.0-20200309034705-8c7ac40bd550 h1:aockulLU8Qjkdj4FQz53WQpNosAIYk8DxRediRLkE5c=
 github.com/filecoin-project/go-bitfield v0.0.0-20200309034705-8c7ac40bd550/go.mod h1:iodsLxOFZnqKtjj2zkgqzoGNrv6vUqj69AT/J8DKXEw=
+github.com/filecoin-project/go-bitfield v0.0.0-20200415174627-536a2ee8529d h1:ufxUB1ssNdti7SgDNnHXZ863F8g04/yx+EW4ygvGcSU=
+github.com/filecoin-project/go-bitfield v0.0.0-20200415174627-536a2ee8529d/go.mod h1:iodsLxOFZnqKtjj2zkgqzoGNrv6vUqj69AT/J8DKXEw=
 github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2 h1:av5fw6wmm58FYMgJeoB/lK9XXrgdugYiTqkdxjTy9k8=
 github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2/go.mod h1:pqTiPHobNkOVM5thSRsHYjyQfq7O5QSCMhvuu9JoDlg=
 github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03 h1:2pMXdBnCiXjfCYx/hLqFxccPoqsSveQFxVLvNxy9bus=
@@ -177,6 +179,13 @@ github.com/filecoin-project/specs-actors v0.0.0-20200409043918-e569f4a2f504 h1:m
 github.com/filecoin-project/specs-actors v0.0.0-20200409043918-e569f4a2f504/go.mod h1:mdJraXq5vMy0+/FqVQIrnNlpQ/Em6zeu06G/ltQ0/lA=
 github.com/filecoin-project/specs-actors v0.0.0-20200413173219-041b36c0a9f9 h1:4tI+G7/evqB8PeNTrzXmcyKt/mOLUl+hOOjWuM34OAA=
 github.com/filecoin-project/specs-actors v0.0.0-20200413173219-041b36c0a9f9/go.mod h1:2vDr7jdyeGaZa3izCjVknCuqYNn8GHuKi4wVmKa6+pM=
+github.com/filecoin-project/specs-actors v0.0.0-20200415061109-4a9e396341bd h1:iBj3s3MMBcZqBLOF9bj2Iij9SFQcvgbzBAyj1MRYzzY=
+github.com/filecoin-project/specs-actors v0.0.0-20200415061109-4a9e396341bd/go.mod h1:M2HNOBpYbgXl/V4GmJFOsY7lQNuAmOtrCQMa6Yfpfrc=
+github.com/filecoin-project/specs-actors v0.0.0-20200415152026-b48e5d7dfd1b h1:1w61QcF/sA8rhRwh9xcAOBdrX60bIwRxhivvE/YMIJw=
+github.com/filecoin-project/specs-actors v0.0.0-20200415152026-b48e5d7dfd1b/go.mod h1:M2HNOBpYbgXl/V4GmJFOsY7lQNuAmOtrCQMa6Yfpfrc=
+github.com/filecoin-project/specs-actors v0.0.0-20200415163419-910af9a5064e/go.mod h1:M2HNOBpYbgXl/V4GmJFOsY7lQNuAmOtrCQMa6Yfpfrc=
+github.com/filecoin-project/specs-actors v0.0.0-20200415170224-54c7b2a42e71 h1:kmU2Y+QIuUQG+1lELiLdcX/UMd+BVkSlX8jnii87+ZY=
+github.com/filecoin-project/specs-actors v0.0.0-20200415170224-54c7b2a42e71/go.mod h1:M2HNOBpYbgXl/V4GmJFOsY7lQNuAmOtrCQMa6Yfpfrc=
 github.com/filecoin-project/specs-storage v0.0.0-20200410185809-9fbaaa08f275 h1:6OTcpsTQBQM0f/A67oEi4E4YtYd6fzkMqbU8cPIWMMs=
 github.com/filecoin-project/specs-storage v0.0.0-20200410185809-9fbaaa08f275/go.mod h1:xJ1/xl9+8zZeSSSFmDC3Wr6uusCTxyYPI0VeNVSFmPE=
 github.com/filecoin-project/storage-fsm v0.0.0-20200413200947-069c3b2468ca h1:TejufIAWDpEVqFUCszDpgOEzXBWuTVltsDQL/3F8Jxo=
@@ -889,6 +898,8 @@ github.com/whyrusleeping/cbor-gen v0.0.0-20200321164527-9340289d0ca7/go.mod h1:X
 github.com/whyrusleeping/cbor-gen v0.0.0-20200402171437-3d27c146c105 h1:Sh6UG5dW5xW8Ek2CtRGq4ipdEvvx9hOyBJjEGyTYDl0=
 github.com/whyrusleeping/cbor-gen v0.0.0-20200402171437-3d27c146c105/go.mod h1:Xj/M2wWU+QdTdRbu/L/1dIZY8/Wb2K9pAhtroQuxJJI=
 github.com/whyrusleeping/cbor-gen v0.0.0-20200402171437-3d27c146c105/go.mod h1:Xj/M2wWU+QdTdRbu/L/1dIZY8/Wb2K9pAhtroQuxJJI=
+github.com/whyrusleeping/cbor-gen v0.0.0-20200414195334-429a0b5e922e h1:JY8o/ebUUrCYetWmjRCNghxC59cOEaili83rxPRQCLw=
+github.com/whyrusleeping/cbor-gen v0.0.0-20200414195334-429a0b5e922e/go.mod h1:Xj/M2wWU+QdTdRbu/L/1dIZY8/Wb2K9pAhtroQuxJJI=
 github.com/whyrusleeping/chunker v0.0.0-20181014151217-fe64bd25879f h1:jQa4QT2UP9WYv2nzyawpKMOCl+Z/jW7djv2/J50lj9E=
 github.com/whyrusleeping/chunker v0.0.0-20181014151217-fe64bd25879f/go.mod h1:p9UJB6dDgdPgMJZs7UjUOdulKyRr9fqkS+6JKAInPy8=
 github.com/whyrusleeping/go-keyspace v0.0.0-20160322163242-5b898ac5add1 h1:EKhdznlJHPMoKr0XTrX+IlJs1LH3lyx2nfr1dOlZ79k=
