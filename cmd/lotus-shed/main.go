@@ -23,6 +23,7 @@ func main() {
 		bigIntParseCmd,
 		staterootStatsCmd,
 		importCarCmd,
+		commpToCidCmd,
 	}
 
 	app := &cli.App{
