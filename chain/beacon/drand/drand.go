@@ -30,7 +30,7 @@ var drandPubKey *dkey.DistPublic
 
 func init() {
 	drandPubKey = new(dkey.DistPublic)
-	err := drandPubKey.FromTOML(&dkey.DistPublicTOML{build.DrandCoeffs})
+	err := drandPubKey.FromTOML(&dkey.DistPublicTOML{Coefficients: build.DrandCoeffs})
 	if err != nil {
 		panic(err)
 	}
