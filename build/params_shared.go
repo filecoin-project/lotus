@@ -6,8 +6,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/protocol"
 
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	sabig "github.com/filecoin-project/specs-actors/actors/abi/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 )
 
 // Core network constants
@@ -88,8 +86,6 @@ var InitialRewardBalance *big.Int
 func init() {
 	InitialRewardBalance = big.NewInt(MiningRewardTotal)
 	InitialRewardBalance = InitialRewardBalance.Mul(InitialRewardBalance, big.NewInt(FilecoinPrecision))
-
-	power.ConsensusMinerMinPower = sabig.NewInt(2048)
 }
 
 // Sync
