@@ -371,6 +371,20 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 	return root, trace, nil
 }
 
+func GetProvingSetRaw(ctx context.Context, sm *StateManager, mas miner.State) ([]*api.ChainSectorInfo, error) {
+	notProving, err := abi.BitFieldUnion(mas.Faults, mas.Recoveries, mas.NewSectors)
+	if err != nil {
+		return nil, err
+	}
+
+	provset, err := LoadSectorsFromSet(ctx, sm.cs.Blockstore(), mas.Sectors, &notProving)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get proving set: %w", err)
+	}
+
+	return provset, nil
+}
+
 func MinerGetBaseInfo(ctx context.Context, sm *StateManager, tsk types.TipSetKey, maddr address.Address) (*api.MiningBaseInfo, error) {
 	ts, err := sm.ChainStore().LoadTipSet(tsk)
 	if err != nil {
@@ -388,14 +402,9 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, tsk types.TipSetKey
 		return nil, xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
 	}
 
-	notProving, err := abi.BitFieldUnion(mas.Faults, mas.Recoveries, mas.NewSectors)
+	provset, err := GetProvingSetRaw(ctx, sm, mas)
 	if err != nil {
 		return nil, err
-	}
-
-	provset, err := LoadSectorsFromSet(ctx, sm.cs.Blockstore(), mas.Sectors, &notProving)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to get proving set: %w", err)
 	}
 
 	mpow, tpow, err := getPowerRaw(ctx, sm, st, maddr)

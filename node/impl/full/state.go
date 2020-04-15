@@ -57,6 +57,21 @@ func (a *StateAPI) StateMinerSectors(ctx context.Context, addr address.Address, 
 	return stmgr.GetMinerSectorSet(ctx, a.StateManager, ts, addr, filter)
 }
 
+func (a *StateAPI) StateMinerProvingSet(ctx context.Context, addr address.Address, tsk types.TipSetKey) ([]*api.ChainSectorInfo, error) {
+	ts, err := a.Chain.GetTipSetFromKey(tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	var mas miner.State
+	_, err = a.StateManager.LoadActorState(ctx, addr, &mas, ts)
+	if err != nil {
+		return nil, xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
+	}
+
+	return stmgr.GetProvingSetRaw(ctx, a.StateManager, mas)
+}
+
 func (a *StateAPI) StateMinerWorker(ctx context.Context, m address.Address, tsk types.TipSetKey) (address.Address, error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
@@ -95,6 +110,23 @@ func (a *StateAPI) StateMinerFaults(ctx context.Context, addr address.Address, t
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 	return stmgr.GetMinerFaults(ctx, a.StateManager, ts, addr)
+}
+
+func (a *StateAPI) StateMinerPower(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*api.MinerPower, error) {
+	ts, err := a.Chain.GetTipSetFromKey(tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	m, net, err := stmgr.GetPower(ctx, a.StateManager, ts, addr)
+	if err != nil {
+		return nil, err
+	}
+
+	return &api.MinerPower{
+		MinerPower: m,
+		TotalPower: net,
+	}, nil
 }
 
 func (a *StateAPI) StatePledgeCollateral(ctx context.Context, tsk types.TipSetKey) (types.BigInt, error) {
