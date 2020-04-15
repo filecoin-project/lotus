@@ -81,6 +81,14 @@ func (a *StateAPI) StateMinerSectorSize(ctx context.Context, actor address.Addre
 	return stmgr.GetMinerSectorSize(ctx, a.StateManager, ts, actor)
 }
 
+func (a *StateAPI) StateMinerDeadlines(ctx context.Context, m address.Address, tsk types.TipSetKey) (*miner.Deadlines, error) {
+	ts, err := a.Chain.GetTipSetFromKey(tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+	return stmgr.GetMinerDeadlines(ctx, a.StateManager, ts, m)
+}
+
 func (a *StateAPI) StateMinerFaults(ctx context.Context, addr address.Address, tsk types.TipSetKey) ([]abi.SectorNumber, error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
