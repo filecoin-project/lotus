@@ -208,8 +208,8 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 						DealIDs:         []abi.DealID{dealIDs[pi]},
 						Expiration:      preseal.Deal.EndEpoch,
 					},
-					ActivationEpoch:       0,
-					DealWeight:            dealWeight,
+					ActivationEpoch: 0,
+					DealWeight:      dealWeight,
 				}
 
 				err = vm.MutateState(ctx, maddr, func(cst cbor.IpldStore, st *miner.State) error {
