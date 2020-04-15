@@ -206,8 +206,9 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 	}
 
 	templ := &genesis.Template{
-		Accounts: genaccs,
-		Miners:   genms,
+		Accounts:  genaccs,
+		Miners:    genms,
+		Timestamp: uint64(time.Now().Unix() - 1000), // some time sufficiently far in the past
 	}
 
 	// END PRESEAL SECTION
@@ -335,8 +336,9 @@ func mockSbBuilder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []t
 		genms = append(genms, *genm)
 	}
 	templ := &genesis.Template{
-		Accounts: genaccs,
-		Miners:   genms,
+		Accounts:  genaccs,
+		Miners:    genms,
+		Timestamp: uint64(time.Now().Unix() - 1000),
 	}
 
 	// END PRESEAL SECTION

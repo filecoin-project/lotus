@@ -283,6 +283,7 @@ func Online() Option {
 			Override(new(sealing.TicketFn), modules.SealTicketGen),
 			Override(new(*storage.Miner), modules.StorageMiner),
 			Override(new(dtypes.NetworkName), modules.StorageNetworkName),
+			Override(new(beacon.RandomBeacon), modules.MinerRandomBeacon),
 
 			Override(new(dtypes.StagingBlockstore), modules.StagingBlockstore),
 			Override(new(dtypes.StagingDAG), modules.StagingDAG),
@@ -485,5 +486,6 @@ func Test() Option {
 	return Options(
 		Unset(RunPeerMgrKey),
 		Unset(new(*peermgr.PeerMgr)),
+		Override(new(beacon.RandomBeacon), testing.RandomBeacon),
 	)
 }
