@@ -49,46 +49,12 @@ func (a *StateAPI) StateNetworkName(ctx context.Context) (dtypes.NetworkName, er
 	return stmgr.GetNetworkName(ctx, a.StateManager, a.Chain.GetHeaviestTipSet().ParentState())
 }
 
-func (a *StateAPI) StateMinerSectors(ctx context.Context, addr address.Address, tsk types.TipSetKey) ([]*api.ChainSectorInfo, error) {
+func (a *StateAPI) StateMinerSectors(ctx context.Context, addr address.Address, filter *abi.BitField, tsk types.TipSetKey) ([]*api.ChainSectorInfo, error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
-	return stmgr.GetMinerSectorSet(ctx, a.StateManager, ts, addr)
-}
-
-func (a *StateAPI) StateMinerProvingSet(ctx context.Context, addr address.Address, tsk types.TipSetKey) ([]*api.ChainSectorInfo, error) {
-	ts, err := a.Chain.GetTipSetFromKey(tsk)
-	if err != nil {
-		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
-	}
-	return stmgr.GetMinerProvingSet(ctx, a.StateManager, ts, addr)
-}
-
-func (a *StateAPI) StateMinerPower(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (*api.MinerPower, error) {
-	ts, err := a.Chain.GetTipSetFromKey(tsk)
-	if err != nil {
-		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
-	}
-	mpow, tpow, err := stmgr.GetPower(ctx, a.StateManager, ts, maddr)
-	if err != nil {
-		return nil, err
-	}
-
-	if maddr != address.Undef {
-		slashed, err := stmgr.GetMinerSlashed(ctx, a.StateManager, ts, maddr)
-		if err != nil {
-			return nil, err
-		}
-		if slashed {
-			mpow = types.NewInt(0)
-		}
-	}
-
-	return &api.MinerPower{
-		MinerPower: mpow,
-		TotalPower: tpow,
-	}, nil
+	return stmgr.GetMinerSectorSet(ctx, a.StateManager, ts, addr, filter)
 }
 
 func (a *StateAPI) StateMinerWorker(ctx context.Context, m address.Address, tsk types.TipSetKey) (address.Address, error) {
@@ -105,14 +71,6 @@ func (a *StateAPI) StateMinerPeerID(ctx context.Context, m address.Address, tsk 
 		return "", xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 	return stmgr.GetMinerPeerID(ctx, a.StateManager, ts, m)
-}
-
-func (a *StateAPI) StateMinerPostState(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*miner.PoStState, error) {
-	ts, err := a.Chain.GetTipSetFromKey(tsk)
-	if err != nil {
-		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
-	}
-	return stmgr.GetMinerPostState(ctx, a.StateManager, ts, actor)
 }
 
 func (a *StateAPI) StateMinerSectorSize(ctx context.Context, actor address.Address, tsk types.TipSetKey) (abi.SectorSize, error) {
