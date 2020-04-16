@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"github.com/filecoin-project/lotus/build"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -53,7 +54,7 @@ type Runtime struct {
 }
 
 func (rt *Runtime) TotalFilCircSupply() abi.TokenAmount {
-	panic("implement me")
+	return types.BigInt{build.InitialRewardBalance} // Close enough
 }
 
 func (rt *Runtime) ResolveAddress(addr address.Address) (ret address.Address, ok bool) {
