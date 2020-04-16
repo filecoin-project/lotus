@@ -158,6 +158,11 @@ func (n *ProviderNodeAdapter) GetMinerWorkerAddress(ctx context.Context, miner a
 }
 
 func (n *ProviderNodeAdapter) SignBytes(ctx context.Context, signer address.Address, b []byte) (*crypto.Signature, error) {
+	signer, err := n.StateAccountKey(ctx, signer, types.EmptyTSK)
+	if err != nil {
+		return nil, err
+	}
+
 	localSignature, err := n.WalletSign(ctx, signer, b)
 	if err != nil {
 		return nil, err

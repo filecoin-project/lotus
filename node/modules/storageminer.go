@@ -135,12 +135,17 @@ func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api lapi.FullNode, h
 		return nil, err
 	}
 
-	fps, err := storage.NewWindowedPoStScheduler(api, sealer, maddr, mi.Worker)
+	worker, err := api.StateAccountKey(ctx, mi.Worker, types.EmptyTSK)
 	if err != nil {
 		return nil, err
 	}
 
-	sm, err := storage.NewMiner(api, maddr, mi.Worker, h, ds, sealer, sc, verif, tktFn)
+	fps, err := storage.NewWindowedPoStScheduler(api, sealer, maddr, worker)
+	if err != nil {
+		return nil, err
+	}
+
+	sm, err := storage.NewMiner(api, maddr, worker, h, ds, sealer, sc, verif, tktFn)
 	if err != nil {
 		return nil, err
 	}

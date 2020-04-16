@@ -216,6 +216,15 @@ func (a *StateAPI) StateLookupID(ctx context.Context, addr address.Address, tsk 
 	return state.LookupID(addr)
 }
 
+func (a *StateAPI) StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
+	ts, err := a.Chain.GetTipSetFromKey(tsk)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	return a.StateManager.ResolveToKeyAddress(ctx, addr, ts)
+}
+
 func (a *StateAPI) StateReadState(ctx context.Context, act *types.Actor, tsk types.TipSetKey) (*api.ActorState, error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {

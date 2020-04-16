@@ -365,6 +365,10 @@ func (m *Miner) computeTicket(ctx context.Context, addr address.Address, brand *
 	if err != nil {
 		return nil, err
 	}
+	worker, err := m.api.StateAccountKey(ctx, mi.Worker, types.EmptyTSK)
+	if err != nil {
+		return nil, err
+	}
 
 	buf := new(bytes.Buffer)
 	if err := addr.MarshalCBOR(buf); err != nil {
@@ -376,7 +380,7 @@ func (m *Miner) computeTicket(ctx context.Context, addr address.Address, brand *
 		return nil, err
 	}
 
-	vrfOut, err := gen.ComputeVRF(ctx, m.api.WalletSign, mi.Worker, input)
+	vrfOut, err := gen.ComputeVRF(ctx, m.api.WalletSign, worker, input)
 	if err != nil {
 		return nil, err
 	}
