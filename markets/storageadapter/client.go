@@ -85,7 +85,12 @@ func (n *ClientNodeAdapter) ListStorageProviders(ctx context.Context, encodedTs 
 }
 
 func (n *ClientNodeAdapter) VerifySignature(ctx context.Context, sig crypto.Signature, addr address.Address, input []byte, encodedTs shared.TipSetToken) (bool, error) {
-	err := sigs.Verify(&sig, addr, input)
+	addr, err := n.StateAccountKey(ctx, addr, types.EmptyTSK)
+	if err != nil {
+		return false, err
+	}
+
+	err = sigs.Verify(&sig, addr, input)
 	return err == nil, err
 }
 
@@ -328,6 +333,11 @@ func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider 
 func (n *ClientNodeAdapter) SignProposal(ctx context.Context, signer address.Address, proposal samarket.DealProposal) (*samarket.ClientDealProposal, error) {
 	// TODO: output spec signed proposal
 	buf, err := cborutil.Dump(&proposal)
+	if err != nil {
+		return nil, err
+	}
+
+	signer, err = n.StateAccountKey(ctx, signer, types.EmptyTSK)
 	if err != nil {
 		return nil, err
 	}
