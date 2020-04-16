@@ -70,27 +70,17 @@ func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) 
 		return nil, xerrors.Errorf("provided address doesn't exist in wallet")
 	}
 
-	pid, err := a.StateMinerPeerID(ctx, params.Miner, types.EmptyTSK)
+	mi, err := a.StateMinerInfo(ctx, params.Miner, types.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("failed getting peer ID: %w", err)
 	}
 
-	mw, err := a.StateMinerWorker(ctx, params.Miner, types.EmptyTSK)
-	if err != nil {
-		return nil, xerrors.Errorf("failed getting miner worker: %w", err)
-	}
-
-	ssize, err := a.StateMinerSectorSize(ctx, params.Miner, types.EmptyTSK)
-	if err != nil {
-		return nil, xerrors.Errorf("failed checking miners sector size: %w", err)
-	}
-
-	rt, err := ffiwrapper.SealProofTypeFromSectorSize(ssize)
+	rt, err := ffiwrapper.SealProofTypeFromSectorSize(mi.SectorSize)
 	if err != nil {
 		return nil, xerrors.Errorf("bad sector size: %w", err)
 	}
 
-	providerInfo := utils.NewStorageProviderInfo(params.Miner, mw, 0, pid)
+	providerInfo := utils.NewStorageProviderInfo(params.Miner, mi.Worker, 0, mi.PeerId)
 	ts, err := a.ChainHead(ctx)
 	if err != nil {
 		return nil, xerrors.Errorf("failed getting chain height: %w", err)
@@ -333,12 +323,12 @@ func (a *API) ClientListImports(ctx context.Context) ([]api.Import, error) {
 
 func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref api.FileRef) error {
 	if order.MinerPeerID == "" {
-		pid, err := a.StateMinerPeerID(ctx, order.Miner, types.EmptyTSK)
+		mi, err := a.StateMinerInfo(ctx, order.Miner, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
 
-		order.MinerPeerID = pid
+		order.MinerPeerID = mi.PeerId
 	}
 
 	if order.Size == 0 {

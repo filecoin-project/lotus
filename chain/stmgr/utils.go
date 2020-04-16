@@ -25,7 +25,6 @@ import (
 	cid "github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	"github.com/libp2p/go-libp2p-core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 )
@@ -56,22 +55,6 @@ func GetMinerWorkerRaw(ctx context.Context, sm *StateManager, st cid.Cid, maddr 
 	return vm.ResolveToKeyAddr(state, cst, mas.Info.Worker)
 }
 
-func GetMinerOwner(ctx context.Context, sm *StateManager, st cid.Cid, maddr address.Address) (address.Address, error) {
-	var mas miner.State
-	_, err := sm.LoadActorStateRaw(ctx, maddr, &mas, st)
-	if err != nil {
-		return address.Undef, xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
-	}
-
-	cst := cbor.NewCborStore(sm.cs.Blockstore())
-	state, err := state.LoadStateTree(cst, st)
-	if err != nil {
-		return address.Undef, xerrors.Errorf("load state tree: %w", err)
-	}
-
-	return vm.ResolveToKeyAddr(state, cst, mas.Info.Owner)
-}
-
 func GetPower(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (types.BigInt, types.BigInt, error) {
 	return getPowerRaw(ctx, sm, ts.ParentState(), maddr)
 }
@@ -99,20 +82,6 @@ func getPowerRaw(ctx context.Context, sm *StateManager, st cid.Cid, maddr addres
 	}
 
 	return mpow, ps.TotalQualityAdjPower, nil
-}
-
-func GetMinerPeerID(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (peer.ID, error) {
-	var mas miner.State
-	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
-	if err != nil {
-		return "", xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
-	}
-
-	return mas.Info.PeerId, nil
-}
-
-func GetMinerWorker(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (address.Address, error) {
-	return GetMinerWorkerRaw(ctx, sm, sm.parentState(ts), maddr)
 }
 
 func SectorSetSizes(ctx context.Context, sm *StateManager, maddr address.Address, ts *types.TipSet) (api.MinerSectors, error) {
@@ -161,8 +130,14 @@ func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, 
 	return LoadSectorsFromSet(ctx, sm.ChainStore().Blockstore(), mas.Sectors, filter)
 }
 
-func GetMinerSectorSize(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (abi.SectorSize, error) {
-	return getMinerSectorSizeRaw(ctx, sm, ts.ParentState(), maddr)
+func StateMinerInfo(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (miner.MinerInfo, error) {
+	var mas miner.State
+	_, err := sm.LoadActorStateRaw(ctx, maddr, &mas, ts.ParentState())
+	if err != nil {
+		return miner.MinerInfo{}, xerrors.Errorf("(get ssize) failed to load miner actor state: %w", err)
+	}
+
+	return mas.Info, nil
 }
 
 func getMinerSectorSizeRaw(ctx context.Context, sm *StateManager, st cid.Cid, maddr address.Address) (abi.SectorSize, error) {

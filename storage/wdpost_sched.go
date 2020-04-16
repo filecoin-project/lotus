@@ -37,12 +37,12 @@ type WindowPoStScheduler struct {
 }
 
 func NewWindowedPoStScheduler(api storageMinerApi, sb storage.Prover, actor address.Address, worker address.Address) (*WindowPoStScheduler, error) {
-	mss, err := api.StateMinerSectorSize(context.TODO(), actor, types.EmptyTSK)
+	mi, err := api.StateMinerInfo(context.TODO(), actor, types.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("getting sector size: %w", err)
 	}
 
-	spt, err := ffiwrapper.SealProofTypeFromSectorSize(mss)
+	spt, err := ffiwrapper.SealProofTypeFromSectorSize(mi.SectorSize)
 	if err != nil {
 		return nil, err
 	}

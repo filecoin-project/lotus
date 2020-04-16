@@ -72,21 +72,12 @@ func (n *ClientNodeAdapter) ListStorageProviders(ctx context.Context, encodedTs 
 	var out []*storagemarket.StorageProviderInfo
 
 	for _, addr := range addresses {
-		workerAddr, err := n.StateMinerWorker(ctx, addr, tsk)
+		mi, err := n.StateMinerInfo(ctx, addr, tsk)
 		if err != nil {
 			return nil, err
 		}
 
-		sectorSize, err := n.StateMinerSectorSize(ctx, addr, tsk)
-		if err != nil {
-			return nil, err
-		}
-
-		peerID, err := n.StateMinerPeerID(ctx, addr, tsk)
-		if err != nil {
-			return nil, err
-		}
-		storageProviderInfo := utils.NewStorageProviderInfo(addr, workerAddr, sectorSize, peerID)
+		storageProviderInfo := utils.NewStorageProviderInfo(addr, mi.Worker, mi.SectorSize, mi.PeerId)
 		out = append(out, &storageProviderInfo)
 	}
 
@@ -176,12 +167,12 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 		return 0, xerrors.Errorf("getting deal pubsish message: %w", err)
 	}
 
-	pw, err := stmgr.GetMinerWorker(ctx, c.sm, nil, deal.Proposal.Provider)
+	mi, err := stmgr.StateMinerInfo(ctx, c.sm, nil, deal.Proposal.Provider)
 	if err != nil {
 		return 0, xerrors.Errorf("getting miner worker failed: %w", err)
 	}
 
-	if pubmsg.From != pw {
+	if pubmsg.From != mi.Worker {
 		return 0, xerrors.Errorf("deal wasn't published by storage provider: from=%s, provider=%s", pubmsg.From, deal.Proposal.Provider)
 	}
 
@@ -363,7 +354,7 @@ func (n *ClientNodeAdapter) ValidateAskSignature(ctx context.Context, ask *stora
 		return false, err
 	}
 
-	w, err := n.StateMinerWorker(ctx, ask.Ask.Miner, tsk)
+	mi, err := n.StateMinerInfo(ctx, ask.Ask.Miner, tsk)
 	if err != nil {
 		return false, xerrors.Errorf("failed to get worker for miner in ask", err)
 	}
@@ -373,7 +364,7 @@ func (n *ClientNodeAdapter) ValidateAskSignature(ctx context.Context, ask *stora
 		return false, xerrors.Errorf("failed to re-serialize ask")
 	}
 
-	err = sigs.Verify(ask.Signature, w, sigb)
+	err = sigs.Verify(ask.Signature, mi.Worker, sigb)
 	return err == nil, err
 }
 
