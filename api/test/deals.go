@@ -83,11 +83,11 @@ func TestDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, carExport
 		t.Fatal(err)
 	}
 	deal, err := client.ClientStartDeal(ctx, &api.StartDealParams{
-		Data:           &storagemarket.DataRef{Root: fcid},
-		Wallet:         addr,
-		Miner:          maddr,
-		EpochPrice:     types.NewInt(1000000),
-		BlocksDuration: 100,
+		Data:              &storagemarket.DataRef{Root: fcid},
+		Wallet:            addr,
+		Miner:             maddr,
+		EpochPrice:        types.NewInt(1000000),
+		MinBlocksDuration: 100,
 	})
 	if err != nil {
 		t.Fatalf("%+v", err)

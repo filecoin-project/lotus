@@ -320,11 +320,11 @@ type MethodCall struct {
 }
 
 type StartDealParams struct {
-	Data           *storagemarket.DataRef
-	Wallet         address.Address
-	Miner          address.Address
-	EpochPrice     types.BigInt
-	BlocksDuration uint64
+	Data              *storagemarket.DataRef
+	Wallet            address.Address
+	Miner             address.Address
+	EpochPrice        types.BigInt
+	MinBlocksDuration uint64
 }
 
 type IpldObject struct {
