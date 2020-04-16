@@ -40,7 +40,7 @@ type StateManager struct {
 	stCache  map[string][]cid.Cid
 	compWait map[string]chan struct{}
 	stlk     sync.Mutex
-	newVM    func(cid.Cid, abi.ChainEpoch, vm.Rand, address.Address, blockstore.Blockstore, runtime.Syscalls) (*vm.VM, error)
+	newVM    func(cid.Cid, abi.ChainEpoch, vm.Rand, blockstore.Blockstore, runtime.Syscalls) (*vm.VM, error)
 }
 
 func NewStateManager(cs *store.ChainStore) *StateManager {
@@ -149,7 +149,7 @@ type BlockMessages struct {
 type ExecCallback func(cid.Cid, *types.Message, *vm.ApplyRet) error
 
 func (sm *StateManager) ApplyBlocks(ctx context.Context, pstate cid.Cid, bms []BlockMessages, epoch abi.ChainEpoch, r vm.Rand, cb ExecCallback) (cid.Cid, cid.Cid, error) {
-	vmi, err := sm.newVM(pstate, epoch, r, address.Undef, sm.cs.Blockstore(), sm.cs.VMSys())
+	vmi, err := sm.newVM(pstate, epoch, r, sm.cs.Blockstore(), sm.cs.VMSys())
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("instantiating VM failed: %w", err)
 	}
@@ -157,7 +157,6 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, pstate cid.Cid, bms []B
 	var receipts []cbg.CBORMarshaler
 	processedMsgs := map[cid.Cid]bool{}
 	for _, b := range bms {
-		vmi.SetBlockMiner(b.Miner)
 
 		penalty := types.NewInt(0)
 		gasReward := big.Zero()
@@ -781,6 +780,6 @@ func (sm *StateManager) ValidateChain(ctx context.Context, ts *types.TipSet) err
 	return nil
 }
 
-func (sm *StateManager) SetVMConstructor(nvm func(cid.Cid, abi.ChainEpoch, vm.Rand, address.Address, blockstore.Blockstore, runtime.Syscalls) (*vm.VM, error)) {
+func (sm *StateManager) SetVMConstructor(nvm func(cid.Cid, abi.ChainEpoch, vm.Rand, blockstore.Blockstore, runtime.Syscalls) (*vm.VM, error)) {
 	sm.newVM = nvm
 }

@@ -90,12 +90,16 @@ func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) 
 		return nil, xerrors.Errorf("failed checking miners sector size: %w", err)
 	}
 
+	if uint64(params.Data.PieceSize.Padded()) > uint64(ssize) {
+		return nil, xerrors.New("data doesn't fit in a sector")
+	}
+
 	rt, _, err := ffiwrapper.ProofTypeFromSectorSize(ssize)
 	if err != nil {
 		return nil, xerrors.Errorf("bad sector size: %w", err)
 	}
 
-	providerInfo := utils.NewStorageProviderInfo(params.Miner, mw, 0, pid)
+	providerInfo := utils.NewStorageProviderInfo(params.Miner, mw, ssize, pid)
 	ts, err := a.ChainHead(ctx)
 	if err != nil {
 		return nil, xerrors.Errorf("failed getting chain height: %w", err)
