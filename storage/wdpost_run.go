@@ -3,13 +3,13 @@ package storage
 import (
 	"bytes"
 	"context"
-	"github.com/filecoin-project/go-address"
 	"time"
 
-	"github.com/filecoin-project/specs-actors/actors/crypto"
-
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
@@ -83,30 +83,48 @@ func (s *WindowPoStScheduler) checkFaults(ctx context.Context, ssi []abi.SectorN
 	return faultIDs, nil
 }
 
-func (s *WindowPoStScheduler) runPost(ctx context.Context, deadline Deadline, ts *types.TipSet) (*abi.WindowPoStVerifyInfo, error) {
+func (s *WindowPoStScheduler) runPost(ctx context.Context, di Deadline, ts *types.TipSet) (*miner.SubmitWindowedPoStParams, error) {
 	ctx, span := trace.StartSpan(ctx, "storage.runPost")
 	defer span.End()
-
-	challengeRound := deadline.start // TODO: check with spec
 
 	buf := new(bytes.Buffer)
 	if err := s.actor.MarshalCBOR(buf); err != nil {
 		return nil, xerrors.Errorf("failed to marshal address to cbor: %w", err)
 	}
-	rand, err := s.api.ChainGetRandomness(ctx, ts.Key(), crypto.DomainSeparationTag_WindowedPoStChallengeSeed, challengeRound, buf.Bytes())
+	rand, err := s.api.ChainGetRandomness(ctx, ts.Key(), crypto.DomainSeparationTag_WindowedPoStChallengeSeed, di.challengeEpoch, buf.Bytes())
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get chain randomness for windowPost (ts=%d; deadline=%d): %w", ts.Height(), deadline, err)
+		return nil, xerrors.Errorf("failed to get chain randomness for windowPost (ts=%d; deadline=%d): %w", ts.Height(), di, err)
 	}
 
-	partitions, err := s.getDeadlinePartitions(ts, deadline)
+	deadlines, err := s.api.StateMinerDeadlines(ctx, s.actor, ts.Key())
 	if err != nil {
 		return nil, err
 	}
 
-	ssi, err := s.sortedSectorInfo(ctx, partitions, ts) // TODO: Optimization: Only get challenged sectors
+	firstPartition, _, err := miner.PartitionsForDeadline(deadlines, di.deadlineIdx)
+	if err != nil {
+		return nil, xerrors.Errorf("getting partitions for deadline: %w", err)
+	}
+
+	partitionCount, _, err := miner.DeadlineCount(deadlines, di.deadlineIdx)
+	if err != nil {
+		return nil, xerrors.Errorf("getting deadline partition count: %w", err)
+	}
+
+	if partitionCount == 0 {
+		return nil, xerrors.Errorf("runPost with no partitions!")
+	}
+
+	partitions := make([]uint64, partitionCount)
+	for i := range partitions {
+		partitions[i] = firstPartition + uint64(i)
+	}
+
+	ssi, err := s.sortedSectorInfo(ctx, deadlines.Due[di.deadlineIdx], ts)
 	if err != nil {
 		return nil, xerrors.Errorf("getting sorted sector info: %w", err)
 	}
+
 	if len(ssi) == 0 {
 		log.Warn("attempted to run windowPost without any sectors...")
 		return nil, xerrors.Errorf("no sectors to run windowPost on")
@@ -114,7 +132,7 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, deadline Deadline, ts
 
 	log.Infow("running windowPost",
 		"chain-random", rand,
-		"deadline", deadline,
+		"deadline", di,
 		"height", ts.Height())
 
 	var snums []abi.SectorNumber
@@ -138,18 +156,8 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, deadline Deadline, ts
 		return nil, err
 	}
 
-	ci, err := s.prover.GenerateWinningPoStSectorChallenge(ctx, s.proofType, abi.ActorID(mid), abi.PoStRandomness(rand), uint64(len(ssi)))
-	if err != nil {
-		return nil, xerrors.Errorf("generating window post challenge: %w", err)
-	}
-
-	cssi := make([]abi.SectorInfo, len(ci))
-	for i, u := range ci {
-		cssi[i] = ssi[u]
-	}
-
 	// TODO: Faults!
-	postOut, err := s.prover.GenerateWindowPoSt(ctx, abi.ActorID(mid), cssi, abi.PoStRandomness(rand))
+	postOut, err := s.prover.GenerateWindowPoSt(ctx, abi.ActorID(mid), ssi, abi.PoStRandomness(rand))
 	if err != nil {
 		return nil, xerrors.Errorf("running post failed: %w", err)
 	}
@@ -161,16 +169,15 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, deadline Deadline, ts
 	elapsed := time.Since(tsStart)
 	log.Infow("submitting PoSt", "elapsed", elapsed)
 
-	return &abi.WindowPoStVerifyInfo{
-		Randomness:        abi.PoStRandomness(rand),
-		Proofs:            postOut,
-		ChallengedSectors: cssi,
-		Prover:            abi.ActorID(mid),
+	return &miner.SubmitWindowedPoStParams{
+		Partitions: partitions,
+		Proofs:     postOut,
+		Skipped:    *abi.NewBitField(), // TODO: Faults here?
 	}, nil
 }
 
-func (s *WindowPoStScheduler) sortedSectorInfo(ctx context.Context, partitions []abiPartition, ts *types.TipSet) ([]abi.SectorInfo, error) {
-	sset, err := s.getPartitionSectors(ts, partitions)
+func (s *WindowPoStScheduler) sortedSectorInfo(ctx context.Context, deadlineSectors *abi.BitField, ts *types.TipSet) ([]abi.SectorInfo, error) {
+	sset, err := s.api.StateMinerSectors(ctx, s.actor, deadlineSectors, ts.Key())
 	if err != nil {
 		return nil, err
 	}
@@ -178,16 +185,16 @@ func (s *WindowPoStScheduler) sortedSectorInfo(ctx context.Context, partitions [
 	sbsi := make([]abi.SectorInfo, len(sset))
 	for k, sector := range sset {
 		sbsi[k] = abi.SectorInfo{
-			SectorNumber:    sector.SectorNumber,
-			SealedCID:       sector.SealedCID,
-			RegisteredProof: sector.RegisteredProof,
+			SectorNumber:    sector.ID,
+			SealedCID:       sector.Info.Info.SealedCID,
+			RegisteredProof: sector.Info.Info.RegisteredProof,
 		}
 	}
 
 	return sbsi, nil
 }
 
-func (s *WindowPoStScheduler) submitPost(ctx context.Context, proof *abi.WindowPoStVerifyInfo) error {
+func (s *WindowPoStScheduler) submitPost(ctx context.Context, proof *miner.SubmitWindowedPoStParams) error {
 	ctx, span := trace.StartSpan(ctx, "storage.commitPost")
 	defer span.End()
 

@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/chain/store"
@@ -56,27 +57,18 @@ func NewWindowedPoStScheduler(api storageMinerApi, sb storage.Prover, actor addr
 }
 
 type Deadline struct {
-	// ID
-	start abi.ChainEpoch
+	provingPeriodStart abi.ChainEpoch
+	deadlineIdx uint64
+	challengeEpoch abi.ChainEpoch
 }
 
-func (Deadline) Equals(other Deadline) bool {
-	panic("maybe equal")
-}
+func (d *Deadline) Equals(other *Deadline) bool {
+	if d == nil || other == nil {
+		return d == other
+	}
 
-type abiPartition uint64
-
-func (s *WindowPoStScheduler) getCurrentDeadline(ts *types.TipSet) (Deadline, error) {
-	return Deadline{}, nil
-}
-
-func (s *WindowPoStScheduler) getDeadlinePartitions(ts *types.TipSet, d Deadline) ([]abiPartition, error) {
-	return nil, nil
-}
-
-func (s *WindowPoStScheduler) getPartitionSectors(ts *types.TipSet, partition []abiPartition) ([]abi.SectorInfo, error) {
-	// TODO: maybe make this per partition
-	return nil, nil
+	return d.provingPeriodStart == other.provingPeriodStart &&
+		   d.deadlineIdx == other.deadlineIdx
 }
 
 func (s *WindowPoStScheduler) Run(ctx context.Context) {
@@ -162,10 +154,12 @@ func (s *WindowPoStScheduler) revert(ctx context.Context, newLowest *types.TipSe
 	}
 	s.cur = newLowest
 
-	newDeadline, err := s.getCurrentDeadline(newLowest)
+	mi, err := s.api.StateMinerInfo(ctx, s.actor, newLowest.Key())
 	if err != nil {
 		return err
 	}
+
+	newDeadline := deadlineInfo(mi, newLowest)
 
 	if !s.activeDeadline.Equals(newDeadline) {
 		s.abortActivePoSt()
@@ -178,11 +172,24 @@ func (s *WindowPoStScheduler) update(ctx context.Context, new *types.TipSet) err
 	if new == nil {
 		return xerrors.Errorf("no new tipset in WindowPoStScheduler.update")
 	}
-	shouldPost, newDeadline, err := s.shouldPost(ctx, new)
+
+	mi, err := s.api.StateMinerInfo(ctx, s.actor, new.Key())
 	if err != nil {
 		return err
 	}
-	if !shouldPost {
+
+	di := deadlineInfo(mi, new)
+	if s.activeDeadline.Equals(di) {
+		return nil // already working on this deadline
+	}
+	if di == nil {
+		return nil // not proving anything yet
+	}
+
+	s.abortActivePoSt()
+
+	if di.challengeEpoch + StartConfidence >= new.Height() {
+		log.Info("not starting windowPost yet, waiting for startconfidence", di.challengeEpoch, di.challengeEpoch + StartConfidence, new.Height())
 		return nil
 	}
 
@@ -193,11 +200,7 @@ func (s *WindowPoStScheduler) update(ctx context.Context, new *types.TipSet) err
 	}
 	s.failLk.Unlock()*/
 
-	s.abortActivePoSt()
-
-	if newDeadline != nil {
-		s.doPost(ctx, newDeadline, new)
-	}
+	s.doPost(ctx, di, new)
 
 	return nil
 }
@@ -217,10 +220,21 @@ func (s *WindowPoStScheduler) abortActivePoSt() {
 	s.abort = nil
 }
 
-func (s *WindowPoStScheduler) shouldPost(ctx context.Context, ts *types.TipSet) (bool, *Deadline, error) {
+func deadlineInfo(mi miner.MinerInfo, new *types.TipSet) *Deadline {
+	pps, nonNegative := provingPeriodStart(mi, new.Height())
+	if !nonNegative {
+		return nil // proving didn't start yet
+	}
 
+	deadlineIdx, challengeEpoch := miner.ComputeCurrentDeadline(pps, new.Height())
 
-	// call getCurrentDeadline, set activeDeadline if needed
-	panic("todo check actor state for post in the deadline")
-	return true, nil, nil
+	return &Deadline{
+		provingPeriodStart: pps,
+		deadlineIdx:        deadlineIdx,
+		challengeEpoch:     challengeEpoch,
+	}
+}
+
+func provingPeriodStart(mi miner.MinerInfo, currEpoch abi.ChainEpoch) (period abi.ChainEpoch, nonNegative bool) {
+	return (&miner.State{Info:mi}).ProvingPeriodStart(currEpoch)
 }
