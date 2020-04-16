@@ -417,11 +417,16 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, tsk types.TipSetKey
 		return nil, xerrors.Errorf("failed to get latest beacon entry: %w", err)
 	}
 
+	worker, err := sm.ResolveToKeyAddress(ctx, mas.GetWorker(), ts)
+	if err != nil {
+		return nil, xerrors.Errorf("resolving worker address: %w", err)
+	}
+
 	return &api.MiningBaseInfo{
 		MinerPower:      mpow,
 		NetworkPower:    tpow,
 		Sectors:         provset,
-		Worker:          mas.GetWorker(),
+		WorkerKey:       worker,
 		SectorSize:      mas.Info.SectorSize,
 		PrevBeaconEntry: *prev,
 	}, nil

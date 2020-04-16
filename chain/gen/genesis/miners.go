@@ -185,11 +185,11 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 						RegisteredProof: preseal.ProofType,
 						SectorNumber:    preseal.SectorID,
 						SealedCID:       preseal.CommR,
-						SealRandEpoch:   0,
+						SealRandEpoch:   0, // TODO: REVIEW: Correct?
 						DealIDs:         []abi.DealID{dealIDs[pi]},
 						Expiration:      preseal.Deal.EndEpoch,
 					},
-					ActivationEpoch: 0,
+					ActivationEpoch: 0, // TODO: REVIEW: Correct?
 					DealWeight:      dealWeight,
 				}
 
@@ -200,7 +200,6 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 						return xerrors.Errorf("failed to prove commit: %v", err)
 					}
 
-					panic("assign deadlines")
 					return nil
 				})
 				if err != nil {

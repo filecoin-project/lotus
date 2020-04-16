@@ -6,6 +6,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
+	"github.com/minio/blake2b-simd"
 	mh "github.com/multiformats/go-multihash"
 	"golang.org/x/xerrors"
 
@@ -46,7 +47,7 @@ func (ss *syscallShim) ComputeUnsealedSectorCID(st abi.RegisteredProof, pieces [
 }
 
 func (ss *syscallShim) HashBlake2b(data []byte) [32]byte {
-	panic("NYI")
+	return blake2b.Sum256(data)
 }
 
 func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte) (*runtime.ConsensusFault, error) {
