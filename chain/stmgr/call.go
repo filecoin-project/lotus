@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 	"go.opencensus.io/trace"
@@ -21,7 +19,7 @@ func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate 
 	ctx, span := trace.StartSpan(ctx, "statemanager.CallRaw")
 	defer span.End()
 
-	vmi, err := vm.NewVM(bstate, bheight, r, builtin.SystemActorAddr, sm.cs.Blockstore(), sm.cs.VMSys())
+	vmi, err := vm.NewVM(bstate, bheight, r, sm.cs.Blockstore(), sm.cs.VMSys())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to set up vm: %w", err)
 	}

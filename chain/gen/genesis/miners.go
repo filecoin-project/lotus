@@ -41,7 +41,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 		networkPower = big.Add(networkPower, big.NewInt(int64(m.SectorSize)*int64(len(m.Sectors))))
 	}
 
-	vm, err := vm.NewVM(sroot, 0, &fakeRand{}, builtin.SystemActorAddr, cs.Blockstore(), cs.VMSys())
+	vm, err := vm.NewVM(sroot, 0, &fakeRand{}, cs.Blockstore(), cs.VMSys())
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to create NewVM: %w", err)
 	}

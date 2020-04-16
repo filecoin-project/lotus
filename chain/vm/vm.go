@@ -129,14 +129,13 @@ type VM struct {
 	cst         *cbor.BasicIpldStore
 	buf         *bufbstore.BufferedBS
 	blockHeight abi.ChainEpoch
-	blockMiner  address.Address
 	inv         *invoker
 	rand        Rand
 
 	Syscalls runtime.Syscalls
 }
 
-func NewVM(base cid.Cid, height abi.ChainEpoch, r Rand, maddr address.Address, cbs blockstore.Blockstore, syscalls runtime.Syscalls) (*VM, error) {
+func NewVM(base cid.Cid, height abi.ChainEpoch, r Rand, cbs blockstore.Blockstore, syscalls runtime.Syscalls) (*VM, error) {
 	buf := bufbstore.NewBufferedBstore(cbs)
 	cst := cbor.NewCborStore(buf)
 	state, err := state.LoadStateTree(cst, base)
@@ -150,7 +149,6 @@ func NewVM(base cid.Cid, height abi.ChainEpoch, r Rand, maddr address.Address, c
 		cst:         cst,
 		buf:         buf,
 		blockHeight: height,
-		blockMiner:  maddr,
 		inv:         NewInvoker(),
 		rand:        r, // TODO: Probably should be a syscall
 		Syscalls:    syscalls,
@@ -414,10 +412,6 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 		Penalty:            types.NewInt(0),
 		Duration:           time.Since(start),
 	}, nil
-}
-
-func (vm *VM) SetBlockMiner(m address.Address) {
-	vm.blockMiner = m
 }
 
 func (vm *VM) ActorBalance(addr address.Address) (types.BigInt, aerrors.ActorError) {
