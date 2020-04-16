@@ -118,7 +118,12 @@ func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagema
 }
 
 func (n *ProviderNodeAdapter) VerifySignature(ctx context.Context, sig crypto.Signature, addr address.Address, input []byte, encodedTs shared.TipSetToken) (bool, error) {
-	err := sigs.Verify(&sig, addr, input)
+	addr, err := n.StateAccountKey(ctx, addr, types.EmptyTSK)
+	if err != nil {
+		return false, err
+	}
+
+	err = sigs.Verify(&sig, addr, input)
 	return err == nil, err
 }
 

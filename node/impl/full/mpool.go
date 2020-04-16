@@ -91,7 +91,7 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message) (*t
 		return nil, xerrors.Errorf("MpoolPushMessage expects message nonce to be 0, was %d", msg.Nonce)
 	}
 
-	return a.Mpool.PushWithNonce(msg.From, func(nonce uint64) (*types.SignedMessage, error) {
+	return a.Mpool.PushWithNonce(ctx, msg.From, func(from address.Address, nonce uint64) (*types.SignedMessage, error) {
 		msg.Nonce = nonce
 
 		b, err := a.WalletBalance(ctx, msg.From)
@@ -103,7 +103,7 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message) (*t
 			return nil, xerrors.Errorf("mpool push: not enough funds: %s < %s", b, msg.Value)
 		}
 
-		return a.WalletSignMessage(ctx, msg.From, msg)
+		return a.WalletSignMessage(ctx, from, msg)
 	})
 }
 
