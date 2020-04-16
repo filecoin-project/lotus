@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-storage/storage"
 
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -55,10 +54,6 @@ func NewWindowedPoStScheduler(api storageMinerApi, sb storage.Prover, actor addr
 
 	return &WindowPoStScheduler{api: api, prover: sb, actor: actor, worker: worker, proofType: rt}, nil
 }
-
-const ProvingDeadlineEpochs = (30 * 60) / build.BlockDelay
-const ProvingPeriodDeadlines = 48
-const ProvingPeriodEpochs = ProvingDeadlineEpochs * ProvingDeadlineEpochs
 
 type Deadline struct {
 	// ID
@@ -223,6 +218,8 @@ func (s *WindowPoStScheduler) abortActivePoSt() {
 }
 
 func (s *WindowPoStScheduler) shouldPost(ctx context.Context, ts *types.TipSet) (bool, *Deadline, error) {
+
+
 	// call getCurrentDeadline, set activeDeadline if needed
 	panic("todo check actor state for post in the deadline")
 	return true, nil, nil
