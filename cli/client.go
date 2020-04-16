@@ -187,11 +187,11 @@ var clientDealCmd = &cli.Command{
 		}
 
 		proposal, err := api.ClientStartDeal(ctx, &lapi.StartDealParams{
-			Data:           ref,
-			Wallet:         a,
-			Miner:          miner,
-			EpochPrice:     types.BigInt(price),
-			BlocksDuration: uint64(dur),
+			Data:              ref,
+			Wallet:            a,
+			Miner:             miner,
+			EpochPrice:        types.BigInt(price),
+			MinBlocksDuration: uint64(dur),
 		})
 		if err != nil {
 			return err

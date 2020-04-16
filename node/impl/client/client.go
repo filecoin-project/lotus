@@ -6,9 +6,6 @@ import (
 	"io"
 	"os"
 
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
-
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-blockservice"
@@ -29,7 +26,10 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -86,13 +86,16 @@ func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) 
 		return nil, xerrors.Errorf("failed getting chain height: %w", err)
 	}
 
+	exp := ts.Height()+dealStartBuffer+abi.ChainEpoch(params.MinBlocksDuration)
+	exp += miner.WPoStProvingPeriod - (exp % miner.WPoStProvingPeriod) + mi.ProvingPeriodBoundary - 1
+
 	result, err := a.SMDealClient.ProposeStorageDeal(
 		ctx,
 		params.Wallet,
 		&providerInfo,
 		params.Data,
 		ts.Height()+dealStartBuffer,
-		ts.Height()+dealStartBuffer+abi.ChainEpoch(params.BlocksDuration),
+		exp,
 		params.EpochPrice,
 		big.Zero(),
 		rt,
