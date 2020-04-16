@@ -5,13 +5,13 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"github.com/filecoin-project/lotus/build"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	sainit "github.com/filecoin-project/specs-actors/actors/builtin/init"
+	sapower "github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	vmr "github.com/filecoin-project/specs-actors/actors/runtime"
@@ -24,6 +24,7 @@ import (
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -54,7 +55,38 @@ type Runtime struct {
 }
 
 func (rt *Runtime) TotalFilCircSupply() abi.TokenAmount {
-	return types.BigInt{build.InitialRewardBalance} // Close enough
+	total := types.FromFil(build.TotalFilecoin)
+
+	rew, err := rt.state.GetActor(builtin.RewardActorAddr)
+	if err != nil {
+		rt.Abortf(exitcode.ErrIllegalState, "failed to get reward actor for computing total supply: %s", err)
+	}
+
+	burnt, err := rt.state.GetActor(builtin.BurntFundsActorAddr)
+	if err != nil {
+		rt.Abortf(exitcode.ErrIllegalState, "failed to get reward actor for computing total supply: %s", err)
+	}
+
+	market, err := rt.state.GetActor(builtin.StorageMarketActorAddr)
+	if err != nil {
+		rt.Abortf(exitcode.ErrIllegalState, "failed to get reward actor for computing total supply: %s", err)
+	}
+
+	power, err := rt.state.GetActor(builtin.StoragePowerActorAddr)
+	if err != nil {
+		rt.Abortf(exitcode.ErrIllegalState, "failed to get reward actor for computing total supply: %s", err)
+	}
+
+	total = types.BigSub(total, rew.Balance)
+	total = types.BigSub(total, burnt.Balance)
+	total = types.BigSub(total, market.Balance)
+
+	var st sapower.State
+	if err := rt.cst.Get(rt.ctx, power.Head, &st); err != nil {
+		rt.Abortf(exitcode.ErrIllegalState, "failed to get storage power state: %s", err)
+	}
+
+	return types.BigSub(total, st.TotalPledgeCollateral)
 }
 
 func (rt *Runtime) ResolveAddress(addr address.Address) (ret address.Address, ok bool) {
