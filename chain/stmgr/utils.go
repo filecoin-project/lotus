@@ -140,24 +140,12 @@ func StateMinerInfo(ctx context.Context, sm *StateManager, ts *types.TipSet, mad
 	return mas.Info, nil
 }
 
-func getMinerSectorSizeRaw(ctx context.Context, sm *StateManager, st cid.Cid, maddr address.Address) (abi.SectorSize, error) {
-	var mas miner.State
-	_, err := sm.LoadActorStateRaw(ctx, maddr, &mas, st)
-	if err != nil {
-		return 0, xerrors.Errorf("(get ssize) failed to load miner actor state: %w", err)
-	}
-
-	return mas.Info.SectorSize, nil
-}
-
 func GetMinerSlashed(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (bool, error) {
 	var mas miner.State
 	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
 	if err != nil {
 		return false, xerrors.Errorf("(get miner slashed) failed to load miner actor state")
 	}
-
-	panic("update this")
 
 	var spas power.State
 	_, err = sm.LoadActorState(ctx, builtin.StoragePowerActorAddr, &spas, ts)
@@ -167,17 +155,34 @@ func GetMinerSlashed(ctx context.Context, sm *StateManager, ts *types.TipSet, ma
 
 	store := sm.cs.Store(ctx)
 
-	claims, err := adt.AsMap(store, spas.Claims)
-	if err != nil {
-		return false, err
+	{
+		claims, err := adt.AsMap(store, spas.Claims)
+		if err != nil {
+			return false, err
+		}
+
+		ok, err := claims.Get(power.AddrKey(maddr), nil)
+		if err != nil {
+			return false, err
+		}
+		if !ok {
+			return true, nil
+		}
 	}
 
-	ok, err := claims.Get(power.AddrKey(maddr), nil)
-	if err != nil {
-		return false, err
-	}
-	if !ok {
-		return true, nil
+	{
+		detectedFaulty, err := adt.AsMap(store, spas.PoStDetectedFaultMiners)
+		if err != nil {
+			return false, err
+		}
+
+		ok, err := detectedFaulty.Get(power.AddrKey(maddr), nil)
+		if err != nil {
+			return false, err
+		}
+		if ok {
+			return true, nil
+		}
 	}
 
 	return false, nil
