@@ -225,7 +225,7 @@ func GetMinerFaults(ctx context.Context, sm *StateManager, ts *types.TipSet, mad
 		return nil, xerrors.Errorf("(get ssize) failed to load miner actor state: %w", err)
 	}
 
-	faults, err := mas.Faults.All(miner.MaxFaultsCount)
+	faults, err := mas.Faults.All(miner.SectorsMax)
 	if err != nil {
 		return nil, xerrors.Errorf("reading fault bit set: %w", err)
 	}
@@ -372,12 +372,12 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 }
 
 func GetProvingSetRaw(ctx context.Context, sm *StateManager, mas miner.State) ([]*api.ChainSectorInfo, error) {
-	notProving, err := abi.BitFieldUnion(mas.Faults, mas.Recoveries, mas.NewSectors)
+	notProving, err := abi.BitFieldUnion(mas.Faults, mas.Recoveries)
 	if err != nil {
 		return nil, err
 	}
 
-	provset, err := LoadSectorsFromSet(ctx, sm.cs.Blockstore(), mas.Sectors, &notProving)
+	provset, err := LoadSectorsFromSet(ctx, sm.cs.Blockstore(), mas.Sectors, notProving)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get proving set: %w", err)
 	}

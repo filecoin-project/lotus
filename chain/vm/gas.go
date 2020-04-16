@@ -135,7 +135,7 @@ func (ps pricedSyscalls) VerifyPoSt(vi abi.WindowPoStVerifyInfo) error {
 // the "parent grinding fault", in which case it must be the sibling of h1 (same parent tipset) and one of the
 // blocks in the parent of h2 (i.e. h2's grandparent).
 // Returns nil and an error if the headers don't prove a fault.
-func (ps pricedSyscalls) VerifyConsensusFault(h1 []byte, h2 []byte, extra []byte, earliest abi.ChainEpoch) (*runtime.ConsensusFault, error) {
+func (ps pricedSyscalls) VerifyConsensusFault(h1 []byte, h2 []byte, extra []byte) (*runtime.ConsensusFault, error) {
 	ps.chargeGas(ps.pl.OnVerifyConsensusFault())
-	return ps.under.VerifyConsensusFault(h1, h2, extra, earliest)
+	return ps.under.VerifyConsensusFault(h1, h2, extra)
 }

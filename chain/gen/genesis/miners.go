@@ -11,7 +11,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -126,30 +125,12 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 
 		// setup windowed post
 		{
-			provingPeriodBoundary := abi.ChainEpoch(0)
-
+			// TODO: Can drop, now done in constructor
 			err = vm.MutateState(ctx, maddr, func(cst cbor.IpldStore, st *miner.State) error {
-				panic("from some randomness")
-				st.ProvingPeriodBoundary = 0
+				fmt.Println("PROVINg BOUNDARY:                       #### ", st.Info.ProvingPeriodBoundary)
 				return nil
 			})
 
-			panic("todo, probably more cron stuff")
-			payload, err := cborutil.Dump(&miner.CronEventPayload{
-				EventType: miner.CronEventProvingPeriod,
-			})
-			if err != nil {
-				return cid.Undef, err
-			}
-			params := &power.EnrollCronEventParams{
-				EventEpoch: miner.WPoStProvingPeriod + provingPeriodBoundary, // TODO: correct ???
-				Payload:    payload,
-			}
-
-			_, err = doExecValue(ctx, vm, builtin.StoragePowerActorAddr, maddr, big.Zero(), builtin.MethodsPower.EnrollCronEvent, mustEnc(params))
-			if err != nil {
-				return cid.Undef, xerrors.Errorf("failed to verify preseal deals miner: %w", err)
-			}
 		}
 
 		// Commit sectors
@@ -224,28 +205,6 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 				})
 				if err != nil {
 					return cid.Cid{}, xerrors.Errorf("put to sset: %w", err)
-				}
-			}
-
-			{
-				sectorBf := abi.NewBitField()
-				sectorBf.Set(uint64(preseal.SectorID))
-
-				payload, err := cborutil.Dump(&miner.CronEventPayload{
-					EventType: miner.CronEventPreCommitExpiry, // TODO: Review: Is this correct?
-					Sectors:   &sectorBf,
-				})
-				if err != nil {
-					return cid.Undef, err
-				}
-				params := &power.EnrollCronEventParams{
-					EventEpoch: preseal.Deal.EndEpoch,
-					Payload:    payload,
-				}
-
-				_, err = doExecValue(ctx, vm, builtin.StoragePowerActorAddr, maddr, big.Zero(), builtin.MethodsPower.EnrollCronEvent, mustEnc(params))
-				if err != nil {
-					return cid.Undef, xerrors.Errorf("failed to verify preseal deals miner: %w", err)
 				}
 			}
 		}
