@@ -594,12 +594,12 @@ var stateSectorSizeCmd = &cli.Command{
 			return err
 		}
 
-		ssize, err := api.StateMinerSectorSize(ctx, addr, ts.Key())
+		mi, err := api.StateMinerInfo(ctx, addr, ts.Key())
 		if err != nil {
 			return err
 		}
 
-		fmt.Printf("%d\n", ssize)
+		fmt.Printf("%d\n", mi.SectorSize)
 		return nil
 	},
 }

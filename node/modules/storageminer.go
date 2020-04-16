@@ -91,12 +91,12 @@ func StorageNetworkName(ctx helpers.MetricsCtx, a lapi.FullNode) (dtypes.Network
 }
 
 func ProofsConfig(maddr dtypes.MinerAddress, fnapi lapi.FullNode) (*ffiwrapper.Config, error) {
-	ssize, err := fnapi.StateMinerSectorSize(context.TODO(), address.Address(maddr), types.EmptyTSK)
+	mi, err := fnapi.StateMinerInfo(context.TODO(), address.Address(maddr), types.EmptyTSK)
 	if err != nil {
 		return nil, err
 	}
 
-	spt, err := ffiwrapper.SealProofTypeFromSectorSize(ssize)
+	spt, err := ffiwrapper.SealProofTypeFromSectorSize(mi.SectorSize)
 	if err != nil {
 		return nil, xerrors.Errorf("bad sector size: %w", err)
 	}
@@ -130,17 +130,17 @@ func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api lapi.FullNode, h
 
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
-	worker, err := api.StateMinerWorker(ctx, maddr, types.EmptyTSK)
+	mi, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
 	if err != nil {
 		return nil, err
 	}
 
-	fps, err := storage.NewWindowedPoStScheduler(api, sealer, maddr, worker)
+	fps, err := storage.NewWindowedPoStScheduler(api, sealer, maddr, mi.Worker)
 	if err != nil {
 		return nil, err
 	}
 
-	sm, err := storage.NewMiner(api, maddr, worker, h, ds, sealer, sc, verif, tktFn)
+	sm, err := storage.NewMiner(api, maddr, mi.Worker, h, ds, sealer, sc, verif, tktFn)
 	if err != nil {
 		return nil, err
 	}
@@ -317,12 +317,12 @@ func StorageProvider(ctx helpers.MetricsCtx, fapi lapi.FullNode, h host.Host, ds
 		return nil, err
 	}
 
-	ssize, err := fapi.StateMinerSectorSize(ctx, minerAddress, types.EmptyTSK)
+	mi, err := fapi.StateMinerInfo(ctx, minerAddress, types.EmptyTSK)
 	if err != nil {
 		return nil, err
 	}
 
-	rt, err := ffiwrapper.SealProofTypeFromSectorSize(ssize)
+	rt, err := ffiwrapper.SealProofTypeFromSectorSize(mi.SectorSize)
 	if err != nil {
 		return nil, err
 	}

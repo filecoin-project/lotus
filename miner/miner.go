@@ -361,7 +361,7 @@ func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningB
 }
 
 func (m *Miner) computeTicket(ctx context.Context, addr address.Address, brand *types.BeaconEntry, base *MiningBase) (*types.Ticket, error) {
-	w, err := m.api.StateMinerWorker(ctx, addr, types.EmptyTSK)
+	mi, err := m.api.StateMinerInfo(ctx, addr, types.EmptyTSK)
 	if err != nil {
 		return nil, err
 	}
@@ -376,7 +376,7 @@ func (m *Miner) computeTicket(ctx context.Context, addr address.Address, brand *
 		return nil, err
 	}
 
-	vrfOut, err := gen.ComputeVRF(ctx, m.api.WalletSign, w, input)
+	vrfOut, err := gen.ComputeVRF(ctx, m.api.WalletSign, mi.Worker, input)
 	if err != nil {
 		return nil, err
 	}

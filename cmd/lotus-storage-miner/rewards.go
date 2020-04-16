@@ -42,7 +42,7 @@ var rewardsRedeemCmd = &cli.Command{
 			return err
 		}
 
-		worker, err := api.StateMinerWorker(ctx, maddr, types.EmptyTSK)
+		mi, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
@@ -52,16 +52,16 @@ var rewardsRedeemCmd = &cli.Command{
 			return err
 		}
 
-		workerNonce, err := api.MpoolGetNonce(ctx, worker)
+		workerNonce, err := api.MpoolGetNonce(ctx, mi.Worker)
 		if err != nil {
 			return err
 		}
 
 		panic("todo correct method; call miner actor")
 
-		smsg, err := api.WalletSignMessage(ctx, worker, &types.Message{
+		smsg, err := api.WalletSignMessage(ctx, mi.Worker, &types.Message{
 			To:       builtin.RewardActorAddr,
-			From:     worker,
+			From:     mi.Worker,
 			Nonce:    workerNonce,
 			Value:    types.NewInt(0),
 			GasPrice: types.NewInt(1),

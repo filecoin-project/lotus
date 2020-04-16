@@ -56,7 +56,7 @@ func NewProviderNodeAdapter(dag dtypes.StagingDAG, secb *sectorblocks.SectorBloc
 func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemarket.MinerDeal) (abi.DealID, cid.Cid, error) {
 	log.Info("publishing deal")
 
-	worker, err := n.StateMinerWorker(ctx, deal.Proposal.Provider, types.EmptyTSK)
+	mi, err := n.StateMinerInfo(ctx, deal.Proposal.Provider, types.EmptyTSK)
 	if err != nil {
 		return 0, cid.Undef, err
 	}
@@ -72,7 +72,7 @@ func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemark
 	// TODO: We may want this to happen after fetching data
 	smsg, err := n.MpoolPushMessage(ctx, &types.Message{
 		To:       builtin.StorageMarketActorAddr,
-		From:     worker,
+		From:     mi.Worker,
 		Value:    types.NewInt(0),
 		GasPrice: types.NewInt(0),
 		GasLimit: 1000000,
@@ -150,7 +150,11 @@ func (n *ProviderNodeAdapter) GetMinerWorkerAddress(ctx context.Context, miner a
 		return address.Undef, err
 	}
 
-	return n.StateMinerWorker(ctx, miner, tsk)
+	mi, err := n.StateMinerInfo(ctx, miner, tsk)
+	if err != nil {
+		return address.Address{}, err
+	}
+	return mi.Worker, nil
 }
 
 func (n *ProviderNodeAdapter) SignBytes(ctx context.Context, signer address.Address, b []byte) (*crypto.Signature, error) {

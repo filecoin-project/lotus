@@ -49,11 +49,10 @@ type Miner struct {
 type storageMinerApi interface {
 	// Call a read only method on actors (no interaction with the chain required)
 	StateCall(context.Context, *types.Message, types.TipSetKey) (*api.InvocResult, error)
-	StateMinerWorker(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 	StateMinerDeadlines(ctx context.Context, maddr address.Address, tok types.TipSetKey) (*miner.Deadlines, error)
 	StateMinerSectors(context.Context, address.Address, *abi.BitField, types.TipSetKey) ([]*api.ChainSectorInfo, error)
-	StateMinerSectorSize(context.Context, address.Address, types.TipSetKey) (abi.SectorSize, error)
 	StateSectorPreCommitInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error)
+	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (miner.MinerInfo, error)
 	StateWaitMsg(context.Context, cid.Cid) (*api.MsgLookup, error) // TODO: removeme eventually
 	StateGetActor(ctx context.Context, actor address.Address, ts types.TipSetKey) (*types.Actor, error)
 	StateGetReceipt(context.Context, cid.Cid, types.TipSetKey) (*types.MessageReceipt, error)
@@ -138,12 +137,12 @@ func NewWinningPoStProver(api api.FullNode, sb storage.Prover, miner dtypes.Mine
 		return nil, err
 	}
 
-	mss, err := api.StateMinerSectorSize(context.TODO(), ma, types.EmptyTSK)
+	mi, err := api.StateMinerInfo(context.TODO(), ma, types.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("getting sector size: %w", err)
 	}
 
-	spt, err := ffiwrapper.SealProofTypeFromSectorSize(mss)
+	spt, err := ffiwrapper.SealProofTypeFromSectorSize(mi.SectorSize)
 	if err != nil {
 		return nil, err
 	}

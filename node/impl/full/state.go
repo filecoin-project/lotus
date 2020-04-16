@@ -9,7 +9,6 @@ import (
 	cid "github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	"github.com/libp2p/go-libp2p-core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
@@ -72,28 +71,12 @@ func (a *StateAPI) StateMinerProvingSet(ctx context.Context, addr address.Addres
 	return stmgr.GetProvingSetRaw(ctx, a.StateManager, mas)
 }
 
-func (a *StateAPI) StateMinerWorker(ctx context.Context, m address.Address, tsk types.TipSetKey) (address.Address, error) {
+func (a *StateAPI) StateMinerInfo(ctx context.Context, actor address.Address, tsk types.TipSetKey) (miner.MinerInfo, error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
-		return address.Undef, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+		return miner.MinerInfo{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
-	return stmgr.GetMinerWorker(ctx, a.StateManager, ts, m)
-}
-
-func (a *StateAPI) StateMinerPeerID(ctx context.Context, m address.Address, tsk types.TipSetKey) (peer.ID, error) {
-	ts, err := a.Chain.GetTipSetFromKey(tsk)
-	if err != nil {
-		return "", xerrors.Errorf("loading tipset %s: %w", tsk, err)
-	}
-	return stmgr.GetMinerPeerID(ctx, a.StateManager, ts, m)
-}
-
-func (a *StateAPI) StateMinerSectorSize(ctx context.Context, actor address.Address, tsk types.TipSetKey) (abi.SectorSize, error) {
-	ts, err := a.Chain.GetTipSetFromKey(tsk)
-	if err != nil {
-		return 0, xerrors.Errorf("loading tipset %s: %w", tsk, err)
-	}
-	return stmgr.GetMinerSectorSize(ctx, a.StateManager, ts, actor)
+	return stmgr.StateMinerInfo(ctx, a.StateManager, ts, actor)
 }
 
 func (a *StateAPI) StateMinerDeadlines(ctx context.Context, m address.Address, tsk types.TipSetKey) (*miner.Deadlines, error) {

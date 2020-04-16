@@ -40,7 +40,12 @@ func (s SealingAPIAdapter) StateMinerSectorSize(ctx context.Context, maddr addre
 		return 0, xerrors.Errorf("failed to unmarshal TipSetToken to TipSetKey: %w", err)
 	}
 
-	return s.delegate.StateMinerSectorSize(ctx, maddr, tsk)
+	// TODO: update storage-fsm to just StateMinerInfo
+	mi, err := s.delegate.StateMinerInfo(ctx, maddr, tsk)
+	if err != nil {
+		return 0, err
+	}
+	return mi.SectorSize, nil
 }
 
 func (s SealingAPIAdapter) StateMinerWorkerAddress(ctx context.Context, maddr address.Address, tok sealing.TipSetToken) (address.Address, error) {
@@ -49,7 +54,12 @@ func (s SealingAPIAdapter) StateMinerWorkerAddress(ctx context.Context, maddr ad
 		return address.Undef, xerrors.Errorf("failed to unmarshal TipSetToken to TipSetKey: %w", err)
 	}
 
-	return s.delegate.StateMinerWorker(ctx, maddr, tsk)
+	// TODO: update storage-fsm to just StateMinerInfo
+	mi, err := s.delegate.StateMinerInfo(ctx, maddr, tsk)
+	if err != nil {
+		return address.Undef, err
+	}
+	return mi.Worker, nil
 }
 
 func (s SealingAPIAdapter) StateMinerDeadlines(ctx context.Context, maddr address.Address, tok sealing.TipSetToken) (*miner.Deadlines, error) {
