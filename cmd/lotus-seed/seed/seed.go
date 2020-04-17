@@ -133,7 +133,6 @@ func PreSeal(maddr address.Address, pt abi.RegisteredProof, offset abi.SectorNum
 		}
 	}
 
-
 	miner := &genesis.Miner{
 		Owner:         minerAddr.Address,
 		Worker:        minerAddr.Address,

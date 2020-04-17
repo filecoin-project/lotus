@@ -482,7 +482,6 @@ func (mp *MessagePool) PushWithNonce(ctx context.Context, addr address.Address, 
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
-
 	nonce, err := mp.getNonceLocked(addr, mp.curTs)
 	if err != nil {
 		return nil, xerrors.Errorf("get nonce locked failed: %w", err)

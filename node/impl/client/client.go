@@ -95,7 +95,7 @@ func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) 
 		return nil, xerrors.Errorf("failed getting chain height: %w", err)
 	}
 
-	exp := ts.Height()+dealStartBuffer+abi.ChainEpoch(params.MinBlocksDuration)
+	exp := ts.Height() + dealStartBuffer + abi.ChainEpoch(params.MinBlocksDuration)
 	exp += miner.WPoStProvingPeriod - (exp % miner.WPoStProvingPeriod) + mi.ProvingPeriodBoundary - 1
 
 	result, err := a.SMDealClient.ProposeStorageDeal(

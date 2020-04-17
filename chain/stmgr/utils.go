@@ -167,7 +167,7 @@ func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *S
 	}
 
 	// TODO: use the right dst, also NB: not using any 'entropy' in this call because nicola really didnt want it
-	rand, err := sm.cs.GetRandomness(ctx, ts.Cids(), crypto.DomainSeparationTag_ElectionPoStChallengeSeed, ts.Height() - 1, nil)
+	rand, err := sm.cs.GetRandomness(ctx, ts.Cids(), crypto.DomainSeparationTag_ElectionPoStChallengeSeed, ts.Height()-1, nil)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get randomness for winning post: %w", err)
 	}
