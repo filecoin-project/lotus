@@ -324,8 +324,6 @@ func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m add
 		return nil, nil, nil, xerrors.Errorf("compute VRF: %w", err)
 	}
 
-	// TODO winning post return?
-
 	return entries, eproof, &types.Ticket{VRFProof: vrfout}, nil
 }
 
@@ -502,7 +500,7 @@ func (mca mca) WalletSign(ctx context.Context, a address.Address, v []byte) (*cr
 
 type WinningPoStProver interface {
 	GenerateCandidates(context.Context, abi.PoStRandomness, uint64) ([]uint64, error)
-	ComputeProof(context.Context, []abi.SectorInfo, []byte) ([]abi.PoStProof, error)
+	ComputeProof(context.Context, []abi.SectorInfo, abi.PoStRandomness) ([]abi.PoStProof, error)
 }
 
 type wppProvider struct{}
@@ -511,7 +509,7 @@ func (wpp *wppProvider) GenerateCandidates(ctx context.Context, _ abi.PoStRandom
 	return []uint64{0}, nil
 }
 
-func (wpp *wppProvider) ComputeProof(context.Context, []abi.SectorInfo, []byte) ([]abi.PoStProof, error) {
+func (wpp *wppProvider) ComputeProof(context.Context, []abi.SectorInfo, abi.PoStRandomness) ([]abi.PoStProof, error) {
 	return []abi.PoStProof{{
 		ProofBytes: []byte("valid proof"),
 	}}, nil

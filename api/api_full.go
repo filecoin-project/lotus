@@ -386,12 +386,13 @@ type MiningBaseInfo struct {
 }
 
 type BlockTemplate struct {
-	Miner        address.Address
-	Parents      types.TipSetKey
-	Ticket       *types.Ticket
-	Eproof       *types.ElectionProof
-	BeaconValues []types.BeaconEntry
-	Messages     []*types.SignedMessage
-	Epoch        abi.ChainEpoch
-	Timestamp    uint64
+	Miner            address.Address
+	Parents          types.TipSetKey
+	Ticket           *types.Ticket
+	Eproof           *types.ElectionProof
+	BeaconValues     []types.BeaconEntry
+	Messages         []*types.SignedMessage
+	Epoch            abi.ChainEpoch
+	Timestamp        uint64
+	WinningPoStProof []abi.PoStProof
 }
