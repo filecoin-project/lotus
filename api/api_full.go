@@ -71,7 +71,7 @@ type FullNode interface {
 
 	// miner
 
-	MinerGetBaseInfo(context.Context, address.Address, types.TipSetKey) (*MiningBaseInfo, error)
+	MinerGetBaseInfo(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*MiningBaseInfo, error)
 	MinerCreateBlock(context.Context, *BlockTemplate) (*types.BlockMsg, error)
 
 	// // UX ?
@@ -382,7 +382,7 @@ type ComputeStateOutput struct {
 type MiningBaseInfo struct {
 	MinerPower      types.BigInt
 	NetworkPower    types.BigInt
-	Sectors         []*ChainSectorInfo
+	Sectors         []abi.SectorInfo
 	WorkerKey       address.Address
 	SectorSize      abi.SectorSize
 	PrevBeaconEntry types.BeaconEntry

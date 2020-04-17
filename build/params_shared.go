@@ -71,6 +71,8 @@ const MaxSealLookback = SealRandomnessLookbackLimit + 2000 // TODO: Get from spe
 // Epochs
 const TicketRandomnessLookback = 1
 
+const WinningPoStSectorSetLookback = 10
+
 // /////
 // Devnet settings
 
