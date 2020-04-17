@@ -613,9 +613,13 @@ func (m genFakeVerifier) VerifySeal(svi abi.SealVerifyInfo) (bool, error) {
 }
 
 func (m genFakeVerifier) VerifyWinningPoSt(ctx context.Context, info abi.WinningPoStVerifyInfo) (bool, error) {
-	panic("implement me")
+	panic("not supported")
 }
 
 func (m genFakeVerifier) VerifyWindowPoSt(ctx context.Context, info abi.WindowPoStVerifyInfo) (bool, error) {
-	panic("implement me")
+	panic("not supported")
+}
+
+func (m genFakeVerifier) GenerateWinningPoStSectorChallenge(ctx context.Context, proof abi.RegisteredProof, id abi.ActorID, randomness abi.PoStRandomness, u uint64) ([]uint64, error) {
+	panic("not supported")
 }

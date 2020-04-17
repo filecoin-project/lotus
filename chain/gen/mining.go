@@ -45,7 +45,7 @@ func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wal
 		BeaconEntries: bt.BeaconValues,
 		Height:        bt.Epoch,
 		Timestamp:     bt.Timestamp,
-		//EPostProof:            *proof,
+		WinPoStProof:  bt.WinningPoStProof,
 		ParentStateRoot:       st,
 		ParentMessageReceipts: recpts,
 	}

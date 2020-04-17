@@ -174,6 +174,8 @@ github.com/filecoin-project/go-statestore v0.1.0/go.mod h1:LFc9hD+fRxPqiHiaqUEZO
 github.com/filecoin-project/lotus v0.2.10/go.mod h1:om5PQA9ZT0lf16qI7Fz/ZGLn4LDCMqPC8ntZA9uncRE=
 github.com/filecoin-project/sector-storage v0.0.0-20200411000242-61616264b16d h1:vD83B+dP/YCTVvsnk76auROLjurEOl/VLseRKbmoFYI=
 github.com/filecoin-project/sector-storage v0.0.0-20200411000242-61616264b16d/go.mod h1:/yueJueMh0Yc+0G1adS0lhnedcSnjY86EjKsA20+DVY=
+github.com/filecoin-project/sector-storage v0.0.0-20200417140021-6850784b1efe h1:KQew4OOuIoBjKOa5gG3reS7QQBrCnQbXlcV/+5cHWTk=
+github.com/filecoin-project/sector-storage v0.0.0-20200417140021-6850784b1efe/go.mod h1:m5wM3aqbgDcg+mT2EW0Urv7t/sCok9TmvQqtb7Sf738=
 github.com/filecoin-project/specs-actors v0.0.0-20200210130641-2d1fbd8672cf/go.mod h1:xtDZUB6pe4Pksa/bAJbJ693OilaC5Wbot9jMhLm3cZA=
 github.com/filecoin-project/specs-actors v0.0.0-20200324235424-aef9b20a9fb1 h1:IL6A1yAamz0HtLQEdZS57hnRZHPL11VIrQxMZ1Nn5hI=
 github.com/filecoin-project/specs-actors v0.0.0-20200324235424-aef9b20a9fb1/go.mod h1:5WngRgTN5Eo4+0SjCBqLzEr2l6Mj45DrP2606gBhqI0=
@@ -194,6 +196,8 @@ github.com/filecoin-project/specs-actors v0.0.0-20200416213853-1bd9b52a4621 h1:c
 github.com/filecoin-project/specs-actors v0.0.0-20200416213853-1bd9b52a4621/go.mod h1:qNIpwxs7WCtxbcbG4ZiS+Wf3qn36eyfqktlXJhi46X4=
 github.com/filecoin-project/specs-storage v0.0.0-20200410185809-9fbaaa08f275 h1:6OTcpsTQBQM0f/A67oEi4E4YtYd6fzkMqbU8cPIWMMs=
 github.com/filecoin-project/specs-storage v0.0.0-20200410185809-9fbaaa08f275/go.mod h1:xJ1/xl9+8zZeSSSFmDC3Wr6uusCTxyYPI0VeNVSFmPE=
+github.com/filecoin-project/specs-storage v0.0.0-20200417134612-61b2d91a6102 h1:T3f/zkuvgtgqcXrb0NO3BicuveGOxxUAMPa/Yif2kuE=
+github.com/filecoin-project/specs-storage v0.0.0-20200417134612-61b2d91a6102/go.mod h1:xJ1/xl9+8zZeSSSFmDC3Wr6uusCTxyYPI0VeNVSFmPE=
 github.com/filecoin-project/storage-fsm v0.0.0-20200413200947-069c3b2468ca h1:TejufIAWDpEVqFUCszDpgOEzXBWuTVltsDQL/3F8Jxo=
 github.com/filecoin-project/storage-fsm v0.0.0-20200413200947-069c3b2468ca/go.mod h1:jbcbdJW0RogwlQ+dCpgIgC8HIVq6x/aXn31/RGOHvN0=
 github.com/filecoin-project/storage-fsm v0.0.0-20200415180041-afc45d4b6e8b h1:YQrc/AZsHiNQFfSVjFwTkuNa+8m4wj6xzeGPoQ3Uwro=

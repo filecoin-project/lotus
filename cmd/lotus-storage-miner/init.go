@@ -442,7 +442,7 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 			if err != nil {
 				return err
 			}
-			epp, err := storage.NewWinningPoStProver(api, smgr, dtypes.MinerID(mid))
+			epp, err := storage.NewWinningPoStProver(api, smgr, ffiwrapper.ProofVerifier, dtypes.MinerID(mid))
 			if err != nil {
 				return err
 			}

@@ -79,9 +79,11 @@ type Syncer struct {
 	incoming *pubsub.PubSub
 
 	receiptTracker *blockReceiptTracker
+
+	verifier ffiwrapper.Verifier
 }
 
-func NewSyncer(sm *stmgr.StateManager, bsync *blocksync.BlockSync, connmgr connmgr.ConnManager, self peer.ID, beacon beacon.RandomBeacon) (*Syncer, error) {
+func NewSyncer(sm *stmgr.StateManager, bsync *blocksync.BlockSync, connmgr connmgr.ConnManager, self peer.ID, beacon beacon.RandomBeacon, verifier ffiwrapper.Verifier) (*Syncer, error) {
 	gen, err := sm.ChainStore().GetGenesis()
 	if err != nil {
 		return nil, err
@@ -102,6 +104,7 @@ func NewSyncer(sm *stmgr.StateManager, bsync *blocksync.BlockSync, connmgr connm
 		self:           self,
 		receiptTracker: newBlockReceiptTracker(),
 		connmgr:        connmgr,
+		verifier:       verifier,
 
 		incoming: pubsub.New(50),
 	}
@@ -710,13 +713,13 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 func (syncer *Syncer) VerifyWinningPoStProof(ctx context.Context, h *types.BlockHeader, waddr address.Address) error {
 	if build.InsecurePoStValidation {
 		if len(h.WinPoStProof) == 0 {
-			return xerrors.Errorf("[TESTING] No election post proof given")
+			return xerrors.Errorf("[TESTING] No winning post proof given")
 		}
 
 		if string(h.WinPoStProof[0].ProofBytes) == "valid proof" {
 			return nil
 		}
-		return xerrors.Errorf("[TESTING] election post was invalid")
+		return xerrors.Errorf("[TESTING] winning post was invalid")
 	}
 
 	curTs, err := types.NewTipSet([]*types.BlockHeader{h})
@@ -727,7 +730,7 @@ func (syncer *Syncer) VerifyWinningPoStProof(ctx context.Context, h *types.Block
 	// TODO: use proper DST
 	rand, err := syncer.sm.ChainStore().GetRandomness(ctx, curTs.Cids(), crypto.DomainSeparationTag_ElectionPoStChallengeSeed, h.Height-1, nil)
 	if err != nil {
-		return xerrors.Errorf("failed to get randomness for verifying election proof: %w", err)
+		return xerrors.Errorf("failed to get randomness for verifying winningPost proof: %w", err)
 	}
 
 	mid, err := address.IDFromAddress(h.Miner)
@@ -735,20 +738,15 @@ func (syncer *Syncer) VerifyWinningPoStProof(ctx context.Context, h *types.Block
 		return xerrors.Errorf("failed to get ID from miner address %s: %w", h.Miner, err)
 	}
 
-	sectors, err := stmgr.GetSectorsForWinningPoSt(ctx, syncer.sm, curTs, h.Miner)
+	sectors, err := stmgr.GetSectorsForWinningPoSt(ctx, syncer.verifier, syncer.sm, curTs, h.Miner)
 	if err != nil {
-		return xerrors.Errorf("getting election post sector set: %w", err)
+		return xerrors.Errorf("getting winning post sector set: %w", err)
 	}
-
-	panic("NEED TO GET CHALLENGE epp.GenerateWinningPoStSectorChallenge")
-	challenge := 0
-
-	sector := sectors[challenge]
 
 	ok, err := ffiwrapper.ProofVerifier.VerifyWinningPoSt(ctx, abi.WinningPoStVerifyInfo{
 		Randomness:        rand,
 		Proofs:            h.WinPoStProof,
-		ChallengedSectors: []abi.SectorInfo{sector.Info.AsSectorInfo()},
+		ChallengedSectors: sectors,
 		Prover:            abi.ActorID(mid),
 	})
 	if err != nil {
@@ -756,8 +754,8 @@ func (syncer *Syncer) VerifyWinningPoStProof(ctx context.Context, h *types.Block
 	}
 
 	if !ok {
-		log.Errorf("invalid election post (%x; %v)", rand, challenge)
-		return xerrors.Errorf("election post was invalid")
+		log.Errorf("invalid winning post (%x; %v)", rand, sectors)
+		return xerrors.Errorf("winning post was invalid")
 	}
 
 	return nil
