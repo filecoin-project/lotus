@@ -1,4 +1,5 @@
 // +build !debug
+// +build !2k
 
 package build
 
