@@ -629,8 +629,6 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 			return xerrors.Errorf("miner created a block but was not a winner")
 		}
 
-		log.Warn("TODO: validate winning post proof") // TODO: validate winning post proof
-
 		return nil
 	})
 
