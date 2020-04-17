@@ -2,8 +2,8 @@ package stmgr
 
 import (
 	"context"
-
 	amt "github.com/filecoin-project/go-amt-ipld/v2"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/go-address"
@@ -130,8 +131,55 @@ func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, 
 	return LoadSectorsFromSet(ctx, sm.ChainStore().Blockstore(), mas.Sectors, filter)
 }
 
-func GetSectorsForWinningPoSt(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) ([]*api.ChainSectorInfo, error) {
-	panic("TODO")
+func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *StateManager, ts *types.TipSet, maddr address.Address) ([]abi.SectorInfo, error) {
+	var mas miner.State
+	_, err := sm.LoadActorStateRaw(ctx, maddr, &mas, ts.ParentState())
+	if err != nil {
+		return nil, xerrors.Errorf("(get ssize) failed to load miner actor state: %w", err)
+	}
+
+	// TODO: Optimization: we could avoid loaditg the whole proving set here if we had AMT.GetNth with bitfield filtering
+	sectorSet, err := GetProvingSetRaw(ctx, sm, mas)
+	if err != nil {
+		return nil, xerrors.Errorf("getting proving set: %w", err)
+	}
+
+	spt, err := ffiwrapper.SealProofTypeFromSectorSize(mas.Info.SectorSize)
+	if err != nil {
+		return nil, xerrors.Errorf("getting seal proof type: %w", err)
+	}
+
+	wpt, err := spt.RegisteredWinningPoStProof()
+	if err != nil {
+		return nil, xerrors.Errorf("getting window proof type: %w", err)
+	}
+
+	mid, err := address.IDFromAddress(maddr)
+	if err != nil {
+		return nil, xerrors.Errorf("getting miner ID: %w", err)
+	}
+
+	// TODO: use the right dst, also NB: not using any 'entropy' in this call because nicola really didnt want it
+	rand, err := sm.cs.GetRandomness(ctx, ts.Cids(), crypto.DomainSeparationTag_ElectionPoStChallengeSeed, ts.Height() - 1, nil)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get randomness for winning post: %w", err)
+	}
+
+	ids, err := pv.GenerateWinningPoStSectorChallenge(ctx, wpt, abi.ActorID(mid), rand, uint64(len(sectorSet)))
+	if err != nil {
+		return nil, xerrors.Errorf("generating winning post challenges: %w", err)
+	}
+
+	out := make([]abi.SectorInfo, len(ids))
+	for i, n := range ids {
+		out[i] = abi.SectorInfo{
+			RegisteredProof: wpt,
+			SectorNumber:    sectorSet[n].ID,
+			SealedCID:       sectorSet[n].Info.Info.SealedCID,
+		}
+	}
+
+	return out, nil
 }
 
 func StateMinerInfo(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (miner.MinerInfo, error) {

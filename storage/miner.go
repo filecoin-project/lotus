@@ -127,11 +127,12 @@ func (m *Miner) runPreflightChecks(ctx context.Context) error {
 
 type StorageWpp struct {
 	prover  storage.Prover
+	verifier ffiwrapper.Verifier
 	miner   abi.ActorID
 	winnRpt abi.RegisteredProof
 }
 
-func NewWinningPoStProver(api api.FullNode, sb storage.Prover, miner dtypes.MinerID) (*StorageWpp, error) {
+func NewWinningPoStProver(api api.FullNode, prover storage.Prover, verifier ffiwrapper.Verifier, miner dtypes.MinerID) (*StorageWpp, error) {
 	ma, err := address.NewIDAddress(uint64(miner))
 	if err != nil {
 		return nil, err
@@ -152,7 +153,7 @@ func NewWinningPoStProver(api api.FullNode, sb storage.Prover, miner dtypes.Mine
 		return nil, err
 	}
 
-	return &StorageWpp{sb, abi.ActorID(miner), wpt}, nil
+	return &StorageWpp{prover,verifier,abi.ActorID(miner), wpt}, nil
 }
 
 var _ gen.WinningPoStProver = (*StorageWpp)(nil)
@@ -160,7 +161,7 @@ var _ gen.WinningPoStProver = (*StorageWpp)(nil)
 func (wpp *StorageWpp) GenerateCandidates(ctx context.Context, randomness abi.PoStRandomness, eligibleSectorCount uint64) ([]uint64, error) {
 	start := time.Now()
 
-	cds, err := wpp.prover.GenerateWinningPoStSectorChallenge(ctx, wpp.winnRpt, wpp.miner, randomness, eligibleSectorCount)
+	cds, err := wpp.verifier.GenerateWinningPoStSectorChallenge(ctx, wpp.winnRpt, wpp.miner, randomness, eligibleSectorCount)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to generate candidates: %w", err)
 	}

@@ -24,9 +24,9 @@ require (
 	github.com/filecoin-project/go-padreader v0.0.0-20200210211231-548257017ca6
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200218225740-47c639bab663
 	github.com/filecoin-project/go-statestore v0.1.0
-	github.com/filecoin-project/sector-storage v0.0.0-20200411000242-61616264b16d
+	github.com/filecoin-project/sector-storage v0.0.0-20200417140021-6850784b1efe
 	github.com/filecoin-project/specs-actors v0.0.0-20200416213853-1bd9b52a4621
-	github.com/filecoin-project/specs-storage v0.0.0-20200410185809-9fbaaa08f275
+	github.com/filecoin-project/specs-storage v0.0.0-20200417134612-61b2d91a6102
 	github.com/filecoin-project/storage-fsm v0.0.0-20200415180041-afc45d4b6e8b
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/google/uuid v1.1.1
