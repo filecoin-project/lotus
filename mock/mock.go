@@ -183,7 +183,7 @@ func (mgr *SectorMgr) SealPreCommit2(ctx context.Context, sid abi.SectorID, phas
 		commr[32-(i+1)] = db[i]
 	}
 
-	commR := commcid.DataCommitmentV1ToCID(commr)
+	commR := commcid.ReplicaCommitmentV1ToCID(commr)
 
 	return storage.SectorCids{
 		Unsealed: d,
@@ -327,7 +327,7 @@ func (m mockVerif) GenerateDataCommitment(pt abi.RegisteredProof, pieces []abi.P
 }
 
 func (m mockVerif) GenerateWinningPoStSectorChallenge(ctx context.Context, proofType abi.RegisteredProof, minerID abi.ActorID, randomness abi.PoStRandomness, eligibleSectorCount uint64) ([]uint64, error) {
-	panic("implement me")
+	return []uint64{0}, nil
 }
 
 var MockVerifier = mockVerif{}
