@@ -276,7 +276,7 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 				log.Error(err)
 				// Not sure why this would fail, but its probably worth continuing
 			}
-			info.power = pow.MinerPower
+			info.power = pow.MinerPower.QualityAdjPower
 
 			sszs, err := api.StateMinerSectorCount(ctx, k.addr, types.EmptyTSK)
 			if err != nil {

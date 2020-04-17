@@ -164,7 +164,7 @@ func RecordTipsetStatePoints(ctx context.Context, api api.FullNode, pl *PointLis
 		return err
 	}
 
-	p = NewPoint("chain.power", power.TotalPower.Int64())
+	p = NewPoint("chain.power", power.TotalPower.QualityAdjPower.Int64())
 	pl.AddPoint(p)
 
 	miners, err := api.StateListMiners(ctx, tipset.Key())
@@ -174,7 +174,7 @@ func RecordTipsetStatePoints(ctx context.Context, api api.FullNode, pl *PointLis
 			return err
 		}
 
-		p = NewPoint("chain.miner_power", power.MinerPower.Int64())
+		p = NewPoint("chain.miner_power", power.MinerPower.QualityAdjPower.Int64())
 		p.AddTag("miner", miner.String())
 		pl.AddPoint(p)
 	}
