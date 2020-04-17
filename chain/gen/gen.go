@@ -277,9 +277,9 @@ func CarWalkFunc(nd format.Node) (out []*format.Link, err error) {
 }
 
 func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m address.Address, round abi.ChainEpoch) ([]types.BeaconEntry, *types.ElectionProof, *types.Ticket, error) {
-	mc := &mca{w: cg.w, sm: cg.sm}
+	mc := &mca{w: cg.w, sm: cg.sm, pv: ffiwrapper.ProofVerifier}
 
-	mbi, err := mc.MinerGetBaseInfo(ctx, m, pts.Key())
+	mbi, err := mc.MinerGetBaseInfo(ctx, m, round, pts.Key())
 	if err != nil {
 		return nil, nil, nil, xerrors.Errorf("get miner base info: %w", err)
 	}
@@ -476,7 +476,7 @@ func (cg *ChainGen) YieldRepo() (repo.Repo, error) {
 type MiningCheckAPI interface {
 	ChainGetRandomness(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
 
-	MinerGetBaseInfo(context.Context, address.Address, types.TipSetKey) (*api.MiningBaseInfo, error)
+	MinerGetBaseInfo(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*api.MiningBaseInfo, error)
 
 	WalletSign(context.Context, address.Address, []byte) (*crypto.Signature, error)
 }
@@ -484,6 +484,7 @@ type MiningCheckAPI interface {
 type mca struct {
 	w  *wallet.Wallet
 	sm *stmgr.StateManager
+	pv ffiwrapper.Verifier
 }
 
 func (mca mca) ChainGetRandomness(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
@@ -495,8 +496,8 @@ func (mca mca) ChainGetRandomness(ctx context.Context, tsk types.TipSetKey, pers
 	return mca.sm.ChainStore().GetRandomness(ctx, pts.Cids(), personalization, randEpoch, entropy)
 }
 
-func (mca mca) MinerGetBaseInfo(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (*api.MiningBaseInfo, error) {
-	return stmgr.MinerGetBaseInfo(ctx, mca.sm, tsk, maddr)
+func (mca mca) MinerGetBaseInfo(ctx context.Context, maddr address.Address, epoch abi.ChainEpoch, tsk types.TipSetKey) (*api.MiningBaseInfo, error) {
+	return stmgr.MinerGetBaseInfo(ctx, mca.sm, tsk, epoch, maddr, mca.pv)
 }
 
 func (mca mca) WalletSign(ctx context.Context, a address.Address, v []byte) (*crypto.Signature, error) {
