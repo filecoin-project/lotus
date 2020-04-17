@@ -27,10 +27,6 @@ func (mb *mockBeacon) RoundTime() time.Duration {
 	return mb.interval
 }
 
-func (mb *mockBeacon) LastEntry() (types.BeaconEntry, error) {
-	panic("NYI")
-}
-
 func (mb *mockBeacon) entryForIndex(index uint64) types.BeaconEntry {
 	buf := make([]byte, 8)
 	binary.BigEndian.PutUint64(buf, index)
