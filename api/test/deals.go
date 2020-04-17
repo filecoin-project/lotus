@@ -107,7 +107,7 @@ loop:
 		case storagemarket.StorageDealFailing:
 			t.Fatal("deal failed")
 		case storagemarket.StorageDealError:
-			t.Fatal("deal errored")
+			t.Fatal("deal errored", di.Message)
 		case storagemarket.StorageDealActive:
 			fmt.Println("COMPLETE", di)
 			break loop
