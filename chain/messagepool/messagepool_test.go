@@ -1,6 +1,7 @@
 package messagepool
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -72,6 +73,13 @@ func (tma *testMpoolApi) StateGetActor(addr address.Address, ts *types.TipSet) (
 		Nonce:   tma.statenonce[addr],
 		Balance: types.NewInt(90000000),
 	}, nil
+}
+
+func (tma *testMpoolApi) StateAccountKey(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
+	if addr.Protocol() != address.BLS && addr.Protocol() != address.SECP256K1 {
+		return address.Undef, fmt.Errorf("given address was not a key addr")
+	}
+	return addr, nil
 }
 
 func (tma *testMpoolApi) MessagesForBlock(h *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error) {

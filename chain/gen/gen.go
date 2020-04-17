@@ -358,9 +358,13 @@ func (cg *ChainGen) NextTipSetFromMiners(base *types.TipSet, miners []address.Ad
 			}
 
 			if et != nil {
-				// TODO: winning post proof
-				_ = ticket
-				fblk, err := cg.makeBlock(base, m, ticket, et, bvals, round, msgs)
+				// TODO: maybe think about passing in more real parameters to this?
+				wpost, err := cg.eppProvs[m].ComputeProof(context.TODO(), nil, nil)
+				if err != nil {
+					return nil, err
+				}
+
+				fblk, err := cg.makeBlock(base, m, ticket, et, bvals, round, wpost, msgs)
 				if err != nil {
 					return nil, xerrors.Errorf("making a block for next tipset failed: %w", err)
 				}
@@ -384,7 +388,7 @@ func (cg *ChainGen) NextTipSetFromMiners(base *types.TipSet, miners []address.Ad
 
 func (cg *ChainGen) makeBlock(parents *types.TipSet, m address.Address, vrfticket *types.Ticket,
 	eticket *types.ElectionProof, bvals []types.BeaconEntry, height abi.ChainEpoch,
-	msgs []*types.SignedMessage) (*types.FullBlock, error) {
+	wpost []abi.PoStProof, msgs []*types.SignedMessage) (*types.FullBlock, error) {
 
 	var ts uint64
 	if cg.Timestamper != nil {
@@ -394,14 +398,15 @@ func (cg *ChainGen) makeBlock(parents *types.TipSet, m address.Address, vrfticke
 	}
 
 	fblk, err := MinerCreateBlock(context.TODO(), cg.sm, cg.w, &api.BlockTemplate{
-		Miner:        m,
-		Parents:      parents.Key(),
-		Ticket:       vrfticket,
-		Eproof:       eticket,
-		BeaconValues: bvals,
-		Messages:     msgs,
-		Epoch:        height,
-		Timestamp:    ts,
+		Miner:            m,
+		Parents:          parents.Key(),
+		Ticket:           vrfticket,
+		Eproof:           eticket,
+		BeaconValues:     bvals,
+		Messages:         msgs,
+		Epoch:            height,
+		Timestamp:        ts,
+		WinningPoStProof: wpost,
 	})
 	if err != nil {
 		return nil, err
