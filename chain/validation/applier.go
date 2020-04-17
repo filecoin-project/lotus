@@ -120,7 +120,7 @@ func (a *Applier) applyMessage(eCtx *vtypes.ExecutionContext, state vstate.VMWra
 
 	base := st.Root()
 	randSrc := &vmRand{eCtx}
-	lotusVM, err := vm.NewVM(base, eCtx.Epoch, randSrc, eCtx.Miner, st.bs, vdrivers.NewChainValidationSyscalls())
+	lotusVM, err := vm.NewVM(base, eCtx.Epoch, randSrc, st.bs, vdrivers.NewChainValidationSyscalls())
 	if err != nil {
 		return vtypes.MessageReceipt{}, big.Zero(), big.Zero(), err
 	}

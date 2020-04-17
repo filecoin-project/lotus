@@ -3,6 +3,11 @@ package client
 import (
 	"context"
 	"errors"
+	"github.com/filecoin-project/go-fil-markets/pieceio"
+	ipldfree "github.com/ipld/go-ipld-prime/impl/free"
+	"github.com/ipld/go-ipld-prime/traversal/selector"
+	"github.com/ipld/go-ipld-prime/traversal/selector/builder"
+
 	"io"
 	"os"
 
@@ -80,7 +85,11 @@ func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) 
 		return nil, xerrors.Errorf("bad sector size: %w", err)
 	}
 
-	providerInfo := utils.NewStorageProviderInfo(params.Miner, mi.Worker, 0, mi.PeerId)
+	if uint64(params.Data.PieceSize.Padded()) > uint64(mi.SectorSize) {
+		return nil, xerrors.New("data doesn't fit in a sector")
+	}
+
+	providerInfo := utils.NewStorageProviderInfo(params.Miner, mi.Worker, mi.SectorSize, mi.PeerId)
 	ts, err := a.ChainHead(ctx)
 	if err != nil {
 		return nil, xerrors.Errorf("failed getting chain height: %w", err)
@@ -195,63 +204,15 @@ func (a *API) ClientFindData(ctx context.Context, root cid.Cid) ([]api.QueryOffe
 }
 
 func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (cid.Cid, error) {
-	f, err := os.Open(ref.Path)
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	stat, err := f.Stat()
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	file, err := files.NewReaderPathFile(ref.Path, f, stat)
-	if err != nil {
-		return cid.Undef, err
-	}
-	if ref.IsCAR {
-		var store car.Store
-		if a.Filestore == nil {
-			store = a.Blockstore
-		} else {
-			store = (*filestore.Filestore)(a.Filestore)
-		}
-		result, err := car.LoadCar(store, file)
-		if err != nil {
-			return cid.Undef, err
-		}
-
-		if len(result.Roots) != 1 {
-			return cid.Undef, xerrors.New("cannot import car with more than one root")
-		}
-
-		return result.Roots[0], nil
-	}
 
 	bufferedDS := ipld.NewBufferedDAG(ctx, a.LocalDAG)
+	nd, err := a.clientImport(ref, bufferedDS)
 
-	params := ihelper.DagBuilderParams{
-		Maxlinks:   build.UnixfsLinksPerLevel,
-		RawLeaves:  true,
-		CidBuilder: nil,
-		Dagserv:    bufferedDS,
-		NoCopy:     true,
-	}
-
-	db, err := params.New(chunker.NewSizeSplitter(file, int64(build.UnixfsChunkSize)))
-	if err != nil {
-		return cid.Undef, err
-	}
-	nd, err := balanced.Layout(db)
 	if err != nil {
 		return cid.Undef, err
 	}
 
-	if err := bufferedDS.Commit(); err != nil {
-		return cid.Undef, err
-	}
-
-	return nd.Cid(), nil
+	return nd, nil
 }
 
 func (a *API) ClientImportLocal(ctx context.Context, f io.Reader) (cid.Cid, error) {
@@ -402,4 +363,126 @@ func (a *API) ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Addre
 		return nil, err
 	}
 	return signedAsk, nil
+}
+
+func (a *API) ClientCalcCommP(ctx context.Context, inpath string, miner address.Address) (*api.CommPRet, error) {
+	mi, err := a.StateMinerInfo(ctx, miner, types.EmptyTSK)
+	if err != nil {
+		return nil, xerrors.Errorf("failed checking miners sector size: %w", err)
+	}
+
+	rt, err := ffiwrapper.SealProofTypeFromSectorSize(mi.SectorSize)
+	if err != nil {
+		return nil, xerrors.Errorf("bad sector size: %w", err)
+	}
+
+	rdr, err := os.Open(inpath)
+	if err != nil {
+		return nil, err
+	}
+
+	stat, err := rdr.Stat()
+	if err != nil {
+		return nil, err
+	}
+
+	commP, pieceSize, err := pieceio.GeneratePieceCommitment(rt, rdr, uint64(stat.Size()))
+
+	if err != nil {
+		return nil, xerrors.Errorf("computing commP failed: %w", err)
+	}
+
+	return &api.CommPRet{
+		Root: commP,
+		Size: pieceSize,
+	}, nil
+}
+
+func (a *API) ClientGenCar(ctx context.Context, ref api.FileRef, outputPath string) error {
+
+	bufferedDS := ipld.NewBufferedDAG(ctx, a.LocalDAG)
+	c, err := a.clientImport(ref, bufferedDS)
+
+	if err != nil {
+		return err
+	}
+
+	defer bufferedDS.Remove(ctx, c)
+	ssb := builder.NewSelectorSpecBuilder(ipldfree.NodeBuilder())
+
+	// entire DAG selector
+	allSelector := ssb.ExploreRecursive(selector.RecursionLimitNone(),
+		ssb.ExploreAll(ssb.ExploreRecursiveEdge())).Node()
+
+	f, err := os.Create(outputPath)
+	defer f.Close()
+	if err != nil {
+		return err
+	}
+
+	sc := car.NewSelectiveCar(ctx, a.Blockstore, []car.Dag{{Root: c, Selector: allSelector}})
+	if err = sc.Write(f); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (a *API) clientImport(ref api.FileRef, bufferedDS *ipld.BufferedDAG) (cid.Cid, error) {
+	f, err := os.Open(ref.Path)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	stat, err := f.Stat()
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	file, err := files.NewReaderPathFile(ref.Path, f, stat)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	if ref.IsCAR {
+		var store car.Store
+		if a.Filestore == nil {
+			store = a.Blockstore
+		} else {
+			store = (*filestore.Filestore)(a.Filestore)
+		}
+		result, err := car.LoadCar(store, file)
+		if err != nil {
+			return cid.Undef, err
+		}
+
+		if len(result.Roots) != 1 {
+			return cid.Undef, xerrors.New("cannot import car with more than one root")
+		}
+
+		return result.Roots[0], nil
+	}
+
+	params := ihelper.DagBuilderParams{
+		Maxlinks:   build.UnixfsLinksPerLevel,
+		RawLeaves:  true,
+		CidBuilder: nil,
+		Dagserv:    bufferedDS,
+		NoCopy:     true,
+	}
+
+	db, err := params.New(chunker.NewSizeSplitter(file, int64(build.UnixfsChunkSize)))
+	if err != nil {
+		return cid.Undef, err
+	}
+	nd, err := balanced.Layout(db)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	if err := bufferedDS.Commit(); err != nil {
+		return cid.Undef, err
+	}
+
+	return nd.Cid(), nil
 }
