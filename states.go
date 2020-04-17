@@ -290,12 +290,40 @@ func (m *Sealing) handleFaulty(ctx statemachine.Context, sector SectorInfo) erro
 	// TODO: check if the fault has already been reported, and that this sector is even valid
 
 	// TODO: coalesce faulty sector reporting
+
+	// TODO: ReportFaultFailed
 	bf := abi.NewBitField()
 	bf.Set(uint64(sector.SectorNumber))
 
-	params := &miner.DeclareTemporaryFaultsParams{
-		SectorNumbers: bf,
-		Duration:      99999999, // TODO: This is very unlikely to be the correct number
+	deadlines, err := m.api.StateMinerDeadlines(ctx.Context(), m.maddr, nil)
+	if err != nil {
+		log.Errorf("handleFaulty: api error, not proceeding: %+v", err)
+		return nil
+	}
+
+	deadline := -1
+	for d, field := range deadlines.Due {
+		set, err := field.IsSet(uint64(sector.SectorNumber))
+		if err != nil {
+			return err
+		}
+		if set {
+			deadline = d
+			break
+		}
+	}
+	if deadline == -1 {
+		log.Errorf("handleFaulty: deadline not found")
+		return nil
+	}
+
+	params := &miner.DeclareFaultsParams{
+		Faults: []miner.FaultDeclaration{
+			{
+				Deadline: uint64(deadline),
+				Sectors:  bf,
+			},
+		},
 	}
 
 	enc := new(bytes.Buffer)
@@ -315,7 +343,7 @@ func (m *Sealing) handleFaulty(ctx statemachine.Context, sector SectorInfo) erro
 		return nil
 	}
 
-	mcid, err := m.api.SendMsg(ctx.Context(), waddr, m.maddr, builtin.MethodsMiner.DeclareTemporaryFaults, big.NewInt(0), big.NewInt(1), 1000000, enc.Bytes())
+	mcid, err := m.api.SendMsg(ctx.Context(), waddr, m.maddr, builtin.MethodsMiner.DeclareFaults, big.NewInt(0), big.NewInt(1), 1000000, enc.Bytes())
 	if err != nil {
 		return xerrors.Errorf("failed to push declare faults message to network: %w", err)
 	}

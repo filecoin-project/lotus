@@ -4,13 +4,14 @@ go 1.13
 
 require (
 	github.com/filecoin-project/go-address v0.0.2-0.20200218010043-eb9bb40ed5be
+	github.com/filecoin-project/go-bitfield v0.0.0-20200415174627-536a2ee8529d // indirect
 	github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2
 	github.com/filecoin-project/go-fil-commcid v0.0.0-20200208005934-2b8bd03caca5
 	github.com/filecoin-project/go-padreader v0.0.0-20200210211231-548257017ca6
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200218225740-47c639bab663 // indirect
 	github.com/filecoin-project/go-statemachine v0.0.0-20200226041606-2074af6d51d9
 	github.com/filecoin-project/sector-storage v0.0.0-20200411000242-61616264b16d
-	github.com/filecoin-project/specs-actors v0.0.0-20200409043918-e569f4a2f504
+	github.com/filecoin-project/specs-actors v0.0.0-20200415170224-54c7b2a42e71
 	github.com/filecoin-project/specs-storage v0.0.0-20200410185809-9fbaaa08f275
 	github.com/ipfs/go-cid v0.0.5
 	github.com/ipfs/go-datastore v0.4.4
@@ -19,7 +20,7 @@ require (
 	github.com/ipfs/go-log/v2 v2.0.3
 	github.com/libp2p/go-libp2p-core v0.5.0 // indirect
 	github.com/stretchr/testify v1.4.0
-	github.com/whyrusleeping/cbor-gen v0.0.0-20200321164527-9340289d0ca7
+	github.com/whyrusleeping/cbor-gen v0.0.0-20200414195334-429a0b5e922e
 	go.uber.org/zap v1.14.1 // indirect
 	golang.org/x/crypto v0.0.0-20200317142112-1b76d66859c6 // indirect
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
