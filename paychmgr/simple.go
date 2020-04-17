@@ -74,6 +74,8 @@ func (pm *Manager) waitForPaychCreateMsg(ctx context.Context, mcid cid.Cid) (add
 	if err := pm.store.trackChannel(ci); err != nil {
 		return address.Undef, xerrors.Errorf("tracking channel: %w", err)
 	}
+
+	return paychaddr, nil
 }
 
 func (pm *Manager) addFunds(ctx context.Context, ch address.Address, from address.Address, amt types.BigInt) (cid.Cid, error) {
