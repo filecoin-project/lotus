@@ -942,6 +942,10 @@ func (cs *ChainStore) GetTipsetByHeight(ctx context.Context, h abi.ChainEpoch, t
 		return nil, xerrors.Errorf("looking for tipset with height less than start point")
 	}
 
+	if h == ts.Height() {
+		return ts, nil
+	}
+
 	if ts.Height()-h > build.ForkLengthThreshold {
 		log.Warnf("expensive call to GetTipsetByHeight, seeking %d levels", ts.Height()-h)
 	}
@@ -954,6 +958,9 @@ func (cs *ChainStore) GetTipsetByHeight(ctx context.Context, h abi.ChainEpoch, t
 
 		if h > pts.Height() {
 			return ts, nil
+		}
+		if h == pts.Height() {
+			return pts, nil
 		}
 
 		ts = pts
