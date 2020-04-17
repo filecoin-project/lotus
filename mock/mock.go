@@ -258,10 +258,6 @@ func AddOpFinish(ctx context.Context) (context.Context, func()) {
 	}
 }
 
-func (mgr *SectorMgr) GenerateWinningPoStSectorChallenge(ctx context.Context, proofType abi.RegisteredProof, minerID abi.ActorID, randomness abi.PoStRandomness, eligibleSectorCount uint64) ([]uint64, error) {
-	panic("implement me")
-}
-
 func (mgr *SectorMgr) GenerateWinningPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []abi.SectorInfo, randomness abi.PoStRandomness) ([]abi.PoStProof, error) {
 	panic("implement me")
 }
@@ -328,6 +324,10 @@ func (m mockVerif) VerifyWindowPoSt(ctx context.Context, info abi.WindowPoStVeri
 
 func (m mockVerif) GenerateDataCommitment(pt abi.RegisteredProof, pieces []abi.PieceInfo) (cid.Cid, error) {
 	return ffiwrapper.GenerateUnsealedCID(pt, pieces)
+}
+
+func (m mockVerif) GenerateWinningPoStSectorChallenge(ctx context.Context, proofType abi.RegisteredProof, minerID abi.ActorID, randomness abi.PoStRandomness, eligibleSectorCount uint64) ([]uint64, error) {
+	panic("implement me")
 }
 
 var MockVerifier = mockVerif{}
