@@ -37,6 +37,8 @@ type Verifier interface {
 	VerifySeal(abi.SealVerifyInfo) (bool, error)
 	VerifyWinningPoSt(ctx context.Context, info abi.WinningPoStVerifyInfo) (bool, error)
 	VerifyWindowPoSt(ctx context.Context, info abi.WindowPoStVerifyInfo) (bool, error)
+
+	GenerateWinningPoStSectorChallenge(context.Context, abi.RegisteredProof, abi.ActorID, abi.PoStRandomness, uint64) ([]uint64, error)
 }
 
 var ErrSectorNotFound = errors.New("sector not found")

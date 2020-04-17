@@ -14,11 +14,6 @@ import (
 	"github.com/filecoin-project/sector-storage/stores"
 )
 
-func (sb *Sealer) GenerateWinningPoStSectorChallenge(ctx context.Context, proofType abi.RegisteredProof, minerID abi.ActorID, randomness abi.PoStRandomness, eligibleSectorCount uint64) ([]uint64, error) {
-	randomness[31] = 0 // TODO: Not correct, fixme
-	return ffi.GenerateWinningPoStSectorChallenge(proofType, minerID, randomness, eligibleSectorCount)
-}
-
 func (sb *Sealer) GenerateWinningPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []abi.SectorInfo, randomness abi.PoStRandomness) ([]abi.PoStProof, error) {
 	randomness[31] = 0                                                                                                    // TODO: Not correct, fixme
 	privsectors, err := sb.pubSectorToPriv(ctx, minerID, sectorInfo, nil, abi.RegisteredProof.RegisteredWinningPoStProof) // TODO: FAULTS?
@@ -97,4 +92,9 @@ func (proofVerifier) VerifyWindowPoSt(ctx context.Context, info abi.WindowPoStVe
 	defer span.End()
 
 	return ffi.VerifyWindowPoSt(info)
+}
+
+func (proofVerifier) GenerateWinningPoStSectorChallenge(ctx context.Context, proofType abi.RegisteredProof, minerID abi.ActorID, randomness abi.PoStRandomness, eligibleSectorCount uint64) ([]uint64, error) {
+	randomness[31] = 0 // TODO: Not correct, fixme
+	return ffi.GenerateWinningPoStSectorChallenge(proofType, minerID, randomness, eligibleSectorCount)
 }
