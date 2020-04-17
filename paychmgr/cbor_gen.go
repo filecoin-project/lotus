@@ -348,9 +348,11 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) error {
 			if maj != cbg.MajArray {
 				return fmt.Errorf("expected cbor array")
 			}
+
 			if extra > 0 {
 				t.Vouchers = make([]*VoucherInfo, extra)
 			}
+
 			for i := 0; i < int(extra); i++ {
 
 				var v VoucherInfo
