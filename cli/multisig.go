@@ -144,7 +144,6 @@ var msigCreateCmd = &cli.Command{
 			fmt.Println("actor creation failed!")
 			return err
 		}
-		
 
 		// get address of newly created miner
 
@@ -153,7 +152,7 @@ var msigCreateCmd = &cli.Command{
 			return err
 		}
 		fmt.Println("Created new multisig: ", execreturn.IDAddress, execreturn.RobustAddress)
-		
+
 		// TODO: maybe register this somewhere
 		return nil
 	},
