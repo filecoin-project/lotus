@@ -17,10 +17,10 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-func (pm *Manager) createPaych(ctx context.Context, from, to address.Address, amt types.BigInt) (address.Address, cid.Cid, error) {
+func (pm *Manager) createPaych(ctx context.Context, from, to address.Address, amt types.BigInt) (cid.Cid, error) {
 	params, aerr := actors.SerializeParams(&paych.ConstructorParams{From: from, To: to})
 	if aerr != nil {
-		return address.Undef, cid.Undef, aerr
+		return cid.Undef, aerr
 	}
 
 	enc, aerr := actors.SerializeParams(&init_.ExecParams{
@@ -28,7 +28,7 @@ func (pm *Manager) createPaych(ctx context.Context, from, to address.Address, am
 		ConstructorParams: params,
 	})
 	if aerr != nil {
-		return address.Undef, cid.Undef, aerr
+		return cid.Undef, aerr
 	}
 
 	msg := &types.Message{
@@ -43,42 +43,40 @@ func (pm *Manager) createPaych(ctx context.Context, from, to address.Address, am
 
 	smsg, err := pm.mpool.MpoolPushMessage(ctx, msg)
 	if err != nil {
-		return address.Undef, cid.Undef, xerrors.Errorf("initializing paych actor: %w", err)
+		return cid.Undef, xerrors.Errorf("initializing paych actor: %w", err)
 	}
 
-	mcid := smsg.Cid()
+	return smsg.Cid(), nil
+}
 
-	// TODO: wait outside the store lock!
-	//  (tricky because we need to setup channel tracking before we know it's address)
+func (pm *Manager) waitForPaychCreateMsg(ctx context.Context, mcid cid.Cid) (address.Address, error) {
 	mwait, err := pm.state.StateWaitMsg(ctx, mcid)
 	if err != nil {
-		return address.Undef, cid.Undef, xerrors.Errorf("wait msg: %w", err)
+		return address.Undef, xerrors.Errorf("wait msg: %w", err)
 	}
 
 	if mwait.Receipt.ExitCode != 0 {
-		return address.Undef, cid.Undef, fmt.Errorf("payment channel creation failed (exit code %d)", mwait.Receipt.ExitCode)
+		return address.Undef, fmt.Errorf("payment channel creation failed (exit code %d)", mwait.Receipt.ExitCode)
 	}
 
 	var decodedReturn init_.ExecReturn
 	err = decodedReturn.UnmarshalCBOR(bytes.NewReader(mwait.Receipt.Return))
 	if err != nil {
-		return address.Undef, cid.Undef, err
+		return address.Undef, err
 	}
 	paychaddr := decodedReturn.RobustAddress
 
 	ci, err := pm.loadOutboundChannelInfo(ctx, paychaddr)
 	if err != nil {
-		return address.Undef, cid.Undef, xerrors.Errorf("loading channel info: %w", err)
+		return address.Undef, xerrors.Errorf("loading channel info: %w", err)
 	}
 
 	if err := pm.store.trackChannel(ci); err != nil {
-		return address.Undef, cid.Undef, xerrors.Errorf("tracking channel: %w", err)
+		return address.Undef, xerrors.Errorf("tracking channel: %w", err)
 	}
-
-	return paychaddr, mcid, nil
 }
 
-func (pm *Manager) addFunds(ctx context.Context, ch address.Address, from address.Address, amt types.BigInt) error {
+func (pm *Manager) addFunds(ctx context.Context, ch address.Address, from address.Address, amt types.BigInt) (cid.Cid, error) {
 	msg := &types.Message{
 		To:       ch,
 		From:     from,
@@ -90,10 +88,14 @@ func (pm *Manager) addFunds(ctx context.Context, ch address.Address, from addres
 
 	smsg, err := pm.mpool.MpoolPushMessage(ctx, msg)
 	if err != nil {
-		return err
+		return cid.Undef, err
 	}
+	return smsg.Cid(), nil
+}
 
-	mwait, err := pm.state.StateWaitMsg(ctx, smsg.Cid()) // TODO: wait outside the store lock!
+func (pm *Manager) waitForAddFundsMsg(ctx context.Context, mcid cid.Cid) error {
+
+	mwait, err := pm.state.StateWaitMsg(ctx, mcid) // TODO: wait outside the store lock!
 	if err != nil {
 		return err
 	}
@@ -109,6 +111,7 @@ func (pm *Manager) GetPaych(ctx context.Context, from, to address.Address, ensur
 	pm.store.lk.Lock()
 	defer pm.store.lk.Unlock()
 
+	var mcid cid.Cid
 	ch, err := pm.store.findChan(func(ci *ChannelInfo) bool {
 		if ci.Direction != DirOutbound {
 			return false
@@ -120,8 +123,10 @@ func (pm *Manager) GetPaych(ctx context.Context, from, to address.Address, ensur
 	}
 	if ch != address.Undef {
 		// TODO: Track available funds
-		return ch, cid.Undef, pm.addFunds(ctx, ch, from, ensureFree)
+		mcid, err = pm.addFunds(ctx, ch, from, ensureFree)
+	} else {
+		mcid, err = pm.createPaych(ctx, from, to, ensureFree)
 	}
 
-	return pm.createPaych(ctx, from, to, ensureFree)
+	return ch, mcid, err
 }
