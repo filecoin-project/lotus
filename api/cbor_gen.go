@@ -168,9 +168,11 @@ func (t *PaymentInfo) UnmarshalCBOR(r io.Reader) error {
 			if maj != cbg.MajArray {
 				return fmt.Errorf("expected cbor array")
 			}
+
 			if extra > 0 {
 				t.Vouchers = make([]*paych.SignedVoucher, extra)
 			}
+
 			for i := 0; i < int(extra); i++ {
 
 				var v paych.SignedVoucher
@@ -412,9 +414,11 @@ func (t *SealedRefs) UnmarshalCBOR(r io.Reader) error {
 			if maj != cbg.MajArray {
 				return fmt.Errorf("expected cbor array")
 			}
+
 			if extra > 0 {
 				t.Refs = make([]SealedRef, extra)
 			}
+
 			for i := 0; i < int(extra); i++ {
 
 				var v SealedRef
