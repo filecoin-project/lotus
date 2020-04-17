@@ -96,9 +96,14 @@ func (m *Miner) Run(ctx context.Context) error {
 		return xerrors.Errorf("miner preflight checks failed: %w", err)
 	}
 
+	mi, err := m.api.StateMinerInfo(ctx, m.maddr, types.EmptyTSK)
+	if err != nil {
+		return xerrors.Errorf("getting miner info: %w", err)
+	}
+
 	evts := events.NewEvents(ctx, m.api)
 	adaptedAPI := NewSealingAPIAdapter(m.api)
-	pcp := sealing.NewBasicPreCommitPolicy(adaptedAPI, 10000000)
+	pcp := sealing.NewBasicPreCommitPolicy(adaptedAPI, 10000000, mi.ProvingPeriodBoundary)
 	m.sealing = sealing.New(adaptedAPI, NewEventsAdapter(evts), m.maddr, m.ds, m.sealer, m.sc, m.verif, m.tktFn, &pcp)
 
 	go m.sealing.Run(ctx)
@@ -165,7 +170,7 @@ func (wpp *StorageWpp) GenerateCandidates(ctx context.Context, randomness abi.Po
 	if err != nil {
 		return nil, xerrors.Errorf("failed to generate candidates: %w", err)
 	}
-	log.Infof("Generate candidates took %s", time.Since(start))
+	log.Infof("Generate candidates took %s (C: %+v)", time.Since(start), cds)
 	return cds, nil
 }
 
@@ -174,6 +179,8 @@ func (wpp *StorageWpp) ComputeProof(ctx context.Context, ssi []abi.SectorInfo, r
 		log.Warn("Generating fake EPost proof! You should only see this while running tests!")
 		return []abi.PoStProof{{ProofBytes: []byte("valid proof")}}, nil
 	}
+
+	log.Infof("Computing WinningPoSt ;%+v; %v", ssi, rand)
 
 	start := time.Now()
 	proof, err := wpp.prover.GenerateWinningPoSt(ctx, wpp.miner, ssi, rand)

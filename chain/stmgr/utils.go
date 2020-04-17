@@ -132,8 +132,13 @@ func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, 
 }
 
 func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *StateManager, ts *types.TipSet, maddr address.Address) ([]abi.SectorInfo, error) {
+	pts, err := sm.cs.LoadTipSet(ts.Parents()) // TODO: Review: check correct lookback for winningPost sector set
+	if err != nil {
+		return nil, xerrors.Errorf("loading parent tipset: %w", err)
+	}
+
 	var mas miner.State
-	_, err := sm.LoadActorStateRaw(ctx, maddr, &mas, ts.ParentState())
+	_, err = sm.LoadActorStateRaw(ctx, maddr, &mas, pts.ParentState())
 	if err != nil {
 		return nil, xerrors.Errorf("(get ssize) failed to load miner actor state: %w", err)
 	}
