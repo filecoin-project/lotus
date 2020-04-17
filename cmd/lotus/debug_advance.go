@@ -48,7 +48,7 @@ func init() {
 			addr, _ := address.NewIDAddress(1000)
 			var ticket *types.Ticket
 			{
-				w, err := api.StateMinerWorker(ctx, addr, head.Key())
+				mi, err := api.StateMinerInfo(ctx, addr, head.Key())
 				if err != nil {
 					return xerrors.Errorf("StateMinerWorker: %w", err)
 				}
@@ -58,7 +58,7 @@ func init() {
 					return xerrors.Errorf("failed to get randomness: %w", err)
 				}
 
-				t, err := gen.ComputeVRF(ctx, api.WalletSign, w, rand)
+				t, err := gen.ComputeVRF(ctx, api.WalletSign, mi.Worker, rand)
 				if err != nil {
 					return xerrors.Errorf("compute vrf failed: %w", err)
 				}
@@ -72,7 +72,7 @@ func init() {
 			uts := head.MinTimestamp() + uint64(build.BlockDelay)
 			nheight := head.Height() + 1
 			blk, err := api.MinerCreateBlock(ctx, &lapi.BlockTemplate{
-				addr, head.Key(), ticket, nil, nil, msgs, nheight, uts,
+				addr, head.Key(), ticket, nil, nil, msgs, nheight, uts, nil,
 			})
 			if err != nil {
 				return xerrors.Errorf("creating block: %w", err)
