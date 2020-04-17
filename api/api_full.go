@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 
 	"github.com/filecoin-project/lotus/chain/store"
@@ -254,8 +255,8 @@ type VoucherSpec struct {
 }
 
 type MinerPower struct {
-	MinerPower types.BigInt
-	TotalPower types.BigInt
+	MinerPower power.Claim
+	TotalPower power.Claim
 }
 
 type QueryOffer struct {

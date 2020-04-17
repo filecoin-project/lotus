@@ -188,10 +188,10 @@ var statePowerCmd = &cli.Command{
 		tp := power.TotalPower
 		if cctx.Args().Present() {
 			mp := power.MinerPower
-			percI := types.BigDiv(types.BigMul(mp, types.NewInt(1000000)), tp)
-			fmt.Printf("%s(%s) / %s(%s) ~= %0.4f%%\n", mp.String(), types.SizeStr(mp), tp.String(), types.SizeStr(tp), float64(percI.Int64())/10000)
+			percI := types.BigDiv(types.BigMul(mp.QualityAdjPower, types.NewInt(1000000)), tp.QualityAdjPower)
+			fmt.Printf("%s(%s) / %s(%s) ~= %0.4f%%\n", mp.QualityAdjPower.String(), types.SizeStr(mp.QualityAdjPower), tp.QualityAdjPower.String(), types.SizeStr(tp.QualityAdjPower), float64(percI.Int64())/10000)
 		} else {
-			fmt.Printf("%s(%s)\n", tp.String(), types.SizeStr(tp))
+			fmt.Printf("%s(%s)\n", tp.QualityAdjPower.String(), types.SizeStr(tp.QualityAdjPower))
 		}
 
 		return nil
