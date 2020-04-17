@@ -287,7 +287,7 @@ func (m *Miner) hasPower(ctx context.Context, addr address.Address, ts *types.Ti
 		return false, err
 	}
 
-	return !power.MinerPower.Equals(types.NewInt(0)), nil
+	return !power.MinerPower.QualityAdjPower.Equals(types.NewInt(0)), nil
 }
 
 func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningBase) (*types.BlockMsg, error) {

@@ -625,7 +625,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 			return xerrors.Errorf("failed getting power: %w", err)
 		}
 
-		if !types.IsTicketWinner(h.ElectionProof.VRFProof, mpow, tpow) {
+		if !types.IsTicketWinner(h.ElectionProof.VRFProof, mpow.QualityAdjPower, tpow.QualityAdjPower) {
 			return xerrors.Errorf("miner created a block but was not a winner")
 		}
 

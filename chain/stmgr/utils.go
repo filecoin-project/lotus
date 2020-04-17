@@ -5,7 +5,6 @@ import (
 	amt "github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
@@ -56,33 +55,36 @@ func GetMinerWorkerRaw(ctx context.Context, sm *StateManager, st cid.Cid, maddr 
 	return vm.ResolveToKeyAddr(state, cst, mas.Info.Worker)
 }
 
-func GetPower(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (types.BigInt, types.BigInt, error) {
+func GetPower(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (power.Claim, power.Claim, error) {
 	return getPowerRaw(ctx, sm, ts.ParentState(), maddr)
 }
 
-func getPowerRaw(ctx context.Context, sm *StateManager, st cid.Cid, maddr address.Address) (types.BigInt, types.BigInt, error) {
+func getPowerRaw(ctx context.Context, sm *StateManager, st cid.Cid, maddr address.Address) (power.Claim, power.Claim, error) {
 	var ps power.State
 	_, err := sm.LoadActorStateRaw(ctx, builtin.StoragePowerActorAddr, &ps, st)
 	if err != nil {
-		return big.Zero(), big.Zero(), xerrors.Errorf("(get sset) failed to load power actor state: %w", err)
+		return power.Claim{}, power.Claim{}, xerrors.Errorf("(get sset) failed to load power actor state: %w", err)
 	}
 
-	var mpow big.Int
+	var mpow power.Claim
 	if maddr != address.Undef {
 		cm, err := adt.AsMap(sm.cs.Store(ctx), ps.Claims)
 		if err != nil {
-			return types.BigInt{}, types.BigInt{}, err
+			return power.Claim{}, power.Claim{}, err
 		}
 
 		var claim power.Claim
 		if _, err := cm.Get(adt.AddrKey(maddr), &claim); err != nil {
-			return big.Zero(), big.Zero(), err
+			return power.Claim{}, power.Claim{}, err
 		}
 
-		mpow = claim.QualityAdjPower // TODO: is quality adjusted power what we want here?
+		mpow = claim
 	}
 
-	return mpow, ps.TotalQualityAdjPower, nil
+	return mpow, power.Claim{
+		RawBytePower:    ps.TotalRawBytePower,
+		QualityAdjPower: ps.TotalQualityAdjPower,
+	}, nil
 }
 
 func SectorSetSizes(ctx context.Context, sm *StateManager, maddr address.Address, ts *types.TipSet) (api.MinerSectors, error) {
@@ -460,8 +462,8 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, tsk types.TipSetKey
 	}
 
 	return &api.MiningBaseInfo{
-		MinerPower:      mpow,
-		NetworkPower:    tpow,
+		MinerPower:      mpow.QualityAdjPower,
+		NetworkPower:    tpow.QualityAdjPower,
 		Sectors:         provset,
 		WorkerKey:       worker,
 		SectorSize:      mas.Info.SectorSize,
