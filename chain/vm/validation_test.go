@@ -1,5 +1,6 @@
 package vm_test
 
+/*
 import (
 	"fmt"
 	"reflect"
@@ -33,7 +34,7 @@ var TestSuiteSkipper TestSkipper
 func init() {
 	// initialize the test skipper with tests being skipped
 	TestSuiteSkipper = TestSkipper{testSkips: []suites.TestCase{
-		/* tests to skip go here */
+		// tests to skip go here
 	}}
 }
 
@@ -66,3 +67,4 @@ func caseName(testCase suites.TestCase) string {
 	toks := strings.Split(fqName, ".")
 	return toks[len(toks)-1]
 }
+*/

@@ -399,7 +399,7 @@ var sealBenchCmd = &cli.Command{
 
 		if !c.Bool("skip-commit2") {
 			log.Info("generating winning post candidates")
-			fcandidates, err := sb.GenerateWinningPoStSectorChallenge(context.TODO(), spt, mid, challenge[:], uint64(len(sealedSectors)))
+			fcandidates, err := ffiwrapper.ProofVerifier.GenerateWinningPoStSectorChallenge(context.TODO(), spt, mid, challenge[:], uint64(len(sealedSectors)))
 			if err != nil {
 				return err
 			}
