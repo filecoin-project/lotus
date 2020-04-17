@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 )
 
 type PreCommitPolicy interface {
@@ -31,13 +32,15 @@ type Chain interface {
 type BasicPreCommitPolicy struct {
 	api Chain
 
-	duration abi.ChainEpoch
+	provingBoundary abi.ChainEpoch
+	duration        abi.ChainEpoch
 }
 
 // NewBasicPreCommitPolicy produces a BasicPreCommitPolicy
-func NewBasicPreCommitPolicy(api Chain, duration abi.ChainEpoch) BasicPreCommitPolicy {
+func NewBasicPreCommitPolicy(api Chain, duration abi.ChainEpoch, provingBoundary abi.ChainEpoch) BasicPreCommitPolicy {
 	return BasicPreCommitPolicy{
 		api:      api,
+		provingBoundary: provingBoundary,
 		duration: duration,
 	}
 }
@@ -63,7 +66,8 @@ func (p *BasicPreCommitPolicy) Expiration(ctx context.Context, ps ...Piece) (abi
 		}
 
 		if end == nil || *end < p.DealInfo.DealSchedule.EndEpoch {
-			end = &p.DealInfo.DealSchedule.EndEpoch
+			tmp := p.DealInfo.DealSchedule.EndEpoch
+			end = &tmp
 		}
 	}
 
@@ -71,6 +75,8 @@ func (p *BasicPreCommitPolicy) Expiration(ctx context.Context, ps ...Piece) (abi
 		tmp := epoch + p.duration
 		end = &tmp
 	}
+
+	*end += miner.WPoStProvingPeriod - (*end % miner.WPoStProvingPeriod) + p.provingBoundary - 1
 
 	return *end, nil
 }
