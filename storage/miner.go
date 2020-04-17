@@ -131,10 +131,10 @@ func (m *Miner) runPreflightChecks(ctx context.Context) error {
 }
 
 type StorageWpp struct {
-	prover  storage.Prover
+	prover   storage.Prover
 	verifier ffiwrapper.Verifier
-	miner   abi.ActorID
-	winnRpt abi.RegisteredProof
+	miner    abi.ActorID
+	winnRpt  abi.RegisteredProof
 }
 
 func NewWinningPoStProver(api api.FullNode, prover storage.Prover, verifier ffiwrapper.Verifier, miner dtypes.MinerID) (*StorageWpp, error) {
@@ -158,7 +158,7 @@ func NewWinningPoStProver(api api.FullNode, prover storage.Prover, verifier ffiw
 		return nil, err
 	}
 
-	return &StorageWpp{prover,verifier,abi.ActorID(miner), wpt}, nil
+	return &StorageWpp{prover, verifier, abi.ActorID(miner), wpt}, nil
 }
 
 var _ gen.WinningPoStProver = (*StorageWpp)(nil)

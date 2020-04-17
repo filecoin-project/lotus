@@ -58,8 +58,8 @@ func NewWindowedPoStScheduler(api storageMinerApi, sb storage.Prover, actor addr
 
 type Deadline struct {
 	provingPeriodStart abi.ChainEpoch
-	deadlineIdx uint64
-	challengeEpoch abi.ChainEpoch
+	deadlineIdx        uint64
+	challengeEpoch     abi.ChainEpoch
 }
 
 func (d *Deadline) Equals(other *Deadline) bool {
@@ -68,7 +68,7 @@ func (d *Deadline) Equals(other *Deadline) bool {
 	}
 
 	return d.provingPeriodStart == other.provingPeriodStart &&
-		   d.deadlineIdx == other.deadlineIdx
+		d.deadlineIdx == other.deadlineIdx
 }
 
 func (s *WindowPoStScheduler) Run(ctx context.Context) {
@@ -188,8 +188,8 @@ func (s *WindowPoStScheduler) update(ctx context.Context, new *types.TipSet) err
 
 	s.abortActivePoSt()
 
-	if di.challengeEpoch + StartConfidence >= new.Height() {
-		log.Info("not starting windowPost yet, waiting for startconfidence", di.challengeEpoch, di.challengeEpoch + StartConfidence, new.Height())
+	if di.challengeEpoch+StartConfidence >= new.Height() {
+		log.Info("not starting windowPost yet, waiting for startconfidence", di.challengeEpoch, di.challengeEpoch+StartConfidence, new.Height())
 		return nil
 	}
 
@@ -236,5 +236,5 @@ func deadlineInfo(mi miner.MinerInfo, new *types.TipSet) *Deadline {
 }
 
 func provingPeriodStart(mi miner.MinerInfo, currEpoch abi.ChainEpoch) (period abi.ChainEpoch, nonNegative bool) {
-	return (&miner.State{Info:mi}).ProvingPeriodStart(currEpoch)
+	return (&miner.State{Info: mi}).ProvingPeriodStart(currEpoch)
 }

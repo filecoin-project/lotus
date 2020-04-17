@@ -13,7 +13,7 @@ import (
 )
 
 var provingCmd = &cli.Command{
-	Name:  "proving",
+	Name: "proving",
 	Subcommands: []*cli.Command{
 		provingInfoCmd,
 		provingDeadlinesCmd,
@@ -52,7 +52,7 @@ var provingInfoCmd = &cli.Command{
 			return xerrors.Errorf("getting miner info: %w", err)
 		}
 
-		pps, _ := (&miner.State{Info:mi}).ProvingPeriodStart(head.Height())
+		pps, _ := (&miner.State{Info: mi}).ProvingPeriodStart(head.Height())
 		npp := pps + miner.WPoStProvingPeriod
 
 		cd, chg := miner.ComputeCurrentDeadline(pps, head.Height())
@@ -69,20 +69,20 @@ var provingInfoCmd = &cli.Command{
 
 		fmt.Printf("Proving Period Boundary: %d\n", mi.ProvingPeriodBoundary)
 		fmt.Printf("Current Epoch:           %d\n", head.Height())
-		fmt.Printf("Proving Period Start:    %d (%s ago)\n", pps, time.Second * time.Duration(build.BlockDelay * (head.Height() - pps)))
-		fmt.Printf("Next Proving Period:     %d (in %s)\n\n", npp, time.Second * time.Duration(build.BlockDelay * (npp - head.Height())))
+		fmt.Printf("Proving Period Start:    %d (%s ago)\n", pps, time.Second*time.Duration(build.BlockDelay*(head.Height()-pps)))
+		fmt.Printf("Next Proving Period:     %d (in %s)\n\n", npp, time.Second*time.Duration(build.BlockDelay*(npp-head.Height())))
 
 		fmt.Printf("Deadline:         %d\n", cd)
 		fmt.Printf("Deadline Sectors: %d\n", curDeadlineSectors)
-		fmt.Printf("Deadline Start:   %d\n", pps + (abi.ChainEpoch(cd) * miner.WPoStChallengeWindow))
+		fmt.Printf("Deadline Start:   %d\n", pps+(abi.ChainEpoch(cd)*miner.WPoStChallengeWindow))
 		fmt.Printf("Challenge Epoch:  %d\n", chg)
-		fmt.Printf("Time left:        %s\n", time.Second * time.Duration(build.BlockDelay * ((pps + ((1 + abi.ChainEpoch(cd)) * miner.WPoStChallengeWindow)) - head.Height())))
+		fmt.Printf("Time left:        %s\n", time.Second*time.Duration(build.BlockDelay*((pps+((1+abi.ChainEpoch(cd))*miner.WPoStChallengeWindow))-head.Height())))
 		return nil
 	},
 }
 
 var provingDeadlinesCmd = &cli.Command{
-	Name:  "deadlines",
+	Name: "deadlines",
 	Action: func(cctx *cli.Context) error {
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
