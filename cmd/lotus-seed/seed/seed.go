@@ -13,6 +13,8 @@ import (
 
 	"github.com/google/uuid"
 	logging "github.com/ipfs/go-log/v2"
+	ic "github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -117,6 +119,21 @@ func PreSeal(maddr address.Address, pt abi.RegisteredProof, offset abi.SectorNum
 		}
 	}
 
+	var pid peer.ID
+	{
+		log.Warn("PeerID not specified, generating dummy")
+		p, _, err := ic.GenerateEd25519Key(rand.Reader)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		pid, err = peer.IDFromPrivateKey(p)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+
 	miner := &genesis.Miner{
 		Owner:         minerAddr.Address,
 		Worker:        minerAddr.Address,
@@ -124,6 +141,7 @@ func PreSeal(maddr address.Address, pt abi.RegisteredProof, offset abi.SectorNum
 		PowerBalance:  big.Zero(),
 		SectorSize:    ssize,
 		Sectors:       sealedSectors,
+		PeerId:        pid,
 	}
 
 	if err := createDeals(miner, minerAddr, maddr, ssize); err != nil {
