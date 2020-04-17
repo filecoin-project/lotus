@@ -294,14 +294,15 @@ func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningB
 	log.Debugw("attempting to mine a block", "tipset", types.LogCids(base.ts.Cids()))
 	start := time.Now()
 
-	mbi, err := m.api.MinerGetBaseInfo(ctx, addr, base.ts.Key())
+	round := base.ts.Height() + base.nullRounds + 1
+
+	mbi, err := m.api.MinerGetBaseInfo(ctx, addr, round, base.ts.Key())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get mining base info: %w", err)
 	}
 
 	beaconPrev := mbi.PrevBeaconEntry
 
-	round := base.ts.Height() + base.nullRounds + 1
 	bvals, err := beacon.BeaconEntriesForBlock(ctx, m.beacon, round, beaconPrev)
 	if err != nil {
 		return nil, xerrors.Errorf("get beacon entries failed: %w", err)
@@ -347,14 +348,7 @@ func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningB
 
 	prand := abi.PoStRandomness(rand)
 
-	sx, err := m.epp.GenerateCandidates(ctx, prand, uint64(len(mbi.Sectors)))
-	if err != nil {
-		return nil, xerrors.Errorf("failed to generate candidates for winning post: %w", err)
-	}
-
-	si := mbi.Sectors[sx[0]]
-	postInp := []abi.SectorInfo{si.Info.AsSectorInfo()}
-	postProof, err := m.epp.ComputeProof(ctx, postInp, prand)
+	postProof, err := m.epp.ComputeProof(ctx, mbi.Sectors, prand)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to compute winning post proof: %w", err)
 	}
