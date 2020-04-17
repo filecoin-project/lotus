@@ -27,6 +27,8 @@ import (
 	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
 	amt "github.com/filecoin-project/go-amt-ipld/v2"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
@@ -661,19 +663,19 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		return nil
 	})
 
-	//eproofCheck := async.Err(func() error {
-	//if err := syncer.VerifyElectionPoStProof(ctx, h, waddr); err != nil {
-	//return xerrors.Errorf("invalid election post: %w", err)
-	//}
-	//return nil
-	//})
+	wproofCheck := async.Err(func() error {
+		if err := syncer.VerifyWinningPoStProof(ctx, h, waddr); err != nil {
+			return xerrors.Errorf("invalid election post: %w", err)
+		}
+		return nil
+	})
 
 	await := []async.ErrorFuture{
 		minerCheck,
 		tktsCheck,
 		blockSigCheck,
 		beaconValuesCheck,
-		//eproofCheck,
+		wproofCheck,
 		winnerCheck,
 		msgsCheck,
 	}
@@ -705,29 +707,27 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	return merr
 }
 
-/*
-func (syncer *Syncer) VerifyElectionPoStProof(ctx context.Context, h *types.BlockHeader, waddr address.Address) error {
+func (syncer *Syncer) VerifyWinningPoStProof(ctx context.Context, h *types.BlockHeader, waddr address.Address) error {
+	if build.InsecurePoStValidation {
+		if len(h.WinPoStProof) == 0 {
+			return xerrors.Errorf("[TESTING] No election post proof given")
+		}
+
+		if string(h.WinPoStProof[0].ProofBytes) == "valid proof" {
+			return nil
+		}
+		return xerrors.Errorf("[TESTING] election post was invalid")
+	}
+
 	curTs, err := types.NewTipSet([]*types.BlockHeader{h})
 	if err != nil {
 		return err
 	}
 
-	buf := new(bytes.Buffer)
-	if err := h.Miner.MarshalCBOR(buf); err != nil {
-		return xerrors.Errorf("failed to marshal miner to cbor: %w", err)
-	}
-	rand, err := syncer.sm.ChainStore().GetRandomness(ctx, curTs.Cids(), crypto.DomainSeparationTag_ElectionPoStChallengeSeed, h.Height-build.EcRandomnessLookback, buf.Bytes())
+	// TODO: use proper DST
+	rand, err := syncer.sm.ChainStore().GetRandomness(ctx, curTs.Cids(), crypto.DomainSeparationTag_ElectionPoStChallengeSeed, h.Height-1, nil)
 	if err != nil {
 		return xerrors.Errorf("failed to get randomness for verifying election proof: %w", err)
-	}
-
-	if err := VerifyElectionPoStVRF(ctx, h.EPostProof.PostRand, rand, waddr); err != nil {
-		return xerrors.Errorf("checking eproof failed: %w", err)
-	}
-
-	ssize, err := stmgr.GetMinerSectorSize(ctx, syncer.sm, curTs, h.Miner)
-	if err != nil {
-		return xerrors.Errorf("failed to get sector size for miner: %w", err)
 	}
 
 	mid, err := address.IDFromAddress(h.Miner)
@@ -735,79 +735,33 @@ func (syncer *Syncer) VerifyElectionPoStProof(ctx context.Context, h *types.Bloc
 		return xerrors.Errorf("failed to get ID from miner address %s: %w", h.Miner, err)
 	}
 
-	var winners []abi.PoStCandidate
-	for _, t := range h.EPostProof.Candidates {
-		winners = append(winners, abi.PoStCandidate{
-			PartialTicket: t.Partial,
-			SectorID: abi.SectorID{
-				Number: t.SectorID,
-				Miner:  abi.ActorID(mid),
-			},
-			ChallengeIndex: int64(t.ChallengeIndex),
-		})
-	}
-
-	if len(winners) == 0 {
-		return xerrors.Errorf("no candidates")
-	}
-
-	sectorInfo, err := stmgr.GetSectorsForElectionPost(ctx, syncer.sm, curTs, h.Miner)
+	sectors, err := stmgr.GetSectorsForWinningPoSt(ctx, syncer.sm, curTs, h.Miner)
 	if err != nil {
 		return xerrors.Errorf("getting election post sector set: %w", err)
 	}
 
-	if build.InsecurePoStValidation {
-		if len(h.EPostProof.Proofs) == 0 {
-			return xerrors.Errorf("[TESTING] No election post proof given")
-		}
+	panic("NEED TO GET CHALLENGE epp.GenerateWinningPoStSectorChallenge")
+	challenge := 0
 
-		if string(h.EPostProof.Proofs[0].ProofBytes) == "valid proof" {
-			return nil
-		}
-		return xerrors.Errorf("[TESTING] election post was invalid")
-	}
+	sector := sectors[challenge]
 
-	rt, _, err := ffiwrapper.ProofTypeFromSectorSize(ssize)
-	if err != nil {
-		return err
-	}
-
-	candidates := make([]abi.PoStCandidate, 0, len(h.EPostProof.Candidates))
-	for _, c := range h.EPostProof.Candidates {
-		candidates = append(candidates, abi.PoStCandidate{
-			RegisteredProof: rt,
-			PartialTicket:   c.Partial,
-			SectorID:        abi.SectorID{Number: c.SectorID}, // this should not be an ID, we already know who the miner is...
-			ChallengeIndex:  int64(c.ChallengeIndex),
-		})
-	}
-
-	// TODO: why do we need this here?
-	challengeCount := ffiwrapper.ElectionPostChallengeCount(uint64(len(sectorInfo)), 0)
-
-	hvrf := blake2b.Sum256(h.EPostProof.PostRand)
-	pvi := abi.PoStVerifyInfo{
-		Randomness:      hvrf[:],
-		Candidates:      candidates,
-		Proofs:          h.EPostProof.Proofs,
-		EligibleSectors: sectorInfo,
-		Prover:          abi.ActorID(mid),
-		ChallengeCount:  challengeCount,
-	}
-
-	ok, err := ffiwrapper.ProofVerifier.VerifyElectionPost(ctx, pvi)
+	ok, err := ffiwrapper.ProofVerifier.VerifyWinningPoSt(ctx, abi.WinningPoStVerifyInfo{
+		Randomness:        rand,
+		Proofs:            h.WinPoStProof,
+		ChallengedSectors: []abi.SectorInfo{sector.Info.AsSectorInfo()},
+		Prover:            abi.ActorID(mid),
+	})
 	if err != nil {
 		return xerrors.Errorf("failed to verify election post: %w", err)
 	}
 
 	if !ok {
-		log.Errorf("invalid election post (%x; %v)", pvi.Randomness, candidates)
+		log.Errorf("invalid election post (%x; %v)", rand, challenge)
 		return xerrors.Errorf("election post was invalid")
 	}
 
 	return nil
 }
-*/
 
 func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock, baseTs *types.TipSet) error {
 	{

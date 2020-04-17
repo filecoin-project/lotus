@@ -40,6 +40,8 @@ type BlockHeader struct {
 
 	BeaconEntries []BeaconEntry
 
+	WinPoStProof []abi.PoStProof
+
 	Parents []cid.Cid // 3
 
 	ParentWeight BigInt // 4

@@ -130,6 +130,10 @@ func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, 
 	return LoadSectorsFromSet(ctx, sm.ChainStore().Blockstore(), mas.Sectors, filter)
 }
 
+func GetSectorsForWinningPoSt(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) ([]*api.ChainSectorInfo, error) {
+	panic("TODO")
+}
+
 func StateMinerInfo(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (miner.MinerInfo, error) {
 	var mas miner.State
 	_, err := sm.LoadActorStateRaw(ctx, maddr, &mas, ts.ParentState())

@@ -339,6 +339,26 @@ func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningB
 		return nil, nil
 	}
 
+	// TODO: use the right dst, also NB: not using any 'entropy' in this call because nicola really didnt want it
+	rand, err := m.api.ChainGetRandomness(ctx, base.ts.Key(), crypto.DomainSeparationTag_ElectionPoStChallengeSeed, base.ts.Height()+base.nullRounds, nil)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get randomness for winning post: %w", err)
+	}
+
+	prand := abi.PoStRandomness(rand)
+
+	sx, err := m.epp.GenerateCandidates(ctx, prand, uint64(len(mbi.Sectors)))
+	if err != nil {
+		return nil, xerrors.Errorf("failed to generate candidates for winning post: %w", err)
+	}
+
+	si := mbi.Sectors[sx[0]]
+	postInp := []abi.SectorInfo{si.Info.AsSectorInfo()}
+	postProof, err := m.epp.ComputeProof(ctx, postInp, prand)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to compute winning post proof: %w", err)
+	}
+
 	// get pending messages early,
 	pending, err := m.api.MpoolPending(context.TODO(), base.ts.Key())
 	if err != nil {
@@ -346,7 +366,7 @@ func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningB
 	}
 
 	// TODO: winning post proof
-	b, err := m.createBlock(base, addr, ticket, winner, bvals, pending)
+	b, err := m.createBlock(base, addr, ticket, winner, bvals, postProof, pending)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to create block: %w", err)
 	}
@@ -391,7 +411,7 @@ func (m *Miner) computeTicket(ctx context.Context, addr address.Address, brand *
 }
 
 func (m *Miner) createBlock(base *MiningBase, addr address.Address, ticket *types.Ticket,
-	eproof *types.ElectionProof, bvals []types.BeaconEntry, pending []*types.SignedMessage) (*types.BlockMsg, error) {
+	eproof *types.ElectionProof, bvals []types.BeaconEntry, wpostProof []abi.PoStProof, pending []*types.SignedMessage) (*types.BlockMsg, error) {
 	msgs, err := SelectMessages(context.TODO(), m.api.StateGetActor, base.ts, pending)
 	if err != nil {
 		return nil, xerrors.Errorf("message filtering failed: %w", err)
@@ -408,14 +428,15 @@ func (m *Miner) createBlock(base *MiningBase, addr address.Address, ticket *type
 
 	// why even return this? that api call could just submit it for us
 	return m.api.MinerCreateBlock(context.TODO(), &api.BlockTemplate{
-		Miner:        addr,
-		Parents:      base.ts.Key(),
-		Ticket:       ticket,
-		Eproof:       eproof,
-		BeaconValues: bvals,
-		Messages:     msgs,
-		Epoch:        nheight,
-		Timestamp:    uts,
+		Miner:            addr,
+		Parents:          base.ts.Key(),
+		Ticket:           ticket,
+		Eproof:           eproof,
+		BeaconValues:     bvals,
+		Messages:         msgs,
+		Epoch:            nheight,
+		Timestamp:        uts,
+		WinningPoStProof: wpostProof,
 	})
 }
 
