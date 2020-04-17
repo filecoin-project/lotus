@@ -93,6 +93,10 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message) (*t
 
 	return a.Mpool.PushWithNonce(ctx, msg.From, func(from address.Address, nonce uint64) (*types.SignedMessage, error) {
 		msg.Nonce = nonce
+		if msg.From.Protocol() == address.ID {
+			log.Warnf("Push from ID address (%s), adjusting to %s", msg.From, from)
+			msg.From = from
+		}
 
 		b, err := a.WalletBalance(ctx, msg.From)
 		if err != nil {
