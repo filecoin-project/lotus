@@ -24,18 +24,18 @@ func (f *fakeChain) ChainHead(ctx context.Context) (sealing.TipSetToken, abi.Cha
 func TestBasicPolicyEmptySector(t *testing.T) {
 	policy := sealing.NewBasicPreCommitPolicy(&fakeChain{
 		h: abi.ChainEpoch(55),
-	}, 10)
+	}, 10, 0)
 
 	exp, err := policy.Expiration(context.Background())
 	require.NoError(t, err)
 
-	assert.Equal(t, 65, int(exp))
+	assert.Equal(t, 3455, int(exp))
 }
 
 func TestBasicPolicyMostConstrictiveSchedule(t *testing.T) {
 	policy := sealing.NewBasicPreCommitPolicy(&fakeChain{
 		h: abi.ChainEpoch(55),
-	}, 100)
+	}, 100, 11)
 
 	pieces := []sealing.Piece{
 		{
@@ -69,13 +69,13 @@ func TestBasicPolicyMostConstrictiveSchedule(t *testing.T) {
 	exp, err := policy.Expiration(context.Background(), pieces...)
 	require.NoError(t, err)
 
-	assert.Equal(t, 100, int(exp))
+	assert.Equal(t, 3466, int(exp))
 }
 
 func TestBasicPolicyIgnoresExistingScheduleIfExpired(t *testing.T) {
 	policy := sealing.NewBasicPreCommitPolicy(&fakeChain{
 		h: abi.ChainEpoch(55),
-	}, 100)
+	}, 100, 0)
 
 	pieces := []sealing.Piece{
 		{
@@ -96,13 +96,13 @@ func TestBasicPolicyIgnoresExistingScheduleIfExpired(t *testing.T) {
 	exp, err := policy.Expiration(context.Background(), pieces...)
 	require.NoError(t, err)
 
-	assert.Equal(t, 155, int(exp))
+	assert.Equal(t, 3455, int(exp))
 }
 
 func TestMissingDealIsIgnored(t *testing.T) {
 	policy := sealing.NewBasicPreCommitPolicy(&fakeChain{
 		h: abi.ChainEpoch(55),
-	}, 100)
+	}, 100, 11)
 
 	pieces := []sealing.Piece{
 		{
@@ -130,5 +130,5 @@ func TestMissingDealIsIgnored(t *testing.T) {
 	exp, err := policy.Expiration(context.Background(), pieces...)
 	require.NoError(t, err)
 
-	assert.Equal(t, 155, int(exp))
+	assert.Equal(t, 3466, int(exp))
 }

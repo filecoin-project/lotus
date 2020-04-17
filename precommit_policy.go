@@ -39,9 +39,9 @@ type BasicPreCommitPolicy struct {
 // NewBasicPreCommitPolicy produces a BasicPreCommitPolicy
 func NewBasicPreCommitPolicy(api Chain, duration abi.ChainEpoch, provingBoundary abi.ChainEpoch) BasicPreCommitPolicy {
 	return BasicPreCommitPolicy{
-		api:      api,
+		api:             api,
 		provingBoundary: provingBoundary,
-		duration: duration,
+		duration:        duration,
 	}
 }
 
