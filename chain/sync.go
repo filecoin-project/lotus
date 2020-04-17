@@ -8,7 +8,6 @@ import (
 	"os"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/Gurpartap/async"
@@ -949,23 +948,14 @@ func (syncer *Syncer) verifyBlsAggregate(ctx context.Context, sig *crypto.Signat
 		trace.Int64Attribute("msgCount", int64(len(msgs))),
 	)
 
-	var wg sync.WaitGroup
-
-	digests := make([]bls.Digest, len(msgs))
-	for i := 0; i < 10; i++ {
-		wg.Add(1)
-		go func(w int) {
-			defer wg.Done()
-			for j := 0; (j*10)+w < len(msgs); j++ {
-				digests[j*10+w] = bls.Hash(bls.Message(msgs[j*10+w].Bytes()))
-			}
-		}(i)
+	bmsgs := make([]bls.Message, len(msgs))
+	for i, m := range msgs {
+		bmsgs[i] = m.Bytes()
 	}
-	wg.Wait()
 
 	var bsig bls.Signature
 	copy(bsig[:], sig.Data)
-	if !bls.Verify(&bsig, digests, pubks) {
+	if !bls.HashVerify(&bsig, bmsgs, pubks) {
 		return xerrors.New("bls aggregate signature failed to verify")
 	}
 
