@@ -100,7 +100,7 @@ var runCmd = &cli.Command{
 			from: from,
 			limiter: NewLimiter(LimiterConfig{
 				TotalRate:   time.Second,
-				TotalBurst:  20,
+				TotalBurst:  256,
 				IPRate:      time.Minute,
 				IPBurst:     5,
 				WalletRate:  15 * time.Minute,
@@ -108,7 +108,7 @@ var runCmd = &cli.Command{
 			}),
 			minerLimiter: NewLimiter(LimiterConfig{
 				TotalRate:   time.Second,
-				TotalBurst:  20,
+				TotalBurst:  256,
 				IPRate:      10 * time.Minute,
 				IPBurst:     2,
 				WalletRate:  1 * time.Hour,
@@ -231,7 +231,15 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Limit based on IP
-	limiter = h.minerLimiter.GetIPLimiter(r.RemoteAddr)
+	reqIP := r.Header.Get("X-Real-IP")
+	if reqIP == "" {
+		h, _, err := net.SplitHostPort(r.RemoteAddr)
+		if err != nil {
+			log.Errorf("could not get ip from: %s, err: %s", r.RemoteAddr, err)
+		}
+		reqIP = h
+	}
+	limiter = h.minerLimiter.GetIPLimiter(reqIP)
 	if !limiter.Allow() {
 		http.Error(w, http.StatusText(http.StatusTooManyRequests)+": IP limit", http.StatusTooManyRequests)
 		return
