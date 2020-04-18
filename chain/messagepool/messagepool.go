@@ -482,18 +482,20 @@ func (mp *MessagePool) PushWithNonce(ctx context.Context, addr address.Address, 
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
-	nonce, err := mp.getNonceLocked(addr, mp.curTs)
-	if err != nil {
-		return nil, xerrors.Errorf("get nonce locked failed: %w", err)
-	}
-
 	fromKey := addr
 	if fromKey.Protocol() == address.ID {
+		var err error
 		fromKey, err = mp.api.StateAccountKey(ctx, fromKey, mp.curTs)
 		if err != nil {
 			return nil, xerrors.Errorf("resolving sender key: %w", err)
 		}
 	}
+
+	nonce, err := mp.getNonceLocked(fromKey, mp.curTs)
+	if err != nil {
+		return nil, xerrors.Errorf("get nonce locked failed: %w", err)
+	}
+
 
 	msg, err := cb(fromKey, nonce)
 	if err != nil {
