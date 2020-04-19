@@ -1181,6 +1181,10 @@ func (syncer *Syncer) iterFullTipsets(ctx context.Context, headers []*types.TipS
 			if err := copyBlockstore(bs, syncer.store.Blockstore()); err != nil {
 				return xerrors.Errorf("message processing failed: %w", err)
 			}
+
+			if err := syncer.store.PutTipSet(ctx, headers[i]); err != nil {
+				return xerrors.Errorf("put tip set failed: %w", err)
+			}
 		}
 		i -= batchSize
 	}
