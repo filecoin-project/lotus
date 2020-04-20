@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -650,6 +651,10 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	})
 
 	beaconValuesCheck := async.Err(func() error {
+		if os.Getenv("LOTUS_IGNORE_DRAND") == "_yes_" {
+			return nil
+		}
+
 		if err := beacon.ValidateBlockValues(syncer.beacon, h, *prevBeacon); err != nil {
 			return xerrors.Errorf("failed to validate blocks random beacon values: %w", err)
 		}
