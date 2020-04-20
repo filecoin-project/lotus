@@ -1,6 +1,7 @@
 package modules
 
 import (
+	"bytes"
 	"context"
 	"net/http"
 	"reflect"
@@ -282,7 +283,17 @@ func SetupBlockProducer(lc fx.Lifecycle, ds dtypes.MetadataDS, api lapi.FullNode
 	return m, nil
 }
 
-func SealTicketGen(fapi lapi.FullNode) sealing.TicketFn {
+func SealTicketGen(fapi lapi.FullNode, ds dtypes.MetadataDS) (sealing.TicketFn, error) {
+	minerAddr, err := minerAddrFromDS(ds)
+	if err != nil {
+		return nil, err
+	}
+
+	entropy := new(bytes.Buffer)
+	if err := minerAddr.MarshalCBOR(entropy); err != nil {
+		return nil, err
+	}
+
 	return func(ctx context.Context, tok sealing.TipSetToken) (abi.SealRandomness, abi.ChainEpoch, error) {
 		tsk, err := types.TipSetKeyFromBytes(tok)
 		if err != nil {
@@ -294,13 +305,13 @@ func SealTicketGen(fapi lapi.FullNode) sealing.TicketFn {
 			return nil, 0, xerrors.Errorf("getting TipSet for key failed: %w", err)
 		}
 
-		r, err := fapi.ChainGetRandomness(ctx, ts.Key(), crypto.DomainSeparationTag_SealRandomness, ts.Height()-build.SealRandomnessLookback, nil)
+		r, err := fapi.ChainGetRandomness(ctx, ts.Key(), crypto.DomainSeparationTag_SealRandomness, ts.Height()-build.SealRandomnessLookback, entropy.Bytes())
 		if err != nil {
 			return nil, 0, xerrors.Errorf("getting randomness for SealTicket failed: %w", err)
 		}
 
 		return abi.SealRandomness(r), ts.Height() - build.SealRandomnessLookback, nil
-	}
+	}, nil
 }
 
 func NewProviderRequestValidator(deals dtypes.ProviderDealStore) *requestvalidation.ProviderRequestValidator {
