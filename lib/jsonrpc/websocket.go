@@ -122,14 +122,13 @@ func (c *wsConn) nextWriter(cb func(io.Writer)) {
 	}
 }
 
-func (c *wsConn) sendRequest(req request) {
+func (c *wsConn) sendRequest(req request) error {
 	c.writeLk.Lock()
+	defer c.writeLk.Unlock()
 	if err := c.conn.WriteJSON(req); err != nil {
-		log.Error("handle me:", err)
-		c.writeLk.Unlock()
-		return
+		return err
 	}
-	c.writeLk.Unlock()
+	return nil
 }
 
 //                 //
@@ -215,22 +214,27 @@ func (c *wsConn) handleOutChans() {
 			cases = cases[:n]
 			caseToID = caseToID[:n-internal]
 
-			c.sendRequest(request{
+			if err := c.sendRequest(request{
 				Jsonrpc: "2.0",
 				ID:      nil, // notification
 				Method:  chClose,
 				Params:  []param{{v: reflect.ValueOf(id)}},
-			})
+			}); err != nil {
+				log.Warnf("closed out channel sendRequest failed: %s", err)
+			}
 			continue
 		}
 
 		// forward message
-		c.sendRequest(request{
+		if err := c.sendRequest(request{
 			Jsonrpc: "2.0",
 			ID:      nil, // notification
 			Method:  chValue,
 			Params:  []param{{v: reflect.ValueOf(caseToID[chosen-internal])}, {v: val}},
-		})
+		}); err != nil {
+			log.Warnf("sendRequest failed: %s", err)
+			return
+		}
 	}
 }
 
@@ -535,7 +539,9 @@ func (c *wsConn) handleWsConn(ctx context.Context) {
 				c.inflight[*req.req.ID] = req
 			}
 			c.writeLk.Unlock()
-			c.sendRequest(req.req)
+			if err := c.sendRequest(req.req); err != nil {
+				log.Errorf("sendReqest failed (Handle me): %s", err)
+			}
 		case <-c.stop:
 			c.writeLk.Lock()
 			cmsg := websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")
