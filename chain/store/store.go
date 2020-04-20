@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"io"
+	"os"
 	"sync"
 
 	"github.com/filecoin-project/specs-actors/actors/crypto"
@@ -1112,6 +1113,12 @@ func (cs *ChainStore) GetLatestBeaconEntry(ts *types.TipSet) (*types.BeaconEntry
 			return nil, xerrors.Errorf("failed to load parents when searching back for latest beacon entry: %w", err)
 		}
 		cur = next
+	}
+
+	if os.Getenv("LOTUS_IGNORE_DRAND") == "_yes_" {
+		return &types.BeaconEntry{
+			Data: []byte{9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9},
+		}, nil
 	}
 
 	return nil, xerrors.Errorf("found NO beacon entries in the 20 blocks prior to given tipset")

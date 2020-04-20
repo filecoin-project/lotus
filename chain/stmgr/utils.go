@@ -2,7 +2,15 @@ package stmgr
 
 import (
 	"context"
+	"os"
 
+	cid "github.com/ipfs/go-cid"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	cbg "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-address"
 	amt "github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -14,8 +22,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
-	"github.com/filecoin-project/go-address"
-
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/state"
@@ -23,12 +29,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
-
-	cid "github.com/ipfs/go-cid"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	cbor "github.com/ipfs/go-ipld-cbor"
-	cbg "github.com/whyrusleeping/cbor-gen"
-	"golang.org/x/xerrors"
 )
 
 func GetNetworkName(ctx context.Context, sm *StateManager, st cid.Cid) (dtypes.NetworkName, error) {
@@ -473,7 +473,11 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, tsk types.TipSetKey
 
 	prev, err := sm.ChainStore().GetLatestBeaconEntry(ts)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get latest beacon entry: %w", err)
+		if os.Getenv("LOTUS_IGNORE_DRAND") != "_yes_" {
+			return nil, xerrors.Errorf("failed to get latest beacon entry: %w", err)
+		}
+
+		prev = &types.BeaconEntry{}
 	}
 
 	worker, err := sm.ResolveToKeyAddress(ctx, mas.GetWorker(), ts)
