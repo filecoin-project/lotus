@@ -65,11 +65,13 @@ func (rcn *retrievalClientNode) GetChainHead(ctx context.Context) (shared.TipSet
 	return head.Key().Bytes(), head.Height(), nil
 }
 
+// WaitForPaymentChannelAddFunds waits for messageCID to appear on chain.
 func (rcn *retrievalClientNode) WaitForPaymentChannelAddFunds(messageCID cid.Cid) error {
-	panic("implement me")
+	return rcn.pmgr.WaitForAddFundsMsg(context.TODO(), messageCID)
 }
 
+// WaitForPaymentChannelCreation waits for messageCID to appear on chain and returns
+// the address of the payment channel
 func (rcn *retrievalClientNode) WaitForPaymentChannelCreation(messageCID cid.Cid) (address.Address, error) {
-	panic("implement me")
+	return rcn.pmgr.WaitForPaychCreateMsg(context.TODO(), messageCID)
 }
-

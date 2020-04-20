@@ -147,8 +147,6 @@ github.com/filecoin-project/go-data-transfer v0.0.0-20200408061858-82c58b423ca6/
 github.com/filecoin-project/go-fil-commcid v0.0.0-20200208005934-2b8bd03caca5 h1:yvQJCW9mmi9zy+51xA01Ea2X7/dL7r8eKDPuGUjRmbo=
 github.com/filecoin-project/go-fil-commcid v0.0.0-20200208005934-2b8bd03caca5/go.mod h1:JbkIgFF/Z9BDlvrJO1FuKkaWsH673/UdFaiVS6uIHlA=
 github.com/filecoin-project/go-fil-markets v0.0.0-20200114015428-74d100f305f8/go.mod h1:c8NTjvFVy1Ud02mmGDjOiMeawY2t6ALfrrdvAB01FQc=
-github.com/filecoin-project/go-fil-markets v0.0.0-20200413201123-731e6ca89984 h1:QY5jgd5T4txUEC2k9BPqWRlhDUTdFx5f1z/StOlh92g=
-github.com/filecoin-project/go-fil-markets v0.0.0-20200413201123-731e6ca89984/go.mod h1:vcX3y5FVyuclIZgogPG1uIvJxHLSBU54B1ANJ88uMNk=
 github.com/filecoin-project/go-fil-markets v0.0.0-20200415011556-4378bd41b91f h1:mPmWWrEwc/5zZW2E14m8a7HMrrOWREaflGZL1Iun/Aw=
 github.com/filecoin-project/go-fil-markets v0.0.0-20200415011556-4378bd41b91f/go.mod h1:vcX3y5FVyuclIZgogPG1uIvJxHLSBU54B1ANJ88uMNk=
 github.com/filecoin-project/go-padreader v0.0.0-20200210211231-548257017ca6 h1:92PET+sx1Hb4W/8CgFwGuxaKbttwY+UNspYZTvXY0vs=
