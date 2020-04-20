@@ -17,7 +17,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-func (s *WindowPoStScheduler) failPost(deadline *Deadline) {
+func (s *WindowPoStScheduler) failPost(deadline *miner.DeadlineInfo) {
 	log.Errorf("TODO")
 	/*s.failLk.Lock()
 	if eps > s.failed {
@@ -26,7 +26,7 @@ func (s *WindowPoStScheduler) failPost(deadline *Deadline) {
 	s.failLk.Unlock()*/
 }
 
-func (s *WindowPoStScheduler) doPost(ctx context.Context, deadline *Deadline, ts *types.TipSet) {
+func (s *WindowPoStScheduler) doPost(ctx context.Context, deadline *miner.DeadlineInfo, ts *types.TipSet) {
 	ctx, abort := context.WithCancel(ctx)
 
 	s.abort = abort
@@ -83,7 +83,7 @@ func (s *WindowPoStScheduler) checkFaults(ctx context.Context, ssi []abi.SectorN
 	return faultIDs, nil
 }
 
-func (s *WindowPoStScheduler) runPost(ctx context.Context, di Deadline, ts *types.TipSet) (*miner.SubmitWindowedPoStParams, error) {
+func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo, ts *types.TipSet) (*miner.SubmitWindowedPoStParams, error) {
 	ctx, span := trace.StartSpan(ctx, "storage.runPost")
 	defer span.End()
 
@@ -91,7 +91,7 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di Deadline, ts *type
 	if err := s.actor.MarshalCBOR(buf); err != nil {
 		return nil, xerrors.Errorf("failed to marshal address to cbor: %w", err)
 	}
-	rand, err := s.api.ChainGetRandomness(ctx, ts.Key(), crypto.DomainSeparationTag_WindowedPoStChallengeSeed, di.challengeEpoch, buf.Bytes())
+	rand, err := s.api.ChainGetRandomness(ctx, ts.Key(), crypto.DomainSeparationTag_WindowedPoStChallengeSeed, di.Challenge, buf.Bytes())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get chain randomness for windowPost (ts=%d; deadline=%d): %w", ts.Height(), di, err)
 	}
@@ -101,12 +101,12 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di Deadline, ts *type
 		return nil, err
 	}
 
-	firstPartition, _, err := miner.PartitionsForDeadline(deadlines, di.deadlineIdx)
+	firstPartition, _, err := miner.PartitionsForDeadline(deadlines, di.Index)
 	if err != nil {
 		return nil, xerrors.Errorf("getting partitions for deadline: %w", err)
 	}
 
-	partitionCount, _, err := miner.DeadlineCount(deadlines, di.deadlineIdx)
+	partitionCount, _, err := miner.DeadlineCount(deadlines, di.Index)
 	if err != nil {
 		return nil, xerrors.Errorf("getting deadline partition count: %w", err)
 	}
@@ -120,7 +120,7 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di Deadline, ts *type
 		partitions[i] = firstPartition + uint64(i)
 	}
 
-	ssi, err := s.sortedSectorInfo(ctx, deadlines.Due[di.deadlineIdx], ts)
+	ssi, err := s.sortedSectorInfo(ctx, deadlines.Due[di.Index], ts)
 	if err != nil {
 		return nil, xerrors.Errorf("getting sorted sector info: %w", err)
 	}
