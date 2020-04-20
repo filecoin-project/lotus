@@ -52,33 +52,48 @@ var provingInfoCmd = &cli.Command{
 			return xerrors.Errorf("getting miner info: %w", err)
 		}
 
-		pps, _ := (&miner.State{Info: mi}).ProvingPeriodStart(head.Height())
-		npp := pps + miner.WPoStProvingPeriod
-
-		cd, chg := miner.ComputeCurrentDeadline(pps, head.Height())
+		cd, _ := miner.ComputeProvingPeriodDeadline(mi.ProvingPeriodBoundary, head.Height())
 
 		deadlines, err := api.StateMinerDeadlines(ctx, maddr, head.Key())
 		if err != nil {
 			return xerrors.Errorf("getting miner deadlines: %w", err)
 		}
 
-		curDeadlineSectors, err := deadlines.Due[cd].Count()
+		curDeadlineSectors, err := deadlines.Due[cd.Index].Count()
 		if err != nil {
 			return xerrors.Errorf("counting deadline sectors: %w", err)
 		}
 
-		fmt.Printf("Proving Period Boundary: %d\n", mi.ProvingPeriodBoundary)
-		fmt.Printf("Current Epoch:           %d\n", head.Height())
-		fmt.Printf("Proving Period Start:    %d (%s ago)\n", pps, time.Second*time.Duration(build.BlockDelay*(head.Height()-pps)))
-		fmt.Printf("Next Proving Period:     %d (in %s)\n\n", npp, time.Second*time.Duration(build.BlockDelay*(npp-head.Height())))
+		fmt.Printf("Current Epoch:           %d\n", cd.CurrentEpoch)
+		fmt.Printf("Chain Period:            %d\n", cd.CurrentEpoch / miner.WPoStProvingPeriod)
+		fmt.Printf("Chain Period Start:      %s\n", epochTime(cd.CurrentEpoch, (cd.CurrentEpoch / miner.WPoStProvingPeriod) * miner.WPoStProvingPeriod))
+		fmt.Printf("Chain Period End:        %s\n\n", epochTime(cd.CurrentEpoch, (cd.CurrentEpoch / miner.WPoStProvingPeriod + 1) * miner.WPoStProvingPeriod))
 
-		fmt.Printf("Deadline:         %d\n", cd)
-		fmt.Printf("Deadline Sectors: %d\n", curDeadlineSectors)
-		fmt.Printf("Deadline Start:   %d\n", pps+(abi.ChainEpoch(cd)*miner.WPoStChallengeWindow))
-		fmt.Printf("Challenge Epoch:  %d\n", chg)
-		fmt.Printf("Time left:        %s\n", time.Second*time.Duration(build.BlockDelay*((pps+((1+abi.ChainEpoch(cd))*miner.WPoStChallengeWindow))-head.Height())))
+		fmt.Printf("Proving Period Boundary: %d\n", mi.ProvingPeriodBoundary)
+		fmt.Printf("Proving Period Start:    %s\n", epochTime(cd.CurrentEpoch, cd.PeriodStart))
+		fmt.Printf("Next Period Start:       %s\n\n", epochTime(cd.CurrentEpoch, cd.PeriodStart + miner.WPoStProvingPeriod))
+
+		fmt.Printf("Deadline Index:       %d\n", cd.Index)
+		fmt.Printf("Deadline Sectors:     %d\n", curDeadlineSectors)
+		fmt.Printf("Deadline Open:        %s\n", epochTime(cd.CurrentEpoch, cd.Open))
+		fmt.Printf("Deadline Close:       %s\n", epochTime(cd.CurrentEpoch, cd.Close))
+		fmt.Printf("Deadline Challenge:   %s\n", epochTime(cd.CurrentEpoch, cd.Challenge))
+		fmt.Printf("Deadline FaultCutoff: %s\n", epochTime(cd.CurrentEpoch, cd.FaultCutoff))
 		return nil
 	},
+}
+
+func epochTime(curr, e abi.ChainEpoch) string {
+	switch {
+	case curr > e:
+		return fmt.Sprintf("%d (%s ago)", e, time.Second*time.Duration(build.BlockDelay*(curr - e)))
+	case curr == e:
+		return fmt.Sprintf("%d (now)", e)
+	case curr < e:
+		return fmt.Sprintf("%d (in %s)", e, time.Second*time.Duration(build.BlockDelay*(e - curr)))
+	}
+
+	panic("math broke")
 }
 
 var provingDeadlinesCmd = &cli.Command{

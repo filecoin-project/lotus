@@ -438,6 +438,18 @@ var chainGetCmd = &cli.Command{
    - /ipfs/[cid]/@Hu:123 - get uvarint elem 123 from hamt
    - /ipfs/[cid]/@Ha:t01 - get element under Addr(t01).Bytes
    - /ipfs/[cid]/@A:10 - get 10th amt element
+
+   List of --as-type types:
+   - raw
+   - block
+   - message
+   - smessage, signedmessage
+   - actor
+   - amt
+   - hamt-epoch
+   - hamt-address
+   - cronevent
+   - account-state
 `,
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)

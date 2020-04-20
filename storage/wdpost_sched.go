@@ -30,7 +30,7 @@ type WindowPoStScheduler struct {
 	cur *types.TipSet
 
 	// if a post is in progress, this indicates for which ElectionPeriodStart
-	activeDeadline *Deadline
+	activeDeadline *miner.DeadlineInfo
 	abort          context.CancelFunc
 
 	//failed abi.ChainEpoch // eps
@@ -56,19 +56,12 @@ func NewWindowedPoStScheduler(api storageMinerApi, sb storage.Prover, actor addr
 	return &WindowPoStScheduler{api: api, prover: sb, actor: actor, worker: worker, proofType: rt}, nil
 }
 
-type Deadline struct {
-	provingPeriodStart abi.ChainEpoch
-	deadlineIdx        uint64
-	challengeEpoch     abi.ChainEpoch
-}
-
-func (d *Deadline) Equals(other *Deadline) bool {
-	if d == nil || other == nil {
-		return d == other
+func deadlineEquals(a, b *miner.DeadlineInfo) bool {
+	if a == nil || b == nil {
+		return b == a
 	}
 
-	return d.provingPeriodStart == other.provingPeriodStart &&
-		d.deadlineIdx == other.deadlineIdx
+	return a.PeriodStart == b.PeriodStart && a.Index == b.Index && a.Challenge == b.Challenge
 }
 
 func (s *WindowPoStScheduler) Run(ctx context.Context) {
@@ -159,9 +152,9 @@ func (s *WindowPoStScheduler) revert(ctx context.Context, newLowest *types.TipSe
 		return err
 	}
 
-	newDeadline := deadlineInfo(mi, newLowest)
+	newDeadline, _ := deadlineInfo(mi, newLowest)
 
-	if !s.activeDeadline.Equals(newDeadline) {
+	if !deadlineEquals(s.activeDeadline, newDeadline) {
 		s.abortActivePoSt()
 	}
 
@@ -178,18 +171,18 @@ func (s *WindowPoStScheduler) update(ctx context.Context, new *types.TipSet) err
 		return err
 	}
 
-	di := deadlineInfo(mi, new)
-	if s.activeDeadline.Equals(di) {
+	di, nn := deadlineInfo(mi, new)
+	if deadlineEquals(s.activeDeadline, di) {
 		return nil // already working on this deadline
 	}
-	if di == nil {
+	if !nn {
 		return nil // not proving anything yet
 	}
 
 	s.abortActivePoSt()
 
-	if di.challengeEpoch+StartConfidence >= new.Height() {
-		log.Info("not starting windowPost yet, waiting for startconfidence", di.challengeEpoch, di.challengeEpoch+StartConfidence, new.Height())
+	if di.Challenge+StartConfidence >= new.Height() {
+		log.Info("not starting windowPost yet, waiting for startconfidence", di.Challenge, di.Challenge+StartConfidence, new.Height())
 		return nil
 	}
 
@@ -220,21 +213,6 @@ func (s *WindowPoStScheduler) abortActivePoSt() {
 	s.abort = nil
 }
 
-func deadlineInfo(mi miner.MinerInfo, new *types.TipSet) *Deadline {
-	pps, nonNegative := provingPeriodStart(mi, new.Height())
-	if !nonNegative {
-		return nil // proving didn't start yet
-	}
-
-	deadlineIdx, challengeEpoch := miner.ComputeCurrentDeadline(pps, new.Height())
-
-	return &Deadline{
-		provingPeriodStart: pps,
-		deadlineIdx:        deadlineIdx,
-		challengeEpoch:     challengeEpoch,
-	}
-}
-
-func provingPeriodStart(mi miner.MinerInfo, currEpoch abi.ChainEpoch) (period abi.ChainEpoch, nonNegative bool) {
-	return (&miner.State{Info: mi}).ProvingPeriodStart(currEpoch)
+func deadlineInfo(mi miner.MinerInfo, new *types.TipSet) (*miner.DeadlineInfo, bool) {
+	return miner.ComputeProvingPeriodDeadline(mi.ProvingPeriodBoundary, new.Height())
 }
