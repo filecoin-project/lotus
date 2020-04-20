@@ -176,7 +176,12 @@ func (m *Sealing) handleWaitSeed(ctx statemachine.Context, sector SectorInfo) er
 	randHeight := pci.PreCommitEpoch + miner.PreCommitChallengeDelay
 
 	err = m.events.ChainAt(func(ectx context.Context, tok TipSetToken, curH abi.ChainEpoch) error {
-		rand, err := m.api.ChainGetRandomness(ectx, tok, crypto.DomainSeparationTag_InteractiveSealChallengeSeed, randHeight, nil)
+		buf := new(bytes.Buffer)
+		if err := m.maddr.MarshalCBOR(buf); err != nil {
+			return err
+		}
+
+		rand, err := m.api.ChainGetRandomness(ectx, tok, crypto.DomainSeparationTag_InteractiveSealChallengeSeed, randHeight, buf.Bytes())
 		if err != nil {
 			err = xerrors.Errorf("failed to get randomness for computing seal proof: %w", err)
 
