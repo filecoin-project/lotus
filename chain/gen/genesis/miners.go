@@ -8,6 +8,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -101,26 +102,43 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 
 		var dealIDs []abi.DealID
 		{
+			publish := func(params *market.PublishStorageDealsParams) error {
+				fmt.Printf("publishing %d storage deals on miner %s with worker %s\n", len(params.Deals), params.Deals[0].Proposal.Provider, m.Worker)
+
+				ret, err := doExecValue(ctx, vm, builtin.StorageMarketActorAddr, m.Worker, big.Zero(), builtin.MethodsMarket.PublishStorageDeals, mustEnc(params))
+				if err != nil {
+					return xerrors.Errorf("failed to create genesis miner: %w", err)
+				}
+				var ids market.PublishStorageDealsReturn
+				if err := ids.UnmarshalCBOR(bytes.NewReader(ret)); err != nil {
+					return err
+				}
+
+				dealIDs = append(dealIDs, ids.IDs...)
+				return nil
+			}
+
 			params := &market.PublishStorageDealsParams{}
 			for _, preseal := range m.Sectors {
-
 				params.Deals = append(params.Deals, market.ClientDealProposal{
 					Proposal:        preseal.Deal,
 					ClientSignature: crypto.Signature{Type: crypto.SigTypeBLS}, // TODO: do we want to sign these? Or do we want to fake signatures for genesis setup?
 				})
-				fmt.Printf("calling publish storage deals on miner %s with worker %s\n", preseal.Deal.Provider, m.Worker)
+
+				if len(params.Deals) == cbg.MaxLength {
+					if err := publish(params); err != nil {
+						return cid.Undef, err
+					}
+
+					params = &market.PublishStorageDealsParams{}
+				}
 			}
 
-			ret, err := doExecValue(ctx, vm, builtin.StorageMarketActorAddr, m.Worker, big.Zero(), builtin.MethodsMarket.PublishStorageDeals, mustEnc(params))
-			if err != nil {
-				return cid.Undef, xerrors.Errorf("failed to create genesis miner: %w", err)
+			if len(params.Deals) > 0 {
+				if err := publish(params); err != nil {
+					return cid.Undef, err
+				}
 			}
-			var ids market.PublishStorageDealsReturn
-			if err := ids.UnmarshalCBOR(bytes.NewReader(ret)); err != nil {
-				return cid.Undef, err
-			}
-
-			dealIDs = ids.IDs
 		}
 
 		// setup windowed post
