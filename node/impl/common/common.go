@@ -30,7 +30,7 @@ type CommonAPI struct {
 }
 
 type jwtPayload struct {
-	Allow []string
+	Allow []api.Permission
 }
 
 func (a *CommonAPI) AuthVerify(ctx context.Context, token string) ([]api.Permission, error) {
