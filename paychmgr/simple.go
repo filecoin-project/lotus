@@ -49,7 +49,9 @@ func (pm *Manager) createPaych(ctx context.Context, from, to address.Address, am
 	return smsg.Cid(), nil
 }
 
-func (pm *Manager) waitForPaychCreateMsg(ctx context.Context, mcid cid.Cid) (address.Address, error) {
+// WaitForPaychCreateMsg waits for mcid to appear on chain and returns the robust address of the
+// created payment channel
+func (pm *Manager) WaitForPaychCreateMsg(ctx context.Context, mcid cid.Cid) (address.Address, error) {
 	mwait, err := pm.state.StateWaitMsg(ctx, mcid)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("wait msg: %w", err)
@@ -95,7 +97,8 @@ func (pm *Manager) addFunds(ctx context.Context, ch address.Address, from addres
 	return smsg.Cid(), nil
 }
 
-func (pm *Manager) waitForAddFundsMsg(ctx context.Context, mcid cid.Cid) error {
+// WaitForAddFundsMsg waits for mcid to appear on chain and returns error, if any
+func (pm *Manager) WaitForAddFundsMsg(ctx context.Context, mcid cid.Cid) error {
 
 	mwait, err := pm.state.StateWaitMsg(ctx, mcid) // TODO: wait outside the store lock!
 	if err != nil {
