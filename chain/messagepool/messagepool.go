@@ -496,7 +496,6 @@ func (mp *MessagePool) PushWithNonce(ctx context.Context, addr address.Address, 
 		return nil, xerrors.Errorf("get nonce locked failed: %w", err)
 	}
 
-
 	msg, err := cb(fromKey, nonce)
 	if err != nil {
 		return nil, err
