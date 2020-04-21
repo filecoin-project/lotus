@@ -115,12 +115,7 @@ var stateMinerInfo = &cli.Command{
 	},
 }
 
-func parseTipSetString(cctx *cli.Context) ([]cid.Cid, error) {
-	ts := cctx.String("tipset")
-	if ts == "" {
-		return nil, nil
-	}
-
+func parseTipSetString(ts string) ([]cid.Cid, error) {
 	strs := strings.Split(ts, ",")
 
 	var cids []cid.Cid
@@ -136,7 +131,21 @@ func parseTipSetString(cctx *cli.Context) ([]cid.Cid, error) {
 }
 
 func LoadTipSet(ctx context.Context, cctx *cli.Context, api api.FullNode) (*types.TipSet, error) {
-	cids, err := parseTipSetString(cctx)
+	tss := cctx.String("tipset")
+	if tss == "" {
+		return nil, nil
+	}
+
+	if tss[0] == '@' {
+		var h uint64
+		if _, err := fmt.Sscanf(tss, "@%d", &h); err != nil {
+			return nil, xerrors.Errorf("parsing height tipset ref: %w", err)
+		}
+
+		return api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(h), types.EmptyTSK)
+	}
+
+	cids, err := parseTipSetString(tss)
 	if err != nil {
 		return nil, err
 	}
