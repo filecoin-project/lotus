@@ -177,10 +177,10 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 			{
 				err = vm.MutateState(ctx, builtin.StoragePowerActorAddr, func(cst cbor.IpldStore, st *power.State) error {
 					weight := &power.SectorStorageWeightDesc{
-						SectorSize: m.SectorSize,
-						Duration:   preseal.Deal.Duration(),
-						DealWeight: dealWeight.DealWeight,
-						VerifiedDealWeight:  dealWeight.VerifiedDealWeight,
+						SectorSize:         m.SectorSize,
+						Duration:           preseal.Deal.Duration(),
+						DealWeight:         dealWeight.DealWeight,
+						VerifiedDealWeight: dealWeight.VerifiedDealWeight,
 					}
 
 					qapower := power.QAPowerForWeight(weight)
@@ -208,9 +208,9 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 						DealIDs:         []abi.DealID{dealIDs[pi]},
 						Expiration:      preseal.Deal.EndEpoch,
 					},
-					ActivationEpoch: 0, // TODO: REVIEW: Correct?
-					DealWeight: dealWeight.DealWeight,
-					VerifiedDealWeight:  dealWeight.VerifiedDealWeight,
+					ActivationEpoch:    0, // TODO: REVIEW: Correct?
+					DealWeight:         dealWeight.DealWeight,
+					VerifiedDealWeight: dealWeight.VerifiedDealWeight,
 				}
 
 				err = vm.MutateState(ctx, maddr, func(cst cbor.IpldStore, st *miner.State) error {
