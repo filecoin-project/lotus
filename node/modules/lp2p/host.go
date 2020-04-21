@@ -83,6 +83,8 @@ func DHTRouting(mode dht.ModeOpt) interface{} {
 			dht.ProtocolPrefix(protocol.ID(nn)),
 			dht.QueryFilter(dht.PublicQueryFilter),
 			dht.RoutingTableFilter(dht.PublicRoutingTableFilter),
+			dht.DisableProviders(),
+			dht.DisableValues(),
 		)
 
 		if err != nil {
