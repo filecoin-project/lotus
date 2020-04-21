@@ -29,7 +29,6 @@ func SetupStoragePowerActor(bs bstore.Blockstore) (*types.Actor, error) {
 		MinerCount:               0,
 		CronEventQueue:           emptyhamt,
 		LastEpochTick:            0,
-		PoStDetectedFaultMiners:  emptyhamt,
 		Claims:                   emptyhamt,
 		NumMinersMeetingMinPower: 0,
 	}

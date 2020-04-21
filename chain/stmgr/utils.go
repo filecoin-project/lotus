@@ -205,34 +205,17 @@ func GetMinerSlashed(ctx context.Context, sm *StateManager, ts *types.TipSet, ma
 
 	store := sm.cs.Store(ctx)
 
-	{
-		claims, err := adt.AsMap(store, spas.Claims)
-		if err != nil {
-			return false, err
-		}
-
-		ok, err := claims.Get(power.AddrKey(maddr), nil)
-		if err != nil {
-			return false, err
-		}
-		if !ok {
-			return true, nil
-		}
+	claims, err := adt.AsMap(store, spas.Claims)
+	if err != nil {
+		return false, err
 	}
 
-	{
-		detectedFaulty, err := adt.AsMap(store, spas.PoStDetectedFaultMiners)
-		if err != nil {
-			return false, err
-		}
-
-		ok, err := detectedFaulty.Get(power.AddrKey(maddr), nil)
-		if err != nil {
-			return false, err
-		}
-		if ok {
-			return true, nil
-		}
+	ok, err := claims.Get(power.AddrKey(maddr), nil)
+	if err != nil {
+		return false, err
+	}
+	if !ok {
+		return true, nil
 	}
 
 	return false, nil
@@ -245,7 +228,7 @@ func GetMinerDeadlines(ctx context.Context, sm *StateManager, ts *types.TipSet, 
 		return nil, xerrors.Errorf("(get ssize) failed to load miner actor state: %w", err)
 	}
 
-	return miner.LoadDeadlines(sm.cs.Store(ctx), &mas)
+	return mas.LoadDeadlines(sm.cs.Store(ctx))
 }
 
 func GetMinerFaults(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) ([]abi.SectorNumber, error) {

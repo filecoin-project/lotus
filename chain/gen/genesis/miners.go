@@ -71,7 +71,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 
 			var ma power.CreateMinerReturn
 			if err := ma.UnmarshalCBOR(bytes.NewReader(rval)); err != nil {
-				return cid.Undef, err
+				return cid.Undef, xerrors.Errorf("unmarshaling CreateMinerReturn: %w", err)
 			}
 
 			expma := MinerAddress(uint64(i))
@@ -111,7 +111,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 				}
 				var ids market.PublishStorageDealsReturn
 				if err := ids.UnmarshalCBOR(bytes.NewReader(ret)); err != nil {
-					return err
+					return xerrors.Errorf("unmarsahling publishStorageDeals result: %w", err)
 				}
 
 				dealIDs = append(dealIDs, ids.IDs...)
@@ -156,7 +156,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 			// TODO: Maybe check seal (Can just be snark inputs, doesn't go into the genesis file)
 
 			// check deals, get dealWeight
-			dealWeight := big.Zero()
+			var dealWeight market.VerifyDealsOnSectorProveCommitReturn
 			{
 				params := &market.VerifyDealsOnSectorProveCommitParams{
 					DealIDs:      []abi.DealID{dealIDs[pi]},
@@ -169,7 +169,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 					return cid.Undef, xerrors.Errorf("failed to verify preseal deals miner: %w", err)
 				}
 				if err := dealWeight.UnmarshalCBOR(bytes.NewReader(ret)); err != nil {
-					return cid.Undef, err
+					return cid.Undef, xerrors.Errorf("unmarshaling market onProveCommit result: %w", err)
 				}
 			}
 
@@ -179,7 +179,8 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 					weight := &power.SectorStorageWeightDesc{
 						SectorSize: m.SectorSize,
 						Duration:   preseal.Deal.Duration(),
-						DealWeight: dealWeight,
+						DealWeight: dealWeight.DealWeight,
+						VerifiedDealWeight:  dealWeight.VerifiedDealWeight,
 					}
 
 					qapower := power.QAPowerForWeight(weight)
@@ -208,7 +209,8 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 						Expiration:      preseal.Deal.EndEpoch,
 					},
 					ActivationEpoch: 0, // TODO: REVIEW: Correct?
-					DealWeight:      dealWeight,
+					DealWeight: dealWeight.DealWeight,
+					VerifiedDealWeight:  dealWeight.VerifiedDealWeight,
 				}
 
 				err = vm.MutateState(ctx, maddr, func(cst cbor.IpldStore, st *miner.State) error {
@@ -239,7 +241,10 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 	})
 
 	c, err := vm.Flush(ctx)
-	return c, err
+	if err != nil {
+		return cid.Cid{}, xerrors.Errorf("flushing vm: %w", err)
+	}
+	return c, nil
 }
 
 // TODO: copied from actors test harness, deduplicate or remove from here
