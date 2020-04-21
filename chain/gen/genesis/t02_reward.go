@@ -17,12 +17,14 @@ func SetupRewardActor(bs bstore.Blockstore) (*types.Actor, error) {
 	cst := cbor.NewCborStore(bs)
 
 	as := store.ActorStore(context.TODO(), bs)
-	emv, err := adt.MakeEmptyMultimap(as)
+	emv := adt.MakeEmptyMultimap(as)
+
+	r, err := emv.Root()
 	if err != nil {
 		return nil, err
 	}
 
-	st := reward.ConstructState(emv.Root())
+	st := reward.ConstructState(r)
 	hcid, err := cst.Put(context.TODO(), st)
 	if err != nil {
 		return nil, err

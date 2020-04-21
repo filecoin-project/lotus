@@ -12,7 +12,6 @@ require (
 	github.com/davidlazar/go-crypto v0.0.0-20190912175916-7055855a373f // indirect
 	github.com/docker/go-units v0.4.0
 	github.com/drand/drand v0.7.2
-	github.com/filecoin-project/chain-validation v0.0.6-0.20200331143132-15970e639ac2
 	github.com/filecoin-project/filecoin-ffi v0.0.0-20200326153646-e899cc1dd072
 	github.com/filecoin-project/go-address v0.0.2-0.20200218010043-eb9bb40ed5be
 	github.com/filecoin-project/go-amt-ipld/v2 v2.0.1-0.20200131012142-05d80eeccc5e
@@ -20,14 +19,14 @@ require (
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
 	github.com/filecoin-project/go-data-transfer v0.0.0-20200408061858-82c58b423ca6
 	github.com/filecoin-project/go-fil-commcid v0.0.0-20200208005934-2b8bd03caca5
-	github.com/filecoin-project/go-fil-markets v0.0.0-20200408062434-d92f329a6428
+	github.com/filecoin-project/go-fil-markets v0.0.0-20200413201123-731e6ca89984
 	github.com/filecoin-project/go-padreader v0.0.0-20200210211231-548257017ca6
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200218225740-47c639bab663
 	github.com/filecoin-project/go-statestore v0.1.0
-	github.com/filecoin-project/sector-storage v0.0.0-20200406195014-a6d093838576
-	github.com/filecoin-project/specs-actors v0.0.0-20200409043918-e569f4a2f504
-	github.com/filecoin-project/specs-storage v0.0.0-20200317225704-7420bc655c38
-	github.com/filecoin-project/storage-fsm v0.0.0-20200408153957-1c356922353f
+	github.com/filecoin-project/sector-storage v0.0.0-20200417225459-e75536581a08
+	github.com/filecoin-project/specs-actors v0.0.0-20200421160610-702cd4b229c4
+	github.com/filecoin-project/specs-storage v0.0.0-20200417134612-61b2d91a6102
+	github.com/filecoin-project/storage-fsm v0.0.0-20200420183220-1515cffb5d13
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/mux v1.7.4
@@ -94,7 +93,7 @@ require (
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/stretchr/testify v1.4.0
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
-	github.com/whyrusleeping/cbor-gen v0.0.0-20200402171437-3d27c146c105
+	github.com/whyrusleeping/cbor-gen v0.0.0-20200414195334-429a0b5e922e
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
 	github.com/whyrusleeping/pubsub v0.0.0-20131020042734-02de8aa2db3d
 	go.opencensus.io v0.22.3

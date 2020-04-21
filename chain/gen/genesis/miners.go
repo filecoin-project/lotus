@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"math/rand"
 
-	cborutil "github.com/filecoin-project/go-cbor-util"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	cbg "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -16,12 +17,12 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
-	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/genesis"
 )
@@ -70,7 +71,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 
 			var ma power.CreateMinerReturn
 			if err := ma.UnmarshalCBOR(bytes.NewReader(rval)); err != nil {
-				return cid.Undef, err
+				return cid.Undef, xerrors.Errorf("unmarshaling CreateMinerReturn: %w", err)
 			}
 
 			expma := MinerAddress(uint64(i))
@@ -101,50 +102,42 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 
 		var dealIDs []abi.DealID
 		{
+			publish := func(params *market.PublishStorageDealsParams) error {
+				fmt.Printf("publishing %d storage deals on miner %s with worker %s\n", len(params.Deals), params.Deals[0].Proposal.Provider, m.Worker)
+
+				ret, err := doExecValue(ctx, vm, builtin.StorageMarketActorAddr, m.Worker, big.Zero(), builtin.MethodsMarket.PublishStorageDeals, mustEnc(params))
+				if err != nil {
+					return xerrors.Errorf("failed to create genesis miner: %w", err)
+				}
+				var ids market.PublishStorageDealsReturn
+				if err := ids.UnmarshalCBOR(bytes.NewReader(ret)); err != nil {
+					return xerrors.Errorf("unmarsahling publishStorageDeals result: %w", err)
+				}
+
+				dealIDs = append(dealIDs, ids.IDs...)
+				return nil
+			}
+
 			params := &market.PublishStorageDealsParams{}
 			for _, preseal := range m.Sectors {
-
 				params.Deals = append(params.Deals, market.ClientDealProposal{
 					Proposal:        preseal.Deal,
 					ClientSignature: crypto.Signature{Type: crypto.SigTypeBLS}, // TODO: do we want to sign these? Or do we want to fake signatures for genesis setup?
 				})
-				fmt.Printf("calling publish storage deals on miner %s with worker %s\n", preseal.Deal.Provider, m.Worker)
+
+				if len(params.Deals) == cbg.MaxLength {
+					if err := publish(params); err != nil {
+						return cid.Undef, err
+					}
+
+					params = &market.PublishStorageDealsParams{}
+				}
 			}
 
-			ret, err := doExecValue(ctx, vm, builtin.StorageMarketActorAddr, m.Worker, big.Zero(), builtin.MethodsMarket.PublishStorageDeals, mustEnc(params))
-			if err != nil {
-				return cid.Undef, xerrors.Errorf("failed to create genesis miner: %w", err)
-			}
-			var ids market.PublishStorageDealsReturn
-			if err := ids.UnmarshalCBOR(bytes.NewReader(ret)); err != nil {
-				return cid.Undef, err
-			}
-
-			dealIDs = ids.IDs
-		}
-
-		// setup windowed post
-		{
-			err = vm.MutateState(ctx, maddr, func(cst cbor.IpldStore, st *miner.State) error {
-				// TODO: Randomize so all genesis miners don't fall on the same epoch
-				st.PoStState.ProvingPeriodStart = miner.ProvingPeriod
-				return nil
-			})
-
-			payload, err := cborutil.Dump(&miner.CronEventPayload{
-				EventType: miner.CronEventWindowedPoStExpiration,
-			})
-			if err != nil {
-				return cid.Undef, err
-			}
-			params := &power.EnrollCronEventParams{
-				EventEpoch: miner.ProvingPeriod + power.WindowedPostChallengeDuration,
-				Payload:    payload,
-			}
-
-			_, err = doExecValue(ctx, vm, builtin.StoragePowerActorAddr, maddr, big.Zero(), builtin.MethodsPower.EnrollCronEvent, mustEnc(params))
-			if err != nil {
-				return cid.Undef, xerrors.Errorf("failed to verify preseal deals miner: %w", err)
+			if len(params.Deals) > 0 {
+				if err := publish(params); err != nil {
+					return cid.Undef, err
+				}
 			}
 		}
 
@@ -153,10 +146,11 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 			// TODO: Maybe check seal (Can just be snark inputs, doesn't go into the genesis file)
 
 			// check deals, get dealWeight
-			dealWeight := big.Zero()
+			var dealWeight market.VerifyDealsOnSectorProveCommitReturn
 			{
 				params := &market.VerifyDealsOnSectorProveCommitParams{
 					DealIDs:      []abi.DealID{dealIDs[pi]},
+					SectorSize:   m.SectorSize,
 					SectorExpiry: preseal.Deal.EndEpoch,
 				}
 
@@ -165,27 +159,27 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 					return cid.Undef, xerrors.Errorf("failed to verify preseal deals miner: %w", err)
 				}
 				if err := dealWeight.UnmarshalCBOR(bytes.NewReader(ret)); err != nil {
-					return cid.Undef, err
+					return cid.Undef, xerrors.Errorf("unmarshaling market onProveCommit result: %w", err)
 				}
 			}
 
 			// update power claims
-			pledge := big.Zero()
 			{
 				err = vm.MutateState(ctx, builtin.StoragePowerActorAddr, func(cst cbor.IpldStore, st *power.State) error {
 					weight := &power.SectorStorageWeightDesc{
-						SectorSize: m.SectorSize,
-						Duration:   preseal.Deal.Duration(),
-						DealWeight: dealWeight,
+						SectorSize:         m.SectorSize,
+						Duration:           preseal.Deal.Duration(),
+						DealWeight:         dealWeight.DealWeight,
+						VerifiedDealWeight: dealWeight.VerifiedDealWeight,
 					}
 
-					spower := power.ConsensusPowerForWeight(weight)
-					pledge = power.PledgeForWeight(weight, st.TotalNetworkPower)
-					err := st.AddToClaim(&state.AdtStore{cst}, maddr, spower, pledge)
+					qapower := power.QAPowerForWeight(weight)
+
+					err := st.AddToClaim(&state.AdtStore{cst}, maddr, types.NewInt(uint64(weight.SectorSize)), qapower)
 					if err != nil {
 						return xerrors.Errorf("add to claim: %w", err)
 					}
-					fmt.Println("Added weight to claim: ", st.TotalNetworkPower)
+					fmt.Println("Added weight to claim: ", st.TotalRawBytePower, st.TotalQualityAdjPower)
 					return nil
 				})
 				if err != nil {
@@ -204,47 +198,26 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 						DealIDs:         []abi.DealID{dealIDs[pi]},
 						Expiration:      preseal.Deal.EndEpoch,
 					},
-					ActivationEpoch:       0,
-					DealWeight:            dealWeight,
-					PledgeRequirement:     pledge,
-					DeclaredFaultEpoch:    -1,
-					DeclaredFaultDuration: -1,
+					ActivationEpoch:    0,
+					DealWeight:         dealWeight.DealWeight,
+					VerifiedDealWeight: dealWeight.VerifiedDealWeight,
 				}
 
 				err = vm.MutateState(ctx, maddr, func(cst cbor.IpldStore, st *miner.State) error {
 					store := &state.AdtStore{cst}
 
 					if err = st.PutSector(store, newSectorInfo); err != nil {
-						return xerrors.Errorf("failed to prove commit: %v", err)
+						return xerrors.Errorf("failed to put sector: %v", err)
 					}
 
-					st.ProvingSet = st.Sectors
+					if err := st.AddNewSectors(newSectorInfo.Info.SectorNumber); err != nil {
+						return xerrors.Errorf("failed to add NewSector: %w", err)
+					}
+
 					return nil
 				})
 				if err != nil {
 					return cid.Cid{}, xerrors.Errorf("put to sset: %w", err)
-				}
-			}
-
-			{
-				sectorBf := abi.NewBitField()
-				sectorBf.Set(uint64(preseal.SectorID))
-
-				payload, err := cborutil.Dump(&miner.CronEventPayload{
-					EventType: miner.CronEventSectorExpiry,
-					Sectors:   &sectorBf,
-				})
-				if err != nil {
-					return cid.Undef, err
-				}
-				params := &power.EnrollCronEventParams{
-					EventEpoch: preseal.Deal.EndEpoch,
-					Payload:    payload,
-				}
-
-				_, err = doExecValue(ctx, vm, builtin.StoragePowerActorAddr, maddr, big.Zero(), builtin.MethodsPower.EnrollCronEvent, mustEnc(params))
-				if err != nil {
-					return cid.Undef, xerrors.Errorf("failed to verify preseal deals miner: %w", err)
 				}
 			}
 		}
@@ -253,12 +226,15 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 
 	// TODO: to avoid division by zero, we set the initial power actor power to 1, this adjusts that back down so the accounting is accurate.
 	err = vm.MutateState(ctx, builtin.StoragePowerActorAddr, func(cst cbor.IpldStore, st *power.State) error {
-		st.TotalNetworkPower = big.Sub(st.TotalNetworkPower, big.NewInt(1))
+		st.TotalQualityAdjPower = big.Sub(st.TotalQualityAdjPower, big.NewInt(1))
 		return nil
 	})
 
 	c, err := vm.Flush(ctx)
-	return c, err
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("flushing vm: %w", err)
+	}
+	return c, nil
 }
 
 // TODO: copied from actors test harness, deduplicate or remove from here

@@ -2,7 +2,6 @@ package genesis
 
 import (
 	"context"
-
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
@@ -24,11 +23,12 @@ func SetupStoragePowerActor(bs bstore.Blockstore) (*types.Actor, error) {
 	}
 
 	sms := &power.State{
-		TotalNetworkPower:        big.NewInt(1), // TODO: has to be 1 initially to avoid div by zero. Kinda annoying, should find a way to fix
+		TotalRawBytePower:        big.NewInt(0),
+		TotalQualityAdjPower:     big.NewInt(1), // TODO: has to be 1 initially to avoid div by zero. Kinda annoying, should find a way to fix
+		TotalPledgeCollateral:    big.NewInt(0),
 		MinerCount:               0,
-		EscrowTable:              emptyhamt,
 		CronEventQueue:           emptyhamt,
-		PoStDetectedFaultMiners:  emptyhamt,
+		LastEpochTick:            0,
 		Claims:                   emptyhamt,
 		NumMinersMeetingMinPower: 0,
 	}

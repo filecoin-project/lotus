@@ -63,7 +63,7 @@ func (ss *syscallShim) HashBlake2b(data []byte) [32]byte {
 // Checks validity of the submitted consensus fault with the two block headers needed to prove the fault
 // and an optional extra one to check common ancestry (as needed).
 // Note that the blocks are ordered: the method requires a.Epoch() <= b.Epoch().
-func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte, epoch abi.ChainEpoch) (*runtime.ConsensusFault, error) {
+func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte) (*runtime.ConsensusFault, error) {
 	// Note that block syntax is not validated. Any validly signed block will be accepted pursuant to the below conditions.
 	// Whether or not it could ever have been accepted in a chain is not checked/does not matter here.
 	// for that reason when checking block parent relationships, rather than instantiating a Tipset to do so
@@ -190,8 +190,8 @@ func (ss *syscallShim) VerifyBlockSig(blk *types.BlockHeader) error {
 	return nil
 }
 
-func (ss *syscallShim) VerifyPoSt(proof abi.PoStVerifyInfo) error {
-	ok, err := ss.verifier.VerifyFallbackPost(ss.ctx, proof)
+func (ss *syscallShim) VerifyPoSt(proof abi.WindowPoStVerifyInfo) error {
+	ok, err := ss.verifier.VerifyWindowPoSt(context.TODO(), proof)
 	if err != nil {
 		return err
 	}

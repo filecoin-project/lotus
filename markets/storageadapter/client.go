@@ -72,21 +72,12 @@ func (n *ClientNodeAdapter) ListStorageProviders(ctx context.Context, encodedTs 
 	var out []*storagemarket.StorageProviderInfo
 
 	for _, addr := range addresses {
-		workerAddr, err := n.StateMinerWorker(ctx, addr, tsk)
+		mi, err := n.StateMinerInfo(ctx, addr, tsk)
 		if err != nil {
 			return nil, err
 		}
 
-		sectorSize, err := n.StateMinerSectorSize(ctx, addr, tsk)
-		if err != nil {
-			return nil, err
-		}
-
-		peerID, err := n.StateMinerPeerID(ctx, addr, tsk)
-		if err != nil {
-			return nil, err
-		}
-		storageProviderInfo := utils.NewStorageProviderInfo(addr, workerAddr, sectorSize, peerID)
+		storageProviderInfo := utils.NewStorageProviderInfo(addr, mi.Worker, mi.SectorSize, mi.PeerId)
 		out = append(out, &storageProviderInfo)
 	}
 
@@ -94,7 +85,12 @@ func (n *ClientNodeAdapter) ListStorageProviders(ctx context.Context, encodedTs 
 }
 
 func (n *ClientNodeAdapter) VerifySignature(ctx context.Context, sig crypto.Signature, addr address.Address, input []byte, encodedTs shared.TipSetToken) (bool, error) {
-	err := sigs.Verify(&sig, addr, input)
+	addr, err := n.StateAccountKey(ctx, addr, types.EmptyTSK)
+	if err != nil {
+		return false, err
+	}
+
+	err = sigs.Verify(&sig, addr, input)
 	return err == nil, err
 }
 
@@ -176,12 +172,17 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 		return 0, xerrors.Errorf("getting deal pubsish message: %w", err)
 	}
 
-	pw, err := stmgr.GetMinerWorker(ctx, c.sm, nil, deal.Proposal.Provider)
+	mi, err := stmgr.StateMinerInfo(ctx, c.sm, c.cs.GetHeaviestTipSet(), deal.Proposal.Provider)
 	if err != nil {
 		return 0, xerrors.Errorf("getting miner worker failed: %w", err)
 	}
 
-	if pubmsg.From != pw {
+	fromid, err := c.StateLookupID(ctx, pubmsg.From, types.EmptyTSK)
+	if err != nil {
+		return 0, xerrors.Errorf("failed to resolve from msg ID addr: %w", err)
+	}
+
+	if fromid != mi.Worker {
 		return 0, xerrors.Errorf("deal wasn't published by storage provider: from=%s, provider=%s", pubmsg.From, deal.Proposal.Provider)
 	}
 
@@ -341,6 +342,11 @@ func (n *ClientNodeAdapter) SignProposal(ctx context.Context, signer address.Add
 		return nil, err
 	}
 
+	signer, err = n.StateAccountKey(ctx, signer, types.EmptyTSK)
+	if err != nil {
+		return nil, err
+	}
+
 	sig, err := n.Wallet.Sign(ctx, signer, buf)
 	if err != nil {
 		return nil, err
@@ -363,7 +369,7 @@ func (n *ClientNodeAdapter) ValidateAskSignature(ctx context.Context, ask *stora
 		return false, err
 	}
 
-	w, err := n.StateMinerWorker(ctx, ask.Ask.Miner, tsk)
+	mi, err := n.StateMinerInfo(ctx, ask.Ask.Miner, tsk)
 	if err != nil {
 		return false, xerrors.Errorf("failed to get worker for miner in ask", err)
 	}
@@ -373,7 +379,7 @@ func (n *ClientNodeAdapter) ValidateAskSignature(ctx context.Context, ask *stora
 		return false, xerrors.Errorf("failed to re-serialize ask")
 	}
 
-	err = sigs.Verify(ask.Signature, w, sigb)
+	err = sigs.Verify(ask.Signature, mi.Worker, sigb)
 	return err == nil, err
 }
 

@@ -13,6 +13,8 @@ import (
 
 	"github.com/google/uuid"
 	logging "github.com/ipfs/go-log/v2"
+	ic "github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -32,11 +34,6 @@ import (
 var log = logging.Logger("preseal")
 
 func PreSeal(maddr address.Address, pt abi.RegisteredProof, offset abi.SectorNumber, sectors int, sbroot string, preimage []byte, key *types.KeyInfo) (*genesis.Miner, *types.KeyInfo, error) {
-	ppt, err := pt.RegisteredPoStProof()
-	if err != nil {
-		return nil, nil, err
-	}
-
 	spt, err := pt.RegisteredSealProof()
 	if err != nil {
 		return nil, nil, err
@@ -49,7 +46,6 @@ func PreSeal(maddr address.Address, pt abi.RegisteredProof, offset abi.SectorNum
 
 	cfg := &ffiwrapper.Config{
 		SealProofType: spt,
-		PoStProofType: ppt,
 	}
 
 	if err := os.MkdirAll(sbroot, 0775); err != nil {
@@ -123,6 +119,20 @@ func PreSeal(maddr address.Address, pt abi.RegisteredProof, offset abi.SectorNum
 		}
 	}
 
+	var pid peer.ID
+	{
+		log.Warn("PeerID not specified, generating dummy")
+		p, _, err := ic.GenerateEd25519Key(rand.Reader)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		pid, err = peer.IDFromPrivateKey(p)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
 	miner := &genesis.Miner{
 		Owner:         minerAddr.Address,
 		Worker:        minerAddr.Address,
@@ -130,6 +140,7 @@ func PreSeal(maddr address.Address, pt abi.RegisteredProof, offset abi.SectorNum
 		PowerBalance:  big.Zero(),
 		SectorSize:    ssize,
 		Sectors:       sealedSectors,
+		PeerId:        pid,
 	}
 
 	if err := createDeals(miner, minerAddr, maddr, ssize); err != nil {

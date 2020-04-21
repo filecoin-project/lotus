@@ -40,7 +40,35 @@ func (s SealingAPIAdapter) StateMinerSectorSize(ctx context.Context, maddr addre
 		return 0, xerrors.Errorf("failed to unmarshal TipSetToken to TipSetKey: %w", err)
 	}
 
-	return s.delegate.StateMinerSectorSize(ctx, maddr, tsk)
+	// TODO: update storage-fsm to just StateMinerInfo
+	mi, err := s.delegate.StateMinerInfo(ctx, maddr, tsk)
+	if err != nil {
+		return 0, err
+	}
+	return mi.SectorSize, nil
+}
+
+func (s SealingAPIAdapter) StateMinerWorkerAddress(ctx context.Context, maddr address.Address, tok sealing.TipSetToken) (address.Address, error) {
+	tsk, err := types.TipSetKeyFromBytes(tok)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("failed to unmarshal TipSetToken to TipSetKey: %w", err)
+	}
+
+	// TODO: update storage-fsm to just StateMinerInfo
+	mi, err := s.delegate.StateMinerInfo(ctx, maddr, tsk)
+	if err != nil {
+		return address.Undef, err
+	}
+	return mi.Worker, nil
+}
+
+func (s SealingAPIAdapter) StateMinerDeadlines(ctx context.Context, maddr address.Address, tok sealing.TipSetToken) (*miner.Deadlines, error) {
+	tsk, err := types.TipSetKeyFromBytes(tok)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to unmarshal TipSetToken to TipSetKey: %w", err)
+	}
+
+	return s.delegate.StateMinerDeadlines(ctx, maddr, tsk)
 }
 
 func (s SealingAPIAdapter) StateWaitMsg(ctx context.Context, mcid cid.Cid) (sealing.MsgLookup, error) {
@@ -120,8 +148,12 @@ func (s SealingAPIAdapter) StateSectorPreCommitInfo(ctx context.Context, maddr a
 		return nil, xerrors.Errorf("handleSealFailed(%d): temp error: unmarshaling miner state: %+v", sectorNumber, err)
 	}
 
+	precommits, err := adt.AsMap(store.ActorStore(ctx, apibstore.NewAPIBlockstore(s.delegate)), state.PreCommittedSectors)
+	if err != nil {
+		return nil, err
+	}
+
 	var pci miner.SectorPreCommitOnChainInfo
-	precommits := adt.AsMap(store.ActorStore(ctx, apibstore.NewAPIBlockstore(s.delegate)), state.PreCommittedSectors)
 	if _, err := precommits.Get(adt.UIntKey(uint64(sectorNumber)), &pci); err != nil {
 		return nil, err
 	}

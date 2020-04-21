@@ -35,8 +35,8 @@ func (rpn *retrievalProviderNode) GetMinerWorkerAddress(ctx context.Context, min
 		return address.Undef, err
 	}
 
-	addr, err := rpn.full.StateMinerWorker(ctx, miner, tsk)
-	return addr, err
+	mi, err := rpn.full.StateMinerInfo(ctx, miner, tsk)
+	return mi.Worker, err
 }
 
 func (rpn *retrievalProviderNode) UnsealSector(ctx context.Context, sectorID uint64, offset uint64, length uint64) (io.ReadCloser, error) {

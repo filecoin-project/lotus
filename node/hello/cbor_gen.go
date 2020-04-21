@@ -7,7 +7,7 @@ import (
 	"io"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/ipfs/go-cid"
+	cid "github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 )
@@ -91,9 +91,11 @@ func (t *HelloMessage) UnmarshalCBOR(r io.Reader) error {
 	if maj != cbg.MajArray {
 		return fmt.Errorf("expected cbor array")
 	}
+
 	if extra > 0 {
 		t.HeaviestTipSet = make([]cid.Cid, extra)
 	}
+
 	for i := 0; i < int(extra); i++ {
 
 		c, err := cbg.ReadCid(br)

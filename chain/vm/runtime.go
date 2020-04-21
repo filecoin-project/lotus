@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	sainit "github.com/filecoin-project/specs-actors/actors/builtin/init"
+	sapower "github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	vmr "github.com/filecoin-project/specs-actors/actors/runtime"
@@ -23,6 +24,7 @@ import (
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -50,6 +52,41 @@ type Runtime struct {
 
 	internalExecutions []*types.ExecutionResult
 	numActorsCreated   uint64
+}
+
+func (rt *Runtime) TotalFilCircSupply() abi.TokenAmount {
+	total := types.FromFil(build.TotalFilecoin)
+
+	rew, err := rt.state.GetActor(builtin.RewardActorAddr)
+	if err != nil {
+		rt.Abortf(exitcode.ErrIllegalState, "failed to get reward actor for computing total supply: %s", err)
+	}
+
+	burnt, err := rt.state.GetActor(builtin.BurntFundsActorAddr)
+	if err != nil {
+		rt.Abortf(exitcode.ErrIllegalState, "failed to get reward actor for computing total supply: %s", err)
+	}
+
+	market, err := rt.state.GetActor(builtin.StorageMarketActorAddr)
+	if err != nil {
+		rt.Abortf(exitcode.ErrIllegalState, "failed to get reward actor for computing total supply: %s", err)
+	}
+
+	power, err := rt.state.GetActor(builtin.StoragePowerActorAddr)
+	if err != nil {
+		rt.Abortf(exitcode.ErrIllegalState, "failed to get reward actor for computing total supply: %s", err)
+	}
+
+	total = types.BigSub(total, rew.Balance)
+	total = types.BigSub(total, burnt.Balance)
+	total = types.BigSub(total, market.Balance)
+
+	var st sapower.State
+	if err := rt.cst.Get(rt.ctx, power.Head, &st); err != nil {
+		rt.Abortf(exitcode.ErrIllegalState, "failed to get storage power state: %s", err)
+	}
+
+	return types.BigSub(total, st.TotalPledgeCollateral)
 }
 
 func (rt *Runtime) ResolveAddress(addr address.Address) (ret address.Address, ok bool) {
@@ -199,7 +236,7 @@ func (rt *Runtime) CreateActor(codeId cid.Cid, address address.Address) {
 	}
 }
 
-func (rt *Runtime) DeleteActor() {
+func (rt *Runtime) DeleteActor(addr address.Address) {
 	rt.ChargeGas(rt.Pricelist().OnDeleteActor())
 	act, err := rt.state.GetActor(rt.Message().Receiver())
 	if err != nil {

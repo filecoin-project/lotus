@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
-	"github.com/ipfs/go-cid"
+	cid "github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 )
@@ -21,7 +21,7 @@ func (t *BlockHeader) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{142}); err != nil {
+	if _, err := w.Write([]byte{143}); err != nil {
 		return err
 	}
 
@@ -49,6 +49,20 @@ func (t *BlockHeader) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 	for _, v := range t.BeaconEntries {
+		if err := v.MarshalCBOR(w); err != nil {
+			return err
+		}
+	}
+
+	// t.WinPoStProof ([]abi.PoStProof) (slice)
+	if len(t.WinPoStProof) > cbg.MaxLength {
+		return xerrors.Errorf("Slice value in field t.WinPoStProof was too long")
+	}
+
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajArray, uint64(len(t.WinPoStProof)))); err != nil {
+		return err
+	}
+	for _, v := range t.WinPoStProof {
 		if err := v.MarshalCBOR(w); err != nil {
 			return err
 		}
@@ -138,7 +152,7 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 14 {
+	if extra != 15 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -207,9 +221,11 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 	if maj != cbg.MajArray {
 		return fmt.Errorf("expected cbor array")
 	}
+
 	if extra > 0 {
 		t.BeaconEntries = make([]BeaconEntry, extra)
 	}
+
 	for i := 0; i < int(extra); i++ {
 
 		var v BeaconEntry
@@ -218,6 +234,35 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 		}
 
 		t.BeaconEntries[i] = v
+	}
+
+	// t.WinPoStProof ([]abi.PoStProof) (slice)
+
+	maj, extra, err = cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+
+	if extra > cbg.MaxLength {
+		return fmt.Errorf("t.WinPoStProof: array too large (%d)", extra)
+	}
+
+	if maj != cbg.MajArray {
+		return fmt.Errorf("expected cbor array")
+	}
+
+	if extra > 0 {
+		t.WinPoStProof = make([]abi.PoStProof, extra)
+	}
+
+	for i := 0; i < int(extra); i++ {
+
+		var v abi.PoStProof
+		if err := v.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
+		t.WinPoStProof[i] = v
 	}
 
 	// t.Parents ([]cid.Cid) (slice)
@@ -234,9 +279,11 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 	if maj != cbg.MajArray {
 		return fmt.Errorf("expected cbor array")
 	}
+
 	if extra > 0 {
 		t.Parents = make([]cid.Cid, extra)
 	}
+
 	for i := 0; i < int(extra); i++ {
 
 		c, err := cbg.ReadCid(br)
@@ -1141,9 +1188,11 @@ func (t *BlockMsg) UnmarshalCBOR(r io.Reader) error {
 	if maj != cbg.MajArray {
 		return fmt.Errorf("expected cbor array")
 	}
+
 	if extra > 0 {
 		t.BlsMessages = make([]cid.Cid, extra)
 	}
+
 	for i := 0; i < int(extra); i++ {
 
 		c, err := cbg.ReadCid(br)
@@ -1167,9 +1216,11 @@ func (t *BlockMsg) UnmarshalCBOR(r io.Reader) error {
 	if maj != cbg.MajArray {
 		return fmt.Errorf("expected cbor array")
 	}
+
 	if extra > 0 {
 		t.SecpkMessages = make([]cid.Cid, extra)
 	}
+
 	for i := 0; i < int(extra); i++ {
 
 		c, err := cbg.ReadCid(br)
@@ -1261,9 +1312,11 @@ func (t *ExpTipSet) UnmarshalCBOR(r io.Reader) error {
 	if maj != cbg.MajArray {
 		return fmt.Errorf("expected cbor array")
 	}
+
 	if extra > 0 {
 		t.Cids = make([]cid.Cid, extra)
 	}
+
 	for i := 0; i < int(extra); i++ {
 
 		c, err := cbg.ReadCid(br)
@@ -1287,9 +1340,11 @@ func (t *ExpTipSet) UnmarshalCBOR(r io.Reader) error {
 	if maj != cbg.MajArray {
 		return fmt.Errorf("expected cbor array")
 	}
+
 	if extra > 0 {
 		t.Blocks = make([]*BlockHeader, extra)
 	}
+
 	for i := 0; i < int(extra); i++ {
 
 		var v BlockHeader

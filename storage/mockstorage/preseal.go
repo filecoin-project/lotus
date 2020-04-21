@@ -31,7 +31,7 @@ func PreSeal(ssize abi.SectorSize, maddr address.Address, sectors int) (*genesis
 		Sectors:       make([]*genesis.PreSeal, sectors),
 	}
 
-	_, st, err := ffiwrapper.ProofTypeFromSectorSize(ssize)
+	st, err := ffiwrapper.SealProofTypeFromSectorSize(ssize)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -299,7 +299,7 @@ func Online() Option {
 			Override(HandleRetrievalKey, modules.HandleRetrieval),
 			Override(GetParamsKey, modules.GetParams),
 			Override(HandleDealsKey, modules.HandleDeals),
-			Override(new(gen.ElectionPoStProver), storage.NewElectionPoStProver),
+			Override(new(gen.WinningPoStProver), storage.NewWinningPoStProver),
 			Override(new(*miner.Miner), modules.SetupBlockProducer),
 		),
 	)

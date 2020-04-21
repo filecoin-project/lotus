@@ -51,6 +51,9 @@ deps: $(BUILD_DEPS)
 debug: GOFLAGS+=-tags=debug
 debug: lotus lotus-storage-miner lotus-seal-worker lotus-seed
 
+2k: GOFLAGS+=-tags=2k
+2k: lotus lotus-storage-miner lotus-seal-worker lotus-seed
+
 lotus: $(BUILD_DEPS)
 	rm -f lotus
 	go build $(GOFLAGS) -o lotus ./cmd/lotus

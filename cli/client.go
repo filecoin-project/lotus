@@ -246,11 +246,11 @@ var clientDealCmd = &cli.Command{
 		}
 
 		proposal, err := api.ClientStartDeal(ctx, &lapi.StartDealParams{
-			Data:           ref,
-			Wallet:         a,
-			Miner:          miner,
-			EpochPrice:     types.BigInt(price),
-			BlocksDuration: uint64(dur),
+			Data:              ref,
+			Wallet:            a,
+			Miner:             miner,
+			EpochPrice:        types.BigInt(price),
+			MinBlocksDuration: uint64(dur),
 		})
 		if err != nil {
 			return err
@@ -434,16 +434,16 @@ var clientQueryAskCmd = &cli.Command{
 			}
 			pid = p
 		} else {
-			p, err := api.StateMinerPeerID(ctx, maddr, types.EmptyTSK)
+			mi, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
 			if err != nil {
 				return xerrors.Errorf("failed to get peerID for miner: %w", err)
 			}
 
-			if p == peer.ID("SETME") {
+			if mi.PeerId == peer.ID("SETME") {
 				return fmt.Errorf("the miner hasn't initialized yet")
 			}
 
-			pid = p
+			pid = mi.PeerId
 		}
 
 		ask, err := api.ClientQueryAsk(ctx, pid, maddr)

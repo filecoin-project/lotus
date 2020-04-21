@@ -37,7 +37,7 @@ type Pricelist interface {
 	OnHashing(dataSize int) int64
 	OnComputeUnsealedSectorCid(proofType abi.RegisteredProof, pieces []abi.PieceInfo) int64
 	OnVerifySeal(info abi.SealVerifyInfo) int64
-	OnVerifyPost(info abi.PoStVerifyInfo) int64
+	OnVerifyPost(info abi.WindowPoStVerifyInfo) int64
 	OnVerifyConsensusFault() int64
 }
 
@@ -120,7 +120,7 @@ func (ps pricedSyscalls) VerifySeal(vi abi.SealVerifyInfo) error {
 }
 
 // Verifies a proof of spacetime.
-func (ps pricedSyscalls) VerifyPoSt(vi abi.PoStVerifyInfo) error {
+func (ps pricedSyscalls) VerifyPoSt(vi abi.WindowPoStVerifyInfo) error {
 	ps.chargeGas(ps.pl.OnVerifyPost(vi))
 	return ps.under.VerifyPoSt(vi)
 }
@@ -135,7 +135,7 @@ func (ps pricedSyscalls) VerifyPoSt(vi abi.PoStVerifyInfo) error {
 // the "parent grinding fault", in which case it must be the sibling of h1 (same parent tipset) and one of the
 // blocks in the parent of h2 (i.e. h2's grandparent).
 // Returns nil and an error if the headers don't prove a fault.
-func (ps pricedSyscalls) VerifyConsensusFault(h1 []byte, h2 []byte, extra []byte, earliest abi.ChainEpoch) (*runtime.ConsensusFault, error) {
+func (ps pricedSyscalls) VerifyConsensusFault(h1 []byte, h2 []byte, extra []byte) (*runtime.ConsensusFault, error) {
 	ps.chargeGas(ps.pl.OnVerifyConsensusFault())
-	return ps.under.VerifyConsensusFault(h1, h2, extra, earliest)
+	return ps.under.VerifyConsensusFault(h1, h2, extra)
 }

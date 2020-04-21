@@ -47,6 +47,7 @@ The process:
   - Setup Cron
   - Create empty power actor
   - Create empty market
+  - Create verified registry
   - Setup burnt fund address
   - Initialize account / msig balances
 - Instantiate early vm with genesis syscalls
@@ -161,6 +162,15 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 		return nil, xerrors.Errorf("setup storage market actor: %w", err)
 	}
 	if err := state.SetActor(builtin.StorageMarketActorAddr, marketact); err != nil {
+		return nil, xerrors.Errorf("set market actor: %w", err)
+	}
+
+	// Create verified registry
+	verifact, err := SetupVerifiedRegistryActor(bs)
+	if err != nil {
+		return nil, xerrors.Errorf("setup storage market actor: %w", err)
+	}
+	if err := state.SetActor(builtin.VerifiedRegistryActorAddr, verifact); err != nil {
 		return nil, xerrors.Errorf("set market actor: %w", err)
 	}
 
