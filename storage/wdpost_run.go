@@ -57,10 +57,6 @@ func (s *WindowPoStScheduler) doPost(ctx context.Context, deadline *miner.Deadli
 func (s *WindowPoStScheduler) checkFaults(ctx context.Context, ssi []abi.SectorNumber) ([]abi.SectorNumber, error) {
 	//faults := s.prover.Scrub(ssi)
 	log.Warnf("Stub checkFaults")
-	var faults []struct {
-		SectorNum abi.SectorNumber
-		Err       error
-	}
 
 	declaredFaults := map[abi.SectorNumber]struct{}{}
 
@@ -75,12 +71,7 @@ func (s *WindowPoStScheduler) checkFaults(ctx context.Context, ssi []abi.SectorN
 		}
 	}
 
-	var faultIDs []abi.SectorNumber
-	if len(faults) > 0 {
-		panic("Aaaaaaaaaaaaaaaaaaaa")
-	}
-
-	return faultIDs, nil
+	return nil, nil
 }
 
 func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo, ts *types.TipSet) (*miner.SubmitWindowedPoStParams, error) {

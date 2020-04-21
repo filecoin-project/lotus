@@ -141,16 +141,6 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 			}
 		}
 
-		// setup windowed post
-		{
-			// TODO: Can drop, now done in constructor
-			err = vm.MutateState(ctx, maddr, func(cst cbor.IpldStore, st *miner.State) error {
-				fmt.Println("PROVINg BOUNDARY:                       #### ", st.Info.ProvingPeriodBoundary)
-				return nil
-			})
-
-		}
-
 		// Commit sectors
 		for pi, preseal := range m.Sectors {
 			// TODO: Maybe check seal (Can just be snark inputs, doesn't go into the genesis file)
@@ -204,11 +194,11 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 						RegisteredProof: preseal.ProofType,
 						SectorNumber:    preseal.SectorID,
 						SealedCID:       preseal.CommR,
-						SealRandEpoch:   0, // TODO: REVIEW: Correct?
+						SealRandEpoch:   0,
 						DealIDs:         []abi.DealID{dealIDs[pi]},
 						Expiration:      preseal.Deal.EndEpoch,
 					},
-					ActivationEpoch:    0, // TODO: REVIEW: Correct?
+					ActivationEpoch:    0,
 					DealWeight:         dealWeight.DealWeight,
 					VerifiedDealWeight: dealWeight.VerifiedDealWeight,
 				}
@@ -242,7 +232,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 
 	c, err := vm.Flush(ctx)
 	if err != nil {
-		return cid.Cid{}, xerrors.Errorf("flushing vm: %w", err)
+		return cid.Undef, xerrors.Errorf("flushing vm: %w", err)
 	}
 	return c, nil
 }
