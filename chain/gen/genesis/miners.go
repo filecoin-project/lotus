@@ -215,7 +215,11 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 					store := &state.AdtStore{cst}
 
 					if err = st.PutSector(store, newSectorInfo); err != nil {
-						return xerrors.Errorf("failed to prove commit: %v", err)
+						return xerrors.Errorf("failed to put sector: %v", err)
+					}
+
+					if err := st.AddNewSectors(newSectorInfo.Info.SectorNumber); err != nil {
+						return xerrors.Errorf("failed to add NewSector: %w", err)
 					}
 
 					return nil
