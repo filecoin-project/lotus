@@ -7,7 +7,7 @@ import (
 	"io"
 
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/ipfs/go-cid"
+	cid "github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 )
@@ -81,9 +81,11 @@ func (t *BlockSyncRequest) UnmarshalCBOR(r io.Reader) error {
 	if maj != cbg.MajArray {
 		return fmt.Errorf("expected cbor array")
 	}
+
 	if extra > 0 {
 		t.Start = make([]cid.Cid, extra)
 	}
+
 	for i := 0; i < int(extra); i++ {
 
 		c, err := cbg.ReadCid(br)
@@ -196,9 +198,11 @@ func (t *BlockSyncResponse) UnmarshalCBOR(r io.Reader) error {
 	if maj != cbg.MajArray {
 		return fmt.Errorf("expected cbor array")
 	}
+
 	if extra > 0 {
 		t.Chain = make([]*BSTipSet, extra)
 	}
+
 	for i := 0; i < int(extra); i++ {
 
 		var v BSTipSet
@@ -364,9 +368,11 @@ func (t *BSTipSet) UnmarshalCBOR(r io.Reader) error {
 	if maj != cbg.MajArray {
 		return fmt.Errorf("expected cbor array")
 	}
+
 	if extra > 0 {
 		t.Blocks = make([]*types.BlockHeader, extra)
 	}
+
 	for i := 0; i < int(extra); i++ {
 
 		var v types.BlockHeader
@@ -391,9 +397,11 @@ func (t *BSTipSet) UnmarshalCBOR(r io.Reader) error {
 	if maj != cbg.MajArray {
 		return fmt.Errorf("expected cbor array")
 	}
+
 	if extra > 0 {
 		t.BlsMessages = make([]*types.Message, extra)
 	}
+
 	for i := 0; i < int(extra); i++ {
 
 		var v types.Message
@@ -418,9 +426,11 @@ func (t *BSTipSet) UnmarshalCBOR(r io.Reader) error {
 	if maj != cbg.MajArray {
 		return fmt.Errorf("expected cbor array")
 	}
+
 	if extra > 0 {
 		t.BlsMsgIncludes = make([][]uint64, extra)
 	}
+
 	for i := 0; i < int(extra); i++ {
 		{
 			var maj byte
@@ -439,9 +449,11 @@ func (t *BSTipSet) UnmarshalCBOR(r io.Reader) error {
 			if maj != cbg.MajArray {
 				return fmt.Errorf("expected cbor array")
 			}
+
 			if extra > 0 {
 				t.BlsMsgIncludes[i] = make([]uint64, extra)
 			}
+
 			for j := 0; j < int(extra); j++ {
 
 				maj, val, err := cbg.CborReadHeader(br)
@@ -473,9 +485,11 @@ func (t *BSTipSet) UnmarshalCBOR(r io.Reader) error {
 	if maj != cbg.MajArray {
 		return fmt.Errorf("expected cbor array")
 	}
+
 	if extra > 0 {
 		t.SecpkMessages = make([]*types.SignedMessage, extra)
 	}
+
 	for i := 0; i < int(extra); i++ {
 
 		var v types.SignedMessage
@@ -500,9 +514,11 @@ func (t *BSTipSet) UnmarshalCBOR(r io.Reader) error {
 	if maj != cbg.MajArray {
 		return fmt.Errorf("expected cbor array")
 	}
+
 	if extra > 0 {
 		t.SecpkMsgIncludes = make([][]uint64, extra)
 	}
+
 	for i := 0; i < int(extra); i++ {
 		{
 			var maj byte
@@ -521,9 +537,11 @@ func (t *BSTipSet) UnmarshalCBOR(r io.Reader) error {
 			if maj != cbg.MajArray {
 				return fmt.Errorf("expected cbor array")
 			}
+
 			if extra > 0 {
 				t.SecpkMsgIncludes[i] = make([]uint64, extra)
 			}
+
 			for j := 0; j < int(extra); j++ {
 
 				maj, val, err := cbg.CborReadHeader(br)

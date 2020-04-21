@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -17,6 +16,7 @@ import (
 	"gopkg.in/urfave/cli.v2"
 
 	paramfetch "github.com/filecoin-project/go-paramfetch"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/apistruct"
@@ -242,7 +242,7 @@ var runCmd = &cli.Command{
 		}
 
 		// Setup remote sector store
-		_, spt, err := ffiwrapper.ProofTypeFromSectorSize(ssize)
+		spt, err := ffiwrapper.SealProofTypeFromSectorSize(ssize)
 		if err != nil {
 			return xerrors.Errorf("getting proof type: %w", err)
 		}

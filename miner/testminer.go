@@ -10,8 +10,8 @@ import (
 	lru "github.com/hashicorp/golang-lru"
 )
 
-func NewTestMiner(nextCh <-chan struct{}, addr address.Address) func(api.FullNode, gen.ElectionPoStProver, beacon.RandomBeacon) *Miner {
-	return func(api api.FullNode, epp gen.ElectionPoStProver, b beacon.RandomBeacon) *Miner {
+func NewTestMiner(nextCh <-chan struct{}, addr address.Address) func(api.FullNode, gen.WinningPoStProver, beacon.RandomBeacon) *Miner {
+	return func(api api.FullNode, epp gen.WinningPoStProver, b beacon.RandomBeacon) *Miner {
 		arc, err := lru.NewARC(10000)
 		if err != nil {
 			panic(err)

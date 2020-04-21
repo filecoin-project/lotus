@@ -60,7 +60,11 @@ func (sm *StorageMinerAPI) ActorAddress(context.Context) (address.Address, error
 }
 
 func (sm *StorageMinerAPI) ActorSectorSize(ctx context.Context, addr address.Address) (abi.SectorSize, error) {
-	return sm.Full.StateMinerSectorSize(ctx, addr, types.EmptyTSK)
+	mi, err := sm.Full.StateMinerInfo(ctx, addr, types.EmptyTSK)
+	if err != nil {
+		return 0, err
+	}
+	return mi.SectorSize, nil
 }
 
 func (sm *StorageMinerAPI) PledgeSector(ctx context.Context) error {

@@ -63,18 +63,34 @@ func BigCmp(a, b BigInt) int {
 	return a.Int.Cmp(b.Int)
 }
 
-var sizeUnits = []string{"B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB"}
+var byteSizeUnits = []string{"B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB"}
 
 func SizeStr(bi BigInt) string {
 	r := new(big.Rat).SetInt(bi.Int)
 	den := big.NewRat(1, 1024)
 
 	var i int
-	for f, _ := r.Float64(); f >= 1024 && i+1 < len(sizeUnits); f, _ = r.Float64() {
+	for f, _ := r.Float64(); f >= 1024 && i+1 < len(byteSizeUnits); f, _ = r.Float64() {
 		i++
 		r = r.Mul(r, den)
 	}
 
 	f, _ := r.Float64()
-	return fmt.Sprintf("%.3g %s", f, sizeUnits[i])
+	return fmt.Sprintf("%.3g %s", f, byteSizeUnits[i])
+}
+
+var decUnits = []string{"", "K", "M", "G", "T", "P", "E", "Z"}
+
+func DecStr(bi BigInt) string {
+	r := new(big.Rat).SetInt(bi.Int)
+	den := big.NewRat(1, 1000)
+
+	var i int
+	for f, _ := r.Float64(); f >= 1000 && i+1 < len(decUnits); f, _ = r.Float64() {
+		i++
+		r = r.Mul(r, den)
+	}
+
+	f, _ := r.Float64()
+	return fmt.Sprintf("%.3g %s", f, decUnits[i])
 }

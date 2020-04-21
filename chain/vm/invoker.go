@@ -77,7 +77,7 @@ func (inv *invoker) Invoke(codeCid cid.Cid, rt runtime.Runtime, method abi.Metho
 func (inv *invoker) Register(c cid.Cid, instance Invokee, state interface{}) {
 	code, err := inv.transform(instance)
 	if err != nil {
-		panic(err)
+		panic(xerrors.Errorf("%s: %w", string(c.Hash()), err))
 	}
 	inv.builtInCode[c] = code
 	inv.builtInState[c] = reflect.TypeOf(state)

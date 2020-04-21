@@ -11,9 +11,6 @@ import (
 	"io"
 	"os"
 
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
-
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-blockservice"
@@ -34,7 +31,10 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -66,6 +66,14 @@ type API struct {
 	Filestore  dtypes.ClientFilestore `optional:"true"`
 }
 
+func calcDealExpiration(minDuration uint64, mi miner.MinerInfo, ts *types.TipSet) abi.ChainEpoch {
+	// Make sure we give some time for the miner to seal
+	minExp := ts.Height() + dealStartBuffer + abi.ChainEpoch(minDuration)
+
+	// Align on miners ProvingPeriodBoundary
+	return minExp + miner.WPoStProvingPeriod - (minExp % miner.WPoStProvingPeriod) + mi.ProvingPeriodBoundary - 1
+}
+
 func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) (*cid.Cid, error) {
 	exist, err := a.WalletHas(ctx, params.Wallet)
 	if err != nil {
@@ -75,31 +83,21 @@ func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) 
 		return nil, xerrors.Errorf("provided address doesn't exist in wallet")
 	}
 
-	pid, err := a.StateMinerPeerID(ctx, params.Miner, types.EmptyTSK)
+	mi, err := a.StateMinerInfo(ctx, params.Miner, types.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("failed getting peer ID: %w", err)
 	}
 
-	mw, err := a.StateMinerWorker(ctx, params.Miner, types.EmptyTSK)
-	if err != nil {
-		return nil, xerrors.Errorf("failed getting miner worker: %w", err)
-	}
-
-	ssize, err := a.StateMinerSectorSize(ctx, params.Miner, types.EmptyTSK)
-	if err != nil {
-		return nil, xerrors.Errorf("failed checking miners sector size: %w", err)
-	}
-
-	if uint64(params.Data.PieceSize.Padded()) > uint64(ssize) {
-		return nil, xerrors.New("data doesn't fit in a sector")
-	}
-
-	rt, _, err := ffiwrapper.ProofTypeFromSectorSize(ssize)
+	rt, err := ffiwrapper.SealProofTypeFromSectorSize(mi.SectorSize)
 	if err != nil {
 		return nil, xerrors.Errorf("bad sector size: %w", err)
 	}
 
-	providerInfo := utils.NewStorageProviderInfo(params.Miner, mw, ssize, pid)
+	if uint64(params.Data.PieceSize.Padded()) > uint64(mi.SectorSize) {
+		return nil, xerrors.New("data doesn't fit in a sector")
+	}
+
+	providerInfo := utils.NewStorageProviderInfo(params.Miner, mi.Worker, mi.SectorSize, mi.PeerId)
 	ts, err := a.ChainHead(ctx)
 	if err != nil {
 		return nil, xerrors.Errorf("failed getting chain height: %w", err)
@@ -111,7 +109,7 @@ func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) 
 		&providerInfo,
 		params.Data,
 		ts.Height()+dealStartBuffer,
-		ts.Height()+dealStartBuffer+abi.ChainEpoch(params.BlocksDuration),
+		calcDealExpiration(params.MinBlocksDuration, mi, ts),
 		params.EpochPrice,
 		big.Zero(),
 		rt,
@@ -294,12 +292,12 @@ func (a *API) ClientListImports(ctx context.Context) ([]api.Import, error) {
 
 func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref api.FileRef) error {
 	if order.MinerPeerID == "" {
-		pid, err := a.StateMinerPeerID(ctx, order.Miner, types.EmptyTSK)
+		mi, err := a.StateMinerInfo(ctx, order.Miner, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
 
-		order.MinerPeerID = pid
+		order.MinerPeerID = mi.PeerId
 	}
 
 	if order.Size == 0 {
@@ -373,12 +371,12 @@ func (a *API) ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Addre
 }
 
 func (a *API) ClientCalcCommP(ctx context.Context, inpath string, miner address.Address) (*api.CommPRet, error) {
-	ssize, err := a.StateMinerSectorSize(ctx, miner, types.EmptyTSK)
+	mi, err := a.StateMinerInfo(ctx, miner, types.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("failed checking miners sector size: %w", err)
 	}
 
-	rt, _, err := ffiwrapper.ProofTypeFromSectorSize(ssize)
+	rt, err := ffiwrapper.SealProofTypeFromSectorSize(mi.SectorSize)
 	if err != nil {
 		return nil, xerrors.Errorf("bad sector size: %w", err)
 	}
