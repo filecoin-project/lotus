@@ -133,7 +133,7 @@ var sealBenchCmd = &cli.Command{
 			Usage: "Save commit2 input to a file",
 		},
 		&cli.IntFlag{
-			Name: "num-sectors",
+			Name:  "num-sectors",
 			Value: 1,
 		},
 	},

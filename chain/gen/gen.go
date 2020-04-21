@@ -554,31 +554,6 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, round abi.ChainEpoch,
 	return &types.ElectionProof{VRFProof: vrfout}, nil
 }
 
-/*
-func ComputeProof(ctx context.Context, epp WinningPoStProver, pi *ProofInput) (*types.EPostProof, error) {
-	proof, err := epp.ComputeProof(ctx, pi.sectors, pi.hvrf, pi.challengedSectors)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to compute snark for election proof: %w", err)
-	}
-
-	ept := types.EPostProof{
-		Proofs:   proof,
-		PostRand: pi.vrfout,
-	}
-	for _, win := range pi.challengedSectors {
-		part := make([]byte, 32)
-		copy(part, win.Candidate.PartialTicket)
-		ept.Candidates = append(ept.Candidates, types.EPostTicket{
-			Partial:        part,
-			SectorID:       win.Candidate.SectorID.Number,
-			ChallengeIndex: uint64(win.Candidate.ChallengeIndex),
-		})
-	}
-
-	return &ept, nil
-}
-*/
-
 type SignFunc func(context.Context, address.Address, []byte) (*crypto.Signature, error)
 
 func VerifyVRF(ctx context.Context, worker address.Address, vrfBase, vrfproof []byte) error {

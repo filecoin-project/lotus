@@ -32,6 +32,7 @@ var log = logging.Logger("genesis")
 type GenesisBootstrap struct {
 	Genesis *types.BlockHeader
 }
+
 /*
 From a list of parameters, create a genesis block / initial state
 

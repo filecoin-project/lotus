@@ -66,6 +66,14 @@ type API struct {
 	Filestore  dtypes.ClientFilestore `optional:"true"`
 }
 
+func calcDealExpiration(minDuration uint64, mi miner.MinerInfo, ts *types.TipSet) abi.ChainEpoch {
+	// Make sure we give some time for the miner to seal
+	minExp := ts.Height() + dealStartBuffer + abi.ChainEpoch(minDuration)
+
+	// Align on miners ProvingPeriodBoundary
+	return minExp + miner.WPoStProvingPeriod - (minExp % miner.WPoStProvingPeriod) + mi.ProvingPeriodBoundary - 1
+}
+
 func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) (*cid.Cid, error) {
 	exist, err := a.WalletHas(ctx, params.Wallet)
 	if err != nil {
@@ -95,16 +103,13 @@ func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) 
 		return nil, xerrors.Errorf("failed getting chain height: %w", err)
 	}
 
-	exp := ts.Height() + dealStartBuffer + abi.ChainEpoch(params.MinBlocksDuration)
-	exp += miner.WPoStProvingPeriod - (exp % miner.WPoStProvingPeriod) + mi.ProvingPeriodBoundary - 1
-
 	result, err := a.SMDealClient.ProposeStorageDeal(
 		ctx,
 		params.Wallet,
 		&providerInfo,
 		params.Data,
 		ts.Height()+dealStartBuffer,
-		exp,
+		calcDealExpiration(params.MinBlocksDuration, mi, ts),
 		params.EpochPrice,
 		big.Zero(),
 		rt,
