@@ -62,7 +62,7 @@ func TestDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, carExport
 		}
 	}()
 
-	makeDeal(t, ctx, 6, client, miner)
+	makeDeal(t, ctx, 6, client, miner, carExport)
 
 	mine = false
 	fmt.Println("shutting down mining")
@@ -100,15 +100,15 @@ func TestDoubleDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration) {
 		}
 	}()
 
-	makeDeal(t, ctx, 6, client, miner)
-	makeDeal(t, ctx, 7, client, miner)
+	makeDeal(t, ctx, 6, client, miner, false)
+	makeDeal(t, ctx, 7, client, miner, false)
 
 	mine = false
 	fmt.Println("shutting down mining")
 	<-done
 }
 
-func makeDeal(t *testing.T, ctx context.Context, rseed int, client *impl.FullNodeAPI, miner TestStorageNode) {
+func makeDeal(t *testing.T, ctx context.Context, rseed int, client *impl.FullNodeAPI, miner TestStorageNode, carExport bool) {
 	data := make([]byte, 1600)
 	rand.New(rand.NewSource(6)).Read(data)
 
