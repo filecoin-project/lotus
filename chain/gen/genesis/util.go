@@ -36,7 +36,7 @@ func doExecValue(ctx context.Context, vm *vm.VM, to, from address.Address, value
 		From:     from,
 		Method:   method,
 		Params:   params,
-		GasLimit: 100000000000,
+		GasLimit: 1_000_000_000_000_000,
 		GasPrice: types.NewInt(0),
 		Value:    value,
 		Nonce:    act.Nonce,
