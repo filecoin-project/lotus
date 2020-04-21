@@ -115,7 +115,7 @@ type FullNodeStruct struct {
 		ClientGenCar      func(ctx context.Context, ref api.FileRef, outpath string) error                                     `perm:"write"`
 
 		StateNetworkName         func(context.Context) (dtypes.NetworkName, error)                                                                   `perm:"read"`
-		StateMinerSectors        func(context.Context, address.Address, *abi.BitField, types.TipSetKey) ([]*api.ChainSectorInfo, error)              `perm:"read"`
+		StateMinerSectors        func(context.Context, address.Address, *abi.BitField, bool, types.TipSetKey) ([]*api.ChainSectorInfo, error)              `perm:"read"`
 		StateMinerProvingSet     func(context.Context, address.Address, types.TipSetKey) ([]*api.ChainSectorInfo, error)                             `perm:"read"`
 		StateMinerPower          func(context.Context, address.Address, types.TipSetKey) (*api.MinerPower, error)                                    `perm:"read"`
 		StateMinerInfo           func(context.Context, address.Address, types.TipSetKey) (miner.MinerInfo, error)                                    `perm:"read"`
@@ -488,8 +488,8 @@ func (c *FullNodeStruct) StateNetworkName(ctx context.Context) (dtypes.NetworkNa
 	return c.Internal.StateNetworkName(ctx)
 }
 
-func (c *FullNodeStruct) StateMinerSectors(ctx context.Context, addr address.Address, filter *abi.BitField, tsk types.TipSetKey) ([]*api.ChainSectorInfo, error) {
-	return c.Internal.StateMinerSectors(ctx, addr, filter, tsk)
+func (c *FullNodeStruct) StateMinerSectors(ctx context.Context, addr address.Address, filter *abi.BitField, filterOut bool, tsk types.TipSetKey) ([]*api.ChainSectorInfo, error) {
+	return c.Internal.StateMinerSectors(ctx, addr, filter, filterOut, tsk)
 }
 
 func (c *FullNodeStruct) StateMinerProvingSet(ctx context.Context, addr address.Address, tsk types.TipSetKey) ([]*api.ChainSectorInfo, error) {

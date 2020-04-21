@@ -125,14 +125,14 @@ func PreCommitInfo(ctx context.Context, sm *StateManager, maddr address.Address,
 	return *i, nil
 }
 
-func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address, filter *abi.BitField) ([]*api.ChainSectorInfo, error) {
+func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address, filter *abi.BitField, filterOut bool) ([]*api.ChainSectorInfo, error) {
 	var mas miner.State
 	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
 	}
 
-	return LoadSectorsFromSet(ctx, sm.ChainStore().Blockstore(), mas.Sectors, filter)
+	return LoadSectorsFromSet(ctx, sm.ChainStore().Blockstore(), mas.Sectors, filter, filterOut)
 }
 
 func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *StateManager, st cid.Cid, maddr address.Address, rand abi.PoStRandomness) ([]abi.SectorInfo, error) {
@@ -310,7 +310,7 @@ func ListMinerActors(ctx context.Context, sm *StateManager, ts *types.TipSet) ([
 	return miners, nil
 }
 
-func LoadSectorsFromSet(ctx context.Context, bs blockstore.Blockstore, ssc cid.Cid, filter *abi.BitField) ([]*api.ChainSectorInfo, error) {
+func LoadSectorsFromSet(ctx context.Context, bs blockstore.Blockstore, ssc cid.Cid, filter *abi.BitField, filterOut bool) ([]*api.ChainSectorInfo, error) {
 	a, err := amt.LoadAMT(ctx, cbor.NewCborStore(bs), ssc)
 	if err != nil {
 		return nil, err
@@ -323,7 +323,7 @@ func LoadSectorsFromSet(ctx context.Context, bs blockstore.Blockstore, ssc cid.C
 			if err != nil {
 				return xerrors.Errorf("filter check error: %w", err)
 			}
-			if set {
+			if set == filterOut {
 				return nil
 			}
 		}
@@ -390,7 +390,7 @@ func GetProvingSetRaw(ctx context.Context, sm *StateManager, mas miner.State) ([
 		return nil, err
 	}
 
-	provset, err := LoadSectorsFromSet(ctx, sm.cs.Blockstore(), mas.Sectors, notProving)
+	provset, err := LoadSectorsFromSet(ctx, sm.cs.Blockstore(), mas.Sectors, notProving, true)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get proving set: %w", err)
 	}

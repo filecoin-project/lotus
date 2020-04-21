@@ -111,8 +111,19 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 		return nil, xerrors.Errorf("getting deadline partition count: %w", err)
 	}
 
+	dc, err := deadlines.Due[di.Index].Count()
+	if err != nil {
+		return nil, xerrors.Errorf("get deadline count: %w", err)
+	}
+
+	log.Infof("di: %+v", di)
+	log.Infof("dc: %+v", dc)
+	log.Infof("fp: %+v", firstPartition)
+	log.Infof("pc: %+v", partitionCount)
+	log.Infof("ts: %+v (%d)", ts.Key(), ts.Height())
+
 	if partitionCount == 0 {
-		return nil, xerrors.Errorf("runPost with no partitions!")
+		return nil, nil
 	}
 
 	partitions := make([]uint64, partitionCount)
@@ -167,7 +178,7 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 	}
 
 	elapsed := time.Since(tsStart)
-	log.Infow("submitting PoSt", "elapsed", elapsed)
+	log.Infow("submitting window PoSt", "elapsed", elapsed)
 
 	return &miner.SubmitWindowedPoStParams{
 		Partitions: partitions,
@@ -177,7 +188,7 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 }
 
 func (s *WindowPoStScheduler) sortedSectorInfo(ctx context.Context, deadlineSectors *abi.BitField, ts *types.TipSet) ([]abi.SectorInfo, error) {
-	sset, err := s.api.StateMinerSectors(ctx, s.actor, deadlineSectors, ts.Key())
+	sset, err := s.api.StateMinerSectors(ctx, s.actor, deadlineSectors, false, ts.Key())
 	if err != nil {
 		return nil, err
 	}
@@ -219,7 +230,7 @@ func (s *WindowPoStScheduler) submitPost(ctx context.Context, proof *miner.Submi
 		return xerrors.Errorf("pushing message to mpool: %w", err)
 	}
 
-	log.Infof("Submitted fallback post: %s", sm.Cid())
+	log.Infof("Submitted window post: %s", sm.Cid())
 
 	go func() {
 		rec, err := s.api.StateWaitMsg(context.TODO(), sm.Cid())
@@ -232,7 +243,7 @@ func (s *WindowPoStScheduler) submitPost(ctx context.Context, proof *miner.Submi
 			return
 		}
 
-		log.Errorf("Submitting fallback post %s failed: exit %d", sm.Cid(), rec.Receipt.ExitCode)
+		log.Errorf("Submitting window post %s failed: exit %d", sm.Cid(), rec.Receipt.ExitCode)
 	}()
 
 	return nil

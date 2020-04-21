@@ -50,12 +50,12 @@ func (a *StateAPI) StateNetworkName(ctx context.Context) (dtypes.NetworkName, er
 	return stmgr.GetNetworkName(ctx, a.StateManager, a.Chain.GetHeaviestTipSet().ParentState())
 }
 
-func (a *StateAPI) StateMinerSectors(ctx context.Context, addr address.Address, filter *abi.BitField, tsk types.TipSetKey) ([]*api.ChainSectorInfo, error) {
+func (a *StateAPI) StateMinerSectors(ctx context.Context, addr address.Address, filter *abi.BitField, filterOut bool, tsk types.TipSetKey) ([]*api.ChainSectorInfo, error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
-	return stmgr.GetMinerSectorSet(ctx, a.StateManager, ts, addr, filter)
+	return stmgr.GetMinerSectorSet(ctx, a.StateManager, ts, addr, filter, filterOut)
 }
 
 func (a *StateAPI) StateMinerProvingSet(ctx context.Context, addr address.Address, tsk types.TipSetKey) ([]*api.ChainSectorInfo, error) {

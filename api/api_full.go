@@ -120,7 +120,7 @@ type FullNode interface {
 	StateListMessages(ctx context.Context, match *types.Message, tsk types.TipSetKey, toht abi.ChainEpoch) ([]cid.Cid, error)
 
 	StateNetworkName(context.Context) (dtypes.NetworkName, error)
-	StateMinerSectors(context.Context, address.Address, *abi.BitField, types.TipSetKey) ([]*ChainSectorInfo, error)
+	StateMinerSectors(context.Context, address.Address, *abi.BitField, bool, types.TipSetKey) ([]*ChainSectorInfo, error)
 	StateMinerProvingSet(context.Context, address.Address, types.TipSetKey) ([]*ChainSectorInfo, error)
 	StateMinerPower(context.Context, address.Address, types.TipSetKey) (*MinerPower, error)
 	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (miner.MinerInfo, error)
