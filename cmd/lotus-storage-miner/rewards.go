@@ -8,8 +8,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
-
 	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 )
 
 var rewardsCmd = &cli.Command{
@@ -47,38 +47,32 @@ var rewardsRedeemCmd = &cli.Command{
 			return err
 		}
 
-		params, err := actors.SerializeParams(&maddr)
+		mact, err := api.StateGetActor(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
 
-		workerNonce, err := api.MpoolGetNonce(ctx, mi.Worker)
+		params, err := actors.SerializeParams(&miner.WithdrawBalanceParams{
+			mact.Balance, // Default to attempting to withdraw all the extra funds in the miner actor
+		})
 		if err != nil {
 			return err
 		}
 
-		panic("todo correct method; call miner actor")
-
-		smsg, err := api.WalletSignMessage(ctx, mi.Worker, &types.Message{
-			To:       builtin.RewardActorAddr,
-			From:     mi.Worker,
-			Nonce:    workerNonce,
+		smsg, err := api.MpoolPushMessage(ctx, &types.Message{
+			To:       maddr,
+			From:     mi.Owner,
 			Value:    types.NewInt(0),
 			GasPrice: types.NewInt(1),
 			GasLimit: 100000,
-			Method:   0,
+			Method:   builtin.MethodsMiner.WithdrawBalance,
 			Params:   params,
 		})
 		if err != nil {
 			return err
 		}
 
-		mcid, err := api.MpoolPush(ctx, smsg)
-		if err != nil {
-			return err
-		}
-
-		fmt.Printf("Requested rewards withdrawal in message %s\n", mcid)
+		fmt.Printf("Requested rewards withdrawal in message %s\n", smsg.Cid())
 
 		return nil
 	},
