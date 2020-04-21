@@ -12,6 +12,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p-core/routing"
+	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-peerstore/pstoremem"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	record "github.com/libp2p/go-libp2p-record"
@@ -160,7 +161,7 @@ func libp2p() Option {
 
 		Override(new(lp2p.RawHost), lp2p.Host),
 		Override(new(host.Host), lp2p.RoutedHost),
-		Override(new(lp2p.BaseIpfsRouting), lp2p.DHTRouting(false)),
+		Override(new(lp2p.BaseIpfsRouting), lp2p.DHTRouting(dht.ModeAuto)),
 
 		Override(DiscoveryHandlerKey, lp2p.DiscoveryHandler),
 		Override(AddrsFactoryKey, lp2p.AddrsFactory(nil, nil)),
