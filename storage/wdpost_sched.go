@@ -192,6 +192,7 @@ func (s *WindowPoStScheduler) update(ctx context.Context, new *types.TipSet) err
 		s.activeEPS = 0
 	}
 	s.failLk.Unlock()*/
+	log.Infof("at %d, doPost for P %d, dd %d", new.Height(), di.PeriodStart, di.Index)
 
 	s.doPost(ctx, di, new)
 
