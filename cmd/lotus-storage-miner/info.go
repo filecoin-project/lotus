@@ -52,8 +52,8 @@ var infoCmd = &cli.Command{
 
 		rpercI := types.BigDiv(types.BigMul(pow.MinerPower.RawBytePower, types.NewInt(1000000)), pow.TotalPower.RawBytePower)
 		qpercI := types.BigDiv(types.BigMul(pow.MinerPower.QualityAdjPower, types.NewInt(1000000)), pow.TotalPower.QualityAdjPower)
-		fmt.Printf("Raw Power:    %s / %s (%0.4f%%)\n", types.SizeStr(pow.MinerPower.RawBytePower), types.SizeStr(pow.TotalPower.RawBytePower), float64(rpercI.Int64())/10000)
-		fmt.Printf("Actual Power: %s / %s (%0.4f%%)\n", types.SizeStr(pow.MinerPower.QualityAdjPower), types.SizeStr(pow.TotalPower.QualityAdjPower), float64(qpercI.Int64())/10000)
+		fmt.Printf("Byte Power:   %s / %s (%0.4f%%)\n", types.SizeStr(pow.MinerPower.RawBytePower), types.SizeStr(pow.TotalPower.RawBytePower), float64(rpercI.Int64())/10000)
+		fmt.Printf("Actual Power: %s / %s (%0.4f%%)\n", types.DecStr(pow.MinerPower.QualityAdjPower), types.DecStr(pow.TotalPower.QualityAdjPower), float64(qpercI.Int64())/10000)
 		secCounts, err := api.StateMinerSectorCount(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return err

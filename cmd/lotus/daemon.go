@@ -123,13 +123,14 @@ var DaemonCmd = &cli.Command{
 			return xerrors.Errorf("fetching proof parameters: %w", err)
 		}
 
-		genBytes := build.MaybeGenesis()
-
+		var genBytes []byte
 		if cctx.String("genesis") != "" {
 			genBytes, err = ioutil.ReadFile(cctx.String("genesis"))
 			if err != nil {
 				return xerrors.Errorf("reading genesis: %w", err)
 			}
+		} else {
+			genBytes = build.MaybeGenesis()
 		}
 
 		chainfile := cctx.String("import-chain")
