@@ -28,7 +28,6 @@ require (
 	github.com/filecoin-project/specs-storage v0.0.0-20200417134612-61b2d91a6102
 	github.com/filecoin-project/storage-fsm v0.0.0-20200420183220-1515cffb5d13
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
-	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/mux v1.7.4
 	github.com/gorilla/websocket v1.4.2
@@ -61,7 +60,6 @@ require (
 	github.com/ipfs/go-path v0.0.7
 	github.com/ipfs/go-unixfs v0.2.2-0.20190827150610-868af2e9e5cb
 	github.com/ipld/go-ipld-prime v0.0.2-0.20191108012745-28a82f04c785
-	github.com/jackpal/go-nat-pmp v1.0.2 // indirect
 	github.com/jbenet/go-temp-err-catcher v0.1.0 // indirect
 	github.com/lib/pq v1.2.0
 	github.com/libp2p/go-eventbus v0.1.0
@@ -92,10 +90,7 @@ require (
 	github.com/multiformats/go-multiaddr-dns v0.2.0
 	github.com/multiformats/go-multiaddr-net v0.1.4
 	github.com/multiformats/go-multihash v0.0.13
-	github.com/multiformats/go-varint v0.0.5
 	github.com/opentracing/opentracing-go v1.1.0
-	github.com/polydawn/refmt v0.0.0-20190809202753-05966cbd336a
-	github.com/prometheus/common v0.2.0
 	github.com/stretchr/testify v1.5.1
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
 	github.com/whyrusleeping/cbor-gen v0.0.0-20200414195334-429a0b5e922e
@@ -104,10 +99,8 @@ require (
 	go.opencensus.io v0.22.3
 	go.uber.org/dig v1.8.0 // indirect
 	go.uber.org/fx v1.9.0
-	go.uber.org/goleak v1.0.0 // indirect
 	go.uber.org/multierr v1.5.0
 	go.uber.org/zap v1.14.1
-	go4.org v0.0.0-20190313082347-94abd6928b1d // indirect
 	golang.org/x/net v0.0.0-20200301022130-244492dfa37a // indirect
 	golang.org/x/sys v0.0.0-20200409092240-59c9f1ba88fa
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
