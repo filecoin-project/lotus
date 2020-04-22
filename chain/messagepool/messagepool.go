@@ -825,9 +825,9 @@ func (mp *MessagePool) loadLocal() error {
 
 const MinGasPrice = 0
 
-func (mp *MessagePool) EstimateGasPrice(ctx context.Context, priority uint64) (types.BigInt, error) {
+func (mp *MessagePool) EstimateGasPrice(ctx context.Context, nblocksincl uint64, sender address.Address, gaslimit int64) (types.BigInt, error) {
 	// TODO: something smarter obviously
-	switch priority {
+	switch nblocksincl {
 	case 0:
 		return types.NewInt(MinGasPrice + 2), nil
 	case 1:
