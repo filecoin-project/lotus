@@ -116,7 +116,7 @@ func (pm *Manager) waitForAddFundsMsg(ctx context.Context, mcid cid.Cid) {
 }
 
 func (pm *Manager) GetPaych(ctx context.Context, from, to address.Address, ensureFree types.BigInt) (address.Address, cid.Cid, error) {
-	pm.store.lk.Lock()
+	pm.store.lk.Lock()  // unlock only on err; wait funcs will defer unlock
 	var mcid cid.Cid
 	ch, err := pm.store.findChan(func(ci *ChannelInfo) bool {
 		if ci.Direction != DirOutbound {
@@ -125,6 +125,7 @@ func (pm *Manager) GetPaych(ctx context.Context, from, to address.Address, ensur
 		return ci.Control == from && ci.Target == to
 	})
 	if err != nil {
+		pm.store.lk.Unlock()
 		return address.Undef, cid.Undef, xerrors.Errorf("findChan: %w", err)
 	}
 	if ch != address.Undef {
@@ -133,6 +134,8 @@ func (pm *Manager) GetPaych(ctx context.Context, from, to address.Address, ensur
 	} else {
 		mcid, err = pm.createPaych(ctx, from, to, ensureFree)
 	}
-
+	if err != nil {
+		pm.store.lk.Unlock()
+	}
 	return ch, mcid, err
 }
