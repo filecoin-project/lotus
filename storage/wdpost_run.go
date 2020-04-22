@@ -3,6 +3,7 @@ package storage
 import (
 	"bytes"
 	"context"
+	"errors"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -16,6 +17,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 )
+
+var errNoPartitions = errors.New("no partitions")
 
 func (s *WindowPoStScheduler) failPost(deadline *miner.DeadlineInfo) {
 	log.Errorf("TODO")
@@ -39,18 +42,20 @@ func (s *WindowPoStScheduler) doPost(ctx context.Context, deadline *miner.Deadli
 		defer span.End()
 
 		proof, err := s.runPost(ctx, *deadline, ts)
-		if err != nil {
+		switch err {
+		case errNoPartitions:
+			return
+		case nil:
+			if err := s.submitPost(ctx, proof); err != nil {
+				log.Errorf("submitPost failed: %+v", err)
+				s.failPost(deadline)
+				return
+			}
+		default:
 			log.Errorf("runPost failed: %+v", err)
 			s.failPost(deadline)
 			return
 		}
-
-		if err := s.submitPost(ctx, proof); err != nil {
-			log.Errorf("submitPost failed: %+v", err)
-			s.failPost(deadline)
-			return
-		}
-
 	}()
 }
 
@@ -114,7 +119,7 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 	log.Infof("ts: %+v (%d)", ts.Key(), ts.Height())
 
 	if partitionCount == 0 {
-		return nil, nil
+		return nil, errNoPartitions
 	}
 
 	partitions := make([]uint64, partitionCount)
