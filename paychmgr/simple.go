@@ -3,7 +3,6 @@ package paychmgr
 import (
 	"bytes"
 	"context"
-	"fmt"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
@@ -17,10 +16,10 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-func (pm *Manager) createPaych(ctx context.Context, from, to address.Address, amt types.BigInt) (address.Address, cid.Cid, error) {
+func (pm *Manager) createPaych(ctx context.Context, from, to address.Address, amt types.BigInt) (cid.Cid, error) {
 	params, aerr := actors.SerializeParams(&paych.ConstructorParams{From: from, To: to})
 	if aerr != nil {
-		return address.Undef, cid.Undef, aerr
+		return cid.Undef, aerr
 	}
 
 	enc, aerr := actors.SerializeParams(&init_.ExecParams{
@@ -28,7 +27,7 @@ func (pm *Manager) createPaych(ctx context.Context, from, to address.Address, am
 		ConstructorParams: params,
 	})
 	if aerr != nil {
-		return address.Undef, cid.Undef, aerr
+		return cid.Undef, aerr
 	}
 
 	msg := &types.Message{
@@ -43,42 +42,46 @@ func (pm *Manager) createPaych(ctx context.Context, from, to address.Address, am
 
 	smsg, err := pm.mpool.MpoolPushMessage(ctx, msg)
 	if err != nil {
-		return address.Undef, cid.Undef, xerrors.Errorf("initializing paych actor: %w", err)
+		return cid.Undef, xerrors.Errorf("initializing paych actor: %w", err)
 	}
-
 	mcid := smsg.Cid()
+	go pm.waitForPaychCreateMsg(ctx, mcid)
+	return mcid, nil
+}
 
-	// TODO: wait outside the store lock!
-	//  (tricky because we need to setup channel tracking before we know it's address)
+// WaitForPaychCreateMsg waits for mcid to appear on chain and returns the robust address of the
+// created payment channel
+// TODO: wait outside the store lock!
+//  (tricky because we need to setup channel tracking before we know its address)
+func (pm *Manager) waitForPaychCreateMsg(ctx context.Context, mcid cid.Cid) {
+	defer pm.store.lk.Unlock()
 	mwait, err := pm.state.StateWaitMsg(ctx, mcid)
 	if err != nil {
-		return address.Undef, cid.Undef, xerrors.Errorf("wait msg: %w", err)
+		log.Errorf("wait msg: %w", err)
 	}
 
 	if mwait.Receipt.ExitCode != 0 {
-		return address.Undef, cid.Undef, fmt.Errorf("payment channel creation failed (exit code %d)", mwait.Receipt.ExitCode)
+		log.Errorf("payment channel creation failed (exit code %d)", mwait.Receipt.ExitCode)
 	}
 
 	var decodedReturn init_.ExecReturn
 	err = decodedReturn.UnmarshalCBOR(bytes.NewReader(mwait.Receipt.Return))
 	if err != nil {
-		return address.Undef, cid.Undef, err
+		log.Error(err)
 	}
 	paychaddr := decodedReturn.RobustAddress
 
 	ci, err := pm.loadOutboundChannelInfo(ctx, paychaddr)
 	if err != nil {
-		return address.Undef, cid.Undef, xerrors.Errorf("loading channel info: %w", err)
+		log.Errorf("loading channel info: %w", err)
 	}
 
 	if err := pm.store.trackChannel(ci); err != nil {
-		return address.Undef, cid.Undef, xerrors.Errorf("tracking channel: %w", err)
+		log.Errorf("tracking channel: %w", err)
 	}
-
-	return paychaddr, mcid, nil
 }
 
-func (pm *Manager) addFunds(ctx context.Context, ch address.Address, from address.Address, amt types.BigInt) error {
+func (pm *Manager) addFunds(ctx context.Context, ch address.Address, from address.Address, amt types.BigInt) (cid.Cid, error) {
 	msg := &types.Message{
 		To:       ch,
 		From:     from,
@@ -90,25 +93,31 @@ func (pm *Manager) addFunds(ctx context.Context, ch address.Address, from addres
 
 	smsg, err := pm.mpool.MpoolPushMessage(ctx, msg)
 	if err != nil {
-		return err
+		return cid.Undef, err
 	}
+	mcid := smsg.Cid()
+	go pm.waitForAddFundsMsg(ctx, mcid)
+	return mcid, nil
+}
 
-	mwait, err := pm.state.StateWaitMsg(ctx, smsg.Cid()) // TODO: wait outside the store lock!
+// WaitForAddFundsMsg waits for mcid to appear on chain and returns error, if any
+// TODO: wait outside the store lock!
+//  (tricky because we need to setup channel tracking before we know it's address)
+func (pm *Manager) waitForAddFundsMsg(ctx context.Context, mcid cid.Cid) {
+	defer pm.store.lk.Unlock()
+	mwait, err := pm.state.StateWaitMsg(ctx, mcid)
 	if err != nil {
-		return err
+		log.Error(err)
 	}
 
 	if mwait.Receipt.ExitCode != 0 {
-		return fmt.Errorf("voucher channel creation failed: adding funds (exit code %d)", mwait.Receipt.ExitCode)
+		log.Errorf("voucher channel creation failed: adding funds (exit code %d)", mwait.Receipt.ExitCode)
 	}
-
-	return nil
 }
 
 func (pm *Manager) GetPaych(ctx context.Context, from, to address.Address, ensureFree types.BigInt) (address.Address, cid.Cid, error) {
-	pm.store.lk.Lock()
-	defer pm.store.lk.Unlock()
-
+	pm.store.lk.Lock() // unlock only on err; wait funcs will defer unlock
+	var mcid cid.Cid
 	ch, err := pm.store.findChan(func(ci *ChannelInfo) bool {
 		if ci.Direction != DirOutbound {
 			return false
@@ -116,12 +125,17 @@ func (pm *Manager) GetPaych(ctx context.Context, from, to address.Address, ensur
 		return ci.Control == from && ci.Target == to
 	})
 	if err != nil {
+		pm.store.lk.Unlock()
 		return address.Undef, cid.Undef, xerrors.Errorf("findChan: %w", err)
 	}
 	if ch != address.Undef {
 		// TODO: Track available funds
-		return ch, cid.Undef, pm.addFunds(ctx, ch, from, ensureFree)
+		mcid, err = pm.addFunds(ctx, ch, from, ensureFree)
+	} else {
+		mcid, err = pm.createPaych(ctx, from, to, ensureFree)
 	}
-
-	return pm.createPaych(ctx, from, to, ensureFree)
+	if err != nil {
+		pm.store.lk.Unlock()
+	}
+	return ch, mcid, err
 }
