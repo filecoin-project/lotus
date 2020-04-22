@@ -8,13 +8,13 @@ make 2k
 
 Download the 2048 byte parameters:
 ```sh
-./lotus fetch-params --proving-params 2048
+./lotus fetch-params --proving-params 512MiB
 ```
 
 Pre-seal some sectors:
 
 ```sh
-./lotus-seed pre-seal --sector-size 2048 --num-sectors 2
+./lotus-seed pre-seal --sector-size 512MiB --num-sectors 4
 ```
 
 Create the genesis block and start up the first node:
