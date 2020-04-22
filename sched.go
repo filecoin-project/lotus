@@ -117,7 +117,8 @@ func (m *Manager) maybeSchedRequest(req *workerRequest) (*workerResponse, error)
 
 	tried := 0
 
-	for _, id := range req.accept {
+	for i := len(req.accept) - 1; i >= 0; i-- {
+		id := req.accept[i]
 		w, ok := m.workers[id]
 		if !ok {
 			log.Warnf("requested worker %d is not in scheduler", id)
