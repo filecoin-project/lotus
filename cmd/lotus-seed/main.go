@@ -182,7 +182,7 @@ func mergeGenMiners(a, b genesis.Miner) genesis.Miner {
 	return genesis.Miner{
 		Owner:         a.Owner,
 		Worker:        a.Worker,
-		PeerId:        "",
+		PeerId:        a.PeerId,
 		MarketBalance: big.Zero(),
 		PowerBalance:  big.Zero(),
 		SectorSize:    a.SectorSize,
