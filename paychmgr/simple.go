@@ -116,7 +116,7 @@ func (pm *Manager) waitForAddFundsMsg(ctx context.Context, mcid cid.Cid) {
 }
 
 func (pm *Manager) GetPaych(ctx context.Context, from, to address.Address, ensureFree types.BigInt) (address.Address, cid.Cid, error) {
-	pm.store.lk.Lock()  // unlock only on err; wait funcs will defer unlock
+	pm.store.lk.Lock() // unlock only on err; wait funcs will defer unlock
 	var mcid cid.Cid
 	ch, err := pm.store.findChan(func(ci *ChannelInfo) bool {
 		if ci.Direction != DirOutbound {
