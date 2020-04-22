@@ -542,6 +542,13 @@ var stateLookupIDCmd = &cli.Command{
 	Name:      "lookup",
 	Usage:     "Find corresponding ID address",
 	ArgsUsage: "[address]",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:    "reverse",
+			Aliases: []string{"r"},
+			Usage:   "Perform reverse lookup",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -565,7 +572,13 @@ var stateLookupIDCmd = &cli.Command{
 			return err
 		}
 
-		a, err := api.StateLookupID(ctx, addr, ts.Key())
+		var a address.Address
+		if !cctx.Bool("reverse") {
+			a, err = api.StateLookupID(ctx, addr, ts.Key())
+		} else {
+			a, err = api.StateAccountKey(ctx, addr, ts.Key())
+		}
+
 		if err != nil {
 			return err
 		}
