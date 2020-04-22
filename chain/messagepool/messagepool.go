@@ -822,3 +822,17 @@ func (mp *MessagePool) loadLocal() error {
 
 	return nil
 }
+
+const MinGasPrice = 0
+
+func (mp *MessagePool) EstimateGasPrice(ctx context.Context, priority uint64) (types.BigInt, error) {
+	// TODO: something smarter obviously
+	switch priority {
+	case 0:
+		return types.NewInt(MinGasPrice + 2), nil
+	case 1:
+		return types.NewInt(MinGasPrice + 1), nil
+	default:
+		return types.NewInt(MinGasPrice), nil
+	}
+}

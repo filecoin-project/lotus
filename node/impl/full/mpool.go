@@ -118,3 +118,7 @@ func (a *MpoolAPI) MpoolGetNonce(ctx context.Context, addr address.Address) (uin
 func (a *MpoolAPI) MpoolSub(ctx context.Context) (<-chan api.MpoolUpdate, error) {
 	return a.Mpool.Updates(ctx)
 }
+
+func (a *MpoolAPI) MpoolEstimateGasPrice(ctx context.Context, priority uint64) (types.BigInt, error) {
+	return a.Mpool.EstimateGasPrice(ctx, priority)
+}

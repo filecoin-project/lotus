@@ -81,11 +81,12 @@ type FullNodeStruct struct {
 		SyncMarkBad        func(ctx context.Context, bcid cid.Cid) error                `perm:"admin"`
 		SyncCheckBad       func(ctx context.Context, bcid cid.Cid) (string, error)      `perm:"read"`
 
-		MpoolPending     func(context.Context, types.TipSetKey) ([]*types.SignedMessage, error) `perm:"read"`
-		MpoolPush        func(context.Context, *types.SignedMessage) (cid.Cid, error)           `perm:"write"`
-		MpoolPushMessage func(context.Context, *types.Message) (*types.SignedMessage, error)    `perm:"sign"`
-		MpoolGetNonce    func(context.Context, address.Address) (uint64, error)                 `perm:"read"`
-		MpoolSub         func(context.Context) (<-chan api.MpoolUpdate, error)                  `perm:"read"`
+		MpoolPending          func(context.Context, types.TipSetKey) ([]*types.SignedMessage, error) `perm:"read"`
+		MpoolPush             func(context.Context, *types.SignedMessage) (cid.Cid, error)           `perm:"write"`
+		MpoolPushMessage      func(context.Context, *types.Message) (*types.SignedMessage, error)    `perm:"sign"`
+		MpoolGetNonce         func(context.Context, address.Address) (uint64, error)                 `perm:"read"`
+		MpoolSub              func(context.Context) (<-chan api.MpoolUpdate, error)                  `perm:"read"`
+		MpoolEstimateGasPrice func(context.Context, uint64) (types.BigInt, error)                    `perm:"read"`
 
 		MinerGetBaseInfo func(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*api.MiningBaseInfo, error) `perm:"read"`
 		MinerCreateBlock func(context.Context, *api.BlockTemplate) (*types.BlockMsg, error)                                   `perm:"write"`
@@ -330,6 +331,10 @@ func (c *FullNodeStruct) MpoolPushMessage(ctx context.Context, msg *types.Messag
 
 func (c *FullNodeStruct) MpoolSub(ctx context.Context) (<-chan api.MpoolUpdate, error) {
 	return c.Internal.MpoolSub(ctx)
+}
+
+func (c *FullNodeStruct) MpoolEstimateGasPrice(ctx context.Context, priority uint64) (types.BigInt, error) {
+	return c.Internal.MpoolEstimateGasPrice(ctx, priority)
 }
 
 func (c *FullNodeStruct) MinerGetBaseInfo(ctx context.Context, maddr address.Address, epoch abi.ChainEpoch, tsk types.TipSetKey) (*api.MiningBaseInfo, error) {
