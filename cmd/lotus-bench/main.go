@@ -238,6 +238,8 @@ var sealBenchCmd = &cli.Command{
 		rand.Read(challenge[:])
 
 		if robench != "" {
+			// TODO: implement sbfs.List() and use that for all cases (preexisting sectorbuilder or not)
+
 			// TODO: this assumes we only ever benchmark a preseal
 			// sectorbuilder directory... we need a better way to handle
 			// this in other cases
@@ -259,8 +261,9 @@ var sealBenchCmd = &cli.Command{
 
 			for _, s := range genm.Sectors {
 				sealedSectors = append(sealedSectors, abi.SectorInfo{
-					SealedCID:    s.CommR,
-					SectorNumber: s.SectorID,
+					SealedCID:       s.CommR,
+					SectorNumber:    s.SectorID,
+					RegisteredProof: s.ProofType,
 				})
 			}
 		}
