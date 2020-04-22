@@ -36,6 +36,8 @@ func (bs *CacheBS) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
 }
 
 func (bs *CacheBS) DeleteBlock(c cid.Cid) error {
+	bs.cache.Remove(c)
+
 	return bs.bs.DeleteBlock(c)
 }
 
