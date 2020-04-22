@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"gopkg.in/urfave/cli.v2"
+	"strconv"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -22,6 +23,7 @@ var rewardsCmd = &cli.Command{
 var rewardsRedeemCmd = &cli.Command{
 	Name:  "redeem",
 	Usage: "Redeem block rewards",
+	ArgsUsage: "[gaslimit]",
 	Action: func(cctx *cli.Context) error {
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
@@ -59,12 +61,17 @@ var rewardsRedeemCmd = &cli.Command{
 			return err
 		}
 
+		gasLimit, err := strconv.ParseInt(cctx.Args().Get(0), 10, 64)
+		if err != nil {
+			gasLimit = 100000
+		}
+
 		smsg, err := api.MpoolPushMessage(ctx, &types.Message{
 			To:       maddr,
 			From:     mi.Owner,
 			Value:    types.NewInt(0),
 			GasPrice: types.NewInt(1),
-			GasLimit: 100000,
+			GasLimit: gasLimit,
 			Method:   builtin.MethodsMiner.WithdrawBalance,
 			Params:   params,
 		})
