@@ -10,7 +10,7 @@ import (
 	lru "github.com/hashicorp/golang-lru"
 )
 
-func NewTestMiner(nextCh <-chan struct{}, addr address.Address) func(api.FullNode, gen.WinningPoStProver, beacon.RandomBeacon) *Miner {
+func NewTestMiner(nextCh <-chan func(bool), addr address.Address) func(api.FullNode, gen.WinningPoStProver, beacon.RandomBeacon) *Miner {
 	return func(api api.FullNode, epp gen.WinningPoStProver, b beacon.RandomBeacon) *Miner {
 		arc, err := lru.NewARC(10000)
 		if err != nil {
@@ -32,14 +32,13 @@ func NewTestMiner(nextCh <-chan struct{}, addr address.Address) func(api.FullNod
 	}
 }
 
-func chanWaiter(next <-chan struct{}) func(ctx context.Context, _ uint64) error {
-	return func(ctx context.Context, _ uint64) error {
+func chanWaiter(next <-chan func(bool)) func(ctx context.Context, _ uint64) (func(bool), error) {
+	return func(ctx context.Context, _ uint64) (func(bool), error) {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
-		case <-next:
+			return nil, ctx.Err()
+		case cb := <-next:
+			return cb, nil
 		}
-
-		return nil
 	}
 }
