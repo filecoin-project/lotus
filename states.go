@@ -256,8 +256,13 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 		return nil
 	}
 
+	collateral, err := m.api.StateMinerInitialPledgeCollateral(ctx.Context(), m.maddr, sector.SectorNumber, tok)
+	if err != nil {
+		return xerrors.Errorf("getting initial pledge collateral: %w", err)
+	}
+
 	// TODO: check seed / ticket are up to date
-	mcid, err := m.api.SendMsg(ctx.Context(), waddr, m.maddr, builtin.MethodsMiner.ProveCommitSector, big.NewInt(0), big.NewInt(1), 1000000, enc.Bytes())
+	mcid, err := m.api.SendMsg(ctx.Context(), waddr, m.maddr, builtin.MethodsMiner.ProveCommitSector, collateral, big.NewInt(1), 1000000, enc.Bytes())
 	if err != nil {
 		return ctx.Send(SectorCommitFailed{xerrors.Errorf("pushing message to mpool: %w", err)})
 	}
