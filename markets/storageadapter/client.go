@@ -379,7 +379,18 @@ func (n *ClientNodeAdapter) ValidateAskSignature(ctx context.Context, ask *stora
 		return false, xerrors.Errorf("failed to re-serialize ask")
 	}
 
-	err = sigs.Verify(ask.Signature, mi.Worker, sigb)
+	ts, err := n.ChainGetTipSet(ctx, tsk)
+	if err != nil {
+		return false, xerrors.Errorf("failed to load tipset")
+	}
+
+	m, err := n.StateManager.ResolveToKeyAddress(ctx, mi.Worker, ts)
+
+	if err != nil {
+		return false, xerrors.Errorf("failed to resolve miner to key address")
+	}
+
+	err = sigs.Verify(ask.Signature, m, sigb)
 	return err == nil, err
 }
 
