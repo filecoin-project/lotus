@@ -634,8 +634,6 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 		return types.EmptyInt, xerrors.Errorf("no precommit found for sector %d", snum)
 	}
 
-	st.AddPreCommitDeposit(precommit.PreCommitDeposit.Neg())
-
 	var dealWeights market.VerifyDealsOnSectorProveCommitReturn
 	{
 		var err error
@@ -701,10 +699,33 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 		}
 	}
 
-	available := st.GetAvailableBalance(act.Balance)
-	if available.GreaterThanEqual(initialPledge) {
-		return types.NewInt(0), nil
+	return initialPledge, nil
+}
+
+func (a *StateAPI) StateMinerAvailableBalance(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (types.BigInt, error) {
+	ts, err := a.Chain.GetTipSetFromKey(tsk)
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	return types.BigSub(initialPledge, available), nil
+	act, err := a.StateManager.GetActor(maddr, ts)
+	if err != nil {
+		return types.EmptyInt, err
+	}
+
+	as := store.ActorStore(ctx, a.Chain.Blockstore())
+
+	var st miner.State
+	if err := as.Get(ctx, act.Head, &st); err != nil {
+		return types.EmptyInt, err
+	}
+
+	// TODO: !!!! Use method that doesnt trigger additional state mutations, this is going to cause lots of objects to be created and written to disk
+	log.Warnf("calling inefficient unlock vested funds method, fixme")
+	vested, err := st.UnlockVestedFunds(as, ts.Height())
+	if err != nil {
+		return types.EmptyInt, err
+	}
+
+	return types.BigAdd(st.GetAvailableBalance(act.Balance), vested), nil
 }
