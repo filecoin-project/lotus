@@ -12,6 +12,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p-core/routing"
+	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-peerstore/pstoremem"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	record "github.com/libp2p/go-libp2p-record"
@@ -81,6 +82,7 @@ var (
 	BaseRoutingKey       = special{7} // fx groups + multiret
 	NatPortMapKey        = special{8} // Libp2p option
 	ConnectionManagerKey = special{9} // Libp2p option
+	AutoNATSvcKey        = special{9} // Libp2p option
 )
 
 type invoke int
@@ -160,7 +162,7 @@ func libp2p() Option {
 
 		Override(new(lp2p.RawHost), lp2p.Host),
 		Override(new(host.Host), lp2p.RoutedHost),
-		Override(new(lp2p.BaseIpfsRouting), lp2p.DHTRouting(false)),
+		Override(new(lp2p.BaseIpfsRouting), lp2p.DHTRouting(dht.ModeAuto)),
 
 		Override(DiscoveryHandlerKey, lp2p.DiscoveryHandler),
 		Override(AddrsFactoryKey, lp2p.AddrsFactory(nil, nil)),
@@ -174,6 +176,7 @@ func libp2p() Option {
 		Override(NatPortMapKey, lp2p.NatPortMap),
 
 		Override(ConnectionManagerKey, lp2p.ConnectionManager(50, 200, 20*time.Second, nil)),
+		Override(AutoNATSvcKey, lp2p.AutoNATService),
 
 		Override(new(*pubsub.PubSub), lp2p.GossipSub()),
 
