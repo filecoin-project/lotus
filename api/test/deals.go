@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -62,14 +63,14 @@ func TestDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, carExport
 
 	fmt.Println("FILE CID: ", fcid)
 
-	mine := true
+	var mine int32 = 1
 	done := make(chan struct{})
 
 	go func() {
 		defer close(done)
-		for mine {
+		for atomic.LoadInt32(&mine) == 1 {
 			time.Sleep(blocktime)
-			if err := sn[0].MineOne(ctx); err != nil {
+			if err := sn[0].MineOne(ctx, func(bool) {}); err != nil {
 				t.Error(err)
 			}
 		}
@@ -86,7 +87,7 @@ func TestDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, carExport
 
 	testRetrieval(t, err, client, ctx, fcid, carExport, data)
 
-	mine = false
+	atomic.StoreInt32(&mine, 0)
 	fmt.Println("shutting down mining")
 	<-done
 }
