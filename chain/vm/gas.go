@@ -33,7 +33,7 @@ type Pricelist interface {
 	// OnDeleteActor returns the gas used for deleting an actor
 	OnDeleteActor() int64
 
-	OnVerifySignature(sigType crypto.SigType, planTextSize int) int64
+	OnVerifySignature(sigType crypto.SigType, planTextSize int) (int64, error)
 	OnHashing(dataSize int) int64
 	OnComputeUnsealedSectorCid(proofType abi.RegisteredProof, pieces []abi.PieceInfo) int64
 	OnVerifySeal(info abi.SealVerifyInfo) int64
@@ -97,7 +97,11 @@ type pricedSyscalls struct {
 
 // Verifies that a signature is valid for an address and plaintext.
 func (ps pricedSyscalls) VerifySignature(signature crypto.Signature, signer addr.Address, plaintext []byte) error {
-	ps.chargeGas(ps.pl.OnVerifySignature(signature.Type, len(plaintext)))
+	c, err := ps.pl.OnVerifySignature(signature.Type, len(plaintext))
+	if err != nil {
+		return err
+	}
+	ps.chargeGas(c)
 	return ps.under.VerifySignature(signature, signer, plaintext)
 }
 
