@@ -47,7 +47,7 @@ func (m *Sealing) handlePacking(ctx statemachine.Context, sector SectorInfo) err
 }
 
 func (m *Sealing) handlePreCommit1(ctx statemachine.Context, sector SectorInfo) error {
-	tok, _, err := m.api.ChainHead(ctx.Context())
+	tok, epoch, err := m.api.ChainHead(ctx.Context())
 	if err != nil {
 		log.Errorf("handlePreCommit1: api error, not proceeding: %+v", err)
 		return nil
@@ -68,10 +68,16 @@ func (m *Sealing) handlePreCommit1(ctx statemachine.Context, sector SectorInfo) 
 	}
 
 	log.Infow("performing sector replication...", "sector", sector.SectorNumber)
-	ticketValue, ticketEpoch, err := m.tktFn(ctx.Context(), tok)
+	ticketEpoch := epoch - miner.ChainFinalityish
+	buf := new(bytes.Buffer)
+	if err := m.maddr.MarshalCBOR(buf); err != nil {
+		return err
+	}
+	rand, err := m.api.ChainGetRandomness(ctx.Context(), tok, crypto.DomainSeparationTag_SealRandomness, ticketEpoch, buf.Bytes())
 	if err != nil {
 		return ctx.Send(SectorSealPreCommitFailed{xerrors.Errorf("getting ticket failed: %w", err)})
 	}
+	ticketValue := abi.SealRandomness(rand)
 
 	pc1o, err := m.sealer.SealPreCommit1(ctx.Context(), m.minerSector(sector.SectorNumber), ticketValue, sector.pieceInfos())
 	if err != nil {
@@ -180,7 +186,6 @@ func (m *Sealing) handleWaitSeed(ctx statemachine.Context, sector SectorInfo) er
 		if err := m.maddr.MarshalCBOR(buf); err != nil {
 			return err
 		}
-
 		rand, err := m.api.ChainGetRandomness(ectx, tok, crypto.DomainSeparationTag_InteractiveSealChallengeSeed, randHeight, buf.Bytes())
 		if err != nil {
 			err = xerrors.Errorf("failed to get randomness for computing seal proof: %w", err)
