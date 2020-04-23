@@ -9,9 +9,9 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	sectorstorage "github.com/filecoin-project/sector-storage"
 	"github.com/filecoin-project/sector-storage/sealtasks"
 	"github.com/filecoin-project/sector-storage/stores"
+	"github.com/filecoin-project/sector-storage/storiface"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
@@ -189,8 +189,8 @@ type StorageMinerStruct struct {
 		SectorsRefs   func(context.Context) (map[string][]api.SealedRef, error)          `perm:"read"`
 		SectorsUpdate func(context.Context, abi.SectorNumber, sealing.SectorState) error `perm:"write"`
 
-		WorkerConnect func(context.Context, string) error                                 `perm:"admin"` // TODO: worker perm
-		WorkerStats   func(context.Context) (map[uint64]sectorstorage.WorkerStats, error) `perm:"admin"`
+		WorkerConnect func(context.Context, string) error                             `perm:"admin"` // TODO: worker perm
+		WorkerStats   func(context.Context) (map[uint64]storiface.WorkerStats, error) `perm:"admin"`
 
 		StorageList          func(context.Context) (map[stores.ID][]stores.Decl, error)                                            `perm:"admin"`
 		StorageLocal         func(context.Context) (map[stores.ID]string, error)                                                   `perm:"admin"`
@@ -217,7 +217,7 @@ type WorkerStruct struct {
 
 		TaskTypes func(context.Context) (map[sealtasks.TaskType]struct{}, error) `perm:"admin"`
 		Paths     func(context.Context) ([]stores.StoragePath, error)            `perm:"admin"`
-		Info      func(context.Context) (sectorstorage.WorkerInfo, error)        `perm:"admin"`
+		Info      func(context.Context) (storiface.WorkerInfo, error)            `perm:"admin"`
 
 		SealPreCommit1 func(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, pieces []abi.PieceInfo) (storage.PreCommit1Out, error)                                                           `perm:"admin"`
 		SealPreCommit2 func(context.Context, abi.SectorID, storage.PreCommit1Out) (cids storage.SectorCids, err error)                                                                                            `perm:"admin"`
@@ -697,7 +697,7 @@ func (c *StorageMinerStruct) WorkerConnect(ctx context.Context, url string) erro
 	return c.Internal.WorkerConnect(ctx, url)
 }
 
-func (c *StorageMinerStruct) WorkerStats(ctx context.Context) (map[uint64]sectorstorage.WorkerStats, error) {
+func (c *StorageMinerStruct) WorkerStats(ctx context.Context) (map[uint64]storiface.WorkerStats, error) {
 	return c.Internal.WorkerStats(ctx)
 }
 
@@ -777,7 +777,7 @@ func (w *WorkerStruct) Paths(ctx context.Context) ([]stores.StoragePath, error) 
 	return w.Internal.Paths(ctx)
 }
 
-func (w *WorkerStruct) Info(ctx context.Context) (sectorstorage.WorkerInfo, error) {
+func (w *WorkerStruct) Info(ctx context.Context) (storiface.WorkerInfo, error) {
 	return w.Internal.Info(ctx)
 }
 

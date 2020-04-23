@@ -8,8 +8,8 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	sectorstorage "github.com/filecoin-project/sector-storage"
 	"github.com/filecoin-project/sector-storage/stores"
+	"github.com/filecoin-project/sector-storage/storiface"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	"github.com/filecoin-project/lotus/chain/types"
@@ -45,7 +45,7 @@ type StorageMiner interface {
 
 	// WorkerConnect tells the node to connect to workers RPC
 	WorkerConnect(context.Context, string) error
-	WorkerStats(context.Context) (map[uint64]sectorstorage.WorkerStats, error)
+	WorkerStats(context.Context) (map[uint64]storiface.WorkerStats, error)
 
 	stores.SectorIndex
 
