@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	"github.com/filecoin-project/lotus/chain/types"
-	sealing "github.com/filecoin-project/storage-fsm"
 )
 
 // StorageMiner is a low-level interface to the Filecoin network storage miner node
@@ -37,7 +36,7 @@ type StorageMiner interface {
 
 	SectorsRefs(context.Context) (map[string][]SealedRef, error)
 
-	SectorsUpdate(context.Context, abi.SectorNumber, sealing.SectorState) error
+	SectorsUpdate(context.Context, abi.SectorNumber, SectorState) error
 
 	StorageList(ctx context.Context) (map[stores.ID][]stores.Decl, error)
 	StorageLocal(ctx context.Context) (map[stores.ID]string, error)
@@ -78,7 +77,7 @@ type SectorLog struct {
 
 type SectorInfo struct {
 	SectorID abi.SectorNumber
-	State    sealing.SectorState
+	State    SectorState
 	CommD    *cid.Cid
 	CommR    *cid.Cid
 	Proof    []byte
@@ -119,3 +118,5 @@ func (st *SealTicket) Equals(ost *SealTicket) bool {
 func (st *SealSeed) Equals(ost *SealSeed) bool {
 	return bytes.Equal(st.Value, ost.Value) && st.Epoch == ost.Epoch
 }
+
+type SectorState string

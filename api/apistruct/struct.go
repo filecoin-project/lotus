@@ -23,7 +23,6 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	sealing "github.com/filecoin-project/storage-fsm"
 )
 
 // All permissions are listed in permissioned.go
@@ -184,10 +183,10 @@ type StorageMinerStruct struct {
 
 		PledgeSector func(context.Context) error `perm:"write"`
 
-		SectorsStatus func(context.Context, abi.SectorNumber) (api.SectorInfo, error)    `perm:"read"`
-		SectorsList   func(context.Context) ([]abi.SectorNumber, error)                  `perm:"read"`
-		SectorsRefs   func(context.Context) (map[string][]api.SealedRef, error)          `perm:"read"`
-		SectorsUpdate func(context.Context, abi.SectorNumber, sealing.SectorState) error `perm:"write"`
+		SectorsStatus func(context.Context, abi.SectorNumber) (api.SectorInfo, error) `perm:"read"`
+		SectorsList   func(context.Context) ([]abi.SectorNumber, error)               `perm:"read"`
+		SectorsRefs   func(context.Context) (map[string][]api.SealedRef, error)       `perm:"read"`
+		SectorsUpdate func(context.Context, abi.SectorNumber, api.SectorState) error  `perm:"write"`
 
 		WorkerConnect func(context.Context, string) error                             `perm:"admin"` // TODO: worker perm
 		WorkerStats   func(context.Context) (map[uint64]storiface.WorkerStats, error) `perm:"admin"`
@@ -689,7 +688,7 @@ func (c *StorageMinerStruct) SectorsRefs(ctx context.Context) (map[string][]api.
 	return c.Internal.SectorsRefs(ctx)
 }
 
-func (c *StorageMinerStruct) SectorsUpdate(ctx context.Context, id abi.SectorNumber, state sealing.SectorState) error {
+func (c *StorageMinerStruct) SectorsUpdate(ctx context.Context, id abi.SectorNumber, state api.SectorState) error {
 	return c.Internal.SectorsUpdate(ctx, id, state)
 }
 
