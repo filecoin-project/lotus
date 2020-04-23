@@ -283,7 +283,6 @@ func Online() Option {
 			Override(new(storage2.Prover), From(new(sectorstorage.SectorManager))),
 
 			Override(new(*sectorblocks.SectorBlocks), sectorblocks.NewSectorBlocks),
-			Override(new(sealing.TicketFn), modules.SealTicketGen),
 			Override(new(*storage.Miner), modules.StorageMiner),
 			Override(new(dtypes.NetworkName), modules.StorageNetworkName),
 			Override(new(beacon.RandomBeacon), modules.MinerRandomBeacon),

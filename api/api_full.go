@@ -66,6 +66,7 @@ type FullNode interface {
 	MpoolPushMessage(context.Context, *types.Message) (*types.SignedMessage, error) // get nonce, sign, push
 	MpoolGetNonce(context.Context, address.Address) (uint64, error)
 	MpoolSub(context.Context) (<-chan MpoolUpdate, error)
+	MpoolEstimateGasPrice(context.Context, uint64, address.Address, int64, types.TipSetKey) (types.BigInt, error)
 
 	// FullNodeStruct
 
@@ -126,6 +127,8 @@ type FullNode interface {
 	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (miner.MinerInfo, error)
 	StateMinerDeadlines(context.Context, address.Address, types.TipSetKey) (*miner.Deadlines, error)
 	StateMinerFaults(context.Context, address.Address, types.TipSetKey) ([]abi.SectorNumber, error)
+	StateMinerInitialPledgeCollateral(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (types.BigInt, error)
+	StateMinerAvailableBalance(context.Context, address.Address, types.TipSetKey) (types.BigInt, error)
 	StateSectorPreCommitInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error)
 	StatePledgeCollateral(context.Context, types.TipSetKey) (types.BigInt, error)
 	StateWaitMsg(context.Context, cid.Cid) (*MsgLookup, error)
