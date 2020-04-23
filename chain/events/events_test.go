@@ -92,21 +92,21 @@ func makeTs(t *testing.T, h abi.ChainEpoch, msgcid cid.Cid) *types.TipSet {
 	return ts
 }
 
-func (fcs *fakeCS) ChainNotify(context.Context) (<-chan []*store.HeadChange, error) {
-	out := make(chan []*store.HeadChange, 1)
-	out <- []*store.HeadChange{{Type: store.HCCurrent, Val: fcs.tsc.best()}}
+func (fcs *fakeCS) ChainNotify(context.Context) (<-chan []*api.HeadChange, error) {
+	out := make(chan []*api.HeadChange, 1)
+	out <- []*api.HeadChange{{Type: store.HCCurrent, Val: fcs.tsc.best()}}
 
 	fcs.sub = func(rev, app []*types.TipSet) {
-		notif := make([]*store.HeadChange, len(rev)+len(app))
+		notif := make([]*api.HeadChange, len(rev)+len(app))
 
 		for i, r := range rev {
-			notif[i] = &store.HeadChange{
+			notif[i] = &api.HeadChange{
 				Type: store.HCRevert,
 				Val:  r,
 			}
 		}
 		for i, r := range app {
-			notif[i+len(rev)] = &store.HeadChange{
+			notif[i+len(rev)] = &api.HeadChange{
 				Type: store.HCApply,
 				Val:  r,
 			}

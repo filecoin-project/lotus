@@ -3,7 +3,7 @@ package main
 import (
 	"container/list"
 
-	"github.com/filecoin-project/lotus/chain/store"
+	"github.com/filecoin-project/lotus/api"
 )
 
 type headBuffer struct {
@@ -21,12 +21,12 @@ func NewHeadBuffer(size int) *headBuffer {
 	}
 }
 
-func (h *headBuffer) Push(hc *store.HeadChange) (rethc *store.HeadChange) {
+func (h *headBuffer) Push(hc *api.HeadChange) (rethc *api.HeadChange) {
 	if h.buffer.Len() == h.size {
 		var ok bool
 
 		el := h.buffer.Front()
-		rethc, ok = el.Value.(*store.HeadChange)
+		rethc, ok = el.Value.(*api.HeadChange)
 		if !ok {
 			panic("Value from list is not the correct type")
 		}
