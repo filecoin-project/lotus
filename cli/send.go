@@ -92,11 +92,13 @@ var sendCmd = &cli.Command{
 			if err != nil {
 				return err
 			}
+			fmt.Println(sm.Cid())
 		} else {
-			_, err = api.MpoolPushMessage(ctx, msg)
+			sm, err := api.MpoolPushMessage(ctx, msg)
 			if err != nil {
 				return err
 			}
+			fmt.Println(sm.Cid())
 		}
 
 		return nil

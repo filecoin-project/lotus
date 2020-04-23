@@ -536,7 +536,7 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, round abi.ChainEpoch,
 		return nil, xerrors.Errorf("failed to cbor marshal address: %w")
 	}
 
-	electionRand, err := store.DrawRandomness(brand.Data, 17, round, buf.Bytes())
+	electionRand, err := store.DrawRandomness(brand.Data, crypto.DomainSeparationTag_ElectionProofProduction, round, buf.Bytes())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to draw randomness: %w", err)
 	}

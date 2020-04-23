@@ -9,7 +9,6 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -52,8 +51,67 @@ func TestDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, carExport
 	}
 	time.Sleep(time.Second)
 
-	data := make([]byte, 600)
-	rand.New(rand.NewSource(5)).Read(data)
+	mine := true
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for mine {
+			time.Sleep(blocktime)
+			if err := sn[0].MineOne(ctx, func(bool) {}); err != nil {
+				t.Error(err)
+			}
+		}
+	}()
+
+	makeDeal(t, ctx, 6, client, miner, carExport)
+
+	mine = false
+	fmt.Println("shutting down mining")
+	<-done
+}
+
+func TestDoubleDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration) {
+	os.Setenv("BELLMAN_NO_GPU", "1")
+
+	ctx := context.Background()
+	n, sn := b(t, 1, oneMiner)
+	client := n[0].FullNode.(*impl.FullNodeAPI)
+	miner := sn[0]
+
+	addrinfo, err := client.NetAddrsListen(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := miner.NetConnect(ctx, addrinfo); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(time.Second)
+
+	mine := true
+	done := make(chan struct{})
+
+	go func() {
+		defer close(done)
+		for mine {
+			time.Sleep(blocktime)
+			if err := sn[0].MineOne(ctx, func(bool) {}); err != nil {
+				t.Error(err)
+			}
+		}
+	}()
+
+	makeDeal(t, ctx, 6, client, miner, false)
+	makeDeal(t, ctx, 7, client, miner, false)
+
+	mine = false
+	fmt.Println("shutting down mining")
+	<-done
+}
+
+func makeDeal(t *testing.T, ctx context.Context, rseed int, client *impl.FullNodeAPI, miner TestStorageNode, carExport bool) {
+	data := make([]byte, 1600)
+	rand.New(rand.NewSource(int64(rseed))).Read(data)
 
 	r := bytes.NewReader(data)
 	fcid, err := client.ClientImportLocal(ctx, r)
@@ -63,36 +121,18 @@ func TestDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, carExport
 
 	fmt.Println("FILE CID: ", fcid)
 
-	var mine int32 = 1
-	done := make(chan struct{})
-
-	go func() {
-		defer close(done)
-		for atomic.LoadInt32(&mine) == 1 {
-			time.Sleep(blocktime)
-			if err := sn[0].MineOne(ctx, func(bool) {}); err != nil {
-				t.Error(err)
-			}
-		}
-	}()
-
-	deal := startDeal(t, miner, ctx, client, fcid)
+	deal := startDeal(t, ctx, miner, client, fcid)
 
 	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
 	time.Sleep(time.Second)
-
 	waitDealSealed(t, ctx, client, deal)
 
 	// Retrieval
 
-	testRetrieval(t, err, client, ctx, fcid, carExport, data)
-
-	atomic.StoreInt32(&mine, 0)
-	fmt.Println("shutting down mining")
-	<-done
+	testRetrieval(t, ctx, err, client, fcid, carExport, data)
 }
 
-func startDeal(t *testing.T, miner TestStorageNode, ctx context.Context, client *impl.FullNodeAPI, fcid cid.Cid) *cid.Cid {
+func startDeal(t *testing.T, ctx context.Context, miner TestStorageNode, client *impl.FullNodeAPI, fcid cid.Cid) *cid.Cid {
 	maddr, err := miner.ActorAddress(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -102,7 +142,6 @@ func startDeal(t *testing.T, miner TestStorageNode, ctx context.Context, client 
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	deal, err := client.ClientStartDeal(ctx, &api.StartDealParams{
 		Data:              &storagemarket.DataRef{Root: fcid},
 		Wallet:            addr,
@@ -139,7 +178,7 @@ loop:
 	}
 }
 
-func testRetrieval(t *testing.T, err error, client *impl.FullNodeAPI, ctx context.Context, fcid cid.Cid, carExport bool, data []byte) {
+func testRetrieval(t *testing.T, ctx context.Context, err error, client *impl.FullNodeAPI, fcid cid.Cid, carExport bool, data []byte) {
 	offers, err := client.ClientFindData(ctx, fcid)
 	if err != nil {
 		t.Fatal(err)

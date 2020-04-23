@@ -195,7 +195,7 @@ func builder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test.TestN
 
 		genaccs = append(genaccs, genesis.Actor{
 			Type:    genesis.TAccount,
-			Balance: big.NewInt(40000000000),
+			Balance: big.NewInt(5000000000000000000),
 			Meta:    (&genesis.AccountMeta{Owner: wk.Address}).ActorMeta(),
 		})
 
@@ -331,7 +331,7 @@ func mockSbBuilder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test
 
 		genaccs = append(genaccs, genesis.Actor{
 			Type:    genesis.TAccount,
-			Balance: big.NewInt(40000000000),
+			Balance: big.NewInt(5000000000000000000),
 			Meta:    (&genesis.AccountMeta{Owner: wk.Address}).ActorMeta(),
 		})
 
@@ -453,10 +453,14 @@ func TestAPIDealFlow(t *testing.T) {
 	logging.SetLogLevel("sub", "ERROR")
 	logging.SetLogLevel("storageminer", "ERROR")
 
-	test.TestDealFlow(t, mockSbBuilder, 10*time.Millisecond, false)
-
+	t.Run("TestDealFlow", func(t *testing.T) {
+		test.TestDealFlow(t, mockSbBuilder, 10*time.Millisecond, false)
+	})
 	t.Run("WithExportedCAR", func(t *testing.T) {
 		test.TestDealFlow(t, mockSbBuilder, 10*time.Millisecond, true)
+	})
+	t.Run("TestDoubleDealFlow", func(t *testing.T) {
+		test.TestDoubleDealFlow(t, mockSbBuilder, 10*time.Millisecond)
 	})
 }
 
