@@ -109,7 +109,7 @@ func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, a
 	// start node
 	var minerapi api.StorageMiner
 
-	mineBlock := make(chan struct{})
+	mineBlock := make(chan func(bool))
 	// TODO: use stop
 	_, err = node.New(ctx,
 		node.StorageMiner(&minerapi),
@@ -134,9 +134,9 @@ func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, a
 
 	err = minerapi.NetConnect(ctx, remoteAddrs)
 	require.NoError(t, err)*/
-	mineOne := func(ctx context.Context) error {
+	mineOne := func(ctx context.Context, cb func(bool)) error {
 		select {
-		case mineBlock <- struct{}{}:
+		case mineBlock <- cb:
 			return nil
 		case <-ctx.Done():
 			return ctx.Err()
@@ -285,17 +285,8 @@ func mockSbBuilder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test
 	fulls := make([]test.TestNode, nFull)
 	storers := make([]test.TestStorageNode, len(storage))
 
-	pk, _, err := crypto.GenerateEd25519Key(rand.Reader)
-	require.NoError(t, err)
-
-	minerPid, err := peer.IDFromPrivateKey(pk)
-	require.NoError(t, err)
-
 	var genbuf bytes.Buffer
 
-	if len(storage) > 1 {
-		panic("need more peer IDs")
-	}
 	// PRESEAL SECTION, TRY TO REPLACE WITH BETTER IN THE FUTURE
 	// TODO: would be great if there was a better way to fake the preseals
 
@@ -304,6 +295,7 @@ func mockSbBuilder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test
 	var maddrs []address.Address
 	var presealDirs []string
 	var keys []*wallet.Key
+	var pidKeys []crypto.PrivKey
 	for i := 0; i < len(storage); i++ {
 		maddr, err := address.NewIDAddress(genesis2.MinerStart + uint64(i))
 		if err != nil {
@@ -323,6 +315,13 @@ func mockSbBuilder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test
 		if err != nil {
 			t.Fatal(err)
 		}
+
+		pk, _, err := crypto.GenerateEd25519Key(rand.Reader)
+		require.NoError(t, err)
+
+		minerPid, err := peer.IDFromPrivateKey(pk)
+		require.NoError(t, err)
+
 		genm.PeerId = minerPid
 
 		wk, err := wallet.NewKey(*k)
@@ -337,6 +336,7 @@ func mockSbBuilder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test
 		})
 
 		keys = append(keys, wk)
+		pidKeys = append(pidKeys, pk)
 		presealDirs = append(presealDirs, tdir)
 		maddrs = append(maddrs, maddr)
 		genms = append(genms, *genm)
@@ -377,9 +377,6 @@ func mockSbBuilder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test
 
 	for i, def := range storage {
 		// TODO: support non-bootstrap miners
-		if i != 0 {
-			t.Fatal("only one storage node supported")
-		}
 		if def.Full != 0 {
 			t.Fatal("storage nodes only supported on the first full node")
 		}
@@ -392,10 +389,7 @@ func mockSbBuilder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test
 			return nil, nil
 		}
 
-		genMiner := maddrs[i]
-		wa := genms[i].Worker
-
-		storers[i] = testStorageNode(ctx, t, wa, genMiner, pk, f, mn, node.Options(
+		storers[i] = testStorageNode(ctx, t, genms[i].Worker, maddrs[i], pidKeys[i], f, mn, node.Options(
 			node.Override(new(sectorstorage.SectorManager), func() (sectorstorage.SectorManager, error) {
 				return mock.NewMockSectorMgr(5, build.SectorSizes[0]), nil
 			}),
@@ -478,4 +472,14 @@ func TestAPIDealFlowReal(t *testing.T) {
 	logging.SetLogLevel("storageminer", "ERROR")
 
 	test.TestDealFlow(t, builder, time.Second, false)
+}
+
+func TestDealMining(t *testing.T) {
+	logging.SetLogLevel("miner", "ERROR")
+	logging.SetLogLevel("chainstore", "ERROR")
+	logging.SetLogLevel("chain", "ERROR")
+	logging.SetLogLevel("sub", "ERROR")
+	logging.SetLogLevel("storageminer", "ERROR")
+
+	test.TestDealMining(t, mockSbBuilder, 50*time.Millisecond, false)
 }

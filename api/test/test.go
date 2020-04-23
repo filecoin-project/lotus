@@ -16,7 +16,7 @@ type TestNode struct {
 type TestStorageNode struct {
 	api.StorageMiner
 
-	MineOne func(context.Context) error
+	MineOne func(context.Context, func(bool)) error
 }
 
 var PresealGenesis = -1

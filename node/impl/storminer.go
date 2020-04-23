@@ -59,6 +59,14 @@ func (sm *StorageMinerAPI) ActorAddress(context.Context) (address.Address, error
 	return sm.Miner.Address(), nil
 }
 
+func (sm *StorageMinerAPI) MiningBase(ctx context.Context) (*types.TipSet, error) {
+	mb, err := sm.BlockMiner.GetBestMiningCandidate(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return mb.TipSet, nil
+}
+
 func (sm *StorageMinerAPI) ActorSectorSize(ctx context.Context, addr address.Address) (abi.SectorSize, error) {
 	mi, err := sm.Full.StateMinerInfo(ctx, addr, types.EmptyTSK)
 	if err != nil {
