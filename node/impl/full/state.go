@@ -607,7 +607,7 @@ func (a *StateAPI) MsigGetAvailableBalance(ctx context.Context, addr address.Add
 	return types.BigSub(act.Balance, minBalance), nil
 }
 
-func (a *StateAPI) StateMinerFundsRequiredForCommit(ctx context.Context, maddr address.Address, snum abi.SectorNumber, tsk types.TipSetKey) (types.BigInt, error) {
+func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr address.Address, snum abi.SectorNumber, tsk types.TipSetKey) (types.BigInt, error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -636,32 +636,70 @@ func (a *StateAPI) StateMinerFundsRequiredForCommit(ctx context.Context, maddr a
 
 	st.AddPreCommitDeposit(precommit.PreCommitDeposit.Neg())
 
-	available := st.GetAvailableBalance(act.Balance)
+	var dealWeights market.VerifyDealsOnSectorProveCommitReturn
+	{
+		var err error
+		params, err := actors.SerializeParams(&market.VerifyDealsOnSectorProveCommitParams{
+				DealIDs:      precommit.Info.DealIDs,
+				SectorSize:   st.GetSectorSize(),
+				SectorExpiry: precommit.Info.Expiration,
+		})
+		if err != nil {
+			return types.EmptyInt, err
+		}
 
-	dealWeight := 0 // ????
-	verifDealWeight := dealWeight
-	panic("i need some deal weight numbers")
+		ret, err := a.StateManager.Call(ctx, &types.Message{
+			From:     maddr,
+			To:       builtin.StorageMarketActorAddr,
+			Method:   builtin.MethodsMarket.VerifyDealsOnSectorProveCommit,
+			GasLimit: 100000000000,
+			GasPrice: types.NewInt(0),
+			Params:   params,
+		}, ts)
+		if err != nil {
+			return types.EmptyInt, err
+		}
 
-	params, err := actors.SerializeParams(&power.OnSectorProveCommitParams{
-		SectorSize:         precommit.Info.SectorSize,
-		Duration:           precommit.Info.Expiration - ts.Height(), // NB: not exactly accurate, but should always lead us to *over* estimate, not under
-		DealWeight:         dealWeight,
-		VerifiedDealWeight: verifDealWeight,
-	})
-	if err != nil {
-		return types.EmptyInt, err
+		if err := dealWeights.UnmarshalCBOR(bytes.NewReader(ret.MsgRct.Return)); err != nil {
+			return types.BigInt{}, err
+		}
 	}
 
-	ret, err := a.StateManager.Call(ctx, &types.Message{
-		From:     maddr,
-		To:       builtin.StoragePowerActorAddr,
-		Method:   builtin.MethodsPower.OnSectorProveCommit,
-		GasLimit: 100000000,
-		GasPrice: types.NewInt(0),
-		Params:   params,
-	}, tsk)
-	if err != nil {
-		return types.EmptyInt, err
+	initialPledge := big.Zero()
+	{
+		ssize, err := precommit.Info.RegisteredProof.SectorSize()
+		if err != nil {
+			return types.EmptyInt, err
+		}
+
+		params, err := actors.SerializeParams(&power.OnSectorProveCommitParams{
+			Weight: power.SectorStorageWeightDesc{
+				SectorSize:         ssize,
+				Duration:           precommit.Info.Expiration - ts.Height(), // NB: not exactly accurate, but should always lead us to *over* estimate, not under
+				DealWeight:         dealWeights.DealWeight,
+				VerifiedDealWeight: dealWeights.VerifiedDealWeight,
+			},
+		})
+		if err != nil {
+			return types.EmptyInt, err
+		}
+
+		ret, err := a.StateManager.Call(ctx, &types.Message{
+			From:     maddr,
+			To:       builtin.StoragePowerActorAddr,
+			Method:   builtin.MethodsPower.OnSectorProveCommit,
+			GasLimit: 10000000000,
+			GasPrice: types.NewInt(0),
+			Params:   params,
+		}, ts)
+		if err != nil {
+			return types.EmptyInt, err
+		}
+
+		if err := initialPledge.UnmarshalCBOR(bytes.NewReader(ret.MsgRct.Return)); err != nil {
+			return types.BigInt{}, err
+		}
 	}
 
+	return initialPledge, nil
 }
