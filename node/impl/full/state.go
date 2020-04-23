@@ -640,9 +640,9 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 	{
 		var err error
 		params, err := actors.SerializeParams(&market.VerifyDealsOnSectorProveCommitParams{
-				DealIDs:      precommit.Info.DealIDs,
-				SectorSize:   st.GetSectorSize(),
-				SectorExpiry: precommit.Info.Expiration,
+			DealIDs:      precommit.Info.DealIDs,
+			SectorSize:   st.GetSectorSize(),
+			SectorExpiry: precommit.Info.Expiration,
 		})
 		if err != nil {
 			return types.EmptyInt, err
