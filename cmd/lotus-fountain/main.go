@@ -30,7 +30,7 @@ import (
 
 var log = logging.Logger("main")
 
-var sendPerRequest, _ = types.ParseFIL("0.005")
+var sendPerRequest, _ = types.ParseFIL("50")
 
 func main() {
 	logging.SetLogLevel("*", "INFO")

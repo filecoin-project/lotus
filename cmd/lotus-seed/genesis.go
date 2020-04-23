@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 
+	"github.com/filecoin-project/lotus/build"
 	genesis2 "github.com/filecoin-project/lotus/chain/gen/genesis"
 	"github.com/filecoin-project/lotus/genesis"
 )
@@ -123,7 +124,7 @@ var genesisAddMinerCmd = &cli.Command{
 			log.Infof("Giving %s some initial balance", miner.Owner)
 			template.Accounts = append(template.Accounts, genesis.Actor{
 				Type:    genesis.TAccount,
-				Balance: big.NewInt(100000000000000),
+				Balance: big.Mul(big.NewInt(50_000_000), big.NewInt(build.FilecoinPrecision)),
 				Meta:    (&genesis.AccountMeta{Owner: miner.Owner}).ActorMeta(),
 			})
 		}

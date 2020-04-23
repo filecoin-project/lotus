@@ -24,9 +24,9 @@ require (
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200218225740-47c639bab663
 	github.com/filecoin-project/go-statestore v0.1.0
 	github.com/filecoin-project/sector-storage v0.0.0-20200417225459-e75536581a08
-	github.com/filecoin-project/specs-actors v0.0.0-20200421235624-312ac81e2aa4
+	github.com/filecoin-project/specs-actors v1.0.0
 	github.com/filecoin-project/specs-storage v0.0.0-20200417134612-61b2d91a6102
-	github.com/filecoin-project/storage-fsm v0.0.0-20200420183220-1515cffb5d13
+	github.com/filecoin-project/storage-fsm v0.0.0-20200423114251-f3bea4aa8bd7
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/mux v1.7.4
