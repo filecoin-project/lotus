@@ -488,9 +488,9 @@ var clientListDeals = &cli.Command{
 		}
 
 		w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
-		fmt.Fprintf(w, "DealCid\tProvider\tState\tPieceCID\tSize\tPrice\tDuration\tMessage\n")
+		fmt.Fprintf(w, "DealCid\tDealId\tProvider\tState\tPieceCID\tSize\tPrice\tDuration\tMessage\n")
 		for _, d := range deals {
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%d\t%s\t%d\t%s\n", d.ProposalCid, d.Provider, storagemarket.DealStates[d.State], d.PieceCID, d.Size, d.PricePerEpoch, d.Duration, d.Message)
+			fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\t%d\t%s\t%d\t%s\n", d.ProposalCid, d.DealID, d.Provider, storagemarket.DealStates[d.State], d.PieceCID, d.Size, d.PricePerEpoch, d.Duration, d.Message)
 		}
 		return w.Flush()
 	},

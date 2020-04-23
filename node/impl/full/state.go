@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -32,6 +33,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	samsig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 )
 
 type StateAPI struct {
@@ -603,4 +605,127 @@ func (a *StateAPI) MsigGetAvailableBalance(ctx context.Context, addr address.Add
 	minBalance := types.BigDiv(types.BigInt(st.InitialBalance), types.NewInt(uint64(st.UnlockDuration)))
 	minBalance = types.BigMul(minBalance, types.NewInt(uint64(offset)))
 	return types.BigSub(act.Balance, minBalance), nil
+}
+
+func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr address.Address, snum abi.SectorNumber, tsk types.TipSetKey) (types.BigInt, error) {
+	ts, err := a.Chain.GetTipSetFromKey(tsk)
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	act, err := a.StateManager.GetActor(maddr, ts)
+	if err != nil {
+		return types.EmptyInt, err
+	}
+
+	as := store.ActorStore(ctx, a.Chain.Blockstore())
+
+	var st miner.State
+	if err := as.Get(ctx, act.Head, &st); err != nil {
+		return types.EmptyInt, err
+	}
+
+	precommit, found, err := st.GetPrecommittedSector(as, snum)
+	if err != nil {
+		return types.EmptyInt, err
+	}
+
+	if !found {
+		return types.EmptyInt, xerrors.Errorf("no precommit found for sector %d", snum)
+	}
+
+	var dealWeights market.VerifyDealsOnSectorProveCommitReturn
+	{
+		var err error
+		params, err := actors.SerializeParams(&market.VerifyDealsOnSectorProveCommitParams{
+			DealIDs:      precommit.Info.DealIDs,
+			SectorSize:   st.GetSectorSize(),
+			SectorExpiry: precommit.Info.Expiration,
+		})
+		if err != nil {
+			return types.EmptyInt, err
+		}
+
+		ret, err := a.StateManager.Call(ctx, &types.Message{
+			From:     maddr,
+			To:       builtin.StorageMarketActorAddr,
+			Method:   builtin.MethodsMarket.VerifyDealsOnSectorProveCommit,
+			GasLimit: 100000000000,
+			GasPrice: types.NewInt(0),
+			Params:   params,
+		}, ts)
+		if err != nil {
+			return types.EmptyInt, err
+		}
+
+		if err := dealWeights.UnmarshalCBOR(bytes.NewReader(ret.MsgRct.Return)); err != nil {
+			return types.BigInt{}, err
+		}
+	}
+
+	initialPledge := big.Zero()
+	{
+		ssize, err := precommit.Info.RegisteredProof.SectorSize()
+		if err != nil {
+			return types.EmptyInt, err
+		}
+
+		params, err := actors.SerializeParams(&power.OnSectorProveCommitParams{
+			Weight: power.SectorStorageWeightDesc{
+				SectorSize:         ssize,
+				Duration:           precommit.Info.Expiration - ts.Height(), // NB: not exactly accurate, but should always lead us to *over* estimate, not under
+				DealWeight:         dealWeights.DealWeight,
+				VerifiedDealWeight: dealWeights.VerifiedDealWeight,
+			},
+		})
+		if err != nil {
+			return types.EmptyInt, err
+		}
+
+		ret, err := a.StateManager.Call(ctx, &types.Message{
+			From:     maddr,
+			To:       builtin.StoragePowerActorAddr,
+			Method:   builtin.MethodsPower.OnSectorProveCommit,
+			GasLimit: 10000000000,
+			GasPrice: types.NewInt(0),
+			Params:   params,
+		}, ts)
+		if err != nil {
+			return types.EmptyInt, err
+		}
+
+		if err := initialPledge.UnmarshalCBOR(bytes.NewReader(ret.MsgRct.Return)); err != nil {
+			return types.BigInt{}, err
+		}
+	}
+
+	return initialPledge, nil
+}
+
+func (a *StateAPI) StateMinerAvailableBalance(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (types.BigInt, error) {
+	ts, err := a.Chain.GetTipSetFromKey(tsk)
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	act, err := a.StateManager.GetActor(maddr, ts)
+	if err != nil {
+		return types.EmptyInt, err
+	}
+
+	as := store.ActorStore(ctx, a.Chain.Blockstore())
+
+	var st miner.State
+	if err := as.Get(ctx, act.Head, &st); err != nil {
+		return types.EmptyInt, err
+	}
+
+	// TODO: !!!! Use method that doesnt trigger additional state mutations, this is going to cause lots of objects to be created and written to disk
+	log.Warnf("calling inefficient unlock vested funds method, fixme")
+	vested, err := st.UnlockVestedFunds(as, ts.Height())
+	if err != nil {
+		return types.EmptyInt, err
+	}
+
+	return types.BigAdd(st.GetAvailableBalance(act.Balance), vested), nil
 }

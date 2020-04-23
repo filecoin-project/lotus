@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/ipfs/go-cid"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -36,7 +37,7 @@ func TestDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, carExport
 	os.Setenv("BELLMAN_NO_GPU", "1")
 
 	ctx := context.Background()
-	n, sn := b(t, 1, []int{0})
+	n, sn := b(t, 1, oneMiner)
 	client := n[0].FullNode.(*impl.FullNodeAPI)
 	miner := sn[0]
 
@@ -50,21 +51,42 @@ func TestDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, carExport
 	}
 	time.Sleep(time.Second)
 
-	data := make([]byte, 600)
-	rand.New(rand.NewSource(5)).Read(data)
+	mine := true
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for mine {
+			time.Sleep(blocktime)
+			if err := sn[0].MineOne(ctx, func(bool) {}); err != nil {
+				t.Error(err)
+			}
+		}
+	}()
 
-	r := bytes.NewReader(data)
-	fcid, err := client.ClientImportLocal(ctx, r)
+	makeDeal(t, ctx, 6, client, miner, carExport)
+
+	mine = false
+	fmt.Println("shutting down mining")
+	<-done
+}
+
+func TestDoubleDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration) {
+	os.Setenv("BELLMAN_NO_GPU", "1")
+
+	ctx := context.Background()
+	n, sn := b(t, 1, oneMiner)
+	client := n[0].FullNode.(*impl.FullNodeAPI)
+	miner := sn[0]
+
+	addrinfo, err := client.NetAddrsListen(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	maddr, err := miner.ActorAddress(ctx)
-	if err != nil {
+	if err := miner.NetConnect(ctx, addrinfo); err != nil {
 		t.Fatal(err)
 	}
-
-	fmt.Println("FILE CID: ", fcid)
+	time.Sleep(time.Second)
 
 	mine := true
 	done := make(chan struct{})
@@ -73,11 +95,49 @@ func TestDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, carExport
 		defer close(done)
 		for mine {
 			time.Sleep(blocktime)
-			if err := sn[0].MineOne(ctx); err != nil {
+			if err := sn[0].MineOne(ctx, func(bool) {}); err != nil {
 				t.Error(err)
 			}
 		}
 	}()
+
+	makeDeal(t, ctx, 6, client, miner, false)
+	makeDeal(t, ctx, 7, client, miner, false)
+
+	mine = false
+	fmt.Println("shutting down mining")
+	<-done
+}
+
+func makeDeal(t *testing.T, ctx context.Context, rseed int, client *impl.FullNodeAPI, miner TestStorageNode, carExport bool) {
+	data := make([]byte, 1600)
+	rand.New(rand.NewSource(int64(rseed))).Read(data)
+
+	r := bytes.NewReader(data)
+	fcid, err := client.ClientImportLocal(ctx, r)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	fmt.Println("FILE CID: ", fcid)
+
+	deal := startDeal(t, ctx, miner, client, fcid)
+
+	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
+	time.Sleep(time.Second)
+	waitDealSealed(t, ctx, client, deal)
+
+	// Retrieval
+
+	testRetrieval(t, ctx, err, client, fcid, carExport, data)
+}
+
+func startDeal(t *testing.T, ctx context.Context, miner TestStorageNode, client *impl.FullNodeAPI, fcid cid.Cid) *cid.Cid {
+	maddr, err := miner.ActorAddress(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	addr, err := client.WalletDefaultAddress(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -92,9 +152,10 @@ func TestDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, carExport
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
+	return deal
+}
 
-	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
-	time.Sleep(time.Second)
+func waitDealSealed(t *testing.T, ctx context.Context, client *impl.FullNodeAPI, deal *cid.Cid) {
 loop:
 	for {
 		di, err := client.ClientGetDealInfo(ctx, *deal)
@@ -115,9 +176,9 @@ loop:
 		fmt.Println("Deal state: ", storagemarket.DealStates[di.State])
 		time.Sleep(time.Second / 2)
 	}
+}
 
-	// Retrieval
-
+func testRetrieval(t *testing.T, ctx context.Context, err error, client *impl.FullNodeAPI, fcid cid.Cid, carExport bool, data []byte) {
 	offers, err := client.ClientFindData(ctx, fcid)
 	if err != nil {
 		t.Fatal(err)
@@ -153,39 +214,40 @@ loop:
 	}
 
 	if carExport {
-		bserv := dstest.Bserv()
-		ch, err := car.LoadCar(bserv.Blockstore(), bytes.NewReader(rdata))
-		if err != nil {
-			t.Fatal(err)
-		}
-		b, err := bserv.GetBlock(ctx, ch.Roots[0])
-		if err != nil {
-			t.Fatal(err)
-		}
-		nd, err := ipld.Decode(b)
-		if err != nil {
-			t.Fatal(err)
-		}
-		dserv := dag.NewDAGService(bserv)
-		fil, err := unixfile.NewUnixfsFile(ctx, dserv, nd)
-		if err != nil {
-			t.Fatal(err)
-		}
-		outPath := filepath.Join(rpath, "retLoadedCAR")
-		if err := files.WriteTo(fil, outPath); err != nil {
-			t.Fatal(err)
-		}
-		rdata, err = ioutil.ReadFile(outPath)
-		if err != nil {
-			t.Fatal(err)
-		}
+		rdata = extractCarData(t, ctx, rdata, rpath)
 	}
 
 	if !bytes.Equal(rdata, data) {
 		t.Fatal("wrong data retrieved")
 	}
+}
 
-	mine = false
-	fmt.Println("shutting down mining")
-	<-done
+func extractCarData(t *testing.T, ctx context.Context, rdata []byte, rpath string) []byte {
+	bserv := dstest.Bserv()
+	ch, err := car.LoadCar(bserv.Blockstore(), bytes.NewReader(rdata))
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := bserv.GetBlock(ctx, ch.Roots[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	nd, err := ipld.Decode(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dserv := dag.NewDAGService(bserv)
+	fil, err := unixfile.NewUnixfsFile(ctx, dserv, nd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	outPath := filepath.Join(rpath, "retLoadedCAR")
+	if err := files.WriteTo(fil, outPath); err != nil {
+		t.Fatal(err)
+	}
+	rdata, err = ioutil.ReadFile(outPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return rdata
 }

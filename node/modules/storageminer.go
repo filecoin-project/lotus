@@ -1,7 +1,6 @@
 package modules
 
 import (
-	"bytes"
 	"context"
 	"net/http"
 	"reflect"
@@ -35,12 +34,6 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storedcounter"
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-statestore"
-	sectorstorage "github.com/filecoin-project/sector-storage"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/sector-storage/stores"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
-
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/beacon"
@@ -53,6 +46,10 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage"
+	sectorstorage "github.com/filecoin-project/sector-storage"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/sector-storage/stores"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	sealing "github.com/filecoin-project/storage-fsm"
 )
 
@@ -124,7 +121,7 @@ func SectorIDCounter(ds dtypes.MetadataDS) sealing.SectorIDCounter {
 	return &sidsc{sc}
 }
 
-func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api lapi.FullNode, h host.Host, ds dtypes.MetadataDS, sealer sectorstorage.SectorManager, sc sealing.SectorIDCounter, verif ffiwrapper.Verifier, tktFn sealing.TicketFn) (*storage.Miner, error) {
+func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api lapi.FullNode, h host.Host, ds dtypes.MetadataDS, sealer sectorstorage.SectorManager, sc sealing.SectorIDCounter, verif ffiwrapper.Verifier) (*storage.Miner, error) {
 	maddr, err := minerAddrFromDS(ds)
 	if err != nil {
 		return nil, err
@@ -147,7 +144,7 @@ func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api lapi.FullNode, h
 		return nil, err
 	}
 
-	sm, err := storage.NewMiner(api, maddr, worker, h, ds, sealer, sc, verif, tktFn)
+	sm, err := storage.NewMiner(api, maddr, worker, h, ds, sealer, sc, verif)
 	if err != nil {
 		return nil, err
 	}
@@ -281,37 +278,6 @@ func SetupBlockProducer(lc fx.Lifecycle, ds dtypes.MetadataDS, api lapi.FullNode
 	})
 
 	return m, nil
-}
-
-func SealTicketGen(fapi lapi.FullNode, ds dtypes.MetadataDS) (sealing.TicketFn, error) {
-	minerAddr, err := minerAddrFromDS(ds)
-	if err != nil {
-		return nil, err
-	}
-
-	entropy := new(bytes.Buffer)
-	if err := minerAddr.MarshalCBOR(entropy); err != nil {
-		return nil, err
-	}
-
-	return func(ctx context.Context, tok sealing.TipSetToken) (abi.SealRandomness, abi.ChainEpoch, error) {
-		tsk, err := types.TipSetKeyFromBytes(tok)
-		if err != nil {
-			return nil, 0, xerrors.Errorf("could not unmarshal TipSetToken to TipSetKey: %w", err)
-		}
-
-		ts, err := fapi.ChainGetTipSet(ctx, tsk)
-		if err != nil {
-			return nil, 0, xerrors.Errorf("getting TipSet for key failed: %w", err)
-		}
-
-		r, err := fapi.ChainGetRandomness(ctx, ts.Key(), crypto.DomainSeparationTag_SealRandomness, ts.Height()-build.SealRandomnessLookback, entropy.Bytes())
-		if err != nil {
-			return nil, 0, xerrors.Errorf("getting randomness for SealTicket failed: %w", err)
-		}
-
-		return abi.SealRandomness(r), ts.Height() - build.SealRandomnessLookback, nil
-	}, nil
 }
 
 func NewProviderRequestValidator(deals dtypes.ProviderDealStore) *requestvalidation.ProviderRequestValidator {
