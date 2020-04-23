@@ -6,6 +6,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	"github.com/filecoin-project/sector-storage/sealtasks"
+	"github.com/filecoin-project/sector-storage/storiface"
 )
 
 const mib = 1 << 20
@@ -39,7 +40,7 @@ func (r *workerRequest) respond(resp workerResponse) {
 type workerHandle struct {
 	w Worker
 
-	info WorkerInfo
+	info storiface.WorkerInfo
 
 	memUsedMin uint64
 	memUsedMax uint64

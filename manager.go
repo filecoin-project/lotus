@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/sector-storage/sealtasks"
 	"github.com/filecoin-project/sector-storage/stores"
+	"github.com/filecoin-project/sector-storage/storiface"
 )
 
 var log = logging.Logger("advmgr")
@@ -35,24 +36,9 @@ type Worker interface {
 	// Returns paths accessible to the worker
 	Paths(context.Context) ([]stores.StoragePath, error)
 
-	Info(context.Context) (WorkerInfo, error)
+	Info(context.Context) (storiface.WorkerInfo, error)
 
 	Close() error
-}
-
-type WorkerInfo struct {
-	Hostname string
-
-	Resources WorkerResources
-}
-
-type WorkerResources struct {
-	MemPhysical uint64
-	MemSwap     uint64
-
-	MemReserved uint64 // Used by system / other processes
-
-	GPUs []string
 }
 
 type SectorManager interface {
