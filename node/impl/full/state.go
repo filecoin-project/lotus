@@ -701,5 +701,10 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 		}
 	}
 
-	return initialPledge, nil
+	available := st.GetAvailableBalance(act.Balance)
+	if available.GreaterThanEqual(initialPledge) {
+		return types.NewInt(0), nil
+	}
+
+	return types.BigSub(initialPledge, available), nil
 }
