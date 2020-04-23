@@ -35,4 +35,6 @@ func AutoNATService(quic bool) func(repo repo.Repo, mctx helpers.MetricsCtx, lc 
 }
 */
 
+var AutoNATService = simpleOpt(libp2p.EnableNATService())
+
 var NatPortMap = simpleOpt(libp2p.NATPortMap())
