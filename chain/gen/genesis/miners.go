@@ -37,11 +37,6 @@ func MinerAddress(genesisIndex uint64) address.Address {
 }
 
 func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid, miners []genesis.Miner) (cid.Cid, error) {
-	networkPower := big.Zero()
-	for _, m := range miners {
-		networkPower = big.Add(networkPower, big.NewInt(int64(m.SectorSize)*int64(len(m.Sectors))))
-	}
-
 	vm, err := vm.NewVM(sroot, 0, &fakeRand{}, cs.Blockstore(), cs.VMSys())
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to create NewVM: %w", err)
