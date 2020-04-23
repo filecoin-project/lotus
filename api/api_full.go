@@ -18,7 +18,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 
-	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
@@ -33,7 +32,7 @@ type FullNode interface {
 
 	// ChainNotify returns channel with chain head updates
 	// First message is guaranteed to be of len == 1, and type == 'current'
-	ChainNotify(context.Context) (<-chan []*store.HeadChange, error)
+	ChainNotify(context.Context) (<-chan []*HeadChange, error)
 	ChainHead(context.Context) (*types.TipSet, error)
 	ChainGetRandomness(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
 	ChainGetBlock(context.Context, cid.Cid) (*types.BlockHeader, error)
@@ -50,7 +49,7 @@ type FullNode interface {
 	ChainTipSetWeight(context.Context, types.TipSetKey) (types.BigInt, error)
 	ChainGetNode(ctx context.Context, p string) (*IpldObject, error)
 	ChainGetMessage(context.Context, cid.Cid) (*types.Message, error)
-	ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*store.HeadChange, error)
+	ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*HeadChange, error)
 	ChainExport(context.Context, types.TipSetKey) (<-chan []byte, error)
 
 	// syncer
@@ -406,4 +405,8 @@ type BlockTemplate struct {
 type CommPRet struct {
 	Root cid.Cid
 	Size abi.UnpaddedPieceSize
+}
+type HeadChange struct {
+	Type string
+	Val  *types.TipSet
 }

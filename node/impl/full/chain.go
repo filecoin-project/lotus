@@ -45,7 +45,7 @@ type ChainAPI struct {
 	Chain *store.ChainStore
 }
 
-func (a *ChainAPI) ChainNotify(ctx context.Context) (<-chan []*store.HeadChange, error) {
+func (a *ChainAPI) ChainNotify(ctx context.Context) (<-chan []*api.HeadChange, error) {
 	return a.Chain.SubHeadChanges(ctx), nil
 }
 
@@ -98,7 +98,7 @@ func (a *ChainAPI) ChainGetBlockMessages(ctx context.Context, msg cid.Cid) (*api
 	}, nil
 }
 
-func (a *ChainAPI) ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*store.HeadChange, error) {
+func (a *ChainAPI) ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*api.HeadChange, error) {
 	return a.Chain.GetPath(ctx, from, to)
 }
 

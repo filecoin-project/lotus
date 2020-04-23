@@ -15,7 +15,9 @@ import (
 	sectorstorage "github.com/filecoin-project/sector-storage"
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/sector-storage/stores"
+	"github.com/filecoin-project/sector-storage/storiface"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	sealing "github.com/filecoin-project/storage-fsm"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/apistruct"
@@ -24,7 +26,6 @@ import (
 	"github.com/filecoin-project/lotus/node/impl/common"
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
-	sealing "github.com/filecoin-project/storage-fsm"
 )
 
 type StorageMinerAPI struct {
@@ -51,7 +52,7 @@ func (sm *StorageMinerAPI) ServeRemote(w http.ResponseWriter, r *http.Request) {
 	sm.StorageMgr.ServeHTTP(w, r)
 }
 
-func (sm *StorageMinerAPI) WorkerStats(context.Context) (map[uint64]sectorstorage.WorkerStats, error) {
+func (sm *StorageMinerAPI) WorkerStats(context.Context) (map[uint64]storiface.WorkerStats, error) {
 	return sm.StorageMgr.WorkerStats(), nil
 }
 
@@ -105,7 +106,7 @@ func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid abi.SectorNumb
 
 	return api.SectorInfo{
 		SectorID: sid,
-		State:    info.State,
+		State:    api.SectorState(info.State),
 		CommD:    info.CommD,
 		CommR:    info.CommR,
 		Proof:    info.Proof,
@@ -163,8 +164,8 @@ func (sm *StorageMinerAPI) StorageStat(ctx context.Context, id stores.ID) (store
 	return sm.StorageMgr.FsStat(ctx, id)
 }
 
-func (sm *StorageMinerAPI) SectorsUpdate(ctx context.Context, id abi.SectorNumber, state sealing.SectorState) error {
-	return sm.Miner.ForceSectorState(ctx, id, state)
+func (sm *StorageMinerAPI) SectorsUpdate(ctx context.Context, id abi.SectorNumber, state api.SectorState) error {
+	return sm.Miner.ForceSectorState(ctx, id, sealing.SectorState(state))
 }
 
 func (sm *StorageMinerAPI) WorkerConnect(ctx context.Context, url string) error {
