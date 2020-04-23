@@ -25,7 +25,7 @@ SCRIPTDIR="\$( cd "\$( dirname "\${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 pushd \$SCRIPTDIR/../build
 
 pwd
-make clean deps lotus lotus-storage-miner lotus-shed
+env RUSTFLAGS="-C target-cpu=native -g" FFI_BUILD_FROM_SOURCE=1 make clean deps lotus lotus-storage-miner lotus-shed
 cp lotus lotus-storage-miner lotus-shed ../bin/
 
 popd
