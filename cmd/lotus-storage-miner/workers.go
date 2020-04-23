@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/sector-storage"
+	"github.com/filecoin-project/sector-storage/storiface"
 	"gopkg.in/urfave/cli.v2"
 	"sort"
 
@@ -37,7 +37,7 @@ var workersListCmd = &cli.Command{
 
 		type sortableStat struct {
 			id uint64
-			sectorstorage.WorkerStats
+			storiface.WorkerStats
 		}
 
 		st := make([]sortableStat, 0, len(stats))
