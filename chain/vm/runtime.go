@@ -407,15 +407,19 @@ func (ssh *shimStateHandle) Create(obj vmr.CBORMarshaler) {
 func (ssh *shimStateHandle) Readonly(obj vmr.CBORUnmarshaler) {
 	act, err := ssh.rs.state.GetActor(ssh.rs.Message().Receiver())
 	if err != nil {
-		ssh.rs.Abortf(exitcode.SysErrInternal, "failed to get actor for Readonly state: %s", err)
+		ssh.rs.Abortf(exitcode.SysErrorIllegalArgument, "failed to get actor for Readonly state: %s", err)
 	}
 	ssh.rs.Get(act.Head, obj)
 }
 
 func (ssh *shimStateHandle) Transaction(obj vmr.CBORer, f func() interface{}) interface{} {
+	if obj == nil {
+		ssh.rs.Abortf(exitcode.SysErrorIllegalActor, "Must not pass nil to Transaction()")
+	}
+
 	act, err := ssh.rs.state.GetActor(ssh.rs.Message().Receiver())
 	if err != nil {
-		ssh.rs.Abortf(exitcode.SysErrInternal, "failed to get actor for Readonly state: %s", err)
+		ssh.rs.Abortf(exitcode.SysErrorIllegalActor, "failed to get actor for Transaction: %s", err)
 	}
 	baseState := act.Head
 	ssh.rs.Get(baseState, obj)
@@ -445,17 +449,17 @@ func (rt *Runtime) stateCommit(oldh, newh cid.Cid) aerrors.ActorError {
 	// TODO: we can make this more efficient in the future...
 	act, err := rt.state.GetActor(rt.Message().Receiver())
 	if err != nil {
-		rt.Abortf(exitcode.SysErrInternal, "failed to get actor to commit state: %s", err)
+		return aerrors.Escalate(err, "failed to get actor to commit state")
 	}
 
 	if act.Head != oldh {
-		rt.Abortf(exitcode.ErrIllegalState, "failed to update, inconsistent base reference")
+		return aerrors.Fatal("failed to update, inconsistent base reference")
 	}
 
 	act.Head = newh
 
 	if err := rt.state.SetActor(rt.Message().Receiver(), act); err != nil {
-		rt.Abortf(exitcode.SysErrInternal, "failed to set actor in commit state: %s", err)
+		return aerrors.Fatalf("failed to set actor in commit state: %s", err)
 	}
 
 	return nil
