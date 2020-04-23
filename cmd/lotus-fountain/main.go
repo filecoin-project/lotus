@@ -277,7 +277,7 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 		Owner:      owner,
 		Worker:     owner,
 		SectorSize: abi.SectorSize(ssize),
-		Peer:       peer.ID("SETME"),
+		Peer:       peer.ID("12D3KooWJpBNhwgvoZ15EB1JwRTRpxgM9D2fwq6eEktrJJG74aP6"),
 	})
 	if err != nil {
 		w.WriteHeader(400)
