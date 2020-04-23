@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"runtime/pprof"
+	"sort"
 	"time"
 
 	"github.com/filecoin-project/lotus/api"
@@ -33,6 +34,9 @@ type TipSetExec struct {
 var importBenchCmd = &cli.Command{
 	Name:  "import",
 	Usage: "benchmark chain import and validation",
+	Subcommands: []*cli.Command{
+		importAnalyzeCmd,
+	},
 	Flags: []cli.Flag{
 		&cli.Int64Flag{
 			Name:  "height",
@@ -136,5 +140,59 @@ var importBenchCmd = &cli.Command{
 
 		return nil
 
+	},
+}
+
+type Invocation struct {
+	TipSet types.TipSetKey
+	Invoc  *api.InvocResult
+}
+
+var importAnalyzeCmd = &cli.Command{
+	Name: "analyze",
+	Action: func(cctx *cli.Context) error {
+		if !cctx.Args().Present() {
+			fmt.Println("must pass bench file to analyze")
+			return nil
+		}
+
+		fi, err := os.Open(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		var results []TipSetExec
+		if err := json.NewDecoder(fi).Decode(&results); err != nil {
+			return err
+		}
+
+		var invocs []Invocation
+		var totalTime time.Duration
+		for i, r := range results {
+			_ = i
+			totalTime += r.Duration
+
+			for _, inv := range r.Trace {
+				invocs = append(invocs, Invocation{
+					TipSet: r.TipSet,
+					Invoc:  inv,
+				})
+			}
+		}
+
+		sort.Slice(invocs, func(i, j int) bool {
+			return invocs[i].Invoc.Duration > invocs[j].Invoc.Duration
+		})
+
+		fmt.Println("Total time: ", totalTime)
+		fmt.Println("Average time per epoch: ", totalTime/time.Duration(len(results)))
+
+		n := 30
+		fmt.Printf("Top %d most expensive calls:\n", n)
+		for i := 0; i < n; i++ {
+			inv := invocs[i].Invoc
+			fmt.Printf("%s: %s %s %d %s\n", inv.Duration, inv.Msg.From, inv.Msg.To, inv.Msg.Method, invocs[i].TipSet)
+		}
+		return nil
 	},
 }
