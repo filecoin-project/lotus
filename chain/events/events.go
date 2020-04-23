@@ -32,7 +32,7 @@ type heightHandler struct {
 }
 
 type eventApi interface {
-	ChainNotify(context.Context) (<-chan []*store.HeadChange, error)
+	ChainNotify(context.Context) (<-chan []*api.HeadChange, error)
 	ChainGetBlockMessages(context.Context, cid.Cid) (*api.BlockMessages, error)
 	ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error)
 	StateGetReceipt(context.Context, cid.Cid, types.TipSetKey) (*types.MessageReceipt, error)
