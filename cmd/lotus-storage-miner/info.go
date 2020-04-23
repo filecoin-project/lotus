@@ -142,7 +142,7 @@ func sectorsInfo(ctx context.Context, napi api.StorageMiner) (map[sealing.Sector
 			return nil, err
 		}
 
-		out[st.State]++
+		out[sealing.SectorState(st.State)]++
 	}
 
 	return out, nil
