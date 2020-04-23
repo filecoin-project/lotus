@@ -195,7 +195,7 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 
 		genaccs = append(genaccs, genesis.Actor{
 			Type:    genesis.TAccount,
-			Balance: big.NewInt(40000000000),
+			Balance: big.NewInt(5000000000000000000),
 			Meta:    (&genesis.AccountMeta{Owner: wk.Address}).ActorMeta(),
 		})
 
@@ -326,7 +326,7 @@ func mockSbBuilder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []t
 
 		genaccs = append(genaccs, genesis.Actor{
 			Type:    genesis.TAccount,
-			Balance: big.NewInt(40000000000),
+			Balance: big.NewInt(5000000000000000000),
 			Meta:    (&genesis.AccountMeta{Owner: wk.Address}).ActorMeta(),
 		})
 
