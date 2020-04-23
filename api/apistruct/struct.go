@@ -176,6 +176,8 @@ type StorageMinerStruct struct {
 		ActorAddress    func(context.Context) (address.Address, error)                 `perm:"read"`
 		ActorSectorSize func(context.Context, address.Address) (abi.SectorSize, error) `perm:"read"`
 
+		MiningBase func(context.Context) (*types.TipSet, error)
+
 		MarketImportDealData      func(context.Context, cid.Cid, string) error                   `perm:"write"`
 		MarketListDeals           func(ctx context.Context) ([]storagemarket.StorageDeal, error) `perm:"read"`
 		MarketListIncompleteDeals func(ctx context.Context) ([]storagemarket.MinerDeal, error)   `perm:"read"`
@@ -660,6 +662,10 @@ func (c *FullNodeStruct) PaychVoucherSubmit(ctx context.Context, ch address.Addr
 
 func (c *StorageMinerStruct) ActorAddress(ctx context.Context) (address.Address, error) {
 	return c.Internal.ActorAddress(ctx)
+}
+
+func (c *StorageMinerStruct) MiningBase(ctx context.Context) (*types.TipSet, error) {
+	return c.Internal.MiningBase(ctx)
 }
 
 func (c *StorageMinerStruct) ActorSectorSize(ctx context.Context, addr address.Address) (abi.SectorSize, error) {

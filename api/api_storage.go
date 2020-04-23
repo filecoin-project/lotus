@@ -24,6 +24,8 @@ type StorageMiner interface {
 
 	ActorSectorSize(context.Context, address.Address) (abi.SectorSize, error)
 
+	MiningBase(context.Context) (*types.TipSet, error)
+
 	// Temp api for testing
 	PledgeSector(context.Context) error
 

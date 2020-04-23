@@ -148,6 +148,10 @@ func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *S
 		return nil, xerrors.Errorf("getting proving set: %w", err)
 	}
 
+	if len(sectorSet) == 0 {
+		return nil, nil
+	}
+
 	spt, err := ffiwrapper.SealProofTypeFromSectorSize(mas.Info.SectorSize)
 	if err != nil {
 		return nil, xerrors.Errorf("getting seal proof type: %w", err)
@@ -447,6 +451,10 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, tsk types.TipSetKey
 	sectors, err := GetSectorsForWinningPoSt(ctx, pv, sm, lbst, maddr, prand)
 	if err != nil {
 		return nil, xerrors.Errorf("getting wpost proving set: %w", err)
+	}
+
+	if len(sectors) == 0 {
+		return nil, nil
 	}
 
 	mpow, tpow, err := GetPowerRaw(ctx, sm, lbst, maddr)
