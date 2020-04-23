@@ -10,7 +10,7 @@ HOST=$1
 # TODO: destroy
 
 FILES_TO_SEND=(
-	./louts
+	./lotus
 	./lotus-storage-miner
 	scripts/lotus-daemon.service
 	scripts/louts-miner.service
@@ -26,7 +26,7 @@ systemctl stop lotus-daemon
 mkdir -p .lotus .lotusstorage
 
 cd "$HOME/lotus-stage/"
-cp -f louts lotus-storage-miner /usr/local/bin
+cp -f lotus lotus-storage-miner /usr/local/bin
 cp -f lotus-daemon.service /etc/systemd/system/lotus-daemon.service
 cp -f lotus-miner.service /etc/systemd/system/lotus-storage-miner.service
 

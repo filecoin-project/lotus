@@ -443,7 +443,7 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, tsk types.TipSetKey
 	}
 
 	// TODO: use the right dst, also NB: not using any 'entropy' in this call because nicola really didnt want it
-	prand, err := sm.cs.GetRandomness(ctx, ts.Cids(), crypto.DomainSeparationTag_ElectionPoStChallengeSeed, round-1, nil)
+	prand, err := sm.cs.GetRandomness(ctx, ts.Cids(), crypto.DomainSeparationTag_WinningPoStChallengeSeed, round-1, nil)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get randomness for winning post: %w", err)
 	}
