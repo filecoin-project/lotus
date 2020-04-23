@@ -50,12 +50,11 @@ type Sealing struct {
 	sectors *statemachine.StateGroup
 	sc      SectorIDCounter
 	verif   ffiwrapper.Verifier
-	tktFn   TicketFn
 
 	pcp PreCommitPolicy
 }
 
-func New(api SealingAPI, events Events, maddr address.Address, ds datastore.Batching, sealer sectorstorage.SectorManager, sc SectorIDCounter, verif ffiwrapper.Verifier, tktFn TicketFn, pcp PreCommitPolicy) *Sealing {
+func New(api SealingAPI, events Events, maddr address.Address, ds datastore.Batching, sealer sectorstorage.SectorManager, sc SectorIDCounter, verif ffiwrapper.Verifier, pcp PreCommitPolicy) *Sealing {
 	s := &Sealing{
 		api:    api,
 		events: events,
@@ -64,7 +63,6 @@ func New(api SealingAPI, events Events, maddr address.Address, ds datastore.Batc
 		sealer: sealer,
 		sc:     sc,
 		verif:  verif,
-		tktFn:  tktFn,
 		pcp:    pcp,
 	}
 

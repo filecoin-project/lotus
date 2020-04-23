@@ -2,7 +2,6 @@ package sealing
 
 import (
 	"bytes"
-	"context"
 
 	"github.com/ipfs/go-cid"
 
@@ -112,8 +111,6 @@ func (t *SectorInfo) existingPieceSizes() []abi.UnpaddedPieceSize {
 	}
 	return out
 }
-
-type TicketFn func(ctx context.Context, tok TipSetToken) (abi.SealRandomness, abi.ChainEpoch, error)
 
 type SectorIDCounter interface {
 	Next() (abi.SectorNumber, error)
