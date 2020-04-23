@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/sector-storage/sealtasks"
 	"github.com/filecoin-project/sector-storage/stores"
+	"github.com/filecoin-project/sector-storage/storiface"
 )
 
 var pathTypes = []stores.SectorFileType{stores.FTUnsealed, stores.FTSealed, stores.FTCache}
@@ -167,7 +168,7 @@ func (l *LocalWorker) Paths(ctx context.Context) ([]stores.StoragePath, error) {
 	return l.localStore.Local(ctx)
 }
 
-func (l *LocalWorker) Info(context.Context) (WorkerInfo, error) {
+func (l *LocalWorker) Info(context.Context) (storiface.WorkerInfo, error) {
 	hostname, err := os.Hostname() // TODO: allow overriding from config
 	if err != nil {
 		panic(err)
@@ -180,17 +181,17 @@ func (l *LocalWorker) Info(context.Context) (WorkerInfo, error) {
 
 	h, err := sysinfo.Host()
 	if err != nil {
-		return WorkerInfo{}, xerrors.Errorf("getting host info: %w", err)
+		return storiface.WorkerInfo{}, xerrors.Errorf("getting host info: %w", err)
 	}
 
 	mem, err := h.Memory()
 	if err != nil {
-		return WorkerInfo{}, xerrors.Errorf("getting memory info: %w", err)
+		return storiface.WorkerInfo{}, xerrors.Errorf("getting memory info: %w", err)
 	}
 
-	return WorkerInfo{
+	return storiface.WorkerInfo{
 		Hostname: hostname,
-		Resources: WorkerResources{
+		Resources: storiface.WorkerResources{
 			MemPhysical: mem.Total,
 			MemSwap:     mem.VirtualTotal,
 			MemReserved: mem.VirtualUsed + mem.Total - mem.Available, // TODO: sub this process
