@@ -612,7 +612,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		}
 
 		//TODO: DST from spec actors when it is there
-		vrfBase, err := store.DrawRandomness(rBeacon.Data, 17, h.Height, buf.Bytes())
+		vrfBase, err := store.DrawRandomness(rBeacon.Data, crypto.DomainSeparationTag_ElectionProofProduction, h.Height, buf.Bytes())
 		if err != nil {
 			return xerrors.Errorf("could not draw randomness: %w", err)
 		}
@@ -742,7 +742,7 @@ func (syncer *Syncer) VerifyWinningPoStProof(ctx context.Context, h *types.Block
 	}
 
 	// TODO: use proper DST
-	rand, err := syncer.sm.ChainStore().GetRandomness(ctx, curTs.Cids(), crypto.DomainSeparationTag_ElectionPoStChallengeSeed, h.Height-1, nil)
+	rand, err := syncer.sm.ChainStore().GetRandomness(ctx, curTs.Cids(), crypto.DomainSeparationTag_WinningPoStChallengeSeed, h.Height-1, nil)
 	if err != nil {
 		return xerrors.Errorf("failed to get randomness for verifying winningPost proof: %w", err)
 	}

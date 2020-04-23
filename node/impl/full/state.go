@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -32,6 +33,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	samsig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 )
 
 type StateAPI struct {
@@ -603,4 +605,63 @@ func (a *StateAPI) MsigGetAvailableBalance(ctx context.Context, addr address.Add
 	minBalance := types.BigDiv(types.BigInt(st.InitialBalance), types.NewInt(uint64(st.UnlockDuration)))
 	minBalance = types.BigMul(minBalance, types.NewInt(uint64(offset)))
 	return types.BigSub(act.Balance, minBalance), nil
+}
+
+func (a *StateAPI) StateMinerFundsRequiredForCommit(ctx context.Context, maddr address.Address, snum abi.SectorNumber, tsk types.TipSetKey) (types.BigInt, error) {
+	ts, err := a.Chain.GetTipSetFromKey(tsk)
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	act, err := a.StateManager.GetActor(maddr, ts)
+	if err != nil {
+		return types.EmptyInt, err
+	}
+
+	as := store.ActorStore(ctx, a.Chain.Blockstore())
+
+	var st miner.State
+	if err := as.Get(ctx, act.Head, &st); err != nil {
+		return types.EmptyInt, err
+	}
+
+	precommit, found, err := st.GetPrecommittedSector(as, snum)
+	if err != nil {
+		return types.EmptyInt, err
+	}
+
+	if !found {
+		return types.EmptyInt, xerrors.Errorf("no precommit found for sector %d", snum)
+	}
+
+	st.AddPreCommitDeposit(precommit.PreCommitDeposit.Neg())
+
+	available := st.GetAvailableBalance(act.Balance)
+
+	dealWeight := 0 // ????
+	verifDealWeight := dealWeight
+	panic("i need some deal weight numbers")
+
+	params, err := actors.SerializeParams(&power.OnSectorProveCommitParams{
+		SectorSize:         precommit.Info.SectorSize,
+		Duration:           precommit.Info.Expiration - ts.Height(), // NB: not exactly accurate, but should always lead us to *over* estimate, not under
+		DealWeight:         dealWeight,
+		VerifiedDealWeight: verifDealWeight,
+	})
+	if err != nil {
+		return types.EmptyInt, err
+	}
+
+	ret, err := a.StateManager.Call(ctx, &types.Message{
+		From:     maddr,
+		To:       builtin.StoragePowerActorAddr,
+		Method:   builtin.MethodsPower.OnSectorProveCommit,
+		GasLimit: 100000000,
+		GasPrice: types.NewInt(0),
+		Params:   params,
+	}, tsk)
+	if err != nil {
+		return types.EmptyInt, err
+	}
+
 }
