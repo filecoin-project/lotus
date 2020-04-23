@@ -21,7 +21,6 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	sealing "github.com/filecoin-project/storage-fsm"
@@ -55,7 +54,7 @@ type FullNodeStruct struct {
 	CommonStruct
 
 	Internal struct {
-		ChainNotify            func(context.Context) (<-chan []*store.HeadChange, error)                                                          `perm:"read"`
+		ChainNotify            func(context.Context) (<-chan []*api.HeadChange, error)                                                            `perm:"read"`
 		ChainHead              func(context.Context) (*types.TipSet, error)                                                                       `perm:"read"`
 		ChainGetRandomness     func(context.Context, types.TipSetKey, crypto.DomainSeparationTag, abi.ChainEpoch, []byte) (abi.Randomness, error) `perm:"read"`
 		ChainGetBlock          func(context.Context, cid.Cid) (*types.BlockHeader, error)                                                         `perm:"read"`
@@ -72,7 +71,7 @@ type FullNodeStruct struct {
 		ChainTipSetWeight      func(context.Context, types.TipSetKey) (types.BigInt, error)                                                       `perm:"read"`
 		ChainGetNode           func(ctx context.Context, p string) (*api.IpldObject, error)                                                       `perm:"read"`
 		ChainGetMessage        func(context.Context, cid.Cid) (*types.Message, error)                                                             `perm:"read"`
-		ChainGetPath           func(context.Context, types.TipSetKey, types.TipSetKey) ([]*store.HeadChange, error)                               `perm:"read"`
+		ChainGetPath           func(context.Context, types.TipSetKey, types.TipSetKey) ([]*api.HeadChange, error)                                 `perm:"read"`
 		ChainExport            func(context.Context, types.TipSetKey) (<-chan []byte, error)                                                      `perm:"read"`
 
 		SyncState          func(context.Context) (*api.SyncState, error)                `perm:"read"`
@@ -424,7 +423,7 @@ func (c *FullNodeStruct) ChainGetParentMessages(ctx context.Context, b cid.Cid) 
 	return c.Internal.ChainGetParentMessages(ctx, b)
 }
 
-func (c *FullNodeStruct) ChainNotify(ctx context.Context) (<-chan []*store.HeadChange, error) {
+func (c *FullNodeStruct) ChainNotify(ctx context.Context) (<-chan []*api.HeadChange, error) {
 	return c.Internal.ChainNotify(ctx)
 }
 
@@ -460,7 +459,7 @@ func (c *FullNodeStruct) ChainGetMessage(ctx context.Context, mc cid.Cid) (*type
 	return c.Internal.ChainGetMessage(ctx, mc)
 }
 
-func (c *FullNodeStruct) ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*store.HeadChange, error) {
+func (c *FullNodeStruct) ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*api.HeadChange, error) {
 	return c.Internal.ChainGetPath(ctx, from, to)
 }
 
