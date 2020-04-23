@@ -10,7 +10,7 @@ import (
 
 func (ts *testSuite) testMining(t *testing.T) {
 	ctx := context.Background()
-	apis, sn := ts.makeNodes(t, 1, []int{0})
+	apis, sn := ts.makeNodes(t, 1, oneMiner)
 	api := apis[0]
 
 	h1, err := api.ChainHead(ctx)

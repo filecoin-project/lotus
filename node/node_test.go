@@ -79,7 +79,7 @@ func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, a
 	require.NoError(t, err)
 
 	nic := storedcounter.New(ds, datastore.NewKey("/storage/nextid"))
-	for i := 0; i < nPreseal; i++ {
+	for i := 0; i < nGenesisPreseals; i++ {
 		nic.Next()
 	}
 	nic.Next()
@@ -146,7 +146,7 @@ func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, a
 	return test.TestStorageNode{StorageMiner: minerapi, MineOne: mineOne}
 }
 
-func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.TestStorageNode) {
+func builder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test.TestNode, []test.TestStorageNode) {
 	ctx := context.Background()
 	mn := mocknet.New(ctx)
 
@@ -182,7 +182,7 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 		if err != nil {
 			t.Fatal(err)
 		}
-		genm, k, err := seed.PreSeal(maddr, abi.RegisteredProof_StackedDRG2KiBPoSt, 0, nPreseal, tdir, []byte("make genesis mem random"), nil)
+		genm, k, err := seed.PreSeal(maddr, abi.RegisteredProof_StackedDRG2KiBPoSt, 0, nGenesisPreseals, tdir, []byte("make genesis mem random"), nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -238,16 +238,16 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 
 	}
 
-	for i, full := range storage {
+	for i, def := range storage {
 		// TODO: support non-bootstrap miners
 		if i != 0 {
 			t.Fatal("only one storage node supported")
 		}
-		if full != 0 {
+		if def.Full != 0 {
 			t.Fatal("storage nodes only supported on the first full node")
 		}
 
-		f := fulls[full]
+		f := fulls[def.Full]
 		if _, err := f.FullNode.WalletImport(ctx, &keys[i].KeyInfo); err != nil {
 			t.Fatal(err)
 		}
@@ -276,9 +276,9 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 	return fulls, storers
 }
 
-const nPreseal = 2
+const nGenesisPreseals = 2
 
-func mockSbBuilder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.TestStorageNode) {
+func mockSbBuilder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test.TestNode, []test.TestStorageNode) {
 	ctx := context.Background()
 	mn := mocknet.New(ctx)
 
@@ -313,7 +313,13 @@ func mockSbBuilder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []t
 		if err != nil {
 			t.Fatal(err)
 		}
-		genm, k, err := mockstorage.PreSeal(2048, maddr, nPreseal)
+
+		preseals := storage[i].Preseal
+		if preseals == test.PresealGenesis {
+			preseals = nGenesisPreseals
+		}
+
+		genm, k, err := mockstorage.PreSeal(2048, maddr, preseals)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -369,16 +375,16 @@ func mockSbBuilder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []t
 		}
 	}
 
-	for i, full := range storage {
+	for i, def := range storage {
 		// TODO: support non-bootstrap miners
 		if i != 0 {
 			t.Fatal("only one storage node supported")
 		}
-		if full != 0 {
+		if def.Full != 0 {
 			t.Fatal("storage nodes only supported on the first full node")
 		}
 
-		f := fulls[full]
+		f := fulls[def.Full]
 		if _, err := f.FullNode.WalletImport(ctx, &keys[i].KeyInfo); err != nil {
 			return nil, nil
 		}
@@ -409,7 +415,7 @@ func TestAPI(t *testing.T) {
 	test.TestApis(t, builder)
 }
 
-func rpcBuilder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.TestStorageNode) {
+func rpcBuilder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test.TestNode, []test.TestStorageNode) {
 	fullApis, storaApis := builder(t, nFull, storage)
 	fulls := make([]test.TestNode, nFull)
 	storers := make([]test.TestStorageNode, len(storage))
