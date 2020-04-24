@@ -1,6 +1,5 @@
 package vm_test
 
-/*
 import (
 	"fmt"
 	"reflect"
@@ -9,6 +8,7 @@ import (
 	"testing"
 
 	suites "github.com/filecoin-project/chain-validation/suites"
+
 	factory "github.com/filecoin-project/lotus/chain/validation"
 )
 
@@ -67,4 +67,3 @@ func caseName(testCase suites.TestCase) string {
 	toks := strings.Split(fqName, ".")
 	return toks[len(toks)-1]
 }
-*/
