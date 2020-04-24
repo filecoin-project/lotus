@@ -148,12 +148,10 @@ func (s *WindowPoStScheduler) revert(ctx context.Context, newLowest *types.TipSe
 	}
 	s.cur = newLowest
 
-	mi, err := s.api.StateMinerInfo(ctx, s.actor, newLowest.Key())
+	newDeadline, err := s.api.StateMinerProvingDeadline(ctx, s.actor, newLowest.Key())
 	if err != nil {
 		return err
 	}
-
-	newDeadline, _ := deadlineInfo(mi, newLowest)
 
 	if !deadlineEquals(s.activeDeadline, newDeadline) {
 		s.abortActivePoSt()
@@ -167,16 +165,15 @@ func (s *WindowPoStScheduler) update(ctx context.Context, new *types.TipSet) err
 		return xerrors.Errorf("no new tipset in WindowPoStScheduler.update")
 	}
 
-	mi, err := s.api.StateMinerInfo(ctx, s.actor, new.Key())
+	di, err := s.api.StateMinerProvingDeadline(ctx, s.actor, new.Key())
 	if err != nil {
 		return err
 	}
 
-	di, nn := deadlineInfo(mi, new)
 	if deadlineEquals(s.activeDeadline, di) {
 		return nil // already working on this deadline
 	}
-	if !nn {
+	if !di.PeriodStarted() {
 		return nil // not proving anything yet
 	}
 
@@ -213,8 +210,4 @@ func (s *WindowPoStScheduler) abortActivePoSt() {
 
 	s.activeDeadline = nil
 	s.abort = nil
-}
-
-func deadlineInfo(mi miner.MinerInfo, new *types.TipSet) (*miner.DeadlineInfo, bool) {
-	return miner.ComputeProvingPeriodDeadline(mi.ProvingPeriodBoundary, new.Height())
 }

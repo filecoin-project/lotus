@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -47,12 +48,10 @@ var provingInfoCmd = &cli.Command{
 			return xerrors.Errorf("getting chain head: %w", err)
 		}
 
-		mi, err := api.StateMinerInfo(ctx, maddr, head.Key())
+		cd, err := api.StateMinerProvingDeadline(ctx, maddr, head.Key())
 		if err != nil {
 			return xerrors.Errorf("getting miner info: %w", err)
 		}
-
-		cd, _ := miner.ComputeProvingPeriodDeadline(mi.ProvingPeriodBoundary, head.Height())
 
 		deadlines, err := api.StateMinerDeadlines(ctx, maddr, head.Key())
 		if err != nil {
@@ -64,14 +63,57 @@ var provingInfoCmd = &cli.Command{
 			return xerrors.Errorf("counting deadline sectors: %w", err)
 		}
 
+		var mas miner.State
+		{
+			mact, err := api.StateGetActor(ctx, maddr, types.EmptyTSK)
+			if err != nil {
+				return err
+			}
+			rmas, err := api.ChainReadObj(ctx, mact.Head)
+			if err != nil {
+				return err
+			}
+			if err := mas.UnmarshalCBOR(bytes.NewReader(rmas)); err != nil {
+				return err
+			}
+		}
+
+		newSectors, err := mas.NewSectors.Count()
+		if err != nil {
+			return err
+		}
+
+		faults, err := mas.Faults.Count()
+		if err != nil {
+			return err
+		}
+
+		recoveries, err := mas.Recoveries.Count()
+		if err != nil {
+			return err
+		}
+
+		var provenSectors uint64
+		for _, d := range deadlines.Due {
+			c, err := d.Count()
+			if err != nil {
+				return err
+			}
+			provenSectors += c
+		}
+
 		fmt.Printf("Current Epoch:           %d\n", cd.CurrentEpoch)
 		fmt.Printf("Chain Period:            %d\n", cd.CurrentEpoch/miner.WPoStProvingPeriod)
 		fmt.Printf("Chain Period Start:      %s\n", epochTime(cd.CurrentEpoch, (cd.CurrentEpoch/miner.WPoStProvingPeriod)*miner.WPoStProvingPeriod))
 		fmt.Printf("Chain Period End:        %s\n\n", epochTime(cd.CurrentEpoch, (cd.CurrentEpoch/miner.WPoStProvingPeriod+1)*miner.WPoStProvingPeriod))
 
-		fmt.Printf("Proving Period Boundary: %d\n", mi.ProvingPeriodBoundary)
+		fmt.Printf("Proving Period Boundary: %d\n", cd.PeriodStart % miner.WPoStProvingPeriod)
 		fmt.Printf("Proving Period Start:    %s\n", epochTime(cd.CurrentEpoch, cd.PeriodStart))
 		fmt.Printf("Next Period Start:       %s\n\n", epochTime(cd.CurrentEpoch, cd.PeriodStart+miner.WPoStProvingPeriod))
+
+		fmt.Printf("Faults:      %d (%.2f%%)\n", faults, float64(faults*10000/provenSectors)/100)
+		fmt.Printf("Recovering:  %d\n", recoveries)
+		fmt.Printf("New Sectors: %d\n\n", newSectors)
 
 		fmt.Printf("Deadline Index:       %d\n", cd.Index)
 		fmt.Printf("Deadline Sectors:     %d\n", curDeadlineSectors)
@@ -123,13 +165,46 @@ var provingDeadlinesCmd = &cli.Command{
 			return xerrors.Errorf("getting deadlines: %w", err)
 		}
 
+		di, err := api.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			return xerrors.Errorf("getting deadlines: %w", err)
+		}
+
+		var mas miner.State
+		{
+			mact, err := api.StateGetActor(ctx, maddr, types.EmptyTSK)
+			if err != nil {
+				return err
+			}
+			rmas, err := api.ChainReadObj(ctx, mact.Head)
+			if err != nil {
+				return err
+			}
+			if err := mas.UnmarshalCBOR(bytes.NewReader(rmas)); err != nil {
+				return err
+			}
+		}
+
 		for i, field := range deadlines.Due {
 			c, err := field.Count()
 			if err != nil {
 				return err
 			}
 
-			fmt.Printf("%d: %d sectors\n", i, c)
+			var info string
+			proven, err := mas.PostSubmissions.IsSet(uint64(i))
+			if err != nil {
+				return err
+			}
+
+			if proven {
+				info += ", proven"
+			}
+
+			if di.Index == uint64(i) {
+				info += " (current)"
+			}
+			fmt.Printf("%d: %d sectors%s\n", i, c, info)
 		}
 
 		return nil

@@ -66,12 +66,12 @@ type API struct {
 	Filestore  dtypes.ClientFilestore `optional:"true"`
 }
 
-func calcDealExpiration(minDuration uint64, mi miner.MinerInfo, ts *types.TipSet) abi.ChainEpoch {
+func calcDealExpiration(minDuration uint64, md *miner.DeadlineInfo, ts *types.TipSet) abi.ChainEpoch {
 	// Make sure we give some time for the miner to seal
 	minExp := ts.Height() + dealStartBuffer + abi.ChainEpoch(minDuration)
 
 	// Align on miners ProvingPeriodBoundary
-	return minExp + miner.WPoStProvingPeriod - (minExp % miner.WPoStProvingPeriod) + mi.ProvingPeriodBoundary - 1
+	return minExp + miner.WPoStProvingPeriod - (minExp % miner.WPoStProvingPeriod) + (md.PeriodStart % miner.WPoStProvingPeriod) - 1
 }
 
 func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) (*cid.Cid, error) {
@@ -84,6 +84,11 @@ func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) 
 	}
 
 	mi, err := a.StateMinerInfo(ctx, params.Miner, types.EmptyTSK)
+	if err != nil {
+		return nil, xerrors.Errorf("failed getting peer ID: %w", err)
+	}
+
+	md, err := a.StateMinerProvingDeadline(ctx, params.Miner, types.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("failed getting peer ID: %w", err)
 	}
@@ -109,7 +114,7 @@ func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) 
 		&providerInfo,
 		params.Data,
 		ts.Height()+dealStartBuffer,
-		calcDealExpiration(params.MinBlocksDuration, mi, ts),
+		calcDealExpiration(params.MinBlocksDuration, md, ts),
 		params.EpochPrice,
 		big.Zero(),
 		rt,
