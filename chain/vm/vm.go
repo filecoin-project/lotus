@@ -100,6 +100,7 @@ func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, origin addres
 		gasAvailable:     msg.GasLimit,
 		numActorsCreated: nac,
 		pricelist:        PricelistByEpoch(vm.blockHeight),
+		allowInternal:    true,
 	}
 
 	rt.cst = &cbor.BasicIpldStore{
