@@ -291,7 +291,12 @@ var msigProposeCmd = &cli.Command{
 	Name:      "propose",
 	Usage:     "Propose a multisig transaction",
 	ArgsUsage: "[multisigAddress destinationAddress value <methodName methodParams> (optional)]",
-	Flags:     []cli.Flag{},
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "source",
+			Usage: "account to send the propose message from",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -341,7 +346,7 @@ var msigProposeCmd = &cli.Command{
 
 		enc, err := actors.SerializeParams(&samsig.ProposeParams{
 			To:     dest,
-			Value:  abi.TokenAmount(types.BigInt(value)),
+			Value:  types.BigInt(value),
 			Method: abi.MethodNum(method),
 			Params: params,
 		})
