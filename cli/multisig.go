@@ -59,6 +59,10 @@ var msigCreateCmd = &cli.Command{
 			Usage: "initial funds to give to multisig",
 			Value: "0",
 		},
+		&cli.StringFlag{
+			Name:  "sender",
+			Usage: "account to send the create message from",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -78,9 +82,21 @@ var msigCreateCmd = &cli.Command{
 		}
 
 		// get the address we're going to use to create the multisig (can be one of the above, as long as they have funds)
-		sendAddr, err := api.WalletDefaultAddress(ctx)
-		if err != nil {
-			return err
+		var sendAddr address.Address
+		if send := cctx.String("sender"); send == "" {
+			defaddr, err := api.WalletDefaultAddress(ctx)
+			if err != nil {
+				return err
+			}
+
+			sendAddr = defaddr
+		} else {
+			addr, err := address.NewFromString(send)
+			if err != nil {
+				return err
+			}
+
+			sendAddr = addr
 		}
 
 		val := cctx.String("value")
