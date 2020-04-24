@@ -3,7 +3,7 @@ import CID from 'cids'
 import ReactTooltip from 'react-tooltip'
 import * as multihash from "multihashes"
 import State from "./State"
-import methods from "./chain/methods"
+import methods from "./chain/methods.json"
 import Fil from "./Fil";
 
 function truncAddr(addr, len) {
