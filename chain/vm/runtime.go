@@ -52,6 +52,7 @@ type Runtime struct {
 
 	internalExecutions []*types.ExecutionResult
 	numActorsCreated   uint64
+	allowInternal      bool
 }
 
 func (rt *Runtime) TotalFilCircSupply() abi.TokenAmount {
@@ -315,6 +316,9 @@ func (dwt *dumbWrapperType) Into(um vmr.CBORUnmarshaler) error {
 }
 
 func (rs *Runtime) Send(to address.Address, method abi.MethodNum, m vmr.CBORMarshaler, value abi.TokenAmount) (vmr.SendReturn, exitcode.ExitCode) {
+	if !rs.allowInternal {
+		rs.Abortf(exitcode.SysErrorIllegalActor, "runtime.Send() is currently disallowed")
+	}
 	var params []byte
 	if m != nil {
 		buf := new(bytes.Buffer)
@@ -424,7 +428,9 @@ func (ssh *shimStateHandle) Transaction(obj vmr.CBORer, f func() interface{}) in
 	baseState := act.Head
 	ssh.rs.Get(baseState, obj)
 
+	ssh.rs.allowInternal = false
 	out := f()
+	ssh.rs.allowInternal = true
 
 	c := ssh.rs.Put(obj)
 
