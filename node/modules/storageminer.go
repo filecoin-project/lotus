@@ -310,7 +310,19 @@ func StorageProvider(ctx helpers.MetricsCtx, fapi lapi.FullNode, h host.Host, ds
 		return nil, err
 	}
 
-	return storageimpl.NewProvider(net, ds, ibs, store, pieceStore, dataTransfer, spn, minerAddress, rt)
+	p, err := storageimpl.NewProvider(net, ds, ibs, store, pieceStore, dataTransfer, spn, minerAddress, rt)
+	if err != nil {
+		return p, err
+	}
+
+	// Hacky way to set max piece size to the sector size
+	a := p.ListAsks(minerAddress)[0].Ask
+	err = p.AddAsk(a.Price, a.Expiry-a.Timestamp, storagemarket.MaxPieceSize(abi.PaddedPieceSize(mi.SectorSize)))
+	if err != nil {
+		return p, err
+	}
+
+	return p, nil
 }
 
 // RetrievalProvider creates a new retrieval provider attached to the provider blockstore
