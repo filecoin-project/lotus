@@ -157,7 +157,6 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, pstate cid.Cid, bms []B
 	var receipts []cbg.CBORMarshaler
 	processedMsgs := map[cid.Cid]bool{}
 	for _, b := range bms {
-
 		penalty := types.NewInt(0)
 		gasReward := big.Zero()
 

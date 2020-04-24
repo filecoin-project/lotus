@@ -1,6 +1,5 @@
 package validation
 
-/*
 import (
 	"context"
 
@@ -11,12 +10,10 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"golang.org/x/xerrors"
 
+	vstate "github.com/filecoin-project/chain-validation/state"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
-
-	vstate "github.com/filecoin-project/chain-validation/state"
 
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -61,16 +58,30 @@ func NewState() *StateWrapper {
 	}
 }
 
+func (s *StateWrapper) NewVM() {
+	return
+}
+
 func (s *StateWrapper) Root() cid.Cid {
 	return s.stateRoot
 }
 
-func (s *StateWrapper) Store() adt.Store {
+// StoreGet the value at key from vm store
+func (s *StateWrapper) StoreGet(key cid.Cid, out runtime.CBORUnmarshaler) error {
 	tree, err := state.LoadStateTree(s.cst, s.stateRoot)
 	if err != nil {
-		panic(err)
+		return err
 	}
-	return &contextStore{tree.Store, context.Background()}
+	return tree.Store.Get(context.Background(), key, out)
+}
+
+// StorePut `value` into vm store
+func (s *StateWrapper) StorePut(value runtime.CBORMarshaler) (cid.Cid, error) {
+	tree, err := state.LoadStateTree(s.cst, s.stateRoot)
+	if err != nil {
+		return cid.Undef, err
+	}
+	return tree.Store.Put(context.Background(), value)
 }
 
 func (s *StateWrapper) Actor(addr address.Address) (vstate.Actor, error) {
@@ -204,4 +215,3 @@ type contextStore struct {
 func (s *contextStore) Context() context.Context {
 	return s.ctx
 }
-*/
