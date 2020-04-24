@@ -1,15 +1,19 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"golang.org/x/xerrors"
 
 	"gopkg.in/urfave/cli.v2"
+
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	sealing "github.com/filecoin-project/storage-fsm"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
-	sealing "github.com/filecoin-project/storage-fsm"
 )
 
 var infoCmd = &cli.Command{
@@ -33,6 +37,21 @@ var infoCmd = &cli.Command{
 		maddr, err := nodeApi.ActorAddress(ctx)
 		if err != nil {
 			return err
+		}
+
+		mact, err := api.StateGetActor(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+		var mas miner.State
+		{
+			rmas, err := api.ChainReadObj(ctx, mact.Head)
+			if err != nil {
+				return err
+			}
+			if err := mas.UnmarshalCBOR(bytes.NewReader(rmas)); err != nil {
+				return err
+			}
 		}
 
 		fmt.Printf("Miner: %s\n", maddr)
@@ -72,6 +91,23 @@ var infoCmd = &cli.Command{
 				types.SizeStr(types.BigMul(types.NewInt(uint64(len(faults))), types.NewInt(uint64(mi.SectorSize)))),
 				float64(10000*uint64(len(faults))/secCounts.Pset)/100.)
 		}
+
+		fmt.Printf("Miner Balance: %s\n", types.FIL(mact.Balance))
+		fmt.Printf("\tPreCommit:   %s\n", types.FIL(mas.PreCommitDeposits))
+		fmt.Printf("\tLocked:      %s\n", types.FIL(mas.LockedFunds))
+		fmt.Printf("\tAvailable:   %s\n", types.FIL(types.BigSub(mact.Balance, types.BigAdd(mas.LockedFunds, mas.PreCommitDeposits))))
+		wb, err := api.WalletBalance(ctx, mi.Worker)
+		if err != nil {
+			return xerrors.Errorf("getting worker balance: %w", err)
+		}
+		fmt.Printf("Worker Balance: %s\n", types.FIL(wb))
+
+		mb, err := api.StateMarketBalance(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			return xerrors.Errorf("getting market balance: %w", err)
+		}
+		fmt.Printf("Market (Escrow):  %s\n", types.FIL(mb.Escrow))
+		fmt.Printf("Market (Locked):  %s\n", types.FIL(mb.Locked))
 
 		/*// TODO: indicate whether the post worker is in use
 		wstat, err := nodeApi.WorkerStats(ctx)
