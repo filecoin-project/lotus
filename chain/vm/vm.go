@@ -241,7 +241,7 @@ func checkMessage(msg *types.Message) error {
 
 func (vm *VM) ApplyImplicitMessage(ctx context.Context, msg *types.Message) (*ApplyRet, error) {
 	start := time.Now()
-	ret, actorErr, _ := vm.send(ctx, msg, nil, 0)
+	ret, actorErr, rt := vm.send(ctx, msg, nil, 0)
 	return &ApplyRet{
 		MessageReceipt: types.MessageReceipt{
 			ExitCode: exitcode.ExitCode(aerrors.RetCode(actorErr)),
@@ -249,7 +249,7 @@ func (vm *VM) ApplyImplicitMessage(ctx context.Context, msg *types.Message) (*Ap
 			GasUsed:  0,
 		},
 		ActorErr:           actorErr,
-		InternalExecutions: nil,
+		InternalExecutions: rt.internalExecutions,
 		Penalty:            types.NewInt(0),
 		Duration:           time.Since(start),
 	}, actorErr
