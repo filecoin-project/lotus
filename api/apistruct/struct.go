@@ -175,7 +175,7 @@ type StorageMinerStruct struct {
 		ActorAddress    func(context.Context) (address.Address, error)                 `perm:"read"`
 		ActorSectorSize func(context.Context, address.Address) (abi.SectorSize, error) `perm:"read"`
 
-		MiningBase func(context.Context) (*types.TipSet, error)
+		MiningBase func(context.Context) (*types.TipSet, error) `perm:"read"`
 
 		MarketImportDealData      func(context.Context, cid.Cid, string) error                   `perm:"write"`
 		MarketListDeals           func(ctx context.Context) ([]storagemarket.StorageDeal, error) `perm:"read"`
