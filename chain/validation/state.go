@@ -66,17 +66,17 @@ func (s *StateWrapper) Root() cid.Cid {
 	return s.stateRoot
 }
 
-// Get the value at key from vm store
-func (s *StateWrapper) StoreGet(key cid.Cid, out runtime.CBORUnmarshaler) error{
+// StoreGet the value at key from vm store
+func (s *StateWrapper) StoreGet(key cid.Cid, out runtime.CBORUnmarshaler) error {
 	tree, err := state.LoadStateTree(s.cst, s.stateRoot)
 	if err != nil {
 		return err
 	}
-	return tree.Store.Get(context.Background(),key, out)
+	return tree.Store.Get(context.Background(), key, out)
 }
 
-// Put `value` into vm store
-func (s *StateWrapper) StorePut(value runtime.CBORMarshaler) (cid.Cid, error){
+// StorePut `value` into vm store
+func (s *StateWrapper) StorePut(value runtime.CBORMarshaler) (cid.Cid, error) {
 	tree, err := state.LoadStateTree(s.cst, s.stateRoot)
 	if err != nil {
 		return cid.Undef, err
