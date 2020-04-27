@@ -137,6 +137,15 @@ func (m *Miner) Unregister(ctx context.Context, addr address.Address) error {
 	return nil
 }
 
+func (m *Miner) niceSleep(d time.Duration) bool {
+	select {
+	case <-time.After(d):
+		return true
+	case <-m.stop:
+		return false
+	}
+}
+
 func (m *Miner) mine(ctx context.Context) {
 	ctx, span := trace.StartSpan(ctx, "/mine")
 	defer span.End()
@@ -163,7 +172,7 @@ eventLoop:
 		prebase, err := m.GetBestMiningCandidate(ctx)
 		if err != nil {
 			log.Errorf("failed to get best mining candidate: %s", err)
-			time.Sleep(time.Second * 5)
+			m.niceSleep(time.Second * 5)
 			continue
 		}
 
@@ -181,7 +190,7 @@ eventLoop:
 		}
 		if base.TipSet.Equals(lastBase.TipSet) && lastBase.NullRounds == base.NullRounds {
 			log.Warnf("BestMiningCandidate from the previous round: %s (nulls:%d)", lastBase.TipSet.Cids(), lastBase.NullRounds)
-			time.Sleep(build.BlockDelay * time.Second)
+			m.niceSleep(build.BlockDelay * time.Second)
 			continue
 		}
 		lastBase = *base
@@ -204,7 +213,10 @@ eventLoop:
 		if len(blks) != 0 {
 			btime := time.Unix(int64(blks[0].Header.Timestamp), 0)
 			if time.Now().Before(btime) {
-				time.Sleep(time.Until(btime))
+				if !m.niceSleep(time.Until(btime)) {
+					log.Warnf("received interrupt while waiting to broadcast block, will shutdown after block is sent out")
+					time.Sleep(time.Until(btime))
+				}
 			} else {
 				log.Warnw("mined block in the past", "block-time", btime,
 					"time", time.Now(), "duration", time.Since(btime))
@@ -214,7 +226,7 @@ eventLoop:
 			for _, b := range blks {
 				_, notOk := mWon[b.Header.Miner]
 				if notOk {
-					log.Errorw("2 blocks for the same miner. Throwing hands in the air. Report this. It is important.", "bloks", blks)
+					log.Errorw("2 blocks for the same miner. Throwing hands in the air. Report this. It is important.", "blocks", blks)
 					continue eventLoop
 				}
 				mWon[b.Header.Miner] = struct{}{}
