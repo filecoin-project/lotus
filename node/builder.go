@@ -82,7 +82,7 @@ var (
 	BaseRoutingKey       = special{7} // fx groups + multiret
 	NatPortMapKey        = special{8} // Libp2p option
 	ConnectionManagerKey = special{9} // Libp2p option
-	AutoNATSvcKey        = special{9} // Libp2p option
+	AutoNATSvcKey        = special{10} // Libp2p option
 )
 
 type invoke int
