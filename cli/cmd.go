@@ -215,6 +215,7 @@ var CommonCommands = []*cli.Command{
 	netCmd,
 	versionCmd,
 	logCmd,
+	waitApiCmd,
 }
 
 var Commands = []*cli.Command{
@@ -232,4 +233,5 @@ var Commands = []*cli.Command{
 	versionCmd,
 	walletCmd,
 	logCmd,
+	waitApiCmd,
 }
