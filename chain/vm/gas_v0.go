@@ -1,11 +1,10 @@
 package vm
 
 import (
-	"github.com/filecoin-project/lotus/chain/actors/aerrors"
+	"fmt"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
-	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 )
 
 type pricelistV0 struct {
@@ -127,12 +126,12 @@ func (pl *pricelistV0) OnDeleteActor() int64 {
 }
 
 // OnVerifySignature
-func (pl *pricelistV0) OnVerifySignature(sigType crypto.SigType, planTextSize int) int64 {
+func (pl *pricelistV0) OnVerifySignature(sigType crypto.SigType, planTextSize int) (int64, error) {
 	costFn, ok := pl.verifySignature[sigType]
 	if !ok {
-		panic(aerrors.Newf(exitcode.SysErrInternal, "Cost function for signature type %d not supported", sigType))
+		return 0, fmt.Errorf("cost function for signature type %d not supported", sigType)
 	}
-	return costFn(int64(planTextSize))
+	return costFn(int64(planTextSize)), nil
 }
 
 // OnHashing
