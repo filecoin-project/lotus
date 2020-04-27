@@ -22,5 +22,5 @@ type WorkerStats struct {
 	MemUsedMin uint64
 	MemUsedMax uint64
 	GpuUsed    bool
-	CpuUse     int
+	CpuUse     uint64
 }

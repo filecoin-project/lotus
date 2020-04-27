@@ -30,6 +30,7 @@ type URLs []string
 
 type Worker interface {
 	ffiwrapper.StorageSealer
+	Fetch(context.Context, abi.SectorID, stores.SectorFileType, bool) error
 
 	TaskTypes(context.Context) (map[sealtasks.TaskType]struct{}, error)
 
@@ -122,7 +123,7 @@ func New(ctx context.Context, ls stores.LocalStorage, si stores.SectorIndex, cfg
 	go m.runSched()
 
 	localTasks := []sealtasks.TaskType{
-		sealtasks.TTAddPiece, sealtasks.TTCommit1, sealtasks.TTFinalize,
+		sealtasks.TTAddPiece, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTFetch,
 	}
 	if sc.AllowPreCommit1 {
 		localTasks = append(localTasks, sealtasks.TTPreCommit1)
