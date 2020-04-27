@@ -45,7 +45,7 @@ type workerHandle struct {
 	memUsedMin uint64
 	memUsedMax uint64
 	gpuUsed    bool
-	cpuUse     int // -1 - multicore thing; 0 - free; 1+ - singlecore things
+	cpuUse     uint64 // 0 - free; 1+ - singlecore things
 }
 
 func (m *Manager) runSched() {
@@ -150,13 +150,9 @@ func (m *Manager) makeResponse(wid WorkerID, w *workerHandle, req *workerRequest
 
 	w.gpuUsed = needRes.CanGPU
 	if needRes.MultiThread {
-		w.cpuUse = -1
+		w.cpuUse += w.info.Resources.CPUs
 	} else {
-		if w.cpuUse != -1 {
-			w.cpuUse++
-		} else {
-			log.Warnf("sched: makeResponse for worker %d: worker cpu is in multicore use, but a single core task was scheduled", wid)
-		}
+		w.cpuUse++
 	}
 
 	w.memUsedMin += needRes.MinMemory
@@ -173,8 +169,8 @@ func (m *Manager) makeResponse(wid WorkerID, w *workerHandle, req *workerRequest
 			}
 
 			if needRes.MultiThread {
-				w.cpuUse = 0
-			} else if w.cpuUse != -1 {
+				w.cpuUse -= w.info.Resources.CPUs
+			} else {
 				w.cpuUse--
 			}
 
@@ -216,13 +212,8 @@ func (m *Manager) canHandleRequest(wid WorkerID, w *workerHandle, req *workerReq
 	}
 
 	if needRes.MultiThread {
-		if w.cpuUse != 0 {
-			log.Debugf("sched: not scheduling on worker %d; multicore process needs free CPU", wid)
-			return false, nil
-		}
-	} else {
-		if w.cpuUse == -1 {
-			log.Debugf("sched: not scheduling on worker %d; CPU in use by a multicore process", wid)
+		if w.cpuUse > 0 {
+			log.Debugf("sched: not scheduling on worker %d; multicore process needs %d threads, %d in use, target %d", wid, res.CPUs, w.cpuUse, res.CPUs)
 			return false, nil
 		}
 	}

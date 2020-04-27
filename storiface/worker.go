@@ -12,6 +12,7 @@ type WorkerResources struct {
 
 	MemReserved uint64 // Used by system / other processes
 
+	CPUs uint64 // Logical cores
 	GPUs []string
 }
 

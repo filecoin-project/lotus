@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"os"
+	"runtime"
 
 	"github.com/elastic/go-sysinfo"
 	"golang.org/x/xerrors"
@@ -195,6 +196,7 @@ func (l *LocalWorker) Info(context.Context) (storiface.WorkerInfo, error) {
 			MemPhysical: mem.Total,
 			MemSwap:     mem.VirtualTotal,
 			MemReserved: mem.VirtualUsed + mem.Total - mem.Available, // TODO: sub this process
+			CPUs:        uint64(runtime.NumCPU()),
 			GPUs:        gpus,
 		},
 	}, nil
