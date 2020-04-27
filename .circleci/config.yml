@@ -42,13 +42,13 @@ commands:
       - restore_cache:
           name: Restore parameters cache
           keys:
-            - 'v24-2k-lotus-params'
+            - 'v25-2k-lotus-params'
           paths:
             - /var/tmp/filecoin-proof-parameters/
       - run:  ./lotus fetch-params --proving-params 2048
       - save_cache:
           name: Save parameters cache
-          key: 'v24-2k-lotus-params'
+          key: 'v25-2k-lotus-params'
           paths:
             - /var/tmp/filecoin-proof-parameters/
   install_ipfs:
