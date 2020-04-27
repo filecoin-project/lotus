@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"github.com/minio/blake2b-simd"
 	"os"
 	"sort"
 	"strconv"
@@ -59,6 +60,10 @@ var msigCreateCmd = &cli.Command{
 			Usage: "initial funds to give to multisig",
 			Value: "0",
 		},
+		&cli.StringFlag{
+			Name:  "sender",
+			Usage: "account to send the create message from",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -78,9 +83,21 @@ var msigCreateCmd = &cli.Command{
 		}
 
 		// get the address we're going to use to create the multisig (can be one of the above, as long as they have funds)
-		sendAddr, err := api.WalletDefaultAddress(ctx)
-		if err != nil {
-			return err
+		var sendAddr address.Address
+		if send := cctx.String("sender"); send == "" {
+			defaddr, err := api.WalletDefaultAddress(ctx)
+			if err != nil {
+				return err
+			}
+
+			sendAddr = defaddr
+		} else {
+			addr, err := address.NewFromString(send)
+			if err != nil {
+				return err
+			}
+
+			sendAddr = addr
 		}
 
 		val := cctx.String("value")
@@ -274,8 +291,13 @@ func state(tx *samsig.Transaction) string {
 var msigProposeCmd = &cli.Command{
 	Name:      "propose",
 	Usage:     "Propose a multisig transaction",
-	ArgsUsage: "[multisigAddress destinationAddress value <methodName methodParams> (optional)]",
-	Flags:     []cli.Flag{},
+	ArgsUsage: "[multisigAddress destinationAddress value <methodId methodParams> (optional)]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "source",
+			Usage: "account to send the propose message from",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -325,7 +347,7 @@ var msigProposeCmd = &cli.Command{
 
 		enc, err := actors.SerializeParams(&samsig.ProposeParams{
 			To:     dest,
-			Value:  abi.TokenAmount(types.BigInt(value)),
+			Value:  types.BigInt(value),
 			Method: abi.MethodNum(method),
 			Params: params,
 		})
@@ -388,8 +410,13 @@ var msigProposeCmd = &cli.Command{
 var msigApproveCmd = &cli.Command{
 	Name:      "approve",
 	Usage:     "Approve a multisig message",
-	ArgsUsage: "[multisigAddress messageId]",
-	Flags:     []cli.Flag{},
+	ArgsUsage: "[multisigAddress messageId proposerAddress destination value <methodId methodParams> (optional)]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "source",
+			Usage: "account to send the approve message from",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -398,8 +425,12 @@ var msigApproveCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		if cctx.Args().Len() != 2 {
-			return fmt.Errorf("must pass multisig address and message ID")
+		if cctx.Args().Len() < 5 {
+			return fmt.Errorf("must pass multisig address, message ID, proposer address, destination, and value")
+		}
+
+		if cctx.Args().Len() > 5 && cctx.Args().Len() != 7 {
+			return fmt.Errorf("usage: msig approve <msig addr> <message ID> <proposer address> <desination> <value> [ <method> <params> ]")
 		}
 
 		msig, err := address.NewFromString(cctx.Args().Get(0))
@@ -412,9 +443,63 @@ var msigApproveCmd = &cli.Command{
 			return err
 		}
 
+		proposer, err := address.NewFromString(cctx.Args().Get(2))
+		if err != nil {
+			return err
+		}
+
+		if proposer.Protocol() != address.ID {
+			proposer, err = api.StateLookupID(ctx, proposer, types.EmptyTSK)
+			if err != nil {
+				return err
+			}
+		}
+
+		dest, err := address.NewFromString(cctx.Args().Get(3))
+		if err != nil {
+			return err
+		}
+
+		value, err := types.ParseFIL(cctx.Args().Get(4))
+		if err != nil {
+			return err
+		}
+
+		var method uint64
+		var params []byte
+		if cctx.Args().Len() == 7 {
+			m, err := strconv.ParseUint(cctx.Args().Get(5), 10, 64)
+			if err != nil {
+				return err
+			}
+			method = m
+
+			p, err := hex.DecodeString(cctx.Args().Get(6))
+			if err != nil {
+				return err
+			}
+			params = p
+		}
+
+		p := samsig.ProposalHashData{
+			Requester: proposer,
+			To:        dest,
+			Value:     types.BigInt(value),
+			Method:    abi.MethodNum(method),
+			Params:    params,
+		}
+
+		pser, err := p.Serialize()
+		if err != nil {
+			return err
+		}
+		phash := blake2b.Sum256(pser)
+
 		enc, err := actors.SerializeParams(&samsig.TxnIDParams{
-			ID: samsig.TxnID(txid),
+			ID:           samsig.TxnID(txid),
+			ProposalHash: phash[:],
 		})
+
 		if err != nil {
 			return err
 		}
