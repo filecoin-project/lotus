@@ -7,6 +7,7 @@ import (
 	"reflect"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
+	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 
 	"github.com/ipfs/go-cid"
@@ -55,6 +56,7 @@ func NewInvoker() *invoker {
 	inv.Register(builtin.StorageMinerActorCodeID, miner.Actor{}, miner.State{})
 	inv.Register(builtin.MultisigActorCodeID, multisig.Actor{}, multisig.State{})
 	inv.Register(builtin.PaymentChannelActorCodeID, paych.Actor{}, paych.State{})
+	inv.Register(builtin.VerifiedRegistryActorCodeID, verifreg.Actor{}, verifreg.State{})
 	inv.Register(builtin.AccountActorCodeID, account.Actor{}, account.State{})
 
 	return inv

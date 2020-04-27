@@ -39,11 +39,23 @@ func (st *storage) setup() error {
 		return err
 	}
 	_, err = tx.Exec(`
+create table if not exists block_cids
+(
+	cid text not null
+		constraint block_cids_pk
+			primary key
+);
+
+create unique index if not exists block_cids_cid_uindex
+	on block_cids (cid);
+
 create table if not exists blocks_synced
 (
 	cid text not null
 		constraint blocks_synced_pk
-			primary key,
+			primary key
+	    constraint blocks_block_cids_cid_fk
+			references block_cids (cid),
 	add_ts int not null
 );
 
@@ -52,25 +64,52 @@ create unique index if not exists blocks_synced_cid_uindex
 
 create table if not exists block_parents
 (
-	block text not null,
+	block text not null
+	    constraint blocks_block_cids_cid_fk
+			references block_cids (cid),
 	parent text not null
 );
 
 create unique index if not exists block_parents_block_parent_uindex
 	on block_parents (block, parent);
 
+create table if not exists drand_entries
+(
+    round bigint not null
+    	constraint drand_entries_pk
+			primary key,
+	data bytea not null
+);
+create unique index if not exists drand_entries_round_uindex
+	on drand_entries (round);
+
+create table if not exists block_drand_entries
+(
+    round bigint not null
+    	constraint block_drand_entries_drand_entries_round_fk
+			references drand_entries (round),
+	block text not null
+	    constraint blocks_block_cids_cid_fk
+			references block_cids (cid)
+);
+create unique index if not exists block_drand_entries_round_uindex
+	on block_drand_entries (round, block);
+
 create table if not exists blocks
 (
 	cid text not null
 		constraint blocks_pk
-			primary key,
+			primary key
+	    constraint blocks_block_cids_cid_fk
+			references block_cids (cid),
 	parentWeight numeric not null,
 	parentStateRoot text not null,
 	height bigint not null,
 	miner text not null,
 	timestamp bigint not null,
-	vrfproof bytea,
-	eprof bytea
+	ticket bytea not null,
+	eprof bytea,
+	forksig bigint not null
 );
 
 create unique index if not exists block_cid_uindex
@@ -178,7 +217,9 @@ create index if not exists messages_to_index
 
 create table if not exists block_messages
 (
-	block text not null,
+	block text not null
+	    constraint blocks_block_cids_cid_fk
+			references block_cids (cid),
 	message text not null,
 	constraint block_messages_pk
 		primary key (block, message)
@@ -304,35 +345,6 @@ create index if not exists deal_activations_activation_epoch_index
 create unique index if not exists deal_activations_deal_uindex
 	on deal_activations (deal);
 */
-create table if not exists blocks_challenges
-(
-	block text not null
-		constraint blocks_challenges_pk_2
-			primary key
-		constraint blocks_challenges_blocks_cid_fk
-			references blocks,
-	index bigint not null,
-	sector_id bigint not null,
-	partial bytea not null,
-	candidate bigint not null,
-	constraint blocks_challenges_pk
-		unique (block, index)
-);
-
-create index if not exists blocks_challenges_block_index
-	on blocks_challenges (block);
-
-create index if not exists blocks_challenges_block_candidate_index
-	on blocks_challenges (block,candidate);
-
-create index if not exists blocks_challenges_block_index_index
-	on blocks_challenges (block, index);
-
-create index if not exists blocks_challenges_candidate_index
-	on blocks_challenges (candidate);
-
-create index if not exists blocks_challenges_index_index
-	on blocks_challenges (index);
 
 `)
 	if err != nil {
@@ -505,35 +517,106 @@ func (st *storage) storeHeaders(bhs map[cid.Cid]*types.BlockHeader, sync bool) e
 
 	if _, err := tx.Exec(`
 
+create temp table bc (like block_cids excluding constraints) on commit drop;
+create temp table de (like drand_entries excluding constraints) on commit drop;
+create temp table bde (like block_drand_entries excluding constraints) on commit drop;
 create temp table tbp (like block_parents excluding constraints) on commit drop;
 create temp table bs (like blocks_synced excluding constraints) on commit drop;
 create temp table b (like blocks excluding constraints) on commit drop;
-create temp table c (like blocks_challenges excluding constraints) on commit drop;
 
 
 `); err != nil {
 		return xerrors.Errorf("prep temp: %w", err)
 	}
 
-	stmt, err := tx.Prepare(`copy tbp (block, parent) from STDIN`)
-	if err != nil {
-		return err
-	}
+	{
+		stmt, err := tx.Prepare(`copy bc (cid) from STDIN`)
+		if err != nil {
+			return err
+		}
 
-	for _, bh := range bhs {
-		for _, parent := range bh.Parents {
-			if _, err := stmt.Exec(bh.Cid().String(), parent.String()); err != nil {
+		for _, bh := range bhs {
+			if _, err := stmt.Exec(bh.Cid().String()); err != nil {
 				log.Error(err)
 			}
 		}
+
+		if err := stmt.Close(); err != nil {
+			return err
+		}
+
+		if _, err := tx.Exec(`insert into block_cids select * from bc on conflict do nothing `); err != nil {
+			return xerrors.Errorf("drand entries put: %w", err)
+		}
 	}
 
-	if err := stmt.Close(); err != nil {
-		return err
+	{
+		stmt, err := tx.Prepare(`copy de (round, data) from STDIN`)
+		if err != nil {
+			return err
+		}
+
+		for _, bh := range bhs {
+			for _, ent := range bh.BeaconEntries {
+				if _, err := stmt.Exec(ent.Round, ent.Data); err != nil {
+					log.Error(err)
+				}
+			}
+		}
+
+		if err := stmt.Close(); err != nil {
+			return err
+		}
+
+		if _, err := tx.Exec(`insert into drand_entries select * from de on conflict do nothing `); err != nil {
+			return xerrors.Errorf("drand entries put: %w", err)
+		}
 	}
 
-	if _, err := tx.Exec(`insert into block_parents select * from tbp on conflict do nothing `); err != nil {
-		return xerrors.Errorf("parent put: %w", err)
+	{
+		stmt, err := tx.Prepare(`copy bde (round, block) from STDIN`)
+		if err != nil {
+			return err
+		}
+
+		for _, bh := range bhs {
+			for _, ent := range bh.BeaconEntries {
+				if _, err := stmt.Exec(ent.Round, bh.Cid().String()); err != nil {
+					log.Error(err)
+				}
+			}
+		}
+
+		if err := stmt.Close(); err != nil {
+			return err
+		}
+
+		if _, err := tx.Exec(`insert into block_drand_entries select * from bde on conflict do nothing `); err != nil {
+			return xerrors.Errorf("block drand entries put: %w", err)
+		}
+	}
+
+	{
+		stmt, err := tx.Prepare(`copy tbp (block, parent) from STDIN`)
+		if err != nil {
+			return err
+		}
+
+		for _, bh := range bhs {
+			for _, parent := range bh.Parents {
+				if _, err := stmt.Exec(bh.Cid().String(), parent.String()); err != nil {
+					log.Error(err)
+				}
+			}
+		}
+
+		if err := stmt.Close(); err != nil {
+			return err
+		}
+
+		if _, err := tx.Exec(`insert into block_parents select * from tbp on conflict do nothing `); err != nil {
+			return xerrors.Errorf("parent put: %w", err)
+		}
 	}
 
 	if sync {
@@ -559,12 +642,16 @@ create temp table c (like blocks_challenges excluding constraints) on commit dro
 		}
 	}
 
-	stmt2, err := tx.Prepare(`copy b (cid, parentWeight, parentStateRoot, height, miner, "timestamp", vrfproof) from stdin`)
+	stmt2, err := tx.Prepare(`copy b (cid, parentWeight, parentStateRoot, height, miner, "timestamp", ticket, eprof, forksig) from stdin`)
 	if err != nil {
 		return err
 	}
 
 	for _, bh := range bhs {
+		var eprof interface{}
+		if bh.ElectionProof != nil {
+			eprof = bh.ElectionProof.VRFProof
+		}
 
 		if _, err := stmt2.Exec(
 			bh.Cid().String(),
@@ -573,7 +660,9 @@ create temp table c (like blocks_challenges excluding constraints) on commit dro
 			bh.Height,
 			bh.Miner.String(),
 			bh.Timestamp,
-			bh.Ticket.VRFProof); err != nil {
+			bh.Ticket.VRFProof,
+			eprof,
+			bh.ForkSignaling); err != nil {
 			log.Error(err)
 		}
 	}
@@ -586,7 +675,7 @@ create temp table c (like blocks_challenges excluding constraints) on commit dro
 		return xerrors.Errorf("blk put: %w", err)
 	}
 
-	return nil
+	return tx.Commit()
 }
 
 func (st *storage) storeMessages(msgs map[cid.Cid]*types.Message) error {
