@@ -247,8 +247,28 @@ func (sh *scheduler) assignWorker(wid WorkerID, w *workerHandle, req *workerRequ
 
 	go func() {
 		err := req.prepare(req.ctx, w.w)
-
 		sh.workersLk.Lock()
+
+		if err != nil {
+			w.preparing.free(w.info.Resources, needRes)
+			sh.workersLk.Unlock()
+
+			select {
+			case sh.workerFree <- wid:
+			case <-sh.closing:
+				log.Warnf("scheduler closed while sending response (prepare error: %+v)", err)
+			}
+
+			select {
+			case req.ret <- workerResponse{err: err}:
+			case <-req.ctx.Done():
+				log.Warnf("request got cancelled before we could respond (prepare error: %+v)", err)
+			case <-sh.closing:
+				log.Warnf("scheduler closed while sending response (prepare error: %+v)", err)
+			}
+			return
+		}
+
 		err = w.active.withResources(sh.spt, wid, w.info.Resources, needRes, &sh.workersLk, func() error {
 			w.preparing.free(w.info.Resources, needRes)
 			sh.workersLk.Unlock()
