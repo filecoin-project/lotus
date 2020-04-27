@@ -1,12 +1,10 @@
 package sectorstorage
 
 import (
-	"container/list"
 	"context"
 	"errors"
 	"io"
 	"net/http"
-	"sync"
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
@@ -62,18 +60,9 @@ type Manager struct {
 	remoteHnd  *stores.FetchHandler
 	index      stores.SectorIndex
 
+	sched *scheduler
+
 	storage.Prover
-
-	workersLk  sync.Mutex
-	nextWorker WorkerID
-	workers    map[WorkerID]*workerHandle
-
-	newWorkers chan *workerHandle
-	schedule   chan *workerRequest
-	workerFree chan WorkerID
-	closing    chan struct{}
-
-	schedQueue *list.List // List[*workerRequest]
 }
 
 type SealerConfig struct {
@@ -107,20 +96,12 @@ func New(ctx context.Context, ls stores.LocalStorage, si stores.SectorIndex, cfg
 		remoteHnd:  &stores.FetchHandler{Local: lstor},
 		index:      si,
 
-		nextWorker: 0,
-		workers:    map[WorkerID]*workerHandle{},
-
-		newWorkers: make(chan *workerHandle),
-		schedule:   make(chan *workerRequest),
-		workerFree: make(chan WorkerID),
-		closing:    make(chan struct{}),
-
-		schedQueue: list.New(),
+		sched: newScheduler(cfg.SealProofType),
 
 		Prover: prover,
 	}
 
-	go m.runSched()
+	go m.sched.runSched()
 
 	localTasks := []sealtasks.TaskType{
 		sealtasks.TTAddPiece, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTFetch,
@@ -170,7 +151,7 @@ func (m *Manager) AddWorker(ctx context.Context, w Worker) error {
 		return xerrors.Errorf("getting worker info: %w", err)
 	}
 
-	m.newWorkers <- &workerHandle{
+	m.sched.newWorkers <- &workerHandle{
 		w:    w,
 		info: info,
 	}
@@ -190,7 +171,7 @@ func (m *Manager) ReadPieceFromSealedSector(context.Context, abi.SectorID, ffiwr
 	panic("implement me")
 }
 
-func (m *Manager) getWorkersByPaths(task sealtasks.TaskType, inPaths []stores.StorageInfo) ([]WorkerID, map[WorkerID]stores.StorageInfo) {
+/*func (m *Manager) getWorkersByPaths(task sealtasks.TaskType, inPaths []stores.StorageInfo) ([]WorkerID, map[WorkerID]stores.StorageInfo) {
 	m.workersLk.Lock()
 	defer m.workersLk.Unlock()
 
@@ -249,8 +230,8 @@ func (m *Manager) getWorker(ctx context.Context, taskType sealtasks.TaskType, ac
 		taskType: taskType,
 		accept:   accept,
 
-		cancel: ctx.Done(),
-		ret:    ret,
+		ctx: ctx.Done(),
+		ret: ret,
 	}:
 	case <-m.closing:
 		return nil, nil, xerrors.New("closing")
@@ -266,6 +247,16 @@ func (m *Manager) getWorker(ctx context.Context, taskType sealtasks.TaskType, ac
 	case <-ctx.Done():
 		return nil, nil, ctx.Err()
 	}
+}*/
+
+func schedNop(context.Context, Worker) error {
+	return nil
+}
+
+func schedFetch(sector abi.SectorID, ft stores.SectorFileType, sealing bool) func(context.Context, Worker) error {
+	return func(ctx context.Context, worker Worker) error {
+		return worker.Fetch(ctx, sector, ft, sealing)
+	}
 }
 
 func (m *Manager) NewSector(ctx context.Context, sector abi.SectorID) error {
@@ -274,151 +265,114 @@ func (m *Manager) NewSector(ctx context.Context, sector abi.SectorID) error {
 }
 
 func (m *Manager) AddPiece(ctx context.Context, sector abi.SectorID, existingPieces []abi.UnpaddedPieceSize, sz abi.UnpaddedPieceSize, r io.Reader) (abi.PieceInfo, error) {
-	// TODO: consider multiple paths vs workers when initially allocating
-
-	var best []stores.StorageInfo
+	var selector WorkerSelector
 	var err error
 	if len(existingPieces) == 0 { // new
-		best, err = m.index.StorageBestAlloc(ctx, stores.FTUnsealed, true)
+		selector, err = newAllocSelector(ctx, m.index, stores.FTUnsealed)
 	} else { // append to existing
-		best, err = m.index.StorageFindSector(ctx, sector, stores.FTUnsealed, false)
+		selector, err = newExistingSelector(ctx, m.index, sector, stores.FTUnsealed, false)
 	}
 	if err != nil {
-		return abi.PieceInfo{}, xerrors.Errorf("finding sector path: %w", err)
+		return abi.PieceInfo{}, xerrors.Errorf("creating path selector: %w", err)
 	}
 
-	log.Debugf("find workers for %v", best)
-	candidateWorkers, _ := m.getWorkersByPaths(sealtasks.TTAddPiece, best)
+	var out abi.PieceInfo
+	err = m.sched.Schedule(ctx, sealtasks.TTAddPiece, selector, schedNop, func(ctx context.Context, w Worker) error {
+		p, err := w.AddPiece(ctx, sector, existingPieces, sz, r)
+		if err != nil {
+			return err
+		}
+		out = p
+		return nil
+	})
 
-	if len(candidateWorkers) == 0 {
-		return abi.PieceInfo{}, ErrNoWorkers
-	}
-
-	worker, done, err := m.getWorker(ctx, sealtasks.TTAddPiece, candidateWorkers)
-	if err != nil {
-		return abi.PieceInfo{}, xerrors.Errorf("scheduling worker: %w", err)
-	}
-	defer done()
-
-	// TODO: select(candidateWorkers, ...)
-	// TODO: remove the sectorbuilder abstraction, pass path directly
-	return worker.AddPiece(ctx, sector, existingPieces, sz, r)
+	return out, err
 }
 
 func (m *Manager) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, pieces []abi.PieceInfo) (out storage.PreCommit1Out, err error) {
 	// TODO: also consider where the unsealed data sits
 
-	best, err := m.index.StorageBestAlloc(ctx, stores.FTCache|stores.FTSealed, true)
+	selector, err := newAllocSelector(ctx, m.index, stores.FTCache|stores.FTSealed)
 	if err != nil {
-		return nil, xerrors.Errorf("finding path for sector sealing: %w", err)
+		return nil, xerrors.Errorf("creating path selector: %w", err)
 	}
 
-	candidateWorkers, _ := m.getWorkersByPaths(sealtasks.TTPreCommit1, best)
-	if len(candidateWorkers) == 0 {
-		return nil, ErrNoWorkers
-	}
+	err = m.sched.Schedule(ctx, sealtasks.TTPreCommit1, selector, schedFetch(sector, stores.FTUnsealed, true), func(ctx context.Context, w Worker) error {
+		p, err := w.SealPreCommit1(ctx, sector, ticket, pieces)
+		if err != nil {
+			return err
+		}
+		out = p
+		return nil
+	})
 
-	worker, done, err := m.getWorker(ctx, sealtasks.TTPreCommit1, candidateWorkers)
-	if err != nil {
-		return nil, xerrors.Errorf("scheduling worker: %w", err)
-	}
-	defer done()
-
-	// TODO: select(candidateWorkers, ...)
-	// TODO: remove the sectorbuilder abstraction, pass path directly
-	return worker.SealPreCommit1(ctx, sector, ticket, pieces)
+	return out, err
 }
 
-func (m *Manager) SealPreCommit2(ctx context.Context, sector abi.SectorID, phase1Out storage.PreCommit1Out) (cids storage.SectorCids, err error) {
-	// TODO: allow workers to fetch the sectors
-
-	best, err := m.index.StorageFindSector(ctx, sector, stores.FTCache|stores.FTSealed, true)
+func (m *Manager) SealPreCommit2(ctx context.Context, sector abi.SectorID, phase1Out storage.PreCommit1Out) (out storage.SectorCids, err error) {
+	selector, err := newExistingSelector(ctx, m.index, sector, stores.FTCache|stores.FTSealed, true)
 	if err != nil {
-		return storage.SectorCids{}, xerrors.Errorf("finding path for sector sealing: %w", err)
+		return storage.SectorCids{}, xerrors.Errorf("creating path selector: %w", err)
 	}
 
-	candidateWorkers, _ := m.getWorkersByPaths(sealtasks.TTPreCommit2, best)
-	if len(candidateWorkers) == 0 {
-		return storage.SectorCids{}, ErrNoWorkers
-	}
-
-	worker, done, err := m.getWorker(ctx, sealtasks.TTPreCommit2, candidateWorkers)
-	if err != nil {
-		return storage.SectorCids{}, xerrors.Errorf("scheduling worker: %w", err)
-	}
-	defer done()
-
-	// TODO: select(candidateWorkers, ...)
-	// TODO: remove the sectorbuilder abstraction, pass path directly
-	return worker.SealPreCommit2(ctx, sector, phase1Out)
+	err = m.sched.Schedule(ctx, sealtasks.TTPreCommit2, selector, schedFetch(sector, stores.FTCache|stores.FTSealed, true), func(ctx context.Context, w Worker) error {
+		p, err := w.SealPreCommit2(ctx, sector, phase1Out)
+		if err != nil {
+			return err
+		}
+		out = p
+		return nil
+	})
+	return out, err
 }
 
-func (m *Manager) SealCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storage.SectorCids) (output storage.Commit1Out, err error) {
-	best, err := m.index.StorageFindSector(ctx, sector, stores.FTCache|stores.FTSealed, true)
+func (m *Manager) SealCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storage.SectorCids) (out storage.Commit1Out, err error) {
+	selector, err := newExistingSelector(ctx, m.index, sector, stores.FTCache|stores.FTSealed, false)
 	if err != nil {
-		return nil, xerrors.Errorf("finding path for sector sealing: %w", err)
-	}
-
-	candidateWorkers, _ := m.getWorkersByPaths(sealtasks.TTCommit1, best)
-	if len(candidateWorkers) == 0 {
-		return nil, ErrNoWorkers
+		return storage.Commit1Out{}, xerrors.Errorf("creating path selector: %w", err)
 	}
 
 	// TODO: Try very hard to execute on worker with access to the sectors
-	worker, done, err := m.getWorker(ctx, sealtasks.TTCommit1, candidateWorkers)
-	if err != nil {
-		return nil, xerrors.Errorf("scheduling worker: %w", err)
-	}
-	defer done()
-
-	// TODO: select(candidateWorkers, ...)
-	// TODO: remove the sectorbuilder abstraction, pass path directly
-	return worker.SealCommit1(ctx, sector, ticket, seed, pieces, cids)
+	//  (except, don't.. for now at least - we are using this step to bring data
+	//  into 'provable' storage. Optimally we'd do that in commit2, in parallel
+	//  with snark compute)
+	err = m.sched.Schedule(ctx, sealtasks.TTCommit1, selector, schedFetch(sector, stores.FTCache|stores.FTSealed, true), func(ctx context.Context, w Worker) error {
+		p, err := w.SealCommit1(ctx, sector, ticket, seed, pieces, cids)
+		if err != nil {
+			return err
+		}
+		out = p
+		return nil
+	})
+	return out, err
 }
 
-func (m *Manager) SealCommit2(ctx context.Context, sector abi.SectorID, phase1Out storage.Commit1Out) (proof storage.Proof, err error) {
-	var candidateWorkers []WorkerID
+func (m *Manager) SealCommit2(ctx context.Context, sector abi.SectorID, phase1Out storage.Commit1Out) (out storage.Proof, err error) {
+	selector := newTaskSelector()
 
-	m.workersLk.Lock()
-	for id, worker := range m.workers {
-		tt, err := worker.w.TaskTypes(ctx)
+	err = m.sched.Schedule(ctx, sealtasks.TTCommit2, selector, schedNop, func(ctx context.Context, w Worker) error {
+		p, err := w.SealCommit2(ctx, sector, phase1Out)
 		if err != nil {
-			log.Errorf("error getting supported worker task types: %+v", err)
-			continue
+			return err
 		}
-		if _, ok := tt[sealtasks.TTCommit2]; !ok {
-			continue
-		}
-		candidateWorkers = append(candidateWorkers, id)
-	}
-	m.workersLk.Unlock()
-	if len(candidateWorkers) == 0 {
-		return nil, ErrNoWorkers
-	}
+		out = p
+		return nil
+	})
 
-	worker, done, err := m.getWorker(ctx, sealtasks.TTCommit2, candidateWorkers)
-	if err != nil {
-		return nil, xerrors.Errorf("scheduling worker: %w", err)
-	}
-	defer done()
-
-	return worker.SealCommit2(ctx, sector, phase1Out)
+	return out, err
 }
 
 func (m *Manager) FinalizeSector(ctx context.Context, sector abi.SectorID) error {
-	best, err := m.index.StorageFindSector(ctx, sector, stores.FTCache|stores.FTSealed|stores.FTUnsealed, true)
+	selector, err := newExistingSelector(ctx, m.index, sector, stores.FTCache|stores.FTSealed|stores.FTUnsealed, false)
 	if err != nil {
-		return xerrors.Errorf("finding sealed sector: %w", err)
+		return xerrors.Errorf("creating path selector: %w", err)
 	}
 
-	candidateWorkers, _ := m.getWorkersByPaths(sealtasks.TTFinalize, best)
-	if len(candidateWorkers) == 0 {
-		return ErrNoWorkers
-	}
-
-	// TODO: Remove sector from sealing stores
-	// TODO: Move the sector to long-term storage
-	return m.workers[candidateWorkers[0]].w.FinalizeSector(ctx, sector)
+	return m.sched.Schedule(ctx, sealtasks.TTFinalize, selector,
+		schedFetch(sector, stores.FTCache|stores.FTSealed|stores.FTUnsealed, false),
+		func(ctx context.Context, w Worker) error {
+			return w.FinalizeSector(ctx, sector)
+		})
 }
 
 func (m *Manager) StorageLocal(ctx context.Context) (map[stores.ID]string, error) {
@@ -440,8 +394,7 @@ func (m *Manager) FsStat(ctx context.Context, id stores.ID) (stores.FsStat, erro
 }
 
 func (m *Manager) Close() error {
-	close(m.closing)
-	return nil
+	return m.sched.Close()
 }
 
 var _ SectorManager = &Manager{}

@@ -1,6 +1,12 @@
 package sectorstorage
 
 import (
+	"container/list"
+	"context"
+	"sort"
+	"sync"
+
+	"github.com/hashicorp/go-multierror"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -11,29 +17,95 @@ import (
 
 const mib = 1 << 20
 
+type WorkerAction func(ctx context.Context, w Worker) error
+
+type WorkerSelector interface {
+	Ok(ctx context.Context, task sealtasks.TaskType, a *workerHandle) (bool, error) // true if worker is acceptable for performing a task
+
+	Cmp(ctx context.Context, task sealtasks.TaskType, a, b *workerHandle) (bool, error) // true if a is preferred over b
+}
+
+type scheduler struct {
+	spt abi.RegisteredProof
+
+	workersLk  sync.Mutex
+	nextWorker WorkerID
+	workers    map[WorkerID]*workerHandle
+
+	newWorkers chan *workerHandle
+	schedule   chan *workerRequest
+	workerFree chan WorkerID
+	closing    chan struct{}
+
+	schedQueue *list.List // List[*workerRequest]
+}
+
+func newScheduler(spt abi.RegisteredProof) *scheduler {
+	return &scheduler{
+		spt: spt,
+
+		nextWorker: 0,
+		workers:    map[WorkerID]*workerHandle{},
+
+		newWorkers: make(chan *workerHandle),
+		schedule:   make(chan *workerRequest),
+		workerFree: make(chan WorkerID),
+		closing:    make(chan struct{}),
+
+		schedQueue: list.New(),
+	}
+}
+
+func (sh *scheduler) Schedule(ctx context.Context, taskType sealtasks.TaskType, sel WorkerSelector, prepare WorkerAction, work WorkerAction) error {
+	ret := make(chan workerResponse)
+
+	select {
+	case sh.schedule <- &workerRequest{
+		taskType: taskType,
+		sel:      sel,
+
+		prepare: prepare,
+		work:    work,
+
+		ret: ret,
+		ctx: ctx,
+	}:
+	case <-sh.closing:
+		return xerrors.New("closing")
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+
+	select {
+	case resp := <-ret:
+		return resp.err
+	case <-sh.closing:
+		return xerrors.New("closing")
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
 type workerRequest struct {
 	taskType sealtasks.TaskType
-	accept   []WorkerID // ordered by preference
+	sel      WorkerSelector
 
-	ret    chan<- workerResponse
-	cancel <-chan struct{}
+	prepare WorkerAction
+	work    WorkerAction
+
+	ret chan<- workerResponse
+	ctx context.Context
 }
 
 type workerResponse struct {
 	err error
-
-	worker Worker
-	done   func()
 }
 
-func (r *workerRequest) respond(resp workerResponse) {
+func (r *workerRequest) respond(err error) {
 	select {
-	case r.ret <- resp:
-	case <-r.cancel:
+	case r.ret <- workerResponse{err: err}:
+	case <-r.ctx.Done():
 		log.Warnf("request got cancelled before we could respond")
-		if resp.done != nil {
-			resp.done()
-		}
 	}
 }
 
@@ -48,60 +120,56 @@ type workerHandle struct {
 	cpuUse     uint64 // 0 - free; 1+ - singlecore things
 }
 
-func (m *Manager) runSched() {
+func (sh *scheduler) runSched() {
 	for {
 		select {
-		case w := <-m.newWorkers:
-			m.schedNewWorker(w)
-		case req := <-m.schedule:
-			resp, err := m.maybeSchedRequest(req)
+		case w := <-sh.newWorkers:
+			sh.schedNewWorker(w)
+		case req := <-sh.schedule:
+			scheduled, err := sh.maybeSchedRequest(req)
 			if err != nil {
-				req.respond(workerResponse{err: err})
+				req.respond(err)
+				continue
+			}
+			if scheduled {
 				continue
 			}
 
-			if resp != nil {
-				req.respond(*resp)
-				continue
-			}
-
-			m.schedQueue.PushBack(req)
-		case wid := <-m.workerFree:
-			m.onWorkerFreed(wid)
-		case <-m.closing:
-			m.schedClose()
+			sh.schedQueue.PushBack(req)
+		case wid := <-sh.workerFree:
+			sh.onWorkerFreed(wid)
+		case <-sh.closing:
+			sh.schedClose()
 			return
 		}
 	}
 }
 
-func (m *Manager) onWorkerFreed(wid WorkerID) {
-	for e := m.schedQueue.Front(); e != nil; e = e.Next() {
+func (sh *scheduler) onWorkerFreed(wid WorkerID) {
+	for e := sh.schedQueue.Front(); e != nil; e = e.Next() {
 		req := e.Value.(*workerRequest)
-		var ok bool
-		for _, id := range req.accept {
-			if id == wid {
-				ok = true
-				break
-			}
+
+		ok, err := req.sel.Ok(req.ctx, req.taskType, sh.workers[wid])
+		if err != nil {
+			log.Errorf("onWorkerFreed req.sel.Ok error: %+v", err)
+			continue
 		}
+
 		if !ok {
 			continue
 		}
 
-		resp, err := m.maybeSchedRequest(req)
+		scheduled, err := sh.maybeSchedRequest(req)
 		if err != nil {
-			req.respond(workerResponse{err: err})
+			req.respond(err)
 			continue
 		}
 
-		if resp != nil {
-			req.respond(*resp)
-
+		if scheduled {
 			pe := e.Prev()
-			m.schedQueue.Remove(e)
+			sh.schedQueue.Remove(e)
 			if pe == nil {
-				pe = m.schedQueue.Front()
+				pe = sh.schedQueue.Front()
 			}
 			if pe == nil {
 				break
@@ -112,44 +180,68 @@ func (m *Manager) onWorkerFreed(wid WorkerID) {
 	}
 }
 
-func (m *Manager) maybeSchedRequest(req *workerRequest) (*workerResponse, error) {
-	m.workersLk.Lock()
-	defer m.workersLk.Unlock()
+func (sh *scheduler) maybeSchedRequest(req *workerRequest) (bool, error) {
+	sh.workersLk.Lock()
+	defer sh.workersLk.Unlock()
 
 	tried := 0
+	var acceptable []WorkerID
 
-	for i := len(req.accept) - 1; i >= 0; i-- {
-		id := req.accept[i]
-		w, ok := m.workers[id]
+	for wid, worker := range sh.workers {
+		ok, err := req.sel.Ok(req.ctx, req.taskType, worker)
+		if err != nil {
+			return false, err
+		}
+
 		if !ok {
-			log.Warnf("requested worker %d is not in scheduler", id)
+			continue
 		}
 		tried++
 
-		canDo, err := m.canHandleRequest(id, w, req)
+		canDo, err := sh.canHandleRequest(wid, worker, req)
 		if err != nil {
-			return nil, err
+			return false, err
 		}
 
 		if !canDo {
 			continue
 		}
 
-		return m.makeResponse(id, w, req), nil
+		acceptable = append(acceptable, wid)
+	}
+
+	if len(acceptable) > 0 {
+		{
+			var serr error
+
+			sort.SliceStable(acceptable, func(i, j int) bool {
+				r, err := req.sel.Cmp(req.ctx, req.taskType, sh.workers[acceptable[i]], sh.workers[acceptable[j]])
+				if err != nil {
+					serr = multierror.Append(serr, err)
+				}
+				return r
+			})
+
+			if serr != nil {
+				return false, xerrors.Errorf("error(s) selecting best worker: %w", serr)
+			}
+		}
+
+		return true, sh.assignWorker(acceptable[0], sh.workers[acceptable[0]], req)
 	}
 
 	if tried == 0 {
-		return nil, xerrors.New("maybeSchedRequest didn't find any good workers")
+		return false, xerrors.New("maybeSchedRequest didn't find any good workers")
 	}
 
-	return nil, nil // put in waiting queue
+	return false, nil // put in waiting queue
 }
 
-func (m *Manager) makeResponse(wid WorkerID, w *workerHandle, req *workerRequest) *workerResponse {
-	needRes := ResourceTable[req.taskType][m.scfg.SealProofType]
+func (sh *scheduler) assignWorker(wid WorkerID, w *workerHandle, req *workerRequest) error {
+	needRes := ResourceTable[req.taskType][sh.spt]
 
 	w.gpuUsed = needRes.CanGPU
-	if needRes.MultiThread {
+	if needRes.MultiThread() {
 		w.cpuUse += w.info.Resources.CPUs
 	} else {
 		w.cpuUse++
@@ -158,17 +250,17 @@ func (m *Manager) makeResponse(wid WorkerID, w *workerHandle, req *workerRequest
 	w.memUsedMin += needRes.MinMemory
 	w.memUsedMax += needRes.MaxMemory
 
-	return &workerResponse{
-		err:    nil,
-		worker: w.w,
-		done: func() {
-			m.workersLk.Lock()
+	go func() {
+		var err error
+
+		defer func() {
+			sh.workersLk.Lock()
 
 			if needRes.CanGPU {
 				w.gpuUsed = false
 			}
 
-			if needRes.MultiThread {
+			if needRes.MultiThread() {
 				w.cpuUse -= w.info.Resources.CPUs
 			} else {
 				w.cpuUse--
@@ -177,20 +269,35 @@ func (m *Manager) makeResponse(wid WorkerID, w *workerHandle, req *workerRequest
 			w.memUsedMin -= needRes.MinMemory
 			w.memUsedMax -= needRes.MaxMemory
 
-			m.workersLk.Unlock()
+			sh.workersLk.Unlock()
 
 			select {
-			case m.workerFree <- wid:
-			case <-m.closing:
+			case sh.workerFree <- wid:
+			case <-sh.closing:
 			}
-		},
-	}
+		}()
+
+		err = req.prepare(req.ctx, w.w)
+		if err == nil {
+			err = req.work(req.ctx, w.w)
+		}
+
+		select {
+		case req.ret <- workerResponse{err: err}:
+		case <-req.ctx.Done():
+			log.Warnf("request got cancelled before we could respond")
+		case <-sh.closing:
+			log.Warnf("scheduler closed while sending response")
+		}
+	}()
+
+	return nil
 }
 
-func (m *Manager) canHandleRequest(wid WorkerID, w *workerHandle, req *workerRequest) (bool, error) {
-	needRes, ok := ResourceTable[req.taskType][m.scfg.SealProofType]
+func (sh *scheduler) canHandleRequest(wid WorkerID, w *workerHandle, req *workerRequest) (bool, error) {
+	needRes, ok := ResourceTable[req.taskType][sh.spt]
 	if !ok {
-		return false, xerrors.Errorf("canHandleRequest: missing ResourceTable entry for %s/%d", req.taskType, m.scfg.SealProofType)
+		return false, xerrors.Errorf("canHandleRequest: missing ResourceTable entry for %s/%d", req.taskType, sh.spt)
 	}
 
 	res := w.info.Resources
@@ -203,7 +310,7 @@ func (m *Manager) canHandleRequest(wid WorkerID, w *workerHandle, req *workerReq
 	}
 
 	maxNeedMem := res.MemReserved + w.memUsedMax + needRes.MaxMemory + needRes.BaseMinMemory
-	if m.scfg.SealProofType == abi.RegisteredProof_StackedDRG32GiBSeal {
+	if sh.spt == abi.RegisteredProof_StackedDRG32GiBSeal {
 		maxNeedMem += MaxCachingOverhead
 	}
 	if maxNeedMem > res.MemSwap+res.MemPhysical {
@@ -211,7 +318,7 @@ func (m *Manager) canHandleRequest(wid WorkerID, w *workerHandle, req *workerReq
 		return false, nil
 	}
 
-	if needRes.MultiThread {
+	if needRes.MultiThread() {
 		if w.cpuUse > 0 {
 			log.Debugf("sched: not scheduling on worker %d; multicore process needs %d threads, %d in use, target %d", wid, res.CPUs, w.cpuUse, res.CPUs)
 			return false, nil
@@ -228,22 +335,27 @@ func (m *Manager) canHandleRequest(wid WorkerID, w *workerHandle, req *workerReq
 	return true, nil
 }
 
-func (m *Manager) schedNewWorker(w *workerHandle) {
-	m.workersLk.Lock()
-	defer m.workersLk.Unlock()
+func (sh *scheduler) schedNewWorker(w *workerHandle) {
+	sh.workersLk.Lock()
+	defer sh.workersLk.Unlock()
 
-	id := m.nextWorker
-	m.workers[id] = w
-	m.nextWorker++
+	id := sh.nextWorker
+	sh.workers[id] = w
+	sh.nextWorker++
 }
 
-func (m *Manager) schedClose() {
-	m.workersLk.Lock()
-	defer m.workersLk.Unlock()
+func (sh *scheduler) schedClose() {
+	sh.workersLk.Lock()
+	defer sh.workersLk.Unlock()
 
-	for i, w := range m.workers {
+	for i, w := range sh.workers {
 		if err := w.w.Close(); err != nil {
 			log.Errorf("closing worker %d: %+v", i, err)
 		}
 	}
+}
+
+func (sh *scheduler) Close() error {
+	close(sh.closing)
+	return nil
 }
