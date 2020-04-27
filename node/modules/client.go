@@ -85,7 +85,8 @@ func NewClientDatastore(ds dtypes.MetadataDS) dtypes.ClientDatastore {
 // ClientDAG is a DAGService for the ClientBlockstore
 func ClientDAG(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.ClientBlockstore, rt routing.Routing, h host.Host) dtypes.ClientDAG {
 	bitswapNetwork := network.NewFromIpfsHost(h, rt)
-	exch := bitswap.New(helpers.LifecycleCtx(mctx, lc), bitswapNetwork, ibs)
+	bitswapOptions := []bitswap.Option{bitswap.ProvideEnabled(false)}
+	exch := bitswap.New(helpers.LifecycleCtx(mctx, lc), bitswapNetwork, ibs, bitswapOptions...)
 
 	bsvc := blockservice.New(ibs, exch)
 	dag := merkledag.NewDAGService(bsvc)
