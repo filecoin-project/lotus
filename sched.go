@@ -109,15 +109,22 @@ func (r *workerRequest) respond(err error) {
 	}
 }
 
+type activeResources struct {
+	memUsedMin uint64
+	memUsedMax uint64
+	gpuUsed    bool
+	cpuUse     uint64
+
+	cond *sync.Cond
+}
+
 type workerHandle struct {
 	w Worker
 
 	info storiface.WorkerInfo
 
-	memUsedMin uint64
-	memUsedMax uint64
-	gpuUsed    bool
-	cpuUse     uint64 // 0 - free; 1+ - singlecore things
+	preparing *activeResources
+	active    *activeResources
 }
 
 func (sh *scheduler) runSched() {
@@ -198,12 +205,8 @@ func (sh *scheduler) maybeSchedRequest(req *workerRequest) (bool, error) {
 		}
 		tried++
 
-		canDo, err := sh.canHandleRequest(wid, worker, req)
-		if err != nil {
-			return false, err
-		}
-
-		if !canDo {
+		needRes := ResourceTable[req.taskType][sh.spt]
+		if !canHandleRequest(needRes, sh.spt, wid, worker.info.Resources, worker.preparing) {
 			continue
 		}
 
@@ -240,99 +243,120 @@ func (sh *scheduler) maybeSchedRequest(req *workerRequest) (bool, error) {
 func (sh *scheduler) assignWorker(wid WorkerID, w *workerHandle, req *workerRequest) error {
 	needRes := ResourceTable[req.taskType][sh.spt]
 
-	w.gpuUsed = needRes.CanGPU
-	if needRes.MultiThread() {
-		w.cpuUse += w.info.Resources.CPUs
-	} else {
-		w.cpuUse++
-	}
-
-	w.memUsedMin += needRes.MinMemory
-	w.memUsedMax += needRes.MaxMemory
+	w.preparing.add(w.info.Resources, needRes)
 
 	go func() {
-		var err error
+		err := req.prepare(req.ctx, w.w)
 
-		defer func() {
-			sh.workersLk.Lock()
-
-			if needRes.CanGPU {
-				w.gpuUsed = false
-			}
-
-			if needRes.MultiThread() {
-				w.cpuUse -= w.info.Resources.CPUs
-			} else {
-				w.cpuUse--
-			}
-
-			w.memUsedMin -= needRes.MinMemory
-			w.memUsedMax -= needRes.MaxMemory
-
+		sh.workersLk.Lock()
+		err = w.active.withResources(sh.spt, wid, w.info.Resources, needRes, &sh.workersLk, func() error {
+			w.preparing.free(w.info.Resources, needRes)
 			sh.workersLk.Unlock()
+			defer sh.workersLk.Lock() // we MUST return locked from this function
 
 			select {
 			case sh.workerFree <- wid:
 			case <-sh.closing:
 			}
-		}()
 
-		err = req.prepare(req.ctx, w.w)
-		if err == nil {
 			err = req.work(req.ctx, w.w)
-		}
 
-		select {
-		case req.ret <- workerResponse{err: err}:
-		case <-req.ctx.Done():
-			log.Warnf("request got cancelled before we could respond")
-		case <-sh.closing:
-			log.Warnf("scheduler closed while sending response")
-		}
+			select {
+			case req.ret <- workerResponse{err: err}:
+			case <-req.ctx.Done():
+				log.Warnf("request got cancelled before we could respond")
+			case <-sh.closing:
+				log.Warnf("scheduler closed while sending response")
+			}
+
+			return nil
+		})
+
+		sh.workersLk.Unlock()
 	}()
 
 	return nil
 }
 
-func (sh *scheduler) canHandleRequest(wid WorkerID, w *workerHandle, req *workerRequest) (bool, error) {
-	needRes, ok := ResourceTable[req.taskType][sh.spt]
-	if !ok {
-		return false, xerrors.Errorf("canHandleRequest: missing ResourceTable entry for %s/%d", req.taskType, sh.spt)
+func (a *activeResources) withResources(spt abi.RegisteredProof, id WorkerID, wr storiface.WorkerResources, r Resources, locker sync.Locker, cb func() error) error {
+	for !canHandleRequest(r, spt, id, wr, a) {
+		if a.cond == nil {
+			a.cond = sync.NewCond(locker)
+		}
+		a.cond.Wait()
 	}
 
-	res := w.info.Resources
+	a.add(wr, r)
+
+	err := cb()
+
+	a.free(wr, r)
+	if a.cond != nil {
+		a.cond.Broadcast()
+	}
+
+	return err
+}
+
+func (a *activeResources) add(wr storiface.WorkerResources, r Resources) {
+	a.gpuUsed = r.CanGPU
+	if r.MultiThread() {
+		a.cpuUse += wr.CPUs
+	} else {
+		a.cpuUse += uint64(r.Threads)
+	}
+
+	a.memUsedMin += r.MinMemory
+	a.memUsedMax += r.MaxMemory
+}
+
+func (a *activeResources) free(wr storiface.WorkerResources, r Resources) {
+	if r.CanGPU {
+		a.gpuUsed = false
+	}
+	if r.MultiThread() {
+		a.cpuUse -= wr.CPUs
+	} else {
+		a.cpuUse -= uint64(r.Threads)
+	}
+
+	a.memUsedMin -= r.MinMemory
+	a.memUsedMax -= r.MaxMemory
+}
+
+func canHandleRequest(needRes Resources, spt abi.RegisteredProof, wid WorkerID, res storiface.WorkerResources, active *activeResources) bool {
 
 	// TODO: dedupe needRes.BaseMinMemory per task type (don't add if that task is already running)
-	minNeedMem := res.MemReserved + w.memUsedMin + needRes.MinMemory + needRes.BaseMinMemory
+	minNeedMem := res.MemReserved + active.memUsedMin + needRes.MinMemory + needRes.BaseMinMemory
 	if minNeedMem > res.MemPhysical {
 		log.Debugf("sched: not scheduling on worker %d; not enough physical memory - need: %dM, have %dM", wid, minNeedMem/mib, res.MemPhysical/mib)
-		return false, nil
+		return false
 	}
 
-	maxNeedMem := res.MemReserved + w.memUsedMax + needRes.MaxMemory + needRes.BaseMinMemory
-	if sh.spt == abi.RegisteredProof_StackedDRG32GiBSeal {
+	maxNeedMem := res.MemReserved + active.memUsedMax + needRes.MaxMemory + needRes.BaseMinMemory
+	if spt == abi.RegisteredProof_StackedDRG32GiBSeal {
 		maxNeedMem += MaxCachingOverhead
 	}
 	if maxNeedMem > res.MemSwap+res.MemPhysical {
 		log.Debugf("sched: not scheduling on worker %d; not enough virtual memory - need: %dM, have %dM", wid, maxNeedMem/mib, (res.MemSwap+res.MemPhysical)/mib)
-		return false, nil
+		return false
 	}
 
 	if needRes.MultiThread() {
-		if w.cpuUse > 0 {
-			log.Debugf("sched: not scheduling on worker %d; multicore process needs %d threads, %d in use, target %d", wid, res.CPUs, w.cpuUse, res.CPUs)
-			return false, nil
+		if active.cpuUse > 0 {
+			log.Debugf("sched: not scheduling on worker %d; multicore process needs %d threads, %d in use, target %d", wid, res.CPUs, active.cpuUse, res.CPUs)
+			return false
 		}
 	}
 
 	if len(res.GPUs) > 0 && needRes.CanGPU {
-		if w.gpuUsed {
+		if active.gpuUsed {
 			log.Debugf("sched: not scheduling on worker %d; GPU in use", wid)
-			return false, nil
+			return false
 		}
 	}
 
-	return true, nil
+	return true
 }
 
 func (sh *scheduler) schedNewWorker(w *workerHandle) {

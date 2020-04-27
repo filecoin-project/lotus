@@ -152,8 +152,10 @@ func (m *Manager) AddWorker(ctx context.Context, w Worker) error {
 	}
 
 	m.sched.newWorkers <- &workerHandle{
-		w:    w,
-		info: info,
+		w:         w,
+		info:      info,
+		preparing: &activeResources{},
+		active:    &activeResources{},
 	}
 	return nil
 }
@@ -170,84 +172,6 @@ func (m *Manager) SectorSize() abi.SectorSize {
 func (m *Manager) ReadPieceFromSealedSector(context.Context, abi.SectorID, ffiwrapper.UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) (io.ReadCloser, error) {
 	panic("implement me")
 }
-
-/*func (m *Manager) getWorkersByPaths(task sealtasks.TaskType, inPaths []stores.StorageInfo) ([]WorkerID, map[WorkerID]stores.StorageInfo) {
-	m.workersLk.Lock()
-	defer m.workersLk.Unlock()
-
-	var workers []WorkerID
-	paths := map[WorkerID]stores.StorageInfo{}
-
-	for i, worker := range m.workers {
-		tt, err := worker.w.TaskTypes(context.TODO())
-		if err != nil {
-			log.Errorf("error getting supported worker task types: %+v", err)
-			continue
-		}
-		if _, ok := tt[task]; !ok {
-			log.Debugf("dropping worker %d; task %s not supported (supports %v)", i, task, tt)
-			continue
-		}
-
-		phs, err := worker.w.Paths(context.TODO())
-		if err != nil {
-			log.Errorf("error getting worker paths: %+v", err)
-			continue
-		}
-
-		// check if the worker has access to the path we selected
-		var st *stores.StorageInfo
-		for _, p := range phs {
-			for _, meta := range inPaths {
-				if p.ID == meta.ID {
-					if st != nil && st.Weight > p.Weight {
-						continue
-					}
-
-					p := meta // copy
-					st = &p
-				}
-			}
-		}
-		if st == nil {
-			log.Debugf("skipping worker %d; doesn't have any of %v", i, inPaths)
-			log.Debugf("skipping worker %d; only has %v", i, phs)
-			continue
-		}
-
-		paths[i] = *st
-		workers = append(workers, i)
-	}
-
-	return workers, paths
-}
-
-func (m *Manager) getWorker(ctx context.Context, taskType sealtasks.TaskType, accept []WorkerID) (Worker, func(), error) {
-	ret := make(chan workerResponse)
-
-	select {
-	case m.schedule <- &workerRequest{
-		taskType: taskType,
-		accept:   accept,
-
-		ctx: ctx.Done(),
-		ret: ret,
-	}:
-	case <-m.closing:
-		return nil, nil, xerrors.New("closing")
-	case <-ctx.Done():
-		return nil, nil, ctx.Err()
-	}
-
-	select {
-	case resp := <-ret:
-		return resp.worker, resp.done, resp.err
-	case <-m.closing:
-		return nil, nil, xerrors.New("closing")
-	case <-ctx.Done():
-		return nil, nil, ctx.Err()
-	}
-}*/
 
 func schedNop(context.Context, Worker) error {
 	return nil
