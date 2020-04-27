@@ -10,7 +10,7 @@ require (
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200218225740-47c639bab663 // indirect
 	github.com/filecoin-project/go-statemachine v0.0.0-20200226041606-2074af6d51d9
 	github.com/filecoin-project/sector-storage v0.0.0-20200411000242-61616264b16d
-	github.com/filecoin-project/specs-actors v1.0.0
+	github.com/filecoin-project/specs-actors v0.2.0
 	github.com/filecoin-project/specs-storage v0.0.0-20200410185809-9fbaaa08f275
 	github.com/ipfs/go-cid v0.0.5
 	github.com/ipfs/go-datastore v0.4.4
