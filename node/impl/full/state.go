@@ -91,7 +91,7 @@ func (a *StateAPI) StateMinerDeadlines(ctx context.Context, m address.Address, t
 	return stmgr.GetMinerDeadlines(ctx, a.StateManager, ts, m)
 }
 
-func (a *StateAPI)  StateMinerProvingDeadline(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*miner.DeadlineInfo, error) {
+func (a *StateAPI) StateMinerProvingDeadline(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*miner.DeadlineInfo, error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
