@@ -44,16 +44,16 @@ func ResolveToKeyAddr(state types.StateTree, cst cbor.IpldStore, addr address.Ad
 
 	act, err := state.GetActor(addr)
 	if err != nil {
-		return address.Undef, aerrors.Newf(exitcode.SysErrInternal, "failed to find actor: %s", addr)
+		return address.Undef, aerrors.Newf(exitcode.SysErrInvalidParameters, "failed to find actor: %s", addr)
 	}
 
 	if act.Code != builtin.AccountActorCodeID {
-		return address.Undef, aerrors.Fatalf("address %s was not for an account actor", addr)
+		return address.Undef, aerrors.Newf(exitcode.SysErrInvalidParameters, "address %s was not for an account actor", addr)
 	}
 
 	var aast account.State
 	if err := cst.Get(context.TODO(), act.Head, &aast); err != nil {
-		return address.Undef, aerrors.Escalate(err, fmt.Sprintf("failed to get account actor state for %s", addr))
+		return address.Undef, aerrors.Absorb(err, exitcode.SysErrInvalidParameters, fmt.Sprintf("failed to get account actor state for %s", addr))
 	}
 
 	return aast.Address, nil
@@ -100,6 +100,7 @@ func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, origin addres
 		gasAvailable:     msg.GasLimit,
 		numActorsCreated: nac,
 		pricelist:        PricelistByEpoch(vm.blockHeight),
+		allowInternal:    true,
 	}
 
 	rt.cst = &cbor.BasicIpldStore{

@@ -13,7 +13,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
-	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -33,25 +32,26 @@ var EmptyObjectCid cid.Cid
 func TryCreateAccountActor(rt *Runtime, addr address.Address) (*types.Actor, aerrors.ActorError) {
 	addrID, err := rt.state.RegisterNewAddress(addr)
 	if err != nil {
-		return nil, aerrors.Absorb(err, exitcode.SysErrInternal, "registering actor address")
+		return nil, aerrors.Escalate(err, "registering actor address")
 	}
 
 	if err := rt.chargeGasSafe(PricelistByEpoch(rt.height).OnCreateActor()); err != nil {
 		return nil, err
 	}
 
-	act, aerr := makeActor(rt.state, addr)
+	act, aerr := makeActor(addr)
 	if aerr != nil {
 		return nil, aerr
 	}
 
 	if err := rt.state.SetActor(addrID, act); err != nil {
-		return nil, aerrors.Absorb(err, exitcode.SysErrInternal, "creating new actor failed")
+		return nil, aerrors.Escalate(err, "creating new actor failed")
 	}
 
 	p, err := actors.SerializeParams(&addr)
 	if err != nil {
-		return nil, aerrors.Absorb(err, exitcode.SysErrInternal, "registering actor address")
+		// TODO: Unsure whether this should be fatal
+		return nil, aerrors.Absorb(err, exitcode.SysErrInvalidParameters, "registering actor address")
 	}
 	// call constructor on account
 
@@ -62,42 +62,42 @@ func TryCreateAccountActor(rt *Runtime, addr address.Address) (*types.Actor, aer
 
 	act, err = rt.state.GetActor(addrID)
 	if err != nil {
-		return nil, aerrors.Absorb(err, exitcode.SysErrInternal, "loading newly created actor failed")
+		return nil, aerrors.Escalate(err, "loading newly created actor failed")
 	}
 	return act, nil
 }
 
-func makeActor(st *state.StateTree, addr address.Address) (*types.Actor, aerrors.ActorError) {
+func makeActor(addr address.Address) (*types.Actor, aerrors.ActorError) {
 	switch addr.Protocol() {
 	case address.BLS:
-		return NewBLSAccountActor()
+		return NewBLSAccountActor(), nil
 	case address.SECP256K1:
-		return NewSecp256k1AccountActor()
+		return NewSecp256k1AccountActor(), nil
 	case address.ID:
-		return nil, aerrors.Newf(1, "no actor with given ID: %s", addr)
+		return nil, aerrors.Newf(exitcode.SysErrInvalidReceiver, "no actor with given ID: %s", addr)
 	case address.Actor:
-		return nil, aerrors.Newf(1, "no such actor: %s", addr)
+		return nil, aerrors.Newf(exitcode.SysErrInvalidReceiver, "no such actor: %s", addr)
 	default:
-		return nil, aerrors.Newf(1, "address has unsupported protocol: %d", addr.Protocol())
+		return nil, aerrors.Newf(exitcode.SysErrInvalidReceiver, "address has unsupported protocol: %d", addr.Protocol())
 	}
 }
 
-func NewBLSAccountActor() (*types.Actor, aerrors.ActorError) {
+func NewBLSAccountActor() *types.Actor {
 	nact := &types.Actor{
 		Code:    builtin.AccountActorCodeID,
 		Balance: types.NewInt(0),
 		Head:    EmptyObjectCid,
 	}
 
-	return nact, nil
+	return nact
 }
 
-func NewSecp256k1AccountActor() (*types.Actor, aerrors.ActorError) {
+func NewSecp256k1AccountActor() *types.Actor {
 	nact := &types.Actor{
 		Code:    builtin.AccountActorCodeID,
 		Balance: types.NewInt(0),
 		Head:    EmptyObjectCid,
 	}
 
-	return nact, nil
+	return nact
 }
