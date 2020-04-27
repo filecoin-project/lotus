@@ -232,7 +232,8 @@ func StagingBlockstore(r repo.LockedRepo) (dtypes.StagingBlockstore, error) {
 func StagingDAG(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.StagingBlockstore, rt routing.Routing, h host.Host) (dtypes.StagingDAG, error) {
 
 	bitswapNetwork := network.NewFromIpfsHost(h, rt)
-	exch := bitswap.New(helpers.LifecycleCtx(mctx, lc), bitswapNetwork, ibs)
+	bitswapOptions := []bitswap.Option{bitswap.ProvideEnabled(false)}
+	exch := bitswap.New(helpers.LifecycleCtx(mctx, lc), bitswapNetwork, ibs, bitswapOptions...)
 
 	bsvc := blockservice.New(ibs, exch)
 	dag := merkledag.NewDAGService(bsvc)
