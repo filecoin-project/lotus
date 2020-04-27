@@ -94,7 +94,7 @@ while true; do
     fi
 
     case \$state in
-      Packing | Unsealed | PreCommitting | Committing | CommitWait | FinalizeSector ) sleep 30 ;;
+      PreCommit1 | PreCommit2 | Packing | Unsealed | PreCommitting | Committing | CommitWait | FinalizeSector ) sleep 30 ;;
       WaitSeed | Proving ) break ;;
       * ) echo "Unknown Sector State: \$state"
           lotus-storage-miner sectors status --log \$current
