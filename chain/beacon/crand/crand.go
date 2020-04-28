@@ -3,6 +3,7 @@ package crand
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/binary"
 	"encoding/hex"
 	"sync"
@@ -16,18 +17,19 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 var log = logging.Logger("crand")
 
 var crandServers = []string{
-	"localhost:17000",
+	"crand.kittyhawk.wtf:443",
 }
 
 var crandPubKey ffi.PublicKey
 
 func init() {
-	_, err := hex.Decode(crandPubKey[:], []byte("98066719FE8C859863FCE1F65AA08D5D96962591C5D5DC36D58D6337562994E16C0C7FE1CC8BF58488C4C315D4A9F0AF"))
+	_, err := hex.Decode(crandPubKey[:], []byte("b035b3a318ae11cab5740e22d550e816c0bf7d0ae6f7c66f961eae7d7f6c2f296baf9ae29ae67c03406029c171dd44dc"))
 	if err != nil {
 		panic(err)
 	}
@@ -65,7 +67,7 @@ func NewCrandBeacon(genesisTs uint64, interval uint64) (*CrandBeacon, error) {
 		panic("what are you doing this cant be zero")
 	}
 
-	conn, err := grpc.Dial(crandServers[0], grpc.WithInsecure())
+	conn, err := grpc.Dial(crandServers[0], grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{})))
 	if err != nil {
 		return nil, xerrors.Errorf("dialing crand: %w", err)
 	}
