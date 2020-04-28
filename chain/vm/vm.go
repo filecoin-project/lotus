@@ -101,6 +101,7 @@ func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, origin addres
 		numActorsCreated: nac,
 		pricelist:        PricelistByEpoch(vm.blockHeight),
 		allowInternal:    true,
+		callerValidated:  false,
 	}
 
 	rt.cst = &cbor.BasicIpldStore{
