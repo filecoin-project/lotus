@@ -27,7 +27,7 @@ func (s *taskSelector) Ok(ctx context.Context, task sealtasks.TaskType, whnd *wo
 	return supported, nil
 }
 
-func (s *taskSelector) Cmp(ctx context.Context, task sealtasks.TaskType, a, b *workerHandle) (bool, error) {
+func (s *taskSelector) Cmp(ctx context.Context, _ sealtasks.TaskType, a, b *workerHandle) (bool, error) {
 	atasks, err := a.w.TaskTypes(ctx)
 	if err != nil {
 		return false, xerrors.Errorf("getting supported worker task types: %w", err)
@@ -40,7 +40,7 @@ func (s *taskSelector) Cmp(ctx context.Context, task sealtasks.TaskType, a, b *w
 		return len(atasks) < len(btasks), nil // prefer workers which can do less
 	}
 
-	return a.info.Hostname > a.info.Hostname, nil // TODO: Better fallback strategy
+	return a.info.Hostname > b.info.Hostname, nil // TODO: Better fallback strategy
 }
 
 var _ WorkerSelector = &allocSelector{}
