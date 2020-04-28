@@ -17,6 +17,7 @@ func main() {
 	local := []*cli.Command{
 		base32Cmd,
 		base16Cmd,
+		bitFieldCmd,
 		keyinfoCmd,
 		peerkeyCmd,
 		noncefix,
