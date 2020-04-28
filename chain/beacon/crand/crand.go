@@ -66,6 +66,9 @@ func NewCrandBeacon(genesisTs uint64, interval uint64) (*CrandBeacon, error) {
 	}
 
 	conn, err := grpc.Dial(crandServers[0], grpc.WithInsecure())
+	if err != nil {
+		return nil, xerrors.Errorf("dialing crand: %w", err)
+	}
 
 	db := &CrandBeacon{
 		client:     pb.NewCrandClient(conn),
