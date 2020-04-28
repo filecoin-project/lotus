@@ -14,6 +14,7 @@
 /lotuspond/front/build
 /cmd/lotus-townhall/townhall/node_modules
 /cmd/lotus-townhall/townhall/build
+/cmd/crand/crand
 extern/filecoin-ffi/rust/target
 **/*.a
 **/*.pc

@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package crand;
+option go_package = "github.com/filecoin-project/lotus/cmd/crand/pb";
+
+service Crand {
+  rpc GetRandomness (RandomnessRequest) returns (RandomnessReply) {}
+  rpc GetInfo (
+}
+
+message RandomnessRequest {
+  uint64 round = 1;
+}
+
+// The response message containing randomness
+message RandomnessReply {
+  bytes randomness = 1;
+}
+
+message InfoRequest {
+}
+message InfoReply {
+  bytes pubkey
+  uint64 timestamp
+}
