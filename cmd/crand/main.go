@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net"
 	"os"
@@ -15,6 +16,7 @@ import (
 	cli "github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 var log = logging.Logger("crand")
@@ -76,6 +78,8 @@ func setupConn(addr string, insecure bool) (pb.CrandClient, func() error, error)
 	flags := []grpc.DialOption{grpc.WithBlock()}
 	if insecure {
 		flags = append(flags, grpc.WithInsecure())
+	} else {
+		flags = append(flags, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{})))
 	}
 	conn, err := grpc.Dial(addr, flags...)
 	if err != nil {
