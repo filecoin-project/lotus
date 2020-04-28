@@ -145,7 +145,6 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 			{
 				params := &market.VerifyDealsOnSectorProveCommitParams{
 					DealIDs:      []abi.DealID{dealIDs[pi]},
-					SectorSize:   m.SectorSize,
 					SectorExpiry: preseal.Deal.EndEpoch,
 				}
 
