@@ -54,9 +54,6 @@ const WRatioDen = 2
 // Proofs
 
 // Epochs
-const FallbackPoStConfidence = 6
-
-// Epochs
 const SealRandomnessLookback = Finality
 
 // Epochs
