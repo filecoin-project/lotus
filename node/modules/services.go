@@ -17,7 +17,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/beacon"
-	"github.com/filecoin-project/lotus/chain/beacon/drand"
+	"github.com/filecoin-project/lotus/chain/beacon/crand"
 	"github.com/filecoin-project/lotus/chain/blocksync"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -125,5 +125,5 @@ func RandomBeacon(cs *store.ChainStore, _ dtypes.AfterGenesisSet) (beacon.Random
 	}
 
 	//return beacon.NewMockBeacon(build.BlockDelay * time.Second)
-	return drand.NewDrandBeacon(gen.Timestamp, build.BlockDelay)
+	return crand.NewCrandBeacon(gen.Timestamp, build.BlockDelay)
 }

@@ -36,3 +36,4 @@ build/paramfetch.sh
 bin/ipget
 bin/tmp/*
 .idea
+cmd/crand/params.json

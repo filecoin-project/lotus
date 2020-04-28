@@ -5,7 +5,7 @@ option go_package = "github.com/filecoin-project/lotus/cmd/crand/pb";
 
 service Crand {
   rpc GetRandomness (RandomnessRequest) returns (RandomnessReply) {}
-  rpc GetInfo (
+  rpc GetInfo (InfoRequest) returns (InfoReply) {}
 }
 
 message RandomnessRequest {
@@ -20,6 +20,7 @@ message RandomnessReply {
 message InfoRequest {
 }
 message InfoReply {
-  bytes pubkey
-  uint64 timestamp
+  bytes pubkey = 1;
+  int64 genesis_ts = 2;
+  int64 round = 3;
 }

@@ -13,6 +13,7 @@ import (
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	pb "github.com/filecoin-project/lotus/cmd/crand/pb"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
+	lru "github.com/hashicorp/golang-lru"
 	logging "github.com/ipfs/go-log/v2"
 	cli "github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -24,7 +25,10 @@ import (
 var log = logging.Logger("crand")
 
 type server struct {
-	p Params
+	p   Params
+	pub ffi.PublicKey
+
+	cache *lru.ARCCache
 	pb.UnimplementedCrandServer
 }
 
@@ -33,12 +37,21 @@ func (s *server) GetRandomness(_ context.Context, rq *pb.RandomnessRequest) (*pb
 	if time.Since(s.p.GenesisTime.Add(s.p.Round.D()*time.Duration(rnd))) < 0 {
 		return nil, status.Errorf(codes.Unavailable, "randomenss is part of the future")
 	}
+	if v, ok := s.cache.Get(rnd); ok {
+		return &pb.RandomnessReply{Randomness: v.([]byte)}, nil
+	}
 
 	buf := make([]byte, 8)
 	binary.BigEndian.PutUint64(buf, rq.Round)
 
+	log.Infow("signing", "round", rnd)
 	sig := ffi.PrivateKeySign(s.p.Priv, buf)
+	s.cache.Add(rnd, sig[:])
 	return &pb.RandomnessReply{Randomness: sig[:]}, nil
+}
+
+func (s *server) GetInfo(_ context.Context, _ *pb.InfoRequest) (*pb.InfoReply, error) {
+	return &pb.InfoReply{Pubkey: s.pub[:], GenesisTs: s.p.GenesisTime.Unix(), Round: int64(s.p.Round)}, nil
 }
 
 type JDuration time.Duration
@@ -115,6 +128,10 @@ var serve = &cli.Command{
 			Name:  "params",
 			Value: "params.json",
 		},
+		&cli.IntFlag{
+			Name:  "cache-size",
+			Value: 10 << 10,
+		},
 	},
 
 	Action: func(cctx *cli.Context) error {
@@ -131,19 +148,39 @@ var serve = &cli.Command{
 			return err
 		}
 		pub := ffi.PrivateKeyPublicKey(params.Priv)
-		fmt.Printf("pubkey: %x\n", pub)
-		fmt.Printf("genesis: %s\n", params.GenesisTime)
-		fmt.Printf("round: %s\n", params.Round.D())
+		fmt.Printf("Pubkey: %x\n", pub)
+		fmt.Printf("Genesis: %s\n", params.GenesisTime)
+		fmt.Printf("Round: %s\n", params.Round.D())
+		cache, err := lru.NewARC(cctx.Int("cache-size"))
+		if err != nil {
+			return xerrors.Errorf("could not create cache with size %d : %w", cctx.Int("cache-size"), err)
+		}
 
 		list, err := net.Listen("tcp", cctx.String("listen"))
 		if err != nil {
 			xerrors.Errorf("failed to listen: %v", err)
 		}
+		defer list.Close()
 		s := grpc.NewServer()
-		pb.RegisterCrandServer(s, &server{p: *params})
+
+		pb.RegisterCrandServer(s, &server{p: *params, pub: pub, cache: cache})
 		fmt.Printf("Runing server\n")
 		return s.Serve(list)
 	},
+}
+
+func setupConn(addr string, insecure bool) (pb.CrandClient, func() error, error) {
+	flags := []grpc.DialOption{grpc.WithBlock()}
+	if insecure {
+		flags = append(flags, grpc.WithInsecure())
+	}
+	conn, err := grpc.Dial(addr, flags...)
+	if err != nil {
+		return nil, nil, xerrors.Errorf("did not connect: %+v", err)
+	}
+	c := pb.NewCrandClient(conn)
+
+	return c, conn.Close, nil
 }
 
 var client = &cli.Command{
@@ -165,17 +202,34 @@ var client = &cli.Command{
 			Usage: "index of randomness to request",
 		},
 	},
+	Subcommands: []*cli.Command{
+		{
+			Name:        "info",
+			Description: "get crand info",
+			Action: func(cctx *cli.Context) error {
+				c, cls, err := setupConn(cctx.String("addr"), cctx.Bool("insecure"))
+				if err != nil {
+					return xerrors.Errorf("seting up connection: %w", err)
+				}
+				defer cls()
+
+				ctx, cancel := context.WithTimeout(cctx.Context, time.Second)
+				defer cancel()
+				r, err := c.GetInfo(ctx, &pb.InfoRequest{})
+
+				fmt.Printf("Pubkey: %x\nGenesis: %s\nRound: %s\n", r.GetPubkey(),
+					time.Unix(r.GetGenesisTs(), 0), time.Duration(r.GetRound()))
+
+				return nil
+			},
+		},
+	},
 	Action: func(cctx *cli.Context) error {
-		flags := []grpc.DialOption{grpc.WithBlock()}
-		if cctx.Bool("insecure") {
-			flags = append(flags, grpc.WithInsecure())
-		}
-		conn, err := grpc.Dial(cctx.String("addr"), flags...)
+		c, cls, err := setupConn(cctx.String("addr"), cctx.Bool("insecure"))
 		if err != nil {
-			log.Fatalf("did not connect: %v", err)
+			return xerrors.Errorf("seting up connection: %w", err)
 		}
-		defer conn.Close()
-		c := pb.NewCrandClient(conn)
+		defer cls()
 
 		ctx, cancel := context.WithTimeout(cctx.Context, time.Second)
 		defer cancel()
@@ -183,7 +237,7 @@ var client = &cli.Command{
 		if err != nil {
 			log.Fatalf("could not get randomess: %v", err)
 		}
-		fmt.Printf("Randomness: %X", r.GetRandomness())
+		fmt.Printf("Randomness: %X\n", r.GetRandomness())
 		return nil
 	},
 }
