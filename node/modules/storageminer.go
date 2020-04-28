@@ -36,7 +36,7 @@ import (
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/beacon"
-	"github.com/filecoin-project/lotus/chain/beacon/drand"
+	"github.com/filecoin-project/lotus/chain/beacon/crand"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/markets/retrievaladapter"
@@ -375,5 +375,5 @@ func MinerRandomBeacon(api lapi.FullNode) (beacon.RandomBeacon, error) {
 		return nil, err
 	}
 
-	return drand.NewDrandBeacon(gents.Blocks()[0].Timestamp, build.BlockDelay)
+	return crand.NewCrandBeacon(gents.Blocks()[0].Timestamp, build.BlockDelay)
 }
