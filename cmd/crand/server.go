@@ -31,7 +31,7 @@ func (s *server) GetRandomness(_ context.Context, rq *pb.RandomnessRequest) (*pb
 		return nil, status.Errorf(codes.Unavailable, "randomenss is part of the future")
 	}
 	if v, ok := s.cache.Get(reqRound); ok {
-		return &pb.RandomnessReply{Randomness: v.([]byte)}, nil
+		return &pb.RandomnessReply{Randomness: v.([]byte), Round: reqRound}, nil
 	}
 
 	buf := make([]byte, 8)
