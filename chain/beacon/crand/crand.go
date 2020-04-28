@@ -112,7 +112,10 @@ func (db *CrandBeacon) Entry(ctx context.Context, round uint64) <-chan beacon.Re
 	out := make(chan beacon.Response, 1)
 
 	go func() {
+		start := time.Now()
+		log.Infof("fetching crand entry: %d", round)
 		resp, err := db.client.GetRandomness(ctx, &pb.RandomnessRequest{Round: round})
+		log.Infof("fetched crand entry duration: %s", time.Since(start))
 
 		var br beacon.Response
 		if err != nil {
@@ -172,6 +175,7 @@ func (db *CrandBeacon) MaxBeaconRoundForEpoch(filEpoch abi.ChainEpoch, prevEntry
 	// TODO: sometimes the genesis time for filecoin is zero and this goes negative
 	latestTs := ((uint64(filEpoch) * db.filRoundTime) + db.filGenTime) - db.filRoundTime
 	dround := (latestTs - db.drandGenTime) / uint64(db.interval/time.Second)
+	log.Infof("fil epoch %d, crand round: %d", filEpoch, dround)
 	return dround
 }
 
