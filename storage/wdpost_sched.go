@@ -173,6 +173,7 @@ func (s *WindowPoStScheduler) update(ctx context.Context, new *types.TipSet) err
 	if deadlineEquals(s.activeDeadline, di) {
 		return nil // already working on this deadline
 	}
+
 	if !di.PeriodStarted() {
 		return nil // not proving anything yet
 	}

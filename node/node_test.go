@@ -13,7 +13,7 @@ import (
 	"github.com/filecoin-project/lotus/storage/mockstorage"
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
 
-	"github.com/filecoin-project/go-fil-markets/storedcounter"
+	"github.com/filecoin-project/go-storedcounter"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/crypto"
