@@ -172,6 +172,10 @@ var bitFieldStatCmd = &cli.Command{
 			}
 		}
 
+		if _, err := rle.Count(); err != nil { // check overflows
+			fmt.Println("Error: ", err)
+		}
+
 		fmt.Printf("Decoded length: %d bits\n", ones+zeros)
 		fmt.Printf("\tOnes:  %d\n", ones)
 		fmt.Printf("\tZeros: %d\n", zeros)
