@@ -21,20 +21,25 @@ type server struct {
 }
 
 func (s *server) GetRandomness(_ context.Context, rq *pb.RandomnessRequest) (*pb.RandomnessReply, error) {
-	rnd := rq.Round
-	if uint64(time.Since(s.p.GenesisTime)/s.p.Round.D()) < rnd {
+	reqRound := rq.Round
+	curRound := uint64(time.Since(s.p.GenesisTime)/s.p.Round.D()) + 1
+	if reqRound == 0 {
+		reqRound = curRound
+	}
+	log.Infof("current round: %d, reqRound: %d", curRound, reqRound)
+	if reqRound > curRound {
 		return nil, status.Errorf(codes.Unavailable, "randomenss is part of the future")
 	}
-	if v, ok := s.cache.Get(rnd); ok {
+	if v, ok := s.cache.Get(reqRound); ok {
 		return &pb.RandomnessReply{Randomness: v.([]byte)}, nil
 	}
 
 	buf := make([]byte, 8)
-	binary.BigEndian.PutUint64(buf, rq.Round)
+	binary.BigEndian.PutUint64(buf, reqRound)
 
-	log.Infow("signing", "round", rnd)
+	log.Infow("signing", "round", reqRound)
 	sig := ffi.PrivateKeySign(s.p.Priv, buf)
-	s.cache.Add(rnd, sig[:])
+	s.cache.Add(reqRound, sig[:])
 	return &pb.RandomnessReply{Randomness: sig[:]}, nil
 }
 
