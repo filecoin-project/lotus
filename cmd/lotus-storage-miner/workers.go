@@ -57,11 +57,7 @@ var workersListCmd = &cli.Command{
 
 			fmt.Printf("Worker %d, host %s\n", stat.id, stat.Info.Hostname)
 
-			if stat.CpuUse != -1 {
-				fmt.Printf("\tCPU: %d core(s) in use\n", stat.CpuUse)
-			} else {
-				fmt.Printf("\tCPU: all cores in use\n")
-			}
+			fmt.Printf("\tCPU: %d core(s) in use\n", stat.CpuUse)
 
 			for _, gpu := range stat.Info.Resources.GPUs {
 				fmt.Printf("\tGPU: %s, %sused\n", gpu, gpuUse)
