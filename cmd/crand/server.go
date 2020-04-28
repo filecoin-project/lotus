@@ -40,7 +40,7 @@ func (s *server) GetRandomness(_ context.Context, rq *pb.RandomnessRequest) (*pb
 	log.Infow("signing", "round", reqRound)
 	sig := ffi.PrivateKeySign(s.p.Priv, buf)
 	s.cache.Add(reqRound, sig[:])
-	return &pb.RandomnessReply{Randomness: sig[:]}, nil
+	return &pb.RandomnessReply{Randomness: sig[:], Round: reqRound}, nil
 }
 
 func (s *server) GetInfo(_ context.Context, _ *pb.InfoRequest) (*pb.InfoReply, error) {

@@ -15,6 +15,7 @@ message RandomnessRequest {
 // The response message containing randomness
 message RandomnessReply {
   bytes randomness = 1;
+  uint64 round = 2;
 }
 
 message InfoRequest {

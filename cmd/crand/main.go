@@ -147,7 +147,8 @@ var client = &cli.Command{
 		if err != nil {
 			log.Fatalf("could not get randomess: %v", err)
 		}
-		fmt.Printf("Randomness: %X\n", r.GetRandomness())
+
+		fmt.Printf("Round: %d\nRandomness: %X\n", r.GetRound(), r.GetRandomness())
 		return nil
 	},
 }
