@@ -116,7 +116,7 @@ func (db *CrandBeacon) Entry(ctx context.Context, round uint64) <-chan beacon.Re
 
 		var br beacon.Response
 		if err != nil {
-			br.Err = err
+			br.Err = xerrors.Errorf("getting randomness for round %d: %w", round, err)
 		} else {
 			br.Entry.Round = resp.GetRound()
 			br.Entry.Data = resp.GetRandomness()
