@@ -23,7 +23,7 @@ import (
 var log = logging.Logger("drand")
 
 var drandServers = []string{
-	"drand-test1.nikkolasg.xyz:5001",
+	"drand-test3.nikkolasg.xyz:5003",
 }
 
 var drandPubKey *dkey.DistPublic
