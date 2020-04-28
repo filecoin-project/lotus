@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
@@ -110,6 +109,9 @@ func (rs *Runtime) Get(c cid.Cid, o vmr.CBORUnmarshaler) bool {
 	if err := rs.cst.Get(context.TODO(), c, o); err != nil {
 		var nfe notFoundErr
 		if xerrors.As(err, &nfe) && nfe.IsNotFound() {
+			if xerrors.As(err, new(cbor.SerializationError)) {
+				panic(aerrors.Newf(exitcode.ErrSerialization, "failed to unmarshal cbor object %s", err))
+			}
 			return false
 		}
 
@@ -121,6 +123,9 @@ func (rs *Runtime) Get(c cid.Cid, o vmr.CBORUnmarshaler) bool {
 func (rs *Runtime) Put(x vmr.CBORMarshaler) cid.Cid {
 	c, err := rs.cst.Put(context.TODO(), x)
 	if err != nil {
+		if xerrors.As(err, new(cbor.SerializationError)) {
+			panic(aerrors.Newf(exitcode.ErrSerialization, "failed to marshal cbor object %s", err))
+		}
 		panic(aerrors.Fatalf("failed to put cbor object: %s", err))
 	}
 	return c
