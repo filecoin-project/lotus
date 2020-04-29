@@ -6,3 +6,4 @@ export TRUST_PARAMS=1
 
 go run -tags=debug ./cmd/lotus wallet import ~/.genesis-sectors/pre-seal-t01000.key
 go run -tags=debug ./cmd/lotus-storage-miner init --actor=t01000 --genesis-miner --pre-sealed-sectors=~/.genesis-sectors --pre-sealed-metadata=~/.genesis-sectors/pre-seal-t01000.json
+go run -tags=debug ./cmd/lotus-storage-miner run --nosync
