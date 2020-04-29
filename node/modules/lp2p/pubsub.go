@@ -77,8 +77,8 @@ func GossipSub(pubsubOptions ...PubsubOpt) interface{} {
 					// TODO we want to whitelist IPv6 /64s that belong to datacenters etc
 					// IPColocationFactorWhitelist: map[string]struct{}{},
 
-					DecayInterval: time.Second,
-					DecayToZero:   0.01,
+					DecayInterval: pubsub.DefaultDecayInterval,
+					DecayToZero:   pubsub.DefaultDecayToZero,
 
 					// this retains non-positive scores for 6 hours
 					RetainScore: 6 * time.Hour,
@@ -95,13 +95,13 @@ func GossipSub(pubsubOptions ...PubsubOpt) interface{} {
 							TimeInMeshCap:     1,
 
 							// deliveries decay after 1 hour, cap at 100 blocks
-							FirstMessageDeliveriesWeight: 25,      // max value is 2500
-							FirstMessageDeliveriesDecay:  0.99972, // 1 hour
-							FirstMessageDeliveriesCap:    100,     // 100 blocks
+							FirstMessageDeliveriesWeight: 25, // max value is 2500
+							FirstMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(time.Hour),
+							FirstMessageDeliveriesCap:    100, // 100 blocks
 
 							// deliveries decay after 1 hour, penalty activates at 1 minute and expects ~0.4 blocks
-							MeshMessageDeliveriesWeight:     -576,    // max penalty is -100
-							MeshMessageDeliveriesDecay:      0.99972, // 1 hour
+							MeshMessageDeliveriesWeight:     -576, // max penalty is -100
+							MeshMessageDeliveriesDecay:      pubsub.ScoreParameterDecay(time.Hour),
 							MeshMessageDeliveriesCap:        100,     // 100 blocks
 							MeshMessageDeliveriesThreshold:  0.41666, // 5 / 12 blocks/min
 							MeshMessageDeliveriesWindow:     10 * time.Millisecond,
@@ -109,11 +109,11 @@ func GossipSub(pubsubOptions ...PubsubOpt) interface{} {
 
 							// decays after 15 min
 							MeshFailurePenaltyWeight: -576,
-							MeshFailurePenaltyDecay:  0.99888,
+							MeshFailurePenaltyDecay:  pubsub.ScoreParameterDecay(15 * time.Minute),
 
 							// invalid messages decay after 1 hour
 							InvalidMessageDeliveriesWeight: -1000,
-							InvalidMessageDeliveriesDecay:  0.99972,
+							InvalidMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(time.Hour),
 						},
 						build.MessagesTopic(nn): {
 							// expected > 1 tx/second
@@ -126,12 +126,12 @@ func GossipSub(pubsubOptions ...PubsubOpt) interface{} {
 
 							// deliveries decay after 10min, cap at 1000 tx
 							FirstMessageDeliveriesWeight: 1, // max value is 1000
-							FirstMessageDeliveriesDecay:  0.99833,
+							FirstMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(10 * time.Minute),
 							FirstMessageDeliveriesCap:    1000,
 
 							// deliveries decay after 10min, penalty activates at 1 min and expects 5 txs
 							MeshMessageDeliveriesWeight:     -4, // max penalty is -100
-							MeshMessageDeliveriesDecay:      0.99833,
+							MeshMessageDeliveriesDecay:      pubsub.ScoreParameterDecay(10 * time.Minute),
 							MeshMessageDeliveriesCap:        1000,
 							MeshMessageDeliveriesThreshold:  5,
 							MeshMessageDeliveriesWindow:     10 * time.Millisecond,
@@ -139,11 +139,11 @@ func GossipSub(pubsubOptions ...PubsubOpt) interface{} {
 
 							// decays after 5min
 							MeshFailurePenaltyWeight: -4,
-							MeshFailurePenaltyDecay:  0.99666,
+							MeshFailurePenaltyDecay:  pubsub.ScoreParameterDecay(5 * time.Minute),
 
 							// invalid messages decay after 1 hour
 							InvalidMessageDeliveriesWeight: -1000,
-							InvalidMessageDeliveriesDecay:  0.99972,
+							InvalidMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(time.Hour),
 						},
 					},
 				},
