@@ -11,14 +11,16 @@ import (
 	"time"
 
 	rice "github.com/GeertJohan/go.rice"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
+
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
@@ -281,11 +283,18 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Infof("%s: push funds %s", owner, smsg.Cid())
 
+	spt, err := ffiwrapper.SealProofTypeFromSectorSize(abi.SectorSize(ssize))
+	if err != nil {
+		w.WriteHeader(400)
+		w.Write([]byte("sealprooftype: " + err.Error()))
+		return
+	}
+
 	params, err := actors.SerializeParams(&power.CreateMinerParams{
-		Owner:      owner,
-		Worker:     owner,
-		SectorSize: abi.SectorSize(ssize),
-		Peer:       h.defaultMinerPeer,
+		Owner:         owner,
+		Worker:        owner,
+		SealProofType: spt,
+		Peer:          h.defaultMinerPeer,
 	})
 	if err != nil {
 		w.WriteHeader(400)
