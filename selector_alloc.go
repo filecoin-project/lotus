@@ -53,7 +53,7 @@ func (s *allocSelector) Ok(ctx context.Context, task sealtasks.TaskType, whnd *w
 }
 
 func (s *allocSelector) Cmp(ctx context.Context, task sealtasks.TaskType, a, b *workerHandle) (bool, error) {
-	return a.info.Hostname > b.info.Hostname, nil // TODO: Better strategy
+	return a.active.utilization(a.info.Resources) < b.active.utilization(b.info.Resources), nil
 }
 
 var _ WorkerSelector = &allocSelector{}

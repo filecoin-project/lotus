@@ -40,7 +40,7 @@ func (s *taskSelector) Cmp(ctx context.Context, _ sealtasks.TaskType, a, b *work
 		return len(atasks) < len(btasks), nil // prefer workers which can do less
 	}
 
-	return a.info.Hostname > b.info.Hostname, nil // TODO: Better fallback strategy
+	return a.active.utilization(a.info.Resources) < b.active.utilization(b.info.Resources), nil
 }
 
 var _ WorkerSelector = &allocSelector{}

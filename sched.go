@@ -194,6 +194,8 @@ func (sh *scheduler) maybeSchedRequest(req *workerRequest) (bool, error) {
 	tried := 0
 	var acceptable []WorkerID
 
+	needRes := ResourceTable[req.taskType][sh.spt]
+
 	for wid, worker := range sh.workers {
 		ok, err := req.sel.Ok(req.ctx, req.taskType, worker)
 		if err != nil {
@@ -205,7 +207,6 @@ func (sh *scheduler) maybeSchedRequest(req *workerRequest) (bool, error) {
 		}
 		tried++
 
-		needRes := ResourceTable[req.taskType][sh.spt]
 		if !canHandleRequest(needRes, sh.spt, wid, worker.info.Resources, worker.preparing) {
 			continue
 		}
@@ -382,6 +383,25 @@ func canHandleRequest(needRes Resources, spt abi.RegisteredProof, wid WorkerID, 
 	}
 
 	return true
+}
+
+func (a *activeResources) utilization(wr storiface.WorkerResources) float64 {
+	var max float64
+
+	cpu := float64(a.cpuUse) / float64(wr.CPUs)
+	max = cpu
+
+	memMin := float64(a.memUsedMin + wr.MemReserved) / float64(wr.MemPhysical)
+	if memMin > max {
+		max = memMin
+	}
+
+	memMax := float64(a.memUsedMax + wr.MemReserved) / float64(wr.MemPhysical + wr.MemSwap)
+	if memMax > max {
+		max = memMax
+	}
+
+	return max
 }
 
 func (sh *scheduler) schedNewWorker(w *workerHandle) {
