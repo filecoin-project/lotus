@@ -87,7 +87,7 @@ func GossipSub(pubsubOptions ...PubsubOpt) interface{} {
 					Topics: map[string]*pubsub.TopicScoreParams{
 						build.BlocksTopic(nn): {
 							// expected 10 blocks/min
-							TopicWeight: 0.1, // max is 250, max mesh penalty is -10, single invalid message is -100
+							TopicWeight: 0.1, // max is 50, max mesh penalty is -10, single invalid message is -100
 
 							// 1 tick per second, maxes at 1 after 1 hour
 							TimeInMeshWeight:  0.00027, // ~1/3600
@@ -95,15 +95,16 @@ func GossipSub(pubsubOptions ...PubsubOpt) interface{} {
 							TimeInMeshCap:     1,
 
 							// deliveries decay after 1 hour, cap at 100 blocks
-							FirstMessageDeliveriesWeight: 25, // max value is 2500
+							FirstMessageDeliveriesWeight: 5, // max value is 500
 							FirstMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(time.Hour),
-							FirstMessageDeliveriesCap:    100, // 100 blocks
+							FirstMessageDeliveriesCap:    100, // 100 blocks in an hour
 
-							// deliveries decay after 1 hour, penalty activates at 1 minute and expects ~0.4 blocks
+							// tracks deliveries in the last minute
+							// penalty activates at 1 minute and expects ~0.4 blocks
 							MeshMessageDeliveriesWeight:     -576, // max penalty is -100
-							MeshMessageDeliveriesDecay:      pubsub.ScoreParameterDecay(time.Hour),
-							MeshMessageDeliveriesCap:        100,     // 100 blocks
-							MeshMessageDeliveriesThreshold:  0.41666, // 5 / 12 blocks/min
+							MeshMessageDeliveriesDecay:      pubsub.ScoreParameterDecay(time.Minute),
+							MeshMessageDeliveriesCap:        10,      // 10 blocks in a minute
+							MeshMessageDeliveriesThreshold:  0.41666, // 10/12/2 blocks/min
 							MeshMessageDeliveriesWindow:     10 * time.Millisecond,
 							MeshMessageDeliveriesActivation: time.Minute,
 
@@ -117,7 +118,7 @@ func GossipSub(pubsubOptions ...PubsubOpt) interface{} {
 						},
 						build.MessagesTopic(nn): {
 							// expected > 1 tx/second
-							TopicWeight: 0.05, // max is 50, max mesh penalty is -5, single invalid message is -50
+							TopicWeight: 0.05, // max is 25, max mesh penalty is -5, single invalid message is -100
 
 							// 1 tick per second, maxes at 1 hour
 							TimeInMeshWeight:  0.0002778, // ~1/3600
@@ -125,24 +126,25 @@ func GossipSub(pubsubOptions ...PubsubOpt) interface{} {
 							TimeInMeshCap:     1,
 
 							// deliveries decay after 10min, cap at 1000 tx
-							FirstMessageDeliveriesWeight: 1, // max value is 1000
+							FirstMessageDeliveriesWeight: 0.5, // max value is 500
 							FirstMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(10 * time.Minute),
 							FirstMessageDeliveriesCap:    1000,
 
-							// deliveries decay after 10min, penalty activates at 1 min and expects 5 txs
-							MeshMessageDeliveriesWeight:     -4, // max penalty is -100
-							MeshMessageDeliveriesDecay:      pubsub.ScoreParameterDecay(10 * time.Minute),
-							MeshMessageDeliveriesCap:        1000,
-							MeshMessageDeliveriesThreshold:  5,
+							// tracks deliveries in the last minute
+							// penalty activates at 1 min and expects 2.5 txs
+							MeshMessageDeliveriesWeight:     -16, // max penalty is -100
+							MeshMessageDeliveriesDecay:      pubsub.ScoreParameterDecay(time.Minute),
+							MeshMessageDeliveriesCap:        100, // 100 txs in a minute
+							MeshMessageDeliveriesThreshold:  2.5, // 60/12/2 txs/minute
 							MeshMessageDeliveriesWindow:     10 * time.Millisecond,
 							MeshMessageDeliveriesActivation: time.Minute,
 
 							// decays after 5min
-							MeshFailurePenaltyWeight: -4,
+							MeshFailurePenaltyWeight: -16,
 							MeshFailurePenaltyDecay:  pubsub.ScoreParameterDecay(5 * time.Minute),
 
 							// invalid messages decay after 1 hour
-							InvalidMessageDeliveriesWeight: -1000,
+							InvalidMessageDeliveriesWeight: -2000,
 							InvalidMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(time.Hour),
 						},
 					},
