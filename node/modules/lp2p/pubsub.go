@@ -85,7 +85,7 @@ func GossipSub(pubsubOptions ...PubsubOpt) interface{} {
 
 					// topic parameters
 					Topics: map[string]*pubsub.TopicScoreParams{
-						build.BlocksTopic(nn): &pubsub.TopicScoreParams{
+						build.BlocksTopic(nn): {
 							// expected 10 blocks/min
 							TopicWeight: 0.1, // max is 250, max mesh penalty is -10, single invalid message is -100
 
@@ -115,7 +115,7 @@ func GossipSub(pubsubOptions ...PubsubOpt) interface{} {
 							InvalidMessageDeliveriesWeight: -1000,
 							InvalidMessageDeliveriesDecay:  0.99972,
 						},
-						build.MessagesTopic(nn): &pubsub.TopicScoreParams{
+						build.MessagesTopic(nn): {
 							// expected > 1 tx/second
 							TopicWeight: 0.05, // max is 50, max mesh penalty is -5, single invalid message is -50
 
