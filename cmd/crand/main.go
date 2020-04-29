@@ -5,15 +5,20 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net"
+	"net/http"
+	"net/http/pprof"
 	"os"
 	"time"
 
+	"contrib.go.opencensus.io/exporter/prometheus"
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	pb "github.com/filecoin-project/lotus/cmd/crand/pb"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
 	lru "github.com/hashicorp/golang-lru"
 	logging "github.com/ipfs/go-log/v2"
 	cli "github.com/urfave/cli/v2"
+	"go.opencensus.io/plugin/ocgrpc"
+	"go.opencensus.io/stats/view"
 	"golang.org/x/xerrors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -37,6 +42,10 @@ var serve = &cli.Command{
 			Name:  "cache-size",
 			Value: 10 << 10,
 		},
+		&cli.StringFlag{
+			Name:  "metrics",
+			Value: "localhost:17001",
+		},
 	},
 
 	Action: func(cctx *cli.Context) error {
@@ -56,6 +65,38 @@ var serve = &cli.Command{
 		fmt.Printf("Pubkey: %x\n", pub)
 		fmt.Printf("Genesis: %s\n", params.GenesisTime)
 		fmt.Printf("Round: %s\n", params.Round.D())
+
+		if err := view.Register(ocgrpc.DefaultServerViews...); err != nil {
+			log.Fatalf("Failed to register ocgrpc server views: %v", err)
+		}
+		s := grpc.NewServer(grpc.StatsHandler(&ocgrpc.ServerHandler{}))
+
+		exporter, err := prometheus.NewExporter(prometheus.Options{
+			Namespace: "crand",
+		})
+		if err != nil {
+			return xerrors.Errorf("could not create prometheus exporter: %w", err)
+		}
+		mux := http.NewServeMux()
+		mux.Handle("/debug/metrics", exporter)
+		mux.HandleFunc("/debug/pprof/", pprof.Index)
+		mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+		mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+		mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+		mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+
+		mSrv := &http.Server{
+			Addr:    cctx.String("metrics"),
+			Handler: mux,
+		}
+
+		go func() {
+			err := mSrv.ListenAndServe()
+			if err != nil {
+				log.Errorf("serving metrics: %+v", err)
+			}
+		}()
+
 		cache, err := lru.NewARC(cctx.Int("cache-size"))
 		if err != nil {
 			return xerrors.Errorf("could not create cache with size %d : %w", cctx.Int("cache-size"), err)
@@ -66,7 +107,6 @@ var serve = &cli.Command{
 			return xerrors.Errorf("failed to listen: %v", err)
 		}
 		defer list.Close()
-		s := grpc.NewServer()
 
 		pb.RegisterCrandServer(s, &server{p: *params, pub: pub, cache: cache})
 		fmt.Printf("Running server\n")
