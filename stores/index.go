@@ -277,11 +277,9 @@ func (i *Index) StorageBestAlloc(ctx context.Context, allocate SectorFileType, s
 
 	for _, p := range i.stores {
 		if sealing && !p.info.CanSeal {
-			log.Debugf("alloc: not considering %s; can't seal", p.info.ID)
 			continue
 		}
 		if !sealing && !p.info.CanStore {
-			log.Debugf("alloc: not considering %s; can't store", p.info.ID)
 			continue
 		}
 

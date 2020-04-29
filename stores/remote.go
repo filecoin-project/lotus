@@ -92,7 +92,11 @@ func (r *Remote) acquireFromRemote(ctx context.Context, s abi.SectorID, fileType
 		return "", "", "", nil, err
 	}
 
-	sort.Slice(si, func(i, j int) bool {
+	if len(si) == 0 {
+		return "", "", "", nil, xerrors.Errorf("failed to acquire sector %v from remote(%d): not found", s, fileType)
+	}
+
+		sort.Slice(si, func(i, j int) bool {
 		return si[i].Weight < si[j].Weight
 	})
 
