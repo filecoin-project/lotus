@@ -16,5 +16,6 @@ func SetupLogLevels() {
 		logging.SetLogLevel("connmgr", "WARN")
 		logging.SetLogLevel("advmgr", "DEBUG")
 		logging.SetLogLevel("stores", "DEBUG")
+		logging.SetLogLevel("nat", "INFO")
 	}
 }

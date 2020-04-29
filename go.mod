@@ -12,22 +12,24 @@ require (
 	github.com/davidlazar/go-crypto v0.0.0-20190912175916-7055855a373f // indirect
 	github.com/docker/go-units v0.4.0
 	github.com/drand/drand v0.7.2
-	github.com/filecoin-project/chain-validation v0.0.6-0.20200424212533-860752305527
-	github.com/filecoin-project/filecoin-ffi v0.0.0-20200326153646-e899cc1dd072
+	github.com/filecoin-project/chain-validation v0.0.6-0.20200429002049-f137de961672
+	github.com/filecoin-project/filecoin-ffi v0.0.0-20200427223233-a0014b17f124
 	github.com/filecoin-project/go-address v0.0.2-0.20200218010043-eb9bb40ed5be
 	github.com/filecoin-project/go-amt-ipld/v2 v2.0.1-0.20200131012142-05d80eeccc5e
+	github.com/filecoin-project/go-bitfield v0.0.0-20200416002808-b3ee67ec9060
 	github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
 	github.com/filecoin-project/go-data-transfer v0.0.0-20200408061858-82c58b423ca6
 	github.com/filecoin-project/go-fil-commcid v0.0.0-20200208005934-2b8bd03caca5
-	github.com/filecoin-project/go-fil-markets v0.0.0-20200415011556-4378bd41b91f
+	github.com/filecoin-project/go-fil-markets v0.1.0
 	github.com/filecoin-project/go-padreader v0.0.0-20200210211231-548257017ca6
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200218225740-47c639bab663
 	github.com/filecoin-project/go-statestore v0.1.0
+	github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b
 	github.com/filecoin-project/sector-storage v0.0.0-20200428103407-5f1a27d52b30
-	github.com/filecoin-project/specs-actors v1.0.1-0.20200424220637-349bd6297517
+	github.com/filecoin-project/specs-actors v0.2.1-0.20200428232403-f0282340f59a
 	github.com/filecoin-project/specs-storage v0.0.0-20200417134612-61b2d91a6102
-	github.com/filecoin-project/storage-fsm v0.0.0-20200423114251-f3bea4aa8bd7
+	github.com/filecoin-project/storage-fsm v0.0.0-20200427182014-01487d5ad3c8
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/mux v1.7.4
@@ -53,7 +55,7 @@ require (
 	github.com/ipfs/go-ipfs-exchange-offline v0.0.1
 	github.com/ipfs/go-ipfs-files v0.0.7
 	github.com/ipfs/go-ipfs-routing v0.1.0
-	github.com/ipfs/go-ipld-cbor v0.0.5-0.20200204214505-252690b78669
+	github.com/ipfs/go-ipld-cbor v0.0.5-0.20200428170625-a0bd04d3cbdf
 	github.com/ipfs/go-ipld-format v0.0.2
 	github.com/ipfs/go-log v1.0.4
 	github.com/ipfs/go-log/v2 v2.0.5
