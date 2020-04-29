@@ -18,13 +18,41 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	cli "github.com/urfave/cli/v2"
 	"go.opencensus.io/plugin/ocgrpc"
+	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
+	"go.opencensus.io/tag"
 	"golang.org/x/xerrors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
 
 var log = logging.Logger("crand")
+
+var (
+	mSignatureMs = stats.Float64("crand/bls_compute", "Time spent computing bls", stats.UnitMilliseconds)
+	mCache       = stats.Int64("crand/cache", "Cache requests", stats.UnitDimensionless)
+	tagStatus    = tag.MustNewKey("status")
+
+	sigsSumView = &view.View{
+		Name:        "crand/bls_compute_ms",
+		Measure:     mSignatureMs,
+		Description: "time spent computing signatures",
+		Aggregation: view.Sum(),
+	}
+
+	sigsCountView = &view.View{
+		Name:        "crand/bls_compute_count",
+		Measure:     mSignatureMs,
+		Description: "time spent computing signatures",
+		Aggregation: view.Count(),
+	}
+	cacheView = &view.View{
+		Name:        "crand/cache_count",
+		Measure:     mCache,
+		TagKeys:     []tag.Key{tagStatus},
+		Aggregation: view.Sum(),
+	}
+)
 
 var serve = &cli.Command{
 	Name:        "serve",
@@ -66,7 +94,7 @@ var serve = &cli.Command{
 		fmt.Printf("Genesis: %s\n", params.GenesisTime)
 		fmt.Printf("Round: %s\n", params.Round.D())
 
-		if err := view.Register(ocgrpc.DefaultServerViews...); err != nil {
+		if err := view.Register(append(ocgrpc.DefaultServerViews, sigsCountView, sigsSumView, cacheView)...); err != nil {
 			log.Fatalf("Failed to register ocgrpc server views: %v", err)
 		}
 		s := grpc.NewServer(grpc.StatsHandler(&ocgrpc.ServerHandler{}))
