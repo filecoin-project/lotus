@@ -12,6 +12,7 @@ type WorkerResources struct {
 
 	MemReserved uint64 // Used by system / other processes
 
+	CPUs uint64 // Logical cores
 	GPUs []string
 }
 
@@ -21,5 +22,5 @@ type WorkerStats struct {
 	MemUsedMin uint64
 	MemUsedMax uint64
 	GpuUsed    bool
-	CpuUse     int
+	CpuUse     uint64
 }

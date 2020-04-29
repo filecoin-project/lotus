@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"os"
+	"runtime"
 
 	"github.com/elastic/go-sysinfo"
 	"golang.org/x/xerrors"
@@ -103,6 +104,15 @@ func (l *LocalWorker) AddPiece(ctx context.Context, sector abi.SectorID, epcs []
 	return sb.AddPiece(ctx, sector, epcs, sz, r)
 }
 
+func (l *LocalWorker) Fetch(ctx context.Context, sector abi.SectorID, fileType stores.SectorFileType, sealing bool) error {
+	_, done, err := (&localWorkerPathProvider{w: l}).AcquireSector(ctx, sector, fileType, stores.FTNone, sealing)
+	if err != nil {
+		return err
+	}
+	done()
+	return nil
+}
+
 func (l *LocalWorker) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, pieces []abi.PieceInfo) (out storage2.PreCommit1Out, err error) {
 	sb, err := l.sb()
 	if err != nil {
@@ -195,6 +205,7 @@ func (l *LocalWorker) Info(context.Context) (storiface.WorkerInfo, error) {
 			MemPhysical: mem.Total,
 			MemSwap:     mem.VirtualTotal,
 			MemReserved: mem.VirtualUsed + mem.Total - mem.Available, // TODO: sub this process
+			CPUs:        uint64(runtime.NumCPU()),
 			GPUs:        gpus,
 		},
 	}, nil

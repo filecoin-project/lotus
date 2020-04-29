@@ -27,9 +27,8 @@ type Remote struct {
 	index SectorIndex
 	auth  http.Header
 
-	fetchLk sync.Mutex // TODO: this can be much smarter
-	// TODO: allow multiple parallel fetches
-	//  (make sure to not fetch the same sector data twice)
+	fetchLk sync.Mutex
+	fetching map[abi.SectorID]chan struct{}
 }
 
 func NewRemote(local *Local, index SectorIndex, auth http.Header) *Remote {
@@ -37,6 +36,8 @@ func NewRemote(local *Local, index SectorIndex, auth http.Header) *Remote {
 		local: local,
 		index: index,
 		auth:  auth,
+
+		fetching: map[abi.SectorID]chan struct{}{},
 	}
 }
 
@@ -45,8 +46,32 @@ func (r *Remote) AcquireSector(ctx context.Context, s abi.SectorID, existing Sec
 		return SectorPaths{}, SectorPaths{}, nil, xerrors.New("can't both find and allocate a sector")
 	}
 
-	r.fetchLk.Lock()
-	defer r.fetchLk.Unlock()
+	for {
+		r.fetchLk.Lock()
+
+		c, locked := r.fetching[s]
+		if !locked {
+			r.fetching[s] = make(chan struct{})
+			r.fetchLk.Unlock()
+			break
+		}
+
+		r.fetchLk.Unlock()
+
+		select {
+		case <-c:
+			continue
+		case <-ctx.Done():
+			return SectorPaths{}, SectorPaths{}, nil, ctx.Err()
+		}
+	}
+
+	defer func() {
+		r.fetchLk.Lock()
+		close(r.fetching[s])
+		delete(r.fetching, s)
+		r.fetchLk.Unlock()
+	}()
 
 	paths, stores, done, err := r.local.AcquireSector(ctx, s, existing, allocate, sealing)
 	if err != nil {
@@ -92,7 +117,11 @@ func (r *Remote) acquireFromRemote(ctx context.Context, s abi.SectorID, fileType
 		return "", "", "", nil, err
 	}
 
-	sort.Slice(si, func(i, j int) bool {
+	if len(si) == 0 {
+		return "", "", "", nil, xerrors.Errorf("failed to acquire sector %v from remote(%d): not found", s, fileType)
+	}
+
+		sort.Slice(si, func(i, j int) bool {
 		return si[i].Weight < si[j].Weight
 	})
 

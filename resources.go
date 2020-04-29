@@ -23,10 +23,14 @@ type Resources struct {
 	MinMemory uint64 // What Must be in RAM for decent perf
 	MaxMemory uint64 // Memory required (swap + ram)
 
-	MultiThread bool
-	CanGPU      bool
+	Threads int // -1 = multithread
+	CanGPU  bool
 
 	BaseMinMemory uint64 // What Must be in RAM for decent perf (shared between threads)
+}
+
+func (r Resources) MultiThread() bool {
+	return r.Threads == -1
 }
 
 const MaxCachingOverhead = 32 << 30
@@ -37,7 +41,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 			MaxMemory: 32 << 30,
 			MinMemory: 32 << 30,
 
-			MultiThread: false,
+			Threads: 1,
 
 			BaseMinMemory: 1 << 30,
 		},
@@ -45,7 +49,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 			MaxMemory: 1 << 30,
 			MinMemory: 1 << 30,
 
-			MultiThread: false,
+			Threads: 1,
 
 			BaseMinMemory: 1 << 30,
 		},
@@ -53,7 +57,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 			MaxMemory: 2 << 10,
 			MinMemory: 2 << 10,
 
-			MultiThread: false,
+			Threads: 1,
 
 			BaseMinMemory: 2 << 10,
 		},
@@ -61,7 +65,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 			MaxMemory: 8 << 20,
 			MinMemory: 8 << 20,
 
-			MultiThread: false,
+			Threads: 1,
 
 			BaseMinMemory: 8 << 20,
 		},
@@ -71,7 +75,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 			MaxMemory: 64 << 30,
 			MinMemory: 32 << 30,
 
-			MultiThread: false,
+			Threads: 1,
 
 			BaseMinMemory: 30 << 30,
 		},
@@ -79,7 +83,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 			MaxMemory: 3 << 29, // 1.5G
 			MinMemory: 1 << 30,
 
-			MultiThread: false,
+			Threads: 1,
 
 			BaseMinMemory: 1 << 30,
 		},
@@ -87,7 +91,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 			MaxMemory: 2 << 10,
 			MinMemory: 2 << 10,
 
-			MultiThread: false,
+			Threads: 1,
 
 			BaseMinMemory: 2 << 10,
 		},
@@ -95,7 +99,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 			MaxMemory: 8 << 20,
 			MinMemory: 8 << 20,
 
-			MultiThread: false,
+			Threads: 1,
 
 			BaseMinMemory: 8 << 20,
 		},
@@ -105,7 +109,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 			MaxMemory: 96 << 30,
 			MinMemory: 64 << 30,
 
-			MultiThread: true,
+			Threads: -1,
 
 			BaseMinMemory: 30 << 30,
 		},
@@ -113,7 +117,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 			MaxMemory: 3 << 29, // 1.5G
 			MinMemory: 1 << 30,
 
-			MultiThread: true,
+			Threads: -1,
 
 			BaseMinMemory: 1 << 30,
 		},
@@ -121,7 +125,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 			MaxMemory: 2 << 10,
 			MinMemory: 2 << 10,
 
-			MultiThread: true,
+			Threads: -1,
 
 			BaseMinMemory: 2 << 10,
 		},
@@ -129,7 +133,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 			MaxMemory: 8 << 20,
 			MinMemory: 8 << 20,
 
-			MultiThread: true,
+			Threads: -1,
 
 			BaseMinMemory: 8 << 20,
 		},
@@ -139,7 +143,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 			MaxMemory: 1 << 30,
 			MinMemory: 1 << 30,
 
-			MultiThread: false,
+			Threads: 0,
 
 			BaseMinMemory: 1 << 30,
 		},
@@ -147,7 +151,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 			MaxMemory: 1 << 30,
 			MinMemory: 1 << 30,
 
-			MultiThread: false,
+			Threads: 0,
 
 			BaseMinMemory: 1 << 30,
 		},
@@ -155,7 +159,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 			MaxMemory: 2 << 10,
 			MinMemory: 2 << 10,
 
-			MultiThread: false,
+			Threads: 0,
 
 			BaseMinMemory: 2 << 10,
 		},
@@ -163,7 +167,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 			MaxMemory: 8 << 20,
 			MinMemory: 8 << 20,
 
-			MultiThread: false,
+			Threads: 0,
 
 			BaseMinMemory: 8 << 20,
 		},
@@ -173,8 +177,8 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 			MaxMemory: 110 << 30,
 			MinMemory: 60 << 30,
 
-			MultiThread: true,
-			CanGPU:      true,
+			Threads: -1,
+			CanGPU:  true,
 
 			BaseMinMemory: 64 << 30, // params
 		},
@@ -182,8 +186,8 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 			MaxMemory: 3 << 29, // 1.5G
 			MinMemory: 1 << 30,
 
-			MultiThread: false, // This is fine
-			CanGPU:      true,
+			Threads: 1, // This is fine
+			CanGPU:  true,
 
 			BaseMinMemory: 10 << 30,
 		},
@@ -191,8 +195,8 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 			MaxMemory: 2 << 10,
 			MinMemory: 2 << 10,
 
-			MultiThread: false,
-			CanGPU:      true,
+			Threads: 1,
+			CanGPU:  true,
 
 			BaseMinMemory: 2 << 10,
 		},
@@ -200,10 +204,48 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 			MaxMemory: 8 << 20,
 			MinMemory: 8 << 20,
 
-			MultiThread: false,
-			CanGPU:      true,
+			Threads: 1,
+			CanGPU:  true,
 
 			BaseMinMemory: 8 << 20,
+		},
+	},
+	sealtasks.TTFetch: {
+		abi.RegisteredProof_StackedDRG32GiBSeal: Resources{
+			MaxMemory: 1 << 20,
+			MinMemory: 1 << 20,
+
+			Threads: 0,
+			CanGPU:  false,
+
+			BaseMinMemory: 0,
+		},
+		abi.RegisteredProof_StackedDRG512MiBSeal: Resources{
+			MaxMemory: 1 << 20,
+			MinMemory: 1 << 20,
+
+			Threads: 0,
+			CanGPU:  false,
+
+			BaseMinMemory: 0,
+		},
+		abi.RegisteredProof_StackedDRG2KiBSeal: Resources{
+			MaxMemory: 1 << 20,
+			MinMemory: 1 << 20,
+
+			Threads: 0,
+			CanGPU:  false,
+
+			BaseMinMemory: 0,
+		},
+		abi.RegisteredProof_StackedDRG8MiBSeal: Resources{
+			MaxMemory: 1 << 20,
+			MinMemory: 1 << 20,
+
+			Threads: 0,
+			CanGPU:  false,
+
+			BaseMinMemory: 0,
 		},
 	},
 }

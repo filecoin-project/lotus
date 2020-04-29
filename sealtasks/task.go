@@ -10,4 +10,6 @@ const (
 	TTCommit2    TaskType = "seal/v0/commit/2"
 
 	TTFinalize TaskType = "seal/v0/finalize"
+
+	TTFetch TaskType = "seal/v0/fetch"
 )
