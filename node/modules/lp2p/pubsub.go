@@ -61,7 +61,7 @@ func GossipSub(pubsubOptions ...PubsubOpt) interface{} {
 						// we don't do that in the bootstrappers themselves to avoid creating a closed mesh
 						// between them (however we might want to consider doing just that)
 						_, ok := bootstrappers[p]
-						if ok && isBootstrapNode {
+						if ok && !isBootstrapNode {
 							return 2500
 						}
 
