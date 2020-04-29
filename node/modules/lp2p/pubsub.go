@@ -34,16 +34,32 @@ func PubsubTracer() PubsubOpt {
 }
 
 func GossipSub(pubsubOptions ...PubsubOpt) interface{} {
-	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, nn dtypes.NetworkName) (service *pubsub.PubSub, err error) {
+	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, nn dtypes.NetworkName, bp dtypes.BootstrapPeers) (service *pubsub.PubSub, err error) {
+		bootstrappers := make(map[peer.ID]struct{})
+		for _, pi := range bp {
+			bootstrappers[pi.ID] = struct{}{}
+		}
+		_, isBootstrapNode := bootstrappers[host.ID()]
+
 		v11Options := []pubsub.Option{
 			// Gossipsubv1.1 configuration
 			pubsub.WithFloodPublish(true),
 			pubsub.WithPeerScore(
 				&pubsub.PeerScoreParams{
-					// TODO: we want to assign heavy positive scores to bootstrappers and also plug the
-					//       application specific score to the node itself in order to provide feedback
-					//       to the pubsub system based on observed behaviour
-					AppSpecificScore:  func(p peer.ID) float64 { return 0 },
+					AppSpecificScore: func(p peer.ID) float64 {
+						// return a heavy positive score for bootstrappers so that we don't unilaterally prune
+						// them and accept PX from them.
+						// we don't do that in the bootstrappers themselves to avoid creating a closed mesh
+						// between them (however we might want to consider doing just that)
+						_, ok := bootstrappers[p]
+						if ok && isBootstrapNode {
+							return 2500
+						}
+
+						// TODO: we want to  plug the application specific score to the node itself in order
+						//       to provide feedback to the pubsub system based on observed behaviour
+						return 0
+					},
 					AppSpecificWeight: 1,
 
 					// This sets the IP colocation threshold to 1 peer per
@@ -132,11 +148,13 @@ func GossipSub(pubsubOptions ...PubsubOpt) interface{} {
 			),
 		}
 
-		// TODO: we want to enable Peer eXchange on bootstrappers
-		// v11Options = append(v11Options, pubsub.WithPeerExchange(XXX))
+		// enable Peer eXchange on bootstrappers
+		if isBootstrapNode {
+			v11Options = append(v11Options, pubsub.WithPeerExchange(true))
+		}
 
 		// TODO: we want to hook the peer score inspector so that we can gain visibility
-		//       in peer scores for debugging purposes -- this can be trigged by metrics collection
+		//       in peer scores for debugging purposes -- this might be trigged by metrics collection
 		// v11Options = append(v11Options, pubsub.WithPeerScoreInspect(XXX, time.Second))
 
 		options := append(v11Options, paresOpts(host, pubsubOptions)...)
