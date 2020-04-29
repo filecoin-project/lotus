@@ -129,10 +129,10 @@ func (s *WindowPoStScheduler) Run(ctx context.Context) {
 			}
 
 			if err := s.revert(ctx, lowest); err != nil {
-				log.Error("handling head reverts in fallbackPost sched: %+v", err)
+				log.Error("handling head reverts in windowPost sched: %+v", err)
 			}
 			if err := s.update(ctx, highest); err != nil {
-				log.Error("handling head updates in fallbackPost sched: %+v", err)
+				log.Error("handling head updates in windowPost sched: %+v", err)
 			}
 
 			span.End()
@@ -173,6 +173,7 @@ func (s *WindowPoStScheduler) update(ctx context.Context, new *types.TipSet) err
 	if deadlineEquals(s.activeDeadline, di) {
 		return nil // already working on this deadline
 	}
+
 	if !di.PeriodStarted() {
 		return nil // not proving anything yet
 	}
@@ -206,7 +207,7 @@ func (s *WindowPoStScheduler) abortActivePoSt() {
 		s.abort()
 	}
 
-	log.Warnf("Aborting Fallback PoSt (Deadline: %+v)", s.activeDeadline)
+	log.Warnf("Aborting Window PoSt (Deadline: %+v)", s.activeDeadline)
 
 	s.activeDeadline = nil
 	s.abort = nil

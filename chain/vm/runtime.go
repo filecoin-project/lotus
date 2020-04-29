@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
@@ -53,6 +52,7 @@ type Runtime struct {
 	internalExecutions []*types.ExecutionResult
 	numActorsCreated   uint64
 	allowInternal      bool
+	callerValidated    bool
 }
 
 func (rt *Runtime) TotalFilCircSupply() abi.TokenAmount {
@@ -109,6 +109,9 @@ func (rs *Runtime) Get(c cid.Cid, o vmr.CBORUnmarshaler) bool {
 	if err := rs.cst.Get(context.TODO(), c, o); err != nil {
 		var nfe notFoundErr
 		if xerrors.As(err, &nfe) && nfe.IsNotFound() {
+			if xerrors.As(err, new(cbor.SerializationError)) {
+				panic(aerrors.Newf(exitcode.ErrSerialization, "failed to unmarshal cbor object %s", err))
+			}
 			return false
 		}
 
@@ -120,6 +123,9 @@ func (rs *Runtime) Get(c cid.Cid, o vmr.CBORUnmarshaler) bool {
 func (rs *Runtime) Put(x vmr.CBORMarshaler) cid.Cid {
 	c, err := rs.cst.Put(context.TODO(), x)
 	if err != nil {
+		if xerrors.As(err, new(cbor.SerializationError)) {
+			panic(aerrors.Newf(exitcode.ErrSerialization, "failed to marshal cbor object %s", err))
+		}
 		panic(aerrors.Fatalf("failed to put cbor object: %s", err))
 	}
 	return c
@@ -141,6 +147,11 @@ func (rs *Runtime) shimCall(f func() interface{}) (rval []byte, aerr aerrors.Act
 	}()
 
 	ret := f()
+
+	if !rs.callerValidated {
+		rs.Abortf(exitcode.SysErrorIllegalActor, "Caller MUST be validated during method execution")
+	}
+
 	switch ret := ret.(type) {
 	case []byte:
 		return ret, nil
@@ -164,6 +175,7 @@ func (rs *Runtime) Message() vmr.Message {
 }
 
 func (rs *Runtime) ValidateImmediateCallerAcceptAny() {
+	rs.abortIfAlreadyValidated()
 	return
 }
 
@@ -267,6 +279,7 @@ func (rs *Runtime) StartSpan(name string) vmr.TraceSpan {
 }
 
 func (rt *Runtime) ValidateImmediateCallerIs(as ...address.Address) {
+	rt.abortIfAlreadyValidated()
 	imm := rt.Message().Caller()
 
 	for _, a := range as {
@@ -291,6 +304,7 @@ func (rs *Runtime) AbortStateMsg(msg string) {
 }
 
 func (rt *Runtime) ValidateImmediateCallerType(ts ...cid.Cid) {
+	rt.abortIfAlreadyValidated()
 	callerCid, ok := rt.GetActorCodeCID(rt.Message().Caller())
 	if !ok {
 		panic(aerrors.Fatalf("failed to lookup code cid for caller"))
@@ -493,4 +507,11 @@ func (rt *Runtime) Pricelist() Pricelist {
 
 func (rt *Runtime) incrementNumActorsCreated() {
 	rt.numActorsCreated++
+}
+
+func (rt *Runtime) abortIfAlreadyValidated() {
+	if rt.callerValidated {
+		rt.Abortf(exitcode.SysErrorIllegalActor, "Method must validate caller identity exactly once")
+	}
+	rt.callerValidated = true
 }
