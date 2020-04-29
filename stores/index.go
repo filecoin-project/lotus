@@ -63,6 +63,9 @@ func NewIndex() *Index {
 }
 
 func (i *Index) StorageList(ctx context.Context) (map[ID][]Decl, error) {
+	i.lk.RLock()
+	defer i.lk.RUnlock()
+
 	byID := map[ID]map[abi.SectorID]SectorFileType{}
 
 	for id := range i.stores {
