@@ -373,6 +373,11 @@ func canHandleRequest(needRes Resources, spt abi.RegisteredProof, wid WorkerID, 
 			log.Debugf("sched: not scheduling on worker %d; multicore process needs %d threads, %d in use, target %d", wid, res.CPUs, active.cpuUse, res.CPUs)
 			return false
 		}
+	} else {
+		if active.cpuUse + uint64(needRes.Threads) > res.CPUs {
+			log.Debugf("sched: not scheduling on worker %d; not enough threads, need %d, %d in use, target %d", wid, needRes.Threads, active.cpuUse, res.CPUs)
+			return false
+		}
 	}
 
 	if len(res.GPUs) > 0 && needRes.CanGPU {
