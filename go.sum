@@ -169,8 +169,8 @@ github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b 
 github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b/go.mod h1:Q0GQOBtKf1oE10eSXSlhN45kDBdGvEcVOqMiffqX+N8=
 github.com/filecoin-project/lotus v0.2.10/go.mod h1:om5PQA9ZT0lf16qI7Fz/ZGLn4LDCMqPC8ntZA9uncRE=
 github.com/filecoin-project/sector-storage v0.0.0-20200411000242-61616264b16d/go.mod h1:/yueJueMh0Yc+0G1adS0lhnedcSnjY86EjKsA20+DVY=
-github.com/filecoin-project/sector-storage v0.0.0-20200428103407-5f1a27d52b30 h1:MlenH1KWLpDHgPzP0BhZ2I87M52GTv/JDWkoOkjhhbU=
-github.com/filecoin-project/sector-storage v0.0.0-20200428103407-5f1a27d52b30/go.mod h1:q/V90xaSKTlu7KovS0uj+cAvlPPFrGn141ZO3iQNEdw=
+github.com/filecoin-project/sector-storage v0.0.0-20200429155855-7f1c9c89e735 h1:dzhoQvScipNNexk7Jcgspgf+QLun+gT7FYBdDMMnqgE=
+github.com/filecoin-project/sector-storage v0.0.0-20200429155855-7f1c9c89e735/go.mod h1:q/V90xaSKTlu7KovS0uj+cAvlPPFrGn141ZO3iQNEdw=
 github.com/filecoin-project/specs-actors v0.0.0-20200210130641-2d1fbd8672cf/go.mod h1:xtDZUB6pe4Pksa/bAJbJ693OilaC5Wbot9jMhLm3cZA=
 github.com/filecoin-project/specs-actors v0.0.0-20200409043918-e569f4a2f504/go.mod h1:mdJraXq5vMy0+/FqVQIrnNlpQ/Em6zeu06G/ltQ0/lA=
 github.com/filecoin-project/specs-actors v0.2.0 h1:bKxloHLegeYJttIJbQjl4/tdsKOUtYtpiZsEfB4eOnI=
