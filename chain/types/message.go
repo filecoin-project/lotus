@@ -12,6 +12,8 @@ import (
 	"github.com/filecoin-project/go-address"
 )
 
+const MessageVersion = 0
+
 type ChainMsg interface {
 	Cid() cid.Cid
 	VMMessage() *Message
@@ -20,6 +22,8 @@ type ChainMsg interface {
 }
 
 type Message struct {
+	Version int64
+
 	To   address.Address
 	From address.Address
 
@@ -54,6 +58,10 @@ func DecodeMessage(b []byte) (*Message, error) {
 	var msg Message
 	if err := msg.UnmarshalCBOR(bytes.NewReader(b)); err != nil {
 		return nil, err
+	}
+
+	if msg.Version != MessageVersion {
+		return nil, fmt.Errorf("decoded message had incorrect version (%d)", msg.Version)
 	}
 
 	return &msg, nil
