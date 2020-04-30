@@ -201,10 +201,9 @@ func (db *DrandBeacon) VerifyEntry(curr types.BeaconEntry, prev types.BeaconEntr
 		return nil
 	}
 	b := &dbeacon.Beacon{
-		PreviousRound: prev.Round,
-		PreviousSig:   prev.Data,
-		Round:         curr.Round,
-		Signature:     curr.Data,
+		PreviousSig: prev.Data,
+		Round:       curr.Round,
+		Signature:   curr.Data,
 	}
 	//log.Warnw("VerifyEntry", "beacon", b)
 	err := dbeacon.VerifyBeacon(db.pubkey.Key(), b)

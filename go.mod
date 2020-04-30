@@ -11,7 +11,7 @@ require (
 	github.com/coreos/go-systemd/v22 v22.0.0
 	github.com/davidlazar/go-crypto v0.0.0-20190912175916-7055855a373f // indirect
 	github.com/docker/go-units v0.4.0
-	github.com/drand/drand v0.7.2
+	github.com/drand/drand v0.8.1
 	github.com/filecoin-project/chain-validation v0.0.6-0.20200430031342-7aa02ea6b9d9
 	github.com/filecoin-project/filecoin-ffi v0.0.0-20200427223233-a0014b17f124
 	github.com/filecoin-project/go-address v0.0.2-0.20200218010043-eb9bb40ed5be
@@ -70,9 +70,9 @@ require (
 	github.com/libp2p/go-eventbus v0.1.0
 	github.com/libp2p/go-libp2p v0.8.1
 	github.com/libp2p/go-libp2p-circuit v0.2.1
+	github.com/libp2p/go-libp2p-connmgr v0.1.1
 	github.com/libp2p/go-libp2p-core v0.5.2
 	github.com/libp2p/go-libp2p-discovery v0.4.0
-	github.com/libp2p/go-libp2p-connmgr v0.1.1
 	github.com/libp2p/go-libp2p-kad-dht v0.7.6
 	github.com/libp2p/go-libp2p-mplex v0.2.3
 	github.com/libp2p/go-libp2p-peer v0.2.0
@@ -107,7 +107,7 @@ require (
 	go.uber.org/multierr v1.5.0
 	go.uber.org/zap v1.14.1
 	golang.org/x/net v0.0.0-20200301022130-244492dfa37a // indirect
-	golang.org/x/sys v0.0.0-20200409092240-59c9f1ba88fa
+	golang.org/x/sys v0.0.0-20200427175716-29b57079015a
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
 	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543
 	gopkg.in/urfave/cli.v2 v2.0.0-20180128182452-d3ae77c26ac8
