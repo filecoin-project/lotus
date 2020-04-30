@@ -26,6 +26,12 @@ var mpoolCmd = &cli.Command{
 var mpoolPending = &cli.Command{
 	Name:  "pending",
 	Usage: "Get pending messages",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "local",
+			Usage: "print pending messages for addresses in local wallet only",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -35,12 +41,32 @@ var mpoolPending = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
+		var filter map[address.Address]struct{}
+		if cctx.Bool("local") {
+			filter = map[address.Address]struct{}{}
+
+			addrss, err := api.WalletList(ctx)
+			if err != nil {
+				return xerrors.Errorf("getting local addresses: %w", err)
+			}
+
+			for _, a := range addrss {
+				filter[a] = struct{}{}
+			}
+		}
+
 		msgs, err := api.MpoolPending(ctx, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
 
 		for _, msg := range msgs {
+			if filter != nil {
+				if _, has := filter[msg.Message.From]; !has {
+					continue
+				}
+			}
+
 			out, err := json.MarshalIndent(msg, "", "  ")
 			if err != nil {
 				return err
@@ -95,6 +121,12 @@ type mpStat struct {
 var mpoolStat = &cli.Command{
 	Name:  "stat",
 	Usage: "print mempool stats",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "local",
+			Usage: "print stats for addresses in local wallet only",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -109,6 +141,20 @@ var mpoolStat = &cli.Command{
 			return xerrors.Errorf("getting chain head: %w", err)
 		}
 
+		var filter map[address.Address]struct{}
+		if cctx.Bool("local") {
+			filter = map[address.Address]struct{}{}
+
+			addrss, err := api.WalletList(ctx)
+			if err != nil {
+				return xerrors.Errorf("getting local addresses: %w", err)
+			}
+
+			for _, a := range addrss {
+				filter[a] = struct{}{}
+			}
+		}
+
 		msgs, err := api.MpoolPending(ctx, types.EmptyTSK)
 		if err != nil {
 			return err
@@ -117,6 +163,12 @@ var mpoolStat = &cli.Command{
 		buckets := map[address.Address]*statBucket{}
 
 		for _, v := range msgs {
+			if filter != nil {
+				if _, has := filter[v.Message.From]; !has {
+					continue
+				}
+			}
+
 			bkt, ok := buckets[v.Message.From]
 			if !ok {
 				bkt = &statBucket{

@@ -13,7 +13,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 )
 
-type NotAVeryGoodMarshaler struct {}
+type NotAVeryGoodMarshaler struct{}
 
 func (*NotAVeryGoodMarshaler) MarshalCBOR(writer io.Writer) error {
 	return xerrors.Errorf("no")
