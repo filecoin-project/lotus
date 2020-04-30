@@ -3,6 +3,8 @@ SHELL=/usr/bin/env bash
 all: build
 .PHONY: all
 
+unexport GOFLAGS
+
 GOVERSION:=$(shell go version | cut -d' ' -f 3 | cut -d. -f 2)
 ifeq ($(shell expr $(GOVERSION) \< 13), 1)
 $(warning Your Golang version is go 1.$(GOVERSION))
@@ -14,7 +16,14 @@ MODULES:=
 
 CLEAN:=
 BINS:=
-GOFLAGS+=-ldflags=-X="github.com/filecoin-project/lotus/build".CurrentCommit="+git$(subst -,.,$(shell git describe --always --match=NeVeRmAtCh --dirty 2>/dev/null || git rev-parse --short HEAD 2>/dev/null))"
+
+ldflags=-X="github.com/filecoin-project/lotus/build".CurrentCommit="+git$(subst -,.,$(shell git describe --always --match=NeVeRmAtCh --dirty 2>/dev/null || git rev-parse --short HEAD 2>/dev/null))"
+ifneq ($(strip $(LDFLAGS)),)
+	ldflags+=-extldflags="$(LDFLAGS)"
+endif
+
+GOFLAGS+=-ldflags="$(ldflags)"
+
 
 ## FFI
 
