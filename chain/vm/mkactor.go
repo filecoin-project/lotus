@@ -2,7 +2,6 @@ package vm
 
 import (
 	"context"
-
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -35,10 +34,6 @@ func TryCreateAccountActor(rt *Runtime, addr address.Address) (*types.Actor, aer
 		return nil, aerrors.Escalate(err, "registering actor address")
 	}
 
-	if err := rt.chargeGasSafe(PricelistByEpoch(rt.height).OnCreateActor()); err != nil {
-		return nil, err
-	}
-
 	act, aerr := makeActor(addr)
 	if aerr != nil {
 		return nil, aerr
@@ -53,6 +48,10 @@ func TryCreateAccountActor(rt *Runtime, addr address.Address) (*types.Actor, aer
 		return nil, aerrors.Escalate(err, "couldn't serialize params for actor construction")
 	}
 	// call constructor on account
+
+	if err := rt.chargeGasSafe(PricelistByEpoch(rt.height).OnCreateActor()); err != nil {
+		return nil, err
+	}
 
 	_, aerr = rt.internalSend(builtin.SystemActorAddr, addrID, builtin.MethodsAccount.Constructor, big.Zero(), p)
 	if aerr != nil {
