@@ -12,7 +12,7 @@ require (
 	github.com/davidlazar/go-crypto v0.0.0-20190912175916-7055855a373f // indirect
 	github.com/docker/go-units v0.4.0
 	github.com/drand/drand v0.7.2
-	github.com/filecoin-project/chain-validation v0.0.6-0.20200429181200-c83b25321997
+	github.com/filecoin-project/chain-validation v0.0.6-0.20200430031342-7aa02ea6b9d9
 	github.com/filecoin-project/filecoin-ffi v0.0.0-20200427223233-a0014b17f124
 	github.com/filecoin-project/go-address v0.0.2-0.20200218010043-eb9bb40ed5be
 	github.com/filecoin-project/go-amt-ipld/v2 v2.0.1-0.20200131012142-05d80eeccc5e
