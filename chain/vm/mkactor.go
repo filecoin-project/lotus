@@ -50,8 +50,7 @@ func TryCreateAccountActor(rt *Runtime, addr address.Address) (*types.Actor, aer
 
 	p, err := actors.SerializeParams(&addr)
 	if err != nil {
-		// TODO: Unsure whether this should be fatal
-		return nil, aerrors.Absorb(err, exitcode.SysErrInvalidParameters, "registering actor address")
+		return nil, aerrors.Escalate(err, "couldn't serialize params for actor construction")
 	}
 	// call constructor on account
 
