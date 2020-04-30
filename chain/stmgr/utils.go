@@ -1,6 +1,7 @@
 package stmgr
 
 import (
+	"bytes"
 	"context"
 	"os"
 
@@ -24,6 +25,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -421,10 +423,29 @@ func GetLookbackTipSetForRound(ctx context.Context, sm *StateManager, ts *types.
 	return lbts, nil
 }
 
-func MinerGetBaseInfo(ctx context.Context, sm *StateManager, tsk types.TipSetKey, round abi.ChainEpoch, maddr address.Address, pv ffiwrapper.Verifier) (*api.MiningBaseInfo, error) {
+func MinerGetBaseInfo(ctx context.Context, sm *StateManager, bcn beacon.RandomBeacon, tsk types.TipSetKey, round abi.ChainEpoch, maddr address.Address, pv ffiwrapper.Verifier) (*api.MiningBaseInfo, error) {
 	ts, err := sm.ChainStore().LoadTipSet(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load tipset for mining base: %w", err)
+	}
+
+	prev, err := sm.ChainStore().GetLatestBeaconEntry(ts)
+	if err != nil {
+		if os.Getenv("LOTUS_IGNORE_DRAND") != "_yes_" {
+			return nil, xerrors.Errorf("failed to get latest beacon entry: %w", err)
+		}
+
+		prev = &types.BeaconEntry{}
+	}
+
+	entries, err := beacon.BeaconEntriesForBlock(ctx, bcn, round, *prev)
+	if err != nil {
+		return nil, err
+	}
+
+	rbase := *prev
+	if len(entries) > 0 {
+		rbase = entries[len(entries)-1]
 	}
 
 	lbts, err := GetLookbackTipSetForRound(ctx, sm, ts, round)
@@ -442,8 +463,13 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, tsk types.TipSetKey
 		return nil, err
 	}
 
+	buf := new(bytes.Buffer)
+	if err := maddr.MarshalCBOR(buf); err != nil {
+		return nil, xerrors.Errorf("failed to marshal miner address: %w", err)
+	}
+
 	// TODO: use the right dst, also NB: not using any 'entropy' in this call because nicola really didnt want it
-	prand, err := sm.cs.GetRandomness(ctx, ts.Cids(), crypto.DomainSeparationTag_WinningPoStChallengeSeed, round-1, nil)
+	prand, err := store.DrawRandomness(rbase.Data, crypto.DomainSeparationTag_WinningPoStChallengeSeed, round-1, buf.Bytes())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get randomness for winning post: %w", err)
 	}
@@ -462,15 +488,6 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, tsk types.TipSetKey
 		return nil, xerrors.Errorf("failed to get power: %w", err)
 	}
 
-	prev, err := sm.ChainStore().GetLatestBeaconEntry(ts)
-	if err != nil {
-		if os.Getenv("LOTUS_IGNORE_DRAND") != "_yes_" {
-			return nil, xerrors.Errorf("failed to get latest beacon entry: %w", err)
-		}
-
-		prev = &types.BeaconEntry{}
-	}
-
 	worker, err := sm.ResolveToKeyAddress(ctx, mas.GetWorker(), ts)
 	if err != nil {
 		return nil, xerrors.Errorf("resolving worker address: %w", err)
@@ -483,5 +500,6 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, tsk types.TipSetKey
 		WorkerKey:       worker,
 		SectorSize:      mas.Info.SectorSize,
 		PrevBeaconEntry: *prev,
+		BeaconEntries:   entries,
 	}, nil
 }
