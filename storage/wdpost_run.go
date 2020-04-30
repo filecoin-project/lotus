@@ -97,12 +97,12 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 		return nil, err
 	}
 
-	firstPartition, _, err := miner.PartitionsForDeadline(deadlines, di.Index)
+	firstPartition, _, err := miner.PartitionsForDeadline(deadlines, s.partitionSectors, di.Index)
 	if err != nil {
 		return nil, xerrors.Errorf("getting partitions for deadline: %w", err)
 	}
 
-	partitionCount, _, err := miner.DeadlineCount(deadlines, di.Index)
+	partitionCount, _, err := miner.DeadlineCount(deadlines, s.partitionSectors, di.Index)
 	if err != nil {
 		return nil, xerrors.Errorf("getting deadline partition count: %w", err)
 	}
