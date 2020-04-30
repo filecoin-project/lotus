@@ -109,7 +109,7 @@ func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
 
 	p, err := homedir.Expand(ctx.String(repoFlag))
 	if err != nil {
-		return APIInfo{}, xerrors.Errorf("cound not exand home dir (%s): %w", repoFlag, err)
+		return APIInfo{}, xerrors.Errorf("cound not expand home dir (%s): %w", repoFlag, err)
 	}
 
 	r, err := repo.NewFS(p)
@@ -119,7 +119,7 @@ func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
 
 	ma, err := r.APIEndpoint()
 	if err != nil {
-		return APIInfo{}, xerrors.Errorf("could not get api enpoint: %w", err)
+		return APIInfo{}, xerrors.Errorf("could not get api endpoint: %w", err)
 	}
 
 	token, err := r.APIToken()
