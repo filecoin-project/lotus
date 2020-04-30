@@ -173,6 +173,11 @@ var clientDealCmd = &cli.Command{
 			Name:  "from",
 			Usage: "specify address to fund the deal with",
 		},
+		&cli.Int64Flag{
+			Name:  "start-epoch",
+			Usage: "specify the epoch that the deal should start at",
+			Value: -1,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -252,6 +257,7 @@ var clientDealCmd = &cli.Command{
 			Miner:             miner,
 			EpochPrice:        types.BigInt(price),
 			MinBlocksDuration: uint64(dur),
+			DealStartEpoch:    abi.ChainEpoch(cctx.Int64("start-epoch")),
 		})
 		if err != nil {
 			return err
