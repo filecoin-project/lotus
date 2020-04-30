@@ -365,9 +365,17 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 			return nil, xerrors.Errorf("send returned nil runtime, send error was: %s", actorErr)
 		}
 		actorErr2 := rt.chargeGasSafe(rt.Pricelist().OnChainReturnValue(len(ret)))
-		if actorErr == nil {
-			//TODO: Ambigous what to do in this case
-			actorErr = actorErr2
+		if actorErr2 != nil {
+			return &ApplyRet{
+				MessageReceipt: types.MessageReceipt{
+					ExitCode: aerrors.RetCode(actorErr2),
+					GasUsed:  rt.gasUsed,
+				},
+				ActorErr: actorErr2,
+				Penalty:  types.NewInt(0),
+				Duration: time.Since(start),
+			}, nil
+
 		}
 	}
 
