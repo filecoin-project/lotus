@@ -742,12 +742,17 @@ func (syncer *Syncer) VerifyWinningPoStProof(ctx context.Context, h *types.Block
 		return xerrors.Errorf("[TESTING] winning post was invalid")
 	}
 
+	buf := new(bytes.Buffer)
+	if err := h.Miner.MarshalCBOR(buf); err != nil {
+		return xerrors.Errorf("failed to marshal miner address: %w", err)
+	}
+
 	rbase := prevBeacon
 	if len(h.BeaconEntries) > 0 {
 		rbase = h.BeaconEntries[len(h.BeaconEntries)-1]
 	}
 
-	rand, err := store.DrawRandomness(rbase.Data, crypto.DomainSeparationTag_WinningPoStChallengeSeed, h.Height-1, nil)
+	rand, err := store.DrawRandomness(rbase.Data, crypto.DomainSeparationTag_WinningPoStChallengeSeed, h.Height-1, buf.Bytes())
 	if err != nil {
 		return xerrors.Errorf("failed to get randomness for verifying winningPost proof: %w", err)
 	}
