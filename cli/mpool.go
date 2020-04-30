@@ -28,7 +28,7 @@ var mpoolPending = &cli.Command{
 	Usage: "Get pending messages",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
-			Name: "local",
+			Name:  "local",
 			Usage: "print pending messages for addresses in local wallet only",
 		},
 	},
@@ -61,7 +61,7 @@ var mpoolPending = &cli.Command{
 		}
 
 		for _, msg := range msgs {
-			if filter != nil{
+			if filter != nil {
 				if _, has := filter[msg.Message.From]; !has {
 					continue
 				}
@@ -123,7 +123,7 @@ var mpoolStat = &cli.Command{
 	Usage: "print mempool stats",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
-			Name: "local",
+			Name:  "local",
 			Usage: "print stats for addresses in local wallet only",
 		},
 	},
@@ -163,7 +163,7 @@ var mpoolStat = &cli.Command{
 		buckets := map[address.Address]*statBucket{}
 
 		for _, v := range msgs {
-			if filter != nil{
+			if filter != nil {
 				if _, has := filter[v.Message.From]; !has {
 					continue
 				}
