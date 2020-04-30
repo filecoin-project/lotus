@@ -2,6 +2,7 @@ package drand
 
 import (
 	"context"
+	"math/rand"
 	"sync"
 	"time"
 
@@ -23,7 +24,13 @@ import (
 var log = logging.Logger("drand")
 
 var drandServers = []string{
-	"drand-test3.nikkolasg.xyz:5003",
+	"nicolas.drand.fil-test.net:443",
+	"philipp.drand.fil-test.net:443",
+	"mathilde.drand.fil-test.net:443",
+	"ludovic.drand.fil-test.net:443",
+	"gabbi.drand.fil-test.net:443",
+	"linus.drand.fil-test.net:443",
+	"jeff.drand.fil-test.net:443",
 }
 
 var drandPubKey *dkey.DistPublic
@@ -51,7 +58,10 @@ func (dp *drandPeer) IsTLS() bool {
 
 type DrandBeacon struct {
 	client dnet.Client
-	peers  []dnet.Peer
+
+	peers         []dnet.Peer
+	peersIndex    int
+	peersIndexMtx sync.Mutex
 
 	pubkey *dkey.DistPublic
 
@@ -78,7 +88,9 @@ func NewDrandBeacon(genesisTs, interval uint64) (*DrandBeacon, error) {
 		db.peers = append(db.peers, &drandPeer{addr: ds, tls: true})
 	}
 
-	groupResp, err := db.client.Group(context.TODO(), db.peers[0], &dproto.GroupRequest{})
+	db.peersIndex = rand.Intn(len(db.peers))
+
+	groupResp, err := db.client.Group(context.TODO(), db.peers[db.peersIndex], &dproto.GroupRequest{})
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get group response from beacon peer: %w", err)
 	}
@@ -101,17 +113,24 @@ func NewDrandBeacon(genesisTs, interval uint64) (*DrandBeacon, error) {
 
 	// TODO: the stream currently gives you back *all* values since drand genesis.
 	// Having the stream in the background is merely an optimization, so not a big deal to disable it for now
-	//go db.handleStreamingUpdates()
+	// go db.handleStreamingUpdates()
 
 	return db, nil
 }
 
+func (db *DrandBeacon) rotatePeersIndex() {
+	db.peersIndexMtx.Lock()
+	defer db.peersIndexMtx.Unlock()
+	db.peersIndex = (db.peersIndex + 1) % len(db.peers)
+}
+
 func (db *DrandBeacon) handleStreamingUpdates() {
 	for {
-		ch, err := db.client.PublicRandStream(context.Background(), db.peers[0], &dproto.PublicRandRequest{})
+		ch, err := db.client.PublicRandStream(context.Background(), db.peers[db.peersIndex], &dproto.PublicRandRequest{})
 		if err != nil {
 			log.Warnf("failed to get public rand stream: %s", err)
 			log.Warnf("trying again in 10 seconds")
+			db.rotatePeersIndex()
 			time.Sleep(time.Second * 10)
 			continue
 		}
@@ -122,7 +141,9 @@ func (db *DrandBeacon) handleStreamingUpdates() {
 				Data:  e.Signature,
 			})
 		}
+
 		log.Warn("drand beacon stream broke, reconnecting in 10 seconds")
+		db.rotatePeersIndex()
 		time.Sleep(time.Second * 10)
 	}
 }
@@ -140,10 +161,11 @@ func (db *DrandBeacon) Entry(ctx context.Context, round uint64) <-chan beacon.Re
 	out := make(chan beacon.Response, 1)
 
 	go func() {
-		resp, err := db.client.PublicRand(ctx, db.peers[0], &dproto.PublicRandRequest{Round: round})
+		resp, err := db.client.PublicRand(ctx, db.peers[db.peersIndex], &dproto.PublicRandRequest{Round: round})
 
 		var br beacon.Response
 		if err != nil {
+			db.rotatePeersIndex()
 			br.Err = err
 		} else {
 			br.Entry.Round = resp.GetRound()

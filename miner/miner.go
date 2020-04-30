@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/gen"
+	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -345,7 +346,7 @@ func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningB
 		rbase = bvals[len(bvals)-1]
 	}
 
-	ticket, err := m.computeTicket(ctx, addr, &rbase, base)
+	ticket, err := m.computeTicket(ctx, addr, &rbase, base, len(bvals) > 0)
 	if err != nil {
 		return nil, xerrors.Errorf("scratching ticket failed: %w", err)
 	}
@@ -393,7 +394,7 @@ func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningB
 	return b, nil
 }
 
-func (m *Miner) computeTicket(ctx context.Context, addr address.Address, brand *types.BeaconEntry, base *MiningBase) (*types.Ticket, error) {
+func (m *Miner) computeTicket(ctx context.Context, addr address.Address, brand *types.BeaconEntry, base *MiningBase, haveNewEntries bool) (*types.Ticket, error) {
 	mi, err := m.api.StateMinerInfo(ctx, addr, types.EmptyTSK)
 	if err != nil {
 		return nil, err
@@ -407,8 +408,12 @@ func (m *Miner) computeTicket(ctx context.Context, addr address.Address, brand *
 	if err := addr.MarshalCBOR(buf); err != nil {
 		return nil, xerrors.Errorf("failed to marshal address to cbor: %w", err)
 	}
-	input, err := m.api.ChainGetRandomness(ctx, base.TipSet.Key(), crypto.DomainSeparationTag_TicketProduction,
-		base.TipSet.Height()+base.NullRounds+1-build.TicketRandomnessLookback, buf.Bytes())
+
+	if !haveNewEntries {
+		buf.Write(base.TipSet.MinTicket().VRFProof)
+	}
+
+	input, err := store.DrawRandomness(brand.Data, crypto.DomainSeparationTag_TicketProduction, base.TipSet.Height()+base.NullRounds+1-build.TicketRandomnessLookback, buf.Bytes())
 	if err != nil {
 		return nil, err
 	}
