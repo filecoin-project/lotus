@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"errors"
+
 	"github.com/filecoin-project/go-fil-markets/pieceio"
 	ipldfree "github.com/ipld/go-ipld-prime/impl/free"
 	"github.com/ipld/go-ipld-prime/traversal/selector"
@@ -66,9 +67,9 @@ type API struct {
 	Filestore  dtypes.ClientFilestore `optional:"true"`
 }
 
-func calcDealExpiration(minDuration uint64, md *miner.DeadlineInfo, ts *types.TipSet) abi.ChainEpoch {
+func calcDealExpiration(minDuration uint64, md *miner.DeadlineInfo, startEpoch abi.ChainEpoch) abi.ChainEpoch {
 	// Make sure we give some time for the miner to seal
-	minExp := ts.Height() + dealStartBuffer + abi.ChainEpoch(minDuration)
+	minExp := startEpoch + abi.ChainEpoch(minDuration)
 
 	// Align on miners ProvingPeriodBoundary
 	return minExp + miner.WPoStProvingPeriod - (minExp % miner.WPoStProvingPeriod) + (md.PeriodStart % miner.WPoStProvingPeriod) - 1
@@ -103,9 +104,15 @@ func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) 
 	}
 
 	providerInfo := utils.NewStorageProviderInfo(params.Miner, mi.Worker, mi.SectorSize, mi.PeerId)
-	ts, err := a.ChainHead(ctx)
-	if err != nil {
-		return nil, xerrors.Errorf("failed getting chain height: %w", err)
+
+	dealStart := params.DealStartEpoch
+	if dealStart <= 0 { // unset, or explicitly 'epoch undefined'
+		ts, err := a.ChainHead(ctx)
+		if err != nil {
+			return nil, xerrors.Errorf("failed getting chain height: %w", err)
+		}
+
+		dealStart = ts.Height() + dealStartBuffer
 	}
 
 	result, err := a.SMDealClient.ProposeStorageDeal(
@@ -113,8 +120,8 @@ func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) 
 		params.Wallet,
 		&providerInfo,
 		params.Data,
-		ts.Height()+dealStartBuffer,
-		calcDealExpiration(params.MinBlocksDuration, md, ts),
+		dealStart,
+		calcDealExpiration(params.MinBlocksDuration, md, dealStart),
 		params.EpochPrice,
 		big.Zero(),
 		rt,
