@@ -20,7 +20,7 @@ func IpfsClientBlockstore(mctx helpers.MetricsCtx, lc fx.Lifecycle, fstore dtype
 	}
 
 	return bufbstore.NewTieredBstore(
-			ipfsbs,
-			blockstore.NewIdStore((*filestore.Filestore)(fstore)),
-		), nil
+		ipfsbs,
+		blockstore.NewIdStore((*filestore.Filestore)(fstore)),
+	), nil
 }
