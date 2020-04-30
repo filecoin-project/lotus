@@ -46,6 +46,7 @@ func TestApis(t *testing.T, b APIBuilder) {
 	t.Run("id", ts.testID)
 	t.Run("testConnectTwo", ts.testConnectTwo)
 	t.Run("testMining", ts.testMining)
+	t.Run("testMiningReal", ts.testMiningReal)
 }
 
 var oneMiner = []StorageMiner{{Full: 0, Preseal: PresealGenesis}}
