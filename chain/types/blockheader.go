@@ -29,20 +29,13 @@ type ElectionProof struct {
 type BeaconEntry struct {
 	Round uint64
 	Data  []byte
-
-	prevRound uint64
 }
 
-func NewBeaconEntry(round, prevRound uint64, data []byte) BeaconEntry {
+func NewBeaconEntry(round uint64, data []byte) BeaconEntry {
 	return BeaconEntry{
-		Round:     round,
-		Data:      data,
-		prevRound: prevRound,
+		Round: round,
+		Data:  data,
 	}
-}
-
-func (be *BeaconEntry) PrevRound() uint64 {
-	return be.prevRound
 }
 
 type BlockHeader struct {

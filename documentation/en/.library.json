@@ -101,6 +101,18 @@
           "slug": "en+storing-data-troubleshooting",
           "github": "en/storing-data-troubleshooting.md",
           "value": null
+        },
+        {
+          "title": "Information for Miners",
+          "slug": "en+info-for-miners",
+          "github": "en/miner-deals.md",
+          "value": null
+        },
+        {
+          "title": "IPFS Integration",
+          "slug": "en+ipfs-client-integration",
+          "github": "en/storing-ipfs-integration.md",
+          "value": null
         }
       ]
     },

@@ -151,7 +151,7 @@ var bitFieldStatCmd = &cli.Command{
 			return xerrors.Errorf("getting run iterator: %w", err)
 		}
 
-		fmt.Printf("Raw length: %d bits (%d bytes)\n", len(dec) * 8, len(dec))
+		fmt.Printf("Raw length: %d bits (%d bytes)\n", len(dec)*8, len(dec))
 
 		var ones, zeros, oneRuns, zeroRuns, invalid uint64
 
