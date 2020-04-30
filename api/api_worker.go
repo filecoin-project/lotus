@@ -3,12 +3,13 @@ package api
 import (
 	"context"
 
+	"github.com/filecoin-project/sector-storage/sealtasks"
+	"github.com/filecoin-project/sector-storage/stores"
 	"github.com/filecoin-project/sector-storage/storiface"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/sector-storage/sealtasks"
-	"github.com/filecoin-project/sector-storage/stores"
 )
 
 type WorkerApi interface {
@@ -20,4 +21,5 @@ type WorkerApi interface {
 	Info(context.Context) (storiface.WorkerInfo, error)
 
 	storage.Sealer
+	Fetch(context.Context, abi.SectorID, stores.SectorFileType, bool) error
 }
