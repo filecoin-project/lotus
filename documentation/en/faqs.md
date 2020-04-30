@@ -117,6 +117,11 @@ Note that these might NOT be the minimum requirements for mining on Mainnet.
 
 A list of benchmarked GPUs can be found [here](https://lotu.sh/en+hardware-mining#benchmarked-gpus-7393).
 
+### Why is my GPU not being used when sealing a sector?
+
+Sealing a sector does not involve constant GPU operations. It's possible
+that your GPU simply isn't necessary at the moment you checked.
+
 ## Advanced questions
 
 ### Is there a Docker image for lotus?

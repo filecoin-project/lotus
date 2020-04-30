@@ -12,6 +12,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -49,13 +50,18 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 	for i, m := range miners {
 		// Create miner through power actor
 
+		spt, err := ffiwrapper.SealProofTypeFromSectorSize(m.SectorSize)
+		if err != nil {
+			return cid.Undef, err
+		}
+
 		var maddr address.Address
 		{
 			constructorParams := &power.CreateMinerParams{
-				Owner:      m.Worker,
-				Worker:     m.Worker,
-				SectorSize: m.SectorSize,
-				Peer:       m.PeerId,
+				Owner:         m.Worker,
+				Worker:        m.Worker,
+				Peer:          m.PeerId,
+				SealProofType: spt,
 			}
 
 			params := mustEnc(constructorParams)

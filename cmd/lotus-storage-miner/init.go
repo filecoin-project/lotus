@@ -621,11 +621,16 @@ func createStorageMiner(ctx context.Context, api lapi.FullNode, peerid peer.ID, 
 		return address.Undef, err
 	}
 
+	spt, err := ffiwrapper.SealProofTypeFromSectorSize(abi.SectorSize(ssize))
+	if err != nil {
+		return address.Undef, err
+	}
+
 	params, err := actors.SerializeParams(&power.CreateMinerParams{
-		Owner:      owner,
-		Worker:     worker,
-		SectorSize: abi.SectorSize(ssize),
-		Peer:       peerid,
+		Owner:         owner,
+		Worker:        worker,
+		SealProofType: spt,
+		Peer:          peerid,
 	})
 	if err != nil {
 		return address.Undef, err
