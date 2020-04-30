@@ -331,6 +331,7 @@ type StartDealParams struct {
 	Miner             address.Address
 	EpochPrice        types.BigInt
 	MinBlocksDuration uint64
+	DealStartEpoch    abi.ChainEpoch
 }
 
 type IpldObject struct {

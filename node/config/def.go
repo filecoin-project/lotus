@@ -16,6 +16,7 @@ type Common struct {
 // FullNode is a full node config
 type FullNode struct {
 	Common
+	Client  Client
 	Metrics Metrics
 }
 
@@ -52,6 +53,10 @@ type Metrics struct {
 	Nickname      string
 	HeadNotifs    bool
 	PubsubTracing bool
+}
+
+type Client struct {
+	UseIpfs bool
 }
 
 func defCommon() Common {
