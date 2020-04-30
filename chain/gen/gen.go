@@ -277,7 +277,7 @@ func CarWalkFunc(nd format.Node) (out []*format.Link, err error) {
 }
 
 func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m address.Address, round abi.ChainEpoch) ([]types.BeaconEntry, *types.ElectionProof, *types.Ticket, error) {
-	mc := &mca{w: cg.w, sm: cg.sm, pv: ffiwrapper.ProofVerifier}
+	mc := &mca{w: cg.w, sm: cg.sm, pv: ffiwrapper.ProofVerifier, bcn: cg.beacon}
 
 	mbi, err := mc.MinerGetBaseInfo(ctx, m, round, pts.Key())
 	if err != nil {
@@ -485,9 +485,10 @@ type MiningCheckAPI interface {
 }
 
 type mca struct {
-	w  *wallet.Wallet
-	sm *stmgr.StateManager
-	pv ffiwrapper.Verifier
+	w   *wallet.Wallet
+	sm  *stmgr.StateManager
+	pv  ffiwrapper.Verifier
+	bcn beacon.RandomBeacon
 }
 
 func (mca mca) ChainGetRandomness(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
@@ -500,7 +501,7 @@ func (mca mca) ChainGetRandomness(ctx context.Context, tsk types.TipSetKey, pers
 }
 
 func (mca mca) MinerGetBaseInfo(ctx context.Context, maddr address.Address, epoch abi.ChainEpoch, tsk types.TipSetKey) (*api.MiningBaseInfo, error) {
-	return stmgr.MinerGetBaseInfo(ctx, mca.sm, tsk, epoch, maddr, mca.pv)
+	return stmgr.MinerGetBaseInfo(ctx, mca.sm, mca.bcn, tsk, epoch, maddr, mca.pv)
 }
 
 func (mca mca) WalletSign(ctx context.Context, a address.Address, v []byte) (*crypto.Signature, error) {
