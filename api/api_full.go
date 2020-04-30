@@ -390,6 +390,7 @@ type MiningBaseInfo struct {
 	WorkerKey       address.Address
 	SectorSize      abi.SectorSize
 	PrevBeaconEntry types.BeaconEntry
+	BeaconEntries   []types.BeaconEntry
 }
 
 type BlockTemplate struct {
