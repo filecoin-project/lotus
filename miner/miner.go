@@ -362,7 +362,7 @@ func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningB
 	}
 
 	buf := new(bytes.Buffer)
-	if err := m.addresses[0].MarshalCBOR(buf); err != nil {
+	if err := addr.MarshalCBOR(buf); err != nil {
 		return nil, xerrors.Errorf("failed to marshal miner address: %w", err)
 	}
 
