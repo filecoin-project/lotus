@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/node/impl"
 )
 
@@ -41,6 +42,43 @@ func (ts *testSuite) testMining(t *testing.T) {
 	h2, err := api.ChainHead(ctx)
 	require.NoError(t, err)
 	require.Equal(t, abi.ChainEpoch(1), h2.Height())
+}
+
+func (ts *testSuite) testMiningReal(t *testing.T) {
+	build.InsecurePoStValidation = false
+	defer func() {
+		build.InsecurePoStValidation = true
+	}()
+
+	ctx := context.Background()
+	apis, sn := ts.makeNodes(t, 1, oneMiner)
+	api := apis[0]
+
+	h1, err := api.ChainHead(ctx)
+	require.NoError(t, err)
+	require.Equal(t, abi.ChainEpoch(0), h1.Height())
+
+	newHeads, err := api.ChainNotify(ctx)
+	require.NoError(t, err)
+	<-newHeads
+
+	err = sn[0].MineOne(ctx, func(bool) {})
+	require.NoError(t, err)
+
+	<-newHeads
+
+	h2, err := api.ChainHead(ctx)
+	require.NoError(t, err)
+	require.Equal(t, abi.ChainEpoch(1), h2.Height())
+
+	err = sn[0].MineOne(ctx, func(bool) {})
+	require.NoError(t, err)
+
+	<-newHeads
+
+	h2, err = api.ChainHead(ctx)
+	require.NoError(t, err)
+	require.Equal(t, abi.ChainEpoch(2), h2.Height())
 }
 
 func TestDealMining(t *testing.T, b APIBuilder, blocktime time.Duration, carExport bool) {
