@@ -107,6 +107,12 @@
           "slug": "en+info-for-miners",
           "github": "en/miner-deals.md",
           "value": null
+        },
+        {
+          "title": "IPFS Integration",
+          "slug": "en+ipfs-client-integration",
+          "github": "en/storing-ipfs-integration.md",
+          "value": null
         }
       ]
     },
