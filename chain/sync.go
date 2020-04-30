@@ -687,7 +687,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	})
 
 	wproofCheck := async.Err(func() error {
-		if err := syncer.VerifyWinningPoStProof(ctx, h, lbst, waddr); err != nil {
+		if err := syncer.VerifyWinningPoStProof(ctx, h, *prevBeacon, lbst, waddr); err != nil {
 			return xerrors.Errorf("invalid election post: %w", err)
 		}
 		return nil
@@ -730,7 +730,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	return merr
 }
 
-func (syncer *Syncer) VerifyWinningPoStProof(ctx context.Context, h *types.BlockHeader, lbst cid.Cid, waddr address.Address) error {
+func (syncer *Syncer) VerifyWinningPoStProof(ctx context.Context, h *types.BlockHeader, prevBeacon types.BeaconEntry, lbst cid.Cid, waddr address.Address) error {
 	if build.InsecurePoStValidation {
 		if len(h.WinPoStProof) == 0 {
 			return xerrors.Errorf("[TESTING] No winning post proof given")
@@ -742,13 +742,12 @@ func (syncer *Syncer) VerifyWinningPoStProof(ctx context.Context, h *types.Block
 		return xerrors.Errorf("[TESTING] winning post was invalid")
 	}
 
-	curTs, err := types.NewTipSet([]*types.BlockHeader{h})
-	if err != nil {
-		return err
+	rbase := prevBeacon
+	if len(h.BeaconEntries) > 0 {
+		rbase = h.BeaconEntries[len(h.BeaconEntries)-1]
 	}
 
-	// TODO: use proper DST
-	rand, err := syncer.sm.ChainStore().GetRandomness(ctx, curTs.Cids(), crypto.DomainSeparationTag_WinningPoStChallengeSeed, h.Height-1, nil)
+	rand, err := store.DrawRandomness(rbase.Data, crypto.DomainSeparationTag_WinningPoStChallengeSeed, h.Height-1, nil)
 	if err != nil {
 		return xerrors.Errorf("failed to get randomness for verifying winningPost proof: %w", err)
 	}

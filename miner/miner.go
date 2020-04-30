@@ -361,7 +361,7 @@ func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningB
 		return nil, nil
 	}
 
-	rand, err := m.api.ChainGetRandomness(ctx, base.TipSet.Key(), crypto.DomainSeparationTag_WinningPoStChallengeSeed, base.TipSet.Height()+base.NullRounds, nil)
+	rand, err := store.DrawRandomness(rbase.Data, crypto.DomainSeparationTag_WinningPoStChallengeSeed, base.TipSet.Height()+base.NullRounds, nil)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get randomness for winning post: %w", err)
 	}
