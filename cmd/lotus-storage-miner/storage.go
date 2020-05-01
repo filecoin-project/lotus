@@ -142,22 +142,21 @@ var storageListCmd = &cli.Command{
 			return err
 		}
 
-		sorted := make([]struct {
+		type fsInfo struct {
 			stores.ID
 			sectors []stores.Decl
 			stat stores.FsStat
-		}, 0, len(st))
+		}
+
+		sorted := make([]fsInfo, 0, len(st))
 		for id, decls := range st {
 			st, err := nodeApi.StorageStat(ctx, id)
 			if err != nil {
-				return err
+				sorted = append(sorted, fsInfo{ID: id, sectors: decls})
+				continue
 			}
 
-			sorted = append(sorted, struct {
-				stores.ID
-				sectors []stores.Decl
-				stat stores.FsStat
-			}{id, decls, st})
+			sorted = append(sorted, fsInfo{id, decls, st})
 		}
 
 		sort.Slice(sorted, func(i, j int) bool {
@@ -178,10 +177,13 @@ var storageListCmd = &cli.Command{
 				}
 			}
 
+			fmt.Printf("%s:\n", s.ID)
+
 			pingStart := time.Now()
 			st, err := nodeApi.StorageStat(ctx, s.ID)
 			if err != nil {
-				return err
+				fmt.Printf("\t%s: %s:\n", color.RedString("Error"), err)
+				continue
 			}
 			ping := time.Now().Sub(pingStart)
 
@@ -199,7 +201,6 @@ var storageListCmd = &cli.Command{
 			set := (st.Capacity-st.Available)*barCols/st.Capacity
 			bar := strings.Repeat("|", int(set)) + strings.Repeat(" ", int(barCols-set))
 
-			fmt.Printf("%s:\n", s.ID)
 			fmt.Printf("\t[%s] %s/%s %s\n", color.New(percCol).Sprint(bar),
 				types.SizeStr(types.NewInt(st.Capacity-st.Available)),
 				types.SizeStr(types.NewInt(st.Capacity)),
