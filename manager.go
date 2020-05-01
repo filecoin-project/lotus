@@ -37,6 +37,9 @@ type Worker interface {
 
 	Info(context.Context) (storiface.WorkerInfo, error)
 
+	// returns channel signalling worker shutdown
+	Closing(context.Context) (<-chan struct{}, error)
+
 	Close() error
 }
 

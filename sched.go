@@ -33,6 +33,10 @@ type scheduler struct {
 	workers    map[WorkerID]*workerHandle
 
 	newWorkers chan *workerHandle
+
+	watchClosing  chan WorkerID
+	workerClosing chan WorkerID
+
 	schedule   chan *workerRequest
 	workerFree chan WorkerID
 	closing    chan struct{}
@@ -48,6 +52,10 @@ func newScheduler(spt abi.RegisteredProof) *scheduler {
 		workers:    map[WorkerID]*workerHandle{},
 
 		newWorkers: make(chan *workerHandle),
+
+		watchClosing:  make(chan WorkerID),
+		workerClosing: make(chan WorkerID),
+
 		schedule:   make(chan *workerRequest),
 		workerFree: make(chan WorkerID),
 		closing:    make(chan struct{}),
@@ -128,10 +136,14 @@ type workerHandle struct {
 }
 
 func (sh *scheduler) runSched() {
+	go sh.runWorkerWatcher()
+
 	for {
 		select {
 		case w := <-sh.newWorkers:
 			sh.schedNewWorker(w)
+		case wid := <-sh.workerClosing:
+			sh.schedDropWorker(wid)
 		case req := <-sh.schedule:
 			scheduled, err := sh.maybeSchedRequest(req)
 			if err != nil {
@@ -153,10 +165,18 @@ func (sh *scheduler) runSched() {
 }
 
 func (sh *scheduler) onWorkerFreed(wid WorkerID) {
+	sh.workersLk.Lock()
+	w, ok := sh.workers[wid]
+	sh.workersLk.Unlock()
+	if !ok {
+		log.Warnf("onWorkerFreed on invalid worker %d", wid)
+		return
+	}
+
 	for e := sh.schedQueue.Front(); e != nil; e = e.Next() {
 		req := e.Value.(*workerRequest)
 
-		ok, err := req.sel.Ok(req.ctx, req.taskType, sh.workers[wid])
+		ok, err := req.sel.Ok(req.ctx, req.taskType, w)
 		if err != nil {
 			log.Errorf("onWorkerFreed req.sel.Ok error: %+v", err)
 			continue
@@ -374,7 +394,7 @@ func canHandleRequest(needRes Resources, spt abi.RegisteredProof, wid WorkerID, 
 			return false
 		}
 	} else {
-		if active.cpuUse + uint64(needRes.Threads) > res.CPUs {
+		if active.cpuUse+uint64(needRes.Threads) > res.CPUs {
 			log.Debugf("sched: not scheduling on worker %d; not enough threads, need %d, %d in use, target %d", wid, needRes.Threads, active.cpuUse, res.CPUs)
 			return false
 		}
@@ -396,12 +416,12 @@ func (a *activeResources) utilization(wr storiface.WorkerResources) float64 {
 	cpu := float64(a.cpuUse) / float64(wr.CPUs)
 	max = cpu
 
-	memMin := float64(a.memUsedMin + wr.MemReserved) / float64(wr.MemPhysical)
+	memMin := float64(a.memUsedMin+wr.MemReserved) / float64(wr.MemPhysical)
 	if memMin > max {
 		max = memMin
 	}
 
-	memMax := float64(a.memUsedMax + wr.MemReserved) / float64(wr.MemPhysical + wr.MemSwap)
+	memMax := float64(a.memUsedMax+wr.MemReserved) / float64(wr.MemPhysical+wr.MemSwap)
 	if memMax > max {
 		max = memMax
 	}
@@ -411,11 +431,34 @@ func (a *activeResources) utilization(wr storiface.WorkerResources) float64 {
 
 func (sh *scheduler) schedNewWorker(w *workerHandle) {
 	sh.workersLk.Lock()
-	defer sh.workersLk.Unlock()
 
 	id := sh.nextWorker
 	sh.workers[id] = w
 	sh.nextWorker++
+
+	sh.workersLk.Unlock()
+
+	select {
+	case sh.watchClosing <- id:
+	case <-sh.closing:
+		return
+	}
+
+	sh.onWorkerFreed(id)
+}
+
+func (sh *scheduler) schedDropWorker(wid WorkerID) {
+	sh.workersLk.Lock()
+	defer sh.workersLk.Unlock()
+
+	w := sh.workers[wid]
+	delete(sh.workers, wid)
+
+	go func() {
+		if err := w.w.Close(); err != nil {
+			log.Warnf("closing worker %d: %+v", err)
+		}
+	}()
 }
 
 func (sh *scheduler) schedClose() {
