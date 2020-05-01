@@ -10,7 +10,7 @@ import (
 )
 
 type taskSelector struct {
-	best []stores.StorageInfo
+	best []stores.StorageInfo //nolint: unused, structcheck
 }
 
 func newTaskSelector() *taskSelector {
