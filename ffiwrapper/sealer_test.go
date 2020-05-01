@@ -16,11 +16,9 @@ import (
 	"golang.org/x/xerrors"
 
 	paramfetch "github.com/filecoin-project/go-paramfetch"
+	"github.com/filecoin-project/sector-storage/ffiwrapper/basicfs"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-storage/storage"
-
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/sector-storage/ffiwrapper/basicfs"
 )
 
 func init() {
@@ -151,9 +149,12 @@ func post(t *testing.T, sealer *Sealer, seals ...seal) time.Time {
 }
 
 func getGrothParamFileAndVerifyingKeys(s abi.SectorSize) {
-	dat := build.ParametersJson()
+	dat, err := ioutil.ReadFile("../parameters.json")
+	if err != nil {
+		panic(err)
+	}
 
-	err := paramfetch.GetParams(dat, uint64(s))
+	err = paramfetch.GetParams(dat, uint64(s))
 	if err != nil {
 		panic(xerrors.Errorf("failed to acquire Groth parameters for 2KiB sectors: %w", err))
 	}
