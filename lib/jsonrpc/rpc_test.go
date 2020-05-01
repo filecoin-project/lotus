@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/require"
 )
 
@@ -275,10 +276,12 @@ func TestUnmarshalableResult(t *testing.T) {
 
 type ChanHandler struct {
 	wait chan struct{}
+	ctxdone <-chan struct{}
 }
 
 func (h *ChanHandler) Sub(ctx context.Context, i int, eq int) (<-chan int, error) {
 	out := make(chan int)
+	h.ctxdone = ctx.Done()
 
 	go func() {
 		defer close(out)
@@ -431,6 +434,68 @@ func TestChanServerClose(t *testing.T) {
 
 	_, ok := <-sub
 	require.Equal(t, false, ok)
+}
+
+
+func TestServerChanLockClose(t *testing.T) {
+	var client struct {
+		Sub func(context.Context, int, int) (<-chan int, error)
+	}
+
+	serverHandler := &ChanHandler{
+		wait: make(chan struct{}),
+	}
+
+	rpcServer := NewServer()
+	rpcServer.Register("ChanHandler", serverHandler)
+
+	testServ := httptest.NewServer(rpcServer)
+
+	var closeConn func() error
+
+	_, err := NewMergeClient("ws://"+testServ.Listener.Addr().String(),
+		"ChanHandler",
+		[]interface{}{&client}, nil,
+		func(c *Config) {
+			c.proxyConnFactory = func(f func() (*websocket.Conn, error)) func() (*websocket.Conn, error) {
+				return func() (*websocket.Conn, error) {
+					c, err := f()
+					if err != nil {
+						return nil, err
+					}
+
+					closeConn = c.UnderlyingConn().Close
+
+					return c, nil
+				}
+			}
+		})
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// sub
+
+	sub, err := client.Sub(ctx, 2, -1)
+	require.NoError(t, err)
+
+	// recv one
+
+	go func() {
+		serverHandler.wait <- struct{}{}
+	}()
+	require.Equal(t, 2, <-sub)
+
+	for i := 0; i < 100; i++ {
+		serverHandler.wait <- struct{}{}
+	}
+
+	if err := closeConn(); err != nil {
+		t.Fatal(err)
+	}
+
+	<-serverHandler.ctxdone
 }
 
 func TestControlChanDeadlock(t *testing.T) {
