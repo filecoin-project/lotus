@@ -8,8 +8,10 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
+	"github.com/fatih/color"
 	"github.com/google/uuid"
 	"github.com/mitchellh/go-homedir"
 	"golang.org/x/xerrors"
@@ -117,7 +119,12 @@ var storageAttachCmd = &cli.Command{
 var storageListCmd = &cli.Command{
 	Name:  "list",
 	Usage: "list local storage paths",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{Name: "color"},
+	},
 	Action: func(cctx *cli.Context) error {
+		color.NoColor = !cctx.Bool("color")
+
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
@@ -138,15 +145,25 @@ var storageListCmd = &cli.Command{
 		sorted := make([]struct {
 			stores.ID
 			sectors []stores.Decl
+			stat stores.FsStat
 		}, 0, len(st))
 		for id, decls := range st {
+			st, err := nodeApi.StorageStat(ctx, id)
+			if err != nil {
+				return err
+			}
+
 			sorted = append(sorted, struct {
 				stores.ID
 				sectors []stores.Decl
-			}{id, decls})
+				stat stores.FsStat
+			}{id, decls, st})
 		}
 
 		sort.Slice(sorted, func(i, j int) bool {
+			if sorted[i].stat.Capacity != sorted[j].stat.Capacity {
+				return sorted[i].stat.Capacity > sorted[j].stat.Capacity
+			}
 			return sorted[i].ID < sorted[j].ID
 		})
 
@@ -168,13 +185,29 @@ var storageListCmd = &cli.Command{
 			}
 			ping := time.Now().Sub(pingStart)
 
+			usedPercent := (st.Capacity-st.Available)*100/st.Capacity
+
+			percCol := color.FgGreen
+			switch {
+			case usedPercent > 98:
+				percCol = color.FgRed
+			case usedPercent > 90:
+				percCol = color.FgYellow
+			}
+
+			var barCols = uint64(50)
+			set := (st.Capacity-st.Available)*barCols/st.Capacity
+			bar := strings.Repeat("|", int(set)) + strings.Repeat(" ", int(barCols-set))
+
 			fmt.Printf("%s:\n", s.ID)
-			fmt.Printf("\tUnsealed: %d; Sealed: %d; Caches: %d\n", cnt[0], cnt[1], cnt[2])
-			fmt.Printf("\tSpace Used: %s/%s %d%% (%s avail)\n",
+			fmt.Printf("\t[%s] %s/%s %s\n", color.New(percCol).Sprint(bar),
 				types.SizeStr(types.NewInt(st.Capacity-st.Available)),
 				types.SizeStr(types.NewInt(st.Capacity)),
-				(st.Capacity-st.Available)*100/st.Capacity,
-				types.SizeStr(types.NewInt(st.Available)))
+				color.New(percCol).Sprintf("%d%%", usedPercent))
+			fmt.Printf("\t%s; %s; %s\n",
+				color.YellowString("Unsealed: %d", cnt[0]),
+				color.GreenString("Sealed: %d", cnt[1]),
+				color.BlueString("Caches: %d", cnt[2]))
 
 			si, err := nodeApi.StorageInfo(ctx, s.ID)
 			if err != nil {
@@ -185,18 +218,18 @@ var storageListCmd = &cli.Command{
 			if si.CanSeal || si.CanStore {
 				fmt.Printf("Weight: %d; Use: ", si.Weight)
 				if si.CanSeal {
-					fmt.Print("Seal ")
+					fmt.Print(color.MagentaString("Seal "))
 				}
 				if si.CanStore {
-					fmt.Print("Store")
+					fmt.Print(color.CyanString("Store"))
 				}
 				fmt.Println("")
 			} else {
-				fmt.Println("Use: ReadOnly")
+				fmt.Print(color.HiYellowString("Use: ReadOnly"))
 			}
 
 			if localPath, ok := local[s.ID]; ok {
-				fmt.Printf("\tLocal: %s\n", localPath)
+				fmt.Printf("\tLocal: %s\n", color.GreenString(localPath))
 			}
 			for i, l := range si.URLs {
 				var rtt string
@@ -206,6 +239,7 @@ var storageListCmd = &cli.Command{
 
 				fmt.Printf("\tURL: %s%s\n", l, rtt) // TODO; try pinging maybe?? print latency?
 			}
+			fmt.Println()
 		}
 
 		return nil
