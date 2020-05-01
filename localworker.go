@@ -211,6 +211,10 @@ func (l *LocalWorker) Info(context.Context) (storiface.WorkerInfo, error) {
 	}, nil
 }
 
+func (l *LocalWorker) Closing(ctx context.Context) (<-chan struct{}, error) {
+	return make(chan struct{}), nil
+}
+
 func (l *LocalWorker) Close() error {
 	return nil
 }
