@@ -142,9 +142,9 @@ var infoCmd = &cli.Command{
 	},
 }
 
-type stateMeta struct{
-	i   int
-	col color.Attribute
+type stateMeta struct {
+	i     int
+	col   color.Attribute
 	state sealing.SectorState
 }
 
@@ -178,8 +178,8 @@ var stateList = []stateMeta{
 func init() {
 	for i, state := range stateList {
 		stateOrder[state.state] = stateMeta{
-			i:     i,
-			col:   state.col,
+			i:   i,
+			col: state.col,
 		}
 	}
 }

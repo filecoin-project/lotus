@@ -145,7 +145,7 @@ var storageListCmd = &cli.Command{
 		type fsInfo struct {
 			stores.ID
 			sectors []stores.Decl
-			stat stores.FsStat
+			stat    stores.FsStat
 		}
 
 		sorted := make([]fsInfo, 0, len(st))
@@ -187,7 +187,7 @@ var storageListCmd = &cli.Command{
 			}
 			ping := time.Now().Sub(pingStart)
 
-			usedPercent := (st.Capacity-st.Available)*100/st.Capacity
+			usedPercent := (st.Capacity - st.Available) * 100 / st.Capacity
 
 			percCol := color.FgGreen
 			switch {
@@ -198,7 +198,7 @@ var storageListCmd = &cli.Command{
 			}
 
 			var barCols = uint64(50)
-			set := (st.Capacity-st.Available)*barCols/st.Capacity
+			set := (st.Capacity - st.Available) * barCols / st.Capacity
 			bar := strings.Repeat("|", int(set)) + strings.Repeat(" ", int(barCols-set))
 
 			fmt.Printf("\t[%s] %s/%s %s\n", color.New(percCol).Sprint(bar),

@@ -275,7 +275,7 @@ func TestUnmarshalableResult(t *testing.T) {
 }
 
 type ChanHandler struct {
-	wait chan struct{}
+	wait    chan struct{}
 	ctxdone <-chan struct{}
 }
 
@@ -435,7 +435,6 @@ func TestChanServerClose(t *testing.T) {
 	_, ok := <-sub
 	require.Equal(t, false, ok)
 }
-
 
 func TestServerChanLockClose(t *testing.T) {
 	var client struct {
