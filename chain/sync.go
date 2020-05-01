@@ -752,7 +752,7 @@ func (syncer *Syncer) VerifyWinningPoStProof(ctx context.Context, h *types.Block
 		rbase = h.BeaconEntries[len(h.BeaconEntries)-1]
 	}
 
-	rand, err := store.DrawRandomness(rbase.Data, crypto.DomainSeparationTag_WinningPoStChallengeSeed, h.Height-1, buf.Bytes())
+	rand, err := store.DrawRandomness(rbase.Data, crypto.DomainSeparationTag_WinningPoStChallengeSeed, h.Height, buf.Bytes())
 	if err != nil {
 		return xerrors.Errorf("failed to get randomness for verifying winningPost proof: %w", err)
 	}
