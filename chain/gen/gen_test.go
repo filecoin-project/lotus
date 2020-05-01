@@ -19,8 +19,8 @@ func init() {
 	power.ConsensusMinerMinPower = big.NewInt(2048)
 }
 
-func testGeneration(t testing.TB, n int, msgs int) {
-	g, err := NewGenerator()
+func testGeneration(t testing.TB, n int, msgs int, sectors int) {
+	g, err := NewGeneratorWithSectors(sectors)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -37,23 +37,24 @@ func testGeneration(t testing.TB, n int, msgs int) {
 }
 
 func TestChainGeneration(t *testing.T) {
-	testGeneration(t, 10, 20)
+	testGeneration(t, 10, 20, 1)
+	testGeneration(t, 10, 20, 25)
 }
 
 func BenchmarkChainGeneration(b *testing.B) {
 	b.Run("0-messages", func(b *testing.B) {
-		testGeneration(b, b.N, 0)
+		testGeneration(b, b.N, 0, 1)
 	})
 
 	b.Run("10-messages", func(b *testing.B) {
-		testGeneration(b, b.N, 10)
+		testGeneration(b, b.N, 10, 1)
 	})
 
 	b.Run("100-messages", func(b *testing.B) {
-		testGeneration(b, b.N, 100)
+		testGeneration(b, b.N, 100, 1)
 	})
 
 	b.Run("1000-messages", func(b *testing.B) {
-		testGeneration(b, b.N, 1000)
+		testGeneration(b, b.N, 1000, 1)
 	})
 }

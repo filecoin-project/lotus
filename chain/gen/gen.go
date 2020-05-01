@@ -87,7 +87,7 @@ func (m mybs) Get(c cid.Cid) (block.Block, error) {
 	return b, nil
 }
 
-func NewGenerator() (*ChainGen, error) {
+func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
 	mr := repo.NewMemory(nil)
 	lr, err := mr.Lock(repo.StorageMiner)
 	if err != nil {
@@ -136,7 +136,7 @@ func NewGenerator() (*ChainGen, error) {
 		return nil, err
 	}
 
-	genm1, k1, err := seed.PreSeal(maddr1, abi.RegisteredProof_StackedDRG2KiBPoSt, 0, 1, m1temp, []byte("some randomness"), nil)
+	genm1, k1, err := seed.PreSeal(maddr1, abi.RegisteredProof_StackedDRG2KiBPoSt, 0, numSectors, m1temp, []byte("some randomness"), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +148,7 @@ func NewGenerator() (*ChainGen, error) {
 		return nil, err
 	}
 
-	genm2, k2, err := seed.PreSeal(maddr2, abi.RegisteredProof_StackedDRG2KiBPoSt, 0, 1, m2temp, []byte("some randomness"), nil)
+	genm2, k2, err := seed.PreSeal(maddr2, abi.RegisteredProof_StackedDRG2KiBPoSt, 0, numSectors, m2temp, []byte("some randomness"), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -237,6 +237,10 @@ func NewGenerator() (*ChainGen, error) {
 	}
 
 	return gen, nil
+}
+
+func NewGenerator() (*ChainGen, error) {
+	return NewGeneratorWithSectors(1)
 }
 
 func (cg *ChainGen) SetStateManager(sm *stmgr.StateManager) {
