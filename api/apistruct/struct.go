@@ -227,6 +227,8 @@ type WorkerStruct struct {
 		FinalizeSector func(context.Context, abi.SectorID) error                                                                                                                                                  `perm:"admin"`
 
 		Fetch func(context.Context, abi.SectorID, stores.SectorFileType, bool) error `perm:"admin"`
+
+		Closing func(context.Context) (<-chan struct{}, error) `perm:"admin"`
 	}
 }
 
@@ -814,6 +816,10 @@ func (w *WorkerStruct) FinalizeSector(ctx context.Context, sector abi.SectorID) 
 
 func (w *WorkerStruct) Fetch(ctx context.Context, id abi.SectorID, fileType stores.SectorFileType, b bool) error {
 	return w.Internal.Fetch(ctx, id, fileType, b)
+}
+
+func (w *WorkerStruct) Closing(ctx context.Context) (<-chan struct{}, error) {
+	return w.Internal.Closing(ctx)
 }
 
 var _ api.Common = &CommonStruct{}

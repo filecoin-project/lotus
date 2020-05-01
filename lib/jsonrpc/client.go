@@ -84,18 +84,23 @@ type client struct {
 // NewMergeClient is like NewClient, but allows to specify multiple structs
 // to be filled in the same namespace, using one connection
 func NewMergeClient(addr string, namespace string, outs []interface{}, requestHeader http.Header, opts ...Option) (ClientCloser, error) {
+	var config Config
+	for _, o := range opts {
+		o(&config)
+	}
+
 	connFactory := func() (*websocket.Conn, error) {
 		conn, _, err := websocket.DefaultDialer.Dial(addr, requestHeader)
 		return conn, err
 	}
+
+	if config.proxyConnFactory != nil {
+		connFactory = config.proxyConnFactory(connFactory)
+	}
+
 	conn, err := connFactory()
 	if err != nil {
 		return nil, err
-	}
-
-	var config Config
-	for _, o := range opts {
-		o(&config)
 	}
 
 	c := client{

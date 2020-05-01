@@ -1,9 +1,15 @@
 package jsonrpc
 
-import "time"
+import (
+	"time"
+
+	"github.com/gorilla/websocket"
+)
 
 type Config struct {
 	ReconnectInterval time.Duration
+
+	proxyConnFactory func(func() (*websocket.Conn, error)) func() (*websocket.Conn, error) // for testing
 }
 
 var defaultConfig = Config{

@@ -22,4 +22,6 @@ type WorkerApi interface {
 
 	storage.Sealer
 	Fetch(context.Context, abi.SectorID, stores.SectorFileType, bool) error
+
+	Closing(context.Context) (<-chan struct{}, error)
 }
