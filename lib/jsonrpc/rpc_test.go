@@ -378,7 +378,6 @@ func TestChan(t *testing.T) {
 	require.Equal(t, false, ok)
 }
 
-
 func TestChanServerClose(t *testing.T) {
 	var client struct {
 		Sub func(context.Context, int, int) (<-chan int, error)
