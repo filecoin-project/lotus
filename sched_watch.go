@@ -68,7 +68,7 @@ func (sh *scheduler) runWorkerWatcher() {
 			}
 
 			cases[toSet] = reflect.SelectCase{
-				Dir: reflect.SelectRecv,
+				Dir:  reflect.SelectRecv,
 				Chan: reflect.ValueOf(workerClosing),
 			}
 
@@ -78,7 +78,7 @@ func (sh *scheduler) runWorkerWatcher() {
 
 			delete(caseToWorker, n)
 			cases[n] = reflect.SelectCase{
-				Dir: reflect.SelectRecv,
+				Dir:  reflect.SelectRecv,
 				Chan: nilch,
 			}
 

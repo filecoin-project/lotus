@@ -27,7 +27,7 @@ type Remote struct {
 	index SectorIndex
 	auth  http.Header
 
-	fetchLk sync.Mutex
+	fetchLk  sync.Mutex
 	fetching map[abi.SectorID]chan struct{}
 }
 
@@ -121,7 +121,7 @@ func (r *Remote) acquireFromRemote(ctx context.Context, s abi.SectorID, fileType
 		return "", "", "", nil, xerrors.Errorf("failed to acquire sector %v from remote(%d): not found", s, fileType)
 	}
 
-		sort.Slice(si, func(i, j int) bool {
+	sort.Slice(si, func(i, j int) bool {
 		return si[i].Weight < si[j].Weight
 	})
 

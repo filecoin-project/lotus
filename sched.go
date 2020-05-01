@@ -51,14 +51,14 @@ func newScheduler(spt abi.RegisteredProof) *scheduler {
 		nextWorker: 0,
 		workers:    map[WorkerID]*workerHandle{},
 
-		newWorkers:  make(chan *workerHandle),
+		newWorkers: make(chan *workerHandle),
 
 		watchClosing:  make(chan WorkerID),
 		workerClosing: make(chan WorkerID),
 
-		schedule:    make(chan *workerRequest),
-		workerFree:  make(chan WorkerID),
-		closing:     make(chan struct{}),
+		schedule:   make(chan *workerRequest),
+		workerFree: make(chan WorkerID),
+		closing:    make(chan struct{}),
 
 		schedQueue: list.New(),
 	}
@@ -394,7 +394,7 @@ func canHandleRequest(needRes Resources, spt abi.RegisteredProof, wid WorkerID, 
 			return false
 		}
 	} else {
-		if active.cpuUse + uint64(needRes.Threads) > res.CPUs {
+		if active.cpuUse+uint64(needRes.Threads) > res.CPUs {
 			log.Debugf("sched: not scheduling on worker %d; not enough threads, need %d, %d in use, target %d", wid, needRes.Threads, active.cpuUse, res.CPUs)
 			return false
 		}
@@ -416,12 +416,12 @@ func (a *activeResources) utilization(wr storiface.WorkerResources) float64 {
 	cpu := float64(a.cpuUse) / float64(wr.CPUs)
 	max = cpu
 
-	memMin := float64(a.memUsedMin + wr.MemReserved) / float64(wr.MemPhysical)
+	memMin := float64(a.memUsedMin+wr.MemReserved) / float64(wr.MemPhysical)
 	if memMin > max {
 		max = memMin
 	}
 
-	memMax := float64(a.memUsedMax + wr.MemReserved) / float64(wr.MemPhysical + wr.MemSwap)
+	memMax := float64(a.memUsedMax+wr.MemReserved) / float64(wr.MemPhysical+wr.MemSwap)
 	if memMax > max {
 		max = memMax
 	}
