@@ -436,13 +436,14 @@ func (c *wsConn) closeInFlight() {
 				Code:    2,
 			},
 		}
-
-		c.handlingLk.Lock()
-		for _, cancel := range c.handling {
-			cancel()
-		}
-		c.handlingLk.Unlock()
 	}
+
+	c.handlingLk.Lock()
+	for _, cancel := range c.handling {
+		cancel()
+	}
+	c.handlingLk.Unlock()
+
 	c.inflight = map[int64]clientRequest{}
 	c.handling = map[int64]context.CancelFunc{}
 }
