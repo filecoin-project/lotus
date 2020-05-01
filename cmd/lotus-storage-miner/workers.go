@@ -66,37 +66,36 @@ var workersListCmd = &cli.Command{
 				gpuUse = ""
 			}
 
-
 			fmt.Printf("Worker %d, host %s\n", stat.id, color.MagentaString(stat.Info.Hostname))
 
 			var barCols = uint64(64)
 			cpuBars := int(stat.CpuUse * barCols / stat.Info.Resources.CPUs)
-			cpuBar := strings.Repeat("|", cpuBars) + strings.Repeat(" ", int(barCols) - cpuBars)
+			cpuBar := strings.Repeat("|", cpuBars) + strings.Repeat(" ", int(barCols)-cpuBars)
 
 			fmt.Printf("\tCPU:  [%s] %d core(s) in use\n", color.GreenString(cpuBar), stat.CpuUse)
 
-			ramBarsRes := int(stat.Info.Resources.MemReserved*barCols/stat.Info.Resources.MemPhysical)
-			ramBarsUsed := int(stat.MemUsedMin*barCols/stat.Info.Resources.MemPhysical)
+			ramBarsRes := int(stat.Info.Resources.MemReserved * barCols / stat.Info.Resources.MemPhysical)
+			ramBarsUsed := int(stat.MemUsedMin * barCols / stat.Info.Resources.MemPhysical)
 			ramBar := color.YellowString(strings.Repeat("|", ramBarsRes)) +
 				color.GreenString(strings.Repeat("|", ramBarsUsed)) +
-				strings.Repeat(" ", int(barCols) - ramBarsUsed - ramBarsRes)
+				strings.Repeat(" ", int(barCols)-ramBarsUsed-ramBarsRes)
 
-			vmem := stat.Info.Resources.MemPhysical+stat.Info.Resources.MemSwap
+			vmem := stat.Info.Resources.MemPhysical + stat.Info.Resources.MemSwap
 
-			vmemBarsRes := int(stat.Info.Resources.MemReserved*barCols/vmem)
-			vmemBarsUsed := int(stat.MemUsedMax*barCols/vmem)
+			vmemBarsRes := int(stat.Info.Resources.MemReserved * barCols / vmem)
+			vmemBarsUsed := int(stat.MemUsedMax * barCols / vmem)
 			vmemBar := color.YellowString(strings.Repeat("|", vmemBarsRes)) +
 				color.GreenString(strings.Repeat("|", vmemBarsUsed)) +
-				strings.Repeat(" ", int(barCols) - vmemBarsUsed - vmemBarsRes)
+				strings.Repeat(" ", int(barCols)-vmemBarsUsed-vmemBarsRes)
 
 			fmt.Printf("\tRAM:  [%s] %d%% %s/%s\n", ramBar,
-				(stat.Info.Resources.MemReserved + stat.MemUsedMin)*100/stat.Info.Resources.MemPhysical,
-				types.SizeStr(types.NewInt(stat.Info.Resources.MemReserved + stat.MemUsedMin)),
+				(stat.Info.Resources.MemReserved+stat.MemUsedMin)*100/stat.Info.Resources.MemPhysical,
+				types.SizeStr(types.NewInt(stat.Info.Resources.MemReserved+stat.MemUsedMin)),
 				types.SizeStr(types.NewInt(stat.Info.Resources.MemPhysical)))
 
 			fmt.Printf("\tVMEM: [%s] %d%% %s/%s\n", vmemBar,
-				(stat.Info.Resources.MemReserved + stat.MemUsedMax)*100/vmem,
-				types.SizeStr(types.NewInt(stat.Info.Resources.MemReserved + stat.MemUsedMax)),
+				(stat.Info.Resources.MemReserved+stat.MemUsedMax)*100/vmem,
+				types.SizeStr(types.NewInt(stat.Info.Resources.MemReserved+stat.MemUsedMax)),
 				types.SizeStr(types.NewInt(vmem)))
 
 			for _, gpu := range stat.Info.Resources.GPUs {
