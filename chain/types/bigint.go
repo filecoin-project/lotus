@@ -79,18 +79,18 @@ func SizeStr(bi BigInt) string {
 	return fmt.Sprintf("%.3g %s", f, byteSizeUnits[i])
 }
 
-var decUnits = []string{"", "K", "M", "G", "T", "P", "E", "Z"}
+var deciUnits = []string{"", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"}
 
-func DecStr(bi BigInt) string {
+func DeciStr(bi BigInt) string {
 	r := new(big.Rat).SetInt(bi.Int)
-	den := big.NewRat(1, 1000)
+	den := big.NewRat(1, 1024)
 
 	var i int
-	for f, _ := r.Float64(); f >= 1000 && i+1 < len(decUnits); f, _ = r.Float64() {
+	for f, _ := r.Float64(); f >= 1024 && i+1 < len(deciUnits); f, _ = r.Float64() {
 		i++
 		r = r.Mul(r, den)
 	}
 
 	f, _ := r.Float64()
-	return fmt.Sprintf("%.3g %s", f, decUnits[i])
+	return fmt.Sprintf("%.3g %s", f, deciUnits[i])
 }
