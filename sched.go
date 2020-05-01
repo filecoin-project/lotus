@@ -131,7 +131,9 @@ func (sh *scheduler) runSched() {
 	for {
 		select {
 		case w := <-sh.newWorkers:
-			sh.schedNewWorker(w)
+			wid := sh.schedNewWorker(w)
+
+			sh.onWorkerFreed(wid)
 		case req := <-sh.schedule:
 			scheduled, err := sh.maybeSchedRequest(req)
 			if err != nil {
@@ -409,13 +411,15 @@ func (a *activeResources) utilization(wr storiface.WorkerResources) float64 {
 	return max
 }
 
-func (sh *scheduler) schedNewWorker(w *workerHandle) {
+func (sh *scheduler) schedNewWorker(w *workerHandle) WorkerID {
 	sh.workersLk.Lock()
 	defer sh.workersLk.Unlock()
 
 	id := sh.nextWorker
 	sh.workers[id] = w
 	sh.nextWorker++
+
+	return id
 }
 
 func (sh *scheduler) schedClose() {
