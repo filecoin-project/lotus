@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"golang.org/x/xerrors"
+	"sort"
 
+	"github.com/fatih/color"
+	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
@@ -19,7 +21,12 @@ import (
 var infoCmd = &cli.Command{
 	Name:  "info",
 	Usage: "Print storage miner info",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{Name: "color"},
+	},
 	Action: func(cctx *cli.Context) error {
+		color.NoColor = !cctx.Bool("color")
+
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
@@ -54,7 +61,7 @@ var infoCmd = &cli.Command{
 			}
 		}
 
-		fmt.Printf("Miner: %s\n", maddr)
+		fmt.Printf("Miner: %s\n", color.BlueString("%s", maddr))
 
 		// Sector size
 		mi, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
@@ -71,8 +78,17 @@ var infoCmd = &cli.Command{
 
 		rpercI := types.BigDiv(types.BigMul(pow.MinerPower.RawBytePower, types.NewInt(1000000)), pow.TotalPower.RawBytePower)
 		qpercI := types.BigDiv(types.BigMul(pow.MinerPower.QualityAdjPower, types.NewInt(1000000)), pow.TotalPower.QualityAdjPower)
-		fmt.Printf("Byte Power:   %s / %s (%0.4f%%)\n", types.SizeStr(pow.MinerPower.RawBytePower), types.SizeStr(pow.TotalPower.RawBytePower), float64(rpercI.Int64())/10000)
-		fmt.Printf("Actual Power: %s / %s (%0.4f%%)\n", types.DecStr(pow.MinerPower.QualityAdjPower), types.DecStr(pow.TotalPower.QualityAdjPower), float64(qpercI.Int64())/10000)
+
+		fmt.Printf("Byte Power:   %s / %s (%0.4f%%)\n",
+			color.BlueString(types.SizeStr(pow.MinerPower.RawBytePower)),
+			types.SizeStr(pow.TotalPower.RawBytePower),
+			float64(rpercI.Int64())/10000)
+
+		fmt.Printf("Actual Power: %s / %s (%0.4f%%)\n",
+			color.GreenString(types.DeciStr(pow.MinerPower.QualityAdjPower)),
+			types.DeciStr(pow.TotalPower.QualityAdjPower),
+			float64(qpercI.Int64())/10000)
+
 		secCounts, err := api.StateMinerSectorCount(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return err
@@ -92,15 +108,17 @@ var infoCmd = &cli.Command{
 				float64(10000*uint64(len(faults))/secCounts.Pset)/100.)
 		}
 
-		fmt.Printf("Miner Balance: %s\n", types.FIL(mact.Balance))
+		fmt.Println()
+
+		fmt.Printf("Miner Balance: %s\n", color.YellowString("%s", types.FIL(mact.Balance)))
 		fmt.Printf("\tPreCommit:   %s\n", types.FIL(mas.PreCommitDeposits))
 		fmt.Printf("\tLocked:      %s\n", types.FIL(mas.LockedFunds))
-		fmt.Printf("\tAvailable:   %s\n", types.FIL(types.BigSub(mact.Balance, types.BigAdd(mas.LockedFunds, mas.PreCommitDeposits))))
+		color.Green("\tAvailable:   %s", types.FIL(types.BigSub(mact.Balance, types.BigAdd(mas.LockedFunds, mas.PreCommitDeposits))))
 		wb, err := api.WalletBalance(ctx, mi.Worker)
 		if err != nil {
 			return xerrors.Errorf("getting worker balance: %w", err)
 		}
-		fmt.Printf("Worker Balance: %s\n", types.FIL(wb))
+		color.Cyan("Worker Balance: %s", types.FIL(wb))
 
 		mb, err := api.StateMarketBalance(ctx, maddr, types.EmptyTSK)
 		if err != nil {
@@ -109,52 +127,13 @@ var infoCmd = &cli.Command{
 		fmt.Printf("Market (Escrow):  %s\n", types.FIL(mb.Escrow))
 		fmt.Printf("Market (Locked):  %s\n", types.FIL(mb.Locked))
 
-		/*// TODO: indicate whether the post worker is in use
-		wstat, err := nodeApi.WorkerStats(ctx)
+		fmt.Println()
+
+		fmt.Println("Sectors:")
+		err = sectorsInfo(ctx, nodeApi)
 		if err != nil {
 			return err
 		}
-
-		fmt.Printf("Worker use:\n")
-		fmt.Printf("\tLocal: %d / %d (+%d reserved)\n", wstat.LocalTotal-wstat.LocalReserved-wstat.LocalFree, wstat.LocalTotal-wstat.LocalReserved, wstat.LocalReserved)
-		fmt.Printf("\tRemote: %d / %d\n", wstat.RemotesTotal-wstat.RemotesFree, wstat.RemotesTotal)
-
-		fmt.Printf("Queues:\n")
-		fmt.Printf("\tAddPiece: %d\n", wstat.AddPieceWait)
-		fmt.Printf("\tPreCommit: %d\n", wstat.PreCommitWait)
-		fmt.Printf("\tCommit: %d\n", wstat.CommitWait)
-		fmt.Printf("\tUnseal: %d\n", wstat.UnsealWait)*/
-
-		/*ps, err := api.StateMinerPostState(ctx, maddr, types.EmptyTSK)
-		if err != nil {
-			return err
-		}
-		if ps.ProvingPeriodStart != 0 {
-			head, err := api.ChainHead(ctx)
-			if err != nil {
-				return err
-			}
-
-			fallback := ps.ProvingPeriodStart - head.Height()
-			fallbackS := fallback * build.BlockDelay
-
-			next := fallback + power.WindowedPostChallengeDuration
-			nextS := next * build.BlockDelay
-
-			fmt.Printf("PoSt Submissions:\n")
-			fmt.Printf("\tFallback: Epoch %d (in %d blocks, ~%dm %ds)\n", ps.ProvingPeriodStart, fallback, fallbackS/60, fallbackS%60)
-			fmt.Printf("\tDeadline: Epoch %d (in %d blocks, ~%dm %ds)\n", ps.ProvingPeriodStart+build.SlashablePowerDelay, next, nextS/60, nextS%60)
-			fmt.Printf("\tConsecutive Failures: %d\n", ps.NumConsecutiveFailures)
-		} else {
-			fmt.Printf("Proving Period: Not Proving\n")
-		}*/
-
-		sinfo, err := sectorsInfo(ctx, nodeApi)
-		if err != nil {
-			return err
-		}
-
-		fmt.Println("Sectors: ", sinfo)
 
 		// TODO: grab actr state / info
 		//  * Sealed sectors (count / bytes)
@@ -163,23 +142,78 @@ var infoCmd = &cli.Command{
 	},
 }
 
-func sectorsInfo(ctx context.Context, napi api.StorageMiner) (map[sealing.SectorState]int, error) {
+type stateMeta struct{
+	i   int
+	col color.Attribute
+	state sealing.SectorState
+}
+
+var stateOrder = map[sealing.SectorState]stateMeta{}
+var stateList = []stateMeta{
+	{col: 39, state: "Total"},
+	{col: color.FgGreen, state: sealing.Proving},
+
+	{col: color.FgRed, state: sealing.UndefinedSectorState},
+	{col: color.FgYellow, state: sealing.Empty},
+	{col: color.FgYellow, state: sealing.Packing},
+	{col: color.FgYellow, state: sealing.PreCommit1},
+	{col: color.FgYellow, state: sealing.PreCommit2},
+	{col: color.FgYellow, state: sealing.PreCommitting},
+	{col: color.FgYellow, state: sealing.WaitSeed},
+	{col: color.FgYellow, state: sealing.Committing},
+	{col: color.FgYellow, state: sealing.CommitWait},
+	{col: color.FgYellow, state: sealing.FinalizeSector},
+
+	{col: color.FgRed, state: sealing.FailedUnrecoverable},
+	{col: color.FgRed, state: sealing.SealFailed},
+	{col: color.FgRed, state: sealing.PreCommitFailed},
+	{col: color.FgRed, state: sealing.ComputeProofFailed},
+	{col: color.FgRed, state: sealing.CommitFailed},
+	{col: color.FgRed, state: sealing.PackingFailed},
+	{col: color.FgRed, state: sealing.Faulty},
+	{col: color.FgRed, state: sealing.FaultReported},
+	{col: color.FgRed, state: sealing.FaultedFinal},
+}
+
+func init() {
+	for i, state := range stateList {
+		stateOrder[state.state] = stateMeta{
+			i:     i,
+			col:   state.col,
+		}
+	}
+}
+
+func sectorsInfo(ctx context.Context, napi api.StorageMiner) error {
 	sectors, err := napi.SectorsList(ctx)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	out := map[sealing.SectorState]int{
+	buckets := map[sealing.SectorState]int{
 		"Total": len(sectors),
 	}
 	for _, s := range sectors {
 		st, err := napi.SectorsStatus(ctx, s)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
-		out[sealing.SectorState(st.State)]++
+		buckets[sealing.SectorState(st.State)]++
 	}
 
-	return out, nil
+	var sorted []stateMeta
+	for state, i := range buckets {
+		sorted = append(sorted, stateMeta{i: i, state: state})
+	}
+
+	sort.Slice(sorted, func(i, j int) bool {
+		return stateOrder[sorted[i].state].i < stateOrder[sorted[j].state].i
+	})
+
+	for _, s := range sorted {
+		_, _ = color.New(stateOrder[s.state].col).Printf("\t%s: %d\n", s.state, s.i)
+	}
+
+	return nil
 }
