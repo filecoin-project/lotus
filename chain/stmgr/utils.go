@@ -98,6 +98,16 @@ func SectorSetSizes(ctx context.Context, sm *StateManager, maddr address.Address
 		return api.MinerSectors{}, xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
 	}
 
+	notProving, err := abi.BitFieldUnion(mas.Faults, mas.Recoveries)
+	if err != nil {
+		return api.MinerSectors{}, err
+	}
+
+	npc, err := notProving.Count()
+	if err != nil {
+		return api.MinerSectors{}, err
+	}
+
 	blks := cbor.NewCborStore(sm.ChainStore().Blockstore())
 	ss, err := amt.LoadAMT(ctx, blks, mas.Sectors)
 	if err != nil {
@@ -106,6 +116,7 @@ func SectorSetSizes(ctx context.Context, sm *StateManager, maddr address.Address
 
 	return api.MinerSectors{
 		Sset: ss.Count,
+		Pset: ss.Count - npc,
 	}, nil
 }
 
