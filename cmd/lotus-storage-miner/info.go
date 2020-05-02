@@ -82,14 +82,33 @@ var infoCmd = &cli.Command{
 			return err
 		}
 
+		head, err := api.ChainHead(ctx)
+		if err != nil {
+			return xerrors.Errorf("getting chain head: %w", err)
+		}
+
+		deadlines, err := api.StateMinerDeadlines(ctx, maddr, head.Key())
+		if err != nil {
+			return xerrors.Errorf("getting miner deadlines: %w", err)
+		}
+
+		var provenSectors uint64
+		for _, d := range deadlines.Due {
+			c, err := d.Count()
+			if err != nil {
+				return err
+			}
+			provenSectors += c
+		}
+
 		fmt.Printf("\tCommitted: %s\n", types.SizeStr(types.BigMul(types.NewInt(secCounts.Sset), types.NewInt(uint64(mi.SectorSize)))))
 		if len(faults) == 0 {
 			fmt.Printf("\tProving: %s\n", types.SizeStr(types.BigMul(types.NewInt(secCounts.Pset), types.NewInt(uint64(mi.SectorSize)))))
 		} else {
 			fmt.Printf("\tProving: %s (%s Faulty, %.2f%%)\n",
-				types.SizeStr(types.BigMul(types.NewInt(secCounts.Pset-uint64(len(faults))), types.NewInt(uint64(mi.SectorSize)))),
+				types.SizeStr(types.BigMul(types.NewInt(provenSectors-uint64(len(faults))), types.NewInt(uint64(mi.SectorSize)))),
 				types.SizeStr(types.BigMul(types.NewInt(uint64(len(faults))), types.NewInt(uint64(mi.SectorSize)))),
-				float64(10000*uint64(len(faults))/secCounts.Pset)/100.)
+				float64(10000*uint64(len(faults))/provenSectors)/100.)
 		}
 
 		fmt.Printf("Miner Balance: %s\n", types.FIL(mact.Balance))
