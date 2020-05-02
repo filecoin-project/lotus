@@ -3,10 +3,10 @@ package seed
 import (
 	"context"
 	"crypto/rand"
-	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/minio/blake2b-simd"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -78,7 +78,7 @@ func PreSeal(maddr address.Address, pt abi.RegisteredProof, offset abi.SectorNum
 			return nil, nil, err
 		}
 
-		trand := sha256.Sum256(preimage)
+		trand := blake2b.Sum256(preimage)
 		ticket := abi.SealRandomness(trand[:])
 
 		fmt.Printf("sector-id: %d, piece info: %v\n", sid, pi)

@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+	"github.com/minio/blake2b-simd"
 	"math/big"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -9,7 +10,6 @@ import (
 
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	"github.com/minio/sha256-simd"
 	"github.com/multiformats/go-multihash"
 	xerrors "golang.org/x/xerrors"
 
@@ -195,7 +195,7 @@ func IsTicketWinner(vrfTicket []byte, mypow BigInt, totpow BigInt) bool {
 
 	*/
 
-	h := sha256.Sum256(vrfTicket)
+	h := blake2b.Sum256(vrfTicket)
 
 	lhs := BigFromBytes(h[:]).Int
 	lhs = lhs.Mul(lhs, totpow.Int)
