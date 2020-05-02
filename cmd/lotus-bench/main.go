@@ -2,9 +2,9 @@ package main
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"github.com/minio/blake2b-simd"
 	"io/ioutil"
 	"math/big"
 	"math/rand"
@@ -455,7 +455,7 @@ func runSeals(sb *ffiwrapper.Sealer, numSectors int, mid abi.ActorID, sectorSize
 
 		addpiece := time.Now()
 
-		trand := sha256.Sum256(ticketPreimage)
+		trand := blake2b.Sum256(ticketPreimage)
 		ticket := abi.SealRandomness(trand[:])
 
 		log.Info("Running replication(1)...")
