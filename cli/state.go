@@ -21,41 +21,66 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/account"
+	"github.com/filecoin-project/specs-actors/actors/builtin/cron"
+	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	miner2 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	samsig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
+	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
+	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/miner"
 )
 
-var methods = map[cid.Cid][]string{}
+type methodMeta struct {
+	name string
+
+	params reflect.Type
+	ret    reflect.Type
+}
+
+var methods = map[cid.Cid][]methodMeta{}
 
 func init() {
-	cidToMethods := map[cid.Cid]interface{}{
-		// builtin.SystemActorCodeID:        builtin.MethodsSystem - apparently it doesn't have methods
-		builtin.InitActorCodeID:             builtin.MethodsInit,
-		builtin.CronActorCodeID:             builtin.MethodsCron,
-		builtin.AccountActorCodeID:          builtin.MethodsAccount,
-		builtin.StoragePowerActorCodeID:     builtin.MethodsPower,
-		builtin.StorageMinerActorCodeID:     builtin.MethodsMiner,
-		builtin.StorageMarketActorCodeID:    builtin.MethodsMarket,
-		builtin.PaymentChannelActorCodeID:   builtin.MethodsPaych,
-		builtin.MultisigActorCodeID:         builtin.MethodsMultisig,
-		builtin.RewardActorCodeID:           builtin.MethodsReward,
-		builtin.VerifiedRegistryActorCodeID: builtin.MethodsVerifiedRegistry,
+	cidToMethods := map[cid.Cid][2]interface{}{
+		// builtin.SystemActorCodeID:        {builtin.MethodsSystem, system.Actor{} }- apparently it doesn't have methods
+		builtin.InitActorCodeID:             {builtin.MethodsInit, init_.Actor{}},
+		builtin.CronActorCodeID:             {builtin.MethodsCron, cron.Actor{}},
+		builtin.AccountActorCodeID:          {builtin.MethodsAccount, account.Actor{}},
+		builtin.StoragePowerActorCodeID:     {builtin.MethodsPower, power.Actor{}},
+		builtin.StorageMinerActorCodeID:     {builtin.MethodsMiner, miner2.Actor{}},
+		builtin.StorageMarketActorCodeID:    {builtin.MethodsMarket, market.Actor{}},
+		builtin.PaymentChannelActorCodeID:   {builtin.MethodsPaych, paych.Actor{}},
+		builtin.MultisigActorCodeID:         {builtin.MethodsMultisig, multisig.Actor{}},
+		builtin.RewardActorCodeID:           {builtin.MethodsReward, reward.Actor{}},
+		builtin.VerifiedRegistryActorCodeID: {builtin.MethodsVerifiedRegistry, verifreg.Actor{}},
 	}
 
 	for c, m := range cidToMethods {
-		rt := reflect.TypeOf(m)
+		rt := reflect.TypeOf(m[0])
 		nf := rt.NumField()
 
-		methods[c] = append(methods[c], "Send")
+		methods[c] = append(methods[c], methodMeta{
+			name:   "Send",
+			params: reflect.TypeOf(new(adt.EmptyValue)),
+			ret:    reflect.TypeOf(new(adt.EmptyValue)),
+		})
+
+		exports := m[1].(abi.Invokee).Exports()
 		for i := 0; i < nf; i++ {
-			methods[c] = append(methods[c], rt.Field(i).Name)
+			export := reflect.TypeOf(exports[i+1])
+
+			methods[c] = append(methods[c], methodMeta{
+				name:   rt.Field(i).Name,
+				params: export.In(1),
+				ret:    export.Out(0),
+			})
 		}
 	}
 }
@@ -903,16 +928,18 @@ func computeStateHtml(o *api.ComputeStateOutput, getCode func(addr address.Addre
    html, body { font-family: monospace; }
    a:link, a:visited { color: #004; }
    pre { background: #ccc; }
-   code { background: #eee; }
+   .call { color: #00a; }
+   .params { background: #dfd; }
+   .ret { background: #ddf; }
    .error { color: red; }
    .exit0 { color: green; }
    .exec {
-    padding-left: 10px;
-    border-left: 1px solid;
-    margin-bottom: 15px;
+    padding-left: 15px;
+    border-left: 2.5px solid;
+    margin-bottom: 45px;
    }
    .exec:hover {
-    background: #fef;
+    background: #eee;
    }
    .slow-true-false { color: #660; }
    .slow-true-true { color: #f80; }
@@ -928,14 +955,37 @@ func computeStateHtml(o *api.ComputeStateOutput, getCode func(addr address.Addre
 			return xerrors.Errorf("getting code for %s: %w", toCode, err)
 		}
 
-		slow := ir.Duration > 10 * time.Millisecond
-		veryslow := ir.Duration > 50 * time.Millisecond
+		params, err := jsonParams(toCode, ir.Msg.Method, ir.Msg.Params)
+		if err != nil {
+			return xerrors.Errorf("decoding params: %w", err)
+		}
+
+		if len(ir.Msg.Params) != 0 {
+			params = `<div><pre class="params">` + params + `</pre></div>`
+		} else {
+			params = ""
+		}
+
+		ret, err := jsonReturn(toCode, ir.Msg.Method, ir.MsgRct.Return)
+		if err != nil {
+			return xerrors.Errorf("decoding return value: %w", err)
+		}
+
+		if len(ir.MsgRct.Return) == 0 {
+			ret = "</div>"
+		} else {
+			ret = `, Return</div><div><pre class="ret">` + ret + `</pre></div>`
+		}
+
+		slow := ir.Duration > 10*time.Millisecond
+		veryslow := ir.Duration > 50*time.Millisecond
 
 		fmt.Printf(`<div class="exec">
+<div><h2 class="call">%s:%s</h2></div>
 <div><b>%s</b> -&gt; <b>%s</b> (%s FIL), M%d</div>
-<div><code>%s:%s(<a href="http://cbor.me/?bytes=%x">%x</a>)</code></div>
-<div><span class="slow-%t-%t">Took %s</span>, <span class="exit%d">Exit: <b>%d</b></span>, Return: %x</div>
-`, ir.Msg.From, ir.Msg.To, types.FIL(ir.Msg.Value), ir.Msg.Method, codeStr(toCode), methods[toCode][ir.Msg.Method], ir.Msg.Params, ir.Msg.Params, slow, veryslow, ir.Duration, ir.MsgRct.ExitCode, ir.MsgRct.ExitCode, ir.MsgRct.Return)
+%s
+<div><span class="slow-%t-%t">Took %s</span>, <span class="exit%d">Exit: <b>%d</b></span>%s
+`, codeStr(toCode), methods[toCode][ir.Msg.Method].name, ir.Msg.From, ir.Msg.To, types.FIL(ir.Msg.Value), ir.Msg.Method, params, slow, veryslow, ir.Duration, ir.MsgRct.ExitCode, ir.MsgRct.ExitCode, ret)
 		if ir.MsgRct.ExitCode != 0 {
 			fmt.Printf(`<div class="error">Error: <pre>%s</pre></div>`, ir.Error)
 		}
@@ -961,11 +1011,34 @@ func printInternalExecutionsHtml(trace []*types.ExecutionResult, getCode func(ad
 			return xerrors.Errorf("getting code for %s: %w", toCode, err)
 		}
 
+		params, err := jsonParams(toCode, im.Msg.Method, im.Msg.Params)
+		if err != nil {
+			return xerrors.Errorf("decoding params: %w", err)
+		}
+
+		if len(im.Msg.Params) != 0 {
+			params = `<div><pre class="params">` + params + `</pre></div>`
+		} else {
+			params = ""
+		}
+
+		ret, err := jsonReturn(toCode, im.Msg.Method, im.MsgRct.Return)
+		if err != nil {
+			return xerrors.Errorf("decoding return value: %w", err)
+		}
+
+		if len(im.MsgRct.Return) == 0 {
+			ret = "</div>"
+		} else {
+			ret = `, Return</div><div><pre class="ret">` + ret + `</pre></div>`
+		}
+
 		fmt.Printf(`<div class="exec">
+<div><h4 class="call">%s:%s</h4></div>
 <div><b>%s</b> -&gt; <b>%s</b> (%s FIL), M%d</div>
-<div><code>%s:%s(<a href="http://cbor.me/?bytes=%x">%x</a>)</code></div>
-<div><span class="exit%d">Exit: <b>%d</b></span>, Return: %x</div>
-`, im.Msg.From, im.Msg.To, types.FIL(im.Msg.Value), im.Msg.Method, codeStr(toCode), methods[toCode][im.Msg.Method], im.Msg.Params, im.Msg.Params, im.MsgRct.ExitCode, im.MsgRct.ExitCode, im.MsgRct.Return)
+%s
+<div><span class="exit%d">Exit: <b>%d</b></span>%s
+`, codeStr(toCode), methods[toCode][im.Msg.Method].name, im.Msg.From, im.Msg.To, types.FIL(im.Msg.Value), im.Msg.Method, params, im.MsgRct.ExitCode, im.MsgRct.ExitCode, ret)
 		if im.MsgRct.ExitCode != 0 {
 			fmt.Printf(`<div class="error">Error: <pre>%s</pre></div>`, im.Error)
 		}
@@ -979,6 +1052,28 @@ func printInternalExecutionsHtml(trace []*types.ExecutionResult, getCode func(ad
 	}
 
 	return nil
+}
+
+func jsonParams(code cid.Cid, method abi.MethodNum, params []byte) (string, error) {
+	re := reflect.New(methods[code][method].params.Elem())
+	p := re.Interface().(cbg.CBORUnmarshaler)
+	if err := p.UnmarshalCBOR(bytes.NewReader(params)); err != nil {
+		return "", err
+	}
+
+	b, err := json.MarshalIndent(p, "", "  ")
+	return string(b), err
+}
+
+func jsonReturn(code cid.Cid, method abi.MethodNum, ret []byte) (string, error) {
+	re := reflect.New(methods[code][method].ret.Elem())
+	p := re.Interface().(cbg.CBORUnmarshaler)
+	if err := p.UnmarshalCBOR(bytes.NewReader(ret)); err != nil {
+		return "", err
+	}
+
+	b, err := json.MarshalIndent(p, "", "  ")
+	return string(b), err
 }
 
 var stateWaitMsgCmd = &cli.Command{
@@ -1217,7 +1312,7 @@ func parseParamsForMethod(act cid.Cid, method uint64, args []string) ([]byte, er
 	case builtin.StoragePowerActorCodeID:
 		f = power.Actor{}.Exports()[method]
 	case builtin.MultisigActorCodeID:
-		f = samsig.Actor{}.Exports()[method]
+		f = multisig.Actor{}.Exports()[method]
 	case builtin.PaymentChannelActorCodeID:
 		f = paych.Actor{}.Exports()[method]
 	default:
