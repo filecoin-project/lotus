@@ -27,10 +27,10 @@ const (
 
 	// some constants for looking up tuple encoded struct fields
 	// field index of Parents field in a block header
-	blockIndexParentsField = 3
+	blockIndexParentsField = 5
 
 	// field index of Messages field in a block header
-	blockIndexMessagesField = 8
+	blockIndexMessagesField = 10
 
 	// field index of AMT node in AMT head
 	amtHeadNodeFieldIndex = 2
