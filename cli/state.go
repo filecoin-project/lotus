@@ -981,13 +981,15 @@ func computeStateHtml(o *api.ComputeStateOutput, getCode func(addr address.Addre
 		slow := ir.Duration > 10*time.Millisecond
 		veryslow := ir.Duration > 50*time.Millisecond
 
-		fmt.Printf(`<div class="exec">
-<div><h2 class="call">%s:%s</h2></div>
+		cid := ir.Msg.Cid()
+
+		fmt.Printf(`<div class="exec" id="%s">
+<div><a href="#%s"><h2 class="call">%s:%s</h2></a></div>
 <div><b>%s</b> -&gt; <b>%s</b> (%s FIL), M%d</div>
 <div><small>Msg CID: %s</small></div>
 %s
 <div><span class="slow-%t-%t">Took %s</span>, <span class="exit%d">Exit: <b>%d</b></span>%s
-`, codeStr(toCode), methods[toCode][ir.Msg.Method].name, ir.Msg.From, ir.Msg.To, types.FIL(ir.Msg.Value), ir.Msg.Method, ir.Msg.Cid(), params, slow, veryslow, ir.Duration, ir.MsgRct.ExitCode, ir.MsgRct.ExitCode, ret)
+`, cid, cid, codeStr(toCode), methods[toCode][ir.Msg.Method].name, ir.Msg.From, ir.Msg.To, types.FIL(ir.Msg.Value), ir.Msg.Method, cid, params, slow, veryslow, ir.Duration, ir.MsgRct.ExitCode, ir.MsgRct.ExitCode, ret)
 		if ir.MsgRct.ExitCode != 0 {
 			fmt.Printf(`<div class="error">Error: <pre>%s</pre></div>`, ir.Error)
 		}
