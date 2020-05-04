@@ -15,7 +15,7 @@ require (
 	github.com/fatih/color v1.8.0
 	github.com/filecoin-project/chain-validation v0.0.6-0.20200430201010-ce84f6e96519
 	github.com/filecoin-project/filecoin-ffi v0.0.0-20200427223233-a0014b17f124
-	github.com/filecoin-project/go-address v0.0.2-0.20200218010043-eb9bb40ed5be
+	github.com/filecoin-project/go-address v0.0.2-0.20200504173055-8b6f2fb2b3ef
 	github.com/filecoin-project/go-amt-ipld/v2 v2.0.1-0.20200131012142-05d80eeccc5e
 	github.com/filecoin-project/go-bitfield v0.0.0-20200416002808-b3ee67ec9060
 	github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2
@@ -42,7 +42,7 @@ require (
 	github.com/ipfs/go-block-format v0.0.2
 	github.com/ipfs/go-blockservice v0.1.3
 	github.com/ipfs/go-car v0.0.3-0.20200304012825-b6769248bfef
-	github.com/ipfs/go-cid v0.0.5
+	github.com/ipfs/go-cid v0.0.6-0.20200501230655-7c82f3b81c00
 	github.com/ipfs/go-datastore v0.4.4
 	github.com/ipfs/go-ds-badger2 v0.1.0
 	github.com/ipfs/go-filestore v0.0.2
@@ -98,7 +98,7 @@ require (
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/stretchr/testify v1.5.1
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
-	github.com/whyrusleeping/cbor-gen v0.0.0-20200501014322-5f9941ef88e0
+	github.com/whyrusleeping/cbor-gen v0.0.0-20200504204219-64967432584d
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
 	github.com/whyrusleeping/pubsub v0.0.0-20131020042734-02de8aa2db3d
 	go.opencensus.io v0.22.3

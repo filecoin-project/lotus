@@ -141,6 +141,8 @@ github.com/filecoin-project/go-address v0.0.0-20191219011437-af739c490b4f/go.mod
 github.com/filecoin-project/go-address v0.0.0-20200107215422-da8eea2842b5/go.mod h1:SAOwJoakQ8EPjwNIsiakIQKsoKdkcbx8U3IapgCg9R0=
 github.com/filecoin-project/go-address v0.0.2-0.20200218010043-eb9bb40ed5be h1:TooKBwR/g8jG0hZ3lqe9S5sy2vTUcLOZLlz3M5wGn2E=
 github.com/filecoin-project/go-address v0.0.2-0.20200218010043-eb9bb40ed5be/go.mod h1:SAOwJoakQ8EPjwNIsiakIQKsoKdkcbx8U3IapgCg9R0=
+github.com/filecoin-project/go-address v0.0.2-0.20200504173055-8b6f2fb2b3ef h1:Wi5E+P1QfHP8IF27eUiTx5vYfqQZwfPxzq3oFEq8w8U=
+github.com/filecoin-project/go-address v0.0.2-0.20200504173055-8b6f2fb2b3ef/go.mod h1:SrA+pWVoUivqKOfC+ckVYbx41hWz++HxJcrlmHNnebU=
 github.com/filecoin-project/go-amt-ipld v0.0.0-20191205011053-79efc22d6cdc h1:cODZD2YzpTUtrOSxbEnWFcQHidNRZiRdvLxySjGvG/M=
 github.com/filecoin-project/go-amt-ipld v0.0.0-20191205011053-79efc22d6cdc/go.mod h1:KsFPWjF+UUYl6n9A+qbg4bjFgAOneicFZtDH/LQEX2U=
 github.com/filecoin-project/go-amt-ipld/v2 v2.0.0/go.mod h1:PAZ5tvSfMfWE327osqFXKm7cBpCpBk2Nh0qKsJUmjjk=
@@ -322,6 +324,8 @@ github.com/ipfs/go-cid v0.0.4-0.20191112011718-79e75dffeb10/go.mod h1:/BYOuUoxkE
 github.com/ipfs/go-cid v0.0.4/go.mod h1:4LLaPOQwmk5z9LBgQnpkivrx8BJjUyGwTXCd5Xfj6+M=
 github.com/ipfs/go-cid v0.0.5 h1:o0Ix8e/ql7Zb5UVUJEUfjsWCIY8t48++9lR8qi6oiJU=
 github.com/ipfs/go-cid v0.0.5/go.mod h1:plgt+Y5MnOey4vO4UlUazGqdbEXuFYitED67FexhXog=
+github.com/ipfs/go-cid v0.0.6-0.20200501230655-7c82f3b81c00 h1:QN88Q0kT2QiDaLxpR/SDsqOBtNIEF/F3n96gSDUimkA=
+github.com/ipfs/go-cid v0.0.6-0.20200501230655-7c82f3b81c00/go.mod h1:plgt+Y5MnOey4vO4UlUazGqdbEXuFYitED67FexhXog=
 github.com/ipfs/go-datastore v0.0.1/go.mod h1:d4KVXhMt913cLBEI/PXAy6ko+W7e9AhyAKBGh803qeE=
 github.com/ipfs/go-datastore v0.0.5/go.mod h1:d4KVXhMt913cLBEI/PXAy6ko+W7e9AhyAKBGh803qeE=
 github.com/ipfs/go-datastore v0.1.0/go.mod h1:d4KVXhMt913cLBEI/PXAy6ko+W7e9AhyAKBGh803qeE=
@@ -1010,6 +1014,9 @@ github.com/whyrusleeping/cbor-gen v0.0.0-20200414195334-429a0b5e922e h1:JY8o/ebU
 github.com/whyrusleeping/cbor-gen v0.0.0-20200414195334-429a0b5e922e/go.mod h1:Xj/M2wWU+QdTdRbu/L/1dIZY8/Wb2K9pAhtroQuxJJI=
 github.com/whyrusleeping/cbor-gen v0.0.0-20200501014322-5f9941ef88e0 h1:dmdwCOVtJAm7qwONARangN4jgCisVFmSJ486JZ1LYaA=
 github.com/whyrusleeping/cbor-gen v0.0.0-20200501014322-5f9941ef88e0/go.mod h1:Xj/M2wWU+QdTdRbu/L/1dIZY8/Wb2K9pAhtroQuxJJI=
+github.com/whyrusleeping/cbor-gen v0.0.0-20200501232601-351665a6e756/go.mod h1:W5MvapuoHRP8rz4vxjwCK1pDqF1aQcWsV5PZ+AHbqdg=
+github.com/whyrusleeping/cbor-gen v0.0.0-20200504204219-64967432584d h1:Y25auOnuZb/GuJvqMflRSDWBz8/HBRME8fiD+H8zLfs=
+github.com/whyrusleeping/cbor-gen v0.0.0-20200504204219-64967432584d/go.mod h1:W5MvapuoHRP8rz4vxjwCK1pDqF1aQcWsV5PZ+AHbqdg=
 github.com/whyrusleeping/chunker v0.0.0-20181014151217-fe64bd25879f h1:jQa4QT2UP9WYv2nzyawpKMOCl+Z/jW7djv2/J50lj9E=
 github.com/whyrusleeping/chunker v0.0.0-20181014151217-fe64bd25879f/go.mod h1:p9UJB6dDgdPgMJZs7UjUOdulKyRr9fqkS+6JKAInPy8=
 github.com/whyrusleeping/go-ctrlnet v0.0.0-20180313164037-f564fbbdaa95/go.mod h1:SJqKCCPXRfBFCwXjfNT/skfsceF7+MBFLI2OrvuRA7g=
