@@ -928,6 +928,7 @@ func computeStateHtml(o *api.ComputeStateOutput, getCode func(addr address.Addre
    html, body { font-family: monospace; }
    a:link, a:visited { color: #004; }
    pre { background: #ccc; }
+   small { color: #444; }
    .call { color: #00a; }
    .params { background: #dfd; }
    .ret { background: #ddf; }
@@ -983,9 +984,10 @@ func computeStateHtml(o *api.ComputeStateOutput, getCode func(addr address.Addre
 		fmt.Printf(`<div class="exec">
 <div><h2 class="call">%s:%s</h2></div>
 <div><b>%s</b> -&gt; <b>%s</b> (%s FIL), M%d</div>
+<div><small>Msg CID: %s</small></div>
 %s
 <div><span class="slow-%t-%t">Took %s</span>, <span class="exit%d">Exit: <b>%d</b></span>%s
-`, codeStr(toCode), methods[toCode][ir.Msg.Method].name, ir.Msg.From, ir.Msg.To, types.FIL(ir.Msg.Value), ir.Msg.Method, params, slow, veryslow, ir.Duration, ir.MsgRct.ExitCode, ir.MsgRct.ExitCode, ret)
+`, codeStr(toCode), methods[toCode][ir.Msg.Method].name, ir.Msg.From, ir.Msg.To, types.FIL(ir.Msg.Value), ir.Msg.Method, ir.Msg.Cid(), params, slow, veryslow, ir.Duration, ir.MsgRct.ExitCode, ir.MsgRct.ExitCode, ret)
 		if ir.MsgRct.ExitCode != 0 {
 			fmt.Printf(`<div class="error">Error: <pre>%s</pre></div>`, ir.Error)
 		}
