@@ -14,36 +14,40 @@ import (
 
 var _ = xerrors.Errorf
 
+var lengthBufHelloMessage = []byte{132}
+
 func (t *HelloMessage) MarshalCBOR(w io.Writer) error {
 	if t == nil {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{132}); err != nil {
+	if _, err := w.Write(lengthBufHelloMessage); err != nil {
 		return err
 	}
+
+	scratch := make([]byte, 9)
 
 	// t.HeaviestTipSet ([]cid.Cid) (slice)
 	if len(t.HeaviestTipSet) > cbg.MaxLength {
 		return xerrors.Errorf("Slice value in field t.HeaviestTipSet was too long")
 	}
 
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajArray, uint64(len(t.HeaviestTipSet)))); err != nil {
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajArray, uint64(len(t.HeaviestTipSet))); err != nil {
 		return err
 	}
 	for _, v := range t.HeaviestTipSet {
-		if err := cbg.WriteCid(w, v); err != nil {
+		if err := cbg.WriteCidBuf(scratch, w, v); err != nil {
 			return xerrors.Errorf("failed writing cid field t.HeaviestTipSet: %w", err)
 		}
 	}
 
 	// t.HeaviestTipSetHeight (abi.ChainEpoch) (int64)
 	if t.HeaviestTipSetHeight >= 0 {
-		if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.HeaviestTipSetHeight))); err != nil {
+		if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajUnsignedInt, uint64(t.HeaviestTipSetHeight)); err != nil {
 			return err
 		}
 	} else {
-		if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajNegativeInt, uint64(-t.HeaviestTipSetHeight)-1)); err != nil {
+		if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajNegativeInt, uint64(-t.HeaviestTipSetHeight-1)); err != nil {
 			return err
 		}
 	}
@@ -55,7 +59,7 @@ func (t *HelloMessage) MarshalCBOR(w io.Writer) error {
 
 	// t.GenesisHash (cid.Cid) (struct)
 
-	if err := cbg.WriteCid(w, t.GenesisHash); err != nil {
+	if err := cbg.WriteCidBuf(scratch, w, t.GenesisHash); err != nil {
 		return xerrors.Errorf("failed to write cid field t.GenesisHash: %w", err)
 	}
 
@@ -64,8 +68,9 @@ func (t *HelloMessage) MarshalCBOR(w io.Writer) error {
 
 func (t *HelloMessage) UnmarshalCBOR(r io.Reader) error {
 	br := cbg.GetPeeker(r)
+	scratch := make([]byte, 8)
 
-	maj, extra, err := cbg.CborReadHeader(br)
+	maj, extra, err := cbg.CborReadHeaderBuf(br, scratch)
 	if err != nil {
 		return err
 	}
@@ -79,7 +84,7 @@ func (t *HelloMessage) UnmarshalCBOR(r io.Reader) error {
 
 	// t.HeaviestTipSet ([]cid.Cid) (slice)
 
-	maj, extra, err = cbg.CborReadHeader(br)
+	maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
 	if err != nil {
 		return err
 	}
@@ -107,7 +112,7 @@ func (t *HelloMessage) UnmarshalCBOR(r io.Reader) error {
 
 	// t.HeaviestTipSetHeight (abi.ChainEpoch) (int64)
 	{
-		maj, extra, err := cbg.CborReadHeader(br)
+		maj, extra, err := cbg.CborReadHeaderBuf(br, scratch)
 		var extraI int64
 		if err != nil {
 			return err
@@ -154,33 +159,37 @@ func (t *HelloMessage) UnmarshalCBOR(r io.Reader) error {
 	return nil
 }
 
+var lengthBufLatencyMessage = []byte{130}
+
 func (t *LatencyMessage) MarshalCBOR(w io.Writer) error {
 	if t == nil {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{130}); err != nil {
+	if _, err := w.Write(lengthBufLatencyMessage); err != nil {
 		return err
 	}
 
+	scratch := make([]byte, 9)
+
 	// t.TArrial (int64) (int64)
 	if t.TArrial >= 0 {
-		if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.TArrial))); err != nil {
+		if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajUnsignedInt, uint64(t.TArrial)); err != nil {
 			return err
 		}
 	} else {
-		if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajNegativeInt, uint64(-t.TArrial)-1)); err != nil {
+		if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajNegativeInt, uint64(-t.TArrial-1)); err != nil {
 			return err
 		}
 	}
 
 	// t.TSent (int64) (int64)
 	if t.TSent >= 0 {
-		if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.TSent))); err != nil {
+		if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajUnsignedInt, uint64(t.TSent)); err != nil {
 			return err
 		}
 	} else {
-		if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajNegativeInt, uint64(-t.TSent)-1)); err != nil {
+		if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajNegativeInt, uint64(-t.TSent-1)); err != nil {
 			return err
 		}
 	}
@@ -189,8 +198,9 @@ func (t *LatencyMessage) MarshalCBOR(w io.Writer) error {
 
 func (t *LatencyMessage) UnmarshalCBOR(r io.Reader) error {
 	br := cbg.GetPeeker(r)
+	scratch := make([]byte, 8)
 
-	maj, extra, err := cbg.CborReadHeader(br)
+	maj, extra, err := cbg.CborReadHeaderBuf(br, scratch)
 	if err != nil {
 		return err
 	}
@@ -204,7 +214,7 @@ func (t *LatencyMessage) UnmarshalCBOR(r io.Reader) error {
 
 	// t.TArrial (int64) (int64)
 	{
-		maj, extra, err := cbg.CborReadHeader(br)
+		maj, extra, err := cbg.CborReadHeaderBuf(br, scratch)
 		var extraI int64
 		if err != nil {
 			return err
@@ -229,7 +239,7 @@ func (t *LatencyMessage) UnmarshalCBOR(r io.Reader) error {
 	}
 	// t.TSent (int64) (int64)
 	{
-		maj, extra, err := cbg.CborReadHeader(br)
+		maj, extra, err := cbg.CborReadHeaderBuf(br, scratch)
 		var extraI int64
 		if err != nil {
 			return err
