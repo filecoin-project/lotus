@@ -8,6 +8,7 @@ import (
 	peer "github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	pubsub_pb "github.com/libp2p/go-libp2p-pubsub/pb"
+	blake2b "github.com/minio/blake2b-simd"
 	ma "github.com/multiformats/go-multiaddr"
 	"go.uber.org/fx"
 
@@ -205,6 +206,11 @@ func GossipSub(cfg *config.Pubsub) interface{} {
 
 		return pubsub.NewGossipSub(helpers.LifecycleCtx(mctx, lc), host, options...)
 	}
+}
+
+func HashMsgId(m *pubsub_pb.Message) string {
+	hash := blake2b.Sum256(m.Data)
+	return string(hash[:])
 }
 
 func newTracerWrapper(tr pubsub.EventTracer) pubsub.EventTracer {
