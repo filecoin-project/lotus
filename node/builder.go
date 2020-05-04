@@ -178,7 +178,7 @@ func libp2p() Option {
 		Override(ConnectionManagerKey, lp2p.ConnectionManager(50, 200, 20*time.Second, nil)),
 		Override(AutoNATSvcKey, lp2p.AutoNATService),
 
-		Override(new(*pubsub.PubSub), lp2p.GossipSub()),
+		Override(new(*pubsub.PubSub), lp2p.GossipSub(&config.Pubsub{})),
 
 		Override(PstoreAddSelfKeysKey, lp2p.PstoreAddSelfKeys),
 		Override(StartListeningKey, lp2p.StartListening(config.DefaultFullNode().Libp2p.ListenAddresses)),
@@ -354,6 +354,7 @@ func ConfigCommon(cfg *config.Common) Option {
 				cfg.Libp2p.ConnMgrHigh,
 				time.Duration(cfg.Libp2p.ConnMgrGrace),
 				cfg.Libp2p.ProtectedPeers)),
+			Override(new(*pubsub.PubSub), lp2p.GossipSub(&cfg.Pubsub)),
 
 			ApplyIf(func(s *Settings) bool { return len(cfg.Libp2p.BootstrapPeers) > 0 },
 				Override(new(dtypes.BootstrapPeers), modules.ConfigBootstrap(cfg.Libp2p.BootstrapPeers)),
@@ -376,9 +377,6 @@ func ConfigFullNode(c interface{}) Option {
 
 		If(cfg.Metrics.HeadNotifs,
 			Override(HeadMetricsKey, metrics.SendHeadNotifs(cfg.Metrics.Nickname)),
-		),
-		If(cfg.Metrics.PubsubTracing,
-			Override(new(*pubsub.PubSub), lp2p.GossipSub(lp2p.PubsubTracer())),
 		),
 	)
 }
