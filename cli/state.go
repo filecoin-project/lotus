@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/docker/go-units"
 	"github.com/ipfs/go-cid"
@@ -913,6 +914,8 @@ func computeStateHtml(o *api.ComputeStateOutput, getCode func(addr address.Addre
    .exec:hover {
     background: #fef;
    }
+   .slow-true-false { color: #660; }
+   .slow-true-true { color: #f80; }
   </style>
  </head>
  <body>
@@ -925,11 +928,14 @@ func computeStateHtml(o *api.ComputeStateOutput, getCode func(addr address.Addre
 			return xerrors.Errorf("getting code for %s: %w", toCode, err)
 		}
 
+		slow := ir.Duration > 10 * time.Millisecond
+		veryslow := ir.Duration > 50 * time.Millisecond
+
 		fmt.Printf(`<div class="exec">
 <div><b>%s</b> -&gt; <b>%s</b> (%s FIL), M%d</div>
 <div><code>%s:%s(<a href="http://cbor.me/?bytes=%x">%x</a>)</code></div>
-<div><span class="exit%d">Exit: <b>%d</b></span>, Return: %x</div>
-`, ir.Msg.From, ir.Msg.To, types.FIL(ir.Msg.Value), ir.Msg.Method, codeStr(toCode), methods[toCode][ir.Msg.Method], ir.Msg.Params, ir.Msg.Params, ir.MsgRct.ExitCode, ir.MsgRct.ExitCode, ir.MsgRct.Return)
+<div><span class="slow-%t-%t">Took %s</span>, <span class="exit%d">Exit: <b>%d</b></span>, Return: %x</div>
+`, ir.Msg.From, ir.Msg.To, types.FIL(ir.Msg.Value), ir.Msg.Method, codeStr(toCode), methods[toCode][ir.Msg.Method], ir.Msg.Params, ir.Msg.Params, slow, veryslow, ir.Duration, ir.MsgRct.ExitCode, ir.MsgRct.ExitCode, ir.MsgRct.Return)
 		if ir.MsgRct.ExitCode != 0 {
 			fmt.Printf(`<div class="error">Error: <pre>%s</pre></div>`, ir.Error)
 		}
