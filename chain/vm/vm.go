@@ -200,7 +200,7 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 		if xerrors.Is(err, init_.ErrAddressNotFound) {
 			a, err := TryCreateAccountActor(rt, msg.To)
 			if err != nil {
-				return nil, aerrors.Absorb(err, 1, "could not create account"), rt
+				return nil, aerrors.Wrapf(err, "could not create account"), rt
 			}
 			toActor = a
 		} else {
