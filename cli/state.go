@@ -769,6 +769,10 @@ var stateComputeStateCmd = &cli.Command{
 			Name:  "show-trace",
 			Usage: "print out full execution trace for given tipset",
 		},
+		&cli.BoolFlag{
+			Name:  "html",
+			Usage: "generate html report",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -818,6 +822,10 @@ var stateComputeStateCmd = &cli.Command{
 			return err
 		}
 
+		if cctx.Bool("html") {
+			return computeStateHtml(stout)
+		}
+
 		fmt.Println("computed state cid: ", stout.Root)
 		if cctx.Bool("show-trace") {
 			for _, ir := range stout.Trace {
@@ -833,6 +841,65 @@ func printInternalExecutions(prefix string, trace []*types.ExecutionResult) {
 	for _, im := range trace {
 		fmt.Printf("%s%s\t%s\t%s\t%d\t%x\t%d\t%x\n", prefix, im.Msg.From, im.Msg.To, im.Msg.Value, im.Msg.Method, im.Msg.Params, im.MsgRct.ExitCode, im.MsgRct.Return)
 		printInternalExecutions(prefix+"\t", im.Subcalls)
+	}
+}
+
+func computeStateHtml(o *api.ComputeStateOutput) error {
+	fmt.Printf(`<html>
+ <head>
+  <style>
+   html, body { font-family: monospace; }
+   pre { background: #ccc; }
+   .error { color: red; }
+   .exit0 { color: green; }
+   .exec {
+    padding-left: 10px;
+    border-left: 1px solid;
+    margin-bottom: 15px;
+   }
+  </style>
+ </head>
+ <body>
+  <div>State CID: <b>%s</b></div>
+  <div>Calls</div>`, o.Root)
+
+	for _, ir := range o.Trace {
+		fmt.Printf(`<div class="exec">
+<div><b>%s</b> -&gt; <b>%s</b> (%s FIL), Method %d</div>
+<div>Params: %x</div>
+<div><span class="exit%d">Exit: <b>%d</b></span>, Return: %x</div>
+`, ir.Msg.From, ir.Msg.To, types.FIL(ir.Msg.Value), ir.Msg.Method, ir.Msg.Params, ir.MsgRct.ExitCode, ir.MsgRct.ExitCode, ir.MsgRct.Return)
+		if ir.MsgRct.ExitCode != 0 {
+			fmt.Printf(`<div class="error">Error: <pre>%s</pre></div>`, ir.Error)
+		}
+
+		if len(ir.InternalExecutions) > 0 {
+			fmt.Println("<div>Internal executions:</div>")
+			printInternalExecutionsHtml(ir.InternalExecutions)
+		}
+		fmt.Println("</div>")
+	}
+
+	fmt.Printf(`</body>
+</html>`)
+	return nil
+}
+
+func printInternalExecutionsHtml(trace []*types.ExecutionResult) {
+	for _, im := range trace {
+		fmt.Printf(`<div class="exec">
+<div><b>%s</b> -&gt; <b>%s</b> (%s FIL), Method %d</div>
+<div>Params: %x</div>
+<div><span class="exit%d">Exit: <b>%d</b></span>, Return: %x</div>
+`, im.Msg.From, im.Msg.To, types.FIL(im.Msg.Value), im.Msg.Method, im.Msg.Params, im.MsgRct.ExitCode, im.MsgRct.ExitCode, im.MsgRct.Return)
+		if im.MsgRct.ExitCode != 0 {
+			fmt.Printf(`<div class="error">Error: <pre>%s</pre></div>`, im.Error)
+		}
+		if len(im.Subcalls) > 0 {
+			fmt.Println("<div>Subcalls:</div>")
+			printInternalExecutionsHtml(im.Subcalls)
+		}
+		fmt.Println("</div>")
 	}
 }
 
