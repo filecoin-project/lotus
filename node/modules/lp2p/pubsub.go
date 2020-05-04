@@ -146,6 +146,14 @@ func GossipSub(cfg *config.Pubsub) interface{} {
 
 		// enable Peer eXchange on bootstrappers
 		if isBootstrapNode {
+			// turn off the mesh in bootstrappers -- only do gossip and PX
+			pubsub.GossipSubD = 0
+			pubsub.GossipSubDscore = 0
+			pubsub.GossipSubDlo = 0
+			pubsub.GossipSubDhi = 0
+			pubsub.GossipSubDlazy = 1024
+			pubsub.GossipSubGossipFactor = 0.5
+			// turn on PX
 			options = append(options, pubsub.WithPeerExchange(true))
 		}
 
