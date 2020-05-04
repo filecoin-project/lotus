@@ -6,15 +6,12 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
-	"github.com/minio/blake2b-simd"
 	"os"
 	"sort"
 	"strconv"
 	"text/tabwriter"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	samsig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	cid "github.com/ipfs/go-cid"
@@ -26,7 +23,6 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/apibstore"
-	actors "github.com/filecoin-project/lotus/chain/actors"
 	types "github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -106,52 +102,22 @@ var msigCreateCmd = &cli.Command{
 			return err
 		}
 
+		intVal := types.BigInt(filval)
+
 		required := cctx.Int64("required")
 		if required == 0 {
 			required = int64(len(addrs))
 		}
 
-		// Set up constructor parameters for multisig
-		msigParams := &samsig.ConstructorParams{
-			Signers:               addrs,
-			NumApprovalsThreshold: required,
-		}
+		gp := types.NewInt(1)
 
-		enc, err := actors.SerializeParams(msigParams)
-		if err != nil {
-			return err
-		}
-
-		// new actors are created by invoking 'exec' on the init actor with the constructor params
-		execParams := &init_.ExecParams{
-			CodeCID:           builtin.MultisigActorCodeID,
-			ConstructorParams: enc,
-		}
-
-		enc, err = actors.SerializeParams(execParams)
-		if err != nil {
-			return err
-		}
-
-		// now we create the message to send this with
-		msg := types.Message{
-			To:       builtin.InitActorAddr,
-			From:     sendAddr,
-			Method:   builtin.MethodsInit.Exec,
-			Params:   enc,
-			GasPrice: types.NewInt(1),
-			GasLimit: 1000000,
-			Value:    types.BigInt(filval),
-		}
-
-		// send the message out to the network
-		smsg, err := api.MpoolPushMessage(ctx, &msg)
+		msgCid, err := api.MsigCreate(ctx, required, addrs, intVal, sendAddr, gp)
 		if err != nil {
 			return err
 		}
 
 		// wait for it to get mined into a block
-		wait, err := api.StateWaitMsg(ctx, smsg.Cid())
+		wait, err := api.StateWaitMsg(ctx, msgCid)
 		if err != nil {
 			return err
 		}
@@ -345,16 +311,6 @@ var msigProposeCmd = &cli.Command{
 			params = p
 		}
 
-		enc, err := actors.SerializeParams(&samsig.ProposeParams{
-			To:     dest,
-			Value:  types.BigInt(value),
-			Method: abi.MethodNum(method),
-			Params: params,
-		})
-		if err != nil {
-			return err
-		}
-
 		var from address.Address
 		if cctx.IsSet("source") {
 			f, err := address.NewFromString(cctx.String("source"))
@@ -370,24 +326,14 @@ var msigProposeCmd = &cli.Command{
 			from = defaddr
 		}
 
-		msg := &types.Message{
-			To:       msig,
-			From:     from,
-			Value:    types.NewInt(0),
-			Method:   builtin.MethodsMultisig.Propose,
-			Params:   enc,
-			GasLimit: 100000,
-			GasPrice: types.NewInt(1),
-		}
-
-		smsg, err := api.MpoolPushMessage(ctx, msg)
+		msgCid, err := api.MsigPropose(ctx, msig, dest, types.BigInt(value), from, method, params)
 		if err != nil {
 			return err
 		}
 
-		fmt.Println("send proposal in message: ", smsg.Cid())
+		fmt.Println("send proposal in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, smsg.Cid())
+		wait, err := api.StateWaitMsg(ctx, msgCid)
 		if err != nil {
 			return err
 		}
@@ -481,29 +427,6 @@ var msigApproveCmd = &cli.Command{
 			params = p
 		}
 
-		p := samsig.ProposalHashData{
-			Requester: proposer,
-			To:        dest,
-			Value:     types.BigInt(value),
-			Method:    abi.MethodNum(method),
-			Params:    params,
-		}
-
-		pser, err := p.Serialize()
-		if err != nil {
-			return err
-		}
-		phash := blake2b.Sum256(pser)
-
-		enc, err := actors.SerializeParams(&samsig.TxnIDParams{
-			ID:           samsig.TxnID(txid),
-			ProposalHash: phash[:],
-		})
-
-		if err != nil {
-			return err
-		}
-
 		var from address.Address
 		if cctx.IsSet("source") {
 			f, err := address.NewFromString(cctx.String("source"))
@@ -519,24 +442,14 @@ var msigApproveCmd = &cli.Command{
 			from = defaddr
 		}
 
-		msg := &types.Message{
-			To:       msig,
-			From:     from,
-			Value:    types.NewInt(0),
-			Method:   builtin.MethodsMultisig.Approve,
-			Params:   enc,
-			GasLimit: 100000,
-			GasPrice: types.NewInt(1),
-		}
-
-		smsg, err := api.MpoolPushMessage(ctx, msg)
+		msgCid, err := api.MsigApprove(ctx, msig, txid, proposer, dest, types.BigInt(value), from, method, params)
 		if err != nil {
 			return err
 		}
 
-		fmt.Println("sent approval in message: ", smsg.Cid())
+		fmt.Println("sent approval in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, smsg.Cid())
+		wait, err := api.StateWaitMsg(ctx, msgCid)
 		if err != nil {
 			return err
 		}
