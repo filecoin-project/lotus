@@ -9,27 +9,55 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/docker/go-units"
+	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/multiformats/go-multihash"
+	cbg "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/xerrors"
+	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	miner2 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	samsig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/miner"
-
-	"github.com/docker/go-units"
-	"github.com/ipfs/go-cid"
-	cbg "github.com/whyrusleeping/cbor-gen"
-	"gopkg.in/urfave/cli.v2"
 )
+
+var methods = map[cid.Cid][]string{}
+
+func init() {
+	cidToMethods := map[cid.Cid]interface{}{
+		// builtin.SystemActorCodeID:        builtin.MethodsSystem - apparently it doesn't have methods
+		builtin.InitActorCodeID:             builtin.MethodsInit,
+		builtin.CronActorCodeID:             builtin.MethodsCron,
+		builtin.AccountActorCodeID:          builtin.MethodsAccount,
+		builtin.StoragePowerActorCodeID:     builtin.MethodsPower,
+		builtin.StorageMinerActorCodeID:     builtin.MethodsMiner,
+		builtin.StorageMarketActorCodeID:    builtin.MethodsMarket,
+		builtin.PaymentChannelActorCodeID:   builtin.MethodsPaych,
+		builtin.MultisigActorCodeID:         builtin.MethodsMultisig,
+		builtin.RewardActorCodeID:           builtin.MethodsReward,
+		builtin.VerifiedRegistryActorCodeID: builtin.MethodsVerifiedRegistry,
+	}
+
+	for c, m := range cidToMethods {
+		rt := reflect.TypeOf(m)
+		nf := rt.NumField()
+
+		methods[c] = append(methods[c], "Send")
+		for i := 0; i < nf; i++ {
+			methods[c] = append(methods[c], rt.Field(i).Name)
+		}
+	}
+}
 
 var stateCmd = &cli.Command{
 	Name:  "state",
@@ -823,7 +851,22 @@ var stateComputeStateCmd = &cli.Command{
 		}
 
 		if cctx.Bool("html") {
-			return computeStateHtml(stout)
+			codeCache := map[address.Address]cid.Cid{}
+			getCode := func(addr address.Address) (cid.Cid, error) {
+				if c, found := codeCache[addr]; found {
+					return c, nil
+				}
+
+				c, err := api.StateGetActor(ctx, addr, ts.Key())
+				if err != nil {
+					return cid.Cid{}, err
+				}
+
+				codeCache[addr] = c.Code
+				return c.Code, nil
+			}
+
+			return computeStateHtml(stout, getCode)
 		}
 
 		fmt.Println("computed state cid: ", stout.Root)
@@ -844,18 +887,31 @@ func printInternalExecutions(prefix string, trace []*types.ExecutionResult) {
 	}
 }
 
-func computeStateHtml(o *api.ComputeStateOutput) error {
+func codeStr(c cid.Cid) string {
+	cmh, err := multihash.Decode(c.Hash())
+	if err != nil {
+		panic(err)
+	}
+	return string(cmh.Digest)
+}
+
+func computeStateHtml(o *api.ComputeStateOutput, getCode func(addr address.Address) (cid.Cid, error)) error {
 	fmt.Printf(`<html>
  <head>
   <style>
    html, body { font-family: monospace; }
+   a:link, a:visited { color: #004; }
    pre { background: #ccc; }
+   code { background: #eee; }
    .error { color: red; }
    .exit0 { color: green; }
    .exec {
     padding-left: 10px;
     border-left: 1px solid;
     margin-bottom: 15px;
+   }
+   .exec:hover {
+    background: #fef;
    }
   </style>
  </head>
@@ -864,18 +920,25 @@ func computeStateHtml(o *api.ComputeStateOutput) error {
   <div>Calls</div>`, o.Root)
 
 	for _, ir := range o.Trace {
+		toCode, err := getCode(ir.Msg.To)
+		if err != nil {
+			return xerrors.Errorf("getting code for %s: %w", toCode, err)
+		}
+
 		fmt.Printf(`<div class="exec">
-<div><b>%s</b> -&gt; <b>%s</b> (%s FIL), Method %d</div>
-<div>Params: %x</div>
+<div><b>%s</b> -&gt; <b>%s</b> (%s FIL), M%d</div>
+<div><code>%s:%s(<a href="http://cbor.me/?bytes=%x">%x</a>)</code></div>
 <div><span class="exit%d">Exit: <b>%d</b></span>, Return: %x</div>
-`, ir.Msg.From, ir.Msg.To, types.FIL(ir.Msg.Value), ir.Msg.Method, ir.Msg.Params, ir.MsgRct.ExitCode, ir.MsgRct.ExitCode, ir.MsgRct.Return)
+`, ir.Msg.From, ir.Msg.To, types.FIL(ir.Msg.Value), ir.Msg.Method, codeStr(toCode), methods[toCode][ir.Msg.Method], ir.Msg.Params, ir.Msg.Params, ir.MsgRct.ExitCode, ir.MsgRct.ExitCode, ir.MsgRct.Return)
 		if ir.MsgRct.ExitCode != 0 {
 			fmt.Printf(`<div class="error">Error: <pre>%s</pre></div>`, ir.Error)
 		}
 
 		if len(ir.InternalExecutions) > 0 {
 			fmt.Println("<div>Internal executions:</div>")
-			printInternalExecutionsHtml(ir.InternalExecutions)
+			if err := printInternalExecutionsHtml(ir.InternalExecutions, getCode); err != nil {
+				return err
+			}
 		}
 		fmt.Println("</div>")
 	}
@@ -885,22 +948,31 @@ func computeStateHtml(o *api.ComputeStateOutput) error {
 	return nil
 }
 
-func printInternalExecutionsHtml(trace []*types.ExecutionResult) {
+func printInternalExecutionsHtml(trace []*types.ExecutionResult, getCode func(addr address.Address) (cid.Cid, error)) error {
 	for _, im := range trace {
+		toCode, err := getCode(im.Msg.To)
+		if err != nil {
+			return xerrors.Errorf("getting code for %s: %w", toCode, err)
+		}
+
 		fmt.Printf(`<div class="exec">
-<div><b>%s</b> -&gt; <b>%s</b> (%s FIL), Method %d</div>
-<div>Params: %x</div>
+<div><b>%s</b> -&gt; <b>%s</b> (%s FIL), M%d</div>
+<div><code>%s:%s(<a href="http://cbor.me/?bytes=%x">%x</a>)</code></div>
 <div><span class="exit%d">Exit: <b>%d</b></span>, Return: %x</div>
-`, im.Msg.From, im.Msg.To, types.FIL(im.Msg.Value), im.Msg.Method, im.Msg.Params, im.MsgRct.ExitCode, im.MsgRct.ExitCode, im.MsgRct.Return)
+`, im.Msg.From, im.Msg.To, types.FIL(im.Msg.Value), im.Msg.Method, codeStr(toCode), methods[toCode][im.Msg.Method], im.Msg.Params, im.Msg.Params, im.MsgRct.ExitCode, im.MsgRct.ExitCode, im.MsgRct.Return)
 		if im.MsgRct.ExitCode != 0 {
 			fmt.Printf(`<div class="error">Error: <pre>%s</pre></div>`, im.Error)
 		}
 		if len(im.Subcalls) > 0 {
 			fmt.Println("<div>Subcalls:</div>")
-			printInternalExecutionsHtml(im.Subcalls)
+			if err := printInternalExecutionsHtml(im.Subcalls, getCode); err != nil {
+				return err
+			}
 		}
 		fmt.Println("</div>")
 	}
+
+	return nil
 }
 
 var stateWaitMsgCmd = &cli.Command{
