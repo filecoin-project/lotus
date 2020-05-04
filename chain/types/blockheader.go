@@ -2,8 +2,9 @@ package types
 
 import (
 	"bytes"
-	"github.com/minio/blake2b-simd"
 	"math/big"
+
+	"github.com/minio/blake2b-simd"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
@@ -43,31 +44,31 @@ type BlockHeader struct {
 
 	Ticket *Ticket // 1
 
-	ElectionProof *ElectionProof
+	ElectionProof *ElectionProof // 2
 
-	BeaconEntries []BeaconEntry
+	BeaconEntries []BeaconEntry // 3
 
-	WinPoStProof []abi.PoStProof
+	WinPoStProof []abi.PoStProof // 4
 
-	Parents []cid.Cid // 3
+	Parents []cid.Cid // 5
 
-	ParentWeight BigInt // 4
+	ParentWeight BigInt // 6
 
-	Height abi.ChainEpoch // 5
+	Height abi.ChainEpoch // 7
 
-	ParentStateRoot cid.Cid // 6
+	ParentStateRoot cid.Cid // 8
 
-	ParentMessageReceipts cid.Cid // 7
+	ParentMessageReceipts cid.Cid // 8
 
-	Messages cid.Cid // 8
+	Messages cid.Cid // 10
 
-	BLSAggregate *crypto.Signature // 9
+	BLSAggregate *crypto.Signature // 11
 
-	Timestamp uint64 // 10
+	Timestamp uint64 // 12
 
-	BlockSig *crypto.Signature // 11
+	BlockSig *crypto.Signature // 13
 
-	ForkSignaling uint64 // 12
+	ForkSignaling uint64 // 14
 }
 
 func (b *BlockHeader) ToStorageBlock() (block.Block, error) {
