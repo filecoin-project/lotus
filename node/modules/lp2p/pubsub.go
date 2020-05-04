@@ -7,10 +7,12 @@ import (
 	host "github.com/libp2p/go-libp2p-core/host"
 	peer "github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	pubsub_pb "github.com/libp2p/go-libp2p-pubsub/pb"
 	ma "github.com/multiformats/go-multiaddr"
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 )
@@ -22,35 +24,18 @@ func init() {
 	pubsub.GossipSubDlo = 6
 	pubsub.GossipSubDhi = 12
 	pubsub.GossipSubDlazy = 12
+	pubsub.GossipSubDirectConnectInitialDelay = 30 * time.Second
 }
 
-type PubsubOpt func(host.Host) pubsub.Option
-
-func PubsubTracer() PubsubOpt {
-	return func(host host.Host) pubsub.Option {
-		pi, err := peer.AddrInfoFromP2pAddr(ma.StringCast("/ip4/147.75.67.199/tcp/4001/p2p/QmTd6UvR47vUidRNZ1ZKXHrAFhqTJAD27rKL9XYghEKgKX"))
-		if err != nil {
-			panic(err)
-		}
-
-		tr, err := pubsub.NewRemoteTracer(context.TODO(), host, *pi)
-		if err != nil {
-			panic(err)
-		}
-
-		return pubsub.WithEventTracer(tr)
-	}
-}
-
-func GossipSub(pubsubOptions ...PubsubOpt) interface{} {
+func GossipSub(cfg *config.Pubsub) interface{} {
 	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, nn dtypes.NetworkName, bp dtypes.BootstrapPeers) (service *pubsub.PubSub, err error) {
 		bootstrappers := make(map[peer.ID]struct{})
 		for _, pi := range bp {
 			bootstrappers[pi.ID] = struct{}{}
 		}
-		_, isBootstrapNode := bootstrappers[host.ID()]
+		isBootstrapNode := cfg.Bootstrapper
 
-		v11Options := []pubsub.Option{
+		options := []pubsub.Option{
 			// Gossipsubv1.1 configuration
 			pubsub.WithFloodPublish(true),
 			pubsub.WithPeerScore(
@@ -161,23 +146,85 @@ func GossipSub(pubsubOptions ...PubsubOpt) interface{} {
 
 		// enable Peer eXchange on bootstrappers
 		if isBootstrapNode {
-			v11Options = append(v11Options, pubsub.WithPeerExchange(true))
+			options = append(options, pubsub.WithPeerExchange(true))
+		}
+
+		// direct peers
+		if cfg.DirectPeers != nil {
+			var directPeerInfo []peer.AddrInfo
+
+			for _, addr := range cfg.DirectPeers {
+				a, err := ma.NewMultiaddr(addr)
+				if err != nil {
+					return nil, err
+				}
+
+				pi, err := peer.AddrInfoFromP2pAddr(a)
+				if err != nil {
+					return nil, err
+				}
+
+				directPeerInfo = append(directPeerInfo, *pi)
+			}
+
+			options = append(options, pubsub.WithDirectPeers(directPeerInfo))
+		}
+
+		// tracer
+		if cfg.RemoteTracer != "" {
+			a, err := ma.NewMultiaddr(cfg.RemoteTracer)
+			if err != nil {
+				return nil, err
+			}
+
+			pi, err := peer.AddrInfoFromP2pAddr(a)
+			if err != nil {
+				return nil, err
+			}
+
+			tr, err := pubsub.NewRemoteTracer(context.TODO(), host, *pi)
+			if err != nil {
+				return nil, err
+			}
+
+			trw := newTracerWrapper(tr)
+			options = append(options, pubsub.WithEventTracer(trw))
 		}
 
 		// TODO: we want to hook the peer score inspector so that we can gain visibility
 		//       in peer scores for debugging purposes -- this might be trigged by metrics collection
-		// v11Options = append(v11Options, pubsub.WithPeerScoreInspect(XXX, time.Second))
-
-		options := append(v11Options, paresOpts(host, pubsubOptions)...)
+		// options = append(options, pubsub.WithPeerScoreInspect(XXX, time.Second))
 
 		return pubsub.NewGossipSub(helpers.LifecycleCtx(mctx, lc), host, options...)
 	}
 }
 
-func paresOpts(host host.Host, in []PubsubOpt) []pubsub.Option {
-	out := make([]pubsub.Option, len(in))
-	for k, v := range in {
-		out[k] = v(host)
+func newTracerWrapper(tr pubsub.EventTracer) pubsub.EventTracer {
+	return &tracerWrapper{tr: tr}
+}
+
+type tracerWrapper struct {
+	tr pubsub.EventTracer
+}
+
+func (trw *tracerWrapper) Trace(evt *pubsub_pb.TraceEvent) {
+	// this filters the trace events reported to the remote tracer to include only
+	// JOIN/LEAVE/GRAFT/PRUNE/PUBLISH/DELIVER. This significantly reduces bandwidth usage and still
+	// collects enough data to recover the state of the mesh and compute message delivery latency
+	// distributions.
+	// TODO: hook all events into local metrics for inspection through the dashboard
+	switch evt.GetType() {
+	case pubsub_pb.TraceEvent_PUBLISH_MESSAGE:
+		trw.tr.Trace(evt)
+	case pubsub_pb.TraceEvent_DELIVER_MESSAGE:
+		trw.tr.Trace(evt)
+	case pubsub_pb.TraceEvent_JOIN:
+		trw.tr.Trace(evt)
+	case pubsub_pb.TraceEvent_LEAVE:
+		trw.tr.Trace(evt)
+	case pubsub_pb.TraceEvent_GRAFT:
+		trw.tr.Trace(evt)
+	case pubsub_pb.TraceEvent_PRUNE:
+		trw.tr.Trace(evt)
 	}
-	return out
 }
