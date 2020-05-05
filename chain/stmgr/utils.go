@@ -426,7 +426,7 @@ func GetLookbackTipSetForRound(ctx context.Context, sm *StateManager, ts *types.
 		return ts, nil
 	}
 
-	lbts, err := sm.ChainStore().GetTipsetByHeight(ctx, lbr, ts)
+	lbts, err := sm.ChainStore().GetTipsetByHeight(ctx, lbr, ts, true)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get lookback tipset: %w", err)
 	}
