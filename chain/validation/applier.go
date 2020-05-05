@@ -2,13 +2,13 @@ package validation
 
 import (
 	"context"
-
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/specs-actors/actors/puppet"
 	"github.com/ipfs/go-cid"
 
 	vtypes "github.com/filecoin-project/chain-validation/chain/types"
@@ -135,6 +135,10 @@ func (a *Applier) applyMessage(epoch abi.ChainEpoch, lm types.ChainMsg) (vtypes.
 	base := a.stateWrapper.Root()
 
 	lotusVM, err := vm.NewVM(base, epoch, &vmRand{}, a.stateWrapper.bs, vdrivers.NewChainValidationSyscalls())
+	// need to modify the VM invoker to add the puppet actor
+	chainValInvoker := vm.NewInvoker()
+	chainValInvoker.Register(puppet.PuppetActorCodeID, puppet.Actor{}, puppet.State{})
+	lotusVM.SetInvoker(chainValInvoker)
 	if err != nil {
 		return vtypes.MessageReceipt{}, big.Zero(), big.Zero(), err
 	}
