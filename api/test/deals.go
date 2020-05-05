@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/ipfs/go-cid"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -12,9 +11,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ipfs/go-car"
+	"github.com/ipfs/go-cid"
+
 	files "github.com/ipfs/go-ipfs-files"
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/ipld/go-car"
 
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/lotus/api"

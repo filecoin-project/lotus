@@ -17,6 +17,8 @@ import (
 	samarket "github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
+	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/events"
@@ -118,7 +120,7 @@ func (n *ClientNodeAdapter) ListClientDeals(ctx context.Context, addr address.Ad
 }
 
 // Adds funds with the StorageMinerActor for a storage participant.  Used by both providers and clients.
-func (n *ClientNodeAdapter) AddFunds(ctx context.Context, addr address.Address, amount abi.TokenAmount) error {
+func (n *ClientNodeAdapter) AddFunds(ctx context.Context, addr address.Address, amount abi.TokenAmount) (cid.Cid, error) {
 	// (Provider Node API)
 	smsg, err := n.MpoolPushMessage(ctx, &types.Message{
 		To:       builtin.StorageMarketActorAddr,
@@ -129,22 +131,13 @@ func (n *ClientNodeAdapter) AddFunds(ctx context.Context, addr address.Address, 
 		Method:   builtin.MethodsMarket.AddBalance,
 	})
 	if err != nil {
-		return err
+		return cid.Undef, err
 	}
 
-	r, err := n.StateWaitMsg(ctx, smsg.Cid())
-	if err != nil {
-		return err
-	}
-
-	if r.Receipt.ExitCode != 0 {
-		return xerrors.Errorf("adding funds to storage miner market actor failed: exit %d", r.Receipt.ExitCode)
-	}
-
-	return nil
+	return smsg.Cid(), nil
 }
 
-func (n *ClientNodeAdapter) EnsureFunds(ctx context.Context, addr, wallet address.Address, amount abi.TokenAmount, ts shared.TipSetToken) error {
+func (n *ClientNodeAdapter) EnsureFunds(ctx context.Context, addr, wallet address.Address, amount abi.TokenAmount, ts shared.TipSetToken) (cid.Cid, error) {
 	return n.fm.EnsureAvailable(ctx, addr, wallet, amount)
 }
 
@@ -401,6 +394,14 @@ func (n *ClientNodeAdapter) GetChainHead(ctx context.Context) (shared.TipSetToke
 	}
 
 	return head.Key().Bytes(), head.Height(), nil
+}
+
+func (n *ClientNodeAdapter) WaitForMessage(ctx context.Context, mcid cid.Cid, cb func(code exitcode.ExitCode, bytes []byte, err error) error) error {
+	receipt, err := n.StateWaitMsg(ctx, mcid)
+	if err != nil {
+		return cb(0, nil, err)
+	}
+	return cb(receipt.Receipt.ExitCode, receipt.Receipt.Return, nil)
 }
 
 var _ storagemarket.StorageClientNode = &ClientNodeAdapter{}
