@@ -174,7 +174,7 @@ func (a *ChainAPI) ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoch,
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
-	return a.Chain.GetTipsetByHeight(ctx, h, ts)
+	return a.Chain.GetTipsetByHeight(ctx, h, ts, true)
 }
 
 func (a *ChainAPI) ChainReadObj(ctx context.Context, obj cid.Cid) ([]byte, error) {
