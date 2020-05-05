@@ -279,8 +279,6 @@ func (rt *Runtime) DeleteActor(addr address.Address) {
 	}
 }
 
-const GasVerifySignature = 50
-
 func (rs *Runtime) Syscalls() vmr.Syscalls {
 	// TODO: Make sure this is wrapped in something that charges gas for each of the calls
 	return rs.sys

@@ -243,11 +243,12 @@ func (ss *syscallShim) VerifySeal(info abi.SealVerifyInfo) error {
 }
 
 func (ss *syscallShim) VerifySignature(sig crypto.Signature, addr address.Address, input []byte) error {
-	return nil
-	/* // TODO: in genesis setup, we are currently faking signatures
-	if err := ss.rt.vmctx.VerifySignature(&sig, addr, input); err != nil {
-		return false
+	// TODO: in genesis setup, we are currently faking signatures
+
+	kaddr, err := ResolveToKeyAddr(ss.cstate, ss.cst, addr)
+	if err != nil {
+		return err
 	}
-	return true
-	*/
+
+	return sigs.Verify(&sig, kaddr, input)
 }
