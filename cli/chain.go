@@ -692,7 +692,7 @@ var chainBisectCmd = &cli.Command{
 
 		highest, err := api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(end), types.EmptyTSK)
 		if err != nil {
-			return err
+			return xerrors.Errorf("getting end tipset: %w", err)
 		}
 
 		prev := highest.Height()
@@ -726,15 +726,32 @@ var chainBisectCmd = &cli.Command{
 			cmd.Stdin = bytes.NewReader(b)
 
 			var out bytes.Buffer
+			var serr bytes.Buffer
+
 			cmd.Stdout = &out
+			cmd.Stderr = &serr
 
 			switch cmd.Run().(type) {
 			case nil:
 				// it's lower
-				end = mid
-				highest = midTs
-				fmt.Println("true")
+				if strings.TrimSpace(out.String()) == "true" {
+					end = mid
+					highest = midTs
+					fmt.Println("true")
+				} else {
+					start = mid
+					fmt.Printf("false ('%s' not 'true')\n", strings.TrimSpace(out.String()))
+				}
 			case *exec.ExitError:
+				if len(serr.String()) > 0 {
+					fmt.Println("error")
+
+					fmt.Printf("> Command: %s\n---->\n", strings.Join(cctx.Args().Slice()[3:], " "))
+					fmt.Println(string(b))
+					fmt.Println("<----")
+					return xerrors.Errorf("error running bisect check: %s", serr.String())
+				}
+
 				start = mid
 				fmt.Println("false")
 			default:
