@@ -23,9 +23,10 @@ func NewTestMiner(nextCh <-chan func(bool), addr address.Address) func(api.FullN
 			waitFunc:          chanWaiter(nextCh),
 			epp:               epp,
 			minedBlockHeights: arc,
+			address:           addr,
 		}
 
-		if err := m.Register(addr); err != nil {
+		if err := m.Start(context.TODO()); err != nil {
 			panic(err)
 		}
 		return m
