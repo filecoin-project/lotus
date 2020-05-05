@@ -199,8 +199,9 @@ func RegisterProviderValidator(mrv *requestvalidation.ProviderRequestValidator, 
 
 // NewProviderDAGServiceDataTransfer returns a data transfer manager that just
 // uses the provider's Staging DAG service for transfers
-func NewProviderDAGServiceDataTransfer(h host.Host, gs dtypes.StagingGraphsync) dtypes.ProviderDataTransfer {
-	return dtgraphsync.NewGraphSyncDataTransfer(h, gs)
+func NewProviderDAGServiceDataTransfer(h host.Host, gs dtypes.StagingGraphsync, ds dtypes.MetadataDS) dtypes.ProviderDataTransfer {
+	sc := storedcounter.New(ds, datastore.NewKey("/datatransfer/provider/counter"))
+	return dtgraphsync.NewGraphSyncDataTransfer(h, gs, sc)
 }
 
 // NewProviderDealStore creates a statestore for the client to store its deals
