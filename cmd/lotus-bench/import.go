@@ -85,7 +85,7 @@ var importBenchCmd = &cli.Command{
 		}
 
 		if h := cctx.Int64("height"); h != 0 {
-			tsh, err := cs.GetTipsetByHeight(context.TODO(), abi.ChainEpoch(h), head)
+			tsh, err := cs.GetTipsetByHeight(context.TODO(), abi.ChainEpoch(h), head, true)
 			if err != nil {
 				return err
 			}
