@@ -264,17 +264,17 @@ func SetupBlockProducer(lc fx.Lifecycle, ds dtypes.MetadataDS, api lapi.FullNode
 		return nil, err
 	}
 
-	m := miner.NewMiner(api, epp, beacon)
+	m := miner.NewMiner(api, epp, beacon, minerAddr)
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			if err := m.Register(minerAddr); err != nil {
+			if err := m.Start(ctx); err != nil {
 				return err
 			}
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
-			return m.Unregister(ctx, minerAddr)
+			return m.Stop(ctx)
 		},
 	})
 

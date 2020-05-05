@@ -456,15 +456,15 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 				return err
 			}
 
-			m := miner.NewMiner(api, epp, beacon)
+			m := miner.NewMiner(api, epp, beacon, a)
 			{
-				if err := m.Register(a); err != nil {
+				if err := m.Start(ctx); err != nil {
 					return xerrors.Errorf("failed to start up genesis miner: %w", err)
 				}
 
 				cerr := configureStorageMiner(ctx, api, a, peerid, gasPrice)
 
-				if err := m.Unregister(ctx, a); err != nil {
+				if err := m.Stop(ctx); err != nil {
 					log.Error("failed to shut down storage miner: ", err)
 				}
 
