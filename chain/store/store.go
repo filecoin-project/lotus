@@ -930,7 +930,11 @@ func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, pers cr
 	}
 }
 
-func (cs *ChainStore) GetTipsetByHeight(ctx context.Context, h abi.ChainEpoch, ts *types.TipSet) (*types.TipSet, error) {
+// GetTipsetByHeight returns the tipset on the chain behind 'ts' at the given
+// height. In the case that the given height is a null round, the 'prev' flag
+// selects the tipset before the null round if true, and the tipset following
+// the null round if false.
+func (cs *ChainStore) GetTipsetByHeight(ctx context.Context, h abi.ChainEpoch, ts *types.TipSet, prev bool) (*types.TipSet, error) {
 	if ts == nil {
 		ts = cs.GetHeaviestTipSet()
 	}
@@ -954,6 +958,9 @@ func (cs *ChainStore) GetTipsetByHeight(ctx context.Context, h abi.ChainEpoch, t
 		}
 
 		if h > pts.Height() {
+			if prev {
+				return pts, nil
+			}
 			return ts, nil
 		}
 		if h == pts.Height() {
