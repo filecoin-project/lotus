@@ -24,7 +24,7 @@ import (
 
 var log = logging.Logger("sub")
 
-func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *chain.Syncer, cmgr connmgr.ConnManager) {
+func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *chain.Syncer, cmgr connmgr.ConnManager, bv *BlockValidator) {
 	for {
 		msg, err := bsub.Next(ctx)
 		if err != nil {
@@ -42,6 +42,8 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 			return
 		}
 
+		src := peer.ID(msg.GetFrom())
+
 		go func() {
 			log.Infof("New block over pubsub: %s", blk.Cid())
 
@@ -49,13 +51,15 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 			log.Debug("about to fetch messages for block from pubsub")
 			bmsgs, err := s.Bsync.FetchMessagesByCids(context.TODO(), blk.BlsMessages)
 			if err != nil {
-				log.Errorf("failed to fetch all bls messages for block received over pubusb: %s", err)
+				log.Errorf("failed to fetch all bls messages for block received over pubusb: %s; flagging source %s", err, src)
+				bv.flagPeer(src)
 				return
 			}
 
 			smsgs, err := s.Bsync.FetchSignedMessagesByCids(context.TODO(), blk.SecpkMessages)
 			if err != nil {
-				log.Errorf("failed to fetch all secpk messages for block received over pubusb: %s", err)
+				log.Errorf("failed to fetch all secpk messages for block received over pubusb: %s; flagging source %s", err, src)
+				bv.flagPeer(src)
 				return
 			}
 
@@ -90,7 +94,7 @@ func NewBlockValidator(blacklist func(peer.ID)) *BlockValidator {
 	p, _ := lru.New2Q(4096)
 	return &BlockValidator{
 		peers:      p,
-		killThresh: 5,
+		killThresh: 10,
 		blacklist:  blacklist,
 		recvBlocks: newBlockReceiptCache(),
 	}
@@ -106,7 +110,9 @@ func (bv *BlockValidator) flagPeer(p peer.ID) {
 	val := v.(int)
 
 	if val >= bv.killThresh {
+		log.Warnf("blacklisting peer %s", p)
 		bv.blacklist(p)
+		return
 	}
 
 	bv.peers.Add(p, v.(int)+1)
