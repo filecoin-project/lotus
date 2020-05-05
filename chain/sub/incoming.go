@@ -10,7 +10,7 @@ import (
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	connmgr "github.com/libp2p/go-libp2p-core/connmgr"
-	peer "github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
@@ -42,6 +42,7 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 			return
 		}
 
+		//nolint:golint
 		src := peer.ID(msg.GetFrom())
 
 		go func() {
@@ -198,9 +199,8 @@ func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubs
 		stats.Record(ctx, metrics.MessageValidationFailure.M(1))
 		if xerrors.Is(err, messagepool.ErrBroadcastAnyway) {
 			return pubsub.ValidationAccept
-		} else {
-			return pubsub.ValidationIgnore
 		}
+		return pubsub.ValidationIgnore
 	}
 	stats.Record(ctx, metrics.MessageValidationSuccess.M(1))
 	return pubsub.ValidationAccept
