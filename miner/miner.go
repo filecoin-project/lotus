@@ -176,11 +176,8 @@ func (m *Miner) mine(ctx context.Context) {
 					"time", time.Now(), "duration", time.Since(btime))
 			}
 
-			// TODO: this code was written to handle creating blocks for multiple miners.
-			// However, we don't use that, and we probably never will. So even though this code will
-			// never see different miners, i'm going to handle the caching as if it was going to.
-			// We can clean it up later when we remove all the multiple miner logic.
-			blkKey := fmt.Sprintf("%s-%d", b.Header.Miner, b.Header.Height)
+			// TODO: should do better 'anti slash' protection here
+			blkKey := fmt.Sprintf("%d", b.Header.Height)
 			if _, ok := m.minedBlockHeights.Get(blkKey); ok {
 				log.Warnw("Created a block at the same height as another block we've created", "height", b.Header.Height, "miner", b.Header.Miner, "parents", b.Header.Parents)
 				continue
