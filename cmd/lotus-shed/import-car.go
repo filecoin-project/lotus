@@ -5,8 +5,8 @@ import (
 	"io"
 	"os"
 
-	"github.com/ipfs/go-car"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	"github.com/ipld/go-car"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 

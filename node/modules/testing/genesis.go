@@ -10,11 +10,11 @@ import (
 	"time"
 
 	"github.com/ipfs/go-blockservice"
-	"github.com/ipfs/go-car"
 	"github.com/ipfs/go-cid"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/ipfs/go-merkledag"
+	"github.com/ipld/go-car"
 	"github.com/mitchellh/go-homedir"
 	"golang.org/x/xerrors"
 

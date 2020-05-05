@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -53,12 +54,12 @@ func NewProviderNodeAdapter(dag dtypes.StagingDAG, secb *sectorblocks.SectorBloc
 	}
 }
 
-func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemarket.MinerDeal) (abi.DealID, cid.Cid, error) {
+func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemarket.MinerDeal) (cid.Cid, error) {
 	log.Info("publishing deal")
 
 	mi, err := n.StateMinerInfo(ctx, deal.Proposal.Provider, types.EmptyTSK)
 	if err != nil {
-		return 0, cid.Undef, err
+		return cid.Undef, err
 	}
 
 	params, err := actors.SerializeParams(&market.PublishStorageDealsParams{
@@ -66,7 +67,7 @@ func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemark
 	})
 
 	if err != nil {
-		return 0, cid.Undef, xerrors.Errorf("serializing PublishStorageDeals params failed: ", err)
+		return cid.Undef, xerrors.Errorf("serializing PublishStorageDeals params failed: ", err)
 	}
 
 	// TODO: We may want this to happen after fetching data
@@ -80,25 +81,9 @@ func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemark
 		Params:   params,
 	})
 	if err != nil {
-		return 0, cid.Undef, err
+		return cid.Undef, err
 	}
-	r, err := n.StateWaitMsg(ctx, smsg.Cid())
-	if err != nil {
-		return 0, cid.Undef, err
-	}
-	if r.Receipt.ExitCode != 0 {
-		return 0, cid.Undef, xerrors.Errorf("publishing deal failed: exit %d", r.Receipt.ExitCode)
-	}
-	var resp market.PublishStorageDealsReturn
-	if err := resp.UnmarshalCBOR(bytes.NewReader(r.Receipt.Return)); err != nil {
-		return 0, cid.Undef, err
-	}
-	if len(resp.IDs) != 1 {
-		return 0, cid.Undef, xerrors.Errorf("got unexpected number of DealIDs from")
-	}
-
-	// TODO: bad types here
-	return resp.IDs[0], smsg.Cid(), nil
+	return smsg.Cid(), nil
 }
 
 func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagemarket.MinerDeal, pieceSize abi.UnpaddedPieceSize, pieceData io.Reader) error {
@@ -175,12 +160,12 @@ func (n *ProviderNodeAdapter) SignBytes(ctx context.Context, signer address.Addr
 	return localSignature, nil
 }
 
-func (n *ProviderNodeAdapter) EnsureFunds(ctx context.Context, addr, wallet address.Address, amt abi.TokenAmount, encodedTs shared.TipSetToken) error {
+func (n *ProviderNodeAdapter) EnsureFunds(ctx context.Context, addr, wallet address.Address, amt abi.TokenAmount, encodedTs shared.TipSetToken) (cid.Cid, error) {
 	return n.MarketEnsureAvailable(ctx, addr, wallet, amt)
 }
 
 // Adds funds with the StorageMinerActor for a storage participant.  Used by both providers and clients.
-func (n *ProviderNodeAdapter) AddFunds(ctx context.Context, addr address.Address, amount abi.TokenAmount) error {
+func (n *ProviderNodeAdapter) AddFunds(ctx context.Context, addr address.Address, amount abi.TokenAmount) (cid.Cid, error) {
 	// (Provider Node API)
 	smsg, err := n.MpoolPushMessage(ctx, &types.Message{
 		To:       builtin.StorageMarketActorAddr,
@@ -191,19 +176,10 @@ func (n *ProviderNodeAdapter) AddFunds(ctx context.Context, addr address.Address
 		Method:   builtin.MethodsMarket.AddBalance,
 	})
 	if err != nil {
-		return err
+		return cid.Undef, err
 	}
 
-	r, err := n.StateWaitMsg(ctx, smsg.Cid())
-	if err != nil {
-		return err
-	}
-
-	if r.Receipt.ExitCode != 0 {
-		return xerrors.Errorf("adding funds to storage miner market actor failed: exit %d", r.Receipt.ExitCode)
-	}
-
-	return nil
+	return smsg.Cid(), nil
 }
 
 func (n *ProviderNodeAdapter) GetBalance(ctx context.Context, addr address.Address, encodedTs shared.TipSetToken) (storagemarket.Balance, error) {
@@ -359,6 +335,14 @@ func (n *ProviderNodeAdapter) GetChainHead(ctx context.Context) (shared.TipSetTo
 	}
 
 	return head.Key().Bytes(), head.Height(), nil
+}
+
+func (n *ProviderNodeAdapter) WaitForMessage(ctx context.Context, mcid cid.Cid, cb func(code exitcode.ExitCode, bytes []byte, err error) error) error {
+	receipt, err := n.StateWaitMsg(ctx, mcid)
+	if err != nil {
+		return cb(0, nil, err)
+	}
+	return cb(receipt.Receipt.ExitCode, receipt.Receipt.Return, nil)
 }
 
 var _ storagemarket.StorageProviderNode = &ProviderNodeAdapter{}
