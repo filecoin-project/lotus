@@ -6,7 +6,7 @@ import (
 	eventbus "github.com/libp2p/go-eventbus"
 	event "github.com/libp2p/go-libp2p-core/event"
 	"github.com/libp2p/go-libp2p-core/host"
-	peer "github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
@@ -75,7 +75,7 @@ func HandleIncomingBlocks(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.P
 		panic(err)
 	}
 
-	go sub.HandleIncomingBlocks(ctx, blocksub, s, h.ConnManager())
+	go sub.HandleIncomingBlocks(ctx, blocksub, s, h.ConnManager(), v)
 }
 
 func HandleIncomingMessages(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.PubSub, mpool *messagepool.MessagePool, nn dtypes.NetworkName) {

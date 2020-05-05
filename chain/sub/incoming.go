@@ -10,7 +10,7 @@ import (
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	connmgr "github.com/libp2p/go-libp2p-core/connmgr"
-	peer "github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
@@ -24,7 +24,7 @@ import (
 
 var log = logging.Logger("sub")
 
-func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *chain.Syncer, cmgr connmgr.ConnManager) {
+func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *chain.Syncer, cmgr connmgr.ConnManager, bv *BlockValidator) {
 	for {
 		msg, err := bsub.Next(ctx)
 		if err != nil {
@@ -39,7 +39,11 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 		blk, ok := msg.ValidatorData.(*types.BlockMsg)
 		if !ok {
 			log.Warnf("pubsub block validator passed on wrong type: %#v", msg.ValidatorData)
+			return
 		}
+
+		//nolint:golint
+		src := peer.ID(msg.GetFrom())
 
 		go func() {
 			log.Infof("New block over pubsub: %s", blk.Cid())
@@ -48,13 +52,15 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 			log.Debug("about to fetch messages for block from pubsub")
 			bmsgs, err := s.Bsync.FetchMessagesByCids(context.TODO(), blk.BlsMessages)
 			if err != nil {
-				log.Errorf("failed to fetch all bls messages for block received over pubusb: %s", err)
+				log.Errorf("failed to fetch all bls messages for block received over pubusb: %s; flagging source %s", err, src)
+				bv.flagPeer(src)
 				return
 			}
 
 			smsgs, err := s.Bsync.FetchSignedMessagesByCids(context.TODO(), blk.SecpkMessages)
 			if err != nil {
-				log.Errorf("failed to fetch all secpk messages for block received over pubusb: %s", err)
+				log.Errorf("failed to fetch all secpk messages for block received over pubusb: %s; flagging source %s", err, src)
+				bv.flagPeer(src)
 				return
 			}
 
@@ -89,7 +95,7 @@ func NewBlockValidator(blacklist func(peer.ID)) *BlockValidator {
 	p, _ := lru.New2Q(4096)
 	return &BlockValidator{
 		peers:      p,
-		killThresh: 5,
+		killThresh: 10,
 		blacklist:  blacklist,
 		recvBlocks: newBlockReceiptCache(),
 	}
@@ -105,13 +111,15 @@ func (bv *BlockValidator) flagPeer(p peer.ID) {
 	val := v.(int)
 
 	if val >= bv.killThresh {
+		log.Warnf("blacklisting peer %s", p)
 		bv.blacklist(p)
+		return
 	}
 
 	bv.peers.Add(p, v.(int)+1)
 }
 
-func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub.Message) bool {
+func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub.Message) pubsub.ValidationResult {
 	stats.Record(ctx, metrics.BlockReceived.M(1))
 	blk, err := types.DecodeBlockMsg(msg.GetData())
 	if err != nil {
@@ -119,7 +127,7 @@ func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub
 		ctx, _ = tag.New(ctx, tag.Insert(metrics.FailureType, "invalid"))
 		stats.Record(ctx, metrics.BlockValidationFailure.M(1))
 		bv.flagPeer(pid)
-		return false
+		return pubsub.ValidationReject
 	}
 
 	if len(blk.BlsMessages)+len(blk.SecpkMessages) > build.BlockMessageLimit {
@@ -127,18 +135,18 @@ func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub
 		ctx, _ = tag.New(ctx, tag.Insert(metrics.FailureType, "too_many_messages"))
 		stats.Record(ctx, metrics.BlockValidationFailure.M(1))
 		bv.flagPeer(pid)
-		return false
+		return pubsub.ValidationReject
 	}
 
 	if bv.recvBlocks.add(blk.Header.Cid()) > 0 {
 		// TODO: once these changes propagate to the network, we can consider
 		// dropping peers who send us the same block multiple times
-		return false
+		return pubsub.ValidationIgnore
 	}
 
 	msg.ValidatorData = blk
 	stats.Record(ctx, metrics.BlockValidationSuccess.M(1))
-	return true
+	return pubsub.ValidationAccept
 }
 
 type blockReceiptCache struct {
@@ -172,14 +180,14 @@ func NewMessageValidator(mp *messagepool.MessagePool) *MessageValidator {
 	return &MessageValidator{mp}
 }
 
-func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub.Message) bool {
+func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub.Message) pubsub.ValidationResult {
 	stats.Record(ctx, metrics.MessageReceived.M(1))
 	m, err := types.DecodeSignedMessage(msg.Message.GetData())
 	if err != nil {
 		log.Warnf("failed to decode incoming message: %s", err)
 		ctx, _ = tag.New(ctx, tag.Insert(metrics.FailureType, "decode"))
 		stats.Record(ctx, metrics.MessageValidationFailure.M(1))
-		return false
+		return pubsub.ValidationReject
 	}
 
 	if err := mv.mpool.Add(m); err != nil {
@@ -189,10 +197,13 @@ func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubs
 			tag.Insert(metrics.FailureType, "add"),
 		)
 		stats.Record(ctx, metrics.MessageValidationFailure.M(1))
-		return xerrors.Is(err, messagepool.ErrBroadcastAnyway)
+		if xerrors.Is(err, messagepool.ErrBroadcastAnyway) {
+			return pubsub.ValidationAccept
+		}
+		return pubsub.ValidationIgnore
 	}
 	stats.Record(ctx, metrics.MessageValidationSuccess.M(1))
-	return true
+	return pubsub.ValidationAccept
 }
 
 func HandleIncomingMessages(ctx context.Context, mpool *messagepool.MessagePool, msub *pubsub.Subscription) {
