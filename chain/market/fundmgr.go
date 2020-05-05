@@ -5,8 +5,8 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -34,14 +34,14 @@ func NewFundMgr(sm *stmgr.StateManager, mpool full.MpoolAPI) *FundMgr {
 	}
 }
 
-func (fm *FundMgr) EnsureAvailable(ctx context.Context, addr, wallet address.Address, amt types.BigInt) error {
+func (fm *FundMgr) EnsureAvailable(ctx context.Context, addr, wallet address.Address, amt types.BigInt) (cid.Cid, error) {
 	fm.lk.Lock()
 	avail, ok := fm.available[addr]
 	if !ok {
 		bal, err := fm.sm.MarketBalance(ctx, addr, nil)
 		if err != nil {
 			fm.lk.Unlock()
-			return err
+			return cid.Undef, err
 		}
 
 		avail = types.BigSub(bal.Escrow, bal.Locked)
@@ -62,7 +62,7 @@ func (fm *FundMgr) EnsureAvailable(ctx context.Context, addr, wallet address.Add
 	var err error
 	params, err := actors.SerializeParams(&addr)
 	if err != nil {
-		return err
+		return cid.Undef, err
 	}
 
 	smsg, err := fm.mpool.MpoolPushMessage(ctx, &types.Message{
@@ -75,16 +75,8 @@ func (fm *FundMgr) EnsureAvailable(ctx context.Context, addr, wallet address.Add
 		Params:   params,
 	})
 	if err != nil {
-		return err
+		return cid.Undef, err
 	}
 
-	_, r, err := fm.sm.WaitForMessage(ctx, smsg.Cid())
-	if err != nil {
-		return xerrors.Errorf("failed waiting for market AddBalance message: %w", err)
-	}
-
-	if r.ExitCode != 0 {
-		return xerrors.Errorf("adding funds to storage miner market actor failed: exit %d", r.ExitCode)
-	}
-	return nil
+	return smsg.Cid(), nil
 }

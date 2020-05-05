@@ -148,7 +148,7 @@ type FullNode interface {
 
 	MsigGetAvailableBalance(context.Context, address.Address, types.TipSetKey) (types.BigInt, error)
 
-	MarketEnsureAvailable(context.Context, address.Address, address.Address, types.BigInt) error
+	MarketEnsureAvailable(context.Context, address.Address, address.Address, types.BigInt) (cid.Cid, error)
 	// MarketFreeBalance
 
 	PaychGet(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*ChannelInfo, error)

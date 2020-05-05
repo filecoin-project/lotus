@@ -68,8 +68,9 @@ func RegisterClientValidator(crv *requestvalidation.ClientRequestValidator, dtm 
 
 // NewClientGraphsyncDataTransfer returns a data transfer manager that just
 // uses the clients's Client DAG service for transfers
-func NewClientGraphsyncDataTransfer(h host.Host, gs dtypes.Graphsync) dtypes.ClientDataTransfer {
-	return graphsyncimpl.NewGraphSyncDataTransfer(h, gs)
+func NewClientGraphsyncDataTransfer(h host.Host, gs dtypes.Graphsync, ds dtypes.MetadataDS) dtypes.ClientDataTransfer {
+	sc := storedcounter.New(ds, datastore.NewKey("/datatransfer/client/counter"))
+	return graphsyncimpl.NewGraphSyncDataTransfer(h, gs, sc)
 }
 
 // NewClientDealStore creates a statestore for the client to store its deals
