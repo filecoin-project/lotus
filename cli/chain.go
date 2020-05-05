@@ -717,7 +717,7 @@ var chainBisectCmd = &cli.Command{
 				return err
 			}
 
-			b, err := json.MarshalIndent(nd, "", "\t")
+			b, err := json.MarshalIndent(nd.Obj, "", "\t")
 			if err != nil {
 				return err
 			}
@@ -734,13 +734,13 @@ var chainBisectCmd = &cli.Command{
 			switch cmd.Run().(type) {
 			case nil:
 				// it's lower
-				if strings.TrimSpace(out.String()) == "true" {
+				if strings.TrimSpace(out.String()) != "false" {
 					end = mid
 					highest = midTs
 					fmt.Println("true")
 				} else {
 					start = mid
-					fmt.Printf("false ('%s' not 'true')\n", strings.TrimSpace(out.String()))
+					fmt.Printf("false (cli)\n")
 				}
 			case *exec.ExitError:
 				if len(serr.String()) > 0 {
