@@ -144,7 +144,7 @@ func startDeal(t *testing.T, ctx context.Context, miner TestStorageNode, client 
 		t.Fatal(err)
 	}
 	deal, err := client.ClientStartDeal(ctx, &api.StartDealParams{
-		Data:              &storagemarket.DataRef{Root: fcid},
+		Data:              &storagemarket.DataRef{Root: fcid, TransferType: storagemarket.TTGraphsync},
 		Wallet:            addr,
 		Miner:             maddr,
 		EpochPrice:        types.NewInt(1000000),

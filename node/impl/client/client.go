@@ -89,6 +89,22 @@ func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) 
 		return nil, xerrors.Errorf("failed getting peer ID: %w", err)
 	}
 
+	ask, err := a.ClientQueryAsk(ctx, mi.PeerId, params.Miner)
+	if err != nil {
+		return nil, xerrors.Errorf("failed getting miner ask: %w", err)
+	}
+
+	if params.Data.TransferType == storagemarket.TTGraphsync {
+		err = a.validateDeal(ctx, ask.Ask, params)
+	} else if params.Data.TransferType == storagemarket.TTManual {
+		err = validateSizeAndPrice(params.Data.PieceSize.Padded(), params.EpochPrice, ask.Ask)
+	} else {
+		return nil, xerrors.Errorf("unknown transfer type: %s", params.Data.TransferType)
+	}
+	if err != nil {
+		return nil, xerrors.Errorf("deal violates ask restriction: %w", err)
+	}
+
 	md, err := a.StateMinerProvingDeadline(ctx, params.Miner, types.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("failed getting peer ID: %w", err)
@@ -284,7 +300,7 @@ func (a *API) ClientListImports(ctx context.Context) ([]api.Import, error) {
 						Status:   r.Status,
 						Key:      r.Key,
 						FilePath: r.FilePath,
-						Size:     r.Size,
+						Size:     abi.UnpaddedPieceSize(r.Size),
 					}
 				}
 				break
@@ -295,7 +311,7 @@ func (a *API) ClientListImports(ctx context.Context) ([]api.Import, error) {
 				Status:   r.Status,
 				Key:      r.Key,
 				FilePath: r.FilePath,
-				Size:     r.Size,
+				Size:     abi.UnpaddedPieceSize(r.Size),
 			})
 			lowest = append(lowest, r.Offset)
 		}
@@ -510,4 +526,44 @@ func (a *API) clientImport(ref api.FileRef, bufferedDS *ipld.BufferedDAG) (cid.C
 	}
 
 	return nd.Cid(), nil
+}
+
+func (a *API) clientLoadImportInfo(ctx context.Context, root cid.Cid) (api.Import, error) {
+	imps, err := a.ClientListImports(ctx)
+	if err != nil {
+		return api.Import{}, err
+	}
+
+	for _, imp := range imps {
+		if imp.Key == root {
+			return imp, nil
+		}
+	}
+
+	return api.Import{}, xerrors.Errorf("import not found: %s", root)
+}
+
+func (a *API) validateDeal(ctx context.Context, ask *storagemarket.StorageAsk, params *api.StartDealParams) error {
+	info, err := a.clientLoadImportInfo(ctx, params.Data.Root)
+	if err != nil {
+		// Presumably an in-memory import, assume it's valid
+		return nil
+	}
+
+	return validateSizeAndPrice(info.Size.Padded(), params.EpochPrice, ask)
+}
+
+func validateSizeAndPrice(pSize abi.PaddedPieceSize, price types.BigInt, ask *storagemarket.StorageAsk) error {
+	if pSize < ask.MinPieceSize {
+		return xerrors.Errorf("proposed piece size is below miner ask's minimum: %d < %d", pSize, ask.MinPieceSize)
+	}
+	if pSize > ask.MaxPieceSize {
+		return xerrors.Errorf("proposed piece size is above miner ask's maximum: %d > %d", pSize, ask.MaxPieceSize)
+	}
+
+	minPrice := big.Div(big.Mul(ask.Price, abi.NewTokenAmount(int64(pSize))), abi.NewTokenAmount(1<<30))
+	if price.LessThan(minPrice) {
+		return xerrors.Errorf("storage price per epoch less than asking price: %s < %s", price, minPrice)
+	}
+	return nil
 }
