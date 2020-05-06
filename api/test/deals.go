@@ -13,6 +13,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 
+	"github.com/ipfs/go-car"
 	files "github.com/ipfs/go-ipfs-files"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/ipld/go-car"
