@@ -1,5 +1,6 @@
 package vm_test
 
+/*
 import (
 	"fmt"
 	"reflect"
@@ -67,3 +68,4 @@ func caseName(testCase suites.TestCase) string {
 	toks := strings.Split(fqName, ".")
 	return toks[len(toks)-1]
 }
+*/
