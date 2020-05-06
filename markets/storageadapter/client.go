@@ -233,7 +233,7 @@ func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider 
 
 		if err != nil {
 			// TODO: This may be fine for some errors
-			return false, false, xerrors.Errorf("failed to look up deal on chain: %w", err)
+			return false, false, xerrors.Errorf("client: failed to look up deal on chain: %w", err)
 		}
 
 		if sd.State.SectorStartEpoch > 0 {
