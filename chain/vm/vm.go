@@ -360,27 +360,25 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 		return nil, xerrors.Errorf("[from=%s,to=%s,n=%d,m=%d,h=%d] fatal error: %w", msg.From, msg.To, msg.Nonce, msg.Method, vm.blockHeight, actorErr)
 	}
 
-	{
-		if rt == nil {
-			return nil, xerrors.Errorf("send returned nil runtime, send error was: %s", actorErr)
-		}
-		actorErr2 := rt.chargeGasSafe(rt.Pricelist().OnChainReturnValue(len(ret)))
-		if actorErr2 != nil {
-			return &ApplyRet{
-				MessageReceipt: types.MessageReceipt{
-					ExitCode: aerrors.RetCode(actorErr2),
-					GasUsed:  rt.gasUsed,
-				},
-				ActorErr: actorErr2,
-				Penalty:  types.NewInt(0),
-				Duration: time.Since(start),
-			}, nil
-
-		}
-	}
-
 	if actorErr != nil {
 		log.Warnw("Send actor error", "from", msg.From, "to", msg.To, "nonce", msg.Nonce, "method", msg.Method, "height", vm.blockHeight, "error", fmt.Sprintf("%+v", actorErr))
+	}
+
+	if actorErr != nil && len(ret) != 0 {
+		// This should not happen, something is wonky
+		return nil, xerrors.Errorf("message invocation errored, but had a return value anyway: %w", actorErr)
+	}
+
+	if rt == nil {
+		return nil, xerrors.Errorf("send returned nil runtime, send error was: %s", actorErr)
+	}
+
+	if len(ret) != 0 {
+		// safely override actorErr since it must be nil
+		actorErr = rt.chargeGasSafe(rt.Pricelist().OnChainReturnValue(len(ret)))
+		if actorErr != nil {
+			ret = nil
+		}
 	}
 
 	var errcode exitcode.ExitCode
