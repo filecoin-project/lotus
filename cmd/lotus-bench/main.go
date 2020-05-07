@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/minio/blake2b-simd"
 	"io/ioutil"
 	"math/big"
 	"math/rand"
@@ -14,12 +13,14 @@ import (
 
 	"github.com/docker/go-units"
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/minio/blake2b-simd"
 	"github.com/mitchellh/go-homedir"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/go-address"
 	paramfetch "github.com/filecoin-project/go-paramfetch"
+	"github.com/filecoin-project/sector-storage/stores"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-storage/storage"
 
@@ -226,7 +227,7 @@ var sealBenchCmd = &cli.Command{
 
 		if robench == "" {
 			var err error
-			sealTimings, sealedSectors, err = runSeals(sb, c.Int("num-sectors"), mid, sectorSize, []byte(c.String("ticket-preimage")), c.String("save-commit2-input"), c.Bool("skip-commit2"), c.Bool("skip-unseal"))
+			sealTimings, sealedSectors, err = runSeals(sb, sbfs, c.Int("num-sectors"), mid, sectorSize, []byte(c.String("ticket-preimage")), c.String("save-commit2-input"), c.Bool("skip-commit2"), c.Bool("skip-unseal"))
 			if err != nil {
 				return xerrors.Errorf("failed to run seals: %w", err)
 			}
@@ -433,7 +434,7 @@ var sealBenchCmd = &cli.Command{
 	},
 }
 
-func runSeals(sb *ffiwrapper.Sealer, numSectors int, mid abi.ActorID, sectorSize abi.SectorSize, ticketPreimage []byte, saveC2inp string, skipc2, skipunseal bool) ([]SealingResult, []abi.SectorInfo, error) {
+func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, mid abi.ActorID, sectorSize abi.SectorSize, ticketPreimage []byte, saveC2inp string, skipc2, skipunseal bool) ([]SealingResult, []abi.SectorInfo, error) {
 	var sealTimings []SealingResult
 	var sealedSectors []abi.SectorInfo
 
@@ -553,6 +554,18 @@ func runSeals(sb *ffiwrapper.Sealer, numSectors int, mid abi.ActorID, sectorSize
 
 		if !skipunseal {
 			log.Info("Unsealing sector")
+			{
+				p, done, err := sbfs.AcquireSector(context.TODO(), abi.SectorID{Miner: mid, Number: 1}, stores.FTUnsealed, stores.FTNone, true)
+				if err != nil {
+					return nil, nil, xerrors.Errorf("acquire unsealed sector for removing: %w", err)
+				}
+				done()
+
+				if err := os.Remove(p.Unsealed); err != nil {
+					return nil, nil, xerrors.Errorf("removing unsealed sector: %w", err)
+				}
+			}
+
 			// TODO: RM unsealed sector first
 			rc, err := sb.ReadPieceFromSealedSector(context.TODO(), abi.SectorID{Miner: mid, Number: 1}, 0, abi.UnpaddedPieceSize(sectorSize), ticket, cids.Unsealed)
 			if err != nil {
