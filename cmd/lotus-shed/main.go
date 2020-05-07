@@ -25,6 +25,7 @@ func main() {
 		staterootStatsCmd,
 		importCarCmd,
 		commpToCidCmd,
+		fetchParamCmd,
 	}
 
 	app := &cli.App{
