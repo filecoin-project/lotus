@@ -6,7 +6,7 @@ wminer="miner"
 wsetup="setup"
 wpledging="pledging"
 wcli="cli"
-faucet="http://t01000.miner.interopnet.kittyhawk.wtf"
+faucet="https://t01000.miner.interopnet.kittyhawk.wtf"
 
 PLEDGE_COUNT="${1:-20}"
 BRANCH="interopnet"
