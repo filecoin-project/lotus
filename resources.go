@@ -110,7 +110,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 			MinMemory: 32 << 30,
 
 			Threads: -1,
-			CanGPU: true,
+			CanGPU:  true,
 
 			BaseMinMemory: 30 << 30,
 		},
