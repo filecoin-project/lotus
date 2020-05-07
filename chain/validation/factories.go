@@ -1,6 +1,5 @@
 package validation
 
-/*
 import (
 	"context"
 
@@ -46,4 +45,3 @@ func (f *Factories) NewValidationConfig() vstate.ValidationConfig {
 	checkState := true
 	return NewConfig(trackGas, checkExit, checkRet, checkState)
 }
-*/
