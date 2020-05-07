@@ -1,20 +1,20 @@
 # Setup Local Devnet
 
-Build the Lotus Binaries in debug mode, This enables the use of 1024 byte sectors.
+Build the Lotus Binaries in debug mode, This enables the use of 2048 byte sectors.
 
 ```sh
 make debug
 ```
 
-Download the 1024 byte parameters:
+Download the 2048 byte parameters:
 ```sh
-./lotus fetch-params --proving-params 1024
+./lotus fetch-params --proving-params 2048
 ```
 
 Pre-seal some sectors:
 
 ```sh
-./lotus-seed pre-seal --sector-size 1024 --num-sectors 2
+./lotus-seed pre-seal --sector-size 2048 --num-sectors 2
 ```
 
 Create the genesis block and start up the first node:
