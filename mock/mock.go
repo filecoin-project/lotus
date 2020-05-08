@@ -16,7 +16,6 @@ import (
 	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/sector-storage"
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
 )
 
@@ -26,7 +25,6 @@ type SectorMgr struct {
 	sectors      map[abi.SectorID]*sectorState
 	sectorSize   abi.SectorSize
 	nextSectorID abi.SectorNumber
-	rateLimit    chan struct{}
 	proofType    abi.RegisteredProof
 
 	lk sync.Mutex
@@ -34,7 +32,7 @@ type SectorMgr struct {
 
 type mockVerif struct{}
 
-func NewMockSectorMgr(threads int, ssize abi.SectorSize) *SectorMgr {
+func NewMockSectorMgr(ssize abi.SectorSize) *SectorMgr {
 	rt, err := ffiwrapper.SealProofTypeFromSectorSize(ssize)
 	if err != nil {
 		panic(err)
@@ -44,7 +42,6 @@ func NewMockSectorMgr(threads int, ssize abi.SectorSize) *SectorMgr {
 		sectors:      make(map[abi.SectorID]*sectorState),
 		sectorSize:   ssize,
 		nextSectorID: 5,
-		rateLimit:    make(chan struct{}, threads),
 		proofType:    rt,
 	}
 }
@@ -62,15 +59,6 @@ type sectorState struct {
 	state int
 
 	lk sync.Mutex
-}
-
-func (mgr *SectorMgr) RateLimit() func() {
-	mgr.rateLimit <- struct{}{}
-
-	// TODO: probably want to copy over rate limit code
-	return func() {
-		<-mgr.rateLimit
-	}
 }
 
 func (mgr *SectorMgr) NewSector(ctx context.Context, sector abi.SectorID) error {
@@ -333,4 +321,3 @@ func (m mockVerif) GenerateWinningPoStSectorChallenge(ctx context.Context, proof
 var MockVerifier = mockVerif{}
 
 var _ ffiwrapper.Verifier = MockVerifier
-var _ sectorstorage.SectorManager = &SectorMgr{}
