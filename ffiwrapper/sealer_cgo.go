@@ -108,33 +108,48 @@ func (sb *Sealer) AddPiece(ctx context.Context, sector abi.SectorID, existingPie
 	}, werr()
 }
 
+type closerFunc func() error
+
+func (cf closerFunc) Close() error {
+	return cf()
+}
+
 func (sb *Sealer) ReadPieceFromSealedSector(ctx context.Context, sector abi.SectorID, offset UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, unsealedCID cid.Cid) (io.ReadCloser, error) {
-	path, doneUnsealed, err := sb.sectors.AcquireSector(ctx, sector, stores.FTUnsealed, stores.FTUnsealed, false)
-	if err != nil {
-		return nil, xerrors.Errorf("acquire unsealed sector path: %w", err)
-	}
-	defer doneUnsealed()
-	f, err := os.OpenFile(path.Unsealed, os.O_RDONLY, 0644)
-	if err == nil {
-		if _, err := f.Seek(int64(offset), io.SeekStart); err != nil {
-			return nil, xerrors.Errorf("seek: %w", err)
+	{
+		path, doneUnsealed, err := sb.sectors.AcquireSector(ctx, sector, stores.FTUnsealed, stores.FTNone, false)
+		if err != nil {
+			return nil, xerrors.Errorf("acquire unsealed sector path: %w", err)
 		}
 
-		lr := io.LimitReader(f, int64(size))
+		f, err := os.OpenFile(path.Unsealed, os.O_RDONLY, 0644)
+		if err == nil {
+			if _, err := f.Seek(int64(offset), io.SeekStart); err != nil {
+				doneUnsealed()
+				return nil, xerrors.Errorf("seek: %w", err)
+			}
 
-		return &struct {
-			io.Reader
-			io.Closer
-		}{
-			Reader: lr,
-			Closer: f,
-		}, nil
-	}
-	if !os.IsNotExist(err) {
-		return nil, err
+			lr := io.LimitReader(f, int64(size))
+
+			return &struct {
+				io.Reader
+				io.Closer
+			}{
+				Reader: lr,
+				Closer: closerFunc(func() error {
+					doneUnsealed()
+					return f.Close()
+				}),
+			}, nil
+		}
+
+		doneUnsealed()
+
+		if !os.IsNotExist(err) {
+			return nil, err
+		}
 	}
 
-	sealed, doneSealed, err := sb.sectors.AcquireSector(ctx, sector, stores.FTUnsealed|stores.FTCache, 0, false)
+	paths, doneSealed, err := sb.sectors.AcquireSector(ctx, sector, stores.FTSealed|stores.FTCache, stores.FTUnsealed, false)
 	if err != nil {
 		return nil, xerrors.Errorf("acquire sealed/cache sector path: %w", err)
 	}
@@ -145,9 +160,9 @@ func (sb *Sealer) ReadPieceFromSealedSector(ctx context.Context, sector abi.Sect
 	//   remove last used one (or use whatever other cache policy makes sense))
 	err = ffi.Unseal(
 		sb.sealProofType,
-		sealed.Cache,
-		sealed.Sealed,
-		path.Unsealed,
+		paths.Cache,
+		paths.Sealed,
+		paths.Unsealed,
 		sector.Number,
 		sector.Miner,
 		ticket,
@@ -157,7 +172,7 @@ func (sb *Sealer) ReadPieceFromSealedSector(ctx context.Context, sector abi.Sect
 		return nil, xerrors.Errorf("unseal failed: %w", err)
 	}
 
-	f, err = os.OpenFile(string(path.Unsealed), os.O_RDONLY, 0644)
+	f, err := os.OpenFile(paths.Unsealed, os.O_RDONLY, 0644)
 	if err != nil {
 		return nil, err
 	}

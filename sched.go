@@ -1,7 +1,7 @@
 package sectorstorage
 
 import (
-	"container/list"
+	"container/heap"
 	"context"
 	"sort"
 	"sync"
@@ -41,7 +41,7 @@ type scheduler struct {
 	workerFree chan WorkerID
 	closing    chan struct{}
 
-	schedQueue *list.List // List[*workerRequest]
+	schedQueue *requestQueue
 }
 
 func newScheduler(spt abi.RegisteredProof) *scheduler {
@@ -60,7 +60,7 @@ func newScheduler(spt abi.RegisteredProof) *scheduler {
 		workerFree: make(chan WorkerID),
 		closing:    make(chan struct{}),
 
-		schedQueue: list.New(),
+		schedQueue: &requestQueue{},
 	}
 }
 
@@ -100,6 +100,8 @@ type workerRequest struct {
 
 	prepare WorkerAction
 	work    WorkerAction
+
+	index int // The index of the item in the heap.
 
 	ret chan<- workerResponse
 	ctx context.Context
@@ -154,7 +156,7 @@ func (sh *scheduler) runSched() {
 				continue
 			}
 
-			sh.schedQueue.PushBack(req)
+			heap.Push(sh.schedQueue, req)
 		case wid := <-sh.workerFree:
 			sh.onWorkerFreed(wid)
 		case <-sh.closing:
@@ -173,8 +175,8 @@ func (sh *scheduler) onWorkerFreed(wid WorkerID) {
 		return
 	}
 
-	for e := sh.schedQueue.Front(); e != nil; e = e.Next() {
-		req := e.Value.(*workerRequest)
+	for i := 0; i < sh.schedQueue.Len(); i++ {
+		req := (*sh.schedQueue)[i]
 
 		ok, err := req.sel.Ok(req.ctx, req.taskType, w)
 		if err != nil {
@@ -193,15 +195,8 @@ func (sh *scheduler) onWorkerFreed(wid WorkerID) {
 		}
 
 		if scheduled {
-			pe := e.Prev()
-			sh.schedQueue.Remove(e)
-			if pe == nil {
-				pe = sh.schedQueue.Front()
-			}
-			if pe == nil {
-				break
-			}
-			e = pe
+			heap.Remove(sh.schedQueue, i)
+			i--
 			continue
 		}
 	}
