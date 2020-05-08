@@ -9,6 +9,7 @@ require (
 	github.com/filecoin-project/go-paramfetch v0.0.1
 	github.com/filecoin-project/specs-actors v0.3.0
 	github.com/filecoin-project/specs-storage v0.0.0-20200417134612-61b2d91a6102
+	github.com/google/uuid v1.1.1
 	github.com/gorilla/mux v1.7.4
 	github.com/hashicorp/go-multierror v1.0.0
 	github.com/ipfs/go-cid v0.0.5
@@ -17,6 +18,7 @@ require (
 	github.com/ipfs/go-log/v2 v2.0.3
 	github.com/mattn/go-isatty v0.0.9 // indirect
 	github.com/mitchellh/go-homedir v1.1.0
+	github.com/stretchr/testify v1.4.0
 	go.opencensus.io v0.22.3
 	go.uber.org/atomic v1.5.1 // indirect
 	go.uber.org/zap v1.13.0 // indirect
