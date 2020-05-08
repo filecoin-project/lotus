@@ -14,8 +14,8 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 )
 
-var HeartBeatInterval = 10 * time.Second
-var SkippedHeartbeatThresh = HeartBeatInterval * 5
+var HeartbeatInterval = 10 * time.Second
+var SkippedHeartbeatThresh = HeartbeatInterval * 5
 
 // ID identifies sector storage by UUID. One sector storage should map to one
 //  filesystem, local or networked / shared by multiple machines
@@ -47,7 +47,7 @@ type SectorIndex interface { // part of storage-miner api
 	StorageDropSector(ctx context.Context, storageId ID, s abi.SectorID, ft SectorFileType) error
 	StorageFindSector(ctx context.Context, sector abi.SectorID, ft SectorFileType, allowFetch bool) ([]StorageInfo, error)
 
-	StorageBestAlloc(ctx context.Context, allocate SectorFileType, sealing bool) ([]StorageInfo, error)
+	StorageBestAlloc(ctx context.Context, allocate SectorFileType, spt abi.RegisteredProof, sealing bool) ([]StorageInfo, error)
 }
 
 type Decl struct {
@@ -302,11 +302,16 @@ func (i *Index) StorageInfo(ctx context.Context, id ID) (StorageInfo, error) {
 	return *si.info, nil
 }
 
-func (i *Index) StorageBestAlloc(ctx context.Context, allocate SectorFileType, sealing bool) ([]StorageInfo, error) {
+func (i *Index) StorageBestAlloc(ctx context.Context, allocate SectorFileType, spt abi.RegisteredProof, sealing bool) ([]StorageInfo, error) {
 	i.lk.RLock()
 	defer i.lk.RUnlock()
 
 	var candidates []storageEntry
+
+	spaceReq, err := allocate.SealSpaceUse(spt)
+	if err != nil {
+		return nil, xerrors.Errorf("estimating required space: %w", err)
+	}
 
 	for _, p := range i.stores {
 		if sealing && !p.info.CanSeal {
@@ -316,7 +321,20 @@ func (i *Index) StorageBestAlloc(ctx context.Context, allocate SectorFileType, s
 			continue
 		}
 
-		// TODO: filter out of space
+		if spaceReq > p.fsi.Available {
+			log.Debugf("not allocating on %s, out of space (available: %d, need: %d)", p.info.ID, p.fsi.Available, spaceReq)
+			continue
+		}
+
+		if time.Since(p.lastHeartbeat) > SkippedHeartbeatThresh {
+			log.Debugf("not allocating on %s, didn't receive heartbeats for %s", p.info.ID, time.Since(p.lastHeartbeat))
+			continue
+		}
+
+		if p.heartbeatErr != nil {
+			log.Debugf("not allocating on %s, heartbeat error: %s", p.info.ID, p.heartbeatErr)
+			continue
+		}
 
 		candidates = append(candidates, *p)
 	}

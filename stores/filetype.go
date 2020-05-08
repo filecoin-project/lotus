@@ -17,6 +17,18 @@ const (
 	FTNone SectorFileType = 0
 )
 
+var FSOverheadSeal = map[SectorFileType]int{ // 10x overheads
+	FTUnsealed: 10,
+	FTSealed:   10,
+	FTCache:    70, // TODO: confirm for 32G
+}
+
+var FsOverheadFinalized = map[SectorFileType]int{
+	FTUnsealed: 10,
+	FTSealed:   10,
+	FTCache:    2,
+}
+
 type SectorFileType int
 
 func (t SectorFileType) String() string {
@@ -34,6 +46,29 @@ func (t SectorFileType) String() string {
 
 func (t SectorFileType) Has(singleType SectorFileType) bool {
 	return t&singleType == singleType
+}
+
+func (t SectorFileType) SealSpaceUse(spt abi.RegisteredProof) (uint64, error) {
+	ssize, err := spt.SectorSize()
+	if err != nil {
+		return 0, xerrors.Errorf("getting sector size: %w", err)
+	}
+
+	var need uint64
+	for _, pathType := range PathTypes {
+		if !t.Has(pathType) {
+			continue
+		}
+
+		oh, ok := FSOverheadSeal[pathType]
+		if !ok {
+			return 0, xerrors.Errorf("no seal overhead info for %s", pathType)
+		}
+
+		need += uint64(oh) * uint64(ssize) / 10
+	}
+
+	return need, nil
 }
 
 type SectorPaths struct {

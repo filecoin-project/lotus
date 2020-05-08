@@ -164,7 +164,7 @@ func (st *Local) open(ctx context.Context) error {
 
 func (st *Local) reportHealth(ctx context.Context) {
 	// randomize interval by ~10%
-	interval := (HeartBeatInterval*100_000 + time.Duration(rand.Int63n(10_000))) / 100_000
+	interval := (HeartbeatInterval*100_000 + time.Duration(rand.Int63n(10_000))) / 100_000
 
 	for {
 		select {
@@ -195,7 +195,7 @@ func (st *Local) reportHealth(ctx context.Context) {
 	}
 }
 
-func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, existing SectorFileType, allocate SectorFileType, sealing bool) (SectorPaths, SectorPaths, func(), error) {
+func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, spt abi.RegisteredProof, existing SectorFileType, allocate SectorFileType, sealing bool) (SectorPaths, SectorPaths, func(), error) {
 	if existing|allocate != existing^allocate {
 		return SectorPaths{}, SectorPaths{}, nil, xerrors.New("can't both find and allocate a sector")
 	}
@@ -240,7 +240,7 @@ func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, existing S
 			continue
 		}
 
-		sis, err := st.index.StorageBestAlloc(ctx, fileType, sealing)
+		sis, err := st.index.StorageBestAlloc(ctx, fileType, spt, sealing)
 		if err != nil {
 			st.localLk.RUnlock()
 			return SectorPaths{}, SectorPaths{}, nil, xerrors.Errorf("finding best storage for allocating : %w", err)
@@ -352,14 +352,14 @@ func (st *Local) Remove(ctx context.Context, sid abi.SectorID, typ SectorFileTyp
 	return nil
 }
 
-func (st *Local) MoveStorage(ctx context.Context, s abi.SectorID, types SectorFileType) error {
-	dest, destIds, sdone, err := st.AcquireSector(ctx, s, FTNone, types, false)
+func (st *Local) MoveStorage(ctx context.Context, s abi.SectorID, spt abi.RegisteredProof, types SectorFileType) error {
+	dest, destIds, sdone, err := st.AcquireSector(ctx, s, spt, FTNone, types, false)
 	if err != nil {
 		return xerrors.Errorf("acquire dest storage: %w", err)
 	}
 	defer sdone()
 
-	src, srcIds, ddone, err := st.AcquireSector(ctx, s, types, FTNone, false)
+	src, srcIds, ddone, err := st.AcquireSector(ctx, s, spt, types, FTNone, false)
 	if err != nil {
 		return xerrors.Errorf("acquire src storage: %w", err)
 	}

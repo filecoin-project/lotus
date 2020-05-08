@@ -58,7 +58,7 @@ type localWorkerPathProvider struct {
 }
 
 func (l *localWorkerPathProvider) AcquireSector(ctx context.Context, sector abi.SectorID, existing stores.SectorFileType, allocate stores.SectorFileType, sealing bool) (stores.SectorPaths, func(), error) {
-	paths, storageIDs, done, err := l.w.storage.AcquireSector(ctx, sector, existing, allocate, sealing)
+	paths, storageIDs, done, err := l.w.storage.AcquireSector(ctx, sector, l.w.scfg.SealProofType, existing, allocate, sealing)
 	if err != nil {
 		return stores.SectorPaths{}, nil, err
 	}
@@ -163,7 +163,7 @@ func (l *LocalWorker) FinalizeSector(ctx context.Context, sector abi.SectorID) e
 		return xerrors.Errorf("removing unsealed data: %w", err)
 	}
 
-	if err := l.storage.MoveStorage(ctx, sector, stores.FTSealed|stores.FTCache); err != nil {
+	if err := l.storage.MoveStorage(ctx, sector, l.scfg.SealProofType, stores.FTSealed|stores.FTCache); err != nil {
 		return xerrors.Errorf("moving sealed data to storage: %w", err)
 	}
 
