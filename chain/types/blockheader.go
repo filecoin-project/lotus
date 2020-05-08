@@ -2,7 +2,6 @@ package types
 
 import (
 	"bytes"
-	"fmt"
 	"math/big"
 
 	"github.com/minio/blake2b-simd"
@@ -100,14 +99,6 @@ func DecodeBlock(b []byte) (*BlockHeader, error) {
 	var blk BlockHeader
 	if err := blk.UnmarshalCBOR(bytes.NewReader(b)); err != nil {
 		return nil, err
-	}
-
-	if blk.ElectionProof == nil {
-		return nil, fmt.Errorf("block cannot have nil election proof")
-	}
-
-	if blk.Ticket == nil {
-		return nil, fmt.Errorf("block cannot have nil ticket")
 	}
 
 	return &blk, nil
