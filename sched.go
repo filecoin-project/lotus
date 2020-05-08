@@ -378,6 +378,9 @@ func canHandleRequest(needRes Resources, spt abi.RegisteredProof, wid WorkerID, 
 	if spt == abi.RegisteredProof_StackedDRG32GiBSeal {
 		maxNeedMem += MaxCachingOverhead
 	}
+	if spt == abi.RegisteredProof_StackedDRG64GiBSeal {
+		maxNeedMem += MaxCachingOverhead * 2 // ewwrhmwh
+	}
 	if maxNeedMem > res.MemSwap+res.MemPhysical {
 		log.Debugf("sched: not scheduling on worker %d; not enough virtual memory - need: %dM, have %dM", wid, maxNeedMem/mib, (res.MemSwap+res.MemPhysical)/mib)
 		return false
