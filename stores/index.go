@@ -6,12 +6,16 @@ import (
 	gopath "path"
 	"sort"
 	"sync"
+	"time"
 
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 )
+
+var HeartBeatInterval = 10 * time.Second
+var SkippedHeartbeatThresh = HeartBeatInterval * 5
 
 // ID identifies sector storage by UUID. One sector storage should map to one
 //  filesystem, local or networked / shared by multiple machines
@@ -24,12 +28,20 @@ type StorageInfo struct {
 
 	CanSeal  bool
 	CanStore bool
+
+	LastHeartbeat time.Time
+	HeartbeatErr  error
+}
+
+type HealthReport struct {
+	Stat FsStat
+	Err  error
 }
 
 type SectorIndex interface { // part of storage-miner api
 	StorageAttach(context.Context, StorageInfo, FsStat) error
 	StorageInfo(context.Context, ID) (StorageInfo, error)
-	// TODO: StorageUpdateStats(FsStat)
+	StorageReportHealth(context.Context, ID, HealthReport) error
 
 	StorageDeclareSector(ctx context.Context, storageId ID, s abi.SectorID, ft SectorFileType) error
 	StorageDropSector(ctx context.Context, storageId ID, s abi.SectorID, ft SectorFileType) error
@@ -46,6 +58,9 @@ type Decl struct {
 type storageEntry struct {
 	info *StorageInfo
 	fsi  FsStat
+
+	lastHeartbeat time.Time
+	heartbeatErr  error
 }
 
 type Index struct {
@@ -120,7 +135,25 @@ func (i *Index) StorageAttach(ctx context.Context, si StorageInfo, st FsStat) er
 	i.stores[si.ID] = &storageEntry{
 		info: &si,
 		fsi:  st,
+
+		lastHeartbeat: time.Now(),
 	}
+	return nil
+}
+
+func (i *Index) StorageReportHealth(ctx context.Context, id ID, report HealthReport) error {
+	i.lk.Lock()
+	defer i.lk.Unlock()
+
+	ent, ok := i.stores[id]
+	if !ok {
+		return xerrors.Errorf("health report for unknown storage: %s", id)
+	}
+
+	ent.fsi = report.Stat
+	ent.heartbeatErr = report.Err
+	ent.lastHeartbeat = time.Now()
+
 	return nil
 }
 

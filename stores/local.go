@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"math/bits"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"golang.org/x/xerrors"
 
@@ -155,7 +157,42 @@ func (st *Local) open(ctx context.Context) error {
 		}
 	}
 
+	go st.reportHealth(ctx)
+
 	return nil
+}
+
+func (st *Local) reportHealth(ctx context.Context) {
+	// randomize interval by ~10%
+	interval := (HeartBeatInterval*100_000 + time.Duration(rand.Int63n(10_000))) / 100_000
+
+	for {
+		select {
+		case <-time.After(interval):
+		case <-ctx.Done():
+			return
+		}
+
+		st.localLk.RLock()
+
+		toReport := map[ID]HealthReport{}
+		for id, p := range st.paths {
+			stat, err := Stat(p.local)
+
+			toReport[id] = HealthReport{
+				Stat: stat,
+				Err:  err,
+			}
+		}
+
+		st.localLk.RUnlock()
+
+		for id, report := range toReport {
+			if err := st.index.StorageReportHealth(ctx, id, report); err != nil {
+				log.Warnf("error reporting storage health for %s: %+v", id, report)
+			}
+		}
+	}
 }
 
 func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, existing SectorFileType, allocate SectorFileType, sealing bool) (SectorPaths, SectorPaths, func(), error) {
