@@ -884,3 +884,62 @@ func TestCalledOrder(t *testing.T) {
 
 	fcs.advance(9, 1, nil)
 }
+
+func TestCalledNull(t *testing.T) {
+	fcs := &fakeCS{
+		t: t,
+		h: 1,
+
+		msgs:    map[cid.Cid]fakeMsg{},
+		blkMsgs: map[cid.Cid]cid.Cid{},
+		tsc:     newTSCache(2*build.ForkLengthThreshold, nil),
+	}
+	require.NoError(t, fcs.tsc.add(makeTs(t, 1, dummyCid)))
+
+	events := NewEvents(context.Background(), fcs)
+
+	t0123, err := address.NewFromString("t0123")
+	require.NoError(t, err)
+
+	more := true
+	var applied, reverted bool
+
+	err = events.Called(func(ts *types.TipSet) (d bool, m bool, e error) {
+		return false, true, nil
+	}, func(msg *types.Message, rec *types.MessageReceipt, ts *types.TipSet, curH abi.ChainEpoch) (bool, error) {
+		require.Equal(t, false, applied)
+		applied = true
+		return more, nil
+	}, func(_ context.Context, ts *types.TipSet) error {
+		reverted = true
+		return nil
+	}, 3, 20, matchAddrMethod(t0123, 5))
+	require.NoError(t, err)
+
+	// create few blocks to make sure nothing get's randomly called
+
+	fcs.advance(0, 4, nil) // H=5
+	require.Equal(t, false, applied)
+	require.Equal(t, false, reverted)
+
+	// create blocks with message (but below confidence threshold)
+
+	fcs.advance(0, 3, map[int]cid.Cid{ // msg at H=6; H=8 (confidence=2)
+		0: fcs.fakeMsgs(fakeMsg{
+			bmsgs: []*types.Message{
+				{To: t0123, From: t0123, Method: 5, Nonce: 1},
+			},
+		}),
+	})
+
+	require.Equal(t, false, applied)
+	require.Equal(t, false, reverted)
+
+	// create additional blocks so we are above confidence threshold, but with null tipset at the height
+	// of application
+
+	fcs.advance(0, 3, nil, 10) // H=11 (confidence=3, apply)
+
+	require.Equal(t, true, applied)
+	require.Equal(t, false, reverted)
+}
