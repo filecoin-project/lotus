@@ -507,7 +507,15 @@ var ErrTemporal = errors.New("temporal error")
 
 func blockSanityChecks(h *types.BlockHeader) error {
 	if h.ElectionProof == nil {
-		return fmt.Errorf("block cannot have nil election proof")
+		return xerrors.Errorf("block cannot have nil election proof")
+	}
+
+	if h.Ticket == nil {
+		return xerrors.Errorf("block cannot have nil ticket")
+	}
+
+	if h.BlockSig == nil {
+		return xerrors.Errorf("block had nil signature")
 	}
 
 	return nil
@@ -550,9 +558,6 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	//nulls := h.Height - (baseTs.Height() + 1)
 
 	// fast checks first
-	if h.BlockSig == nil {
-		return xerrors.Errorf("block had nil signature")
-	}
 
 	now := uint64(time.Now().Unix())
 	if h.Timestamp > now+build.AllowableClockDrift {
