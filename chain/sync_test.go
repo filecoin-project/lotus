@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	mocktypes "github.com/filecoin-project/lotus/chain/types/mock"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/filecoin-project/lotus/node/modules"
@@ -510,4 +511,31 @@ func runSyncBenchLength(b *testing.B, l int) {
 	tu.connect(1, 0)
 
 	tu.waitUntilSync(0, client)
+}
+
+func TestSyncInputs(t *testing.T) {
+	H := 10
+	tu := prepSyncTest(t, H)
+
+	p1 := tu.addClientNode()
+
+	fn := tu.nds[p1].(*impl.FullNodeAPI)
+
+	s := fn.SyncAPI.Syncer
+
+	err := s.ValidateBlock(context.TODO(), &types.FullBlock{
+		Header: &types.BlockHeader{},
+	})
+	if err == nil {
+		t.Fatal("should error on empty block")
+	}
+
+	h := mocktypes.MkBlock(nil, 123, 432)
+
+	h.ElectionProof = nil
+
+	err = s.ValidateBlock(context.TODO(), &types.FullBlock{Header: h})
+	if err == nil {
+		t.Fatal("should error on block with nil election proof")
+	}
 }

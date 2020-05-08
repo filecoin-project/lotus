@@ -88,7 +88,7 @@ type Syncer struct {
 func NewSyncer(sm *stmgr.StateManager, bsync *blocksync.BlockSync, connmgr connmgr.ConnManager, self peer.ID, beacon beacon.RandomBeacon, verifier ffiwrapper.Verifier) (*Syncer, error) {
 	gen, err := sm.ChainStore().GetGenesis()
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("getting genesis block: %w", err)
 	}
 
 	gent, err := types.NewTipSet([]*types.BlockHeader{gen})
@@ -505,12 +505,36 @@ func (syncer *Syncer) minerIsValid(ctx context.Context, maddr address.Address, b
 
 var ErrTemporal = errors.New("temporal error")
 
+func blockSanityChecks(h *types.BlockHeader) error {
+	if h.ElectionProof == nil {
+		return xerrors.Errorf("block cannot have nil election proof")
+	}
+
+	if h.Ticket == nil {
+		return xerrors.Errorf("block cannot have nil ticket")
+	}
+
+	if h.BlockSig == nil {
+		return xerrors.Errorf("block had nil signature")
+	}
+
+	if h.BLSAggregate == nil {
+		return xerrors.Errorf("block had nil bls aggregate signature")
+	}
+
+	return nil
+}
+
 // Should match up with 'Semantical Validation' in validation.md in the spec
 func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) error {
 	ctx, span := trace.StartSpan(ctx, "validateBlock")
 	defer span.End()
 	if build.InsecurePoStValidation {
 		log.Warn("insecure test validation is enabled, if you see this outside of a test, it is a severe bug!")
+	}
+
+	if err := blockSanityChecks(b.Header); err != nil {
+		return xerrors.Errorf("incoming header failed basic sanity checks: %w", err)
 	}
 
 	h := b.Header
@@ -538,9 +562,6 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	//nulls := h.Height - (baseTs.Height() + 1)
 
 	// fast checks first
-	if h.BlockSig == nil {
-		return xerrors.Errorf("block had nil signature")
-	}
 
 	now := uint64(time.Now().Unix())
 	if h.Timestamp > now+build.AllowableClockDrift {
@@ -617,8 +638,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 			return xerrors.Errorf("could not draw randomness: %w", err)
 		}
 
-		err = gen.VerifyVRF(ctx, waddr, vrfBase, h.ElectionProof.VRFProof)
-		if err != nil {
+		if err := gen.VerifyVRF(ctx, waddr, vrfBase, h.ElectionProof.VRFProof); err != nil {
 			return xerrors.Errorf("validating block election proof failed: %w", err)
 		}
 

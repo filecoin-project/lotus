@@ -273,6 +273,7 @@ func MakeGenesisBlock(ctx context.Context, bs bstore.Blockstore, sys runtime.Sys
 		BLSAggregate:          nil,
 		BlockSig:              nil,
 		Timestamp:             template.Timestamp,
+		ElectionProof:         new(types.ElectionProof),
 		BeaconEntries: []types.BeaconEntry{
 			{
 				Round: 0,
