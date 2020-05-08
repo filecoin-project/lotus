@@ -158,13 +158,13 @@ github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2/go.m
 github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03 h1:2pMXdBnCiXjfCYx/hLqFxccPoqsSveQFxVLvNxy9bus=
 github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03/go.mod h1:+viYnvGtUTgJRdy6oaeF4MTFKAfatX071MPDPBL11EQ=
 github.com/filecoin-project/go-data-transfer v0.0.0-20191219005021-4accf56bd2ce/go.mod h1:b14UWxhxVCAjrQUYvVGrQRRsjAh79wXYejw9RbUcAww=
-github.com/filecoin-project/go-data-transfer v0.2.1 h1:PBcxnbA1AKE33AGMJ02Xi4pcvKoW8xjdB2VR0IcOwrs=
-github.com/filecoin-project/go-data-transfer v0.2.1/go.mod h1:+0weLKevhT3EKyan4QzUSMlQOPgLNgT2j0CfEA1NLqI=
+github.com/filecoin-project/go-data-transfer v0.3.0 h1:BwBrrXu9Unh9JjjX4GAc5FfzUNioor/aATIjfc7JTBg=
+github.com/filecoin-project/go-data-transfer v0.3.0/go.mod h1:cONglGP4s/d+IUQw5mWZrQK+FQATQxr3AXzi4dRh0l4=
 github.com/filecoin-project/go-fil-commcid v0.0.0-20200208005934-2b8bd03caca5 h1:yvQJCW9mmi9zy+51xA01Ea2X7/dL7r8eKDPuGUjRmbo=
 github.com/filecoin-project/go-fil-commcid v0.0.0-20200208005934-2b8bd03caca5/go.mod h1:JbkIgFF/Z9BDlvrJO1FuKkaWsH673/UdFaiVS6uIHlA=
 github.com/filecoin-project/go-fil-markets v0.0.0-20200114015428-74d100f305f8/go.mod h1:c8NTjvFVy1Ud02mmGDjOiMeawY2t6ALfrrdvAB01FQc=
-github.com/filecoin-project/go-fil-markets v0.2.0 h1:jl6fnuZKEc13wNa3ywm9/Er9+Mt3eg3o3o4b4vkSc34=
-github.com/filecoin-project/go-fil-markets v0.2.0/go.mod h1:ecCGcUn95jc9AF5QBEoFEZyhoL0X+bLek+49ZhIE0nA=
+github.com/filecoin-project/go-fil-markets v0.2.1 h1:SyGjUeJqCWyhn8pdqy+BYwNf8OW4T+8XopUJt70aV3s=
+github.com/filecoin-project/go-fil-markets v0.2.1/go.mod h1:KM//kgQRIQcW6gLLqmAwJW0AAuh3ONfeV3WgnsriFdQ=
 github.com/filecoin-project/go-padreader v0.0.0-20200210211231-548257017ca6 h1:92PET+sx1Hb4W/8CgFwGuxaKbttwY+UNspYZTvXY0vs=
 github.com/filecoin-project/go-padreader v0.0.0-20200210211231-548257017ca6/go.mod h1:0HgYnrkeSU4lu1p+LEOeDpFsNBssa0OGGriWdA4hvaE=
 github.com/filecoin-project/go-paramfetch v0.0.0-20200102181131-b20d579f2878/go.mod h1:40kI2Gv16mwcRsHptI3OAV4nlOEU7wVDc4RgMylNFjU=

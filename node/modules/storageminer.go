@@ -3,7 +3,6 @@ package modules
 import (
 	"context"
 	"net/http"
-	"reflect"
 
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
@@ -192,7 +191,7 @@ func HandleDeals(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, h sto
 // request validator with the data transfer module as the validator for
 // StorageDataTransferVoucher types
 func RegisterProviderValidator(mrv *requestvalidation.ProviderRequestValidator, dtm dtypes.ProviderDataTransfer) {
-	if err := dtm.RegisterVoucherType(reflect.TypeOf(&requestvalidation.StorageDataTransferVoucher{}), mrv); err != nil {
+	if err := dtm.RegisterVoucherType(&requestvalidation.StorageDataTransferVoucher{}, mrv); err != nil {
 		panic(err)
 	}
 }
