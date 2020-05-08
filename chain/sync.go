@@ -518,6 +518,10 @@ func blockSanityChecks(h *types.BlockHeader) error {
 		return xerrors.Errorf("block had nil signature")
 	}
 
+	if h.BLSAggregate == nil {
+		return xerrors.Errorf("block had nil bls aggregate signature")
+	}
+
 	return nil
 }
 
