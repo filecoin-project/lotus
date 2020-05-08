@@ -142,6 +142,8 @@ func (e *Events) listenHeadChangesOnce(ctx context.Context) error {
 	}
 
 	e.readyOnce.Do(func() {
+		e.at = cur[0].Val.Height()
+
 		e.ready.Done()
 	})
 
