@@ -942,4 +942,10 @@ func TestCalledNull(t *testing.T) {
 
 	require.Equal(t, true, applied)
 	require.Equal(t, false, reverted)
+	applied = false
+
+	fcs.advance(5, 1, nil, 10)
+
+	require.Equal(t, false, applied)
+	require.Equal(t, true, reverted)
 }
