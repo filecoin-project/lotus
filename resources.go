@@ -4,20 +4,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	"github.com/filecoin-project/sector-storage/sealtasks"
-	"github.com/filecoin-project/sector-storage/stores"
 )
-
-var FSOverheadSeal = map[stores.SectorFileType]int{ // 10x overheads
-	stores.FTUnsealed: 10,
-	stores.FTSealed:   10,
-	stores.FTCache:    70, // TODO: confirm for 32G
-}
-
-var FsOverheadFinalized = map[stores.SectorFileType]int{
-	stores.FTUnsealed: 10,
-	stores.FTSealed:   10,
-	stores.FTCache:    2,
-}
 
 type Resources struct {
 	MinMemory uint64 // What Must be in RAM for decent perf

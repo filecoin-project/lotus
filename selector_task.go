@@ -5,6 +5,8 @@ import (
 
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
+
 	"github.com/filecoin-project/sector-storage/sealtasks"
 	"github.com/filecoin-project/sector-storage/stores"
 )
@@ -17,7 +19,7 @@ func newTaskSelector() *taskSelector {
 	return &taskSelector{}
 }
 
-func (s *taskSelector) Ok(ctx context.Context, task sealtasks.TaskType, whnd *workerHandle) (bool, error) {
+func (s *taskSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi.RegisteredProof, whnd *workerHandle) (bool, error) {
 	tasks, err := whnd.w.TaskTypes(ctx)
 	if err != nil {
 		return false, xerrors.Errorf("getting supported worker task types: %w", err)

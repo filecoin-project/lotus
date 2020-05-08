@@ -20,7 +20,7 @@ const mib = 1 << 20
 type WorkerAction func(ctx context.Context, w Worker) error
 
 type WorkerSelector interface {
-	Ok(ctx context.Context, task sealtasks.TaskType, a *workerHandle) (bool, error) // true if worker is acceptable for performing a task
+	Ok(ctx context.Context, task sealtasks.TaskType, spt abi.RegisteredProof, a *workerHandle) (bool, error) // true if worker is acceptable for performing a task
 
 	Cmp(ctx context.Context, task sealtasks.TaskType, a, b *workerHandle) (bool, error) // true if a is preferred over b
 }
@@ -178,7 +178,7 @@ func (sh *scheduler) onWorkerFreed(wid WorkerID) {
 	for i := 0; i < sh.schedQueue.Len(); i++ {
 		req := (*sh.schedQueue)[i]
 
-		ok, err := req.sel.Ok(req.ctx, req.taskType, w)
+		ok, err := req.sel.Ok(req.ctx, req.taskType, sh.spt, w)
 		if err != nil {
 			log.Errorf("onWorkerFreed req.sel.Ok error: %+v", err)
 			continue
@@ -212,7 +212,7 @@ func (sh *scheduler) maybeSchedRequest(req *workerRequest) (bool, error) {
 	needRes := ResourceTable[req.taskType][sh.spt]
 
 	for wid, worker := range sh.workers {
-		ok, err := req.sel.Ok(req.ctx, req.taskType, worker)
+		ok, err := req.sel.Ok(req.ctx, req.taskType, sh.spt, worker)
 		if err != nil {
 			return false, err
 		}

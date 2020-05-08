@@ -5,26 +5,25 @@ import (
 
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
+
 	"github.com/filecoin-project/sector-storage/sealtasks"
 	"github.com/filecoin-project/sector-storage/stores"
 )
 
 type allocSelector struct {
-	best []stores.StorageInfo
+	index stores.SectorIndex
+	alloc stores.SectorFileType
 }
 
 func newAllocSelector(ctx context.Context, index stores.SectorIndex, alloc stores.SectorFileType) (*allocSelector, error) {
-	best, err := index.StorageBestAlloc(ctx, alloc, true)
-	if err != nil {
-		return nil, err
-	}
-
 	return &allocSelector{
-		best: best,
+		index: index,
+		alloc: alloc,
 	}, nil
 }
 
-func (s *allocSelector) Ok(ctx context.Context, task sealtasks.TaskType, whnd *workerHandle) (bool, error) {
+func (s *allocSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi.RegisteredProof, whnd *workerHandle) (bool, error) {
 	tasks, err := whnd.w.TaskTypes(ctx)
 	if err != nil {
 		return false, xerrors.Errorf("getting supported worker task types: %w", err)
@@ -43,7 +42,12 @@ func (s *allocSelector) Ok(ctx context.Context, task sealtasks.TaskType, whnd *w
 		have[path.ID] = struct{}{}
 	}
 
-	for _, info := range s.best {
+	best, err := s.index.StorageBestAlloc(ctx, s.alloc, spt, true)
+	if err != nil {
+		return false, xerrors.Errorf("finding best alloc storage: %w", err)
+	}
+
+	for _, info := range best {
 		if _, ok := have[info.ID]; ok {
 			return true, nil
 		}
