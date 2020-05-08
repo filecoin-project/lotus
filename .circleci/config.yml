@@ -22,7 +22,7 @@ commands:
       - restore_cache:
           name: Restore parameters cache
           keys:
-            - 'v24-2k-lotus-params'
+            - 'v26a-2k-lotus-params'
           paths:
             - /var/tmp/filecoin-proof-parameters/
       - run: |
@@ -33,7 +33,7 @@ commands:
           ./go-paramfetch 2048 "${DIR}/parameters.json"
       - save_cache:
           name: Save parameters cache
-          key: 'v24-2k-lotus-params'
+          key: 'v26a-2k-lotus-params'
           paths:
             - /var/tmp/filecoin-proof-parameters/
 jobs:
