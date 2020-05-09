@@ -24,6 +24,14 @@ const MaxCachingOverhead = 32 << 30
 
 var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 	sealtasks.TTAddPiece: {
+		abi.RegisteredProof_StackedDRG64GiBSeal: Resources{ // This is probably a bit conservative
+			MaxMemory: 64 << 30,
+			MinMemory: 64 << 30,
+
+			Threads: 1,
+
+			BaseMinMemory: 1 << 30,
+		},
 		abi.RegisteredProof_StackedDRG32GiBSeal: Resources{ // This is probably a bit conservative
 			MaxMemory: 32 << 30,
 			MinMemory: 32 << 30,
@@ -58,6 +66,14 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 		},
 	},
 	sealtasks.TTPreCommit1: {
+		abi.RegisteredProof_StackedDRG64GiBSeal: Resources{
+			MaxMemory: 128 << 30,
+			MinMemory: 96 << 30,
+
+			Threads: 1,
+
+			BaseMinMemory: 60 << 30,
+		},
 		abi.RegisteredProof_StackedDRG32GiBSeal: Resources{
 			MaxMemory: 64 << 30,
 			MinMemory: 48 << 30,
@@ -92,6 +108,15 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 		},
 	},
 	sealtasks.TTPreCommit2: {
+		abi.RegisteredProof_StackedDRG64GiBSeal: Resources{
+			MaxMemory: 64 << 30,
+			MinMemory: 64 << 30,
+
+			Threads: -1,
+			CanGPU:  true,
+
+			BaseMinMemory: 60 << 30,
+		},
 		abi.RegisteredProof_StackedDRG32GiBSeal: Resources{
 			MaxMemory: 32 << 30,
 			MinMemory: 32 << 30,
@@ -127,6 +152,14 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 		},
 	},
 	sealtasks.TTCommit1: { // Very short (~100ms), so params are very light
+		abi.RegisteredProof_StackedDRG64GiBSeal: Resources{
+			MaxMemory: 1 << 30,
+			MinMemory: 1 << 30,
+
+			Threads: 0,
+
+			BaseMinMemory: 1 << 30,
+		},
 		abi.RegisteredProof_StackedDRG32GiBSeal: Resources{
 			MaxMemory: 1 << 30,
 			MinMemory: 1 << 30,
@@ -161,6 +194,15 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 		},
 	},
 	sealtasks.TTCommit2: {
+		abi.RegisteredProof_StackedDRG64GiBSeal: Resources{
+			MaxMemory: 260 << 30, // TODO: Confirm
+			MinMemory: 120 << 30,
+
+			Threads: -1,
+			CanGPU:  true,
+
+			BaseMinMemory: 128 << 30, // params
+		},
 		abi.RegisteredProof_StackedDRG32GiBSeal: Resources{
 			MaxMemory: 130 << 30,
 			MinMemory: 60 << 30,
@@ -199,6 +241,15 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 		},
 	},
 	sealtasks.TTFetch: {
+		abi.RegisteredProof_StackedDRG64GiBSeal: Resources{
+			MaxMemory: 1 << 20,
+			MinMemory: 1 << 20,
+
+			Threads: 0,
+			CanGPU:  false,
+
+			BaseMinMemory: 0,
+		},
 		abi.RegisteredProof_StackedDRG32GiBSeal: Resources{
 			MaxMemory: 1 << 20,
 			MinMemory: 1 << 20,

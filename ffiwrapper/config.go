@@ -30,6 +30,8 @@ func SealProofTypeFromSectorSize(ssize abi.SectorSize) (abi.RegisteredProof, err
 		return abi.RegisteredProof_StackedDRG512MiBSeal, nil
 	case 32 << 30:
 		return abi.RegisteredProof_StackedDRG32GiBSeal, nil
+	case 64 << 30:
+		return abi.RegisteredProof_StackedDRG64GiBSeal, nil
 	default:
 		return 0, xerrors.Errorf("unsupported sector size for miner: %v", ssize)
 	}
