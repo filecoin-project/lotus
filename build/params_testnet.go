@@ -13,9 +13,10 @@ func init() {
 	power.ConsensusMinerMinPower = big.NewInt(2 << 30)
 }
 
-var SectorSizes = []abi.SectorSize{
+var SectorSizes = []abi.SectorSize{ // TODO: This isn't really used anywhere
 	512 << 20,
 	32 << 30,
+	64 << 30,
 }
 
 // Seconds
