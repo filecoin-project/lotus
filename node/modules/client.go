@@ -3,7 +3,6 @@ package modules
 import (
 	"context"
 	"path/filepath"
-	"reflect"
 
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/ipfs/go-merkledag"
@@ -61,7 +60,7 @@ func ClientBlockstore(fstore dtypes.ClientFilestore) dtypes.ClientBlockstore {
 // request validator with the data transfer module as the validator for
 // StorageDataTransferVoucher types
 func RegisterClientValidator(crv *requestvalidation.ClientRequestValidator, dtm dtypes.ClientDataTransfer) {
-	if err := dtm.RegisterVoucherType(reflect.TypeOf(&requestvalidation.StorageDataTransferVoucher{}), crv); err != nil {
+	if err := dtm.RegisterVoucherType(&requestvalidation.StorageDataTransferVoucher{}, crv); err != nil {
 		panic(err)
 	}
 }
@@ -105,9 +104,23 @@ func NewClientRequestValidator(deals dtypes.ClientDealStore) *requestvalidation.
 	return requestvalidation.NewClientRequestValidator(deals)
 }
 
-func StorageClient(h host.Host, ibs dtypes.ClientBlockstore, r repo.LockedRepo, dataTransfer dtypes.ClientDataTransfer, discovery *discovery.Local, deals dtypes.ClientDatastore, scn storagemarket.StorageClientNode) (storagemarket.StorageClient, error) {
+func StorageClient(lc fx.Lifecycle, h host.Host, ibs dtypes.ClientBlockstore, r repo.LockedRepo, dataTransfer dtypes.ClientDataTransfer, discovery *discovery.Local, deals dtypes.ClientDatastore, scn storagemarket.StorageClientNode) (storagemarket.StorageClient, error) {
 	net := smnet.NewFromLibp2pHost(h)
-	return storageimpl.NewClient(net, ibs, dataTransfer, discovery, deals, scn)
+	c, err := storageimpl.NewClient(net, ibs, dataTransfer, discovery, deals, scn)
+	if err != nil {
+		return nil, err
+	}
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			c.Run(ctx)
+			return nil
+		},
+		OnStop: func(context.Context) error {
+			c.Stop()
+			return nil
+		},
+	})
+	return c, nil
 }
 
 // RetrievalClient creates a new retrieval client attached to the client blockstore
