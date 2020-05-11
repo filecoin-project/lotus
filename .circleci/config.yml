@@ -5,7 +5,7 @@ orbs:
 executors:
   golang:
     docker:
-      - image: circleci/golang:1.13
+      - image: circleci/golang:1.14.2
     resource_class: 2xlarge
   ubuntu:
     docker:
@@ -212,8 +212,8 @@ jobs:
       - run:
           name: Install go
           command: |
-            curl -O https://dl.google.com/go/go1.13.4.darwin-amd64.pkg && \
-            sudo installer -pkg go1.13.4.darwin-amd64.pkg -target /
+            curl -O https://dl.google.com/go/go1.14.2.darwin-amd64.pkg && \
+            sudo installer -pkg go1.14.2.darwin-amd64.pkg -target /
       - run:
           name: Install pkg-config
           command: HOMEBREW_NO_AUTO_UPDATE=1 brew install pkg-config
