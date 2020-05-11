@@ -21,6 +21,7 @@ type FullNodeAPI struct {
 	market.MarketAPI
 	paych.PaychAPI
 	full.StateAPI
+	full.MsigAPI
 	full.WalletAPI
 	full.SyncAPI
 }
