@@ -13,11 +13,7 @@ import (
 
 func SetupCronActor(bs bstore.Blockstore) (*types.Actor, error) {
 	cst := cbor.NewCborStore(bs)
-	cas := &cron.State{Entries: []cron.Entry{{
-		Receiver:  builtin.StoragePowerActorAddr,
-		MethodNum: builtin.MethodsPower.OnEpochTickEnd,
-	},
-	}}
+	cas := cron.ConstructState(cron.BuiltInEntries())
 
 	stcid, err := cst.Put(context.TODO(), cas)
 	if err != nil {
