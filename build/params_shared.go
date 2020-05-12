@@ -14,7 +14,7 @@ import (
 )
 
 func DefaultSectorSize() abi.SectorSize {
-	szs := make([]abi.SectorSize, len(miner.SupportedProofTypes))
+	szs := make([]abi.SectorSize, 0, len(miner.SupportedProofTypes))
 	for spt := range miner.SupportedProofTypes {
 		ss, err := spt.SectorSize()
 		if err != nil {
