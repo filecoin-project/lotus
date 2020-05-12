@@ -74,7 +74,7 @@ lotus-storage-miner info
 **Seal** random data to start producing **PoSts**:
 
 ```sh
-lotus-storage-miner pledge-sector
+lotus-storage-miner sectors pledge
 ```
 
 - Warning: On Linux configurations, this command will write data to `$TMPDIR` which is not usually the largest partition. You should point the value to a larger partition if possible.
@@ -88,13 +88,4 @@ lotus-storage-miner state power
 lotus-storage-miner state power <miner>
 
 lotus-storage-miner state sectors <miner>
-```
-
-## Change nickname
-
-Update `~/.lotus/config.toml` with:
-
-```sh
-[Metrics]
-Nickname="fun"
 ```
