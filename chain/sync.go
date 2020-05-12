@@ -1162,7 +1162,7 @@ loop:
 var ErrForkTooLong = fmt.Errorf("fork longer than threshold")
 
 func (syncer *Syncer) syncFork(ctx context.Context, from *types.TipSet, to *types.TipSet) ([]*types.TipSet, error) {
-	tips, err := syncer.Bsync.GetBlocks(ctx, from.Parents(), build.ForkLengthThreshold)
+	tips, err := syncer.Bsync.GetBlocks(ctx, from.Parents(), int(build.ForkLengthThreshold))
 	if err != nil {
 		return nil, err
 	}
@@ -1333,7 +1333,7 @@ func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet) error 
 
 	ss.SetStage(api.StagePersistHeaders)
 
-	toPersist := make([]*types.BlockHeader, 0, len(headers)*build.BlocksPerEpoch)
+	toPersist := make([]*types.BlockHeader, 0, len(headers)*int(build.BlocksPerEpoch))
 	for _, ts := range headers {
 		toPersist = append(toPersist, ts.Blocks()...)
 	}

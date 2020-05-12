@@ -79,7 +79,7 @@ var initCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:  "sector-size",
 			Usage: "specify sector size to use",
-			Value: fmt.Sprint(build.SectorSizes[0]),
+			Value: fmt.Sprint(build.DefaultSectorSize()),
 		},
 		&cli.StringSliceFlag{
 			Name:  "pre-sealed-sectors",
