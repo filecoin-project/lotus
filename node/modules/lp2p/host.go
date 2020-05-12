@@ -10,7 +10,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
-	protocol "github.com/libp2p/go-libp2p-protocol"
 	record "github.com/libp2p/go-libp2p-record"
 	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
@@ -80,7 +79,7 @@ func DHTRouting(mode dht.ModeOpt) interface{} {
 			dht.Mode(mode),
 			dht.Datastore(dstore),
 			dht.Validator(validator),
-			dht.ProtocolPrefix(protocol.ID(nn)),
+			dht.ProtocolPrefix(build.DhtProtocolName(nn)),
 			dht.QueryFilter(dht.PublicQueryFilter),
 			dht.RoutingTableFilter(dht.PublicRoutingTableFilter),
 			dht.DisableProviders(),
