@@ -21,7 +21,7 @@ type tipSetCache struct {
 	storage tsByHFunc
 }
 
-func newTSCache(cap int, storage tsByHFunc) *tipSetCache {
+func newTSCache(cap abi.ChainEpoch, storage tsByHFunc) *tipSetCache {
 	return &tipSetCache{
 		cache: make([]*types.TipSet, cap),
 		start: 0,
