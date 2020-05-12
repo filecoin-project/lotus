@@ -11,20 +11,22 @@ import (
 	"sync/atomic"
 	"time"
 
-	genesis2 "github.com/filecoin-project/lotus/chain/gen/genesis"
-	"github.com/filecoin-project/lotus/genesis"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
-
-	"github.com/filecoin-project/specs-actors/actors/abi"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/build"
+	genesis2 "github.com/filecoin-project/lotus/chain/gen/genesis"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
+	"github.com/filecoin-project/lotus/genesis"
 )
 
 func init() {
-	build.SectorSizes = []abi.SectorSize{2048}
+	miner.SupportedProofTypes = map[abi.RegisteredProof]struct{}{
+		abi.RegisteredProof_StackedDRG2KiBSeal: {},
+	}
 }
 
 func (api *api) Spawn() (nodeInfo, error) {

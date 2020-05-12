@@ -2,11 +2,34 @@ package build
 
 import (
 	"math/big"
+	"sort"
 
 	"github.com/libp2p/go-libp2p-core/protocol"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
+
+func DefaultSectorSize() abi.SectorSize {
+	szs := make([]abi.SectorSize, len(miner.SupportedProofTypes))
+	for spt := range miner.SupportedProofTypes {
+		ss, err := spt.SectorSize()
+		if err != nil {
+			panic(err)
+		}
+
+		szs = append(szs, ss)
+	}
+
+	sort.Slice(szs, func(i, j int) bool {
+		return szs[i] < szs[i]
+	})
+
+	return szs[0]
+}
 
 // Core network constants
 
@@ -22,14 +45,6 @@ func DhtProtocolName(netName dtypes.NetworkName) protocol.ID {
 const UnixfsChunkSize uint64 = 1 << 20
 const UnixfsLinksPerLevel = 1024
 
-const SectorChallengeRatioDiv = 25
-
-// /////
-// Payments
-
-// Epochs
-const PaymentChannelClosingDelay = 6 * 60 * 60 / BlockDelay // six hours
-
 // /////
 // Consensus / Network
 
@@ -40,10 +55,10 @@ const AllowableClockDrift = 1
 const ForkLengthThreshold = Finality
 
 // Blocks (e)
-const BlocksPerEpoch = 5
+var BlocksPerEpoch = uint64(builtin.ExpectedLeadersPerEpoch)
 
 // Epochs
-const Finality = 500
+const Finality = miner.ChainFinalityish
 
 // constants for Weight calculation
 // The ratio of weight contributed by short-term vs long-term factors in a given round
