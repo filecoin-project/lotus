@@ -24,7 +24,7 @@ import (
 
 var log = logging.Logger("sub")
 
-func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *chain.Syncer, cmgr connmgr.ConnManager, bv *BlockValidator) {
+func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *chain.Syncer, cmgr connmgr.ConnManager) {
 	for {
 		msg, err := bsub.Next(ctx)
 		if err != nil {
@@ -52,15 +52,13 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 			log.Debug("about to fetch messages for block from pubsub")
 			bmsgs, err := s.Bsync.FetchMessagesByCids(context.TODO(), blk.BlsMessages)
 			if err != nil {
-				log.Errorf("failed to fetch all bls messages for block received over pubusb: %s; flagging source %s", err, src)
-				bv.flagPeer(src)
+				log.Errorf("failed to fetch all bls messages for block received over pubusb: %s; source: %s", err, src)
 				return
 			}
 
 			smsgs, err := s.Bsync.FetchSignedMessagesByCids(context.TODO(), blk.SecpkMessages)
 			if err != nil {
-				log.Errorf("failed to fetch all secpk messages for block received over pubusb: %s; flagging source %s", err, src)
-				bv.flagPeer(src)
+				log.Errorf("failed to fetch all secpk messages for block received over pubusb: %s; source: %s", err, src)
 				return
 			}
 

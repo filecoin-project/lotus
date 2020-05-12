@@ -75,7 +75,7 @@ func HandleIncomingBlocks(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.P
 		panic(err)
 	}
 
-	go sub.HandleIncomingBlocks(ctx, blocksub, s, h.ConnManager(), v)
+	go sub.HandleIncomingBlocks(ctx, blocksub, s, h.ConnManager())
 }
 
 func HandleIncomingMessages(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.PubSub, mpool *messagepool.MessagePool, nn dtypes.NetworkName) {
