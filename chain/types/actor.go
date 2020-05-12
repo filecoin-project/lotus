@@ -3,6 +3,7 @@ package types
 import (
 	"github.com/ipfs/go-cid"
 
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 )
 
@@ -14,4 +15,8 @@ type Actor struct {
 	Head    cid.Cid
 	Nonce   uint64
 	Balance BigInt
+}
+
+func (a *Actor) IsAccountActor() bool {
+	return a.Code == builtin.AccountActorCodeID
 }

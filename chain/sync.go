@@ -31,6 +31,7 @@ import (
 	amt "github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
@@ -45,6 +46,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/metrics"
 )
@@ -805,6 +807,7 @@ func (syncer *Syncer) VerifyWinningPoStProof(ctx context.Context, h *types.Block
 	return nil
 }
 
+// TODO: We should extract this somewhere else and make the message pool and miner use the same logic
 func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock, baseTs *types.TipSet) error {
 	{
 		var sigCids []cid.Cid // this is what we get for people not wanting the marshalcbor method on the cid type
@@ -840,15 +843,58 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 	}
 
 	checkMsg := func(m *types.Message) error {
+		// Phase 1: syntactic validation, as defined in the spec
+
+		if m.Version != 0 {
+			return xerrors.New("'Version' unsupported")
+		}
+
 		if m.To == address.Undef {
 			return xerrors.New("'To' address cannot be empty")
 		}
 
+		if m.From == address.Undef {
+			return xerrors.New("'From' address cannot be empty")
+		}
+
+		if m.Value.LessThan(big.Zero()) {
+			return xerrors.New("'Value' field cannot be negative")
+		}
+
+		if m.Value.GreaterThan(types.TotalFilecoinInt) {
+			return xerrors.New("'Value' field cannot be greater than total filecoin supply")
+		}
+
+		if len(m.Params) != 0 && m.Method == 0 {
+			return xerrors.New("'Params' field should be empty if no 'Method' is being called")
+		}
+
+		if m.GasPrice.LessThan(big.Zero()) {
+			return xerrors.New("'GasPrice' field cannot be negative")
+		}
+
+		// TODO: This should be a thing
+		//if m.GasLimit > BLOCK_GAS_LIMIT {
+		//	return xerrors.New("'GasLimit' field cannot be greater than a block's gas limit")
+		//}
+
+		// since prices might vary with time, this is technically semantic validation
+		if m.GasLimit < vm.PricelistByEpoch(baseTs.Height()).OnChainMessage(m.ChainLength()) {
+			return xerrors.New("'GasLimit' field cannot be less than the cost of storing a message on chain")
+		}
+
+		// Phase 2: (Partial) semantic validation:
+		// the sender exists and is an account actor, and the nonces make sense
 		if _, ok := nonces[m.From]; !ok {
 			// `GetActor` does not validate that this is an account actor.
 			act, err := st.GetActor(m.From)
 			if err != nil {
 				return xerrors.Errorf("failed to get actor: %w", err)
+			}
+
+			// redundant check
+			if !act.IsAccountActor() {
+				return xerrors.New("Sender must be an account actor")
 			}
 			nonces[m.From] = act.Nonce
 		}
