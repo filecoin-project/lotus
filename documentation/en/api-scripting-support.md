@@ -25,6 +25,8 @@ FULLNODE_API_INFO="JWT_TOKEN:/ip4/127.0.0.1/tcp/1234/http"
 STORAGE_API_INFO="JWT_TOKEN:/ip4/127.0.0.1/tcp/2345/http"
 ```
 
+You can also use `lotus auth api-info --perm admin` to quickly create _API_INFO env vars
+
 - The **Lotus Node**'s `mutliaddr` is in `~/.lotus/api`.
 - The default token is in `~/.lotus/token`.
 - The **Lotus Storage Miner**'s `multiaddr` is in `~/.lotusstorage/config`.
