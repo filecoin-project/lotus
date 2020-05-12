@@ -28,7 +28,16 @@ To check that the **Lotus Seal Worker** is properly connected to your storage mi
 
 ```sh
 why@computer ~/lotus> lotus-storage-miner workers list
-*TODO: paste example output*
+Worker 0, host computer
+        CPU:  [                                                                ] 0 core(s) in use
+        RAM:  [||||||||||||||||||                                              ] 28% 18.1 GiB/62.7 GiB
+        VMEM: [||||||||||||||||||                                              ] 28% 18.1 GiB/62.7 GiB
+        GPU: GeForce RTX 2080, not used
+Worker 1, host computer
+        CPU:  [                                                                ] 0 core(s) in use
+        RAM:  [||||||||||||||||||                                              ] 28% 18.1 GiB/62.7 GiB
+        VMEM: [||||||||||||||||||                                              ] 28% 18.1 GiB/62.7 GiB
+        GPU: GeForce RTX 2080, not used
 ```
 
 ## Running Over the Network
@@ -71,5 +80,15 @@ To check that the **Lotus Seal Worker** is connected to your **Lotus Storage Min
 
 ```sh
 why@computer ~/lotus> lotus-storage-miner workers list
-*TODO: paste example output*
+Worker 0, host computer
+        CPU:  [                                                                ] 0 core(s) in use
+        RAM:  [||||||||||||||||||                                              ] 28% 18.1 GiB/62.7 GiB
+        VMEM: [||||||||||||||||||                                              ] 28% 18.1 GiB/62.7 GiB
+        GPU: GeForce RTX 2080, not used
+
+Worker 1, host othercomputer
+        CPU:  [                                                                ] 0 core(s) in use
+        RAM:  [||||||||||||||                                                  ] 23% 14 GiB/62.7 GiB
+        VMEM: [||||||||||||||                                                  ] 23% 14 GiB/62.7 GiB
+        GPU: GeForce RTX 2080, not used
 ```
