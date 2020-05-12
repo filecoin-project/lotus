@@ -3,6 +3,7 @@ package sub
 import (
 	"bytes"
 	"context"
+	"sync"
 	"time"
 
 	"golang.org/x/xerrors"
@@ -99,6 +100,9 @@ type BlockValidator struct {
 	// necessary for block validation
 	chain *store.ChainStore
 	stmgr *stmgr.StateManager
+
+	mx       sync.Mutex
+	keycache map[string]address.Address
 }
 
 func NewBlockValidator(chain *store.ChainStore, stmgr *stmgr.StateManager, blacklist func(peer.ID)) *BlockValidator {
@@ -179,7 +183,12 @@ func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub
 func (bv *BlockValidator) getMinerWorkerKey(ctx context.Context, msg *types.BlockMsg) (address.Address, error) {
 	addr := msg.Header.Miner
 
-	// TODO cache those, all this is expensive!
+	bv.mx.Lock()
+	key, ok := bv.keycache[addr.String()]
+	bv.mx.Unlock()
+	if ok {
+		return key, nil
+	}
 
 	// TODO I have a feeling all this can be simplified by cleverer DI to use the API
 	ts := bv.chain.GetHeaviestTipSet()
@@ -211,10 +220,14 @@ func (bv *BlockValidator) getMinerWorkerKey(ctx context.Context, msg *types.Bloc
 	}
 
 	worker := mst.Info.Worker
-	key, err := bv.stmgr.ResolveToKeyAddress(ctx, worker, ts)
+	key, err = bv.stmgr.ResolveToKeyAddress(ctx, worker, ts)
 	if err != nil {
 		return address.Undef, err
 	}
+
+	bv.mx.Lock()
+	bv.keycache[addr.String()] = key
+	bv.mx.Unlock()
 
 	return key, nil
 }
