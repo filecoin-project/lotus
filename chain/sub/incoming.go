@@ -120,6 +120,7 @@ func NewBlockValidator(chain *store.ChainStore, stmgr *stmgr.StateManager, black
 		recvBlocks: newBlockReceiptCache(),
 		chain:      chain,
 		stmgr:      stmgr,
+		keycache:   make(map[string]address.Address),
 	}
 }
 
