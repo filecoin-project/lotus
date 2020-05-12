@@ -3,20 +3,25 @@ package sub
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
 	"golang.org/x/xerrors"
 
 	address "github.com/filecoin-project/go-address"
+	amt "github.com/filecoin-project/go-amt-ipld/v2"
 	miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/ipfs/go-cid"
+	dstore "github.com/ipfs/go-datastore"
+	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
 	connmgr "github.com/libp2p/go-libp2p-core/connmgr"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
 
@@ -28,6 +33,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/bufbstore"
+	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/metrics"
 )
 
@@ -138,22 +144,39 @@ func (bv *BlockValidator) flagPeer(p peer.ID) {
 func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub.Message) pubsub.ValidationResult {
 	stats.Record(ctx, metrics.BlockReceived.M(1))
 
+	recordFailure := func(what string) {
+		ctx, _ = tag.New(ctx, tag.Insert(metrics.FailureType, what))
+		stats.Record(ctx, metrics.BlockValidationFailure.M(1))
+		bv.flagPeer(pid)
+	}
+
 	// make sure the block can be decoded
 	blk, err := types.DecodeBlockMsg(msg.GetData())
 	if err != nil {
 		log.Error("got invalid block over pubsub: ", err)
-		ctx, _ = tag.New(ctx, tag.Insert(metrics.FailureType, "invalid"))
-		stats.Record(ctx, metrics.BlockValidationFailure.M(1))
-		bv.flagPeer(pid)
+		recordFailure("invalid")
 		return pubsub.ValidationReject
 	}
 
 	// check the message limit constraints
 	if len(blk.BlsMessages)+len(blk.SecpkMessages) > build.BlockMessageLimit {
 		log.Warnf("received block with too many messages over pubsub")
-		ctx, _ = tag.New(ctx, tag.Insert(metrics.FailureType, "too_many_messages"))
-		stats.Record(ctx, metrics.BlockValidationFailure.M(1))
-		bv.flagPeer(pid)
+		recordFailure("too_many_messages")
+		return pubsub.ValidationReject
+	}
+
+	// make sure we have a signature
+	if blk.Header.BlockSig == nil {
+		log.Warnf("received block without a signature over pubsub")
+		recordFailure("missing_signature")
+		return pubsub.ValidationReject
+	}
+
+	// validate the block meta: the Message CID in the header must match the included messages
+	err = bv.validateMsgMeta(ctx, blk)
+	if err != nil {
+		log.Warnf("error validating message metadata: %s", err)
+		recordFailure("invalid_block_meta")
 		return pubsub.ValidationReject
 	}
 
@@ -163,9 +186,33 @@ func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub
 	// if we can find it then it's a known miner and we can validate the signature.
 	// if we can't find it, we check whether we are (near) synced in the chain.
 	// if we are not synced we cannot validate the block and we must ignore it.
-	// if we are synced and the miner is uknown, then the block is rejcected.
+	// if we are synced and the miner is unknown, then the block is rejcected.
+	key, err := bv.getMinerWorkerKey(ctx, blk)
+	if err != nil {
+		if bv.isChainNearSynced() {
+			log.Warnf("received block message from unknown miner over pubsub; rejecting message")
+			recordFailure("unknown_miner")
+			return pubsub.ValidationReject
+		} else {
+			log.Warnf("cannot validate block message; unknown miner in unsynced chain")
+			return pubsub.ValidationIgnore
+		}
+	}
 
-	// XXX Implement me
+	blob, err := blk.Header.SigningBytes()
+	if err != nil {
+		// this shouldn't happen; it's an encoding error of the object we just decoded sans the
+		// signature...
+		log.Errorf("error retrieving signing bytes for block header: %s", err)
+		return pubsub.ValidationIgnore
+	}
+
+	err = sigs.Verify(blk.Header.BlockSig, key, blob)
+	if err != nil {
+		log.Errorf("block signature verification failed: %s", err)
+		recordFailure("signature_verification_failed")
+		return pubsub.ValidationReject
+	}
 
 	// it's a good block! make sure we've only seen it once
 	if bv.recvBlocks.add(blk.Header.Cid()) > 0 {
@@ -178,6 +225,55 @@ func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub
 	msg.ValidatorData = blk
 	stats.Record(ctx, metrics.BlockValidationSuccess.M(1))
 	return pubsub.ValidationAccept
+}
+
+func (bv *BlockValidator) isChainNearSynced() bool {
+	ts := bv.chain.GetHeaviestTipSet()
+	timestamp := ts.MinTimestamp()
+	now := time.Now().UnixNano()
+	cutoff := uint64(now) - uint64(6*time.Hour)
+	return timestamp > cutoff
+}
+
+func (bv *BlockValidator) validateMsgMeta(ctx context.Context, msg *types.BlockMsg) error {
+	var bcids, scids []cbg.CBORMarshaler
+	for _, m := range msg.BlsMessages {
+		c := cbg.CborCid(m)
+		bcids = append(bcids, &c)
+	}
+
+	for _, m := range msg.SecpkMessages {
+		c := cbg.CborCid(m)
+		scids = append(scids, &c)
+	}
+
+	// TODO there has to be a simpler way to do this without the blockstore dance
+	bs := cbor.NewCborStore(bstore.NewBlockstore(dstore.NewMapDatastore()))
+
+	bmroot, err := amt.FromArray(ctx, bs, bcids)
+	if err != nil {
+		return err
+	}
+
+	smroot, err := amt.FromArray(ctx, bs, scids)
+	if err != nil {
+		return err
+	}
+
+	mrcid, err := bs.Put(ctx, &types.MsgMeta{
+		BlsMessages:   bmroot,
+		SecpkMessages: smroot,
+	})
+
+	if err != nil {
+		return err
+	}
+
+	if msg.Header.Messages != mrcid {
+		return fmt.Errorf("messages didn't match root cid in header")
+	}
+
+	return nil
 }
 
 func (bv *BlockValidator) getMinerWorkerKey(ctx context.Context, msg *types.BlockMsg) (address.Address, error) {
