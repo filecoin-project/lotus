@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	saminer "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-blockservice"
@@ -88,6 +89,10 @@ func (m mybs) Get(c cid.Cid) (block.Block, error) {
 }
 
 func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
+	saminer.SupportedProofTypes = map[abi.RegisteredProof]struct{}{
+		abi.RegisteredProof_StackedDRG2KiBSeal: {},
+	}
+
 	mr := repo.NewMemory(nil)
 	lr, err := mr.Lock(repo.StorageMiner)
 	if err != nil {

@@ -97,6 +97,7 @@ const BlsSignatureCacheSize = 40000
 // ///////
 // Limits
 
+// TODO: If this is gonna stay, it should move to specs-actors
 const BlockMessageLimit = 512
 
 var DrandCoeffs = []string{

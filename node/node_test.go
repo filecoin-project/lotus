@@ -53,6 +53,9 @@ func init() {
 
 	build.SectorSizes = []abi.SectorSize{2048}
 	power.ConsensusMinerMinPower = big.NewInt(2048)
+	saminer.SupportedProofTypes = map[abi.RegisteredProof]struct{}{
+		abi.RegisteredProof_StackedDRG2KiBSeal: {},
+	}
 }
 
 func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, act address.Address, pk crypto.PrivKey, tnd test.TestNode, mn mocknet.Mocknet, opts node.Option) test.TestStorageNode {
@@ -195,7 +198,7 @@ func builder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test.TestN
 
 		genaccs = append(genaccs, genesis.Actor{
 			Type:    genesis.TAccount,
-			Balance: big.NewInt(5000000000000000000),
+			Balance: big.Mul(big.NewInt(50000), types.NewInt(build.FilecoinPrecision)),
 			Meta:    (&genesis.AccountMeta{Owner: wk.Address}).ActorMeta(),
 		})
 
@@ -331,7 +334,7 @@ func mockSbBuilder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test
 
 		genaccs = append(genaccs, genesis.Actor{
 			Type:    genesis.TAccount,
-			Balance: big.NewInt(5000000000000000000),
+			Balance: big.Mul(big.NewInt(50000), types.NewInt(build.FilecoinPrecision)),
 			Meta:    (&genesis.AccountMeta{Owner: wk.Address}).ActorMeta(),
 		})
 
