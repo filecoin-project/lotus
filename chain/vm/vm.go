@@ -277,6 +277,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 	pl := PricelistByEpoch(vm.blockHeight)
 
 	msgGasCost := pl.OnChainMessage(cmsg.ChainLength())
+	// this should never happen, but is currently still exercised by some tests
 	if msgGasCost > msg.GasLimit {
 		return &ApplyRet{
 			MessageReceipt: types.MessageReceipt{
@@ -292,6 +293,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 
 	minerPenaltyAmount := types.BigMul(msg.GasPrice, types.NewInt(uint64(msgGasCost)))
 	fromActor, err := st.GetActor(msg.From)
+	// this should never happen, but is currently still exercised by some tests
 	if err != nil {
 		if xerrors.Is(err, types.ErrActorNotFound) {
 			return &ApplyRet{
@@ -306,6 +308,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 		return nil, xerrors.Errorf("failed to look up from actor: %w", err)
 	}
 
+	// this should never happen, but is currently still exercised by some tests
 	if !fromActor.Code.Equals(builtin.AccountActorCodeID) {
 		return &ApplyRet{
 			MessageReceipt: types.MessageReceipt{
@@ -317,6 +320,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 		}, nil
 	}
 
+	// TODO: We should remove this, we might punish miners for no fault of their own
 	if msg.Nonce != fromActor.Nonce {
 		return &ApplyRet{
 			MessageReceipt: types.MessageReceipt{

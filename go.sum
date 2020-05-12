@@ -137,6 +137,10 @@ github.com/fd/go-nat v1.0.0/go.mod h1:BTBu/CKvMmOMUPkKVef1pngt2WFH/lg7E6yQnulfp6
 github.com/filecoin-project/chain-validation v0.0.3/go.mod h1:NCEGFjcWRjb8akWFSOXvU6n2efkWIqAeOKU6o5WBGQw=
 github.com/filecoin-project/chain-validation v0.0.6-0.20200511194551-1a0e66ce8052 h1:Ar9t7O4ZXcYNpfkorG14/zLt8ZPsVxpdp7JAZy4+B8k=
 github.com/filecoin-project/chain-validation v0.0.6-0.20200511194551-1a0e66ce8052/go.mod h1:tyI16CI6/S0TvluPzFyopPWcR+/5l6kUjyzeIgLFVfs=
+github.com/filecoin-project/chain-validation v0.0.6-0.20200506234205-5fe7d4aab7f9 h1:CK3t79ocoF35ZFr4ohfGkpEChnZ/a7TK14Dl1Be5L9w=
+github.com/filecoin-project/chain-validation v0.0.6-0.20200506234205-5fe7d4aab7f9/go.mod h1:tyI16CI6/S0TvluPzFyopPWcR+/5l6kUjyzeIgLFVfs=
+github.com/filecoin-project/chain-validation v0.0.6-0.20200512155742-b6896edf7c52 h1:nxNiXL8I/TJcYdnSUFdIWVKSHqWSMpLpzXzhmMUDGQ0=
+github.com/filecoin-project/chain-validation v0.0.6-0.20200512155742-b6896edf7c52/go.mod h1:cZHunl0Zy7CKljcDNJ56rL6m9IoKuuvqPpuGT4Gtgg8=
 github.com/filecoin-project/go-address v0.0.0-20191219011437-af739c490b4f/go.mod h1:rCbpXPva2NKF9/J4X6sr7hbKBgQCxyFtRj7KOZqoIms=
 github.com/filecoin-project/go-address v0.0.0-20200107215422-da8eea2842b5/go.mod h1:SAOwJoakQ8EPjwNIsiakIQKsoKdkcbx8U3IapgCg9R0=
 github.com/filecoin-project/go-address v0.0.2-0.20200218010043-eb9bb40ed5be h1:TooKBwR/g8jG0hZ3lqe9S5sy2vTUcLOZLlz3M5wGn2E=
@@ -153,6 +157,8 @@ github.com/filecoin-project/go-amt-ipld/v2 v2.0.1-0.20200424220931-6263827e49f2/
 github.com/filecoin-project/go-bitfield v0.0.0-20200309034705-8c7ac40bd550/go.mod h1:iodsLxOFZnqKtjj2zkgqzoGNrv6vUqj69AT/J8DKXEw=
 github.com/filecoin-project/go-bitfield v0.0.0-20200416002808-b3ee67ec9060 h1:/3qjGMn6ukXgZJHsIbuwGL7ipla8DOV3uHZDBJkBYfU=
 github.com/filecoin-project/go-bitfield v0.0.0-20200416002808-b3ee67ec9060/go.mod h1:iodsLxOFZnqKtjj2zkgqzoGNrv6vUqj69AT/J8DKXEw=
+github.com/filecoin-project/go-bitfield v0.0.1 h1:Xg/JnrqqE77aJVKdbEyR04n9FZQWhwrN+buDgQCVpZU=
+github.com/filecoin-project/go-bitfield v0.0.1/go.mod h1:Ry9/iUlWSyjPUzlAvdnfy4Gtvrq4kWmWDztCU1yEgJY=
 github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2 h1:av5fw6wmm58FYMgJeoB/lK9XXrgdugYiTqkdxjTy9k8=
 github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2/go.mod h1:pqTiPHobNkOVM5thSRsHYjyQfq7O5QSCMhvuu9JoDlg=
 github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03 h1:2pMXdBnCiXjfCYx/hLqFxccPoqsSveQFxVLvNxy9bus=
@@ -163,8 +169,8 @@ github.com/filecoin-project/go-data-transfer v0.3.0/go.mod h1:cONglGP4s/d+IUQw5m
 github.com/filecoin-project/go-fil-commcid v0.0.0-20200208005934-2b8bd03caca5 h1:yvQJCW9mmi9zy+51xA01Ea2X7/dL7r8eKDPuGUjRmbo=
 github.com/filecoin-project/go-fil-commcid v0.0.0-20200208005934-2b8bd03caca5/go.mod h1:JbkIgFF/Z9BDlvrJO1FuKkaWsH673/UdFaiVS6uIHlA=
 github.com/filecoin-project/go-fil-markets v0.0.0-20200114015428-74d100f305f8/go.mod h1:c8NTjvFVy1Ud02mmGDjOiMeawY2t6ALfrrdvAB01FQc=
-github.com/filecoin-project/go-fil-markets v0.2.2 h1:ZOt7A0rCxiCByJLvxj89g4aJ2qDOeBKx5VnTXjwJkko=
-github.com/filecoin-project/go-fil-markets v0.2.2/go.mod h1:LI3VFHse33aU0djAmFQ8+Hg39i0J8ibAoppGu6TbgkA=
+github.com/filecoin-project/go-fil-markets v0.2.3 h1:00exBcwysQVEx7wvzcdVz9ZT3HLMXKmbQNIz9ktyeO8=
+github.com/filecoin-project/go-fil-markets v0.2.3/go.mod h1:LI3VFHse33aU0djAmFQ8+Hg39i0J8ibAoppGu6TbgkA=
 github.com/filecoin-project/go-padreader v0.0.0-20200210211231-548257017ca6 h1:92PET+sx1Hb4W/8CgFwGuxaKbttwY+UNspYZTvXY0vs=
 github.com/filecoin-project/go-padreader v0.0.0-20200210211231-548257017ca6/go.mod h1:0HgYnrkeSU4lu1p+LEOeDpFsNBssa0OGGriWdA4hvaE=
 github.com/filecoin-project/go-paramfetch v0.0.0-20200102181131-b20d579f2878/go.mod h1:40kI2Gv16mwcRsHptI3OAV4nlOEU7wVDc4RgMylNFjU=
@@ -193,6 +199,10 @@ github.com/filecoin-project/specs-actors v0.3.0 h1:QxgAuTrZr5TPqjyprZk0nTYW5o0JW
 github.com/filecoin-project/specs-actors v0.3.0/go.mod h1:nQYnFbQ7Y0bHZyq6HDEuVlCPR+U3z5Q3wMOQ+2aiV+Y=
 github.com/filecoin-project/specs-actors v0.4.0 h1:ywlvhg4V46D1jrhW8XeXD6K3+lP5r5E5jRHuYAClD1U=
 github.com/filecoin-project/specs-actors v0.4.0/go.mod h1:UW3ft23q6VS8wQoNqLWjENsu9gu1uh6lxOd+H8cwhT8=
+github.com/filecoin-project/specs-actors v0.4.1-0.20200509020627-3c96f54f3d7d h1:xK1KzVM6DAJABSnP5GhBMIk5zCDnJR5LSkxKJW1zFzA=
+github.com/filecoin-project/specs-actors v0.4.1-0.20200509020627-3c96f54f3d7d/go.mod h1:UW3ft23q6VS8wQoNqLWjENsu9gu1uh6lxOd+H8cwhT8=
+github.com/filecoin-project/specs-actors v0.4.1-0.20200512154829-da721a49952f h1:ZwXCgwXs9H/E2sJiuzO5llaPUaIIfFC2VWD8k5sjmLI=
+github.com/filecoin-project/specs-actors v0.4.1-0.20200512154829-da721a49952f/go.mod h1:r5btrNzZD0oBkEz1pohv80gSCXQnqGrD0kYwOTiExyE=
 github.com/filecoin-project/specs-storage v0.0.0-20200410185809-9fbaaa08f275 h1:6OTcpsTQBQM0f/A67oEi4E4YtYd6fzkMqbU8cPIWMMs=
 github.com/filecoin-project/specs-storage v0.0.0-20200410185809-9fbaaa08f275/go.mod h1:xJ1/xl9+8zZeSSSFmDC3Wr6uusCTxyYPI0VeNVSFmPE=
 github.com/filecoin-project/specs-storage v0.0.0-20200417134612-61b2d91a6102 h1:T3f/zkuvgtgqcXrb0NO3BicuveGOxxUAMPa/Yif2kuE=
