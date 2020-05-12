@@ -2,6 +2,7 @@ package vm_test
 
 import (
 	"fmt"
+	"github.com/filecoin-project/chain-validation/suites/message"
 	"reflect"
 	"runtime"
 	"strings"
@@ -34,6 +35,7 @@ var TestSuiteSkipper TestSkipper
 func init() {
 	// initialize the test skipper with tests being skipped
 	TestSuiteSkipper = TestSkipper{testSkips: []suites.TestCase{
+		message.MessageTest_NestedSends,
 		// tests to skip go here
 	}}
 }
