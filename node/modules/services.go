@@ -20,6 +20,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/beacon/drand"
 	"github.com/filecoin-project/lotus/chain/blocksync"
 	"github.com/filecoin-project/lotus/chain/messagepool"
+	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/sub"
 	"github.com/filecoin-project/lotus/lib/peermgr"
@@ -58,7 +59,7 @@ func RunBlockSync(h host.Host, svc *blocksync.BlockSyncService) {
 	h.SetStreamHandler(blocksync.BlockSyncProtocolID, svc.HandleStream)
 }
 
-func HandleIncomingBlocks(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.PubSub, s *chain.Syncer, h host.Host, nn dtypes.NetworkName) {
+func HandleIncomingBlocks(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.PubSub, s *chain.Syncer, chain *store.ChainStore, stmgr *stmgr.StateManager, h host.Host, nn dtypes.NetworkName) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
 	blocksub, err := ps.Subscribe(build.BlocksTopic(nn))
@@ -66,10 +67,12 @@ func HandleIncomingBlocks(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.P
 		panic(err)
 	}
 
-	v := sub.NewBlockValidator(func(p peer.ID) {
-		ps.BlacklistPeer(p)
-		h.ConnManager().TagPeer(p, "badblock", -1000)
-	})
+	v := sub.NewBlockValidator(
+		chain, stmgr,
+		func(p peer.ID) {
+			ps.BlacklistPeer(p)
+			h.ConnManager().TagPeer(p, "badblock", -1000)
+		})
 
 	if err := ps.RegisterTopicValidator(build.BlocksTopic(nn), v.Validate); err != nil {
 		panic(err)

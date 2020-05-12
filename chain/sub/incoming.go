@@ -1,13 +1,17 @@
 package sub
 
 import (
+	"bytes"
 	"context"
 	"time"
 
 	"golang.org/x/xerrors"
 
+	address "github.com/filecoin-project/go-address"
+	miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
 	connmgr "github.com/libp2p/go-libp2p-core/connmgr"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -18,7 +22,11 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/messagepool"
+	"github.com/filecoin-project/lotus/chain/state"
+	"github.com/filecoin-project/lotus/chain/stmgr"
+	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/bufbstore"
 	"github.com/filecoin-project/lotus/metrics"
 )
 
@@ -87,15 +95,21 @@ type BlockValidator struct {
 	recvBlocks *blockReceiptCache
 
 	blacklist func(peer.ID)
+
+	// necessary for block validation
+	chain *store.ChainStore
+	stmgr *stmgr.StateManager
 }
 
-func NewBlockValidator(blacklist func(peer.ID)) *BlockValidator {
+func NewBlockValidator(chain *store.ChainStore, stmgr *stmgr.StateManager, blacklist func(peer.ID)) *BlockValidator {
 	p, _ := lru.New2Q(4096)
 	return &BlockValidator{
 		peers:      p,
 		killThresh: 10,
 		blacklist:  blacklist,
 		recvBlocks: newBlockReceiptCache(),
+		chain:      chain,
+		stmgr:      stmgr,
 	}
 }
 
@@ -119,6 +133,8 @@ func (bv *BlockValidator) flagPeer(p peer.ID) {
 
 func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub.Message) pubsub.ValidationResult {
 	stats.Record(ctx, metrics.BlockReceived.M(1))
+
+	// make sure the block can be decoded
 	blk, err := types.DecodeBlockMsg(msg.GetData())
 	if err != nil {
 		log.Error("got invalid block over pubsub: ", err)
@@ -128,6 +144,7 @@ func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub
 		return pubsub.ValidationReject
 	}
 
+	// check the message limit constraints
 	if len(blk.BlsMessages)+len(blk.SecpkMessages) > build.BlockMessageLimit {
 		log.Warnf("received block with too many messages over pubsub")
 		ctx, _ = tag.New(ctx, tag.Insert(metrics.FailureType, "too_many_messages"))
@@ -136,15 +153,70 @@ func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub
 		return pubsub.ValidationReject
 	}
 
+	// we want to ensure that it is a block from a known miner; we reject blocks from unknown miners
+	// to prevent spam attacks.
+	// the logic works as follows: we lookup the miner in the chain for its key.
+	// if we can find it then it's a known miner and we can validate the signature.
+	// if we can't find it, we check whether we are (near) synced in the chain.
+	// if we are not synced we cannot validate the block and we must ignore it.
+	// if we are synced and the miner is uknown, then the block is rejcected.
+
+	// XXX Implement me
+
+	// it's a good block! make sure we've only seen it once
 	if bv.recvBlocks.add(blk.Header.Cid()) > 0 {
 		// TODO: once these changes propagate to the network, we can consider
 		// dropping peers who send us the same block multiple times
 		return pubsub.ValidationIgnore
 	}
 
+	// all good, accept the block
 	msg.ValidatorData = blk
 	stats.Record(ctx, metrics.BlockValidationSuccess.M(1))
 	return pubsub.ValidationAccept
+}
+
+func (bv *BlockValidator) getMinerWorkerKey(ctx context.Context, msg *types.BlockMsg) (address.Address, error) {
+	addr := msg.Header.Miner
+
+	// TODO cache those, all this is expensive!
+
+	// TODO I have a feeling all this can be simplified by cleverer DI to use the API
+	ts := bv.chain.GetHeaviestTipSet()
+	st, _, err := bv.stmgr.TipSetState(ctx, ts)
+	if err != nil {
+		return address.Undef, err
+	}
+	buf := bufbstore.NewBufferedBstore(bv.chain.Blockstore())
+	cst := cbor.NewCborStore(buf)
+	state, err := state.LoadStateTree(cst, st)
+	if err != nil {
+		return address.Undef, err
+	}
+	act, err := state.GetActor(addr)
+	if err != nil {
+		return address.Undef, err
+	}
+
+	blk, err := bv.chain.Blockstore().Get(act.Head)
+	if err != nil {
+		return address.Undef, err
+	}
+	aso := blk.RawData()
+
+	var mst miner.State
+	err = mst.UnmarshalCBOR(bytes.NewReader(aso))
+	if err != nil {
+		return address.Undef, err
+	}
+
+	worker := mst.Info.Worker
+	key, err := bv.stmgr.ResolveToKeyAddress(ctx, worker, ts)
+	if err != nil {
+		return address.Undef, err
+	}
+
+	return key, nil
 }
 
 type blockReceiptCache struct {
