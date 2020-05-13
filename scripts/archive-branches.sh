@@ -2,8 +2,6 @@
 set -euo pipefail
 IFS=$'\n\t'
 
-auth=""
-#auth="-u kubuxu:$GH_TOKEN"
 org=filecoin-project
 repo=lotus
 arch_repo=Kubuxu/lotus-archived
@@ -53,8 +51,8 @@ echo "================"
 
 echo "Please confirm move of above branches [y/N]:"
 
-read line
-case $line in
+read -r line
+case "$line" in
   [Yy]|[Yy][Ee][Ss]) ;;
   *) exit 1 ;;
 esac
