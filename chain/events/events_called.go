@@ -125,7 +125,13 @@ func (e *calledEvents) handleReverts(ts *types.TipSet) {
 }
 
 func (e *calledEvents) checkNewCalls(ts *types.TipSet) {
-	e.messagesForTs(ts, func(msg *types.Message) {
+	pts, err := e.cs.ChainGetTipSet(e.ctx, ts.Parents()) // we actually care about messages in the parent tipset here
+	if err != nil {
+		log.Errorf("getting parent tipset in checkNewCalls: %s", err)
+		return
+	}
+
+	e.messagesForTs(pts, func(msg *types.Message) {
 		// TODO: provide receipts
 
 		for tid, matchFns := range e.matchers {
@@ -154,8 +160,7 @@ func (e *calledEvents) checkNewCalls(ts *types.TipSet) {
 func (e *calledEvents) queueForConfidence(triggerId uint64, msg *types.Message, ts *types.TipSet) {
 	trigger := e.triggers[triggerId]
 
-	// messages are not applied in the tipset they are included in
-	appliedH := ts.Height() + 1
+	appliedH := ts.Height()
 
 	triggerH := appliedH + abi.ChainEpoch(trigger.confidence)
 

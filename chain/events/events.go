@@ -36,6 +36,7 @@ type eventApi interface {
 	ChainGetBlockMessages(context.Context, cid.Cid) (*api.BlockMessages, error)
 	ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error)
 	StateGetReceipt(context.Context, cid.Cid, types.TipSetKey) (*types.MessageReceipt, error)
+	ChainGetTipSet(context.Context, types.TipSetKey) (*types.TipSet, error)
 
 	StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) // optional / for CalledMsg
 }
@@ -162,6 +163,11 @@ func (e *Events) listenHeadChangesOnce(ctx context.Context) error {
 
 		if err := e.headChange(rev, app); err != nil {
 			log.Warnf("headChange failed: %s", err)
+		}
+
+		// sync with fake chainstore (for tests)
+		if fcs, ok := e.api.(interface{notifDone()}); ok {
+			fcs.notifDone()
 		}
 	}
 
