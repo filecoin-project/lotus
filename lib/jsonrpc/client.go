@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -161,14 +160,60 @@ func (c *client) makeOutChan(ctx context.Context, ftyp reflect.Type, valOut int)
 		chCtx, chCancel := context.WithCancel(ctx)
 		retVal = ch.Convert(ftyp.Out(valOut))
 
-		buf := (&list.List{}).Init()
-		var bufLk sync.Mutex
+		incoming := make(chan reflect.Value, 32)
+
+		// gorotuine to handle buffering of items
+		go func() {
+			buf := (&list.List{}).Init()
+
+			for {
+				front := buf.Front()
+
+				cases := []reflect.SelectCase{
+					{
+						Dir:  reflect.SelectRecv,
+						Chan: reflect.ValueOf(chCtx.Done()),
+					},
+					{
+						Dir:  reflect.SelectRecv,
+						Chan: reflect.ValueOf(incoming),
+					},
+				}
+
+				if front != nil {
+					cases = append(cases, reflect.SelectCase{
+						Dir:  reflect.SelectSend,
+						Chan: ch,
+						Send: front.Value.(reflect.Value).Elem(),
+					})
+				}
+
+				chosen, val, _ := reflect.Select(cases)
+
+				switch chosen {
+				case 0:
+					ch.Close()
+					return
+				case 1:
+					vvval := val.Interface().(reflect.Value)
+					buf.PushBack(vvval)
+					if buf.Len() > 1 {
+						if buf.Len() > 10 {
+							log.Warnw("rpc output message buffer", "n", buf.Len())
+						} else {
+							log.Infow("rpc output message buffer", "n", buf.Len())
+						}
+					}
+
+				case 2:
+					buf.Remove(front)
+				}
+			}
+		}()
 
 		return ctx, func(result []byte, ok bool) {
 			if !ok {
 				chCancel()
-				// remote channel closed, close ours too
-				ch.Close()
 				return
 			}
 
@@ -178,56 +223,15 @@ func (c *client) makeOutChan(ctx context.Context, ftyp reflect.Type, valOut int)
 				return
 			}
 
-			bufLk.Lock()
 			if ctx.Err() != nil {
 				log.Errorf("got rpc message with cancelled context: %s", ctx.Err())
-				bufLk.Unlock()
 				return
 			}
 
-			buf.PushBack(val)
-
-			if buf.Len() > 1 {
-				if buf.Len() > 10 {
-					log.Warnw("rpc output message buffer", "n", buf.Len())
-				} else {
-					log.Infow("rpc output message buffer", "n", buf.Len())
-				}
-				bufLk.Unlock()
-				return
+			select {
+			case incoming <- val:
+			case <-chCtx.Done():
 			}
-
-			go func() {
-				for buf.Len() > 0 {
-					front := buf.Front()
-					bufLk.Unlock()
-
-					cases := []reflect.SelectCase{
-						{
-							Dir:  reflect.SelectRecv,
-							Chan: reflect.ValueOf(chCtx.Done()),
-						},
-						{
-							Dir:  reflect.SelectSend,
-							Chan: ch,
-							Send: front.Value.(reflect.Value).Elem(),
-						},
-					}
-
-					chosen, _, _ := reflect.Select(cases)
-					bufLk.Lock()
-
-					switch chosen {
-					case 0:
-						buf.Init()
-					case 1:
-						buf.Remove(front)
-					}
-				}
-
-				bufLk.Unlock()
-			}()
-
 		}
 	}
 
@@ -292,8 +296,8 @@ type rpcFunc struct {
 	valOut int
 	errOut int
 
-	hasCtx int
-	retCh  bool
+	hasCtx               int
+	returnValueIsChannel bool
 
 	retry bool
 }
@@ -350,7 +354,7 @@ func (fn *rpcFunc) handleRpcCall(args []reflect.Value) (results []reflect.Value)
 	// if the function returns a channel, we need to provide a sink for the
 	// messages
 	var chCtor makeChanSink
-	if fn.retCh {
+	if fn.returnValueIsChannel {
 		retVal, chCtor = fn.client.makeOutChan(ctx, fn.ftyp, fn.valOut)
 	}
 
@@ -385,7 +389,7 @@ func (fn *rpcFunc) handleRpcCall(args []reflect.Value) (results []reflect.Value)
 			return fn.processError(xerrors.New("request and response id didn't match"))
 		}
 
-		if fn.valOut != -1 && !fn.retCh {
+		if fn.valOut != -1 && !fn.returnValueIsChannel {
 			val := reflect.New(fn.ftyp.Out(fn.valOut))
 
 			if resp.Result != nil {
@@ -425,7 +429,7 @@ func (c *client) makeRpcFunc(f reflect.StructField) (reflect.Value, error) {
 	if ftyp.NumIn() > 0 && ftyp.In(0) == contextType {
 		fun.hasCtx = 1
 	}
-	fun.retCh = fun.valOut != -1 && ftyp.Out(fun.valOut).Kind() == reflect.Chan
+	fun.returnValueIsChannel = fun.valOut != -1 && ftyp.Out(fun.valOut).Kind() == reflect.Chan
 
 	return reflect.MakeFunc(ftyp, fun.handleRpcCall), nil
 }

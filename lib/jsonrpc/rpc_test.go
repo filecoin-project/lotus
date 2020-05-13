@@ -13,8 +13,13 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/require"
 )
+
+func init() {
+	logging.SetLogLevel("rpc", "DEBUG")
+}
 
 type SimpleServerHandler struct {
 	n int
@@ -283,6 +288,9 @@ func (h *ChanHandler) Sub(ctx context.Context, i int, eq int) (<-chan int, error
 	out := make(chan int)
 	h.ctxdone = ctx.Done()
 
+	wait := h.wait
+
+	log.Warnf("SERVER SUB!")
 	go func() {
 		defer close(out)
 		var n int
@@ -292,7 +300,7 @@ func (h *ChanHandler) Sub(ctx context.Context, i int, eq int) (<-chan int, error
 			case <-ctx.Done():
 				fmt.Println("ctxdone1")
 				return
-			case <-h.wait:
+			case <-wait:
 			}
 
 			n += i
@@ -365,15 +373,19 @@ func TestChan(t *testing.T) {
 
 	// sub (again)
 
+	serverHandler.wait = make(chan struct{}, 5)
 	serverHandler.wait <- struct{}{}
 
 	ctx, cancel = context.WithCancel(context.Background())
 	defer cancel()
 
+	log.Warnf("last sub")
 	sub, err = client.Sub(ctx, 3, 6)
 	require.NoError(t, err)
 
+	log.Warnf("waiting for value now")
 	require.Equal(t, 3, <-sub)
+	log.Warnf("not equal")
 
 	// close (remote)
 	serverHandler.wait <- struct{}{}
@@ -535,12 +547,25 @@ func testControlChanDeadlock(t *testing.T) {
 	sub, err := client.Sub(ctx, 1, -1)
 	require.NoError(t, err)
 
+	done := make(chan struct{})
+
 	go func() {
+		defer close(done)
 		for i := 0; i < n; i++ {
-			require.Equal(t, i+1, <-sub)
+			if <-sub != i+1 {
+				panic("bad!")
+				//require.Equal(t, i+1, <-sub)
+			}
 		}
 	}()
 
+	// reset this channel so its not shared between the sub requests...
+	serverHandler.wait = make(chan struct{}, n)
+	for i := 0; i < n; i++ {
+		serverHandler.wait <- struct{}{}
+	}
+
 	_, err = client.Sub(ctx, 2, -1)
 	require.NoError(t, err)
+	<-done
 }
