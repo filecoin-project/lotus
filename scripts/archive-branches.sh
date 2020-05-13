@@ -4,7 +4,7 @@ IFS=$'\n\t'
 
 org=filecoin-project
 repo=lotus
-arch_repo=Kubuxu/lotus-archived
+arch_repo="$org/lotus-archived"
 api_repo="repos/$org/$repo"
 
 exclusions=(
