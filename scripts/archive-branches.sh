@@ -26,8 +26,8 @@ gh_api() {
 }
 
 pr_branches() {
-	gh_api "$api_repo/pulls" |  jq -r '.[].head.label | select(test("^ipfs:"))' \
-		| sed 's/^ipfs://'
+	gh_api "$api_repo/pulls" |  jq -r '.[].head.label | select(test("^'"$org"':"))' \
+		| sed 's/^'"$org"'://'
 }
 
 origin_refs() {
