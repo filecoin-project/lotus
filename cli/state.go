@@ -1113,12 +1113,37 @@ var stateWaitMsgCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Printf("message was executed in tipset: %s", mw.TipSet.Cids())
-		fmt.Printf("Exit Code: %d", mw.Receipt.ExitCode)
-		fmt.Printf("Gas Used: %d", mw.Receipt.GasUsed)
-		fmt.Printf("Return: %x", mw.Receipt.Return)
+		m, err := api.ChainGetMessage(ctx, msg)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("message was executed in tipset: %s\n", mw.TipSet.Cids())
+		fmt.Printf("Exit Code: %d\n", mw.Receipt.ExitCode)
+		fmt.Printf("Gas Used: %d\n", mw.Receipt.GasUsed)
+		fmt.Printf("Return: %x\n", mw.Receipt.Return)
+		if err := printReceiptReturn(ctx, api, m, mw.Receipt); err != nil {
+			return err
+		}
+
 		return nil
 	},
+}
+
+func printReceiptReturn(ctx context.Context, api api.FullNode, m *types.Message, r types.MessageReceipt) error {
+	act, err := api.StateGetActor(ctx, m.To, types.EmptyTSK)
+	if err != nil {
+		return err
+	}
+
+	jret, err := jsonReturn(act.Code, m.Method, r.Return)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(jret)
+
+	return nil
 }
 
 var stateSearchMsgCmd = &cli.Command{
