@@ -17,6 +17,8 @@ import (
 var AdvanceBlockCmd *cli.Command
 
 func main() {
+	os.Setenv("BELLMAN_NO_GPU", "1")
+
 	lotuslog.SetupLogLevels()
 
 	local := []*cli.Command{
