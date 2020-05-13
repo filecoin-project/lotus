@@ -271,6 +271,7 @@ func (rt *Runtime) DeleteActor(addr address.Address) {
 		panic(aerrors.Fatalf("failed to get actor: %s", err))
 	}
 	if !act.Balance.IsZero() {
+		// TODO don't ignore this error?
 		rt.vm.transfer(rt.Message().Receiver(), builtin.BurntFundsActorAddr, act.Balance)
 	}
 
