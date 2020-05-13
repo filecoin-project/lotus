@@ -332,7 +332,7 @@ workflows:
   ci:
     jobs:
       - lint-changes:
-          args: "--new-from-rev origin/testnet/3"
+          args: "--new-from-rev origin/master"
       - test:
           codecov-upload: true
       - mod-tidy-check
