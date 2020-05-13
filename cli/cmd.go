@@ -210,28 +210,33 @@ func ReqContext(cctx *cli.Context) context.Context {
 }
 
 var CommonCommands = []*cli.Command{
-	authCmd,
-	fetchParamCmd,
 	netCmd,
-	versionCmd,
+	authCmd,
 	logCmd,
 	waitApiCmd,
+	fetchParamCmd,
+	versionCmd,
 }
 
 var Commands = []*cli.Command{
-	authCmd,
-	chainCmd,
-	clientCmd,
-	fetchParamCmd,
-	mpoolCmd,
-	multisigCmd,
-	netCmd,
-	paychCmd,
-	sendCmd,
-	stateCmd,
-	syncCmd,
+	withCategory("basic", sendCmd),
+	withCategory("basic", walletCmd),
+	withCategory("basic", clientCmd),
+	withCategory("basic", multisigCmd),
+	withCategory("basic", paychCmd),
+	withCategory("developer", authCmd),
+	withCategory("developer", mpoolCmd),
+	withCategory("developer", stateCmd),
+	withCategory("developer", chainCmd),
+	withCategory("developer", logCmd),
+	withCategory("developer", waitApiCmd),
+	withCategory("developer", fetchParamCmd),
+	withCategory("network", netCmd),
+	withCategory("network", syncCmd),
 	versionCmd,
-	walletCmd,
-	logCmd,
-	waitApiCmd,
+}
+
+func withCategory(cat string, cmd *cli.Command) *cli.Command {
+	cmd.Category = cat
+	return cmd
 }
