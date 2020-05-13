@@ -79,7 +79,7 @@ var initCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:  "sector-size",
 			Usage: "specify sector size to use",
-			Value: fmt.Sprint(build.DefaultSectorSize()),
+			Value: units.BytesSize(float64(build.DefaultSectorSize())),
 		},
 		&cli.StringSliceFlag{
 			Name:  "pre-sealed-sectors",
@@ -603,7 +603,10 @@ func createStorageMiner(ctx context.Context, api lapi.FullNode, peerid peer.ID, 
 		return address.Undef, err
 	}
 
-	ssize := cctx.Uint64("sector-size")
+	ssize, err := units.RAMInBytes(cctx.String("sector-size"))
+	if err != nil {
+		return address.Undef, fmt.Errorf("failed to parse sector size: %w", err)
+	}
 
 	worker := owner
 	if cctx.String("worker") != "" {
