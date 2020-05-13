@@ -873,10 +873,9 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 			return xerrors.New("'GasPrice' field cannot be negative")
 		}
 
-		// TODO: This should be a thing
-		//if m.GasLimit > BLOCK_GAS_LIMIT {
-		//	return xerrors.New("'GasLimit' field cannot be greater than a block's gas limit")
-		//}
+		if m.GasLimit > build.BlockGasLimit {
+			return xerrors.New("'GasLimit' field cannot be greater than a block's gas limit")
+		}
 
 		// since prices might vary with time, this is technically semantic validation
 		if m.GasLimit < vm.PricelistByEpoch(baseTs.Height()).OnChainMessage(m.ChainLength()) {
