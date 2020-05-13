@@ -29,15 +29,4 @@ ERROR hello hello/hello.go:81 other peer has different genesis!
 - repo is already locked
 ```
 
-- You already have another lotus deamon running.
-
-## Warning: get message get failed
-
-Some errors will occur that do not prevent Lotus from working:
-
-```sh
-ERROR chainstore  store/store.go:564  get message get failed: <Data CID>: blockstore: block not found
-
-```
-
-- Someone is requesting a **Data CID** from you that you don't have.
+- You already have another lotus daemon running.

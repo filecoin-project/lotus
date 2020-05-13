@@ -55,7 +55,7 @@ Check the status of a deal:
 lotus client list-deals
 ```
 
-- The `duration`, which represents how long the miner will keep your file hosted, is represented in blocks. Each block represents 45 seconds.
+- The `duration`, which represents how long the miner will keep your file hosted, is represented in blocks. Each block represents 25 seconds.
 
 Upon success, this command will return a **Deal CID**.
 
