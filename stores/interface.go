@@ -11,7 +11,7 @@ import (
 
 type Store interface {
 	AcquireSector(ctx context.Context, s abi.SectorID, spt abi.RegisteredProof, existing SectorFileType, allocate SectorFileType, sealing bool) (paths SectorPaths, stores SectorPaths, done func(), err error)
-	Remove(ctx context.Context, s abi.SectorID, types SectorFileType) error
+	Remove(ctx context.Context, s abi.SectorID, types SectorFileType, force bool) error
 
 	// move sectors into storage
 	MoveStorage(ctx context.Context, s abi.SectorID, spt abi.RegisteredProof, types SectorFileType) error

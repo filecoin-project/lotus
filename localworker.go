@@ -114,6 +114,17 @@ func (l *LocalWorker) Fetch(ctx context.Context, sector abi.SectorID, fileType s
 }
 
 func (l *LocalWorker) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, pieces []abi.PieceInfo) (out storage2.PreCommit1Out, err error) {
+	{
+		// cleanup previous failed attempts if they exist
+		if err := l.storage.Remove(ctx, sector, stores.FTSealed, true); err != nil {
+			return nil, xerrors.Errorf("cleaning up sealed data: %w", err)
+		}
+
+		if err := l.storage.Remove(ctx, sector, stores.FTCache, true); err != nil {
+			return nil, xerrors.Errorf("cleaning up cache data: %w", err)
+		}
+	}
+
 	sb, err := l.sb()
 	if err != nil {
 		return nil, err
@@ -159,7 +170,7 @@ func (l *LocalWorker) FinalizeSector(ctx context.Context, sector abi.SectorID) e
 		return xerrors.Errorf("finalizing sector: %w", err)
 	}
 
-	if err := l.storage.Remove(ctx, sector, stores.FTUnsealed); err != nil {
+	if err := l.storage.Remove(ctx, sector, stores.FTUnsealed, true); err != nil {
 		return xerrors.Errorf("removing unsealed data: %w", err)
 	}
 
