@@ -374,6 +374,10 @@ func (mp *MessagePool) addLocked(m *types.SignedMessage) error {
 		mp.blsSigCache.Add(m.Cid(), m.Signature)
 	}
 
+	if m.Message.GasLimit > build.BlockGasLimit {
+		return xerrors.Errorf("given message has too high of a gas limit")
+	}
+
 	if _, err := mp.api.PutMessage(m); err != nil {
 		log.Warnf("mpooladd cs.PutMessage failed: %s", err)
 		return err

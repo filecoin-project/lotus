@@ -421,6 +421,12 @@ func SelectMessages(ctx context.Context, al ActorLookup, ts *types.TipSet, msgs 
 
 	for _, msg := range msgs {
 
+		// TODO: this should be in some more general 'validate message' call
+		if msg.Message.GasLimit > build.BlockGasLimit {
+			log.Warnf("message in mempool had too high of a gas limit (%d)", msg.Message.GasLimit)
+			continue
+		}
+
 		if msg.Message.To == address.Undef {
 			log.Warnf("message in mempool had bad 'To' address")
 			continue
