@@ -102,6 +102,11 @@ var provingInfoCmd = &cli.Command{
 			provenSectors += c
 		}
 
+		var faultPerc float64
+		if provenSectors > 0 {
+			faultPerc = float64(faults*10000/provenSectors) / 100
+		}
+
 		fmt.Printf("Current Epoch:           %d\n", cd.CurrentEpoch)
 		fmt.Printf("Chain Period:            %d\n", cd.CurrentEpoch/miner.WPoStProvingPeriod)
 		fmt.Printf("Chain Period Start:      %s\n", epochTime(cd.CurrentEpoch, (cd.CurrentEpoch/miner.WPoStProvingPeriod)*miner.WPoStProvingPeriod))
@@ -111,7 +116,7 @@ var provingInfoCmd = &cli.Command{
 		fmt.Printf("Proving Period Start:    %s\n", epochTime(cd.CurrentEpoch, cd.PeriodStart))
 		fmt.Printf("Next Period Start:       %s\n\n", epochTime(cd.CurrentEpoch, cd.PeriodStart+miner.WPoStProvingPeriod))
 
-		fmt.Printf("Faults:      %d (%.2f%%)\n", faults, float64(faults*10000/provenSectors)/100)
+		fmt.Printf("Faults:      %d (%.2f%%)\n", faults, faultPerc)
 		fmt.Printf("Recovering:  %d\n", recoveries)
 		fmt.Printf("New Sectors: %d\n\n", newSectors)
 
