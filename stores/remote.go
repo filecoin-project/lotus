@@ -214,12 +214,12 @@ func (r *Remote) MoveStorage(ctx context.Context, s abi.SectorID, spt abi.Regist
 	return r.local.MoveStorage(ctx, s, spt, types)
 }
 
-func (r *Remote) Remove(ctx context.Context, sid abi.SectorID, typ SectorFileType) error {
+func (r *Remote) Remove(ctx context.Context, sid abi.SectorID, typ SectorFileType, force bool) error {
 	if bits.OnesCount(uint(typ)) != 1 {
 		return xerrors.New("delete expects one file type")
 	}
 
-	if err := r.local.Remove(ctx, sid, typ); err != nil {
+	if err := r.local.Remove(ctx, sid, typ, force); err != nil {
 		return xerrors.Errorf("remove from local: %w", err)
 	}
 

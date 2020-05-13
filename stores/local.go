@@ -313,7 +313,7 @@ func (st *Local) Local(ctx context.Context) ([]StoragePath, error) {
 	return out, nil
 }
 
-func (st *Local) Remove(ctx context.Context, sid abi.SectorID, typ SectorFileType) error {
+func (st *Local) Remove(ctx context.Context, sid abi.SectorID, typ SectorFileType, force bool) error {
 	if bits.OnesCount(uint(typ)) != 1 {
 		return xerrors.New("delete expects one file type")
 	}
@@ -323,7 +323,7 @@ func (st *Local) Remove(ctx context.Context, sid abi.SectorID, typ SectorFileTyp
 		return xerrors.Errorf("finding existing sector %d(t:%d) failed: %w", sid, typ, err)
 	}
 
-	if len(si) == 0 {
+	if len(si) == 0 && !force {
 		return xerrors.Errorf("can't delete sector %v(%d), not found", sid, typ)
 	}
 
