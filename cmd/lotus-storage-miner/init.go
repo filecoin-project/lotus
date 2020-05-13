@@ -568,7 +568,7 @@ func configureStorageMiner(ctx context.Context, api lapi.FullNode, addr address.
 		Params:   enc,
 		Value:    types.NewInt(0),
 		GasPrice: gasPrice,
-		GasLimit: 100000000,
+		GasLimit: 99999999,
 	}
 
 	smsg, err := api.MpoolPushMessage(ctx, msg)
