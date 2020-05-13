@@ -3,37 +3,43 @@ package impl
 import (
 	"context"
 	"encoding/json"
-	"github.com/filecoin-project/lotus/chain/types"
-	"io"
-	"mime"
 	"net/http"
 	"os"
 	"strconv"
 
-	"github.com/gorilla/mux"
-	files "github.com/ipfs/go-ipfs-files"
+	"github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-sectorbuilder"
-	"github.com/filecoin-project/go-sectorbuilder/fs"
+	storagemarket "github.com/filecoin-project/go-fil-markets/storagemarket"
+	sectorstorage "github.com/filecoin-project/sector-storage"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/sector-storage/stores"
+	"github.com/filecoin-project/sector-storage/storiface"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	sealing "github.com/filecoin-project/storage-fsm"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/apistruct"
-	"github.com/filecoin-project/lotus/lib/tarutil"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/miner"
+	"github.com/filecoin-project/lotus/node/impl/common"
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
 type StorageMinerAPI struct {
-	CommonAPI
+	common.CommonAPI
 
-	SectorBuilderConfig *sectorbuilder.Config
-	SectorBuilder       sectorbuilder.Interface
-	SectorBlocks        *sectorblocks.SectorBlocks
+	ProofsConfig *ffiwrapper.Config
+	SectorBlocks *sectorblocks.SectorBlocks
 
-	Miner      *storage.Miner
-	BlockMiner *miner.Miner
-	Full       api.FullNode
+	StorageProvider storagemarket.StorageProvider
+	Miner           *storage.Miner
+	BlockMiner      *miner.Miner
+	Full            api.FullNode
+	StorageMgr      *sectorstorage.Manager `optional:"true"`
+	*stores.Index
 }
 
 func (sm *StorageMinerAPI) ServeRemote(w http.ResponseWriter, r *http.Request) {
@@ -43,148 +49,49 @@ func (sm *StorageMinerAPI) ServeRemote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mux := mux.NewRouter()
-
-	mux.HandleFunc("/remote/{type}/{id}", sm.remoteGetSector).Methods("GET")
-	mux.HandleFunc("/remote/{type}/{id}", sm.remotePutSector).Methods("PUT")
-
-	log.Infof("SERVEGETREMOTE %s", r.URL)
-
-	mux.ServeHTTP(w, r)
+	sm.StorageMgr.ServeHTTP(w, r)
 }
 
-func (sm *StorageMinerAPI) remoteGetSector(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-
-	id, err := strconv.ParseUint(vars["id"], 10, 64)
-	if err != nil {
-		log.Error("parsing sector id: ", err)
-		w.WriteHeader(500)
-		return
-	}
-
-	path, err := sm.SectorBuilder.SectorPath(fs.DataType(vars["type"]), id)
-	if err != nil {
-		log.Error(err)
-		w.WriteHeader(500)
-		return
-	}
-
-	stat, err := os.Stat(string(path))
-	if err != nil {
-		log.Error(err)
-		w.WriteHeader(500)
-		return
-	}
-
-	var rd io.Reader
-	if stat.IsDir() {
-		rd, err = tarutil.TarDirectory(string(path))
-		w.Header().Set("Content-Type", "application/x-tar")
-	} else {
-		rd, err = os.OpenFile(string(path), os.O_RDONLY, 0644)
-		w.Header().Set("Content-Type", "application/octet-stream")
-	}
-	if err != nil {
-		log.Error(err)
-		w.WriteHeader(500)
-		return
-	}
-
-	w.WriteHeader(200)
-	if _, err := io.Copy(w, rd); err != nil {
-		log.Error(err)
-		return
-	}
-}
-
-func (sm *StorageMinerAPI) remotePutSector(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-
-	id, err := strconv.ParseUint(vars["id"], 10, 64)
-	if err != nil {
-		log.Error("parsing sector id: ", err)
-		w.WriteHeader(500)
-		return
-	}
-
-	// This is going to get better with worker-to-worker transfers
-
-	path, err := sm.SectorBuilder.SectorPath(fs.DataType(vars["type"]), id)
-	if err != nil {
-		if err != fs.ErrNotFound {
-			log.Error(err)
-			w.WriteHeader(500)
-			return
-		}
-
-		path, err = sm.SectorBuilder.AllocSectorPath(fs.DataType(vars["type"]), id, true)
-		if err != nil {
-			log.Error(err)
-			w.WriteHeader(500)
-			return
-		}
-	}
-
-	mediatype, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
-	if err != nil {
-		log.Error(err)
-		w.WriteHeader(500)
-		return
-	}
-
-	if err := os.RemoveAll(string(path)); err != nil {
-		log.Error(err)
-		w.WriteHeader(500)
-		return
-	}
-
-	switch mediatype {
-	case "application/x-tar":
-		if err := tarutil.ExtractTar(r.Body, string(path)); err != nil {
-			log.Error(err)
-			w.WriteHeader(500)
-			return
-		}
-	default:
-		if err := files.WriteTo(files.NewReaderFile(r.Body), string(path)); err != nil {
-			log.Error(err)
-			w.WriteHeader(500)
-			return
-		}
-	}
-
-	w.WriteHeader(200)
-
-	log.Infof("received %s sector (%s): %d bytes", vars["type"], vars["sname"], r.ContentLength)
-}
-
-func (sm *StorageMinerAPI) WorkerStats(context.Context) (sectorbuilder.WorkerStats, error) {
-	stat := sm.SectorBuilder.WorkerStats()
-	return stat, nil
+func (sm *StorageMinerAPI) WorkerStats(context.Context) (map[uint64]storiface.WorkerStats, error) {
+	return sm.StorageMgr.WorkerStats(), nil
 }
 
 func (sm *StorageMinerAPI) ActorAddress(context.Context) (address.Address, error) {
-	return sm.SectorBuilderConfig.Miner, nil
+	return sm.Miner.Address(), nil
 }
 
-func (sm *StorageMinerAPI) ActorSectorSize(ctx context.Context, addr address.Address) (uint64, error) {
-	return sm.Full.StateMinerSectorSize(ctx, addr, types.EmptyTSK)
+func (sm *StorageMinerAPI) MiningBase(ctx context.Context) (*types.TipSet, error) {
+	mb, err := sm.BlockMiner.GetBestMiningCandidate(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return mb.TipSet, nil
+}
+
+func (sm *StorageMinerAPI) ActorSectorSize(ctx context.Context, addr address.Address) (abi.SectorSize, error) {
+	mi, err := sm.Full.StateMinerInfo(ctx, addr, types.EmptyTSK)
+	if err != nil {
+		return 0, err
+	}
+	return mi.SectorSize, nil
 }
 
 func (sm *StorageMinerAPI) PledgeSector(ctx context.Context) error {
 	return sm.Miner.PledgeSector()
 }
 
-func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid uint64) (api.SectorInfo, error) {
+func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid abi.SectorNumber) (api.SectorInfo, error) {
 	info, err := sm.Miner.GetSectorInfo(sid)
 	if err != nil {
 		return api.SectorInfo{}, err
 	}
 
-	deals := make([]uint64, len(info.Pieces))
+	deals := make([]abi.DealID, len(info.Pieces))
 	for i, piece := range info.Pieces {
-		deals[i] = piece.DealID
+		if piece.DealInfo == nil {
+			continue
+		}
+		deals[i] = piece.DealInfo.DealID
 	}
 
 	log := make([]api.SectorLog, len(info.Log))
@@ -199,14 +106,20 @@ func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid uint64) (api.S
 
 	return api.SectorInfo{
 		SectorID: sid,
-		State:    info.State,
+		State:    api.SectorState(info.State),
 		CommD:    info.CommD,
 		CommR:    info.CommR,
 		Proof:    info.Proof,
 		Deals:    deals,
-		Ticket:   info.Ticket.SB(),
-		Seed:     info.Seed.SB(),
-		Retries:  info.Nonce,
+		Ticket: api.SealTicket{
+			Value: info.TicketValue,
+			Epoch: info.TicketEpoch,
+		},
+		Seed: api.SealSeed{
+			Value: info.SeedValue,
+			Epoch: info.SeedEpoch,
+		},
+		Retries: info.Nonce,
 
 		LastErr: info.LastErr,
 		Log:     log,
@@ -214,17 +127,21 @@ func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid uint64) (api.S
 }
 
 // List all staged sectors
-func (sm *StorageMinerAPI) SectorsList(context.Context) ([]uint64, error) {
+func (sm *StorageMinerAPI) SectorsList(context.Context) ([]abi.SectorNumber, error) {
 	sectors, err := sm.Miner.ListSectors()
 	if err != nil {
 		return nil, err
 	}
 
-	out := make([]uint64, len(sectors))
+	out := make([]abi.SectorNumber, len(sectors))
 	for i, sector := range sectors {
-		out[i] = sector.SectorID
+		out[i] = sector.SectorNumber
 	}
 	return out, nil
+}
+
+func (sm *StorageMinerAPI) StorageLocal(ctx context.Context) (map[stores.ID]string, error) {
+	return sm.StorageMgr.StorageLocal(ctx)
 }
 
 func (sm *StorageMinerAPI) SectorsRefs(context.Context) (map[string][]api.SealedRef, error) {
@@ -237,22 +154,73 @@ func (sm *StorageMinerAPI) SectorsRefs(context.Context) (map[string][]api.Sealed
 	}
 
 	for k, v := range refs {
-		out[k.String()] = v
+		out[strconv.FormatUint(k, 10)] = v
 	}
 
 	return out, nil
 }
 
-func (sm *StorageMinerAPI) SectorsUpdate(ctx context.Context, id uint64, state api.SectorState) error {
-	return sm.Miner.ForceSectorState(ctx, id, state)
+func (sm *StorageMinerAPI) StorageStat(ctx context.Context, id stores.ID) (stores.FsStat, error) {
+	return sm.StorageMgr.FsStat(ctx, id)
 }
 
-func (sm *StorageMinerAPI) WorkerQueue(ctx context.Context, cfg sectorbuilder.WorkerCfg) (<-chan sectorbuilder.WorkerTask, error) {
-	return sm.SectorBuilder.AddWorker(ctx, cfg)
+func (sm *StorageMinerAPI) SectorsUpdate(ctx context.Context, id abi.SectorNumber, state api.SectorState) error {
+	return sm.Miner.ForceSectorState(ctx, id, sealing.SectorState(state))
 }
 
-func (sm *StorageMinerAPI) WorkerDone(ctx context.Context, task uint64, res sectorbuilder.SealRes) error {
-	return sm.SectorBuilder.TaskDone(ctx, task, res)
+func (sm *StorageMinerAPI) WorkerConnect(ctx context.Context, url string) error {
+	w, err := connectRemoteWorker(ctx, sm, url)
+	if err != nil {
+		return xerrors.Errorf("connecting remote storage failed: %w", err)
+	}
+
+	log.Infof("Connected to a remote worker at %s", url)
+
+	return sm.StorageMgr.AddWorker(ctx, w)
+}
+
+func (sm *StorageMinerAPI) MarketImportDealData(ctx context.Context, propCid cid.Cid, path string) error {
+	fi, err := os.Open(path)
+	if err != nil {
+		return xerrors.Errorf("failed to open file: %w", err)
+	}
+	defer fi.Close()
+
+	return sm.StorageProvider.ImportDataForDeal(ctx, propCid, fi)
+}
+
+func (sm *StorageMinerAPI) MarketListDeals(ctx context.Context) ([]storagemarket.StorageDeal, error) {
+	return sm.StorageProvider.ListDeals(ctx)
+}
+
+func (sm *StorageMinerAPI) MarketListIncompleteDeals(ctx context.Context) ([]storagemarket.MinerDeal, error) {
+	return sm.StorageProvider.ListLocalDeals()
+}
+
+func (sm *StorageMinerAPI) MarketSetPrice(ctx context.Context, p types.BigInt) error {
+	return sm.StorageProvider.AddAsk(abi.TokenAmount(p), 60*60*24*100) // lasts for 100 days?
+}
+
+func (sm *StorageMinerAPI) DealsList(ctx context.Context) ([]storagemarket.StorageDeal, error) {
+	return sm.StorageProvider.ListDeals(ctx)
+}
+
+func (sm *StorageMinerAPI) DealsImportData(ctx context.Context, deal cid.Cid, fname string) error {
+	fi, err := os.Open(fname)
+	if err != nil {
+		return xerrors.Errorf("failed to open given file: %w", err)
+	}
+	defer fi.Close()
+
+	return sm.StorageProvider.ImportDataForDeal(ctx, deal, fi)
+}
+
+func (sm *StorageMinerAPI) StorageAddLocal(ctx context.Context, path string) error {
+	if sm.StorageMgr == nil {
+		return xerrors.Errorf("no storage manager")
+	}
+
+	return sm.StorageMgr.AddLocalStorage(ctx, path)
 }
 
 var _ api.StorageMiner = &StorageMinerAPI{}

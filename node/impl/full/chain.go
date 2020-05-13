@@ -6,8 +6,13 @@ import (
 	"io"
 	"strconv"
 	"strings"
+	"sync"
 
-	"github.com/filecoin-project/go-amt-ipld"
+	"github.com/filecoin-project/go-amt-ipld/v2"
+	commcid "github.com/filecoin-project/go-fil-commcid"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
@@ -15,11 +20,11 @@ import (
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	ipld "github.com/ipfs/go-ipld-format"
+	logging "github.com/ipfs/go-log"
 	"github.com/ipfs/go-merkledag"
 	"github.com/ipfs/go-path"
 	"github.com/ipfs/go-path/resolver"
 	mh "github.com/multiformats/go-multihash"
-	"github.com/prometheus/common/log"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -30,6 +35,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
+var log = logging.Logger("fullnode")
+
 type ChainAPI struct {
 	fx.In
 
@@ -38,7 +45,7 @@ type ChainAPI struct {
 	Chain *store.ChainStore
 }
 
-func (a *ChainAPI) ChainNotify(ctx context.Context) (<-chan []*store.HeadChange, error) {
+func (a *ChainAPI) ChainNotify(ctx context.Context) (<-chan []*api.HeadChange, error) {
 	return a.Chain.SubHeadChanges(ctx), nil
 }
 
@@ -46,8 +53,13 @@ func (a *ChainAPI) ChainHead(context.Context) (*types.TipSet, error) {
 	return a.Chain.GetHeaviestTipSet(), nil
 }
 
-func (a *ChainAPI) ChainGetRandomness(ctx context.Context, pts types.TipSetKey, round int64) ([]byte, error) {
-	return a.Chain.GetRandomness(ctx, pts.Cids(), round)
+func (a *ChainAPI) ChainGetRandomness(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	pts, err := a.Chain.LoadTipSet(tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset key: %w", err)
+	}
+
+	return a.Chain.GetRandomness(ctx, pts.Cids(), personalization, randEpoch, entropy)
 }
 
 func (a *ChainAPI) ChainGetBlock(ctx context.Context, msg cid.Cid) (*types.BlockHeader, error) {
@@ -86,7 +98,7 @@ func (a *ChainAPI) ChainGetBlockMessages(ctx context.Context, msg cid.Cid) (*api
 	}, nil
 }
 
-func (a *ChainAPI) ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*store.HeadChange, error) {
+func (a *ChainAPI) ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*api.HeadChange, error) {
 	return a.Chain.GetPath(ctx, from, to)
 }
 
@@ -157,12 +169,12 @@ func (a *ChainAPI) ChainGetParentReceipts(ctx context.Context, bcid cid.Cid) ([]
 	return out, nil
 }
 
-func (a *ChainAPI) ChainGetTipSetByHeight(ctx context.Context, h uint64, tsk types.TipSetKey) (*types.TipSet, error) {
+func (a *ChainAPI) ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
-	return a.Chain.GetTipsetByHeight(ctx, h, ts)
+	return a.Chain.GetTipsetByHeight(ctx, h, ts, true)
 }
 
 func (a *ChainAPI) ChainReadObj(ctx context.Context, obj cid.Cid) ([]byte, error) {
@@ -176,6 +188,54 @@ func (a *ChainAPI) ChainReadObj(ctx context.Context, obj cid.Cid) ([]byte, error
 
 func (a *ChainAPI) ChainHasObj(ctx context.Context, obj cid.Cid) (bool, error) {
 	return a.Chain.Blockstore().Has(obj)
+}
+
+func (a *ChainAPI) ChainStatObj(ctx context.Context, obj cid.Cid, base cid.Cid) (api.ObjStat, error) {
+	bs := a.Chain.Blockstore()
+	bsvc := blockservice.New(bs, offline.Exchange(bs))
+
+	dag := merkledag.NewDAGService(bsvc)
+
+	seen := cid.NewSet()
+
+	var statslk sync.Mutex
+	var stats api.ObjStat
+	var collect = true
+
+	walker := func(ctx context.Context, c cid.Cid) ([]*ipld.Link, error) {
+		if c.Prefix().MhType == uint64(commcid.FC_SEALED_V1) || c.Prefix().MhType == uint64(commcid.FC_UNSEALED_V1) {
+			return []*ipld.Link{}, nil
+		}
+
+		nd, err := dag.Get(ctx, c)
+		if err != nil {
+			return nil, err
+		}
+
+		if collect {
+			s := uint64(len(nd.RawData()))
+			statslk.Lock()
+			stats.Size = stats.Size + s
+			stats.Links = stats.Links + 1
+			statslk.Unlock()
+		}
+
+		return nd.Links(), nil
+	}
+
+	if base != cid.Undef {
+		collect = false
+		if err := merkledag.Walk(ctx, walker, base, seen.Visit, merkledag.Concurrent()); err != nil {
+			return api.ObjStat{}, err
+		}
+		collect = true
+	}
+
+	if err := merkledag.Walk(ctx, walker, obj, seen.Visit, merkledag.Concurrent()); err != nil {
+		return api.ObjStat{}, err
+	}
+
+	return stats, nil
 }
 
 func (a *ChainAPI) ChainSetHead(ctx context.Context, tsk types.TipSetKey) error {
@@ -214,10 +274,32 @@ func resolveOnce(bs blockstore.Blockstore) func(ctx context.Context, ds ipld.Nod
 			names[0] = "@H:" + string(addr.Bytes())
 		}
 
-		if strings.HasPrefix(names[0], "@H:") {
-			cst := hamt.CSTFromBstore(bs)
+		if strings.HasPrefix(names[0], "@Hi:") {
+			i, err := strconv.ParseInt(names[0][4:], 10, 64)
+			if err != nil {
+				return nil, nil, xerrors.Errorf("parsing int64: %w", err)
+			}
 
-			h, err := hamt.LoadNode(ctx, cst, nd.Cid())
+			ik := adt.IntKey(i)
+
+			names[0] = "@H:" + ik.Key()
+		}
+
+		if strings.HasPrefix(names[0], "@Hu:") {
+			i, err := strconv.ParseUint(names[0][4:], 10, 64)
+			if err != nil {
+				return nil, nil, xerrors.Errorf("parsing int64: %w", err)
+			}
+
+			ik := adt.UIntKey(i)
+
+			names[0] = "@H:" + ik.Key()
+		}
+
+		if strings.HasPrefix(names[0], "@H:") {
+			cst := cbor.NewCborStore(bs)
+
+			h, err := hamt.LoadNode(ctx, cst, nd.Cid(), hamt.UseTreeBitWidth(5))
 			if err != nil {
 				return nil, nil, xerrors.Errorf("resolving hamt link: %w", err)
 			}
@@ -253,7 +335,7 @@ func resolveOnce(bs blockstore.Blockstore) func(ctx context.Context, ds ipld.Nod
 		}
 
 		if strings.HasPrefix(names[0], "@A:") {
-			a, err := amt.LoadAMT(amt.WrapBlockstore(bs), nd.Cid())
+			a, err := amt.LoadAMT(ctx, cbor.NewCborStore(bs), nd.Cid())
 			if err != nil {
 				return nil, nil, xerrors.Errorf("load amt: %w", err)
 			}
@@ -264,7 +346,7 @@ func resolveOnce(bs blockstore.Blockstore) func(ctx context.Context, ds ipld.Nod
 			}
 
 			var m interface{}
-			if err := a.Get(idx, &m); err != nil {
+			if err := a.Get(ctx, idx, &m); err != nil {
 				return nil, nil, xerrors.Errorf("amt get: %w", err)
 			}
 			fmt.Printf("AG %T %v\n", m, m)
@@ -299,7 +381,7 @@ func resolveOnce(bs blockstore.Blockstore) func(ctx context.Context, ds ipld.Nod
 	}
 }
 
-func (a *ChainAPI) ChainGetNode(ctx context.Context, p string) (interface{}, error) {
+func (a *ChainAPI) ChainGetNode(ctx context.Context, p string) (*api.IpldObject, error) {
 	ip, err := path.ParsePath(p)
 	if err != nil {
 		return nil, xerrors.Errorf("parsing path: %w", err)
@@ -320,7 +402,10 @@ func (a *ChainAPI) ChainGetNode(ctx context.Context, p string) (interface{}, err
 		return nil, err
 	}
 
-	return node, nil
+	return &api.IpldObject{
+		Cid: node.Cid(),
+		Obj: node,
+	}, nil
 }
 
 func (a *ChainAPI) ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Message, error) {
@@ -352,7 +437,7 @@ func (a *ChainAPI) ChainExport(ctx context.Context, tsk types.TipSetKey) (<-chan
 		for {
 			buf := make([]byte, 4096)
 			n, err := r.Read(buf)
-			if err != nil {
+			if err != nil && err != io.EOF {
 				log.Errorf("chain export pipe read failed: %s", err)
 				return
 			}
@@ -360,6 +445,9 @@ func (a *ChainAPI) ChainExport(ctx context.Context, tsk types.TipSetKey) (<-chan
 			case out <- buf[:n]:
 			case <-ctx.Done():
 				log.Warnf("export writer failed: %s", ctx.Err())
+			}
+			if err == io.EOF {
+				return
 			}
 		}
 	}()

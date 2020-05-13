@@ -10,8 +10,8 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
+	"github.com/filecoin-project/lotus/lib/tracing"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/filecoin-project/lotus/tracing"
 )
 
 var log = logging.Logger("main")
@@ -22,11 +22,16 @@ func main() {
 	lotuslog.SetupLogLevels()
 
 	local := []*cli.Command{
-		runCmd,
-		initCmd,
+		dealsCmd,
 		infoCmd,
-		pledgeSectorCmd,
+		initCmd,
+		rewardsCmd,
+		runCmd,
 		sectorsCmd,
+		storageCmd,
+		setPriceCmd,
+		workersCmd,
+		provingCmd,
 	}
 	jaeger := tracing.SetupJaegerTracing("lotus")
 	defer func() {
@@ -50,9 +55,10 @@ func main() {
 	}
 
 	app := &cli.App{
-		Name:    "lotus-storage-miner",
-		Usage:   "Filecoin decentralized storage network storage miner",
-		Version: build.UserVersion,
+		Name:                  "lotus-storage-miner",
+		Usage:                 "Filecoin decentralized storage network storage miner",
+		Version:               build.UserVersion,
+		EnableShellCompletion: true,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    "repo",
@@ -67,7 +73,7 @@ func main() {
 			},
 		},
 
-		Commands: append(local, lcli.Commands...),
+		Commands: append(local, lcli.CommonCommands...),
 	}
 	app.Setup()
 	app.Metadata["repoType"] = repo.StorageMiner

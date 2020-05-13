@@ -4,12 +4,13 @@ import (
 	"errors"
 	"fmt"
 
-	hamt "github.com/ipfs/go-hamt-ipld"
+	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"golang.org/x/xerrors"
 )
 
 // New creates a new non-fatal error
-func New(retCode uint8, message string) ActorError {
+func New(retCode exitcode.ExitCode, message string) ActorError {
 	if retCode == 0 {
 		return &actorError{
 			fatal:   true,
@@ -29,7 +30,7 @@ func New(retCode uint8, message string) ActorError {
 }
 
 // Newf creates a new non-fatal error
-func Newf(retCode uint8, format string, args ...interface{}) ActorError {
+func Newf(retCode exitcode.ExitCode, format string, args ...interface{}) ActorError {
 	if retCode == 0 {
 		return &actorError{
 			fatal:   true,
@@ -45,6 +46,26 @@ func Newf(retCode uint8, format string, args ...interface{}) ActorError {
 
 		msg:   fmt.Sprintf(format, args...),
 		frame: xerrors.Caller(1),
+	}
+}
+
+// todo: bit hacky
+func NewfSkip(skip int, retCode exitcode.ExitCode, format string, args ...interface{}) ActorError {
+	if retCode == 0 {
+		return &actorError{
+			fatal:   true,
+			retCode: 0,
+
+			msg:   "tried creating an error and setting RetCode to 0",
+			frame: xerrors.Caller(skip),
+			err:   fmt.Errorf(format, args...),
+		}
+	}
+	return &actorError{
+		retCode: retCode,
+
+		msg:   fmt.Sprintf(format, args...),
+		frame: xerrors.Caller(skip),
 	}
 }
 
@@ -95,7 +116,7 @@ func Wrapf(err ActorError, format string, args ...interface{}) ActorError {
 }
 
 // Absorb takes and error and makes in not fatal ActorError
-func Absorb(err error, retCode uint8, msg string) ActorError {
+func Absorb(err error, retCode exitcode.ExitCode, msg string) ActorError {
 	if err == nil {
 		return nil
 	}
@@ -160,7 +181,7 @@ func HandleExternalError(err error, msg string) ActorError {
 		}
 	}
 
-	if xerrors.Is(err, &hamt.SerializationError{}) {
+	if xerrors.Is(err, &cbor.SerializationError{}) {
 		return &actorError{
 			fatal:   false,
 			retCode: 253,

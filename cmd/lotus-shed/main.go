@@ -17,10 +17,15 @@ func main() {
 	local := []*cli.Command{
 		base32Cmd,
 		base16Cmd,
+		bitFieldCmd,
 		keyinfoCmd,
 		peerkeyCmd,
 		noncefix,
 		bigIntParseCmd,
+		staterootStatsCmd,
+		importCarCmd,
+		commpToCidCmd,
+		fetchParamCmd,
 	}
 
 	app := &cli.App{
@@ -28,6 +33,14 @@ func main() {
 		Usage:    "A place for all the lotus tools",
 		Version:  build.BuildVersion,
 		Commands: local,
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:    "repo",
+				EnvVars: []string{"LOTUS_PATH"},
+				Hidden:  true,
+				Value:   "~/.lotus", // TODO: Consider XDG_DATA_HOME
+			},
+		},
 	}
 
 	if err := app.Run(os.Args); err != nil {

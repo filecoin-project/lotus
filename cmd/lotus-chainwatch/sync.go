@@ -8,8 +8,12 @@ import (
 	"math"
 	"sync"
 
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+
 	"github.com/filecoin-project/go-address"
-	actors2 "github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 
 	"github.com/ipfs/go-cid"
 
@@ -51,9 +55,10 @@ type minerKey struct {
 }
 
 type minerInfo struct {
-	state actors2.StorageMinerActorState
-	info  actors2.MinerInfo
+	state miner.State
+	info  miner.MinerInfo
 
+	power big.Int
 	ssize uint64
 	psize uint64
 }
@@ -111,7 +116,7 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 	for len(allToSync) > 0 {
 		actors := map[address.Address]map[types.Actor]actorInfo{}
 		addresses := map[address.Address]address.Address{}
-		minH := uint64(math.MaxUint64)
+		minH := abi.ChainEpoch(math.MaxInt64)
 
 		for _, header := range allToSync {
 			if header.Height < minH {
@@ -121,7 +126,7 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 
 		toSync := map[cid.Cid]*types.BlockHeader{}
 		for c, header := range allToSync {
-			if header.Height < minH+uint64(maxBatch) {
+			if header.Height < minH+abi.ChainEpoch(maxBatch) {
 				toSync[c] = header
 				addresses[header.Miner] = address.Undef
 			}
@@ -251,7 +256,7 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 
 		for addr, m := range actors {
 			for actor, c := range m {
-				if !(actor.Code == actors2.StorageMinerCodeCid || actor.Code == actors2.StorageMiner2CodeCid) {
+				if actor.Code != builtin.StorageMinerActorCodeID {
 					continue
 				}
 
@@ -265,6 +270,13 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 
 		par(50, kvmaparr(miners), func(it func() (minerKey, *minerInfo)) {
 			k, info := it()
+
+			pow, err := api.StateMinerPower(ctx, k.addr, types.EmptyTSK)
+			if err != nil {
+				log.Error(err)
+				// Not sure why this would fail, but its probably worth continuing
+			}
+			info.power = pow.MinerPower.QualityAdjPower
 
 			sszs, err := api.StateMinerSectorCount(ctx, k.addr, types.EmptyTSK)
 			if err != nil {
@@ -285,16 +297,7 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 				return
 			}
 
-			ib, err := api.ChainReadObj(ctx, info.state.Info)
-			if err != nil {
-				log.Error(err)
-				return
-			}
-
-			if err := info.info.UnmarshalCBOR(bytes.NewReader(ib)); err != nil {
-				log.Error(err)
-				return
-			}
+			info.info = info.state.Info
 		})
 
 		log.Info("Getting receipts")

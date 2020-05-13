@@ -11,8 +11,8 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
 
@@ -149,7 +149,7 @@ func RecordTipsetStatePoints(ctx context.Context, api api.FullNode, pl *PointLis
 	p := NewPoint("chain.pledge_collateral", pcFilFloat)
 	pl.AddPoint(p)
 
-	netBal, err := api.WalletBalance(ctx, actors.NetworkAddress)
+	netBal, err := api.WalletBalance(ctx, builtin.RewardActorAddr)
 	if err != nil {
 		return err
 	}
@@ -164,7 +164,7 @@ func RecordTipsetStatePoints(ctx context.Context, api api.FullNode, pl *PointLis
 		return err
 	}
 
-	p = NewPoint("chain.power", power.TotalPower.Int64())
+	p = NewPoint("chain.power", power.TotalPower.QualityAdjPower.Int64())
 	pl.AddPoint(p)
 
 	miners, err := api.StateListMiners(ctx, tipset.Key())
@@ -174,7 +174,7 @@ func RecordTipsetStatePoints(ctx context.Context, api api.FullNode, pl *PointLis
 			return err
 		}
 
-		p = NewPoint("chain.miner_power", power.MinerPower.Int64())
+		p = NewPoint("chain.miner_power", power.MinerPower.QualityAdjPower.Int64())
 		p.AddTag("miner", miner.String())
 		pl.AddPoint(p)
 	}
@@ -229,8 +229,8 @@ func RecordTipsetMessagesPoints(ctx context.Context, api api.FullNode, pl *Point
 		}
 		tag := msgTag{
 			actor:    string(dm.Digest),
-			method:   msg.Message.Method,
-			exitcode: recp[i].ExitCode,
+			method:   uint64(msg.Message.Method),
+			exitcode: uint8(recp[i].ExitCode),
 		}
 
 		found := false

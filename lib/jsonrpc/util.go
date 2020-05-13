@@ -19,6 +19,10 @@ func (p *param) UnmarshalJSON(raw []byte) error {
 }
 
 func (p *param) MarshalJSON() ([]byte, error) {
+	if p.v.Kind() == reflect.Invalid {
+		return p.data, nil
+	}
+
 	return json.Marshal(p.v.Interface())
 }
 

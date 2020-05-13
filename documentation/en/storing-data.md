@@ -55,7 +55,6 @@ Check the status of a deal:
 lotus client list-deals
 ```
 
-- Price is in attoFIL.
 - The `duration`, which represents how long the miner will keep your file hosted, is represented in blocks. Each block represents 45 seconds.
 
 Upon success, this command will return a **Deal CID**.

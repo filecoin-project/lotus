@@ -14,7 +14,9 @@ func NewCommonRPC(addr string, requestHeader http.Header) (api.Common, jsonrpc.C
 	closer, err := jsonrpc.NewMergeClient(addr, "Filecoin",
 		[]interface{}{
 			&res.Internal,
-		}, requestHeader)
+		},
+		requestHeader,
+	)
 
 	return &res, closer, err
 }
@@ -38,7 +40,21 @@ func NewStorageMinerRPC(addr string, requestHeader http.Header) (api.StorageMine
 		[]interface{}{
 			&res.CommonStruct.Internal,
 			&res.Internal,
-		}, requestHeader)
+		},
+		requestHeader,
+	)
+
+	return &res, closer, err
+}
+
+func NewWorkerRPC(addr string, requestHeader http.Header) (api.WorkerApi, jsonrpc.ClientCloser, error) {
+	var res apistruct.WorkerStruct
+	closer, err := jsonrpc.NewMergeClient(addr, "Filecoin",
+		[]interface{}{
+			&res.Internal,
+		},
+		requestHeader,
+	)
 
 	return &res, closer, err
 }

@@ -2,32 +2,48 @@ package build
 
 import (
 	"math/big"
+	"sort"
+
+	"github.com/libp2p/go-libp2p-core/protocol"
+
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
+func DefaultSectorSize() abi.SectorSize {
+	szs := make([]abi.SectorSize, 0, len(miner.SupportedProofTypes))
+	for spt := range miner.SupportedProofTypes {
+		ss, err := spt.SectorSize()
+		if err != nil {
+			panic(err)
+		}
+
+		szs = append(szs, ss)
+	}
+
+	sort.Slice(szs, func(i, j int) bool {
+		return szs[i] < szs[i]
+	})
+
+	return szs[0]
+}
+
 // Core network constants
+
+func BlocksTopic(netName dtypes.NetworkName) string   { return "/fil/blocks/" + string(netName) }
+func MessagesTopic(netName dtypes.NetworkName) string { return "/fil/msgs/" + string(netName) }
+func DhtProtocolName(netName dtypes.NetworkName) protocol.ID {
+	return protocol.ID("/fil/kad/" + string(netName))
+}
 
 // /////
 // Storage
 
 const UnixfsChunkSize uint64 = 1 << 20
 const UnixfsLinksPerLevel = 1024
-
-func SupportedSectorSize(ssize uint64) bool {
-	for _, ss := range SectorSizes {
-		if ssize == ss {
-			return true
-		}
-	}
-	return false
-}
-
-const SectorChallengeRatioDiv = 25
-
-// /////
-// Payments
-
-// Epochs
-const PaymentChannelClosingDelay = 6 * 60 * 60 / BlockDelay // six hours
 
 // /////
 // Consensus / Network
@@ -39,10 +55,10 @@ const AllowableClockDrift = 1
 const ForkLengthThreshold = Finality
 
 // Blocks (e)
-const BlocksPerEpoch = 5
+var BlocksPerEpoch = uint64(builtin.ExpectedLeadersPerEpoch)
 
 // Epochs
-const Finality = 500
+const Finality = miner.ChainFinalityish
 
 // constants for Weight calculation
 // The ratio of weight contributed by short-term vs long-term factors in a given round
@@ -56,20 +72,18 @@ const WRatioDen = 2
 const SealRandomnessLookback = Finality
 
 // Epochs
-const SealRandomnessLookbackLimit = SealRandomnessLookback + 2000
+const SealRandomnessLookbackLimit = SealRandomnessLookback + 2000 // TODO: Get from spec specs-actors
 
 // Maximum lookback that randomness can be sourced from for a seal proof submission
-const MaxSealLookback = SealRandomnessLookbackLimit + 2000
+const MaxSealLookback = SealRandomnessLookbackLimit + 2000 // TODO: Get from specs-actors
 
 // /////
 // Mining
 
 // Epochs
-const EcRandomnessLookback = 300
+const TicketRandomnessLookback = 1
 
-const PowerCollateralProportion = 5
-const PerCapitaCollateralProportion = 1
-const CollateralPrecision = 1000
+const WinningPoStSectorSetLookback = 10
 
 // /////
 // Devnet settings
@@ -77,23 +91,15 @@ const CollateralPrecision = 1000
 const TotalFilecoin = 2_000_000_000
 const MiningRewardTotal = 1_400_000_000
 
-const InitialRewardStr = "153856861913558700202"
-
-var InitialReward *big.Int
-
 const FilecoinPrecision = 1_000_000_000_000_000_000
+
+var InitialRewardBalance *big.Int
 
 // TODO: Move other important consts here
 
 func init() {
-	InitialReward = new(big.Int)
-
-	var ok bool
-	InitialReward, ok = InitialReward.
-		SetString(InitialRewardStr, 10)
-	if !ok {
-		panic("could not parse InitialRewardStr")
-	}
+	InitialRewardBalance = big.NewInt(MiningRewardTotal)
+	InitialRewardBalance = InitialRewardBalance.Mul(InitialRewardBalance, big.NewInt(FilecoinPrecision))
 }
 
 // Sync
@@ -106,5 +112,12 @@ const BlsSignatureCacheSize = 40000
 // ///////
 // Limits
 
+// TODO: If this is gonna stay, it should move to specs-actors
 const BlockMessageLimit = 512
-const MinerMaxSectors = 1 << 48
+
+var DrandCoeffs = []string{
+	"82c279cce744450e68de98ee08f9698a01dd38f8e3be3c53f2b840fb9d09ad62a0b6b87981e179e1b14bc9a2d284c985",
+	"82d51308ad346c686f81b8094551597d7b963295cbf313401a93df9baf52d5ae98a87745bee70839a4d6e65c342bd15b",
+	"94eebfd53f4ba6a3b8304236400a12e73885e5a781509a5c8d41d2e8b476923d8ea6052649b3c17282f596217f96c5de",
+	"8dc4231e42b4edf39e86ef1579401692480647918275da767d3e558c520d6375ad953530610fd27daf110187877a65d0",
+}

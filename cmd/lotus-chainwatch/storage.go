@@ -2,8 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"encoding/hex"
-	"fmt"
 	"sync"
 	"time"
 
@@ -13,7 +11,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -42,11 +39,23 @@ func (st *storage) setup() error {
 		return err
 	}
 	_, err = tx.Exec(`
+create table if not exists block_cids
+(
+	cid text not null
+		constraint block_cids_pk
+			primary key
+);
+
+create unique index if not exists block_cids_cid_uindex
+	on block_cids (cid);
+
 create table if not exists blocks_synced
 (
 	cid text not null
 		constraint blocks_synced_pk
-			primary key,
+			primary key
+	    constraint blocks_block_cids_cid_fk
+			references block_cids (cid),
 	add_ts int not null
 );
 
@@ -55,30 +64,52 @@ create unique index if not exists blocks_synced_cid_uindex
 
 create table if not exists block_parents
 (
-	block text not null,
+	block text not null
+	    constraint blocks_block_cids_cid_fk
+			references block_cids (cid),
 	parent text not null
 );
 
 create unique index if not exists block_parents_block_parent_uindex
 	on block_parents (block, parent);
 
+create table if not exists drand_entries
+(
+    round bigint not null
+    	constraint drand_entries_pk
+			primary key,
+	data bytea not null
+);
+create unique index if not exists drand_entries_round_uindex
+	on drand_entries (round);
+
+create table if not exists block_drand_entries
+(
+    round bigint not null
+    	constraint block_drand_entries_drand_entries_round_fk
+			references drand_entries (round),
+	block text not null
+	    constraint blocks_block_cids_cid_fk
+			references block_cids (cid)
+);
+create unique index if not exists block_drand_entries_round_uindex
+	on block_drand_entries (round, block);
+
 create table if not exists blocks
 (
 	cid text not null
 		constraint blocks_pk
-			primary key,
+			primary key
+	    constraint blocks_block_cids_cid_fk
+			references block_cids (cid),
 	parentWeight numeric not null,
 	parentStateRoot text not null,
 	height bigint not null,
 	miner text not null,
 	timestamp bigint not null,
-	vrfproof bytea,
-	tickets bigint not null,
+	ticket bytea not null,
 	eprof bytea,
-	prand bytea,
-	ep0partial bytea,
-	ep0sector numeric not null,
-	ep0challangei numeric not null
+	forksig bigint not null
 );
 
 create unique index if not exists block_cid_uindex
@@ -177,10 +208,18 @@ create table if not exists messages
 
 create unique index if not exists messages_cid_uindex
 	on messages (cid);
-	
+
+create index if not exists messages_from_index
+	on messages ("from");
+
+create index if not exists messages_to_index
+	on messages ("to");
+
 create table if not exists block_messages
 (
-	block text not null,
+	block text not null
+	    constraint blocks_block_cids_cid_fk
+			references block_cids (cid),
 	message text not null,
 	constraint block_messages_pk
 		primary key (block, message)
@@ -213,7 +252,7 @@ create table if not exists receipts
 
 create index if not exists receipts_msg_state_index
 	on receipts (msg, state);
-
+/*
 create table if not exists miner_heads
 (
 	head text not null,
@@ -270,8 +309,8 @@ create table if not exists deals
 	pieceSize bigint not null,
 	client text not null,
 	provider text not null,
-	expiration decimal not null,
-	duration decimal not null,
+	start decimal not null,
+	end decimal not null,
 	epochPrice decimal not null,
 	collateral decimal not null,
 	constraint deals_pk
@@ -305,36 +344,7 @@ create index if not exists deal_activations_activation_epoch_index
 
 create unique index if not exists deal_activations_deal_uindex
 	on deal_activations (deal);
-
-create table if not exists blocks_challenges
-(
-	block text not null
-		constraint blocks_challenges_pk_2
-			primary key
-		constraint blocks_challenges_blocks_cid_fk
-			references blocks,
-	index bigint not null,
-	sector_id bigint not null,
-	partial bytea not null,
-	candidate bigint not null,
-	constraint blocks_challenges_pk
-		unique (block, index)
-);
-
-create index if not exists blocks_challenges_block_index
-	on blocks_challenges (block);
-
-create index if not exists blocks_challenges_block_candidate_index
-	on blocks_challenges (block,candidate);
-
-create index if not exists blocks_challenges_block_index_index
-	on blocks_challenges (block, index);
-
-create index if not exists blocks_challenges_candidate_index
-	on blocks_challenges (candidate);
-
-create index if not exists blocks_challenges_index_index
-	on blocks_challenges (index);
+*/
 
 `)
 	if err != nil {
@@ -447,54 +457,53 @@ func (st *storage) storeActors(actors map[address.Address]map[types.Actor]actorI
 }
 
 func (st *storage) storeMiners(miners map[minerKey]*minerInfo) error {
-	tx, err := st.db.Begin()
-	if err != nil {
-		return err
-	}
-
-	if _, err := tx.Exec(`
-
-create temp table mh (like miner_heads excluding constraints) on commit drop;
-
-
-`); err != nil {
-		return xerrors.Errorf("prep temp: %w", err)
-	}
-
-	stmt, err := tx.Prepare(`copy mh (head, addr, stateroot, sectorset, setsize, provingset, provingsize, owner, worker, peerid, sectorsize, power, active, ppe, slashed_at) from STDIN`)
-	if err != nil {
-		return err
-	}
-	for k, i := range miners {
-		if _, err := stmt.Exec(
-			k.act.Head.String(),
-			k.addr.String(),
-			k.stateroot.String(),
-			i.state.Sectors.String(),
-			fmt.Sprint(i.ssize),
-			i.state.ProvingSet.String(),
-			fmt.Sprint(i.psize),
-			i.info.Owner.String(),
-			i.info.Worker.String(),
-			i.info.PeerID.String(),
-			i.info.SectorSize,
-			i.state.Power.String(),
-			i.state.Active,
-			i.state.ElectionPeriodStart,
-			i.state.SlashedAt,
-		); err != nil {
+	/*tx, err := st.db.Begin()
+		if err != nil {
 			return err
 		}
-	}
-	if err := stmt.Close(); err != nil {
-		return err
-	}
 
-	if _, err := tx.Exec(`insert into miner_heads select * from mh on conflict do nothing `); err != nil {
-		return xerrors.Errorf("actor put: %w", err)
-	}
+		if _, err := tx.Exec(`
 
-	return tx.Commit()
+	create temp table mh (like miner_heads excluding constraints) on commit drop;
+
+
+	`); err != nil {
+			return xerrors.Errorf("prep temp: %w", err)
+		}
+
+		stmt, err := tx.Prepare(`copy mh (head, addr, stateroot, sectorset, setsize, provingset, provingsize, owner, worker, peerid, sectorsize, power, ppe) from STDIN`)
+		if err != nil {
+			return err
+		}
+		for k, i := range miners {
+			if _, err := stmt.Exec(
+				k.act.Head.String(),
+				k.addr.String(),
+				k.stateroot.String(),
+				i.state.Sectors.String(),
+				fmt.Sprint(i.ssize),
+				i.state.ProvingSet.String(),
+				fmt.Sprint(i.psize),
+				i.info.Owner.String(),
+				i.info.Worker.String(),
+				i.info.PeerId.String(),
+				i.info.SectorSize,
+				i.power.String(), // TODO: SPA
+				i.state.PoStState.ProvingPeriodStart,
+			); err != nil {
+				return err
+			}
+		}
+		if err := stmt.Close(); err != nil {
+			return err
+		}
+
+		if _, err := tx.Exec(`insert into miner_heads select * from mh on conflict do nothing `); err != nil {
+			return xerrors.Errorf("actor put: %w", err)
+		}
+
+		return tx.Commit()*/
+	return nil
 }
 
 func (st *storage) storeHeaders(bhs map[cid.Cid]*types.BlockHeader, sync bool) error {
@@ -508,35 +517,106 @@ func (st *storage) storeHeaders(bhs map[cid.Cid]*types.BlockHeader, sync bool) e
 
 	if _, err := tx.Exec(`
 
+create temp table bc (like block_cids excluding constraints) on commit drop;
+create temp table de (like drand_entries excluding constraints) on commit drop;
+create temp table bde (like block_drand_entries excluding constraints) on commit drop;
 create temp table tbp (like block_parents excluding constraints) on commit drop;
 create temp table bs (like blocks_synced excluding constraints) on commit drop;
 create temp table b (like blocks excluding constraints) on commit drop;
-create temp table c (like blocks_challenges excluding constraints) on commit drop;
 
 
 `); err != nil {
 		return xerrors.Errorf("prep temp: %w", err)
 	}
 
-	stmt, err := tx.Prepare(`copy tbp (block, parent) from STDIN`)
-	if err != nil {
-		return err
-	}
+	{
+		stmt, err := tx.Prepare(`copy bc (cid) from STDIN`)
+		if err != nil {
+			return err
+		}
 
-	for _, bh := range bhs {
-		for _, parent := range bh.Parents {
-			if _, err := stmt.Exec(bh.Cid().String(), parent.String()); err != nil {
+		for _, bh := range bhs {
+			if _, err := stmt.Exec(bh.Cid().String()); err != nil {
 				log.Error(err)
 			}
 		}
+
+		if err := stmt.Close(); err != nil {
+			return err
+		}
+
+		if _, err := tx.Exec(`insert into block_cids select * from bc on conflict do nothing `); err != nil {
+			return xerrors.Errorf("drand entries put: %w", err)
+		}
 	}
 
-	if err := stmt.Close(); err != nil {
-		return err
+	{
+		stmt, err := tx.Prepare(`copy de (round, data) from STDIN`)
+		if err != nil {
+			return err
+		}
+
+		for _, bh := range bhs {
+			for _, ent := range bh.BeaconEntries {
+				if _, err := stmt.Exec(ent.Round, ent.Data); err != nil {
+					log.Error(err)
+				}
+			}
+		}
+
+		if err := stmt.Close(); err != nil {
+			return err
+		}
+
+		if _, err := tx.Exec(`insert into drand_entries select * from de on conflict do nothing `); err != nil {
+			return xerrors.Errorf("drand entries put: %w", err)
+		}
 	}
 
-	if _, err := tx.Exec(`insert into block_parents select * from tbp on conflict do nothing `); err != nil {
-		return xerrors.Errorf("parent put: %w", err)
+	{
+		stmt, err := tx.Prepare(`copy bde (round, block) from STDIN`)
+		if err != nil {
+			return err
+		}
+
+		for _, bh := range bhs {
+			for _, ent := range bh.BeaconEntries {
+				if _, err := stmt.Exec(ent.Round, bh.Cid().String()); err != nil {
+					log.Error(err)
+				}
+			}
+		}
+
+		if err := stmt.Close(); err != nil {
+			return err
+		}
+
+		if _, err := tx.Exec(`insert into block_drand_entries select * from bde on conflict do nothing `); err != nil {
+			return xerrors.Errorf("block drand entries put: %w", err)
+		}
+	}
+
+	{
+		stmt, err := tx.Prepare(`copy tbp (block, parent) from STDIN`)
+		if err != nil {
+			return err
+		}
+
+		for _, bh := range bhs {
+			for _, parent := range bh.Parents {
+				if _, err := stmt.Exec(bh.Cid().String(), parent.String()); err != nil {
+					log.Error(err)
+				}
+			}
+		}
+
+		if err := stmt.Close(); err != nil {
+			return err
+		}
+
+		if _, err := tx.Exec(`insert into block_parents select * from tbp on conflict do nothing `); err != nil {
+			return xerrors.Errorf("parent put: %w", err)
+		}
 	}
 
 	if sync {
@@ -562,15 +642,15 @@ create temp table c (like blocks_challenges excluding constraints) on commit dro
 		}
 	}
 
-	stmt2, err := tx.Prepare(`copy b (cid, parentWeight, parentStateRoot, height, miner, "timestamp", vrfproof, tickets, eprof, prand, ep0partial, ep0sector, ep0challangei) from stdin`)
+	stmt2, err := tx.Prepare(`copy b (cid, parentWeight, parentStateRoot, height, miner, "timestamp", ticket, eprof, forksig) from stdin`)
 	if err != nil {
 		return err
 	}
 
 	for _, bh := range bhs {
-		l := len(bh.EPostProof.Candidates)
-		if len(bh.EPostProof.Candidates) == 0 {
-			bh.EPostProof.Candidates = append(bh.EPostProof.Candidates, types.EPostTicket{})
+		var eprof interface{}
+		if bh.ElectionProof != nil {
+			eprof = bh.ElectionProof.VRFProof
 		}
 
 		if _, err := stmt2.Exec(
@@ -581,12 +661,8 @@ create temp table c (like blocks_challenges excluding constraints) on commit dro
 			bh.Miner.String(),
 			bh.Timestamp,
 			bh.Ticket.VRFProof,
-			l,
-			bh.EPostProof.Proof,
-			bh.EPostProof.PostRand,
-			bh.EPostProof.Candidates[0].Partial,
-			bh.EPostProof.Candidates[0].SectorID,
-			bh.EPostProof.Candidates[0].ChallengeIndex); err != nil {
+			eprof,
+			bh.ForkSignaling); err != nil {
 			log.Error(err)
 		}
 	}
@@ -599,37 +675,7 @@ create temp table c (like blocks_challenges excluding constraints) on commit dro
 		return xerrors.Errorf("blk put: %w", err)
 	}
 
-	stmt3, err := tx.Prepare(`copy c (block, index, sector_id, partial, candidate) from stdin`)
-	if err != nil {
-		return xerrors.Errorf("s3 create: %w", err)
-	}
-	for _, bh := range bhs {
-		for index, c := range bh.EPostProof.Candidates {
-			if _, err := stmt3.Exec(
-				bh.Cid().String(),
-				index,
-				c.SectorID,
-				c.Partial,
-				c.ChallengeIndex); err != nil {
-				log.Error(err)
-			}
-		}
-	}
-
-	if err := stmt3.Close(); err != nil {
-		return xerrors.Errorf("s2 close: %w", err)
-	}
-
-	if _, err := tx.Exec(`insert into blocks_challenges select * from c on conflict do nothing `); err != nil {
-		return xerrors.Errorf("blk put: %w", err)
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		return xerrors.Errorf("commit: %w", err)
-	}
-
-	return nil
+	return tx.Commit()
 }
 
 func (st *storage) storeMessages(msgs map[cid.Cid]*types.Message) error {
@@ -660,7 +706,7 @@ create temp table msgs (like messages excluding constraints) on commit drop;
 			m.Nonce,
 			m.Value.String(),
 			m.GasPrice.String(),
-			m.GasLimit.String(),
+			m.GasLimit,
 			m.Method,
 			m.Params,
 		); err != nil {
@@ -704,7 +750,7 @@ create temp table recs (like receipts excluding constraints) on commit drop;
 			c.state.String(),
 			c.idx,
 			m.ExitCode,
-			m.GasUsed.String(),
+			m.GasUsed,
 			m.Return,
 		); err != nil {
 			return err
@@ -845,8 +891,8 @@ func (st *storage) storeMpoolInclusions(msgs []api.MpoolUpdate) error {
 	return tx.Commit()
 }
 
-func (st *storage) storeDeals(deals map[string]actors.OnChainDeal) error {
-	tx, err := st.db.Begin()
+func (st *storage) storeDeals(deals map[string]api.MarketDeal) error {
+	/*tx, err := st.db.Begin()
 	if err != nil {
 		return err
 	}
@@ -857,7 +903,7 @@ func (st *storage) storeDeals(deals map[string]actors.OnChainDeal) error {
 		return xerrors.Errorf("prep temp: %w", err)
 	}
 
-	stmt, err := tx.Prepare(`copy d (id, pieceref, piecesize, client, "provider", expiration, duration, epochprice, collateral) from stdin `)
+	stmt, err := tx.Prepare(`copy d (id, pieceref, piecesize, client, "provider", "start", "end", epochprice, collateral) from stdin `)
 	if err != nil {
 		return err
 	}
@@ -865,20 +911,20 @@ func (st *storage) storeDeals(deals map[string]actors.OnChainDeal) error {
 	var bloat uint64
 
 	for id, deal := range deals {
-		if len(deal.PieceRef) > 40 {
-			bloat += uint64(len(deal.PieceRef))
+		if len(deal.Proposal.PieceCID.String()) > 100 {
+			bloat += uint64(len(deal.Proposal.PieceCID.String()))
 			continue
 		}
 		if _, err := stmt.Exec(
 			id,
-			hex.EncodeToString(deal.PieceRef),
-			deal.PieceSize,
-			deal.Client.String(),
-			deal.Provider.String(),
-			fmt.Sprint(deal.ProposalExpiration),
-			fmt.Sprint(deal.Duration),
-			deal.StoragePricePerEpoch.String(),
-			deal.StorageCollateral.String(),
+			deal.Proposal.PieceCID.String(),
+			deal.Proposal.PieceSize,
+			deal.Proposal.Client.String(),
+			deal.Proposal.Provider.String(),
+			fmt.Sprint(deal.Proposal.StartEpoch),
+			fmt.Sprint(deal.Proposal.EndEpoch),
+			deal.Proposal.StoragePricePerEpoch.String(),
+			deal.Proposal.ProviderCollateral.String(),
 		); err != nil {
 			return err
 		}
@@ -918,12 +964,12 @@ func (st *storage) storeDeals(deals map[string]actors.OnChainDeal) error {
 	}
 
 	for id, deal := range deals {
-		if deal.ActivationEpoch == 0 {
+		if deal.State.SectorStartEpoch <= 0 {
 			continue
 		}
 		if _, err := stmt.Exec(
 			id,
-			deal.ActivationEpoch,
+			deal.State.SectorStartEpoch,
 		); err != nil {
 			return err
 		}
@@ -939,7 +985,7 @@ func (st *storage) storeDeals(deals map[string]actors.OnChainDeal) error {
 	if err := tx.Commit(); err != nil {
 		return err
 	}
-
+	*/
 	return nil
 }
 

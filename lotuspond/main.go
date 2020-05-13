@@ -116,7 +116,6 @@ func logHandler(api *api) func(http.ResponseWriter, *http.Request) {
 		id, err := strconv.ParseInt(path.Base(req.URL.Path), 10, 32)
 		if err != nil {
 			panic(err)
-			return
 		}
 
 		api.runningLk.Lock()

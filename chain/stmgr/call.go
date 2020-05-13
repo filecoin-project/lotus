@@ -4,28 +4,28 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 )
 
-func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate cid.Cid, r vm.Rand, bheight uint64) (*api.InvocResult, error) {
+func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate cid.Cid, r vm.Rand, bheight abi.ChainEpoch) (*api.InvocResult, error) {
 	ctx, span := trace.StartSpan(ctx, "statemanager.CallRaw")
 	defer span.End()
 
-	vmi, err := vm.NewVM(bstate, bheight, r, actors.NetworkAddress, sm.cs.Blockstore(), sm.cs.VMSys())
+	vmi, err := vm.NewVM(bstate, bheight, r, sm.cs.Blockstore(), sm.cs.VMSys())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to set up vm: %w", err)
 	}
 
-	if msg.GasLimit == types.EmptyInt {
-		msg.GasLimit = types.NewInt(10000000000)
+	if msg.GasLimit == 0 {
+		msg.GasLimit = 10000000000
 	}
 	if msg.GasPrice == types.EmptyInt {
 		msg.GasPrice = types.NewInt(0)
@@ -36,7 +36,7 @@ func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate 
 
 	if span.IsRecordingEvents() {
 		span.AddAttributes(
-			trace.Int64Attribute("gas_limit", int64(msg.GasLimit.Uint64())),
+			trace.Int64Attribute("gas_limit", msg.GasLimit),
 			trace.Int64Attribute("gas_price", int64(msg.GasPrice.Uint64())),
 			trace.StringAttribute("value", msg.Value.String()),
 		)
@@ -50,7 +50,7 @@ func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate 
 	msg.Nonce = fromActor.Nonce
 
 	// TODO: maybe just use the invoker directly?
-	ret, err := vmi.ApplyMessage(ctx, msg)
+	ret, err := vmi.ApplyImplicitMessage(ctx, msg)
 	if err != nil {
 		return nil, xerrors.Errorf("apply message failed: %w", err)
 	}
@@ -62,10 +62,11 @@ func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate 
 	}
 
 	return &api.InvocResult{
-		Msg: 			msg,
-		MsgRct: 	&ret.MessageReceipt,
+		Msg:                msg,
+		MsgRct:             &ret.MessageReceipt,
 		InternalExecutions: ret.InternalExecutions,
-		Error:          	errs,
+		Error:              errs,
+		Duration:           ret.Duration,
 	}, nil
 
 }
@@ -98,6 +99,10 @@ func (sm *StateManager) Replay(ctx context.Context, ts *types.TipSet, mcid cid.C
 	})
 	if err != nil && err != errHaltExecution {
 		return nil, nil, xerrors.Errorf("unexpected error during execution: %w", err)
+	}
+
+	if outr == nil {
+		return nil, nil, xerrors.Errorf("given message not found in tipset")
 	}
 
 	return outm, outr, nil

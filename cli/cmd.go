@@ -134,7 +134,6 @@ func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
 }
 
 func GetRawAPI(ctx *cli.Context, t repo.RepoType) (string, http.Header, error) {
-
 	ainfo, err := GetAPIInfo(ctx, t)
 	if err != nil {
 		return "", nil, xerrors.Errorf("could not get API info: %w", err)
@@ -205,9 +204,18 @@ func ReqContext(cctx *cli.Context) context.Context {
 		<-sigChan
 		done()
 	}()
-	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
+	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP)
 
 	return ctx
+}
+
+var CommonCommands = []*cli.Command{
+	authCmd,
+	fetchParamCmd,
+	netCmd,
+	versionCmd,
+	logCmd,
+	waitApiCmd,
 }
 
 var Commands = []*cli.Command{
@@ -225,4 +233,5 @@ var Commands = []*cli.Command{
 	versionCmd,
 	walletCmd,
 	logCmd,
+	waitApiCmd,
 }

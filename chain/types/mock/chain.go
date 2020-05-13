@@ -5,9 +5,12 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/ipfs/go-cid"
+
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
-	"github.com/ipfs/go-cid"
 )
 
 func Address(i uint64) address.Address {
@@ -24,7 +27,7 @@ func MkMessage(from, to address.Address, nonce uint64, w *wallet.Wallet) *types.
 		From:     from,
 		Value:    types.NewInt(1),
 		Nonce:    nonce,
-		GasLimit: types.NewInt(1),
+		GasLimit: 1,
 		GasPrice: types.NewInt(0),
 	}
 
@@ -47,7 +50,7 @@ func MkBlock(parents *types.TipSet, weightInc uint64, ticketNonce uint64) *types
 	}
 
 	var pcids []cid.Cid
-	var height uint64
+	var height abi.ChainEpoch
 	weight := types.NewInt(weightInc)
 	if parents != nil {
 		pcids = parents.Cids()
@@ -57,20 +60,20 @@ func MkBlock(parents *types.TipSet, weightInc uint64, ticketNonce uint64) *types
 
 	return &types.BlockHeader{
 		Miner: addr,
-		EPostProof: types.EPostProof{
-			Proof: []byte("election post proof proof"),
+		ElectionProof: &types.ElectionProof{
+			VRFProof: []byte(fmt.Sprintf("====%d=====", ticketNonce)),
 		},
 		Ticket: &types.Ticket{
 			VRFProof: []byte(fmt.Sprintf("====%d=====", ticketNonce)),
 		},
 		Parents:               pcids,
 		ParentMessageReceipts: c,
-		BLSAggregate:          types.Signature{Type: types.KTBLS, Data: []byte("boo! im a signature")},
+		BLSAggregate:          &crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte("boo! im a signature")},
 		ParentWeight:          weight,
 		Messages:              c,
 		Height:                height,
 		ParentStateRoot:       c,
-		BlockSig:              &types.Signature{Type: types.KTBLS, Data: []byte("boo! im a signature")},
+		BlockSig:              &crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte("boo! im a signature")},
 	}
 }
 

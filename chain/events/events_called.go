@@ -5,27 +5,27 @@ import (
 	"math"
 	"sync"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-const NoTimeout = math.MaxUint64
+const NoTimeout = math.MaxInt64
 
 type triggerId = uint64
 
 // msgH is the block height at which a message was present / event has happened
-type msgH = uint64
+type msgH = abi.ChainEpoch
 
 // triggerH is the block height at which the listener will be notified about the
 //  message (msgH+confidence)
-type triggerH = uint64
+type triggerH = abi.ChainEpoch
 
 // `ts` is the tipset, in which the `msg` is included.
 // `curH`-`ts.Height` = `confidence`
-type CalledHandler func(msg *types.Message, rec *types.MessageReceipt, ts *types.TipSet, curH uint64) (more bool, err error)
+type CalledHandler func(msg *types.Message, rec *types.MessageReceipt, ts *types.TipSet, curH abi.ChainEpoch) (more bool, err error)
 
 // CheckFunc is used for atomicity guarantees. If the condition the callbacks
 // wait for has already happened in tipset `ts`
@@ -39,7 +39,7 @@ type MatchFunc func(msg *types.Message) (bool, error)
 
 type callHandler struct {
 	confidence int
-	timeout    uint64
+	timeout    abi.ChainEpoch
 
 	disabled bool // TODO: GC after gcConfidence reached
 
@@ -50,7 +50,7 @@ type callHandler struct {
 type queuedEvent struct {
 	trigger triggerId
 
-	h   uint64
+	h   abi.ChainEpoch
 	msg *types.Message
 
 	called bool
@@ -61,6 +61,8 @@ type calledEvents struct {
 	tsc          *tipSetCache
 	ctx          context.Context
 	gcConfidence uint64
+
+	at abi.ChainEpoch
 
 	lk sync.Mutex
 
@@ -77,20 +79,22 @@ type calledEvents struct {
 	revertQueue map[msgH][]triggerH
 
 	// [timeoutH+confidence][triggerId]{calls}
-	timeouts map[uint64]map[triggerId]int
+	timeouts map[abi.ChainEpoch]map[triggerId]int
 }
 
 func (e *calledEvents) headChangeCalled(rev, app []*types.TipSet) error {
 	for _, ts := range rev {
 		e.handleReverts(ts)
+		e.at = ts.Height()
 	}
 
 	for _, ts := range app {
 		// called triggers
-
 		e.checkNewCalls(ts)
-		e.applyWithConfidence(ts)
-		e.applyTimeouts(ts)
+		for ; e.at <= ts.Height(); e.at++ {
+			e.applyWithConfidence(ts, e.at)
+			e.applyTimeouts(ts)
+		}
 	}
 
 	return nil
@@ -129,7 +133,7 @@ func (e *calledEvents) checkNewCalls(ts *types.TipSet) {
 			for _, matchFn := range matchFns {
 				ok, err := matchFn(msg)
 				if err != nil {
-					log.Warnf("event matcher failed: %s")
+					log.Errorf("event matcher failed: %s", err)
 					continue
 				}
 				matched = ok
@@ -153,11 +157,11 @@ func (e *calledEvents) queueForConfidence(triggerId uint64, msg *types.Message, 
 	// messages are not applied in the tipset they are included in
 	appliedH := ts.Height() + 1
 
-	triggerH := appliedH + uint64(trigger.confidence)
+	triggerH := appliedH + abi.ChainEpoch(trigger.confidence)
 
 	byOrigH, ok := e.confQueue[triggerH]
 	if !ok {
-		byOrigH = map[uint64][]*queuedEvent{}
+		byOrigH = map[abi.ChainEpoch][]*queuedEvent{}
 		e.confQueue[triggerH] = byOrigH
 	}
 
@@ -170,8 +174,8 @@ func (e *calledEvents) queueForConfidence(triggerId uint64, msg *types.Message, 
 	e.revertQueue[appliedH] = append(e.revertQueue[appliedH], triggerH)
 }
 
-func (e *calledEvents) applyWithConfidence(ts *types.TipSet) {
-	byOrigH, ok := e.confQueue[ts.Height()]
+func (e *calledEvents) applyWithConfidence(ts *types.TipSet, height abi.ChainEpoch) {
+	byOrigH, ok := e.confQueue[height]
 	if !ok {
 		return // no triggers at thin height
 	}
@@ -179,7 +183,7 @@ func (e *calledEvents) applyWithConfidence(ts *types.TipSet) {
 	for origH, events := range byOrigH {
 		triggerTs, err := e.tsc.get(origH)
 		if err != nil {
-			log.Errorf("events: applyWithConfidence didn't find tipset for event; wanted %d; current %d", origH, ts.Height())
+			log.Errorf("events: applyWithConfidence didn't find tipset for event; wanted %d; current %d", origH, height)
 		}
 
 		for _, event := range events {
@@ -198,9 +202,9 @@ func (e *calledEvents) applyWithConfidence(ts *types.TipSet) {
 				return
 			}
 
-			more, err := trigger.handle(event.msg, rec, triggerTs, ts.Height())
+			more, err := trigger.handle(event.msg, rec, triggerTs, height)
 			if err != nil {
-				log.Errorf("chain trigger (call %s.%d() @H %d, called @ %d) failed: %s", event.msg.To, event.msg.Method, origH, ts.Height(), err)
+				log.Errorf("chain trigger (call %s.%d() @H %d, called @ %d) failed: %s", event.msg.To, event.msg.Method, origH, height, err)
 				continue // don't revert failed calls
 			}
 
@@ -231,9 +235,9 @@ func (e *calledEvents) applyTimeouts(ts *types.TipSet) {
 			continue
 		}
 
-		timeoutTs, err := e.tsc.get(ts.Height() - uint64(trigger.confidence))
+		timeoutTs, err := e.tsc.get(ts.Height() - abi.ChainEpoch(trigger.confidence))
 		if err != nil {
-			log.Errorf("events: applyTimeouts didn't find tipset for event; wanted %d; current %d", ts.Height()-uint64(trigger.confidence), ts.Height())
+			log.Errorf("events: applyTimeouts didn't find tipset for event; wanted %d; current %d", ts.Height()-abi.ChainEpoch(trigger.confidence), ts.Height())
 		}
 
 		more, err := trigger.handle(nil, nil, timeoutTs, ts.Height())
@@ -304,7 +308,7 @@ func (e *calledEvents) messagesForTs(ts *types.TipSet, consume func(*types.Messa
 //    containing the message. The tipset passed as the argument is the tipset
 //    that is being dropped. Note that the message dropped may be re-applied
 //    in a different tipset in small amount of time.
-func (e *calledEvents) Called(check CheckFunc, hnd CalledHandler, rev RevertHandler, confidence int, timeout uint64, mf MatchFunc) error {
+func (e *calledEvents) Called(check CheckFunc, hnd CalledHandler, rev RevertHandler, confidence int, timeout abi.ChainEpoch, mf MatchFunc) error {
 	e.lk.Lock()
 	defer e.lk.Unlock()
 
@@ -322,7 +326,7 @@ func (e *calledEvents) Called(check CheckFunc, hnd CalledHandler, rev RevertHand
 
 	e.triggers[id] = &callHandler{
 		confidence: confidence,
-		timeout:    timeout + uint64(confidence),
+		timeout:    timeout + abi.ChainEpoch(confidence),
 
 		disabled: !more,
 
@@ -333,15 +337,15 @@ func (e *calledEvents) Called(check CheckFunc, hnd CalledHandler, rev RevertHand
 	e.matchers[id] = append(e.matchers[id], mf)
 
 	if timeout != NoTimeout {
-		if e.timeouts[timeout+uint64(confidence)] == nil {
-			e.timeouts[timeout+uint64(confidence)] = map[uint64]int{}
+		if e.timeouts[timeout+abi.ChainEpoch(confidence)] == nil {
+			e.timeouts[timeout+abi.ChainEpoch(confidence)] = map[uint64]int{}
 		}
-		e.timeouts[timeout+uint64(confidence)][id] = 0
+		e.timeouts[timeout+abi.ChainEpoch(confidence)][id] = 0
 	}
 
 	return nil
 }
 
-func (e *calledEvents) CalledMsg(ctx context.Context, hnd CalledHandler, rev RevertHandler, confidence int, timeout uint64, msg store.ChainMsg) error {
+func (e *calledEvents) CalledMsg(ctx context.Context, hnd CalledHandler, rev RevertHandler, confidence int, timeout abi.ChainEpoch, msg types.ChainMsg) error {
 	return e.Called(e.CheckMsg(ctx, msg, hnd), hnd, rev, confidence, timeout, e.MatchMsg(msg.VMMessage()))
 }

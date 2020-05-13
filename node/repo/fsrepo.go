@@ -3,6 +3,7 @@ package repo
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/sector-storage/stores"
 	"io"
 	"io/ioutil"
 	"os"
@@ -25,12 +26,13 @@ import (
 )
 
 const (
-	fsAPI       = "api"
-	fsAPIToken  = "token"
-	fsConfig    = "config.toml"
-	fsDatastore = "datastore"
-	fsLock      = "repo.lock"
-	fsKeystore  = "keystore"
+	fsAPI           = "api"
+	fsAPIToken      = "token"
+	fsConfig        = "config.toml"
+	fsStorageConfig = "storage.json"
+	fsDatastore     = "datastore"
+	fsLock          = "repo.lock"
+	fsKeystore      = "keystore"
 )
 
 type RepoType int
@@ -39,6 +41,7 @@ const (
 	_                 = iota // Default is invalid
 	FullNode RepoType = iota
 	StorageMiner
+	Worker
 )
 
 func defConfForType(t RepoType) interface{} {
@@ -47,6 +50,8 @@ func defConfForType(t RepoType) interface{} {
 		return config.DefaultFullNode()
 	case StorageMiner:
 		return config.DefaultStorageMiner()
+	case Worker:
+		return &struct{}{}
 	default:
 		panic(fmt.Sprintf("unknown RepoType(%d)", int(t)))
 	}
@@ -218,6 +223,8 @@ type fsLockedRepo struct {
 	ds     datastore.Batching
 	dsErr  error
 	dsOnce sync.Once
+
+	storageLk sync.Mutex
 }
 
 func (fsr *fsLockedRepo) Path() string {
@@ -274,6 +281,35 @@ func (fsr *fsLockedRepo) Config() (interface{}, error) {
 		return nil, err
 	}
 	return config.FromFile(fsr.join(fsConfig), defConfForType(fsr.repoType))
+}
+
+func (fsr *fsLockedRepo) GetStorage() (stores.StorageConfig, error) {
+	fsr.storageLk.Lock()
+	defer fsr.storageLk.Unlock()
+
+	return fsr.getStorage(nil)
+}
+
+func (fsr *fsLockedRepo) getStorage(def *stores.StorageConfig) (stores.StorageConfig, error) {
+	c, err := config.StorageFromFile(fsr.join(fsStorageConfig), def)
+	if err != nil {
+		return stores.StorageConfig{}, err
+	}
+	return *c, nil
+}
+
+func (fsr *fsLockedRepo) SetStorage(c func(*stores.StorageConfig)) error {
+	fsr.storageLk.Lock()
+	defer fsr.storageLk.Unlock()
+
+	sc, err := fsr.getStorage(&stores.StorageConfig{})
+	if err != nil {
+		return xerrors.Errorf("get storage: %w", err)
+	}
+
+	c(&sc)
+
+	return config.WriteStorageFile(fsr.join(fsStorageConfig), sc)
 }
 
 func (fsr *fsLockedRepo) SetAPIEndpoint(ma multiaddr.Multiaddr) error {

@@ -3,12 +3,14 @@ package types
 import (
 	"bytes"
 	"testing"
+
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 )
 
 func TestSignatureSerializeRoundTrip(t *testing.T) {
-	s := &Signature{
+	s := &crypto.Signature{
 		Data: []byte("foo bar cat dog"),
-		Type: KTBLS,
+		Type: crypto.SigTypeBLS,
 	}
 
 	buf := new(bytes.Buffer)
@@ -16,7 +18,7 @@ func TestSignatureSerializeRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var outs Signature
+	var outs crypto.Signature
 	if err := outs.UnmarshalCBOR(buf); err != nil {
 		t.Fatal(err)
 	}

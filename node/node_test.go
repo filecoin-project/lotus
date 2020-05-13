@@ -6,45 +6,55 @@ import (
 	"crypto/rand"
 	"io/ioutil"
 	"net/http/httptest"
-	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-address"
-	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/lib/lotuslog"
+	"github.com/filecoin-project/lotus/storage/mockstorage"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
+
+	"github.com/filecoin-project/go-storedcounter"
 	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/namespace"
-	badger "github.com/ipfs/go-ds-badger2"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	saminer "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
 	"github.com/filecoin-project/lotus/api/test"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/gen"
+	genesis2 "github.com/filecoin-project/lotus/chain/gen/genesis"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
-	"github.com/filecoin-project/lotus/genesis"
+	genesis "github.com/filecoin-project/lotus/genesis"
 	"github.com/filecoin-project/lotus/lib/jsonrpc"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node"
-	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/filecoin-project/lotus/node/modules"
 	modtest "github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/filecoin-project/lotus/storage/sbmock"
+	sectorstorage "github.com/filecoin-project/sector-storage"
+	"github.com/filecoin-project/sector-storage/mock"
 )
 
 func init() {
 	_ = logging.SetLogLevel("*", "INFO")
 
-	build.SectorSizes = []uint64{1024}
-	build.MinimumMinerPower = 1024
+	power.ConsensusMinerMinPower = big.NewInt(2048)
+	saminer.SupportedProofTypes = map[abi.RegisteredProof]struct{}{
+		abi.RegisteredProof_StackedDRG2KiBSeal: {},
+	}
 }
 
 func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, act address.Address, pk crypto.PrivKey, tnd test.TestNode, mn mocknet.Mocknet, opts node.Option) test.TestStorageNode {
@@ -70,23 +80,29 @@ func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, a
 	err = ds.Put(datastore.NewKey("miner-address"), act.Bytes())
 	require.NoError(t, err)
 
+	nic := storedcounter.New(ds, datastore.NewKey("/storage/nextid"))
+	for i := 0; i < nGenesisPreseals; i++ {
+		nic.Next()
+	}
+	nic.Next()
+
 	err = lr.Close()
 	require.NoError(t, err)
 
 	peerid, err := peer.IDFromPrivateKey(pk)
 	require.NoError(t, err)
 
-	enc, err := actors.SerializeParams(&actors.UpdatePeerIDParams{PeerID: peerid})
+	enc, err := actors.SerializeParams(&saminer.ChangePeerIDParams{NewID: peerid})
 	require.NoError(t, err)
 
 	msg := &types.Message{
 		To:       act,
 		From:     waddr,
-		Method:   actors.MAMethods.UpdatePeerID,
+		Method:   builtin.MethodsMiner.ChangePeerID,
 		Params:   enc,
 		Value:    types.NewInt(0),
 		GasPrice: types.NewInt(0),
-		GasLimit: types.NewInt(1000000),
+		GasLimit: 1000000,
 	}
 
 	_, err = tnd.MpoolPushMessage(ctx, msg)
@@ -95,7 +111,7 @@ func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, a
 	// start node
 	var minerapi api.StorageMiner
 
-	mineBlock := make(chan struct{})
+	mineBlock := make(chan func(bool))
 	// TODO: use stop
 	_, err = node.New(ctx,
 		node.StorageMiner(&minerapi),
@@ -120,9 +136,9 @@ func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, a
 
 	err = minerapi.NetConnect(ctx, remoteAddrs)
 	require.NoError(t, err)*/
-	mineOne := func(ctx context.Context) error {
+	mineOne := func(ctx context.Context, cb func(bool)) error {
 		select {
-		case mineBlock <- struct{}{}:
+		case mineBlock <- cb:
 			return nil
 		case <-ctx.Done():
 			return ctx.Err()
@@ -132,7 +148,7 @@ func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, a
 	return test.TestStorageNode{StorageMiner: minerapi, MineOne: mineOne}
 }
 
-func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.TestStorageNode) {
+func builder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test.TestNode, []test.TestStorageNode) {
 	ctx := context.Background()
 	mn := mocknet.New(ctx)
 
@@ -152,14 +168,15 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 	}
 	// PRESEAL SECTION, TRY TO REPLACE WITH BETTER IN THE FUTURE
 	// TODO: would be great if there was a better way to fake the preseals
-	gmc := &gen.GenMinerCfg{
-		PeerIDs:  []peer.ID{minerPid}, // TODO: if we have more miners, need more peer IDs
-		PreSeals: map[string]genesis.GenesisMiner{},
-	}
+
+	var genms []genesis.Miner
+	var maddrs []address.Address
+	var genaccs []genesis.Actor
+	var keys []*wallet.Key
 
 	var presealDirs []string
 	for i := 0; i < len(storage); i++ {
-		maddr, err := address.NewIDAddress(300 + uint64(i))
+		maddr, err := address.NewIDAddress(genesis2.MinerStart + uint64(i))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -167,14 +184,33 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 		if err != nil {
 			t.Fatal(err)
 		}
-		genm, err := seed.PreSeal(maddr, 1024, 0, 1, tdir, []byte("make genesis mem random"))
+		genm, k, err := seed.PreSeal(maddr, abi.RegisteredProof_StackedDRG2KiBPoSt, 0, nGenesisPreseals, tdir, []byte("make genesis mem random"), nil)
 		if err != nil {
 			t.Fatal(err)
 		}
+		genm.PeerId = minerPid
 
+		wk, err := wallet.NewKey(*k)
+		if err != nil {
+			return nil, nil
+		}
+
+		genaccs = append(genaccs, genesis.Actor{
+			Type:    genesis.TAccount,
+			Balance: big.Mul(big.NewInt(50000), types.NewInt(build.FilecoinPrecision)),
+			Meta:    (&genesis.AccountMeta{Owner: wk.Address}).ActorMeta(),
+		})
+
+		keys = append(keys, wk)
 		presealDirs = append(presealDirs, tdir)
-		gmc.MinerAddrs = append(gmc.MinerAddrs, maddr)
-		gmc.PreSeals[maddr.String()] = *genm
+		maddrs = append(maddrs, maddr)
+		genms = append(genms, *genm)
+	}
+
+	templ := &genesis.Template{
+		Accounts:  genaccs,
+		Miners:    genms,
+		Timestamp: uint64(time.Now().Unix() - 10000), // some time sufficiently far in the past
 	}
 
 	// END PRESEAL SECTION
@@ -182,7 +218,7 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 	for i := 0; i < nFull; i++ {
 		var genesis node.Option
 		if i == 0 {
-			genesis = node.Override(new(modules.Genesis), modtest.MakeGenesisMem(&genbuf, gmc))
+			genesis = node.Override(new(modules.Genesis), modtest.MakeGenesisMem(&genbuf, *templ))
 		} else {
 			genesis = node.Override(new(modules.Genesis), modules.LoadGenesis(genbuf.Bytes()))
 		}
@@ -204,44 +240,35 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 
 	}
 
-	for i, full := range storage {
+	for i, def := range storage {
 		// TODO: support non-bootstrap miners
 		if i != 0 {
 			t.Fatal("only one storage node supported")
 		}
-		if full != 0 {
+		if def.Full != 0 {
 			t.Fatal("storage nodes only supported on the first full node")
 		}
 
-		f := fulls[full]
+		f := fulls[def.Full]
+		if _, err := f.FullNode.WalletImport(ctx, &keys[i].KeyInfo); err != nil {
+			t.Fatal(err)
+		}
+		if err := f.FullNode.WalletSetDefault(ctx, keys[i].Address); err != nil {
+			t.Fatal(err)
+		}
 
-		genMiner := gmc.MinerAddrs[i]
-		wa := gmc.PreSeals[genMiner.String()].Worker
+		genMiner := maddrs[i]
+		wa := genms[i].Worker
 
 		storers[i] = testStorageNode(ctx, t, wa, genMiner, pk, f, mn, node.Options())
-
-		sma := storers[i].StorageMiner.(*impl.StorageMinerAPI)
-
-		psd := presealDirs[i]
-		mds, err := badger.NewDatastore(filepath.Join(psd, "badger"), nil)
-		if err != nil {
-			t.Fatal(err)
+		if err := storers[i].StorageAddLocal(ctx, presealDirs[i]); err != nil {
+			t.Fatalf("%+v", err)
 		}
+		/*
+			sma := storers[i].StorageMiner.(*impl.StorageMinerAPI)
 
-		osb, err := sectorbuilder.New(&sectorbuilder.Config{
-			SectorSize:    1024,
-			WorkerThreads: 2,
-			Miner:         genMiner,
-			Paths:         sectorbuilder.SimplePath(psd),
-		}, namespace.Wrap(mds, datastore.NewKey("/sectorbuilder")))
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if err := sma.SectorBuilder.(*sectorbuilder.SectorBuilder).ImportFrom(osb, false); err != nil {
-			t.Fatal(err)
-		}
-
+			psd := presealDirs[i]
+		*/
 	}
 
 	if err := mn.LinkAll(); err != nil {
@@ -251,34 +278,28 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 	return fulls, storers
 }
 
-func mockSbBuilder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.TestStorageNode) {
+const nGenesisPreseals = 2
+
+func mockSbBuilder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test.TestNode, []test.TestStorageNode) {
 	ctx := context.Background()
 	mn := mocknet.New(ctx)
 
 	fulls := make([]test.TestNode, nFull)
 	storers := make([]test.TestStorageNode, len(storage))
 
-	pk, _, err := crypto.GenerateEd25519Key(rand.Reader)
-	require.NoError(t, err)
-
-	minerPid, err := peer.IDFromPrivateKey(pk)
-	require.NoError(t, err)
-
 	var genbuf bytes.Buffer
 
-	if len(storage) > 1 {
-		panic("need more peer IDs")
-	}
 	// PRESEAL SECTION, TRY TO REPLACE WITH BETTER IN THE FUTURE
 	// TODO: would be great if there was a better way to fake the preseals
-	gmc := &gen.GenMinerCfg{
-		PeerIDs:  []peer.ID{minerPid}, // TODO: if we have more miners, need more peer IDs
-		PreSeals: map[string]genesis.GenesisMiner{},
-	}
 
+	var genms []genesis.Miner
+	var genaccs []genesis.Actor
+	var maddrs []address.Address
 	var presealDirs []string
+	var keys []*wallet.Key
+	var pidKeys []crypto.PrivKey
 	for i := 0; i < len(storage); i++ {
-		maddr, err := address.NewIDAddress(300 + uint64(i))
+		maddr, err := address.NewIDAddress(genesis2.MinerStart + uint64(i))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -286,14 +307,46 @@ func mockSbBuilder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []t
 		if err != nil {
 			t.Fatal(err)
 		}
-		genm, err := sbmock.PreSeal(1024, maddr, 1)
+
+		preseals := storage[i].Preseal
+		if preseals == test.PresealGenesis {
+			preseals = nGenesisPreseals
+		}
+
+		genm, k, err := mockstorage.PreSeal(2048, maddr, preseals)
 		if err != nil {
 			t.Fatal(err)
 		}
 
+		pk, _, err := crypto.GenerateEd25519Key(rand.Reader)
+		require.NoError(t, err)
+
+		minerPid, err := peer.IDFromPrivateKey(pk)
+		require.NoError(t, err)
+
+		genm.PeerId = minerPid
+
+		wk, err := wallet.NewKey(*k)
+		if err != nil {
+			return nil, nil
+		}
+
+		genaccs = append(genaccs, genesis.Actor{
+			Type:    genesis.TAccount,
+			Balance: big.Mul(big.NewInt(50000), types.NewInt(build.FilecoinPrecision)),
+			Meta:    (&genesis.AccountMeta{Owner: wk.Address}).ActorMeta(),
+		})
+
+		keys = append(keys, wk)
+		pidKeys = append(pidKeys, pk)
 		presealDirs = append(presealDirs, tdir)
-		gmc.MinerAddrs = append(gmc.MinerAddrs, maddr)
-		gmc.PreSeals[maddr.String()] = *genm
+		maddrs = append(maddrs, maddr)
+		genms = append(genms, *genm)
+	}
+	templ := &genesis.Template{
+		Accounts:  genaccs,
+		Miners:    genms,
+		Timestamp: uint64(time.Now().Unix() - 10000),
 	}
 
 	// END PRESEAL SECTION
@@ -301,7 +354,7 @@ func mockSbBuilder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []t
 	for i := 0; i < nFull; i++ {
 		var genesis node.Option
 		if i == 0 {
-			genesis = node.Override(new(modules.Genesis), modtest.MakeGenesisMem(&genbuf, gmc))
+			genesis = node.Override(new(modules.Genesis), modtest.MakeGenesisMem(&genbuf, *templ))
 		} else {
 			genesis = node.Override(new(modules.Genesis), modules.LoadGenesis(genbuf.Bytes()))
 		}
@@ -315,32 +368,35 @@ func mockSbBuilder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []t
 			node.MockHost(mn),
 			node.Test(),
 
-			node.Override(new(sectorbuilder.Verifier), sbmock.MockVerifier),
+			node.Override(new(ffiwrapper.Verifier), mock.MockVerifier),
 
 			genesis,
 		)
 		if err != nil {
-			t.Fatal(err)
+			t.Fatalf("%+v", err)
 		}
-
 	}
 
-	for i, full := range storage {
+	for i, def := range storage {
 		// TODO: support non-bootstrap miners
-		if i != 0 {
-			t.Fatal("only one storage node supported")
-		}
-		if full != 0 {
+		if def.Full != 0 {
 			t.Fatal("storage nodes only supported on the first full node")
 		}
 
-		f := fulls[full]
+		f := fulls[def.Full]
+		if _, err := f.FullNode.WalletImport(ctx, &keys[i].KeyInfo); err != nil {
+			return nil, nil
+		}
+		if err := f.FullNode.WalletSetDefault(ctx, keys[i].Address); err != nil {
+			return nil, nil
+		}
 
-		genMiner := gmc.MinerAddrs[i]
-		wa := gmc.PreSeals[genMiner.String()].Worker
-
-		storers[i] = testStorageNode(ctx, t, wa, genMiner, pk, f, mn, node.Options(
-			node.Override(new(sectorbuilder.Interface), sbmock.NewMockSectorBuilder(5, build.SectorSizes[0])),
+		storers[i] = testStorageNode(ctx, t, genms[i].Worker, maddrs[i], pidKeys[i], f, mn, node.Options(
+			node.Override(new(sectorstorage.SectorManager), func() (sectorstorage.SectorManager, error) {
+				return mock.NewMockSectorMgr(build.DefaultSectorSize()), nil
+			}),
+			node.Override(new(ffiwrapper.Verifier), mock.MockVerifier),
+			node.Unset(new(*sectorstorage.Manager)),
 		))
 	}
 
@@ -355,7 +411,7 @@ func TestAPI(t *testing.T) {
 	test.TestApis(t, builder)
 }
 
-func rpcBuilder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.TestStorageNode) {
+func rpcBuilder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test.TestNode, []test.TestStorageNode) {
 	fullApis, storaApis := builder(t, nFull, storage)
 	fulls := make([]test.TestNode, nFull)
 	storers := make([]test.TestStorageNode, len(storage))
@@ -399,12 +455,37 @@ func TestAPIDealFlow(t *testing.T) {
 	logging.SetLogLevel("sub", "ERROR")
 	logging.SetLogLevel("storageminer", "ERROR")
 
-	test.TestDealFlow(t, mockSbBuilder, 10*time.Millisecond)
+	t.Run("TestDealFlow", func(t *testing.T) {
+		test.TestDealFlow(t, mockSbBuilder, 10*time.Millisecond, false)
+	})
+	t.Run("WithExportedCAR", func(t *testing.T) {
+		test.TestDealFlow(t, mockSbBuilder, 10*time.Millisecond, true)
+	})
+	t.Run("TestDoubleDealFlow", func(t *testing.T) {
+		test.TestDoubleDealFlow(t, mockSbBuilder, 10*time.Millisecond)
+	})
 }
 
 func TestAPIDealFlowReal(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode")
 	}
-	test.TestDealFlow(t, builder, time.Second)
+	lotuslog.SetupLogLevels()
+	logging.SetLogLevel("miner", "ERROR")
+	logging.SetLogLevel("chainstore", "ERROR")
+	logging.SetLogLevel("chain", "ERROR")
+	logging.SetLogLevel("sub", "ERROR")
+	logging.SetLogLevel("storageminer", "ERROR")
+
+	test.TestDealFlow(t, builder, time.Second, false)
+}
+
+func TestDealMining(t *testing.T) {
+	logging.SetLogLevel("miner", "ERROR")
+	logging.SetLogLevel("chainstore", "ERROR")
+	logging.SetLogLevel("chain", "ERROR")
+	logging.SetLogLevel("sub", "ERROR")
+	logging.SetLogLevel("storageminer", "ERROR")
+
+	test.TestDealMining(t, mockSbBuilder, 50*time.Millisecond, false)
 }

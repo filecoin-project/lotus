@@ -4,12 +4,17 @@ package main
 
 import (
 	"context"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"runtime/pprof"
+	"strings"
+
+	"github.com/filecoin-project/lotus/chain/types"
 
 	paramfetch "github.com/filecoin-project/go-paramfetch"
-	"github.com/filecoin-project/go-sectorbuilder"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/mitchellh/go-homedir"
 	"github.com/multiformats/go-multiaddr"
@@ -24,17 +29,18 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/lib/peermgr"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/filecoin-project/lotus/peermgr"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
 )
 
 const (
-	makeGenFlag          = "lotus-make-random-genesis"
-	preSealedSectorsFlag = "genesis-presealed-sectors"
+	makeGenFlag     = "lotus-make-genesis"
+	preTemplateFlag = "genesis-template"
 )
 
 // DaemonCmd is the `go-lotus daemon` command
@@ -52,17 +58,17 @@ var DaemonCmd = &cli.Command{
 			Hidden: true,
 		},
 		&cli.StringFlag{
-			Name:   preSealedSectorsFlag,
+			Name:   preTemplateFlag,
+			Hidden: true,
+		},
+		&cli.StringFlag{
+			Name:   "import-key",
+			Usage:  "on first run, import a default key from a given file",
 			Hidden: true,
 		},
 		&cli.StringFlag{
 			Name:  "genesis",
 			Usage: "genesis file to use for first node run",
-		},
-		&cli.StringFlag{
-			Name:   "genesis-timestamp",
-			Hidden: true,
-			Usage:  "set the timestamp for the genesis block that will be created",
 		},
 		&cli.BoolFlag{
 			Name:  "bootstrap",
@@ -117,13 +123,14 @@ var DaemonCmd = &cli.Command{
 			return xerrors.Errorf("fetching proof parameters: %w", err)
 		}
 
-		genBytes := build.MaybeGenesis()
-
+		var genBytes []byte
 		if cctx.String("genesis") != "" {
 			genBytes, err = ioutil.ReadFile(cctx.String("genesis"))
 			if err != nil {
 				return xerrors.Errorf("reading genesis: %w", err)
 			}
+		} else {
+			genBytes = build.MaybeGenesis()
 		}
 
 		chainfile := cctx.String("import-chain")
@@ -132,6 +139,7 @@ var DaemonCmd = &cli.Command{
 				return err
 			}
 			if cctx.Bool("halt-after-import") {
+				fmt.Println("Chain import complete, halting as requested...")
 				return nil
 			}
 		}
@@ -141,10 +149,10 @@ var DaemonCmd = &cli.Command{
 			genesis = node.Override(new(modules.Genesis), modules.LoadGenesis(genBytes))
 		}
 		if cctx.String(makeGenFlag) != "" {
-			if cctx.String(preSealedSectorsFlag) == "" {
-				return xerrors.Errorf("must also pass file with miner preseal info to `--%s`", preSealedSectorsFlag)
+			if cctx.String(preTemplateFlag) == "" {
+				return xerrors.Errorf("must also pass file with genesis template to `--%s`", preTemplateFlag)
 			}
-			genesis = node.Override(new(modules.Genesis), testing.MakeGenesis(cctx.String(makeGenFlag), cctx.String(preSealedSectorsFlag), cctx.String("genesis-timestamp")))
+			genesis = node.Override(new(modules.Genesis), testing.MakeGenesis(cctx.String(makeGenFlag), cctx.String(preTemplateFlag)))
 		}
 
 		var api api.FullNode
@@ -175,6 +183,12 @@ var DaemonCmd = &cli.Command{
 			return xerrors.Errorf("initializing node: %w", err)
 		}
 
+		if cctx.String("import-key") != "" {
+			if err := importKey(ctx, api, cctx.String("import-key")); err != nil {
+				log.Errorf("importing key failed: %+v", err)
+			}
+		}
+
 		// Register all metric views
 		if err = view.Register(
 			metrics.DefaultViews...,
@@ -193,6 +207,40 @@ var DaemonCmd = &cli.Command{
 		// TODO: properly parse api endpoint (or make it a URL)
 		return serveRPC(api, stop, endpoint)
 	},
+}
+
+func importKey(ctx context.Context, api api.FullNode, f string) error {
+	f, err := homedir.Expand(f)
+	if err != nil {
+		return err
+	}
+
+	hexdata, err := ioutil.ReadFile(f)
+	if err != nil {
+		return err
+	}
+
+	data, err := hex.DecodeString(strings.TrimSpace(string(hexdata)))
+	if err != nil {
+		return err
+	}
+
+	var ki types.KeyInfo
+	if err := json.Unmarshal(data, &ki); err != nil {
+		return err
+	}
+
+	addr, err := api.WalletImport(ctx, &ki)
+	if err != nil {
+		return err
+	}
+
+	if err := api.WalletSetDefault(ctx, addr); err != nil {
+		return err
+	}
+
+	log.Info("successfully imported key for %s", addr)
+	return nil
 }
 
 func ImportChain(r repo.Repo, fname string) error {
@@ -219,7 +267,7 @@ func ImportChain(r repo.Repo, fname string) error {
 
 	bs := blockstore.NewBlockstore(ds)
 
-	cst := store.NewChainStore(bs, mds, vm.Syscalls(sectorbuilder.ProofVerifier))
+	cst := store.NewChainStore(bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier))
 
 	log.Info("importing chain from file...")
 	ts, err := cst.Import(fi)

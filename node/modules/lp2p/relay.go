@@ -51,6 +51,6 @@ func AutoRelay(mctx helpers.MetricsCtx, lc fx.Lifecycle, router BaseIpfsRouting,
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
 	// TODO: review: LibP2P doesn't set this as host in config.go, why?
-	_ = relay.NewAutoRelay(ctx, h.(*basichost.BasicHost), d, router)
+	_ = relay.NewAutoRelay(ctx, h.(*basichost.BasicHost), d, router, nil)
 	return nil
 }

@@ -27,7 +27,7 @@ func BenchmarkSerializeMessage(b *testing.B) {
 		Nonce:    197,
 		Method:   1231254,
 		Params:   []byte("some bytes, idk. probably at least ten of them"),
-		GasLimit: NewInt(126723),
+		GasLimit: 126723,
 		GasPrice: NewInt(1776234),
 	}
 

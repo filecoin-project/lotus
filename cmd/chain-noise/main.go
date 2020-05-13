@@ -7,6 +7,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/filecoin-project/specs-actors/actors/crypto"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -59,7 +61,7 @@ var runCmd = &cli.Command{
 func sendSmallFundsTxs(ctx context.Context, api api.FullNode, from address.Address, rate int) error {
 	var sendSet []address.Address
 	for i := 0; i < 20; i++ {
-		naddr, err := api.WalletNew(ctx, "bls")
+		naddr, err := api.WalletNew(ctx, crypto.SigTypeSecp256k1)
 		if err != nil {
 			return err
 		}
@@ -75,7 +77,7 @@ func sendSmallFundsTxs(ctx context.Context, api api.FullNode, from address.Addre
 				From:     from,
 				To:       sendSet[rand.Intn(20)],
 				Value:    types.NewInt(1),
-				GasLimit: types.NewInt(100000),
+				GasLimit: 100000,
 				GasPrice: types.NewInt(0),
 			}
 

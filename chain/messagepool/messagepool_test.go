@@ -1,16 +1,17 @@
 package messagepool
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/mock"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 )
@@ -59,7 +60,7 @@ func (tma *testMpoolApi) SubscribeHeadChanges(cb func(rev, app []*types.TipSet) 
 	return nil
 }
 
-func (tma *testMpoolApi) PutMessage(m store.ChainMsg) (cid.Cid, error) {
+func (tma *testMpoolApi) PutMessage(m types.ChainMsg) (cid.Cid, error) {
 	return cid.Undef, nil
 }
 
@@ -74,11 +75,18 @@ func (tma *testMpoolApi) StateGetActor(addr address.Address, ts *types.TipSet) (
 	}, nil
 }
 
+func (tma *testMpoolApi) StateAccountKey(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
+	if addr.Protocol() != address.BLS && addr.Protocol() != address.SECP256K1 {
+		return address.Undef, fmt.Errorf("given address was not a key addr")
+	}
+	return addr, nil
+}
+
 func (tma *testMpoolApi) MessagesForBlock(h *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error) {
 	return nil, tma.bmsgs[h.Cid()], nil
 }
 
-func (tma *testMpoolApi) MessagesForTipset(ts *types.TipSet) ([]store.ChainMsg, error) {
+func (tma *testMpoolApi) MessagesForTipset(ts *types.TipSet) ([]types.ChainMsg, error) {
 	if len(ts.Blocks()) != 1 {
 		panic("cant deal with multiblock tipsets in this test")
 	}
@@ -88,7 +96,7 @@ func (tma *testMpoolApi) MessagesForTipset(ts *types.TipSet) ([]store.ChainMsg, 
 		return nil, err
 	}
 
-	var out []store.ChainMsg
+	var out []types.ChainMsg
 	for _, m := range bm {
 		out = append(out, m)
 	}
@@ -139,14 +147,14 @@ func TestMessagePool(t *testing.T) {
 
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(tma, ds)
+	mp, err := New(tma, ds, "mptest")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	a := mock.MkBlock(nil, 1, 1)
 
-	sender, err := w.GenerateKey(types.KTBLS)
+	sender, err := w.GenerateKey(crypto.SigTypeBLS)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -180,7 +188,7 @@ func TestRevertMessages(t *testing.T) {
 
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(tma, ds)
+	mp, err := New(tma, ds, "mptest")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -188,7 +196,7 @@ func TestRevertMessages(t *testing.T) {
 	a := mock.MkBlock(nil, 1, 1)
 	b := mock.MkBlock(mock.TipSet(a), 1, 1)
 
-	sender, err := w.GenerateKey(types.KTBLS)
+	sender, err := w.GenerateKey(crypto.SigTypeBLS)
 	if err != nil {
 		t.Fatal(err)
 	}

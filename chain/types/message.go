@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
@@ -11,7 +12,18 @@ import (
 	"github.com/filecoin-project/go-address"
 )
 
+const MessageVersion = 0
+
+type ChainMsg interface {
+	Cid() cid.Cid
+	VMMessage() *Message
+	ToStorageBlock() (block.Block, error)
+	ChainLength() int
+}
+
 type Message struct {
+	Version int64
+
 	To   address.Address
 	From address.Address
 
@@ -20,16 +32,36 @@ type Message struct {
 	Value BigInt
 
 	GasPrice BigInt
-	GasLimit BigInt
+	GasLimit int64
 
-	Method uint64
+	Method abi.MethodNum
 	Params []byte
+}
+
+func (t *Message) BlockMiner() address.Address {
+	panic("implement me")
+}
+
+func (t *Message) Caller() address.Address {
+	return t.From
+}
+
+func (t *Message) Receiver() address.Address {
+	return t.To
+}
+
+func (t *Message) ValueReceived() abi.TokenAmount {
+	return t.Value
 }
 
 func DecodeMessage(b []byte) (*Message, error) {
 	var msg Message
 	if err := msg.UnmarshalCBOR(bytes.NewReader(b)); err != nil {
 		return nil, err
+	}
+
+	if msg.Version != MessageVersion {
+		return nil, fmt.Errorf("decoded message had incorrect version (%d)", msg.Version)
 	}
 
 	return &msg, nil
@@ -41,6 +73,14 @@ func (m *Message) Serialize() ([]byte, error) {
 		return nil, err
 	}
 	return buf.Bytes(), nil
+}
+
+func (m *Message) ChainLength() int {
+	ser, err := m.Serialize()
+	if err != nil {
+		panic(err)
+	}
+	return len(ser)
 }
 
 func (m *Message) ToStorageBlock() (block.Block, error) {
@@ -70,7 +110,7 @@ func (m *Message) Cid() cid.Cid {
 func (m *Message) RequiredFunds() BigInt {
 	return BigAdd(
 		m.Value,
-		BigMul(m.GasPrice, m.GasLimit),
+		BigMul(m.GasPrice, NewInt(uint64(m.GasLimit))),
 	)
 }
 

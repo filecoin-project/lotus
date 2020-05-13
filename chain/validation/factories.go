@@ -1,27 +1,47 @@
 package validation
 
 import (
-	vchain "github.com/filecoin-project/chain-validation/pkg/chain"
-	vstate "github.com/filecoin-project/chain-validation/pkg/state"
-	"github.com/filecoin-project/chain-validation/pkg/suites"
+	"context"
+
+	vstate "github.com/filecoin-project/chain-validation/state"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	acrypto "github.com/filecoin-project/specs-actors/actors/crypto"
 )
 
-type factories struct {
+type Factories struct {
 	*Applier
 }
 
-var _ suites.Factories = &factories{}
+var _ vstate.Factories = &Factories{}
 
-func NewFactories() *factories {
-	applier := NewApplier()
-	return &factories{applier}
+func NewFactories() *Factories {
+	return &Factories{}
 }
 
-func (f *factories) NewState() vstate.Wrapper {
-	return NewState()
+func (f *Factories) NewStateAndApplier() (vstate.VMWrapper, vstate.Applier) {
+	st := NewState()
+	return st, NewApplier(st)
 }
 
-func (f *factories) NewMessageFactory(wrapper vstate.Wrapper) vchain.MessageFactory {
-	signer := wrapper.(*StateWrapper).Signer()
-	return NewMessageFactory(signer)
+func (f *Factories) NewKeyManager() vstate.KeyManager {
+	return newKeyManager()
+}
+
+type fakeRandSrc struct {
+}
+
+func (r fakeRandSrc) Randomness(_ context.Context, _ acrypto.DomainSeparationTag, _ abi.ChainEpoch, _ []byte) (abi.Randomness, error) {
+	return abi.Randomness("sausages"), nil
+}
+
+func (f *Factories) NewRandomnessSource() vstate.RandomnessSource {
+	return &fakeRandSrc{}
+}
+
+func (f *Factories) NewValidationConfig() vstate.ValidationConfig {
+	trackGas := true
+	checkExit := true
+	checkRet := true
+	checkState := true
+	return NewConfig(trackGas, checkExit, checkRet, checkState)
 }

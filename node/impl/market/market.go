@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/market"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/ipfs/go-cid"
 )
 
 type MarketAPI struct {
@@ -16,6 +17,6 @@ type MarketAPI struct {
 	FMgr *market.FundMgr
 }
 
-func (a *MarketAPI) MarketEnsureAvailable(ctx context.Context, addr address.Address, amt types.BigInt) error {
-	return a.FMgr.EnsureAvailable(ctx, addr, amt)
+func (a *MarketAPI) MarketEnsureAvailable(ctx context.Context, addr, wallet address.Address, amt types.BigInt) (cid.Cid, error) {
+	return a.FMgr.EnsureAvailable(ctx, addr, wallet, amt)
 }

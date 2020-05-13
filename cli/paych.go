@@ -1,11 +1,15 @@
 package cli
 
 import (
+	"bytes"
+	"encoding/base64"
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
-	types "github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"gopkg.in/urfave/cli.v2"
+
+	types "github.com/filecoin-project/lotus/chain/types"
 )
 
 var paychCmd = &cli.Command{
@@ -19,8 +23,9 @@ var paychCmd = &cli.Command{
 }
 
 var paychGetCmd = &cli.Command{
-	Name:  "get",
-	Usage: "Create a new payment channel or get existing one",
+	Name:      "get",
+	Usage:     "Create a new payment channel or get existing one",
+	ArgsUsage: "[fromAddress toAddress amount]",
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Len() != 3 {
 			return fmt.Errorf("must pass three arguments: <from> <to> <available funds>")
@@ -97,8 +102,9 @@ var paychVoucherCmd = &cli.Command{
 }
 
 var paychVoucherCreateCmd = &cli.Command{
-	Name:  "create",
-	Usage: "Create a signed payment channel voucher",
+	Name:      "create",
+	Usage:     "Create a signed payment channel voucher",
+	ArgsUsage: "[channelAddress amount]",
 	Flags: []cli.Flag{
 		&cli.IntFlag{
 			Name:  "lane",
@@ -136,7 +142,7 @@ var paychVoucherCreateCmd = &cli.Command{
 			return err
 		}
 
-		enc, err := sv.EncodedString()
+		enc, err := EncodedString(sv)
 		if err != nil {
 			return err
 		}
@@ -147,8 +153,9 @@ var paychVoucherCreateCmd = &cli.Command{
 }
 
 var paychVoucherCheckCmd = &cli.Command{
-	Name:  "check",
-	Usage: "Check validity of payment channel voucher",
+	Name:      "check",
+	Usage:     "Check validity of payment channel voucher",
+	ArgsUsage: "[channelAddress voucher]",
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Len() != 2 {
 			return fmt.Errorf("must pass payment channel address and voucher to validate")
@@ -182,8 +189,9 @@ var paychVoucherCheckCmd = &cli.Command{
 }
 
 var paychVoucherAddCmd = &cli.Command{
-	Name:  "add",
-	Usage: "Add payment channel voucher to local datastore",
+	Name:      "add",
+	Usage:     "Add payment channel voucher to local datastore",
+	ArgsUsage: "[channelAddress voucher]",
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Len() != 2 {
 			return fmt.Errorf("must pass payment channel address and voucher")
@@ -217,8 +225,9 @@ var paychVoucherAddCmd = &cli.Command{
 }
 
 var paychVoucherListCmd = &cli.Command{
-	Name:  "list",
-	Usage: "List stored vouchers for a given payment channel",
+	Name:      "list",
+	Usage:     "List stored vouchers for a given payment channel",
+	ArgsUsage: "[channelAddress]",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:  "export",
@@ -250,7 +259,7 @@ var paychVoucherListCmd = &cli.Command{
 
 		for _, v := range vouchers {
 			if cctx.Bool("export") {
-				enc, err := v.EncodedString()
+				enc, err := EncodedString(v)
 				if err != nil {
 					return err
 				}
@@ -266,8 +275,9 @@ var paychVoucherListCmd = &cli.Command{
 }
 
 var paychVoucherBestSpendableCmd = &cli.Command{
-	Name:  "best-spendable",
-	Usage: "Print voucher with highest value that is currently spendable",
+	Name:      "best-spendable",
+	Usage:     "Print voucher with highest value that is currently spendable",
+	ArgsUsage: "[channelAddress]",
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Len() != 1 {
 			return fmt.Errorf("must pass payment channel address")
@@ -291,7 +301,7 @@ var paychVoucherBestSpendableCmd = &cli.Command{
 			return err
 		}
 
-		var best *types.SignedVoucher
+		var best *paych.SignedVoucher
 		for _, v := range vouchers {
 			spendable, err := api.PaychVoucherCheckSpendable(ctx, ch, v, nil, nil)
 			if err != nil {
@@ -308,7 +318,7 @@ var paychVoucherBestSpendableCmd = &cli.Command{
 			return fmt.Errorf("No spendable vouchers for that channel")
 		}
 
-		enc, err := best.EncodedString()
+		enc, err := EncodedString(best)
 		if err != nil {
 			return err
 		}
@@ -320,8 +330,9 @@ var paychVoucherBestSpendableCmd = &cli.Command{
 }
 
 var paychVoucherSubmitCmd = &cli.Command{
-	Name:  "submit",
-	Usage: "Submit voucher to chain to update payment channel state",
+	Name:      "submit",
+	Usage:     "Submit voucher to chain to update payment channel state",
+	ArgsUsage: "[channelAddress voucher]",
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Len() != 2 {
 			return fmt.Errorf("must pass payment channel address and voucher")
@@ -363,4 +374,13 @@ var paychVoucherSubmitCmd = &cli.Command{
 
 		return nil
 	},
+}
+
+func EncodedString(sv *paych.SignedVoucher) (string, error) {
+	buf := new(bytes.Buffer)
+	if err := sv.MarshalCBOR(buf); err != nil {
+		return "", err
+	}
+
+	return base64.RawURLEncoding.EncodeToString(buf.Bytes()), nil
 }

@@ -6,12 +6,20 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/go-address"
-	amt "github.com/filecoin-project/go-amt-ipld"
+	amt "github.com/filecoin-project/go-amt-ipld/v2"
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
+	"github.com/filecoin-project/specs-actors/actors/runtime"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
@@ -19,6 +27,7 @@ import (
 	"github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/trace"
 )
@@ -31,7 +40,7 @@ type StateManager struct {
 	stCache  map[string][]cid.Cid
 	compWait map[string]chan struct{}
 	stlk     sync.Mutex
-	newVM    func(cid.Cid, uint64, vm.Rand, address.Address, blockstore.Blockstore, *types.VMSyscalls) (*vm.VM, error)
+	newVM    func(cid.Cid, abi.ChainEpoch, vm.Rand, blockstore.Blockstore, runtime.Syscalls) (*vm.VM, error)
 }
 
 func NewStateManager(cs *store.ChainStore) *StateManager {
@@ -108,7 +117,157 @@ func (sm *StateManager) TipSetState(ctx context.Context, ts *types.TipSet) (st c
 	return st, rec, nil
 }
 
-func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.BlockHeader, cb func(cid.Cid, *types.Message, *vm.ApplyRet) error) (cid.Cid, cid.Cid, error) {
+func (sm *StateManager) ExecutionTrace(ctx context.Context, ts *types.TipSet) (cid.Cid, []*api.InvocResult, error) {
+	var trace []*api.InvocResult
+	st, _, err := sm.computeTipSetState(ctx, ts.Blocks(), func(mcid cid.Cid, msg *types.Message, ret *vm.ApplyRet) error {
+		ir := &api.InvocResult{
+			Msg:                msg,
+			MsgRct:             &ret.MessageReceipt,
+			InternalExecutions: ret.InternalExecutions,
+			Duration:           ret.Duration,
+		}
+		if ret.ActorErr != nil {
+			ir.Error = ret.ActorErr.Error()
+		}
+		trace = append(trace, ir)
+		return nil
+	})
+	if err != nil {
+		return cid.Undef, nil, err
+	}
+
+	return st, trace, nil
+}
+
+type BlockMessages struct {
+	Miner         address.Address
+	BlsMessages   []types.ChainMsg
+	SecpkMessages []types.ChainMsg
+	TicketCount   int64
+}
+
+type ExecCallback func(cid.Cid, *types.Message, *vm.ApplyRet) error
+
+func (sm *StateManager) ApplyBlocks(ctx context.Context, pstate cid.Cid, bms []BlockMessages, epoch abi.ChainEpoch, r vm.Rand, cb ExecCallback) (cid.Cid, cid.Cid, error) {
+	vmi, err := sm.newVM(pstate, epoch, r, sm.cs.Blockstore(), sm.cs.VMSys())
+	if err != nil {
+		return cid.Undef, cid.Undef, xerrors.Errorf("instantiating VM failed: %w", err)
+	}
+
+	var receipts []cbg.CBORMarshaler
+	processedMsgs := map[cid.Cid]bool{}
+	for _, b := range bms {
+		penalty := types.NewInt(0)
+		gasReward := big.Zero()
+
+		for _, cm := range append(b.BlsMessages, b.SecpkMessages...) {
+			m := cm.VMMessage()
+			if _, found := processedMsgs[m.Cid()]; found {
+				continue
+			}
+			r, err := vmi.ApplyMessage(ctx, cm)
+			if err != nil {
+				return cid.Undef, cid.Undef, err
+			}
+
+			receipts = append(receipts, &r.MessageReceipt)
+			gasReward = big.Add(gasReward, big.Mul(m.GasPrice, big.NewInt(r.GasUsed)))
+			penalty = big.Add(penalty, r.Penalty)
+
+			if cb != nil {
+				if err := cb(cm.Cid(), m, r); err != nil {
+					return cid.Undef, cid.Undef, err
+				}
+			}
+			processedMsgs[m.Cid()] = true
+		}
+
+		var err error
+		params, err := actors.SerializeParams(&reward.AwardBlockRewardParams{
+			Miner:       b.Miner,
+			Penalty:     penalty,
+			GasReward:   gasReward,
+			TicketCount: 1, // TODO: no longer need ticket count here.
+		})
+		if err != nil {
+			return cid.Undef, cid.Undef, xerrors.Errorf("failed to serialize award params: %w", err)
+		}
+
+		sysAct, err := vmi.StateTree().GetActor(builtin.SystemActorAddr)
+		if err != nil {
+			return cid.Undef, cid.Undef, xerrors.Errorf("failed to get system actor: %w", err)
+		}
+
+		rwMsg := &types.Message{
+			From:     builtin.SystemActorAddr,
+			To:       builtin.RewardActorAddr,
+			Nonce:    sysAct.Nonce,
+			Value:    types.NewInt(0),
+			GasPrice: types.NewInt(0),
+			GasLimit: 1 << 30,
+			Method:   builtin.MethodsReward.AwardBlockReward,
+			Params:   params,
+		}
+		ret, err := vmi.ApplyImplicitMessage(ctx, rwMsg)
+		if err != nil {
+			return cid.Undef, cid.Undef, xerrors.Errorf("failed to apply reward message for miner %s: %w", b.Miner, err)
+		}
+		if cb != nil {
+			if err := cb(rwMsg.Cid(), rwMsg, ret); err != nil {
+				return cid.Undef, cid.Undef, xerrors.Errorf("callback failed on reward message: %w", err)
+			}
+		}
+
+		if ret.ExitCode != 0 {
+			return cid.Undef, cid.Undef, xerrors.Errorf("reward application message failed (exit %d): %s", ret.ExitCode, ret.ActorErr)
+		}
+
+	}
+
+	// TODO: this nonce-getting is a tiny bit ugly
+	ca, err := vmi.StateTree().GetActor(builtin.SystemActorAddr)
+	if err != nil {
+		return cid.Undef, cid.Undef, err
+	}
+
+	cronMsg := &types.Message{
+		To:       builtin.CronActorAddr,
+		From:     builtin.SystemActorAddr,
+		Nonce:    ca.Nonce,
+		Value:    types.NewInt(0),
+		GasPrice: types.NewInt(0),
+		GasLimit: 1 << 30, // Make super sure this is never too little
+		Method:   builtin.MethodsCron.EpochTick,
+		Params:   nil,
+	}
+	ret, err := vmi.ApplyImplicitMessage(ctx, cronMsg)
+	if err != nil {
+		return cid.Undef, cid.Undef, err
+	}
+	if cb != nil {
+		if err := cb(cronMsg.Cid(), cronMsg, ret); err != nil {
+			return cid.Undef, cid.Undef, xerrors.Errorf("callback failed on cron message: %w", err)
+		}
+	}
+	if ret.ExitCode != 0 {
+		return cid.Undef, cid.Undef, xerrors.Errorf("CheckProofSubmissions exit was non-zero: %d", ret.ExitCode)
+	}
+
+	bs := cbor.NewCborStore(sm.cs.Blockstore())
+	rectroot, err := amt.FromArray(ctx, bs, receipts)
+	if err != nil {
+		return cid.Undef, cid.Undef, xerrors.Errorf("failed to build receipts amt: %w", err)
+	}
+
+	st, err := vmi.Flush(ctx)
+	if err != nil {
+		return cid.Undef, cid.Undef, xerrors.Errorf("vm flush failed: %w", err)
+	}
+
+	return st, rectroot, nil
+}
+
+func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.BlockHeader, cb ExecCallback) (cid.Cid, cid.Cid, error) {
 	ctx, span := trace.StartSpan(ctx, "computeTipSetState")
 	defer span.End()
 
@@ -142,167 +301,55 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 
 	r := store.NewChainRand(sm.cs, cids, blks[0].Height)
 
-	vmi, err := sm.newVM(pstate, blks[0].Height, r, address.Undef, sm.cs.Blockstore(), sm.cs.VMSys())
-	if err != nil {
-		return cid.Undef, cid.Undef, xerrors.Errorf("instantiating VM failed: %w", err)
-	}
-
-	netact, err := vmi.StateTree().GetActor(actors.NetworkAddress)
-	if err != nil {
-		return cid.Undef, cid.Undef, xerrors.Errorf("failed to get network actor: %w", err)
-	}
-	reward := vm.MiningReward(netact.Balance)
-	for tsi, b := range blks {
-		netact, err = vmi.StateTree().GetActor(actors.NetworkAddress)
-		if err != nil {
-			return cid.Undef, cid.Undef, xerrors.Errorf("failed to get network actor: %w", err)
-		}
-		vmi.SetBlockMiner(b.Miner)
-
-		owner, err := GetMinerOwner(ctx, sm, pstate, b.Miner)
-		if err != nil {
-			return cid.Undef, cid.Undef, xerrors.Errorf("failed to get owner for miner %s: %w", b.Miner, err)
-		}
-
-		act, err := vmi.StateTree().GetActor(owner)
-		if err != nil {
-			return cid.Undef, cid.Undef, xerrors.Errorf("failed to get miner owner actor")
-		}
-
-		if err := vm.Transfer(netact, act, reward); err != nil {
-			return cid.Undef, cid.Undef, xerrors.Errorf("failed to deduct funds from network actor: %w", err)
-		}
-
-		// all block miners created a valid post, go update the actor state
-		postSubmitMsg := &types.Message{
-			From:     actors.NetworkAddress,
-			Nonce:    netact.Nonce,
-			To:       b.Miner,
-			Method:   actors.MAMethods.SubmitElectionPoSt,
-			GasPrice: types.NewInt(0),
-			GasLimit: types.NewInt(10000000000),
-			Value:    types.NewInt(0),
-		}
-		ret, err := vmi.ApplyMessage(ctx, postSubmitMsg)
-		if err != nil {
-			return cid.Undef, cid.Undef, xerrors.Errorf("submit election post message for block %s (miner %s) invocation failed: %w", b.Cid(), b.Miner, err)
-		}
-		if ret.ExitCode != 0 {
-			return cid.Undef, cid.Undef, xerrors.Errorf("submit election post invocation returned nonzero exit code: %d (err = %s, block = %s, miner = %s, tsi = %d)", ret.ExitCode, ret.ActorErr, b.Cid(), b.Miner, tsi)
-		}
-	}
-
-	// TODO: can't use method from chainstore because it doesnt let us know who the block miners were
-	applied := make(map[address.Address]uint64)
-	balances := make(map[address.Address]types.BigInt)
-
-	preloadAddr := func(a address.Address) error {
-		if _, ok := applied[a]; !ok {
-			act, err := vmi.StateTree().GetActor(a)
-			if err != nil {
-				return err
-			}
-
-			applied[a] = act.Nonce
-			balances[a] = act.Balance
-		}
-		return nil
-	}
-
-	var receipts []cbg.CBORMarshaler
+	var blkmsgs []BlockMessages
 	for _, b := range blks {
-		vmi.SetBlockMiner(b.Miner)
-
 		bms, sms, err := sm.cs.MessagesForBlock(b)
 		if err != nil {
 			return cid.Undef, cid.Undef, xerrors.Errorf("failed to get messages for block: %w", err)
 		}
 
-		cmsgs := make([]store.ChainMsg, 0, len(bms)+len(sms))
+		bm := BlockMessages{
+			Miner:         b.Miner,
+			BlsMessages:   make([]types.ChainMsg, 0, len(bms)),
+			SecpkMessages: make([]types.ChainMsg, 0, len(sms)),
+			TicketCount:   1, //int64(len(b.EPostProof.Proofs)), // TODO fix this
+		}
+
 		for _, m := range bms {
-			cmsgs = append(cmsgs, m)
-		}
-		for _, sm := range sms {
-			cmsgs = append(cmsgs, sm)
+			bm.BlsMessages = append(bm.BlsMessages, m)
 		}
 
-		for _, cm := range cmsgs {
-			m := cm.VMMessage()
-			if err := preloadAddr(m.From); err != nil {
-				return cid.Undef, cid.Undef, err
-			}
-
-			if applied[m.From] != m.Nonce {
-				continue
-			}
-			applied[m.From]++
-
-			if balances[m.From].LessThan(m.RequiredFunds()) {
-				continue
-			}
-			balances[m.From] = types.BigSub(balances[m.From], m.RequiredFunds())
-
-			r, err := vmi.ApplyMessage(ctx, m)
-			if err != nil {
-				return cid.Undef, cid.Undef, err
-			}
-
-			receipts = append(receipts, &r.MessageReceipt)
-
-			if cb != nil {
-				if err := cb(cm.Cid(), m, r); err != nil {
-					return cid.Undef, cid.Undef, err
-				}
-			}
+		for _, m := range sms {
+			bm.SecpkMessages = append(bm.SecpkMessages, m)
 		}
+
+		blkmsgs = append(blkmsgs, bm)
 	}
 
-	// TODO: this nonce-getting is a tiny bit ugly
-	ca, err := vmi.StateTree().GetActor(actors.CronAddress)
-	if err != nil {
-		return cid.Undef, cid.Undef, err
-	}
-
-	ret, err := vmi.ApplyMessage(ctx, &types.Message{
-		To:       actors.CronAddress,
-		From:     actors.CronAddress,
-		Nonce:    ca.Nonce,
-		Value:    types.NewInt(0),
-		GasPrice: types.NewInt(0),
-		GasLimit: types.NewInt(1 << 30), // Make super sure this is never too little
-		Method:   actors.CAMethods.EpochTick,
-		Params:   nil,
-	})
-	if err != nil {
-		return cid.Undef, cid.Undef, err
-	}
-	if ret.ExitCode != 0 {
-		return cid.Undef, cid.Undef, xerrors.Errorf("CheckProofSubmissions exit was non-zero: %d", ret.ExitCode)
-	}
-
-	bs := amt.WrapBlockstore(sm.cs.Blockstore())
-	rectroot, err := amt.FromArray(bs, receipts)
-	if err != nil {
-		return cid.Undef, cid.Undef, xerrors.Errorf("failed to build receipts amt: %w", err)
-	}
-
-	st, err := vmi.Flush(ctx)
-	if err != nil {
-		return cid.Undef, cid.Undef, xerrors.Errorf("vm flush failed: %w", err)
-	}
-
-	return st, rectroot, nil
+	return sm.ApplyBlocks(ctx, pstate, blkmsgs, abi.ChainEpoch(blks[0].Height), r, cb)
 }
 
-func (sm *StateManager) GetActor(addr address.Address, ts *types.TipSet) (*types.Actor, error) {
+func (sm *StateManager) parentState(ts *types.TipSet) cid.Cid {
 	if ts == nil {
 		ts = sm.cs.GetHeaviestTipSet()
 	}
 
-	stcid := ts.ParentState()
+	return ts.ParentState()
+}
 
-	cst := hamt.CSTFromBstore(sm.cs.Blockstore())
-	state, err := state.LoadStateTree(cst, stcid)
+func (sm *StateManager) GetActor(addr address.Address, ts *types.TipSet) (*types.Actor, error) {
+	cst := cbor.NewCborStore(sm.cs.Blockstore())
+	state, err := state.LoadStateTree(cst, sm.parentState(ts))
+	if err != nil {
+		return nil, xerrors.Errorf("load state tree: %w", err)
+	}
+
+	return state.GetActor(addr)
+}
+
+func (sm *StateManager) getActorRaw(addr address.Address, st cid.Cid) (*types.Actor, error) {
+	cst := cbor.NewCborStore(sm.cs.Blockstore())
+	state, err := state.LoadStateTree(cst, st)
 	if err != nil {
 		return nil, xerrors.Errorf("load state tree: %w", err)
 	}
@@ -332,13 +379,34 @@ func (sm *StateManager) LoadActorState(ctx context.Context, a address.Address, o
 		return nil, err
 	}
 
-	cst := hamt.CSTFromBstore(sm.cs.Blockstore())
+	cst := cbor.NewCborStore(sm.cs.Blockstore())
+	if err := cst.Get(ctx, act.Head, out); err != nil {
+		var r cbg.Deferred
+		cst.Get(ctx, act.Head, &r)
+		fmt.Printf("badhead %x\n", r.Raw)
+
+		return nil, err
+	}
+
+	return act, nil
+}
+
+func (sm *StateManager) LoadActorStateRaw(ctx context.Context, a address.Address, out interface{}, st cid.Cid) (*types.Actor, error) {
+	act, err := sm.getActorRaw(a, st)
+	if err != nil {
+		return nil, err
+	}
+
+	cst := cbor.NewCborStore(sm.cs.Blockstore())
 	if err := cst.Get(ctx, act.Head, out); err != nil {
 		return nil, err
 	}
 
 	return act, nil
 }
+
+// Similar to `vm.ResolveToKeyAddr` but does not allow `Actor` type of addresses. Uses the `TipSet` `ts`
+// to generate the VM state.
 func (sm *StateManager) ResolveToKeyAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
 	switch addr.Protocol() {
 	case address.BLS, address.SECP256K1:
@@ -357,7 +425,7 @@ func (sm *StateManager) ResolveToKeyAddress(ctx context.Context, addr address.Ad
 		return address.Undef, xerrors.Errorf("resolve address failed to get tipset state: %w", err)
 	}
 
-	cst := hamt.CSTFromBstore(sm.cs.Blockstore())
+	cst := cbor.NewCborStore(sm.cs.Blockstore())
 	tree, err := state.LoadStateTree(cst, st)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("failed to load state tree")
@@ -378,6 +446,15 @@ func (sm *StateManager) GetBlsPublicKey(ctx context.Context, addr address.Addres
 
 	copy(pubk[:], kaddr.Payload())
 	return pubk, nil
+}
+
+func (sm *StateManager) LookupID(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
+	cst := cbor.NewCborStore(sm.cs.Blockstore())
+	state, err := state.LoadStateTree(cst, sm.parentState(ts))
+	if err != nil {
+		return address.Undef, xerrors.Errorf("load state tree: %w", err)
+	}
+	return state.LookupID(addr)
 }
 
 func (sm *StateManager) GetReceipt(ctx context.Context, msg cid.Cid, ts *types.TipSet) (*types.MessageReceipt, error) {
@@ -482,7 +559,38 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid) (*type
 	}
 }
 
-func (sm *StateManager) searchBackForMsg(ctx context.Context, from *types.TipSet, m store.ChainMsg) (*types.TipSet, *types.MessageReceipt, error) {
+func (sm *StateManager) SearchForMessage(ctx context.Context, mcid cid.Cid) (*types.TipSet, *types.MessageReceipt, error) {
+	msg, err := sm.cs.GetCMessage(mcid)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to load message: %w", err)
+	}
+
+	head := sm.cs.GetHeaviestTipSet()
+
+	r, err := sm.tipsetExecutedMessage(head, mcid, msg.VMMessage())
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if r != nil {
+		return head, r, nil
+	}
+
+	fts, r, err := sm.searchBackForMsg(ctx, head, msg)
+
+	if err != nil {
+		log.Warnf("failed to look back through chain for message %s", mcid)
+		return nil, nil, err
+	}
+
+	if fts == nil {
+		return nil, nil, nil
+	}
+
+	return fts, r, nil
+}
+
+func (sm *StateManager) searchBackForMsg(ctx context.Context, from *types.TipSet, m types.ChainMsg) (*types.TipSet, *types.MessageReceipt, error) {
 
 	cur := from
 	for {
@@ -575,8 +683,8 @@ func (sm *StateManager) ListAllActors(ctx context.Context, ts *types.TipSet) ([]
 		return nil, err
 	}
 
-	cst := hamt.CSTFromBstore(sm.cs.Blockstore())
-	r, err := hamt.LoadNode(ctx, cst, st)
+	cst := cbor.NewCborStore(sm.cs.Blockstore())
+	r, err := hamt.LoadNode(ctx, cst, st, hamt.UseTreeBitWidth(5))
 	if err != nil {
 		return nil, err
 	}
@@ -597,18 +705,55 @@ func (sm *StateManager) ListAllActors(ctx context.Context, ts *types.TipSet) ([]
 	return out, nil
 }
 
-func (sm *StateManager) MarketBalance(ctx context.Context, addr address.Address, ts *types.TipSet) (actors.StorageParticipantBalance, error) {
-	var state actors.StorageMarketState
-	if _, err := sm.LoadActorState(ctx, actors.StorageMarketAddress, &state, ts); err != nil {
-		return actors.StorageParticipantBalance{}, err
-	}
-	cst := hamt.CSTFromBstore(sm.cs.Blockstore())
-	b, _, err := actors.GetMarketBalances(ctx, cst, state.Balances, addr)
+func (sm *StateManager) MarketBalance(ctx context.Context, addr address.Address, ts *types.TipSet) (api.MarketBalance, error) {
+	var state market.State
+	_, err := sm.LoadActorState(ctx, builtin.StorageMarketActorAddr, &state, ts)
 	if err != nil {
-		return actors.StorageParticipantBalance{}, err
+		return api.MarketBalance{}, err
 	}
 
-	return b[0], nil
+	addr, err = sm.LookupID(ctx, addr, ts)
+	if err != nil {
+		return api.MarketBalance{}, err
+	}
+
+	var out api.MarketBalance
+
+	et, err := adt.AsBalanceTable(sm.cs.Store(ctx), state.EscrowTable)
+	if err != nil {
+		return api.MarketBalance{}, err
+	}
+	ehas, err := et.Has(addr)
+	if err != nil {
+		return api.MarketBalance{}, err
+	}
+	if ehas {
+		out.Escrow, err = et.Get(addr)
+		if err != nil {
+			return api.MarketBalance{}, xerrors.Errorf("getting escrow balance: %w", err)
+		}
+	} else {
+		out.Escrow = big.Zero()
+	}
+
+	lt, err := adt.AsBalanceTable(sm.cs.Store(ctx), state.LockedTable)
+	if err != nil {
+		return api.MarketBalance{}, err
+	}
+	lhas, err := lt.Has(addr)
+	if err != nil {
+		return api.MarketBalance{}, err
+	}
+	if lhas {
+		out.Locked, err = lt.Get(addr)
+		if err != nil {
+			return api.MarketBalance{}, xerrors.Errorf("getting locked balance: %w", err)
+		}
+	} else {
+		out.Locked = big.Zero()
+	}
+
+	return out, nil
 }
 
 func (sm *StateManager) ValidateChain(ctx context.Context, ts *types.TipSet) error {
@@ -640,6 +785,6 @@ func (sm *StateManager) ValidateChain(ctx context.Context, ts *types.TipSet) err
 	return nil
 }
 
-func (sm *StateManager) SetVMConstructor(nvm func(cid.Cid, uint64, vm.Rand, address.Address, blockstore.Blockstore, *types.VMSyscalls) (*vm.VM, error)) {
+func (sm *StateManager) SetVMConstructor(nvm func(cid.Cid, abi.ChainEpoch, vm.Rand, blockstore.Blockstore, runtime.Syscalls) (*vm.VM, error)) {
 	sm.newVM = nvm
 }

@@ -5,7 +5,7 @@ orbs:
 executors:
   golang:
     docker:
-      - image: circleci/golang:1.13
+      - image: circleci/golang:1.14.2
     resource_class: 2xlarge
   ubuntu:
     docker:
@@ -42,13 +42,13 @@ commands:
       - restore_cache:
           name: Restore parameters cache
           keys:
-            - 'v20-1k-lotus-params'
+            - 'v25-2k-lotus-params'
           paths:
             - /var/tmp/filecoin-proof-parameters/
-      - run:  ./lotus fetch-params --proving-params 1024
+      - run:  ./lotus fetch-params --proving-params 2048
       - save_cache:
           name: Save parameters cache
-          key: 'v20-1k-lotus-params'
+          key: 'v25-2k-lotus-params'
           paths:
             - /var/tmp/filecoin-proof-parameters/
   install_ipfs:
@@ -106,6 +106,18 @@ jobs:
           root: "."
           paths:
             - linux
+
+  build-debug:
+    executor: golang
+    steps:
+      - install-deps
+      - prepare
+      - go/mod-download
+      - restore_cache:
+          name: restore go mod cache
+          key: v1-go-deps-{{ arch }}-{{ checksum "/home/circleci/project/go.mod" }}
+      - run:
+          command: make debug
 
   test: &test
     description: |
@@ -200,8 +212,8 @@ jobs:
       - run:
           name: Install go
           command: |
-            curl -O https://dl.google.com/go/go1.13.4.darwin-amd64.pkg && \
-            sudo installer -pkg go1.13.4.darwin-amd64.pkg -target /
+            curl -O https://dl.google.com/go/go1.14.2.darwin-amd64.pkg && \
+            sudo installer -pkg go1.14.2.darwin-amd64.pkg -target /
       - run:
           name: Install pkg-config
           command: HOMEBREW_NO_AUTO_UPDATE=1 brew install pkg-config
@@ -242,6 +254,15 @@ jobs:
             - "~/.rustup"
             - "~/.cargo"
 
+  gofmt:
+    executor: golang
+    steps:
+      - install-deps
+      - prepare
+      - go/mod-download
+      - run:
+          command: "! go fmt ./... 2>&1 | read"
+
   lint: &lint
     description: |
       Run golangci-lint.
@@ -251,7 +272,7 @@ jobs:
         default: golang
       golangci-lint-version:
         type: string
-        default: 1.17.1
+        default: 1.23.8
       concurrency:
         type: string
         default: '2'
@@ -311,16 +332,18 @@ workflows:
   ci:
     jobs:
       - lint-changes:
-          args: "--new-from-rev origin/master"
+          args: "--new-from-rev origin/testnet/3"
       - test:
           codecov-upload: true
       - mod-tidy-check
+      - gofmt
       - test-short:
           go-test-flags: "--timeout 10m --short"
           filters:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+$/
+      - build-debug
       - build-all:
           requires:
             - test-short

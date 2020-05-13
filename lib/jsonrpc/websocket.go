@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"golang.org/x/xerrors"
@@ -42,11 +43,13 @@ type outChanReg struct {
 
 type wsConn struct {
 	// outside params
-	conn     *websocket.Conn
-	handler  handlers
-	requests <-chan clientRequest
-	stop     <-chan struct{}
-	exiting  chan struct{}
+	conn              *websocket.Conn
+	connFactory       func() (*websocket.Conn, error)
+	reconnectInterval time.Duration
+	handler           handlers
+	requests          <-chan clientRequest
+	stop              <-chan struct{}
+	exiting           chan struct{}
 
 	// incoming messages
 	incoming    chan io.Reader
@@ -119,14 +122,13 @@ func (c *wsConn) nextWriter(cb func(io.Writer)) {
 	}
 }
 
-func (c *wsConn) sendRequest(req request) {
+func (c *wsConn) sendRequest(req request) error {
 	c.writeLk.Lock()
+	defer c.writeLk.Unlock()
 	if err := c.conn.WriteJSON(req); err != nil {
-		log.Error("handle me:", err)
-		c.writeLk.Unlock()
-		return
+		return err
 	}
-	c.writeLk.Unlock()
+	return nil
 }
 
 //                 //
@@ -212,22 +214,27 @@ func (c *wsConn) handleOutChans() {
 			cases = cases[:n]
 			caseToID = caseToID[:n-internal]
 
-			c.sendRequest(request{
+			if err := c.sendRequest(request{
 				Jsonrpc: "2.0",
 				ID:      nil, // notification
 				Method:  chClose,
 				Params:  []param{{v: reflect.ValueOf(id)}},
-			})
+			}); err != nil {
+				log.Warnf("closed out channel sendRequest failed: %s", err)
+			}
 			continue
 		}
 
 		// forward message
-		c.sendRequest(request{
+		if err := c.sendRequest(request{
 			Jsonrpc: "2.0",
 			ID:      nil, // notification
 			Method:  chValue,
 			Params:  []param{{v: reflect.ValueOf(caseToID[chosen-internal])}, {v: val}},
-		})
+		}); err != nil {
+			log.Warnf("sendRequest failed: %s", err)
+			return
+		}
 	}
 }
 
@@ -419,6 +426,36 @@ func (c *wsConn) handleFrame(ctx context.Context, frame frame) {
 	}
 }
 
+func (c *wsConn) closeInFlight() {
+	for id, req := range c.inflight {
+		req.ready <- clientResponse{
+			Jsonrpc: "2.0",
+			ID:      id,
+			Error: &respError{
+				Message: "handler: websocket connection closed",
+				Code:    2,
+			},
+		}
+	}
+
+	c.handlingLk.Lock()
+	for _, cancel := range c.handling {
+		cancel()
+	}
+	c.handlingLk.Unlock()
+
+	c.inflight = map[int64]clientRequest{}
+	c.handling = map[int64]context.CancelFunc{}
+}
+
+func (c *wsConn) closeChans() {
+	for chid := range c.chanHandlers {
+		hnd := c.chanHandlers[chid]
+		delete(c.chanHandlers, chid)
+		hnd(nil, false)
+	}
+}
+
 func (c *wsConn) handleWsConn(ctx context.Context) {
 	c.incoming = make(chan io.Reader)
 	c.inflight = map[int64]clientRequest{}
@@ -432,27 +469,10 @@ func (c *wsConn) handleWsConn(ctx context.Context) {
 
 	// on close, make sure to return from all pending calls, and cancel context
 	//  on all calls we handle
-	defer func() {
-		for id, req := range c.inflight {
-			req.ready <- clientResponse{
-				Jsonrpc: "2.0",
-				ID:      id,
-				Error: &respError{
-					Message: "handler: websocket connection closed",
-				},
-			}
-
-			c.handlingLk.Lock()
-			for _, cancel := range c.handling {
-				cancel()
-			}
-			c.handlingLk.Unlock()
-		}
-	}()
+	defer c.closeInFlight()
 
 	// wait for the first message
 	go c.nextMessage()
-
 	for {
 		select {
 		case r, ok := <-c.incoming:
@@ -460,6 +480,32 @@ func (c *wsConn) handleWsConn(ctx context.Context) {
 				if c.incomingErr != nil {
 					if !websocket.IsCloseError(c.incomingErr, websocket.CloseNormalClosure) {
 						log.Debugw("websocket error", "error", c.incomingErr)
+						// connection dropped unexpectedly, do our best to recover it
+						c.closeInFlight()
+						c.closeChans()
+						c.incoming = make(chan io.Reader) // listen again for responses
+						go func() {
+							if c.connFactory == nil { // likely the server side, don't try to reconnect
+								return
+							}
+
+							var conn *websocket.Conn
+							for conn == nil {
+								time.Sleep(c.reconnectInterval)
+								var err error
+								if conn, err = c.connFactory(); err != nil {
+									log.Debugw("websocket connection retry failed", "error", err)
+								}
+							}
+
+							c.writeLk.Lock()
+							c.conn = conn
+							c.incomingErr = nil
+							c.writeLk.Unlock()
+
+							go c.nextMessage()
+						}()
+						continue
 					}
 				}
 				return // remote closed
@@ -477,10 +523,26 @@ func (c *wsConn) handleWsConn(ctx context.Context) {
 			c.handleFrame(ctx, frame)
 			go c.nextMessage()
 		case req := <-c.requests:
+			c.writeLk.Lock()
 			if req.req.ID != nil {
+				if c.incomingErr != nil { // No conn?, immediate fail
+					req.ready <- clientResponse{
+						Jsonrpc: "2.0",
+						ID:      *req.req.ID,
+						Error: &respError{
+							Message: "handler: websocket connection closed",
+							Code:    2,
+						},
+					}
+					c.writeLk.Unlock()
+					break
+				}
 				c.inflight[*req.req.ID] = req
 			}
-			c.sendRequest(req.req)
+			c.writeLk.Unlock()
+			if err := c.sendRequest(req.req); err != nil {
+				log.Errorf("sendReqest failed (Handle me): %s", err)
+			}
 		case <-c.stop:
 			c.writeLk.Lock()
 			cmsg := websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")

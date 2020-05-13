@@ -1,33 +1,26 @@
 // +build !debug
+// +build !2k
 
 package build
 
-var SectorSizes = []uint64{
-	32 << 30,
+import (
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+)
+
+func init() {
+	power.ConsensusMinerMinPower = big.NewInt(2 << 30)
+	miner.SupportedProofTypes = map[abi.RegisteredProof]struct{}{
+		abi.RegisteredProof_StackedDRG512MiBSeal: {},
+		abi.RegisteredProof_StackedDRG32GiBSeal:  {},
+		abi.RegisteredProof_StackedDRG64GiBSeal:  {},
+	}
 }
 
 // Seconds
-const BlockDelay = 45
+const BlockDelay = builtin.EpochDurationSeconds
 
 const PropagationDelay = 6
-
-// FallbackPoStDelay is the number of epochs the miner needs to wait after
-//  ElectionPeriodStart before starting fallback post computation
-//
-// Epochs
-const FallbackPoStDelay = 30
-
-// SlashablePowerDelay is the number of epochs after ElectionPeriodStart, after
-// which the miner is slashed
-//
-// Epochs
-const SlashablePowerDelay = 200
-
-// Epochs
-const InteractivePoRepDelay = 8
-
-// Epochs
-const InteractivePoRepConfidence = 6
-
-// Bytes
-var MinimumMinerPower uint64 = 512 << 30 // 512GB

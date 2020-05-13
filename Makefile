@@ -3,6 +3,8 @@ SHELL=/usr/bin/env bash
 all: build
 .PHONY: all
 
+unexport GOFLAGS
+
 GOVERSION:=$(shell go version | cut -d' ' -f 3 | cut -d. -f 2)
 ifeq ($(shell expr $(GOVERSION) \< 13), 1)
 $(warning Your Golang version is go 1.$(GOVERSION))
@@ -14,12 +16,19 @@ MODULES:=
 
 CLEAN:=
 BINS:=
-GOFLAGS+=-ldflags=-X="github.com/filecoin-project/lotus/build".CurrentCommit="+git$(subst -,.,$(shell git describe --always --match=NeVeRmAtCh --dirty 2>/dev/null || git rev-parse --short HEAD 2>/dev/null))"
+
+ldflags=-X=github.com/filecoin-project/lotus/build.CurrentCommit='+git$(subst -,.,$(shell git describe --always --match=NeVeRmAtCh --dirty 2>/dev/null || git rev-parse --short HEAD 2>/dev/null))'
+ifneq ($(strip $(LDFLAGS)),)
+	ldflags+=-extldflags=$(LDFLAGS)
+endif
+
+GOFLAGS+=-ldflags="$(ldflags)"
+
 
 ## FFI
 
 FFI_PATH:=extern/filecoin-ffi/
-FFI_DEPS:=libfilecoin.a filecoin.pc filecoin.h
+FFI_DEPS:=.install-filcrypto
 FFI_DEPS:=$(addprefix $(FFI_PATH),$(FFI_DEPS))
 
 $(FFI_DEPS): build/.filecoin-install ;
@@ -50,6 +59,9 @@ deps: $(BUILD_DEPS)
 
 debug: GOFLAGS+=-tags=debug
 debug: lotus lotus-storage-miner lotus-seal-worker lotus-seed
+
+2k: GOFLAGS+=-tags=2k
+2k: lotus lotus-storage-miner lotus-seal-worker lotus-seed
 
 lotus: $(BUILD_DEPS)
 	rm -f lotus
@@ -161,6 +173,18 @@ BINS+=health
 
 buildall: $(BINS)
 
+completions:
+	./scripts/make-completions.sh lotus
+	./scripts/make-completions.sh lotus-storage-miner
+.PHONY: completions
+
+install-completions:
+	mkdir -p /usr/share/bash-completion/completions /usr/local/share/zsh/site-functions/
+	install -C ./scripts/bash-completion/lotus /usr/share/bash-completion/completions/lotus
+	install -C ./scripts/bash-completion/lotus-storage-miner /usr/share/bash-completion/completions/lotus-storage-miner
+	install -C ./scripts/zsh-completion/lotus /usr/local/share/zsh/site-functions/_lotus
+	install -C ./scripts/zsh-completion/lotus-storage-miner /usr/local/share/zsh/site-functions/_lotus-storage-miner
+
 clean:
 	rm -rf $(CLEAN) $(BINS)
 	-$(MAKE) -C $(FFI_PATH) clean
@@ -173,6 +197,11 @@ dist-clean:
 
 type-gen:
 	go run ./gen/main.go
+
+method-gen:
+	(cd ./lotuspond/front/src/chain && go run ./methodgen.go)
+
+gen: type-gen method-gen
 
 print-%:
 	@echo $*=$($*)

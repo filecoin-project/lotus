@@ -1,32 +1,40 @@
 # Setup Local Devnet
 
-Build the Lotus Binaries in debug mode, This enables the use of 1024 byte sectors.
+Build the Lotus Binaries in debug mode, This enables the use of 2048 byte sectors.
 
 ```sh
-make debug
+make 2k
 ```
 
-Download the 1024 byte parameters:
+Download the 2048 byte parameters:
 ```sh
-./lotus fetch-params --proving-params 1024
+./lotus fetch-params --proving-params 2048
 ```
 
 Pre-seal some sectors:
 
 ```sh
-./lotus-seed pre-seal --sector-size 1024 --num-sectors 2
+./lotus-seed pre-seal --sector-size 2048 --num-sectors 2
 ```
 
 Create the genesis block and start up the first node:
 
 ```sh
-./lotus daemon --lotus-make-random-genesis=dev.gen --genesis-presealed-sectors=~/.genesis-sectors/pre-seal-t0101.json --bootstrap=false
+./lotus-seed genesis new localnet.json
+./lotus-seed genesis add-miner localnet.json ~/.genesis-sectors/pre-seal-t01000.json
+./lotus daemon --lotus-make-genesis=dev.gen --genesis-template=localnet.json --bootstrap=false
+```
+
+Then, in another console, import the genesis miner key:
+
+```sh
+./lotus wallet import ~/.genesis-sectors/pre-seal-t01000.key
 ```
 
 Set up the genesis miner:
 
 ```sh
-./lotus-storage-miner init --genesis-miner --actor=t0101 --sector-size=1024 --pre-sealed-sectors=~/.genesis-sectors --pre-sealed-metadata=~/.genesis-sectors/pre-seal-t0101.json --nosync
+./lotus-storage-miner init --genesis-miner --actor=t01000 --sector-size=2048 --pre-sealed-sectors=~/.genesis-sectors --pre-sealed-metadata=~/.genesis-sectors/pre-seal-t01000.json --nosync
 ```
 
 Now, finally, start up the miner:
