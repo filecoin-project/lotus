@@ -12,8 +12,6 @@ lotus-storage-miner set-price <price>
 This command will set up your miner to accept deal proposals that meet the input price.
 The price is inputted in FIL per GiB per epoch, and the default is 0.0000000005. 
 
-<!-- TODO: Add info about setting min piece size, max piece size, duration -->
-
 ## Ensure you can be discovered
 
 Clients need to be able to find you in order to make storage deals with you. 
