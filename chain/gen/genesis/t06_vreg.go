@@ -2,7 +2,6 @@ package genesis
 
 import (
 	"context"
-	"crypto/rand"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-hamt-ipld"
@@ -23,9 +22,10 @@ func SetupVerifiedRegistryActor(bs bstore.Blockstore) (*types.Actor, error) {
 		return nil, err
 	}
 
-	var r [32]byte // TODO: grab from genesis template
-	_, _ = rand.Read(r[:])
-	k, _ := address.NewSecp256k1Address(r[:])
+	k, err := address.NewFromString("t3qfoulel6fy6gn3hjmbhpdpf6fs5aqjb5fkurhtwvgssizq4jey5nw4ptq5up6h7jk7frdvvobv52qzmgjinq")
+	if err != nil {
+		return nil, err
+	}
 
 	sms := verifreg.ConstructState(h, k)
 
