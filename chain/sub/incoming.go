@@ -200,15 +200,7 @@ func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub
 		}
 	}
 
-	blob, err := blk.Header.SigningBytes()
-	if err != nil {
-		// this shouldn't happen; it's an encoding error of the object we just decoded sans the
-		// signature...
-		log.Errorf("error retrieving signing bytes for block header: %s", err)
-		return pubsub.ValidationIgnore
-	}
-
-	err = sigs.Verify(blk.Header.BlockSig, key, blob)
+	err = sigs.CheckBlockSignature(blk.Header, ctx, key)
 	if err != nil {
 		log.Errorf("block signature verification failed: %s", err)
 		recordFailure("signature_verification_failed")
