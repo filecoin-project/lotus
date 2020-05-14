@@ -55,7 +55,7 @@ Here is an example of the response:
 t1aswwvjsae63tcrniz6x5ykvsuotlgkvlulnqpsi
 ```
 
-- Visit the [faucet](https://facuet.testnet.filecoin.io) to add funds.
+- Visit the [faucet](https://faucet.testnet.filecoin.io) to add funds.
 - Paste the address you created.
 - Press the send button.
 
