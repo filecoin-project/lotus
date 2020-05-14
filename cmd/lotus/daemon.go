@@ -33,6 +33,7 @@ import (
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/modules"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
@@ -86,6 +87,10 @@ var DaemonCmd = &cli.Command{
 			Name:  "pprof",
 			Usage: "specify name of file for writing cpu profile to",
 		},
+		&cli.StringFlag{
+			Name:  "profile",
+			Usage: "specify type of node",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		if prof := cctx.String("pprof"); prof != "" {
@@ -98,6 +103,16 @@ var DaemonCmd = &cli.Command{
 				return err
 			}
 			defer pprof.StopCPUProfile()
+		}
+
+		var isBootstrapper dtypes.Bootstrapper
+		switch profile := cctx.String("profile"); profile {
+		case "bootstrapper":
+			isBootstrapper = true
+		case "":
+			// do nothing
+		default:
+			return fmt.Errorf("unrecognized profile type: %q", profile)
 		}
 
 		ctx, _ := tag.New(context.Background(), tag.Insert(metrics.Version, build.BuildVersion), tag.Insert(metrics.Commit, build.CurrentCommit))
@@ -160,6 +175,7 @@ var DaemonCmd = &cli.Command{
 		stop, err := node.New(ctx,
 			node.FullAPI(&api),
 
+			node.Override(new(dtypes.Bootstrapper), isBootstrapper),
 			node.Online(),
 			node.Repo(r),
 

@@ -28,160 +28,141 @@ func init() {
 	pubsub.GossipSubDirectConnectInitialDelay = 30 * time.Second
 }
 
-func GossipSub(cfg *config.Pubsub) interface{} {
-	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, nn dtypes.NetworkName, bp dtypes.BootstrapPeers) (service *pubsub.PubSub, err error) {
-		bootstrappers := make(map[peer.ID]struct{})
-		for _, pi := range bp {
-			bootstrappers[pi.ID] = struct{}{}
-		}
-		isBootstrapNode := cfg.Bootstrapper
+func GossipSub(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, nn dtypes.NetworkName, bp dtypes.BootstrapPeers, cfg *config.Pubsub) (service *pubsub.PubSub, err error) {
+	bootstrappers := make(map[peer.ID]struct{})
+	for _, pi := range bp {
+		bootstrappers[pi.ID] = struct{}{}
+	}
+	isBootstrapNode := cfg.Bootstrapper
 
-		options := []pubsub.Option{
-			// Gossipsubv1.1 configuration
-			pubsub.WithFloodPublish(true),
-			pubsub.WithPeerScore(
-				&pubsub.PeerScoreParams{
-					AppSpecificScore: func(p peer.ID) float64 {
-						// return a heavy positive score for bootstrappers so that we don't unilaterally prune
-						// them and accept PX from them.
-						// we don't do that in the bootstrappers themselves to avoid creating a closed mesh
-						// between them (however we might want to consider doing just that)
-						_, ok := bootstrappers[p]
-						if ok && !isBootstrapNode {
-							return 2500
-						}
+	options := []pubsub.Option{
+		// Gossipsubv1.1 configuration
+		pubsub.WithFloodPublish(true),
+		pubsub.WithPeerScore(
+			&pubsub.PeerScoreParams{
+				AppSpecificScore: func(p peer.ID) float64 {
+					// return a heavy positive score for bootstrappers so that we don't unilaterally prune
+					// them and accept PX from them.
+					// we don't do that in the bootstrappers themselves to avoid creating a closed mesh
+					// between them (however we might want to consider doing just that)
+					_, ok := bootstrappers[p]
+					if ok && !isBootstrapNode {
+						return 2500
+					}
 
-						// TODO: we want to  plug the application specific score to the node itself in order
-						//       to provide feedback to the pubsub system based on observed behaviour
-						return 0
+					// TODO: we want to  plug the application specific score to the node itself in order
+					//       to provide feedback to the pubsub system based on observed behaviour
+					return 0
+				},
+				AppSpecificWeight: 1,
+
+				// This sets the IP colocation threshold to 1 peer per
+				IPColocationFactorThreshold: 1,
+				IPColocationFactorWeight:    -100,
+				// TODO we want to whitelist IPv6 /64s that belong to datacenters etc
+				// IPColocationFactorWhitelist: map[string]struct{}{},
+
+				DecayInterval: pubsub.DefaultDecayInterval,
+				DecayToZero:   pubsub.DefaultDecayToZero,
+
+				// this retains non-positive scores for 6 hours
+				RetainScore: 6 * time.Hour,
+
+				// topic parameters
+				Topics: map[string]*pubsub.TopicScoreParams{
+					build.BlocksTopic(nn): {
+						// expected 10 blocks/min
+						TopicWeight: 0.1, // max is 50, max mesh penalty is -10, single invalid message is -100
+
+						// 1 tick per second, maxes at 1 after 1 hour
+						TimeInMeshWeight:  0.00027, // ~1/3600
+						TimeInMeshQuantum: time.Second,
+						TimeInMeshCap:     1,
+
+						// deliveries decay after 1 hour, cap at 100 blocks
+						FirstMessageDeliveriesWeight: 5, // max value is 500
+						FirstMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(time.Hour),
+						FirstMessageDeliveriesCap:    100, // 100 blocks in an hour
+
+						// tracks deliveries in the last minute
+						// penalty activates at 1 minute and expects ~0.4 blocks
+						MeshMessageDeliveriesWeight:     -576, // max penalty is -100
+						MeshMessageDeliveriesDecay:      pubsub.ScoreParameterDecay(time.Minute),
+						MeshMessageDeliveriesCap:        10,      // 10 blocks in a minute
+						MeshMessageDeliveriesThreshold:  0.41666, // 10/12/2 blocks/min
+						MeshMessageDeliveriesWindow:     10 * time.Millisecond,
+						MeshMessageDeliveriesActivation: time.Minute,
+
+						// decays after 15 min
+						MeshFailurePenaltyWeight: -576,
+						MeshFailurePenaltyDecay:  pubsub.ScoreParameterDecay(15 * time.Minute),
+
+						// invalid messages decay after 1 hour
+						InvalidMessageDeliveriesWeight: -1000,
+						InvalidMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(time.Hour),
 					},
-					AppSpecificWeight: 1,
+					build.MessagesTopic(nn): {
+						// expected > 1 tx/second
+						TopicWeight: 0.05, // max is 25, max mesh penalty is -5, single invalid message is -100
 
-					// This sets the IP colocation threshold to 1 peer per
-					IPColocationFactorThreshold: 1,
-					IPColocationFactorWeight:    -100,
-					// TODO we want to whitelist IPv6 /64s that belong to datacenters etc
-					// IPColocationFactorWhitelist: map[string]struct{}{},
+						// 1 tick per second, maxes at 1 hour
+						TimeInMeshWeight:  0.0002778, // ~1/3600
+						TimeInMeshQuantum: time.Second,
+						TimeInMeshCap:     1,
 
-					DecayInterval: pubsub.DefaultDecayInterval,
-					DecayToZero:   pubsub.DefaultDecayToZero,
+						// deliveries decay after 10min, cap at 1000 tx
+						FirstMessageDeliveriesWeight: 0.5, // max value is 500
+						FirstMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(10 * time.Minute),
+						FirstMessageDeliveriesCap:    1000,
 
-					// this retains non-positive scores for 6 hours
-					RetainScore: 6 * time.Hour,
+						// tracks deliveries in the last minute
+						// penalty activates at 1 min and expects 2.5 txs
+						MeshMessageDeliveriesWeight:     -16, // max penalty is -100
+						MeshMessageDeliveriesDecay:      pubsub.ScoreParameterDecay(time.Minute),
+						MeshMessageDeliveriesCap:        100, // 100 txs in a minute
+						MeshMessageDeliveriesThreshold:  2.5, // 60/12/2 txs/minute
+						MeshMessageDeliveriesWindow:     10 * time.Millisecond,
+						MeshMessageDeliveriesActivation: time.Minute,
 
-					// topic parameters
-					Topics: map[string]*pubsub.TopicScoreParams{
-						build.BlocksTopic(nn): {
-							// expected 10 blocks/min
-							TopicWeight: 0.1, // max is 50, max mesh penalty is -10, single invalid message is -100
+						// decays after 5min
+						MeshFailurePenaltyWeight: -16,
+						MeshFailurePenaltyDecay:  pubsub.ScoreParameterDecay(5 * time.Minute),
 
-							// 1 tick per second, maxes at 1 after 1 hour
-							TimeInMeshWeight:  0.00027, // ~1/3600
-							TimeInMeshQuantum: time.Second,
-							TimeInMeshCap:     1,
-
-							// deliveries decay after 1 hour, cap at 100 blocks
-							FirstMessageDeliveriesWeight: 5, // max value is 500
-							FirstMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(time.Hour),
-							FirstMessageDeliveriesCap:    100, // 100 blocks in an hour
-
-							// tracks deliveries in the last minute
-							// penalty activates at 1 minute and expects ~0.4 blocks
-							MeshMessageDeliveriesWeight:     -576, // max penalty is -100
-							MeshMessageDeliveriesDecay:      pubsub.ScoreParameterDecay(time.Minute),
-							MeshMessageDeliveriesCap:        10,      // 10 blocks in a minute
-							MeshMessageDeliveriesThreshold:  0.41666, // 10/12/2 blocks/min
-							MeshMessageDeliveriesWindow:     10 * time.Millisecond,
-							MeshMessageDeliveriesActivation: time.Minute,
-
-							// decays after 15 min
-							MeshFailurePenaltyWeight: -576,
-							MeshFailurePenaltyDecay:  pubsub.ScoreParameterDecay(15 * time.Minute),
-
-							// invalid messages decay after 1 hour
-							InvalidMessageDeliveriesWeight: -1000,
-							InvalidMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(time.Hour),
-						},
-						build.MessagesTopic(nn): {
-							// expected > 1 tx/second
-							TopicWeight: 0.05, // max is 25, max mesh penalty is -5, single invalid message is -100
-
-							// 1 tick per second, maxes at 1 hour
-							TimeInMeshWeight:  0.0002778, // ~1/3600
-							TimeInMeshQuantum: time.Second,
-							TimeInMeshCap:     1,
-
-							// deliveries decay after 10min, cap at 1000 tx
-							FirstMessageDeliveriesWeight: 0.5, // max value is 500
-							FirstMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(10 * time.Minute),
-							FirstMessageDeliveriesCap:    1000,
-
-							// tracks deliveries in the last minute
-							// penalty activates at 1 min and expects 2.5 txs
-							MeshMessageDeliveriesWeight:     -16, // max penalty is -100
-							MeshMessageDeliveriesDecay:      pubsub.ScoreParameterDecay(time.Minute),
-							MeshMessageDeliveriesCap:        100, // 100 txs in a minute
-							MeshMessageDeliveriesThreshold:  2.5, // 60/12/2 txs/minute
-							MeshMessageDeliveriesWindow:     10 * time.Millisecond,
-							MeshMessageDeliveriesActivation: time.Minute,
-
-							// decays after 5min
-							MeshFailurePenaltyWeight: -16,
-							MeshFailurePenaltyDecay:  pubsub.ScoreParameterDecay(5 * time.Minute),
-
-							// invalid messages decay after 1 hour
-							InvalidMessageDeliveriesWeight: -2000,
-							InvalidMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(time.Hour),
-						},
+						// invalid messages decay after 1 hour
+						InvalidMessageDeliveriesWeight: -2000,
+						InvalidMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(time.Hour),
 					},
 				},
-				&pubsub.PeerScoreThresholds{
-					GossipThreshold:             -500,
-					PublishThreshold:            -1000,
-					GraylistThreshold:           -2500,
-					AcceptPXThreshold:           1000,
-					OpportunisticGraftThreshold: 2.5,
-				},
-			),
-		}
+			},
+			&pubsub.PeerScoreThresholds{
+				GossipThreshold:             -500,
+				PublishThreshold:            -1000,
+				GraylistThreshold:           -2500,
+				AcceptPXThreshold:           1000,
+				OpportunisticGraftThreshold: 2.5,
+			},
+		),
+	}
 
-		// enable Peer eXchange on bootstrappers
-		if isBootstrapNode {
-			// turn off the mesh in bootstrappers -- only do gossip and PX
-			pubsub.GossipSubD = 0
-			pubsub.GossipSubDscore = 0
-			pubsub.GossipSubDlo = 0
-			pubsub.GossipSubDhi = 0
-			pubsub.GossipSubDlazy = 1024
-			pubsub.GossipSubGossipFactor = 0.5
-			// turn on PX
-			options = append(options, pubsub.WithPeerExchange(true))
-		}
+	// enable Peer eXchange on bootstrappers
+	if isBootstrapNode {
+		// turn off the mesh in bootstrappers -- only do gossip and PX
+		pubsub.GossipSubD = 0
+		pubsub.GossipSubDscore = 0
+		pubsub.GossipSubDlo = 0
+		pubsub.GossipSubDhi = 0
+		pubsub.GossipSubDlazy = 1024
+		pubsub.GossipSubGossipFactor = 0.5
+		// turn on PX
+		options = append(options, pubsub.WithPeerExchange(true))
+	}
 
-		// direct peers
-		if cfg.DirectPeers != nil {
-			var directPeerInfo []peer.AddrInfo
+	// direct peers
+	if cfg.DirectPeers != nil {
+		var directPeerInfo []peer.AddrInfo
 
-			for _, addr := range cfg.DirectPeers {
-				a, err := ma.NewMultiaddr(addr)
-				if err != nil {
-					return nil, err
-				}
-
-				pi, err := peer.AddrInfoFromP2pAddr(a)
-				if err != nil {
-					return nil, err
-				}
-
-				directPeerInfo = append(directPeerInfo, *pi)
-			}
-
-			options = append(options, pubsub.WithDirectPeers(directPeerInfo))
-		}
-
-		// tracer
-		if cfg.RemoteTracer != "" {
-			a, err := ma.NewMultiaddr(cfg.RemoteTracer)
+		for _, addr := range cfg.DirectPeers {
+			a, err := ma.NewMultiaddr(addr)
 			if err != nil {
 				return nil, err
 			}
@@ -191,21 +172,38 @@ func GossipSub(cfg *config.Pubsub) interface{} {
 				return nil, err
 			}
 
-			tr, err := pubsub.NewRemoteTracer(context.TODO(), host, *pi)
-			if err != nil {
-				return nil, err
-			}
-
-			trw := newTracerWrapper(tr)
-			options = append(options, pubsub.WithEventTracer(trw))
+			directPeerInfo = append(directPeerInfo, *pi)
 		}
 
-		// TODO: we want to hook the peer score inspector so that we can gain visibility
-		//       in peer scores for debugging purposes -- this might be trigged by metrics collection
-		// options = append(options, pubsub.WithPeerScoreInspect(XXX, time.Second))
-
-		return pubsub.NewGossipSub(helpers.LifecycleCtx(mctx, lc), host, options...)
+		options = append(options, pubsub.WithDirectPeers(directPeerInfo))
 	}
+
+	// tracer
+	if cfg.RemoteTracer != "" {
+		a, err := ma.NewMultiaddr(cfg.RemoteTracer)
+		if err != nil {
+			return nil, err
+		}
+
+		pi, err := peer.AddrInfoFromP2pAddr(a)
+		if err != nil {
+			return nil, err
+		}
+
+		tr, err := pubsub.NewRemoteTracer(context.TODO(), host, *pi)
+		if err != nil {
+			return nil, err
+		}
+
+		trw := newTracerWrapper(tr)
+		options = append(options, pubsub.WithEventTracer(trw))
+	}
+
+	// TODO: we want to hook the peer score inspector so that we can gain visibility
+	//       in peer scores for debugging purposes -- this might be trigged by metrics collection
+	// options = append(options, pubsub.WithPeerScoreInspect(XXX, time.Second))
+
+	return pubsub.NewGossipSub(helpers.LifecycleCtx(mctx, lc), host, options...)
 }
 
 func HashMsgId(m *pubsub_pb.Message) string {
