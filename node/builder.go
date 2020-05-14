@@ -142,12 +142,14 @@ type Settings struct {
 
 	Online bool // Online option applied
 	Config bool // Config option applied
+
 }
 
 func defaults() []Option {
 	return []Option{
 		Override(new(helpers.MetricsCtx), context.Background),
 		Override(new(record.Validator), modules.RecordValidator),
+		Override(new(dtypes.Bootstrapper), dtypes.Bootstrapper(false)),
 
 		// Filecoin modules
 
@@ -178,7 +180,12 @@ func libp2p() Option {
 		Override(ConnectionManagerKey, lp2p.ConnectionManager(50, 200, 20*time.Second, nil)),
 		Override(AutoNATSvcKey, lp2p.AutoNATService),
 
-		Override(new(*pubsub.PubSub), lp2p.GossipSub(&config.Pubsub{})),
+		Override(new(*pubsub.PubSub), lp2p.GossipSub),
+		Override(new(*config.Pubsub), func(bs dtypes.Bootstrapper) *config.Pubsub {
+			return &config.Pubsub{
+				Bootstrapper: bool(bs),
+			}
+		}),
 
 		Override(PstoreAddSelfKeysKey, lp2p.PstoreAddSelfKeys),
 		Override(StartListeningKey, lp2p.StartListening(config.DefaultFullNode().Libp2p.ListenAddresses)),
@@ -354,7 +361,8 @@ func ConfigCommon(cfg *config.Common) Option {
 				cfg.Libp2p.ConnMgrHigh,
 				time.Duration(cfg.Libp2p.ConnMgrGrace),
 				cfg.Libp2p.ProtectedPeers)),
-			Override(new(*pubsub.PubSub), lp2p.GossipSub(&cfg.Pubsub)),
+			Override(new(*pubsub.PubSub), lp2p.GossipSub),
+			Override(new(*config.Pubsub), &cfg.Pubsub),
 
 			ApplyIf(func(s *Settings) bool { return len(cfg.Libp2p.BootstrapPeers) > 0 },
 				Override(new(dtypes.BootstrapPeers), modules.ConfigBootstrap(cfg.Libp2p.BootstrapPeers)),

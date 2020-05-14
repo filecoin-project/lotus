@@ -71,19 +71,23 @@ func MockHost(mn mocknet.Mocknet, id peer.ID, ps peerstore.Peerstore) (RawHost, 
 }
 
 func DHTRouting(mode dht.ModeOpt) interface{} {
-	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, host RawHost, dstore dtypes.MetadataDS, validator record.Validator, nn dtypes.NetworkName) (BaseIpfsRouting, error) {
+	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, host RawHost, dstore dtypes.MetadataDS, validator record.Validator, nn dtypes.NetworkName, bs dtypes.Bootstrapper) (BaseIpfsRouting, error) {
 		ctx := helpers.LifecycleCtx(mctx, lc)
 
-		d, err := dht.New(
-			ctx, host,
-			dht.Mode(mode),
+		if bs {
+			mode = dht.ModeServer
+		}
+
+		opts := []dht.Option{dht.Mode(mode),
 			dht.Datastore(dstore),
 			dht.Validator(validator),
 			dht.ProtocolPrefix(build.DhtProtocolName(nn)),
 			dht.QueryFilter(dht.PublicQueryFilter),
 			dht.RoutingTableFilter(dht.PublicRoutingTableFilter),
 			dht.DisableProviders(),
-			dht.DisableValues(),
+			dht.DisableValues()}
+		d, err := dht.New(
+			ctx, host, opts...,
 		)
 
 		if err != nil {
