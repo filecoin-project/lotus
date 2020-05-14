@@ -4,10 +4,13 @@ import (
 	"bytes"
 	"fmt"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
+	xerrors "golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 )
@@ -120,4 +123,41 @@ func (m *Message) VMMessage() *Message {
 
 func (m *Message) Equals(o *Message) bool {
 	return m.Cid() == o.Cid()
+}
+
+func (m *Message) ValidForBlockInclusion(minGas int64) error {
+	if m.Version != 0 {
+		return xerrors.New("'Version' unsupported")
+	}
+
+	if m.To == address.Undef {
+		return xerrors.New("'To' address cannot be empty")
+	}
+
+	if m.From == address.Undef {
+		return xerrors.New("'From' address cannot be empty")
+	}
+
+	if m.Value.LessThan(big.Zero()) {
+		return xerrors.New("'Value' field cannot be negative")
+	}
+
+	if m.Value.GreaterThan(TotalFilecoinInt) {
+		return xerrors.New("'Value' field cannot be greater than total filecoin supply")
+	}
+
+	if m.GasPrice.LessThan(big.Zero()) {
+		return xerrors.New("'GasPrice' field cannot be negative")
+	}
+
+	if m.GasLimit > build.BlockGasLimit {
+		return xerrors.New("'GasLimit' field cannot be greater than a block's gas limit")
+	}
+
+	// since prices might vary with time, this is technically semantic validation
+	if m.GasLimit < minGas {
+		return xerrors.New("'GasLimit' field cannot be less than the cost of storing a message on chain")
+	}
+
+	return nil
 }

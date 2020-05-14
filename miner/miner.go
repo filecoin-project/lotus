@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/vm"
 
 	logging "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/trace"
@@ -420,6 +421,12 @@ func SelectMessages(ctx context.Context, al ActorLookup, ts *types.TipSet, msgs 
 	inclCount := make(map[address.Address]int)
 
 	for _, msg := range msgs {
+
+		minGas := vm.PricelistByEpoch(ts.Height()).OnChainMessage(msg.VMMessage().ChainLength()) // TODO: really should be doing just msg.ChainLength() but the sync side of this code doesnt seem to have access to that
+		if err := msg.VMMessage().ValidForBlockInclusion(minGas); err != nil {
+			log.Warnf("invalid message in message pool: %s", err)
+			continue
+		}
 
 		// TODO: this should be in some more general 'validate message' call
 		if msg.Message.GasLimit > build.BlockGasLimit {
