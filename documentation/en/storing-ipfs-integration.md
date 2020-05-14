@@ -2,7 +2,9 @@
 
 Lotus supports making deals with data stored in IPFS, without having to re-import it into lotus.
 
-To enable this integration, open up `~/.lotus/config.toml` (Or if you manually set `LOTUS_PATH`, look under that directory) and look for the Client field, and set `UseIpfs` to `true`.
+To enable this integration, you need to have an IPFS daemon running in the background.
+Then, open up `~/.lotus/config.toml` (or if you manually set `LOTUS_PATH`, look under that directory) 
+and look for the Client field, and set `UseIpfs` to `true`.
 
 ```toml
 [Client]

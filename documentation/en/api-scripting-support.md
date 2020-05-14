@@ -1,21 +1,13 @@
-# API Scripting Support
+# Remote API Support
 
-You may want to delegate the work **Lotus Storage Miner** or **Lotus Node** perform to other machines. Here is how to setup the necessary authorization and environment variables.
-
-## Generate a JWT
-
-To generate a JWT for your environment variables, use this command:
-
-```sh
-lotus auth create-token --perm admin
-lotus-storage-miner auth create-token --perm admin
-```
+You may want to delegate the work **Lotus Storage Miner** or **Lotus Node** performs to other machines. 
+Here is how to setup the necessary authorization and environment variables.
 
 ## Environment variables
 
 Environmental variables are variables that are defined for the current shell and are inherited by any child shells or processes. Environmental variables are used to pass information into processes that are spawned from the shell.
 
-Using the JWT you generated, you can assign it and the **multiaddr** to the appropriate environment variable.
+Using the [JWT you generated](https://lotu.sh/en+api#how-do-i-generate-a-token-18865), you can assign it and the **multiaddr** to the appropriate environment variable.
 
 ```sh
 # Lotus Node
