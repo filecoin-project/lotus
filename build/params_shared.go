@@ -25,7 +25,7 @@ func DefaultSectorSize() abi.SectorSize {
 	}
 
 	sort.Slice(szs, func(i, j int) bool {
-		return szs[i] < szs[i]
+		return szs[i] < szs[j]
 	})
 
 	return szs[0]
