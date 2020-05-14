@@ -301,6 +301,7 @@ func (h *ChanHandler) Sub(ctx context.Context, i int, eq int) (<-chan int, error
 				fmt.Println("ctxdone1", i, eq)
 				return
 			case <-wait:
+				fmt.Println("CONSUMED WAIT: ", i)
 			}
 
 			n += i
@@ -416,8 +417,6 @@ func TestChanClosing(t *testing.T) {
 	ctx1, cancel1 := context.WithCancel(context.Background())
 	ctx2, cancel2 := context.WithCancel(context.Background())
 
-	defer cancel2()
-
 	// sub
 
 	sub1, err := client.Sub(ctx1, 2, -1)
@@ -436,9 +435,14 @@ func TestChanClosing(t *testing.T) {
 
 	cancel1()
 
-	serverHandler.wait <- struct{}{}
 	require.Equal(t, 0, <-sub1)
+	time.Sleep(time.Millisecond * 50) // make sure the loop has exited (having a shared wait channel makes this annoying)
+
+	serverHandler.wait <- struct{}{}
 	require.Equal(t, 6, <-sub2)
+
+	cancel2()
+	require.Equal(t, 0, <-sub2)
 }
 
 func TestChanServerClose(t *testing.T) {

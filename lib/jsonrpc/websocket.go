@@ -204,13 +204,14 @@ func (c *wsConn) handleOutChans() {
 		if !ok {
 			// Output channel closed, cleanup, and tell remote that this happened
 
+			id := caseToID[chosen-internal]
+
 			n := len(cases) - 1
 			if n > 0 {
 				cases[chosen] = cases[n]
 				caseToID[chosen-internal] = caseToID[n-internal]
 			}
 
-			id := caseToID[chosen-internal]
 			cases = cases[:n]
 			caseToID = caseToID[:n-internal]
 
