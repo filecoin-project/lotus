@@ -865,10 +865,6 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 			return xerrors.New("'Value' field cannot be greater than total filecoin supply")
 		}
 
-		if len(m.Params) != 0 && m.Method == 0 {
-			return xerrors.New("'Params' field should be empty if no 'Method' is being called")
-		}
-
 		if m.GasPrice.LessThan(big.Zero()) {
 			return xerrors.New("'GasPrice' field cannot be negative")
 		}
