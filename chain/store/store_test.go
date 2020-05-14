@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 
 	"github.com/filecoin-project/lotus/chain/gen"
@@ -25,6 +26,7 @@ func init() {
 		abi.RegisteredProof_StackedDRG2KiBSeal: {},
 	}
 	power.ConsensusMinerMinPower = big.NewInt(2048)
+	verifreg.MinVerifiedDealSize = big.NewInt(256)
 }
 
 func BenchmarkGetRandomness(b *testing.B) {

@@ -27,6 +27,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	saminer "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
@@ -55,6 +56,7 @@ func init() {
 	saminer.SupportedProofTypes = map[abi.RegisteredProof]struct{}{
 		abi.RegisteredProof_StackedDRG2KiBSeal: {},
 	}
+	verifreg.MinVerifiedDealSize = big.NewInt(256)
 }
 
 func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, act address.Address, pk crypto.PrivKey, tnd test.TestNode, mn mocknet.Mocknet, opts node.Option) test.TestStorageNode {

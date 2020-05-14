@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 
 	"github.com/filecoin-project/go-amt-ipld/v2"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
+	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -20,6 +22,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/genesis"
 )
 
@@ -215,7 +218,70 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 		}
 	}
 
+	vregroot, err := address.NewIDAddress(80)
+	if err != nil {
+		return nil, err
+	}
+
+	vrst, err := cst.Put(ctx, &account.State{Address: RootVerifierAddr})
+	if err != nil {
+		return nil, err
+	}
+
+	err = state.SetActor(vregroot, &types.Actor{
+		Code:    builtin.AccountActorCodeID,
+		Balance: types.NewInt(0),
+		Head:    vrst,
+	})
+
+	if err != nil {
+		return nil, xerrors.Errorf("setting account from actmap: %w", err)
+	}
+
 	return state, nil
+}
+
+func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, stateroot cid.Cid, template genesis.Template) (cid.Cid, error) {
+	verifNeeds := make(map[address.Address]abi.PaddedPieceSize)
+	var sum abi.PaddedPieceSize
+	for _, m := range template.Miners {
+		for _, s := range m.Sectors {
+			amt := (1 << 20) + s.Deal.PieceSize
+			verifNeeds[s.Deal.Client] += amt
+			sum += amt
+		}
+	}
+
+	verifier, err := address.NewIDAddress(80)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	vm, err := vm.NewVM(stateroot, 0, &fakeRand{}, cs.Blockstore(), &fakedSigSyscalls{cs.VMSys()})
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to create NewVM: %w", err)
+	}
+
+	_, err = doExecValue(ctx, vm, builtin.VerifiedRegistryActorAddr, RootVerifierAddr, types.NewInt(0), builtin.MethodsVerifiedRegistry.AddVerifier, mustEnc(&verifreg.AddVerifierParams{
+		Address:   verifier,
+		Allowance: abi.NewStoragePower(int64(sum*3) / 2), // eh, close enough
+
+	}))
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to failed to create verifier: %w", err)
+	}
+
+	for c, amt := range verifNeeds {
+		_, err := doExecValue(ctx, vm, builtin.VerifiedRegistryActorAddr, verifier, types.NewInt(0), builtin.MethodsVerifiedRegistry.AddVerifiedClient, mustEnc(&verifreg.AddVerifiedClientParams{
+			Address:   c,
+			Allowance: abi.NewStoragePower(int64(amt*12) / 10),
+		}))
+		if err != nil {
+			return cid.Undef, xerrors.Errorf("failed to add verified client: %w", err)
+		}
+	}
+
+	return vm.Flush(ctx)
 }
 
 func MakeGenesisBlock(ctx context.Context, bs bstore.Blockstore, sys runtime.Syscalls, template genesis.Template) (*GenesisBootstrap, error) {
@@ -231,6 +297,13 @@ func MakeGenesisBlock(ctx context.Context, bs bstore.Blockstore, sys runtime.Sys
 
 	// temp chainstore
 	cs := store.NewChainStore(bs, datastore.NewMapDatastore(), sys)
+
+	// Verify PreSealed Data
+	stateroot, err = VerifyPreSealedData(ctx, cs, stateroot, template)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to verify presealed data: %w", err)
+	}
+
 	stateroot, err = SetupStorageMiners(ctx, cs, stateroot, template.Miners)
 	if err != nil {
 		return nil, xerrors.Errorf("setup storage miners failed: %w", err)

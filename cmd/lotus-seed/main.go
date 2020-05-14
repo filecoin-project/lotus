@@ -4,10 +4,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/docker/go-units"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"io/ioutil"
 	"os"
+
+	"github.com/docker/go-units"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"

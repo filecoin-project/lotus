@@ -14,6 +14,26 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
+var RootVerifierAddr address.Address
+
+var RootVerifierID address.Address
+
+func init() {
+	k, err := address.NewFromString("t3qfoulel6fy6gn3hjmbhpdpf6fs5aqjb5fkurhtwvgssizq4jey5nw4ptq5up6h7jk7frdvvobv52qzmgjinq")
+	if err != nil {
+		panic(err)
+	}
+
+	RootVerifierAddr = k
+
+	idk, err := address.NewFromString("t080")
+	if err != nil {
+		panic(err)
+	}
+
+	RootVerifierID = idk
+}
+
 func SetupVerifiedRegistryActor(bs bstore.Blockstore) (*types.Actor, error) {
 	cst := cbor.NewCborStore(bs)
 
@@ -22,12 +42,7 @@ func SetupVerifiedRegistryActor(bs bstore.Blockstore) (*types.Actor, error) {
 		return nil, err
 	}
 
-	k, err := address.NewFromString("t3qfoulel6fy6gn3hjmbhpdpf6fs5aqjb5fkurhtwvgssizq4jey5nw4ptq5up6h7jk7frdvvobv52qzmgjinq")
-	if err != nil {
-		return nil, err
-	}
-
-	sms := verifreg.ConstructState(h, k)
+	sms := verifreg.ConstructState(h, RootVerifierID)
 
 	stcid, err := cst.Put(context.TODO(), sms)
 	if err != nil {

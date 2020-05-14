@@ -130,6 +130,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 
 			params := &market.PublishStorageDealsParams{}
 			for _, preseal := range m.Sectors {
+				preseal.Deal.VerifiedDeal = true
 				params.Deals = append(params.Deals, market.ClientDealProposal{
 					Proposal:        preseal.Deal,
 					ClientSignature: crypto.Signature{Type: crypto.SigTypeBLS}, // TODO: do we want to sign these? Or do we want to fake signatures for genesis setup?
