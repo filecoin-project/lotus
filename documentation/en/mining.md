@@ -28,7 +28,7 @@ lotus wallet new bls
 
 With your wallet address:
 
-- Visit the [faucet](https://facuet.testnet.filecoin.io)
+- Visit the [faucet](https://faucet.testnet.filecoin.io)
 - Click "Create Miner"
 - DO NOT REFRESH THE PAGE. THIS OPERATION CAN TAKE SOME TIME.
 
