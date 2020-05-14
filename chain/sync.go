@@ -841,9 +841,11 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 		return xerrors.Errorf("failed to load base state tree: %w", err)
 	}
 
-	checkMsg := func(m *types.Message) error {
+	checkMsg := func(msg types.ChainMsg) error {
+		m := msg.VMMessage()
+
 		// Phase 1: syntactic validation, as defined in the spec
-		minGas := vm.PricelistByEpoch(baseTs.Height()).OnChainMessage(m.ChainLength())
+		minGas := vm.PricelistByEpoch(baseTs.Height()).OnChainMessage(msg.ChainLength())
 		if err := m.ValidForBlockInclusion(minGas); err != nil {
 			return err
 		}
@@ -885,7 +887,7 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 
 	var secpkCids []cbg.CBORMarshaler
 	for i, m := range b.SecpkMessages {
-		if err := checkMsg(&m.Message); err != nil {
+		if err := checkMsg(m); err != nil {
 			return xerrors.Errorf("block had invalid secpk message at index %d: %w", i, err)
 		}
 
