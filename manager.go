@@ -49,7 +49,7 @@ type Worker interface {
 type SectorManager interface {
 	SectorSize() abi.SectorSize
 
-	ReadPieceFromSealedSector(context.Context, io.Writer, abi.SectorID, ffiwrapper.UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) error
+	ReadPiece(context.Context, io.Writer, abi.SectorID, ffiwrapper.UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) error
 
 	ffiwrapper.StorageSealer
 	storage.Prover
@@ -189,7 +189,7 @@ func schedFetch(sector abi.SectorID, ft stores.SectorFileType, sealing bool) fun
 	}
 }
 
-func (m *Manager) ReadPieceFromSealedSector(ctx context.Context, sink io.Writer, sector abi.SectorID, offset ffiwrapper.UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, unsealed cid.Cid) error {
+func (m *Manager) ReadPiece(ctx context.Context, sink io.Writer, sector abi.SectorID, offset ffiwrapper.UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, unsealed cid.Cid) error {
 	best, err := m.index.StorageFindSector(ctx, sector, stores.FTUnsealed, false)
 	if err != nil {
 		return xerrors.Errorf("read piece: checking for already existing unsealed sector: %w", err)

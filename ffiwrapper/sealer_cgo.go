@@ -7,6 +7,7 @@ import (
 	"io"
 	"math/bits"
 	"os"
+	"path/filepath"
 
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
@@ -46,13 +47,20 @@ func (sb *Sealer) NewSector(ctx context.Context, sector abi.SectorID) error {
 }
 
 func (sb *Sealer) AddPiece(ctx context.Context, sector abi.SectorID, existingPieceSizes []abi.UnpaddedPieceSize, pieceSize abi.UnpaddedPieceSize, file storage.Data) (abi.PieceInfo, error) {
-	f, werr, err := toReadableFile(file, int64(pieceSize))
-	if err != nil {
-		return abi.PieceInfo{}, err
+	var offset abi.UnpaddedPieceSize
+	for _, size := range existingPieceSizes {
+		offset += size
 	}
 
+	maxPieceSize := abi.PaddedPieceSize(sb.ssize).Unpadded()
+
+	if offset + pieceSize > maxPieceSize {
+		return abi.PieceInfo{}, xerrors.Errorf("can't add %d byte piece to sector %v with %d bytes of existing pieces", pieceSize, sector, offset)
+	}
+
+	var err error
 	var done func()
-	var stagedFile *os.File
+	var stagedFile *partialFile
 
 	defer func() {
 		if done != nil {
@@ -73,9 +81,9 @@ func (sb *Sealer) AddPiece(ctx context.Context, sector abi.SectorID, existingPie
 			return abi.PieceInfo{}, xerrors.Errorf("acquire unsealed sector: %w", err)
 		}
 
-		stagedFile, err = os.Create(stagedPath.Unsealed)
+		stagedFile, err = createPartialFile(maxPieceSize, stagedPath.Unsealed)
 		if err != nil {
-			return abi.PieceInfo{}, xerrors.Errorf("opening sector file: %w", err)
+			return abi.PieceInfo{}, xerrors.Errorf("creating unsealed sector file: %w", err)
 		}
 	} else {
 		stagedPath, done, err = sb.sectors.AcquireSector(ctx, sector, stores.FTUnsealed, 0, true)
@@ -83,24 +91,35 @@ func (sb *Sealer) AddPiece(ctx context.Context, sector abi.SectorID, existingPie
 			return abi.PieceInfo{}, xerrors.Errorf("acquire unsealed sector: %w", err)
 		}
 
-		stagedFile, err = os.OpenFile(stagedPath.Unsealed, os.O_RDWR, 0644)
+		stagedFile, err = openPartialFile(maxPieceSize, stagedPath.Unsealed)
 		if err != nil {
-			return abi.PieceInfo{}, xerrors.Errorf("opening sector file: %w", err)
-		}
-
-		if _, err := stagedFile.Seek(0, io.SeekEnd); err != nil {
-			return abi.PieceInfo{}, xerrors.Errorf("seek end: %w", err)
+			return abi.PieceInfo{}, xerrors.Errorf("opening unsealed sector file: %w", err)
 		}
 	}
 
-	_, _, pieceCID, err := ffi.WriteWithAlignment(sb.sealProofType, f, pieceSize, stagedFile, existingPieceSizes)
+	w, err := stagedFile.Writer(offset, pieceSize)
 	if err != nil {
-		return abi.PieceInfo{}, err
+		return abi.PieceInfo{}, xerrors.Errorf("getting partial file writer: %w", err)
+	}
+	pr := io.TeeReader(io.LimitReader(file, int64(pieceSize)), w)
+	prf, werr, err := toReadableFile(pr, int64(pieceSize))
+	if err != nil {
+		return abi.PieceInfo{}, xerrors.Errorf("getting tee reader pipe: %w", err)
 	}
 
-	if err := f.Close(); err != nil {
+	pieceCID, err := ffi.GeneratePieceCIDFromFile(sb.sealProofType, prf, pieceSize)
+	if err != nil {
+		return abi.PieceInfo{}, xerrors.Errorf("generating piece commitment: %w", err)
+	}
+
+	if err := stagedFile.MarkAllocated(offset, pieceSize); err != nil {
+		return abi.PieceInfo{}, xerrors.Errorf("marking data range as allocated: %w", err)
+	}
+
+	if err := stagedFile.Close(); err != nil {
 		return abi.PieceInfo{}, err
 	}
+	stagedFile = nil
 
 	return abi.PieceInfo{
 		Size:     pieceSize.Padded(),
@@ -232,11 +251,22 @@ func (sb *Sealer) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticke
 		return nil, xerrors.Errorf("aggregated piece sizes don't match sector size: %d != %d (%d)", sum, ussize, int64(ussize-sum))
 	}
 
+	staged := filepath.Join(paths.Cache, "staged")
+
+	if err := sb.rewriteAsPadded(paths.Unsealed, staged); err != nil {
+		return nil, xerrors.Errorf("rewriting sector as padded: %w", err)
+	}
+	defer func() {
+		if err := os.Remove(staged); err != nil {
+			log.Warnf("Removing staged sector file(%v): %s", sector, err)
+		}
+	}()
+
 	// TODO: context cancellation respect
 	p1o, err := ffi.SealPreCommitPhase1(
 		sb.sealProofType,
 		paths.Cache,
-		paths.Unsealed,
+		staged,
 		paths.Sealed,
 		sector.Number,
 		sector.Miner,
@@ -247,6 +277,52 @@ func (sb *Sealer) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticke
 		return nil, xerrors.Errorf("presealing sector %d (%s): %w", sector.Number, paths.Unsealed, err)
 	}
 	return p1o, nil
+}
+
+func (sb *Sealer) rewriteAsPadded(unsealed string, staged string) error {
+	maxPieceSize := abi.PaddedPieceSize(sb.ssize).Unpadded()
+
+	pf, err := openPartialFile(maxPieceSize, unsealed)
+	if err != nil {
+		return xerrors.Errorf("opening unsealed file: %w", err)
+	}
+
+	upr, err := pf.Reader(0, maxPieceSize)
+	if err != nil {
+		pf.Close()
+		return err
+	}
+
+	st, err := os.OpenFile(staged, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		pf.Close()
+		return xerrors.Errorf("openning staged file: %w", err)
+	}
+
+	// OPTIMIZATION: upr is a file, so it could be passed straight to
+	//  WriteWithAlignment IF it wouldn't care about the trailer
+	lupr, werr, err := toReadableFile(io.LimitReader(upr, int64(maxPieceSize)), int64(maxPieceSize))
+	if err != nil {
+		return err
+	}
+
+	_, _, _, err = ffi.WriteWithAlignment(sb.sealProofType, lupr, maxPieceSize, st, nil)
+	if err != nil {
+		pf.Close()
+		st.Close()
+		return xerrors.Errorf("write with alignment: %w", err)
+	}
+
+	if err := st.Close(); err != nil {
+		pf.Close()
+		return err
+	}
+
+	if err := pf.Close(); err != nil {
+		return err
+	}
+
+	return werr()
 }
 
 func (sb *Sealer) SealPreCommit2(ctx context.Context, sector abi.SectorID, phase1Out storage.PreCommit1Out) (storage.SectorCids, error) {

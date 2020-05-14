@@ -1,8 +1,10 @@
 package ffiwrapper
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	ffi "github.com/filecoin-project/filecoin-ffi"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -350,4 +352,15 @@ func TestSealAndVerify2(t *testing.T) {
 	wg.Wait()
 
 	post(t, sb, s1, s2)
+}
+
+func TestScribbles(t *testing.T) {
+	rf, w, _ := toReadableFile(bytes.NewReader(bytes.Repeat([]byte{0xff, 0}, 127)), 254)
+	defer w()
+
+	tf, _ := ioutil.TempFile("/tmp/", "scrb-")
+
+	fmt.Println(tf.Name())
+
+	fmt.Println(ffi.WriteWithAlignment(abi.RegisteredProof_StackedDRG2KiBSeal, rf, 254, tf, nil))
 }
