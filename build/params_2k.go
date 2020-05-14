@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 )
 
 func init() {
@@ -14,6 +15,7 @@ func init() {
 	miner.SupportedProofTypes = map[abi.RegisteredProof]struct{}{
 		abi.RegisteredProof_StackedDRG2KiBSeal: {},
 	}
+	verifreg.MinVerifiedDealSize = big.NewInt(256)
 }
 
 // Seconds

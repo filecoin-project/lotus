@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
@@ -43,6 +44,10 @@ func SetupInitActor(bs bstore.Blockstore, netname string, initialActors []genesi
 		if err := amap.Set(context.TODO(), string(ainfo.Owner.Bytes()), AccountStart+uint64(i)); err != nil {
 			return nil, err
 		}
+	}
+
+	if err := amap.Set(context.TODO(), string(RootVerifierAddr.Bytes()), 80); err != nil {
+		return nil, err
 	}
 
 	if err := amap.Flush(context.TODO()); err != nil {

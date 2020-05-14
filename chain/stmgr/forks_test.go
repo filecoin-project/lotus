@@ -13,6 +13,7 @@ import (
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"golang.org/x/xerrors"
@@ -40,6 +41,7 @@ func init() {
 		abi.RegisteredProof_StackedDRG2KiBSeal: {},
 	}
 	power.ConsensusMinerMinPower = big.NewInt(2048)
+	verifreg.MinVerifiedDealSize = big.NewInt(256)
 }
 
 const testForkHeight = 40
