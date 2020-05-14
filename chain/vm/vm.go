@@ -608,17 +608,17 @@ func (vm *VM) transfer(from, to address.Address, amt types.BigInt) aerrors.Actor
 	}
 
 	if amt.LessThan(types.NewInt(0)) {
-		return aerrors.New(exitcode.SysErrSenderInvalid, "attempted to transfer negative value")
+		return aerrors.Newf(exitcode.SysErrForbidden, "attempted to transfer negative value: %s", amt)
 	}
 
 	f, err := vm.cstate.GetActor(from)
 	if err != nil {
-		return aerrors.Newf(exitcode.SysErrSenderInvalid, "transfer failed when retrieving sender actor: %s", err)
+		return aerrors.Fatalf("transfer failed when retrieving sender actor: %s", err)
 	}
 
 	t, err := vm.cstate.GetActor(to)
 	if err != nil {
-		return aerrors.Newf(exitcode.SysErrInvalidReceiver, "transfer failed when retrieving receiver actor: %s", err)
+		return aerrors.Fatalf("transfer failed when retrieving receiver actor: %s", err)
 	}
 
 	if err := deductFunds(f, amt); err != nil {
@@ -627,11 +627,11 @@ func (vm *VM) transfer(from, to address.Address, amt types.BigInt) aerrors.Actor
 	depositFunds(t, amt)
 
 	if err := vm.cstate.SetActor(from, f); err != nil {
-		return aerrors.Newf(exitcode.ErrIllegalState, "transfer failed when setting receiver actor: %s", err)
+		return aerrors.Fatalf("transfer failed when setting receiver actor: %s", err)
 	}
 
 	if err := vm.cstate.SetActor(to, t); err != nil {
-		return aerrors.Newf(exitcode.ErrIllegalState, "transfer failed when setting sender actor: %s", err)
+		return aerrors.Fatalf("transfer failed when setting sender actor: %s", err)
 	}
 
 	return nil
