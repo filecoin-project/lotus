@@ -31,7 +31,6 @@ import (
 	amt "github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
@@ -844,38 +843,9 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 
 	checkMsg := func(m *types.Message) error {
 		// Phase 1: syntactic validation, as defined in the spec
-
-		if m.Version != 0 {
-			return xerrors.New("'Version' unsupported")
-		}
-
-		if m.To == address.Undef {
-			return xerrors.New("'To' address cannot be empty")
-		}
-
-		if m.From == address.Undef {
-			return xerrors.New("'From' address cannot be empty")
-		}
-
-		if m.Value.LessThan(big.Zero()) {
-			return xerrors.New("'Value' field cannot be negative")
-		}
-
-		if m.Value.GreaterThan(types.TotalFilecoinInt) {
-			return xerrors.New("'Value' field cannot be greater than total filecoin supply")
-		}
-
-		if m.GasPrice.LessThan(big.Zero()) {
-			return xerrors.New("'GasPrice' field cannot be negative")
-		}
-
-		if m.GasLimit > build.BlockGasLimit {
-			return xerrors.New("'GasLimit' field cannot be greater than a block's gas limit")
-		}
-
-		// since prices might vary with time, this is technically semantic validation
-		if m.GasLimit < vm.PricelistByEpoch(baseTs.Height()).OnChainMessage(m.ChainLength()) {
-			return xerrors.New("'GasLimit' field cannot be less than the cost of storing a message on chain")
+		minGas := vm.PricelistByEpoch(baseTs.Height()).OnChainMessage(m.ChainLength())
+		if err := m.ValidForBlockInclusion(minGas); err != nil {
+			return err
 		}
 
 		// Phase 2: (Partial) semantic validation:
