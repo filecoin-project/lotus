@@ -35,6 +35,7 @@ type SyncManager struct {
 
 	syncStates []*SyncerState
 
+	// Normally this handler is set to `(*Syncer).Sync()`.
 	doSync func(context.Context, *types.TipSet) error
 
 	stop chan struct{}
