@@ -246,7 +246,7 @@ func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, stateroot ci
 	var sum abi.PaddedPieceSize
 	for _, m := range template.Miners {
 		for _, s := range m.Sectors {
-			amt := (1 << 20) + s.Deal.PieceSize
+			amt := s.Deal.PieceSize
 			verifNeeds[s.Deal.Client] += amt
 			sum += amt
 		}
@@ -264,7 +264,7 @@ func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, stateroot ci
 
 	_, err = doExecValue(ctx, vm, builtin.VerifiedRegistryActorAddr, RootVerifierAddr, types.NewInt(0), builtin.MethodsVerifiedRegistry.AddVerifier, mustEnc(&verifreg.AddVerifierParams{
 		Address:   verifier,
-		Allowance: abi.NewStoragePower(int64(sum*3) / 2), // eh, close enough
+		Allowance: abi.NewStoragePower(int64(sum)), // eh, close enough
 
 	}))
 	if err != nil {
@@ -274,7 +274,7 @@ func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, stateroot ci
 	for c, amt := range verifNeeds {
 		_, err := doExecValue(ctx, vm, builtin.VerifiedRegistryActorAddr, verifier, types.NewInt(0), builtin.MethodsVerifiedRegistry.AddVerifiedClient, mustEnc(&verifreg.AddVerifiedClientParams{
 			Address:   c,
-			Allowance: abi.NewStoragePower(int64(amt*12) / 10),
+			Allowance: abi.NewStoragePower(int64(amt)),
 		}))
 		if err != nil {
 			return cid.Undef, xerrors.Errorf("failed to add verified client: %w", err)
