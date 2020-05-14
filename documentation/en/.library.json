@@ -137,7 +137,7 @@
       "value": null,
       "posts": [
         {
-          "title": "API Scripting Support",
+          "title": "Remote API Support",
           "slug": "en+api-scripting-support",
           "github": "en/api-scripting-support.md",
           "value": null
