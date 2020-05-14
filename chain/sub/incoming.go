@@ -377,10 +377,12 @@ func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubs
 			tag.Insert(metrics.FailureType, "add"),
 		)
 		stats.Record(ctx, metrics.MessageValidationFailure.M(1))
-		if xerrors.Is(err, messagepool.ErrBroadcastAnyway) {
-			return pubsub.ValidationAccept
+		switch {
+		case xerrors.Is(err, messagepool.ErrBroadcastAnyway):
+			return pubsub.ValidationIgnore
+		default:
+			return pubsub.ValidationReject
 		}
-		return pubsub.ValidationIgnore
 	}
 	stats.Record(ctx, metrics.MessageValidationSuccess.M(1))
 	return pubsub.ValidationAccept
