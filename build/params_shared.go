@@ -109,6 +109,10 @@ const BadBlockCacheSize = 1 << 15
 // 10 block reorg.
 const BlsSignatureCacheSize = 40000
 
+// Size of signature verification cache
+// 32k keeps the cache around 10MB in size, max
+const VerifSigCacheSize = 32000
+
 // ///////
 // Limits
 
