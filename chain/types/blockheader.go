@@ -69,6 +69,9 @@ type BlockHeader struct {
 	BlockSig *crypto.Signature // 13
 
 	ForkSignaling uint64 // 14
+
+	// internal
+	validated bool // true if the signature has been validated
 }
 
 func (b *BlockHeader) ToStorageBlock() (block.Block, error) {
@@ -122,6 +125,14 @@ func (blk *BlockHeader) SigningBytes() ([]byte, error) {
 	blkcopy.BlockSig = nil
 
 	return blkcopy.Serialize()
+}
+
+func (blk *BlockHeader) SetValidated() {
+	blk.validated = true
+}
+
+func (blk *BlockHeader) IsValidated() bool {
+	return blk.validated
 }
 
 type MsgMeta struct {

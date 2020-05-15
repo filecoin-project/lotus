@@ -72,6 +72,10 @@ func CheckBlockSignature(blk *types.BlockHeader, ctx context.Context, worker add
 	_, span := trace.StartSpan(ctx, "checkBlockSignature")
 	defer span.End()
 
+	if blk.IsValidated() {
+		return nil
+	}
+
 	if blk.BlockSig == nil {
 		return xerrors.New("block signature not present")
 	}
@@ -81,8 +85,12 @@ func CheckBlockSignature(blk *types.BlockHeader, ctx context.Context, worker add
 		return xerrors.Errorf("failed to get block signing bytes: %w", err)
 	}
 
-	_ = sigb
-	return Verify(blk.BlockSig, worker, sigb)
+	err = Verify(blk.BlockSig, worker, sigb)
+	if err == nil {
+		blk.SetValidated()
+	}
+
+	return err
 }
 
 // SigShim is used for introducing signature functions
