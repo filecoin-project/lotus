@@ -653,6 +653,14 @@ create temp table b (like blocks excluding constraints) on commit drop;
 			eprof = bh.ElectionProof.VRFProof
 		}
 
+		if bh.Ticket == nil {
+			log.Warnf("got a block with nil ticket")
+
+			bh.Ticket = &types.Ticket{
+				VRFProof: []byte{},
+			}
+		}
+
 		if _, err := stmt2.Exec(
 			bh.Cid().String(),
 			bh.ParentWeight.String(),
