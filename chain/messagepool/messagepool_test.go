@@ -3,9 +3,7 @@ package messagepool
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"testing"
-	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -234,62 +232,4 @@ func TestRevertMessages(t *testing.T) {
 		t.Fatal("expected three messages in mempool")
 	}
 
-}
-
-func TestMpoolStress(t *testing.T) {
-	tma := newTestMpoolApi()
-
-	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ds := datastore.NewMapDatastore()
-
-	mp, err := New(tma, ds, "mptest")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	var messages []*types.SignedMessage
-
-	for i := 0; i < 100; i++ {
-		sender, err := w.GenerateKey(crypto.SigTypeBLS)
-		if err != nil {
-			t.Fatal(err)
-		}
-		target := mock.Address(1001)
-
-		for i := 0; i < 50; i++ {
-			messages = append(messages, mock.MkMessage(sender, target, uint64(i), w))
-		}
-	}
-
-	numAdds := 1000
-	averageAddTimings := make(chan time.Duration)
-	for i := 0; i < 20; i++ {
-		go func() {
-			var sum time.Duration
-			for j := 0; j < numAdds; j++ {
-				b := time.Now()
-				if err := mp.Add(messages[rand.Intn(len(messages))]); err != nil {
-					t.Error(err)
-				}
-				m := time.Since(b)
-				sum += m
-				fmt.Println(m)
-			}
-			averageAddTimings <- (sum / time.Duration(numAdds))
-		}()
-	}
-
-	var timings []time.Duration
-	var tsum time.Duration
-	for i := 0; i < 20; i++ {
-		t := <-averageAddTimings
-		timings = append(timings, t)
-		tsum += t
-	}
-
-	fmt.Println("average add time: ", tsum/20)
 }
