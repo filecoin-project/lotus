@@ -671,7 +671,7 @@ func TestCalled(t *testing.T) {
 		0: n2msg,
 	})
 
-	require.Equal(t, true, applied)  // msg from H=7, which had reverted execution
+	require.Equal(t, true, applied) // msg from H=7, which had reverted execution
 	require.Equal(t, false, reverted)
 	require.Equal(t, abi.ChainEpoch(10), appliedH)
 	applied = false

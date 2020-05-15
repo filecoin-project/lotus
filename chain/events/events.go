@@ -166,7 +166,7 @@ func (e *Events) listenHeadChangesOnce(ctx context.Context) error {
 		}
 
 		// sync with fake chainstore (for tests)
-		if fcs, ok := e.api.(interface{notifDone()}); ok {
+		if fcs, ok := e.api.(interface{ notifDone() }); ok {
 			fcs.notifDone()
 		}
 	}
