@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
@@ -9,9 +10,14 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 
+	"github.com/filecoin-project/lotus/api/apibstore"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
+	"github.com/ipfs/go-hamt-ipld"
+	cbor "github.com/ipfs/go-ipld-cbor"
+
+	cbg "github.com/whyrusleeping/cbor-gen"
 )
 
 var verifRegCmd = &cli.Command{
@@ -21,6 +27,8 @@ var verifRegCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		verifRegAddVerifierCmd,
 		verifRegVerifyClientCmd,
+		verifRegListVerifiersCmd,
+		verifRegListClientsCmd,
 	},
 }
 
@@ -158,6 +166,110 @@ var verifRegVerifyClientCmd = &cli.Command{
 
 		if mwait.Receipt.ExitCode != 0 {
 			return fmt.Errorf("failed to add verified client: %d", mwait.Receipt.ExitCode)
+		}
+
+		return nil
+	},
+}
+
+var verifRegListVerifiersCmd = &cli.Command{
+	Name:  "list-verifiers",
+	Usage: "list all verifiers",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		act, err := api.StateGetActor(ctx, builtin.VerifiedRegistryActorAddr, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		apibs := apibstore.NewAPIBlockstore(api)
+		cst := cbor.NewCborStore(apibs)
+
+		var st verifreg.State
+		if err := cst.Get(ctx, act.Head, &st); err != nil {
+			return err
+		}
+
+		vh, err := hamt.LoadNode(ctx, cst, st.Verifiers)
+		if err != nil {
+			return err
+		}
+
+		if err := vh.ForEach(ctx, func(k string, val interface{}) error {
+			addr, err := address.NewFromBytes([]byte(k))
+			if err != nil {
+				return err
+			}
+
+			var dcap verifreg.DataCap
+
+			if err := dcap.UnmarshalCBOR(bytes.NewReader(val.(*cbg.Deferred).Raw)); err != nil {
+				return err
+			}
+
+			fmt.Printf("%s: %s\n", addr, dcap)
+
+			return nil
+		}); err != nil {
+			return err
+		}
+
+		return nil
+	},
+}
+
+var verifRegListClientsCmd = &cli.Command{
+	Name:  "list-clients",
+	Usage: "list all verified clients",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		act, err := api.StateGetActor(ctx, builtin.VerifiedRegistryActorAddr, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		apibs := apibstore.NewAPIBlockstore(api)
+		cst := cbor.NewCborStore(apibs)
+
+		var st verifreg.State
+		if err := cst.Get(ctx, act.Head, &st); err != nil {
+			return err
+		}
+
+		vh, err := hamt.LoadNode(ctx, cst, st.VerifiedClients)
+		if err != nil {
+			return err
+		}
+
+		if err := vh.ForEach(ctx, func(k string, val interface{}) error {
+			addr, err := address.NewFromBytes([]byte(k))
+			if err != nil {
+				return err
+			}
+
+			var dcap verifreg.DataCap
+
+			if err := dcap.UnmarshalCBOR(bytes.NewReader(val.(*cbg.Deferred).Raw)); err != nil {
+				return err
+			}
+
+			fmt.Printf("%s: %s\n", addr, dcap)
+
+			return nil
+		}); err != nil {
+			return err
 		}
 
 		return nil
