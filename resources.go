@@ -196,7 +196,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 	sealtasks.TTCommit2: {
 		abi.RegisteredProof_StackedDRG64GiBSeal: Resources{
 			MaxMemory: 260 << 30, // TODO: Confirm
-			MinMemory: 120 << 30,
+			MinMemory: 60 << 30,
 
 			Threads: -1,
 			CanGPU:  true,
@@ -205,7 +205,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 		},
 		abi.RegisteredProof_StackedDRG32GiBSeal: Resources{
 			MaxMemory: 130 << 30,
-			MinMemory: 60 << 30,
+			MinMemory: 30 << 30,
 
 			Threads: -1,
 			CanGPU:  true,
