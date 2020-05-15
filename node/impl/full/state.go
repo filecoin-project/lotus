@@ -624,6 +624,9 @@ func (a *StateAPI) MsigGetAvailableBalance(ctx context.Context, addr address.Add
 	return types.BigSub(act.Balance, minBalance), nil
 }
 
+var initialPledgeNum = types.NewInt(103)
+var initialPledgeDen = types.NewInt(100)
+
 func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr address.Address, snum abi.SectorNumber, tsk types.TipSetKey) (types.BigInt, error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
@@ -715,7 +718,7 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 		}
 	}
 
-	return initialPledge, nil
+	return types.BigDiv(types.BigMul(initialPledge, initialPledgeNum), initialPledgeDen), nil
 }
 
 func (a *StateAPI) StateMinerAvailableBalance(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (types.BigInt, error) {
