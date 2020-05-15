@@ -84,18 +84,28 @@ func GossipSub(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, nn dtyp
 						FirstMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(time.Hour),
 						FirstMessageDeliveriesCap:    100, // 100 blocks in an hour
 
-						// tracks deliveries in the last minute
-						// penalty activates at 1 minute and expects ~0.4 blocks
-						MeshMessageDeliveriesWeight:     -576, // max penalty is -100
-						MeshMessageDeliveriesDecay:      pubsub.ScoreParameterDecay(time.Minute),
-						MeshMessageDeliveriesCap:        10,      // 10 blocks in a minute
-						MeshMessageDeliveriesThreshold:  0.41666, // 10/12/2 blocks/min
-						MeshMessageDeliveriesWindow:     10 * time.Millisecond,
-						MeshMessageDeliveriesActivation: time.Minute,
-
-						// decays after 15 min
-						MeshFailurePenaltyWeight: -576,
-						MeshFailurePenaltyDecay:  pubsub.ScoreParameterDecay(15 * time.Minute),
+						// Mesh Delivery Failure is currently turned off for blocks
+						// This is on purpose as
+						// - the traffic is very low for meaningful distribution of incoming edges.
+						// - the reaction time needs to be very slow -- in the order of 10 min at least
+						//   so we might as well let opportunistic grafting repair the mesh on its own
+						//   pace.
+						// - the network is too small, so large asymmetries can be expected between mesh
+						//   edges.
+						// We should revisit this once the network grows.
+						//
+						// // tracks deliveries in the last minute
+						// // penalty activates at 1 minute and expects ~0.4 blocks
+						// MeshMessageDeliveriesWeight:     -576, // max penalty is -100
+						// MeshMessageDeliveriesDecay:      pubsub.ScoreParameterDecay(time.Minute),
+						// MeshMessageDeliveriesCap:        10,      // 10 blocks in a minute
+						// MeshMessageDeliveriesThreshold:  0.41666, // 10/12/2 blocks/min
+						// MeshMessageDeliveriesWindow:     10 * time.Millisecond,
+						// MeshMessageDeliveriesActivation: time.Minute,
+						//
+						// // decays after 15 min
+						// MeshFailurePenaltyWeight: -576,
+						// MeshFailurePenaltyDecay:  pubsub.ScoreParameterDecay(15 * time.Minute),
 
 						// invalid messages decay after 1 hour
 						InvalidMessageDeliveriesWeight: -1000,
