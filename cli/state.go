@@ -892,7 +892,7 @@ var stateComputeStateCmd = &cli.Command{
 				return c.Code, nil
 			}
 
-			return computeStateHtml(stout, getCode)
+			return computeStateHtml(ts, stout, getCode)
 		}
 
 		fmt.Println("computed state cid: ", stout.Root)
@@ -921,7 +921,7 @@ func codeStr(c cid.Cid) string {
 	return string(cmh.Digest)
 }
 
-func computeStateHtml(o *api.ComputeStateOutput, getCode func(addr address.Address) (cid.Cid, error)) error {
+func computeStateHtml(ts *types.TipSet, o *api.ComputeStateOutput, getCode func(addr address.Address) (cid.Cid, error)) error {
 	fmt.Printf(`<html>
  <head>
   <style>
@@ -947,8 +947,10 @@ func computeStateHtml(o *api.ComputeStateOutput, getCode func(addr address.Addre
   </style>
  </head>
  <body>
+  <div>Tipset: <b>%s</b></div>
+  <div>Height: %d</div>
   <div>State CID: <b>%s</b></div>
-  <div>Calls</div>`, o.Root)
+  <div>Calls</div>`, ts.Key(), ts.Height(), o.Root)
 
 	for _, ir := range o.Trace {
 		toCode, err := getCode(ir.Msg.To)
