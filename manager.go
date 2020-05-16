@@ -50,6 +50,7 @@ type SectorManager interface {
 
 	ffiwrapper.StorageSealer
 	storage.Prover
+	FaultTracker
 }
 
 type WorkerID uint64
