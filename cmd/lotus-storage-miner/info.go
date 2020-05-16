@@ -102,10 +102,14 @@ var infoCmd = &cli.Command{
 		if len(faults) == 0 {
 			fmt.Printf("\tProving: %s\n", types.SizeStr(types.BigMul(types.NewInt(secCounts.Pset), types.NewInt(uint64(mi.SectorSize)))))
 		} else {
+			var faultyPercentage float64
+			if secCounts.Pset != 0 {
+				faultyPercentage = float64(10000*uint64(len(faults))/secCounts.Pset) / 100.
+			}
 			fmt.Printf("\tProving: %s (%s Faulty, %.2f%%)\n",
 				types.SizeStr(types.BigMul(types.NewInt(secCounts.Pset-uint64(len(faults))), types.NewInt(uint64(mi.SectorSize)))),
 				types.SizeStr(types.BigMul(types.NewInt(uint64(len(faults))), types.NewInt(uint64(mi.SectorSize)))),
-				float64(10000*uint64(len(faults))/secCounts.Pset)/100.)
+				faultyPercentage)
 		}
 
 		fmt.Println()
