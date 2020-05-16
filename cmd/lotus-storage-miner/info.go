@@ -98,17 +98,22 @@ var infoCmd = &cli.Command{
 			return err
 		}
 
+		nfaults, err := faults.Count()
+		if err != nil {
+			return xerrors.Errorf("counting faults: %w", err)
+		}
+
 		fmt.Printf("\tCommitted: %s\n", types.SizeStr(types.BigMul(types.NewInt(secCounts.Sset), types.NewInt(uint64(mi.SectorSize)))))
-		if len(faults) == 0 {
+		if nfaults == 0 {
 			fmt.Printf("\tProving: %s\n", types.SizeStr(types.BigMul(types.NewInt(secCounts.Pset), types.NewInt(uint64(mi.SectorSize)))))
 		} else {
 			var faultyPercentage float64
 			if secCounts.Sset != 0 {
-				faultyPercentage = float64(10000*uint64(len(faults))/secCounts.Sset) / 100.
+				faultyPercentage = float64(10000*nfaults/secCounts.Sset) / 100.
 			}
 			fmt.Printf("\tProving: %s (%s Faulty, %.2f%%)\n",
 				types.SizeStr(types.BigMul(types.NewInt(secCounts.Pset), types.NewInt(uint64(mi.SectorSize)))),
-				types.SizeStr(types.BigMul(types.NewInt(uint64(len(faults))), types.NewInt(uint64(mi.SectorSize)))),
+				types.SizeStr(types.BigMul(types.NewInt(nfaults), types.NewInt(uint64(mi.SectorSize)))),
 				faultyPercentage)
 		}
 

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"github.com/filecoin-project/go-bitfield"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -59,11 +60,128 @@ func (s *WindowPoStScheduler) doPost(ctx context.Context, deadline *miner.Deadli
 	}()
 }
 
+func (s *WindowPoStScheduler) checkRecoveries(ctx context.Context, deadline uint64, ts *types.TipSet) error {
+	faults, err := s.api.StateMinerFaults(ctx, s.actor, ts.Key())
+	if err != nil {
+		return xerrors.Errorf("getting on-chain faults: %w", err)
+	}
+
+	fc, err := faults.Count()
+	if err != nil {
+		return xerrors.Errorf("counting faulty sectors: %w", err)
+	}
+
+	if fc == 0 {
+		return nil
+	}
+
+	recov, err := s.api.StateMinerRecoveries(ctx, s.actor, ts.Key())
+	if err != nil {
+		return xerrors.Errorf("getting on-chain recoveries: %w", err)
+	}
+
+	unrecovered, err := bitfield.SubtractBitField(faults, recov)
+	if err != nil {
+		return xerrors.Errorf("subtracting recovered set from fault set: %w", err)
+	}
+
+	uc, err := unrecovered.Count()
+	if err != nil {
+		return xerrors.Errorf("counting unrecovered sectors: %w", err)
+	}
+
+	if uc == 0 {
+		return nil
+	}
+
+	spt, err := s.proofType.RegisteredSealProof()
+	if err != nil {
+		return xerrors.Errorf("getting seal proof type: %w", err)
+	}
+
+	mid, err := address.IDFromAddress(s.actor)
+	if err != nil {
+		return err
+	}
+
+	var sectors map[abi.SectorID]struct{}
+	var tocheck []abi.SectorID
+	err = unrecovered.ForEach(func(snum uint64) error {
+		s := abi.SectorID{
+			Miner:  abi.ActorID(mid),
+			Number: abi.SectorNumber(snum),
+		}
+
+		tocheck = append(tocheck, s)
+		sectors[s] = struct{}{}
+		return nil
+	})
+	if err != nil {
+		return xerrors.Errorf("iterating over unrecovered bitfield: %w", err)
+	}
+
+	bad, err := s.faultTracker.CheckProvable(ctx, spt, tocheck)
+	if err != nil {
+		return xerrors.Errorf("checking provable sectors: %w", err)
+	}
+	for _, id := range bad {
+		delete(sectors, id)
+	}
+
+	log.Warnw("Recoverable sectors", "faulty", len(tocheck), "recoverable", len(sectors))
+
+	if len(sectors) == 0 { // nothing to recover
+		return nil
+	}
+
+	sbf := bitfield.New()
+	for s := range sectors {
+		(&sbf).Set(uint64(s.Number))
+	}
+
+	params := &miner.DeclareFaultsRecoveredParams{
+		Recoveries: []miner.RecoveryDeclaration{{Deadline: deadline, Sectors: &sbf}},
+	}
+
+	enc, aerr := actors.SerializeParams(params)
+	if aerr != nil {
+		return xerrors.Errorf("could not serialize declare recoveries parameters: %w", aerr)
+	}
+
+	msg := &types.Message{
+		To:       s.actor,
+		From:     s.worker,
+		Method:   builtin.MethodsMiner.DeclareFaultsRecovered,
+		Params:   enc,
+		Value:    types.NewInt(0),
+		GasLimit: 10000000, // i dont know help
+		GasPrice: types.NewInt(2),
+	}
+
+	sm, err := s.api.MpoolPushMessage(ctx, msg)
+	if err != nil {
+		return xerrors.Errorf("pushing message to mpool: %w", err)
+	}
+
+	log.Warnw("declare faults recovered Message CID", "cid", sm.Cid())
+
+	rec, err := s.api.StateWaitMsg(context.TODO(), sm.Cid())
+	if err != nil {
+		return xerrors.Errorf("declare faults recovered wait error: %w", err)
+	}
+
+	if rec.Receipt.ExitCode == 0 {
+		return xerrors.Errorf("declare faults recovered wait non-0 exit code: %d", rec.Receipt.ExitCode)
+	}
+
+	return nil
+}
+
 func (s *WindowPoStScheduler) checkFaults(ctx context.Context, ssi []abi.SectorNumber) ([]abi.SectorNumber, error) {
 	//faults := s.prover.Scrub(ssi)
 	log.Warnf("Stub checkFaults")
 
-	declaredFaults := map[abi.SectorNumber]struct{}{}
+	/*declaredFaults := map[abi.SectorNumber]struct{}{}
 
 	{
 		chainFaults, err := s.api.StateMinerFaults(ctx, s.actor, types.EmptyTSK)
@@ -74,7 +192,7 @@ func (s *WindowPoStScheduler) checkFaults(ctx context.Context, ssi []abi.SectorN
 		for _, fault := range chainFaults {
 			declaredFaults[fault] = struct{}{}
 		}
-	}
+	}*/
 
 	return nil, nil
 }
@@ -82,6 +200,11 @@ func (s *WindowPoStScheduler) checkFaults(ctx context.Context, ssi []abi.SectorN
 func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo, ts *types.TipSet) (*miner.SubmitWindowedPoStParams, error) {
 	ctx, span := trace.StartSpan(ctx, "storage.runPost")
 	defer span.End()
+
+	if err := s.checkRecoveries(ctx, di.Index, ts); err != nil {
+		// TODO: This is potentially quite bad, but not even trying to post when this fails is objectively worse
+		log.Errorf("checking sector recoveries: %v")
+	}
 
 	buf := new(bytes.Buffer)
 	if err := s.actor.MarshalCBOR(buf); err != nil {
