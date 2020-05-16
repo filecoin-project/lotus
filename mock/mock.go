@@ -288,6 +288,10 @@ func (mgr *SectorMgr) FinalizeSector(context.Context, abi.SectorID) error {
 	return nil
 }
 
+func (mgr *SectorMgr) CheckProvable(context.Context, abi.RegisteredProof, []abi.SectorID) ([]abi.SectorID, error) {
+	return nil, nil
+}
+
 func (m mockVerif) VerifySeal(svi abi.SealVerifyInfo) (bool, error) {
 	if len(svi.OnChain.Proof) != 32 { // Real ones are longer, but this should be fine
 		return false, nil
