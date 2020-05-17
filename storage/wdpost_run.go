@@ -104,7 +104,7 @@ func (s *WindowPoStScheduler) checkRecoveries(ctx context.Context, deadline uint
 		return err
 	}
 
-	var sectors map[abi.SectorID]struct{}
+	sectors := make(map[abi.SectorID]struct{})
 	var tocheck []abi.SectorID
 	err = unrecovered.ForEach(func(snum uint64) error {
 		s := abi.SectorID{
