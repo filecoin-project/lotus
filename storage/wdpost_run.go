@@ -201,9 +201,11 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 	ctx, span := trace.StartSpan(ctx, "storage.runPost")
 	defer span.End()
 
-	if err := s.checkRecoveries(ctx, di.Index, ts); err != nil {
+	// check recoveries for the *next* deadline. It's already too late to
+	// declare them for this deadline
+	if err := s.checkRecoveries(ctx, (di.Index+1)%miner.WPoStPeriodDeadlines, ts); err != nil {
 		// TODO: This is potentially quite bad, but not even trying to post when this fails is objectively worse
-		log.Errorf("checking sector recoveries: %v")
+		log.Errorf("checking sector recoveries: %v", err)
 	}
 
 	buf := new(bytes.Buffer)
