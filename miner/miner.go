@@ -9,6 +9,7 @@ import (
 
 	address "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	lru "github.com/hashicorp/golang-lru"
 
@@ -239,12 +240,12 @@ func (m *Miner) GetBestMiningCandidate(ctx context.Context) (*MiningBase, error)
 }
 
 func (m *Miner) hasPower(ctx context.Context, addr address.Address, ts *types.TipSet) (bool, error) {
-	power, err := m.api.StateMinerPower(ctx, addr, ts.Key())
+	mpower, err := m.api.StateMinerPower(ctx, addr, ts.Key())
 	if err != nil {
 		return false, err
 	}
 
-	return !power.MinerPower.QualityAdjPower.Equals(types.NewInt(0)), nil
+	return mpower.MinerPower.QualityAdjPower.GreaterThanEqual(power.ConsensusMinerMinPower), nil
 }
 
 func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*types.BlockMsg, error) {
