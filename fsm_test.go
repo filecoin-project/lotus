@@ -41,6 +41,9 @@ func TestHappyPath(t *testing.T) {
 	require.Equal(m.t, m.state.State, PreCommitting)
 
 	m.planSingle(SectorPreCommitted{})
+	require.Equal(m.t, m.state.State, PreCommitWait)
+
+	m.planSingle(SectorPreCommitLanded{})
 	require.Equal(m.t, m.state.State, WaitSeed)
 
 	m.planSingle(SectorSeedReady{})
@@ -73,6 +76,9 @@ func TestSeedRevert(t *testing.T) {
 	require.Equal(m.t, m.state.State, PreCommitting)
 
 	m.planSingle(SectorPreCommitted{})
+	require.Equal(m.t, m.state.State, PreCommitWait)
+
+	m.planSingle(SectorPreCommitLanded{})
 	require.Equal(m.t, m.state.State, WaitSeed)
 
 	m.planSingle(SectorSeedReady{})

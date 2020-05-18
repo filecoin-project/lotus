@@ -98,6 +98,14 @@ func (evt SectorPreCommit2) apply(state *SectorInfo) {
 	state.CommR = &commr
 }
 
+type SectorPreCommitLanded struct {
+	TipSet TipSetToken
+}
+
+func (evt SectorPreCommitLanded) apply(si *SectorInfo) {
+	si.PreCommitTipSet = evt.TipSet
+}
+
 type SectorSealPreCommitFailed struct{ error }
 
 func (evt SectorSealPreCommitFailed) FormatError(xerrors.Printer) (next error) { return evt.error }
