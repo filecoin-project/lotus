@@ -7,7 +7,11 @@ type requestQueue []*workerRequest
 func (q requestQueue) Len() int { return len(q) }
 
 func (q requestQueue) Less(i, j int) bool {
-	return q[i].taskType.Less(q[j].taskType)
+	if q[i].taskType != q[j].taskType {
+		return q[i].taskType.Less(q[j].taskType)
+	}
+
+	return q[i].sector.Number < q[j].sector.Number // optimize minerActor.NewSectors bitfield
 }
 
 func (q requestQueue) Swap(i, j int) {
