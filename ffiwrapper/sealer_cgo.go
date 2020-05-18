@@ -136,7 +136,7 @@ func (cf closerFunc) Close() error {
 	return cf()
 }
 
-func (sb *Sealer) UnsealPiece(ctx context.Context, sector abi.SectorID, offset UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, cid cid.Cid) error {
+func (sb *Sealer) UnsealPiece(ctx context.Context, sector abi.SectorID, offset UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, commd cid.Cid) error {
 	maxPieceSize := abi.PaddedPieceSize(sb.ssize).Unpadded()
 
 	// try finding existing
@@ -230,14 +230,15 @@ func (sb *Sealer) UnsealPiece(ctx context.Context, sector abi.SectorID, offset U
 				return xerrors.Errorf("mk temp fifo: %w", err)
 			}
 
-			outpipe, err = os.OpenFile(outpath, os.O_RDONLY, 0600)
-			if err != nil {
-				return xerrors.Errorf("open temp pipe: %w", err)
-			}
-
 			go func() {
 				defer close(outWait)
 				defer os.Remove(outpath)
+
+				outpipe, err = os.OpenFile(outpath, os.O_RDONLY, 0600)
+				if err != nil {
+					perr = xerrors.Errorf("open temp pipe: %w", err)
+					return
+				}
 				defer outpipe.Close()
 
 				_, perr = io.CopyN(out, outpipe, int64(size))
@@ -253,7 +254,7 @@ func (sb *Sealer) UnsealPiece(ctx context.Context, sector abi.SectorID, offset U
 			sector.Number,
 			sector.Miner,
 			randomness,
-			cid,
+			commd,
 			at,
 			piece.Len)
 		if err != nil {

@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	"github.com/filecoin-project/sector-storage/stores"
+	"github.com/filecoin-project/sector-storage/storiface"
 )
 
 type sectorFile struct {
@@ -63,13 +64,22 @@ func (b *Provider) AcquireSector(ctx context.Context, id abi.SectorID, existing 
 			return stores.SectorPaths{}, nil, ctx.Err()
 		}
 
+		path := filepath.Join(b.Root, fileType.String(), stores.SectorName(id))
+
 		prevDone := done
 		done = func() {
 			prevDone()
 			<-ch
 		}
 
-		stores.SetPathByType(&out, fileType, filepath.Join(b.Root, fileType.String(), stores.SectorName(id)))
+		if !allocate.Has(fileType) {
+			if _, err := os.Stat(path); os.IsNotExist(err) {
+				done()
+				return stores.SectorPaths{}, nil, storiface.ErrSectorNotFound
+			}
+		}
+
+		stores.SetPathByType(&out, fileType, path)
 	}
 
 	return out, done, nil
