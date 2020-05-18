@@ -2,7 +2,6 @@ package ffiwrapper
 
 import (
 	"context"
-	"errors"
 	"io"
 
 	"github.com/ipfs/go-cid"
@@ -41,10 +40,8 @@ type Verifier interface {
 	GenerateWinningPoStSectorChallenge(context.Context, abi.RegisteredProof, abi.ActorID, abi.PoStRandomness, uint64) ([]uint64, error)
 }
 
-var ErrSectorNotFound = errors.New("sector not found")
-
 type SectorProvider interface {
-	// * returns ErrSectorNotFound if a requested existing sector doesn't exist
+	// * returns storiface.ErrSectorNotFound if a requested existing sector doesn't exist
 	// * returns an error when allocate is set, and existing isn't, and the sector exists
 	AcquireSector(ctx context.Context, id abi.SectorID, existing stores.SectorFileType, allocate stores.SectorFileType, sealing bool) (stores.SectorPaths, func(), error)
 }

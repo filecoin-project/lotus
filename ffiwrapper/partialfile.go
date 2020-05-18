@@ -53,7 +53,7 @@ func writeTrailer(psz int64, w *os.File, r rlepluslazy.RunIterator) error {
 }
 
 func createPartialFile(maxPieceSize abi.UnpaddedPieceSize, path string) (*partialFile, error) {
-	f, err := os.OpenFile(path, os.O_RDWR | os.O_CREATE, 0644)
+	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
 		return nil, xerrors.Errorf("openning partial file '%s': %w", path, err)
 	}
@@ -98,7 +98,7 @@ func openPartialFile(maxPieceSize abi.UnpaddedPieceSize, path string) (*partialF
 		}
 		// read trailer
 		var tlen [4]byte
-		_, err = f.ReadAt(tlen[:], st.Size() - int64(len(tlen)))
+		_, err = f.ReadAt(tlen[:], st.Size()-int64(len(tlen)))
 		if err != nil {
 			return xerrors.Errorf("reading trailer length: %w", err)
 		}
@@ -107,7 +107,7 @@ func openPartialFile(maxPieceSize abi.UnpaddedPieceSize, path string) (*partialF
 		trailerLen := binary.LittleEndian.Uint32(tlen[:])
 		expectLen := int64(trailerLen) + int64(len(tlen)) + int64(maxPieceSize)
 		if expectLen != st.Size() {
-			return xerrors.Errorf("file '%d' has inconsistent length; has %d bytes; expected %d (%d trailer, %d sector data)", path, st.Size(), expectLen, int64(trailerLen) + int64(len(tlen)), maxPieceSize)
+			return xerrors.Errorf("file '%d' has inconsistent length; has %d bytes; expected %d (%d trailer, %d sector data)", path, st.Size(), expectLen, int64(trailerLen)+int64(len(tlen)), maxPieceSize)
 		}
 		if trailerLen > veryLargeRle {
 			log.Warnf("Partial file '%s' has a VERY large trailer with %d bytes", path, trailerLen)
@@ -161,7 +161,7 @@ func (pf *partialFile) Close() error {
 	return pf.file.Close()
 }
 
-func (pf *partialFile) Writer(offset abi.UnpaddedPieceSize, size abi.UnpaddedPieceSize) (io.Writer, error) {
+func (pf *partialFile) Writer(offset UnpaddedByteIndex, size abi.UnpaddedPieceSize) (io.Writer, error) {
 	if _, err := pf.file.Seek(int64(offset), io.SeekStart); err != nil {
 		return nil, xerrors.Errorf("seek piece start: %w", err)
 	}
@@ -190,7 +190,7 @@ func (pf *partialFile) Writer(offset abi.UnpaddedPieceSize, size abi.UnpaddedPie
 	return pf.file, nil
 }
 
-func (pf *partialFile) MarkAllocated(offset abi.UnpaddedPieceSize, size abi.UnpaddedPieceSize) error {
+func (pf *partialFile) MarkAllocated(offset UnpaddedByteIndex, size abi.UnpaddedPieceSize) error {
 	have, err := pf.allocated.RunIterator()
 	if err != nil {
 		return err
@@ -208,7 +208,7 @@ func (pf *partialFile) MarkAllocated(offset abi.UnpaddedPieceSize, size abi.Unpa
 	return nil
 }
 
-func (pf *partialFile) Reader(offset abi.UnpaddedPieceSize, size abi.UnpaddedPieceSize) (*os.File, error) {
+func (pf *partialFile) Reader(offset UnpaddedByteIndex, size abi.UnpaddedPieceSize) (*os.File, error) {
 	if _, err := pf.file.Seek(int64(offset), io.SeekStart); err != nil {
 		return nil, xerrors.Errorf("seek piece start: %w", err)
 	}
@@ -230,14 +230,18 @@ func (pf *partialFile) Reader(offset abi.UnpaddedPieceSize, size abi.UnpaddedPie
 		}
 
 		if c != uint64(size) {
-			log.Warnf("getting partial file reader reading %d unallocated bytes", uint64(size) - c)
+			log.Warnf("getting partial file reader reading %d unallocated bytes", uint64(size)-c)
 		}
 	}
 
 	return pf.file, nil
 }
 
-func pieceRun(offset abi.UnpaddedPieceSize, size abi.UnpaddedPieceSize) rlepluslazy.RunIterator {
+func (pf *partialFile) Allocated() (rlepluslazy.RunIterator, error) {
+	return pf.allocated.RunIterator()
+}
+
+func pieceRun(offset UnpaddedByteIndex, size abi.UnpaddedPieceSize) rlepluslazy.RunIterator {
 	var runs []rlepluslazy.Run
 	if offset > 0 {
 		runs = append(runs, rlepluslazy.Run{

@@ -19,6 +19,7 @@ import (
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
+	"github.com/filecoin-project/sector-storage/storiface"
 	"github.com/filecoin-project/sector-storage/tarutil"
 )
 
@@ -118,7 +119,7 @@ func (r *Remote) acquireFromRemote(ctx context.Context, s abi.SectorID, spt abi.
 	}
 
 	if len(si) == 0 {
-		return "", "", "", nil, xerrors.Errorf("failed to acquire sector %v from remote(%d): not found", s, fileType)
+		return "", "", "", nil, xerrors.Errorf("failed to acquire sector %v from remote(%d): %w", s, fileType, storiface.ErrSectorNotFound)
 	}
 
 	sort.Slice(si, func(i, j int) bool {
