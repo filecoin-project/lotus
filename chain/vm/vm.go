@@ -210,7 +210,7 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 
 	if types.BigCmp(msg.Value, types.NewInt(0)) != 0 {
 		if err := vm.transfer(msg.From, msg.To, msg.Value); err != nil {
-			return nil, aerrors.Absorb(err, 1, "failed to transfer funds"), nil
+			return nil, aerrors.Wrap(err, "failed to transfer funds"), nil
 		}
 	}
 
@@ -602,36 +602,36 @@ func (vm *VM) incrementNonce(addr address.Address) error {
 	})
 }
 
-func (vm *VM) transfer(from, to address.Address, amt types.BigInt) error {
+func (vm *VM) transfer(from, to address.Address, amt types.BigInt) aerrors.ActorError {
 	if from == to {
 		return nil
 	}
 
 	if amt.LessThan(types.NewInt(0)) {
-		return xerrors.Errorf("attempted to transfer negative value")
+		return aerrors.Newf(exitcode.SysErrForbidden, "attempted to transfer negative value: %s", amt)
 	}
 
 	f, err := vm.cstate.GetActor(from)
 	if err != nil {
-		return xerrors.Errorf("transfer failed when retrieving sender actor")
+		return aerrors.Fatalf("transfer failed when retrieving sender actor: %s", err)
 	}
 
 	t, err := vm.cstate.GetActor(to)
 	if err != nil {
-		return xerrors.Errorf("transfer failed when retrieving receiver actor")
+		return aerrors.Fatalf("transfer failed when retrieving receiver actor: %s", err)
 	}
 
 	if err := deductFunds(f, amt); err != nil {
-		return err
+		return aerrors.Newf(exitcode.SysErrInsufficientFunds, "transfer failed when deducting funds: %s", err)
 	}
 	depositFunds(t, amt)
 
 	if err := vm.cstate.SetActor(from, f); err != nil {
-		return err
+		return aerrors.Fatalf("transfer failed when setting receiver actor: %s", err)
 	}
 
 	if err := vm.cstate.SetActor(to, t); err != nil {
-		return err
+		return aerrors.Fatalf("transfer failed when setting sender actor: %s", err)
 	}
 
 	return nil

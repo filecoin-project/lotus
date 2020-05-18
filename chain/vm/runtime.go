@@ -271,7 +271,9 @@ func (rt *Runtime) DeleteActor(addr address.Address) {
 		panic(aerrors.Fatalf("failed to get actor: %s", err))
 	}
 	if !act.Balance.IsZero() {
-		rt.vm.transfer(rt.Message().Receiver(), builtin.BurntFundsActorAddr, act.Balance)
+		if err := rt.vm.transfer(rt.Message().Receiver(), builtin.BurntFundsActorAddr, act.Balance); err != nil {
+			panic(aerrors.Fatalf("failed to transfer balance to burnt funds actor: %s", err))
+		}
 	}
 
 	if err := rt.state.DeleteActor(rt.Message().Receiver()); err != nil {
