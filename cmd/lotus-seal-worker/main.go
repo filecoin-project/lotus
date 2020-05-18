@@ -7,7 +7,9 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -288,14 +290,16 @@ var runCmd = &cli.Command{
 			},
 		}
 
+		sigChan := make(chan os.Signal, 2)
 		go func() {
-			<-ctx.Done()
+			<-sigChan
 			log.Warn("Shutting down..")
 			if err := srv.Shutdown(context.TODO()); err != nil {
 				log.Errorf("shutting down RPC server failed: %s", err)
 			}
 			log.Warn("Graceful shutdown successful")
 		}()
+		signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
 
 		nl, err := net.Listen("tcp", cctx.String("address"))
 		if err != nil {
