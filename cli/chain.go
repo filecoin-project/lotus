@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
+	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
@@ -521,6 +522,12 @@ var chainGetCmd = &cli.Command{
 			cbu = new(power.CronEvent)
 		case "account-state":
 			cbu = new(account.State)
+		case "miner-state":
+			cbu = new(miner.State)
+		case "power-state":
+			cbu = new(power.State)
+		case "market-state":
+			cbu = new(market.State)
 		default:
 			return fmt.Errorf("unknown type: %q", t)
 		}
