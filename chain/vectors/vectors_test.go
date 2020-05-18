@@ -1,11 +1,15 @@
 package vectors
 
 import (
+	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 func LoadVector(t *testing.T, f string, out interface{}) {
@@ -42,5 +46,40 @@ func TestBlockHeaderVectors(t *testing.T) {
 }
 
 func TestMessageSigningVectors(t *testing.T) {
-	// TODO:
+	var msvs []MessageSigningVector
+	LoadVector(t, "message_signing.json", &msvs)
+
+	for i, msv := range msvs {
+		smsg := &types.SignedMessage{
+			Message:   *msv.Unsigned,
+			Signature: *msv.Signature,
+		}
+
+		if smsg.Cid().String() != msv.Cid {
+			t.Fatalf("cid of message in vector %d mismatches", i)
+		}
+
+		// TODO: check signature
+	}
+}
+
+func TestUnsignedMessageVectors(t *testing.T) {
+	var msvs []UnsignedMessageVector
+	LoadVector(t, "unsigned_messages.json", &msvs)
+
+	for i, msv := range msvs {
+		b, err := msv.Message.Serialize()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		dec, err := hex.DecodeString(msv.HexCbor)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if !bytes.Equal(b, dec) {
+			t.Fatalf("serialization vector %d mismatches bytes", i)
+		}
+	}
 }
