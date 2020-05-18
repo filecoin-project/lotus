@@ -112,8 +112,6 @@ github.com/docker/go-units v0.4.0 h1:3uh0PgVws3nIA0Q+MwDC8yjEPf9zjRfZZWXZYDct3Tw
 github.com/docker/go-units v0.4.0/go.mod h1:fgPhTUdO+D/Jk86RDLlptpiXQzgHJF7gydDDbaIK4Dk=
 github.com/drand/bls12-381 v0.3.2 h1:RImU8Wckmx8XQx1tp1q04OV73J9Tj6mmpQLYDP7V1XE=
 github.com/drand/bls12-381 v0.3.2/go.mod h1:dtcLgPtYT38L3NO6mPDYH0nbpc5tjPassDqiniuAt4Y=
-github.com/drand/drand v0.8.1 h1:wAGnZKa+HbyNvRQOwLGIVnJR14o9kS/0+w9VroJ1AO0=
-github.com/drand/drand v0.8.1/go.mod h1:ZdzIrSqqEYZvMiS1UuZlJs3WTb9uLz1I9uH0icYPqoE=
 github.com/drand/drand v0.8.2-0.20200518165838-d61135e6e2c8 h1:i5Dh4bklVI1mRLflpOJa5igk6xdPJWgZAe8iesZSs0o=
 github.com/drand/drand v0.8.2-0.20200518165838-d61135e6e2c8/go.mod h1:ZdzIrSqqEYZvMiS1UuZlJs3WTb9uLz1I9uH0icYPqoE=
 github.com/drand/kyber v1.0.1-0.20200110225416-8de27ed8c0e2/go.mod h1:UpXoA0Upd1N9l4TvRPHr1qAUBBERj6JQ/mnKI3BPEmw=
