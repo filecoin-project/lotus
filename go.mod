@@ -11,7 +11,7 @@ require (
 	github.com/coreos/go-systemd/v22 v22.0.0
 	github.com/davidlazar/go-crypto v0.0.0-20190912175916-7055855a373f // indirect
 	github.com/docker/go-units v0.4.0
-	github.com/drand/drand v0.8.1
+	github.com/drand/drand v0.8.2-0.20200518165838-d61135e6e2c8
 	github.com/fatih/color v1.8.0
 	github.com/filecoin-project/chain-validation v0.0.6-0.20200512234642-6304037e1db6
 	github.com/filecoin-project/filecoin-ffi v0.0.0-20200427223233-a0014b17f124
