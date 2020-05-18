@@ -501,16 +501,27 @@ var clientListDeals = &cli.Command{
 		}
 
 		var deals []deal
-		for idx := range localDeals {
-			onChain, err := api.StateMarketStorageDeal(ctx, localDeals[idx].DealID, head.Key())
-			if err != nil {
-				return err
-			}
+		for _, v := range localDeals {
+			if v.DealID == 0 {
+				deals = append(deals, deal{
+					LocalDeal: v,
+					OnChainDealState: market.DealState{
+						SectorStartEpoch: -1,
+						LastUpdatedEpoch: -1,
+						SlashEpoch:       -1,
+					},
+				})
+			} else {
+				onChain, err := api.StateMarketStorageDeal(ctx, v.DealID, head.Key())
+				if err != nil {
+					return err
+				}
 
-			deals = append(deals, deal{
-				LocalDeal:        localDeals[idx],
-				OnChainDealState: onChain.State,
-			})
+				deals = append(deals, deal{
+					LocalDeal:        v,
+					OnChainDealState: onChain.State,
+				})
+			}
 		}
 
 		w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
