@@ -34,6 +34,12 @@ import (
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/go-storedcounter"
+	sectorstorage "github.com/filecoin-project/sector-storage"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/sector-storage/stores"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	sealing "github.com/filecoin-project/storage-fsm"
+
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/beacon"
@@ -46,12 +52,9 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage"
-	sectorstorage "github.com/filecoin-project/sector-storage"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/sector-storage/stores"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	sealing "github.com/filecoin-project/storage-fsm"
 )
+
+var StorageCounterDSPrefix = "/storage/nextid"
 
 func minerAddrFromDS(ds dtypes.MetadataDS) (address.Address, error) {
 	maddrb, err := ds.Get(datastore.NewKey("miner-address"))
@@ -117,7 +120,7 @@ func (s *sidsc) Next() (abi.SectorNumber, error) {
 }
 
 func SectorIDCounter(ds dtypes.MetadataDS) sealing.SectorIDCounter {
-	sc := storedcounter.New(ds, datastore.NewKey("/storage/nextid"))
+	sc := storedcounter.New(ds, datastore.NewKey(StorageCounterDSPrefix))
 	return &sidsc{sc}
 }
 
@@ -191,7 +194,7 @@ func HandleDeals(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, h sto
 // RegisterProviderValidator is an initialization hook that registers the provider
 // request validator with the data transfer module as the validator for
 // StorageDataTransferVoucher types
-func RegisterProviderValidator(mrv *requestvalidation.ProviderRequestValidator, dtm dtypes.ProviderDataTransfer) {
+func RegisterProviderValidator(mrv *requestvalidation.UnifiedRequestValidator, dtm dtypes.ProviderDataTransfer) {
 	if err := dtm.RegisterVoucherType(&requestvalidation.StorageDataTransferVoucher{}, mrv); err != nil {
 		panic(err)
 	}
@@ -282,8 +285,8 @@ func SetupBlockProducer(lc fx.Lifecycle, ds dtypes.MetadataDS, api lapi.FullNode
 	return m, nil
 }
 
-func NewProviderRequestValidator(deals dtypes.ProviderDealStore) *requestvalidation.ProviderRequestValidator {
-	return requestvalidation.NewProviderRequestValidator(deals)
+func NewProviderRequestValidator(deals dtypes.ProviderDealStore) *requestvalidation.UnifiedRequestValidator {
+	return requestvalidation.NewUnifiedRequestValidator(deals, nil)
 }
 
 func StorageProvider(ctx helpers.MetricsCtx, fapi lapi.FullNode, h host.Host, ds dtypes.MetadataDS, ibs dtypes.StagingBlockstore, r repo.LockedRepo, pieceStore dtypes.ProviderPieceStore, dataTransfer dtypes.ProviderDataTransfer, spn storagemarket.StorageProviderNode) (storagemarket.StorageProvider, error) {
@@ -312,6 +315,7 @@ func StorageProvider(ctx helpers.MetricsCtx, fapi lapi.FullNode, h host.Host, ds
 		return nil, err
 	}
 
+	//p, err := storageimpl.NewProvider(net, namespace.Wrap(ds, datastore.NewKey("/storage")), ibs, store, pieceStore, dataTransfer, spn, minerAddress, rt)
 	p, err := storageimpl.NewProvider(net, ds, ibs, store, pieceStore, dataTransfer, spn, minerAddress, rt)
 	if err != nil {
 		return p, err
@@ -335,6 +339,7 @@ func RetrievalProvider(h host.Host, miner *storage.Miner, sealer sectorstorage.S
 		return nil, err
 	}
 	network := rmnet.NewFromLibp2pHost(h)
+	//return retrievalimpl.NewProvider(address, adapter, network, pieceStore, ibs, namespace.Wrap(ds, datastore.NewKey("/retr/provider")))
 	return retrievalimpl.NewProvider(address, adapter, network, pieceStore, ibs, ds)
 }
 

@@ -82,7 +82,7 @@ func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, a
 	err = ds.Put(datastore.NewKey("miner-address"), act.Bytes())
 	require.NoError(t, err)
 
-	nic := storedcounter.New(ds, datastore.NewKey("/storage/nextid"))
+	nic := storedcounter.New(ds, datastore.NewKey(modules.StorageCounterDSPrefix))
 	for i := 0; i < nGenesisPreseals; i++ {
 		nic.Next()
 	}

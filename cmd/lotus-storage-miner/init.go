@@ -362,7 +362,7 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, metadata string,
 
 	buf := make([]byte, binary.MaxVarintLen64)
 	size := binary.PutUvarint(buf, uint64(maxSectorID+1))
-	return mds.Put(datastore.NewKey("/storage/nextid"), buf[:size])
+	return mds.Put(datastore.NewKey(modules.StorageCounterDSPrefix), buf[:size])
 }
 
 func findMarketDealID(ctx context.Context, api lapi.FullNode, deal market.DealProposal) (abi.DealID, error) {

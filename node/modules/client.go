@@ -64,7 +64,7 @@ func ClientBlockstore(fstore dtypes.ClientFilestore) dtypes.ClientBlockstore {
 // RegisterClientValidator is an initialization hook that registers the client
 // request validator with the data transfer module as the validator for
 // StorageDataTransferVoucher types
-func RegisterClientValidator(crv *requestvalidation.ClientRequestValidator, dtm dtypes.ClientDataTransfer) {
+func RegisterClientValidator(crv *requestvalidation.UnifiedRequestValidator, dtm dtypes.ClientDataTransfer) {
 	if err := dtm.RegisterVoucherType(&requestvalidation.StorageDataTransferVoucher{}, crv); err != nil {
 		panic(err)
 	}
@@ -105,12 +105,13 @@ func ClientDAG(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.ClientBlocks
 	return dag
 }
 
-func NewClientRequestValidator(deals dtypes.ClientDealStore) *requestvalidation.ClientRequestValidator {
-	return requestvalidation.NewClientRequestValidator(deals)
+func NewClientRequestValidator(deals dtypes.ClientDealStore) *requestvalidation.UnifiedRequestValidator {
+	return requestvalidation.NewUnifiedRequestValidator(nil, deals)
 }
 
 func StorageClient(lc fx.Lifecycle, h host.Host, ibs dtypes.ClientBlockstore, r repo.LockedRepo, dataTransfer dtypes.ClientDataTransfer, discovery *discovery.Local, deals dtypes.ClientDatastore, scn storagemarket.StorageClientNode) (storagemarket.StorageClient, error) {
 	net := smnet.NewFromLibp2pHost(h)
+	//c, err := storageimpl.NewClient(net, ibs, dataTransfer, discovery, namespace.Wrap(deals, datastore.NewKey("/storage")), scn)
 	c, err := storageimpl.NewClient(net, ibs, dataTransfer, discovery, deals, scn)
 	if err != nil {
 		return nil, err
@@ -133,5 +134,6 @@ func RetrievalClient(h host.Host, bs dtypes.ClientBlockstore, pmgr *paychmgr.Man
 	adapter := retrievaladapter.NewRetrievalClientNode(pmgr, payapi, chainapi)
 	network := rmnet.NewFromLibp2pHost(h)
 	sc := storedcounter.New(ds, datastore.NewKey("/retr"))
+	//return retrievalimpl.NewClient(network, bs, adapter, resolver, namespace.Wrap(ds, datastore.NewKey("/retr/client")), sc)
 	return retrievalimpl.NewClient(network, bs, adapter, resolver, ds, sc)
 }
