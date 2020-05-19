@@ -6,6 +6,7 @@ import (
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/apistruct"
 	"github.com/filecoin-project/lotus/node/repo"
 )
@@ -45,7 +46,7 @@ var authCreateAdminToken = &cli.Command{
 		perm := cctx.String("perm")
 		idx := 0
 		for i, p := range apistruct.AllPermissions {
-			if perm == p {
+			if api.Permission(perm) == p {
 				idx = i + 1
 			}
 		}
@@ -93,7 +94,7 @@ var authApiInfoToken = &cli.Command{
 		perm := cctx.String("perm")
 		idx := 0
 		for i, p := range apistruct.AllPermissions {
-			if perm == p {
+			if api.Permission(perm) == p {
 				idx = i + 1
 			}
 		}

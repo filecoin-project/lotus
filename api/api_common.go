@@ -9,7 +9,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 )
 
-type Permission = string
+type Permission string
 
 type Common interface {
 	// Auth

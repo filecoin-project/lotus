@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/apistruct"
 
 	"github.com/filecoin-project/lotus/build"
@@ -35,7 +36,7 @@ func RecordValidator(ps peerstore.Peerstore) record.Validator {
 const JWTSecretName = "auth-jwt-private"
 
 type jwtPayload struct {
-	Allow []string
+	Allow []api.Permission
 }
 
 func APISecret(keystore types.KeyStore, lr repo.LockedRepo) (*dtypes.APIAlg, error) {
