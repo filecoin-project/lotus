@@ -190,6 +190,8 @@ func (v *Visitor) Visit(node ast.Node) ast.Visitor {
 	return v
 }
 
+const noComment = "There are not yet any comments for this method."
+
 func parseApiASTInfo() (map[string]string, map[string]string) {
 
 	fset := token.NewFileSet()
@@ -212,7 +214,7 @@ func parseApiASTInfo() (map[string]string, map[string]string) {
 	for mn, node := range v.Methods {
 		cs := cmap.Filter(node).Comments()
 		if len(cs) == 0 {
-			out[mn] = "There are not yet any comments for this method."
+			out[mn] = noComment
 		} else {
 			for _, c := range cs {
 				if strings.HasPrefix(c.Text(), "MethodGroup:") {
@@ -220,10 +222,17 @@ func parseApiASTInfo() (map[string]string, map[string]string) {
 					groupName := strings.TrimSpace(parts[0][12:])
 					comment := strings.Join(parts[1:], "\n")
 					groupDocs[groupName] = comment
+
+					break
 				}
 			}
 
-			out[mn] = cs[len(cs)-1].Text()
+			last := cs[len(cs)-1].Text()
+			if !strings.HasPrefix(last, "MethodGroup:") {
+				out[mn] = last
+			} else {
+				out[mn] = noComment
+			}
 		}
 	}
 	return out, groupDocs
