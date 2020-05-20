@@ -104,9 +104,15 @@ type FullNode interface {
 
 	// Other
 
+	// MethodGroup: Client
+	// The Client methods all have to do with interacting with the storage and
+	// retrieval markets as a client
+
 	// ClientImport imports file under the specified path into filestore
 	ClientImport(ctx context.Context, ref FileRef) (cid.Cid, error)
+	// ClientStartDeal proposes a deal with a miner
 	ClientStartDeal(ctx context.Context, params *StartDealParams) (*cid.Cid, error)
+	// ClientGetDeal info returns the latest information about a given deal
 	ClientGetDealInfo(context.Context, cid.Cid) (*DealInfo, error)
 	ClientListDeals(ctx context.Context) ([]DealInfo, error)
 	ClientHasLocal(ctx context.Context, root cid.Cid) (bool, error)
@@ -123,6 +129,9 @@ type FullNode interface {
 	ClientListImports(ctx context.Context) ([]Import, error)
 
 	//ClientListAsks() []Ask
+
+	// MethodGroup: State
+	// The State methods are used to query, inspect, and interact with chain state
 
 	// if tipset is nil, we'll use heaviest
 	StateCall(context.Context, *types.Message, types.TipSetKey) (*InvocResult, error)
@@ -158,6 +167,10 @@ type FullNode interface {
 	StateMinerSectorCount(context.Context, address.Address, types.TipSetKey) (MinerSectors, error)
 	StateCompute(context.Context, abi.ChainEpoch, []*types.Message, types.TipSetKey) (*ComputeStateOutput, error)
 
+	// MethodGroup: Msig
+	// The Msig methods are used to interact with multisig wallets on the
+	// filecoin network
+
 	MsigGetAvailableBalance(context.Context, address.Address, types.TipSetKey) (types.BigInt, error)
 	MsigCreate(context.Context, int64, []address.Address, types.BigInt, address.Address, types.BigInt) (cid.Cid, error)
 	MsigPropose(context.Context, address.Address, address.Address, types.BigInt, address.Address, uint64, []byte) (cid.Cid, error)
@@ -166,6 +179,9 @@ type FullNode interface {
 
 	MarketEnsureAvailable(context.Context, address.Address, address.Address, types.BigInt) (cid.Cid, error)
 	// MarketFreeBalance
+
+	// MethodGroup: Paych
+	// The Paych methods are for interacting with and managing payment channels
 
 	PaychGet(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*ChannelInfo, error)
 	PaychList(context.Context) ([]address.Address, error)
