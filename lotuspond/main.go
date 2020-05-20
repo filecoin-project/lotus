@@ -8,9 +8,9 @@ import (
 	"path"
 	"strconv"
 
-	"github.com/filecoin-project/lotus/lib/jsonrpc"
-
 	"gopkg.in/urfave/cli.v2"
+
+	"github.com/filecoin-project/go-jsonrpc"
 )
 
 const listenAddr = "127.0.0.1:2222"

@@ -2,6 +2,7 @@ package impl
 
 import (
 	"context"
+	"github.com/filecoin-project/go-jsonrpc"
 	"net/http"
 
 	"golang.org/x/xerrors"
@@ -11,7 +12,6 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
-	"github.com/filecoin-project/lotus/lib/jsonrpc"
 	"github.com/filecoin-project/sector-storage"
 )
 
