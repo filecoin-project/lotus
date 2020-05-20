@@ -18,10 +18,10 @@ import (
 	"contrib.go.opencensus.io/exporter/prometheus"
 
 	"github.com/filecoin-project/go-jsonrpc"
+	"github.com/filecoin-project/go-jsonrpc/auth"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/apistruct"
-	"github.com/filecoin-project/lotus/lib/auth"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/impl"
 )
@@ -83,7 +83,7 @@ func handleImport(a *impl.FullNodeAPI) func(w http.ResponseWriter, r *http.Reque
 			w.WriteHeader(404)
 			return
 		}
-		if !apistruct.HasPerm(r.Context(), apistruct.PermWrite) {
+		if !auth.HasPerm(r.Context(), nil, apistruct.PermWrite) {
 			w.WriteHeader(401)
 			json.NewEncoder(w).Encode(struct{ Error string }{"unauthorized: missing write permission"})
 			return

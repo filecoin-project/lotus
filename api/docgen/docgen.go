@@ -14,6 +14,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
+	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -29,11 +30,11 @@ import (
 )
 
 var ExampleValues = map[reflect.Type]interface{}{
-	reflect.TypeOf(api.Permission("")): api.Permission("write"),
-	reflect.TypeOf(""):                 "string value",
-	reflect.TypeOf(uint64(42)):         uint64(42),
-	reflect.TypeOf(byte(7)):            byte(7),
-	reflect.TypeOf([]byte{}):           []byte("byte array"),
+	reflect.TypeOf(auth.Permission("")): auth.Permission("write"),
+	reflect.TypeOf(""):                  "string value",
+	reflect.TypeOf(uint64(42)):          uint64(42),
+	reflect.TypeOf(byte(7)):             byte(7),
+	reflect.TypeOf([]byte{}):            []byte("byte array"),
 }
 
 func addExample(v interface{}) {
