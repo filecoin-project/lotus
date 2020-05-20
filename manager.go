@@ -53,6 +53,7 @@ type SectorManager interface {
 
 	ffiwrapper.StorageSealer
 	storage.Prover
+	FaultTracker
 }
 
 type WorkerID uint64
@@ -218,7 +219,7 @@ func (m *Manager) ReadPiece(ctx context.Context, sink io.Writer, sector abi.Sect
 		return nil
 	}
 
-	err = m.sched.Schedule(ctx, sealtasks.TTUnseal, selector, unsealFetch, func(ctx context.Context, w Worker) error {
+	err = m.sched.Schedule(ctx, sector, sealtasks.TTUnseal, selector, unsealFetch, func(ctx context.Context, w Worker) error {
 		return w.UnsealPiece(ctx, sector, offset, size, ticket, unsealed)
 	})
 	if err != nil {
@@ -230,7 +231,7 @@ func (m *Manager) ReadPiece(ctx context.Context, sink io.Writer, sector abi.Sect
 		return xerrors.Errorf("creating readPiece selector: %w", err)
 	}
 
-	err = m.sched.Schedule(ctx, sealtasks.TTReadUnsealed, selector, schedFetch(sector, stores.FTUnsealed, true, stores.AcquireMove), func(ctx context.Context, w Worker) error {
+	err = m.sched.Schedule(ctx, sector, sealtasks.TTReadUnsealed, selector, schedFetch(sector, stores.FTUnsealed, true, stores.AcquireMove), func(ctx context.Context, w Worker) error {
 		return w.ReadPiece(ctx, sink, sector, offset, size)
 	})
 	if err != nil {
@@ -258,7 +259,7 @@ func (m *Manager) AddPiece(ctx context.Context, sector abi.SectorID, existingPie
 	}
 
 	var out abi.PieceInfo
-	err = m.sched.Schedule(ctx, sealtasks.TTAddPiece, selector, schedNop, func(ctx context.Context, w Worker) error {
+	err = m.sched.Schedule(ctx, sector, sealtasks.TTAddPiece, selector, schedNop, func(ctx context.Context, w Worker) error {
 		p, err := w.AddPiece(ctx, sector, existingPieces, sz, r)
 		if err != nil {
 			return err
@@ -278,7 +279,7 @@ func (m *Manager) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticke
 		return nil, xerrors.Errorf("creating path selector: %w", err)
 	}
 
-	err = m.sched.Schedule(ctx, sealtasks.TTPreCommit1, selector, schedFetch(sector, stores.FTUnsealed, true, stores.AcquireMove), func(ctx context.Context, w Worker) error {
+	err = m.sched.Schedule(ctx, sector, sealtasks.TTPreCommit1, selector, schedFetch(sector, stores.FTUnsealed, true, stores.AcquireMove), func(ctx context.Context, w Worker) error {
 		p, err := w.SealPreCommit1(ctx, sector, ticket, pieces)
 		if err != nil {
 			return err
@@ -296,7 +297,7 @@ func (m *Manager) SealPreCommit2(ctx context.Context, sector abi.SectorID, phase
 		return storage.SectorCids{}, xerrors.Errorf("creating path selector: %w", err)
 	}
 
-	err = m.sched.Schedule(ctx, sealtasks.TTPreCommit2, selector, schedFetch(sector, stores.FTCache|stores.FTSealed, true, stores.AcquireMove), func(ctx context.Context, w Worker) error {
+	err = m.sched.Schedule(ctx, sector, sealtasks.TTPreCommit2, selector, schedFetch(sector, stores.FTCache|stores.FTSealed, true, stores.AcquireMove), func(ctx context.Context, w Worker) error {
 		p, err := w.SealPreCommit2(ctx, sector, phase1Out)
 		if err != nil {
 			return err
@@ -317,7 +318,7 @@ func (m *Manager) SealCommit1(ctx context.Context, sector abi.SectorID, ticket a
 	//  (except, don't.. for now at least - we are using this step to bring data
 	//  into 'provable' storage. Optimally we'd do that in commit2, in parallel
 	//  with snark compute)
-	err = m.sched.Schedule(ctx, sealtasks.TTCommit1, selector, schedFetch(sector, stores.FTCache|stores.FTSealed, true, stores.AcquireMove), func(ctx context.Context, w Worker) error {
+	err = m.sched.Schedule(ctx, sector, sealtasks.TTCommit1, selector, schedFetch(sector, stores.FTCache|stores.FTSealed, true, stores.AcquireMove), func(ctx context.Context, w Worker) error {
 		p, err := w.SealCommit1(ctx, sector, ticket, seed, pieces, cids)
 		if err != nil {
 			return err
@@ -331,7 +332,7 @@ func (m *Manager) SealCommit1(ctx context.Context, sector abi.SectorID, ticket a
 func (m *Manager) SealCommit2(ctx context.Context, sector abi.SectorID, phase1Out storage.Commit1Out) (out storage.Proof, err error) {
 	selector := newTaskSelector()
 
-	err = m.sched.Schedule(ctx, sealtasks.TTCommit2, selector, schedNop, func(ctx context.Context, w Worker) error {
+	err = m.sched.Schedule(ctx, sector, sealtasks.TTCommit2, selector, schedNop, func(ctx context.Context, w Worker) error {
 		p, err := w.SealCommit2(ctx, sector, phase1Out)
 		if err != nil {
 			return err
@@ -349,7 +350,7 @@ func (m *Manager) FinalizeSector(ctx context.Context, sector abi.SectorID) error
 		return xerrors.Errorf("creating path selector: %w", err)
 	}
 
-	return m.sched.Schedule(ctx, sealtasks.TTFinalize, selector,
+	return m.sched.Schedule(ctx, sector, sealtasks.TTFinalize, selector,
 		schedFetch(sector, stores.FTCache|stores.FTSealed|stores.FTUnsealed, false, stores.AcquireMove),
 		func(ctx context.Context, w Worker) error {
 			return w.FinalizeSector(ctx, sector)

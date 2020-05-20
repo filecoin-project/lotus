@@ -201,16 +201,16 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 			Threads: -1,
 			CanGPU:  true,
 
-			BaseMinMemory: 128 << 30, // params
+			BaseMinMemory: 64 << 30, // params
 		},
 		abi.RegisteredProof_StackedDRG32GiBSeal: Resources{
-			MaxMemory: 130 << 30,
+			MaxMemory: 150 << 30, // TODO: ~30G of this should really be BaseMaxMemory
 			MinMemory: 30 << 30,
 
 			Threads: -1,
 			CanGPU:  true,
 
-			BaseMinMemory: 64 << 30, // params
+			BaseMinMemory: 32 << 30, // params
 		},
 		abi.RegisteredProof_StackedDRG512MiBSeal: Resources{
 			MaxMemory: 3 << 29, // 1.5G

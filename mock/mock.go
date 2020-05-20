@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math"
 	"math/rand"
 	"sync"
 
@@ -247,11 +248,24 @@ func AddOpFinish(ctx context.Context) (context.Context, func()) {
 }
 
 func (mgr *SectorMgr) GenerateWinningPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []abi.SectorInfo, randomness abi.PoStRandomness) ([]abi.PoStProof, error) {
-	panic("implement me")
+	return generateFakePoSt(sectorInfo), nil
 }
 
 func (mgr *SectorMgr) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []abi.SectorInfo, randomness abi.PoStRandomness) ([]abi.PoStProof, error) {
-	panic("implement me")
+	return generateFakePoSt(sectorInfo), nil
+}
+
+func generateFakePoSt(sectorInfo []abi.SectorInfo) []abi.PoStProof {
+	se, err := sectorInfo[0].RegisteredProof.WindowPoStPartitionSectors()
+	if err != nil {
+		panic(err)
+	}
+	return []abi.PoStProof{
+		{
+			RegisteredProof: sectorInfo[0].RegisteredProof,
+			ProofBytes:      make([]byte, 192*int(math.Ceil(float64(len(sectorInfo))/float64(se)))),
+		},
+	}
 }
 
 func (mgr *SectorMgr) ReadPieceFromSealedSector(ctx context.Context, sectorID abi.SectorID, offset ffiwrapper.UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, commD cid.Cid) (io.ReadCloser, error) {
@@ -288,6 +302,10 @@ func (mgr *SectorMgr) FinalizeSector(context.Context, abi.SectorID) error {
 	return nil
 }
 
+func (mgr *SectorMgr) CheckProvable(context.Context, abi.RegisteredProof, []abi.SectorID) ([]abi.SectorID, error) {
+	return nil, nil
+}
+
 func (m mockVerif) VerifySeal(svi abi.SealVerifyInfo) (bool, error) {
 	if len(svi.OnChain.Proof) != 32 { // Real ones are longer, but this should be fine
 		return false, nil
@@ -303,11 +321,11 @@ func (m mockVerif) VerifySeal(svi abi.SealVerifyInfo) (bool, error) {
 }
 
 func (m mockVerif) VerifyWinningPoSt(ctx context.Context, info abi.WinningPoStVerifyInfo) (bool, error) {
-	panic("implement me")
+	return true, nil
 }
 
 func (m mockVerif) VerifyWindowPoSt(ctx context.Context, info abi.WindowPoStVerifyInfo) (bool, error) {
-	panic("implement me")
+	return true, nil
 }
 
 func (m mockVerif) GenerateDataCommitment(pt abi.RegisteredProof, pieces []abi.PieceInfo) (cid.Cid, error) {

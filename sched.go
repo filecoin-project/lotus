@@ -64,11 +64,12 @@ func newScheduler(spt abi.RegisteredProof) *scheduler {
 	}
 }
 
-func (sh *scheduler) Schedule(ctx context.Context, taskType sealtasks.TaskType, sel WorkerSelector, prepare WorkerAction, work WorkerAction) error {
+func (sh *scheduler) Schedule(ctx context.Context, sector abi.SectorID, taskType sealtasks.TaskType, sel WorkerSelector, prepare WorkerAction, work WorkerAction) error {
 	ret := make(chan workerResponse)
 
 	select {
 	case sh.schedule <- &workerRequest{
+		sector:   sector,
 		taskType: taskType,
 		sel:      sel,
 
@@ -95,6 +96,7 @@ func (sh *scheduler) Schedule(ctx context.Context, taskType sealtasks.TaskType, 
 }
 
 type workerRequest struct {
+	sector   abi.SectorID
 	taskType sealtasks.TaskType
 	sel      WorkerSelector
 
