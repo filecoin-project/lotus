@@ -1,6 +1,7 @@
 package dtypes
 
 import (
+	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/requestvalidation"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-filestore"
@@ -29,6 +30,7 @@ type ClientFilestore *filestore.Filestore
 type ClientBlockstore blockstore.Blockstore
 type ClientDAG format.DAGService
 type ClientDealStore *statestore.StateStore
+type ClientRequestValidator *requestvalidation.UnifiedRequestValidator
 type ClientDatastore datastore.Batching
 
 type Graphsync graphsync.GraphExchange
@@ -38,6 +40,7 @@ type ClientDataTransfer datatransfer.Manager
 
 type ProviderDealStore *statestore.StateStore
 type ProviderPieceStore piecestore.PieceStore
+type ProviderRequestValidator *requestvalidation.UnifiedRequestValidator
 
 // ProviderDataTransfer is a data transfer manager for the provider
 type ProviderDataTransfer datatransfer.Manager
