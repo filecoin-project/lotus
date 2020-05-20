@@ -2,6 +2,8 @@ package drand
 
 import (
 	"context"
+	"encoding/hex"
+	"fmt"
 	"math/rand"
 	"sync"
 	"time"
@@ -18,7 +20,6 @@ import (
 	"github.com/drand/drand/core"
 	dkey "github.com/drand/drand/key"
 	dnet "github.com/drand/drand/net"
-	dproto "github.com/drand/drand/protobuf/drand"
 )
 
 var log = logging.Logger("drand")
@@ -57,7 +58,7 @@ func (dp *drandPeer) IsTLS() bool {
 }
 
 type DrandBeacon struct {
-	client dnet.Client
+	client *DrandHttpClient
 
 	peers         []dnet.Peer
 	peersIndex    int
@@ -81,7 +82,7 @@ func NewDrandBeacon(genesisTs, interval uint64) (*DrandBeacon, error) {
 		panic("what are you doing this cant be zero")
 	}
 	db := &DrandBeacon{
-		client:     dnet.NewGrpcClient(),
+		client:     &DrandHttpClient{Peer: drandServers[rand.Intn(len(drandServers))]},
 		localCache: make(map[uint64]types.BeaconEntry),
 	}
 	for _, ds := range drandServers {
@@ -90,7 +91,7 @@ func NewDrandBeacon(genesisTs, interval uint64) (*DrandBeacon, error) {
 
 	db.peersIndex = rand.Intn(len(db.peers))
 
-	groupResp, err := db.client.Group(context.TODO(), db.peers[db.peersIndex], &dproto.GroupRequest{})
+	gi, err := db.client.GroupInfo(context.TODO())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get group response from beacon peer: %w", err)
 	}
@@ -133,6 +134,7 @@ func (db *DrandBeacon) getPeerIndex() int {
 	return db.peersIndex
 }
 
+/* we dont really need this tbh
 func (db *DrandBeacon) handleStreamingUpdates() {
 	for {
 		p := db.peers[db.getPeerIndex()]
@@ -157,6 +159,7 @@ func (db *DrandBeacon) handleStreamingUpdates() {
 		time.Sleep(time.Second * 10)
 	}
 }
+*/
 
 func (db *DrandBeacon) Entry(ctx context.Context, round uint64) <-chan beacon.Response {
 	// check cache, it it if there, otherwise query the endpoint
@@ -172,15 +175,19 @@ func (db *DrandBeacon) Entry(ctx context.Context, round uint64) <-chan beacon.Re
 
 	go func() {
 		p := db.peers[db.getPeerIndex()]
-		resp, err := db.client.PublicRand(ctx, p, &dproto.PublicRandRequest{Round: round})
+		resp, err := db.client.GetRound(ctx, round)
 
 		var br beacon.Response
 		if err != nil {
 			db.rotatePeersIndex()
 			br.Err = xerrors.Errorf("drand peer %q failed publicRand request: %w", p.Address(), err)
 		} else {
-			br.Entry.Round = resp.GetRound()
-			br.Entry.Data = resp.GetSignature()
+			br.Entry.Round = resp.Round
+			sigval, err := hex.DecodeString(resp.Signature)
+			if err != nil {
+				br.Err = fmt.Errorf("failed to hex decode response from server: %w", err)
+			}
+			br.Entry.Data = sigval
 		}
 
 		out <- br
