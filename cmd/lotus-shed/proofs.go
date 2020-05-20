@@ -21,6 +21,7 @@ var proofsCmd = &cli.Command{
 
 var verifySealProofCmd = &cli.Command{
 	Name:        "verify-seal",
+	ArgsUsage:   "<commr> <commd> <proof>",
 	Description: "Verify a seal proof with manual inputs",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
