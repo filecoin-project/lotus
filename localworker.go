@@ -56,10 +56,11 @@ func NewLocalWorker(wcfg WorkerConfig, store stores.Store, local *stores.Local, 
 
 type localWorkerPathProvider struct {
 	w *LocalWorker
+	op stores.AcquireMode
 }
 
 func (l *localWorkerPathProvider) AcquireSector(ctx context.Context, sector abi.SectorID, existing stores.SectorFileType, allocate stores.SectorFileType, sealing bool) (stores.SectorPaths, func(), error) {
-	paths, storageIDs, done, err := l.w.storage.AcquireSector(ctx, sector, l.w.scfg.SealProofType, existing, allocate, sealing)
+	paths, storageIDs, done, err := l.w.storage.AcquireSector(ctx, sector, l.w.scfg.SealProofType, existing, allocate, stores.PathType(sealing), l.op)
 	if err != nil {
 		return stores.SectorPaths{}, nil, err
 	}
@@ -76,7 +77,7 @@ func (l *localWorkerPathProvider) AcquireSector(ctx context.Context, sector abi.
 
 			sid := stores.PathByType(storageIDs, fileType)
 
-			if err := l.w.sindex.StorageDeclareSector(ctx, stores.ID(sid), sector, fileType); err != nil {
+			if err := l.w.sindex.StorageDeclareSector(ctx, stores.ID(sid), sector, fileType, l.op == stores.AcquireMove); err != nil {
 				log.Errorf("declare sector error: %+v", err)
 			}
 		}
@@ -105,8 +106,8 @@ func (l *LocalWorker) AddPiece(ctx context.Context, sector abi.SectorID, epcs []
 	return sb.AddPiece(ctx, sector, epcs, sz, r)
 }
 
-func (l *LocalWorker) Fetch(ctx context.Context, sector abi.SectorID, fileType stores.SectorFileType, sealing bool) error {
-	_, done, err := (&localWorkerPathProvider{w: l}).AcquireSector(ctx, sector, fileType, stores.FTNone, sealing)
+func (l *LocalWorker) Fetch(ctx context.Context, sector abi.SectorID, fileType stores.SectorFileType, sealing bool, am stores.AcquireMode) error {
+	_, done, err := (&localWorkerPathProvider{w: l, op: am}).AcquireSector(ctx, sector, fileType, stores.FTNone, sealing)
 	if err != nil {
 		return err
 	}
@@ -182,12 +183,30 @@ func (l *LocalWorker) FinalizeSector(ctx context.Context, sector abi.SectorID) e
 	return nil
 }
 
-func (l *LocalWorker) UnsealPiece(ctx context.Context, id abi.SectorID, index ffiwrapper.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, cid cid.Cid) error {
-	panic("implement me")
+func (l *LocalWorker) UnsealPiece(ctx context.Context, sector abi.SectorID, index ffiwrapper.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, cid cid.Cid) error {
+	sb, err := l.sb()
+	if err != nil {
+		return err
+	}
+
+	if err := sb.UnsealPiece(ctx, sector, index, size, randomness, cid); err != nil {
+		return xerrors.Errorf("unsealing sector: %w", err)
+	}
+
+	if err := l.storage.RemoveCopies(ctx, sector, stores.FTSealed | stores.FTCache); err != nil {
+		return xerrors.Errorf("removing source data: %w", err)
+	}
+
+	return nil
 }
 
-func (l *LocalWorker) ReadPiece(ctx context.Context, writer io.Writer, id abi.SectorID, index ffiwrapper.UnpaddedByteIndex, size abi.UnpaddedPieceSize) error {
-	panic("implement me")
+func (l *LocalWorker) ReadPiece(ctx context.Context, writer io.Writer, sector abi.SectorID, index ffiwrapper.UnpaddedByteIndex, size abi.UnpaddedPieceSize) error {
+	sb, err := l.sb()
+	if err != nil {
+		return err
+	}
+
+	return sb.ReadPiece(ctx, writer, sector, index, size)
 }
 
 func (l *LocalWorker) TaskTypes(context.Context) (map[sealtasks.TaskType]struct{}, error) {

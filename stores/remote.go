@@ -32,6 +32,14 @@ type Remote struct {
 	fetching map[abi.SectorID]chan struct{}
 }
 
+func (r *Remote) RemoveCopies(ctx context.Context, s abi.SectorID, types SectorFileType) error {
+	// TODO: do this on remotes too
+	//  (not that we really need to do that since it's always called by the
+	//   worker which pulled the copy)
+
+	return r.local.RemoveCopies(ctx, s, types)
+}
+
 func NewRemote(local *Local, index SectorIndex, auth http.Header) *Remote {
 	return &Remote{
 		local: local,
@@ -42,7 +50,7 @@ func NewRemote(local *Local, index SectorIndex, auth http.Header) *Remote {
 	}
 }
 
-func (r *Remote) AcquireSector(ctx context.Context, s abi.SectorID, spt abi.RegisteredProof, existing SectorFileType, allocate SectorFileType, sealing bool) (SectorPaths, SectorPaths, func(), error) {
+func (r *Remote) AcquireSector(ctx context.Context, s abi.SectorID, spt abi.RegisteredProof, existing SectorFileType, allocate SectorFileType, pathType PathType, op AcquireMode) (SectorPaths, SectorPaths, func(), error) {
 	if existing|allocate != existing^allocate {
 		return SectorPaths{}, SectorPaths{}, nil, xerrors.New("can't both find and allocate a sector")
 	}
@@ -74,7 +82,7 @@ func (r *Remote) AcquireSector(ctx context.Context, s abi.SectorID, spt abi.Regi
 		r.fetchLk.Unlock()
 	}()
 
-	paths, stores, done, err := r.local.AcquireSector(ctx, s, spt, existing, allocate, sealing)
+	paths, stores, done, err := r.local.AcquireSector(ctx, s, spt, existing, allocate, pathType, op)
 	if err != nil {
 		return SectorPaths{}, SectorPaths{}, nil, xerrors.Errorf("local acquire error: %w", err)
 	}
@@ -88,7 +96,7 @@ func (r *Remote) AcquireSector(ctx context.Context, s abi.SectorID, spt abi.Regi
 			continue
 		}
 
-		ap, storageID, url, rdone, err := r.acquireFromRemote(ctx, s, spt, fileType, sealing)
+		ap, storageID, url, rdone, err := r.acquireFromRemote(ctx, s, spt, fileType, pathType, op)
 		if err != nil {
 			done()
 			return SectorPaths{}, SectorPaths{}, nil, err
@@ -98,21 +106,22 @@ func (r *Remote) AcquireSector(ctx context.Context, s abi.SectorID, spt abi.Regi
 		SetPathByType(&paths, fileType, ap)
 		SetPathByType(&stores, fileType, string(storageID))
 
-		if err := r.index.StorageDeclareSector(ctx, storageID, s, fileType); err != nil {
+		if err := r.index.StorageDeclareSector(ctx, storageID, s, fileType, op == AcquireMove); err != nil {
 			log.Warnf("declaring sector %v in %s failed: %+v", s, storageID, err)
 			continue
 		}
 
-		// TODO: some way to allow having duplicated sectors in the system for perf
-		if err := r.deleteFromRemote(ctx, url); err != nil {
-			log.Warnf("deleting sector %v from %s (delete %s): %+v", s, storageID, url, err)
+		if op == AcquireMove {
+			if err := r.deleteFromRemote(ctx, url); err != nil {
+				log.Warnf("deleting sector %v from %s (delete %s): %+v", s, storageID, url, err)
+			}
 		}
 	}
 
 	return paths, stores, done, nil
 }
 
-func (r *Remote) acquireFromRemote(ctx context.Context, s abi.SectorID, spt abi.RegisteredProof, fileType SectorFileType, sealing bool) (string, ID, string, func(), error) {
+func (r *Remote) acquireFromRemote(ctx context.Context, s abi.SectorID, spt abi.RegisteredProof, fileType SectorFileType, pathType PathType, op AcquireMode) (string, ID, string, func(), error) {
 	si, err := r.index.StorageFindSector(ctx, s, fileType, false)
 	if err != nil {
 		return "", "", "", nil, err
@@ -126,7 +135,7 @@ func (r *Remote) acquireFromRemote(ctx context.Context, s abi.SectorID, spt abi.
 		return si[i].Weight < si[j].Weight
 	})
 
-	apaths, ids, done, err := r.local.AcquireSector(ctx, s, spt, FTNone, fileType, sealing)
+	apaths, ids, done, err := r.local.AcquireSector(ctx, s, spt, FTNone, fileType, pathType, op)
 	if err != nil {
 		return "", "", "", nil, xerrors.Errorf("allocate local sector for fetching: %w", err)
 	}
@@ -206,7 +215,7 @@ func (r *Remote) fetch(ctx context.Context, url, outname string) error {
 
 func (r *Remote) MoveStorage(ctx context.Context, s abi.SectorID, spt abi.RegisteredProof, types SectorFileType) error {
 	// Make sure we have the data local
-	_, _, ddone, err := r.AcquireSector(ctx, s, spt, types, FTNone, false)
+	_, _, ddone, err := r.AcquireSector(ctx, s, spt, types, FTNone, PathStorage, AcquireMove)
 	if err != nil {
 		return xerrors.Errorf("acquire src storage (remote): %w", err)
 	}

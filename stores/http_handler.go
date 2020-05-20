@@ -70,7 +70,7 @@ func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Requ
 	}
 
 	// passing 0 spt because we don't allocate anything
-	paths, _, done, err := handler.Local.AcquireSector(r.Context(), id, 0, ft, FTNone, false)
+	paths, _, done, err := handler.Local.AcquireSector(r.Context(), id, 0, ft, FTNone, false, AcquireMove)
 	if err != nil {
 		log.Error("%+v", err)
 		w.WriteHeader(500)

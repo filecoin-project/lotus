@@ -78,7 +78,7 @@ func (t *testWorker) FinalizeSector(ctx context.Context, sector abi.SectorID) er
 	panic("implement me")
 }
 
-func (t *testWorker) Fetch(ctx context.Context, id abi.SectorID, fileType stores.SectorFileType, b bool) error {
+func (t *testWorker) Fetch(ctx context.Context, id abi.SectorID, fileType stores.SectorFileType, b bool, am stores.AcquireMode) error {
 	return nil
 }
 
