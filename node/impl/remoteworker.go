@@ -2,11 +2,12 @@ package impl
 
 import (
 	"context"
-	"github.com/filecoin-project/go-jsonrpc"
 	"net/http"
 
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-jsonrpc"
+	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	storage2 "github.com/filecoin-project/specs-storage/storage"
 
@@ -29,7 +30,7 @@ func (r *remoteWorker) AddPiece(ctx context.Context, sector abi.SectorID, pieceS
 }
 
 func connectRemoteWorker(ctx context.Context, fa api.Common, url string) (*remoteWorker, error) {
-	token, err := fa.AuthNew(ctx, []api.Permission{"admin"})
+	token, err := fa.AuthNew(ctx, []auth.Permission{"admin"})
 	if err != nil {
 		return nil, xerrors.Errorf("creating auth token for remote connection: %w", err)
 	}

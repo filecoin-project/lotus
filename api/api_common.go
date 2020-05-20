@@ -4,17 +4,18 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/lotus/build"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
-)
 
-type Permission string
+	"github.com/filecoin-project/go-jsonrpc/auth"
+
+	"github.com/filecoin-project/lotus/build"
+)
 
 type Common interface {
 	// Auth
-	AuthVerify(ctx context.Context, token string) ([]Permission, error)
-	AuthNew(ctx context.Context, perms []Permission) ([]byte, error)
+	AuthVerify(ctx context.Context, token string) ([]auth.Permission, error)
+	AuthNew(ctx context.Context, perms []auth.Permission) ([]byte, error)
 
 	// network
 

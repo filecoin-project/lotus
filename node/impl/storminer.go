@@ -12,6 +12,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	storagemarket "github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/go-jsonrpc/auth"
 	sectorstorage "github.com/filecoin-project/sector-storage"
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/sector-storage/stores"
@@ -43,7 +44,7 @@ type StorageMinerAPI struct {
 }
 
 func (sm *StorageMinerAPI) ServeRemote(w http.ResponseWriter, r *http.Request) {
-	if !apistruct.HasPerm(r.Context(), apistruct.PermAdmin) {
+	if !auth.HasPerm(r.Context(), nil, apistruct.PermAdmin) {
 		w.WriteHeader(401)
 		json.NewEncoder(w).Encode(struct{ Error string }{"unauthorized: missing write permission"})
 		return

@@ -3,8 +3,6 @@ package common
 import (
 	"context"
 
-	"github.com/filecoin-project/lotus/node/modules/lp2p"
-
 	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/gbrlsnchs/jwt/v3"
@@ -16,9 +14,12 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-jsonrpc/auth"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/filecoin-project/lotus/node/modules/lp2p"
 )
 
 type CommonAPI struct {
@@ -30,10 +31,10 @@ type CommonAPI struct {
 }
 
 type jwtPayload struct {
-	Allow []api.Permission
+	Allow []auth.Permission
 }
 
-func (a *CommonAPI) AuthVerify(ctx context.Context, token string) ([]api.Permission, error) {
+func (a *CommonAPI) AuthVerify(ctx context.Context, token string) ([]auth.Permission, error) {
 	var payload jwtPayload
 	if _, err := jwt.Verify([]byte(token), (*jwt.HMACSHA)(a.APISecret), &payload); err != nil {
 		return nil, xerrors.Errorf("JWT Verification failed: %w", err)
@@ -42,7 +43,7 @@ func (a *CommonAPI) AuthVerify(ctx context.Context, token string) ([]api.Permiss
 	return payload.Allow, nil
 }
 
-func (a *CommonAPI) AuthNew(ctx context.Context, perms []api.Permission) ([]byte, error) {
+func (a *CommonAPI) AuthNew(ctx context.Context, perms []auth.Permission) ([]byte, error) {
 	p := jwtPayload{
 		Allow: perms, // TODO: consider checking validity
 	}

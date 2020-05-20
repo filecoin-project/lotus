@@ -9,6 +9,8 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/go-jsonrpc/auth"
+
 	"github.com/filecoin-project/sector-storage/sealtasks"
 	"github.com/filecoin-project/sector-storage/stores"
 	"github.com/filecoin-project/sector-storage/storiface"
@@ -30,8 +32,8 @@ var _ = AllPermissions
 
 type CommonStruct struct {
 	Internal struct {
-		AuthVerify func(ctx context.Context, token string) ([]api.Permission, error) `perm:"read"`
-		AuthNew    func(ctx context.Context, perms []api.Permission) ([]byte, error) `perm:"admin"`
+		AuthVerify func(ctx context.Context, token string) ([]auth.Permission, error) `perm:"read"`
+		AuthNew    func(ctx context.Context, perms []auth.Permission) ([]byte, error) `perm:"admin"`
 
 		NetConnectedness func(context.Context, peer.ID) (network.Connectedness, error) `perm:"read"`
 		NetPeers         func(context.Context) ([]peer.AddrInfo, error)                `perm:"read"`
@@ -240,11 +242,11 @@ type WorkerStruct struct {
 
 // CommonStruct
 
-func (c *CommonStruct) AuthVerify(ctx context.Context, token string) ([]api.Permission, error) {
+func (c *CommonStruct) AuthVerify(ctx context.Context, token string) ([]auth.Permission, error) {
 	return c.Internal.AuthVerify(ctx, token)
 }
 
-func (c *CommonStruct) AuthNew(ctx context.Context, perms []api.Permission) ([]byte, error) {
+func (c *CommonStruct) AuthNew(ctx context.Context, perms []auth.Permission) ([]byte, error) {
 	return c.Internal.AuthNew(ctx, perms)
 }
 
