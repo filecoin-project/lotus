@@ -44,7 +44,12 @@ func ClientFstore(r repo.LockedRepo) (dtypes.ClientFilestore, error) {
 	}
 	blocks := namespace.Wrap(clientds, datastore.NewKey("blocks"))
 
-	fm := filestore.NewFileManager(clientds, filepath.Dir(r.Path()))
+	absPath, err := filepath.Abs(r.Path())
+	if err != nil {
+		return nil, err
+	}
+
+	fm := filestore.NewFileManager(clientds, filepath.Dir(absPath))
 	fm.AllowFiles = true
 	// TODO: fm.AllowUrls (needs more code in client import)
 
