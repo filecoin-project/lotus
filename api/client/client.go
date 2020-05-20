@@ -1,11 +1,12 @@
 package client
 
 import (
-	"github.com/filecoin-project/lotus/api/apistruct"
 	"net/http"
 
+	"github.com/filecoin-project/go-jsonrpc"
+
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/lib/jsonrpc"
+	"github.com/filecoin-project/lotus/api/apistruct"
 )
 
 // NewCommonRPC creates a new http jsonrpc client.

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	manet "github.com/multiformats/go-multiaddr-net"
 
@@ -16,7 +17,6 @@ import (
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/jsonrpc"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
