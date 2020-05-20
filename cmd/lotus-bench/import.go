@@ -67,6 +67,11 @@ var importBenchCmd = &cli.Command{
 			return err
 		}
 		bs := blockstore.NewBlockstore(bds)
+		cbs, err := blockstore.CachedBlockstore(context.TODO(), bs, blockstore.DefaultCacheOpts())
+		if err != nil {
+			return err
+		}
+		bs = cbs
 		ds := datastore.NewMapDatastore()
 		cs := store.NewChainStore(bs, ds, vm.Syscalls(ffiwrapper.ProofVerifier))
 		stm := stmgr.NewStateManager(cs)

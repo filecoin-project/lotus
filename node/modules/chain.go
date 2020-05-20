@@ -60,14 +60,19 @@ func MessagePool(lc fx.Lifecycle, sm *stmgr.StateManager, ps *pubsub.PubSub, ds 
 	return mp, nil
 }
 
-func ChainBlockstore(r repo.LockedRepo) (dtypes.ChainBlockstore, error) {
+func ChainBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRepo) (dtypes.ChainBlockstore, error) {
 	blocks, err := r.Datastore("/blocks")
 	if err != nil {
 		return nil, err
 	}
 
 	bs := blockstore.NewBlockstore(blocks)
-	return blockstore.NewIdStore(bs), nil
+	cbs, err := blockstore.CachedBlockstore(helpers.LifecycleCtx(mctx, lc), bs, blockstore.DefaultCacheOpts())
+	if err != nil {
+		return nil, err
+	}
+
+	return blockstore.NewIdStore(cbs), nil
 }
 
 func ChainGCBlockstore(bs dtypes.ChainBlockstore, gcl dtypes.ChainGCLocker) dtypes.ChainGCBlockstore {
