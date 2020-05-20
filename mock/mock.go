@@ -247,11 +247,11 @@ func AddOpFinish(ctx context.Context) (context.Context, func()) {
 }
 
 func (mgr *SectorMgr) GenerateWinningPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []abi.SectorInfo, randomness abi.PoStRandomness) ([]abi.PoStProof, error) {
-	panic("implement me")
+	return []abi.PoStProof{}, nil
 }
 
 func (mgr *SectorMgr) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []abi.SectorInfo, randomness abi.PoStRandomness) ([]abi.PoStProof, error) {
-	panic("implement me")
+	return []abi.PoStProof{}, nil
 }
 
 func (mgr *SectorMgr) ReadPieceFromSealedSector(ctx context.Context, sectorID abi.SectorID, offset ffiwrapper.UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, commD cid.Cid) (io.ReadCloser, error) {
@@ -307,11 +307,11 @@ func (m mockVerif) VerifySeal(svi abi.SealVerifyInfo) (bool, error) {
 }
 
 func (m mockVerif) VerifyWinningPoSt(ctx context.Context, info abi.WinningPoStVerifyInfo) (bool, error) {
-	panic("implement me")
+	return true, nil
 }
 
 func (m mockVerif) VerifyWindowPoSt(ctx context.Context, info abi.WindowPoStVerifyInfo) (bool, error) {
-	panic("implement me")
+	return true, nil
 }
 
 func (m mockVerif) GenerateDataCommitment(pt abi.RegisteredProof, pieces []abi.PieceInfo) (cid.Cid, error) {
