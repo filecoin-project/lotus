@@ -339,8 +339,7 @@ func RetrievalProvider(h host.Host, miner *storage.Miner, sealer sectorstorage.S
 		return nil, err
 	}
 	network := rmnet.NewFromLibp2pHost(h)
-	//return retrievalimpl.NewProvider(address, adapter, network, pieceStore, ibs, namespace.Wrap(ds, datastore.NewKey("/retr/provider")))
-	return retrievalimpl.NewProvider(address, adapter, network, pieceStore, ibs, ds)
+	return retrievalimpl.NewProvider(address, adapter, network, pieceStore, ibs, namespace.Wrap(ds, datastore.NewKey("/retr/provider")))
 }
 
 func SectorStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, ls stores.LocalStorage, si stores.SectorIndex, cfg *ffiwrapper.Config, sc sectorstorage.SealerConfig, urls sectorstorage.URLs, sa sectorstorage.StorageAuth) (*sectorstorage.Manager, error) {

@@ -134,6 +134,5 @@ func RetrievalClient(h host.Host, bs dtypes.ClientBlockstore, pmgr *paychmgr.Man
 	adapter := retrievaladapter.NewRetrievalClientNode(pmgr, payapi, chainapi)
 	network := rmnet.NewFromLibp2pHost(h)
 	sc := storedcounter.New(ds, datastore.NewKey("/retr"))
-	//return retrievalimpl.NewClient(network, bs, adapter, resolver, namespace.Wrap(ds, datastore.NewKey("/retr/client")), sc)
-	return retrievalimpl.NewClient(network, bs, adapter, resolver, ds, sc)
+	return retrievalimpl.NewClient(network, bs, adapter, resolver, namespace.Wrap(ds, datastore.NewKey("/retr/client")), sc)
 }
