@@ -70,6 +70,16 @@ var verifySealProofCmd = &cli.Command{
 			return err
 		}
 
+		ticket, err := hex.DecodeString(cctx.String("ticket"))
+		if err != nil {
+			return err
+		}
+
+		proofRand, err := hex.DecodeString(cctx.String("proof-rand"))
+		if err != nil {
+			return err
+		}
+
 		snum := abi.SectorNumber(cctx.Uint64("sector-id"))
 
 		ok, err := ffi.VerifySeal(abi.SealVerifyInfo{
@@ -86,8 +96,8 @@ var verifySealProofCmd = &cli.Command{
 				SectorNumber:     snum,
 				SealRandEpoch:    0,
 			},
-			Randomness:            abi.SealRandomness(nil),
-			InteractiveRandomness: abi.InteractiveSealRandomness(nil),
+			Randomness:            abi.SealRandomness(ticket),
+			InteractiveRandomness: abi.InteractiveSealRandomness(proofRand),
 			UnsealedCID:           commd,
 		})
 		if err != nil {
