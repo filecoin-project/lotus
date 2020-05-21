@@ -129,18 +129,21 @@ func GossipSub(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, nn dtyp
 						FirstMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(10 * time.Minute),
 						FirstMessageDeliveriesCap:    1000,
 
-						// tracks deliveries in the last minute
-						// penalty activates at 1 min and expects 2.5 txs
-						MeshMessageDeliveriesWeight:     -16, // max penalty is -100
-						MeshMessageDeliveriesDecay:      pubsub.ScoreParameterDecay(time.Minute),
-						MeshMessageDeliveriesCap:        100, // 100 txs in a minute
-						MeshMessageDeliveriesThreshold:  2.5, // 60/12/2 txs/minute
-						MeshMessageDeliveriesWindow:     10 * time.Millisecond,
-						MeshMessageDeliveriesActivation: time.Minute,
+						// Mesh Delivery Failure is currently turned off for messages
+						// This is on purpose as the network is still too small, which results in
+						// asymmetries and potential unmeshing from negative scores.
+						// // tracks deliveries in the last minute
+						// // penalty activates at 1 min and expects 2.5 txs
+						// MeshMessageDeliveriesWeight:     -16, // max penalty is -100
+						// MeshMessageDeliveriesDecay:      pubsub.ScoreParameterDecay(time.Minute),
+						// MeshMessageDeliveriesCap:        100, // 100 txs in a minute
+						// MeshMessageDeliveriesThreshold:  2.5, // 60/12/2 txs/minute
+						// MeshMessageDeliveriesWindow:     10 * time.Millisecond,
+						// MeshMessageDeliveriesActivation: time.Minute,
 
-						// decays after 5min
-						MeshFailurePenaltyWeight: -16,
-						MeshFailurePenaltyDecay:  pubsub.ScoreParameterDecay(5 * time.Minute),
+						// // decays after 5min
+						// MeshFailurePenaltyWeight: -16,
+						// MeshFailurePenaltyDecay:  pubsub.ScoreParameterDecay(5 * time.Minute),
 
 						// invalid messages decay after 1 hour
 						InvalidMessageDeliveriesWeight: -2000,
@@ -165,6 +168,7 @@ func GossipSub(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, nn dtyp
 		pubsub.GossipSubDscore = 0
 		pubsub.GossipSubDlo = 0
 		pubsub.GossipSubDhi = 0
+		pubsub.GossipSubDout = 0
 		pubsub.GossipSubDlazy = 1024
 		pubsub.GossipSubGossipFactor = 0.5
 		// turn on PX
