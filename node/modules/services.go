@@ -3,6 +3,8 @@ package modules
 import (
 	"context"
 
+	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/namespace"
 	eventbus "github.com/libp2p/go-eventbus"
 	event "github.com/libp2p/go-libp2p-core/event"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -114,7 +116,7 @@ func RunDealClient(mctx helpers.MetricsCtx, lc fx.Lifecycle, c storagemarket.Sto
 }
 
 func NewLocalDiscovery(ds dtypes.MetadataDS) *discovery.Local {
-	return discovery.NewLocal(ds)
+	return discovery.NewLocal(namespace.Wrap(ds, datastore.NewKey("/deals/local")))
 }
 
 func RetrievalResolver(l *discovery.Local) retrievalmarket.PeerResolver {

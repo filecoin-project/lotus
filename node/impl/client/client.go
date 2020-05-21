@@ -331,7 +331,7 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 
 	ppb := types.BigDiv(order.Total, types.NewInt(order.Size))
 
-	a.Retrieval.Retrieve(
+	_, err := a.Retrieval.Retrieve(
 		ctx,
 		order.Root,
 		retrievalmarket.NewParamsV0(ppb, order.PaymentInterval, order.PaymentIntervalIncrease),
@@ -339,6 +339,9 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 		order.MinerPeerID,
 		order.Client,
 		order.Miner)
+	if err != nil {
+		return xerrors.Errorf("Retrieve failed: %w", err)
+	}
 	select {
 	case <-ctx.Done():
 		return xerrors.New("Retrieval Timed Out")

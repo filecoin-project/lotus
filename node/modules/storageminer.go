@@ -29,11 +29,18 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/requestvalidation"
+	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
 	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/go-storedcounter"
+	sectorstorage "github.com/filecoin-project/sector-storage"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/sector-storage/stores"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	sealing "github.com/filecoin-project/storage-fsm"
+
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/beacon"
@@ -46,12 +53,9 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage"
-	sectorstorage "github.com/filecoin-project/sector-storage"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/sector-storage/stores"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	sealing "github.com/filecoin-project/storage-fsm"
 )
+
+var StorageCounterDSPrefix = "/storage/nextid"
 
 func minerAddrFromDS(ds dtypes.MetadataDS) (address.Address, error) {
 	maddrb, err := ds.Get(datastore.NewKey("miner-address"))
@@ -117,7 +121,7 @@ func (s *sidsc) Next() (abi.SectorNumber, error) {
 }
 
 func SectorIDCounter(ds dtypes.MetadataDS) sealing.SectorIDCounter {
-	sc := storedcounter.New(ds, datastore.NewKey("/storage/nextid"))
+	sc := storedcounter.New(ds, datastore.NewKey(StorageCounterDSPrefix))
 	return &sidsc{sc}
 }
 
@@ -191,8 +195,8 @@ func HandleDeals(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, h sto
 // RegisterProviderValidator is an initialization hook that registers the provider
 // request validator with the data transfer module as the validator for
 // StorageDataTransferVoucher types
-func RegisterProviderValidator(mrv *requestvalidation.ProviderRequestValidator, dtm dtypes.ProviderDataTransfer) {
-	if err := dtm.RegisterVoucherType(&requestvalidation.StorageDataTransferVoucher{}, mrv); err != nil {
+func RegisterProviderValidator(mrv dtypes.ProviderRequestValidator, dtm dtypes.ProviderDataTransfer) {
+	if err := dtm.RegisterVoucherType(&requestvalidation.StorageDataTransferVoucher{}, (*requestvalidation.UnifiedRequestValidator)(mrv)); err != nil {
 		panic(err)
 	}
 }
@@ -206,13 +210,13 @@ func NewProviderDAGServiceDataTransfer(h host.Host, gs dtypes.StagingGraphsync, 
 
 // NewProviderDealStore creates a statestore for the client to store its deals
 func NewProviderDealStore(ds dtypes.MetadataDS) dtypes.ProviderDealStore {
-	return statestore.New(namespace.Wrap(ds, datastore.NewKey("/deals/client")))
+	return statestore.New(namespace.Wrap(ds, datastore.NewKey("/deals/provider")))
 }
 
 // NewProviderPieceStore creates a statestore for storing metadata about pieces
 // shared by the storage and retrieval providers
 func NewProviderPieceStore(ds dtypes.MetadataDS) dtypes.ProviderPieceStore {
-	return piecestore.NewPieceStore(ds)
+	return piecestore.NewPieceStore(namespace.Wrap(ds, datastore.NewKey("/storagemarket")))
 }
 
 // StagingBlockstore creates a blockstore for staging blocks for a miner
@@ -282,44 +286,35 @@ func SetupBlockProducer(lc fx.Lifecycle, ds dtypes.MetadataDS, api lapi.FullNode
 	return m, nil
 }
 
-func NewProviderRequestValidator(deals dtypes.ProviderDealStore) *requestvalidation.ProviderRequestValidator {
-	return requestvalidation.NewProviderRequestValidator(deals)
+func NewProviderRequestValidator(deals dtypes.ProviderDealStore) dtypes.ProviderRequestValidator {
+	return requestvalidation.NewUnifiedRequestValidator(deals, nil)
 }
 
-func StorageProvider(ctx helpers.MetricsCtx, fapi lapi.FullNode, h host.Host, ds dtypes.MetadataDS, ibs dtypes.StagingBlockstore, r repo.LockedRepo, pieceStore dtypes.ProviderPieceStore, dataTransfer dtypes.ProviderDataTransfer, spn storagemarket.StorageProviderNode) (storagemarket.StorageProvider, error) {
+func NewStorageAsk(ctx helpers.MetricsCtx, fapi lapi.FullNode, ds dtypes.MetadataDS, minerAddress dtypes.MinerAddress, spn storagemarket.StorageProviderNode) (*storedask.StoredAsk, error) {
+
+	mi, err := fapi.StateMinerInfo(ctx, address.Address(minerAddress), types.EmptyTSK)
+	if err != nil {
+		return nil, err
+	}
+
+	storedAsk, err := storedask.NewStoredAsk(namespace.Wrap(ds, datastore.NewKey("/deals/provider")), datastore.NewKey("latest-ask"), spn, address.Address(minerAddress))
+	// Hacky way to set max piece size to the sector size
+	a := storedAsk.GetAsk(address.Address(minerAddress)).Ask
+	err = storedAsk.AddAsk(a.Price, a.Expiry-a.Timestamp, storagemarket.MaxPieceSize(abi.PaddedPieceSize(mi.SectorSize)))
+	if err != nil {
+		return storedAsk, err
+	}
+	return storedAsk, nil
+}
+
+func StorageProvider(minerAddress dtypes.MinerAddress, ffiConfig *ffiwrapper.Config, storedAsk *storedask.StoredAsk, h host.Host, ds dtypes.MetadataDS, ibs dtypes.StagingBlockstore, r repo.LockedRepo, pieceStore dtypes.ProviderPieceStore, dataTransfer dtypes.ProviderDataTransfer, spn storagemarket.StorageProviderNode) (storagemarket.StorageProvider, error) {
+	net := smnet.NewFromLibp2pHost(h)
 	store, err := piecefilestore.NewLocalFileStore(piecefilestore.OsPath(r.Path()))
 	if err != nil {
 		return nil, err
 	}
-	net := smnet.NewFromLibp2pHost(h)
-	addr, err := ds.Get(datastore.NewKey("miner-address"))
-	if err != nil {
-		return nil, err
-	}
 
-	minerAddress, err := address.NewFromBytes(addr)
-	if err != nil {
-		return nil, err
-	}
-
-	mi, err := fapi.StateMinerInfo(ctx, minerAddress, types.EmptyTSK)
-	if err != nil {
-		return nil, err
-	}
-
-	rt, err := ffiwrapper.SealProofTypeFromSectorSize(mi.SectorSize)
-	if err != nil {
-		return nil, err
-	}
-
-	p, err := storageimpl.NewProvider(net, ds, ibs, store, pieceStore, dataTransfer, spn, minerAddress, rt)
-	if err != nil {
-		return p, err
-	}
-
-	// Hacky way to set max piece size to the sector size
-	a := p.ListAsks(minerAddress)[0].Ask
-	err = p.AddAsk(a.Price, a.Expiry-a.Timestamp, storagemarket.MaxPieceSize(abi.PaddedPieceSize(mi.SectorSize)))
+	p, err := storageimpl.NewProvider(net, namespace.Wrap(ds, datastore.NewKey("/deals/provider")), ibs, store, pieceStore, dataTransfer, spn, address.Address(minerAddress), ffiConfig.SealProofType, storedAsk)
 	if err != nil {
 		return p, err
 	}
@@ -335,7 +330,7 @@ func RetrievalProvider(h host.Host, miner *storage.Miner, sealer sectorstorage.S
 		return nil, err
 	}
 	network := rmnet.NewFromLibp2pHost(h)
-	return retrievalimpl.NewProvider(address, adapter, network, pieceStore, ibs, ds)
+	return retrievalimpl.NewProvider(address, adapter, network, pieceStore, ibs, namespace.Wrap(ds, datastore.NewKey("/retrievals/provider")))
 }
 
 func SectorStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, ls stores.LocalStorage, si stores.SectorIndex, cfg *ffiwrapper.Config, sc sectorstorage.SealerConfig, urls sectorstorage.URLs, sa sectorstorage.StorageAuth) (*sectorstorage.Manager, error) {
