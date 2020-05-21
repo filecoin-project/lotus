@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -493,6 +494,12 @@ var stateGetDealSetCmd = &cli.Command{
 var stateListMinersCmd = &cli.Command{
 	Name:  "list-miners",
 	Usage: "list all miners in the network",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "sort-by",
+			Usage: "criteria to sort miners by (none, num-deals)",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -512,12 +519,48 @@ var stateListMinersCmd = &cli.Command{
 			return err
 		}
 
+		switch cctx.String("sort-by") {
+		case "num-deals":
+			ndm, err := getDealsCounts(ctx, api)
+			if err != nil {
+				return err
+			}
+
+			sort.Slice(miners, func(i, j int) bool {
+				return ndm[miners[i]] > ndm[miners[j]]
+			})
+
+			for i := 0; i < 50 && i < len(miners); i++ {
+				fmt.Printf("%s %d\n", miners[i], ndm[miners[i]])
+			}
+			return nil
+		default:
+			return fmt.Errorf("unrecognized sorting order")
+		case "", "none":
+		}
+
 		for _, m := range miners {
 			fmt.Println(m.String())
 		}
 
 		return nil
 	},
+}
+
+func getDealsCounts(ctx context.Context, lapi api.FullNode) (map[address.Address]int, error) {
+	allDeals, err := lapi.StateMarketDeals(ctx, types.EmptyTSK)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make(map[address.Address]int)
+	for _, d := range allDeals {
+		if d.State.SectorStartEpoch != -1 {
+			out[d.Proposal.Provider]++
+		}
+	}
+
+	return out, nil
 }
 
 var stateListActorsCmd = &cli.Command{
