@@ -9,7 +9,6 @@ require (
 	github.com/GeertJohan/go.rice v1.0.0
 	github.com/Gurpartap/async v0.0.0-20180927173644-4f7f499dd9ee
 	github.com/coreos/go-systemd/v22 v22.0.0
-	github.com/davidlazar/go-crypto v0.0.0-20190912175916-7055855a373f // indirect
 	github.com/docker/go-units v0.4.0
 	github.com/drand/drand v0.8.2-0.20200518165838-d61135e6e2c8
 	github.com/fatih/color v1.8.0
@@ -69,8 +68,8 @@ require (
 	github.com/ipld/go-ipld-prime v0.0.2-0.20200428162820-8b59dc292b8e
 	github.com/lib/pq v1.2.0
 	github.com/libp2p/go-eventbus v0.1.0
-	github.com/libp2p/go-libp2p v0.8.1
-	github.com/libp2p/go-libp2p-circuit v0.2.1
+	github.com/libp2p/go-libp2p v0.9.2
+	github.com/libp2p/go-libp2p-circuit v0.2.2
 	github.com/libp2p/go-libp2p-connmgr v0.2.3
 	github.com/libp2p/go-libp2p-core v0.5.6
 	github.com/libp2p/go-libp2p-discovery v0.4.0
@@ -107,8 +106,7 @@ require (
 	go.uber.org/fx v1.9.0
 	go.uber.org/multierr v1.5.0
 	go.uber.org/zap v1.15.0
-	golang.org/x/net v0.0.0-20200301022130-244492dfa37a // indirect
-	golang.org/x/sys v0.0.0-20200509044756-6aff5f38e54f
+	golang.org/x/sys v0.0.0-20200519105757-fe76b779f299
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
 	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543
 	gopkg.in/urfave/cli.v2 v2.0.0-20180128182452-d3ae77c26ac8
