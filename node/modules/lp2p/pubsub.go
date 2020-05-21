@@ -156,7 +156,7 @@ func GossipSub(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, nn dtyp
 				PublishThreshold:            -1000,
 				GraylistThreshold:           -2500,
 				AcceptPXThreshold:           1000,
-				OpportunisticGraftThreshold: 2.5,
+				OpportunisticGraftThreshold: 5,
 			},
 		),
 	}
