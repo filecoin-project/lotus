@@ -378,11 +378,17 @@ func ConfigFullNode(c interface{}) Option {
 		return Error(xerrors.Errorf("invalid config from repo, got: %T", c))
 	}
 
+	remoteIpfsMaddrNotEmpty := func(s *Settings) bool {
+		return len(cfg.Client.RemoteIpfsMAddr) > 0
+	}
+
 	return Options(
 		ConfigCommon(&cfg.Common),
 		If(cfg.Client.UseIpfs,
 			Override(new(dtypes.ClientBlockstore), modules.IpfsClientBlockstore),
 		),
+		ApplyIf(remoteIpfsMaddrNotEmpty,
+			Override(new(dtypes.ClientBlockstore), modules.IpfsRemoteClientBlockstore(cfg.Client.RemoteIpfsMAddr))),
 
 		If(cfg.Metrics.HeadNotifs,
 			Override(HeadMetricsKey, metrics.SendHeadNotifs(cfg.Metrics.Nickname)),

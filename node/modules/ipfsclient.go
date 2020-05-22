@@ -6,6 +6,7 @@ import (
 
 	"github.com/ipfs/go-filestore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	"github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/lotus/lib/bufbstore"
 	"github.com/filecoin-project/lotus/lib/ipfsbstore"
@@ -23,4 +24,22 @@ func IpfsClientBlockstore(mctx helpers.MetricsCtx, lc fx.Lifecycle, fstore dtype
 		ipfsbs,
 		blockstore.NewIdStore((*filestore.Filestore)(fstore)),
 	), nil
+}
+
+func IpfsRemoteClientBlockstore(ipfsMaddr string) func(helpers.MetricsCtx, fx.Lifecycle, dtypes.ClientFilestore) (dtypes.ClientBlockstore, error) {
+	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, fstore dtypes.ClientFilestore) (dtypes.ClientBlockstore, error) {
+		ma, err := multiaddr.NewMultiaddr(ipfsMaddr)
+		if err != nil {
+			return nil, xerrors.Errorf("parsing ipfs multiaddr: %w", err)
+		}
+		ipfsbs, err := ipfsbstore.NewRemoteIpfsBstore(helpers.LifecycleCtx(mctx, lc), ma)
+		if err != nil {
+			return nil, xerrors.Errorf("constructing ipfs blockstore: %w", err)
+		}
+
+		return bufbstore.NewTieredBstore(
+			ipfsbs,
+			blockstore.NewIdStore((*filestore.Filestore)(fstore)),
+		), nil
+	}
 }

@@ -68,6 +68,7 @@ require (
 	github.com/ipfs/interface-go-ipfs-core v0.2.3
 	github.com/ipld/go-car v0.1.1-0.20200430185908-8ff2e52a4c88
 	github.com/ipld/go-ipld-prime v0.0.2-0.20200428162820-8b59dc292b8e
+	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/lib/pq v1.2.0
 	github.com/libp2p/go-eventbus v0.1.0
 	github.com/libp2p/go-libp2p v0.9.2

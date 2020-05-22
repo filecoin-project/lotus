@@ -7,6 +7,7 @@ import (
 
 	"golang.org/x/xerrors"
 
+	"github.com/multiformats/go-multiaddr"
 	"github.com/multiformats/go-multihash"
 
 	blocks "github.com/ipfs/go-block-format"
@@ -27,6 +28,18 @@ func NewIpfsBstore(ctx context.Context) (*IpfsBstore, error) {
 	api, err := httpapi.NewLocalApi()
 	if err != nil {
 		return nil, xerrors.Errorf("getting local ipfs api: %w", err)
+	}
+
+	return &IpfsBstore{
+		ctx: ctx,
+		api: api,
+	}, nil
+}
+
+func NewRemoteIpfsBstore(ctx context.Context, maddr multiaddr.Multiaddr) (*IpfsBstore, error) {
+	api, err := httpapi.NewApi(maddr)
+	if err != nil {
+		return nil, xerrors.Errorf("getting remote ipfs api: %w", err)
 	}
 
 	return &IpfsBstore{

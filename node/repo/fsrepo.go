@@ -3,13 +3,14 @@ package repo
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/sector-storage/stores"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"github.com/filecoin-project/sector-storage/stores"
 
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
@@ -276,7 +277,7 @@ func (fsr *fsLockedRepo) Datastore(ns string) (datastore.Batching, error) {
 	return namespace.Wrap(fsr.ds, datastore.NewKey(ns)), nil
 }
 
-func (fsr *fsLockedRepo) Config() (interface{}, error) {
+func (fsr *fsLockedRepo) Config() (df interface{}, err error) {
 	if err := fsr.stillValid(); err != nil {
 		return nil, err
 	}
