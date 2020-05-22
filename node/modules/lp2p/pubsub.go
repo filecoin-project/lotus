@@ -127,7 +127,8 @@ func GossipSub(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, nn dtyp
 						// deliveries decay after 10min, cap at 1000 tx
 						FirstMessageDeliveriesWeight: 0.5, // max value is 500
 						FirstMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(10 * time.Minute),
-						FirstMessageDeliveriesCap:    1000,
+						//FirstMessageDeliveriesCap:    1000,
+						FirstMessageDeliveriesCap: 1, // we can't yet properly validate them so only confer a tiny boost from delivery
 
 						// Mesh Delivery Failure is currently turned off for messages
 						// This is on purpose as the network is still too small, which results in
