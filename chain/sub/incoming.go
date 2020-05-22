@@ -143,6 +143,13 @@ func (bv *BlockValidator) flagPeer(p peer.ID) {
 }
 
 func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub.Message) pubsub.ValidationResult {
+	// track validation time
+	begin := time.Now()
+	defer func() {
+		end := time.Now()
+		log.Infof("block validation time: %s", end.Sub(begin))
+	}()
+
 	stats.Record(ctx, metrics.BlockReceived.M(1))
 
 	recordFailure := func(what string) {
