@@ -8,6 +8,7 @@ require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/GeertJohan/go.rice v1.0.0
 	github.com/Gurpartap/async v0.0.0-20180927173644-4f7f499dd9ee
+	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
 	github.com/coreos/go-systemd/v22 v22.0.0
 	github.com/docker/go-units v0.4.0
 	github.com/drand/drand v0.8.2-0.20200518165838-d61135e6e2c8
@@ -15,6 +16,7 @@ require (
 	github.com/filecoin-project/chain-validation v0.0.6-0.20200518190139-483332336e8e
 	github.com/filecoin-project/filecoin-ffi v0.0.0-20200427223233-a0014b17f124
 	github.com/filecoin-project/go-address v0.0.2-0.20200504173055-8b6f2fb2b3ef
+	github.com/filecoin-project/go-amt-ipld v0.0.0-20191205011053-79efc22d6cdc // indirect
 	github.com/filecoin-project/go-amt-ipld/v2 v2.0.1-0.20200424220931-6263827e49f2
 	github.com/filecoin-project/go-bitfield v0.0.1
 	github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2
@@ -25,13 +27,15 @@ require (
 	github.com/filecoin-project/go-jsonrpc v0.1.1-0.20200520183639-7c6ee2e066b4
 	github.com/filecoin-project/go-padreader v0.0.0-20200210211231-548257017ca6
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200505180321-973f8949ea8e
+	github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200203173614-42d67726bb62 // indirect
 	github.com/filecoin-project/go-statestore v0.1.0
 	github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b
-	github.com/filecoin-project/sector-storage v0.0.0-20200516212231-e620df4c43a4
-	github.com/filecoin-project/specs-actors v0.5.3
+	github.com/filecoin-project/sector-storage v0.0.0-20200522011946-a59ca7536a95
+	github.com/filecoin-project/specs-actors v0.5.4-0.20200521014528-0df536f7e461
 	github.com/filecoin-project/specs-storage v0.0.0-20200417134612-61b2d91a6102
-	github.com/filecoin-project/storage-fsm v0.0.0-20200427182014-01487d5ad3c8
+	github.com/filecoin-project/storage-fsm v0.0.0-20200522010518-83fd743db8bc
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
+	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/mux v1.7.4
 	github.com/gorilla/websocket v1.4.2
@@ -41,6 +45,7 @@ require (
 	github.com/ipfs/go-bitswap v0.2.8
 	github.com/ipfs/go-block-format v0.0.2
 	github.com/ipfs/go-blockservice v0.1.3
+	github.com/ipfs/go-car v0.0.3-0.20200121013634-f188c0e24291 // indirect
 	github.com/ipfs/go-cid v0.0.6-0.20200501230655-7c82f3b81c00
 	github.com/ipfs/go-datastore v0.4.4
 	github.com/ipfs/go-ds-badger2 v0.1.0
@@ -106,11 +111,13 @@ require (
 	go.uber.org/fx v1.9.0
 	go.uber.org/multierr v1.5.0
 	go.uber.org/zap v1.15.0
+	go4.org v0.0.0-20190313082347-94abd6928b1d // indirect
 	golang.org/x/sys v0.0.0-20200519105757-fe76b779f299
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
 	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543
 	gopkg.in/urfave/cli.v2 v2.0.0-20180128182452-d3ae77c26ac8
 	gotest.tools v2.2.0+incompatible
+	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
 )
 
 replace github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v1.18.0

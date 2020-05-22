@@ -170,18 +170,18 @@ func (s SealingAPIAdapter) StateSectorPreCommitInfo(ctx context.Context, maddr a
 	return &pci, nil
 }
 
-func (s SealingAPIAdapter) StateMarketStorageDeal(ctx context.Context, dealID abi.DealID, tok sealing.TipSetToken) (market.DealProposal, market.DealState, error) {
+func (s SealingAPIAdapter) StateMarketStorageDeal(ctx context.Context, dealID abi.DealID, tok sealing.TipSetToken) (market.DealProposal, error) {
 	tsk, err := types.TipSetKeyFromBytes(tok)
 	if err != nil {
-		return market.DealProposal{}, market.DealState{}, err
+		return market.DealProposal{}, err
 	}
 
 	deal, err := s.delegate.StateMarketStorageDeal(ctx, dealID, tsk)
 	if err != nil {
-		return market.DealProposal{}, market.DealState{}, err
+		return market.DealProposal{}, err
 	}
 
-	return deal.Proposal, deal.State, nil
+	return deal.Proposal, nil
 }
 
 func (s SealingAPIAdapter) SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, gasPrice big.Int, gasLimit int64, params []byte) (cid.Cid, error) {
