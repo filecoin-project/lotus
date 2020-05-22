@@ -307,12 +307,12 @@ func (mgr *SectorMgr) CheckProvable(context.Context, abi.RegisteredProof, []abi.
 }
 
 func (m mockVerif) VerifySeal(svi abi.SealVerifyInfo) (bool, error) {
-	if len(svi.OnChain.Proof) != 32 { // Real ones are longer, but this should be fine
+	if len(svi.Proof) != 32 { // Real ones are longer, but this should be fine
 		return false, nil
 	}
 
-	for i, b := range svi.OnChain.Proof {
-		if b != svi.UnsealedCID.Bytes()[i]+svi.OnChain.SealedCID.Bytes()[31-i]-svi.InteractiveRandomness[i]*svi.Randomness[i] {
+	for i, b := range svi.Proof {
+		if b != svi.UnsealedCID.Bytes()[i]+svi.SealedCID.Bytes()[31-i]-svi.InteractiveRandomness[i]*svi.Randomness[i] {
 			return false, nil
 		}
 	}
