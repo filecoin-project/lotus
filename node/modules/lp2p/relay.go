@@ -4,29 +4,15 @@ import (
 	"fmt"
 
 	"github.com/libp2p/go-libp2p"
-	circuit "github.com/libp2p/go-libp2p-circuit"
 	coredisc "github.com/libp2p/go-libp2p-core/discovery"
 	routing "github.com/libp2p/go-libp2p-core/routing"
 	discovery "github.com/libp2p/go-libp2p-discovery"
-	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
-	relay "github.com/libp2p/go-libp2p/p2p/host/relay"
-	"go.uber.org/fx"
-
-	"github.com/filecoin-project/lotus/node/modules/helpers"
 )
 
-func Relay(disable, enableHop bool) func() (opts Libp2pOpts, err error) {
+func NoRelay() func() (opts Libp2pOpts, err error) {
 	return func() (opts Libp2pOpts, err error) {
-		if disable {
-			// Enabled by default.
-			opts.Opts = append(opts.Opts, libp2p.DisableRelay())
-		} else {
-			relayOpts := []circuit.RelayOpt{circuit.OptDiscovery}
-			if enableHop {
-				relayOpts = append(relayOpts, circuit.OptHop)
-			}
-			opts.Opts = append(opts.Opts, libp2p.EnableRelay(relayOpts...))
-		}
+		// always disabled, it's an eclipse attack vector
+		opts.Opts = append(opts.Opts, libp2p.DisableRelay())
 		return
 	}
 }
@@ -39,18 +25,4 @@ func Discovery(router BaseIpfsRouting) (coredisc.Discovery, error) {
 	}
 
 	return discovery.NewRoutingDiscovery(crouter), nil
-}
-
-// NOTE: only set when relayHop is set
-func AdvertiseRelay(mctx helpers.MetricsCtx, d coredisc.Discovery) {
-	relay.Advertise(mctx, d)
-}
-
-// NOTE: only set when relayHop is not set
-func AutoRelay(mctx helpers.MetricsCtx, lc fx.Lifecycle, router BaseIpfsRouting, h RawHost, d coredisc.Discovery) error {
-	ctx := helpers.LifecycleCtx(mctx, lc)
-
-	// TODO: review: LibP2P doesn't set this as host in config.go, why?
-	_ = relay.NewAutoRelay(ctx, h.(*basichost.BasicHost), d, router, nil)
-	return nil
 }
