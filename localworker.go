@@ -55,7 +55,7 @@ func NewLocalWorker(wcfg WorkerConfig, store stores.Store, local *stores.Local, 
 }
 
 type localWorkerPathProvider struct {
-	w *LocalWorker
+	w  *LocalWorker
 	op stores.AcquireMode
 }
 
@@ -193,7 +193,7 @@ func (l *LocalWorker) UnsealPiece(ctx context.Context, sector abi.SectorID, inde
 		return xerrors.Errorf("unsealing sector: %w", err)
 	}
 
-	if err := l.storage.RemoveCopies(ctx, sector, stores.FTSealed | stores.FTCache); err != nil {
+	if err := l.storage.RemoveCopies(ctx, sector, stores.FTSealed|stores.FTCache); err != nil {
 		return xerrors.Errorf("removing source data: %w", err)
 	}
 

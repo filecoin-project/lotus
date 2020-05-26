@@ -278,9 +278,9 @@ func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft Sector
 		}
 
 		out = append(out, SectorStorageInfo{
-			ID:       id,
-			URLs:     urls,
-			Weight:   st.info.Weight * n, // storage with more sector types is better
+			ID:     id,
+			URLs:   urls,
+			Weight: st.info.Weight * n, // storage with more sector types is better
 
 			CanSeal:  st.info.CanSeal,
 			CanStore: st.info.CanStore,
@@ -307,9 +307,9 @@ func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft Sector
 			}
 
 			out = append(out, SectorStorageInfo{
-				ID:       id,
-				URLs:     urls,
-				Weight:   st.info.Weight * 0, // TODO: something better than just '0'
+				ID:     id,
+				URLs:   urls,
+				Weight: st.info.Weight * 0, // TODO: something better than just '0'
 
 				CanSeal:  st.info.CanSeal,
 				CanStore: st.info.CanStore,

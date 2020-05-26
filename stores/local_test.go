@@ -16,7 +16,7 @@ const pathSize = 16 << 20
 
 type TestingLocalStorage struct {
 	root string
-	c StorageConfig
+	c    StorageConfig
 }
 
 func (t *TestingLocalStorage) GetStorage() (StorageConfig, error) {
@@ -62,7 +62,6 @@ func (t *TestingLocalStorage) init(subpath string) error {
 
 	return nil
 }
-
 
 var _ LocalStorage = &TestingLocalStorage{}
 

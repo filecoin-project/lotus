@@ -10,12 +10,14 @@ import (
 )
 
 type PathType bool
+
 const (
 	PathStorage = false
 	PathSealing = true
 )
 
 type AcquireMode string
+
 const (
 	AcquireMove = "move"
 	AcquireCopy = "copy"
