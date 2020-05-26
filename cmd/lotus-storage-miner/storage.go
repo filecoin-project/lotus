@@ -249,7 +249,7 @@ var storageListCmd = &cli.Command{
 
 type storedSector struct {
 	id    stores.ID
-	store stores.StorageInfo
+	store stores.SectorStorageInfo
 
 	unsealed, sealed, cache bool
 }

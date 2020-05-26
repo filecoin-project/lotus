@@ -18,7 +18,7 @@ require (
 	github.com/filecoin-project/filecoin-ffi v0.26.1-0.20200508175440-05b30afeb00d
 	github.com/filecoin-project/go-address v0.0.2-0.20200504173055-8b6f2fb2b3ef
 	github.com/filecoin-project/go-amt-ipld/v2 v2.0.1-0.20200424220931-6263827e49f2
-	github.com/filecoin-project/go-bitfield v0.0.1
+	github.com/filecoin-project/go-bitfield v0.0.2-0.20200518150651-562fdb554b6e
 	github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
 	github.com/filecoin-project/go-data-transfer v0.3.0
@@ -29,7 +29,7 @@ require (
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200505180321-973f8949ea8e
 	github.com/filecoin-project/go-statestore v0.1.0
 	github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b
-	github.com/filecoin-project/sector-storage v0.0.0-20200522011946-a59ca7536a95
+	github.com/filecoin-project/sector-storage v0.0.0-20200529175241-9df0cdf19326
 	github.com/filecoin-project/specs-actors v0.5.4
 	github.com/filecoin-project/specs-storage v0.0.0-20200417134612-61b2d91a6102
 	github.com/filecoin-project/storage-fsm v0.0.0-20200528050623-cdada6e88960
@@ -67,7 +67,7 @@ require (
 	github.com/ipfs/go-path v0.0.7
 	github.com/ipfs/go-unixfs v0.2.4
 	github.com/ipfs/interface-go-ipfs-core v0.2.3
-	github.com/ipld/go-car v0.1.1-0.20200430185908-8ff2e52a4c88
+	github.com/ipld/go-car v0.1.1-0.20200526133713-1c7508d55aae
 	github.com/ipld/go-ipld-prime v0.0.2-0.20200428162820-8b59dc292b8e
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/lib/pq v1.2.0

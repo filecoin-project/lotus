@@ -319,6 +319,10 @@ func (fsr *fsLockedRepo) SetStorage(c func(*stores.StorageConfig)) error {
 	return config.WriteStorageFile(fsr.join(fsStorageConfig), sc)
 }
 
+func (fsr *fsLockedRepo) Stat(path string) (stores.FsStat, error) {
+	return stores.Stat(path)
+}
+
 func (fsr *fsLockedRepo) SetAPIEndpoint(ma multiaddr.Multiaddr) error {
 	if err := fsr.stillValid(); err != nil {
 		return err

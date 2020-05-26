@@ -40,6 +40,7 @@ type LockedRepo interface {
 
 	GetStorage() (stores.StorageConfig, error)
 	SetStorage(func(*stores.StorageConfig)) error
+	Stat(path string) (stores.FsStat, error)
 
 	// SetAPIEndpoint sets the endpoint of the current API
 	// so it can be read by API clients
