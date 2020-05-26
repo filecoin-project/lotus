@@ -32,13 +32,14 @@ type partialFile struct {
 	file *os.File
 }
 
-func writeTrailer(psz int64, w *os.File, r rlepluslazy.RunIterator) error {
+func writeTrailer(maxPieceSize int64, w *os.File, r rlepluslazy.RunIterator) error {
 	trailer, err := rlepluslazy.EncodeRuns(r, nil)
 	if err != nil {
 		return xerrors.Errorf("encoding trailer: %w", err)
 	}
 
-	if _, err := w.Seek(psz, io.SeekStart); err != nil {
+	// maxPieceSize == unpadded(sectorSize) == trailer start
+	if _, err := w.Seek(maxPieceSize, io.SeekStart); err != nil {
 		return xerrors.Errorf("seek to trailer start: %w", err)
 	}
 
@@ -51,7 +52,7 @@ func writeTrailer(psz int64, w *os.File, r rlepluslazy.RunIterator) error {
 		return xerrors.Errorf("writing trailer length: %w", err)
 	}
 
-	return w.Truncate(psz + int64(rb) + 4)
+	return w.Truncate(maxPieceSize + int64(rb) + 4)
 }
 
 func createPartialFile(maxPieceSize abi.UnpaddedPieceSize, path string) (*partialFile, error) {
