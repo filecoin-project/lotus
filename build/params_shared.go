@@ -118,7 +118,7 @@ const VerifSigCacheSize = 32000
 
 // TODO: If this is gonna stay, it should move to specs-actors
 const BlockMessageLimit = 512
-const BlockGasLimit = 100_000_000
+const BlockGasLimit = 100_000_000_000
 
 var DrandCoeffs = []string{
 	"82c279cce744450e68de98ee08f9698a01dd38f8e3be3c53f2b840fb9d09ad62a0b6b87981e179e1b14bc9a2d284c985",

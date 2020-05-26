@@ -12,10 +12,11 @@ import (
 )
 
 func init() {
-	power.ConsensusMinerMinPower = big.NewInt(1024 << 30)
+	power.ConsensusMinerMinPower = big.NewInt(1024 << 20)
 	miner.SupportedProofTypes = map[abi.RegisteredProof]struct{}{
-		abi.RegisteredProof_StackedDRG32GiBSeal: {},
-		abi.RegisteredProof_StackedDRG64GiBSeal: {},
+		abi.RegisteredProof_StackedDRG512MiBSeal: {},
+		abi.RegisteredProof_StackedDRG32GiBSeal:  {},
+		abi.RegisteredProof_StackedDRG64GiBSeal:  {},
 	}
 }
 
