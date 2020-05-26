@@ -100,7 +100,7 @@ func (sb *Sealer) AddPiece(ctx context.Context, sector abi.SectorID, existingPie
 		}
 	}
 
-	w, err := stagedFile.Writer(UnpaddedByteIndex(offset), pieceSize)
+	w, err := stagedFile.Writer(storiface.UnpaddedByteIndex(offset), pieceSize)
 	if err != nil {
 		return abi.PieceInfo{}, xerrors.Errorf("getting partial file writer: %w", err)
 	}
@@ -115,7 +115,7 @@ func (sb *Sealer) AddPiece(ctx context.Context, sector abi.SectorID, existingPie
 		return abi.PieceInfo{}, xerrors.Errorf("generating piece commitment: %w", err)
 	}
 
-	if err := stagedFile.MarkAllocated(UnpaddedByteIndex(offset), pieceSize); err != nil {
+	if err := stagedFile.MarkAllocated(storiface.UnpaddedByteIndex(offset), pieceSize); err != nil {
 		return abi.PieceInfo{}, xerrors.Errorf("marking data range as allocated: %w", err)
 	}
 
@@ -136,7 +136,7 @@ func (cf closerFunc) Close() error {
 	return cf()
 }
 
-func (sb *Sealer) UnsealPiece(ctx context.Context, sector abi.SectorID, offset UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, commd cid.Cid) error {
+func (sb *Sealer) UnsealPiece(ctx context.Context, sector abi.SectorID, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, commd cid.Cid) error {
 	maxPieceSize := abi.PaddedPieceSize(sb.ssize).Unpadded()
 
 	// try finding existing
@@ -271,7 +271,7 @@ func (sb *Sealer) UnsealPiece(ctx context.Context, sector abi.SectorID, offset U
 			return xerrors.Errorf("piping output to unsealed file: %w", perr)
 		}
 
-		if err := pf.MarkAllocated(UnpaddedByteIndex(at), abi.UnpaddedPieceSize(piece.Len)); err != nil {
+		if err := pf.MarkAllocated(storiface.UnpaddedByteIndex(at), abi.UnpaddedPieceSize(piece.Len)); err != nil {
 			return xerrors.Errorf("marking unsealed range as allocated: %w", err)
 		}
 
@@ -283,7 +283,7 @@ func (sb *Sealer) UnsealPiece(ctx context.Context, sector abi.SectorID, offset U
 	return nil
 }
 
-func (sb *Sealer) ReadPiece(ctx context.Context, writer io.Writer, sector abi.SectorID, offset UnpaddedByteIndex, size abi.UnpaddedPieceSize) error {
+func (sb *Sealer) ReadPiece(ctx context.Context, writer io.Writer, sector abi.SectorID, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) error {
 	path, done, err := sb.sectors.AcquireSector(ctx, sector, stores.FTUnsealed, stores.FTNone, false)
 	if err != nil {
 		return xerrors.Errorf("acquire unsealed sector path: %w", err)

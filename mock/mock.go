@@ -17,6 +17,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/sector-storage/storiface"
 )
 
 var log = logging.Logger("sbmock")
@@ -267,7 +268,7 @@ func generateFakePoSt(sectorInfo []abi.SectorInfo) []abi.PoStProof {
 	}
 }
 
-func (mgr *SectorMgr) ReadPiece(ctx context.Context, w io.Writer, sectorID abi.SectorID, offset ffiwrapper.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, c cid.Cid) error {
+func (mgr *SectorMgr) ReadPiece(ctx context.Context, w io.Writer, sectorID abi.SectorID, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, c cid.Cid) error {
 	if len(mgr.sectors[sectorID].pieces) > 1 {
 		panic("implme")
 	}

@@ -11,9 +11,8 @@ import (
 
 	"github.com/filecoin-project/sector-storage/ffiwrapper/basicfs"
 	"github.com/filecoin-project/sector-storage/stores"
+	"github.com/filecoin-project/sector-storage/storiface"
 )
-
-type UnpaddedByteIndex uint64
 
 type Validator interface {
 	CanCommit(sector stores.SectorPaths) (bool, error)
@@ -29,8 +28,8 @@ type Storage interface {
 	storage.Prover
 	StorageSealer
 
-	UnsealPiece(ctx context.Context, sector abi.SectorID, offset UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, commd cid.Cid) error
-	ReadPiece(ctx context.Context, writer io.Writer, sector abi.SectorID, offset UnpaddedByteIndex, size abi.UnpaddedPieceSize) error
+	UnsealPiece(ctx context.Context, sector abi.SectorID, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, commd cid.Cid) error
+	ReadPiece(ctx context.Context, writer io.Writer, sector abi.SectorID, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) error
 }
 
 type Verifier interface {

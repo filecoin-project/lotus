@@ -5,6 +5,8 @@ import (
 
 	"github.com/filecoin-project/go-bitfield/rle"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+
+	"github.com/filecoin-project/sector-storage/storiface"
 )
 
 // merge gaps between ranges which are close to each other
@@ -13,7 +15,7 @@ const mergeGaps = 32 << 20
 
 // TODO const expandRuns = 16 << 20 // unseal more than requested for future requests
 
-func computeUnsealRanges(unsealed rlepluslazy.RunIterator, offset UnpaddedByteIndex, size abi.UnpaddedPieceSize) (rlepluslazy.RunIterator, error) {
+func computeUnsealRanges(unsealed rlepluslazy.RunIterator, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (rlepluslazy.RunIterator, error) {
 	todo := pieceRun(offset, size)
 	todo, err := rlepluslazy.Subtract(todo, unsealed)
 	if err != nil {

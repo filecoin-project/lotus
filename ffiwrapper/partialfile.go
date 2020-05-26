@@ -10,6 +10,8 @@ import (
 
 	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+
+	"github.com/filecoin-project/sector-storage/storiface"
 )
 
 const veryLargeRle = 1 << 20
@@ -161,7 +163,7 @@ func (pf *partialFile) Close() error {
 	return pf.file.Close()
 }
 
-func (pf *partialFile) Writer(offset UnpaddedByteIndex, size abi.UnpaddedPieceSize) (io.Writer, error) {
+func (pf *partialFile) Writer(offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (io.Writer, error) {
 	if _, err := pf.file.Seek(int64(offset), io.SeekStart); err != nil {
 		return nil, xerrors.Errorf("seek piece start: %w", err)
 	}
@@ -190,7 +192,7 @@ func (pf *partialFile) Writer(offset UnpaddedByteIndex, size abi.UnpaddedPieceSi
 	return pf.file, nil
 }
 
-func (pf *partialFile) MarkAllocated(offset UnpaddedByteIndex, size abi.UnpaddedPieceSize) error {
+func (pf *partialFile) MarkAllocated(offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) error {
 	have, err := pf.allocated.RunIterator()
 	if err != nil {
 		return err
@@ -208,7 +210,7 @@ func (pf *partialFile) MarkAllocated(offset UnpaddedByteIndex, size abi.Unpadded
 	return nil
 }
 
-func (pf *partialFile) Reader(offset UnpaddedByteIndex, size abi.UnpaddedPieceSize) (*os.File, error) {
+func (pf *partialFile) Reader(offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (*os.File, error) {
 	if _, err := pf.file.Seek(int64(offset), io.SeekStart); err != nil {
 		return nil, xerrors.Errorf("seek piece start: %w", err)
 	}
@@ -241,7 +243,7 @@ func (pf *partialFile) Allocated() (rlepluslazy.RunIterator, error) {
 	return pf.allocated.RunIterator()
 }
 
-func pieceRun(offset UnpaddedByteIndex, size abi.UnpaddedPieceSize) rlepluslazy.RunIterator {
+func pieceRun(offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) rlepluslazy.RunIterator {
 	var runs []rlepluslazy.Run
 	if offset > 0 {
 		runs = append(runs, rlepluslazy.Run{
