@@ -384,7 +384,7 @@ var clientRetrieveCmd = &cli.Command{
 			return nil
 		}
 
-		ref := lapi.FileRef{
+		ref := &lapi.FileRef{
 			Path:  cctx.Args().Get(1),
 			IsCAR: cctx.Bool("car"),
 		}

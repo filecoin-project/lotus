@@ -200,7 +200,7 @@ func testRetrieval(t *testing.T, ctx context.Context, err error, client *impl.Fu
 		t.Fatal(err)
 	}
 
-	ref := api.FileRef{
+	ref := &api.FileRef{
 		Path:  filepath.Join(rpath, "ret"),
 		IsCAR: carExport,
 	}
