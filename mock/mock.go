@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math"
 	"math/rand"
 	"sync"
@@ -268,11 +267,13 @@ func generateFakePoSt(sectorInfo []abi.SectorInfo) []abi.PoStProof {
 	}
 }
 
-func (mgr *SectorMgr) ReadPieceFromSealedSector(ctx context.Context, sectorID abi.SectorID, offset ffiwrapper.UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, commD cid.Cid) (io.ReadCloser, error) {
+func (mgr *SectorMgr) ReadPiece(ctx context.Context, w io.Writer, sectorID abi.SectorID, offset ffiwrapper.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, c cid.Cid) error {
 	if len(mgr.sectors[sectorID].pieces) > 1 {
 		panic("implme")
 	}
-	return ioutil.NopCloser(io.LimitReader(bytes.NewReader(mgr.sectors[sectorID].pieces[0].Bytes()[offset:]), int64(size))), nil
+
+	_, err := io.CopyN(w, bytes.NewReader(mgr.sectors[sectorID].pieces[0].Bytes()[offset:]), int64(size))
+	return err
 }
 
 func (mgr *SectorMgr) StageFakeData(mid abi.ActorID) (abi.SectorID, []abi.PieceInfo, error) {
