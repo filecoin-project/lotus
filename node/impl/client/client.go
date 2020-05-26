@@ -302,7 +302,7 @@ func (a *API) ClientListImports(ctx context.Context) ([]api.Import, error) {
 	}
 }
 
-func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref api.FileRef) error {
+func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref *api.FileRef) error {
 	if order.MinerPeerID == "" {
 		mi, err := a.StateMinerInfo(ctx, order.Miner, types.EmptyTSK)
 		if err != nil {
@@ -352,6 +352,11 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 	}
 
 	unsubscribe()
+
+	// If ref is nil, it only fetches the data into the configured blockstore.
+	if ref == nil {
+		return nil
+	}
 
 	if ref.IsCAR {
 		f, err := os.OpenFile(ref.Path, os.O_CREATE|os.O_WRONLY, 0644)
