@@ -225,10 +225,10 @@ func (ss *syscallShim) VerifySeal(info abi.SealVerifyInfo) error {
 	}
 
 	ticket := []byte(info.Randomness)
-	proof := []byte(info.OnChain.Proof)
+	proof := []byte(info.Proof)
 	seed := []byte(info.InteractiveRandomness)
 
-	log.Debugf("Verif r:%x; d:%x; m:%s; t:%x; s:%x; N:%d; p:%x", info.OnChain.SealedCID, info.UnsealedCID, miner, ticket, seed, info.SectorID.Number, proof)
+	log.Debugf("Verif r:%x; d:%x; m:%s; t:%x; s:%x; N:%d; p:%x", info.SealedCID, info.UnsealedCID, miner, ticket, seed, info.SectorID.Number, proof)
 
 	//func(ctx context.Context, maddr address.Address, ssize abi.SectorSize, commD, commR, ticket, proof, seed []byte, sectorID abi.SectorNumber)
 	ok, err := ss.verifier.VerifySeal(info)

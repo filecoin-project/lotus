@@ -527,16 +527,11 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, mid
 
 		if !skipc2 {
 			svi := abi.SealVerifyInfo{
-				SectorID: abi.SectorID{Miner: mid, Number: i},
-				OnChain: abi.OnChainSealVerifyInfo{
-					SealedCID:        cids.Sealed,
-					InteractiveEpoch: seed.Epoch,
-					RegisteredProof:  sb.SealProofType(),
-					Proof:            proof,
-					DealIDs:          nil,
-					SectorNumber:     i,
-					SealRandEpoch:    0,
-				},
+				SectorID:              abi.SectorID{Miner: mid, Number: i},
+				SealedCID:             cids.Sealed,
+				RegisteredProof:       sb.SealProofType(),
+				Proof:                 proof,
+				DealIDs:               nil,
 				Randomness:            ticket,
 				InteractiveRandomness: seed.Value,
 				UnsealedCID:           cids.Unsealed,
