@@ -13,7 +13,6 @@ import (
 	"github.com/ipfs/go-cid"
 
 	vtypes "github.com/filecoin-project/chain-validation/chain/types"
-	vdrivers "github.com/filecoin-project/chain-validation/drivers"
 	vstate "github.com/filecoin-project/chain-validation/state"
 
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -136,7 +135,7 @@ func (a *Applier) applyMessage(epoch abi.ChainEpoch, lm types.ChainMsg) (vtypes.
 	ctx := context.TODO()
 	base := a.stateWrapper.Root()
 
-	lotusVM, err := vm.NewVM(base, epoch, &vmRand{}, a.stateWrapper.bs, vdrivers.NewChainValidationSyscalls())
+	lotusVM, err := vm.NewVM(base, epoch, &vmRand{}, a.stateWrapper.bs, a.syscalls)
 	// need to modify the VM invoker to add the puppet actor
 	chainValInvoker := vm.NewInvoker()
 	chainValInvoker.Register(puppet.PuppetActorCodeID, puppet.Actor{}, puppet.State{})
