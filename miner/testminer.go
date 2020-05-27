@@ -5,20 +5,18 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/gen"
 	lru "github.com/hashicorp/golang-lru"
 )
 
-func NewTestMiner(nextCh <-chan func(bool), addr address.Address) func(api.FullNode, gen.WinningPoStProver, beacon.RandomBeacon) *Miner {
-	return func(api api.FullNode, epp gen.WinningPoStProver, b beacon.RandomBeacon) *Miner {
+func NewTestMiner(nextCh <-chan func(bool), addr address.Address) func(api.FullNode, gen.WinningPoStProver) *Miner {
+	return func(api api.FullNode, epp gen.WinningPoStProver) *Miner {
 		arc, err := lru.NewARC(10000)
 		if err != nil {
 			panic(err)
 		}
 
 		m := &Miner{
-			beacon:            b,
 			api:               api,
 			waitFunc:          chanWaiter(nextCh),
 			epp:               epp,

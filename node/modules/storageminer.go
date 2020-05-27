@@ -263,13 +263,13 @@ func StagingGraphsync(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.Stagi
 	return gs
 }
 
-func SetupBlockProducer(lc fx.Lifecycle, ds dtypes.MetadataDS, api lapi.FullNode, epp gen.WinningPoStProver, beacon beacon.RandomBeacon) (*miner.Miner, error) {
+func SetupBlockProducer(lc fx.Lifecycle, ds dtypes.MetadataDS, api lapi.FullNode, epp gen.WinningPoStProver) (*miner.Miner, error) {
 	minerAddr, err := minerAddrFromDS(ds)
 	if err != nil {
 		return nil, err
 	}
 
-	m := miner.NewMiner(api, epp, beacon, minerAddr)
+	m := miner.NewMiner(api, epp, minerAddr)
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {

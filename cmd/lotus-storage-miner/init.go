@@ -37,7 +37,6 @@ import (
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/beacon/drand"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/genesis"
@@ -446,17 +445,7 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 				return err
 			}
 
-			gen, err := api.ChainGetGenesis(ctx)
-			if err != nil {
-				return err
-			}
-
-			beacon, err := drand.NewDrandBeacon(gen.Blocks()[0].Timestamp, build.BlockDelay)
-			if err != nil {
-				return err
-			}
-
-			m := miner.NewMiner(api, epp, beacon, a)
+			m := miner.NewMiner(api, epp, a)
 			{
 				if err := m.Start(ctx); err != nil {
 					return xerrors.Errorf("failed to start up genesis miner: %w", err)

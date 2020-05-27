@@ -15,7 +15,6 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -31,7 +30,7 @@ var log = logging.Logger("miner")
 // returns a callback reporting whether we mined a blocks in this round
 type waitFunc func(ctx context.Context, baseTime uint64) (func(bool), error)
 
-func NewMiner(api api.FullNode, epp gen.WinningPoStProver, beacon beacon.RandomBeacon, addr address.Address) *Miner {
+func NewMiner(api api.FullNode, epp gen.WinningPoStProver, addr address.Address) *Miner {
 	arc, err := lru.NewARC(10000)
 	if err != nil {
 		panic(err)
@@ -40,7 +39,6 @@ func NewMiner(api api.FullNode, epp gen.WinningPoStProver, beacon beacon.RandomB
 	return &Miner{
 		api:     api,
 		epp:     epp,
-		beacon:  beacon,
 		address: addr,
 		waitFunc: func(ctx context.Context, baseTime uint64) (func(bool), error) {
 			// Wait around for half the block time in case other parents come in
@@ -56,8 +54,7 @@ func NewMiner(api api.FullNode, epp gen.WinningPoStProver, beacon beacon.RandomB
 type Miner struct {
 	api api.FullNode
 
-	epp    gen.WinningPoStProver
-	beacon beacon.RandomBeacon
+	epp gen.WinningPoStProver
 
 	lk       sync.Mutex
 	address  address.Address
@@ -267,12 +264,8 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*types.BlockMsg,
 
 	beaconPrev := mbi.PrevBeaconEntry
 
-	bvals, err := beacon.BeaconEntriesForBlock(ctx, m.beacon, round, beaconPrev)
-	if err != nil {
-		return nil, xerrors.Errorf("get beacon entries failed: %w", err)
-	}
-
 	tDrand := time.Now()
+	bvals := mbi.BeaconEntries
 
 	hasPower, err := m.hasPower(ctx, m.address, base.TipSet)
 	if err != nil {
