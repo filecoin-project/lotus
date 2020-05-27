@@ -77,7 +77,7 @@ lotus-storage-miner auth create-token --perm admin
 
 ## What authorization level should I use?
 
-When viewing [api/struct.go](https://github.com/filecoin-project/lotus/blob/master/api/struct.go), you will encounter these types:
+When viewing [api/apistruct/struct.go](https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go), you will encounter these types:
 
 - `read` - Read node state, no private data.
 - `write` - Write to local store / chain, and `read` permissions.
