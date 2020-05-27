@@ -331,7 +331,7 @@ workflows:
   ci:
     jobs:
       - lint-changes:
-          args: "--new-from-rev origin/master"
+          args: "--new-from-rev << pipeline.git.base_revision >>"
       - test:
           codecov-upload: true
       - mod-tidy-check
