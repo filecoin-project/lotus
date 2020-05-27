@@ -20,12 +20,14 @@ import (
 // The flag useForRetrieval indicates if the IPFS node will also be used for storing retrieving deals.
 func IpfsClientBlockstore(ipfsMaddr string, useForRetrieval bool) func(helpers.MetricsCtx, fx.Lifecycle, dtypes.ClientFilestore) (dtypes.ClientBlockstore, error) {
 	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, fstore dtypes.ClientFilestore) (dtypes.ClientBlockstore, error) {
-		ma, err := multiaddr.NewMultiaddr(ipfsMaddr)
-		if err != nil {
-			return nil, xerrors.Errorf("parsing ipfs multiaddr: %w", err)
-		}
+		var err error
 		var ipfsbs *ipfsbstore.IpfsBstore
 		if ipfsMaddr != "" {
+			var ma multiaddr.Multiaddr
+			ma, err = multiaddr.NewMultiaddr(ipfsMaddr)
+			if err != nil {
+				return nil, xerrors.Errorf("parsing ipfs multiaddr: %w", err)
+			}
 			ipfsbs, err = ipfsbstore.NewRemoteIpfsBstore(helpers.LifecycleCtx(mctx, lc), ma)
 		} else {
 			ipfsbs, err = ipfsbstore.NewIpfsBstore(helpers.LifecycleCtx(mctx, lc))
