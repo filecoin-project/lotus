@@ -62,7 +62,9 @@ type Metrics struct {
 }
 
 type Client struct {
-	UseIpfs bool
+	UseIpfs             bool
+	IpfsMAddr           string
+	IpfsUseForRetrieval bool
 }
 
 func defCommon() Common {

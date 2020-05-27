@@ -110,7 +110,7 @@ type FullNodeStruct struct {
 		ClientStartDeal   func(ctx context.Context, params *api.StartDealParams) (*cid.Cid, error)                             `perm:"admin"`
 		ClientGetDealInfo func(context.Context, cid.Cid) (*api.DealInfo, error)                                                `perm:"read"`
 		ClientListDeals   func(ctx context.Context) ([]api.DealInfo, error)                                                    `perm:"write"`
-		ClientRetrieve    func(ctx context.Context, order api.RetrievalOrder, ref api.FileRef) error                           `perm:"admin"`
+		ClientRetrieve    func(ctx context.Context, order api.RetrievalOrder, ref *api.FileRef) error                          `perm:"admin"`
 		ClientQueryAsk    func(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.SignedStorageAsk, error) `perm:"read"`
 		ClientCalcCommP   func(ctx context.Context, inpath string, miner address.Address) (*api.CommPRet, error)               `perm:"read"`
 		ClientGenCar      func(ctx context.Context, ref api.FileRef, outpath string) error                                     `perm:"write"`
@@ -321,7 +321,7 @@ func (c *FullNodeStruct) ClientListDeals(ctx context.Context) ([]api.DealInfo, e
 	return c.Internal.ClientListDeals(ctx)
 }
 
-func (c *FullNodeStruct) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref api.FileRef) error {
+func (c *FullNodeStruct) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref *api.FileRef) error {
 	return c.Internal.ClientRetrieve(ctx, order, ref)
 }
 

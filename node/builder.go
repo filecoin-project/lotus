@@ -378,12 +378,13 @@ func ConfigFullNode(c interface{}) Option {
 		return Error(xerrors.Errorf("invalid config from repo, got: %T", c))
 	}
 
+	ipfsMaddr := cfg.Client.IpfsMAddr
+	useForRetrieval := cfg.Client.IpfsUseForRetrieval
 	return Options(
 		ConfigCommon(&cfg.Common),
 		If(cfg.Client.UseIpfs,
-			Override(new(dtypes.ClientBlockstore), modules.IpfsClientBlockstore),
+			Override(new(dtypes.ClientBlockstore), modules.IpfsClientBlockstore(ipfsMaddr, useForRetrieval)),
 		),
-
 		If(cfg.Metrics.HeadNotifs,
 			Override(HeadMetricsKey, metrics.SendHeadNotifs(cfg.Metrics.Nickname)),
 		),
