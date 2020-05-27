@@ -46,8 +46,12 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	),
 	PreCommitting: planOne(
 		on(SectorSealPreCommitFailed{}, SealFailed),
-		on(SectorPreCommitted{}, WaitSeed),
+		on(SectorPreCommitted{}, PreCommitWait),
 		on(SectorChainPreCommitFailed{}, PreCommitFailed),
+	),
+	PreCommitWait: planOne(
+		on(SectorChainPreCommitFailed{}, PreCommitFailed),
+		on(SectorPreCommitLanded{}, WaitSeed),
 	),
 	WaitSeed: planOne(
 		on(SectorSeedReady{}, Committing),
@@ -177,6 +181,8 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		return m.handlePreCommit2, nil
 	case PreCommitting:
 		return m.handlePreCommitting, nil
+	case PreCommitWait:
+		return m.handlePreCommitWait, nil
 	case WaitSeed:
 		return m.handleWaitSeed, nil
 	case Committing:
@@ -211,7 +217,7 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 	case FailedUnrecoverable:
 		log.Errorf("sector %d failed unrecoverably", state.SectorNumber)
 	default:
-		log.Errorf("unexpected sector update state: %d", state.State)
+		log.Errorf("unexpected sector update state: %s", state.State)
 	}
 
 	return nil, nil

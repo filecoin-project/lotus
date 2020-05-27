@@ -11,6 +11,7 @@ const (
 	PreCommit1     SectorState = "PreCommit1"    // do PreCommit1
 	PreCommit2     SectorState = "PreCommit2"    // do PreCommit1
 	PreCommitting  SectorState = "PreCommitting" // on chain pre-commit
+	PreCommitWait  SectorState = "PreCommitWait" // waiting for precommit to land on chain
 	WaitSeed       SectorState = "WaitSeed"      // waiting for seed
 	Committing     SectorState = "Committing"
 	CommitWait     SectorState = "CommitWait" // waiting for message to land on chain

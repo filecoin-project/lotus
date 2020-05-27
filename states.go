@@ -159,7 +159,7 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 	return ctx.Send(SectorPreCommitted{Message: mcid})
 }
 
-func (m *Sealing) handleWaitSeed(ctx statemachine.Context, sector SectorInfo) error {
+func (m *Sealing) handlePreCommitWait(ctx statemachine.Context, sector SectorInfo) error {
 	// would be ideal to just use the events.Called handler, but it wouldnt be able to handle individual message timeouts
 	log.Info("Sector precommitted: ", sector.SectorNumber)
 	mw, err := m.api.StateWaitMsg(ctx.Context(), *sector.PreCommitMessage)
@@ -174,7 +174,11 @@ func (m *Sealing) handleWaitSeed(ctx statemachine.Context, sector SectorInfo) er
 	}
 	log.Info("precommit message landed on chain: ", sector.SectorNumber)
 
-	pci, err := m.api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, sector.SectorNumber, mw.TipSetTok)
+	return ctx.Send(SectorPreCommitLanded{TipSet: mw.TipSetTok})
+}
+
+func (m *Sealing) handleWaitSeed(ctx statemachine.Context, sector SectorInfo) error {
+	pci, err := m.api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, sector.SectorNumber, sector.PreCommitTipSet)
 	if err != nil {
 		return xerrors.Errorf("getting precommit info: %w", err)
 	}

@@ -67,6 +67,7 @@ type SectorInfo struct {
 	Proof []byte
 
 	PreCommitMessage *cid.Cid
+	PreCommitTipSet  TipSetToken
 
 	// WaitSeed
 	SeedValue abi.InteractiveSealRandomness
