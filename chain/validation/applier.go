@@ -9,10 +9,10 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/puppet"
+	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/ipfs/go-cid"
 
 	vtypes "github.com/filecoin-project/chain-validation/chain/types"
-	vdrivers "github.com/filecoin-project/chain-validation/drivers"
 	vstate "github.com/filecoin-project/chain-validation/state"
 
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -24,12 +24,13 @@ import (
 // Applier applies messages to state trees and storage.
 type Applier struct {
 	stateWrapper *StateWrapper
+	syscalls     runtime.Syscalls
 }
 
 var _ vstate.Applier = &Applier{}
 
-func NewApplier(sw *StateWrapper) *Applier {
-	return &Applier{sw}
+func NewApplier(sw *StateWrapper, syscalls runtime.Syscalls) *Applier {
+	return &Applier{sw, syscalls}
 }
 
 func (a *Applier) ApplyMessage(epoch abi.ChainEpoch, message *vtypes.Message) (vtypes.ApplyMessageResult, error) {
@@ -65,7 +66,7 @@ func (a *Applier) ApplySignedMessage(epoch abi.ChainEpoch, msg *vtypes.SignedMes
 }
 
 func (a *Applier) ApplyTipSetMessages(epoch abi.ChainEpoch, blocks []vtypes.BlockMessagesInfo, rnd vstate.RandomnessSource) (vtypes.ApplyTipSetResult, error) {
-	cs := store.NewChainStore(a.stateWrapper.bs, a.stateWrapper.ds, vdrivers.NewChainValidationSyscalls())
+	cs := store.NewChainStore(a.stateWrapper.bs, a.stateWrapper.ds, a.syscalls)
 	sm := stmgr.NewStateManager(cs)
 
 	var bms []stmgr.BlockMessages
@@ -134,7 +135,7 @@ func (a *Applier) applyMessage(epoch abi.ChainEpoch, lm types.ChainMsg) (vtypes.
 	ctx := context.TODO()
 	base := a.stateWrapper.Root()
 
-	lotusVM, err := vm.NewVM(base, epoch, &vmRand{}, a.stateWrapper.bs, vdrivers.NewChainValidationSyscalls())
+	lotusVM, err := vm.NewVM(base, epoch, &vmRand{}, a.stateWrapper.bs, a.syscalls)
 	// need to modify the VM invoker to add the puppet actor
 	chainValInvoker := vm.NewInvoker()
 	chainValInvoker.Register(puppet.PuppetActorCodeID, puppet.Actor{}, puppet.State{})
