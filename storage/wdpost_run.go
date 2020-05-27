@@ -351,6 +351,7 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 	log.Infow("submitting window PoSt", "elapsed", elapsed)
 
 	return &miner.SubmitWindowedPoStParams{
+		Deadline:   di.Index,
 		Partitions: partitions,
 		Proofs:     postOut,
 		Skipped:    *abi.NewBitField(), // TODO: Faults here?
