@@ -79,7 +79,7 @@ require (
 	github.com/libp2p/go-libp2p-mplex v0.2.3
 	github.com/libp2p/go-libp2p-peer v0.2.0
 	github.com/libp2p/go-libp2p-peerstore v0.2.4
-	github.com/libp2p/go-libp2p-pubsub v0.3.0
+	github.com/libp2p/go-libp2p-pubsub v0.3.1
 	github.com/libp2p/go-libp2p-quic-transport v0.1.1
 	github.com/libp2p/go-libp2p-record v0.1.2
 	github.com/libp2p/go-libp2p-routing-helpers v0.2.1
