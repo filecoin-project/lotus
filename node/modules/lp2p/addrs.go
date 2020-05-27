@@ -18,7 +18,7 @@ func AddrFilters(filters []string) func() (opts Libp2pOpts, err error) {
 			if err != nil {
 				return opts, fmt.Errorf("incorrectly formatted address filter in config: %s", s)
 			}
-			opts.Opts = append(opts.Opts, libp2p.FilterAddresses(f)) //golint:staticcheck
+			opts.Opts = append(opts.Opts, libp2p.FilterAddresses(f)) //nolint:staticcheck
 		}
 		return opts, nil
 	}

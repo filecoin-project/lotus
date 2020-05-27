@@ -389,7 +389,7 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 	if err != nil {
 		return err
 	}
-	defer lr.Close() //notlint:errcheck
+	defer lr.Close() //nolint:errcheck
 
 	log.Info("Initializing libp2p identity")
 

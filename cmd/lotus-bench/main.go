@@ -157,7 +157,7 @@ var sealBenchCmd = &cli.Command{
 				return err
 			}
 
-			err = os.MkdirAll(sdir, 0775)
+			err = os.MkdirAll(sdir, 0775) //nolint:gosec
 			if err != nil {
 				return xerrors.Errorf("creating sectorbuilder dir: %w", err)
 			}

@@ -48,7 +48,7 @@ func PreSeal(maddr address.Address, pt abi.RegisteredProof, offset abi.SectorNum
 		SealProofType: spt,
 	}
 
-	if err := os.MkdirAll(sbroot, 0775); err != nil { //golint:gosec
+	if err := os.MkdirAll(sbroot, 0775); err != nil { //nolint:gosec
 		return nil, nil, err
 	}
 

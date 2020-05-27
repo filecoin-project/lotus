@@ -207,7 +207,7 @@ var msigInspectCmd = &cli.Command{
 				fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%d\t%x\n", txid, state(tx), tx.To, types.FIL(tx.Value), tx.Method, tx.Params)
 			}
 			if err := w.Flush(); err != nil {
-				return xerrors.Errorf("flushing ouput: %+v", err)
+				return xerrors.Errorf("flushing output: %+v", err)
 			}
 
 		}

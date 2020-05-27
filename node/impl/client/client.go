@@ -435,7 +435,6 @@ func (a *API) ClientGenCar(ctx context.Context, ref api.FileRef, outputPath stri
 		ssb.ExploreAll(ssb.ExploreRecursiveEdge())).Node()
 
 	f, err := os.Create(outputPath)
-	defer f.Close() //nolint:errcheck
 	if err != nil {
 		return err
 	}
@@ -445,7 +444,7 @@ func (a *API) ClientGenCar(ctx context.Context, ref api.FileRef, outputPath stri
 		return err
 	}
 
-	return nil
+	return f.Close()
 }
 
 func (a *API) clientImport(ref api.FileRef, bufferedDS *ipld.BufferedDAG) (cid.Cid, error) {
