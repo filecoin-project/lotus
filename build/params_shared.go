@@ -120,4 +120,4 @@ const VerifSigCacheSize = 32000
 const BlockMessageLimit = 512
 const BlockGasLimit = 100_000_000
 
-var DrandChain = `{"public_key":"kiouk4KP+DNFuuUz9RcmaaJsAtx21r9ZyAiS4SqxRVwikhGIbzW7Vq9tW+qYECTf","period":25,"genesis_time":1590445175,"hash":"E4oySqZUD5PQ2tACqolFSxvsK26UhoLN5r1NtA9LfJs="}`
+var DrandChain = `{"public_key":"922a2e93828ff83345bae533f5172669a26c02dc76d6bf59c80892e12ab1455c229211886f35bb56af6d5bea981024df","period":25,"genesis_time":1590445175,"hash":"138a324aa6540f93d0dad002aa89454b1bec2b6e948682cde6bd4db40f4b7c9b"}`

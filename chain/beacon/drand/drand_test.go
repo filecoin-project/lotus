@@ -1,8 +1,7 @@
 package drand
 
 import (
-	"encoding/json"
-	"fmt"
+	"os"
 	"testing"
 
 	dchain "github.com/drand/drand/chain"
@@ -18,7 +17,6 @@ func TestPrintGroupInfo(t *testing.T) {
 	})
 	chain, err := cg.FetchChainInfo(nil)
 	assert.NoError(t, err)
-	cbytes, err := json.Marshal(chain.ToProto())
+	err = chain.ToJSON(os.Stdout)
 	assert.NoError(t, err)
-	fmt.Printf("%s\n", cbytes)
 }
