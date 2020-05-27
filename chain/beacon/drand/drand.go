@@ -106,7 +106,7 @@ func (db *DrandBeacon) Entry(ctx context.Context, round uint64) <-chan beacon.Re
 	}
 
 	go func() {
-		log.Warnw("fetching randomness", "round", round)
+		log.Infow("fetching randomness", "round", round)
 		resp, err := db.client.Get(ctx, round)
 
 		var br beacon.Response
