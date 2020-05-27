@@ -6,6 +6,10 @@ After=network.target
 ExecStart=/usr/local/bin/lotus daemon
 Environment=GOLOG_FILE="/var/log/lotus-daemon"
 Environment=GOLOG_LOG_FMT="json"
+MemoryAccounting=true
+MemoryHigh=8G
+MemoryMax=10G
+LimitNOFILE=8192:10240
 
 [Install]
 WantedBy=multiuser.target
