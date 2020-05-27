@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/minio/blake2b-simd"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -15,6 +14,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	ic "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/minio/blake2b-simd"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -48,7 +48,7 @@ func PreSeal(maddr address.Address, pt abi.RegisteredProof, offset abi.SectorNum
 		SealProofType: spt,
 	}
 
-	if err := os.MkdirAll(sbroot, 0775); err != nil {
+	if err := os.MkdirAll(sbroot, 0775); err != nil { //golint:gosec
 		return nil, nil, err
 	}
 

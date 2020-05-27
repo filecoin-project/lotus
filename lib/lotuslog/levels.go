@@ -6,6 +6,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 )
 
+//nolint:gosec
 func SetupLogLevels() {
 	if _, set := os.LookupEnv("GOLOG_LOG_LEVEL"); !set {
 		logging.SetLogLevel("*", "INFO")

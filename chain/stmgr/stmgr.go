@@ -382,8 +382,8 @@ func (sm *StateManager) LoadActorState(ctx context.Context, a address.Address, o
 	cst := cbor.NewCborStore(sm.cs.Blockstore())
 	if err := cst.Get(ctx, act.Head, out); err != nil {
 		var r cbg.Deferred
-		cst.Get(ctx, act.Head, &r)
-		fmt.Printf("badhead %x\n", r.Raw)
+		_ = cst.Get(ctx, act.Head, &r)
+		log.Errorw("bad actor head", "error", err, "raw", r.Raw, "address", a)
 
 		return nil, err
 	}

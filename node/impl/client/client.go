@@ -427,7 +427,7 @@ func (a *API) ClientGenCar(ctx context.Context, ref api.FileRef, outputPath stri
 		return err
 	}
 
-	defer bufferedDS.Remove(ctx, c)
+	defer bufferedDS.Remove(ctx, c) //nolint:errcheck
 	ssb := builder.NewSelectorSpecBuilder(basicnode.Style.Any)
 
 	// entire DAG selector
@@ -435,7 +435,7 @@ func (a *API) ClientGenCar(ctx context.Context, ref api.FileRef, outputPath stri
 		ssb.ExploreAll(ssb.ExploreRecursiveEdge())).Node()
 
 	f, err := os.Create(outputPath)
-	defer f.Close()
+	defer f.Close() //nolint:errcheck
 	if err != nil {
 		return err
 	}

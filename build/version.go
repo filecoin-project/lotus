@@ -33,6 +33,7 @@ func (ve Version) EqMajorMinor(v2 Version) bool {
 // APIVersion is a semver version of the rpc api exposed
 var APIVersion Version = newVer(0, 3, 0)
 
+//nolint:varcheck
 const (
 	majorMask = 0xff0000
 	minorMask = 0xffff00

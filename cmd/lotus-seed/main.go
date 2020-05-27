@@ -145,7 +145,6 @@ var aggregateManifestsCmd = &cli.Command{
 			if err != nil {
 				return err
 			}
-			defer fi.Close()
 			var val map[string]genesis.Miner
 			if err := json.NewDecoder(fi).Decode(&val); err != nil {
 				return err

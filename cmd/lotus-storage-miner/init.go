@@ -127,7 +127,7 @@ var initCmd = &cli.Command{
 		}
 
 		log.Info("Checking proof parameters")
-		if err := paramfetch.GetParams(build.ParametersJson(), uint64(ssize)); err != nil {
+		if err := paramfetch.GetParams(build.ParametersJSON(), uint64(ssize)); err != nil {
 			return xerrors.Errorf("fetching proof parameters: %w", err)
 		}
 
@@ -389,7 +389,7 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 	if err != nil {
 		return err
 	}
-	defer lr.Close()
+	defer lr.Close() //notlint:errcheck
 
 	log.Info("Initializing libp2p identity")
 

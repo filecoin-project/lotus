@@ -157,7 +157,7 @@ func (h *handler) send(w http.ResponseWriter, r *http.Request) {
 	to, err := address.NewFromString(r.FormValue("address"))
 	if err != nil {
 		w.WriteHeader(400)
-		w.Write([]byte(err.Error()))
+		_, _ = w.Write([]byte(err.Error()))
 		return
 	}
 
@@ -204,11 +204,11 @@ func (h *handler) send(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		w.WriteHeader(400)
-		w.Write([]byte(err.Error()))
+		_, _ = w.Write([]byte(err.Error()))
 		return
 	}
 
-	w.Write([]byte(smsg.Cid().String()))
+	_, _ = w.Write([]byte(smsg.Cid().String()))
 }
 
 func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {

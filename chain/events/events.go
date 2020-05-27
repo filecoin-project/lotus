@@ -67,7 +67,7 @@ func NewEvents(ctx context.Context, api eventApi) *Events {
 		heightEvents: heightEvents{
 			tsc:          tsc,
 			ctx:          ctx,
-			gcConfidence: abi.ChainEpoch(gcConfidence),
+			gcConfidence: gcConfidence,
 
 			heightTriggers:   map[uint64]*heightHandler{},
 			htTriggerHeights: map[abi.ChainEpoch][]uint64{},

@@ -28,7 +28,7 @@ type PreSeal struct {
 type Miner struct {
 	Owner  address.Address
 	Worker address.Address
-	PeerId peer.ID
+	PeerId peer.ID //nolint:golint
 
 	MarketBalance abi.TokenAmount
 	PowerBalance  abi.TokenAmount

@@ -370,7 +370,7 @@ var paychVoucherSubmitCmd = &cli.Command{
 			return fmt.Errorf("message execution failed (exit code %d)", mwait.Receipt.ExitCode)
 		}
 
-		fmt.Println("channel updated succesfully")
+		fmt.Println("channel updated successfully")
 
 		return nil
 	},

@@ -193,7 +193,7 @@ func testRetrieval(t *testing.T, ctx context.Context, err error, client *impl.Fu
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(rpath)
+	defer os.RemoveAll(rpath) //nolint:errcheck
 
 	caddr, err := client.WalletDefaultAddress(ctx)
 	if err != nil {

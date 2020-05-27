@@ -804,7 +804,12 @@ var chainExportCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		defer fi.Close()
+		defer func() {
+			err := fi.Close()
+			if err != nil {
+				fmt.Printf("error closing output file: %+v", err)
+			}
+		}()
 
 		ts, err := LoadTipSet(ctx, cctx, api)
 		if err != nil {

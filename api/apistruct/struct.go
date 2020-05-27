@@ -865,4 +865,4 @@ func (w *WorkerStruct) Closing(ctx context.Context) (<-chan struct{}, error) {
 var _ api.Common = &CommonStruct{}
 var _ api.FullNode = &FullNodeStruct{}
 var _ api.StorageMiner = &StorageMinerStruct{}
-var _ api.WorkerApi = &WorkerStruct{}
+var _ api.WorkerAPI = &WorkerStruct{}

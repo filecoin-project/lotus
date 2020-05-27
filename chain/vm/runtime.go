@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
@@ -182,7 +183,7 @@ func (rs *Runtime) ValidateImmediateCallerAcceptAny() {
 func (rs *Runtime) CurrentBalance() abi.TokenAmount {
 	b, err := rs.GetBalance(rs.Message().Receiver())
 	if err != nil {
-		rs.Abortf(exitcode.ExitCode(err.RetCode()), "get current balance: %v", err)
+		rs.Abortf(err.RetCode(), "get current balance: %v", err)
 	}
 	return b
 }
@@ -354,13 +355,13 @@ func (rs *Runtime) Send(to address.Address, method abi.MethodNum, m vmr.CBORMars
 		params = buf.Bytes()
 	}
 
-	ret, err := rs.internalSend(rs.Message().Receiver(), to, method, types.BigInt(value), params)
+	ret, err := rs.internalSend(rs.Message().Receiver(), to, method, value, params)
 	if err != nil {
 		if err.IsFatal() {
 			panic(err)
 		}
 		log.Warnf("vmctx send failed: to: %s, method: %d: ret: %d, err: %s", to, method, ret, err)
-		return nil, exitcode.ExitCode(err.RetCode())
+		return nil, err.RetCode()
 	}
 	return &dumbWrapperType{ret}, 0
 }
@@ -399,7 +400,7 @@ func (rt *Runtime) internalSend(from, to address.Address, method abi.MethodNum, 
 	}
 
 	mr := types.MessageReceipt{
-		ExitCode: exitcode.ExitCode(aerrors.RetCode(errSend)),
+		ExitCode: aerrors.RetCode(errSend),
 		Return:   ret,
 		GasUsed:  0,
 	}
@@ -431,6 +432,7 @@ type shimStateHandle struct {
 
 func (ssh *shimStateHandle) Create(obj vmr.CBORMarshaler) {
 	c := ssh.rs.Put(obj)
+	// TODO: handle error below
 	ssh.rs.stateCommit(EmptyObjectCid, c)
 }
 
@@ -460,6 +462,7 @@ func (ssh *shimStateHandle) Transaction(obj vmr.CBORer, f func() interface{}) in
 
 	c := ssh.rs.Put(obj)
 
+	// TODO: handle error below
 	ssh.rs.stateCommit(baseState, c)
 
 	return out

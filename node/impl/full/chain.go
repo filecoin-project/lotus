@@ -425,7 +425,7 @@ func (a *ChainAPI) ChainExport(ctx context.Context, tsk types.TipSetKey) (<-chan
 	r, w := io.Pipe()
 	out := make(chan []byte)
 	go func() {
-		defer w.Close()
+		defer w.Close() //nolint:errcheck // it is a pipe
 		if err := a.Chain.Export(ctx, ts, w); err != nil {
 			log.Errorf("chain export call failed: %s", err)
 			return

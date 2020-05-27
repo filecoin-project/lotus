@@ -246,7 +246,7 @@ func (vm *VM) ApplyImplicitMessage(ctx context.Context, msg *types.Message) (*Ap
 	ret, actorErr, rt := vm.send(ctx, msg, nil, 0)
 	return &ApplyRet{
 		MessageReceipt: types.MessageReceipt{
-			ExitCode: exitcode.ExitCode(aerrors.RetCode(actorErr)),
+			ExitCode: aerrors.RetCode(actorErr),
 			Return:   ret,
 			GasUsed:  0,
 		},
@@ -415,7 +415,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 
 	return &ApplyRet{
 		MessageReceipt: types.MessageReceipt{
-			ExitCode: exitcode.ExitCode(errcode),
+			ExitCode: errcode,
 			Return:   ret,
 			GasUsed:  gasUsed,
 		},

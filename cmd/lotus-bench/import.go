@@ -55,7 +55,7 @@ var importBenchCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		defer cfi.Close()
+		defer cfi.Close() //nolint:errcheck // read only file
 
 		tdir, err := ioutil.TempDir("", "lotus-import-bench")
 		if err != nil {
@@ -80,7 +80,7 @@ var importBenchCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		defer prof.Close()
+		defer prof.Close() //nolint:errcheck
 
 		if err := pprof.StartCPUProfile(prof); err != nil {
 			return err
@@ -146,7 +146,7 @@ var importBenchCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		defer ibj.Close()
+		defer ibj.Close() //nolint:errcheck
 
 		if err := json.NewEncoder(ibj).Encode(out); err != nil {
 			return err

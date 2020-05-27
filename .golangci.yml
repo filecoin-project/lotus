@@ -22,13 +22,23 @@ issues:
     - "func name will be used as test\\.Test.* by other packages, and that stutters; consider calling this"
     - "Potential file inclusion via variable"
     - "should have( a package)? comment"
+    - "Error return value of `logging.SetLogLevel` is not checked"
 
   exclude-use-default: false
   exclude-rules:
+    - path: lotuspond
+      linters:
+        - errcheck
+
     - path: node/modules/lp2p
       linters:
         - golint
-    - path: ".*_test.go"
+
+    - path: build/params_.*\.go
+      linters:
+        - golint
+
+    - path: .*_test.go
       linters:
         - gosec
 

@@ -107,14 +107,13 @@ func (m *Miner) Run(ctx context.Context) error {
 	pcp := sealing.NewBasicPreCommitPolicy(adaptedAPI, 10000000, md.PeriodStart%miner.WPoStProvingPeriod)
 	m.sealing = sealing.New(adaptedAPI, NewEventsAdapter(evts), m.maddr, m.ds, m.sealer, m.sc, m.verif, &pcp)
 
-	go m.sealing.Run(ctx)
+	go m.sealing.Run(ctx) //nolint:errcheck // logged intside the function
 
 	return nil
 }
 
 func (m *Miner) Stop(ctx context.Context) error {
-	defer m.sealing.Stop(ctx)
-	return nil
+	return m.sealing.Stop(ctx)
 }
 
 func (m *Miner) runPreflightChecks(ctx context.Context) error {

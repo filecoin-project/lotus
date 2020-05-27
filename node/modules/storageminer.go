@@ -72,7 +72,7 @@ func GetParams(sbc *ffiwrapper.Config) error {
 		return err
 	}
 
-	if err := paramfetch.GetParams(build.ParametersJson(), uint64(ssize)); err != nil {
+	if err := paramfetch.GetParams(build.ParametersJSON(), uint64(ssize)); err != nil {
 		return xerrors.Errorf("fetching proof parameters: %w", err)
 	}
 
@@ -167,12 +167,10 @@ func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api lapi.FullNode, h
 func HandleRetrieval(host host.Host, lc fx.Lifecycle, m retrievalmarket.RetrievalProvider) {
 	lc.Append(fx.Hook{
 		OnStart: func(context.Context) error {
-			m.Start()
-			return nil
+			return m.Start()
 		},
 		OnStop: func(context.Context) error {
-			m.Stop()
-			return nil
+			return m.Stop()
 		},
 	})
 }
@@ -182,12 +180,10 @@ func HandleDeals(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, h sto
 
 	lc.Append(fx.Hook{
 		OnStart: func(context.Context) error {
-			h.Start(ctx)
-			return nil
+			return h.Start(ctx)
 		},
 		OnStop: func(context.Context) error {
-			h.Stop()
-			return nil
+			return h.Stop()
 		},
 	})
 }

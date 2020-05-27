@@ -64,7 +64,7 @@ func (hs *Service) HandleStream(s inet.Stream) {
 	var hmsg HelloMessage
 	if err := cborutil.ReadCborRPC(s, &hmsg); err != nil {
 		log.Infow("failed to read hello message, disconnecting", "error", err)
-		s.Conn().Close()
+		_ = s.Conn().Close()
 		return
 	}
 	arrived := time.Now()
@@ -76,11 +76,11 @@ func (hs *Service) HandleStream(s inet.Stream) {
 
 	if hmsg.GenesisHash != hs.syncer.Genesis.Cids()[0] {
 		log.Warnf("other peer has different genesis! (%s)", hmsg.GenesisHash)
-		s.Conn().Close()
+		_ = s.Conn().Close()
 		return
 	}
 	go func() {
-		defer s.Close()
+		defer s.Close() //nolint:errcheck
 
 		sent := time.Now()
 		msg := &LatencyMessage{
@@ -152,10 +152,10 @@ func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
 	}
 
 	go func() {
-		defer s.Close()
+		defer s.Close() //nolint:errcheck
 
 		lmsg := &LatencyMessage{}
-		s.SetReadDeadline(time.Now().Add(10 * time.Second))
+		_ = s.SetReadDeadline(time.Now().Add(10 * time.Second))
 		err := cborutil.ReadCborRPC(s, lmsg)
 		if err != nil {
 			log.Infow("reading latency message", "error", err)
