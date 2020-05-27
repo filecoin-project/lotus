@@ -1,11 +1,12 @@
 package drand
 
 import (
+	"bytes"
 	"context"
-	"math/rand"
 	"sync"
 	"time"
 
+	"github.com/drand/kyber"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -14,32 +15,26 @@ import (
 
 	logging "github.com/ipfs/go-log"
 
-	dbeacon "github.com/drand/drand/beacon"
-	"github.com/drand/drand/core"
-	dkey "github.com/drand/drand/key"
-	dnet "github.com/drand/drand/net"
-	dproto "github.com/drand/drand/protobuf/drand"
+	dchain "github.com/drand/drand/chain"
+	dclient "github.com/drand/drand/client"
 )
 
 var log = logging.Logger("drand")
 
 var drandServers = []string{
-	"nicolas.drand.fil-test.net:443",
-	"philipp.drand.fil-test.net:443",
-	"mathilde.drand.fil-test.net:443",
-	"ludovic.drand.fil-test.net:443",
-	"gabbi.drand.fil-test.net:443",
-	"linus.drand.fil-test.net:443",
-	"jeff.drand.fil-test.net:443",
+	"https://pl-eu.testnet.drand.sh",
+	"https://pl-us.testnet.drand.sh",
+	"https://pl-sin.testnet.drand.sh",
 }
 
-var drandPubKey *dkey.DistPublic
+var drandChain *dchain.Info
 
 func init() {
-	drandPubKey = new(dkey.DistPublic)
-	err := drandPubKey.FromTOML(&dkey.DistPublicTOML{Coefficients: build.DrandCoeffs})
+
+	var err error
+	drandChain, err = dchain.InfoFromJSON(bytes.NewReader([]byte(build.DrandChain)))
 	if err != nil {
-		panic(err)
+		panic("could not unmarshal chain info: " + err.Error())
 	}
 }
 
@@ -57,13 +52,9 @@ func (dp *drandPeer) IsTLS() bool {
 }
 
 type DrandBeacon struct {
-	client dnet.Client
+	client dclient.Client
 
-	peers         []dnet.Peer
-	peersIndex    int
-	peersIndexMtx sync.Mutex
-
-	pubkey *dkey.DistPublic
+	pubkey kyber.Point
 
 	// seconds
 	interval time.Duration
@@ -80,107 +71,50 @@ func NewDrandBeacon(genesisTs, interval uint64) (*DrandBeacon, error) {
 	if genesisTs == 0 {
 		panic("what are you doing this cant be zero")
 	}
+	client, err := dclient.New(
+		dclient.WithHTTPEndpoints(drandServers),
+		dclient.WithChainInfo(drandChain),
+		dclient.WithCacheSize(1024),
+	)
+	if err != nil {
+		return nil, xerrors.Errorf("creating drand client")
+	}
+
 	db := &DrandBeacon{
-		client:     dnet.NewGrpcClient(),
+		client:     client,
 		localCache: make(map[uint64]types.BeaconEntry),
 	}
-	for _, ds := range drandServers {
-		db.peers = append(db.peers, &drandPeer{addr: ds, tls: true})
-	}
 
-	db.peersIndex = rand.Intn(len(db.peers))
-
-	groupResp, err := db.client.Group(context.TODO(), db.peers[db.peersIndex], &dproto.GroupRequest{})
-	if err != nil {
-		return nil, xerrors.Errorf("failed to get group response from beacon peer: %w", err)
-	}
-
-	kgroup, err := core.ProtoToGroup(groupResp)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to parse group response: %w", err)
-	}
-
-	// TODO: verify these values are what we expect them to be
-	if !kgroup.PublicKey.Equal(drandPubKey) {
-		return nil, xerrors.Errorf("public key does not match")
-	}
-	// fmt.Printf("Drand Pubkey:\n%#v\n", kgroup.PublicKey.TOML()) // use to print public key
-	db.pubkey = drandPubKey
-	db.interval = kgroup.Period
-	db.drandGenTime = uint64(kgroup.GenesisTime)
+	db.pubkey = drandChain.PublicKey
+	db.interval = drandChain.Period
+	db.drandGenTime = uint64(drandChain.GenesisTime)
 	db.filRoundTime = interval
 	db.filGenTime = genesisTs
-
-	// TODO: the stream currently gives you back *all* values since drand genesis.
-	// Having the stream in the background is merely an optimization, so not a big deal to disable it for now
-	// go db.handleStreamingUpdates()
 
 	return db, nil
 }
 
-func (db *DrandBeacon) rotatePeersIndex() {
-	db.peersIndexMtx.Lock()
-	nval := rand.Intn(len(db.peers))
-	db.peersIndex = nval
-	db.peersIndexMtx.Unlock()
-
-	log.Warnf("rotated to drand peer %d, %q", nval, db.peers[nval].Address())
-}
-
-func (db *DrandBeacon) getPeerIndex() int {
-	db.peersIndexMtx.Lock()
-	defer db.peersIndexMtx.Unlock()
-	return db.peersIndex
-}
-
-func (db *DrandBeacon) handleStreamingUpdates() {
-	for {
-		p := db.peers[db.getPeerIndex()]
-		ch, err := db.client.PublicRandStream(context.Background(), p, &dproto.PublicRandRequest{})
-		if err != nil {
-			log.Warnf("failed to get public rand stream to peer %q: %s", p.Address(), err)
-			log.Warnf("trying again in 10 seconds")
-			db.rotatePeersIndex()
-			time.Sleep(time.Second * 10)
-			continue
-		}
-
-		for e := range ch {
-			db.cacheValue(types.BeaconEntry{
-				Round: e.Round,
-				Data:  e.Signature,
-			})
-		}
-
-		log.Warnf("drand beacon stream to peer %q broke, reconnecting in 10 seconds", p.Address())
-		db.rotatePeersIndex()
-		time.Sleep(time.Second * 10)
-	}
-}
-
 func (db *DrandBeacon) Entry(ctx context.Context, round uint64) <-chan beacon.Response {
-	// check cache, it it if there, otherwise query the endpoint
-	cres := db.getCachedValue(round)
-	if cres != nil {
-		out := make(chan beacon.Response, 1)
-		out <- beacon.Response{Entry: *cres}
-		close(out)
-		return out
-	}
-
 	out := make(chan beacon.Response, 1)
+	if round != 0 {
+		be := db.getCachedValue(round)
+		if be != nil {
+			out <- beacon.Response{Entry: *be}
+			close(out)
+			return out
+		}
+	}
 
 	go func() {
-		p := db.peers[db.getPeerIndex()]
-		resp, err := db.client.PublicRand(ctx, p, &dproto.PublicRandRequest{Round: round})
+		log.Warnw("fetching randomness", "round", round)
+		resp, err := db.client.Get(ctx, round)
 
 		var br beacon.Response
 		if err != nil {
-			db.rotatePeersIndex()
-			br.Err = xerrors.Errorf("drand peer %q failed publicRand request: %w", p.Address(), err)
+			br.Err = xerrors.Errorf("drand failed Get request: %w", err)
 		} else {
-			br.Entry.Round = resp.GetRound()
-			br.Entry.Data = resp.GetSignature()
+			br.Entry.Round = resp.Round()
+			br.Entry.Data = resp.Signature()
 		}
 
 		out <- br
@@ -189,7 +123,6 @@ func (db *DrandBeacon) Entry(ctx context.Context, round uint64) <-chan beacon.Re
 
 	return out
 }
-
 func (db *DrandBeacon) cacheValue(e types.BeaconEntry) {
 	db.cacheLk.Lock()
 	defer db.cacheLk.Unlock()
@@ -211,13 +144,12 @@ func (db *DrandBeacon) VerifyEntry(curr types.BeaconEntry, prev types.BeaconEntr
 		// TODO handle genesis better
 		return nil
 	}
-	b := &dbeacon.Beacon{
+	b := &dchain.Beacon{
 		PreviousSig: prev.Data,
 		Round:       curr.Round,
 		Signature:   curr.Data,
 	}
-	//log.Warnw("VerifyEntry", "beacon", b)
-	err := dbeacon.VerifyBeacon(db.pubkey.Key(), b)
+	err := dchain.VerifyBeacon(db.pubkey, b)
 	if err == nil {
 		db.cacheValue(curr)
 	}

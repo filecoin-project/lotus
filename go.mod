@@ -11,7 +11,8 @@ require (
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
 	github.com/coreos/go-systemd/v22 v22.0.0
 	github.com/docker/go-units v0.4.0
-	github.com/drand/drand v0.8.2-0.20200518165838-d61135e6e2c8
+	github.com/drand/drand v0.9.2-0.20200526173017-9cffec0d074e
+	github.com/drand/kyber v1.0.2
 	github.com/fatih/color v1.8.0
 	github.com/filecoin-project/chain-validation v0.0.6-0.20200518190139-483332336e8e
 	github.com/filecoin-project/filecoin-ffi v0.0.0-20200427223233-a0014b17f124
@@ -39,7 +40,7 @@ require (
 	github.com/gorilla/websocket v1.4.2
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/hashicorp/golang-lru v0.5.4
-	github.com/influxdata/influxdb1-client v0.0.0-20190809212627-fc22c7df067e
+	github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d
 	github.com/ipfs/go-bitswap v0.2.8
 	github.com/ipfs/go-block-format v0.0.2
 	github.com/ipfs/go-blockservice v0.1.3
@@ -61,7 +62,7 @@ require (
 	github.com/ipfs/go-ipld-cbor v0.0.5-0.20200428170625-a0bd04d3cbdf
 	github.com/ipfs/go-ipld-format v0.2.0
 	github.com/ipfs/go-log v1.0.4
-	github.com/ipfs/go-log/v2 v2.0.8
+	github.com/ipfs/go-log/v2 v2.1.0
 	github.com/ipfs/go-merkledag v0.3.1
 	github.com/ipfs/go-path v0.0.7
 	github.com/ipfs/go-unixfs v0.2.4
@@ -109,7 +110,7 @@ require (
 	go.uber.org/zap v1.15.0
 	go4.org v0.0.0-20190313082347-94abd6928b1d // indirect
 	golang.org/x/sys v0.0.0-20200519105757-fe76b779f299
-	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
+	golang.org/x/time v0.0.0-20191024005414-555d28b269f0
 	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543
 	gopkg.in/urfave/cli.v2 v2.0.0-20180128182452-d3ae77c26ac8
 	gotest.tools v2.2.0+incompatible
@@ -119,5 +120,3 @@ require (
 replace github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v1.18.0
 
 replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
-
-replace github.com/coreos/go-systemd => github.com/coreos/go-systemd/v22 v22.0.0

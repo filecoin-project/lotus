@@ -219,6 +219,10 @@ func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
 	miners := []address.Address{maddr1, maddr2}
 
 	beac := beacon.NewMockBeacon(time.Second)
+	//beac, err := drand.NewDrandBeacon(tpl.Timestamp, build.BlockDelay)
+	//if err != nil {
+	//return nil, xerrors.Errorf("creating drand beacon: %w", err)
+	//}
 
 	gen := &ChainGen{
 		bs:           bs,

@@ -119,7 +119,7 @@ benchmarks:
 	@curl -X POST 'http://benchmark.kittyhawk.wtf/benchmark' -d '@bench.json' -u "${benchmark_http_cred}"
 .PHONY: benchmarks
 
-pond: build
+pond: 2k
 	go build -o pond ./lotuspond
 	(cd lotuspond/front && npm i && CI=false npm run build)
 .PHONY: pond
