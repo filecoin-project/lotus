@@ -1,9 +1,9 @@
 package repo
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/sector-storage/stores"
 	"io"
 	"io/ioutil"
 	"os"
@@ -20,6 +20,8 @@ import (
 	"github.com/multiformats/go-base32"
 	"github.com/multiformats/go-multiaddr"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/sector-storage/stores"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/config"
@@ -191,7 +193,12 @@ func (fsr *FsRepo) APIToken() ([]byte, error) {
 	}
 	defer f.Close() //nolint: errcheck // Read only op
 
-	return ioutil.ReadAll(f)
+	tb, err := ioutil.ReadAll(f)
+	if err != nil {
+		return nil, err
+	}
+
+	return bytes.TrimSpace(tb), nil
 }
 
 // Lock acquires exclusive lock on this repo
