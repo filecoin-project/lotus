@@ -14,7 +14,7 @@ require (
 	github.com/drand/drand v0.9.2-0.20200526173017-9cffec0d074e
 	github.com/drand/kyber v1.0.2
 	github.com/fatih/color v1.8.0
-	github.com/filecoin-project/chain-validation v0.0.6-0.20200526171800-c56c1882dc99
+	github.com/filecoin-project/chain-validation v0.0.6-0.20200528194021-3ce40d696ae1
 	github.com/filecoin-project/filecoin-ffi v0.26.1-0.20200508175440-05b30afeb00d
 	github.com/filecoin-project/go-address v0.0.2-0.20200504173055-8b6f2fb2b3ef
 	github.com/filecoin-project/go-amt-ipld/v2 v2.0.1-0.20200424220931-6263827e49f2
@@ -121,5 +121,3 @@ require (
 replace github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v1.18.0
 
 replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
-
-replace github.com/filecoin-project/chain-validation => ../chain-validation
