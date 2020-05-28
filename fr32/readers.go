@@ -59,6 +59,39 @@ func (r *padReader) Read(out []byte) (int, error) {
 	return int(todo.Padded()), err
 }
 
+func NewPadWriter(dst io.Writer, sz abi.UnpaddedPieceSize) (io.Writer, error) {
+	if err := sz.Validate(); err != nil {
+		return nil, xerrors.Errorf("bad piece size: %w", err)
+	}
+
+	buf := make([]byte, mtTresh*mtChunkCount(sz.Padded()))
+
+	// TODO: Real writer
+	r, w := io.Pipe()
+
+	pr, err := NewPadReader(r, sz)
+	if err != nil {
+		return nil, err
+	}
+
+	go func() {
+		for {
+			n, err := pr.Read(buf)
+			if err != nil && err != io.EOF {
+				r.CloseWithError(err)
+				return
+			}
+
+			if _, err := dst.Write(buf[:n]); err != nil {
+				r.CloseWithError(err)
+				return
+			}
+		}
+	}()
+
+	return w, err
+}
+
 type unpadReader struct {
 	src io.Reader
 
@@ -86,7 +119,9 @@ func (r *unpadReader) Read(out []byte) (int, error) {
 		return 0, io.EOF
 	}
 
-	outTwoPow := 1 << (63 - bits.LeadingZeros64(uint64(len(out))))
+	chunks := len(out) / 127
+
+	outTwoPow := 1 << (63 - bits.LeadingZeros64(uint64(chunks*128)))
 
 	if err := abi.PaddedPieceSize(outTwoPow).Validate(); err != nil {
 		return 0, xerrors.Errorf("output must be of valid padded piece size: %w", err)

@@ -55,11 +55,6 @@ func Pad(in, out []byte) {
 }
 
 func pad(in, out []byte) {
-	if len(out) > int(mtTresh) {
-		mt(in, out, len(out), Pad)
-		return
-	}
-
 	chunks := len(out) / 128
 	for chunk := 0; chunk < chunks; chunk++ {
 		inOff := chunk * 127

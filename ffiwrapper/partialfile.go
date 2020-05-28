@@ -24,7 +24,7 @@ const veryLargeRle = 1 << 20
 // [unpadded (raw) data][rle+][4B LE length fo the rle+ field]
 
 type partialFile struct {
-	maxPiece abi.UnpaddedPieceSize
+	maxPiece abi.PaddedPieceSize
 
 	path      string
 	allocated rlepluslazy.RLE
@@ -55,7 +55,7 @@ func writeTrailer(maxPieceSize int64, w *os.File, r rlepluslazy.RunIterator) err
 	return w.Truncate(maxPieceSize + int64(rb) + 4)
 }
 
-func createPartialFile(maxPieceSize abi.UnpaddedPieceSize, path string) (*partialFile, error) {
+func createPartialFile(maxPieceSize abi.PaddedPieceSize, path string) (*partialFile, error) {
 	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
 		return nil, xerrors.Errorf("openning partial file '%s': %w", path, err)
@@ -84,7 +84,7 @@ func createPartialFile(maxPieceSize abi.UnpaddedPieceSize, path string) (*partia
 	return openPartialFile(maxPieceSize, path)
 }
 
-func openPartialFile(maxPieceSize abi.UnpaddedPieceSize, path string) (*partialFile, error) {
+func openPartialFile(maxPieceSize abi.PaddedPieceSize, path string) (*partialFile, error) {
 	f, err := os.OpenFile(path, os.O_RDWR, 0644)
 	if err != nil {
 		return nil, xerrors.Errorf("openning partial file '%s': %w", path, err)
@@ -164,7 +164,7 @@ func (pf *partialFile) Close() error {
 	return pf.file.Close()
 }
 
-func (pf *partialFile) Writer(offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (io.Writer, error) {
+func (pf *partialFile) Writer(offset storiface.PaddedByteIndex, size abi.PaddedPieceSize) (io.Writer, error) {
 	if _, err := pf.file.Seek(int64(offset), io.SeekStart); err != nil {
 		return nil, xerrors.Errorf("seek piece start: %w", err)
 	}
@@ -193,7 +193,7 @@ func (pf *partialFile) Writer(offset storiface.UnpaddedByteIndex, size abi.Unpad
 	return pf.file, nil
 }
 
-func (pf *partialFile) MarkAllocated(offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) error {
+func (pf *partialFile) MarkAllocated(offset storiface.PaddedByteIndex, size abi.PaddedPieceSize) error {
 	have, err := pf.allocated.RunIterator()
 	if err != nil {
 		return err
@@ -211,7 +211,7 @@ func (pf *partialFile) MarkAllocated(offset storiface.UnpaddedByteIndex, size ab
 	return nil
 }
 
-func (pf *partialFile) Reader(offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (*os.File, error) {
+func (pf *partialFile) Reader(offset storiface.PaddedByteIndex, size abi.PaddedPieceSize) (*os.File, error) {
 	if _, err := pf.file.Seek(int64(offset), io.SeekStart); err != nil {
 		return nil, xerrors.Errorf("seek piece start: %w", err)
 	}
@@ -244,7 +244,7 @@ func (pf *partialFile) Allocated() (rlepluslazy.RunIterator, error) {
 	return pf.allocated.RunIterator()
 }
 
-func pieceRun(offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) rlepluslazy.RunIterator {
+func pieceRun(offset storiface.PaddedByteIndex, size abi.PaddedPieceSize) rlepluslazy.RunIterator {
 	var runs []rlepluslazy.Run
 	if offset > 0 {
 		runs = append(runs, rlepluslazy.Run{
