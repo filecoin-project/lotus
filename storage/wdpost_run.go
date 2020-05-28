@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"github.com/filecoin-project/go-bitfield"
 	"time"
+
+	"github.com/filecoin-project/go-bitfield"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -171,7 +172,7 @@ func (s *WindowPoStScheduler) checkRecoveries(ctx context.Context, deadline uint
 		return xerrors.Errorf("declare faults recovered wait error: %w", err)
 	}
 
-	if rec.Receipt.ExitCode == 0 {
+	if rec.Receipt.ExitCode != 0 {
 		return xerrors.Errorf("declare faults recovered wait non-0 exit code: %d", rec.Receipt.ExitCode)
 	}
 
