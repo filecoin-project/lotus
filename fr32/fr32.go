@@ -8,19 +8,30 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
-var mtTresh = 32 << 20
+var mtTresh = uint64(32 << 20)
 
-func mt(in, out []byte, padLen int, op func(unpadded, padded []byte)) {
-	threads := padLen / mtTresh
-	if threads > runtime.NumCPU() {
+func mtChunkCount(usz abi.PaddedPieceSize) uint64 {
+	threads := (uint64(usz)) / mtTresh
+	if threads > uint64(runtime.NumCPU()) {
 		threads = 1 << (32 - bits.LeadingZeros32(uint32(runtime.NumCPU())))
 	}
-	threadBytes := abi.PaddedPieceSize(padLen / threads)
+	if threads == 0 {
+		return 1
+	}
+	if threads > 64 {
+		return 64 // avoid too large buffers
+	}
+	return threads
+}
+
+func mt(in, out []byte, padLen int, op func(unpadded, padded []byte)) {
+	threads := mtChunkCount(abi.PaddedPieceSize(padLen))
+	threadBytes := abi.PaddedPieceSize(padLen / int(threads))
 
 	var wg sync.WaitGroup
-	wg.Add(threads)
+	wg.Add(int(threads))
 
-	for i := 0; i < threads; i++ {
+	for i := 0; i < int(threads); i++ {
 		go func(thread int) {
 			defer wg.Done()
 
@@ -35,7 +46,7 @@ func mt(in, out []byte, padLen int, op func(unpadded, padded []byte)) {
 
 // Assumes len(in)%127==0 and len(out)%128==0
 func Pad(in, out []byte) {
-	if len(out) > mtTresh {
+	if len(out) > int(mtTresh) {
 		mt(in, out, len(out), pad)
 		return
 	}
@@ -44,7 +55,7 @@ func Pad(in, out []byte) {
 }
 
 func pad(in, out []byte) {
-	if len(out) > mtTresh {
+	if len(out) > int(mtTresh) {
 		mt(in, out, len(out), Pad)
 		return
 	}
@@ -88,11 +99,9 @@ func pad(in, out []byte) {
 	}
 }
 
-
-
 // Assumes len(in)%128==0 and len(out)%127==0
 func Unpad(in []byte, out []byte) {
-	if len(in) > mtTresh {
+	if len(in) > int(mtTresh) {
 		mt(out, in, len(in), unpad)
 		return
 	}

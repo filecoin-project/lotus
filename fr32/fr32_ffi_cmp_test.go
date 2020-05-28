@@ -55,12 +55,11 @@ func TestWriteTwoPcs(t *testing.T) {
 		panic(err)
 	}
 
-	outBytes := make([]byte, int(paddedSize) * n)
+	outBytes := make([]byte, int(paddedSize)*n)
 	Pad(rawBytes, outBytes)
 	require.Equal(t, ffiBytes, outBytes)
 
-	unpadBytes := make([]byte, int(paddedSize.Unpadded()) * n)
+	unpadBytes := make([]byte, int(paddedSize.Unpadded())*n)
 	Unpad(ffiBytes, unpadBytes)
 	require.Equal(t, rawBytes, unpadBytes)
 }
-
