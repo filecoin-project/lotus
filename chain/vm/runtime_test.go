@@ -33,7 +33,7 @@ func TestRuntimePutErrors(t *testing.T) {
 			t.Fatal("expected non-fatal actor error")
 		}
 
-		if aerr.RetCode() != exitcode.ErrSerialization {
+		if aerr.RetCode() != exitcode.SysErrSerialization {
 			t.Fatal("expected serialization error")
 		}
 	}()

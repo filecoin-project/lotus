@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
@@ -124,7 +125,7 @@ func (rs *Runtime) Put(x vmr.CBORMarshaler) cid.Cid {
 	c, err := rs.cst.Put(context.TODO(), x)
 	if err != nil {
 		if xerrors.As(err, new(cbor.SerializationError)) {
-			panic(aerrors.Newf(exitcode.ErrSerialization, "failed to marshal cbor object %s", err))
+			panic(aerrors.Newf(exitcode.SysErrSerialization, "failed to marshal cbor object %s", err))
 		}
 		panic(aerrors.Fatalf("failed to put cbor object: %s", err))
 	}
