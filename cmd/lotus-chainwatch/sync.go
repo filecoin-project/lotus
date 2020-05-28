@@ -20,6 +20,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	parmap "github.com/filecoin-project/lotus/lib/parmap"
 )
 
 func runSyncer(ctx context.Context, api api.FullNode, st *storage, maxBatch int) {
@@ -138,7 +139,7 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 		log.Infof("Syncing %d blocks", len(toSync))
 
 		paDone := 0
-		par(50, maparr(toSync), func(bh *types.BlockHeader) {
+		parmap.Par(50, parmap.MapArr(toSync), func(bh *types.BlockHeader) {
 			paDone++
 			if paDone%100 == 0 {
 				log.Infof("pa: %d %d%%", paDone, (paDone*100)/len(toSync))
@@ -152,7 +153,7 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 					return
 				}
 
-				par(50, aadrs, func(addr address.Address) {
+				parmap.Par(50, aadrs, func(addr address.Address) {
 					act, err := api.StateGetActor(ctx, addr, ts.Key())
 					if err != nil {
 						log.Error(err)
@@ -239,7 +240,7 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 			addresses[message.From] = address.Undef
 		}
 
-		par(50, kmaparr(addresses), func(addr address.Address) {
+		parmap.Par(50, parmap.KMapArr(addresses), func(addr address.Address) {
 			raddr, err := api.StateLookupID(ctx, addr, types.EmptyTSK)
 			if err != nil {
 				log.Warn(err)
@@ -268,7 +269,7 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 			}
 		}
 
-		par(50, kvmaparr(miners), func(it func() (minerKey, *minerInfo)) {
+		parmap.Par(50, parmap.KVMapArr(miners), func(it func() (minerKey, *minerInfo)) {
 			k, info := it()
 
 			pow, err := api.StateMinerPower(ctx, k.addr, types.EmptyTSK)
@@ -386,7 +387,7 @@ func fetchMessages(ctx context.Context, api api.FullNode, toSync map[cid.Cid]*ty
 	messages := map[cid.Cid]*types.Message{}
 	inclusions := map[cid.Cid][]cid.Cid{} // block -> msgs
 
-	par(50, maparr(toSync), func(header *types.BlockHeader) {
+	parmap.Par(50, parmap.MapArr(toSync), func(header *types.BlockHeader) {
 		msgs, err := api.ChainGetBlockMessages(ctx, header.Cid())
 		if err != nil {
 			log.Error(err)
@@ -423,7 +424,7 @@ func fetchParentReceipts(ctx context.Context, api api.FullNode, toSync map[cid.C
 	var lk sync.Mutex
 	out := map[mrec]*types.MessageReceipt{}
 
-	par(50, maparr(toSync), func(header *types.BlockHeader) {
+	parmap.Par(50, parmap.MapArr(toSync), func(header *types.BlockHeader) {
 		recs, err := api.ChainGetParentReceipts(ctx, header.Cid())
 		if err != nil {
 			log.Error(err)

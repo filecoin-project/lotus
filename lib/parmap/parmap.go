@@ -1,11 +1,11 @@
-package main
+package parmap
 
 import (
 	"reflect"
 	"sync"
 )
 
-func maparr(in interface{}) interface{} {
+func MapArr(in interface{}) interface{} {
 	rin := reflect.ValueOf(in)
 	rout := reflect.MakeSlice(reflect.SliceOf(rin.Type().Elem()), rin.Len(), rin.Len())
 	var i int
@@ -19,7 +19,7 @@ func maparr(in interface{}) interface{} {
 	return rout.Interface()
 }
 
-func kmaparr(in interface{}) interface{} {
+func KMapArr(in interface{}) interface{} {
 	rin := reflect.ValueOf(in)
 	rout := reflect.MakeSlice(reflect.SliceOf(rin.Type().Key()), rin.Len(), rin.Len())
 	var i int
@@ -34,7 +34,7 @@ func kmaparr(in interface{}) interface{} {
 }
 
 // map[k]v => []func() (k, v)
-func kvmaparr(in interface{}) interface{} {
+func KVMapArr(in interface{}) interface{} {
 	rin := reflect.ValueOf(in)
 
 	t := reflect.FuncOf([]reflect.Type{}, []reflect.Type{
@@ -59,7 +59,7 @@ func kvmaparr(in interface{}) interface{} {
 	return rout.Interface()
 }
 
-func par(concurrency int, arr interface{}, f interface{}) {
+func Par(concurrency int, arr interface{}, f interface{}) {
 	throttle := make(chan struct{}, concurrency)
 	var wg sync.WaitGroup
 
