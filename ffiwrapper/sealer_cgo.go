@@ -105,7 +105,7 @@ func (sb *Sealer) AddPiece(ctx context.Context, sector abi.SectorID, existingPie
 		return abi.PieceInfo{}, xerrors.Errorf("getting partial file writer: %w", err)
 	}
 	pr := io.TeeReader(io.LimitReader(file, int64(pieceSize)), w)
-	prf, werr, err := toReadableFile(pr, int64(pieceSize))
+	prf, werr, err := ToReadableFile(pr, int64(pieceSize))
 	if err != nil {
 		return abi.PieceInfo{}, xerrors.Errorf("getting tee reader pipe: %w", err)
 	}
@@ -405,7 +405,7 @@ func (sb *Sealer) rewriteAsPadded(unsealed string, staged string) error {
 
 	// OPTIMIZATION: upr is a file, so it could be passed straight to
 	//  WriteWithAlignment IF it wouldn't care about the trailer
-	lupr, werr, err := toReadableFile(io.LimitReader(upr, int64(maxPieceSize)), int64(maxPieceSize))
+	lupr, werr, err := ToReadableFile(io.LimitReader(upr, int64(maxPieceSize)), int64(maxPieceSize))
 	if err != nil {
 		return err
 	}
@@ -489,7 +489,7 @@ func (sb *Sealer) FinalizeSector(ctx context.Context, sector abi.SectorID) error
 }
 
 func GeneratePieceCIDFromFile(proofType abi.RegisteredProof, piece io.Reader, pieceSize abi.UnpaddedPieceSize) (cid.Cid, error) {
-	f, werr, err := toReadableFile(piece, int64(pieceSize))
+	f, werr, err := ToReadableFile(piece, int64(pieceSize))
 	if err != nil {
 		return cid.Undef, err
 	}

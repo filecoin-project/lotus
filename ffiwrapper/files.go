@@ -8,7 +8,7 @@ import (
 	"golang.org/x/xerrors"
 )
 
-func toReadableFile(r io.Reader, n int64) (*os.File, func() error, error) {
+func ToReadableFile(r io.Reader, n int64) (*os.File, func() error, error) {
 	f, ok := r.(*os.File)
 	if ok {
 		return f, func() error { return nil }, nil

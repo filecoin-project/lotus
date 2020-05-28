@@ -16,12 +16,13 @@ import (
 	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
 
+	ffi "github.com/filecoin-project/filecoin-ffi"
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/sector-storage/ffiwrapper/basicfs"
 	"github.com/filecoin-project/sector-storage/stores"
-	"github.com/filecoin-project/specs-storage/storage"
 )
 
 func init() {
@@ -413,4 +414,19 @@ func TestSealAndVerify2(t *testing.T) {
 	wg.Wait()
 
 	post(t, sb, s1, s2)
+}
+
+func BenchmarkWriteWithAlignment(b *testing.B) {
+	bt := abi.UnpaddedPieceSize(2 * 127 * 1024 * 1024)
+	b.SetBytes(int64(bt))
+
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+		rf, w, _ := ToReadableFile(bytes.NewReader(bytes.Repeat([]byte{0xff, 0}, int(bt/2))), int64(bt))
+		tf, _ := ioutil.TempFile("/tmp/", "scrb-")
+		b.StartTimer()
+
+		ffi.WriteWithAlignment(abi.RegisteredProof_StackedDRG2KiBSeal, rf, bt, tf, nil)
+		w()
+	}
 }
