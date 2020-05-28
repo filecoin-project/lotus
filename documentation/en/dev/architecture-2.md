@@ -102,26 +102,110 @@ If we have validated such a block's parent tipset, and adding it to our tipset a
 head, then we validate and add this block. The validation described is identical to that invoked during the sync
 process (indeed, it's the same codepath).
 
-## Some more sync notes (FIXME)
+# State
 
-Alternatively to this path, we also receive new blocks through the `blocks` `gossipsub` topic which will also be checked to be a potential new head to our current chain. (FIXME: We either explain gossipsub in libp2p subsection above or discuss it in its own section later, either way refer to that). For simplicity in this analysis we follow the `hello` code path.
+In Filecoin, the chain state at any given point is  a collection of data stored under a root CID 
+encapsulated in the `StateTree` structure (`chain/state/statetree.go`) and accessed through the 
+`StateManager` (`chain/stmgr/stmgr.go`).
+The state at the chain's head is thus easily tracked and updated in a state root CID. 
+(FIXME: Talk about CIDs somewhere,  we might want to explain some of the modify/flush/update-root mechanism here.))
 
-It is important to note that the sync service runs throughout the entire lifetime of the node, it cannot be stopped, as we are always in a "perpetual syncing state" since we can never be sure that we have *the* heaviest tipset in the entire network, there is always the possibility of a new incoming tipset to be "better" (heavier) than our current head. Even when the `lotus sync wait` command reports we are synced, it just means the timestamp of our current head is close to the current time (see `SyncWait()` in `cli/sync.go`), that we are "synced up to the present", but it does not guarantee having the heaviest tipset possible (a decentralized model does not have such a concept to begin with because there is no central authority to keep track of that, we just depend on the weight of a block based on an agreed upon set of rules from the protocol).
+## Calculating a Tipset State
 
-We already saw the `modules.RunHello()` dependency setup in the `node.Online()` configuration function, it starts the `(*Service).HandleStream()` service to process incoming `hello` messages (`HelloMessage`, `node/hello/hello.go`) and extracts the `HeaviestTipSet` from it, calling `(*Syncer).InformNewHead()` to notify the syncer process about a new potential head of the chain, that is, a new tipset with more weight than our current heaviest one (without still knowing if it is valid or not). A few notes of interest before moving on, the tipset in its entirety is not actually sent in the message but instead its `TipSetKey` (string of CIDs of the blocks that conform that tipset). The `hello` service fetches the actual tipset by using the `Syncer`'s `BlockSync` service `(*BlockSync).GetFullTipSet()`. What does this means in terms of dependencies? That `hello.Service` needs access to the `Syncer` which in turn uses its `BlockSync`, this is reflected in the dependency construction: the `RunHello()` provider has a `hello.Service` parameter, this in turn has the `Syncer` as a parameter (`NewHelloService`), and the `Syncer` (as we have already seen) needs a `BlockSync` (`NewSyncer()`).
+Recall that a tipset is a set of blocks that have identical parents (that is, that are built on top of the same tipset).
+The genesis tipset comprises the genesis block(s), and has some state corresponding to it.
 
-Once the `Syncer` is informed of a new potential head it adds it to the queue to process it. Without going into the full details of `Syncer` internals, we should mention the it has a `SyncManager` structure in charge of coordinating the multiple syncing process (as we might be checking more than one potential heaviest tipset at a time, this is specially true during the first sync of the node where we start from the initial genesis block). As said, the `Syncer` runs throughout the life cycle of the node and this is reflected on the `OnStart`/`OnStop` application hooks in `NewSyncer` that start and stop the sync process in coordination with the node application. When the `SyncManager` starts it runs many sync worker routines and a central scheduler to coordinate them:
+The methods `TipSetState()` and `computeTipSetState()` in `StateManager` are responsible for computing
+the state that results from applying a tipset. This involves applying all the messages included
+in the tipset, and performing implicit operations like awarding block rewards.
 
-```Go
-	go sm.syncScheduler()
-	for i := 0; i < syncWorkerCount; i++ {
-		go sm.syncWorker(i)
-	}
-```
+Any valid block built on top of a tipset `ts` should have its Parent State Root equal to the result of
+calculating the tipset state of `ts`. Note that this means that all blocks in a tipset must have the same Parent
+State Root (which is to be expected, since )
 
-The `syncWorkerCount` number (normally 3) is reflected in the output of the `lotus sync status` command that will show a separate status (`SyncerState`, `chain/syncstate.go`) for each of the sync workers. When a new tipset is informed, depending on the current state of the sync, the scheduler will assign a free worker to process it or will queue it (see `scheduleIncoming` in `chain/sync_manager.go`). (FIXME: There is much more to it but that should be in the code's comments, that currently doesn't have, but eventually we should point there.)
+### Preparing to apply a tipset
 
-Each `syncWorker` once it receives a new head calls the `doSync` handler to sync to it, usually corresponding to the `(*Syncer).Sync()` function (set up in the `NewSyncer()` configuration.)
+When `StateManager::computeTipsetState()` is called with a tipset, `ts`, 
+it retrieves the parent state root of the blocks in `ts`. It also creates a list of `BlockMessages`, which wraps the BLS
+and SecP messages in a block along with the miner that produced the block. 
+
+Control then flows to `StateManager::ApplyBlocks()`, which builds a VM to apply the messages given to it. The VM 
+is initialized with the parent state root of the blocks in `ts`. We apply the blocks in `ts` in order (see FIXME for
+ordering of blocks in a tipset).
+
+### Applying a block
+
+For each block, we prepare to apply the ordered messages (first BLS, then SecP). Before applying a message, we check if 
+we have already applied a message with that CID within the scope of this method. If so, we simply skip that message;
+this is how duplicate messages included in the same tipset are skipped (with only the miner of the "first" block to
+include the message getting the reward). For the actual process of message application, see FIXME, for now we 
+simply assume that the outcome of the VM applying a message is either an error, or a `MessageReceipt` and some
+other information. 
+
+We treat an error from the VM as a showstopper; there is no recovery, and no meaningful state can be computed for `ts`.
+Given a successful receipt, we add the rewards and penalties to what the miner has earned so far. Once all the messages
+included in a block have been applied (or skipped if they're a duplicate), we use an implicit message to call
+the Reward Actor. This awards the miner their reward for having won a block, and also awards / penalizes them based
+on the message rewards and penalties we tracked.
+
+We then proceed to apply the next block in `ts`, using the same VM. This means that the state changes that result
+from applying a message are visible when applying all subsequent messages, even if they are included in a different block.
+
+### Finishing up
+
+Having applied all the blocks, we send one more implicit message, to the Cron Actor, which handles operations that
+must be performed at the end of every epoch (see FIXME for more). The resulting state after calling the Cron Actor
+is the computed state of the tipset.
+
+# Virtual Machine
+
+The Virtual Machine (VM) is responsible for executing messages. Note that Filecoin refers to "smart contracts" as actors,
+and pre-compiled contracts as "builtin actors". Filecoin does not allow users to define their own actors, but has a 
+suite of builtin actors to provide core functionality. These builtin actors can be found in the sepcs-actors repository
+(LINK).
+
+The Lotus Virtual Machine is responsible for invoking the appropriate methods in the builtin actors, and providing
+a Runtime interface to the builtin actors that exposes their state, allows them to take certain actions, and metering
+their gas usage. The VM also performs balance transfers, creates new account actors as needed, and tracks the gas reward,
+penalty, return value, and exit code.
+
+## Applying a Message
+
+The primary entrypoint of the VM is the `ApplyMessage()` method (LINK). This method should not return an error
+unless something goes unrecoverably wrong.
+
+The first thing this method does is assess if the message provided meets any of the penalty criteria (SPECK-CHECK).
+If so, a penalty is issued, and the method returns. Next, the entire gas cost of the message is transferred to
+a temporary gas holder account. It is from this gas holder that gas will be deducted; if it runs out of gas, the message
+fails. Any unused gas in this holder will be refunded to the message's sender at the end of message execution.
+
+The VM then increments the sender's nonce, takes a snapshot of the state, and invokes `VM::send()`.
+
+The `send()` method creates a `runtime` for the subsequent message execution, and charges for the method invocation.
+It then transfers the message's value to the recipient, creating a new account actor if needed.
+
+### Method Invocation
+
+We use reflection to translate a Filecoin message for the VM to an actual Go function, relying on the VM's
+`invoker` structure. 
+Each actor has its own set of codes defined in `specs-actors/actors/builtin/methods.go`.
+The `invoker` structure maps the builtin actors' CIDs
+ to a list of `invokeFunc` (one per exported method), which each take the `Runtime` (for state manipulation) 
+ and the serialized input parameters.
+
+FIXME (aayush) Polish this next para.
+
+The basic layout (without reflection details) of `(*invoker).transform()` is as follows. From each actor registered in `NewInvoker()` we take its `Exports()` methods converting them to `invokeFunc`s. The actual method is wrapped in another function that takes care of decoding the serialized parameters and the runtime, this function is passed to `shimCall()` that will encapsulate the actors code being run inside a `defer` function to `recover()` from panics (we fail in the actors code with panics to unwrap the stack). The return values will then be (CBOR) marshaled and returned to the VM.
+
+### Returning from the VM
+
+Once method invocation is complete (including any subcalls), we return to `ApplyMessage()`, which receives 
+the serialized response and the `ActorError`. 
+The sender will be charged the appropriate amount of gas for the returned response, which gets put into the
+`MessageReceipt`.
+
+The method then refunds any unused gas to the sender, sets up the gas reward for the miner, and 
+wraps all of this into an `ApplyRet`, which is returned.
 
 # CLI, API
 
@@ -301,64 +385,3 @@ This block store is the same store underlying the chain store which in turn is a
 ## libp2p
 
 FIXME: This should be a brief section with the relevant links to `libp2p` documentation and how do we use its services.
-
-# VM: chain state
-
-We continue the sync process to give more details on the chain state and how the VM computes it. (FIXME: Is there anything accessible in the spec we can link to?)
-
-The most important fact about the state is that it is just a collection of data stored under a root CID encapsulated in the `StateTree` structure (`chain/state/statetree.go`) and accessed through the `StateManager` (`chain/stmgr/stmgr.go`). (See, currently non-existing, Actors section later for the type of data that the state holds. FIXME: We can at least link to something in the spec for now.) Changing the state is then just changing the value of that CID pointer (`StateTree.root`). (FIXME: We could link to the immutability doc again here, but we might want to explain some of the modify/flush/update-root mechanism here.)
-
-This data is generated by the VM when executing the messages of the blocks of a particular block set (FIXME: at this point the tipset/block set clarification should be made). That means there isn't a *single* state but instead it depends on the block set of the particular epoch we are looking in the chain (we might sometimes talk about an unqualified "chain state" to refer to the state of the current head of the chain). The genesis block starts with a hard-coded state and from then onwards the messages of the following blocks will modify this initial state.
-
-Each tipset will hold a CID pointer to its own *base* state over which its messages are applied (technically each block in the tipset has that `ParentStateRoot` entry, which should be the same for all blocks in the same set, so we normally reference the first one). It is important to note that the state seen by that tipset, by those blocks in it, does *not* depend on the messages *they* contain but on their parent's (tipset) messages. The messages of tipset `N` are applied over the *base* state of tipset `N-1`, since each message is potentially generated by a different party, no message in the same set can rely on the contents of the (yet unknown) other messages that will be included in the same block of the same tipset. (FIXME: Not exactly correct, after the blocks and messages are sorted, the state seen by one message is what the previous one left behind, a sort of "partial" state being built on top of the base, but we may get away with this simplification here and clarify it in the next subsection.)
-
-With this in mind, the sync process then progressively computes the states of each fetch tipset leading up to the new head, starting from the last state computed on the current chain up to, but not including, the new potential head. The messages of the new head will be checked (against its parent's state) but officially its state will not be fully determined until that round is over and we move to the new epoch.
-
-## State computation
-
-We continue the sync process from `syncMessagesAndCheckState()`, that is, we have already retrieved all blocks up to the new head and we need to execute their messages to check if the head is valid. We will mostly skip all validation checks (they will be detailed in a separate document) and focus on the state computation by the VM. The VM is nothing more than the part of the logic that knows how to interpret and execute the messages, it mostly resides in the `github.com/filecoin-project/specs-actors` repo with the "adapter" logic in Lotus to pass state information back and forth from it (see `Runtime` below).
-
-In `ValidateBlock()` where the message validation happens we need then to first compute the state of the previous tipset (for every block up to the new head). For the block being validated then we call `(*StateManager).TipSetState(ts *types.TipSet)` (`chain/stmgr/stmgr.go`) with the block's parent tipset (which is the same for all blocks in a tipset since they share their parents). This is accessible through the block's header in `BlockHeader.Parents`, it holds the list of CIDs of all the parent blocks forming the previous tipset, as we can't reference a state for a single block but only for all blocks in the tipset.
-
-Skipping the cache logic, we go straight to `(*StateManager).ApplyBlocks()` which applies all messages from all blocks together. For that we construct a `NewVM()` (`chain/vm/vm.go`), as although the logic is always the same the associated state inside the VM depends on the parent tipset we are applying the messages to. From this point on we should remember that messages and current state refer always to *different* tipsets (the messages to the current tipset we are computing the state for, and the *base* state on which the messages are applied to the parent tipset). `LoadStateTree(cbor.IpldStore, cid.Cid)` (`chain/state/statetree.go`) is called to load the parent's state, identified by the CID of the root IPFS block of a HAMT structure (see `github.com/ipfs/go-hamt-ipld` for more on HAMT management). The other argument of `LoadStateTree` is an `IpldStore` which is just another wrapper over the original chain store were we store *all* chain data. That means that besides storing Filecoin blocks and messages we also store there all state information generated by them (all this data is accessible through the CID of the underlying IPFS blocks that encode it).
-
-`(*VM).ApplyMessage()` is then called separately for each message that will conform the new state. Since each message is independent of each other it is actually the VM that will consolidate the *aggregated* state from the succession of message executions. The state each message will see is the base state (from the parent tipset) plus all the state modifications the previous messages in the current tipset have executed, so when we talk about the base state, technically only the first message in the tipset will see it, all following messages will see a "partial" state from previous modification to the starting base. No messages is aware of this a priori though, since they were all generated by potentially independent parties that had no information about what everyone else was computing. This aggregated stated is retrieved at the end of `ApplyBlocks()` (after all `ApplyMessage()`s) when `(*VM).Flush()` is called. This function will return the new root CID reflecting the modified contents of its internal `StateTree`, which is ultimately the CID that will be stored in the new blocks being created for the next round under their `ParentStateRoot` attribute (see `MinerCreateBlock` in `chain/gen/mining.go` for more details).
-
-Inside `ApplyMessage()` (ignoring verifications), `(*VM).send()` is called. Messages are deemed with that name because each targets a specific logic of the Filecoin protocol grouped into what are called "actors" (in the OOP model we can think of them as objects that receive their associated methods), *send* in this context means targeting the specific actor the messages should run for. The VM logic (and the actors logic it contains) is decoupled from the rest of the code and depends *only* in the chain state (this way the VM is portable across different implementations of the Filecoin protocol). The way we pass that state is through the `Runtime` structure (`chain/vm/runtime.go`), which most importantly contains the `StateTree` with the initial base state from the parent tipset, over which the VM will run the different messages and continuously update its value.
-
-## Invoker
-
-To translate a Filecoin message for the VM to an actual Go function we rely on reflection logic (which can make the code harder to follow), we outline the most important aspects here. The VM contains an `invoker` structure which is the responsible for making the translation, mapping a message code directed to an actor (each actor has its *own* set of codes defined in `specs-actors/actors/builtin/methods.go`) to an actual Go function (`(*invoker).Invoke()`) stored in itself (`invoker.builtInCode`) of type `invokeFunc`, which takes the `Runtime` (state communication) and the serialized parameters (for the actor's logic):
-
-```
-type invoker struct {
-	builtInCode  map[cid.Cid]nativeCode
-	builtInState map[cid.Cid]reflect.Type
-}
-
-type invokeFunc func(rt runtime.Runtime, params []byte) ([]byte, aerrors.ActorError)
-type nativeCode []invokeFunc
-```
-
-`(*invoker).Register()` stores for each actor available its set of methods exported through its interface:
-
-```
-type Invokee interface {
-	Exports() []interface{}
-}
-```
-
-The basic layout (without reflection details) of `(*invoker).transform()` is as follows. From each actor registered in `NewInvoker()` we take its `Exports()` methods converting them to `invokeFunc`s. The actual method is wrapped in another function that takes care of decoding the serialized parameters and the runtime, this function is passed to `shimCall()` that will encapsulate the actors code being run inside a `defer` function to `recover()` from panics (we fail in the actors code with panics to unwrap the stack). The return values will then be (CBOR) marshaled and returned to the VM.
-
-## Returning from the VM
-
-`(*VM).ApplyMessage` will receive back from the invoker the serialized response and the `ActorError`. The returned message will be charged the corresponding gas to be stored in `rt.chargeGasSafe(rt.Pricelist().OnChainReturnValue(len(ret)))`, we don't process the return value any further than this (FIXME: is anything else done with it?).
-
-Besides charging the gas for the returned response, in `(*VM).makeRuntime()` the block store is wrapped in another `gasChargingBlocks` store responsible for charging any other state information generated (through the runtime):
-
-```
-func (bs *gasChargingBlocks) Put(blk block.Block) error {
-	bs.chargeGas(bs.pricelist.OnIpldPut(len(blk.RawData())))
-```
-
-(FIXME: What happens when there is an error? Is that just discarded?)
