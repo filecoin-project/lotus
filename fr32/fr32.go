@@ -10,7 +10,7 @@ import (
 
 var mtTresh = 32 << 20
 
-func mt(in, out []byte, padLen int, op func(in, out []byte)) {
+func mt(in, out []byte, padLen int, op func(unpadded, padded []byte)) {
 	threads := padLen / mtTresh
 	if threads > runtime.NumCPU() {
 		threads = 1 << (32 - bits.LeadingZeros32(uint32(runtime.NumCPU())))
@@ -35,6 +35,15 @@ func mt(in, out []byte, padLen int, op func(in, out []byte)) {
 
 // Assumes len(in)%127==0 and len(out)%128==0
 func Pad(in, out []byte) {
+	if len(out) > mtTresh {
+		mt(in, out, len(out), pad)
+		return
+	}
+
+	pad(in, out)
+}
+
+func pad(in, out []byte) {
 	if len(out) > mtTresh {
 		mt(in, out, len(out), Pad)
 		return
@@ -79,13 +88,19 @@ func Pad(in, out []byte) {
 	}
 }
 
+
+
 // Assumes len(in)%128==0 and len(out)%127==0
 func Unpad(in []byte, out []byte) {
-	if len(out) > mtTresh {
-		mt(in, out, len(in), Unpad)
+	if len(in) > mtTresh {
+		mt(out, in, len(in), unpad)
 		return
 	}
 
+	unpad(out, in)
+}
+
+func unpad(out, in []byte) {
 	chunks := len(in) / 128
 	for chunk := 0; chunk < chunks; chunk++ {
 		inOffNext := chunk*128 + 1
