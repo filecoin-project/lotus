@@ -114,6 +114,7 @@ install-services: install
 clean-services:
 	rm -f /usr/local/lib/systemd/system/lotus-daemon.service
 	rm -f /usr/local/lib/systemd/system/lotus-miner.service
+	rm -f /usr/local/lib/systemd/system/chainwatch.service
 	systemctl daemon-reload
 
 # TOOLS
@@ -159,6 +160,13 @@ chainwatch:
 	go run github.com/GeertJohan/go.rice/rice append --exec chainwatch -i ./cmd/lotus-chainwatch -i ./build
 .PHONY: chainwatch
 BINS+=chainwatch
+
+install-chainwatch-service: chainwatch
+	install -C ./chainwatch /usr/local/bin/chainwatch
+	install -C -m 0644 ./scripts/chainwatch.service /usr/local/lib/systemd/system/chainwatch.service
+	systemctl daemon-reload
+	@echo
+	@echo "chainwatch installed. Don't forget to 'systemctl enable chainwatch' for it to be enabled on startup."
 
 bench:
 	rm -f bench

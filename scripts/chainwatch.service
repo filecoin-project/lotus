@@ -1,0 +1,12 @@
+[Unit]
+Description=Chainwatch
+After=lotus-daemon.service
+Requires=lotus-daemon.service
+
+[Service]
+ExecStart=/usr/local/bin/chainwatch run
+Environment=LOTUS_DB="postgres://postgres:password@localhost:5432/postgres?sslmode=disable"
+Environment=LOTUS_PATH="/root/.lotus"
+
+[Install]
+WantedBy=multiuser.target
