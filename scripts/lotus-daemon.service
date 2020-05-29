@@ -7,7 +7,6 @@ Wants=network-online.target
 Environment=GOLOG_FILE="/var/log/lotus-daemon"
 Environment=GOLOG_LOG_FMT="json"
 ExecStart=/usr/local/bin/lotus daemon
-#ExecStop=/bin/sh -a -c /root/capture_lotus_heap.sh
 Restart=always
 RestartSec=30
 
