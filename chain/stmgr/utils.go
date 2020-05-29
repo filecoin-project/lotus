@@ -138,6 +138,24 @@ func PreCommitInfo(ctx context.Context, sm *StateManager, maddr address.Address,
 	return *i, nil
 }
 
+func MinerSectorInfo(ctx context.Context, sm *StateManager, maddr address.Address, sid abi.SectorNumber, ts *types.TipSet) (*miner.SectorOnChainInfo, error) {
+	var mas miner.State
+	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
+	if err != nil {
+		return nil, xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
+	}
+
+	sectorInfo, ok, err := mas.GetSector(sm.cs.Store(ctx), sid)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, xerrors.New("sector not found")
+	}
+
+	return sectorInfo, nil
+}
+
 func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address, filter *abi.BitField, filterOut bool) ([]*api.ChainSectorInfo, error) {
 	var mas miner.State
 	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)

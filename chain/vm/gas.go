@@ -3,6 +3,7 @@ package vm
 import (
 	"fmt"
 
+	"github.com/filecoin-project/go-address"
 	addr "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
@@ -142,4 +143,9 @@ func (ps pricedSyscalls) VerifyPoSt(vi abi.WindowPoStVerifyInfo) error {
 func (ps pricedSyscalls) VerifyConsensusFault(h1 []byte, h2 []byte, extra []byte) (*runtime.ConsensusFault, error) {
 	ps.chargeGas(ps.pl.OnVerifyConsensusFault())
 	return ps.under.VerifyConsensusFault(h1, h2, extra)
+}
+
+func (ps pricedSyscalls) BatchVerifySeals(inp map[address.Address][]abi.SealVerifyInfo) (map[address.Address][]bool, error) {
+	ps.chargeGas(0) // TODO: this is only called by the cron actor. Should we even charge gas?
+	return ps.under.BatchVerifySeals(inp)
 }

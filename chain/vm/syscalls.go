@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
@@ -251,4 +252,30 @@ func (ss *syscallShim) VerifySignature(sig crypto.Signature, addr address.Addres
 	}
 
 	return sigs.Verify(&sig, kaddr, input)
+}
+
+func (ss *syscallShim) BatchVerifySeals(inp map[address.Address][]abi.SealVerifyInfo) (map[address.Address][]bool, error) {
+	out := make(map[address.Address][]bool)
+
+	var wg sync.WaitGroup
+	for addr, seals := range inp {
+		results := make([]bool, len(seals))
+		out[addr] = results
+
+		for i, s := range seals {
+			wg.Add(1)
+			go func(ma address.Address, ix int, svi abi.SealVerifyInfo, res []bool) {
+				defer wg.Done()
+				if err := ss.VerifySeal(svi); err != nil {
+					log.Warnw("seal verify in batch failed", "miner", ma, "index", ix, "err", err)
+					res[ix] = false
+				} else {
+					res[ix] = true
+				}
+			}(addr, i, s, results)
+		}
+	}
+	wg.Wait()
+
+	return out, nil
 }
