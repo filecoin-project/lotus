@@ -213,8 +213,10 @@ func (m *Manager) ReadPiece(ctx context.Context, sink io.Writer, sector abi.Sect
 			return xerrors.Errorf("copy sealed/cache sector data: %w", err)
 		}
 
-		if err := worker.Fetch(ctx, sector, stores.FTUnsealed, true, stores.AcquireMove); err != nil {
-			return xerrors.Errorf("copy unsealed sector data: %w", err)
+		if len(best) > 0 {
+			if err := worker.Fetch(ctx, sector, stores.FTUnsealed, true, stores.AcquireMove); err != nil {
+				return xerrors.Errorf("copy unsealed sector data: %w", err)
+			}
 		}
 		return nil
 	}
