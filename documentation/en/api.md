@@ -2,7 +2,7 @@
 
 Here is an early overview of how to make API calls.
 
-Implementation details for the **JSON-RPC** package are [here](https://github.com/filecoin-project/lotus/tree/master/lib/jsonrpc).
+Implementation details for the **JSON-RPC** package are [here](https://github.com/filecoin-project/go-jsonrpc).
 
 ## Overview: How do you modify the config.toml to change the API endpoint?
 
