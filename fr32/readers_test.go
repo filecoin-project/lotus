@@ -1,4 +1,4 @@
-package fr32
+package fr32_test
 
 import (
 	"bytes"
@@ -8,6 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
+
+	"github.com/filecoin-project/sector-storage/fr32"
 )
 
 func TestPadReader(t *testing.T) {
@@ -15,7 +17,7 @@ func TestPadReader(t *testing.T) {
 
 	raw := bytes.Repeat([]byte{0x55}, int(ps))
 
-	r, err := NewPadReader(bytes.NewReader(raw), ps)
+	r, err := fr32.NewPadReader(bytes.NewReader(raw), ps)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -26,7 +28,7 @@ func TestPadReader(t *testing.T) {
 	}
 
 	padOut := make([]byte, ps.Padded())
-	Pad(raw, padOut)
+	fr32.Pad(raw, padOut)
 
 	require.Equal(t, padOut, readerPadded)
 }
@@ -37,9 +39,9 @@ func TestUnpadReader(t *testing.T) {
 	raw := bytes.Repeat([]byte{0x77}, int(ps))
 
 	padOut := make([]byte, ps.Padded())
-	Pad(raw, padOut)
+	fr32.Pad(raw, padOut)
 
-	r, err := NewUnpadReader(bytes.NewReader(padOut), ps.Padded())
+	r, err := fr32.NewUnpadReader(bytes.NewReader(padOut), ps.Padded())
 	if err != nil {
 		t.Fatal(err)
 	}

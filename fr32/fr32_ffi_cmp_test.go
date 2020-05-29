@@ -1,7 +1,8 @@
-package fr32
+package fr32_test
 
 import (
 	"bytes"
+	"github.com/filecoin-project/sector-storage/fr32"
 	"io"
 	"io/ioutil"
 	"os"
@@ -56,10 +57,10 @@ func TestWriteTwoPcs(t *testing.T) {
 	}
 
 	outBytes := make([]byte, int(paddedSize)*n)
-	Pad(rawBytes, outBytes)
+	fr32.Pad(rawBytes, outBytes)
 	require.Equal(t, ffiBytes, outBytes)
 
 	unpadBytes := make([]byte, int(paddedSize.Unpadded())*n)
-	Unpad(ffiBytes, unpadBytes)
+	fr32.Unpad(ffiBytes, unpadBytes)
 	require.Equal(t, rawBytes, unpadBytes)
 }

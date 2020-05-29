@@ -1,4 +1,4 @@
-package fr32
+package fr32_test
 
 import (
 	"bytes"
@@ -9,9 +9,11 @@ import (
 	"testing"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/sector-storage/fr32"
 )
 
 func padFFI(buf []byte) []byte {
@@ -52,7 +54,7 @@ func TestPadChunkFFI(t *testing.T) {
 			var buf [128]byte
 			copy(buf[:], bytes.Repeat([]byte{b}, 127))
 
-			Pad(buf[:], buf[:])
+			fr32.Pad(buf[:], buf[:])
 
 			expect := padFFI(bytes.Repeat([]byte{b}, 127))
 
@@ -74,7 +76,7 @@ func TestPadChunkRandEqFFI(t *testing.T) {
 
 		var buf [128]byte
 
-		Pad(input[:], buf[:])
+		fr32.Pad(input[:], buf[:])
 
 		expect := padFFI(input[:])
 
@@ -88,10 +90,10 @@ func TestRoundtrip(t *testing.T) {
 			var buf [128]byte
 			input := bytes.Repeat([]byte{0x01}, 127)
 
-			Pad(input, buf[:])
+			fr32.Pad(input, buf[:])
 
 			var out [127]byte
-			Unpad(buf[:], out[:])
+			fr32.Unpad(buf[:], out[:])
 
 			require.Equal(t, input, out[:])
 		}
@@ -112,10 +114,10 @@ func TestRoundtripChunkRand(t *testing.T) {
 		var buf [128]byte
 		copy(buf[:], input[:])
 
-		Pad(buf[:], buf[:])
+		fr32.Pad(buf[:], buf[:])
 
 		var out [127]byte
-		Unpad(buf[:], out[:])
+		fr32.Unpad(buf[:], out[:])
 
 		require.Equal(t, input[:], out[:])
 	}
@@ -129,10 +131,10 @@ func TestRoundtrip16MRand(t *testing.T) {
 
 	buf := make([]byte, 16<<20)
 
-	Pad(input, buf)
+	fr32.Pad(input, buf)
 
 	out := make([]byte, up)
-	Unpad(buf, out)
+	fr32.Unpad(buf, out)
 
 	require.Equal(t, input, out)
 
@@ -147,7 +149,7 @@ func BenchmarkPadChunk(b *testing.B) {
 	b.SetBytes(127)
 
 	for i := 0; i < b.N; i++ {
-		Pad(in, buf[:])
+		fr32.Pad(in, buf[:])
 	}
 }
 
@@ -159,8 +161,8 @@ func BenchmarkChunkRoundtrip(b *testing.B) {
 	b.SetBytes(127)
 
 	for i := 0; i < b.N; i++ {
-		Pad(buf[:], buf[:])
-		Unpad(buf[:], out[:])
+		fr32.Pad(buf[:], buf[:])
+		fr32.Unpad(buf[:], out[:])
 	}
 }
 
@@ -168,7 +170,7 @@ func BenchmarkUnpadChunk(b *testing.B) {
 	var buf [128]byte
 	copy(buf[:], bytes.Repeat([]byte{0xff}, 127))
 
-	Pad(buf[:], buf[:])
+	fr32.Pad(buf[:], buf[:])
 	var out [127]byte
 
 	b.SetBytes(127)
@@ -177,7 +179,7 @@ func BenchmarkUnpadChunk(b *testing.B) {
 	bs := buf[:]
 
 	for i := 0; i < b.N; i++ {
-		Unpad(bs, out[:])
+		fr32.Unpad(bs, out[:])
 	}
 }
 
@@ -186,7 +188,7 @@ func BenchmarkUnpad16MChunk(b *testing.B) {
 
 	var buf [16 << 20]byte
 
-	Pad(bytes.Repeat([]byte{0xff}, int(up)), buf[:])
+	fr32.Pad(bytes.Repeat([]byte{0xff}, int(up)), buf[:])
 	var out [16 << 20]byte
 
 	b.SetBytes(16 << 20)
@@ -194,7 +196,7 @@ func BenchmarkUnpad16MChunk(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		Unpad(buf[:], out[:])
+		fr32.Unpad(buf[:], out[:])
 	}
 }
 
@@ -210,7 +212,7 @@ func BenchmarkPad16MChunk(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		Pad(in, buf[:])
+		fr32.Pad(in, buf[:])
 	}
 }
 
@@ -226,7 +228,7 @@ func BenchmarkPad1GChunk(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		Pad(in, buf[:])
+		fr32.Pad(in, buf[:])
 	}
 }
 
@@ -235,7 +237,7 @@ func BenchmarkUnpad1GChunk(b *testing.B) {
 
 	var buf [1 << 30]byte
 
-	Pad(bytes.Repeat([]byte{0xff}, int(up)), buf[:])
+	fr32.Pad(bytes.Repeat([]byte{0xff}, int(up)), buf[:])
 	var out [1 << 30]byte
 
 	b.SetBytes(1 << 30)
@@ -243,6 +245,6 @@ func BenchmarkUnpad1GChunk(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		Unpad(buf[:], out[:])
+		fr32.Unpad(buf[:], out[:])
 	}
 }
