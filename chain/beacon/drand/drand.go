@@ -6,17 +6,22 @@ import (
 	"sync"
 	"time"
 
+	dchain "github.com/drand/drand/chain"
+	dclient "github.com/drand/drand/client"
+	gclient "github.com/drand/drand/cmd/relay-gossip/client"
+	dlog "github.com/drand/drand/log"
 	"github.com/drand/kyber"
+	kzap "github.com/go-kit/kit/log/zap"
+	"go.uber.org/zap/zapcore"
+	"golang.org/x/xerrors"
+
+	logging "github.com/ipfs/go-log"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
+
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	"golang.org/x/xerrors"
-
-	logging "github.com/ipfs/go-log"
-
-	dchain "github.com/drand/drand/chain"
-	dclient "github.com/drand/drand/client"
 )
 
 var log = logging.Logger("drand")
@@ -67,15 +72,24 @@ type DrandBeacon struct {
 	localCache map[uint64]types.BeaconEntry
 }
 
-func NewDrandBeacon(genesisTs, interval uint64) (*DrandBeacon, error) {
+func NewDrandBeacon(genesisTs, interval uint64, ps *pubsub.PubSub) (*DrandBeacon, error) {
 	if genesisTs == 0 {
 		panic("what are you doing this cant be zero")
 	}
-	client, err := dclient.New(
-		dclient.WithHTTPEndpoints(drandServers),
+	opts := []dclient.Option{
 		dclient.WithChainInfo(drandChain),
+		dclient.WithHTTPEndpoints(drandServers),
 		dclient.WithCacheSize(1024),
-	)
+		dclient.WithLogger(dlog.NewKitLoggerFrom(kzap.NewZapSugarLogger(
+			log.SugaredLogger.Desugar(), zapcore.InfoLevel))),
+	}
+	if ps != nil {
+		opts = append(opts, gclient.WithPubsub(ps))
+	} else {
+		log.Info("drand beacon without pubsub")
+	}
+
+	client, err := dclient.New(opts...)
 	if err != nil {
 		return nil, xerrors.Errorf("creating drand client")
 	}
