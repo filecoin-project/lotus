@@ -44,12 +44,11 @@
     "Constructor",
     "AddBalance",
     "WithdrawBalance",
-    "HandleExpiredDeals",
     "PublishStorageDeals",
     "VerifyDealsOnSectorProveCommit",
     "OnMinerSectorsTerminate",
     "ComputeDataCommitment",
-    "HandleInitTimeoutDeals"
+    "CronTick"
   ],
   "fil/1/storageminer": [
     "Send",
@@ -68,7 +67,8 @@
     "CheckSectorProven",
     "AddLockedFund",
     "ReportConsensusFault",
-    "WithdrawBalance"
+    "WithdrawBalance",
+    "ConfirmSectorProofsValid"
   ],
   "fil/1/storagepower": [
     "Send",
@@ -83,7 +83,8 @@
     "EnrollCronEvent",
     "OnEpochTickEnd",
     "UpdatePledgeTotal",
-    "OnConsensusFault"
+    "OnConsensusFault",
+    "SubmitPoRepForBulkVerify"
   ],
   "fil/1/verifiedregistry": [
     "Send",
