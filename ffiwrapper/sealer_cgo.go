@@ -3,11 +3,13 @@
 package ffiwrapper
 
 import (
+	"bufio"
 	"context"
 	"io"
 	"io/ioutil"
 	"math/bits"
 	"os"
+	"runtime"
 	"syscall"
 
 	"github.com/ipfs/go-cid"
@@ -105,12 +107,12 @@ func (sb *Sealer) AddPiece(ctx context.Context, sector abi.SectorID, existingPie
 		return abi.PieceInfo{}, xerrors.Errorf("getting partial file writer: %w", err)
 	}
 
-	w, err = fr32.NewPadWriter(w, pieceSize)
+	pw, err := fr32.NewPadWriter(w)
 	if err != nil {
 		return abi.PieceInfo{}, xerrors.Errorf("creating padded reader: %w", err)
 	}
 
-	pr := io.TeeReader(io.LimitReader(file, int64(pieceSize)), w)
+	pr := io.TeeReader(io.LimitReader(file, int64(pieceSize)), pw)
 	prf, werr, err := ToReadableFile(pr, int64(pieceSize))
 	if err != nil {
 		return abi.PieceInfo{}, xerrors.Errorf("getting tee reader pipe: %w", err)
@@ -119,6 +121,10 @@ func (sb *Sealer) AddPiece(ctx context.Context, sector abi.SectorID, existingPie
 	pieceCID, err := ffi.GeneratePieceCIDFromFile(sb.sealProofType, prf, pieceSize)
 	if err != nil {
 		return abi.PieceInfo{}, xerrors.Errorf("generating piece commitment: %w", err)
+	}
+
+	if err := pw.Close(); err != nil {
+		return abi.PieceInfo{}, xerrors.Errorf("closing padded writer: %w", err)
 	}
 
 	if err := stagedFile.MarkAllocated(storiface.UnpaddedByteIndex(offset).Padded(), pieceSize.Padded()); err != nil {
@@ -253,7 +259,14 @@ func (sb *Sealer) UnsealPiece(ctx context.Context, sector abi.SectorID, offset s
 					return
 				}
 
-				_, perr = io.CopyN(out, padreader, int64(size))
+				bsize := uint64(size.Padded())
+				if bsize > uint64(runtime.NumCPU())*fr32.MTTresh {
+					bsize = uint64(runtime.NumCPU()) * fr32.MTTresh
+				}
+
+				padreader = bufio.NewReaderSize(padreader, int(bsize))
+
+				_, perr = io.CopyN(out, padreader, int64(size.Padded()))
 			}()
 		}
 		// </eww>

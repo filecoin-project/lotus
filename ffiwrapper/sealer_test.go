@@ -14,6 +14,7 @@ import (
 	"time"
 
 	logging "github.com/ipfs/go-log"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
@@ -29,8 +30,9 @@ func init() {
 	logging.SetLogLevel("*", "DEBUG") //nolint: errcheck
 }
 
-var sectorSize = abi.SectorSize(2048)
 var sealProofType = abi.RegisteredProof_StackedDRG2KiBSeal
+var sectorSize, _ = sealProofType.SectorSize()
+
 var sealRand = abi.SealRandomness{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2}
 
 type seal struct {
@@ -139,9 +141,7 @@ func (s *seal) unseal(t *testing.T, sb *Sealer, sp *basicfs.Provider, si abi.Sec
 	}
 
 	expect, _ = ioutil.ReadAll(data(si.Number, 1016))
-	if !bytes.Equal(b.Bytes(), expect) {
-		t.Fatal("read wrong bytes")
-	}
+	require.Equal(t, expect, b.Bytes())
 
 	b.Reset()
 	err = sb.ReadPiece(context.TODO(), &b, si, 0, 2032)

@@ -21,7 +21,7 @@ func NewPadReader(src io.Reader, sz abi.UnpaddedPieceSize) (io.Reader, error) {
 		return nil, xerrors.Errorf("bad piece size: %w", err)
 	}
 
-	buf := make([]byte, mtTresh*mtChunkCount(sz.Padded()))
+	buf := make([]byte, MTTresh*mtChunkCount(sz.Padded()))
 
 	return &padReader{
 		src: src,
@@ -59,39 +59,6 @@ func (r *padReader) Read(out []byte) (int, error) {
 	return int(todo.Padded()), err
 }
 
-func NewPadWriter(dst io.Writer, sz abi.UnpaddedPieceSize) (io.Writer, error) {
-	if err := sz.Validate(); err != nil {
-		return nil, xerrors.Errorf("bad piece size: %w", err)
-	}
-
-	buf := make([]byte, mtTresh*mtChunkCount(sz.Padded()))
-
-	// TODO: Real writer
-	r, w := io.Pipe()
-
-	pr, err := NewPadReader(r, sz)
-	if err != nil {
-		return nil, err
-	}
-
-	go func() {
-		for {
-			n, err := pr.Read(buf)
-			if err != nil && err != io.EOF {
-				r.CloseWithError(err)
-				return
-			}
-
-			if _, err := dst.Write(buf[:n]); err != nil {
-				r.CloseWithError(err)
-				return
-			}
-		}
-	}()
-
-	return w, err
-}
-
 type unpadReader struct {
 	src io.Reader
 
@@ -104,7 +71,7 @@ func NewUnpadReader(src io.Reader, sz abi.PaddedPieceSize) (io.Reader, error) {
 		return nil, xerrors.Errorf("bad piece size: %w", err)
 	}
 
-	buf := make([]byte, mtTresh*mtChunkCount(sz))
+	buf := make([]byte, MTTresh*mtChunkCount(sz))
 
 	return &unpadReader{
 		src: src,
@@ -146,4 +113,71 @@ func (r *unpadReader) Read(out []byte) (int, error) {
 	Unpad(r.work[:todo], out[:todo.Unpadded()])
 
 	return int(todo.Unpadded()), err
+}
+
+type padWriter struct {
+	dst io.Writer
+
+	stash []byte
+	work  []byte
+}
+
+func NewPadWriter(dst io.Writer) (io.WriteCloser, error) {
+	return &padWriter{
+		dst: dst,
+	}, nil
+}
+
+func (w *padWriter) Write(p []byte) (int, error) {
+	in := p
+
+	if len(p)+len(w.stash) < 127 {
+		w.stash = append(w.stash, p...)
+		return len(p), nil
+	}
+
+	if len(w.stash) != 0 {
+		in = append(w.stash, in...)
+	}
+
+	for {
+		pieces := subPieces(abi.UnpaddedPieceSize(len(in)))
+		biggest := pieces[len(pieces)-1]
+
+		if abi.PaddedPieceSize(cap(w.work)) < biggest.Padded() {
+			w.work = make([]byte, 0, biggest.Padded())
+		}
+
+		Pad(in[:int(biggest)], w.work[:int(biggest.Padded())])
+
+		n, err := w.dst.Write(w.work[:int(biggest.Padded())])
+		if err != nil {
+			return int(abi.PaddedPieceSize(n).Unpadded()), err
+		}
+
+		in = in[biggest:]
+
+		if len(in) < 127 {
+			if cap(w.stash) < len(in) {
+				w.stash = make([]byte, 0, len(in))
+			}
+			w.stash = w.stash[:len(in)]
+			copy(w.stash, in)
+
+			return len(p), nil
+		}
+	}
+}
+
+func (w *padWriter) Close() error {
+	if len(w.stash) > 0 {
+		return xerrors.Errorf("still have %d unprocessed bytes", len(w.stash))
+	}
+
+	// allow gc
+	w.stash = nil
+	w.work = nil
+	w.dst = nil
+
+	return nil
 }

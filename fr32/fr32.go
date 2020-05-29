@@ -8,10 +8,10 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
-var mtTresh = uint64(32 << 20)
+var MTTresh = uint64(32 << 20)
 
 func mtChunkCount(usz abi.PaddedPieceSize) uint64 {
-	threads := (uint64(usz)) / mtTresh
+	threads := (uint64(usz)) / MTTresh
 	if threads > uint64(runtime.NumCPU()) {
 		threads = 1 << (32 - bits.LeadingZeros32(uint32(runtime.NumCPU())))
 	}
@@ -46,7 +46,7 @@ func mt(in, out []byte, padLen int, op func(unpadded, padded []byte)) {
 
 // Assumes len(in)%127==0 and len(out)%128==0
 func Pad(in, out []byte) {
-	if len(out) > int(mtTresh) {
+	if len(out) > int(MTTresh) {
 		mt(in, out, len(out), pad)
 		return
 	}
@@ -96,7 +96,7 @@ func pad(in, out []byte) {
 
 // Assumes len(in)%128==0 and len(out)%127==0
 func Unpad(in []byte, out []byte) {
-	if len(in) > int(mtTresh) {
+	if len(in) > int(MTTresh) {
 		mt(out, in, len(in), unpad)
 		return
 	}
