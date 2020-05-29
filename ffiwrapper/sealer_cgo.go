@@ -385,17 +385,6 @@ func (sb *Sealer) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticke
 		return nil, xerrors.Errorf("aggregated piece sizes don't match sector size: %d != %d (%d)", sum, ussize, int64(ussize-sum))
 	}
 
-	//staged := filepath.Join(paths.Cache, "staged")
-
-	/*if err := sb.rewriteAsPadded(paths.Unsealed, staged); err != nil {
-		return nil, xerrors.Errorf("rewriting sector as padded: %w", err)
-	}*/
-	/*defer func() {
-		if err := os.Remove(staged); err != nil {
-			log.Warnf("Removing staged sector file(%v): %s", sector, err)
-		}
-	}()
-	*/
 	// TODO: context cancellation respect
 	p1o, err := ffi.SealPreCommitPhase1(
 		sb.sealProofType,
@@ -412,53 +401,6 @@ func (sb *Sealer) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticke
 	}
 	return p1o, nil
 }
-
-/*
-func (sb *Sealer) rewriteAsPadded(unsealed string, staged string) error {
-	maxPieceSize := abi.PaddedPieceSize(sb.ssize).Unpadded()
-
-	pf, err := openPartialFile(maxPieceSize, unsealed)
-	if err != nil {
-		return xerrors.Errorf("opening unsealed file: %w", err)
-	}
-
-	upr, err := pf.Reader(0, maxPieceSize)
-	if err != nil {
-		pf.Close()
-		return err
-	}
-
-	st, err := os.OpenFile(staged, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
-	if err != nil {
-		pf.Close()
-		return xerrors.Errorf("openning staged file: %w", err)
-	}
-
-	// OPTIMIZATION: upr is a file, so it could be passed straight to
-	//  WriteWithAlignment IF it wouldn't care about the trailer
-	lupr, werr, err := ToReadableFile(io.LimitReader(upr, int64(maxPieceSize)), int64(maxPieceSize))
-	if err != nil {
-		return err
-	}
-
-	_, _, _, err = ffi.WriteWithAlignment(sb.sealProofType, lupr, maxPieceSize, st, nil)
-	if err != nil {
-		pf.Close()
-		st.Close()
-		return xerrors.Errorf("write with alignment: %w", err)
-	}
-
-	if err := st.Close(); err != nil {
-		pf.Close()
-		return err
-	}
-
-	if err := pf.Close(); err != nil {
-		return err
-	}
-
-	return werr()
-}*/
 
 func (sb *Sealer) SealPreCommit2(ctx context.Context, sector abi.SectorID, phase1Out storage.PreCommit1Out) (storage.SectorCids, error) {
 	paths, done, err := sb.sectors.AcquireSector(ctx, sector, stores.FTSealed|stores.FTCache, 0, true)
