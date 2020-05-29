@@ -61,6 +61,10 @@ func (lmem *lockedMemRepo) SetStorage(c func(*stores.StorageConfig)) error {
 	return nil
 }
 
+func (lmem *lockedMemRepo) Stat(path string) (stores.FsStat, error) {
+	return stores.Stat(path)
+}
+
 func (lmem *lockedMemRepo) Path() string {
 	lmem.Lock()
 	defer lmem.Unlock()

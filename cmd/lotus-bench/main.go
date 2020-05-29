@@ -568,13 +568,8 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, mid
 				}
 			}
 
-			// TODO: RM unsealed sector first
-			rc, err := sb.ReadPieceFromSealedSector(context.TODO(), abi.SectorID{Miner: mid, Number: 1}, 0, abi.UnpaddedPieceSize(sectorSize), ticket, cids.Unsealed)
+			err := sb.UnsealPiece(context.TODO(), abi.SectorID{Miner: mid, Number: 1}, 0, abi.UnpaddedPieceSize(sectorSize), ticket, cids.Unsealed)
 			if err != nil {
-				return nil, nil, err
-			}
-
-			if err := rc.Close(); err != nil {
 				return nil, nil, err
 			}
 		}
