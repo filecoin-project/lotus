@@ -47,7 +47,13 @@ func (bs *CacheBS) Get(c cid.Cid) (block.Block, error) {
 		return v.(block.Block), nil
 	}
 
-	return bs.bs.Get(c)
+	out, err := bs.bs.Get(c)
+	if err != nil {
+		return nil, err
+	}
+
+	bs.cache.Add(c, out)
+	return out, nil
 }
 
 func (bs *CacheBS) GetSize(c cid.Cid) (int, error) {
