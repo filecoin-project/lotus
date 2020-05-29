@@ -206,7 +206,10 @@ var msigInspectCmd = &cli.Command{
 				tx := pending[txid]
 				fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%d\t%x\n", txid, state(tx), tx.To, types.FIL(tx.Value), tx.Method, tx.Params)
 			}
-			w.Flush()
+			if err := w.Flush(); err != nil {
+				return xerrors.Errorf("flushing output: %+v", err)
+			}
+
 		}
 
 		return nil

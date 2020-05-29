@@ -11,7 +11,7 @@ import (
 	madns "github.com/multiformats/go-multiaddr-dns"
 )
 
-// parseAddresses is a function that takes in a slice of string peer addresses
+// ParseAddresses is a function that takes in a slice of string peer addresses
 // (multiaddr + peerid) and returns a slice of properly constructed peers
 func ParseAddresses(ctx context.Context, addrs []string) ([]peer.AddrInfo, error) {
 	// resolve addresses

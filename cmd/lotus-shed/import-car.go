@@ -34,7 +34,7 @@ var importCarCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		defer lr.Close()
+		defer lr.Close() //nolint:errcheck
 
 		cf := cctx.Args().Get(0)
 		f, err := os.OpenFile(cf, os.O_RDONLY, 0664)

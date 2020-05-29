@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/filecoin-project/go-address"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -173,14 +174,18 @@ func WriteJsonToFile(fname string, obj interface{}) error {
 	if err != nil {
 		return err
 	}
-	defer fi.Close()
+	defer fi.Close() //nolint:errcheck
 
 	out, err := json.MarshalIndent(obj, "", "  ")
 	if err != nil {
 		return err
 	}
 
-	fi.Write(out)
+	_, err = fi.Write(out)
+	if err != nil {
+		return xerrors.Errorf("writing json: %w", err)
+	}
+
 	return nil
 }
 

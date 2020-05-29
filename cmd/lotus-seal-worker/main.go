@@ -26,7 +26,7 @@ import (
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/filecoin-project/sector-storage"
+	sectorstorage "github.com/filecoin-project/sector-storage"
 	"github.com/filecoin-project/sector-storage/sealtasks"
 	"github.com/filecoin-project/sector-storage/stores"
 )
@@ -107,7 +107,9 @@ var runCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Bool("enable-gpu-proving") {
-			os.Setenv("BELLMAN_NO_GPU", "true")
+			if err := os.Setenv("BELLMAN_NO_GPU", "true"); err != nil {
+				return xerrors.Errorf("could not set no-gpu env: %+v", err)
+			}
 		}
 
 		if cctx.String("address") == "" {
@@ -146,7 +148,7 @@ var runCmd = &cli.Command{
 		}
 
 		if cctx.Bool("commit") {
-			if err := paramfetch.GetParams(build.ParametersJson(), uint64(ssize)); err != nil {
+			if err := paramfetch.GetParams(build.ParametersJSON(), uint64(ssize)); err != nil {
 				return xerrors.Errorf("get params: %w", err)
 			}
 		}

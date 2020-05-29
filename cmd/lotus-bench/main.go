@@ -141,7 +141,10 @@ var sealBenchCmd = &cli.Command{
 	},
 	Action: func(c *cli.Context) error {
 		if c.Bool("no-gpu") {
-			os.Setenv("BELLMAN_NO_GPU", "1")
+			err := os.Setenv("BELLMAN_NO_GPU", "1")
+			if err != nil {
+				return xerrors.Errorf("setting no-gpu flag: %w", err)
+			}
 		}
 
 		robench := c.String("benchmark-existing-sectorbuilder")
@@ -154,7 +157,10 @@ var sealBenchCmd = &cli.Command{
 				return err
 			}
 
-			os.MkdirAll(sdir, 0775)
+			err = os.MkdirAll(sdir, 0775) //nolint:gosec
+			if err != nil {
+				return xerrors.Errorf("creating sectorbuilder dir: %w", err)
+			}
 
 			tsdir, err := ioutil.TempDir(sdir, "bench")
 			if err != nil {
@@ -209,7 +215,7 @@ var sealBenchCmd = &cli.Command{
 
 		// Only fetch parameters if actually needed
 		if !c.Bool("skip-commit2") {
-			if err := paramfetch.GetParams(build.ParametersJson(), uint64(sectorSize)); err != nil {
+			if err := paramfetch.GetParams(build.ParametersJSON(), uint64(sectorSize)); err != nil {
 				return xerrors.Errorf("getting params: %w", err)
 			}
 		}
@@ -599,7 +605,10 @@ var proveCmd = &cli.Command{
 	},
 	Action: func(c *cli.Context) error {
 		if c.Bool("no-gpu") {
-			os.Setenv("BELLMAN_NO_GPU", "1")
+			err := os.Setenv("BELLMAN_NO_GPU", "1")
+			if err != nil {
+				return xerrors.Errorf("setting no-gpu flag: %w", err)
+			}
 		}
 
 		if !c.Args().Present() {
@@ -616,7 +625,7 @@ var proveCmd = &cli.Command{
 			return xerrors.Errorf("unmarshalling input file: %w", err)
 		}
 
-		if err := paramfetch.GetParams(build.ParametersJson(), c2in.SectorSize); err != nil {
+		if err := paramfetch.GetParams(build.ParametersJSON(), c2in.SectorSize); err != nil {
 			return xerrors.Errorf("getting params: %w", err)
 		}
 

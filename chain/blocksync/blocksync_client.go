@@ -283,14 +283,14 @@ func (bs *BlockSync) fetchBlocksBlockSync(ctx context.Context, p peer.ID, req *B
 		bs.RemovePeer(p)
 		return nil, xerrors.Errorf("failed to open stream to peer: %w", err)
 	}
-	s.SetWriteDeadline(time.Now().Add(5 * time.Second))
+	_ = s.SetWriteDeadline(time.Now().Add(5 * time.Second))
 
 	if err := cborutil.WriteCborRPC(s, req); err != nil {
-		s.SetWriteDeadline(time.Time{})
+		_ = s.SetWriteDeadline(time.Time{})
 		bs.syncPeers.logFailure(p, time.Since(start))
 		return nil, err
 	}
-	s.SetWriteDeadline(time.Time{})
+	_ = s.SetWriteDeadline(time.Time{})
 
 	var res BlockSyncResponse
 	r := incrt.New(s, 50<<10, 5*time.Second)

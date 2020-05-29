@@ -895,11 +895,17 @@ func DrawRandomness(rbase []byte, pers crypto.DomainSeparationTag, round abi.Cha
 		return nil, xerrors.Errorf("deriving randomness: %w", err)
 	}
 	VRFDigest := blake2b.Sum256(rbase)
-	h.Write(VRFDigest[:])
+	_, err := h.Write(VRFDigest[:])
+	if err != nil {
+		return nil, xerrors.Errorf("hashing VRFDigest: %w", err)
+	}
 	if err := binary.Write(h, binary.BigEndian, round); err != nil {
 		return nil, xerrors.Errorf("deriving randomness: %w", err)
 	}
-	h.Write(entropy)
+	_, err = h.Write(entropy)
+	if err != nil {
+		return nil, xerrors.Errorf("hashing entropy: %w", err)
+	}
 
 	return h.Sum(nil), nil
 }

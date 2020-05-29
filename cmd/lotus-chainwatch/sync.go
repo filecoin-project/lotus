@@ -199,6 +199,8 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 			}
 
 			for a, act := range changes {
+				act := act
+
 				addr, err := address.NewFromString(a)
 				if err != nil {
 					log.Error(err)

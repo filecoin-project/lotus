@@ -85,14 +85,14 @@ func handleImport(a *impl.FullNodeAPI) func(w http.ResponseWriter, r *http.Reque
 		}
 		if !auth.HasPerm(r.Context(), nil, apistruct.PermWrite) {
 			w.WriteHeader(401)
-			json.NewEncoder(w).Encode(struct{ Error string }{"unauthorized: missing write permission"})
+			_ = json.NewEncoder(w).Encode(struct{ Error string }{"unauthorized: missing write permission"})
 			return
 		}
 
 		c, err := a.ClientImportLocal(r.Context(), r.Body)
 		if err != nil {
 			w.WriteHeader(500)
-			json.NewEncoder(w).Encode(struct{ Error string }{err.Error()})
+			_ = json.NewEncoder(w).Encode(struct{ Error string }{err.Error()})
 			return
 		}
 		w.WriteHeader(200)

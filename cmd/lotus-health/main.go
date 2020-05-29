@@ -79,7 +79,7 @@ var watchHeadCmd = &cli.Command{
 		&cli.IntFlag{
 			Name:  "api-retries",
 			Value: 8,
-			Usage: "number of API retry attemps",
+			Usage: "number of API retry attempts",
 		},
 	},
 	Action: func(c *cli.Context) error {

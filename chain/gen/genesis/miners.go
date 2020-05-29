@@ -58,6 +58,8 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 
 	for i, m := range miners {
 		// Create miner through power actor
+		i := i
+		m := m
 
 		spt, err := ffiwrapper.SealProofTypeFromSectorSize(m.SectorSize)
 		if err != nil {
@@ -154,6 +156,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 
 		// Commit sectors
 		for pi, preseal := range m.Sectors {
+			preseal := preseal
 			// TODO: Maybe check seal (Can just be snark inputs, doesn't go into the genesis file)
 
 			// check deals, get dealWeight

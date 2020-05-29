@@ -12,7 +12,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 )
 
-type WorkerApi interface {
+type WorkerAPI interface {
 	Version(context.Context) (build.Version, error)
 	// TODO: Info() (name, ...) ?
 

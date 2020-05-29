@@ -86,7 +86,7 @@ var runCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		defer st.close()
+		defer st.close() //nolint:errcheck
 
 		runSyncer(ctx, api, st, maxBatch)
 

@@ -417,7 +417,7 @@ func TestSyncBadTimestamp(t *testing.T) {
 	a1 := tu.mineOnBlock(base, 0, nil, false, true)
 
 	tu.g.Timestamper = nil
-	tu.g.ResyncBankerNonce(a1.TipSet())
+	require.NoError(t, tu.g.ResyncBankerNonce(a1.TipSet()))
 
 	fmt.Println("After mine bad block!")
 	tu.printHeads()
@@ -479,7 +479,7 @@ func TestSyncFork(t *testing.T) {
 	a := tu.mineOnBlock(a1, p1, []int{0}, true, false)
 	a = tu.mineOnBlock(a, p1, []int{0}, true, false)
 
-	tu.g.ResyncBankerNonce(a1.TipSet())
+	require.NoError(t, tu.g.ResyncBankerNonce(a1.TipSet()))
 	// chain B will now be heaviest
 	b := tu.mineOnBlock(base, p2, []int{1}, true, false)
 	b = tu.mineOnBlock(b, p2, []int{1}, true, false)

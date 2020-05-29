@@ -53,8 +53,7 @@ var runCmd = &cli.Command{
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
-		sendSmallFundsTxs(ctx, api, addr, 5)
-		return nil
+		return sendSmallFundsTxs(ctx, api, addr, 5)
 	},
 }
 

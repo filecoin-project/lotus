@@ -84,9 +84,11 @@ func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, a
 
 	nic := storedcounter.New(ds, datastore.NewKey(modules.StorageCounterDSPrefix))
 	for i := 0; i < nGenesisPreseals; i++ {
-		nic.Next()
+		_, err := nic.Next()
+		require.NoError(t, err)
 	}
-	nic.Next()
+	_, err = nic.Next()
+	require.NoError(t, err)
 
 	err = lr.Close()
 	require.NoError(t, err)

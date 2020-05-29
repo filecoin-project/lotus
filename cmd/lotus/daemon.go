@@ -134,7 +134,7 @@ var DaemonCmd = &cli.Command{
 			return xerrors.Errorf("repo init error: %w", err)
 		}
 
-		if err := paramfetch.GetParams(build.ParametersJson(), 0); err != nil {
+		if err := paramfetch.GetParams(build.ParametersJSON(), 0); err != nil {
 			return xerrors.Errorf("fetching proof parameters: %w", err)
 		}
 
@@ -269,7 +269,7 @@ func ImportChain(r repo.Repo, fname string) error {
 	if err != nil {
 		return err
 	}
-	defer lr.Close()
+	defer lr.Close() //nolint:errcheck
 
 	ds, err := lr.Datastore("/blocks")
 	if err != nil {
