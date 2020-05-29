@@ -43,8 +43,6 @@ import (
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/beacon"
-	"github.com/filecoin-project/lotus/chain/beacon/drand"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/markets/retrievaladapter"
@@ -359,13 +357,4 @@ func StorageAuth(ctx helpers.MetricsCtx, ca lapi.Common) (sectorstorage.StorageA
 	headers := http.Header{}
 	headers.Add("Authorization", "Bearer "+string(token))
 	return sectorstorage.StorageAuth(headers), nil
-}
-
-func MinerRandomBeacon(api lapi.FullNode) (beacon.RandomBeacon, error) {
-	gents, err := api.ChainGetGenesis(context.TODO())
-	if err != nil {
-		return nil, err
-	}
-
-	return drand.NewDrandBeacon(gents.Blocks()[0].Timestamp, build.BlockDelay)
 }

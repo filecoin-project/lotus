@@ -123,12 +123,19 @@ func RetrievalResolver(l *discovery.Local) retrievalmarket.PeerResolver {
 	return discovery.Multi(l)
 }
 
-func RandomBeacon(cs *store.ChainStore, _ dtypes.AfterGenesisSet) (beacon.RandomBeacon, error) {
-	gen, err := cs.GetGenesis()
+type RandomBeaconParams struct {
+	fx.In
+
+	PubSub *pubsub.PubSub `optional:"true"`
+	Cs     *store.ChainStore
+}
+
+func RandomBeacon(p RandomBeaconParams, _ dtypes.AfterGenesisSet) (beacon.RandomBeacon, error) {
+	gen, err := p.Cs.GetGenesis()
 	if err != nil {
 		return nil, err
 	}
 
 	//return beacon.NewMockBeacon(build.BlockDelay * time.Second)
-	return drand.NewDrandBeacon(gen.Timestamp, build.BlockDelay)
+	return drand.NewDrandBeacon(gen.Timestamp, build.BlockDelay, p.PubSub)
 }

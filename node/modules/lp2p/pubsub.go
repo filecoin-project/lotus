@@ -38,6 +38,7 @@ func GossipSub(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, nn dtyp
 	options := []pubsub.Option{
 		// Gossipsubv1.1 configuration
 		pubsub.WithFloodPublish(true),
+		pubsub.WithMessageIdFn(HashMsgId),
 		pubsub.WithPeerScore(
 			&pubsub.PeerScoreParams{
 				AppSpecificScore: func(p peer.ID) float64 {

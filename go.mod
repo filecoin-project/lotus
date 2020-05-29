@@ -11,7 +11,7 @@ require (
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
 	github.com/coreos/go-systemd/v22 v22.0.0
 	github.com/docker/go-units v0.4.0
-	github.com/drand/drand v0.9.2-0.20200526173017-9cffec0d074e
+	github.com/drand/drand v0.9.2-0.20200529123141-6b138aefaef2
 	github.com/drand/kyber v1.0.2
 	github.com/fatih/color v1.8.0
 	github.com/filecoin-project/chain-validation v0.0.6-0.20200528194021-3ce40d696ae1
@@ -34,6 +34,7 @@ require (
 	github.com/filecoin-project/specs-storage v0.0.0-20200417134612-61b2d91a6102
 	github.com/filecoin-project/storage-fsm v0.0.0-20200528050623-cdada6e88960
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
+	github.com/go-kit/kit v0.10.0
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/mux v1.7.4
