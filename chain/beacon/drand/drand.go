@@ -76,13 +76,16 @@ func NewDrandBeacon(genesisTs, interval uint64, ps *pubsub.PubSub) (*DrandBeacon
 	if genesisTs == 0 {
 		panic("what are you doing this cant be zero")
 	}
+
+	dlogger := dlog.NewKitLoggerFrom(kzap.NewZapSugarLogger(
+		log.SugaredLogger.Desugar(), zapcore.InfoLevel))
 	opts := []dclient.Option{
 		dclient.WithChainInfo(drandChain),
 		dclient.WithHTTPEndpoints(drandServers),
 		dclient.WithCacheSize(1024),
-		dclient.WithLogger(dlog.NewKitLoggerFrom(kzap.NewZapSugarLogger(
-			log.SugaredLogger.Desugar(), zapcore.InfoLevel))),
+		dclient.WithLogger(dlogger),
 	}
+
 	if ps != nil {
 		opts = append(opts, gclient.WithPubsub(ps))
 	} else {
@@ -93,6 +96,14 @@ func NewDrandBeacon(genesisTs, interval uint64, ps *pubsub.PubSub) (*DrandBeacon
 	if err != nil {
 		return nil, xerrors.Errorf("creating drand client")
 	}
+
+	go func() {
+		// Explicitly Watch until that is fixed in drand
+		ch := client.Watch(context.Background())
+		for range ch {
+		}
+		log.Error("dranch Watch bork")
+	}()
 
 	db := &DrandBeacon{
 		client:     client,
