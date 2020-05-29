@@ -47,6 +47,8 @@ type LocalPath struct {
 type LocalStorage interface {
 	GetStorage() (StorageConfig, error)
 	SetStorage(func(*StorageConfig)) error
+
+	Stat(path string) (FsStat, error)
 }
 
 const MetaFile = "sectorstore.json"
@@ -98,7 +100,7 @@ func (st *Local) OpenPath(ctx context.Context, p string) error {
 		local: p,
 	}
 
-	fst, err := Stat(p)
+	fst, err := st.localStorage.Stat(p)
 	if err != nil {
 		return err
 	}
@@ -133,7 +135,7 @@ func (st *Local) OpenPath(ctx context.Context, p string) error {
 				return xerrors.Errorf("parse sector id %s: %w", ent.Name(), err)
 			}
 
-			if err := st.index.StorageDeclareSector(ctx, meta.ID, sid, t); err != nil {
+			if err := st.index.StorageDeclareSector(ctx, meta.ID, sid, t, meta.CanStore); err != nil {
 				return xerrors.Errorf("declare sector %d(t:%d) -> %s: %w", sid, t, meta.ID, err)
 			}
 		}
@@ -177,7 +179,7 @@ func (st *Local) reportHealth(ctx context.Context) {
 
 		toReport := map[ID]HealthReport{}
 		for id, p := range st.paths {
-			stat, err := Stat(p.local)
+			stat, err := st.localStorage.Stat(p.local)
 
 			toReport[id] = HealthReport{
 				Stat: stat,
@@ -195,7 +197,7 @@ func (st *Local) reportHealth(ctx context.Context) {
 	}
 }
 
-func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, spt abi.RegisteredProof, existing SectorFileType, allocate SectorFileType, sealing bool) (SectorPaths, SectorPaths, func(), error) {
+func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, spt abi.RegisteredProof, existing SectorFileType, allocate SectorFileType, pathType PathType, op AcquireMode) (SectorPaths, SectorPaths, func(), error) {
 	if existing|allocate != existing^allocate {
 		return SectorPaths{}, SectorPaths{}, nil, xerrors.New("can't both find and allocate a sector")
 	}
@@ -240,7 +242,7 @@ func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, spt abi.Re
 			continue
 		}
 
-		sis, err := st.index.StorageBestAlloc(ctx, fileType, spt, sealing)
+		sis, err := st.index.StorageBestAlloc(ctx, fileType, spt, pathType)
 		if err != nil {
 			st.localLk.RUnlock()
 			return SectorPaths{}, SectorPaths{}, nil, xerrors.Errorf("finding best storage for allocating : %w", err)
@@ -259,11 +261,11 @@ func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, spt abi.Re
 				continue
 			}
 
-			if sealing && !si.CanSeal {
+			if (pathType == PathSealing) && !si.CanSeal {
 				continue
 			}
 
-			if !sealing && !si.CanStore {
+			if (pathType == PathStorage) && !si.CanStore {
 				continue
 			}
 
@@ -328,38 +330,82 @@ func (st *Local) Remove(ctx context.Context, sid abi.SectorID, typ SectorFileTyp
 	}
 
 	for _, info := range si {
-		p, ok := st.paths[info.ID]
-		if !ok {
-			continue
-		}
-
-		if p.local == "" { // TODO: can that even be the case?
-			continue
-		}
-
-		if err := st.index.StorageDropSector(ctx, info.ID, sid, typ); err != nil {
-			return xerrors.Errorf("dropping sector from index: %w", err)
-		}
-
-		spath := filepath.Join(p.local, typ.String(), SectorName(sid))
-		log.Infof("remove %s", spath)
-
-		if err := os.RemoveAll(spath); err != nil {
-			log.Errorf("removing sector (%v) from %s: %+v", sid, spath, err)
+		if err := st.removeSector(ctx, sid, typ, info.ID); err != nil {
+			return err
 		}
 	}
 
 	return nil
 }
 
+func (st *Local) RemoveCopies(ctx context.Context, sid abi.SectorID, typ SectorFileType) error {
+	if bits.OnesCount(uint(typ)) != 1 {
+		return xerrors.New("delete expects one file type")
+	}
+
+	si, err := st.index.StorageFindSector(ctx, sid, typ, false)
+	if err != nil {
+		return xerrors.Errorf("finding existing sector %d(t:%d) failed: %w", sid, typ, err)
+	}
+
+	var hasPrimary bool
+	for _, info := range si {
+		if info.Primary {
+			hasPrimary = true
+			break
+		}
+	}
+
+	if !hasPrimary {
+		log.Warnf("RemoveCopies: no primary copies of sector %v (%s), not removing anything", sid, typ)
+		return nil
+	}
+
+	for _, info := range si {
+		if info.Primary {
+			continue
+		}
+
+		if err := st.removeSector(ctx, sid, typ, info.ID); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (st *Local) removeSector(ctx context.Context, sid abi.SectorID, typ SectorFileType, storage ID) error {
+	p, ok := st.paths[storage]
+	if !ok {
+		return nil
+	}
+
+	if p.local == "" { // TODO: can that even be the case?
+		return nil
+	}
+
+	if err := st.index.StorageDropSector(ctx, storage, sid, typ); err != nil {
+		return xerrors.Errorf("dropping sector from index: %w", err)
+	}
+
+	spath := filepath.Join(p.local, typ.String(), SectorName(sid))
+	log.Infof("remove %s", spath)
+
+	if err := os.RemoveAll(spath); err != nil {
+		log.Errorf("removing sector (%v) from %s: %+v", sid, spath, err)
+	}
+
+	return nil
+}
+
 func (st *Local) MoveStorage(ctx context.Context, s abi.SectorID, spt abi.RegisteredProof, types SectorFileType) error {
-	dest, destIds, sdone, err := st.AcquireSector(ctx, s, spt, FTNone, types, false)
+	dest, destIds, sdone, err := st.AcquireSector(ctx, s, spt, FTNone, types, false, AcquireMove)
 	if err != nil {
 		return xerrors.Errorf("acquire dest storage: %w", err)
 	}
 	defer sdone()
 
-	src, srcIds, ddone, err := st.AcquireSector(ctx, s, spt, types, FTNone, false)
+	src, srcIds, ddone, err := st.AcquireSector(ctx, s, spt, types, FTNone, false, AcquireMove)
 	if err != nil {
 		return xerrors.Errorf("acquire src storage: %w", err)
 	}
@@ -401,7 +447,7 @@ func (st *Local) MoveStorage(ctx context.Context, s abi.SectorID, spt abi.Regist
 			return xerrors.Errorf("moving sector %v(%d): %w", s, fileType, err)
 		}
 
-		if err := st.index.StorageDeclareSector(ctx, ID(PathByType(destIds, fileType)), s, fileType); err != nil {
+		if err := st.index.StorageDeclareSector(ctx, ID(PathByType(destIds, fileType)), s, fileType, true); err != nil {
 			return xerrors.Errorf("declare sector %d(t:%d) -> %s: %w", s, fileType, ID(PathByType(destIds, fileType)), err)
 		}
 	}
@@ -420,7 +466,7 @@ func (st *Local) FsStat(ctx context.Context, id ID) (FsStat, error) {
 		return FsStat{}, errPathNotFound
 	}
 
-	return Stat(p.local)
+	return st.localStorage.Stat(p.local)
 }
 
 var _ Store = &Local{}

@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math"
 	"math/rand"
 	"sync"
@@ -18,12 +17,14 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/sector-storage/storiface"
 )
 
 var log = logging.Logger("sbmock")
 
 type SectorMgr struct {
 	sectors      map[abi.SectorID]*sectorState
+	pieces       map[cid.Cid][]byte
 	sectorSize   abi.SectorSize
 	nextSectorID abi.SectorNumber
 	proofType    abi.RegisteredProof
@@ -41,6 +42,7 @@ func NewMockSectorMgr(ssize abi.SectorSize) *SectorMgr {
 
 	return &SectorMgr{
 		sectors:      make(map[abi.SectorID]*sectorState),
+		pieces:       map[cid.Cid][]byte{},
 		sectorSize:   ssize,
 		nextSectorID: 5,
 		proofType:    rt,
@@ -80,13 +82,17 @@ func (mgr *SectorMgr) AddPiece(ctx context.Context, sectorId abi.SectorID, exist
 	ss.lk.Lock()
 	defer ss.lk.Unlock()
 
-	c, err := ffiwrapper.GeneratePieceCIDFromFile(mgr.proofType, r, size)
+	var b bytes.Buffer
+	tr := io.TeeReader(r, &b)
+
+	c, err := ffiwrapper.GeneratePieceCIDFromFile(mgr.proofType, tr, size)
 	if err != nil {
 		return abi.PieceInfo{}, xerrors.Errorf("failed to generate piece cid: %w", err)
 	}
 
 	log.Warn("Generated Piece CID: ", c)
 
+	mgr.pieces[c] = b.Bytes()
 	ss.pieces = append(ss.pieces, c)
 	return abi.PieceInfo{
 		Size:     size.Padded(),
@@ -268,11 +274,13 @@ func generateFakePoSt(sectorInfo []abi.SectorInfo) []abi.PoStProof {
 	}
 }
 
-func (mgr *SectorMgr) ReadPieceFromSealedSector(ctx context.Context, sectorID abi.SectorID, offset ffiwrapper.UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, commD cid.Cid) (io.ReadCloser, error) {
-	if len(mgr.sectors[sectorID].pieces) > 1 {
+func (mgr *SectorMgr) ReadPiece(ctx context.Context, w io.Writer, sectorID abi.SectorID, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, c cid.Cid) error {
+	if len(mgr.sectors[sectorID].pieces) > 1 || offset != 0 {
 		panic("implme")
 	}
-	return ioutil.NopCloser(io.LimitReader(bytes.NewReader(mgr.sectors[sectorID].pieces[0].Bytes()[offset:]), int64(size))), nil
+
+	_, err := io.CopyN(w, bytes.NewReader(mgr.pieces[mgr.sectors[sectorID].pieces[0]]), int64(size))
+	return err
 }
 
 func (mgr *SectorMgr) StageFakeData(mid abi.ActorID) (abi.SectorID, []abi.PieceInfo, error) {

@@ -288,3 +288,8 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 		},
 	},
 }
+
+func init() {
+	ResourceTable[sealtasks.TTUnseal] = ResourceTable[sealtasks.TTPreCommit1] // TODO: measure accurately
+	ResourceTable[sealtasks.TTReadUnsealed] = ResourceTable[sealtasks.TTFetch]
+}

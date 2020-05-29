@@ -11,17 +11,21 @@ const (
 
 	TTFinalize TaskType = "seal/v0/finalize"
 
-	TTFetch TaskType = "seal/v0/fetch"
+	TTFetch        TaskType = "seal/v0/fetch"
+	TTUnseal       TaskType = "seal/v0/unseal"
+	TTReadUnsealed TaskType = "seal/v0/unsealread"
 )
 
 var order = map[TaskType]int{
-	TTAddPiece:   7,
-	TTPreCommit1: 6,
-	TTPreCommit2: 5,
-	TTCommit2:    4,
-	TTCommit1:    3,
-	TTFetch:      2,
-	TTFinalize:   1,
+	TTAddPiece:     7,
+	TTPreCommit1:   6,
+	TTPreCommit2:   5,
+	TTCommit2:      4,
+	TTCommit1:      3,
+	TTFetch:        2,
+	TTFinalize:     1,
+	TTUnseal:       0,
+	TTReadUnsealed: 0,
 }
 
 func (a TaskType) Less(b TaskType) bool {

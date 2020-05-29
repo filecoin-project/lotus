@@ -12,7 +12,7 @@ import (
 )
 
 type existingSelector struct {
-	best []stores.StorageInfo
+	best []stores.SectorStorageInfo
 }
 
 func newExistingSelector(ctx context.Context, index stores.SectorIndex, sector abi.SectorID, alloc stores.SectorFileType, allowFetch bool) (*existingSelector, error) {

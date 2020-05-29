@@ -20,7 +20,7 @@ func (l *readonlyProvider) AcquireSector(ctx context.Context, id abi.SectorID, e
 		return stores.SectorPaths{}, nil, xerrors.New("read-only storage")
 	}
 
-	p, _, done, err := l.stor.AcquireSector(ctx, id, l.spt, existing, allocate, sealing)
+	p, _, done, err := l.stor.AcquireSector(ctx, id, l.spt, existing, allocate, stores.PathType(sealing), stores.AcquireMove)
 
 	return p, done, err
 }

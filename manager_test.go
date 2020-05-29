@@ -65,6 +65,10 @@ func (t *testStorage) SetStorage(f func(*stores.StorageConfig)) error {
 	return nil
 }
 
+func (t *testStorage) Stat(path string) (stores.FsStat, error) {
+	return stores.Stat(path)
+}
+
 var _ stores.LocalStorage = &testStorage{}
 
 func newTestMgr(ctx context.Context, t *testing.T) (*Manager, *stores.Local, *stores.Remote, *stores.Index) {

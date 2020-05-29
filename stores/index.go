@@ -38,21 +38,37 @@ type HealthReport struct {
 	Err  error
 }
 
+type SectorStorageInfo struct {
+	ID     ID
+	URLs   []string // TODO: Support non-http transports
+	Weight uint64
+
+	CanSeal  bool
+	CanStore bool
+
+	Primary bool
+}
+
 type SectorIndex interface { // part of storage-miner api
 	StorageAttach(context.Context, StorageInfo, FsStat) error
 	StorageInfo(context.Context, ID) (StorageInfo, error)
 	StorageReportHealth(context.Context, ID, HealthReport) error
 
-	StorageDeclareSector(ctx context.Context, storageId ID, s abi.SectorID, ft SectorFileType) error
+	StorageDeclareSector(ctx context.Context, storageId ID, s abi.SectorID, ft SectorFileType, primary bool) error
 	StorageDropSector(ctx context.Context, storageId ID, s abi.SectorID, ft SectorFileType) error
-	StorageFindSector(ctx context.Context, sector abi.SectorID, ft SectorFileType, allowFetch bool) ([]StorageInfo, error)
+	StorageFindSector(ctx context.Context, sector abi.SectorID, ft SectorFileType, allowFetch bool) ([]SectorStorageInfo, error)
 
-	StorageBestAlloc(ctx context.Context, allocate SectorFileType, spt abi.RegisteredProof, sealing bool) ([]StorageInfo, error)
+	StorageBestAlloc(ctx context.Context, allocate SectorFileType, spt abi.RegisteredProof, pathType PathType) ([]StorageInfo, error)
 }
 
 type Decl struct {
 	abi.SectorID
 	SectorFileType
+}
+
+type declMeta struct {
+	storage ID
+	primary bool
 }
 
 type storageEntry struct {
@@ -66,13 +82,13 @@ type storageEntry struct {
 type Index struct {
 	lk sync.RWMutex
 
-	sectors map[Decl][]ID
+	sectors map[Decl][]*declMeta
 	stores  map[ID]*storageEntry
 }
 
 func NewIndex() *Index {
 	return &Index{
-		sectors: map[Decl][]ID{},
+		sectors: map[Decl][]*declMeta{},
 		stores:  map[ID]*storageEntry{},
 	}
 }
@@ -88,7 +104,7 @@ func (i *Index) StorageList(ctx context.Context) (map[ID][]Decl, error) {
 	}
 	for decl, ids := range i.sectors {
 		for _, id := range ids {
-			byID[id][decl.SectorID] |= decl.SectorFileType
+			byID[id.storage][decl.SectorID] |= decl.SectorFileType
 		}
 	}
 
@@ -157,10 +173,11 @@ func (i *Index) StorageReportHealth(ctx context.Context, id ID, report HealthRep
 	return nil
 }
 
-func (i *Index) StorageDeclareSector(ctx context.Context, storageId ID, s abi.SectorID, ft SectorFileType) error {
+func (i *Index) StorageDeclareSector(ctx context.Context, storageId ID, s abi.SectorID, ft SectorFileType, primary bool) error {
 	i.lk.Lock()
 	defer i.lk.Unlock()
 
+loop:
 	for _, fileType := range PathTypes {
 		if fileType&ft == 0 {
 			continue
@@ -169,13 +186,20 @@ func (i *Index) StorageDeclareSector(ctx context.Context, storageId ID, s abi.Se
 		d := Decl{s, fileType}
 
 		for _, sid := range i.sectors[d] {
-			if sid == storageId {
-				log.Warnf("sector %v redeclared in %s", s, storageId)
-				return nil
+			if sid.storage == storageId {
+				if !sid.primary && primary {
+					sid.primary = true
+				} else {
+					log.Warnf("sector %v redeclared in %s", s, storageId)
+				}
+				continue loop
 			}
 		}
 
-		i.sectors[d] = append(i.sectors[d], storageId)
+		i.sectors[d] = append(i.sectors[d], &declMeta{
+			storage: storageId,
+			primary: primary,
+		})
 	}
 
 	return nil
@@ -196,9 +220,9 @@ func (i *Index) StorageDropSector(ctx context.Context, storageId ID, s abi.Secto
 			return nil
 		}
 
-		rewritten := make([]ID, 0, len(i.sectors[d])-1)
+		rewritten := make([]*declMeta, 0, len(i.sectors[d])-1)
 		for _, sid := range i.sectors[d] {
-			if sid == storageId {
+			if sid.storage == storageId {
 				continue
 			}
 
@@ -215,11 +239,12 @@ func (i *Index) StorageDropSector(ctx context.Context, storageId ID, s abi.Secto
 	return nil
 }
 
-func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft SectorFileType, allowFetch bool) ([]StorageInfo, error) {
+func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft SectorFileType, allowFetch bool) ([]SectorStorageInfo, error) {
 	i.lk.RLock()
 	defer i.lk.RUnlock()
 
 	storageIDs := map[ID]uint64{}
+	isprimary := map[ID]bool{}
 
 	for _, pathType := range PathTypes {
 		if ft&pathType == 0 {
@@ -227,11 +252,12 @@ func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft Sector
 		}
 
 		for _, id := range i.sectors[Decl{s, pathType}] {
-			storageIDs[id]++
+			storageIDs[id.storage]++
+			isprimary[id.storage] = isprimary[id.storage] || id.primary
 		}
 	}
 
-	out := make([]StorageInfo, 0, len(storageIDs))
+	out := make([]SectorStorageInfo, 0, len(storageIDs))
 
 	for id, n := range storageIDs {
 		st, ok := i.stores[id]
@@ -251,12 +277,15 @@ func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft Sector
 			urls[k] = rl.String()
 		}
 
-		out = append(out, StorageInfo{
-			ID:       id,
-			URLs:     urls,
-			Weight:   st.info.Weight * n, // storage with more sector types is better
+		out = append(out, SectorStorageInfo{
+			ID:     id,
+			URLs:   urls,
+			Weight: st.info.Weight * n, // storage with more sector types is better
+
 			CanSeal:  st.info.CanSeal,
 			CanStore: st.info.CanStore,
+
+			Primary: isprimary[id],
 		})
 	}
 
@@ -277,12 +306,15 @@ func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft Sector
 				urls[k] = rl.String()
 			}
 
-			out = append(out, StorageInfo{
-				ID:       id,
-				URLs:     urls,
-				Weight:   st.info.Weight * 0, // TODO: something better than just '0'
+			out = append(out, SectorStorageInfo{
+				ID:     id,
+				URLs:   urls,
+				Weight: st.info.Weight * 0, // TODO: something better than just '0'
+
 				CanSeal:  st.info.CanSeal,
 				CanStore: st.info.CanStore,
+
+				Primary: false,
 			})
 		}
 	}
@@ -302,7 +334,7 @@ func (i *Index) StorageInfo(ctx context.Context, id ID) (StorageInfo, error) {
 	return *si.info, nil
 }
 
-func (i *Index) StorageBestAlloc(ctx context.Context, allocate SectorFileType, spt abi.RegisteredProof, sealing bool) ([]StorageInfo, error) {
+func (i *Index) StorageBestAlloc(ctx context.Context, allocate SectorFileType, spt abi.RegisteredProof, pathType PathType) ([]StorageInfo, error) {
 	i.lk.RLock()
 	defer i.lk.RUnlock()
 
@@ -314,10 +346,10 @@ func (i *Index) StorageBestAlloc(ctx context.Context, allocate SectorFileType, s
 	}
 
 	for _, p := range i.stores {
-		if sealing && !p.info.CanSeal {
+		if (pathType == PathSealing) && !p.info.CanSeal {
 			continue
 		}
-		if !sealing && !p.info.CanStore {
+		if (pathType == PathStorage) && !p.info.CanStore {
 			continue
 		}
 
@@ -362,10 +394,19 @@ func (i *Index) FindSector(id abi.SectorID, typ SectorFileType) ([]ID, error) {
 	i.lk.RLock()
 	defer i.lk.RUnlock()
 
-	return i.sectors[Decl{
+	f, ok := i.sectors[Decl{
 		SectorID:       id,
 		SectorFileType: typ,
-	}], nil
+	}]
+	if !ok {
+		return nil, nil
+	}
+	out := make([]ID, 0, len(f))
+	for _, meta := range f {
+		out = append(out, meta.storage)
+	}
+
+	return out, nil
 }
 
 var _ SectorIndex = &Index{}

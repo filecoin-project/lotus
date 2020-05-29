@@ -2,6 +2,9 @@ package sectorstorage
 
 import (
 	"context"
+	"io"
+
+	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-storage/storage"
@@ -46,6 +49,14 @@ func (t *testWorker) NewSector(ctx context.Context, sector abi.SectorID) error {
 	panic("implement me")
 }
 
+func (t *testWorker) UnsealPiece(ctx context.Context, id abi.SectorID, index storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, cid cid.Cid) error {
+	panic("implement me")
+}
+
+func (t *testWorker) ReadPiece(ctx context.Context, writer io.Writer, id abi.SectorID, index storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) error {
+	panic("implement me")
+}
+
 func (t *testWorker) AddPiece(ctx context.Context, sector abi.SectorID, pieceSizes []abi.UnpaddedPieceSize, newPieceSize abi.UnpaddedPieceSize, pieceData storage.Data) (abi.PieceInfo, error) {
 	return t.mockSeal.AddPiece(ctx, sector, pieceSizes, newPieceSize, pieceData)
 }
@@ -66,7 +77,7 @@ func (t *testWorker) FinalizeSector(ctx context.Context, sector abi.SectorID) er
 	panic("implement me")
 }
 
-func (t *testWorker) Fetch(ctx context.Context, id abi.SectorID, fileType stores.SectorFileType, b bool) error {
+func (t *testWorker) Fetch(ctx context.Context, id abi.SectorID, fileType stores.SectorFileType, b bool, am stores.AcquireMode) error {
 	return nil
 }
 

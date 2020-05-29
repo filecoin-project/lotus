@@ -1,6 +1,7 @@
 package ffiwrapper
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -13,20 +14,26 @@ import (
 	"time"
 
 	logging "github.com/ipfs/go-log"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"
 
+	ffi "github.com/filecoin-project/filecoin-ffi"
 	paramfetch "github.com/filecoin-project/go-paramfetch"
-	"github.com/filecoin-project/sector-storage/ffiwrapper/basicfs"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-storage/storage"
+
+	"github.com/filecoin-project/sector-storage/ffiwrapper/basicfs"
+	"github.com/filecoin-project/sector-storage/stores"
 )
 
 func init() {
-	logging.SetLogLevel("*", "INFO") //nolint: errcheck
+	logging.SetLogLevel("*", "DEBUG") //nolint: errcheck
 }
 
-var sectorSize = abi.SectorSize(2048)
 var sealProofType = abi.RegisteredProof_StackedDRG2KiBSeal
+var sectorSize, _ = sealProofType.SectorSize()
+
+var sealRand = abi.SealRandomness{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2}
 
 type seal struct {
 	id     abi.SectorID
@@ -35,18 +42,22 @@ type seal struct {
 	ticket abi.SealRandomness
 }
 
+func data(sn abi.SectorNumber, dlen abi.UnpaddedPieceSize) io.Reader {
+	return io.LimitReader(rand.New(rand.NewSource(42+int64(sn))), int64(dlen))
+}
+
 func (s *seal) precommit(t *testing.T, sb *Sealer, id abi.SectorID, done func()) {
 	defer done()
 	dlen := abi.PaddedPieceSize(sectorSize).Unpadded()
 
 	var err error
-	r := io.LimitReader(rand.New(rand.NewSource(42+int64(id.Number))), int64(dlen))
+	r := data(id.Number, dlen)
 	s.pi, err = sb.AddPiece(context.TODO(), id, []abi.UnpaddedPieceSize{}, dlen, r)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
 
-	s.ticket = abi.SealRandomness{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2}
+	s.ticket = sealRand
 
 	p1, err := sb.SealPreCommit1(context.TODO(), id, s.ticket, []abi.PieceInfo{s.pi})
 	if err != nil {
@@ -87,6 +98,60 @@ func (s *seal) commit(t *testing.T, sb *Sealer, done func()) {
 
 	if !ok {
 		t.Fatal("proof failed to validate")
+	}
+}
+
+func (s *seal) unseal(t *testing.T, sb *Sealer, sp *basicfs.Provider, si abi.SectorID, done func()) {
+	defer done()
+
+	var b bytes.Buffer
+	err := sb.ReadPiece(context.TODO(), &b, si, 0, 1016)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expect, _ := ioutil.ReadAll(data(si.Number, 1016))
+	if !bytes.Equal(b.Bytes(), expect) {
+		t.Fatal("read wrong bytes")
+	}
+
+	p, sd, err := sp.AcquireSector(context.TODO(), si, stores.FTUnsealed, stores.FTNone, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(p.Unsealed); err != nil {
+		t.Fatal(err)
+	}
+	sd()
+
+	err = sb.ReadPiece(context.TODO(), &b, si, 0, 1016)
+	if err == nil {
+		t.Fatal("HOW?!")
+	}
+	log.Info("this is what we expect: ", err)
+
+	if err := sb.UnsealPiece(context.TODO(), si, 0, 1016, sealRand, s.cids.Unsealed); err != nil {
+		t.Fatal(err)
+	}
+
+	b.Reset()
+	err = sb.ReadPiece(context.TODO(), &b, si, 0, 1016)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expect, _ = ioutil.ReadAll(data(si.Number, 1016))
+	require.Equal(t, expect, b.Bytes())
+
+	b.Reset()
+	err = sb.ReadPiece(context.TODO(), &b, si, 0, 2032)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expect = append(expect, bytes.Repeat([]byte{0}, 1016)...)
+	if !bytes.Equal(b.Bytes(), expect) {
+		t.Fatal("read wrong bytes")
 	}
 }
 
@@ -227,6 +292,8 @@ func TestSealAndVerify(t *testing.T) {
 		t.Fatalf("%+v", err)
 	}
 
+	s.unseal(t, sb, sp, si, func() {})
+
 	fmt.Printf("PreCommit: %s\n", precommit.Sub(start).String())
 	fmt.Printf("Commit: %s\n", commit.Sub(precommit).String())
 	fmt.Printf("GenCandidates: %s\n", genCandidiates.Sub(commit).String())
@@ -347,4 +414,19 @@ func TestSealAndVerify2(t *testing.T) {
 	wg.Wait()
 
 	post(t, sb, s1, s2)
+}
+
+func BenchmarkWriteWithAlignment(b *testing.B) {
+	bt := abi.UnpaddedPieceSize(2 * 127 * 1024 * 1024)
+	b.SetBytes(int64(bt))
+
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+		rf, w, _ := ToReadableFile(bytes.NewReader(bytes.Repeat([]byte{0xff, 0}, int(bt/2))), int64(bt))
+		tf, _ := ioutil.TempFile("/tmp/", "scrb-")
+		b.StartTimer()
+
+		ffi.WriteWithAlignment(abi.RegisteredProof_StackedDRG2KiBSeal, rf, bt, tf, nil)
+		w()
+	}
 }

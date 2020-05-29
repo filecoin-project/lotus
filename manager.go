@@ -28,7 +28,10 @@ type URLs []string
 
 type Worker interface {
 	ffiwrapper.StorageSealer
-	Fetch(context.Context, abi.SectorID, stores.SectorFileType, bool) error
+
+	Fetch(ctx context.Context, s abi.SectorID, ft stores.SectorFileType, sealing bool, am stores.AcquireMode) error
+	UnsealPiece(context.Context, abi.SectorID, storiface.UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) error
+	ReadPiece(context.Context, io.Writer, abi.SectorID, storiface.UnpaddedByteIndex, abi.UnpaddedPieceSize) error
 
 	TaskTypes(context.Context) (map[sealtasks.TaskType]struct{}, error)
 
@@ -46,7 +49,7 @@ type Worker interface {
 type SectorManager interface {
 	SectorSize() abi.SectorSize
 
-	ReadPieceFromSealedSector(context.Context, abi.SectorID, ffiwrapper.UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) (io.ReadCloser, error)
+	ReadPiece(context.Context, io.Writer, abi.SectorID, storiface.UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) error
 
 	ffiwrapper.StorageSealer
 	storage.Prover
@@ -74,6 +77,7 @@ type SealerConfig struct {
 	AllowPreCommit1 bool
 	AllowPreCommit2 bool
 	AllowCommit     bool
+	AllowUnseal     bool
 }
 
 type StorageAuth http.Header
@@ -108,7 +112,7 @@ func New(ctx context.Context, ls stores.LocalStorage, si stores.SectorIndex, cfg
 	go m.sched.runSched()
 
 	localTasks := []sealtasks.TaskType{
-		sealtasks.TTAddPiece, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTFetch,
+		sealtasks.TTAddPiece, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTFetch, sealtasks.TTReadUnsealed,
 	}
 	if sc.AllowPreCommit1 {
 		localTasks = append(localTasks, sealtasks.TTPreCommit1)
@@ -118,6 +122,9 @@ func New(ctx context.Context, ls stores.LocalStorage, si stores.SectorIndex, cfg
 	}
 	if sc.AllowCommit {
 		localTasks = append(localTasks, sealtasks.TTCommit2)
+	}
+	if sc.AllowUnseal {
+		localTasks = append(localTasks, sealtasks.TTUnseal)
 	}
 
 	err = m.AddWorker(ctx, NewLocalWorker(WorkerConfig{
@@ -173,18 +180,67 @@ func (m *Manager) SectorSize() abi.SectorSize {
 	return sz
 }
 
-func (m *Manager) ReadPieceFromSealedSector(context.Context, abi.SectorID, ffiwrapper.UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) (io.ReadCloser, error) {
-	panic("implement me")
-}
-
 func schedNop(context.Context, Worker) error {
 	return nil
 }
 
-func schedFetch(sector abi.SectorID, ft stores.SectorFileType, sealing bool) func(context.Context, Worker) error {
+func schedFetch(sector abi.SectorID, ft stores.SectorFileType, sealing bool, am stores.AcquireMode) func(context.Context, Worker) error {
 	return func(ctx context.Context, worker Worker) error {
-		return worker.Fetch(ctx, sector, ft, sealing)
+		return worker.Fetch(ctx, sector, ft, sealing, am)
 	}
+}
+
+func (m *Manager) ReadPiece(ctx context.Context, sink io.Writer, sector abi.SectorID, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, unsealed cid.Cid) error {
+	best, err := m.index.StorageFindSector(ctx, sector, stores.FTUnsealed, false)
+	if err != nil {
+		return xerrors.Errorf("read piece: checking for already existing unsealed sector: %w", err)
+	}
+
+	var selector WorkerSelector
+	if len(best) == 0 { // new
+		selector, err = newAllocSelector(ctx, m.index, stores.FTUnsealed)
+	} else { // append to existing
+		selector, err = newExistingSelector(ctx, m.index, sector, stores.FTUnsealed, false)
+	}
+	if err != nil {
+		return xerrors.Errorf("creating unsealPiece selector: %w", err)
+	}
+
+	// TODO: Optimization: don't send unseal to a worker if the requested range is already unsealed
+
+	unsealFetch := func(ctx context.Context, worker Worker) error {
+		if err := worker.Fetch(ctx, sector, stores.FTSealed|stores.FTCache, true, stores.AcquireCopy); err != nil {
+			return xerrors.Errorf("copy sealed/cache sector data: %w", err)
+		}
+
+		if len(best) > 0 {
+			if err := worker.Fetch(ctx, sector, stores.FTUnsealed, true, stores.AcquireMove); err != nil {
+				return xerrors.Errorf("copy unsealed sector data: %w", err)
+			}
+		}
+		return nil
+	}
+
+	err = m.sched.Schedule(ctx, sector, sealtasks.TTUnseal, selector, unsealFetch, func(ctx context.Context, w Worker) error {
+		return w.UnsealPiece(ctx, sector, offset, size, ticket, unsealed)
+	})
+	if err != nil {
+		return err
+	}
+
+	selector, err = newExistingSelector(ctx, m.index, sector, stores.FTUnsealed, false)
+	if err != nil {
+		return xerrors.Errorf("creating readPiece selector: %w", err)
+	}
+
+	err = m.sched.Schedule(ctx, sector, sealtasks.TTReadUnsealed, selector, schedFetch(sector, stores.FTUnsealed, true, stores.AcquireMove), func(ctx context.Context, w Worker) error {
+		return w.ReadPiece(ctx, sink, sector, offset, size)
+	})
+	if err != nil {
+		return xerrors.Errorf("reading piece from sealed sector: %w", err)
+	}
+
+	return nil
 }
 
 func (m *Manager) NewSector(ctx context.Context, sector abi.SectorID) error {
@@ -197,7 +253,7 @@ func (m *Manager) AddPiece(ctx context.Context, sector abi.SectorID, existingPie
 	var err error
 	if len(existingPieces) == 0 { // new
 		selector, err = newAllocSelector(ctx, m.index, stores.FTUnsealed)
-	} else { // append to existing
+	} else { // use existing
 		selector, err = newExistingSelector(ctx, m.index, sector, stores.FTUnsealed, false)
 	}
 	if err != nil {
@@ -225,7 +281,7 @@ func (m *Manager) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticke
 		return nil, xerrors.Errorf("creating path selector: %w", err)
 	}
 
-	err = m.sched.Schedule(ctx, sector, sealtasks.TTPreCommit1, selector, schedFetch(sector, stores.FTUnsealed, true), func(ctx context.Context, w Worker) error {
+	err = m.sched.Schedule(ctx, sector, sealtasks.TTPreCommit1, selector, schedFetch(sector, stores.FTUnsealed, true, stores.AcquireMove), func(ctx context.Context, w Worker) error {
 		p, err := w.SealPreCommit1(ctx, sector, ticket, pieces)
 		if err != nil {
 			return err
@@ -243,7 +299,7 @@ func (m *Manager) SealPreCommit2(ctx context.Context, sector abi.SectorID, phase
 		return storage.SectorCids{}, xerrors.Errorf("creating path selector: %w", err)
 	}
 
-	err = m.sched.Schedule(ctx, sector, sealtasks.TTPreCommit2, selector, schedFetch(sector, stores.FTCache|stores.FTSealed, true), func(ctx context.Context, w Worker) error {
+	err = m.sched.Schedule(ctx, sector, sealtasks.TTPreCommit2, selector, schedFetch(sector, stores.FTCache|stores.FTSealed, true, stores.AcquireMove), func(ctx context.Context, w Worker) error {
 		p, err := w.SealPreCommit2(ctx, sector, phase1Out)
 		if err != nil {
 			return err
@@ -264,7 +320,7 @@ func (m *Manager) SealCommit1(ctx context.Context, sector abi.SectorID, ticket a
 	//  (except, don't.. for now at least - we are using this step to bring data
 	//  into 'provable' storage. Optimally we'd do that in commit2, in parallel
 	//  with snark compute)
-	err = m.sched.Schedule(ctx, sector, sealtasks.TTCommit1, selector, schedFetch(sector, stores.FTCache|stores.FTSealed, true), func(ctx context.Context, w Worker) error {
+	err = m.sched.Schedule(ctx, sector, sealtasks.TTCommit1, selector, schedFetch(sector, stores.FTCache|stores.FTSealed, true, stores.AcquireMove), func(ctx context.Context, w Worker) error {
 		p, err := w.SealCommit1(ctx, sector, ticket, seed, pieces, cids)
 		if err != nil {
 			return err
@@ -297,7 +353,7 @@ func (m *Manager) FinalizeSector(ctx context.Context, sector abi.SectorID) error
 	}
 
 	return m.sched.Schedule(ctx, sector, sealtasks.TTFinalize, selector,
-		schedFetch(sector, stores.FTCache|stores.FTSealed|stores.FTUnsealed, false),
+		schedFetch(sector, stores.FTCache|stores.FTSealed|stores.FTUnsealed, false, stores.AcquireMove),
 		func(ctx context.Context, w Worker) error {
 			return w.FinalizeSector(ctx, sector)
 		})

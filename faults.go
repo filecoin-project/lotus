@@ -21,7 +21,7 @@ func (m *Manager) CheckProvable(ctx context.Context, spt abi.RegisteredProof, se
 	// TODO: More better checks
 	for _, sector := range sectors {
 		err := func() error {
-			lp, _, done, err := m.localStore.AcquireSector(ctx, sector, spt, stores.FTSealed|stores.FTCache, stores.FTNone, false)
+			lp, _, done, err := m.localStore.AcquireSector(ctx, sector, spt, stores.FTSealed|stores.FTCache, stores.FTNone, false, stores.AcquireMove)
 			if err != nil {
 				return xerrors.Errorf("acquire sector in checkProvable: %w", err)
 			}
