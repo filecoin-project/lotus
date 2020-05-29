@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -234,6 +235,8 @@ type fsLockedRepo struct {
 	storageLk sync.Mutex
 }
 
+const MaxSize int64 = 1<<32 - 1
+
 func (fsr *fsLockedRepo) Path() string {
 	return fsr.path
 }
@@ -267,10 +270,26 @@ func (fsr *fsLockedRepo) stillValid() error {
 	return nil
 }
 
+func (fsr *fsLockedRepo) verifyDatastoreVlog(p string) error {
+	err := filepath.Walk(p, func(_ string, info os.FileInfo, err error) error {
+		if !info.IsDir() && path.Ext(filepath.Join(p, info.Name())) == "vlog" && info.Size() > MaxSize {
+			er := os.Remove(filepath.Join(p, info.Name()))
+			return er
+		}
+		return nil
+	})
+	return err
+}
+
 func (fsr *fsLockedRepo) Datastore(ns string) (datastore.Batching, error) {
 	fsr.dsOnce.Do(func() {
 		opts := badger.DefaultOptions
 		opts.Truncate = true
+
+		err := fsr.verifyDatastoreVlog(fsr.join(fsDatastore))
+		if err != nil {
+			fmt.Println(err)
+		}
 
 		fsr.ds, fsr.dsErr = badger.NewDatastore(fsr.join(fsDatastore), &opts)
 		/*if fsr.dsErr == nil {
