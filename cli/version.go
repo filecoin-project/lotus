@@ -23,7 +23,9 @@ var versionCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		fmt.Println(v)
+		fmt.Println("Daemon: ", v)
+
+		fmt.Print("Local: ")
 		cli.VersionPrinter(cctx)
 		return nil
 	},

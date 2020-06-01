@@ -39,7 +39,7 @@ func main() {
 	app := &cli.App{
 		Name:    "lotus-seed",
 		Usage:   "Seal sectors for genesis miner",
-		Version: build.UserVersion,
+		Version: build.UserVersion(),
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:  "sector-dir",

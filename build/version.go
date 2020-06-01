@@ -3,11 +3,33 @@ package build
 import "fmt"
 
 var CurrentCommit string
+var BuildType int
+
+const (
+	BuildDefault = 0
+	Build2k      = 0x1
+	BuildDebug   = 0x3
+)
+
+func buildType() string {
+	switch BuildType {
+	case BuildDefault:
+		return "+default"
+	case BuildDebug:
+		return "+debug"
+	case Build2k:
+		return "+2k"
+	default:
+		return "+huh?"
+	}
+}
 
 // BuildVersion is the local build version, set by build system
 const BuildVersion = "0.4.0"
 
-var UserVersion = BuildVersion + CurrentCommit
+func UserVersion() string {
+	return BuildVersion + buildType() + CurrentCommit
+}
 
 type Version uint32
 
