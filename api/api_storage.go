@@ -8,11 +8,10 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/sector-storage/stores"
 	"github.com/filecoin-project/sector-storage/storiface"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-
-	"github.com/filecoin-project/lotus/chain/types"
 )
 
 // StorageMiner is a low-level interface to the Filecoin network storage miner node
