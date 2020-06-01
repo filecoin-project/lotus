@@ -20,6 +20,7 @@ type TestStorageNode struct {
 }
 
 var PresealGenesis = -1
+const GenesisPreseals = 2
 
 type StorageMiner struct {
 	Full    int

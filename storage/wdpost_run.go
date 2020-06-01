@@ -189,6 +189,15 @@ func (s *WindowPoStScheduler) checkNextRecoveries(ctx context.Context, deadline 
 }
 
 func (s *WindowPoStScheduler) checkNextFaults(ctx context.Context, deadline uint64, deadlineSectors *abi.BitField, ts *types.TipSet) error {
+	dc, err := deadlineSectors.Count()
+	if err != nil {
+		return xerrors.Errorf("counting deadline sectors: %w", err)
+	}
+	if dc == 0 {
+		// nothing can become faulty
+		return nil
+	}
+
 	toCheck, err := s.getSectorsToProve(ctx, deadlineSectors, true, ts)
 	if err != nil {
 		return xerrors.Errorf("getting next sectors to prove: %w", err)

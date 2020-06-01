@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/sector-storage/stores"
 	"github.com/filecoin-project/sector-storage/storiface"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	sealing "github.com/filecoin-project/storage-fsm"
 
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -119,4 +120,4 @@ func (st *SealSeed) Equals(ost *SealSeed) bool {
 	return bytes.Equal(st.Value, ost.Value) && st.Epoch == ost.Epoch
 }
 
-type SectorState string
+type SectorState = sealing.SectorState

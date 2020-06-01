@@ -83,7 +83,7 @@ func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, a
 	require.NoError(t, err)
 
 	nic := storedcounter.New(ds, datastore.NewKey(modules.StorageCounterDSPrefix))
-	for i := 0; i < nGenesisPreseals; i++ {
+	for i := 0; i < test.GenesisPreseals; i++ {
 		_, err := nic.Next()
 		require.NoError(t, err)
 	}
@@ -188,7 +188,7 @@ func builder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test.TestN
 		if err != nil {
 			t.Fatal(err)
 		}
-		genm, k, err := seed.PreSeal(maddr, abi.RegisteredProof_StackedDRG2KiBPoSt, 0, nGenesisPreseals, tdir, []byte("make genesis mem random"), nil)
+		genm, k, err := seed.PreSeal(maddr, abi.RegisteredProof_StackedDRG2KiBPoSt, 0, test.GenesisPreseals, tdir, []byte("make genesis mem random"), nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -282,8 +282,6 @@ func builder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test.TestN
 	return fulls, storers
 }
 
-const nGenesisPreseals = 2
-
 func mockSbBuilder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test.TestNode, []test.TestStorageNode) {
 	ctx := context.Background()
 	mn := mocknet.New(ctx)
@@ -314,7 +312,7 @@ func mockSbBuilder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test
 
 		preseals := storage[i].Preseal
 		if preseals == test.PresealGenesis {
-			preseals = nGenesisPreseals
+			preseals = test.GenesisPreseals
 		}
 
 		genm, k, err := mockstorage.PreSeal(2048, maddr, preseals)
@@ -350,7 +348,7 @@ func mockSbBuilder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test
 	templ := &genesis.Template{
 		Accounts:  genaccs,
 		Miners:    genms,
-		Timestamp: uint64(time.Now().Unix() - 10000),
+		Timestamp: uint64(time.Now().Unix() - (build.BlockDelay * 20000)),
 	}
 
 	// END PRESEAL SECTION
@@ -492,4 +490,42 @@ func TestDealMining(t *testing.T) {
 	logging.SetLogLevel("storageminer", "ERROR")
 
 	test.TestDealMining(t, mockSbBuilder, 50*time.Millisecond, false)
+}
+
+func TestPledgeSectors(t *testing.T) {
+	logging.SetLogLevel("miner", "ERROR")
+	logging.SetLogLevel("chainstore", "ERROR")
+	logging.SetLogLevel("chain", "ERROR")
+	logging.SetLogLevel("sub", "ERROR")
+	logging.SetLogLevel("storageminer", "ERROR")
+
+	t.Run("1", func(t *testing.T) {
+		test.TestPledgeSector(t, mockSbBuilder, 50*time.Millisecond, 1)
+	})
+
+	t.Run("100", func(t *testing.T) {
+		test.TestPledgeSector(t, mockSbBuilder, 50*time.Millisecond, 100)
+	})
+
+	t.Run("1000", func(t *testing.T) {
+		if testing.Short() { // takes ~16s
+			t.Skip("skipping test in short mode")
+		}
+
+		test.TestPledgeSector(t, mockSbBuilder, 50*time.Millisecond, 1000)
+	})
+}
+
+func TestWindowedPost(t *testing.T) {
+	if testing.Short() {
+		t.Skip("this takes a while")
+	}
+
+	logging.SetLogLevel("miner", "ERROR")
+	logging.SetLogLevel("chainstore", "ERROR")
+	logging.SetLogLevel("chain", "ERROR")
+	logging.SetLogLevel("sub", "ERROR")
+	logging.SetLogLevel("storageminer", "ERROR")
+
+	test.TestWindowPost(t, mockSbBuilder, 3*time.Millisecond, 10)
 }
