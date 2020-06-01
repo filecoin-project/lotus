@@ -227,19 +227,7 @@ var DaemonCmd = &cli.Command{
 		}
 
 		// TODO: properly parse api endpoint (or make it a URL)
-		return serveRPC(api, func(ctx context.Context) error {
-			err := stop(ctx)
-			if err != nil {
-				return xerrors.Errorf("stopping node: %w", err)
-			}
-
-			err = setDaemonPID(r, 0)
-			if err != nil {
-				return xerrors.Errorf("setting daemon pid to zero: %w", err)
-			}
-
-			return nil
-		}, endpoint)
+		return serveRPC(api, stop, endpoint)
 	},
 	Subcommands: []*cli.Command{
 		daemonStopCmd,
