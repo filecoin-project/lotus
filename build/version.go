@@ -14,7 +14,7 @@ const (
 func buildType() string {
 	switch BuildType {
 	case BuildDefault:
-		return "+default"
+		return ""
 	case BuildDebug:
 		return "+debug"
 	case Build2k:

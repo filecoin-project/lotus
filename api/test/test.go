@@ -4,9 +4,11 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/stretchr/testify/assert"
 )
 
 type TestNode struct {
@@ -62,9 +64,7 @@ func (ts *testSuite) testVersion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if v.Version != build.BuildVersion {
-		t.Error("Version didn't work properly")
-	}
+	require.Equal(t, v.Version, build.BuildVersion)
 }
 
 func (ts *testSuite) testID(t *testing.T) {
