@@ -104,7 +104,7 @@ func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
 		return nil, xerrors.Errorf("failed to get metadata datastore: %w", err)
 	}
 
-	bds, err := lr.Datastore("/blocks")
+	bds, err := lr.Datastore("/chain")
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get blocks datastore: %w", err)
 	}

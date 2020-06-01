@@ -55,7 +55,7 @@ func BenchmarkGetRandomness(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	bds, err := lr.Datastore("/blocks")
+	bds, err := lr.Datastore("/chain")
 	if err != nil {
 		b.Fatal(err)
 	}

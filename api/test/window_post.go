@@ -143,11 +143,11 @@ func TestWindowPost(t *testing.T, b APIBuilder, blocktime time.Duration, nSector
 		head, err := client.ChainHead(ctx)
 		require.NoError(t, err)
 
-		if head.Height() > di.PeriodStart + (miner2.WPoStProvingPeriod) + 2 {
+		if head.Height() > di.PeriodStart+(miner2.WPoStProvingPeriod)+2 {
 			break
 		}
 
-		if head.Height() % 100 == 0 {
+		if head.Height()%100 == 0 {
 			fmt.Printf("@%d\n", head.Height())
 		}
 		time.Sleep(blocktime)
@@ -160,7 +160,7 @@ func TestWindowPost(t *testing.T, b APIBuilder, blocktime time.Duration, nSector
 	require.NoError(t, err)
 
 	require.Equal(t, p.MinerPower, p.TotalPower)
-	require.Equal(t, p.MinerPower.RawBytePower, types.NewInt(uint64(ssz) * uint64(nSectors + GenesisPreseals)))
+	require.Equal(t, p.MinerPower.RawBytePower, types.NewInt(uint64(ssz)*uint64(nSectors+GenesisPreseals)))
 
 	// TODO: Inject faults here
 

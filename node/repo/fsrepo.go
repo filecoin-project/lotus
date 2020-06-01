@@ -12,8 +12,6 @@ import (
 	"sync"
 
 	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/namespace"
-	badger "github.com/ipfs/go-ds-badger2"
 	fslock "github.com/ipfs/go-fs-lock"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
@@ -265,22 +263,6 @@ func (fsr *fsLockedRepo) stillValid() error {
 		return ErrClosedRepo
 	}
 	return nil
-}
-
-func (fsr *fsLockedRepo) Datastore(ns string) (datastore.Batching, error) {
-	fsr.dsOnce.Do(func() {
-		opts := badger.DefaultOptions
-		opts.Truncate = true
-
-		fsr.ds, fsr.dsErr = badger.NewDatastore(fsr.join(fsDatastore), &opts)
-		/*if fsr.dsErr == nil {
-			fsr.ds = datastore.NewLogDatastore(fsr.ds, "fsrepo")
-		}*/
-	})
-	if fsr.dsErr != nil {
-		return nil, fsr.dsErr
-	}
-	return namespace.Wrap(fsr.ds, datastore.NewKey(ns)), nil
 }
 
 func (fsr *fsLockedRepo) Config() (interface{}, error) {
