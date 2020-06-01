@@ -8,12 +8,10 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/sector-storage/stores"
 	"github.com/filecoin-project/sector-storage/storiface"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	sealing "github.com/filecoin-project/storage-fsm"
-
-	"github.com/filecoin-project/lotus/chain/types"
 )
 
 // StorageMiner is a low-level interface to the Filecoin network storage miner node
@@ -120,4 +118,4 @@ func (st *SealSeed) Equals(ost *SealSeed) bool {
 	return bytes.Equal(st.Value, ost.Value) && st.Epoch == ost.Epoch
 }
 
-type SectorState = sealing.SectorState
+type SectorState string

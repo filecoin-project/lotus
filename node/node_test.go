@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"io/ioutil"
 	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
 
@@ -517,8 +518,8 @@ func TestPledgeSectors(t *testing.T) {
 }
 
 func TestWindowedPost(t *testing.T) {
-	if testing.Short() {
-		t.Skip("this takes a while")
+	if os.Getenv("LOTUS_TEST_WINDOW_POST") != "1" {
+		t.Skip("this takes a few minutes, set LOTUS_TEST_WINDOW_POST=1 to run")
 	}
 
 	logging.SetLogLevel("miner", "ERROR")
@@ -527,5 +528,5 @@ func TestWindowedPost(t *testing.T) {
 	logging.SetLogLevel("sub", "ERROR")
 	logging.SetLogLevel("storageminer", "ERROR")
 
-	test.TestWindowPost(t, mockSbBuilder, 3*time.Millisecond, 10)
+	test.TestWindowPost(t, mockSbBuilder, 5*time.Millisecond, 10)
 }

@@ -3,6 +3,7 @@ package test
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/lotus/api"
 	"os"
 	"strings"
 	"testing"
@@ -85,7 +86,7 @@ func pledgeSectors(t *testing.T, ctx context.Context, miner TestStorageNode, n i
 		for n := range toCheck {
 			st, err := miner.SectorsStatus(ctx, n)
 			require.NoError(t, err)
-			if st.State == sealing.Proving {
+			if st.State == api.SectorState(sealing.Proving) {
 				delete(toCheck, n)
 			}
 			if strings.Contains(string(st.State), "Fail") {

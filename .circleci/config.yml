@@ -134,6 +134,9 @@ jobs:
         type: string
         default: "./..."
         description: Import paths of packages to be tested.
+      winpost-test:
+        type: string
+        default: "0"
       test-suite-name:
         type: string
         default: unit
@@ -171,6 +174,7 @@ jobs:
           environment:
             GOTESTSUM_JUNITFILE: /tmp/test-reports/<< parameters.test-suite-name >>/junit.xml
             GOTESTSUM_FORMAT: << parameters.gotestsum-format >>
+            LOTUS_TEST_WINDOW_POST: << parameters.winpost-test >>
           command: |
             mkdir -p /tmp/test-reports/<< parameters.test-suite-name >>
             gotestsum -- \
@@ -198,6 +202,8 @@ jobs:
             - "~/go/src/golang.org"
 
   test-short:
+    <<: *test
+  test-window-post:
     <<: *test
 
   build-macos:
@@ -332,10 +338,13 @@ workflows:
     jobs:
       - lint-changes:
           args: "--new-from-rev origin/next" 
-      - test:
-          codecov-upload: true
       - mod-tidy-check
       - gofmt
+      - test:
+          codecov-upload: true
+      - test-window-post:
+          go-test-flags: "-run=TestWindowedPost"
+          winpost-test: "1"
       - test-short:
           go-test-flags: "--timeout 10m --short"
           filters:
