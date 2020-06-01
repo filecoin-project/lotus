@@ -135,6 +135,11 @@ var DaemonCmd = &cli.Command{
 			return xerrors.Errorf("repo init error: %w", err)
 		}
 
+		err = setDaemonPID(r, os.Getpid())
+		if err != nil {
+			return xerrors.Errorf("setting daemon pid: %w", err)
+		}
+
 		if err := paramfetch.GetParams(build.ParametersJson(), 0); err != nil {
 			return xerrors.Errorf("fetching proof parameters: %w", err)
 		}
@@ -223,19 +228,17 @@ var DaemonCmd = &cli.Command{
 
 		// TODO: properly parse api endpoint (or make it a URL)
 		return serveRPC(api, func(ctx context.Context) error {
-			err = setDaemonPID(r, os.Getpid())
+			err := stop(ctx)
 			if err != nil {
-				return xerrors.Errorf("setting daemon pid: %w", err)
+				return xerrors.Errorf("stopping node: %w", err)
 			}
 
-			return nil
-		}, func(ctx context.Context) error {
 			err = setDaemonPID(r, 0)
 			if err != nil {
 				return xerrors.Errorf("setting daemon pid to zero: %w", err)
 			}
 
-			return stop(ctx)
+			return nil
 		}, endpoint)
 	},
 	Subcommands: []*cli.Command{

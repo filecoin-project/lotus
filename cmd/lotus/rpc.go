@@ -27,7 +27,7 @@ import (
 
 var log = logging.Logger("main")
 
-func serveRPC(a api.FullNode, beforeServerStart, afterServerStop func(context.Context) error, addr multiaddr.Multiaddr) error {
+func serveRPC(a api.FullNode, afterServerStop func(context.Context) error, addr multiaddr.Multiaddr) error {
 	rpcServer := jsonrpc.NewServer()
 	rpcServer.Register("Filecoin", apistruct.PermissionedFullAPI(a))
 
@@ -72,11 +72,6 @@ func serveRPC(a api.FullNode, beforeServerStart, afterServerStop func(context.Co
 		}
 	}()
 	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
-
-	err = beforeServerStart(context.TODO())
-	if err != nil {
-		return xerrors.Errorf("before server start func failed: %w", err)
-	}
 
 	return srv.Serve(manet.NetListener(lst))
 }
