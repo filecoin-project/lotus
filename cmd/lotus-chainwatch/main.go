@@ -29,7 +29,7 @@ func main() {
 	app := &cli.App{
 		Name:    "lotus-chainwatch",
 		Usage:   "Devnet token distribution utility",
-		Version: build.UserVersion,
+		Version: build.UserVersion(),
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    "repo",

@@ -16,6 +16,8 @@ func init() {
 		abi.RegisteredProof_StackedDRG2KiBSeal: {},
 	}
 	verifreg.MinVerifiedDealSize = big.NewInt(256)
+
+	BuildType |= Build2k
 }
 
 // Seconds

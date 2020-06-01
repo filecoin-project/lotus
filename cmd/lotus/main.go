@@ -52,7 +52,7 @@ func main() {
 	app := &cli.App{
 		Name:                  "lotus",
 		Usage:                 "Filecoin decentralized storage network client",
-		Version:               build.UserVersion,
+		Version:               build.UserVersion(),
 		EnableShellCompletion: true,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
