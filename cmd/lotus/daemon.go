@@ -367,6 +367,6 @@ func setDaemonPID(r repo.Repo, pid int) error {
 	}
 	defer lr.Close()
 
-	log.Info("setting daemon pid to %d", pid)
+	log.Infof("setting daemon pid to %d", pid)
 	return lr.SetDaemonPID(pid)
 }
