@@ -26,12 +26,26 @@ type MemRepo struct {
 		token []byte
 	}
 
+	daemon struct {
+		sync.Mutex
+		pid int
+	}
+
 	repoLock chan struct{}
 	token    *byte
 
 	datastore datastore.Datastore
 	configF   func(t RepoType) interface{}
 	keystore  map[string]types.KeyInfo
+}
+
+func (mem *MemRepo) DaemonPID() (int, error) {
+	mem.daemon.Lock()
+	defer mem.daemon.Unlock()
+	if mem.daemon.pid == 0 {
+		return 0, ErrNoDaemonPID
+	}
+	return mem.daemon.pid, nil
 }
 
 type lockedMemRepo struct {
@@ -42,6 +56,16 @@ type lockedMemRepo struct {
 	tempDir string
 	token   *byte
 	sc      *stores.StorageConfig
+}
+
+func (lmem *lockedMemRepo) SetDaemonPID(pid int) error {
+	if err := lmem.checkToken(); err != nil {
+		return err
+	}
+	lmem.mem.daemon.Lock()
+	lmem.mem.daemon.pid = pid
+	lmem.mem.daemon.Unlock()
+	return nil
 }
 
 func (lmem *lockedMemRepo) GetStorage() (stores.StorageConfig, error) {

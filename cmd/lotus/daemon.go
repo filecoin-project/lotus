@@ -11,6 +11,7 @@ import (
 	"os"
 	"runtime/pprof"
 	"strings"
+	"syscall"
 
 	"github.com/filecoin-project/lotus/chain/types"
 
@@ -221,7 +222,57 @@ var DaemonCmd = &cli.Command{
 		}
 
 		// TODO: properly parse api endpoint (or make it a URL)
-		return serveRPC(api, stop, endpoint)
+		return serveRPC(api, func(ctx context.Context) error {
+			err = setDaemonPID(r, os.Getpid())
+			if err != nil {
+				return xerrors.Errorf("setting daemon pid: %w", err)
+			}
+
+			return nil
+		}, func(ctx context.Context) error {
+			err = setDaemonPID(r, 0)
+			if err != nil {
+				return xerrors.Errorf("setting daemon pid to zero: %w", err)
+			}
+
+			return stop(ctx)
+		}, endpoint)
+	},
+	Subcommands: []*cli.Command{
+		daemonStopCmd,
+	},
+}
+
+var daemonStopCmd = &cli.Command{
+	Name:  "stop",
+	Usage: "Stop a running lotus daemon",
+	Flags: []cli.Flag{},
+	Action: func(cctx *cli.Context) error {
+		r, err := repo.NewFS(cctx.String("repo"))
+		if err != nil {
+			return xerrors.Errorf("opening fs repo: %w", err)
+		}
+
+		pid, err := r.DaemonPID()
+		if (err == nil && pid == 0) || (err != nil && err == repo.ErrNoDaemonPID) {
+			return xerrors.Errorf("cannot stop daemon (not running)")
+		} else if err != nil {
+			return xerrors.Errorf("getting daemon pid: %w", err)
+		}
+
+		_, err = os.FindProcess(pid)
+		if err != nil {
+			return xerrors.Errorf("failed to find daemon by its pid (is daemon running?): %w", err)
+		}
+
+		err = syscall.Kill(pid, syscall.SIGTERM)
+		if err != nil {
+			return xerrors.Errorf("failed to stop daemon with pid %d: %w", pid, err)
+		}
+
+		log.Infof("successfully shut down daemon with pid %d", pid)
+
+		return nil
 	},
 }
 
@@ -304,4 +355,15 @@ func ImportChain(r repo.Repo, fname string) error {
 	}
 
 	return nil
+}
+
+func setDaemonPID(r repo.Repo, pid int) error {
+	lr, err := r.Lock(repo.FullNode)
+	if err != nil {
+		return err
+	}
+	defer lr.Close()
+
+	log.Info("setting daemon pid to %d", pid)
+	return lr.SetDaemonPID(pid)
 }

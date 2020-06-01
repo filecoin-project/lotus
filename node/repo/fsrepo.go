@@ -8,7 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
+	"strconv"
 	"sync"
 
 	"github.com/ipfs/go-datastore"
@@ -29,6 +29,7 @@ import (
 
 const (
 	fsAPI           = "api"
+	fsDaemonPID     = "daemon.pid"
 	fsAPIToken      = "token"
 	fsConfig        = "config.toml"
 	fsStorageConfig = "storage.json"
@@ -156,49 +157,57 @@ func (fsr *FsRepo) initKeystore() error {
 	return os.Mkdir(kstorePath, 0700)
 }
 
+// DaemonPID returns the pid of the most recently-run daemon.
+func (fsr *FsRepo) DaemonPID() (int, error) {
+	data, err := fsr.readFromRepo(fsDaemonPID, ErrNoDaemonPID)
+	if err != nil {
+		return 0, err
+	}
+
+	pid, err := strconv.Atoi(string(data))
+	if err != nil {
+		return 0, xerrors.Errorf("failed to marshal from string '%s' to int", string(data), err)
+	}
+
+	return pid, nil
+}
+
 // APIEndpoint returns endpoint of API in this repo
 func (fsr *FsRepo) APIEndpoint() (multiaddr.Multiaddr, error) {
-	p := filepath.Join(fsr.path, fsAPI)
-
-	f, err := os.Open(p)
-	if os.IsNotExist(err) {
-		return nil, ErrNoAPIEndpoint
-	} else if err != nil {
-		return nil, err
-	}
-	defer f.Close() //nolint: errcheck // Read only op
-
-	data, err := ioutil.ReadAll(f)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to read %q: %w", p, err)
-	}
-	strma := string(data)
-	strma = strings.TrimSpace(strma)
-
-	apima, err := multiaddr.NewMultiaddr(strma)
+	data, err := fsr.readFromRepo(fsAPI, ErrNoAPIEndpoint)
 	if err != nil {
 		return nil, err
 	}
-	return apima, nil
+
+	maddr, err := multiaddr.NewMultiaddr(string(data))
+	if err != nil {
+		return nil, xerrors.Errorf("failed to marshal from string '%s' to multiaddr", string(data), err)
+	}
+
+	return maddr, nil
 }
 
 func (fsr *FsRepo) APIToken() ([]byte, error) {
-	p := filepath.Join(fsr.path, fsAPIToken)
+	return fsr.readFromRepo(fsAPIToken, ErrNoAPIToken)
+}
+
+func (fsr *FsRepo) readFromRepo(fname string, ifNotExist error) ([]byte, error) {
+	p := filepath.Join(fsr.path, fname)
 	f, err := os.Open(p)
 
 	if os.IsNotExist(err) {
-		return nil, ErrNoAPIEndpoint
+		return nil, ifNotExist
 	} else if err != nil {
 		return nil, err
 	}
-	defer f.Close() //nolint: errcheck // Read only op
+	defer f.Close() //nolint: errcheck
 
-	tb, err := ioutil.ReadAll(f)
+	data, err := ioutil.ReadAll(f)
 	if err != nil {
 		return nil, err
 	}
 
-	return bytes.TrimSpace(tb), nil
+	return bytes.TrimSpace(data), nil
 }
 
 // Lock acquires exclusive lock on this repo
@@ -232,6 +241,13 @@ type fsLockedRepo struct {
 	dsOnce sync.Once
 
 	storageLk sync.Mutex
+}
+
+func (fsr *fsLockedRepo) SetDaemonPID(pid int) error {
+	if err := fsr.stillValid(); err != nil {
+		return err
+	}
+	return ioutil.WriteFile(fsr.join(fsDaemonPID), []byte(fmt.Sprintf("%d", pid)), 0644)
 }
 
 func (fsr *fsLockedRepo) Path() string {

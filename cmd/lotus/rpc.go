@@ -22,13 +22,12 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/apistruct"
-	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/impl"
 )
 
 var log = logging.Logger("main")
 
-func serveRPC(a api.FullNode, stop node.StopFunc, addr multiaddr.Multiaddr) error {
+func serveRPC(a api.FullNode, beforeServerStart, afterServerStop func(context.Context) error, addr multiaddr.Multiaddr) error {
 	rpcServer := jsonrpc.NewServer()
 	rpcServer.Register("Filecoin", apistruct.PermissionedFullAPI(a))
 
@@ -68,11 +67,16 @@ func serveRPC(a api.FullNode, stop node.StopFunc, addr multiaddr.Multiaddr) erro
 		if err := srv.Shutdown(context.TODO()); err != nil {
 			log.Errorf("shutting down RPC server failed: %s", err)
 		}
-		if err := stop(context.TODO()); err != nil {
+		if err := afterServerStop(context.TODO()); err != nil {
 			log.Errorf("graceful shutting down failed: %s", err)
 		}
 	}()
 	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
+
+	err = beforeServerStart(context.TODO())
+	if err != nil {
+		return xerrors.Errorf("before server start func failed: %w", err)
+	}
 
 	return srv.Serve(manet.NetListener(lst))
 }

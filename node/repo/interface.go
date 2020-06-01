@@ -13,6 +13,7 @@ import (
 
 var (
 	ErrNoAPIEndpoint     = errors.New("API not running (no endpoint)")
+	ErrNoDaemonPID       = errors.New("daemon not running (no pid)")
 	ErrNoAPIToken        = errors.New("API token not set")
 	ErrRepoAlreadyLocked = errors.New("repo is already locked (lotus daemon already running)")
 	ErrClosedRepo        = errors.New("repo is no longer open")
@@ -24,6 +25,9 @@ type Repo interface {
 
 	// APIToken returns JWT API Token for use in operations that require auth
 	APIToken() ([]byte, error)
+
+	// DaemonPID returns the process id for the most recently-run daemon.
+	DaemonPID() (int, error)
 
 	// Lock locks the repo for exclusive use.
 	Lock(RepoType) (LockedRepo, error)
@@ -45,6 +49,10 @@ type LockedRepo interface {
 	// SetAPIEndpoint sets the endpoint of the current API
 	// so it can be read by API clients
 	SetAPIEndpoint(multiaddr.Multiaddr) error
+
+	// SetDaemonPID sets the daemon process id in the repo so that it can be
+	// read by the `daemon stop` command.
+	SetDaemonPID(int) error
 
 	// SetAPIToken sets JWT API Token for CLI
 	SetAPIToken([]byte) error
