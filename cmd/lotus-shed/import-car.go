@@ -42,7 +42,7 @@ var importCarCmd = &cli.Command{
 			return xerrors.Errorf("opening the car file: %w", err)
 		}
 
-		ds, err := lr.Datastore("/blocks")
+		ds, err := lr.Datastore("/chain")
 		if err != nil {
 			return err
 		}

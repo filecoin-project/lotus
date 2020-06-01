@@ -271,7 +271,7 @@ func ImportChain(r repo.Repo, fname string) error {
 	}
 	defer lr.Close() //nolint:errcheck
 
-	ds, err := lr.Datastore("/blocks")
+	ds, err := lr.Datastore("/chain")
 	if err != nil {
 		return err
 	}
