@@ -12,11 +12,11 @@ faucet="http://t01000.miner.interopnet.kittyhawk.wtf"
 
 PLEDGE_COUNT="${1:-20}"
 
-if [ -z "$BRANCH" ]; then 
+if [ -z "$BRANCH" ]; then
   BRANCH="interopnet"
 fi
 
-if [ -z "$BUILD" ]; then 
+if [ -z "$BUILD" ]; then
   BUILD="no"
 fi
 
@@ -65,7 +65,7 @@ cat > "${BASEDIR}/scripts/create_miner.bash" <<EOF
 set -x
 
 lotus wallet import ~/.genesis-sectors/pre-seal-t01000.key
-lotus-storage-miner init --genesis-miner --actor=t01000 --sector-size=2048 --pre-sealed-sectors=~/.genesis-sectors --pre-sealed-metadata=~/.genesis-sectors/pre-seal-t01000.json --nosync
+lotus-storage-miner init --genesis-miner --actor=t01000 --sector-size=2KiB --pre-sealed-sectors=~/.genesis-sectors --pre-sealed-metadata=~/.genesis-sectors/pre-seal-t01000.json --nosync
 EOF
 
 cat > "${BASEDIR}/scripts/pledge_sectors.bash" <<EOF

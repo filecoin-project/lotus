@@ -1,6 +1,6 @@
-# Lotus and Miner as a systemd service
+# Use Lotus with systemd
 
-Lotus is capable of running as a systemd service daemon. You can find installable service files for systemd in the [lotus repo](https://github.com/filecoin-project/lotus/tree/master/scripts) as files with `.service` extension. In order to install these service files, you can copy these `.service` files to the default systemd service path.
+Lotus is capable of running as a systemd service daemon. You can find installable service files for systemd in the [lotus repo scripts directory](https://github.com/filecoin-project/lotus/tree/master/scripts) as files with `.service` extension. In order to install these service files, you can copy these `.service` files to the default systemd service path.
 
 ## Installing via `make`
 

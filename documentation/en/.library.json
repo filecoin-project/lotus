@@ -57,6 +57,12 @@
           "value": null
         },
         {
+          "title": "Use Lotus with systemd",
+          "slug": "en+install-system-services",
+          "github": "en/install-system-services.md",
+          "value": null
+        },
+        {
           "title": "Setup Troubleshooting",
           "slug": "en+setup-troubleshooting",
           "github": "en/setup-troubleshooting.md",

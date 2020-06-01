@@ -187,7 +187,11 @@ func (m *Miner) mine(ctx context.Context) {
 				log.Errorf("failed to submit newly mined block: %s", err)
 			}
 		} else {
-			nextRound := time.Unix(int64(base.TipSet.MinTimestamp()+uint64(build.BlockDelay*base.NullRounds)), 0)
+			// Wait until the next epoch, plus the propagation delay, so a new tipset
+			// has enough time to form.
+			//
+			// See:  https://github.com/filecoin-project/lotus/issues/1845
+			nextRound := time.Unix(int64(base.TipSet.MinTimestamp()+uint64(build.BlockDelay*base.NullRounds))+int64(build.PropagationDelay), 0)
 
 			select {
 			case <-time.After(time.Until(nextRound)):

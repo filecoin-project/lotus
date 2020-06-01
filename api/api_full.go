@@ -148,6 +148,8 @@ type FullNode interface {
 	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (miner.MinerInfo, error)
 	StateMinerDeadlines(context.Context, address.Address, types.TipSetKey) (*miner.Deadlines, error)
 	StateMinerFaults(context.Context, address.Address, types.TipSetKey) (*abi.BitField, error)
+	// Returns all non-expired Faults that occur within lookback epochs of the given tipset
+	StateAllMinerFaults(ctx context.Context, lookback abi.ChainEpoch, ts types.TipSetKey) ([]*Fault, error)
 	StateMinerRecoveries(context.Context, address.Address, types.TipSetKey) (*abi.BitField, error)
 	StateMinerInitialPledgeCollateral(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (types.BigInt, error)
 	StateMinerAvailableBalance(context.Context, address.Address, types.TipSetKey) (types.BigInt, error)
@@ -454,3 +456,8 @@ const (
 	MsigApprove MsigProposeResponse = iota
 	MsigCancel
 )
+
+type Fault struct {
+	Miner address.Address
+	Epoch abi.ChainEpoch
+}

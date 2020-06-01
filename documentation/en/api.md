@@ -2,7 +2,7 @@
 
 Here is an early overview of how to make API calls.
 
-Implementation details for the **JSON-RPC** package are [here](https://github.com/filecoin-project/lotus/tree/master/lib/jsonrpc).
+Implementation details for the **JSON-RPC** package are [here](https://github.com/filecoin-project/go-jsonrpc).
 
 ## Overview: How do you modify the config.toml to change the API endpoint?
 
@@ -77,7 +77,7 @@ lotus-storage-miner auth create-token --perm admin
 
 ## What authorization level should I use?
 
-When viewing [api/struct.go](https://github.com/filecoin-project/lotus/blob/master/api/struct.go), you will encounter these types:
+When viewing [api/apistruct/struct.go](https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go), you will encounter these types:
 
 - `read` - Read node state, no private data.
 - `write` - Write to local store / chain, and `read` permissions.

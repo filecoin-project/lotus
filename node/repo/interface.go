@@ -2,6 +2,7 @@ package repo
 
 import (
 	"errors"
+
 	"github.com/filecoin-project/sector-storage/stores"
 
 	"github.com/ipfs/go-datastore"
@@ -13,7 +14,7 @@ import (
 var (
 	ErrNoAPIEndpoint     = errors.New("API not running (no endpoint)")
 	ErrNoAPIToken        = errors.New("API token not set")
-	ErrRepoAlreadyLocked = errors.New("repo is already locked")
+	ErrRepoAlreadyLocked = errors.New("repo is already locked (lotus daemon already running)")
 	ErrClosedRepo        = errors.New("repo is no longer open")
 )
 

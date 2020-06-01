@@ -116,6 +116,47 @@ func (a *StateAPI) StateMinerFaults(ctx context.Context, addr address.Address, t
 	return stmgr.GetMinerFaults(ctx, a.StateManager, ts, addr)
 }
 
+func (a *StateAPI) StateAllMinerFaults(ctx context.Context, lookback abi.ChainEpoch, endTsk types.TipSetKey) ([]*api.Fault, error) {
+	endTs, err := a.Chain.GetTipSetFromKey(endTsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading end tipset %s: %w", endTsk, err)
+	}
+
+	cutoff := endTs.Height() - lookback
+	miners, err := stmgr.ListMinerActors(ctx, a.StateManager, endTs)
+
+	if err != nil {
+		return nil, xerrors.Errorf("loading miners: %w", err)
+	}
+
+	var allFaults []*api.Fault
+
+	for _, m := range miners {
+		var mas miner.State
+		_, err := a.StateManager.LoadActorState(ctx, m, &mas, endTs)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to load miner actor state %s: %w", m, err)
+		}
+
+		err = mas.ForEachFaultEpoch(a.Chain.Store(ctx), func(faultStart abi.ChainEpoch, faults *abi.BitField) error {
+			if faultStart >= cutoff {
+				allFaults = append(allFaults, &api.Fault{
+					Miner: m,
+					Epoch: faultStart,
+				})
+				return nil
+			}
+			return nil
+		})
+
+		if err != nil {
+			return nil, xerrors.Errorf("failure when iterating over miner states: %w", err)
+		}
+	}
+
+	return allFaults, nil
+}
+
 func (a *StateAPI) StateMinerRecoveries(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.BitField, error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
