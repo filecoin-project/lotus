@@ -4,7 +4,7 @@ set -o xtrace
 
 export TRUST_PARAMS=1
 
-go run -tags=debug ./cmd/lotus-seed pre-seal --sector-size 2048 --num-sectors 2
+go run -tags=debug ./cmd/lotus-seed pre-seal --sector-size 2KiB --num-sectors 2
 go run -tags=debug ./cmd/lotus-seed genesis new localnet.json
 go run -tags=debug ./cmd/lotus-seed genesis add-miner localnet.json ~/.genesis-sectors/pre-seal-t01000.json
 go run -tags=debug ./cmd/lotus daemon --lotus-make-genesis=devel.gen --genesis-template=localnet.json --bootstrap=false

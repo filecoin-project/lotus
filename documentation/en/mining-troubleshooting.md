@@ -51,7 +51,7 @@ If you suspect that your GPU is not being used, first make sure it is properly c
 First, to watch GPU utilization run `nvtop` in one terminal, then in a separate terminal, run:
 
 ```sh
-lotus-bench --sector-size=2048
+lotus-bench --sector-size=2KiB
 ```
 
 This process uses a fair amount of GPU, and generally takes ~4 minutes to complete. If you do not see any activity in nvtop from lotus during the entire process, it is likely something is misconfigured with your GPU.
