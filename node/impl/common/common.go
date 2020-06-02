@@ -25,10 +25,10 @@ import (
 type CommonAPI struct {
 	fx.In
 
-	APISecret  *dtypes.APIAlg
-	Host       host.Host
-	Router     lp2p.BaseIpfsRouting
-	ShutdownCh dtypes.ShutdownChan
+	APISecret    *dtypes.APIAlg
+	Host         host.Host
+	Router       lp2p.BaseIpfsRouting
+	ShutdownChan dtypes.ShutdownChan
 }
 
 type jwtPayload struct {
@@ -117,7 +117,7 @@ func (a *CommonAPI) LogSetLevel(ctx context.Context, subsystem, level string) er
 }
 
 func (a *CommonAPI) Shutdown(ctx context.Context) error {
-	a.ShutdownCh <- struct{}{}
+	a.ShutdownChan <- struct{}{}
 	return nil
 }
 
