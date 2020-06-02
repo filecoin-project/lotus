@@ -63,8 +63,7 @@ var ErrRepoExists = xerrors.New("repo exists")
 
 // FsRepo is struct for repo, use NewFS to create
 type FsRepo struct {
-	path     string
-	repoType RepoType
+	path string
 }
 
 var _ Repo = &FsRepo{}

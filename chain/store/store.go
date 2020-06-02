@@ -387,7 +387,7 @@ func (cs *ChainStore) LoadTipSet(tsk types.TipSetKey) (*types.TipSet, error) {
 	return ts, nil
 }
 
-// returns true if 'a' is an ancestor of 'b'
+// IsAncestorOf returns true if 'a' is an ancestor of 'b'
 func (cs *ChainStore) IsAncestorOf(a, b *types.TipSet) (bool, error) {
 	if b.Height() <= a.Height() {
 		return false, nil
@@ -1154,7 +1154,6 @@ func (cr *chainRand) GetRandomness(ctx context.Context, pers crypto.DomainSepara
 func (cs *ChainStore) GetTipSetFromKey(tsk types.TipSetKey) (*types.TipSet, error) {
 	if tsk.IsEmpty() {
 		return cs.GetHeaviestTipSet(), nil
-	} else {
-		return cs.LoadTipSet(tsk)
 	}
+	return cs.LoadTipSet(tsk)
 }

@@ -68,7 +68,7 @@ func ToPublic(sigType crypto.SigType, pk []byte) ([]byte, error) {
 	return sv.ToPublic(pk)
 }
 
-func CheckBlockSignature(blk *types.BlockHeader, ctx context.Context, worker address.Address) error {
+func CheckBlockSignature(ctx context.Context, blk *types.BlockHeader, worker address.Address) error {
 	_, span := trace.StartSpan(ctx, "checkBlockSignature")
 	defer span.End()
 
@@ -103,7 +103,7 @@ type SigShim interface {
 
 var sigs map[crypto.SigType]SigShim
 
-// RegisterSig should be only used during init
+// RegisterSignature should be only used during init
 func RegisterSignature(typ crypto.SigType, vs SigShim) {
 	if sigs == nil {
 		sigs = make(map[crypto.SigType]SigShim)

@@ -32,7 +32,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 )
 
-type invoker struct {
+type Invoker struct {
 	builtInCode  map[cid.Cid]nativeCode
 	builtInState map[cid.Cid]reflect.Type
 }
@@ -40,8 +40,8 @@ type invoker struct {
 type invokeFunc func(rt runtime.Runtime, params []byte) ([]byte, aerrors.ActorError)
 type nativeCode []invokeFunc
 
-func NewInvoker() *invoker {
-	inv := &invoker{
+func NewInvoker() *Invoker {
+	inv := &Invoker{
 		builtInCode:  make(map[cid.Cid]nativeCode),
 		builtInState: make(map[cid.Cid]reflect.Type),
 	}
@@ -62,7 +62,7 @@ func NewInvoker() *invoker {
 	return inv
 }
 
-func (inv *invoker) Invoke(codeCid cid.Cid, rt runtime.Runtime, method abi.MethodNum, params []byte) ([]byte, aerrors.ActorError) {
+func (inv *Invoker) Invoke(codeCid cid.Cid, rt runtime.Runtime, method abi.MethodNum, params []byte) ([]byte, aerrors.ActorError) {
 
 	code, ok := inv.builtInCode[codeCid]
 	if !ok {
@@ -76,7 +76,7 @@ func (inv *invoker) Invoke(codeCid cid.Cid, rt runtime.Runtime, method abi.Metho
 
 }
 
-func (inv *invoker) Register(c cid.Cid, instance Invokee, state interface{}) {
+func (inv *Invoker) Register(c cid.Cid, instance Invokee, state interface{}) {
 	code, err := inv.transform(instance)
 	if err != nil {
 		panic(xerrors.Errorf("%s: %w", string(c.Hash()), err))
@@ -89,9 +89,7 @@ type Invokee interface {
 	Exports() []interface{}
 }
 
-var tAError = reflect.TypeOf((*aerrors.ActorError)(nil)).Elem()
-
-func (*invoker) transform(instance Invokee) (nativeCode, error) {
+func (*Invoker) transform(instance Invokee) (nativeCode, error) {
 	itype := reflect.TypeOf(instance)
 	exports := instance.Exports()
 	for i, m := range exports {

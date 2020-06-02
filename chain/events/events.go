@@ -19,7 +19,7 @@ import (
 
 var log = logging.Logger("events")
 
-// `curH`-`ts.Height` = `confidence`
+// HeightHandler `curH`-`ts.Height` = `confidence`
 type HeightHandler func(ctx context.Context, ts *types.TipSet, curH abi.ChainEpoch) error
 type RevertHandler func(ctx context.Context, ts *types.TipSet) error
 
@@ -31,7 +31,7 @@ type heightHandler struct {
 	revert RevertHandler
 }
 
-type eventApi interface {
+type eventAPI interface {
 	ChainNotify(context.Context) (<-chan []*api.HeadChange, error)
 	ChainGetBlockMessages(context.Context, cid.Cid) (*api.BlockMessages, error)
 	ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error)
@@ -42,7 +42,7 @@ type eventApi interface {
 }
 
 type Events struct {
-	api eventApi
+	api eventAPI
 
 	tsc *tipSetCache
 	lk  sync.Mutex
@@ -54,7 +54,7 @@ type Events struct {
 	calledEvents
 }
 
-func NewEvents(ctx context.Context, api eventApi) *Events {
+func NewEvents(ctx context.Context, api eventAPI) *Events {
 	gcConfidence := 2 * build.ForkLengthThreshold
 
 	tsc := newTSCache(gcConfidence, api.ChainGetTipSetByHeight)
@@ -82,9 +82,9 @@ func NewEvents(ctx context.Context, api eventApi) *Events {
 
 			confQueue:   map[triggerH]map[msgH][]*queuedEvent{},
 			revertQueue: map[msgH][]triggerH{},
-			triggers:    map[triggerId]*callHandler{},
-			matchers:    map[triggerId][]MatchFunc{},
-			timeouts:    map[abi.ChainEpoch]map[triggerId]int{},
+			triggers:    map[triggerID]*callHandler{},
+			matchers:    map[triggerID][]MatchFunc{},
+			timeouts:    map[abi.ChainEpoch]map[triggerID]int{},
 		},
 	}
 

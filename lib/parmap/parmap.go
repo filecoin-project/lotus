@@ -5,6 +5,7 @@ import (
 	"sync"
 )
 
+// MapArr transforms map into slice of map values
 func MapArr(in interface{}) interface{} {
 	rin := reflect.ValueOf(in)
 	rout := reflect.MakeSlice(reflect.SliceOf(rin.Type().Elem()), rin.Len(), rin.Len())
@@ -19,6 +20,7 @@ func MapArr(in interface{}) interface{} {
 	return rout.Interface()
 }
 
+// KMapArr transforms map into slice of map keys
 func KMapArr(in interface{}) interface{} {
 	rin := reflect.ValueOf(in)
 	rout := reflect.MakeSlice(reflect.SliceOf(rin.Type().Key()), rin.Len(), rin.Len())
@@ -33,7 +35,8 @@ func KMapArr(in interface{}) interface{} {
 	return rout.Interface()
 }
 
-// map[k]v => []func() (k, v)
+// KMapArr transforms map into slice of functions returning (key, val) pairs.
+// map[A]B => []func()(A, B)
 func KVMapArr(in interface{}) interface{} {
 	rin := reflect.ValueOf(in)
 

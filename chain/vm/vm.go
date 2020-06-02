@@ -131,7 +131,7 @@ type VM struct {
 	cst         *cbor.BasicIpldStore
 	buf         *bufbstore.BufferedBS
 	blockHeight abi.ChainEpoch
-	inv         *invoker
+	inv         *Invoker
 	rand        Rand
 
 	Syscalls runtime.Syscalls
@@ -454,7 +454,7 @@ func (vm *VM) Flush(ctx context.Context) (cid.Cid, error) {
 	return root, nil
 }
 
-// vm.MutateState(idAddr, func(cst cbor.IpldStore, st *ActorStateType) error {...})
+// MutateState usage: MutateState(ctx, idAddr, func(cst cbor.IpldStore, st *ActorStateType) error {...})
 func (vm *VM) MutateState(ctx context.Context, addr address.Address, fn interface{}) error {
 	act, err := vm.cstate.GetActor(addr)
 	if err != nil {
@@ -591,7 +591,7 @@ func (vm *VM) Invoke(act *types.Actor, rt *Runtime, method abi.MethodNum, params
 	return ret, nil
 }
 
-func (vm *VM) SetInvoker(i *invoker) {
+func (vm *VM) SetInvoker(i *Invoker) {
 	vm.inv = i
 }
 
@@ -607,17 +607,17 @@ func (vm *VM) transfer(from, to address.Address, amt types.BigInt) aerrors.Actor
 		return nil
 	}
 
-	fromId, err := vm.cstate.LookupID(from)
+	fromID, err := vm.cstate.LookupID(from)
 	if err != nil {
 		return aerrors.Fatalf("transfer failed when resolving sender address: %s", err)
 	}
 
-	toId, err := vm.cstate.LookupID(to)
+	toID, err := vm.cstate.LookupID(to)
 	if err != nil {
 		return aerrors.Fatalf("transfer failed when resolving receiver address: %s", err)
 	}
 
-	if fromId == toId {
+	if fromID == toID {
 		return nil
 	}
 
@@ -625,12 +625,12 @@ func (vm *VM) transfer(from, to address.Address, amt types.BigInt) aerrors.Actor
 		return aerrors.Newf(exitcode.SysErrForbidden, "attempted to transfer negative value: %s", amt)
 	}
 
-	f, err := vm.cstate.GetActor(fromId)
+	f, err := vm.cstate.GetActor(fromID)
 	if err != nil {
 		return aerrors.Fatalf("transfer failed when retrieving sender actor: %s", err)
 	}
 
-	t, err := vm.cstate.GetActor(toId)
+	t, err := vm.cstate.GetActor(toID)
 	if err != nil {
 		return aerrors.Fatalf("transfer failed when retrieving receiver actor: %s", err)
 	}
@@ -640,11 +640,11 @@ func (vm *VM) transfer(from, to address.Address, amt types.BigInt) aerrors.Actor
 	}
 	depositFunds(t, amt)
 
-	if err := vm.cstate.SetActor(fromId, f); err != nil {
+	if err := vm.cstate.SetActor(fromID, f); err != nil {
 		return aerrors.Fatalf("transfer failed when setting receiver actor: %s", err)
 	}
 
-	if err := vm.cstate.SetActor(toId, t); err != nil {
+	if err := vm.cstate.SetActor(toID, t); err != nil {
 		return aerrors.Fatalf("transfer failed when setting sender actor: %s", err)
 	}
 

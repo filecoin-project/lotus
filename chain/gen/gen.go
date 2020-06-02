@@ -431,7 +431,7 @@ func (cg *ChainGen) makeBlock(parents *types.TipSet, m address.Address, vrfticke
 	return fblk, err
 }
 
-// This function is awkward. It's used to deal with messages made when
+// ResyncBankerNonce is used for dealing with messages made when
 // simulating forks
 func (cg *ChainGen) ResyncBankerNonce(ts *types.TipSet) error {
 	act, err := cg.sm.GetActor(cg.banker, ts)
@@ -536,13 +536,6 @@ func (wpp *wppProvider) ComputeProof(context.Context, []abi.SectorInfo, abi.PoSt
 	return []abi.PoStProof{{
 		ProofBytes: []byte("valid proof"),
 	}}, nil
-}
-
-type ProofInput struct {
-	sectors           []abi.SectorInfo
-	hvrf              []byte
-	challengedSectors []uint64
-	vrfout            []byte
 }
 
 func IsRoundWinner(ctx context.Context, ts *types.TipSet, round abi.ChainEpoch,

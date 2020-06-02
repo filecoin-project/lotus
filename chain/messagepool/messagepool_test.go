@@ -16,7 +16,7 @@ import (
 	"github.com/ipfs/go-datastore"
 )
 
-type testMpoolApi struct {
+type testMpoolAPI struct {
 	cb func(rev, app []*types.TipSet) error
 
 	bmsgs      map[cid.Cid][]*types.SignedMessage
@@ -25,68 +25,68 @@ type testMpoolApi struct {
 	tipsets []*types.TipSet
 }
 
-func newTestMpoolApi() *testMpoolApi {
-	return &testMpoolApi{
+func newTestMpoolApi() *testMpoolAPI {
+	return &testMpoolAPI{
 		bmsgs:      make(map[cid.Cid][]*types.SignedMessage),
 		statenonce: make(map[address.Address]uint64),
 	}
 }
 
-func (tma *testMpoolApi) applyBlock(t *testing.T, b *types.BlockHeader) {
+func (tma *testMpoolAPI) applyBlock(t *testing.T, b *types.BlockHeader) {
 	t.Helper()
 	if err := tma.cb(nil, []*types.TipSet{mock.TipSet(b)}); err != nil {
 		t.Fatal(err)
 	}
 }
 
-func (tma *testMpoolApi) revertBlock(t *testing.T, b *types.BlockHeader) {
+func (tma *testMpoolAPI) revertBlock(t *testing.T, b *types.BlockHeader) {
 	t.Helper()
 	if err := tma.cb([]*types.TipSet{mock.TipSet(b)}, nil); err != nil {
 		t.Fatal(err)
 	}
 }
 
-func (tma *testMpoolApi) setStateNonce(addr address.Address, v uint64) {
+func (tma *testMpoolAPI) setStateNonce(addr address.Address, v uint64) {
 	tma.statenonce[addr] = v
 }
 
-func (tma *testMpoolApi) setBlockMessages(h *types.BlockHeader, msgs ...*types.SignedMessage) {
+func (tma *testMpoolAPI) setBlockMessages(h *types.BlockHeader, msgs ...*types.SignedMessage) {
 	tma.bmsgs[h.Cid()] = msgs
 	tma.tipsets = append(tma.tipsets, mock.TipSet(h))
 }
 
-func (tma *testMpoolApi) SubscribeHeadChanges(cb func(rev, app []*types.TipSet) error) *types.TipSet {
+func (tma *testMpoolAPI) SubscribeHeadChanges(cb func(rev, app []*types.TipSet) error) *types.TipSet {
 	tma.cb = cb
 	return nil
 }
 
-func (tma *testMpoolApi) PutMessage(m types.ChainMsg) (cid.Cid, error) {
+func (tma *testMpoolAPI) PutMessage(m types.ChainMsg) (cid.Cid, error) {
 	return cid.Undef, nil
 }
 
-func (tma *testMpoolApi) PubSubPublish(string, []byte) error {
+func (tma *testMpoolAPI) PubSubPublish(string, []byte) error {
 	return nil
 }
 
-func (tma *testMpoolApi) StateGetActor(addr address.Address, ts *types.TipSet) (*types.Actor, error) {
+func (tma *testMpoolAPI) StateGetActor(addr address.Address, ts *types.TipSet) (*types.Actor, error) {
 	return &types.Actor{
 		Nonce:   tma.statenonce[addr],
 		Balance: types.NewInt(90000000),
 	}, nil
 }
 
-func (tma *testMpoolApi) StateAccountKey(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
+func (tma *testMpoolAPI) StateAccountKey(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
 	if addr.Protocol() != address.BLS && addr.Protocol() != address.SECP256K1 {
 		return address.Undef, fmt.Errorf("given address was not a key addr")
 	}
 	return addr, nil
 }
 
-func (tma *testMpoolApi) MessagesForBlock(h *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error) {
+func (tma *testMpoolAPI) MessagesForBlock(h *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error) {
 	return nil, tma.bmsgs[h.Cid()], nil
 }
 
-func (tma *testMpoolApi) MessagesForTipset(ts *types.TipSet) ([]types.ChainMsg, error) {
+func (tma *testMpoolAPI) MessagesForTipset(ts *types.TipSet) ([]types.ChainMsg, error) {
 	if len(ts.Blocks()) != 1 {
 		panic("cant deal with multiblock tipsets in this test")
 	}
@@ -108,7 +108,7 @@ func (tma *testMpoolApi) MessagesForTipset(ts *types.TipSet) ([]types.ChainMsg, 
 	return out, nil
 }
 
-func (tma *testMpoolApi) LoadTipSet(tsk types.TipSetKey) (*types.TipSet, error) {
+func (tma *testMpoolAPI) LoadTipSet(tsk types.TipSetKey) (*types.TipSet, error) {
 	for _, ts := range tma.tipsets {
 		if types.CidArrsEqual(tsk.Cids(), ts.Cids()) {
 			return ts, nil
