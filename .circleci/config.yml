@@ -259,7 +259,7 @@ jobs:
         default: golang
       golangci-lint-version:
         type: string
-        default: 1.23.8
+        default: 1.27.0
       concurrency:
         type: string
         default: '2'
@@ -285,7 +285,7 @@ jobs:
       - run:
           name: Lint
           command: |
-            $HOME/.local/bin/golangci-lint run -v \
+            $HOME/.local/bin/golangci-lint run -v --timeout 2m \
               --concurrency << parameters.concurrency >> << parameters.args >>
   lint-changes:
     <<: *lint
