@@ -1,6 +1,6 @@
 version: 2.1
 orbs:
-  go: gotest/tools@0.0.9
+  go: gotest/tools@0.0.13
 
 executors:
   golang:
@@ -79,7 +79,6 @@ jobs:
     steps:
       - install-deps
       - prepare
-      - go/mod-download
       - go/mod-tidy-check
 
   build-all:
@@ -90,9 +89,6 @@ jobs:
       - go/mod-download
       - run: sudo apt-get update
       - run: sudo apt-get install npm
-      - restore_cache:
-          name: restore go mod cache
-          key: v1-go-deps-{{ arch }}-{{ checksum "/home/circleci/project/go.mod" }}
       - run:
           command: make buildall
       - store_artifacts:
@@ -112,10 +108,6 @@ jobs:
     steps:
       - install-deps
       - prepare
-      - go/mod-download
-      - restore_cache:
-          name: restore go mod cache
-          key: v2-go-deps-{{ arch }}-{{ checksum "/home/circleci/project/go.mod" }}
       - run:
           command: make debug
 
@@ -160,9 +152,6 @@ jobs:
       - install-deps
       - prepare
       - go/mod-download
-      - restore_cache:
-          name: restore go mod cache
-          key: v2-go-deps-{{ arch }}-{{ checksum "/home/circleci/project/go.mod" }}
       - run:
           command: make deps lotus
           no_output_timeout: 30m
@@ -193,13 +182,6 @@ jobs:
                 shell: /bin/bash -eo pipefail
                 command: |
                   bash <(curl -s https://codecov.io/bash)
-      - save_cache:
-          name: save go mod cache
-          key: v1-go-deps-{{ arch }}-{{ checksum "/home/circleci/project/go.mod" }}
-          paths:
-            - "~/go/pkg"
-            - "~/go/src/github.com"
-            - "~/go/src/golang.org"
 
   test-short:
     <<: *test
@@ -234,7 +216,7 @@ jobs:
             curl --location https://github.com/stedolan/jq/releases/download/jq-1.6/jq-osx-amd64 --output /usr/local/bin/jq
             chmod +x /usr/local/bin/jq
       - restore_cache:
-          name: restore go mod and cargo cache
+          name: restore cargo cache
           key: v3-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/lotus/go.sum" }}
       - install-deps
       - go/mod-download
