@@ -191,7 +191,7 @@ var DaemonCmd = &cli.Command{
 			genesis = node.Override(new(modules.Genesis), testing.MakeGenesis(cctx.String(makeGenFlag), cctx.String(preTemplateFlag)))
 		}
 
-		shutdownCh := make(chan struct{})
+		shutdownChan := make(chan struct{})
 
 		var api api.FullNode
 
@@ -199,7 +199,7 @@ var DaemonCmd = &cli.Command{
 			node.FullAPI(&api),
 
 			node.Override(new(dtypes.Bootstrapper), isBootstrapper),
-			node.Override(new(dtypes.ShutdownCh), shutdownCh),
+			node.Override(new(dtypes.ShutdownCh), shutdownChan),
 			node.Online(),
 			node.Repo(r),
 
@@ -245,7 +245,7 @@ var DaemonCmd = &cli.Command{
 		}
 
 		// TODO: properly parse api endpoint (or make it a URL)
-		return serveRPC(api, stop, endpoint, shutdownCh)
+		return serveRPC(api, stop, endpoint, shutdownChan)
 	},
 	Subcommands: []*cli.Command{
 		daemonStopCmd,
