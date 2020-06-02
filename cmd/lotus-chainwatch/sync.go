@@ -146,7 +146,7 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 			}
 
 			if len(bh.Parents) == 0 { // genesis case
-				ts, err := types.NewTipSet([]*types.BlockHeader{bh})
+				ts, _ := types.NewTipSet([]*types.BlockHeader{bh})
 				aadrs, err := api.StateListActors(ctx, ts.Key())
 				if err != nil {
 					log.Error(err)

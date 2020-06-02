@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/lotus/chain/types"
 	"io"
 	"io/ioutil"
 	"os"
@@ -11,6 +10,8 @@ import (
 	"path/filepath"
 	"sync/atomic"
 	"time"
+
+	"github.com/filecoin-project/lotus/chain/types"
 
 	"golang.org/x/xerrors"
 
@@ -122,7 +123,7 @@ func (api *api) Spawn() (nodeInfo, error) {
 	info := nodeInfo{
 		Repo:    dir,
 		ID:      id,
-		ApiPort: 2500 + id,
+		APIPort: 2500 + id,
 		State:   NodeRunning,
 	}
 
@@ -198,7 +199,7 @@ func (api *api) SpawnStorage(fullNodeRepo string) (nodeInfo, error) {
 	info := nodeInfo{
 		Repo:    dir,
 		ID:      id,
-		ApiPort: 2500 + id,
+		APIPort: 2500 + id,
 		State:   NodeRunning,
 
 		FullNode: fullNodeRepo,

@@ -184,7 +184,7 @@ func (ss *syscallShim) VerifyBlockSig(blk *types.BlockHeader) error {
 		return err
 	}
 
-	if err := sigs.CheckBlockSignature(blk, ss.ctx, waddr); err != nil {
+	if err := sigs.CheckBlockSignature(ss.ctx, blk, waddr); err != nil {
 		return err
 	}
 
@@ -200,20 +200,6 @@ func (ss *syscallShim) VerifyPoSt(proof abi.WindowPoStVerifyInfo) error {
 		return fmt.Errorf("proof was invalid")
 	}
 	return nil
-}
-
-func cidToCommD(c cid.Cid) [32]byte {
-	b := c.Bytes()
-	var out [32]byte
-	copy(out[:], b[len(b)-32:])
-	return out
-}
-
-func cidToCommR(c cid.Cid) [32]byte {
-	b := c.Bytes()
-	var out [32]byte
-	copy(out[:], b[len(b)-32:])
-	return out
 }
 
 func (ss *syscallShim) VerifySeal(info abi.SealVerifyInfo) error {

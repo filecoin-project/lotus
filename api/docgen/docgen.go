@@ -193,8 +193,7 @@ func (v *Visitor) Visit(node ast.Node) ast.Visitor {
 
 const noComment = "There are not yet any comments for this method."
 
-func parseApiASTInfo() (map[string]string, map[string]string) {
-
+func parseApiASTInfo() (map[string]string, map[string]string) { //nolint:golint
 	fset := token.NewFileSet()
 	pkgs, err := parser.ParseDir(fset, "./api", nil, parser.AllErrors|parser.ParseComments)
 	if err != nil {

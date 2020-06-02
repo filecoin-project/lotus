@@ -326,7 +326,7 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 		blkmsgs = append(blkmsgs, bm)
 	}
 
-	return sm.ApplyBlocks(ctx, pstate, blkmsgs, abi.ChainEpoch(blks[0].Height), r, cb)
+	return sm.ApplyBlocks(ctx, pstate, blkmsgs, blks[0].Height, r, cb)
 }
 
 func (sm *StateManager) parentState(ts *types.TipSet) cid.Cid {
@@ -405,8 +405,8 @@ func (sm *StateManager) LoadActorStateRaw(ctx context.Context, a address.Address
 	return act, nil
 }
 
-// Similar to `vm.ResolveToKeyAddr` but does not allow `Actor` type of addresses. Uses the `TipSet` `ts`
-// to generate the VM state.
+// ResolveToKeyAddress is similar to `vm.ResolveToKeyAddr` but does not allow `Actor` type of addresses.
+// Uses the `TipSet` `ts` to generate the VM state.
 func (sm *StateManager) ResolveToKeyAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
 	switch addr.Protocol() {
 	case address.BLS, address.SECP256K1:

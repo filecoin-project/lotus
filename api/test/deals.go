@@ -35,7 +35,7 @@ func init() {
 }
 
 func TestDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, carExport bool) {
-	os.Setenv("BELLMAN_NO_GPU", "1")
+	_ = os.Setenv("BELLMAN_NO_GPU", "1")
 
 	ctx := context.Background()
 	n, sn := b(t, 1, oneMiner)
@@ -72,7 +72,7 @@ func TestDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, carExport
 }
 
 func TestDoubleDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration) {
-	os.Setenv("BELLMAN_NO_GPU", "1")
+	_ = os.Setenv("BELLMAN_NO_GPU", "1")
 
 	ctx := context.Background()
 	n, sn := b(t, 1, oneMiner)

@@ -46,7 +46,7 @@ type StorageMinerAPI struct {
 func (sm *StorageMinerAPI) ServeRemote(w http.ResponseWriter, r *http.Request) {
 	if !auth.HasPerm(r.Context(), nil, apistruct.PermAdmin) {
 		w.WriteHeader(401)
-		json.NewEncoder(w).Encode(struct{ Error string }{"unauthorized: missing write permission"})
+		_ = json.NewEncoder(w).Encode(struct{ Error string }{"unauthorized: missing write permission"})
 		return
 	}
 
@@ -185,7 +185,7 @@ func (sm *StorageMinerAPI) MarketImportDealData(ctx context.Context, propCid cid
 	if err != nil {
 		return xerrors.Errorf("failed to open file: %w", err)
 	}
-	defer fi.Close()
+	defer fi.Close() //nolint:errcheck
 
 	return sm.StorageProvider.ImportDataForDeal(ctx, propCid, fi)
 }
@@ -211,7 +211,7 @@ func (sm *StorageMinerAPI) DealsImportData(ctx context.Context, deal cid.Cid, fn
 	if err != nil {
 		return xerrors.Errorf("failed to open given file: %w", err)
 	}
-	defer fi.Close()
+	defer fi.Close() //nolint:errcheck
 
 	return sm.StorageProvider.ImportDataForDeal(ctx, deal, fi)
 }

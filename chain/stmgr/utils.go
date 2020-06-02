@@ -286,7 +286,7 @@ func GetMinerRecoveries(ctx context.Context, sm *StateManager, ts *types.TipSet,
 	return mas.Recoveries, nil
 }
 
-func GetStorageDeal(ctx context.Context, sm *StateManager, dealId abi.DealID, ts *types.TipSet) (*api.MarketDeal, error) {
+func GetStorageDeal(ctx context.Context, sm *StateManager, dealID abi.DealID, ts *types.TipSet) (*api.MarketDeal, error) {
 	var state market.State
 	if _, err := sm.LoadActorState(ctx, builtin.StorageMarketActorAddr, &state, ts); err != nil {
 		return nil, err
@@ -298,7 +298,7 @@ func GetStorageDeal(ctx context.Context, sm *StateManager, dealId abi.DealID, ts
 	}
 
 	var dp market.DealProposal
-	if err := da.Get(ctx, uint64(dealId), &dp); err != nil {
+	if err := da.Get(ctx, uint64(dealID), &dp); err != nil {
 		return nil, err
 	}
 
@@ -307,7 +307,7 @@ func GetStorageDeal(ctx context.Context, sm *StateManager, dealId abi.DealID, ts
 		return nil, err
 	}
 
-	st, found, err := sa.Get(dealId)
+	st, found, err := sa.Get(dealID)
 	if err != nil {
 		return nil, err
 	}

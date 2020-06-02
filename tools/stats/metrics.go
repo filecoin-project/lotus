@@ -38,8 +38,7 @@ func (pl *PointList) Points() []models.Point {
 }
 
 type InfluxWriteQueue struct {
-	influx client.Client
-	ch     chan client.BatchPoints
+	ch chan client.BatchPoints
 }
 
 func NewInfluxWriteQueue(ctx context.Context, influx client.Client) *InfluxWriteQueue {

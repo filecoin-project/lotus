@@ -61,9 +61,9 @@ func TestTipSetKey(t *testing.T) {
 
 	t.Run("JSON", func(t *testing.T) {
 		k0 := NewTipSetKey()
-		verifyJson(t, "[]", k0)
+		verifyJSON(t, "[]", k0)
 		k3 := NewTipSetKey(c1, c2, c3)
-		verifyJson(t, `[`+
+		verifyJSON(t, `[`+
 			`{"/":"bafy2bzacecesrkxghscnq7vatble2hqdvwat6ed23vdu4vvo3uuggsoaya7ki"},`+
 			`{"/":"bafy2bzacebxfyh2fzoxrt6kcgc5dkaodpcstgwxxdizrww225vrhsizsfcg4g"},`+
 			`{"/":"bafy2bzacedwviarjtjraqakob5pslltmuo5n3xev3nt5zylezofkbbv5jclyu"}`+
@@ -71,7 +71,7 @@ func TestTipSetKey(t *testing.T) {
 	})
 }
 
-func verifyJson(t *testing.T, expected string, k TipSetKey) {
+func verifyJSON(t *testing.T, expected string, k TipSetKey) {
 	bytes, err := json.Marshal(k)
 	require.NoError(t, err)
 	assert.Equal(t, expected, string(bytes))

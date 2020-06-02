@@ -15,12 +15,12 @@ type heightEvents struct {
 	tsc          *tipSetCache
 	gcConfidence abi.ChainEpoch
 
-	ctr triggerId
+	ctr triggerID
 
-	heightTriggers map[triggerId]*heightHandler
+	heightTriggers map[triggerID]*heightHandler
 
-	htTriggerHeights map[triggerH][]triggerId
-	htHeights        map[msgH][]triggerId
+	htTriggerHeights map[triggerH][]triggerID
+	htHeights        map[msgH][]triggerID
 
 	ctx context.Context
 }

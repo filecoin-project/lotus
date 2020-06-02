@@ -526,7 +526,7 @@ func blockSanityChecks(h *types.BlockHeader) error {
 	return nil
 }
 
-// Should match up with 'Semantical Validation' in validation.md in the spec
+// ValidateBlock should match up with 'Semantical Validation' in validation.md in the spec
 func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) error {
 	ctx, span := trace.StartSpan(ctx, "validateBlock")
 	defer span.End()
@@ -665,7 +665,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	})
 
 	blockSigCheck := async.Err(func() error {
-		if err := sigs.CheckBlockSignature(h, ctx, waddr); err != nil {
+		if err := sigs.CheckBlockSignature(ctx, h, waddr); err != nil {
 			return xerrors.Errorf("check block signature failed: %w", err)
 		}
 		return nil

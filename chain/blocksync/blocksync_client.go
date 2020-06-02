@@ -561,26 +561,30 @@ func (bpt *bsPeerTracker) logSuccess(p peer.ID, dur time.Duration) {
 	bpt.lk.Lock()
 	defer bpt.lk.Unlock()
 
-	if pi, ok := bpt.peers[p]; !ok {
+	var pi *peerStats
+	var ok bool
+	if pi, ok = bpt.peers[p]; !ok {
 		log.Warnw("log success called on peer not in tracker", "peerid", p.String())
 		return
-	} else {
-		pi.successes++
-
-		logTime(pi, dur)
 	}
+
+	pi.successes++
+	logTime(pi, dur)
 }
 
 func (bpt *bsPeerTracker) logFailure(p peer.ID, dur time.Duration) {
 	bpt.lk.Lock()
 	defer bpt.lk.Unlock()
-	if pi, ok := bpt.peers[p]; !ok {
+
+	var pi *peerStats
+	var ok bool
+	if pi, ok = bpt.peers[p]; !ok {
 		log.Warn("log failure called on peer not in tracker", "peerid", p.String())
 		return
-	} else {
-		pi.failures++
-		logTime(pi, dur)
 	}
+
+	pi.failures++
+	logTime(pi, dur)
 }
 
 func (bpt *bsPeerTracker) removePeer(p peer.ID) {

@@ -20,7 +20,13 @@ var dotCmd = &cli.Command{
 		}
 
 		minH, err := strconv.ParseInt(cctx.Args().Get(0), 10, 32)
+		if err != nil {
+			return err
+		}
 		tosee, err := strconv.ParseInt(cctx.Args().Get(1), 10, 32)
+		if err != nil {
+			return err
+		}
 		maxH := minH + tosee
 
 		res, err := st.db.Query(`select block, parent, b.miner, b.height, p.height from block_parents

@@ -17,7 +17,7 @@ import (
 var log = logging.Logger("chainwatch")
 
 func main() {
-	logging.SetLogLevel("*", "INFO")
+	_ = logging.SetLogLevel("*", "INFO")
 
 	log.Info("Starting chainwatch")
 

@@ -37,6 +37,10 @@ issues:
     - path: build/params_.*\.go
       linters:
         - golint
+          
+    - path: api/apistruct/struct.go
+      linters:
+        - golint
 
     - path: .*_test.go
       linters:
