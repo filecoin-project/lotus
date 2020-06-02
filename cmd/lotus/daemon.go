@@ -44,6 +44,15 @@ const (
 	preTemplateFlag = "genesis-template"
 )
 
+var daemonStopCmd = &cli.Command{
+	Name:  "stop",
+	Usage: "Stop a running lotus daemon",
+	Flags: []cli.Flag{},
+	Action: func(cctx *cli.Context) error {
+		panic("wombat attack")
+	},
+}
+
 // DaemonCmd is the `go-lotus daemon` command
 var DaemonCmd = &cli.Command{
 	Name:  "daemon",
@@ -222,6 +231,9 @@ var DaemonCmd = &cli.Command{
 
 		// TODO: properly parse api endpoint (or make it a URL)
 		return serveRPC(api, stop, endpoint)
+	},
+	Subcommands: []*cli.Command{
+		daemonStopCmd,
 	},
 }
 
