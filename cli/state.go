@@ -1082,12 +1082,15 @@ func printInternalExecutionsHtml(trace []*types.ExecutionResult, getCode func(ad
 			ret = `, Return</div><div><pre class="ret">` + ret + `</pre></div>`
 		}
 
+		slow := im.Duration > 10*time.Millisecond
+		veryslow := im.Duration > 50*time.Millisecond
+
 		fmt.Printf(`<div class="exec">
 <div><h4 class="call">%s:%s</h4></div>
 <div><b>%s</b> -&gt; <b>%s</b> (%s FIL), M%d</div>
 %s
-<div><span class="exit%d">Exit: <b>%d</b></span>%s
-`, codeStr(toCode), methods[toCode][im.Msg.Method].name, im.Msg.From, im.Msg.To, types.FIL(im.Msg.Value), im.Msg.Method, params, im.MsgRct.ExitCode, im.MsgRct.ExitCode, ret)
+<div><span class="slow-%t-%t">Took %s</span>, <span class="exit%d">Exit: <b>%d</b></span>%s
+`, codeStr(toCode), methods[toCode][im.Msg.Method].name, im.Msg.From, im.Msg.To, types.FIL(im.Msg.Value), im.Msg.Method, params, slow, veryslow, im.Duration, im.MsgRct.ExitCode, im.MsgRct.ExitCode, ret)
 		if im.MsgRct.ExitCode != 0 {
 			fmt.Printf(`<div class="error">Error: <pre>%s</pre></div>`, im.Error)
 		}
