@@ -24,6 +24,8 @@ type ErrExpiredDeals struct{ error }
 
 type ErrBadCommD struct{ error }
 type ErrExpiredTicket struct{ error }
+type ErrBadTicket struct{ error }
+type ErrPrecommitOnChain struct{ error }
 
 type ErrBadSeed struct{ error }
 type ErrInvalidProof struct{ error }
@@ -80,6 +82,18 @@ func checkPrecommit(ctx context.Context, maddr address.Address, si SectorInfo, t
 
 	if int64(height)-int64(si.TicketEpoch+SealRandomnessLookback) > SealRandomnessLookbackLimit {
 		return &ErrExpiredTicket{xerrors.Errorf("ticket expired: seal height: %d, head: %d", si.TicketEpoch+SealRandomnessLookback, height)}
+	}
+
+	pci, err := api.StateSectorPreCommitInfo(ctx, maddr, si.SectorNumber, tok)
+	if err != nil {
+		return &ErrApi{xerrors.Errorf("getting precommit info: %w", err)}
+	}
+
+	if pci != nil {
+		if pci.Info.SealRandEpoch != si.TicketEpoch {
+			return &ErrBadTicket{}
+		}
+		return &ErrPrecommitOnChain{}
 	}
 
 	return nil

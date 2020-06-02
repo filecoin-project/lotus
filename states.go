@@ -46,13 +46,37 @@ func (m *Sealing) handlePacking(ctx statemachine.Context, sector SectorInfo) err
 	return ctx.Send(SectorPacked{FillerPieces: fillerPieces})
 }
 
-func (m *Sealing) handlePreCommit1(ctx statemachine.Context, sector SectorInfo) error {
+func (m *Sealing) getTicket(ctx statemachine.Context, sector SectorInfo) (abi.SealRandomness, abi.ChainEpoch, error) {
 	tok, epoch, err := m.api.ChainHead(ctx.Context())
 	if err != nil {
 		log.Errorf("handlePreCommit1: api error, not proceeding: %+v", err)
-		return nil
+		return nil, 0, nil
 	}
 
+	ticketEpoch := epoch - miner.ChainFinalityish
+	buf := new(bytes.Buffer)
+	if err := m.maddr.MarshalCBOR(buf); err != nil {
+		return nil, 0, err
+	}
+
+	pci, err := m.api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, sector.SectorNumber, tok)
+	if err != nil {
+		return nil, 0, xerrors.Errorf("getting precommit info: %w", err)
+	}
+
+	if pci != nil {
+		ticketEpoch = pci.Info.SealRandEpoch
+	}
+
+	rand, err := m.api.ChainGetRandomness(ctx.Context(), tok, crypto.DomainSeparationTag_SealRandomness, ticketEpoch, buf.Bytes())
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return abi.SealRandomness(rand), ticketEpoch, nil
+}
+
+func (m *Sealing) handlePreCommit1(ctx statemachine.Context, sector SectorInfo) error {
 	if err := checkPieces(ctx.Context(), sector, m.api); err != nil { // Sanity check state
 		switch err.(type) {
 		case *ErrApi:
@@ -68,16 +92,10 @@ func (m *Sealing) handlePreCommit1(ctx statemachine.Context, sector SectorInfo) 
 	}
 
 	log.Infow("performing sector replication...", "sector", sector.SectorNumber)
-	ticketEpoch := epoch - miner.ChainFinalityish
-	buf := new(bytes.Buffer)
-	if err := m.maddr.MarshalCBOR(buf); err != nil {
-		return err
-	}
-	rand, err := m.api.ChainGetRandomness(ctx.Context(), tok, crypto.DomainSeparationTag_SealRandomness, ticketEpoch, buf.Bytes())
+	ticketValue, ticketEpoch, err := m.getTicket(ctx, sector)
 	if err != nil {
 		return ctx.Send(SectorSealPreCommitFailed{xerrors.Errorf("getting ticket failed: %w", err)})
 	}
-	ticketValue := abi.SealRandomness(rand)
 
 	pc1o, err := m.sealer.SealPreCommit1(ctx.Context(), m.minerSector(sector.SectorNumber), ticketValue, sector.pieceInfos())
 	if err != nil {
@@ -117,7 +135,7 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 	}
 
 	if err := checkPrecommit(ctx.Context(), m.Address(), sector, tok, height, m.api); err != nil {
-		switch err.(type) {
+		switch err := err.(type) {
 		case *ErrApi:
 			log.Errorf("handlePreCommitting: api error, not proceeding: %+v", err)
 			return nil
@@ -125,6 +143,10 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 			return ctx.Send(SectorSealPreCommitFailed{xerrors.Errorf("bad CommD error: %w", err)})
 		case *ErrExpiredTicket:
 			return ctx.Send(SectorSealPreCommitFailed{xerrors.Errorf("ticket expired: %w", err)})
+		case *ErrBadTicket:
+			return ctx.Send(SectorSealPreCommitFailed{xerrors.Errorf("bad expired: %w", err)})
+		case *ErrPrecommitOnChain:
+			return ctx.Send(SectorPreCommitLanded{TipSet: tok}) // we re-did precommit
 		default:
 			return xerrors.Errorf("checkPrecommit sanity check error: %w", err)
 		}

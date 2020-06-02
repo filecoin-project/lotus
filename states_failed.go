@@ -72,6 +72,10 @@ func (m *Sealing) handlePreCommitFailed(ctx statemachine.Context, sector SectorI
 			return ctx.Send(SectorSealPreCommitFailed{xerrors.Errorf("bad CommD error: %w", err)})
 		case *ErrExpiredTicket:
 			return ctx.Send(SectorSealPreCommitFailed{xerrors.Errorf("ticket expired error: %w", err)})
+		case *ErrBadTicket:
+			return ctx.Send(SectorSealPreCommitFailed{xerrors.Errorf("bad expired: %w", err)})
+		case *ErrPrecommitOnChain:
+			// noop
 		default:
 			return xerrors.Errorf("checkPrecommit sanity check error: %w", err)
 		}
@@ -80,7 +84,7 @@ func (m *Sealing) handlePreCommitFailed(ctx statemachine.Context, sector SectorI
 	if pci, is := m.checkPreCommitted(ctx, sector); is && pci != nil {
 		if sector.PreCommitMessage != nil {
 			log.Warn("sector %d is precommitted on chain, but we don't have precommit message", sector.SectorNumber)
-			return nil // TODO: SeedWait needs this currently
+			return ctx.Send(SectorPreCommitLanded{TipSet: tok})
 		}
 
 		if pci.Info.SealedCID != *sector.CommR {
@@ -139,6 +143,10 @@ func (m *Sealing) handleCommitFailed(ctx statemachine.Context, sector SectorInfo
 			return ctx.Send(SectorSealPreCommitFailed{xerrors.Errorf("bad CommD error: %w", err)})
 		case *ErrExpiredTicket:
 			return ctx.Send(SectorSealPreCommitFailed{xerrors.Errorf("ticket expired error: %w", err)})
+		case *ErrBadTicket:
+			return ctx.Send(SectorSealPreCommitFailed{xerrors.Errorf("bad expired: %w", err)})
+		case *ErrPrecommitOnChain:
+			// noop, this is expected
 		default:
 			return xerrors.Errorf("checkPrecommit sanity check error: %w", err)
 		}
