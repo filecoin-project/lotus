@@ -86,7 +86,6 @@ jobs:
     steps:
       - install-deps
       - prepare
-      - go/mod-download
       - run: sudo apt-get update
       - run: sudo apt-get install npm
       - run:
@@ -151,7 +150,6 @@ jobs:
     steps:
       - install-deps
       - prepare
-      - go/mod-download
       - run:
           command: make deps lotus
           no_output_timeout: 30m
@@ -219,7 +217,6 @@ jobs:
           name: restore cargo cache
           key: v3-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/lotus/go.sum" }}
       - install-deps
-      - go/mod-download
       - run:
           command: make build
           no_output_timeout: 30m
@@ -246,7 +243,6 @@ jobs:
     steps:
       - install-deps
       - prepare
-      - go/mod-download
       - run:
           command: "! go fmt ./... 2>&1 | read"
 
@@ -275,7 +271,6 @@ jobs:
     steps:
       - install-deps
       - prepare
-      - go/mod-download
       - run:
           command: make deps
           no_output_timeout: 30m
