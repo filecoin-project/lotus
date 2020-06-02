@@ -25,7 +25,7 @@ type testMpoolAPI struct {
 	tipsets []*types.TipSet
 }
 
-func newTestMpoolApi() *testMpoolAPI {
+func newTestMpoolAPI() *testMpoolAPI {
 	return &testMpoolAPI{
 		bmsgs:      make(map[cid.Cid][]*types.SignedMessage),
 		statenonce: make(map[address.Address]uint64),
@@ -138,7 +138,7 @@ func mustAdd(t *testing.T, mp *MessagePool, msg *types.SignedMessage) {
 }
 
 func TestMessagePool(t *testing.T) {
-	tma := newTestMpoolApi()
+	tma := newTestMpoolAPI()
 
 	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
 	if err != nil {
@@ -179,7 +179,7 @@ func TestMessagePool(t *testing.T) {
 }
 
 func TestRevertMessages(t *testing.T) {
-	tma := newTestMpoolApi()
+	tma := newTestMpoolAPI()
 
 	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
 	if err != nil {

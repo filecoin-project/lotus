@@ -405,7 +405,7 @@ func (sm *StateManager) LoadActorStateRaw(ctx context.Context, a address.Address
 	return act, nil
 }
 
-// ResolveToKeyAddr is similar to `vm.ResolveToKeyAddr` but does not allow `Actor` type of addresses.
+// ResolveToKeyAddress is similar to `vm.ResolveToKeyAddr` but does not allow `Actor` type of addresses.
 // Uses the `TipSet` `ts` to generate the VM state.
 func (sm *StateManager) ResolveToKeyAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
 	switch addr.Protocol() {

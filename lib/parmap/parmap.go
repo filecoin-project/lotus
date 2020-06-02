@@ -35,7 +35,7 @@ func KMapArr(in interface{}) interface{} {
 	return rout.Interface()
 }
 
-// KMapArr transforms map into slice of functions returning (key, val) pairs.
+// KVMapArr transforms map into slice of functions returning (key, val) pairs.
 // map[A]B => []func()(A, B)
 func KVMapArr(in interface{}) interface{} {
 	rin := reflect.ValueOf(in)

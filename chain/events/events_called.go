@@ -23,7 +23,7 @@ type msgH = abi.ChainEpoch
 //  message (msgH+confidence)
 type triggerH = abi.ChainEpoch
 
-// CalledHandler
+// CalledHandler arguments:
 // `ts` is the tipset, in which the `msg` is included.
 // `curH`-`ts.Height` = `confidence`
 type CalledHandler func(msg *types.Message, rec *types.MessageReceipt, ts *types.TipSet, curH abi.ChainEpoch) (more bool, err error)
