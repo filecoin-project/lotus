@@ -116,6 +116,10 @@ func (m *Sealing) handleComputeProofFailed(ctx statemachine.Context, sector Sect
 		return err
 	}
 
+	if sector.InvalidProofs > 1 {
+		return ctx.Send(SectorSealPreCommitFailed{xerrors.Errorf("consecutive compute fails")})
+	}
+
 	return ctx.Send(SectorRetryComputeProof{})
 }
 

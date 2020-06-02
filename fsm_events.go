@@ -185,7 +185,9 @@ func (evt SectorRetryWaitSeed) apply(state *SectorInfo) {}
 
 type SectorRetryComputeProof struct{}
 
-func (evt SectorRetryComputeProof) apply(state *SectorInfo) {}
+func (evt SectorRetryComputeProof) apply(state *SectorInfo) {
+	state.InvalidProofs++
+}
 
 type SectorRetryInvalidProof struct{}
 

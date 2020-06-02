@@ -82,6 +82,7 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	),
 	ComputeProofFailed: planOne(
 		on(SectorRetryComputeProof{}, Committing),
+		on(SectorSealPreCommitFailed{}, SealFailed),
 	),
 	CommitFailed: planOne(
 		on(SectorSealPreCommitFailed{}, SealFailed),
