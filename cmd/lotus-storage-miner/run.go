@@ -100,9 +100,12 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("repo at '%s' is not initialized, run 'lotus-storage-miner init' to set it up", storageRepoPath)
 		}
 
+		shutdownChan := make(chan struct{})
+
 		var minerapi api.StorageMiner
 		stop, err := node.New(ctx,
 			node.StorageMiner(&minerapi),
+			node.Override(new(dtypes.ShutdownCh), shutdownChan),
 			node.Online(),
 			node.Repo(r),
 
@@ -156,8 +159,12 @@ var runCmd = &cli.Command{
 
 		sigChan := make(chan os.Signal, 2)
 		go func() {
-			<-sigChan
-			log.Warn("Shutting down..")
+			select {
+			case <-sigChan:
+			case <-shutdownChan:
+			}
+
+			log.Warn("Shutting down...")
 			if err := stop(context.TODO()); err != nil {
 				log.Errorf("graceful shutting down failed: %s", err)
 			}
