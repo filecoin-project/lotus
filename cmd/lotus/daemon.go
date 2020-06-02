@@ -29,6 +29,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/vm"
+	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/peermgr"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node"
@@ -49,7 +50,18 @@ var daemonStopCmd = &cli.Command{
 	Usage: "Stop a running lotus daemon",
 	Flags: []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
-		panic("wombat attack")
+		api, closer, err := lcli.GetAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		err = api.Shutdown(lcli.ReqContext(cctx))
+		if err != nil {
+			return err
+		}
+
+		return nil
 	},
 }
 
@@ -179,12 +191,15 @@ var DaemonCmd = &cli.Command{
 			genesis = node.Override(new(modules.Genesis), testing.MakeGenesis(cctx.String(makeGenFlag), cctx.String(preTemplateFlag)))
 		}
 
+		shutdownCh := make(chan struct{})
+
 		var api api.FullNode
 
 		stop, err := node.New(ctx,
 			node.FullAPI(&api),
 
 			node.Override(new(dtypes.Bootstrapper), isBootstrapper),
+			node.Override(new(dtypes.ShutdownCh), shutdownCh),
 			node.Online(),
 			node.Repo(r),
 
@@ -230,7 +245,7 @@ var DaemonCmd = &cli.Command{
 		}
 
 		// TODO: properly parse api endpoint (or make it a URL)
-		return serveRPC(api, stop, endpoint)
+		return serveRPC(api, stop, endpoint, shutdownCh)
 	},
 	Subcommands: []*cli.Command{
 		daemonStopCmd,
