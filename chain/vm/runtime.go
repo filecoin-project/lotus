@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -367,6 +368,7 @@ func (rt *Runtime) Send(to address.Address, method abi.MethodNum, m vmr.CBORMars
 }
 
 func (rt *Runtime) internalSend(from, to address.Address, method abi.MethodNum, value types.BigInt, params []byte) ([]byte, aerrors.ActorError) {
+	start := time.Now()
 	ctx, span := trace.StartSpan(rt.ctx, "vmc.Send")
 	defer span.End()
 	if span.IsRecordingEvents() {
@@ -406,8 +408,9 @@ func (rt *Runtime) internalSend(from, to address.Address, method abi.MethodNum, 
 	}
 
 	er := types.ExecutionResult{
-		Msg:    msg,
-		MsgRct: &mr,
+		Msg:      msg,
+		MsgRct:   &mr,
+		Duration: time.Since(start),
 	}
 
 	if errSend != nil {
