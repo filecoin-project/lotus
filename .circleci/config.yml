@@ -115,7 +115,7 @@ jobs:
       - go/mod-download
       - restore_cache:
           name: restore go mod cache
-          key: v1-go-deps-{{ arch }}-{{ checksum "/home/circleci/project/go.mod" }}
+          key: v2-go-deps-{{ arch }}-{{ checksum "/home/circleci/project/go.mod" }}
       - run:
           command: make debug
 
@@ -162,7 +162,7 @@ jobs:
       - go/mod-download
       - restore_cache:
           name: restore go mod cache
-          key: v1-go-deps-{{ arch }}-{{ checksum "/home/circleci/project/go.mod" }}
+          key: v2-go-deps-{{ arch }}-{{ checksum "/home/circleci/project/go.mod" }}
       - run:
           command: make deps lotus
           no_output_timeout: 30m
