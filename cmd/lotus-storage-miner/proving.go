@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"time"
+
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -10,7 +12,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
-	"time"
 )
 
 var provingCmd = &cli.Command{
