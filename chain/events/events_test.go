@@ -209,6 +209,9 @@ func (fcs *fakeCS) advance(rev, app int, msgs map[int]cid.Cid, nulls ...int) { /
 	fcs.sync.Lock()
 
 	fcs.sub(revs, apps)
+
+	fcs.sync.Lock()
+	fcs.sync.Unlock() //nolint:staticcheck
 }
 
 func (fcs *fakeCS) notifDone() {
