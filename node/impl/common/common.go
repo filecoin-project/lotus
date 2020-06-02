@@ -28,7 +28,7 @@ type CommonAPI struct {
 	APISecret  *dtypes.APIAlg
 	Host       host.Host
 	Router     lp2p.BaseIpfsRouting
-	ShutdownCh dtypes.ShutdownCh
+	ShutdownCh dtypes.ShutdownChan
 }
 
 type jwtPayload struct {

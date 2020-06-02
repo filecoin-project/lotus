@@ -199,7 +199,7 @@ var DaemonCmd = &cli.Command{
 			node.FullAPI(&api),
 
 			node.Override(new(dtypes.Bootstrapper), isBootstrapper),
-			node.Override(new(dtypes.ShutdownCh), shutdownChan),
+			node.Override(new(dtypes.ShutdownChan), shutdownChan),
 			node.Online(),
 			node.Repo(r),
 
