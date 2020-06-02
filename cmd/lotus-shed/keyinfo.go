@@ -9,7 +9,7 @@ import (
 	"strings"
 	"text/template"
 
-	"gopkg.in/urfave/cli.v2"
+	"github.com/urfave/cli/v2"
 
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"

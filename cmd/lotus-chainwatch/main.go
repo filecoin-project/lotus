@@ -8,7 +8,7 @@ import (
 
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
-	"gopkg.in/urfave/cli.v2"
+	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"

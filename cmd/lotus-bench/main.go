@@ -16,7 +16,7 @@ import (
 	"github.com/minio/blake2b-simd"
 	"github.com/mitchellh/go-homedir"
 	"golang.org/x/xerrors"
-	"gopkg.in/urfave/cli.v2"
+	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/go-address"
 	paramfetch "github.com/filecoin-project/go-paramfetch"

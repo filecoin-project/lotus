@@ -10,8 +10,8 @@ import (
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
-	"gopkg.in/urfave/cli.v2"
 )
 
 var provingCmd = &cli.Command{

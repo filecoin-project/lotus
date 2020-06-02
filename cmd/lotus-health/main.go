@@ -10,7 +10,7 @@ import (
 
 	cid "github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
-	"gopkg.in/urfave/cli.v2"
+	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/go-jsonrpc"
 

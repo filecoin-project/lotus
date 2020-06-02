@@ -17,7 +17,7 @@ import (
 	"github.com/multiformats/go-multihash"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
-	"gopkg.in/urfave/cli.v2"
+	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"

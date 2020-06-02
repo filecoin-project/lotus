@@ -24,7 +24,7 @@ import (
 	"github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger2"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	"gopkg.in/urfave/cli.v2"
+	"github.com/urfave/cli/v2"
 )
 
 type TipSetExec struct {

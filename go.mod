@@ -104,6 +104,7 @@ require (
 	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/stretchr/testify v1.5.1
 	github.com/syndtr/goleveldb v1.0.0
+	github.com/urfave/cli/v2 v2.2.0
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
 	github.com/whyrusleeping/cbor-gen v0.0.0-20200504204219-64967432584d
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
@@ -117,7 +118,6 @@ require (
 	golang.org/x/sys v0.0.0-20200519105757-fe76b779f299
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0
 	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543
-	gopkg.in/urfave/cli.v2 v2.0.0-20180128182452-d3ae77c26ac8
 	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
 )
 
