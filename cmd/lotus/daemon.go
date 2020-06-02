@@ -150,6 +150,11 @@ var DaemonCmd = &cli.Command{
 
 		chainfile := cctx.String("import-chain")
 		if chainfile != "" {
+			chainfile, err := homedir.Expand(chainfile)
+			if err != nil {
+				return err
+			}
+
 			if err := ImportChain(r, chainfile); err != nil {
 				return err
 			}
