@@ -17,8 +17,8 @@ var aSector = abi.SectorID{
 
 func TestCanLock(t *testing.T) {
 	lk := sectorLock{
-		r:  [FileTypes]uint{},
-		w:  FTNone,
+		r: [FileTypes]uint{},
+		w: FTNone,
 	}
 
 	require.Equal(t, true, lk.canLock(FTUnsealed, FTNone))
@@ -37,8 +37,8 @@ func TestCanLock(t *testing.T) {
 	require.Equal(t, true, lk.canLock(ftAll, FTNone))
 	require.Equal(t, false, lk.canLock(FTNone, ftAll))
 
-	require.Equal(t, true, lk.canLock(FTNone, FTSealed | FTCache))
-	require.Equal(t, true, lk.canLock(FTUnsealed, FTSealed | FTCache))
+	require.Equal(t, true, lk.canLock(FTNone, FTSealed|FTCache))
+	require.Equal(t, true, lk.canLock(FTUnsealed, FTSealed|FTCache))
 
 	lk.r[0] = 0
 
@@ -68,6 +68,7 @@ func TestIndexLocksSeq(t *testing.T) {
 	require.NoError(t, ilk.StorageLock(ctx, aSector, FTNone, FTUnsealed))
 	cancel()
 
+	ctx, cancel = context.WithTimeout(context.Background(), time.Second)
 	require.NoError(t, ilk.StorageLock(ctx, aSector, FTNone, FTUnsealed))
 	cancel()
 
@@ -75,6 +76,7 @@ func TestIndexLocksSeq(t *testing.T) {
 	require.NoError(t, ilk.StorageLock(ctx, aSector, FTUnsealed, FTNone))
 	cancel()
 
+	ctx, cancel = context.WithTimeout(context.Background(), time.Second)
 	require.NoError(t, ilk.StorageLock(ctx, aSector, FTNone, FTUnsealed))
 	cancel()
 

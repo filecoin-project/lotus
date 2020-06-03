@@ -95,8 +95,8 @@ func NewIndex() *Index {
 		indexLocks: &indexLocks{
 			locks: map[abi.SectorID]*sectorLock{},
 		},
-		sectors:    map[Decl][]*declMeta{},
-		stores:     map[ID]*storageEntry{},
+		sectors: map[Decl][]*declMeta{},
+		stores:  map[ID]*storageEntry{},
 	}
 }
 

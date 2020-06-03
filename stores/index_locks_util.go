@@ -8,7 +8,7 @@ import (
 // like sync.Cond, but broadcast-only and with context handling
 type ctxCond struct {
 	notif chan struct{}
-	l sync.Locker
+	l     sync.Locker
 
 	lk sync.Mutex
 }

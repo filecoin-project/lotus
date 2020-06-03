@@ -10,7 +10,7 @@ import (
 )
 
 type sectorLock struct {
-	lk sync.Mutex
+	lk    sync.Mutex
 	notif *ctxCond
 
 	r [FileTypes]uint
@@ -26,7 +26,7 @@ func (l *sectorLock) canLock(read SectorFileType, write SectorFileType) bool {
 		}
 	}
 
-	return l.w & (read | write) == 0
+	return l.w&(read|write) == 0
 }
 
 func (l *sectorLock) tryLock(read SectorFileType, write SectorFileType) bool {
@@ -82,11 +82,11 @@ type indexLocks struct {
 }
 
 func (i *indexLocks) StorageLock(ctx context.Context, sector abi.SectorID, read SectorFileType, write SectorFileType) error {
-	if read | write == 0 {
+	if read|write == 0 {
 		return nil
 	}
 
-	if read | write > (1 << FileTypes) - 1 {
+	if read|write > (1<<FileTypes)-1 {
 		return xerrors.Errorf("unknown file types specified")
 	}
 
@@ -124,4 +124,3 @@ func (i *indexLocks) StorageLock(ctx context.Context, sector abi.SectorID, read 
 
 	return nil
 }
-
