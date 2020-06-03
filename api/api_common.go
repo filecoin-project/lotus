@@ -34,6 +34,9 @@ type Common interface {
 
 	LogList(context.Context) ([]string, error)
 	LogSetLevel(context.Context, string, string) error
+
+	// trigger graceful shutdown
+	Shutdown(context.Context) error
 }
 
 // Version provides various build-time information

@@ -150,6 +150,7 @@ func defaults() []Option {
 		Override(new(helpers.MetricsCtx), context.Background),
 		Override(new(record.Validator), modules.RecordValidator),
 		Override(new(dtypes.Bootstrapper), dtypes.Bootstrapper(false)),
+		Override(new(dtypes.ShutdownChan), make(chan struct{})),
 
 		// Filecoin modules
 

@@ -29,6 +29,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/vm"
+	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/peermgr"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node"
@@ -43,6 +44,26 @@ const (
 	makeGenFlag     = "lotus-make-genesis"
 	preTemplateFlag = "genesis-template"
 )
+
+var daemonStopCmd = &cli.Command{
+	Name:  "stop",
+	Usage: "Stop a running lotus daemon",
+	Flags: []cli.Flag{},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := lcli.GetAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		err = api.Shutdown(lcli.ReqContext(cctx))
+		if err != nil {
+			return err
+		}
+
+		return nil
+	},
+}
 
 // DaemonCmd is the `go-lotus daemon` command
 var DaemonCmd = &cli.Command{
@@ -170,12 +191,15 @@ var DaemonCmd = &cli.Command{
 			genesis = node.Override(new(modules.Genesis), testing.MakeGenesis(cctx.String(makeGenFlag), cctx.String(preTemplateFlag)))
 		}
 
+		shutdownChan := make(chan struct{})
+
 		var api api.FullNode
 
 		stop, err := node.New(ctx,
 			node.FullAPI(&api),
 
 			node.Override(new(dtypes.Bootstrapper), isBootstrapper),
+			node.Override(new(dtypes.ShutdownChan), shutdownChan),
 			node.Online(),
 			node.Repo(r),
 
@@ -221,7 +245,10 @@ var DaemonCmd = &cli.Command{
 		}
 
 		// TODO: properly parse api endpoint (or make it a URL)
-		return serveRPC(api, stop, endpoint)
+		return serveRPC(api, stop, endpoint, shutdownChan)
+	},
+	Subcommands: []*cli.Command{
+		daemonStopCmd,
 	},
 }
 
