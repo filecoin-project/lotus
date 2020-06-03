@@ -28,7 +28,11 @@ func init() {
 	pubsub.GossipSubDirectConnectInitialDelay = 30 * time.Second
 }
 
-func GossipSub(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, nn dtypes.NetworkName, bp dtypes.BootstrapPeers, cfg *config.Pubsub) (service *pubsub.PubSub, err error) {
+func ScoreKeeper() *dtypes.ScoreKeeper {
+	return new(dtypes.ScoreKeeper)
+}
+
+func GossipSub(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, nn dtypes.NetworkName, bp dtypes.BootstrapPeers, cfg *config.Pubsub, sk *dtypes.ScoreKeeper) (service *pubsub.PubSub, err error) {
 	bootstrappers := make(map[peer.ID]struct{})
 	for _, pi := range bp {
 		bootstrappers[pi.ID] = struct{}{}
@@ -161,6 +165,7 @@ func GossipSub(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, nn dtyp
 				OpportunisticGraftThreshold: 5,
 			},
 		),
+		pubsub.WithPeerScoreInspect(sk.Update, 10*time.Second),
 	}
 
 	// enable Peer eXchange on bootstrappers
