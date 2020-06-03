@@ -9,6 +9,7 @@ import (
 	amt "github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -41,15 +42,18 @@ type StateManager struct {
 	compWait map[string]chan struct{}
 	stlk     sync.Mutex
 	newVM    func(cid.Cid, abi.ChainEpoch, vm.Rand, blockstore.Blockstore, runtime.Syscalls) (*vm.VM, error)
+	events   *events.Events
 }
 
-func NewStateManager(cs *store.ChainStore) *StateManager {
-	return &StateManager{
+func NewStateManager(ctx context.Context, cs *store.ChainStore) *StateManager {
+	mgr := &StateManager{
 		newVM:    vm.NewVM,
 		cs:       cs,
 		stCache:  make(map[string][]cid.Cid),
 		compWait: make(map[string]chan struct{}),
 	}
+	mgr.events = NewEvents(ctx, cs, mgr)
+	return mgr
 }
 
 func cidsToKey(cids []cid.Cid) string {
@@ -480,7 +484,7 @@ func (sm *StateManager) GetReceipt(ctx context.Context, msg cid.Cid, ts *types.T
 	return r, nil
 }
 
-func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid) (*types.TipSet, *types.MessageReceipt, error) {
+func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid, confidence int, timeout abi.ChainEpoch) (*types.TipSet, *types.MessageReceipt, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -513,8 +517,9 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid) (*type
 		return head[0].Val, r, nil
 	}
 
-	var backTs *types.TipSet
-	var backRcp *types.MessageReceipt
+	var foundTs *types.TipSet
+	var foundRcp *types.MessageReceipt
+
 	backSearchWait := make(chan struct{})
 	go func() {
 		fts, r, err := sm.searchBackForMsg(ctx, head[0].Val, msg)
@@ -523,34 +528,52 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid) (*type
 			return
 		}
 
-		backTs = fts
-		backRcp = r
+		foundTs = fts
+		foundRcp = r
 		close(backSearchWait)
+	}()
+
+	forwardSearchWait := make(chan struct{})
+	go func() {
+		// use events to wait for message with confidence interval and timeout
+		err := sm.events.Called(
+			func(ts *types.TipSet) (done bool, more bool, err error) {
+				return false, true, nil // continue until we find the message or timeout
+			},
+			func(msg *types.Message, rec *types.MessageReceipt, ts *types.TipSet, curH abi.ChainEpoch) (more bool, err error) {
+				// we've either found the message after a sufficient confidence interval or timeout
+				if rec != nil {
+					foundTs = ts // this is not a timeout, record tipset and receipt
+					foundRcp = rec
+				}
+				return false, nil
+			},
+			func(ctx context.Context, ts *types.TipSet) error {
+				return nil // do not attempt to revert
+			},
+			confidence,
+			timeout,
+			func(msg *types.Message) (bool, error) {
+				return msg.Cid().Equals(mcid), nil // we've matched the message if it has the same cid
+			})
+		if err != nil {
+			log.Warnf("failed to wait for message: %w", err)
+			return
+		}
+
+		close(forwardSearchWait)
 	}()
 
 	for {
 		select {
-		case notif, ok := <-tsub:
-			if !ok {
-				return nil, nil, ctx.Err()
+		case <-forwardSearchWait:
+			if foundTs != nil {
+				return foundTs, foundRcp, nil
 			}
-			for _, val := range notif {
-				switch val.Type {
-				case store.HCRevert:
-					continue
-				case store.HCApply:
-					r, err := sm.tipsetExecutedMessage(val.Val, mcid, msg.VMMessage())
-					if err != nil {
-						return nil, nil, err
-					}
-					if r != nil {
-						return val.Val, r, nil
-					}
-				}
-			}
+			forwardSearchWait = nil
 		case <-backSearchWait:
-			if backTs != nil {
-				return backTs, backRcp, nil
+			if foundTs != nil {
+				return foundTs, foundRcp, nil
 			}
 			backSearchWait = nil
 		case <-ctx.Done():

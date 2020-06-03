@@ -89,6 +89,8 @@ func (m mybs) Get(c cid.Cid) (block.Block, error) {
 }
 
 func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
+	ctx := context.Background()
+
 	saminer.SupportedProofTypes = map[abi.RegisteredProof]struct{}{
 		abi.RegisteredProof_StackedDRG2KiBSeal: {},
 	}
@@ -214,7 +216,7 @@ func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
 		mgen[genesis2.MinerAddress(uint64(i))] = &wppProvider{}
 	}
 
-	sm := stmgr.NewStateManager(cs)
+	sm := stmgr.NewStateManager(ctx, cs)
 
 	miners := []address.Address{maddr1, maddr2}
 

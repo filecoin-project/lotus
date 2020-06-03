@@ -150,7 +150,7 @@ var DaemonCmd = &cli.Command{
 
 		chainfile := cctx.String("import-chain")
 		if chainfile != "" {
-			if err := ImportChain(r, chainfile); err != nil {
+			if err := ImportChain(ctx, r, chainfile); err != nil {
 				return err
 			}
 			if cctx.Bool("halt-after-import") {
@@ -259,7 +259,7 @@ func importKey(ctx context.Context, api api.FullNode, f string) error {
 	return nil
 }
 
-func ImportChain(r repo.Repo, fname string) error {
+func ImportChain(ctx context.Context, r repo.Repo, fname string) error {
 	fi, err := os.Open(fname)
 	if err != nil {
 		return err
@@ -291,7 +291,7 @@ func ImportChain(r repo.Repo, fname string) error {
 		return xerrors.Errorf("importing chain failed: %w", err)
 	}
 
-	stm := stmgr.NewStateManager(cst)
+	stm := stmgr.NewStateManager(ctx, cst)
 
 	log.Infof("validating imported chain...")
 	if err := stm.ValidateChain(context.TODO(), ts); err != nil {
