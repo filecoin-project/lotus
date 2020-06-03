@@ -3,6 +3,7 @@ package storage
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/lotus/build"
 
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -81,7 +82,7 @@ func (s SealingAPIAdapter) StateMinerDeadlines(ctx context.Context, maddr addres
 }
 
 func (s SealingAPIAdapter) StateWaitMsg(ctx context.Context, mcid cid.Cid) (sealing.MsgLookup, error) {
-	wmsg, err := s.delegate.StateWaitMsg(ctx, mcid)
+	wmsg, err := s.delegate.StateWaitMsg(ctx, mcid, build.MessageConfidence, build.MessageTimeout)
 	if err != nil {
 		return sealing.MsgLookup{}, err
 	}

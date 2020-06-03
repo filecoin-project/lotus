@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"github.com/filecoin-project/lotus/build"
 	"os"
 	"sort"
 	"strconv"
@@ -117,7 +118,7 @@ var msigCreateCmd = &cli.Command{
 		}
 
 		// wait for it to get mined into a block
-		wait, err := api.StateWaitMsg(ctx, msgCid)
+		wait, err := api.StateWaitMsg(ctx, msgCid, build.MessageConfidence, build.MessageTimeout)
 		if err != nil {
 			return err
 		}
@@ -333,7 +334,7 @@ var msigProposeCmd = &cli.Command{
 
 		fmt.Println("send proposal in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, msgCid)
+		wait, err := api.StateWaitMsg(ctx, msgCid, build.MessageConfidence, build.MessageTimeout)
 		if err != nil {
 			return err
 		}
@@ -449,7 +450,7 @@ var msigApproveCmd = &cli.Command{
 
 		fmt.Println("sent approval in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, msgCid)
+		wait, err := api.StateWaitMsg(ctx, msgCid, build.MessageConfidence, build.MessageTimeout)
 		if err != nil {
 			return err
 		}

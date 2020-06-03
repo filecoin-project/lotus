@@ -344,10 +344,8 @@ func (a *StateAPI) MinerCreateBlock(ctx context.Context, bt *api.BlockTemplate) 
 	return &out, nil
 }
 
-func (a *StateAPI) StateWaitMsg(ctx context.Context, msg cid.Cid) (*api.MsgLookup, error) {
-	// TODO: consider using event system for this, expose confidence
-
-	ts, recpt, err := a.StateManager.WaitForMessage(ctx, msg)
+func (a *StateAPI) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64, timeout uint64) (*api.MsgLookup, error) {
+	ts, recpt, err := a.StateManager.WaitForMessage(ctx, msg, confidence, timeout)
 	if err != nil {
 		return nil, err
 	}

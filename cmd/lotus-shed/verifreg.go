@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"github.com/filecoin-project/lotus/build"
 
 	"github.com/filecoin-project/go-address"
 	"gopkg.in/urfave/cli.v2"
@@ -85,7 +86,7 @@ var verifRegAddVerifierCmd = &cli.Command{
 
 		fmt.Printf("message sent, now waiting on cid: %s\n", smsg.Cid())
 
-		mwait, err := api.StateWaitMsg(ctx, smsg.Cid())
+		mwait, err := api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence, build.MessageTimeout)
 		if err != nil {
 			return err
 		}
@@ -161,7 +162,7 @@ var verifRegVerifyClientCmd = &cli.Command{
 
 		fmt.Printf("message sent, now waiting on cid: %s\n", smsg.Cid())
 
-		mwait, err := api.StateWaitMsg(ctx, smsg.Cid())
+		mwait, err := api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence, build.MessageTimeout)
 		if err != nil {
 			return err
 		}

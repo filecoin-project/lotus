@@ -3,6 +3,7 @@ package retrievaladapter
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/lotus/build"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
@@ -72,7 +73,7 @@ func (rcn *retrievalClientNode) GetChainHead(ctx context.Context) (shared.TipSet
 // WaitForPaymentChannelAddFunds waits messageCID to appear on chain. If it doesn't appear within
 // defaultMsgWaitTimeout it returns error
 func (rcn *retrievalClientNode) WaitForPaymentChannelAddFunds(messageCID cid.Cid) error {
-	_, mr, err := rcn.chainapi.StateManager.WaitForMessage(context.TODO(), messageCID)
+	_, mr, err := rcn.chainapi.StateManager.WaitForMessage(context.TODO(), messageCID, build.MessageConfidence, build.MessageTimeout)
 
 	if err != nil {
 		return err
@@ -84,7 +85,7 @@ func (rcn *retrievalClientNode) WaitForPaymentChannelAddFunds(messageCID cid.Cid
 }
 
 func (rcn *retrievalClientNode) WaitForPaymentChannelCreation(messageCID cid.Cid) (address.Address, error) {
-	_, mr, err := rcn.chainapi.StateManager.WaitForMessage(context.TODO(), messageCID)
+	_, mr, err := rcn.chainapi.StateManager.WaitForMessage(context.TODO(), messageCID, build.MessageConfidence, build.MessageTimeout)
 
 	if err != nil {
 		return address.Undef, err

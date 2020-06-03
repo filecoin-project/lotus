@@ -133,7 +133,7 @@ type FullNodeStruct struct {
 		StateGetActor                     func(context.Context, address.Address, types.TipSetKey) (*types.Actor, error)                                       `perm:"read"`
 		StateReadState                    func(context.Context, *types.Actor, types.TipSetKey) (*api.ActorState, error)                                       `perm:"read"`
 		StatePledgeCollateral             func(context.Context, types.TipSetKey) (types.BigInt, error)                                                        `perm:"read"`
-		StateWaitMsg                      func(context.Context, cid.Cid) (*api.MsgLookup, error)                                                              `perm:"read"`
+		StateWaitMsg                      func(context.Context, cid.Cid, uint64, uint64) (*api.MsgLookup, error)                                              `perm:"read"`
 		StateSearchMsg                    func(context.Context, cid.Cid) (*api.MsgLookup, error)                                                              `perm:"read"`
 		StateListMiners                   func(context.Context, types.TipSetKey) ([]address.Address, error)                                                   `perm:"read"`
 		StateListActors                   func(context.Context, types.TipSetKey) ([]address.Address, error)                                                   `perm:"read"`
@@ -581,8 +581,8 @@ func (c *FullNodeStruct) StatePledgeCollateral(ctx context.Context, tsk types.Ti
 	return c.Internal.StatePledgeCollateral(ctx, tsk)
 }
 
-func (c *FullNodeStruct) StateWaitMsg(ctx context.Context, msgc cid.Cid) (*api.MsgLookup, error) {
-	return c.Internal.StateWaitMsg(ctx, msgc)
+func (c *FullNodeStruct) StateWaitMsg(ctx context.Context, msgc cid.Cid, confidence uint64, timeout uint64) (*api.MsgLookup, error) {
+	return c.Internal.StateWaitMsg(ctx, msgc, confidence, timeout)
 }
 
 func (c *FullNodeStruct) StateSearchMsg(ctx context.Context, msgc cid.Cid) (*api.MsgLookup, error) {

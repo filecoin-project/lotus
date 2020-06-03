@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/lotus/build"
 	"reflect"
 	"sort"
 	"strconv"
@@ -392,7 +393,7 @@ var stateReplaySetCmd = &cli.Command{
 
 				ts, err = types.NewTipSet(headers)
 			} else {
-				r, err := api.StateWaitMsg(ctx, mcid)
+				r, err := api.StateWaitMsg(ctx, mcid, build.MessageConfidence, build.MessageTimeout)
 				if err != nil {
 					return xerrors.Errorf("finding message in chain: %w", err)
 				}
@@ -1156,7 +1157,7 @@ var stateWaitMsgCmd = &cli.Command{
 			return err
 		}
 
-		mw, err := api.StateWaitMsg(ctx, msg)
+		mw, err := api.StateWaitMsg(ctx, msg, build.MessageConfidence, build.MessageTimeout)
 		if err != nil {
 			return err
 		}
