@@ -14,12 +14,14 @@ import (
 type allocSelector struct {
 	index stores.SectorIndex
 	alloc stores.SectorFileType
+	ptype stores.PathType
 }
 
-func newAllocSelector(ctx context.Context, index stores.SectorIndex, alloc stores.SectorFileType) (*allocSelector, error) {
+func newAllocSelector(ctx context.Context, index stores.SectorIndex, alloc stores.SectorFileType, ptype stores.PathType) (*allocSelector, error) {
 	return &allocSelector{
 		index: index,
 		alloc: alloc,
+		ptype: ptype,
 	}, nil
 }
 
@@ -42,7 +44,7 @@ func (s *allocSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi
 		have[path.ID] = struct{}{}
 	}
 
-	best, err := s.index.StorageBestAlloc(ctx, s.alloc, spt, true)
+	best, err := s.index.StorageBestAlloc(ctx, s.alloc, spt, s.ptype)
 	if err != nil {
 		return false, xerrors.Errorf("finding best alloc storage: %w", err)
 	}

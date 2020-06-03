@@ -176,6 +176,10 @@ func (l *LocalWorker) FinalizeSector(ctx context.Context, sector abi.SectorID) e
 		return xerrors.Errorf("removing unsealed data: %w", err)
 	}
 
+	return nil
+}
+
+func (l *LocalWorker) MoveStorage(ctx context.Context, sector abi.SectorID) error {
 	if err := l.storage.MoveStorage(ctx, sector, l.scfg.SealProofType, stores.FTSealed|stores.FTCache); err != nil {
 		return xerrors.Errorf("moving sealed data to storage: %w", err)
 	}
