@@ -164,6 +164,10 @@ type SectorFinalized struct{}
 
 func (evt SectorFinalized) apply(*SectorInfo) {}
 
+type SectorRetryFinalize struct{}
+
+func (evt SectorRetryFinalize) apply(*SectorInfo) {}
+
 type SectorFinalizeFailed struct{ error }
 
 func (evt SectorFinalizeFailed) FormatError(xerrors.Printer) (next error) { return evt.error }

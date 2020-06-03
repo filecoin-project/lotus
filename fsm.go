@@ -66,6 +66,7 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 
 	FinalizeSector: planOne(
 		on(SectorFinalized{}, Proving),
+		on(SectorFinalizeFailed{}, FinalizeFailed),
 	),
 
 	Proving: planOne(
@@ -91,6 +92,9 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorRetryWaitSeed{}, WaitSeed),
 		on(SectorRetryComputeProof{}, Committing),
 		on(SectorRetryInvalidProof{}, Committing),
+	),
+	FinalizeFailed: planOne(
+		on(SectorRetryFinalize{}, FinalizeSector),
 	),
 
 	Faulty: planOne(
@@ -207,6 +211,8 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		return m.handleComputeProofFailed, nil
 	case CommitFailed:
 		return m.handleCommitFailed, nil
+	case FinalizeFailed:
+		return m.handleFinalizeFailed, nil
 
 		// Faults
 	case Faulty:

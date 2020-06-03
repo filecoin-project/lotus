@@ -24,7 +24,9 @@ const (
 	ComputeProofFailed  SectorState = "ComputeProofFailed"
 	CommitFailed        SectorState = "CommitFailed"
 	PackingFailed       SectorState = "PackingFailed"
-	Faulty              SectorState = "Faulty"        // sector is corrupted or gone for some reason
-	FaultReported       SectorState = "FaultReported" // sector has been declared as a fault on chain
-	FaultedFinal        SectorState = "FaultedFinal"  // fault declared on chain
+	FinalizeFailed      SectorState = "FinalizeFailed"
+
+	Faulty        SectorState = "Faulty"        // sector is corrupted or gone for some reason
+	FaultReported SectorState = "FaultReported" // sector has been declared as a fault on chain
+	FaultedFinal  SectorState = "FaultedFinal"  // fault declared on chain
 )

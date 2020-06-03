@@ -183,3 +183,13 @@ func (m *Sealing) handleCommitFailed(ctx statemachine.Context, sector SectorInfo
 
 	return ctx.Send(SectorRetryComputeProof{})
 }
+
+func (m *Sealing) handleFinalizeFailed(ctx statemachine.Context, sector SectorInfo) error {
+	// TODO: Check sector files
+
+	if err := failedCooldown(ctx, sector); err != nil {
+		return err
+	}
+
+	return ctx.Send(SectorRetryFinalize{})
+}
