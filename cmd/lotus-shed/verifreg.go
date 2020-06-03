@@ -86,7 +86,7 @@ var verifRegAddVerifierCmd = &cli.Command{
 
 		fmt.Printf("message sent, now waiting on cid: %s\n", smsg.Cid())
 
-		mwait, err := api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence, build.MessageTimeout)
+		mwait, err := api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
 		if err != nil {
 			return err
 		}
@@ -162,7 +162,7 @@ var verifRegVerifyClientCmd = &cli.Command{
 
 		fmt.Printf("message sent, now waiting on cid: %s\n", smsg.Cid())
 
-		mwait, err := api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence, build.MessageTimeout)
+		mwait, err := api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
 		if err != nil {
 			return err
 		}

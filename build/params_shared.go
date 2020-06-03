@@ -60,7 +60,6 @@ var BlocksPerEpoch = uint64(builtin.ExpectedLeadersPerEpoch)
 // Epochs
 const Finality = miner.ChainFinalityish
 const MessageConfidence = 5
-const MessageTimeout = 72
 
 // constants for Weight calculation
 // The ratio of weight contributed by short-term vs long-term factors in a given round

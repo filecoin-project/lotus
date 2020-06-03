@@ -73,7 +73,7 @@ func (rcn *retrievalClientNode) GetChainHead(ctx context.Context) (shared.TipSet
 // WaitForPaymentChannelAddFunds waits messageCID to appear on chain. If it doesn't appear within
 // defaultMsgWaitTimeout it returns error
 func (rcn *retrievalClientNode) WaitForPaymentChannelAddFunds(messageCID cid.Cid) error {
-	_, mr, err := rcn.chainapi.StateManager.WaitForMessage(context.TODO(), messageCID, build.MessageConfidence, build.MessageTimeout)
+	_, mr, err := rcn.chainapi.StateManager.WaitForMessage(context.TODO(), messageCID, build.MessageConfidence)
 
 	if err != nil {
 		return err
@@ -85,7 +85,7 @@ func (rcn *retrievalClientNode) WaitForPaymentChannelAddFunds(messageCID cid.Cid
 }
 
 func (rcn *retrievalClientNode) WaitForPaymentChannelCreation(messageCID cid.Cid) (address.Address, error) {
-	_, mr, err := rcn.chainapi.StateManager.WaitForMessage(context.TODO(), messageCID, build.MessageConfidence, build.MessageTimeout)
+	_, mr, err := rcn.chainapi.StateManager.WaitForMessage(context.TODO(), messageCID, build.MessageConfidence)
 
 	if err != nil {
 		return address.Undef, err

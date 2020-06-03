@@ -82,7 +82,7 @@ func (s SealingAPIAdapter) StateMinerDeadlines(ctx context.Context, maddr addres
 }
 
 func (s SealingAPIAdapter) StateWaitMsg(ctx context.Context, mcid cid.Cid) (sealing.MsgLookup, error) {
-	wmsg, err := s.delegate.StateWaitMsg(ctx, mcid, build.MessageConfidence, build.MessageTimeout)
+	wmsg, err := s.delegate.StateWaitMsg(ctx, mcid, build.MessageConfidence)
 	if err != nil {
 		return sealing.MsgLookup{}, err
 	}

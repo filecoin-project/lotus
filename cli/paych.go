@@ -362,7 +362,7 @@ var paychVoucherSubmitCmd = &cli.Command{
 			return err
 		}
 
-		mwait, err := api.StateWaitMsg(ctx, mcid, build.MessageConfidence, build.MessageTimeout)
+		mwait, err := api.StateWaitMsg(ctx, mcid, build.MessageConfidence)
 		if err != nil {
 			return err
 		}

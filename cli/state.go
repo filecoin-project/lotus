@@ -393,7 +393,7 @@ var stateReplaySetCmd = &cli.Command{
 
 				ts, err = types.NewTipSet(headers)
 			} else {
-				r, err := api.StateWaitMsg(ctx, mcid, build.MessageConfidence, build.MessageTimeout)
+				r, err := api.StateWaitMsg(ctx, mcid, build.MessageConfidence)
 				if err != nil {
 					return xerrors.Errorf("finding message in chain: %w", err)
 				}
@@ -1157,7 +1157,7 @@ var stateWaitMsgCmd = &cli.Command{
 			return err
 		}
 
-		mw, err := api.StateWaitMsg(ctx, msg, build.MessageConfidence, build.MessageTimeout)
+		mw, err := api.StateWaitMsg(ctx, msg, build.MessageConfidence)
 		if err != nil {
 			return err
 		}

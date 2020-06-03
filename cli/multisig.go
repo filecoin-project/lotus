@@ -118,7 +118,7 @@ var msigCreateCmd = &cli.Command{
 		}
 
 		// wait for it to get mined into a block
-		wait, err := api.StateWaitMsg(ctx, msgCid, build.MessageConfidence, build.MessageTimeout)
+		wait, err := api.StateWaitMsg(ctx, msgCid, build.MessageConfidence)
 		if err != nil {
 			return err
 		}
@@ -334,7 +334,7 @@ var msigProposeCmd = &cli.Command{
 
 		fmt.Println("send proposal in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, msgCid, build.MessageConfidence, build.MessageTimeout)
+		wait, err := api.StateWaitMsg(ctx, msgCid, build.MessageConfidence)
 		if err != nil {
 			return err
 		}
@@ -450,7 +450,7 @@ var msigApproveCmd = &cli.Command{
 
 		fmt.Println("sent approval in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, msgCid, build.MessageConfidence, build.MessageTimeout)
+		wait, err := api.StateWaitMsg(ctx, msgCid, build.MessageConfidence)
 		if err != nil {
 			return err
 		}

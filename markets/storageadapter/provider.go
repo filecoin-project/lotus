@@ -338,7 +338,7 @@ func (n *ProviderNodeAdapter) GetChainHead(ctx context.Context) (shared.TipSetTo
 }
 
 func (n *ProviderNodeAdapter) WaitForMessage(ctx context.Context, mcid cid.Cid, cb func(code exitcode.ExitCode, bytes []byte, err error) error) error {
-	receipt, err := n.StateWaitMsg(ctx, mcid, build.MessageConfidence, build.MessageTimeout)
+	receipt, err := n.StateWaitMsg(ctx, mcid, build.MessageConfidence)
 	if err != nil {
 		return cb(0, nil, err)
 	}

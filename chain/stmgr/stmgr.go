@@ -483,7 +483,7 @@ func (sm *StateManager) GetReceipt(ctx context.Context, msg cid.Cid, ts *types.T
 // WaitForMessage blocks until a message appears on chain. It looks backwards in the chain to see if this has already
 // happened. It guarantees that the message has been on chain for at least confidence epochs without being reverted
 // before returning.
-func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid, confidence uint64, timeout uint64) (*types.TipSet, *types.MessageReceipt, error) {
+func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid, confidence uint64) (*types.TipSet, *types.MessageReceipt, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -568,11 +568,6 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid, confid
 						candidateRcp = r
 					}
 					heightOfHead = val.Val.Height()
-
-					// check for timeout
-					if heightOfHead >= head[0].Val.Height() + abi.ChainEpoch(timeout) {
-						return nil, nil, nil
-					}
 				}
 			}
 		case <-backSearchWait:
