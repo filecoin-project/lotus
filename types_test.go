@@ -27,7 +27,6 @@ func TestSectorInfoSelialization(t *testing.T) {
 	si := &SectorInfo{
 		State:        "stateful",
 		SectorNumber: 234,
-		Nonce:        345,
 		Pieces: []Piece{{
 			Piece: abi.PieceInfo{
 				Size:     5,
@@ -59,7 +58,6 @@ func TestSectorInfoSelialization(t *testing.T) {
 	}
 
 	assert.Equal(t, si.State, si2.State)
-	assert.Equal(t, si.Nonce, si2.Nonce)
 	assert.Equal(t, si.SectorNumber, si2.SectorNumber)
 
 	assert.Equal(t, si.Pieces, si2.Pieces)
