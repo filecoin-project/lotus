@@ -21,6 +21,7 @@ var netCmd = &cli.Command{
 		netListen,
 		netId,
 		netFindPeer,
+		netScores,
 	},
 }
 
@@ -44,7 +45,30 @@ var netPeers = &cli.Command{
 		})
 
 		for _, peer := range peers {
-			fmt.Println(peer)
+			fmt.Printf("%s, %s\n", peer.ID, peer.Addrs)
+		}
+
+		return nil
+	},
+}
+
+var netScores = &cli.Command{
+	Name:  "scores",
+	Usage: "Print peers' pubsub scores",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+		scores, err := api.NetPubsubScores(ctx)
+		if err != nil {
+			return err
+		}
+
+		for _, peer := range scores {
+			fmt.Printf("%s, %f\n", peer.ID, peer.Score)
 		}
 
 		return nil

@@ -180,6 +180,7 @@ func libp2p() Option {
 		Override(ConnectionManagerKey, lp2p.ConnectionManager(50, 200, 20*time.Second, nil)),
 		Override(AutoNATSvcKey, lp2p.AutoNATService),
 
+		Override(new(*dtypes.ScoreKeeper), lp2p.ScoreKeeper),
 		Override(new(*pubsub.PubSub), lp2p.GossipSub),
 		Override(new(*config.Pubsub), func(bs dtypes.Bootstrapper) *config.Pubsub {
 			return &config.Pubsub{

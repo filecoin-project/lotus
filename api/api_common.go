@@ -25,6 +25,7 @@ type Common interface {
 	NetAddrsListen(context.Context) (peer.AddrInfo, error)
 	NetDisconnect(context.Context, peer.ID) error
 	NetFindPeer(context.Context, peer.ID) (peer.AddrInfo, error)
+	NetPubsubScores(context.Context) ([]PubsubScore, error)
 
 	// ID returns peerID of libp2p node backing this API
 	ID(context.Context) (peer.ID, error)
