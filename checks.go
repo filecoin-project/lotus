@@ -80,7 +80,7 @@ func checkPrecommit(ctx context.Context, maddr address.Address, si SectorInfo, t
 		return &ErrBadCommD{xerrors.Errorf("on chain CommD differs from sector: %s != %s", commD, si.CommD)}
 	}
 
-	if int64(height)-int64(si.TicketEpoch+SealRandomnessLookback) > SealRandomnessLookbackLimit {
+	if height-si.TicketEpoch+SealRandomnessLookback > SealRandomnessLookbackLimit(si.SectorType) {
 		return &ErrExpiredTicket{xerrors.Errorf("ticket expired: seal height: %d, head: %d", si.TicketEpoch+SealRandomnessLookback, height)}
 	}
 

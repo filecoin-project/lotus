@@ -53,7 +53,7 @@ func (m *Sealing) getTicket(ctx statemachine.Context, sector SectorInfo) (abi.Se
 		return nil, 0, nil
 	}
 
-	ticketEpoch := epoch - miner.ChainFinalityish
+	ticketEpoch := epoch - SealRandomnessLookback
 	buf := new(bytes.Buffer)
 	if err := m.maddr.MarshalCBOR(buf); err != nil {
 		return nil, 0, err
