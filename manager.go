@@ -311,15 +311,14 @@ func (m *Manager) SealPreCommit2(ctx context.Context, sector abi.SectorID, phase
 }
 
 func (m *Manager) SealCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storage.SectorCids) (out storage.Commit1Out, err error) {
+	// NOTE: We set allowFetch to false in so that we always execute on a worker
+	// with direct access to the data. We want to do that because this step is
+	// generally very cheap / fast, and transferring data is not worth the effort
 	selector, err := newExistingSelector(ctx, m.index, sector, stores.FTCache|stores.FTSealed, false)
 	if err != nil {
 		return storage.Commit1Out{}, xerrors.Errorf("creating path selector: %w", err)
 	}
 
-	// TODO: Try very hard to execute on worker with access to the sectors
-	//  (except, don't.. for now at least - we are using this step to bring data
-	//  into 'provable' storage. Optimally we'd do that in commit2, in parallel
-	//  with snark compute)
 	err = m.sched.Schedule(ctx, sector, sealtasks.TTCommit1, selector, schedFetch(sector, stores.FTCache|stores.FTSealed, true, stores.AcquireMove), func(ctx context.Context, w Worker) error {
 		p, err := w.SealCommit1(ctx, sector, ticket, seed, pieces, cids)
 		if err != nil {

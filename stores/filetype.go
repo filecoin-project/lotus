@@ -11,6 +11,8 @@ const (
 	FTUnsealed SectorFileType = 1 << iota
 	FTSealed
 	FTCache
+
+	FileTypes = iota
 )
 
 const (
@@ -69,6 +71,14 @@ func (t SectorFileType) SealSpaceUse(spt abi.RegisteredProof) (uint64, error) {
 	}
 
 	return need, nil
+}
+
+func (t SectorFileType) All() (out [FileTypes]bool) {
+	for i := range out {
+		out[i] = t & (1 << i) > 0
+	}
+
+	return out
 }
 
 type SectorPaths struct {
