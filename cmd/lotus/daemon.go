@@ -291,7 +291,7 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string) error {
 		return xerrors.Errorf("importing chain failed: %w", err)
 	}
 
-	stm := stmgr.NewStateManager(ctx, cst)
+	stm := stmgr.NewStateManager(cst)
 
 	log.Infof("validating imported chain...")
 	if err := stm.ValidateChain(context.TODO(), ts); err != nil {

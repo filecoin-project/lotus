@@ -145,7 +145,7 @@ func SetGenesis(cs *store.ChainStore, g Genesis) (dtypes.AfterGenesisSet, error)
 func NetworkName(mctx helpers.MetricsCtx, lc fx.Lifecycle, cs *store.ChainStore, _ dtypes.AfterGenesisSet) (dtypes.NetworkName, error) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
-	netName, err := stmgr.GetNetworkName(ctx, stmgr.NewStateManager(ctx, cs), cs.GetHeaviestTipSet().ParentState())
+	netName, err := stmgr.GetNetworkName(ctx, stmgr.NewStateManager(cs), cs.GetHeaviestTipSet().ParentState())
 	return netName, err
 }
 

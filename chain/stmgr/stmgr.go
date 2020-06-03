@@ -45,14 +45,14 @@ type StateManager struct {
 	events   *events.Events
 }
 
-func NewStateManager(ctx context.Context, cs *store.ChainStore) *StateManager {
+func NewStateManager(cs *store.ChainStore) *StateManager {
 	mgr := &StateManager{
 		newVM:    vm.NewVM,
 		cs:       cs,
 		stCache:  make(map[string][]cid.Cid),
 		compWait: make(map[string]chan struct{}),
 	}
-	mgr.events = NewEvents(ctx, cs, mgr)
+	mgr.events = NewEvents(context.Background(), cs, mgr)
 	return mgr
 }
 
@@ -535,6 +535,7 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid, confid
 
 	forwardSearchWait := make(chan struct{})
 	go func() {
+
 		// use events to wait for message with confidence interval and timeout
 		err := sm.events.Called(
 			func(ts *types.TipSet) (done bool, more bool, err error) {
