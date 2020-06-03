@@ -62,7 +62,7 @@ func (a *CommonAPI) NetPubsubScores(context.Context) ([]api.PubsubScore, error) 
 	out := make([]api.PubsubScore, len(scores))
 	i := 0
 	for k, v := range scores {
-		out[i] = api.PubsubScore{k, v}
+		out[i] = api.PubsubScore{ID: k, Score: v}
 		i++
 	}
 

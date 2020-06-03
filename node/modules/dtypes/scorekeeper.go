@@ -3,7 +3,7 @@ package dtypes
 import (
 	"sync"
 
-	peer "github.com/libp2p/go-libp2p-peer"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 )
 
 type ScoreKeeper struct {
