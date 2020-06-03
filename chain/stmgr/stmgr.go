@@ -610,9 +610,9 @@ func (sm *StateManager) searchBackForMsg(ctx context.Context, from *types.TipSet
 			return nil, nil, err
 		}
 
-		if act.Nonce < m.VMMessage().Nonce {
-			// nonce on chain is before message nonce we're looking for, its
-			// not going to be here
+		// we either have no messages from the sender, or the latest message we found has a lower nonce than the one being searched for,
+		// either way, no reason to lookback, it ain't there
+		if act.Nonce == 0 || act.Nonce < m.VMMessage().Nonce {
 			return nil, nil, nil
 		}
 
