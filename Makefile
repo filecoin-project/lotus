@@ -105,11 +105,12 @@ install:
 
 install-services: install
 	mkdir -p /usr/local/lib/systemd/system
+	mkdir -p /var/log/lotus
 	install -C -m 0644 ./scripts/lotus-daemon.service /usr/local/lib/systemd/system/lotus-daemon.service
 	install -C -m 0644 ./scripts/lotus-miner.service /usr/local/lib/systemd/system/lotus-miner.service
 	systemctl daemon-reload
 	@echo
-	@echo "lotus and lotus-miner services installed. Don't forget to 'systemctl enable lotus|lotus-miner' for it to be enabled on startup."
+	@echo "lotus-daemon and lotus-miner services installed. Don't forget to 'systemctl enable lotus-daemon|lotus-miner' for it to be enabled on startup."
 
 clean-services:
 	rm -f /usr/local/lib/systemd/system/lotus-daemon.service

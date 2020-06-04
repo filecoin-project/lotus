@@ -2,10 +2,11 @@
 Description=Lotus Storage Miner
 After=network.target
 After=lotus-daemon.service
+Requires=lotus-daemon.service
 
 [Service]
 ExecStart=/usr/local/bin/lotus-storage-miner run
-Environment=GOLOG_FILE="/var/log/lotus-miner"
+Environment=GOLOG_FILE="/var/log/lotus/miner.log"
 Environment=GOLOG_LOG_FMT="json"
 
 [Install]

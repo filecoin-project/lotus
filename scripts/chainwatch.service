@@ -1,12 +1,15 @@
 [Unit]
 Description=Chainwatch
+PartOf=sentinel.service
 After=lotus-daemon.service
 Requires=lotus-daemon.service
 
 [Service]
-ExecStart=/usr/local/bin/chainwatch run
+Environment=GOLOG_FILE="/var/log/lotus/chainwatch.log"
+Environment=GOLOG_LOG_FMT="json"
 Environment=LOTUS_DB="postgres://postgres:password@localhost:5432/postgres?sslmode=disable"
 Environment=LOTUS_PATH="/root/.lotus"
+ExecStart=/usr/local/bin/chainwatch run
 
 [Install]
 WantedBy=multiuser.target
