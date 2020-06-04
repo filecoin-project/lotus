@@ -26,10 +26,7 @@ func (l *readonlyProvider) AcquireSector(ctx context.Context, id abi.SectorID, e
 		return stores.SectorPaths{}, nil, xerrors.Errorf("acquiring sector lock: %w", err)
 	}
 
-	p, _, done, err := l.stor.AcquireSector(ctx, id, l.spt, existing, allocate, stores.PathType(sealing), stores.AcquireMove)
+	p, _, err := l.stor.AcquireSector(ctx, id, l.spt, existing, allocate, stores.PathType(sealing), stores.AcquireMove)
 
-	return p, func() {
-		cancel()
-		done()
-	}, err
+	return p, cancel, err
 }

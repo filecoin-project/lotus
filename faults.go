@@ -19,13 +19,14 @@ func (m *Manager) CheckProvable(ctx context.Context, spt abi.RegisteredProof, se
 	var bad []abi.SectorID
 
 	// TODO: More better checks
+	// TODO: This should live in sector-storage
+	// TODO: Use proper locking
 	for _, sector := range sectors {
 		err := func() error {
-			lp, _, done, err := m.localStore.AcquireSector(ctx, sector, spt, stores.FTSealed|stores.FTCache, stores.FTNone, false, stores.AcquireMove)
+			lp, _, err := m.localStore.AcquireSector(ctx, sector, spt, stores.FTSealed|stores.FTCache, stores.FTNone, false, stores.AcquireMove)
 			if err != nil {
 				return xerrors.Errorf("acquire sector in checkProvable: %w", err)
 			}
-			defer done()
 
 			if lp.Sealed == "" || lp.Cache == "" {
 				log.Warnw("CheckProvable Sector FAULT: cache an/or sealed paths not found", "sector", sector, "sealed", lp.Sealed, "cache", lp.Cache)

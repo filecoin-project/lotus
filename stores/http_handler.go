@@ -69,14 +69,15 @@ func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// The caller has a lock on this sector already, no need to get one here
+
 	// passing 0 spt because we don't allocate anything
-	paths, _, done, err := handler.Local.AcquireSector(r.Context(), id, 0, ft, FTNone, false, AcquireMove)
+	paths, _, err := handler.Local.AcquireSector(r.Context(), id, 0, ft, FTNone, false, AcquireMove)
 	if err != nil {
 		log.Error("%+v", err)
 		w.WriteHeader(500)
 		return
 	}
-	defer done()
 
 	path := PathByType(paths, ft)
 	if path == "" {

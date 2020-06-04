@@ -24,7 +24,7 @@ const (
 )
 
 type Store interface {
-	AcquireSector(ctx context.Context, s abi.SectorID, spt abi.RegisteredProof, existing SectorFileType, allocate SectorFileType, sealing PathType, op AcquireMode) (paths SectorPaths, stores SectorPaths, done func(), err error)
+	AcquireSector(ctx context.Context, s abi.SectorID, spt abi.RegisteredProof, existing SectorFileType, allocate SectorFileType, sealing PathType, op AcquireMode) (paths SectorPaths, stores SectorPaths, err error)
 	Remove(ctx context.Context, s abi.SectorID, types SectorFileType, force bool) error
 
 	// like remove, but doesn't remove the primary sector copy, nor the last

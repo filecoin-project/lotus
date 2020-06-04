@@ -60,7 +60,7 @@ type localWorkerPathProvider struct {
 }
 
 func (l *localWorkerPathProvider) AcquireSector(ctx context.Context, sector abi.SectorID, existing stores.SectorFileType, allocate stores.SectorFileType, sealing bool) (stores.SectorPaths, func(), error) {
-	paths, storageIDs, done, err := l.w.storage.AcquireSector(ctx, sector, l.w.scfg.SealProofType, existing, allocate, stores.PathType(sealing), l.op)
+	paths, storageIDs, err := l.w.storage.AcquireSector(ctx, sector, l.w.scfg.SealProofType, existing, allocate, stores.PathType(sealing), l.op)
 	if err != nil {
 		return stores.SectorPaths{}, nil, err
 	}
@@ -68,8 +68,6 @@ func (l *localWorkerPathProvider) AcquireSector(ctx context.Context, sector abi.
 	log.Debugf("acquired sector %d (e:%d; a:%d): %v", sector, existing, allocate, paths)
 
 	return paths, func() {
-		done()
-
 		for _, fileType := range pathTypes {
 			if fileType&allocate == 0 {
 				continue
