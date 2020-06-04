@@ -58,7 +58,7 @@ func (ci *ChainIndex) GetTipsetByHeight(ctx context.Context, from *types.TipSet,
 		if lbe.ts.Height() == to || lbe.parentHeight < to {
 			return lbe.ts, nil
 		} else if to > lbe.ts.Height()-ci.skipLength {
-			return ci.walkBack(from, to)
+			return ci.walkBack(lbe.ts, to)
 		}
 
 		cur = lbe.target
@@ -69,6 +69,13 @@ func (ci *ChainIndex) fillCache(tsk types.TipSetKey) (*lbEntry, error) {
 	ts, err := ci.loadTipSet(tsk)
 	if err != nil {
 		return nil, err
+	}
+
+	if ts.Height() == 0 {
+		return &lbEntry{
+			ts:           ts,
+			parentHeight: 0,
+		}, nil
 	}
 
 	// will either be equal to ts.Height, or at least > ts.Parent.Height()
