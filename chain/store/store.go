@@ -62,6 +62,8 @@ type ChainStore struct {
 	tstLk   sync.Mutex
 	tipsets map[abi.ChainEpoch][]cid.Cid
 
+	cindex *ChainIndex
+
 	reorgCh          chan<- reorg
 	headChangeNotifs []func(rev, app []*types.TipSet) error
 
@@ -83,6 +85,10 @@ func NewChainStore(bs bstore.Blockstore, ds dstore.Batching, vmcalls runtime.Sys
 		tsCache:  tsc,
 		vmcalls:  vmcalls,
 	}
+
+	ci := NewChainIndex(cs.LoadTipSet)
+
+	cs.cindex = ci
 
 	cs.reorgCh = cs.reorgWorker(context.TODO())
 
@@ -951,24 +957,16 @@ func (cs *ChainStore) GetTipsetByHeight(ctx context.Context, h abi.ChainEpoch, t
 		log.Warnf("expensive call to GetTipsetByHeight, seeking %d levels", ts.Height()-h)
 	}
 
-	for {
-		pts, err := cs.LoadTipSet(ts.Parents())
-		if err != nil {
-			return nil, err
-		}
-
-		if h > pts.Height() {
-			if prev {
-				return pts, nil
-			}
-			return ts, nil
-		}
-		if h == pts.Height() {
-			return pts, nil
-		}
-
-		ts = pts
+	lbts, err := cs.cindex.GetTipsetByHeight(ctx, ts, h)
+	if err != nil {
+		return nil, err
 	}
+
+	if lbts.Height() == h || !prev {
+		return lbts, nil
+	}
+
+	return cs.LoadTipSet(lbts.Parents())
 }
 
 func recurseLinks(bs blockstore.Blockstore, root cid.Cid, in []cid.Cid) ([]cid.Cid, error) {
