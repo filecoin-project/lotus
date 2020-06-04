@@ -25,6 +25,8 @@ type WorkerAPI interface {
 
 	storage.Sealer
 
+	MoveStorage(ctx context.Context, sector abi.SectorID) error
+
 	UnsealPiece(context.Context, abi.SectorID, storiface.UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) error
 	ReadPiece(context.Context, io.Writer, abi.SectorID, storiface.UnpaddedByteIndex, abi.UnpaddedPieceSize) error
 
