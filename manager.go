@@ -31,7 +31,7 @@ type Worker interface {
 
 	MoveStorage(ctx context.Context, sector abi.SectorID) error
 
-	Fetch(ctx context.Context, s abi.SectorID, ft stores.SectorFileType, sealing bool, am stores.AcquireMode) error
+	Fetch(ctx context.Context, s abi.SectorID, ft stores.SectorFileType, ptype stores.PathType, am stores.AcquireMode) error
 	UnsealPiece(context.Context, abi.SectorID, storiface.UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) error
 	ReadPiece(context.Context, io.Writer, abi.SectorID, storiface.UnpaddedByteIndex, abi.UnpaddedPieceSize) error
 
@@ -186,9 +186,9 @@ func schedNop(context.Context, Worker) error {
 	return nil
 }
 
-func schedFetch(sector abi.SectorID, ft stores.SectorFileType, sealing stores.PathType, am stores.AcquireMode) func(context.Context, Worker) error {
+func schedFetch(sector abi.SectorID, ft stores.SectorFileType, ptype stores.PathType, am stores.AcquireMode) func(context.Context, Worker) error {
 	return func(ctx context.Context, worker Worker) error {
-		return worker.Fetch(ctx, sector, ft, bool(sealing), am)
+		return worker.Fetch(ctx, sector, ft, ptype, am)
 	}
 }
 

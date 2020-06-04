@@ -16,7 +16,7 @@ type readonlyProvider struct {
 	spt   abi.RegisteredProof
 }
 
-func (l *readonlyProvider) AcquireSector(ctx context.Context, id abi.SectorID, existing stores.SectorFileType, allocate stores.SectorFileType, sealing bool) (stores.SectorPaths, func(), error) {
+func (l *readonlyProvider) AcquireSector(ctx context.Context, id abi.SectorID, existing stores.SectorFileType, allocate stores.SectorFileType, sealing stores.PathType) (stores.SectorPaths, func(), error) {
 	if allocate != stores.FTNone {
 		return stores.SectorPaths{}, nil, xerrors.New("read-only storage")
 	}
@@ -26,7 +26,7 @@ func (l *readonlyProvider) AcquireSector(ctx context.Context, id abi.SectorID, e
 		return stores.SectorPaths{}, nil, xerrors.Errorf("acquiring sector lock: %w", err)
 	}
 
-	p, _, err := l.stor.AcquireSector(ctx, id, l.spt, existing, allocate, stores.PathType(sealing), stores.AcquireMove)
+	p, _, err := l.stor.AcquireSector(ctx, id, l.spt, existing, allocate, sealing, stores.AcquireMove)
 
 	return p, cancel, err
 }
