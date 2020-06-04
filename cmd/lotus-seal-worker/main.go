@@ -292,7 +292,7 @@ var runCmd = &cli.Command{
 
 		go func() {
 			<-ctx.Done()
-			log.Warn("Shutting down..")
+			log.Warn("Shutting down...")
 			if err := srv.Shutdown(context.TODO()); err != nil {
 				log.Errorf("shutting down RPC server failed: %s", err)
 			}

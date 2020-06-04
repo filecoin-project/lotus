@@ -22,6 +22,7 @@ func init() {
 	// configure larger overlay parameters
 	pubsub.GossipSubD = 8
 	pubsub.GossipSubDscore = 6
+	pubsub.GossipSubDout = 3
 	pubsub.GossipSubDlo = 6
 	pubsub.GossipSubDhi = 12
 	pubsub.GossipSubDlazy = 12
