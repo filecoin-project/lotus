@@ -86,7 +86,7 @@ require (
 	github.com/libp2p/go-libp2p-secio v0.2.2
 	github.com/libp2p/go-libp2p-swarm v0.2.6
 	github.com/libp2p/go-libp2p-tls v0.1.3
-	github.com/libp2p/go-libp2p-yamux v0.2.7
+	github.com/libp2p/go-libp2p-yamux v0.2.8
 	github.com/libp2p/go-maddr-filter v0.0.5
 	github.com/mattn/go-isatty v0.0.12 // indirect
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1
