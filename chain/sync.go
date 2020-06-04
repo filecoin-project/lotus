@@ -528,8 +528,17 @@ func blockSanityChecks(h *types.BlockHeader) error {
 
 // Should match up with 'Semantical Validation' in validation.md in the spec
 func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) error {
+	validationStart := time.Now()
+	defer func() {
+		dur := time.Since(validationStart)
+		durMilli := dur.Seconds() * float64(1000)
+		stats.Record(ctx, metrics.BlockValidationDurationMilliseconds.M(durMilli))
+		log.Infow("block validation", "took", dur, "height", b.Header.Height)
+	}()
+
 	ctx, span := trace.StartSpan(ctx, "validateBlock")
 	defer span.End()
+
 	if build.InsecurePoStValidation {
 		log.Warn("insecure test validation is enabled, if you see this outside of a test, it is a severe bug!")
 	}
