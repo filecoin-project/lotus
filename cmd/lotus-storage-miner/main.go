@@ -27,6 +27,7 @@ func main() {
 		initCmd,
 		rewardsCmd,
 		runCmd,
+		stopCmd,
 		sectorsCmd,
 		storageCmd,
 		setPriceCmd,

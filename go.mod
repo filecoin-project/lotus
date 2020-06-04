@@ -74,24 +74,24 @@ require (
 	github.com/ipld/go-ipld-prime v0.0.2-0.20200428162820-8b59dc292b8e
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/lib/pq v1.2.0
-	github.com/libp2p/go-eventbus v0.1.0
-	github.com/libp2p/go-libp2p v0.9.2
-	github.com/libp2p/go-libp2p-connmgr v0.2.3
-	github.com/libp2p/go-libp2p-core v0.5.6
+	github.com/libp2p/go-eventbus v0.2.1
+	github.com/libp2p/go-libp2p v0.9.4
+	github.com/libp2p/go-libp2p-connmgr v0.2.4
+	github.com/libp2p/go-libp2p-core v0.5.7
 	github.com/libp2p/go-libp2p-discovery v0.4.0
-	github.com/libp2p/go-libp2p-kad-dht v0.7.6
+	github.com/libp2p/go-libp2p-kad-dht v0.8.1
 	github.com/libp2p/go-libp2p-mplex v0.2.3
 	github.com/libp2p/go-libp2p-peer v0.2.0
 	github.com/libp2p/go-libp2p-peerstore v0.2.4
-	github.com/libp2p/go-libp2p-pubsub v0.3.1
-	github.com/libp2p/go-libp2p-quic-transport v0.1.1
+	github.com/libp2p/go-libp2p-pubsub v0.3.2
+	github.com/libp2p/go-libp2p-quic-transport v0.5.0
 	github.com/libp2p/go-libp2p-record v0.1.2
-	github.com/libp2p/go-libp2p-routing-helpers v0.2.1
+	github.com/libp2p/go-libp2p-routing-helpers v0.2.3
 	github.com/libp2p/go-libp2p-secio v0.2.2
-	github.com/libp2p/go-libp2p-swarm v0.2.4
+	github.com/libp2p/go-libp2p-swarm v0.2.6
 	github.com/libp2p/go-libp2p-tls v0.1.3
-	github.com/libp2p/go-libp2p-yamux v0.2.7
-	github.com/libp2p/go-maddr-filter v0.0.5
+	github.com/libp2p/go-libp2p-yamux v0.2.8
+	github.com/libp2p/go-maddr-filter v0.1.0
 	github.com/mattn/go-isatty v0.0.12 // indirect
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1
 	github.com/mitchellh/go-homedir v1.1.0
