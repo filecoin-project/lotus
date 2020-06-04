@@ -84,6 +84,7 @@ func (evt SectorPreCommit1) apply(state *SectorInfo) {
 	state.PreCommit1Out = evt.PreCommit1Out
 	state.TicketEpoch = evt.TicketEpoch
 	state.TicketValue = evt.TicketValue
+	state.PreCommit2Fails = 0
 }
 
 type SectorPreCommit2 struct {
@@ -106,11 +107,20 @@ func (evt SectorPreCommitLanded) apply(si *SectorInfo) {
 	si.PreCommitTipSet = evt.TipSet
 }
 
-type SectorSealPreCommitFailed struct{ error }
+type SectorSealPreCommit1Failed struct{ error }
 
-func (evt SectorSealPreCommitFailed) FormatError(xerrors.Printer) (next error) { return evt.error }
-func (evt SectorSealPreCommitFailed) apply(si *SectorInfo) {
+func (evt SectorSealPreCommit1Failed) FormatError(xerrors.Printer) (next error) { return evt.error }
+func (evt SectorSealPreCommit1Failed) apply(si *SectorInfo) {
 	si.InvalidProofs = 0 // reset counter
+	si.PreCommit2Fails = 0
+}
+
+type SectorSealPreCommit2Failed struct{ error }
+
+func (evt SectorSealPreCommit2Failed) FormatError(xerrors.Printer) (next error) { return evt.error }
+func (evt SectorSealPreCommit2Failed) apply(si *SectorInfo) {
+	si.InvalidProofs = 0 // reset counter
+	si.PreCommit2Fails++
 }
 
 type SectorChainPreCommitFailed struct{ error }
@@ -175,9 +185,13 @@ func (evt SectorFinalizeFailed) apply(*SectorInfo)                        {}
 
 // Failed state recovery
 
-type SectorRetrySeal struct{}
+type SectorRetrySealPreCommit1 struct{}
 
-func (evt SectorRetrySeal) apply(state *SectorInfo) {}
+func (evt SectorRetrySealPreCommit1) apply(state *SectorInfo) {}
+
+type SectorRetrySealPreCommit2 struct{}
+
+func (evt SectorRetrySealPreCommit2) apply(state *SectorInfo) {}
 
 type SectorRetryPreCommit struct{}
 

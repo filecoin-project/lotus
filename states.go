@@ -94,12 +94,12 @@ func (m *Sealing) handlePreCommit1(ctx statemachine.Context, sector SectorInfo) 
 	log.Infow("performing sector replication...", "sector", sector.SectorNumber)
 	ticketValue, ticketEpoch, err := m.getTicket(ctx, sector)
 	if err != nil {
-		return ctx.Send(SectorSealPreCommitFailed{xerrors.Errorf("getting ticket failed: %w", err)})
+		return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("getting ticket failed: %w", err)})
 	}
 
 	pc1o, err := m.sealer.SealPreCommit1(ctx.Context(), m.minerSector(sector.SectorNumber), ticketValue, sector.pieceInfos())
 	if err != nil {
-		return ctx.Send(SectorSealPreCommitFailed{xerrors.Errorf("seal pre commit(1) failed: %w", err)})
+		return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("seal pre commit(1) failed: %w", err)})
 	}
 
 	return ctx.Send(SectorPreCommit1{
@@ -112,7 +112,7 @@ func (m *Sealing) handlePreCommit1(ctx statemachine.Context, sector SectorInfo) 
 func (m *Sealing) handlePreCommit2(ctx statemachine.Context, sector SectorInfo) error {
 	cids, err := m.sealer.SealPreCommit2(ctx.Context(), m.minerSector(sector.SectorNumber), sector.PreCommit1Out)
 	if err != nil {
-		return ctx.Send(SectorSealPreCommitFailed{xerrors.Errorf("seal pre commit(2) failed: %w", err)})
+		return ctx.Send(SectorSealPreCommit2Failed{xerrors.Errorf("seal pre commit(2) failed: %w", err)})
 	}
 
 	return ctx.Send(SectorPreCommit2{
@@ -140,11 +140,11 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 			log.Errorf("handlePreCommitting: api error, not proceeding: %+v", err)
 			return nil
 		case *ErrBadCommD: // TODO: Should this just back to packing? (not really needed since handlePreCommit1 will do that too)
-			return ctx.Send(SectorSealPreCommitFailed{xerrors.Errorf("bad CommD error: %w", err)})
+			return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("bad CommD error: %w", err)})
 		case *ErrExpiredTicket:
-			return ctx.Send(SectorSealPreCommitFailed{xerrors.Errorf("ticket expired: %w", err)})
+			return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("ticket expired: %w", err)})
 		case *ErrBadTicket:
-			return ctx.Send(SectorSealPreCommitFailed{xerrors.Errorf("bad expired: %w", err)})
+			return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("bad ticket: %w", err)})
 		case *ErrPrecommitOnChain:
 			return ctx.Send(SectorPreCommitLanded{TipSet: tok}) // we re-did precommit
 		default:
@@ -154,7 +154,7 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 
 	expiration, err := m.pcp.Expiration(ctx.Context(), sector.Pieces...)
 	if err != nil {
-		return ctx.Send(SectorSealPreCommitFailed{xerrors.Errorf("handlePreCommitting: failed to compute pre-commit expiry: %w", err)})
+		return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("handlePreCommitting: failed to compute pre-commit expiry: %w", err)})
 	}
 
 	params := &miner.SectorPreCommitInfo{
