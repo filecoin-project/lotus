@@ -3,7 +3,7 @@ package cli
 import (
 	"fmt"
 
-	"gopkg.in/urfave/cli.v2"
+	"github.com/urfave/cli/v2"
 )
 
 var versionCmd = &cli.Command{

@@ -7,7 +7,7 @@ import (
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	cid "github.com/ipfs/go-cid"
-	"gopkg.in/urfave/cli.v2"
+	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"

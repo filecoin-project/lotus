@@ -7,7 +7,7 @@ import (
 
 	"github.com/libp2p/go-libp2p-core/peer"
 
-	"gopkg.in/urfave/cli.v2"
+	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/lotus/lib/addrutil"
 )

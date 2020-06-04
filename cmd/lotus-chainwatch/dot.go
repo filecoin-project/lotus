@@ -6,7 +6,7 @@ import (
 	"strconv"
 
 	"github.com/ipfs/go-cid"
-	"gopkg.in/urfave/cli.v2"
+	"github.com/urfave/cli/v2"
 )
 
 var dotCmd = &cli.Command{
