@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/lotus/build"
 	"reflect"
 	"sort"
 	"strconv"
@@ -36,6 +35,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/miner"
 )

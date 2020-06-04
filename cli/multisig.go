@@ -6,7 +6,6 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
-	"github.com/filecoin-project/lotus/build"
 	"os"
 	"sort"
 	"strconv"
@@ -24,6 +23,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/apibstore"
+	"github.com/filecoin-project/lotus/build"
 	types "github.com/filecoin-project/lotus/chain/types"
 )
 
