@@ -566,7 +566,7 @@ func configureStorageMiner(ctx context.Context, api lapi.FullNode, addr address.
 	}
 
 	log.Info("Waiting for message: ", smsg.Cid())
-	ret, err := api.StateWaitMsg(ctx, smsg.Cid())
+	ret, err := api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
 	if err != nil {
 		return err
 	}
@@ -648,7 +648,7 @@ func createStorageMiner(ctx context.Context, api lapi.FullNode, peerid peer.ID, 
 	log.Infof("Pushed StorageMarket.CreateStorageMiner, %s to Mpool", signed.Cid())
 	log.Infof("Waiting for confirmation")
 
-	mw, err := api.StateWaitMsg(ctx, signed.Cid())
+	mw, err := api.StateWaitMsg(ctx, signed.Cid(), build.MessageConfidence)
 	if err != nil {
 		return address.Undef, err
 	}

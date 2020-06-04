@@ -12,6 +12,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -55,7 +56,7 @@ func (pm *Manager) createPaych(ctx context.Context, from, to address.Address, am
 //  (tricky because we need to setup channel tracking before we know its address)
 func (pm *Manager) waitForPaychCreateMsg(ctx context.Context, mcid cid.Cid) {
 	defer pm.store.lk.Unlock()
-	mwait, err := pm.state.StateWaitMsg(ctx, mcid)
+	mwait, err := pm.state.StateWaitMsg(ctx, mcid, build.MessageConfidence)
 	if err != nil {
 		log.Errorf("wait msg: %w", err)
 	}
@@ -105,7 +106,7 @@ func (pm *Manager) addFunds(ctx context.Context, ch address.Address, from addres
 //  (tricky because we need to setup channel tracking before we know it's address)
 func (pm *Manager) waitForAddFundsMsg(ctx context.Context, mcid cid.Cid) {
 	defer pm.store.lk.Unlock()
-	mwait, err := pm.state.StateWaitMsg(ctx, mcid)
+	mwait, err := pm.state.StateWaitMsg(ctx, mcid, build.MessageConfidence)
 	if err != nil {
 		log.Error(err)
 	}

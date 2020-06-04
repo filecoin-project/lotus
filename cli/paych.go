@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
+	"github.com/filecoin-project/lotus/build"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
@@ -361,7 +362,7 @@ var paychVoucherSubmitCmd = &cli.Command{
 			return err
 		}
 
-		mwait, err := api.StateWaitMsg(ctx, mcid)
+		mwait, err := api.StateWaitMsg(ctx, mcid, build.MessageConfidence)
 		if err != nil {
 			return err
 		}

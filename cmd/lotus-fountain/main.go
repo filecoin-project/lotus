@@ -334,7 +334,7 @@ func (h *handler) msgwait(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mw, err := h.api.StateWaitMsg(r.Context(), c)
+	mw, err := h.api.StateWaitMsg(r.Context(), c, build.MessageConfidence)
 	if err != nil {
 		w.WriteHeader(400)
 		w.Write([]byte(err.Error()))
@@ -357,7 +357,7 @@ func (h *handler) msgwaitaddr(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mw, err := h.api.StateWaitMsg(r.Context(), c)
+	mw, err := h.api.StateWaitMsg(r.Context(), c, build.MessageConfidence)
 	if err != nil {
 		w.WriteHeader(400)
 		w.Write([]byte(err.Error()))

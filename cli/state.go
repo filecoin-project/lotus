@@ -35,6 +35,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/miner"
 )
@@ -392,7 +393,7 @@ var stateReplaySetCmd = &cli.Command{
 
 				ts, err = types.NewTipSet(headers)
 			} else {
-				r, err := api.StateWaitMsg(ctx, mcid)
+				r, err := api.StateWaitMsg(ctx, mcid, build.MessageConfidence)
 				if err != nil {
 					return xerrors.Errorf("finding message in chain: %w", err)
 				}
@@ -1156,7 +1157,7 @@ var stateWaitMsgCmd = &cli.Command{
 			return err
 		}
 
-		mw, err := api.StateWaitMsg(ctx, msg)
+		mw, err := api.StateWaitMsg(ctx, msg, build.MessageConfidence)
 		if err != nil {
 			return err
 		}
