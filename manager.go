@@ -390,13 +390,25 @@ func (m *Manager) FinalizeSector(ctx context.Context, sector abi.SectorID) error
 		return xerrors.Errorf("acquiring sector lock: %w", err)
 	}
 
-	selector, err := newExistingSelector(ctx, m.index, sector, stores.FTCache|stores.FTSealed|stores.FTUnsealed, false)
+	unsealed := stores.FTUnsealed
+	{
+		unsealedStores, err := m.index.StorageFindSector(ctx, sector, stores.FTUnsealed, false)
+		if err != nil {
+			return xerrors.Errorf("finding unsealed sector: %w", err)
+		}
+
+		if len(unsealedStores) == 0 { // Is some edge-cases unsealed sector may not exist already, that's fine
+			unsealed = stores.FTNone
+		}
+	}
+
+	selector, err := newExistingSelector(ctx, m.index, sector, stores.FTCache|stores.FTSealed|unsealed, false)
 	if err != nil {
 		return xerrors.Errorf("creating path selector: %w", err)
 	}
 
 	err = m.sched.Schedule(ctx, sector, sealtasks.TTFinalize, selector,
-		schedFetch(sector, stores.FTCache|stores.FTSealed|stores.FTUnsealed, stores.PathSealing, stores.AcquireMove),
+		schedFetch(sector, stores.FTCache|stores.FTSealed|unsealed, stores.PathSealing, stores.AcquireMove),
 		func(ctx context.Context, w Worker) error {
 			return w.FinalizeSector(ctx, sector)
 		})
