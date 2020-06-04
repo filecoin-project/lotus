@@ -120,7 +120,7 @@ func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid abi.SectorNumb
 			Value: info.SeedValue,
 			Epoch: info.SeedEpoch,
 		},
-		Retries: info.Nonce,
+		Retries: info.InvalidProofs,
 
 		LastErr: info.LastErr,
 		Log:     log,

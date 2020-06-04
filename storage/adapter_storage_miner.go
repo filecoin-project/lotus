@@ -163,8 +163,12 @@ func (s SealingAPIAdapter) StateSectorPreCommitInfo(ctx context.Context, maddr a
 	}
 
 	var pci miner.SectorPreCommitOnChainInfo
-	if _, err := precommits.Get(adt.UIntKey(uint64(sectorNumber)), &pci); err != nil {
+	ok, err := precommits.Get(adt.UIntKey(uint64(sectorNumber)), &pci)
+	if err != nil {
 		return nil, err
+	}
+	if !ok {
+		return nil, nil
 	}
 
 	return &pci, nil
