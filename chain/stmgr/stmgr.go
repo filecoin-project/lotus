@@ -553,7 +553,7 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid, confid
 						reverts[val.Val.Key()] = true
 					}
 				case store.HCApply:
-					if candidateTs != nil && val.Val.Height() >= candidateTs.Height() + abi.ChainEpoch(confidence) {
+					if candidateTs != nil && val.Val.Height() >= candidateTs.Height()+abi.ChainEpoch(confidence) {
 						return candidateTs, candidateRcp, nil
 					}
 					r, err := sm.tipsetExecutedMessage(val.Val, mcid, msg.VMMessage())
@@ -574,7 +574,7 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid, confid
 			// check if we found the message in the chain and that is hasn't been reverted since we started searching
 			if backTs != nil && !reverts[backTs.Key()] {
 				// if head is at or past confidence interval, return immediately
-				if heightOfHead >= backTs.Height() + abi.ChainEpoch(confidence) {
+				if heightOfHead >= backTs.Height()+abi.ChainEpoch(confidence) {
 					return backTs, backRcp, nil
 				}
 
