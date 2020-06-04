@@ -914,6 +914,10 @@ func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, pers cr
 		return nil, err
 	}
 
+	if round > ts.Height() {
+		return DrawRandomness(ts.MinTicket().VRFProof, pers, round, entropy)
+	}
+
 	searchHeight := round
 	if searchHeight < 0 {
 		searchHeight = 0
