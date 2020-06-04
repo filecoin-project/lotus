@@ -3,7 +3,6 @@ package paychmgr
 import (
 	"bytes"
 	"context"
-	"github.com/filecoin-project/lotus/build"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
@@ -13,6 +12,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 )
