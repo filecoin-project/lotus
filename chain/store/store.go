@@ -962,6 +962,14 @@ func (cs *ChainStore) GetTipsetByHeight(ctx context.Context, h abi.ChainEpoch, t
 		return nil, err
 	}
 
+	if lbts.Height() < h {
+		log.Warnf("chain index returned the wrong tipset at height %d, using slow retrieval", h)
+		lbts, err = cs.cindex.GetTipsetByHeightWithoutCache(ts, h)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	if lbts.Height() == h || !prev {
 		return lbts, nil
 	}

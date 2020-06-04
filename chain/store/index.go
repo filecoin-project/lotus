@@ -30,6 +30,7 @@ func NewChainIndex(lts loadTipSetFunc) *ChainIndex {
 type lbEntry struct {
 	ts           *types.TipSet
 	parentHeight abi.ChainEpoch
+	targetHeight abi.ChainEpoch
 	target       types.TipSetKey
 }
 
@@ -57,12 +58,16 @@ func (ci *ChainIndex) GetTipsetByHeight(ctx context.Context, from *types.TipSet,
 		lbe := cval.(*lbEntry)
 		if lbe.ts.Height() == to || lbe.parentHeight < to {
 			return lbe.ts, nil
-		} else if to > lbe.ts.Height()-ci.skipLength {
+		} else if to > lbe.targetHeight {
 			return ci.walkBack(lbe.ts, to)
 		}
 
 		cur = lbe.target
 	}
+}
+
+func (ci *ChainIndex) GetTipsetByHeightWithoutCache(from *types.TipSet, to abi.ChainEpoch) (*types.TipSet, error) {
+	return ci.walkBack(from, to)
 }
 
 func (ci *ChainIndex) fillCache(tsk types.TipSetKey) (*lbEntry, error) {
@@ -100,6 +105,7 @@ func (ci *ChainIndex) fillCache(tsk types.TipSetKey) (*lbEntry, error) {
 	lbe := &lbEntry{
 		ts:           ts,
 		parentHeight: parent.Height(),
+		targetHeight: skipTarget.Height(),
 		target:       skipTarget.Key(),
 	}
 	ci.skipCache.Add(tsk, lbe)
