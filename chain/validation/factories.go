@@ -1,27 +1,34 @@
 package validation
 
 import (
-	vchain "github.com/filecoin-project/chain-validation/pkg/chain"
-	vstate "github.com/filecoin-project/chain-validation/pkg/state"
-	"github.com/filecoin-project/chain-validation/pkg/suites"
+	"github.com/filecoin-project/specs-actors/actors/runtime"
+
+	vstate "github.com/filecoin-project/chain-validation/state"
 )
 
-type factories struct {
+type Factories struct {
 	*Applier
 }
 
-var _ suites.Factories = &factories{}
+var _ vstate.Factories = &Factories{}
 
-func NewFactories() *factories {
-	applier := NewApplier()
-	return &factories{applier}
+func NewFactories() *Factories {
+	return &Factories{}
 }
 
-func (f *factories) NewState() vstate.Wrapper {
-	return NewState()
+func (f *Factories) NewStateAndApplier(syscalls runtime.Syscalls) (vstate.VMWrapper, vstate.Applier) {
+	st := NewState()
+	return st, NewApplier(st, syscalls)
 }
 
-func (f *factories) NewMessageFactory(wrapper vstate.Wrapper) vchain.MessageFactory {
-	signer := wrapper.(*StateWrapper).Signer()
-	return NewMessageFactory(signer)
+func (f *Factories) NewKeyManager() vstate.KeyManager {
+	return newKeyManager()
+}
+
+func (f *Factories) NewValidationConfig() vstate.ValidationConfig {
+	trackGas := true
+	checkExit := true
+	checkRet := true
+	checkState := true
+	return NewConfig(trackGas, checkExit, checkRet, checkState)
 }

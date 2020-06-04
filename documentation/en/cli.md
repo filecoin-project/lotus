@@ -66,7 +66,7 @@ lotus version
 ### Listing accounts in your wallet
 
 ```sh
-lo*tus wallet list
+lotus wallet list
 ``` 
 
 ### Creating a new account

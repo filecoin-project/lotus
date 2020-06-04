@@ -67,7 +67,7 @@ func TestSizeStr(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		assert.Equal(t, c.out, NewInt(c.in).SizeStr(), "input %+v, produced wrong result", c)
+		assert.Equal(t, c.out, SizeStr(NewInt(c.in)), "input %+v, produced wrong result", c)
 	}
 }
 
@@ -75,6 +75,6 @@ func TestSizeStrBig(t *testing.T) {
 	ZiB := big.NewInt(50000)
 	ZiB = ZiB.Lsh(ZiB, 70)
 
-	assert.Equal(t, "5e+04 ZiB", BigInt{Int: ZiB}.SizeStr(), "inout %+v, produced wrong result", ZiB)
+	assert.Equal(t, "5e+04 ZiB", SizeStr(BigInt{Int: ZiB}), "inout %+v, produced wrong result", ZiB)
 
 }

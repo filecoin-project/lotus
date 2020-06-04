@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	. "github.com/filecoin-project/lotus/chain/actors/aerrors"
+	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/xerrors"
@@ -31,5 +32,5 @@ func TestAbsorbeError(t *testing.T) {
 	aw3 := Wrap(aw2, "creating miner in storage market")
 	t.Logf("Verbose error: %+v", aw3)
 	t.Logf("Normal error: %v", aw3)
-	assert.Equal(t, uint8(35), RetCode(aw3))
+	assert.Equal(t, exitcode.ExitCode(35), RetCode(aw3))
 }

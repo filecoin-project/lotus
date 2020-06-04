@@ -14,14 +14,17 @@ import (
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
+	"github.com/filecoin-project/go-jsonrpc"
+	"github.com/filecoin-project/go-jsonrpc/auth"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/apistruct"
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/lotus/lib/auth"
-	"github.com/filecoin-project/lotus/lib/jsonrpc"
+	"github.com/filecoin-project/lotus/lib/ulimit"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/impl"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -31,7 +34,7 @@ var runCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "api",
-			Value: "2345",
+			Usage: "2345",
 		},
 		&cli.BoolFlag{
 			Name:  "enable-gpu-proving",
@@ -41,6 +44,11 @@ var runCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name:  "nosync",
 			Usage: "don't check full-node sync status",
+		},
+		&cli.BoolFlag{
+			Name:  "manage-fdlimit",
+			Usage: "manage open file limit",
+			Value: true,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -58,6 +66,12 @@ var runCmd = &cli.Command{
 		v, err := nodeApi.Version(ctx)
 		if err != nil {
 			return err
+		}
+
+		if cctx.Bool("manage-fdlimit") {
+			if _, _, err := ulimit.ManageFdLimit(); err != nil {
+				log.Errorf("setting file descriptor limit: %s", err)
+			}
 		}
 
 		if v.APIVersion != build.APIVersion {
@@ -86,20 +100,18 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("repo at '%s' is not initialized, run 'lotus-storage-miner init' to set it up", storageRepoPath)
 		}
 
+		shutdownChan := make(chan struct{})
+
 		var minerapi api.StorageMiner
 		stop, err := node.New(ctx,
 			node.StorageMiner(&minerapi),
+			node.Override(new(dtypes.ShutdownChan), shutdownChan),
 			node.Online(),
 			node.Repo(r),
 
 			node.ApplyIf(func(s *node.Settings) bool { return cctx.IsSet("api") },
-				node.Override(node.SetApiEndpointKey, func(lr repo.LockedRepo) error {
-					apima, err := multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/" +
-						cctx.String("api"))
-					if err != nil {
-						return err
-					}
-					return lr.SetAPIEndpoint(apima)
+				node.Override(new(dtypes.APIEndpoint), func() (dtypes.APIEndpoint, error) {
+					return multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/" + cctx.String("api"))
 				})),
 			node.Override(new(api.FullNode), nodeApi),
 		)
@@ -147,8 +159,12 @@ var runCmd = &cli.Command{
 
 		sigChan := make(chan os.Signal, 2)
 		go func() {
-			<-sigChan
-			log.Warn("Shutting down..")
+			select {
+			case <-sigChan:
+			case <-shutdownChan:
+			}
+
+			log.Warn("Shutting down...")
 			if err := stop(context.TODO()); err != nil {
 				log.Errorf("graceful shutting down failed: %s", err)
 			}

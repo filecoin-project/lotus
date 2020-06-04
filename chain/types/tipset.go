@@ -7,8 +7,10 @@ import (
 	"io"
 	"sort"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/minio/blake2b-simd"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 )
@@ -18,7 +20,7 @@ var log = logging.Logger("types")
 type TipSet struct {
 	cids   []cid.Cid
 	blks   []*BlockHeader
-	height uint64
+	height abi.ChainEpoch
 }
 
 // why didnt i just export the fields? Because the struct has methods with the
@@ -26,7 +28,7 @@ type TipSet struct {
 type ExpTipSet struct {
 	Cids   []cid.Cid
 	Blocks []*BlockHeader
-	Height uint64
+	Height abi.ChainEpoch
 }
 
 func (ts *TipSet) MarshalJSON() ([]byte, error) {
@@ -88,7 +90,7 @@ func tipsetSortFunc(blks []*BlockHeader) func(i, j int) bool {
 
 		if ti.Equals(tj) {
 			log.Warnf("blocks have same ticket (%s %s)", blks[i].Miner, blks[j].Miner)
-			return blks[i].Cid().KeyString() < blks[j].Cid().KeyString()
+			return bytes.Compare(blks[i].Cid().Bytes(), blks[j].Cid().Bytes()) < 0
 		}
 
 		return ti.Less(tj)
@@ -135,7 +137,7 @@ func (ts *TipSet) Key() TipSetKey {
 	return NewTipSetKey(ts.cids...)
 }
 
-func (ts *TipSet) Height() uint64 {
+func (ts *TipSet) Height() abi.ChainEpoch {
 	return ts.height
 }
 
@@ -169,7 +171,9 @@ func (ts *TipSet) Equals(ots *TipSet) bool {
 }
 
 func (t *Ticket) Less(o *Ticket) bool {
-	return bytes.Compare(t.VRFProof, o.VRFProof) < 0
+	tDigest := blake2b.Sum256(t.VRFProof)
+	oDigest := blake2b.Sum256(o.VRFProof)
+	return bytes.Compare(tDigest[:], oDigest[:]) < 0
 }
 
 func (ts *TipSet) MinTicket() *Ticket {

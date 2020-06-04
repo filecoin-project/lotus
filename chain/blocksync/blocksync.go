@@ -138,7 +138,7 @@ func (bss *BlockSyncService) processRequest(ctx context.Context, p peer.ID, req 
 		reqlen = BlockSyncMaxRequestLength
 	}
 
-	chain, err := bss.collectChainSegment(types.NewTipSetKey(req.Start...), reqlen, opts)
+	chain, err := collectChainSegment(bss.cs, types.NewTipSetKey(req.Start...), reqlen, opts)
 	if err != nil {
 		log.Warn("encountered error while responding to block sync request: ", err)
 		return &BlockSyncResponse{
@@ -158,18 +158,18 @@ func (bss *BlockSyncService) processRequest(ctx context.Context, p peer.ID, req 
 	}, nil
 }
 
-func (bss *BlockSyncService) collectChainSegment(start types.TipSetKey, length uint64, opts *BSOptions) ([]*BSTipSet, error) {
+func collectChainSegment(cs *store.ChainStore, start types.TipSetKey, length uint64, opts *BSOptions) ([]*BSTipSet, error) {
 	var bstips []*BSTipSet
 	cur := start
 	for {
 		var bst BSTipSet
-		ts, err := bss.cs.LoadTipSet(cur)
+		ts, err := cs.LoadTipSet(cur)
 		if err != nil {
 			return nil, xerrors.Errorf("failed loading tipset %s: %w", cur, err)
 		}
 
 		if opts.IncludeMessages {
-			bmsgs, bmincl, smsgs, smincl, err := bss.gatherMessages(ts)
+			bmsgs, bmincl, smsgs, smincl, err := gatherMessages(cs, ts)
 			if err != nil {
 				return nil, xerrors.Errorf("gather messages failed: %w", err)
 			}
@@ -194,7 +194,7 @@ func (bss *BlockSyncService) collectChainSegment(start types.TipSetKey, length u
 	}
 }
 
-func (bss *BlockSyncService) gatherMessages(ts *types.TipSet) ([]*types.Message, [][]uint64, []*types.SignedMessage, [][]uint64, error) {
+func gatherMessages(cs *store.ChainStore, ts *types.TipSet) ([]*types.Message, [][]uint64, []*types.SignedMessage, [][]uint64, error) {
 	blsmsgmap := make(map[cid.Cid]uint64)
 	secpkmsgmap := make(map[cid.Cid]uint64)
 	var secpkmsgs []*types.SignedMessage
@@ -202,7 +202,7 @@ func (bss *BlockSyncService) gatherMessages(ts *types.TipSet) ([]*types.Message,
 	var secpkincl, blsincl [][]uint64
 
 	for _, b := range ts.Blocks() {
-		bmsgs, smsgs, err := bss.cs.MessagesForBlock(b)
+		bmsgs, smsgs, err := cs.MessagesForBlock(b)
 		if err != nil {
 			return nil, nil, nil, nil, err
 		}

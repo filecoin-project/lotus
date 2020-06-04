@@ -10,9 +10,9 @@ import (
 
 	rice "github.com/GeertJohan/go.rice"
 	"github.com/gorilla/websocket"
-	"github.com/ipfs/go-car"
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	"github.com/ipld/go-car"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"

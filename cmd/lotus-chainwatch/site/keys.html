@@ -17,8 +17,8 @@
                {{$addr := .}}
                <div>
                    <a href="key.html?w={{$addr}}">{{$addr}}</a>
-                   <span><b>{{qstr "select count(distinct cid) from messages where \"from\"=?" $addr}}</b> outmsgs;</span>
-                   <span><b>{{qstr "select count(distinct cid) from messages where \"to\"=?" $addr}}</b> inmsgs</span>
+                   <span><b>{{qstr "select count(distinct cid) from messages where \"from\"=$1" $addr}}</b> outmsgs;</span>
+                   <span><b>{{qstr "select count(distinct cid) from messages where \"to\"=$1" $addr}}</b> inmsgs</span>
                </div>
            {{end}}
         </div>

@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/ipfs/go-cid"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
@@ -13,7 +15,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	full "github.com/filecoin-project/lotus/node/impl/full"
-	"github.com/filecoin-project/lotus/paych"
+	"github.com/filecoin-project/lotus/paychmgr"
 )
 
 type PaychAPI struct {
@@ -23,7 +25,7 @@ type PaychAPI struct {
 	full.WalletAPI
 	full.ChainAPI
 
-	PaychMgr *paych.Manager
+	PaychMgr *paychmgr.Manager
 }
 
 func (a *PaychAPI) PaychGet(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*api.ChannelInfo, error) {
@@ -57,16 +59,17 @@ func (a *PaychAPI) PaychNewPayment(ctx context.Context, from, to address.Address
 		return nil, err
 	}
 
-	svs := make([]*types.SignedVoucher, len(vouchers))
+	svs := make([]*paych.SignedVoucher, len(vouchers))
 
 	for i, v := range vouchers {
-		sv, err := a.paychVoucherCreate(ctx, ch.Channel, types.SignedVoucher{
+		sv, err := a.paychVoucherCreate(ctx, ch.Channel, paych.SignedVoucher{
 			Amount: v.Amount,
-			Lane:   lane,
+			Lane:   uint64(lane),
 
-			Extra:          v.Extra,
-			TimeLock:       v.TimeLock,
-			MinCloseHeight: v.MinClose,
+			Extra:           v.Extra,
+			TimeLockMin:     v.TimeLockMin,
+			TimeLockMax:     v.TimeLockMax,
+			MinSettleHeight: v.MinSettle,
 		})
 		if err != nil {
 			return nil, err
@@ -103,6 +106,8 @@ func (a *PaychAPI) PaychStatus(ctx context.Context, pch address.Address) (*api.P
 }
 
 func (a *PaychAPI) PaychClose(ctx context.Context, addr address.Address) (cid.Cid, error) {
+	panic("TODO Settle logic")
+
 	ci, err := a.PaychMgr.GetChannelInfo(addr)
 	if err != nil {
 		return cid.Undef, err
@@ -117,10 +122,10 @@ func (a *PaychAPI) PaychClose(ctx context.Context, addr address.Address) (cid.Ci
 		To:     addr,
 		From:   ci.Control,
 		Value:  types.NewInt(0),
-		Method: actors.PCAMethods.Close,
+		Method: builtin.MethodsPaych.Settle,
 		Nonce:  nonce,
 
-		GasLimit: types.NewInt(500),
+		GasLimit: 10000,
 		GasPrice: types.NewInt(0),
 	}
 
@@ -136,15 +141,15 @@ func (a *PaychAPI) PaychClose(ctx context.Context, addr address.Address) (cid.Ci
 	return smsg.Cid(), nil
 }
 
-func (a *PaychAPI) PaychVoucherCheckValid(ctx context.Context, ch address.Address, sv *types.SignedVoucher) error {
+func (a *PaychAPI) PaychVoucherCheckValid(ctx context.Context, ch address.Address, sv *paych.SignedVoucher) error {
 	return a.PaychMgr.CheckVoucherValid(ctx, ch, sv)
 }
 
-func (a *PaychAPI) PaychVoucherCheckSpendable(ctx context.Context, ch address.Address, sv *types.SignedVoucher, secret []byte, proof []byte) (bool, error) {
+func (a *PaychAPI) PaychVoucherCheckSpendable(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (bool, error) {
 	return a.PaychMgr.CheckVoucherSpendable(ctx, ch, sv, secret, proof)
 }
 
-func (a *PaychAPI) PaychVoucherAdd(ctx context.Context, ch address.Address, sv *types.SignedVoucher, proof []byte, minDelta types.BigInt) (types.BigInt, error) {
+func (a *PaychAPI) PaychVoucherAdd(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, proof []byte, minDelta types.BigInt) (types.BigInt, error) {
 	_ = a.PaychMgr.TrackInboundChannel(ctx, ch) // TODO: expose those calls
 
 	return a.PaychMgr.AddVoucher(ctx, ch, sv, proof, minDelta)
@@ -155,11 +160,11 @@ func (a *PaychAPI) PaychVoucherAdd(ctx context.Context, ch address.Address, sv *
 // that will be used to create the voucher, so if previous vouchers exist, the
 // actual additional value of this voucher will only be the difference between
 // the two.
-func (a *PaychAPI) PaychVoucherCreate(ctx context.Context, pch address.Address, amt types.BigInt, lane uint64) (*types.SignedVoucher, error) {
-	return a.paychVoucherCreate(ctx, pch, types.SignedVoucher{Amount: amt, Lane: lane})
+func (a *PaychAPI) PaychVoucherCreate(ctx context.Context, pch address.Address, amt types.BigInt, lane uint64) (*paych.SignedVoucher, error) {
+	return a.paychVoucherCreate(ctx, pch, paych.SignedVoucher{Amount: amt, Lane: lane})
 }
 
-func (a *PaychAPI) paychVoucherCreate(ctx context.Context, pch address.Address, voucher types.SignedVoucher) (*types.SignedVoucher, error) {
+func (a *PaychAPI) paychVoucherCreate(ctx context.Context, pch address.Address, voucher paych.SignedVoucher) (*paych.SignedVoucher, error) {
 	ci, err := a.PaychMgr.GetChannelInfo(pch)
 	if err != nil {
 		return nil, xerrors.Errorf("get channel info: %w", err)
@@ -192,13 +197,13 @@ func (a *PaychAPI) paychVoucherCreate(ctx context.Context, pch address.Address, 
 	return sv, nil
 }
 
-func (a *PaychAPI) PaychVoucherList(ctx context.Context, pch address.Address) ([]*types.SignedVoucher, error) {
+func (a *PaychAPI) PaychVoucherList(ctx context.Context, pch address.Address) ([]*paych.SignedVoucher, error) {
 	vi, err := a.PaychMgr.ListVouchers(ctx, pch)
 	if err != nil {
 		return nil, err
 	}
 
-	out := make([]*types.SignedVoucher, len(vi))
+	out := make([]*paych.SignedVoucher, len(vi))
 	for k, v := range vi {
 		out[k] = v.Voucher
 	}
@@ -206,7 +211,7 @@ func (a *PaychAPI) PaychVoucherList(ctx context.Context, pch address.Address) ([
 	return out, nil
 }
 
-func (a *PaychAPI) PaychVoucherSubmit(ctx context.Context, ch address.Address, sv *types.SignedVoucher) (cid.Cid, error) {
+func (a *PaychAPI) PaychVoucherSubmit(ctx context.Context, ch address.Address, sv *paych.SignedVoucher) (cid.Cid, error) {
 	ci, err := a.PaychMgr.GetChannelInfo(ch)
 	if err != nil {
 		return cid.Undef, err
@@ -221,7 +226,7 @@ func (a *PaychAPI) PaychVoucherSubmit(ctx context.Context, ch address.Address, s
 		return cid.Undef, fmt.Errorf("cant handle more advanced payment channel stuff yet")
 	}
 
-	enc, err := actors.SerializeParams(&actors.PCAUpdateChannelStateParams{
+	enc, err := actors.SerializeParams(&paych.UpdateChannelStateParams{
 		Sv: *sv,
 	})
 	if err != nil {
@@ -233,9 +238,9 @@ func (a *PaychAPI) PaychVoucherSubmit(ctx context.Context, ch address.Address, s
 		To:       ch,
 		Value:    types.NewInt(0),
 		Nonce:    nonce,
-		Method:   actors.PCAMethods.UpdateChannelState,
+		Method:   builtin.MethodsPaych.UpdateChannelState,
 		Params:   enc,
-		GasLimit: types.NewInt(100000),
+		GasLimit: 100000,
 		GasPrice: types.NewInt(0),
 	}
 

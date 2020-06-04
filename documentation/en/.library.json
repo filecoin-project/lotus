@@ -57,6 +57,12 @@
           "value": null
         },
         {
+          "title": "Use Lotus with systemd",
+          "slug": "en+install-system-services",
+          "github": "en/install-system-services.md",
+          "value": null
+        },
+        {
           "title": "Setup Troubleshooting",
           "slug": "en+setup-troubleshooting",
           "github": "en/setup-troubleshooting.md",
@@ -107,6 +113,12 @@
           "slug": "en+info-for-miners",
           "github": "en/miner-deals.md",
           "value": null
+        },
+        {
+          "title": "IPFS Integration",
+          "slug": "en+ipfs-client-integration",
+          "github": "en/storing-ipfs-integration.md",
+          "value": null
         }
       ]
     },
@@ -131,7 +143,7 @@
       "value": null,
       "posts": [
         {
-          "title": "API Scripting Support",
+          "title": "Remote API Support",
           "slug": "en+api-scripting-support",
           "github": "en/api-scripting-support.md",
           "value": null
@@ -154,13 +166,6 @@
           "title": "Setup Local Devnet",
           "slug": "en+setup-local-dev-net",
           "github": "en/local-dev-net.md",
-          "value": null,
-          "posts": []
-        },
-        {
-          "title": "Pond UI",
-          "slug": "en+dev-tools-pond-ui",
-          "github": "en/dev-tools-pond-ui.md",
           "value": null,
           "posts": []
         },

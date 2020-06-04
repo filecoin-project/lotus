@@ -8,9 +8,9 @@ import (
 	"path"
 	"strconv"
 
-	"github.com/filecoin-project/lotus/lib/jsonrpc"
-
 	"gopkg.in/urfave/cli.v2"
+
+	"github.com/filecoin-project/go-jsonrpc"
 )
 
 const listenAddr = "127.0.0.1:2222"
@@ -116,7 +116,6 @@ func logHandler(api *api) func(http.ResponseWriter, *http.Request) {
 		id, err := strconv.ParseInt(path.Base(req.URL.Path), 10, 32)
 		if err != nil {
 			panic(err)
-			return
 		}
 
 		api.runningLk.Lock()

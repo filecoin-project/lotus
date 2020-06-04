@@ -22,7 +22,7 @@ class State extends React.Component {
 
   async componentDidMount() {
     const tipset = this.props.tipset || await this.props.client.call("Filecoin.ChainHead", [])
-    const actstate = await this.props.client.call('Filecoin.StateReadState', [this.props.actor, tipset])
+    const actstate = await this.props.client.call('Filecoin.StateReadState', [this.props.actor, tipset.Cids])
 
     const c = new CID(this.props.actor.Code['/'])
     const mh = multihash.decode(c.multihash)
@@ -37,7 +37,7 @@ class State extends React.Component {
       const Stelem = this.byCode[this.state.code]
       state = <Stelem addr={this.props.addr} actor={this.props.actor} client={this.props.client} mountWindow={this.props.mountWindow} tipset={this.props.tipset}/>
     } else {
-      state = <div>{Object.keys(this.state.State).map(k => <div key={k}>{k}: <span>{JSON.stringify(this.state.State[k])}</span></div>)}</div>
+      state = <div>{Object.keys(this.state.State || {}).map(k => <div key={k}>{k}: <span>{JSON.stringify(this.state.State[k])}</span></div>)}</div>
     }
 
     const content = <div className="State">
@@ -60,7 +60,7 @@ class InitState extends React.Component {
 
   async componentDidMount() {
     const tipset = await this.props.client.call("Filecoin.ChainHead", []) // TODO: from props
-    const actors = await this.props.client.call("Filecoin.StateListActors", [tipset])
+    const actors = await this.props.client.call("Filecoin.StateListActors", [tipset.Cids])
     this.setState({actors: actors})
   }
 
@@ -79,8 +79,8 @@ class PowerState extends React.Component {
 
   async componentDidMount() {
     const tipset = await this.props.client.call("Filecoin.ChainHead", []) // TODO: from props
-    const actors = await this.props.client.call("Filecoin.StateListMiners", [tipset])
-    const state = await this.props.client.call('Filecoin.StateReadState', [this.props.actor, tipset])
+    const actors = await this.props.client.call("Filecoin.StateListMiners", [tipset.Cids])
+    const state = await this.props.client.call('Filecoin.StateReadState', [this.props.actor, tipset.Cids])
 
     this.setState({actors, state})
   }
@@ -105,9 +105,9 @@ class MarketState extends React.Component {
 
   async componentDidMount() {
     const tipset = await this.props.client.call("Filecoin.ChainHead", []) // TODO: from props
-    const participants = await this.props.client.call("Filecoin.StateMarketParticipants", [tipset])
-    const deals = await this.props.client.call("Filecoin.StateMarketDeals", [tipset])
-    const state = await this.props.client.call('Filecoin.StateReadState', [this.props.actor, tipset])
+    const participants = await this.props.client.call("Filecoin.StateMarketParticipants", [tipset.Cids])
+    const deals = await this.props.client.call("Filecoin.StateMarketDeals", [tipset.Cids])
+    const state = await this.props.client.call('Filecoin.StateReadState', [this.props.actor, tipset.Cids])
     this.setState({participants, deals, nextDeal: state.State.NextDealID})
   }
 
@@ -128,15 +128,15 @@ class MarketState extends React.Component {
         <div>---</div>
         <div>Deals ({this.state.nextDeal} Total):</div>
         <table>
-          <tr><td>id</td><td>Active</td><td>Client</td><td>Provider</td><td>Size</td><td>Price</td><td>Duration</td></tr>
+          <tr><td>id</td><td>Started</td><td>Client</td><td>Provider</td><td>Size</td><td>Price</td><td>Duration</td></tr>
           {Object.keys(this.state.deals).map(d => <tr>
             <td>{d}</td>
-            <td>{this.state.deals[d].ActivationEpoch || "No"}</td>
-            <td><Address short={true} addr={this.state.deals[d].Deal.Proposal.Client} client={this.props.client} mountWindow={this.props.mountWindow}/></td>
-            <td><Address short={true} addr={this.state.deals[d].Deal.Proposal.Provider} client={this.props.client} mountWindow={this.props.mountWindow}/></td>
-            <td>{this.state.deals[d].Deal.Proposal.PieceSize}B</td>
-            <td>{this.state.deals[d].Deal.Proposal.StoragePricePerEpoch*this.state.deals[d].Deal.Proposal.Duration}</td>
-            <td>{this.state.deals[d].Deal.Proposal.Duration}</td>
+            <td>{this.state.deals[d].State.SectorStartEpoch || "No"}</td>
+            <td><Address short={true} addr={this.state.deals[d].Proposal.Client} client={this.props.client} mountWindow={this.props.mountWindow}/></td>
+            <td><Address short={true} addr={this.state.deals[d].Proposal.Provider} client={this.props.client} mountWindow={this.props.mountWindow}/></td>
+            <td>{this.state.deals[d].Proposal.PieceSize}B</td>
+            <td>{this.state.deals[d].Proposal.StoragePricePerEpoch*(this.state.deals[d].Proposal.EndEpoch-this.state.deals[d].Proposal.StartEpoch)}</td>
+            <td>{this.state.deals[d].Proposal.EndEpoch-this.state.deals[d].Proposal.StartEpoch}</td>
           </tr>)}
         </table>
       </div>
@@ -153,17 +153,17 @@ class MinerState extends React.Component {
   async componentDidMount() {
     const tipset = await this.props.client.call("Filecoin.ChainHead", []) // TODO: from props
 
-    const state = await this.props.client.call('Filecoin.StateReadState', [this.props.actor, tipset])
-    const sectorSize = await this.props.client.call("Filecoin.StateMinerSectorSize", [this.props.addr, tipset])
-    const worker = await this.props.client.call("Filecoin.StateMinerWorker", [this.props.addr, tipset])
+    const state = await this.props.client.call('Filecoin.StateReadState', [this.props.actor, tipset.Cids])
+    const sectorSize = await this.props.client.call("Filecoin.StateMinerSectorSize", [this.props.addr, tipset.Cids])
+    const worker = await this.props.client.call("Filecoin.StateMinerWorker", [this.props.addr, tipset.Cids])
 
-    const tpow = await this.props.client.call("Filecoin.StateMinerPower", [this.props.addr, tipset])
+    const tpow = await this.props.client.call("Filecoin.StateMinerPower", [this.props.addr, tipset.Cids])
     const networkPower = tpow.TotalPower
 
     let sectors = {}
 
-    const sset = await this.props.client.call("Filecoin.StateMinerSectors", [this.props.addr, tipset]) || []
-    const pset = await this.props.client.call("Filecoin.StateMinerProvingSet", [this.props.addr, tipset]) || []
+    const sset = await this.props.client.call("Filecoin.StateMinerSectors", [this.props.addr, tipset.Cids]) || []
+    const pset = await this.props.client.call("Filecoin.StateMinerProvingSet", [this.props.addr, tipset.Cids]) || []
 
     sset.forEach(s => sectors[s.SectorID] = {...s, sectorSet: true})
     pset.forEach(s => sectors[s.SectorID] = {...(sectors[s.SectorID] || s), provingSet: true})
@@ -181,7 +181,7 @@ class MinerState extends React.Component {
     return <div>
       <div>Worker: <Address addr={this.state.worker} client={this.props.client} mountWindow={this.props.mountWindow}/></div>
       <div>Sector Size: <b>{this.state.sectorSize/1024}</b> KiB</div>
-      <div>Power: <b>{state.Power}</b> (<b>{state.Power/this.state.networkPower*100}</b>%)</div>
+      <div>Power: <b>todoPower</b> (<b>{1/this.state.networkPower*100}</b>%)</div>
       <div>Election Period Start: <b>{state.ElectionPeriodStart}</b></div>
       <div>Slashed: <b>{state.SlashedAt === 0 ? "NO" : state.SlashedAt}</b></div>
       <div>

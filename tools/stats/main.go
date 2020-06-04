@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	logging "github.com/ipfs/go-log/v2"
 )
 
@@ -21,6 +22,7 @@ func main() {
 	var repo string = "~/.lotus"
 	var database string = "lotus"
 	var reset bool = false
+	var nosync bool = false
 	var height int64 = 0
 	var headlag int = 3
 
@@ -29,6 +31,7 @@ func main() {
 	flag.Int64Var(&height, "height", height, "block height to start syncing from (0 will resume)")
 	flag.IntVar(&headlag, "head-lag", headlag, "number of head events to hold to protect against small reorgs")
 	flag.BoolVar(&reset, "reset", reset, "truncate database before starting stats gathering")
+	flag.BoolVar(&nosync, "nosync", nosync, "skip waiting for sync")
 
 	flag.Parse()
 
@@ -64,11 +67,13 @@ func main() {
 	}
 	defer closer()
 
-	if err := WaitForSyncComplete(ctx, api); err != nil {
-		log.Fatal(err)
+	if !nosync {
+		if err := WaitForSyncComplete(ctx, api); err != nil {
+			log.Fatal(err)
+		}
 	}
 
-	tipsetsCh, err := GetTips(ctx, api, uint64(height), headlag)
+	tipsetsCh, err := GetTips(ctx, api, abi.ChainEpoch(height), headlag)
 	if err != nil {
 		log.Fatal(err)
 	}

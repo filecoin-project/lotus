@@ -3,120 +3,171 @@ package seed
 import (
 	"context"
 	"crypto/rand"
-	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/minio/blake2b-simd"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 
-	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
-	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/namespace"
-	badger "github.com/ipfs/go-ds-badger2"
+	"github.com/google/uuid"
 	logging "github.com/ipfs/go-log/v2"
+	ic "github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
+
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/genesis"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/sector-storage/ffiwrapper/basicfs"
+	"github.com/filecoin-project/sector-storage/stores"
 )
 
 var log = logging.Logger("preseal")
 
-func PreSeal(maddr address.Address, ssize uint64, offset uint64, sectors int, sbroot string, preimage []byte) (*genesis.GenesisMiner, error) {
-	cfg := &sectorbuilder.Config{
-		Miner:          maddr,
-		SectorSize:     ssize,
-		FallbackLastID: offset,
-		Paths:          sectorbuilder.SimplePath(sbroot),
-		WorkerThreads:  2,
+func PreSeal(maddr address.Address, pt abi.RegisteredProof, offset abi.SectorNumber, sectors int, sbroot string, preimage []byte, key *types.KeyInfo) (*genesis.Miner, *types.KeyInfo, error) {
+	spt, err := pt.RegisteredSealProof()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	mid, err := address.IDFromAddress(maddr)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	cfg := &ffiwrapper.Config{
+		SealProofType: spt,
 	}
 
 	if err := os.MkdirAll(sbroot, 0775); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	mds, err := badger.NewDatastore(filepath.Join(sbroot, "badger"), nil)
+	next := offset
+
+	sbfs := &basicfs.Provider{
+		Root: sbroot,
+	}
+
+	sb, err := ffiwrapper.New(sbfs, cfg)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	sb, err := sectorbuilder.New(cfg, namespace.Wrap(mds, datastore.NewKey("/sectorbuilder")))
+	ssize, err := pt.SectorSize()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-
-	size := sectorbuilder.UserBytesForSectorSize(ssize)
 
 	var sealedSectors []*genesis.PreSeal
 	for i := 0; i < sectors; i++ {
-		sid, err := sb.AcquireSectorId()
+		sid := abi.SectorID{Miner: abi.ActorID(mid), Number: next}
+		next++
+
+		pi, err := sb.AddPiece(context.TODO(), sid, nil, abi.PaddedPieceSize(ssize).Unpadded(), rand.Reader)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
-		pi, err := sb.AddPiece(context.TODO(), size, sid, rand.Reader, nil)
+		trand := blake2b.Sum256(preimage)
+		ticket := abi.SealRandomness(trand[:])
+
+		fmt.Printf("sector-id: %d, piece info: %v\n", sid, pi)
+
+		in2, err := sb.SealPreCommit1(context.TODO(), sid, ticket, []abi.PieceInfo{pi})
 		if err != nil {
-			return nil, err
+			return nil, nil, xerrors.Errorf("commit: %w", err)
 		}
 
-		trand := sha256.Sum256(preimage)
-		ticket := sectorbuilder.SealTicket{
-			TicketBytes: trand,
-		}
-
-		fmt.Printf("sector-id: %d, piece info: %v", sid, pi)
-
-		pco, err := sb.SealPreCommit(context.TODO(), sid, ticket, []sectorbuilder.PublicPieceInfo{pi})
+		cids, err := sb.SealPreCommit2(context.TODO(), sid, in2)
 		if err != nil {
-			return nil, xerrors.Errorf("commit: %w", err)
+			return nil, nil, xerrors.Errorf("commit: %w", err)
 		}
 
-		if err := sb.TrimCache(context.TODO(), sid); err != nil {
-			return nil, xerrors.Errorf("trim cache: %w", err)
+		if err := sb.FinalizeSector(context.TODO(), sid); err != nil {
+			return nil, nil, xerrors.Errorf("trim cache: %w", err)
 		}
 
-		log.Warn("PreCommitOutput: ", sid, pco)
+		log.Warn("PreCommitOutput: ", sid, cids.Sealed, cids.Unsealed)
 		sealedSectors = append(sealedSectors, &genesis.PreSeal{
-			CommR:    pco.CommR,
-			CommD:    pco.CommD,
-			SectorID: sid,
+			CommR:     cids.Sealed,
+			CommD:     cids.Unsealed,
+			SectorID:  sid.Number,
+			ProofType: pt,
 		})
 	}
 
-	minerAddr, err := wallet.GenerateKey(types.KTBLS)
-	if err != nil {
-		return nil, err
+	var minerAddr *wallet.Key
+	if key != nil {
+		minerAddr, err = wallet.NewKey(*key)
+		if err != nil {
+			return nil, nil, err
+		}
+	} else {
+		minerAddr, err = wallet.GenerateKey(crypto.SigTypeBLS)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
-	miner := &genesis.GenesisMiner{
-		Owner:  minerAddr.Address,
-		Worker: minerAddr.Address,
+	var pid peer.ID
+	{
+		log.Warn("PeerID not specified, generating dummy")
+		p, _, err := ic.GenerateEd25519Key(rand.Reader)
+		if err != nil {
+			return nil, nil, err
+		}
 
-		SectorSize: ssize,
+		pid, err = peer.IDFromPrivateKey(p)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
 
-		Sectors: sealedSectors,
-
-		Key: minerAddr.KeyInfo,
+	miner := &genesis.Miner{
+		Owner:         minerAddr.Address,
+		Worker:        minerAddr.Address,
+		MarketBalance: big.Zero(),
+		PowerBalance:  big.Zero(),
+		SectorSize:    ssize,
+		Sectors:       sealedSectors,
+		PeerId:        pid,
 	}
 
 	if err := createDeals(miner, minerAddr, maddr, ssize); err != nil {
-		return nil, xerrors.Errorf("creating deals: %w", err)
+		return nil, nil, xerrors.Errorf("creating deals: %w", err)
 	}
 
-	if err := mds.Close(); err != nil {
-		return nil, xerrors.Errorf("closing datastore: %w", err)
+	{
+		b, err := json.MarshalIndent(&stores.LocalStorageMeta{
+			ID:       stores.ID(uuid.New().String()),
+			Weight:   0, // read-only
+			CanSeal:  false,
+			CanStore: false,
+		}, "", "  ")
+		if err != nil {
+			return nil, nil, xerrors.Errorf("marshaling storage config: %w", err)
+		}
+
+		if err := ioutil.WriteFile(filepath.Join(sbroot, "sectorstore.json"), b, 0644); err != nil {
+			return nil, nil, xerrors.Errorf("persisting storage metadata (%s): %w", filepath.Join(sbroot, "storage.json"), err)
+		}
 	}
 
-	return miner, nil
+	return miner, &minerAddr.KeyInfo, nil
 }
 
-func WriteGenesisMiner(maddr address.Address, sbroot string, gm *genesis.GenesisMiner) error {
-	output := map[string]genesis.GenesisMiner{
+func WriteGenesisMiner(maddr address.Address, sbroot string, gm *genesis.Miner, key *types.KeyInfo) error {
+	output := map[string]genesis.Miner{
 		maddr.String(): *gm,
 	}
 
@@ -125,32 +176,39 @@ func WriteGenesisMiner(maddr address.Address, sbroot string, gm *genesis.Genesis
 		return err
 	}
 
+	log.Infof("Writing preseal manifest to %s", filepath.Join(sbroot, "pre-seal-"+maddr.String()+".json"))
+
 	if err := ioutil.WriteFile(filepath.Join(sbroot, "pre-seal-"+maddr.String()+".json"), out, 0664); err != nil {
 		return err
+	}
+
+	if key != nil {
+		b, err := json.Marshal(key)
+		if err != nil {
+			return err
+		}
+
+		// TODO: allow providing key
+		if err := ioutil.WriteFile(filepath.Join(sbroot, "pre-seal-"+maddr.String()+".key"), []byte(hex.EncodeToString(b)), 0664); err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
-func createDeals(m *genesis.GenesisMiner, k *wallet.Key, maddr address.Address, ssize uint64) error {
+func createDeals(m *genesis.Miner, k *wallet.Key, maddr address.Address, ssize abi.SectorSize) error {
 	for _, sector := range m.Sectors {
-		pref := make([]byte, len(sector.CommD))
-		copy(pref, sector.CommD[:])
-		proposal := &actors.StorageDealProposal{
-			PieceRef:             pref, // just one deal so this == CommP
-			PieceSize:            sectorbuilder.UserBytesForSectorSize(ssize),
+		proposal := &market.DealProposal{
+			PieceCID:             sector.CommD,
+			PieceSize:            abi.PaddedPieceSize(ssize),
 			Client:               k.Address,
 			Provider:             maddr,
-			ProposalExpiration:   9000, // TODO: allow setting
-			Duration:             9000,
-			StoragePricePerEpoch: types.NewInt(0),
-			StorageCollateral:    types.NewInt(0),
-			ProposerSignature:    nil,
-		}
-
-		// TODO: pretty sure we don't even need to sign this
-		if err := api.SignWith(context.TODO(), wallet.KeyWallet(k).Sign, k.Address, proposal); err != nil {
-			return err
+			StartEpoch:           0,
+			EndEpoch:             9001,
+			StoragePricePerEpoch: big.Zero(),
+			ProviderCollateral:   big.Zero(),
+			ClientCollateral:     big.Zero(),
 		}
 
 		sector.Deal = *proposal

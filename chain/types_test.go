@@ -19,7 +19,7 @@ func TestSignedMessageJsonRoundtrip(t *testing.T) {
 			Method:   1235126,
 			Value:    types.NewInt(123123),
 			GasPrice: types.NewInt(1234),
-			GasLimit: types.NewInt(9992969384),
+			GasLimit: 9992969384,
 			Nonce:    123123,
 		},
 	}

@@ -16,7 +16,14 @@ type TestNode struct {
 type TestStorageNode struct {
 	api.StorageMiner
 
-	MineOne func(context.Context) error
+	MineOne func(context.Context, func(bool)) error
+}
+
+var PresealGenesis = -1
+
+type StorageMiner struct {
+	Full    int
+	Preseal int
 }
 
 // APIBuilder is a function which is invoked in test suite to provide
@@ -24,7 +31,7 @@ type TestStorageNode struct {
 //
 // storage array defines storage nodes, numbers in the array specify full node
 // index the storage node 'belongs' to
-type APIBuilder func(t *testing.T, nFull int, storage []int) ([]TestNode, []TestStorageNode)
+type APIBuilder func(t *testing.T, nFull int, storage []StorageMiner) ([]TestNode, []TestStorageNode)
 type testSuite struct {
 	makeNodes APIBuilder
 }
@@ -39,11 +46,14 @@ func TestApis(t *testing.T, b APIBuilder) {
 	t.Run("id", ts.testID)
 	t.Run("testConnectTwo", ts.testConnectTwo)
 	t.Run("testMining", ts.testMining)
+	t.Run("testMiningReal", ts.testMiningReal)
 }
+
+var oneMiner = []StorageMiner{{Full: 0, Preseal: PresealGenesis}}
 
 func (ts *testSuite) testVersion(t *testing.T) {
 	ctx := context.Background()
-	apis, _ := ts.makeNodes(t, 1, []int{0})
+	apis, _ := ts.makeNodes(t, 1, oneMiner)
 	api := apis[0]
 
 	v, err := api.Version(ctx)
@@ -57,7 +67,7 @@ func (ts *testSuite) testVersion(t *testing.T) {
 
 func (ts *testSuite) testID(t *testing.T) {
 	ctx := context.Background()
-	apis, _ := ts.makeNodes(t, 1, []int{0})
+	apis, _ := ts.makeNodes(t, 1, oneMiner)
 	api := apis[0]
 
 	id, err := api.ID(ctx)
@@ -69,7 +79,7 @@ func (ts *testSuite) testID(t *testing.T) {
 
 func (ts *testSuite) testConnectTwo(t *testing.T) {
 	ctx := context.Background()
-	apis, _ := ts.makeNodes(t, 2, []int{0})
+	apis, _ := ts.makeNodes(t, 2, oneMiner)
 
 	p, err := apis[0].NetPeers(ctx)
 	if err != nil {

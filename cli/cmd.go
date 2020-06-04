@@ -16,9 +16,10 @@ import (
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
+	"github.com/filecoin-project/go-jsonrpc"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
-	"github.com/filecoin-project/lotus/lib/jsonrpc"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -134,7 +135,6 @@ func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
 }
 
 func GetRawAPI(ctx *cli.Context, t repo.RepoType) (string, http.Header, error) {
-
 	ainfo, err := GetAPIInfo(ctx, t)
 	if err != nil {
 		return "", nil, xerrors.Errorf("could not get API info: %w", err)
@@ -205,24 +205,39 @@ func ReqContext(cctx *cli.Context) context.Context {
 		<-sigChan
 		done()
 	}()
-	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
+	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP)
 
 	return ctx
 }
 
-var Commands = []*cli.Command{
-	authCmd,
-	chainCmd,
-	clientCmd,
-	fetchParamCmd,
-	mpoolCmd,
-	multisigCmd,
+var CommonCommands = []*cli.Command{
 	netCmd,
-	paychCmd,
-	sendCmd,
-	stateCmd,
-	syncCmd,
-	versionCmd,
-	walletCmd,
+	authCmd,
 	logCmd,
+	waitApiCmd,
+	fetchParamCmd,
+	versionCmd,
+}
+
+var Commands = []*cli.Command{
+	withCategory("basic", sendCmd),
+	withCategory("basic", walletCmd),
+	withCategory("basic", clientCmd),
+	withCategory("basic", multisigCmd),
+	withCategory("basic", paychCmd),
+	withCategory("developer", authCmd),
+	withCategory("developer", mpoolCmd),
+	withCategory("developer", stateCmd),
+	withCategory("developer", chainCmd),
+	withCategory("developer", logCmd),
+	withCategory("developer", waitApiCmd),
+	withCategory("developer", fetchParamCmd),
+	withCategory("network", netCmd),
+	withCategory("network", syncCmd),
+	versionCmd,
+}
+
+func withCategory(cat string, cmd *cli.Command) *cli.Command {
+	cmd.Category = cat
+	return cmd
 }

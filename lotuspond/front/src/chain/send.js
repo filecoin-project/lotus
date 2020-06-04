@@ -4,7 +4,7 @@ import { Tagged } from 'borc'
 
 async function pushMessage(client, from, inmsg) {
     if(!inmsg.GasLimit) {
-        inmsg.GasLimit = "1000"
+        inmsg.GasLimit = "10000"
     }
     if(!inmsg.GasPrice) {
         inmsg.GasPrice = "0"
