@@ -321,7 +321,7 @@ func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider 
 		}
 	}
 
-	if err := c.ev.Called(checkFunc, called, revert, 3, build.SealRandomnessLookbackLimit, matchEvent); err != nil {
+	if err := c.ev.Called(checkFunc, called, revert, build.MessageConfidence + 1, build.SealRandomnessLookbackLimit, matchEvent); err != nil {
 		return xerrors.Errorf("failed to set up called handler: %w", err)
 	}
 
