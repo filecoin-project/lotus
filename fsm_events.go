@@ -84,6 +84,7 @@ func (evt SectorPreCommit1) apply(state *SectorInfo) {
 	state.PreCommit1Out = evt.PreCommit1Out
 	state.TicketEpoch = evt.TicketEpoch
 	state.TicketValue = evt.TicketValue
+	state.PreCommit2Fails = 0
 }
 
 type SectorPreCommit2 struct {
@@ -106,11 +107,20 @@ func (evt SectorPreCommitLanded) apply(si *SectorInfo) {
 	si.PreCommitTipSet = evt.TipSet
 }
 
-type SectorSealPreCommitFailed struct{ error }
+type SectorSealPreCommit1Failed struct{ error }
 
-func (evt SectorSealPreCommitFailed) FormatError(xerrors.Printer) (next error) { return evt.error }
-func (evt SectorSealPreCommitFailed) apply(si *SectorInfo) {
+func (evt SectorSealPreCommit1Failed) FormatError(xerrors.Printer) (next error) { return evt.error }
+func (evt SectorSealPreCommit1Failed) apply(si *SectorInfo) {
 	si.InvalidProofs = 0 // reset counter
+	si.PreCommit2Fails = 0
+}
+
+type SectorSealPreCommit2Failed struct{ error }
+
+func (evt SectorSealPreCommit2Failed) FormatError(xerrors.Printer) (next error) { return evt.error }
+func (evt SectorSealPreCommit2Failed) apply(si *SectorInfo) {
+	si.InvalidProofs = 0 // reset counter
+	si.PreCommit2Fails++
 }
 
 type SectorChainPreCommitFailed struct{ error }
@@ -164,6 +174,10 @@ type SectorFinalized struct{}
 
 func (evt SectorFinalized) apply(*SectorInfo) {}
 
+type SectorRetryFinalize struct{}
+
+func (evt SectorRetryFinalize) apply(*SectorInfo) {}
+
 type SectorFinalizeFailed struct{ error }
 
 func (evt SectorFinalizeFailed) FormatError(xerrors.Printer) (next error) { return evt.error }
@@ -171,9 +185,13 @@ func (evt SectorFinalizeFailed) apply(*SectorInfo)                        {}
 
 // Failed state recovery
 
-type SectorRetrySeal struct{}
+type SectorRetrySealPreCommit1 struct{}
 
-func (evt SectorRetrySeal) apply(state *SectorInfo) {}
+func (evt SectorRetrySealPreCommit1) apply(state *SectorInfo) {}
+
+type SectorRetrySealPreCommit2 struct{}
+
+func (evt SectorRetrySealPreCommit2) apply(state *SectorInfo) {}
 
 type SectorRetryPreCommit struct{}
 
@@ -185,7 +203,9 @@ func (evt SectorRetryWaitSeed) apply(state *SectorInfo) {}
 
 type SectorRetryComputeProof struct{}
 
-func (evt SectorRetryComputeProof) apply(state *SectorInfo) {}
+func (evt SectorRetryComputeProof) apply(state *SectorInfo) {
+	state.InvalidProofs++
+}
 
 type SectorRetryInvalidProof struct{}
 

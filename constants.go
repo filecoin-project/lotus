@@ -1,13 +1,17 @@
 package sealing
 
-// Epochs
-const Finality = 500
+import (
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+)
 
 // Epochs
-const SealRandomnessLookback = Finality
+const SealRandomnessLookback = miner.ChainFinalityish
 
 // Epochs
-const SealRandomnessLookbackLimit = SealRandomnessLookback + 2000
+func SealRandomnessLookbackLimit(spt abi.RegisteredProof) abi.ChainEpoch {
+	return miner.MaxSealDuration[spt]
+}
 
 // Epochs
 const InteractivePoRepConfidence = 6

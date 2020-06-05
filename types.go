@@ -48,8 +48,7 @@ type Log struct {
 
 type SectorInfo struct {
 	State        SectorState
-	SectorNumber abi.SectorNumber // TODO: this field's name should be changed to SectorNumber
-	Nonce        uint64           // TODO: remove
+	SectorNumber abi.SectorNumber
 
 	SectorType abi.RegisteredProof
 
@@ -69,13 +68,15 @@ type SectorInfo struct {
 	PreCommitMessage *cid.Cid
 	PreCommitTipSet  TipSetToken
 
+	PreCommit2Fails uint64
+
 	// WaitSeed
 	SeedValue abi.InteractiveSealRandomness
 	SeedEpoch abi.ChainEpoch
 
 	// Committing
 	CommitMessage *cid.Cid
-	InvalidProofs uint64 // failed proof computations (doesn't validate with proof inputs)
+	InvalidProofs uint64 // failed proof computations (doesn't validate with proof inputs; can't compute)
 
 	// Faults
 	FaultReportMsg *cid.Cid

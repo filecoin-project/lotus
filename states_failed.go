@@ -30,30 +30,37 @@ func failedCooldown(ctx statemachine.Context, sector SectorInfo) error {
 func (m *Sealing) checkPreCommitted(ctx statemachine.Context, sector SectorInfo) (*miner.SectorPreCommitOnChainInfo, bool) {
 	tok, _, err := m.api.ChainHead(ctx.Context())
 	if err != nil {
-		log.Errorf("handleSealFailed(%d): temp error: %+v", sector.SectorNumber, err)
+		log.Errorf("handleSealPrecommit1Failed(%d): temp error: %+v", sector.SectorNumber, err)
 		return nil, true
 	}
 
 	info, err := m.api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, sector.SectorNumber, tok)
 	if err != nil {
-		log.Errorf("handleSealFailed(%d): temp error: %+v", sector.SectorNumber, err)
+		log.Errorf("handleSealPrecommit1Failed(%d): temp error: %+v", sector.SectorNumber, err)
 		return nil, true
 	}
 
 	return info, false
 }
 
-func (m *Sealing) handleSealFailed(ctx statemachine.Context, sector SectorInfo) error {
-	if _, is := m.checkPreCommitted(ctx, sector); is {
-		// TODO: Remove this after we can re-precommit
-		return nil // noop, for now
-	}
-
+func (m *Sealing) handleSealPrecommit1Failed(ctx statemachine.Context, sector SectorInfo) error {
 	if err := failedCooldown(ctx, sector); err != nil {
 		return err
 	}
 
-	return ctx.Send(SectorRetrySeal{})
+	return ctx.Send(SectorRetrySealPreCommit1{})
+}
+
+func (m *Sealing) handleSealPrecommit2Failed(ctx statemachine.Context, sector SectorInfo) error {
+	if err := failedCooldown(ctx, sector); err != nil {
+		return err
+	}
+
+	if sector.PreCommit2Fails > 1 {
+		return ctx.Send(SectorRetrySealPreCommit1{})
+	}
+
+	return ctx.Send(SectorRetrySealPreCommit2{})
 }
 
 func (m *Sealing) handlePreCommitFailed(ctx statemachine.Context, sector SectorInfo) error {
@@ -69,9 +76,13 @@ func (m *Sealing) handlePreCommitFailed(ctx statemachine.Context, sector SectorI
 			log.Errorf("handlePreCommitFailed: api error, not proceeding: %+v", err)
 			return nil
 		case *ErrBadCommD: // TODO: Should this just back to packing? (not really needed since handlePreCommit1 will do that too)
-			return ctx.Send(SectorSealPreCommitFailed{xerrors.Errorf("bad CommD error: %w", err)})
+			return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("bad CommD error: %w", err)})
 		case *ErrExpiredTicket:
-			return ctx.Send(SectorSealPreCommitFailed{xerrors.Errorf("ticket expired error: %w", err)})
+			return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("ticket expired error: %w", err)})
+		case *ErrBadTicket:
+			return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("bad expired: %w", err)})
+		case *ErrPrecommitOnChain:
+			// noop
 		default:
 			return xerrors.Errorf("checkPrecommit sanity check error: %w", err)
 		}
@@ -80,7 +91,7 @@ func (m *Sealing) handlePreCommitFailed(ctx statemachine.Context, sector SectorI
 	if pci, is := m.checkPreCommitted(ctx, sector); is && pci != nil {
 		if sector.PreCommitMessage != nil {
 			log.Warn("sector %d is precommitted on chain, but we don't have precommit message", sector.SectorNumber)
-			return nil // TODO: SeedWait needs this currently
+			return ctx.Send(SectorPreCommitLanded{TipSet: tok})
 		}
 
 		if pci.Info.SealedCID != *sector.CommR {
@@ -116,6 +127,10 @@ func (m *Sealing) handleComputeProofFailed(ctx statemachine.Context, sector Sect
 		return err
 	}
 
+	if sector.InvalidProofs > 1 {
+		return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("consecutive compute fails")})
+	}
+
 	return ctx.Send(SectorRetryComputeProof{})
 }
 
@@ -132,9 +147,13 @@ func (m *Sealing) handleCommitFailed(ctx statemachine.Context, sector SectorInfo
 			log.Errorf("handleCommitFailed: api error, not proceeding: %+v", err)
 			return nil
 		case *ErrBadCommD:
-			return ctx.Send(SectorSealPreCommitFailed{xerrors.Errorf("bad CommD error: %w", err)})
+			return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("bad CommD error: %w", err)})
 		case *ErrExpiredTicket:
-			return ctx.Send(SectorSealPreCommitFailed{xerrors.Errorf("ticket expired error: %w", err)})
+			return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("ticket expired error: %w", err)})
+		case *ErrBadTicket:
+			return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("bad expired: %w", err)})
+		case *ErrPrecommitOnChain:
+			// noop, this is expected
 		default:
 			return xerrors.Errorf("checkPrecommit sanity check error: %w", err)
 		}
@@ -154,7 +173,7 @@ func (m *Sealing) handleCommitFailed(ctx statemachine.Context, sector SectorInfo
 			}
 
 			if sector.InvalidProofs > 0 {
-				return ctx.Send(SectorSealPreCommitFailed{xerrors.Errorf("consecutive invalid proofs")})
+				return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("consecutive invalid proofs")})
 			}
 
 			return ctx.Send(SectorRetryInvalidProof{})
@@ -170,4 +189,14 @@ func (m *Sealing) handleCommitFailed(ctx statemachine.Context, sector SectorInfo
 	}
 
 	return ctx.Send(SectorRetryComputeProof{})
+}
+
+func (m *Sealing) handleFinalizeFailed(ctx statemachine.Context, sector SectorInfo) error {
+	// TODO: Check sector files
+
+	if err := failedCooldown(ctx, sector); err != nil {
+		return err
+	}
+
+	return ctx.Send(SectorRetryFinalize{})
 }

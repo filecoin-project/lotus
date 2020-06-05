@@ -382,7 +382,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{179}); err != nil {
+	if _, err := w.Write([]byte{180}); err != nil {
 		return err
 	}
 
@@ -422,22 +422,6 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.SectorNumber))); err != nil {
-		return err
-	}
-
-	// t.Nonce (uint64) (uint64)
-	if len("Nonce") > cbg.MaxLength {
-		return xerrors.Errorf("Value in field \"Nonce\" was too long")
-	}
-
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("Nonce")))); err != nil {
-		return err
-	}
-	if _, err := w.Write([]byte("Nonce")); err != nil {
-		return err
-	}
-
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.Nonce))); err != nil {
 		return err
 	}
 
@@ -643,6 +627,45 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		if err := cbg.WriteCid(w, *t.PreCommitMessage); err != nil {
 			return xerrors.Errorf("failed to write cid field t.PreCommitMessage: %w", err)
 		}
+	}
+
+	// t.PreCommitTipSet (sealing.TipSetToken) (slice)
+	if len("PreCommitTipSet") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"PreCommitTipSet\" was too long")
+	}
+
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("PreCommitTipSet")))); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("PreCommitTipSet")); err != nil {
+		return err
+	}
+
+	if len(t.PreCommitTipSet) > cbg.ByteArrayMaxLen {
+		return xerrors.Errorf("Byte array in field t.PreCommitTipSet was too long")
+	}
+
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.PreCommitTipSet)))); err != nil {
+		return err
+	}
+	if _, err := w.Write(t.PreCommitTipSet); err != nil {
+		return err
+	}
+
+	// t.PreCommit2Fails (uint64) (uint64)
+	if len("PreCommit2Fails") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"PreCommit2Fails\" was too long")
+	}
+
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("PreCommit2Fails")))); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("PreCommit2Fails")); err != nil {
+		return err
+	}
+
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.PreCommit2Fails))); err != nil {
+		return err
 	}
 
 	// t.SeedValue (abi.InteractiveSealRandomness) (slice)
@@ -856,21 +879,6 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 				t.SectorNumber = abi.SectorNumber(extra)
 
 			}
-			// t.Nonce (uint64) (uint64)
-		case "Nonce":
-
-			{
-
-				maj, extra, err = cbg.CborReadHeader(br)
-				if err != nil {
-					return err
-				}
-				if maj != cbg.MajUnsignedInt {
-					return fmt.Errorf("wrong type for uint64 field")
-				}
-				t.Nonce = uint64(extra)
-
-			}
 			// t.SectorType (abi.RegisteredProof) (int64)
 		case "SectorType":
 			{
@@ -912,9 +920,11 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 			if maj != cbg.MajArray {
 				return fmt.Errorf("expected cbor array")
 			}
+
 			if extra > 0 {
 				t.Pieces = make([]Piece, extra)
 			}
+
 			for i := 0; i < int(extra); i++ {
 
 				var v Piece
@@ -1080,6 +1090,39 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 				}
 
 			}
+			// t.PreCommitTipSet (sealing.TipSetToken) (slice)
+		case "PreCommitTipSet":
+
+			maj, extra, err = cbg.CborReadHeader(br)
+			if err != nil {
+				return err
+			}
+
+			if extra > cbg.ByteArrayMaxLen {
+				return fmt.Errorf("t.PreCommitTipSet: byte array too large (%d)", extra)
+			}
+			if maj != cbg.MajByteString {
+				return fmt.Errorf("expected byte array")
+			}
+			t.PreCommitTipSet = make([]byte, extra)
+			if _, err := io.ReadFull(br, t.PreCommitTipSet); err != nil {
+				return err
+			}
+			// t.PreCommit2Fails (uint64) (uint64)
+		case "PreCommit2Fails":
+
+			{
+
+				maj, extra, err = cbg.CborReadHeader(br)
+				if err != nil {
+					return err
+				}
+				if maj != cbg.MajUnsignedInt {
+					return fmt.Errorf("wrong type for uint64 field")
+				}
+				t.PreCommit2Fails = uint64(extra)
+
+			}
 			// t.SeedValue (abi.InteractiveSealRandomness) (slice)
 		case "SeedValue":
 
@@ -1215,9 +1258,11 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 			if maj != cbg.MajArray {
 				return fmt.Errorf("expected cbor array")
 			}
+
 			if extra > 0 {
 				t.Log = make([]Log, extra)
 			}
+
 			for i := 0; i < int(extra); i++ {
 
 				var v Log
