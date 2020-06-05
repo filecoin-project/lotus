@@ -281,7 +281,13 @@ var clientDealCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Println(proposal)
+		encoded, err := proposal.StringOfBase(multibase.Base32)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println(encoded)
+
 		return nil
 	},
 }
