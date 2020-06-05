@@ -442,7 +442,8 @@ var chainGetCmd = &cli.Command{
    - /ipfs/[cid]/@Hi:123 - get varint elem 123 from hamt
    - /ipfs/[cid]/@Hu:123 - get uvarint elem 123 from hamt
    - /ipfs/[cid]/@Ha:t01 - get element under Addr(t01).Bytes
-   - /ipfs/[cid]/@A:10 - get 10th amt element
+   - /ipfs/[cid]/@A:10   - get 10th amt element
+   - .../@Ha:t01/@state  - get pretty map-based actor state
 
    List of --as-type types:
    - raw

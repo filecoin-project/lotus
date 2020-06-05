@@ -1,7 +1,9 @@
 package full
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"strconv"
@@ -33,6 +35,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/vm"
 )
 
 var log = logging.Logger("fullnode")
@@ -369,6 +372,54 @@ func resolveOnce(bs blockstore.Blockstore) func(ctx context.Context, ds ipld.Nod
 			if len(names) == 1 {
 				return &ipld.Link{
 					Name: names[0][3:],
+					Size: 0,
+					Cid:  n.Cid(),
+				}, nil, nil
+			}
+
+			return resolveOnce(bs)(ctx, ds, n, names[1:])
+		}
+
+		if names[0] == "@state" {
+			var act types.Actor
+			if err := act.UnmarshalCBOR(bytes.NewReader(nd.RawData())); err != nil {
+				return nil, nil, xerrors.Errorf("unmarshaling actor struct for @state: %w", err)
+			}
+
+			head, err := ds.Get(ctx, act.Head)
+			if err != nil {
+				return nil, nil, xerrors.Errorf("getting actor head for @state: %w", err)
+			}
+
+			m, err := vm.DumpActorState(act.Code, head.RawData())
+			if err != nil {
+				return nil, nil, err
+			}
+
+			// a hack to workaround struct aliasing in refmt
+			ms := map[string]interface{}{}
+			{
+				mstr, err := json.Marshal(m)
+				if err != nil {
+					return nil, nil, err
+				}
+				if err := json.Unmarshal(mstr, &ms); err != nil {
+					return nil, nil, err
+				}
+			}
+
+			n, err := cbor.WrapObject(ms, mh.SHA2_256, 32)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			if err := bs.Put(n); err != nil {
+				return nil, nil, xerrors.Errorf("put amt val: %w", err)
+			}
+
+			if len(names) == 1 {
+				return &ipld.Link{
+					Name: "state",
 					Size: 0,
 					Cid:  n.Cid(),
 				}, nil, nil
