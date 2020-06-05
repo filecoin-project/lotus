@@ -19,7 +19,6 @@ func (m *Manager) CheckProvable(ctx context.Context, spt abi.RegisteredProof, se
 	var bad []abi.SectorID
 
 	// TODO: More better checks
-	// TODO: This should live in sector-storage
 	// TODO: Use proper locking
 	for _, sector := range sectors {
 		err := func() error {

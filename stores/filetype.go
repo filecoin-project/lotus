@@ -73,7 +73,9 @@ func (t SectorFileType) SealSpaceUse(spt abi.RegisteredProof) (uint64, error) {
 	return need, nil
 }
 
-func (t SectorFileType) All() (out [FileTypes]bool) {
+func (t SectorFileType) All() [FileTypes]bool {
+	var out [FileTypes]bool
+
 	for i := range out {
 		out[i] = t&(1<<i) > 0
 	}

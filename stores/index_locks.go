@@ -26,7 +26,8 @@ func (l *sectorLock) canLock(read SectorFileType, write SectorFileType) bool {
 		}
 	}
 
-	return l.w&(read|write) == 0
+	// check that there are no locks taken for either read or write file types we want
+	return l.w&read == 0 && l.w&write == 0
 }
 
 func (l *sectorLock) tryLock(read SectorFileType, write SectorFileType) bool {
