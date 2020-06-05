@@ -3,15 +3,21 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"os"
+	"text/tabwriter"
 	"time"
+
+	"github.com/urfave/cli/v2"
+	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-bitfield"
+	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/urfave/cli/v2"
-	"golang.org/x/xerrors"
 )
 
 var provingCmd = &cli.Command{
@@ -191,28 +197,59 @@ var provingDeadlinesCmd = &cli.Command{
 			}
 		}
 
+		tw := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
+		_, _ = fmt.Fprintln(tw, "deadline\tsectors\tpartitions\tproven")
+
 		for i, field := range deadlines.Due {
 			c, err := field.Count()
 			if err != nil {
 				return err
 			}
 
-			var info string
-			proven, err := mas.PostSubmissions.IsSet(uint64(i))
+			firstPartition, sectorCount, err := miner.PartitionsForDeadline(deadlines, mas.Info.WindowPoStPartitionSectors, uint64(i))
 			if err != nil {
 				return err
 			}
 
-			if proven {
-				info += ", proven"
+			partitionCount := (sectorCount + mas.Info.WindowPoStPartitionSectors - 1) / mas.Info.WindowPoStPartitionSectors
+
+			var provenPartitions uint64
+			{
+				var maskRuns []rlepluslazy.Run
+				if firstPartition > 0 {
+					maskRuns = append(maskRuns, rlepluslazy.Run{
+						Val: false,
+						Len: firstPartition,
+					})
+				}
+				maskRuns = append(maskRuns, rlepluslazy.Run{
+					Val: true,
+					Len: partitionCount,
+				})
+
+				ppbm, err := bitfield.NewFromIter(&rlepluslazy.RunSliceIterator{Runs: maskRuns})
+				if err != nil {
+					return err
+				}
+
+				pp, err := bitfield.IntersectBitField(ppbm, mas.PostSubmissions)
+				if err != nil {
+					return err
+				}
+
+				provenPartitions, err = pp.Count()
+				if err != nil {
+					return err
+				}
 			}
 
+			var cur string
 			if di.Index == uint64(i) {
-				info += " (current)"
+				cur += "\t(current)"
 			}
-			fmt.Printf("%d: %d sectors%s\n", i, c, info)
+			_, _ = fmt.Fprintf(tw,"%d\t%d\t%d\t%d%s\n", i, c, partitionCount, provenPartitions, cur)
 		}
 
-		return nil
+		return tw.Flush()
 	},
 }
