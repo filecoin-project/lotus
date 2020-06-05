@@ -63,18 +63,21 @@ func (pm *Manager) waitForPaychCreateMsg(ctx context.Context, mcid cid.Cid) {
 
 	if mwait.Receipt.ExitCode != 0 {
 		log.Errorf("payment channel creation failed (exit code %d)", mwait.Receipt.ExitCode)
+		return
 	}
 
 	var decodedReturn init_.ExecReturn
 	err = decodedReturn.UnmarshalCBOR(bytes.NewReader(mwait.Receipt.Return))
 	if err != nil {
 		log.Error(err)
+		return
 	}
 	paychaddr := decodedReturn.RobustAddress
 
 	ci, err := pm.loadOutboundChannelInfo(ctx, paychaddr)
 	if err != nil {
 		log.Errorf("loading channel info: %w", err)
+		return
 	}
 
 	if err := pm.store.trackChannel(ci); err != nil {
