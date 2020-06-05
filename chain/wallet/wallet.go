@@ -22,10 +22,11 @@ import (
 var log = logging.Logger("wallet")
 
 const (
-	KNamePrefix = "wallet-"
-	KDefault    = "default"
-	KTBLS       = "bls"
-	KTSecp256k1 = "secp256k1"
+	KNamePrefix  = "wallet-"
+	KTrashPrefix = "trash-"
+	KDefault     = "default"
+	KTBLS        = "bls"
+	KTSecp256k1  = "secp256k1"
 )
 
 type Wallet struct {
@@ -228,6 +229,23 @@ func (w *Wallet) HasKey(addr address.Address) (bool, error) {
 		return false, err
 	}
 	return k != nil, nil
+}
+
+func (w *Wallet) DeleteKey(addr address.Address) error {
+	k, err := w.findKey(addr)
+	if err != nil {
+		return xerrors.Errorf("failed to delete key %s : %w", addr, err)
+	}
+
+	if err := w.keystore.Put(KTrashPrefix+k.Address.String(), k.KeyInfo); err != nil {
+		return xerrors.Errorf("failed to mark key %s as trashed: %w", addr, err)
+	}
+
+	if err := w.keystore.Delete(KNamePrefix + k.Address.String()); err != nil {
+		return xerrors.Errorf("failed to delete key %s: %w", addr, err)
+	}
+
+	return nil
 }
 
 type Key struct {

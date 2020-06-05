@@ -104,6 +104,7 @@ type FullNodeStruct struct {
 		WalletSetDefault     func(context.Context, address.Address) error                                         `perm:"admin"`
 		WalletExport         func(context.Context, address.Address) (*types.KeyInfo, error)                       `perm:"admin"`
 		WalletImport         func(context.Context, *types.KeyInfo) (address.Address, error)                       `perm:"admin"`
+		WalletDelete         func(context.Context, address.Address) error                                         `perm:"write"`
 
 		ClientImport      func(ctx context.Context, ref api.FileRef) (cid.Cid, error)                                          `perm:"admin"`
 		ClientListImports func(ctx context.Context) ([]api.Import, error)                                                      `perm:"write"`
@@ -425,6 +426,10 @@ func (c *FullNodeStruct) WalletExport(ctx context.Context, a address.Address) (*
 
 func (c *FullNodeStruct) WalletImport(ctx context.Context, ki *types.KeyInfo) (address.Address, error) {
 	return c.Internal.WalletImport(ctx, ki)
+}
+
+func (c *FullNodeStruct) WalletDelete(ctx context.Context, addr address.Address) error {
+	return c.Internal.WalletDelete(ctx, addr)
 }
 
 func (c *FullNodeStruct) MpoolGetNonce(ctx context.Context, addr address.Address) (uint64, error) {

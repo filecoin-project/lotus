@@ -31,6 +31,7 @@ var walletCmd = &cli.Command{
 		walletSetDefault,
 		walletSign,
 		walletVerify,
+		walletDelete,
 	},
 }
 
@@ -373,5 +374,30 @@ var walletVerify = &cli.Command{
 			fmt.Println("invalid")
 			return NewCliError("CLI Verify called with invalid signature")
 		}
+	},
+}
+
+var walletDelete = &cli.Command{
+	Name:      "delete",
+	Usage:     "Delete an account from the wallet",
+	ArgsUsage: "<address> ",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		if !cctx.Args().Present() || cctx.NArg() != 1 {
+			return fmt.Errorf("must specify address to delete")
+		}
+
+		addr, err := address.NewFromString(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		return api.WalletDelete(ctx, addr)
 	},
 }
