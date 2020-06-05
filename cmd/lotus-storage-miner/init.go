@@ -126,8 +126,11 @@ var initCmd = &cli.Command{
 			log.Info("will attempt to symlink to imported sectors")
 		}
 
+		ctx := lcli.ReqContext(cctx)
+
 		log.Info("Checking proof parameters")
-		if err := paramfetch.GetParams(build.ParametersJson(), uint64(ssize)); err != nil {
+
+		if err := paramfetch.GetParams(ctx, build.ParametersJson(), uint64(ssize)); err != nil {
 			return xerrors.Errorf("fetching proof parameters: %w", err)
 		}
 
@@ -138,7 +141,6 @@ var initCmd = &cli.Command{
 			return err
 		}
 		defer closer()
-		ctx := lcli.ReqContext(cctx)
 
 		log.Info("Checking full node sync status")
 
