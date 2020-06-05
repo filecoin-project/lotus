@@ -11,16 +11,22 @@ import (
 )
 
 type readonlyProvider struct {
-	stor *stores.Local
-	spt  abi.RegisteredProof
+	index stores.SectorIndex
+	stor  *stores.Local
+	spt   abi.RegisteredProof
 }
 
-func (l *readonlyProvider) AcquireSector(ctx context.Context, id abi.SectorID, existing stores.SectorFileType, allocate stores.SectorFileType, sealing bool) (stores.SectorPaths, func(), error) {
+func (l *readonlyProvider) AcquireSector(ctx context.Context, id abi.SectorID, existing stores.SectorFileType, allocate stores.SectorFileType, sealing stores.PathType) (stores.SectorPaths, func(), error) {
 	if allocate != stores.FTNone {
 		return stores.SectorPaths{}, nil, xerrors.New("read-only storage")
 	}
 
-	p, _, done, err := l.stor.AcquireSector(ctx, id, l.spt, existing, allocate, stores.PathType(sealing), stores.AcquireMove)
+	ctx, cancel := context.WithCancel(ctx)
+	if err := l.index.StorageLock(ctx, id, existing, stores.FTNone); err != nil {
+		return stores.SectorPaths{}, nil, xerrors.Errorf("acquiring sector lock: %w", err)
+	}
 
-	return p, done, err
+	p, _, err := l.stor.AcquireSector(ctx, id, l.spt, existing, allocate, sealing, stores.AcquireMove)
+
+	return p, cancel, err
 }

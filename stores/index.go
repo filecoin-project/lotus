@@ -59,6 +59,9 @@ type SectorIndex interface { // part of storage-miner api
 	StorageFindSector(ctx context.Context, sector abi.SectorID, ft SectorFileType, allowFetch bool) ([]SectorStorageInfo, error)
 
 	StorageBestAlloc(ctx context.Context, allocate SectorFileType, spt abi.RegisteredProof, pathType PathType) ([]StorageInfo, error)
+
+	// atomically acquire locks on all sector file types. close ctx to unlock
+	StorageLock(ctx context.Context, sector abi.SectorID, read SectorFileType, write SectorFileType) error
 }
 
 type Decl struct {
@@ -80,6 +83,7 @@ type storageEntry struct {
 }
 
 type Index struct {
+	*indexLocks
 	lk sync.RWMutex
 
 	sectors map[Decl][]*declMeta
@@ -88,6 +92,9 @@ type Index struct {
 
 func NewIndex() *Index {
 	return &Index{
+		indexLocks: &indexLocks{
+			locks: map[abi.SectorID]*sectorLock{},
+		},
 		sectors: map[Decl][]*declMeta{},
 		stores:  map[ID]*storageEntry{},
 	}

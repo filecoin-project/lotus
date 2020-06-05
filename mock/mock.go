@@ -70,17 +70,6 @@ func (mgr *SectorMgr) NewSector(ctx context.Context, sector abi.SectorID) error 
 
 func (mgr *SectorMgr) AddPiece(ctx context.Context, sectorId abi.SectorID, existingPieces []abi.UnpaddedPieceSize, size abi.UnpaddedPieceSize, r io.Reader) (abi.PieceInfo, error) {
 	log.Warn("Add piece: ", sectorId, size, mgr.proofType)
-	mgr.lk.Lock()
-	ss, ok := mgr.sectors[sectorId]
-	if !ok {
-		ss = &sectorState{
-			state: statePacking,
-		}
-		mgr.sectors[sectorId] = ss
-	}
-	mgr.lk.Unlock()
-	ss.lk.Lock()
-	defer ss.lk.Unlock()
 
 	var b bytes.Buffer
 	tr := io.TeeReader(r, &b)
@@ -92,9 +81,24 @@ func (mgr *SectorMgr) AddPiece(ctx context.Context, sectorId abi.SectorID, exist
 
 	log.Warn("Generated Piece CID: ", c)
 
+	mgr.lk.Lock()
 	mgr.pieces[c] = b.Bytes()
+
+	ss, ok := mgr.sectors[sectorId]
+	if !ok {
+		ss = &sectorState{
+			state: statePacking,
+		}
+		mgr.sectors[sectorId] = ss
+	}
+	mgr.lk.Unlock()
+
+	ss.lk.Lock()
 	ss.pieces = append(ss.pieces, c)
+	ss.lk.Unlock()
+
 	return abi.PieceInfo{
+
 		Size:     size.Padded(),
 		PieceCID: c,
 	}, nil

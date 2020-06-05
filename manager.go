@@ -29,7 +29,9 @@ type URLs []string
 type Worker interface {
 	ffiwrapper.StorageSealer
 
-	Fetch(ctx context.Context, s abi.SectorID, ft stores.SectorFileType, sealing bool, am stores.AcquireMode) error
+	MoveStorage(ctx context.Context, sector abi.SectorID) error
+
+	Fetch(ctx context.Context, s abi.SectorID, ft stores.SectorFileType, ptype stores.PathType, am stores.AcquireMode) error
 	UnsealPiece(context.Context, abi.SectorID, storiface.UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) error
 	ReadPiece(context.Context, io.Writer, abi.SectorID, storiface.UnpaddedByteIndex, abi.UnpaddedPieceSize) error
 
@@ -88,7 +90,7 @@ func New(ctx context.Context, ls stores.LocalStorage, si stores.SectorIndex, cfg
 		return nil, err
 	}
 
-	prover, err := ffiwrapper.New(&readonlyProvider{stor: lstor}, cfg)
+	prover, err := ffiwrapper.New(&readonlyProvider{stor: lstor, index: si}, cfg)
 	if err != nil {
 		return nil, xerrors.Errorf("creating prover instance: %w", err)
 	}
@@ -184,13 +186,20 @@ func schedNop(context.Context, Worker) error {
 	return nil
 }
 
-func schedFetch(sector abi.SectorID, ft stores.SectorFileType, sealing bool, am stores.AcquireMode) func(context.Context, Worker) error {
+func schedFetch(sector abi.SectorID, ft stores.SectorFileType, ptype stores.PathType, am stores.AcquireMode) func(context.Context, Worker) error {
 	return func(ctx context.Context, worker Worker) error {
-		return worker.Fetch(ctx, sector, ft, sealing, am)
+		return worker.Fetch(ctx, sector, ft, ptype, am)
 	}
 }
 
 func (m *Manager) ReadPiece(ctx context.Context, sink io.Writer, sector abi.SectorID, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, unsealed cid.Cid) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	if err := m.index.StorageLock(ctx, sector, stores.FTSealed|stores.FTCache, stores.FTUnsealed); err != nil {
+		return xerrors.Errorf("acquiring sector lock: %w", err)
+	}
+
 	best, err := m.index.StorageFindSector(ctx, sector, stores.FTUnsealed, false)
 	if err != nil {
 		return xerrors.Errorf("read piece: checking for already existing unsealed sector: %w", err)
@@ -198,7 +207,7 @@ func (m *Manager) ReadPiece(ctx context.Context, sink io.Writer, sector abi.Sect
 
 	var selector WorkerSelector
 	if len(best) == 0 { // new
-		selector, err = newAllocSelector(ctx, m.index, stores.FTUnsealed)
+		selector, err = newAllocSelector(ctx, m.index, stores.FTUnsealed, stores.PathSealing)
 	} else { // append to existing
 		selector, err = newExistingSelector(ctx, m.index, sector, stores.FTUnsealed, false)
 	}
@@ -233,7 +242,7 @@ func (m *Manager) ReadPiece(ctx context.Context, sink io.Writer, sector abi.Sect
 		return xerrors.Errorf("creating readPiece selector: %w", err)
 	}
 
-	err = m.sched.Schedule(ctx, sector, sealtasks.TTReadUnsealed, selector, schedFetch(sector, stores.FTUnsealed, true, stores.AcquireMove), func(ctx context.Context, w Worker) error {
+	err = m.sched.Schedule(ctx, sector, sealtasks.TTReadUnsealed, selector, schedFetch(sector, stores.FTUnsealed, stores.PathSealing, stores.AcquireMove), func(ctx context.Context, w Worker) error {
 		return w.ReadPiece(ctx, sink, sector, offset, size)
 	})
 	if err != nil {
@@ -249,10 +258,17 @@ func (m *Manager) NewSector(ctx context.Context, sector abi.SectorID) error {
 }
 
 func (m *Manager) AddPiece(ctx context.Context, sector abi.SectorID, existingPieces []abi.UnpaddedPieceSize, sz abi.UnpaddedPieceSize, r io.Reader) (abi.PieceInfo, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	if err := m.index.StorageLock(ctx, sector, stores.FTNone, stores.FTUnsealed); err != nil {
+		return abi.PieceInfo{}, xerrors.Errorf("acquiring sector lock: %w", err)
+	}
+
 	var selector WorkerSelector
 	var err error
 	if len(existingPieces) == 0 { // new
-		selector, err = newAllocSelector(ctx, m.index, stores.FTUnsealed)
+		selector, err = newAllocSelector(ctx, m.index, stores.FTUnsealed, stores.PathSealing)
 	} else { // use existing
 		selector, err = newExistingSelector(ctx, m.index, sector, stores.FTUnsealed, false)
 	}
@@ -274,14 +290,21 @@ func (m *Manager) AddPiece(ctx context.Context, sector abi.SectorID, existingPie
 }
 
 func (m *Manager) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, pieces []abi.PieceInfo) (out storage.PreCommit1Out, err error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	if err := m.index.StorageLock(ctx, sector, stores.FTUnsealed, stores.FTSealed|stores.FTCache); err != nil {
+		return nil, xerrors.Errorf("acquiring sector lock: %w", err)
+	}
+
 	// TODO: also consider where the unsealed data sits
 
-	selector, err := newAllocSelector(ctx, m.index, stores.FTCache|stores.FTSealed)
+	selector, err := newAllocSelector(ctx, m.index, stores.FTCache|stores.FTSealed, stores.PathSealing)
 	if err != nil {
 		return nil, xerrors.Errorf("creating path selector: %w", err)
 	}
 
-	err = m.sched.Schedule(ctx, sector, sealtasks.TTPreCommit1, selector, schedFetch(sector, stores.FTUnsealed, true, stores.AcquireMove), func(ctx context.Context, w Worker) error {
+	err = m.sched.Schedule(ctx, sector, sealtasks.TTPreCommit1, selector, schedFetch(sector, stores.FTUnsealed, stores.PathSealing, stores.AcquireMove), func(ctx context.Context, w Worker) error {
 		p, err := w.SealPreCommit1(ctx, sector, ticket, pieces)
 		if err != nil {
 			return err
@@ -294,12 +317,19 @@ func (m *Manager) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticke
 }
 
 func (m *Manager) SealPreCommit2(ctx context.Context, sector abi.SectorID, phase1Out storage.PreCommit1Out) (out storage.SectorCids, err error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	if err := m.index.StorageLock(ctx, sector, stores.FTSealed, stores.FTCache); err != nil {
+		return storage.SectorCids{}, xerrors.Errorf("acquiring sector lock: %w", err)
+	}
+
 	selector, err := newExistingSelector(ctx, m.index, sector, stores.FTCache|stores.FTSealed, true)
 	if err != nil {
 		return storage.SectorCids{}, xerrors.Errorf("creating path selector: %w", err)
 	}
 
-	err = m.sched.Schedule(ctx, sector, sealtasks.TTPreCommit2, selector, schedFetch(sector, stores.FTCache|stores.FTSealed, true, stores.AcquireMove), func(ctx context.Context, w Worker) error {
+	err = m.sched.Schedule(ctx, sector, sealtasks.TTPreCommit2, selector, schedFetch(sector, stores.FTCache|stores.FTSealed, stores.PathSealing, stores.AcquireMove), func(ctx context.Context, w Worker) error {
 		p, err := w.SealPreCommit2(ctx, sector, phase1Out)
 		if err != nil {
 			return err
@@ -311,16 +341,22 @@ func (m *Manager) SealPreCommit2(ctx context.Context, sector abi.SectorID, phase
 }
 
 func (m *Manager) SealCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storage.SectorCids) (out storage.Commit1Out, err error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	if err := m.index.StorageLock(ctx, sector, stores.FTSealed, stores.FTCache); err != nil {
+		return storage.Commit1Out{}, xerrors.Errorf("acquiring sector lock: %w", err)
+	}
+
+	// NOTE: We set allowFetch to false in so that we always execute on a worker
+	// with direct access to the data. We want to do that because this step is
+	// generally very cheap / fast, and transferring data is not worth the effort
 	selector, err := newExistingSelector(ctx, m.index, sector, stores.FTCache|stores.FTSealed, false)
 	if err != nil {
 		return storage.Commit1Out{}, xerrors.Errorf("creating path selector: %w", err)
 	}
 
-	// TODO: Try very hard to execute on worker with access to the sectors
-	//  (except, don't.. for now at least - we are using this step to bring data
-	//  into 'provable' storage. Optimally we'd do that in commit2, in parallel
-	//  with snark compute)
-	err = m.sched.Schedule(ctx, sector, sealtasks.TTCommit1, selector, schedFetch(sector, stores.FTCache|stores.FTSealed, true, stores.AcquireMove), func(ctx context.Context, w Worker) error {
+	err = m.sched.Schedule(ctx, sector, sealtasks.TTCommit1, selector, schedFetch(sector, stores.FTCache|stores.FTSealed, stores.PathSealing, stores.AcquireMove), func(ctx context.Context, w Worker) error {
 		p, err := w.SealCommit1(ctx, sector, ticket, seed, pieces, cids)
 		if err != nil {
 			return err
@@ -347,16 +383,54 @@ func (m *Manager) SealCommit2(ctx context.Context, sector abi.SectorID, phase1Ou
 }
 
 func (m *Manager) FinalizeSector(ctx context.Context, sector abi.SectorID) error {
-	selector, err := newExistingSelector(ctx, m.index, sector, stores.FTCache|stores.FTSealed|stores.FTUnsealed, false)
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	if err := m.index.StorageLock(ctx, sector, stores.FTNone, stores.FTSealed|stores.FTUnsealed|stores.FTCache); err != nil {
+		return xerrors.Errorf("acquiring sector lock: %w", err)
+	}
+
+	unsealed := stores.FTUnsealed
+	{
+		unsealedStores, err := m.index.StorageFindSector(ctx, sector, stores.FTUnsealed, false)
+		if err != nil {
+			return xerrors.Errorf("finding unsealed sector: %w", err)
+		}
+
+		if len(unsealedStores) == 0 { // Is some edge-cases unsealed sector may not exist already, that's fine
+			unsealed = stores.FTNone
+		}
+	}
+
+	selector, err := newExistingSelector(ctx, m.index, sector, stores.FTCache|stores.FTSealed|unsealed, false)
 	if err != nil {
 		return xerrors.Errorf("creating path selector: %w", err)
 	}
 
-	return m.sched.Schedule(ctx, sector, sealtasks.TTFinalize, selector,
-		schedFetch(sector, stores.FTCache|stores.FTSealed|stores.FTUnsealed, false, stores.AcquireMove),
+	err = m.sched.Schedule(ctx, sector, sealtasks.TTFinalize, selector,
+		schedFetch(sector, stores.FTCache|stores.FTSealed|unsealed, stores.PathSealing, stores.AcquireMove),
 		func(ctx context.Context, w Worker) error {
 			return w.FinalizeSector(ctx, sector)
 		})
+	if err != nil {
+		return err
+	}
+
+	fetchSel, err := newAllocSelector(ctx, m.index, stores.FTCache|stores.FTSealed, stores.PathStorage)
+	if err != nil {
+		return xerrors.Errorf("creating fetchSel: %w", err)
+	}
+
+	err = m.sched.Schedule(ctx, sector, sealtasks.TTFetch, fetchSel,
+		schedFetch(sector, stores.FTCache|stores.FTSealed, stores.PathStorage, stores.AcquireMove),
+		func(ctx context.Context, w Worker) error {
+			return w.MoveStorage(ctx, sector)
+		})
+	if err != nil {
+		return xerrors.Errorf("moving sector to storage: %w", err)
+	}
+
+	return nil
 }
 
 func (m *Manager) StorageLocal(ctx context.Context) (map[stores.ID]string, error) {

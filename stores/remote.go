@@ -50,9 +50,9 @@ func NewRemote(local *Local, index SectorIndex, auth http.Header) *Remote {
 	}
 }
 
-func (r *Remote) AcquireSector(ctx context.Context, s abi.SectorID, spt abi.RegisteredProof, existing SectorFileType, allocate SectorFileType, pathType PathType, op AcquireMode) (SectorPaths, SectorPaths, func(), error) {
+func (r *Remote) AcquireSector(ctx context.Context, s abi.SectorID, spt abi.RegisteredProof, existing SectorFileType, allocate SectorFileType, pathType PathType, op AcquireMode) (SectorPaths, SectorPaths, error) {
 	if existing|allocate != existing^allocate {
-		return SectorPaths{}, SectorPaths{}, nil, xerrors.New("can't both find and allocate a sector")
+		return SectorPaths{}, SectorPaths{}, xerrors.New("can't both find and allocate a sector")
 	}
 
 	for {
@@ -71,7 +71,7 @@ func (r *Remote) AcquireSector(ctx context.Context, s abi.SectorID, spt abi.Regi
 		case <-c:
 			continue
 		case <-ctx.Done():
-			return SectorPaths{}, SectorPaths{}, nil, ctx.Err()
+			return SectorPaths{}, SectorPaths{}, ctx.Err()
 		}
 	}
 
@@ -82,9 +82,9 @@ func (r *Remote) AcquireSector(ctx context.Context, s abi.SectorID, spt abi.Regi
 		r.fetchLk.Unlock()
 	}()
 
-	paths, stores, done, err := r.local.AcquireSector(ctx, s, spt, existing, allocate, pathType, op)
+	paths, stores, err := r.local.AcquireSector(ctx, s, spt, existing, allocate, pathType, op)
 	if err != nil {
-		return SectorPaths{}, SectorPaths{}, nil, xerrors.Errorf("local acquire error: %w", err)
+		return SectorPaths{}, SectorPaths{}, xerrors.Errorf("local acquire error: %w", err)
 	}
 
 	for _, fileType := range PathTypes {
@@ -96,13 +96,11 @@ func (r *Remote) AcquireSector(ctx context.Context, s abi.SectorID, spt abi.Regi
 			continue
 		}
 
-		ap, storageID, url, rdone, err := r.acquireFromRemote(ctx, s, spt, fileType, pathType, op)
+		ap, storageID, url, err := r.acquireFromRemote(ctx, s, spt, fileType, pathType, op)
 		if err != nil {
-			done()
-			return SectorPaths{}, SectorPaths{}, nil, err
+			return SectorPaths{}, SectorPaths{}, err
 		}
 
-		done = mergeDone(done, rdone)
 		SetPathByType(&paths, fileType, ap)
 		SetPathByType(&stores, fileType, string(storageID))
 
@@ -118,26 +116,26 @@ func (r *Remote) AcquireSector(ctx context.Context, s abi.SectorID, spt abi.Regi
 		}
 	}
 
-	return paths, stores, done, nil
+	return paths, stores, nil
 }
 
-func (r *Remote) acquireFromRemote(ctx context.Context, s abi.SectorID, spt abi.RegisteredProof, fileType SectorFileType, pathType PathType, op AcquireMode) (string, ID, string, func(), error) {
+func (r *Remote) acquireFromRemote(ctx context.Context, s abi.SectorID, spt abi.RegisteredProof, fileType SectorFileType, pathType PathType, op AcquireMode) (string, ID, string, error) {
 	si, err := r.index.StorageFindSector(ctx, s, fileType, false)
 	if err != nil {
-		return "", "", "", nil, err
+		return "", "", "", err
 	}
 
 	if len(si) == 0 {
-		return "", "", "", nil, xerrors.Errorf("failed to acquire sector %v from remote(%d): %w", s, fileType, storiface.ErrSectorNotFound)
+		return "", "", "", xerrors.Errorf("failed to acquire sector %v from remote(%d): %w", s, fileType, storiface.ErrSectorNotFound)
 	}
 
 	sort.Slice(si, func(i, j int) bool {
 		return si[i].Weight < si[j].Weight
 	})
 
-	apaths, ids, done, err := r.local.AcquireSector(ctx, s, spt, FTNone, fileType, pathType, op)
+	apaths, ids, err := r.local.AcquireSector(ctx, s, spt, FTNone, fileType, pathType, op)
 	if err != nil {
-		return "", "", "", nil, xerrors.Errorf("allocate local sector for fetching: %w", err)
+		return "", "", "", xerrors.Errorf("allocate local sector for fetching: %w", err)
 	}
 	dest := PathByType(apaths, fileType)
 	storageID := PathByType(ids, fileType)
@@ -156,12 +154,11 @@ func (r *Remote) acquireFromRemote(ctx context.Context, s abi.SectorID, spt abi.
 			if merr != nil {
 				log.Warnw("acquireFromRemote encountered errors when fetching sector from remote", "errors", merr)
 			}
-			return dest, ID(storageID), url, done, nil
+			return dest, ID(storageID), url, nil
 		}
 	}
 
-	done()
-	return "", "", "", nil, xerrors.Errorf("failed to acquire sector %v from remote (tried %v): %w", s, si, merr)
+	return "", "", "", xerrors.Errorf("failed to acquire sector %v from remote (tried %v): %w", s, si, merr)
 }
 
 func (r *Remote) fetch(ctx context.Context, url, outname string) error {
@@ -215,11 +212,10 @@ func (r *Remote) fetch(ctx context.Context, url, outname string) error {
 
 func (r *Remote) MoveStorage(ctx context.Context, s abi.SectorID, spt abi.RegisteredProof, types SectorFileType) error {
 	// Make sure we have the data local
-	_, _, ddone, err := r.AcquireSector(ctx, s, spt, types, FTNone, PathStorage, AcquireMove)
+	_, _, err := r.AcquireSector(ctx, s, spt, types, FTNone, PathStorage, AcquireMove)
 	if err != nil {
 		return xerrors.Errorf("acquire src storage (remote): %w", err)
 	}
-	ddone()
 
 	return r.local.MoveStorage(ctx, s, spt, types)
 }
@@ -334,13 +330,6 @@ func (r *Remote) FsStat(ctx context.Context, id ID) (FsStat, error) {
 	defer resp.Body.Close()
 
 	return out, nil
-}
-
-func mergeDone(a func(), b func()) func() {
-	return func() {
-		a()
-		b()
-	}
 }
 
 var _ Store = &Remote{}
