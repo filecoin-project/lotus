@@ -904,7 +904,7 @@ func DrawRandomness(rbase []byte, pers crypto.DomainSeparationTag, round abi.Cha
 	return h.Sum(nil), nil
 }
 
-func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) (out []byte, err error) {
+func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	_, span := trace.StartSpan(ctx, "store.GetRandomness")
 	defer span.End()
 	span.AddAttributes(trace.Int64Attribute("round", int64(round)))
@@ -915,7 +915,7 @@ func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, pers cr
 	}
 
 	if round > ts.Height() {
-		return DrawRandomness(ts.MinTicket().VRFProof, pers, round, entropy)
+		return nil, xerrors.Errorf("cannot draw randomness from the future")
 	}
 
 	searchHeight := round
