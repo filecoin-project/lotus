@@ -916,30 +916,35 @@ func DrawRandomness(rbase []byte, pers crypto.DomainSeparationTag, round abi.Cha
 	return h.Sum(nil), nil
 }
 
-func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) (out []byte, err error) {
+func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	_, span := trace.StartSpan(ctx, "store.GetRandomness")
 	defer span.End()
 	span.AddAttributes(trace.Int64Attribute("round", int64(round)))
 
-	//defer func() {
-	//log.Infof("getRand %v %d %d %x -> %x", blks, pers, round, entropy, out)
-	//}()
-	for {
-		nts, err := cs.LoadTipSet(types.NewTipSetKey(blks...))
-		if err != nil {
-			return nil, err
-		}
-
-		mtb := nts.MinTicketBlock()
-
-		// if at (or just past -- for null epochs) appropriate epoch
-		// or at genesis (works for negative epochs)
-		if nts.Height() <= round || mtb.Height == 0 {
-			return DrawRandomness(nts.MinTicketBlock().Ticket.VRFProof, pers, round, entropy)
-		}
-
-		blks = mtb.Parents
+	ts, err := cs.LoadTipSet(types.NewTipSetKey(blks...))
+	if err != nil {
+		return nil, err
 	}
+
+	if round > ts.Height() {
+		return nil, xerrors.Errorf("cannot draw randomness from the future")
+	}
+
+	searchHeight := round
+	if searchHeight < 0 {
+		searchHeight = 0
+	}
+
+	randTs, err := cs.GetTipsetByHeight(ctx, searchHeight, ts, true)
+	if err != nil {
+		return nil, err
+	}
+
+	mtb := randTs.MinTicketBlock()
+
+	// if at (or just past -- for null epochs) appropriate epoch
+	// or at genesis (works for negative epochs)
+	return DrawRandomness(mtb.Ticket.VRFProof, pers, round, entropy)
 }
 
 // GetTipsetByHeight returns the tipset on the chain behind 'ts' at the given
