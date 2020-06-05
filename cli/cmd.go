@@ -196,12 +196,12 @@ func DaemonContext(cctx *cli.Context) context.Context {
 	return context.Background()
 }
 
-// GetCidEncoder returns an encoder using the cid-base flag if provided, or
+// GetCidEncoder returns an encoder using the `cid-base` flag if provided, or
 // the default (Base32) encoder if not.
 func GetCidEncoder(cctx *cli.Context) (cidenc.Encoder, error) {
 	val := cctx.String("cid-base")
 
-	e := cidenc.Default()
+	e := cidenc.Encoder{Base: multibase.MustNewEncoder(multibase.Base32)}
 
 	if val != "" {
 		var err error
