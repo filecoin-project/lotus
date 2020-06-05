@@ -102,11 +102,16 @@ var clientCommPCmd = &cli.Command{
 		}
 
 		ret, err := api.ClientCalcCommP(ctx, cctx.Args().Get(0), miner)
-
 		if err != nil {
 			return err
 		}
-		fmt.Println("CID: ", ret.Root)
+
+		encoded, err := ret.Root.StringOfBase(multibase.Base32)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("CID: ", encoded)
 		fmt.Println("Piece size: ", ret.Size)
 		return nil
 	},
