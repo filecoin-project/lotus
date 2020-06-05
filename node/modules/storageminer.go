@@ -70,7 +70,7 @@ func GetParams(sbc *ffiwrapper.Config) error {
 		return err
 	}
 
-	if err := paramfetch.GetParams(build.ParametersJSON(), uint64(ssize)); err != nil {
+	if err := paramfetch.GetParams(context.TODO(), build.ParametersJSON(), uint64(ssize)); err != nil {
 		return xerrors.Errorf("fetching proof parameters: %w", err)
 	}
 
