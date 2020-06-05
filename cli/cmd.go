@@ -9,6 +9,9 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/multiformats/go-multibase"
+
+	cidenc "github.com/ipfs/go-cidutil/cidenc"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
 	"github.com/multiformats/go-multiaddr"
@@ -191,6 +194,24 @@ func DaemonContext(cctx *cli.Context) context.Context {
 	}
 
 	return context.Background()
+}
+
+// GetCidEncoder returns an encoder using the cid-base flag if provided, or
+// the default (Base32) encoder if not.
+func GetCidEncoder(cctx *cli.Context) (cidenc.Encoder, error) {
+	val := cctx.String("cid-base")
+
+	e := cidenc.Default()
+
+	if val != "" {
+		var err error
+		e.Base, err = multibase.EncoderByName(val)
+		if err != nil {
+			return e, err
+		}
+	}
+
+	return e, nil
 }
 
 // ReqContext returns context for cli execution. Calling it for the first time

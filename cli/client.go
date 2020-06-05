@@ -9,7 +9,6 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/multiformats/go-multibase"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
@@ -69,12 +68,12 @@ var clientImportCmd = &cli.Command{
 			return err
 		}
 
-		encoded, err := c.StringOfBase(multibase.Base32)
+		encoder, err := GetCidEncoder(cctx)
 		if err != nil {
 			return err
 		}
 
-		fmt.Println(encoded)
+		fmt.Println(encoder.Encode(c))
 
 		return nil
 	},
@@ -106,12 +105,12 @@ var clientCommPCmd = &cli.Command{
 			return err
 		}
 
-		encoded, err := ret.Root.StringOfBase(multibase.Base32)
+		encoder, err := GetCidEncoder(cctx)
 		if err != nil {
 			return err
 		}
 
-		fmt.Println("CID: ", encoded)
+		fmt.Println("CID: ", encoder.Encode(ret.Root))
 		fmt.Println("Piece size: ", ret.Size)
 		return nil
 	},
@@ -162,13 +161,14 @@ var clientLocalCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		for _, v := range list {
-			encoded, err := v.Key.StringOfBase(multibase.Base32)
-			if err != nil {
-				return err
-			}
 
-			fmt.Printf("%s %s %d %s\n", encoded, v.FilePath, v.Size, v.Status)
+		encoder, err := GetCidEncoder(cctx)
+		if err != nil {
+			return err
+		}
+
+		for _, v := range list {
+			fmt.Printf("%s %s %d %s\n", encoder.Encode(v.Key), v.FilePath, v.Size, v.Status)
 		}
 		return nil
 	},
@@ -281,12 +281,12 @@ var clientDealCmd = &cli.Command{
 			return err
 		}
 
-		encoded, err := proposal.StringOfBase(multibase.Base32)
+		encoder, err := GetCidEncoder(cctx)
 		if err != nil {
 			return err
 		}
 
-		fmt.Println(encoded)
+		fmt.Println(encoder.Encode(*proposal))
 
 		return nil
 	},
