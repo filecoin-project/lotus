@@ -10,8 +10,7 @@ import (
 )
 
 type sectorLock struct {
-	lk    sync.Mutex
-	notif *ctxCond
+	cond *ctxCond
 
 	r [FileTypes]uint
 	w SectorFileType
@@ -47,23 +46,21 @@ func (l *sectorLock) tryLock(read SectorFileType, write SectorFileType) bool {
 }
 
 func (l *sectorLock) lock(ctx context.Context, read SectorFileType, write SectorFileType) error {
-	l.lk.Lock()
-	defer l.lk.Unlock()
+	l.cond.L.Lock()
+	defer l.cond.L.Unlock()
 
-	for {
-		if l.tryLock(read, write) {
-			return nil
-		}
-
-		if err := l.notif.Wait(ctx); err != nil {
+	for !l.tryLock(read, write) {
+		if err := l.cond.Wait(ctx); err != nil {
 			return err
 		}
 	}
+
+	return nil
 }
 
 func (l *sectorLock) unlock(read SectorFileType, write SectorFileType) {
-	l.lk.Lock()
-	defer l.lk.Unlock()
+	l.cond.L.Lock()
+	defer l.cond.L.Unlock()
 
 	for i, set := range read.All() {
 		if set {
@@ -73,7 +70,7 @@ func (l *sectorLock) unlock(read SectorFileType, write SectorFileType) {
 
 	l.w &= ^write
 
-	l.notif.Broadcast()
+	l.cond.Broadcast()
 }
 
 type indexLocks struct {
@@ -95,7 +92,7 @@ func (i *indexLocks) StorageLock(ctx context.Context, sector abi.SectorID, read 
 	slk, ok := i.locks[sector]
 	if !ok {
 		slk = &sectorLock{}
-		slk.notif = newCtxCond(&slk.lk)
+		slk.cond = newCtxCond(&sync.Mutex{})
 		i.locks[sector] = slk
 	}
 

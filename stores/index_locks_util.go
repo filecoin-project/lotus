@@ -8,14 +8,14 @@ import (
 // like sync.Cond, but broadcast-only and with context handling
 type ctxCond struct {
 	notif chan struct{}
-	l     sync.Locker
+	L     sync.Locker
 
 	lk sync.Mutex
 }
 
 func newCtxCond(l sync.Locker) *ctxCond {
 	return &ctxCond{
-		l: l,
+		L: l,
 	}
 }
 
@@ -37,8 +37,8 @@ func (c *ctxCond) Wait(ctx context.Context) error {
 	wait := c.notif
 	c.lk.Unlock()
 
-	c.l.Unlock()
-	defer c.l.Lock()
+	c.L.Unlock()
+	defer c.L.Lock()
 
 	select {
 	case <-wait:
