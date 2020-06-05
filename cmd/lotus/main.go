@@ -61,13 +61,6 @@ func main() {
 				Hidden:  true,
 				Value:   "~/.lotus", // TODO: Consider XDG_DATA_HOME
 			},
-			&cli.StringFlag{
-				Name:        "cid-base",
-				Hidden:      true,
-				Value:       "base32",
-				Usage:       "Multibase encoding used for version 1 CIDs in output.",
-				DefaultText: "base32",
-			},
 		},
 
 		Commands: append(local, lcli.Commands...),
