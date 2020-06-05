@@ -377,6 +377,8 @@ github.com/ipfs/go-hamt-ipld v0.0.15-0.20200131012125-dd88a59d3f2e/go.mod h1:9aQ
 github.com/ipfs/go-hamt-ipld v0.0.15-0.20200204200533-99b8553ef242/go.mod h1:kq3Pi+UP3oHhAdKexE+kHHYRKMoFNuGero0R7q3hWGg=
 github.com/ipfs/go-hamt-ipld v0.1.1-0.20200501020327-d53d20a7063e h1:Klv6s+kbuhh0JVpGFmFK2t6AtZxJfAnVneQHh1DlFOo=
 github.com/ipfs/go-hamt-ipld v0.1.1-0.20200501020327-d53d20a7063e/go.mod h1:giiPqWYCnRBYpNTsJ/EX1ojldX5kTXrXYckSJQ7ko9M=
+github.com/ipfs/go-hamt-ipld v0.1.1-0.20200605182717-0310ad2b0b1f h1:mchhWiYYUSoCuE3wDfRCo8cho5kqSoxkgnOtGcnNMZw=
+github.com/ipfs/go-hamt-ipld v0.1.1-0.20200605182717-0310ad2b0b1f/go.mod h1:phOFBB7W73N9dg1glcb1fQ9HtQFDUpeyJgatW8ns0bw=
 github.com/ipfs/go-ipfs-blockstore v0.0.1/go.mod h1:d3WClOmRQKFnJ0Jz/jj/zmksX0ma1gROTlovZKBmN08=
 github.com/ipfs/go-ipfs-blockstore v0.1.0/go.mod h1:5aD0AvHPi7mZc6Ci1WCAhiBQu2IsfTduLl+422H6Rqw=
 github.com/ipfs/go-ipfs-blockstore v0.1.4/go.mod h1:Jxm3XMVjh6R17WvxFEiyKBLUGr86HgIYJW/D/MwqeYQ=
