@@ -25,7 +25,7 @@ require (
 	github.com/filecoin-project/go-fil-markets v0.2.7
 	github.com/filecoin-project/go-jsonrpc v0.1.1-0.20200602181149-522144ab4e24
 	github.com/filecoin-project/go-padreader v0.0.0-20200210211231-548257017ca6
-	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200505180321-973f8949ea8e
+	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200605171344-fcac609550ca
 	github.com/filecoin-project/go-statestore v0.1.0
 	github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b
 	github.com/filecoin-project/sector-storage v0.0.0-20200522011946-a59ca7536a95

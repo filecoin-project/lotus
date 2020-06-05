@@ -20,6 +20,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	paramfetch "github.com/filecoin-project/go-paramfetch"
+	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/sector-storage/ffiwrapper/basicfs"
 	"github.com/filecoin-project/sector-storage/stores"
@@ -209,7 +210,7 @@ var sealBenchCmd = &cli.Command{
 
 		// Only fetch parameters if actually needed
 		if !c.Bool("skip-commit2") {
-			if err := paramfetch.GetParams(build.ParametersJson(), uint64(sectorSize)); err != nil {
+			if err := paramfetch.GetParams(lcli.ReqContext(c), build.ParametersJson(), uint64(sectorSize)); err != nil {
 				return xerrors.Errorf("getting params: %w", err)
 			}
 		}
@@ -616,7 +617,7 @@ var proveCmd = &cli.Command{
 			return xerrors.Errorf("unmarshalling input file: %w", err)
 		}
 
-		if err := paramfetch.GetParams(build.ParametersJson(), c2in.SectorSize); err != nil {
+		if err := paramfetch.GetParams(lcli.ReqContext(c), build.ParametersJson(), c2in.SectorSize); err != nil {
 			return xerrors.Errorf("getting params: %w", err)
 		}
 
