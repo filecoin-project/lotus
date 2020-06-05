@@ -8,7 +8,9 @@ import (
 	"text/tabwriter"
 
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cidutil/cidenc"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/multiformats/go-multibase"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
@@ -20,6 +22,32 @@ import (
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 )
+
+var CidBaseFlag = cli.StringFlag{
+	Name:        "cid-base",
+	Hidden:      true,
+	Value:       "base32",
+	Usage:       "Multibase encoding used for version 1 CIDs in output.",
+	DefaultText: "base32",
+}
+
+// GetCidEncoder returns an encoder using the `cid-base` flag if provided, or
+// the default (Base32) encoder if not.
+func GetCidEncoder(cctx *cli.Context) (cidenc.Encoder, error) {
+	val := cctx.String("cid-base")
+
+	e := cidenc.Encoder{Base: multibase.MustNewEncoder(multibase.Base32)}
+
+	if val != "" {
+		var err error
+		e.Base, err = multibase.EncoderByName(val)
+		if err != nil {
+			return e, err
+		}
+	}
+
+	return e, nil
+}
 
 var clientCmd = &cli.Command{
 	Name:  "client",
@@ -46,6 +74,7 @@ var clientImportCmd = &cli.Command{
 			Name:  "car",
 			Usage: "import from a car file instead of a regular file",
 		},
+		&CidBaseFlag,
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -67,7 +96,14 @@ var clientImportCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		fmt.Println(c.String())
+
+		encoder, err := GetCidEncoder(cctx)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println(encoder.Encode(c))
+
 		return nil
 	},
 }
@@ -76,6 +112,9 @@ var clientCommPCmd = &cli.Command{
 	Name:      "commP",
 	Usage:     "calculate the piece-cid (commP) of a CAR file",
 	ArgsUsage: "[inputFile minerAddress]",
+	Flags: []cli.Flag{
+		&CidBaseFlag,
+	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -94,11 +133,16 @@ var clientCommPCmd = &cli.Command{
 		}
 
 		ret, err := api.ClientCalcCommP(ctx, cctx.Args().Get(0), miner)
-
 		if err != nil {
 			return err
 		}
-		fmt.Println("CID: ", ret.Root)
+
+		encoder, err := GetCidEncoder(cctx)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("CID: ", encoder.Encode(ret.Root))
 		fmt.Println("Piece size: ", ret.Size)
 		return nil
 	},
@@ -137,6 +181,9 @@ var clientCarGenCmd = &cli.Command{
 var clientLocalCmd = &cli.Command{
 	Name:  "local",
 	Usage: "List locally imported data",
+	Flags: []cli.Flag{
+		&CidBaseFlag,
+	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -149,8 +196,14 @@ var clientLocalCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
+
+		encoder, err := GetCidEncoder(cctx)
+		if err != nil {
+			return err
+		}
+
 		for _, v := range list {
-			fmt.Printf("%s %s %d %s\n", v.Key, v.FilePath, v.Size, v.Status)
+			fmt.Printf("%s %s %d %s\n", encoder.Encode(v.Key), v.FilePath, v.Size, v.Status)
 		}
 		return nil
 	},
@@ -178,6 +231,7 @@ var clientDealCmd = &cli.Command{
 			Usage: "specify the epoch that the deal should start at",
 			Value: -1,
 		},
+		&CidBaseFlag,
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -263,7 +317,13 @@ var clientDealCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Println(proposal)
+		encoder, err := GetCidEncoder(cctx)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println(encoder.Encode(*proposal))
+
 		return nil
 	},
 }
