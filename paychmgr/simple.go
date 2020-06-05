@@ -58,6 +58,7 @@ func (pm *Manager) waitForPaychCreateMsg(ctx context.Context, mcid cid.Cid) {
 	mwait, err := pm.state.StateWaitMsg(ctx, mcid)
 	if err != nil {
 		log.Errorf("wait msg: %w", err)
+		return
 	}
 
 	if mwait.Receipt.ExitCode != 0 {
