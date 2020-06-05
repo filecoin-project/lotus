@@ -9,6 +9,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/multiformats/go-multibase"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
@@ -67,7 +68,14 @@ var clientImportCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		fmt.Println(c.String())
+
+		encoded, err := c.StringOfBase(multibase.Base32)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println(encoded)
+
 		return nil
 	},
 }
@@ -150,7 +158,12 @@ var clientLocalCmd = &cli.Command{
 			return err
 		}
 		for _, v := range list {
-			fmt.Printf("%s %s %d %s\n", v.Key, v.FilePath, v.Size, v.Status)
+			encoded, err := v.Key.StringOfBase(multibase.Base32)
+			if err != nil {
+				return err
+			}
+
+			fmt.Printf("%s %s %d %s\n", encoded, v.FilePath, v.Size, v.Status)
 		}
 		return nil
 	},
