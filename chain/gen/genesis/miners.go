@@ -71,7 +71,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 			constructorParams := &power.CreateMinerParams{
 				Owner:         m.Worker,
 				Worker:        m.Worker,
-				Peer:          m.PeerId,
+				Peer:          []byte(m.PeerId),
 				SealProofType: spt,
 			}
 

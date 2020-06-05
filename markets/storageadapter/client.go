@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/events"
@@ -79,7 +80,7 @@ func (n *ClientNodeAdapter) ListStorageProviders(ctx context.Context, encodedTs 
 			return nil, err
 		}
 
-		storageProviderInfo := utils.NewStorageProviderInfo(addr, mi.Worker, mi.SectorSize, mi.PeerId)
+		storageProviderInfo := utils.NewStorageProviderInfo(addr, mi.Worker, mi.SectorSize, peer.ID(mi.PeerId))
 		out = append(out, &storageProviderInfo)
 	}
 

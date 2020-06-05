@@ -545,7 +545,7 @@ func configureStorageMiner(ctx context.Context, api lapi.FullNode, addr address.
 		return xerrors.Errorf("getWorkerAddr returned bad address: %w", err)
 	}
 
-	enc, err := actors.SerializeParams(&miner2.ChangePeerIDParams{NewID: peerid})
+	enc, err := actors.SerializeParams(&miner2.ChangePeerIDParams{NewID: abi.PeerID(peerid)})
 	if err != nil {
 		return err
 	}
@@ -622,7 +622,7 @@ func createStorageMiner(ctx context.Context, api lapi.FullNode, peerid peer.ID, 
 		Owner:         owner,
 		Worker:        worker,
 		SealProofType: spt,
-		Peer:          peerid,
+		Peer:          abi.PeerID(peerid),
 	})
 	if err != nil {
 		return address.Undef, err
