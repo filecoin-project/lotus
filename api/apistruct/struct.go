@@ -42,12 +42,15 @@ type CommonStruct struct {
 		NetAddrsListen   func(context.Context) (peer.AddrInfo, error)                  `perm:"read"`
 		NetDisconnect    func(context.Context, peer.ID) error                          `perm:"write"`
 		NetFindPeer      func(context.Context, peer.ID) (peer.AddrInfo, error)         `perm:"read"`
+		NetPubsubScores  func(context.Context) ([]api.PubsubScore, error)              `perm:"read"`
 
 		ID      func(context.Context) (peer.ID, error)     `perm:"read"`
 		Version func(context.Context) (api.Version, error) `perm:"read"`
 
 		LogList     func(context.Context) ([]string, error)     `perm:"write"`
 		LogSetLevel func(context.Context, string, string) error `perm:"write"`
+
+		Shutdown func(context.Context) error `perm:"admin"`
 	}
 }
 
@@ -135,7 +138,7 @@ type FullNodeStruct struct {
 		StateGetActor                     func(context.Context, address.Address, types.TipSetKey) (*types.Actor, error)                                       `perm:"read"`
 		StateReadState                    func(context.Context, *types.Actor, types.TipSetKey) (*api.ActorState, error)                                       `perm:"read"`
 		StatePledgeCollateral             func(context.Context, types.TipSetKey) (types.BigInt, error)                                                        `perm:"read"`
-		StateWaitMsg                      func(context.Context, cid.Cid) (*api.MsgLookup, error)                                                              `perm:"read"`
+		StateWaitMsg                      func(ctx context.Context, cid cid.Cid, confidence uint64) (*api.MsgLookup, error)                                   `perm:"read"`
 		StateSearchMsg                    func(context.Context, cid.Cid) (*api.MsgLookup, error)                                                              `perm:"read"`
 		StateListMiners                   func(context.Context, types.TipSetKey) ([]address.Address, error)                                                   `perm:"read"`
 		StateListActors                   func(context.Context, types.TipSetKey) ([]address.Address, error)                                                   `perm:"read"`
@@ -258,6 +261,9 @@ func (c *CommonStruct) AuthNew(ctx context.Context, perms []auth.Permission) ([]
 	return c.Internal.AuthNew(ctx, perms)
 }
 
+func (c *CommonStruct) NetPubsubScores(ctx context.Context) ([]api.PubsubScore, error) {
+	return c.Internal.NetPubsubScores(ctx)
+}
 func (c *CommonStruct) NetConnectedness(ctx context.Context, pid peer.ID) (network.Connectedness, error) {
 	return c.Internal.NetConnectedness(ctx, pid)
 }
@@ -298,6 +304,10 @@ func (c *CommonStruct) LogList(ctx context.Context) ([]string, error) {
 
 func (c *CommonStruct) LogSetLevel(ctx context.Context, group, level string) error {
 	return c.Internal.LogSetLevel(ctx, group, level)
+}
+
+func (c *CommonStruct) Shutdown(ctx context.Context) error {
+	return c.Internal.Shutdown(ctx)
 }
 
 // FullNodeStruct
@@ -592,8 +602,8 @@ func (c *FullNodeStruct) StatePledgeCollateral(ctx context.Context, tsk types.Ti
 	return c.Internal.StatePledgeCollateral(ctx, tsk)
 }
 
-func (c *FullNodeStruct) StateWaitMsg(ctx context.Context, msgc cid.Cid) (*api.MsgLookup, error) {
-	return c.Internal.StateWaitMsg(ctx, msgc)
+func (c *FullNodeStruct) StateWaitMsg(ctx context.Context, msgc cid.Cid, confidence uint64) (*api.MsgLookup, error) {
+	return c.Internal.StateWaitMsg(ctx, msgc, confidence)
 }
 
 func (c *FullNodeStruct) StateSearchMsg(ctx context.Context, msgc cid.Cid) (*api.MsgLookup, error) {

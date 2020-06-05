@@ -176,7 +176,7 @@ func (s *WindowPoStScheduler) checkNextRecoveries(ctx context.Context, deadline 
 
 	log.Warnw("declare faults recovered Message CID", "cid", sm.Cid())
 
-	rec, err := s.api.StateWaitMsg(context.TODO(), sm.Cid())
+	rec, err := s.api.StateWaitMsg(context.TODO(), sm.Cid(), build.MessageConfidence)
 	if err != nil {
 		return xerrors.Errorf("declare faults recovered wait error: %w", err)
 	}
@@ -255,7 +255,7 @@ func (s *WindowPoStScheduler) checkNextFaults(ctx context.Context, deadline uint
 
 	log.Warnw("declare faults Message CID", "cid", sm.Cid())
 
-	rec, err := s.api.StateWaitMsg(context.TODO(), sm.Cid())
+	rec, err := s.api.StateWaitMsg(context.TODO(), sm.Cid(), build.MessageConfidence)
 	if err != nil {
 		return xerrors.Errorf("declare faults wait error: %w", err)
 	}
@@ -499,7 +499,7 @@ func (s *WindowPoStScheduler) submitPost(ctx context.Context, proof *miner.Submi
 	log.Infof("Submitted window post: %s", sm.Cid())
 
 	go func() {
-		rec, err := s.api.StateWaitMsg(context.TODO(), sm.Cid())
+		rec, err := s.api.StateWaitMsg(context.TODO(), sm.Cid(), build.MessageConfidence)
 		if err != nil {
 			log.Error(err)
 			return

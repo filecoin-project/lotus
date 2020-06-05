@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"golang.org/x/xerrors"
-	"gopkg.in/urfave/cli.v2"
+	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/go-jsonrpc/auth"
 

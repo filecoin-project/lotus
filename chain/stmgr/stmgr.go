@@ -480,7 +480,10 @@ func (sm *StateManager) GetReceipt(ctx context.Context, msg cid.Cid, ts *types.T
 	return r, nil
 }
 
-func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid) (*types.TipSet, *types.MessageReceipt, error) {
+// WaitForMessage blocks until a message appears on chain. It looks backwards in the chain to see if this has already
+// happened. It guarantees that the message has been on chain for at least confidence epochs without being reverted
+// before returning.
+func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid, confidence uint64) (*types.TipSet, *types.MessageReceipt, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -528,6 +531,11 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid) (*type
 		close(backSearchWait)
 	}()
 
+	var candidateTs *types.TipSet
+	var candidateRcp *types.MessageReceipt
+	heightOfHead := head[0].Val.Height()
+	reverts := map[types.TipSetKey]bool{}
+
 	for {
 		select {
 		case notif, ok := <-tsub:
@@ -537,21 +545,44 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid) (*type
 			for _, val := range notif {
 				switch val.Type {
 				case store.HCRevert:
-					continue
+					if val.Val.Equals(candidateTs) {
+						candidateTs = nil
+						candidateRcp = nil
+					}
+					if backSearchWait != nil {
+						reverts[val.Val.Key()] = true
+					}
 				case store.HCApply:
+					if candidateTs != nil && val.Val.Height() >= candidateTs.Height()+abi.ChainEpoch(confidence) {
+						return candidateTs, candidateRcp, nil
+					}
 					r, err := sm.tipsetExecutedMessage(val.Val, mcid, msg.VMMessage())
 					if err != nil {
 						return nil, nil, err
 					}
 					if r != nil {
-						return val.Val, r, nil
+						if confidence == 0 {
+							return val.Val, r, err
+						}
+						candidateTs = val.Val
+						candidateRcp = r
 					}
+					heightOfHead = val.Val.Height()
 				}
 			}
 		case <-backSearchWait:
-			if backTs != nil {
-				return backTs, backRcp, nil
+			// check if we found the message in the chain and that is hasn't been reverted since we started searching
+			if backTs != nil && !reverts[backTs.Key()] {
+				// if head is at or past confidence interval, return immediately
+				if heightOfHead >= backTs.Height()+abi.ChainEpoch(confidence) {
+					return backTs, backRcp, nil
+				}
+
+				// wait for confidence interval
+				candidateTs = backTs
+				candidateRcp = backRcp
 			}
+			reverts = nil
 			backSearchWait = nil
 		case <-ctx.Done():
 			return nil, nil, ctx.Err()
@@ -610,9 +641,9 @@ func (sm *StateManager) searchBackForMsg(ctx context.Context, from *types.TipSet
 			return nil, nil, err
 		}
 
-		if act.Nonce < m.VMMessage().Nonce {
-			// nonce on chain is before message nonce we're looking for, its
-			// not going to be here
+		// we either have no messages from the sender, or the latest message we found has a lower nonce than the one being searched for,
+		// either way, no reason to lookback, it ain't there
+		if act.Nonce == 0 || act.Nonce < m.VMMessage().Nonce {
 			return nil, nil, nil
 		}
 

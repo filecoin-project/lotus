@@ -2,6 +2,8 @@ package common
 
 import (
 	"context"
+	"sort"
+	"strings"
 
 	logging "github.com/ipfs/go-log/v2"
 
@@ -25,9 +27,11 @@ import (
 type CommonAPI struct {
 	fx.In
 
-	APISecret *dtypes.APIAlg
-	Host      host.Host
-	Router    lp2p.BaseIpfsRouting
+	APISecret    *dtypes.APIAlg
+	Host         host.Host
+	Router       lp2p.BaseIpfsRouting
+	Sk           *dtypes.ScoreKeeper
+	ShutdownChan dtypes.ShutdownChan
 }
 
 type jwtPayload struct {
@@ -53,6 +57,21 @@ func (a *CommonAPI) AuthNew(ctx context.Context, perms []auth.Permission) ([]byt
 
 func (a *CommonAPI) NetConnectedness(ctx context.Context, pid peer.ID) (network.Connectedness, error) {
 	return a.Host.Network().Connectedness(pid), nil
+}
+func (a *CommonAPI) NetPubsubScores(context.Context) ([]api.PubsubScore, error) {
+	scores := a.Sk.Get()
+	out := make([]api.PubsubScore, len(scores))
+	i := 0
+	for k, v := range scores {
+		out[i] = api.PubsubScore{ID: k, Score: v}
+		i++
+	}
+
+	sort.Slice(out, func(i, j int) bool {
+		return strings.Compare(string(out[i].ID), string(out[j].ID)) > 0
+	})
+
+	return out, nil
 }
 
 func (a *CommonAPI) NetPeers(context.Context) ([]peer.AddrInfo, error) {
@@ -113,6 +132,11 @@ func (a *CommonAPI) LogList(context.Context) ([]string, error) {
 
 func (a *CommonAPI) LogSetLevel(ctx context.Context, subsystem, level string) error {
 	return logging.SetLogLevel(subsystem, level)
+}
+
+func (a *CommonAPI) Shutdown(ctx context.Context) error {
+	a.ShutdownChan <- struct{}{}
+	return nil
 }
 
 var _ api.Common = &CommonAPI{}

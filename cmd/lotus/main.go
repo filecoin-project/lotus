@@ -4,8 +4,8 @@ import (
 	"context"
 	"os"
 
+	"github.com/urfave/cli/v2"
 	"go.opencensus.io/trace"
-	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -50,10 +50,10 @@ func main() {
 	defer span.End()
 
 	app := &cli.App{
-		Name:                  "lotus",
-		Usage:                 "Filecoin decentralized storage network client",
-		Version:               build.UserVersion(),
-		EnableShellCompletion: true,
+		Name:                 "lotus",
+		Usage:                "Filecoin decentralized storage network client",
+		Version:              build.UserVersion(),
+		EnableBashCompletion: true,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    "repo",

@@ -9,7 +9,7 @@ import (
 
 	"github.com/fatih/color"
 	"golang.org/x/xerrors"
-	"gopkg.in/urfave/cli.v2"
+	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	sealing "github.com/filecoin-project/storage-fsm"

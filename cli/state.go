@@ -17,7 +17,7 @@ import (
 	"github.com/multiformats/go-multihash"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
-	"gopkg.in/urfave/cli.v2"
+	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -35,6 +35,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/miner"
 )
@@ -392,7 +393,7 @@ var stateReplaySetCmd = &cli.Command{
 
 				ts, err = types.NewTipSet(headers)
 			} else {
-				r, err := api.StateWaitMsg(ctx, mcid)
+				r, err := api.StateWaitMsg(ctx, mcid, build.MessageConfidence)
 				if err != nil {
 					return xerrors.Errorf("finding message in chain: %w", err)
 				}
@@ -1082,12 +1083,15 @@ func printInternalExecutionsHtml(trace []*types.ExecutionResult, getCode func(ad
 			ret = `, Return</div><div><pre class="ret">` + ret + `</pre></div>`
 		}
 
+		slow := im.Duration > 10*time.Millisecond
+		veryslow := im.Duration > 50*time.Millisecond
+
 		fmt.Printf(`<div class="exec">
 <div><h4 class="call">%s:%s</h4></div>
 <div><b>%s</b> -&gt; <b>%s</b> (%s FIL), M%d</div>
 %s
-<div><span class="exit%d">Exit: <b>%d</b></span>%s
-`, codeStr(toCode), methods[toCode][im.Msg.Method].name, im.Msg.From, im.Msg.To, types.FIL(im.Msg.Value), im.Msg.Method, params, im.MsgRct.ExitCode, im.MsgRct.ExitCode, ret)
+<div><span class="slow-%t-%t">Took %s</span>, <span class="exit%d">Exit: <b>%d</b></span>%s
+`, codeStr(toCode), methods[toCode][im.Msg.Method].name, im.Msg.From, im.Msg.To, types.FIL(im.Msg.Value), im.Msg.Method, params, slow, veryslow, im.Duration, im.MsgRct.ExitCode, im.MsgRct.ExitCode, ret)
 		if im.MsgRct.ExitCode != 0 {
 			fmt.Printf(`<div class="error">Error: <pre>%s</pre></div>`, im.Error)
 		}
@@ -1153,7 +1157,7 @@ var stateWaitMsgCmd = &cli.Command{
 			return err
 		}
 
-		mw, err := api.StateWaitMsg(ctx, msg)
+		mw, err := api.StateWaitMsg(ctx, msg, build.MessageConfidence)
 		if err != nil {
 			return err
 		}
