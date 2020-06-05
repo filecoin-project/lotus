@@ -294,7 +294,7 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 		Owner:         owner,
 		Worker:        owner,
 		SealProofType: spt,
-		Peer:          h.defaultMinerPeer,
+		Peer:          abi.PeerID(h.defaultMinerPeer),
 	})
 	if err != nil {
 		w.WriteHeader(400)

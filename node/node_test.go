@@ -97,7 +97,7 @@ func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, a
 	peerid, err := peer.IDFromPrivateKey(pk)
 	require.NoError(t, err)
 
-	enc, err := actors.SerializeParams(&saminer.ChangePeerIDParams{NewID: peerid})
+	enc, err := actors.SerializeParams(&saminer.ChangePeerIDParams{NewID: abi.PeerID(peerid)})
 	require.NoError(t, err)
 
 	msg := &types.Message{
