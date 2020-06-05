@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-	"golang.org/x/xerrors"
 	"github.com/urfave/cli/v2"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	sealing "github.com/filecoin-project/storage-fsm"
@@ -124,8 +124,8 @@ var infoCmd = &cli.Command{
 			if expWinChance > 1 {
 				expWinChance = 1
 			}
-			winRate := time.Duration(float64(time.Second * build.BlockDelay) / expWinChance)
-			winPerDay := float64(time.Hour * 24) / float64(winRate)
+			winRate := time.Duration(float64(time.Second*build.BlockDelay) / expWinChance)
+			winPerDay := float64(time.Hour*24) / float64(winRate)
 
 			fmt.Print("Expected block win rate: ")
 			color.Blue("%.4f/day (every %s)", winPerDay, winRate.Truncate(time.Second))

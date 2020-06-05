@@ -3,8 +3,8 @@ package cli
 import (
 	"fmt"
 
-	"golang.org/x/xerrors"
 	"github.com/urfave/cli/v2"
+	"golang.org/x/xerrors"
 )
 
 var logCmd = &cli.Command{

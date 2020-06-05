@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"sort"
 
-	"golang.org/x/xerrors"
 	"github.com/urfave/cli/v2"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 
