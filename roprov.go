@@ -22,8 +22,14 @@ func (l *readonlyProvider) AcquireSector(ctx context.Context, id abi.SectorID, e
 	}
 
 	ctx, cancel := context.WithCancel(ctx)
-	if err := l.index.StorageLock(ctx, id, existing, stores.FTNone); err != nil {
+
+	// use TryLock to avoid blocking
+	locked, err := l.index.StorageTryLock(ctx, id, existing, stores.FTNone)
+	if err != nil {
 		return stores.SectorPaths{}, nil, xerrors.Errorf("acquiring sector lock: %w", err)
+	}
+	if !locked {
+		return stores.SectorPaths{}, nil, xerrors.Errorf("failed to acquire sector lock")
 	}
 
 	p, _, err := l.stor.AcquireSector(ctx, id, l.spt, existing, allocate, sealing, stores.AcquireMove)
