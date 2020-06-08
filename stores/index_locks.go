@@ -45,17 +45,26 @@ func (l *sectorLock) tryLock(read SectorFileType, write SectorFileType) bool {
 	return true
 }
 
-func (l *sectorLock) lock(ctx context.Context, read SectorFileType, write SectorFileType) error {
+type lockFn func(l *sectorLock, ctx context.Context, read SectorFileType, write SectorFileType) (bool, error)
+
+func (l *sectorLock) tryLockSafe(ctx context.Context, read SectorFileType, write SectorFileType) (bool, error) {
+	l.cond.L.Lock()
+	defer l.cond.L.Unlock()
+
+	return l.tryLock(read, write), nil
+}
+
+func (l *sectorLock) lock(ctx context.Context, read SectorFileType, write SectorFileType) (bool, error) {
 	l.cond.L.Lock()
 	defer l.cond.L.Unlock()
 
 	for !l.tryLock(read, write) {
 		if err := l.cond.Wait(ctx); err != nil {
-			return err
+			return false, err
 		}
 	}
 
-	return nil
+	return true, nil
 }
 
 func (l *sectorLock) unlock(read SectorFileType, write SectorFileType) {
@@ -79,13 +88,13 @@ type indexLocks struct {
 	locks map[abi.SectorID]*sectorLock
 }
 
-func (i *indexLocks) StorageLock(ctx context.Context, sector abi.SectorID, read SectorFileType, write SectorFileType) error {
+func (i *indexLocks) lockWith(ctx context.Context, lockFn lockFn, sector abi.SectorID, read SectorFileType, write SectorFileType) (bool, error) {
 	if read|write == 0 {
-		return nil
+		return false, nil
 	}
 
 	if read|write > (1<<FileTypes)-1 {
-		return xerrors.Errorf("unknown file types specified")
+		return false, xerrors.Errorf("unknown file types specified")
 	}
 
 	i.lk.Lock()
@@ -100,8 +109,12 @@ func (i *indexLocks) StorageLock(ctx context.Context, sector abi.SectorID, read 
 
 	i.lk.Unlock()
 
-	if err := slk.lock(ctx, read, write); err != nil {
-		return err
+	locked, err := lockFn(slk, ctx, read, write)
+	if err != nil {
+		return false, err
+	}
+	if !locked {
+		return false, nil
 	}
 
 	go func() {
@@ -120,5 +133,22 @@ func (i *indexLocks) StorageLock(ctx context.Context, sector abi.SectorID, read 
 		i.lk.Unlock()
 	}()
 
+	return true, nil
+}
+
+func (i *indexLocks) StorageLock(ctx context.Context, sector abi.SectorID, read SectorFileType, write SectorFileType) error {
+	ok, err := i.lockWith(ctx, (*sectorLock).lock, sector, read, write)
+	if err != nil {
+		return err
+	}
+
+	if !ok {
+		return xerrors.Errorf("failed to acquire lock")
+	}
+
 	return nil
+}
+
+func (i *indexLocks) StorageTryLock(ctx context.Context, sector abi.SectorID, read SectorFileType, write SectorFileType) (bool, error) {
+	return i.lockWith(ctx, (*sectorLock).tryLockSafe, sector, read, write)
 }
