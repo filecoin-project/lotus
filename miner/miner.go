@@ -153,13 +153,14 @@ func (m *Miner) mine(ctx context.Context) {
 			m.niceSleep(build.BlockDelay * time.Second)
 			continue
 		}
-		lastBase = *base
 
 		b, err := m.mineOne(ctx, base)
 		if err != nil {
 			log.Errorf("mining block failed: %+v", err)
+			m.niceSleep(time.Second)
 			continue
 		}
+		lastBase = *base
 
 		onDone(b != nil)
 
