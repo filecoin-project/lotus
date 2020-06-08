@@ -261,8 +261,8 @@ func (mgr *SectorMgr) GenerateWinningPoSt(ctx context.Context, minerID abi.Actor
 	return generateFakePoSt(sectorInfo), nil
 }
 
-func (mgr *SectorMgr) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []abi.SectorInfo, randomness abi.PoStRandomness) ([]abi.PoStProof, error) {
-	return generateFakePoSt(sectorInfo), nil
+func (mgr *SectorMgr) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []abi.SectorInfo, randomness abi.PoStRandomness) ([]abi.PoStProof, []abi.SectorID, error) {
+	return generateFakePoSt(sectorInfo), nil, nil
 }
 
 func generateFakePoSt(sectorInfo []abi.SectorInfo) []abi.PoStProof {
