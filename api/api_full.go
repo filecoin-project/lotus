@@ -101,6 +101,7 @@ type FullNode interface {
 	WalletSetDefault(context.Context, address.Address) error
 	WalletExport(context.Context, address.Address) (*types.KeyInfo, error)
 	WalletImport(context.Context, *types.KeyInfo) (address.Address, error)
+	WalletDelete(context.Context, address.Address) error
 
 	// Other
 
