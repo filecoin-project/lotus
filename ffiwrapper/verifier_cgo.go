@@ -44,15 +44,20 @@ func (sb *Sealer) pubSectorToPriv(ctx context.Context, mid abi.ActorID, sectorIn
 		fmap[fault] = struct{}{}
 	}
 
+	var skipped []abi.SectorID
 	var out []ffi.PrivateSectorInfo
 	for _, s := range sectorInfo {
 		if _, faulty := fmap[s.SectorNumber]; faulty {
 			continue
 		}
 
-		paths, done, err := sb.sectors.AcquireSector(ctx, abi.SectorID{Miner: mid, Number: s.SectorNumber}, stores.FTCache|stores.FTSealed, 0, false)
+		sid := abi.SectorID{Miner: mid, Number: s.SectorNumber}
+
+		paths, done, err := sb.sectors.AcquireSector(ctx, sid, stores.FTCache|stores.FTSealed, 0, false)
 		if err != nil {
-			return ffi.SortedPrivateSectorInfo{}, nil, xerrors.Errorf("acquire sector paths: %w", err)
+			log.Warnw("failed to acquire sector, skipping", "sector", sid, "error", err)
+			skipped = append(skipped, sid)
+			continue
 		}
 		done() // TODO: This is a tiny bit suboptimal
 
@@ -69,7 +74,7 @@ func (sb *Sealer) pubSectorToPriv(ctx context.Context, mid abi.ActorID, sectorIn
 		})
 	}
 
-	return ffi.NewSortedPrivateSectorInfo(out...), nil, nil
+	return ffi.NewSortedPrivateSectorInfo(out...), skipped, nil
 }
 
 var _ Verifier = ProofVerifier
