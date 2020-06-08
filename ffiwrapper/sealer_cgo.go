@@ -6,11 +6,9 @@ import (
 	"bufio"
 	"context"
 	"io"
-	"io/ioutil"
 	"math/bits"
 	"os"
 	"runtime"
-	"syscall"
 
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
@@ -200,6 +198,12 @@ func (sb *Sealer) UnsealPiece(ctx context.Context, sector abi.SectorID, offset s
 	}
 	defer srcDone()
 
+	sealed, err := os.OpenFile(srcPaths.Sealed, os.O_RDONLY, 0644)
+	if err != nil {
+		return xerrors.Errorf("opening sealed file: %w", err)
+	}
+	defer sealed.Close()
+
 	var at, nextat abi.PaddedPieceSize
 	for {
 		piece, err := toUnseal.NextRun()
@@ -220,40 +224,20 @@ func (sb *Sealer) UnsealPiece(ctx context.Context, sector abi.SectorID, offset s
 		}
 
 		// <eww>
-		outpipe, err := ioutil.TempFile(os.TempDir(), "sector-storage-unseal-")
+		opr, opw, err := os.Pipe()
 		if err != nil {
-			return xerrors.Errorf("creating temp pipe file: %w", err)
+			return xerrors.Errorf("creating out pipe: %w", err)
 		}
-		var outpath string
+
 		var perr error
 		outWait := make(chan struct{})
 
 		{
-			outpath = outpipe.Name()
-			if err := outpipe.Close(); err != nil {
-				return xerrors.Errorf("close pipe temp: %w", err)
-			}
-			if err := os.Remove(outpath); err != nil {
-				return xerrors.Errorf("rm pipe temp: %w", err)
-			}
-
-			// TODO: Make UnsealRange write to an FD
-			if err := syscall.Mkfifo(outpath, 0600); err != nil {
-				return xerrors.Errorf("mk temp fifo: %w", err)
-			}
-
 			go func() {
 				defer close(outWait)
-				defer os.Remove(outpath)
+				defer opr.Close()
 
-				outpipe, err = os.OpenFile(outpath, os.O_RDONLY, 0600)
-				if err != nil {
-					perr = xerrors.Errorf("open temp pipe: %w", err)
-					return
-				}
-				defer outpipe.Close()
-
-				padreader, err := fr32.NewPadReader(outpipe, abi.PaddedPieceSize(piece.Len).Unpadded())
+				padreader, err := fr32.NewPadReader(opr, abi.PaddedPieceSize(piece.Len).Unpadded())
 				if err != nil {
 					perr = xerrors.Errorf("creating new padded reader: %w", err)
 					return
@@ -274,14 +258,17 @@ func (sb *Sealer) UnsealPiece(ctx context.Context, sector abi.SectorID, offset s
 		// TODO: This may be possible to do in parallel
 		err = ffi.UnsealRange(sb.sealProofType,
 			srcPaths.Cache,
-			srcPaths.Sealed,
-			outpath,
+			sealed,
+			opw,
 			sector.Number,
 			sector.Miner,
 			randomness,
 			commd,
 			uint64(at.Unpadded()),
 			uint64(abi.PaddedPieceSize(piece.Len).Unpadded()))
+
+		_ = opr.Close()
+
 		if err != nil {
 			return xerrors.Errorf("unseal range: %w", err)
 		}
