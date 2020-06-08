@@ -2,6 +2,8 @@ package sectorstorage
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 
 	"golang.org/x/xerrors"
 
@@ -19,9 +21,22 @@ func (m *Manager) CheckProvable(ctx context.Context, spt abi.RegisteredProof, se
 	var bad []abi.SectorID
 
 	// TODO: More better checks
-	// TODO: Use proper locking
 	for _, sector := range sectors {
 		err := func() error {
+			ctx, cancel := context.WithCancel(ctx)
+			defer cancel()
+
+			locked, err := m.index.StorageTryLock(ctx, sector, stores.FTSealed|stores.FTCache, stores.FTNone)
+			if err != nil {
+				return xerrors.Errorf("acquiring sector lock: %w", err)
+			}
+
+			if !locked {
+				log.Warnw("CheckProvable Sector FAULT: can't acquire read lock", "sector", sector, "sealed")
+				bad = append(bad, sector)
+				return nil
+			}
+
 			lp, _, err := m.localStore.AcquireSector(ctx, sector, spt, stores.FTSealed|stores.FTCache, stores.FTNone, false, stores.AcquireMove)
 			if err != nil {
 				return xerrors.Errorf("acquire sector in checkProvable: %w", err)
@@ -33,7 +48,21 @@ func (m *Manager) CheckProvable(ctx context.Context, spt abi.RegisteredProof, se
 				return nil
 			}
 
-			// must be fine
+			toCheck := []string{
+				lp.Sealed,
+				filepath.Join(lp.Cache, "t_aux"),
+				filepath.Join(lp.Cache, "p_aux"),
+				filepath.Join(lp.Cache, "sc-02-data-tree-r-last.dat"),
+			}
+
+			for _, p := range toCheck {
+				_, err := os.Stat(p)
+				if err != nil {
+					log.Warnw("CheckProvable Sector FAULT: sector file stat error", "sector", sector, "sealed", lp.Sealed, "cache", lp.Cache, "file", p)
+					bad = append(bad, sector)
+					return nil
+				}
+			}
 
 			return nil
 		}()
