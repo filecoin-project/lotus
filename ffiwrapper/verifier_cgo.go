@@ -15,26 +15,30 @@ import (
 )
 
 func (sb *Sealer) GenerateWinningPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []abi.SectorInfo, randomness abi.PoStRandomness) ([]abi.PoStProof, error) {
-	randomness[31] = 0                                                                                                    // TODO: Not correct, fixme
-	privsectors, err := sb.pubSectorToPriv(ctx, minerID, sectorInfo, nil, abi.RegisteredProof.RegisteredWinningPoStProof) // TODO: FAULTS?
+	randomness[31] = 0                                                                                                             // TODO: Not correct, fixme
+	privsectors, skipped, err := sb.pubSectorToPriv(ctx, minerID, sectorInfo, nil, abi.RegisteredProof.RegisteredWinningPoStProof) // TODO: FAULTS?
 	if err != nil {
 		return nil, err
+	}
+	if len(skipped) > 0 {
+		return nil, xerrors.Errorf("pubSectorToPriv skipped sectors: %+v", skipped)
 	}
 
 	return ffi.GenerateWinningPoSt(minerID, privsectors, randomness)
 }
 
-func (sb *Sealer) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []abi.SectorInfo, randomness abi.PoStRandomness) ([]abi.PoStProof, error) {
-	randomness[31] = 0                                                                                                   // TODO: Not correct, fixme
-	privsectors, err := sb.pubSectorToPriv(ctx, minerID, sectorInfo, nil, abi.RegisteredProof.RegisteredWindowPoStProof) // TODO: FAULTS?
+func (sb *Sealer) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []abi.SectorInfo, randomness abi.PoStRandomness) ([]abi.PoStProof, []abi.SectorID, error) {
+	randomness[31] = 0 // TODO: Not correct, fixme
+	privsectors, skipped, err := sb.pubSectorToPriv(ctx, minerID, sectorInfo, nil, abi.RegisteredProof.RegisteredWindowPoStProof)
 	if err != nil {
-		return nil, err
+		return nil, nil, xerrors.Errorf("gathering sector info: %w", err)
 	}
 
-	return ffi.GenerateWindowPoSt(minerID, privsectors, randomness)
+	proof, err := ffi.GenerateWindowPoSt(minerID, privsectors, randomness)
+	return proof, skipped, err
 }
 
-func (sb *Sealer) pubSectorToPriv(ctx context.Context, mid abi.ActorID, sectorInfo []abi.SectorInfo, faults []abi.SectorNumber, rpt func(abi.RegisteredProof) (abi.RegisteredProof, error)) (ffi.SortedPrivateSectorInfo, error) {
+func (sb *Sealer) pubSectorToPriv(ctx context.Context, mid abi.ActorID, sectorInfo []abi.SectorInfo, faults []abi.SectorNumber, rpt func(abi.RegisteredProof) (abi.RegisteredProof, error)) (ffi.SortedPrivateSectorInfo, []abi.SectorID, error) {
 	fmap := map[abi.SectorNumber]struct{}{}
 	for _, fault := range faults {
 		fmap[fault] = struct{}{}
@@ -48,13 +52,13 @@ func (sb *Sealer) pubSectorToPriv(ctx context.Context, mid abi.ActorID, sectorIn
 
 		paths, done, err := sb.sectors.AcquireSector(ctx, abi.SectorID{Miner: mid, Number: s.SectorNumber}, stores.FTCache|stores.FTSealed, 0, false)
 		if err != nil {
-			return ffi.SortedPrivateSectorInfo{}, xerrors.Errorf("acquire sector paths: %w", err)
+			return ffi.SortedPrivateSectorInfo{}, nil, xerrors.Errorf("acquire sector paths: %w", err)
 		}
 		done() // TODO: This is a tiny bit suboptimal
 
 		postProofType, err := rpt(s.RegisteredProof)
 		if err != nil {
-			return ffi.SortedPrivateSectorInfo{}, xerrors.Errorf("acquiring registered PoSt proof from sector info %+v: %w", s, err)
+			return ffi.SortedPrivateSectorInfo{}, nil, xerrors.Errorf("acquiring registered PoSt proof from sector info %+v: %w", s, err)
 		}
 
 		out = append(out, ffi.PrivateSectorInfo{
@@ -65,7 +69,7 @@ func (sb *Sealer) pubSectorToPriv(ctx context.Context, mid abi.ActorID, sectorIn
 		})
 	}
 
-	return ffi.NewSortedPrivateSectorInfo(out...), nil
+	return ffi.NewSortedPrivateSectorInfo(out...), nil, nil
 }
 
 var _ Verifier = ProofVerifier
