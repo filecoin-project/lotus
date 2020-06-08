@@ -41,6 +41,7 @@ type GossipIn struct {
 	Host host.Host
 	Nn   dtypes.NetworkName
 	Bp   dtypes.BootstrapPeers
+	Db   dtypes.DrandBootstrap
 	Cfg  *config.Pubsub
 	Sk   *dtypes.ScoreKeeper
 }
@@ -61,6 +62,11 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 	for _, pi := range in.Bp {
 		bootstrappers[pi.ID] = struct{}{}
 	}
+	drandBootstrappers := make(map[peer.ID]struct{})
+	for _, pi := range in.Db {
+		drandBootstrappers[pi.ID] = struct{}{}
+	}
+
 	isBootstrapNode := in.Cfg.Bootstrapper
 	drandTopic, err := getDrandTopic()
 	if err != nil {
@@ -81,6 +87,11 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 					_, ok := bootstrappers[p]
 					if ok && !isBootstrapNode {
 						return 2500
+					}
+
+					_, ok = drandBootstrappers[p]
+					if ok && !isBootstrapNode {
+						return 1500
 					}
 
 					// TODO: we want to  plug the application specific score to the node itself in order

@@ -218,6 +218,7 @@ func Online() Option {
 			// TODO: Fix offline mode
 
 			Override(new(dtypes.BootstrapPeers), modules.BuiltinBootstrap),
+			Override(new(dtypes.DrandBootstrap), modules.DrandBootstrap),
 
 			Override(HandleIncomingMessagesKey, modules.HandleIncomingMessages),
 
