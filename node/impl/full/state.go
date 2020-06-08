@@ -794,9 +794,7 @@ func (a *StateAPI) StateMinerAvailableBalance(ctx context.Context, maddr address
 		return types.EmptyInt, err
 	}
 
-	// TODO: !!!! Use method that doesnt trigger additional state mutations, this is going to cause lots of objects to be created and written to disk
-	log.Warnf("calling inefficient unlock vested funds method, fixme")
-	vested, err := st.UnlockVestedFunds(as, ts.Height())
+	vested, err := st.CheckVestedFunds(as, ts.Height())
 	if err != nil {
 		return types.EmptyInt, err
 	}
