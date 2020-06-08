@@ -34,7 +34,7 @@ Assemble a `FullTipSet` populated with the single block received earlier.
 
 `(*Syncer).collectHeaders()`: we retrieve all tipsets from the received block down to our chain. Validation now is expanded to *every* block inside these tipsets.
 
-`FixMe:` Add DRAND check: `// ensure consistency of beacon entires`.
+`V`: Beacon entires are ordered by their round number.
 
 `V:` Tipset `Parents` CIDs match the fetched parent tipset through block sync. (This check is not enforced correctly at the moment, see [issue](https://github.com/filecoin-project/lotus/issues/1918).)
 
@@ -76,7 +76,7 @@ We check all the messages contained in one block at a time (`(*Syncer).checkBloc
 
 ### Winner
 
-`FixMe:` Describe `winnerCheck` validations. Winning ticket, DRAND, randomness, VRF.
+`V`: Verify `ElectionProof VRF` and `IsTicketWinner`.
 
 ### Block signature
 
@@ -84,13 +84,14 @@ We check all the messages contained in one block at a time (`(*Syncer).checkBloc
 
 ### Beacon values check
 
-`FixMe:` Describe `beaconValuesCheck`.
+`V`: All `BeaconEntires` are valid.
 
-### `tktsCheck()`
+`V`: All entries between `MAxBeaconRoundForEpoch` down to `prevEntry` (from previous tipset) are included.
 
-`FixMe:` Change section title from cryptic function name to a more descriptive text.
+### Verify VRF Ticket chain
 
-`FixMe:` Describe `tktsCheck()`. Draw randomness, VRF.
+Draw randomness for current epoch with minimum ticket from previous tipset.
+`V`: `VerifyVRF` using drawn randomness and miner public key.
 
 ### Winning PoSt proof
 
