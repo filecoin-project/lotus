@@ -12,7 +12,7 @@ import (
 )
 
 // FromFile loads config from a specified file overriding defaults specified in
-// the def parameter. If file does not exist or is empty defaults are asummed.
+// the def parameter. If file does not exist or is empty defaults are assumed.
 func FromFile(path string, def interface{}) (interface{}, error) {
 	file, err := os.Open(path)
 	switch {
