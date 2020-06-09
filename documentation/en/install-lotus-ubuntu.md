@@ -24,7 +24,7 @@ sudo apt install mesa-opencl-icd ocl-icd-opencl-dev gcc git bzr jq pkg-config
 
 Install Go 1.14
 
-Find the latest version of Go [on their website](https://golang.org/dl/) and follow the installation instructions. As of now, thats 1.14.4. Extract it to `/usr/local`, and add the go binaries to your `$PATH`.
+Find the latest version of Go [on their website](https://golang.org/dl/) and follow the installation instructions. At the time of writing this document, thats 1.14.4. Extract it to `/usr/local`, and add the go binaries to your `$PATH`.
 
 ```sh
 wget -c https://dl.google.com/go/go1.14.4.linux-amd64.tar.gz -O - | sudo tar -xz -C /usr/local
