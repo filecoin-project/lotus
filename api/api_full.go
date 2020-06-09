@@ -299,39 +299,6 @@ type MinerPower struct {
 	TotalPower power.Claim
 }
 
-type MinerInfo struct {
-	Owner                      address.Address // Must be an ID-address.
-	Worker                     address.Address // Must be an ID-address.
-	NewWorker                  address.Address // Must be an ID-address.
-	WorkerChangeEpoch          abi.ChainEpoch
-	PeerId                     peer.ID
-	Multiaddrs                 []abi.Multiaddrs
-	SealProofType              abi.RegisteredProof
-	SectorSize                 abi.SectorSize
-	WindowPoStPartitionSectors uint64
-}
-
-func NewApiMinerInfo(info miner.MinerInfo) MinerInfo {
-	mi := MinerInfo{
-		Owner:                      info.Owner,
-		Worker:                     info.Worker,
-		NewWorker:                  address.Undef,
-		WorkerChangeEpoch:          -1,
-		PeerId:                     peer.ID(info.PeerId),
-		Multiaddrs:                 info.Multiaddrs,
-		SealProofType:              info.SealProofType,
-		SectorSize:                 info.SectorSize,
-		WindowPoStPartitionSectors: info.WindowPoStPartitionSectors,
-	}
-
-	if info.PendingWorkerKey != nil {
-		mi.NewWorker = info.PendingWorkerKey.NewWorker
-		mi.WorkerChangeEpoch = info.PendingWorkerKey.EffectiveAt
-	}
-
-	return mi
-}
-
 type QueryOffer struct {
 	Err string
 
