@@ -146,7 +146,7 @@ type FullNode interface {
 	StateMinerProvingSet(context.Context, address.Address, types.TipSetKey) ([]*ChainSectorInfo, error)
 	StateMinerProvingDeadline(context.Context, address.Address, types.TipSetKey) (*miner.DeadlineInfo, error)
 	StateMinerPower(context.Context, address.Address, types.TipSetKey) (*MinerPower, error)
-	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (miner.MinerInfo, error)
+	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (MinerInfo, error)
 	StateMinerDeadlines(context.Context, address.Address, types.TipSetKey) (*miner.Deadlines, error)
 	StateMinerFaults(context.Context, address.Address, types.TipSetKey) (*abi.BitField, error)
 	// Returns all non-expired Faults that occur within lookback epochs of the given tipset
@@ -297,6 +297,39 @@ type VoucherSpec struct {
 type MinerPower struct {
 	MinerPower power.Claim
 	TotalPower power.Claim
+}
+
+type MinerInfo struct {
+	Owner                      address.Address // Must be an ID-address.
+	Worker                     address.Address // Must be an ID-address.
+	NewWorker                  address.Address // Must be an ID-address.
+	WorkerChangeEpoch          abi.ChainEpoch
+	PeerId                     peer.ID
+	Multiaddrs                 []abi.Multiaddrs
+	SealProofType              abi.RegisteredProof
+	SectorSize                 abi.SectorSize
+	WindowPoStPartitionSectors uint64
+}
+
+func NewApiMinerInfo(info miner.MinerInfo) MinerInfo {
+	mi := MinerInfo{
+		Owner:                      info.Owner,
+		Worker:                     info.Worker,
+		NewWorker:                  address.Undef,
+		WorkerChangeEpoch:          -1,
+		PeerId:                     peer.ID(info.PeerId),
+		Multiaddrs:                 info.Multiaddrs,
+		SealProofType:              info.SealProofType,
+		SectorSize:                 info.SectorSize,
+		WindowPoStPartitionSectors: info.WindowPoStPartitionSectors,
+	}
+
+	if info.PendingWorkerKey != nil {
+		mi.NewWorker = info.PendingWorkerKey.NewWorker
+		mi.WorkerChangeEpoch = info.PendingWorkerKey.EffectiveAt
+	}
+
+	return mi
 }
 
 type QueryOffer struct {
