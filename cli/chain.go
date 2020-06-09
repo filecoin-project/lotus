@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/go-units"
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -230,7 +229,7 @@ var chainStatObjCmd = &cli.Command{
 		}
 
 		fmt.Printf("Links: %d\n", stats.Links)
-		fmt.Printf("Size: %s (%d)\n", units.BytesSize(float64(stats.Size)), stats.Size)
+		fmt.Printf("Size: %s (%d)\n", types.SizeStr(types.NewInt(stats.Size)), stats.Size)
 		return nil
 	},
 }

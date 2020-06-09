@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/go-units"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/multiformats/go-multihash"
@@ -153,7 +152,7 @@ var stateMinerInfo = &cli.Command{
 		fmt.Printf("Owner:\t%s\n", mi.Owner)
 		fmt.Printf("Worker:\t%s\n", mi.Worker)
 		fmt.Printf("PeerID:\t%s\n", mi.PeerId)
-		fmt.Printf("SectorSize:\t%s (%d)\n", units.BytesSize(float64(mi.SectorSize)), mi.SectorSize)
+		fmt.Printf("SectorSize:\t%s (%d)\n", types.SizeStr(types.NewInt(uint64(mi.SectorSize))), mi.SectorSize)
 
 		return nil
 	},
@@ -707,7 +706,7 @@ var stateSectorSizeCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Printf("%d\n", mi.SectorSize)
+		fmt.Printf("%s (%d)\n", types.SizeStr(types.NewInt(uint64(mi.SectorSize))), mi.SectorSize)
 		return nil
 	},
 }
