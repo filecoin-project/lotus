@@ -10,7 +10,6 @@ import (
 	"math/bits"
 	"os"
 	"runtime"
-	"sync"
 
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
@@ -112,11 +111,9 @@ func (sb *Sealer) AddPiece(ctx context.Context, sector abi.SectorID, existingPie
 
 	pr := io.TeeReader(io.LimitReader(file, int64(pieceSize)), pw)
 
-	thr := 1 << bits.Len32(uint32(runtime.NumCPU()))
 	chunk := abi.PaddedPieceSize(4 << 20)
-	var wg sync.WaitGroup
 
-	buf := make([]byte, (chunk * abi.PaddedPieceSize(thr)).Unpadded())
+	buf := make([]byte, chunk.Unpadded())
 	var pieceCids []abi.PieceInfo
 
 	for {
@@ -128,38 +125,14 @@ func (sb *Sealer) AddPiece(ctx context.Context, sector abi.SectorID, existingPie
 			break
 		}
 
-		wg.Add(n/int(chunk))
-		res := make([]interface{}, n/int(chunk))
-
-		for i := 0; i < n/int(chunk); i++ {
-			go func(i int) {
-				defer wg.Done()
-
-				b := buf[i*int(chunk.Unpadded()):((i+1)*int(chunk.Unpadded()))]
-
-				c, err := sb.pieceCid(b)
-				if err != nil {
-					res[i] = err
-					return
-				}
-				res[i] = abi.PieceInfo{
-					Size:     abi.UnpaddedPieceSize(len(b)).Padded(),
-					PieceCID: c,
-				}
-			}(i)
+		c, err := sb.pieceCid(buf[:n])
+		if err != nil {
+			return abi.PieceInfo{}, xerrors.Errorf("pieceCid error: %w", err)
 		}
-		wg.Wait()
-
-		for _, r := range res {
-			switch r := r.(type) {
-			case abi.PieceInfo:
-				pieceCids = append(pieceCids, r)
-			case error:
-				return abi.PieceInfo{}, xerrors.Errorf("pieceCid error: %w", r)
-			default:
-				return abi.PieceInfo{}, xerrors.Errorf("pieceCid mystery result: %v", r)
-			}
-		}
+		pieceCids = append(pieceCids, abi.PieceInfo{
+			Size:     abi.UnpaddedPieceSize(len(buf[:n])).Padded(),
+			PieceCID: c,
+		})
 	}
 
 	if err := pw.Close(); err != nil {
@@ -313,9 +286,9 @@ func (sb *Sealer) UnsealPiece(ctx context.Context, sector abi.SectorID, offset s
 					bsize = uint64(runtime.NumCPU()) * fr32.MTTresh
 				}
 
-				bw := bufio.NewWriterSize(padwriter, int(bsize))
+				bw := bufio.NewWriterSize(padwriter, int(abi.PaddedPieceSize(bsize).Unpadded()))
 
-				_, err = io.CopyN(bw, opr, int64(size.Padded()))
+				_, err = io.CopyN(bw, opr, int64(size))
 				if err != nil {
 					perr = xerrors.Errorf("copying data: %w", err)
 					return
