@@ -4,16 +4,19 @@ package ffiwrapper
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"io"
 	"math/bits"
 	"os"
 	"runtime"
+	"sync"
 
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
+	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-storage/storage"
 
@@ -105,20 +108,58 @@ func (sb *Sealer) AddPiece(ctx context.Context, sector abi.SectorID, existingPie
 		return abi.PieceInfo{}, xerrors.Errorf("getting partial file writer: %w", err)
 	}
 
-	pw, err := fr32.NewPadWriter(w)
-	if err != nil {
-		return abi.PieceInfo{}, xerrors.Errorf("creating padded reader: %w", err)
-	}
+	pw := fr32.NewPadWriter(w)
 
 	pr := io.TeeReader(io.LimitReader(file, int64(pieceSize)), pw)
-	prf, werr, err := ToReadableFile(pr, int64(pieceSize))
-	if err != nil {
-		return abi.PieceInfo{}, xerrors.Errorf("getting tee reader pipe: %w", err)
-	}
 
-	pieceCID, err := ffi.GeneratePieceCIDFromFile(sb.sealProofType, prf, pieceSize)
-	if err != nil {
-		return abi.PieceInfo{}, xerrors.Errorf("generating piece commitment: %w", err)
+	thr := 1 << bits.Len32(uint32(runtime.NumCPU()))
+	chunk := abi.PaddedPieceSize(4 << 20)
+	var wg sync.WaitGroup
+
+	buf := make([]byte, (chunk * abi.PaddedPieceSize(thr)).Unpadded())
+	var pieceCids []abi.PieceInfo
+
+	for {
+		n, err := pr.Read(buf[:])
+		if err != nil && err != io.EOF {
+			return abi.PieceInfo{}, xerrors.Errorf("pr read error: %w", err)
+		}
+		if err == io.EOF {
+			break
+		}
+
+		wg.Add(n/int(chunk))
+		res := make([]interface{}, n/int(chunk))
+
+		for i := 0; i < n/int(chunk); i++ {
+			go func(i int) {
+				defer wg.Done()
+
+				b := buf[i*int(chunk.Unpadded()):((i+1)*int(chunk.Unpadded()))]
+
+				c, err := sb.pieceCid(b)
+				if err != nil {
+					res[i] = err
+					return
+				}
+				res[i] = abi.PieceInfo{
+					Size:     abi.UnpaddedPieceSize(len(b)).Padded(),
+					PieceCID: c,
+				}
+			}(i)
+		}
+		wg.Wait()
+
+		for _, r := range res {
+			switch r := r.(type) {
+			case abi.PieceInfo:
+				pieceCids = append(pieceCids, r)
+			case error:
+				return abi.PieceInfo{}, xerrors.Errorf("pieceCid error: %w", r)
+			default:
+				return abi.PieceInfo{}, xerrors.Errorf("pieceCid mystery result: %v", r)
+			}
+		}
 	}
 
 	if err := pw.Close(); err != nil {
@@ -134,16 +175,40 @@ func (sb *Sealer) AddPiece(ctx context.Context, sector abi.SectorID, existingPie
 	}
 	stagedFile = nil
 
+	if len(pieceCids) == 1 {
+		return pieceCids[0], nil
+	}
+
+	pieceCID, err := ffi.GenerateUnsealedCID(sb.sealProofType, pieceCids)
+	if err != nil {
+		return abi.PieceInfo{}, xerrors.Errorf("generate unsealed CID: %w", err)
+	}
+
+	commp, err := commcid.CIDToDataCommitmentV1(pieceCID)
+	if err != nil {
+		return abi.PieceInfo{}, err
+	}
+
 	return abi.PieceInfo{
 		Size:     pieceSize.Padded(),
-		PieceCID: pieceCID,
-	}, werr()
+		PieceCID: commcid.PieceCommitmentV1ToCID(commp),
+	}, nil
 }
 
-type closerFunc func() error
+func (sb *Sealer) pieceCid(in []byte) (cid.Cid, error) {
+	prf, werr, err := ToReadableFile(bytes.NewReader(in), int64(len(in)))
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("getting tee reader pipe: %w", err)
+	}
 
-func (cf closerFunc) Close() error {
-	return cf()
+	pieceCID, err := ffi.GeneratePieceCIDFromFile(sb.sealProofType, prf, abi.UnpaddedPieceSize(len(in)))
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("generating piece commitment: %w", err)
+	}
+
+	prf.Close()
+
+	return pieceCID, werr()
 }
 
 func (sb *Sealer) UnsealPiece(ctx context.Context, sector abi.SectorID, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, commd cid.Cid) error {
@@ -237,9 +302,9 @@ func (sb *Sealer) UnsealPiece(ctx context.Context, sector abi.SectorID, offset s
 				defer close(outWait)
 				defer opr.Close()
 
-				padreader, err := fr32.NewPadReader(opr, abi.PaddedPieceSize(piece.Len).Unpadded())
+				padwriter := fr32.NewPadWriter(out)
 				if err != nil {
-					perr = xerrors.Errorf("creating new padded reader: %w", err)
+					perr = xerrors.Errorf("creating new padded writer: %w", err)
 					return
 				}
 
@@ -248,9 +313,23 @@ func (sb *Sealer) UnsealPiece(ctx context.Context, sector abi.SectorID, offset s
 					bsize = uint64(runtime.NumCPU()) * fr32.MTTresh
 				}
 
-				padreader = bufio.NewReaderSize(padreader, int(bsize))
+				bw := bufio.NewWriterSize(padwriter, int(bsize))
 
-				_, perr = io.CopyN(out, padreader, int64(size.Padded()))
+				_, err = io.CopyN(bw, opr, int64(size.Padded()))
+				if err != nil {
+					perr = xerrors.Errorf("copying data: %w", err)
+					return
+				}
+
+				if err := bw.Flush(); err != nil {
+					perr = xerrors.Errorf("flushing unpadded data: %w", err)
+					return
+				}
+
+				if err := padwriter.Close(); err != nil {
+					perr = xerrors.Errorf("closing padwriter: %w", err)
+					return
+				}
 			}()
 		}
 		// </eww>
