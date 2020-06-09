@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/BurntSushi/toml"
 	"github.com/ipfs/go-datastore"
 	fslock "github.com/ipfs/go-fs-lock"
 	logging "github.com/ipfs/go-log/v2"
@@ -269,6 +270,29 @@ func (fsr *fsLockedRepo) Config() (interface{}, error) {
 		return nil, err
 	}
 	return config.FromFile(fsr.join(fsConfig), defConfForType(fsr.repoType))
+}
+
+func (fsr *fsLockedRepo) SetConfig(cfg interface{}) error {
+	if err := fsr.stillValid(); err != nil {
+		return err
+	}
+
+	tmp, err := ioutil.TempFile("", "lotus-config-temp")
+	if err != nil {
+		return err
+	}
+
+	err = toml.NewEncoder(tmp).Encode(cfg)
+	if err != nil {
+		return err
+	}
+
+	err = os.Rename(tmp.Name(), fsr.join(fsConfig))
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (fsr *fsLockedRepo) GetStorage() (stores.StorageConfig, error) {

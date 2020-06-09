@@ -9,6 +9,8 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/config"
+
+	"github.com/stretchr/testify/require"
 )
 
 func basicTest(t *testing.T, repo Repo) {
@@ -47,9 +49,21 @@ func basicTest(t *testing.T, repo Repo) {
 	assert.NoError(t, err, "setting multiaddr shouldn't error")
 	assert.Equal(t, ma, apima, "returned API multiaddr should be the same")
 
-	cfg, err := lrepo.Config()
-	assert.Equal(t, config.DefaultFullNode(), cfg, "there should be a default config")
+	c1, err := lrepo.Config()
+	assert.Equal(t, config.DefaultFullNode(), c1, "there should be a default config")
 	assert.NoError(t, err, "config should not error")
+
+	// mutate config and persist back to repo
+	cfg1 := c1.(*config.FullNode)
+	cfg1.Client.IpfsMAddr = "duvall"
+	err = lrepo.SetConfig(cfg1)
+	assert.NoError(t, err)
+
+	// load config and verify changes
+	c2, err := lrepo.Config()
+	require.NoError(t, err)
+	cfg2 := c2.(*config.FullNode)
+	require.Equal(t, cfg2.Client.IpfsMAddr, "duvall")
 
 	err = lrepo.Close()
 	assert.NoError(t, err, "should be able to close")

@@ -412,7 +412,7 @@ func Repo(r repo.Repo) Option {
 		if err != nil {
 			return err
 		}
-		c, err := lr.GetConfig()
+		c, err := lr.Config()
 		if err != nil {
 			return err
 		}

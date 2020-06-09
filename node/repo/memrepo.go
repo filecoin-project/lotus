@@ -30,8 +30,13 @@ type MemRepo struct {
 	token    *byte
 
 	datastore datastore.Datastore
-	configF   func(t RepoType) interface{}
 	keystore  map[string]types.KeyInfo
+
+	// given a repo type, produce the default config
+	configF func(t RepoType) interface{}
+
+	// holds the current config value
+	config interface{}
 }
 
 type lockedMemRepo struct {
@@ -217,11 +222,22 @@ func (lmem *lockedMemRepo) Datastore(ns string) (datastore.Batching, error) {
 	return namespace.Wrap(lmem.mem.datastore, datastore.NewKey(ns)), nil
 }
 
-func (lmem *lockedMemRepo) GetConfig() (interface{}, error) {
+func (lmem *lockedMemRepo) Config() (interface{}, error) {
 	if err := lmem.checkToken(); err != nil {
 		return nil, err
 	}
-	return lmem.mem.configF(lmem.t), nil
+
+	if lmem.mem.config == nil {
+		lmem.mem.config = lmem.mem.configF(lmem.t)
+	}
+
+	return lmem.mem.config, nil
+}
+
+func (lmem *lockedMemRepo) SetConfig(cfg interface{}) error {
+	lmem.mem.config = cfg
+
+	return nil
 }
 
 func (lmem *lockedMemRepo) Storage() (stores.StorageConfig, error) {
