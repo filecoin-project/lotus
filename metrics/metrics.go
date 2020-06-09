@@ -22,16 +22,17 @@ var (
 
 // Measures
 var (
-	LotusInfo                = stats.Int64("info", "Arbitrary counter to tag lotus info to", stats.UnitDimensionless)
-	ChainNodeHeight          = stats.Int64("chain/node_height", "Current Height of the node", stats.UnitDimensionless)
-	ChainNodeWorkerHeight    = stats.Int64("chain/node_worker_height", "Current Height of workers on the node", stats.UnitDimensionless)
-	MessageReceived          = stats.Int64("message/received", "Counter for total received messages", stats.UnitDimensionless)
-	MessageValidationFailure = stats.Int64("message/failure", "Counter for message validation failures", stats.UnitDimensionless)
-	MessageValidationSuccess = stats.Int64("message/success", "Counter for message validation successes", stats.UnitDimensionless)
-	BlockReceived            = stats.Int64("block/received", "Counter for total received blocks", stats.UnitDimensionless)
-	BlockValidationFailure   = stats.Int64("block/failure", "Counter for block validation failures", stats.UnitDimensionless)
-	BlockValidationSuccess   = stats.Int64("block/success", "Counter for block validation successes", stats.UnitDimensionless)
-	PeerCount                = stats.Int64("peer/count", "Current number of FIL peers", stats.UnitDimensionless)
+	LotusInfo                           = stats.Int64("info", "Arbitrary counter to tag lotus info to", stats.UnitDimensionless)
+	ChainNodeHeight                     = stats.Int64("chain/node_height", "Current Height of the node", stats.UnitDimensionless)
+	ChainNodeWorkerHeight               = stats.Int64("chain/node_worker_height", "Current Height of workers on the node", stats.UnitDimensionless)
+	MessageReceived                     = stats.Int64("message/received", "Counter for total received messages", stats.UnitDimensionless)
+	MessageValidationFailure            = stats.Int64("message/failure", "Counter for message validation failures", stats.UnitDimensionless)
+	MessageValidationSuccess            = stats.Int64("message/success", "Counter for message validation successes", stats.UnitDimensionless)
+	BlockReceived                       = stats.Int64("block/received", "Counter for total received blocks", stats.UnitDimensionless)
+	BlockValidationFailure              = stats.Int64("block/failure", "Counter for block validation failures", stats.UnitDimensionless)
+	BlockValidationSuccess              = stats.Int64("block/success", "Counter for block validation successes", stats.UnitDimensionless)
+	BlockValidationDurationMilliseconds = stats.Float64("block/validation_ms", "Duration for Block Validation in ms", stats.UnitMilliseconds)
+	PeerCount                           = stats.Int64("peer/count", "Current number of FIL peers", stats.UnitDimensionless)
 )
 
 var (
@@ -63,6 +64,10 @@ var (
 		Measure:     BlockValidationSuccess,
 		Aggregation: view.Count(),
 	}
+	BlockValidationDurationView = &view.View{
+		Measure:     BlockValidationDurationMilliseconds,
+		Aggregation: view.Sum(),
+	}
 	MessageReceivedView = &view.View{
 		Measure:     MessageReceived,
 		Aggregation: view.Count(),
@@ -90,6 +95,7 @@ var DefaultViews = append([]*view.View{
 	BlockReceivedView,
 	BlockValidationFailureView,
 	BlockValidationSuccessView,
+	BlockValidationDurationView,
 	MessageReceivedView,
 	MessageValidationFailureView,
 	MessageValidationSuccessView,

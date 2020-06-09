@@ -18,6 +18,7 @@ import (
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/mitchellh/go-homedir"
 	"github.com/multiformats/go-multiaddr"
+	"go.opencensus.io/plugin/runmetrics"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
@@ -114,6 +115,13 @@ var DaemonCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		err := runmetrics.Enable(runmetrics.RunMetricOptions{
+			EnableCPU:    true,
+			EnableMemory: true,
+		})
+		if err != nil {
+			return xerrors.Errorf("enabling runtime metrics: %w", err)
+		}
 		if prof := cctx.String("pprof"); prof != "" {
 			profile, err := os.Create(prof)
 			if err != nil {
