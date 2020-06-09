@@ -2,7 +2,7 @@
 
 These steps will install the following dependencies:
 
-- go (1.13 or higher)
+- go (1.14 or higher)
 - gcc (7.4.0 or higher)
 - git (version 2 or higher)
 - bzr (some go dependency needs this)
@@ -15,29 +15,42 @@ These steps will install the following dependencies:
 - llvm (proofs build)
 - clang (proofs build)
 
-Run
+Install dependencies
 
 ```sh
 sudo apt update
-sudo apt install mesa-opencl-icd ocl-icd-opencl-dev
+sudo apt install mesa-opencl-icd ocl-icd-opencl-dev gcc git bzr jq pkg-config mesa-opencl-icd ocl-icd-opencl-dev
 ```
 
-Build
+Install Go 1.14
+
+Find the latest version of Go [on their website](https://golang.org/dl/) and follow the installation instructions. As of now, thats 1.14.4. Extract it to `/usr/local`, and add the go binaries to your `$PATH`.
 
 ```sh
-sudo add-apt-repository ppa:longsleep/golang-backports
-sudo apt update
-sudo apt install golang-go gcc git bzr jq pkg-config mesa-opencl-icd ocl-icd-opencl-dev
+wget -c https://dl.google.com/go/go1.14.4.linux-amd64.tar.gz -O - | sudo tar -xz -C /usr/local
+echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.profile
+source ~/.profile
 ```
 
-Clone
+Verify your go installation by running 
+```sh
+go version
+```
+
+Install Rust 
+_(this is an interactive installer)_
+```sh
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+Clone the Lotus repository
 
 ```sh
 git clone https://github.com/filecoin-project/lotus.git
 cd lotus/
 ```
 
-Install
+Build the Lotus binaries from source and install
 
 ```sh
 make clean && make all
