@@ -8,7 +8,9 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -43,7 +45,10 @@ type seal struct {
 }
 
 func data(sn abi.SectorNumber, dlen abi.UnpaddedPieceSize) io.Reader {
-	return io.LimitReader(rand.New(rand.NewSource(42+int64(sn))), int64(dlen))
+	return io.MultiReader(
+		io.LimitReader(rand.New(rand.NewSource(42+int64(sn))), int64(123)),
+		io.LimitReader(rand.New(rand.NewSource(42+int64(sn))), int64(dlen-123)),
+	)
 }
 
 func (s *seal) precommit(t *testing.T, sb *Sealer, id abi.SectorID, done func()) {
@@ -229,10 +234,14 @@ func getGrothParamFileAndVerifyingKeys(s abi.SectorSize) {
 // go test -run=^TestDownloadParams
 //
 func TestDownloadParams(t *testing.T) {
+	defer requireFDsClosed(t, openFDs(t))
+
 	getGrothParamFileAndVerifyingKeys(sectorSize)
 }
 
 func TestSealAndVerify(t *testing.T) {
+	defer requireFDsClosed(t, openFDs(t))
+
 	if runtime.NumCPU() < 10 && os.Getenv("CI") == "" { // don't bother on slow hardware
 		t.Skip("this is slow")
 	}
@@ -301,6 +310,8 @@ func TestSealAndVerify(t *testing.T) {
 }
 
 func TestSealPoStNoCommit(t *testing.T) {
+	defer requireFDsClosed(t, openFDs(t))
+
 	if runtime.NumCPU() < 10 && os.Getenv("CI") == "" { // don't bother on slow hardware
 		t.Skip("this is slow")
 	}
@@ -361,6 +372,8 @@ func TestSealPoStNoCommit(t *testing.T) {
 }
 
 func TestSealAndVerify2(t *testing.T) {
+	defer requireFDsClosed(t, openFDs(t))
+
 	if runtime.NumCPU() < 10 && os.Getenv("CI") == "" { // don't bother on slow hardware
 		t.Skip("this is slow")
 	}
@@ -429,4 +442,45 @@ func BenchmarkWriteWithAlignment(b *testing.B) {
 		ffi.WriteWithAlignment(abi.RegisteredProof_StackedDRG2KiBSeal, rf, bt, tf, nil)
 		w()
 	}
+}
+
+func openFDs(t *testing.T) int {
+	dent, err := ioutil.ReadDir("/proc/self/fd")
+	require.NoError(t, err)
+
+	var skip int
+	for _, info := range dent {
+		l, err := os.Readlink(filepath.Join("/proc/self/fd", info.Name()))
+		if err != nil {
+			continue
+		}
+
+		if strings.HasPrefix(l, "/dev/nvidia") {
+			skip++
+		}
+	}
+
+	return len(dent) - skip
+}
+
+func requireFDsClosed(t *testing.T, start int) {
+	openNow := openFDs(t)
+
+	if start != openNow {
+		dent, err := ioutil.ReadDir("/proc/self/fd")
+		require.NoError(t, err)
+
+		for _, info := range dent {
+			l, err := os.Readlink(filepath.Join("/proc/self/fd", info.Name()))
+			if err != nil {
+				fmt.Printf("FD err %s\n", err)
+				continue
+			}
+
+			fmt.Printf("FD %s -> %s\n", info.Name(), l)
+		}
+	}
+
+	log.Infow("open FDs", "start", start, "now", openNow)
+	require.Equal(t, start, openNow, "FDs shouldn't leak")
 }

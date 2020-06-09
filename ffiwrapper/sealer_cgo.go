@@ -4,18 +4,18 @@ package ffiwrapper
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"io"
-	"io/ioutil"
 	"math/bits"
 	"os"
 	"runtime"
-	"syscall"
 
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
+	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-storage/storage"
 
@@ -107,20 +107,42 @@ func (sb *Sealer) AddPiece(ctx context.Context, sector abi.SectorID, existingPie
 		return abi.PieceInfo{}, xerrors.Errorf("getting partial file writer: %w", err)
 	}
 
-	pw, err := fr32.NewPadWriter(w)
-	if err != nil {
-		return abi.PieceInfo{}, xerrors.Errorf("creating padded reader: %w", err)
-	}
+	pw := fr32.NewPadWriter(w)
 
 	pr := io.TeeReader(io.LimitReader(file, int64(pieceSize)), pw)
-	prf, werr, err := ToReadableFile(pr, int64(pieceSize))
-	if err != nil {
-		return abi.PieceInfo{}, xerrors.Errorf("getting tee reader pipe: %w", err)
-	}
 
-	pieceCID, err := ffi.GeneratePieceCIDFromFile(sb.sealProofType, prf, pieceSize)
-	if err != nil {
-		return abi.PieceInfo{}, xerrors.Errorf("generating piece commitment: %w", err)
+	chunk := abi.PaddedPieceSize(4 << 20)
+
+	buf := make([]byte, chunk.Unpadded())
+	var pieceCids []abi.PieceInfo
+
+	for {
+		var read int
+		for rbuf := buf; len(rbuf) > 0; {
+			n, err := pr.Read(rbuf)
+			if err != nil && err != io.EOF {
+				return abi.PieceInfo{}, xerrors.Errorf("pr read error: %w", err)
+			}
+
+			rbuf = rbuf[n:]
+			read += n
+
+			if err == io.EOF {
+				break
+			}
+		}
+		if read == 0 {
+			break
+		}
+
+		c, err := sb.pieceCid(buf[:read])
+		if err != nil {
+			return abi.PieceInfo{}, xerrors.Errorf("pieceCid error: %w", err)
+		}
+		pieceCids = append(pieceCids, abi.PieceInfo{
+			Size:     abi.UnpaddedPieceSize(len(buf[:read])).Padded(),
+			PieceCID: c,
+		})
 	}
 
 	if err := pw.Close(); err != nil {
@@ -136,16 +158,40 @@ func (sb *Sealer) AddPiece(ctx context.Context, sector abi.SectorID, existingPie
 	}
 	stagedFile = nil
 
+	if len(pieceCids) == 1 {
+		return pieceCids[0], nil
+	}
+
+	pieceCID, err := ffi.GenerateUnsealedCID(sb.sealProofType, pieceCids)
+	if err != nil {
+		return abi.PieceInfo{}, xerrors.Errorf("generate unsealed CID: %w", err)
+	}
+
+	commp, err := commcid.CIDToDataCommitmentV1(pieceCID)
+	if err != nil {
+		return abi.PieceInfo{}, err
+	}
+
 	return abi.PieceInfo{
 		Size:     pieceSize.Padded(),
-		PieceCID: pieceCID,
-	}, werr()
+		PieceCID: commcid.PieceCommitmentV1ToCID(commp),
+	}, nil
 }
 
-type closerFunc func() error
+func (sb *Sealer) pieceCid(in []byte) (cid.Cid, error) {
+	prf, werr, err := ToReadableFile(bytes.NewReader(in), int64(len(in)))
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("getting tee reader pipe: %w", err)
+	}
 
-func (cf closerFunc) Close() error {
-	return cf()
+	pieceCID, err := ffi.GeneratePieceCIDFromFile(sb.sealProofType, prf, abi.UnpaddedPieceSize(len(in)))
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("generating piece commitment: %w", err)
+	}
+
+	prf.Close()
+
+	return pieceCID, werr()
 }
 
 func (sb *Sealer) UnsealPiece(ctx context.Context, sector abi.SectorID, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, commd cid.Cid) error {
@@ -200,6 +246,12 @@ func (sb *Sealer) UnsealPiece(ctx context.Context, sector abi.SectorID, offset s
 	}
 	defer srcDone()
 
+	sealed, err := os.OpenFile(srcPaths.Sealed, os.O_RDONLY, 0644)
+	if err != nil {
+		return xerrors.Errorf("opening sealed file: %w", err)
+	}
+	defer sealed.Close()
+
 	var at, nextat abi.PaddedPieceSize
 	for {
 		piece, err := toUnseal.NextRun()
@@ -220,42 +272,22 @@ func (sb *Sealer) UnsealPiece(ctx context.Context, sector abi.SectorID, offset s
 		}
 
 		// <eww>
-		outpipe, err := ioutil.TempFile(os.TempDir(), "sector-storage-unseal-")
+		opr, opw, err := os.Pipe()
 		if err != nil {
-			return xerrors.Errorf("creating temp pipe file: %w", err)
+			return xerrors.Errorf("creating out pipe: %w", err)
 		}
-		var outpath string
+
 		var perr error
 		outWait := make(chan struct{})
 
 		{
-			outpath = outpipe.Name()
-			if err := outpipe.Close(); err != nil {
-				return xerrors.Errorf("close pipe temp: %w", err)
-			}
-			if err := os.Remove(outpath); err != nil {
-				return xerrors.Errorf("rm pipe temp: %w", err)
-			}
-
-			// TODO: Make UnsealRange write to an FD
-			if err := syscall.Mkfifo(outpath, 0600); err != nil {
-				return xerrors.Errorf("mk temp fifo: %w", err)
-			}
-
 			go func() {
 				defer close(outWait)
-				defer os.Remove(outpath)
+				defer opr.Close()
 
-				outpipe, err = os.OpenFile(outpath, os.O_RDONLY, 0600)
+				padwriter := fr32.NewPadWriter(out)
 				if err != nil {
-					perr = xerrors.Errorf("open temp pipe: %w", err)
-					return
-				}
-				defer outpipe.Close()
-
-				padreader, err := fr32.NewPadReader(outpipe, abi.PaddedPieceSize(piece.Len).Unpadded())
-				if err != nil {
-					perr = xerrors.Errorf("creating new padded reader: %w", err)
+					perr = xerrors.Errorf("creating new padded writer: %w", err)
 					return
 				}
 
@@ -264,9 +296,23 @@ func (sb *Sealer) UnsealPiece(ctx context.Context, sector abi.SectorID, offset s
 					bsize = uint64(runtime.NumCPU()) * fr32.MTTresh
 				}
 
-				padreader = bufio.NewReaderSize(padreader, int(bsize))
+				bw := bufio.NewWriterSize(padwriter, int(abi.PaddedPieceSize(bsize).Unpadded()))
 
-				_, perr = io.CopyN(out, padreader, int64(size.Padded()))
+				_, err = io.CopyN(bw, opr, int64(size))
+				if err != nil {
+					perr = xerrors.Errorf("copying data: %w", err)
+					return
+				}
+
+				if err := bw.Flush(); err != nil {
+					perr = xerrors.Errorf("flushing unpadded data: %w", err)
+					return
+				}
+
+				if err := padwriter.Close(); err != nil {
+					perr = xerrors.Errorf("closing padwriter: %w", err)
+					return
+				}
 			}()
 		}
 		// </eww>
@@ -274,14 +320,17 @@ func (sb *Sealer) UnsealPiece(ctx context.Context, sector abi.SectorID, offset s
 		// TODO: This may be possible to do in parallel
 		err = ffi.UnsealRange(sb.sealProofType,
 			srcPaths.Cache,
-			srcPaths.Sealed,
-			outpath,
+			sealed,
+			opw,
 			sector.Number,
 			sector.Miner,
 			randomness,
 			commd,
 			uint64(at.Unpadded()),
 			uint64(abi.PaddedPieceSize(piece.Len).Unpadded()))
+
+		_ = opr.Close()
+
 		if err != nil {
 			return xerrors.Errorf("unseal range: %w", err)
 		}

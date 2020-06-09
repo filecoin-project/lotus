@@ -12,27 +12,6 @@ import (
 	"github.com/filecoin-project/sector-storage/fr32"
 )
 
-func TestPadReader(t *testing.T) {
-	ps := abi.PaddedPieceSize(64 << 20).Unpadded()
-
-	raw := bytes.Repeat([]byte{0x55}, int(ps))
-
-	r, err := fr32.NewPadReader(bytes.NewReader(raw), ps)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	readerPadded, err := ioutil.ReadAll(r)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	padOut := make([]byte, ps.Padded())
-	fr32.Pad(raw, padOut)
-
-	require.Equal(t, padOut, readerPadded)
-}
-
 func TestUnpadReader(t *testing.T) {
 	ps := abi.PaddedPieceSize(64 << 20).Unpadded()
 

@@ -13,13 +13,13 @@ var MTTresh = uint64(32 << 20)
 func mtChunkCount(usz abi.PaddedPieceSize) uint64 {
 	threads := (uint64(usz)) / MTTresh
 	if threads > uint64(runtime.NumCPU()) {
-		threads = 1 << (32 - bits.LeadingZeros32(uint32(runtime.NumCPU())))
+		threads = 1 << (bits.Len32(uint32(runtime.NumCPU())))
 	}
 	if threads == 0 {
 		return 1
 	}
-	if threads > 64 {
-		return 64 // avoid too large buffers
+	if threads > 32 {
+		return 32 // avoid too large buffers
 	}
 	return threads
 }
