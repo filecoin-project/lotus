@@ -70,11 +70,12 @@ We now discuss the various stages of the sync process.
 
 ## Sync setup
 
-When a Lotus node connects to a new peer, we exchange the head of our chain with the new peer through the `hello` protocol.
-See FIXME for more about the `hello` protocol. If our peer's head is heavier than ours, we try to sync to it. Note
+When a Lotus node connects to a new peer, we exchange the head of our chain 
+with the new peer through [the `hello` protocol](https://github.com/filecoin-project/lotus/blob/master/node/hello/hello.go). 
+If the peer's head is heavier than ours, we try to sync to it. Note
 that we do NOT update our chain head at this stage.
 
-## Fetching and Persisting Headers
+## Fetching and Persisting Block Headers
 
 Note: The API refers to these stages as `StageHeaders` and `StagePersistHeaders`.
 
@@ -83,12 +84,16 @@ moving back from their head, until we reach a tipset that we have in common
 (such a common tipset must exist, thought it may simply be the genesis block).
 The functionality can be found in `Syncer::collectHeaders()`.
 
+If the common tipset is our head, we treat the sync as a "fast-forward", else we must
+drop part of our chain to connect to the peer's head (referred to as "forking").
+
+FIXME: This next para might be best replaced with a link to the validation doc
 Some of the possible causes of failure in this stage include:
 
 - The chain is linked to a block that we have previously marked as bad, 
 and stored in a [`BadBlockCache`](https://github.com/filecoin-project/lotus/blob/master/chain/badtscache.go).
 - The beacon entries in a block are inconsistent (FIXME: more details about what is validated here wouldn't be bad).
-- Switching to this new chain would invole a chain reorganization beyond the allowed threshold (SPECK-CHECK).
+- Switching to this new chain would involve a chain reorganization beyond the allowed threshold (SPECK-CHECK).
 
 ## Fetching and Validating Blocks
 
@@ -101,6 +106,8 @@ which includes the syntactic validity of messages included
 in the block.
 We then apply the messages, running all the state transitions, and compare the state root we calculate with the provided state root.
 
+
+FIXME: This next para might be best replaced with a link to the validation doc
 Some of the possible causes of failure in this stage include:
 
 - a block is syntactically invalid (including potentially containing syntactically invalid messages)
@@ -108,7 +115,7 @@ Some of the possible causes of failure in this stage include:
 - FIXME: Check what's covered by syntactic validity, and add anything important that isn't (like proof validity, future checks, etc.)
 
 The core functionality can be found in `Syncer::ValidateTipset()`, with `Syncer::checkBlockMessages()` performing
-syntactic validation of messages (LINK).
+syntactic validation of messages.
 
 ## Setting the head
 
@@ -120,9 +127,12 @@ We already have the full state, since we calculated
 it during the sync process.
  
 FIXME (aayush) I don't fuilly understand the next 2 paragraphs, but it seems important. Confirm and polish.
+Relevant issue in IPFS: https://github.com/ipfs/ipfs-docs/issues/264
 
 It is important to note at this point that similar to the IPFS architecture of addressing by content and not by location/address (FIXME: check and link to IPFS docs) the "actual" chain stored in the node repo is *relative* to which CID we look for. We always have stored a series of Filecoin blocks pointing to other blocks, each a potential chain in itself by following its parent's reference, and its parent's parent, and so on up to the genesis block. (FIXME: We need a diagram here, one of the Filecoin blog entries might have something similar to what we are describing here.) It only depends on *where* (location) do we start to look for. The *only* address/location reference we hold of the chain, a relative reference, is the `heaviest` pointer. This is reflected by the fact that we don't store it in the `Blockstore` by a fixed, *absolute*, CID that reflects its contents, as this will change each time we sync to a new head (FIXME: link to the immutability IPFS doc that I need to write).
 
+FIXME: Create a further reading appendix, move this next para to it, along with other
+extraneous content
 This is one of the few items we store in `Datastore` by key, location, allowing its contents to change on every sync. This is reflected in the `(*ChainStore) writeHead()` function (called by `takeHeaviestTipSet()` above) where we reference the pointer by the explicit `chainHeadKey` address (the string `"head"`, not a hash embedded in a CID), and similarly in `(*ChainStore).Load()` when we start the node and create the `ChainStore`. Compare this to a Filecoin block or message which are immutable, stored in the `Blockstore` by CID, once created they never change.
 
 ## Keeping up with the chain 

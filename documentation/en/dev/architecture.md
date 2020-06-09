@@ -1,3 +1,6 @@
+Most of this is live, but there's some content in here we might
+want to reuse elsewhere
+
 # Lotus node architecture
 
 Not a complete reference, just introductory material to the key concepts and components in the code. Seen from the perspective of a syncing (not miner) node.
