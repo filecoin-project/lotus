@@ -71,6 +71,12 @@
       ]
     },
     {
+      "title": "Architecture",
+      "slug": "en+arch",
+      "github": "en/architecture.md",
+      "value": null,
+      "posts": []
+    },    {
       "title": "Storage Mining",
       "slug": "en+mining",
       "github": "en/mining.md",
