@@ -37,7 +37,7 @@ type LockedRepo interface {
 	Datastore(namespace string) (datastore.Batching, error)
 
 	// Returns config in this repo
-	Config() (interface{}, error)
+	GetConfig() (interface{}, error)
 
 	GetStorage() (stores.StorageConfig, error)
 	SetStorage(func(*stores.StorageConfig)) error

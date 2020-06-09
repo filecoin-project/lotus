@@ -217,7 +217,7 @@ func (lmem *lockedMemRepo) Datastore(ns string) (datastore.Batching, error) {
 	return namespace.Wrap(lmem.mem.datastore, datastore.NewKey(ns)), nil
 }
 
-func (lmem *lockedMemRepo) Config() (interface{}, error) {
+func (lmem *lockedMemRepo) GetConfig() (interface{}, error) {
 	if err := lmem.checkToken(); err != nil {
 		return nil, err
 	}
