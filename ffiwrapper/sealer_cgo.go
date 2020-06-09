@@ -117,20 +117,30 @@ func (sb *Sealer) AddPiece(ctx context.Context, sector abi.SectorID, existingPie
 	var pieceCids []abi.PieceInfo
 
 	for {
-		n, err := pr.Read(buf[:])
-		if err != nil && err != io.EOF {
-			return abi.PieceInfo{}, xerrors.Errorf("pr read error: %w", err)
+		var read int
+		for rbuf := buf; len(rbuf) > 0; {
+			n, err := pr.Read(rbuf)
+			if err != nil && err != io.EOF {
+				return abi.PieceInfo{}, xerrors.Errorf("pr read error: %w", err)
+			}
+
+			rbuf = rbuf[n:]
+			read += n
+
+			if err == io.EOF {
+				break
+			}
 		}
-		if err == io.EOF {
+		if read == 0 {
 			break
 		}
 
-		c, err := sb.pieceCid(buf[:n])
+		c, err := sb.pieceCid(buf[:read])
 		if err != nil {
 			return abi.PieceInfo{}, xerrors.Errorf("pieceCid error: %w", err)
 		}
 		pieceCids = append(pieceCids, abi.PieceInfo{
-			Size:     abi.UnpaddedPieceSize(len(buf[:n])).Padded(),
+			Size:     abi.UnpaddedPieceSize(len(buf[:read])).Padded(),
 			PieceCID: c,
 		})
 	}

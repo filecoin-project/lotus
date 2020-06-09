@@ -45,7 +45,10 @@ type seal struct {
 }
 
 func data(sn abi.SectorNumber, dlen abi.UnpaddedPieceSize) io.Reader {
-	return io.LimitReader(rand.New(rand.NewSource(42+int64(sn))), int64(dlen))
+	return io.MultiReader(
+		io.LimitReader(rand.New(rand.NewSource(42+int64(sn))), int64(123)),
+		io.LimitReader(rand.New(rand.NewSource(42+int64(sn))), int64(dlen-123)),
+	)
 }
 
 func (s *seal) precommit(t *testing.T, sb *Sealer, id abi.SectorID, done func()) {
