@@ -139,7 +139,7 @@ func (rt *Runtime) shimCall(f func() interface{}) (rval []byte, aerr aerrors.Act
 	defer func() {
 		if r := recover(); r != nil {
 			if ar, ok := r.(aerrors.ActorError); ok {
-				log.Errorf("VM.Call failure: %+v", ar)
+				log.Warnf("VM.Call failure: %+v", ar)
 				aerr = ar
 				return
 			}
@@ -309,7 +309,7 @@ func (rt *Runtime) Context() context.Context {
 }
 
 func (rt *Runtime) Abortf(code exitcode.ExitCode, msg string, args ...interface{}) {
-	log.Error("Abortf: ", fmt.Sprintf(msg, args...))
+	log.Warnf("Abortf: ", fmt.Sprintf(msg, args...))
 	panic(aerrors.NewfSkip(2, code, msg, args...))
 }
 

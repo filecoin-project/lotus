@@ -18,7 +18,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/metrics"
@@ -962,10 +961,6 @@ func (cs *ChainStore) GetTipsetByHeight(ctx context.Context, h abi.ChainEpoch, t
 
 	if h == ts.Height() {
 		return ts, nil
-	}
-
-	if ts.Height()-h > build.ForkLengthThreshold {
-		log.Warnf("expensive call to GetTipsetByHeight, seeking %d levels", ts.Height()-h)
 	}
 
 	lbts, err := cs.cindex.GetTipsetByHeight(ctx, ts, h)

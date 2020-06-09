@@ -280,7 +280,7 @@ func (sm *SyncManager) syncScheduler() {
 }
 
 func (sm *SyncManager) scheduleIncoming(ts *types.TipSet) {
-	log.Info("scheduling incoming tipset sync: ", ts.Cids())
+	log.Debug("scheduling incoming tipset sync: ", ts.Cids())
 	if sm.getBootstrapState() == BSStateSelected {
 		sm.setBootstrapState(BSStateScheduled)
 		sm.syncTargets <- ts
