@@ -143,7 +143,7 @@ var clientCommPCmd = &cli.Command{
 		}
 
 		fmt.Println("CID: ", encoder.Encode(ret.Root))
-		fmt.Println("Piece size: ", ret.Size)
+		fmt.Println("Piece size: ", types.SizeStr(types.NewInt(uint64(ret.Size))))
 		return nil
 	},
 }
@@ -203,7 +203,7 @@ var clientLocalCmd = &cli.Command{
 		}
 
 		for _, v := range list {
-			fmt.Printf("%s %s %d %s\n", encoder.Encode(v.Key), v.FilePath, v.Size, v.Status)
+			fmt.Printf("%s %s %s %s\n", encoder.Encode(v.Key), v.FilePath, types.SizeStr(types.NewInt(v.Size)), v.Status)
 		}
 		return nil
 	},
@@ -371,7 +371,7 @@ var clientFindCmd = &cli.Command{
 				fmt.Printf("ERR %s@%s: %s\n", offer.Miner, offer.MinerPeerID, offer.Err)
 				continue
 			}
-			fmt.Printf("RETRIEVAL %s@%s-%sfil-%db\n", offer.Miner, offer.MinerPeerID, types.FIL(offer.MinPrice), offer.Size)
+			fmt.Printf("RETRIEVAL %s@%s-%sfil-%s\n", offer.Miner, offer.MinerPeerID, types.FIL(offer.MinPrice), types.SizeStr(types.NewInt(offer.Size)))
 		}
 
 		return nil
@@ -520,7 +520,7 @@ var clientQueryAskCmd = &cli.Command{
 
 		fmt.Printf("Ask: %s\n", maddr)
 		fmt.Printf("Price per GiB: %s\n", types.FIL(ask.Ask.Price))
-		fmt.Printf("Max Piece size: %d\n", ask.Ask.MaxPieceSize)
+		fmt.Printf("Max Piece size: %s\n", types.SizeStr(types.NewInt(uint64(ask.Ask.MaxPieceSize))))
 
 		size := cctx.Int64("size")
 		if size == 0 {
@@ -597,7 +597,7 @@ var clientListDeals = &cli.Command{
 				slashed = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SlashEpoch)
 			}
 
-			fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\t%s\t%s\t%d\t%s\t%d\t%s\n", d.LocalDeal.ProposalCid, d.LocalDeal.DealID, d.LocalDeal.Provider, storagemarket.DealStates[d.LocalDeal.State], onChain, slashed, d.LocalDeal.PieceCID, d.LocalDeal.Size, d.LocalDeal.PricePerEpoch, d.LocalDeal.Duration, d.LocalDeal.Message)
+			fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d\t%s\n", d.LocalDeal.ProposalCid, d.LocalDeal.DealID, d.LocalDeal.Provider, storagemarket.DealStates[d.LocalDeal.State], onChain, slashed, d.LocalDeal.PieceCID, types.SizeStr(types.NewInt(d.LocalDeal.Size)), d.LocalDeal.PricePerEpoch, d.LocalDeal.Duration, d.LocalDeal.Message)
 		}
 		return w.Flush()
 	},
