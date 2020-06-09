@@ -58,8 +58,8 @@
         },
         {
           "title": "Use Lotus with systemd",
-          "slug": "en+install-system-services",
-          "github": "en/install-system-services.md",
+          "slug": "en+install-systemd-services",
+          "github": "en/install-systemd-services.md",
           "value": null
         },
         {
