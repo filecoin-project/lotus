@@ -19,7 +19,7 @@ Install dependencies
 
 ```sh
 sudo apt update
-sudo apt install mesa-opencl-icd ocl-icd-opencl-dev gcc git bzr jq pkg-config mesa-opencl-icd ocl-icd-opencl-dev
+sudo apt install mesa-opencl-icd ocl-icd-opencl-dev gcc git bzr jq pkg-config
 ```
 
 Install Go 1.14
