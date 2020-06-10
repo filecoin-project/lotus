@@ -72,7 +72,7 @@ Worker 1, host othercomputer
 ### Running locally for manually managing process priority
 
 You can also run the **Lotus Seal Worker** on the same machine as your **Lotus Storage Miner**, so you can manually manage the process priority.
-To do so you have to first **disable all seal task types** in the miner config. This is important to prevent conflicts between the two processes.
+To do so you have to first __disable all seal task types__ in the miner config. This is important to prevent conflicts between the two processes.
 
 You can then run the storage miner on your local-loopback interface; 
 
