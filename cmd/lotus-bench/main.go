@@ -412,7 +412,7 @@ var sealBenchCmd = &cli.Command{
 
 			fmt.Println(string(data))
 		} else {
-			fmt.Printf("----\nresults (v26) (%d)\n", sectorSize)
+			fmt.Printf("----\nresults (v27) (%d)\n", sectorSize)
 			if robench == "" {
 				fmt.Printf("seal: addPiece: %s (%s)\n", bo.SealingResults[0].AddPiece, bps(bo.SectorSize, bo.SealingResults[0].AddPiece)) // TODO: average across multiple sealings
 				fmt.Printf("seal: preCommit phase 1: %s (%s)\n", bo.SealingResults[0].PreCommit1, bps(bo.SectorSize, bo.SealingResults[0].PreCommit1))
@@ -569,7 +569,7 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, mid
 				}
 			}
 
-			err := sb.UnsealPiece(context.TODO(), abi.SectorID{Miner: mid, Number: 1}, 0, abi.UnpaddedPieceSize(sectorSize), ticket, cids.Unsealed)
+			err := sb.UnsealPiece(context.TODO(), abi.SectorID{Miner: mid, Number: 1}, 0, abi.PaddedPieceSize(sectorSize).Unpadded(), ticket, cids.Unsealed)
 			if err != nil {
 				return nil, nil, err
 			}
