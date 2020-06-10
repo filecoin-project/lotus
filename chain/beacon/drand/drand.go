@@ -8,8 +8,9 @@ import (
 
 	dchain "github.com/drand/drand/chain"
 	dclient "github.com/drand/drand/client"
-	gclient "github.com/drand/drand/cmd/relay-gossip/client"
+	hclient "github.com/drand/drand/client/http"
 	dlog "github.com/drand/drand/log"
+	gclient "github.com/drand/drand/lp2p/client"
 	"github.com/drand/kyber"
 	kzap "github.com/go-kit/kit/log/zap"
 	"go.uber.org/zap/zapcore"
@@ -79,11 +80,22 @@ func NewDrandBeacon(genesisTs, interval uint64, ps *pubsub.PubSub) (*DrandBeacon
 
 	dlogger := dlog.NewKitLoggerFrom(kzap.NewZapSugarLogger(
 		log.SugaredLogger.Desugar(), zapcore.InfoLevel))
+
+	var clients []dclient.Client
+	for _, url := range drandServers {
+		hc, err := hclient.NewWithInfo(url, drandChain, nil)
+		if err != nil {
+			return nil, xerrors.Errorf("could not create http drand client: %w", err)
+		}
+		clients = append(clients, hc)
+
+	}
+
 	opts := []dclient.Option{
 		dclient.WithChainInfo(drandChain),
-		dclient.WithHTTPEndpoints(drandServers),
 		dclient.WithCacheSize(1024),
 		dclient.WithLogger(dlogger),
+		dclient.WithAutoWatch(),
 	}
 
 	if ps != nil {
@@ -92,18 +104,10 @@ func NewDrandBeacon(genesisTs, interval uint64, ps *pubsub.PubSub) (*DrandBeacon
 		log.Info("drand beacon without pubsub")
 	}
 
-	client, err := dclient.New(opts...)
+	client, err := dclient.Wrap(clients, opts...)
 	if err != nil {
 		return nil, xerrors.Errorf("creating drand client")
 	}
-
-	go func() {
-		// Explicitly Watch until that is fixed in drand
-		ch := client.Watch(context.Background())
-		for range ch {
-		}
-		log.Error("dranch Watch bork")
-	}()
 
 	db := &DrandBeacon{
 		client:     client,
