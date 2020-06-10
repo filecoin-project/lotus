@@ -245,7 +245,6 @@ func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, spt abi.Re
 
 		sis, err := st.index.StorageBestAlloc(ctx, fileType, spt, pathType)
 		if err != nil {
-			st.localLk.RUnlock()
 			return SectorPaths{}, SectorPaths{}, xerrors.Errorf("finding best storage for allocating : %w", err)
 		}
 
@@ -277,7 +276,6 @@ func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, spt abi.Re
 		}
 
 		if best == "" {
-			st.localLk.RUnlock()
 			return SectorPaths{}, SectorPaths{}, xerrors.Errorf("couldn't find a suitable path for a sector")
 		}
 
