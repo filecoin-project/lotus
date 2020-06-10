@@ -889,6 +889,9 @@ var slashConsensusFault = &cli.Command{
 			BlockHeader1: bh1,
 			BlockHeader2: bh2,
 		})
+		if err != nil {
+			return err
+		}
 
 		if cctx.String("miner") == "" {
 			return xerrors.Errorf("--miner flag is required")
