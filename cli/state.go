@@ -145,22 +145,10 @@ var stateMinerInfo = &cli.Command{
 			return err
 		}
 
-		act, err := api.StateGetActor(ctx, addr, ts.Key())
+		mi, err := api.StateMinerInfo(ctx, addr, ts.Key())
 		if err != nil {
 			return err
 		}
-
-		aso, err := api.ChainReadObj(ctx, act.Head)
-		if err != nil {
-			return err
-		}
-
-		var mst miner2.State
-		if err := mst.UnmarshalCBOR(bytes.NewReader(aso)); err != nil {
-			return err
-		}
-
-		mi := mst.Info
 
 		fmt.Printf("Owner:\t%s\n", mi.Owner)
 		fmt.Printf("Worker:\t%s\n", mi.Worker)
