@@ -230,6 +230,7 @@ type fsLockedRepo struct {
 	dsOnce sync.Once
 
 	storageLk sync.Mutex
+	configLk  sync.Mutex
 }
 
 func (fsr *fsLockedRepo) Path() string {
@@ -266,28 +267,43 @@ func (fsr *fsLockedRepo) stillValid() error {
 }
 
 func (fsr *fsLockedRepo) Config() (interface{}, error) {
-	if err := fsr.stillValid(); err != nil {
-		return nil, err
-	}
+	fsr.configLk.Lock()
+	defer fsr.configLk.Unlock()
+
+	return fsr.loadConfigFromDisk()
+}
+
+func (fsr *fsLockedRepo) loadConfigFromDisk() (interface{}, error) {
 	return config.FromFile(fsr.join(fsConfig), defConfForType(fsr.repoType))
 }
 
-func (fsr *fsLockedRepo) SetConfig(cfg interface{}) error {
+func (fsr *fsLockedRepo) SetConfig(c func(interface{})) error {
 	if err := fsr.stillValid(); err != nil {
 		return err
 	}
 
-	tmp, err := ioutil.TempFile("", "lotus-config-temp")
+	fsr.configLk.Lock()
+	defer fsr.configLk.Unlock()
+
+	cfg, err := fsr.loadConfigFromDisk()
 	if err != nil {
 		return err
 	}
 
-	err = toml.NewEncoder(tmp).Encode(cfg)
+	// mutate in-memory representation of config
+	c(cfg)
+
+	// buffer into which we write TOML bytes
+	buf := new(bytes.Buffer)
+
+	// encode now-mutated config as TOML and write to buffer
+	err = toml.NewEncoder(buf).Encode(cfg)
 	if err != nil {
 		return err
 	}
 
-	err = os.Rename(tmp.Name(), fsr.join(fsConfig))
+	// write buffer of TOML bytes to config file
+	err = ioutil.WriteFile(fsr.join(fsConfig), buf.Bytes(), 0644)
 	if err != nil {
 		return err
 	}

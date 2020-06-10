@@ -54,9 +54,10 @@ func basicTest(t *testing.T, repo Repo) {
 	assert.NoError(t, err, "config should not error")
 
 	// mutate config and persist back to repo
-	cfg1 := c1.(*config.FullNode)
-	cfg1.Client.IpfsMAddr = "duvall"
-	err = lrepo.SetConfig(cfg1)
+	err = lrepo.SetConfig(func(c interface{}) {
+		cfg := c.(*config.FullNode)
+		cfg.Client.IpfsMAddr = "duvall"
+	})
 	assert.NoError(t, err)
 
 	// load config and verify changes
