@@ -68,3 +68,14 @@ Worker 1, host othercomputer
         VMEM: [||||||||||||||                                                  ] 23% 14 GiB/62.7 GiB
         GPU: GeForce RTX 2080, not used
 ```
+
+### Running locally for manually managing process priority
+
+You can also run the **Lotus Seal Worker** on the same machine as your **Lotus Storage Miner**, so you can manually manage the process priority.
+To do so you have to first **disable all seal task types** in the miner config. This is important to prevent conflicts between the two processes.
+
+You can then run the storage miner on your local-loopback interface; 
+
+```sh
+lotus-seal-worker run --address 127.0.0.1:2345
+```
