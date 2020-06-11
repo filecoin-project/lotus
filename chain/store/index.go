@@ -91,16 +91,11 @@ func (ci *ChainIndex) fillCache(tsk types.TipSetKey) (*lbEntry, error) {
 		return nil, err
 	}
 
-	if parent.Height() > rheight {
-		return nil, xerrors.Errorf("cache is inconsistent")
-	}
-
 	rheight -= ci.skipLength
 
 	var skipTarget *types.TipSet
 	if parent.Height() < rheight {
 		skipTarget = parent
-
 	} else {
 		skipTarget, err = ci.walkBack(parent, rheight)
 		if err != nil {
@@ -119,8 +114,9 @@ func (ci *ChainIndex) fillCache(tsk types.TipSetKey) (*lbEntry, error) {
 	return lbe, nil
 }
 
+// floors to nearest skipLength multiple
 func (ci *ChainIndex) roundHeight(h abi.ChainEpoch) abi.ChainEpoch {
-	return abi.ChainEpoch(h/ci.skipLength) * ci.skipLength
+	return (h / ci.skipLength) * ci.skipLength
 }
 
 func (ci *ChainIndex) roundDown(ts *types.TipSet) (*types.TipSet, error) {
@@ -152,6 +148,8 @@ func (ci *ChainIndex) walkBack(from *types.TipSet, to abi.ChainEpoch) (*types.Ti
 		}
 
 		if to > pts.Height() {
+			// in case pts is lower than the epoch we're looking for (null blocks)
+			// return a tipset above that height
 			return ts, nil
 		}
 		if to == pts.Height() {
