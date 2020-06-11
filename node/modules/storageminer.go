@@ -315,11 +315,12 @@ func StorageProvider(minerAddress dtypes.MinerAddress, ffiConfig *ffiwrapper.Con
 	opt := storageimpl.CustomDealDecisionLogic(func(ctx context.Context, deal storagemarket.MinerDeal) (bool, string, error) {
 		willEntertainProposals, err := isAcceptingStorageDealsFunc()
 		if err != nil {
-			return false, "IsAcceptingStorageDealsFunc error", err
+			return false, "miner error", err
 		}
 
 		if !willEntertainProposals {
-			return false, "user has disabled storage deals", nil
+			log.Warnf("storage deal acceptance disabled; rejecting storage deal proposal from client: %s", deal.Client.String())
+			return false, "miner is not accepting storage deals", nil
 		}
 
 		return true, "", nil
