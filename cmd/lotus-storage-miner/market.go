@@ -10,6 +10,24 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+var enableCmd = &cli.Command{
+	Name:  "enable",
+	Usage: "Configure the miner to consider storage deal proposals",
+	Flags: []cli.Flag{},
+	Action: func(cctx *cli.Context) error {
+		panic("enable storage deals")
+	},
+}
+
+var disableCmd = &cli.Command{
+	Name:  "disable",
+	Usage: "Configure the miner to reject all storage deal proposals",
+	Flags: []cli.Flag{},
+	Action: func(cctx *cli.Context) error {
+		panic("disable storage deals")
+	},
+}
+
 var setPriceCmd = &cli.Command{
 	Name:  "set-price",
 	Usage: "Set price that miner will accept storage deals at (FIL / GiB / Epoch)",
