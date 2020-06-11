@@ -857,7 +857,7 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 
 		// Phase 1: syntactic validation, as defined in the spec
 		minGas := vm.PricelistByEpoch(baseTs.Height()).OnChainMessage(msg.ChainLength())
-		if err := m.ValidForBlockInclusion(minGas); err != nil {
+		if err := m.ValidForBlockInclusion(minGas.Total()); err != nil {
 			return err
 		}
 
