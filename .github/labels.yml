@@ -7,6 +7,8 @@
 # pinks:    bf0f73
 # oranges:  ba500e ce8048
 # teals:    40c491
+#
+# Tailwind CSS colors: https://tailwindcss.com/docs/customizing-colors/
 
 ###
 ### Special magic GitHub labels
@@ -21,48 +23,9 @@
 ###
 ### Areas
 ###
-- name: area/ux-cli
+- name: area/*
   color: 0bb1ed
-  description: "Area: UX/CLI"
-- name: area/core
-  color: 0bb1ed
-  description: "Area: Core"
-- name: area/sdk-sync
-  color: 0bb1ed
-  description: "Area: SDK | Sync Service"
-- name: area/sdk-runtime
-  color: 0bb1ed
-  description: "Area: SDK | Runtime"
-- name: area/sdk-testplans
-  color: 0bb1ed
-  description: "Area: SDK | Test plan API"
-- name: area/sidecar
-  color: 0bb1ed
-  description: "Area: Sidecar"
-- name: area/observability
-  color: 0bb1ed
-  description: "Area: Observability"
-- name: area/runners
-  color: 0bb1ed
-  description: "Area: Runners"
-- name: area/builders
-  color: 0bb1ed
-  description: "Area: Builders"
-- name: area/infra
-  color: 0bb1ed
-  description: "Area: Infrastructure"
-- name: area/specs
-  color: 0bb1ed
-  description: "Area: Specs"
-- name: area/docs
-  color: 0bb1ed
-  description: "Area: Documentation"
-- name: area/testing
-  color: 0bb1ed
-  description: "Area: Testing"
-- name: area/test-plan
-  color: 0bb1ed
-  description: "Area: Test Plans"
+  description: "Area: Generic (will unfold later)"
 
 ###
 ### Kinds
@@ -85,9 +48,9 @@
 - name: kind/improvement
   color: fcf0b5
   description: "Kind: Improvement"
-- name: kind/test
+- name: kind/test-scenario
   color: fcf0b5
-  description: "Kind: Test"
+  description: "Kind: Test Scenario"
 - name: kind/tracking-issue
   color: fcf0b5
   description: "Kind: Tracking Issue"
@@ -102,26 +65,29 @@
   description: "Kind: Discussion"
 - name: kind/spike
   color: fcf0b5
-  description: "Kind: Spike"  
+  description: "Kind: Spike"
+- name: kind/system-process
+  color: fcf0b5
+  description: "Kind: System Process"
 
 ###
 ### Difficulties
 ###
 - name: dif/trivial
   color: b2b7ff
-  description: "Can be confidently tackled by newcomers, who are widely unfamiliar with testground."
+  description: "Difficulty: Trivial"
 - name: dif/easy
   color: 7886d7
-  description: "A prexisting testground user should be able to pick this up."
+  description: "Difficulty: Easy"
 - name: dif/medium
   color: 6574cd
-  description: "Prior experience in having developed testground modules is likely helpful."
+  description: "Difficulty: Medium"
 - name: dif/hard
   color: 5661b3
-  description: "Suggests that having worked on the specific component affected by this issue is important."
+  description: "Difficulty: Hard"
 - name: dif/expert
   color: 2f365f
-  description: "Requires extensive knowledge of the history, implications, ramifications of the issue."  
+  description: "Difficulty: Expert"
 
 ###
 ### Efforts
@@ -146,57 +112,41 @@
   description: "Effort: Multiple Weeks."  
 
 ###
-### Impacts
-###
-- name: impact/regression
-  color: f1f5f8
-  description: "Impact: Regression"
-- name: impact/api-breakage
-  color: f1f5f8
-  description: "Impact: API Breakage"
-- name: impact/quality
-  color: f1f5f8
-  description: "Impact: Quality"
-- name: impact/dx
-  color: f1f5f8
-  description: "Impact: Developer Experience"
-- name: impact/test-flakiness
-  color: f1f5f8
-  description: "Impact: Test Flakiness"  
-
-###
 ### Discomfort Factor
 ###
-- name: discomfort factor 10
-  color: bf0f73
-  description: "Nauseous Discomfort"
-- name: discomfort factor 9
-  color: bf0f73
-  description: "Can't Sleep Discomfort"
-- name: discomfort factor 8
-  color: bf0f73
-  description: "Extreme Discomfort"
-- name: discomfort factor 7
-  color: bf0f73
-  description: "I'm Uncomfortable about this"
-- name: discomfort factor 6
-  color: bf0f73
-  description: "I'm bothered by this"  
-- name: discomfort factor 5
-  color: bf0f73
-  description: "Ya know, this could be a problem"  
-  - name: discomfort factor 4
-  color: bf0f73
-  description: "eh, it should be fine"  
-  - name: discomfort factor 3
-  color: bf0f73
-  description: "What evs"  
-  - name: discomfort factor 2
-  color: bf0f73
-  description: "Be cool, man. It's fine."  
-  - name: discomfort factor 
-  color: bf0f73
-  description: "Don't worry, be happy"  
+- name: discomfort-factor/10
+  color: c53030
+  description: "Discomfort factor: I wake up in the middle of the night with nightmares, sweats, and chills."
+- name: discomfort-factor/9
+  color: e53e3e
+  description: "Discomfort factor: Wakes me up in the middle of the night, but if I breathe deep, I can sleep again."
+- name: discomfort-factor/8
+  color: f56565
+  description: "Discomfort factor: I touched my eyes after picking up a Jalapeño (10,000 SHU)."
+- name: discomfort-factor/7
+  color: dd6b20
+  description: "Discomfort factor: Sitting next to a sweaty gentleman in a transatlantic flight."
+- name: discomfort-factor/6
+  color: ed8936
+  description: "Discomfort factor: Agonizing smalltalk."
+- name: discomfort-factor/5
+  color: f6ad55
+  description: "Discomfort factor: Watching tourists wear white socks with flip-flops."
+- name: discomfort-factor/4
+  color: ecc94b
+  description: "Discomfort factor: An itchy jumper label the entire night."
+- name: discomfort-factor/3
+  color: f6e05e
+  description: "Discomfort factor: A pebble in my shoe."
+- name: discomfort-factor/2
+  color: faf089
+  description: "Discomfort factor: A sneeze that just won't come out."
+- name: discomfort-factor/1
+  color: c6f6d5
+  description: "Discomfort factor: Opening a can with a supposedly 'easy open lid' whose ring has snapped."
+- name: discomfort-factor/0
+  color: f0fff4
+  description: "Discomfort factor: Don't worry, chill, we're cool!"
   
 ###
 ### Priorities
