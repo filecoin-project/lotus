@@ -60,8 +60,6 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 		src := msg.GetFrom()
 
 		go func() {
-			log.Infof("New block over pubsub: %s", blk.Cid())
-
 			start := time.Now()
 			log.Debug("about to fetch messages for block from pubsub")
 			bmsgs, err := s.Bsync.FetchMessagesByCids(context.TODO(), blk.BlsMessages)
@@ -145,8 +143,7 @@ func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub
 	// track validation time
 	begin := time.Now()
 	defer func() {
-		end := time.Now()
-		log.Infof("block validation time: %s", end.Sub(begin))
+		log.Debugf("block validation time: %s", time.Since(begin))
 	}()
 
 	stats.Record(ctx, metrics.BlockReceived.M(1))

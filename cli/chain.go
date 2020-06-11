@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/go-units"
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -230,7 +229,7 @@ var chainStatObjCmd = &cli.Command{
 		}
 
 		fmt.Printf("Links: %d\n", stats.Links)
-		fmt.Printf("Size: %s (%d)\n", units.BytesSize(float64(stats.Size)), stats.Size)
+		fmt.Printf("Size: %s (%d)\n", types.SizeStr(types.NewInt(stats.Size)), stats.Size)
 		return nil
 	},
 }
@@ -842,6 +841,10 @@ var slashConsensusFault = &cli.Command{
 			Name:  "miner",
 			Usage: "Miner address",
 		},
+		&cli.StringFlag{
+			Name:  "extra",
+			Usage: "Extra block cid",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -886,10 +889,34 @@ var slashConsensusFault = &cli.Command{
 			return err
 		}
 
-		params, err := actors.SerializeParams(&miner.ReportConsensusFaultParams{
+		params := miner.ReportConsensusFaultParams{
 			BlockHeader1: bh1,
 			BlockHeader2: bh2,
-		})
+		}
+
+		if cctx.String("extra") != "" {
+			cExtra, err := cid.Parse(cctx.String("extra"))
+			if err != nil {
+				return xerrors.Errorf("parsing cid extra: %w", err)
+			}
+
+			bExtra, err := api.ChainGetBlock(ctx, cExtra)
+			if err != nil {
+				return xerrors.Errorf("getting block extra: %w", err)
+			}
+
+			be, err := cborutil.Dump(bExtra)
+			if err != nil {
+				return err
+			}
+
+			params.BlockHeaderExtra = be
+		}
+
+		enc, err := actors.SerializeParams(&params)
+		if err != nil {
+			return err
+		}
 
 		if cctx.String("miner") == "" {
 			return xerrors.Errorf("--miner flag is required")
@@ -907,7 +934,7 @@ var slashConsensusFault = &cli.Command{
 			GasPrice: types.NewInt(1),
 			GasLimit: 10000000,
 			Method:   builtin.MethodsMiner.ReportConsensusFault,
-			Params:   params,
+			Params:   enc,
 		}
 
 		smsg, err := api.MpoolPushMessage(ctx, msg)

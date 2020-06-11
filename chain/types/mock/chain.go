@@ -49,6 +49,11 @@ func MkBlock(parents *types.TipSet, weightInc uint64, ticketNonce uint64) *types
 		panic(err)
 	}
 
+	pstateRoot := c
+	if parents != nil {
+		pstateRoot = parents.Blocks()[0].ParentStateRoot
+	}
+
 	var pcids []cid.Cid
 	var height abi.ChainEpoch
 	weight := types.NewInt(weightInc)
@@ -72,7 +77,7 @@ func MkBlock(parents *types.TipSet, weightInc uint64, ticketNonce uint64) *types
 		ParentWeight:          weight,
 		Messages:              c,
 		Height:                height,
-		ParentStateRoot:       c,
+		ParentStateRoot:       pstateRoot,
 		BlockSig:              &crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte("boo! im a signature")},
 	}
 }
