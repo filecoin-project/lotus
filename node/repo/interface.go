@@ -38,6 +38,7 @@ type LockedRepo interface {
 
 	// Returns config in this repo
 	Config() (interface{}, error)
+	SetConfig(func(interface{})) error
 
 	GetStorage() (stores.StorageConfig, error)
 	SetStorage(func(*stores.StorageConfig)) error
