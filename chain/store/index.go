@@ -97,9 +97,15 @@ func (ci *ChainIndex) fillCache(tsk types.TipSetKey) (*lbEntry, error) {
 
 	rheight -= ci.skipLength
 
-	skipTarget, err := ci.walkBack(parent, rheight)
-	if err != nil {
-		return nil, err
+	var skipTarget *types.TipSet
+	if parent.Height() < rheight {
+		skipTarget = parent
+
+	} else {
+		skipTarget, err = ci.walkBack(parent, rheight)
+		if err != nil {
+			return nil, xerrors.Errorf("fillCache walkback: %w", err)
+		}
 	}
 
 	lbe := &lbEntry{
