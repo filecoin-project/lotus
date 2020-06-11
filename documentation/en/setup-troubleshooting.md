@@ -30,3 +30,17 @@ ERROR hello hello/hello.go:81 other peer has different genesis!
 ```
 
 - You already have another lotus daemon running.
+
+## Config: Open files limit
+
+On most systems you can check the open files limit with:
+
+```sh
+ulimit -n
+```
+
+You can also modify this number by using the `ulimit` command. It gives you the ability to control the resources available for the shell or process started by it. If the number is below 10000, you can change it with the following command prior to starting the Lotus daemon:
+
+```sh
+ulimit -n 10000
+```
