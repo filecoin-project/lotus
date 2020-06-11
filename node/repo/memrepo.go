@@ -30,8 +30,16 @@ type MemRepo struct {
 	token    *byte
 
 	datastore datastore.Datastore
-	configF   func(t RepoType) interface{}
 	keystore  map[string]types.KeyInfo
+
+	// given a repo type, produce the default config
+	configF func(t RepoType) interface{}
+
+	// holds the current config value
+	config struct {
+		sync.Mutex
+		val interface{}
+	}
 }
 
 type lockedMemRepo struct {
@@ -45,6 +53,10 @@ type lockedMemRepo struct {
 }
 
 func (lmem *lockedMemRepo) GetStorage() (stores.StorageConfig, error) {
+	if err := lmem.checkToken(); err != nil {
+		return stores.StorageConfig{}, err
+	}
+
 	if lmem.sc == nil {
 		lmem.sc = &stores.StorageConfig{StoragePaths: []stores.LocalPath{
 			{Path: lmem.Path()},
@@ -55,6 +67,10 @@ func (lmem *lockedMemRepo) GetStorage() (stores.StorageConfig, error) {
 }
 
 func (lmem *lockedMemRepo) SetStorage(c func(*stores.StorageConfig)) error {
+	if err := lmem.checkToken(); err != nil {
+		return err
+	}
+
 	_, _ = lmem.GetStorage()
 
 	c(lmem.sc)
@@ -221,11 +237,32 @@ func (lmem *lockedMemRepo) Config() (interface{}, error) {
 	if err := lmem.checkToken(); err != nil {
 		return nil, err
 	}
-	return lmem.mem.configF(lmem.t), nil
+
+	lmem.mem.config.Lock()
+	defer lmem.mem.config.Unlock()
+
+	if lmem.mem.config.val == nil {
+		lmem.mem.config.val = lmem.mem.configF(lmem.t)
+	}
+
+	return lmem.mem.config.val, nil
 }
 
-func (lmem *lockedMemRepo) Storage() (stores.StorageConfig, error) {
-	panic("implement me")
+func (lmem *lockedMemRepo) SetConfig(c func(interface{})) error {
+	if err := lmem.checkToken(); err != nil {
+		return err
+	}
+
+	lmem.mem.config.Lock()
+	defer lmem.mem.config.Unlock()
+
+	if lmem.mem.config.val == nil {
+		lmem.mem.config.val = lmem.mem.configF(lmem.t)
+	}
+
+	c(lmem.mem.config.val)
+
+	return nil
 }
 
 func (lmem *lockedMemRepo) SetAPIEndpoint(ma multiaddr.Multiaddr) error {

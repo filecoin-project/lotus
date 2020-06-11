@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -51,10 +50,10 @@ type Runtime struct {
 	origin      address.Address
 	originNonce uint64
 
-	internalExecutions []*types.ExecutionResult
-	numActorsCreated   uint64
-	allowInternal      bool
-	callerValidated    bool
+	executionTrace   types.ExecutionTrace
+	numActorsCreated uint64
+	allowInternal    bool
+	callerValidated  bool
 }
 
 func (rt *Runtime) TotalFilCircSupply() abi.TokenAmount {
@@ -368,7 +367,6 @@ func (rt *Runtime) Send(to address.Address, method abi.MethodNum, m vmr.CBORMars
 }
 
 func (rt *Runtime) internalSend(from, to address.Address, method abi.MethodNum, value types.BigInt, params []byte) ([]byte, aerrors.ActorError) {
-	start := time.Now()
 	ctx, span := trace.StartSpan(rt.ctx, "vmc.Send")
 	defer span.End()
 	if span.IsRecordingEvents() {
@@ -401,27 +399,10 @@ func (rt *Runtime) internalSend(from, to address.Address, method abi.MethodNum, 
 		}
 	}
 
-	mr := types.MessageReceipt{
-		ExitCode: aerrors.RetCode(errSend),
-		Return:   ret,
-		GasUsed:  0,
-	}
-
-	er := types.ExecutionResult{
-		Msg:      msg,
-		MsgRct:   &mr,
-		Duration: time.Since(start),
-	}
-
-	if errSend != nil {
-		er.Error = errSend.Error()
-	}
-
 	if subrt != nil {
-		er.Subcalls = subrt.internalExecutions
 		rt.numActorsCreated = subrt.numActorsCreated
 	}
-	rt.internalExecutions = append(rt.internalExecutions, &er)
+	rt.executionTrace.Subcalls = append(rt.executionTrace.Subcalls, subrt.executionTrace) //&er)
 	return ret, errSend
 }
 
@@ -504,19 +485,23 @@ func (rt *Runtime) stateCommit(oldh, newh cid.Cid) aerrors.ActorError {
 }
 
 func (rt *Runtime) ChargeGas(toUse int64) {
-	err := rt.chargeGasSafe(toUse)
+	err := rt.chargeGasInternal(toUse)
 	if err != nil {
 		panic(err)
 	}
 }
 
-func (rt *Runtime) chargeGasSafe(toUse int64) aerrors.ActorError {
+func (rt *Runtime) chargeGasInternal(toUse int64) aerrors.ActorError {
 	if rt.gasUsed+toUse > rt.gasAvailable {
 		rt.gasUsed = rt.gasAvailable
 		return aerrors.Newf(exitcode.SysErrOutOfGas, "not enough gas: used=%d, available=%d", rt.gasUsed, rt.gasAvailable)
 	}
 	rt.gasUsed += toUse
 	return nil
+}
+
+func (rt *Runtime) chargeGasSafe(toUse int64) aerrors.ActorError {
+	return rt.chargeGasInternal(toUse)
 }
 
 func (rt *Runtime) Pricelist() Pricelist {

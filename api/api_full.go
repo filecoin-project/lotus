@@ -350,11 +350,11 @@ type RetrievalOrder struct {
 }
 
 type InvocResult struct {
-	Msg                *types.Message
-	MsgRct             *types.MessageReceipt
-	InternalExecutions []*types.ExecutionResult
-	Error              string
-	Duration           time.Duration
+	Msg            *types.Message
+	MsgRct         *types.MessageReceipt
+	ExecutionTrace types.ExecutionTrace
+	Error          string
+	Duration       time.Duration
 }
 
 type MethodCall struct {
