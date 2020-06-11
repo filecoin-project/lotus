@@ -21,7 +21,7 @@ var enableCmd = &cli.Command{
 		}
 		defer closer()
 
-		return api.DealsSetIsAcceptingStorageDeals(lcli.DaemonContext(cctx), true)
+		return api.DealsSetAcceptingStorageDeals(lcli.DaemonContext(cctx), true)
 	},
 }
 
@@ -36,7 +36,7 @@ var disableCmd = &cli.Command{
 		}
 		defer closer()
 
-		return api.DealsSetIsAcceptingStorageDeals(lcli.DaemonContext(cctx), false)
+		return api.DealsSetAcceptingStorageDeals(lcli.DaemonContext(cctx), false)
 	},
 }
 

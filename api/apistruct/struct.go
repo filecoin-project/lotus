@@ -220,9 +220,9 @@ type StorageMinerStruct struct {
 		StorageLock          func(ctx context.Context, sector abi.SectorID, read stores.SectorFileType, write stores.SectorFileType) error                             `perm:"admin"`
 		StorageTryLock       func(ctx context.Context, sector abi.SectorID, read stores.SectorFileType, write stores.SectorFileType) (bool, error)                     `perm:"admin"`
 
-		DealsImportData                 func(ctx context.Context, dealPropCid cid.Cid, file string) error `perm:"write"`
-		DealsList                       func(ctx context.Context) ([]storagemarket.StorageDeal, error)    `perm:"read"`
-		DealsSetIsAcceptingStorageDeals func(ctx context.Context, b bool) error                           `perm:"admin"`
+		DealsImportData               func(ctx context.Context, dealPropCid cid.Cid, file string) error `perm:"write"`
+		DealsList                     func(ctx context.Context) ([]storagemarket.StorageDeal, error)    `perm:"read"`
+		DealsSetAcceptingStorageDeals func(context.Context, bool) error                                 `perm:"admin"`
 
 		StorageAddLocal func(ctx context.Context, path string) error `perm:"admin"`
 	}
@@ -853,8 +853,8 @@ func (c *StorageMinerStruct) DealsList(ctx context.Context) ([]storagemarket.Sto
 	return c.Internal.DealsList(ctx)
 }
 
-func (c *StorageMinerStruct) DealsSetIsAcceptingStorageDeals(ctx context.Context, b bool) error {
-	return c.Internal.DealsSetIsAcceptingStorageDeals(ctx, b)
+func (c *StorageMinerStruct) DealsSetAcceptingStorageDeals(ctx context.Context, b bool) error {
+	return c.Internal.DealsSetAcceptingStorageDeals(ctx, b)
 }
 
 func (c *StorageMinerStruct) StorageAddLocal(ctx context.Context, path string) error {

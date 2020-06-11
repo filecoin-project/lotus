@@ -32,7 +32,7 @@ type StorageMiner struct {
 }
 
 type DealmakingConfig struct {
-	IsAcceptingStorageDeals bool
+	AcceptingStorageDeals bool
 }
 
 // API contains configs for API endpoint
@@ -116,7 +116,7 @@ func DefaultStorageMiner() *StorageMiner {
 		},
 
 		Dealmaking: DealmakingConfig{
-			IsAcceptingStorageDeals: true,
+			AcceptingStorageDeals: true,
 		},
 	}
 	cfg.Common.API.ListenAddress = "/ip4/127.0.0.1/tcp/2345/http"

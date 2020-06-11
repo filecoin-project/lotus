@@ -307,7 +307,7 @@ func NewStorageAsk(ctx helpers.MetricsCtx, fapi lapi.FullNode, ds dtypes.Metadat
 	return storedAsk, nil
 }
 
-func StorageProvider(minerAddress dtypes.MinerAddress, ffiConfig *ffiwrapper.Config, storedAsk *storedask.StoredAsk, h host.Host, ds dtypes.MetadataDS, ibs dtypes.StagingBlockstore, r repo.LockedRepo, pieceStore dtypes.ProviderPieceStore, dataTransfer dtypes.ProviderDataTransfer, spn storagemarket.StorageProviderNode, isAcceptingStorageDealsFunc dtypes.IsAcceptingStorageDealsFunc) (storagemarket.StorageProvider, error) {
+func StorageProvider(minerAddress dtypes.MinerAddress, ffiConfig *ffiwrapper.Config, storedAsk *storedask.StoredAsk, h host.Host, ds dtypes.MetadataDS, ibs dtypes.StagingBlockstore, r repo.LockedRepo, pieceStore dtypes.ProviderPieceStore, dataTransfer dtypes.ProviderDataTransfer, spn storagemarket.StorageProviderNode, isAcceptingFunc dtypes.AcceptingStorageDealsConfigFunc) (storagemarket.StorageProvider, error) {
 	net := smnet.NewFromLibp2pHost(h)
 	store, err := piecefilestore.NewLocalFileStore(piecefilestore.OsPath(r.Path()))
 	if err != nil {
@@ -315,12 +315,12 @@ func StorageProvider(minerAddress dtypes.MinerAddress, ffiConfig *ffiwrapper.Con
 	}
 
 	opt := storageimpl.CustomDealDecisionLogic(func(ctx context.Context, deal storagemarket.MinerDeal) (bool, string, error) {
-		willEntertainProposals, err := isAcceptingStorageDealsFunc()
+		b, err := isAcceptingFunc()
 		if err != nil {
 			return false, "miner error", err
 		}
 
-		if !willEntertainProposals {
+		if !b {
 			log.Warnf("storage deal acceptance disabled; rejecting storage deal proposal from client: %s", deal.Client.String())
 			return false, "miner is not accepting storage deals", nil
 		}
@@ -379,7 +379,7 @@ func StorageAuth(ctx helpers.MetricsCtx, ca lapi.Common) (sectorstorage.StorageA
 	return sectorstorage.StorageAuth(headers), nil
 }
 
-func NewIsAcceptingStorageDealsFunc(r repo.LockedRepo) (dtypes.IsAcceptingStorageDealsFunc, error) {
+func NewAcceptingStorageDealsConfigFunc(r repo.LockedRepo) (dtypes.AcceptingStorageDealsConfigFunc, error) {
 	return func() (bool, error) {
 		raw, err := r.Config()
 		if err != nil {
@@ -391,11 +391,11 @@ func NewIsAcceptingStorageDealsFunc(r repo.LockedRepo) (dtypes.IsAcceptingStorag
 			return false, xerrors.New("expected address of config.StorageMiner")
 		}
 
-		return cfg.Dealmaking.IsAcceptingStorageDeals, nil
+		return cfg.Dealmaking.AcceptingStorageDeals, nil
 	}, nil
 }
 
-func NewSetAcceptingStorageDealsFunc(r repo.LockedRepo) (dtypes.SetAcceptingStorageDealsFunc, error) {
+func NewSetAcceptingStorageDealsConfigFunc(r repo.LockedRepo) (dtypes.SetAcceptingStorageDealsConfigFunc, error) {
 	return func(b bool) error {
 		var typeErr error
 
@@ -406,7 +406,7 @@ func NewSetAcceptingStorageDealsFunc(r repo.LockedRepo) (dtypes.SetAcceptingStor
 				return
 			}
 
-			cfg.Dealmaking.IsAcceptingStorageDeals = b
+			cfg.Dealmaking.AcceptingStorageDeals = b
 		})
 
 		return multierr.Combine(typeErr, setConfigErr)

@@ -43,7 +43,7 @@ type StorageMinerAPI struct {
 	StorageMgr      *sectorstorage.Manager `optional:"true"`
 	*stores.Index
 
-	SetAcceptingStorageDealsFunc dtypes.SetAcceptingStorageDealsFunc
+	SetAcceptingStorageDealsConfigFunc dtypes.SetAcceptingStorageDealsConfigFunc
 }
 
 func (sm *StorageMinerAPI) ServeRemote(w http.ResponseWriter, r *http.Request) {
@@ -209,8 +209,8 @@ func (sm *StorageMinerAPI) DealsList(ctx context.Context) ([]storagemarket.Stora
 	return sm.StorageProvider.ListDeals(ctx)
 }
 
-func (sm *StorageMinerAPI) DealsSetIsAcceptingStorageDeals(ctx context.Context, b bool) error {
-	return sm.SetAcceptingStorageDealsFunc(b)
+func (sm *StorageMinerAPI) DealsSetAcceptingStorageDeals(ctx context.Context, b bool) error {
+	return sm.SetAcceptingStorageDealsConfigFunc(b)
 }
 
 func (sm *StorageMinerAPI) DealsImportData(ctx context.Context, deal cid.Cid, fname string) error {
