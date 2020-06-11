@@ -68,9 +68,11 @@ func TestIndexSeeks(t *testing.T) {
 	}
 	assert.Equal(t, abi.ChainEpoch(151), ts.Height())
 
-	ts2, err := cs.GetTipsetByHeight(ctx, 90, skipts, false)
-	if err != nil {
-		t.Fatal(err)
+	for i := 0; i <= 100; i++ {
+		ts3, err := cs.GetTipsetByHeight(ctx, abi.ChainEpoch(i), skipts, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		assert.Equal(t, abi.ChainEpoch(i), ts3.Height())
 	}
-	assert.Equal(t, abi.ChainEpoch(90), ts2.Height())
 }
