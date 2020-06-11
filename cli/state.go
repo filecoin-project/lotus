@@ -975,6 +975,7 @@ func computeStateHtml(ts *types.TipSet, o *api.ComputeStateOutput, getCode func(
    }
    .slow-true-false { color: #660; }
    .slow-true-true { color: #f80; }
+   table { font-size: 12px; }
   </style>
  </head>
  <body>
@@ -1026,6 +1027,13 @@ func computeStateHtml(ts *types.TipSet, o *api.ComputeStateOutput, getCode func(
 		if ir.MsgRct.ExitCode != 0 {
 			fmt.Printf(`<div class="error">Error: <pre>%s</pre></div>`, ir.Error)
 		}
+		fmt.Printf("\n<details><summary>Gas Trace</summary><table><tr>" +
+			"<th>Name</th><th>Total/Compute/Storage</th><th>Time Taken</th><th>Location</th></tr>")
+		for _, gc := range ir.ExecutionTrace.GasCharges {
+			fmt.Printf("<tr><td>%s</td><td>%d/%d/%d</td><td>%s</td><td>%s</td></tr>",
+				gc.Name, gc.TotalGas, gc.ComputeGas, gc.StorageGas, gc.TimeTaken, gc.Location)
+		}
+		fmt.Printf("</table></details>\n")
 
 		fmt.Println("<div>Execution trace:</div>")
 		if err := printInternalExecutionsHtml(cid.String(), ir.ExecutionTrace.Subcalls, getCode); err != nil {
@@ -1082,6 +1090,13 @@ func printInternalExecutionsHtml(hashName string, trace []types.ExecutionTrace, 
 		if im.MsgRct.ExitCode != 0 {
 			fmt.Printf(`<div class="error">Error: <pre>%s</pre></div>`, im.Error)
 		}
+		fmt.Printf("\n<details><summary>Gas Trace</summary><table><tr>" +
+			"<th>Name</th><th>Total/Compute/Storage</th><th>Time Taken</th><th>Location</th></tr>")
+		for _, gc := range im.GasCharges {
+			fmt.Printf("<tr><td>%s</td><td>%d/%d/%d</td><td>%s</td><td>%s</td></tr>",
+				gc.Name, gc.TotalGas, gc.ComputeGas, gc.StorageGas, gc.TimeTaken, gc.Location)
+		}
+		fmt.Printf("</table></details>\n")
 		if len(im.Subcalls) > 0 {
 			fmt.Println("<div>Subcalls:</div>")
 			if err := printInternalExecutionsHtml(hashName, im.Subcalls, getCode); err != nil {
