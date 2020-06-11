@@ -44,7 +44,8 @@ func TestIndexSeeks(t *testing.T) {
 	}
 	cs.SetGenesis(gen)
 
-	for i := 0; i < 100; i++ {
+	// Put 113 blocks from genesis
+	for i := 0; i < 113; i++ {
 		nextts := mock.TipSet(mock.MkBlock(cur, 1, 1))
 
 		if err := cs.PutTipSet(ctx, nextts); err != nil {
@@ -53,6 +54,7 @@ func TestIndexSeeks(t *testing.T) {
 		cur = nextts
 	}
 
+	// Put 50 null epochs + 1 block
 	skip := mock.MkBlock(cur, 1, 1)
 	skip.Height += 50
 
@@ -66,9 +68,9 @@ func TestIndexSeeks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assert.Equal(t, abi.ChainEpoch(151), ts.Height())
+	assert.Equal(t, abi.ChainEpoch(164), ts.Height())
 
-	for i := 0; i <= 100; i++ {
+	for i := 0; i <= 113; i++ {
 		ts3, err := cs.GetTipsetByHeight(ctx, abi.ChainEpoch(i), skipts, false)
 		if err != nil {
 			t.Fatal(err)
