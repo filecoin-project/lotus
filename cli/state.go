@@ -975,7 +975,11 @@ func computeStateHtml(ts *types.TipSet, o *api.ComputeStateOutput, getCode func(
    }
    .slow-true-false { color: #660; }
    .slow-true-true { color: #f80; }
-   table { font-size: 12px; }
+   table {
+    font-size: 12px;
+	border-collapse: collapse;
+	}
+	tr.sum { border-top: 1px solid black; }
   </style>
  </head>
  <body>
@@ -1029,10 +1033,20 @@ func computeStateHtml(ts *types.TipSet, o *api.ComputeStateOutput, getCode func(
 		}
 		fmt.Printf("\n<details><summary>Gas Trace</summary><table><tr>" +
 			"<th>Name</th><th>Total/Compute/Storage</th><th>Time Taken</th><th>Location</th></tr>")
+
+		var sumTotal, sumCompute, sumStorage int64
+		var sumTime time.Duration
 		for _, gc := range ir.ExecutionTrace.GasCharges {
 			fmt.Printf("<tr><td>%s</td><td>%d/%d/%d</td><td>%s</td><td>%s</td></tr>",
 				gc.Name, gc.TotalGas, gc.ComputeGas, gc.StorageGas, gc.TimeTaken, gc.Location)
+			sumTotal += gc.TotalGas
+			sumCompute += gc.ComputeGas
+			sumStorage += gc.StorageGas
+			sumTime += gc.TimeTaken
 		}
+		fmt.Printf("<tr class=\"sum\"><td>%s</td><td>%d/%d/%d</td><td>%s</td><td>%s</td></tr>",
+			"<b>Sum</b>", sumTotal, sumCompute, sumStorage, sumTime, "")
+
 		fmt.Printf("</table></details>\n")
 
 		fmt.Println("<div>Execution trace:</div>")
@@ -1092,10 +1106,18 @@ func printInternalExecutionsHtml(hashName string, trace []types.ExecutionTrace, 
 		}
 		fmt.Printf("\n<details><summary>Gas Trace</summary><table><tr>" +
 			"<th>Name</th><th>Total/Compute/Storage</th><th>Time Taken</th><th>Location</th></tr>")
+		var sumTotal, sumCompute, sumStorage int64
+		var sumTime time.Duration
 		for _, gc := range im.GasCharges {
 			fmt.Printf("<tr><td>%s</td><td>%d/%d/%d</td><td>%s</td><td>%s</td></tr>",
 				gc.Name, gc.TotalGas, gc.ComputeGas, gc.StorageGas, gc.TimeTaken, gc.Location)
+			sumTotal += gc.TotalGas
+			sumCompute += gc.ComputeGas
+			sumStorage += gc.StorageGas
+			sumTime += gc.TimeTaken
 		}
+		fmt.Printf("<tr class=\"sum\"><td>%s</td><td>%d/%d/%d</td><td>%s</td><td>%s</td></tr>",
+			"<b>Sum</b>", sumTotal, sumCompute, sumStorage, sumTime, "")
 		fmt.Printf("</table></details>\n")
 		if len(im.Subcalls) > 0 {
 			fmt.Println("<div>Subcalls:</div>")

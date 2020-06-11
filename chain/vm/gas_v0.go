@@ -108,12 +108,12 @@ func (pl *pricelistV0) OnMethodInvocation(value abi.TokenAmount, methodNum abi.M
 
 // OnIpldGet returns the gas used for storing an object
 func (pl *pricelistV0) OnIpldGet(dataSize int) GasCharge {
-	return newGasCharge("OnIpldGet", pl.ipldGetBase+int64(dataSize)*pl.ipldGetPerByte, 0)
+	return newGasCharge(fmt.Sprintf("OnIpldGet:%db", dataSize), pl.ipldGetBase+int64(dataSize)*pl.ipldGetPerByte, 0)
 }
 
 // OnIpldPut returns the gas used for storing an object
 func (pl *pricelistV0) OnIpldPut(dataSize int) GasCharge {
-	return newGasCharge("OnIpldPut", pl.ipldPutBase, int64(dataSize)*pl.ipldPutPerByte)
+	return newGasCharge(fmt.Sprintf("OnIpldPut:%db", dataSize), pl.ipldPutBase, int64(dataSize)*pl.ipldPutPerByte)
 }
 
 // OnCreateActor returns the gas used for creating an actor
