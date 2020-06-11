@@ -931,14 +931,14 @@ var stateComputeStateCmd = &cli.Command{
 		if cctx.Bool("show-trace") {
 			for _, ir := range stout.Trace {
 				fmt.Printf("%s\t%s\t%s\t%d\t%x\t%d\t%x\n", ir.Msg.From, ir.Msg.To, ir.Msg.Value, ir.Msg.Method, ir.Msg.Params, ir.MsgRct.ExitCode, ir.MsgRct.Return)
-				printInternalExecutions("\t", ir.InternalExecutions)
+				printInternalExecutions("\t", ir.ExecutionTrace.Subcalls)
 			}
 		}
 		return nil
 	},
 }
 
-func printInternalExecutions(prefix string, trace []*types.ExecutionResult) {
+func printInternalExecutions(prefix string, trace []types.ExecutionTrace) {
 	for _, im := range trace {
 		fmt.Printf("%s%s\t%s\t%s\t%d\t%x\t%d\t%x\n", prefix, im.Msg.From, im.Msg.To, im.Msg.Value, im.Msg.Method, im.Msg.Params, im.MsgRct.ExitCode, im.MsgRct.Return)
 		printInternalExecutions(prefix+"\t", im.Subcalls)
@@ -1028,11 +1028,9 @@ func computeStateHtml(ts *types.TipSet, o *api.ComputeStateOutput, getCode func(
 			fmt.Printf(`<div class="error">Error: <pre>%s</pre></div>`, ir.Error)
 		}
 
-		if len(ir.InternalExecutions) > 0 {
-			fmt.Println("<div>Internal executions:</div>")
-			if err := printInternalExecutionsHtml(cid.String(), ir.InternalExecutions, getCode); err != nil {
-				return err
-			}
+		fmt.Println("<div>Execution trace:</div>")
+		if err := printInternalExecutionsHtml(cid.String(), ir.ExecutionTrace.Subcalls, getCode); err != nil {
+			return err
 		}
 		fmt.Println("</div>")
 	}
@@ -1042,7 +1040,7 @@ func computeStateHtml(ts *types.TipSet, o *api.ComputeStateOutput, getCode func(
 	return nil
 }
 
-func printInternalExecutionsHtml(hashName string, trace []*types.ExecutionResult, getCode func(addr address.Address) (cid.Cid, error)) error {
+func printInternalExecutionsHtml(hashName string, trace []types.ExecutionTrace, getCode func(addr address.Address) (cid.Cid, error)) error {
 	for i, im := range trace {
 		hashName := fmt.Sprintf("%s-r%d", hashName, i)
 

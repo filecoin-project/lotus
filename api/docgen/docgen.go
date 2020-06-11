@@ -93,7 +93,7 @@ func init() {
 	addExample(build.APIVersion)
 	addExample(api.PCHInbound)
 	addExample(time.Minute)
-	addExample(&types.ExecutionResult{
+	addExample(&types.ExecutionTrace{
 		Msg:    exampleValue(reflect.TypeOf(&types.Message{})).(*types.Message),
 		MsgRct: exampleValue(reflect.TypeOf(&types.MessageReceipt{})).(*types.MessageReceipt),
 	})
