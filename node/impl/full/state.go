@@ -242,11 +242,11 @@ func (a *StateAPI) StateReplay(ctx context.Context, tsk types.TipSetKey, mc cid.
 	}
 
 	return &api.InvocResult{
-		Msg:                m,
-		MsgRct:             &r.MessageReceipt,
-		InternalExecutions: r.InternalExecutions,
-		Error:              errstr,
-		Duration:           r.Duration,
+		Msg:            m,
+		MsgRct:         &r.MessageReceipt,
+		ExecutionTrace: r.ExecutionTrace,
+		Error:          errstr,
+		Duration:       r.Duration,
 	}, nil
 }
 

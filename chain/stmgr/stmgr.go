@@ -121,10 +121,10 @@ func (sm *StateManager) ExecutionTrace(ctx context.Context, ts *types.TipSet) (c
 	var trace []*api.InvocResult
 	st, _, err := sm.computeTipSetState(ctx, ts.Blocks(), func(mcid cid.Cid, msg *types.Message, ret *vm.ApplyRet) error {
 		ir := &api.InvocResult{
-			Msg:                msg,
-			MsgRct:             &ret.MessageReceipt,
-			InternalExecutions: ret.InternalExecutions,
-			Duration:           ret.Duration,
+			Msg:            msg,
+			MsgRct:         &ret.MessageReceipt,
+			ExecutionTrace: ret.ExecutionTrace,
+			Duration:       ret.Duration,
 		}
 		if ret.ActorErr != nil {
 			ir.Error = ret.ActorErr.Error()

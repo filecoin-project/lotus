@@ -104,6 +104,7 @@ require (
 	github.com/multiformats/go-multibase v0.0.2
 	github.com/multiformats/go-multihash v0.0.13
 	github.com/opentracing/opentracing-go v1.1.0
+	github.com/prometheus/common v0.9.1
 	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/stretchr/testify v1.5.1
 	github.com/syndtr/goleveldb v1.0.0
