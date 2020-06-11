@@ -484,14 +484,15 @@ func (rt *Runtime) stateCommit(oldh, newh cid.Cid) aerrors.ActorError {
 	return nil
 }
 
-func (rt *Runtime) ChargeGas(toUse int64) {
-	err := rt.chargeGasInternal(toUse)
+func (rt *Runtime) ChargeGas(gas GasCharge) {
+	err := rt.chargeGasInternal(gas)
 	if err != nil {
 		panic(err)
 	}
 }
 
-func (rt *Runtime) chargeGasInternal(toUse int64) aerrors.ActorError {
+func (rt *Runtime) chargeGasInternal(gas GasCharge) aerrors.ActorError {
+	toUse := gas.Total()
 	if rt.gasUsed+toUse > rt.gasAvailable {
 		rt.gasUsed = rt.gasAvailable
 		return aerrors.Newf(exitcode.SysErrOutOfGas, "not enough gas: used=%d, available=%d", rt.gasUsed, rt.gasAvailable)
@@ -500,8 +501,8 @@ func (rt *Runtime) chargeGasInternal(toUse int64) aerrors.ActorError {
 	return nil
 }
 
-func (rt *Runtime) chargeGasSafe(toUse int64) aerrors.ActorError {
-	return rt.chargeGasInternal(toUse)
+func (rt *Runtime) chargeGasSafe(gas GasCharge) aerrors.ActorError {
+	return rt.chargeGasInternal(gas)
 }
 
 func (rt *Runtime) Pricelist() Pricelist {

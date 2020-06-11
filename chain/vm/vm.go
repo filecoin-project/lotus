@@ -62,7 +62,7 @@ func ResolveToKeyAddr(state types.StateTree, cst cbor.IpldStore, addr address.Ad
 var _ cbor.IpldBlockstore = (*gasChargingBlocks)(nil)
 
 type gasChargingBlocks struct {
-	chargeGas func(int64)
+	chargeGas func(GasCharge)
 	pricelist Pricelist
 	under     cbor.IpldBlockstore
 }
@@ -294,7 +294,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 
 	pl := PricelistByEpoch(vm.blockHeight)
 
-	msgGasCost := pl.OnChainMessage(cmsg.ChainLength())
+	msgGasCost := pl.OnChainMessage(cmsg.ChainLength()).Total()
 	// this should never happen, but is currently still exercised by some tests
 	if msgGasCost > msg.GasLimit {
 		return &ApplyRet{

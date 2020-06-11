@@ -12,34 +12,57 @@ import (
 	"github.com/ipfs/go-cid"
 )
 
+const (
+	GasStorageMulti = 1
+	GasComputeMulti = 1
+)
+
+type GasCharge struct {
+	Name       string
+	ComputeGas int64
+	StorageGas int64
+}
+
+func (g GasCharge) Total() int64 {
+	return g.ComputeGas*GasComputeMulti + g.StorageGas*GasStorageMulti
+}
+
+func newGasCharge(name string, computeGas int64, storageGas int64) GasCharge {
+	return GasCharge{
+		Name:       name,
+		ComputeGas: computeGas,
+		StorageGas: storageGas,
+	}
+}
+
 // Pricelist provides prices for operations in the VM.
 //
 // Note: this interface should be APPEND ONLY since last chain checkpoint
 type Pricelist interface {
 	// OnChainMessage returns the gas used for storing a message of a given size in the chain.
-	OnChainMessage(msgSize int) int64
+	OnChainMessage(msgSize int) GasCharge
 	// OnChainReturnValue returns the gas used for storing the response of a message in the chain.
-	OnChainReturnValue(dataSize int) int64
+	OnChainReturnValue(dataSize int) GasCharge
 
 	// OnMethodInvocation returns the gas used when invoking a method.
-	OnMethodInvocation(value abi.TokenAmount, methodNum abi.MethodNum) int64
+	OnMethodInvocation(value abi.TokenAmount, methodNum abi.MethodNum) GasCharge
 
 	// OnIpldGet returns the gas used for storing an object
-	OnIpldGet(dataSize int) int64
+	OnIpldGet(dataSize int) GasCharge
 	// OnIpldPut returns the gas used for storing an object
-	OnIpldPut(dataSize int) int64
+	OnIpldPut(dataSize int) GasCharge
 
 	// OnCreateActor returns the gas used for creating an actor
-	OnCreateActor() int64
+	OnCreateActor() GasCharge
 	// OnDeleteActor returns the gas used for deleting an actor
-	OnDeleteActor() int64
+	OnDeleteActor() GasCharge
 
-	OnVerifySignature(sigType crypto.SigType, planTextSize int) (int64, error)
-	OnHashing(dataSize int) int64
-	OnComputeUnsealedSectorCid(proofType abi.RegisteredProof, pieces []abi.PieceInfo) int64
-	OnVerifySeal(info abi.SealVerifyInfo) int64
-	OnVerifyPost(info abi.WindowPoStVerifyInfo) int64
-	OnVerifyConsensusFault() int64
+	OnVerifySignature(sigType crypto.SigType, planTextSize int) (GasCharge, error)
+	OnHashing(dataSize int) GasCharge
+	OnComputeUnsealedSectorCid(proofType abi.RegisteredProof, pieces []abi.PieceInfo) GasCharge
+	OnVerifySeal(info abi.SealVerifyInfo) GasCharge
+	OnVerifyPost(info abi.WindowPoStVerifyInfo) GasCharge
+	OnVerifyConsensusFault() GasCharge
 }
 
 var prices = map[abi.ChainEpoch]Pricelist{
@@ -93,7 +116,7 @@ func PricelistByEpoch(epoch abi.ChainEpoch) Pricelist {
 type pricedSyscalls struct {
 	under     vmr.Syscalls
 	pl        Pricelist
-	chargeGas func(int64)
+	chargeGas func(GasCharge)
 }
 
 // Verifies that a signature is valid for an address and plaintext.
@@ -146,6 +169,6 @@ func (ps pricedSyscalls) VerifyConsensusFault(h1 []byte, h2 []byte, extra []byte
 }
 
 func (ps pricedSyscalls) BatchVerifySeals(inp map[address.Address][]abi.SealVerifyInfo) (map[address.Address][]bool, error) {
-	ps.chargeGas(0) // TODO: this is only called by the cron actor. Should we even charge gas?
+	ps.chargeGas(newGasCharge("BatchVerifySeals", 0, 0)) // TODO: this is only called by the cron actor. Should we even charge gas?
 	return ps.under.BatchVerifySeals(inp)
 }
