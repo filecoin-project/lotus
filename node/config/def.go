@@ -27,7 +27,12 @@ type FullNode struct {
 type StorageMiner struct {
 	Common
 
-	Storage sectorstorage.SealerConfig
+	StorageDeals StorageDealConfig
+	Storage      sectorstorage.SealerConfig
+}
+
+type StorageDealConfig struct {
+	IsAcceptingStorageDeals bool
 }
 
 // API contains configs for API endpoint
