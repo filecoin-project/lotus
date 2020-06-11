@@ -2,6 +2,7 @@ package modules
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/ipfs/go-bitswap"
@@ -17,6 +18,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/routing"
 	"go.uber.org/fx"
+	"go.uber.org/multierr"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -390,5 +392,23 @@ func NewIsAcceptingStorageDealsFunc(r repo.LockedRepo) (dtypes.IsAcceptingStorag
 		}
 
 		return cfg.Dealmaking.IsAcceptingStorageDeals, nil
+	}, nil
+}
+
+func NewSetAcceptingStorageDealsFunc(r repo.LockedRepo) (dtypes.SetAcceptingStorageDealsFunc, error) {
+	return func(b bool) error {
+		var typeErr error
+
+		setConfigErr := r.SetConfig(func(raw interface{}) {
+			cfg, ok := raw.(*config.StorageMiner)
+			if !ok {
+				typeErr = errors.New("expected storage miner config")
+				return
+			}
+
+			cfg.Dealmaking.IsAcceptingStorageDeals = b
+		})
+
+		return multierr.Combine(typeErr, setConfigErr)
 	}, nil
 }

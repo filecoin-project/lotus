@@ -15,7 +15,13 @@ var enableCmd = &cli.Command{
 	Usage: "Configure the miner to consider storage deal proposals",
 	Flags: []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
-		panic("enable storage deals")
+		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		return api.DealsSetIsAcceptingStorageDeals(lcli.DaemonContext(cctx), true)
 	},
 }
 
@@ -24,7 +30,13 @@ var disableCmd = &cli.Command{
 	Usage: "Configure the miner to reject all storage deal proposals",
 	Flags: []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
-		panic("disable storage deals")
+		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		return api.DealsSetIsAcceptingStorageDeals(lcli.DaemonContext(cctx), false)
 	},
 }
 
@@ -60,6 +72,8 @@ var dealsCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		dealsImportDataCmd,
 		dealsListCmd,
+		enableCmd,
+		disableCmd,
 	},
 }
 

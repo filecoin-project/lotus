@@ -11,3 +11,7 @@ type MinerID abi.ActorID
 // IsAcceptingStorageDealsFunc is a function which reads from miner config to
 // determine if the user has disabled storage deals (or not).
 type IsAcceptingStorageDealsFunc func() (bool, error)
+
+// SetAcceptingStorageDealsFunc is a function which is used to disable or enable
+// storage deal acceptance.
+type SetAcceptingStorageDealsFunc func(bool) error

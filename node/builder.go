@@ -314,6 +314,7 @@ func Online() Option {
 			Override(new(gen.WinningPoStProver), storage.NewWinningPoStProver),
 			Override(new(*miner.Miner), modules.SetupBlockProducer),
 			Override(new(dtypes.IsAcceptingStorageDealsFunc), modules.NewIsAcceptingStorageDealsFunc),
+			Override(new(dtypes.SetAcceptingStorageDealsFunc), modules.NewSetAcceptingStorageDealsFunc),
 		),
 	)
 }

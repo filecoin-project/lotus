@@ -33,8 +33,6 @@ func main() {
 		setPriceCmd,
 		workersCmd,
 		provingCmd,
-		enableCmd,
-		disableCmd,
 	}
 	jaeger := tracing.SetupJaegerTracing("lotus")
 	defer func() {
