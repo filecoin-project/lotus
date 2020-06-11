@@ -835,6 +835,10 @@ var slashConsensusFault = &cli.Command{
 			Name:  "miner",
 			Usage: "Miner address",
 		},
+		&cli.StringFlag{
+			Name:  "extra",
+			Usage: "Extra block cid",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -879,10 +883,31 @@ var slashConsensusFault = &cli.Command{
 			return err
 		}
 
-		params, err := actors.SerializeParams(&miner.ReportConsensusFaultParams{
+		params := miner.ReportConsensusFaultParams{
 			BlockHeader1: bh1,
 			BlockHeader2: bh2,
-		})
+		}
+
+		if cctx.String("extra") != "" {
+			cExtra, err := cid.Parse(cctx.String("extra"))
+			if err != nil {
+				return xerrors.Errorf("parsing cid extra: %w", err)
+			}
+
+			bExtra, err := api.ChainGetBlock(ctx, cExtra)
+			if err != nil {
+				return xerrors.Errorf("getting block extra: %w", err)
+			}
+
+			be, err := cborutil.Dump(bExtra)
+			if err != nil {
+				return err
+			}
+
+			params.BlockHeaderExtra = be
+		}
+
+		enc, err := actors.SerializeParams(&params)
 		if err != nil {
 			return err
 		}
@@ -903,7 +928,7 @@ var slashConsensusFault = &cli.Command{
 			GasPrice: types.NewInt(1),
 			GasLimit: 10000000,
 			Method:   builtin.MethodsMiner.ReportConsensusFault,
-			Params:   params,
+			Params:   enc,
 		}
 
 		smsg, err := api.MpoolPushMessage(ctx, msg)
