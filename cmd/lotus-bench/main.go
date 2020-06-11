@@ -598,6 +598,11 @@ var proveCmd = &cli.Command{
 			Name:  "no-gpu",
 			Usage: "disable gpu usage for the benchmark run",
 		},
+		&cli.StringFlag{
+			Name:  "miner-addr",
+			Usage: "pass miner address (only necessary if using existing sectorbuilder)",
+			Value: "t01000",
+		},
 	},
 	Action: func(c *cli.Context) error {
 		if c.Bool("no-gpu") {
@@ -659,7 +664,7 @@ var proveCmd = &cli.Command{
 
 		fmt.Printf("proof: %x\n", proof)
 
-		fmt.Printf("----\nresults (v23) (%d)\n", c2in.SectorSize)
+		fmt.Printf("----\nresults (v27) (%d)\n", c2in.SectorSize)
 		dur := sealCommit2.Sub(start)
 
 		fmt.Printf("seal: commit phase 2: %s (%s)\n", dur, bps(abi.SectorSize(c2in.SectorSize), dur))
