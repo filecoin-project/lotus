@@ -389,6 +389,6 @@ func NewIsAcceptingStorageDealsFunc(r repo.LockedRepo) (dtypes.IsAcceptingStorag
 			return false, xerrors.New("expected address of config.StorageMiner")
 		}
 
-		return cfg.StorageDeals.IsAcceptingStorageDeals, nil
+		return cfg.Dealmaking.IsAcceptingStorageDeals, nil
 	}, nil
 }

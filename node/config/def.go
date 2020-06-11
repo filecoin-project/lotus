@@ -27,11 +27,11 @@ type FullNode struct {
 type StorageMiner struct {
 	Common
 
-	StorageDeals StorageDealConfig
-	Storage      sectorstorage.SealerConfig
+	Dealmaking DealmakingConfig
+	Storage    sectorstorage.SealerConfig
 }
 
-type StorageDealConfig struct {
+type DealmakingConfig struct {
 	IsAcceptingStorageDeals bool
 }
 
@@ -113,6 +113,10 @@ func DefaultStorageMiner() *StorageMiner {
 			AllowPreCommit2: true,
 			AllowCommit:     true,
 			AllowUnseal:     true,
+		},
+
+		Dealmaking: DealmakingConfig{
+			IsAcceptingStorageDeals: true,
 		},
 	}
 	cfg.Common.API.ListenAddress = "/ip4/127.0.0.1/tcp/2345/http"
