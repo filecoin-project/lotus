@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"html/template"
+	"os"
 	"reflect"
 	"sort"
 	"strconv"
@@ -31,6 +33,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
+	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/api"
@@ -40,7 +43,7 @@ import (
 )
 
 type methodMeta struct {
-	name string
+	Name string
 
 	params reflect.Type
 	ret    reflect.Type
@@ -68,7 +71,7 @@ func init() {
 		nf := rt.NumField()
 
 		methods[c] = append(methods[c], methodMeta{
-			name:   "Send",
+			Name:   "Send",
 			params: reflect.TypeOf(new(adt.EmptyValue)),
 			ret:    reflect.TypeOf(new(adt.EmptyValue)),
 		})
@@ -78,7 +81,7 @@ func init() {
 			export := reflect.TypeOf(exports[i+1])
 
 			methods[c] = append(methods[c], methodMeta{
-				name:   rt.Field(i).Name,
+				Name:   rt.Field(i).Name,
 				params: export.In(1),
 				ret:    export.Out(0),
 			})
@@ -923,7 +926,7 @@ var stateComputeStateCmd = &cli.Command{
 				return c.Code, nil
 			}
 
-			return computeStateHtml(ts, stout, getCode)
+			return computeStateHTMLTempl(ts, stout, getCode)
 		}
 
 		fmt.Println("computed state cid: ", stout.Root)
@@ -944,16 +947,8 @@ func printInternalExecutions(prefix string, trace []types.ExecutionTrace) {
 	}
 }
 
-func codeStr(c cid.Cid) string {
-	cmh, err := multihash.Decode(c.Hash())
-	if err != nil {
-		panic(err)
-	}
-	return string(cmh.Digest)
-}
-
-func computeStateHtml(ts *types.TipSet, o *api.ComputeStateOutput, getCode func(addr address.Address) (cid.Cid, error)) error {
-	fmt.Printf(`<html>
+var compStateTemplate = `
+<html>
  <head>
   <style>
    html, body { font-family: monospace; }
@@ -983,152 +978,153 @@ func computeStateHtml(ts *types.TipSet, o *api.ComputeStateOutput, getCode func(
   </style>
  </head>
  <body>
-  <div>Tipset: <b>%s</b></div>
-  <div>Height: %d</div>
-  <div>State CID: <b>%s</b></div>
-  <div>Calls</div>`, ts.Key(), ts.Height(), o.Root)
+  <div>Tipset: <b>{{.TipSet.Key}}</b></div>
+  <div>Epoch: {{.TipSet.Height}}</div>
+  <div>State CID: <b>{{.Comp.Root}}</b></div>
+  <div>Calls</div>
+  {{range .Comp.Trace}}
+   {{template "message" (Call .ExecutionTrace false .Msg.Cid.String)}}
+  {{end}}
+ </body>
+</html>
+`
 
-	for _, ir := range o.Trace {
-		toCode, err := getCode(ir.Msg.To)
-		if err != nil {
-			return xerrors.Errorf("getting code for %s: %w", toCode, err)
-		}
+var compStateMsg = `
+<div class="exec" id="{{.Hash}}">
+ {{$code := GetCode .Msg.To}}
+ <div>
+ <a href="#{{.Hash}}">
+  {{if not .Subcall}}
+   <h2 class="call">
+  {{else}}
+   <h4 class="call">
+  {{end}}
+   {{- CodeStr $code}}:{{GetMethod ($code) (.Msg.Method)}}
+  {{if not .Subcall}}
+   </h2>
+  {{else}}
+   </h4>
+  {{end}}
+ </a>
+ </div>
 
-		params, err := jsonParams(toCode, ir.Msg.Method, ir.Msg.Params)
-		if err != nil {
-			return xerrors.Errorf("decoding params: %w", err)
-		}
+ <div><b>{{.Msg.From}}</b> -&gt; <b>{{.Msg.To}}</b> ({{ToFil .Msg.Value}} FIL), M{{.Msg.Method}}</div>
+ {{if not .Subcall}}<div><small>Msg CID: {{.Msg.Cid}}</small></div>{{end}}
+ {{if gt (len .Msg.Params) 0}}
+  <div><pre class="params">{{JsonParams ($code) (.Msg.Method) (.Msg.Params) | html}}</pre></div>
+ {{end}}
+ <div><span class="slow-{{IsSlow .Duration}}-{{IsVerySlow .Duration}}">Took {{.Duration}}</span>, <span class="exit{{IntExit .MsgRct.ExitCode}}">Exit: <b>{{.MsgRct.ExitCode}}</b></span>{{if gt (len .MsgRct.Return) 0}}, Return{{end}}</div>
+ 
+ {{if gt (len .MsgRct.Return) 0}}
+  <div><pre class="ret">{{JsonReturn ($code) (.Msg.Method) (.MsgRct.Return) | html}}</pre></div>
+ {{end}}
 
-		if len(ir.Msg.Params) != 0 {
-			params = `<div><pre class="params">` + params + `</pre></div>`
-		} else {
-			params = ""
-		}
+ {{if ne .MsgRct.ExitCode 0}}
+  <div class="error">Error: <pre>{{.Error}}</pre></div>
+ {{end}}
 
-		ret, err := jsonReturn(toCode, ir.Msg.Method, ir.MsgRct.Return)
-		if err != nil {
-			return xerrors.Errorf("decoding return value: %w", err)
-		}
+ <details>
+  <summary>Gas Trace</summary>
+  <table>
+   <tr><th>Name</th><th>Total/Compute/Storage</th><th>Time Taken</th><th>Location</th></tr>
+   {{range .GasCharges}}
+    <tr><td>{{.Name}}</td><td>{{.TotalGas}}/{{.ComputeGas}}/{{.StorageGas}}</td><td>{{.TimeTaken}}</td><td>{{.Location}}</td></tr>
+   {{end}}
+   {{with SumGas .GasCharges}}
+     <tr class="sum"><td><b>Sum</b></td><td>{{.TotalGas}}/{{.ComputeGas}}/{{.StorageGas}}</td><td>{{.TimeTaken}}</td><td></td></tr>
+   {{end}}
+  </table>
+ </details>
+ {{if gt (len .Subcalls) 0}}
+  <div>Subcalls:</div>
+  {{$hash := .Hash}}
+  {{range .Subcalls}}
+   {{template "message" (Call . true (printf "%s-%s" $hash .Msg.Cid.String))}}
+  {{end}}
+ {{end}}
+</div>`
 
-		if len(ir.MsgRct.Return) == 0 {
-			ret = "</div>"
-		} else {
-			ret = `, Return</div><div><pre class="ret">` + ret + `</pre></div>`
-		}
-
-		slow := ir.Duration > 10*time.Millisecond
-		veryslow := ir.Duration > 50*time.Millisecond
-
-		cid := ir.Msg.Cid()
-
-		fmt.Printf(`<div class="exec" id="%s">
-<div><a href="#%s"><h2 class="call">%s:%s</h2></a></div>
-<div><b>%s</b> -&gt; <b>%s</b> (%s FIL), M%d</div>
-<div><small>Msg CID: %s</small></div>
-%s
-<div><span class="slow-%t-%t">Took %s</span>, <span class="exit%d">Exit: <b>%d</b></span>%s
-`, cid, cid, codeStr(toCode), methods[toCode][ir.Msg.Method].name, ir.Msg.From, ir.Msg.To, types.FIL(ir.Msg.Value), ir.Msg.Method, cid, params, slow, veryslow, ir.Duration, ir.MsgRct.ExitCode, ir.MsgRct.ExitCode, ret)
-		if ir.MsgRct.ExitCode != 0 {
-			fmt.Printf(`<div class="error">Error: <pre>%s</pre></div>`, ir.Error)
-		}
-		fmt.Printf("\n<details><summary>Gas Trace</summary><table><tr>" +
-			"<th>Name</th><th>Total/Compute/Storage</th><th>Time Taken</th><th>Location</th></tr>")
-
-		var sumTotal, sumCompute, sumStorage int64
-		var sumTime time.Duration
-		for _, gc := range ir.ExecutionTrace.GasCharges {
-			fmt.Printf("<tr><td>%s</td><td>%d/%d/%d</td><td>%s</td><td>%s</td></tr>",
-				gc.Name, gc.TotalGas, gc.ComputeGas, gc.StorageGas, gc.TimeTaken, gc.Location)
-			sumTotal += gc.TotalGas
-			sumCompute += gc.ComputeGas
-			sumStorage += gc.StorageGas
-			sumTime += gc.TimeTaken
-		}
-		fmt.Printf("<tr class=\"sum\"><td>%s</td><td>%d/%d/%d</td><td>%s</td><td>%s</td></tr>",
-			"<b>Sum</b>", sumTotal, sumCompute, sumStorage, sumTime, "")
-
-		fmt.Printf("</table></details>\n")
-
-		fmt.Println("<div>Execution trace:</div>")
-		if err := printInternalExecutionsHtml(cid.String(), ir.ExecutionTrace.Subcalls, getCode); err != nil {
-			return err
-		}
-		fmt.Println("</div>")
-	}
-
-	fmt.Printf(`</body>
-</html>`)
-	return nil
+type compStateHTMLIn struct {
+	TipSet *types.TipSet
+	Comp   *api.ComputeStateOutput
 }
 
-func printInternalExecutionsHtml(hashName string, trace []types.ExecutionTrace, getCode func(addr address.Address) (cid.Cid, error)) error {
-	for i, im := range trace {
-		hashName := fmt.Sprintf("%s-r%d", hashName, i)
-
-		toCode, err := getCode(im.Msg.To)
-		if err != nil {
-			return xerrors.Errorf("getting code for %s: %w", toCode, err)
-		}
-
-		params, err := jsonParams(toCode, im.Msg.Method, im.Msg.Params)
-		if err != nil {
-			return xerrors.Errorf("decoding params: %w", err)
-		}
-
-		if len(im.Msg.Params) != 0 {
-			params = `<div><pre class="params">` + params + `</pre></div>`
-		} else {
-			params = ""
-		}
-
-		ret, err := jsonReturn(toCode, im.Msg.Method, im.MsgRct.Return)
-		if err != nil {
-			return xerrors.Errorf("decoding return value: %w", err)
-		}
-
-		if len(im.MsgRct.Return) == 0 {
-			ret = "</div>"
-		} else {
-			ret = `, Return</div><div><pre class="ret">` + ret + `</pre></div>`
-		}
-
-		slow := im.Duration > 10*time.Millisecond
-		veryslow := im.Duration > 50*time.Millisecond
-
-		fmt.Printf(`<div class="exec" id="%s">
-<div><a href="#%s"><h4 class="call">%s:%s</h4></a></div>
-<div><b>%s</b> -&gt; <b>%s</b> (%s FIL), M%d</div>
-%s
-<div><span class="slow-%t-%t">Took %s</span>, <span class="exit%d">Exit: <b>%d</b></span>%s
-`, hashName, hashName, codeStr(toCode), methods[toCode][im.Msg.Method].name, im.Msg.From, im.Msg.To, types.FIL(im.Msg.Value), im.Msg.Method, params, slow, veryslow, im.Duration, im.MsgRct.ExitCode, im.MsgRct.ExitCode, ret)
-		if im.MsgRct.ExitCode != 0 {
-			fmt.Printf(`<div class="error">Error: <pre>%s</pre></div>`, im.Error)
-		}
-		fmt.Printf("\n<details><summary>Gas Trace</summary><table><tr>" +
-			"<th>Name</th><th>Total/Compute/Storage</th><th>Time Taken</th><th>Location</th></tr>")
-		var sumTotal, sumCompute, sumStorage int64
-		var sumTime time.Duration
-		for _, gc := range im.GasCharges {
-			fmt.Printf("<tr><td>%s</td><td>%d/%d/%d</td><td>%s</td><td>%s</td></tr>",
-				gc.Name, gc.TotalGas, gc.ComputeGas, gc.StorageGas, gc.TimeTaken, gc.Location)
-			sumTotal += gc.TotalGas
-			sumCompute += gc.ComputeGas
-			sumStorage += gc.StorageGas
-			sumTime += gc.TimeTaken
-		}
-		fmt.Printf("<tr class=\"sum\"><td>%s</td><td>%d/%d/%d</td><td>%s</td><td>%s</td></tr>",
-			"<b>Sum</b>", sumTotal, sumCompute, sumStorage, sumTime, "")
-		fmt.Printf("</table></details>\n")
-		if len(im.Subcalls) > 0 {
-			fmt.Println("<div>Subcalls:</div>")
-			if err := printInternalExecutionsHtml(hashName, im.Subcalls, getCode); err != nil {
-				return err
-			}
-		}
-		fmt.Println("</div>")
+func computeStateHTMLTempl(ts *types.TipSet, o *api.ComputeStateOutput, getCode func(addr address.Address) (cid.Cid, error)) error {
+	t, err := template.New("compute_state").Funcs(map[string]interface{}{
+		"GetCode":    getCode,
+		"GetMethod":  getMethod,
+		"ToFil":      toFil,
+		"JsonParams": jsonParams,
+		"JsonReturn": jsonReturn,
+		"IsSlow":     isSlow,
+		"IsVerySlow": isVerySlow,
+		"IntExit":    func(i exitcode.ExitCode) int64 { return int64(i) },
+		"SumGas":     sumGas,
+		"CodeStr":    codeStr,
+		"Call":       call,
+	}).Parse(compStateTemplate)
+	if err != nil {
+		return err
+	}
+	t, err = t.New("message").Parse(compStateMsg)
+	if err != nil {
+		return err
 	}
 
-	return nil
+	return t.ExecuteTemplate(os.Stdout, "compute_state", &compStateHTMLIn{
+		TipSet: ts,
+		Comp:   o,
+	})
+}
+
+type callMeta struct {
+	types.ExecutionTrace
+	Subcall bool
+	Hash    string
+}
+
+func call(e types.ExecutionTrace, subcall bool, hash string) callMeta {
+	return callMeta{
+		ExecutionTrace: e,
+		Subcall:        subcall,
+		Hash:           hash,
+	}
+}
+
+func codeStr(c cid.Cid) string {
+	cmh, err := multihash.Decode(c.Hash())
+	if err != nil {
+		panic(err)
+	}
+	return string(cmh.Digest)
+}
+
+func getMethod(code cid.Cid, method abi.MethodNum) string {
+	return methods[code][method].Name
+}
+
+func toFil(f types.BigInt) types.FIL {
+	return types.FIL(f)
+}
+
+func isSlow(t time.Duration) bool {
+	return t > 10*time.Millisecond
+}
+
+func isVerySlow(t time.Duration) bool {
+	return t > 50*time.Millisecond
+}
+
+func sumGas(changes []*types.GasTrace) types.GasTrace {
+	var out types.GasTrace
+	for _, gc := range changes {
+		out.TotalGas += gc.TotalGas
+		out.ComputeGas += gc.ComputeGas
+		out.StorageGas += gc.StorageGas
+		out.TimeTaken += gc.TimeTaken
+	}
+
+	return out
 }
 
 func jsonParams(code cid.Cid, method abi.MethodNum, params []byte) (string, error) {
