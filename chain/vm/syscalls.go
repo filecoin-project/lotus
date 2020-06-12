@@ -88,6 +88,15 @@ func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte) (*runtime.Consen
 		return nil, xerrors.Errorf("cannot decode second block header: %f", decodeErr)
 	}
 
+	var blockAParent0, blockBParent0 types.BlockHeader
+	if decodeErr := blockAParent0.UnmarshalCBOR(bytes.NewReader(blockA.Parents[0].Bytes())); decodeErr != nil {
+		return nil, xerrors.Errorf("cannot decode first block parent0 header: %w", decodeErr)
+	}
+
+	if decodeErr := blockBParent0.UnmarshalCBOR(bytes.NewReader(blockB.Parents[0].Bytes())); decodeErr != nil {
+		return nil, xerrors.Errorf("cannot decode second block parent1 header: %f", decodeErr)
+	}
+
 	// (1) check conditions necessary to any consensus fault
 
 	// were blocks mined by same miner?
@@ -115,7 +124,7 @@ func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte) (*runtime.Consen
 	// (b) time-offset mining fault
 	// strictly speaking no need to compare heights based on double fork mining check above,
 	// but at same height this would be a different fault.
-	if types.CidArrsEqual(blockA.Parents, blockB.Parents) && blockA.Height != blockB.Height {
+	if blockAParent0.Height == blockBParent0.Height && blockA.Height != blockB.Height {
 		consensusFault = &runtime.ConsensusFault{
 			Target: blockA.Miner,
 			Epoch:  blockB.Height,
