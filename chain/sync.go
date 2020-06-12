@@ -50,6 +50,10 @@ import (
 	"github.com/filecoin-project/lotus/metrics"
 )
 
+// Blocks that are more than MaxHeightDrift epochs above
+//the theoretical max height based on systime are quickly rejected
+const MaxHeightDrift = 5
+
 var log = logging.Logger("chain")
 
 var LocalIncoming = "incoming"
@@ -131,6 +135,11 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) bool {
 	ctx := context.Background()
 	if fts == nil {
 		log.Errorf("got nil tipset in InformNewHead")
+		return false
+	}
+
+	if syncer.IsEpochBeyondCurrMax(fts.TipSet().Height()) {
+		log.Errorf("Received block with impossibly large height %d", fts.TipSet().Height())
 		return false
 	}
 
@@ -1379,4 +1388,14 @@ func (syncer *Syncer) getLatestBeaconEntry(ctx context.Context, ts *types.TipSet
 	}
 
 	return nil, xerrors.Errorf("found NO beacon entries in the 20 blocks prior to given tipset")
+}
+
+func (syncer *Syncer) IsEpochBeyondCurrMax(epoch abi.ChainEpoch) bool {
+	g, err := syncer.store.GetGenesis()
+	if err != nil {
+		return false
+	}
+
+	now := uint64(time.Now().Unix())
+	return epoch > (abi.ChainEpoch((now-g.Timestamp)/build.BlockDelay) + MaxHeightDrift)
 }
