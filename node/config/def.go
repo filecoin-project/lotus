@@ -39,9 +39,11 @@ type API struct {
 
 // Libp2p contains configs for libp2p
 type Libp2p struct {
-	ListenAddresses []string
-	BootstrapPeers  []string
-	ProtectedPeers  []string
+	ListenAddresses     []string
+	AnnounceAddresses   []string
+	NoAnnounceAddresses []string
+	BootstrapPeers      []string
+	ProtectedPeers      []string
 
 	ConnMgrLow   uint
 	ConnMgrHigh  uint
@@ -78,6 +80,8 @@ func defCommon() Common {
 				"/ip4/0.0.0.0/tcp/0",
 				"/ip6/::/tcp/0",
 			},
+			AnnounceAddresses:   []string{},
+			NoAnnounceAddresses: []string{},
 
 			ConnMgrLow:   150,
 			ConnMgrHigh:  180,
