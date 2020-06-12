@@ -5,12 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"os"
 	"reflect"
 	"sort"
 	"strconv"
 	"strings"
-	"text/template"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -992,9 +992,22 @@ var compStateTemplate = `
 var compStateMsg = `
 <div class="exec" id="{{.Hash}}">
  {{$code := GetCode .Msg.To}}
- {{$h := "h2"}}{{if .Subcall}}{{$h = "h4"}}{{end}}
+ <div>
+ <a href="#{{.Hash}}">
+  {{if not .Subcall}}
+   <h2 class="call">
+  {{else}}
+   <h4 class="call">
+  {{end}}
+   {{- CodeStr $code}}:{{GetMethod ($code) (.Msg.Method)}}
+  {{if not .Subcall}}
+   </h2>
+  {{else}}
+   </h4>
+  {{end}}
+ </a>
+ </div>
 
- <div><a href="#{{.Hash}}"><{{$h}} class="call">{{CodeStr $code}}:{{GetMethod ($code) (.Msg.Method)}}</{{$h}}></a></div>
  <div><b>{{.Msg.From}}</b> -&gt; <b>{{.Msg.To}}</b> ({{ToFil .Msg.Value}} FIL), M{{.Msg.Method}}</div>
  {{if not .Subcall}}<div><small>Msg CID: {{.Msg.Cid}}</small></div>{{end}}
  {{if gt (len .Msg.Params) 0}}
@@ -1049,6 +1062,9 @@ func computeStateHtmlT(ts *types.TipSet, o *api.ComputeStateOutput, getCode func
 		"SumGas":     sumGas,
 		"CodeStr":    codeStr,
 		"Call":       call,
+		"htmlSafeAttr": func(html string) template.HTMLAttr {
+			return template.HTMLAttr(html)
+		},
 	}).Parse(compStateTemplate)
 	if err != nil {
 		return err
