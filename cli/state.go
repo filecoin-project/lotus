@@ -926,7 +926,7 @@ var stateComputeStateCmd = &cli.Command{
 				return c.Code, nil
 			}
 
-			return computeStateHtmlT(ts, stout, getCode)
+			return computeStateHTMLTempl(ts, stout, getCode)
 		}
 
 		fmt.Println("computed state cid: ", stout.Root)
@@ -1044,12 +1044,12 @@ var compStateMsg = `
  {{end}}
 </div>`
 
-type compStateHtmlIn struct {
+type compStateHTMLIn struct {
 	TipSet *types.TipSet
 	Comp   *api.ComputeStateOutput
 }
 
-func computeStateHtmlT(ts *types.TipSet, o *api.ComputeStateOutput, getCode func(addr address.Address) (cid.Cid, error)) error {
+func computeStateHTMLTempl(ts *types.TipSet, o *api.ComputeStateOutput, getCode func(addr address.Address) (cid.Cid, error)) error {
 	t, err := template.New("compute_state").Funcs(map[string]interface{}{
 		"GetCode":    getCode,
 		"GetMethod":  getMethod,
@@ -1071,7 +1071,7 @@ func computeStateHtmlT(ts *types.TipSet, o *api.ComputeStateOutput, getCode func
 		return err
 	}
 
-	return t.ExecuteTemplate(os.Stdout, "compute_state", &compStateHtmlIn{
+	return t.ExecuteTemplate(os.Stdout, "compute_state", &compStateHTMLIn{
 		TipSet: ts,
 		Comp:   o,
 	})
