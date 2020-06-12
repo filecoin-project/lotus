@@ -75,6 +75,10 @@ type FullNode interface {
 	// manages all incoming and outgoing 'messages' going over the network.
 
 	MpoolPending(context.Context, types.TipSetKey) ([]*types.SignedMessage, error)
+	// MpoolPush adds a signed message to the message pool.
+	//
+	// When calling through JsonRPC, the message parameter can be encoded either
+	//  as an object, or as a base64 encoded string of bytes
 	MpoolPush(context.Context, *types.SignedMessage) (cid.Cid, error)
 	MpoolPushMessage(context.Context, *types.Message) (*types.SignedMessage, error) // get nonce, sign, push
 	MpoolGetNonce(context.Context, address.Address) (uint64, error)

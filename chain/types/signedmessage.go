@@ -2,11 +2,12 @@ package types
 
 import (
 	"bytes"
-
+	"encoding/json"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
+	"golang.org/x/xerrors"
 )
 
 func (sm *SignedMessage) ToStorageBlock() (block.Block, error) {
@@ -79,6 +80,45 @@ func (sm *SignedMessage) Size() int {
 	}
 
 	return len(serdata)
+}
+
+func (sm *SignedMessage) UnmarshalJSON(b []byte) error {
+	if len(b) == 0 {
+		return xerrors.Errorf("expected at least 1 byte")
+	}
+
+	switch b[0] {
+	case '"':
+		var b []byte
+		if err := json.Unmarshal(b, &b); err != nil {
+			return err
+		}
+
+		dm, err := DecodeSignedMessage(b)
+		if err != nil {
+			return err
+		}
+
+		*sm = *dm
+
+		return nil
+	case '{':
+		msg := struct {
+			Message   Message
+			Signature crypto.Signature
+		}{}
+
+		if err := json.Unmarshal(b, &msg); err != nil {
+			return err
+		}
+
+		sm.Message = msg.Message
+		sm.Signature = msg.Signature
+
+		return nil
+	default:
+		return xerrors.Errorf("unexpected token '%s'", b[0])
+	}
 }
 
 func (sm *SignedMessage) VMMessage() *Message {
