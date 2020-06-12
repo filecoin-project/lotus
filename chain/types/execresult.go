@@ -87,11 +87,6 @@ func (gt *GasTrace) MarshalJSON() ([]byte, error) {
 					Line:     frame.Line,
 					Function: frame.Function,
 				}
-				//fn := strings.Split(frame.Function, "/")
-
-				//split := strings.Split(frame.File, "/")
-				//file := strings.Join(split[len(split)-2:], "/")
-				//gt.Location += fmt.Sprintf("%s@%s:%d", fn[len(fn)-1], file, frame.Line)
 				gt.Location = append(gt.Location, l)
 				if !more {
 					break
