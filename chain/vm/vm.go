@@ -107,12 +107,12 @@ func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, origin addres
 	}
 
 	rt.cst = &cbor.BasicIpldStore{
-		Blocks: &gasChargingBlocks{rt.ChargeGas, rt.pricelist, vm.cst.Blocks},
+		Blocks: &gasChargingBlocks{rt.chargeGasFunc(2), rt.pricelist, vm.cst.Blocks},
 		Atlas:  vm.cst.Atlas,
 	}
 	rt.sys = pricedSyscalls{
 		under:     vm.Syscalls,
-		chargeGas: rt.ChargeGas,
+		chargeGas: rt.chargeGasFunc(1),
 		pl:        rt.pricelist,
 	}
 

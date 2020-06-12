@@ -972,9 +972,35 @@ var compStateTemplate = `
    .slow-true-true { color: #f80; }
    table {
     font-size: 12px;
-	border-collapse: collapse;
-	}
-	tr.sum { border-top: 1px solid black; }
+    border-collapse: collapse;
+   }
+   tr { 
+   	border-top: 1px solid black;
+   	border-bottom: 1px solid black;
+   }
+   tr.sum { border-top: 2px solid black; }
+   tr:first-child { border-top: none; }
+   tr:last-child { border-bottom: none; }
+
+
+   .ellipsis-content,
+   .ellipsis-toggle input {
+     display: none;
+   }
+   .ellipsis-toggle {
+     cursor: pointer;
+   }
+   /**
+   Checked State
+   **/
+   
+   .ellipsis-toggle input:checked + .ellipsis {
+     display: none;
+   }
+   .ellipsis-toggle input:checked ~ .ellipsis-content {
+     display: inline;
+	 background-color: #ddd;
+   }
   </style>
  </head>
  <body>
@@ -1028,7 +1054,21 @@ var compStateMsg = `
   <table>
    <tr><th>Name</th><th>Total/Compute/Storage</th><th>Time Taken</th><th>Location</th></tr>
    {{range .GasCharges}}
-    <tr><td>{{.Name}}</td><td>{{.TotalGas}}/{{.ComputeGas}}/{{.StorageGas}}</td><td>{{.TimeTaken}}</td><td>{{.Location}}</td></tr>
+    <tr><td>{{.Name}}</td><td>{{.TotalGas}}/{{.ComputeGas}}/{{.StorageGas}}</td><td>{{.TimeTaken}}</td>
+	<td>
+	{{ range $index, $ele := .Location }}
+	 {{- if $index }}|&#8203;{{end -}}
+	 {{- if .Show -}}
+	 {{- if .Important }}<b>{{end -}}
+	 {{- . -}}
+	 {{- if .Important }}</b>{{end -}}
+     {{- else -}}
+     <label class="ellipsis-toggle"><input type="checkbox" /><span class="ellipsis">...</span>
+	 {{- "" -}}
+	 <span class="ellipsis-content">{{- . -}}</span></label>
+	 {{- end -}}
+	{{end}}
+	</td></tr>
    {{end}}
    {{with SumGas .GasCharges}}
      <tr class="sum"><td><b>Sum</b></td><td>{{.TotalGas}}/{{.ComputeGas}}/{{.StorageGas}}</td><td>{{.TimeTaken}}</td><td></td></tr>
