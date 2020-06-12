@@ -42,6 +42,7 @@ go version
 _(this is an interactive installer)_
 ```sh
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source ~/.profile
 ```
 
 ### Clone the Lotus repository
