@@ -1062,9 +1062,6 @@ func computeStateHtmlT(ts *types.TipSet, o *api.ComputeStateOutput, getCode func
 		"SumGas":     sumGas,
 		"CodeStr":    codeStr,
 		"Call":       call,
-		"htmlSafeAttr": func(html string) template.HTMLAttr {
-			return template.HTMLAttr(html)
-		},
 	}).Parse(compStateTemplate)
 	if err != nil {
 		return err
