@@ -1001,6 +1001,12 @@ var compStateTemplate = `
      display: inline;
 	 background-color: #ddd;
    }
+   hr {
+    border: none;
+    height: 1px;
+    background-color: black;
+	margin: 0;
+   }
   </style>
  </head>
  <body>
@@ -1049,32 +1055,54 @@ var compStateMsg = `
   <div class="error">Error: <pre>{{.Error}}</pre></div>
  {{end}}
 
- <details>
-  <summary>Gas Trace</summary>
-  <table>
-   <tr><th>Name</th><th>Total/Compute/Storage</th><th>Time Taken</th><th>Location</th></tr>
-   {{range .GasCharges}}
-    <tr><td>{{.Name}}</td><td>{{.TotalGas}}/{{.ComputeGas}}/{{.StorageGas}}</td><td>{{.TimeTaken}}</td>
-	<td>
-	{{ range $index, $ele := .Location }}
-	 {{- if $index }}|&#8203;{{end -}}
-	 {{- if .Show -}}
-	 {{- if .Important }}<b>{{end -}}
-	 {{- . -}}
-	 {{- if .Important }}</b>{{end -}}
-     {{- else -}}
-     <label class="ellipsis-toggle"><input type="checkbox" /><span class="ellipsis">...</span>
-	 {{- "" -}}
-	 <span class="ellipsis-content">{{- . -}}</span></label>
-	 {{- end -}}
+<details>
+<summary>Gas Trace</summary>
+<table>
+ <tr><th>Name</th><th>Total/Compute/Storage</th><th>Time Taken</th><th>Location</th></tr>
+ {{range .GasCharges}}
+ <tr><td>{{.Name}}</td><td>{{.TotalGas}}/{{.ComputeGas}}/{{.StorageGas}}</td><td>{{.TimeTaken}}</td>
+  <td>
+   {{ $fImp := FirstImportant .Location }}
+   {{ if $fImp }}
+   <details>
+    <summary>{{ $fImp }}</summary><hr />
+	{{ $elipOn := false }}
+    {{ range $index, $ele := .Location -}}
+     {{- if $index }}<br />{{end -}}
+     {{- if .Show -}}
+	  {{ if $elipOn }}
+	   {{ $elipOn = false }}
+       </span></label>
+	  {{end}}
+
+      {{- if .Important }}<b>{{end -}}
+      {{- . -}}
+      {{if .Important }}</b>{{end}}
+     {{else}}
+	  {{ if not $elipOn }}
+	    {{ $elipOn = true }}
+        <label class="ellipsis-toggle"><input type="checkbox" /><span class="ellipsis">[…]<br /></span>
+		<span class="ellipsis-content">
+	  {{end}}
+      {{- "" -}}
+      {{- . -}}
+     {{end}}
+    {{end}}
+	{{ if $elipOn }}
+	  {{ $elipOn = false }}
+      </span></label>
 	{{end}}
-	</td></tr>
-   {{end}}
-   {{with SumGas .GasCharges}}
-     <tr class="sum"><td><b>Sum</b></td><td>{{.TotalGas}}/{{.ComputeGas}}/{{.StorageGas}}</td><td>{{.TimeTaken}}</td><td></td></tr>
-   {{end}}
-  </table>
- </details>
+   </details>
+  {{end}}
+  </td></tr>
+  {{end}}
+  {{with SumGas .GasCharges}}
+  <tr class="sum"><td><b>Sum</b></td><td>{{.TotalGas}}/{{.ComputeGas}}/{{.StorageGas}}</td><td>{{.TimeTaken}}</td><td></td></tr>
+  {{end}}
+</table>
+</details>
+
+
  {{if gt (len .Subcalls) 0}}
   <div>Subcalls:</div>
   {{$hash := .Hash}}
@@ -1102,6 +1130,17 @@ func computeStateHTMLTempl(ts *types.TipSet, o *api.ComputeStateOutput, getCode 
 		"SumGas":     sumGas,
 		"CodeStr":    codeStr,
 		"Call":       call,
+		"FirstImportant": func(locs []types.Loc) *types.Loc {
+			if len(locs) != 0 {
+				for _, l := range locs {
+					if l.Important() {
+						return &l
+					}
+				}
+				return &locs[0]
+			}
+			return nil
+		},
 	}).Parse(compStateTemplate)
 	if err != nil {
 		return err

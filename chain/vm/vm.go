@@ -96,14 +96,13 @@ func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, origin addres
 		originNonce: originNonce,
 		height:      vm.blockHeight,
 
-		gasUsed:           usedGas,
-		gasAvailable:      msg.GasLimit,
-		numActorsCreated:  nac,
-		pricelist:         PricelistByEpoch(vm.blockHeight),
-		allowInternal:     true,
-		callerValidated:   false,
-		executionTrace:    types.ExecutionTrace{Msg: msg},
-		lastGasChargeTime: time.Now(),
+		gasUsed:          usedGas,
+		gasAvailable:     msg.GasLimit,
+		numActorsCreated: nac,
+		pricelist:        PricelistByEpoch(vm.blockHeight),
+		allowInternal:    true,
+		callerValidated:  false,
+		executionTrace:   types.ExecutionTrace{Msg: msg},
 	}
 
 	rt.cst = &cbor.BasicIpldStore{
@@ -172,8 +171,7 @@ type ApplyRet struct {
 }
 
 func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
-	gasCharge *GasCharge) ([]byte, aerrors.ActorError, *Runtime) {
-	start := time.Now()
+	gasCharge *GasCharge, start time.Time) ([]byte, aerrors.ActorError, *Runtime) {
 
 	st := vm.cstate
 
@@ -189,6 +187,7 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 	}
 
 	rt := vm.makeRuntime(ctx, msg, origin, on, gasUsed, nac)
+	rt.lastGasChargeTime = start
 	if parent != nil {
 		rt.lastGasChargeTime = parent.lastGasChargeTime
 		rt.lastGasCharge = parent.lastGasCharge
@@ -273,7 +272,8 @@ func checkMessage(msg *types.Message) error {
 
 func (vm *VM) ApplyImplicitMessage(ctx context.Context, msg *types.Message) (*ApplyRet, error) {
 	start := time.Now()
-	ret, actorErr, rt := vm.send(ctx, msg, nil, nil)
+	ret, actorErr, rt := vm.send(ctx, msg, nil, nil, start)
+	rt.finilizeGasTracing()
 	return &ApplyRet{
 		MessageReceipt: types.MessageReceipt{
 			ExitCode: aerrors.RetCode(actorErr),
@@ -390,8 +390,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 	}
 	defer st.ClearSnapshot()
 
-	ret, actorErr, rt := vm.send(ctx, msg, nil, &msgGas)
-	rt.finilizeGasTracing()
+	ret, actorErr, rt := vm.send(ctx, msg, nil, &msgGas, start)
 	if aerrors.IsFatal(actorErr) {
 		return nil, xerrors.Errorf("[from=%s,to=%s,n=%d,m=%d,h=%d] fatal error: %w", msg.From, msg.To, msg.Nonce, msg.Method, vm.blockHeight, actorErr)
 	}
@@ -444,6 +443,8 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 	if types.BigCmp(types.NewInt(0), gasHolder.Balance) != 0 {
 		return nil, xerrors.Errorf("gas handling math is wrong")
 	}
+
+	rt.finilizeGasTracing()
 
 	return &ApplyRet{
 		MessageReceipt: types.MessageReceipt{
