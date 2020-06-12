@@ -15,28 +15,43 @@ These steps will install the following dependencies:
 - llvm (proofs build)
 - clang (proofs build)
 
-Install dependencies
+### Install dependencies
 
 ```sh
-sudo add-apt-repository ppa:longsleep/golang-backports
 sudo apt update
-sudo apt install mesa-opencl-icd ocl-icd-opencl-dev gcc git bzr jq pkg-config golang-go
+sudo apt install mesa-opencl-icd ocl-icd-opencl-dev gcc git bzr jq pkg-config curl
+sudo apt upgrade
 ```
 
-Install Rust 
+### Install Go 1.14
+
+Find the latest version of Go [on their website](https://golang.org/dl/) and follow the installation instructions. At the time of writing this document, thats 1.14.4. Extract it to `/usr/local`, and add the go binaries to your `$PATH`.
+
+```sh
+wget -c https://dl.google.com/go/go1.14.4.linux-amd64.tar.gz -O - | sudo tar -xz -C /usr/local
+echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.profile
+source ~/.profile
+```
+
+Verify your go installation by running
+```sh
+go version
+```
+
+### Install Rust 
 _(this is an interactive installer)_
 ```sh
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
-Clone the Lotus repository
+### Clone the Lotus repository
 
 ```sh
 git clone https://github.com/filecoin-project/lotus.git
 cd lotus/
 ```
 
-Build the Lotus binaries from source and install
+### Build the Lotus binaries from source and install
 
 ```sh
 make clean && make all
