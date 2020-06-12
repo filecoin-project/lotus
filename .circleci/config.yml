@@ -45,7 +45,7 @@ commands:
             - 'v25-2k-lotus-params'
           paths:
             - /var/tmp/filecoin-proof-parameters/
-      - run:  ./lotus fetch-params --proving-params 2048
+      - run:  ./lotus fetch-params 2048
       - save_cache:
           name: Save parameters cache
           key: 'v25-2k-lotus-params'
