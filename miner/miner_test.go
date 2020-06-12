@@ -6,6 +6,9 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types/mock"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/stretchr/testify/assert"
 )
 
 func mustIDAddr(i uint64) address.Address {
@@ -101,4 +104,67 @@ func wrapMsgs(msgs []types.Message) []*types.SignedMessage {
 		out = append(out, &types.SignedMessage{Message: m})
 	}
 	return out
+}
+
+type testMinerApi struct {
+	MinerApiProvider
+
+	head *types.TipSet
+}
+
+func (t *testMinerApi) ChainHead(ctx context.Context) (*types.TipSet, error) {
+	return t.head, nil
+}
+
+func TestMiningLoopNonceIncrement(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.TODO())
+	defer cancel()
+
+	mapi := &testMinerApi{}
+	addr, err := address.NewIDAddress(100)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	enterWait := make(chan struct{})
+	mineCh := make(chan struct{})
+	mineOneWait := make(chan struct{})
+	m := NewMiner(mapi, nil, addr)
+	m.waitFunc = func(ctx context.Context, baseTime uint64) (func(bool), error) {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case enterWait <- struct{}{}:
+		}
+
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-mineCh:
+		}
+		return func(bool) {}, nil
+	}
+
+	m.mineOneFn = func(ctx context.Context, base *MiningBase) (*types.BlockMsg, error) {
+		mineOneWait <- struct{}{}
+		return nil, nil
+	}
+
+	mapi.head = mock.TipSet(mock.MkBlock(nil, 1, 1))
+
+	m.Start(ctx)
+
+	<-enterWait
+	mineCh <- struct{}{}
+	<-mineOneWait
+
+	<-enterWait
+	assert.Equal(t, m.lastWork.NullRounds, abi.ChainEpoch(1))
+
+	mineCh <- struct{}{}
+	<-mineOneWait
+
+	<-enterWait
+	assert.Equal(t, m.lastWork.NullRounds, abi.ChainEpoch(2))
+
 }

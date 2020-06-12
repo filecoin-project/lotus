@@ -9,6 +9,7 @@ import (
 
 	address "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	lru "github.com/hashicorp/golang-lru"
@@ -30,13 +31,13 @@ var log = logging.Logger("miner")
 // returns a callback reporting whether we mined a blocks in this round
 type waitFunc func(ctx context.Context, baseTime uint64) (func(bool), error)
 
-func NewMiner(api api.FullNode, epp gen.WinningPoStProver, addr address.Address) *Miner {
+func NewMiner(api MinerApiProvider, epp gen.WinningPoStProver, addr address.Address) *Miner {
 	arc, err := lru.NewARC(10000)
 	if err != nil {
 		panic(err)
 	}
 
-	return &Miner{
+	m := &Miner{
 		api:     api,
 		epp:     epp,
 		address: addr,
@@ -49,10 +50,27 @@ func NewMiner(api api.FullNode, epp gen.WinningPoStProver, addr address.Address)
 		},
 		minedBlockHeights: arc,
 	}
+	m.mineOneFn = m.mineOne
+	return m
+}
+
+type MinerApiProvider interface {
+	SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) error
+	ChainHead(context.Context) (*types.TipSet, error)
+	ChainTipSetWeight(context.Context, types.TipSetKey) (types.BigInt, error)
+	StateMinerPower(context.Context, address.Address, types.TipSetKey) (*api.MinerPower, error)
+	MpoolPending(context.Context, types.TipSetKey) ([]*types.SignedMessage, error)
+	MinerGetBaseInfo(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*api.MiningBaseInfo, error)
+	MinerCreateBlock(context.Context, *api.BlockTemplate) (*types.BlockMsg, error)
+	StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error)
+	WalletSign(context.Context, address.Address, []byte) (*crypto.Signature, error)
+	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (miner.MinerInfo, error)
+	ChainGetRandomness(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
+	StateAccountKey(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 }
 
 type Miner struct {
-	api api.FullNode
+	api MinerApiProvider
 
 	epp gen.WinningPoStProver
 
@@ -64,6 +82,10 @@ type Miner struct {
 	waitFunc waitFunc
 
 	lastWork *MiningBase
+
+	// usually Miner.mineOne
+	// mineOneFn attempts to mine a block on top of the given base, returning 'nil' if no block was mineable
+	mineOneFn func(ctx context.Context, base *MiningBase) (*types.BlockMsg, error)
 
 	minedBlockHeights *lru.ARCCache
 }
@@ -154,7 +176,7 @@ func (m *Miner) mine(ctx context.Context) {
 			continue
 		}
 
-		b, err := m.mineOne(ctx, base)
+		b, err := m.mineOneFn(ctx, base)
 		if err != nil {
 			log.Errorf("mining block failed: %+v", err)
 			m.niceSleep(time.Second)

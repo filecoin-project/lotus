@@ -23,6 +23,7 @@ func NewTestMiner(nextCh <-chan func(bool), addr address.Address) func(api.FullN
 			minedBlockHeights: arc,
 			address:           addr,
 		}
+		m.mineOneFn = m.mineOne
 
 		if err := m.Start(context.TODO()); err != nil {
 			panic(err)
