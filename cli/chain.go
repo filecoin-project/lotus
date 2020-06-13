@@ -221,6 +221,9 @@ var chainStatObjCmd = &cli.Command{
 		base := cid.Undef
 		if cctx.IsSet("base") {
 			base, err = cid.Decode(cctx.String("base"))
+			if err != nil {
+				return err
+			}
 		}
 
 		stats, err := api.ChainStatObj(ctx, obj, base)

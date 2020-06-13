@@ -359,7 +359,7 @@ var stateReplaySetCmd = &cli.Command{
 			return fmt.Errorf("message cid was invalid: %s", err)
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		fapi, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -381,7 +381,7 @@ var stateReplaySetCmd = &cli.Command{
 			if len(tscids) > 0 {
 				var headers []*types.BlockHeader
 				for _, c := range tscids {
-					h, err := api.ChainGetBlock(ctx, c)
+					h, err := fapi.ChainGetBlock(ctx, c)
 					if err != nil {
 						return err
 					}
@@ -391,12 +391,13 @@ var stateReplaySetCmd = &cli.Command{
 
 				ts, err = types.NewTipSet(headers)
 			} else {
-				r, err := api.StateWaitMsg(ctx, mcid)
+				var r *api.MsgLookup
+				r, err = fapi.StateWaitMsg(ctx, mcid)
 				if err != nil {
 					return xerrors.Errorf("finding message in chain: %w", err)
 				}
 
-				ts, err = api.ChainGetTipSet(ctx, r.TipSet.Parents())
+				ts, err = fapi.ChainGetTipSet(ctx, r.TipSet.Parents())
 			}
 			if err != nil {
 				return err
@@ -404,7 +405,7 @@ var stateReplaySetCmd = &cli.Command{
 
 		}
 
-		res, err := api.StateReplay(ctx, ts.Key(), mcid)
+		res, err := fapi.StateReplay(ctx, ts.Key(), mcid)
 		if err != nil {
 			return xerrors.Errorf("replay call failed: %w", err)
 		}
