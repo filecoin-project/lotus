@@ -524,14 +524,18 @@ func (rt *Runtime) chargeGasInternal(gas GasCharge, skip int) aerrors.ActorError
 	}
 
 	gasTrace := types.GasTrace{
-		Name:              gas.Name,
-		TotalGas:          toUse,
-		ComputeGas:        gas.ComputeGas,
-		StorageGas:        gas.StorageGas,
+		Name:  gas.Name,
+		Extra: gas.Extra,
+
+		TotalGas:   toUse,
+		ComputeGas: gas.ComputeGas,
+		StorageGas: gas.StorageGas,
+
 		TotalVirtualGas:   gas.VirtualCompute*GasComputeMulti + gas.VirtualStorage*GasStorageMulti,
 		VirtualComputeGas: gas.VirtualCompute,
 		VirtualStorageGas: gas.VirtualStorage,
-		Callers:           callers[:cout],
+
+		Callers: callers[:cout],
 	}
 	rt.executionTrace.GasCharges = append(rt.executionTrace.GasCharges, &gasTrace)
 	rt.lastGasChargeTime = now

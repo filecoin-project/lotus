@@ -18,7 +18,9 @@ const (
 )
 
 type GasCharge struct {
-	Name       string
+	Name  string
+	Extra interface{}
+
 	ComputeGas int64
 	StorageGas int64
 
@@ -33,6 +35,12 @@ func (g GasCharge) WithVirtual(compute, storage int64) GasCharge {
 	out := g
 	out.VirtualCompute = compute
 	out.VirtualStorage = storage
+	return out
+}
+
+func (g GasCharge) WithExtra(extra interface{}) GasCharge {
+	out := g
+	out.Extra = extra
 	return out
 }
 

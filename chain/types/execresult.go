@@ -30,7 +30,7 @@ type GasTrace struct {
 	VirtualStorageGas int64
 
 	TimeTaken time.Duration
-	Extra     interface{}
+	Extra     interface{} `json:",omitempty"`
 
 	Callers []uintptr `json:"-"`
 }
