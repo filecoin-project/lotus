@@ -23,7 +23,7 @@ import (
 var pathTypes = []stores.SectorFileType{stores.FTUnsealed, stores.FTSealed, stores.FTCache}
 
 type WorkerConfig struct {
-	SealProof abi.RegisteredProof
+	SealProof abi.RegisteredSealProof
 	TaskTypes []sealtasks.TaskType
 }
 

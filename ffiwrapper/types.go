@@ -37,7 +37,7 @@ type Verifier interface {
 	VerifyWinningPoSt(ctx context.Context, info abi.WinningPoStVerifyInfo) (bool, error)
 	VerifyWindowPoSt(ctx context.Context, info abi.WindowPoStVerifyInfo) (bool, error)
 
-	GenerateWinningPoStSectorChallenge(context.Context, abi.RegisteredProof, abi.ActorID, abi.PoStRandomness, uint64) ([]uint64, error)
+	GenerateWinningPoStSectorChallenge(context.Context, abi.RegisteredPoStProof, abi.ActorID, abi.PoStRandomness, uint64) ([]uint64, error)
 }
 
 type SectorProvider interface {

@@ -8,7 +8,7 @@ import (
 var log = logging.Logger("ffiwrapper")
 
 type Sealer struct {
-	sealProofType abi.RegisteredProof
+	sealProofType abi.RegisteredSealProof
 	ssize         abi.SectorSize // a function of sealProofType and postProofType
 
 	sectors  SectorProvider
@@ -23,6 +23,6 @@ func (sb *Sealer) SectorSize() abi.SectorSize {
 	return sb.ssize
 }
 
-func (sb *Sealer) SealProofType() abi.RegisteredProof {
+func (sb *Sealer) SealProofType() abi.RegisteredSealProof {
 	return sb.sealProofType
 }

@@ -13,11 +13,11 @@ import (
 
 // TODO: Track things more actively
 type FaultTracker interface {
-	CheckProvable(ctx context.Context, spt abi.RegisteredProof, sectors []abi.SectorID) ([]abi.SectorID, error)
+	CheckProvable(ctx context.Context, spt abi.RegisteredSealProof, sectors []abi.SectorID) ([]abi.SectorID, error)
 }
 
 // Returns unprovable sectors
-func (m *Manager) CheckProvable(ctx context.Context, spt abi.RegisteredProof, sectors []abi.SectorID) ([]abi.SectorID, error) {
+func (m *Manager) CheckProvable(ctx context.Context, spt abi.RegisteredSealProof, sectors []abi.SectorID) ([]abi.SectorID, error) {
 	var bad []abi.SectorID
 
 	// TODO: More better checks

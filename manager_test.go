@@ -77,7 +77,7 @@ func newTestMgr(ctx context.Context, t *testing.T) (*Manager, *stores.Local, *st
 
 	si := stores.NewIndex()
 	cfg := &ffiwrapper.Config{
-		SealProofType: abi.RegisteredProof_StackedDRG2KiBSeal,
+		SealProofType: abi.RegisteredSealProof_StackedDrg2KiBV1,
 	}
 
 	lstor, err := stores.NewLocal(ctx, st, si, nil)
@@ -118,7 +118,7 @@ func TestSimple(t *testing.T) {
 	}
 
 	err := m.AddWorker(ctx, newTestWorker(WorkerConfig{
-		SealProof: abi.RegisteredProof_StackedDRG2KiBSeal,
+		SealProof: abi.RegisteredSealProof_StackedDrg2KiBV1,
 		TaskTypes: localTasks,
 	}, lstor))
 	require.NoError(t, err)

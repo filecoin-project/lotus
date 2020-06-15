@@ -197,7 +197,7 @@ func (st *Local) reportHealth(ctx context.Context) {
 	}
 }
 
-func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, spt abi.RegisteredProof, existing SectorFileType, allocate SectorFileType, pathType PathType, op AcquireMode) (SectorPaths, SectorPaths, error) {
+func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, spt abi.RegisteredSealProof, existing SectorFileType, allocate SectorFileType, pathType PathType, op AcquireMode) (SectorPaths, SectorPaths, error) {
 	if existing|allocate != existing^allocate {
 		return SectorPaths{}, SectorPaths{}, xerrors.New("can't both find and allocate a sector")
 	}
@@ -397,7 +397,7 @@ func (st *Local) removeSector(ctx context.Context, sid abi.SectorID, typ SectorF
 	return nil
 }
 
-func (st *Local) MoveStorage(ctx context.Context, s abi.SectorID, spt abi.RegisteredProof, types SectorFileType) error {
+func (st *Local) MoveStorage(ctx context.Context, s abi.SectorID, spt abi.RegisteredSealProof, types SectorFileType) error {
 	dest, destIds, err := st.AcquireSector(ctx, s, spt, FTNone, types, false, AcquireMove)
 	if err != nil {
 		return xerrors.Errorf("acquire dest storage: %w", err)
