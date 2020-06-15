@@ -91,7 +91,7 @@ func (s *seal) commit(t *testing.T, sb *Sealer, done func()) {
 	ok, err := ProofVerifier.VerifySeal(abi.SealVerifyInfo{
 		SectorID:              s.id,
 		SealedCID:             s.cids.Sealed,
-		SealProof:       sealProofType,
+		SealProof:             sealProofType,
 		Proof:                 proof,
 		Randomness:            s.ticket,
 		InteractiveRandomness: seed,

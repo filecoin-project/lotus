@@ -278,7 +278,7 @@ func generateFakePoSt(sectorInfo []abi.SectorInfo, rpt func(abi.RegisteredSealPr
 	return []abi.PoStProof{
 		{
 			PoStProof:  wp,
-			ProofBytes:      make([]byte, 192*int(math.Ceil(float64(len(sectorInfo))/float64(se)))),
+			ProofBytes: make([]byte, 192*int(math.Ceil(float64(len(sectorInfo))/float64(se)))),
 		},
 	}
 }
@@ -319,7 +319,7 @@ func (mgr *SectorMgr) FinalizeSector(context.Context, abi.SectorID) error {
 	return nil
 }
 
-func (mgr *SectorMgr) CheckProvable(context.Context, abi.RegisteredProof, []abi.SectorID) ([]abi.SectorID, error) {
+func (mgr *SectorMgr) CheckProvable(context.Context, abi.RegisteredSealProof, []abi.SectorID) ([]abi.SectorID, error) {
 	return nil, nil
 }
 

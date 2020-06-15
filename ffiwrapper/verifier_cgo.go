@@ -15,7 +15,7 @@ import (
 )
 
 func (sb *Sealer) GenerateWinningPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []abi.SectorInfo, randomness abi.PoStRandomness) ([]abi.PoStProof, error) {
-	randomness[31] = 0                                                                                                                   // TODO: Not correct, fixme
+	randomness[31] = 0                                                                                                                       // TODO: Not correct, fixme
 	privsectors, skipped, done, err := sb.pubSectorToPriv(ctx, minerID, sectorInfo, nil, abi.RegisteredSealProof.RegisteredWinningPoStProof) // TODO: FAULTS?
 	if err != nil {
 		return nil, err
