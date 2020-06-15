@@ -25,6 +25,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/impl/common"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
@@ -41,6 +42,8 @@ type StorageMinerAPI struct {
 	Full            api.FullNode
 	StorageMgr      *sectorstorage.Manager `optional:"true"`
 	*stores.Index
+
+	SetAcceptingStorageDealsConfigFunc dtypes.SetAcceptingStorageDealsConfigFunc
 }
 
 func (sm *StorageMinerAPI) ServeRemote(w http.ResponseWriter, r *http.Request) {
@@ -204,6 +207,10 @@ func (sm *StorageMinerAPI) MarketSetPrice(ctx context.Context, p types.BigInt) e
 
 func (sm *StorageMinerAPI) DealsList(ctx context.Context) ([]storagemarket.StorageDeal, error) {
 	return sm.StorageProvider.ListDeals(ctx)
+}
+
+func (sm *StorageMinerAPI) DealsSetAcceptingStorageDeals(ctx context.Context, b bool) error {
+	return sm.SetAcceptingStorageDealsConfigFunc(b)
 }
 
 func (sm *StorageMinerAPI) DealsImportData(ctx context.Context, deal cid.Cid, fname string) error {
