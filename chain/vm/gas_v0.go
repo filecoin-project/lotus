@@ -142,7 +142,7 @@ func (pl *pricelistV0) OnHashing(dataSize int) GasCharge {
 }
 
 // OnComputeUnsealedSectorCid
-func (pl *pricelistV0) OnComputeUnsealedSectorCid(proofType abi.RegisteredProof, pieces []abi.PieceInfo) GasCharge {
+func (pl *pricelistV0) OnComputeUnsealedSectorCid(proofType abi.RegisteredSealProof, pieces []abi.PieceInfo) GasCharge {
 	// TODO: this needs more cost tunning, check with @lotus
 	return newGasCharge("OnComputeUnsealedSectorCid", pl.computeUnsealedSectorCidBase, 0)
 }

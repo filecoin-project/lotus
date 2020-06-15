@@ -14,7 +14,7 @@ require (
 	github.com/drand/drand v0.9.2-0.20200529123141-6b138aefaef2
 	github.com/drand/kyber v1.0.2
 	github.com/fatih/color v1.8.0
-	github.com/filecoin-project/chain-validation v0.0.6-0.20200605221044-7f78284bbc94
+	github.com/filecoin-project/chain-validation v0.0.6-0.20200615142407-39c0fe23a3d5
 	github.com/filecoin-project/filecoin-ffi v0.26.1-0.20200508175440-05b30afeb00d
 	github.com/filecoin-project/go-address v0.0.2-0.20200504173055-8b6f2fb2b3ef
 	github.com/filecoin-project/go-amt-ipld/v2 v2.0.1-0.20200424220931-6263827e49f2
@@ -23,16 +23,16 @@ require (
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
 	github.com/filecoin-project/go-data-transfer v0.3.0
 	github.com/filecoin-project/go-fil-commcid v0.0.0-20200208005934-2b8bd03caca5
-	github.com/filecoin-project/go-fil-markets v0.2.7
+	github.com/filecoin-project/go-fil-markets v0.2.8-0.20200615162707-5dd6b2eb253b
 	github.com/filecoin-project/go-jsonrpc v0.1.1-0.20200602181149-522144ab4e24
 	github.com/filecoin-project/go-padreader v0.0.0-20200210211231-548257017ca6
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200605171344-fcac609550ca
 	github.com/filecoin-project/go-statestore v0.1.0
 	github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b
-	github.com/filecoin-project/sector-storage v0.0.0-20200615123301-7d09fa88b4b0
+	github.com/filecoin-project/sector-storage v0.0.0-20200615154852-728a47ab99d6
 	github.com/filecoin-project/specs-actors v0.6.0
 	github.com/filecoin-project/specs-storage v0.1.0
-	github.com/filecoin-project/storage-fsm v0.0.0-20200605082304-aa405b2176aa
+	github.com/filecoin-project/storage-fsm v0.0.0-20200615162749-494c3bc48743
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/go-kit/kit v0.10.0
 	github.com/go-ole/go-ole v1.2.4 // indirect
@@ -127,3 +127,5 @@ require (
 replace github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v1.18.0
 
 replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
+
+replace github.com/filecoin-project/go-fil-markets => /home/magik6k/gohack/github.com/filecoin-project/go-fil-markets

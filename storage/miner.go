@@ -135,7 +135,7 @@ type StorageWpp struct {
 	prover   storage.Prover
 	verifier ffiwrapper.Verifier
 	miner    abi.ActorID
-	winnRpt  abi.RegisteredProof
+	winnRpt  abi.RegisteredPoStProof
 }
 
 func NewWinningPoStProver(api api.FullNode, prover storage.Prover, verifier ffiwrapper.Verifier, miner dtypes.MinerID) (*StorageWpp, error) {

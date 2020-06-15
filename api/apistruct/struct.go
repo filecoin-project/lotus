@@ -207,18 +207,18 @@ type StorageMinerStruct struct {
 		WorkerConnect func(context.Context, string) error                             `perm:"admin"` // TODO: worker perm
 		WorkerStats   func(context.Context) (map[uint64]storiface.WorkerStats, error) `perm:"admin"`
 
-		StorageList          func(context.Context) (map[stores.ID][]stores.Decl, error)                                                                                `perm:"admin"`
-		StorageLocal         func(context.Context) (map[stores.ID]string, error)                                                                                       `perm:"admin"`
-		StorageStat          func(context.Context, stores.ID) (stores.FsStat, error)                                                                                   `perm:"admin"`
-		StorageAttach        func(context.Context, stores.StorageInfo, stores.FsStat) error                                                                            `perm:"admin"`
-		StorageDeclareSector func(context.Context, stores.ID, abi.SectorID, stores.SectorFileType, bool) error                                                         `perm:"admin"`
-		StorageDropSector    func(context.Context, stores.ID, abi.SectorID, stores.SectorFileType) error                                                               `perm:"admin"`
-		StorageFindSector    func(context.Context, abi.SectorID, stores.SectorFileType, bool) ([]stores.SectorStorageInfo, error)                                      `perm:"admin"`
-		StorageInfo          func(context.Context, stores.ID) (stores.StorageInfo, error)                                                                              `perm:"admin"`
-		StorageBestAlloc     func(ctx context.Context, allocate stores.SectorFileType, spt abi.RegisteredProof, sealing stores.PathType) ([]stores.StorageInfo, error) `perm:"admin"`
-		StorageReportHealth  func(ctx context.Context, id stores.ID, report stores.HealthReport) error                                                                 `perm:"admin"`
-		StorageLock          func(ctx context.Context, sector abi.SectorID, read stores.SectorFileType, write stores.SectorFileType) error                             `perm:"admin"`
-		StorageTryLock       func(ctx context.Context, sector abi.SectorID, read stores.SectorFileType, write stores.SectorFileType) (bool, error)                     `perm:"admin"`
+		StorageList          func(context.Context) (map[stores.ID][]stores.Decl, error)                                                                                    `perm:"admin"`
+		StorageLocal         func(context.Context) (map[stores.ID]string, error)                                                                                           `perm:"admin"`
+		StorageStat          func(context.Context, stores.ID) (stores.FsStat, error)                                                                                       `perm:"admin"`
+		StorageAttach        func(context.Context, stores.StorageInfo, stores.FsStat) error                                                                                `perm:"admin"`
+		StorageDeclareSector func(context.Context, stores.ID, abi.SectorID, stores.SectorFileType, bool) error                                                             `perm:"admin"`
+		StorageDropSector    func(context.Context, stores.ID, abi.SectorID, stores.SectorFileType) error                                                                   `perm:"admin"`
+		StorageFindSector    func(context.Context, abi.SectorID, stores.SectorFileType, bool) ([]stores.SectorStorageInfo, error)                                          `perm:"admin"`
+		StorageInfo          func(context.Context, stores.ID) (stores.StorageInfo, error)                                                                                  `perm:"admin"`
+		StorageBestAlloc     func(ctx context.Context, allocate stores.SectorFileType, spt abi.RegisteredSealProof, sealing stores.PathType) ([]stores.StorageInfo, error) `perm:"admin"`
+		StorageReportHealth  func(ctx context.Context, id stores.ID, report stores.HealthReport) error                                                                     `perm:"admin"`
+		StorageLock          func(ctx context.Context, sector abi.SectorID, read stores.SectorFileType, write stores.SectorFileType) error                                 `perm:"admin"`
+		StorageTryLock       func(ctx context.Context, sector abi.SectorID, read stores.SectorFileType, write stores.SectorFileType) (bool, error)                         `perm:"admin"`
 
 		DealsImportData func(ctx context.Context, dealPropCid cid.Cid, file string) error `perm:"write"`
 		DealsList       func(ctx context.Context) ([]storagemarket.StorageDeal, error)    `perm:"read"`
@@ -812,7 +812,7 @@ func (c *StorageMinerStruct) StorageInfo(ctx context.Context, id stores.ID) (sto
 	return c.Internal.StorageInfo(ctx, id)
 }
 
-func (c *StorageMinerStruct) StorageBestAlloc(ctx context.Context, allocate stores.SectorFileType, spt abi.RegisteredProof, pt stores.PathType) ([]stores.StorageInfo, error) {
+func (c *StorageMinerStruct) StorageBestAlloc(ctx context.Context, allocate stores.SectorFileType, spt abi.RegisteredSealProof, pt stores.PathType) ([]stores.StorageInfo, error) {
 	return c.Internal.StorageBestAlloc(ctx, allocate, spt, pt)
 }
 

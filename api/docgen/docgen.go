@@ -72,7 +72,7 @@ func init() {
 	addExample(pid)
 
 	addExample(bitfield.NewFromSet([]uint64{5}))
-	addExample(abi.RegisteredProof_StackedDRG32GiBPoSt)
+	addExample(abi.RegisteredSealProof_StackedDrg32GiBV1)
 	addExample(abi.ChainEpoch(10101))
 	addExample(crypto.SigTypeBLS)
 	addExample(int64(9))

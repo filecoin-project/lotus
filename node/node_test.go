@@ -54,8 +54,8 @@ func init() {
 	_ = logging.SetLogLevel("*", "INFO")
 
 	power.ConsensusMinerMinPower = big.NewInt(2048)
-	saminer.SupportedProofTypes = map[abi.RegisteredProof]struct{}{
-		abi.RegisteredProof_StackedDRG2KiBSeal: {},
+	saminer.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
+		abi.RegisteredSealProof_StackedDrg2KiBV1: {},
 	}
 	verifreg.MinVerifiedDealSize = big.NewInt(256)
 }
@@ -189,7 +189,7 @@ func builder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test.TestN
 		if err != nil {
 			t.Fatal(err)
 		}
-		genm, k, err := seed.PreSeal(maddr, abi.RegisteredProof_StackedDRG2KiBPoSt, 0, test.GenesisPreseals, tdir, []byte("make genesis mem random"), nil)
+		genm, k, err := seed.PreSeal(maddr, abi.RegisteredSealProof_StackedDrg2KiBV1, 0, test.GenesisPreseals, tdir, []byte("make genesis mem random"), nil)
 		if err != nil {
 			t.Fatal(err)
 		}

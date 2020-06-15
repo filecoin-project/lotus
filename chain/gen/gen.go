@@ -89,8 +89,8 @@ func (m mybs) Get(c cid.Cid) (block.Block, error) {
 }
 
 func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
-	saminer.SupportedProofTypes = map[abi.RegisteredProof]struct{}{
-		abi.RegisteredProof_StackedDRG2KiBSeal: {},
+	saminer.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
+		abi.RegisteredSealProof_StackedDrg2KiBV1: {},
 	}
 
 	mr := repo.NewMemory(nil)
@@ -141,7 +141,7 @@ func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
 		return nil, err
 	}
 
-	genm1, k1, err := seed.PreSeal(maddr1, abi.RegisteredProof_StackedDRG2KiBPoSt, 0, numSectors, m1temp, []byte("some randomness"), nil)
+	genm1, k1, err := seed.PreSeal(maddr1, abi.RegisteredSealProof_StackedDrg2KiBV1, 0, numSectors, m1temp, []byte("some randomness"), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +153,7 @@ func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
 		return nil, err
 	}
 
-	genm2, k2, err := seed.PreSeal(maddr2, abi.RegisteredProof_StackedDRG2KiBPoSt, 0, numSectors, m2temp, []byte("some randomness"), nil)
+	genm2, k2, err := seed.PreSeal(maddr2, abi.RegisteredSealProof_StackedDrg2KiBV1, 0, numSectors, m2temp, []byte("some randomness"), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -611,6 +611,6 @@ func (m genFakeVerifier) VerifyWindowPoSt(ctx context.Context, info abi.WindowPo
 	panic("not supported")
 }
 
-func (m genFakeVerifier) GenerateWinningPoStSectorChallenge(ctx context.Context, proof abi.RegisteredProof, id abi.ActorID, randomness abi.PoStRandomness, u uint64) ([]uint64, error) {
+func (m genFakeVerifier) GenerateWinningPoStSectorChallenge(ctx context.Context, proof abi.RegisteredPoStProof, id abi.ActorID, randomness abi.PoStRandomness, u uint64) ([]uint64, error) {
 	panic("not supported")
 }
