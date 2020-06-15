@@ -524,11 +524,14 @@ func (rt *Runtime) chargeGasInternal(gas GasCharge, skip int) aerrors.ActorError
 	}
 
 	gasTrace := types.GasTrace{
-		Name:       gas.Name,
-		TotalGas:   toUse,
-		ComputeGas: gas.ComputeGas,
-		StorageGas: gas.StorageGas,
-		Callers:    callers[:cout],
+		Name:              gas.Name,
+		TotalGas:          toUse,
+		ComputeGas:        gas.ComputeGas,
+		StorageGas:        gas.StorageGas,
+		TotalVirtualGas:   gas.VirtualCompute*GasComputeMulti + gas.VirtualStorage*GasStorageMulti,
+		VirtualComputeGas: gas.VirtualCompute,
+		VirtualStorageGas: gas.VirtualStorage,
+		Callers:           callers[:cout],
 	}
 	rt.executionTrace.GasCharges = append(rt.executionTrace.GasCharges, &gasTrace)
 	rt.lastGasChargeTime = now
@@ -536,7 +539,8 @@ func (rt *Runtime) chargeGasInternal(gas GasCharge, skip int) aerrors.ActorError
 
 	if rt.gasUsed+toUse > rt.gasAvailable {
 		rt.gasUsed = rt.gasAvailable
-		return aerrors.Newf(exitcode.SysErrOutOfGas, "not enough gas: used=%d, available=%d", rt.gasUsed, rt.gasAvailable)
+		return aerrors.Newf(exitcode.SysErrOutOfGas, "not enough gas: used=%d, available=%d",
+			rt.gasUsed, rt.gasAvailable)
 	}
 	rt.gasUsed += toUse
 	return nil

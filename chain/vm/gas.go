@@ -21,10 +21,19 @@ type GasCharge struct {
 	Name       string
 	ComputeGas int64
 	StorageGas int64
+
+	VirtualCompute int64
+	VirtualStorage int64
 }
 
 func (g GasCharge) Total() int64 {
 	return g.ComputeGas*GasComputeMulti + g.StorageGas*GasStorageMulti
+}
+func (g GasCharge) WithVirtual(compute, storage int64) GasCharge {
+	out := g
+	out.VirtualCompute = compute
+	out.VirtualStorage = storage
+	return out
 }
 
 func newGasCharge(name string, computeGas int64, storageGas int64) GasCharge {
