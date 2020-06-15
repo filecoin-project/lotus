@@ -329,7 +329,7 @@ func (sb *Sealer) UnsealPiece(ctx context.Context, sector abi.SectorID, offset s
 			uint64(at.Unpadded()),
 			uint64(abi.PaddedPieceSize(piece.Len).Unpadded()))
 
-		_ = opr.Close()
+		_ = opw.Close()
 
 		if err != nil {
 			return xerrors.Errorf("unseal range: %w", err)
