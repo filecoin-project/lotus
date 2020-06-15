@@ -202,7 +202,7 @@ func (sm *StorageMinerAPI) MarketListIncompleteDeals(ctx context.Context) ([]sto
 }
 
 func (sm *StorageMinerAPI) MarketSetPrice(ctx context.Context, p types.BigInt) error {
-	return sm.StorageProvider.SetAsk(abi.TokenAmount(p), 60*60*24*100) // lasts for 100 days?
+	return sm.StorageProvider.SetAsk(p, 60*60*24*100) // lasts for 100 days?
 }
 
 func (sm *StorageMinerAPI) DealsList(ctx context.Context) ([]storagemarket.StorageDeal, error) {
