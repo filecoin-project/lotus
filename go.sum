@@ -223,6 +223,8 @@ github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b/
 github.com/filecoin-project/sector-storage v0.0.0-20200508203401-a74812ba12f3/go.mod h1:B+xzopr/oWZJz2hBL5Ekb7Obcum5ntmfbaAUlaaho28=
 github.com/filecoin-project/sector-storage v0.0.0-20200609231555-252c2b0c969d h1:q7KC8/yIirwVX7JCLgjEmo5LX77V8tYV0EzVCnCwrE8=
 github.com/filecoin-project/sector-storage v0.0.0-20200609231555-252c2b0c969d/go.mod h1:SfaVNw/A6LwqqEt6wEMVBN5Grn3XC50j+yjmegHIe7Y=
+github.com/filecoin-project/sector-storage v0.0.0-20200615123301-7d09fa88b4b0 h1:DpdlpS3G2XN+F68rxOTAXsGL3cV7UkFr0TxdmKSiaJg=
+github.com/filecoin-project/sector-storage v0.0.0-20200615123301-7d09fa88b4b0/go.mod h1:M59QnAeA/oV+Z8oHFLoNpGMv0LZ8Rll+vHVXX7GirPM=
 github.com/filecoin-project/specs-actors v0.0.0-20200210130641-2d1fbd8672cf/go.mod h1:xtDZUB6pe4Pksa/bAJbJ693OilaC5Wbot9jMhLm3cZA=
 github.com/filecoin-project/specs-actors v0.0.0-20200409043918-e569f4a2f504/go.mod h1:mdJraXq5vMy0+/FqVQIrnNlpQ/Em6zeu06G/ltQ0/lA=
 github.com/filecoin-project/specs-actors v0.3.0/go.mod h1:nQYnFbQ7Y0bHZyq6HDEuVlCPR+U3z5Q3wMOQ+2aiV+Y=
@@ -231,6 +233,8 @@ github.com/filecoin-project/specs-actors v0.5.5 h1:bDsowem6dLRc9B7g3sgFYvHgfWTH4
 github.com/filecoin-project/specs-actors v0.5.5/go.mod h1:dRdy3cURykh2R8O/DKqy8olScl70rmIS7GrB4hB1IDY=
 github.com/filecoin-project/specs-actors v0.5.6 h1:WlhtoXwFoKlP1b06NI4NJaxC4m9EXNV+qFVl43/xRN8=
 github.com/filecoin-project/specs-actors v0.5.6/go.mod h1:dRdy3cURykh2R8O/DKqy8olScl70rmIS7GrB4hB1IDY=
+github.com/filecoin-project/specs-actors v0.6.0 h1:IepUsmDGY60QliENVTkBTAkwqGWw9kNbbHOcU/9oiC0=
+github.com/filecoin-project/specs-actors v0.6.0/go.mod h1:dRdy3cURykh2R8O/DKqy8olScl70rmIS7GrB4hB1IDY=
 github.com/filecoin-project/specs-storage v0.0.0-20200417134612-61b2d91a6102 h1:T3f/zkuvgtgqcXrb0NO3BicuveGOxxUAMPa/Yif2kuE=
 github.com/filecoin-project/specs-storage v0.0.0-20200417134612-61b2d91a6102/go.mod h1:xJ1/xl9+8zZeSSSFmDC3Wr6uusCTxyYPI0VeNVSFmPE=
 github.com/filecoin-project/specs-storage v0.1.0 h1:PkDgTOT5W5Ao7752onjDl4QSv+sgOVdJbvFjOnD5w94=
