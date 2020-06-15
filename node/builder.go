@@ -371,6 +371,9 @@ func ConfigCommon(cfg *config.Common) Option {
 				Override(new(dtypes.BootstrapPeers), modules.ConfigBootstrap(cfg.Libp2p.BootstrapPeers)),
 			),
 		),
+		Override(AddrsFactoryKey, lp2p.AddrsFactory(
+			cfg.Libp2p.AnnounceAddresses,
+			cfg.Libp2p.NoAnnounceAddresses)),
 	)
 }
 

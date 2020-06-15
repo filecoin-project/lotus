@@ -62,7 +62,7 @@ func ResolveToKeyAddr(state types.StateTree, cst cbor.IpldStore, addr address.Ad
 var _ cbor.IpldBlockstore = (*gasChargingBlocks)(nil)
 
 type gasChargingBlocks struct {
-	chargeGas func(int64)
+	chargeGas func(GasCharge)
 	pricelist Pricelist
 	under     cbor.IpldBlockstore
 }
@@ -106,12 +106,12 @@ func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, origin addres
 	}
 
 	rt.cst = &cbor.BasicIpldStore{
-		Blocks: &gasChargingBlocks{rt.ChargeGas, rt.pricelist, vm.cst.Blocks},
+		Blocks: &gasChargingBlocks{rt.chargeGasFunc(2), rt.pricelist, vm.cst.Blocks},
 		Atlas:  vm.cst.Atlas,
 	}
 	rt.sys = pricedSyscalls{
 		under:     vm.Syscalls,
-		chargeGas: rt.ChargeGas,
+		chargeGas: rt.chargeGasFunc(1),
 		pl:        rt.pricelist,
 	}
 
@@ -171,27 +171,38 @@ type ApplyRet struct {
 }
 
 func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
-	gasCharge int64) ([]byte, aerrors.ActorError, *Runtime) {
-	start := time.Now()
+	gasCharge *GasCharge, start time.Time) ([]byte, aerrors.ActorError, *Runtime) {
 
 	st := vm.cstate
-	gasUsed := gasCharge
 
 	origin := msg.From
 	on := msg.Nonce
 	var nac uint64 = 0
+	var gasUsed int64
 	if parent != nil {
-		gasUsed = parent.gasUsed + gasUsed
+		gasUsed = parent.gasUsed
 		origin = parent.origin
 		on = parent.originNonce
 		nac = parent.numActorsCreated
 	}
 
 	rt := vm.makeRuntime(ctx, msg, origin, on, gasUsed, nac)
+	rt.lastGasChargeTime = start
 	if parent != nil {
+		rt.lastGasChargeTime = parent.lastGasChargeTime
+		rt.lastGasCharge = parent.lastGasCharge
 		defer func() {
 			parent.gasUsed = rt.gasUsed
+			parent.lastGasChargeTime = rt.lastGasChargeTime
+			parent.lastGasCharge = rt.lastGasCharge
 		}()
+	}
+
+	if gasCharge != nil {
+		if err := rt.chargeGasSafe(*gasCharge); err != nil {
+			// this should never happen
+			return nil, aerrors.Wrap(err, "not enough gas for initial message charge, this should not happen"), rt
+		}
 	}
 
 	ret, err := func() ([]byte, aerrors.ActorError) {
@@ -261,7 +272,8 @@ func checkMessage(msg *types.Message) error {
 
 func (vm *VM) ApplyImplicitMessage(ctx context.Context, msg *types.Message) (*ApplyRet, error) {
 	start := time.Now()
-	ret, actorErr, rt := vm.send(ctx, msg, nil, 0)
+	ret, actorErr, rt := vm.send(ctx, msg, nil, nil, start)
+	rt.finilizeGasTracing()
 	return &ApplyRet{
 		MessageReceipt: types.MessageReceipt{
 			ExitCode: aerrors.RetCode(actorErr),
@@ -294,7 +306,8 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 
 	pl := PricelistByEpoch(vm.blockHeight)
 
-	msgGasCost := pl.OnChainMessage(cmsg.ChainLength())
+	msgGas := pl.OnChainMessage(cmsg.ChainLength())
+	msgGasCost := msgGas.Total()
 	// this should never happen, but is currently still exercised by some tests
 	if msgGasCost > msg.GasLimit {
 		return &ApplyRet{
@@ -377,7 +390,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 	}
 	defer st.ClearSnapshot()
 
-	ret, actorErr, rt := vm.send(ctx, msg, nil, msgGasCost)
+	ret, actorErr, rt := vm.send(ctx, msg, nil, &msgGas, start)
 	if aerrors.IsFatal(actorErr) {
 		return nil, xerrors.Errorf("[from=%s,to=%s,n=%d,m=%d,h=%d] fatal error: %w", msg.From, msg.To, msg.Nonce, msg.Method, vm.blockHeight, actorErr)
 	}
@@ -430,6 +443,8 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 	if types.BigCmp(types.NewInt(0), gasHolder.Balance) != 0 {
 		return nil, xerrors.Errorf("gas handling math is wrong")
 	}
+
+	rt.finilizeGasTracing()
 
 	return &ApplyRet{
 		MessageReceipt: types.MessageReceipt{

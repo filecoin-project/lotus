@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"fmt"
+	gruntime "runtime"
+	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -49,10 +52,12 @@ type Runtime struct {
 	origin      address.Address
 	originNonce uint64
 
-	executionTrace   types.ExecutionTrace
-	numActorsCreated uint64
-	allowInternal    bool
-	callerValidated  bool
+	executionTrace    types.ExecutionTrace
+	numActorsCreated  uint64
+	allowInternal     bool
+	callerValidated   bool
+	lastGasChargeTime time.Time
+	lastGasCharge     *types.GasTrace
 }
 
 func (rt *Runtime) TotalFilCircSupply() abi.TokenAmount {
@@ -307,6 +312,7 @@ func (rt *Runtime) Context() context.Context {
 }
 
 func (rt *Runtime) Abortf(code exitcode.ExitCode, msg string, args ...interface{}) {
+	log.Warnf("Abortf: ", fmt.Sprintf(msg, args...))
 	panic(aerrors.NewfSkip(2, code, msg, args...))
 }
 
@@ -365,6 +371,8 @@ func (rt *Runtime) Send(to address.Address, method abi.MethodNum, m vmr.CBORMars
 }
 
 func (rt *Runtime) internalSend(from, to address.Address, method abi.MethodNum, value types.BigInt, params []byte) ([]byte, aerrors.ActorError) {
+
+	start := time.Now()
 	ctx, span := trace.StartSpan(rt.ctx, "vmc.Send")
 	defer span.End()
 	if span.IsRecordingEvents() {
@@ -390,7 +398,7 @@ func (rt *Runtime) internalSend(from, to address.Address, method abi.MethodNum, 
 	}
 	defer st.ClearSnapshot()
 
-	ret, errSend, subrt := rt.vm.send(ctx, msg, rt, 0)
+	ret, errSend, subrt := rt.vm.send(ctx, msg, rt, nil, start)
 	if errSend != nil {
 		if errRevert := st.Revert(); errRevert != nil {
 			return nil, aerrors.Escalate(errRevert, "failed to revert state tree after failed subcall")
@@ -482,14 +490,50 @@ func (rt *Runtime) stateCommit(oldh, newh cid.Cid) aerrors.ActorError {
 	return nil
 }
 
-func (rt *Runtime) ChargeGas(toUse int64) {
-	err := rt.chargeGasInternal(toUse)
+func (rt *Runtime) finilizeGasTracing() {
+	if rt.lastGasCharge != nil {
+		rt.lastGasCharge.TimeTaken = time.Since(rt.lastGasChargeTime)
+	}
+}
+
+func (rt *Runtime) ChargeGas(gas GasCharge) {
+	err := rt.chargeGasInternal(gas, 1)
 	if err != nil {
 		panic(err)
 	}
 }
 
-func (rt *Runtime) chargeGasInternal(toUse int64) aerrors.ActorError {
+func (rt *Runtime) chargeGasFunc(skip int) func(GasCharge) {
+	return func(gas GasCharge) {
+		err := rt.chargeGasInternal(gas, 1+skip)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+}
+
+func (rt *Runtime) chargeGasInternal(gas GasCharge, skip int) aerrors.ActorError {
+	toUse := gas.Total()
+	var callers [10]uintptr
+	cout := gruntime.Callers(2+skip, callers[:])
+
+	now := time.Now()
+	if rt.lastGasCharge != nil {
+		rt.lastGasCharge.TimeTaken = now.Sub(rt.lastGasChargeTime)
+	}
+
+	gasTrace := types.GasTrace{
+		Name:       gas.Name,
+		TotalGas:   toUse,
+		ComputeGas: gas.ComputeGas,
+		StorageGas: gas.StorageGas,
+		Callers:    callers[:cout],
+	}
+	rt.executionTrace.GasCharges = append(rt.executionTrace.GasCharges, &gasTrace)
+	rt.lastGasChargeTime = now
+	rt.lastGasCharge = &gasTrace
+
 	if rt.gasUsed+toUse > rt.gasAvailable {
 		rt.gasUsed = rt.gasAvailable
 		return aerrors.Newf(exitcode.SysErrOutOfGas, "not enough gas: used=%d, available=%d", rt.gasUsed, rt.gasAvailable)
@@ -498,8 +542,8 @@ func (rt *Runtime) chargeGasInternal(toUse int64) aerrors.ActorError {
 	return nil
 }
 
-func (rt *Runtime) chargeGasSafe(toUse int64) aerrors.ActorError {
-	return rt.chargeGasInternal(toUse)
+func (rt *Runtime) chargeGasSafe(gas GasCharge) aerrors.ActorError {
+	return rt.chargeGasInternal(gas, 1)
 }
 
 func (rt *Runtime) Pricelist() Pricelist {

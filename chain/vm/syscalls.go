@@ -115,7 +115,7 @@ func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte) (*runtime.Consen
 	// (b) time-offset mining fault
 	// strictly speaking no need to compare heights based on double fork mining check above,
 	// but at same height this would be a different fault.
-	if !types.CidArrsEqual(blockA.Parents, blockB.Parents) && blockA.Height != blockB.Height {
+	if types.CidArrsEqual(blockA.Parents, blockB.Parents) && blockA.Height != blockB.Height {
 		consensusFault = &runtime.ConsensusFault{
 			Target: blockA.Miner,
 			Epoch:  blockB.Height,
@@ -159,7 +159,7 @@ func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte) (*runtime.Consen
 	}
 
 	if sigErr := ss.VerifyBlockSig(&blockB); sigErr != nil {
-		return nil, xerrors.Errorf("cannot verify first block sig: %w", sigErr)
+		return nil, xerrors.Errorf("cannot verify second block sig: %w", sigErr)
 	}
 
 	return consensusFault, nil
