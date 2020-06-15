@@ -971,6 +971,7 @@ var compStateTemplate = `
    }
    .slow-true-false { color: #660; }
    .slow-true-true { color: #f80; }
+   .deemp { color: #444; }
    table {
     font-size: 12px;
     border-collapse: collapse;
@@ -1060,8 +1061,20 @@ var compStateMsg = `
 <summary>Gas Trace</summary>
 <table>
  <tr><th>Name</th><th>Total/Compute/Storage</th><th>Time Taken</th><th>Location</th></tr>
+ {{define "virt" -}}
+ {{- if . -}}
+ <span class="deemp">+({{.}})</span>
+ {{- end -}}
+ {{- end}}
+
+ {{define "gasC" -}}
+ <td>{{.TotalGas}}{{template "virt" .TotalVirtualGas }}/{{.ComputeGas}}{{template "virt" .VirtualComputeGas}}/{{.StorageGas}}{{template "virt" .VirtualStorageGas}}</td>
+ {{- end}}
+
  {{range .GasCharges}}
- <tr><td>{{.Name}}</td><td>{{.TotalGas}}/{{.ComputeGas}}/{{.StorageGas}}</td><td>{{.TimeTaken}}</td>
+ <tr><td>{{.Name}}</td>
+ {{template "gasC" .}}
+ <td>{{.TimeTaken}}</td>
   <td>
    {{ $fImp := FirstImportant .Location }}
    {{ if $fImp }}
@@ -1098,7 +1111,10 @@ var compStateMsg = `
   </td></tr>
   {{end}}
   {{with SumGas .GasCharges}}
-  <tr class="sum"><td><b>Sum</b></td><td>{{.TotalGas}}/{{.ComputeGas}}/{{.StorageGas}}</td><td>{{.TimeTaken}}</td><td></td></tr>
+  <tr class="sum"><td><b>Sum</b></td>
+  {{template "gasC" .}}
+  <td>{{.TimeTaken}}</td>
+  <td></td></tr>
   {{end}}
 </table>
 </details>
@@ -1201,7 +1217,10 @@ func sumGas(changes []*types.GasTrace) types.GasTrace {
 		out.TotalGas += gc.TotalGas
 		out.ComputeGas += gc.ComputeGas
 		out.StorageGas += gc.StorageGas
-		out.TimeTaken += gc.TimeTaken
+
+		out.TotalVirtualGas += gc.TotalVirtualGas
+		out.VirtualComputeGas += gc.VirtualComputeGas
+		out.VirtualStorageGas += gc.VirtualStorageGas
 	}
 
 	return out

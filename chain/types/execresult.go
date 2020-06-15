@@ -21,10 +21,13 @@ type ExecutionTrace struct {
 type GasTrace struct {
 	Name string
 
-	Location   []Loc
-	TotalGas   int64
-	ComputeGas int64
-	StorageGas int64
+	Location          []Loc
+	TotalGas          int64
+	ComputeGas        int64
+	StorageGas        int64
+	TotalVirtualGas   int64
+	VirtualComputeGas int64
+	VirtualStorageGas int64
 
 	TimeTaken time.Duration
 	Extra     interface{}
