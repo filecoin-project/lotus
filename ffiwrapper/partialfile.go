@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"io"
 	"os"
+	"syscall"
 
 	"github.com/detailyang/go-fallocate"
 	"golang.org/x/xerrors"
@@ -63,6 +64,12 @@ func createPartialFile(maxPieceSize abi.PaddedPieceSize, path string) (*partialF
 
 	err = func() error {
 		err := fallocate.Fallocate(f, 0, int64(maxPieceSize))
+		if errno, ok := err.(syscall.Errno); ok {
+			if errno == syscall.EOPNOTSUPP || errno == syscall.ENOSYS {
+				log.Warnf("could not allocated space, ignoring: %v", errno)
+				err = nil // log and ignore
+			}
+		}
 		if err != nil {
 			return xerrors.Errorf("fallocate '%s': %w", path, err)
 		}
