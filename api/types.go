@@ -50,7 +50,7 @@ type MinerInfo struct {
 	WorkerChangeEpoch          abi.ChainEpoch
 	PeerId                     peer.ID
 	Multiaddrs                 []abi.Multiaddrs
-	SealProofType              abi.RegisteredProof
+	SealProofType              abi.RegisteredSealProof
 	SectorSize                 abi.SectorSize
 	WindowPoStPartitionSectors uint64
 }

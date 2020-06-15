@@ -469,9 +469,9 @@ func (s *WindowPoStScheduler) sortedSectorInfo(ctx context.Context, deadlineSect
 	sbsi := make([]abi.SectorInfo, len(sset))
 	for k, sector := range sset {
 		sbsi[k] = abi.SectorInfo{
-			SectorNumber:    sector.ID,
-			SealedCID:       sector.Info.Info.SealedCID,
-			RegisteredProof: sector.Info.Info.RegisteredProof,
+			SectorNumber: sector.ID,
+			SealedCID:    sector.Info.Info.SealedCID,
+			SealProof:    sector.Info.Info.SealProof,
 		}
 	}
 

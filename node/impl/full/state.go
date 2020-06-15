@@ -750,7 +750,7 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 
 	initialPledge := big.Zero()
 	{
-		ssize, err := precommit.Info.RegisteredProof.SectorSize()
+		ssize, err := precommit.Info.SealProof.SectorSize()
 		if err != nil {
 			return types.EmptyInt, err
 		}

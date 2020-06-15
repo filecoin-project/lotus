@@ -34,8 +34,8 @@ import (
 func init() {
 	build.InsecurePoStValidation = true
 	os.Setenv("TRUST_PARAMS", "1")
-	miner.SupportedProofTypes = map[abi.RegisteredProof]struct{}{
-		abi.RegisteredProof_StackedDRG2KiBSeal: {},
+	miner.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
+		abi.RegisteredSealProof_StackedDrg2KiBV1: {},
 	}
 	power.ConsensusMinerMinPower = big.NewInt(2048)
 	verifreg.MinVerifiedDealSize = big.NewInt(256)

@@ -43,7 +43,7 @@ type syscallShim struct {
 	verifier ffiwrapper.Verifier
 }
 
-func (ss *syscallShim) ComputeUnsealedSectorCID(st abi.RegisteredProof, pieces []abi.PieceInfo) (cid.Cid, error) {
+func (ss *syscallShim) ComputeUnsealedSectorCID(st abi.RegisteredSealProof, pieces []abi.PieceInfo) (cid.Cid, error) {
 	var sum abi.PaddedPieceSize
 	for _, p := range pieces {
 		sum += p.Size

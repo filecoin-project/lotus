@@ -33,12 +33,7 @@ import (
 
 var log = logging.Logger("preseal")
 
-func PreSeal(maddr address.Address, pt abi.RegisteredProof, offset abi.SectorNumber, sectors int, sbroot string, preimage []byte, key *types.KeyInfo) (*genesis.Miner, *types.KeyInfo, error) {
-	spt, err := pt.RegisteredSealProof()
-	if err != nil {
-		return nil, nil, err
-	}
-
+func PreSeal(maddr address.Address, spt abi.RegisteredSealProof, offset abi.SectorNumber, sectors int, sbroot string, preimage []byte, key *types.KeyInfo) (*genesis.Miner, *types.KeyInfo, error) {
 	mid, err := address.IDFromAddress(maddr)
 	if err != nil {
 		return nil, nil, err
@@ -63,7 +58,7 @@ func PreSeal(maddr address.Address, pt abi.RegisteredProof, offset abi.SectorNum
 		return nil, nil, err
 	}
 
-	ssize, err := pt.SectorSize()
+	ssize, err := spt.SectorSize()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -102,7 +97,7 @@ func PreSeal(maddr address.Address, pt abi.RegisteredProof, offset abi.SectorNum
 			CommR:     cids.Sealed,
 			CommD:     cids.Unsealed,
 			SectorID:  sid.Number,
-			ProofType: pt,
+			ProofType: spt,
 		})
 	}
 
