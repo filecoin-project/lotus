@@ -239,6 +239,9 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 		st.TotalQualityAdjPower = big.Sub(st.TotalQualityAdjPower, big.NewInt(1))
 		return nil
 	})
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("mutating state: %w", err)
+	}
 
 	c, err := vm.Flush(ctx)
 	if err != nil {
