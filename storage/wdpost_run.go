@@ -111,7 +111,7 @@ func (s *WindowPoStScheduler) checkSectors(ctx context.Context, check *abi.BitFi
 	return &sbf, nil
 }
 
-func (s *WindowPoStScheduler) checkNextRecoveries(ctx context.Context, deadline uint64, ts *types.TipSet) error {
+func (s *WindowPoStScheduler) checkNextRecoveries(ctx context.Context, deadline uint64, deadlineSectors *abi.BitField, ts *types.TipSet) error {
 	faults, err := s.api.StateMinerFaults(ctx, s.actor, ts.Key())
 	if err != nil {
 		return xerrors.Errorf("getting on-chain faults: %w", err)
@@ -134,6 +134,11 @@ func (s *WindowPoStScheduler) checkNextRecoveries(ctx context.Context, deadline 
 	unrecovered, err := bitfield.SubtractBitField(faults, recov)
 	if err != nil {
 		return xerrors.Errorf("subtracting recovered set from fault set: %w", err)
+	}
+
+	unrecovered, err = bitfield.IntersectBitField(unrecovered, deadlineSectors)
+	if err != nil {
+		return xerrors.Errorf("intersect unrecovered set with deadlineSectors: %w", err)
 	}
 
 	uc, err := unrecovered.Count()
@@ -326,7 +331,7 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 		// late to declare them for this deadline
 		declDeadline := (di.Index + 1) % miner.WPoStPeriodDeadlines
 
-		if err := s.checkNextRecoveries(ctx, declDeadline, ts); err != nil {
+		if err := s.checkNextRecoveries(ctx, declDeadline, deadlines.Due[declDeadline], ts); err != nil {
 			// TODO: This is potentially quite bad, but not even trying to post when this fails is objectively worse
 			log.Errorf("checking sector recoveries: %v", err)
 		}
