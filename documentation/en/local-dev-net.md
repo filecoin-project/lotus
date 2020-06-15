@@ -8,7 +8,7 @@ make 2k
 
 Download the 2048 byte parameters:
 ```sh
-./lotus fetch-params --proving-params 2048
+./lotus fetch-params 2048
 ```
 
 Pre-seal some sectors:

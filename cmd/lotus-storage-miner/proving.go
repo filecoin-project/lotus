@@ -21,7 +21,8 @@ import (
 )
 
 var provingCmd = &cli.Command{
-	Name: "proving",
+	Name:  "proving",
+	Usage: "View proving information",
 	Subcommands: []*cli.Command{
 		provingInfoCmd,
 		provingDeadlinesCmd,
@@ -29,7 +30,8 @@ var provingCmd = &cli.Command{
 }
 
 var provingInfoCmd = &cli.Command{
-	Name: "info",
+	Name:  "info",
+	Usage: "View current state information",
 	Action: func(cctx *cli.Context) error {
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
@@ -151,7 +153,8 @@ func epochTime(curr, e abi.ChainEpoch) string {
 }
 
 var provingDeadlinesCmd = &cli.Command{
-	Name: "deadlines",
+	Name:  "deadlines",
+	Usage: "View the current proving period deadlines information",
 	Action: func(cctx *cli.Context) error {
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
