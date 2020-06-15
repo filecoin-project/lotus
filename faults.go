@@ -20,6 +20,11 @@ type FaultTracker interface {
 func (m *Manager) CheckProvable(ctx context.Context, spt abi.RegisteredProof, sectors []abi.SectorID) ([]abi.SectorID, error) {
 	var bad []abi.SectorID
 
+	ssize, err := spt.SectorSize()
+	if err != nil {
+		return nil, err
+	}
+
 	// TODO: More better checks
 	for _, sector := range sectors {
 		err := func() error {
@@ -48,19 +53,27 @@ func (m *Manager) CheckProvable(ctx context.Context, spt abi.RegisteredProof, se
 				return nil
 			}
 
-			toCheck := []string{
-				lp.Sealed,
-				filepath.Join(lp.Cache, "t_aux"),
-				filepath.Join(lp.Cache, "p_aux"),
-				filepath.Join(lp.Cache, "sc-02-data-tree-r-last.dat"),
+			toCheck := map[string]int64{
+				lp.Sealed:                        1,
+				filepath.Join(lp.Cache, "t_aux"): 0,
+				filepath.Join(lp.Cache, "p_aux"): 0,
+				filepath.Join(lp.Cache, "sc-02-data-tree-r-last.dat"): 0,
 			}
 
-			for _, p := range toCheck {
-				_, err := os.Stat(p)
+			for p, sz := range toCheck {
+				st, err := os.Stat(p)
 				if err != nil {
 					log.Warnw("CheckProvable Sector FAULT: sector file stat error", "sector", sector, "sealed", lp.Sealed, "cache", lp.Cache, "file", p)
 					bad = append(bad, sector)
 					return nil
+				}
+
+				if sz != 0 {
+					if st.Size() != int64(ssize)*sz {
+						log.Warnw("CheckProvable Sector FAULT: sector file is wrong size", "sector", sector, "sealed", lp.Sealed, "cache", lp.Cache, "file", p, "size", st.Size(), "expectSize", int64(ssize)*sz)
+						bad = append(bad, sector)
+						return nil
+					}
 				}
 			}
 
