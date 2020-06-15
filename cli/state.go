@@ -1072,7 +1072,7 @@ var compStateMsg = `
  {{- end}}
 
  {{range .GasCharges}}
- <tr><td>{{.Name}}</td>
+ <tr><td>{{.Name}}{{if .Extra}}:{{.Extra}}{{end}}</td>
  {{template "gasC" .}}
  <td>{{.TimeTaken}}</td>
   <td>

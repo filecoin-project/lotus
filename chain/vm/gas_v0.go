@@ -108,12 +108,12 @@ func (pl *pricelistV0) OnMethodInvocation(value abi.TokenAmount, methodNum abi.M
 
 // OnIpldGet returns the gas used for storing an object
 func (pl *pricelistV0) OnIpldGet(dataSize int) GasCharge {
-	return newGasCharge(fmt.Sprintf("OnIpldGet:%db", dataSize), pl.ipldGetBase+int64(dataSize)*pl.ipldGetPerByte, 0)
+	return newGasCharge("OnIpldGet", pl.ipldGetBase+int64(dataSize)*pl.ipldGetPerByte, 0).WithExtra(dataSize)
 }
 
 // OnIpldPut returns the gas used for storing an object
 func (pl *pricelistV0) OnIpldPut(dataSize int) GasCharge {
-	return newGasCharge(fmt.Sprintf("OnIpldPut:%db", dataSize), pl.ipldPutBase, int64(dataSize)*pl.ipldPutPerByte)
+	return newGasCharge("OnIpldPut", pl.ipldPutBase, int64(dataSize)*pl.ipldPutPerByte).WithExtra(dataSize)
 }
 
 // OnCreateActor returns the gas used for creating an actor
@@ -133,7 +133,7 @@ func (pl *pricelistV0) OnVerifySignature(sigType crypto.SigType, planTextSize in
 		return GasCharge{}, fmt.Errorf("cost function for signature type %d not supported", sigType)
 	}
 	sigName, _ := sigType.Name()
-	return newGasCharge("OnVerifySignature/"+sigName, costFn(int64(planTextSize)), 0), nil
+	return newGasCharge("OnVerifySignature", costFn(int64(planTextSize)), 0).WithExtra(sigName), nil
 }
 
 // OnHashing
