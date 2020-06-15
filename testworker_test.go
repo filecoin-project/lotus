@@ -94,7 +94,7 @@ func (t *testWorker) Paths(ctx context.Context) ([]stores.StoragePath, error) {
 }
 
 func (t *testWorker) Info(ctx context.Context) (storiface.WorkerInfo, error) {
-	res := ResourceTable[sealtasks.TTPreCommit2][abi.RegisteredProof_StackedDRG2KiBSeal]
+	res := ResourceTable[sealtasks.TTPreCommit2][abi.RegisteredSealProof_StackedDrg2KiBV1]
 
 	return storiface.WorkerInfo{
 		Hostname: "testworkerer",

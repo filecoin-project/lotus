@@ -13,7 +13,7 @@ import (
 type readonlyProvider struct {
 	index stores.SectorIndex
 	stor  *stores.Local
-	spt   abi.RegisteredProof
+	spt   abi.RegisteredSealProof
 }
 
 func (l *readonlyProvider) AcquireSector(ctx context.Context, id abi.SectorID, existing stores.SectorFileType, allocate stores.SectorFileType, sealing stores.PathType) (stores.SectorPaths, func(), error) {

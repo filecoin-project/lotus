@@ -7,31 +7,27 @@ import (
 )
 
 type Config struct {
-	SealProofType abi.RegisteredProof
+	SealProofType abi.RegisteredSealProof
 
 	_ struct{} // guard against nameless init
 }
 
 func sizeFromConfig(cfg Config) (abi.SectorSize, error) {
-	if cfg.SealProofType == abi.RegisteredProof(0) {
-		return abi.SectorSize(0), xerrors.New("must specify a seal proof type from abi.RegisteredProof")
-	}
-
 	return cfg.SealProofType.SectorSize()
 }
 
-func SealProofTypeFromSectorSize(ssize abi.SectorSize) (abi.RegisteredProof, error) {
+func SealProofTypeFromSectorSize(ssize abi.SectorSize) (abi.RegisteredSealProof, error) {
 	switch ssize {
 	case 2 << 10:
-		return abi.RegisteredProof_StackedDRG2KiBSeal, nil
+		return abi.RegisteredSealProof_StackedDrg2KiBV1, nil
 	case 8 << 20:
-		return abi.RegisteredProof_StackedDRG8MiBSeal, nil
+		return abi.RegisteredSealProof_StackedDrg8MiBV1, nil
 	case 512 << 20:
-		return abi.RegisteredProof_StackedDRG512MiBSeal, nil
+		return abi.RegisteredSealProof_StackedDrg512MiBV1, nil
 	case 32 << 30:
-		return abi.RegisteredProof_StackedDRG32GiBSeal, nil
+		return abi.RegisteredSealProof_StackedDrg32GiBV1, nil
 	case 64 << 30:
-		return abi.RegisteredProof_StackedDRG64GiBSeal, nil
+		return abi.RegisteredSealProof_StackedDrg64GiBV1, nil
 	default:
 		return 0, xerrors.Errorf("unsupported sector size for miner: %v", ssize)
 	}

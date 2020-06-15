@@ -26,7 +26,7 @@ func newExistingSelector(ctx context.Context, index stores.SectorIndex, sector a
 	}, nil
 }
 
-func (s *existingSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi.RegisteredProof, whnd *workerHandle) (bool, error) {
+func (s *existingSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi.RegisteredSealProof, whnd *workerHandle) (bool, error) {
 	tasks, err := whnd.w.TaskTypes(ctx)
 	if err != nil {
 		return false, xerrors.Errorf("getting supported worker task types: %w", err)

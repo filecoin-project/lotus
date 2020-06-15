@@ -30,7 +30,7 @@ func TestWriteTwoPcs(t *testing.T) {
 
 		rf, w, _ := ffiwrapper.ToReadableFile(bytes.NewReader(buf), int64(len(buf)))
 
-		_, _, _, err := ffi.WriteWithAlignment(abi.RegisteredProof_StackedDRG32GiBSeal, rf, abi.UnpaddedPieceSize(len(buf)), tf, nil)
+		_, _, _, err := ffi.WriteWithAlignment(abi.RegisteredSealProof_StackedDrg32GiBV1, rf, abi.UnpaddedPieceSize(len(buf)), tf, nil)
 		if err != nil {
 			panic(err)
 		}

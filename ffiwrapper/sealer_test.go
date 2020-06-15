@@ -32,7 +32,7 @@ func init() {
 	logging.SetLogLevel("*", "DEBUG") //nolint: errcheck
 }
 
-var sealProofType = abi.RegisteredProof_StackedDRG2KiBSeal
+var sealProofType = abi.RegisteredSealProof_StackedDrg2KiBV1
 var sectorSize, _ = sealProofType.SectorSize()
 
 var sealRand = abi.SealRandomness{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2}
@@ -91,7 +91,7 @@ func (s *seal) commit(t *testing.T, sb *Sealer, done func()) {
 	ok, err := ProofVerifier.VerifySeal(abi.SealVerifyInfo{
 		SectorID:              s.id,
 		SealedCID:             s.cids.Sealed,
-		RegisteredProof:       sealProofType,
+		SealProof:       sealProofType,
 		Proof:                 proof,
 		Randomness:            s.ticket,
 		InteractiveRandomness: seed,
@@ -439,7 +439,7 @@ func BenchmarkWriteWithAlignment(b *testing.B) {
 		tf, _ := ioutil.TempFile("/tmp/", "scrb-")
 		b.StartTimer()
 
-		ffi.WriteWithAlignment(abi.RegisteredProof_StackedDRG2KiBSeal, rf, bt, tf, nil)
+		ffi.WriteWithAlignment(abi.RegisteredSealProof_StackedDrg2KiBV1, rf, bt, tf, nil)
 		w()
 	}
 }

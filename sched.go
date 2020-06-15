@@ -20,13 +20,13 @@ const mib = 1 << 20
 type WorkerAction func(ctx context.Context, w Worker) error
 
 type WorkerSelector interface {
-	Ok(ctx context.Context, task sealtasks.TaskType, spt abi.RegisteredProof, a *workerHandle) (bool, error) // true if worker is acceptable for performing a task
+	Ok(ctx context.Context, task sealtasks.TaskType, spt abi.RegisteredSealProof, a *workerHandle) (bool, error) // true if worker is acceptable for performing a task
 
 	Cmp(ctx context.Context, task sealtasks.TaskType, a, b *workerHandle) (bool, error) // true if a is preferred over b
 }
 
 type scheduler struct {
-	spt abi.RegisteredProof
+	spt abi.RegisteredSealProof
 
 	workersLk  sync.Mutex
 	nextWorker WorkerID
@@ -44,7 +44,7 @@ type scheduler struct {
 	schedQueue *requestQueue
 }
 
-func newScheduler(spt abi.RegisteredProof) *scheduler {
+func newScheduler(spt abi.RegisteredSealProof) *scheduler {
 	return &scheduler{
 		spt: spt,
 
@@ -321,7 +321,7 @@ func (sh *scheduler) assignWorker(wid WorkerID, w *workerHandle, req *workerRequ
 	return nil
 }
 
-func (a *activeResources) withResources(spt abi.RegisteredProof, id WorkerID, wr storiface.WorkerResources, r Resources, locker sync.Locker, cb func() error) error {
+func (a *activeResources) withResources(spt abi.RegisteredSealProof, id WorkerID, wr storiface.WorkerResources, r Resources, locker sync.Locker, cb func() error) error {
 	for !canHandleRequest(r, spt, id, wr, a) {
 		if a.cond == nil {
 			a.cond = sync.NewCond(locker)
@@ -367,7 +367,7 @@ func (a *activeResources) free(wr storiface.WorkerResources, r Resources) {
 	a.memUsedMax -= r.MaxMemory
 }
 
-func canHandleRequest(needRes Resources, spt abi.RegisteredProof, wid WorkerID, res storiface.WorkerResources, active *activeResources) bool {
+func canHandleRequest(needRes Resources, spt abi.RegisteredSealProof, wid WorkerID, res storiface.WorkerResources, active *activeResources) bool {
 
 	// TODO: dedupe needRes.BaseMinMemory per task type (don't add if that task is already running)
 	minNeedMem := res.MemReserved + active.memUsedMin + needRes.MinMemory + needRes.BaseMinMemory
@@ -377,10 +377,10 @@ func canHandleRequest(needRes Resources, spt abi.RegisteredProof, wid WorkerID, 
 	}
 
 	maxNeedMem := res.MemReserved + active.memUsedMax + needRes.MaxMemory + needRes.BaseMinMemory
-	if spt == abi.RegisteredProof_StackedDRG32GiBSeal {
+	if spt == abi.RegisteredSealProof_StackedDrg32GiBV1 {
 		maxNeedMem += MaxCachingOverhead
 	}
-	if spt == abi.RegisteredProof_StackedDRG64GiBSeal {
+	if spt == abi.RegisteredSealProof_StackedDrg64GiBV1 {
 		maxNeedMem += MaxCachingOverhead * 2 // ewwrhmwh
 	}
 	if maxNeedMem > res.MemSwap+res.MemPhysical {

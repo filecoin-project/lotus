@@ -510,7 +510,7 @@ func (sb *Sealer) FinalizeSector(ctx context.Context, sector abi.SectorID) error
 	return ffi.ClearCache(uint64(sb.ssize), paths.Cache)
 }
 
-func GeneratePieceCIDFromFile(proofType abi.RegisteredProof, piece io.Reader, pieceSize abi.UnpaddedPieceSize) (cid.Cid, error) {
+func GeneratePieceCIDFromFile(proofType abi.RegisteredSealProof, piece io.Reader, pieceSize abi.UnpaddedPieceSize) (cid.Cid, error) {
 	f, werr, err := ToReadableFile(piece, int64(pieceSize))
 	if err != nil {
 		return cid.Undef, err
@@ -524,7 +524,7 @@ func GeneratePieceCIDFromFile(proofType abi.RegisteredProof, piece io.Reader, pi
 	return pieceCID, werr()
 }
 
-func GenerateUnsealedCID(proofType abi.RegisteredProof, pieces []abi.PieceInfo) (cid.Cid, error) {
+func GenerateUnsealedCID(proofType abi.RegisteredSealProof, pieces []abi.PieceInfo) (cid.Cid, error) {
 	var sum abi.PaddedPieceSize
 	for _, p := range pieces {
 		sum += p.Size

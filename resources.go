@@ -22,9 +22,9 @@ func (r Resources) MultiThread() bool {
 
 const MaxCachingOverhead = 32 << 30
 
-var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
+var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredSealProof]Resources{
 	sealtasks.TTAddPiece: {
-		abi.RegisteredProof_StackedDRG64GiBSeal: Resources{ // This is probably a bit conservative
+		abi.RegisteredSealProof_StackedDrg64GiBV1: Resources{ // This is probably a bit conservative
 			MaxMemory: 64 << 30,
 			MinMemory: 64 << 30,
 
@@ -32,7 +32,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 
 			BaseMinMemory: 1 << 30,
 		},
-		abi.RegisteredProof_StackedDRG32GiBSeal: Resources{ // This is probably a bit conservative
+		abi.RegisteredSealProof_StackedDrg32GiBV1: Resources{ // This is probably a bit conservative
 			MaxMemory: 32 << 30,
 			MinMemory: 32 << 30,
 
@@ -40,7 +40,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 
 			BaseMinMemory: 1 << 30,
 		},
-		abi.RegisteredProof_StackedDRG512MiBSeal: Resources{
+		abi.RegisteredSealProof_StackedDrg512MiBV1: Resources{
 			MaxMemory: 1 << 30,
 			MinMemory: 1 << 30,
 
@@ -48,7 +48,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 
 			BaseMinMemory: 1 << 30,
 		},
-		abi.RegisteredProof_StackedDRG2KiBSeal: Resources{
+		abi.RegisteredSealProof_StackedDrg2KiBV1: Resources{
 			MaxMemory: 2 << 10,
 			MinMemory: 2 << 10,
 
@@ -56,7 +56,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 
 			BaseMinMemory: 2 << 10,
 		},
-		abi.RegisteredProof_StackedDRG8MiBSeal: Resources{
+		abi.RegisteredSealProof_StackedDrg8MiBV1: Resources{
 			MaxMemory: 8 << 20,
 			MinMemory: 8 << 20,
 
@@ -66,7 +66,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 		},
 	},
 	sealtasks.TTPreCommit1: {
-		abi.RegisteredProof_StackedDRG64GiBSeal: Resources{
+		abi.RegisteredSealProof_StackedDrg64GiBV1: Resources{
 			MaxMemory: 128 << 30,
 			MinMemory: 96 << 30,
 
@@ -74,7 +74,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 
 			BaseMinMemory: 60 << 30,
 		},
-		abi.RegisteredProof_StackedDRG32GiBSeal: Resources{
+		abi.RegisteredSealProof_StackedDrg32GiBV1: Resources{
 			MaxMemory: 64 << 30,
 			MinMemory: 48 << 30,
 
@@ -82,7 +82,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 
 			BaseMinMemory: 30 << 30,
 		},
-		abi.RegisteredProof_StackedDRG512MiBSeal: Resources{
+		abi.RegisteredSealProof_StackedDrg512MiBV1: Resources{
 			MaxMemory: 3 << 29, // 1.5G
 			MinMemory: 1 << 30,
 
@@ -90,7 +90,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 
 			BaseMinMemory: 1 << 30,
 		},
-		abi.RegisteredProof_StackedDRG2KiBSeal: Resources{
+		abi.RegisteredSealProof_StackedDrg2KiBV1: Resources{
 			MaxMemory: 2 << 10,
 			MinMemory: 2 << 10,
 
@@ -98,7 +98,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 
 			BaseMinMemory: 2 << 10,
 		},
-		abi.RegisteredProof_StackedDRG8MiBSeal: Resources{
+		abi.RegisteredSealProof_StackedDrg8MiBV1: Resources{
 			MaxMemory: 8 << 20,
 			MinMemory: 8 << 20,
 
@@ -108,7 +108,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 		},
 	},
 	sealtasks.TTPreCommit2: {
-		abi.RegisteredProof_StackedDRG64GiBSeal: Resources{
+		abi.RegisteredSealProof_StackedDrg64GiBV1: Resources{
 			MaxMemory: 64 << 30,
 			MinMemory: 64 << 30,
 
@@ -117,7 +117,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 
 			BaseMinMemory: 60 << 30,
 		},
-		abi.RegisteredProof_StackedDRG32GiBSeal: Resources{
+		abi.RegisteredSealProof_StackedDrg32GiBV1: Resources{
 			MaxMemory: 32 << 30,
 			MinMemory: 32 << 30,
 
@@ -126,7 +126,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 
 			BaseMinMemory: 30 << 30,
 		},
-		abi.RegisteredProof_StackedDRG512MiBSeal: Resources{
+		abi.RegisteredSealProof_StackedDrg512MiBV1: Resources{
 			MaxMemory: 3 << 29, // 1.5G
 			MinMemory: 1 << 30,
 
@@ -134,7 +134,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 
 			BaseMinMemory: 1 << 30,
 		},
-		abi.RegisteredProof_StackedDRG2KiBSeal: Resources{
+		abi.RegisteredSealProof_StackedDrg2KiBV1: Resources{
 			MaxMemory: 2 << 10,
 			MinMemory: 2 << 10,
 
@@ -142,7 +142,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 
 			BaseMinMemory: 2 << 10,
 		},
-		abi.RegisteredProof_StackedDRG8MiBSeal: Resources{
+		abi.RegisteredSealProof_StackedDrg8MiBV1: Resources{
 			MaxMemory: 8 << 20,
 			MinMemory: 8 << 20,
 
@@ -152,7 +152,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 		},
 	},
 	sealtasks.TTCommit1: { // Very short (~100ms), so params are very light
-		abi.RegisteredProof_StackedDRG64GiBSeal: Resources{
+		abi.RegisteredSealProof_StackedDrg64GiBV1: Resources{
 			MaxMemory: 1 << 30,
 			MinMemory: 1 << 30,
 
@@ -160,7 +160,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 
 			BaseMinMemory: 1 << 30,
 		},
-		abi.RegisteredProof_StackedDRG32GiBSeal: Resources{
+		abi.RegisteredSealProof_StackedDrg32GiBV1: Resources{
 			MaxMemory: 1 << 30,
 			MinMemory: 1 << 30,
 
@@ -168,7 +168,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 
 			BaseMinMemory: 1 << 30,
 		},
-		abi.RegisteredProof_StackedDRG512MiBSeal: Resources{
+		abi.RegisteredSealProof_StackedDrg512MiBV1: Resources{
 			MaxMemory: 1 << 30,
 			MinMemory: 1 << 30,
 
@@ -176,7 +176,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 
 			BaseMinMemory: 1 << 30,
 		},
-		abi.RegisteredProof_StackedDRG2KiBSeal: Resources{
+		abi.RegisteredSealProof_StackedDrg2KiBV1: Resources{
 			MaxMemory: 2 << 10,
 			MinMemory: 2 << 10,
 
@@ -184,7 +184,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 
 			BaseMinMemory: 2 << 10,
 		},
-		abi.RegisteredProof_StackedDRG8MiBSeal: Resources{
+		abi.RegisteredSealProof_StackedDrg8MiBV1: Resources{
 			MaxMemory: 8 << 20,
 			MinMemory: 8 << 20,
 
@@ -194,7 +194,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 		},
 	},
 	sealtasks.TTCommit2: {
-		abi.RegisteredProof_StackedDRG64GiBSeal: Resources{
+		abi.RegisteredSealProof_StackedDrg64GiBV1: Resources{
 			MaxMemory: 260 << 30, // TODO: Confirm
 			MinMemory: 60 << 30,
 
@@ -203,7 +203,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 
 			BaseMinMemory: 64 << 30, // params
 		},
-		abi.RegisteredProof_StackedDRG32GiBSeal: Resources{
+		abi.RegisteredSealProof_StackedDrg32GiBV1: Resources{
 			MaxMemory: 150 << 30, // TODO: ~30G of this should really be BaseMaxMemory
 			MinMemory: 30 << 30,
 
@@ -212,7 +212,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 
 			BaseMinMemory: 32 << 30, // params
 		},
-		abi.RegisteredProof_StackedDRG512MiBSeal: Resources{
+		abi.RegisteredSealProof_StackedDrg512MiBV1: Resources{
 			MaxMemory: 3 << 29, // 1.5G
 			MinMemory: 1 << 30,
 
@@ -221,7 +221,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 
 			BaseMinMemory: 10 << 30,
 		},
-		abi.RegisteredProof_StackedDRG2KiBSeal: Resources{
+		abi.RegisteredSealProof_StackedDrg2KiBV1: Resources{
 			MaxMemory: 2 << 10,
 			MinMemory: 2 << 10,
 
@@ -230,7 +230,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 
 			BaseMinMemory: 2 << 10,
 		},
-		abi.RegisteredProof_StackedDRG8MiBSeal: Resources{
+		abi.RegisteredSealProof_StackedDrg8MiBV1: Resources{
 			MaxMemory: 8 << 20,
 			MinMemory: 8 << 20,
 
@@ -241,7 +241,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 		},
 	},
 	sealtasks.TTFetch: {
-		abi.RegisteredProof_StackedDRG64GiBSeal: Resources{
+		abi.RegisteredSealProof_StackedDrg64GiBV1: Resources{
 			MaxMemory: 1 << 20,
 			MinMemory: 1 << 20,
 
@@ -250,7 +250,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 
 			BaseMinMemory: 0,
 		},
-		abi.RegisteredProof_StackedDRG32GiBSeal: Resources{
+		abi.RegisteredSealProof_StackedDrg32GiBV1: Resources{
 			MaxMemory: 1 << 20,
 			MinMemory: 1 << 20,
 
@@ -259,7 +259,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 
 			BaseMinMemory: 0,
 		},
-		abi.RegisteredProof_StackedDRG512MiBSeal: Resources{
+		abi.RegisteredSealProof_StackedDrg512MiBV1: Resources{
 			MaxMemory: 1 << 20,
 			MinMemory: 1 << 20,
 
@@ -268,7 +268,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 
 			BaseMinMemory: 0,
 		},
-		abi.RegisteredProof_StackedDRG2KiBSeal: Resources{
+		abi.RegisteredSealProof_StackedDrg2KiBV1: Resources{
 			MaxMemory: 1 << 20,
 			MinMemory: 1 << 20,
 
@@ -277,7 +277,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredProof]Resources{
 
 			BaseMinMemory: 0,
 		},
-		abi.RegisteredProof_StackedDRG8MiBSeal: Resources{
+		abi.RegisteredSealProof_StackedDrg8MiBV1: Resources{
 			MaxMemory: 1 << 20,
 			MinMemory: 1 << 20,
 
