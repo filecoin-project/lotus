@@ -460,7 +460,7 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 				}
 
 				if cerr != nil {
-					return xerrors.Errorf("failed to configure storage miner: %w", err)
+					return xerrors.Errorf("failed to configure storage miner: %w", cerr)
 				}
 			}
 
