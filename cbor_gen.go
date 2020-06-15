@@ -425,7 +425,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.SectorType (abi.RegisteredProof) (int64)
+	// t.SectorType (abi.RegisteredSealProof) (int64)
 	if len("SectorType") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"SectorType\" was too long")
 	}
@@ -879,7 +879,7 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 				t.SectorNumber = abi.SectorNumber(extra)
 
 			}
-			// t.SectorType (abi.RegisteredProof) (int64)
+			// t.SectorType (abi.RegisteredSealProof) (int64)
 		case "SectorType":
 			{
 				maj, extra, err := cbg.CborReadHeader(br)
@@ -903,7 +903,7 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 					return fmt.Errorf("wrong type for int64 field: %d", maj)
 				}
 
-				t.SectorType = abi.RegisteredProof(extraI)
+				t.SectorType = abi.RegisteredSealProof(extraI)
 			}
 			// t.Pieces ([]sealing.Piece) (slice)
 		case "Pieces":

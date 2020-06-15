@@ -50,7 +50,7 @@ type SectorInfo struct {
 	State        SectorState
 	SectorNumber abi.SectorNumber
 
-	SectorType abi.RegisteredProof
+	SectorType abi.RegisteredSealProof
 
 	// Packing
 	Pieces []Piece

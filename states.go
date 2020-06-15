@@ -158,9 +158,9 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 	}
 
 	params := &miner.SectorPreCommitInfo{
-		Expiration:      expiration,
-		SectorNumber:    sector.SectorNumber,
-		RegisteredProof: sector.SectorType,
+		Expiration:   expiration,
+		SectorNumber: sector.SectorNumber,
+		SealProof:    sector.SectorType,
 
 		SealedCID:     *sector.CommR,
 		SealRandEpoch: sector.TicketEpoch,

@@ -49,7 +49,7 @@ func (evt SectorForceState) applyGlobal(state *SectorInfo) bool {
 
 type SectorStart struct {
 	ID         abi.SectorNumber
-	SectorType abi.RegisteredProof
+	SectorType abi.RegisteredSealProof
 	Pieces     []Piece
 }
 
