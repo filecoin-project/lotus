@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"math"
 	"os"
+	"runtime"
 	"runtime/pprof"
 	"sort"
 	"time"
@@ -45,8 +46,14 @@ var importBenchCmd = &cli.Command{
 			Name:  "height",
 			Usage: "halt validation after given height",
 		},
+		&cli.IntFlag{
+			Name:  "batch-seal-verify-threads",
+			Usage: "set the parallelism factor for batch seal verification",
+			Value: runtime.NumCPU(),
+		},
 	},
 	Action: func(cctx *cli.Context) error {
+		vm.BatchSealVerifyParallelism = cctx.Int("batch-seal-verify-threads")
 		if !cctx.Args().Present() {
 			fmt.Println("must pass car file of chain to benchmark importing")
 			return nil
@@ -200,6 +207,21 @@ func compStats(vals []float64) (float64, float64) {
 	return av, math.Sqrt(varsum / float64(len(vals)))
 }
 
+func tallyGasCharges(charges map[string][]float64, et *types.ExecutionTrace) {
+	for _, gc := range et.GasCharges {
+
+		compGas := gc.ComputeGas + gc.VirtualComputeGas
+		ratio := float64(compGas) / float64(gc.TimeTaken.Nanoseconds())
+
+		charges[gc.Name] = append(charges[gc.Name], 1/(ratio/GasPerNs))
+		//fmt.Printf("%s: %d, %s: %0.2f\n", gc.Name, compGas, gc.TimeTaken, 1/(ratio/GasPerNs))
+		for _, sub := range et.Subcalls {
+			tallyGasCharges(charges, &sub)
+		}
+	}
+
+}
+
 var importAnalyzeCmd = &cli.Command{
 	Name: "analyze",
 	Action: func(cctx *cli.Context) error {
@@ -235,14 +257,8 @@ var importAnalyzeCmd = &cli.Command{
 				cgas, vgas := countGasCosts(&inv.ExecutionTrace)
 				fmt.Printf("Invocation: %d %s: %s %d -> %0.2f\n", inv.Msg.Method, inv.Msg.To, inv.Duration, cgas+vgas, float64(GasPerNs*inv.Duration.Nanoseconds())/float64(cgas+vgas))
 
-				for _, gc := range inv.ExecutionTrace.GasCharges {
+				tallyGasCharges(chargeDeltas, &inv.ExecutionTrace)
 
-					compGas := gc.ComputeGas + gc.VirtualComputeGas
-					ratio := float64(compGas) / float64(gc.TimeTaken.Nanoseconds())
-
-					chargeDeltas[gc.Name] = append(chargeDeltas[gc.Name], 1/(ratio/GasPerNs))
-					//fmt.Printf("%s: %d, %s: %0.2f\n", gc.Name, compGas, gc.TimeTaken, 1/(ratio/GasPerNs))
-				}
 			}
 		}
 

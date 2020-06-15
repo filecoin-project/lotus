@@ -103,17 +103,17 @@ func (pl *pricelistV0) OnMethodInvocation(value abi.TokenAmount, methodNum abi.M
 	if methodNum != builtin.MethodSend {
 		ret += pl.sendInvokeMethod
 	}
-	return newGasCharge("OnMethodInvocation", ret, 0)
+	return newGasCharge("OnMethodInvocation", ret, 0).WithVirtual(ret*15000, 0)
 }
 
 // OnIpldGet returns the gas used for storing an object
 func (pl *pricelistV0) OnIpldGet(dataSize int) GasCharge {
-	return newGasCharge("OnIpldGet", pl.ipldGetBase+int64(dataSize)*pl.ipldGetPerByte, 0).WithExtra(dataSize)
+	return newGasCharge("OnIpldGet", pl.ipldGetBase+int64(dataSize)*pl.ipldGetPerByte, 0).WithExtra(dataSize).WithVirtual(pl.ipldGetBase*13750+(pl.ipldGetPerByte*100), 0)
 }
 
 // OnIpldPut returns the gas used for storing an object
 func (pl *pricelistV0) OnIpldPut(dataSize int) GasCharge {
-	return newGasCharge("OnIpldPut", pl.ipldPutBase, int64(dataSize)*pl.ipldPutPerByte).WithExtra(dataSize)
+	return newGasCharge("OnIpldPut", pl.ipldPutBase, int64(dataSize)*pl.ipldPutPerByte).WithExtra(dataSize).WithVirtual(pl.ipldPutBase*8700+(pl.ipldPutPerByte*100), 0)
 }
 
 // OnCreateActor returns the gas used for creating an actor
@@ -144,13 +144,13 @@ func (pl *pricelistV0) OnHashing(dataSize int) GasCharge {
 // OnComputeUnsealedSectorCid
 func (pl *pricelistV0) OnComputeUnsealedSectorCid(proofType abi.RegisteredSealProof, pieces []abi.PieceInfo) GasCharge {
 	// TODO: this needs more cost tunning, check with @lotus
-	return newGasCharge("OnComputeUnsealedSectorCid", pl.computeUnsealedSectorCidBase, 0)
+	return newGasCharge("OnComputeUnsealedSectorCid", pl.computeUnsealedSectorCidBase, 0).WithVirtual(pl.computeUnsealedSectorCidBase*24500, 0)
 }
 
 // OnVerifySeal
 func (pl *pricelistV0) OnVerifySeal(info abi.SealVerifyInfo) GasCharge {
 	// TODO: this needs more cost tunning, check with @lotus
-	return newGasCharge("OnVerifySeal", pl.verifySealBase, 0)
+	return newGasCharge("OnVerifySeal", pl.verifySealBase, 0).WithVirtual(pl.verifySealBase*177500, 0)
 }
 
 // OnVerifyPost
