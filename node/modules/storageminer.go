@@ -299,8 +299,8 @@ func NewStorageAsk(ctx helpers.MetricsCtx, fapi lapi.FullNode, ds dtypes.Metadat
 		return nil, err
 	}
 	// Hacky way to set max piece size to the sector size
-	a := storedAsk.GetAsk(address.Address(minerAddress)).Ask
-	err = storedAsk.AddAsk(a.Price, a.Expiry-a.Timestamp, storagemarket.MaxPieceSize(abi.PaddedPieceSize(mi.SectorSize)))
+	a := storedAsk.GetAsk().Ask
+	err = storedAsk.SetAsk(a.Price, a.Expiry-a.Timestamp, storagemarket.MaxPieceSize(abi.PaddedPieceSize(mi.SectorSize)))
 	if err != nil {
 		return storedAsk, err
 	}

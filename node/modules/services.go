@@ -1,8 +1,6 @@
 package modules
 
 import (
-	"context"
-
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	eventbus "github.com/libp2p/go-eventbus"
@@ -15,7 +13,6 @@ import (
 
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/discovery"
-	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/beacon"
@@ -98,21 +95,6 @@ func HandleIncomingMessages(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub
 	}
 
 	go sub.HandleIncomingMessages(ctx, mpool, msgsub)
-}
-
-func RunDealClient(mctx helpers.MetricsCtx, lc fx.Lifecycle, c storagemarket.StorageClient) {
-	ctx := helpers.LifecycleCtx(mctx, lc)
-
-	lc.Append(fx.Hook{
-		OnStart: func(context.Context) error {
-			c.Run(ctx)
-			return nil
-		},
-		OnStop: func(context.Context) error {
-			c.Stop()
-			return nil
-		},
-	})
 }
 
 func NewLocalDiscovery(ds dtypes.MetadataDS) *discovery.Local {
