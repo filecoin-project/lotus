@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/filecoin-project/go-fil-markets/pieceio"
 	basicnode "github.com/ipld/go-ipld-prime/node/basic"
@@ -224,6 +225,15 @@ func (a *API) makeRetrievalQuery(ctx context.Context, rp retrievalmarket.Retriev
 	if err != nil {
 		return api.QueryOffer{Err: err.Error(), Miner: rp.Address, MinerPeerID: rp.ID}
 	}
+	var errStr string
+	switch queryResponse.Status {
+	case retrievalmarket.QueryResponseAvailable:
+		errStr = ""
+	case retrievalmarket.QueryResponseUnavailable:
+		errStr = fmt.Sprintf("retrieval query offer was unavailable: %s", queryResponse.Message)
+	case retrievalmarket.QueryResponseError:
+		errStr = fmt.Sprintf("retrieval query offer errored: %s", queryResponse.Message)
+	}
 
 	return api.QueryOffer{
 		Root:                    payload,
@@ -233,6 +243,7 @@ func (a *API) makeRetrievalQuery(ctx context.Context, rp retrievalmarket.Retriev
 		PaymentIntervalIncrease: queryResponse.MaxPaymentIntervalIncrease,
 		Miner:                   queryResponse.PaymentAddress, // TODO: check
 		MinerPeerID:             rp.ID,
+		Err:                     errStr,
 	}
 }
 
