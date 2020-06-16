@@ -529,7 +529,24 @@ func blockSanityChecks(h *types.BlockHeader) error {
 }
 
 // Should match up with 'Semantical Validation' in validation.md in the spec
-func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) error {
+func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) (err error) {
+	defer func() {
+		// b.Cid() could panic for empty blocks that are used in tests.
+		if rerr := recover(); rerr != nil {
+			err = xerrors.Errorf("validate block panic: %w", rerr)
+			return
+		}
+	}()
+
+	isValidated, err := syncer.store.IsBlockValidated(ctx, b.Cid())
+	if err != nil {
+		return xerrors.Errorf("check block validation cache %s: %w", b.Cid(), err)
+	}
+
+	if isValidated {
+		return nil
+	}
+
 	validationStart := time.Now()
 	defer func() {
 		dur := time.Since(validationStart)
@@ -759,7 +776,11 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		}
 	}
 
-	return merr
+	if err := syncer.store.MarkBlockAsValidated(ctx, b.Cid()); err != nil {
+		return xerrors.Errorf("caching block validation %s: %w", b.Cid(), err)
+	}
+
+	return nil
 }
 
 func (syncer *Syncer) VerifyWinningPoStProof(ctx context.Context, h *types.BlockHeader, prevBeacon types.BeaconEntry, lbst cid.Cid, waddr address.Address) error {
