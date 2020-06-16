@@ -208,8 +208,13 @@ func (a *API) ClientFindData(ctx context.Context, root cid.Cid) ([]api.QueryOffe
 }
 
 func (a *API) ClientMinerQueryOffer(ctx context.Context, payload cid.Cid, miner address.Address) (api.QueryOffer, error) {
+	mi, err := a.StateMinerInfo(ctx, miner, types.EmptyTSK)
+	if err != nil {
+		return api.QueryOffer{}, err
+	}
 	rp := retrievalmarket.RetrievalPeer{
 		Address: miner,
+		ID:      mi.PeerId,
 	}
 	return a.makeRetrievalQuery(ctx, rp, payload, retrievalmarket.QueryParams{}), nil
 }
