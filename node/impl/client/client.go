@@ -224,6 +224,15 @@ func (a *API) makeRetrievalQuery(ctx context.Context, rp retrievalmarket.Retriev
 	if err != nil {
 		return api.QueryOffer{Err: err.Error(), Miner: rp.Address, MinerPeerID: rp.ID}
 	}
+	var errStr string
+	switch queryResponse.Status {
+	case retrievalmarket.QueryResponseAvailable:
+		errStr = ""
+	case retrievalmarket.QueryResponseUnavailable:
+		errStr = "retrieval query offer was unavailable"
+	case retrievalmarket.QueryResponseError:
+		errStr = "retrieval query offer errored"
+	}
 
 	return api.QueryOffer{
 		Root:                    payload,
@@ -233,6 +242,7 @@ func (a *API) makeRetrievalQuery(ctx context.Context, rp retrievalmarket.Retriev
 		PaymentIntervalIncrease: queryResponse.MaxPaymentIntervalIncrease,
 		Miner:                   queryResponse.PaymentAddress, // TODO: check
 		MinerPeerID:             rp.ID,
+		Err:                     errStr,
 	}
 }
 

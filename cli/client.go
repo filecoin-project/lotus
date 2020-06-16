@@ -461,6 +461,9 @@ var clientRetrieveCmd = &cli.Command{
 				return err
 			}
 		}
+		if offer.Err != "" {
+			return fmt.Errorf("The received offer errored: %s", offer.Err)
+		}
 
 		ref := &lapi.FileRef{
 			Path:  cctx.Args().Get(1),
