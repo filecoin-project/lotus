@@ -30,7 +30,6 @@ func main() {
 		stopCmd,
 		sectorsCmd,
 		storageCmd,
-		setPriceCmd,
 		workersCmd,
 		provingCmd,
 	}

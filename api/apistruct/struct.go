@@ -192,10 +192,10 @@ type StorageMinerStruct struct {
 
 		MiningBase func(context.Context) (*types.TipSet, error) `perm:"read"`
 
-		MarketImportDealData      func(context.Context, cid.Cid, string) error                   `perm:"write"`
-		MarketListDeals           func(ctx context.Context) ([]storagemarket.StorageDeal, error) `perm:"read"`
-		MarketListIncompleteDeals func(ctx context.Context) ([]storagemarket.MinerDeal, error)   `perm:"read"`
-		MarketSetPrice            func(context.Context, types.BigInt) error                      `perm:"admin"`
+		MarketImportDealData      func(context.Context, cid.Cid, string) error                                                                                                     `perm:"write"`
+		MarketListDeals           func(ctx context.Context) ([]storagemarket.StorageDeal, error)                                                                                   `perm:"read"`
+		MarketListIncompleteDeals func(ctx context.Context) ([]storagemarket.MinerDeal, error)                                                                                     `perm:"read"`
+		MarketSetAsk              func(ctx context.Context, price types.BigInt, duration abi.ChainEpoch, minPieceSize abi.PaddedPieceSize, maxPieceSize abi.PaddedPieceSize) error `perm:"admin"`
 
 		PledgeSector func(context.Context) error `perm:"write"`
 
@@ -841,8 +841,8 @@ func (c *StorageMinerStruct) MarketListIncompleteDeals(ctx context.Context) ([]s
 	return c.Internal.MarketListIncompleteDeals(ctx)
 }
 
-func (c *StorageMinerStruct) MarketSetPrice(ctx context.Context, p types.BigInt) error {
-	return c.Internal.MarketSetPrice(ctx, p)
+func (c *StorageMinerStruct) MarketSetAsk(ctx context.Context, price types.BigInt, duration abi.ChainEpoch, minPieceSize abi.PaddedPieceSize, maxPieceSize abi.PaddedPieceSize) error {
+	return c.Internal.MarketSetAsk(ctx, price, duration, minPieceSize, maxPieceSize)
 }
 
 func (c *StorageMinerStruct) DealsImportData(ctx context.Context, dealPropCid cid.Cid, file string) error {

@@ -201,8 +201,13 @@ func (sm *StorageMinerAPI) MarketListIncompleteDeals(ctx context.Context) ([]sto
 	return sm.StorageProvider.ListLocalDeals()
 }
 
-func (sm *StorageMinerAPI) MarketSetPrice(ctx context.Context, p types.BigInt) error {
-	return sm.StorageProvider.SetAsk(p, 60*60*24*100) // lasts for 100 days?
+func (sm *StorageMinerAPI) MarketSetAsk(ctx context.Context, price types.BigInt, duration abi.ChainEpoch, minPieceSize abi.PaddedPieceSize, maxPieceSize abi.PaddedPieceSize) error {
+	options := []storagemarket.StorageAskOption{
+		storagemarket.MinPieceSize(minPieceSize),
+		storagemarket.MaxPieceSize(maxPieceSize),
+	}
+
+	return sm.StorageProvider.SetAsk(price, duration, options...)
 }
 
 func (sm *StorageMinerAPI) DealsList(ctx context.Context) ([]storagemarket.StorageDeal, error) {

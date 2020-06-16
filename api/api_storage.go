@@ -50,7 +50,7 @@ type StorageMiner interface {
 	MarketImportDealData(ctx context.Context, propcid cid.Cid, path string) error
 	MarketListDeals(ctx context.Context) ([]storagemarket.StorageDeal, error)
 	MarketListIncompleteDeals(ctx context.Context) ([]storagemarket.MinerDeal, error)
-	MarketSetPrice(context.Context, types.BigInt) error
+	MarketSetAsk(ctx context.Context, price types.BigInt, duration abi.ChainEpoch, minPieceSize abi.PaddedPieceSize, maxPieceSize abi.PaddedPieceSize) error
 
 	DealsImportData(ctx context.Context, dealPropCid cid.Cid, file string) error
 	DealsList(ctx context.Context) ([]storagemarket.StorageDeal, error)
