@@ -5,12 +5,12 @@ import (
 	"testing"
 
 	dchain "github.com/drand/drand/chain"
-	dclient "github.com/drand/drand/client"
+	hclient "github.com/drand/drand/client/http"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestPrintGroupInfo(t *testing.T) {
-	c, err := dclient.NewHTTPClient(drandServers[0], nil, nil)
+	c, err := hclient.New(drandServers[0], nil, nil)
 	assert.NoError(t, err)
 	cg := c.(interface {
 		FetchChainInfo(groupHash []byte) (*dchain.Info, error)
