@@ -529,7 +529,24 @@ func blockSanityChecks(h *types.BlockHeader) error {
 }
 
 // Should match up with 'Semantical Validation' in validation.md in the spec
-func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) error {
+func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) (err error) {
+	defer func() {
+		// b.Cid() could panic for empty blocks that are used in tests.
+		if rerr := recover(); rerr != nil {
+			err = xerrors.Errorf("validate block panic: %w", rerr)
+			return
+		}
+	}()
+
+	isValidated, err := syncer.store.IsBlockValidated(ctx, b.Cid())
+	if err != nil {
+		return xerrors.Errorf("check block validation cache %s: %w", b.Cid(), err)
+	}
+
+	if isValidated {
+		return nil
+	}
+
 	validationStart := time.Now()
 	defer func() {
 		dur := time.Since(validationStart)
@@ -650,7 +667,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 			return xerrors.Errorf("could not draw randomness: %w", err)
 		}
 
-		if err := gen.VerifyVRF(ctx, waddr, vrfBase, h.ElectionProof.VRFProof); err != nil {
+		if err := VerifyElectionPoStVRF(ctx, waddr, vrfBase, h.ElectionProof.VRFProof); err != nil {
 			return xerrors.Errorf("validating block election proof failed: %w", err)
 		}
 
@@ -711,7 +728,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 			return xerrors.Errorf("failed to compute vrf base for ticket: %w", err)
 		}
 
-		err = gen.VerifyVRF(ctx, waddr, vrfBase, h.Ticket.VRFProof)
+		err = VerifyElectionPoStVRF(ctx, waddr, vrfBase, h.Ticket.VRFProof)
 		if err != nil {
 			return xerrors.Errorf("validating block tickets failed: %w", err)
 		}
@@ -759,7 +776,11 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		}
 	}
 
-	return merr
+	if err := syncer.store.MarkBlockAsValidated(ctx, b.Cid()); err != nil {
+		return xerrors.Errorf("caching block validation %s: %w", b.Cid(), err)
+	}
+
+	return nil
 }
 
 func (syncer *Syncer) VerifyWinningPoStProof(ctx context.Context, h *types.BlockHeader, prevBeacon types.BeaconEntry, lbst cid.Cid, waddr address.Address) error {
@@ -1336,12 +1357,12 @@ func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet) error 
 	return nil
 }
 
-func VerifyElectionPoStVRF(ctx context.Context, evrf []byte, rand []byte, worker address.Address) error {
-	if err := gen.VerifyVRF(ctx, worker, rand, evrf); err != nil {
-		return xerrors.Errorf("failed to verify post_randomness vrf: %w", err)
+func VerifyElectionPoStVRF(ctx context.Context, worker address.Address, rand []byte, evrf []byte) error {
+	if build.InsecurePoStValidation {
+		return nil
+	} else {
+		return gen.VerifyVRF(ctx, worker, rand, evrf)
 	}
-
-	return nil
 }
 
 func (syncer *Syncer) State() []SyncerState {
