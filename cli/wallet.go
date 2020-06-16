@@ -113,7 +113,12 @@ var walletBalance = &cli.Command{
 			return err
 		}
 
-		fmt.Printf("%s\n", types.FIL(balance))
+		if balance.Equals(types.NewInt(0)) {
+			fmt.Printf("%s (warning: may display 0 if chain sync in progress)\n", types.FIL(balance))
+		} else {
+			fmt.Printf("%s\n", types.FIL(balance))
+		}
+
 		return nil
 	},
 }

@@ -47,6 +47,7 @@ import (
 var log = logging.Logger("chainstore")
 
 var chainHeadKey = dstore.NewKey("head")
+var blockValidationCacheKeyPrefix = dstore.NewKey("blockValidation")
 
 // ReorgNotifee represents a callback that gets called upon reorgs.
 type ReorgNotifee func(rev, app []*types.TipSet) error
@@ -215,6 +216,22 @@ func (cs *ChainStore) SubHeadChanges(ctx context.Context) chan []*api.HeadChange
 
 func (cs *ChainStore) SubscribeHeadChanges(f ReorgNotifee) {
 	cs.reorgNotifeeCh <- f
+}
+
+func (cs *ChainStore) IsBlockValidated(ctx context.Context, blkid cid.Cid) (bool, error) {
+	key := blockValidationCacheKeyPrefix.Instance(blkid.String())
+
+	return cs.ds.Has(key)
+}
+
+func (cs *ChainStore) MarkBlockAsValidated(ctx context.Context, blkid cid.Cid) error {
+	key := blockValidationCacheKeyPrefix.Instance(blkid.String())
+
+	if err := cs.ds.Put(key, []byte{0}); err != nil {
+		return xerrors.Errorf("cache block validation: %w", err)
+	}
+
+	return nil
 }
 
 func (cs *ChainStore) SetGenesis(b *types.BlockHeader) error {
