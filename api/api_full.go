@@ -118,6 +118,7 @@ type FullNode interface {
 	ClientListDeals(ctx context.Context) ([]DealInfo, error)
 	ClientHasLocal(ctx context.Context, root cid.Cid) (bool, error)
 	ClientFindData(ctx context.Context, root cid.Cid) ([]QueryOffer, error)
+	ClientMinerQueryOffer(ctx context.Context, root cid.Cid, miner address.Address) (QueryOffer, error)
 	ClientRetrieve(ctx context.Context, order RetrievalOrder, ref *FileRef) error
 	ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.SignedStorageAsk, error)
 	ClientCalcCommP(ctx context.Context, inpath string, miner address.Address) (*CommPRet, error)
