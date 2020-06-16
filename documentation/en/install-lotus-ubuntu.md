@@ -25,25 +25,7 @@ sudo apt upgrade
 
 ### Install Go 1.14
 
-Find the latest version of Go [on their website](https://golang.org/dl/) and follow the installation instructions. At the time of writing this document, thats 1.14.4. Extract it to `/usr/local`, and add the go binaries to your `$PATH`.
-
-```sh
-wget -c https://dl.google.com/go/go1.14.4.linux-amd64.tar.gz -O - | sudo tar -xz -C /usr/local
-echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.profile
-source ~/.profile
-```
-
-Verify your go installation by running
-```sh
-go version
-```
-
-### Install Rust 
-_(this is an interactive installer)_
-```sh
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-source ~/.profile
-```
+Install the latest version of Go by following [the docs on their website](https://golang.org/doc/install).
 
 ### Clone the Lotus repository
 
