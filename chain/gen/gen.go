@@ -45,6 +45,10 @@ var log = logging.Logger("gen")
 
 const msgsPerBlock = 20
 
+var ValidWpostForTesting = []abi.PoStProof{{
+	ProofBytes: []byte("valid proof"),
+}}
+
 type ChainGen struct {
 	msgsPerBlock int
 
@@ -529,9 +533,7 @@ func (wpp *wppProvider) GenerateCandidates(ctx context.Context, _ abi.PoStRandom
 }
 
 func (wpp *wppProvider) ComputeProof(context.Context, []abi.SectorInfo, abi.PoStRandomness) ([]abi.PoStProof, error) {
-	return []abi.PoStProof{{
-		ProofBytes: []byte("valid proof"),
-	}}, nil
+	return ValidWpostForTesting, nil
 }
 
 type ProofInput struct {
