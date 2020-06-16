@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/filecoin-project/go-fil-markets/pieceio"
 	basicnode "github.com/ipld/go-ipld-prime/node/basic"
@@ -229,9 +230,9 @@ func (a *API) makeRetrievalQuery(ctx context.Context, rp retrievalmarket.Retriev
 	case retrievalmarket.QueryResponseAvailable:
 		errStr = ""
 	case retrievalmarket.QueryResponseUnavailable:
-		errStr = "retrieval query offer was unavailable"
+		errStr = fmt.Sprintf("retrieval query offer was unavailable: %s", queryResponse.Message)
 	case retrievalmarket.QueryResponseError:
-		errStr = "retrieval query offer errored"
+		errStr = fmt.Sprintf("retrieval query offer errored: %s", queryResponse.Message)
 	}
 
 	return api.QueryOffer{
