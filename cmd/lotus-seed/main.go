@@ -12,7 +12,7 @@ import (
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
-	"gopkg.in/urfave/cli.v2"
+	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -39,7 +39,7 @@ func main() {
 	app := &cli.App{
 		Name:    "lotus-seed",
 		Usage:   "Seal sectors for genesis miner",
-		Version: build.UserVersion,
+		Version: build.UserVersion(),
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:  "sector-dir",
@@ -145,7 +145,6 @@ var aggregateManifestsCmd = &cli.Command{
 			if err != nil {
 				return err
 			}
-			defer fi.Close()
 			var val map[string]genesis.Miner
 			if err := json.NewDecoder(fi).Decode(&val); err != nil {
 				return err

@@ -14,7 +14,7 @@ import (
 
 const NoTimeout = math.MaxInt64
 
-type triggerId = uint64
+type triggerID = uint64
 
 // msgH is the block height at which a message was present / event has happened
 type msgH = abi.ChainEpoch
@@ -23,6 +23,7 @@ type msgH = abi.ChainEpoch
 //  message (msgH+confidence)
 type triggerH = abi.ChainEpoch
 
+// CalledHandler arguments:
 // `ts` is the tipset, in which the `msg` is included.
 // `curH`-`ts.Height` = `confidence`
 type CalledHandler func(msg *types.Message, rec *types.MessageReceipt, ts *types.TipSet, curH abi.ChainEpoch) (more bool, err error)
@@ -48,7 +49,7 @@ type callHandler struct {
 }
 
 type queuedEvent struct {
-	trigger triggerId
+	trigger triggerID
 
 	h   abi.ChainEpoch
 	msg *types.Message
@@ -57,7 +58,7 @@ type queuedEvent struct {
 }
 
 type calledEvents struct {
-	cs           eventApi
+	cs           eventAPI
 	tsc          *tipSetCache
 	ctx          context.Context
 	gcConfidence uint64
@@ -66,10 +67,10 @@ type calledEvents struct {
 
 	lk sync.Mutex
 
-	ctr triggerId
+	ctr triggerID
 
-	triggers map[triggerId]*callHandler
-	matchers map[triggerId][]MatchFunc
+	triggers map[triggerID]*callHandler
+	matchers map[triggerID][]MatchFunc
 
 	// maps block heights to events
 	// [triggerH][msgH][event]
@@ -78,8 +79,8 @@ type calledEvents struct {
 	// [msgH][triggerH]
 	revertQueue map[msgH][]triggerH
 
-	// [timeoutH+confidence][triggerId]{calls}
-	timeouts map[abi.ChainEpoch]map[triggerId]int
+	// [timeoutH+confidence][triggerID]{calls}
+	timeouts map[abi.ChainEpoch]map[triggerID]int
 }
 
 func (e *calledEvents) headChangeCalled(rev, app []*types.TipSet) error {
@@ -157,8 +158,8 @@ func (e *calledEvents) checkNewCalls(ts *types.TipSet) {
 	})
 }
 
-func (e *calledEvents) queueForConfidence(triggerId uint64, msg *types.Message, ts *types.TipSet) {
-	trigger := e.triggers[triggerId]
+func (e *calledEvents) queueForConfidence(trigID uint64, msg *types.Message, ts *types.TipSet) {
+	trigger := e.triggers[trigID]
 
 	appliedH := ts.Height()
 
@@ -171,7 +172,7 @@ func (e *calledEvents) queueForConfidence(triggerId uint64, msg *types.Message, 
 	}
 
 	byOrigH[appliedH] = append(byOrigH[appliedH], &queuedEvent{
-		trigger: triggerId,
+		trigger: trigID,
 		h:       appliedH,
 		msg:     msg,
 	})
@@ -231,11 +232,11 @@ func (e *calledEvents) applyTimeouts(ts *types.TipSet) {
 		return // nothing to do
 	}
 
-	for triggerId, calls := range triggers {
+	for triggerID, calls := range triggers {
 		if calls > 0 {
 			continue // don't timeout if the method was called
 		}
-		trigger := e.triggers[triggerId]
+		trigger := e.triggers[triggerID]
 		if trigger.disabled {
 			continue
 		}

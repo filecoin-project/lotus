@@ -14,7 +14,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 
-	"gopkg.in/urfave/cli.v2"
+	"github.com/urfave/cli/v2"
 )
 
 func main() {
@@ -53,8 +53,7 @@ var runCmd = &cli.Command{
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
-		sendSmallFundsTxs(ctx, api, addr, 5)
-		return nil
+		return sendSmallFundsTxs(ctx, api, addr, 5)
 	},
 }
 

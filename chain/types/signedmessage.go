@@ -9,12 +9,12 @@ import (
 	"github.com/multiformats/go-multihash"
 )
 
-func (m *SignedMessage) ToStorageBlock() (block.Block, error) {
-	if m.Signature.Type == crypto.SigTypeBLS {
-		return m.Message.ToStorageBlock()
+func (sm *SignedMessage) ToStorageBlock() (block.Block, error) {
+	if sm.Signature.Type == crypto.SigTypeBLS {
+		return sm.Message.ToStorageBlock()
 	}
 
-	data, err := m.Serialize()
+	data, err := sm.Serialize()
 	if err != nil {
 		return nil, err
 	}
@@ -28,12 +28,12 @@ func (m *SignedMessage) ToStorageBlock() (block.Block, error) {
 	return block.NewBlockWithCid(data, c)
 }
 
-func (m *SignedMessage) Cid() cid.Cid {
-	if m.Signature.Type == crypto.SigTypeBLS {
-		return m.Message.Cid()
+func (sm *SignedMessage) Cid() cid.Cid {
+	if sm.Signature.Type == crypto.SigTypeBLS {
+		return sm.Message.Cid()
 	}
 
-	sb, err := m.ToStorageBlock()
+	sb, err := sm.ToStorageBlock()
 	if err != nil {
 		panic(err)
 	}

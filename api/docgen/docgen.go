@@ -72,7 +72,7 @@ func init() {
 	addExample(pid)
 
 	addExample(bitfield.NewFromSet([]uint64{5}))
-	addExample(abi.RegisteredProof_StackedDRG32GiBPoSt)
+	addExample(abi.RegisteredSealProof_StackedDrg32GiBV1)
 	addExample(abi.ChainEpoch(10101))
 	addExample(crypto.SigTypeBLS)
 	addExample(int64(9))
@@ -93,7 +93,7 @@ func init() {
 	addExample(build.APIVersion)
 	addExample(api.PCHInbound)
 	addExample(time.Minute)
-	addExample(&types.ExecutionResult{
+	addExample(&types.ExecutionTrace{
 		Msg:    exampleValue(reflect.TypeOf(&types.Message{})).(*types.Message),
 		MsgRct: exampleValue(reflect.TypeOf(&types.MessageReceipt{})).(*types.MessageReceipt),
 	})
@@ -193,8 +193,7 @@ func (v *Visitor) Visit(node ast.Node) ast.Visitor {
 
 const noComment = "There are not yet any comments for this method."
 
-func parseApiASTInfo() (map[string]string, map[string]string) {
-
+func parseApiASTInfo() (map[string]string, map[string]string) { //nolint:golint
 	fset := token.NewFileSet()
 	pkgs, err := parser.ParseDir(fset, "./api", nil, parser.AllErrors|parser.ParseComments)
 	if err != nil {
@@ -320,6 +319,7 @@ func main() {
 	})
 
 	for _, g := range groupslice {
+		g := g
 		fmt.Printf("## %s\n", g.GroupName)
 		fmt.Printf("%s\n\n", g.Header)
 

@@ -3,7 +3,7 @@ package main
 import (
 	_ "net/http/pprof"
 
-	"gopkg.in/urfave/cli.v2"
+	"github.com/urfave/cli/v2"
 
 	lcli "github.com/filecoin-project/lotus/cli"
 )

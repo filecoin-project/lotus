@@ -11,9 +11,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/BurntSushi/toml"
 	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/namespace"
-	badger "github.com/ipfs/go-ds-badger2"
 	fslock "github.com/ipfs/go-fs-lock"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
@@ -65,8 +64,7 @@ var ErrRepoExists = xerrors.New("repo exists")
 
 // FsRepo is struct for repo, use NewFS to create
 type FsRepo struct {
-	path     string
-	repoType RepoType
+	path string
 }
 
 var _ Repo = &FsRepo{}
@@ -232,6 +230,7 @@ type fsLockedRepo struct {
 	dsOnce sync.Once
 
 	storageLk sync.Mutex
+	configLk  sync.Mutex
 }
 
 func (fsr *fsLockedRepo) Path() string {
@@ -267,27 +266,49 @@ func (fsr *fsLockedRepo) stillValid() error {
 	return nil
 }
 
-func (fsr *fsLockedRepo) Datastore(ns string) (datastore.Batching, error) {
-	fsr.dsOnce.Do(func() {
-		opts := badger.DefaultOptions
-		opts.Truncate = true
+func (fsr *fsLockedRepo) Config() (interface{}, error) {
+	fsr.configLk.Lock()
+	defer fsr.configLk.Unlock()
 
-		fsr.ds, fsr.dsErr = badger.NewDatastore(fsr.join(fsDatastore), &opts)
-		/*if fsr.dsErr == nil {
-			fsr.ds = datastore.NewLogDatastore(fsr.ds, "fsrepo")
-		}*/
-	})
-	if fsr.dsErr != nil {
-		return nil, fsr.dsErr
-	}
-	return namespace.Wrap(fsr.ds, datastore.NewKey(ns)), nil
+	return fsr.loadConfigFromDisk()
 }
 
-func (fsr *fsLockedRepo) Config() (interface{}, error) {
-	if err := fsr.stillValid(); err != nil {
-		return nil, err
-	}
+func (fsr *fsLockedRepo) loadConfigFromDisk() (interface{}, error) {
 	return config.FromFile(fsr.join(fsConfig), defConfForType(fsr.repoType))
+}
+
+func (fsr *fsLockedRepo) SetConfig(c func(interface{})) error {
+	if err := fsr.stillValid(); err != nil {
+		return err
+	}
+
+	fsr.configLk.Lock()
+	defer fsr.configLk.Unlock()
+
+	cfg, err := fsr.loadConfigFromDisk()
+	if err != nil {
+		return err
+	}
+
+	// mutate in-memory representation of config
+	c(cfg)
+
+	// buffer into which we write TOML bytes
+	buf := new(bytes.Buffer)
+
+	// encode now-mutated config as TOML and write to buffer
+	err = toml.NewEncoder(buf).Encode(cfg)
+	if err != nil {
+		return err
+	}
+
+	// write buffer of TOML bytes to config file
+	err = ioutil.WriteFile(fsr.join(fsConfig), buf.Bytes(), 0644)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (fsr *fsLockedRepo) GetStorage() (stores.StorageConfig, error) {
@@ -317,6 +338,10 @@ func (fsr *fsLockedRepo) SetStorage(c func(*stores.StorageConfig)) error {
 	c(&sc)
 
 	return config.WriteStorageFile(fsr.join(fsStorageConfig), sc)
+}
+
+func (fsr *fsLockedRepo) Stat(path string) (stores.FsStat, error) {
+	return stores.Stat(path)
 }
 
 func (fsr *fsLockedRepo) SetAPIEndpoint(ma multiaddr.Multiaddr) error {

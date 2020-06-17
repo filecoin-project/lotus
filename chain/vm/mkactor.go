@@ -2,6 +2,7 @@ package vm
 
 import (
 	"context"
+
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -27,7 +28,7 @@ func init() {
 
 var EmptyObjectCid cid.Cid
 
-// Creates account actors from only BLS/SECP256K1 addresses.
+// TryCreateAccountActor creates account actors from only BLS/SECP256K1 addresses.
 func TryCreateAccountActor(rt *Runtime, addr address.Address) (*types.Actor, aerrors.ActorError) {
 	addrID, err := rt.state.RegisterNewAddress(addr)
 	if err != nil {

@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"html/template"
+	"os"
 	"reflect"
 	"sort"
 	"strconv"
@@ -14,9 +16,9 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/multiformats/go-multihash"
+	"github.com/urfave/cli/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
-	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -31,15 +33,17 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
+	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/miner"
 )
 
 type methodMeta struct {
-	name string
+	Name string
 
 	params reflect.Type
 	ret    reflect.Type
@@ -67,7 +71,7 @@ func init() {
 		nf := rt.NumField()
 
 		methods[c] = append(methods[c], methodMeta{
-			name:   "Send",
+			Name:   "Send",
 			params: reflect.TypeOf(new(adt.EmptyValue)),
 			ret:    reflect.TypeOf(new(adt.EmptyValue)),
 		})
@@ -77,7 +81,7 @@ func init() {
 			export := reflect.TypeOf(exports[i+1])
 
 			methods[c] = append(methods[c], methodMeta{
-				name:   rt.Field(i).Name,
+				Name:   rt.Field(i).Name,
 				params: export.In(1),
 				ret:    export.Out(0),
 			})
@@ -143,22 +147,10 @@ var stateMinerInfo = &cli.Command{
 			return err
 		}
 
-		act, err := api.StateGetActor(ctx, addr, ts.Key())
+		mi, err := api.StateMinerInfo(ctx, addr, ts.Key())
 		if err != nil {
 			return err
 		}
-
-		aso, err := api.ChainReadObj(ctx, act.Head)
-		if err != nil {
-			return err
-		}
-
-		var mst miner2.State
-		if err := mst.UnmarshalCBOR(bytes.NewReader(aso)); err != nil {
-			return err
-		}
-
-		mi := mst.Info
 
 		fmt.Printf("Owner:\t%s\n", mi.Owner)
 		fmt.Printf("Worker:\t%s\n", mi.Worker)
@@ -392,7 +384,7 @@ var stateReplaySetCmd = &cli.Command{
 				ts, err = types.NewTipSet(headers)
 			} else {
 				var r *api.MsgLookup
-				r, err = fapi.StateWaitMsg(ctx, mcid)
+				r, err = fapi.StateWaitMsg(ctx, mcid, build.MessageConfidence)
 				if err != nil {
 					return xerrors.Errorf("finding message in chain: %w", err)
 				}
@@ -935,37 +927,29 @@ var stateComputeStateCmd = &cli.Command{
 				return c.Code, nil
 			}
 
-			return computeStateHtml(ts, stout, getCode)
+			return computeStateHTMLTempl(ts, stout, getCode)
 		}
 
 		fmt.Println("computed state cid: ", stout.Root)
 		if cctx.Bool("show-trace") {
 			for _, ir := range stout.Trace {
 				fmt.Printf("%s\t%s\t%s\t%d\t%x\t%d\t%x\n", ir.Msg.From, ir.Msg.To, ir.Msg.Value, ir.Msg.Method, ir.Msg.Params, ir.MsgRct.ExitCode, ir.MsgRct.Return)
-				printInternalExecutions("\t", ir.InternalExecutions)
+				printInternalExecutions("\t", ir.ExecutionTrace.Subcalls)
 			}
 		}
 		return nil
 	},
 }
 
-func printInternalExecutions(prefix string, trace []*types.ExecutionResult) {
+func printInternalExecutions(prefix string, trace []types.ExecutionTrace) {
 	for _, im := range trace {
 		fmt.Printf("%s%s\t%s\t%s\t%d\t%x\t%d\t%x\n", prefix, im.Msg.From, im.Msg.To, im.Msg.Value, im.Msg.Method, im.Msg.Params, im.MsgRct.ExitCode, im.MsgRct.Return)
 		printInternalExecutions(prefix+"\t", im.Subcalls)
 	}
 }
 
-func codeStr(c cid.Cid) string {
-	cmh, err := multihash.Decode(c.Hash())
-	if err != nil {
-		panic(err)
-	}
-	return string(cmh.Digest)
-}
-
-func computeStateHtml(ts *types.TipSet, o *api.ComputeStateOutput, getCode func(addr address.Address) (cid.Cid, error)) error {
-	fmt.Printf(`<html>
+var compStateTemplate = `
+<html>
  <head>
   <style>
    html, body { font-family: monospace; }
@@ -987,123 +971,259 @@ func computeStateHtml(ts *types.TipSet, o *api.ComputeStateOutput, getCode func(
    }
    .slow-true-false { color: #660; }
    .slow-true-true { color: #f80; }
+   .deemp { color: #444; }
+   table {
+    font-size: 12px;
+    border-collapse: collapse;
+   }
+   tr { 
+   	border-top: 1px solid black;
+   	border-bottom: 1px solid black;
+   }
+   tr.sum { border-top: 2px solid black; }
+   tr:first-child { border-top: none; }
+   tr:last-child { border-bottom: none; }
+
+
+   .ellipsis-content,
+   .ellipsis-toggle input {
+     display: none;
+   }
+   .ellipsis-toggle {
+     cursor: pointer;
+   }
+   /**
+   Checked State
+   **/
+   
+   .ellipsis-toggle input:checked + .ellipsis {
+     display: none;
+   }
+   .ellipsis-toggle input:checked ~ .ellipsis-content {
+     display: inline;
+	 background-color: #ddd;
+   }
+   hr {
+    border: none;
+    height: 1px;
+    background-color: black;
+	margin: 0;
+   }
   </style>
  </head>
  <body>
-  <div>Tipset: <b>%s</b></div>
-  <div>Height: %d</div>
-  <div>State CID: <b>%s</b></div>
-  <div>Calls</div>`, ts.Key(), ts.Height(), o.Root)
+  <div>Tipset: <b>{{.TipSet.Key}}</b></div>
+  <div>Epoch: {{.TipSet.Height}}</div>
+  <div>State CID: <b>{{.Comp.Root}}</b></div>
+  <div>Calls</div>
+  {{range .Comp.Trace}}
+   {{template "message" (Call .ExecutionTrace false .Msg.Cid.String)}}
+  {{end}}
+ </body>
+</html>
+`
 
-	for _, ir := range o.Trace {
-		toCode, err := getCode(ir.Msg.To)
-		if err != nil {
-			return xerrors.Errorf("getting code for %s: %w", toCode, err)
-		}
+var compStateMsg = `
+<div class="exec" id="{{.Hash}}">
+ {{$code := GetCode .Msg.To}}
+ <div>
+ <a href="#{{.Hash}}">
+  {{if not .Subcall}}
+   <h2 class="call">
+  {{else}}
+   <h4 class="call">
+  {{end}}
+   {{- CodeStr $code}}:{{GetMethod ($code) (.Msg.Method)}}
+  {{if not .Subcall}}
+   </h2>
+  {{else}}
+   </h4>
+  {{end}}
+ </a>
+ </div>
 
-		params, err := jsonParams(toCode, ir.Msg.Method, ir.Msg.Params)
-		if err != nil {
-			return xerrors.Errorf("decoding params: %w", err)
-		}
+ <div><b>{{.Msg.From}}</b> -&gt; <b>{{.Msg.To}}</b> ({{ToFil .Msg.Value}} FIL), M{{.Msg.Method}}</div>
+ {{if not .Subcall}}<div><small>Msg CID: {{.Msg.Cid}}</small></div>{{end}}
+ {{if gt (len .Msg.Params) 0}}
+  <div><pre class="params">{{JsonParams ($code) (.Msg.Method) (.Msg.Params) | html}}</pre></div>
+ {{end}}
+ <div><span class="slow-{{IsSlow .Duration}}-{{IsVerySlow .Duration}}">Took {{.Duration}}</span>, <span class="exit{{IntExit .MsgRct.ExitCode}}">Exit: <b>{{.MsgRct.ExitCode}}</b></span>{{if gt (len .MsgRct.Return) 0}}, Return{{end}}</div>
+ 
+ {{if gt (len .MsgRct.Return) 0}}
+  <div><pre class="ret">{{JsonReturn ($code) (.Msg.Method) (.MsgRct.Return) | html}}</pre></div>
+ {{end}}
 
-		if len(ir.Msg.Params) != 0 {
-			params = `<div><pre class="params">` + params + `</pre></div>`
-		} else {
-			params = ""
-		}
+ {{if ne .MsgRct.ExitCode 0}}
+  <div class="error">Error: <pre>{{.Error}}</pre></div>
+ {{end}}
 
-		ret, err := jsonReturn(toCode, ir.Msg.Method, ir.MsgRct.Return)
-		if err != nil {
-			return xerrors.Errorf("decoding return value: %w", err)
-		}
+<details>
+<summary>Gas Trace</summary>
+<table>
+ <tr><th>Name</th><th>Total/Compute/Storage</th><th>Time Taken</th><th>Location</th></tr>
+ {{define "virt" -}}
+ {{- if . -}}
+ <span class="deemp">+({{.}})</span>
+ {{- end -}}
+ {{- end}}
 
-		if len(ir.MsgRct.Return) == 0 {
-			ret = "</div>"
-		} else {
-			ret = `, Return</div><div><pre class="ret">` + ret + `</pre></div>`
-		}
+ {{define "gasC" -}}
+ <td>{{.TotalGas}}{{template "virt" .TotalVirtualGas }}/{{.ComputeGas}}{{template "virt" .VirtualComputeGas}}/{{.StorageGas}}{{template "virt" .VirtualStorageGas}}</td>
+ {{- end}}
 
-		slow := ir.Duration > 10*time.Millisecond
-		veryslow := ir.Duration > 50*time.Millisecond
+ {{range .GasCharges}}
+ <tr><td>{{.Name}}{{if .Extra}}:{{.Extra}}{{end}}</td>
+ {{template "gasC" .}}
+ <td>{{.TimeTaken}}</td>
+  <td>
+   {{ $fImp := FirstImportant .Location }}
+   {{ if $fImp }}
+   <details>
+    <summary>{{ $fImp }}</summary><hr />
+	{{ $elipOn := false }}
+    {{ range $index, $ele := .Location -}}
+     {{- if $index }}<br />{{end -}}
+     {{- if .Show -}}
+	  {{ if $elipOn }}
+	   {{ $elipOn = false }}
+       </span></label>
+	  {{end}}
 
-		cid := ir.Msg.Cid()
+      {{- if .Important }}<b>{{end -}}
+      {{- . -}}
+      {{if .Important }}</b>{{end}}
+     {{else}}
+	  {{ if not $elipOn }}
+	    {{ $elipOn = true }}
+        <label class="ellipsis-toggle"><input type="checkbox" /><span class="ellipsis">[…]<br /></span>
+		<span class="ellipsis-content">
+	  {{end}}
+      {{- "" -}}
+      {{- . -}}
+     {{end}}
+    {{end}}
+	{{ if $elipOn }}
+	  {{ $elipOn = false }}
+      </span></label>
+	{{end}}
+   </details>
+  {{end}}
+  </td></tr>
+  {{end}}
+  {{with SumGas .GasCharges}}
+  <tr class="sum"><td><b>Sum</b></td>
+  {{template "gasC" .}}
+  <td>{{.TimeTaken}}</td>
+  <td></td></tr>
+  {{end}}
+</table>
+</details>
 
-		fmt.Printf(`<div class="exec" id="%s">
-<div><a href="#%s"><h2 class="call">%s:%s</h2></a></div>
-<div><b>%s</b> -&gt; <b>%s</b> (%s FIL), M%d</div>
-<div><small>Msg CID: %s</small></div>
-%s
-<div><span class="slow-%t-%t">Took %s</span>, <span class="exit%d">Exit: <b>%d</b></span>%s
-`, cid, cid, codeStr(toCode), methods[toCode][ir.Msg.Method].name, ir.Msg.From, ir.Msg.To, types.FIL(ir.Msg.Value), ir.Msg.Method, cid, params, slow, veryslow, ir.Duration, ir.MsgRct.ExitCode, ir.MsgRct.ExitCode, ret)
-		if ir.MsgRct.ExitCode != 0 {
-			fmt.Printf(`<div class="error">Error: <pre>%s</pre></div>`, ir.Error)
-		}
 
-		if len(ir.InternalExecutions) > 0 {
-			fmt.Println("<div>Internal executions:</div>")
-			if err := printInternalExecutionsHtml(ir.InternalExecutions, getCode); err != nil {
-				return err
-			}
-		}
-		fmt.Println("</div>")
-	}
+ {{if gt (len .Subcalls) 0}}
+  <div>Subcalls:</div>
+  {{$hash := .Hash}}
+  {{range .Subcalls}}
+   {{template "message" (Call . true (printf "%s-%s" $hash .Msg.Cid.String))}}
+  {{end}}
+ {{end}}
+</div>`
 
-	fmt.Printf(`</body>
-</html>`)
-	return nil
+type compStateHTMLIn struct {
+	TipSet *types.TipSet
+	Comp   *api.ComputeStateOutput
 }
 
-func printInternalExecutionsHtml(trace []*types.ExecutionResult, getCode func(addr address.Address) (cid.Cid, error)) error {
-	for _, im := range trace {
-		toCode, err := getCode(im.Msg.To)
-		if err != nil {
-			return xerrors.Errorf("getting code for %s: %w", toCode, err)
-		}
-
-		params, err := jsonParams(toCode, im.Msg.Method, im.Msg.Params)
-		if err != nil {
-			return xerrors.Errorf("decoding params: %w", err)
-		}
-
-		if len(im.Msg.Params) != 0 {
-			params = `<div><pre class="params">` + params + `</pre></div>`
-		} else {
-			params = ""
-		}
-
-		ret, err := jsonReturn(toCode, im.Msg.Method, im.MsgRct.Return)
-		if err != nil {
-			return xerrors.Errorf("decoding return value: %w", err)
-		}
-
-		if len(im.MsgRct.Return) == 0 {
-			ret = "</div>"
-		} else {
-			ret = `, Return</div><div><pre class="ret">` + ret + `</pre></div>`
-		}
-
-		slow := im.Duration > 10*time.Millisecond
-		veryslow := im.Duration > 50*time.Millisecond
-
-		fmt.Printf(`<div class="exec">
-<div><h4 class="call">%s:%s</h4></div>
-<div><b>%s</b> -&gt; <b>%s</b> (%s FIL), M%d</div>
-%s
-<div><span class="slow-%t-%t">Took %s</span>, <span class="exit%d">Exit: <b>%d</b></span>%s
-`, codeStr(toCode), methods[toCode][im.Msg.Method].name, im.Msg.From, im.Msg.To, types.FIL(im.Msg.Value), im.Msg.Method, params, slow, veryslow, im.Duration, im.MsgRct.ExitCode, im.MsgRct.ExitCode, ret)
-		if im.MsgRct.ExitCode != 0 {
-			fmt.Printf(`<div class="error">Error: <pre>%s</pre></div>`, im.Error)
-		}
-		if len(im.Subcalls) > 0 {
-			fmt.Println("<div>Subcalls:</div>")
-			if err := printInternalExecutionsHtml(im.Subcalls, getCode); err != nil {
-				return err
+func computeStateHTMLTempl(ts *types.TipSet, o *api.ComputeStateOutput, getCode func(addr address.Address) (cid.Cid, error)) error {
+	t, err := template.New("compute_state").Funcs(map[string]interface{}{
+		"GetCode":    getCode,
+		"GetMethod":  getMethod,
+		"ToFil":      toFil,
+		"JsonParams": jsonParams,
+		"JsonReturn": jsonReturn,
+		"IsSlow":     isSlow,
+		"IsVerySlow": isVerySlow,
+		"IntExit":    func(i exitcode.ExitCode) int64 { return int64(i) },
+		"SumGas":     sumGas,
+		"CodeStr":    codeStr,
+		"Call":       call,
+		"FirstImportant": func(locs []types.Loc) *types.Loc {
+			if len(locs) != 0 {
+				for _, l := range locs {
+					if l.Important() {
+						return &l
+					}
+				}
+				return &locs[0]
 			}
-		}
-		fmt.Println("</div>")
+			return nil
+		},
+	}).Parse(compStateTemplate)
+	if err != nil {
+		return err
+	}
+	t, err = t.New("message").Parse(compStateMsg)
+	if err != nil {
+		return err
 	}
 
-	return nil
+	return t.ExecuteTemplate(os.Stdout, "compute_state", &compStateHTMLIn{
+		TipSet: ts,
+		Comp:   o,
+	})
+}
+
+type callMeta struct {
+	types.ExecutionTrace
+	Subcall bool
+	Hash    string
+}
+
+func call(e types.ExecutionTrace, subcall bool, hash string) callMeta {
+	return callMeta{
+		ExecutionTrace: e,
+		Subcall:        subcall,
+		Hash:           hash,
+	}
+}
+
+func codeStr(c cid.Cid) string {
+	cmh, err := multihash.Decode(c.Hash())
+	if err != nil {
+		panic(err)
+	}
+	return string(cmh.Digest)
+}
+
+func getMethod(code cid.Cid, method abi.MethodNum) string {
+	return methods[code][method].Name
+}
+
+func toFil(f types.BigInt) types.FIL {
+	return types.FIL(f)
+}
+
+func isSlow(t time.Duration) bool {
+	return t > 10*time.Millisecond
+}
+
+func isVerySlow(t time.Duration) bool {
+	return t > 50*time.Millisecond
+}
+
+func sumGas(changes []*types.GasTrace) types.GasTrace {
+	var out types.GasTrace
+	for _, gc := range changes {
+		out.TotalGas += gc.TotalGas
+		out.ComputeGas += gc.ComputeGas
+		out.StorageGas += gc.StorageGas
+
+		out.TotalVirtualGas += gc.TotalVirtualGas
+		out.VirtualComputeGas += gc.VirtualComputeGas
+		out.VirtualStorageGas += gc.VirtualStorageGas
+	}
+
+	return out
 }
 
 func jsonParams(code cid.Cid, method abi.MethodNum, params []byte) (string, error) {
@@ -1156,7 +1276,7 @@ var stateWaitMsgCmd = &cli.Command{
 			return err
 		}
 
-		mw, err := api.StateWaitMsg(ctx, msg)
+		mw, err := api.StateWaitMsg(ctx, msg, build.MessageConfidence)
 		if err != nil {
 			return err
 		}

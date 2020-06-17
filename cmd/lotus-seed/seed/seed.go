@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/minio/blake2b-simd"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -15,6 +14,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	ic "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/minio/blake2b-simd"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -33,12 +33,7 @@ import (
 
 var log = logging.Logger("preseal")
 
-func PreSeal(maddr address.Address, pt abi.RegisteredProof, offset abi.SectorNumber, sectors int, sbroot string, preimage []byte, key *types.KeyInfo) (*genesis.Miner, *types.KeyInfo, error) {
-	spt, err := pt.RegisteredSealProof()
-	if err != nil {
-		return nil, nil, err
-	}
-
+func PreSeal(maddr address.Address, spt abi.RegisteredSealProof, offset abi.SectorNumber, sectors int, sbroot string, preimage []byte, key *types.KeyInfo) (*genesis.Miner, *types.KeyInfo, error) {
 	mid, err := address.IDFromAddress(maddr)
 	if err != nil {
 		return nil, nil, err
@@ -48,7 +43,7 @@ func PreSeal(maddr address.Address, pt abi.RegisteredProof, offset abi.SectorNum
 		SealProofType: spt,
 	}
 
-	if err := os.MkdirAll(sbroot, 0775); err != nil {
+	if err := os.MkdirAll(sbroot, 0775); err != nil { //nolint:gosec
 		return nil, nil, err
 	}
 
@@ -63,7 +58,7 @@ func PreSeal(maddr address.Address, pt abi.RegisteredProof, offset abi.SectorNum
 		return nil, nil, err
 	}
 
-	ssize, err := pt.SectorSize()
+	ssize, err := spt.SectorSize()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -97,12 +92,16 @@ func PreSeal(maddr address.Address, pt abi.RegisteredProof, offset abi.SectorNum
 			return nil, nil, xerrors.Errorf("trim cache: %w", err)
 		}
 
+		if err := cleanupUnsealed(sbfs, sid); err != nil {
+			return nil, nil, xerrors.Errorf("remove unsealed file: %w", err)
+		}
+
 		log.Warn("PreCommitOutput: ", sid, cids.Sealed, cids.Unsealed)
 		sealedSectors = append(sealedSectors, &genesis.PreSeal{
 			CommR:     cids.Sealed,
 			CommD:     cids.Unsealed,
 			SectorID:  sid.Number,
-			ProofType: pt,
+			ProofType: spt,
 		})
 	}
 
@@ -164,6 +163,16 @@ func PreSeal(maddr address.Address, pt abi.RegisteredProof, offset abi.SectorNum
 	}
 
 	return miner, &minerAddr.KeyInfo, nil
+}
+
+func cleanupUnsealed(sbfs *basicfs.Provider, sid abi.SectorID) error {
+	paths, done, err := sbfs.AcquireSector(context.TODO(), sid, stores.FTUnsealed, stores.FTNone, stores.PathSealing)
+	if err != nil {
+		return err
+	}
+	defer done()
+
+	return os.Remove(paths.Unsealed)
 }
 
 func WriteGenesisMiner(maddr address.Address, sbroot string, gm *genesis.Miner, key *types.KeyInfo) error {

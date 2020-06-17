@@ -35,7 +35,7 @@ func init() {
 }
 
 func TestDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, carExport bool) {
-	os.Setenv("BELLMAN_NO_GPU", "1")
+	_ = os.Setenv("BELLMAN_NO_GPU", "1")
 
 	ctx := context.Background()
 	n, sn := b(t, 1, oneMiner)
@@ -72,7 +72,7 @@ func TestDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, carExport
 }
 
 func TestDoubleDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration) {
-	os.Setenv("BELLMAN_NO_GPU", "1")
+	_ = os.Setenv("BELLMAN_NO_GPU", "1")
 
 	ctx := context.Background()
 	n, sn := b(t, 1, oneMiner)
@@ -193,7 +193,7 @@ func testRetrieval(t *testing.T, ctx context.Context, err error, client *impl.Fu
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(rpath)
+	defer os.RemoveAll(rpath) //nolint:errcheck
 
 	caddr, err := client.WalletDefaultAddress(ctx)
 	if err != nil {

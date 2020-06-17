@@ -7,8 +7,8 @@ import (
 	"os"
 
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
-	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -17,7 +17,7 @@ import (
 var log = logging.Logger("chainwatch")
 
 func main() {
-	logging.SetLogLevel("*", "INFO")
+	_ = logging.SetLogLevel("*", "INFO")
 
 	log.Info("Starting chainwatch")
 
@@ -29,7 +29,7 @@ func main() {
 	app := &cli.App{
 		Name:    "lotus-chainwatch",
 		Usage:   "Devnet token distribution utility",
-		Version: build.UserVersion,
+		Version: build.UserVersion(),
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    "repo",
@@ -86,7 +86,7 @@ var runCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		defer st.close()
+		defer st.close() //nolint:errcheck
 
 		runSyncer(ctx, api, st, maxBatch)
 

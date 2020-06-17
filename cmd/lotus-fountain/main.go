@@ -14,8 +14,8 @@ import (
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
-	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -46,7 +46,7 @@ func main() {
 	app := &cli.App{
 		Name:    "lotus-fountain",
 		Usage:   "Devnet token distribution utility",
-		Version: build.UserVersion,
+		Version: build.UserVersion(),
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    "repo",
@@ -157,7 +157,7 @@ func (h *handler) send(w http.ResponseWriter, r *http.Request) {
 	to, err := address.NewFromString(r.FormValue("address"))
 	if err != nil {
 		w.WriteHeader(400)
-		w.Write([]byte(err.Error()))
+		_, _ = w.Write([]byte(err.Error()))
 		return
 	}
 
@@ -204,25 +204,25 @@ func (h *handler) send(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		w.WriteHeader(400)
-		w.Write([]byte(err.Error()))
+		_, _ = w.Write([]byte(err.Error()))
 		return
 	}
 
-	w.Write([]byte(smsg.Cid().String()))
+	_, _ = w.Write([]byte(smsg.Cid().String()))
 }
 
 func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 	owner, err := address.NewFromString(r.FormValue("address"))
 	if err != nil {
 		w.WriteHeader(400)
-		w.Write([]byte(err.Error()))
+		_, _ = w.Write([]byte(err.Error()))
 		return
 	}
 
 	if owner.Protocol() != address.BLS {
 		w.WriteHeader(400)
-		w.Write([]byte("Miner address must use BLS. A BLS address starts with the prefix 't3'."))
-		w.Write([]byte("Please create a BLS address by running \"lotus wallet new bls\" while connected to a Lotus node."))
+		_, _ = w.Write([]byte("Miner address must use BLS. A BLS address starts with the prefix 't3'."))
+		_, _ = w.Write([]byte("Please create a BLS address by running \"lotus wallet new bls\" while connected to a Lotus node."))
 		return
 	}
 
@@ -294,7 +294,7 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 		Owner:         owner,
 		Worker:        owner,
 		SealProofType: spt,
-		Peer:          h.defaultMinerPeer,
+		Peer:          abi.PeerID(h.defaultMinerPeer),
 	})
 	if err != nil {
 		w.WriteHeader(400)
@@ -334,7 +334,7 @@ func (h *handler) msgwait(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mw, err := h.api.StateWaitMsg(r.Context(), c)
+	mw, err := h.api.StateWaitMsg(r.Context(), c, build.MessageConfidence)
 	if err != nil {
 		w.WriteHeader(400)
 		w.Write([]byte(err.Error()))
@@ -357,7 +357,7 @@ func (h *handler) msgwaitaddr(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mw, err := h.api.StateWaitMsg(r.Context(), c)
+	mw, err := h.api.StateWaitMsg(r.Context(), c, build.MessageConfidence)
 	if err != nil {
 		w.WriteHeader(400)
 		w.Write([]byte(err.Error()))

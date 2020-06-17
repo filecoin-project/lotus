@@ -24,7 +24,7 @@ type WindowPoStScheduler struct {
 	api              storageMinerApi
 	prover           storage.Prover
 	faultTracker     sectorstorage.FaultTracker
-	proofType        abi.RegisteredProof
+	proofType        abi.RegisteredPoStProof
 	partitionSectors uint64
 
 	actor  address.Address

@@ -104,7 +104,7 @@ func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) 
 		return nil, xerrors.New("data doesn't fit in a sector")
 	}
 
-	providerInfo := utils.NewStorageProviderInfo(params.Miner, mi.Worker, mi.SectorSize, mi.PeerId)
+	providerInfo := utils.NewStorageProviderInfo(params.Miner, mi.Worker, mi.SectorSize, peer.ID(mi.PeerId))
 
 	dealStart := params.DealStartEpoch
 	if dealStart <= 0 { // unset, or explicitly 'epoch undefined'
@@ -336,7 +336,7 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 			return err
 		}
 
-		order.MinerPeerID = mi.PeerId
+		order.MinerPeerID = peer.ID(mi.PeerId)
 	}
 
 	if order.Size == 0 {
@@ -459,7 +459,7 @@ func (a *API) ClientGenCar(ctx context.Context, ref api.FileRef, outputPath stri
 		return err
 	}
 
-	defer bufferedDS.Remove(ctx, c)
+	defer bufferedDS.Remove(ctx, c) //nolint:errcheck
 	ssb := builder.NewSelectorSpecBuilder(basicnode.Style.Any)
 
 	// entire DAG selector
@@ -467,7 +467,6 @@ func (a *API) ClientGenCar(ctx context.Context, ref api.FileRef, outputPath stri
 		ssb.ExploreAll(ssb.ExploreRecursiveEdge())).Node()
 
 	f, err := os.Create(outputPath)
-	defer f.Close()
 	if err != nil {
 		return err
 	}
@@ -477,7 +476,7 @@ func (a *API) ClientGenCar(ctx context.Context, ref api.FileRef, outputPath stri
 		return err
 	}
 
-	return nil
+	return f.Close()
 }
 
 func (a *API) clientImport(ref api.FileRef, bufferedDS *ipld.BufferedDAG) (cid.Cid, error) {

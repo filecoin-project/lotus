@@ -117,8 +117,7 @@ func StorageClient(lc fx.Lifecycle, h host.Host, ibs dtypes.ClientBlockstore, r 
 	}
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			c.Run(ctx)
-			return nil
+			return c.Start(ctx)
 		},
 		OnStop: func(context.Context) error {
 			c.Stop()

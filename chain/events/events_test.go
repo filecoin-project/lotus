@@ -211,15 +211,14 @@ func (fcs *fakeCS) advance(rev, app int, msgs map[int]cid.Cid, nulls ...int) { /
 	fcs.sub(revs, apps)
 
 	fcs.sync.Lock()
-	fcs.sync.Unlock()
-
+	fcs.sync.Unlock() //nolint:staticcheck
 }
 
 func (fcs *fakeCS) notifDone() {
 	fcs.sync.Unlock()
 }
 
-var _ eventApi = &fakeCS{}
+var _ eventAPI = &fakeCS{}
 
 func TestAt(t *testing.T) {
 	fcs := &fakeCS{

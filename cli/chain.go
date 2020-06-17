@@ -22,9 +22,9 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	cid "github.com/ipfs/go-cid"
+	"github.com/urfave/cli/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
-	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -444,7 +444,8 @@ var chainGetCmd = &cli.Command{
    - /ipfs/[cid]/@Hi:123 - get varint elem 123 from hamt
    - /ipfs/[cid]/@Hu:123 - get uvarint elem 123 from hamt
    - /ipfs/[cid]/@Ha:t01 - get element under Addr(t01).Bytes
-   - /ipfs/[cid]/@A:10 - get 10th amt element
+   - /ipfs/[cid]/@A:10   - get 10th amt element
+   - .../@Ha:t01/@state  - get pretty map-based actor state
 
    List of --as-type types:
    - raw
@@ -806,7 +807,12 @@ var chainExportCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		defer fi.Close()
+		defer func() {
+			err := fi.Close()
+			if err != nil {
+				fmt.Printf("error closing output file: %+v", err)
+			}
+		}()
 
 		ts, err := LoadTipSet(ctx, cctx, api)
 		if err != nil {

@@ -61,7 +61,7 @@ func MessagePool(lc fx.Lifecycle, sm *stmgr.StateManager, ps *pubsub.PubSub, ds 
 }
 
 func ChainBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRepo) (dtypes.ChainBlockstore, error) {
-	blocks, err := r.Datastore("/blocks")
+	blocks, err := r.Datastore("/chain")
 	if err != nil {
 		return nil, err
 	}

@@ -15,8 +15,8 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/minio/blake2b-simd"
 	"github.com/mitchellh/go-homedir"
+	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
-	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/go-address"
 	paramfetch "github.com/filecoin-project/go-paramfetch"
@@ -74,12 +74,12 @@ func main() {
 
 	log.Info("Starting lotus-bench")
 
-	miner.SupportedProofTypes[abi.RegisteredProof_StackedDRG2KiBSeal] = struct{}{}
+	miner.SupportedProofTypes[abi.RegisteredSealProof_StackedDrg2KiBV1] = struct{}{}
 
 	app := &cli.App{
 		Name:    "lotus-bench",
 		Usage:   "Benchmark performance of lotus on your hardware",
-		Version: build.UserVersion,
+		Version: build.UserVersion(),
 		Commands: []*cli.Command{
 			proveCmd,
 			sealBenchCmd,
@@ -142,7 +142,10 @@ var sealBenchCmd = &cli.Command{
 	},
 	Action: func(c *cli.Context) error {
 		if c.Bool("no-gpu") {
-			os.Setenv("BELLMAN_NO_GPU", "1")
+			err := os.Setenv("BELLMAN_NO_GPU", "1")
+			if err != nil {
+				return xerrors.Errorf("setting no-gpu flag: %w", err)
+			}
 		}
 
 		robench := c.String("benchmark-existing-sectorbuilder")
@@ -155,7 +158,10 @@ var sealBenchCmd = &cli.Command{
 				return err
 			}
 
-			os.MkdirAll(sdir, 0775)
+			err = os.MkdirAll(sdir, 0775) //nolint:gosec
+			if err != nil {
+				return xerrors.Errorf("creating sectorbuilder dir: %w", err)
+			}
 
 			tsdir, err := ioutil.TempDir(sdir, "bench")
 			if err != nil {
@@ -210,7 +216,7 @@ var sealBenchCmd = &cli.Command{
 
 		// Only fetch parameters if actually needed
 		if !c.Bool("skip-commit2") {
-			if err := paramfetch.GetParams(lcli.ReqContext(c), build.ParametersJson(), uint64(sectorSize)); err != nil {
+			if err := paramfetch.GetParams(lcli.ReqContext(c), build.ParametersJSON(), uint64(sectorSize)); err != nil {
 				return xerrors.Errorf("getting params: %w", err)
 			}
 		}
@@ -264,9 +270,9 @@ var sealBenchCmd = &cli.Command{
 
 			for _, s := range genm.Sectors {
 				sealedSectors = append(sealedSectors, abi.SectorInfo{
-					SealedCID:       s.CommR,
-					SectorNumber:    s.SectorID,
-					RegisteredProof: s.ProofType,
+					SealedCID:    s.CommR,
+					SectorNumber: s.SectorID,
+					SealProof:    s.ProofType,
 				})
 			}
 		}
@@ -278,7 +284,12 @@ var sealBenchCmd = &cli.Command{
 
 		if !c.Bool("skip-commit2") {
 			log.Info("generating winning post candidates")
-			fcandidates, err := ffiwrapper.ProofVerifier.GenerateWinningPoStSectorChallenge(context.TODO(), spt, mid, challenge[:], uint64(len(sealedSectors)))
+			wipt, err := spt.RegisteredWinningPoStProof()
+			if err != nil {
+				return err
+			}
+
+			fcandidates, err := ffiwrapper.ProofVerifier.GenerateWinningPoStSectorChallenge(context.TODO(), wipt, mid, challenge[:], uint64(len(sealedSectors)))
 			if err != nil {
 				return err
 			}
@@ -339,7 +350,7 @@ var sealBenchCmd = &cli.Command{
 			verifyWinningPost2 := time.Now()
 
 			log.Info("computing window post snark (cold)")
-			wproof1, err := sb.GenerateWindowPoSt(context.TODO(), mid, sealedSectors, challenge[:])
+			wproof1, _, err := sb.GenerateWindowPoSt(context.TODO(), mid, sealedSectors, challenge[:])
 			if err != nil {
 				return err
 			}
@@ -347,7 +358,7 @@ var sealBenchCmd = &cli.Command{
 			windowpost1 := time.Now()
 
 			log.Info("computing window post snark (hot)")
-			wproof2, err := sb.GenerateWindowPoSt(context.TODO(), mid, sealedSectors, challenge[:])
+			wproof2, _, err := sb.GenerateWindowPoSt(context.TODO(), mid, sealedSectors, challenge[:])
 			if err != nil {
 				return err
 			}
@@ -406,7 +417,7 @@ var sealBenchCmd = &cli.Command{
 
 			fmt.Println(string(data))
 		} else {
-			fmt.Printf("----\nresults (v26) (%d)\n", sectorSize)
+			fmt.Printf("----\nresults (v27) (%d)\n", sectorSize)
 			if robench == "" {
 				fmt.Printf("seal: addPiece: %s (%s)\n", bo.SealingResults[0].AddPiece, bps(bo.SectorSize, bo.SealingResults[0].AddPiece)) // TODO: average across multiple sealings
 				fmt.Printf("seal: preCommit phase 1: %s (%s)\n", bo.SealingResults[0].PreCommit1, bps(bo.SectorSize, bo.SealingResults[0].PreCommit1))
@@ -479,9 +490,9 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, mid
 		precommit2 := time.Now()
 
 		sealedSectors = append(sealedSectors, abi.SectorInfo{
-			RegisteredProof: sb.SealProofType(),
-			SectorNumber:    i,
-			SealedCID:       cids.Sealed,
+			SealProof:    sb.SealProofType(),
+			SectorNumber: i,
+			SealedCID:    cids.Sealed,
 		})
 
 		seed := lapi.SealSeed{
@@ -530,7 +541,7 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, mid
 			svi := abi.SealVerifyInfo{
 				SectorID:              abi.SectorID{Miner: mid, Number: i},
 				SealedCID:             cids.Sealed,
-				RegisteredProof:       sb.SealProofType(),
+				SealProof:             sb.SealProofType(),
 				Proof:                 proof,
 				DealIDs:               nil,
 				Randomness:            ticket,
@@ -563,13 +574,8 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, mid
 				}
 			}
 
-			// TODO: RM unsealed sector first
-			rc, err := sb.ReadPieceFromSealedSector(context.TODO(), abi.SectorID{Miner: mid, Number: 1}, 0, abi.UnpaddedPieceSize(sectorSize), ticket, cids.Unsealed)
+			err := sb.UnsealPiece(context.TODO(), abi.SectorID{Miner: mid, Number: 1}, 0, abi.PaddedPieceSize(sectorSize).Unpadded(), ticket, cids.Unsealed)
 			if err != nil {
-				return nil, nil, err
-			}
-
-			if err := rc.Close(); err != nil {
 				return nil, nil, err
 			}
 		}
@@ -597,10 +603,18 @@ var proveCmd = &cli.Command{
 			Name:  "no-gpu",
 			Usage: "disable gpu usage for the benchmark run",
 		},
+		&cli.StringFlag{
+			Name:  "miner-addr",
+			Usage: "pass miner address (only necessary if using existing sectorbuilder)",
+			Value: "t01000",
+		},
 	},
 	Action: func(c *cli.Context) error {
 		if c.Bool("no-gpu") {
-			os.Setenv("BELLMAN_NO_GPU", "1")
+			err := os.Setenv("BELLMAN_NO_GPU", "1")
+			if err != nil {
+				return xerrors.Errorf("setting no-gpu flag: %w", err)
+			}
 		}
 
 		if !c.Args().Present() {
@@ -617,7 +631,7 @@ var proveCmd = &cli.Command{
 			return xerrors.Errorf("unmarshalling input file: %w", err)
 		}
 
-		if err := paramfetch.GetParams(lcli.ReqContext(c), build.ParametersJson(), c2in.SectorSize); err != nil {
+		if err := paramfetch.GetParams(lcli.ReqContext(c), build.ParametersJSON(), c2in.SectorSize); err != nil {
 			return xerrors.Errorf("getting params: %w", err)
 		}
 
@@ -655,7 +669,7 @@ var proveCmd = &cli.Command{
 
 		fmt.Printf("proof: %x\n", proof)
 
-		fmt.Printf("----\nresults (v23) (%d)\n", c2in.SectorSize)
+		fmt.Printf("----\nresults (v27) (%d)\n", c2in.SectorSize)
 		dur := sealCommit2.Sub(start)
 
 		fmt.Printf("seal: commit phase 2: %s (%s)\n", dur, bps(abi.SectorSize(c2in.SectorSize), dur))

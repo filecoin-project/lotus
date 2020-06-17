@@ -8,7 +8,6 @@ import (
 	"os"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/Gurpartap/async"
@@ -528,7 +527,7 @@ func blockSanityChecks(h *types.BlockHeader) error {
 	return nil
 }
 
-// Should match up with 'Semantical Validation' in validation.md in the spec
+// ValidateBlock should match up with 'Semantical Validation' in validation.md in the spec
 func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) (err error) {
 	defer func() {
 		// b.Cid() could panic for empty blocks that are used in tests.
@@ -693,7 +692,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) (er
 	})
 
 	blockSigCheck := async.Err(func() error {
-		if err := sigs.CheckBlockSignature(h, ctx, waddr); err != nil {
+		if err := sigs.CheckBlockSignature(ctx, h, waddr); err != nil {
 			return xerrors.Errorf("check block signature failed: %w", err)
 		}
 		return nil
@@ -878,7 +877,7 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 
 		// Phase 1: syntactic validation, as defined in the spec
 		minGas := vm.PricelistByEpoch(baseTs.Height()).OnChainMessage(msg.ChainLength())
-		if err := m.ValidForBlockInclusion(minGas); err != nil {
+		if err := m.ValidForBlockInclusion(minGas.Total()); err != nil {
 			return err
 		}
 
@@ -970,23 +969,14 @@ func (syncer *Syncer) verifyBlsAggregate(ctx context.Context, sig *crypto.Signat
 		trace.Int64Attribute("msgCount", int64(len(msgs))),
 	)
 
-	var wg sync.WaitGroup
-
-	digests := make([]bls.Digest, len(msgs))
-	for i := 0; i < 10; i++ {
-		wg.Add(1)
-		go func(w int) {
-			defer wg.Done()
-			for j := 0; (j*10)+w < len(msgs); j++ {
-				digests[j*10+w] = bls.Hash(bls.Message(msgs[j*10+w].Bytes()))
-			}
-		}(i)
+	bmsgs := make([]bls.Message, len(msgs))
+	for i, m := range msgs {
+		bmsgs[i] = m.Bytes()
 	}
-	wg.Wait()
 
 	var bsig bls.Signature
 	copy(bsig[:], sig.Data)
-	if !bls.Verify(&bsig, digests, pubks) {
+	if !bls.HashVerify(&bsig, bmsgs, pubks) {
 		return xerrors.New("bls aggregate signature failed to verify")
 	}
 
