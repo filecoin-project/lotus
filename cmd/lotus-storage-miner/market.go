@@ -169,7 +169,11 @@ var getAskCmd = &cli.Command{
 			return err
 		}
 
-		rem := time.Second * time.Duration((ask.Expiry-miningBaseTs.Height())*build.BlockDelay)
+		dlt := ask.Expiry - miningBaseTs.Height()
+		rem := "<expired>"
+		if dlt > 0 {
+			rem = (time.Second * time.Duration(dlt*build.BlockDelay)).String()
+		}
 
 		fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%s\t%d\n", ask.Price, types.SizeStr(types.NewInt(uint64(ask.MinPieceSize))), types.SizeStr(types.NewInt(uint64(ask.MaxPieceSize))), ask.Expiry, rem, ask.SeqNo)
 
