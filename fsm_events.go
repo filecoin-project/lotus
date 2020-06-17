@@ -201,6 +201,10 @@ type SectorRetryWaitSeed struct{}
 
 func (evt SectorRetryWaitSeed) apply(state *SectorInfo) {}
 
+type SectorRetryPreCommitWait struct{}
+
+func (evt SectorRetryPreCommitWait) apply(state *SectorInfo) {}
+
 type SectorRetryComputeProof struct{}
 
 func (evt SectorRetryComputeProof) apply(state *SectorInfo) {

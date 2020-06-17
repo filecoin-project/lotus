@@ -29,6 +29,7 @@ type ErrPrecommitOnChain struct{ error }
 
 type ErrBadSeed struct{ error }
 type ErrInvalidProof struct{ error }
+type ErrNoPrecommit struct{ error }
 
 func checkPieces(ctx context.Context, si SectorInfo, api SealingAPI) error {
 	tok, height, err := api.ChainHead(ctx)
@@ -107,6 +108,10 @@ func (m *Sealing) checkCommit(ctx context.Context, si SectorInfo, proof []byte, 
 	pci, err := m.api.StateSectorPreCommitInfo(ctx, m.maddr, si.SectorNumber, tok)
 	if err != nil {
 		return xerrors.Errorf("getting precommit info: %w", err)
+	}
+
+	if pci == nil {
+		return &ErrNoPrecommit{xerrors.Errorf("precommit info not found on-chain")}
 	}
 
 	if pci.PreCommitEpoch+miner.PreCommitChallengeDelay != si.SeedEpoch {

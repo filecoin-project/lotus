@@ -177,6 +177,9 @@ func (m *Sealing) handleCommitFailed(ctx statemachine.Context, sector SectorInfo
 			}
 
 			return ctx.Send(SectorRetryInvalidProof{})
+		case *ErrPrecommitOnChain:
+			log.Errorf("no precommit on chain, will retry: %+v", err)
+			return ctx.Send(SectorRetryPreCommitWait{})
 		default:
 			return xerrors.Errorf("checkCommit sanity check error: %w", err)
 		}
