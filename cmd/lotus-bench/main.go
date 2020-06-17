@@ -307,7 +307,7 @@ var sealBenchCmd = &cli.Command{
 				return err
 			}
 
-			winnnigpost1 := time.Now()
+			winningpost1 := time.Now()
 
 			log.Info("computing winning post snark (hot)")
 			proof2, err := sb.GenerateWinningPoSt(context.TODO(), mid, candidates, challenge[:])
@@ -331,7 +331,7 @@ var sealBenchCmd = &cli.Command{
 				log.Error("post verification failed")
 			}
 
-			verifyWinnnigPost1 := time.Now()
+			verifyWinningPost1 := time.Now()
 
 			pvi2 := abi.WinningPoStVerifyInfo{
 				Randomness:        abi.PoStRandomness(challenge[:]),
@@ -398,10 +398,10 @@ var sealBenchCmd = &cli.Command{
 			verifyWindowpost2 := time.Now()
 
 			bo.PostGenerateCandidates = gencandidates.Sub(beforePost)
-			bo.PostWinningProofCold = winnnigpost1.Sub(gencandidates)
-			bo.PostWinningProofHot = winnningpost2.Sub(winnnigpost1)
-			bo.VerifyWinningPostCold = verifyWinnnigPost1.Sub(winnningpost2)
-			bo.VerifyWinningPostHot = verifyWinningPost2.Sub(verifyWinnnigPost1)
+			bo.PostWinningProofCold = winningpost1.Sub(gencandidates)
+			bo.PostWinningProofHot = winnningpost2.Sub(winningpost1)
+			bo.VerifyWinningPostCold = verifyWinningPost1.Sub(winnningpost2)
+			bo.VerifyWinningPostHot = verifyWinningPost2.Sub(verifyWinningPost1)
 
 			bo.PostWindowProofCold = windowpost1.Sub(verifyWinningPost2)
 			bo.PostWindowProofHot = windowpost2.Sub(windowpost1)
@@ -432,10 +432,10 @@ var sealBenchCmd = &cli.Command{
 			}
 			if !c.Bool("skip-commit2") {
 				fmt.Printf("generate candidates: %s (%s)\n", bo.PostGenerateCandidates, bps(bo.SectorSize*abi.SectorSize(len(bo.SealingResults)), bo.PostGenerateCandidates))
-				fmt.Printf("compute winnnig post proof (cold): %s\n", bo.PostWinningProofCold)
-				fmt.Printf("compute winnnig post proof (hot): %s\n", bo.PostWinningProofHot)
-				fmt.Printf("verify winnnig post proof (cold): %s\n", bo.VerifyWinningPostCold)
-				fmt.Printf("verify winnnig post proof (hot): %s\n\n", bo.VerifyWinningPostHot)
+				fmt.Printf("compute winning post proof (cold): %s\n", bo.PostWinningProofCold)
+				fmt.Printf("compute winning post proof (hot): %s\n", bo.PostWinningProofHot)
+				fmt.Printf("verify winning post proof (cold): %s\n", bo.VerifyWinningPostCold)
+				fmt.Printf("verify winning post proof (hot): %s\n\n", bo.VerifyWinningPostHot)
 
 				fmt.Printf("compute window post proof (cold): %s\n", bo.PostWindowProofCold)
 				fmt.Printf("compute window post proof (hot): %s\n", bo.PostWindowProofHot)
