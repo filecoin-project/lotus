@@ -62,8 +62,8 @@ var setAskCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:        "duration",
 			Usage:       "Set duration of ask (a quantity of time after which the ask expires) `DURATION`",
-			DefaultText: "30d0h0m0s",
-			Value:       "30d0h0m0s",
+			DefaultText: "720h0m0s",
+			Value:       "720h0m0s",
 		},
 		&cli.StringFlag{
 			Name:        "min-piece-size",
@@ -157,12 +157,21 @@ var getAskCmd = &cli.Command{
 		}
 
 		w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
-		fmt.Fprintf(w, "Price per GiB / Epoch\tMin. Piece Size (w/bit-padding)\tMax. Piece Size (w/bit-padding)\tExpiry\tSeq. No.\n")
+		fmt.Fprintf(w, "Price per GiB / Epoch\tMin. Piece Size (w/bit-padding)\tMax. Piece Size (w/bit-padding)\tExpiry (Epoch)\tExpiry (Appx. Rem. Time)\tSeq. No.\n")
 		if ask == nil {
 			fmt.Fprintf(w, "<miner does not have an ask>\n")
-		} else {
-			fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%d\n", ask.Price, types.SizeStr(types.NewInt(uint64(ask.MinPieceSize))), types.SizeStr(types.NewInt(uint64(ask.MaxPieceSize))), ask.Expiry, ask.SeqNo)
+
+			return w.Flush()
 		}
+
+		miningBaseTs, err := api.MiningBase(ctx)
+		if err != nil {
+			return err
+		}
+
+		rem := time.Second * time.Duration((ask.Expiry-miningBaseTs.Height())*build.BlockDelay)
+
+		fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%s\t%d\n", ask.Price, types.SizeStr(types.NewInt(uint64(ask.MinPieceSize))), types.SizeStr(types.NewInt(uint64(ask.MaxPieceSize))), ask.Expiry, rem, ask.SeqNo)
 
 		return w.Flush()
 	},
