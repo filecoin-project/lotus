@@ -210,6 +210,10 @@ func (sm *StorageMinerAPI) MarketSetAsk(ctx context.Context, price types.BigInt,
 	return sm.StorageProvider.SetAsk(price, duration, options...)
 }
 
+func (sm *StorageMinerAPI) MarketGetAsk(ctx context.Context) (*storagemarket.SignedStorageAsk, error) {
+	return sm.StorageProvider.GetAsk(), nil
+}
+
 func (sm *StorageMinerAPI) DealsList(ctx context.Context) ([]storagemarket.StorageDeal, error) {
 	return sm.StorageProvider.ListDeals(ctx)
 }

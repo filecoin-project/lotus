@@ -3,11 +3,15 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"text/tabwriter"
 
 	"github.com/docker/go-units"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
+
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -55,8 +59,8 @@ var setAskCmd = &cli.Command{
 		&cli.Uint64Flag{
 			Name:        "duration",
 			Usage:       "Set the duration (specified as epochs) of the ask to `DURATION`",
-			DefaultText: "8640000",
-			Value:       8640000,
+			DefaultText: "100000",
+			Value:       100000,
 		},
 		&cli.StringFlag{
 			Name:        "min-piece-size",
@@ -110,6 +114,41 @@ var setAskCmd = &cli.Command{
 	},
 }
 
+var getAskCmd = &cli.Command{
+	Name:  "get-ask",
+	Usage: "Print the miner's ask",
+	Flags: []cli.Flag{},
+	Action: func(cctx *cli.Context) error {
+		ctx := lcli.DaemonContext(cctx)
+
+		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		sask, err := api.MarketGetAsk(ctx)
+		if err != nil {
+			return err
+		}
+
+		var ask *storagemarket.StorageAsk
+		if sask != nil && sask.Ask != nil {
+			ask = sask.Ask
+		}
+
+		w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
+		fmt.Fprintf(w, "Price per GiB / Epoch\tMin. Piece Size (bytes, unpadded)\tMax. Piece Size (bytes, unpadded)\tExpiry\tSeq. No.\n")
+		if ask == nil {
+			fmt.Fprintf(w, "<miner does not have an ask>\n")
+		} else {
+			fmt.Fprintf(w, "%s\t%d\t%d\t%d\t%d\n", ask.Price, ask.MinPieceSize.Unpadded(), ask.MaxPieceSize.Unpadded(), ask.Expiry, ask.SeqNo)
+		}
+
+		return w.Flush()
+	},
+}
+
 var dealsCmd = &cli.Command{
 	Name:  "deals",
 	Usage: "interact with your deals",
@@ -119,6 +158,7 @@ var dealsCmd = &cli.Command{
 		enableCmd,
 		disableCmd,
 		setAskCmd,
+		getAskCmd,
 	},
 }
 
