@@ -239,7 +239,12 @@ var sealBenchCmd = &cli.Command{
 
 		if robench == "" {
 			var err error
-			sealTimings, sealedSectors, err = runSeals(sb, sbfs, c.Int("num-sectors"), c.Int("parallel"), mid, sectorSize, []byte(c.String("ticket-preimage")), c.String("save-commit2-input"), c.Bool("skip-commit2"), c.Bool("skip-unseal"))
+			parCfg := ParCfg{
+				PreCommit1: c.Int("parallel"),
+				PreCommit2: 1,
+				Commit:     1,
+			}
+			sealTimings, sealedSectors, err = runSeals(sb, sbfs, c.Int("num-sectors"), parCfg, mid, sectorSize, []byte(c.String("ticket-preimage")), c.String("save-commit2-input"), c.Bool("skip-commit2"), c.Bool("skip-unseal"))
 			if err != nil {
 				return xerrors.Errorf("failed to run seals: %w", err)
 			}
@@ -451,12 +456,21 @@ var sealBenchCmd = &cli.Command{
 	},
 }
 
-func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors, parallelism int, mid abi.ActorID, sectorSize abi.SectorSize, ticketPreimage []byte, saveC2inp string, skipc2, skipunseal bool) ([]SealingResult, []abi.SectorInfo, error) {
+type ParCfg struct {
+	PreCommit1 int
+	PreCommit2 int
+	Commit     int
+}
+
+func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, par ParCfg, mid abi.ActorID, sectorSize abi.SectorSize, ticketPreimage []byte, saveC2inp string, skipc2, skipunseal bool) ([]SealingResult, []abi.SectorInfo, error) {
 	var pieces []abi.PieceInfo
 	sealTimings := make([]SealingResult, numSectors)
 	sealedSectors := make([]abi.SectorInfo, numSectors)
 
-	if numSectors%parallelism != 0 {
+	preCommit2Sema := make(chan struct{}, par.PreCommit2)
+	commitSema := make(chan struct{}, par.Commit)
+
+	if numSectors%par.PreCommit1 != 0 {
 		return nil, nil, fmt.Errorf("parallelism factor must cleanly divide numSectors")
 	}
 
@@ -481,10 +495,10 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors, paralle
 		sealTimings[i-1].AddPiece = time.Since(start)
 	}
 
-	sectorsPerWorker := numSectors / parallelism
+	sectorsPerWorker := numSectors / par.PreCommit1
 
-	errs := make(chan error, parallelism)
-	for wid := 0; wid < parallelism; wid++ {
+	errs := make(chan error, par.PreCommit1)
+	for wid := 0; wid < par.PreCommit1; wid++ {
 		go func(worker int) {
 			sealerr := func() error {
 				start := 1 + (worker * sectorsPerWorker)
@@ -510,6 +524,8 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors, paralle
 
 					precommit1 := time.Now()
 
+					preCommit2Sema <- struct{}{}
+					pc2Start := time.Now()
 					log.Infof("[%d] Running replication(2)...", i)
 					cids, err := sb.SealPreCommit2(context.TODO(), sid, pc1o)
 					if err != nil {
@@ -517,6 +533,7 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors, paralle
 					}
 
 					precommit2 := time.Now()
+					<-preCommit2Sema
 
 					sealedSectors[ix] = abi.SectorInfo{
 						SealProof:    sb.SealProofType(),
@@ -529,6 +546,8 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors, paralle
 						Value: []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 255},
 					}
 
+					commitSema <- struct{}{}
+					commitStart := time.Now()
 					log.Infof("[%d] Generating PoRep for sector (1)", i)
 					c1o, err := sb.SealCommit1(context.TODO(), sid, ticket, seed.Value, pieces, cids)
 					if err != nil {
@@ -565,6 +584,7 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors, paralle
 					}
 
 					sealcommit2 := time.Now()
+					<-commitSema
 
 					if !skipc2 {
 						svi := abi.SealVerifyInfo{
@@ -611,8 +631,8 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors, paralle
 					unseal := time.Now()
 
 					sealTimings[ix].PreCommit1 = precommit1.Sub(start)
-					sealTimings[ix].PreCommit2 = precommit2.Sub(precommit1)
-					sealTimings[ix].Commit1 = sealcommit1.Sub(precommit2)
+					sealTimings[ix].PreCommit2 = precommit2.Sub(pc2Start)
+					sealTimings[ix].Commit1 = sealcommit1.Sub(commitStart)
 					sealTimings[ix].Commit2 = sealcommit2.Sub(sealcommit1)
 					sealTimings[ix].Verify = verifySeal.Sub(sealcommit2)
 					sealTimings[ix].Unseal = unseal.Sub(verifySeal)
@@ -627,7 +647,7 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors, paralle
 		}(wid)
 	}
 
-	for i := 0; i < parallelism; i++ {
+	for i := 0; i < par.PreCommit1; i++ {
 		err := <-errs
 		if err != nil {
 			return nil, nil, err
