@@ -138,11 +138,11 @@ var getAskCmd = &cli.Command{
 		}
 
 		w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
-		fmt.Fprintf(w, "Price per GiB / Epoch\tMin. Piece Size (bytes, unpadded)\tMax. Piece Size (bytes, unpadded)\tExpiry\tSeq. No.\n")
+		fmt.Fprintf(w, "Price per GiB / Epoch\tMin. Piece Size (unpadded)\tMax. Piece Size (unpadded)\tExpiry\tSeq. No.\n")
 		if ask == nil {
 			fmt.Fprintf(w, "<miner does not have an ask>\n")
 		} else {
-			fmt.Fprintf(w, "%s\t%d\t%d\t%d\t%d\n", ask.Price, ask.MinPieceSize.Unpadded(), ask.MaxPieceSize.Unpadded(), ask.Expiry, ask.SeqNo)
+			fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%d\n", ask.Price, types.SizeStr(types.NewInt(uint64(ask.MinPieceSize.Unpadded()))), types.SizeStr(types.NewInt(uint64(ask.MaxPieceSize.Unpadded()))), ask.Expiry, ask.SeqNo)
 		}
 
 		return w.Flush()
