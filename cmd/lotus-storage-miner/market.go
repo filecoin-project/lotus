@@ -140,13 +140,19 @@ var getAskCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := lcli.DaemonContext(cctx)
 
-		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		fnapi, closer, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		sask, err := api.MarketGetAsk(ctx)
+		smapi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		sask, err := smapi.MarketGetAsk(ctx)
 		if err != nil {
 			return err
 		}
@@ -164,12 +170,12 @@ var getAskCmd = &cli.Command{
 			return w.Flush()
 		}
 
-		miningBaseTs, err := api.MiningBase(ctx)
+		head, err := fnapi.ChainHead(ctx)
 		if err != nil {
 			return err
 		}
 
-		dlt := ask.Expiry - miningBaseTs.Height()
+		dlt := ask.Expiry - head.Height()
 		rem := "<expired>"
 		if dlt > 0 {
 			rem = (time.Second * time.Duration(dlt*build.BlockDelay)).String()
