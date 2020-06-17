@@ -10,6 +10,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -59,20 +60,20 @@ var setAskCmd = &cli.Command{
 		},
 		&cli.Uint64Flag{
 			Name:        "duration",
-			Usage:       "Set the number of epochs (from now) that the ask will expire `DURATION`",
+			Usage:       "Set the number of epochs from the current chain head that the ask will expire `DURATION`",
 			DefaultText: "100000",
 			Value:       100000,
 		},
 		&cli.StringFlag{
 			Name:        "min-piece-size",
-			Usage:       "Set minimum piece size (without bit-padding, in bytes) in ask to `SIZE`",
-			DefaultText: "254B",
-			Value:       "254B",
+			Usage:       "Set minimum piece size (w/bit-padding, in bytes) in ask to `SIZE`",
+			DefaultText: "256B",
+			Value:       "256B",
 		},
 		&cli.StringFlag{
 			Name:        "max-piece-size",
-			Usage:       "Set maximum piece size (without bit-padding, in bytes) in ask to `SIZE`",
-			DefaultText: "miner sector size, without bit-padding",
+			Usage:       "Set maximum piece size (w/bit-padding, in bytes) in ask to `SIZE`",
+			DefaultText: "miner sector size",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -92,8 +93,8 @@ var setAskCmd = &cli.Command{
 			return err
 		}
 
-		if min < 254 {
-			return errors.New("minimum piece size (unpadded) is 254 B")
+		if min < 256 {
+			return xerrors.New("minimum piece size (w/bit-padding) is 256B")
 		}
 
 		max, err := units.RAMInBytes(cctx.String("max-piece-size"))
@@ -111,17 +112,17 @@ var setAskCmd = &cli.Command{
 			return err
 		}
 
-		smax := int64(abi.PaddedPieceSize(ssize).Unpadded())
+		smax := int64(ssize)
 
 		if max == 0 {
 			max = smax
 		}
 
 		if max > smax {
-			return errors.Errorf("max piece size (unpadded) %s cannot exceed miner sector size (unpadded) %s", types.SizeStr(types.NewInt(uint64(max))), types.SizeStr(types.NewInt(uint64(smax))))
+			return errors.Errorf("max piece size (w/bit-padding) %s cannot exceed miner sector size %s", types.SizeStr(types.NewInt(uint64(max))), types.SizeStr(types.NewInt(uint64(smax))))
 		}
 
-		return api.MarketSetAsk(ctx, pri, dur, abi.UnpaddedPieceSize(min).Padded(), abi.UnpaddedPieceSize(max).Padded())
+		return api.MarketSetAsk(ctx, pri, dur, abi.PaddedPieceSize(min), abi.PaddedPieceSize(max))
 	},
 }
 
@@ -149,11 +150,11 @@ var getAskCmd = &cli.Command{
 		}
 
 		w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
-		fmt.Fprintf(w, "Price per GiB / Epoch\tMin. Piece Size (unpadded)\tMax. Piece Size (unpadded)\tExpiry\tSeq. No.\n")
+		fmt.Fprintf(w, "Price per GiB / Epoch\tMin. Piece Size (w/bit-padding)\tMax. Piece Size (w/bit-padding)\tExpiry\tSeq. No.\n")
 		if ask == nil {
 			fmt.Fprintf(w, "<miner does not have an ask>\n")
 		} else {
-			fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%d\n", ask.Price, types.SizeStr(types.NewInt(uint64(ask.MinPieceSize.Unpadded()))), types.SizeStr(types.NewInt(uint64(ask.MaxPieceSize.Unpadded()))), ask.Expiry, ask.SeqNo)
+			fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%d\n", ask.Price, types.SizeStr(types.NewInt(uint64(ask.MinPieceSize))), types.SizeStr(types.NewInt(uint64(ask.MaxPieceSize))), ask.Expiry, ask.SeqNo)
 		}
 
 		return w.Flush()
