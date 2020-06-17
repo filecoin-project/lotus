@@ -38,6 +38,8 @@ type Common interface {
 
 	// trigger graceful shutdown
 	Shutdown(context.Context) error
+
+	Closing(context.Context) (<-chan struct{}, error)
 }
 
 // Version provides various build-time information

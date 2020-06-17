@@ -50,7 +50,8 @@ type CommonStruct struct {
 		LogList     func(context.Context) ([]string, error)     `perm:"write"`
 		LogSetLevel func(context.Context, string, string) error `perm:"write"`
 
-		Shutdown func(context.Context) error `perm:"admin"`
+		Shutdown func(context.Context) error                    `perm:"admin"`
+		Closing  func(context.Context) (<-chan struct{}, error) `perm:"read"`
 	}
 }
 
@@ -311,6 +312,10 @@ func (c *CommonStruct) LogSetLevel(ctx context.Context, group, level string) err
 
 func (c *CommonStruct) Shutdown(ctx context.Context) error {
 	return c.Internal.Shutdown(ctx)
+}
+
+func (c *CommonStruct) Closing(ctx context.Context) (<-chan struct{}, error) {
+	return c.Internal.Closing(ctx)
 }
 
 // FullNodeStruct
