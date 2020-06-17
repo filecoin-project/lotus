@@ -214,9 +214,9 @@ func (m *Sealing) handleWaitSeed(ctx statemachine.Context, sector SectorInfo) er
 		}
 		rand, err := m.api.ChainGetRandomness(ectx, tok, crypto.DomainSeparationTag_InteractiveSealChallengeSeed, randHeight, buf.Bytes())
 		if err != nil {
-			err = xerrors.Errorf("failed to get randomness for computing seal proof: %w", err)
+			err = xerrors.Errorf("failed to get randomness for computing seal proof (ch %d; rh %d; tsk %x): %w", curH, randHeight, tok, err)
 
-			_ = ctx.Send(SectorFatalError{error: err})
+			_ = ctx.Send(SectorChainPreCommitFailed{error: err})
 			return err
 		}
 
