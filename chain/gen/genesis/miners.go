@@ -204,12 +204,12 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 			{
 				newSectorInfo := &miner.SectorOnChainInfo{
 					Info: miner.SectorPreCommitInfo{
-						RegisteredProof: preseal.ProofType,
-						SectorNumber:    preseal.SectorID,
-						SealedCID:       preseal.CommR,
-						SealRandEpoch:   0,
-						DealIDs:         []abi.DealID{dealIDs[pi]},
-						Expiration:      preseal.Deal.EndEpoch,
+						SealProof:     preseal.ProofType,
+						SectorNumber:  preseal.SectorID,
+						SealedCID:     preseal.CommR,
+						SealRandEpoch: 0,
+						DealIDs:       []abi.DealID{dealIDs[pi]},
+						Expiration:    preseal.Deal.EndEpoch,
 					},
 					ActivationEpoch:    0,
 					DealWeight:         dealWeight.DealWeight,
@@ -242,6 +242,9 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 		st.TotalQualityAdjPower = big.Sub(st.TotalQualityAdjPower, big.NewInt(1))
 		return nil
 	})
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("mutating state: %w", err)
+	}
 
 	c, err := vm.Flush(ctx)
 	if err != nil {

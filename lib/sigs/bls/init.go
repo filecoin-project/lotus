@@ -33,16 +33,16 @@ func (blsSigner) Sign(p []byte, msg []byte) ([]byte, error) {
 }
 
 func (blsSigner) Verify(sig []byte, a address.Address, msg []byte) error {
-	digests := []ffi.Digest{ffi.Hash(ffi.Message(msg))}
 
 	var pubk ffi.PublicKey
 	copy(pubk[:], a.Payload())
 	pubkeys := []ffi.PublicKey{pubk}
+	digests := []ffi.Message{msg}
 
 	var s ffi.Signature
 	copy(s[:], sig)
 
-	if !ffi.Verify(&s, digests, pubkeys) {
+	if !ffi.HashVerify(&s, digests, pubkeys) {
 		return fmt.Errorf("bls signature failed to verify")
 	}
 

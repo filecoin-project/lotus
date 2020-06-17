@@ -10,6 +10,36 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+var enableCmd = &cli.Command{
+	Name:  "enable",
+	Usage: "Configure the miner to consider storage deal proposals",
+	Flags: []cli.Flag{},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		return api.DealsSetAcceptingStorageDeals(lcli.DaemonContext(cctx), true)
+	},
+}
+
+var disableCmd = &cli.Command{
+	Name:  "disable",
+	Usage: "Configure the miner to reject all storage deal proposals",
+	Flags: []cli.Flag{},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		return api.DealsSetAcceptingStorageDeals(lcli.DaemonContext(cctx), false)
+	},
+}
+
 var setPriceCmd = &cli.Command{
 	Name:  "set-price",
 	Usage: "Set price that miner will accept storage deals at (FIL / GiB / Epoch)",
@@ -42,6 +72,8 @@ var dealsCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		dealsImportDataCmd,
 		dealsListCmd,
+		enableCmd,
+		disableCmd,
 	},
 }
 

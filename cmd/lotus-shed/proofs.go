@@ -88,7 +88,7 @@ var verifySealProofCmd = &cli.Command{
 				Number: snum,
 			},
 			SealedCID:             commr,
-			RegisteredProof:       abi.RegisteredProof(cctx.Int64("proof-type")),
+			SealProof:             abi.RegisteredSealProof(cctx.Int64("proof-type")),
 			Proof:                 proof,
 			DealIDs:               nil,
 			Randomness:            abi.SealRandomness(ticket),

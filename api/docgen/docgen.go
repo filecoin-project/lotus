@@ -72,7 +72,7 @@ func init() {
 	addExample(pid)
 
 	addExample(bitfield.NewFromSet([]uint64{5}))
-	addExample(abi.RegisteredProof_StackedDRG32GiBPoSt)
+	addExample(abi.RegisteredSealProof_StackedDrg32GiBV1)
 	addExample(abi.ChainEpoch(10101))
 	addExample(crypto.SigTypeBLS)
 	addExample(int64(9))
@@ -93,7 +93,7 @@ func init() {
 	addExample(build.APIVersion)
 	addExample(api.PCHInbound)
 	addExample(time.Minute)
-	addExample(&types.ExecutionResult{
+	addExample(&types.ExecutionTrace{
 		Msg:    exampleValue(reflect.TypeOf(&types.Message{})).(*types.Message),
 		MsgRct: exampleValue(reflect.TypeOf(&types.MessageReceipt{})).(*types.MessageReceipt),
 	})

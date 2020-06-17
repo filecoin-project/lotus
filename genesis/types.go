@@ -22,7 +22,7 @@ type PreSeal struct {
 	CommD     cid.Cid
 	SectorID  abi.SectorNumber
 	Deal      market.DealProposal
-	ProofType abi.RegisteredProof
+	ProofType abi.RegisteredSealProof
 }
 
 type Miner struct {

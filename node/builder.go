@@ -106,7 +106,6 @@ const (
 	HandleIncomingBlocksKey
 	HandleIncomingMessagesKey
 
-	RunDealClientKey
 	RegisterClientValidatorKey
 
 	// storage miner
@@ -266,7 +265,6 @@ func Online() Option {
 			Override(new(storagemarket.StorageClient), modules.StorageClient),
 			Override(new(storagemarket.StorageClientNode), storageadapter.NewClientNodeAdapter),
 			Override(RegisterClientValidatorKey, modules.RegisterClientValidator),
-			Override(RunDealClientKey, modules.RunDealClient),
 			Override(new(beacon.RandomBeacon), modules.RandomBeacon),
 
 			Override(new(*paychmgr.Store), paychmgr.NewStore),
@@ -313,6 +311,9 @@ func Online() Option {
 			Override(HandleDealsKey, modules.HandleDeals),
 			Override(new(gen.WinningPoStProver), storage.NewWinningPoStProver),
 			Override(new(*miner.Miner), modules.SetupBlockProducer),
+
+			Override(new(dtypes.AcceptingStorageDealsConfigFunc), modules.NewAcceptingStorageDealsConfigFunc),
+			Override(new(dtypes.SetAcceptingStorageDealsConfigFunc), modules.NewSetAcceptingStorageDealsConfigFunc),
 		),
 	)
 }
@@ -371,6 +372,9 @@ func ConfigCommon(cfg *config.Common) Option {
 				Override(new(dtypes.BootstrapPeers), modules.ConfigBootstrap(cfg.Libp2p.BootstrapPeers)),
 			),
 		),
+		Override(AddrsFactoryKey, lp2p.AddrsFactory(
+			cfg.Libp2p.AnnounceAddresses,
+			cfg.Libp2p.NoAnnounceAddresses)),
 	)
 }
 

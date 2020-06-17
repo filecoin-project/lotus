@@ -8,7 +8,6 @@ import (
 	"os"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/Gurpartap/async"
@@ -429,6 +428,8 @@ func (syncer *Syncer) Sync(ctx context.Context, maybeHead *types.TipSet) error {
 		return xerrors.Errorf("collectChain failed: %w", err)
 	}
 
+	// At this point we have accepted and synced to the new `maybeHead`
+	// (`StageSyncComplete`).
 	if err := syncer.store.PutTipSet(ctx, maybeHead); err != nil {
 		span.AddAttributes(trace.StringAttribute("put_error", err.Error()))
 		span.SetStatus(trace.Status{
@@ -527,9 +528,35 @@ func blockSanityChecks(h *types.BlockHeader) error {
 }
 
 // ValidateBlock should match up with 'Semantical Validation' in validation.md in the spec
-func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) error {
+func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) (err error) {
+	defer func() {
+		// b.Cid() could panic for empty blocks that are used in tests.
+		if rerr := recover(); rerr != nil {
+			err = xerrors.Errorf("validate block panic: %w", rerr)
+			return
+		}
+	}()
+
+	isValidated, err := syncer.store.IsBlockValidated(ctx, b.Cid())
+	if err != nil {
+		return xerrors.Errorf("check block validation cache %s: %w", b.Cid(), err)
+	}
+
+	if isValidated {
+		return nil
+	}
+
+	validationStart := time.Now()
+	defer func() {
+		dur := time.Since(validationStart)
+		durMilli := dur.Seconds() * float64(1000)
+		stats.Record(ctx, metrics.BlockValidationDurationMilliseconds.M(durMilli))
+		log.Infow("block validation", "took", dur, "height", b.Header.Height)
+	}()
+
 	ctx, span := trace.StartSpan(ctx, "validateBlock")
 	defer span.End()
+
 	if build.InsecurePoStValidation {
 		log.Warn("insecure test validation is enabled, if you see this outside of a test, it is a severe bug!")
 	}
@@ -639,7 +666,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 			return xerrors.Errorf("could not draw randomness: %w", err)
 		}
 
-		if err := gen.VerifyVRF(ctx, waddr, vrfBase, h.ElectionProof.VRFProof); err != nil {
+		if err := VerifyElectionPoStVRF(ctx, waddr, vrfBase, h.ElectionProof.VRFProof); err != nil {
 			return xerrors.Errorf("validating block election proof failed: %w", err)
 		}
 
@@ -700,7 +727,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 			return xerrors.Errorf("failed to compute vrf base for ticket: %w", err)
 		}
 
-		err = gen.VerifyVRF(ctx, waddr, vrfBase, h.Ticket.VRFProof)
+		err = VerifyElectionPoStVRF(ctx, waddr, vrfBase, h.Ticket.VRFProof)
 		if err != nil {
 			return xerrors.Errorf("validating block tickets failed: %w", err)
 		}
@@ -748,7 +775,11 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		}
 	}
 
-	return merr
+	if err := syncer.store.MarkBlockAsValidated(ctx, b.Cid()); err != nil {
+		return xerrors.Errorf("caching block validation %s: %w", b.Cid(), err)
+	}
+
+	return nil
 }
 
 func (syncer *Syncer) VerifyWinningPoStProof(ctx context.Context, h *types.BlockHeader, prevBeacon types.BeaconEntry, lbst cid.Cid, waddr address.Address) error {
@@ -846,7 +877,7 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 
 		// Phase 1: syntactic validation, as defined in the spec
 		minGas := vm.PricelistByEpoch(baseTs.Height()).OnChainMessage(msg.ChainLength())
-		if err := m.ValidForBlockInclusion(minGas); err != nil {
+		if err := m.ValidForBlockInclusion(minGas.Total()); err != nil {
 			return err
 		}
 
@@ -938,23 +969,14 @@ func (syncer *Syncer) verifyBlsAggregate(ctx context.Context, sig *crypto.Signat
 		trace.Int64Attribute("msgCount", int64(len(msgs))),
 	)
 
-	var wg sync.WaitGroup
-
-	digests := make([]bls.Digest, len(msgs))
-	for i := 0; i < 10; i++ {
-		wg.Add(1)
-		go func(w int) {
-			defer wg.Done()
-			for j := 0; (j*10)+w < len(msgs); j++ {
-				digests[j*10+w] = bls.Hash(bls.Message(msgs[j*10+w].Bytes()))
-			}
-		}(i)
+	bmsgs := make([]bls.Message, len(msgs))
+	for i, m := range msgs {
+		bmsgs[i] = m.Bytes()
 	}
-	wg.Wait()
 
 	var bsig bls.Signature
 	copy(bsig[:], sig.Data)
-	if !bls.Verify(&bsig, digests, pubks) {
+	if !bls.HashVerify(&bsig, bmsgs, pubks) {
 		return xerrors.New("bls aggregate signature failed to verify")
 	}
 
@@ -1325,12 +1347,12 @@ func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet) error 
 	return nil
 }
 
-func VerifyElectionPoStVRF(ctx context.Context, evrf []byte, rand []byte, worker address.Address) error {
-	if err := gen.VerifyVRF(ctx, worker, rand, evrf); err != nil {
-		return xerrors.Errorf("failed to verify post_randomness vrf: %w", err)
+func VerifyElectionPoStVRF(ctx context.Context, worker address.Address, rand []byte, evrf []byte) error {
+	if build.InsecurePoStValidation {
+		return nil
+	} else {
+		return gen.VerifyVRF(ctx, worker, rand, evrf)
 	}
-
-	return nil
 }
 
 func (syncer *Syncer) State() []SyncerState {

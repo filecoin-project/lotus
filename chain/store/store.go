@@ -18,7 +18,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/metrics"
@@ -48,6 +47,10 @@ import (
 var log = logging.Logger("chainstore")
 
 var chainHeadKey = dstore.NewKey("head")
+var blockValidationCacheKeyPrefix = dstore.NewKey("blockValidation")
+
+// ReorgNotifee represents a callback that gets called upon reorgs.
+type ReorgNotifee func(rev, app []*types.TipSet) error
 
 type ChainStore struct {
 	bs bstore.Blockstore
@@ -64,8 +67,8 @@ type ChainStore struct {
 
 	cindex *ChainIndex
 
-	reorgCh          chan<- reorg
-	headChangeNotifs []func(rev, app []*types.TipSet) error
+	reorgCh        chan<- reorg
+	reorgNotifeeCh chan ReorgNotifee
 
 	mmCache *lru.ARCCache
 	tsCache *lru.ARCCache
@@ -89,8 +92,6 @@ func NewChainStore(bs bstore.Blockstore, ds dstore.Batching, vmcalls runtime.Sys
 	ci := NewChainIndex(cs.LoadTipSet)
 
 	cs.cindex = ci
-
-	cs.reorgCh = cs.reorgWorker(context.TODO())
 
 	hcnf := func(rev, app []*types.TipSet) error {
 		cs.pubLk.Lock()
@@ -123,7 +124,8 @@ func NewChainStore(bs bstore.Blockstore, ds dstore.Batching, vmcalls runtime.Sys
 		return nil
 	}
 
-	cs.headChangeNotifs = append(cs.headChangeNotifs, hcnf, hcmetric)
+	cs.reorgNotifeeCh = make(chan ReorgNotifee)
+	cs.reorgCh = cs.reorgWorker(context.TODO(), []ReorgNotifee{hcnf, hcmetric})
 
 	return cs
 }
@@ -212,8 +214,24 @@ func (cs *ChainStore) SubHeadChanges(ctx context.Context) chan []*api.HeadChange
 	return out
 }
 
-func (cs *ChainStore) SubscribeHeadChanges(f func(rev, app []*types.TipSet) error) {
-	cs.headChangeNotifs = append(cs.headChangeNotifs, f)
+func (cs *ChainStore) SubscribeHeadChanges(f ReorgNotifee) {
+	cs.reorgNotifeeCh <- f
+}
+
+func (cs *ChainStore) IsBlockValidated(ctx context.Context, blkid cid.Cid) (bool, error) {
+	key := blockValidationCacheKeyPrefix.Instance(blkid.String())
+
+	return cs.ds.Has(key)
+}
+
+func (cs *ChainStore) MarkBlockAsValidated(ctx context.Context, blkid cid.Cid) error {
+	key := blockValidationCacheKeyPrefix.Instance(blkid.String())
+
+	if err := cs.ds.Put(key, []byte{0}); err != nil {
+		return xerrors.Errorf("cache block validation: %w", err)
+	}
+
+	return nil
 }
 
 func (cs *ChainStore) SetGenesis(b *types.BlockHeader) error {
@@ -274,13 +292,19 @@ type reorg struct {
 	new *types.TipSet
 }
 
-func (cs *ChainStore) reorgWorker(ctx context.Context) chan<- reorg {
+func (cs *ChainStore) reorgWorker(ctx context.Context, initialNotifees []ReorgNotifee) chan<- reorg {
 	out := make(chan reorg, 32)
+	notifees := make([]ReorgNotifee, len(initialNotifees))
+	copy(notifees, initialNotifees)
+
 	go func() {
 		defer log.Warn("reorgWorker quit")
 
 		for {
 			select {
+			case n := <-cs.reorgNotifeeCh:
+				notifees = append(notifees, n)
+
 			case r := <-out:
 				revert, apply, err := cs.ReorgOps(r.old, r.new)
 				if err != nil {
@@ -294,7 +318,7 @@ func (cs *ChainStore) reorgWorker(ctx context.Context) chan<- reorg {
 					apply[i], apply[opp] = apply[opp], apply[i]
 				}
 
-				for _, hcf := range cs.headChangeNotifs {
+				for _, hcf := range notifees {
 					if err := hcf(revert, apply); err != nil {
 						log.Error("head change func errored (BAD): ", err)
 					}
@@ -962,10 +986,6 @@ func (cs *ChainStore) GetTipsetByHeight(ctx context.Context, h abi.ChainEpoch, t
 
 	if h == ts.Height() {
 		return ts, nil
-	}
-
-	if ts.Height()-h > build.ForkLengthThreshold {
-		log.Warnf("expensive call to GetTipsetByHeight, seeking %d levels", ts.Height()-h)
 	}
 
 	lbts, err := cs.cindex.GetTipsetByHeight(ctx, ts, h)

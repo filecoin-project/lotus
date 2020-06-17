@@ -206,9 +206,9 @@ func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *S
 	out := make([]abi.SectorInfo, len(ids))
 	for i, n := range ids {
 		out[i] = abi.SectorInfo{
-			RegisteredProof: wpt,
-			SectorNumber:    sectorSet[n].ID,
-			SealedCID:       sectorSet[n].Info.Info.SealedCID,
+			SealProof:    spt,
+			SectorNumber: sectorSet[n].ID,
+			SealedCID:    sectorSet[n].Info.Info.SealedCID,
 		}
 	}
 

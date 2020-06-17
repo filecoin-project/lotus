@@ -77,12 +77,17 @@ func (a *StateAPI) StateMinerProvingSet(ctx context.Context, addr address.Addres
 	return stmgr.GetProvingSetRaw(ctx, a.StateManager, mas)
 }
 
-func (a *StateAPI) StateMinerInfo(ctx context.Context, actor address.Address, tsk types.TipSetKey) (miner.MinerInfo, error) {
+func (a *StateAPI) StateMinerInfo(ctx context.Context, actor address.Address, tsk types.TipSetKey) (api.MinerInfo, error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
-		return miner.MinerInfo{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+		return api.MinerInfo{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
-	return stmgr.StateMinerInfo(ctx, a.StateManager, ts, actor)
+
+	mi, err := stmgr.StateMinerInfo(ctx, a.StateManager, ts, actor)
+	if err != nil {
+		return api.MinerInfo{}, err
+	}
+	return api.NewApiMinerInfo(mi), nil
 }
 
 func (a *StateAPI) StateMinerDeadlines(ctx context.Context, m address.Address, tsk types.TipSetKey) (*miner.Deadlines, error) {
@@ -237,11 +242,11 @@ func (a *StateAPI) StateReplay(ctx context.Context, tsk types.TipSetKey, mc cid.
 	}
 
 	return &api.InvocResult{
-		Msg:                m,
-		MsgRct:             &r.MessageReceipt,
-		InternalExecutions: r.InternalExecutions,
-		Error:              errstr,
-		Duration:           r.Duration,
+		Msg:            m,
+		MsgRct:         &r.MessageReceipt,
+		ExecutionTrace: r.ExecutionTrace,
+		Error:          errstr,
+		Duration:       r.Duration,
 	}, nil
 }
 
@@ -745,7 +750,7 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 
 	initialPledge := big.Zero()
 	{
-		ssize, err := precommit.Info.RegisteredProof.SectorSize()
+		ssize, err := precommit.Info.SealProof.SectorSize()
 		if err != nil {
 			return types.EmptyInt, err
 		}
