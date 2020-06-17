@@ -742,12 +742,7 @@ var stateReadStateCmd = &cli.Command{
 			return err
 		}
 
-		act, err := api.StateGetActor(ctx, addr, ts.Key())
-		if err != nil {
-			return err
-		}
-
-		as, err := api.StateReadState(ctx, act, ts.Key())
+		as, err := api.StateReadState(ctx, addr, ts.Key())
 		if err != nil {
 			return err
 		}
