@@ -59,7 +59,7 @@ var setAskCmd = &cli.Command{
 		},
 		&cli.Uint64Flag{
 			Name:        "duration",
-			Usage:       "Set the duration (specified as epochs) of the ask to `DURATION`",
+			Usage:       "Set the number of epochs (from now) that the ask will expire `DURATION`",
 			DefaultText: "100000",
 			Value:       100000,
 		},
