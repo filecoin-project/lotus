@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/filecoin-project/go-fil-markets/pieceio"
 	basicnode "github.com/ipld/go-ipld-prime/node/basic"
@@ -201,23 +202,49 @@ func (a *API) ClientFindData(ctx context.Context, root cid.Cid) ([]api.QueryOffe
 
 	out := make([]api.QueryOffer, len(peers))
 	for k, p := range peers {
-		queryResponse, err := a.Retrieval.Query(ctx, p, root, retrievalmarket.QueryParams{})
-		if err != nil {
-			out[k] = api.QueryOffer{Err: err.Error(), Miner: p.Address, MinerPeerID: p.ID}
-		} else {
-			out[k] = api.QueryOffer{
-				Root:                    root,
-				Size:                    queryResponse.Size,
-				MinPrice:                queryResponse.PieceRetrievalPrice(),
-				PaymentInterval:         queryResponse.MaxPaymentInterval,
-				PaymentIntervalIncrease: queryResponse.MaxPaymentIntervalIncrease,
-				Miner:                   queryResponse.PaymentAddress, // TODO: check
-				MinerPeerID:             p.ID,
-			}
-		}
+		out[k] = a.makeRetrievalQuery(ctx, p, root, retrievalmarket.QueryParams{})
 	}
 
 	return out, nil
+}
+
+func (a *API) ClientMinerQueryOffer(ctx context.Context, payload cid.Cid, miner address.Address) (api.QueryOffer, error) {
+	mi, err := a.StateMinerInfo(ctx, miner, types.EmptyTSK)
+	if err != nil {
+		return api.QueryOffer{}, err
+	}
+	rp := retrievalmarket.RetrievalPeer{
+		Address: miner,
+		ID:      mi.PeerId,
+	}
+	return a.makeRetrievalQuery(ctx, rp, payload, retrievalmarket.QueryParams{}), nil
+}
+
+func (a *API) makeRetrievalQuery(ctx context.Context, rp retrievalmarket.RetrievalPeer, payload cid.Cid, qp retrievalmarket.QueryParams) api.QueryOffer {
+	queryResponse, err := a.Retrieval.Query(ctx, rp, payload, qp)
+	if err != nil {
+		return api.QueryOffer{Err: err.Error(), Miner: rp.Address, MinerPeerID: rp.ID}
+	}
+	var errStr string
+	switch queryResponse.Status {
+	case retrievalmarket.QueryResponseAvailable:
+		errStr = ""
+	case retrievalmarket.QueryResponseUnavailable:
+		errStr = fmt.Sprintf("retrieval query offer was unavailable: %s", queryResponse.Message)
+	case retrievalmarket.QueryResponseError:
+		errStr = fmt.Sprintf("retrieval query offer errored: %s", queryResponse.Message)
+	}
+
+	return api.QueryOffer{
+		Root:                    payload,
+		Size:                    queryResponse.Size,
+		MinPrice:                queryResponse.PieceRetrievalPrice(),
+		PaymentInterval:         queryResponse.MaxPaymentInterval,
+		PaymentIntervalIncrease: queryResponse.MaxPaymentIntervalIncrease,
+		Miner:                   queryResponse.PaymentAddress, // TODO: check
+		MinerPeerID:             rp.ID,
+		Err:                     errStr,
+	}
 }
 
 func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (cid.Cid, error) {

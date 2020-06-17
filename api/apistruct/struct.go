@@ -109,17 +109,18 @@ type FullNodeStruct struct {
 		WalletImport         func(context.Context, *types.KeyInfo) (address.Address, error)                       `perm:"admin"`
 		WalletDelete         func(context.Context, address.Address) error                                         `perm:"write"`
 
-		ClientImport      func(ctx context.Context, ref api.FileRef) (cid.Cid, error)                                          `perm:"admin"`
-		ClientListImports func(ctx context.Context) ([]api.Import, error)                                                      `perm:"write"`
-		ClientHasLocal    func(ctx context.Context, root cid.Cid) (bool, error)                                                `perm:"write"`
-		ClientFindData    func(ctx context.Context, root cid.Cid) ([]api.QueryOffer, error)                                    `perm:"read"`
-		ClientStartDeal   func(ctx context.Context, params *api.StartDealParams) (*cid.Cid, error)                             `perm:"admin"`
-		ClientGetDealInfo func(context.Context, cid.Cid) (*api.DealInfo, error)                                                `perm:"read"`
-		ClientListDeals   func(ctx context.Context) ([]api.DealInfo, error)                                                    `perm:"write"`
-		ClientRetrieve    func(ctx context.Context, order api.RetrievalOrder, ref *api.FileRef) error                          `perm:"admin"`
-		ClientQueryAsk    func(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.SignedStorageAsk, error) `perm:"read"`
-		ClientCalcCommP   func(ctx context.Context, inpath string, miner address.Address) (*api.CommPRet, error)               `perm:"read"`
-		ClientGenCar      func(ctx context.Context, ref api.FileRef, outpath string) error                                     `perm:"write"`
+		ClientImport          func(ctx context.Context, ref api.FileRef) (cid.Cid, error)                                          `perm:"admin"`
+		ClientListImports     func(ctx context.Context) ([]api.Import, error)                                                      `perm:"write"`
+		ClientHasLocal        func(ctx context.Context, root cid.Cid) (bool, error)                                                `perm:"write"`
+		ClientFindData        func(ctx context.Context, root cid.Cid) ([]api.QueryOffer, error)                                    `perm:"read"`
+		ClientMinerQueryOffer func(ctx context.Context, root cid.Cid, miner address.Address) (api.QueryOffer, error)               `perm:"read"`
+		ClientStartDeal       func(ctx context.Context, params *api.StartDealParams) (*cid.Cid, error)                             `perm:"admin"`
+		ClientGetDealInfo     func(context.Context, cid.Cid) (*api.DealInfo, error)                                                `perm:"read"`
+		ClientListDeals       func(ctx context.Context) ([]api.DealInfo, error)                                                    `perm:"write"`
+		ClientRetrieve        func(ctx context.Context, order api.RetrievalOrder, ref *api.FileRef) error                          `perm:"admin"`
+		ClientQueryAsk        func(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.SignedStorageAsk, error) `perm:"read"`
+		ClientCalcCommP       func(ctx context.Context, inpath string, miner address.Address) (*api.CommPRet, error)               `perm:"read"`
+		ClientGenCar          func(ctx context.Context, ref api.FileRef, outpath string) error                                     `perm:"write"`
 
 		StateNetworkName                  func(context.Context) (dtypes.NetworkName, error)                                                                   `perm:"read"`
 		StateMinerSectors                 func(context.Context, address.Address, *abi.BitField, bool, types.TipSetKey) ([]*api.ChainSectorInfo, error)        `perm:"read"`
@@ -335,6 +336,10 @@ func (c *FullNodeStruct) ClientHasLocal(ctx context.Context, root cid.Cid) (bool
 
 func (c *FullNodeStruct) ClientFindData(ctx context.Context, root cid.Cid) ([]api.QueryOffer, error) {
 	return c.Internal.ClientFindData(ctx, root)
+}
+
+func (c *FullNodeStruct) ClientMinerQueryOffer(ctx context.Context, root cid.Cid, miner address.Address) (api.QueryOffer, error) {
+	return c.Internal.ClientMinerQueryOffer(ctx, root, miner)
 }
 
 func (c *FullNodeStruct) ClientStartDeal(ctx context.Context, params *api.StartDealParams) (*cid.Cid, error) {
