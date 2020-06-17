@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"text/tabwriter"
+	"time"
 
 	"github.com/docker/go-units"
 	"github.com/ipfs/go-cid"
@@ -14,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 )
@@ -57,11 +59,11 @@ var setAskCmd = &cli.Command{
 			Usage:    "Set the price of the ask (specified as FIL / GiB / Epoch) to `PRICE`",
 			Required: true,
 		},
-		&cli.Uint64Flag{
+		&cli.StringFlag{
 			Name:        "duration",
-			Usage:       "Set the number of epochs from the current chain head that the ask will expire `DURATION`",
-			DefaultText: "100000",
-			Value:       100000,
+			Usage:       "Set duration of ask (a quantity of time after which the ask expires) `DURATION`",
+			DefaultText: "30d0h0m0s",
+			Value:       "30d0h0m0s",
 		},
 		&cli.StringFlag{
 			Name:        "min-piece-size",
@@ -85,11 +87,17 @@ var setAskCmd = &cli.Command{
 		defer closer()
 
 		pri := types.NewInt(cctx.Uint64("price"))
-		dur := abi.ChainEpoch(cctx.Uint64("duration"))
+
+		dur, err := time.ParseDuration(cctx.String("duration"))
+		if err != nil {
+			return xerrors.Errorf("cannot parse duration: %w", err)
+		}
+
+		qty := dur.Seconds() / build.BlockDelay
 
 		min, err := units.RAMInBytes(cctx.String("min-piece-size"))
 		if err != nil {
-			return err
+			return xerrors.Errorf("cannot parse min-piece-size to quantity of bytes: %w", err)
 		}
 
 		if min < 256 {
@@ -98,7 +106,7 @@ var setAskCmd = &cli.Command{
 
 		max, err := units.RAMInBytes(cctx.String("max-piece-size"))
 		if err != nil {
-			return err
+			return xerrors.Errorf("cannot parse max-piece-size to quantity of bytes: %w", err)
 		}
 
 		maddr, err := api.ActorAddress(ctx)
@@ -121,7 +129,7 @@ var setAskCmd = &cli.Command{
 			return xerrors.Errorf("max piece size (w/bit-padding) %s cannot exceed miner sector size %s", types.SizeStr(types.NewInt(uint64(max))), types.SizeStr(types.NewInt(uint64(smax))))
 		}
 
-		return api.MarketSetAsk(ctx, pri, dur, abi.PaddedPieceSize(min), abi.PaddedPieceSize(max))
+		return api.MarketSetAsk(ctx, pri, abi.ChainEpoch(qty), abi.PaddedPieceSize(min), abi.PaddedPieceSize(max))
 	},
 }
 
