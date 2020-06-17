@@ -8,7 +8,6 @@ import (
 
 	"github.com/docker/go-units"
 	"github.com/ipfs/go-cid"
-	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
@@ -119,7 +118,7 @@ var setAskCmd = &cli.Command{
 		}
 
 		if max > smax {
-			return errors.Errorf("max piece size (w/bit-padding) %s cannot exceed miner sector size %s", types.SizeStr(types.NewInt(uint64(max))), types.SizeStr(types.NewInt(uint64(smax))))
+			return xerrors.Errorf("max piece size (w/bit-padding) %s cannot exceed miner sector size %s", types.SizeStr(types.NewInt(uint64(max))), types.SizeStr(types.NewInt(uint64(smax))))
 		}
 
 		return api.MarketSetAsk(ctx, pri, dur, abi.PaddedPieceSize(min), abi.PaddedPieceSize(max))
