@@ -3,11 +3,13 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -117,10 +119,18 @@ var runCmd = &cli.Command{
 		}
 
 		// Connect to storage-miner
+		var nodeApi api.StorageMiner
+		var closer func()
+		var err error
+		for {
+			nodeApi, closer, err = lcli.GetStorageMinerAPI(cctx)
+			if err == nil {
+				break
+			}
+			fmt.Printf("\r\x1b[0KConnecting to miner API... (%s)", err)
+			time.Sleep(time.Second)
+			continue
 
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
-		if err != nil {
-			return xerrors.Errorf("getting miner api: %w", err)
 		}
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
