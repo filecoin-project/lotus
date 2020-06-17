@@ -8,6 +8,7 @@ import (
 
 	"github.com/docker/go-units"
 	"github.com/ipfs/go-cid"
+	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
@@ -91,23 +92,33 @@ var setAskCmd = &cli.Command{
 			return err
 		}
 
+		if min < 254 {
+			return errors.New("minimum piece size (unpadded) is 254 B")
+		}
+
 		max, err := units.RAMInBytes(cctx.String("max-piece-size"))
 		if err != nil {
 			return err
 		}
 
+		maddr, err := api.ActorAddress(ctx)
+		if err != nil {
+			return err
+		}
+
+		ssize, err := api.ActorSectorSize(ctx, maddr)
+		if err != nil {
+			return err
+		}
+
+		smax := int64(abi.PaddedPieceSize(ssize).Unpadded())
+
 		if max == 0 {
-			maddr, err := api.ActorAddress(ctx)
-			if err != nil {
-				return err
-			}
+			max = smax
+		}
 
-			ssize, err := api.ActorSectorSize(ctx, maddr)
-			if err != nil {
-				return err
-			}
-
-			max = int64(abi.PaddedPieceSize(ssize).Unpadded())
+		if max > smax {
+			return errors.Errorf("max piece size (unpadded) %s cannot exceed miner sector size (unpadded) %s", types.SizeStr(types.NewInt(uint64(max))), types.SizeStr(types.NewInt(uint64(smax))))
 		}
 
 		return api.MarketSetAsk(ctx, pri, dur, abi.UnpaddedPieceSize(min).Padded(), abi.UnpaddedPieceSize(max).Padded())
