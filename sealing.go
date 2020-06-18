@@ -90,6 +90,10 @@ func (m *Sealing) AllocatePiece(size abi.UnpaddedPieceSize) (sectorID abi.Sector
 	if (padreader.PaddedSize(uint64(size))) != size {
 		return 0, 0, xerrors.Errorf("cannot allocate unpadded piece")
 	}
+	
+	if size > abi.UnpaddedPieceSize(m.sealer.SectorSize()) {
+		return 0, 0, xerrors.Errorf("piece cannot fit into a sector")
+	}
 
 	sid, err := m.sc.Next()
 	if err != nil {
