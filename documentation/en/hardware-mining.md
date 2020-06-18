@@ -51,4 +51,4 @@ To get the number of cores for your GPU, you will need to check your card’s sp
 
 ## Benchmarking
 
-Here is a [benchmarking tool](https://github.com/filecoin-project/lotus/tree/testnet-staging/cmd/lotus-bench) and a [GitHub issue thread](https://github.com/filecoin-project/lotus/issues/694) for those who wish to experiment with and contribute hardware setups for the **Filecoin Testnet**.
+Here is a [benchmarking tool](https://github.com/filecoin-project/lotus/tree/master/cmd/lotus-bench) and a [GitHub issue thread](https://github.com/filecoin-project/lotus/issues/694) for those who wish to experiment with and contribute hardware setups for the **Filecoin Testnet**.
