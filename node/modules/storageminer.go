@@ -3,6 +3,7 @@ package modules
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/ipfs/go-bitswap"
@@ -308,7 +309,7 @@ func NewStorageAsk(ctx helpers.MetricsCtx, fapi lapi.FullNode, ds dtypes.Metadat
 	return storedAsk, nil
 }
 
-func StorageProvider(minerAddress dtypes.MinerAddress, ffiConfig *ffiwrapper.Config, storedAsk *storedask.StoredAsk, h host.Host, ds dtypes.MetadataDS, ibs dtypes.StagingBlockstore, r repo.LockedRepo, pieceStore dtypes.ProviderPieceStore, dataTransfer dtypes.ProviderDataTransfer, spn storagemarket.StorageProviderNode, isAcceptingFunc dtypes.AcceptingStorageDealsConfigFunc) (storagemarket.StorageProvider, error) {
+func StorageProvider(minerAddress dtypes.MinerAddress, ffiConfig *ffiwrapper.Config, storedAsk *storedask.StoredAsk, h host.Host, ds dtypes.MetadataDS, ibs dtypes.StagingBlockstore, r repo.LockedRepo, pieceStore dtypes.ProviderPieceStore, dataTransfer dtypes.ProviderDataTransfer, spn storagemarket.StorageProviderNode, isAcceptingFunc dtypes.AcceptingStorageDealsConfigFunc, blacklistFunc dtypes.StorageDealCidBlacklistConfigFunc) (storagemarket.StorageProvider, error) {
 	net := smnet.NewFromLibp2pHost(h)
 	store, err := piecefilestore.NewLocalFileStore(piecefilestore.OsPath(r.Path()))
 	if err != nil {
@@ -324,6 +325,18 @@ func StorageProvider(minerAddress dtypes.MinerAddress, ffiConfig *ffiwrapper.Con
 		if !b {
 			log.Warnf("storage deal acceptance disabled; rejecting storage deal proposal from client: %s", deal.Client.String())
 			return false, "miner is not accepting storage deals", nil
+		}
+
+		blacklist, err := blacklistFunc()
+		if err != nil {
+			return false, "miner error", err
+		}
+
+		for idx := range blacklist {
+			if deal.Proposal.PieceCID.Equals(blacklist[idx]) {
+				log.Warnf("piece CID in proposal %s is blacklisted; rejecting storage deal proposal from client: %s", deal.Proposal.PieceCID, deal.Client.String())
+				return false, fmt.Sprintf("miner has blacklisted piece CID %s", deal.Proposal.PieceCID), nil
+			}
 		}
 
 		return true, "", nil
