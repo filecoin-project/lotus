@@ -35,26 +35,71 @@ type FullNode interface {
 	// ChainNotify returns channel with chain head updates
 	// First message is guaranteed to be of len == 1, and type == 'current'
 	ChainNotify(context.Context) (<-chan []*HeadChange, error)
+
 	// ChainHead returns the current head of the chain
 	ChainHead(context.Context) (*types.TipSet, error)
+
 	// ChainGetRandomness is used to sample the chain for randomness
 	ChainGetRandomness(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
+
 	// ChainGetBlock returns the block specified by the given CID
 	ChainGetBlock(context.Context, cid.Cid) (*types.BlockHeader, error)
 	ChainGetTipSet(context.Context, types.TipSetKey) (*types.TipSet, error)
-	ChainGetBlockMessages(context.Context, cid.Cid) (*BlockMessages, error)
-	ChainGetParentReceipts(context.Context, cid.Cid) ([]*types.MessageReceipt, error)
-	ChainGetParentMessages(context.Context, cid.Cid) ([]Message, error)
+
+	// ChainGetBlockMessages returns messages stored in the specified block
+	ChainGetBlockMessages(ctx context.Context, blockCid cid.Cid) (*BlockMessages, error)
+
+	// ChainGetParentReceipts returns receipts for messages in parent tipset of
+	// the specified block
+	ChainGetParentReceipts(ctx context.Context, blockCid cid.Cid) ([]*types.MessageReceipt, error)
+
+	// ChainGetParentReceipts returns messages stored in parent tipset of the
+	// specified block
+	ChainGetParentMessages(ctx context.Context, blockCid cid.Cid) ([]Message, error)
+
+	// ChainGetTipSetByHeight looks back for a tipset at the specified epoch.
+	// If there are no blocks at the specified epoch, a tipset at higher epoch
+	// will be returned
 	ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error)
+
+	// ChainReadObj reads ipld nodes referenced by the specified CID from chain
+	// blockstore and returns raw bytes
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
+
+	// ChainHasObj checks if a given CID exists in the chain blockstore
 	ChainHasObj(context.Context, cid.Cid) (bool, error)
 	ChainStatObj(context.Context, cid.Cid, cid.Cid) (ObjStat, error)
+
+	// ChainSetHead forcefully sets current chain head. Use with caution
 	ChainSetHead(context.Context, types.TipSetKey) error
+
+	// ChainGetGenesis returns the genesis tipset
 	ChainGetGenesis(context.Context) (*types.TipSet, error)
+
+	// ChainTipSetWeight computes weight for the specified tipset
 	ChainTipSetWeight(context.Context, types.TipSetKey) (types.BigInt, error)
 	ChainGetNode(ctx context.Context, p string) (*IpldObject, error)
+
+	// ChainGetMessage reads a message referenced by the specified CID from the
+	// chain blockstore
 	ChainGetMessage(context.Context, cid.Cid) (*types.Message, error)
+
+	// ChainGetPath returns a set of revert/apply operations needed to get from
+	// one tipset to another, for example:
+	//```
+	//        to
+	//         ^
+	// from   tAA
+	//   ^     ^
+	// tBA    tAB
+	//  ^---*--^
+	//      ^
+	//     tRR
+	//```
+	// Would return `[revert(tBA), apply(tAB), apply(tAA)]`
 	ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*HeadChange, error)
+
+	// ChainExport returns a stream of bytes with CAR dump of chain data
 	ChainExport(context.Context, types.TipSetKey) (<-chan []byte, error)
 
 	// MethodGroup: Sync
@@ -63,23 +108,45 @@ type FullNode interface {
 
 	// SyncState returns the current status of the lotus sync system
 	SyncState(context.Context) (*SyncState, error)
+
 	// SyncSubmitBlock can be used to submit a newly created block to the
 	// network through this node
 	SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) error
+
+	// SyncIncomingBlocks returns a channel streaming incoming, potentially not
+	// yet synced block headers.
 	SyncIncomingBlocks(ctx context.Context) (<-chan *types.BlockHeader, error)
+
+	// SyncMarkBad marks a blocks as bad, meaning that it won't ever by synced.
+	// Use with extreme caution
 	SyncMarkBad(ctx context.Context, bcid cid.Cid) error
+
+	// SyncCheckBad checks if a block was marked as bad, and if it was, returns
+	// the reason
 	SyncCheckBad(ctx context.Context, bcid cid.Cid) (string, error)
 
 	// MethodGroup: Mpool
 	// The Mpool methods are for interacting with the message pool. The message pool
 	// manages all incoming and outgoing 'messages' going over the network.
 
+	// MpoolPending returns pending mempool messages
 	MpoolPending(context.Context, types.TipSetKey) ([]*types.SignedMessage, error)
+
+	// MpoolPush pushes a signed message to mempool
 	MpoolPush(context.Context, *types.SignedMessage) (cid.Cid, error)
-	MpoolPushMessage(context.Context, *types.Message) (*types.SignedMessage, error) // get nonce, sign, push
+
+	// MpoolPushMessage atomically assigns a nonce, signs, and pushes a message
+	// to mempool
+	MpoolPushMessage(context.Context, *types.Message) (*types.SignedMessage, error)
+
+	// MpoolGetNonce gets next nonce for the specified sender.
+	// Note that this method may not be atomic. Use MpoolPushMessage instead
 	MpoolGetNonce(context.Context, address.Address) (uint64, error)
 	MpoolSub(context.Context) (<-chan MpoolUpdate, error)
-	MpoolEstimateGasPrice(context.Context, uint64, address.Address, int64, types.TipSetKey) (types.BigInt, error)
+
+	// MpoolEstimateGasPrice estimates what gas price should be used for a
+	// message to have high likelihood of inclusion in `nblocksincl` epochs
+	MpoolEstimateGasPrice(ctx context.Context, nblocksincl uint64, sender address.Address, gaslimit int64, tsk types.TipSetKey) (types.BigInt, error)
 
 	// MethodGroup: Miner
 
