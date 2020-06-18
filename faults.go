@@ -2,6 +2,7 @@ package sectorstorage
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -57,8 +58,9 @@ func (m *Manager) CheckProvable(ctx context.Context, spt abi.RegisteredSealProof
 				lp.Sealed:                        1,
 				filepath.Join(lp.Cache, "t_aux"): 0,
 				filepath.Join(lp.Cache, "p_aux"): 0,
-				filepath.Join(lp.Cache, "sc-02-data-tree-r-last.dat"): 0,
 			}
+
+			addCachePathsForSectorSize(toCheck, lp.Cache, ssize)
 
 			for p, sz := range toCheck {
 				st, err := os.Stat(p)
@@ -85,6 +87,19 @@ func (m *Manager) CheckProvable(ctx context.Context, spt abi.RegisteredSealProof
 	}
 
 	return bad, nil
+}
+
+func addCachePathsForSectorSize(chk map[string]int64, cacheDir string, ssize abi.SectorSize) {
+	switch ssize {
+	case 512 << 20:
+		chk[filepath.Join(cacheDir, "sc-02-data-tree-r-last.dat")] = 0
+	case 32 << 30:
+		for i := 0; i < 8; i++ {
+			chk[filepath.Join(cacheDir, fmt.Sprintf("sc-02-data-tree-r-last-%d.dat", i))] = 0
+		}
+	default:
+		log.Warnf("not checking cache files of %s sectors for faults", ssize)
+	}
 }
 
 var _ FaultTracker = &Manager{}
