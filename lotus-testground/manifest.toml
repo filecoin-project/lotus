@@ -11,7 +11,7 @@ skip_runtime_image = true
 [builders."docker:go".dockerfile_extensions]
 pre_mod_download = """
 RUN apt-get update && apt-get install -y ca-certificates llvm clang mesa-opencl-icd ocl-icd-opencl-dev jq gcc git bzr pkg-config
-ARG LOTUS_VERSION=70e964d9f947ae2d5e4cb61b5afebd4a5bfc8654
+ARG LOTUS_VERSION=c6a8fe16
 RUN git clone https://github.com/filecoin-project/lotus.git ${PLAN_DIR}/../lotus && cd ${PLAN_DIR}/../lotus && git checkout ${LOTUS_VERSION} && git submodule update --init && make 2k
 RUN cd ${PLAN_DIR}/../lotus/extern/filecoin-ffi \
     && make \
