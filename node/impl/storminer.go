@@ -44,8 +44,8 @@ type StorageMinerAPI struct {
 	*stores.Index
 
 	SetAcceptingStorageDealsConfigFunc        dtypes.SetAcceptingStorageDealsConfigFunc
-	StorageDealPieceCidBlacklistConfigFunc    dtypes.StorageDealPieceCidBlacklistConfigFunc
-	SetStorageDealPieceCidBlacklistConfigFunc dtypes.SetStorageDealPieceCidBlacklistConfigFunc
+	StorageDealPieceCidBlocklistConfigFunc    dtypes.StorageDealPieceCidBlocklistConfigFunc
+	SetStorageDealPieceCidBlocklistConfigFunc dtypes.SetStorageDealPieceCidBlocklistConfigFunc
 }
 
 func (sm *StorageMinerAPI) ServeRemote(w http.ResponseWriter, r *http.Request) {
@@ -234,12 +234,12 @@ func (sm *StorageMinerAPI) DealsImportData(ctx context.Context, deal cid.Cid, fn
 	return sm.StorageProvider.ImportDataForDeal(ctx, deal, fi)
 }
 
-func (sm *StorageMinerAPI) DealsPieceCidBlacklist(ctx context.Context) ([]cid.Cid, error) {
-	return sm.StorageDealPieceCidBlacklistConfigFunc()
+func (sm *StorageMinerAPI) DealsPieceCidBlocklist(ctx context.Context) ([]cid.Cid, error) {
+	return sm.StorageDealPieceCidBlocklistConfigFunc()
 }
 
-func (sm *StorageMinerAPI) DealsSetPieceCidBlacklist(ctx context.Context, cids []cid.Cid) error {
-	return sm.SetStorageDealPieceCidBlacklistConfigFunc(cids)
+func (sm *StorageMinerAPI) DealsSetPieceCidBlocklist(ctx context.Context, cids []cid.Cid) error {
+	return sm.SetStorageDealPieceCidBlocklistConfigFunc(cids)
 }
 
 func (sm *StorageMinerAPI) StorageAddLocal(ctx context.Context, path string) error {

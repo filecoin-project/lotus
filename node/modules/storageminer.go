@@ -309,7 +309,7 @@ func NewStorageAsk(ctx helpers.MetricsCtx, fapi lapi.FullNode, ds dtypes.Metadat
 	return storedAsk, nil
 }
 
-func StorageProvider(minerAddress dtypes.MinerAddress, ffiConfig *ffiwrapper.Config, storedAsk *storedask.StoredAsk, h host.Host, ds dtypes.MetadataDS, ibs dtypes.StagingBlockstore, r repo.LockedRepo, pieceStore dtypes.ProviderPieceStore, dataTransfer dtypes.ProviderDataTransfer, spn storagemarket.StorageProviderNode, isAcceptingFunc dtypes.AcceptingStorageDealsConfigFunc, blacklistFunc dtypes.StorageDealPieceCidBlacklistConfigFunc) (storagemarket.StorageProvider, error) {
+func StorageProvider(minerAddress dtypes.MinerAddress, ffiConfig *ffiwrapper.Config, storedAsk *storedask.StoredAsk, h host.Host, ds dtypes.MetadataDS, ibs dtypes.StagingBlockstore, r repo.LockedRepo, pieceStore dtypes.ProviderPieceStore, dataTransfer dtypes.ProviderDataTransfer, spn storagemarket.StorageProviderNode, isAcceptingFunc dtypes.AcceptingStorageDealsConfigFunc, blocklistFunc dtypes.StorageDealPieceCidBlocklistConfigFunc) (storagemarket.StorageProvider, error) {
 	net := smnet.NewFromLibp2pHost(h)
 	store, err := piecefilestore.NewLocalFileStore(piecefilestore.OsPath(r.Path()))
 	if err != nil {
@@ -327,15 +327,15 @@ func StorageProvider(minerAddress dtypes.MinerAddress, ffiConfig *ffiwrapper.Con
 			return false, "miner is not accepting storage deals", nil
 		}
 
-		blacklist, err := blacklistFunc()
+		blocklist, err := blocklistFunc()
 		if err != nil {
 			return false, "miner error", err
 		}
 
-		for idx := range blacklist {
-			if deal.Proposal.PieceCID.Equals(blacklist[idx]) {
-				log.Warnf("piece CID in proposal %s is blacklisted; rejecting storage deal proposal from client: %s", deal.Proposal.PieceCID, deal.Client.String())
-				return false, fmt.Sprintf("miner has blacklisted piece CID %s", deal.Proposal.PieceCID), nil
+		for idx := range blocklist {
+			if deal.Proposal.PieceCID.Equals(blocklist[idx]) {
+				log.Warnf("piece CID in proposal %s is blocklisted; rejecting storage deal proposal from client: %s", deal.Proposal.PieceCID, deal.Client.String())
+				return false, fmt.Sprintf("miner has blocklisted piece CID %s", deal.Proposal.PieceCID), nil
 			}
 		}
 
@@ -411,19 +411,19 @@ func NewSetAcceptingStorageDealsConfigFunc(r repo.LockedRepo) (dtypes.SetAccepti
 	}, nil
 }
 
-func NewStorageDealPieceCidBlacklistConfigFunc(r repo.LockedRepo) (dtypes.StorageDealPieceCidBlacklistConfigFunc, error) {
+func NewStorageDealPieceCidBlocklistConfigFunc(r repo.LockedRepo) (dtypes.StorageDealPieceCidBlocklistConfigFunc, error) {
 	return func() (out []cid.Cid, err error) {
 		err = readCfg(r, func(cfg *config.StorageMiner) {
-			out = cfg.Dealmaking.PieceCidBlacklist
+			out = cfg.Dealmaking.PieceCidBlocklist
 		})
 		return
 	}, nil
 }
 
-func NewSetStorageDealPieceCidBlacklistConfigFunc(r repo.LockedRepo) (dtypes.SetStorageDealPieceCidBlacklistConfigFunc, error) {
-	return func(blacklist []cid.Cid) (err error) {
+func NewSetStorageDealPieceCidBlocklistConfigFunc(r repo.LockedRepo) (dtypes.SetStorageDealPieceCidBlocklistConfigFunc, error) {
+	return func(blocklist []cid.Cid) (err error) {
 		err = mutateCfg(r, func(cfg *config.StorageMiner) {
-			cfg.Dealmaking.PieceCidBlacklist = blacklist
+			cfg.Dealmaking.PieceCidBlocklist = blocklist
 		})
 		return
 	}, nil

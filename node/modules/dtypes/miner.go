@@ -18,11 +18,11 @@ type AcceptingStorageDealsConfigFunc func() (bool, error)
 // storage deal acceptance.
 type SetAcceptingStorageDealsConfigFunc func(bool) error
 
-// StorageDealCidBlacklistConfigFunc is a function which reads from miner config
+// StorageDealCidBlocklistConfigFunc is a function which reads from miner config
 // to obtain a list of CIDs for which the storage miner will not accept storage
 // proposals.
-type StorageDealPieceCidBlacklistConfigFunc func() ([]cid.Cid, error)
+type StorageDealPieceCidBlocklistConfigFunc func() ([]cid.Cid, error)
 
-// SetStorageDealCidBlacklistConfigFunc is a function which is used to set a
+// SetStorageDealCidBlocklistConfigFunc is a function which is used to set a
 // list of CIDs for which the storage miner will reject deal proposals.
-type SetStorageDealPieceCidBlacklistConfigFunc func([]cid.Cid) error
+type SetStorageDealPieceCidBlocklistConfigFunc func([]cid.Cid) error
