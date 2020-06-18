@@ -296,14 +296,14 @@ func main() {
 			args = append(args, exampleValue(inp, nil))
 		}
 
-		v, err := json.Marshal(args)
+		v, err := json.MarshalIndent(args, "", "  ")
 		if err != nil {
 			panic(err)
 		}
 
 		outv := exampleValue(ft.Out(0), nil)
 
-		ov, err := json.Marshal(outv)
+		ov, err := json.MarshalIndent(outv, "", "  ")
 		if err != nil {
 			panic(err)
 		}
@@ -338,8 +338,17 @@ func main() {
 			fmt.Printf("### %s\n", m.Name)
 			fmt.Printf("%s\n\n", m.Comment)
 
-			fmt.Printf("Inputs: `%s`\n\n", m.InputExample)
-			fmt.Printf("Response: `%s`\n\n", m.ResponseExample)
+			if strings.Count(m.InputExample, "\n") > 0 {
+				fmt.Printf("Inputs:\n```json\n%s\n```\n\n", m.InputExample)
+			} else {
+				fmt.Printf("Inputs: `%s`\n\n", m.InputExample)
+			}
+
+			if strings.Count(m.ResponseExample, "\n") > 0 {
+				fmt.Printf("Response:\n```json\n%s\n```\n\n", m.ResponseExample)
+			} else {
+				fmt.Printf("Response: `%s`\n\n", m.ResponseExample)
+			}
 		}
 	}
 }
