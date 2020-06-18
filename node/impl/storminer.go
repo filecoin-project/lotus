@@ -43,7 +43,9 @@ type StorageMinerAPI struct {
 	StorageMgr      *sectorstorage.Manager `optional:"true"`
 	*stores.Index
 
-	SetAcceptingStorageDealsConfigFunc dtypes.SetAcceptingStorageDealsConfigFunc
+	SetAcceptingStorageDealsConfigFunc   dtypes.SetAcceptingStorageDealsConfigFunc
+	StorageDealCidBlacklistConfigFunc    dtypes.StorageDealCidBlacklistConfigFunc
+	SetStorageDealCidBlacklistConfigFunc dtypes.SetStorageDealCidBlacklistConfigFunc
 }
 
 func (sm *StorageMinerAPI) ServeRemote(w http.ResponseWriter, r *http.Request) {
@@ -230,6 +232,14 @@ func (sm *StorageMinerAPI) DealsImportData(ctx context.Context, deal cid.Cid, fn
 	defer fi.Close() //nolint:errcheck
 
 	return sm.StorageProvider.ImportDataForDeal(ctx, deal, fi)
+}
+
+func (sm *StorageMinerAPI) DealsBlacklist(ctx context.Context) ([]cid.Cid, error) {
+	return sm.StorageDealCidBlacklistConfigFunc()
+}
+
+func (sm *StorageMinerAPI) DealsSetBlacklist(ctx context.Context, cids []cid.Cid) error {
+	return sm.SetStorageDealCidBlacklistConfigFunc(cids)
 }
 
 func (sm *StorageMinerAPI) StorageAddLocal(ctx context.Context, path string) error {

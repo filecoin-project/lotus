@@ -8,6 +8,7 @@ import (
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
 	"github.com/ipfs/go-blockservice"
+	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	graphsync "github.com/ipfs/go-graphsync/impl"
@@ -380,35 +381,69 @@ func StorageAuth(ctx helpers.MetricsCtx, ca lapi.Common) (sectorstorage.StorageA
 }
 
 func NewAcceptingStorageDealsConfigFunc(r repo.LockedRepo) (dtypes.AcceptingStorageDealsConfigFunc, error) {
-	return func() (bool, error) {
-		raw, err := r.Config()
-		if err != nil {
-			return false, err
-		}
-
-		cfg, ok := raw.(*config.StorageMiner)
-		if !ok {
-			return false, xerrors.New("expected address of config.StorageMiner")
-		}
-
-		return cfg.Dealmaking.AcceptingStorageDeals, nil
+	return func() (out bool, err error) {
+		err = readCfg(r, func(cfg *config.StorageMiner) {
+			out = cfg.Dealmaking.AcceptingStorageDeals
+		})
+		return
 	}, nil
 }
 
 func NewSetAcceptingStorageDealsConfigFunc(r repo.LockedRepo) (dtypes.SetAcceptingStorageDealsConfigFunc, error) {
-	return func(b bool) error {
-		var typeErr error
-
-		setConfigErr := r.SetConfig(func(raw interface{}) {
-			cfg, ok := raw.(*config.StorageMiner)
-			if !ok {
-				typeErr = errors.New("expected storage miner config")
-				return
-			}
-
+	return func(b bool) (err error) {
+		err = mutateCfg(r, func(cfg *config.StorageMiner) {
 			cfg.Dealmaking.AcceptingStorageDeals = b
 		})
-
-		return multierr.Combine(typeErr, setConfigErr)
+		return
 	}, nil
+}
+
+func NewStorageDealCidBlacklistConfigFunc(r repo.LockedRepo) (dtypes.StorageDealCidBlacklistConfigFunc, error) {
+	return func() (out []cid.Cid, err error) {
+		err = readCfg(r, func(cfg *config.StorageMiner) {
+			out = cfg.Dealmaking.Blacklist
+		})
+		return
+	}, nil
+}
+
+func NewSetStorageDealCidBlacklistConfigFunc(r repo.LockedRepo) (dtypes.SetStorageDealCidBlacklistConfigFunc, error) {
+	return func(blacklist []cid.Cid) (err error) {
+		err = mutateCfg(r, func(cfg *config.StorageMiner) {
+			cfg.Dealmaking.Blacklist = blacklist
+		})
+		return
+	}, nil
+}
+
+func readCfg(r repo.LockedRepo, accessor func(*config.StorageMiner)) error {
+	raw, err := r.Config()
+	if err != nil {
+		return err
+	}
+
+	cfg, ok := raw.(*config.StorageMiner)
+	if !ok {
+		return xerrors.New("expected address of config.StorageMiner")
+	}
+
+	accessor(cfg)
+
+	return nil
+}
+
+func mutateCfg(r repo.LockedRepo, mutator func(*config.StorageMiner)) error {
+	var typeErr error
+
+	setConfigErr := r.SetConfig(func(raw interface{}) {
+		cfg, ok := raw.(*config.StorageMiner)
+		if !ok {
+			typeErr = errors.New("expected storage miner config")
+			return
+		}
+
+		mutator(cfg)
+	})
+
+	return multierr.Combine(typeErr, setConfigErr)
 }
