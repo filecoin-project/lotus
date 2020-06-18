@@ -170,8 +170,6 @@ var getAskCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := lcli.DaemonContext(cctx)
 
-		fmt.Println("wombat")
-
 		fnapi, closer, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
