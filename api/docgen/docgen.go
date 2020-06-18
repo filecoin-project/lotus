@@ -73,9 +73,13 @@ func init() {
 
 	addExample(bitfield.NewFromSet([]uint64{5}))
 	addExample(abi.RegisteredSealProof_StackedDrg32GiBV1)
+	addExample(abi.RegisteredPoStProof_StackedDrgWindow32GiBV1)
 	addExample(abi.ChainEpoch(10101))
 	addExample(crypto.SigTypeBLS)
 	addExample(int64(9))
+	addExample(12.3)
+	addExample(123)
+	addExample(uintptr(0))
 	addExample(abi.MethodNum(1))
 	addExample(exitcode.ExitCode(0))
 	addExample(crypto.DomainSeparationTag_ElectionProofProduction)
@@ -94,17 +98,17 @@ func init() {
 	addExample(api.PCHInbound)
 	addExample(time.Minute)
 	addExample(&types.ExecutionTrace{
-		Msg:    exampleValue(reflect.TypeOf(&types.Message{})).(*types.Message),
-		MsgRct: exampleValue(reflect.TypeOf(&types.MessageReceipt{})).(*types.MessageReceipt),
+		Msg:    exampleValue(reflect.TypeOf(&types.Message{}), nil).(*types.Message),
+		MsgRct: exampleValue(reflect.TypeOf(&types.MessageReceipt{}), nil).(*types.MessageReceipt),
 	})
 	addExample(map[string]types.Actor{
-		"t01236": exampleValue(reflect.TypeOf(types.Actor{})).(types.Actor),
+		"t01236": exampleValue(reflect.TypeOf(types.Actor{}), nil).(types.Actor),
 	})
 	addExample(map[string]api.MarketDeal{
-		"t026363": exampleValue(reflect.TypeOf(api.MarketDeal{})).(api.MarketDeal),
+		"t026363": exampleValue(reflect.TypeOf(api.MarketDeal{}), nil).(api.MarketDeal),
 	})
 	addExample(map[string]api.MarketBalance{
-		"t026363": exampleValue(reflect.TypeOf(api.MarketBalance{})).(api.MarketBalance),
+		"t026363": exampleValue(reflect.TypeOf(api.MarketBalance{}), nil).(api.MarketBalance),
 	})
 
 	maddr, err := multiaddr.NewMultiaddr("/ip4/52.36.61.156/tcp/1347/p2p/12D3KooWFETiESTf1v4PGUvtnxMAcEFMzLZbJGg4tjWfGEimYior")
@@ -117,7 +121,7 @@ func init() {
 
 }
 
-func exampleValue(t reflect.Type) interface{} {
+func exampleValue(t, parent reflect.Type) interface{} {
 	v, ok := ExampleValues[t]
 	if ok {
 		return v
@@ -126,25 +130,25 @@ func exampleValue(t reflect.Type) interface{} {
 	switch t.Kind() {
 	case reflect.Slice:
 		out := reflect.New(t).Elem()
-		reflect.Append(out, reflect.ValueOf(exampleValue(t.Elem())))
+		reflect.Append(out, reflect.ValueOf(exampleValue(t.Elem(), t)))
 		return out.Interface()
 	case reflect.Chan:
-		return exampleValue(t.Elem())
+		return exampleValue(t.Elem(), nil)
 	case reflect.Struct:
-		es := exampleStruct(t)
+		es := exampleStruct(t, parent)
 		v := reflect.ValueOf(es).Elem().Interface()
 		ExampleValues[t] = v
 		return v
 	case reflect.Array:
 		out := reflect.New(t).Elem()
 		for i := 0; i < t.Len(); i++ {
-			out.Index(i).Set(reflect.ValueOf(exampleValue(t.Elem())))
+			out.Index(i).Set(reflect.ValueOf(exampleValue(t.Elem(), t)))
 		}
 		return out.Interface()
 
 	case reflect.Ptr:
 		if t.Elem().Kind() == reflect.Struct {
-			es := exampleStruct(t.Elem())
+			es := exampleStruct(t.Elem(), t)
 			//ExampleValues[t] = es
 			return es
 		}
@@ -155,12 +159,15 @@ func exampleValue(t reflect.Type) interface{} {
 	panic(fmt.Sprintf("No example value for type: %s", t))
 }
 
-func exampleStruct(t reflect.Type) interface{} {
+func exampleStruct(t, parent reflect.Type) interface{} {
 	ns := reflect.New(t)
 	for i := 0; i < t.NumField(); i++ {
 		f := t.Field(i)
+		if f.Type == parent {
+			continue
+		}
 		if strings.Title(f.Name) == f.Name {
-			ns.Elem().Field(i).Set(reflect.ValueOf(exampleValue(f.Type)))
+			ns.Elem().Field(i).Set(reflect.ValueOf(exampleValue(f.Type, t)))
 		}
 	}
 
@@ -286,17 +293,17 @@ func main() {
 		ft := m.Func.Type()
 		for j := 2; j < ft.NumIn(); j++ {
 			inp := ft.In(j)
-			args = append(args, exampleValue(inp))
+			args = append(args, exampleValue(inp, nil))
 		}
 
-		v, err := json.Marshal(args)
+		v, err := json.MarshalIndent(args, "", "  ")
 		if err != nil {
 			panic(err)
 		}
 
-		outv := exampleValue(ft.Out(0))
+		outv := exampleValue(ft.Out(0), nil)
 
-		ov, err := json.Marshal(outv)
+		ov, err := json.MarshalIndent(outv, "", "  ")
 		if err != nil {
 			panic(err)
 		}
@@ -318,6 +325,15 @@ func main() {
 		return groupslice[i].GroupName < groupslice[j].GroupName
 	})
 
+	fmt.Printf("# Groups\n")
+
+	for _, g := range groupslice {
+		fmt.Printf("* [%s](#%s)\n", g.GroupName, g.GroupName)
+		for _, method := range g.Methods {
+			fmt.Printf("  * [%s](#%s)\n", method.Name, method.Name)
+		}
+	}
+
 	for _, g := range groupslice {
 		g := g
 		fmt.Printf("## %s\n", g.GroupName)
@@ -331,8 +347,17 @@ func main() {
 			fmt.Printf("### %s\n", m.Name)
 			fmt.Printf("%s\n\n", m.Comment)
 
-			fmt.Printf("Inputs: `%s`\n\n", m.InputExample)
-			fmt.Printf("Response: `%s`\n\n", m.ResponseExample)
+			if strings.Count(m.InputExample, "\n") > 0 {
+				fmt.Printf("Inputs:\n```json\n%s\n```\n\n", m.InputExample)
+			} else {
+				fmt.Printf("Inputs: `%s`\n\n", m.InputExample)
+			}
+
+			if strings.Count(m.ResponseExample, "\n") > 0 {
+				fmt.Printf("Response:\n```json\n%s\n```\n\n", m.ResponseExample)
+			} else {
+				fmt.Printf("Response: `%s`\n\n", m.ResponseExample)
+			}
 		}
 	}
 }
