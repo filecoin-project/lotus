@@ -35,7 +35,7 @@ type StorageMiner struct {
 
 type DealmakingConfig struct {
 	AcceptingStorageDeals bool
-	Blacklist             []cid.Cid
+	PieceCidBlacklist     []cid.Cid
 }
 
 // API contains configs for API endpoint
@@ -124,7 +124,7 @@ func DefaultStorageMiner() *StorageMiner {
 
 		Dealmaking: DealmakingConfig{
 			AcceptingStorageDeals: true,
-			Blacklist:             []cid.Cid{},
+			PieceCidBlacklist:     []cid.Cid{},
 		},
 	}
 	cfg.Common.API.ListenAddress = "/ip4/127.0.0.1/tcp/2345/http"

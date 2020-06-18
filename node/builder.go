@@ -314,8 +314,8 @@ func Online() Option {
 
 			Override(new(dtypes.AcceptingStorageDealsConfigFunc), modules.NewAcceptingStorageDealsConfigFunc),
 			Override(new(dtypes.SetAcceptingStorageDealsConfigFunc), modules.NewSetAcceptingStorageDealsConfigFunc),
-			Override(new(dtypes.StorageDealCidBlacklistConfigFunc), modules.NewStorageDealCidBlacklistConfigFunc),
-			Override(new(dtypes.SetStorageDealCidBlacklistConfigFunc), modules.NewSetStorageDealCidBlacklistConfigFunc),
+			Override(new(dtypes.StorageDealPieceCidBlacklistConfigFunc), modules.NewStorageDealPieceCidBlacklistConfigFunc),
+			Override(new(dtypes.SetStorageDealPieceCidBlacklistConfigFunc), modules.NewSetStorageDealPieceCidBlacklistConfigFunc),
 		),
 	)
 }

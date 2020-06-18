@@ -309,7 +309,7 @@ func NewStorageAsk(ctx helpers.MetricsCtx, fapi lapi.FullNode, ds dtypes.Metadat
 	return storedAsk, nil
 }
 
-func StorageProvider(minerAddress dtypes.MinerAddress, ffiConfig *ffiwrapper.Config, storedAsk *storedask.StoredAsk, h host.Host, ds dtypes.MetadataDS, ibs dtypes.StagingBlockstore, r repo.LockedRepo, pieceStore dtypes.ProviderPieceStore, dataTransfer dtypes.ProviderDataTransfer, spn storagemarket.StorageProviderNode, isAcceptingFunc dtypes.AcceptingStorageDealsConfigFunc, blacklistFunc dtypes.StorageDealCidBlacklistConfigFunc) (storagemarket.StorageProvider, error) {
+func StorageProvider(minerAddress dtypes.MinerAddress, ffiConfig *ffiwrapper.Config, storedAsk *storedask.StoredAsk, h host.Host, ds dtypes.MetadataDS, ibs dtypes.StagingBlockstore, r repo.LockedRepo, pieceStore dtypes.ProviderPieceStore, dataTransfer dtypes.ProviderDataTransfer, spn storagemarket.StorageProviderNode, isAcceptingFunc dtypes.AcceptingStorageDealsConfigFunc, blacklistFunc dtypes.StorageDealPieceCidBlacklistConfigFunc) (storagemarket.StorageProvider, error) {
 	net := smnet.NewFromLibp2pHost(h)
 	store, err := piecefilestore.NewLocalFileStore(piecefilestore.OsPath(r.Path()))
 	if err != nil {
@@ -411,19 +411,19 @@ func NewSetAcceptingStorageDealsConfigFunc(r repo.LockedRepo) (dtypes.SetAccepti
 	}, nil
 }
 
-func NewStorageDealCidBlacklistConfigFunc(r repo.LockedRepo) (dtypes.StorageDealCidBlacklistConfigFunc, error) {
+func NewStorageDealPieceCidBlacklistConfigFunc(r repo.LockedRepo) (dtypes.StorageDealPieceCidBlacklistConfigFunc, error) {
 	return func() (out []cid.Cid, err error) {
 		err = readCfg(r, func(cfg *config.StorageMiner) {
-			out = cfg.Dealmaking.Blacklist
+			out = cfg.Dealmaking.PieceCidBlacklist
 		})
 		return
 	}, nil
 }
 
-func NewSetStorageDealCidBlacklistConfigFunc(r repo.LockedRepo) (dtypes.SetStorageDealCidBlacklistConfigFunc, error) {
+func NewSetStorageDealPieceCidBlacklistConfigFunc(r repo.LockedRepo) (dtypes.SetStorageDealPieceCidBlacklistConfigFunc, error) {
 	return func(blacklist []cid.Cid) (err error) {
 		err = mutateCfg(r, func(cfg *config.StorageMiner) {
-			cfg.Dealmaking.Blacklist = blacklist
+			cfg.Dealmaking.PieceCidBlacklist = blacklist
 		})
 		return
 	}, nil

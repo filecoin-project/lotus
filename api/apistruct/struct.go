@@ -226,8 +226,8 @@ type StorageMinerStruct struct {
 		DealsImportData               func(ctx context.Context, dealPropCid cid.Cid, file string) error `perm:"write"`
 		DealsList                     func(ctx context.Context) ([]storagemarket.StorageDeal, error)    `perm:"read"`
 		DealsSetAcceptingStorageDeals func(context.Context, bool) error                                 `perm:"admin"`
-		DealsBlacklist                func(context.Context) ([]cid.Cid, error)                          `perm:"admin"`
-		DealsSetBlacklist             func(context.Context, []cid.Cid) error                            `perm:"read"`
+		DealsPieceCidBlacklist        func(context.Context) ([]cid.Cid, error)                          `perm:"admin"`
+		DealsSetPieceCidBlacklist     func(context.Context, []cid.Cid) error                            `perm:"read"`
 
 		StorageAddLocal func(ctx context.Context, path string) error `perm:"admin"`
 	}
@@ -874,12 +874,12 @@ func (c *StorageMinerStruct) DealsSetAcceptingStorageDeals(ctx context.Context, 
 	return c.Internal.DealsSetAcceptingStorageDeals(ctx, b)
 }
 
-func (c *StorageMinerStruct) DealsBlacklist(ctx context.Context) ([]cid.Cid, error) {
-	return c.Internal.DealsBlacklist(ctx)
+func (c *StorageMinerStruct) DealsPieceCidBlacklist(ctx context.Context) ([]cid.Cid, error) {
+	return c.Internal.DealsPieceCidBlacklist(ctx)
 }
 
-func (c *StorageMinerStruct) DealsSetBlacklist(ctx context.Context, cids []cid.Cid) error {
-	return c.Internal.DealsSetBlacklist(ctx, cids)
+func (c *StorageMinerStruct) DealsSetPieceCidBlacklist(ctx context.Context, cids []cid.Cid) error {
+	return c.Internal.DealsSetPieceCidBlacklist(ctx, cids)
 }
 
 func (c *StorageMinerStruct) StorageAddLocal(ctx context.Context, path string) error {

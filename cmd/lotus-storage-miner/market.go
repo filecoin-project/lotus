@@ -293,7 +293,7 @@ var dealsListCmd = &cli.Command{
 
 var getBlacklistCmd = &cli.Command{
 	Name:  "get-blacklist",
-	Usage: "List the CIDs in the storage miner's blacklist",
+	Usage: "List the contents of the storage miner's piece CID blacklist",
 	Flags: []cli.Flag{
 		&CidBaseFlag,
 	},
@@ -304,7 +304,7 @@ var getBlacklistCmd = &cli.Command{
 		}
 		defer closer()
 
-		blacklist, err := api.DealsBlacklist(lcli.DaemonContext(cctx))
+		blacklist, err := api.DealsPieceCidBlacklist(lcli.DaemonContext(cctx))
 		if err != nil {
 			return err
 		}
@@ -324,8 +324,8 @@ var getBlacklistCmd = &cli.Command{
 
 var setBlacklistCmd = &cli.Command{
 	Name:      "set-blacklist",
-	Usage:     "Set the storage miner's list of blacklisted CIDs",
-	ArgsUsage: "[<path-of-file-containing-newline-delimited-CIDs> (optional, will read from stdin if omitted)]",
+	Usage:     "Set the storage miner's list of blacklisted piece CIDs",
+	ArgsUsage: "[<path-of-file-containing-newline-delimited-piece-CIDs> (optional, will read from stdin if omitted)]",
 	Flags:     []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := lcli.GetStorageMinerAPI(cctx)
@@ -365,13 +365,13 @@ var setBlacklistCmd = &cli.Command{
 			return err
 		}
 
-		return api.DealsSetBlacklist(lcli.DaemonContext(cctx), blacklist)
+		return api.DealsSetPieceCidBlacklist(lcli.DaemonContext(cctx), blacklist)
 	},
 }
 
 var resetBlacklistCmd = &cli.Command{
 	Name:  "reset-blacklist",
-	Usage: "Remove all entries from the storage miner's blacklist",
+	Usage: "Remove all entries from the storage miner's piece CID blacklist",
 	Flags: []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := lcli.GetStorageMinerAPI(cctx)
@@ -380,6 +380,6 @@ var resetBlacklistCmd = &cli.Command{
 		}
 		defer closer()
 
-		return api.DealsSetBlacklist(lcli.DaemonContext(cctx), []cid.Cid{})
+		return api.DealsSetPieceCidBlacklist(lcli.DaemonContext(cctx), []cid.Cid{})
 	},
 }
