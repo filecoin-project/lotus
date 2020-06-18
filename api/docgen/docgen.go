@@ -325,6 +325,15 @@ func main() {
 		return groupslice[i].GroupName < groupslice[j].GroupName
 	})
 
+	fmt.Printf("# Groups\n")
+
+	for _, g := range groupslice {
+		fmt.Printf("* [%s](#%s)\n", g.GroupName, g.GroupName)
+		for _, method := range g.Methods {
+			fmt.Printf("  * [%s](#%s)\n", method.Name, method.Name)
+		}
+	}
+
 	for _, g := range groupslice {
 		g := g
 		fmt.Printf("## %s\n", g.GroupName)
