@@ -76,7 +76,7 @@ func SizeStr(bi BigInt) string {
 	}
 
 	f, _ := r.Float64()
-	return fmt.Sprintf("%.3g %s", f, byteSizeUnits[i])
+	return fmt.Sprintf("%.4g %s", f, byteSizeUnits[i])
 }
 
 var deciUnits = []string{"", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"}
