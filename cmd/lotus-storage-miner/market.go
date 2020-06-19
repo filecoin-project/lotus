@@ -1,14 +1,18 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"text/tabwriter"
 	"time"
 
 	"github.com/docker/go-units"
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cidutil/cidenc"
+	"github.com/multiformats/go-multibase"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
@@ -19,6 +23,32 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 )
+
+var CidBaseFlag = cli.StringFlag{
+	Name:        "cid-base",
+	Hidden:      true,
+	Value:       "base32",
+	Usage:       "Multibase encoding used for version 1 CIDs in output.",
+	DefaultText: "base32",
+}
+
+// GetCidEncoder returns an encoder using the `cid-base` flag if provided, or
+// the default (Base32) encoder if not.
+func GetCidEncoder(cctx *cli.Context) (cidenc.Encoder, error) {
+	val := cctx.String("cid-base")
+
+	e := cidenc.Encoder{Base: multibase.MustNewEncoder(multibase.Base32)}
+
+	if val != "" {
+		var err error
+		e.Base, err = multibase.EncoderByName(val)
+		if err != nil {
+			return e, err
+		}
+	}
+
+	return e, nil
+}
 
 var enableCmd = &cli.Command{
 	Name:  "enable",
@@ -197,6 +227,9 @@ var dealsCmd = &cli.Command{
 		disableCmd,
 		setAskCmd,
 		getAskCmd,
+		setBlocklistCmd,
+		getBlocklistCmd,
+		resetBlocklistCmd,
 	},
 }
 
@@ -253,5 +286,98 @@ var dealsListCmd = &cli.Command{
 
 		fmt.Println(string(data))
 		return nil
+	},
+}
+
+var getBlocklistCmd = &cli.Command{
+	Name:  "get-blocklist",
+	Usage: "List the contents of the storage miner's piece CID blocklist",
+	Flags: []cli.Flag{
+		&CidBaseFlag,
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		blocklist, err := api.DealsPieceCidBlocklist(lcli.DaemonContext(cctx))
+		if err != nil {
+			return err
+		}
+
+		encoder, err := GetCidEncoder(cctx)
+		if err != nil {
+			return err
+		}
+
+		for idx := range blocklist {
+			fmt.Println(encoder.Encode(blocklist[idx]))
+		}
+
+		return nil
+	},
+}
+
+var setBlocklistCmd = &cli.Command{
+	Name:      "set-blocklist",
+	Usage:     "Set the storage miner's list of blocklisted piece CIDs",
+	ArgsUsage: "[<path-of-file-containing-newline-delimited-piece-CIDs> (optional, will read from stdin if omitted)]",
+	Flags:     []cli.Flag{},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		scanner := bufio.NewScanner(os.Stdin)
+		if cctx.Args().Present() && cctx.Args().First() != "-" {
+			absPath, err := filepath.Abs(cctx.Args().First())
+			if err != nil {
+				return err
+			}
+
+			file, err := os.Open(absPath)
+			if err != nil {
+				log.Fatal(err)
+			}
+			defer file.Close() //nolint:errcheck
+
+			scanner = bufio.NewScanner(file)
+		}
+
+		var blocklist []cid.Cid
+		for scanner.Scan() {
+			decoded, err := cid.Decode(scanner.Text())
+			if err != nil {
+				return err
+			}
+
+			blocklist = append(blocklist, decoded)
+		}
+
+		err = scanner.Err()
+		if err != nil {
+			return err
+		}
+
+		return api.DealsSetPieceCidBlocklist(lcli.DaemonContext(cctx), blocklist)
+	},
+}
+
+var resetBlocklistCmd = &cli.Command{
+	Name:  "reset-blocklist",
+	Usage: "Remove all entries from the storage miner's piece CID blocklist",
+	Flags: []cli.Flag{},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		return api.DealsSetPieceCidBlocklist(lcli.DaemonContext(cctx), []cid.Cid{})
 	},
 }
