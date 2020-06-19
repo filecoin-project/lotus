@@ -343,7 +343,7 @@ var setBlocklistCmd = &cli.Command{
 			if err != nil {
 				log.Fatal(err)
 			}
-			defer file.Close()
+			defer file.Close() //nolint:errcheck
 
 			scanner = bufio.NewScanner(file)
 		}
