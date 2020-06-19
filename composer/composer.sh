@@ -10,6 +10,7 @@ image_full_name="$image_name:$image_tag"
 tg_home=${TESTGROUND_HOME:-$HOME/testground}
 container_plans_dir="/testground/plans"
 jupyter_port=${JUPYTER_PORT:-8888}
+panel_port=${PANEL_PORT:-5006}
 
 poll_interval=30
 
@@ -73,10 +74,6 @@ cleanup () {
   if [[ -d "$temp_manifest_dir" ]]; then
     rm -rf ${temp_manifest_dir}
   fi
-
-  if [[ -d "$temp_jupyter_runtime_dir" ]]; then
-    rm -rf ${temp_jupyter_runtime_dir}
-  fi
 }
 
 # run cleanup on exit
@@ -92,31 +89,24 @@ if [[ "$TEMP" != "" ]]; then
 fi
 
 temp_manifest_dir="$(mktemp -d ${temp_base}/testground-composer-XXXX)"
-temp_jupyter_runtime_dir="$(mktemp -d ${temp_base}/testground-composer-jupyter-XXXX)"
 echo "temp manifest dir: $temp_manifest_dir"
-echo "temp jupyter dir: $temp_jupyter_runtime_dir"
 
 # copy the manifests to the temp dir
 update_manifests ${temp_manifest_dir}
 
 # run the container in detached mode and grab the id
-container_id=$(docker run -d --user $(id -u):$(id -g) -p ${jupyter_port}:8888 -v ${temp_manifest_dir}:${container_plans_dir}:ro -v ${temp_jupyter_runtime_dir}:/jupyter/runtime $image_full_name)
+container_id=$(docker run -d --user $(id -u):$(id -g) -p ${panel_port}:5006 -v ${temp_manifest_dir}:${container_plans_dir}:ro $image_full_name)
 
 echo "container $container_id started"
 # print the log output
 docker logs -f ${container_id} &
 
+# sleep for a couple seconds to let the server start up
+sleep 2
 
-while [[ ! -f ${temp_jupyter_runtime_dir}/nbserver-1.json ]]; do
-  sleep 1
-done
-
-token=$(jq -r '.token' ${temp_jupyter_runtime_dir}/nbserver-1.json)
-jupyter_url="http://localhost:${jupyter_port}/?token=${token}"
-
-echo "Jupyter url: $jupyter_url"
-open_url $jupyter_url
-
+# open a browser to the app url
+panel_url="http://localhost:${panel_port}"
+open_url $panel_url
 
 # poll & check for manifest changes every few seconds
 watch_manifests ${temp_manifest_dir}

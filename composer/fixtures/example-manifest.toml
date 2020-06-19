@@ -1,0 +1,63 @@
+name = "example"
+
+[defaults]
+builder = "exec:go"
+runner = "local:exec"
+
+[builders."docker:generic"]
+  enabled = true
+  
+[builders."docker:generic".build_args]
+build_image = "golang:alpine"
+run_image = "scratch"
+
+[builders."docker:go"]
+enabled = true
+
+[builders."exec:go"]
+enabled = true
+
+[runners."local:docker"]
+enabled = true
+
+[runners."local:exec"]
+enabled = true
+
+[runners."cluster:swarm"]
+enabled = true
+
+[runners."cluster:k8s"]
+enabled = true
+
+[[testcases]]
+name = "output"
+instances = { min = 1, max = 200, default = 1 }
+
+[[testcases]]
+name = "failure"
+instances = { min = 1, max = 200, default = 1 }
+
+[[testcases]]
+name = "panic"
+instances = { min = 1, max = 200, default = 1 }
+
+[[testcases]]
+name = "params"
+instances = { min = 1, max = 200, default = 1 }
+  [testcases.params]
+  param1 = { type = "int", desc = "some param 1", unit = "widgets", default=1 }
+  param2 = { type = "int", desc = "some param 2", unit = "widgets", default=2 }
+  param3 = { type = "int", desc = "some param 3", unit = "widgets", default=3 }
+
+[[testcases]]
+name = "sync"
+instances = { min = 2, max = 200, default = 5 }
+
+[[testcases]]
+name = "metrics"
+instances = { min = 1, max = 200, default = 5 }
+
+[[testcases]]
+name = "artifact"
+instances = { min = 1, max = 200, default = 5 }
+

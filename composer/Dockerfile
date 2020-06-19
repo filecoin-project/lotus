@@ -2,18 +2,18 @@ FROM python:3.8-buster
 
 WORKDIR /usr/src/app
 
-RUN mkdir /jupyter && chmod 777 /jupyter
+RUN mkdir /composer && chmod 777 /composer
+RUN mkdir /testground && chmod 777 /testground
+
+ENV HOME /composer
+ENV TESTGROUND_HOME /testground
+ENV LISTEN_PORT 5006
+
+VOLUME /testground/plans
+
 
 COPY requirements.txt ./
 RUN pip install -r requirements.txt
-
 COPY . .
 
-VOLUME /testground/plans
-VOLUME /jupyter/runtime
-
-ENV TESTGROUND_HOME /testground
-ENV HOME /jupyter
-ENV JUPYTER_RUNTIME_DIR /jupyter/runtime
-
-CMD ["jupyter", "notebook", "--allow-root", "--ip", "0.0.0.0"]
+CMD panel serve --address 0.0.0.0 --port $LISTEN_PORT composer.ipynb
