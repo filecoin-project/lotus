@@ -402,7 +402,7 @@ func (m *Manager) FinalizeSector(ctx context.Context, sector abi.SectorID) error
 		}
 	}
 
-	selector, err := newExistingSelector(ctx, m.index, sector, stores.FTCache|stores.FTSealed|unsealed, false)
+	selector, err := newExistingSelector(ctx, m.index, sector, stores.FTCache|stores.FTSealed, false)
 	if err != nil {
 		return xerrors.Errorf("creating path selector: %w", err)
 	}
