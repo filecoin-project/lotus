@@ -505,7 +505,7 @@ func (t *Ticket) UnmarshalCBOR(r io.Reader) error {
 	return nil
 }
 
-var lengthBufElectionProof = []byte{129}
+var lengthBufElectionProof = []byte{130}
 
 func (t *ElectionProof) MarshalCBOR(w io.Writer) error {
 	if t == nil {
@@ -517,6 +517,12 @@ func (t *ElectionProof) MarshalCBOR(w io.Writer) error {
 	}
 
 	scratch := make([]byte, 9)
+
+	// t.WinCount (uint64) (uint64)
+
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajUnsignedInt, uint64(t.WinCount)); err != nil {
+		return err
+	}
 
 	// t.VRFProof ([]uint8) (slice)
 	if len(t.VRFProof) > cbg.ByteArrayMaxLen {
@@ -545,10 +551,24 @@ func (t *ElectionProof) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 1 {
+	if extra != 2 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
+	// t.WinCount (uint64) (uint64)
+
+	{
+
+		maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
+		if err != nil {
+			return err
+		}
+		if maj != cbg.MajUnsignedInt {
+			return fmt.Errorf("wrong type for uint64 field")
+		}
+		t.WinCount = uint64(extra)
+
+	}
 	// t.VRFProof ([]uint8) (slice)
 
 	maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
