@@ -183,6 +183,7 @@ class Group(Base):
         print('rendering groups panel for ' + self.id)
         return pn.Column(
             "**Group: {}**".format(self.id),
+            self.param['id'],
             self.instances,
             self.resources,
             self.build,
@@ -268,6 +269,7 @@ class Composition(param.Parameterized):
     def _add_group(self, *args):
         group_id = 'group-{}'.format(len(self.groups) + 1)
         g = Group(id=group_id, params_class=self._params_class_for_current_testcase())
+        g.param.watch(self._refresh_tabs, 'id')
         groups = self.groups
         groups.append(g)
         self.groups = groups
@@ -281,8 +283,7 @@ class Composition(param.Parameterized):
             g.params = cls()
         self._refresh_tabs()
 
-
-    def _refresh_tabs(self):
+    def _refresh_tabs(self, *args):
         self.group_tabs[:] = [(g.id, g.panel()) for g in self.groups]
 
     def to_dict(self):
