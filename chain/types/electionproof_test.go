@@ -67,6 +67,7 @@ func TestWinCounts(t *testing.T) {
 	power := NewInt(30)
 
 	f, _ := os.Create("output.wins")
+	fmt.Fprintf(f, "wins\n")
 	ep := &ElectionProof{VRFProof: nil}
 	for i := uint64(0); i < 1000000; i++ {
 		i := i + 1000000

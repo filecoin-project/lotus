@@ -105,6 +105,67 @@ func lambda(power, totalPower *big.Int) *big.Int {
 
 var MaxWinCount = 3 * build.BlocksPerEpoch
 
+type poiss struct {
+	lam  *big.Int
+	pmf  *big.Int
+	tmp  *big.Int
+	icdf *big.Int
+
+	k    uint64
+	kBig *big.Int
+}
+
+// newPoiss starts poisson inverted CDF
+// lambda is in Q.256 format
+// returns (instance, `1-poisscdf(0, lambda)`)
+// CDF value returend is reused when calling `next`
+func newPoiss(lambda *big.Int) (*poiss, *big.Int) {
+	elam := expneg(lambda) // Q.256
+
+	pmf := new(big.Int).Set(elam) // Q.256
+
+	icdf := big.NewInt(1)
+	icdf = icdf.Lsh(icdf, precision) // Q.256
+	icdf = icdf.Sub(icdf, pmf)       // Q.256
+
+	k := uint64(0)
+	kBig := new(big.Int).SetUint64(k) // Q.0
+
+	p := &poiss{
+		lam: lambda,
+		pmf: pmf,
+
+		tmp:  elam,
+		icdf: icdf,
+
+		k:    k,
+		kBig: kBig,
+	}
+
+	return p, icdf
+}
+
+// next computes next `k++, 1-poisscdf(k, lam)`
+// return is in Q.256 format
+func (p *poiss) next() *big.Int {
+	p.k++
+	p.kBig = p.kBig.SetUint64(p.k) // Q.0
+
+	// calculate pmf for k
+	p.pmf = p.pmf.Div(p.pmf, p.kBig)    // Q.256 / Q.0 => Q.256
+	p.tmp = p.tmp.Mul(p.pmf, p.lam)     // Q.256 * Q.256 => Q.512
+	p.pmf = p.pmf.Rsh(p.tmp, precision) // Q.512 >> 256 => Q.256
+
+	// calculate output
+	p.icdf = p.icdf.Sub(p.icdf, p.pmf) // Q.256
+	return p.icdf
+}
+
+// poissStep performs a step in evaluation of Poisson distribution
+// k should be incremented after each evaluation step
+// tmp is scratch space
+// ouput is (pmf, icdf)
+
 func (ep *ElectionProof) ComputeWinCount(power BigInt, totalPower BigInt) uint64 {
 	h := blake2b.Sum256(ep.VRFProof)
 
@@ -112,7 +173,6 @@ func (ep *ElectionProof) ComputeWinCount(power BigInt, totalPower BigInt) uint64
 
 	// We are calculating upside-down CDF of Poisson distribution with
 	// rate λ=power*E/totalPower
-
 	// Steps:
 	//  1. calculate λ=power*E/totalPower
 	//  2. calculate elam = exp(-λ)
@@ -123,21 +183,13 @@ func (ep *ElectionProof) ComputeWinCount(power BigInt, totalPower BigInt) uint64
 	//    for h(vrf) < rhs: j++; pmf = pmf * lam / j; rhs = rhs - pmf
 
 	lam := lambda(power.Int, totalPower.Int) // Q.256
-	elam := expneg(lam)                      // Q.256
-	pmf := new(big.Int).Set(elam)
 
-	rhs := big.NewInt(1)          // Q.0
-	rhs = rhs.Lsh(rhs, precision) // Q.256
-	rhs = rhs.Sub(rhs, elam)      // Q.256
+	p, rhs := newPoiss(lam)
 
-	tmp := new(big.Int) // big.Int.Mul doesn't like when input is reused as output
 	var j uint64
 	for lhs.Cmp(rhs) < 0 && j < MaxWinCount {
+		rhs = p.next()
 		j++
-		pmf = pmf.Div(pmf, new(big.Int).SetUint64(j) /* Q.0 */) // Q.256 / Q.0 => Q.256
-		tmp = tmp.Mul(pmf, lam)                                 // Q.256 * Q.256 => Q.512
-		pmf = pmf.Rsh(tmp, precision)                           // Q.512 >> 256 => Q.256
-		rhs = rhs.Sub(rhs, pmf)
 	}
 
 	return j
