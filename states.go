@@ -208,6 +208,9 @@ func (m *Sealing) handleWaitSeed(ctx statemachine.Context, sector SectorInfo) er
 	if err != nil {
 		return xerrors.Errorf("getting precommit info: %w", err)
 	}
+	if pci == nil {
+		return ctx.Send(SectorChainPreCommitFailed{error: xerrors.Errorf("precommit info not found on chain")})
+	}
 
 	randHeight := pci.PreCommitEpoch + miner.PreCommitChallengeDelay
 
