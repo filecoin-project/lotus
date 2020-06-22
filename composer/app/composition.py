@@ -1,31 +1,7 @@
 import param
 import panel as pn
 import toml
-import os
-import sys
-
-
-def parse_manifest(manifest_path):
-    with open(manifest_path, 'rt') as f:
-        return toml.load(f)
-
-
-def tg_home():
-    return os.environ.get('TESTGROUND_HOME',
-                          os.path.join(os.environ['HOME'], 'testground'))
-
-
-def get_plans():
-    return list(os.listdir(os.path.join(tg_home(), 'plans')))
-
-
-def get_manifest(plan_name):
-    manifest_path = os.path.join(tg_home(), 'plans', plan_name, 'manifest.toml')
-    return parse_manifest(manifest_path)
-
-
-def print_err(*args):
-    print(*args, file=sys.stderr)
+from .util import get_manifest, print_err
 
 
 def value_dict(parameterized, renames=None):
@@ -241,7 +217,10 @@ class Composition(param.Parameterized):
         add_group_button = pn.widgets.Button(name='Add Group')
         add_group_button.on_click(self._add_group)
 
-        group_panel = self.groups.panel()
+        if self.groups is None:
+            group_panel = pn.Column()
+        else:
+            group_panel = self.groups.panel()
         if self.groups_ui is None:
             self.groups_ui = pn.Column(
                 add_group_button,
