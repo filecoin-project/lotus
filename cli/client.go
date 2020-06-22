@@ -128,7 +128,7 @@ var clientDeleteDataCmd = &cli.Command{
 
 		dataCid, err := cid.Parse(cctx.Args().Get(0))
 		if err != nil {
-			return err
+			return xerrors.Errorf("could not parse argument %s to CID: %w", cctx.Args().Get(0), err)
 		}
 
 		err = api.ClientDelete(ReqContext(cctx), dataCid)
