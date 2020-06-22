@@ -193,8 +193,9 @@ class Group(Base):
 class Composition(param.Parameterized):
     metadata = param.Parameter(Metadata(), precedence=-1)
     global_config = param.Parameter(Global(), precedence=-1)
-    groups = param.ObjectSelector()
 
+    groups = param.List(precedence=-1)
+    group_tabs = pn.Tabs()
     groups_ui = None
 
     def __init__(self, manifest=None, add_default_group=False, **params):
@@ -218,11 +219,7 @@ class Composition(param.Parameterized):
             metadata=Metadata.from_dict(d.get('metadata', {})),
             global_config=Global.from_dict(d.get('global', {})),
         )
-        params_class = c._params_class_for_current_testcase()
-        groups = [Group.from_dict(g, params_class=params_class) for g in d.get('groups', [])]
-        c.param['groups'].objects = groups
-        if len(groups) != 0:
-            c.groups = groups[0]
+        c.setup_groups()
 
         return c
 
@@ -237,19 +234,14 @@ class Composition(param.Parameterized):
         add_group_button = pn.widgets.Button(name='Add Group')
         add_group_button.on_click(self._add_group)
 
-        if self.groups is None:
-            group_panel = pn.Column()
-        else:
-            group_panel = self.groups.panel()
+        self.group_tabs[:] = [(g.id, g.panel()) for g in self.groups]
+
         if self.groups_ui is None:
             self.groups_ui = pn.Column(
                 add_group_button,
-                pn.Param(self.param['groups'], expand_button=False, expand=False),
-                group_panel,
+                self.group_tabs,
             )
-        else:
-            self.groups_ui.objects.pop()
-            self.groups_ui.append(group_panel)
+
         return pn.Row(
             pn.Column(self.metadata, self.global_config),
             self.groups_ui,
@@ -265,6 +257,11 @@ class Composition(param.Parameterized):
         for tc in manifest.get('testcases', []):
             self.testcase_param_classes[tc['name']] = make_group_params_class(tc)
 
+    def setup_groups(self):
+        params_class = self._params_class_for_current_testcase()
+        groups = [Group.from_dict(g, params_class=params_class) for g in self.manifest.get('groups', [])]
+        self.groups = groups
+
     @param.depends("global_config.case", watch=True)
     def _params_class_for_current_testcase(self):
         case = self.global_config.case
@@ -274,17 +271,18 @@ class Composition(param.Parameterized):
         return cls
 
     def _add_group(self, *args):
-        g = Group(id='new-group', params_class=self._params_class_for_current_testcase())
-        groups = self.param['groups'].objects
+        group_id = 'group-{}'.format(len(self.groups) + 1)
+        g = Group(id=group_id, params_class=self._params_class_for_current_testcase())
+        groups = self.groups
         groups.append(g)
-        self.param['groups'].objects = groups
-        self.groups = g
+        self.groups = groups
+        self.group_tabs.active = len(groups)-1
 
     def to_dict(self):
         return {
             'metadata': value_dict(self.metadata, renames={'composition_name': 'name'}),
             'global': value_dict(self.global_config),
-            'groups': [g.to_dict() for g in self.param['groups'].objects]
+            'groups': [g.to_dict() for g in self.groups]
         }
 
     def to_toml(self):
