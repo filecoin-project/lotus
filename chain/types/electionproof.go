@@ -67,12 +67,13 @@ func init() {
 	expDenoCoef = parse(deno)
 }
 
-// expneg accepts x in Q.256 format, in range of 0 to 5 and computes e^-x,
-// output is in Q.256 format
+// expneg accepts x in Q.256 format and computes e^-x.
+// It is most precise within [0, 1.725) range, where error is less than 3.4e-30.
+// Over the [0, 5) range its error is less than 4.6e-15.
+// Output is in Q.256 format.
 func expneg(x *big.Int) *big.Int {
 	// exp is approximated by rational function
-	// polynomials of the rational function are evaluated using Horners method
-
+	// polynomials of the rational function are evaluated using Horner's method
 	num := polyval(expNumCoef, x)   // Q.256
 	deno := polyval(expDenoCoef, x) // Q.256
 
@@ -80,10 +81,11 @@ func expneg(x *big.Int) *big.Int {
 	return num.Div(num, deno)     // Q.512 / Q.256 => Q.256
 }
 
-// polyval evaluates a polynomial given by coefficients `p` in Q.256 format,
-// at point `x` in Q.256 format, output is in Q.256
-
+// polyval evaluates a polynomial given by coefficients `p` in Q.256 format
+// at point `x` in Q.256 format. Output is in Q.256.
+// Coefficients should be ordered from the highest order coefficient to the lowest.
 func polyval(p []*big.Int, x *big.Int) *big.Int {
+	// evaluation using Horner's method
 	res := new(big.Int).Set(p[0]) // Q.256
 	tmp := new(big.Int)           // big.Int.Mul doesn't like when input is reused as output
 	for _, c := range p[1:] {
@@ -108,11 +110,11 @@ var MaxWinCount = 3 * build.BlocksPerEpoch
 type poiss struct {
 	lam  *big.Int
 	pmf  *big.Int
-	tmp  *big.Int
 	icdf *big.Int
 
-	k    uint64
-	kBig *big.Int
+	tmp *big.Int // temporary variable for optmization
+
+	k uint64
 }
 
 // newPoiss starts poisson inverted CDF
@@ -120,12 +122,10 @@ type poiss struct {
 // returns (instance, `1-poisscdf(0, lambda)`)
 // CDF value returend is reused when calling `next`
 func newPoiss(lambda *big.Int) (*poiss, *big.Int) {
-	// e^-lambda
-	elam := expneg(lambda) // Q.256
 
 	// pmf(k) = (lambda^k)*(e^lambda) / k!
-	// k = 0 here so it similifies to just e^labda
-	pmf := new(big.Int).Set(elam) // Q.256
+	// k = 0 here, so it simplifies to just e^-lambda
+	pmf := expneg(lambda) // Q.256
 
 	// icdf(k) = 1 - ∑ᵏᵢ₌₀ pmf(i)
 	// icdf(0) = 1 - pmf(0)
@@ -134,34 +134,34 @@ func newPoiss(lambda *big.Int) (*poiss, *big.Int) {
 	icdf = icdf.Sub(icdf, pmf)       // Q.256
 
 	k := uint64(0)
-	kBig := new(big.Int).SetUint64(k) // Q.0
 
 	p := &poiss{
 		lam: lambda,
 		pmf: pmf,
 
-		tmp:  elam,
+		tmp:  new(big.Int),
 		icdf: icdf,
 
-		k:    k,
-		kBig: kBig,
+		k: k,
 	}
 
 	return p, icdf
 }
 
-// next computes next `k++, 1-poisscdf(k, lam)`
+// next computes `k++, 1-poisscdf(k, lam)`
 // return is in Q.256 format
 func (p *poiss) next() *big.Int {
-	// incrementally compute next pfm and icdf
+	// incrementally compute next pmf and icdf
+
 	// pmf(k) = (lambda^k)*(e^lambda) / k!
 	// so pmf(k) = pmf(k-1) * lambda / k
-
 	p.k++
-	p.kBig = p.kBig.SetUint64(p.k) // Q.0
+	p.tmp.SetUint64(p.k) // Q.0
 
 	// calculate pmf for k
-	p.pmf = p.pmf.Div(p.pmf, p.kBig)    // Q.256 / Q.0 => Q.256
+	p.pmf = p.pmf.Div(p.pmf, p.tmp) // Q.256 / Q.0 => Q.256
+	// we are using `tmp` as target for multiplication as using an input as output
+	// for Int.Mul causes allocations
 	p.tmp = p.tmp.Mul(p.pmf, p.lam)     // Q.256 * Q.256 => Q.512
 	p.pmf = p.pmf.Rsh(p.tmp, precision) // Q.512 >> 256 => Q.256
 
@@ -171,11 +171,9 @@ func (p *poiss) next() *big.Int {
 	return p.icdf
 }
 
-// poissStep performs a step in evaluation of Poisson distribution
-// k should be incremented after each evaluation step
-// tmp is scratch space
-// ouput is (pmf, icdf)
-
+// ComputeWinCount uses VRFProof to compute number of wins
+// The algorithm is based on Algorand's Sortition with Binomial distribution
+// replaced by Poisson distribution.
 func (ep *ElectionProof) ComputeWinCount(power BigInt, totalPower BigInt) uint64 {
 	h := blake2b.Sum256(ep.VRFProof)
 

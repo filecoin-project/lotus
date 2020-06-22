@@ -1,11 +1,51 @@
 package types
 
 import (
+	"bytes"
 	"fmt"
 	"math/big"
 	"os"
 	"testing"
+
+	"github.com/xorcare/golden"
 )
+
+func TestPoissonFunction(t *testing.T) {
+	tests := []struct {
+		lambdaBase  uint64
+		lambdaShift uint
+	}{
+		{10, 10},      // 0.0097
+		{209714, 20},  // 0.19999885
+		{1036915, 20}, // 0.9888792038
+		{1706, 10},    // 1.6660
+		{2, 0},        // 2
+		{5242879, 20}, //4.9999990
+		{5, 0},        // 5
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("lam-%d-%d", test.lambdaBase, test.lambdaShift), func(t *testing.T) {
+			test := test
+
+			b := &bytes.Buffer{}
+			b.WriteString("icdf\n")
+
+			lam := new(big.Int).SetUint64(test.lambdaBase)
+			lam = lam.Lsh(lam, precision-test.lambdaShift)
+			p, icdf := newPoiss(lam)
+
+			b.WriteString(icdf.String())
+			b.WriteRune('\n')
+
+			for i := 0; i < 15; i++ {
+				b.WriteString(p.next().String())
+				b.WriteRune('\n')
+			}
+			golden.Assert(t, []byte(b.String()))
+		})
+	}
+}
 
 func q256ToF(x *big.Int) float64 {
 	deno := big.NewInt(1)
