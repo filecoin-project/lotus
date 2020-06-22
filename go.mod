@@ -11,35 +11,37 @@ require (
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
 	github.com/coreos/go-systemd/v22 v22.0.0
 	github.com/docker/go-units v0.4.0
-	github.com/drand/drand v0.8.2-0.20200518165838-d61135e6e2c8
+	github.com/drand/drand v0.9.2-0.20200616080806-a94e9c1636a4
+	github.com/drand/kyber v1.1.0
 	github.com/fatih/color v1.8.0
-	github.com/filecoin-project/chain-validation v0.0.6-0.20200526171800-c56c1882dc99
+	github.com/filecoin-project/chain-validation v0.0.6-0.20200615191232-6be1a8c6ed09
 	github.com/filecoin-project/filecoin-ffi v0.26.1-0.20200508175440-05b30afeb00d
 	github.com/filecoin-project/go-address v0.0.2-0.20200504173055-8b6f2fb2b3ef
 	github.com/filecoin-project/go-amt-ipld/v2 v2.0.1-0.20200424220931-6263827e49f2
-	github.com/filecoin-project/go-bitfield v0.0.1
+	github.com/filecoin-project/go-bitfield v0.0.2-0.20200518150651-562fdb554b6e
 	github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
 	github.com/filecoin-project/go-data-transfer v0.3.0
 	github.com/filecoin-project/go-fil-commcid v0.0.0-20200208005934-2b8bd03caca5
-	github.com/filecoin-project/go-fil-markets v0.2.7
+	github.com/filecoin-project/go-fil-markets v0.3.0
 	github.com/filecoin-project/go-jsonrpc v0.1.1-0.20200602181149-522144ab4e24
 	github.com/filecoin-project/go-padreader v0.0.0-20200210211231-548257017ca6
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200605171344-fcac609550ca
 	github.com/filecoin-project/go-statestore v0.1.0
 	github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b
-	github.com/filecoin-project/sector-storage v0.0.0-20200522011946-a59ca7536a95
-	github.com/filecoin-project/specs-actors v0.5.4-0.20200521014528-0df536f7e461
-	github.com/filecoin-project/specs-storage v0.0.0-20200417134612-61b2d91a6102
-	github.com/filecoin-project/storage-fsm v0.0.0-20200522010518-83fd743db8bc
+	github.com/filecoin-project/sector-storage v0.0.0-20200618073200-d9de9b7cb4b4
+	github.com/filecoin-project/specs-actors v0.6.2-0.20200617175406-de392ca14121
+	github.com/filecoin-project/specs-storage v0.1.0
+	github.com/filecoin-project/storage-fsm v0.0.0-20200617183754-4380106d3e94
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
+	github.com/go-kit/kit v0.10.0
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/mux v1.7.4
 	github.com/gorilla/websocket v1.4.2
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/hashicorp/golang-lru v0.5.4
-	github.com/influxdata/influxdb1-client v0.0.0-20190809212627-fc22c7df067e
+	github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d
 	github.com/ipfs/go-bitswap v0.2.8
 	github.com/ipfs/go-block-format v0.0.2
 	github.com/ipfs/go-blockservice v0.1.3
@@ -47,6 +49,8 @@ require (
 	github.com/ipfs/go-cidutil v0.0.2
 	github.com/ipfs/go-datastore v0.4.4
 	github.com/ipfs/go-ds-badger2 v0.1.0
+	github.com/ipfs/go-ds-leveldb v0.4.2
+	github.com/ipfs/go-ds-measure v0.1.0
 	github.com/ipfs/go-filestore v1.0.0
 	github.com/ipfs/go-fs-lock v0.0.1
 	github.com/ipfs/go-graphsync v0.0.6-0.20200504202014-9d5f2c26a103
@@ -62,12 +66,12 @@ require (
 	github.com/ipfs/go-ipld-cbor v0.0.5-0.20200428170625-a0bd04d3cbdf
 	github.com/ipfs/go-ipld-format v0.2.0
 	github.com/ipfs/go-log v1.0.4
-	github.com/ipfs/go-log/v2 v2.0.8
+	github.com/ipfs/go-log/v2 v2.1.2-0.20200609205458-f8d20c392cb7
 	github.com/ipfs/go-merkledag v0.3.1
 	github.com/ipfs/go-path v0.0.7
 	github.com/ipfs/go-unixfs v0.2.4
 	github.com/ipfs/interface-go-ipfs-core v0.2.3
-	github.com/ipld/go-car v0.1.1-0.20200430185908-8ff2e52a4c88
+	github.com/ipld/go-car v0.1.1-0.20200526133713-1c7508d55aae
 	github.com/ipld/go-ipld-prime v0.0.2-0.20200428162820-8b59dc292b8e
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/lib/pq v1.2.0
@@ -101,6 +105,8 @@ require (
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/stretchr/testify v1.5.1
+	github.com/syndtr/goleveldb v1.0.0
+	github.com/urfave/cli/v2 v2.2.0
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
 	github.com/whyrusleeping/cbor-gen v0.0.0-20200504204219-64967432584d
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
@@ -111,11 +117,10 @@ require (
 	go.uber.org/multierr v1.5.0
 	go.uber.org/zap v1.15.0
 	go4.org v0.0.0-20190313082347-94abd6928b1d // indirect
-	golang.org/x/sys v0.0.0-20200519105757-fe76b779f299
-	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
+	golang.org/x/sys v0.0.0-20200602225109-6fdc65e7d980
+	golang.org/x/time v0.0.0-20191024005414-555d28b269f0
 	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543
-	gopkg.in/urfave/cli.v2 v2.0.0-20180128182452-d3ae77c26ac8
-	gotest.tools v2.2.0+incompatible
+	google.golang.org/api v0.25.0 // indirect
 	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
 )
 

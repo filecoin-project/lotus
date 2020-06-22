@@ -2,6 +2,9 @@ package api
 
 import (
 	"context"
+	"io"
+
+	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/sector-storage/sealtasks"
 	"github.com/filecoin-project/sector-storage/stores"
@@ -12,7 +15,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 )
 
-type WorkerApi interface {
+type WorkerAPI interface {
 	Version(context.Context) (build.Version, error)
 	// TODO: Info() (name, ...) ?
 
@@ -21,7 +24,13 @@ type WorkerApi interface {
 	Info(context.Context) (storiface.WorkerInfo, error)
 
 	storage.Sealer
-	Fetch(context.Context, abi.SectorID, stores.SectorFileType, bool) error
+
+	MoveStorage(ctx context.Context, sector abi.SectorID) error
+
+	UnsealPiece(context.Context, abi.SectorID, storiface.UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) error
+	ReadPiece(context.Context, io.Writer, abi.SectorID, storiface.UnpaddedByteIndex, abi.UnpaddedPieceSize) error
+
+	Fetch(context.Context, abi.SectorID, stores.SectorFileType, stores.PathType, stores.AcquireMode) error
 
 	Closing(context.Context) (<-chan struct{}, error)
 }

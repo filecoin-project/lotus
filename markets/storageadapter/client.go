@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/events"
@@ -79,7 +80,7 @@ func (n *ClientNodeAdapter) ListStorageProviders(ctx context.Context, encodedTs 
 			return nil, err
 		}
 
-		storageProviderInfo := utils.NewStorageProviderInfo(addr, mi.Worker, mi.SectorSize, mi.PeerId)
+		storageProviderInfo := utils.NewStorageProviderInfo(addr, mi.Worker, mi.SectorSize, peer.ID(mi.PeerId))
 		out = append(out, &storageProviderInfo)
 	}
 
@@ -211,7 +212,7 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 	}
 
 	// TODO: timeout
-	_, ret, err := c.sm.WaitForMessage(ctx, *deal.PublishMessage)
+	_, ret, err := c.sm.WaitForMessage(ctx, *deal.PublishMessage, build.MessageConfidence)
 	if err != nil {
 		return 0, xerrors.Errorf("waiting for deal publish message: %w", err)
 	}
@@ -321,7 +322,7 @@ func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider 
 		}
 	}
 
-	if err := c.ev.Called(checkFunc, called, revert, 3, build.SealRandomnessLookbackLimit, matchEvent); err != nil {
+	if err := c.ev.Called(checkFunc, called, revert, build.MessageConfidence+1, build.SealRandomnessLookbackLimit, matchEvent); err != nil {
 		return xerrors.Errorf("failed to set up called handler: %w", err)
 	}
 
@@ -397,7 +398,7 @@ func (n *ClientNodeAdapter) GetChainHead(ctx context.Context) (shared.TipSetToke
 }
 
 func (n *ClientNodeAdapter) WaitForMessage(ctx context.Context, mcid cid.Cid, cb func(code exitcode.ExitCode, bytes []byte, err error) error) error {
-	receipt, err := n.StateWaitMsg(ctx, mcid)
+	receipt, err := n.StateWaitMsg(ctx, mcid, build.MessageConfidence)
 	if err != nil {
 		return cb(0, nil, err)
 	}

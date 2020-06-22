@@ -23,8 +23,6 @@ type TipSet struct {
 	height abi.ChainEpoch
 }
 
-// why didnt i just export the fields? Because the struct has methods with the
-// same names already
 type ExpTipSet struct {
 	Cids   []cid.Cid
 	Blocks []*BlockHeader
@@ -32,6 +30,8 @@ type ExpTipSet struct {
 }
 
 func (ts *TipSet) MarshalJSON() ([]byte, error) {
+	// why didnt i just export the fields? Because the struct has methods with the
+	// same names already
 	return json.Marshal(ExpTipSet{
 		Cids:   ts.cids,
 		Blocks: ts.blks,

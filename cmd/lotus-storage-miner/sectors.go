@@ -8,8 +8,8 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
-	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 

@@ -5,15 +5,17 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/fatih/color"
+	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
-	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	sealing "github.com/filecoin-project/storage-fsm"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 )
@@ -117,6 +119,18 @@ var infoCmd = &cli.Command{
 				faultyPercentage)
 		}
 
+		expWinChance := float64(types.BigMul(qpercI, types.NewInt(build.BlocksPerEpoch)).Int64()) / 1000000
+		if expWinChance > 0 {
+			if expWinChance > 1 {
+				expWinChance = 1
+			}
+			winRate := time.Duration(float64(time.Second*build.BlockDelay) / expWinChance)
+			winPerDay := float64(time.Hour*24) / float64(winRate)
+
+			fmt.Print("Expected block win rate: ")
+			color.Blue("%.4f/day (every %s)", winPerDay, winRate.Truncate(time.Second))
+		}
+
 		fmt.Println()
 
 		fmt.Printf("Miner Balance: %s\n", color.YellowString("%s", types.FIL(mact.Balance)))
@@ -168,17 +182,20 @@ var stateList = []stateMeta{
 	{col: color.FgYellow, state: sealing.PreCommit1},
 	{col: color.FgYellow, state: sealing.PreCommit2},
 	{col: color.FgYellow, state: sealing.PreCommitting},
+	{col: color.FgYellow, state: sealing.PreCommitWait},
 	{col: color.FgYellow, state: sealing.WaitSeed},
 	{col: color.FgYellow, state: sealing.Committing},
 	{col: color.FgYellow, state: sealing.CommitWait},
 	{col: color.FgYellow, state: sealing.FinalizeSector},
 
 	{col: color.FgRed, state: sealing.FailedUnrecoverable},
-	{col: color.FgRed, state: sealing.SealFailed},
+	{col: color.FgRed, state: sealing.SealPreCommit1Failed},
+	{col: color.FgRed, state: sealing.SealPreCommit2Failed},
 	{col: color.FgRed, state: sealing.PreCommitFailed},
 	{col: color.FgRed, state: sealing.ComputeProofFailed},
 	{col: color.FgRed, state: sealing.CommitFailed},
 	{col: color.FgRed, state: sealing.PackingFailed},
+	{col: color.FgRed, state: sealing.FinalizeFailed},
 	{col: color.FgRed, state: sealing.Faulty},
 	{col: color.FgRed, state: sealing.FaultReported},
 	{col: color.FgRed, state: sealing.FaultedFinal},

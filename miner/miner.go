@@ -15,7 +15,6 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -31,7 +30,7 @@ var log = logging.Logger("miner")
 // returns a callback reporting whether we mined a blocks in this round
 type waitFunc func(ctx context.Context, baseTime uint64) (func(bool), error)
 
-func NewMiner(api api.FullNode, epp gen.WinningPoStProver, beacon beacon.RandomBeacon, addr address.Address) *Miner {
+func NewMiner(api api.FullNode, epp gen.WinningPoStProver, addr address.Address) *Miner {
 	arc, err := lru.NewARC(10000)
 	if err != nil {
 		panic(err)
@@ -40,7 +39,6 @@ func NewMiner(api api.FullNode, epp gen.WinningPoStProver, beacon beacon.RandomB
 	return &Miner{
 		api:     api,
 		epp:     epp,
-		beacon:  beacon,
 		address: addr,
 		waitFunc: func(ctx context.Context, baseTime uint64) (func(bool), error) {
 			// Wait around for half the block time in case other parents come in
@@ -56,8 +54,7 @@ func NewMiner(api api.FullNode, epp gen.WinningPoStProver, beacon beacon.RandomB
 type Miner struct {
 	api api.FullNode
 
-	epp    gen.WinningPoStProver
-	beacon beacon.RandomBeacon
+	epp gen.WinningPoStProver
 
 	lk       sync.Mutex
 	address  address.Address
@@ -156,13 +153,14 @@ func (m *Miner) mine(ctx context.Context) {
 			m.niceSleep(build.BlockDelay * time.Second)
 			continue
 		}
-		lastBase = *base
 
 		b, err := m.mineOne(ctx, base)
 		if err != nil {
 			log.Errorf("mining block failed: %+v", err)
+			m.niceSleep(time.Second)
 			continue
 		}
+		lastBase = *base
 
 		onDone(b != nil)
 
@@ -190,6 +188,8 @@ func (m *Miner) mine(ctx context.Context) {
 				log.Errorf("failed to submit newly mined block: %s", err)
 			}
 		} else {
+			base.NullRounds++
+
 			// Wait until the next epoch, plus the propagation delay, so a new tipset
 			// has enough time to form.
 			//
@@ -263,7 +263,6 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*types.BlockMsg,
 		return nil, xerrors.Errorf("failed to get mining base info: %w", err)
 	}
 	if mbi == nil {
-		base.NullRounds++
 		return nil, nil
 	}
 
@@ -271,12 +270,8 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*types.BlockMsg,
 
 	beaconPrev := mbi.PrevBeaconEntry
 
-	bvals, err := beacon.BeaconEntriesForBlock(ctx, m.beacon, round, beaconPrev)
-	if err != nil {
-		return nil, xerrors.Errorf("get beacon entries failed: %w", err)
-	}
-
 	tDrand := time.Now()
+	bvals := mbi.BeaconEntries
 
 	hasPower, err := m.hasPower(ctx, m.address, base.TipSet)
 	if err != nil {
@@ -284,7 +279,6 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*types.BlockMsg,
 	}
 	if !hasPower {
 		// slashed or just have no power yet
-		base.NullRounds++
 		return nil, nil
 	}
 
@@ -308,7 +302,6 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*types.BlockMsg,
 	}
 
 	if winner == nil {
-		base.NullRounds++
 		return nil, nil
 	}
 
@@ -491,7 +484,7 @@ func SelectMessages(ctx context.Context, al ActorLookup, ts *types.TipSet, msgs 
 		vmstart := time.Now()
 
 		minGas := vm.PricelistByEpoch(ts.Height()).OnChainMessage(msg.ChainLength()) // TODO: really should be doing just msg.ChainLength() but the sync side of this code doesnt seem to have access to that
-		if err := msg.VMMessage().ValidForBlockInclusion(minGas); err != nil {
+		if err := msg.VMMessage().ValidForBlockInclusion(minGas.Total()); err != nil {
 			log.Warnf("invalid message in message pool: %s", err)
 			continue
 		}

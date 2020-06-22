@@ -21,7 +21,7 @@ func subBlocks(ctx context.Context, api aapi.FullNode, st *storage) {
 			bh.Cid(): bh,
 		}, false)
 		if err != nil {
-			//log.Errorf("%+v", err)
+			log.Errorf("%+v", err)
 		}
 	}
 }

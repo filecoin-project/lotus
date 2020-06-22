@@ -17,12 +17,13 @@ import (
 	cid "github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/urfave/cli/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
-	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/apibstore"
+	"github.com/filecoin-project/lotus/build"
 	types "github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -117,7 +118,7 @@ var msigCreateCmd = &cli.Command{
 		}
 
 		// wait for it to get mined into a block
-		wait, err := api.StateWaitMsg(ctx, msgCid)
+		wait, err := api.StateWaitMsg(ctx, msgCid, build.MessageConfidence)
 		if err != nil {
 			return err
 		}
@@ -206,7 +207,10 @@ var msigInspectCmd = &cli.Command{
 				tx := pending[txid]
 				fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%d\t%x\n", txid, state(tx), tx.To, types.FIL(tx.Value), tx.Method, tx.Params)
 			}
-			w.Flush()
+			if err := w.Flush(); err != nil {
+				return xerrors.Errorf("flushing output: %+v", err)
+			}
+
 		}
 
 		return nil
@@ -333,7 +337,7 @@ var msigProposeCmd = &cli.Command{
 
 		fmt.Println("send proposal in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, msgCid)
+		wait, err := api.StateWaitMsg(ctx, msgCid, build.MessageConfidence)
 		if err != nil {
 			return err
 		}
@@ -449,7 +453,7 @@ var msigApproveCmd = &cli.Command{
 
 		fmt.Println("sent approval in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, msgCid)
+		wait, err := api.StateWaitMsg(ctx, msgCid, build.MessageConfidence)
 		if err != nil {
 			return err
 		}

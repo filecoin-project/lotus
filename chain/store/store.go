@@ -49,6 +49,9 @@ var log = logging.Logger("chainstore")
 var chainHeadKey = dstore.NewKey("head")
 var blockValidationCacheKeyPrefix = dstore.NewKey("blockValidation")
 
+// ReorgNotifee represents a callback that gets called upon reorgs.
+type ReorgNotifee func(rev, app []*types.TipSet) error
+
 type ChainStore struct {
 	bs bstore.Blockstore
 	ds dstore.Datastore
@@ -64,8 +67,8 @@ type ChainStore struct {
 
 	cindex *ChainIndex
 
-	reorgCh          chan<- reorg
-	headChangeNotifs []func(rev, app []*types.TipSet) error
+	reorgCh        chan<- reorg
+	reorgNotifeeCh chan ReorgNotifee
 
 	mmCache *lru.ARCCache
 	tsCache *lru.ARCCache
@@ -89,8 +92,6 @@ func NewChainStore(bs bstore.Blockstore, ds dstore.Batching, vmcalls runtime.Sys
 	ci := NewChainIndex(cs.LoadTipSet)
 
 	cs.cindex = ci
-
-	cs.reorgCh = cs.reorgWorker(context.TODO())
 
 	hcnf := func(rev, app []*types.TipSet) error {
 		cs.pubLk.Lock()
@@ -123,7 +124,8 @@ func NewChainStore(bs bstore.Blockstore, ds dstore.Batching, vmcalls runtime.Sys
 		return nil
 	}
 
-	cs.headChangeNotifs = append(cs.headChangeNotifs, hcnf, hcmetric)
+	cs.reorgNotifeeCh = make(chan ReorgNotifee)
+	cs.reorgCh = cs.reorgWorker(context.TODO(), []ReorgNotifee{hcnf, hcmetric})
 
 	return cs
 }
@@ -212,8 +214,8 @@ func (cs *ChainStore) SubHeadChanges(ctx context.Context) chan []*api.HeadChange
 	return out
 }
 
-func (cs *ChainStore) SubscribeHeadChanges(f func(rev, app []*types.TipSet) error) {
-	cs.headChangeNotifs = append(cs.headChangeNotifs, f)
+func (cs *ChainStore) SubscribeHeadChanges(f ReorgNotifee) {
+	cs.reorgNotifeeCh <- f
 }
 
 func (cs *ChainStore) IsBlockValidated(ctx context.Context, blkid cid.Cid) (bool, error) {
@@ -290,13 +292,19 @@ type reorg struct {
 	new *types.TipSet
 }
 
-func (cs *ChainStore) reorgWorker(ctx context.Context) chan<- reorg {
+func (cs *ChainStore) reorgWorker(ctx context.Context, initialNotifees []ReorgNotifee) chan<- reorg {
 	out := make(chan reorg, 32)
+	notifees := make([]ReorgNotifee, len(initialNotifees))
+	copy(notifees, initialNotifees)
+
 	go func() {
 		defer log.Warn("reorgWorker quit")
 
 		for {
 			select {
+			case n := <-cs.reorgNotifeeCh:
+				notifees = append(notifees, n)
+
 			case r := <-out:
 				revert, apply, err := cs.ReorgOps(r.old, r.new)
 				if err != nil {
@@ -310,7 +318,7 @@ func (cs *ChainStore) reorgWorker(ctx context.Context) chan<- reorg {
 					apply[i], apply[opp] = apply[opp], apply[i]
 				}
 
-				for _, hcf := range cs.headChangeNotifs {
+				for _, hcf := range notifees {
 					if err := hcf(revert, apply); err != nil {
 						log.Error("head change func errored (BAD): ", err)
 					}
@@ -409,7 +417,7 @@ func (cs *ChainStore) LoadTipSet(tsk types.TipSetKey) (*types.TipSet, error) {
 	return ts, nil
 }
 
-// returns true if 'a' is an ancestor of 'b'
+// IsAncestorOf returns true if 'a' is an ancestor of 'b'
 func (cs *ChainStore) IsAncestorOf(a, b *types.TipSet) (bool, error) {
 	if b.Height() <= a.Height() {
 		return false, nil
@@ -917,39 +925,50 @@ func DrawRandomness(rbase []byte, pers crypto.DomainSeparationTag, round abi.Cha
 		return nil, xerrors.Errorf("deriving randomness: %w", err)
 	}
 	VRFDigest := blake2b.Sum256(rbase)
-	h.Write(VRFDigest[:])
+	_, err := h.Write(VRFDigest[:])
+	if err != nil {
+		return nil, xerrors.Errorf("hashing VRFDigest: %w", err)
+	}
 	if err := binary.Write(h, binary.BigEndian, round); err != nil {
 		return nil, xerrors.Errorf("deriving randomness: %w", err)
 	}
-	h.Write(entropy)
+	_, err = h.Write(entropy)
+	if err != nil {
+		return nil, xerrors.Errorf("hashing entropy: %w", err)
+	}
 
 	return h.Sum(nil), nil
 }
 
-func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) (out []byte, err error) {
+func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	_, span := trace.StartSpan(ctx, "store.GetRandomness")
 	defer span.End()
 	span.AddAttributes(trace.Int64Attribute("round", int64(round)))
 
-	//defer func() {
-	//log.Infof("getRand %v %d %d %x -> %x", blks, pers, round, entropy, out)
-	//}()
-	for {
-		nts, err := cs.LoadTipSet(types.NewTipSetKey(blks...))
-		if err != nil {
-			return nil, err
-		}
-
-		mtb := nts.MinTicketBlock()
-
-		// if at (or just past -- for null epochs) appropriate epoch
-		// or at genesis (works for negative epochs)
-		if nts.Height() <= round || mtb.Height == 0 {
-			return DrawRandomness(nts.MinTicketBlock().Ticket.VRFProof, pers, round, entropy)
-		}
-
-		blks = mtb.Parents
+	ts, err := cs.LoadTipSet(types.NewTipSetKey(blks...))
+	if err != nil {
+		return nil, err
 	}
+
+	if round > ts.Height() {
+		return nil, xerrors.Errorf("cannot draw randomness from the future")
+	}
+
+	searchHeight := round
+	if searchHeight < 0 {
+		searchHeight = 0
+	}
+
+	randTs, err := cs.GetTipsetByHeight(ctx, searchHeight, ts, true)
+	if err != nil {
+		return nil, err
+	}
+
+	mtb := randTs.MinTicketBlock()
+
+	// if at (or just past -- for null epochs) appropriate epoch
+	// or at genesis (works for negative epochs)
+	return DrawRandomness(mtb.Ticket.VRFProof, pers, round, entropy)
 }
 
 // GetTipsetByHeight returns the tipset on the chain behind 'ts' at the given
@@ -1166,7 +1185,6 @@ func (cr *chainRand) GetRandomness(ctx context.Context, pers crypto.DomainSepara
 func (cs *ChainStore) GetTipSetFromKey(tsk types.TipSetKey) (*types.TipSet, error) {
 	if tsk.IsEmpty() {
 		return cs.GetHeaviestTipSet(), nil
-	} else {
-		return cs.LoadTipSet(tsk)
 	}
+	return cs.LoadTipSet(tsk)
 }

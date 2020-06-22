@@ -3,17 +3,20 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
 	"path/filepath"
+	"syscall"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
-	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-jsonrpc/auth"
@@ -47,7 +50,7 @@ func main() {
 	app := &cli.App{
 		Name:    "lotus-seal-worker",
 		Usage:   "Remote storage miner worker",
-		Version: build.UserVersion,
+		Version: build.UserVersion(),
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    FlagStorageRepo,
@@ -107,7 +110,9 @@ var runCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Bool("enable-gpu-proving") {
-			os.Setenv("BELLMAN_NO_GPU", "true")
+			if err := os.Setenv("BELLMAN_NO_GPU", "true"); err != nil {
+				return xerrors.Errorf("could not set no-gpu env: %+v", err)
+			}
 		}
 
 		if cctx.String("address") == "" {
@@ -115,11 +120,19 @@ var runCmd = &cli.Command{
 		}
 
 		// Connect to storage-miner
-
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
-		if err != nil {
-			return xerrors.Errorf("getting miner api: %w", err)
+		var nodeApi api.StorageMiner
+		var closer func()
+		var err error
+		for {
+			nodeApi, closer, err = lcli.GetStorageMinerAPI(cctx)
+			if err == nil {
+				break
+			}
+			fmt.Printf("\r\x1b[0KConnecting to miner API... (%s)", err)
+			time.Sleep(time.Second)
+			continue
 		}
+
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 		ctx, cancel := context.WithCancel(ctx)
@@ -134,6 +147,8 @@ var runCmd = &cli.Command{
 		}
 		log.Infof("Remote version %s", v)
 
+		watchMinerConn(ctx, cctx, nodeApi)
+
 		// Check params
 
 		act, err := nodeApi.ActorAddress(ctx)
@@ -146,14 +161,14 @@ var runCmd = &cli.Command{
 		}
 
 		if cctx.Bool("commit") {
-			if err := paramfetch.GetParams(ctx, build.ParametersJson(), uint64(ssize)); err != nil {
+			if err := paramfetch.GetParams(ctx, build.ParametersJSON(), uint64(ssize)); err != nil {
 				return xerrors.Errorf("get params: %w", err)
 			}
 		}
 
 		var taskTypes []sealtasks.TaskType
 
-		taskTypes = append(taskTypes, sealtasks.TTFetch)
+		taskTypes = append(taskTypes, sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTFinalize)
 
 		if cctx.Bool("precommit1") {
 			taskTypes = append(taskTypes, sealtasks.TTPreCommit1)
@@ -314,4 +329,43 @@ var runCmd = &cli.Command{
 
 		return srv.Serve(nl)
 	},
+}
+
+func watchMinerConn(ctx context.Context, cctx *cli.Context, nodeApi api.StorageMiner) {
+	go func() {
+		closing, err := nodeApi.Closing(ctx)
+		if err != nil {
+			log.Errorf("failed to get remote closing channel: %+v", err)
+		}
+
+		select {
+		case <-closing:
+		case <-ctx.Done():
+		}
+
+		if ctx.Err() != nil {
+			return // graceful shutdown
+		}
+
+		log.Warnf("Connection with miner node lost, restarting")
+
+		exe, err := os.Executable()
+		if err != nil {
+			log.Errorf("getting executable for auto-restart: %+v", err)
+		}
+
+		log.Sync()
+
+		// TODO: there are probably cleaner/more graceful ways to restart,
+		//  but this is good enough for now (FSM can recover from the mess this creates)
+		if err := syscall.Exec(exe, []string{exe, "run",
+			fmt.Sprintf("--address=%s", cctx.String("address")),
+			fmt.Sprintf("--no-local-storage=%t", cctx.Bool("no-local-storage")),
+			fmt.Sprintf("--precommit1=%t", cctx.Bool("precommit1")),
+			fmt.Sprintf("--precommit2=%t", cctx.Bool("precommit2")),
+			fmt.Sprintf("--commit=%t", cctx.Bool("commit")),
+		}, os.Environ()); err != nil {
+			fmt.Println(err)
+		}
+	}()
 }

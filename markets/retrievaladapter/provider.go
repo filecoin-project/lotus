@@ -2,13 +2,13 @@ package retrievaladapter
 
 import (
 	"context"
+	"github.com/filecoin-project/sector-storage/storiface"
 	"io"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/shared"
 	sectorstorage "github.com/filecoin-project/sector-storage"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 
@@ -54,7 +54,14 @@ func (rpn *retrievalProviderNode) UnsealSector(ctx context.Context, sectorID uin
 		Miner:  abi.ActorID(mid),
 		Number: abi.SectorNumber(sectorID),
 	}
-	return rpn.sealer.ReadPieceFromSealedSector(ctx, sid, ffiwrapper.UnpaddedByteIndex(offset), abi.UnpaddedPieceSize(length), si.TicketValue, *si.CommD)
+
+	r, w := io.Pipe()
+	go func() {
+		err := rpn.sealer.ReadPiece(ctx, w, sid, storiface.UnpaddedByteIndex(offset), abi.UnpaddedPieceSize(length), si.TicketValue, *si.CommD)
+		_ = w.CloseWithError(err)
+	}()
+
+	return r, nil
 }
 
 func (rpn *retrievalProviderNode) SavePaymentVoucher(ctx context.Context, paymentChannel address.Address, voucher *paych.SignedVoucher, proof []byte, expectedAmount abi.TokenAmount, tok shared.TipSetToken) (abi.TokenAmount, error) {

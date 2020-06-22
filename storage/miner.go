@@ -50,10 +50,11 @@ type storageMinerApi interface {
 	StateMinerDeadlines(ctx context.Context, maddr address.Address, tok types.TipSetKey) (*miner.Deadlines, error)
 	StateMinerSectors(context.Context, address.Address, *abi.BitField, bool, types.TipSetKey) ([]*api.ChainSectorInfo, error)
 	StateSectorPreCommitInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error)
-	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (miner.MinerInfo, error)
+	StateSectorGetInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*miner.SectorOnChainInfo, error)
+	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)
 	StateMinerProvingDeadline(context.Context, address.Address, types.TipSetKey) (*miner.DeadlineInfo, error)
 	StateMinerInitialPledgeCollateral(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (types.BigInt, error)
-	StateWaitMsg(context.Context, cid.Cid) (*api.MsgLookup, error) // TODO: removeme eventually
+	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64) (*api.MsgLookup, error) // TODO: removeme eventually
 	StateGetActor(ctx context.Context, actor address.Address, ts types.TipSetKey) (*types.Actor, error)
 	StateGetReceipt(context.Context, cid.Cid, types.TipSetKey) (*types.MessageReceipt, error)
 	StateMarketStorageDeal(context.Context, abi.DealID, types.TipSetKey) (*api.MarketDeal, error)
@@ -107,14 +108,13 @@ func (m *Miner) Run(ctx context.Context) error {
 	pcp := sealing.NewBasicPreCommitPolicy(adaptedAPI, 10000000, md.PeriodStart%miner.WPoStProvingPeriod)
 	m.sealing = sealing.New(adaptedAPI, NewEventsAdapter(evts), m.maddr, m.ds, m.sealer, m.sc, m.verif, &pcp)
 
-	go m.sealing.Run(ctx)
+	go m.sealing.Run(ctx) //nolint:errcheck // logged intside the function
 
 	return nil
 }
 
 func (m *Miner) Stop(ctx context.Context) error {
-	defer m.sealing.Stop(ctx)
-	return nil
+	return m.sealing.Stop(ctx)
 }
 
 func (m *Miner) runPreflightChecks(ctx context.Context) error {
@@ -135,7 +135,7 @@ type StorageWpp struct {
 	prover   storage.Prover
 	verifier ffiwrapper.Verifier
 	miner    abi.ActorID
-	winnRpt  abi.RegisteredProof
+	winnRpt  abi.RegisteredPoStProof
 }
 
 func NewWinningPoStProver(api api.FullNode, prover storage.Prover, verifier ffiwrapper.Verifier, miner dtypes.MinerID) (*StorageWpp, error) {

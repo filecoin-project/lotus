@@ -91,7 +91,7 @@ func (bss *BlockSyncService) HandleStream(s inet.Stream) {
 	ctx, span := trace.StartSpan(context.Background(), "blocksync.HandleStream")
 	defer span.End()
 
-	defer s.Close()
+	defer s.Close() //nolint:errcheck
 
 	var req BlockSyncRequest
 	if err := cborutil.ReadCborRPC(bufio.NewReader(s), &req); err != nil {
@@ -107,7 +107,7 @@ func (bss *BlockSyncService) HandleStream(s inet.Stream) {
 	}
 
 	writeDeadline := 60 * time.Second
-	s.SetDeadline(time.Now().Add(writeDeadline))
+	_ = s.SetDeadline(time.Now().Add(writeDeadline))
 	if err := cborutil.WriteCborRPC(s, resp); err != nil {
 		log.Warnw("failed to write back response for handle stream", "err", err, "peer", s.Conn().RemotePeer())
 		return

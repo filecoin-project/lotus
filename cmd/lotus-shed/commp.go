@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	commcid "github.com/filecoin-project/go-fil-commcid"
-	"gopkg.in/urfave/cli.v2"
+	"github.com/urfave/cli/v2"
 )
 
 var commpToCidCmd = &cli.Command{

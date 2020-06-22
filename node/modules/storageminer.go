@@ -2,11 +2,14 @@ package modules
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
 	"github.com/ipfs/go-blockservice"
+	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	graphsync "github.com/ipfs/go-graphsync/impl"
@@ -17,6 +20,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/routing"
 	"go.uber.org/fx"
+	"go.uber.org/multierr"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -35,6 +39,7 @@ import (
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/go-storedcounter"
+	"github.com/filecoin-project/lotus/node/config"
 	sectorstorage "github.com/filecoin-project/sector-storage"
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/sector-storage/stores"
@@ -43,8 +48,6 @@ import (
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/beacon"
-	"github.com/filecoin-project/lotus/chain/beacon/drand"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/markets/retrievaladapter"
@@ -72,7 +75,7 @@ func GetParams(sbc *ffiwrapper.Config) error {
 		return err
 	}
 
-	if err := paramfetch.GetParams(context.TODO(), build.ParametersJson(), uint64(ssize)); err != nil {
+	if err := paramfetch.GetParams(context.TODO(), build.ParametersJSON(), uint64(ssize)); err != nil {
 		return xerrors.Errorf("fetching proof parameters: %w", err)
 	}
 
@@ -167,12 +170,10 @@ func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api lapi.FullNode, h
 func HandleRetrieval(host host.Host, lc fx.Lifecycle, m retrievalmarket.RetrievalProvider) {
 	lc.Append(fx.Hook{
 		OnStart: func(context.Context) error {
-			m.Start()
-			return nil
+			return m.Start()
 		},
 		OnStop: func(context.Context) error {
-			m.Stop()
-			return nil
+			return m.Stop()
 		},
 	})
 }
@@ -182,12 +183,10 @@ func HandleDeals(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, h sto
 
 	lc.Append(fx.Hook{
 		OnStart: func(context.Context) error {
-			h.Start(ctx)
-			return nil
+			return h.Start(ctx)
 		},
 		OnStop: func(context.Context) error {
-			h.Stop()
-			return nil
+			return h.Stop()
 		},
 	})
 }
@@ -263,13 +262,13 @@ func StagingGraphsync(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.Stagi
 	return gs
 }
 
-func SetupBlockProducer(lc fx.Lifecycle, ds dtypes.MetadataDS, api lapi.FullNode, epp gen.WinningPoStProver, beacon beacon.RandomBeacon) (*miner.Miner, error) {
+func SetupBlockProducer(lc fx.Lifecycle, ds dtypes.MetadataDS, api lapi.FullNode, epp gen.WinningPoStProver) (*miner.Miner, error) {
 	minerAddr, err := minerAddrFromDS(ds)
 	if err != nil {
 		return nil, err
 	}
 
-	m := miner.NewMiner(api, epp, beacon, minerAddr)
+	m := miner.NewMiner(api, epp, minerAddr)
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
@@ -302,22 +301,48 @@ func NewStorageAsk(ctx helpers.MetricsCtx, fapi lapi.FullNode, ds dtypes.Metadat
 		return nil, err
 	}
 	// Hacky way to set max piece size to the sector size
-	a := storedAsk.GetAsk(address.Address(minerAddress)).Ask
-	err = storedAsk.AddAsk(a.Price, a.Expiry-a.Timestamp, storagemarket.MaxPieceSize(abi.PaddedPieceSize(mi.SectorSize)))
+	a := storedAsk.GetAsk().Ask
+	err = storedAsk.SetAsk(a.Price, a.Expiry-a.Timestamp, storagemarket.MaxPieceSize(abi.PaddedPieceSize(mi.SectorSize)))
 	if err != nil {
 		return storedAsk, err
 	}
 	return storedAsk, nil
 }
 
-func StorageProvider(minerAddress dtypes.MinerAddress, ffiConfig *ffiwrapper.Config, storedAsk *storedask.StoredAsk, h host.Host, ds dtypes.MetadataDS, ibs dtypes.StagingBlockstore, r repo.LockedRepo, pieceStore dtypes.ProviderPieceStore, dataTransfer dtypes.ProviderDataTransfer, spn storagemarket.StorageProviderNode) (storagemarket.StorageProvider, error) {
+func StorageProvider(minerAddress dtypes.MinerAddress, ffiConfig *ffiwrapper.Config, storedAsk *storedask.StoredAsk, h host.Host, ds dtypes.MetadataDS, ibs dtypes.StagingBlockstore, r repo.LockedRepo, pieceStore dtypes.ProviderPieceStore, dataTransfer dtypes.ProviderDataTransfer, spn storagemarket.StorageProviderNode, isAcceptingFunc dtypes.AcceptingStorageDealsConfigFunc, blocklistFunc dtypes.StorageDealPieceCidBlocklistConfigFunc) (storagemarket.StorageProvider, error) {
 	net := smnet.NewFromLibp2pHost(h)
 	store, err := piecefilestore.NewLocalFileStore(piecefilestore.OsPath(r.Path()))
 	if err != nil {
 		return nil, err
 	}
 
-	p, err := storageimpl.NewProvider(net, namespace.Wrap(ds, datastore.NewKey("/deals/provider")), ibs, store, pieceStore, dataTransfer, spn, address.Address(minerAddress), ffiConfig.SealProofType, storedAsk)
+	opt := storageimpl.CustomDealDecisionLogic(func(ctx context.Context, deal storagemarket.MinerDeal) (bool, string, error) {
+		b, err := isAcceptingFunc()
+		if err != nil {
+			return false, "miner error", err
+		}
+
+		if !b {
+			log.Warnf("storage deal acceptance disabled; rejecting storage deal proposal from client: %s", deal.Client.String())
+			return false, "miner is not accepting storage deals", nil
+		}
+
+		blocklist, err := blocklistFunc()
+		if err != nil {
+			return false, "miner error", err
+		}
+
+		for idx := range blocklist {
+			if deal.Proposal.PieceCID.Equals(blocklist[idx]) {
+				log.Warnf("piece CID in proposal %s is blocklisted; rejecting storage deal proposal from client: %s", deal.Proposal.PieceCID, deal.Client.String())
+				return false, fmt.Sprintf("miner has blocklisted piece CID %s", deal.Proposal.PieceCID), nil
+			}
+		}
+
+		return true, "", nil
+	})
+
+	p, err := storageimpl.NewProvider(net, namespace.Wrap(ds, datastore.NewKey("/deals/provider")), ibs, store, pieceStore, dataTransfer, spn, address.Address(minerAddress), ffiConfig.SealProofType, storedAsk, opt)
 	if err != nil {
 		return p, err
 	}
@@ -368,11 +393,70 @@ func StorageAuth(ctx helpers.MetricsCtx, ca lapi.Common) (sectorstorage.StorageA
 	return sectorstorage.StorageAuth(headers), nil
 }
 
-func MinerRandomBeacon(api lapi.FullNode) (beacon.RandomBeacon, error) {
-	gents, err := api.ChainGetGenesis(context.TODO())
+func NewAcceptingStorageDealsConfigFunc(r repo.LockedRepo) (dtypes.AcceptingStorageDealsConfigFunc, error) {
+	return func() (out bool, err error) {
+		err = readCfg(r, func(cfg *config.StorageMiner) {
+			out = cfg.Dealmaking.AcceptingStorageDeals
+		})
+		return
+	}, nil
+}
+
+func NewSetAcceptingStorageDealsConfigFunc(r repo.LockedRepo) (dtypes.SetAcceptingStorageDealsConfigFunc, error) {
+	return func(b bool) (err error) {
+		err = mutateCfg(r, func(cfg *config.StorageMiner) {
+			cfg.Dealmaking.AcceptingStorageDeals = b
+		})
+		return
+	}, nil
+}
+
+func NewStorageDealPieceCidBlocklistConfigFunc(r repo.LockedRepo) (dtypes.StorageDealPieceCidBlocklistConfigFunc, error) {
+	return func() (out []cid.Cid, err error) {
+		err = readCfg(r, func(cfg *config.StorageMiner) {
+			out = cfg.Dealmaking.PieceCidBlocklist
+		})
+		return
+	}, nil
+}
+
+func NewSetStorageDealPieceCidBlocklistConfigFunc(r repo.LockedRepo) (dtypes.SetStorageDealPieceCidBlocklistConfigFunc, error) {
+	return func(blocklist []cid.Cid) (err error) {
+		err = mutateCfg(r, func(cfg *config.StorageMiner) {
+			cfg.Dealmaking.PieceCidBlocklist = blocklist
+		})
+		return
+	}, nil
+}
+
+func readCfg(r repo.LockedRepo, accessor func(*config.StorageMiner)) error {
+	raw, err := r.Config()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return drand.NewDrandBeacon(gents.Blocks()[0].Timestamp, build.BlockDelay)
+	cfg, ok := raw.(*config.StorageMiner)
+	if !ok {
+		return xerrors.New("expected address of config.StorageMiner")
+	}
+
+	accessor(cfg)
+
+	return nil
+}
+
+func mutateCfg(r repo.LockedRepo, mutator func(*config.StorageMiner)) error {
+	var typeErr error
+
+	setConfigErr := r.SetConfig(func(raw interface{}) {
+		cfg, ok := raw.(*config.StorageMiner)
+		if !ok {
+			typeErr = errors.New("expected storage miner config")
+			return
+		}
+
+		mutator(cfg)
+	})
+
+	return multierr.Combine(typeErr, setConfigErr)
 }

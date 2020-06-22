@@ -21,7 +21,7 @@ import (
 
 var log = logging.Logger("statetree")
 
-// Stores actors state by their ID.
+// StateTree stores actors state by their ID.
 type StateTree struct {
 	root  *hamt.Node
 	Store cbor.IpldStore
@@ -149,7 +149,7 @@ func (st *StateTree) SetActor(addr address.Address, act *types.Actor) error {
 	return nil
 }
 
-// `LookupID` gets the ID address of this actor's `addr` stored in the `InitActor`.
+// LookupID gets the ID address of this actor's `addr` stored in the `InitActor`.
 func (st *StateTree) LookupID(addr address.Address) (address.Address, error) {
 	if addr.Protocol() == address.ID {
 		return addr, nil

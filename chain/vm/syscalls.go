@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	goruntime "runtime"
+	"sync"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
@@ -41,7 +43,7 @@ type syscallShim struct {
 	verifier ffiwrapper.Verifier
 }
 
-func (ss *syscallShim) ComputeUnsealedSectorCID(st abi.RegisteredProof, pieces []abi.PieceInfo) (cid.Cid, error) {
+func (ss *syscallShim) ComputeUnsealedSectorCID(st abi.RegisteredSealProof, pieces []abi.PieceInfo) (cid.Cid, error) {
 	var sum abi.PaddedPieceSize
 	for _, p := range pieces {
 		sum += p.Size
@@ -113,7 +115,7 @@ func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte) (*runtime.Consen
 	// (b) time-offset mining fault
 	// strictly speaking no need to compare heights based on double fork mining check above,
 	// but at same height this would be a different fault.
-	if !types.CidArrsEqual(blockA.Parents, blockB.Parents) && blockA.Height != blockB.Height {
+	if types.CidArrsEqual(blockA.Parents, blockB.Parents) && blockA.Height != blockB.Height {
 		consensusFault = &runtime.ConsensusFault{
 			Target: blockA.Miner,
 			Epoch:  blockB.Height,
@@ -157,7 +159,7 @@ func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte) (*runtime.Consen
 	}
 
 	if sigErr := ss.VerifyBlockSig(&blockB); sigErr != nil {
-		return nil, xerrors.Errorf("cannot verify first block sig: %w", sigErr)
+		return nil, xerrors.Errorf("cannot verify second block sig: %w", sigErr)
 	}
 
 	return consensusFault, nil
@@ -183,7 +185,7 @@ func (ss *syscallShim) VerifyBlockSig(blk *types.BlockHeader) error {
 		return err
 	}
 
-	if err := sigs.CheckBlockSignature(blk, ss.ctx, waddr); err != nil {
+	if err := sigs.CheckBlockSignature(ss.ctx, blk, waddr); err != nil {
 		return err
 	}
 
@@ -201,20 +203,6 @@ func (ss *syscallShim) VerifyPoSt(proof abi.WindowPoStVerifyInfo) error {
 	return nil
 }
 
-func cidToCommD(c cid.Cid) [32]byte {
-	b := c.Bytes()
-	var out [32]byte
-	copy(out[:], b[len(b)-32:])
-	return out
-}
-
-func cidToCommR(c cid.Cid) [32]byte {
-	b := c.Bytes()
-	var out [32]byte
-	copy(out[:], b[len(b)-32:])
-	return out
-}
-
 func (ss *syscallShim) VerifySeal(info abi.SealVerifyInfo) error {
 	//_, span := trace.StartSpan(ctx, "ValidatePoRep")
 	//defer span.End()
@@ -225,7 +213,7 @@ func (ss *syscallShim) VerifySeal(info abi.SealVerifyInfo) error {
 	}
 
 	ticket := []byte(info.Randomness)
-	proof := []byte(info.Proof)
+	proof := info.Proof
 	seed := []byte(info.InteractiveRandomness)
 
 	log.Debugf("Verif r:%x; d:%x; m:%s; t:%x; s:%x; N:%d; p:%x", info.SealedCID, info.UnsealedCID, miner, ticket, seed, info.SectorID.Number, proof)
@@ -251,4 +239,38 @@ func (ss *syscallShim) VerifySignature(sig crypto.Signature, addr address.Addres
 	}
 
 	return sigs.Verify(&sig, kaddr, input)
+}
+
+var BatchSealVerifyParallelism = goruntime.NumCPU()
+
+func (ss *syscallShim) BatchVerifySeals(inp map[address.Address][]abi.SealVerifyInfo) (map[address.Address][]bool, error) {
+	out := make(map[address.Address][]bool)
+
+	sema := make(chan struct{}, BatchSealVerifyParallelism)
+
+	var wg sync.WaitGroup
+	for addr, seals := range inp {
+		results := make([]bool, len(seals))
+		out[addr] = results
+
+		for i, s := range seals {
+			wg.Add(1)
+			go func(ma address.Address, ix int, svi abi.SealVerifyInfo, res []bool) {
+				defer wg.Done()
+				sema <- struct{}{}
+
+				if err := ss.VerifySeal(svi); err != nil {
+					log.Warnw("seal verify in batch failed", "miner", ma, "index", ix, "err", err)
+					res[ix] = false
+				} else {
+					res[ix] = true
+				}
+
+				<-sema
+			}(addr, i, s, results)
+		}
+	}
+	wg.Wait()
+
+	return out, nil
 }

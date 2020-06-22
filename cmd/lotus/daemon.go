@@ -18,12 +18,12 @@ import (
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/mitchellh/go-homedir"
 	"github.com/multiformats/go-multiaddr"
+	"github.com/urfave/cli/v2"
 	"go.opencensus.io/plugin/runmetrics"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
 	"golang.org/x/xerrors"
-	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -163,7 +163,7 @@ var DaemonCmd = &cli.Command{
 			return xerrors.Errorf("repo init error: %w", err)
 		}
 
-		if err := paramfetch.GetParams(lcli.ReqContext(cctx), build.ParametersJson(), 0); err != nil {
+		if err := paramfetch.GetParams(lcli.ReqContext(cctx), build.ParametersJSON(), 0); err != nil {
 			return xerrors.Errorf("fetching proof parameters: %w", err)
 		}
 
@@ -179,6 +179,11 @@ var DaemonCmd = &cli.Command{
 
 		chainfile := cctx.String("import-chain")
 		if chainfile != "" {
+			chainfile, err := homedir.Expand(chainfile)
+			if err != nil {
+				return err
+			}
+
 			if err := ImportChain(r, chainfile); err != nil {
 				return err
 			}
@@ -304,9 +309,9 @@ func ImportChain(r repo.Repo, fname string) error {
 	if err != nil {
 		return err
 	}
-	defer lr.Close()
+	defer lr.Close() //nolint:errcheck
 
-	ds, err := lr.Datastore("/blocks")
+	ds, err := lr.Datastore("/chain")
 	if err != nil {
 		return err
 	}

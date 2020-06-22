@@ -63,10 +63,6 @@
     "title": "Proof-of-Spacetime(s)",
     "value": "Filecoin is a protocol token whose blockchain runs on a novel proof, called Proof-of-Spacetime, where blocks are created by miners that are storing data."
   },
-  "lotus-testnet": {
-    "title": "Filecoin Testnet",
-    "value": "Until we launch, we are making lots of changes to Lotus. The Testnet is expected to bring a few significant fixes/improvements. During Testnet, you can retrieve test filecoin from our network faucet to use as collateral to start mining. Test filecoin do not have any value – the official filecoin tokens will not be released until Mainnet launch."
-  },
   "filecoin-testnet": {
     "title": "Filecoin Testnet",
     "value": "Until we launch, we are making lots of changes to Lotus. The Testnet is expected to bring a few significant fixes/improvements. During Testnet, you can retrieve test filecoin from our network faucet to use as collateral to start mining. Test filecoin do not have any value – the official filecoin tokens will not be released until Mainnet launch."

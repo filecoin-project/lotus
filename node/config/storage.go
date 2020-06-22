@@ -2,12 +2,13 @@ package config
 
 import (
 	"encoding/json"
-	"github.com/filecoin-project/sector-storage/stores"
 	"io"
 	"io/ioutil"
 	"os"
 
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/sector-storage/stores"
 )
 
 func StorageFromFile(path string, def *stores.StorageConfig) (*stores.StorageConfig, error) {
