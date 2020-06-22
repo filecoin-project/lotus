@@ -25,8 +25,8 @@ func TestPoissonFunction(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(fmt.Sprintf("lam-%d-%d", test.lambdaBase, test.lambdaShift), func(t *testing.T) {
-			test := test
 
 			b := &bytes.Buffer{}
 			b.WriteString("icdf\n")
