@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"os"
 	"text/tabwriter"
 	"time"
@@ -26,6 +27,60 @@ var provingCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		provingInfoCmd,
 		provingDeadlinesCmd,
+		provingFaultsCmd,
+	},
+}
+
+var provingFaultsCmd = &cli.Command{
+	Name:  "faults",
+	Usage: "View the currently known proving faulty sectors information",
+	Action: func(cctx *cli.Context) error {
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		api, acloser, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer acloser()
+
+		ctx := lcli.ReqContext(cctx)
+
+		maddr, err := nodeApi.ActorAddress(ctx)
+		if err != nil {
+			return xerrors.Errorf("getting actor address: %w", err)
+		}
+
+		var mas miner.State
+		{
+			mact, err := api.StateGetActor(ctx, maddr, types.EmptyTSK)
+			if err != nil {
+				return err
+			}
+			rmas, err := api.ChainReadObj(ctx, mact.Head)
+			if err != nil {
+				return err
+			}
+			if err := mas.UnmarshalCBOR(bytes.NewReader(rmas)); err != nil {
+				return err
+			}
+		}
+		faults, err := mas.Faults.All(100000000000)
+		if err != nil {
+			return err
+		}
+		if len(faults) == 0 {
+			fmt.Println("no sector fault")
+		}
+		for _, num := range faults {
+			num2 := num % (mas.Info.WindowPoStPartitionSectors * (miner.WPoStPeriodDeadlines - 1))
+			deadline := uint64(math.Floor(float64(num2)/float64(mas.Info.WindowPoStPartitionSectors))) + 1
+			fmt.Printf("sector number = %d,deadline = %d\n", num, deadline)
+		}
+		return nil
 	},
 }
 
