@@ -6,29 +6,12 @@ runner = "local:exec"
 
 [builders."docker:go"]
 enabled = true
-skip_runtime_image = true
-
-[builders."docker:go".dockerfile_extensions]
-pre_mod_download = """
-RUN apt-get update && apt-get install -y ca-certificates llvm clang mesa-opencl-icd ocl-icd-opencl-dev jq gcc git bzr pkg-config
-ARG LOTUS_VERSION=c6a8fe16
-RUN git clone https://github.com/filecoin-project/lotus.git ${PLAN_DIR}/../lotus && cd ${PLAN_DIR}/../lotus && git checkout ${LOTUS_VERSION} && git submodule update --init && make 2k
-RUN cd ${PLAN_DIR}/../lotus/extern/filecoin-ffi \
-    && make \
-    && mkdir /tmp/filecoin-ffi \
-    && cp -R ${PLAN_DIR}/../lotus/extern/filecoin-ffi /tmp
-"""
-
-[builders."exec:go"]
-enabled = true
+runtime_image = "iptestground/oni-runtime:596ed33"
+build_base_image = "iptestground/oni-buildbase:596ed33"
+enable_go_build_cache = true
+skip_runtime_image = false
 
 [runners."local:docker"]
-enabled = true
-
-[runners."local:exec"]
-enabled = true
-
-[runners."cluster:swarm"]
 enabled = true
 
 [runners."cluster:k8s"]
@@ -37,7 +20,7 @@ enabled = true
 # seq 0
 [[testcases]]
 name = "lotus-network"
-instances = { min = 2, max = 2, default = 2 }
+instances = { min = 5, max = 5, default = 5 }
 
 [testcases.params]
-   miner-count = { type = "int", default = 1 }
+   miner-count = { type = "int", default = 2 }
