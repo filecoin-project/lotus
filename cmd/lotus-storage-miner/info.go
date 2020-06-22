@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"sort"
 	"time"
 
@@ -119,16 +120,20 @@ var infoCmd = &cli.Command{
 				faultyPercentage)
 		}
 
-		expWinChance := float64(types.BigMul(qpercI, types.NewInt(build.BlocksPerEpoch)).Int64()) / 1000000
-		if expWinChance > 0 {
-			if expWinChance > 1 {
-				expWinChance = 1
-			}
-			winRate := time.Duration(float64(time.Second*build.BlockDelay) / expWinChance)
-			winPerDay := float64(time.Hour*24) / float64(winRate)
+		if pow.MinerPower.RawBytePower.LessThan(power.ConsensusMinerMinPower) {
+			fmt.Print("Below minimum power threshold, no blocks will be won")
+		} else {
+			expWinChance := float64(types.BigMul(qpercI, types.NewInt(build.BlocksPerEpoch)).Int64()) / 1000000
+			if expWinChance > 0 {
+				if expWinChance > 1 {
+					expWinChance = 1
+				}
+				winRate := time.Duration(float64(time.Second*build.BlockDelay) / expWinChance)
+				winPerDay := float64(time.Hour*24) / float64(winRate)
 
-			fmt.Print("Expected block win rate: ")
-			color.Blue("%.4f/day (every %s)", winPerDay, winRate.Truncate(time.Second))
+				fmt.Print("Expected block win rate: ")
+				color.Blue("%.4f/day (every %s)", winPerDay, winRate.Truncate(time.Second))
+			}
 		}
 
 		fmt.Println()
