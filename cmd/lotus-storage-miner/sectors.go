@@ -27,6 +27,7 @@ var sectorsCmd = &cli.Command{
 		sectorsRefsCmd,
 		sectorsUpdateCmd,
 		sectorsPledgeCmd,
+		sectorsRemoveCmd,
 	},
 }
 
@@ -205,6 +206,39 @@ var sectorsRefsCmd = &cli.Command{
 			}
 		}
 		return nil
+	},
+}
+
+
+var sectorsRemoveCmd = &cli.Command{
+	Name:  "remove",
+	Usage: "Forcefully remove a sector (WARNING: This means losing power and collateral for the removed sector)",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "really-do-it",
+			Usage: "pass this flag if you know what you are doing",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if !cctx.Bool("really-do-it") {
+			return xerrors.Errorf("this is a command for advanced users, only use it if you are sure of what you are doing")
+		}
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+		if cctx.Args().Len() != 1 {
+			return xerrors.Errorf("must pass sector ID")
+		}
+
+		id, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
+		if err != nil {
+			return xerrors.Errorf("could not parse sector ID: %w", err)
+		}
+
+		return nodeApi.SectorRemove(ctx, abi.SectorNumber(id))
 	},
 }
 

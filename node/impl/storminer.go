@@ -172,6 +172,10 @@ func (sm *StorageMinerAPI) SectorsUpdate(ctx context.Context, id abi.SectorNumbe
 	return sm.Miner.ForceSectorState(ctx, id, sealing.SectorState(state))
 }
 
+func (sm *StorageMinerAPI) SectorRemove(ctx context.Context, id abi.SectorNumber) error {
+	return sm.Miner.RemoveSector(ctx, id)
+}
+
 func (sm *StorageMinerAPI) WorkerConnect(ctx context.Context, url string) error {
 	w, err := connectRemoteWorker(ctx, sm, url)
 	if err != nil {

@@ -39,3 +39,7 @@ func (m *Miner) PledgeSector() error {
 func (m *Miner) ForceSectorState(ctx context.Context, id abi.SectorNumber, state sealing.SectorState) error {
 	return m.sealing.ForceSectorState(ctx, id, state)
 }
+
+func (m *Miner) RemoveSector(ctx context.Context, id abi.SectorNumber) error {
+	return m.sealing.Remove(ctx, id)
+}
