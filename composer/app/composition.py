@@ -188,11 +188,13 @@ class Composition(param.Parameterized):
 
     groups_ui = None
 
-    def __init__(self, manifest=None, **params):
+    def __init__(self, manifest=None, add_default_group=False, **params):
         super(Composition, self).__init__(**params)
         self.manifest = manifest
         self.testcase_param_classes = dict()
         self._set_manifest(manifest)
+        if add_default_group:
+            self._add_group()
 
     @classmethod
     def from_dict(cls, d, manifest=None):
@@ -262,7 +264,7 @@ class Composition(param.Parameterized):
             print_err("No testcase found in manifest named " + case)
         return cls
 
-    def _add_group(self, evt):
+    def _add_group(self, *args):
         g = Group(id='New Group', params_class=self._params_class_for_current_testcase())
         groups = self.param['groups'].objects
         groups.append(g)

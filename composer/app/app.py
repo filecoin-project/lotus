@@ -3,10 +3,11 @@ import panel as pn
 import toml
 from .util import get_plans, get_manifest
 from .composition import Composition
+from .runner import TestRunner
 
 STAGE_WELCOME = 'Welcome'
 STAGE_CONFIG_COMPOSITION = 'Configure'
-
+STAGE_RUN_TEST = 'Run'
 
 class Welcome(param.Parameterized):
     composition = param.Parameter()
@@ -45,7 +46,7 @@ class Welcome(param.Parameterized):
             return
         print('plan selected: {}'.format(evt.new))
         manifest = get_manifest(evt.new)
-        self.composition = Composition(manifest=manifest)
+        self.composition = Composition(manifest=manifest, add_default_group=True)
         print('new composition: ', self.composition)
         self.ready = True
 
@@ -65,7 +66,8 @@ class WorkflowPipeline(object):
     def __init__(self):
         stages = [
             (STAGE_WELCOME, Welcome(), dict(ready_parameter='ready')),
-            (STAGE_CONFIG_COMPOSITION, ConfigureComposition())
+            (STAGE_CONFIG_COMPOSITION, ConfigureComposition()),
+            (STAGE_RUN_TEST, TestRunner()),
         ]
 
         self.pipeline = pn.pipeline.Pipeline(debug=True, stages=stages)
@@ -79,6 +81,7 @@ class WorkflowPipeline(object):
                 self.pipeline.next_button,
             ),
             self.pipeline.stage,
+            sizing_mode='stretch_width',
         )
 
 

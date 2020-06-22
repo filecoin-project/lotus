@@ -17,6 +17,7 @@ RUN mkdir /testground && chmod 777 /testground
 ENV HOME /composer
 ENV TESTGROUND_HOME /testground
 ENV LISTEN_PORT 5006
+ENV TESTGROUND_DAEMON_HOST host.docker.internal
 
 VOLUME /testground/plans
 
