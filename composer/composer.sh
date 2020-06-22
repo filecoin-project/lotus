@@ -74,6 +74,12 @@ trap "{ cleanup; }" EXIT
 # make sure we have the commands we need
 require_cmds jq docker rsync
 
+if [[ "$SKIP_BUILD" == "" ]]; then
+  echo "Building latest docker image. Set SKIP_BUILD env var to any value to bypass."
+  require_cmds make
+  make docker
+fi
+
 # make temp dir for manifests
 temp_base="/tmp"
 if [[ "$TEMP" != "" ]]; then
