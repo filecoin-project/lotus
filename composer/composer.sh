@@ -80,8 +80,7 @@ cleanup () {
 trap "{ cleanup; }" EXIT
 
 # make sure we have the commands we need
-require_cmds jq dockerimport param
-import panel as pn
+require_cmds jq docker
 
 # make temp dir for manifests
 temp_base="/tmp"

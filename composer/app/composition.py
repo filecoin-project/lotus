@@ -107,7 +107,7 @@ class Metadata(Base):
 
 class Global(Base):
     plan = param.String()
-    case = param.String()
+    case = param.Selector()
     builder = param.String()
     runner = param.String()
 
@@ -116,6 +116,15 @@ class Global(Base):
     # TODO: add ui widget for key/value maps instead of using Dict param type
     build_config = param.Dict(default={}, allow_None=True)
     run_config = param.Dict(default={}, allow_None=True)
+
+    def set_manifest(self, manifest):
+        if manifest is None:
+            return
+        print('manifest:', manifest)
+        self.plan = manifest['name']
+        cases = [tc['name'] for tc in manifest['testcases']]
+        self.param['case'].objects = cases
+        print('global config updated manifest. cases:', self.param['case'].objects)
 
 
 class Resources(Base):
@@ -173,8 +182,8 @@ class Group(Base):
 
 
 class Composition(param.Parameterized):
-    metadata = param.Parameter(Metadata, precedence=-1)
-    global_config = param.Parameter(Global, precedence=-1)
+    metadata = param.Parameter(Metadata(), precedence=-1)
+    global_config = param.Parameter(Global(), precedence=-1)
     groups = param.ObjectSelector()
 
     groups_ui = None
@@ -239,6 +248,9 @@ class Composition(param.Parameterized):
         if manifest is None:
             return
 
+        g = self.global_config
+        print('global conifg: ', g)
+        g.set_manifest(manifest)
         for tc in manifest.get('testcases', []):
             self.testcase_param_classes[tc['name']] = make_group_params_class(tc)
 
