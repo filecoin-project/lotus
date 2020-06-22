@@ -4,7 +4,7 @@ import toml
 from .util import get_manifest, print_err
 
 
-def value_dict(parameterized, renames=None):
+def value_dict(parameterized, renames=None, stringify=False):
     d = dict()
     if renames is None:
         renames = dict()
@@ -19,6 +19,8 @@ def value_dict(parameterized, renames=None):
                 val = val.to_dict()
             except:
                 val = value_dict(val, renames=renames)
+        if stringify:
+            val = str(val)
         d[name] = val
     return d
 
@@ -30,7 +32,8 @@ def make_group_params_class(testcase):
     for name, p in testcase.get('params', {}).items():
         tc_params[name] = make_param(p)
 
-    cls = param.parameterized_class('Test Params for testcase {}'.format(testcase.get('name', '')), tc_params, Base)
+    name = 'Test Params for testcase {}'.format(testcase.get('name', ''))
+    cls = param.parameterized_class(name, tc_params, GroupParamsBase)
     return cls
 
 
@@ -89,6 +92,11 @@ class Base(param.Parameterized):
 
     def to_dict(self):
         return value_dict(self)
+
+
+class GroupParamsBase(Base):
+    def to_dict(self):
+        return value_dict(self, stringify=True)
 
 
 class Metadata(Base):
@@ -156,17 +164,37 @@ class Build(Base):
     dependencies = param.List(allow_None=True)
 
 
+class Run(Base):
+    artifact = param.String(allow_None=True)
+    test_params = param.Parameter()
+
+    def __init__(self, params_class=None, **params):
+        super().__init__(**params)
+        if params_class is not None:
+            self.test_params = params_class()
+
+    @classmethod
+    def from_dict(cls, d, params_class=None):
+        return Run(artifact=d.get('artifact', None), params_class=params_class)
+
+    def panel(self):
+        return pn.Column(
+            self.param['artifact'],
+            pn.Param(self.test_params)
+        )
+
+
 class Group(Base):
     id = param.String()
     instances = param.Parameter(Instances(), precedence=-1)
     resources = param.Parameter(Resources(), allow_None=True, precedence=-1)
     build = param.Parameter(Build(), precedence=-1)
-    params = param.Parameter(precedence=-1)
+    run = param.Parameter(Run(), precedence=-1)
 
     def __init__(self, params_class=None, **params):
         super().__init__(**params)
         if params_class is not None:
-            self.params = params_class()
+            self.run = Run(params_class=params_class)
         self._set_name(self.id)
 
     @classmethod
@@ -176,7 +204,7 @@ class Group(Base):
             resources=Resources.from_dict(d.get('resources', {})),
             instances=Instances.from_dict(d.get('instances', {})),
             build=Build.from_dict(d.get('build', {})),
-            params=params_class.from_dict(d.get('params', {})),
+            run=Run.from_dict(d.get('params', {}), params_class=params_class),
         )
 
     def panel(self):
@@ -187,7 +215,7 @@ class Group(Base):
             self.instances,
             self.resources,
             self.build,
-            self.params
+            self.run.panel(),
         )
 
 
@@ -280,7 +308,7 @@ class Composition(param.Parameterized):
         print('test case changed', self.global_config.case)
         cls = self._params_class_for_current_testcase()
         for g in self.groups:
-            g.params = cls()
+            g.run.test_params = cls()
         self._refresh_tabs()
 
     def _refresh_tabs(self, *args):
