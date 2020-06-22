@@ -1,6 +1,15 @@
+FROM golang:1.14.4-buster as tg-build
+
+ARG TESTGROUND_REF="oni"
+WORKDIR /usr/src
+RUN git clone https://github.com/testground/testground.git
+RUN cd testground && git checkout $TESTGROUND_REF && go build .
+
 FROM python:3.8-buster
 
 WORKDIR /usr/src/app
+
+COPY --from=tg-build /usr/src/testground/testground /usr/bin/testground
 
 RUN mkdir /composer && chmod 777 /composer
 RUN mkdir /testground && chmod 777 /testground
