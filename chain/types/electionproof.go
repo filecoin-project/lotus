@@ -120,10 +120,15 @@ type poiss struct {
 // returns (instance, `1-poisscdf(0, lambda)`)
 // CDF value returend is reused when calling `next`
 func newPoiss(lambda *big.Int) (*poiss, *big.Int) {
+	// e^-lambda
 	elam := expneg(lambda) // Q.256
 
+	// pmf(k) = (lambda^k)*(e^lambda) / k!
+	// k = 0 here so it similifies to just e^labda
 	pmf := new(big.Int).Set(elam) // Q.256
 
+	// icdf(k) = 1 - ∑ᵏᵢ₌₀ pmf(i)
+	// icdf(0) = 1 - pmf(0)
 	icdf := big.NewInt(1)
 	icdf = icdf.Lsh(icdf, precision) // Q.256
 	icdf = icdf.Sub(icdf, pmf)       // Q.256
@@ -148,6 +153,10 @@ func newPoiss(lambda *big.Int) (*poiss, *big.Int) {
 // next computes next `k++, 1-poisscdf(k, lam)`
 // return is in Q.256 format
 func (p *poiss) next() *big.Int {
+	// incrementally compute next pfm and icdf
+	// pmf(k) = (lambda^k)*(e^lambda) / k!
+	// so pmf(k) = pmf(k-1) * lambda / k
+
 	p.k++
 	p.kBig = p.kBig.SetUint64(p.k) // Q.0
 
@@ -157,6 +166,7 @@ func (p *poiss) next() *big.Int {
 	p.pmf = p.pmf.Rsh(p.tmp, precision) // Q.512 >> 256 => Q.256
 
 	// calculate output
+	// icdf(k) = icdf(k-1) - pmf(k)
 	p.icdf = p.icdf.Sub(p.icdf, p.pmf) // Q.256
 	return p.icdf
 }
