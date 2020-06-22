@@ -77,8 +77,7 @@ func expneg(x *big.Int) *big.Int {
 	deno := polyval(expDenoCoef, x) // Q.256
 
 	num = num.Lsh(num, precision) // Q.512
-
-	return num.Div(num, deno) // Q.512 / Q.256 => Q.256
+	return num.Div(num, deno)     // Q.512 / Q.256 => Q.256
 }
 
 // polyval evaluates a polynomial given by coefficients `p` in Q.256 format,
@@ -142,12 +141,4 @@ func (ep *ElectionProof) ComputeWinCount(power BigInt, totalPower BigInt) uint64
 	}
 
 	return j
-}
-
-func fxToD(x *big.Int) float64 {
-	deno := big.NewInt(1)
-	deno = deno.Lsh(deno, 256)
-	rat := new(big.Rat).SetFrac(x, deno)
-	f, _ := rat.Float64()
-	return f
 }

@@ -7,13 +7,21 @@ import (
 	"testing"
 )
 
+func q256ToF(x *big.Int) float64 {
+	deno := big.NewInt(1)
+	deno = deno.Lsh(deno, 256)
+	rat := new(big.Rat).SetFrac(x, deno)
+	f, _ := rat.Float64()
+	return f
+}
+
 func TestElectionLam(t *testing.T) {
 	p := big.NewInt(64)
 	tot := big.NewInt(128)
 	lam := lambda(p, tot)
 	target := 64. * 5. / 128.
-	if fxToD(lam) != target {
-		t.Fatalf("wrong lambda: %f, should be: %f", fxToD(lam), target)
+	if q256ToF(lam) != target {
+		t.Fatalf("wrong lambda: %f, should be: %f", q256ToF(lam), target)
 	}
 }
 
