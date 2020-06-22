@@ -230,3 +230,18 @@ func (evt SectorFaultReported) apply(state *SectorInfo) {
 }
 
 type SectorFaultedFinal struct{}
+
+// External events
+
+type SectorRemove struct{}
+
+func (evt SectorRemove) apply(state *SectorInfo) {}
+
+type SectorRemoved struct{}
+
+func (evt SectorRemoved) apply(state *SectorInfo) {}
+
+type SectorRemoveFailed struct{ error }
+
+func (evt SectorRemoveFailed) FormatError(xerrors.Printer) (next error) { return evt.error }
+func (evt SectorRemoveFailed) apply(*SectorInfo)                        {}

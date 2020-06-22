@@ -32,6 +32,8 @@ func (m *Sealing) Plan(events []statemachine.Event, user interface{}) (interface
 }
 
 var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *SectorInfo) error{
+	// Sealing
+
 	UndefinedSectorState: planOne(on(SectorStart{}, Packing)),
 	Packing:              planOne(on(SectorPacked{}, PreCommit1)),
 	PreCommit1: planOne(
@@ -69,10 +71,7 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorFinalizeFailed{}, FinalizeFailed),
 	),
 
-	Proving: planOne(
-		on(SectorFaultReported{}, FaultReported),
-		on(SectorFaulty{}, Faulty),
-	),
+	// Sealing errors
 
 	SealPreCommit1Failed: planOne(
 		on(SectorRetrySealPreCommit1{}, PreCommit1),
@@ -102,10 +101,23 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorRetryFinalize{}, FinalizeSector),
 	),
 
+	// Post-seal
+
+	Proving: planOne(
+		on(SectorFaultReported{}, FaultReported),
+		on(SectorFaulty{}, Faulty),
+		on(SectorRemove{}, Removing),
+	),
+	Removing: planOne(
+		on(SectorRemoved{}, Removed),
+		on(SectorRemoveFailed{}, RemoveFailed),
+	),
 	Faulty: planOne(
 		on(SectorFaultReported{}, FaultReported),
 	),
+
 	FaultedFinal: final,
+	Removed:      final,
 }
 
 func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(statemachine.Context, SectorInfo) error, error) {
@@ -207,9 +219,6 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		return m.handleCommitWait, nil
 	case FinalizeSector:
 		return m.handleFinalizeSector, nil
-	case Proving:
-		// TODO: track sector health / expiration
-		log.Infof("Proving sector %d", state.SectorNumber)
 
 	// Handled failure modes
 	case SealPreCommit1Failed:
@@ -224,6 +233,13 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		return m.handleCommitFailed, nil
 	case FinalizeFailed:
 		return m.handleFinalizeFailed, nil
+
+	// Post-seal
+	case Proving:
+		// TODO: track sector health / expiration
+		log.Infof("Proving sector %d", state.SectorNumber)
+	case Removing:
+		return m.handleRemoving, nil
 
 		// Faults
 	case Faulty:

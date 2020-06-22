@@ -138,6 +138,10 @@ func (m *Sealing) newSector(sid abi.SectorNumber, rt abi.RegisteredSealProof, pi
 	})
 }
 
+func (m *Sealing) Remove(ctx context.Context, sid abi.SectorNumber) error {
+	return m.sectors.Send(uint64(sid), SectorRemove{})
+}
+
 func (m *Sealing) minerSector(num abi.SectorNumber) abi.SectorID {
 	mid, err := address.IDFromAddress(m.maddr)
 	if err != nil {
