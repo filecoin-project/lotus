@@ -83,11 +83,13 @@ func expneg(x *big.Int) *big.Int {
 
 // polyval evaluates a polynomial given by coefficients `p` in Q.256 format,
 // at point `x` in Q.256 format, output is in Q.256
+
 func polyval(p []*big.Int, x *big.Int) *big.Int {
 	res := new(big.Int).Set(p[0]) // Q.256
+	tmp := new(big.Int)           // big.Int.Mul doesn't like when input is reused as output
 	for _, c := range p[1:] {
-		res = res.Mul(res, x)         // Q.256 * Q.256 => Q.512
-		res = res.Rsh(res, precision) // Q.512 >> 256 => Q.256
+		tmp = tmp.Mul(res, x)         // Q.256 * Q.256 => Q.512
+		res = res.Rsh(tmp, precision) // Q.512 >> 256 => Q.256
 		res = res.Add(res, c)
 	}
 
@@ -129,12 +131,13 @@ func (ep *ElectionProof) ComputeWinCount(power BigInt, totalPower BigInt) uint64
 	rhs = rhs.Lsh(rhs, precision) // Q.256
 	rhs = rhs.Sub(rhs, elam)      // Q.256
 
+	tmp := new(big.Int) // big.Int.Mul doesn't like when input is reused as output
 	var j uint64
 	for lhs.Cmp(rhs) < 0 && j < MaxWinCount {
 		j++
-		pmf = pmf.Mul(pmf, lam)                                 // Q.256 * Q.256 => Q.512
-		pmf = pmf.Rsh(pmf, precision)                           // Q.512 >> 256 => Q.256
 		pmf = pmf.Div(pmf, new(big.Int).SetUint64(j) /* Q.0 */) // Q.256 / Q.0 => Q.256
+		tmp = tmp.Mul(pmf, lam)                                 // Q.256 * Q.256 => Q.512
+		pmf = pmf.Rsh(tmp, precision)                           // Q.512 >> 256 => Q.256
 		rhs = rhs.Sub(rhs, pmf)
 	}
 
