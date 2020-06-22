@@ -259,6 +259,10 @@ func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (cid.Cid, error
 	return nd, nil
 }
 
+func (a *API) ClientDelete(ctx context.Context, dataCid cid.Cid) error {
+	return a.LocalDAG.Remove(ctx, dataCid)
+}
+
 func (a *API) ClientImportLocal(ctx context.Context, f io.Reader) (cid.Cid, error) {
 	file := files.NewReaderFile(f)
 

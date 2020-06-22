@@ -178,6 +178,8 @@ type FullNode interface {
 
 	// ClientImport imports file under the specified path into filestore
 	ClientImport(ctx context.Context, ref FileRef) (cid.Cid, error)
+	// ClientDelete removes data with the specified CID from the filestore
+	ClientDelete(context.Context, cid.Cid) error
 	// ClientStartDeal proposes a deal with a miner
 	ClientStartDeal(ctx context.Context, params *StartDealParams) (*cid.Cid, error)
 	// ClientGetDeal info returns the latest information about a given deal

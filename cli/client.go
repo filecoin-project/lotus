@@ -63,6 +63,7 @@ var clientCmd = &cli.Command{
 		clientQueryAskCmd,
 		clientListDeals,
 		clientCarGenCmd,
+		clientDeleteDataCmd,
 	},
 }
 
@@ -104,6 +105,36 @@ var clientImportCmd = &cli.Command{
 		}
 
 		fmt.Println(encoder.Encode(c))
+
+		return nil
+	},
+}
+
+var clientDeleteDataCmd = &cli.Command{
+	Name:      "delete-data",
+	Usage:     "Delete previously-imported data by its CID",
+	ArgsUsage: "[dataCid]",
+	Flags:     []cli.Flag{},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		if cctx.NArg() != 1 {
+			return xerrors.New("expected 1 arg: dataCid")
+		}
+
+		dataCid, err := cid.Parse(cctx.Args().Get(0))
+		if err != nil {
+			return err
+		}
+
+		err = api.ClientDelete(ReqContext(cctx), dataCid)
+		if err != nil {
+			return err
+		}
 
 		return nil
 	},
