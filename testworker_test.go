@@ -73,7 +73,15 @@ func (t *testWorker) SealCommit2(ctx context.Context, sector abi.SectorID, c1o s
 	panic("implement me")
 }
 
-func (t *testWorker) FinalizeSector(ctx context.Context, sector abi.SectorID) error {
+func (t *testWorker) FinalizeSector(ctx context.Context, sector abi.SectorID, keepUnsealed []storage.Range) error {
+	panic("implement me")
+}
+
+func (t *testWorker) ReleaseUnsealed(ctx context.Context, sector abi.SectorID, safeToFree []storage.Range) error {
+	panic("implement me")
+}
+
+func (t *testWorker) Remove(ctx context.Context, sector abi.SectorID) error {
 	panic("implement me")
 }
 

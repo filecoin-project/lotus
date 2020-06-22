@@ -500,7 +500,11 @@ func (sb *Sealer) SealCommit2(ctx context.Context, sector abi.SectorID, phase1Ou
 	return ffi.SealCommitPhase2(phase1Out, sector.Number, sector.Miner)
 }
 
-func (sb *Sealer) FinalizeSector(ctx context.Context, sector abi.SectorID) error {
+func (sb *Sealer) FinalizeSector(ctx context.Context, sector abi.SectorID, keepUnsealed []storage.Range) error {
+	if len(keepUnsealed) > 0 {
+		return xerrors.Errorf("keepUnsealed unsupported") // TODO: impl for fastretrieval copies
+	}
+
 	paths, done, err := sb.sectors.AcquireSector(ctx, sector, stores.FTCache, 0, false)
 	if err != nil {
 		return xerrors.Errorf("acquiring sector cache path: %w", err)
@@ -508,6 +512,20 @@ func (sb *Sealer) FinalizeSector(ctx context.Context, sector abi.SectorID) error
 	defer done()
 
 	return ffi.ClearCache(uint64(sb.ssize), paths.Cache)
+}
+
+func (sb *Sealer) ReleaseUnsealed(ctx context.Context, sector abi.SectorID, safeToFree []storage.Range) error {
+	// This call is meant to mark storage as 'freeable'. Given that unsealing is
+	// very expensive, we don't remove data as soon as we can - instead we only
+	// do that when we don't have free space for data that really needs it
+
+	// This function should not be called at this layer, everything should be
+	// handled in localworker
+	return xerrors.Errorf("not supported at this layer")
+}
+
+func (sb *Sealer) Remove(ctx context.Context, sector abi.SectorID) error {
+	return xerrors.Errorf("not supported at this layer") // happens in localworker
 }
 
 func GeneratePieceCIDFromFile(proofType abi.RegisteredSealProof, piece io.Reader, pieceSize abi.UnpaddedPieceSize) (cid.Cid, error) {
