@@ -119,6 +119,7 @@ const (
 	ExtractApiKey
 	HeadMetricsKey
 	RunPeerTaggerKey
+	JournalKey
 
 	SetApiEndpointKey
 
@@ -150,6 +151,7 @@ func defaults() []Option {
 		Override(new(record.Validator), modules.RecordValidator),
 		Override(new(dtypes.Bootstrapper), dtypes.Bootstrapper(false)),
 		Override(new(dtypes.ShutdownChan), make(chan struct{})),
+		Override(JournalKey, modules.SetupJournal),
 
 		// Filecoin modules
 

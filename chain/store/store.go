@@ -20,6 +20,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/metrics"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/trace"
@@ -323,6 +324,14 @@ func (cs *ChainStore) reorgWorker(ctx context.Context, initialNotifees []ReorgNo
 					log.Error("computing reorg ops failed: ", err)
 					continue
 				}
+
+				journal.Add("sync", map[string]interface{}{
+					"op":    "headChange",
+					"from":  r.old.Key(),
+					"to":    r.new.Key(),
+					"rev":   len(revert),
+					"apply": len(apply),
+				})
 
 				// reverse the apply array
 				for i := len(apply)/2 - 1; i >= 0; i-- {
