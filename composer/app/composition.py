@@ -125,6 +125,8 @@ class Global(Base):
         cases = [tc['name'] for tc in manifest['testcases']]
         self.param['case'].objects = cases
         print('global config updated manifest. cases:', self.param['case'].objects)
+        if len(cases) != 0:
+            self.case = cases[0]
 
 
 class Resources(Base):
@@ -149,9 +151,9 @@ class Build(Base):
 
 class Group(Base):
     id = param.String()
-    instances = param.Parameter(Instances, precedence=-1)
-    resources = param.Parameter(Resources, allow_None=True, precedence=-1)
-    build = param.Parameter(Build, precedence=-1)
+    instances = param.Parameter(Instances(), precedence=-1)
+    resources = param.Parameter(Resources(), allow_None=True, precedence=-1)
+    build = param.Parameter(Build(), precedence=-1)
     params = param.Parameter(precedence=-1)
 
     def __init__(self, params_class=None, **params):
@@ -265,7 +267,7 @@ class Composition(param.Parameterized):
         return cls
 
     def _add_group(self, *args):
-        g = Group(id='New Group', params_class=self._params_class_for_current_testcase())
+        g = Group(id='new-group', params_class=self._params_class_for_current_testcase())
         groups = self.param['groups'].objects
         groups.append(g)
         self.param['groups'].objects = groups

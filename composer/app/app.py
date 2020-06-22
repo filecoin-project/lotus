@@ -9,6 +9,7 @@ STAGE_WELCOME = 'Welcome'
 STAGE_CONFIG_COMPOSITION = 'Configure'
 STAGE_RUN_TEST = 'Run'
 
+
 class Welcome(param.Parameterized):
     composition = param.Parameter()
     composition_picker = pn.widgets.FileInput(accept='.toml')
