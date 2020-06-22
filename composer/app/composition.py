@@ -85,7 +85,6 @@ def str_param(pdef):
 
 
 class Base(param.Parameterized):
-
     @classmethod
     def from_dict(cls, d):
         return cls(**d)
@@ -166,7 +165,7 @@ class Build(Base):
 
 class Run(Base):
     artifact = param.String(allow_None=True)
-    test_params = param.Parameter()
+    test_params = param.Parameter(instantiate=True)
 
     def __init__(self, params_class=None, **params):
         super().__init__(**params)
@@ -186,10 +185,10 @@ class Run(Base):
 
 class Group(Base):
     id = param.String()
-    instances = param.Parameter(Instances(), precedence=-1)
-    resources = param.Parameter(Resources(), allow_None=True, precedence=-1)
-    build = param.Parameter(Build(), precedence=-1)
-    run = param.Parameter(Run(), precedence=-1)
+    instances = param.Parameter(Instances(), instantiate=True)
+    resources = param.Parameter(Resources(), allow_None=True, instantiate=True)
+    build = param.Parameter(Build(), instantiate=True)
+    run = param.Parameter(Run(), instantiate=True)
 
     def __init__(self, params_class=None, **params):
         super().__init__(**params)
@@ -220,8 +219,8 @@ class Group(Base):
 
 
 class Composition(param.Parameterized):
-    metadata = param.Parameter(Metadata(), precedence=-1)
-    global_config = param.Parameter(Global(), precedence=-1)
+    metadata = param.Parameter(Metadata(), instantiate=True)
+    global_config = param.Parameter(Global(), instantiate=True)
 
     groups = param.List(precedence=-1)
     group_tabs = pn.Tabs()
