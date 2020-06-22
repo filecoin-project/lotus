@@ -128,6 +128,13 @@ class Global(Base):
         if len(cases) != 0:
             self.case = cases[0]
 
+        if 'defaults' in manifest:
+            print('manifest defaults', manifest['defaults'])
+            if self.builder == '':
+                self.builder = manifest['defaults'].get('builder', '')
+            if self.runner == '':
+                self.runner = manifest['defaults'].get('runner', '')
+
 
 class Resources(Base):
     memory = param.String(allow_None=True)
