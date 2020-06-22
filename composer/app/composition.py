@@ -179,8 +179,8 @@ class Group(Base):
             params=params_class.from_dict(d.get('params', {})),
         )
 
-    @param.depends('id', watch=True)
     def panel(self):
+        print('rendering groups panel for ' + self.id)
         return pn.Column(
             "**Group: {}**".format(self.id),
             self.instances,
@@ -219,7 +219,8 @@ class Composition(param.Parameterized):
             metadata=Metadata.from_dict(d.get('metadata', {})),
             global_config=Global.from_dict(d.get('global', {})),
         )
-        c.setup_groups()
+        params_class = c._params_class_for_current_testcase()
+        c.groups = [Group.from_dict(g, params_class=params_class) for g in d.get('groups', [])]
 
         return c
 
@@ -234,7 +235,7 @@ class Composition(param.Parameterized):
         add_group_button = pn.widgets.Button(name='Add Group')
         add_group_button.on_click(self._add_group)
 
-        self.group_tabs[:] = [(g.id, g.panel()) for g in self.groups]
+        self._refresh_tabs()
 
         if self.groups_ui is None:
             self.groups_ui = pn.Column(
@@ -257,12 +258,6 @@ class Composition(param.Parameterized):
         for tc in manifest.get('testcases', []):
             self.testcase_param_classes[tc['name']] = make_group_params_class(tc)
 
-    def setup_groups(self):
-        params_class = self._params_class_for_current_testcase()
-        groups = [Group.from_dict(g, params_class=params_class) for g in self.manifest.get('groups', [])]
-        self.groups = groups
-
-    @param.depends("global_config.case", watch=True)
     def _params_class_for_current_testcase(self):
         case = self.global_config.case
         cls = self.testcase_param_classes.get(case, None)
@@ -277,6 +272,18 @@ class Composition(param.Parameterized):
         groups.append(g)
         self.groups = groups
         self.group_tabs.active = len(groups)-1
+
+    @param.depends("global_config.case", watch=True)
+    def _test_case_changed(self):
+        print('test case changed', self.global_config.case)
+        cls = self._params_class_for_current_testcase()
+        for g in self.groups:
+            g.params = cls()
+        self._refresh_tabs()
+
+
+    def _refresh_tabs(self):
+        self.group_tabs[:] = [(g.id, g.panel()) for g in self.groups]
 
     def to_dict(self):
         return {
