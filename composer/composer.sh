@@ -77,7 +77,14 @@ get_host_ip() {
   # get interface of default route
   local net_if=$(netstat -rn | awk '/^0.0.0.0/ {thif=substr($0,74,10); print thif;} /^default.*UG/ {thif=substr($0,65,10); print thif;}')
   # use ifconfig to get addr of that interface
-  ifconfig ${net_if} | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){3}[0-9]*' | grep -v '127.0.0.1'
+  detected_host_ip=`ifconfig ${net_if} | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){3}[0-9]*' | grep -v '127.0.0.1'`
+
+  if [ -z "$detected_host_ip" ]
+  then
+    detected_host_ip="host.docker.internal"
+  fi
+
+  echo $detected_host_ip
 }
 
 # run cleanup on exit
