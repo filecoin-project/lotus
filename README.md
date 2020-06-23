@@ -12,7 +12,6 @@ Our mandate is:
 
 * [@raulk](https://github.com/raulk) (Captain + TL)
 * [@nonsense](https://github.com/nonsense) (Testground TG + engineer)
-* [@robmat05](https://github.com/robmat05) (TPM)
 * [@yusefnapora](https://github.com/yusefnapora) (engineer and technical writer)
 * [@vyzo](https://github.com/vyzo) (engineer)
 * [@schomatis](https://github.com/schomatis) (advisor)
