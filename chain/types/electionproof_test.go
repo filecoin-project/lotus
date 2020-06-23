@@ -70,7 +70,26 @@ func TestLambdaFunction(t *testing.T) {
 			golden.Assert(t, []byte(lam.String()))
 		})
 	}
+}
 
+func TestExpFunction(t *testing.T) {
+	const N = 256
+
+	step := big.NewInt(5)
+	step = step.Lsh(step, 256) // Q.256
+	step = step.Div(step, big.NewInt(N-1))
+
+	x := big.NewInt(0)
+	b := &bytes.Buffer{}
+
+	b.WriteString("x, y\n")
+	for i := 0; i < N; i++ {
+		y := expneg(x)
+		fmt.Fprintf(b, "%s,%s\n", x, y)
+		x = x.Add(x, step)
+	}
+
+	golden.Assert(t, b.Bytes())
 }
 
 func q256ToF(x *big.Int) float64 {
