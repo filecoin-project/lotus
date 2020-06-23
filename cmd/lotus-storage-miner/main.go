@@ -24,6 +24,7 @@ func main() {
 	local := []*cli.Command{
 		actorCmd,
 		storageDealsCmd,
+		retrievalDealsCmd,
 		infoCmd,
 		initCmd,
 		rewardsCmd,
