@@ -53,7 +53,14 @@ type Sealing struct {
 	sc      SectorIDCounter
 	verif   ffiwrapper.Verifier
 
-	pcp PreCommitPolicy
+	unsealedInfos map[abi.SectorNumber]UnsealedSectorInfo
+	pcp           PreCommitPolicy
+}
+
+type UnsealedSectorInfo struct {
+	// stored should always equal sum of pieceSizes
+	stored     uint64
+	pieceSizes []abi.UnpaddedPieceSize
 }
 
 func New(api SealingAPI, events Events, maddr address.Address, ds datastore.Batching, sealer sectorstorage.SectorManager, sc SectorIDCounter, verif ffiwrapper.Verifier, pcp PreCommitPolicy) *Sealing {
@@ -61,11 +68,12 @@ func New(api SealingAPI, events Events, maddr address.Address, ds datastore.Batc
 		api:    api,
 		events: events,
 
-		maddr:  maddr,
-		sealer: sealer,
-		sc:     sc,
-		verif:  verif,
-		pcp:    pcp,
+		maddr:         maddr,
+		sealer:        sealer,
+		sc:            sc,
+		verif:         verif,
+		unsealedInfos: make(map[abi.SectorNumber]UnsealedSectorInfo),
+		pcp:           pcp,
 	}
 
 	s.sectors = statemachine.New(namespace.Wrap(ds, datastore.NewKey(SectorStorePrefix)), s, SectorInfo{})
@@ -130,7 +138,18 @@ func (m *Sealing) AddPieceToAnySector(ctx context.Context, size abi.UnpaddedPiec
 
 func (m *Sealing) addPiece(sectorID abi.SectorNumber, piece Piece) error {
 	log.Infof("Adding piece to sector %d", sectorID)
-	return m.sectors.Send(uint64(sectorID), SectorAddPiece{NewPiece: piece})
+	err := m.sectors.Send(uint64(sectorID), SectorAddPiece{NewPiece: piece})
+	if err != nil {
+		return err
+	}
+
+	ui := m.unsealedInfos[sectorID]
+	m.unsealedInfos[sectorID] = UnsealedSectorInfo{
+		stored:     ui.stored + uint64(piece.Piece.Size.Unpadded()),
+		pieceSizes: append(ui.pieceSizes, piece.Piece.Size.Unpadded()),
+	}
+
+	return nil
 }
 
 func (m *Sealing) Remove(ctx context.Context, sid abi.SectorNumber) error {
@@ -139,7 +158,14 @@ func (m *Sealing) Remove(ctx context.Context, sid abi.SectorNumber) error {
 
 func (m *Sealing) StartPacking(sectorID abi.SectorNumber) error {
 	log.Infof("Starting packing sector %d", sectorID)
-	return m.sectors.Send(uint64(sectorID), SectorStartPacking{})
+	err := m.sectors.Send(uint64(sectorID), SectorStartPacking{})
+	if err != nil {
+		return err
+	}
+
+	delete(m.unsealedInfos, sectorID)
+
+	return nil
 }
 
 // newSector creates a new sector for deal storage
@@ -150,10 +176,21 @@ func (m *Sealing) newSector(sid abi.SectorNumber) error {
 	}
 
 	log.Infof("Creating sector %d", sid)
-	return m.sectors.Send(uint64(sid), SectorStart{
+	err = m.sectors.Send(uint64(sid), SectorStart{
 		ID:         sid,
 		SectorType: rt,
 	})
+
+	if err != nil {
+		return err
+	}
+
+	m.unsealedInfos[sid] = UnsealedSectorInfo{
+		stored:     0,
+		pieceSizes: nil,
+	}
+
+	return nil
 }
 
 // newSectorCC accepts a slice of pieces with no deal (junk data)
