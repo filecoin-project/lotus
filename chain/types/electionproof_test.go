@@ -7,6 +7,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/xorcare/golden"
 )
 
@@ -27,7 +28,6 @@ func TestPoissonFunction(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(fmt.Sprintf("lam-%d-%d", test.lambdaBase, test.lambdaShift), func(t *testing.T) {
-
 			b := &bytes.Buffer{}
 			b.WriteString("icdf\n")
 
@@ -45,6 +45,32 @@ func TestPoissonFunction(t *testing.T) {
 			golden.Assert(t, []byte(b.String()))
 		})
 	}
+}
+
+func TestLambdaFunction(t *testing.T) {
+	tests := []struct {
+		power      string
+		totalPower string
+		target     float64
+	}{
+		{"10", "100", .1 * 5.},
+		{"1024", "2048", 0.5 * 5.},
+		{"2000000000000000", "100000000000000000", 0.02 * 5.},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(fmt.Sprintf("%s-%s", test.power, test.totalPower), func(t *testing.T) {
+			pow, ok := new(big.Int).SetString(test.power, 10)
+			assert.True(t, ok)
+			total, ok := new(big.Int).SetString(test.totalPower, 10)
+			assert.True(t, ok)
+			lam := lambda(pow, total)
+			assert.Equal(t, test.target, q256ToF(lam))
+			golden.Assert(t, []byte(lam.String()))
+		})
+	}
+
 }
 
 func q256ToF(x *big.Int) float64 {

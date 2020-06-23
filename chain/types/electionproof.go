@@ -112,7 +112,7 @@ type poiss struct {
 	pmf  *big.Int
 	icdf *big.Int
 
-	tmp *big.Int // temporary variable for optmization
+	tmp *big.Int // temporary variable for optimization
 
 	k uint64
 }
@@ -125,7 +125,8 @@ func newPoiss(lambda *big.Int) (*poiss, *big.Int) {
 
 	// pmf(k) = (lambda^k)*(e^lambda) / k!
 	// k = 0 here, so it simplifies to just e^-lambda
-	pmf := expneg(lambda) // Q.256
+	elam := expneg(lambda) // Q.256
+	pmf := new(big.Int).Set(elam)
 
 	// icdf(k) = 1 - ∑ᵏᵢ₌₀ pmf(i)
 	// icdf(0) = 1 - pmf(0)
@@ -139,7 +140,7 @@ func newPoiss(lambda *big.Int) (*poiss, *big.Int) {
 		lam: lambda,
 		pmf: pmf,
 
-		tmp:  new(big.Int),
+		tmp:  elam,
 		icdf: icdf,
 
 		k: k,
