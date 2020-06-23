@@ -348,6 +348,8 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 	unsubscribe := a.Retrieval.SubscribeToEvents(func(event retrievalmarket.ClientEvent, state retrievalmarket.ClientDealState) {
 		if state.PayloadCID.Equals(order.Root) {
 			switch state.Status {
+			case retrievalmarket.DealStatusRejected:
+				retrievalResult <- xerrors.Errorf("Retrieval Proposal Rejected: %s", state.Message)
 			case retrievalmarket.DealStatusFailed, retrievalmarket.DealStatusErrored:
 				retrievalResult <- xerrors.Errorf("Retrieval Error: %s", state.Message)
 			case retrievalmarket.DealStatusCompleted:
