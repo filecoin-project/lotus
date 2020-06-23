@@ -57,6 +57,13 @@ func (dp *drandPeer) IsTLS() bool {
 	return dp.tls
 }
 
+// DrandBeacon connects Lotus with a drand network in order to provide
+// randomness to the system in a way that's aligned with Filecoin rounds/epochs.
+//
+// We connect to drand peers via their public HTTP endpoints. The peers are
+// enumerated in the drandServers variable.
+//
+// The root trust for the Drand chain is configured from build.DrandChain.
 type DrandBeacon struct {
 	client dclient.Client
 
