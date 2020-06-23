@@ -15,7 +15,7 @@ import (
 )
 
 var actorCmd = &cli.Command{
-	Name: "actor",
+	Name:  "actor",
 	Usage: "manipulate the miner actor",
 	Subcommands: []*cli.Command{
 		actorSetAddrsCmd,
@@ -33,7 +33,7 @@ var actorSetAddrsCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		nodeAPI, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -57,7 +57,7 @@ var actorSetAddrsCmd = &cli.Command{
 			addrs = append(addrs, maddr.Bytes())
 		}
 
-		maddr, err := nodeApi.ActorAddress(ctx)
+		maddr, err := nodeAPI.ActorAddress(ctx)
 		if err != nil {
 			return err
 		}
@@ -67,7 +67,7 @@ var actorSetAddrsCmd = &cli.Command{
 			return err
 		}
 
-		params, err := actors.SerializeParams(&miner.ChangeMultiaddrsParams{addrs})
+		params, err := actors.SerializeParams(&miner.ChangeMultiaddrsParams{NewMultiaddrs: addrs})
 		if err != nil {
 			return err
 		}
@@ -83,6 +83,9 @@ var actorSetAddrsCmd = &cli.Command{
 			Method:   18,
 			Params:   params,
 		})
+		if err != nil {
+			return err
+		}
 
 		fmt.Printf("Requested multiaddrs change in message %s\n", smsg.Cid())
 		return nil
