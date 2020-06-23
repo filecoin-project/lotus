@@ -8,18 +8,15 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-	ma "github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	sealing "github.com/filecoin-project/storage-fsm"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 )
@@ -27,9 +24,6 @@ import (
 var infoCmd = &cli.Command{
 	Name:  "info",
 	Usage: "Print storage miner info",
-	Subcommands: []*cli.Command{
-		infoSetAddrsCmd,
-	},
 	Flags: []cli.Flag{
 		&cli.BoolFlag{Name: "color"},
 	},
@@ -253,72 +247,4 @@ func sectorsInfo(ctx context.Context, napi api.StorageMiner) error {
 	}
 
 	return nil
-}
-
-var infoSetAddrsCmd = &cli.Command{
-	Name:  "set-addrs",
-	Usage: "set addresses that your miner can be publically dialed on",
-	Flags: []cli.Flag{
-		&cli.Int64Flag{
-			Name:  "gas-limit",
-			Usage: "set gas limit",
-			Value: 100000,
-		},
-	},
-	Action: func(cctx *cli.Context) error {
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer closer()
-
-		api, acloser, err := lcli.GetFullNodeAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer acloser()
-
-		ctx := lcli.ReqContext(cctx)
-
-		var addrs []abi.Multiaddrs
-		for _, a := range cctx.Args().Slice() {
-			maddr, err := ma.NewMultiaddr(a)
-			if err != nil {
-				return fmt.Errorf("failed to parse %q as a multiaddr: %w", a, err)
-			}
-
-			addrs = append(addrs, maddr.Bytes())
-		}
-
-		maddr, err := nodeApi.ActorAddress(ctx)
-		if err != nil {
-			return err
-		}
-
-		minfo, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
-		if err != nil {
-			return err
-		}
-
-		params, err := actors.SerializeParams(&miner.ChangeMultiaddrsParams{addrs})
-		if err != nil {
-			return err
-		}
-
-		gasLimit := cctx.Int64("gas-limit")
-
-		smsg, err := api.MpoolPushMessage(ctx, &types.Message{
-			To:       maddr,
-			From:     minfo.Worker,
-			Value:    types.NewInt(0),
-			GasPrice: types.NewInt(1),
-			GasLimit: gasLimit,
-			Method:   18,
-			Params:   params,
-		})
-
-		fmt.Printf("Requested multiaddrs change in message %s\n", smsg.Cid())
-		return nil
-
-	},
 }
