@@ -1,0 +1,214 @@
+[metadata]
+  name = "all-both"
+  author = "adin"
+
+[global]
+  plan = "dht"
+  case = "all"
+  total_instances = 1000
+  builder = "docker:go"
+  runner = "cluster:k8s"
+  [global.build_config]
+    push_registry = true
+    registry_type = "aws"
+
+[[groups]]
+  id = "balsam-undialable-provider"
+  [groups.instances]
+    count = 5
+    percentage = 0.0
+  [groups.build]
+    selectors = ["balsam"]
+  [groups.run]
+    artifact = "909427826938.dkr.ecr.us-east-1.amazonaws.com/testground-us-east-1-dht:701251a63b92"
+    [groups.run.test_params]
+      bs_strategy = "7"
+      bucket_size = "10"
+      expect_dht = "false"
+      group_order = "4"
+      latency = "100"
+      record_count = "1"
+      timeout_secs = "600"
+      undialable = "true"
+
+[[groups]]
+  id = "balsam-undialable-searcher"
+  [groups.instances]
+    count = 5
+    percentage = 0.0
+  [groups.build]
+    selectors = ["balsam"]
+  [groups.run]
+    artifact = "909427826938.dkr.ecr.us-east-1.amazonaws.com/testground-us-east-1-dht:701251a63b92"
+    [groups.run.test_params]
+      bs_strategy = "7"
+      bucket_size = "10"
+      expect_dht = "false"
+      group_order = "5"
+      latency = "100"
+      search_records = "true"
+      timeout_secs = "600"
+      undialable = "true"
+
+[[groups]]
+  id = "balsam-dialable-passive"
+  [groups.instances]
+    count = 780
+    percentage = 0.0
+  [groups.build]
+    selectors = ["balsam"]
+  [groups.run]
+    artifact = "909427826938.dkr.ecr.us-east-1.amazonaws.com/testground-us-east-1-dht:701251a63b92"
+    [groups.run.test_params]
+      bs_strategy = "7"
+      bucket_size = "10"
+      expect_dht = "false"
+      group_order = "6"
+      latency = "100"
+      timeout_secs = "600"
+      undialable = "false"
+
+[[groups]]
+  id = "balsam-dialable-provider"
+  [groups.instances]
+    count = 5
+    percentage = 0.0
+  [groups.build]
+    selectors = ["balsam"]
+  [groups.run]
+    artifact = "909427826938.dkr.ecr.us-east-1.amazonaws.com/testground-us-east-1-dht:701251a63b92"
+    [groups.run.test_params]
+      bs_strategy = "7"
+      bucket_size = "10"
+      expect_dht = "false"
+      group_order = "7"
+      latency = "100"
+      record_count = "1"
+      timeout_secs = "600"
+      undialable = "false"
+
+[[groups]]
+  id = "balsam-dialable-searcher"
+  [groups.instances]
+    count = 5
+    percentage = 0.0
+  [groups.build]
+    selectors = ["balsam"]
+  [groups.run]
+    artifact = "909427826938.dkr.ecr.us-east-1.amazonaws.com/testground-us-east-1-dht:701251a63b92"
+    [groups.run.test_params]
+      bs_strategy = "7"
+      bucket_size = "10"
+      expect_dht = "false"
+      group_order = "8"
+      latency = "100"
+      search_records = "true"
+      timeout_secs = "600"
+      undialable = "false"
+
+[[groups]]
+  id = "cypress-passive"
+  [groups.instances]
+    count = 185
+    percentage = 0.0
+  [groups.build]
+    selectors = ["cypress"]
+
+    [[groups.build.dependencies]]
+      module = "github.com/libp2p/go-libp2p-kad-dht"
+      version = "180be07b8303d536e39809bc39c58be5407fedd9"
+
+    [[groups.build.dependencies]]
+      module = "github.com/libp2p/go-libp2p-xor"
+      version = "df24f5b04bcbdc0059b27989163a6090f4f6dc7a"
+  [groups.run]
+    artifact = "909427826938.dkr.ecr.us-east-1.amazonaws.com/testground-us-east-1-dht:ca78473d669d"
+    [groups.run.test_params]
+      alpha = "6"
+      beta = "3"
+      bs_strategy = "7"
+      bucket_size = "10"
+      group_order = "1"
+      latency = "100"
+      timeout_secs = "600"
+
+[[groups]]
+  id = "cypress-provider"
+  [groups.instances]
+    count = 5
+    percentage = 0.0
+  [groups.build]
+    selectors = ["cypress"]
+
+    [[groups.build.dependencies]]
+      module = "github.com/libp2p/go-libp2p-kad-dht"
+      version = "180be07b8303d536e39809bc39c58be5407fedd9"
+
+    [[groups.build.dependencies]]
+      module = "github.com/libp2p/go-libp2p-xor"
+      version = "df24f5b04bcbdc0059b27989163a6090f4f6dc7a"
+  [groups.run]
+    artifact = "909427826938.dkr.ecr.us-east-1.amazonaws.com/testground-us-east-1-dht:ca78473d669d"
+    [groups.run.test_params]
+      alpha = "6"
+      beta = "3"
+      bs_strategy = "7"
+      bucket_size = "10"
+      group_order = "2"
+      latency = "100"
+      record_count = "1"
+      timeout_secs = "600"
+
+[[groups]]
+  id = "cypress-searcher"
+  [groups.instances]
+    count = 5
+    percentage = 0.0
+  [groups.build]
+    selectors = ["cypress"]
+
+    [[groups.build.dependencies]]
+      module = "github.com/libp2p/go-libp2p-kad-dht"
+      version = "180be07b8303d536e39809bc39c58be5407fedd9"
+
+    [[groups.build.dependencies]]
+      module = "github.com/libp2p/go-libp2p-xor"
+      version = "df24f5b04bcbdc0059b27989163a6090f4f6dc7a"
+  [groups.run]
+    artifact = "909427826938.dkr.ecr.us-east-1.amazonaws.com/testground-us-east-1-dht:ca78473d669d"
+    [groups.run.test_params]
+      alpha = "6"
+      beta = "3"
+      bs_strategy = "7"
+      bucket_size = "10"
+      group_order = "3"
+      latency = "100"
+      search_records = "true"
+      timeout_secs = "600"
+
+[[groups]]
+  id = "cypress-bs"
+  [groups.instances]
+    count = 5
+    percentage = 0.0
+  [groups.build]
+    selectors = ["cypress"]
+
+    [[groups.build.dependencies]]
+      module = "github.com/libp2p/go-libp2p-kad-dht"
+      version = "180be07b8303d536e39809bc39c58be5407fedd9"
+
+    [[groups.build.dependencies]]
+      module = "github.com/libp2p/go-libp2p-xor"
+      version = "df24f5b04bcbdc0059b27989163a6090f4f6dc7a"
+  [groups.run]
+    artifact = "909427826938.dkr.ecr.us-east-1.amazonaws.com/testground-us-east-1-dht:ca78473d669d"
+    [groups.run.test_params]
+      alpha = "6"
+      beta = "3"
+      bootstrapper = "true"
+      bs_strategy = "7"
+      bucket_size = "10"
+      group_order = "0"
+      latency = "100"
+      timeout_secs = "600"
