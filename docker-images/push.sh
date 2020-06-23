@@ -12,14 +12,14 @@ err_report() {
 
 trap 'err_report $LINENO' ERR
 
-COMMIT=$1
+TAG=$1
 
 # Validate required arguments
-if [ -z "$COMMIT" ]
+if [ -z "$TAG" ]
 then
-  echo -e "Please provider commit of Lotus to build against. For example: \`./push.sh 596ed33\`"
+  echo -e "Please provide a tag for the push. For example: \`./push.sh v3\`"
   exit 2
 fi
 
-docker push iptestground/oni-buildbase:$COMMIT
-docker push iptestground/oni-runtime:$COMMIT
+docker push "iptestground/oni-buildbase:$TAG"
+docker push "iptestground/oni-runtime:$TAG"

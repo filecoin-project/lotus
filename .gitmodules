@@ -1,0 +1,3 @@
+[submodule "extra/filecoin-ffi"]
+	path = extra/filecoin-ffi
+	url = https://github.com/filecoin-project/filecoin-ffi.git

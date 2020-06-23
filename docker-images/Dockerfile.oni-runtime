@@ -1,25 +1,18 @@
 ARG GO_VERSION=1.14.2
 
-ARG RUNTIME_IMAGE=ubuntu:18.04
+FROM golang:${GO_VERSION}-buster as downloader
 
-FROM golang:${GO_VERSION}-buster AS builder
+## Fetch the proof parameters.
+## 1. Install the paramfetch binary first, so it can be cached over builds.
+## 2. Then copy over the parameters (which could change).
+## 3. Trigger the download.
+## Output will be in /var/tmp/filecoin-proof-parameters.
 
-RUN apt-get update && apt-get install -y ca-certificates llvm clang mesa-opencl-icd ocl-icd-opencl-dev jq gcc git bzr pkg-config
+RUN go get github.com/filecoin-project/go-paramfetch/paramfetch
+COPY /proof-parameters.json /
+RUN paramfetch 2048 /proof-parameters.json
 
-ARG LOTUS_VERSION
+FROM ubuntu:18.04
 
-RUN git clone https://github.com/filecoin-project/lotus.git /lotus && cd /lotus && git checkout ${LOTUS_VERSION} && git submodule update --init && make 2k
-
-RUN cd /lotus/extern/filecoin-ffi \
-    && make \
-    && mkdir /tmp/filecoin-ffi \
-    && cp -R /lotus/extern/filecoin-ffi /tmp
-
-RUN /lotus/lotus fetch-params 2048
-
-FROM ${RUNTIME_IMAGE} AS binary
-
-COPY --from=builder /var/tmp/filecoin-proof-parameters/* /var/tmp/filecoin-proof-parameters/
-COPY --from=builder /lotus/build/bootstrap/* /lotus/build/bootstrap/
-COPY --from=builder /lotus/build/proof-params/* /lotus/build/proof-params/
-COPY --from=builder /usr/lib/x86_64-linux-gnu/* /lib/x86_64-linux-gnu/* /usr/lib/
+RUN apt-get update && apt-get install -y ca-certificates llvm clang mesa-opencl-icd ocl-icd-opencl-dev jq gcc pkg-config
+COPY --from=downloader /var/tmp/filecoin-proof-parameters /var/tmp/filecoin-proof-parameters
