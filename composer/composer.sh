@@ -4,6 +4,18 @@
 # plan manifests from the user's local filesystem into a temporary
 # directory that's bind-mounted into the container.
 
+set -o errexit
+set -o pipefail
+
+set -e
+
+err_report() {
+    echo "Error on line $1"
+}
+
+trap 'err_report $LINENO' ERR
+
+
 image_name="iptestground/composer"
 image_tag="latest"
 image_full_name="$image_name:$image_tag"
