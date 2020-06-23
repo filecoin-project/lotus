@@ -10,7 +10,7 @@ import (
 )
 
 func TestPrintGroupInfo(t *testing.T) {
-	c, err := hclient.New(drandServers[0], nil, nil)
+	c, err := hclient.New(defaultConfig.Servers[0], nil, nil)
 	assert.NoError(t, err)
 	cg := c.(interface {
 		FetchChainInfo(groupHash []byte) (*dchain.Info, error)
