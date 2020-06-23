@@ -357,14 +357,31 @@ func StorageProvider(minerAddress dtypes.MinerAddress, ffiConfig *ffiwrapper.Con
 }
 
 // RetrievalProvider creates a new retrieval provider attached to the provider blockstore
-func RetrievalProvider(h host.Host, miner *storage.Miner, sealer sectorstorage.SectorManager, full lapi.FullNode, ds dtypes.MetadataDS, pieceStore dtypes.ProviderPieceStore, ibs dtypes.StagingBlockstore) (retrievalmarket.RetrievalProvider, error) {
+func RetrievalProvider(h host.Host, miner *storage.Miner, sealer sectorstorage.SectorManager, full lapi.FullNode, ds dtypes.MetadataDS, pieceStore dtypes.ProviderPieceStore, ibs dtypes.StagingBlockstore, isAcceptingFunc dtypes.AcceptingRetrievalDealsConfigFunc) (retrievalmarket.RetrievalProvider, error) {
 	adapter := retrievaladapter.NewRetrievalProviderNode(miner, sealer, full)
-	address, err := minerAddrFromDS(ds)
+
+	maddr, err := minerAddrFromDS(ds)
 	if err != nil {
 		return nil, err
 	}
-	network := rmnet.NewFromLibp2pHost(h)
-	return retrievalimpl.NewProvider(address, adapter, network, pieceStore, ibs, namespace.Wrap(ds, datastore.NewKey("/retrievals/provider")))
+
+	netwk := rmnet.NewFromLibp2pHost(h)
+
+	opt := retrievalimpl.DealDeciderOpt(func(ctx context.Context, state retrievalmarket.ProviderDealState) (bool, string, error) {
+		b, err := isAcceptingFunc()
+		if err != nil {
+			return false, "miner error", err
+		}
+
+		if !b {
+			log.Warn("retrieval deal acceptance disabled; rejecting retrieval deal proposal from client")
+			return false, "miner is not accepting retrieval deals", nil
+		}
+
+		return true, "", nil
+	})
+
+	return retrievalimpl.NewProvider(maddr, adapter, netwk, pieceStore, ibs, namespace.Wrap(ds, datastore.NewKey("/retrievals/provider")), opt)
 }
 
 func SectorStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, ls stores.LocalStorage, si stores.SectorIndex, cfg *ffiwrapper.Config, sc sectorstorage.SealerConfig, urls sectorstorage.URLs, sa sectorstorage.StorageAuth) (*sectorstorage.Manager, error) {
@@ -397,6 +414,24 @@ func StorageAuth(ctx helpers.MetricsCtx, ca lapi.Common) (sectorstorage.StorageA
 	headers := http.Header{}
 	headers.Add("Authorization", "Bearer "+string(token))
 	return sectorstorage.StorageAuth(headers), nil
+}
+
+func NewAcceptingRetrievalDealsConfigFunc(r repo.LockedRepo) (dtypes.AcceptingRetrievalDealsConfigFunc, error) {
+	return func() (out bool, err error) {
+		err = readCfg(r, func(cfg *config.StorageMiner) {
+			out = cfg.Dealmaking.AcceptingRetrievalDeals
+		})
+		return
+	}, nil
+}
+
+func NewSetAcceptingRetrievalDealsConfigFunc(r repo.LockedRepo) (dtypes.SetAcceptingRetrievalDealsConfigFunc, error) {
+	return func(b bool) (err error) {
+		err = mutateCfg(r, func(cfg *config.StorageMiner) {
+			cfg.Dealmaking.AcceptingRetrievalDeals = b
+		})
+		return
+	}, nil
 }
 
 func NewAcceptingStorageDealsConfigFunc(r repo.LockedRepo) (dtypes.AcceptingStorageDealsConfigFunc, error) {
