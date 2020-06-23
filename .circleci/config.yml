@@ -1,0 +1,53 @@
+---
+version: 2.1
+
+parameters:
+  go-version:
+    type: string
+    default: "1.14.2"
+  workspace-dir:
+    type: string
+    default: "/home/circleci"
+
+commands:
+  setup:
+    description: "install go, checkout and restore cache"
+    steps:
+      - run:
+          name: "install go"
+          command: |
+            curl --create-dirs -o $GOPATH/go.tar.gz https://dl.google.com/go/go${GOVERSION}.linux-amd64.tar.gz
+            tar --strip-components=1 -C $GOPATH -xzf $GOPATH/go.tar.gz
+            rm -rf $GOPATH/go.tar.gz
+      - checkout
+      - run: sudo apt-get update
+      - run: sudo apt-get install ocl-icd-opencl-dev
+      - run: git submodule sync
+      - run: git submodule update --init
+      - run: cd extra/filecoin-ffi && make
+
+executors:
+  linux:
+    machine:
+      image: ubuntu-1604:201903-01
+      docker_layer_caching: true
+    working_directory: << pipeline.parameters.workspace-dir >>/project
+    environment:
+      GOPATH: << pipeline.parameters.workspace-dir >>/go/<< pipeline.parameters.go-version >>
+      PATH: << pipeline.parameters.workspace-dir >>/go/<< pipeline.parameters.go-version >>/bin:<< pipeline.parameters.workspace-dir >>/bin:/usr/local/bin:/usr/bin:/bin
+      GOVERSION: << pipeline.parameters.go-version >>
+
+workflows:
+  version: 2
+  main:
+    jobs:
+      - build-linux
+
+jobs:
+  build-linux:
+    executor: linux
+    steps:
+      - setup
+      - run:
+          name: "build lotus-testground"
+          command: pushd lotus-testground && go build .
