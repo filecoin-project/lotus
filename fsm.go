@@ -35,8 +35,13 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	// Sealing
 
 	UndefinedSectorState: planOne(
-		on(SectorStart{}, Packing),
+		on(SectorStart{}, Empty),
 		on(SectorStartCC{}, Packing),
+	),
+	Empty: planOne(on(SectorAddPiece{}, WaitDeals)),
+	WaitDeals: planOne(
+		on(SectorAddPiece{}, WaitDeals),
+		on(SectorStartPacking{}, Packing),
 	),
 	Packing: planOne(on(SectorPacked{}, PreCommit1)),
 	PreCommit1: planOne(

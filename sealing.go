@@ -134,6 +134,11 @@ func (m *Sealing) Remove(ctx context.Context, sid abi.SectorNumber) error {
 	return m.sectors.Send(uint64(sid), SectorRemove{})
 }
 
+func (m *Sealing) StartPacking(sectorID abi.SectorNumber) error {
+	log.Infof("Starting packing sector %d", sectorID)
+	return m.sectors.Send(uint64(sectorID), SectorStartPacking{})
+}
+
 // newSector accepts a slice of pieces which will have deals associated with
 func (m *Sealing) newSector(sid abi.SectorNumber, rt abi.RegisteredSealProof, pieces []Piece) error {
 	log.Infof("Creating sector %d", sid)

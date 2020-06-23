@@ -71,6 +71,18 @@ func (evt SectorStartCC) apply(state *SectorInfo) {
 	state.SectorType = evt.SectorType
 }
 
+type SectorAddPiece struct {
+	NewPiece Piece
+}
+
+func (evt SectorAddPiece) apply(state *SectorInfo) {
+	state.Pieces = append(state.Pieces, evt.NewPiece)
+}
+
+type SectorStartPacking struct{}
+
+func (evt SectorStartPacking) apply(*SectorInfo) {}
+
 type SectorPacked struct{ FillerPieces []abi.PieceInfo }
 
 func (evt SectorPacked) apply(state *SectorInfo) {

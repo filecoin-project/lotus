@@ -7,6 +7,7 @@ const (
 
 	// happy path
 	Empty          SectorState = "Empty"
+	WaitDeals      SectorState = "WaitDeals"     // waiting for more pieces (deals) to be added to the sector
 	Packing        SectorState = "Packing"       // sector not in sealStore, and not on chain
 	PreCommit1     SectorState = "PreCommit1"    // do PreCommit1
 	PreCommit2     SectorState = "PreCommit2"    // do PreCommit1
