@@ -466,16 +466,27 @@ func (syncer *Syncer) ValidateTipSet(ctx context.Context, fts *store.FullTipSet)
 		return nil
 	}
 
+	var futures []async.ErrorFuture
 	for _, b := range fts.Blocks {
-		if err := syncer.ValidateBlock(ctx, b); err != nil {
-			if isPermanent(err) {
-				syncer.bad.Add(b.Cid(), err.Error())
-			}
-			return xerrors.Errorf("validating block %s: %w", b.Cid(), err)
-		}
+		b := b // rebind to a scoped variable
 
-		if err := syncer.sm.ChainStore().AddToTipSetTracker(b.Header); err != nil {
-			return xerrors.Errorf("failed to add validated header to tipset tracker: %w", err)
+		futures = append(futures, async.Err(func() error {
+			if err := syncer.ValidateBlock(ctx, b); err != nil {
+				if isPermanent(err) {
+					syncer.bad.Add(b.Cid(), err.Error())
+				}
+				return xerrors.Errorf("validating block %s: %w", b.Cid(), err)
+			}
+
+			if err := syncer.sm.ChainStore().AddToTipSetTracker(b.Header); err != nil {
+				return xerrors.Errorf("failed to add validated header to tipset tracker: %w", err)
+			}
+			return nil
+		}))
+	}
+	for _, f := range futures {
+		if err := f.AwaitContext(ctx); err != nil {
+			return err
 		}
 	}
 	return nil
