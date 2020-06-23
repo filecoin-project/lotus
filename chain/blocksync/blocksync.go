@@ -10,6 +10,7 @@ import (
 	"golang.org/x/xerrors"
 
 	cborutil "github.com/filecoin-project/go-cbor-util"
+
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 
@@ -27,6 +28,24 @@ const BlockSyncProtocolID = "/fil/sync/blk/0.0.1"
 
 const BlockSyncMaxRequestLength = 800
 
+// BlockSyncService is the component that services BlockSync requests from
+// peers.
+//
+// BlockSync is the basic chain synchronization protocol of Filecoin. BlockSync
+// is an RPC-oriented protocol, with a single operation to request blocks.
+//
+// A request contains a start anchor block (referred to with a CID), and a
+// amount of blocks requested beyond the anchor (including the anchor itself).
+//
+// A client can also pass options, encoded as a 64-bit bitfield. Lotus supports
+// two options at the moment:
+//
+//  - include block contents
+//  - include block messages
+//
+// The response will include a status code, an optional message, and the
+// response payload in case of success. The payload is a slice of serialized
+// tipsets.
 type BlockSyncService struct {
 	cs *store.ChainStore
 }

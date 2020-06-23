@@ -57,6 +57,8 @@ type StorageMiner interface {
 	DealsImportData(ctx context.Context, dealPropCid cid.Cid, file string) error
 	DealsList(ctx context.Context) ([]storagemarket.StorageDeal, error)
 	DealsSetAcceptingStorageDeals(context.Context, bool) error
+	DealsPieceCidBlocklist(context.Context) ([]cid.Cid, error)
+	DealsSetPieceCidBlocklist(context.Context, []cid.Cid) error
 
 	StorageAddLocal(ctx context.Context, path string) error
 }
