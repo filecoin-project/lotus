@@ -348,12 +348,34 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 	unsubscribe := a.Retrieval.SubscribeToEvents(func(event retrievalmarket.ClientEvent, state retrievalmarket.ClientDealState) {
 		if state.PayloadCID.Equals(order.Root) {
 			switch state.Status {
-			case retrievalmarket.DealStatusRejected:
-				retrievalResult <- xerrors.Errorf("Retrieval Proposal Rejected: %s", state.Message)
-			case retrievalmarket.DealStatusFailed, retrievalmarket.DealStatusErrored:
-				retrievalResult <- xerrors.Errorf("Retrieval Error: %s", state.Message)
-			case retrievalmarket.DealStatusCompleted:
+			case
+				retrievalmarket.DealStatusCompleted:
 				retrievalResult <- nil
+			case
+				retrievalmarket.DealStatusRejected:
+				retrievalResult <- xerrors.Errorf("Retrieval Proposal Rejected: %s", state.Message)
+			case
+				retrievalmarket.DealStatusDealNotFound,
+				retrievalmarket.DealStatusErrored,
+				retrievalmarket.DealStatusFailed:
+				retrievalResult <- xerrors.Errorf("Retrieval Error: %s", state.Message)
+			case
+				retrievalmarket.DealStatusAccepted,
+				retrievalmarket.DealStatusAwaitingAcceptance,
+				retrievalmarket.DealStatusBlocksComplete,
+				retrievalmarket.DealStatusFinalizing,
+				retrievalmarket.DealStatusFundsNeeded,
+				retrievalmarket.DealStatusFundsNeededLastPayment,
+				retrievalmarket.DealStatusNew,
+				retrievalmarket.DealStatusOngoing,
+				retrievalmarket.DealStatusPaymentChannelAddingFunds,
+				retrievalmarket.DealStatusPaymentChannelAllocatingLane,
+				retrievalmarket.DealStatusPaymentChannelCreating,
+				retrievalmarket.DealStatusPaymentChannelReady,
+				retrievalmarket.DealStatusVerified:
+				return
+			default:
+				retrievalResult <- xerrors.Errorf("Unhandled Retrieval Status: %+v", state.Status)
 			}
 		}
 	})
