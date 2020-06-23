@@ -30,4 +30,8 @@ const (
 	Faulty        SectorState = "Faulty"        // sector is corrupted or gone for some reason
 	FaultReported SectorState = "FaultReported" // sector has been declared as a fault on chain
 	FaultedFinal  SectorState = "FaultedFinal"  // fault declared on chain
+
+	Removing     SectorState = "Removing"
+	RemoveFailed SectorState = "RemoveFailed"
+	Removed      SectorState = "Removed"
 )
