@@ -103,24 +103,14 @@ func (m *Sealing) AddPieceToAnySector(ctx context.Context, size abi.UnpaddedPiec
 		return 0, 0, xerrors.Errorf("piece cannot fit into a sector")
 	}
 
-	sid, err := m.sc.Next()
+	sid, err := m.newSector() // TODO: Put more than one thing in a sector
 	if err != nil {
-		return 0, 0, xerrors.Errorf("getting sector number: %w", err)
-	}
-
-	err = m.sealer.NewSector(context.TODO(), m.minerSector(sid)) // TODO: Put more than one thing in a sector
-	if err != nil {
-		return 0, 0, xerrors.Errorf("initializing sector: %w", err)
+		return 0, 0, xerrors.Errorf("creating new sector: %w", err)
 	}
 
 	ppi, err := m.sealer.AddPiece(sectorstorage.WithPriority(ctx, DealSectorPriority), m.minerSector(sid), []abi.UnpaddedPieceSize{}, size, r)
 	if err != nil {
 		return 0, 0, xerrors.Errorf("writing piece: %w", err)
-	}
-
-	err = m.newSector(sid)
-	if err != nil {
-		return 0, 0, xerrors.Errorf("creating new sector: %w", err)
 	}
 
 	err = m.addPiece(sid, Piece{
@@ -169,10 +159,20 @@ func (m *Sealing) StartPacking(sectorID abi.SectorNumber) error {
 }
 
 // newSector creates a new sector for deal storage
-func (m *Sealing) newSector(sid abi.SectorNumber) error {
+func (m *Sealing) newSector() (abi.SectorNumber, error) {
+	sid, err := m.sc.Next()
+	if err != nil {
+		return 0, xerrors.Errorf("getting sector number: %w", err)
+	}
+
+	err = m.sealer.NewSector(context.TODO(), m.minerSector(sid))
+	if err != nil {
+		return 0, xerrors.Errorf("initializing sector: %w", err)
+	}
+
 	rt, err := ffiwrapper.SealProofTypeFromSectorSize(m.sealer.SectorSize())
 	if err != nil {
-		return xerrors.Errorf("bad sector size: %w", err)
+		return 0, xerrors.Errorf("bad sector size: %w", err)
 	}
 
 	log.Infof("Creating sector %d", sid)
@@ -182,7 +182,7 @@ func (m *Sealing) newSector(sid abi.SectorNumber) error {
 	})
 
 	if err != nil {
-		return err
+		return 0, xerrors.Errorf("starting the sector fsm: %w", err)
 	}
 
 	m.unsealedInfos[sid] = UnsealedSectorInfo{
@@ -190,7 +190,7 @@ func (m *Sealing) newSector(sid abi.SectorNumber) error {
 		pieceSizes: nil,
 	}
 
-	return nil
+	return sid, nil
 }
 
 // newSectorCC accepts a slice of pieces with no deal (junk data)
