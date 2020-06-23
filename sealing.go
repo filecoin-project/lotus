@@ -114,15 +114,27 @@ func (m *Sealing) SealPiece(ctx context.Context, size abi.UnpaddedPieceSize, r i
 
 	ppi, err := m.sealer.AddPiece(sectorstorage.WithPriority(ctx, DealSectorPriority), m.minerSector(sectorID), []abi.UnpaddedPieceSize{}, size, r)
 	if err != nil {
-		return xerrors.Errorf("adding piece to sector: %w", err)
+		return xerrors.Errorf("writing piece: %w", err)
 	}
 
-	return m.newSector(sectorID, []Piece{
-		{
-			Piece:    ppi,
-			DealInfo: &d,
-		},
+	err = m.newSector(sectorID)
+	if err != nil {
+		return xerrors.Errorf("creating new sector: %w", err)
+	}
+
+	err = m.addPiece(sectorID, Piece{
+		Piece:    ppi,
+		DealInfo: &d,
 	})
+
+	if err != nil {
+		return xerrors.Errorf("adding piece to sector: %w", err)
+	}
+}
+
+func (m *Sealing) addPiece(sectorID abi.SectorNumber, piece Piece) error {
+	log.Infof("Adding piece to sector %d", sectorID)
+	return m.sectors.Send(uint64(sectorID), SectorAddPiece{NewPiece: piece})
 }
 
 func (m *Sealing) Remove(ctx context.Context, sid abi.SectorNumber) error {
@@ -134,8 +146,8 @@ func (m *Sealing) StartPacking(sectorID abi.SectorNumber) error {
 	return m.sectors.Send(uint64(sectorID), SectorStartPacking{})
 }
 
-// newSector accepts a slice of pieces which will have deals associated with
-func (m *Sealing) newSector(sid abi.SectorNumber, pieces []Piece) error {
+// newSector creates a new sector for deal storage
+func (m *Sealing) newSector(sid abi.SectorNumber) error {
 	rt, err := ffiwrapper.SealProofTypeFromSectorSize(m.sealer.SectorSize())
 	if err != nil {
 		return xerrors.Errorf("bad sector size: %w", err)
@@ -144,7 +156,6 @@ func (m *Sealing) newSector(sid abi.SectorNumber, pieces []Piece) error {
 	log.Infof("Creating sector %d", sid)
 	return m.sectors.Send(uint64(sid), SectorStart{
 		ID:         sid,
-		Pieces:     pieces,
 		SectorType: rt,
 	})
 }
