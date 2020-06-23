@@ -109,8 +109,8 @@ type RandomBeaconParams struct {
 	fx.In
 
 	DrandConfig *drand.DrandConfig `optional:"true"`
-	PubSub *pubsub.PubSub `optional:"true"`
-	Cs     *store.ChainStore
+	PubSub      *pubsub.PubSub     `optional:"true"`
+	Cs          *store.ChainStore
 }
 
 func RandomBeacon(p RandomBeaconParams, _ dtypes.AfterGenesisSet) (beacon.RandomBeacon, error) {

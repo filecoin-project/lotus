@@ -28,7 +28,7 @@ import (
 var log = logging.Logger("drand")
 
 type DrandConfig struct {
-	Servers []string
+	Servers   []string
 	ChainInfo *dchain.Info
 }
 
