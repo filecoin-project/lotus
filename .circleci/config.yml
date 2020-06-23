@@ -314,7 +314,7 @@ workflows:
   ci:
     jobs:
       - lint-changes:
-          args: "--new-from-rev origin/next" 
+          args: "--new-from-rev origin/master"
       - mod-tidy-check
       - gofmt
       - test:
