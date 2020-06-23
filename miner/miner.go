@@ -252,6 +252,12 @@ func (m *Miner) hasPower(ctx context.Context, addr address.Address, ts *types.Ti
 	return mpower.MinerPower.QualityAdjPower.GreaterThanEqual(power.ConsensusMinerMinPower), nil
 }
 
+// mineOne mines a single block, and does so synchronously, if and only if we
+// have won the current round.
+//
+// {hint/landmark}: This method coordinates all the steps involved in mining a
+// block, including the condition of whether mine or not at all depending on
+// whether we win the round or not.
 func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*types.BlockMsg, error) {
 	log.Debugw("attempting to mine a block", "tipset", types.LogCids(base.TipSet.Cids()))
 	start := time.Now()
