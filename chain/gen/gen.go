@@ -559,11 +559,15 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, round abi.ChainEpoch,
 	}
 
 	// TODO: wire in real power
-	if !types.IsTicketWinner(vrfout, mbi.MinerPower, mbi.NetworkPower) {
+	// TODO: is above TODO still applicable?
+	ep := &types.ElectionProof{VRFProof: vrfout}
+	j := ep.ComputeWinCount(mbi.MinerPower, mbi.NetworkPower)
+	ep.WinCount = j
+	if j < 1 {
 		return nil, nil
 	}
 
-	return &types.ElectionProof{VRFProof: vrfout}, nil
+	return ep, nil
 }
 
 type SignFunc func(context.Context, address.Address, []byte) (*crypto.Signature, error)
