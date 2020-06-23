@@ -108,9 +108,13 @@ func RetrievalResolver(l *discovery.Local) retrievalmarket.PeerResolver {
 type RandomBeaconParams struct {
 	fx.In
 
-	DrandConfig *drand.DrandConfig `optional:"true"`
-	PubSub      *pubsub.PubSub     `optional:"true"`
+	PubSub      *pubsub.PubSub `optional:"true"`
 	Cs          *store.ChainStore
+	DrandConfig dtypes.DrandConfig
+}
+
+func BuiltinDrandConfig() dtypes.DrandConfig {
+	return build.DrandConfig
 }
 
 func RandomBeacon(p RandomBeaconParams, _ dtypes.AfterGenesisSet) (beacon.RandomBeacon, error) {

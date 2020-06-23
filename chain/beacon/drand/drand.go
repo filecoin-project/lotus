@@ -19,34 +19,14 @@ import (
 	logging "github.com/ipfs/go-log"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
 var log = logging.Logger("drand")
-
-type DrandConfig struct {
-	Servers   []string
-	ChainInfo *dchain.Info
-}
-
-var defaultConfig = DrandConfig{
-	Servers: []string{
-		"https://pl-eu.testnet.drand.sh",
-		"https://pl-us.testnet.drand.sh",
-		"https://pl-sin.testnet.drand.sh",
-	},
-}
-
-func init() {
-	var err error
-	defaultConfig.ChainInfo, err = dchain.InfoFromJSON(bytes.NewReader([]byte(build.DrandChain)))
-	if err != nil {
-		panic("could not unmarshal chain info: " + err.Error())
-	}
-}
 
 type drandPeer struct {
 	addr string
@@ -77,15 +57,15 @@ type DrandBeacon struct {
 	localCache map[uint64]types.BeaconEntry
 }
 
-func NewDrandBeacon(genesisTs, interval uint64, ps *pubsub.PubSub, config *DrandConfig) (*DrandBeacon, error) {
+func NewDrandBeacon(genesisTs, interval uint64, ps *pubsub.PubSub, config dtypes.DrandConfig) (*DrandBeacon, error) {
 	if genesisTs == 0 {
 		panic("what are you doing this cant be zero")
 	}
 
-	if config == nil {
-		config = &defaultConfig
+	drandChain, err := dchain.InfoFromJSON(bytes.NewReader([]byte(config.ChainInfoJSON)))
+	if err != nil {
+		return nil, xerrors.Errorf("unable to unmarshal drand chain info: %w", err)
 	}
-	drandChain := config.ChainInfo
 
 	dlogger := dlog.NewKitLoggerFrom(kzap.NewZapSugarLogger(
 		log.SugaredLogger.Desugar(), zapcore.InfoLevel))
