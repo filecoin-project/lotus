@@ -468,6 +468,8 @@ func (syncer *Syncer) ValidateTipSet(ctx context.Context, fts *store.FullTipSet)
 
 	var futures []async.ErrorFuture
 	for _, b := range fts.Blocks {
+		b := b // rebind to a scoped variable
+
 		futures = append(futures, async.Err(func() error {
 			if err := syncer.ValidateBlock(ctx, b); err != nil {
 				if isPermanent(err) {
