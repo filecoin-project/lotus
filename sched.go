@@ -5,6 +5,7 @@ import (
 	"context"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"golang.org/x/xerrors"
@@ -214,7 +215,10 @@ func (sh *scheduler) maybeSchedRequest(req *workerRequest) (bool, error) {
 	needRes := ResourceTable[req.taskType][sh.spt]
 
 	for wid, worker := range sh.workers {
-		ok, err := req.sel.Ok(req.ctx, req.taskType, sh.spt, worker)
+		rpcCtx, cancel := context.WithTimeout(req.ctx, 5*time.Second)
+		ok, err := req.sel.Ok(rpcCtx, req.taskType, sh.spt, worker)
+		cancel()
+
 		if err != nil {
 			return false, err
 		}
