@@ -108,8 +108,9 @@ func RetrievalResolver(l *discovery.Local) retrievalmarket.PeerResolver {
 type RandomBeaconParams struct {
 	fx.In
 
-	PubSub *pubsub.PubSub `optional:"true"`
-	Cs     *store.ChainStore
+	DrandConfig *drand.DrandConfig `optional:"true"`
+	PubSub      *pubsub.PubSub     `optional:"true"`
+	Cs          *store.ChainStore
 }
 
 func RandomBeacon(p RandomBeaconParams, _ dtypes.AfterGenesisSet) (beacon.RandomBeacon, error) {
@@ -119,5 +120,5 @@ func RandomBeacon(p RandomBeaconParams, _ dtypes.AfterGenesisSet) (beacon.Random
 	}
 
 	//return beacon.NewMockBeacon(build.BlockDelay * time.Second)
-	return drand.NewDrandBeacon(gen.Timestamp, build.BlockDelay, p.PubSub)
+	return drand.NewDrandBeacon(gen.Timestamp, build.BlockDelay, p.PubSub, p.DrandConfig)
 }

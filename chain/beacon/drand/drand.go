@@ -27,18 +27,22 @@ import (
 
 var log = logging.Logger("drand")
 
-var drandServers = []string{
-	"https://pl-eu.testnet.drand.sh",
-	"https://pl-us.testnet.drand.sh",
-	"https://pl-sin.testnet.drand.sh",
+type DrandConfig struct {
+	Servers   []string
+	ChainInfo *dchain.Info
 }
 
-var drandChain *dchain.Info
+var defaultConfig = DrandConfig{
+	Servers: []string{
+		"https://pl-eu.testnet.drand.sh",
+		"https://pl-us.testnet.drand.sh",
+		"https://pl-sin.testnet.drand.sh",
+	},
+}
 
 func init() {
-
 	var err error
-	drandChain, err = dchain.InfoFromJSON(bytes.NewReader([]byte(build.DrandChain)))
+	defaultConfig.ChainInfo, err = dchain.InfoFromJSON(bytes.NewReader([]byte(build.DrandChain)))
 	if err != nil {
 		panic("could not unmarshal chain info: " + err.Error())
 	}
@@ -73,16 +77,21 @@ type DrandBeacon struct {
 	localCache map[uint64]types.BeaconEntry
 }
 
-func NewDrandBeacon(genesisTs, interval uint64, ps *pubsub.PubSub) (*DrandBeacon, error) {
+func NewDrandBeacon(genesisTs, interval uint64, ps *pubsub.PubSub, config *DrandConfig) (*DrandBeacon, error) {
 	if genesisTs == 0 {
 		panic("what are you doing this cant be zero")
 	}
+
+	if config == nil {
+		config = &defaultConfig
+	}
+	drandChain := config.ChainInfo
 
 	dlogger := dlog.NewKitLoggerFrom(kzap.NewZapSugarLogger(
 		log.SugaredLogger.Desugar(), zapcore.InfoLevel))
 
 	var clients []dclient.Client
-	for _, url := range drandServers {
+	for _, url := range config.Servers {
 		hc, err := hclient.NewWithInfo(url, drandChain, nil)
 		if err != nil {
 			return nil, xerrors.Errorf("could not create http drand client: %w", err)
