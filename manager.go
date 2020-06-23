@@ -424,7 +424,7 @@ func (m *Manager) FinalizeSector(ctx context.Context, sector abi.SectorID, keepU
 	moveUnsealed := unsealed
 	{
 		if len(keepUnsealed) == 0 {
-			unsealed = stores.FTNone
+			moveUnsealed = stores.FTNone
 		}
 	}
 
