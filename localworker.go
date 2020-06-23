@@ -7,6 +7,7 @@ import (
 	"runtime"
 
 	"github.com/elastic/go-sysinfo"
+	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -160,13 +161,13 @@ func (l *LocalWorker) SealCommit2(ctx context.Context, sector abi.SectorID, phas
 	return sb.SealCommit2(ctx, sector, phase1Out)
 }
 
-func (l *LocalWorker) FinalizeSector(ctx context.Context, sector abi.SectorID) error {
+func (l *LocalWorker) FinalizeSector(ctx context.Context, sector abi.SectorID, keepUnsealed []storage2.Range) error {
 	sb, err := l.sb()
 	if err != nil {
 		return err
 	}
 
-	if err := sb.FinalizeSector(ctx, sector); err != nil {
+	if err := sb.FinalizeSector(ctx, sector, keepUnsealed); err != nil {
 		return xerrors.Errorf("finalizing sector: %w", err)
 	}
 
@@ -175,6 +176,26 @@ func (l *LocalWorker) FinalizeSector(ctx context.Context, sector abi.SectorID) e
 	}
 
 	return nil
+}
+
+func (l *LocalWorker) ReleaseUnsealed(ctx context.Context, sector abi.SectorID, safeToFree []storage2.Range) error {
+	return xerrors.Errorf("implement me")
+}
+
+func (l *LocalWorker) Remove(ctx context.Context, sector abi.SectorID) error {
+	var err error
+
+	if rerr := l.storage.Remove(ctx, sector, stores.FTSealed, true); rerr != nil {
+		err = multierror.Append(err, xerrors.Errorf("removing sector (sealed): %w", rerr))
+	}
+	if rerr := l.storage.Remove(ctx, sector, stores.FTCache, true); rerr != nil {
+		err = multierror.Append(err, xerrors.Errorf("removing sector (cache): %w", rerr))
+	}
+	if rerr := l.storage.Remove(ctx, sector, stores.FTUnsealed, true); rerr != nil {
+		err = multierror.Append(err, xerrors.Errorf("removing sector (unsealed): %w", rerr))
+	}
+
+	return err
 }
 
 func (l *LocalWorker) MoveStorage(ctx context.Context, sector abi.SectorID) error {
