@@ -117,12 +117,7 @@ func (m *Sealing) SealPiece(ctx context.Context, size abi.UnpaddedPieceSize, r i
 		return xerrors.Errorf("adding piece to sector: %w", err)
 	}
 
-	rt, err := ffiwrapper.SealProofTypeFromSectorSize(m.sealer.SectorSize())
-	if err != nil {
-		return xerrors.Errorf("bad sector size: %w", err)
-	}
-
-	return m.newSector(sectorID, rt, []Piece{
+	return m.newSector(sectorID, []Piece{
 		{
 			Piece:    ppi,
 			DealInfo: &d,
@@ -140,7 +135,12 @@ func (m *Sealing) StartPacking(sectorID abi.SectorNumber) error {
 }
 
 // newSector accepts a slice of pieces which will have deals associated with
-func (m *Sealing) newSector(sid abi.SectorNumber, rt abi.RegisteredSealProof, pieces []Piece) error {
+func (m *Sealing) newSector(sid abi.SectorNumber, pieces []Piece) error {
+	rt, err := ffiwrapper.SealProofTypeFromSectorSize(m.sealer.SectorSize())
+	if err != nil {
+		return xerrors.Errorf("bad sector size: %w", err)
+	}
+
 	log.Infof("Creating sector %d", sid)
 	return m.sectors.Send(uint64(sid), SectorStart{
 		ID:         sid,
@@ -150,7 +150,12 @@ func (m *Sealing) newSector(sid abi.SectorNumber, rt abi.RegisteredSealProof, pi
 }
 
 // newSectorCC accepts a slice of pieces with no deal (junk data)
-func (m *Sealing) newSectorCC(sid abi.SectorNumber, rt abi.RegisteredSealProof, pieces []Piece) error {
+func (m *Sealing) newSectorCC(sid abi.SectorNumber, pieces []Piece) error {
+	rt, err := ffiwrapper.SealProofTypeFromSectorSize(m.sealer.SectorSize())
+	if err != nil {
+		return xerrors.Errorf("bad sector size: %w", err)
+	}
+
 	log.Infof("Creating CC sector %d", sid)
 	return m.sectors.Send(uint64(sid), SectorStartCC{
 		ID:         sid,
