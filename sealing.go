@@ -85,8 +85,8 @@ func (m *Sealing) Run(ctx context.Context) error {
 func (m *Sealing) Stop(ctx context.Context) error {
 	return m.sectors.Stop(ctx)
 }
-
-func (m *Sealing) AllocatePiece(size abi.UnpaddedPieceSize) (sectorID abi.SectorNumber, offset uint64, err error) {
+func (m *Sealing) AddPieceToAnySector(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, d DealInfo) (abi.SectorNumber, uint64, error) {
+	log.Infof("Adding piece for deal %d", d.DealID)
 	if (padreader.PaddedSize(uint64(size))) != size {
 		return 0, 0, xerrors.Errorf("cannot allocate unpadded piece")
 	}
@@ -105,31 +105,27 @@ func (m *Sealing) AllocatePiece(size abi.UnpaddedPieceSize) (sectorID abi.Sector
 		return 0, 0, xerrors.Errorf("initializing sector: %w", err)
 	}
 
-	// offset hard-coded to 0 since we only put one thing in a sector for now
-	return sid, 0, nil
-}
-
-func (m *Sealing) SealPiece(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, sectorID abi.SectorNumber, d DealInfo) error {
-	log.Infof("Seal piece for deal %d", d.DealID)
-
-	ppi, err := m.sealer.AddPiece(sectorstorage.WithPriority(ctx, DealSectorPriority), m.minerSector(sectorID), []abi.UnpaddedPieceSize{}, size, r)
+	ppi, err := m.sealer.AddPiece(sectorstorage.WithPriority(ctx, DealSectorPriority), m.minerSector(sid), []abi.UnpaddedPieceSize{}, size, r)
 	if err != nil {
-		return xerrors.Errorf("writing piece: %w", err)
+		return 0, 0, xerrors.Errorf("writing piece: %w", err)
 	}
 
-	err = m.newSector(sectorID)
+	err = m.newSector(sid)
 	if err != nil {
-		return xerrors.Errorf("creating new sector: %w", err)
+		return 0, 0, xerrors.Errorf("creating new sector: %w", err)
 	}
 
-	err = m.addPiece(sectorID, Piece{
+	err = m.addPiece(sid, Piece{
 		Piece:    ppi,
 		DealInfo: &d,
 	})
 
 	if err != nil {
-		return xerrors.Errorf("adding piece to sector: %w", err)
+		return 0, 0, xerrors.Errorf("adding piece to sector: %w", err)
 	}
+
+	// offset hard-coded to 0 since we only put one thing in a sector for now
+	return sid, 0, nil
 }
 
 func (m *Sealing) addPiece(sectorID abi.SectorNumber, piece Piece) error {
