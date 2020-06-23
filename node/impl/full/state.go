@@ -425,7 +425,7 @@ func (a *StateAPI) StateMarketParticipants(ctx context.Context, tsk types.TipSet
 	if err != nil {
 		return nil, err
 	}
-	locked, err := hamt.LoadNode(ctx, cst, state.EscrowTable, hamt.UseTreeBitWidth(5))
+	locked, err := hamt.LoadNode(ctx, cst, state.LockedTable, hamt.UseTreeBitWidth(5))
 	if err != nil {
 		return nil, err
 	}
@@ -489,13 +489,11 @@ func (a *StateAPI) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (m
 
 		var s market.DealState
 		if err := sa.Get(ctx, i, &s); err != nil {
-			if err != nil {
-				if _, ok := err.(*amt.ErrNotFound); !ok {
-					return xerrors.Errorf("failed to get state for deal in proposals array: %w", err)
-				}
-
-				s.SectorStartEpoch = -1
+			if _, ok := err.(*amt.ErrNotFound); !ok {
+				return xerrors.Errorf("failed to get state for deal in proposals array: %w", err)
 			}
+
+			s.SectorStartEpoch = -1
 		}
 		out[strconv.FormatInt(int64(i), 10)] = api.MarketDeal{
 			Proposal: d,
