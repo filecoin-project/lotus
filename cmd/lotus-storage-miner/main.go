@@ -23,7 +23,7 @@ func main() {
 
 	local := []*cli.Command{
 		actorCmd,
-		dealsCmd,
+		storageDealsCmd,
 		infoCmd,
 		initCmd,
 		rewardsCmd,
