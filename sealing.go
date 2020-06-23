@@ -103,12 +103,13 @@ func (m *Sealing) AddPieceToAnySector(ctx context.Context, size abi.UnpaddedPiec
 		return 0, 0, xerrors.Errorf("piece cannot fit into a sector")
 	}
 
-	sid, err := m.newSector() // TODO: Put more than one thing in a sector
+	sid, err := m.getAvailableSector(size)
 	if err != nil {
 		return 0, 0, xerrors.Errorf("creating new sector: %w", err)
 	}
 
-	ppi, err := m.sealer.AddPiece(sectorstorage.WithPriority(ctx, DealSectorPriority), m.minerSector(sid), []abi.UnpaddedPieceSize{}, size, r)
+	offset := m.unsealedInfos[sid].stored
+	ppi, err := m.sealer.AddPiece(sectorstorage.WithPriority(ctx, DealSectorPriority), m.minerSector(sid), m.unsealedInfos[sid].pieceSizes, size, r)
 	if err != nil {
 		return 0, 0, xerrors.Errorf("writing piece: %w", err)
 	}
@@ -122,8 +123,7 @@ func (m *Sealing) AddPieceToAnySector(ctx context.Context, size abi.UnpaddedPiec
 		return 0, 0, xerrors.Errorf("adding piece to sector: %w", err)
 	}
 
-	// offset hard-coded to 0 since we only put one thing in a sector for now
-	return sid, 0, nil
+	return sid, offset, nil
 }
 
 func (m *Sealing) addPiece(sectorID abi.SectorNumber, piece Piece) error {
@@ -156,6 +156,20 @@ func (m *Sealing) StartPacking(sectorID abi.SectorNumber) error {
 	delete(m.unsealedInfos, sectorID)
 
 	return nil
+}
+
+func (m *Sealing) getAvailableSector(size abi.UnpaddedPieceSize) (abi.SectorNumber, error) {
+	ss := m.sealer.SectorSize()
+	for k, v := range m.unsealedInfos {
+		if v.stored+uint64(size) <= uint64(ss) {
+			// TODO: Support multiple deal sizes in the same sector
+			if len(v.pieceSizes) == 0 || v.pieceSizes[0] == size {
+				return k, nil
+			}
+		}
+	}
+
+	return m.newSector()
 }
 
 // newSector creates a new sector for deal storage
