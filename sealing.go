@@ -90,7 +90,7 @@ func (m *Sealing) AllocatePiece(size abi.UnpaddedPieceSize) (sectorID abi.Sector
 	if (padreader.PaddedSize(uint64(size))) != size {
 		return 0, 0, xerrors.Errorf("cannot allocate unpadded piece")
 	}
-	
+
 	if size > abi.UnpaddedPieceSize(m.sealer.SectorSize()) {
 		return 0, 0, xerrors.Errorf("piece cannot fit into a sector")
 	}
@@ -130,11 +130,13 @@ func (m *Sealing) SealPiece(ctx context.Context, size abi.UnpaddedPieceSize, r i
 	})
 }
 
-// newSector accepts a slice of pieces which will have a deal associated with
-// them (in the event of a storage deal) or no deal (in the event of sealing
-// garbage data)
+func (m *Sealing) Remove(ctx context.Context, sid abi.SectorNumber) error {
+	return m.sectors.Send(uint64(sid), SectorRemove{})
+}
+
+// newSector accepts a slice of pieces which will have deals associated with
 func (m *Sealing) newSector(sid abi.SectorNumber, rt abi.RegisteredSealProof, pieces []Piece) error {
-	log.Infof("Start sealing %d", sid)
+	log.Infof("Creating sector %d", sid)
 	return m.sectors.Send(uint64(sid), SectorStart{
 		ID:         sid,
 		Pieces:     pieces,
@@ -142,8 +144,14 @@ func (m *Sealing) newSector(sid abi.SectorNumber, rt abi.RegisteredSealProof, pi
 	})
 }
 
-func (m *Sealing) Remove(ctx context.Context, sid abi.SectorNumber) error {
-	return m.sectors.Send(uint64(sid), SectorRemove{})
+// newSectorCC accepts a slice of pieces with no deal (junk data)
+func (m *Sealing) newSectorCC(sid abi.SectorNumber, rt abi.RegisteredSealProof, pieces []Piece) error {
+	log.Infof("Creating CC sector %d", sid)
+	return m.sectors.Send(uint64(sid), SectorStartCC{
+		ID:         sid,
+		Pieces:     pieces,
+		SectorType: rt,
+	})
 }
 
 func (m *Sealing) minerSector(num abi.SectorNumber) abi.SectorID {

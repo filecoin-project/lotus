@@ -77,7 +77,7 @@ func (m *Sealing) PledgeSector() error {
 			}
 		}
 
-		if err := m.newSector(sid, rt, ps); err != nil {
+		if err := m.newSectorCC(sid, rt, ps); err != nil {
 			log.Errorf("%+v", err)
 			return
 		}

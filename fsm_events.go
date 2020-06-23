@@ -59,6 +59,18 @@ func (evt SectorStart) apply(state *SectorInfo) {
 	state.SectorType = evt.SectorType
 }
 
+type SectorStartCC struct {
+	ID         abi.SectorNumber
+	SectorType abi.RegisteredSealProof
+	Pieces     []Piece
+}
+
+func (evt SectorStartCC) apply(state *SectorInfo) {
+	state.SectorNumber = evt.ID
+	state.Pieces = evt.Pieces
+	state.SectorType = evt.SectorType
+}
+
 type SectorPacked struct{ FillerPieces []abi.PieceInfo }
 
 func (evt SectorPacked) apply(state *SectorInfo) {
