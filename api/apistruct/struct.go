@@ -206,7 +206,7 @@ type StorageMinerStruct struct {
 		SectorsList   func(context.Context) ([]abi.SectorNumber, error)               `perm:"read"`
 		SectorsRefs   func(context.Context) (map[string][]api.SealedRef, error)       `perm:"read"`
 		SectorsUpdate func(context.Context, abi.SectorNumber, api.SectorState) error  `perm:"write"`
-		SectorRemove  func(context.Context, abi.SectorNumber) error `perm:"admin"`
+		SectorRemove  func(context.Context, abi.SectorNumber) error                   `perm:"admin"`
 
 		WorkerConnect func(context.Context, string) error                             `perm:"admin"` // TODO: worker perm
 		WorkerStats   func(context.Context) (map[uint64]storiface.WorkerStats, error) `perm:"admin"`

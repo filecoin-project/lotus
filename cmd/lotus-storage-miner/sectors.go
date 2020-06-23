@@ -47,8 +47,9 @@ var sectorsPledgeCmd = &cli.Command{
 }
 
 var sectorsStatusCmd = &cli.Command{
-	Name:  "status",
-	Usage: "Get the seal status of a sector by its ID",
+	Name:      "status",
+	Usage:     "Get the seal status of a sector by its number",
+	ArgsUsage: "<sectorNum>",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:  "log",
@@ -64,7 +65,7 @@ var sectorsStatusCmd = &cli.Command{
 		ctx := lcli.ReqContext(cctx)
 
 		if !cctx.Args().Present() {
-			return fmt.Errorf("must specify sector ID to get status of")
+			return fmt.Errorf("must specify sector number to get status of")
 		}
 
 		id, err := strconv.ParseUint(cctx.Args().First(), 10, 64)
@@ -209,10 +210,10 @@ var sectorsRefsCmd = &cli.Command{
 	},
 }
 
-
 var sectorsRemoveCmd = &cli.Command{
-	Name:  "remove",
-	Usage: "Forcefully remove a sector (WARNING: This means losing power and collateral for the removed sector)",
+	Name:      "remove",
+	Usage:     "Forcefully remove a sector (WARNING: This means losing power and collateral for the removed sector)",
+	ArgsUsage: "<sectorNum>",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:  "really-do-it",
@@ -230,12 +231,12 @@ var sectorsRemoveCmd = &cli.Command{
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 		if cctx.Args().Len() != 1 {
-			return xerrors.Errorf("must pass sector ID")
+			return xerrors.Errorf("must pass sector number")
 		}
 
 		id, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
 		if err != nil {
-			return xerrors.Errorf("could not parse sector ID: %w", err)
+			return xerrors.Errorf("could not parse sector number: %w", err)
 		}
 
 		return nodeApi.SectorRemove(ctx, abi.SectorNumber(id))
@@ -262,12 +263,12 @@ var sectorsUpdateCmd = &cli.Command{
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 		if cctx.Args().Len() < 2 {
-			return xerrors.Errorf("must pass sector ID and new state")
+			return xerrors.Errorf("must pass sector number and new state")
 		}
 
 		id, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
 		if err != nil {
-			return xerrors.Errorf("could not parse sector ID: %w", err)
+			return xerrors.Errorf("could not parse sector number: %w", err)
 		}
 
 		return nodeApi.SectorsUpdate(ctx, abi.SectorNumber(id), api.SectorState(cctx.Args().Get(1)))
