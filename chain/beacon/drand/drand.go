@@ -23,14 +23,10 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
 var log = logging.Logger("drand")
-
-type DrandConfig struct {
-	Servers       []string
-	ChainInfoJSON string
-}
 
 type drandPeer struct {
 	addr string
@@ -61,7 +57,7 @@ type DrandBeacon struct {
 	localCache map[uint64]types.BeaconEntry
 }
 
-func NewDrandBeacon(genesisTs, interval uint64, ps *pubsub.PubSub, config DrandConfig) (*DrandBeacon, error) {
+func NewDrandBeacon(genesisTs, interval uint64, ps *pubsub.PubSub, config dtypes.DrandConfig) (*DrandBeacon, error) {
 	if genesisTs == 0 {
 		panic("what are you doing this cant be zero")
 	}

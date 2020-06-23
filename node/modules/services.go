@@ -124,9 +124,5 @@ func RandomBeacon(p RandomBeaconParams, _ dtypes.AfterGenesisSet) (beacon.Random
 	}
 
 	//return beacon.NewMockBeacon(build.BlockDelay * time.Second)
-	config := drand.DrandConfig{
-		Servers:       p.DrandConfig.Servers,
-		ChainInfoJSON: p.DrandConfig.ChainInfoJSON,
-	}
-	return drand.NewDrandBeacon(gen.Timestamp, build.BlockDelay, p.PubSub, config)
+	return drand.NewDrandBeacon(gen.Timestamp, build.BlockDelay, p.PubSub, p.DrandConfig)
 }
