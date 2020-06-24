@@ -82,7 +82,7 @@ func runBaselineMiner(t *TestEnvironment) error {
 	go func() {
 		defer close(done)
 		for mine {
-			time.Sleep(10 * time.Second)
+			time.Sleep(1000 * time.Millisecond)
 			t.RecordMessage("mine one block")
 			if err := miner.MineOne(ctx, func(bool) {}); err != nil {
 				panic(err)
@@ -201,7 +201,7 @@ func startDeal(ctx context.Context, minerActorAddr address.Address, client *impl
 		Wallet:            addr,
 		Miner:             minerActorAddr,
 		EpochPrice:        types.NewInt(1000000),
-		MinBlocksDuration: 100,
+		MinBlocksDuration: 1000,
 	})
 	if err != nil {
 		panic(err)

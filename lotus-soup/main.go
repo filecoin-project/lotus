@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -20,12 +21,7 @@ var testplans = map[string]interface{}{
 }
 
 func init() {
-	logging.SetLogLevel("vm", "WARN")
-	logging.SetLogLevel("miner", "WARN")
-	logging.SetLogLevel("chainstore", "WARN")
-	logging.SetLogLevel("chain", "WARN")
-	logging.SetLogLevel("sub", "WARN")
-	logging.SetLogLevel("storageminer", "WARN")
+	logging.SetLogLevel("*", "WARN")
 
 	build.DisableBuiltinAssets = true
 
@@ -35,6 +31,9 @@ func init() {
 		abi.RegisteredSealProof_StackedDrg2KiBV1: {},
 	}
 	verifreg.MinVerifiedDealSize = big.NewInt(256)
+
+	build.InsecurePoStValidation = true
+	os.Setenv("BELLMAN_NO_GPU", "1")
 }
 
 func main() {
