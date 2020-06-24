@@ -383,8 +383,6 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 		return nil, xerrors.Errorf("get need prove sectors: %w", err)
 	}
 
-	// var skipped *abi.BitField
-	// {
 	good, err := s.checkSectors(ctx, nps)
 	if err != nil {
 		return nil, xerrors.Errorf("checking sectors to skip: %w", err)
@@ -394,7 +392,6 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 	if err != nil {
 		return nil, xerrors.Errorf("nps - good: %w", err)
 	}
-	// }
 
 	skipCount, err := skipped.Count()
 	if err != nil {
