@@ -82,15 +82,15 @@ func runBaselineMiner(t *TestEnvironment) error {
 	go func() {
 		defer close(done)
 		for mine {
-			time.Sleep(10 * time.Millisecond)
-			//t.RecordMessage("mine one block")
+			time.Sleep(10 * time.Second)
+			t.RecordMessage("mine one block")
 			if err := miner.MineOne(ctx, func(bool) {}); err != nil {
 				panic(err)
 			}
 		}
 	}()
 
-	time.Sleep(300 * time.Second)
+	time.Sleep(3600 * time.Second)
 	mine = false
 	fmt.Println("shutting down mining")
 	<-done
@@ -122,6 +122,8 @@ func runBaselineClient(t *TestEnvironment) error {
 
 	t.RecordMessage("client connected to miner")
 
+	time.Sleep(10 * time.Second)
+
 	// generate random data
 	data := make([]byte, 1600)
 	rand.New(rand.NewSource(time.Now().UnixNano())).Read(data)
@@ -137,7 +139,7 @@ func runBaselineClient(t *TestEnvironment) error {
 	t.RecordMessage("started deal: %s", deal)
 
 	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
-	time.Sleep(3 * time.Second)
+	time.Sleep(5 * time.Second)
 
 	t.RecordMessage("wait to be sealed")
 	waitDealSealed(ctx, client, deal)

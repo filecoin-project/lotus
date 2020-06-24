@@ -14,7 +14,6 @@ import (
 	"github.com/testground/sdk-go/runtime"
 	"github.com/testground/sdk-go/sync"
 
-	logging "github.com/ipfs/go-log/v2"
 	libp2p_crypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
@@ -40,13 +39,11 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/lp2p"
 	modtest "github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	saminer "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 )
 
@@ -93,19 +90,6 @@ type GenesisMsg struct {
 type MinerAddresses struct {
 	PeerAddr  peer.AddrInfo
 	ActorAddr address.Address
-}
-
-func init() {
-	logging.SetLogLevel("vm", "WARN")
-
-	build.DisableBuiltinAssets = true
-
-	// Note: I don't understand the significance of this, but the node test does it.
-	power.ConsensusMinerMinPower = big.NewInt(2048)
-	saminer.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
-		abi.RegisteredSealProof_StackedDrg2KiBV1: {},
-	}
-	verifreg.MinVerifiedDealSize = big.NewInt(256)
 }
 
 func prepareBootstrapper(t *TestEnvironment) (*Node, error) {
