@@ -1,11 +1,20 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"math/rand"
+	"time"
 
+	"github.com/davecgh/go-spew/spew"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/node/impl"
+	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/testground/sdk-go/sync"
 )
 
 // This is the basline test; Filecoin 101.
@@ -59,7 +68,22 @@ func runBaselineMiner(t *TestEnvironment) error {
 
 	t.RecordMessage("got %v client addrs", len(addrs))
 
-	// subscribe to clients
+	// mine / stop mining
+	//mine := true
+	//done := make(chan struct{})
+	//go func() {
+	//defer close(done)
+	//for mine {
+	//time.Sleep(blocktime)
+	//if err := sn[0].MineOne(ctx, func(bool) {}); err != nil {
+	//t.Error(err)
+	//}
+	//}
+	//}()
+	//makeDeal(t, ctx, 6, client, miner, carExport)
+	//mine = false
+	//fmt.Println("shutting down mining")
+	//<-done
 
 	// TODO wait a bit for network to bootstrap
 	// TODO just wait until completion of test, serving requests -- the client does all the job
@@ -70,7 +94,7 @@ func runBaselineMiner(t *TestEnvironment) error {
 
 func runBaselineClient(t *TestEnvironment) error {
 	t.RecordMessage("running client")
-	client, err := prepareClient(t)
+	cl, err := prepareClient(t)
 	if err != nil {
 		return err
 	}
@@ -81,43 +105,92 @@ func runBaselineClient(t *TestEnvironment) error {
 		return err
 	}
 
+	client := cl.fullApi.(*impl.FullNodeAPI)
+
 	t.RecordMessage("got %v miner addrs", len(addrs))
 
-	if err := client.fullApi.NetConnect(ctx, addrs[0]); err != nil {
+	if err := client.NetConnect(ctx, addrs[0].PeerAddr); err != nil {
 		return err
 	}
 
 	t.RecordMessage("client connected to miner")
 
-	// TODO generate a number of random "files" and publish them to one or more miners
+	// generate a number of random "files" and publish them to one or more miners
+	data := make([]byte, 1600)
+	rand.New(rand.NewSource(time.Now().UnixNano())).Read(data)
+
+	r := bytes.NewReader(data)
+	fcid, err := client.ClientImportLocal(ctx, r)
+	if err != nil {
+		return err
+	}
+
+	t.RecordMessage("file cid: %s", fcid)
+
+	// start deal
+	deal := startDeal(ctx, addrs[0].ActorAddr, client, fcid)
+	spew.Dump(deal)
+
+	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
+	time.Sleep(time.Second)
+
+	//waitDealSealed(t, ctx, client, deal)
+	//testRetrieval(t, ctx, err, client, fcid, carExport, data)
+
 	// TODO broadcast published content CIDs to other clients
-	// TODO select a random piece of content published by some other client and retreieve it
+	// TODO select a random piece of content published by some other client and retrieve it
 
 	t.SyncClient.MustSignalAndWait(ctx, stateDone, t.TestInstanceCount)
 	return nil
 }
 
-func collectMinersAddrs(t *TestEnvironment, ctx context.Context, miners int) ([]peer.AddrInfo, error) {
-	return collectAddrs(t, ctx, minersAddrsTopic, miners)
-}
+func collectMinersAddrs(t *TestEnvironment, ctx context.Context, miners int) ([]MinerAddresses, error) {
+	ch := make(chan MinerAddresses)
+	sub := t.SyncClient.MustSubscribe(ctx, minersAddrsTopic, ch)
 
-func collectClientsAddrs(t *TestEnvironment, ctx context.Context, clients int) ([]peer.AddrInfo, error) {
-	return collectAddrs(t, ctx, clientsAddrsTopic, clients)
-}
-
-func collectAddrs(t *TestEnvironment, ctx context.Context, topic *sync.Topic, expectedValues int) ([]peer.AddrInfo, error) {
-	ch := make(chan peer.AddrInfo)
-	sub := t.SyncClient.MustSubscribe(ctx, topic, ch)
-
-	addrs := make([]peer.AddrInfo, 0, expectedValues)
-	for i := 0; i < expectedValues; i++ {
+	addrs := make([]MinerAddresses, 0, miners)
+	for i := 0; i < miners; i++ {
 		select {
 		case a := <-ch:
 			addrs = append(addrs, a)
 		case err := <-sub.Done():
-			return nil, fmt.Errorf("got error while waiting for %v addrs: %w", topic, err)
+			return nil, fmt.Errorf("got error while waiting for miners addrs: %w", err)
 		}
 	}
 
 	return addrs, nil
+}
+
+func collectClientsAddrs(t *TestEnvironment, ctx context.Context, clients int) ([]peer.AddrInfo, error) {
+	ch := make(chan peer.AddrInfo)
+	sub := t.SyncClient.MustSubscribe(ctx, clientsAddrsTopic, ch)
+
+	addrs := make([]peer.AddrInfo, 0, clients)
+	for i := 0; i < clients; i++ {
+		select {
+		case a := <-ch:
+			addrs = append(addrs, a)
+		case err := <-sub.Done():
+			return nil, fmt.Errorf("got error while waiting for clients addrs: %w", err)
+		}
+	}
+
+	return addrs, nil
+}
+
+func startDeal(ctx context.Context, minerActorAddr address.Address, client *impl.FullNodeAPI, fcid cid.Cid) *cid.Cid {
+	//func startDeal(ctx context.Context, minerActorAddr address.Address, client api.FullNodeAPI, fcid cid.Cid) *cid.Cid {
+	addr, _ := client.WalletDefaultAddress(ctx)
+
+	deal, err := client.ClientStartDeal(ctx, &api.StartDealParams{
+		Data:              &storagemarket.DataRef{Root: fcid},
+		Wallet:            addr,
+		Miner:             minerActorAddr,
+		EpochPrice:        types.NewInt(1000000),
+		MinBlocksDuration: 100,
+	})
+	if err != nil {
+		panic(err)
+	}
+	return deal
 }

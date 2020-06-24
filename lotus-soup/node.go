@@ -57,7 +57,7 @@ var (
 	presealTopic = sync.NewTopic("preseal", &PresealMsg{})
 
 	clientsAddrsTopic = sync.NewTopic("clientsAddrsTopic", &peer.AddrInfo{})
-	minersAddrsTopic  = sync.NewTopic("minersAddrsTopic", &peer.AddrInfo{})
+	minersAddrsTopic  = sync.NewTopic("minersAddrsTopic", &MinerAddresses{})
 
 	stateReady = sync.State("ready")
 	stateDone  = sync.State("done")
@@ -86,6 +86,11 @@ type PresealMsg struct {
 type GenesisMsg struct {
 	Genesis      []byte
 	Bootstrapper []byte
+}
+
+type MinerAddresses struct {
+	PeerAddr  peer.AddrInfo
+	ActorAddr address.Address
 }
 
 func init() {
@@ -400,11 +405,15 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 	}
 
 	t.RecordMessage("publish our address to the miners addr topic")
+	actoraddress, err := n.minerApi.ActorAddress(ctx)
+	if err != nil {
+		return nil, err
+	}
 	addrinfo, err := n.minerApi.NetAddrsListen(ctx)
 	if err != nil {
 		return nil, err
 	}
-	t.SyncClient.MustPublish(ctx, minersAddrsTopic, addrinfo)
+	t.SyncClient.MustPublish(ctx, minersAddrsTopic, MinerAddresses{addrinfo, actoraddress})
 
 	t.RecordMessage("waiting for all nodes to be ready")
 	t.SyncClient.MustSignalAndWait(ctx, stateReady, t.TestInstanceCount)
