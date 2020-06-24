@@ -115,7 +115,7 @@ func collectAddrs(t *TestEnvironment, ctx context.Context, topic *sync.Topic, ex
 		case a := <-ch:
 			addrs = append(addrs, a)
 		case err := <-sub.Done():
-			return nil, fmt.Errorf("got error while waiting for client addrs: %w", err)
+			return nil, fmt.Errorf("got error while waiting for %v addrs: %w", topic, err)
 		}
 	}
 
