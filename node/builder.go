@@ -218,6 +218,7 @@ func Online() Option {
 
 			Override(new(dtypes.BootstrapPeers), modules.BuiltinBootstrap),
 			Override(new(dtypes.DrandBootstrap), modules.DrandBootstrap),
+			Override(new(dtypes.DrandConfig), modules.BuiltinDrandConfig),
 
 			Override(HandleIncomingMessagesKey, modules.HandleIncomingMessages),
 

@@ -31,7 +31,7 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	rm "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -59,8 +59,8 @@ type API struct {
 	paych.PaychAPI
 
 	SMDealClient storagemarket.StorageClient
-	RetDiscovery retrievalmarket.PeerResolver
-	Retrieval    retrievalmarket.RetrievalClient
+	RetDiscovery rm.PeerResolver
+	Retrieval    rm.RetrievalClient
 	Chain        *store.ChainStore
 
 	LocalDAG   dtypes.ClientDAG
@@ -202,7 +202,7 @@ func (a *API) ClientFindData(ctx context.Context, root cid.Cid) ([]api.QueryOffe
 
 	out := make([]api.QueryOffer, len(peers))
 	for k, p := range peers {
-		out[k] = a.makeRetrievalQuery(ctx, p, root, retrievalmarket.QueryParams{})
+		out[k] = a.makeRetrievalQuery(ctx, p, root, rm.QueryParams{})
 	}
 
 	return out, nil
@@ -213,25 +213,25 @@ func (a *API) ClientMinerQueryOffer(ctx context.Context, payload cid.Cid, miner 
 	if err != nil {
 		return api.QueryOffer{}, err
 	}
-	rp := retrievalmarket.RetrievalPeer{
+	rp := rm.RetrievalPeer{
 		Address: miner,
 		ID:      mi.PeerId,
 	}
-	return a.makeRetrievalQuery(ctx, rp, payload, retrievalmarket.QueryParams{}), nil
+	return a.makeRetrievalQuery(ctx, rp, payload, rm.QueryParams{}), nil
 }
 
-func (a *API) makeRetrievalQuery(ctx context.Context, rp retrievalmarket.RetrievalPeer, payload cid.Cid, qp retrievalmarket.QueryParams) api.QueryOffer {
+func (a *API) makeRetrievalQuery(ctx context.Context, rp rm.RetrievalPeer, payload cid.Cid, qp rm.QueryParams) api.QueryOffer {
 	queryResponse, err := a.Retrieval.Query(ctx, rp, payload, qp)
 	if err != nil {
 		return api.QueryOffer{Err: err.Error(), Miner: rp.Address, MinerPeerID: rp.ID}
 	}
 	var errStr string
 	switch queryResponse.Status {
-	case retrievalmarket.QueryResponseAvailable:
+	case rm.QueryResponseAvailable:
 		errStr = ""
-	case retrievalmarket.QueryResponseUnavailable:
+	case rm.QueryResponseUnavailable:
 		errStr = fmt.Sprintf("retrieval query offer was unavailable: %s", queryResponse.Message)
-	case retrievalmarket.QueryResponseError:
+	case rm.QueryResponseError:
 		errStr = fmt.Sprintf("retrieval query offer errored: %s", queryResponse.Message)
 	}
 
@@ -345,13 +345,35 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 
 	retrievalResult := make(chan error, 1)
 
-	unsubscribe := a.Retrieval.SubscribeToEvents(func(event retrievalmarket.ClientEvent, state retrievalmarket.ClientDealState) {
+	unsubscribe := a.Retrieval.SubscribeToEvents(func(event rm.ClientEvent, state rm.ClientDealState) {
 		if state.PayloadCID.Equals(order.Root) {
 			switch state.Status {
-			case retrievalmarket.DealStatusFailed, retrievalmarket.DealStatusErrored:
-				retrievalResult <- xerrors.Errorf("Retrieval Error: %s", state.Message)
-			case retrievalmarket.DealStatusCompleted:
+			case rm.DealStatusCompleted:
 				retrievalResult <- nil
+			case rm.DealStatusRejected:
+				retrievalResult <- xerrors.Errorf("Retrieval Proposal Rejected: %s", state.Message)
+			case
+				rm.DealStatusDealNotFound,
+				rm.DealStatusErrored,
+				rm.DealStatusFailed:
+				retrievalResult <- xerrors.Errorf("Retrieval Error: %s", state.Message)
+			case
+				rm.DealStatusAccepted,
+				rm.DealStatusAwaitingAcceptance,
+				rm.DealStatusBlocksComplete,
+				rm.DealStatusFinalizing,
+				rm.DealStatusFundsNeeded,
+				rm.DealStatusFundsNeededLastPayment,
+				rm.DealStatusNew,
+				rm.DealStatusOngoing,
+				rm.DealStatusPaymentChannelAddingFunds,
+				rm.DealStatusPaymentChannelAllocatingLane,
+				rm.DealStatusPaymentChannelCreating,
+				rm.DealStatusPaymentChannelReady,
+				rm.DealStatusVerified:
+				return
+			default:
+				retrievalResult <- xerrors.Errorf("Unhandled Retrieval Status: %+v", state.Status)
 			}
 		}
 	})
@@ -361,7 +383,7 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 	_, err := a.Retrieval.Retrieve(
 		ctx,
 		order.Root,
-		retrievalmarket.NewParamsV0(ppb, order.PaymentInterval, order.PaymentIntervalIncrease),
+		rm.NewParamsV0(ppb, order.PaymentInterval, order.PaymentIntervalIncrease),
 		order.Total,
 		order.MinerPeerID,
 		order.Client,
