@@ -46,7 +46,7 @@ func runBaselineBootstrapper(t *TestEnvironment) error {
 
 func runBaselineMiner(t *TestEnvironment) error {
 	t.RecordMessage("running miner")
-	miner, err := prepareMiner(t)
+	_, err := prepareMiner(t)
 	if err != nil {
 		return err
 	}
@@ -59,12 +59,6 @@ func runBaselineMiner(t *TestEnvironment) error {
 
 	t.RecordMessage("got %v client addrs", len(addrs))
 
-	if err := miner.fullApi.NetConnect(ctx, addrs[0]); err != nil {
-		return err
-	}
-
-	t.RecordMessage("miner connected to client")
-
 	// subscribe to clients
 
 	// TODO wait a bit for network to bootstrap
@@ -76,7 +70,7 @@ func runBaselineMiner(t *TestEnvironment) error {
 
 func runBaselineClient(t *TestEnvironment) error {
 	t.RecordMessage("running client")
-	_, err := prepareClient(t)
+	client, err := prepareClient(t)
 	if err != nil {
 		return err
 	}
@@ -88,6 +82,12 @@ func runBaselineClient(t *TestEnvironment) error {
 	}
 
 	t.RecordMessage("got %v miner addrs", len(addrs))
+
+	if err := client.fullApi.NetConnect(ctx, addrs[0]); err != nil {
+		return err
+	}
+
+	t.RecordMessage("client connected to miner")
 
 	// TODO generate a number of random "files" and publish them to one or more miners
 	// TODO broadcast published content CIDs to other clients
@@ -107,7 +107,7 @@ func collectClientsAddrs(t *TestEnvironment, ctx context.Context, clients int) (
 
 func collectAddrs(t *TestEnvironment, ctx context.Context, topic *sync.Topic, expectedValues int) ([]peer.AddrInfo, error) {
 	ch := make(chan peer.AddrInfo)
-	sub := t.SyncClient.MustSubscribe(ctx, clientsAddrsTopic, ch)
+	sub := t.SyncClient.MustSubscribe(ctx, topic, ch)
 
 	addrs := make([]peer.AddrInfo, 0, expectedValues)
 	for i := 0; i < expectedValues; i++ {
