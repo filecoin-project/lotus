@@ -32,6 +32,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
 	"github.com/filecoin-project/lotus/genesis"
+	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules"
@@ -72,6 +73,7 @@ type Node struct {
 	fullApi  api.FullNode
 	minerApi api.StorageMiner
 	stop     node.StopFunc
+	MineOne  func(context.Context, func(bool)) error
 }
 
 type InitialBalanceMsg struct {
@@ -354,11 +356,13 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 		return nil, err
 	}
 
+	mineBlock := make(chan func(bool))
 	stop2, err := node.New(context.Background(),
 		node.StorageMiner(&n.minerApi),
 		node.Online(),
 		node.Repo(minerRepo),
 		node.Override(new(api.FullNode), n.fullApi),
+		node.Override(new(*miner.Miner), miner.NewTestMiner(mineBlock, minerAddr)),
 		withMinerListenAddress(minerIP),
 	)
 	if err != nil {
@@ -373,6 +377,21 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 			return err2
 		}
 		return err1
+	}
+
+	/*// Bootstrap with full node
+	remoteAddrs, err := tnd.NetAddrsListen(ctx)
+	require.NoError(t, err)
+
+	err = minerapi.NetConnect(ctx, remoteAddrs)
+	require.NoError(t, err)*/
+	n.MineOne = func(ctx context.Context, cb func(bool)) error {
+		select {
+		case mineBlock <- cb:
+			return nil
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 	}
 
 	// add local storage for presealed sectors

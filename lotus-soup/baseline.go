@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/lotus/api"
@@ -64,7 +63,7 @@ func runBaselineBootstrapper(t *TestEnvironment) error {
 
 func runBaselineMiner(t *TestEnvironment) error {
 	t.RecordMessage("running miner")
-	_, err := prepareMiner(t)
+	miner, err := prepareMiner(t)
 	if err != nil {
 		return err
 	}
@@ -78,24 +77,23 @@ func runBaselineMiner(t *TestEnvironment) error {
 	t.RecordMessage("got %v client addrs", len(addrs))
 
 	// mine / stop mining
-	//mine := true
-	//done := make(chan struct{})
-	//go func() {
-	//defer close(done)
-	//for mine {
-	//time.Sleep(blocktime)
-	//if err := sn[0].MineOne(ctx, func(bool) {}); err != nil {
-	//t.Error(err)
-	//}
-	//}
-	//}()
-	//makeDeal(t, ctx, 6, client, miner, carExport)
-	//mine = false
-	//fmt.Println("shutting down mining")
-	//<-done
+	mine := true
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for mine {
+			time.Sleep(7 * time.Second)
+			t.RecordMessage("mine one block")
+			if err := miner.MineOne(ctx, func(bool) {}); err != nil {
+				panic(err)
+			}
+		}
+	}()
 
-	// TODO wait a bit for network to bootstrap
-	// TODO just wait until completion of test, serving requests -- the client does all the job
+	time.Sleep(30 * time.Second)
+	mine = false
+	fmt.Println("shutting down mining")
+	<-done
 
 	t.SyncClient.MustSignalAndWait(ctx, stateDone, t.TestInstanceCount)
 	return nil
@@ -124,28 +122,29 @@ func runBaselineClient(t *TestEnvironment) error {
 
 	t.RecordMessage("client connected to miner")
 
-	// generate a number of random "files" and publish them to one or more miners
+	// generate random data
 	data := make([]byte, 1600)
 	rand.New(rand.NewSource(time.Now().UnixNano())).Read(data)
-
 	r := bytes.NewReader(data)
 	fcid, err := client.ClientImportLocal(ctx, r)
 	if err != nil {
 		return err
 	}
-
 	t.RecordMessage("file cid: %s", fcid)
 
 	// start deal
 	deal := startDeal(ctx, addrs[0].ActorAddr, client, fcid)
-	spew.Dump(deal)
+	t.RecordMessage("started deal: %s", deal)
 
 	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
-	time.Sleep(time.Second)
+	time.Sleep(3 * time.Second)
 
+	// wait for deal to be sealed
 	waitDealSealed(ctx, client, deal)
 
 	carExport := true
+
+	// try to retrieve fcid
 	testRetrieval(ctx, err, client, fcid, carExport, data)
 
 	// TODO broadcast published content CIDs to other clients
