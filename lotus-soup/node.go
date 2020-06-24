@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"os"
+	"strings"
 
 	//"encoding/json"
 	"fmt"
@@ -80,6 +81,15 @@ var (
 type TestEnvironment struct {
 	*runtime.RunEnv
 	*run.InitContext
+}
+
+func (t *TestEnvironment) DurationParam(name string) time.Duration {
+	s := strings.ReplaceAll(t.StringParam(name), "\"", "")
+	d, err := time.ParseDuration(s)
+	if err != nil {
+		panic(fmt.Errorf("invalid duration value for param '%s': %w", name, err))
+	}
+	return d
 }
 
 type Node struct {
@@ -668,11 +678,8 @@ func getDrandConfig(ctx context.Context, t *TestEnvironment) (node.Option, error
 		return nil, err
 	}
 	t.RecordMessage("setting drand config: %v", cfg)
-
 	return node.Options(
-		node.Override(new(dtypes.DrandConfig), *cfg),
-
-		// FIXME: re-enable drand bootstrap peers once drand gossip relays are running in testground
-		node.Override(new(dtypes.DrandBootstrap), dtypes.DrandBootstrap{}),
+		node.Override(new(dtypes.DrandConfig), cfg.Config),
+		node.Override(new(dtypes.DrandBootstrap), cfg.GossipBootstrap),
 	), nil
 }

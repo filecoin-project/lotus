@@ -27,5 +27,11 @@ instances = { min = 1, max = 100, default = 5 }
   miners = { type = "int", default = 1 }
   balance = { type = "int", default = 1 }
   sectors = { type = "int", default = 1 }
-  real_drand = { type = "bool", default = "false", desc = "set to true to use the real drand network config baked into lotus" }
   role = { type = "string" }
+
+  real_drand = { type = "bool", default = "false", desc = "set to true to use the real drand network config baked into lotus. otherwise, make sure there's a group with role='drand' and at least 2 nodes" }
+
+  # params relevant to drand nodes:
+  drand_period = { type = "duration", default="10s" }
+  drand_threshold = { type = "int", default = 2 }
+  drand_gossip_relay = { type = "bool", default = true }
