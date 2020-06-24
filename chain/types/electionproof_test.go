@@ -110,24 +110,6 @@ func TestElectionLam(t *testing.T) {
 	}
 }
 
-func TestElectionExp(t *testing.T) {
-	t.SkipNow()
-	const N = 256
-
-	step := big.NewInt(5)
-	step = step.Lsh(step, 256) // Q.256
-	step = step.Div(step, big.NewInt(N-1))
-
-	f, _ := os.Create("exp.csv")
-
-	x := big.NewInt(0)
-	for i := 0; i < N; i++ {
-		y := expneg(x)
-		fmt.Fprintf(f, "%s,%s\n", x, y)
-		x = x.Add(x, step)
-	}
-}
-
 var Res uint64
 
 func BenchmarkWinCounts(b *testing.B) {
