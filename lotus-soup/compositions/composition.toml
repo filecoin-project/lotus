@@ -22,7 +22,7 @@
       role = "bootstrapper"
       clients = "1"
       miners = "1"
-      balance = "2000"
+      balance = "2000000000"
       sectors = "10"
 
 [[groups]]
@@ -38,7 +38,7 @@
       role = "miner"
       clients = "1"
       miners = "1"
-      balance = "2000"
+      balance = "2000000000"
       sectors = "10"
 
 [[groups]]
@@ -54,5 +54,5 @@
       role = "client"
       clients = "1"
       miners = "1"
-      balance = "2000"
+      balance = "2000000000"
       sectors = "10"
