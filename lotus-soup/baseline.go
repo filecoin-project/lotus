@@ -90,7 +90,7 @@ func runBaselineMiner(t *TestEnvironment) error {
 		}
 	}()
 
-	time.Sleep(60 * time.Second)
+	time.Sleep(300 * time.Second)
 	mine = false
 	fmt.Println("shutting down mining")
 	<-done
