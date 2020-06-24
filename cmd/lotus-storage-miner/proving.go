@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"math"
 	"os"
 	"text/tabwriter"
 	"time"
@@ -73,14 +72,29 @@ var provingFaultsCmd = &cli.Command{
 			return err
 		}
 		if len(faults) == 0 {
-			fmt.Println("no sector fault")
+			fmt.Println("no faulty sectors")
 		}
-		for _, num := range faults {
-			num2 := num % (mas.Info.WindowPoStPartitionSectors * (miner.WPoStPeriodDeadlines - 1))
-			deadline := uint64(math.Floor(float64(num2)/float64(mas.Info.WindowPoStPartitionSectors))) + 1
-			fmt.Printf("sector number = %d,deadline = %d\n", num, deadline)
+		head, err := api.ChainHead(ctx)
+		if err != nil {
+			return xerrors.Errorf("getting chain head: %w", err)
 		}
-		return nil
+		deadlines, err := api.StateMinerDeadlines(ctx, maddr, head.Key())
+		if err != nil {
+			return xerrors.Errorf("getting miner deadlines: %w", err)
+		}
+		tw := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
+		_, _ = fmt.Fprintln(tw, "deadline\tsectors")
+		for deadline, sectors := range deadlines.Due {
+			intersectSectors, _ := bitfield.IntersectBitField(sectors, mas.Faults)
+			if intersectSectors != nil {
+				allSectors, _ := intersectSectors.All(100000000000)
+				for _, num := range allSectors {
+					_, _ = fmt.Fprintf(tw, "%d\t%d\n", deadline, num)
+				}
+			}
+
+		}
+		return tw.Flush()
 	},
 }
 
