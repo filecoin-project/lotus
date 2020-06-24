@@ -518,10 +518,15 @@ func (t *ElectionProof) MarshalCBOR(w io.Writer) error {
 
 	scratch := make([]byte, 9)
 
-	// t.WinCount (uint64) (uint64)
-
-	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajUnsignedInt, uint64(t.WinCount)); err != nil {
-		return err
+	// t.WinCount (int64) (int64)
+	if t.WinCount >= 0 {
+		if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajUnsignedInt, uint64(t.WinCount)); err != nil {
+			return err
+		}
+	} else {
+		if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajNegativeInt, uint64(-t.WinCount-1)); err != nil {
+			return err
+		}
 	}
 
 	// t.VRFProof ([]uint8) (slice)
@@ -555,19 +560,30 @@ func (t *ElectionProof) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.WinCount (uint64) (uint64)
-
+	// t.WinCount (int64) (int64)
 	{
-
-		maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
+		maj, extra, err := cbg.CborReadHeaderBuf(br, scratch)
+		var extraI int64
 		if err != nil {
 			return err
 		}
-		if maj != cbg.MajUnsignedInt {
-			return fmt.Errorf("wrong type for uint64 field")
+		switch maj {
+		case cbg.MajUnsignedInt:
+			extraI = int64(extra)
+			if extraI < 0 {
+				return fmt.Errorf("int64 positive overflow")
+			}
+		case cbg.MajNegativeInt:
+			extraI = int64(extra)
+			if extraI < 0 {
+				return fmt.Errorf("int64 negative oveflow")
+			}
+			extraI = -1 - extraI
+		default:
+			return fmt.Errorf("wrong type for int64 field: %d", maj)
 		}
-		t.WinCount = uint64(extra)
 
+		t.WinCount = int64(extraI)
 	}
 	// t.VRFProof ([]uint8) (slice)
 

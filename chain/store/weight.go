@@ -59,14 +59,14 @@ func (cs *ChainStore) Weight(ctx context.Context, ts *types.TipSet) (types.BigIn
 
 	// (wFunction(totalPowerAtTipset(ts)) * sum(ts.blocks[].ElectionProof.WinCount) * wRatio_num * 2^8) / (e * wRatio_den)
 
-	totalJ := uint64(0)
+	totalJ := int64(0)
 	for _, b := range ts.Blocks() {
 		totalJ += b.ElectionProof.WinCount
 	}
 
 	eWeight := big.NewInt((log2P * build.WRatioNum))
 	eWeight = eWeight.Lsh(eWeight, 8)
-	eWeight = eWeight.Mul(eWeight, new(big.Int).SetUint64(totalJ))
+	eWeight = eWeight.Mul(eWeight, new(big.Int).SetInt64(totalJ))
 	eWeight = eWeight.Div(eWeight, big.NewInt(int64(build.BlocksPerEpoch*build.WRatioDen)))
 
 	out = out.Add(out, eWeight)

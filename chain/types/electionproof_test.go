@@ -110,13 +110,13 @@ func TestElectionLam(t *testing.T) {
 	}
 }
 
-var Res uint64
+var Res int64
 
 func BenchmarkWinCounts(b *testing.B) {
 	totalPower := NewInt(100)
 	power := NewInt(100)
 	ep := &ElectionProof{VRFProof: nil}
-	var res uint64
+	var res int64
 
 	b.ResetTimer()
 	b.ReportAllocs()

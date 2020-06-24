@@ -8,7 +8,7 @@ import (
 )
 
 type ElectionProof struct {
-	WinCount uint64
+	WinCount int64
 	VRFProof []byte
 }
 
@@ -105,7 +105,7 @@ func lambda(power, totalPower *big.Int) *big.Int {
 	return lam
 }
 
-var MaxWinCount = 3 * build.BlocksPerEpoch
+var MaxWinCount = 3 * int64(build.BlocksPerEpoch)
 
 type poiss struct {
 	lam  *big.Int
@@ -175,7 +175,7 @@ func (p *poiss) next() *big.Int {
 // ComputeWinCount uses VRFProof to compute number of wins
 // The algorithm is based on Algorand's Sortition with Binomial distribution
 // replaced by Poisson distribution.
-func (ep *ElectionProof) ComputeWinCount(power BigInt, totalPower BigInt) uint64 {
+func (ep *ElectionProof) ComputeWinCount(power BigInt, totalPower BigInt) int64 {
 	h := blake2b.Sum256(ep.VRFProof)
 
 	lhs := BigFromBytes(h[:]).Int // 256bits, assume Q.256 so [0, 1)
@@ -195,7 +195,7 @@ func (ep *ElectionProof) ComputeWinCount(power BigInt, totalPower BigInt) uint64
 
 	p, rhs := newPoiss(lam)
 
-	var j uint64
+	var j int64
 	for lhs.Cmp(rhs) < 0 && j < MaxWinCount {
 		rhs = p.next()
 		j++
