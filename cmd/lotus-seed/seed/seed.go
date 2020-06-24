@@ -88,7 +88,7 @@ func PreSeal(maddr address.Address, spt abi.RegisteredSealProof, offset abi.Sect
 			return nil, nil, xerrors.Errorf("commit: %w", err)
 		}
 
-		if err := sb.FinalizeSector(context.TODO(), sid); err != nil {
+		if err := sb.FinalizeSector(context.TODO(), sid, nil); err != nil {
 			return nil, nil, xerrors.Errorf("trim cache: %w", err)
 		}
 

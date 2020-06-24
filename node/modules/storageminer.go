@@ -75,6 +75,12 @@ func GetParams(sbc *ffiwrapper.Config) error {
 		return err
 	}
 
+	// If built-in assets are disabled, we expect the user to have placed the right
+	// parameters in the right location on the filesystem (/var/tmp/filecoin-proof-parameters).
+	if build.DisableBuiltinAssets {
+		return nil
+	}
+
 	if err := paramfetch.GetParams(context.TODO(), build.ParametersJSON(), uint64(ssize)); err != nil {
 		return xerrors.Errorf("fetching proof parameters: %w", err)
 	}

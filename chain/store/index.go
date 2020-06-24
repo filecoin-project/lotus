@@ -34,7 +34,7 @@ type lbEntry struct {
 	target       types.TipSetKey
 }
 
-func (ci *ChainIndex) GetTipsetByHeight(ctx context.Context, from *types.TipSet, to abi.ChainEpoch) (*types.TipSet, error) {
+func (ci *ChainIndex) GetTipsetByHeight(_ context.Context, from *types.TipSet, to abi.ChainEpoch) (*types.TipSet, error) {
 	if from.Height()-to <= ci.skipLength {
 		return ci.walkBack(from, to)
 	}

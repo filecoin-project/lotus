@@ -22,6 +22,7 @@ func main() {
 	lotuslog.SetupLogLevels()
 
 	local := []*cli.Command{
+		actorCmd,
 		dealsCmd,
 		infoCmd,
 		initCmd,
