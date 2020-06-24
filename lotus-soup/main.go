@@ -21,7 +21,7 @@ var testplans = map[string]interface{}{
 }
 
 func init() {
-	logging.SetLogLevel("*", "WARN")
+	logging.SetLogLevel("*", "INFO")
 
 	build.DisableBuiltinAssets = true
 

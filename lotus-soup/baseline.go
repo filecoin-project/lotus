@@ -84,7 +84,14 @@ func runBaselineMiner(t *TestEnvironment) error {
 		for mine {
 			time.Sleep(1000 * time.Millisecond)
 			t.RecordMessage("mine one block")
-			if err := miner.MineOne(ctx, func(bool) {}); err != nil {
+
+			// wait and synchronise
+
+			if err := miner.MineOne(ctx, func(bool) {
+
+				// after a block is mined
+
+			}); err != nil {
 				panic(err)
 			}
 		}
