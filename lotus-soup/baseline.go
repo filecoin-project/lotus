@@ -189,8 +189,10 @@ func collectClientsAddrs(t *TestEnvironment, ctx context.Context, clients int) (
 }
 
 func startDeal(ctx context.Context, minerActorAddr address.Address, client *impl.FullNodeAPI, fcid cid.Cid) *cid.Cid {
-	//func startDeal(ctx context.Context, minerActorAddr address.Address, client api.FullNodeAPI, fcid cid.Cid) *cid.Cid {
-	addr, _ := client.WalletDefaultAddress(ctx)
+	addr, err := client.WalletDefaultAddress(ctx)
+	if err != nil {
+		panic(err)
+	}
 
 	deal, err := client.ClientStartDeal(ctx, &api.StartDealParams{
 		Data:              &storagemarket.DataRef{Root: fcid},

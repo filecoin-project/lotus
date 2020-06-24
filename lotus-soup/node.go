@@ -379,12 +379,16 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 		return err1
 	}
 
-	/*// Bootstrap with full node
-	remoteAddrs, err := tnd.NetAddrsListen(ctx)
-	require.NoError(t, err)
+	remoteAddrs, err := n.fullApi.NetAddrsListen(ctx)
+	if err != nil {
+		panic(err)
+	}
 
-	err = minerapi.NetConnect(ctx, remoteAddrs)
-	require.NoError(t, err)*/
+	err = n.minerApi.NetConnect(ctx, remoteAddrs)
+	if err != nil {
+		panic(err)
+	}
+
 	n.MineOne = func(ctx context.Context, cb func(bool)) error {
 		select {
 		case mineBlock <- cb:
