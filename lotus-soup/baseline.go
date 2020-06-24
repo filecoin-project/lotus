@@ -139,7 +139,7 @@ func runBaselineClient(t *TestEnvironment) error {
 	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
 	time.Sleep(3 * time.Second)
 
-	// wait for deal to be sealed
+	t.RecordMessage("wait to be sealed")
 	waitDealSealed(ctx, client, deal)
 
 	carExport := true
@@ -226,7 +226,7 @@ loop:
 			break loop
 		}
 		fmt.Println("Deal state: ", storagemarket.DealStates[di.State])
-		time.Sleep(time.Second / 2)
+		time.Sleep(2 * time.Second)
 	}
 }
 
