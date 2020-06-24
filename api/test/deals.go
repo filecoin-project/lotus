@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -52,11 +53,11 @@ func TestDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, carExport
 	}
 	time.Sleep(time.Second)
 
-	mine := true
+	mine := int64(1)
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		for mine {
+		for atomic.LoadInt64(&mine) == 1 {
 			time.Sleep(blocktime)
 			if err := sn[0].MineOne(ctx, func(bool) {}); err != nil {
 				t.Error(err)
@@ -66,7 +67,7 @@ func TestDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, carExport
 
 	makeDeal(t, ctx, 6, client, miner, carExport)
 
-	mine = false
+	atomic.AddInt64(&mine, -1)
 	fmt.Println("shutting down mining")
 	<-done
 }
@@ -89,12 +90,12 @@ func TestDoubleDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration) {
 	}
 	time.Sleep(time.Second)
 
-	mine := true
+	mine := int64(1)
 	done := make(chan struct{})
 
 	go func() {
 		defer close(done)
-		for mine {
+		for atomic.LoadInt64(&mine) == 1 {
 			time.Sleep(blocktime)
 			if err := sn[0].MineOne(ctx, func(bool) {}); err != nil {
 				t.Error(err)
@@ -105,7 +106,7 @@ func TestDoubleDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration) {
 	makeDeal(t, ctx, 6, client, miner, false)
 	makeDeal(t, ctx, 7, client, miner, false)
 
-	mine = false
+	atomic.AddInt64(&mine, -1)
 	fmt.Println("shutting down mining")
 	<-done
 }

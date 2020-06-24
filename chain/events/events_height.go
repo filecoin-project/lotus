@@ -26,12 +26,15 @@ type heightEvents struct {
 }
 
 func (e *heightEvents) headChangeAt(rev, app []*types.TipSet) error {
+
 	ctx, span := trace.StartSpan(e.ctx, "events.HeightHeadChange")
 	defer span.End()
 	span.AddAttributes(trace.Int64Attribute("endHeight", int64(app[0].Height())))
 	span.AddAttributes(trace.Int64Attribute("reverts", int64(len(rev))))
 	span.AddAttributes(trace.Int64Attribute("applies", int64(len(app))))
 
+	e.lk.Lock()
+	defer e.lk.Unlock()
 	for _, ts := range rev {
 		// TODO: log error if h below gcconfidence
 		// revert height-based triggers
@@ -40,7 +43,10 @@ func (e *heightEvents) headChangeAt(rev, app []*types.TipSet) error {
 			for _, tid := range e.htHeights[h] {
 				ctx, span := trace.StartSpan(ctx, "events.HeightRevert")
 
-				err := e.heightTriggers[tid].revert(ctx, ts)
+				rev := e.heightTriggers[tid].revert
+				e.lk.Unlock()
+				err := rev(ctx, ts)
+				e.lk.Lock()
 				e.heightTriggers[tid].called = false
 
 				span.End()
@@ -98,8 +104,10 @@ func (e *heightEvents) headChangeAt(rev, app []*types.TipSet) error {
 
 				ctx, span := trace.StartSpan(ctx, "events.HeightApply")
 				span.AddAttributes(trace.BoolAttribute("immediate", false))
-
-				err = hnd.handle(ctx, incTs, h)
+				handle := hnd.handle
+				e.lk.Unlock()
+				err = handle(ctx, incTs, h)
+				e.lk.Lock()
 				span.End()
 
 				if err != nil {
