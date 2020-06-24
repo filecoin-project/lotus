@@ -51,3 +51,7 @@ jobs:
       - run:
           name: "build lotus-testground"
           command: pushd lotus-testground && go build .
+      - run:
+          name: "build lotus-soup"
+          command: pushd lotus-soup && go build .
+

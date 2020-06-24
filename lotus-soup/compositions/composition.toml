@@ -1,0 +1,58 @@
+[metadata]
+  name = "lotus-soup"
+  author = ""
+
+[global]
+  plan = "lotus-soup"
+  case = "lotus-baseline"
+  total_instances = 3
+  builder = "docker:go"
+  runner = "local:docker"
+
+[[groups]]
+  id = "bootstrapper"
+  [groups.resources]
+    memory = "120Mi"
+    cpu = "10m"
+  [groups.instances]
+    count = 1
+    percentage = 0.0
+  [groups.run]
+    [groups.run.test_params]
+      role = "bootstrapper"
+      clients = "1"
+      miners = "1"
+      balance = "2000"
+      sectors = "10"
+
+[[groups]]
+  id = "miners"
+  [groups.resources]
+    memory = "120Mi"
+    cpu = "10m"
+  [groups.instances]
+    count = 1
+    percentage = 0.0
+  [groups.run]
+    [groups.run.test_params]
+      role = "miner"
+      clients = "1"
+      miners = "1"
+      balance = "2000"
+      sectors = "10"
+
+[[groups]]
+  id = "clients"
+  [groups.resources]
+    memory = "120Mi"
+    cpu = "10m"
+  [groups.instances]
+    count = 1
+    percentage = 0.0
+  [groups.run]
+    [groups.run.test_params]
+      role = "client"
+      clients = "1"
+      miners = "1"
+      balance = "2000"
+      sectors = "10"
