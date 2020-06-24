@@ -16,6 +16,24 @@ import (
 	"github.com/filecoin-project/sector-storage/storiface"
 )
 
+type schedPrioCtxKey int
+
+var SchedPriorityKey schedPrioCtxKey
+var DefaultSchedPriority = 0
+
+func getPriority(ctx context.Context) int {
+	sp := ctx.Value(SchedPriorityKey)
+	if p, ok := sp.(int); ok {
+		return p
+	}
+
+	return DefaultSchedPriority
+}
+
+func WithPriority(ctx context.Context, priority int) context.Context {
+	return context.WithValue(ctx, SchedPriorityKey, priority)
+}
+
 const mib = 1 << 20
 
 type WorkerAction func(ctx context.Context, w Worker) error
@@ -72,6 +90,7 @@ func (sh *scheduler) Schedule(ctx context.Context, sector abi.SectorID, taskType
 	case sh.schedule <- &workerRequest{
 		sector:   sector,
 		taskType: taskType,
+		priority: getPriority(ctx),
 		sel:      sel,
 
 		prepare: prepare,
@@ -99,6 +118,7 @@ func (sh *scheduler) Schedule(ctx context.Context, sector abi.SectorID, taskType
 type workerRequest struct {
 	sector   abi.SectorID
 	taskType sealtasks.TaskType
+	priority int // larger values more important
 	sel      WorkerSelector
 
 	prepare WorkerAction
