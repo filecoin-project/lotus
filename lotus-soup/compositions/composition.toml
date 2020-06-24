@@ -5,7 +5,7 @@
 [global]
   plan = "lotus-soup"
   case = "lotus-baseline"
-  total_instances = 3
+  total_instances = 6
   builder = "docker:go"
   runner = "local:docker"
 
@@ -56,3 +56,15 @@
       miners = "1"
       balance = "2000000000"
       sectors = "10"
+
+[[groups]]
+  id = "drand"
+  [groups.resources]
+    memory = "120Mi"
+    cpu = "10m"
+  [groups.instances]
+    count = 3
+    percentage = 0.0
+  [groups.run]
+    [groups.run.test_params]
+      role = "drand"

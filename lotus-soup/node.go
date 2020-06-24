@@ -116,6 +116,11 @@ func prepareBootstrapper(t *TestEnvironment) (*Node, error) {
 	miners := t.IntParam("miners")
 	nodes := clients + miners
 
+	drandOpt, err := getDrandConfig(ctx, t)
+	if err != nil {
+		return nil, err
+	}
+
 	// the first duty of the boostrapper is to construct the genesis block
 	// first collect all client and miner balances to assign initial funds
 	balances, err := waitForBalances(t, ctx, nodes)
@@ -177,6 +182,7 @@ func prepareBootstrapper(t *TestEnvironment) (*Node, error) {
 		withListenAddress(bootstrapperIP),
 		withBootstrapper(nil),
 		withPubsubConfig(true),
+		drandOpt,
 	)
 	if err != nil {
 		return nil, err
@@ -228,6 +234,11 @@ func prepareBootstrapper(t *TestEnvironment) (*Node, error) {
 func prepareMiner(t *TestEnvironment) (*Node, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), PrepareNodeTimeout)
 	defer cancel()
+
+	drandOpt, err := getDrandConfig(ctx, t)
+	if err != nil {
+		return nil, err
+	}
 
 	// first create a wallet
 	walletKey, err := wallet.GenerateKey(crypto.SigTypeBLS)
@@ -342,6 +353,7 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 		withListenAddress(minerIP),
 		withBootstrapper(genesisMsg.Bootstrapper),
 		withPubsubConfig(false),
+		drandOpt,
 	)
 	if err != nil {
 		return nil, err
@@ -446,6 +458,11 @@ func prepareClient(t *TestEnvironment) (*Node, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), PrepareNodeTimeout)
 	defer cancel()
 
+	drandOpt, err := getDrandConfig(ctx, t)
+	if err != nil {
+		return nil, err
+	}
+
 	// first create a wallet
 	walletKey, err := wallet.GenerateKey(crypto.SigTypeBLS)
 	if err != nil {
@@ -475,6 +492,7 @@ func prepareClient(t *TestEnvironment) (*Node, error) {
 		withListenAddress(clientIP),
 		withBootstrapper(genesisMsg.Bootstrapper),
 		withPubsubConfig(false),
+		drandOpt,
 	)
 	if err != nil {
 		return nil, err
@@ -635,4 +653,26 @@ func collectClientAddrs(t *TestEnvironment, ctx context.Context, clients int) ([
 	}
 
 	return addrs, nil
+}
+
+func getDrandConfig(ctx context.Context, t *TestEnvironment) (node.Option, error) {
+	if t.BooleanParam("real_drand") {
+		noop := func(settings *node.Settings) error {
+			return nil
+		}
+		return noop, nil
+	}
+	cfg, err := waitForDrandConfig(ctx, t.SyncClient)
+	if err != nil {
+		t.RecordMessage("error getting drand config: %w", err)
+		return nil, err
+	}
+	t.RecordMessage("setting drand config: %v", cfg)
+
+	return node.Options(
+		node.Override(new(dtypes.DrandConfig), *cfg),
+
+		// FIXME: re-enable drand bootstrap peers once drand gossip relays are running in testground
+		node.Override(new(dtypes.DrandBootstrap), dtypes.DrandBootstrap{}),
+	), nil
 }

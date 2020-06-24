@@ -46,6 +46,7 @@ var baselineRoles = map[string]func(*TestEnvironment) error{
 	"bootstrapper": runBootstrapper,
 	"miner":        runMiner,
 	"client":       runBaselineClient,
+	"drand":        runDrandNode,
 }
 
 func runBaselineClient(t *TestEnvironment) error {
@@ -235,4 +236,17 @@ func extractCarData(ctx context.Context, rdata []byte, rpath string) []byte {
 		panic(err)
 	}
 	return rdata
+}
+
+func runDrandNode(t *TestEnvironment) error {
+	t.RecordMessage("running drand node")
+	_, err := prepareDrandNode(t)
+	if err != nil {
+		return err
+	}
+
+	// TODO add ability to halt / recover on demand
+	ctx := context.Background()
+	t.SyncClient.MustSignalAndWait(ctx, stateDone, t.TestInstanceCount)
+	return nil
 }
