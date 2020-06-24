@@ -60,6 +60,7 @@ var (
 	minersAddrsTopic  = sync.NewTopic("minersAddrsTopic", &peer.AddrInfo{})
 
 	stateReady = sync.State("ready")
+	stateDone  = sync.State("done")
 )
 
 type TestEnvironment struct {

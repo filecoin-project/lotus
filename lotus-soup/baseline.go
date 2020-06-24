@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/testground/sdk-go/sync"
@@ -40,8 +39,8 @@ func runBaselineBootstrapper(t *TestEnvironment) error {
 		return err
 	}
 
-	// TODO just wait until completion of test, nothing else to do
-
+	ctx := context.Background()
+	t.SyncClient.MustSignalAndWait(ctx, stateDone, t.TestInstanceCount)
 	return nil
 }
 
@@ -63,17 +62,15 @@ func runBaselineMiner(t *TestEnvironment) error {
 	if err := miner.fullApi.NetConnect(ctx, addrs[0]); err != nil {
 		return err
 	}
-	time.Sleep(time.Second)
 
 	t.RecordMessage("miner connected to client")
-
-	time.Sleep(120 * time.Second)
 
 	// subscribe to clients
 
 	// TODO wait a bit for network to bootstrap
 	// TODO just wait until completion of test, serving requests -- the client does all the job
 
+	t.SyncClient.MustSignalAndWait(ctx, stateDone, t.TestInstanceCount)
 	return nil
 }
 
@@ -92,12 +89,11 @@ func runBaselineClient(t *TestEnvironment) error {
 
 	t.RecordMessage("got %v miner addrs", len(addrs))
 
-	time.Sleep(120 * time.Second)
-
 	// TODO generate a number of random "files" and publish them to one or more miners
 	// TODO broadcast published content CIDs to other clients
 	// TODO select a random piece of content published by some other client and retreieve it
 
+	t.SyncClient.MustSignalAndWait(ctx, stateDone, t.TestInstanceCount)
 	return nil
 }
 
