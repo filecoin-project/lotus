@@ -56,6 +56,9 @@ var (
 	balanceTopic = sync.NewTopic("balance", &InitialBalanceMsg{})
 	presealTopic = sync.NewTopic("preseal", &PresealMsg{})
 
+	clientsAddrsTopic = sync.NewTopic("clientsAddrsTopic", &peer.AddrInfo{})
+	minersAddrsTopic  = sync.NewTopic("minersAddrsTopic", &peer.AddrInfo{})
+
 	stateReady = sync.State("ready")
 )
 
@@ -395,6 +398,13 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 		return nil, err
 	}
 
+	t.RecordMessage("publish our address to the miners addr topic")
+	addrinfo, err := n.minerApi.NetAddrsListen(ctx)
+	if err != nil {
+		return nil, err
+	}
+	t.SyncClient.MustPublish(ctx, minersAddrsTopic, addrinfo)
+
 	t.RecordMessage("waiting for all nodes to be ready")
 	t.SyncClient.MustSignalAndWait(ctx, stateReady, t.TestInstanceCount)
 
@@ -446,6 +456,13 @@ func prepareClient(t *TestEnvironment) (*Node, error) {
 		stop(context.TODO())
 		return nil, err
 	}
+
+	t.RecordMessage("publish our address to the clients addr topic")
+	addrinfo, err := n.fullApi.NetAddrsListen(ctx)
+	if err != nil {
+		return nil, err
+	}
+	t.SyncClient.MustPublish(ctx, clientsAddrsTopic, addrinfo)
 
 	t.RecordMessage("waiting for all nodes to be ready")
 	t.SyncClient.MustSignalAndWait(ctx, stateReady, t.TestInstanceCount)

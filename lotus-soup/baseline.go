@@ -1,5 +1,14 @@
 package main
 
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/testground/sdk-go/sync"
+)
+
 // This is the basline test; Filecoin 101.
 //
 // A network with a bootstrapper, a number of miners, and a number of clients/full nodes
@@ -38,10 +47,29 @@ func runBaselineBootstrapper(t *TestEnvironment) error {
 
 func runBaselineMiner(t *TestEnvironment) error {
 	t.RecordMessage("running miner")
-	_, err := prepareMiner(t)
+	miner, err := prepareMiner(t)
 	if err != nil {
 		return err
 	}
+
+	ctx := context.Background()
+	addrs, err := collectClientsAddrs(t, ctx, t.IntParam("clients"))
+	if err != nil {
+		return err
+	}
+
+	t.RecordMessage("got %v client addrs", len(addrs))
+
+	if err := miner.fullApi.NetConnect(ctx, addrs[0]); err != nil {
+		return err
+	}
+	time.Sleep(time.Second)
+
+	t.RecordMessage("miner connected to client")
+
+	time.Sleep(120 * time.Second)
+
+	// subscribe to clients
 
 	// TODO wait a bit for network to bootstrap
 	// TODO just wait until completion of test, serving requests -- the client does all the job
@@ -56,9 +84,44 @@ func runBaselineClient(t *TestEnvironment) error {
 		return err
 	}
 
+	ctx := context.Background()
+	addrs, err := collectMinersAddrs(t, ctx, t.IntParam("miners"))
+	if err != nil {
+		return err
+	}
+
+	t.RecordMessage("got %v miner addrs", len(addrs))
+
+	time.Sleep(120 * time.Second)
+
 	// TODO generate a number of random "files" and publish them to one or more miners
 	// TODO broadcast published content CIDs to other clients
 	// TODO select a random piece of content published by some other client and retreieve it
 
 	return nil
+}
+
+func collectMinersAddrs(t *TestEnvironment, ctx context.Context, miners int) ([]peer.AddrInfo, error) {
+	return collectAddrs(t, ctx, minersAddrsTopic, miners)
+}
+
+func collectClientsAddrs(t *TestEnvironment, ctx context.Context, clients int) ([]peer.AddrInfo, error) {
+	return collectAddrs(t, ctx, clientsAddrsTopic, clients)
+}
+
+func collectAddrs(t *TestEnvironment, ctx context.Context, topic *sync.Topic, expectedValues int) ([]peer.AddrInfo, error) {
+	ch := make(chan peer.AddrInfo)
+	sub := t.SyncClient.MustSubscribe(ctx, clientsAddrsTopic, ch)
+
+	addrs := make([]peer.AddrInfo, 0, expectedValues)
+	for i := 0; i < expectedValues; i++ {
+		select {
+		case a := <-ch:
+			addrs = append(addrs, a)
+		case err := <-sub.Done():
+			return nil, fmt.Errorf("got error while waiting for client addrs: %w", err)
+		}
+	}
+
+	return addrs, nil
 }
