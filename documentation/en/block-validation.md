@@ -76,7 +76,17 @@ We check all the messages contained in one block at a time (`(*Syncer).checkBloc
 
 ### Winner
 
-`V`: Verify `ElectionProof VRF` and `IsTicketWinner`.
+Draw randomness for current epoch with minimum ticket from previous tipset, using `ElectionProofProduction`
+domain separation tag.
+`V`: `ElectionProof.VRFProof` is computed correctly by checking BLS signature using miner's key.
+`V`: Miner is not slashed in `StoragePowerActor`.
+`V`: Check if ticket is a winning ticket:
+```
+h := blake2b(VRFProof)
+lhs := AsInt(h) * totalNetworkPower
+rhs := minerPower * 2^256
+if lhs < rhs { return "Winner" } else { return "Not a winner" }
+```
 
 ### Block signature
 
@@ -84,18 +94,21 @@ We check all the messages contained in one block at a time (`(*Syncer).checkBloc
 
 ### Beacon values check
 
-`V`: All `BeaconEntires` are valid.
-
-`V`: All entries between `MAxBeaconRoundForEpoch` down to `prevEntry` (from previous tipset) are included.
+`V`: Validate that all `BeaconEntries` are valid. Check that every one of them is a signature of a message: `previousSignature || round` signed using drand's public key.
+`V`: All entries between `MaxBeaconRoundForEpoch` down to `prevEntry` (from previous tipset) are included.
 
 ### Verify VRF Ticket chain
 
-Draw randomness for current epoch with minimum ticket from previous tipset.
+Draw randomness for current epoch with minimum ticket from previous tipset, using `TicketProduction`
+domain separation tag.
 `V`: `VerifyVRF` using drawn randomness and miner public key.
 
 ### Winning PoSt proof
 
-`FixMe:` Describe `VerifyWinningPoStProof`.
+Draw randomness for current epoch with `WinningPoSt` domain separation tag.
+Get list of sectors challanged in this epoch for this miner, based on the randomness drawn. 
+
+`V`: Use filecoin proofs system to verify that miner prooved access to sealed versions of these sectors.
 
 ## `(*StateManager).TipSetState()`
 
