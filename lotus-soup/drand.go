@@ -6,8 +6,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"os"
+	"path"
 	"time"
 
 	"github.com/drand/drand/chain"
@@ -35,6 +37,12 @@ type DrandRuntimeInfo struct {
 type DrandInstance struct {
 	Node node.Node
 	GossipRelay *lp2p.GossipRelayNode
+
+	stateDir string
+}
+
+func (d *DrandInstance) Cleanup() error {
+	return os.RemoveAll(d.stateDir)
 }
 
 // waitForDrandConfig should be called by filecoin instances before constructing the lotus Node
@@ -70,8 +78,13 @@ func prepareDrandNode(t *TestEnvironment) (*DrandInstance, error) {
 
 	beaconOffset := 3
 
+	stateDir, err := ioutil.TempDir("", fmt.Sprintf("drand-%d", t.GroupSeq))
+	if err != nil {
+		return nil, err
+	}
+
 	// TODO(maybe): use TLS?
-	n := node.NewLocalNode(int(seq), period.String(), "~/", false, myAddr.String())
+	n := node.NewLocalNode(int(seq), period.String(), stateDir, false, myAddr.String())
 
 	// share the node addresses with other nodes
 	// TODO: if we implement TLS, this is where we'd share public TLS keys
@@ -105,7 +118,7 @@ func prepareDrandNode(t *TestEnvironment) (*DrandInstance, error) {
 
 	t.SyncClient.MustSignalAndWait(ctx, "drand-start", nNodes)
 	t.RecordMessage("Starting drand sharing ceremony")
-	if err := n.Start("~/"); err != nil {
+	if err := n.Start(stateDir); err != nil {
 		return nil, err
 	}
 
@@ -159,18 +172,17 @@ func prepareDrandNode(t *TestEnvironment) (*DrandInstance, error) {
 	var relayAddrs []peer.AddrInfo
 
 	if runGossipRelay {
-		_ = os.Mkdir("~/drand-gossip", os.ModePerm)
+		gossipDir := path.Join(stateDir, "gossip-relay")
 		listenAddr := fmt.Sprintf("/ip4/%s/tcp/7777", myAddr.String())
 		relayCfg := lp2p.GossipRelayConfig{
 			ChainHash:    hex.EncodeToString(info.Hash()),
 			Addr:         listenAddr,
-			DataDir:      "~/drand-gossip",
-			IdentityPath: "~/drand-gossip/identity.key",
+			DataDir:      gossipDir,
+			IdentityPath: path.Join(gossipDir, "identity.key"),
 			Insecure:     true,
 			Client:       client,
 		}
 		t.RecordMessage("starting drand gossip relay")
-		var err error
 		gossipRelay, err = lp2p.NewGossipRelayNode(log.DefaultLogger, &relayCfg)
 		if err != nil {
 			return nil, fmt.Errorf("failed to construct drand gossip relay: %w", err)
@@ -212,6 +224,7 @@ func prepareDrandNode(t *TestEnvironment) (*DrandInstance, error) {
 	return &DrandInstance{
 		Node: n,
 		GossipRelay: gossipRelay,
+		stateDir: stateDir,
 	}, nil
 }
 

@@ -69,10 +69,11 @@ func runMiner(t *TestEnvironment) error {
 
 func runDrandNode(t *TestEnvironment) error {
 	t.RecordMessage("running drand node")
-	_, err := prepareDrandNode(t)
+	dr, err := prepareDrandNode(t)
 	if err != nil {
 		return err
 	}
+	defer dr.Cleanup()
 
 	// TODO add ability to halt / recover on demand
 	ctx := context.Background()
