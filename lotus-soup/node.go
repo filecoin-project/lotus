@@ -134,7 +134,7 @@ func prepareBootstrapper(t *TestEnvironment) (*Node, error) {
 	genesisTemplate := genesis.Template{
 		Accounts:  genesisActors,
 		Miners:    genesisMiners,
-		Timestamp: uint64(time.Now().Unix() - 10000), // this needs to be in the past
+		Timestamp: uint64(time.Now().Unix() - 100000), // this needs to be in the past
 	}
 
 	// dump the genesis block
