@@ -2,7 +2,7 @@ ARG GO_VERSION=1.14.2
 
 FROM golang:${GO_VERSION}-buster
 
-RUN apt-get update && apt-get install -y ca-certificates llvm clang mesa-opencl-icd ocl-icd-opencl-dev jq gcc git pkg-config
+RUN apt-get update && apt-get install -y ca-certificates llvm clang mesa-opencl-icd ocl-icd-opencl-dev jq gcc git pkg-config bzr
 
 ARG FILECOIN_FFI_COMMIT=ca281af0b6c00314382a75ae869e5cb22c83655b
 ARG FFI_DIR=/extra/filecoin-ffi
