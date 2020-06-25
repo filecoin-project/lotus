@@ -64,9 +64,6 @@
 
 [[groups]]
   id = "drand"
-  [groups.resources]
-    memory = "120Mi"
-    cpu = "10m"
   [groups.instances]
     count = 3
     percentage = 0.0
