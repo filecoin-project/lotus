@@ -21,7 +21,7 @@ func init() {
 }
 
 // Seconds
-const BlockDelay = 2
+var BlockDelay = 2
 
 const PropagationDelay = 3
 
