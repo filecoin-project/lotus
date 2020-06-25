@@ -387,23 +387,17 @@ func (we *watcherEvents) checkStateChanges(oldState, newState *types.TipSet) map
 	return res
 }
 
-// Used to store the state for a stateChange
-type stateData interface{}
-
-// A change in state from -> to
-type stateChange struct {
-	from stateData
-	to   stateData
-}
+// A change in state
+type StateChange interface{}
 
 // StateChangeHandler arguments:
 // `oldTs` is the state "from" tipset
 // `newTs` is the state "to" tipset
-// `states` is the old / new state
+// `states` is the change in state
 // `curH`-`ts.Height` = `confidence`
-type StateChangeHandler func(oldTs, newTs *types.TipSet, states *stateChange, curH abi.ChainEpoch) (more bool, err error)
+type StateChangeHandler func(oldTs, newTs *types.TipSet, states StateChange, curH abi.ChainEpoch) (more bool, err error)
 
-type StateMatchFunc func(oldTs, newTs *types.TipSet) (bool, *stateChange, error)
+type StateMatchFunc func(oldTs, newTs *types.TipSet) (bool, StateChange, error)
 
 // StateChanged registers a callback which is triggered when a specified state
 // change occurs or a timeout is reached.
@@ -435,9 +429,9 @@ type StateMatchFunc func(oldTs, newTs *types.TipSet) (bool, *stateChange, error)
 //   `StateChangeHandler` is called)
 func (we *watcherEvents) StateChanged(check CheckFunc, scHnd StateChangeHandler, rev RevertHandler, confidence int, timeout abi.ChainEpoch, mf StateMatchFunc) error {
 	hnd := func(data eventData, prevTs, ts *types.TipSet, height abi.ChainEpoch) (bool, error) {
-		states, ok := data.(*stateChange)
+		states, ok := data.(StateChange)
 		if data != nil && !ok {
-			panic("expected *stateChange")
+			panic("expected StateChange")
 		}
 
 		return scHnd(prevTs, ts, states, height)
