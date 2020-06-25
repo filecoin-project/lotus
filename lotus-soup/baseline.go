@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/ipfs/go-cid"
 	files "github.com/ipfs/go-ipfs-files"
 	ipld "github.com/ipfs/go-ipld-format"
@@ -121,10 +120,9 @@ func runBaselineClient(t *TestEnvironment) error {
 	if err != nil {
 		return err
 	}
-
-	client := cl.fullApi.(*impl.FullNodeAPI)
-
 	t.RecordMessage("got %v miner addrs", len(addrs))
+
+	client := cl.fullApi
 
 	// select a random miner
 	minerAddr := addrs[rand.Intn(len(addrs))]
@@ -139,8 +137,13 @@ func runBaselineClient(t *TestEnvironment) error {
 	// generate random data
 	data := make([]byte, 1600)
 	rand.New(rand.NewSource(time.Now().UnixNano())).Read(data)
-	r := bytes.NewReader(data)
-	fcid, err := client.ClientImportLocal(ctx, r)
+
+	err = ioutil.WriteFile("/tmp/data", data, 0755)
+	if err != nil {
+		return err
+	}
+
+	fcid, err := client.ClientImport(ctx, api.FileRef{Path: "/tmp/data", IsCAR: false})
 	if err != nil {
 		return err
 	}
@@ -170,7 +173,7 @@ func runBaselineClient(t *TestEnvironment) error {
 	return nil
 }
 
-func startDeal(ctx context.Context, minerActorAddr address.Address, client *impl.FullNodeAPI, fcid cid.Cid) *cid.Cid {
+func startDeal(ctx context.Context, minerActorAddr address.Address, client api.FullNode, fcid cid.Cid) *cid.Cid {
 	addr, err := client.WalletDefaultAddress(ctx)
 	if err != nil {
 		panic(err)
@@ -189,7 +192,7 @@ func startDeal(ctx context.Context, minerActorAddr address.Address, client *impl
 	return deal
 }
 
-func waitDealSealed(t *TestEnvironment, ctx context.Context, client *impl.FullNodeAPI, deal *cid.Cid) {
+func waitDealSealed(t *TestEnvironment, ctx context.Context, client api.FullNode, deal *cid.Cid) {
 loop:
 	for {
 		di, err := client.ClientGetDealInfo(ctx, *deal)
@@ -212,7 +215,7 @@ loop:
 	}
 }
 
-func retrieveData(t *TestEnvironment, ctx context.Context, err error, client *impl.FullNodeAPI, fcid cid.Cid, carExport bool, data []byte) {
+func retrieveData(t *TestEnvironment, ctx context.Context, err error, client api.FullNode, fcid cid.Cid, carExport bool, data []byte) {
 	offers, err := client.ClientFindData(ctx, fcid)
 	if err != nil {
 		panic(err)
