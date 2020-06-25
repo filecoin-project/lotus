@@ -238,15 +238,3 @@ func extractCarData(ctx context.Context, rdata []byte, rpath string) []byte {
 	return rdata
 }
 
-func runDrandNode(t *TestEnvironment) error {
-	t.RecordMessage("running drand node")
-	_, err := prepareDrandNode(t)
-	if err != nil {
-		return err
-	}
-
-	// TODO add ability to halt / recover on demand
-	ctx := context.Background()
-	t.SyncClient.MustSignalAndWait(ctx, stateDone, t.TestInstanceCount)
-	return nil
-}

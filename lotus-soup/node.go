@@ -693,7 +693,13 @@ func getDrandConfig(ctx context.Context, t *TestEnvironment) (node.Option, error
 		), nil
 
 	case "mock":
-		return node.Override(new(beacon.RandomBeacon), modtest.RandomBeacon), nil
+		return node.Options(
+			node.Override(new(beacon.RandomBeacon), modtest.RandomBeacon),
+			node.Override(new(dtypes.DrandConfig), dtypes.DrandConfig{
+				ChainInfoJSON: "{\"Hash\":\"wtf\"}",
+			}),
+			node.Override(new(dtypes.DrandBootstrap), dtypes.DrandBootstrap{}),
+		), nil
 
 	default:
 		return nil, fmt.Errorf("unknown random_beacon_type: %s", beaconType)
