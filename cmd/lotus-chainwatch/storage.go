@@ -270,7 +270,7 @@ create table if not exists miner_sectors
 		primary key (stateroot, miner, sectorid)
 );
 
-create index if not exists miner_sectors_state_index
+create index if not exists miner_sectors_stateroot_miner_sectorid_index
 	on miner_sectors (stateroot, miner, sectorid);
 /*
 create table if not exists miner_heads
