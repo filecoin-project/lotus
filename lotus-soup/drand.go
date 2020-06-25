@@ -97,19 +97,20 @@ func prepareDrandNode(t *TestEnvironment) (*DrandInstance, error) {
 	var publicAddrs []string
 	var leaderAddr string
 	ch := make(chan *NodeAddr)
-	t.SyncClient.MustPublishSubscribe(ctx, addrTopic, &NodeAddr{
+	_, sub := t.SyncClient.MustPublishSubscribe(ctx, addrTopic, &NodeAddr{
 		PrivateAddr: n.PrivateAddr(),
 		PublicAddr:  n.PublicAddr(),
 		IsLeader:    isLeader,
 	}, ch)
 	for i := 0; i < nNodes; i++ {
-		msg, ok := <-ch
-		if !ok {
-			return nil, fmt.Errorf("failed to read drand node addr from sync service")
-		}
-		publicAddrs = append(publicAddrs, fmt.Sprintf("http://%s", msg.PublicAddr))
-		if msg.IsLeader {
-			leaderAddr = msg.PrivateAddr
+		select {
+		case msg := <-ch:
+			publicAddrs = append(publicAddrs, fmt.Sprintf("http://%s", msg.PublicAddr))
+			if msg.IsLeader {
+				leaderAddr = msg.PrivateAddr
+			}
+		case err := <-sub.Done():
+			return nil, fmt.Errorf("unable to read drand addrs from sync service: %w", err)
 		}
 	}
 	if leaderAddr == "" {
@@ -196,10 +197,15 @@ func prepareDrandNode(t *TestEnvironment) (*DrandInstance, error) {
 		}
 		infoCh := make(chan *peer.AddrInfo, nNodes)
 		infoTopic := sync.NewTopic("drand-gossip-addrs", &peer.AddrInfo{})
-		t.SyncClient.MustPublishSubscribe(ctx, infoTopic, relayInfo, infoCh)
+
+		_, sub := t.SyncClient.MustPublishSubscribe(ctx, infoTopic, relayInfo, infoCh)
 		for i := 0; i < nNodes; i++ {
-			ai := <-infoCh
-			relayAddrs = append(relayAddrs, *ai)
+			select {
+			case ai := <-infoCh:
+				relayAddrs = append(relayAddrs, *ai)
+			case err := <-sub.Done():
+				return nil, fmt.Errorf("unable to get drand relay addr from sync service: %w", err)
+			}
 		}
 	}
 
