@@ -138,12 +138,18 @@ func runBaselineClient(t *TestEnvironment) error {
 	data := make([]byte, 1600)
 	rand.New(rand.NewSource(time.Now().UnixNano())).Read(data)
 
-	err = ioutil.WriteFile("/tmp/data", data, 0755)
+	file, err := ioutil.TempFile("/tmp", "data")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(file.Name())
+
+	_, err = file.Write(data)
 	if err != nil {
 		return err
 	}
 
-	fcid, err := client.ClientImport(ctx, api.FileRef{Path: "/tmp/data", IsCAR: false})
+	fcid, err := client.ClientImport(ctx, api.FileRef{Path: file.Name(), IsCAR: false})
 	if err != nil {
 		return err
 	}
