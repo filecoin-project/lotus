@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/beacon"
 	genesis_chain "github.com/filecoin-project/lotus/chain/gen/genesis"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
@@ -83,9 +84,13 @@ type TestEnvironment struct {
 	*run.InitContext
 }
 
+// workaround for default params being wrapped in quote chars
+func (t *TestEnvironment) StringParam(name string) string {
+	return strings.Trim(t.RunEnv.StringParam(name), "\"")
+}
+
 func (t *TestEnvironment) DurationParam(name string) time.Duration {
-	s := strings.ReplaceAll(t.StringParam(name), "\"", "")
-	d, err := time.ParseDuration(s)
+	d, err := time.ParseDuration(t.StringParam(name))
 	if err != nil {
 		panic(fmt.Errorf("invalid duration value for param '%s': %w", name, err))
 	}
@@ -666,20 +671,31 @@ func collectClientAddrs(t *TestEnvironment, ctx context.Context, clients int) ([
 }
 
 func getDrandConfig(ctx context.Context, t *TestEnvironment) (node.Option, error) {
-	if t.BooleanParam("real_drand") {
+	beaconType := t.StringParam("random_beacon_type")
+	switch beaconType {
+	case "external-drand":
 		noop := func(settings *node.Settings) error {
 			return nil
 		}
 		return noop, nil
+
+	case "local-drand":
+		cfg, err := waitForDrandConfig(ctx, t.SyncClient)
+		if err != nil {
+			t.RecordMessage("error getting drand config: %w", err)
+			return nil, err
+			
+		}
+		t.RecordMessage("setting drand config: %v", cfg)
+		return node.Options(
+			node.Override(new(dtypes.DrandConfig), cfg.Config),
+			node.Override(new(dtypes.DrandBootstrap), cfg.GossipBootstrap),
+		), nil
+
+	case "mock":
+		return node.Override(new(beacon.RandomBeacon), modtest.RandomBeacon), nil
+
+	default:
+		return nil, fmt.Errorf("unknown random_beacon_type: %s", beaconType)
 	}
-	cfg, err := waitForDrandConfig(ctx, t.SyncClient)
-	if err != nil {
-		t.RecordMessage("error getting drand config: %w", err)
-		return nil, err
-	}
-	t.RecordMessage("setting drand config: %v", cfg)
-	return node.Options(
-		node.Override(new(dtypes.DrandConfig), cfg.Config),
-		node.Override(new(dtypes.DrandBootstrap), cfg.GossipBootstrap),
-	), nil
 }
