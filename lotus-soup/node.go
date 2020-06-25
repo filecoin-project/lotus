@@ -601,3 +601,37 @@ func waitForGenesis(t *TestEnvironment, ctx context.Context) (*GenesisMsg, error
 		return nil, fmt.Errorf("error while waiting for genesis msg: %w", err)
 	}
 }
+
+func collectMinerAddrs(t *TestEnvironment, ctx context.Context, miners int) ([]MinerAddresses, error) {
+	ch := make(chan MinerAddresses)
+	sub := t.SyncClient.MustSubscribe(ctx, minersAddrsTopic, ch)
+
+	addrs := make([]MinerAddresses, 0, miners)
+	for i := 0; i < miners; i++ {
+		select {
+		case a := <-ch:
+			addrs = append(addrs, a)
+		case err := <-sub.Done():
+			return nil, fmt.Errorf("got error while waiting for miners addrs: %w", err)
+		}
+	}
+
+	return addrs, nil
+}
+
+func collectClientAddrs(t *TestEnvironment, ctx context.Context, clients int) ([]peer.AddrInfo, error) {
+	ch := make(chan peer.AddrInfo)
+	sub := t.SyncClient.MustSubscribe(ctx, clientsAddrsTopic, ch)
+
+	addrs := make([]peer.AddrInfo, 0, clients)
+	for i := 0; i < clients; i++ {
+		select {
+		case a := <-ch:
+			addrs = append(addrs, a)
+		case err := <-sub.Done():
+			return nil, fmt.Errorf("got error while waiting for clients addrs: %w", err)
+		}
+	}
+
+	return addrs, nil
+}
