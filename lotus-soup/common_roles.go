@@ -66,3 +66,17 @@ func runMiner(t *TestEnvironment) error {
 	t.SyncClient.MustSignalAndWait(ctx, stateDone, t.TestInstanceCount)
 	return nil
 }
+
+func runDrandNode(t *TestEnvironment) error {
+	t.RecordMessage("running drand node")
+	dr, err := prepareDrandNode(t)
+	if err != nil {
+		return err
+	}
+	defer dr.Cleanup()
+
+	// TODO add ability to halt / recover on demand
+	ctx := context.Background()
+	t.SyncClient.MustSignalAndWait(ctx, stateDone, t.TestInstanceCount)
+	return nil
+}

@@ -26,3 +26,13 @@ instances = { min = 1, max = 100, default = 5 }
   balance = { type = "int", default = 1 }
   sectors = { type = "int", default = 1 }
   role = { type = "string" }
+
+  random_beacon_type = { type = "enum", default = "mock", options = ["mock", "local-drand", "external-drand"] }
+
+  # Params relevant to drand nodes. drand nodes should have role="drand", and must all be
+  # in the same composition group. There must be at least threshold drand nodes.
+  # To get lotus nodes to actually use the drand nodes, you must set random_beacon_type="local-drand"
+  # for the lotus node groups.
+  drand_period = { type = "duration", default="10s" }
+  drand_threshold = { type = "int", default = 2 }
+  drand_gossip_relay = { type = "bool", default = true }

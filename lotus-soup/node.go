@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"os"
+	"strings"
 
 	//"encoding/json"
 	"fmt"
@@ -16,6 +17,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/beacon"
 	genesis_chain "github.com/filecoin-project/lotus/chain/gen/genesis"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
@@ -82,6 +84,19 @@ type TestEnvironment struct {
 	*run.InitContext
 }
 
+// workaround for default params being wrapped in quote chars
+func (t *TestEnvironment) StringParam(name string) string {
+	return strings.Trim(t.RunEnv.StringParam(name), "\"")
+}
+
+func (t *TestEnvironment) DurationParam(name string) time.Duration {
+	d, err := time.ParseDuration(t.StringParam(name))
+	if err != nil {
+		panic(fmt.Errorf("invalid duration value for param '%s': %w", name, err))
+	}
+	return d
+}
+
 type Node struct {
 	fullApi  api.FullNode
 	minerApi api.StorageMiner
@@ -115,6 +130,11 @@ func prepareBootstrapper(t *TestEnvironment) (*Node, error) {
 	clients := t.IntParam("clients")
 	miners := t.IntParam("miners")
 	nodes := clients + miners
+
+	drandOpt, err := getDrandConfig(ctx, t)
+	if err != nil {
+		return nil, err
+	}
 
 	// the first duty of the boostrapper is to construct the genesis block
 	// first collect all client and miner balances to assign initial funds
@@ -177,6 +197,7 @@ func prepareBootstrapper(t *TestEnvironment) (*Node, error) {
 		withListenAddress(bootstrapperIP),
 		withBootstrapper(nil),
 		withPubsubConfig(true),
+		drandOpt,
 	)
 	if err != nil {
 		return nil, err
@@ -228,6 +249,11 @@ func prepareBootstrapper(t *TestEnvironment) (*Node, error) {
 func prepareMiner(t *TestEnvironment) (*Node, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), PrepareNodeTimeout)
 	defer cancel()
+
+	drandOpt, err := getDrandConfig(ctx, t)
+	if err != nil {
+		return nil, err
+	}
 
 	// first create a wallet
 	walletKey, err := wallet.GenerateKey(crypto.SigTypeBLS)
@@ -342,6 +368,7 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 		withListenAddress(minerIP),
 		withBootstrapper(genesisMsg.Bootstrapper),
 		withPubsubConfig(false),
+		drandOpt,
 	)
 	if err != nil {
 		return nil, err
@@ -446,6 +473,11 @@ func prepareClient(t *TestEnvironment) (*Node, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), PrepareNodeTimeout)
 	defer cancel()
 
+	drandOpt, err := getDrandConfig(ctx, t)
+	if err != nil {
+		return nil, err
+	}
+
 	// first create a wallet
 	walletKey, err := wallet.GenerateKey(crypto.SigTypeBLS)
 	if err != nil {
@@ -475,6 +507,7 @@ func prepareClient(t *TestEnvironment) (*Node, error) {
 		withListenAddress(clientIP),
 		withBootstrapper(genesisMsg.Bootstrapper),
 		withPubsubConfig(false),
+		drandOpt,
 	)
 	if err != nil {
 		return nil, err
@@ -635,4 +668,40 @@ func collectClientAddrs(t *TestEnvironment, ctx context.Context, clients int) ([
 	}
 
 	return addrs, nil
+}
+
+func getDrandConfig(ctx context.Context, t *TestEnvironment) (node.Option, error) {
+	beaconType := t.StringParam("random_beacon_type")
+	switch beaconType {
+	case "external-drand":
+		noop := func(settings *node.Settings) error {
+			return nil
+		}
+		return noop, nil
+
+	case "local-drand":
+		cfg, err := waitForDrandConfig(ctx, t.SyncClient)
+		if err != nil {
+			t.RecordMessage("error getting drand config: %w", err)
+			return nil, err
+			
+		}
+		t.RecordMessage("setting drand config: %v", cfg)
+		return node.Options(
+			node.Override(new(dtypes.DrandConfig), cfg.Config),
+			node.Override(new(dtypes.DrandBootstrap), cfg.GossipBootstrap),
+		), nil
+
+	case "mock":
+		return node.Options(
+			node.Override(new(beacon.RandomBeacon), modtest.RandomBeacon),
+			node.Override(new(dtypes.DrandConfig), dtypes.DrandConfig{
+				ChainInfoJSON: "{\"Hash\":\"wtf\"}",
+			}),
+			node.Override(new(dtypes.DrandBootstrap), dtypes.DrandBootstrap{}),
+		), nil
+
+	default:
+		return nil, fmt.Errorf("unknown random_beacon_type: %s", beaconType)
+	}
 }
