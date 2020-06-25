@@ -1,0 +1,76 @@
+[metadata]
+  name = "lotus-soup"
+  author = ""
+
+[global]
+  plan = "lotus-soup"
+  case = "lotus-baseline"
+  total_instances = 6
+  builder = "docker:go"
+  runner = "local:docker"
+
+[[groups]]
+  id = "bootstrapper"
+  [groups.resources]
+    memory = "120Mi"
+    cpu = "10m"
+  [groups.instances]
+    count = 1
+    percentage = 0.0
+  [groups.run]
+    [groups.run.test_params]
+      role = "bootstrapper"
+      clients = "1"
+      miners = "1"
+      balance = "2000"
+      sectors = "10"
+      random_beacon_type = "local-drand"
+
+[[groups]]
+  id = "miners"
+  [groups.resources]
+    memory = "120Mi"
+    cpu = "10m"
+  [groups.instances]
+    count = 1
+    percentage = 0.0
+  [groups.run]
+    [groups.run.test_params]
+      role = "miner"
+      clients = "1"
+      miners = "1"
+      balance = "2000"
+      sectors = "10"
+      random_beacon_type = "local-drand"
+
+
+[[groups]]
+  id = "clients"
+  [groups.resources]
+    memory = "120Mi"
+    cpu = "10m"
+  [groups.instances]
+    count = 1
+    percentage = 0.0
+  [groups.run]
+    [groups.run.test_params]
+      role = "client"
+      clients = "1"
+      miners = "1"
+      balance = "2000"
+      sectors = "10"
+      random_beacon_type = "local-drand"
+
+
+[[groups]]
+  id = "drand"
+  [groups.instances]
+    count = 3
+    percentage = 0.0
+  [groups.run]
+    [groups.run.test_params]
+      role = "drand"
+      drand_period = "1s"
+      drand_halt_duration = "20s"
+      drand_halt_begin = "10s"
+      drand_log_level = "info"
