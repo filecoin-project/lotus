@@ -174,7 +174,7 @@ func walkExecutionTrace(et *types.ExecutionTrace) {
 		gc.Callers = nil
 	}
 	for _, sub := range et.Subcalls {
-		walkExecutionTrace(&sub)
+		walkExecutionTrace(&sub) //nolint:scopelint,gosec
 	}
 }
 
