@@ -1081,18 +1081,18 @@ func TestStateChanged(t *testing.T) {
 
 	more := true
 	var applied, reverted bool
-	var appliedData stateData
+	var appliedData *stateChange
 	var appliedOldTs *types.TipSet
 	var appliedNewTs *types.TipSet
 	var appliedH abi.ChainEpoch
-	var matchData stateData
+	var matchData *stateChange
 
 	confidence := 3
 	timeout := abi.ChainEpoch(20)
 
 	err := events.StateChanged(func(ts *types.TipSet) (d bool, m bool, e error) {
 		return false, true, nil
-	}, func(oldTs, newTs *types.TipSet, data stateData, curH abi.ChainEpoch) (bool, error) {
+	}, func(oldTs, newTs *types.TipSet, data *stateChange, curH abi.ChainEpoch) (bool, error) {
 		require.Equal(t, false, applied)
 		applied = true
 		appliedData = data
@@ -1103,7 +1103,7 @@ func TestStateChanged(t *testing.T) {
 	}, func(_ context.Context, ts *types.TipSet) error {
 		reverted = true
 		return nil
-	}, confidence, timeout, func(oldTs, newTs *types.TipSet) (bool, stateData, error) {
+	}, confidence, timeout, func(oldTs, newTs *types.TipSet) (bool, *stateChange, error) {
 		if matchData == nil {
 			return false, matchData, nil
 		}
@@ -1121,7 +1121,7 @@ func TestStateChanged(t *testing.T) {
 	require.Equal(t, false, reverted)
 
 	// create state change (but below confidence threshold)
-	matchData = []stateChange{"a", "b"}
+	matchData = &stateChange{from: "a", to: "b"}
 	fcs.advance(0, 3, nil)
 
 	require.Equal(t, false, applied)
@@ -1149,8 +1149,8 @@ func TestStateChanged(t *testing.T) {
 	require.Equal(t, abi.ChainEpoch(9), appliedH)
 
 	// Make sure the state change was correctly passed through
-	require.Equal(t, "a", appliedData[0])
-	require.Equal(t, "b", appliedData[1])
+	require.Equal(t, "a", appliedData.from)
+	require.Equal(t, "b", appliedData.to)
 }
 
 func TestStateChangedRevert(t *testing.T) {
@@ -1168,21 +1168,21 @@ func TestStateChangedRevert(t *testing.T) {
 
 	more := true
 	var applied, reverted bool
-	var matchData stateData
+	var matchData *stateChange
 
 	confidence := 1
 	timeout := abi.ChainEpoch(20)
 
 	err := events.StateChanged(func(ts *types.TipSet) (d bool, m bool, e error) {
 		return false, true, nil
-	}, func(oldTs, newTs *types.TipSet, data stateData, curH abi.ChainEpoch) (bool, error) {
+	}, func(oldTs, newTs *types.TipSet, data *stateChange, curH abi.ChainEpoch) (bool, error) {
 		require.Equal(t, false, applied)
 		applied = true
 		return more, nil
 	}, func(_ context.Context, ts *types.TipSet) error {
 		reverted = true
 		return nil
-	}, confidence, timeout, func(oldTs, newTs *types.TipSet) (bool, stateData, error) {
+	}, confidence, timeout, func(oldTs, newTs *types.TipSet) (bool, *stateChange, error) {
 		if matchData == nil {
 			return false, matchData, nil
 		}
@@ -1196,7 +1196,7 @@ func TestStateChangedRevert(t *testing.T) {
 	fcs.advance(0, 2, nil) // H=3
 
 	// Make a state change from TS at height 3 to TS at height 4
-	matchData = []stateChange{"a", "b"}
+	matchData = &stateChange{from: "a", to: "b"}
 	fcs.advance(0, 1, nil) // H=4
 
 	// Haven't yet reached confidence
@@ -1248,7 +1248,7 @@ func TestStateChangedTimeout(t *testing.T) {
 
 	err := events.StateChanged(func(ts *types.TipSet) (d bool, m bool, e error) {
 		return false, true, nil
-	}, func(oldTs, newTs *types.TipSet, data stateData, curH abi.ChainEpoch) (bool, error) {
+	}, func(oldTs, newTs *types.TipSet, data *stateChange, curH abi.ChainEpoch) (bool, error) {
 		called = true
 		require.Nil(t, data)
 		require.Equal(t, abi.ChainEpoch(20), newTs.Height())
@@ -1257,8 +1257,8 @@ func TestStateChangedTimeout(t *testing.T) {
 	}, func(_ context.Context, ts *types.TipSet) error {
 		t.Fatal("revert on timeout")
 		return nil
-	}, 3, 20, func(oldTs, newTs *types.TipSet) (bool, stateData, error) {
-		return false, stateData{}, nil
+	}, 3, 20, func(oldTs, newTs *types.TipSet) (bool, *stateChange, error) {
+		return false, nil, nil
 	})
 
 	require.NoError(t, err)
@@ -1286,7 +1286,7 @@ func TestStateChangedTimeout(t *testing.T) {
 
 	err = events.StateChanged(func(ts *types.TipSet) (d bool, m bool, e error) {
 		return true, true, nil
-	}, func(oldTs, newTs *types.TipSet, data stateData, curH abi.ChainEpoch) (bool, error) {
+	}, func(oldTs, newTs *types.TipSet, data *stateChange, curH abi.ChainEpoch) (bool, error) {
 		called = true
 		require.Nil(t, data)
 		require.Equal(t, abi.ChainEpoch(20), newTs.Height())
@@ -1295,8 +1295,8 @@ func TestStateChangedTimeout(t *testing.T) {
 	}, func(_ context.Context, ts *types.TipSet) error {
 		t.Fatal("revert on timeout")
 		return nil
-	}, 3, 20, func(oldTs, newTs *types.TipSet) (bool, stateData, error) {
-		return false, stateData{}, nil
+	}, 3, 20, func(oldTs, newTs *types.TipSet) (bool, *stateChange, error) {
+		return false, nil, nil
 	})
 	require.NoError(t, err)
 
