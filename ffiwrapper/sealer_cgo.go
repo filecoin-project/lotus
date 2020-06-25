@@ -543,8 +543,35 @@ func GeneratePieceCIDFromFile(proofType abi.RegisteredSealProof, piece io.Reader
 }
 
 func GenerateUnsealedCID(proofType abi.RegisteredSealProof, pieces []abi.PieceInfo) (cid.Cid, error) {
+	allPieces := make([]abi.PieceInfo, 0, len(pieces))
 	var sum abi.PaddedPieceSize
+
+	padTo := func(s abi.PaddedPieceSize, trailing bool) {
+		// pad remaining space with 0 CommPs
+		toFill := uint64(-sum % s)
+		if trailing && sum == 0 {
+			toFill = uint64(s)
+		}
+
+		n := bits.OnesCount64(toFill)
+		for i := 0; i < n; i++ {
+			next := bits.TrailingZeros64(toFill)
+			psize := uint64(1) << uint(next)
+			toFill ^= psize
+
+			padded := abi.PaddedPieceSize(psize)
+			allPieces = append(allPieces, abi.PieceInfo{
+				Size:     padded,
+				PieceCID: zerocomm.ZeroPieceCommitment(padded.Unpadded()),
+			})
+			sum += padded
+		}
+	}
+
 	for _, p := range pieces {
+		padTo(p.Size, false)
+
+		allPieces = append(allPieces, p)
 		sum += p.Size
 	}
 
@@ -553,22 +580,7 @@ func GenerateUnsealedCID(proofType abi.RegisteredSealProof, pieces []abi.PieceIn
 		return cid.Undef, err
 	}
 
-	{
-		// pad remaining space with 0 CommPs
-		toFill := uint64(abi.PaddedPieceSize(ssize) - sum)
-		n := bits.OnesCount64(toFill)
-		for i := 0; i < n; i++ {
-			next := bits.TrailingZeros64(toFill)
-			psize := uint64(1) << uint(next)
-			toFill ^= psize
+	padTo(abi.PaddedPieceSize(ssize), true)
 
-			unpadded := abi.PaddedPieceSize(psize).Unpadded()
-			pieces = append(pieces, abi.PieceInfo{
-				Size:     unpadded.Padded(),
-				PieceCID: zerocomm.ZeroPieceCommitment(unpadded),
-			})
-		}
-	}
-
-	return ffi.GenerateUnsealedCID(proofType, pieces)
+	return ffi.GenerateUnsealedCID(proofType, allPieces)
 }
