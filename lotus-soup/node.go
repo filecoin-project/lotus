@@ -4,25 +4,15 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"os"
 
 	//"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"time"
 
-	"github.com/testground/sdk-go/run"
-	"github.com/testground/sdk-go/runtime"
-	"github.com/testground/sdk-go/sync"
-
-	libp2p_crypto "github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/peer"
-	ma "github.com/multiformats/go-multiaddr"
-
-	"github.com/ipfs/go-datastore"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-storedcounter"
-
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -39,13 +29,37 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/lp2p"
 	modtest "github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
-
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	saminer "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/ipfs/go-datastore"
+	logging "github.com/ipfs/go-log/v2"
+	libp2p_crypto "github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/libp2p/go-libp2p-core/peer"
+	ma "github.com/multiformats/go-multiaddr"
+	"github.com/testground/sdk-go/run"
+	"github.com/testground/sdk-go/runtime"
+	"github.com/testground/sdk-go/sync"
 )
+
+func init() {
+	logging.SetLogLevel("*", "ERROR")
+
+	os.Setenv("BELLMAN_NO_GPU", "1")
+
+	build.InsecurePoStValidation = true
+	build.DisableBuiltinAssets = true
+
+	power.ConsensusMinerMinPower = big.NewInt(2048)
+	saminer.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
+		abi.RegisteredSealProof_StackedDrg2KiBV1: {},
+	}
+	verifreg.MinVerifiedDealSize = big.NewInt(256)
+}
 
 var (
 	PrepareNodeTimeout = time.Minute
@@ -168,7 +182,6 @@ func prepareBootstrapper(t *TestEnvironment) (*Node, error) {
 	}
 	n.stop = stop
 
-	// this dance to construct the bootstrapper multiaddr is quite vexing.
 	var bootstrapperAddr ma.Multiaddr
 
 	bootstrapperAddrs, err := n.fullApi.NetAddrsListen(ctx)
@@ -268,7 +281,6 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 	// prepare the repo
 	minerRepo := repo.NewMemory(nil)
 
-	// V00D00 People DaNC3!
 	lr, err := minerRepo.Lock(repo.StorageMiner)
 	if err != nil {
 		return nil, err

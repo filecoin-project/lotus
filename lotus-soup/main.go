@@ -2,38 +2,13 @@ package main
 
 import (
 	"fmt"
-	"os"
 
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
-	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	"github.com/testground/sdk-go/run"
 	"github.com/testground/sdk-go/runtime"
-
-	saminer "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	logging "github.com/ipfs/go-log/v2"
 )
 
 var testplans = map[string]interface{}{
 	"lotus-baseline": doRun(baselineRoles),
-}
-
-func init() {
-	logging.SetLogLevel("*", "ERROR")
-
-	build.DisableBuiltinAssets = true
-
-	// Note: I don't understand the significance of this, but the node test does it.
-	power.ConsensusMinerMinPower = big.NewInt(2048)
-	saminer.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
-		abi.RegisteredSealProof_StackedDrg2KiBV1: {},
-	}
-	verifreg.MinVerifiedDealSize = big.NewInt(256)
-
-	build.InsecurePoStValidation = true
-	os.Setenv("BELLMAN_NO_GPU", "1")
 }
 
 func main() {
