@@ -149,6 +149,7 @@ var importBenchCmd = &cli.Command{
 			if err != nil {
 				return err
 			}
+			stripCallers(trace)
 
 			lastTse = &TipSetExec{
 				TipSet:   cur.Key(),
@@ -166,6 +167,21 @@ var importBenchCmd = &cli.Command{
 		return nil
 
 	},
+}
+
+func walkExecutionTrace(et *types.ExecutionTrace) {
+	for _, gc := range et.GasCharges {
+		gc.Callers = nil
+	}
+	for _, sub := range et.Subcalls {
+		walkExecutionTrace(&sub) //nolint:scopelint,gosec
+	}
+}
+
+func stripCallers(trace []*api.InvocResult) {
+	for _, t := range trace {
+		walkExecutionTrace(&t.ExecutionTrace)
+	}
 }
 
 type Invocation struct {
