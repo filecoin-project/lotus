@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
+
 	"github.com/ipfs/go-cid"
 	files "github.com/ipfs/go-ipfs-files"
 	ipld "github.com/ipfs/go-ipld-format"
@@ -42,69 +43,9 @@ import (
 // The we create a genesis block that allocates some funds to each node and collects
 // the presealed sectors.
 var baselineRoles = map[string]func(*TestEnvironment) error{
-	"bootstrapper": runBaselineBootstrapper,
-	"miner":        runBaselineMiner,
+	"bootstrapper": runBootstrapper,
+	"miner":        runMiner,
 	"client":       runBaselineClient,
-}
-
-func runBaselineBootstrapper(t *TestEnvironment) error {
-	t.RecordMessage("running bootstrapper")
-	_, err := prepareBootstrapper(t)
-	if err != nil {
-		return err
-	}
-
-	ctx := context.Background()
-	t.SyncClient.MustSignalAndWait(ctx, stateDone, t.TestInstanceCount)
-	return nil
-}
-
-func runBaselineMiner(t *TestEnvironment) error {
-	t.RecordMessage("running miner")
-	miner, err := prepareMiner(t)
-	if err != nil {
-		return err
-	}
-
-	ctx := context.Background()
-
-	clients := t.IntParam("clients")
-	miners := t.IntParam("miners")
-
-	// mine / stop mining
-	mine := true
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		for mine {
-
-			// synchronize all miners to mine the next block
-			t.RecordMessage("synchronizing all miners to mine next block")
-			t.SyncClient.MustSignalAndWait(ctx, stateMineNext, miners)
-
-			time.Sleep(time.Duration(100 + rand.Intn(int(100*time.Millisecond))))
-
-			err := miner.MineOne(ctx, func(bool) {
-				// after a block is mined
-			})
-			if err != nil {
-				panic(err)
-			}
-		}
-	}()
-
-	// wait for a signal from all clients to stop mining
-	err = <-t.SyncClient.MustBarrier(ctx, stateStopMining, clients).C
-	if err != nil {
-		return err
-	}
-
-	mine = false
-	t.RecordMessage("shutting down mining")
-	<-done
-
-	t.SyncClient.MustSignalAndWait(ctx, stateDone, t.TestInstanceCount)
-	return nil
 }
 
 func runBaselineClient(t *TestEnvironment) error {
