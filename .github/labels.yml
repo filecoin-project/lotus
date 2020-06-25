@@ -49,7 +49,7 @@
   color: fcf0b5
   description: "Kind: Improvement"
 - name: kind/test-scenario
-  color: fcf0b5
+  color: feb95e
   description: "Kind: Test Scenario"
 - name: kind/tracking-issue
   color: fcf0b5
@@ -67,7 +67,7 @@
   color: fcf0b5
   description: "Kind: Spike"
 - name: kind/system-process
-  color: fcf0b5
+  color: ff4782
   description: "Kind: System Process"
 
 ###
