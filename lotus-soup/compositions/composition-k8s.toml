@@ -7,13 +7,19 @@
   case = "lotus-baseline"
   total_instances = 3
   builder = "docker:go"
-  runner = "local:docker"
+  runner = "cluster:k8s"
+
+[global.build_config]
+  push_registry=true
+  go_proxy_mode="remote"
+  go_proxy_url="http://localhost:8081"
+  registry_type="aws"
 
 [[groups]]
   id = "bootstrapper"
   [groups.resources]
-    memory = "120Mi"
-    cpu = "10m"
+    memory = "512Mi"
+    cpu = "1000m"
   [groups.instances]
     count = 1
     percentage = 0.0
@@ -22,14 +28,14 @@
       role = "bootstrapper"
       clients = "1"
       miners = "1"
-      balance = "2000000000"
+      balance = "2000"
       sectors = "10"
 
 [[groups]]
   id = "miners"
   [groups.resources]
-    memory = "120Mi"
-    cpu = "10m"
+    memory = "1024Mi"
+    cpu = "1000m"
   [groups.instances]
     count = 1
     percentage = 0.0
@@ -38,14 +44,14 @@
       role = "miner"
       clients = "1"
       miners = "1"
-      balance = "2000000000"
+      balance = "2000"
       sectors = "10"
 
 [[groups]]
   id = "clients"
   [groups.resources]
-    memory = "120Mi"
-    cpu = "10m"
+    memory = "1024Mi"
+    cpu = "1000m"
   [groups.instances]
     count = 1
     percentage = 0.0
@@ -54,5 +60,5 @@
       role = "client"
       clients = "1"
       miners = "1"
-      balance = "2000000000"
+      balance = "2000"
       sectors = "10"

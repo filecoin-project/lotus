@@ -4,26 +4,15 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"os"
 
 	//"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"time"
 
-	"github.com/testground/sdk-go/run"
-	"github.com/testground/sdk-go/runtime"
-	"github.com/testground/sdk-go/sync"
-
-	logging "github.com/ipfs/go-log/v2"
-	libp2p_crypto "github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/peer"
-	ma "github.com/multiformats/go-multiaddr"
-
-	"github.com/ipfs/go-datastore"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-storedcounter"
-
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -32,6 +21,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
 	"github.com/filecoin-project/lotus/genesis"
+	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules"
@@ -39,15 +29,37 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/lp2p"
 	modtest "github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
-
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	saminer "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/ipfs/go-datastore"
+	logging "github.com/ipfs/go-log/v2"
+	libp2p_crypto "github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/libp2p/go-libp2p-core/peer"
+	ma "github.com/multiformats/go-multiaddr"
+	"github.com/testground/sdk-go/run"
+	"github.com/testground/sdk-go/runtime"
+	"github.com/testground/sdk-go/sync"
 )
+
+func init() {
+	logging.SetLogLevel("*", "WARN")
+
+	os.Setenv("BELLMAN_NO_GPU", "1")
+
+	build.InsecurePoStValidation = true
+	build.DisableBuiltinAssets = true
+
+	power.ConsensusMinerMinPower = big.NewInt(2048)
+	saminer.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
+		abi.RegisteredSealProof_StackedDrg2KiBV1: {},
+	}
+	verifreg.MinVerifiedDealSize = big.NewInt(256)
+}
 
 var (
 	PrepareNodeTimeout = time.Minute
@@ -56,7 +68,13 @@ var (
 	balanceTopic = sync.NewTopic("balance", &InitialBalanceMsg{})
 	presealTopic = sync.NewTopic("preseal", &PresealMsg{})
 
-	stateReady = sync.State("ready")
+	clientsAddrsTopic = sync.NewTopic("clientsAddrsTopic", &peer.AddrInfo{})
+	minersAddrsTopic  = sync.NewTopic("minersAddrsTopic", &MinerAddresses{})
+
+	stateReady      = sync.State("ready")
+	stateDone       = sync.State("done")
+	stateMineNext   = sync.State("mine-next")
+	stateStopMining = sync.State("stop-mining")
 )
 
 type TestEnvironment struct {
@@ -68,6 +86,7 @@ type Node struct {
 	fullApi  api.FullNode
 	minerApi api.StorageMiner
 	stop     node.StopFunc
+	MineOne  func(context.Context, func(bool)) error
 }
 
 type InitialBalanceMsg struct {
@@ -84,17 +103,9 @@ type GenesisMsg struct {
 	Bootstrapper []byte
 }
 
-func init() {
-	logging.SetLogLevel("vm", "WARN")
-
-	build.DisableBuiltinAssets = true
-
-	// Note: I don't understand the significance of this, but the node test does it.
-	power.ConsensusMinerMinPower = big.NewInt(2048)
-	saminer.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
-		abi.RegisteredSealProof_StackedDrg2KiBV1: {},
-	}
-	verifreg.MinVerifiedDealSize = big.NewInt(256)
+type MinerAddresses struct {
+	PeerAddr  peer.AddrInfo
+	ActorAddr address.Address
 }
 
 func prepareBootstrapper(t *TestEnvironment) (*Node, error) {
@@ -138,7 +149,7 @@ func prepareBootstrapper(t *TestEnvironment) (*Node, error) {
 	genesisTemplate := genesis.Template{
 		Accounts:  genesisActors,
 		Miners:    genesisMiners,
-		Timestamp: uint64(time.Now().Unix() - 1000), // this needs to be in the past
+		Timestamp: uint64(time.Now().Unix() - 100000), // this needs to be in the past
 	}
 
 	// dump the genesis block
@@ -172,7 +183,6 @@ func prepareBootstrapper(t *TestEnvironment) (*Node, error) {
 	}
 	n.stop = stop
 
-	// this dance to construct the bootstrapper multiaddr is quite vexing.
 	var bootstrapperAddr ma.Multiaddr
 
 	bootstrapperAddrs, err := n.fullApi.NetAddrsListen(ctx)
@@ -272,7 +282,6 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 	// prepare the repo
 	minerRepo := repo.NewMemory(nil)
 
-	// V00D00 People DaNC3!
 	lr, err := minerRepo.Lock(repo.StorageMiner)
 	if err != nil {
 		return nil, err
@@ -345,11 +354,13 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 		return nil, err
 	}
 
+	mineBlock := make(chan func(bool))
 	stop2, err := node.New(context.Background(),
 		node.StorageMiner(&n.minerApi),
 		node.Online(),
 		node.Repo(minerRepo),
 		node.Override(new(api.FullNode), n.fullApi),
+		node.Override(new(*miner.Miner), miner.NewTestMiner(mineBlock, minerAddr)),
 		withMinerListenAddress(minerIP),
 	)
 	if err != nil {
@@ -364,6 +375,25 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 			return err2
 		}
 		return err1
+	}
+
+	remoteAddrs, err := n.fullApi.NetAddrsListen(ctx)
+	if err != nil {
+		panic(err)
+	}
+
+	err = n.minerApi.NetConnect(ctx, remoteAddrs)
+	if err != nil {
+		panic(err)
+	}
+
+	n.MineOne = func(ctx context.Context, cb func(bool)) error {
+		select {
+		case mineBlock <- cb:
+			return nil
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 	}
 
 	// add local storage for presealed sectors
@@ -394,6 +424,17 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 		n.stop(context.TODO())
 		return nil, err
 	}
+
+	t.RecordMessage("publish our address to the miners addr topic")
+	actoraddress, err := n.minerApi.ActorAddress(ctx)
+	if err != nil {
+		return nil, err
+	}
+	addrinfo, err := n.minerApi.NetAddrsListen(ctx)
+	if err != nil {
+		return nil, err
+	}
+	t.SyncClient.MustPublish(ctx, minersAddrsTopic, MinerAddresses{addrinfo, actoraddress})
 
 	t.RecordMessage("waiting for all nodes to be ready")
 	t.SyncClient.MustSignalAndWait(ctx, stateReady, t.TestInstanceCount)
@@ -446,6 +487,13 @@ func prepareClient(t *TestEnvironment) (*Node, error) {
 		stop(context.TODO())
 		return nil, err
 	}
+
+	t.RecordMessage("publish our address to the clients addr topic")
+	addrinfo, err := n.fullApi.NetAddrsListen(ctx)
+	if err != nil {
+		return nil, err
+	}
+	t.SyncClient.MustPublish(ctx, clientsAddrsTopic, addrinfo)
 
 	t.RecordMessage("waiting for all nodes to be ready")
 	t.SyncClient.MustSignalAndWait(ctx, stateReady, t.TestInstanceCount)
@@ -553,4 +601,38 @@ func waitForGenesis(t *TestEnvironment, ctx context.Context) (*GenesisMsg, error
 	case err := <-sub.Done():
 		return nil, fmt.Errorf("error while waiting for genesis msg: %w", err)
 	}
+}
+
+func collectMinerAddrs(t *TestEnvironment, ctx context.Context, miners int) ([]MinerAddresses, error) {
+	ch := make(chan MinerAddresses)
+	sub := t.SyncClient.MustSubscribe(ctx, minersAddrsTopic, ch)
+
+	addrs := make([]MinerAddresses, 0, miners)
+	for i := 0; i < miners; i++ {
+		select {
+		case a := <-ch:
+			addrs = append(addrs, a)
+		case err := <-sub.Done():
+			return nil, fmt.Errorf("got error while waiting for miners addrs: %w", err)
+		}
+	}
+
+	return addrs, nil
+}
+
+func collectClientAddrs(t *TestEnvironment, ctx context.Context, clients int) ([]peer.AddrInfo, error) {
+	ch := make(chan peer.AddrInfo)
+	sub := t.SyncClient.MustSubscribe(ctx, clientsAddrsTopic, ch)
+
+	addrs := make([]peer.AddrInfo, 0, clients)
+	for i := 0; i < clients; i++ {
+		select {
+		case a := <-ch:
+			addrs = append(addrs, a)
+		case err := <-sub.Done():
+			return nil, fmt.Errorf("got error while waiting for clients addrs: %w", err)
+		}
+	}
+
+	return addrs, nil
 }
