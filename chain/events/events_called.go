@@ -84,6 +84,9 @@ type calledEvents struct {
 }
 
 func (e *calledEvents) headChangeCalled(rev, app []*types.TipSet) error {
+	e.lk.Lock()
+	defer e.lk.Unlock()
+
 	for _, ts := range rev {
 		e.handleReverts(ts)
 		e.at = ts.Height()
@@ -134,7 +137,6 @@ func (e *calledEvents) checkNewCalls(ts *types.TipSet) {
 
 	e.messagesForTs(pts, func(msg *types.Message) {
 		// TODO: provide receipts
-
 		for tid, matchFns := range e.matchers {
 			var matched bool
 			for _, matchFn := range matchFns {

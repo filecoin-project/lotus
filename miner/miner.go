@@ -215,6 +215,9 @@ type MiningBase struct {
 }
 
 func (m *Miner) GetBestMiningCandidate(ctx context.Context) (*MiningBase, error) {
+	m.lk.Lock()
+	defer m.lk.Unlock()
+
 	bts, err := m.api.ChainHead(ctx)
 	if err != nil {
 		return nil, err

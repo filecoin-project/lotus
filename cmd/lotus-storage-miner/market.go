@@ -217,9 +217,9 @@ var getAskCmd = &cli.Command{
 	},
 }
 
-var dealsCmd = &cli.Command{
-	Name:  "deals",
-	Usage: "interact with your deals",
+var storageDealsCmd = &cli.Command{
+	Name:  "storage-deals",
+	Usage: "Manage storage deals and related configuration",
 	Subcommands: []*cli.Command{
 		dealsImportDataCmd,
 		dealsListCmd,
