@@ -82,9 +82,8 @@ func runBaselineMiner(t *TestEnvironment) error {
 			t.RecordMessage("synchronizing all miners to mine next block")
 			t.SyncClient.MustSignalAndWait(ctx, stateMineNext, miners)
 
-			time.Sleep(time.Duration(rand.Intn(int(100 * time.Millisecond))))
+			time.Sleep(time.Duration(100 + rand.Intn(int(100*time.Millisecond))))
 
-			// wait and synchronise
 			err := miner.MineOne(ctx, func(bool) {
 				// after a block is mined
 			})
