@@ -70,3 +70,4 @@
   [groups.run]
     [groups.run.test_params]
       role = "drand"
+      drand_period = "1s"
