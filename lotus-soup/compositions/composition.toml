@@ -5,12 +5,15 @@
 [global]
   plan = "lotus-soup"
   case = "lotus-baseline"
-  total_instances = 6
+  total_instances = 3
   builder = "docker:go"
   runner = "local:docker"
 
 [global.build_config]
   enable_go_build_cache = true
+
+[global.build]
+  selectors = ["testground"]
 
 [global.run.test_params]
   clients = "3"
@@ -32,7 +35,7 @@
 [[groups]]
   id = "miners"
   [groups.instances]
-    count = 2
+    count = 1
     percentage = 0.0
   [groups.run]
     [groups.run.test_params]
@@ -41,7 +44,7 @@
 [[groups]]
   id = "clients"
   [groups.instances]
-    count = 3
+    count = 1
     percentage = 0.0
   [groups.run]
     [groups.run.test_params]

@@ -8,7 +8,7 @@ require (
 	github.com/filecoin-project/go-fil-markets v0.3.0
 	github.com/filecoin-project/go-jsonrpc v0.1.1-0.20200602181149-522144ab4e24
 	github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b
-	github.com/filecoin-project/lotus v0.4.1-0.20200623211458-e8642442267b
+	github.com/filecoin-project/lotus v0.4.1-0.20200625154728-28b4476398ae
 	github.com/filecoin-project/specs-actors v0.6.2-0.20200617175406-de392ca14121
 	github.com/gorilla/mux v1.7.4
 	github.com/influxdata/influxdb v1.8.0 // indirect
