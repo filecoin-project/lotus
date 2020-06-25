@@ -18,8 +18,8 @@
 [[groups]]
   id = "bootstrapper"
   [groups.resources]
-    memory = "120Mi"
-    cpu = "10m"
+    memory = "512Mi"
+    cpu = "1000m"
   [groups.instances]
     count = 1
     percentage = 0.0
@@ -34,8 +34,8 @@
 [[groups]]
   id = "miners"
   [groups.resources]
-    memory = "120Mi"
-    cpu = "10m"
+    memory = "1024Mi"
+    cpu = "1000m"
   [groups.instances]
     count = 1
     percentage = 0.0
@@ -50,8 +50,8 @@
 [[groups]]
   id = "clients"
   [groups.resources]
-    memory = "120Mi"
-    cpu = "10m"
+    memory = "1024Mi"
+    cpu = "1000m"
   [groups.instances]
     count = 1
     percentage = 0.0
