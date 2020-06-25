@@ -67,6 +67,8 @@ func runBaselineMiner(t *TestEnvironment) error {
 		return err
 	}
 
+	ctx := context.Background()
+
 	clients := t.IntParam("clients")
 	miners := t.IntParam("miners")
 
@@ -79,12 +81,12 @@ func runBaselineMiner(t *TestEnvironment) error {
 
 			// synchronize all miners to mine the next block
 			t.RecordMessage("synchronizing all miners to mine next block")
-			t.SyncClient.MustSignalAndWait(context.Background(), stateMineNext, miners)
+			t.SyncClient.MustSignalAndWait(ctx, stateMineNext, miners)
 
 			time.Sleep(time.Duration(rand.Intn(int(100 * time.Millisecond))))
 
 			// wait and synchronise
-			err := miner.MineOne(context.TODO(), func(bool) {
+			err := miner.MineOne(ctx, func(bool) {
 				// after a block is mined
 			})
 			if err != nil {
@@ -94,7 +96,7 @@ func runBaselineMiner(t *TestEnvironment) error {
 	}()
 
 	// wait for a signal from all clients to stop mining
-	err = <-t.SyncClient.MustBarrier(context.Background(), stateStopMining, clients).C
+	err = <-t.SyncClient.MustBarrier(ctx, stateStopMining, clients).C
 	if err != nil {
 		return err
 	}
@@ -103,7 +105,7 @@ func runBaselineMiner(t *TestEnvironment) error {
 	t.RecordMessage("shutting down mining")
 	<-done
 
-	t.SyncClient.MustSignalAndWait(context.Background(), stateDone, t.TestInstanceCount)
+	t.SyncClient.MustSignalAndWait(ctx, stateDone, t.TestInstanceCount)
 	return nil
 }
 
