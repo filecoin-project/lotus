@@ -67,26 +67,33 @@ func runBaselineMiner(t *TestEnvironment) error {
 		return err
 	}
 
+	clients := t.IntParam("clients")
+	miners := t.IntParam("miners")
+
 	// mine / stop mining
 	mine := true
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
 		for mine {
-			time.Sleep(100 * time.Millisecond)
-			//t.RecordMessage("mine one block")
+
+			// synchronize all miners to mine the next block
+			t.RecordMessage("synchronizing all miners to mine next block")
+			t.SyncClient.MustSignalAndWait(context.Background(), stateMineNext, miners)
+
+			time.Sleep(time.Duration(rand.Intn(int(100 * time.Millisecond))))
 
 			// wait and synchronise
-			if err := miner.MineOne(context.TODO(), func(bool) {
+			err := miner.MineOne(context.TODO(), func(bool) {
 				// after a block is mined
-			}); err != nil {
+			})
+			if err != nil {
 				panic(err)
 			}
 		}
 	}()
 
 	// wait for a signal from all clients to stop mining
-	clients := t.IntParam("clients")
 	err = <-t.SyncClient.MustBarrier(context.Background(), stateStopMining, clients).C
 	if err != nil {
 		return err

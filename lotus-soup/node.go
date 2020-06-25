@@ -73,6 +73,7 @@ var (
 
 	stateReady      = sync.State("ready")
 	stateDone       = sync.State("done")
+	stateMineNext   = sync.State("mine-next")
 	stateStopMining = sync.State("stop-mining")
 )
 
