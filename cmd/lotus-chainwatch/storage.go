@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"database/sql"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"sync"
 	"time"
 
@@ -252,6 +254,24 @@ create table if not exists receipts
 
 create index if not exists receipts_msg_state_index
 	on receipts (msg, state);
+	
+create table if not exists miner_sectors
+(
+	stateroot text not null,
+	miner text not null,
+	sectorid bigint not null,
+	activation bigint not null,
+	dealweight bigint not null,
+	verifieddealweight bigint not null,
+	expiration bigint not null,
+	sealcid text not null,
+	sealrandepoch bigint not null,
+	constraint miner_sectors_pk
+		primary key (stateroot, miner, sectorid)
+);
+
+create index if not exists miner_sectors_state_index
+	on miner_sectors (stateroot, miner, sectorid);
 /*
 create table if not exists miner_heads
 (
@@ -454,6 +474,61 @@ func (st *storage) storeActors(actors map[address.Address]map[types.Actor]actorI
 	}
 
 	return nil
+}
+
+type storeSectorsAPI interface {
+	StateMinerSectors(context.Context, address.Address, *abi.BitField, bool, types.TipSetKey) ([]*api.ChainSectorInfo, error)
+}
+
+func (st *storage) storeSectors(minerTips map[types.TipSetKey][]*newMinerInfo, sectorApi storeSectorsAPI) error {
+	tx, err := st.db.Begin()
+	if err != nil {
+		return err
+	}
+
+	if _, err := tx.Exec(`create temp table ms (like miner_sectors excluding constraints) on commit drop;`); err != nil {
+		return xerrors.Errorf("prep temp: %w", err)
+	}
+
+	stmt, err := tx.Prepare(`copy ms (stateroot, miner, sectorid, activation, dealweight, verifieddealweight, expiration, sealcid, sealrandepoch) from STDIN `)
+	if err != nil {
+		return err
+	}
+
+	for tipset, miners := range minerTips {
+		for _, miner := range miners {
+			sectors, err := sectorApi.StateMinerSectors(context.TODO(), miner.addr, nil, true, tipset)
+			if err != nil {
+				log.Debugw("Failed to load sectors", "tipset", tipset.String(), "miner", miner.addr.String(), "error", err)
+			}
+
+			for _, sector := range sectors {
+				if _, err := stmt.Exec(
+					miner.stateroot.String(),
+					miner.addr.String(),
+					uint64(sector.ID),
+					int64(sector.Info.ActivationEpoch),
+					sector.Info.DealWeight.Uint64(),
+					sector.Info.VerifiedDealWeight.Uint64(),
+					int64(sector.Info.Info.Expiration),
+					sector.Info.Info.SealedCID.String(),
+					int64(sector.Info.Info.SealRandEpoch),
+				); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	if err := stmt.Close(); err != nil {
+		return err
+	}
+
+	if _, err := tx.Exec(`insert into miner_sectors select * from ms on conflict do nothing `); err != nil {
+		return xerrors.Errorf("actor put: %w", err)
+	}
+
+	return tx.Commit()
 }
 
 func (st *storage) storeMiners(miners map[minerKey]*minerInfo) error {
