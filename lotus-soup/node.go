@@ -57,8 +57,9 @@ var (
 	clientsAddrsTopic = sync.NewTopic("clientsAddrsTopic", &peer.AddrInfo{})
 	minersAddrsTopic  = sync.NewTopic("minersAddrsTopic", &MinerAddresses{})
 
-	stateReady = sync.State("ready")
-	stateDone  = sync.State("done")
+	stateReady      = sync.State("ready")
+	stateDone       = sync.State("done")
+	stateStopMining = sync.State("stop-mining")
 )
 
 type TestEnvironment struct {

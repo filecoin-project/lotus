@@ -97,9 +97,14 @@ func runBaselineMiner(t *TestEnvironment) error {
 		}
 	}()
 
-	time.Sleep(3600 * time.Second)
+	// wait for a signa to stop mining
+	err = <-t.SyncClient.MustBarrier(ctx, stateStopMining, 1).C
+	if err != nil {
+		return err
+	}
+
 	mine = false
-	fmt.Println("shutting down mining")
+	t.RecordMessage("shutting down mining")
 	<-done
 
 	t.SyncClient.MustSignalAndWait(ctx, stateDone, t.TestInstanceCount)
@@ -129,7 +134,7 @@ func runBaselineClient(t *TestEnvironment) error {
 
 	t.RecordMessage("client connected to miner")
 
-	time.Sleep(10 * time.Second)
+	time.Sleep(2 * time.Second)
 
 	// generate random data
 	data := make([]byte, 1600)
@@ -146,15 +151,17 @@ func runBaselineClient(t *TestEnvironment) error {
 	t.RecordMessage("started deal: %s", deal)
 
 	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
-	time.Sleep(5 * time.Second)
+	time.Sleep(2 * time.Second)
 
 	t.RecordMessage("wait to be sealed")
-	waitDealSealed(ctx, client, deal)
+	waitDealSealed(t, ctx, client, deal)
 
 	carExport := true
 
-	// try to retrieve fcid
-	testRetrieval(ctx, err, client, fcid, carExport, data)
+	t.RecordMessage("try to retrieve fcid")
+	retrieve(t, ctx, err, client, fcid, carExport, data)
+
+	t.SyncClient.MustSignalEntry(ctx, stateStopMining)
 
 	// TODO broadcast published content CIDs to other clients
 	// TODO select a random piece of content published by some other client and retrieve it
@@ -216,7 +223,7 @@ func startDeal(ctx context.Context, minerActorAddr address.Address, client *impl
 	return deal
 }
 
-func waitDealSealed(ctx context.Context, client *impl.FullNodeAPI, deal *cid.Cid) {
+func waitDealSealed(t *TestEnvironment, ctx context.Context, client *impl.FullNodeAPI, deal *cid.Cid) {
 loop:
 	for {
 		di, err := client.ClientGetDealInfo(ctx, *deal)
@@ -231,15 +238,15 @@ loop:
 		case storagemarket.StorageDealError:
 			panic(fmt.Sprintf("deal errored %s", di.Message))
 		case storagemarket.StorageDealActive:
-			fmt.Println("COMPLETE", di)
+			t.RecordMessage("completed deal: %s", di)
 			break loop
 		}
-		fmt.Println("Deal state: ", storagemarket.DealStates[di.State])
+		t.RecordMessage("deal state: %s", storagemarket.DealStates[di.State])
 		time.Sleep(2 * time.Second)
 	}
 }
 
-func testRetrieval(ctx context.Context, err error, client *impl.FullNodeAPI, fcid cid.Cid, carExport bool, data []byte) {
+func retrieve(t *TestEnvironment, ctx context.Context, err error, client *impl.FullNodeAPI, fcid cid.Cid, carExport bool, data []byte) {
 	offers, err := client.ClientFindData(ctx, fcid)
 	if err != nil {
 		panic(err)
@@ -281,6 +288,8 @@ func testRetrieval(ctx context.Context, err error, client *impl.FullNodeAPI, fci
 	if !bytes.Equal(rdata, data) {
 		panic("wrong data retrieved")
 	}
+
+	t.RecordMessage("retrieved successfully")
 }
 
 func extractCarData(ctx context.Context, rdata []byte, rpath string) []byte {
