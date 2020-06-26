@@ -3,7 +3,6 @@ module github.com/filecoin-project/oni/lotus-soup
 go 1.14
 
 require (
-	github.com/davecgh/go-spew v1.1.1
 	github.com/drand/drand v0.9.2-0.20200616080806-a94e9c1636a4
 	github.com/filecoin-project/go-address v0.0.2-0.20200504173055-8b6f2fb2b3ef
 	github.com/filecoin-project/go-fil-markets v0.3.0
@@ -18,7 +17,9 @@ require (
 	github.com/ipfs/go-merkledag v0.3.1
 	github.com/ipfs/go-unixfs v0.2.4
 	github.com/ipld/go-car v0.1.1-0.20200526133713-1c7508d55aae
+	github.com/libp2p/go-libp2p v0.10.0
 	github.com/libp2p/go-libp2p-core v0.6.0
+	github.com/libp2p/go-libp2p-pubsub-tracer v0.0.0-20200626081338-a4828eefb15e
 	github.com/multiformats/go-multiaddr v0.2.2
 	github.com/testground/sdk-go v0.2.3-0.20200617132925-2e4d69f9ba38
 )
