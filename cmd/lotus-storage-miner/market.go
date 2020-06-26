@@ -50,33 +50,73 @@ func GetCidEncoder(cctx *cli.Context) (cidenc.Encoder, error) {
 	return e, nil
 }
 
-var enableCmd = &cli.Command{
-	Name:  "enable",
-	Usage: "Configure the miner to consider storage deal proposals",
-	Flags: []cli.Flag{},
-	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetStorageMinerAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer closer()
-
-		return api.DealsSetAcceptingStorageDeals(lcli.DaemonContext(cctx), true)
+var storageDealSelectionCmd = &cli.Command{
+	Name:  "selection",
+	Usage: "Configure acceptance criteria for storage deal proposals",
+	Subcommands: []*cli.Command{
+		storageDealSelectionShowCmd,
+		storageDealSelectionResetCmd,
+		storageDealSelectionRejectCmd,
 	},
 }
 
-var disableCmd = &cli.Command{
-	Name:  "disable",
-	Usage: "Configure the miner to reject all storage deal proposals",
-	Flags: []cli.Flag{},
+var storageDealSelectionShowCmd = &cli.Command{
+	Name:  "list",
+	Usage: "List storage deal proposal selection criteria",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		smapi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		return api.DealsSetAcceptingStorageDeals(lcli.DaemonContext(cctx), false)
+		isAcceptingStorageDeals, err := smapi.DealsAcceptingStorageDeals(lcli.DaemonContext(cctx))
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("offline storage deals: %t\n", isAcceptingStorageDeals)
+		fmt.Printf("online storage deals: %t\n", isAcceptingStorageDeals)
+
+		return nil
+	},
+}
+
+var storageDealSelectionResetCmd = &cli.Command{
+	Name:  "reset",
+	Usage: "Reset storage deal proposal selection criteria to default values",
+	Action: func(cctx *cli.Context) error {
+		smapi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		err = smapi.DealsSetAcceptingStorageDeals(lcli.DaemonContext(cctx), true)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	},
+}
+
+var storageDealSelectionRejectCmd = &cli.Command{
+	Name:  "reject",
+	Usage: "Configure criteria which necessitate automatic rejection",
+	Action: func(cctx *cli.Context) error {
+		smapi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		err = smapi.DealsSetAcceptingStorageDeals(lcli.DaemonContext(cctx), false)
+		if err != nil {
+			return err
+		}
+
+		return nil
 	},
 }
 
@@ -223,8 +263,7 @@ var storageDealsCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		dealsImportDataCmd,
 		dealsListCmd,
-		enableCmd,
-		disableCmd,
+		storageDealSelectionCmd,
 		setAskCmd,
 		getAskCmd,
 		setBlocklistCmd,

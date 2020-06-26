@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/urfave/cli/v2"
 )
@@ -9,37 +11,76 @@ var retrievalDealsCmd = &cli.Command{
 	Name:  "retrieval-deals",
 	Usage: "Manage retrieval deals and related configuration",
 	Subcommands: []*cli.Command{
-		enableRetrievalCmd,
-		disableRetrievalCmd,
+		retrievalDealSelectionCmd,
 	},
 }
 
-var enableRetrievalCmd = &cli.Command{
-	Name:  "enable",
-	Usage: "Configure the miner to consider retrieval deal proposals",
-	Flags: []cli.Flag{},
+var retrievalDealSelectionCmd = &cli.Command{
+	Name:  "selection",
+	Usage: "Configure acceptance criteria for retrieval deal proposals",
+	Subcommands: []*cli.Command{
+		retrievalDealSelectionShowCmd,
+		retrievalDealSelectionResetCmd,
+		retrievalDealSelectionRejectCmd,
+	},
+}
+
+var retrievalDealSelectionShowCmd = &cli.Command{
+	Name:  "list",
+	Usage: "List retrieval deal proposal selection criteria",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		smapi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		return api.DealsSetAcceptingRetrievalDeals(lcli.DaemonContext(cctx), true)
+		isAcceptingRetrievalDeals, err := smapi.DealsAcceptingRetrievalDeals(lcli.DaemonContext(cctx))
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("offline retrieval deals: %t\n", isAcceptingRetrievalDeals)
+		fmt.Printf("online retrieval deals: %t\n", isAcceptingRetrievalDeals)
+
+		return nil
 	},
 }
 
-var disableRetrievalCmd = &cli.Command{
-	Name:  "disable",
-	Usage: "Configure the miner to reject all retrieval deal proposals",
-	Flags: []cli.Flag{},
+var retrievalDealSelectionResetCmd = &cli.Command{
+	Name:  "reset",
+	Usage: "Reset retrieval deal proposal selection criteria to default values",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		smapi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		return api.DealsSetAcceptingRetrievalDeals(lcli.DaemonContext(cctx), false)
+		err = smapi.DealsSetAcceptingRetrievalDeals(lcli.DaemonContext(cctx), true)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	},
+}
+
+var retrievalDealSelectionRejectCmd = &cli.Command{
+	Name:  "reject",
+	Usage: "Configure criteria which necessitate automatic rejection",
+	Action: func(cctx *cli.Context) error {
+		smapi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		err = smapi.DealsSetAcceptingRetrievalDeals(lcli.DaemonContext(cctx), false)
+		if err != nil {
+			return err
+		}
+
+		return nil
 	},
 }

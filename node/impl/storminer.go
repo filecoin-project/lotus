@@ -43,7 +43,9 @@ type StorageMinerAPI struct {
 	StorageMgr      *sectorstorage.Manager `optional:"true"`
 	*stores.Index
 
+	AcceptingStorageDealsConfigFunc           dtypes.AcceptingStorageDealsConfigFunc
 	SetAcceptingStorageDealsConfigFunc        dtypes.SetAcceptingStorageDealsConfigFunc
+	AcceptingRetrievalDealsConfigFunc         dtypes.AcceptingRetrievalDealsConfigFunc
 	SetAcceptingRetrievalDealsConfigFunc      dtypes.SetAcceptingRetrievalDealsConfigFunc
 	StorageDealPieceCidBlocklistConfigFunc    dtypes.StorageDealPieceCidBlocklistConfigFunc
 	SetStorageDealPieceCidBlocklistConfigFunc dtypes.SetStorageDealPieceCidBlocklistConfigFunc
@@ -225,8 +227,16 @@ func (sm *StorageMinerAPI) DealsList(ctx context.Context) ([]storagemarket.Stora
 	return sm.StorageProvider.ListDeals(ctx)
 }
 
+func (sm *StorageMinerAPI) DealsAcceptingStorageDeals(ctx context.Context) (bool, error) {
+	return sm.AcceptingStorageDealsConfigFunc()
+}
+
 func (sm *StorageMinerAPI) DealsSetAcceptingStorageDeals(ctx context.Context, b bool) error {
 	return sm.SetAcceptingStorageDealsConfigFunc(b)
+}
+
+func (sm *StorageMinerAPI) DealsAcceptingRetrievalDeals(ctx context.Context) (bool, error) {
+	return sm.AcceptingRetrievalDealsConfigFunc()
 }
 
 func (sm *StorageMinerAPI) DealsSetAcceptingRetrievalDeals(ctx context.Context, b bool) error {
