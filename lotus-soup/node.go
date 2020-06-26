@@ -4,12 +4,11 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
-	"os"
-	"strings"
-
-	//"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -31,6 +30,7 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/lp2p"
 	modtest "github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
+
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -38,11 +38,13 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
+
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
 	libp2p_crypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
+
 	"github.com/testground/sdk-go/run"
 	"github.com/testground/sdk-go/runtime"
 	"github.com/testground/sdk-go/sync"
@@ -75,7 +77,6 @@ var (
 
 	stateReady      = sync.State("ready")
 	stateDone       = sync.State("done")
-	stateMineNext   = sync.State("mine-next")
 	stateStopMining = sync.State("stop-mining")
 )
 
@@ -111,6 +112,7 @@ type InitialBalanceMsg struct {
 
 type PresealMsg struct {
 	Miner genesis.Miner
+	Seqno int64
 }
 
 type GenesisMsg struct {
@@ -306,7 +308,7 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 
 	t.RecordMessage("Miner Info: Owner: %s Worker: %s", genMiner.Owner, genMiner.Worker)
 
-	presealMsg := &PresealMsg{Miner: *genMiner}
+	presealMsg := &PresealMsg{Miner: *genMiner, Seqno: t.GroupSeq}
 	t.SyncClient.Publish(ctx, presealTopic, presealMsg)
 
 	// then collect the genesis block and bootstrapper address
@@ -635,6 +637,10 @@ func collectPreseals(t *TestEnvironment, ctx context.Context, miners int) ([]*Pr
 			return nil, fmt.Errorf("got error while waiting for preseals: %w", err)
 		}
 	}
+
+	sort.Slice(preseals, func(i, j int) bool {
+		return preseals[i].Seqno < preseals[j].Seqno
+	})
 
 	return preseals, nil
 }
