@@ -211,22 +211,22 @@ func countGasCosts(et *types.ExecutionTrace) (int64, int64) {
 	return cgas, vgas
 }
 
-func compStats(vals []float32) (float32, float32) {
-	var sum float32
+func compStats(vals []float64) (float64, float64) {
+	var sum float64
 
 	for _, v := range vals {
 		sum += v
 	}
 
-	av := sum / float32(len(vals))
+	av := sum / float64(len(vals))
 
-	var varsum float32
+	var varsum float64
 	for _, v := range vals {
 		delta := av - v
 		varsum += delta * delta
 	}
 
-	return av, float32(math.Sqrt(float64(varsum / float32(len(vals)))))
+	return av, float64(math.Sqrt(float64(varsum / float64(len(vals)))))
 }
 
 type stats struct {
