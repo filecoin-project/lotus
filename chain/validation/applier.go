@@ -2,6 +2,7 @@ package validation
 
 import (
 	"context"
+
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -72,8 +73,8 @@ func (a *Applier) ApplyTipSetMessages(epoch abi.ChainEpoch, blocks []vtypes.Bloc
 	var bms []stmgr.BlockMessages
 	for _, b := range blocks {
 		bm := stmgr.BlockMessages{
-			Miner:       b.Miner,
-			TicketCount: 1,
+			Miner:    b.Miner,
+			WinCount: 1,
 		}
 
 		for _, m := range b.BLSMessages {

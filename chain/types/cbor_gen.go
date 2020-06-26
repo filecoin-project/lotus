@@ -505,7 +505,7 @@ func (t *Ticket) UnmarshalCBOR(r io.Reader) error {
 	return nil
 }
 
-var lengthBufElectionProof = []byte{129}
+var lengthBufElectionProof = []byte{130}
 
 func (t *ElectionProof) MarshalCBOR(w io.Writer) error {
 	if t == nil {
@@ -517,6 +517,17 @@ func (t *ElectionProof) MarshalCBOR(w io.Writer) error {
 	}
 
 	scratch := make([]byte, 9)
+
+	// t.WinCount (int64) (int64)
+	if t.WinCount >= 0 {
+		if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajUnsignedInt, uint64(t.WinCount)); err != nil {
+			return err
+		}
+	} else {
+		if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajNegativeInt, uint64(-t.WinCount-1)); err != nil {
+			return err
+		}
+	}
 
 	// t.VRFProof ([]uint8) (slice)
 	if len(t.VRFProof) > cbg.ByteArrayMaxLen {
@@ -545,10 +556,35 @@ func (t *ElectionProof) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 1 {
+	if extra != 2 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
+	// t.WinCount (int64) (int64)
+	{
+		maj, extra, err := cbg.CborReadHeaderBuf(br, scratch)
+		var extraI int64
+		if err != nil {
+			return err
+		}
+		switch maj {
+		case cbg.MajUnsignedInt:
+			extraI = int64(extra)
+			if extraI < 0 {
+				return fmt.Errorf("int64 positive overflow")
+			}
+		case cbg.MajNegativeInt:
+			extraI = int64(extra)
+			if extraI < 0 {
+				return fmt.Errorf("int64 negative oveflow")
+			}
+			extraI = -1 - extraI
+		default:
+			return fmt.Errorf("wrong type for int64 field: %d", maj)
+		}
+
+		t.WinCount = int64(extraI)
+	}
 	// t.VRFProof ([]uint8) (slice)
 
 	maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)

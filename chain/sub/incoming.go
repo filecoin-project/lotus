@@ -210,6 +210,12 @@ func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub
 		return pubsub.ValidationReject
 	}
 
+	if blk.Header.ElectionProof.WinCount < 1 {
+		log.Errorf("block is not claiming to be winning")
+		recordFailure("not_winning")
+		return pubsub.ValidationReject
+	}
+
 	// it's a good block! make sure we've only seen it once
 	if bv.recvBlocks.add(blk.Header.Cid()) > 0 {
 		// TODO: once these changes propagate to the network, we can consider

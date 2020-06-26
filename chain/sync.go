@@ -651,6 +651,10 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) (er
 	}
 
 	winnerCheck := async.Err(func() error {
+		if h.ElectionProof.WinCount < 1 {
+			return xerrors.Errorf("block is not claiming to be a winner")
+		}
+
 		rBeacon := *prevBeacon
 		if len(h.BeaconEntries) != 0 {
 			rBeacon = h.BeaconEntries[len(h.BeaconEntries)-1]
@@ -660,7 +664,6 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) (er
 			return xerrors.Errorf("failed to marshal miner address to cbor: %w", err)
 		}
 
-		//TODO: DST from spec actors when it is there
 		vrfBase, err := store.DrawRandomness(rBeacon.Data, crypto.DomainSeparationTag_ElectionProofProduction, h.Height, buf.Bytes())
 		if err != nil {
 			return xerrors.Errorf("could not draw randomness: %w", err)
@@ -684,8 +687,9 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) (er
 			return xerrors.Errorf("failed getting power: %w", err)
 		}
 
-		if !types.IsTicketWinner(h.ElectionProof.VRFProof, mpow.QualityAdjPower, tpow.QualityAdjPower) {
-			return xerrors.Errorf("miner created a block but was not a winner")
+		j := h.ElectionProof.ComputeWinCount(mpow.QualityAdjPower, tpow.QualityAdjPower)
+		if h.ElectionProof.WinCount != j {
+			return xerrors.Errorf("miner claims wrong number of wins: miner: %d, computed: %d", h.ElectionProof.WinCount, j)
 		}
 
 		return nil

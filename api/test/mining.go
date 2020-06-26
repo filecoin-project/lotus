@@ -153,6 +153,10 @@ func TestDealMining(t *testing.T, b APIBuilder, blocktime time.Duration, carExpo
 			expect += <-wait
 
 			time.Sleep(blocktime)
+			if expect == 0 {
+				// null block
+				continue
+			}
 
 			for {
 				n := 0

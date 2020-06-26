@@ -143,7 +143,7 @@ type BlockMessages struct {
 	Miner         address.Address
 	BlsMessages   []types.ChainMsg
 	SecpkMessages []types.ChainMsg
-	TicketCount   int64
+	WinCount      int64
 }
 
 type ExecCallback func(cid.Cid, *types.Message, *vm.ApplyRet) error
@@ -311,7 +311,7 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 			Miner:         b.Miner,
 			BlsMessages:   make([]types.ChainMsg, 0, len(bms)),
 			SecpkMessages: make([]types.ChainMsg, 0, len(sms)),
-			TicketCount:   1, //int64(len(b.EPostProof.Proofs)), // TODO fix this
+			WinCount:      b.ElectionProof.WinCount,
 		}
 
 		for _, m := range bms {

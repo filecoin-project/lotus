@@ -21,11 +21,11 @@ func (cs *ChainStore) Weight(ctx context.Context, ts *types.TipSet) (types.BigIn
 	if ts == nil {
 		return types.NewInt(0), nil
 	}
-	// >>> w[r] <<< + wFunction(totalPowerAtTipset(ts)) * 2^8 + (wFunction(totalPowerAtTipset(ts)) * len(ts.blocks) * wRatio_num * 2^8) / (e * wRatio_den)
+	// >>> w[r] <<< + wFunction(totalPowerAtTipset(ts)) * 2^8 + (wFunction(totalPowerAtTipset(ts)) * sum(ts.blocks[].ElectionProof.WinCount) * wRatio_num * 2^8) / (e * wRatio_den)
 
 	var out = new(big.Int).Set(ts.Blocks()[0].ParentWeight.Int)
 
-	// >>> wFunction(totalPowerAtTipset(ts)) * 2^8 <<< + (wFunction(totalPowerAtTipset(ts)) * len(ts.blocks) * wRatio_num * 2^8) / (e * wRatio_den)
+	// >>> wFunction(totalPowerAtTipset(ts)) * 2^8 <<< + (wFunction(totalPowerAtTipset(ts)) * sum(ts.blocks[].ElectionProof.WinCount) * wRatio_num * 2^8) / (e * wRatio_den)
 
 	tpow := big2.Zero()
 	{
@@ -57,11 +57,19 @@ func (cs *ChainStore) Weight(ctx context.Context, ts *types.TipSet) (types.BigIn
 
 	out.Add(out, big.NewInt(log2P<<8))
 
-	// (wFunction(totalPowerAtTipset(ts)) * len(ts.blocks) * wRatio_num * 2^8) / (e * wRatio_den)
+	// (wFunction(totalPowerAtTipset(ts)) * sum(ts.blocks[].ElectionProof.WinCount) * wRatio_num * 2^8) / (e * wRatio_den)
 
-	eWeight := big.NewInt((log2P * int64(len(ts.Blocks())) * build.WRatioNum) << 8)
-	eWeight.Div(eWeight, big.NewInt(int64(build.BlocksPerEpoch*build.WRatioDen)))
-	out.Add(out, eWeight)
+	totalJ := int64(0)
+	for _, b := range ts.Blocks() {
+		totalJ += b.ElectionProof.WinCount
+	}
+
+	eWeight := big.NewInt((log2P * build.WRatioNum))
+	eWeight = eWeight.Lsh(eWeight, 8)
+	eWeight = eWeight.Mul(eWeight, new(big.Int).SetInt64(totalJ))
+	eWeight = eWeight.Div(eWeight, big.NewInt(int64(build.BlocksPerEpoch*build.WRatioDen)))
+
+	out = out.Add(out, eWeight)
 
 	return types.BigInt{Int: out}, nil
 }

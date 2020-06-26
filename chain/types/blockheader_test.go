@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
-	"github.com/stretchr/testify/require"
 	"reflect"
 	"testing"
 
 	cid "github.com/ipfs/go-cid"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -86,7 +86,7 @@ func TestInteropBH(t *testing.T) {
 	bh := &BlockHeader{
 		Miner:         newAddr,
 		Ticket:        &Ticket{[]byte{0x01, 0x02, 0x03}},
-		ElectionProof: &ElectionProof{[]byte{0x0a, 0x0b}},
+		ElectionProof: &ElectionProof{0, []byte{0x0a, 0x0b}},
 		BeaconEntries: []BeaconEntry{
 			{
 				Round: 5,
@@ -116,8 +116,7 @@ func TestInteropBH(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// acquired from go-filecoin
-	gfc := "8f5501d04cb15021bf6bd003073d79e2238d4e61f1ad22814301020381420a0b818205410c818200410781d82a5827000171a0e402202f84fef0d7cc2d7f9f00d22445f7bf7539fdd685fd9f284aa37f3822b57619cc430003e802d82a5827000171a0e402202f84fef0d7cc2d7f9f00d22445f7bf7539fdd685fd9f284aa37f3822b57619ccd82a5827000171a0e402202f84fef0d7cc2d7f9f00d22445f7bf7539fdd685fd9f284aa37f3822b57619ccd82a5827000171a0e402202f84fef0d7cc2d7f9f00d22445f7bf7539fdd685fd9f284aa37f3822b57619cc410001f603"
+	gfc := "8f5501d04cb15021bf6bd003073d79e2238d4e61f1ad2281430102038200420a0b818205410c818200410781d82a5827000171a0e402202f84fef0d7cc2d7f9f00d22445f7bf7539fdd685fd9f284aa37f3822b57619cc430003e802d82a5827000171a0e402202f84fef0d7cc2d7f9f00d22445f7bf7539fdd685fd9f284aa37f3822b57619ccd82a5827000171a0e402202f84fef0d7cc2d7f9f00d22445f7bf7539fdd685fd9f284aa37f3822b57619ccd82a5827000171a0e402202f84fef0d7cc2d7f9f00d22445f7bf7539fdd685fd9f284aa37f3822b57619cc410001f603"
 	require.Equal(t, gfc, hex.EncodeToString(bhsb))
 }
 

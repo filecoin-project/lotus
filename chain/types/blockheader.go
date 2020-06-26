@@ -23,10 +23,6 @@ type Ticket struct {
 	VRFProof []byte
 }
 
-type ElectionProof struct {
-	VRFProof []byte
-}
-
 type BeaconEntry struct {
 	Round uint64
 	Data  []byte
