@@ -208,7 +208,7 @@ func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *S
 		out[i] = abi.SectorInfo{
 			SealProof:    spt,
 			SectorNumber: sectorSet[n].ID,
-			SealedCID:    sectorSet[n].Info.Info.SealedCID,
+			SealedCID:    sectorSet[n].Info.SealedCID,
 		}
 	}
 

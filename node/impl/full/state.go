@@ -753,7 +753,7 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 			return types.EmptyInt, err
 		}
 
-		params, err := actors.SerializeParams(&power.OnSectorProveCommitParams{
+		params, err := actors.SerializeParams(&power.Sea{
 			Weight: power.SectorStorageWeightDesc{
 				SectorSize:         ssize,
 				Duration:           precommit.Info.Expiration - ts.Height(), // NB: not exactly accurate, but should always lead us to *over* estimate, not under

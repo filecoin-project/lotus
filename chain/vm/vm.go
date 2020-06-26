@@ -126,6 +126,14 @@ func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, origin addres
 	return rt
 }
 
+type UnsafeVM struct {
+	VM *VM
+}
+
+func (vm *UnsafeVM) MakeRuntime(ctx context.Context, msg *types.Message, origin address.Address, originNonce uint64, usedGas int64, nac uint64) *Runtime {
+	return vm.VM.makeRuntime(ctx, msg, origin, originNonce, usedGas, nac)
+}
+
 type VM struct {
 	cstate      *state.StateTree
 	base        cid.Cid
