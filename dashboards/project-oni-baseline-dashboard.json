@@ -16,7 +16,7 @@
   "gnetId": null,
   "graphTooltip": 0,
   "id": 16,
-  "iteration": 1593188697650,
+  "iteration": 1593188264284,
   "links": [],
   "panels": [
     {
@@ -145,7 +145,7 @@
         "alignAsTable": true,
         "avg": false,
         "current": false,
-        "max": true,
+        "max": false,
         "min": false,
         "show": true,
         "total": true,
@@ -421,7 +421,7 @@
         "alignAsTable": true,
         "avg": false,
         "current": false,
-        "max": true,
+        "max": false,
         "min": false,
         "rightSide": true,
         "show": true,
@@ -444,6 +444,7 @@
       "steppedLine": false,
       "targets": [
         {
+          "alias": "send-data-to - $tag_miner ($tag_run)",
           "groupBy": [
             {
               "params": [
@@ -453,12 +454,24 @@
             },
             {
               "params": [
+                "miner"
+              ],
+              "type": "tag"
+            },
+            {
+              "params": [
+                "run"
+              ],
+              "type": "tag"
+            },
+            {
+              "params": [
                 "0"
               ],
               "type": "fill"
             }
           ],
-          "measurement": "diagnostics.find-data.offer.t0101.counter",
+          "measurement": "diagnostics.send-data-to.counter",
           "orderByTime": "ASC",
           "policy": "default",
           "refId": "A",
@@ -480,6 +493,7 @@
           "tags": []
         },
         {
+          "alias": "find-data.offer - $tag_miner ($tag_run)",
           "groupBy": [
             {
               "params": [
@@ -489,111 +503,9 @@
             },
             {
               "params": [
-                "0"
+                "miner"
               ],
-              "type": "fill"
-            }
-          ],
-          "measurement": "diagnostics.find-data.offer.t0102.counter",
-          "orderByTime": "ASC",
-          "policy": "default",
-          "refId": "B",
-          "resultFormat": "time_series",
-          "select": [
-            [
-              {
-                "params": [
-                  "count"
-                ],
-                "type": "field"
-              },
-              {
-                "params": [],
-                "type": "sum"
-              }
-            ]
-          ],
-          "tags": []
-        },
-        {
-          "groupBy": [
-            {
-              "params": [
-                "$myinterval"
-              ],
-              "type": "time"
-            },
-            {
-              "params": [
-                "0"
-              ],
-              "type": "fill"
-            }
-          ],
-          "measurement": "diagnostics.find-data.offer.t0103.counter",
-          "orderByTime": "ASC",
-          "policy": "default",
-          "refId": "C",
-          "resultFormat": "time_series",
-          "select": [
-            [
-              {
-                "params": [
-                  "count"
-                ],
-                "type": "field"
-              },
-              {
-                "params": [],
-                "type": "sum"
-              }
-            ]
-          ],
-          "tags": []
-        },
-        {
-          "groupBy": [
-            {
-              "params": [
-                "$myinterval"
-              ],
-              "type": "time"
-            },
-            {
-              "params": [
-                "0"
-              ],
-              "type": "fill"
-            }
-          ],
-          "measurement": "diagnostics.find-data.offer.t0104.counter",
-          "orderByTime": "ASC",
-          "policy": "default",
-          "refId": "D",
-          "resultFormat": "time_series",
-          "select": [
-            [
-              {
-                "params": [
-                  "count"
-                ],
-                "type": "field"
-              },
-              {
-                "params": [],
-                "type": "sum"
-              }
-            ]
-          ],
-          "tags": []
-        },
-        {
-          "groupBy": [
-            {
-              "params": [
-                "$myinterval"
-              ],
-              "type": "time"
+              "type": "tag"
             },
             {
               "params": [
@@ -611,7 +523,7 @@
           "measurement": "diagnostics.find-data.offer.counter",
           "orderByTime": "ASC",
           "policy": "default",
-          "refId": "E",
+          "refId": "D",
           "resultFormat": "time_series",
           "select": [
             [
@@ -634,7 +546,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "data offers",
+      "title": "send data to ; got retrieve offers from",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -987,7 +899,7 @@
     ]
   },
   "time": {
-    "from": "now-10m",
+    "from": "now-15m",
     "to": "now"
   },
   "timepicker": {
@@ -1006,5 +918,5 @@
   "timezone": "",
   "title": "Project Oni - Baseline test",
   "uid": "8em8RXWMz",
-  "version": 3
+  "version": 4
 }

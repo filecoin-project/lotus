@@ -71,6 +71,7 @@ func runBaselineClient(t *TestEnvironment) error {
 	if err := client.NetConnect(ctx, minerAddr.PeerAddr); err != nil {
 		return err
 	}
+	t.D().Counter(fmt.Sprintf("send-data-to,miner=%s", minerAddr.ActorAddr)).Inc(1)
 
 	t.RecordMessage("selected %s as the miner", minerAddr.ActorAddr)
 
@@ -175,8 +176,7 @@ func retrieveData(t *TestEnvironment, ctx context.Context, err error, client api
 		panic(err)
 	}
 	for _, o := range offers {
-		t.D().Counter(fmt.Sprintf("find-data.offer.%s", o.Miner)).Inc(1)
-		t.D().Counter("find-data.offer").Inc(1)
+		t.D().Counter(fmt.Sprintf("find-data.offer,miner=%s", o.Miner)).Inc(1)
 	}
 	t.D().ResettingHistogram("find-data").Update(int64(time.Since(t1)))
 
