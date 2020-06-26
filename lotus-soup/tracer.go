@@ -56,7 +56,8 @@ func preparePubsubTracer(t *TestEnvironment) (*PubsubTracer, error) {
 		return nil, err
 	}
 
-	traced, err := traced.NewTraceCollector(host, "traced.logs")
+	tracedDir := t.TestOutputsPath + "/traced.logs"
+	traced, err := traced.NewTraceCollector(host, tracedDir)
 	if err != nil {
 		host.Close()
 		return nil, err
