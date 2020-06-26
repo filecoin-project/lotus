@@ -17,8 +17,7 @@ import (
 type UserData interface{}
 
 type ChainApi interface {
-	ChainHasObj(context.Context, cid.Cid) (bool, error)
-	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
+	apibstore.ChainIO
 	StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error)
 }
 
@@ -54,7 +53,7 @@ func (sp *StatePredicates) OnActorStateChanged(addr address.Address, diffStateFu
 
 type DiffStorageMarketStateFunc func(ctx context.Context, oldState *market.State, newState *market.State) (changed bool, user UserData, err error)
 
-func (sp *StatePredicates) OnStorageMarketActorChanged(addr address.Address, diffStorageMarketState DiffStorageMarketStateFunc) DiffFunc {
+func (sp *StatePredicates) OnStorageMarketActorChanged(diffStorageMarketState DiffStorageMarketStateFunc) DiffFunc {
 	return sp.OnActorStateChanged(builtin.StorageMarketActorAddr, func(ctx context.Context, oldActorStateHead, newActorStateHead cid.Cid) (changed bool, user UserData, err error) {
 		var oldState market.State
 		if err := sp.cst.Get(ctx, oldActorStateHead, &oldState); err != nil {
@@ -89,9 +88,16 @@ func (sp *StatePredicates) OnDealStateChanged(diffDealStates DiffDealStatesFunc)
 	}
 }
 
+type ChangedDeals map[abi.DealID]DealStateChange
+
+type DealStateChange struct {
+	From market.DealState
+	To market.DealState
+}
+
 func (sp *StatePredicates) DealStateChangedForIDs(dealIds []abi.DealID) DiffDealStatesFunc {
 	return func(ctx context.Context, oldDealStateRoot *amt.Root, newDealStateRoot *amt.Root) (changed bool, user UserData, err error) {
-		var changedDeals []abi.DealID
+		changedDeals := make(ChangedDeals)
 		for _, dealId := range dealIds {
 			var oldDeal, newDeal market.DealState
 			err := oldDealStateRoot.Get(ctx, uint64(dealId), &oldDeal)
@@ -103,11 +109,11 @@ func (sp *StatePredicates) DealStateChangedForIDs(dealIds []abi.DealID) DiffDeal
 				return false, nil, err
 			}
 			if oldDeal != newDeal {
-				changedDeals = append(changedDeals, dealId)
+				changedDeals[dealId] = DealStateChange{oldDeal, newDeal}
 			}
 		}
 		if len(changedDeals) > 0 {
-			return true, changed, nil
+			return true, changedDeals, nil
 		}
 		return false, nil, nil
 	}
