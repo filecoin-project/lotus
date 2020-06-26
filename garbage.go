@@ -6,7 +6,6 @@ import (
 
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	nr "github.com/filecoin-project/storage-fsm/lib/nullreader"
@@ -46,12 +45,6 @@ func (m *Sealing) PledgeSector() error {
 
 		size := abi.PaddedPieceSize(m.sealer.SectorSize()).Unpadded()
 
-		rt, err := ffiwrapper.SealProofTypeFromSectorSize(m.sealer.SectorSize())
-		if err != nil {
-			log.Error(err)
-			return
-		}
-
 		sid, err := m.sc.Next()
 		if err != nil {
 			log.Errorf("%+v", err)
@@ -77,7 +70,7 @@ func (m *Sealing) PledgeSector() error {
 			}
 		}
 
-		if err := m.newSector(sid, rt, ps); err != nil {
+		if err := m.newSectorCC(sid, ps); err != nil {
 			log.Errorf("%+v", err)
 			return
 		}

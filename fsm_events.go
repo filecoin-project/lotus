@@ -50,14 +50,36 @@ func (evt SectorForceState) applyGlobal(state *SectorInfo) bool {
 type SectorStart struct {
 	ID         abi.SectorNumber
 	SectorType abi.RegisteredSealProof
-	Pieces     []Piece
 }
 
 func (evt SectorStart) apply(state *SectorInfo) {
 	state.SectorNumber = evt.ID
+	state.SectorType = evt.SectorType
+}
+
+type SectorStartCC struct {
+	ID         abi.SectorNumber
+	SectorType abi.RegisteredSealProof
+	Pieces     []Piece
+}
+
+func (evt SectorStartCC) apply(state *SectorInfo) {
+	state.SectorNumber = evt.ID
 	state.Pieces = evt.Pieces
 	state.SectorType = evt.SectorType
 }
+
+type SectorAddPiece struct {
+	NewPiece Piece
+}
+
+func (evt SectorAddPiece) apply(state *SectorInfo) {
+	state.Pieces = append(state.Pieces, evt.NewPiece)
+}
+
+type SectorStartPacking struct{}
+
+func (evt SectorStartPacking) apply(*SectorInfo) {}
 
 type SectorPacked struct{ FillerPieces []abi.PieceInfo }
 

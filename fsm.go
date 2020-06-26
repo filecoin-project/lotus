@@ -34,8 +34,16 @@ func (m *Sealing) Plan(events []statemachine.Event, user interface{}) (interface
 var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *SectorInfo) error{
 	// Sealing
 
-	UndefinedSectorState: planOne(on(SectorStart{}, Packing)),
-	Packing:              planOne(on(SectorPacked{}, PreCommit1)),
+	UndefinedSectorState: planOne(
+		on(SectorStart{}, Empty),
+		on(SectorStartCC{}, Packing),
+	),
+	Empty: planOne(on(SectorAddPiece{}, WaitDeals)),
+	WaitDeals: planOne(
+		on(SectorAddPiece{}, WaitDeals),
+		on(SectorStartPacking{}, Packing),
+	),
+	Packing: planOne(on(SectorPacked{}, PreCommit1)),
 	PreCommit1: planOne(
 		on(SectorPreCommit1{}, PreCommit2),
 		on(SectorSealPreCommit1Failed{}, SealPreCommit1Failed),
