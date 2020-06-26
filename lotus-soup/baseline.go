@@ -176,6 +176,7 @@ func retrieveData(t *TestEnvironment, ctx context.Context, err error, client api
 	}
 	for _, o := range offers {
 		t.D().Counter(fmt.Sprintf("find-data.offer.%s", o.Miner)).Inc(1)
+		t.D().Counter("find-data.offer").Inc(1)
 	}
 	t.D().ResettingHistogram("find-data").Update(int64(time.Since(t1)))
 
