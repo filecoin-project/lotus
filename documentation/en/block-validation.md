@@ -38,8 +38,6 @@ Assemble a `FullTipSet` populated with the single block received earlier.
 
 `V:` Tipset `Parents` CIDs match the fetched parent tipset through block sync. (This check is not enforced correctly at the moment, see [issue](https://github.com/filecoin-project/lotus/issues/1918).)
 
-`FixMe:` Consider mentioning `syncFork()` if relevant.
-
 ## `(*Syncer).ValidateBlock()`
 
 This function contains most of the validation logic grouped in separate closures that run asynchronously, this list does not reflect validation order then.
@@ -114,21 +112,13 @@ Get list of sectors challanged in this epoch for this miner, based on the random
 
 Called throughout the validation process for the parent of each tipset being validated. The checks here then do not apply to the received new head itself that started the validation process.
 
-`FixMe:` Is a tipset fully validated once we start applying block messages from a new epoch then?
-
 ### `(*StateManager).computeTipSetState()`
 
-`FixMe:` Consider mentioning `handleStateForks()` if relevant.
-
 `V:` Every block in the tipset should belong to different a miner.
-
-`FixMe:` Is there a way that a `BlockHeader.Miner` address we check could refer to the same miner but with different address protocol type? In general the answer is no because other checks would fail if this is not an ID address, but that should be made explicit.
 
 ### `(*StateManager).ApplyBlocks()`
 
 We create a new VM with the tipset's `ParentStateRoot` (this is then the parent state of the parent of the tipset currently being validated) on which to apply all messages from all blocks in the tipset. For each message independently we apply the validations listed next.
-
-`FixMe:` Check `ApplyImplicitMessage` calls and related logic if they have any relevant validations (it would seem they don't).
 
 ### `(*VM).ApplyMessage()`
 
@@ -137,8 +127,6 @@ We create a new VM with the tipset's `ParentStateRoot` (this is then the parent 
 * Message `GasPrice` and `Value` are set.
 
 `V:` Message storage gas cost is under the message's `GasLimit`.
-
-`FixMe:` Skipping the checks: `// this should never happen, but is currently still exercised by some tests`, confirm if this is correct.
 
 `V:` Message's `Nonce` matches nonce in actor retrieved from message's `From`.
 
