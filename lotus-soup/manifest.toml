@@ -39,11 +39,32 @@ instances = { min = 1, max = 100, default = 5 }
   drand_threshold = { type = "int", default = 2 }
   drand_gossip_relay = { type = "bool", default = true }
   drand_halt_duration = { type = "duration", default="0", desc = "how long to halt drand chain before resuming" }
+
+
+[[testcases]]
+name = "drand-halting"
+instances = { min = 1, max = 100, default = 5 }
+
+  [testcases.params]
+  clients = { type = "int", default = 1 }
+  miners = { type = "int", default = 1 }
+  balance = { type = "int", default = 1 }
+  sectors = { type = "int", default = 1 }
+  role = { type = "string" }
+
+  random_beacon_type = { type = "enum", default = "local-drand", options = ["mock", "local-drand", "external-drand"] }
+
+  # Params relevant to drand nodes. drand nodes should have role="drand", and must all be
+  # in the same composition group. There must be at least threshold drand nodes.
+  # To get lotus nodes to actually use the drand nodes, you must set random_beacon_type="local-drand"
+  # for the lotus node groups.
+  drand_period = { type = "duration", default="10s" }
+  drand_threshold = { type = "int", default = 2 }
+  drand_gossip_relay = { type = "bool", default = true }
+  drand_halt_duration = { type = "duration", default="30s", desc = "how long to halt drand chain before resuming" }
   drand_halt_begin = { type = "duration", default="1m", desc = "when to start drand halting (relative to test start time)"}
   drand_log_level = { type = "string", default="info" }
-
   # Params relevant to pubsub tracing
   enable_pubsub_tracer = { type = "bool", default = false }
-
   # Mining Mode: synchronized -vs- natural time
   mining_mode = { type = "enum", default = "synchronized", options = ["synchronized", "natural"] }

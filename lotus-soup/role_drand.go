@@ -144,7 +144,10 @@ func runDrandNode(t *TestEnvironment) error {
 	ctx := context.Background()
 	t.SyncClient.MustSignalAndWait(ctx, stateReady, t.TestInstanceCount)
 
-	haltDuration := t.DurationParam("drand_halt_duration")
+	haltDuration := time.Duration(0)
+	if t.IsParamSet("drand_halt_duration") {
+		haltDuration = t.DurationParam("drand_halt_duration")
+	}
 	if haltDuration != 0 {
 		startTime := t.DurationParam("drand_halt_begin")
 		time.AfterFunc(startTime, func() {

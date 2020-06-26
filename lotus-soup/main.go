@@ -9,6 +9,7 @@ import (
 
 var testplans = map[string]interface{}{
 	"lotus-baseline": doRun(basicRoles),
+	"drand-halting": doRun(basicRoles),
 }
 
 func main() {
