@@ -7,6 +7,7 @@ import (
 	"io"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 )
@@ -382,7 +383,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{180}); err != nil {
+	if _, err := w.Write([]byte{181}); err != nil {
 		return err
 	}
 
@@ -604,6 +605,22 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 	if _, err := w.Write(t.Proof); err != nil {
+		return err
+	}
+
+	// t.PreCommitInfo (miner.SectorPreCommitInfo) (struct)
+	if len("PreCommitInfo") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"PreCommitInfo\" was too long")
+	}
+
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("PreCommitInfo")))); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("PreCommitInfo")); err != nil {
+		return err
+	}
+
+	if err := t.PreCommitInfo.MarshalCBOR(w); err != nil {
 		return err
 	}
 
@@ -1064,6 +1081,28 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 			t.Proof = make([]byte, extra)
 			if _, err := io.ReadFull(br, t.Proof); err != nil {
 				return err
+			}
+			// t.PreCommitInfo (miner.SectorPreCommitInfo) (struct)
+		case "PreCommitInfo":
+
+			{
+
+				pb, err := br.PeekByte()
+				if err != nil {
+					return err
+				}
+				if pb == cbg.CborNull[0] {
+					var nbuf [1]byte
+					if _, err := br.Read(nbuf[:]); err != nil {
+						return err
+					}
+				} else {
+					t.PreCommitInfo = new(miner.SectorPreCommitInfo)
+					if err := t.PreCommitInfo.UnmarshalCBOR(br); err != nil {
+						return xerrors.Errorf("unmarshaling t.PreCommitInfo pointer: %w", err)
+					}
+				}
+
 			}
 			// t.PreCommitMessage (cid.Cid) (struct)
 		case "PreCommitMessage":

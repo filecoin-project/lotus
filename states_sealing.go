@@ -174,13 +174,18 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("could not serialize pre-commit sector parameters: %w", err)})
 	}
 
-	log.Info("submitting precommit for sector: ", sector.SectorNumber)
-	mcid, err := m.api.SendMsg(ctx.Context(), waddr, m.maddr, builtin.MethodsMiner.PreCommitSector, big.NewInt(0), big.NewInt(1), 1000000, enc.Bytes())
+	collateral, err := m.api.StateMinerInitialPledgeCollateral(ctx.Context(), m.maddr, *params, tok)
+	if err != nil {
+		return xerrors.Errorf("getting initial pledge collateral: %w", err)
+	}
+
+	log.Infof("submitting precommit for sector (deposit: %s): ", sector.SectorNumber, collateral)
+	mcid, err := m.api.SendMsg(ctx.Context(), waddr, m.maddr, builtin.MethodsMiner.PreCommitSector, collateral, big.NewInt(1), 1000000, enc.Bytes())
 	if err != nil {
 		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("pushing message to mpool: %w", err)})
 	}
 
-	return ctx.Send(SectorPreCommitted{Message: mcid})
+	return ctx.Send(SectorPreCommitted{Message: mcid, PreCommitInfo: *params})
 }
 
 func (m *Sealing) handlePreCommitWait(ctx statemachine.Context, sector SectorInfo) error {
@@ -291,9 +296,22 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 		return nil
 	}
 
-	collateral, err := m.api.StateMinerInitialPledgeCollateral(ctx.Context(), m.maddr, sector.SectorNumber, tok)
+	collateral, err := m.api.StateMinerInitialPledgeCollateral(ctx.Context(), m.maddr, *sector.PreCommitInfo, tok)
 	if err != nil {
 		return xerrors.Errorf("getting initial pledge collateral: %w", err)
+	}
+
+	pci, err := m.api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, sector.SectorNumber, sector.PreCommitTipSet)
+	if err != nil {
+		return xerrors.Errorf("getting precommit info: %w", err)
+	}
+	if pci == nil {
+		return ctx.Send(SectorCommitFailed{error: xerrors.Errorf("precommit info not found on chain")})
+	}
+
+	collateral = big.Sub(collateral, pci.PreCommitDeposit)
+	if collateral.LessThan(big.Zero()) {
+		collateral = big.Zero()
 	}
 
 	// TODO: check seed / ticket are up to date
