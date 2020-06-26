@@ -699,7 +699,6 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 		return types.EmptyInt, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-
 	as := store.ActorStore(ctx, a.Chain.Blockstore())
 
 	var minerState miner.State

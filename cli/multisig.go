@@ -105,9 +105,9 @@ var msigCreateCmd = &cli.Command{
 
 		intVal := types.BigInt(filval)
 
-		required := cctx.Int64("required")
+		required := cctx.Uint64("required")
 		if required == 0 {
-			required = int64(len(addrs))
+			required = uint64(len(addrs))
 		}
 
 		gp := types.NewInt(1)
