@@ -321,9 +321,6 @@ var importAnalyzeCmd = &cli.Command{
 
 				for {
 					b, ok := <-jsonIn
-					var tse TipSetExec
-
-					json.Unmarshal(b, &tse)
 					if !ok {
 						results <- result{
 							totalTime:       totalTime,
@@ -331,6 +328,13 @@ var importAnalyzeCmd = &cli.Command{
 							expensiveInvocs: expensiveInvocs,
 						}
 						return
+					}
+
+					var tse TipSetExec
+					err := json.Unmarshal(b, &tse)
+					if err != nil {
+						log.Warnf("error unmarshaling tipset: %+v", err)
+						continue
 					}
 
 					totalTime += tse.Duration
