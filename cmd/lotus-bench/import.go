@@ -253,12 +253,16 @@ var importAnalyzeCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
+		dec := json.NewDecoder(fi)
 
 		var results []TipSetExec
 		for {
 			var tse TipSetExec
-			if err := json.NewDecoder(fi).Decode(&tse); err != nil {
+			if err := dec.Decode(&tse); err != nil {
 				if err != io.EOF {
+					if e, ok := err.(*json.SyntaxError); ok {
+						log.Warnf("syntax error at byte offset %d", e.Offset)
+					}
 					return err
 				}
 				break
@@ -310,6 +314,9 @@ var importAnalyzeCmd = &cli.Command{
 		fmt.Println("Average time per epoch: ", totalTime/time.Duration(len(results)))
 
 		n := 30
+		if len(invocs) < n {
+			n = len(invocs)
+		}
 		fmt.Printf("Top %d most expensive calls:\n", n)
 		for i := 0; i < n; i++ {
 			inv := invocs[i].Invoc
