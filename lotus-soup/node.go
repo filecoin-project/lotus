@@ -697,7 +697,7 @@ func getPubsubTracerConfig(ctx context.Context, t *TestEnvironment) (string, err
 	case m := <-ch:
 		return m.Tracer, nil
 	case err := <-sub.Done():
-		return "", fmt.Errorf("got error while waiting for clients addrs: %w", err)
+		return "", fmt.Errorf("got error while waiting for pubsub tracer config: %w", err)
 	}
 }
 
