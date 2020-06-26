@@ -228,13 +228,54 @@ func compStats(vals []float32) (float32, float32) {
 	return av, float32(math.Sqrt(float64(varsum / float32(len(vals)))))
 }
 
-func tallyGasCharges(charges map[string][]float32, et *types.ExecutionTrace) {
+type stats struct {
+	count float64
+	mean  float64
+	dSqr  float64
+}
+
+func (s *stats) AddPoint(value float64) {
+	s.count++
+	meanDiff := (value - s.mean) / s.count
+	newMean := s.mean + meanDiff
+
+	dSqrtInc := (value - newMean) * (value - s.mean)
+	s.dSqr += dSqrtInc
+	s.mean = newMean
+}
+
+func (s *stats) variance() float64 {
+	return s.dSqr / (s.count - 1)
+}
+
+func (s1 *stats) Combine(s2 *stats) {
+	if s1.count == 0 {
+		*s1 = *s2
+	}
+	newCount := s1.count + s2.count
+	newMean := s1.count*s1.mean + s2.count*s2.mean
+	newMean /= newCount
+	newVar := s1.count * (s1.variance() + (s1.mean-newMean)*(s1.mean-newMean))
+	newVar += s2.count * (s2.variance() + (s2.mean-newMean)*(s2.mean-newMean))
+	newVar /= newCount
+	s1.count = newCount
+	s1.mean = newMean
+	s1.dSqr = newVar * (newCount - 1)
+}
+
+func tallyGasCharges(charges map[string]*stats, et *types.ExecutionTrace) {
 	for _, gc := range et.GasCharges {
 
 		compGas := gc.ComputeGas + gc.VirtualComputeGas
-		ratio := float32(compGas) / float32(gc.TimeTaken.Nanoseconds())
+		ratio := float64(compGas) / float64(gc.TimeTaken.Nanoseconds())
 
-		charges[gc.Name] = append(charges[gc.Name], 1/(ratio/GasPerNs))
+		s := charges[gc.Name]
+		if s == nil {
+			s = new(stats)
+			charges[gc.Name] = s
+		}
+
+		s.AddPoint(ratio)
 		//fmt.Printf("%s: %d, %s: %0.2f\n", gc.Name, compGas, gc.TimeTaken, 1/(ratio/GasPerNs))
 		for _, sub := range et.Subcalls {
 			tallyGasCharges(charges, &sub)
@@ -265,7 +306,7 @@ var importAnalyzeCmd = &cli.Command{
 		tseIn := make(chan TipSetExec, 2*nWorkers)
 		type result struct {
 			totalTime       time.Duration
-			chargeDeltas    map[string][]float32
+			chargeStats     map[string]*stats
 			expensiveInvocs []Invocation
 		}
 
@@ -273,7 +314,7 @@ var importAnalyzeCmd = &cli.Command{
 
 		for i := 0; i < nWorkers; i++ {
 			go func() {
-				chargeDeltas := make(map[string][]float32)
+				chargeStats := make(map[string]*stats)
 				var totalTime time.Duration
 				var expensiveInvocs []Invocation
 				var leastExpensiveInvoc = time.Duration(0)
@@ -283,7 +324,7 @@ var importAnalyzeCmd = &cli.Command{
 					if !ok {
 						results <- result{
 							totalTime:       totalTime,
-							chargeDeltas:    chargeDeltas,
+							chargeStats:     chargeStats,
 							expensiveInvocs: expensiveInvocs,
 						}
 						return
@@ -298,7 +339,7 @@ var importAnalyzeCmd = &cli.Command{
 							})
 						}
 
-						tallyGasCharges(chargeDeltas, &inv.ExecutionTrace)
+						tallyGasCharges(chargeStats, &inv.ExecutionTrace)
 					}
 					sort.Slice(expensiveInvocs, func(i, j int) bool {
 						return expensiveInvocs[i].Invoc.Duration > expensiveInvocs[j].Invoc.Duration
@@ -340,29 +381,32 @@ var importAnalyzeCmd = &cli.Command{
 		var invocs []Invocation
 		var totalTime time.Duration
 		var keys []string
-		var chargeDeltas = make(map[string][]float32)
+		var charges = make(map[string]*stats)
 		for i := 0; i < nWorkers; i++ {
 			fmt.Printf("\rProcessing results from worker %d/%d", i+1, nWorkers)
 			res := <-results
 			invocs = append(invocs, res.expensiveInvocs...)
-			for k, v := range res.chargeDeltas {
-				chargeDeltas[k] = append(chargeDeltas[k], v...)
+			for k, v := range res.chargeStats {
+				s := charges[k]
+				if s == nil {
+					s = new(stats)
+					charges[k] = s
+				}
+				s.Combine(v)
 			}
 			totalTime += res.totalTime
 		}
 
 		fmt.Printf("\nCollecting gas keys\n")
-		for k := range chargeDeltas {
+		for k := range charges {
 			keys = append(keys, k)
 		}
 
 		fmt.Println("Gas Price Deltas")
 		sort.Strings(keys)
 		for _, k := range keys {
-			vals := chargeDeltas[k]
-			av, stdev := compStats(vals)
-
-			fmt.Printf("%s: incr by %f (%f)\n", k, av, stdev)
+			s := charges[k]
+			fmt.Printf("%s: incr by %f (%f)\n", k, s.mean, math.Sqrt(s.variance()))
 		}
 
 		sort.Slice(invocs, func(i, j int) bool {
