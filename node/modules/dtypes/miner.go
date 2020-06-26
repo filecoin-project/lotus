@@ -10,25 +10,25 @@ import (
 type MinerAddress address.Address
 type MinerID abi.ActorID
 
-// AcceptingStorageDealsConfigFunc is a function which reads from miner config
-// to determine if the user has disabled storage deals (or not).
-type AcceptingStorageDealsConfigFunc func() (bool, error)
+// ConsiderOnlineStorageDealsConfigFunc is a function which reads from miner
+// config to determine if the user has disabled storage deals (or not).
+type ConsiderOnlineStorageDealsConfigFunc func() (bool, error)
 
-// SetAcceptingStorageDealsConfigFunc is a function which is used to disable or
-// enable storage deal acceptance.
-type SetAcceptingStorageDealsConfigFunc func(bool) error
+// SetConsiderOnlineStorageDealsConfigFunc is a function which is used to
+// disable or enable storage deal acceptance.
+type SetConsiderOnlineStorageDealsConfigFunc func(bool) error
 
-// AcceptingRetrievalDealsConfigFunc is a function which reads from miner config
-// to determine if the user has disabled retrieval acceptance (or not).
-type AcceptingRetrievalDealsConfigFunc func() (bool, error)
+// ConsiderOnlineRetrievalDealsConfigFunc is a function which reads from miner
+// config to determine if the user has disabled retrieval acceptance (or not).
+type ConsiderOnlineRetrievalDealsConfigFunc func() (bool, error)
 
-// SetAcceptingRetrievalDealsConfigFunc is a function which is used to disable
-// or enable retrieval deal acceptance.
-type SetAcceptingRetrievalDealsConfigFunc func(bool) error
+// SetConsiderOnlineRetrievalDealsConfigFunc is a function which is used to
+// disable or enable retrieval deal acceptance.
+type SetConsiderOnlineRetrievalDealsConfigFunc func(bool) error
 
-// StorageDealPieceCidBlocklistConfigFunc is a function which reads from miner config
-// to obtain a list of CIDs for which the storage miner will not accept storage
-// proposals.
+// StorageDealPieceCidBlocklistConfigFunc is a function which reads from miner
+// config to obtain a list of CIDs for which the storage miner will not accept
+// storage proposals.
 type StorageDealPieceCidBlocklistConfigFunc func() ([]cid.Cid, error)
 
 // SetStorageDealPieceCidBlocklistConfigFunc is a function which is used to set a

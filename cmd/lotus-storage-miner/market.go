@@ -70,7 +70,7 @@ var storageDealSelectionShowCmd = &cli.Command{
 		}
 		defer closer()
 
-		isAcceptingStorageDeals, err := smapi.DealsAcceptingStorageDeals(lcli.DaemonContext(cctx))
+		isAcceptingStorageDeals, err := smapi.DealsConsiderOnlineStorageDeals(lcli.DaemonContext(cctx))
 		if err != nil {
 			return err
 		}
@@ -92,7 +92,7 @@ var storageDealSelectionResetCmd = &cli.Command{
 		}
 		defer closer()
 
-		err = smapi.DealsSetAcceptingStorageDeals(lcli.DaemonContext(cctx), true)
+		err = smapi.DealsSetConsiderOnlineStorageDeals(lcli.DaemonContext(cctx), true)
 		if err != nil {
 			return err
 		}
@@ -111,7 +111,7 @@ var storageDealSelectionRejectCmd = &cli.Command{
 		}
 		defer closer()
 
-		err = smapi.DealsSetAcceptingStorageDeals(lcli.DaemonContext(cctx), false)
+		err = smapi.DealsSetConsiderOnlineStorageDeals(lcli.DaemonContext(cctx), false)
 		if err != nil {
 			return err
 		}

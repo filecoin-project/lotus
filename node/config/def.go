@@ -34,9 +34,9 @@ type StorageMiner struct {
 }
 
 type DealmakingConfig struct {
-	AcceptingStorageDeals   bool
-	AcceptingRetrievalDeals bool
-	PieceCidBlocklist       []cid.Cid
+	ConsiderOnlineStorageDeals   bool
+	ConsiderOnlineRetrievalDeals bool
+	PieceCidBlocklist            []cid.Cid
 }
 
 // API contains configs for API endpoint
@@ -124,9 +124,9 @@ func DefaultStorageMiner() *StorageMiner {
 		},
 
 		Dealmaking: DealmakingConfig{
-			AcceptingStorageDeals:   true,
-			AcceptingRetrievalDeals: true,
-			PieceCidBlocklist:       []cid.Cid{},
+			ConsiderOnlineStorageDeals:   true,
+			ConsiderOnlineRetrievalDeals: true,
+			PieceCidBlocklist:            []cid.Cid{},
 		},
 	}
 	cfg.Common.API.ListenAddress = "/ip4/127.0.0.1/tcp/2345/http"

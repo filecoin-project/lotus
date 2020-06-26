@@ -35,7 +35,7 @@ var retrievalDealSelectionShowCmd = &cli.Command{
 		}
 		defer closer()
 
-		isAcceptingRetrievalDeals, err := smapi.DealsAcceptingRetrievalDeals(lcli.DaemonContext(cctx))
+		isAcceptingRetrievalDeals, err := smapi.DealsConsiderOnlineRetrievalDeals(lcli.DaemonContext(cctx))
 		if err != nil {
 			return err
 		}
@@ -57,7 +57,7 @@ var retrievalDealSelectionResetCmd = &cli.Command{
 		}
 		defer closer()
 
-		err = smapi.DealsSetAcceptingRetrievalDeals(lcli.DaemonContext(cctx), true)
+		err = smapi.DealsSetConsiderOnlineRetrievalDeals(lcli.DaemonContext(cctx), true)
 		if err != nil {
 			return err
 		}
@@ -76,7 +76,7 @@ var retrievalDealSelectionRejectCmd = &cli.Command{
 		}
 		defer closer()
 
-		err = smapi.DealsSetAcceptingRetrievalDeals(lcli.DaemonContext(cctx), false)
+		err = smapi.DealsSetConsiderOnlineRetrievalDeals(lcli.DaemonContext(cctx), false)
 		if err != nil {
 			return err
 		}

@@ -43,10 +43,10 @@ type StorageMinerAPI struct {
 	StorageMgr      *sectorstorage.Manager `optional:"true"`
 	*stores.Index
 
-	AcceptingStorageDealsConfigFunc           dtypes.AcceptingStorageDealsConfigFunc
-	SetAcceptingStorageDealsConfigFunc        dtypes.SetAcceptingStorageDealsConfigFunc
-	AcceptingRetrievalDealsConfigFunc         dtypes.AcceptingRetrievalDealsConfigFunc
-	SetAcceptingRetrievalDealsConfigFunc      dtypes.SetAcceptingRetrievalDealsConfigFunc
+	ConsiderOnlineStorageDealsConfigFunc      dtypes.ConsiderOnlineStorageDealsConfigFunc
+	SetConsiderOnlineStorageDealsConfigFunc   dtypes.SetConsiderOnlineStorageDealsConfigFunc
+	ConsiderOnlineRetrievalDealsConfigFunc    dtypes.ConsiderOnlineRetrievalDealsConfigFunc
+	SetConsiderOnlineRetrievalDealsConfigFunc dtypes.SetConsiderOnlineRetrievalDealsConfigFunc
 	StorageDealPieceCidBlocklistConfigFunc    dtypes.StorageDealPieceCidBlocklistConfigFunc
 	SetStorageDealPieceCidBlocklistConfigFunc dtypes.SetStorageDealPieceCidBlocklistConfigFunc
 }
@@ -227,20 +227,20 @@ func (sm *StorageMinerAPI) DealsList(ctx context.Context) ([]storagemarket.Stora
 	return sm.StorageProvider.ListDeals(ctx)
 }
 
-func (sm *StorageMinerAPI) DealsAcceptingStorageDeals(ctx context.Context) (bool, error) {
-	return sm.AcceptingStorageDealsConfigFunc()
+func (sm *StorageMinerAPI) DealsConsiderOnlineStorageDeals(ctx context.Context) (bool, error) {
+	return sm.ConsiderOnlineStorageDealsConfigFunc()
 }
 
-func (sm *StorageMinerAPI) DealsSetAcceptingStorageDeals(ctx context.Context, b bool) error {
-	return sm.SetAcceptingStorageDealsConfigFunc(b)
+func (sm *StorageMinerAPI) DealsSetConsiderOnlineStorageDeals(ctx context.Context, b bool) error {
+	return sm.SetConsiderOnlineStorageDealsConfigFunc(b)
 }
 
-func (sm *StorageMinerAPI) DealsAcceptingRetrievalDeals(ctx context.Context) (bool, error) {
-	return sm.AcceptingRetrievalDealsConfigFunc()
+func (sm *StorageMinerAPI) DealsConsiderOnlineRetrievalDeals(ctx context.Context) (bool, error) {
+	return sm.ConsiderOnlineRetrievalDealsConfigFunc()
 }
 
-func (sm *StorageMinerAPI) DealsSetAcceptingRetrievalDeals(ctx context.Context, b bool) error {
-	return sm.SetAcceptingRetrievalDealsConfigFunc(b)
+func (sm *StorageMinerAPI) DealsSetConsiderOnlineRetrievalDeals(ctx context.Context, b bool) error {
+	return sm.SetConsiderOnlineRetrievalDealsConfigFunc(b)
 }
 
 func (sm *StorageMinerAPI) DealsImportData(ctx context.Context, deal cid.Cid, fname string) error {
