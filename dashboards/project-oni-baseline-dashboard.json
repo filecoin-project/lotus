@@ -150,7 +150,7 @@
         "rightSide": true,
         "show": true,
         "sort": "total",
-        "sortDesc": true,
+        "sortDesc": false,
         "total": true,
         "values": true
       },
@@ -345,6 +345,7 @@
         "current": false,
         "max": true,
         "min": false,
+        "rightSide": true,
         "show": true,
         "total": false,
         "values": true
@@ -365,6 +366,7 @@
       "steppedLine": false,
       "targets": [
         {
+          "alias": "find-data - 95% max",
           "groupBy": [
             {
               "params": [
@@ -680,6 +682,7 @@
         "current": false,
         "max": true,
         "min": false,
+        "rightSide": true,
         "show": true,
         "total": false,
         "values": true
@@ -700,6 +703,7 @@
       "steppedLine": false,
       "targets": [
         {
+          "alias": "deal.sealed - 95% max",
           "groupBy": [
             {
               "params": [
@@ -811,6 +815,7 @@
         "current": false,
         "max": true,
         "min": false,
+        "rightSide": true,
         "show": true,
         "total": false,
         "values": true
@@ -831,6 +836,7 @@
       "steppedLine": false,
       "targets": [
         {
+          "alias": "deal.retrieved - 95% max",
           "groupBy": [
             {
               "params": [
@@ -973,5 +979,5 @@
   "timezone": "",
   "title": "Project Oni - Baseline test",
   "uid": "8em8RXWMz",
-  "version": 7
+  "version": 8
 }
