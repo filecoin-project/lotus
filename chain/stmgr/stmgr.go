@@ -187,6 +187,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, pstate cid.Cid, bms []B
 			Miner:     b.Miner,
 			Penalty:   penalty,
 			GasReward: gasReward,
+			WinCount:  b.WinCount,
 		})
 		if err != nil {
 			return cid.Undef, cid.Undef, xerrors.Errorf("failed to serialize award params: %w", err)
