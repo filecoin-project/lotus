@@ -2,8 +2,11 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
 	"time"
+
+	"github.com/testground/sdk-go/sync"
 )
 
 func runBootstrapper(t *TestEnvironment) error {
@@ -35,10 +38,11 @@ func runMiner(t *TestEnvironment) error {
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		for mine {
+		for i := 0; mine; i++ {
 
 			// synchronize all miners to mine the next block
-			t.RecordMessage("synchronizing all miners to mine next block")
+			t.RecordMessage("synchronizing all miners to mine next block [%d]", i)
+			stateMineNext := sync.State(fmt.Sprintf("mine-block-%d", i))
 			t.SyncClient.MustSignalAndWait(ctx, stateMineNext, miners)
 
 			// add some random delay to encourage a different miner winning each round
