@@ -275,7 +275,6 @@ func prepareDrandNode(t *TestEnvironment) (*DrandInstance, error) {
 	}
 
 	// start gossip relay (unless disabled via testplan parameter)
-	var gossipRelay *lp2p.GossipRelayNode
 	var relayAddrs []peer.AddrInfo
 
 	if runGossipRelay {
@@ -290,14 +289,14 @@ func prepareDrandNode(t *TestEnvironment) (*DrandInstance, error) {
 			Client:       client,
 		}
 		t.RecordMessage("starting drand gossip relay")
-		gossipRelay, err = lp2p.NewGossipRelayNode(log.NewLogger(getLogLevel(t)), &relayCfg)
+		dr.gossipRelay, err = lp2p.NewGossipRelayNode(log.NewLogger(getLogLevel(t)), &relayCfg)
 		if err != nil {
 			return nil, fmt.Errorf("failed to construct drand gossip relay: %w", err)
 		}
 
 		t.RecordMessage("sharing gossip relay addrs")
 		// share the gossip relay addrs so we can publish them in DrandRuntimeInfo
-		relayInfo, err := relayAddrInfo(gossipRelay.Multiaddrs(), myAddr)
+		relayInfo, err := relayAddrInfo(dr.gossipRelay.Multiaddrs(), myAddr)
 		if err != nil {
 			return nil, err
 		}
