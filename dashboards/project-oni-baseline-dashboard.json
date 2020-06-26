@@ -15,8 +15,8 @@
   "editable": true,
   "gnetId": null,
   "graphTooltip": 0,
-  "id": 1,
-  "iteration": 1593175740897,
+  "id": 16,
+  "iteration": 1593188697650,
   "links": [],
   "panels": [
     {
@@ -176,7 +176,13 @@
             },
             {
               "params": [
-                "none"
+                "run"
+              ],
+              "type": "tag"
+            },
+            {
+              "params": [
+                "0"
               ],
               "type": "fill"
             }
@@ -315,6 +321,12 @@
             },
             {
               "params": [
+                "run"
+              ],
+              "type": "tag"
+            },
+            {
+              "params": [
                 "0"
               ],
               "type": "fill"
@@ -446,7 +458,7 @@
               "type": "fill"
             }
           ],
-          "measurement": "diagnostics.find-data.offer.t0100.counter",
+          "measurement": "diagnostics.find-data.offer.t0101.counter",
           "orderByTime": "ASC",
           "policy": "default",
           "refId": "A",
@@ -558,6 +570,48 @@
           "orderByTime": "ASC",
           "policy": "default",
           "refId": "D",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "count"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "sum"
+              }
+            ]
+          ],
+          "tags": []
+        },
+        {
+          "groupBy": [
+            {
+              "params": [
+                "$myinterval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "run"
+              ],
+              "type": "tag"
+            },
+            {
+              "params": [
+                "0"
+              ],
+              "type": "fill"
+            }
+          ],
+          "measurement": "diagnostics.find-data.offer.counter",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "refId": "E",
           "resultFormat": "time_series",
           "select": [
             [
@@ -688,6 +742,12 @@
             },
             {
               "params": [
+                "run"
+              ],
+              "type": "tag"
+            },
+            {
+              "params": [
                 "0"
               ],
               "type": "fill"
@@ -813,6 +873,12 @@
             },
             {
               "params": [
+                "run"
+              ],
+              "type": "tag"
+            },
+            {
+              "params": [
                 "0"
               ],
               "type": "fill"
@@ -882,7 +948,7 @@
       }
     }
   ],
-  "refresh": "5s",
+  "refresh": "10s",
   "schemaVersion": 25,
   "style": "dark",
   "tags": [],
@@ -921,7 +987,7 @@
     ]
   },
   "time": {
-    "from": "now-30m",
+    "from": "now-10m",
     "to": "now"
   },
   "timepicker": {
@@ -940,5 +1006,5 @@
   "timezone": "",
   "title": "Project Oni - Baseline test",
   "uid": "8em8RXWMz",
-  "version": 2
+  "version": 3
 }
