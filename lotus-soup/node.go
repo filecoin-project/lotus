@@ -127,6 +127,11 @@ func prepareBootstrapper(t *TestEnvironment) (*Node, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), PrepareNodeTimeout)
 	defer cancel()
 
+	pubsubTracer, err := getPubsubTracerConfig(ctx, t)
+	if err != nil {
+		return nil, err
+	}
+
 	clients := t.IntParam("clients")
 	miners := t.IntParam("miners")
 	nodes := clients + miners
@@ -196,7 +201,7 @@ func prepareBootstrapper(t *TestEnvironment) (*Node, error) {
 		node.Override(new(modules.Genesis), modtest.MakeGenesisMem(&genesisBuffer, genesisTemplate)),
 		withListenAddress(bootstrapperIP),
 		withBootstrapper(nil),
-		withPubsubConfig(true),
+		withPubsubConfig(true, pubsubTracer),
 		drandOpt,
 	)
 	if err != nil {
@@ -249,6 +254,11 @@ func prepareBootstrapper(t *TestEnvironment) (*Node, error) {
 func prepareMiner(t *TestEnvironment) (*Node, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), PrepareNodeTimeout)
 	defer cancel()
+
+	pubsubTracer, err := getPubsubTracerConfig(ctx, t)
+	if err != nil {
+		return nil, err
+	}
 
 	drandOpt, err := getDrandConfig(ctx, t)
 	if err != nil {
@@ -367,7 +377,7 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 		withGenesis(genesisMsg.Genesis),
 		withListenAddress(minerIP),
 		withBootstrapper(genesisMsg.Bootstrapper),
-		withPubsubConfig(false),
+		withPubsubConfig(false, pubsubTracer),
 		drandOpt,
 	)
 	if err != nil {
@@ -473,6 +483,11 @@ func prepareClient(t *TestEnvironment) (*Node, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), PrepareNodeTimeout)
 	defer cancel()
 
+	pubsubTracer, err := getPubsubTracerConfig(ctx, t)
+	if err != nil {
+		return nil, err
+	}
+
 	drandOpt, err := getDrandConfig(ctx, t)
 	if err != nil {
 		return nil, err
@@ -506,7 +521,7 @@ func prepareClient(t *TestEnvironment) (*Node, error) {
 		withGenesis(genesisMsg.Genesis),
 		withListenAddress(clientIP),
 		withBootstrapper(genesisMsg.Bootstrapper),
-		withPubsubConfig(false),
+		withPubsubConfig(false, pubsubTracer),
 		drandOpt,
 	)
 	if err != nil {
@@ -571,11 +586,11 @@ func withBootstrapper(ab []byte) node.Option {
 		})
 }
 
-func withPubsubConfig(bootstrapper bool) node.Option {
+func withPubsubConfig(bootstrapper bool, pubsubTracer string) node.Option {
 	return node.Override(new(*config.Pubsub), func() *config.Pubsub {
 		return &config.Pubsub{
 			Bootstrapper: bootstrapper,
-			RemoteTracer: "",
+			RemoteTracer: pubsubTracer,
 		}
 	})
 }
@@ -670,6 +685,22 @@ func collectClientAddrs(t *TestEnvironment, ctx context.Context, clients int) ([
 	return addrs, nil
 }
 
+func getPubsubTracerConfig(ctx context.Context, t *TestEnvironment) (string, error) {
+	if !t.BooleanParam("enable_pubsub_tracer") {
+		return "", nil
+	}
+
+	ch := make(chan *PubsubTracerMsg)
+	sub := t.SyncClient.MustSubscribe(ctx, pubsubTracerTopic, ch)
+
+	select {
+	case m := <-ch:
+		return m.Tracer, nil
+	case err := <-sub.Done():
+		return "", fmt.Errorf("got error while waiting for clients addrs: %w", err)
+	}
+}
+
 func getDrandConfig(ctx context.Context, t *TestEnvironment) (node.Option, error) {
 	beaconType := t.StringParam("random_beacon_type")
 	switch beaconType {
@@ -684,7 +715,7 @@ func getDrandConfig(ctx context.Context, t *TestEnvironment) (node.Option, error
 		if err != nil {
 			t.RecordMessage("error getting drand config: %w", err)
 			return nil, err
-			
+
 		}
 		t.RecordMessage("setting drand config: %v", cfg)
 		return node.Options(

@@ -26,7 +26,7 @@ type PubsubTracer struct {
 }
 
 type PubsubTracerMsg struct {
-	Tracer []byte
+	Tracer string
 }
 
 func (tr *PubsubTracer) Stop() {
@@ -66,7 +66,7 @@ func preparePubsubTracer(t *TestEnvironment) (*PubsubTracer, error) {
 	t.RecordMessage("I am %s", tracedMultiaddrStr)
 
 	tracedMultiaddr := ma.StringCast(tracedMultiaddrStr)
-	tracedMsg := &PubsubTracerMsg{Tracer: tracedMultiaddr.Bytes()}
+	tracedMsg := &PubsubTracerMsg{Tracer: tracedMultiaddr.String()}
 	t.SyncClient.MustPublish(ctx, pubsubTracerTopic, tracedMsg)
 
 	t.RecordMessage("waiting for all nodes to be ready")
