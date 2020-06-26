@@ -65,8 +65,8 @@ func preparePubsubTracer(t *TestEnvironment) (*PubsubTracer, error) {
 	tracedMultiaddrStr := fmt.Sprintf("%s/p2p/%s", tracedAddr, host.ID())
 	t.RecordMessage("I am %s", tracedMultiaddrStr)
 
-	tracedMultiaddr := ma.StringCast(tracedMultiaddrStr)
-	tracedMsg := &PubsubTracerMsg{Tracer: tracedMultiaddr.String()}
+	_ = ma.StringCast(tracedMultiaddrStr)
+	tracedMsg := &PubsubTracerMsg{Tracer: tracedMultiaddrStr}
 	t.SyncClient.MustPublish(ctx, pubsubTracerTopic, tracedMsg)
 
 	t.RecordMessage("waiting for all nodes to be ready")
