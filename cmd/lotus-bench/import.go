@@ -7,6 +7,8 @@ import (
 	"io"
 	"io/ioutil"
 	"math"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"runtime"
 	"runtime/pprof"
@@ -249,6 +251,10 @@ var importAnalyzeCmd = &cli.Command{
 			return nil
 		}
 
+		go func() {
+			http.ListenAndServe("localhost:6060", nil)
+		}()
+
 		fi, err := os.Open(cctx.Args().First())
 		if err != nil {
 			return err
@@ -282,6 +288,7 @@ var importAnalyzeCmd = &cli.Command{
 						}
 						return
 					}
+
 					totalTime += tse.Duration
 					for _, inv := range tse.Trace {
 						if inv.Duration > leastExpensiveInvoc {
