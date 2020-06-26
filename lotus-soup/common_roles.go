@@ -38,7 +38,8 @@ func runMiner(t *TestEnvironment) error {
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		for i := 0; mine; i++ {
+		var i int
+		for i = 0; mine; i++ {
 
 			// synchronize all miners to mine the next block
 			t.RecordMessage("synchronizing all miners to mine next block [%d]", i)
@@ -55,6 +56,11 @@ func runMiner(t *TestEnvironment) error {
 				panic(err)
 			}
 		}
+
+		// signal the last block to make sure no miners are left stuck waiting for the next block signal
+		// while the others have stopped
+		stateMineLast := sync.State(fmt.Sprintf("mine-block-%d", i))
+		t.SyncClient.MustSignalEntry(ctx, stateMineLast)
 	}()
 
 	// wait for a signal from all clients to stop mining
