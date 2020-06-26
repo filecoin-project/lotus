@@ -117,6 +117,8 @@ func runBaselineClient(t *TestEnvironment) error {
 
 	t.SyncClient.MustSignalEntry(ctx, stateStopMining)
 
+	time.Sleep(10 * time.Second) // wait for metrics to be emitted
+
 	// TODO broadcast published content CIDs to other clients
 	// TODO select a random piece of content published by some other client and retrieve it
 

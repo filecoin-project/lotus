@@ -27,6 +27,8 @@ instances = { min = 1, max = 100, default = 5 }
   sectors = { type = "int", default = 1 }
   role = { type = "string" }
 
+  genesis_timestamp_offset = { type = "int", default = 0 }
+
   random_beacon_type = { type = "enum", default = "mock", options = ["mock", "local-drand", "external-drand"] }
 
   # Params relevant to drand nodes. drand nodes should have role="drand", and must all be
