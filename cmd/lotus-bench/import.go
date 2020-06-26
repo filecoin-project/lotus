@@ -264,7 +264,7 @@ func (s1 *stats) Combine(s2 *stats) {
 	s1.dSqr = newVar * (newCount - 1)
 }
 
-func tallyGasCharges(charges map[string]*stats, et *types.ExecutionTrace) {
+func tallyGasCharges(charges map[string]*stats, et types.ExecutionTrace) {
 	for _, gc := range et.GasCharges {
 
 		compGas := gc.ComputeGas + gc.VirtualComputeGas
@@ -279,7 +279,7 @@ func tallyGasCharges(charges map[string]*stats, et *types.ExecutionTrace) {
 		s.AddPoint(ratio)
 		//fmt.Printf("%s: %d, %s: %0.2f\n", gc.Name, compGas, gc.TimeTaken, 1/(ratio/GasPerNs))
 		for _, sub := range et.Subcalls {
-			tallyGasCharges(charges, &sub)
+			tallyGasCharges(charges, sub)
 		}
 	}
 
@@ -343,7 +343,7 @@ var importAnalyzeCmd = &cli.Command{
 							})
 						}
 
-						tallyGasCharges(chargeStats, &inv.ExecutionTrace)
+						tallyGasCharges(chargeStats, inv.ExecutionTrace)
 					}
 					if len(expensiveInvocs) > 4*invocsKeep {
 						sort.Slice(expensiveInvocs, func(i, j int) bool {
