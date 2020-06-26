@@ -693,7 +693,7 @@ func (a *StateAPI) MsigGetAvailableBalance(ctx context.Context, addr address.Add
 var initialPledgeNum = types.NewInt(103)
 var initialPledgeDen = types.NewInt(100)
 
-func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr address.Address, snum abi.SectorNumber, tsk types.TipSetKey) (types.BigInt, error) {
+func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr address.Address, pci miner.SectorPreCommitInfo, tsk types.TipSetKey) (types.BigInt, error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -734,21 +734,12 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 		}
 	}
 
-	precommit, found, err := minerState.GetPrecommittedSector(as, snum)
-	if err != nil {
-		return types.EmptyInt, err
-	}
-
-	if !found {
-		return types.EmptyInt, xerrors.Errorf("no precommit found for sector %d", snum)
-	}
-
 	var dealWeights market.VerifyDealsForActivationReturn
 	{
 		var err error
 		params, err := actors.SerializeParams(&market.VerifyDealsForActivationParams{
-			DealIDs:      precommit.Info.DealIDs,
-			SectorExpiry: precommit.Info.Expiration,
+			DealIDs:      pci.DealIDs,
+			SectorExpiry: pci.Expiration,
 		})
 		if err != nil {
 			return types.EmptyInt, err
@@ -771,12 +762,12 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 		}
 	}
 
-	ssize, err := precommit.Info.SealProof.SectorSize()
+	ssize, err := pci.SealProof.SectorSize()
 	if err != nil {
 		return types.EmptyInt, err
 	}
 
-	duration := precommit.Info.Expiration - ts.Height() // NB: not exactly accurate, but should always lead us to *over* estimate, not under
+	duration := pci.Expiration - ts.Height() // NB: not exactly accurate, but should always lead us to *over* estimate, not under
 
 	circSupply, err := a.StateManager.CirculatingSupply(ctx, ts)
 	if err != nil {
