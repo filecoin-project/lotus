@@ -93,7 +93,7 @@ type hcEvents struct {
 	watcherEvents
 }
 
-func newHCEvents(ctx context.Context, cs eventAPI, tsc *tipSetCache, gcConfidence uint64) hcEvents {
+func newHCEvents(ctx context.Context, cs eventAPI, tsc *tipSetCache, gcConfidence uint64) *hcEvents {
 	e := hcEvents{
 		ctx:          ctx,
 		cs:           cs,
@@ -109,7 +109,7 @@ func newHCEvents(ctx context.Context, cs eventAPI, tsc *tipSetCache, gcConfidenc
 	e.messageEvents = newMessageEvents(ctx, &e, cs)
 	e.watcherEvents = newWatcherEvents(ctx, &e, cs)
 
-	return e
+	return &e
 }
 
 // Called when there is a change to the head with tipsets to be
@@ -297,7 +297,7 @@ func (e *hcEvents) applyTimeouts(ts *types.TipSet) {
 }
 
 // Listen for an event
-// - CheckFunc: immediately checks if the event already occured
+// - CheckFunc: immediately checks if the event already occurred
 // - EventHandler: called when the event has occurred, after confidence tipsets
 // - RevertHandler: called if the chain head changes causing the event to revert
 // - confidence: wait this many tipsets before calling EventHandler
@@ -351,17 +351,17 @@ type headChangeAPI interface {
 type watcherEvents struct {
 	ctx   context.Context
 	cs    eventAPI
-	hcApi headChangeAPI
+	hcAPI headChangeAPI
 
 	lk       sync.RWMutex
 	matchers map[triggerID]StateMatchFunc
 }
 
-func newWatcherEvents(ctx context.Context, hcApi headChangeAPI, cs eventAPI) watcherEvents {
+func newWatcherEvents(ctx context.Context, hcAPI headChangeAPI, cs eventAPI) watcherEvents {
 	return watcherEvents{
 		ctx:      ctx,
 		cs:       cs,
-		hcApi:    hcApi,
+		hcAPI:    hcAPI,
 		matchers: make(map[triggerID]StateMatchFunc),
 	}
 }
@@ -387,7 +387,7 @@ func (we *watcherEvents) checkStateChanges(oldState, newState *types.TipSet) map
 	return res
 }
 
-// A change in state
+// StateChange represents a change in state
 type StateChange interface{}
 
 // StateChangeHandler arguments:
@@ -437,7 +437,7 @@ func (we *watcherEvents) StateChanged(check CheckFunc, scHnd StateChangeHandler,
 		return scHnd(prevTs, ts, states, height)
 	}
 
-	id, err := we.hcApi.onHeadChanged(check, hnd, rev, confidence, timeout)
+	id, err := we.hcAPI.onHeadChanged(check, hnd, rev, confidence, timeout)
 	if err != nil {
 		return err
 	}
@@ -453,17 +453,17 @@ func (we *watcherEvents) StateChanged(check CheckFunc, scHnd StateChangeHandler,
 type messageEvents struct {
 	ctx   context.Context
 	cs    eventAPI
-	hcApi headChangeAPI
+	hcAPI headChangeAPI
 
 	lk       sync.RWMutex
 	matchers map[triggerID][]MsgMatchFunc
 }
 
-func newMessageEvents(ctx context.Context, hcApi headChangeAPI, cs eventAPI) messageEvents {
+func newMessageEvents(ctx context.Context, hcAPI headChangeAPI, cs eventAPI) messageEvents {
 	return messageEvents{
 		ctx:      ctx,
 		cs:       cs,
-		hcApi:    hcApi,
+		hcAPI:    hcAPI,
 		matchers: map[triggerID][]MsgMatchFunc{},
 	}
 }
@@ -592,7 +592,7 @@ func (me *messageEvents) Called(check CheckFunc, msgHnd MsgHandler, rev RevertHa
 		return msgHnd(msg, rec, ts, height)
 	}
 
-	id, err := me.hcApi.onHeadChanged(check, hnd, rev, confidence, timeout)
+	id, err := me.hcAPI.onHeadChanged(check, hnd, rev, confidence, timeout)
 	if err != nil {
 		return err
 	}

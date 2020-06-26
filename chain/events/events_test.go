@@ -1068,7 +1068,7 @@ func TestRemoveTriggersOnMessage(t *testing.T) {
 
 type testStateChange struct {
 	from string
-	to string
+	to   string
 }
 
 func TestStateChanged(t *testing.T) {

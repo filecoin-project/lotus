@@ -2,9 +2,10 @@ package state
 
 import (
 	"context"
+	"testing"
+
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/ipfs/go-hamt-ipld"
-	"testing"
 
 	"github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
@@ -28,23 +29,23 @@ func init() {
 	dummyCid, _ = cid.Parse("bafkqaaa")
 }
 
-type mockApi struct {
+type mockAPI struct {
 	ts map[types.TipSetKey]*types.Actor
 	bs bstore.Blockstore
 }
 
-func newMockApi(bs bstore.Blockstore) *mockApi {
-	return &mockApi{
+func newMockAPI(bs bstore.Blockstore) *mockAPI {
+	return &mockAPI{
 		bs: bs,
 		ts: make(map[types.TipSetKey]*types.Actor),
 	}
 }
 
-func (m mockApi) ChainHasObj(ctx context.Context, c cid.Cid) (bool, error) {
+func (m mockAPI) ChainHasObj(ctx context.Context, c cid.Cid) (bool, error) {
 	return m.bs.Has(c)
 }
 
-func (m mockApi) ChainReadObj(ctx context.Context, c cid.Cid) ([]byte, error) {
+func (m mockAPI) ChainReadObj(ctx context.Context, c cid.Cid) ([]byte, error) {
 	blk, err := m.bs.Get(c)
 	if err != nil {
 		return nil, xerrors.Errorf("blockstore get: %w", err)
@@ -53,11 +54,11 @@ func (m mockApi) ChainReadObj(ctx context.Context, c cid.Cid) ([]byte, error) {
 	return blk.RawData(), nil
 }
 
-func (m mockApi) StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) {
+func (m mockAPI) StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) {
 	return m.ts[tsk], nil
 }
 
-func (m mockApi) setActor(tsk types.TipSetKey, act *types.Actor) {
+func (m mockAPI) setActor(tsk types.TipSetKey, act *types.Actor) {
 	m.ts[tsk] = act
 }
 
@@ -79,7 +80,7 @@ func TestPredicates(t *testing.T) {
 			SlashEpoch:       0,
 		},
 	}
-	oldStateC := createMarketState(t, store, oldDeals, ctx)
+	oldStateC := createMarketState(ctx, t, store, oldDeals)
 
 	newDeals := map[abi.DealID]*market.DealState{
 		abi.DealID(1): {
@@ -93,7 +94,7 @@ func TestPredicates(t *testing.T) {
 			SlashEpoch:       6,
 		},
 	}
-	newStateC := createMarketState(t, store, newDeals, ctx)
+	newStateC := createMarketState(ctx, t, store, newDeals)
 
 	miner, err := address.NewFromString("t00")
 	require.NoError(t, err)
@@ -102,7 +103,7 @@ func TestPredicates(t *testing.T) {
 	newState, err := mockTipset(miner, 2)
 	require.NoError(t, err)
 
-	api := newMockApi(bs)
+	api := newMockAPI(bs)
 	api.setActor(oldState.Key(), &types.Actor{Head: oldStateC})
 	api.setActor(newState.Key(), &types.Actor{Head: newStateC})
 
@@ -149,8 +150,8 @@ func mockTipset(miner address.Address, timestamp uint64) (*types.TipSet, error) 
 	}})
 }
 
-func createMarketState(t *testing.T, store *cbornode.BasicIpldStore, deals map[abi.DealID]*market.DealState, ctx context.Context) cid.Cid {
-	rootCid := createAMT(t, store, deals, ctx)
+func createMarketState(ctx context.Context, t *testing.T, store *cbornode.BasicIpldStore, deals map[abi.DealID]*market.DealState) cid.Cid {
+	rootCid := createAMT(ctx, t, store, deals)
 
 	emptyArrayCid, err := amt.NewAMT(store).Flush(context.TODO())
 	require.NoError(t, err)
@@ -164,10 +165,10 @@ func createMarketState(t *testing.T, store *cbornode.BasicIpldStore, deals map[a
 	return stateC
 }
 
-func createAMT(t *testing.T, store *cbornode.BasicIpldStore, deals map[abi.DealID]*market.DealState, ctx context.Context) cid.Cid {
+func createAMT(ctx context.Context, t *testing.T, store *cbornode.BasicIpldStore, deals map[abi.DealID]*market.DealState) cid.Cid {
 	root := amt.NewAMT(store)
-	for dealId, dealState := range deals {
-		err := root.Set(ctx, uint64(dealId), dealState)
+	for dealID, dealState := range deals {
+		err := root.Set(ctx, uint64(dealID), dealState)
 		require.NoError(t, err)
 	}
 	rootCid, err := root.Flush(ctx)

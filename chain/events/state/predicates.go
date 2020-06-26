@@ -2,41 +2,41 @@ package state
 
 import (
 	"context"
-	cbor "github.com/ipfs/go-ipld-cbor"
 
-	"github.com/ipfs/go-cid"
-	"github.com/filecoin-project/lotus/api/apibstore"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-amt-ipld/v2"
+	"github.com/filecoin-project/lotus/api/apibstore"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
 )
 
-// Data returned from the DiffFunc
+// UserData is the data returned from the DiffFunc
 type UserData interface{}
 
-// The calls made by this class external APIs
-type ChainApi interface {
+// ChainAPI abstracts out calls made by this class to external APIs
+type ChainAPI interface {
 	apibstore.ChainIO
 	StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error)
 }
 
-// Use StatePredicates to respond to state changes
+// StatePredicates has common predicates for responding to state changes
 type StatePredicates struct {
-	api ChainApi
+	api ChainAPI
 	cst *cbor.BasicIpldStore
 }
 
-func NewStatePredicates(api ChainApi) *StatePredicates {
+func NewStatePredicates(api ChainAPI) *StatePredicates {
 	return &StatePredicates{
 		api: api,
 		cst: cbor.NewCborStore(apibstore.NewAPIBlockstore(api)),
 	}
 }
 
-// Check if there's a change form oldState to newState, and return
+// DiffFunc check if there's a change form oldState to newState, and returns
 // - changed: was there a change
 // - user: user-defined data representing the state change
 // - err
@@ -44,7 +44,7 @@ type DiffFunc func(ctx context.Context, oldState, newState *types.TipSet) (chang
 
 type DiffStateFunc func(ctx context.Context, oldActorStateHead, newActorStateHead cid.Cid) (changed bool, user UserData, err error)
 
-// Calls diffStateFunc when the state changes for the given actor
+// OnActorStateChanged calls diffStateFunc when the state changes for the given actor
 func (sp *StatePredicates) OnActorStateChanged(addr address.Address, diffStateFunc DiffStateFunc) DiffFunc {
 	return func(ctx context.Context, oldState, newState *types.TipSet) (changed bool, user UserData, err error) {
 		oldActor, err := sp.api.StateGetActor(ctx, addr, oldState.Key())
@@ -52,6 +52,10 @@ func (sp *StatePredicates) OnActorStateChanged(addr address.Address, diffStateFu
 			return false, nil, err
 		}
 		newActor, err := sp.api.StateGetActor(ctx, addr, newState.Key())
+		if err != nil {
+			return false, nil, err
+		}
+
 		if oldActor.Head.Equals(newActor.Head) {
 			return false, nil, nil
 		}
@@ -61,7 +65,7 @@ func (sp *StatePredicates) OnActorStateChanged(addr address.Address, diffStateFu
 
 type DiffStorageMarketStateFunc func(ctx context.Context, oldState *market.State, newState *market.State) (changed bool, user UserData, err error)
 
-// Calls diffStorageMarketState when the state changes for the market actor
+// OnStorageMarketActorChanged calls diffStorageMarketState when the state changes for the market actor
 func (sp *StatePredicates) OnStorageMarketActorChanged(diffStorageMarketState DiffStorageMarketStateFunc) DiffFunc {
 	return sp.OnActorStateChanged(builtin.StorageMarketActorAddr, func(ctx context.Context, oldActorStateHead, newActorStateHead cid.Cid) (changed bool, user UserData, err error) {
 		var oldState market.State
@@ -78,7 +82,7 @@ func (sp *StatePredicates) OnStorageMarketActorChanged(diffStorageMarketState Di
 
 type DiffDealStatesFunc func(ctx context.Context, oldDealStateRoot *amt.Root, newDealStateRoot *amt.Root) (changed bool, user UserData, err error)
 
-// Calls diffDealStates when the market state changes
+// OnDealStateChanged calls diffDealStates when the market state changes
 func (sp *StatePredicates) OnDealStateChanged(diffDealStates DiffDealStatesFunc) DiffStorageMarketStateFunc {
 	return func(ctx context.Context, oldState *market.State, newState *market.State) (changed bool, user UserData, err error) {
 		if oldState.States.Equals(newState.States) {
@@ -98,31 +102,31 @@ func (sp *StatePredicates) OnDealStateChanged(diffDealStates DiffDealStatesFunc)
 	}
 }
 
-// A set of changes to deal state
+// ChangedDeals is a set of changes to deal state
 type ChangedDeals map[abi.DealID]DealStateChange
 
-// Change in deal state from -> to
+// DealStateChange is a change in deal state from -> to
 type DealStateChange struct {
 	From market.DealState
-	To market.DealState
+	To   market.DealState
 }
 
-// Detect changes in the deal state AMT for the given deal IDs
+// DealStateChangedForIDs detects changes in the deal state AMT for the given deal IDs
 func (sp *StatePredicates) DealStateChangedForIDs(dealIds []abi.DealID) DiffDealStatesFunc {
 	return func(ctx context.Context, oldDealStateRoot *amt.Root, newDealStateRoot *amt.Root) (changed bool, user UserData, err error) {
 		changedDeals := make(ChangedDeals)
-		for _, dealId := range dealIds {
+		for _, dealID := range dealIds {
 			var oldDeal, newDeal market.DealState
-			err := oldDealStateRoot.Get(ctx, uint64(dealId), &oldDeal)
+			err := oldDealStateRoot.Get(ctx, uint64(dealID), &oldDeal)
 			if err != nil {
 				return false, nil, err
 			}
-			err = newDealStateRoot.Get(ctx, uint64(dealId), &newDeal)
+			err = newDealStateRoot.Get(ctx, uint64(dealID), &newDeal)
 			if err != nil {
 				return false, nil, err
 			}
 			if oldDeal != newDeal {
-				changedDeals[dealId] = DealStateChange{oldDeal, newDeal}
+				changedDeals[dealID] = DealStateChange{oldDeal, newDeal}
 			}
 		}
 		if len(changedDeals) > 0 {

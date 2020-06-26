@@ -74,7 +74,7 @@ func NewEvents(ctx context.Context, api eventAPI) *Events {
 			htHeights:        map[abi.ChainEpoch][]uint64{},
 		},
 
-		hcEvents: newHCEvents(ctx, api, tsc, uint64(gcConfidence)),
+		hcEvents: *newHCEvents(ctx, api, tsc, uint64(gcConfidence)),
 	}
 
 	e.ready.Add(1)
