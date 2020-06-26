@@ -16,12 +16,8 @@ func (m *Miner) Address() address.Address {
 	return m.sealing.Address()
 }
 
-func (m *Miner) AllocatePiece(size abi.UnpaddedPieceSize) (sectorID abi.SectorNumber, offset uint64, err error) {
-	return m.sealing.AllocatePiece(size)
-}
-
-func (m *Miner) SealPiece(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, sectorID abi.SectorNumber, d sealing.DealInfo) error {
-	return m.sealing.SealPiece(ctx, size, r, sectorID, d)
+func (m *Miner) AddPieceToAnySector(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, d sealing.DealInfo) (abi.SectorNumber, uint64, error) {
+	return m.sealing.AddPieceToAnySector(ctx, size, r, d)
 }
 
 func (m *Miner) ListSectors() ([]sealing.SectorInfo, error) {

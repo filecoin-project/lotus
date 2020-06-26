@@ -26,9 +26,9 @@ type MsigAPI struct {
 	MpoolAPI  MpoolAPI
 }
 
-func (a *MsigAPI) MsigCreate(ctx context.Context, req int64, addrs []address.Address, val types.BigInt, src address.Address, gp types.BigInt) (cid.Cid, error) {
+func (a *MsigAPI) MsigCreate(ctx context.Context, req uint64, addrs []address.Address, val types.BigInt, src address.Address, gp types.BigInt) (cid.Cid, error) {
 
-	lenAddrs := int64(len(addrs))
+	lenAddrs := uint64(len(addrs))
 
 	if lenAddrs < req {
 		return cid.Undef, xerrors.Errorf("cannot require signing of more addresses than provided for multisig")
