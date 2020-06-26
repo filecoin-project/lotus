@@ -29,10 +29,10 @@ require (
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200605171344-fcac609550ca
 	github.com/filecoin-project/go-statestore v0.1.0
 	github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b
-	github.com/filecoin-project/sector-storage v0.0.0-20200615192001-42c9e08595b7
-	github.com/filecoin-project/specs-actors v0.6.1
-	github.com/filecoin-project/specs-storage v0.1.0
-	github.com/filecoin-project/storage-fsm v0.0.0-20200615162749-494c3bc48743
+	github.com/filecoin-project/sector-storage v0.0.0-20200625154333-98ef8e4ef246
+	github.com/filecoin-project/specs-actors v0.6.2-0.20200617175406-de392ca14121
+	github.com/filecoin-project/specs-storage v0.1.1-0.20200622113353-88a9704877ea
+	github.com/filecoin-project/storage-fsm v0.0.0-20200625160832-379a4655b044
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/go-kit/kit v0.10.0
 	github.com/go-ole/go-ole v1.2.4 // indirect
@@ -44,8 +44,8 @@ require (
 	github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d
 	github.com/ipfs/go-bitswap v0.2.8
 	github.com/ipfs/go-block-format v0.0.2
-	github.com/ipfs/go-blockservice v0.1.3
-	github.com/ipfs/go-cid v0.0.6-0.20200501230655-7c82f3b81c00
+	github.com/ipfs/go-blockservice v0.1.4-0.20200624145336-a978cec6e834
+	github.com/ipfs/go-cid v0.0.6
 	github.com/ipfs/go-cidutil v0.0.2
 	github.com/ipfs/go-datastore v0.4.4
 	github.com/ipfs/go-ds-badger2 v0.1.0
@@ -76,20 +76,20 @@ require (
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/lib/pq v1.2.0
 	github.com/libp2p/go-eventbus v0.2.1
-	github.com/libp2p/go-libp2p v0.9.4
+	github.com/libp2p/go-libp2p v0.10.0
 	github.com/libp2p/go-libp2p-connmgr v0.2.4
-	github.com/libp2p/go-libp2p-core v0.5.7
+	github.com/libp2p/go-libp2p-core v0.6.0
 	github.com/libp2p/go-libp2p-discovery v0.4.0
 	github.com/libp2p/go-libp2p-kad-dht v0.8.1
 	github.com/libp2p/go-libp2p-mplex v0.2.3
 	github.com/libp2p/go-libp2p-peer v0.2.0
-	github.com/libp2p/go-libp2p-peerstore v0.2.4
+	github.com/libp2p/go-libp2p-peerstore v0.2.6
 	github.com/libp2p/go-libp2p-pubsub v0.3.2
 	github.com/libp2p/go-libp2p-quic-transport v0.5.0
 	github.com/libp2p/go-libp2p-record v0.1.2
 	github.com/libp2p/go-libp2p-routing-helpers v0.2.3
 	github.com/libp2p/go-libp2p-secio v0.2.2
-	github.com/libp2p/go-libp2p-swarm v0.2.6
+	github.com/libp2p/go-libp2p-swarm v0.2.7
 	github.com/libp2p/go-libp2p-tls v0.1.3
 	github.com/libp2p/go-libp2p-yamux v0.2.8
 	github.com/libp2p/go-maddr-filter v0.1.0
@@ -100,11 +100,11 @@ require (
 	github.com/multiformats/go-multiaddr v0.2.2
 	github.com/multiformats/go-multiaddr-dns v0.2.0
 	github.com/multiformats/go-multiaddr-net v0.1.5
-	github.com/multiformats/go-multibase v0.0.2
+	github.com/multiformats/go-multibase v0.0.3
 	github.com/multiformats/go-multihash v0.0.13
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/stretchr/objx v0.2.0 // indirect
-	github.com/stretchr/testify v1.5.1
+	github.com/stretchr/testify v1.6.1
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/urfave/cli/v2 v2.2.0
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba

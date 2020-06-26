@@ -139,4 +139,8 @@ func (a *CommonAPI) Shutdown(ctx context.Context) error {
 	return nil
 }
 
+func (a *CommonAPI) Closing(ctx context.Context) (<-chan struct{}, error) {
+	return make(chan struct{}), nil // relies on jsonrpc closing
+}
+
 var _ api.Common = &CommonAPI{}

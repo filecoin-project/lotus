@@ -6,7 +6,7 @@ all: build
 unexport GOFLAGS
 
 GOVERSION:=$(shell go version | cut -d' ' -f 3 | cut -d. -f 2)
-ifeq ($(shell expr $(GOVERSION) \< 13), 1)
+ifeq ($(shell expr $(GOVERSION) \< 14), 1)
 $(warning Your Golang version is go 1.$(GOVERSION))
 $(error Update Golang to version $(shell grep '^go' go.mod))
 endif
@@ -105,15 +105,17 @@ install:
 
 install-services: install
 	mkdir -p /usr/local/lib/systemd/system
+	mkdir -p /var/log/lotus
 	install -C -m 0644 ./scripts/lotus-daemon.service /usr/local/lib/systemd/system/lotus-daemon.service
 	install -C -m 0644 ./scripts/lotus-miner.service /usr/local/lib/systemd/system/lotus-miner.service
 	systemctl daemon-reload
 	@echo
-	@echo "lotus and lotus-miner services installed. Don't forget to 'systemctl enable lotus|lotus-miner' for it to be enabled on startup."
+	@echo "lotus-daemon and lotus-miner services installed. Don't forget to 'systemctl enable lotus-daemon|lotus-miner' for it to be enabled on startup."
 
 clean-services:
 	rm -f /usr/local/lib/systemd/system/lotus-daemon.service
 	rm -f /usr/local/lib/systemd/system/lotus-miner.service
+	rm -f /usr/local/lib/systemd/system/chainwatch.service
 	systemctl daemon-reload
 
 # TOOLS
@@ -159,6 +161,13 @@ chainwatch:
 	go run github.com/GeertJohan/go.rice/rice append --exec chainwatch -i ./cmd/lotus-chainwatch -i ./build
 .PHONY: chainwatch
 BINS+=chainwatch
+
+install-chainwatch-service: chainwatch
+	install -C ./chainwatch /usr/local/bin/chainwatch
+	install -C -m 0644 ./scripts/chainwatch.service /usr/local/lib/systemd/system/chainwatch.service
+	systemctl daemon-reload
+	@echo
+	@echo "chainwatch installed. Don't forget to 'systemctl enable chainwatch' for it to be enabled on startup."
 
 bench:
 	rm -f bench

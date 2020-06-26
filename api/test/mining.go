@@ -126,6 +126,7 @@ func TestDealMining(t *testing.T, b APIBuilder, blocktime time.Duration, carExpo
 	minedTwo := make(chan struct{})
 
 	go func() {
+		doneMinedTwo := false
 		defer close(done)
 
 		prevExpect := 0
@@ -175,9 +176,9 @@ func TestDealMining(t *testing.T, b APIBuilder, blocktime time.Duration, carExpo
 				time.Sleep(blocktime)
 			}
 
-			if prevExpect == 2 && expect == 2 && minedTwo != nil {
+			if prevExpect == 2 && expect == 2 && !doneMinedTwo {
 				close(minedTwo)
-				minedTwo = nil
+				doneMinedTwo = true
 			}
 
 			prevExpect = expect

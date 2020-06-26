@@ -241,10 +241,12 @@ func (ss *syscallShim) VerifySignature(sig crypto.Signature, addr address.Addres
 	return sigs.Verify(&sig, kaddr, input)
 }
 
+var BatchSealVerifyParallelism = goruntime.NumCPU()
+
 func (ss *syscallShim) BatchVerifySeals(inp map[address.Address][]abi.SealVerifyInfo) (map[address.Address][]bool, error) {
 	out := make(map[address.Address][]bool)
 
-	sema := make(chan struct{}, goruntime.NumCPU())
+	sema := make(chan struct{}, BatchSealVerifyParallelism)
 
 	var wg sync.WaitGroup
 	for addr, seals := range inp {

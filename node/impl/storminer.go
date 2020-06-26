@@ -43,7 +43,10 @@ type StorageMinerAPI struct {
 	StorageMgr      *sectorstorage.Manager `optional:"true"`
 	*stores.Index
 
-	SetAcceptingStorageDealsConfigFunc dtypes.SetAcceptingStorageDealsConfigFunc
+	SetAcceptingStorageDealsConfigFunc        dtypes.SetAcceptingStorageDealsConfigFunc
+	SetAcceptingRetrievalDealsConfigFunc      dtypes.SetAcceptingRetrievalDealsConfigFunc
+	StorageDealPieceCidBlocklistConfigFunc    dtypes.StorageDealPieceCidBlocklistConfigFunc
+	SetStorageDealPieceCidBlocklistConfigFunc dtypes.SetStorageDealPieceCidBlocklistConfigFunc
 }
 
 func (sm *StorageMinerAPI) ServeRemote(w http.ResponseWriter, r *http.Request) {
@@ -172,6 +175,10 @@ func (sm *StorageMinerAPI) SectorsUpdate(ctx context.Context, id abi.SectorNumbe
 	return sm.Miner.ForceSectorState(ctx, id, sealing.SectorState(state))
 }
 
+func (sm *StorageMinerAPI) SectorRemove(ctx context.Context, id abi.SectorNumber) error {
+	return sm.Miner.RemoveSector(ctx, id)
+}
+
 func (sm *StorageMinerAPI) WorkerConnect(ctx context.Context, url string) error {
 	w, err := connectRemoteWorker(ctx, sm, url)
 	if err != nil {
@@ -201,8 +208,17 @@ func (sm *StorageMinerAPI) MarketListIncompleteDeals(ctx context.Context) ([]sto
 	return sm.StorageProvider.ListLocalDeals()
 }
 
-func (sm *StorageMinerAPI) MarketSetPrice(ctx context.Context, p types.BigInt) error {
-	return sm.StorageProvider.SetAsk(p, 60*60*24*100) // lasts for 100 days?
+func (sm *StorageMinerAPI) MarketSetAsk(ctx context.Context, price types.BigInt, duration abi.ChainEpoch, minPieceSize abi.PaddedPieceSize, maxPieceSize abi.PaddedPieceSize) error {
+	options := []storagemarket.StorageAskOption{
+		storagemarket.MinPieceSize(minPieceSize),
+		storagemarket.MaxPieceSize(maxPieceSize),
+	}
+
+	return sm.StorageProvider.SetAsk(price, duration, options...)
+}
+
+func (sm *StorageMinerAPI) MarketGetAsk(ctx context.Context) (*storagemarket.SignedStorageAsk, error) {
+	return sm.StorageProvider.GetAsk(), nil
 }
 
 func (sm *StorageMinerAPI) DealsList(ctx context.Context) ([]storagemarket.StorageDeal, error) {
@@ -213,6 +229,10 @@ func (sm *StorageMinerAPI) DealsSetAcceptingStorageDeals(ctx context.Context, b 
 	return sm.SetAcceptingStorageDealsConfigFunc(b)
 }
 
+func (sm *StorageMinerAPI) DealsSetAcceptingRetrievalDeals(ctx context.Context, b bool) error {
+	return sm.SetAcceptingRetrievalDealsConfigFunc(b)
+}
+
 func (sm *StorageMinerAPI) DealsImportData(ctx context.Context, deal cid.Cid, fname string) error {
 	fi, err := os.Open(fname)
 	if err != nil {
@@ -221,6 +241,14 @@ func (sm *StorageMinerAPI) DealsImportData(ctx context.Context, deal cid.Cid, fn
 	defer fi.Close() //nolint:errcheck
 
 	return sm.StorageProvider.ImportDataForDeal(ctx, deal, fi)
+}
+
+func (sm *StorageMinerAPI) DealsPieceCidBlocklist(ctx context.Context) ([]cid.Cid, error) {
+	return sm.StorageDealPieceCidBlocklistConfigFunc()
+}
+
+func (sm *StorageMinerAPI) DealsSetPieceCidBlocklist(ctx context.Context, cids []cid.Cid) error {
+	return sm.SetStorageDealPieceCidBlocklistConfigFunc(cids)
 }
 
 func (sm *StorageMinerAPI) StorageAddLocal(ctx context.Context, path string) error {

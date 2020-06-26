@@ -218,6 +218,7 @@ func Online() Option {
 
 			Override(new(dtypes.BootstrapPeers), modules.BuiltinBootstrap),
 			Override(new(dtypes.DrandBootstrap), modules.DrandBootstrap),
+			Override(new(dtypes.DrandConfig), modules.BuiltinDrandConfig),
 
 			Override(HandleIncomingMessagesKey, modules.HandleIncomingMessages),
 
@@ -312,8 +313,12 @@ func Online() Option {
 			Override(new(gen.WinningPoStProver), storage.NewWinningPoStProver),
 			Override(new(*miner.Miner), modules.SetupBlockProducer),
 
+			Override(new(dtypes.AcceptingRetrievalDealsConfigFunc), modules.NewAcceptingRetrievalDealsConfigFunc),
+			Override(new(dtypes.SetAcceptingRetrievalDealsConfigFunc), modules.NewSetAcceptingRetrievalDealsConfigFunc),
 			Override(new(dtypes.AcceptingStorageDealsConfigFunc), modules.NewAcceptingStorageDealsConfigFunc),
 			Override(new(dtypes.SetAcceptingStorageDealsConfigFunc), modules.NewSetAcceptingStorageDealsConfigFunc),
+			Override(new(dtypes.StorageDealPieceCidBlocklistConfigFunc), modules.NewStorageDealPieceCidBlocklistConfigFunc),
+			Override(new(dtypes.SetStorageDealPieceCidBlocklistConfigFunc), modules.NewSetStorageDealPieceCidBlocklistConfigFunc),
 		),
 	)
 }

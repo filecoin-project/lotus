@@ -21,16 +21,16 @@ type ExecutionTrace struct {
 type GasTrace struct {
 	Name string
 
-	Location          []Loc
-	TotalGas          int64
-	ComputeGas        int64
-	StorageGas        int64
-	TotalVirtualGas   int64
-	VirtualComputeGas int64
-	VirtualStorageGas int64
+	Location          []Loc `json:"loc"`
+	TotalGas          int64 `json:"tg"`
+	ComputeGas        int64 `json:"cg"`
+	StorageGas        int64 `json:"sg"`
+	TotalVirtualGas   int64 `json:"vtg"`
+	VirtualComputeGas int64 `json:"vcg"`
+	VirtualStorageGas int64 `json:"vsg"`
 
-	TimeTaken time.Duration
-	Extra     interface{} `json:",omitempty"`
+	TimeTaken time.Duration `json:"tt"`
+	Extra     interface{}   `json:"ex,omitempty"`
 
 	Callers []uintptr `json:"-"`
 }

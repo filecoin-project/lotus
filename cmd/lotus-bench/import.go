@@ -4,8 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"math"
 	"os"
+	"runtime"
 	"runtime/pprof"
 	"sort"
 	"time"
@@ -44,8 +47,14 @@ var importBenchCmd = &cli.Command{
 			Name:  "height",
 			Usage: "halt validation after given height",
 		},
+		&cli.IntFlag{
+			Name:  "batch-seal-verify-threads",
+			Usage: "set the parallelism factor for batch seal verification",
+			Value: runtime.NumCPU(),
+		},
 	},
 	Action: func(cctx *cli.Context) error {
+		vm.BatchSealVerifyParallelism = cctx.Int("batch-seal-verify-threads")
 		if !cctx.Args().Present() {
 			fmt.Println("must pass car file of chain to benchmark importing")
 			return nil
@@ -111,14 +120,22 @@ var importBenchCmd = &cli.Command{
 			ts = next
 		}
 
-		out := make([]TipSetExec, 0, len(tschain))
+		ibj, err := os.Create("import-bench.json")
+		if err != nil {
+			return err
+		}
+		defer ibj.Close() //nolint:errcheck
+
+		enc := json.NewEncoder(ibj)
+
+		var lastTse *TipSetExec
 
 		lastState := tschain[len(tschain)-1].ParentState()
 		for i := len(tschain) - 2; i >= 0; i-- {
 			cur := tschain[i]
 			log.Infof("computing state (height: %d, ts=%s)", cur.Height(), cur.Cids())
 			if cur.ParentState() != lastState {
-				lastTrace := out[len(out)-1].Trace
+				lastTrace := lastTse.Trace
 				d, err := json.MarshalIndent(lastTrace, "", "  ")
 				if err != nil {
 					panic(err)
@@ -132,34 +149,96 @@ var importBenchCmd = &cli.Command{
 			if err != nil {
 				return err
 			}
-			out = append(out, TipSetExec{
+			stripCallers(trace)
+
+			lastTse = &TipSetExec{
 				TipSet:   cur.Key(),
 				Trace:    trace,
 				Duration: time.Since(start),
-			})
+			}
 			lastState = st
+			if err := enc.Encode(lastTse); err != nil {
+				return xerrors.Errorf("failed to write out tipsetexec: %w", err)
+			}
 		}
 
 		pprof.StopCPUProfile()
-
-		ibj, err := os.Create("import-bench.json")
-		if err != nil {
-			return err
-		}
-		defer ibj.Close() //nolint:errcheck
-
-		if err := json.NewEncoder(ibj).Encode(out); err != nil {
-			return err
-		}
 
 		return nil
 
 	},
 }
 
+func walkExecutionTrace(et *types.ExecutionTrace) {
+	for _, gc := range et.GasCharges {
+		gc.Callers = nil
+	}
+	for _, sub := range et.Subcalls {
+		walkExecutionTrace(&sub) //nolint:scopelint,gosec
+	}
+}
+
+func stripCallers(trace []*api.InvocResult) {
+	for _, t := range trace {
+		walkExecutionTrace(&t.ExecutionTrace)
+	}
+}
+
 type Invocation struct {
 	TipSet types.TipSetKey
 	Invoc  *api.InvocResult
+}
+
+const GasPerNs = 10
+
+func countGasCosts(et *types.ExecutionTrace) (int64, int64) {
+	var cgas, vgas int64
+
+	for _, gc := range et.GasCharges {
+		cgas += gc.ComputeGas
+		vgas += gc.VirtualComputeGas
+	}
+
+	for _, sub := range et.Subcalls {
+		c, v := countGasCosts(&sub)
+		cgas += c
+		vgas += v
+	}
+
+	return cgas, vgas
+}
+
+func compStats(vals []float64) (float64, float64) {
+	var sum float64
+
+	for _, v := range vals {
+		sum += v
+	}
+
+	av := sum / float64(len(vals))
+
+	var varsum float64
+	for _, v := range vals {
+		delta := av - v
+		varsum += delta * delta
+	}
+
+	return av, math.Sqrt(varsum / float64(len(vals)))
+}
+
+func tallyGasCharges(charges map[string][]float64, et *types.ExecutionTrace) {
+	for _, gc := range et.GasCharges {
+
+		compGas := gc.ComputeGas + gc.VirtualComputeGas
+		ratio := float64(compGas) / float64(gc.TimeTaken.Nanoseconds())
+
+		charges[gc.Name] = append(charges[gc.Name], 1/(ratio/GasPerNs))
+		//fmt.Printf("%s: %d, %s: %0.2f\n", gc.Name, compGas, gc.TimeTaken, 1/(ratio/GasPerNs))
+		for _, sub := range et.Subcalls {
+			tallyGasCharges(charges, &sub)
+		}
+	}
+
 }
 
 var importAnalyzeCmd = &cli.Command{
@@ -176,9 +255,18 @@ var importAnalyzeCmd = &cli.Command{
 		}
 
 		var results []TipSetExec
-		if err := json.NewDecoder(fi).Decode(&results); err != nil {
-			return err
+		for {
+			var tse TipSetExec
+			if err := json.NewDecoder(fi).Decode(&tse); err != nil {
+				if err != io.EOF {
+					return err
+				}
+				break
+			}
+			results = append(results, tse)
 		}
+
+		chargeDeltas := make(map[string][]float64)
 
 		var invocs []Invocation
 		var totalTime time.Duration
@@ -191,7 +279,27 @@ var importAnalyzeCmd = &cli.Command{
 					TipSet: r.TipSet,
 					Invoc:  inv,
 				})
+
+				cgas, vgas := countGasCosts(&inv.ExecutionTrace)
+				fmt.Printf("Invocation: %d %s: %s %d -> %0.2f\n", inv.Msg.Method, inv.Msg.To, inv.Duration, cgas+vgas, float64(GasPerNs*inv.Duration.Nanoseconds())/float64(cgas+vgas))
+
+				tallyGasCharges(chargeDeltas, &inv.ExecutionTrace)
+
 			}
+		}
+
+		var keys []string
+		for k := range chargeDeltas {
+			keys = append(keys, k)
+		}
+
+		fmt.Println("Gas Price Deltas")
+		sort.Strings(keys)
+		for _, k := range keys {
+			vals := chargeDeltas[k]
+			av, stdev := compStats(vals)
+
+			fmt.Printf("%s: incr by %f (%f)\n", k, av, stdev)
 		}
 
 		sort.Slice(invocs, func(i, j int) bool {

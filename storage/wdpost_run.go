@@ -99,10 +99,6 @@ func (s *WindowPoStScheduler) checkSectors(ctx context.Context, check *abi.BitFi
 
 	log.Warnw("Checked sectors", "checked", len(tocheck), "good", len(sectors))
 
-	if len(sectors) == 0 { // nothing to recover
-		return nil, nil
-	}
-
 	sbf := bitfield.New()
 	for s := range sectors {
 		(&sbf).Set(uint64(s.Number))
@@ -387,17 +383,14 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 		return nil, xerrors.Errorf("get need prove sectors: %w", err)
 	}
 
-	var skipped *abi.BitField
-	{
-		good, err := s.checkSectors(ctx, nps)
-		if err != nil {
-			return nil, xerrors.Errorf("checking sectors to skip: %w", err)
-		}
+	good, err := s.checkSectors(ctx, nps)
+	if err != nil {
+		return nil, xerrors.Errorf("checking sectors to skip: %w", err)
+	}
 
-		skipped, err = bitfield.SubtractBitField(nps, good)
-		if err != nil {
-			return nil, xerrors.Errorf("nps - good: %w", err)
-		}
+	skipped, err := bitfield.SubtractBitField(nps, good)
+	if err != nil {
+		return nil, xerrors.Errorf("nps - good: %w", err)
 	}
 
 	skipCount, err := skipped.Count()
@@ -405,7 +398,7 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 		return nil, xerrors.Errorf("getting skipped sector count: %w", err)
 	}
 
-	ssi, err := s.sortedSectorInfo(ctx, nps, ts)
+	ssi, err := s.sortedSectorInfo(ctx, good, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("getting sorted sector info: %w", err)
 	}

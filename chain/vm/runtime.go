@@ -253,7 +253,7 @@ func (rt *Runtime) CreateActor(codeID cid.Cid, address address.Address) {
 		rt.Abortf(exitcode.SysErrorIllegalArgument, "Actor address already exists")
 	}
 
-	rt.ChargeGas(rt.Pricelist().OnCreateActor())
+	rt.chargeGas(rt.Pricelist().OnCreateActor())
 
 	err = rt.state.SetActor(address, &types.Actor{
 		Code:    codeID,
@@ -267,7 +267,7 @@ func (rt *Runtime) CreateActor(codeID cid.Cid, address address.Address) {
 }
 
 func (rt *Runtime) DeleteActor(addr address.Address) {
-	rt.ChargeGas(rt.Pricelist().OnDeleteActor())
+	rt.chargeGas(rt.Pricelist().OnDeleteActor())
 	act, err := rt.state.GetActor(rt.Message().Receiver())
 	if err != nil {
 		if xerrors.Is(err, types.ErrActorNotFound) {
@@ -408,7 +408,7 @@ func (rt *Runtime) internalSend(from, to address.Address, method abi.MethodNum, 
 	if subrt != nil {
 		rt.numActorsCreated = subrt.numActorsCreated
 	}
-	rt.executionTrace.Subcalls = append(rt.executionTrace.Subcalls, subrt.executionTrace) //&er)
+	rt.executionTrace.Subcalls = append(rt.executionTrace.Subcalls, subrt.executionTrace)
 	return ret, errSend
 }
 
@@ -496,7 +496,15 @@ func (rt *Runtime) finilizeGasTracing() {
 	}
 }
 
-func (rt *Runtime) ChargeGas(gas GasCharge) {
+// ChargeGas is spec actors function
+func (rt *Runtime) ChargeGas(name string, compute int64, virtual int64) {
+	err := rt.chargeGasInternal(newGasCharge(name, compute, 0).WithVirtual(virtual, 0), 1)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func (rt *Runtime) chargeGas(gas GasCharge) {
 	err := rt.chargeGasInternal(gas, 1)
 	if err != nil {
 		panic(err)

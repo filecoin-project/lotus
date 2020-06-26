@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 
+	"github.com/filecoin-project/lotus/api"
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -391,6 +392,10 @@ var clientRetrieveCmd = &cli.Command{
 			Name:  "car",
 			Usage: "export to a car file instead of a regular file",
 		},
+		&cli.StringFlag{
+			Name:  "miner",
+			Usage: "miner address for retrieval, if not present it'll use local discovery",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 2 {
@@ -398,7 +403,7 @@ var clientRetrieveCmd = &cli.Command{
 			return nil
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		fapi, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -409,7 +414,7 @@ var clientRetrieveCmd = &cli.Command{
 		if cctx.String("address") != "" {
 			payer, err = address.NewFromString(cctx.String("address"))
 		} else {
-			payer, err = api.WalletDefaultAddress(ctx)
+			payer, err = fapi.WalletDefaultAddress(ctx)
 		}
 		if err != nil {
 			return err
@@ -432,23 +437,39 @@ var clientRetrieveCmd = &cli.Command{
 			return nil
 		}*/ // TODO: fix
 
-		offers, err := api.ClientFindData(ctx, file)
-		if err != nil {
-			return err
+		var offer api.QueryOffer
+		minerStrAddr := cctx.String("miner")
+		if minerStrAddr == "" { // Local discovery
+			offers, err := fapi.ClientFindData(ctx, file)
+			if err != nil {
+				return err
+			}
+
+			// TODO: parse offer strings from `client find`, make this smarter
+			if len(offers) < 1 {
+				fmt.Println("Failed to find file")
+				return nil
+			}
+			offer = offers[0]
+		} else { // Directed retrieval
+			minerAddr, err := address.NewFromString(minerStrAddr)
+			if err != nil {
+				return err
+			}
+			offer, err = fapi.ClientMinerQueryOffer(ctx, file, minerAddr)
+			if err != nil {
+				return err
+			}
 		}
-
-		// TODO: parse offer strings from `client find`, make this smarter
-
-		if len(offers) < 1 {
-			fmt.Println("Failed to find file")
-			return nil
+		if offer.Err != "" {
+			return fmt.Errorf("The received offer errored: %s", offer.Err)
 		}
 
 		ref := &lapi.FileRef{
 			Path:  cctx.Args().Get(1),
 			IsCAR: cctx.Bool("car"),
 		}
-		if err := api.ClientRetrieve(ctx, offers[0].Order(payer), ref); err != nil {
+		if err := fapi.ClientRetrieve(ctx, offer.Order(payer), ref); err != nil {
 			return xerrors.Errorf("Retrieval Failed: %w", err)
 		}
 

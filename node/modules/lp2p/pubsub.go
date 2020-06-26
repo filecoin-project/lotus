@@ -44,13 +44,14 @@ type GossipIn struct {
 	Db   dtypes.DrandBootstrap
 	Cfg  *config.Pubsub
 	Sk   *dtypes.ScoreKeeper
+	Dr   dtypes.DrandConfig
 }
 
-func getDrandTopic() (string, error) {
+func getDrandTopic(chainInfoJSON string) (string, error) {
 	var drandInfo = struct {
 		Hash string `json:"hash"`
 	}{}
-	err := json.Unmarshal([]byte(build.DrandChain), &drandInfo)
+	err := json.Unmarshal([]byte(chainInfoJSON), &drandInfo)
 	if err != nil {
 		return "", xerrors.Errorf("could not unmarshal drand chain info: %w", err)
 	}
@@ -68,7 +69,7 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 	}
 
 	isBootstrapNode := in.Cfg.Bootstrapper
-	drandTopic, err := getDrandTopic()
+	drandTopic, err := getDrandTopic(in.Dr.ChainInfoJSON)
 	if err != nil {
 		return nil, err
 	}

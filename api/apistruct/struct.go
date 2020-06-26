@@ -50,7 +50,8 @@ type CommonStruct struct {
 		LogList     func(context.Context) ([]string, error)     `perm:"write"`
 		LogSetLevel func(context.Context, string, string) error `perm:"write"`
 
-		Shutdown func(context.Context) error `perm:"admin"`
+		Shutdown func(context.Context) error                    `perm:"admin"`
+		Closing  func(context.Context) (<-chan struct{}, error) `perm:"read"`
 	}
 }
 
@@ -108,17 +109,18 @@ type FullNodeStruct struct {
 		WalletImport         func(context.Context, *types.KeyInfo) (address.Address, error)                       `perm:"admin"`
 		WalletDelete         func(context.Context, address.Address) error                                         `perm:"write"`
 
-		ClientImport      func(ctx context.Context, ref api.FileRef) (cid.Cid, error)                                          `perm:"admin"`
-		ClientListImports func(ctx context.Context) ([]api.Import, error)                                                      `perm:"write"`
-		ClientHasLocal    func(ctx context.Context, root cid.Cid) (bool, error)                                                `perm:"write"`
-		ClientFindData    func(ctx context.Context, root cid.Cid) ([]api.QueryOffer, error)                                    `perm:"read"`
-		ClientStartDeal   func(ctx context.Context, params *api.StartDealParams) (*cid.Cid, error)                             `perm:"admin"`
-		ClientGetDealInfo func(context.Context, cid.Cid) (*api.DealInfo, error)                                                `perm:"read"`
-		ClientListDeals   func(ctx context.Context) ([]api.DealInfo, error)                                                    `perm:"write"`
-		ClientRetrieve    func(ctx context.Context, order api.RetrievalOrder, ref *api.FileRef) error                          `perm:"admin"`
-		ClientQueryAsk    func(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.SignedStorageAsk, error) `perm:"read"`
-		ClientCalcCommP   func(ctx context.Context, inpath string, miner address.Address) (*api.CommPRet, error)               `perm:"read"`
-		ClientGenCar      func(ctx context.Context, ref api.FileRef, outpath string) error                                     `perm:"write"`
+		ClientImport          func(ctx context.Context, ref api.FileRef) (cid.Cid, error)                                          `perm:"admin"`
+		ClientListImports     func(ctx context.Context) ([]api.Import, error)                                                      `perm:"write"`
+		ClientHasLocal        func(ctx context.Context, root cid.Cid) (bool, error)                                                `perm:"write"`
+		ClientFindData        func(ctx context.Context, root cid.Cid) ([]api.QueryOffer, error)                                    `perm:"read"`
+		ClientMinerQueryOffer func(ctx context.Context, root cid.Cid, miner address.Address) (api.QueryOffer, error)               `perm:"read"`
+		ClientStartDeal       func(ctx context.Context, params *api.StartDealParams) (*cid.Cid, error)                             `perm:"admin"`
+		ClientGetDealInfo     func(context.Context, cid.Cid) (*api.DealInfo, error)                                                `perm:"read"`
+		ClientListDeals       func(ctx context.Context) ([]api.DealInfo, error)                                                    `perm:"write"`
+		ClientRetrieve        func(ctx context.Context, order api.RetrievalOrder, ref *api.FileRef) error                          `perm:"admin"`
+		ClientQueryAsk        func(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.SignedStorageAsk, error) `perm:"read"`
+		ClientCalcCommP       func(ctx context.Context, inpath string, miner address.Address) (*api.CommPRet, error)               `perm:"read"`
+		ClientGenCar          func(ctx context.Context, ref api.FileRef, outpath string) error                                     `perm:"write"`
 
 		StateNetworkName                  func(context.Context) (dtypes.NetworkName, error)                                                                   `perm:"read"`
 		StateMinerSectors                 func(context.Context, address.Address, *abi.BitField, bool, types.TipSetKey) ([]*api.ChainSectorInfo, error)        `perm:"read"`
@@ -192,10 +194,11 @@ type StorageMinerStruct struct {
 
 		MiningBase func(context.Context) (*types.TipSet, error) `perm:"read"`
 
-		MarketImportDealData      func(context.Context, cid.Cid, string) error                   `perm:"write"`
-		MarketListDeals           func(ctx context.Context) ([]storagemarket.StorageDeal, error) `perm:"read"`
-		MarketListIncompleteDeals func(ctx context.Context) ([]storagemarket.MinerDeal, error)   `perm:"read"`
-		MarketSetPrice            func(context.Context, types.BigInt) error                      `perm:"admin"`
+		MarketImportDealData      func(context.Context, cid.Cid, string) error                                                                                                     `perm:"write"`
+		MarketListDeals           func(ctx context.Context) ([]storagemarket.StorageDeal, error)                                                                                   `perm:"read"`
+		MarketListIncompleteDeals func(ctx context.Context) ([]storagemarket.MinerDeal, error)                                                                                     `perm:"read"`
+		MarketSetAsk              func(ctx context.Context, price types.BigInt, duration abi.ChainEpoch, minPieceSize abi.PaddedPieceSize, maxPieceSize abi.PaddedPieceSize) error `perm:"admin"`
+		MarketGetAsk              func(ctx context.Context) (*storagemarket.SignedStorageAsk, error)                                                                               `perm:"read"`
 
 		PledgeSector func(context.Context) error `perm:"write"`
 
@@ -203,6 +206,7 @@ type StorageMinerStruct struct {
 		SectorsList   func(context.Context) ([]abi.SectorNumber, error)               `perm:"read"`
 		SectorsRefs   func(context.Context) (map[string][]api.SealedRef, error)       `perm:"read"`
 		SectorsUpdate func(context.Context, abi.SectorNumber, api.SectorState) error  `perm:"write"`
+		SectorRemove  func(context.Context, abi.SectorNumber) error                   `perm:"admin"`
 
 		WorkerConnect func(context.Context, string) error                             `perm:"admin"` // TODO: worker perm
 		WorkerStats   func(context.Context) (map[uint64]storiface.WorkerStats, error) `perm:"admin"`
@@ -220,9 +224,12 @@ type StorageMinerStruct struct {
 		StorageLock          func(ctx context.Context, sector abi.SectorID, read stores.SectorFileType, write stores.SectorFileType) error                                 `perm:"admin"`
 		StorageTryLock       func(ctx context.Context, sector abi.SectorID, read stores.SectorFileType, write stores.SectorFileType) (bool, error)                         `perm:"admin"`
 
-		DealsImportData               func(ctx context.Context, dealPropCid cid.Cid, file string) error `perm:"write"`
-		DealsList                     func(ctx context.Context) ([]storagemarket.StorageDeal, error)    `perm:"read"`
-		DealsSetAcceptingStorageDeals func(context.Context, bool) error                                 `perm:"admin"`
+		DealsImportData                 func(ctx context.Context, dealPropCid cid.Cid, file string) error `perm:"write"`
+		DealsList                       func(ctx context.Context) ([]storagemarket.StorageDeal, error)    `perm:"read"`
+		DealsSetAcceptingStorageDeals   func(context.Context, bool) error                                 `perm:"admin"`
+		DealsSetAcceptingRetrievalDeals func(context.Context, bool) error                                 `perm:"admin"`
+		DealsPieceCidBlocklist          func(context.Context) ([]cid.Cid, error)                          `perm:"admin"`
+		DealsSetPieceCidBlocklist       func(context.Context, []cid.Cid) error                            `perm:"read"`
 
 		StorageAddLocal func(ctx context.Context, path string) error `perm:"admin"`
 	}
@@ -238,12 +245,14 @@ type WorkerStruct struct {
 		Paths     func(context.Context) ([]stores.StoragePath, error)            `perm:"admin"`
 		Info      func(context.Context) (storiface.WorkerInfo, error)            `perm:"admin"`
 
-		SealPreCommit1 func(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, pieces []abi.PieceInfo) (storage.PreCommit1Out, error)                                                           `perm:"admin"`
-		SealPreCommit2 func(context.Context, abi.SectorID, storage.PreCommit1Out) (cids storage.SectorCids, err error)                                                                                            `perm:"admin"`
-		SealCommit1    func(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storage.SectorCids) (storage.Commit1Out, error) `perm:"admin"`
-		SealCommit2    func(context.Context, abi.SectorID, storage.Commit1Out) (storage.Proof, error)                                                                                                             `perm:"admin"`
-		FinalizeSector func(context.Context, abi.SectorID) error                                                                                                                                                  `perm:"admin"`
-		MoveStorage    func(ctx context.Context, sector abi.SectorID) error                                                                                                                                       `perm:"admin"`
+		SealPreCommit1  func(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, pieces []abi.PieceInfo) (storage.PreCommit1Out, error)                                                           `perm:"admin"`
+		SealPreCommit2  func(context.Context, abi.SectorID, storage.PreCommit1Out) (cids storage.SectorCids, err error)                                                                                            `perm:"admin"`
+		SealCommit1     func(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storage.SectorCids) (storage.Commit1Out, error) `perm:"admin"`
+		SealCommit2     func(context.Context, abi.SectorID, storage.Commit1Out) (storage.Proof, error)                                                                                                             `perm:"admin"`
+		FinalizeSector  func(context.Context, abi.SectorID, []storage.Range) error                                                                                                                                 `perm:"admin"`
+		ReleaseUnsealed func(ctx context.Context, sector abi.SectorID, safeToFree []storage.Range) error                                                                                                           `perm:"admin"`
+		Remove          func(ctx context.Context, sector abi.SectorID) error                                                                                                                                       `perm:"admin"`
+		MoveStorage     func(ctx context.Context, sector abi.SectorID) error                                                                                                                                       `perm:"admin"`
 
 		UnsealPiece func(context.Context, abi.SectorID, storiface.UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) error `perm:"admin"`
 		ReadPiece   func(context.Context, io.Writer, abi.SectorID, storiface.UnpaddedByteIndex, abi.UnpaddedPieceSize) error                   `perm:"admin"`
@@ -313,6 +322,10 @@ func (c *CommonStruct) Shutdown(ctx context.Context) error {
 	return c.Internal.Shutdown(ctx)
 }
 
+func (c *CommonStruct) Closing(ctx context.Context) (<-chan struct{}, error) {
+	return c.Internal.Closing(ctx)
+}
+
 // FullNodeStruct
 
 func (c *FullNodeStruct) ClientListImports(ctx context.Context) ([]api.Import, error) {
@@ -329,6 +342,10 @@ func (c *FullNodeStruct) ClientHasLocal(ctx context.Context, root cid.Cid) (bool
 
 func (c *FullNodeStruct) ClientFindData(ctx context.Context, root cid.Cid) ([]api.QueryOffer, error) {
 	return c.Internal.ClientFindData(ctx, root)
+}
+
+func (c *FullNodeStruct) ClientMinerQueryOffer(ctx context.Context, root cid.Cid, miner address.Address) (api.QueryOffer, error) {
+	return c.Internal.ClientMinerQueryOffer(ctx, root, miner)
 }
 
 func (c *FullNodeStruct) ClientStartDeal(ctx context.Context, params *api.StartDealParams) (*cid.Cid, error) {
@@ -773,6 +790,10 @@ func (c *StorageMinerStruct) SectorsUpdate(ctx context.Context, id abi.SectorNum
 	return c.Internal.SectorsUpdate(ctx, id, state)
 }
 
+func (c *StorageMinerStruct) SectorRemove(ctx context.Context, number abi.SectorNumber) error {
+	return c.Internal.SectorRemove(ctx, number)
+}
+
 func (c *StorageMinerStruct) WorkerConnect(ctx context.Context, url string) error {
 	return c.Internal.WorkerConnect(ctx, url)
 }
@@ -841,8 +862,12 @@ func (c *StorageMinerStruct) MarketListIncompleteDeals(ctx context.Context) ([]s
 	return c.Internal.MarketListIncompleteDeals(ctx)
 }
 
-func (c *StorageMinerStruct) MarketSetPrice(ctx context.Context, p types.BigInt) error {
-	return c.Internal.MarketSetPrice(ctx, p)
+func (c *StorageMinerStruct) MarketSetAsk(ctx context.Context, price types.BigInt, duration abi.ChainEpoch, minPieceSize abi.PaddedPieceSize, maxPieceSize abi.PaddedPieceSize) error {
+	return c.Internal.MarketSetAsk(ctx, price, duration, minPieceSize, maxPieceSize)
+}
+
+func (c *StorageMinerStruct) MarketGetAsk(ctx context.Context) (*storagemarket.SignedStorageAsk, error) {
+	return c.Internal.MarketGetAsk(ctx)
 }
 
 func (c *StorageMinerStruct) DealsImportData(ctx context.Context, dealPropCid cid.Cid, file string) error {
@@ -855,6 +880,18 @@ func (c *StorageMinerStruct) DealsList(ctx context.Context) ([]storagemarket.Sto
 
 func (c *StorageMinerStruct) DealsSetAcceptingStorageDeals(ctx context.Context, b bool) error {
 	return c.Internal.DealsSetAcceptingStorageDeals(ctx, b)
+}
+
+func (c *StorageMinerStruct) DealsSetAcceptingRetrievalDeals(ctx context.Context, b bool) error {
+	return c.Internal.DealsSetAcceptingRetrievalDeals(ctx, b)
+}
+
+func (c *StorageMinerStruct) DealsPieceCidBlocklist(ctx context.Context) ([]cid.Cid, error) {
+	return c.Internal.DealsPieceCidBlocklist(ctx)
+}
+
+func (c *StorageMinerStruct) DealsSetPieceCidBlocklist(ctx context.Context, cids []cid.Cid) error {
+	return c.Internal.DealsSetPieceCidBlocklist(ctx, cids)
 }
 
 func (c *StorageMinerStruct) StorageAddLocal(ctx context.Context, path string) error {
@@ -895,8 +932,16 @@ func (w *WorkerStruct) SealCommit2(ctx context.Context, sector abi.SectorID, c1o
 	return w.Internal.SealCommit2(ctx, sector, c1o)
 }
 
-func (w *WorkerStruct) FinalizeSector(ctx context.Context, sector abi.SectorID) error {
-	return w.Internal.FinalizeSector(ctx, sector)
+func (w *WorkerStruct) FinalizeSector(ctx context.Context, sector abi.SectorID, keepUnsealed []storage.Range) error {
+	return w.Internal.FinalizeSector(ctx, sector, keepUnsealed)
+}
+
+func (w *WorkerStruct) ReleaseUnsealed(ctx context.Context, sector abi.SectorID, safeToFree []storage.Range) error {
+	return w.Internal.ReleaseUnsealed(ctx, sector, safeToFree)
+}
+
+func (w *WorkerStruct) Remove(ctx context.Context, sector abi.SectorID) error {
+	return w.Internal.Remove(ctx, sector)
 }
 
 func (w *WorkerStruct) MoveStorage(ctx context.Context, sector abi.SectorID) error {
