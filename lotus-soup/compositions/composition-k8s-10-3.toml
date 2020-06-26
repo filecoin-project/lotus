@@ -1,0 +1,59 @@
+[metadata]
+  name = "lotus-soup"
+  author = ""
+
+[global]
+  plan = "lotus-soup"
+  case = "lotus-baseline"
+  total_instances = 14
+  builder = "docker:go"
+  runner = "cluster:k8s"
+
+[global.build_config]
+  push_registry=true
+  go_proxy_mode="remote"
+  go_proxy_url="http://localhost:8081"
+  registry_type="aws"
+
+[global.run.test_params]
+  clients = "10"
+  miners = "3"
+  genesis_timestamp_offset = "100000"
+  balance = "2000"
+  sectors = "10"
+
+[[groups]]
+  id = "bootstrapper"
+  [groups.resources]
+    memory = "512Mi"
+    cpu = "1000m"
+  [groups.instances]
+    count = 1
+    percentage = 0.0
+  [groups.run]
+    [groups.run.test_params]
+      role = "bootstrapper"
+
+[[groups]]
+  id = "miners"
+  [groups.resources]
+    memory = "8192Mi"
+    cpu = "1000m"
+  [groups.instances]
+    count = 3
+    percentage = 0.0
+  [groups.run]
+    [groups.run.test_params]
+      role = "miner"
+
+[[groups]]
+  id = "clients"
+  [groups.resources]
+    memory = "1024Mi"
+    cpu = "1000m"
+  [groups.instances]
+    count = 10
+    percentage = 0.0
+  [groups.run]
+    [groups.run.test_params]
+      role = "client"
