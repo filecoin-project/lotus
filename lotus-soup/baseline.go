@@ -43,10 +43,11 @@ import (
 // The we create a genesis block that allocates some funds to each node and collects
 // the presealed sectors.
 var baselineRoles = map[string]func(*TestEnvironment) error{
-	"bootstrapper": runBootstrapper,
-	"miner":        runMiner,
-	"client":       runBaselineClient,
-	"drand":        runDrandNode,
+	"bootstrapper":  runBootstrapper,
+	"miner":         runMiner,
+	"client":        runBaselineClient,
+	"drand":         runDrandNode,
+	"pubsub-tracer": runPubsubTracer,
 }
 
 func runBaselineClient(t *TestEnvironment) error {
@@ -237,4 +238,3 @@ func extractCarData(ctx context.Context, rdata []byte, rpath string) []byte {
 	}
 	return rdata
 }
-
