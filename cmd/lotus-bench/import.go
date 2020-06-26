@@ -347,7 +347,6 @@ var importAnalyzeCmd = &cli.Command{
 					}
 					if len(expensiveInvocs) > 4*invocsKeep {
 						sort.Slice(expensiveInvocs, func(i, j int) bool {
-							log.Warnf("i: %v, j: %v", expensiveInvocs[i], expensiveInvocs[j])
 							return expensiveInvocs[i].Invoc.Duration > expensiveInvocs[j].Invoc.Duration
 						})
 						leastExpensiveInvoc = expensiveInvocs[len(expensiveInvocs)-1].Invoc.Duration
