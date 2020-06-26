@@ -226,16 +226,16 @@ type StorageMinerStruct struct {
 
 		DealsImportData                       func(ctx context.Context, dealPropCid cid.Cid, file string) error `perm:"write"`
 		DealsList                             func(ctx context.Context) ([]storagemarket.StorageDeal, error)    `perm:"read"`
-		DealsConsiderOnlineStorageDeals       func(context.Context) (bool, error)                               `perm:"admin"`
+		DealsConsiderOnlineStorageDeals       func(context.Context) (bool, error)                               `perm:"read"`
 		DealsSetConsiderOnlineStorageDeals    func(context.Context, bool) error                                 `perm:"admin"`
-		DealsConsiderOnlineRetrievalDeals     func(context.Context) (bool, error)                               `perm:"admin"`
+		DealsConsiderOnlineRetrievalDeals     func(context.Context) (bool, error)                               `perm:"read"`
 		DealsSetConsiderOnlineRetrievalDeals  func(context.Context, bool) error                                 `perm:"admin"`
-		DealsConsiderOfflineStorageDeals      func(context.Context) (bool, error)                               `perm:"admin"`
+		DealsConsiderOfflineStorageDeals      func(context.Context) (bool, error)                               `perm:"read"`
 		DealsSetConsiderOfflineStorageDeals   func(context.Context, bool) error                                 `perm:"admin"`
-		DealsConsiderOfflineRetrievalDeals    func(context.Context) (bool, error)                               `perm:"admin"`
+		DealsConsiderOfflineRetrievalDeals    func(context.Context) (bool, error)                               `perm:"read"`
 		DealsSetConsiderOfflineRetrievalDeals func(context.Context, bool) error                                 `perm:"admin"`
-		DealsPieceCidBlocklist                func(context.Context) ([]cid.Cid, error)                          `perm:"admin"`
-		DealsSetPieceCidBlocklist             func(context.Context, []cid.Cid) error                            `perm:"read"`
+		DealsPieceCidBlocklist                func(context.Context) ([]cid.Cid, error)                          `perm:"read"`
+		DealsSetPieceCidBlocklist             func(context.Context, []cid.Cid) error                            `perm:"admin"`
 
 		StorageAddLocal func(ctx context.Context, path string) error `perm:"admin"`
 	}
