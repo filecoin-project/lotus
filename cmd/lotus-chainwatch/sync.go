@@ -174,6 +174,8 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, headTs *types.
 
 		log.Infow("Starting Sync", "height", minH, "numBlocks", len(toSync), "maxBatch", maxBatch)
 
+		// map of addresses to changed actors
+		var changes map[string]types.Actor
 		// collect all actor state that has changes between block headers
 		paDone := 0
 		parmap.Par(50, parmap.MapArr(toSync), func(bh *types.BlockHeader) {
@@ -234,7 +236,7 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, headTs *types.
 
 			// TODO Does this return actors that have been deleted between states?
 			// collect all actors that had state changes between the blockheader parent-state and its grandparent-state.
-			changes, err := api.StateChangedActors(ctx, pts.ParentState(), bh.ParentStateRoot)
+			changes, err = api.StateChangedActors(ctx, pts.ParentState(), bh.ParentStateRoot)
 			if err != nil {
 				log.Error(err)
 				return
@@ -279,6 +281,11 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, headTs *types.
 			}
 		})
 
+		// map of tipset to all miners that had a head-change at that tipset.
+		minerTips := make(map[types.TipSetKey][]*newMinerInfo, len(changes))
+		// heads we've seen, im being paranoid
+		headsSeen := make(map[cid.Cid]struct{}, len(actors))
+
 		log.Infof("Getting messages")
 
 		msgs, incls := fetchMessages(ctx, api, toSync)
@@ -305,11 +312,6 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, headTs *types.
 
 		log.Infof("Getting miner info")
 
-		// map of tipset to all miners that had a head-change at that tipset.
-		minerTips := map[types.TipSetKey][]*newMinerInfo{}
-		// heads we've seen, im being paranoid
-		headsSeen := map[cid.Cid]bool{}
-
 		minerChanges := 0
 		for addr, m := range actors {
 			for actor, c := range m {
@@ -318,7 +320,7 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, headTs *types.
 				}
 
 				// only want miner actors with head change events
-				if headsSeen[actor.Head] {
+				if _, found := headsSeen[actor.Head]; found {
 					continue
 				}
 				minerChanges++
@@ -333,15 +335,13 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, headTs *types.
 
 					rawPower: big.Zero(),
 					qalPower: big.Zero(),
-					ssize:    0,
-					psize:    0,
 				})
 
-				headsSeen[actor.Head] = true
+				headsSeen[actor.Head] = struct{}{}
 			}
 		}
 
-		minerProcessingState := time.Now()
+		minerProcessingStartedAt := time.Now()
 		log.Infow("Processing miners", "numTips", len(minerTips), "numMinerChanges", minerChanges)
 		// extract the power actor state at each tipset, loop over all miners that changed at said tipset and extract their
 		// claims from the power actor state. This ensures we only fetch the power actors state once for each tipset.
@@ -395,7 +395,7 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, headTs *types.
 				}
 			*/
 		})
-		log.Infow("Completed Miner Processing", "duration", time.Since(minerProcessingState).String(), "processed", minerChanges)
+		log.Infow("Completed Miner Processing", "duration", time.Since(minerProcessingStartedAt).String(), "processed", minerChanges)
 
 		log.Info("Getting receipts")
 
@@ -580,7 +580,7 @@ func getPowerActorClaimsMap(ctx context.Context, api api.FullNode, ts types.TipS
 }
 
 // require for AMT and HAMT access
-// TODO extract this to a common locaiton in lotus and reuse the code
+// TODO extract this to a common location in lotus and reuse the code
 type apiIpldStore struct {
 	ctx context.Context
 	api api.FullNode
@@ -603,8 +603,7 @@ func (ht *apiIpldStore) Get(ctx context.Context, c cid.Cid, out interface{}) err
 		}
 		return nil
 	}
-
-	return fmt.Errorf("Object does not implement CBORUnmarshaler")
+	return fmt.Errorf("Object does not implement CBORUnmarshaler: %T", out)
 }
 
 func (ht *apiIpldStore) Put(ctx context.Context, v interface{}) (cid.Cid, error) {
