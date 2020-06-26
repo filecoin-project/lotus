@@ -278,11 +278,10 @@ func tallyGasCharges(charges map[string]*stats, et types.ExecutionTrace) {
 
 		s.AddPoint(ratio)
 		//fmt.Printf("%s: %d, %s: %0.2f\n", gc.Name, compGas, gc.TimeTaken, 1/(ratio/GasPerNs))
-		for _, sub := range et.Subcalls {
-			tallyGasCharges(charges, sub)
-		}
 	}
-
+	for _, sub := range et.Subcalls {
+		tallyGasCharges(charges, sub)
+	}
 }
 
 var importAnalyzeCmd = &cli.Command{
