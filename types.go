@@ -68,7 +68,7 @@ type SectorInfo struct {
 	CommR *cid.Cid
 	Proof []byte
 
-	PreCommitInfo *miner.SectorPreCommitInfo
+	PreCommitInfo    *miner.SectorPreCommitInfo
 	PreCommitMessage *cid.Cid
 	PreCommitTipSet  TipSetToken
 
