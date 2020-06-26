@@ -408,7 +408,7 @@ func (rt *Runtime) internalSend(from, to address.Address, method abi.MethodNum, 
 	if subrt != nil {
 		rt.numActorsCreated = subrt.numActorsCreated
 	}
-	rt.executionTrace.Subcalls = append(rt.executionTrace.Subcalls, subrt.executionTrace) //&er)
+	rt.executionTrace.Subcalls = append(rt.executionTrace.Subcalls, subrt.executionTrace)
 	return ret, errSend
 }
 
