@@ -19,7 +19,7 @@ require (
 	github.com/ipld/go-car v0.1.1-0.20200526133713-1c7508d55aae
 	github.com/libp2p/go-libp2p v0.10.0
 	github.com/libp2p/go-libp2p-core v0.6.0
-	github.com/libp2p/go-libp2p-pubsub-tracer v0.0.0-20200626081338-a4828eefb15e
+	github.com/libp2p/go-libp2p-pubsub-tracer v0.0.0-20200626141350-e730b32bf1e6
 	github.com/multiformats/go-multiaddr v0.2.2
 	github.com/testground/sdk-go v0.2.3-0.20200617132925-2e4d69f9ba38
 )
