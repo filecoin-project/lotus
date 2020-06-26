@@ -268,6 +268,10 @@ func tallyGasCharges(charges map[string]*stats, et types.ExecutionTrace) {
 	for _, gc := range et.GasCharges {
 
 		compGas := gc.ComputeGas + gc.VirtualComputeGas
+		if compGas == 0 {
+			compGas = 1
+		}
+
 		ratio := float64(compGas) / float64(gc.TimeTaken.Nanoseconds())
 
 		s := charges[gc.Name]
