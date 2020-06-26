@@ -37,6 +37,11 @@ func runMiner(t *TestEnvironment) error {
 	clients := t.IntParam("clients")
 	miners := t.IntParam("miners")
 
+	myActorAddr, err := miner.minerApi.ActorAddress(ctx)
+	if err != nil {
+		return err
+	}
+
 	// mine / stop mining
 	mine := true
 	done := make(chan struct{})
@@ -44,7 +49,6 @@ func runMiner(t *TestEnvironment) error {
 		defer close(done)
 		var i int
 		for i = 0; mine; i++ {
-
 			// synchronize all miners to mine the next block
 			t.RecordMessage("synchronizing all miners to mine next block [%d]", i)
 			stateMineNext := sync.State(fmt.Sprintf("mine-block-%d", i))
@@ -53,10 +57,8 @@ func runMiner(t *TestEnvironment) error {
 			// add some random delay to encourage a different miner winning each round
 			time.Sleep(time.Duration(100 + rand.Intn(int(100*time.Millisecond))))
 
-			err := miner.MineOne(ctx, func(bool) {
-
-				t.D().Counter("miner.mine").Inc(1)
-				// after a block is mined
+			err := miner.MineOne(ctx, func(mined bool) {
+				t.D().Counter(fmt.Sprintf("block.mine,miner=%s", myActorAddr)).Inc(1)
 			})
 			if err != nil {
 				panic(err)

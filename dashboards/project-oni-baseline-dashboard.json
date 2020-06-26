@@ -16,7 +16,7 @@
   "gnetId": null,
   "graphTooltip": 0,
   "id": 16,
-  "iteration": 1593188264284,
+  "iteration": 1593201827692,
   "links": [],
   "panels": [
     {
@@ -182,15 +182,63 @@
             },
             {
               "params": [
+                "miner"
+              ],
+              "type": "tag"
+            },
+            {
+              "params": [
                 "0"
               ],
               "type": "fill"
             }
           ],
-          "measurement": "diagnostics.miner.mine.counter",
+          "measurement": "diagnostics.block.mine.counter",
           "orderByTime": "ASC",
           "policy": "default",
           "refId": "A",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "count"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "sum"
+              }
+            ]
+          ],
+          "tags": []
+        },
+        {
+          "groupBy": [
+            {
+              "params": [
+                "$myinterval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "run"
+              ],
+              "type": "tag"
+            },
+            {
+              "params": [
+                "0"
+              ],
+              "type": "fill"
+            }
+          ],
+          "measurement": "diagnostics.block.mine.counter",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "refId": "B",
           "resultFormat": "time_series",
           "select": [
             [
@@ -918,5 +966,5 @@
   "timezone": "",
   "title": "Project Oni - Baseline test",
   "uid": "8em8RXWMz",
-  "version": 4
+  "version": 6
 }
