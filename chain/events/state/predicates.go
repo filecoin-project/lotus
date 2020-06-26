@@ -14,13 +14,16 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 )
 
+// Data returned from the DiffFunc
 type UserData interface{}
 
+// The calls made by this class external APIs
 type ChainApi interface {
 	apibstore.ChainIO
 	StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error)
 }
 
+// Use StatePredicates to respond to state changes
 type StatePredicates struct {
 	api ChainApi
 	cst *cbor.BasicIpldStore
@@ -33,10 +36,15 @@ func NewStatePredicates(api ChainApi) *StatePredicates {
 	}
 }
 
+// Check if there's a change form oldState to newState, and return
+// - changed: was there a change
+// - user: user-defined data representing the state change
+// - err
 type DiffFunc func(ctx context.Context, oldState, newState *types.TipSet) (changed bool, user UserData, err error)
 
 type DiffStateFunc func(ctx context.Context, oldActorStateHead, newActorStateHead cid.Cid) (changed bool, user UserData, err error)
 
+// Calls diffStateFunc when the state changes for the given actor
 func (sp *StatePredicates) OnActorStateChanged(addr address.Address, diffStateFunc DiffStateFunc) DiffFunc {
 	return func(ctx context.Context, oldState, newState *types.TipSet) (changed bool, user UserData, err error) {
 		oldActor, err := sp.api.StateGetActor(ctx, addr, oldState.Key())
@@ -53,6 +61,7 @@ func (sp *StatePredicates) OnActorStateChanged(addr address.Address, diffStateFu
 
 type DiffStorageMarketStateFunc func(ctx context.Context, oldState *market.State, newState *market.State) (changed bool, user UserData, err error)
 
+// Calls diffStorageMarketState when the state changes for the market actor
 func (sp *StatePredicates) OnStorageMarketActorChanged(diffStorageMarketState DiffStorageMarketStateFunc) DiffFunc {
 	return sp.OnActorStateChanged(builtin.StorageMarketActorAddr, func(ctx context.Context, oldActorStateHead, newActorStateHead cid.Cid) (changed bool, user UserData, err error) {
 		var oldState market.State
@@ -69,6 +78,7 @@ func (sp *StatePredicates) OnStorageMarketActorChanged(diffStorageMarketState Di
 
 type DiffDealStatesFunc func(ctx context.Context, oldDealStateRoot *amt.Root, newDealStateRoot *amt.Root) (changed bool, user UserData, err error)
 
+// Calls diffDealStates when the market state changes
 func (sp *StatePredicates) OnDealStateChanged(diffDealStates DiffDealStatesFunc) DiffStorageMarketStateFunc {
 	return func(ctx context.Context, oldState *market.State, newState *market.State) (changed bool, user UserData, err error) {
 		if oldState.States.Equals(newState.States) {
@@ -88,13 +98,16 @@ func (sp *StatePredicates) OnDealStateChanged(diffDealStates DiffDealStatesFunc)
 	}
 }
 
+// A set of changes to deal state
 type ChangedDeals map[abi.DealID]DealStateChange
 
+// Change in deal state from -> to
 type DealStateChange struct {
 	From market.DealState
 	To market.DealState
 }
 
+// Detect changes in the deal state AMT for the given deal IDs
 func (sp *StatePredicates) DealStateChangedForIDs(dealIds []abi.DealID) DiffDealStatesFunc {
 	return func(ctx context.Context, oldDealStateRoot *amt.Root, newDealStateRoot *amt.Root) (changed bool, user UserData, err error) {
 		changedDeals := make(ChangedDeals)

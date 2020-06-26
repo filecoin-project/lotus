@@ -306,7 +306,7 @@ func (e *hcEvents) onHeadChanged(check CheckFunc, hnd EventHandler, rev RevertHa
 	e.lk.Lock()
 	defer e.lk.Unlock()
 
-	// Check if the even has already occurred
+	// Check if the event has already occurred
 	ts := e.tsc.best()
 	done, more, err := check(ts)
 	if err != nil {
