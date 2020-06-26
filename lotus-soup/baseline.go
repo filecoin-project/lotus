@@ -98,6 +98,7 @@ func runBaselineClient(t *TestEnvironment) error {
 	t.RecordMessage("file cid: %s", fcid)
 
 	// start deal
+	t1 := time.Now()
 	deal := startDeal(ctx, minerAddr.ActorAddr, client, fcid)
 	t.RecordMessage("started deal: %s", deal)
 
@@ -106,11 +107,13 @@ func runBaselineClient(t *TestEnvironment) error {
 
 	t.RecordMessage("waiting for deal to be sealed")
 	waitDealSealed(t, ctx, client, deal)
+	t.D().ResettingHistogram("deal.sealed").Update(int64(time.Since(t1)))
 
 	carExport := true
 
 	t.RecordMessage("trying to retrieve %s", fcid)
 	retrieveData(t, ctx, err, client, fcid, carExport, data)
+	t.D().ResettingHistogram("deal.retrieved").Update(int64(time.Since(t1)))
 
 	t.SyncClient.MustSignalEntry(ctx, stateStopMining)
 
@@ -164,10 +167,15 @@ loop:
 }
 
 func retrieveData(t *TestEnvironment, ctx context.Context, err error, client api.FullNode, fcid cid.Cid, carExport bool, data []byte) {
+	t1 := time.Now()
 	offers, err := client.ClientFindData(ctx, fcid)
 	if err != nil {
 		panic(err)
 	}
+	for _, o := range offers {
+		t.D().Counter(fmt.Sprintf("find-data.offer.%s", o.Miner)).Inc(1)
+	}
+	t.D().ResettingHistogram("find-data").Update(int64(time.Since(t1)))
 
 	if len(offers) < 1 {
 		panic("no offers")
@@ -188,10 +196,12 @@ func retrieveData(t *TestEnvironment, ctx context.Context, err error, client api
 		Path:  filepath.Join(rpath, "ret"),
 		IsCAR: carExport,
 	}
+	t1 = time.Now()
 	err = client.ClientRetrieve(ctx, offers[0].Order(caddr), ref)
 	if err != nil {
 		panic(err)
 	}
+	t.D().ResettingHistogram("retrieve-data").Update(int64(time.Since(t1)))
 
 	rdata, err := ioutil.ReadFile(filepath.Join(rpath, "ret"))
 	if err != nil {

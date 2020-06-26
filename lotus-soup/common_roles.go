@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/testground/sdk-go/sync"
 )
 
@@ -27,6 +28,9 @@ func runMiner(t *TestEnvironment) error {
 	if err != nil {
 		return err
 	}
+
+	t.RecordMessage("block delay: %v", build.BlockDelay)
+	t.D().Gauge("miner.block-delay").Update(build.BlockDelay)
 
 	ctx := context.Background()
 
@@ -50,6 +54,8 @@ func runMiner(t *TestEnvironment) error {
 			time.Sleep(time.Duration(100 + rand.Intn(int(100*time.Millisecond))))
 
 			err := miner.MineOne(ctx, func(bool) {
+
+				t.D().Counter("miner.mine").Inc(1)
 				// after a block is mined
 			})
 			if err != nil {
