@@ -16,7 +16,7 @@
   "gnetId": null,
   "graphTooltip": 0,
   "id": 16,
-  "iteration": 1593201827692,
+  "iteration": 1593204217741,
   "links": [],
   "panels": [
     {
@@ -147,7 +147,10 @@
         "current": false,
         "max": false,
         "min": false,
+        "rightSide": true,
         "show": true,
+        "sort": "total",
+        "sortDesc": true,
         "total": true,
         "values": true
       },
@@ -167,6 +170,7 @@
       "steppedLine": false,
       "targets": [
         {
+          "alias": "$tag_miner ($tag_run)",
           "groupBy": [
             {
               "params": [
@@ -215,6 +219,7 @@
           "tags": []
         },
         {
+          "alias": "all ($tag_run)",
           "groupBy": [
             {
               "params": [
@@ -473,6 +478,8 @@
         "min": false,
         "rightSide": true,
         "show": true,
+        "sort": "total",
+        "sortDesc": true,
         "total": true,
         "values": true
       },
@@ -947,7 +954,7 @@
     ]
   },
   "time": {
-    "from": "now-15m",
+    "from": "now-8m",
     "to": "now"
   },
   "timepicker": {
@@ -966,5 +973,5 @@
   "timezone": "",
   "title": "Project Oni - Baseline test",
   "uid": "8em8RXWMz",
-  "version": 6
+  "version": 7
 }
