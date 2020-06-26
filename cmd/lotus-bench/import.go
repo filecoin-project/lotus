@@ -299,6 +299,7 @@ var importAnalyzeCmd = &cli.Command{
 					if len(expensiveInvocs) != 0 {
 						leastExpensiveInvoc = expensiveInvocs[len(expensiveInvocs)-1].Invoc.Duration
 					}
+					expensiveInvocs = expensiveInvocs[:30]
 				}
 			}()
 		}
