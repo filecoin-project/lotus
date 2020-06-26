@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
-	"log"
 
 	"github.com/testground/sdk-go/sync"
 
@@ -29,12 +28,9 @@ type PubsubTracerMsg struct {
 	Tracer string
 }
 
-func (tr *PubsubTracer) Stop() {
+func (tr *PubsubTracer) Stop() error {
 	tr.traced.Stop()
-	err := tr.host.Close()
-	if err != nil {
-		log.Printf("error closing host: %s", err)
-	}
+	return tr.host.Close()
 }
 
 func preparePubsubTracer(t *TestEnvironment) (*PubsubTracer, error) {
@@ -83,7 +79,12 @@ func runPubsubTracer(t *TestEnvironment) error {
 		return err
 	}
 
-	defer tracer.Stop()
+	defer func() {
+		err := tracer.Stop()
+		if err != nil {
+			t.RecordMessage("error stoping tracer: %s", err)
+		}
+	}()
 
 	ctx := context.Background()
 	t.SyncClient.MustSignalAndWait(ctx, stateDone, t.TestInstanceCount)
