@@ -35,13 +35,18 @@ var retrievalDealSelectionShowCmd = &cli.Command{
 		}
 		defer closer()
 
-		isAcceptingRetrievalDeals, err := smapi.DealsConsiderOnlineRetrievalDeals(lcli.DaemonContext(cctx))
+		onlineOk, err := smapi.DealsConsiderOnlineRetrievalDeals(lcli.DaemonContext(cctx))
 		if err != nil {
 			return err
 		}
 
-		fmt.Printf("offline retrieval deals: %t\n", isAcceptingRetrievalDeals)
-		fmt.Printf("online retrieval deals: %t\n", isAcceptingRetrievalDeals)
+		offlineOk, err := smapi.DealsConsiderOfflineRetrievalDeals(lcli.DaemonContext(cctx))
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("considering online retrieval deals: %t\n", onlineOk)
+		fmt.Printf("considering offline retrieval deals: %t\n", offlineOk)
 
 		return nil
 	},
@@ -62,6 +67,11 @@ var retrievalDealSelectionResetCmd = &cli.Command{
 			return err
 		}
 
+		err = smapi.DealsSetConsiderOfflineRetrievalDeals(lcli.DaemonContext(cctx), true)
+		if err != nil {
+			return err
+		}
+
 		return nil
 	},
 }
@@ -69,6 +79,14 @@ var retrievalDealSelectionResetCmd = &cli.Command{
 var retrievalDealSelectionRejectCmd = &cli.Command{
 	Name:  "reject",
 	Usage: "Configure criteria which necessitate automatic rejection",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name: "online",
+		},
+		&cli.BoolFlag{
+			Name: "offline",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		smapi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
@@ -76,9 +94,18 @@ var retrievalDealSelectionRejectCmd = &cli.Command{
 		}
 		defer closer()
 
-		err = smapi.DealsSetConsiderOnlineRetrievalDeals(lcli.DaemonContext(cctx), false)
-		if err != nil {
-			return err
+		if cctx.Bool("online") {
+			err = smapi.DealsSetConsiderOnlineRetrievalDeals(lcli.DaemonContext(cctx), false)
+			if err != nil {
+				return err
+			}
+		}
+
+		if cctx.Bool("offline") {
+			err = smapi.DealsSetConsiderOfflineRetrievalDeals(lcli.DaemonContext(cctx), false)
+			if err != nil {
+				return err
+			}
 		}
 
 		return nil

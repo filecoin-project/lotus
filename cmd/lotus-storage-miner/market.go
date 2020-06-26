@@ -70,13 +70,18 @@ var storageDealSelectionShowCmd = &cli.Command{
 		}
 		defer closer()
 
-		isAcceptingStorageDeals, err := smapi.DealsConsiderOnlineStorageDeals(lcli.DaemonContext(cctx))
+		onlineOk, err := smapi.DealsConsiderOnlineStorageDeals(lcli.DaemonContext(cctx))
 		if err != nil {
 			return err
 		}
 
-		fmt.Printf("offline storage deals: %t\n", isAcceptingStorageDeals)
-		fmt.Printf("online storage deals: %t\n", isAcceptingStorageDeals)
+		offlineOk, err := smapi.DealsConsiderOfflineStorageDeals(lcli.DaemonContext(cctx))
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("considering online storage deals: %t\n", onlineOk)
+		fmt.Printf("considering offline storage deals: %t\n", offlineOk)
 
 		return nil
 	},
@@ -97,6 +102,11 @@ var storageDealSelectionResetCmd = &cli.Command{
 			return err
 		}
 
+		err = smapi.DealsSetConsiderOfflineStorageDeals(lcli.DaemonContext(cctx), true)
+		if err != nil {
+			return err
+		}
+
 		return nil
 	},
 }
@@ -104,6 +114,14 @@ var storageDealSelectionResetCmd = &cli.Command{
 var storageDealSelectionRejectCmd = &cli.Command{
 	Name:  "reject",
 	Usage: "Configure criteria which necessitate automatic rejection",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name: "online",
+		},
+		&cli.BoolFlag{
+			Name: "offline",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		smapi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
@@ -111,9 +129,18 @@ var storageDealSelectionRejectCmd = &cli.Command{
 		}
 		defer closer()
 
-		err = smapi.DealsSetConsiderOnlineStorageDeals(lcli.DaemonContext(cctx), false)
-		if err != nil {
-			return err
+		if cctx.Bool("online") {
+			err = smapi.DealsSetConsiderOnlineStorageDeals(lcli.DaemonContext(cctx), false)
+			if err != nil {
+				return err
+			}
+		}
+
+		if cctx.Bool("offline") {
+			err = smapi.DealsSetConsiderOfflineStorageDeals(lcli.DaemonContext(cctx), false)
+			if err != nil {
+				return err
+			}
 		}
 
 		return nil

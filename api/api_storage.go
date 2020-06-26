@@ -62,6 +62,10 @@ type StorageMiner interface {
 	DealsSetConsiderOnlineRetrievalDeals(context.Context, bool) error
 	DealsPieceCidBlocklist(context.Context) ([]cid.Cid, error)
 	DealsSetPieceCidBlocklist(context.Context, []cid.Cid) error
+	DealsConsiderOfflineStorageDeals(context.Context) (bool, error)
+	DealsSetConsiderOfflineStorageDeals(context.Context, bool) error
+	DealsConsiderOfflineRetrievalDeals(context.Context) (bool, error)
+	DealsSetConsiderOfflineRetrievalDeals(context.Context, bool) error
 
 	StorageAddLocal(ctx context.Context, path string) error
 }
