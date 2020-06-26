@@ -17,6 +17,8 @@
   [groups.instances]
     count = 1
     percentage = 0.0
+  [groups.build]
+    selectors = ["testground"]
   [groups.run]
     [groups.run.test_params]
       role = "bootstrapper"
@@ -34,6 +36,8 @@
   [groups.instances]
     count = 1
     percentage = 0.0
+  [groups.build]
+    selectors = ["testground"]
   [groups.run]
     [groups.run.test_params]
       role = "miner"
@@ -52,6 +56,8 @@
   [groups.instances]
     count = 1
     percentage = 0.0
+  [groups.build]
+    selectors = ["testground"]
   [groups.run]
     [groups.run.test_params]
       role = "client"
@@ -67,6 +73,8 @@
   [groups.instances]
     count = 3
     percentage = 0.0
+  [groups.build]
+    selectors = ["testground"]
   [groups.run]
     [groups.run.test_params]
       role = "drand"
