@@ -81,4 +81,4 @@
       drand_period = "1s"
       drand_halt_duration = "20s"
       drand_halt_begin = "10s"
-      drand_log_level = "none"
+      drand_log_level = "info"
