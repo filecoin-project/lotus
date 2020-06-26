@@ -210,29 +210,29 @@ func countGasCosts(et *types.ExecutionTrace) (int64, int64) {
 	return cgas, vgas
 }
 
-func compStats(vals []float64) (float64, float64) {
-	var sum float64
+func compStats(vals []float32) (float32, float32) {
+	var sum float32
 
 	for _, v := range vals {
 		sum += v
 	}
 
-	av := sum / float64(len(vals))
+	av := sum / float32(len(vals))
 
-	var varsum float64
+	var varsum float32
 	for _, v := range vals {
 		delta := av - v
 		varsum += delta * delta
 	}
 
-	return av, math.Sqrt(varsum / float64(len(vals)))
+	return av, float32(math.Sqrt(float64(varsum / float32(len(vals)))))
 }
 
-func tallyGasCharges(charges map[string][]float64, et *types.ExecutionTrace) {
+func tallyGasCharges(charges map[string][]float32, et *types.ExecutionTrace) {
 	for _, gc := range et.GasCharges {
 
 		compGas := gc.ComputeGas + gc.VirtualComputeGas
-		ratio := float64(compGas) / float64(gc.TimeTaken.Nanoseconds())
+		ratio := float32(compGas) / float32(gc.TimeTaken.Nanoseconds())
 
 		charges[gc.Name] = append(charges[gc.Name], 1/(ratio/GasPerNs))
 		//fmt.Printf("%s: %d, %s: %0.2f\n", gc.Name, compGas, gc.TimeTaken, 1/(ratio/GasPerNs))
@@ -265,7 +265,7 @@ var importAnalyzeCmd = &cli.Command{
 		tseIn := make(chan TipSetExec, 2*nWorkers)
 		type result struct {
 			totalTime       time.Duration
-			chargeDeltas    map[string][]float64
+			chargeDeltas    map[string][]float32
 			expensiveInvocs []Invocation
 		}
 
@@ -273,7 +273,7 @@ var importAnalyzeCmd = &cli.Command{
 
 		for i := 0; i < nWorkers; i++ {
 			go func() {
-				chargeDeltas := make(map[string][]float64)
+				chargeDeltas := make(map[string][]float32)
 				var totalTime time.Duration
 				var expensiveInvocs []Invocation
 				var leastExpensiveInvoc = time.Duration(0)
@@ -340,7 +340,7 @@ var importAnalyzeCmd = &cli.Command{
 		var invocs []Invocation
 		var totalTime time.Duration
 		var keys []string
-		var chargeDeltas = make(map[string][]float64)
+		var chargeDeltas = make(map[string][]float32)
 		for i := 0; i < nWorkers; i++ {
 			fmt.Printf("\rProcessing results from worker %d/%d", i+1, nWorkers)
 			res := <-results
