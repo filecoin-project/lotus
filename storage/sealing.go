@@ -20,6 +20,10 @@ func (m *Miner) AddPieceToAnySector(ctx context.Context, size abi.UnpaddedPieceS
 	return m.sealing.AddPieceToAnySector(ctx, size, r, d)
 }
 
+func (m *Miner) StartPackingSector(sectorNum abi.SectorNumber) error {
+	return m.sealing.StartPacking(sectorNum)
+}
+
 func (m *Miner) ListSectors() ([]sealing.SectorInfo, error) {
 	return m.sealing.ListSectors()
 }

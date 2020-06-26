@@ -171,6 +171,10 @@ func (sm *StorageMinerAPI) StorageStat(ctx context.Context, id stores.ID) (store
 	return sm.StorageMgr.FsStat(ctx, id)
 }
 
+func (sm *StorageMinerAPI) SectorStartSealing(ctx context.Context, number abi.SectorNumber) error {
+	return sm.Miner.StartPackingSector(number)
+}
+
 func (sm *StorageMinerAPI) SectorsUpdate(ctx context.Context, id abi.SectorNumber, state api.SectorState) error {
 	return sm.Miner.ForceSectorState(ctx, id, sealing.SectorState(state))
 }
