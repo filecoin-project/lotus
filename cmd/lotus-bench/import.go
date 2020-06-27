@@ -252,10 +252,21 @@ func (s *stats) variance() float64 {
 func (s1 *stats) Combine(s2 *stats) {
 	if s1.count == 0 {
 		*s1 = *s2
+		return
 	}
 	if s2.count == 0 {
 		return
 	}
+	if s1.count == 1 {
+		s2.AddPoint(s1.mean)
+		*s1 = *s2
+		return
+	}
+	if s2.count == 1 {
+		s1.AddPoint(s2.mean)
+		return
+	}
+
 	newCount := s1.count + s2.count
 	newMean := s1.count*s1.mean + s2.count*s2.mean
 	newMean /= newCount
