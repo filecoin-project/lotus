@@ -253,6 +253,9 @@ func (s1 *stats) Combine(s2 *stats) {
 	if s1.count == 0 {
 		*s1 = *s2
 	}
+	if s2.count == 0 {
+		return
+	}
 	newCount := s1.count + s2.count
 	newMean := s1.count*s1.mean + s2.count*s2.mean
 	newMean /= newCount
@@ -273,6 +276,10 @@ func tallyGasCharges(charges map[string]*stats, et types.ExecutionTrace) {
 		}
 
 		ratio := float64(compGas) / float64(gc.TimeTaken.Nanoseconds())
+		ratio = 1 / ratio
+		if math.IsNaN(ratio) {
+			log.Errorf("NaN: comGas: %f, taken: %d", compGas, gc.TimeTaken.Nanoseconds())
+		}
 
 		s := charges[gc.Name]
 		if s == nil {
@@ -280,7 +287,7 @@ func tallyGasCharges(charges map[string]*stats, et types.ExecutionTrace) {
 			charges[gc.Name] = s
 		}
 
-		s.AddPoint(1 / ratio)
+		s.AddPoint(ratio)
 		//fmt.Printf("%s: %d, %s: %0.2f\n", gc.Name, compGas, gc.TimeTaken, 1/(ratio/GasPerNs))
 	}
 	for _, sub := range et.Subcalls {
