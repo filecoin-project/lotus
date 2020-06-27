@@ -281,7 +281,7 @@ func (s1 *stats) Combine(s2 *stats) {
 func tallyGasCharges(charges map[string]*stats, et types.ExecutionTrace) {
 	for _, gc := range et.GasCharges {
 
-		compGas := gc.ComputeGas + gc.VirtualComputeGas
+		compGas := gc.ComputeGas
 		if compGas == 0 {
 			compGas = 1
 		}
