@@ -525,7 +525,7 @@ func (rt *Runtime) chargeGasFunc(skip int) func(GasCharge) {
 
 func (rt *Runtime) chargeGasInternal(gas GasCharge, skip int) aerrors.ActorError {
 	toUse := gas.Total()
-	var callers [10]uintptr
+	var callers [4]uintptr
 	cout := gruntime.Callers(2+skip, callers[:])
 
 	now := time.Now()
