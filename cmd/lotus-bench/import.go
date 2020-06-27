@@ -434,7 +434,7 @@ var importAnalyzeCmd = &cli.Command{
 		sort.Strings(keys)
 		for _, k := range keys {
 			s := charges[k]
-			fmt.Printf("%s: incr by %f (%f)\n", k, s.mean, math.Sqrt(s.variance()))
+			fmt.Printf("%s: incr by %f (stddev: %f, count: %f)\n", k, s.mean, math.Sqrt(s.variance()), s.count)
 		}
 
 		sort.Slice(invocs, func(i, j int) bool {
