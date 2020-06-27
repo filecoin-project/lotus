@@ -226,7 +226,7 @@ func compStats(vals []float64) (float64, float64) {
 		varsum += delta * delta
 	}
 
-	return av, float64(math.Sqrt(float64(varsum / float64(len(vals)))))
+	return av, math.Sqrt(varsum / float64(len(vals)))
 }
 
 type stats struct {
