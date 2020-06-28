@@ -137,7 +137,7 @@ func (m *Miner) mine(ctx context.Context) {
 		}
 
 		// Wait until propagation delay period after block we plan to mine on
-		onDone, err := m.waitFunc(ctx, prebase.TipSet.MinTimestamp())
+		onDone, err := m.waitFunc(ctx, prebase.TipSet.MinTimestamp()+uint64(build.BlockDelay*prebase.NullRounds))
 		if err != nil {
 			log.Error(err)
 			continue
@@ -189,22 +189,6 @@ func (m *Miner) mine(ctx context.Context) {
 			}
 		} else {
 			base.NullRounds++
-
-			// Wait until the next epoch, plus the propagation delay, so a new tipset
-			// has enough time to form.
-			//
-			// See:  https://github.com/filecoin-project/lotus/issues/1845
-			nextRound := time.Unix(int64(base.TipSet.MinTimestamp()+uint64(build.BlockDelay*base.NullRounds))+int64(build.PropagationDelay), 0)
-
-			select {
-			case <-time.After(time.Until(nextRound)):
-			case <-m.stop:
-				stopping := m.stopping
-				m.stop = nil
-				m.stopping = nil
-				close(stopping)
-				return
-			}
 		}
 	}
 }
