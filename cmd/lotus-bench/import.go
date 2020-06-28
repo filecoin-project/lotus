@@ -360,7 +360,6 @@ var importAnalyzeCmd = &cli.Command{
 					}
 
 					totalTime += tse.Duration
-					var execStack = make([]types.ExecutionTrace, 0, 100)
 					for _, inv := range tse.Trace {
 						if inv.Duration > leastExpensiveInvoc {
 							expensiveInvocs = append(expensiveInvocs, Invocation{
@@ -368,33 +367,8 @@ var importAnalyzeCmd = &cli.Command{
 								Invoc:  inv,
 							})
 						}
-						execStack = append(execStack, inv.ExecutionTrace)
-						for len(execStack) != 0 {
-							et := execStack[len(execStack)-1]
-							execStack = execStack[:len(execStack)-1]
-							for _, gc := range et.GasCharges {
 
-								compGas := gc.ComputeGas
-								if compGas == 0 {
-									compGas = 1
-								}
-
-								ratio := float64(compGas) / float64(gc.TimeTaken.Nanoseconds())
-								ratio = 1 / ratio
-								if math.IsNaN(ratio) {
-									log.Errorf("NaN: comGas: %f, taken: %d", compGas, gc.TimeTaken.Nanoseconds())
-								}
-
-								s := chargeStats[gc.Name]
-								if s == nil {
-									s = new(stats)
-									chargeStats[gc.Name] = s
-								}
-
-								s.AddPoint(ratio)
-							}
-							execStack = append(execStack, et.Subcalls...)
-						}
+						tallyGasCharges(chargeStats, inv.ExecutionTrace)
 					}
 					if len(expensiveInvocs) > 4*invocsKeep {
 						sort.Slice(expensiveInvocs, func(i, j int) bool {
