@@ -1341,8 +1341,8 @@ github.com/stretchr/testify v1.6.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/
 github.com/syndtr/goleveldb v1.0.0 h1:fBdIW9lB4Iz0n9khmH8w27SJ3QEJ7+IgjPEwGSZiFdE=
 github.com/syndtr/goleveldb v1.0.0/go.mod h1:ZVVdQEZoIme9iO1Ch2Jdy24qqXrMMOU6lpPAyBWyWuQ=
 github.com/tarm/serial v0.0.0-20180830185346-98f6abe2eb07/go.mod h1:kDXzergiv9cbyO7IOYJZWg1U88JhDg3PB6klq9Hg2pA=
-github.com/testground/sdk-go v0.2.3-0.20200617132925-2e4d69f9ba38 h1:6s2/aFZVGJKX5V/eID4Zlt0F1AVEgllZOtPjzJVR6yQ=
-github.com/testground/sdk-go v0.2.3-0.20200617132925-2e4d69f9ba38/go.mod h1:3auzMDXaoK7NQ+CLQS3pqp4hmREECWO9V+TJi/IWmms=
+github.com/testground/sdk-go v0.2.3-0.20200626214218-7a87893cf56c h1:fZXuBXPwBL2Z4UdH1YVkWs7rqNCaVwSmpu3SmVeayZ0=
+github.com/testground/sdk-go v0.2.3-0.20200626214218-7a87893cf56c/go.mod h1:3auzMDXaoK7NQ+CLQS3pqp4hmREECWO9V+TJi/IWmms=
 github.com/texttheater/golang-levenshtein v0.0.0-20180516184445-d188e65d659e/go.mod h1:XDKHRm5ThF8YJjx001LtgelzsoaEcvnA7lVWz9EeX3g=
 github.com/tmc/grpc-websocket-proxy v0.0.0-20170815181823-89b8d40f7ca8/go.mod h1:ncp9v5uamzpCO7NfCPTXjqaC+bZgJeR0sMTm6dMHP7U=
 github.com/uber/jaeger-client-go v2.15.0+incompatible/go.mod h1:WVhlPFC8FDjOFMMWRy2pZqQJSXxYSwNYOkTr/Z6d3Kk=

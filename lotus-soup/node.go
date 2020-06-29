@@ -51,7 +51,7 @@ import (
 )
 
 func init() {
-	logging.SetLogLevel("*", "WARN")
+	logging.SetLogLevel("*", "ERROR")
 
 	os.Setenv("BELLMAN_NO_GPU", "1")
 
@@ -176,7 +176,7 @@ func prepareBootstrapper(t *TestEnvironment) (*Node, error) {
 	genesisTemplate := genesis.Template{
 		Accounts:  genesisActors,
 		Miners:    genesisMiners,
-		Timestamp: uint64(time.Now().Unix() - 100000), // this needs to be in the past
+		Timestamp: uint64(time.Now().Unix()) - uint64(t.IntParam("genesis_timestamp_offset")), // this needs to be in the past
 	}
 
 	// dump the genesis block

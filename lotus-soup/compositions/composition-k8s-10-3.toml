@@ -5,7 +5,7 @@
 [global]
   plan = "lotus-soup"
   case = "lotus-baseline"
-  total_instances = 3
+  total_instances = 14
   builder = "docker:go"
   runner = "cluster:k8s"
 
@@ -16,8 +16,8 @@
   registry_type="aws"
 
 [global.run.test_params]
-  clients = "1"
-  miners = "1"
+  clients = "10"
+  miners = "3"
   genesis_timestamp_offset = "100000"
   balance = "2000"
   sectors = "10"
@@ -37,10 +37,10 @@
 [[groups]]
   id = "miners"
   [groups.resources]
-    memory = "1024Mi"
+    memory = "8192Mi"
     cpu = "1000m"
   [groups.instances]
-    count = 1
+    count = 3
     percentage = 0.0
   [groups.run]
     [groups.run.test_params]
@@ -52,7 +52,7 @@
     memory = "1024Mi"
     cpu = "1000m"
   [groups.instances]
-    count = 1
+    count = 10
     percentage = 0.0
   [groups.run]
     [groups.run.test_params]
