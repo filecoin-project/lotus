@@ -43,33 +43,40 @@ func runMiner(t *TestEnvironment) error {
 	// mine / stop mining
 	mine := true
 	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		var i int
-		for i = 0; mine; i++ {
-			// synchronize all miners to mine the next block
-			t.RecordMessage("synchronizing all miners to mine next block [%d]", i)
-			stateMineNext := sync.State(fmt.Sprintf("mine-block-%d", i))
-			t.SyncClient.MustSignalAndWait(ctx, stateMineNext, miners)
 
-			ch := make(chan struct{})
-			err := miner.MineOne(ctx, func(mined bool) {
-				if mined {
-					t.D().Counter(fmt.Sprintf("block.mine,miner=%s", myActorAddr)).Inc(1)
+	if miner.MineOne != nil {
+		go func() {
+			defer t.RecordMessage("shutting down mining")
+			defer close(done)
+
+			var i int
+			for i = 0; mine; i++ {
+				// synchronize all miners to mine the next block
+				t.RecordMessage("synchronizing all miners to mine next block [%d]", i)
+				stateMineNext := sync.State(fmt.Sprintf("mine-block-%d", i))
+				t.SyncClient.MustSignalAndWait(ctx, stateMineNext, miners)
+
+				ch := make(chan struct{})
+				err := miner.MineOne(ctx, func(mined bool) {
+					if mined {
+						t.D().Counter(fmt.Sprintf("block.mine,miner=%s", myActorAddr)).Inc(1)
+					}
+					close(ch)
+				})
+				if err != nil {
+					panic(err)
 				}
-				close(ch)
-			})
-			if err != nil {
-				panic(err)
+				<-ch
 			}
-			<-ch
-		}
 
-		// signal the last block to make sure no miners are left stuck waiting for the next block signal
-		// while the others have stopped
-		stateMineLast := sync.State(fmt.Sprintf("mine-block-%d", i))
-		t.SyncClient.MustSignalEntry(ctx, stateMineLast)
-	}()
+			// signal the last block to make sure no miners are left stuck waiting for the next block signal
+			// while the others have stopped
+			stateMineLast := sync.State(fmt.Sprintf("mine-block-%d", i))
+			t.SyncClient.MustSignalEntry(ctx, stateMineLast)
+		}()
+	} else {
+		close(done)
+	}
 
 	// wait for a signal from all clients to stop mining
 	err = <-t.SyncClient.MustBarrier(ctx, stateStopMining, clients).C
@@ -78,7 +85,6 @@ func runMiner(t *TestEnvironment) error {
 	}
 
 	mine = false
-	t.RecordMessage("shutting down mining")
 	<-done
 
 	t.SyncClient.MustSignalAndWait(ctx, stateDone, t.TestInstanceCount)
