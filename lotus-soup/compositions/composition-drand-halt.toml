@@ -9,6 +9,17 @@
   builder = "docker:go"
   runner = "local:docker"
 
+[global.build]
+  selectors = ["testground"]
+
+[global.run.test_params]
+  clients = "1"
+  miners = "1"
+  balance = "2000"
+  sectors = "10"
+  random_beacon_type = "local-drand"
+  genesis_timestamp_offset = "0"
+
 [[groups]]
   id = "bootstrapper"
   [groups.resources]
@@ -17,16 +28,10 @@
   [groups.instances]
     count = 1
     percentage = 0.0
-  [groups.build]
-    selectors = ["testground"]
   [groups.run]
     [groups.run.test_params]
       role = "bootstrapper"
-      clients = "1"
-      miners = "1"
-      balance = "2000"
-      sectors = "10"
-      random_beacon_type = "local-drand"
+
 
 [[groups]]
   id = "miners"
@@ -36,16 +41,9 @@
   [groups.instances]
     count = 1
     percentage = 0.0
-  [groups.build]
-    selectors = ["testground"]
   [groups.run]
     [groups.run.test_params]
       role = "miner"
-      clients = "1"
-      miners = "1"
-      balance = "2000"
-      sectors = "10"
-      random_beacon_type = "local-drand"
 
 
 [[groups]]
@@ -56,16 +54,9 @@
   [groups.instances]
     count = 1
     percentage = 0.0
-  [groups.build]
-    selectors = ["testground"]
   [groups.run]
     [groups.run.test_params]
       role = "client"
-      clients = "1"
-      miners = "1"
-      balance = "2000"
-      sectors = "10"
-      random_beacon_type = "local-drand"
 
 
 [[groups]]
@@ -73,8 +64,6 @@
   [groups.instances]
     count = 3
     percentage = 0.0
-  [groups.build]
-    selectors = ["testground"]
   [groups.run]
     [groups.run.test_params]
       role = "drand"
