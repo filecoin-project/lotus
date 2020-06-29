@@ -76,7 +76,7 @@ func (pm *Manager) TrackInboundChannel(ctx context.Context, ch address.Address) 
 		return err
 	}
 	from := account.Address
-	_, err = pm.sm.LoadActorState(ctx, st.From, &account, nil)
+	_, err = pm.sm.LoadActorState(ctx, st.To, &account, nil)
 	if err != nil {
 		return err
 	}
@@ -114,7 +114,7 @@ func (pm *Manager) loadOutboundChannelInfo(ctx context.Context, ch address.Addre
 		return nil, err
 	}
 	from := account.Address
-	_, err = pm.sm.LoadActorState(ctx, st.From, &account, nil)
+	_, err = pm.sm.LoadActorState(ctx, st.To, &account, nil)
 	if err != nil {
 		return nil, err
 	}

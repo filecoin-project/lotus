@@ -161,7 +161,8 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, headTs *types.
 						log.Error(err)
 						return
 					}
-					ast, err := api.StateReadState(ctx, act, genesisTs.Key())
+
+					ast, err := api.StateReadState(ctx, addr, genesisTs.Key())
 					if err != nil {
 						log.Error(err)
 						return
@@ -210,7 +211,8 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, headTs *types.
 					return
 				}
 
-				ast, err := api.StateReadState(ctx, &act, pts.Key())
+				ast, err := api.StateReadState(ctx, addr, pts.Key())
+
 				if err != nil {
 					log.Error(err)
 					return
