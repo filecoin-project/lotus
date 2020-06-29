@@ -230,49 +230,120 @@ func compStats(vals []float64) (float64, float64) {
 }
 
 type stats struct {
-	count float64
-	mean  float64
+	timeTaken meanVar
+	gasRatio  meanVar
+
+	extra      *meanVar
+	extraCovar *covar
+}
+
+type covar struct {
+	meanX float64
+	meanY float64
+	c     float64
+	n     float64
 	m2    float64
 }
 
-func (s *stats) AddPoint(value float64) {
+func (cov1 *covar) Covariance() float64 {
+	return cov1.c / (cov1.n - 1)
+}
+
+func (cov1 *covar) AddPoint(x, y float64) {
+	cov1.n += 1
+	dx := x - cov1.meanX
+	cov1.meanX += dx / cov1.n
+
+	dx2 := x - cov1.meanX // compute x variance using partial result for covariance
+	cov1.m2 += dx * dx2
+
+	cov1.meanY += (y - cov1.meanY) / cov1.n
+	cov1.c += dx * (y - cov1.meanY)
+}
+
+func (cov1 *covar) Combine(cov2 *covar) {
+	if cov1.n == 0 {
+		*cov1 = *cov2
+		return
+	}
+	if cov2.n == 0 {
+		return
+	}
+
+	if cov1.n == 1 {
+		cpy := *cov2
+		cpy.AddPoint(cov2.meanX, cov2.meanY)
+		*cov1 = cpy
+		return
+	}
+	if cov2.n == 1 {
+		cov1.AddPoint(cov2.meanX, cov2.meanY)
+	}
+	out := covar{}
+	out.n = cov1.n + cov2.n
+
+	dx := cov1.meanX - cov2.meanX
+	out.meanX = cov1.meanX + dx*cov2.n/out.n
+	out.m2 = cov1.m2 + cov2.m2 + dx*dx*cov1.n*cov2.n/out.n
+
+	dy := cov1.meanY - cov2.meanY
+	out.meanY = cov1.meanY + dy*cov2.n/out.n
+
+	out.c = cov1.c + cov2.c + dx*dy*cov1.n*cov2.n/out.n
+	*cov1 = out
+}
+
+type meanVar struct {
+	n    float64
+	mean float64
+	m2   float64
+}
+
+func (v1 *meanVar) AddPoint(value float64) {
 	// based on https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Welford's_online_algorithm
-	s.count += 1
-	delta := value - s.mean
-	s.mean += delta / s.count
-	delta2 := value - s.mean
-	s.m2 += delta * delta2
+	v1.n += 1
+	delta := value - v1.mean
+	v1.mean += delta / v1.n
+	delta2 := value - v1.mean
+	v1.m2 += delta * delta2
 }
 
-func (s *stats) variance() float64 {
-	return s.m2 / (s.count - 1)
+func (v1 *meanVar) Variance() float64 {
+	return v1.m2 / (v1.n - 1)
+}
+func (v1 *meanVar) Mean() float64 {
+	return v1.mean
+}
+func (v1 *meanVar) Stddev() float64 {
+	return math.Sqrt(v1.Variance())
 }
 
-func (s1 *stats) Combine(s2 *stats) {
-	if s1.count == 0 {
-		*s1 = *s2
+func (v1 *meanVar) Combine(v2 *meanVar) {
+	if v1.n == 0 {
+		*v1 = *v2
 		return
 	}
-	if s2.count == 0 {
+	if v2.n == 0 {
 		return
 	}
-	if s1.count == 1 {
-		s2.AddPoint(s1.mean)
-		*s1 = *s2
+	if v1.n == 1 {
+		cpy := *v2
+		cpy.AddPoint(v1.mean)
+		*v1 = cpy
 		return
 	}
-	if s2.count == 1 {
-		s1.AddPoint(s2.mean)
+	if v2.n == 1 {
+		v1.AddPoint(v2.mean)
 		return
 	}
 
-	newCount := s1.count + s2.count
-	delta := s2.mean - s1.mean
-	meanDelta := delta * s2.count / newCount
-	m2 := s1.m2 + s2.m2 + delta*meanDelta*s1.count
-	s1.count = newCount
-	s1.mean += meanDelta
-	s1.m2 = m2
+	newCount := v1.n + v2.n
+	delta := v2.mean - v1.mean
+	meanDelta := delta * v2.n / newCount
+	m2 := v1.m2 + v2.m2 + delta*meanDelta*v1.n
+	v1.n = newCount
+	v1.mean += meanDelta
+	v1.m2 = m2
 }
 
 func tallyGasCharges(charges map[string]*stats, et types.ExecutionTrace) {
@@ -287,24 +358,17 @@ func tallyGasCharges(charges map[string]*stats, et types.ExecutionTrace) {
 
 		compGas := gc.VirtualComputeGas
 		if compGas == 0 {
-			name += "-zerogas"
 			compGas = 1
 		}
-
-		ratio := float64(compGas) / float64(gc.TimeTaken.Nanoseconds())
-		ratio = 1 / ratio
-		if math.IsNaN(ratio) {
-			log.Errorf("NaN: comGas: %f, taken: %d", compGas, gc.TimeTaken.Nanoseconds())
-		}
-
 		s := charges[name]
 		if s == nil {
 			s = new(stats)
 			charges[name] = s
 		}
+		s.timeTaken.AddPoint(float64(gc.TimeTaken.Nanoseconds()))
 
-		s.AddPoint(ratio)
-		//fmt.Printf("%s: %d, %s: %0.2f\n", gc.Name, compGas, gc.TimeTaken, 1/(ratio/GasPerNs))
+		ratio := float64(gc.TimeTaken.Nanoseconds()) / float64(compGas) * GasPerNs
+		s.gasRatio.AddPoint(ratio)
 	}
 	for _, sub := range et.Subcalls {
 		tallyGasCharges(charges, sub)
@@ -425,7 +489,8 @@ var importAnalyzeCmd = &cli.Command{
 					s = new(stats)
 					charges[k] = s
 				}
-				s.Combine(v)
+				s.timeTaken.Combine(&v.timeTaken)
+				s.gasRatio.Combine(&v.gasRatio)
 			}
 			totalTime += res.totalTime
 		}
@@ -439,7 +504,7 @@ var importAnalyzeCmd = &cli.Command{
 		sort.Strings(keys)
 		for _, k := range keys {
 			s := charges[k]
-			fmt.Printf("%s: incr by %f (stddev: %f, count: %f)\n", k, s.mean, math.Sqrt(s.variance()), s.count)
+			fmt.Printf("%s: incr by %f~%f\n", k, s.gasRatio.mean, s.gasRatio.Stddev())
 		}
 
 		sort.Slice(invocs, func(i, j int) bool {
