@@ -12,6 +12,9 @@
 [global.build]
   selectors = ["testground"]
 
+[global.build_config]
+  enable_go_build_cache = true
+
 [global.run.test_params]
   clients = "1"
   miners = "1"
