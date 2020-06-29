@@ -397,15 +397,29 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 		return nil, err
 	}
 
-	mineBlock := make(chan func(bool))
-	stop2, err := node.New(context.Background(),
+	minerOpts := []node.Option{
 		node.StorageMiner(&n.minerApi),
 		node.Online(),
 		node.Repo(minerRepo),
 		node.Override(new(api.FullNode), n.fullApi),
-		node.Override(new(*miner.Miner), miner.NewTestMiner(mineBlock, minerAddr)),
 		withMinerListenAddress(minerIP),
-	)
+	}
+
+	if t.StringParam("mining_mode") != "natural" {
+		mineBlock := make(chan func(bool))
+		minerOpts = append(minerOpts,
+			node.Override(new(*miner.Miner), miner.NewTestMiner(mineBlock, minerAddr)))
+		n.MineOne = func(ctx context.Context, cb func(bool)) error {
+			select {
+			case mineBlock <- cb:
+				return nil
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+		}
+	}
+
+	stop2, err := node.New(context.Background(), minerOpts...)
 	if err != nil {
 		stop1(context.TODO())
 		return nil, err
@@ -428,15 +442,6 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 	err = n.minerApi.NetConnect(ctx, remoteAddrs)
 	if err != nil {
 		panic(err)
-	}
-
-	n.MineOne = func(ctx context.Context, cb func(bool)) error {
-		select {
-		case mineBlock <- cb:
-			return nil
-		case <-ctx.Done():
-			return ctx.Err()
-		}
 	}
 
 	// add local storage for presealed sectors
