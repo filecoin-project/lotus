@@ -75,9 +75,10 @@ var (
 	clientsAddrsTopic = sync.NewTopic("clientsAddrsTopic", &peer.AddrInfo{})
 	minersAddrsTopic  = sync.NewTopic("minersAddrsTopic", &MinerAddresses{})
 
-	stateReady      = sync.State("ready")
-	stateDone       = sync.State("done")
-	stateStopMining = sync.State("stop-mining")
+	stateReady           = sync.State("ready")
+	stateDone            = sync.State("done")
+	stateStopMining      = sync.State("stop-mining")
+	stateMinerPickSeqNum = sync.State("miner-pick-seq-num")
 )
 
 type TestEnvironment struct {
@@ -289,7 +290,10 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 		return nil, err
 	}
 
-	minerAddr, err := address.NewIDAddress(genesis_chain.MinerStart + uint64(t.GroupSeq-1))
+	// pick unique sequence number for each miner, no matter in which group they are
+	seq := t.SyncClient.MustSignalAndWait(ctx, stateMinerPickSeqNum, t.IntParam("miners"))
+
+	minerAddr, err := address.NewIDAddress(genesis_chain.MinerStart + uint64(seq-1))
 	if err != nil {
 		return nil, err
 	}
@@ -308,7 +312,7 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 
 	t.RecordMessage("Miner Info: Owner: %s Worker: %s", genMiner.Owner, genMiner.Worker)
 
-	presealMsg := &PresealMsg{Miner: *genMiner, Seqno: t.GroupSeq}
+	presealMsg := &PresealMsg{Miner: *genMiner, Seqno: seq}
 	t.SyncClient.Publish(ctx, presealTopic, presealMsg)
 
 	// then collect the genesis block and bootstrapper address

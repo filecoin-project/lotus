@@ -20,7 +20,6 @@
   miners = "3"
   genesis_timestamp_offset = "100000"
   balance = "2000"
-  sectors = "10"
 
 [[groups]]
   id = "bootstrapper"
@@ -35,16 +34,30 @@
       role = "bootstrapper"
 
 [[groups]]
-  id = "miners"
+  id = "miners-weak"
   [groups.resources]
     memory = "8192Mi"
     cpu = "1000m"
   [groups.instances]
-    count = 3
+    count = 2
     percentage = 0.0
   [groups.run]
     [groups.run.test_params]
       role = "miner"
+      sectors = "8"
+
+[[groups]]
+  id = "miners-strong"
+  [groups.resources]
+    memory = "8192Mi"
+    cpu = "1000m"
+  [groups.instances]
+    count = 1
+    percentage = 0.0
+  [groups.run]
+    [groups.run.test_params]
+      role = "miner"
+      sectors = "24"
 
 [[groups]]
   id = "clients"
