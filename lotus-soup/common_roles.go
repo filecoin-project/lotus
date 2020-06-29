@@ -3,8 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"math/rand"
-	"time"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/testground/sdk-go/sync"
@@ -54,15 +52,17 @@ func runMiner(t *TestEnvironment) error {
 			stateMineNext := sync.State(fmt.Sprintf("mine-block-%d", i))
 			t.SyncClient.MustSignalAndWait(ctx, stateMineNext, miners)
 
-			// add some random delay to encourage a different miner winning each round
-			time.Sleep(time.Duration(100 + rand.Intn(int(100*time.Millisecond))))
-
+			ch := make(chan struct{})
 			err := miner.MineOne(ctx, func(mined bool) {
-				t.D().Counter(fmt.Sprintf("block.mine,miner=%s", myActorAddr)).Inc(1)
+				if mined {
+					t.D().Counter(fmt.Sprintf("block.mine,miner=%s", myActorAddr)).Inc(1)
+				}
+				close(ch)
 			})
 			if err != nil {
 				panic(err)
 			}
+			<-ch
 		}
 
 		// signal the last block to make sure no miners are left stuck waiting for the next block signal
