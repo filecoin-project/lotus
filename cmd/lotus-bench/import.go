@@ -280,18 +280,6 @@ func (s1 *stats) Combine(s2 *stats) {
 
 func tallyGasCharges(charges map[string]*stats, et types.ExecutionTrace) {
 	for _, gc := range et.GasCharges {
-
-		compGas := gc.VirtualComputeGas
-		if compGas == 0 {
-			compGas = 1
-		}
-		compGas = 1
-
-		ratio := float64(compGas) / float64(gc.TimeTaken.Nanoseconds())
-		ratio = 1 / ratio
-		if math.IsNaN(ratio) {
-			log.Errorf("NaN: comGas: %f, taken: %d", compGas, gc.TimeTaken.Nanoseconds())
-		}
 		name := gc.Name
 		if eString, ok := gc.Extra.(string); ok {
 			name += "-" + eString
@@ -300,10 +288,22 @@ func tallyGasCharges(charges map[string]*stats, et types.ExecutionTrace) {
 			_ = eInt
 		}
 
-		s := charges[gc.Name]
+		compGas := gc.VirtualComputeGas
+		if compGas == 0 {
+			name += "-zerogas"
+			compGas = 1
+		}
+
+		ratio := float64(compGas) / float64(gc.TimeTaken.Nanoseconds())
+		ratio = 1 / ratio
+		if math.IsNaN(ratio) {
+			log.Errorf("NaN: comGas: %f, taken: %d", compGas, gc.TimeTaken.Nanoseconds())
+		}
+
+		s := charges[name]
 		if s == nil {
 			s = new(stats)
-			charges[gc.Name] = s
+			charges[name] = s
 		}
 
 		s.AddPoint(ratio)

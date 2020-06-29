@@ -97,13 +97,16 @@ func (pl *pricelistV0) OnChainReturnValue(dataSize int) GasCharge {
 // OnMethodInvocation returns the gas used when invoking a method.
 func (pl *pricelistV0) OnMethodInvocation(value abi.TokenAmount, methodNum abi.MethodNum) GasCharge {
 	ret := pl.sendBase
+	extra := ""
 	if value != abi.NewTokenAmount(0) {
 		ret += pl.sendTransferFunds
+		extra += "t"
 	}
 	if methodNum != builtin.MethodSend {
 		ret += pl.sendInvokeMethod
+		extra += "i"
 	}
-	return newGasCharge("OnMethodInvocation", ret, 0).WithVirtual(ret*4600, 0)
+	return newGasCharge("OnMethodInvocation", ret, 0).WithVirtual(86315, 0).WithExtra(extra)
 }
 
 // OnIpldGet returns the gas used for storing an object
@@ -113,12 +116,12 @@ func (pl *pricelistV0) OnIpldGet(dataSize int) GasCharge {
 
 // OnIpldPut returns the gas used for storing an object
 func (pl *pricelistV0) OnIpldPut(dataSize int) GasCharge {
-	return newGasCharge("OnIpldPut", pl.ipldPutBase, int64(dataSize)*pl.ipldPutPerByte).WithExtra(dataSize).WithVirtual(475*(pl.ipldPutBase+int64(dataSize)*pl.ipldPutPerByte), 0)
+	return newGasCharge("OnIpldPut", pl.ipldPutBase, int64(dataSize)*pl.ipldPutPerByte).WithExtra(dataSize).WithVirtual(9151, 0)
 }
 
 // OnCreateActor returns the gas used for creating an actor
 func (pl *pricelistV0) OnCreateActor() GasCharge {
-	return newGasCharge("OnCreateActor", pl.createActorBase, pl.createActorExtra).WithVirtual(162*pl.createActorBase, 0)
+	return newGasCharge("OnCreateActor", pl.createActorBase, pl.createActorExtra).WithVirtual(6549, 0)
 }
 
 // OnDeleteActor returns the gas used for deleting an actor
@@ -139,28 +142,28 @@ func (pl *pricelistV0) OnVerifySignature(sigType crypto.SigType, planTextSize in
 
 // OnHashing
 func (pl *pricelistV0) OnHashing(dataSize int) GasCharge {
-	return newGasCharge("OnHashing", pl.hashingBase+int64(dataSize)*pl.hashingPerByte, 0).WithExtra(dataSize).WithVirtual(256*(pl.hashingBase+int64(dataSize)*pl.hashingPerByte), 0)
+	return newGasCharge("OnHashing", pl.hashingBase+int64(dataSize)*pl.hashingPerByte, 0).WithExtra(dataSize).WithVirtual(7881, 0)
 }
 
 // OnComputeUnsealedSectorCid
 func (pl *pricelistV0) OnComputeUnsealedSectorCid(proofType abi.RegisteredSealProof, pieces []abi.PieceInfo) GasCharge {
 	// TODO: this needs more cost tunning, check with @lotus
-	return newGasCharge("OnComputeUnsealedSectorCid", pl.computeUnsealedSectorCidBase, 0).WithVirtual(pl.computeUnsealedSectorCidBase*405, 0)
+	return newGasCharge("OnComputeUnsealedSectorCid", pl.computeUnsealedSectorCidBase, 0).WithVirtual(40536, 0)
 }
 
 // OnVerifySeal
 func (pl *pricelistV0) OnVerifySeal(info abi.SealVerifyInfo) GasCharge {
 	// TODO: this needs more cost tunning, check with @lotus
-	return newGasCharge("OnVerifySeal", pl.verifySealBase, 0).WithVirtual(pl.verifySealBase*177500, 0)
+	return newGasCharge("OnVerifySeal", pl.verifySealBase, 0).WithVirtual(199954003, 0)
 }
 
 // OnVerifyPost
 func (pl *pricelistV0) OnVerifyPost(info abi.WindowPoStVerifyInfo) GasCharge {
 	// TODO: this needs more cost tunning, check with @lotus
-	return newGasCharge("OnVerifyPost", pl.verifyPostBase, 0).WithVirtual(pl.verifyPostBase*385100, 0)
+	return newGasCharge("OnVerifyPost", pl.verifyPostBase, 0).WithVirtual(269570688, 0)
 }
 
 // OnVerifyConsensusFault
 func (pl *pricelistV0) OnVerifyConsensusFault() GasCharge {
-	return newGasCharge("OnVerifyConsensusFault", pl.verifyConsensusFault, 0).WithVirtual(pl.verifyConsensusFault*5466, 0)
+	return newGasCharge("OnVerifyConsensusFault", pl.verifyConsensusFault, 0).WithVirtual(54665, 0)
 }
