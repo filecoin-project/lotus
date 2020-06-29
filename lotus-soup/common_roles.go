@@ -54,7 +54,9 @@ func runMiner(t *TestEnvironment) error {
 
 			ch := make(chan struct{})
 			err := miner.MineOne(ctx, func(mined bool) {
-				t.D().Counter(fmt.Sprintf("block.mine,miner=%s", myActorAddr)).Inc(1)
+				if mined {
+					t.D().Counter(fmt.Sprintf("block.mine,miner=%s", myActorAddr)).Inc(1)
+				}
 				close(ch)
 			})
 			if err != nil {
