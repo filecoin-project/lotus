@@ -341,16 +341,20 @@ func LoadSectorsFromSet(ctx context.Context, bs blockstore.Blockstore, ssc cid.C
 		return nil, err
 	}
 
+	filterSize, err := filter.Count()
+	if err != nil {
+		return nil, err
+	}
+
+	filterSet, err := filter.AllMap(filterSize)
+	if err != nil {
+		return nil, err
+	}
+
 	var sset []*api.ChainSectorInfo
 	if err := a.ForEach(ctx, func(i uint64, v *cbg.Deferred) error {
-		if filter != nil {
-			set, err := filter.IsSet(i)
-			if err != nil {
-				return xerrors.Errorf("filter check error: %w", err)
-			}
-			if set == filterOut {
-				return nil
-			}
+		if filter != nil && filterSet[i] == filterOut {
+			return nil
 		}
 
 		var oci miner.SectorOnChainInfo
