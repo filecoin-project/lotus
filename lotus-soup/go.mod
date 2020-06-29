@@ -6,9 +6,11 @@ require (
 	github.com/drand/drand v0.9.2-0.20200616080806-a94e9c1636a4
 	github.com/filecoin-project/go-address v0.0.2-0.20200504173055-8b6f2fb2b3ef
 	github.com/filecoin-project/go-fil-markets v0.3.0
+	github.com/filecoin-project/go-jsonrpc v0.1.1-0.20200602181149-522144ab4e24
 	github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b
 	github.com/filecoin-project/lotus v0.4.1-0.20200623211458-e8642442267b
 	github.com/filecoin-project/specs-actors v0.6.2-0.20200617175406-de392ca14121
+	github.com/gorilla/mux v1.7.4
 	github.com/ipfs/go-cid v0.0.6
 	github.com/ipfs/go-datastore v0.4.4
 	github.com/ipfs/go-ipfs-files v0.0.8
@@ -21,6 +23,7 @@ require (
 	github.com/libp2p/go-libp2p-core v0.6.0
 	github.com/libp2p/go-libp2p-pubsub-tracer v0.0.0-20200626141350-e730b32bf1e6
 	github.com/multiformats/go-multiaddr v0.2.2
+	github.com/multiformats/go-multiaddr-net v0.1.5
 	github.com/testground/sdk-go v0.2.3-0.20200626214218-7a87893cf56c
 )
 

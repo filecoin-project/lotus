@@ -6,14 +6,18 @@ import (
 	"crypto/rand"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-jsonrpc"
+	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-storedcounter"
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/apistruct"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/beacon"
@@ -25,12 +29,12 @@ import (
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/lp2p"
 	modtest "github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
-
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -38,13 +42,13 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
-
+	"github.com/gorilla/mux"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
 	libp2p_crypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
-
+	manet "github.com/multiformats/go-multiaddr-net"
 	"github.com/testground/sdk-go/run"
 	"github.com/testground/sdk-go/runtime"
 	"github.com/testground/sdk-go/sync"
@@ -416,6 +420,7 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 		return err1
 	}
 
+	// Bootstrap with full node
 	remoteAddrs, err := n.fullApi.NetAddrsListen(ctx)
 	if err != nil {
 		panic(err)
@@ -434,6 +439,54 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 			return ctx.Err()
 		}
 	}
+
+	endpoint, err := minerRepo.APIEndpoint()
+	if err != nil {
+		return nil, err
+	}
+
+	lst, err := manet.Listen(endpoint)
+	if err != nil {
+		return nil, fmt.Errorf("could not listen: %w", err)
+	}
+
+	mux := mux.NewRouter()
+
+	rpcServer := jsonrpc.NewServer()
+	rpcServer.Register("Filecoin", apistruct.PermissionedStorMinerAPI(n.minerApi))
+
+	mux.Handle("/rpc/v0", rpcServer)
+	mux.PathPrefix("/remote").HandlerFunc(n.minerApi.(*impl.StorageMinerAPI).ServeRemote)
+	mux.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
+
+	ah := &auth.Handler{
+		Verify: n.minerApi.AuthVerify,
+		Next:   mux.ServeHTTP,
+	}
+
+	srv := &http.Server{Handler: ah}
+
+	//sigChan := make(chan os.Signal, 2)
+	//go func() {
+	//select {
+	//case <-sigChan:
+	//case <-shutdownChan:
+	//}
+
+	//log.Warn("Shutting down...")
+	//if err := stop(context.TODO()); err != nil {
+	//log.Errorf("graceful shutting down failed: %s", err)
+	//}
+	//if err := srv.Shutdown(context.TODO()); err != nil {
+	//log.Errorf("shutting down RPC server failed: %s", err)
+	//}
+	//log.Warn("Graceful shutdown successful")
+	//}()
+	//signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
+
+	go func() {
+		_ = srv.Serve(manet.NetListener(lst))
+	}()
 
 	// add local storage for presealed sectors
 	err = n.minerApi.StorageAddLocal(ctx, presealDir)
