@@ -24,11 +24,13 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/testground/sdk-go/sync"
+
+	"github.com/filecoin-project/oni/lotus-soup/statemachine"
 )
 
 var (
 	PrepareDrandTimeout = time.Minute
-	secretDKG = "dkgsecret"
+	secretDKG           = "dkgsecret"
 )
 
 type DrandInstance struct {
@@ -121,14 +123,14 @@ func (dr *DrandInstance) RunDKG(nodes, thr int, timeout string, leader bool, lea
 	return kg
 }
 
-func (dr *DrandInstance) Halt(duration time.Duration) {
-	dr.t.RecordMessage("drand node %d halting for %s", dr.t.GroupSeq, duration.String())
+func (dr *DrandInstance) Halt() {
+	dr.t.RecordMessage("drand node #%d halting", dr.t.GroupSeq)
 	dr.daemon.StopBeacon()
+}
 
-	time.AfterFunc(duration, func() {
-		dr.t.RecordMessage("drand node %d coming back online", dr.t.GroupSeq)
-		dr.daemon.StartBeacon(true)
-	})
+func (dr *DrandInstance) Resume() {
+	dr.t.RecordMessage("drand node #d resuming", dr.t.GroupSeq)
+	dr.daemon.StartBeacon(true)
 }
 
 func runDrandNode(t *TestEnvironment) error {
@@ -142,15 +144,9 @@ func runDrandNode(t *TestEnvironment) error {
 	ctx := context.Background()
 	t.SyncClient.MustSignalAndWait(ctx, stateReady, t.TestInstanceCount)
 
-	haltDuration := time.Duration(0)
-	if t.IsParamSet("drand_halt_duration") {
-		haltDuration = t.DurationParam("drand_halt_duration")
-	}
-	if haltDuration != 0 {
-		startTime := t.DurationParam("drand_halt_begin")
-		time.AfterFunc(startTime, func() {
-			dr.Halt(haltDuration)
-		})
+	if t.IsParamSet("suspend_events") {
+		suspender := statemachine.NewSuspender(dr, t.RecordMessage)
+		suspender.RunEvents(t.StringParam("suspend_events"))
 	}
 
 	t.SyncClient.MustSignalAndWait(ctx, stateDone, t.TestInstanceCount)
@@ -182,7 +178,7 @@ func prepareDrandNode(t *TestEnvironment) (*DrandInstance, error) {
 	}
 
 	dr := DrandInstance{
-		t: t,
+		t:        t,
 		stateDir: stateDir,
 		pubAddr:  dtest.FreeBind(myAddr.String()),
 		privAddr: dtest.FreeBind(myAddr.String()),

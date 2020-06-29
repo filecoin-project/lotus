@@ -70,10 +70,9 @@ func (t *TestEnvironment) DurationParam(name string) time.Duration {
 	return d
 }
 
-func (t *TestEnvironment) DebugSpew(format string, args... interface{}) {
+func (t *TestEnvironment) DebugSpew(format string, args ...interface{}) {
 	t.RecordMessage(spew.Sprintf(format, args...))
 }
-
 
 type Node struct {
 	fullApi  api.FullNode

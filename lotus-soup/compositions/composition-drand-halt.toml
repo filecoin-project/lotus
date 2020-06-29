@@ -68,6 +68,5 @@
     [groups.run.test_params]
       role = "drand"
       drand_period = "1s"
-      drand_halt_duration = "1m"
-      drand_halt_begin = "10s"
       drand_log_level = "none"
+      suspend_events = "wait 20s -> halt -> wait 45s -> resume -> wait 5s -> halt -> wait 1m -> resume"
