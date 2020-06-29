@@ -71,12 +71,10 @@ func TestPredicates(t *testing.T) {
 		abi.DealID(1): {
 			SectorStartEpoch: 1,
 			LastUpdatedEpoch: 2,
-			SlashEpoch:       0,
 		},
 		abi.DealID(2): {
 			SectorStartEpoch: 4,
 			LastUpdatedEpoch: 5,
-			SlashEpoch:       0,
 		},
 	}
 	oldStateC := createMarketState(ctx, t, store, oldDeals)
@@ -85,12 +83,6 @@ func TestPredicates(t *testing.T) {
 		abi.DealID(1): {
 			SectorStartEpoch: 1,
 			LastUpdatedEpoch: 3,
-			SlashEpoch:       0,
-		},
-		abi.DealID(2): {
-			SectorStartEpoch: 4,
-			LastUpdatedEpoch: 6,
-			SlashEpoch:       6,
 		},
 	}
 	newStateC := createMarketState(ctx, t, store, newDeals)
@@ -131,8 +123,27 @@ func TestPredicates(t *testing.T) {
 		t.Fatal("Unexpected change to LastUpdatedEpoch")
 	}
 	deal2 := changedDeals[abi.DealID(2)]
-	if deal2.From.SlashEpoch != 0 || deal2.To.SlashEpoch != 6 {
-		t.Fatal("Unexpected change to SlashEpoch")
+	if deal2.From.LastUpdatedEpoch != 5 || deal2.To != nil {
+		t.Fatal("Expected To to be nil")
+	}
+
+	// Diff with non-existent deal.
+	// Note that for non existent deals we expect a change with
+	// From and To set to nil. This is to ensure that if a deal expires and is
+	// removed from state we will still find out about the change.
+	noDeal := []abi.DealID{3}
+	diffNoDealFn := preds.OnStorageMarketActorChanged(preds.OnDealStateChanged(preds.DealStateChangedForIDs(noDeal)))
+	changed, val, err = diffNoDealFn(ctx, oldState, newState)
+	require.NoError(t, err)
+	require.True(t, changed)
+
+	changedDeals, ok = val.(ChangedDeals)
+	require.True(t, ok)
+	require.Len(t, changedDeals, 1)
+	require.Contains(t, changedDeals, noDeal[0])
+	deal1 = changedDeals[abi.DealID(1)]
+	if deal1.From != nil || deal1.To != nil {
+		t.Fatal("Expected both from and to to be nil")
 	}
 
 	// Test that OnActorStateChanged does not call the callback if the state has not changed

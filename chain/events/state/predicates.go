@@ -2,7 +2,6 @@ package state
 
 import (
 	"context"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/lotus/api/apibstore"
@@ -107,8 +106,8 @@ type ChangedDeals map[abi.DealID]DealStateChange
 
 // DealStateChange is a change in deal state from -> to
 type DealStateChange struct {
-	From market.DealState
-	To   market.DealState
+	From *market.DealState
+	To   *market.DealState
 }
 
 // DealStateChangedForIDs detects changes in the deal state AMT for the given deal IDs
@@ -116,17 +115,22 @@ func (sp *StatePredicates) DealStateChangedForIDs(dealIds []abi.DealID) DiffDeal
 	return func(ctx context.Context, oldDealStateRoot *amt.Root, newDealStateRoot *amt.Root) (changed bool, user UserData, err error) {
 		changedDeals := make(ChangedDeals)
 		for _, dealID := range dealIds {
+			var oldDealPtr, newDealPtr *market.DealState
 			var oldDeal, newDeal market.DealState
 			err := oldDealStateRoot.Get(ctx, uint64(dealID), &oldDeal)
-			if err != nil {
+			if err == nil {
+				oldDealPtr = &oldDeal
+			} else if _, ok := err.(*amt.ErrNotFound); !ok {
 				return false, nil, err
 			}
 			err = newDealStateRoot.Get(ctx, uint64(dealID), &newDeal)
-			if err != nil {
+			if err == nil {
+				newDealPtr = &newDeal
+			} else if _, ok := err.(*amt.ErrNotFound); !ok {
 				return false, nil, err
 			}
-			if oldDeal != newDeal {
-				changedDeals[dealID] = DealStateChange{oldDeal, newDeal}
+			if oldDealPtr == nil || newDealPtr == nil || oldDeal != newDeal {
+				changedDeals[dealID] = DealStateChange{oldDealPtr, newDealPtr}
 			}
 		}
 		if len(changedDeals) > 0 {
