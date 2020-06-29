@@ -9,12 +9,12 @@ import (
 func TestStats(t *testing.T) {
 	N := 16
 	ss := make([]*stats, N)
+	rng := rand.New(rand.NewSource(1))
 	for i := 0; i < N; i++ {
 		ss[i] = &stats{}
-		maxJ := rand.Intn(1000)
+		maxJ := rng.Intn(1000)
 		for j := 0; j < maxJ; j++ {
-			ss[i].AddPoint(rand.NormFloat64()*5 + 500)
-			ss[i].AddPoint(rand.NormFloat64()*5 + 1000)
+			ss[i].AddPoint(rng.NormFloat64()*5 + 500)
 		}
 		t.Logf("mean: %f, stddev: %f, count %f", ss[i].mean, math.Sqrt(ss[i].variance()), ss[i].count)
 	}

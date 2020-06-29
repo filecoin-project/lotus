@@ -232,21 +232,20 @@ func compStats(vals []float64) (float64, float64) {
 type stats struct {
 	count float64
 	mean  float64
-	dSqr  float64
+	m2    float64
 }
 
 func (s *stats) AddPoint(value float64) {
-	s.count++
-	meanDiff := (value - s.mean) / s.count
-	newMean := s.mean + meanDiff
-
-	dSqrtInc := (value - newMean) * (value - s.mean)
-	s.dSqr += dSqrtInc
-	s.mean = newMean
+	// based on https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Welford's_online_algorithm
+	s.count += 1
+	delta := value - s.mean
+	s.mean += delta / s.count
+	delta2 := value - s.mean
+	s.m2 += delta * delta2
 }
 
 func (s *stats) variance() float64 {
-	return s.dSqr / (s.count - 1)
+	return s.m2 / (s.count - 1)
 }
 
 func (s1 *stats) Combine(s2 *stats) {
@@ -268,14 +267,12 @@ func (s1 *stats) Combine(s2 *stats) {
 	}
 
 	newCount := s1.count + s2.count
-	newMean := s1.count*s1.mean + s2.count*s2.mean
-	newMean /= newCount
-	newVar := s1.count * (s1.variance() + (s1.mean-newMean)*(s1.mean-newMean))
-	newVar += s2.count * (s2.variance() + (s2.mean-newMean)*(s2.mean-newMean))
-	newVar /= newCount
+	delta := s2.mean - s1.mean
+	meanDelta := delta * s2.count / newCount
+	m2 := s1.m2 + s2.m2 + delta*meanDelta*s1.count
 	s1.count = newCount
-	s1.mean = newMean
-	s1.dSqr = newVar * (newCount - 1)
+	s1.mean += meanDelta
+	s1.m2 = m2
 }
 
 func tallyGasCharges(charges map[string]*stats, et types.ExecutionTrace) {
