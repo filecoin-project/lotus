@@ -20,7 +20,7 @@
   miners = "3"
   genesis_timestamp_offset = "100000"
   balance = "2000"
-  sectors = "10"
+  sectors = "20"
 
 [[groups]]
   id = "bootstrapper"
