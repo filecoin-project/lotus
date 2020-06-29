@@ -365,7 +365,7 @@ func (rt *Runtime) Send(to address.Address, method abi.MethodNum, m vmr.CBORMars
 			panic(err)
 		}
 		log.Warnf("vmctx send failed: to: %s, method: %d: ret: %d, err: %s", to, method, ret, err)
-		return nil, err.RetCode()
+		return &dumbWrapperType{nil}, err.RetCode()
 	}
 	return &dumbWrapperType{ret}, 0
 }
