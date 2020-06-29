@@ -140,7 +140,7 @@ func (m *Miner) mine(ctx context.Context) {
 		onDone, err := m.waitFunc(ctx, prebase.TipSet.MinTimestamp())
 		if err != nil {
 			log.Error(err)
-			return
+			continue
 		}
 
 		base, err := m.GetBestMiningCandidate(ctx)
