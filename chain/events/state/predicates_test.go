@@ -64,7 +64,6 @@ func (m mockAPI) setActor(tsk types.TipSetKey, act *types.Actor) {
 
 func TestPredicates(t *testing.T) {
 	ctx := context.Background()
-
 	bs := bstore.NewBlockstore(ds_sync.MutexWrap(ds.NewMapDatastore()))
 	store := cbornode.NewCborStore(bs)
 
@@ -133,8 +132,29 @@ func TestPredicates(t *testing.T) {
 	}
 	deal2 := changedDeals[abi.DealID(2)]
 	if deal2.From.SlashEpoch != 0 || deal2.To.SlashEpoch != 6 {
-		t.Fatal("Unexpected change to LastUpdatedEpoch")
+		t.Fatal("Unexpected change to SlashEpoch")
 	}
+
+	// Test that OnActorStateChanged does not call the callback if the state has not changed
+	mockAddr, err := address.NewFromString("t01")
+	require.NoError(t, err)
+	actorDiffFn := preds.OnActorStateChanged(mockAddr, func(context.Context, cid.Cid, cid.Cid) (bool, UserData, error) {
+		t.Fatal("No state change so this should not be called")
+		return false, nil, nil
+	})
+	changed, _, err = actorDiffFn(ctx, oldState, oldState)
+	require.NoError(t, err)
+	require.False(t, changed)
+
+	// Test that OnDealStateChanged does not call the callback if the state has not changed
+	diffDealStateFn := preds.OnDealStateChanged(func(context.Context, *amt.Root, *amt.Root) (bool, UserData, error) {
+		t.Fatal("No state change so this should not be called")
+		return false, nil, nil
+	})
+	marketState := createEmptyMarketState(t, store)
+	changed, _, err = diffDealStateFn(ctx, marketState, marketState)
+	require.NoError(t, err)
+	require.False(t, changed)
 }
 
 func mockTipset(miner address.Address, timestamp uint64) (*types.TipSet, error) {
@@ -153,16 +173,20 @@ func mockTipset(miner address.Address, timestamp uint64) (*types.TipSet, error) 
 func createMarketState(ctx context.Context, t *testing.T, store *cbornode.BasicIpldStore, deals map[abi.DealID]*market.DealState) cid.Cid {
 	rootCid := createAMT(ctx, t, store, deals)
 
-	emptyArrayCid, err := amt.NewAMT(store).Flush(context.TODO())
-	require.NoError(t, err)
-	emptyMap, err := store.Put(context.TODO(), hamt.NewNode(store, hamt.UseTreeBitWidth(5)))
-	require.NoError(t, err)
-	state := market.ConstructState(emptyArrayCid, emptyMap, emptyMap)
+	state := createEmptyMarketState(t, store)
 	state.States = rootCid
 
 	stateC, err := store.Put(ctx, state)
 	require.NoError(t, err)
 	return stateC
+}
+
+func createEmptyMarketState(t *testing.T, store *cbornode.BasicIpldStore) *market.State {
+	emptyArrayCid, err := amt.NewAMT(store).Flush(context.TODO())
+	require.NoError(t, err)
+	emptyMap, err := store.Put(context.TODO(), hamt.NewNode(store, hamt.UseTreeBitWidth(5)))
+	require.NoError(t, err)
+	return market.ConstructState(emptyArrayCid, emptyMap, emptyMap)
 }
 
 func createAMT(ctx context.Context, t *testing.T, store *cbornode.BasicIpldStore, deals map[abi.DealID]*market.DealState) cid.Cid {
