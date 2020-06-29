@@ -432,7 +432,7 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 }
 
 func (s *WindowPoStScheduler) sectorInfo(ctx context.Context, deadlineSectors abi.BitField, ts *types.TipSet) ([]abi.SectorInfo, error) {
-	sset, err := s.api.StateMinerSectors(ctx, s.actor, &deadlineSectors, false, ts.Key())
+	sset, err := s.api.StateMinerSectors(ctx, s.actor, &deadlineSectors, ts.Key())
 	if err != nil {
 		return nil, err
 	}

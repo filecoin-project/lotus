@@ -163,14 +163,14 @@ func MinerSectorInfo(ctx context.Context, sm *StateManager, maddr address.Addres
 	return sectorInfo, nil
 }
 
-func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address, filter *abi.BitField, filterOut bool) ([]*api.ChainSectorInfo, error) {
+func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address, filter *abi.BitField) ([]*api.ChainSectorInfo, error) {
 	var mas miner.State
 	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
 	}
 
-	return LoadSectorsFromSet(ctx, sm.ChainStore().Blockstore(), mas.Sectors, filter, filterOut)
+	return LoadSectorsFromSet(ctx, sm.ChainStore().Blockstore(), mas.Sectors, filter)
 }
 
 func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *StateManager, st cid.Cid, maddr address.Address, rand abi.PoStRandomness) ([]abi.SectorInfo, error) {
@@ -387,35 +387,45 @@ func ListMinerActors(ctx context.Context, sm *StateManager, ts *types.TipSet) ([
 	return miners, nil
 }
 
-func LoadSectorsFromSet(ctx context.Context, bs blockstore.Blockstore, ssc cid.Cid, filter *abi.BitField, filterOut bool) ([]*api.ChainSectorInfo, error) {
+func LoadSectorsFromSet(ctx context.Context, bs blockstore.Blockstore, ssc cid.Cid, filter *abi.BitField) ([]*api.ChainSectorInfo, error) {
 	a, err := adt.AsArray(store.ActorStore(ctx, bs), ssc)
 	if err != nil {
 		return nil, err
 	}
 
 	var sset []*api.ChainSectorInfo
-	var v cbg.Deferred
-	if err := a.ForEach(&v, func(i int64) error {
-		if filter != nil {
-			set, err := filter.IsSet(uint64(i))
+	if filter != nil {
+		err = filter.ForEach(func(i uint64) error {
+			var oci miner.SectorOnChainInfo
+			found, err := a.Get(i, &oci)
 			if err != nil {
-				return xerrors.Errorf("filter check error: %w", err)
+				return err
 			}
-			if set == filterOut {
+
+			// skip it.
+			if !found {
 				return nil
 			}
-		}
 
-		var oci miner.SectorOnChainInfo
-		if err := cbor.DecodeInto(v.Raw, &oci); err != nil {
-			return err
-		}
-		sset = append(sset, &api.ChainSectorInfo{
-			Info: oci,
-			ID:   abi.SectorNumber(i),
+			sset = append(sset, &api.ChainSectorInfo{
+				Info: oci,
+				ID:   abi.SectorNumber(i),
+			})
+
+			return nil
 		})
-		return nil
-	}); err != nil {
+	} else {
+		var oci miner.SectorOnChainInfo
+		err = a.ForEach(&oci, func(i int64) error {
+			sset = append(sset, &api.ChainSectorInfo{
+				Info: oci,
+				ID:   abi.SectorNumber(i),
+			})
+			return nil
+		})
+	}
+
+	if err != nil {
 		return nil, err
 	}
 

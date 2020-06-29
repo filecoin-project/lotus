@@ -60,12 +60,12 @@ func (a *StateAPI) StateNetworkName(ctx context.Context) (dtypes.NetworkName, er
 	return stmgr.GetNetworkName(ctx, a.StateManager, a.Chain.GetHeaviestTipSet().ParentState())
 }
 
-func (a *StateAPI) StateMinerSectors(ctx context.Context, addr address.Address, filter *abi.BitField, filterOut bool, tsk types.TipSetKey) ([]*api.ChainSectorInfo, error) {
+func (a *StateAPI) StateMinerSectors(ctx context.Context, addr address.Address, filter *abi.BitField, tsk types.TipSetKey) ([]*api.ChainSectorInfo, error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
-	return stmgr.GetMinerSectorSet(ctx, a.StateManager, ts, addr, filter, filterOut)
+	return stmgr.GetMinerSectorSet(ctx, a.StateManager, ts, addr, filter)
 }
 
 func (a *StateAPI) StateMinerActiveSectors(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]*api.ChainSectorInfo, error) {
@@ -96,7 +96,7 @@ func (a *StateAPI) StateMinerActiveSectors(ctx context.Context, maddr address.Ad
 					return xerrors.Errorf("merging active sector bitfields: %w", err)
 				}
 
-				out, err = stmgr.LoadSectorsFromSet(ctx, a.Chain.Blockstore(), mas.Sectors, &active, false)
+				out, err = stmgr.LoadSectorsFromSet(ctx, a.Chain.Blockstore(), mas.Sectors, &active)
 				return err
 			})))
 	if err != nil {

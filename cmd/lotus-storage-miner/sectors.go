@@ -167,7 +167,7 @@ var sectorsListCmd = &cli.Command{
 			activeIDs[info.ID] = struct{}{}
 		}
 
-		sset, err := fullApi.StateMinerSectors(ctx, maddr, nil, true, types.EmptyTSK)
+		sset, err := fullApi.StateMinerSectors(ctx, maddr, nil, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
