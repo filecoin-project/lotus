@@ -15,8 +15,8 @@
   "editable": true,
   "gnetId": null,
   "graphTooltip": 0,
-  "id": 15,
-  "iteration": 1593447404131,
+  "id": 16,
+  "iteration": 1593448862489,
   "links": [],
   "panels": [
     {
@@ -1019,105 +1019,9 @@
         "label": null,
         "multi": false,
         "name": "runid",
-        "options": [
-          {
-            "selected": true,
-            "text": "All",
-            "value": "$__all"
-          },
-          {
-            "selected": false,
-            "text": "117f08933310",
-            "value": "117f08933310"
-          },
-          {
-            "selected": false,
-            "text": "17a227f7b637",
-            "value": "17a227f7b637"
-          },
-          {
-            "selected": false,
-            "text": "38d83e95c2b2",
-            "value": "38d83e95c2b2"
-          },
-          {
-            "selected": false,
-            "text": "4df9a41381ca",
-            "value": "4df9a41381ca"
-          },
-          {
-            "selected": false,
-            "text": "55bf4f1e53e0",
-            "value": "55bf4f1e53e0"
-          },
-          {
-            "selected": false,
-            "text": "5fc360f56297",
-            "value": "5fc360f56297"
-          },
-          {
-            "selected": false,
-            "text": "61c25df6a523",
-            "value": "61c25df6a523"
-          },
-          {
-            "selected": false,
-            "text": "81bdea781a27",
-            "value": "81bdea781a27"
-          },
-          {
-            "selected": false,
-            "text": "8bda77016642",
-            "value": "8bda77016642"
-          },
-          {
-            "selected": false,
-            "text": "8e5bdd96afd1",
-            "value": "8e5bdd96afd1"
-          },
-          {
-            "selected": false,
-            "text": "9047c7cc419a",
-            "value": "9047c7cc419a"
-          },
-          {
-            "selected": false,
-            "text": "b29b34b67c9f",
-            "value": "b29b34b67c9f"
-          },
-          {
-            "selected": false,
-            "text": "b81f58a9362d",
-            "value": "b81f58a9362d"
-          },
-          {
-            "selected": false,
-            "text": "c05206ad1ca7",
-            "value": "c05206ad1ca7"
-          },
-          {
-            "selected": false,
-            "text": "c99cadb9e63b",
-            "value": "c99cadb9e63b"
-          },
-          {
-            "selected": false,
-            "text": "dbc87837bf29",
-            "value": "dbc87837bf29"
-          },
-          {
-            "selected": false,
-            "text": "ddf546e35bdd",
-            "value": "ddf546e35bdd"
-          },
-          {
-            "selected": false,
-            "text": "e7c3c5a7806d",
-            "value": "e7c3c5a7806d"
-          }
-        ],
+        "options": [],
         "query": "SHOW TAG VALUES WITH KEY = run",
-        "refresh": 0,
+        "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
         "sort": 1,
@@ -1149,5 +1053,5 @@
   "timezone": "",
   "title": "Project Oni - Baseline test",
   "uid": "8em8RXWMz",
-  "version": 2
+  "version": 1
 }
