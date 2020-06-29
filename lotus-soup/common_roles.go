@@ -46,7 +46,9 @@ func runMiner(t *TestEnvironment) error {
 
 	if miner.MineOne != nil {
 		go func() {
+			defer t.RecordMessage("shutting down mining")
 			defer close(done)
+
 			var i int
 			for i = 0; mine; i++ {
 				// synchronize all miners to mine the next block
@@ -83,7 +85,6 @@ func runMiner(t *TestEnvironment) error {
 	}
 
 	mine = false
-	t.RecordMessage("shutting down mining")
 	<-done
 
 	t.SyncClient.MustSignalAndWait(ctx, stateDone, t.TestInstanceCount)
