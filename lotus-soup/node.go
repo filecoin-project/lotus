@@ -8,7 +8,8 @@ import (
 	"sort"
 	"strings"
 	"time"
-
+	
+	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/beacon"
@@ -68,6 +69,11 @@ func (t *TestEnvironment) DurationParam(name string) time.Duration {
 	}
 	return d
 }
+
+func (t *TestEnvironment) DebugSpew(format string, args... interface{}) {
+	t.RecordMessage(spew.Sprintf(format, args...))
+}
+
 
 type Node struct {
 	fullApi  api.FullNode
@@ -206,7 +212,7 @@ func getDrandOpts(ctx context.Context, t *TestEnvironment) (node.Option, error) 
 			return nil, err
 
 		}
-		t.RecordMessage("setting drand config: %v", cfg)
+		t.DebugSpew("setting drand config: %v", cfg)
 		return node.Options(
 			node.Override(new(dtypes.DrandConfig), cfg.Config),
 			node.Override(new(dtypes.DrandBootstrap), cfg.GossipBootstrap),

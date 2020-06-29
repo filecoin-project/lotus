@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -140,7 +139,6 @@ func runDrandNode(t *TestEnvironment) error {
 	}
 	defer dr.Close()
 
-	// TODO add ability to halt / recover on demand
 	ctx := context.Background()
 	t.SyncClient.MustSignalAndWait(ctx, stateReady, t.TestInstanceCount)
 
@@ -327,8 +325,7 @@ func prepareDrandNode(t *TestEnvironment) (*DrandInstance, error) {
 			},
 			GossipBootstrap: relayAddrs,
 		}
-		dump, _ := json.Marshal(cfg)
-		t.RecordMessage("publishing drand config on sync topic: %s", string(dump))
+		t.DebugSpew("publishing drand config on sync topic: %v", cfg)
 		t.SyncClient.MustPublish(ctx, drandConfigTopic, &cfg)
 	}
 

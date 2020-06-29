@@ -79,6 +79,6 @@
     [groups.run.test_params]
       role = "drand"
       drand_period = "1s"
-      drand_halt_duration = "20s"
+      drand_halt_duration = "1m"
       drand_halt_begin = "10s"
-      drand_log_level = "info"
+      drand_log_level = "none"

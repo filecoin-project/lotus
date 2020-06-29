@@ -3,6 +3,7 @@ module github.com/filecoin-project/oni/lotus-soup
 go 1.14
 
 require (
+	github.com/davecgh/go-spew v1.1.1
 	github.com/drand/drand v0.9.2-0.20200616080806-a94e9c1636a4
 	github.com/filecoin-project/go-address v0.0.2-0.20200504173055-8b6f2fb2b3ef
 	github.com/filecoin-project/go-fil-markets v0.3.0
