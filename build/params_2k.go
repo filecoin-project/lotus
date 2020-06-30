@@ -22,7 +22,7 @@ func init() {
 
 const BlockDelaySecs = uint64(2)
 
-const PropagationDelay = uint64(3)
+const PropagationDelaySecs = uint64(3)
 
 // SlashablePowerDelay is the number of epochs after ElectionPeriodStart, after
 // which the miner is slashed

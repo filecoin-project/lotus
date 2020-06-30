@@ -21,11 +21,11 @@ var (
 	UnixfsChunkSize     = uint64(1 << 20)
 	UnixfsLinksPerLevel = 1024
 
-	BlocksPerEpoch    = uint64(builtin.ExpectedLeadersPerEpoch)
-	BlockMessageLimit = 512
-	BlockGasLimit     = int64(100_000_000_000)
-	BlockDelaySecs    = uint64(builtin.EpochDurationSeconds)
-	PropagationDelay  = uint64(6)
+	BlocksPerEpoch       = uint64(builtin.ExpectedLeadersPerEpoch)
+	BlockMessageLimit    = 512
+	BlockGasLimit        = int64(100_000_000_000)
+	BlockDelaySecs       = uint64(builtin.EpochDurationSeconds)
+	PropagationDelaySecs = uint64(6)
 
 	AllowableClockDriftSecs = uint64(1)
 

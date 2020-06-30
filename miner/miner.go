@@ -42,7 +42,7 @@ func NewMiner(api api.FullNode, epp gen.WinningPoStProver, addr address.Address)
 		address: addr,
 		waitFunc: func(ctx context.Context, baseTime uint64) (func(bool), error) {
 			// Wait around for half the block time in case other parents come in
-			deadline := baseTime + build.PropagationDelay
+			deadline := baseTime + build.PropagationDelaySecs
 			time.Sleep(time.Until(time.Unix(int64(deadline), 0)))
 
 			return func(bool) {}, nil
@@ -194,7 +194,7 @@ func (m *Miner) mine(ctx context.Context) {
 			// has enough time to form.
 			//
 			// See:  https://github.com/filecoin-project/lotus/issues/1845
-			nextRound := time.Unix(int64(base.TipSet.MinTimestamp()+build.BlockDelaySecs*uint64(base.NullRounds))+int64(build.PropagationDelay), 0)
+			nextRound := time.Unix(int64(base.TipSet.MinTimestamp()+build.BlockDelaySecs*uint64(base.NullRounds))+int64(build.PropagationDelaySecs), 0)
 
 			select {
 			case <-time.After(time.Until(nextRound)):
