@@ -47,6 +47,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	libp2p_crypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/multiformats/go-multiaddr"
 	ma "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr-net"
 	"github.com/testground/sdk-go/run"
@@ -205,6 +206,13 @@ func prepareBootstrapper(t *TestEnvironment) (*Node, error) {
 		node.Online(),
 		node.Repo(repo.NewMemory(nil)),
 		node.Override(new(modules.Genesis), modtest.MakeGenesisMem(&genesisBuffer, genesisTemplate)),
+		node.Override(node.SetApiEndpointKey, func(lr repo.LockedRepo) error {
+			apima, err := multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/1234")
+			if err != nil {
+				return err
+			}
+			return lr.SetAPIEndpoint(apima)
+		}),
 		withListenAddress(bootstrapperIP),
 		withBootstrapper(nil),
 		withPubsubConfig(true, pubsubTracer),
@@ -376,11 +384,20 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 	// we need both a full node _and_ and storage miner node
 	n := &Node{}
 
+	nodeRepo := repo.NewMemory(nil)
+
 	stop1, err := node.New(context.Background(),
 		node.FullAPI(&n.fullApi),
 		node.Online(),
-		node.Repo(repo.NewMemory(nil)),
+		node.Repo(nodeRepo),
 		withGenesis(genesisMsg.Genesis),
+		node.Override(node.SetApiEndpointKey, func(lr repo.LockedRepo) error {
+			apima, err := multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/1235")
+			if err != nil {
+				return err
+			}
+			return lr.SetAPIEndpoint(apima)
+		}),
 		withListenAddress(minerIP),
 		withBootstrapper(genesisMsg.Bootstrapper),
 		withPubsubConfig(false, pubsubTracer),
@@ -403,6 +420,13 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 		node.Online(),
 		node.Repo(minerRepo),
 		node.Override(new(api.FullNode), n.fullApi),
+		//node.Override(node.SetApiEndpointKey, func(lr repo.LockedRepo) error {
+		//apima, err := multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/1234")
+		//if err != nil {
+		//return err
+		//}
+		//return lr.SetAPIEndpoint(apima)
+		//}),
 		node.Override(new(*miner.Miner), miner.NewTestMiner(mineBlock, minerAddr)),
 		withMinerListenAddress(minerIP),
 	)
@@ -465,6 +489,50 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 	}
 
 	srv := &http.Server{Handler: ah}
+
+	//sigChan := make(chan os.Signal, 2)
+	//go func() {
+	//select {
+	//case <-sigChan:
+	//case <-shutdownChan:
+	//}
+
+	//log.Warn("Shutting down...")
+	//if err := stop(context.TODO()); err != nil {
+	//log.Errorf("graceful shutting down failed: %s", err)
+	//}
+	//if err := srv.Shutdown(context.TODO()); err != nil {
+	//log.Errorf("shutting down RPC server failed: %s", err)
+	//}
+	//log.Warn("Graceful shutdown successful")
+	//}()
+	//signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
+
+	go func() {
+		_ = srv.Serve(manet.NetListener(lst))
+	}()
+
+	//endpoint, err = nodeRepo.APIEndpoint()
+	//if err != nil {
+	//return nil, err
+	//}
+
+	//lst, err = manet.Listen(endpoint)
+	//if err != nil {
+	//return nil, fmt.Errorf("could not listen: %w", err)
+	//}
+
+	//rpcServer = jsonrpc.NewServer()
+	//rpcServer.Register("Filecoin", apistruct.PermissionedFullAPI(n.fullApi))
+
+	//ah = &auth.Handler{
+	//Verify: n.fullApi.AuthVerify,
+	//Next:   rpcServer.ServeHTTP,
+	//}
+
+	//http.Handle("/rpc/v0", ah)
+
+	//srv = &http.Server{Handler: http.DefaultServeMux}
 
 	//sigChan := make(chan os.Signal, 2)
 	//go func() {
@@ -567,12 +635,21 @@ func prepareClient(t *TestEnvironment) (*Node, error) {
 
 	clientIP := t.NetClient.MustGetDataNetworkIP().String()
 
+	nodeRepo := repo.NewMemory(nil)
+
 	// create the node
 	n := &Node{}
 	stop, err := node.New(context.Background(),
 		node.FullAPI(&n.fullApi),
 		node.Online(),
-		node.Repo(repo.NewMemory(nil)),
+		node.Repo(nodeRepo),
+		node.Override(node.SetApiEndpointKey, func(lr repo.LockedRepo) error {
+			apima, err := multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/1234")
+			if err != nil {
+				return err
+			}
+			return lr.SetAPIEndpoint(apima)
+		}),
 		withGenesis(genesisMsg.Genesis),
 		withListenAddress(clientIP),
 		withBootstrapper(genesisMsg.Bootstrapper),
@@ -590,6 +667,32 @@ func prepareClient(t *TestEnvironment) (*Node, error) {
 		stop(context.TODO())
 		return nil, err
 	}
+
+	endpoint, err := nodeRepo.APIEndpoint()
+	if err != nil {
+		return nil, err
+	}
+
+	lst, err := manet.Listen(endpoint)
+	if err != nil {
+		return nil, fmt.Errorf("could not listen: %w", err)
+	}
+
+	rpcServer := jsonrpc.NewServer()
+	rpcServer.Register("Filecoin", apistruct.PermissionedFullAPI(n.fullApi))
+
+	ah := &auth.Handler{
+		Verify: n.fullApi.AuthVerify,
+		Next:   rpcServer.ServeHTTP,
+	}
+
+	http.Handle("/rpc/v0", ah)
+
+	srv := &http.Server{Handler: http.DefaultServeMux}
+
+	go func() {
+		_ = srv.Serve(manet.NetListener(lst))
+	}()
 
 	t.RecordMessage("publish our address to the clients addr topic")
 	addrinfo, err := n.fullApi.NetAddrsListen(ctx)
