@@ -131,7 +131,7 @@ func (dr *DrandInstance) Halt() {
 }
 
 func (dr *DrandInstance) Resume() {
-	dr.t.RecordMessage("drand node #d resuming", dr.t.GroupSeq)
+	dr.t.RecordMessage("drand node #%d resuming", dr.t.GroupSeq)
 	dr.daemon.StartBeacon(true)
 	// block until we can fetch the round corresponding to the current time
 	startTime := time.Now()
