@@ -26,6 +26,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
 	"github.com/filecoin-project/lotus/genesis"
+	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/config"
@@ -45,6 +46,8 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
+	influxdb "github.com/kpacha/opencensus-influxdb"
+
 	libp2p_crypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/multiformats/go-multiaddr"
@@ -53,6 +56,9 @@ import (
 	"github.com/testground/sdk-go/run"
 	"github.com/testground/sdk-go/runtime"
 	"github.com/testground/sdk-go/sync"
+
+	"go.opencensus.io/stats"
+	"go.opencensus.io/stats/view"
 )
 
 func init() {
@@ -443,6 +449,8 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 		return err1
 	}
 
+	registerAndExportMetrics(minerAddr.String())
+
 	// Bootstrap with full node
 	remoteAddrs, err := n.fullApi.NetAddrsListen(ctx)
 	if err != nil {
@@ -569,6 +577,8 @@ func prepareClient(t *TestEnvironment) (*Node, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	registerAndExportMetrics(fmt.Sprintf("client_%d", t.GroupSeq))
 
 	t.RecordMessage("publish our address to the clients addr topic")
 	addrinfo, err := n.fullApi.NetAddrsListen(ctx)
@@ -837,4 +847,29 @@ func startServer(repo *repo.MemRepo, srv *http.Server) error {
 	}()
 
 	return nil
+}
+
+func registerAndExportMetrics(instanceName string) {
+	// Register all Lotus metric views
+	err := view.Register(metrics.DefaultViews...)
+	if err != nil {
+		panic(err)
+	}
+
+	// Set the metric to one so it is published to the exporter
+	stats.Record(context.Background(), metrics.LotusInfo.M(1))
+
+	// Register our custom exporter to opencensus
+	e, err := influxdb.NewExporter(context.Background(), influxdb.Options{
+		Database:     "testground",
+		Address:      os.Getenv("INFLUXDB_URL"),
+		Username:     "",
+		Password:     "",
+		InstanceName: instanceName,
+	})
+	if err != nil {
+		panic(err)
+	}
+	view.RegisterExporter(e)
+	view.SetReportingPeriod(5 * time.Second)
 }
