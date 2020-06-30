@@ -196,7 +196,7 @@ func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
 			*genm2,
 		},
 		NetworkName: "",
-		Timestamp:   uint64(time.Now().Add(-500 * build.BlockDelay * time.Second).Unix()),
+		Timestamp:   uint64(time.Now().Add(-500 * time.Duration(build.BlockDelay) * time.Second).Unix()),
 	}
 
 	genb, err := genesis2.MakeGenesisBlock(context.TODO(), bs, sys, tpl)
@@ -414,7 +414,7 @@ func (cg *ChainGen) makeBlock(parents *types.TipSet, m address.Address, vrfticke
 	if cg.Timestamper != nil {
 		ts = cg.Timestamper(parents, height-parents.Height())
 	} else {
-		ts = parents.MinTimestamp() + uint64((height-parents.Height())*build.BlockDelay)
+		ts = parents.MinTimestamp() + uint64(height-parents.Height())*uint64(build.BlockDelay)
 	}
 
 	fblk, err := MinerCreateBlock(context.TODO(), cg.sm, cg.w, &api.BlockTemplate{
