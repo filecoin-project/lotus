@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 )
@@ -86,20 +87,25 @@ var _ Pricelist = (*pricelistV0)(nil)
 
 // OnChainMessage returns the gas used for storing a message of a given size in the chain.
 func (pl *pricelistV0) OnChainMessage(msgSize int) GasCharge {
-	return newGasCharge("OnChainMessage", 0, pl.onChainMessageBase+pl.onChainMessagePerByte*int64(msgSize)).WithVirtual(7402, 0)
+	return newGasCharge("OnChainMessage", 0, pl.onChainMessageBase+pl.onChainMessagePerByte*int64(msgSize)).WithVirtual(77302, 0)
 }
 
 // OnChainReturnValue returns the gas used for storing the response of a message in the chain.
 func (pl *pricelistV0) OnChainReturnValue(dataSize int) GasCharge {
-	return newGasCharge("OnChainReturnValue", 0, int64(dataSize)*pl.onChainReturnValuePerByte).WithVirtual(11160, 0)
+	return newGasCharge("OnChainReturnValue", 0, int64(dataSize)*pl.onChainReturnValuePerByte).WithVirtual(107294, 0)
 }
 
 // OnMethodInvocation returns the gas used when invoking a method.
 func (pl *pricelistV0) OnMethodInvocation(value abi.TokenAmount, methodNum abi.MethodNum) GasCharge {
 	ret := pl.sendBase
 	extra := ""
+
 	if value != abi.NewTokenAmount(0) {
+		// TODO: fix this, it is comparing pointers instead of values
+		// see vv
 		ret += pl.sendTransferFunds
+	}
+	if big.Cmp(value, abi.NewTokenAmount(0)) == 0 {
 		extra += "t"
 	}
 	if methodNum != builtin.MethodSend {
@@ -111,17 +117,19 @@ func (pl *pricelistV0) OnMethodInvocation(value abi.TokenAmount, methodNum abi.M
 
 // OnIpldGet returns the gas used for storing an object
 func (pl *pricelistV0) OnIpldGet(dataSize int) GasCharge {
-	return newGasCharge("OnIpldGet", pl.ipldGetBase+int64(dataSize)*pl.ipldGetPerByte, 0).WithExtra(dataSize)
+	return newGasCharge("OnIpldGet", pl.ipldGetBase+int64(dataSize)*pl.ipldGetPerByte, 0).
+		WithExtra(dataSize).WithVirtual(433685, 0)
 }
 
 // OnIpldPut returns the gas used for storing an object
 func (pl *pricelistV0) OnIpldPut(dataSize int) GasCharge {
-	return newGasCharge("OnIpldPut", pl.ipldPutBase, int64(dataSize)*pl.ipldPutPerByte).WithExtra(dataSize).WithVirtual(9151, 0)
+	return newGasCharge("OnIpldPut", pl.ipldPutBase, int64(dataSize)*pl.ipldPutPerByte).
+		WithExtra(dataSize).WithVirtual(88970, 0)
 }
 
 // OnCreateActor returns the gas used for creating an actor
 func (pl *pricelistV0) OnCreateActor() GasCharge {
-	return newGasCharge("OnCreateActor", pl.createActorBase, pl.createActorExtra).WithVirtual(6549, 0)
+	return newGasCharge("OnCreateActor", pl.createActorBase, pl.createActorExtra).WithVirtual(65636, 0)
 }
 
 // OnDeleteActor returns the gas used for deleting an actor
@@ -137,18 +145,22 @@ func (pl *pricelistV0) OnVerifySignature(sigType crypto.SigType, planTextSize in
 		return GasCharge{}, fmt.Errorf("cost function for signature type %d not supported", sigType)
 	}
 	sigName, _ := sigType.Name()
-	return newGasCharge("OnVerifySignature", costFn(int64(planTextSize)), 0).WithExtra(sigName), nil
+	return newGasCharge("OnVerifySignature", costFn(int64(planTextSize)), 0).
+		WithExtra(map[string]interface{}{
+			"type": sigName,
+			"size": planTextSize,
+		}), nil
 }
 
 // OnHashing
 func (pl *pricelistV0) OnHashing(dataSize int) GasCharge {
-	return newGasCharge("OnHashing", pl.hashingBase+int64(dataSize)*pl.hashingPerByte, 0).WithExtra(dataSize).WithVirtual(7881, 0)
+	return newGasCharge("OnHashing", pl.hashingBase+int64(dataSize)*pl.hashingPerByte, 0).WithExtra(dataSize).WithVirtual(77300, 0)
 }
 
 // OnComputeUnsealedSectorCid
 func (pl *pricelistV0) OnComputeUnsealedSectorCid(proofType abi.RegisteredSealProof, pieces []abi.PieceInfo) GasCharge {
 	// TODO: this needs more cost tunning, check with @lotus
-	return newGasCharge("OnComputeUnsealedSectorCid", pl.computeUnsealedSectorCidBase, 0).WithVirtual(40536, 0)
+	return newGasCharge("OnComputeUnsealedSectorCid", pl.computeUnsealedSectorCidBase, 0).WithVirtual(382370, 0)
 }
 
 // OnVerifySeal
@@ -160,10 +172,10 @@ func (pl *pricelistV0) OnVerifySeal(info abi.SealVerifyInfo) GasCharge {
 // OnVerifyPost
 func (pl *pricelistV0) OnVerifyPost(info abi.WindowPoStVerifyInfo) GasCharge {
 	// TODO: this needs more cost tunning, check with @lotus
-	return newGasCharge("OnVerifyPost", pl.verifyPostBase, 0).WithVirtual(269570688, 0)
+	return newGasCharge("OnVerifyPost", pl.verifyPostBase, 0).WithVirtual(2629471704, 0)
 }
 
 // OnVerifyConsensusFault
 func (pl *pricelistV0) OnVerifyConsensusFault() GasCharge {
-	return newGasCharge("OnVerifyConsensusFault", pl.verifyConsensusFault, 0).WithVirtual(54665, 0)
+	return newGasCharge("OnVerifyConsensusFault", pl.verifyConsensusFault, 0).WithVirtual(551935, 0)
 }

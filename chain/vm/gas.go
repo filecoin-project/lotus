@@ -200,15 +200,12 @@ func (ps pricedSyscalls) VerifyConsensusFault(h1 []byte, h2 []byte, extra []byte
 func (ps pricedSyscalls) BatchVerifySeals(inp map[address.Address][]abi.SealVerifyInfo) (map[address.Address][]bool, error) {
 	var gasChargeSum GasCharge
 	gasChargeSum.Name = "BatchVerifySeals"
-	ps.chargeGas(gasChargeSum) // TODO: this is only called by the cron actor. Should we even charge gas?
-	defer ps.chargeGas(gasOnActorExec)
-
+	count := 0
 	for _, svis := range inp {
-		for _, svi := range svis {
-			ch := ps.pl.OnVerifySeal(svi)
-			ps.chargeGas(newGasCharge("BatchVerifySingle", 0, 0).WithVirtual(ch.VirtualCompute+ch.ComputeGas, 0))
-		}
+		count += len(svis)
 	}
+	ps.chargeGas(gasChargeSum.WithExtra(count)) // TODO: this is only called by the cron actor. Should we even charge gas?
+	defer ps.chargeGas(gasOnActorExec)
 
 	return ps.under.BatchVerifySeals(inp)
 }
