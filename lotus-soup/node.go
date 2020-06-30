@@ -207,7 +207,7 @@ func prepareBootstrapper(t *TestEnvironment) (*Node, error) {
 		node.Online(),
 		node.Repo(repo.NewMemory(nil)),
 		node.Override(new(modules.Genesis), modtest.MakeGenesisMem(&genesisBuffer, genesisTemplate)),
-		node.Override(node.SetApiEndpointKey, withApiEndpoint),
+		withApiEndpoint("/ip4/127.0.0.1/tcp/1234"),
 		withListenAddress(bootstrapperIP),
 		withBootstrapper(nil),
 		withPubsubConfig(true, pubsubTracer),
@@ -410,7 +410,7 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 		node.Online(),
 		node.Repo(minerRepo),
 		node.Override(new(api.FullNode), n.fullApi),
-		node.Override(node.SetApiEndpointKey, withApiEndpoint),
+		withApiEndpoint("/ip4/127.0.0.1/tcp/1234"),
 		withMinerListenAddress(minerIP),
 	}
 
@@ -546,13 +546,7 @@ func prepareClient(t *TestEnvironment) (*Node, error) {
 		node.FullAPI(&n.fullApi),
 		node.Online(),
 		node.Repo(nodeRepo),
-		node.Override(node.SetApiEndpointKey, func(lr repo.LockedRepo) error {
-			apima, err := multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/1234")
-			if err != nil {
-				return err
-			}
-			return lr.SetAPIEndpoint(apima)
-		}),
+		withApiEndpoint("/ip4/127.0.0.1/tcp/1234"),
 		withGenesis(genesisMsg.Genesis),
 		withListenAddress(clientIP),
 		withBootstrapper(genesisMsg.Bootstrapper),
@@ -643,6 +637,16 @@ func withListenAddress(ip string) node.Option {
 func withMinerListenAddress(ip string) node.Option {
 	addrs := []string{fmt.Sprintf("/ip4/%s/tcp/4002", ip)}
 	return node.Override(node.StartListeningKey, lp2p.StartListening(addrs))
+}
+
+func withApiEndpoint(addr string) node.Option {
+	return node.Override(node.SetApiEndpointKey, func(lr repo.LockedRepo) error {
+		apima, err := multiaddr.NewMultiaddr(addr)
+		if err != nil {
+			return err
+		}
+		return lr.SetAPIEndpoint(apima)
+	})
 }
 
 func waitForBalances(t *TestEnvironment, ctx context.Context, nodes int) ([]*InitialBalanceMsg, error) {
@@ -815,14 +819,6 @@ func startClientAPIServer(repo *repo.MemRepo, api api.FullNode) error {
 	srv := &http.Server{Handler: http.DefaultServeMux}
 
 	return startServer(repo, srv)
-}
-
-func withApiEndpoint(lr repo.LockedRepo) error {
-	apima, err := multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/1234")
-	if err != nil {
-		return err
-	}
-	return lr.SetAPIEndpoint(apima)
 }
 
 func startServer(repo *repo.MemRepo, srv *http.Server) error {
