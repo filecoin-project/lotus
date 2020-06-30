@@ -188,7 +188,7 @@ func (pl *pricelistV0) OnVerifySeal(info abi.SealVerifyInfo) GasCharge {
 // OnVerifyPost
 func (pl *pricelistV0) OnVerifyPost(info abi.WindowPoStVerifyInfo) GasCharge {
 	// TODO: this needs more cost tunning, check with @lotus
-	return newGasCharge("OnVerifyPost", pl.verifyPostBase, 0).WithVirtual(2629471704, 0)
+	return newGasCharge("OnVerifyPost", pl.verifyPostBase, 0).WithVirtual(2629471704, 0).WithExtra(len(info.ChallengedSectors))
 }
 
 // OnVerifyConsensusFault
