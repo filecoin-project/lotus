@@ -258,7 +258,6 @@ create index if not exists receipts_msg_state_index
 	
 create table if not exists miner_sectors
 (
-	stateroot text not null,
 	miner text not null,
 	sectorid bigint not null,
 	activation bigint not null,
@@ -268,17 +267,15 @@ create table if not exists miner_sectors
 	sealcid text not null,
 	sealrandepoch bigint not null,
 	constraint miner_sectors_pk
-		primary key (stateroot, miner, sectorid)
+		primary key (miner, sectorid)
 );
 
-create index if not exists miner_sectors_stateroot_miner_sectorid_index
-	on miner_sectors (stateroot, miner, sectorid);
+create index if not exists miner_sectors_miner_sectorid_index
+	on miner_sectors (miner, sectorid);
+
 create table if not exists miner_heads
 (
-	head text not null,
 	addr text not null,
-	stateroot text not null,
-	
 	owner text not null,
 	worker text not null,
 	peerid text,
@@ -289,11 +286,8 @@ create table if not exists miner_heads
 	lockedfunds text not null,
 	nextdeadlineprocessfaults bigint not null,
 	constraint miner_heads_pk
-		primary key (head, addr)
+		primary key (addr)
 );
-
-create index if not exists miner_heads_stateroot_index
-	on miner_heads (stateroot);
 
 /*
 create or replace function miner_tips(epoch bigint)
@@ -489,7 +483,7 @@ func (st *storage) storeSectors(minerTips map[types.TipSetKey][]*newMinerInfo, s
 		return xerrors.Errorf("prep temp: %w", err)
 	}
 
-	stmt, err := tx.Prepare(`copy ms (stateroot, miner, sectorid, activation, dealweight, verifieddealweight, expiration, sealcid, sealrandepoch) from STDIN `)
+	stmt, err := tx.Prepare(`copy ms (miner, sectorid, activation, dealweight, verifieddealweight, expiration, sealcid, sealrandepoch) from STDIN `)
 	if err != nil {
 		return err
 	}
@@ -503,7 +497,6 @@ func (st *storage) storeSectors(minerTips map[types.TipSetKey][]*newMinerInfo, s
 
 			for _, sector := range sectors {
 				if _, err := stmt.Exec(
-					miner.stateroot.String(),
 					miner.addr.String(),
 					uint64(sector.ID),
 					int64(sector.Info.ActivationEpoch),
@@ -545,7 +538,7 @@ func (st *storage) storeMiners(minerTips map[types.TipSetKey][]*newMinerInfo) er
 		return xerrors.Errorf("prep temp: %w", err)
 	}
 
-	stmt, err := tx.Prepare(`copy mh (head, addr, stateroot, owner, worker, peerid, sectorsize, windowpostpartitionsectors, precommitdeposits, lockedfunds, nextdeadlineprocessfaults) from STDIN`)
+	stmt, err := tx.Prepare(`copy mh (addr, owner, worker, peerid, sectorsize, windowpostpartitionsectors, precommitdeposits, lockedfunds, nextdeadlineprocessfaults) from STDIN`)
 	if err != nil {
 		return err
 	}
@@ -562,10 +555,7 @@ func (st *storage) storeMiners(minerTips map[types.TipSetKey][]*newMinerInfo) er
 				}
 			}
 			if _, err := stmt.Exec(
-				miner.act.Head.String(),
 				miner.addr.String(),
-				miner.stateroot.String(),
-
 				miner.info.Owner.String(),
 				miner.info.Worker.String(),
 				pid,
