@@ -24,7 +24,7 @@ var (
 	BlocksPerEpoch    = uint64(builtin.ExpectedLeadersPerEpoch)
 	BlockMessageLimit = 512
 	BlockGasLimit     = int64(100_000_000_000)
-	BlockDelay        = uint64(builtin.EpochDurationSeconds)
+	BlockDelaySecs    = uint64(builtin.EpochDurationSeconds)
 	PropagationDelay  = uint64(6)
 
 	AllowableClockDrift = uint64(1)

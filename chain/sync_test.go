@@ -408,7 +408,7 @@ func TestSyncBadTimestamp(t *testing.T) {
 
 	base := tu.g.CurTipset
 	tu.g.Timestamper = func(pts *types.TipSet, tl abi.ChainEpoch) uint64 {
-		return pts.MinTimestamp() + (build.BlockDelay / 2)
+		return pts.MinTimestamp() + (build.BlockDelaySecs / 2)
 	}
 
 	fmt.Println("BASE: ", base.Cids())
