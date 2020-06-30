@@ -6,14 +6,18 @@ import (
 	"crypto/rand"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-jsonrpc"
+	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-storedcounter"
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/apistruct"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/beacon"
@@ -22,15 +26,16 @@ import (
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
 	"github.com/filecoin-project/lotus/genesis"
+	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/lp2p"
 	modtest "github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
-
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -38,16 +43,22 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
-
+	"github.com/gorilla/mux"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
+	influxdb "github.com/kpacha/opencensus-influxdb"
+
 	libp2p_crypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/multiformats/go-multiaddr"
 	ma "github.com/multiformats/go-multiaddr"
-
+	manet "github.com/multiformats/go-multiaddr-net"
 	"github.com/testground/sdk-go/run"
 	"github.com/testground/sdk-go/runtime"
 	"github.com/testground/sdk-go/sync"
+
+	"go.opencensus.io/stats"
+	"go.opencensus.io/stats/view"
 )
 
 func init() {
@@ -202,6 +213,7 @@ func prepareBootstrapper(t *TestEnvironment) (*Node, error) {
 		node.Online(),
 		node.Repo(repo.NewMemory(nil)),
 		node.Override(new(modules.Genesis), modtest.MakeGenesisMem(&genesisBuffer, genesisTemplate)),
+		withApiEndpoint("/ip4/127.0.0.1/tcp/1234"),
 		withListenAddress(bootstrapperIP),
 		withBootstrapper(nil),
 		withPubsubConfig(true, pubsubTracer),
@@ -376,10 +388,12 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 	// we need both a full node _and_ and storage miner node
 	n := &Node{}
 
+	nodeRepo := repo.NewMemory(nil)
+
 	stop1, err := node.New(context.Background(),
 		node.FullAPI(&n.fullApi),
 		node.Online(),
-		node.Repo(repo.NewMemory(nil)),
+		node.Repo(nodeRepo),
 		withGenesis(genesisMsg.Genesis),
 		withListenAddress(minerIP),
 		withBootstrapper(genesisMsg.Bootstrapper),
@@ -402,6 +416,7 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 		node.Online(),
 		node.Repo(minerRepo),
 		node.Override(new(api.FullNode), n.fullApi),
+		withApiEndpoint("/ip4/127.0.0.1/tcp/1234"),
 		withMinerListenAddress(minerIP),
 	}
 
@@ -434,6 +449,9 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 		return err1
 	}
 
+	registerAndExportMetrics(minerAddr.String())
+
+	// Bootstrap with full node
 	remoteAddrs, err := n.fullApi.NetAddrsListen(ctx)
 	if err != nil {
 		panic(err)
@@ -442,6 +460,11 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 	err = n.minerApi.NetConnect(ctx, remoteAddrs)
 	if err != nil {
 		panic(err)
+	}
+
+	err = startStorMinerAPIServer(minerRepo, n.minerApi)
+	if err != nil {
+		return nil, err
 	}
 
 	// add local storage for presealed sectors
@@ -523,12 +546,15 @@ func prepareClient(t *TestEnvironment) (*Node, error) {
 
 	clientIP := t.NetClient.MustGetDataNetworkIP().String()
 
+	nodeRepo := repo.NewMemory(nil)
+
 	// create the node
 	n := &Node{}
 	stop, err := node.New(context.Background(),
 		node.FullAPI(&n.fullApi),
 		node.Online(),
-		node.Repo(repo.NewMemory(nil)),
+		node.Repo(nodeRepo),
+		withApiEndpoint("/ip4/127.0.0.1/tcp/1234"),
 		withGenesis(genesisMsg.Genesis),
 		withListenAddress(clientIP),
 		withBootstrapper(genesisMsg.Bootstrapper),
@@ -546,6 +572,13 @@ func prepareClient(t *TestEnvironment) (*Node, error) {
 		stop(context.TODO())
 		return nil, err
 	}
+
+	err = startClientAPIServer(nodeRepo, n.fullApi)
+	if err != nil {
+		return nil, err
+	}
+
+	registerAndExportMetrics(fmt.Sprintf("client_%d", t.GroupSeq))
 
 	t.RecordMessage("publish our address to the clients addr topic")
 	addrinfo, err := n.fullApi.NetAddrsListen(ctx)
@@ -614,6 +647,16 @@ func withListenAddress(ip string) node.Option {
 func withMinerListenAddress(ip string) node.Option {
 	addrs := []string{fmt.Sprintf("/ip4/%s/tcp/4002", ip)}
 	return node.Override(node.StartListeningKey, lp2p.StartListening(addrs))
+}
+
+func withApiEndpoint(addr string) node.Option {
+	return node.Override(node.SetApiEndpointKey, func(lr repo.LockedRepo) error {
+		apima, err := multiaddr.NewMultiaddr(addr)
+		if err != nil {
+			return err
+		}
+		return lr.SetAPIEndpoint(apima)
+	})
 }
 
 func waitForBalances(t *TestEnvironment, ctx context.Context, nodes int) ([]*InitialBalanceMsg, error) {
@@ -750,4 +793,83 @@ func getDrandConfig(ctx context.Context, t *TestEnvironment) (node.Option, error
 	default:
 		return nil, fmt.Errorf("unknown random_beacon_type: %s", beaconType)
 	}
+}
+
+func startStorMinerAPIServer(repo *repo.MemRepo, minerApi api.StorageMiner) error {
+	mux := mux.NewRouter()
+
+	rpcServer := jsonrpc.NewServer()
+	rpcServer.Register("Filecoin", apistruct.PermissionedStorMinerAPI(minerApi))
+
+	mux.Handle("/rpc/v0", rpcServer)
+	mux.PathPrefix("/remote").HandlerFunc(minerApi.(*impl.StorageMinerAPI).ServeRemote)
+	mux.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
+
+	ah := &auth.Handler{
+		Verify: minerApi.AuthVerify,
+		Next:   mux.ServeHTTP,
+	}
+
+	srv := &http.Server{Handler: ah}
+
+	return startServer(repo, srv)
+}
+
+func startClientAPIServer(repo *repo.MemRepo, api api.FullNode) error {
+	rpcServer := jsonrpc.NewServer()
+	rpcServer.Register("Filecoin", apistruct.PermissionedFullAPI(api))
+
+	ah := &auth.Handler{
+		Verify: api.AuthVerify,
+		Next:   rpcServer.ServeHTTP,
+	}
+
+	http.Handle("/rpc/v0", ah)
+
+	srv := &http.Server{Handler: http.DefaultServeMux}
+
+	return startServer(repo, srv)
+}
+
+func startServer(repo *repo.MemRepo, srv *http.Server) error {
+	endpoint, err := repo.APIEndpoint()
+	if err != nil {
+		return err
+	}
+
+	lst, err := manet.Listen(endpoint)
+	if err != nil {
+		return fmt.Errorf("could not listen: %w", err)
+	}
+
+	go func() {
+		_ = srv.Serve(manet.NetListener(lst))
+	}()
+
+	return nil
+}
+
+func registerAndExportMetrics(instanceName string) {
+	// Register all Lotus metric views
+	err := view.Register(metrics.DefaultViews...)
+	if err != nil {
+		panic(err)
+	}
+
+	// Set the metric to one so it is published to the exporter
+	stats.Record(context.Background(), metrics.LotusInfo.M(1))
+
+	// Register our custom exporter to opencensus
+	e, err := influxdb.NewExporter(context.Background(), influxdb.Options{
+		Database:     "testground",
+		Address:      os.Getenv("INFLUXDB_URL"),
+		Username:     "",
+		Password:     "",
+		InstanceName: instanceName,
+	})
+	if err != nil {
+		panic(err)
+	}
+	view.RegisterExporter(e)
+	view.SetReportingPeriod(5 * time.Second)
 }
