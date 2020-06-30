@@ -588,7 +588,7 @@ var importAnalyzeCmd = &cli.Command{
 			if s.extraCovar != nil {
 				fmt.Printf("\t correll: %f, tt = %f * extra + %f\n", s.extraCovar.Correl(),
 					s.extraCovar.A(), s.extraCovar.B())
-				fmt.Printf("\t extra: %f~%f\n", s.extraCovar.meanX, s.extraCovar.StddevX())
+				fmt.Printf("\t covar: %f, extra: %f~%f\n", s.extraCovar.Covariance(), s.extraCovar.meanX, s.extraCovar.StddevX())
 			}
 		}
 
