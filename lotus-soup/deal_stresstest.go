@@ -123,9 +123,9 @@ func runDealStressTestClient(t *TestEnvironment) error {
 
 		for i := 0; i < deals; i++ {
 			deal := startDeal(ctx, minerAddr.ActorAddr, client, cids[i])
-			t.RecordMessage("started storage deal %s", deal)
+			t.RecordMessage("started storage deal %d -> %s", i, deal)
 			time.Sleep(2 * time.Second)
-			t.RecordMessage("waiting for deal to be sealed")
+			t.RecordMessage("waiting for deal %d to be sealed", i)
 			waitDealSealed(t, ctx, client, deal)
 		}
 
