@@ -233,7 +233,6 @@ type stats struct {
 	timeTaken meanVar
 	gasRatio  meanVar
 
-	extra      *meanVar
 	extraCovar *covar
 }
 
@@ -242,19 +241,28 @@ type covar struct {
 	meanY float64
 	c     float64
 	n     float64
-	m2    float64
+	m2x   float64
+	m2y   float64
 }
 
 func (cov1 *covar) Covariance() float64 {
 	return cov1.c / (cov1.n - 1)
 }
 
-func (cov1 *covar) Variance() float64 {
-	return cov1.m2 / (cov1.n - 1)
+func (cov1 *covar) VarianceX() float64 {
+	return cov1.m2x / (cov1.n - 1)
 }
 
-func (v1 *covar) Stddev() float64 {
-	return math.Sqrt(v1.Variance())
+func (v1 *covar) StddevX() float64 {
+	return math.Sqrt(v1.VarianceX())
+}
+
+func (cov1 *covar) VarianceY() float64 {
+	return cov1.m2y / (cov1.n - 1)
+}
+
+func (v1 *covar) StddevY() float64 {
+	return math.Sqrt(v1.VarianceY())
 }
 
 func (cov1 *covar) AddPoint(x, y float64) {
@@ -262,11 +270,15 @@ func (cov1 *covar) AddPoint(x, y float64) {
 	dx := x - cov1.meanX
 	cov1.meanX += dx / cov1.n
 
-	dx2 := x - cov1.meanX // compute x variance using partial result for covariance
-	cov1.m2 += dx * dx2
+	dx2 := x - cov1.meanX
+	cov1.m2x += dx * dx2
 
-	cov1.meanY += (y - cov1.meanY) / cov1.n
-	cov1.c += dx * (y - cov1.meanY)
+	dy := y - cov1.meanY
+	cov1.meanY += dy / cov1.n
+	dy2 := y - cov1.meanY
+	cov1.m2y += dy * dy2
+
+	cov1.c += dx * dy
 }
 
 func (cov1 *covar) Combine(cov2 *covar) {
@@ -293,20 +305,24 @@ func (cov1 *covar) Combine(cov2 *covar) {
 
 	dx := cov1.meanX - cov2.meanX
 	out.meanX = cov1.meanX - dx*cov2.n/out.n
-	out.m2 = cov1.m2 + cov2.m2 + dx*dx*cov1.n*cov2.n/out.n
+	out.m2x = cov1.m2x + cov2.m2x + dx*dx*cov1.n*cov2.n/out.n
 
 	dy := cov1.meanY - cov2.meanY
 	out.meanY = cov1.meanY - dy*cov2.n/out.n
+	out.m2y = cov1.m2y + cov2.m2y + dy*dy*cov1.n*cov2.n/out.n
 
 	out.c = cov1.c + cov2.c + dx*dy*cov1.n*cov2.n/out.n
 	*cov1 = out
 }
 
 func (cov1 *covar) A() float64 {
-	return cov1.Covariance() / cov1.Variance()
+	return cov1.Covariance() / cov1.VarianceX()
 }
 func (cov1 *covar) B() float64 {
 	return cov1.meanY - cov1.meanX*cov1.A()
+}
+func (cov1 *covar) Coerrel() float64 {
+	return cov1.Covariance() / cov1.VarianceX() / cov1.VarianceY()
 }
 
 type meanVar struct {
@@ -417,10 +433,8 @@ func tallyGasCharges(charges map[string]*stats, et types.ExecutionTrace) {
 		if eSize != nil {
 			if s.extraCovar == nil {
 				s.extraCovar = &covar{}
-				s.extra = &meanVar{}
 			}
 			s.extraCovar.AddPoint(*eSize, tt)
-			s.extra.AddPoint(*eSize)
 		}
 
 		s.timeTaken.AddPoint(tt)
@@ -550,12 +564,10 @@ var importAnalyzeCmd = &cli.Command{
 				s.timeTaken.Combine(&v.timeTaken)
 				s.gasRatio.Combine(&v.gasRatio)
 
-				if v.extra != nil {
-					if s.extra == nil {
-						s.extra = &meanVar{}
+				if v.extraCovar != nil {
+					if s.extraCovar == nil {
 						s.extraCovar = &covar{}
 					}
-					s.extra.Combine(v.extra)
 					s.extraCovar.Combine(v.extraCovar)
 				}
 			}
@@ -573,10 +585,10 @@ var importAnalyzeCmd = &cli.Command{
 			s := charges[k]
 			fmt.Printf("%s: incr by %f~%f; tt %f~%f\n", k, s.gasRatio.Mean(), s.gasRatio.Stddev(),
 				s.timeTaken.Mean(), s.timeTaken.Stddev())
-			if s.extra != nil {
-				fmt.Printf("\t covar: %f, tt = %f * extra + %f\n", s.extraCovar.Covariance(),
+			if s.extraCovar != nil {
+				fmt.Printf("\t correll: %f, tt = %f * extra + %f\n", s.extraCovar.Coerrel(),
 					s.extraCovar.A(), s.extraCovar.B())
-				fmt.Printf("\t extra: %f~%f\n", s.extra.Mean(), s.extra.Stddev())
+				fmt.Printf("\t extra: %f~%f\n", s.extraCovar.meanX, s.extraCovar.StddevX())
 			}
 		}
 

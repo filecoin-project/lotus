@@ -99,18 +99,26 @@ func (pl *pricelistV0) OnChainReturnValue(dataSize int) GasCharge {
 func (pl *pricelistV0) OnMethodInvocation(value abi.TokenAmount, methodNum abi.MethodNum) GasCharge {
 	ret := pl.sendBase
 	extra := ""
+	virtGas := int64(1069512)
 
 	if value != abi.NewTokenAmount(0) {
 		// TODO: fix this, it is comparing pointers instead of values
 		// see vv
 		ret += pl.sendTransferFunds
 	}
-	if big.Cmp(value, abi.NewTokenAmount(0)) == 0 {
+	if big.Cmp(value, abi.NewTokenAmount(0)) != 0 {
+		virtGas += 498173
+		if methodNum == builtin.MethodSend {
+			// transfer only
+			virtGas += 968198
+		}
 		extra += "t"
 	}
 	if methodNum != builtin.MethodSend {
 		ret += pl.sendInvokeMethod
 		extra += "i"
+		// running actors is cheaper becase we hand over to actors
+		virtGas += -294632
 	}
 	return newGasCharge("OnMethodInvocation", ret, 0).WithVirtual(86315, 0).WithExtra(extra)
 }
@@ -145,11 +153,19 @@ func (pl *pricelistV0) OnVerifySignature(sigType crypto.SigType, planTextSize in
 		return GasCharge{}, fmt.Errorf("cost function for signature type %d not supported", sigType)
 	}
 	sigName, _ := sigType.Name()
+	virtGas := int64(0)
+	switch sigType {
+	case crypto.SigTypeBLS:
+		virtGas = 220138570
+	case crypto.SigTypeSecp256k1:
+		virtGas = 7053730
+	}
+
 	return newGasCharge("OnVerifySignature", costFn(int64(planTextSize)), 0).
 		WithExtra(map[string]interface{}{
 			"type": sigName,
 			"size": planTextSize,
-		}), nil
+		}).WithVirtual(virtGas, 0), nil
 }
 
 // OnHashing
