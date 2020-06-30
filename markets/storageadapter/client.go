@@ -5,6 +5,7 @@ package storageadapter
 import (
 	"bytes"
 	"context"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/events/state"
 
@@ -412,7 +413,7 @@ func (c *ClientNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID a
 	preds := state.NewStatePredicates(c)
 	dealDiff := preds.OnStorageMarketActorChanged(
 		preds.OnDealStateChanged(
-		preds.DealStateChangedForIDs([]abi.DealID{dealID})))
+			preds.DealStateChangedForIDs([]abi.DealID{dealID})))
 	match := func(oldTs, newTs *types.TipSet) (bool, events.StateChange, error) {
 		return dealDiff(ctx, oldTs, newTs)
 	}
@@ -518,6 +519,19 @@ func (n *ClientNodeAdapter) GetMinerInfo(ctx context.Context, addr address.Addre
 	}
 	out := utils.NewStorageProviderInfo(addr, mi.Worker, mi.SectorSize, mi.PeerId, multiaddrs)
 	return &out, nil
+}
+
+func (n *ClientNodeAdapter) SignBytes(ctx context.Context, signer address.Address, b []byte) (*crypto.Signature, error) {
+	signer, err := n.StateAccountKey(ctx, signer, types.EmptyTSK)
+	if err != nil {
+		return nil, err
+	}
+
+	localSignature, err := n.Wallet.Sign(ctx, signer, b)
+	if err != nil {
+		return nil, err
+	}
+	return localSignature, nil
 }
 
 var _ storagemarket.StorageClientNode = &ClientNodeAdapter{}
