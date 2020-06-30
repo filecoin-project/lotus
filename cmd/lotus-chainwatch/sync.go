@@ -53,24 +53,7 @@ func runSyncer(ctx context.Context, api api.FullNode, st *storage, maxBatch int)
 	}()
 }
 
-type minerKey struct {
-	addr      address.Address
-	act       types.Actor
-	stateroot cid.Cid
-	tsKey     types.TipSetKey
-}
-
-type minerInfo struct {
-	state miner.State
-	info  miner.MinerInfo
-
-	rawPower big.Int
-	qalPower big.Int
-	ssize    uint64
-	psize    uint64
-}
-
-type newMinerInfo struct {
+type minerStateInfo struct {
 	// common
 	addr      address.Address
 	act       types.Actor
@@ -281,7 +264,7 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, headTs *types.
 		})
 
 		// map of tipset to all miners that had a head-change at that tipset.
-		minerTips := make(map[types.TipSetKey][]*newMinerInfo, len(changes))
+		minerTips := make(map[types.TipSetKey][]*minerStateInfo, len(changes))
 		// heads we've seen, im being paranoid
 		headsSeen := make(map[cid.Cid]struct{}, len(actors))
 
@@ -324,7 +307,7 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, headTs *types.
 				}
 				minerChanges++
 
-				minerTips[c.tsKey] = append(minerTips[c.tsKey], &newMinerInfo{
+				minerTips[c.tsKey] = append(minerTips[c.tsKey], &minerStateInfo{
 					addr:      addr,
 					act:       actor,
 					stateroot: c.stateroot,
@@ -344,7 +327,7 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, headTs *types.
 		log.Infow("Processing miners", "numTips", len(minerTips), "numMinerChanges", minerChanges)
 		// extract the power actor state at each tipset, loop over all miners that changed at said tipset and extract their
 		// claims from the power actor state. This ensures we only fetch the power actors state once for each tipset.
-		parmap.Par(50, parmap.KVMapArr(minerTips), func(it func() (types.TipSetKey, []*newMinerInfo)) {
+		parmap.Par(50, parmap.KVMapArr(minerTips), func(it func() (types.TipSetKey, []*minerStateInfo)) {
 			tsKey, minerInfo := it()
 
 			// get the power actors claims map
@@ -421,22 +404,25 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, headTs *types.
 			return
 		}
 
-		// TODO re-enable when ready to fill miner metadata, the contents of storeMiners is commented out too.
 		log.Info("Storing miners")
-
 		if err := st.storeMiners(minerTips); err != nil {
 			log.Error(err)
 			return
 		}
 
 		log.Info("Storing miner sectors")
-
 		sectorStart := time.Now()
 		if err := st.storeSectors(minerTips, api); err != nil {
 			log.Error(err)
 			return
 		}
 		log.Infow("Finished storing miner sectors", "duration", time.Since(sectorStart).String())
+
+		log.Info("Storing miner sectors heads")
+		if err := st.storeMinerSectorsHeads(minerTips); err != nil {
+			log.Error(err)
+			return
+		}
 
 		log.Infof("Storing messages")
 
