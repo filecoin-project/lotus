@@ -250,7 +250,7 @@ func (sh *scheduler) maybeSchedRequest(req *workerRequest) (bool, error) {
 		}
 		tried++
 
-		if !canHandleRequest(needRes, sh.spt, wid, worker.info.Resources, worker.preparing) {
+		if !canHandleRequest(needRes, wid, worker.info.Resources, worker.preparing) {
 			continue
 		}
 
@@ -316,7 +316,7 @@ func (sh *scheduler) assignWorker(wid WorkerID, w *workerHandle, req *workerRequ
 			return
 		}
 
-		err = w.active.withResources(sh.spt, wid, w.info.Resources, needRes, &sh.workersLk, func() error {
+		err = w.active.withResources(wid, w.info.Resources, needRes, &sh.workersLk, func() error {
 			w.preparing.free(w.info.Resources, needRes)
 			sh.workersLk.Unlock()
 			defer sh.workersLk.Lock() // we MUST return locked from this function
@@ -350,8 +350,8 @@ func (sh *scheduler) assignWorker(wid WorkerID, w *workerHandle, req *workerRequ
 	return nil
 }
 
-func (a *activeResources) withResources(spt abi.RegisteredSealProof, id WorkerID, wr storiface.WorkerResources, r Resources, locker sync.Locker, cb func() error) error {
-	for !canHandleRequest(r, spt, id, wr, a) {
+func (a *activeResources) withResources(id WorkerID, wr storiface.WorkerResources, r Resources, locker sync.Locker, cb func() error) error {
+	for !canHandleRequest(r, id, wr, a) {
 		if a.cond == nil {
 			a.cond = sync.NewCond(locker)
 		}
@@ -396,7 +396,7 @@ func (a *activeResources) free(wr storiface.WorkerResources, r Resources) {
 	a.memUsedMax -= r.MaxMemory
 }
 
-func canHandleRequest(needRes Resources, spt abi.RegisteredSealProof, wid WorkerID, res storiface.WorkerResources, active *activeResources) bool {
+func canHandleRequest(needRes Resources, wid WorkerID, res storiface.WorkerResources, active *activeResources) bool {
 
 	// TODO: dedupe needRes.BaseMinMemory per task type (don't add if that task is already running)
 	minNeedMem := res.MemReserved + active.memUsedMin + needRes.MinMemory + needRes.BaseMinMemory
@@ -406,12 +406,7 @@ func canHandleRequest(needRes Resources, spt abi.RegisteredSealProof, wid Worker
 	}
 
 	maxNeedMem := res.MemReserved + active.memUsedMax + needRes.MaxMemory + needRes.BaseMinMemory
-	if spt == abi.RegisteredSealProof_StackedDrg32GiBV1 {
-		maxNeedMem += MaxCachingOverhead
-	}
-	if spt == abi.RegisteredSealProof_StackedDrg64GiBV1 {
-		maxNeedMem += MaxCachingOverhead * 2 // ewwrhmwh
-	}
+
 	if maxNeedMem > res.MemSwap+res.MemPhysical {
 		log.Debugf("sched: not scheduling on worker %d; not enough virtual memory - need: %dM, have %dM", wid, maxNeedMem/mib, (res.MemSwap+res.MemPhysical)/mib)
 		return false
