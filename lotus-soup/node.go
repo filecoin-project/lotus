@@ -207,13 +207,7 @@ func prepareBootstrapper(t *TestEnvironment) (*Node, error) {
 		node.Online(),
 		node.Repo(repo.NewMemory(nil)),
 		node.Override(new(modules.Genesis), modtest.MakeGenesisMem(&genesisBuffer, genesisTemplate)),
-		node.Override(node.SetApiEndpointKey, func(lr repo.LockedRepo) error {
-			apima, err := multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/1234")
-			if err != nil {
-				return err
-			}
-			return lr.SetAPIEndpoint(apima)
-		}),
+		node.Override(node.SetApiEndpointKey, withApiEndpoint),
 		withListenAddress(bootstrapperIP),
 		withBootstrapper(nil),
 		withPubsubConfig(true, pubsubTracer),
@@ -416,13 +410,7 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 		node.Online(),
 		node.Repo(minerRepo),
 		node.Override(new(api.FullNode), n.fullApi),
-		node.Override(node.SetApiEndpointKey, func(lr repo.LockedRepo) error {
-			apima, err := multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/1234")
-			if err != nil {
-				return err
-			}
-			return lr.SetAPIEndpoint(apima)
-		}),
+		node.Override(node.SetApiEndpointKey, withApiEndpoint),
 		withMinerListenAddress(minerIP),
 	}
 
@@ -855,4 +843,12 @@ func startClientAPIServer(repo *repo.MemRepo, api api.FullNode) error {
 	}()
 
 	return nil
+}
+
+func withApiEndpoint(lr repo.LockedRepo) error {
+	apima, err := multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/1234")
+	if err != nil {
+		return err
+	}
+	return lr.SetAPIEndpoint(apima)
 }
