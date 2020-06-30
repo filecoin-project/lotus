@@ -1343,6 +1343,8 @@ github.com/syndtr/goleveldb v1.0.0/go.mod h1:ZVVdQEZoIme9iO1Ch2Jdy24qqXrMMOU6lpP
 github.com/tarm/serial v0.0.0-20180830185346-98f6abe2eb07/go.mod h1:kDXzergiv9cbyO7IOYJZWg1U88JhDg3PB6klq9Hg2pA=
 github.com/testground/sdk-go v0.2.3-0.20200626214218-7a87893cf56c h1:fZXuBXPwBL2Z4UdH1YVkWs7rqNCaVwSmpu3SmVeayZ0=
 github.com/testground/sdk-go v0.2.3-0.20200626214218-7a87893cf56c/go.mod h1:3auzMDXaoK7NQ+CLQS3pqp4hmREECWO9V+TJi/IWmms=
+github.com/testground/sdk-go v0.2.3-0.20200630123819-17fe227923bd h1:e4QpR+UgiQUfFMz3LjMT2ey1VO5+Wa6R0MJBu3BpwIk=
+github.com/testground/sdk-go v0.2.3-0.20200630123819-17fe227923bd/go.mod h1:3auzMDXaoK7NQ+CLQS3pqp4hmREECWO9V+TJi/IWmms=
 github.com/texttheater/golang-levenshtein v0.0.0-20180516184445-d188e65d659e/go.mod h1:XDKHRm5ThF8YJjx001LtgelzsoaEcvnA7lVWz9EeX3g=
 github.com/tmc/grpc-websocket-proxy v0.0.0-20170815181823-89b8d40f7ca8/go.mod h1:ncp9v5uamzpCO7NfCPTXjqaC+bZgJeR0sMTm6dMHP7U=
 github.com/uber/jaeger-client-go v2.15.0+incompatible/go.mod h1:WVhlPFC8FDjOFMMWRy2pZqQJSXxYSwNYOkTr/Z6d3Kk=

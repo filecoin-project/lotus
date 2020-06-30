@@ -24,7 +24,7 @@ require (
 	github.com/libp2p/go-libp2p-pubsub-tracer v0.0.0-20200626141350-e730b32bf1e6
 	github.com/multiformats/go-multiaddr v0.2.2
 	github.com/multiformats/go-multiaddr-net v0.1.5
-	github.com/testground/sdk-go v0.2.3-0.20200626214218-7a87893cf56c
+	github.com/testground/sdk-go v0.2.3-0.20200630123819-17fe227923bd
 )
 
 // This will work in all build modes: docker:go, exec:go, and local go build.
