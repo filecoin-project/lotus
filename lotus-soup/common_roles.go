@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/testground/sdk-go/sync"
@@ -87,8 +86,6 @@ func runMiner(t *TestEnvironment) error {
 
 	mine = false
 	<-done
-
-	time.Sleep(3600 * time.Second)
 
 	t.SyncClient.MustSignalAndWait(ctx, stateDone, t.TestInstanceCount)
 	return nil

@@ -395,13 +395,6 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 		node.Online(),
 		node.Repo(nodeRepo),
 		withGenesis(genesisMsg.Genesis),
-		//node.Override(node.SetApiEndpointKey, func(lr repo.LockedRepo) error {
-		//apima, err := multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/1235")
-		//if err != nil {
-		//return err
-		//}
-		//return lr.SetAPIEndpoint(apima)
-		//}),
 		withListenAddress(minerIP),
 		withBootstrapper(genesisMsg.Bootstrapper),
 		withPubsubConfig(false, pubsubTracer),
