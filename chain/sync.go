@@ -699,7 +699,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) (er
 			log.Warn("Messages for tipset with mismatching state:")
 			for i, m := range msgs {
 				mm := m.VMMessage()
-				log.Warnf("Message[%d]: from=%s to=%s method=%d params=%x", i, mm.From, mm.To, mm.Method, mm.Params)
+				log.Warnf("Message[%d]: from=%s to=%s method=%d params=%s", i, mm.From, mm.To, mm.Method, mm.Params)
 			}
 		}
 
