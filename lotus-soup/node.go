@@ -391,13 +391,13 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 		node.Online(),
 		node.Repo(nodeRepo),
 		withGenesis(genesisMsg.Genesis),
-		node.Override(node.SetApiEndpointKey, func(lr repo.LockedRepo) error {
-			apima, err := multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/1235")
-			if err != nil {
-				return err
-			}
-			return lr.SetAPIEndpoint(apima)
-		}),
+		//node.Override(node.SetApiEndpointKey, func(lr repo.LockedRepo) error {
+		//apima, err := multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/1235")
+		//if err != nil {
+		//return err
+		//}
+		//return lr.SetAPIEndpoint(apima)
+		//}),
 		withListenAddress(minerIP),
 		withBootstrapper(genesisMsg.Bootstrapper),
 		withPubsubConfig(false, pubsubTracer),
@@ -420,13 +420,13 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 		node.Online(),
 		node.Repo(minerRepo),
 		node.Override(new(api.FullNode), n.fullApi),
-		//node.Override(node.SetApiEndpointKey, func(lr repo.LockedRepo) error {
-		//apima, err := multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/1234")
-		//if err != nil {
-		//return err
-		//}
-		//return lr.SetAPIEndpoint(apima)
-		//}),
+		node.Override(node.SetApiEndpointKey, func(lr repo.LockedRepo) error {
+			apima, err := multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/1234")
+			if err != nil {
+				return err
+			}
+			return lr.SetAPIEndpoint(apima)
+		}),
 		node.Override(new(*miner.Miner), miner.NewTestMiner(mineBlock, minerAddr)),
 		withMinerListenAddress(minerIP),
 	)
@@ -489,68 +489,6 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 	}
 
 	srv := &http.Server{Handler: ah}
-
-	//sigChan := make(chan os.Signal, 2)
-	//go func() {
-	//select {
-	//case <-sigChan:
-	//case <-shutdownChan:
-	//}
-
-	//log.Warn("Shutting down...")
-	//if err := stop(context.TODO()); err != nil {
-	//log.Errorf("graceful shutting down failed: %s", err)
-	//}
-	//if err := srv.Shutdown(context.TODO()); err != nil {
-	//log.Errorf("shutting down RPC server failed: %s", err)
-	//}
-	//log.Warn("Graceful shutdown successful")
-	//}()
-	//signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
-
-	go func() {
-		_ = srv.Serve(manet.NetListener(lst))
-	}()
-
-	//endpoint, err = nodeRepo.APIEndpoint()
-	//if err != nil {
-	//return nil, err
-	//}
-
-	//lst, err = manet.Listen(endpoint)
-	//if err != nil {
-	//return nil, fmt.Errorf("could not listen: %w", err)
-	//}
-
-	//rpcServer = jsonrpc.NewServer()
-	//rpcServer.Register("Filecoin", apistruct.PermissionedFullAPI(n.fullApi))
-
-	//ah = &auth.Handler{
-	//Verify: n.fullApi.AuthVerify,
-	//Next:   rpcServer.ServeHTTP,
-	//}
-
-	//http.Handle("/rpc/v0", ah)
-
-	//srv = &http.Server{Handler: http.DefaultServeMux}
-
-	//sigChan := make(chan os.Signal, 2)
-	//go func() {
-	//select {
-	//case <-sigChan:
-	//case <-shutdownChan:
-	//}
-
-	//log.Warn("Shutting down...")
-	//if err := stop(context.TODO()); err != nil {
-	//log.Errorf("graceful shutting down failed: %s", err)
-	//}
-	//if err := srv.Shutdown(context.TODO()); err != nil {
-	//log.Errorf("shutting down RPC server failed: %s", err)
-	//}
-	//log.Warn("Graceful shutdown successful")
-	//}()
-	//signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
 
 	go func() {
 		_ = srv.Serve(manet.NetListener(lst))
