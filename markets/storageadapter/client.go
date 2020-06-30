@@ -64,13 +64,13 @@ func NewClientNodeAdapter(state full.StateAPI, chain full.ChainAPI, mpool full.M
 	}
 }
 
-func (n *ClientNodeAdapter) ListStorageProviders(ctx context.Context, encodedTs shared.TipSetToken) ([]*storagemarket.StorageProviderInfo, error) {
+func (c *ClientNodeAdapter) ListStorageProviders(ctx context.Context, encodedTs shared.TipSetToken) ([]*storagemarket.StorageProviderInfo, error) {
 	tsk, err := types.TipSetKeyFromBytes(encodedTs)
 	if err != nil {
 		return nil, err
 	}
 
-	addresses, err := n.StateListMiners(ctx, tsk)
+	addresses, err := c.StateListMiners(ctx, tsk)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +78,7 @@ func (n *ClientNodeAdapter) ListStorageProviders(ctx context.Context, encodedTs 
 	var out []*storagemarket.StorageProviderInfo
 
 	for _, addr := range addresses {
-		mi, err := n.StateMinerInfo(ctx, addr, tsk)
+		mi, err := c.StateMinerInfo(ctx, addr, tsk)
 		if err != nil {
 			return nil, err
 		}
@@ -98,8 +98,8 @@ func (n *ClientNodeAdapter) ListStorageProviders(ctx context.Context, encodedTs 
 	return out, nil
 }
 
-func (n *ClientNodeAdapter) VerifySignature(ctx context.Context, sig crypto.Signature, addr address.Address, input []byte, encodedTs shared.TipSetToken) (bool, error) {
-	addr, err := n.StateAccountKey(ctx, addr, types.EmptyTSK)
+func (c *ClientNodeAdapter) VerifySignature(ctx context.Context, sig crypto.Signature, addr address.Address, input []byte, encodedTs shared.TipSetToken) (bool, error) {
+	addr, err := c.StateAccountKey(ctx, addr, types.EmptyTSK)
 	if err != nil {
 		return false, err
 	}
@@ -108,13 +108,13 @@ func (n *ClientNodeAdapter) VerifySignature(ctx context.Context, sig crypto.Sign
 	return err == nil, err
 }
 
-func (n *ClientNodeAdapter) ListClientDeals(ctx context.Context, addr address.Address, encodedTs shared.TipSetToken) ([]storagemarket.StorageDeal, error) {
+func (c *ClientNodeAdapter) ListClientDeals(ctx context.Context, addr address.Address, encodedTs shared.TipSetToken) ([]storagemarket.StorageDeal, error) {
 	tsk, err := types.TipSetKeyFromBytes(encodedTs)
 	if err != nil {
 		return nil, err
 	}
 
-	allDeals, err := n.StateMarketDeals(ctx, tsk)
+	allDeals, err := c.StateMarketDeals(ctx, tsk)
 	if err != nil {
 		return nil, err
 	}
@@ -132,9 +132,9 @@ func (n *ClientNodeAdapter) ListClientDeals(ctx context.Context, addr address.Ad
 }
 
 // Adds funds with the StorageMinerActor for a storage participant.  Used by both providers and clients.
-func (n *ClientNodeAdapter) AddFunds(ctx context.Context, addr address.Address, amount abi.TokenAmount) (cid.Cid, error) {
+func (c *ClientNodeAdapter) AddFunds(ctx context.Context, addr address.Address, amount abi.TokenAmount) (cid.Cid, error) {
 	// (Provider Node API)
-	smsg, err := n.MpoolPushMessage(ctx, &types.Message{
+	smsg, err := c.MpoolPushMessage(ctx, &types.Message{
 		To:       builtin.StorageMarketActorAddr,
 		From:     addr,
 		Value:    amount,
@@ -149,17 +149,17 @@ func (n *ClientNodeAdapter) AddFunds(ctx context.Context, addr address.Address, 
 	return smsg.Cid(), nil
 }
 
-func (n *ClientNodeAdapter) EnsureFunds(ctx context.Context, addr, wallet address.Address, amount abi.TokenAmount, ts shared.TipSetToken) (cid.Cid, error) {
-	return n.fm.EnsureAvailable(ctx, addr, wallet, amount)
+func (c *ClientNodeAdapter) EnsureFunds(ctx context.Context, addr, wallet address.Address, amount abi.TokenAmount, ts shared.TipSetToken) (cid.Cid, error) {
+	return c.fm.EnsureAvailable(ctx, addr, wallet, amount)
 }
 
-func (n *ClientNodeAdapter) GetBalance(ctx context.Context, addr address.Address, encodedTs shared.TipSetToken) (storagemarket.Balance, error) {
+func (c *ClientNodeAdapter) GetBalance(ctx context.Context, addr address.Address, encodedTs shared.TipSetToken) (storagemarket.Balance, error) {
 	tsk, err := types.TipSetKeyFromBytes(encodedTs)
 	if err != nil {
 		return storagemarket.Balance{}, err
 	}
 
-	bal, err := n.StateMarketBalance(ctx, addr, tsk)
+	bal, err := c.StateMarketBalance(ctx, addr, tsk)
 	if err != nil {
 		return storagemarket.Balance{}, err
 	}
@@ -424,19 +424,19 @@ func (c *ClientNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID a
 	return nil
 }
 
-func (n *ClientNodeAdapter) SignProposal(ctx context.Context, signer address.Address, proposal samarket.DealProposal) (*samarket.ClientDealProposal, error) {
+func (c *ClientNodeAdapter) SignProposal(ctx context.Context, signer address.Address, proposal samarket.DealProposal) (*samarket.ClientDealProposal, error) {
 	// TODO: output spec signed proposal
 	buf, err := cborutil.Dump(&proposal)
 	if err != nil {
 		return nil, err
 	}
 
-	signer, err = n.StateAccountKey(ctx, signer, types.EmptyTSK)
+	signer, err = c.StateAccountKey(ctx, signer, types.EmptyTSK)
 	if err != nil {
 		return nil, err
 	}
 
-	sig, err := n.Wallet.Sign(ctx, signer, buf)
+	sig, err := c.Wallet.Sign(ctx, signer, buf)
 	if err != nil {
 		return nil, err
 	}
@@ -447,18 +447,18 @@ func (n *ClientNodeAdapter) SignProposal(ctx context.Context, signer address.Add
 	}, nil
 }
 
-func (n *ClientNodeAdapter) GetDefaultWalletAddress(ctx context.Context) (address.Address, error) {
-	addr, err := n.Wallet.GetDefault()
+func (c *ClientNodeAdapter) GetDefaultWalletAddress(ctx context.Context) (address.Address, error) {
+	addr, err := c.Wallet.GetDefault()
 	return addr, err
 }
 
-func (n *ClientNodeAdapter) ValidateAskSignature(ctx context.Context, ask *storagemarket.SignedStorageAsk, encodedTs shared.TipSetToken) (bool, error) {
+func (c *ClientNodeAdapter) ValidateAskSignature(ctx context.Context, ask *storagemarket.SignedStorageAsk, encodedTs shared.TipSetToken) (bool, error) {
 	tsk, err := types.TipSetKeyFromBytes(encodedTs)
 	if err != nil {
 		return false, err
 	}
 
-	mi, err := n.StateMinerInfo(ctx, ask.Ask.Miner, tsk)
+	mi, err := c.StateMinerInfo(ctx, ask.Ask.Miner, tsk)
 	if err != nil {
 		return false, xerrors.Errorf("failed to get worker for miner in ask", err)
 	}
@@ -468,12 +468,12 @@ func (n *ClientNodeAdapter) ValidateAskSignature(ctx context.Context, ask *stora
 		return false, xerrors.Errorf("failed to re-serialize ask")
 	}
 
-	ts, err := n.ChainGetTipSet(ctx, tsk)
+	ts, err := c.ChainGetTipSet(ctx, tsk)
 	if err != nil {
 		return false, xerrors.Errorf("failed to load tipset")
 	}
 
-	m, err := n.StateManager.ResolveToKeyAddress(ctx, mi.Worker, ts)
+	m, err := c.StateManager.ResolveToKeyAddress(ctx, mi.Worker, ts)
 
 	if err != nil {
 		return false, xerrors.Errorf("failed to resolve miner to key address")
@@ -483,8 +483,8 @@ func (n *ClientNodeAdapter) ValidateAskSignature(ctx context.Context, ask *stora
 	return err == nil, err
 }
 
-func (n *ClientNodeAdapter) GetChainHead(ctx context.Context) (shared.TipSetToken, abi.ChainEpoch, error) {
-	head, err := n.ChainHead(ctx)
+func (c *ClientNodeAdapter) GetChainHead(ctx context.Context) (shared.TipSetToken, abi.ChainEpoch, error) {
+	head, err := c.ChainHead(ctx)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -492,20 +492,20 @@ func (n *ClientNodeAdapter) GetChainHead(ctx context.Context) (shared.TipSetToke
 	return head.Key().Bytes(), head.Height(), nil
 }
 
-func (n *ClientNodeAdapter) WaitForMessage(ctx context.Context, mcid cid.Cid, cb func(code exitcode.ExitCode, bytes []byte, err error) error) error {
-	receipt, err := n.StateWaitMsg(ctx, mcid, build.MessageConfidence)
+func (c *ClientNodeAdapter) WaitForMessage(ctx context.Context, mcid cid.Cid, cb func(code exitcode.ExitCode, bytes []byte, err error) error) error {
+	receipt, err := c.StateWaitMsg(ctx, mcid, build.MessageConfidence)
 	if err != nil {
 		return cb(0, nil, err)
 	}
 	return cb(receipt.Receipt.ExitCode, receipt.Receipt.Return, nil)
 }
 
-func (n *ClientNodeAdapter) GetMinerInfo(ctx context.Context, addr address.Address, encodedTs shared.TipSetToken) (*storagemarket.StorageProviderInfo, error) {
+func (c *ClientNodeAdapter) GetMinerInfo(ctx context.Context, addr address.Address, encodedTs shared.TipSetToken) (*storagemarket.StorageProviderInfo, error) {
 	tsk, err := types.TipSetKeyFromBytes(encodedTs)
 	if err != nil {
 		return nil, err
 	}
-	mi, err := n.StateMinerInfo(ctx, addr, tsk)
+	mi, err := c.StateMinerInfo(ctx, addr, tsk)
 	if err != nil {
 		return nil, err
 	}
@@ -521,13 +521,13 @@ func (n *ClientNodeAdapter) GetMinerInfo(ctx context.Context, addr address.Addre
 	return &out, nil
 }
 
-func (n *ClientNodeAdapter) SignBytes(ctx context.Context, signer address.Address, b []byte) (*crypto.Signature, error) {
-	signer, err := n.StateAccountKey(ctx, signer, types.EmptyTSK)
+func (c *ClientNodeAdapter) SignBytes(ctx context.Context, signer address.Address, b []byte) (*crypto.Signature, error) {
+	signer, err := c.StateAccountKey(ctx, signer, types.EmptyTSK)
 	if err != nil {
 		return nil, err
 	}
 
-	localSignature, err := n.Wallet.Sign(ctx, signer, b)
+	localSignature, err := c.Wallet.Sign(ctx, signer, b)
 	if err != nil {
 		return nil, err
 	}

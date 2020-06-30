@@ -130,7 +130,7 @@ func TestPredicates(t *testing.T) {
 	// Diff with non-existent deal.
 	noDeal := []abi.DealID{3}
 	diffNoDealFn := preds.OnStorageMarketActorChanged(preds.OnDealStateChanged(preds.DealStateChangedForIDs(noDeal)))
-	changed, val, err = diffNoDealFn(ctx, oldState, newState)
+	changed, _, err = diffNoDealFn(ctx, oldState, newState)
 	require.NoError(t, err)
 	require.False(t, changed)
 
