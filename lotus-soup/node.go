@@ -466,35 +466,10 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 		panic(err)
 	}
 
-	endpoint, err := minerRepo.APIEndpoint()
+	err = startStorMinerAPIServer(minerRepo, n.minerApi)
 	if err != nil {
 		return nil, err
 	}
-
-	lst, err := manet.Listen(endpoint)
-	if err != nil {
-		return nil, fmt.Errorf("could not listen: %w", err)
-	}
-
-	mux := mux.NewRouter()
-
-	rpcServer := jsonrpc.NewServer()
-	rpcServer.Register("Filecoin", apistruct.PermissionedStorMinerAPI(n.minerApi))
-
-	mux.Handle("/rpc/v0", rpcServer)
-	mux.PathPrefix("/remote").HandlerFunc(n.minerApi.(*impl.StorageMinerAPI).ServeRemote)
-	mux.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
-
-	ah := &auth.Handler{
-		Verify: n.minerApi.AuthVerify,
-		Next:   mux.ServeHTTP,
-	}
-
-	srv := &http.Server{Handler: ah}
-
-	go func() {
-		_ = srv.Serve(manet.NetListener(lst))
-	}()
 
 	// add local storage for presealed sectors
 	err = n.minerApi.StorageAddLocal(ctx, presealDir)
@@ -608,31 +583,10 @@ func prepareClient(t *TestEnvironment) (*Node, error) {
 		return nil, err
 	}
 
-	endpoint, err := nodeRepo.APIEndpoint()
+	err = startClientAPIServer(nodeRepo, n.fullApi)
 	if err != nil {
 		return nil, err
 	}
-
-	lst, err := manet.Listen(endpoint)
-	if err != nil {
-		return nil, fmt.Errorf("could not listen: %w", err)
-	}
-
-	rpcServer := jsonrpc.NewServer()
-	rpcServer.Register("Filecoin", apistruct.PermissionedFullAPI(n.fullApi))
-
-	ah := &auth.Handler{
-		Verify: n.fullApi.AuthVerify,
-		Next:   rpcServer.ServeHTTP,
-	}
-
-	http.Handle("/rpc/v0", ah)
-
-	srv := &http.Server{Handler: http.DefaultServeMux}
-
-	go func() {
-		_ = srv.Serve(manet.NetListener(lst))
-	}()
 
 	t.RecordMessage("publish our address to the clients addr topic")
 	addrinfo, err := n.fullApi.NetAddrsListen(ctx)
@@ -837,4 +791,68 @@ func getDrandConfig(ctx context.Context, t *TestEnvironment) (node.Option, error
 	default:
 		return nil, fmt.Errorf("unknown random_beacon_type: %s", beaconType)
 	}
+}
+
+func startStorMinerAPIServer(repo *repo.MemRepo, minerApi api.StorageMiner) error {
+	endpoint, err := repo.APIEndpoint()
+	if err != nil {
+		return err
+	}
+
+	lst, err := manet.Listen(endpoint)
+	if err != nil {
+		return fmt.Errorf("could not listen: %w", err)
+	}
+
+	mux := mux.NewRouter()
+
+	rpcServer := jsonrpc.NewServer()
+	rpcServer.Register("Filecoin", apistruct.PermissionedStorMinerAPI(minerApi))
+
+	mux.Handle("/rpc/v0", rpcServer)
+	mux.PathPrefix("/remote").HandlerFunc(minerApi.(*impl.StorageMinerAPI).ServeRemote)
+	mux.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
+
+	ah := &auth.Handler{
+		Verify: minerApi.AuthVerify,
+		Next:   mux.ServeHTTP,
+	}
+
+	srv := &http.Server{Handler: ah}
+
+	go func() {
+		_ = srv.Serve(manet.NetListener(lst))
+	}()
+
+	return nil
+}
+
+func startClientAPIServer(repo *repo.MemRepo, api api.FullNode) error {
+	endpoint, err := repo.APIEndpoint()
+	if err != nil {
+		return err
+	}
+
+	lst, err := manet.Listen(endpoint)
+	if err != nil {
+		return fmt.Errorf("could not listen: %w", err)
+	}
+
+	rpcServer := jsonrpc.NewServer()
+	rpcServer.Register("Filecoin", apistruct.PermissionedFullAPI(api))
+
+	ah := &auth.Handler{
+		Verify: api.AuthVerify,
+		Next:   rpcServer.ServeHTTP,
+	}
+
+	http.Handle("/rpc/v0", ah)
+
+	srv := &http.Server{Handler: http.DefaultServeMux}
+
+	go func() {
+		_ = srv.Serve(manet.NetListener(lst))
+	}()
+
+	return nil
 }
