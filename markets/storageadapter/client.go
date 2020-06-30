@@ -7,7 +7,6 @@ import (
 	"context"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/events/state"
-	"sync"
 
 	"golang.org/x/xerrors"
 
@@ -341,27 +340,6 @@ func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider 
 }
 
 func (c *ClientNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID abi.DealID, onDealExpired storagemarket.DealExpiredCallback, onDealSlashed storagemarket.DealSlashedCallback) error {
-	// Make sure that only one of the callbacks is called, and only once
-	var lk sync.Mutex
-	onDealExpiredOnce := func(err error) {
-		lk.Lock()
-		defer lk.Unlock()
-		if onDealExpired != nil {
-			onDealExpired(err)
-		}
-		onDealExpired = nil
-		onDealSlashed = nil
-	}
-	onDealSlashedOnce := func(slashEpoch abi.ChainEpoch, err error) {
-		lk.Lock()
-		defer lk.Unlock()
-		if onDealSlashed != nil {
-			onDealSlashed(slashEpoch, err)
-		}
-		onDealExpired = nil
-		onDealSlashed = nil
-	}
-
 	var sd *api.MarketDeal
 
 	// Called immediately to check if the deal has already expired or been slashed
@@ -374,13 +352,13 @@ func (c *ClientNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID a
 
 		// Check if the deal has already expired
 		if sd.Proposal.EndEpoch <= ts.Height() {
-			onDealExpiredOnce(nil)
+			onDealExpired(nil)
 			return true, false, nil
 		}
 
 		// If there is no deal assume it's already been slashed
 		if sd.State.SectorStartEpoch < 0 {
-			onDealSlashedOnce(ts.Height(), nil)
+			onDealSlashed(ts.Height(), nil)
 			return true, false, nil
 		}
 
@@ -399,7 +377,7 @@ func (c *ClientNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID a
 
 		// Check if the deal has already expired
 		if sd.Proposal.EndEpoch <= ts2.Height() {
-			onDealExpiredOnce(nil)
+			onDealExpired(nil)
 			return false, nil
 		}
 
@@ -416,7 +394,7 @@ func (c *ClientNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID a
 
 		// Deal was slashed
 		if deal.To == nil {
-			onDealSlashedOnce(ts2.Height(), nil)
+			onDealSlashed(ts2.Height(), nil)
 			return false, nil
 		}
 
@@ -441,13 +419,6 @@ func (c *ClientNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID a
 	if err := c.ev.StateChanged(checkFunc, stateChanged, revert, build.MessageConfidence+1, build.SealRandomnessLookbackLimit, match); err != nil {
 		return xerrors.Errorf("failed to set up state changed handler: %w", err)
 	}
-
-	// Listen for when the chain reaches the expiration height
-	heightHandler := func(ctx context.Context, ts *types.TipSet, h abi.ChainEpoch) error {
-		onDealExpiredOnce(nil)
-		return nil
-	}
-	c.ev.ChainAt(heightHandler, revert, build.MessageConfidence+1, sd.Proposal.EndEpoch)
 
 	return nil
 }
