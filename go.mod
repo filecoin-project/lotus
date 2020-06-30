@@ -18,12 +18,12 @@ require (
 	github.com/filecoin-project/filecoin-ffi v0.26.1-0.20200508175440-05b30afeb00d
 	github.com/filecoin-project/go-address v0.0.2-0.20200504173055-8b6f2fb2b3ef
 	github.com/filecoin-project/go-amt-ipld/v2 v2.0.1-0.20200424220931-6263827e49f2
-	github.com/filecoin-project/go-bitfield v0.0.2-0.20200624234227-4563d4a0bc01
+	github.com/filecoin-project/go-bitfield v0.0.2-0.20200629135455-587b27927d38
 	github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
 	github.com/filecoin-project/go-data-transfer v0.3.0
 	github.com/filecoin-project/go-fil-commcid v0.0.0-20200208005934-2b8bd03caca5
-	github.com/filecoin-project/go-fil-markets v0.3.0
+	github.com/filecoin-project/go-fil-markets v0.3.1
 	github.com/filecoin-project/go-jsonrpc v0.1.1-0.20200602181149-522144ab4e24
 	github.com/filecoin-project/go-padreader v0.0.0-20200210211231-548257017ca6
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200605171344-fcac609550ca

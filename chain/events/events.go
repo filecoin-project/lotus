@@ -51,7 +51,7 @@ type Events struct {
 	readyOnce sync.Once
 
 	heightEvents
-	calledEvents
+	*hcEvents
 }
 
 func NewEvents(ctx context.Context, api eventAPI) *Events {
@@ -74,18 +74,7 @@ func NewEvents(ctx context.Context, api eventAPI) *Events {
 			htHeights:        map[abi.ChainEpoch][]uint64{},
 		},
 
-		calledEvents: calledEvents{
-			cs:           api,
-			tsc:          tsc,
-			ctx:          ctx,
-			gcConfidence: uint64(gcConfidence),
-
-			confQueue:   map[triggerH]map[msgH][]*queuedEvent{},
-			revertQueue: map[msgH][]triggerH{},
-			triggers:    map[triggerID]*callHandler{},
-			matchers:    map[triggerID][]MatchFunc{},
-			timeouts:    map[abi.ChainEpoch]map[triggerID]int{},
-		},
+		hcEvents: newHCEvents(ctx, api, tsc, uint64(gcConfidence)),
 	}
 
 	e.ready.Add(1)
@@ -143,7 +132,7 @@ func (e *Events) listenHeadChangesOnce(ctx context.Context) error {
 	}
 
 	e.readyOnce.Do(func() {
-		e.at = cur[0].Val.Height()
+		e.lastTs = cur[0].Val
 
 		e.ready.Done()
 	})
@@ -186,5 +175,5 @@ func (e *Events) headChange(rev, app []*types.TipSet) error {
 		return err
 	}
 
-	return e.headChangeCalled(rev, app)
+	return e.processHeadChangeEvent(rev, app)
 }
