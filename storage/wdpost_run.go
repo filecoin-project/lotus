@@ -463,8 +463,8 @@ func (s *WindowPoStScheduler) sortedSectorInfo(ctx context.Context, deadlineSect
 	for k, sector := range sset {
 		sbsi[k] = abi.SectorInfo{
 			SectorNumber: sector.ID,
-			SealedCID:    sector.Info.Info.SealedCID,
-			SealProof:    sector.Info.Info.SealProof,
+			SealedCID:    sector.Info.SealedCID,
+			SealProof:    sector.Info.SealProof,
 		}
 	}
 

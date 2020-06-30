@@ -59,8 +59,14 @@ The process:
       - power.CreateMiner, set msg value to PowerBalance
       - market.AddFunds with correct value
       - market.PublishDeals for related sectors
-      - Set precommits
-      - Commit presealed sectors
+    - Set network power in the power actor to what we'll have after genesis creation
+    - For each precommitted sector
+      - Get deal weight
+      - Calculate QA Power
+      - Remove fake power from the power actor
+      - Calculate pledge
+      - Precommit
+      - Confirm valid
 
 Data Types:
 

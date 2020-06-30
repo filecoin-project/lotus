@@ -15,6 +15,7 @@ import (
 	amt "github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
@@ -208,7 +209,7 @@ func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *S
 		out[i] = abi.SectorInfo{
 			SealProof:    spt,
 			SectorNumber: sectorSet[n].ID,
-			SealedCID:    sectorSet[n].Info.Info.SealedCID,
+			SealedCID:    sectorSet[n].Info.SealedCID,
 		}
 	}
 
@@ -538,4 +539,29 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, bcn beacon.RandomBe
 		PrevBeaconEntry: *prev,
 		BeaconEntries:   entries,
 	}, nil
+}
+
+func (sm *StateManager) CirculatingSupply(ctx context.Context, ts *types.TipSet) (abi.TokenAmount, error) {
+	if ts == nil {
+		ts = sm.cs.GetHeaviestTipSet()
+	}
+
+	st, _, err := sm.TipSetState(ctx, ts)
+	if err != nil {
+		return big.Zero(), err
+	}
+
+	r := store.NewChainRand(sm.cs, ts.Cids(), ts.Height())
+	vmi, err := vm.NewVM(st, ts.Height(), r, sm.cs.Blockstore(), sm.cs.VMSys())
+	if err != nil {
+		return big.Zero(), err
+	}
+
+	unsafeVM := &vm.UnsafeVM{VM: vmi}
+	rt := unsafeVM.MakeRuntime(ctx, &types.Message{
+		GasLimit: 1_000_000_000,
+		From:     builtin.SystemActorAddr,
+	}, builtin.SystemActorAddr, 0, 0, 0)
+
+	return rt.TotalFilCircSupply(), nil
 }
