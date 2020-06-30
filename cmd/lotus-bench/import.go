@@ -538,21 +538,21 @@ var importAnalyzeCmd = &cli.Command{
 			}
 			totalTipsets++
 			jsonIn <- b
-			fmt.Printf("\rProcessed %d tipsets", totalTipsets)
+			fmt.Fprintf(os.Stderr, "\rProcessed %d tipsets", totalTipsets)
 			if err == io.EOF {
 				break
 			}
 		}
 		close(jsonIn)
-		fmt.Printf("\n")
-		fmt.Printf("Collecting results\n")
+		fmt.Fprintf(os.Stderr, "\n")
+		fmt.Fprintf(os.Stderr, "Collecting results\n")
 
 		var invocs []Invocation
 		var totalTime time.Duration
 		var keys []string
 		var charges = make(map[string]*stats)
 		for i := 0; i < nWorkers; i++ {
-			fmt.Printf("\rProcessing results from worker %d/%d", i+1, nWorkers)
+			fmt.Fprintf(os.Stderr, "\rProcessing results from worker %d/%d", i+1, nWorkers)
 			res := <-results
 			invocs = append(invocs, res.expensiveInvocs...)
 			for k, v := range res.chargeStats {
@@ -574,7 +574,7 @@ var importAnalyzeCmd = &cli.Command{
 			totalTime += res.totalTime
 		}
 
-		fmt.Printf("\nCollecting gas keys\n")
+		fmt.Fprintf(os.Stderr, "\nCollecting gas keys\n")
 		for k := range charges {
 			keys = append(keys, k)
 		}
