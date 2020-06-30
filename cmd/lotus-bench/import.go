@@ -600,6 +600,10 @@ var importAnalyzeCmd = &cli.Command{
 
 		fmt.Println("Total time: ", totalTime)
 		fmt.Println("Average time per epoch: ", totalTime/time.Duration(totalTipsets))
+		if actorExec, ok := charges["OnActorExec"]; ok {
+			timeInActors := actorExec.timeTaken.Mean() * actorExec.timeTaken.n
+			fmt.Printf("Avarage time per epoch in actors: %s (%.1f%%)\n", time.Duration(timeInActors)/time.Duration(totalTipsets), timeInActors/float64(totalTime)*100)
+		}
 
 		n := 30
 		if len(invocs) < n {
