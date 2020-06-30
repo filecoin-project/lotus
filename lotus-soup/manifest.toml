@@ -41,3 +41,6 @@ instances = { min = 1, max = 100, default = 5 }
 
   # Params relevant to pubsub tracing
   enable_pubsub_tracer = { type = "bool", default = false }
+
+  # Mining Mode: synchronized -vs- natural time
+  mining_mode = { type = "enum", default = "synchronized", options = ["synchronized", "natural"] }

@@ -37,6 +37,7 @@
   [groups.run]
     [groups.run.test_params]
       role = "miner"
+      mining_mode = "natural"
 
 [[groups]]
   id = "clients"

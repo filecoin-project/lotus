@@ -80,9 +80,10 @@ var (
 	clientsAddrsTopic = sync.NewTopic("clientsAddrsTopic", &peer.AddrInfo{})
 	minersAddrsTopic  = sync.NewTopic("minersAddrsTopic", &MinerAddresses{})
 
-	stateReady      = sync.State("ready")
-	stateDone       = sync.State("done")
-	stateStopMining = sync.State("stop-mining")
+	stateReady           = sync.State("ready")
+	stateDone            = sync.State("done")
+	stateStopMining      = sync.State("stop-mining")
+	stateMinerPickSeqNum = sync.State("miner-pick-seq-num")
 )
 
 type TestEnvironment struct {
@@ -301,7 +302,10 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 		return nil, err
 	}
 
-	minerAddr, err := address.NewIDAddress(genesis_chain.MinerStart + uint64(t.GroupSeq-1))
+	// pick unique sequence number for each miner, no matter in which group they are
+	seq := t.SyncClient.MustSignalAndWait(ctx, stateMinerPickSeqNum, t.IntParam("miners"))
+
+	minerAddr, err := address.NewIDAddress(genesis_chain.MinerStart + uint64(seq-1))
 	if err != nil {
 		return nil, err
 	}
@@ -320,7 +324,7 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 
 	t.RecordMessage("Miner Info: Owner: %s Worker: %s", genMiner.Owner, genMiner.Worker)
 
-	presealMsg := &PresealMsg{Miner: *genMiner, Seqno: t.GroupSeq}
+	presealMsg := &PresealMsg{Miner: *genMiner, Seqno: seq}
 	t.SyncClient.Publish(ctx, presealTopic, presealMsg)
 
 	// then collect the genesis block and bootstrapper address
@@ -414,8 +418,7 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 		return nil, err
 	}
 
-	mineBlock := make(chan func(bool))
-	stop2, err := node.New(context.Background(),
+	minerOpts := []node.Option{
 		node.StorageMiner(&n.minerApi),
 		node.Online(),
 		node.Repo(minerRepo),
@@ -427,9 +430,24 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 			}
 			return lr.SetAPIEndpoint(apima)
 		}),
-		node.Override(new(*miner.Miner), miner.NewTestMiner(mineBlock, minerAddr)),
 		withMinerListenAddress(minerIP),
-	)
+	}
+
+	if t.StringParam("mining_mode") != "natural" {
+		mineBlock := make(chan func(bool))
+		minerOpts = append(minerOpts,
+			node.Override(new(*miner.Miner), miner.NewTestMiner(mineBlock, minerAddr)))
+		n.MineOne = func(ctx context.Context, cb func(bool)) error {
+			select {
+			case mineBlock <- cb:
+				return nil
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+		}
+	}
+
+	stop2, err := node.New(context.Background(), minerOpts...)
 	if err != nil {
 		stop1(context.TODO())
 		return nil, err
@@ -453,15 +471,6 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 	err = n.minerApi.NetConnect(ctx, remoteAddrs)
 	if err != nil {
 		panic(err)
-	}
-
-	n.MineOne = func(ctx context.Context, cb func(bool)) error {
-		select {
-		case mineBlock <- cb:
-			return nil
-		case <-ctx.Done():
-			return ctx.Err()
-		}
 	}
 
 	endpoint, err := minerRepo.APIEndpoint()

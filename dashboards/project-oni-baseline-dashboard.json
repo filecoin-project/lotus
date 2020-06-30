@@ -16,7 +16,7 @@
   "gnetId": null,
   "graphTooltip": 0,
   "id": 16,
-  "iteration": 1593204217741,
+  "iteration": 1593448862489,
   "links": [],
   "panels": [
     {
@@ -111,7 +111,13 @@
               }
             ]
           ],
-          "tags": []
+          "tags": [
+            {
+              "key": "run",
+              "operator": "=~",
+              "value": "/^$runid$/"
+            }
+          ]
         }
       ],
       "timeFrom": null,
@@ -216,7 +222,13 @@
               }
             ]
           ],
-          "tags": []
+          "tags": [
+            {
+              "key": "run",
+              "operator": "=~",
+              "value": "/^$runid$/"
+            }
+          ]
         },
         {
           "alias": "all ($tag_run)",
@@ -259,7 +271,13 @@
               }
             ]
           ],
-          "tags": []
+          "tags": [
+            {
+              "key": "run",
+              "operator": "=~",
+              "value": "/^$runid$/"
+            }
+          ]
         }
       ],
       "thresholds": [],
@@ -406,7 +424,13 @@
               }
             ]
           ],
-          "tags": []
+          "tags": [
+            {
+              "key": "run",
+              "operator": "=~",
+              "value": "/^$runid$/"
+            }
+          ]
         }
       ],
       "thresholds": [],
@@ -547,7 +571,13 @@
               }
             ]
           ],
-          "tags": []
+          "tags": [
+            {
+              "key": "run",
+              "operator": "=~",
+              "value": "/^$runid$/"
+            }
+          ]
         },
         {
           "alias": "find-data.offer - $tag_miner ($tag_run)",
@@ -596,7 +626,13 @@
               }
             ]
           ],
-          "tags": []
+          "tags": [
+            {
+              "key": "run",
+              "operator": "=~",
+              "value": "/^$runid$/"
+            }
+          ]
         }
       ],
       "thresholds": [],
@@ -743,7 +779,13 @@
               }
             ]
           ],
-          "tags": []
+          "tags": [
+            {
+              "key": "run",
+              "operator": "=~",
+              "value": "/^$runid$/"
+            }
+          ]
         }
       ],
       "thresholds": [],
@@ -876,7 +918,13 @@
               }
             ]
           ],
-          "tags": []
+          "tags": [
+            {
+              "key": "run",
+              "operator": "=~",
+              "value": "/^$runid$/"
+            }
+          ]
         }
       ],
       "thresholds": [],
@@ -956,11 +1004,37 @@
         "refresh": 2,
         "skipUrlSync": false,
         "type": "interval"
+      },
+      {
+        "allValue": null,
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": "influxdb",
+        "definition": "SHOW TAG VALUES WITH KEY = run",
+        "hide": 0,
+        "includeAll": true,
+        "label": null,
+        "multi": false,
+        "name": "runid",
+        "options": [],
+        "query": "SHOW TAG VALUES WITH KEY = run",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
       }
     ]
   },
   "time": {
-    "from": "now-8m",
+    "from": "now-15m",
     "to": "now"
   },
   "timepicker": {
@@ -979,5 +1053,5 @@
   "timezone": "",
   "title": "Project Oni - Baseline test",
   "uid": "8em8RXWMz",
-  "version": 8
+  "version": 1
 }
