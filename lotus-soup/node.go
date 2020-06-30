@@ -782,16 +782,6 @@ func getDrandConfig(ctx context.Context, t *TestEnvironment) (node.Option, error
 }
 
 func startStorMinerAPIServer(repo *repo.MemRepo, minerApi api.StorageMiner) error {
-	endpoint, err := repo.APIEndpoint()
-	if err != nil {
-		return err
-	}
-
-	lst, err := manet.Listen(endpoint)
-	if err != nil {
-		return fmt.Errorf("could not listen: %w", err)
-	}
-
 	mux := mux.NewRouter()
 
 	rpcServer := jsonrpc.NewServer()
@@ -808,24 +798,10 @@ func startStorMinerAPIServer(repo *repo.MemRepo, minerApi api.StorageMiner) erro
 
 	srv := &http.Server{Handler: ah}
 
-	go func() {
-		_ = srv.Serve(manet.NetListener(lst))
-	}()
-
-	return nil
+	return startServer(repo, srv)
 }
 
 func startClientAPIServer(repo *repo.MemRepo, api api.FullNode) error {
-	endpoint, err := repo.APIEndpoint()
-	if err != nil {
-		return err
-	}
-
-	lst, err := manet.Listen(endpoint)
-	if err != nil {
-		return fmt.Errorf("could not listen: %w", err)
-	}
-
 	rpcServer := jsonrpc.NewServer()
 	rpcServer.Register("Filecoin", apistruct.PermissionedFullAPI(api))
 
@@ -838,11 +814,7 @@ func startClientAPIServer(repo *repo.MemRepo, api api.FullNode) error {
 
 	srv := &http.Server{Handler: http.DefaultServeMux}
 
-	go func() {
-		_ = srv.Serve(manet.NetListener(lst))
-	}()
-
-	return nil
+	return startServer(repo, srv)
 }
 
 func withApiEndpoint(lr repo.LockedRepo) error {
@@ -851,4 +823,22 @@ func withApiEndpoint(lr repo.LockedRepo) error {
 		return err
 	}
 	return lr.SetAPIEndpoint(apima)
+}
+
+func startServer(repo *repo.MemRepo, srv *http.Server) error {
+	endpoint, err := repo.APIEndpoint()
+	if err != nil {
+		return err
+	}
+
+	lst, err := manet.Listen(endpoint)
+	if err != nil {
+		return fmt.Errorf("could not listen: %w", err)
+	}
+
+	go func() {
+		_ = srv.Serve(manet.NetListener(lst))
+	}()
+
+	return nil
 }
