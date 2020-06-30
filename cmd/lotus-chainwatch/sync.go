@@ -123,7 +123,7 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, headTs *types.
 
 		allToSync[bh.Cid()] = bh
 		if len(allToSync)%500 == 10 {
-			log.Infof("to visit: (%d) %s @%d", len(allToSync), bh.Cid(), bh.Height)
+			log.Debugf("to visit: (%d) %s @%d", len(allToSync), bh.Cid(), bh.Height)
 		}
 
 		if len(bh.Parents) == 0 {
@@ -276,7 +276,6 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, headTs *types.
 					tsKey:     pts.Key(),
 				}
 				addressToID[addr] = address.Undef
-				//
 				alk.Unlock()
 			}
 		})
@@ -423,14 +422,12 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, headTs *types.
 		}
 
 		// TODO re-enable when ready to fill miner metadata, the contents of storeMiners is commented out too.
-		/*
-			log.Info("Storing miners")
+		log.Info("Storing miners")
 
-				if err := st.storeMiners(miners); err != nil {
-					log.Error(err)
-					return
-				}
-		*/
+		if err := st.storeMiners(minerTips); err != nil {
+			log.Error(err)
+			return
+		}
 
 		log.Info("Storing miner sectors")
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"sync"
 	"time"
 
@@ -257,7 +258,6 @@ create index if not exists receipts_msg_state_index
 	
 create table if not exists miner_sectors
 (
-	stateroot text not null,
 	miner text not null,
 	sectorid bigint not null,
 	activation bigint not null,
@@ -267,36 +267,29 @@ create table if not exists miner_sectors
 	sealcid text not null,
 	sealrandepoch bigint not null,
 	constraint miner_sectors_pk
-		primary key (stateroot, miner, sectorid)
+		primary key (miner, sectorid)
 );
 
-create index if not exists miner_sectors_stateroot_miner_sectorid_index
-	on miner_sectors (stateroot, miner, sectorid);
-/*
+create index if not exists miner_sectors_miner_sectorid_index
+	on miner_sectors (miner, sectorid);
+
 create table if not exists miner_heads
 (
-	head text not null,
 	addr text not null,
-	stateroot text not null,
-	sectorset text not null,
-	setsize decimal not null,
-	provingset text not null,
-	provingsize decimal not null,
 	owner text not null,
 	worker text not null,
-	peerid text not null,
-	sectorsize bigint not null,
-	power decimal not null,
-	active bool,
-	ppe bigint not null,
-	slashed_at bigint not null,
+	peerid text,
+	sectorsize text not null,
+	windowpostpartitionsectors bigint not null,
+	
+	precommitdeposits text not null,
+	lockedfunds text not null,
+	nextdeadlineprocessfaults bigint not null,
 	constraint miner_heads_pk
-		primary key (head, addr)
+		primary key (addr)
 );
 
-create index if not exists miner_heads_stateroot_index
-	on miner_heads (stateroot);
-
+/*
 create or replace function miner_tips(epoch bigint)
     returns table (head text,
                    addr text,
@@ -490,7 +483,7 @@ func (st *storage) storeSectors(minerTips map[types.TipSetKey][]*newMinerInfo, s
 		return xerrors.Errorf("prep temp: %w", err)
 	}
 
-	stmt, err := tx.Prepare(`copy ms (stateroot, miner, sectorid, activation, dealweight, verifieddealweight, expiration, sealcid, sealrandepoch) from STDIN `)
+	stmt, err := tx.Prepare(`copy ms (miner, sectorid, activation, dealweight, verifieddealweight, expiration, sealcid, sealrandepoch) from STDIN `)
 	if err != nil {
 		return err
 	}
@@ -504,7 +497,6 @@ func (st *storage) storeSectors(minerTips map[types.TipSetKey][]*newMinerInfo, s
 
 			for _, sector := range sectors {
 				if _, err := stmt.Exec(
-					miner.stateroot.String(),
 					miner.addr.String(),
 					uint64(sector.ID),
 					int64(sector.Info.ActivationEpoch),
@@ -531,54 +523,65 @@ func (st *storage) storeSectors(minerTips map[types.TipSetKey][]*newMinerInfo, s
 	return tx.Commit()
 }
 
-func (st *storage) storeMiners(miners map[minerKey]*minerInfo) error {
-	/*tx, err := st.db.Begin()
-		if err != nil {
-			return err
-		}
+func (st *storage) storeMiners(minerTips map[types.TipSetKey][]*newMinerInfo) error {
+	tx, err := st.db.Begin()
+	if err != nil {
+		return err
+	}
 
-		if _, err := tx.Exec(`
+	if _, err := tx.Exec(`
 
 	create temp table mh (like miner_heads excluding constraints) on commit drop;
 
 
 	`); err != nil {
-			return xerrors.Errorf("prep temp: %w", err)
-		}
+		return xerrors.Errorf("prep temp: %w", err)
+	}
 
-		stmt, err := tx.Prepare(`copy mh (head, addr, stateroot, sectorset, setsize, provingset, provingsize, owner, worker, peerid, sectorsize, power, ppe) from STDIN`)
-		if err != nil {
-			return err
-		}
-		for k, i := range miners {
+	stmt, err := tx.Prepare(`copy mh (addr, owner, worker, peerid, sectorsize, windowpostpartitionsectors, precommitdeposits, lockedfunds, nextdeadlineprocessfaults) from STDIN`)
+	if err != nil {
+		return err
+	}
+	for ts, miners := range minerTips {
+		for _, miner := range miners {
+			var pid string
+			if len(miner.info.PeerId) != 0 {
+				peerid, err := peer.IDFromBytes(miner.info.PeerId)
+				if err != nil {
+					// this should "never happen", but if it does we should still store info about the miner.
+					log.Warnw("failed to decode peerID", "peerID (bytes)", miner.info.PeerId, "miner", miner.addr, "tipset", ts.String())
+				} else {
+					pid = peerid.String()
+				}
+			}
 			if _, err := stmt.Exec(
-				k.act.Head.String(),
-				k.addr.String(),
-				k.stateroot.String(),
-				i.state.Sectors.String(),
-				fmt.Sprint(i.ssize),
-				i.state.ProvingSet.String(),
-				fmt.Sprint(i.psize),
-				i.info.Owner.String(),
-				i.info.Worker.String(),
-				i.info.PeerId.String(),
-				i.info.SectorSize,
-				i.power.String(), // TODO: SPA
-				i.state.PoStState.ProvingPeriodStart,
+				miner.addr.String(),
+				miner.info.Owner.String(),
+				miner.info.Worker.String(),
+				pid,
+				miner.info.SectorSize.ShortString(),
+				miner.info.WindowPoStPartitionSectors,
+
+				miner.state.PreCommitDeposits.String(),
+				miner.state.LockedFunds.String(),
+				miner.state.NextDeadlineToProcessFaults,
 			); err != nil {
+				log.Errorw("failed to store miner state", miner.state)
+				log.Errorw("failed to store miner info", miner.info)
 				return err
 			}
-		}
-		if err := stmt.Close(); err != nil {
-			return err
-		}
 
-		if _, err := tx.Exec(`insert into miner_heads select * from mh on conflict do nothing `); err != nil {
-			return xerrors.Errorf("actor put: %w", err)
 		}
+	}
+	if err := stmt.Close(); err != nil {
+		return err
+	}
 
-		return tx.Commit()*/
-	return nil
+	if _, err := tx.Exec(`insert into miner_heads select * from mh on conflict do nothing `); err != nil {
+		return xerrors.Errorf("actor put: %w", err)
+	}
+
+	return tx.Commit()
 }
 
 func (st *storage) storeHeaders(bhs map[cid.Cid]*types.BlockHeader, sync bool) error {
