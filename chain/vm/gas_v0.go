@@ -99,7 +99,7 @@ func (pl *pricelistV0) OnChainReturnValue(dataSize int) GasCharge {
 func (pl *pricelistV0) OnMethodInvocation(value abi.TokenAmount, methodNum abi.MethodNum) GasCharge {
 	ret := pl.sendBase
 	extra := ""
-	virtGas := int64(1069512)
+	virtGas := int64(1072944)
 
 	if value != abi.NewTokenAmount(0) {
 		// TODO: fix this, it is comparing pointers instead of values
@@ -107,10 +107,10 @@ func (pl *pricelistV0) OnMethodInvocation(value abi.TokenAmount, methodNum abi.M
 		ret += pl.sendTransferFunds
 	}
 	if big.Cmp(value, abi.NewTokenAmount(0)) != 0 {
-		virtGas += 498173
+		virtGas += 497495
 		if methodNum == builtin.MethodSend {
 			// transfer only
-			virtGas += 968198
+			virtGas += 973940
 		}
 		extra += "t"
 	}
@@ -118,9 +118,9 @@ func (pl *pricelistV0) OnMethodInvocation(value abi.TokenAmount, methodNum abi.M
 		ret += pl.sendInvokeMethod
 		extra += "i"
 		// running actors is cheaper becase we hand over to actors
-		virtGas += -294632
+		virtGas += -295779
 	}
-	return newGasCharge("OnMethodInvocation", ret, 0).WithVirtual(86315, 0).WithExtra(extra)
+	return newGasCharge("OnMethodInvocation", ret, 0).WithVirtual(virtGas, 0).WithExtra(extra)
 }
 
 // OnIpldGet returns the gas used for storing an object
