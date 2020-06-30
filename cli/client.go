@@ -232,6 +232,11 @@ var clientDealCmd = &cli.Command{
 			Usage: "specify the epoch that the deal should start at",
 			Value: -1,
 		},
+		&cli.BoolFlag{
+			Name:  "verified-deal",
+			Usage: "indicate that the deal counts towards verified client total",
+			Value: true,
+		},
 		&CidBaseFlag,
 	},
 	Action: func(cctx *cli.Context) error {
@@ -313,6 +318,7 @@ var clientDealCmd = &cli.Command{
 			EpochPrice:        types.BigInt(price),
 			MinBlocksDuration: uint64(dur),
 			DealStartEpoch:    abi.ChainEpoch(cctx.Int64("start-epoch")),
+			VerifiedDeal:      cctx.Bool("verified-deal"),
 		})
 		if err != nil {
 			return err

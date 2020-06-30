@@ -137,7 +137,7 @@ func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) 
 		big.Zero(),
 		rt,
 		false,
-		false,
+		params.VerifiedDeal,
 	)
 
 	if err != nil {
