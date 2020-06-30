@@ -583,10 +583,10 @@ var importAnalyzeCmd = &cli.Command{
 		sort.Strings(keys)
 		for _, k := range keys {
 			s := charges[k]
-			fmt.Printf("%s: incr by %f~%f; tt %f~%f\n", k, s.gasRatio.Mean(), s.gasRatio.Stddev(),
+			fmt.Printf("%s: incr by %.4f~%.4f; tt %.4f~%.4f\n", k, s.gasRatio.Mean(), s.gasRatio.Stddev(),
 				s.timeTaken.Mean(), s.timeTaken.Stddev())
 			if s.extraCovar != nil {
-				fmt.Printf("\t correll: %.2f, tt = %f * extra + %f\n", s.extraCovar.Correl(),
+				fmt.Printf("\t correll: %.2f, tt = %.2f * extra + %.2f\n", s.extraCovar.Correl(),
 					s.extraCovar.A(), s.extraCovar.B())
 				fmt.Printf("\t covar: %.2f, extra: %.2f~%.2f, tt2: %.2f~%.2f, count %.0f\n",
 					s.extraCovar.Covariance(), s.extraCovar.meanX, s.extraCovar.StddevX(),
