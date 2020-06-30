@@ -19,7 +19,6 @@ func main() {
 		base16Cmd,
 		bitFieldCmd,
 		keyinfoCmd,
-		peerkeyCmd,
 		noncefix,
 		bigIntParseCmd,
 		staterootStatsCmd,
