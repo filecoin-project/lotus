@@ -296,7 +296,7 @@ func (cov1 *covar) Combine(cov2 *covar) {
 	out.m2 = cov1.m2 + cov2.m2 + dx*dx*cov1.n*cov2.n/out.n
 
 	dy := cov1.meanY - cov2.meanY
-	out.meanY = cov1.meanY + dy*cov2.n/out.n
+	out.meanY = cov1.meanY - dy*cov2.n/out.n
 
 	out.c = cov1.c + cov2.c + dx*dy*cov1.n*cov2.n/out.n
 	*cov1 = out
@@ -362,6 +362,30 @@ func (v1 *meanVar) Combine(v2 *meanVar) {
 	v1.m2 = m2
 }
 
+func getExtras(ex interface{}) (*string, *float64) {
+	if t, ok := ex.(string); ok {
+		return &t, nil
+	}
+	if size, ok := ex.(float64); ok {
+		return nil, &size
+	}
+	if exMap, ok := ex.(map[string]interface{}); ok {
+		t, tok := exMap["type"].(string)
+		size, sok := exMap["size"].(float64)
+		if tok && sok {
+			return &t, &size
+		}
+		if tok {
+			return &t, nil
+		}
+		if sok {
+			return nil, &size
+		}
+		return nil, nil
+	}
+	return nil, nil
+}
+
 func tallyGasCharges(charges map[string]*stats, et types.ExecutionTrace) {
 	for i, gc := range et.GasCharges {
 		name := gc.Name
@@ -376,8 +400,9 @@ func tallyGasCharges(charges map[string]*stats, et types.ExecutionTrace) {
 			}
 			tt += float64(prev.TimeTaken.Nanoseconds())
 		}
-		if eString, ok := gc.Extra.(string); ok {
-			name += "-" + eString
+		eType, eSize := getExtras(gc.Extra)
+		if eType != nil {
+			name += "-" + *eType
 		}
 		compGas := gc.VirtualComputeGas
 		if compGas == 0 {
@@ -389,13 +414,13 @@ func tallyGasCharges(charges map[string]*stats, et types.ExecutionTrace) {
 			charges[name] = s
 		}
 
-		if extra, ok := gc.Extra.(float64); ok {
+		if eSize != nil {
 			if s.extraCovar == nil {
 				s.extraCovar = &covar{}
 				s.extra = &meanVar{}
 			}
-			s.extraCovar.AddPoint(extra, tt)
-			s.extra.AddPoint(extra)
+			s.extraCovar.AddPoint(*eSize, tt)
+			s.extra.AddPoint(*eSize)
 		}
 
 		s.timeTaken.AddPoint(tt)
