@@ -235,7 +235,7 @@ var clientDealCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name:  "verified-deal",
 			Usage: "indicate that the deal counts towards verified client total",
-			Value: true,
+			Value: false,
 		},
 		&CidBaseFlag,
 	},
