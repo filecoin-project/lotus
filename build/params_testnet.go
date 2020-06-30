@@ -20,7 +20,6 @@ func init() {
 	}
 }
 
-// Seconds
-const BlockDelaySecs = builtin.EpochDurationSeconds
+const BlockDelaySecs = uint64(builtin.EpochDurationSeconds)
 
-const PropagationDelay = 6
+const PropagationDelay = uint64(6)

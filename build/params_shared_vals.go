@@ -5,6 +5,7 @@ package build
 import (
 	"math/big"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
@@ -21,7 +22,7 @@ const UnixfsLinksPerLevel = 1024
 // Consensus / Network
 
 // Seconds
-const AllowableClockDrift = 1
+const AllowableClockDrift = uint64(1)
 
 // Epochs
 const ForkLengthThreshold = Finality
@@ -31,12 +32,12 @@ var BlocksPerEpoch = uint64(builtin.ExpectedLeadersPerEpoch)
 
 // Epochs
 const Finality = miner.ChainFinalityish
-const MessageConfidence = 5
+const MessageConfidence = uint64(5)
 
 // constants for Weight calculation
 // The ratio of weight contributed by short-term vs long-term factors in a given round
 const WRatioNum = int64(1)
-const WRatioDen = 2
+const WRatioDen = uint64(2)
 
 // /////
 // Proofs
@@ -54,25 +55,25 @@ const MaxSealLookback = SealRandomnessLookbackLimit + 2000 // TODO: Get from spe
 // Mining
 
 // Epochs
-const TicketRandomnessLookback = 1
+const TicketRandomnessLookback = abi.ChainEpoch(1)
 
-const WinningPoStSectorSetLookback = 10
+const WinningPoStSectorSetLookback = abi.ChainEpoch(10)
 
 // /////
 // Devnet settings
 
-const TotalFilecoin = 2_000_000_000
-const MiningRewardTotal = 1_400_000_000
+const TotalFilecoin = uint64(2_000_000_000)
+const MiningRewardTotal = uint64(1_400_000_000)
 
-const FilecoinPrecision = 1_000_000_000_000_000_000
+const FilecoinPrecision = uint64(1_000_000_000_000_000_000)
 
 var InitialRewardBalance *big.Int
 
 // TODO: Move other important consts here
 
 func init() {
-	InitialRewardBalance = big.NewInt(MiningRewardTotal)
-	InitialRewardBalance = InitialRewardBalance.Mul(InitialRewardBalance, big.NewInt(FilecoinPrecision))
+	InitialRewardBalance = big.NewInt(int64(MiningRewardTotal))
+	InitialRewardBalance = InitialRewardBalance.Mul(InitialRewardBalance, big.NewInt(int64(FilecoinPrecision)))
 }
 
 // Sync

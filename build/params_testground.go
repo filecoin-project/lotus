@@ -32,6 +32,9 @@ var (
 	Finality            = miner.ChainFinalityish
 	ForkLengthThreshold = Finality
 
+	SlashablePowerDelay        = 20
+	InteractivePoRepConfidence = 6
+
 	MessageConfidence uint64 = 5
 
 	WRatioNum = int64(1)
