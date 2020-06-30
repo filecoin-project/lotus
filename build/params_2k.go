@@ -20,7 +20,6 @@ func init() {
 	BuildType |= Build2k
 }
 
-// Seconds
 const BlockDelaySecs = 2
 
 const PropagationDelay = 3
