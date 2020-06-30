@@ -117,6 +117,8 @@ func (sp *StatePredicates) DealStateChangedForIDs(dealIds []abi.DealID) DiffDeal
 		for _, dealID := range dealIds {
 			var oldDealPtr, newDealPtr *market.DealState
 			var oldDeal, newDeal market.DealState
+
+			// If the deal has been removed, we just set it to nil
 			err := oldDealStateRoot.Get(ctx, uint64(dealID), &oldDeal)
 			if err == nil {
 				oldDealPtr = &oldDeal
@@ -129,7 +131,8 @@ func (sp *StatePredicates) DealStateChangedForIDs(dealIds []abi.DealID) DiffDeal
 			} else if _, ok := err.(*amt.ErrNotFound); !ok {
 				return false, nil, err
 			}
-			if oldDealPtr == nil || newDealPtr == nil || oldDeal != newDeal {
+
+			if oldDeal != newDeal {
 				changedDeals[dealID] = DealStateChange{oldDealPtr, newDealPtr}
 			}
 		}
