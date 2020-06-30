@@ -113,15 +113,12 @@ func runBaselineClient(t *TestEnvironment) error {
 	carExport := true
 
 	t.RecordMessage("trying to retrieve %s", fcid)
-	retrieveData(t, ctx, err, client, fcid, carExport, data)
+	retrieveData(t, ctx, client, fcid, carExport, data)
 	t.D().ResettingHistogram("deal.retrieved").Update(int64(time.Since(t1)))
 
 	t.SyncClient.MustSignalEntry(ctx, stateStopMining)
 
 	time.Sleep(10 * time.Second) // wait for metrics to be emitted
-
-	// TODO broadcast published content CIDs to other clients
-	// TODO select a random piece of content published by some other client and retrieve it
 
 	t.SyncClient.MustSignalAndWait(ctx, stateDone, t.TestInstanceCount)
 	return nil
@@ -169,7 +166,7 @@ loop:
 	}
 }
 
-func retrieveData(t *TestEnvironment, ctx context.Context, err error, client api.FullNode, fcid cid.Cid, carExport bool, data []byte) {
+func retrieveData(t *TestEnvironment, ctx context.Context, client api.FullNode, fcid cid.Cid, carExport bool, data []byte) {
 	t1 := time.Now()
 	offers, err := client.ClientFindData(ctx, fcid)
 	if err != nil {
