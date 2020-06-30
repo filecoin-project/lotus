@@ -63,9 +63,8 @@ instances = { min = 1, max = 100, default = 5 }
   drand_period = { type = "duration", default="10s" }
   drand_threshold = { type = "int", default = 2 }
   drand_gossip_relay = { type = "bool", default = true }
-  drand_halt_duration = { type = "duration", default="30s", desc = "how long to halt drand chain before resuming" }
-  drand_halt_begin = { type = "duration", default="1m", desc = "when to start drand halting (relative to test start time)"}
   drand_log_level = { type = "string", default="info" }
+  suspend_events = { type = "string", default="", desc = "a sequence of halt/resume/wait events separated by '->'" }
   
   # Params relevant to pubsub tracing
   enable_pubsub_tracer = { type = "bool", default = false }  # Mining Mode: synchronized -vs- natural time
