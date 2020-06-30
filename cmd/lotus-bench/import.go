@@ -267,9 +267,9 @@ func (v1 *covar) StddevY() float64 {
 
 func (cov1 *covar) AddPoint(x, y float64) {
 	cov1.n += 1
+
 	dx := x - cov1.meanX
 	cov1.meanX += dx / cov1.n
-
 	dx2 := x - cov1.meanX
 	cov1.m2x += dx * dx2
 
@@ -586,10 +586,11 @@ var importAnalyzeCmd = &cli.Command{
 			fmt.Printf("%s: incr by %f~%f; tt %f~%f\n", k, s.gasRatio.Mean(), s.gasRatio.Stddev(),
 				s.timeTaken.Mean(), s.timeTaken.Stddev())
 			if s.extraCovar != nil {
-				fmt.Printf("\t correll: %f, tt = %f * extra + %f\n", s.extraCovar.Correl(),
+				fmt.Printf("\t correll: %.2f, tt = %f * extra + %f\n", s.extraCovar.Correl(),
 					s.extraCovar.A(), s.extraCovar.B())
-				fmt.Printf("\t covar: %f, extra: %f~%f, tt2: %f~%f\n", s.extraCovar.Covariance(),
-					s.extraCovar.meanX, s.extraCovar.StddevX(), s.extraCovar.meanY, s.extraCovar.StddevY())
+				fmt.Printf("\t covar: %.2f, extra: %.2f~%.2f, tt2: %.2f~%.2f, count %.0f\n",
+					s.extraCovar.Covariance(), s.extraCovar.meanX, s.extraCovar.StddevX(),
+					s.extraCovar.meanY, s.extraCovar.StddevY(), s.extraCovar.n)
 			}
 		}
 
