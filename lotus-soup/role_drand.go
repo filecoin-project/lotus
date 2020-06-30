@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/drand/drand/chain"
+	"github.com/drand/drand/client"
 	hclient "github.com/drand/drand/client/http"
 	"github.com/drand/drand/core"
 	"github.com/drand/drand/key"
@@ -35,6 +36,7 @@ var (
 
 type DrandInstance struct {
 	daemon      *core.Drand
+	httpClient  client.Client
 	ctrlClient  *dnet.ControlClient
 	gossipRelay *lp2p.GossipRelayNode
 
@@ -131,6 +133,31 @@ func (dr *DrandInstance) Halt() {
 func (dr *DrandInstance) Resume() {
 	dr.t.RecordMessage("drand node #d resuming", dr.t.GroupSeq)
 	dr.daemon.StartBeacon(true)
+	// block until we can fetch the round corresponding to the current time
+	startTime := time.Now()
+	round := dr.httpClient.RoundAt(startTime)
+	timeout := 30 * time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	done := make(chan struct{}, 1)
+	go func() {
+		for {
+			res, err := dr.httpClient.Get(ctx, round)
+			if err == nil {
+				dr.t.RecordMessage("drand chain caught up to round %d", res.Round())
+				done <- struct{}{}
+				return
+			}
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+		dr.t.RecordMessage("drand chain failed to catch up after %s", timeout.String())
+	case <-done:
+		dr.t.RecordMessage("drand chain resumed after %s catchup time", time.Since(startTime))
+	}
 }
 
 func runDrandNode(t *TestEnvironment) error {
@@ -258,12 +285,12 @@ func prepareDrandNode(t *TestEnvironment) (*DrandInstance, error) {
 	// verify that we can get a round of randomness from the chain using an http client
 	info := chain.NewChainInfo(grp)
 	myPublicAddr := fmt.Sprintf("http://%s", dr.pubAddr)
-	client, err := hclient.NewWithInfo(myPublicAddr, info, nil)
+	dr.httpClient, err = hclient.NewWithInfo(myPublicAddr, info, nil)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create drand http client: %w", err)
 	}
 
-	_, err = client.Get(ctx, 1)
+	_, err = dr.httpClient.Get(ctx, 1)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get initial drand round: %w", err)
 	}
@@ -280,7 +307,7 @@ func prepareDrandNode(t *TestEnvironment) (*DrandInstance, error) {
 			DataDir:      gossipDir,
 			IdentityPath: path.Join(gossipDir, "identity.key"),
 			Insecure:     true,
-			Client:       client,
+			Client:       dr.httpClient,
 		}
 		t.RecordMessage("starting drand gossip relay")
 		dr.gossipRelay, err = lp2p.NewGossipRelayNode(log.NewLogger(getLogLevel(t)), &relayCfg)
