@@ -657,7 +657,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) (er
 	// fast checks first
 
 	now := uint64(time.Now().Unix())
-	if h.Timestamp > now+build.AllowableClockDrift {
+	if h.Timestamp > now+build.AllowableClockDriftSecs {
 		return xerrors.Errorf("block was from the future (now=%d, blk=%d): %w", now, h.Timestamp, ErrTemporal)
 	}
 	if h.Timestamp > now {

@@ -27,7 +27,7 @@ var (
 	BlockDelaySecs    = uint64(builtin.EpochDurationSeconds)
 	PropagationDelay  = uint64(6)
 
-	AllowableClockDrift = uint64(1)
+	AllowableClockDriftSecs = uint64(1)
 
 	Finality            = miner.ChainFinalityish
 	ForkLengthThreshold = Finality

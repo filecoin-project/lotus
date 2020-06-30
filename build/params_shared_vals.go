@@ -21,8 +21,7 @@ const UnixfsLinksPerLevel = 1024
 // /////
 // Consensus / Network
 
-// Seconds
-const AllowableClockDrift = uint64(1)
+const AllowableClockDriftSecs = uint64(1)
 
 // Epochs
 const ForkLengthThreshold = Finality

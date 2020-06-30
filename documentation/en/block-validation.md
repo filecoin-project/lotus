@@ -43,7 +43,7 @@ Assemble a `FullTipSet` populated with the single block received earlier.
 This function contains most of the validation logic grouped in separate closures that run asynchronously, this list does not reflect validation order then.
 
 `V:` Block `Timestamp`:
-  * Is not bigger than current time plus `AllowableClockDrift`.
+  * Is not bigger than current time plus `AllowableClockDriftSecs`.
   * Is not smaller than previous block's `Timestamp` plus `BlockDelay` (including null blocks).
 
 ### Messages
