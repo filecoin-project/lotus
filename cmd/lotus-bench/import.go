@@ -321,8 +321,8 @@ func (cov1 *covar) A() float64 {
 func (cov1 *covar) B() float64 {
 	return cov1.meanY - cov1.meanX*cov1.A()
 }
-func (cov1 *covar) Coerrel() float64 {
-	return cov1.Covariance() / cov1.VarianceX() / cov1.VarianceY()
+func (cov1 *covar) Correl() float64 {
+	return cov1.Covariance() / cov1.StddevX() / cov1.StddevY()
 }
 
 type meanVar struct {
@@ -586,7 +586,7 @@ var importAnalyzeCmd = &cli.Command{
 			fmt.Printf("%s: incr by %f~%f; tt %f~%f\n", k, s.gasRatio.Mean(), s.gasRatio.Stddev(),
 				s.timeTaken.Mean(), s.timeTaken.Stddev())
 			if s.extraCovar != nil {
-				fmt.Printf("\t correll: %f, tt = %f * extra + %f\n", s.extraCovar.Coerrel(),
+				fmt.Printf("\t correll: %f, tt = %f * extra + %f\n", s.extraCovar.Correl(),
 					s.extraCovar.A(), s.extraCovar.B())
 				fmt.Printf("\t extra: %f~%f\n", s.extraCovar.meanX, s.extraCovar.StddevX())
 			}

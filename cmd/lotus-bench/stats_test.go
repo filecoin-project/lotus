@@ -33,13 +33,15 @@ func TestCovar(t *testing.T) {
 		maxJ := rng.Intn(1000) + 500
 		for j := 0; j < maxJ; j++ {
 			x := rng.NormFloat64()*5 + 500
-			ss[i].AddPoint(x, x*(rng.NormFloat64()/10+2)-rng.NormFloat64()-1000)
+			ss[i].AddPoint(x, x*2-1000)
 		}
-		t.Logf("covar: %f, y = %f*x+%f @%.0f", ss[i].Covariance(), ss[i].A(), ss[i].B(), ss[i].n)
+		t.Logf("corell: %f, y = %f*x+%f @%.0f", ss[i].Correl(), ss[i].A(), ss[i].B(), ss[i].n)
+		t.Logf("\txVar: %f yVar: %f covar: %f", ss[i].StddevX(), ss[i].StddevY(), ss[i].Covariance())
 	}
 	out := &covar{}
 	for i := 0; i < N; i++ {
 		out.Combine(ss[i])
-		t.Logf("combine: covar: %f, y = %f*x+%f", ss[i].Covariance(), ss[i].A(), ss[i].B())
+		t.Logf("combine: corell: %f, y = %f*x+%f", out.Correl(), out.A(), out.B())
+		t.Logf("\txVar: %f yVar: %f covar: %f", out.StddevX(), out.StddevY(), out.Covariance())
 	}
 }
