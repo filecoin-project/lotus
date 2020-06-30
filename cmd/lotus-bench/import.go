@@ -249,6 +249,14 @@ func (cov1 *covar) Covariance() float64 {
 	return cov1.c / (cov1.n - 1)
 }
 
+func (cov1 *covar) Variance() float64 {
+	return cov1.m2 / (cov1.n - 1)
+}
+
+func (v1 *covar) Stddev() float64 {
+	return math.Sqrt(v1.Variance())
+}
+
 func (cov1 *covar) AddPoint(x, y float64) {
 	cov1.n += 1
 	dx := x - cov1.meanX
@@ -279,11 +287,12 @@ func (cov1 *covar) Combine(cov2 *covar) {
 	if cov2.n == 1 {
 		cov1.AddPoint(cov2.meanX, cov2.meanY)
 	}
+
 	out := covar{}
 	out.n = cov1.n + cov2.n
 
 	dx := cov1.meanX - cov2.meanX
-	out.meanX = cov1.meanX + dx*cov2.n/out.n
+	out.meanX = cov1.meanX - dx*cov2.n/out.n
 	out.m2 = cov1.m2 + cov2.m2 + dx*dx*cov1.n*cov2.n/out.n
 
 	dy := cov1.meanY - cov2.meanY
@@ -291,6 +300,13 @@ func (cov1 *covar) Combine(cov2 *covar) {
 
 	out.c = cov1.c + cov2.c + dx*dy*cov1.n*cov2.n/out.n
 	*cov1 = out
+}
+
+func (cov1 *covar) A() float64 {
+	return cov1.Covariance() / cov1.Variance()
+}
+func (cov1 *covar) B() float64 {
+	return cov1.meanY - cov1.meanX*cov1.A()
 }
 
 type meanVar struct {
@@ -347,15 +363,22 @@ func (v1 *meanVar) Combine(v2 *meanVar) {
 }
 
 func tallyGasCharges(charges map[string]*stats, et types.ExecutionTrace) {
-	for _, gc := range et.GasCharges {
+	for i, gc := range et.GasCharges {
 		name := gc.Name
+		if name == "OnIpldGetStart" {
+			continue
+		}
+		tt := float64(gc.TimeTaken.Nanoseconds())
+		if name == "OnIpldGet" {
+			prev := et.GasCharges[i-1]
+			if prev.Name != "OnIpldGetStart" {
+				log.Warn("OnIpldGet without OnIpldGetStart")
+			}
+			tt += float64(prev.TimeTaken.Nanoseconds())
+		}
 		if eString, ok := gc.Extra.(string); ok {
 			name += "-" + eString
-		} else if eInt, ok := gc.Extra.(float64); ok {
-			// handle scaling
-			_ = eInt
 		}
-
 		compGas := gc.VirtualComputeGas
 		if compGas == 0 {
 			compGas = 1
@@ -365,9 +388,19 @@ func tallyGasCharges(charges map[string]*stats, et types.ExecutionTrace) {
 			s = new(stats)
 			charges[name] = s
 		}
-		s.timeTaken.AddPoint(float64(gc.TimeTaken.Nanoseconds()))
 
-		ratio := float64(gc.TimeTaken.Nanoseconds()) / float64(compGas) * GasPerNs
+		if extra, ok := gc.Extra.(float64); ok {
+			if s.extraCovar == nil {
+				s.extraCovar = &covar{}
+				s.extra = &meanVar{}
+			}
+			s.extraCovar.AddPoint(extra, tt)
+			s.extra.AddPoint(extra)
+		}
+
+		s.timeTaken.AddPoint(tt)
+
+		ratio := tt / float64(compGas) * GasPerNs
 		s.gasRatio.AddPoint(ratio)
 	}
 	for _, sub := range et.Subcalls {
@@ -491,6 +524,15 @@ var importAnalyzeCmd = &cli.Command{
 				}
 				s.timeTaken.Combine(&v.timeTaken)
 				s.gasRatio.Combine(&v.gasRatio)
+
+				if v.extra != nil {
+					if s.extra == nil {
+						s.extra = &meanVar{}
+						s.extraCovar = &covar{}
+					}
+					s.extra.Combine(v.extra)
+					s.extraCovar.Combine(v.extraCovar)
+				}
 			}
 			totalTime += res.totalTime
 		}
@@ -504,7 +546,13 @@ var importAnalyzeCmd = &cli.Command{
 		sort.Strings(keys)
 		for _, k := range keys {
 			s := charges[k]
-			fmt.Printf("%s: incr by %f~%f\n", k, s.gasRatio.mean, s.gasRatio.Stddev())
+			fmt.Printf("%s: incr by %f~%f; tt %f~%f\n", k, s.gasRatio.Mean(), s.gasRatio.Stddev(),
+				s.timeTaken.Mean(), s.timeTaken.Stddev())
+			if s.extra != nil {
+				fmt.Printf("\t covar: %f, tt = %f * extra + %f\n", s.extraCovar.Covariance(),
+					s.extraCovar.A(), s.extraCovar.B())
+				fmt.Printf("\t extra: %f~%f\n", s.extra.Mean(), s.extra.Stddev())
+			}
 		}
 
 		sort.Slice(invocs, func(i, j int) bool {
