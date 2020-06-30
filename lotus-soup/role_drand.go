@@ -14,28 +14,19 @@ import (
 
 	"github.com/drand/drand/chain"
 	hclient "github.com/drand/drand/client/http"
+	"github.com/drand/drand/demo/node"
 	"github.com/drand/drand/log"
 	"github.com/drand/drand/lp2p"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/testground/sdk-go/sync"
-
-	"github.com/drand/drand/demo/node"
 )
 
-var (
-	PrepareDrandTimeout = time.Minute
-	drandConfigTopic    = sync.NewTopic("drand-config", &DrandRuntimeInfo{})
-)
-
-type DrandRuntimeInfo struct {
-	Config          dtypes.DrandConfig
-	GossipBootstrap dtypes.DrandBootstrap
-}
+var PrepareDrandTimeout = time.Minute
 
 type DrandInstance struct {
-	Node node.Node
+	Node        node.Node
 	GossipRelay *lp2p.GossipRelayNode
 
 	stateDir string
@@ -45,17 +36,18 @@ func (d *DrandInstance) Cleanup() error {
 	return os.RemoveAll(d.stateDir)
 }
 
-// waitForDrandConfig should be called by filecoin instances before constructing the lotus Node
-// you can use the returned dtypes.DrandConfig to override the default production config.
-func waitForDrandConfig(ctx context.Context, client sync.Client) (*DrandRuntimeInfo, error) {
-	ch := make(chan *DrandRuntimeInfo, 1)
-	sub := client.MustSubscribe(ctx, drandConfigTopic, ch)
-	select {
-	case cfg := <-ch:
-		return cfg, nil
-	case err := <-sub.Done():
-		return nil, err
+func runDrandNode(t *TestEnvironment) error {
+	t.RecordMessage("running drand node")
+	dr, err := prepareDrandNode(t)
+	if err != nil {
+		return err
 	}
+	defer dr.Cleanup()
+
+	// TODO add ability to halt / recover on demand
+	ctx := context.Background()
+	t.SyncClient.MustSignalAndWait(ctx, stateDone, t.TestInstanceCount)
+	return nil
 }
 
 // prepareDrandNode starts a drand instance and runs a DKG with the other members of the composition group.
@@ -228,10 +220,23 @@ func prepareDrandNode(t *TestEnvironment) (*DrandInstance, error) {
 	}
 
 	return &DrandInstance{
-		Node: n,
+		Node:        n,
 		GossipRelay: gossipRelay,
-		stateDir: stateDir,
+		stateDir:    stateDir,
 	}, nil
+}
+
+// waitForDrandConfig should be called by filecoin instances before constructing the lotus Node
+// you can use the returned dtypes.DrandConfig to override the default production config.
+func waitForDrandConfig(ctx context.Context, client sync.Client) (*DrandRuntimeInfo, error) {
+	ch := make(chan *DrandRuntimeInfo, 1)
+	sub := client.MustSubscribe(ctx, drandConfigTopic, ch)
+	select {
+	case cfg := <-ch:
+		return cfg, nil
+	case err := <-sub.Done():
+		return nil, err
+	}
 }
 
 func relayAddrInfo(addrs []ma.Multiaddr, dataIP net.IP) (*peer.AddrInfo, error) {

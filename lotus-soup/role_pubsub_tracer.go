@@ -5,8 +5,6 @@ import (
 	"crypto/rand"
 	"fmt"
 
-	"github.com/testground/sdk-go/sync"
-
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -15,17 +13,9 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 )
 
-var (
-	pubsubTracerTopic = sync.NewTopic("pubsubTracer", &PubsubTracerMsg{})
-)
-
 type PubsubTracer struct {
 	host   host.Host
 	traced *traced.TraceCollector
-}
-
-type PubsubTracerMsg struct {
-	Tracer string
 }
 
 func (tr *PubsubTracer) Stop() error {
@@ -63,7 +53,7 @@ func preparePubsubTracer(t *TestEnvironment) (*PubsubTracer, error) {
 	t.RecordMessage("I am %s", tracedMultiaddrStr)
 
 	_ = ma.StringCast(tracedMultiaddrStr)
-	tracedMsg := &PubsubTracerMsg{Tracer: tracedMultiaddrStr}
+	tracedMsg := &PubsubTracerMsg{Multiaddr: tracedMultiaddrStr}
 	t.SyncClient.MustPublish(ctx, pubsubTracerTopic, tracedMsg)
 
 	t.RecordMessage("waiting for all nodes to be ready")
