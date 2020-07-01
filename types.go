@@ -62,7 +62,6 @@ type SectorInfo struct {
 	TicketValue   abi.SealRandomness
 	TicketEpoch   abi.ChainEpoch
 	PreCommit1Out storage.PreCommit1Out
-	CCReplace     *abi.SectorNumber
 
 	// PreCommit2
 	CommD *cid.Cid
