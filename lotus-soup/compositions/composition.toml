@@ -15,6 +15,9 @@
 [global.run_config]
   exposed_ports = ["6060", "1234", "2345"]
 
+[global.build]
+  selectors = ["testground"]
+
 [global.run.test_params]
   clients = "3"
   miners = "2"

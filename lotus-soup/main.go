@@ -16,6 +16,7 @@ import (
 
 var cases = map[string]interface{}{
 	"deals-e2e": testkit.WrapTestEnvironment(dealsE2E),
+	"drand-halting": testkit.WrapTestEnvironment(dealsE2E),
 }
 
 func main() {
