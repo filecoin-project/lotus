@@ -10,6 +10,9 @@ enabled = true
 build_base_image = "iptestground/oni-buildbase:v1"
 runtime_image = "iptestground/oni-runtime:v1"
 
+[builders."docker:go".dockerfile_extensions]
+exposed_ports = ["6060", "1234", "2345"]
+
 [runners."local:docker"]
 enabled = true
 
