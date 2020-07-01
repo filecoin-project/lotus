@@ -882,6 +882,11 @@ var stateComputeStateCmd = &cli.Command{
 				ts = head
 			}
 			h = ts.Height()
+		} else {
+			ts, err = api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(h), types.EmptyTSK)
+			if err != nil {
+				return err
+			}
 		}
 
 		var msgs []*types.Message
