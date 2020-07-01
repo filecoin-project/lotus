@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/apistruct"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -334,6 +335,9 @@ func main() {
 		}
 	}
 
+	permStruct := reflect.TypeOf(apistruct.FullNodeStruct{}.Internal)
+	commonPermStruct := reflect.TypeOf(apistruct.CommonStruct{}.Internal)
+
 	for _, g := range groupslice {
 		g := g
 		fmt.Printf("## %s\n", g.GroupName)
@@ -346,6 +350,18 @@ func main() {
 		for _, m := range g.Methods {
 			fmt.Printf("### %s\n", m.Name)
 			fmt.Printf("%s\n\n", m.Comment)
+
+			meth, ok := permStruct.FieldByName(m.Name)
+			if !ok {
+				meth, ok = commonPermStruct.FieldByName(m.Name)
+				if !ok {
+					panic("no perms for method: " + m.Name)
+				}
+			}
+
+			perms := meth.Tag.Get("perm")
+
+			fmt.Printf("Perms: %s\n\n", perms)
 
 			if strings.Count(m.InputExample, "\n") > 0 {
 				fmt.Printf("Inputs:\n```json\n%s\n```\n\n", m.InputExample)
