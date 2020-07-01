@@ -154,9 +154,9 @@ func (evt SectorChainPreCommitFailed) FormatError(xerrors.Printer) (next error) 
 func (evt SectorChainPreCommitFailed) apply(*SectorInfo)                        {}
 
 type SectorPreCommitted struct {
-	Message       cid.Cid
+	Message          cid.Cid
 	PreCommitDeposit big.Int
-	PreCommitInfo miner.SectorPreCommitInfo
+	PreCommitInfo    miner.SectorPreCommitInfo
 }
 
 func (evt SectorPreCommitted) apply(state *SectorInfo) {
