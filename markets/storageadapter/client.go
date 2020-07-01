@@ -19,7 +19,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/events"
@@ -80,7 +80,15 @@ func (n *ClientNodeAdapter) ListStorageProviders(ctx context.Context, encodedTs 
 			return nil, err
 		}
 
-		storageProviderInfo := utils.NewStorageProviderInfo(addr, mi.Worker, mi.SectorSize, peer.ID(mi.PeerId))
+		multiaddrs := make([]multiaddr.Multiaddr, 0, len(mi.Multiaddrs))
+		for _, a := range mi.Multiaddrs {
+			maddr, err := multiaddr.NewMultiaddrBytes(a)
+			if err != nil {
+				return nil, err
+			}
+			multiaddrs = append(multiaddrs, maddr)
+		}
+		storageProviderInfo := utils.NewStorageProviderInfo(addr, mi.Worker, mi.SectorSize, mi.PeerId, multiaddrs)
 		out = append(out, &storageProviderInfo)
 	}
 
@@ -322,7 +330,7 @@ func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider 
 		}
 	}
 
-	if err := c.ev.Called(checkFunc, called, revert, build.MessageConfidence+1, build.SealRandomnessLookbackLimit, matchEvent); err != nil {
+	if err := c.ev.Called(checkFunc, called, revert, int(build.MessageConfidence+1), build.SealRandomnessLookbackLimit, matchEvent); err != nil {
 		return xerrors.Errorf("failed to set up called handler: %w", err)
 	}
 
@@ -403,6 +411,27 @@ func (n *ClientNodeAdapter) WaitForMessage(ctx context.Context, mcid cid.Cid, cb
 		return cb(0, nil, err)
 	}
 	return cb(receipt.Receipt.ExitCode, receipt.Receipt.Return, nil)
+}
+
+func (n *ClientNodeAdapter) GetMinerInfo(ctx context.Context, addr address.Address, encodedTs shared.TipSetToken) (*storagemarket.StorageProviderInfo, error) {
+	tsk, err := types.TipSetKeyFromBytes(encodedTs)
+	if err != nil {
+		return nil, err
+	}
+	mi, err := n.StateMinerInfo(ctx, addr, tsk)
+	if err != nil {
+		return nil, err
+	}
+	multiaddrs := make([]multiaddr.Multiaddr, 0, len(mi.Multiaddrs))
+	for _, a := range mi.Multiaddrs {
+		maddr, err := multiaddr.NewMultiaddrBytes(a)
+		if err != nil {
+			return nil, err
+		}
+		multiaddrs = append(multiaddrs, maddr)
+	}
+	out := utils.NewStorageProviderInfo(addr, mi.Worker, mi.SectorSize, mi.PeerId, multiaddrs)
+	return &out, nil
 }
 
 var _ storagemarket.StorageClientNode = &ClientNodeAdapter{}

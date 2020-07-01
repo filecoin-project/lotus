@@ -63,7 +63,7 @@ var watchHeadCmd = &cli.Command{
 		},
 		&cli.IntFlag{
 			Name:  "interval",
-			Value: build.BlockDelay,
+			Value: int(build.BlockDelaySecs),
 			Usage: "interval in seconds between chain head checks",
 		},
 		&cli.StringFlag{
@@ -72,8 +72,9 @@ var watchHeadCmd = &cli.Command{
 			Usage: "systemd unit name to restart on health check failure",
 		},
 		&cli.IntFlag{
-			Name:  "api-timeout",
-			Value: build.BlockDelay,
+			Name: "api-timeout",
+			// TODO: this default value seems spurious.
+			Value: int(build.BlockDelaySecs),
 			Usage: "timeout between API retries",
 		},
 		&cli.IntFlag{
@@ -236,7 +237,7 @@ func waitForSyncComplete(ctx context.Context, a api.FullNode, r int, t time.Dura
 				return err
 			}
 
-			if time.Now().Unix()-int64(head.MinTimestamp()) < build.BlockDelay {
+			if time.Now().Unix()-int64(head.MinTimestamp()) < int64(build.BlockDelaySecs) {
 				return nil
 			}
 		}

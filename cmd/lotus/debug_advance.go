@@ -82,7 +82,7 @@ func init() {
 				ep.WinCount = ep.ComputeWinCount(types.NewInt(1), types.NewInt(1))
 			}
 
-			uts := head.MinTimestamp() + uint64(build.BlockDelay)
+			uts := head.MinTimestamp() + uint64(build.BlockDelaySecs)
 			nheight := head.Height() + 1
 			blk, err := api.MinerCreateBlock(ctx, &lapi.BlockTemplate{
 				addr, head.Key(), ticket, ep, nil, msgs, nheight, uts, gen.ValidWpostForTesting,

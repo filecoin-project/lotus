@@ -443,8 +443,8 @@ func (we *watcherEvents) StateChanged(check CheckFunc, scHnd StateChangeHandler,
 	}
 
 	we.lk.Lock()
-	we.matchers[id] = mf
 	defer we.lk.Unlock()
+	we.matchers[id] = mf
 
 	return nil
 }
@@ -476,10 +476,11 @@ func (me *messageEvents) checkNewCalls(ts *types.TipSet) (map[triggerID]eventDat
 		return nil, err
 	}
 
+	me.lk.RLock()
+	defer me.lk.RUnlock()
+
 	res := make(map[triggerID]eventData)
 	me.messagesForTs(pts, func(msg *types.Message) {
-		me.lk.RLock()
-		defer me.lk.RUnlock()
 		// TODO: provide receipts
 
 		for tid, matchFns := range me.matchers {
