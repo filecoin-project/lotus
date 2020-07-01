@@ -13,11 +13,18 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	mocktypes "github.com/filecoin-project/lotus/chain/types/mock"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/filecoin-project/lotus/node/modules"
@@ -27,8 +34,11 @@ import (
 func init() {
 	build.InsecurePoStValidation = true
 	os.Setenv("TRUST_PARAMS", "1")
-	build.SectorSizes = []uint64{1024}
-	build.MinimumMinerPower = 1024
+	miner.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
+		abi.RegisteredSealProof_StackedDrg2KiBV1: {},
+	}
+	power.ConsensusMinerMinPower = big.NewInt(2048)
+	verifreg.MinVerifiedDealSize = big.NewInt(256)
 }
 
 const source = 0
@@ -158,7 +168,6 @@ func (tu *syncTestUtil) pushTsExpectErr(to int, fts *store.FullTipSet, experr bo
 			require.NoError(tu.t, err)
 		}
 	}
-
 }
 
 func (tu *syncTestUtil) mineOnBlock(blk *store.FullTipSet, src int, miners []int, wait, fail bool) *store.FullTipSet {
@@ -398,7 +407,7 @@ func TestSyncBadTimestamp(t *testing.T) {
 	tu.waitUntilSync(0, client)
 
 	base := tu.g.CurTipset
-	tu.g.Timestamper = func(pts *types.TipSet, tl uint64) uint64 {
+	tu.g.Timestamper = func(pts *types.TipSet, tl abi.ChainEpoch) uint64 {
 		return pts.MinTimestamp() + (build.BlockDelay / 2)
 	}
 
@@ -408,7 +417,7 @@ func TestSyncBadTimestamp(t *testing.T) {
 	a1 := tu.mineOnBlock(base, 0, nil, false, true)
 
 	tu.g.Timestamper = nil
-	tu.g.ResyncBankerNonce(a1.TipSet())
+	require.NoError(t, tu.g.ResyncBankerNonce(a1.TipSet()))
 
 	fmt.Println("After mine bad block!")
 	tu.printHeads()
@@ -470,7 +479,7 @@ func TestSyncFork(t *testing.T) {
 	a := tu.mineOnBlock(a1, p1, []int{0}, true, false)
 	a = tu.mineOnBlock(a, p1, []int{0}, true, false)
 
-	tu.g.ResyncBankerNonce(a1.TipSet())
+	require.NoError(t, tu.g.ResyncBankerNonce(a1.TipSet()))
 	// chain B will now be heaviest
 	b := tu.mineOnBlock(base, p2, []int{1}, true, false)
 	b = tu.mineOnBlock(b, p2, []int{1}, true, false)
@@ -508,4 +517,31 @@ func runSyncBenchLength(b *testing.B, l int) {
 	tu.connect(1, 0)
 
 	tu.waitUntilSync(0, client)
+}
+
+func TestSyncInputs(t *testing.T) {
+	H := 10
+	tu := prepSyncTest(t, H)
+
+	p1 := tu.addClientNode()
+
+	fn := tu.nds[p1].(*impl.FullNodeAPI)
+
+	s := fn.SyncAPI.Syncer
+
+	err := s.ValidateBlock(context.TODO(), &types.FullBlock{
+		Header: &types.BlockHeader{},
+	})
+	if err == nil {
+		t.Fatal("should error on empty block")
+	}
+
+	h := mocktypes.MkBlock(nil, 123, 432)
+
+	h.ElectionProof = nil
+
+	err = s.ValidateBlock(context.TODO(), &types.FullBlock{Header: h})
+	if err == nil {
+		t.Fatal("should error on block with nil election proof")
+	}
 }

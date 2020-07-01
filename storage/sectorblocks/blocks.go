@@ -3,25 +3,23 @@ package sectorblocks
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"errors"
 	"io"
 	"sync"
 
-	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
-	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	"github.com/ipfs/go-datastore/query"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	dshelp "github.com/ipfs/go-ipfs-ds-help"
-	files "github.com/ipfs/go-ipfs-files"
-	ipld "github.com/ipfs/go-ipld-format"
-	"github.com/ipfs/go-unixfs"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-cbor-util"
+	cborutil "github.com/filecoin-project/go-cbor-util"
+	"github.com/filecoin-project/go-padreader"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	sealing "github.com/filecoin-project/storage-fsm"
+
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/lib/padreader"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/storage"
 )
@@ -33,54 +31,45 @@ const (
 )
 
 var dsPrefix = datastore.NewKey("/sealedblocks")
-var imBlocksPrefix = datastore.NewKey("/intermediate")
 
 var ErrNotFound = errors.New("not found")
 
+func DealIDToDsKey(dealID abi.DealID) datastore.Key {
+	buf := make([]byte, binary.MaxVarintLen64)
+	size := binary.PutUvarint(buf, uint64(dealID))
+	return dshelp.NewKeyFromBinary(buf[:size])
+}
+
+func DsKeyToDealID(key datastore.Key) (uint64, error) {
+	buf, err := dshelp.BinaryFromDsKey(key)
+	if err != nil {
+		return 0, err
+	}
+	dealID, _ := binary.Uvarint(buf)
+	return dealID, nil
+}
+
 type SectorBlocks struct {
 	*storage.Miner
-	sb sectorbuilder.Interface
-
-	intermediate blockstore.Blockstore // holds intermediate nodes TODO: consider combining with the staging blockstore
 
 	keys  datastore.Batching
 	keyLk sync.Mutex
 }
 
-func NewSectorBlocks(miner *storage.Miner, ds dtypes.MetadataDS, sb sectorbuilder.Interface) *SectorBlocks {
+func NewSectorBlocks(miner *storage.Miner, ds dtypes.MetadataDS) *SectorBlocks {
 	sbc := &SectorBlocks{
 		Miner: miner,
-		sb:    sb,
-
-		intermediate: blockstore.NewBlockstore(namespace.Wrap(ds, imBlocksPrefix)),
-
-		keys: namespace.Wrap(ds, dsPrefix),
+		keys:  namespace.Wrap(ds, dsPrefix),
 	}
 
 	return sbc
 }
 
-type UnixfsReader interface {
-	files.File
-
-	// ReadBlock reads data from a single unixfs block. Data is nil
-	// for intermediate nodes
-	ReadBlock(context.Context) (data []byte, offset uint64, nd ipld.Node, err error)
-}
-
-type refStorer struct {
-	blockReader  UnixfsReader
-	writeRef     func(cid cid.Cid, offset uint64, size uint64) error
-	intermediate blockstore.Blockstore
-
-	remaining []byte
-}
-
-func (st *SectorBlocks) writeRef(cid cid.Cid, sectorID uint64, offset uint64, size uint64) error {
+func (st *SectorBlocks) writeRef(dealID abi.DealID, sectorID abi.SectorNumber, offset uint64, size abi.UnpaddedPieceSize) error {
 	st.keyLk.Lock() // TODO: make this multithreaded
 	defer st.keyLk.Unlock()
 
-	v, err := st.keys.Get(dshelp.CidToDsKey(cid))
+	v, err := st.keys.Get(DealIDToDsKey(dealID))
 	if err == datastore.ErrNotFound {
 		err = nil
 	}
@@ -105,80 +94,24 @@ func (st *SectorBlocks) writeRef(cid cid.Cid, sectorID uint64, offset uint64, si
 	if err != nil {
 		return xerrors.Errorf("serializing refs: %w", err)
 	}
-	return st.keys.Put(dshelp.CidToDsKey(cid), newRef) // TODO: batch somehow
+	return st.keys.Put(DealIDToDsKey(dealID), newRef) // TODO: batch somehow
 }
 
-func (r *refStorer) Read(p []byte) (n int, err error) {
-	offset := 0
-	if len(r.remaining) > 0 {
-		offset += len(r.remaining)
-		read := copy(p, r.remaining)
-		if read == len(r.remaining) {
-			r.remaining = nil
-		} else {
-			r.remaining = r.remaining[read:]
-		}
-		return read, nil
-	}
-
-	for {
-		data, offset, nd, err := r.blockReader.ReadBlock(context.TODO())
-		if err != nil {
-			if err == io.EOF {
-				return 0, io.EOF
-			}
-			return 0, xerrors.Errorf("reading block: %w", err)
-		}
-
-		if len(data) == 0 {
-			// TODO: batch
-			// TODO: GC
-			if err := r.intermediate.Put(nd); err != nil {
-				return 0, xerrors.Errorf("storing intermediate node: %w", err)
-			}
-			continue
-		}
-
-		if err := r.writeRef(nd.Cid(), offset, uint64(len(data))); err != nil {
-			return 0, xerrors.Errorf("writing ref: %w", err)
-		}
-
-		read := copy(p, data)
-		if read < len(data) {
-			r.remaining = data[read:]
-		}
-		// TODO: read multiple
-		return read, nil
-	}
-}
-
-func (st *SectorBlocks) AddUnixfsPiece(ctx context.Context, r UnixfsReader, dealID uint64) (sectorID uint64, err error) {
-	size, err := r.Size()
-	if err != nil {
-		return 0, err
-	}
-
+func (st *SectorBlocks) AddPiece(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, d sealing.DealInfo) (sectorID abi.SectorNumber, err error) {
 	sectorID, pieceOffset, err := st.Miner.AllocatePiece(padreader.PaddedSize(uint64(size)))
 	if err != nil {
 		return 0, err
 	}
 
-	refst := &refStorer{
-		blockReader: r,
-		writeRef: func(cid cid.Cid, offset uint64, size uint64) error {
-			offset += pieceOffset
-
-			return st.writeRef(cid, sectorID, offset, size)
-		},
-		intermediate: st.intermediate,
+	err = st.writeRef(d.DealID, sectorID, pieceOffset, size)
+	if err != nil {
+		return 0, err
 	}
 
-	pr, psize := padreader.New(refst, uint64(size))
-
-	return sectorID, st.Miner.SealPiece(ctx, psize, pr, sectorID, dealID)
+	return sectorID, st.Miner.SealPiece(ctx, size, r, sectorID, d)
 }
 
-func (st *SectorBlocks) List() (map[cid.Cid][]api.SealedRef, error) {
+func (st *SectorBlocks) List() (map[uint64][]api.SealedRef, error) {
 	res, err := st.keys.Query(query.Query{})
 	if err != nil {
 		return nil, err
@@ -189,9 +122,9 @@ func (st *SectorBlocks) List() (map[cid.Cid][]api.SealedRef, error) {
 		return nil, err
 	}
 
-	out := map[cid.Cid][]api.SealedRef{}
+	out := map[uint64][]api.SealedRef{}
 	for _, ent := range ents {
-		refCid, err := dshelp.DsKeyToCid(datastore.RawKey(ent.Key))
+		dealID, err := DsKeyToDealID(datastore.RawKey(ent.Key))
 		if err != nil {
 			return nil, err
 		}
@@ -201,14 +134,14 @@ func (st *SectorBlocks) List() (map[cid.Cid][]api.SealedRef, error) {
 			return nil, err
 		}
 
-		out[refCid] = refs.Refs
+		out[dealID] = refs.Refs
 	}
 
 	return out, nil
 }
 
-func (st *SectorBlocks) GetRefs(k cid.Cid) ([]api.SealedRef, error) { // TODO: track local sectors
-	ent, err := st.keys.Get(dshelp.CidToDsKey(k))
+func (st *SectorBlocks) GetRefs(dealID abi.DealID) ([]api.SealedRef, error) { // TODO: track local sectors
+	ent, err := st.keys.Get(DealIDToDsKey(dealID))
 	if err == datastore.ErrNotFound {
 		err = ErrNotFound
 	}
@@ -224,42 +157,16 @@ func (st *SectorBlocks) GetRefs(k cid.Cid) ([]api.SealedRef, error) { // TODO: t
 	return refs.Refs, nil
 }
 
-func (st *SectorBlocks) GetSize(k cid.Cid) (uint64, error) {
-	blk, err := st.intermediate.Get(k)
-	if err == blockstore.ErrNotFound {
-		refs, err := st.GetRefs(k)
-		if err != nil {
-			return 0, err
-		}
-
-		return uint64(refs[0].Size), nil
-	}
+func (st *SectorBlocks) GetSize(dealID abi.DealID) (uint64, error) {
+	refs, err := st.GetRefs(dealID)
 	if err != nil {
 		return 0, err
 	}
 
-	nd, err := ipld.Decode(blk)
-	if err != nil {
-		return 0, err
-	}
-
-	fsn, err := unixfs.ExtractFSNode(nd)
-	if err != nil {
-		return 0, err
-	}
-
-	return fsn.FileSize(), nil
+	return uint64(refs[0].Size), nil
 }
 
-func (st *SectorBlocks) Has(k cid.Cid) (bool, error) {
+func (st *SectorBlocks) Has(dealID abi.DealID) (bool, error) {
 	// TODO: ensure sector is still there
-	return st.keys.Has(dshelp.CidToDsKey(k))
-}
-
-func (st *SectorBlocks) SealedBlockstore(approveUnseal func() error) *SectorBlockStore {
-	return &SectorBlockStore{
-		intermediate:  st.intermediate,
-		sectorBlocks:  st,
-		approveUnseal: approveUnseal,
-	}
+	return st.keys.Has(DealIDToDsKey(dealID))
 }

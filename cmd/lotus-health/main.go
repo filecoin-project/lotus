@@ -8,14 +8,16 @@ import (
 	"syscall"
 	"time"
 
+	cid "github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log"
+	"github.com/urfave/cli/v2"
+
+	"github.com/filecoin-project/go-jsonrpc"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/lotus/lib/jsonrpc"
-	cid "github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log"
-	"gopkg.in/urfave/cli.v2"
 )
 
 type CidWindow [][]cid.Cid
@@ -34,7 +36,7 @@ func main() {
 	app := &cli.App{
 		Name:     "lotus-health",
 		Usage:    "Tools for monitoring lotus daemon health",
-		Version:  build.UserVersion,
+		Version:  build.UserVersion(),
 		Commands: local,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
@@ -77,7 +79,7 @@ var watchHeadCmd = &cli.Command{
 		&cli.IntFlag{
 			Name:  "api-retries",
 			Value: 8,
-			Usage: "number of API retry attemps",
+			Usage: "number of API retry attempts",
 		},
 	},
 	Action: func(c *cli.Context) error {

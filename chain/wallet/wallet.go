@@ -6,10 +6,15 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+
+	_ "github.com/filecoin-project/lotus/lib/sigs/bls"  // enable bls signatures
+	_ "github.com/filecoin-project/lotus/lib/sigs/secp" // enable secp signatures
+
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/sigs"
 )
@@ -17,8 +22,11 @@ import (
 var log = logging.Logger("wallet")
 
 const (
-	KNamePrefix = "wallet-"
-	KDefault    = "default"
+	KNamePrefix  = "wallet-"
+	KTrashPrefix = "trash-"
+	KDefault     = "default"
+	KTBLS        = "bls"
+	KTSecp256k1  = "secp256k1"
 )
 
 type Wallet struct {
@@ -48,7 +56,7 @@ func KeyWallet(keys ...*Key) *Wallet {
 	}
 }
 
-func (w *Wallet) Sign(ctx context.Context, addr address.Address, msg []byte) (*types.Signature, error) {
+func (w *Wallet) Sign(ctx context.Context, addr address.Address, msg []byte) (*crypto.Signature, error) {
 	ki, err := w.findKey(addr)
 	if err != nil {
 		return nil, err
@@ -57,7 +65,7 @@ func (w *Wallet) Sign(ctx context.Context, addr address.Address, msg []byte) (*t
 		return nil, xerrors.Errorf("signing using key '%s': %w", addr.String(), types.ErrKeyInfoNotFound)
 	}
 
-	return sigs.Sign(ki.Type, ki.PrivateKey, msg)
+	return sigs.Sign(ActSigType(ki.Type), ki.PrivateKey, msg)
 }
 
 func (w *Wallet) findKey(addr address.Address) (*Key, error) {
@@ -175,19 +183,19 @@ func (w *Wallet) SetDefault(a address.Address) error {
 	return nil
 }
 
-func GenerateKey(typ string) (*Key, error) {
+func GenerateKey(typ crypto.SigType) (*Key, error) {
 	pk, err := sigs.Generate(typ)
 	if err != nil {
 		return nil, err
 	}
 	ki := types.KeyInfo{
-		Type:       typ,
+		Type:       kstoreSigType(typ),
 		PrivateKey: pk,
 	}
 	return NewKey(ki)
 }
 
-func (w *Wallet) GenerateKey(typ string) (address.Address, error) {
+func (w *Wallet) GenerateKey(typ crypto.SigType) (address.Address, error) {
 	w.lk.Lock()
 	defer w.lk.Unlock()
 
@@ -223,6 +231,23 @@ func (w *Wallet) HasKey(addr address.Address) (bool, error) {
 	return k != nil, nil
 }
 
+func (w *Wallet) DeleteKey(addr address.Address) error {
+	k, err := w.findKey(addr)
+	if err != nil {
+		return xerrors.Errorf("failed to delete key %s : %w", addr, err)
+	}
+
+	if err := w.keystore.Put(KTrashPrefix+k.Address.String(), k.KeyInfo); err != nil {
+		return xerrors.Errorf("failed to mark key %s as trashed: %w", addr, err)
+	}
+
+	if err := w.keystore.Delete(KNamePrefix + k.Address.String()); err != nil {
+		return xerrors.Errorf("failed to delete key %s: %w", addr, err)
+	}
+
+	return nil
+}
+
 type Key struct {
 	types.KeyInfo
 
@@ -236,18 +261,18 @@ func NewKey(keyinfo types.KeyInfo) (*Key, error) {
 	}
 
 	var err error
-	k.PublicKey, err = sigs.ToPublic(k.Type, k.PrivateKey)
+	k.PublicKey, err = sigs.ToPublic(ActSigType(k.Type), k.PrivateKey)
 	if err != nil {
 		return nil, err
 	}
 
 	switch k.Type {
-	case types.KTSecp256k1:
+	case KTSecp256k1:
 		k.Address, err = address.NewSecp256k1Address(k.PublicKey)
 		if err != nil {
 			return nil, xerrors.Errorf("converting Secp256k1 to address: %w", err)
 		}
-	case types.KTBLS:
+	case KTBLS:
 		k.Address, err = address.NewBLSAddress(k.PublicKey)
 		if err != nil {
 			return nil, xerrors.Errorf("converting BLS to address: %w", err)
@@ -257,4 +282,26 @@ func NewKey(keyinfo types.KeyInfo) (*Key, error) {
 	}
 	return k, nil
 
+}
+
+func kstoreSigType(typ crypto.SigType) string {
+	switch typ {
+	case crypto.SigTypeBLS:
+		return KTBLS
+	case crypto.SigTypeSecp256k1:
+		return KTSecp256k1
+	default:
+		return ""
+	}
+}
+
+func ActSigType(typ string) crypto.SigType {
+	switch typ {
+	case KTBLS:
+		return crypto.SigTypeBLS
+	case KTSecp256k1:
+		return crypto.SigTypeSecp256k1
+	default:
+		return 0
+	}
 }

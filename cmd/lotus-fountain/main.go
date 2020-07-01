@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"net"
@@ -12,9 +13,14 @@ import (
 	rice "github.com/GeertJohan/go.rice"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
-	peer "github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
-	"gopkg.in/urfave/cli.v2"
+
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
@@ -26,7 +32,7 @@ import (
 
 var log = logging.Logger("main")
 
-var sendPerRequest, _ = types.ParseFIL("0.005")
+var sendPerRequest, _ = types.ParseFIL("50")
 
 func main() {
 	logging.SetLogLevel("*", "INFO")
@@ -40,7 +46,7 @@ func main() {
 	app := &cli.App{
 		Name:    "lotus-fountain",
 		Usage:   "Devnet token distribution utility",
-		Version: build.UserVersion,
+		Version: build.UserVersion(),
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    "repo",
@@ -90,13 +96,18 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("parsing source address (provide correct --from flag!): %w", err)
 		}
 
+		defaultMinerPeer, err := peer.Decode("12D3KooWJpBNhwgvoZ15EB1JwRTRpxgM9D2fwq6eEktrJJG74aP6")
+		if err != nil {
+			return err
+		}
+
 		h := &handler{
 			ctx:  ctx,
 			api:  nodeApi,
 			from: from,
 			limiter: NewLimiter(LimiterConfig{
 				TotalRate:   time.Second,
-				TotalBurst:  20,
+				TotalBurst:  256,
 				IPRate:      time.Minute,
 				IPBurst:     5,
 				WalletRate:  15 * time.Minute,
@@ -104,12 +115,13 @@ var runCmd = &cli.Command{
 			}),
 			minerLimiter: NewLimiter(LimiterConfig{
 				TotalRate:   time.Second,
-				TotalBurst:  20,
+				TotalBurst:  256,
 				IPRate:      10 * time.Minute,
 				IPBurst:     2,
 				WalletRate:  1 * time.Hour,
 				WalletBurst: 2,
 			}),
+			defaultMinerPeer: defaultMinerPeer,
 		}
 
 		http.Handle("/", http.FileServer(rice.MustFindBox("site").HTTPBox()))
@@ -137,13 +149,15 @@ type handler struct {
 
 	limiter      *Limiter
 	minerLimiter *Limiter
+
+	defaultMinerPeer peer.ID
 }
 
 func (h *handler) send(w http.ResponseWriter, r *http.Request) {
 	to, err := address.NewFromString(r.FormValue("address"))
 	if err != nil {
 		w.WriteHeader(400)
-		w.Write([]byte(err.Error()))
+		_, _ = w.Write([]byte(err.Error()))
 		return
 	}
 
@@ -186,29 +200,29 @@ func (h *handler) send(w http.ResponseWriter, r *http.Request) {
 		To:    to,
 
 		GasPrice: types.NewInt(0),
-		GasLimit: types.NewInt(1000),
+		GasLimit: 10000,
 	})
 	if err != nil {
 		w.WriteHeader(400)
-		w.Write([]byte(err.Error()))
+		_, _ = w.Write([]byte(err.Error()))
 		return
 	}
 
-	w.Write([]byte(smsg.Cid().String()))
+	_, _ = w.Write([]byte(smsg.Cid().String()))
 }
 
 func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 	owner, err := address.NewFromString(r.FormValue("address"))
 	if err != nil {
 		w.WriteHeader(400)
-		w.Write([]byte(err.Error()))
+		_, _ = w.Write([]byte(err.Error()))
 		return
 	}
 
 	if owner.Protocol() != address.BLS {
 		w.WriteHeader(400)
-		w.Write([]byte("Miner address must use BLS. A BLS address starts with the prefix 't3'."))
-		w.Write([]byte("Please create a BLS address by running \"lotus wallet new bls\" while connected to a Lotus node."))
+		_, _ = w.Write([]byte("Miner address must use BLS. A BLS address starts with the prefix 't3'."))
+		_, _ = w.Write([]byte("Please create a BLS address by running \"lotus wallet new bls\" while connected to a Lotus node."))
 		return
 	}
 
@@ -227,7 +241,15 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Limit based on IP
-	limiter = h.minerLimiter.GetIPLimiter(r.RemoteAddr)
+	reqIP := r.Header.Get("X-Real-IP")
+	if reqIP == "" {
+		h, _, err := net.SplitHostPort(r.RemoteAddr)
+		if err != nil {
+			log.Errorf("could not get ip from: %s, err: %s", r.RemoteAddr, err)
+		}
+		reqIP = h
+	}
+	limiter = h.minerLimiter.GetIPLimiter(reqIP)
 	if !limiter.Allow() {
 		http.Error(w, http.StatusText(http.StatusTooManyRequests)+": IP limit", http.StatusTooManyRequests)
 		return
@@ -252,7 +274,7 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 		To:    owner,
 
 		GasPrice: types.NewInt(0),
-		GasLimit: types.NewInt(1000),
+		GasLimit: 10000,
 	})
 	if err != nil {
 		w.WriteHeader(400)
@@ -261,11 +283,18 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Infof("%s: push funds %s", owner, smsg.Cid())
 
-	params, err := actors.SerializeParams(&actors.CreateStorageMinerParams{
-		Owner:      owner,
-		Worker:     owner,
-		SectorSize: uint64(ssize),
-		PeerID:     peer.ID("SETME"),
+	spt, err := ffiwrapper.SealProofTypeFromSectorSize(abi.SectorSize(ssize))
+	if err != nil {
+		w.WriteHeader(400)
+		w.Write([]byte("sealprooftype: " + err.Error()))
+		return
+	}
+
+	params, err := actors.SerializeParams(&power.CreateMinerParams{
+		Owner:         owner,
+		Worker:        owner,
+		SealProofType: spt,
+		Peer:          abi.PeerID(h.defaultMinerPeer),
 	})
 	if err != nil {
 		w.WriteHeader(400)
@@ -274,14 +303,14 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	createStorageMinerMsg := &types.Message{
-		To:    actors.StoragePowerAddress,
+		To:    builtin.StoragePowerActorAddr,
 		From:  h.from,
 		Value: types.BigAdd(collateral, types.BigDiv(collateral, types.NewInt(100))),
 
-		Method: actors.SPAMethods.CreateStorageMiner,
+		Method: builtin.MethodsPower.CreateMiner,
 		Params: params,
 
-		GasLimit: types.NewInt(10000000),
+		GasLimit: 10000000,
 		GasPrice: types.NewInt(0),
 	}
 
@@ -305,7 +334,7 @@ func (h *handler) msgwait(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mw, err := h.api.StateWaitMsg(r.Context(), c)
+	mw, err := h.api.StateWaitMsg(r.Context(), c, build.MessageConfidence)
 	if err != nil {
 		w.WriteHeader(400)
 		w.Write([]byte(err.Error()))
@@ -328,7 +357,7 @@ func (h *handler) msgwaitaddr(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mw, err := h.api.StateWaitMsg(r.Context(), c)
+	mw, err := h.api.StateWaitMsg(r.Context(), c, build.MessageConfidence)
 	if err != nil {
 		w.WriteHeader(400)
 		w.Write([]byte(err.Error()))
@@ -342,12 +371,13 @@ func (h *handler) msgwaitaddr(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(200)
 
-	addr, err := address.NewFromBytes(mw.Receipt.Return)
-	if err != nil {
+	var ma power.CreateMinerReturn
+	if err := ma.UnmarshalCBOR(bytes.NewReader(mw.Receipt.Return)); err != nil {
+		log.Errorf("%w", err)
 		w.WriteHeader(400)
 		w.Write([]byte(err.Error()))
 		return
 	}
 
-	fmt.Fprintf(w, "{\"addr\": \"%s\"}", addr)
+	fmt.Fprintf(w, "{\"addr\": \"%s\"}", ma.IDAddress)
 }

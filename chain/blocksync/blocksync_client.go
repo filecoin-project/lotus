@@ -12,6 +12,8 @@ import (
 	blocks "github.com/ipfs/go-block-format"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
+	graphsync "github.com/ipfs/go-graphsync"
+	gsnet "github.com/ipfs/go-graphsync/network"
 	host "github.com/libp2p/go-libp2p-core/host"
 	inet "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -22,24 +24,26 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	incrt "github.com/filecoin-project/lotus/lib/increadtimeout"
+	"github.com/filecoin-project/lotus/lib/peermgr"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	"github.com/filecoin-project/lotus/peermgr"
 )
 
 type BlockSync struct {
 	bserv bserv.BlockService
+	gsync graphsync.GraphExchange
 	host  host.Host
 
 	syncPeers *bsPeerTracker
 	peerMgr   *peermgr.PeerMgr
 }
 
-func NewBlockSyncClient(bserv dtypes.ChainBlockService, h host.Host, pmgr peermgr.MaybePeerMgr) *BlockSync {
+func NewBlockSyncClient(bserv dtypes.ChainBlockService, h host.Host, pmgr peermgr.MaybePeerMgr, gs dtypes.Graphsync) *BlockSync {
 	return &BlockSync{
 		bserv:     bserv,
 		host:      h,
 		syncPeers: newPeerTracker(pmgr.Mgr),
 		peerMgr:   pmgr.Mgr,
+		gsync:     gs,
 	}
 }
 
@@ -60,6 +64,11 @@ func (bs *BlockSync) processStatus(req *BlockSyncRequest, res *BlockSyncResponse
 	}
 }
 
+// GetBlocks fetches count blocks from the network, from the provided tipset
+// *backwards*, returning as many tipsets as count.
+//
+// {hint/usage}: This is used by the Syncer during normal chain syncing and when
+// resolving forks.
 func (bs *BlockSync) GetBlocks(ctx context.Context, tsk types.TipSetKey, count int) ([]*types.TipSet, error) {
 	ctx, span := trace.StartSpan(ctx, "bsync.GetBlocks")
 	defer span.End()
@@ -76,7 +85,9 @@ func (bs *BlockSync) GetBlocks(ctx context.Context, tsk types.TipSetKey, count i
 		Options:       BSOptBlocks,
 	}
 
+	// this peerset is sorted by latency and failure counting.
 	peers := bs.getPeers()
+
 	// randomize the first few peers so we don't always pick the same peer
 	shufflePrefix(peers)
 
@@ -101,7 +112,7 @@ func (bs *BlockSync) GetBlocks(ctx context.Context, tsk types.TipSetKey, count i
 			continue
 		}
 
-		if res.Status == 0 {
+		if res.Status == StatusOK || res.Status == StatusPartial {
 			resp, err := bs.processBlocksResponse(req, res)
 			if err != nil {
 				return nil, xerrors.Errorf("success response from peer failed to process: %w", err)
@@ -110,6 +121,7 @@ func (bs *BlockSync) GetBlocks(ctx context.Context, tsk types.TipSetKey, count i
 			bs.host.ConnManager().TagPeer(p, "bsync", 25)
 			return resp, nil
 		}
+
 		oerr = bs.processStatus(req, res)
 		if oerr != nil {
 			log.Warnf("BlockSync peer %s response was an error: %s", p.String(), oerr)
@@ -141,7 +153,7 @@ func (bs *BlockSync) GetFullTipSet(ctx context.Context, p peer.ID, tsk types.Tip
 
 		return bstsToFullTipSet(bts)
 	case 101: // Partial Response
-		return nil, xerrors.Errorf("partial responses are not handled")
+		return nil, xerrors.Errorf("partial responses are not handled for single tipset fetching")
 	case 201: // req.Start not found
 		return nil, fmt.Errorf("not found")
 	case 202: // Go Away
@@ -181,7 +193,7 @@ func (bs *BlockSync) GetChainMessages(ctx context.Context, h *types.TipSet, coun
 	req := &BlockSyncRequest{
 		Start:         h.Cids(),
 		RequestLength: count,
-		Options:       BSOptMessages | BSOptBlocks,
+		Options:       BSOptMessages,
 	}
 
 	var err error
@@ -201,8 +213,8 @@ func (bs *BlockSync) GetChainMessages(ctx context.Context, h *types.TipSet, coun
 		}
 
 		if res.Status == StatusPartial {
-			log.Warn("dont yet handle partial responses")
-			continue
+			// TODO: track partial response sizes to ensure we don't overrequest too often
+			return res.Chain, nil
 		}
 
 		err = bs.processStatus(req, res)
@@ -234,27 +246,58 @@ func (bs *BlockSync) sendRequestToPeer(ctx context.Context, p peer.ID, req *Bloc
 		}
 	}()
 
-	start := time.Now()
-
 	if span.IsRecordingEvents() {
 		span.AddAttributes(
 			trace.StringAttribute("peer", p.Pretty()),
 		)
 	}
 
+	gsproto := string(gsnet.ProtocolGraphsync)
+	supp, err := bs.host.Peerstore().SupportsProtocols(p, BlockSyncProtocolID, gsproto)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get protocols for peer: %w", err)
+	}
+
+	if len(supp) == 0 {
+		return nil, xerrors.Errorf("peer %s supports no known sync protocols", p)
+	}
+
+	switch supp[0] {
+	case BlockSyncProtocolID:
+		res, err := bs.fetchBlocksBlockSync(ctx, p, req)
+		if err != nil {
+			return nil, xerrors.Errorf("blocksync req failed: %w", err)
+		}
+		return res, nil
+	case gsproto:
+		res, err := bs.fetchBlocksGraphSync(ctx, p, req)
+		if err != nil {
+			return nil, xerrors.Errorf("graphsync req failed: %w", err)
+		}
+		return res, nil
+	default:
+		return nil, xerrors.Errorf("peerstore somehow returned unexpected protocols: %v", supp)
+	}
+
+}
+func (bs *BlockSync) fetchBlocksBlockSync(ctx context.Context, p peer.ID, req *BlockSyncRequest) (*BlockSyncResponse, error) {
+	ctx, span := trace.StartSpan(ctx, "blockSyncFetch")
+	defer span.End()
+
+	start := time.Now()
 	s, err := bs.host.NewStream(inet.WithNoDial(ctx, "should already have connection"), p, BlockSyncProtocolID)
 	if err != nil {
 		bs.RemovePeer(p)
 		return nil, xerrors.Errorf("failed to open stream to peer: %w", err)
 	}
-	s.SetWriteDeadline(time.Now().Add(5 * time.Second))
+	_ = s.SetWriteDeadline(time.Now().Add(5 * time.Second))
 
 	if err := cborutil.WriteCborRPC(s, req); err != nil {
-		s.SetWriteDeadline(time.Time{})
+		_ = s.SetWriteDeadline(time.Time{})
 		bs.syncPeers.logFailure(p, time.Since(start))
 		return nil, err
 	}
-	s.SetWriteDeadline(time.Time{})
+	_ = s.SetWriteDeadline(time.Time{})
 
 	var res BlockSyncResponse
 	r := incrt.New(s, 50<<10, 5*time.Second)
@@ -272,7 +315,6 @@ func (bs *BlockSync) sendRequestToPeer(ctx context.Context, p peer.ID, req *Bloc
 	}
 
 	bs.syncPeers.logSuccess(p, time.Since(start))
-
 	return &res, nil
 }
 
@@ -321,6 +363,7 @@ func (bs *BlockSync) RemovePeer(p peer.ID) {
 	bs.syncPeers.removePeer(p)
 }
 
+// getPeers returns a preference-sorted set of peers to query.
 func (bs *BlockSync) getPeers() []peer.ID {
 	return bs.syncPeers.prefSortedPeers()
 }
@@ -526,26 +569,30 @@ func (bpt *bsPeerTracker) logSuccess(p peer.ID, dur time.Duration) {
 	bpt.lk.Lock()
 	defer bpt.lk.Unlock()
 
-	if pi, ok := bpt.peers[p]; !ok {
+	var pi *peerStats
+	var ok bool
+	if pi, ok = bpt.peers[p]; !ok {
 		log.Warnw("log success called on peer not in tracker", "peerid", p.String())
 		return
-	} else {
-		pi.successes++
-
-		logTime(pi, dur)
 	}
+
+	pi.successes++
+	logTime(pi, dur)
 }
 
 func (bpt *bsPeerTracker) logFailure(p peer.ID, dur time.Duration) {
 	bpt.lk.Lock()
 	defer bpt.lk.Unlock()
-	if pi, ok := bpt.peers[p]; !ok {
+
+	var pi *peerStats
+	var ok bool
+	if pi, ok = bpt.peers[p]; !ok {
 		log.Warn("log failure called on peer not in tracker", "peerid", p.String())
 		return
-	} else {
-		pi.failures++
-		logTime(pi, dur)
 	}
+
+	pi.failures++
+	logTime(pi, dur)
 }
 
 func (bpt *bsPeerTracker) removePeer(p peer.ID) {

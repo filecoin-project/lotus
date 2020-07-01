@@ -9,7 +9,8 @@ import (
 
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/lib/jsonrpc"
+	"github.com/filecoin-project/go-jsonrpc"
+
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -31,7 +32,7 @@ type api struct {
 type nodeInfo struct {
 	Repo    string
 	ID      int32
-	ApiPort int32
+	APIPort int32
 	State   NodeState
 
 	FullNode string // only for storage nodes

@@ -8,9 +8,9 @@ import (
 	"path"
 	"strconv"
 
-	"github.com/filecoin-project/lotus/lib/jsonrpc"
+	"github.com/urfave/cli/v2"
 
-	"gopkg.in/urfave/cli.v2"
+	"github.com/filecoin-project/go-jsonrpc"
 )
 
 const listenAddr = "127.0.0.1:2222"
@@ -37,7 +37,7 @@ var onCmd = &cli.Command{
 			return err
 		}
 
-		node := nodeById(client.Nodes(), int(nd))
+		node := nodeByID(client.Nodes(), int(nd))
 		var cmd *exec.Cmd
 		if !node.Storage {
 			cmd = exec.Command("./lotus", cctx.Args().Slice()[1:]...)
@@ -75,7 +75,7 @@ var shCmd = &cli.Command{
 			return err
 		}
 
-		node := nodeById(client.Nodes(), int(nd))
+		node := nodeByID(client.Nodes(), int(nd))
 		shcmd := exec.Command("/bin/bash")
 		if !node.Storage {
 			shcmd.Env = []string{
@@ -102,7 +102,7 @@ var shCmd = &cli.Command{
 	},
 }
 
-func nodeById(nodes []nodeInfo, i int) nodeInfo {
+func nodeByID(nodes []nodeInfo, i int) nodeInfo {
 	for _, n := range nodes {
 		if n.ID == int32(i) {
 			return n
@@ -116,7 +116,6 @@ func logHandler(api *api) func(http.ResponseWriter, *http.Request) {
 		id, err := strconv.ParseInt(path.Base(req.URL.Path), 10, 32)
 		if err != nil {
 			panic(err)
-			return
 		}
 
 		api.runningLk.Lock()

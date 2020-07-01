@@ -4,12 +4,6 @@
 
 Anyone can set up a **Lotus Node** and connect to the **Lotus Testnet**. This is the best way to explore the current CLI and the **Filecoin Decentralized Storage Market**.
 
-If you have installed older versions, you may need to clear existing chain data, stored wallets and miners if you run into any errors. You can use this command:
-
-```sh
-rm -rf ~/.lotus ~/.lotusstorage
-```
-
 ## Note: Using the Lotus Node from China
 
 If you are trying to use `lotus` from China. You should set this **environment variable** on your machine:
@@ -33,6 +27,8 @@ lotus net peers | wc -l
 ```
 
 In order to connect to the network, you need to be connected to at least 1 peer. If you’re seeing 0 peers, read our [troubleshooting notes](https://docs.lotu.sh/en+setup-troubleshooting).
+
+Make sure that you have a reasonable "open files limit" set on your machine, such as 10000. If you're seeing a lower value, such as 256 (default on macOS), read our [troubleshooting notes](https://docs.lotu.sh/en+setup-troubleshooting) on how to update it prior to starting the Lotus daemon.
 
 ## Chain sync
 
@@ -61,7 +57,7 @@ Here is an example of the response:
 t1aswwvjsae63tcrniz6x5ykvsuotlgkvlulnqpsi
 ```
 
-- Visit the [faucet](https://lotus-faucet.kittyhawk.wtf/funds.html) to add funds.
+- Visit the [faucet](https://faucet.testnet.filecoin.io) to add funds.
 - Paste the address you created.
 - Press the send button.
 
@@ -77,7 +73,7 @@ You will not see any attoFIL in your wallet if your **chain** is not fully synce
 
 ## Send FIL to another wallet
 
-To send FIL to another wallet, use this command:
+To send FIL to another wallet from your default account, use this command:
 
 ```
 lotus send <target> <amount>

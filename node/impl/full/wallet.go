@@ -2,9 +2,12 @@ package full
 
 import (
 	"context"
+
 	"github.com/filecoin-project/lotus/lib/sigs"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
+
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
@@ -20,7 +23,7 @@ type WalletAPI struct {
 	Wallet       *wallet.Wallet
 }
 
-func (a *WalletAPI) WalletNew(ctx context.Context, typ string) (address.Address, error) {
+func (a *WalletAPI) WalletNew(ctx context.Context, typ crypto.SigType) (address.Address, error) {
 	return a.Wallet.GenerateKey(typ)
 }
 
@@ -36,8 +39,12 @@ func (a *WalletAPI) WalletBalance(ctx context.Context, addr address.Address) (ty
 	return a.StateManager.GetBalance(addr, nil)
 }
 
-func (a *WalletAPI) WalletSign(ctx context.Context, k address.Address, msg []byte) (*types.Signature, error) {
-	return a.Wallet.Sign(ctx, k, msg)
+func (a *WalletAPI) WalletSign(ctx context.Context, k address.Address, msg []byte) (*crypto.Signature, error) {
+	keyAddr, err := a.StateManager.ResolveToKeyAddress(ctx, k, nil)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to resolve ID address: %w", keyAddr)
+	}
+	return a.Wallet.Sign(ctx, keyAddr, msg)
 }
 
 func (a *WalletAPI) WalletSignMessage(ctx context.Context, k address.Address, msg *types.Message) (*types.SignedMessage, error) {
@@ -54,7 +61,7 @@ func (a *WalletAPI) WalletSignMessage(ctx context.Context, k address.Address, ms
 	}, nil
 }
 
-func (a *WalletAPI) WalletVerify(ctx context.Context, k address.Address, msg []byte, sig *types.Signature) bool {
+func (a *WalletAPI) WalletVerify(ctx context.Context, k address.Address, msg []byte, sig *crypto.Signature) bool {
 	return sigs.Verify(sig, k, msg) == nil
 }
 
@@ -72,4 +79,8 @@ func (a *WalletAPI) WalletExport(ctx context.Context, addr address.Address) (*ty
 
 func (a *WalletAPI) WalletImport(ctx context.Context, ki *types.KeyInfo) (address.Address, error) {
 	return a.Wallet.Import(ki)
+}
+
+func (a *WalletAPI) WalletDelete(ctx context.Context, addr address.Address) error {
+	return a.Wallet.DeleteKey(addr)
 }

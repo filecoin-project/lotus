@@ -1,10 +1,13 @@
 package repo
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"sync"
 
+	"github.com/google/uuid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	dssync "github.com/ipfs/go-datastore/sync"
@@ -12,6 +15,8 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/sector-storage/stores"
 )
 
 type MemRepo struct {
@@ -25,8 +30,16 @@ type MemRepo struct {
 	token    *byte
 
 	datastore datastore.Datastore
-	configF   func(t RepoType) interface{}
 	keystore  map[string]types.KeyInfo
+
+	// given a repo type, produce the default config
+	configF func(t RepoType) interface{}
+
+	// holds the current config value
+	config struct {
+		sync.Mutex
+		val interface{}
+	}
 }
 
 type lockedMemRepo struct {
@@ -36,17 +49,75 @@ type lockedMemRepo struct {
 
 	tempDir string
 	token   *byte
+	sc      *stores.StorageConfig
+}
+
+func (lmem *lockedMemRepo) GetStorage() (stores.StorageConfig, error) {
+	if err := lmem.checkToken(); err != nil {
+		return stores.StorageConfig{}, err
+	}
+
+	if lmem.sc == nil {
+		lmem.sc = &stores.StorageConfig{StoragePaths: []stores.LocalPath{
+			{Path: lmem.Path()},
+		}}
+	}
+
+	return *lmem.sc, nil
+}
+
+func (lmem *lockedMemRepo) SetStorage(c func(*stores.StorageConfig)) error {
+	if err := lmem.checkToken(); err != nil {
+		return err
+	}
+
+	_, _ = lmem.GetStorage()
+
+	c(lmem.sc)
+	return nil
+}
+
+func (lmem *lockedMemRepo) Stat(path string) (stores.FsStat, error) {
+	return stores.Stat(path)
 }
 
 func (lmem *lockedMemRepo) Path() string {
+	lmem.Lock()
+	defer lmem.Unlock()
+
+	if lmem.tempDir != "" {
+		return lmem.tempDir
+	}
+
 	t, err := ioutil.TempDir(os.TempDir(), "lotus-memrepo-temp-")
 	if err != nil {
 		panic(err) // only used in tests, probably fine
 	}
 
-	lmem.Lock()
+	if lmem.t == StorageMiner {
+		if err := config.WriteStorageFile(filepath.Join(t, fsStorageConfig), stores.StorageConfig{
+			StoragePaths: []stores.LocalPath{
+				{Path: t},
+			}}); err != nil {
+			panic(err)
+		}
+
+		b, err := json.MarshalIndent(&stores.LocalStorageMeta{
+			ID:       stores.ID(uuid.New().String()),
+			Weight:   10,
+			CanSeal:  true,
+			CanStore: true,
+		}, "", "  ")
+		if err != nil {
+			panic(err)
+		}
+
+		if err := ioutil.WriteFile(filepath.Join(t, "sectorstore.json"), b, 0644); err != nil {
+			panic(err)
+		}
+	}
+
 	lmem.tempDir = t
-	lmem.Unlock()
 	return t
 }
 
@@ -166,7 +237,32 @@ func (lmem *lockedMemRepo) Config() (interface{}, error) {
 	if err := lmem.checkToken(); err != nil {
 		return nil, err
 	}
-	return lmem.mem.configF(lmem.t), nil
+
+	lmem.mem.config.Lock()
+	defer lmem.mem.config.Unlock()
+
+	if lmem.mem.config.val == nil {
+		lmem.mem.config.val = lmem.mem.configF(lmem.t)
+	}
+
+	return lmem.mem.config.val, nil
+}
+
+func (lmem *lockedMemRepo) SetConfig(c func(interface{})) error {
+	if err := lmem.checkToken(); err != nil {
+		return err
+	}
+
+	lmem.mem.config.Lock()
+	defer lmem.mem.config.Unlock()
+
+	if lmem.mem.config.val == nil {
+		lmem.mem.config.val = lmem.mem.configF(lmem.t)
+	}
+
+	c(lmem.mem.config.val)
+
+	return nil
 }
 
 func (lmem *lockedMemRepo) SetAPIEndpoint(ma multiaddr.Multiaddr) error {

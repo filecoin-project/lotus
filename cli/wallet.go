@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bufio"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -10,7 +11,11 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	types "github.com/filecoin-project/lotus/chain/types"
-	"gopkg.in/urfave/cli.v2"
+	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"golang.org/x/xerrors"
+
+	"github.com/urfave/cli/v2"
 )
 
 var walletCmd = &cli.Command{
@@ -26,13 +31,14 @@ var walletCmd = &cli.Command{
 		walletSetDefault,
 		walletSign,
 		walletVerify,
+		walletDelete,
 	},
 }
 
 var walletNew = &cli.Command{
 	Name:      "new",
 	Usage:     "Generate a new key of the given type",
-	ArgsUsage: "[bls|secp256k1]",
+	ArgsUsage: "[bls|secp256k1 (default secp256k1)]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -46,7 +52,7 @@ var walletNew = &cli.Command{
 			t = "secp256k1"
 		}
 
-		nk, err := api.WalletNew(ctx, t)
+		nk, err := api.WalletNew(ctx, wallet.ActSigType(t))
 		if err != nil {
 			return err
 		}
@@ -83,7 +89,7 @@ var walletList = &cli.Command{
 var walletBalance = &cli.Command{
 	Name:      "balance",
 	Usage:     "Get account balance",
-	ArgsUsage: "[account address]",
+	ArgsUsage: "[address]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -107,7 +113,12 @@ var walletBalance = &cli.Command{
 			return err
 		}
 
-		fmt.Printf("%s\n", types.FIL(balance))
+		if balance.Equals(types.NewInt(0)) {
+			fmt.Printf("%s (warning: may display 0 if chain sync in progress)\n", types.FIL(balance))
+		} else {
+			fmt.Printf("%s\n", types.FIL(balance))
+		}
+
 		return nil
 	},
 }
@@ -134,8 +145,9 @@ var walletGetDefault = &cli.Command{
 }
 
 var walletSetDefault = &cli.Command{
-	Name:  "set-default",
-	Usage: "Set default wallet address",
+	Name:      "set-default",
+	Usage:     "Set default wallet address",
+	ArgsUsage: "[address]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -158,8 +170,9 @@ var walletSetDefault = &cli.Command{
 }
 
 var walletExport = &cli.Command{
-	Name:  "export",
-	Usage: "export keys",
+	Name:      "export",
+	Usage:     "export keys",
+	ArgsUsage: "[address]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -193,8 +206,16 @@ var walletExport = &cli.Command{
 }
 
 var walletImport = &cli.Command{
-	Name:  "import",
-	Usage: "import keys",
+	Name:      "import",
+	Usage:     "import keys",
+	ArgsUsage: "[<path> (optional, will read from stdin if omitted)]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "format",
+			Usage: "specify input format for key",
+			Value: "hex-lotus",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -203,29 +224,62 @@ var walletImport = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		var hexdata []byte
+		var inpdata []byte
 		if !cctx.Args().Present() || cctx.Args().First() == "-" {
-			indata, err := ioutil.ReadAll(os.Stdin)
+			reader := bufio.NewReader(os.Stdin)
+			fmt.Print("Enter private key: ")
+			indata, err := reader.ReadBytes('\n')
 			if err != nil {
 				return err
 			}
-			hexdata = indata
+			inpdata = indata
 
 		} else {
 			fdata, err := ioutil.ReadFile(cctx.Args().First())
 			if err != nil {
 				return err
 			}
-			hexdata = fdata
-		}
-		data, err := hex.DecodeString(strings.TrimSpace(string(hexdata)))
-		if err != nil {
-			return err
+			inpdata = fdata
 		}
 
 		var ki types.KeyInfo
-		if err := json.Unmarshal(data, &ki); err != nil {
-			return err
+		switch cctx.String("format") {
+		case "hex-lotus":
+			data, err := hex.DecodeString(strings.TrimSpace(string(inpdata)))
+			if err != nil {
+				return err
+			}
+
+			if err := json.Unmarshal(data, &ki); err != nil {
+				return err
+			}
+		case "json-lotus":
+			if err := json.Unmarshal(inpdata, &ki); err != nil {
+				return err
+			}
+		case "gfc-json":
+			var f struct {
+				KeyInfo []struct {
+					PrivateKey []byte
+					SigType    int
+				}
+			}
+			if err := json.Unmarshal(inpdata, &f); err != nil {
+				return xerrors.Errorf("failed to parse go-filecoin key: %s", err)
+			}
+
+			gk := f.KeyInfo[0]
+			ki.PrivateKey = gk.PrivateKey
+			switch gk.SigType {
+			case 1:
+				ki.Type = wallet.KTSecp256k1
+			case 2:
+				ki.Type = wallet.KTBLS
+			default:
+				return fmt.Errorf("unrecognized key type: %d", gk.SigType)
+			}
+		default:
+			return fmt.Errorf("unrecognized format: %s", cctx.String("format"))
 		}
 
 		addr, err := api.WalletImport(ctx, &ki)
@@ -272,7 +326,7 @@ var walletSign = &cli.Command{
 			return err
 		}
 
-		sigBytes := append([]byte{byte(sig.TypeCode())}, sig.Data...)
+		sigBytes := append([]byte{byte(sig.Type)}, sig.Data...)
 
 		fmt.Println(hex.EncodeToString(sigBytes))
 		return nil
@@ -313,9 +367,8 @@ var walletVerify = &cli.Command{
 			return err
 		}
 
-		sig, err := types.SignatureFromBytes(sigBytes)
-
-		if err != nil {
+		var sig crypto.Signature
+		if err := sig.UnmarshalBinary(sigBytes); err != nil {
 			return err
 		}
 
@@ -326,5 +379,30 @@ var walletVerify = &cli.Command{
 			fmt.Println("invalid")
 			return NewCliError("CLI Verify called with invalid signature")
 		}
+	},
+}
+
+var walletDelete = &cli.Command{
+	Name:      "delete",
+	Usage:     "Delete an account from the wallet",
+	ArgsUsage: "<address> ",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		if !cctx.Args().Present() || cctx.NArg() != 1 {
+			return fmt.Errorf("must specify address to delete")
+		}
+
+		addr, err := address.NewFromString(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		return api.WalletDelete(ctx, addr)
 	},
 }

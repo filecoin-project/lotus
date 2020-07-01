@@ -3,12 +3,13 @@ package events
 import (
 	"context"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-type tsByHFunc func(context.Context, uint64, types.TipSetKey) (*types.TipSet, error)
+type tsByHFunc func(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error)
 
 // tipSetCache implements a simple ring-buffer cache to keep track of recent
 // tipsets
@@ -20,7 +21,7 @@ type tipSetCache struct {
 	storage tsByHFunc
 }
 
-func newTSCache(cap int, storage tsByHFunc) *tipSetCache {
+func newTSCache(cap abi.ChainEpoch, storage tsByHFunc) *tipSetCache {
 	return &tipSetCache{
 		cache: make([]*types.TipSet, cap),
 		start: 0,
@@ -77,7 +78,7 @@ func (tsc *tipSetCache) revert(ts *types.TipSet) error {
 	return nil
 }
 
-func (tsc *tipSetCache) getNonNull(height uint64) (*types.TipSet, error) {
+func (tsc *tipSetCache) getNonNull(height abi.ChainEpoch) (*types.TipSet, error) {
 	for {
 		ts, err := tsc.get(height)
 		if err != nil {
@@ -90,7 +91,7 @@ func (tsc *tipSetCache) getNonNull(height uint64) (*types.TipSet, error) {
 	}
 }
 
-func (tsc *tipSetCache) get(height uint64) (*types.TipSet, error) {
+func (tsc *tipSetCache) get(height abi.ChainEpoch) (*types.TipSet, error) {
 	if tsc.len == 0 {
 		log.Warnf("tipSetCache.get: cache is empty, requesting from storage (h=%d)", height)
 		return tsc.storage(context.TODO(), height, types.EmptyTSK)

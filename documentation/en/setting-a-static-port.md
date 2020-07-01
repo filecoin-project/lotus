@@ -15,6 +15,20 @@ To change the port to `1347`:
 
 After changing the port value, restart your **daemon**.
 
+## Announce Addresses
+
+If the **swarm port** is port-forwarded from another address, it is possible to control what addresses
+are announced to the network.
+
+```sh
+[Libp2p]
+  AnnounceAddresses = ["/ip4/<public-ip>/tcp/1347"]
+```
+
+If non-empty, this array specifies the swarm addresses to announce to the network. If empty, the daemon will announce inferred swarm addresses.
+
+Similarly, it is possible to set `NoAnnounceAddresses` with an array of addresses to not announce to the network.
+
 ## Ubuntu's Uncomplicated Firewall
 
 Open firewall manually:

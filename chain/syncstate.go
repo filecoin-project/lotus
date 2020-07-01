@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -31,7 +33,7 @@ type SyncerState struct {
 	Target  *types.TipSet
 	Base    *types.TipSet
 	Stage   api.SyncStateStage
-	Height  uint64
+	Height  abi.ChainEpoch
 	Message string
 	Start   time.Time
 	End     time.Time
@@ -66,7 +68,7 @@ func (ss *SyncerState) Init(base, target *types.TipSet) {
 	ss.End = time.Time{}
 }
 
-func (ss *SyncerState) SetHeight(h uint64) {
+func (ss *SyncerState) SetHeight(h abi.ChainEpoch) {
 	if ss == nil {
 		return
 	}

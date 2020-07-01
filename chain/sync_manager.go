@@ -35,6 +35,7 @@ type SyncManager struct {
 
 	syncStates []*SyncerState
 
+	// Normally this handler is set to `(*Syncer).Sync()`.
 	doSync func(context.Context, *types.TipSet) error
 
 	stop chan struct{}
@@ -280,7 +281,7 @@ func (sm *SyncManager) syncScheduler() {
 }
 
 func (sm *SyncManager) scheduleIncoming(ts *types.TipSet) {
-	log.Info("scheduling incoming tipset sync: ", ts.Cids())
+	log.Debug("scheduling incoming tipset sync: ", ts.Cids())
 	if sm.getBootstrapState() == BSStateSelected {
 		sm.setBootstrapState(BSStateScheduled)
 		sm.syncTargets <- ts

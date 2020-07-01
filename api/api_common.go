@@ -4,19 +4,22 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/lotus/build"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
+
+	"github.com/filecoin-project/go-jsonrpc/auth"
+
+	"github.com/filecoin-project/lotus/build"
 )
 
-type Permission = string
-
 type Common interface {
-	// Auth
-	AuthVerify(ctx context.Context, token string) ([]Permission, error)
-	AuthNew(ctx context.Context, perms []Permission) ([]byte, error)
 
-	// network
+	// MethodGroup: Auth
+
+	AuthVerify(ctx context.Context, token string) ([]auth.Permission, error)
+	AuthNew(ctx context.Context, perms []auth.Permission) ([]byte, error)
+
+	// MethodGroup: Net
 
 	NetConnectedness(context.Context, peer.ID) (network.Connectedness, error)
 	NetPeers(context.Context) ([]peer.AddrInfo, error)
@@ -24,6 +27,9 @@ type Common interface {
 	NetAddrsListen(context.Context) (peer.AddrInfo, error)
 	NetDisconnect(context.Context, peer.ID) error
 	NetFindPeer(context.Context, peer.ID) (peer.AddrInfo, error)
+	NetPubsubScores(context.Context) ([]PubsubScore, error)
+
+	// MethodGroup: Common
 
 	// ID returns peerID of libp2p node backing this API
 	ID(context.Context) (peer.ID, error)
@@ -33,6 +39,11 @@ type Common interface {
 
 	LogList(context.Context) ([]string, error)
 	LogSetLevel(context.Context, string, string) error
+
+	// trigger graceful shutdown
+	Shutdown(context.Context) error
+
+	Closing(context.Context) (<-chan struct{}, error)
 }
 
 // Version provides various build-time information

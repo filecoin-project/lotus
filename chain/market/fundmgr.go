@@ -4,7 +4,9 @@ import (
 	"context"
 	"sync"
 
-	"golang.org/x/xerrors"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -12,6 +14,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/impl/full"
 )
+
+var log = logging.Logger("market_adapter")
 
 type FundMgr struct {
 	sm    *stmgr.StateManager
@@ -30,17 +34,17 @@ func NewFundMgr(sm *stmgr.StateManager, mpool full.MpoolAPI) *FundMgr {
 	}
 }
 
-func (fm *FundMgr) EnsureAvailable(ctx context.Context, addr address.Address, amt types.BigInt) error {
+func (fm *FundMgr) EnsureAvailable(ctx context.Context, addr, wallet address.Address, amt types.BigInt) (cid.Cid, error) {
 	fm.lk.Lock()
 	avail, ok := fm.available[addr]
 	if !ok {
 		bal, err := fm.sm.MarketBalance(ctx, addr, nil)
 		if err != nil {
 			fm.lk.Unlock()
-			return err
+			return cid.Undef, err
 		}
 
-		avail = bal.Available
+		avail = types.BigSub(bal.Escrow, bal.Locked)
 	}
 
 	toAdd := types.NewInt(0)
@@ -55,25 +59,24 @@ func (fm *FundMgr) EnsureAvailable(ctx context.Context, addr address.Address, am
 
 	fm.lk.Unlock()
 
+	var err error
+	params, err := actors.SerializeParams(&addr)
+	if err != nil {
+		return cid.Undef, err
+	}
+
 	smsg, err := fm.mpool.MpoolPushMessage(ctx, &types.Message{
-		To:       actors.StorageMarketAddress,
-		From:     addr,
+		To:       builtin.StorageMarketActorAddr,
+		From:     wallet,
 		Value:    toAdd,
 		GasPrice: types.NewInt(0),
-		GasLimit: types.NewInt(1000000),
-		Method:   actors.SMAMethods.AddBalance,
+		GasLimit: 1000000,
+		Method:   builtin.MethodsMarket.AddBalance,
+		Params:   params,
 	})
 	if err != nil {
-		return err
+		return cid.Undef, err
 	}
 
-	_, r, err := fm.sm.WaitForMessage(ctx, smsg.Cid())
-	if err != nil {
-		return err
-	}
-
-	if r.ExitCode != 0 {
-		return xerrors.Errorf("adding funds to storage miner market actor failed: exit %d", r.ExitCode)
-	}
-	return nil
+	return smsg.Cid(), nil
 }

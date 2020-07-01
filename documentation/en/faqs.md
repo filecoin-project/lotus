@@ -73,7 +73,7 @@ Information on how to send a `cURL` request to the JSON-RPC API can be found
 ### What are the requests I can send over the JSON-RPC API?
 
 Please have a look at the 
-[source code](https://github.com/filecoin-project/lotus/blob/master/api/api_common.go) 
+[source code](https://github.com/filecoin-project/lotus/blob/master/api/api_full.go) 
 for a list of methods supported by the JSON-RPC API.
 ## The Test Network
 
@@ -87,12 +87,6 @@ community for testing purposes.
 
 Nothing at all! Real-world incentives may be provided in a future phase of Testnet, but this is 
 yet to be confirmed.
-
-### Will there be future phases of Testnet?
-
-Yes, there will be at least one more phase of Testnet. We plan on introducing interoperable
-[go-filecoin nodes](https://github.com/filecoin-project/go-filecoin#filecoin-go-filecoin)
-in a future phase.
 
 ### How can I see the status of Testnet?
 
@@ -137,3 +131,8 @@ You can do so by changing the storage path variable for the second miner, e.g.,
 ### How do I setup my own local devnet?     
 
 Follow the instructions found [here](https://lotu.sh/en+setup-local-dev-net).
+
+### Are there any other implementations of Filecoin?
+
+Yes! Check out the [go-filecoin](https://github.com/filecoin-project/go-filecoin#filecoin-go-filecoin)
+implementation, which is fully interoperable with Lotus!

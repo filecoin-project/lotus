@@ -52,12 +52,12 @@ func (crt *incrt) Read(buf []byte) (int, error) {
 
 	err := crt.rd.SetReadDeadline(start.Add(crt.wait))
 	if err != nil {
-		log.Warnf("unable to set daedline: %+v", err)
+		log.Debugf("unable to set deadline: %+v", err)
 	}
 
 	n, err := crt.rd.Read(buf)
 
-	crt.rd.SetReadDeadline(time.Time{})
+	_ = crt.rd.SetReadDeadline(time.Time{})
 	if err == nil {
 		dur := now().Sub(start)
 		crt.wait -= dur

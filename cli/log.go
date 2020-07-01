@@ -3,8 +3,8 @@ package cli
 import (
 	"fmt"
 
+	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
-	"gopkg.in/urfave/cli.v2"
 )
 
 var logCmd = &cli.Command{
@@ -44,7 +44,7 @@ var logList = &cli.Command{
 var logSetLevel = &cli.Command{
 	Name:      "set-level",
 	Usage:     "Set log level",
-	ArgsUsage: "<level>",
+	ArgsUsage: "[level]",
 	Description: `Set the log level for logging systems:
 
    The system flag can be specified multiple times.

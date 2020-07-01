@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
@@ -18,8 +19,8 @@ import (
 
 var log = logging.Logger("events")
 
-// `curH`-`ts.Height` = `confidence`
-type HeightHandler func(ctx context.Context, ts *types.TipSet, curH uint64) error
+// HeightHandler `curH`-`ts.Height` = `confidence`
+type HeightHandler func(ctx context.Context, ts *types.TipSet, curH abi.ChainEpoch) error
 type RevertHandler func(ctx context.Context, ts *types.TipSet) error
 
 type heightHandler struct {
@@ -30,17 +31,18 @@ type heightHandler struct {
 	revert RevertHandler
 }
 
-type eventApi interface {
-	ChainNotify(context.Context) (<-chan []*store.HeadChange, error)
+type eventAPI interface {
+	ChainNotify(context.Context) (<-chan []*api.HeadChange, error)
 	ChainGetBlockMessages(context.Context, cid.Cid) (*api.BlockMessages, error)
-	ChainGetTipSetByHeight(context.Context, uint64, types.TipSetKey) (*types.TipSet, error)
+	ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error)
 	StateGetReceipt(context.Context, cid.Cid, types.TipSetKey) (*types.MessageReceipt, error)
+	ChainGetTipSet(context.Context, types.TipSetKey) (*types.TipSet, error)
 
 	StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) // optional / for CalledMsg
 }
 
 type Events struct {
-	api eventApi
+	api eventAPI
 
 	tsc *tipSetCache
 	lk  sync.Mutex
@@ -49,10 +51,10 @@ type Events struct {
 	readyOnce sync.Once
 
 	heightEvents
-	calledEvents
+	*hcEvents
 }
 
-func NewEvents(ctx context.Context, api eventApi) *Events {
+func NewEvents(ctx context.Context, api eventAPI) *Events {
 	gcConfidence := 2 * build.ForkLengthThreshold
 
 	tsc := newTSCache(gcConfidence, api.ChainGetTipSetByHeight)
@@ -65,25 +67,14 @@ func NewEvents(ctx context.Context, api eventApi) *Events {
 		heightEvents: heightEvents{
 			tsc:          tsc,
 			ctx:          ctx,
-			gcConfidence: uint64(gcConfidence),
+			gcConfidence: gcConfidence,
 
 			heightTriggers:   map[uint64]*heightHandler{},
-			htTriggerHeights: map[uint64][]uint64{},
-			htHeights:        map[uint64][]uint64{},
+			htTriggerHeights: map[abi.ChainEpoch][]uint64{},
+			htHeights:        map[abi.ChainEpoch][]uint64{},
 		},
 
-		calledEvents: calledEvents{
-			cs:           api,
-			tsc:          tsc,
-			ctx:          ctx,
-			gcConfidence: uint64(gcConfidence),
-
-			confQueue:   map[triggerH]map[msgH][]*queuedEvent{},
-			revertQueue: map[msgH][]triggerH{},
-			triggers:    map[triggerId]*callHandler{},
-			matchers:    map[triggerId][]MatchFunc{},
-			timeouts:    map[uint64]map[triggerId]int{},
-		},
+		hcEvents: newHCEvents(ctx, api, tsc, uint64(gcConfidence)),
 	}
 
 	e.ready.Add(1)
@@ -141,6 +132,8 @@ func (e *Events) listenHeadChangesOnce(ctx context.Context) error {
 	}
 
 	e.readyOnce.Do(func() {
+		e.lastTs = cur[0].Val
+
 		e.ready.Done()
 	})
 
@@ -160,6 +153,11 @@ func (e *Events) listenHeadChangesOnce(ctx context.Context) error {
 		if err := e.headChange(rev, app); err != nil {
 			log.Warnf("headChange failed: %s", err)
 		}
+
+		// sync with fake chainstore (for tests)
+		if fcs, ok := e.api.(interface{ notifDone() }); ok {
+			fcs.notifDone()
+		}
 	}
 
 	return nil
@@ -177,5 +175,5 @@ func (e *Events) headChange(rev, app []*types.TipSet) error {
 		return err
 	}
 
-	return e.headChangeCalled(rev, app)
+	return e.processHeadChangeEvent(rev, app)
 }

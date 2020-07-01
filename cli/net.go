@@ -7,7 +7,7 @@ import (
 
 	"github.com/libp2p/go-libp2p-core/peer"
 
-	"gopkg.in/urfave/cli.v2"
+	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/lotus/lib/addrutil"
 )
@@ -21,6 +21,7 @@ var netCmd = &cli.Command{
 		netListen,
 		netId,
 		netFindPeer,
+		netScores,
 	},
 }
 
@@ -44,7 +45,30 @@ var netPeers = &cli.Command{
 		})
 
 		for _, peer := range peers {
-			fmt.Println(peer)
+			fmt.Printf("%s, %s\n", peer.ID, peer.Addrs)
+		}
+
+		return nil
+	},
+}
+
+var netScores = &cli.Command{
+	Name:  "scores",
+	Usage: "Print peers' pubsub scores",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+		scores, err := api.NetPubsubScores(ctx)
+		if err != nil {
+			return err
+		}
+
+		for _, peer := range scores {
+			fmt.Printf("%s, %f\n", peer.ID, peer.Score)
 		}
 
 		return nil
@@ -77,7 +101,7 @@ var netListen = &cli.Command{
 var netConnect = &cli.Command{
 	Name:      "connect",
 	Usage:     "Connect to a peer",
-	ArgsUsage: "<peer multiaddr>",
+	ArgsUsage: "[peerMultiaddr]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetAPI(cctx)
 		if err != nil {
@@ -130,7 +154,7 @@ var netId = &cli.Command{
 var netFindPeer = &cli.Command{
 	Name:      "findpeer",
 	Usage:     "Find the addresses of a given peerID",
-	ArgsUsage: "<peer ID>",
+	ArgsUsage: "[peerId]",
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 1 {
 			fmt.Println("Usage: findpeer [peer ID]")

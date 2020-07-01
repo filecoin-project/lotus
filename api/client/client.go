@@ -1,11 +1,12 @@
 package client
 
 import (
-	"github.com/filecoin-project/lotus/api/apistruct"
 	"net/http"
 
+	"github.com/filecoin-project/go-jsonrpc"
+
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/lib/jsonrpc"
+	"github.com/filecoin-project/lotus/api/apistruct"
 )
 
 // NewCommonRPC creates a new http jsonrpc client.
@@ -14,7 +15,9 @@ func NewCommonRPC(addr string, requestHeader http.Header) (api.Common, jsonrpc.C
 	closer, err := jsonrpc.NewMergeClient(addr, "Filecoin",
 		[]interface{}{
 			&res.Internal,
-		}, requestHeader)
+		},
+		requestHeader,
+	)
 
 	return &res, closer, err
 }
@@ -38,7 +41,21 @@ func NewStorageMinerRPC(addr string, requestHeader http.Header) (api.StorageMine
 		[]interface{}{
 			&res.CommonStruct.Internal,
 			&res.Internal,
-		}, requestHeader)
+		},
+		requestHeader,
+	)
+
+	return &res, closer, err
+}
+
+func NewWorkerRPC(addr string, requestHeader http.Header) (api.WorkerAPI, jsonrpc.ClientCloser, error) {
+	var res apistruct.WorkerStruct
+	closer, err := jsonrpc.NewMergeClient(addr, "Filecoin",
+		[]interface{}{
+			&res.Internal,
+		},
+		requestHeader,
+	)
 
 	return &res, closer, err
 }

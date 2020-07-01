@@ -10,6 +10,7 @@ import (
 	"golang.org/x/xerrors"
 
 	cborutil "github.com/filecoin-project/go-cbor-util"
+
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 
@@ -27,6 +28,24 @@ const BlockSyncProtocolID = "/fil/sync/blk/0.0.1"
 
 const BlockSyncMaxRequestLength = 800
 
+// BlockSyncService is the component that services BlockSync requests from
+// peers.
+//
+// BlockSync is the basic chain synchronization protocol of Filecoin. BlockSync
+// is an RPC-oriented protocol, with a single operation to request blocks.
+//
+// A request contains a start anchor block (referred to with a CID), and a
+// amount of blocks requested beyond the anchor (including the anchor itself).
+//
+// A client can also pass options, encoded as a 64-bit bitfield. Lotus supports
+// two options at the moment:
+//
+//  - include block contents
+//  - include block messages
+//
+// The response will include a status code, an optional message, and the
+// response payload in case of success. The payload is a slice of serialized
+// tipsets.
 type BlockSyncService struct {
 	cs *store.ChainStore
 }
@@ -91,7 +110,7 @@ func (bss *BlockSyncService) HandleStream(s inet.Stream) {
 	ctx, span := trace.StartSpan(context.Background(), "blocksync.HandleStream")
 	defer span.End()
 
-	defer s.Close()
+	defer s.Close() //nolint:errcheck
 
 	var req BlockSyncRequest
 	if err := cborutil.ReadCborRPC(bufio.NewReader(s), &req); err != nil {
@@ -107,7 +126,7 @@ func (bss *BlockSyncService) HandleStream(s inet.Stream) {
 	}
 
 	writeDeadline := 60 * time.Second
-	s.SetDeadline(time.Now().Add(writeDeadline))
+	_ = s.SetDeadline(time.Now().Add(writeDeadline))
 	if err := cborutil.WriteCborRPC(s, resp); err != nil {
 		log.Warnw("failed to write back response for handle stream", "err", err, "peer", s.Conn().RemotePeer())
 		return
@@ -138,7 +157,7 @@ func (bss *BlockSyncService) processRequest(ctx context.Context, p peer.ID, req 
 		reqlen = BlockSyncMaxRequestLength
 	}
 
-	chain, err := bss.collectChainSegment(types.NewTipSetKey(req.Start...), reqlen, opts)
+	chain, err := collectChainSegment(bss.cs, types.NewTipSetKey(req.Start...), reqlen, opts)
 	if err != nil {
 		log.Warn("encountered error while responding to block sync request: ", err)
 		return &BlockSyncResponse{
@@ -158,18 +177,18 @@ func (bss *BlockSyncService) processRequest(ctx context.Context, p peer.ID, req 
 	}, nil
 }
 
-func (bss *BlockSyncService) collectChainSegment(start types.TipSetKey, length uint64, opts *BSOptions) ([]*BSTipSet, error) {
+func collectChainSegment(cs *store.ChainStore, start types.TipSetKey, length uint64, opts *BSOptions) ([]*BSTipSet, error) {
 	var bstips []*BSTipSet
 	cur := start
 	for {
 		var bst BSTipSet
-		ts, err := bss.cs.LoadTipSet(cur)
+		ts, err := cs.LoadTipSet(cur)
 		if err != nil {
 			return nil, xerrors.Errorf("failed loading tipset %s: %w", cur, err)
 		}
 
 		if opts.IncludeMessages {
-			bmsgs, bmincl, smsgs, smincl, err := bss.gatherMessages(ts)
+			bmsgs, bmincl, smsgs, smincl, err := gatherMessages(cs, ts)
 			if err != nil {
 				return nil, xerrors.Errorf("gather messages failed: %w", err)
 			}
@@ -194,7 +213,7 @@ func (bss *BlockSyncService) collectChainSegment(start types.TipSetKey, length u
 	}
 }
 
-func (bss *BlockSyncService) gatherMessages(ts *types.TipSet) ([]*types.Message, [][]uint64, []*types.SignedMessage, [][]uint64, error) {
+func gatherMessages(cs *store.ChainStore, ts *types.TipSet) ([]*types.Message, [][]uint64, []*types.SignedMessage, [][]uint64, error) {
 	blsmsgmap := make(map[cid.Cid]uint64)
 	secpkmsgmap := make(map[cid.Cid]uint64)
 	var secpkmsgs []*types.SignedMessage
@@ -202,7 +221,7 @@ func (bss *BlockSyncService) gatherMessages(ts *types.TipSet) ([]*types.Message,
 	var secpkincl, blsincl [][]uint64
 
 	for _, b := range ts.Blocks() {
-		bmsgs, smsgs, err := bss.cs.MessagesForBlock(b)
+		bmsgs, smsgs, err := cs.MessagesForBlock(b)
 		if err != nil {
 			return nil, nil, nil, nil, err
 		}

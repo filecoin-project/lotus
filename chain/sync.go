@@ -3,21 +3,19 @@ package chain
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
 	"errors"
 	"fmt"
-	"sync"
+	"os"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/Gurpartap/async"
-	bls "github.com/filecoin-project/filecoin-ffi"
-	amt "github.com/filecoin-project/go-amt-ipld"
-	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-cid"
 	dstore "github.com/ipfs/go-datastore"
-	hamt "github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/connmgr"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -27,28 +25,67 @@ import (
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
+	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
+	amt "github.com/filecoin-project/go-amt-ipld/v2"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/blocksync"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/metrics"
 )
+
+// Blocks that are more than MaxHeightDrift epochs above
+//the theoretical max height based on systime are quickly rejected
+const MaxHeightDrift = 5
 
 var log = logging.Logger("chain")
 
 var LocalIncoming = "incoming"
 
+// Syncer is in charge of running the chain synchronization logic. As such, it
+// is tasked with these functions, amongst others:
+//
+//  * Fast-forwards the chain as it learns of new TipSets from the network via
+//    the SyncManager.
+//  * Applies the fork choice rule to select the correct side when confronted
+//    with a fork in the network.
+//  * Requests block headers and messages from other peers when not available
+//    in our BlockStore.
+//  * Tracks blocks marked as bad in a cache.
+//  * Keeps the BlockStore and ChainStore consistent with our view of the world,
+//    the latter of which in turn informs other components when a reorg has been
+//    committed.
+//
+// The Syncer does not run workers itself. It's mainly concerned with
+// ensuring a consistent state of chain consensus. The reactive and network-
+// interfacing processes are part of other components, such as the SyncManager
+// (which owns the sync scheduler and sync workers), BlockSync, the HELLO
+// protocol, and the gossipsub block propagation layer.
+//
+// {hint/concept} The fork-choice rule as it currently stands is: "pick the
+// chain with the heaviest weight, so long as it hasn’t deviated one finality
+// threshold from our head (900 epochs, parameter determined by spec-actors)".
 type Syncer struct {
 	// The interface for accessing and putting tipsets into local storage
 	store *store.ChainStore
+
+	// handle to the random beacon for verification
+	beacon beacon.RandomBeacon
 
 	// the state manager handles making state queries
 	sm *stmgr.StateManager
@@ -71,12 +108,15 @@ type Syncer struct {
 	incoming *pubsub.PubSub
 
 	receiptTracker *blockReceiptTracker
+
+	verifier ffiwrapper.Verifier
 }
 
-func NewSyncer(sm *stmgr.StateManager, bsync *blocksync.BlockSync, connmgr connmgr.ConnManager, self peer.ID) (*Syncer, error) {
+// NewSyncer creates a new Syncer object.
+func NewSyncer(sm *stmgr.StateManager, bsync *blocksync.BlockSync, connmgr connmgr.ConnManager, self peer.ID, beacon beacon.RandomBeacon, verifier ffiwrapper.Verifier) (*Syncer, error) {
 	gen, err := sm.ChainStore().GetGenesis()
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("getting genesis block: %w", err)
 	}
 
 	gent, err := types.NewTipSet([]*types.BlockHeader{gen})
@@ -85,6 +125,7 @@ func NewSyncer(sm *stmgr.StateManager, bsync *blocksync.BlockSync, connmgr connm
 	}
 
 	s := &Syncer{
+		beacon:         beacon,
 		bad:            NewBadBlockCache(),
 		Genesis:        gent,
 		Bsync:          bsync,
@@ -93,6 +134,7 @@ func NewSyncer(sm *stmgr.StateManager, bsync *blocksync.BlockSync, connmgr connm
 		self:           self,
 		receiptTracker: newBlockReceiptTracker(),
 		connmgr:        connmgr,
+		verifier:       verifier,
 
 		incoming: pubsub.New(50),
 	}
@@ -116,6 +158,11 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) bool {
 	ctx := context.Background()
 	if fts == nil {
 		log.Errorf("got nil tipset in InformNewHead")
+		return false
+	}
+
+	if syncer.IsEpochBeyondCurrMax(fts.TipSet().Height()) {
+		log.Errorf("Received block with impossibly large height %d", fts.TipSet().Height())
 		return false
 	}
 
@@ -168,6 +215,11 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) bool {
 	return true
 }
 
+// IncomingBlocks spawns a goroutine that subscribes to the local eventbus to
+// receive new block headers as they arrive from the network, and sends them to
+// the returned channel.
+//
+// These blocks have not necessarily been incorporated to our view of the chain.
 func (syncer *Syncer) IncomingBlocks(ctx context.Context) (<-chan *types.BlockHeader, error) {
 	sub := syncer.incoming.Sub(LocalIncoming)
 	out := make(chan *types.BlockHeader, 10)
@@ -195,11 +247,15 @@ func (syncer *Syncer) IncomingBlocks(ctx context.Context) (<-chan *types.BlockHe
 	return out, nil
 }
 
+// ValidateMsgMeta performs structural and content hash validation of the
+// messages within this block. If validation passes, it stores the messages in
+// the underlying IPLD block store.
 func (syncer *Syncer) ValidateMsgMeta(fblk *types.FullBlock) error {
 	if msgc := len(fblk.BlsMessages) + len(fblk.SecpkMessages); msgc > build.BlockMessageLimit {
 		return xerrors.Errorf("block %s has too many messages (%d)", fblk.Header.Cid(), msgc)
 	}
 
+	// Collect the CIDs of both types of messages separately: BLS and Secpk.
 	var bcids, scids []cbg.CBORMarshaler
 	for _, m := range fblk.BlsMessages {
 		c := cbg.CborCid(m.Cid())
@@ -216,12 +272,15 @@ func (syncer *Syncer) ValidateMsgMeta(fblk *types.FullBlock) error {
 	// we implement that
 	blockstore := syncer.store.Blockstore()
 
-	bs := amt.WrapBlockstore(blockstore)
+	bs := cbor.NewCborStore(blockstore)
+
+	// Compute the root CID of the combined message trie.
 	smroot, err := computeMsgMeta(bs, bcids, scids)
 	if err != nil {
 		return xerrors.Errorf("validating msgmeta, compute failed: %w", err)
 	}
 
+	// Check that the message trie root matches with what's in the block.
 	if fblk.Header.Messages != smroot {
 		return xerrors.Errorf("messages in full block did not match msgmeta root in header (%s != %s)", fblk.Header.Messages, smroot)
 	}
@@ -283,7 +342,7 @@ func copyBlockstore(from, to bstore.Blockstore) error {
 // either validate it here, or ensure that its validated elsewhere (maybe make
 // sure the blocksync code checks it?)
 // maybe this code should actually live in blocksync??
-func zipTipSetAndMessages(bs amt.Blocks, ts *types.TipSet, allbmsgs []*types.Message, allsmsgs []*types.SignedMessage, bmi, smi [][]uint64) (*store.FullTipSet, error) {
+func zipTipSetAndMessages(bs cbor.IpldStore, ts *types.TipSet, allbmsgs []*types.Message, allsmsgs []*types.SignedMessage, bmi, smi [][]uint64) (*store.FullTipSet, error) {
 	if len(ts.Blocks()) != len(smi) || len(ts.Blocks()) != len(bmi) {
 		return nil, fmt.Errorf("msgincl length didnt match tipset size")
 	}
@@ -316,7 +375,7 @@ func zipTipSetAndMessages(bs amt.Blocks, ts *types.TipSet, allbmsgs []*types.Mes
 		}
 
 		if b.Messages != mrcid {
-			return nil, fmt.Errorf("messages didnt match message root in header")
+			return nil, fmt.Errorf("messages didnt match message root in header for ts %s", ts.Key())
 		}
 
 		fb := &types.FullBlock{
@@ -331,18 +390,21 @@ func zipTipSetAndMessages(bs amt.Blocks, ts *types.TipSet, allbmsgs []*types.Mes
 	return fts, nil
 }
 
-func computeMsgMeta(bs amt.Blocks, bmsgCids, smsgCids []cbg.CBORMarshaler) (cid.Cid, error) {
-	bmroot, err := amt.FromArray(bs, bmsgCids)
+// computeMsgMeta computes the root CID of the combined arrays of message CIDs
+// of both types (BLS and Secpk).
+func computeMsgMeta(bs cbor.IpldStore, bmsgCids, smsgCids []cbg.CBORMarshaler) (cid.Cid, error) {
+	ctx := context.TODO()
+	bmroot, err := amt.FromArray(ctx, bs, bmsgCids)
 	if err != nil {
 		return cid.Undef, err
 	}
 
-	smroot, err := amt.FromArray(bs, smsgCids)
+	smroot, err := amt.FromArray(ctx, bs, smsgCids)
 	if err != nil {
 		return cid.Undef, err
 	}
 
-	mrcid, err := bs.Put(&types.MsgMeta{
+	mrcid, err := bs.Put(ctx, &types.MsgMeta{
 		BlsMessages:   bmroot,
 		SecpkMessages: smroot,
 	})
@@ -353,14 +415,24 @@ func computeMsgMeta(bs amt.Blocks, bmsgCids, smsgCids []cbg.CBORMarshaler) (cid.
 	return mrcid, nil
 }
 
+// FetchTipSet tries to load the provided tipset from the store, and falls back
+// to the network (BlockSync) by querying the supplied peer if not found
+// locally.
+//
+// {hint/usage} This is used from the HELLO protocol, to fetch the greeting
+// peer's heaviest tipset if we don't have it.
 func (syncer *Syncer) FetchTipSet(ctx context.Context, p peer.ID, tsk types.TipSetKey) (*store.FullTipSet, error) {
 	if fts, err := syncer.tryLoadFullTipSet(tsk); err == nil {
 		return fts, nil
 	}
 
+	// fall back to the network.
 	return syncer.Bsync.GetFullTipSet(ctx, p, tsk)
 }
 
+// tryLoadFullTipSet queries the tipset in the ChainStore, and returns a full
+// representation of it containing FullBlocks. If ALL blocks are not found
+// locally, it errors entirely with blockstore.ErrNotFound.
 func (syncer *Syncer) tryLoadFullTipSet(tsk types.TipSetKey) (*store.FullTipSet, error) {
 	ts, err := syncer.store.LoadTipSet(tsk)
 	if err != nil {
@@ -385,6 +457,12 @@ func (syncer *Syncer) tryLoadFullTipSet(tsk types.TipSetKey) (*store.FullTipSet,
 	return fts, nil
 }
 
+// Sync tries to advance our view of the chain to `maybeHead`. It does nothing
+// if our current head is heavier than the requested tipset, or if we're already
+// at the requested head, or if the head is the genesis.
+//
+// Most of the heavy-lifting logic happens in syncer#collectChain. Refer to the
+// godocs on that method for a more detailed view.
 func (syncer *Syncer) Sync(ctx context.Context, maybeHead *types.TipSet) error {
 	ctx, span := trace.StartSpan(ctx, "chain.Sync")
 	defer span.End()
@@ -413,6 +491,8 @@ func (syncer *Syncer) Sync(ctx context.Context, maybeHead *types.TipSet) error {
 		return xerrors.Errorf("collectChain failed: %w", err)
 	}
 
+	// At this point we have accepted and synced to the new `maybeHead`
+	// (`StageSyncComplete`).
 	if err := syncer.store.PutTipSet(ctx, maybeHead); err != nil {
 		span.AddAttributes(trace.StringAttribute("put_error", err.Error()))
 		span.SetStatus(trace.Status{
@@ -449,57 +529,114 @@ func (syncer *Syncer) ValidateTipSet(ctx context.Context, fts *store.FullTipSet)
 		return nil
 	}
 
+	var futures []async.ErrorFuture
 	for _, b := range fts.Blocks {
-		if err := syncer.ValidateBlock(ctx, b); err != nil {
-			if isPermanent(err) {
-				syncer.bad.Add(b.Cid(), err.Error())
-			}
-			return xerrors.Errorf("validating block %s: %w", b.Cid(), err)
-		}
+		b := b // rebind to a scoped variable
 
-		if err := syncer.sm.ChainStore().AddToTipSetTracker(b.Header); err != nil {
-			return xerrors.Errorf("failed to add validated header to tipset tracker: %w", err)
+		futures = append(futures, async.Err(func() error {
+			if err := syncer.ValidateBlock(ctx, b); err != nil {
+				if isPermanent(err) {
+					syncer.bad.Add(b.Cid(), err.Error())
+				}
+				return xerrors.Errorf("validating block %s: %w", b.Cid(), err)
+			}
+
+			if err := syncer.sm.ChainStore().AddToTipSetTracker(b.Header); err != nil {
+				return xerrors.Errorf("failed to add validated header to tipset tracker: %w", err)
+			}
+			return nil
+		}))
+	}
+	for _, f := range futures {
+		if err := f.AwaitContext(ctx); err != nil {
+			return err
 		}
 	}
 	return nil
 }
 
 func (syncer *Syncer) minerIsValid(ctx context.Context, maddr address.Address, baseTs *types.TipSet) error {
-	var err error
-	enc, err := actors.SerializeParams(&actors.IsValidMinerParam{Addr: maddr})
+	var spast power.State
+
+	_, err := syncer.sm.LoadActorState(ctx, builtin.StoragePowerActorAddr, &spast, baseTs)
 	if err != nil {
 		return err
 	}
 
-	ret, err := syncer.sm.Call(ctx, &types.Message{
-		To:     actors.StoragePowerAddress,
-		From:   maddr,
-		Method: actors.SPAMethods.IsValidMiner,
-		Params: enc,
-	}, baseTs)
+	cm, err := adt.AsMap(syncer.store.Store(ctx), spast.Claims)
 	if err != nil {
-		return xerrors.Errorf("checking if block miner is valid failed: %w", err)
+		return err
 	}
 
-	if ret.MsgRct.ExitCode != 0 {
-		return xerrors.Errorf("StorageMarket.IsValidMiner check failed (exit code %d)", ret.MsgRct.ExitCode)
+	var claim power.Claim
+	exist, err := cm.Get(adt.AddrKey(maddr), &claim)
+	if err != nil {
+		return err
 	}
-
-	if !bytes.Equal(ret.MsgRct.Return, cbg.CborBoolTrue) {
+	if !exist {
 		return xerrors.New("miner isn't valid")
 	}
-
 	return nil
 }
 
 var ErrTemporal = errors.New("temporal error")
 
-// Should match up with 'Semantical Validation' in validation.md in the spec
-func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) error {
+func blockSanityChecks(h *types.BlockHeader) error {
+	if h.ElectionProof == nil {
+		return xerrors.Errorf("block cannot have nil election proof")
+	}
+
+	if h.Ticket == nil {
+		return xerrors.Errorf("block cannot have nil ticket")
+	}
+
+	if h.BlockSig == nil {
+		return xerrors.Errorf("block had nil signature")
+	}
+
+	if h.BLSAggregate == nil {
+		return xerrors.Errorf("block had nil bls aggregate signature")
+	}
+
+	return nil
+}
+
+// ValidateBlock should match up with 'Semantical Validation' in validation.md in the spec
+func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) (err error) {
+	defer func() {
+		// b.Cid() could panic for empty blocks that are used in tests.
+		if rerr := recover(); rerr != nil {
+			err = xerrors.Errorf("validate block panic: %w", rerr)
+			return
+		}
+	}()
+
+	isValidated, err := syncer.store.IsBlockValidated(ctx, b.Cid())
+	if err != nil {
+		return xerrors.Errorf("check block validation cache %s: %w", b.Cid(), err)
+	}
+
+	if isValidated {
+		return nil
+	}
+
+	validationStart := time.Now()
+	defer func() {
+		dur := time.Since(validationStart)
+		durMilli := dur.Seconds() * float64(1000)
+		stats.Record(ctx, metrics.BlockValidationDurationMilliseconds.M(durMilli))
+		log.Infow("block validation", "took", dur, "height", b.Header.Height)
+	}()
+
 	ctx, span := trace.StartSpan(ctx, "validateBlock")
 	defer span.End()
+
 	if build.InsecurePoStValidation {
 		log.Warn("insecure test validation is enabled, if you see this outside of a test, it is a severe bug!")
+	}
+
+	if err := blockSanityChecks(b.Header); err != nil {
+		return xerrors.Errorf("incoming header failed basic sanity checks: %w", err)
 	}
 
 	h := b.Header
@@ -509,62 +646,39 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		return xerrors.Errorf("load parent tipset failed (%s): %w", h.Parents, err)
 	}
 
-	// fast checks first
-	if h.BlockSig == nil {
-		return xerrors.Errorf("block had nil signature")
+	lbts, err := stmgr.GetLookbackTipSetForRound(ctx, syncer.sm, baseTs, h.Height)
+	if err != nil {
+		return xerrors.Errorf("failed to get lookback tipset for block: %w", err)
 	}
 
-	if h.Timestamp > uint64(time.Now().Unix()+build.AllowableClockDrift) {
-		return xerrors.Errorf("block was from the future: %w", ErrTemporal)
+	lbst, _, err := syncer.sm.TipSetState(ctx, lbts)
+	if err != nil {
+		return xerrors.Errorf("failed to compute lookback tipset state: %w", err)
 	}
-	if h.Timestamp > uint64(time.Now().Unix()) {
+
+	prevBeacon, err := syncer.store.GetLatestBeaconEntry(baseTs)
+	if err != nil {
+		return xerrors.Errorf("failed to get latest beacon entry: %w", err)
+	}
+
+	//nulls := h.Height - (baseTs.Height() + 1)
+
+	// fast checks first
+
+	now := uint64(time.Now().Unix())
+	if h.Timestamp > now+build.AllowableClockDrift {
+		return xerrors.Errorf("block was from the future (now=%d, blk=%d): %w", now, h.Timestamp, ErrTemporal)
+	}
+	if h.Timestamp > now {
 		log.Warn("Got block from the future, but within threshold", h.Timestamp, time.Now().Unix())
 	}
 
-	if h.Timestamp < baseTs.MinTimestamp()+(build.BlockDelay*(h.Height-baseTs.Height())) {
+	if h.Timestamp < baseTs.MinTimestamp()+(build.BlockDelay*uint64(h.Height-baseTs.Height())) {
 		log.Warn("timestamp funtimes: ", h.Timestamp, baseTs.MinTimestamp(), h.Height, baseTs.Height())
-		return xerrors.Errorf("block was generated too soon (h.ts:%d < base.mints:%d + BLOCK_DELAY:%d * deltaH:%d)", h.Timestamp, baseTs.MinTimestamp(), build.BlockDelay, h.Height-baseTs.Height())
+		diff := (baseTs.MinTimestamp() + (build.BlockDelay * uint64(h.Height-baseTs.Height()))) - h.Timestamp
+
+		return xerrors.Errorf("block was generated too soon (h.ts:%d < base.mints:%d + BLOCK_DELAY:%d * deltaH:%d; diff %d)", h.Timestamp, baseTs.MinTimestamp(), build.BlockDelay, h.Height-baseTs.Height(), diff)
 	}
-
-	winnerCheck := async.Err(func() error {
-		slashedAt, err := stmgr.GetMinerSlashed(ctx, syncer.sm, baseTs, h.Miner)
-		if err != nil {
-			return xerrors.Errorf("failed to check if block miner was slashed: %w", err)
-		}
-
-		if slashedAt != 0 {
-			return xerrors.Errorf("received block was from miner slashed at height %d", slashedAt)
-		}
-
-		mpow, tpow, err := stmgr.GetPower(ctx, syncer.sm, baseTs, h.Miner)
-		if err != nil {
-			return xerrors.Errorf("failed getting power: %w", err)
-		}
-
-		ssize, err := stmgr.GetMinerSectorSize(ctx, syncer.sm, baseTs, h.Miner)
-		if err != nil {
-			return xerrors.Errorf("failed to get sector size for block miner: %w", err)
-		}
-
-		snum := types.BigDiv(mpow, types.NewInt(ssize))
-
-		if len(h.EPostProof.Candidates) == 0 {
-			return xerrors.Errorf("no candidates")
-		}
-
-		wins := make(map[uint64]bool)
-		for _, t := range h.EPostProof.Candidates {
-			if wins[t.ChallengeIndex] {
-				return xerrors.Errorf("block had duplicate epost candidates")
-			}
-			wins[t.ChallengeIndex] = true
-
-			if !types.IsTicketWinner(t.Partial, ssize, snum.Uint64(), tpow) {
-				return xerrors.Errorf("miner created a block but was not a winner")
-			}
-		}
-		return nil
-	})
 
 	msgsCheck := async.Err(func() error {
 		if err := syncer.checkBlockMessages(ctx, b, baseTs); err != nil {
@@ -605,31 +719,97 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		return xerrors.Errorf("parent receipts root did not match computed value (%s != %s)", precp, h.ParentMessageReceipts)
 	}
 
-	waddr, err := stmgr.GetMinerWorkerRaw(ctx, syncer.sm, stateroot, h.Miner)
+	waddr, err := stmgr.GetMinerWorkerRaw(ctx, syncer.sm, lbst, h.Miner)
 	if err != nil {
 		return xerrors.Errorf("GetMinerWorkerRaw failed: %w", err)
 	}
 
+	winnerCheck := async.Err(func() error {
+		rBeacon := *prevBeacon
+		if len(h.BeaconEntries) != 0 {
+			rBeacon = h.BeaconEntries[len(h.BeaconEntries)-1]
+		}
+		buf := new(bytes.Buffer)
+		if err := h.Miner.MarshalCBOR(buf); err != nil {
+			return xerrors.Errorf("failed to marshal miner address to cbor: %w", err)
+		}
+
+		//TODO: DST from spec actors when it is there
+		vrfBase, err := store.DrawRandomness(rBeacon.Data, crypto.DomainSeparationTag_ElectionProofProduction, h.Height, buf.Bytes())
+		if err != nil {
+			return xerrors.Errorf("could not draw randomness: %w", err)
+		}
+
+		if err := VerifyElectionPoStVRF(ctx, waddr, vrfBase, h.ElectionProof.VRFProof); err != nil {
+			return xerrors.Errorf("validating block election proof failed: %w", err)
+		}
+
+		slashed, err := stmgr.GetMinerSlashed(ctx, syncer.sm, baseTs, h.Miner)
+		if err != nil {
+			return xerrors.Errorf("failed to check if block miner was slashed: %w", err)
+		}
+
+		if slashed {
+			return xerrors.Errorf("received block was from slashed or invalid miner")
+		}
+
+		mpow, tpow, err := stmgr.GetPowerRaw(ctx, syncer.sm, lbst, h.Miner)
+		if err != nil {
+			return xerrors.Errorf("failed getting power: %w", err)
+		}
+
+		if !types.IsTicketWinner(h.ElectionProof.VRFProof, mpow.QualityAdjPower, tpow.QualityAdjPower) {
+			return xerrors.Errorf("miner created a block but was not a winner")
+		}
+
+		return nil
+	})
+
 	blockSigCheck := async.Err(func() error {
-		if err := sigs.CheckBlockSignature(h, ctx, waddr); err != nil {
+		if err := sigs.CheckBlockSignature(ctx, h, waddr); err != nil {
 			return xerrors.Errorf("check block signature failed: %w", err)
 		}
 		return nil
 	})
 
+	beaconValuesCheck := async.Err(func() error {
+		if os.Getenv("LOTUS_IGNORE_DRAND") == "_yes_" {
+			return nil
+		}
+
+		if err := beacon.ValidateBlockValues(syncer.beacon, h, *prevBeacon); err != nil {
+			return xerrors.Errorf("failed to validate blocks random beacon values: %w", err)
+		}
+		return nil
+	})
+
 	tktsCheck := async.Err(func() error {
-		vrfBase := baseTs.MinTicket().VRFProof
+		buf := new(bytes.Buffer)
+		if err := h.Miner.MarshalCBOR(buf); err != nil {
+			return xerrors.Errorf("failed to marshal miner address to cbor: %w", err)
+		}
 
-		err := gen.VerifyVRF(ctx, waddr, h.Miner, gen.DSepTicket, vrfBase, h.Ticket.VRFProof)
+		beaconBase := *prevBeacon
+		if len(h.BeaconEntries) == 0 {
+			buf.Write(baseTs.MinTicket().VRFProof)
+		} else {
+			beaconBase = h.BeaconEntries[len(h.BeaconEntries)-1]
+		}
 
+		vrfBase, err := store.DrawRandomness(beaconBase.Data, crypto.DomainSeparationTag_TicketProduction, h.Height-build.TicketRandomnessLookback, buf.Bytes())
+		if err != nil {
+			return xerrors.Errorf("failed to compute vrf base for ticket: %w", err)
+		}
+
+		err = VerifyElectionPoStVRF(ctx, waddr, vrfBase, h.Ticket.VRFProof)
 		if err != nil {
 			return xerrors.Errorf("validating block tickets failed: %w", err)
 		}
 		return nil
 	})
 
-	eproofCheck := async.Err(func() error {
-		if err := syncer.VerifyElectionPoStProof(ctx, h, baseTs, waddr); err != nil {
+	wproofCheck := async.Err(func() error {
+		if err := syncer.VerifyWinningPoStProof(ctx, h, *prevBeacon, lbst, waddr); err != nil {
 			return xerrors.Errorf("invalid election post: %w", err)
 		}
 		return nil
@@ -639,7 +819,8 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		minerCheck,
 		tktsCheck,
 		blockSigCheck,
-		eproofCheck,
+		beaconValuesCheck,
+		wproofCheck,
 		winnerCheck,
 		msgsCheck,
 	}
@@ -650,65 +831,87 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 			merr = multierror.Append(merr, err)
 		}
 	}
+	if merr != nil {
+		mulErr := merr.(*multierror.Error)
+		mulErr.ErrorFormat = func(es []error) string {
+			if len(es) == 1 {
+				return fmt.Sprintf("1 error occurred:\n\t* %+v\n\n", es[0])
+			}
 
-	return merr
-}
+			points := make([]string, len(es))
+			for i, err := range es {
+				points[i] = fmt.Sprintf("* %+v", err)
+			}
 
-func (syncer *Syncer) VerifyElectionPoStProof(ctx context.Context, h *types.BlockHeader, baseTs *types.TipSet, waddr address.Address) error {
-	rand, err := syncer.sm.ChainStore().GetRandomness(ctx, baseTs.Cids(), int64(h.Height-build.EcRandomnessLookback))
-	if err != nil {
-		return xerrors.Errorf("failed to get randomness for verifying election proof: %w", err)
-	}
-
-	if err := VerifyElectionPoStVRF(ctx, h.EPostProof.PostRand, rand, waddr, h.Miner); err != nil {
-		return xerrors.Errorf("checking eproof failed: %w", err)
-	}
-
-	ssize, err := stmgr.GetMinerSectorSize(ctx, syncer.sm, baseTs, h.Miner)
-	if err != nil {
-		return xerrors.Errorf("failed to get sector size for miner: %w", err)
-	}
-
-	var winners []sectorbuilder.EPostCandidate
-	for _, t := range h.EPostProof.Candidates {
-		var partial [32]byte
-		copy(partial[:], t.Partial)
-		winners = append(winners, sectorbuilder.EPostCandidate{
-			PartialTicket:        partial,
-			SectorID:             t.SectorID,
-			SectorChallengeIndex: t.ChallengeIndex,
-		})
-	}
-
-	if len(winners) == 0 {
-		return xerrors.Errorf("no candidates")
-	}
-
-	sectorInfo, err := stmgr.GetSectorsForElectionPost(ctx, syncer.sm, baseTs, h.Miner)
-	if err != nil {
-		return xerrors.Errorf("getting election post sector set: %w", err)
-	}
-
-	if build.InsecurePoStValidation {
-		if string(h.EPostProof.Proof) == "valid proof" {
-			return nil
+			return fmt.Sprintf(
+				"%d errors occurred:\n\t%s\n\n",
+				len(es), strings.Join(points, "\n\t"))
 		}
-		return xerrors.Errorf("[TESTING] election post was invalid")
-	}
-	hvrf := sha256.Sum256(h.EPostProof.PostRand)
-
-	ok, err := sectorbuilder.ProofVerifier.VerifyElectionPost(ctx, ssize, *sectorInfo, hvrf[:], h.EPostProof.Proof, winners, h.Miner)
-	if err != nil {
-		return xerrors.Errorf("failed to verify election post: %w", err)
 	}
 
-	if !ok {
-		return xerrors.Errorf("election post was invalid")
+	if err := syncer.store.MarkBlockAsValidated(ctx, b.Cid()); err != nil {
+		return xerrors.Errorf("caching block validation %s: %w", b.Cid(), err)
 	}
 
 	return nil
 }
 
+func (syncer *Syncer) VerifyWinningPoStProof(ctx context.Context, h *types.BlockHeader, prevBeacon types.BeaconEntry, lbst cid.Cid, waddr address.Address) error {
+	if build.InsecurePoStValidation {
+		if len(h.WinPoStProof) == 0 {
+			return xerrors.Errorf("[TESTING] No winning post proof given")
+		}
+
+		if string(h.WinPoStProof[0].ProofBytes) == "valid proof" {
+			return nil
+		}
+		return xerrors.Errorf("[TESTING] winning post was invalid")
+	}
+
+	buf := new(bytes.Buffer)
+	if err := h.Miner.MarshalCBOR(buf); err != nil {
+		return xerrors.Errorf("failed to marshal miner address: %w", err)
+	}
+
+	rbase := prevBeacon
+	if len(h.BeaconEntries) > 0 {
+		rbase = h.BeaconEntries[len(h.BeaconEntries)-1]
+	}
+
+	rand, err := store.DrawRandomness(rbase.Data, crypto.DomainSeparationTag_WinningPoStChallengeSeed, h.Height, buf.Bytes())
+	if err != nil {
+		return xerrors.Errorf("failed to get randomness for verifying winningPost proof: %w", err)
+	}
+
+	mid, err := address.IDFromAddress(h.Miner)
+	if err != nil {
+		return xerrors.Errorf("failed to get ID from miner address %s: %w", h.Miner, err)
+	}
+
+	sectors, err := stmgr.GetSectorsForWinningPoSt(ctx, syncer.verifier, syncer.sm, lbst, h.Miner, rand)
+	if err != nil {
+		return xerrors.Errorf("getting winning post sector set: %w", err)
+	}
+
+	ok, err := ffiwrapper.ProofVerifier.VerifyWinningPoSt(ctx, abi.WinningPoStVerifyInfo{
+		Randomness:        rand,
+		Proofs:            h.WinPoStProof,
+		ChallengedSectors: sectors,
+		Prover:            abi.ActorID(mid),
+	})
+	if err != nil {
+		return xerrors.Errorf("failed to verify election post: %w", err)
+	}
+
+	if !ok {
+		log.Errorf("invalid winning post (%x; %v)", rand, sectors)
+		return xerrors.Errorf("winning post was invalid")
+	}
+
+	return nil
+}
+
+// TODO: We should extract this somewhere else and make the message pool and miner use the same logic
 func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock, baseTs *types.TipSet) error {
 	{
 		var sigCids []cid.Cid // this is what we get for people not wanting the marshalcbor method on the cid type
@@ -731,31 +934,41 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 	}
 
 	nonces := make(map[address.Address]uint64)
-	balances := make(map[address.Address]types.BigInt)
 
 	stateroot, _, err := syncer.sm.TipSetState(ctx, baseTs)
 	if err != nil {
 		return err
 	}
 
-	cst := hamt.CSTFromBstore(syncer.store.Blockstore())
+	cst := cbor.NewCborStore(syncer.store.Blockstore())
 	st, err := state.LoadStateTree(cst, stateroot)
 	if err != nil {
 		return xerrors.Errorf("failed to load base state tree: %w", err)
 	}
 
-	checkMsg := func(m *types.Message) error {
-		if m.To == address.Undef {
-			return xerrors.New("'To' address cannot be empty")
+	checkMsg := func(msg types.ChainMsg) error {
+		m := msg.VMMessage()
+
+		// Phase 1: syntactic validation, as defined in the spec
+		minGas := vm.PricelistByEpoch(baseTs.Height()).OnChainMessage(msg.ChainLength())
+		if err := m.ValidForBlockInclusion(minGas.Total()); err != nil {
+			return err
 		}
 
+		// Phase 2: (Partial) semantic validation:
+		// the sender exists and is an account actor, and the nonces make sense
 		if _, ok := nonces[m.From]; !ok {
+			// `GetActor` does not validate that this is an account actor.
 			act, err := st.GetActor(m.From)
 			if err != nil {
 				return xerrors.Errorf("failed to get actor: %w", err)
 			}
+
+			// redundant check
+			if !act.IsAccountActor() {
+				return xerrors.New("Sender must be an account actor")
+			}
 			nonces[m.From] = act.Nonce
-			balances[m.From] = act.Balance
 		}
 
 		if nonces[m.From] != m.Nonce {
@@ -763,15 +976,9 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 		}
 		nonces[m.From]++
 
-		if balances[m.From].LessThan(m.RequiredFunds()) {
-			return xerrors.Errorf("not enough funds for message execution")
-		}
-
-		balances[m.From] = types.BigSub(balances[m.From], m.RequiredFunds())
 		return nil
 	}
 
-	bs := amt.WrapBlockstore(syncer.store.Blockstore())
 	var blsCids []cbg.CBORMarshaler
 
 	for i, m := range b.BlsMessages {
@@ -785,10 +992,12 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 
 	var secpkCids []cbg.CBORMarshaler
 	for i, m := range b.SecpkMessages {
-		if err := checkMsg(&m.Message); err != nil {
+		if err := checkMsg(m); err != nil {
 			return xerrors.Errorf("block had invalid secpk message at index %d: %w", i, err)
 		}
 
+		// `From` being an account actor is only validated inside the `vm.ResolveToKeyAddr` call
+		// in `StateManager.ResolveToKeyAddress` here (and not in `checkMsg`).
 		kaddr, err := syncer.sm.ResolveToKeyAddress(ctx, m.Message.From, baseTs)
 		if err != nil {
 			return xerrors.Errorf("failed to resolve key addr: %w", err)
@@ -802,17 +1011,17 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 		secpkCids = append(secpkCids, &c)
 	}
 
-	bmroot, err := amt.FromArray(bs, blsCids)
+	bmroot, err := amt.FromArray(ctx, cst, blsCids)
 	if err != nil {
 		return xerrors.Errorf("failed to build amt from bls msg cids: %w", err)
 	}
 
-	smroot, err := amt.FromArray(bs, secpkCids)
+	smroot, err := amt.FromArray(ctx, cst, secpkCids)
 	if err != nil {
 		return xerrors.Errorf("failed to build amt from bls msg cids: %w", err)
 	}
 
-	mrcid, err := bs.Put(&types.MsgMeta{
+	mrcid, err := cst.Put(ctx, &types.MsgMeta{
 		BlsMessages:   bmroot,
 		SecpkMessages: smroot,
 	})
@@ -827,30 +1036,21 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 	return nil
 }
 
-func (syncer *Syncer) verifyBlsAggregate(ctx context.Context, sig types.Signature, msgs []cid.Cid, pubks []bls.PublicKey) error {
+func (syncer *Syncer) verifyBlsAggregate(ctx context.Context, sig *crypto.Signature, msgs []cid.Cid, pubks []bls.PublicKey) error {
 	_, span := trace.StartSpan(ctx, "syncer.verifyBlsAggregate")
 	defer span.End()
 	span.AddAttributes(
 		trace.Int64Attribute("msgCount", int64(len(msgs))),
 	)
 
-	var wg sync.WaitGroup
-
-	digests := make([]bls.Digest, len(msgs))
-	for i := 0; i < 10; i++ {
-		wg.Add(1)
-		go func(w int) {
-			defer wg.Done()
-			for j := 0; (j*10)+w < len(msgs); j++ {
-				digests[j*10+w] = bls.Hash(bls.Message(msgs[j*10+w].Bytes()))
-			}
-		}(i)
+	bmsgs := make([]bls.Message, len(msgs))
+	for i, m := range msgs {
+		bmsgs[i] = m.Bytes()
 	}
-	wg.Wait()
 
 	var bsig bls.Signature
 	copy(bsig[:], sig.Data)
-	if !bls.Verify(&bsig, digests, pubks) {
+	if !bls.HashVerify(&bsig, bmsgs, pubks) {
 		return xerrors.New("bls aggregate signature failed to verify")
 	}
 
@@ -867,6 +1067,39 @@ func extractSyncState(ctx context.Context) *SyncerState {
 	return nil
 }
 
+// collectHeaders collects the headers from the blocks between any two tipsets.
+//
+// `from` is the heaviest/projected/target tipset we have learned about, and
+// `to` is usually an anchor tipset we already have in our view of the chain
+// (which could be the genesis).
+//
+// collectHeaders checks if portions of the chain are in our ChainStore; falling
+// down to the network to retrieve the missing parts. If during the process, any
+// portion we receive is in our denylist (bad list), we short-circuit.
+//
+// {hint/naming}: `from` and `to` is in inverse order. `from` is the highest,
+// and `to` is the lowest. This method traverses the chain backwards.
+//
+// {hint/usage}: This is used by collectChain, which is in turn called from the
+// main Sync method (Syncer#Sync), so it's a pretty central method.
+//
+// {hint/logic}: The logic of this method is as follows:
+//
+//  1. Check that the from tipset is not linked to a parent block known to be
+//     bad.
+//  2. Check the consistency of beacon entries in the from tipset. We check
+//     total equality of the BeaconEntries in each block.
+//  3. Travers the chain backwards, for each tipset:
+//  	3a. Load it from the chainstore; if found, it move on to its parent.
+//      3b. Query our peers via BlockSync in batches, requesting up to a
+//      maximum of 500 tipsets every time.
+//
+// Once we've concluded, if we find a mismatching tipset at the height where the
+// anchor tipset should be, we are facing a fork, and we invoke Syncer#syncFork
+// to resolve it. Refer to the godocs there.
+//
+// All throughout the process, we keep checking if the received blocks are in
+// the deny list, and short-circuit the process if so.
 func (syncer *Syncer) collectHeaders(ctx context.Context, from *types.TipSet, to *types.TipSet) ([]*types.TipSet, error) {
 	ctx, span := trace.StartSpan(ctx, "collectHeaders")
 	defer span.End()
@@ -877,12 +1110,44 @@ func (syncer *Syncer) collectHeaders(ctx context.Context, from *types.TipSet, to
 		trace.Int64Attribute("toHeight", int64(to.Height())),
 	)
 
+	markBad := func(fmts string, args ...interface{}) {
+		for _, b := range from.Cids() {
+			syncer.bad.Add(b, fmt.Sprintf(fmts, args...))
+		}
+	}
+
+	// Check if the parents of the from block are in the denylist.
+	// i.e. if a fork of the chain has been requested that we know to be bad.
 	for _, pcid := range from.Parents().Cids() {
 		if reason, ok := syncer.bad.Has(pcid); ok {
-			for _, b := range from.Cids() {
-				syncer.bad.Add(b, fmt.Sprintf("linked to %s", pcid))
-			}
+			markBad("linked to %s", pcid)
 			return nil, xerrors.Errorf("chain linked to block marked previously as bad (%s, %s) (reason: %s)", from.Cids(), pcid, reason)
+		}
+	}
+
+	{
+		// ensure consistency of beacon entires
+		targetBE := from.Blocks()[0].BeaconEntries
+		sorted := sort.SliceIsSorted(targetBE, func(i, j int) bool {
+			return targetBE[i].Round < targetBE[j].Round
+		})
+		if !sorted {
+			syncer.bad.Add(from.Cids()[0], "wrong order of beacon entires")
+			return nil, xerrors.Errorf("wrong order of beacon entires")
+		}
+
+		for _, bh := range from.Blocks()[1:] {
+			if len(targetBE) != len(bh.BeaconEntries) {
+				// cannot mark bad, I think @Kubuxu
+				return nil, xerrors.Errorf("tipset contained different number for beacon entires")
+			}
+			for i, be := range bh.BeaconEntries {
+				if targetBE[i].Round != be.Round || !bytes.Equal(targetBE[i].Data, be.Data) {
+					// cannot mark bad, I think @Kubuxu
+					return nil, xerrors.Errorf("tipset contained different beacon entires")
+				}
+			}
+
 		}
 	}
 
@@ -923,8 +1188,8 @@ loop:
 		}
 
 		// NB: GetBlocks validates that the blocks are in-fact the ones we
-		// requested, and that they are correctly linked to eachother. It does
-		// not validate any state transitions
+		// requested, and that they are correctly linked to one another. It does
+		// not validate any state transitions.
 		window := 500
 		if gap := int(blockSet[len(blockSet)-1].Height() - untilHeight); gap < window {
 			window = gap
@@ -965,13 +1230,14 @@ loop:
 		at = blks[len(blks)-1].Parents()
 	}
 
-	// We have now ascertained that this is *not* a 'fast forward'
 	if !types.CidArrsEqual(blockSet[len(blockSet)-1].Parents().Cids(), to.Cids()) {
 		last := blockSet[len(blockSet)-1]
 		if last.Parents() == to.Parents() {
 			// common case: receiving a block thats potentially part of the same tipset as our best block
 			return blockSet, nil
 		}
+
+		// We have now ascertained that this is *not* a 'fast forward'
 
 		log.Warnf("(fork detected) synced header chain (%s - %d) does not link to our best block (%s - %d)", from.Cids(), from.Height(), to.Cids(), to.Height())
 		fork, err := syncer.syncFork(ctx, last, to)
@@ -994,8 +1260,14 @@ loop:
 
 var ErrForkTooLong = fmt.Errorf("fork longer than threshold")
 
+// syncFork tries to obtain the chain fragment that links a fork into a common
+// ancestor in our view of the chain.
+//
+// If the fork is too long (build.ForkLengthThreshold), we add the entire subchain to the
+// denylist. Else, we find the common ancestor, and add the missing chain
+// fragment until the fork point to the returned []TipSet.
 func (syncer *Syncer) syncFork(ctx context.Context, from *types.TipSet, to *types.TipSet) ([]*types.TipSet, error) {
-	tips, err := syncer.Bsync.GetBlocks(ctx, from.Parents(), build.ForkLengthThreshold)
+	tips, err := syncer.Bsync.GetBlocks(ctx, from.Parents(), int(build.ForkLengthThreshold))
 	if err != nil {
 		return nil, err
 	}
@@ -1073,25 +1345,35 @@ func (syncer *Syncer) iterFullTipsets(ctx context.Context, headers []*types.TipS
 			batchSize = i
 		}
 
-		next := headers[i-batchSize]
-		bstips, err := syncer.Bsync.GetChainMessages(ctx, next, uint64(batchSize+1))
-		if err != nil {
-			return xerrors.Errorf("message processing failed: %w", err)
+		nextI := (i + 1) - batchSize // want to fetch batchSize values, 'i' points to last one we want to fetch, so its 'inclusive' of our request, thus we need to add one to our request start index
+
+		var bstout []*blocksync.BSTipSet
+		for len(bstout) < batchSize {
+			next := headers[nextI]
+
+			nreq := batchSize - len(bstout)
+			bstips, err := syncer.Bsync.GetChainMessages(ctx, next, uint64(nreq))
+			if err != nil {
+				return xerrors.Errorf("message processing failed: %w", err)
+			}
+
+			bstout = append(bstout, bstips...)
+			nextI += len(bstips)
 		}
 
-		for bsi := 0; bsi < len(bstips); bsi++ {
+		for bsi := 0; bsi < len(bstout); bsi++ {
 			// temp storage so we don't persist data we dont want to
 			ds := dstore.NewMapDatastore()
 			bs := bstore.NewBlockstore(ds)
-			blks := amt.WrapBlockstore(bs)
+			blks := cbor.NewCborStore(bs)
 
 			this := headers[i-bsi]
-			bstip := bstips[len(bstips)-(bsi+1)]
+			bstip := bstout[len(bstout)-(bsi+1)]
 			fts, err := zipTipSetAndMessages(blks, this, bstip.BlsMessages, bstip.SecpkMessages, bstip.BlsMsgIncludes, bstip.SecpkMsgIncludes)
 			if err != nil {
 				log.Warnw("zipping failed", "error", err, "bsi", bsi, "i", i,
 					"height", this.Height(), "bstip-height", bstip.Blocks[0].Height,
-					"bstips", bstips, "next-height", i+batchSize)
+					"next-height", i+batchSize)
 				return xerrors.Errorf("message processing failed: %w", err)
 			}
 
@@ -1107,7 +1389,7 @@ func (syncer *Syncer) iterFullTipsets(ctx context.Context, headers []*types.TipS
 				return xerrors.Errorf("message processing failed: %w", err)
 			}
 		}
-		i -= windowSize
+		i -= batchSize
 	}
 
 	return nil
@@ -1122,8 +1404,8 @@ func persistMessages(bs bstore.Blockstore, bst *blocksync.BSTipSet) error {
 		}
 	}
 	for _, m := range bst.SecpkMessages {
-		if m.Signature.Type != types.KTSecp256k1 {
-			return xerrors.Errorf("unknown signature type on message %s: %q", m.Cid(), m.Signature.TypeCode)
+		if m.Signature.Type != crypto.SigTypeSecp256k1 {
+			return xerrors.Errorf("unknown signature type on message %s: %q", m.Cid(), m.Signature.Type)
 		}
 		//log.Infof("putting secp256k1 message: %s", m.Cid())
 		if _, err := store.PutMessage(bs, m); err != nil {
@@ -1135,6 +1417,25 @@ func persistMessages(bs bstore.Blockstore, bst *blocksync.BSTipSet) error {
 	return nil
 }
 
+// collectChain tries to advance our view of the chain to the purported head.
+//
+// It goes through various stages:
+//
+//  1. StageHeaders: we proceed in the sync process by requesting block headers
+//     from our peers, moving back from their heads, until we reach a tipset
+//     that we have in common (such a common tipset must exist, thought it may
+//     simply be the genesis block).
+//
+//     If the common tipset is our head, we treat the sync as a "fast-forward",
+//     else we must drop part of our chain to connect to the peer's head
+//     (referred to as "forking").
+//
+//	2. StagePersistHeaders: now that we've collected the missing headers,
+//     augmented by those on the other side of a fork, we persist them to the
+//     BlockStore.
+//
+//  3. StageMessages: having acquired the headers and found a common tipset,
+//     we then move forward, requesting the full blocks, including the messages.
 func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet) error {
 	ctx, span := trace.StartSpan(ctx, "collectChain")
 	defer span.End()
@@ -1156,7 +1457,7 @@ func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet) error 
 
 	ss.SetStage(api.StagePersistHeaders)
 
-	toPersist := make([]*types.BlockHeader, 0, len(headers)*build.BlocksPerEpoch)
+	toPersist := make([]*types.BlockHeader, 0, len(headers)*int(build.BlocksPerEpoch))
 	for _, ts := range headers {
 		toPersist = append(toPersist, ts.Blocks()...)
 	}
@@ -1181,12 +1482,11 @@ func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet) error 
 	return nil
 }
 
-func VerifyElectionPoStVRF(ctx context.Context, evrf []byte, rand []byte, worker, miner address.Address) error {
-	if err := gen.VerifyVRF(ctx, worker, miner, gen.DSepElectionPost, rand, evrf); err != nil {
-		return xerrors.Errorf("failed to verify post_randomness vrf: %w", err)
+func VerifyElectionPoStVRF(ctx context.Context, worker address.Address, rand []byte, evrf []byte) error {
+	if build.InsecurePoStValidation {
+		return nil
 	}
-
-	return nil
+	return gen.VerifyVRF(ctx, worker, rand, evrf)
 }
 
 func (syncer *Syncer) State() []SyncerState {
@@ -1197,10 +1497,42 @@ func (syncer *Syncer) State() []SyncerState {
 	return out
 }
 
+// MarkBad manually adds a block to the "bad blocks" cache.
 func (syncer *Syncer) MarkBad(blk cid.Cid) {
 	syncer.bad.Add(blk, "manually marked bad")
 }
 
 func (syncer *Syncer) CheckBadBlockCache(blk cid.Cid) (string, bool) {
 	return syncer.bad.Has(blk)
+}
+func (syncer *Syncer) getLatestBeaconEntry(_ context.Context, ts *types.TipSet) (*types.BeaconEntry, error) {
+	cur := ts
+	for i := 0; i < 20; i++ {
+		cbe := cur.Blocks()[0].BeaconEntries
+		if len(cbe) > 0 {
+			return &cbe[len(cbe)-1], nil
+		}
+
+		if cur.Height() == 0 {
+			return nil, xerrors.Errorf("made it back to genesis block without finding beacon entry")
+		}
+
+		next, err := syncer.store.LoadTipSet(cur.Parents())
+		if err != nil {
+			return nil, xerrors.Errorf("failed to load parents when searching back for latest beacon entry: %w", err)
+		}
+		cur = next
+	}
+
+	return nil, xerrors.Errorf("found NO beacon entries in the 20 blocks prior to given tipset")
+}
+
+func (syncer *Syncer) IsEpochBeyondCurrMax(epoch abi.ChainEpoch) bool {
+	g, err := syncer.store.GetGenesis()
+	if err != nil {
+		return false
+	}
+
+	now := uint64(time.Now().Unix())
+	return epoch > (abi.ChainEpoch((now-g.Timestamp)/build.BlockDelay) + MaxHeightDrift)
 }

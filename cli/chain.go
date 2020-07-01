@@ -7,13 +7,24 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/go-address"
+	cborutil "github.com/filecoin-project/go-cbor-util"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/account"
+	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	cid "github.com/ipfs/go-cid"
+	"github.com/urfave/cli/v2"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
-	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -27,6 +38,7 @@ var chainCmd = &cli.Command{
 		chainHeadCmd,
 		chainGetBlock,
 		chainReadObjCmd,
+		chainStatObjCmd,
 		chainGetMsgCmd,
 		chainSetHeadCmd,
 		chainListCmd,
@@ -61,8 +73,9 @@ var chainHeadCmd = &cli.Command{
 }
 
 var chainGetBlock = &cli.Command{
-	Name:  "getblock",
-	Usage: "Get a block and print its details",
+	Name:      "getblock",
+	Usage:     "Get a block and print its details",
+	ArgsUsage: "[blockCid]",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:  "raw",
@@ -151,8 +164,9 @@ func apiMsgCids(in []api.Message) []cid.Cid {
 }
 
 var chainReadObjCmd = &cli.Command{
-	Name:  "read-obj",
-	Usage: "Read the raw bytes of an object",
+	Name:      "read-obj",
+	Usage:     "Read the raw bytes of an object",
+	ArgsUsage: "[objectCid]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -176,9 +190,57 @@ var chainReadObjCmd = &cli.Command{
 	},
 }
 
+var chainStatObjCmd = &cli.Command{
+	Name:      "stat-obj",
+	Usage:     "Collect size and ipld link counts for objs",
+	ArgsUsage: "[cid]",
+	Description: `Collect object size and ipld link count for an object.
+
+   When a base is provided it will be walked first, and all links visisted
+   will be ignored when the passed in object is walked.
+`,
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "base",
+			Usage: "ignore links found in this obj",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		obj, err := cid.Decode(cctx.Args().First())
+		if err != nil {
+			return fmt.Errorf("failed to parse cid input: %s", err)
+		}
+
+		base := cid.Undef
+		if cctx.IsSet("base") {
+			base, err = cid.Decode(cctx.String("base"))
+			if err != nil {
+				return err
+			}
+		}
+
+		stats, err := api.ChainStatObj(ctx, obj, base)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Links: %d\n", stats.Links)
+		fmt.Printf("Size: %s (%d)\n", types.SizeStr(types.NewInt(stats.Size)), stats.Size)
+		return nil
+	},
+}
+
 var chainGetMsgCmd = &cli.Command{
-	Name:  "getmessage",
-	Usage: "Get and print a message by its cid",
+	Name:      "getmessage",
+	Usage:     "Get and print a message by its cid",
+	ArgsUsage: "[messageCid]",
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Args().Present() {
 			return fmt.Errorf("must pass a cid of a message to get")
@@ -224,8 +286,9 @@ var chainGetMsgCmd = &cli.Command{
 }
 
 var chainSetHeadCmd = &cli.Command{
-	Name:  "sethead",
-	Usage: "manually set the local nodes head tipset (Caution: normally only used for recovery)",
+	Name:      "sethead",
+	Usage:     "manually set the local nodes head tipset (Caution: normally only used for recovery)",
+	ArgsUsage: "[tipsetkey]",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:  "genesis",
@@ -250,7 +313,7 @@ var chainSetHeadCmd = &cli.Command{
 			ts, err = api.ChainGetGenesis(ctx)
 		}
 		if ts == nil && cctx.IsSet("epoch") {
-			ts, err = api.ChainGetTipSetByHeight(ctx, cctx.Uint64("epoch"), types.EmptyTSK)
+			ts, err = api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(cctx.Uint64("epoch")), types.EmptyTSK)
 		}
 		if ts == nil {
 			ts, err = parseTipSet(api, ctx, cctx.Args().Slice())
@@ -313,7 +376,7 @@ var chainListCmd = &cli.Command{
 		var head *types.TipSet
 
 		if cctx.IsSet("height") {
-			head, err = api.ChainGetTipSetByHeight(ctx, cctx.Uint64("height"), types.EmptyTSK)
+			head, err = api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(cctx.Uint64("height")), types.EmptyTSK)
 		} else {
 			head, err = api.ChainHead(ctx)
 		}
@@ -350,17 +413,51 @@ var chainListCmd = &cli.Command{
 }
 
 var chainGetCmd = &cli.Command{
-	Name:  "get",
-	Usage: "Get chain DAG node by path",
+	Name:      "get",
+	Usage:     "Get chain DAG node by path",
+	ArgsUsage: "[path]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "as-type",
+			Usage: "specify type to interpret output as",
+		},
+		&cli.BoolFlag{
+			Name:  "verbose",
+			Value: false,
+		},
+		&cli.StringFlag{
+			Name:  "tipset",
+			Usage: "specify tipset for /pstate (pass comma separated array of cids)",
+		},
+	},
 	Description: `Get ipld node under a specified path:
 
    lotus chain get /ipfs/[cid]/some/path
 
+   Path prefixes:
+   - /ipfs/[cid], /ipld/[cid] - traverse IPLD path
+   - /pstate - traverse from head.ParentStateRoot
+
    Note:
    You can use special path elements to traverse through some data structures:
    - /ipfs/[cid]/@H:elem - get 'elem' from hamt
+   - /ipfs/[cid]/@Hi:123 - get varint elem 123 from hamt
+   - /ipfs/[cid]/@Hu:123 - get uvarint elem 123 from hamt
    - /ipfs/[cid]/@Ha:t01 - get element under Addr(t01).Bytes
-   - /ipfs/[cid]/@A:10 - get 10th amt element
+   - /ipfs/[cid]/@A:10   - get 10th amt element
+   - .../@Ha:t01/@state  - get pretty map-based actor state
+
+   List of --as-type types:
+   - raw
+   - block
+   - message
+   - smessage, signedmessage
+   - actor
+   - amt
+   - hamt-epoch
+   - hamt-address
+   - cronevent
+   - account-state
 `,
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -370,18 +467,174 @@ var chainGetCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		nd, err := api.ChainGetNode(ctx, cctx.Args().First())
+		p := path.Clean(cctx.Args().First())
+		if strings.HasPrefix(p, "/pstate") {
+			p = p[len("/pstate"):]
+
+			ts, err := LoadTipSet(ctx, cctx, api)
+			if err != nil {
+				return err
+			}
+
+			if ts == nil {
+				ts, err = api.ChainHead(ctx)
+				if err != nil {
+					return err
+				}
+			}
+			p = "/ipfs/" + ts.ParentState().String() + p
+			if cctx.Bool("verbose") {
+				fmt.Println(p)
+			}
+		}
+
+		obj, err := api.ChainGetNode(ctx, p)
 		if err != nil {
 			return err
 		}
 
-		b, err := json.MarshalIndent(nd, "", "\t")
+		t := strings.ToLower(cctx.String("as-type"))
+		if t == "" {
+			b, err := json.MarshalIndent(obj.Obj, "", "\t")
+			if err != nil {
+				return err
+			}
+			fmt.Println(string(b))
+			return nil
+		}
+
+		var cbu cbg.CBORUnmarshaler
+		switch t {
+		case "raw":
+			cbu = nil
+		case "block":
+			cbu = new(types.BlockHeader)
+		case "message":
+			cbu = new(types.Message)
+		case "smessage", "signedmessage":
+			cbu = new(types.SignedMessage)
+		case "actor":
+			cbu = new(types.Actor)
+		case "amt":
+			return handleAmt(ctx, api, obj.Cid)
+		case "hamt-epoch":
+			return handleHamtEpoch(ctx, api, obj.Cid)
+		case "hamt-address":
+			return handleHamtAddress(ctx, api, obj.Cid)
+		case "cronevent":
+			cbu = new(power.CronEvent)
+		case "account-state":
+			cbu = new(account.State)
+		case "miner-state":
+			cbu = new(miner.State)
+		case "power-state":
+			cbu = new(power.State)
+		case "market-state":
+			cbu = new(market.State)
+		default:
+			return fmt.Errorf("unknown type: %q", t)
+		}
+
+		raw, err := api.ChainReadObj(ctx, obj.Cid)
+		if err != nil {
+			return err
+		}
+
+		if cbu == nil {
+			fmt.Printf("%x", raw)
+			return nil
+		}
+
+		if err := cbu.UnmarshalCBOR(bytes.NewReader(raw)); err != nil {
+			return fmt.Errorf("failed to unmarshal as %q", t)
+		}
+
+		b, err := json.MarshalIndent(cbu, "", "\t")
 		if err != nil {
 			return err
 		}
 		fmt.Println(string(b))
 		return nil
 	},
+}
+
+type apiIpldStore struct {
+	ctx context.Context
+	api api.FullNode
+}
+
+func (ht *apiIpldStore) Context() context.Context {
+	return ht.ctx
+}
+
+func (ht *apiIpldStore) Get(ctx context.Context, c cid.Cid, out interface{}) error {
+	raw, err := ht.api.ChainReadObj(ctx, c)
+	if err != nil {
+		return err
+	}
+
+	cu, ok := out.(cbg.CBORUnmarshaler)
+	if ok {
+		if err := cu.UnmarshalCBOR(bytes.NewReader(raw)); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	return fmt.Errorf("Object does not implement CBORUnmarshaler")
+}
+
+func (ht *apiIpldStore) Put(ctx context.Context, v interface{}) (cid.Cid, error) {
+	panic("No mutations allowed")
+}
+
+func handleAmt(ctx context.Context, api api.FullNode, r cid.Cid) error {
+	s := &apiIpldStore{ctx, api}
+	mp, err := adt.AsArray(s, r)
+	if err != nil {
+		return err
+	}
+
+	return mp.ForEach(nil, func(key int64) error {
+		fmt.Printf("%d\n", key)
+		return nil
+	})
+}
+
+func handleHamtEpoch(ctx context.Context, api api.FullNode, r cid.Cid) error {
+	s := &apiIpldStore{ctx, api}
+	mp, err := adt.AsMap(s, r)
+	if err != nil {
+		return err
+	}
+
+	return mp.ForEach(nil, func(key string) error {
+		ik, err := adt.ParseIntKey(key)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("%d\n", ik)
+		return nil
+	})
+}
+
+func handleHamtAddress(ctx context.Context, api api.FullNode, r cid.Cid) error {
+	s := &apiIpldStore{ctx, api}
+	mp, err := adt.AsMap(s, r)
+	if err != nil {
+		return err
+	}
+
+	return mp.ForEach(nil, func(key string) error {
+		addr, err := address.NewFromBytes([]byte(key))
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("%s\n", addr)
+		return nil
+	})
 }
 
 func printTipSet(format string, ts *types.TipSet) {
@@ -407,8 +660,9 @@ func printTipSet(format string, ts *types.TipSet) {
 }
 
 var chainBisectCmd = &cli.Command{
-	Name:  "bisect",
-	Usage: "bisect chain for an event",
+	Name:      "bisect",
+	Usage:     "bisect chain for an event",
+	ArgsUsage: "[minHeight maxHeight path shellCommand <shellCommandArgs (if any)>]",
 	Description: `Bisect the chain state tree:
 
    lotus chain bisect [min height] [max height] '1/2/3/state/path' 'shell command' 'args'
@@ -446,9 +700,9 @@ var chainBisectCmd = &cli.Command{
 
 		subPath := cctx.Args().Get(2)
 
-		highest, err := api.ChainGetTipSetByHeight(ctx, end, types.EmptyTSK)
+		highest, err := api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(end), types.EmptyTSK)
 		if err != nil {
-			return err
+			return xerrors.Errorf("getting end tipset: %w", err)
 		}
 
 		prev := highest.Height()
@@ -460,7 +714,7 @@ var chainBisectCmd = &cli.Command{
 				start = end
 			}
 
-			midTs, err := api.ChainGetTipSetByHeight(ctx, mid, highest.Key())
+			midTs, err := api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(mid), highest.Key())
 			if err != nil {
 				return err
 			}
@@ -473,7 +727,7 @@ var chainBisectCmd = &cli.Command{
 				return err
 			}
 
-			b, err := json.MarshalIndent(nd, "", "\t")
+			b, err := json.MarshalIndent(nd.Obj, "", "\t")
 			if err != nil {
 				return err
 			}
@@ -482,15 +736,32 @@ var chainBisectCmd = &cli.Command{
 			cmd.Stdin = bytes.NewReader(b)
 
 			var out bytes.Buffer
+			var serr bytes.Buffer
+
 			cmd.Stdout = &out
+			cmd.Stderr = &serr
 
 			switch cmd.Run().(type) {
 			case nil:
 				// it's lower
-				end = mid
-				highest = midTs
-				fmt.Println("true")
+				if strings.TrimSpace(out.String()) != "false" {
+					end = mid
+					highest = midTs
+					fmt.Println("true")
+				} else {
+					start = mid
+					fmt.Printf("false (cli)\n")
+				}
 			case *exec.ExitError:
+				if len(serr.String()) > 0 {
+					fmt.Println("error")
+
+					fmt.Printf("> Command: %s\n---->\n", strings.Join(cctx.Args().Slice()[3:], " "))
+					fmt.Println(string(b))
+					fmt.Println("<----")
+					return xerrors.Errorf("error running bisect check: %s", serr.String())
+				}
+
 				start = mid
 				fmt.Println("false")
 			default:
@@ -506,14 +777,15 @@ var chainBisectCmd = &cli.Command{
 				return nil
 			}
 
-			prev = mid
+			prev = abi.ChainEpoch(mid)
 		}
 	},
 }
 
 var chainExportCmd = &cli.Command{
-	Name:  "export",
-	Usage: "export chain to a car file",
+	Name:      "export",
+	Usage:     "export chain to a car file",
+	ArgsUsage: "[outputPath]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name: "tipset",
@@ -535,9 +807,14 @@ var chainExportCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		defer fi.Close()
+		defer func() {
+			err := fi.Close()
+			if err != nil {
+				fmt.Printf("error closing output file: %+v", err)
+			}
+		}()
 
-		ts, err := loadTipSet(ctx, cctx, api)
+		ts, err := LoadTipSet(ctx, cctx, api)
 		if err != nil {
 			return err
 		}
@@ -559,8 +836,19 @@ var chainExportCmd = &cli.Command{
 }
 
 var slashConsensusFault = &cli.Command{
-	Name:  "slash-consensus",
-	Usage: "Report consensus fault",
+	Name:      "slash-consensus",
+	Usage:     "Report consensus fault",
+	ArgsUsage: "[blockCid1 blockCid2]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "miner",
+			Usage: "Miner address",
+		},
+		&cli.StringFlag{
+			Name:  "extra",
+			Usage: "Extra block cid",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -594,19 +882,62 @@ var slashConsensusFault = &cli.Command{
 			return err
 		}
 
-		params, err := actors.SerializeParams(&actors.ArbitrateConsensusFaultParams{
-			Block1: b1,
-			Block2: b2,
-		})
+		bh1, err := cborutil.Dump(b1)
+		if err != nil {
+			return err
+		}
+
+		bh2, err := cborutil.Dump(b2)
+		if err != nil {
+			return err
+		}
+
+		params := miner.ReportConsensusFaultParams{
+			BlockHeader1: bh1,
+			BlockHeader2: bh2,
+		}
+
+		if cctx.String("extra") != "" {
+			cExtra, err := cid.Parse(cctx.String("extra"))
+			if err != nil {
+				return xerrors.Errorf("parsing cid extra: %w", err)
+			}
+
+			bExtra, err := api.ChainGetBlock(ctx, cExtra)
+			if err != nil {
+				return xerrors.Errorf("getting block extra: %w", err)
+			}
+
+			be, err := cborutil.Dump(bExtra)
+			if err != nil {
+				return err
+			}
+
+			params.BlockHeaderExtra = be
+		}
+
+		enc, err := actors.SerializeParams(&params)
+		if err != nil {
+			return err
+		}
+
+		if cctx.String("miner") == "" {
+			return xerrors.Errorf("--miner flag is required")
+		}
+
+		maddr, err := address.NewFromString(cctx.String("miner"))
+		if err != nil {
+			return err
+		}
 
 		msg := &types.Message{
-			To:       actors.StoragePowerAddress,
+			To:       maddr,
 			From:     def,
 			Value:    types.NewInt(0),
 			GasPrice: types.NewInt(1),
-			GasLimit: types.NewInt(10000000),
-			Method:   actors.SPAMethods.ArbitrateConsensusFault,
-			Params:   params,
+			GasLimit: 10000000,
+			Method:   builtin.MethodsMiner.ReportConsensusFault,
+			Params:   enc,
 		}
 
 		smsg, err := api.MpoolPushMessage(ctx, msg)
