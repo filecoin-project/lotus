@@ -202,12 +202,13 @@ type StorageMinerStruct struct {
 
 		PledgeSector func(context.Context) error `perm:"write"`
 
-		SectorsStatus      func(context.Context, abi.SectorNumber) (api.SectorInfo, error) `perm:"read"`
-		SectorsList        func(context.Context) ([]abi.SectorNumber, error)               `perm:"read"`
-		SectorsRefs        func(context.Context) (map[string][]api.SealedRef, error)       `perm:"read"`
-		SectorStartSealing func(context.Context, abi.SectorNumber) error                   `perm:"write"`
-		SectorsUpdate      func(context.Context, abi.SectorNumber, api.SectorState) error  `perm:"admin"`
-		SectorRemove       func(context.Context, abi.SectorNumber) error                   `perm:"admin"`
+		SectorsStatus        func(context.Context, abi.SectorNumber) (api.SectorInfo, error) `perm:"read"`
+		SectorsList          func(context.Context) ([]abi.SectorNumber, error)               `perm:"read"`
+		SectorsRefs          func(context.Context) (map[string][]api.SealedRef, error)       `perm:"read"`
+		SectorStartSealing   func(context.Context, abi.SectorNumber) error                   `perm:"write"`
+		SectorsUpdate        func(context.Context, abi.SectorNumber, api.SectorState) error  `perm:"admin"`
+		SectorRemove         func(context.Context, abi.SectorNumber) error                   `perm:"admin"`
+		SectorMarkForUpgrade func(ctx context.Context, id abi.SectorNumber) error            `perm:"admin"`
 
 		WorkerConnect func(context.Context, string) error                             `perm:"admin"` // TODO: worker perm
 		WorkerStats   func(context.Context) (map[uint64]storiface.WorkerStats, error) `perm:"admin"`
@@ -803,6 +804,10 @@ func (c *StorageMinerStruct) SectorsUpdate(ctx context.Context, id abi.SectorNum
 
 func (c *StorageMinerStruct) SectorRemove(ctx context.Context, number abi.SectorNumber) error {
 	return c.Internal.SectorRemove(ctx, number)
+}
+
+func (c *StorageMinerStruct) SectorMarkForUpgrade(ctx context.Context, number abi.SectorNumber) error {
+	return c.Internal.SectorMarkForUpgrade(ctx, number)
 }
 
 func (c *StorageMinerStruct) WorkerConnect(ctx context.Context, url string) error {
