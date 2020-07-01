@@ -1,4 +1,4 @@
-package main
+package testkit
 
 import (
 	"bytes"
@@ -105,14 +105,13 @@ func (dr *DrandInstance) ctrl() *dnet.ControlClient {
 	return cl
 }
 
-func (dr *DrandInstance) RunDKG(nodes, thr int, timeout string, leader bool, leaderAddr string, beaconOffset int) *key.Group {
+func (dr *DrandInstance) RunDKG(nodes, thr int, period time.Duration, timeout string, leader bool, leaderAddr string, beaconOffset int) *key.Group {
 	cl := dr.ctrl()
-	p := dr.t.DurationParam("drand_period")
 	t, _ := time.ParseDuration(timeout)
 	var grp *drand.GroupPacket
 	var err error
 	if leader {
-		grp, err = cl.InitDKGLeader(nodes, thr, p, t, nil, secretDKG, beaconOffset)
+		grp, err = cl.InitDKGLeader(nodes, thr, period, t, nil, secretDKG, beaconOffset)
 	} else {
 		leader := dnet.CreatePeer(leaderAddr, false)
 		grp, err = cl.InitDKG(leader, nil, secretDKG)
@@ -160,46 +159,45 @@ func (dr *DrandInstance) Resume() {
 	}
 }
 
-func runDrandNode(t *TestEnvironment) error {
-	t.RecordMessage("running drand node")
-	dr, err := prepareDrandNode(t)
-	if err != nil {
-		return err
-	}
+
+func (dr *DrandInstance) RunDefault() error {
+	dr.t.RecordMessage("running drand node")
 	defer dr.Close()
 
-	ctx := context.Background()
-	t.SyncClient.MustSignalAndWait(ctx, stateReady, t.TestInstanceCount)
-
-	if t.IsParamSet("suspend_events") {
-		suspender := statemachine.NewSuspender(dr, t.RecordMessage)
-		suspender.RunEvents(t.StringParam("suspend_events"))
+	if dr.t.IsParamSet("suspend_events") {
+		suspender := statemachine.NewSuspender(dr, dr.t.RecordMessage)
+		suspender.RunEvents(dr.t.StringParam("suspend_events"))
 	}
 
-	t.SyncClient.MustSignalAndWait(ctx, stateDone, t.TestInstanceCount)
+	dr.t.WaitUntilAllDone()
 	return nil
 }
 
-// prepareDrandNode starts a drand instance and runs a DKG with the other members of the composition group.
-// Once the chain is running, the leader publishes the chain info needed by lotus nodes on
-// drandConfigTopic
-func prepareDrandNode(t *TestEnvironment) (*DrandInstance, error) {
+// PrepareDrandInstance starts a drand instance and runs a DKG with the other
+// members of the composition group.
+//
+// Once the chain is running, the leader publishes the chain info needed by
+// lotus nodes on DrandConfigTopic.
+func PrepareDrandInstance(t *TestEnvironment) (*DrandInstance, error) {
+	var (
+		startTime = time.Now()
+		seq       = t.GroupSeq
+		isLeader  = seq == 1
+		nNodes    = t.TestGroupInstanceCount
+
+		myAddr         = t.NetClient.MustGetDataNetworkIP()
+		period         = t.DurationParam("drand_period")
+		threshold      = t.IntParam("drand_threshold")
+		runGossipRelay = t.BooleanParam("drand_gossip_relay")
+
+		beaconOffset = 3
+	)
+
 	ctx, cancel := context.WithTimeout(context.Background(), PrepareDrandTimeout)
 	defer cancel()
 
-	startTime := time.Now()
-
-	seq := t.GroupSeq
-	isLeader := seq == 1
-	nNodes := t.TestGroupInstanceCount
-
-	myAddr := t.NetClient.MustGetDataNetworkIP()
-	threshold := t.IntParam("drand_threshold")
-	runGossipRelay := t.BooleanParam("drand_gossip_relay")
-
-	beaconOffset := 3
-
 	stateDir, err := ioutil.TempDir("/tmp", fmt.Sprintf("drand-%d", t.GroupSeq))
+
 	if err != nil {
 		return nil, err
 	}
@@ -220,6 +218,7 @@ func prepareDrandNode(t *TestEnvironment) (*DrandInstance, error) {
 		PublicAddr  string
 		IsLeader    bool
 	}
+
 	addrTopic := sync.NewTopic("drand-addrs", &NodeAddr{})
 	var publicAddrs []string
 	var leaderAddr string
@@ -229,6 +228,7 @@ func prepareDrandNode(t *TestEnvironment) (*DrandInstance, error) {
 		PublicAddr:  dr.pubAddr,
 		IsLeader:    isLeader,
 	}, ch)
+
 	for i := 0; i < nNodes; i++ {
 		select {
 		case msg := <-ch:
@@ -240,6 +240,7 @@ func prepareDrandNode(t *TestEnvironment) (*DrandInstance, error) {
 			return nil, fmt.Errorf("unable to read drand addrs from sync service: %w", err)
 		}
 	}
+
 	if leaderAddr == "" {
 		return nil, fmt.Errorf("got %d drand addrs, but no leader", len(publicAddrs))
 	}
@@ -270,7 +271,7 @@ func prepareDrandNode(t *TestEnvironment) (*DrandInstance, error) {
 	if !isLeader {
 		time.Sleep(time.Second)
 	}
-	grp := dr.RunDKG(nNodes, threshold, "10s", isLeader, leaderAddr, beaconOffset)
+	grp := dr.RunDKG(nNodes, threshold, period, "10s", isLeader, leaderAddr, beaconOffset)
 	if grp == nil {
 		return nil, fmt.Errorf("drand dkg failed")
 	}
@@ -348,10 +349,12 @@ func prepareDrandNode(t *TestEnvironment) (*DrandInstance, error) {
 			},
 			GossipBootstrap: relayAddrs,
 		}
-		t.DebugSpew("publishing drand config on sync topic: %v", cfg)
-		t.SyncClient.MustPublish(ctx, drandConfigTopic, &cfg)
+		t.DebugSpew("publishing drand config on sync topic: %#v", cfg)
+		t.SyncClient.MustPublish(ctx, DrandConfigTopic, &cfg)
 	}
 
+	// signal that we're ready to start the test
+	t.SyncClient.MustSignalAndWait(ctx, StateReady, t.TestInstanceCount)
 	return &dr, nil
 }
 
@@ -359,7 +362,7 @@ func prepareDrandNode(t *TestEnvironment) (*DrandInstance, error) {
 // you can use the returned dtypes.DrandConfig to override the default production config.
 func waitForDrandConfig(ctx context.Context, client sync.Client) (*DrandRuntimeInfo, error) {
 	ch := make(chan *DrandRuntimeInfo, 1)
-	sub := client.MustSubscribe(ctx, drandConfigTopic, ch)
+	sub := client.MustSubscribe(ctx, DrandConfigTopic, ch)
 	select {
 	case cfg := <-ch:
 		return cfg, nil

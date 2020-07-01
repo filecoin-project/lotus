@@ -1,4 +1,4 @@
-package main
+package testkit
 
 import (
 	"fmt"
