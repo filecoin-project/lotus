@@ -123,6 +123,6 @@ func RandomBeacon(p RandomBeaconParams, _ dtypes.AfterGenesisSet) (beacon.Random
 		return nil, err
 	}
 
-	//return beacon.NewMockBeacon(build.BlockDelay * time.Second)
-	return drand.NewDrandBeacon(gen.Timestamp, build.BlockDelay, p.PubSub, p.DrandConfig)
+	//return beacon.NewMockBeacon(build.BlockDelaySecs * time.Second)
+	return drand.NewDrandBeacon(gen.Timestamp, build.BlockDelaySecs, p.PubSub, p.DrandConfig)
 }
