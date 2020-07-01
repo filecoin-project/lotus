@@ -1,6 +1,8 @@
 package mockstorage
 
 import (
+	"fmt"
+
 	"github.com/filecoin-project/go-address"
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/sector-storage/mock"
@@ -50,6 +52,7 @@ func PreSeal(ssize abi.SectorSize, maddr address.Address, sectors int) (*genesis
 			PieceSize:            abi.PaddedPieceSize(ssize),
 			Client:               maddr,
 			Provider:             maddr,
+			Label:                fmt.Sprintf("%d", i),
 			StartEpoch:           1,
 			EndEpoch:             10000,
 			StoragePricePerEpoch: big.Zero(),
