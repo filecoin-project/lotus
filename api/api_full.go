@@ -437,6 +437,7 @@ type StartDealParams struct {
 	EpochPrice        types.BigInt
 	MinBlocksDuration uint64
 	DealStartEpoch    abi.ChainEpoch
+	VerifiedDeal      bool
 }
 
 type IpldObject struct {
