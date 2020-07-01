@@ -29,7 +29,7 @@ var (
 
 	AllowableClockDriftSecs = uint64(1)
 
-	Finality            = miner.ChainFinalityish
+	Finality            = miner.ChainFinality
 	ForkLengthThreshold = Finality
 
 	SlashablePowerDelay        = 20
