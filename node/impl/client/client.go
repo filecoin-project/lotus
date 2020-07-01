@@ -136,6 +136,8 @@ func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) 
 		params.EpochPrice,
 		big.Zero(),
 		rt,
+		false,
+		false,
 	)
 
 	if err != nil {

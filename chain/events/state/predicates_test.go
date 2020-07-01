@@ -71,12 +71,10 @@ func TestPredicates(t *testing.T) {
 		abi.DealID(1): {
 			SectorStartEpoch: 1,
 			LastUpdatedEpoch: 2,
-			SlashEpoch:       0,
 		},
 		abi.DealID(2): {
 			SectorStartEpoch: 4,
 			LastUpdatedEpoch: 5,
-			SlashEpoch:       0,
 		},
 	}
 	oldStateC := createMarketState(ctx, t, store, oldDeals)
@@ -85,12 +83,6 @@ func TestPredicates(t *testing.T) {
 		abi.DealID(1): {
 			SectorStartEpoch: 1,
 			LastUpdatedEpoch: 3,
-			SlashEpoch:       0,
-		},
-		abi.DealID(2): {
-			SectorStartEpoch: 4,
-			LastUpdatedEpoch: 6,
-			SlashEpoch:       6,
 		},
 	}
 	newStateC := createMarketState(ctx, t, store, newDeals)
@@ -131,9 +123,16 @@ func TestPredicates(t *testing.T) {
 		t.Fatal("Unexpected change to LastUpdatedEpoch")
 	}
 	deal2 := changedDeals[abi.DealID(2)]
-	if deal2.From.SlashEpoch != 0 || deal2.To.SlashEpoch != 6 {
-		t.Fatal("Unexpected change to SlashEpoch")
+	if deal2.From.LastUpdatedEpoch != 5 || deal2.To != nil {
+		t.Fatal("Expected To to be nil")
 	}
+
+	// Diff with non-existent deal.
+	noDeal := []abi.DealID{3}
+	diffNoDealFn := preds.OnStorageMarketActorChanged(preds.OnDealStateChanged(preds.DealStateChangedForIDs(noDeal)))
+	changed, _, err = diffNoDealFn(ctx, oldState, newState)
+	require.NoError(t, err)
+	require.False(t, changed)
 
 	// Test that OnActorStateChanged does not call the callback if the state has not changed
 	mockAddr, err := address.NewFromString("t01")
