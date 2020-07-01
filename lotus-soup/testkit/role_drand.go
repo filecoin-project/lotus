@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -12,164 +13,37 @@ import (
 	"time"
 
 	"github.com/drand/drand/chain"
-	"github.com/drand/drand/client"
 	hclient "github.com/drand/drand/client/http"
-	"github.com/drand/drand/core"
-	"github.com/drand/drand/key"
+	"github.com/drand/drand/demo/node"
 	"github.com/drand/drand/log"
 	"github.com/drand/drand/lp2p"
-	dnet "github.com/drand/drand/net"
-	"github.com/drand/drand/protobuf/drand"
-	dtest "github.com/drand/drand/test"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/testground/sdk-go/sync"
-
-	"github.com/filecoin-project/oni/lotus-soup/statemachine"
 )
 
-var (
-	PrepareDrandTimeout = time.Minute
-	secretDKG           = "dkgsecret"
-)
+var PrepareDrandTimeout = time.Minute
 
 type DrandInstance struct {
-	daemon      *core.Drand
-	httpClient  client.Client
-	ctrlClient  *dnet.ControlClient
-	gossipRelay *lp2p.GossipRelayNode
+	t *TestEnvironment
 
-	t        *TestEnvironment
+	Node        node.Node
+	GossipRelay *lp2p.GossipRelayNode
+
 	stateDir string
-	priv     *key.Pair
-	pubAddr  string
-	privAddr string
-	ctrlAddr string
 }
 
-func (dr *DrandInstance) Start() error {
-	opts := []core.ConfigOption{
-		core.WithLogLevel(getLogLevel(dr.t)),
-		core.WithConfigFolder(dr.stateDir),
-		core.WithPublicListenAddress(dr.pubAddr),
-		core.WithPrivateListenAddress(dr.privAddr),
-		core.WithControlPort(dr.ctrlAddr),
-		core.WithInsecure(),
-	}
-	conf := core.NewConfig(opts...)
-	fs := key.NewFileStore(conf.ConfigFolder())
-	fs.SaveKeyPair(dr.priv)
-	key.Save(path.Join(dr.stateDir, "public.toml"), dr.priv.Public, false)
-	if dr.daemon == nil {
-		drand, err := core.NewDrand(fs, conf)
-		if err != nil {
-			return err
-		}
-		dr.daemon = drand
-	} else {
-		drand, err := core.LoadDrand(fs, conf)
-		if err != nil {
-			return err
-		}
-		drand.StartBeacon(true)
-		dr.daemon = drand
-	}
-	return nil
+func (d *DrandInstance) Cleanup() error {
+	return os.RemoveAll(d.stateDir)
 }
 
-func (dr *DrandInstance) Ping() bool {
-	cl := dr.ctrl()
-	if err := cl.Ping(); err != nil {
-		return false
-	}
-	return true
-}
+func (d *DrandInstance) RunDefault() error {
+	d.t.RecordMessage("running drand node")
+	defer d.Cleanup()
 
-func (dr *DrandInstance) Close() error {
-	dr.gossipRelay.Shutdown()
-	dr.daemon.Stop(context.Background())
-	return os.RemoveAll(dr.stateDir)
-}
-
-func (dr *DrandInstance) ctrl() *dnet.ControlClient {
-	if dr.ctrlClient != nil {
-		return dr.ctrlClient
-	}
-	cl, err := dnet.NewControlClient(dr.ctrlAddr)
-	if err != nil {
-		dr.t.RecordMessage("drand can't instantiate control client: %w", err)
-		return nil
-	}
-	dr.ctrlClient = cl
-	return cl
-}
-
-func (dr *DrandInstance) RunDKG(nodes, thr int, period time.Duration, timeout string, leader bool, leaderAddr string, beaconOffset int) *key.Group {
-	cl := dr.ctrl()
-	t, _ := time.ParseDuration(timeout)
-	var grp *drand.GroupPacket
-	var err error
-	if leader {
-		grp, err = cl.InitDKGLeader(nodes, thr, period, t, nil, secretDKG, beaconOffset)
-	} else {
-		leader := dnet.CreatePeer(leaderAddr, false)
-		grp, err = cl.InitDKG(leader, nil, secretDKG)
-	}
-	if err != nil {
-		dr.t.RecordMessage("drand dkg run failed: %w", err)
-		return nil
-	}
-	kg, _ := key.GroupFromProto(grp)
-	return kg
-}
-
-func (dr *DrandInstance) Halt() {
-	dr.t.RecordMessage("drand node #%d halting", dr.t.GroupSeq)
-	dr.daemon.StopBeacon()
-}
-
-func (dr *DrandInstance) Resume() {
-	dr.t.RecordMessage("drand node #%d resuming", dr.t.GroupSeq)
-	dr.daemon.StartBeacon(true)
-	// block until we can fetch the round corresponding to the current time
-	startTime := time.Now()
-	round := dr.httpClient.RoundAt(startTime)
-	timeout := 30 * time.Second
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	done := make(chan struct{}, 1)
-	go func() {
-		for {
-			res, err := dr.httpClient.Get(ctx, round)
-			if err == nil {
-				dr.t.RecordMessage("drand chain caught up to round %d", res.Round())
-				done <- struct{}{}
-				return
-			}
-		}
-	}()
-
-	select {
-	case <-ctx.Done():
-		dr.t.RecordMessage("drand chain failed to catch up after %s", timeout.String())
-	case <-done:
-		dr.t.RecordMessage("drand chain resumed after %s catchup time", time.Since(startTime))
-	}
-}
-
-
-func (dr *DrandInstance) RunDefault() error {
-	dr.t.RecordMessage("running drand node")
-	defer dr.Close()
-
-	if dr.t.IsParamSet("suspend_events") {
-		suspender := statemachine.NewSuspender(dr, dr.t.RecordMessage)
-		suspender.RunEvents(dr.t.StringParam("suspend_events"))
-	}
-
-	dr.t.WaitUntilAllDone()
+	// TODO add ability to halt / recover on demand
+	d.t.WaitUntilAllDone()
 	return nil
 }
 
@@ -196,20 +70,13 @@ func PrepareDrandInstance(t *TestEnvironment) (*DrandInstance, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), PrepareDrandTimeout)
 	defer cancel()
 
-	stateDir, err := ioutil.TempDir("/tmp", fmt.Sprintf("drand-%d", t.GroupSeq))
-
+	stateDir, err := ioutil.TempDir("", fmt.Sprintf("drand-%d", t.GroupSeq))
 	if err != nil {
 		return nil, err
 	}
 
-	dr := DrandInstance{
-		t:        t,
-		stateDir: stateDir,
-		pubAddr:  dtest.FreeBind(myAddr.String()),
-		privAddr: dtest.FreeBind(myAddr.String()),
-		ctrlAddr: dtest.FreeBind("localhost"),
-	}
-	dr.priv = key.NewKeyPair(dr.privAddr)
+	// TODO(maybe): use TLS?
+	n := node.NewLocalNode(int(seq), period.String(), stateDir, false, myAddr.String())
 
 	// share the node addresses with other nodes
 	// TODO: if we implement TLS, this is where we'd share public TLS keys
@@ -224,8 +91,8 @@ func PrepareDrandInstance(t *TestEnvironment) (*DrandInstance, error) {
 	var leaderAddr string
 	ch := make(chan *NodeAddr)
 	_, sub := t.SyncClient.MustPublishSubscribe(ctx, addrTopic, &NodeAddr{
-		PrivateAddr: dr.privAddr,
-		PublicAddr:  dr.pubAddr,
+		PrivateAddr: n.PrivateAddr(),
+		PublicAddr:  n.PublicAddr(),
 		IsLeader:    isLeader,
 	}, ch)
 
@@ -247,14 +114,14 @@ func PrepareDrandInstance(t *TestEnvironment) (*DrandInstance, error) {
 
 	t.SyncClient.MustSignalAndWait(ctx, "drand-start", nNodes)
 	t.RecordMessage("Starting drand sharing ceremony")
-	if err := dr.Start(); err != nil {
+	if err := n.Start(stateDir); err != nil {
 		return nil, err
 	}
 
 	alive := false
 	waitSecs := 10
 	for i := 0; i < waitSecs; i++ {
-		if !dr.Ping() {
+		if !n.Ping() {
 			time.Sleep(time.Second)
 			continue
 		}
@@ -271,7 +138,7 @@ func PrepareDrandInstance(t *TestEnvironment) (*DrandInstance, error) {
 	if !isLeader {
 		time.Sleep(time.Second)
 	}
-	grp := dr.RunDKG(nNodes, threshold, period, "10s", isLeader, leaderAddr, beaconOffset)
+	grp := n.RunDKG(nNodes, threshold, period.String(), isLeader, leaderAddr, beaconOffset)
 	if grp == nil {
 		return nil, fmt.Errorf("drand dkg failed")
 	}
@@ -285,18 +152,19 @@ func PrepareDrandInstance(t *TestEnvironment) (*DrandInstance, error) {
 	t.RecordMessage("drand beacon chain started, fetching initial round via http")
 	// verify that we can get a round of randomness from the chain using an http client
 	info := chain.NewChainInfo(grp)
-	myPublicAddr := fmt.Sprintf("http://%s", dr.pubAddr)
-	dr.httpClient, err = hclient.NewWithInfo(myPublicAddr, info, nil)
+	myPublicAddr := fmt.Sprintf("http://%s", n.PublicAddr())
+	client, err := hclient.NewWithInfo(myPublicAddr, info, nil)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create drand http client: %w", err)
 	}
 
-	_, err = dr.httpClient.Get(ctx, 1)
+	_, err = client.Get(ctx, 1)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get initial drand round: %w", err)
 	}
 
 	// start gossip relay (unless disabled via testplan parameter)
+	var gossipRelay *lp2p.GossipRelayNode
 	var relayAddrs []peer.AddrInfo
 
 	if runGossipRelay {
@@ -308,17 +176,17 @@ func PrepareDrandInstance(t *TestEnvironment) (*DrandInstance, error) {
 			DataDir:      gossipDir,
 			IdentityPath: path.Join(gossipDir, "identity.key"),
 			Insecure:     true,
-			Client:       dr.httpClient,
+			Client:       client,
 		}
 		t.RecordMessage("starting drand gossip relay")
-		dr.gossipRelay, err = lp2p.NewGossipRelayNode(log.NewLogger(getLogLevel(t)), &relayCfg)
+		gossipRelay, err = lp2p.NewGossipRelayNode(log.DefaultLogger, &relayCfg)
 		if err != nil {
 			return nil, fmt.Errorf("failed to construct drand gossip relay: %w", err)
 		}
 
 		t.RecordMessage("sharing gossip relay addrs")
 		// share the gossip relay addrs so we can publish them in DrandRuntimeInfo
-		relayInfo, err := relayAddrInfo(dr.gossipRelay.Multiaddrs(), myAddr)
+		relayInfo, err := relayAddrInfo(gossipRelay.Multiaddrs(), myAddr)
 		if err != nil {
 			return nil, err
 		}
@@ -349,13 +217,17 @@ func PrepareDrandInstance(t *TestEnvironment) (*DrandInstance, error) {
 			},
 			GossipBootstrap: relayAddrs,
 		}
-		t.DebugSpew("publishing drand config on sync topic: %#v", cfg)
+		dump, _ := json.Marshal(cfg)
+		t.RecordMessage("publishing drand config on sync topic: %s", string(dump))
 		t.SyncClient.MustPublish(ctx, DrandConfigTopic, &cfg)
 	}
 
-	// signal that we're ready to start the test
-	t.SyncClient.MustSignalAndWait(ctx, StateReady, t.TestInstanceCount)
-	return &dr, nil
+	return &DrandInstance{
+		t:           t,
+		Node:        n,
+		GossipRelay: gossipRelay,
+		stateDir:    stateDir,
+	}, nil
 }
 
 // waitForDrandConfig should be called by filecoin instances before constructing the lotus Node
@@ -379,15 +251,4 @@ func relayAddrInfo(addrs []ma.Multiaddr, dataIP net.IP) (*peer.AddrInfo, error) 
 		return peer.AddrInfoFromP2pAddr(a)
 	}
 	return nil, fmt.Errorf("no addr found with data ip %s in addrs: %v", dataIP, addrs)
-}
-
-func getLogLevel(t *TestEnvironment) int {
-	switch t.StringParam("drand_log_level") {
-	case "info":
-		return log.LogInfo
-	case "debug":
-		return log.LogDebug
-	default:
-		return log.LogNone
-	}
 }

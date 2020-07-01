@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
+
 	"github.com/testground/sdk-go/run"
 	"github.com/testground/sdk-go/runtime"
 )

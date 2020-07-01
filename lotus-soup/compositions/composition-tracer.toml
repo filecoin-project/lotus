@@ -4,7 +4,7 @@
 
 [global]
   plan = "lotus-soup"
-  case = "lotus-baseline"
+  case = "deals-e2e"
   total_instances = 7
   builder = "docker:go"
   runner = "local:docker"

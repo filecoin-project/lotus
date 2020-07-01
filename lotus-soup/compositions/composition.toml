@@ -4,8 +4,8 @@
 
 [global]
   plan = "lotus-soup"
-  case = "lotus-baseline"
-  total_instances = 3
+  case = "deals-e2e"
+  total_instances = 6
   builder = "docker:go"
   runner = "local:docker"
 
@@ -35,7 +35,7 @@
 [[groups]]
   id = "miners"
   [groups.instances]
-    count = 1
+    count = 2
     percentage = 0.0
   [groups.run]
     [groups.run.test_params]
@@ -44,7 +44,7 @@
 [[groups]]
   id = "clients"
   [groups.instances]
-    count = 1
+    count = 3
     percentage = 0.0
   [groups.run]
     [groups.run.test_params]
