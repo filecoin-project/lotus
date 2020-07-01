@@ -166,49 +166,56 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 
 	/*
 
-		*   Empty
-		|   |
-		|   v
-		*<- Packing <- incoming
-		|   |
-		|   v
-		*<- PreCommit1 <--> SealPreCommit1Failed
-		|   |       ^          ^^
-		|   |       *----------++----\
-		|   v       v          ||    |
-		*<- PreCommit2 --------++--> SealPreCommit2Failed
-		|   |                  ||
-		|   v          /-------/|
-		*   PreCommitting <-----+---> PreCommitFailed
-		|   |                   |     ^
-		|   v                   |     |
-		*<- WaitSeed -----------+-----/
-		|   |||  ^              |
-		|   |||  \--------*-----/
-		|   |||           |
-		|   vvv      v----+----> ComputeProofFailed
-		*<- Committing    |
-		|   |        ^--> CommitFailed
-		|   v             ^
-		*<- CommitWait ---/
-		|   |
-		|   v
-		|   FinalizeSector <--> FinalizeFailed
-		|   |
-		|   v
-		*<- Proving
-		|
-		v
-		FailedUnrecoverable
+			*   Empty <- incoming deals
+			|   |
+			|   v
+		    *<- WaitDeals <- incoming deals
+			|   |
+			|   v
+			*<- Packing <- incoming committed capacity
+			|   |
+			|   v
+			*<- PreCommit1 <--> SealPreCommit1Failed
+			|   |       ^          ^^
+			|   |       *----------++----\
+			|   v       v          ||    |
+			*<- PreCommit2 --------++--> SealPreCommit2Failed
+			|   |                  ||
+			|   v          /-------/|
+			*   PreCommitting <-----+---> PreCommitFailed
+			|   |                   |     ^
+			|   v                   |     |
+			*<- WaitSeed -----------+-----/
+			|   |||  ^              |
+			|   |||  \--------*-----/
+			|   |||           |
+			|   vvv      v----+----> ComputeProofFailed
+			*<- Committing    |
+			|   |        ^--> CommitFailed
+			|   v             ^
+			*<- CommitWait ---/
+			|   |
+			|   v
+			|   FinalizeSector <--> FinalizeFailed
+			|   |
+			|   v
+			*<- Proving
+			|
+			v
+			FailedUnrecoverable
 
-		UndefinedSectorState <- ¯\_(ツ)_/¯
-			|                     ^
-			*---------------------/
+			UndefinedSectorState <- ¯\_(ツ)_/¯
+				|                     ^
+				*---------------------/
 
 	*/
 
 	switch state.State {
 	// Happy path
+	case Empty:
+		fallthrough
+	case WaitDeals:
+		log.Infof("Waiting for deals %d", state.SectorNumber)
 	case Packing:
 		return m.handlePacking, nil
 	case PreCommit1:

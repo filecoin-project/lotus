@@ -1,10 +1,12 @@
 package sealing
 
 import (
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-storage/storage"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-storage/storage"
 )
 
 type mutator interface {
@@ -151,11 +153,13 @@ func (evt SectorChainPreCommitFailed) FormatError(xerrors.Printer) (next error) 
 func (evt SectorChainPreCommitFailed) apply(*SectorInfo)                        {}
 
 type SectorPreCommitted struct {
-	Message cid.Cid
+	Message       cid.Cid
+	PreCommitInfo miner.SectorPreCommitInfo
 }
 
 func (evt SectorPreCommitted) apply(state *SectorInfo) {
 	state.PreCommitMessage = &evt.Message
+	state.PreCommitInfo = &evt.PreCommitInfo
 }
 
 type SectorSeedReady struct {
