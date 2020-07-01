@@ -43,3 +43,7 @@ func (m *Miner) ForceSectorState(ctx context.Context, id abi.SectorNumber, state
 func (m *Miner) RemoveSector(ctx context.Context, id abi.SectorNumber) error {
 	return m.sealing.Remove(ctx, id)
 }
+
+func (m *Miner) MarkForUpgrade(id abi.SectorNumber) error {
+	return m.sealing.MarkForUpgrade(id)
+}

@@ -530,3 +530,13 @@ func TestWindowedPost(t *testing.T) {
 
 	test.TestWindowPost(t, mockSbBuilder, 5*time.Millisecond, 10)
 }
+
+func TestCCUpgrade(t *testing.T) {
+	logging.SetLogLevel("miner", "ERROR")
+	logging.SetLogLevel("chainstore", "ERROR")
+	logging.SetLogLevel("chain", "ERROR")
+	logging.SetLogLevel("sub", "ERROR")
+	logging.SetLogLevel("storageminer", "ERROR")
+
+	test.TestCCUpgrade(t, mockSbBuilder, 5*time.Millisecond)
+}
