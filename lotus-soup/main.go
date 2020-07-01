@@ -1,27 +1,119 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"io/ioutil"
+	"math/rand"
+	"os"
+	"time"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/testground/sdk-go/run"
-	"github.com/testground/sdk-go/runtime"
+
+	"github.com/filecoin-project/oni/lotus-soup/testkit"
 )
 
-var testplans = map[string]interface{}{
-	"lotus-baseline": doRun(basicRoles),
+var cases = map[string]interface{}{
+	"deals-e2e": testkit.WrapTestEnvironment(dealsE2E),
 }
 
 func main() {
-	run.InvokeMap(testplans)
+	run.InvokeMap(cases)
 }
 
-func doRun(roles map[string]func(*TestEnvironment) error) run.InitializedTestCaseFn {
-	return func(runenv *runtime.RunEnv, initCtx *run.InitContext) error {
-		role := runenv.StringParam("role")
-		proc, ok := roles[role]
-		if ok {
-			return proc(&TestEnvironment{RunEnv: runenv, InitContext: initCtx})
-		}
-		return fmt.Errorf("Unknown role: %s", role)
+// This is the baseline test; Filecoin 101.
+//
+// A network with a bootstrapper, a number of miners, and a number of clients/full nodes
+// is constructed and connected through the bootstrapper.
+// Some funds are allocated to each node and a number of sectors are presealed in the genesis block.
+//
+// The test plan:
+// One or more clients store content to one or more miners, testing storage deals.
+// The plan ensures that the storage deals hit the blockchain and measure the time it took.
+// Verification: one or more clients retrieve and verify the hashes of stored content.
+// The plan ensures that all (previously) published content can be correctly retrieved
+// and measures the time it took.
+//
+// Preparation of the genesis block: this is the responsibility of the bootstrapper.
+// In order to compute the genesis block, we need to collect identities and presealed
+// sectors from each node.
+// Then we create a genesis block that allocates some funds to each node and collects
+// the presealed sectors.
+func dealsE2E(t *testkit.TestEnvironment) error {
+	// Dispatch/forward non-client roles to defaults.
+	if t.Role != "client" {
+		return testkit.HandleDefaultRole(t)
 	}
+
+	cl, err := testkit.PrepareClient(t)
+	if err != nil {
+		return err
+	}
+
+	// This is a client role
+	t.RecordMessage("running client")
+
+	ctx := context.Background()
+	client := cl.FullApi
+
+	// select a random miner
+	minerAddr := cl.MinerAddrs[rand.Intn(len(cl.MinerAddrs))]
+	if err := client.NetConnect(ctx, minerAddr.PeerAddr); err != nil {
+		return err
+	}
+	t.D().Counter(fmt.Sprintf("send-data-to,miner=%s", minerAddr.ActorAddr)).Inc(1)
+
+	t.RecordMessage("selected %s as the miner", minerAddr.ActorAddr)
+
+	time.Sleep(2 * time.Second)
+
+	// generate 1600 bytes of random data
+	data := make([]byte, 1600)
+	rand.New(rand.NewSource(time.Now().UnixNano())).Read(data)
+
+	file, err := ioutil.TempFile("/tmp", "data")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(file.Name())
+
+	_, err = file.Write(data)
+	if err != nil {
+		return err
+	}
+
+	fcid, err := client.ClientImport(ctx, api.FileRef{Path: file.Name(), IsCAR: false})
+	if err != nil {
+		return err
+	}
+	t.RecordMessage("file cid: %s", fcid)
+
+	// start deal
+	t1 := time.Now()
+	deal := testkit.StartDeal(ctx, minerAddr.ActorAddr, client, fcid)
+	t.RecordMessage("started deal: %s", deal)
+
+	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
+	time.Sleep(2 * time.Second)
+
+	t.RecordMessage("waiting for deal to be sealed")
+	testkit.WaitDealSealed(t, ctx, client, deal)
+	t.D().ResettingHistogram("deal.sealed").Update(int64(time.Since(t1)))
+
+	carExport := true
+
+	t.RecordMessage("trying to retrieve %s", fcid)
+	testkit.RetrieveData(t, ctx, err, client, fcid, carExport, data)
+	t.D().ResettingHistogram("deal.retrieved").Update(int64(time.Since(t1)))
+
+	t.SyncClient.MustSignalEntry(ctx, testkit.StateStopMining)
+
+	time.Sleep(10 * time.Second) // wait for metrics to be emitted
+
+	// TODO broadcast published content CIDs to other clients
+	// TODO select a random piece of content published by some other client and retrieve it
+
+	t.SyncClient.MustSignalAndWait(ctx, testkit.StateDone, t.TestInstanceCount)
+	return nil
 }

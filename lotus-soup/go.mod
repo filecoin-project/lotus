@@ -26,7 +26,7 @@ require (
 	github.com/libp2p/go-libp2p-pubsub-tracer v0.0.0-20200626141350-e730b32bf1e6
 	github.com/multiformats/go-multiaddr v0.2.2
 	github.com/multiformats/go-multiaddr-net v0.1.5
-	github.com/testground/sdk-go v0.2.3-0.20200630131002-c16b558f6ca9
+	github.com/testground/sdk-go v0.2.3-0.20200630140907-cda3c5ac055b
 	go.opencensus.io v0.22.4
 )
 

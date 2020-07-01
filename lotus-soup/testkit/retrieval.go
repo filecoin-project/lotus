@@ -1,4 +1,4 @@
-package main
+package testkit
 
 import (
 	"bytes"
@@ -19,7 +19,7 @@ import (
 	"github.com/ipld/go-car"
 )
 
-func retrieveData(t *TestEnvironment, ctx context.Context, err error, client api.FullNode, fcid cid.Cid, carExport bool, data []byte) {
+func RetrieveData(t *TestEnvironment, ctx context.Context, err error, client api.FullNode, fcid cid.Cid, carExport bool, data []byte) {
 	t1 := time.Now()
 	offers, err := client.ClientFindData(ctx, fcid)
 	if err != nil {
@@ -62,7 +62,7 @@ func retrieveData(t *TestEnvironment, ctx context.Context, err error, client api
 	}
 
 	if carExport {
-		rdata = extractCarData(ctx, rdata, rpath)
+		rdata = ExtractCarData(ctx, rdata, rpath)
 	}
 
 	if !bytes.Equal(rdata, data) {
@@ -72,7 +72,7 @@ func retrieveData(t *TestEnvironment, ctx context.Context, err error, client api
 	t.RecordMessage("retrieved successfully")
 }
 
-func extractCarData(ctx context.Context, rdata []byte, rpath string) []byte {
+func ExtractCarData(ctx context.Context, rdata []byte, rpath string) []byte {
 	bserv := dstest.Bserv()
 	ch, err := car.LoadCar(bserv.Blockstore(), bytes.NewReader(rdata))
 	if err != nil {
