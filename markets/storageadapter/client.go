@@ -417,7 +417,7 @@ func (c *ClientNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID a
 	match := func(oldTs, newTs *types.TipSet) (bool, events.StateChange, error) {
 		return dealDiff(ctx, oldTs, newTs)
 	}
-	if err := c.ev.StateChanged(checkFunc, stateChanged, revert, build.MessageConfidence+1, build.SealRandomnessLookbackLimit, match); err != nil {
+	if err := c.ev.StateChanged(checkFunc, stateChanged, revert, int(build.MessageConfidence)+1, build.SealRandomnessLookbackLimit, match); err != nil {
 		return xerrors.Errorf("failed to set up state changed handler: %w", err)
 	}
 
