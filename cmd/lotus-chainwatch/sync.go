@@ -419,7 +419,7 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, headTs *types.
 		log.Infow("Finished storing miner sectors", "duration", time.Since(sectorStart).String())
 
 		log.Info("Storing miner sectors heads")
-		if err := st.storeMinerSectorsHeads(minerTips); err != nil {
+		if err := st.storeMinerSectorsHeads(minerTips, api); err != nil {
 			log.Error(err)
 			return
 		}
