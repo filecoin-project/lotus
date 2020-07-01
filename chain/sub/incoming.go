@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/filecoin-project/lotus/lib/adtutil"
 	"sync"
 	"time"
 
@@ -317,7 +318,12 @@ func (bv *BlockValidator) getMinerWorkerKey(ctx context.Context, msg *types.Bloc
 		return address.Undef, err
 	}
 
-	worker := mst.Info.Worker
+	info, err := mst.GetInfo(adtutil.NewStore(ctx, cst))
+	if err != nil {
+		return address.Undef, err
+	}
+
+	worker := info.Worker
 	key, err = bv.stmgr.ResolveToKeyAddress(ctx, worker, ts)
 	if err != nil {
 		return address.Undef, err

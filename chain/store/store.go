@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/json"
+	"github.com/filecoin-project/lotus/lib/adtutil"
 	"io"
 	"os"
 	"sync"
@@ -885,27 +886,7 @@ func (cs *ChainStore) Blockstore() bstore.Blockstore {
 }
 
 func ActorStore(ctx context.Context, bs blockstore.Blockstore) adt.Store {
-	return &astore{
-		cst: cbor.NewCborStore(bs),
-		ctx: ctx,
-	}
-}
-
-type astore struct {
-	cst cbor.IpldStore
-	ctx context.Context
-}
-
-func (a *astore) Context() context.Context {
-	return a.ctx
-}
-
-func (a *astore) Get(ctx context.Context, c cid.Cid, out interface{}) error {
-	return a.cst.Get(ctx, c, out)
-}
-
-func (a *astore) Put(ctx context.Context, v interface{}) (cid.Cid, error) {
-	return a.cst.Put(ctx, v)
+	return adtutil.NewStore(ctx, cbor.NewCborStore(bs))
 }
 
 func (cs *ChainStore) Store(ctx context.Context) adt.Store {
