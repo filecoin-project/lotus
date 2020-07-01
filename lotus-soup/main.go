@@ -41,9 +41,9 @@ func main() {
 // Then we create a genesis block that allocates some funds to each node and collects
 // the presealed sectors.
 func dealsE2E(t *testkit.TestEnvironment) error {
-	// Dispatch non-client roles to defaults.
+	// Dispatch/forward non-client roles to defaults.
 	if t.Role != "client" {
-		return testkit.RunDefaultRole(t)
+		return testkit.HandleDefaultRole(t)
 	}
 
 	cl, err := testkit.PrepareClient(t)

@@ -42,9 +42,11 @@ var DefaultRoles = map[RoleName]func(*TestEnvironment) error{
 	},
 }
 
-// RunDefaultRole runs a default role, extracted from the `role` RunEnv
-// parameter.
-func RunDefaultRole(t *TestEnvironment) error {
+// HandleDefaultRole handles a role by running its default behaviour.
+//
+// This function is suitable to forward to when a test case doesn't need to
+// explicitly handle/alter a role.
+func HandleDefaultRole(t *TestEnvironment) error {
 	f, ok := DefaultRoles[t.Role]
 	if !ok {
 		panic(fmt.Sprintf("unrecognized role: %s", t.Role))
