@@ -1,4 +1,4 @@
-package main
+package testkit
 
 import (
 	"bytes"
@@ -14,28 +14,21 @@ import (
 
 	"github.com/drand/drand/chain"
 	hclient "github.com/drand/drand/client/http"
+	"github.com/drand/drand/demo/node"
 	"github.com/drand/drand/log"
 	"github.com/drand/drand/lp2p"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/testground/sdk-go/sync"
-
-	"github.com/drand/drand/demo/node"
 )
 
-var (
-	PrepareDrandTimeout = time.Minute
-	drandConfigTopic    = sync.NewTopic("drand-config", &DrandRuntimeInfo{})
-)
-
-type DrandRuntimeInfo struct {
-	Config          dtypes.DrandConfig
-	GossipBootstrap dtypes.DrandBootstrap
-}
+var PrepareDrandTimeout = time.Minute
 
 type DrandInstance struct {
-	Node node.Node
+	t *TestEnvironment
+
+	Node        node.Node
 	GossipRelay *lp2p.GossipRelayNode
 
 	stateDir string
@@ -45,38 +38,37 @@ func (d *DrandInstance) Cleanup() error {
 	return os.RemoveAll(d.stateDir)
 }
 
-// waitForDrandConfig should be called by filecoin instances before constructing the lotus Node
-// you can use the returned dtypes.DrandConfig to override the default production config.
-func waitForDrandConfig(ctx context.Context, client sync.Client) (*DrandRuntimeInfo, error) {
-	ch := make(chan *DrandRuntimeInfo, 1)
-	sub := client.MustSubscribe(ctx, drandConfigTopic, ch)
-	select {
-	case cfg := <-ch:
-		return cfg, nil
-	case err := <-sub.Done():
-		return nil, err
-	}
+func (d *DrandInstance) RunDefault() error {
+	d.t.RecordMessage("running drand node")
+	defer d.Cleanup()
+
+	// TODO add ability to halt / recover on demand
+	d.t.WaitUntilAllDone()
+	return nil
 }
 
-// prepareDrandNode starts a drand instance and runs a DKG with the other members of the composition group.
-// Once the chain is running, the leader publishes the chain info needed by lotus nodes on
-// drandConfigTopic
-func prepareDrandNode(t *TestEnvironment) (*DrandInstance, error) {
+// PrepareDrandInstance starts a drand instance and runs a DKG with the other
+// members of the composition group.
+//
+// Once the chain is running, the leader publishes the chain info needed by
+// lotus nodes on DrandConfigTopic.
+func PrepareDrandInstance(t *TestEnvironment) (*DrandInstance, error) {
+	var (
+		startTime = time.Now()
+		seq       = t.GroupSeq
+		isLeader  = seq == 1
+		nNodes    = t.TestGroupInstanceCount
+
+		myAddr         = t.NetClient.MustGetDataNetworkIP()
+		period         = t.DurationParam("drand_period")
+		threshold      = t.IntParam("drand_threshold")
+		runGossipRelay = t.BooleanParam("drand_gossip_relay")
+
+		beaconOffset = 3
+	)
+
 	ctx, cancel := context.WithTimeout(context.Background(), PrepareDrandTimeout)
 	defer cancel()
-
-	startTime := time.Now()
-
-	seq := t.GroupSeq
-	isLeader := seq == 1
-	nNodes := t.TestGroupInstanceCount
-
-	myAddr := t.NetClient.MustGetDataNetworkIP()
-	period := t.DurationParam("drand_period")
-	threshold := t.IntParam("drand_threshold")
-	runGossipRelay := t.BooleanParam("drand_gossip_relay")
-
-	beaconOffset := 3
 
 	stateDir, err := ioutil.TempDir("", fmt.Sprintf("drand-%d", t.GroupSeq))
 	if err != nil {
@@ -93,6 +85,7 @@ func prepareDrandNode(t *TestEnvironment) (*DrandInstance, error) {
 		PublicAddr  string
 		IsLeader    bool
 	}
+
 	addrTopic := sync.NewTopic("drand-addrs", &NodeAddr{})
 	var publicAddrs []string
 	var leaderAddr string
@@ -102,6 +95,7 @@ func prepareDrandNode(t *TestEnvironment) (*DrandInstance, error) {
 		PublicAddr:  n.PublicAddr(),
 		IsLeader:    isLeader,
 	}, ch)
+
 	for i := 0; i < nNodes; i++ {
 		select {
 		case msg := <-ch:
@@ -113,6 +107,7 @@ func prepareDrandNode(t *TestEnvironment) (*DrandInstance, error) {
 			return nil, fmt.Errorf("unable to read drand addrs from sync service: %w", err)
 		}
 	}
+
 	if leaderAddr == "" {
 		return nil, fmt.Errorf("got %d drand addrs, but no leader", len(publicAddrs))
 	}
@@ -224,14 +219,28 @@ func prepareDrandNode(t *TestEnvironment) (*DrandInstance, error) {
 		}
 		dump, _ := json.Marshal(cfg)
 		t.RecordMessage("publishing drand config on sync topic: %s", string(dump))
-		t.SyncClient.MustPublish(ctx, drandConfigTopic, &cfg)
+		t.SyncClient.MustPublish(ctx, DrandConfigTopic, &cfg)
 	}
 
 	return &DrandInstance{
-		Node: n,
+		t:           t,
+		Node:        n,
 		GossipRelay: gossipRelay,
-		stateDir: stateDir,
+		stateDir:    stateDir,
 	}, nil
+}
+
+// waitForDrandConfig should be called by filecoin instances before constructing the lotus Node
+// you can use the returned dtypes.DrandConfig to override the default production config.
+func waitForDrandConfig(ctx context.Context, client sync.Client) (*DrandRuntimeInfo, error) {
+	ch := make(chan *DrandRuntimeInfo, 1)
+	sub := client.MustSubscribe(ctx, DrandConfigTopic, ch)
+	select {
+	case cfg := <-ch:
+		return cfg, nil
+	case err := <-sub.Done():
+		return nil, err
+	}
 }
 
 func relayAddrInfo(addrs []ma.Multiaddr, dataIP net.IP) (*peer.AddrInfo, error) {

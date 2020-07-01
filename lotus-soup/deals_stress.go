@@ -9,33 +9,32 @@ import (
 	"time"
 
 	"github.com/filecoin-project/lotus/api"
-
 	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/oni/lotus-soup/testkit"
 )
 
-var dealStressTestRoles = map[string]func(*TestEnvironment) error{
-	"bootstrapper":  runBootstrapper,
-	"miner":         runMiner,
-	"client":        runDealStressTestClient,
-	"drand":         runDrandNode,
-	"pubsub-tracer": runPubsubTracer,
-}
+func dealStressTest(t *testkit.TestEnvironment) error {
+	// Dispatch/forward non-client roles to defaults.
+	if t.Role != "client" {
+		return testkit.HandleDefaultRole(t)
+	}
 
-func runDealStressTestClient(t *TestEnvironment) error {
 	t.RecordMessage("running client")
-	cl, err := prepareClient(t)
+
+	cl, err := testkit.PrepareClient(t)
 	if err != nil {
 		return err
 	}
 
 	ctx := context.Background()
-	addrs, err := collectMinerAddrs(t, ctx, t.IntParam("miners"))
+	addrs, err := testkit.CollectMinerAddrs(t, ctx, t.IntParam("miners"))
 	if err != nil {
 		return err
 	}
 	t.RecordMessage("got %v miner addrs", len(addrs))
 
-	client := cl.fullApi
+	client := cl.FullApi
 
 	// select a random miner
 	minerAddr := addrs[rand.Intn(len(addrs))]
@@ -94,11 +93,11 @@ func runDealStressTestClient(t *TestEnvironment) error {
 			wg1.Add(1)
 			go func(i int) {
 				defer wg1.Done()
-				deal := startDeal(ctx, minerAddr.ActorAddr, client, cids[i])
+				deal := testkit.StartDeal(ctx, minerAddr.ActorAddr, client, cids[i])
 				t.RecordMessage("started storage deal %d -> %s", i, deal)
 				time.Sleep(2 * time.Second)
 				t.RecordMessage("waiting for deal %d to be sealed", i)
-				waitDealSealed(t, ctx, client, deal)
+				testkit.WaitDealSealed(t, ctx, client, deal)
 			}(i)
 		}
 		t.RecordMessage("waiting for all deals to be sealed")
@@ -111,7 +110,7 @@ func runDealStressTestClient(t *TestEnvironment) error {
 			go func(i int) {
 				defer wg2.Done()
 				t.RecordMessage("retrieving data for deal %d", i)
-				retrieveData(t, ctx, client, cids[i], true, data[i])
+				testkit.RetrieveData(t, ctx, client, cids[i], true, data[i])
 				t.RecordMessage("retrieved data for deal %d", i)
 			}(i)
 		}
@@ -122,22 +121,22 @@ func runDealStressTestClient(t *TestEnvironment) error {
 	} else {
 
 		for i := 0; i < deals; i++ {
-			deal := startDeal(ctx, minerAddr.ActorAddr, client, cids[i])
+			deal := testkit.StartDeal(ctx, minerAddr.ActorAddr, client, cids[i])
 			t.RecordMessage("started storage deal %d -> %s", i, deal)
 			time.Sleep(2 * time.Second)
 			t.RecordMessage("waiting for deal %d to be sealed", i)
-			waitDealSealed(t, ctx, client, deal)
+			testkit.WaitDealSealed(t, ctx, client, deal)
 		}
 
 		for i := 0; i < deals; i++ {
 			t.RecordMessage("retrieving data for deal %d", i)
-			retrieveData(t, ctx, client, cids[i], true, data[i])
+			testkit.RetrieveData(t, ctx, client, cids[i], true, data[i])
 			t.RecordMessage("retrieved data for deal %d", i)
 		}
 	}
 
-	t.SyncClient.MustSignalEntry(ctx, stateStopMining)
-	t.SyncClient.MustSignalAndWait(ctx, stateDone, t.TestInstanceCount)
+	t.SyncClient.MustSignalEntry(ctx, testkit.StateStopMining)
+	t.SyncClient.MustSignalAndWait(ctx, testkit.StateDone, t.TestInstanceCount)
 
 	return nil
 }

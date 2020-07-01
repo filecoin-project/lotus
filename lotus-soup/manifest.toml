@@ -17,15 +17,15 @@ enabled = true
 enabled = true
 
 [[testcases]]
-name = "lotus-baseline"
+name = "deals-e2e"
 instances = { min = 1, max = 100, default = 5 }
 
   [testcases.params]
-  clients = { type = "int", default = 1 }
-  miners = { type = "int", default = 1 }
-  balance = { type = "int", default = 1 }
-  sectors = { type = "int", default = 1 }
-  role = { type = "string" }
+  clients   = { type = "int", default = 1 }
+  miners    = { type = "int", default = 1 }
+  balance   = { type = "int", default = 1 }
+  sectors   = { type = "int", default = 1 }
+  role      = { type = "string" }
 
   genesis_timestamp_offset = { type = "int", default = 0 }
 
@@ -35,9 +35,9 @@ instances = { min = 1, max = 100, default = 5 }
   # in the same composition group. There must be at least threshold drand nodes.
   # To get lotus nodes to actually use the drand nodes, you must set random_beacon_type="local-drand"
   # for the lotus node groups.
-  drand_period = { type = "duration", default="10s" }
-  drand_threshold = { type = "int", default = 2 }
-  drand_gossip_relay = { type = "bool", default = true }
+  drand_period          = { type = "duration", default="10s" }
+  drand_threshold       = { type = "int", default = 2 }
+  drand_gossip_relay    = { type = "bool", default = true }
 
   # Params relevant to pubsub tracing
   enable_pubsub_tracer = { type = "bool", default = false }

@@ -1,11 +1,9 @@
-package main
+package testkit
 
 import (
 	"context"
 	"crypto/rand"
 	"fmt"
-
-	"github.com/testground/sdk-go/sync"
 
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/crypto"
@@ -15,25 +13,13 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 )
 
-var (
-	pubsubTracerTopic = sync.NewTopic("pubsubTracer", &PubsubTracerMsg{})
-)
-
 type PubsubTracer struct {
+	t      *TestEnvironment
 	host   host.Host
 	traced *traced.TraceCollector
 }
 
-type PubsubTracerMsg struct {
-	Tracer string
-}
-
-func (tr *PubsubTracer) Stop() error {
-	tr.traced.Stop()
-	return tr.host.Close()
-}
-
-func preparePubsubTracer(t *TestEnvironment) (*PubsubTracer, error) {
+func PreparePubsubTracer(t *TestEnvironment) (*PubsubTracer, error) {
 	ctx := context.Background()
 
 	privk, _, err := crypto.GenerateEd25519Key(rand.Reader)
@@ -63,30 +49,31 @@ func preparePubsubTracer(t *TestEnvironment) (*PubsubTracer, error) {
 	t.RecordMessage("I am %s", tracedMultiaddrStr)
 
 	_ = ma.StringCast(tracedMultiaddrStr)
-	tracedMsg := &PubsubTracerMsg{Tracer: tracedMultiaddrStr}
-	t.SyncClient.MustPublish(ctx, pubsubTracerTopic, tracedMsg)
+	tracedMsg := &PubsubTracerMsg{Multiaddr: tracedMultiaddrStr}
+	t.SyncClient.MustPublish(ctx, PubsubTracerTopic, tracedMsg)
 
 	t.RecordMessage("waiting for all nodes to be ready")
-	t.SyncClient.MustSignalAndWait(ctx, stateReady, t.TestInstanceCount)
+	t.SyncClient.MustSignalAndWait(ctx, StateReady, t.TestInstanceCount)
 
-	return &PubsubTracer{host: host, traced: traced}, nil
+	tracer := &PubsubTracer{t: t, host: host, traced: traced}
+	return tracer, nil
 }
 
-func runPubsubTracer(t *TestEnvironment) error {
-	t.RecordMessage("running pubsub tracer")
-	tracer, err := preparePubsubTracer(t)
-	if err != nil {
-		return err
-	}
+func (tr *PubsubTracer) RunDefault() error {
+	tr.t.RecordMessage("running pubsub tracer")
 
 	defer func() {
-		err := tracer.Stop()
+		err := tr.Stop()
 		if err != nil {
-			t.RecordMessage("error stoping tracer: %s", err)
+			tr.t.RecordMessage("error stoping tracer: %s", err)
 		}
 	}()
 
-	ctx := context.Background()
-	t.SyncClient.MustSignalAndWait(ctx, stateDone, t.TestInstanceCount)
+	tr.t.WaitUntilAllDone()
 	return nil
+}
+
+func (tr *PubsubTracer) Stop() error {
+	tr.traced.Stop()
+	return tr.host.Close()
 }
