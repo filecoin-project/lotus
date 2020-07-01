@@ -561,7 +561,7 @@ func SelectMessages(ctx context.Context, al ActorLookup, ts *types.TipSet, msgs 
 	}
 
 	if tooHighNonceMsgs > 0 {
-		log.Warnf("%d messages in mempool had too high nonce", tooLowFundMsgs)
+		log.Warnf("%d messages in mempool had too high nonce", tooHighNonceMsgs)
 	}
 
 	sm := time.Now()
