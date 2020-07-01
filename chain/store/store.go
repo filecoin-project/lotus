@@ -167,9 +167,9 @@ type HeadChange struct {
 func (cs *ChainStore) SubHeadChanges(ctx context.Context) chan []*HeadChange {
 	cs.pubLk.Lock()
 	subch := cs.bestTips.Sub("headchange")
-	head := cs.GetHeaviestTipSet()
 	cs.pubLk.Unlock()
 
+	head := cs.GetHeaviestTipSet()
 	out := make(chan []*HeadChange, 16)
 	out <- []*HeadChange{{
 		Type: HCCurrent,
