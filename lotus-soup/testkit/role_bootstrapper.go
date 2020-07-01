@@ -1,4 +1,4 @@
-package main
+package testkit
 
 import (
 	"bytes"
@@ -19,7 +19,7 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 )
 
-func runBootstrapper(t *TestEnvironment) error {
+func runBootstrapper(t *TestEnvironment, node *LotusNode) error {
 	t.RecordMessage("running bootstrapper")
 	_, err := prepareBootstrapper(t)
 	if err != nil {
@@ -27,37 +27,39 @@ func runBootstrapper(t *TestEnvironment) error {
 	}
 
 	ctx := context.Background()
-	t.SyncClient.MustSignalAndWait(ctx, stateDone, t.TestInstanceCount)
+	t.SyncClient.MustSignalAndWait(ctx, StateDone, t.TestInstanceCount)
 	return nil
 }
 
-func prepareBootstrapper(t *TestEnvironment) (*Node, error) {
+func prepareBootstrapper(t *TestEnvironment) (*LotusNode, error) {
+	var (
+		clients = t.IntParam("clients")
+		miners  = t.IntParam("miners")
+		nodes   = clients + miners
+	)
+
 	ctx, cancel := context.WithTimeout(context.Background(), PrepareNodeTimeout)
 	defer cancel()
 
-	pubsubTracer, err := getPubsubTracerMaddr(ctx, t)
+	pubsubTracerMaddr, err := GetPubsubTracerMaddr(ctx, t)
 	if err != nil {
 		return nil, err
 	}
 
-	clients := t.IntParam("clients")
-	miners := t.IntParam("miners")
-	nodes := clients + miners
-
-	drandOpt, err := getDrandOpts(ctx, t)
+	randomBeaconOpt, err := GetRandomBeaconOpts(ctx, t)
 	if err != nil {
 		return nil, err
 	}
 
 	// the first duty of the boostrapper is to construct the genesis block
 	// first collect all client and miner balances to assign initial funds
-	balances, err := waitForBalances(t, ctx, nodes)
+	balances, err := WaitForBalances(t, ctx, nodes)
 	if err != nil {
 		return nil, err
 	}
 
 	// then collect all preseals from miners
-	preseals, err := collectPreseals(t, ctx, miners)
+	preseals, err := CollectPreseals(t, ctx, miners)
 	if err != nil {
 		return nil, err
 	}
@@ -101,26 +103,26 @@ func prepareBootstrapper(t *TestEnvironment) (*Node, error) {
 
 	bootstrapperIP := t.NetClient.MustGetDataNetworkIP().String()
 
-	n := &Node{}
+	n := &LotusNode{}
 	stop, err := node.New(context.Background(),
-		node.FullAPI(&n.fullApi),
+		node.FullAPI(&n.FullApi),
 		node.Online(),
 		node.Repo(repo.NewMemory(nil)),
 		node.Override(new(modules.Genesis), modtest.MakeGenesisMem(&genesisBuffer, genesisTemplate)),
 		withApiEndpoint("/ip4/127.0.0.1/tcp/1234"),
 		withListenAddress(bootstrapperIP),
 		withBootstrapper(nil),
-		withPubsubConfig(true, pubsubTracer),
-		drandOpt,
+		withPubsubConfig(true, pubsubTracerMaddr),
+		randomBeaconOpt,
 	)
 	if err != nil {
 		return nil, err
 	}
-	n.stop = stop
+	n.StopFn = stop
 
 	var bootstrapperAddr ma.Multiaddr
 
-	bootstrapperAddrs, err := n.fullApi.NetAddrsListen(ctx)
+	bootstrapperAddrs, err := n.FullApi.NetAddrsListen(ctx)
 	if err != nil {
 		stop(context.TODO())
 		return nil, err
@@ -152,10 +154,10 @@ func prepareBootstrapper(t *TestEnvironment) (*Node, error) {
 		Genesis:      genesisBuffer.Bytes(),
 		Bootstrapper: bootstrapperAddr.Bytes(),
 	}
-	t.SyncClient.MustPublish(ctx, genesisTopic, genesisMsg)
+	t.SyncClient.MustPublish(ctx, GenesisTopic, genesisMsg)
 
 	t.RecordMessage("waiting for all nodes to be ready")
-	t.SyncClient.MustSignalAndWait(ctx, stateReady, t.TestInstanceCount)
+	t.SyncClient.MustSignalAndWait(ctx, StateReady, t.TestInstanceCount)
 
 	return n, nil
 }

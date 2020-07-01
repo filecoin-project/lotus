@@ -1,4 +1,4 @@
-package main
+package testkit
 
 import (
 	"github.com/filecoin-project/go-address"
@@ -9,20 +9,20 @@ import (
 )
 
 var (
-	genesisTopic      = sync.NewTopic("genesis", &GenesisMsg{})
-	balanceTopic      = sync.NewTopic("balance", &InitialBalanceMsg{})
-	presealTopic      = sync.NewTopic("preseal", &PresealMsg{})
-	clientsAddrsTopic = sync.NewTopic("clientsAddrsTopic", &peer.AddrInfo{})
-	minersAddrsTopic  = sync.NewTopic("minersAddrsTopic", &MinerAddressesMsg{})
-	pubsubTracerTopic = sync.NewTopic("pubsubTracer", &PubsubTracerMsg{})
-	drandConfigTopic  = sync.NewTopic("drand-config", &DrandRuntimeInfo{})
+	GenesisTopic      = sync.NewTopic("genesis", &GenesisMsg{})
+	BalanceTopic      = sync.NewTopic("balance", &InitialBalanceMsg{})
+	PresealTopic      = sync.NewTopic("preseal", &PresealMsg{})
+	ClientsAddrsTopic = sync.NewTopic("clients_addrs", &peer.AddrInfo{})
+	MinersAddrsTopic  = sync.NewTopic("miners_addrs", &MinerAddressesMsg{})
+	PubsubTracerTopic = sync.NewTopic("pubsub_tracer", &PubsubTracerMsg{})
+	DrandConfigTopic  = sync.NewTopic("drand_config", &DrandRuntimeInfo{})
 )
 
 var (
-	stateReady           = sync.State("ready")
-	stateDone            = sync.State("done")
-	stateStopMining      = sync.State("stop-mining")
-	stateMinerPickSeqNum = sync.State("miner-pick-seq-num")
+	StateReady           = sync.State("ready")
+	StateDone            = sync.State("done")
+	StateStopMining      = sync.State("stop-mining")
+	StateMinerPickSeqNum = sync.State("miner-pick-seq-num")
 )
 
 type InitialBalanceMsg struct {

@@ -1,4 +1,4 @@
-package main
+package testkit
 
 import (
 	"bytes"
@@ -36,17 +36,12 @@ func (d *DrandInstance) Cleanup() error {
 	return os.RemoveAll(d.stateDir)
 }
 
-func runDrandNode(t *TestEnvironment) error {
+func runDrandNode(t *TestEnvironment, dr *DrandInstance) error {
 	t.RecordMessage("running drand node")
-	dr, err := prepareDrandNode(t)
-	if err != nil {
-		return err
-	}
 	defer dr.Cleanup()
 
 	// TODO add ability to halt / recover on demand
-	ctx := context.Background()
-	t.SyncClient.MustSignalAndWait(ctx, stateDone, t.TestInstanceCount)
+	t.WaitUntilAllDone()
 	return nil
 }
 
@@ -216,7 +211,7 @@ func prepareDrandNode(t *TestEnvironment) (*DrandInstance, error) {
 		}
 		dump, _ := json.Marshal(cfg)
 		t.RecordMessage("publishing drand config on sync topic: %s", string(dump))
-		t.SyncClient.MustPublish(ctx, drandConfigTopic, &cfg)
+		t.SyncClient.MustPublish(ctx, DrandConfigTopic, &cfg)
 	}
 
 	return &DrandInstance{
@@ -230,7 +225,7 @@ func prepareDrandNode(t *TestEnvironment) (*DrandInstance, error) {
 // you can use the returned dtypes.DrandConfig to override the default production config.
 func waitForDrandConfig(ctx context.Context, client sync.Client) (*DrandRuntimeInfo, error) {
 	ch := make(chan *DrandRuntimeInfo, 1)
-	sub := client.MustSubscribe(ctx, drandConfigTopic, ch)
+	sub := client.MustSubscribe(ctx, DrandConfigTopic, ch)
 	select {
 	case cfg := <-ch:
 		return cfg, nil

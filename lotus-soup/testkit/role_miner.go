@@ -1,4 +1,4 @@
-package main
+package testkit
 
 import (
 	"context"
@@ -24,101 +24,31 @@ import (
 	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/gorilla/mux"
-	libp2p_crypto "github.com/libp2p/go-libp2p-core/crypto"
-
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	saminer "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
-
+	"github.com/gorilla/mux"
 	"github.com/ipfs/go-datastore"
+	libp2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
-
 	"github.com/testground/sdk-go/sync"
 )
 
-func runMiner(t *TestEnvironment) error {
-	t.RecordMessage("running miner")
-	miner, err := prepareMiner(t)
-	if err != nil {
-		return err
-	}
-
-	t.RecordMessage("block delay: %v", build.BlockDelay)
-	t.D().Gauge("miner.block-delay").Update(build.BlockDelay)
-
-	ctx := context.Background()
-
-	clients := t.IntParam("clients")
-	miners := t.IntParam("miners")
-
-	myActorAddr, err := miner.minerApi.ActorAddress(ctx)
-	if err != nil {
-		return err
-	}
-
-	// mine / stop mining
-	mine := true
-	done := make(chan struct{})
-
-	if miner.MineOne != nil {
-		go func() {
-			defer t.RecordMessage("shutting down mining")
-			defer close(done)
-
-			var i int
-			for i = 0; mine; i++ {
-				// synchronize all miners to mine the next block
-				t.RecordMessage("synchronizing all miners to mine next block [%d]", i)
-				stateMineNext := sync.State(fmt.Sprintf("mine-block-%d", i))
-				t.SyncClient.MustSignalAndWait(ctx, stateMineNext, miners)
-
-				ch := make(chan struct{})
-				err := miner.MineOne(ctx, func(mined bool) {
-					if mined {
-						t.D().Counter(fmt.Sprintf("block.mine,miner=%s", myActorAddr)).Inc(1)
-					}
-					close(ch)
-				})
-				if err != nil {
-					panic(err)
-				}
-				<-ch
-			}
-
-			// signal the last block to make sure no miners are left stuck waiting for the next block signal
-			// while the others have stopped
-			stateMineLast := sync.State(fmt.Sprintf("mine-block-%d", i))
-			t.SyncClient.MustSignalEntry(ctx, stateMineLast)
-		}()
-	} else {
-		close(done)
-	}
-
-	// wait for a signal from all clients to stop mining
-	err = <-t.SyncClient.MustBarrier(ctx, stateStopMining, clients).C
-	if err != nil {
-		return err
-	}
-
-	mine = false
-	<-done
-
-	t.SyncClient.MustSignalAndWait(ctx, stateDone, t.TestInstanceCount)
-	return nil
+type LotusMiner struct {
+	*LotusNode
 }
 
-func prepareMiner(t *TestEnvironment) (*Node, error) {
+func prepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), PrepareNodeTimeout)
 	defer cancel()
 
-	pubsubTracer, err := getPubsubTracerMaddr(ctx, t)
+	pubsubTracer, err := GetPubsubTracerMaddr(ctx, t)
 	if err != nil {
 		return nil, err
 	}
 
-	drandOpt, err := getDrandOpts(ctx, t)
+	drandOpt, err := GetRandomBeaconOpts(ctx, t)
 	if err != nil {
 		return nil, err
 	}
@@ -132,10 +62,10 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 	// publish the account ID/balance
 	balance := t.IntParam("balance")
 	balanceMsg := &InitialBalanceMsg{Addr: walletKey.Address, Balance: balance}
-	t.SyncClient.Publish(ctx, balanceTopic, balanceMsg)
+	t.SyncClient.Publish(ctx, BalanceTopic, balanceMsg)
 
 	// create and publish the preseal commitment
-	priv, _, err := libp2p_crypto.GenerateEd25519Key(rand.Reader)
+	priv, _, err := libp2pcrypto.GenerateEd25519Key(rand.Reader)
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +76,7 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 	}
 
 	// pick unique sequence number for each miner, no matter in which group they are
-	seq := t.SyncClient.MustSignalAndWait(ctx, stateMinerPickSeqNum, t.IntParam("miners"))
+	seq := t.SyncClient.MustSignalAndWait(ctx, StateMinerPickSeqNum, t.IntParam("miners"))
 
 	minerAddr, err := address.NewIDAddress(genesis_chain.MinerStart + uint64(seq-1))
 	if err != nil {
@@ -168,10 +98,10 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 	t.RecordMessage("Miner Info: Owner: %s Worker: %s", genMiner.Owner, genMiner.Worker)
 
 	presealMsg := &PresealMsg{Miner: *genMiner, Seqno: seq}
-	t.SyncClient.Publish(ctx, presealTopic, presealMsg)
+	t.SyncClient.Publish(ctx, PresealTopic, presealMsg)
 
 	// then collect the genesis block and bootstrapper address
-	genesisMsg, err := waitForGenesis(t, ctx)
+	genesisMsg, err := WaitForGenesis(t, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -229,12 +159,12 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 
 	// create the node
 	// we need both a full node _and_ and storage miner node
-	n := &Node{}
+	n := &LotusNode{}
 
 	nodeRepo := repo.NewMemory(nil)
 
 	stop1, err := node.New(context.Background(),
-		node.FullAPI(&n.fullApi),
+		node.FullAPI(&n.FullApi),
 		node.Online(),
 		node.Repo(nodeRepo),
 		withGenesis(genesisMsg.Genesis),
@@ -255,10 +185,10 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 	}
 
 	minerOpts := []node.Option{
-		node.StorageMiner(&n.minerApi),
+		node.StorageMiner(&n.MinerApi),
 		node.Online(),
 		node.Repo(minerRepo),
-		node.Override(new(api.FullNode), n.fullApi),
+		node.Override(new(api.FullNode), n.FullApi),
 		withApiEndpoint("/ip4/127.0.0.1/tcp/1234"),
 		withMinerListenAddress(minerIP),
 	}
@@ -282,7 +212,7 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 		stop1(context.TODO())
 		return nil, err
 	}
-	n.stop = func(ctx context.Context) error {
+	n.StopFn = func(ctx context.Context) error {
 		// TODO use a multierror for this
 		err2 := stop2(ctx)
 		err1 := stop1(ctx)
@@ -295,25 +225,25 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 	registerAndExportMetrics(minerAddr.String())
 
 	// Bootstrap with full node
-	remoteAddrs, err := n.fullApi.NetAddrsListen(ctx)
+	remoteAddrs, err := n.FullApi.NetAddrsListen(ctx)
 	if err != nil {
 		panic(err)
 	}
 
-	err = n.minerApi.NetConnect(ctx, remoteAddrs)
+	err = n.MinerApi.NetConnect(ctx, remoteAddrs)
 	if err != nil {
 		panic(err)
 	}
 
-	err = startStorMinerAPIServer(minerRepo, n.minerApi)
+	err = startStorageMinerAPIServer(minerRepo, n.MinerApi)
 	if err != nil {
 		return nil, err
 	}
 
 	// add local storage for presealed sectors
-	err = n.minerApi.StorageAddLocal(ctx, presealDir)
+	err = n.MinerApi.StorageAddLocal(ctx, presealDir)
 	if err != nil {
-		n.stop(context.TODO())
+		n.StopFn(context.TODO())
 		return nil, err
 	}
 
@@ -333,30 +263,97 @@ func prepareMiner(t *TestEnvironment) (*Node, error) {
 		GasLimit: 1000000,
 	}
 
-	_, err = n.fullApi.MpoolPushMessage(ctx, changeMinerID)
+	_, err = n.FullApi.MpoolPushMessage(ctx, changeMinerID)
 	if err != nil {
-		n.stop(context.TODO())
+		n.StopFn(context.TODO())
 		return nil, err
 	}
 
 	t.RecordMessage("publish our address to the miners addr topic")
-	actoraddress, err := n.minerApi.ActorAddress(ctx)
+	actoraddress, err := n.MinerApi.ActorAddress(ctx)
 	if err != nil {
 		return nil, err
 	}
-	addrinfo, err := n.minerApi.NetAddrsListen(ctx)
+	addrinfo, err := n.MinerApi.NetAddrsListen(ctx)
 	if err != nil {
 		return nil, err
 	}
-	t.SyncClient.MustPublish(ctx, minersAddrsTopic, MinerAddressesMsg{addrinfo, actoraddress})
+	t.SyncClient.MustPublish(ctx, MinersAddrsTopic, MinerAddressesMsg{addrinfo, actoraddress})
 
 	t.RecordMessage("waiting for all nodes to be ready")
-	t.SyncClient.MustSignalAndWait(ctx, stateReady, t.TestInstanceCount)
+	t.SyncClient.MustSignalAndWait(ctx, StateReady, t.TestInstanceCount)
 
-	return n, err
+	return &LotusMiner{n}, err
 }
 
-func startStorMinerAPIServer(repo *repo.MemRepo, minerApi api.StorageMiner) error {
+func runDefaultMiner(t *TestEnvironment, miner *LotusMiner) error {
+	var (
+		clients = t.IntParam("clients")
+		miners  = t.IntParam("miners")
+	)
+
+	t.RecordMessage("running miner")
+	t.RecordMessage("block delay: %v", build.BlockDelay)
+	t.D().Gauge("miner.block-delay").Update(build.BlockDelay)
+
+	ctx := context.Background()
+	myActorAddr, err := miner.MinerApi.ActorAddress(ctx)
+	if err != nil {
+		return err
+	}
+
+	// mine / stop mining
+	mine := true
+	done := make(chan struct{})
+
+	if miner.MineOne != nil {
+		go func() {
+			defer t.RecordMessage("shutting down mining")
+			defer close(done)
+
+			var i int
+			for i = 0; mine; i++ {
+				// synchronize all miners to mine the next block
+				t.RecordMessage("synchronizing all miners to mine next block [%d]", i)
+				stateMineNext := sync.State(fmt.Sprintf("mine-block-%d", i))
+				t.SyncClient.MustSignalAndWait(ctx, stateMineNext, miners)
+
+				ch := make(chan struct{})
+				err := miner.MineOne(ctx, func(mined bool) {
+					if mined {
+						t.D().Counter(fmt.Sprintf("block.mine,miner=%s", myActorAddr)).Inc(1)
+					}
+					close(ch)
+				})
+				if err != nil {
+					panic(err)
+				}
+				<-ch
+			}
+
+			// signal the last block to make sure no miners are left stuck waiting for the next block signal
+			// while the others have stopped
+			stateMineLast := sync.State(fmt.Sprintf("mine-block-%d", i))
+			t.SyncClient.MustSignalEntry(ctx, stateMineLast)
+		}()
+	} else {
+		close(done)
+	}
+
+	// wait for a signal from all clients to stop mining
+	err = <-t.SyncClient.MustBarrier(ctx, StateStopMining, clients).C
+	if err != nil {
+		return err
+	}
+
+	mine = false
+	<-done
+
+	t.SyncClient.MustSignalAndWait(ctx, StateDone, t.TestInstanceCount)
+	return nil
+}
+
+func startStorageMinerAPIServer(repo *repo.MemRepo, minerApi api.StorageMiner) error {
 	mux := mux.NewRouter()
 
 	rpcServer := jsonrpc.NewServer()

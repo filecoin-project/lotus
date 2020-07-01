@@ -1,4 +1,4 @@
-package main
+package testkit
 
 import (
 	"context"
@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/filecoin-project/lotus/api"
@@ -28,16 +27,14 @@ import (
 
 	"github.com/libp2p/go-libp2p-core/peer"
 	manet "github.com/multiformats/go-multiaddr-net"
-	"github.com/testground/sdk-go/run"
-	"github.com/testground/sdk-go/runtime"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 )
 
 func init() {
-	logging.SetLogLevel("*", "ERROR")
+	_ = logging.SetLogLevel("*", "ERROR")
 
-	os.Setenv("BELLMAN_NO_GPU", "1")
+	_ = os.Setenv("BELLMAN_NO_GPU", "1")
 
 	build.InsecurePoStValidation = true
 	build.DisableBuiltinAssets = true
@@ -51,38 +48,20 @@ func init() {
 
 var PrepareNodeTimeout = time.Minute
 
-type TestEnvironment struct {
-	*runtime.RunEnv
-	*run.InitContext
-}
-
-// workaround for default params being wrapped in quote chars
-func (t *TestEnvironment) StringParam(name string) string {
-	return strings.Trim(t.RunEnv.StringParam(name), "\"")
-}
-
-func (t *TestEnvironment) DurationParam(name string) time.Duration {
-	d, err := time.ParseDuration(t.StringParam(name))
-	if err != nil {
-		panic(fmt.Errorf("invalid duration value for param '%s': %w", name, err))
-	}
-	return d
-}
-
-type Node struct {
-	fullApi  api.FullNode
-	minerApi api.StorageMiner
-	stop     node.StopFunc
+type LotusNode struct {
+	FullApi  api.FullNode
+	MinerApi api.StorageMiner
+	StopFn   node.StopFunc
 	MineOne  func(context.Context, func(bool)) error
 }
 
-func (n *Node) setWallet(ctx context.Context, walletKey *wallet.Key) error {
-	_, err := n.fullApi.WalletImport(ctx, &walletKey.KeyInfo)
+func (n *LotusNode) setWallet(ctx context.Context, walletKey *wallet.Key) error {
+	_, err := n.FullApi.WalletImport(ctx, &walletKey.KeyInfo)
 	if err != nil {
 		return err
 	}
 
-	err = n.fullApi.WalletSetDefault(ctx, walletKey.Address)
+	err = n.FullApi.WalletSetDefault(ctx, walletKey.Address)
 	if err != nil {
 		return err
 	}
@@ -90,9 +69,9 @@ func (n *Node) setWallet(ctx context.Context, walletKey *wallet.Key) error {
 	return nil
 }
 
-func waitForBalances(t *TestEnvironment, ctx context.Context, nodes int) ([]*InitialBalanceMsg, error) {
+func WaitForBalances(t *TestEnvironment, ctx context.Context, nodes int) ([]*InitialBalanceMsg, error) {
 	ch := make(chan *InitialBalanceMsg)
-	sub := t.SyncClient.MustSubscribe(ctx, balanceTopic, ch)
+	sub := t.SyncClient.MustSubscribe(ctx, BalanceTopic, ch)
 
 	balances := make([]*InitialBalanceMsg, 0, nodes)
 	for i := 0; i < nodes; i++ {
@@ -107,9 +86,9 @@ func waitForBalances(t *TestEnvironment, ctx context.Context, nodes int) ([]*Ini
 	return balances, nil
 }
 
-func collectPreseals(t *TestEnvironment, ctx context.Context, miners int) ([]*PresealMsg, error) {
+func CollectPreseals(t *TestEnvironment, ctx context.Context, miners int) ([]*PresealMsg, error) {
 	ch := make(chan *PresealMsg)
-	sub := t.SyncClient.MustSubscribe(ctx, presealTopic, ch)
+	sub := t.SyncClient.MustSubscribe(ctx, PresealTopic, ch)
 
 	preseals := make([]*PresealMsg, 0, miners)
 	for i := 0; i < miners; i++ {
@@ -128,9 +107,9 @@ func collectPreseals(t *TestEnvironment, ctx context.Context, miners int) ([]*Pr
 	return preseals, nil
 }
 
-func waitForGenesis(t *TestEnvironment, ctx context.Context) (*GenesisMsg, error) {
+func WaitForGenesis(t *TestEnvironment, ctx context.Context) (*GenesisMsg, error) {
 	genesisCh := make(chan *GenesisMsg)
-	sub := t.SyncClient.MustSubscribe(ctx, genesisTopic, genesisCh)
+	sub := t.SyncClient.MustSubscribe(ctx, GenesisTopic, genesisCh)
 
 	select {
 	case genesisMsg := <-genesisCh:
@@ -140,9 +119,9 @@ func waitForGenesis(t *TestEnvironment, ctx context.Context) (*GenesisMsg, error
 	}
 }
 
-func collectMinerAddrs(t *TestEnvironment, ctx context.Context, miners int) ([]MinerAddressesMsg, error) {
+func CollectMinerAddrs(t *TestEnvironment, ctx context.Context, miners int) ([]MinerAddressesMsg, error) {
 	ch := make(chan MinerAddressesMsg)
-	sub := t.SyncClient.MustSubscribe(ctx, minersAddrsTopic, ch)
+	sub := t.SyncClient.MustSubscribe(ctx, MinersAddrsTopic, ch)
 
 	addrs := make([]MinerAddressesMsg, 0, miners)
 	for i := 0; i < miners; i++ {
@@ -157,9 +136,9 @@ func collectMinerAddrs(t *TestEnvironment, ctx context.Context, miners int) ([]M
 	return addrs, nil
 }
 
-func collectClientAddrs(t *TestEnvironment, ctx context.Context, clients int) ([]peer.AddrInfo, error) {
+func CollectClientAddrs(t *TestEnvironment, ctx context.Context, clients int) ([]peer.AddrInfo, error) {
 	ch := make(chan peer.AddrInfo)
-	sub := t.SyncClient.MustSubscribe(ctx, clientsAddrsTopic, ch)
+	sub := t.SyncClient.MustSubscribe(ctx, ClientsAddrsTopic, ch)
 
 	addrs := make([]peer.AddrInfo, 0, clients)
 	for i := 0; i < clients; i++ {
@@ -174,13 +153,13 @@ func collectClientAddrs(t *TestEnvironment, ctx context.Context, clients int) ([
 	return addrs, nil
 }
 
-func getPubsubTracerMaddr(ctx context.Context, t *TestEnvironment) (string, error) {
+func GetPubsubTracerMaddr(ctx context.Context, t *TestEnvironment) (string, error) {
 	if !t.BooleanParam("enable_pubsub_tracer") {
 		return "", nil
 	}
 
 	ch := make(chan *PubsubTracerMsg)
-	sub := t.SyncClient.MustSubscribe(ctx, pubsubTracerTopic, ch)
+	sub := t.SyncClient.MustSubscribe(ctx, PubsubTracerTopic, ch)
 
 	select {
 	case m := <-ch:
@@ -190,7 +169,7 @@ func getPubsubTracerMaddr(ctx context.Context, t *TestEnvironment) (string, erro
 	}
 }
 
-func getDrandOpts(ctx context.Context, t *TestEnvironment) (node.Option, error) {
+func GetRandomBeaconOpts(ctx context.Context, t *TestEnvironment) (node.Option, error) {
 	beaconType := t.StringParam("random_beacon_type")
 	switch beaconType {
 	case "external-drand":

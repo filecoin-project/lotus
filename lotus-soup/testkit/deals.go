@@ -1,4 +1,4 @@
-package main
+package testkit
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 	"github.com/ipfs/go-cid"
 )
 
-func startDeal(ctx context.Context, minerActorAddr address.Address, client api.FullNode, fcid cid.Cid) *cid.Cid {
+func StartDeal(ctx context.Context, minerActorAddr address.Address, client api.FullNode, fcid cid.Cid) *cid.Cid {
 	addr, err := client.WalletDefaultAddress(ctx)
 	if err != nil {
 		panic(err)
@@ -31,7 +31,7 @@ func startDeal(ctx context.Context, minerActorAddr address.Address, client api.F
 	return deal
 }
 
-func waitDealSealed(t *TestEnvironment, ctx context.Context, client api.FullNode, deal *cid.Cid) {
+func WaitDealSealed(t *TestEnvironment, ctx context.Context, client api.FullNode, deal *cid.Cid) {
 loop:
 	for {
 		di, err := client.ClientGetDealInfo(ctx, *deal)

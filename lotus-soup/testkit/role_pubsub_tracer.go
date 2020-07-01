@@ -1,4 +1,4 @@
-package main
+package testkit
 
 import (
 	"context"
@@ -54,20 +54,16 @@ func preparePubsubTracer(t *TestEnvironment) (*PubsubTracer, error) {
 
 	_ = ma.StringCast(tracedMultiaddrStr)
 	tracedMsg := &PubsubTracerMsg{Multiaddr: tracedMultiaddrStr}
-	t.SyncClient.MustPublish(ctx, pubsubTracerTopic, tracedMsg)
+	t.SyncClient.MustPublish(ctx, PubsubTracerTopic, tracedMsg)
 
 	t.RecordMessage("waiting for all nodes to be ready")
-	t.SyncClient.MustSignalAndWait(ctx, stateReady, t.TestInstanceCount)
+	t.SyncClient.MustSignalAndWait(ctx, StateReady, t.TestInstanceCount)
 
 	return &PubsubTracer{host: host, traced: traced}, nil
 }
 
-func runPubsubTracer(t *TestEnvironment) error {
+func runPubsubTracer(t *TestEnvironment, tracer *PubsubTracer) error {
 	t.RecordMessage("running pubsub tracer")
-	tracer, err := preparePubsubTracer(t)
-	if err != nil {
-		return err
-	}
 
 	defer func() {
 		err := tracer.Stop()
@@ -76,7 +72,6 @@ func runPubsubTracer(t *TestEnvironment) error {
 		}
 	}()
 
-	ctx := context.Background()
-	t.SyncClient.MustSignalAndWait(ctx, stateDone, t.TestInstanceCount)
+	t.WaitUntilAllDone()
 	return nil
 }
