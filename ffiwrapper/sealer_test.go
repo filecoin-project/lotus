@@ -459,6 +459,10 @@ func openFDs(t *testing.T) int {
 		if strings.HasPrefix(l, "/dev/nvidia") {
 			skip++
 		}
+
+		if strings.HasPrefix(l, "/var/tmp/filecoin-proof-parameters/") {
+			skip++
+		}
 	}
 
 	return len(dent) - skip
