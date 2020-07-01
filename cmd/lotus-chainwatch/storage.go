@@ -523,12 +523,12 @@ func (st *storage) storeSectors(minerTips map[types.TipSetKey][]*minerStateInfo,
 				if _, err := stmt.Exec(
 					miner.addr.String(),
 					uint64(sector.ID),
-					int64(sector.Info.ActivationEpoch),
-					int64(sector.Info.Info.Expiration),
+					int64(sector.Info.Activation),
+					int64(sector.Info.Expiration),
 					sector.Info.DealWeight.String(),
 					sector.Info.VerifiedDealWeight.String(),
-					sector.Info.Info.SealedCID.String(),
-					int64(sector.Info.Info.SealRandEpoch),
+					sector.Info.SealedCID.String(),
+					0, // TODO: Not there now?
 				); err != nil {
 					return err
 				}
@@ -693,13 +693,13 @@ func (st *storage) updateMinerSectors(miners []*minerSectorUpdate, api api.FullN
 		var newSecInfo miner_spec.SectorOnChainInfo
 		// if we cannot find an old sector in the new list then it was removed.
 		if err := oldSectors.ForEach(&oldSecInfo, func(i int64) error {
-			found, err := newSectors.Get(uint64(oldSecInfo.Info.SectorNumber), &newSecInfo)
+			found, err := newSectors.Get(uint64(oldSecInfo.SectorNumber), &newSecInfo)
 			if err != nil {
 				log.Warnw("new sectors get", "error", err)
 				return err
 			}
 			if !found {
-				log.Infow("MINER DELETED SECTOR", "miner", miner.minerState.addr.String(), "sector", oldSecInfo.Info.SectorNumber, "tipset", miner.tskey.String())
+				log.Infow("MINER DELETED SECTOR", "miner", miner.minerState.addr.String(), "sector", oldSecInfo.SectorNumber, "tipset", miner.tskey.String())
 				deletedSectors = append(deletedSectors, &deletedSector{
 					deletedSector: oldSecInfo,
 					miner:         miner.minerState.addr,
@@ -731,14 +731,14 @@ func (st *storage) updateMinerSectors(miners []*minerSectorUpdate, api api.FullN
 			return err
 		}
 		// TODO validate this shits right
-		if ts.Height() >= ds.deletedSector.Info.Expiration {
+		if ts.Height() >= ds.deletedSector.Expiration {
 			// means it expired, do nothing
-			log.Infow("expired sector", "miner", ds.miner.String(), "sector", ds.deletedSector.Info.SectorNumber)
+			log.Infow("expired sector", "miner", ds.miner.String(), "sector", ds.deletedSector.SectorNumber)
 			continue
 		}
-		log.Infow("terminated sector", "miner", ds.miner.String(), "sector", ds.deletedSector.Info.SectorNumber)
+		log.Infow("terminated sector", "miner", ds.miner.String(), "sector", ds.deletedSector.SectorNumber)
 		// means it was terminated.
-		if _, err := stmt.Exec(int64(ts.Height()), ds.miner.String(), int64(ds.deletedSector.Info.SectorNumber)); err != nil {
+		if _, err := stmt.Exec(int64(ts.Height()), ds.miner.String(), int64(ds.deletedSector.SectorNumber)); err != nil {
 			return err
 		}
 	}
