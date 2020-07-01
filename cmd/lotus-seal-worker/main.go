@@ -53,6 +53,10 @@ func main() {
 		Version: build.UserVersion(),
 		Flags: []cli.Flag{
 			&cli.StringFlag{
+				Name:  lcli.FlagApiEndpoint,
+				Value: "",
+			},
+			&cli.StringFlag{
 				Name:    FlagStorageRepo,
 				EnvVars: []string{"WORKER_PATH"},
 				Value:   "~/.lotusworker", // TODO: Consider XDG_DATA_HOME

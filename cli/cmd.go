@@ -27,6 +27,8 @@ var log = logging.Logger("cli")
 
 const (
 	metadataTraceConetxt = "traceContext"
+
+	FlagApiEndpoint = "api-endpoint"
 )
 
 // custom CLI error
@@ -135,6 +137,10 @@ func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
 }
 
 func GetRawAPI(ctx *cli.Context, t repo.RepoType) (string, http.Header, error) {
+	if addr := ctx.String(FlagApiEndpoint); addr != "" {
+		return addr, http.Header{}, nil
+	}
+
 	ainfo, err := GetAPIInfo(ctx, t)
 	if err != nil {
 		return "", nil, xerrors.Errorf("could not get API info: %w", err)

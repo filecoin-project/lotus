@@ -7,6 +7,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/lotus/build"
+	lcli "github.com/filecoin-project/lotus/cli"
 )
 
 var log = logging.Logger("lotus-shed")
@@ -36,6 +37,10 @@ func main() {
 		Version:  build.BuildVersion,
 		Commands: local,
 		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:  lcli.FlagApiEndpoint,
+				Value: "",
+			},
 			&cli.StringFlag{
 				Name:    "repo",
 				EnvVars: []string{"LOTUS_PATH"},

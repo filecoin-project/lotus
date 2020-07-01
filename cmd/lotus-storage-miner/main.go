@@ -63,6 +63,10 @@ func main() {
 		EnableBashCompletion: true,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
+				Name:  lcli.FlagApiEndpoint,
+				Value: "",
+			},
+			&cli.StringFlag{
 				Name:    "repo",
 				EnvVars: []string{"LOTUS_PATH"},
 				Hidden:  true,
