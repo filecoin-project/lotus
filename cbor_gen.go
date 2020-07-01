@@ -383,7 +383,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{181}); err != nil {
+	if _, err := w.Write([]byte{182}); err != nil {
 		return err
 	}
 
@@ -621,6 +621,22 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	if err := t.PreCommitInfo.MarshalCBOR(w); err != nil {
+		return err
+	}
+
+	// t.PreCommitDeposit (big.Int) (struct)
+	if len("PreCommitDeposit") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"PreCommitDeposit\" was too long")
+	}
+
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("PreCommitDeposit")))); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("PreCommitDeposit")); err != nil {
+		return err
+	}
+
+	if err := t.PreCommitDeposit.MarshalCBOR(w); err != nil {
 		return err
 	}
 
@@ -1101,6 +1117,16 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 					if err := t.PreCommitInfo.UnmarshalCBOR(br); err != nil {
 						return xerrors.Errorf("unmarshaling t.PreCommitInfo pointer: %w", err)
 					}
+				}
+
+			}
+			// t.PreCommitDeposit (big.Int) (struct)
+		case "PreCommitDeposit":
+
+			{
+
+				if err := t.PreCommitDeposit.UnmarshalCBOR(br); err != nil {
+					return xerrors.Errorf("unmarshaling t.PreCommitDeposit: %w", err)
 				}
 
 			}

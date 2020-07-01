@@ -3,6 +3,7 @@ package sealing
 import (
 	"context"
 	"io"
+	"sync"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -55,6 +56,9 @@ type Sealing struct {
 
 	unsealedInfos map[abi.SectorNumber]UnsealedSectorInfo
 	pcp           PreCommitPolicy
+
+	upgradeLk sync.Mutex
+	toUpgrade map[abi.SectorNumber]struct{}
 }
 
 type UnsealedSectorInfo struct {
@@ -74,6 +78,8 @@ func New(api SealingAPI, events Events, maddr address.Address, ds datastore.Batc
 		verif:         verif,
 		unsealedInfos: make(map[abi.SectorNumber]UnsealedSectorInfo),
 		pcp:           pcp,
+
+		toUpgrade: map[abi.SectorNumber]struct{}{},
 	}
 
 	s.sectors = statemachine.New(namespace.Wrap(ds, datastore.NewKey(SectorStorePrefix)), s, SectorInfo{})

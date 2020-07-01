@@ -8,6 +8,7 @@ import (
 
 	sectorstorage "github.com/filecoin-project/sector-storage"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/filecoin-project/specs-storage/storage"
@@ -69,6 +70,7 @@ type SectorInfo struct {
 	Proof []byte
 
 	PreCommitInfo    *miner.SectorPreCommitInfo
+	PreCommitDeposit big.Int
 	PreCommitMessage *cid.Cid
 	PreCommitTipSet  TipSetToken
 
