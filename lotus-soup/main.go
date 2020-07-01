@@ -15,7 +15,7 @@ import (
 )
 
 var cases = map[string]interface{}{
-	"deals-e2e": dealsE2E(),
+	"deals-e2e": testkit.WrapTestEnvironment(dealsE2E),
 }
 
 func main() {
@@ -40,76 +40,80 @@ func main() {
 // sectors from each node.
 // Then we create a genesis block that allocates some funds to each node and collects
 // the presealed sectors.
-func dealsE2E() run.InitializedTestCaseFn {
-	client := func(t *testkit.TestEnvironment, cl *testkit.LotusClient) error {
-		t.RecordMessage("running client")
-
-		ctx := context.Background()
-		client := cl.FullApi
-
-		// select a random miner
-		minerAddr := cl.MinerAddrs[rand.Intn(len(cl.MinerAddrs))]
-		if err := client.NetConnect(ctx, minerAddr.PeerAddr); err != nil {
-			return err
-		}
-		t.D().Counter(fmt.Sprintf("send-data-to,miner=%s", minerAddr.ActorAddr)).Inc(1)
-
-		t.RecordMessage("selected %s as the miner", minerAddr.ActorAddr)
-
-		time.Sleep(2 * time.Second)
-
-		// generate 1600 bytes of random data
-		data := make([]byte, 1600)
-		rand.New(rand.NewSource(time.Now().UnixNano())).Read(data)
-
-		file, err := ioutil.TempFile("/tmp", "data")
-		if err != nil {
-			return err
-		}
-		defer os.Remove(file.Name())
-
-		_, err = file.Write(data)
-		if err != nil {
-			return err
-		}
-
-		fcid, err := client.ClientImport(ctx, api.FileRef{Path: file.Name(), IsCAR: false})
-		if err != nil {
-			return err
-		}
-		t.RecordMessage("file cid: %s", fcid)
-
-		// start deal
-		t1 := time.Now()
-		deal := testkit.StartDeal(ctx, minerAddr.ActorAddr, client, fcid)
-		t.RecordMessage("started deal: %s", deal)
-
-		// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
-		time.Sleep(2 * time.Second)
-
-		t.RecordMessage("waiting for deal to be sealed")
-		testkit.WaitDealSealed(t, ctx, client, deal)
-		t.D().ResettingHistogram("deal.sealed").Update(int64(time.Since(t1)))
-
-		carExport := true
-
-		t.RecordMessage("trying to retrieve %s", fcid)
-		testkit.RetrieveData(t, ctx, err, client, fcid, carExport, data)
-		t.D().ResettingHistogram("deal.retrieved").Update(int64(time.Since(t1)))
-
-		t.SyncClient.MustSignalEntry(ctx, testkit.StateStopMining)
-
-		time.Sleep(10 * time.Second) // wait for metrics to be emitted
-
-		// TODO broadcast published content CIDs to other clients
-		// TODO select a random piece of content published by some other client and retrieve it
-
-		t.SyncClient.MustSignalAndWait(ctx, testkit.StateDone, t.TestInstanceCount)
-		return nil
-
+func dealsE2E(t *testkit.TestEnvironment) error {
+	// Dispatch non-client roles to defaults.
+	if t.Role != "client" {
+		return testkit.RunDefaultRole(t)
 	}
 
-	testkit.MustOverrideRoleRun(testkit.RoleClient, client)
+	cl, err := testkit.PrepareClient(t)
+	if err != nil {
+		return err
+	}
 
-	return testkit.Entrypoint()
+	// This is a client role
+	t.RecordMessage("running client")
+
+	ctx := context.Background()
+	client := cl.FullApi
+
+	// select a random miner
+	minerAddr := cl.MinerAddrs[rand.Intn(len(cl.MinerAddrs))]
+	if err := client.NetConnect(ctx, minerAddr.PeerAddr); err != nil {
+		return err
+	}
+	t.D().Counter(fmt.Sprintf("send-data-to,miner=%s", minerAddr.ActorAddr)).Inc(1)
+
+	t.RecordMessage("selected %s as the miner", minerAddr.ActorAddr)
+
+	time.Sleep(2 * time.Second)
+
+	// generate 1600 bytes of random data
+	data := make([]byte, 1600)
+	rand.New(rand.NewSource(time.Now().UnixNano())).Read(data)
+
+	file, err := ioutil.TempFile("/tmp", "data")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(file.Name())
+
+	_, err = file.Write(data)
+	if err != nil {
+		return err
+	}
+
+	fcid, err := client.ClientImport(ctx, api.FileRef{Path: file.Name(), IsCAR: false})
+	if err != nil {
+		return err
+	}
+	t.RecordMessage("file cid: %s", fcid)
+
+	// start deal
+	t1 := time.Now()
+	deal := testkit.StartDeal(ctx, minerAddr.ActorAddr, client, fcid)
+	t.RecordMessage("started deal: %s", deal)
+
+	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
+	time.Sleep(2 * time.Second)
+
+	t.RecordMessage("waiting for deal to be sealed")
+	testkit.WaitDealSealed(t, ctx, client, deal)
+	t.D().ResettingHistogram("deal.sealed").Update(int64(time.Since(t1)))
+
+	carExport := true
+
+	t.RecordMessage("trying to retrieve %s", fcid)
+	testkit.RetrieveData(t, ctx, err, client, fcid, carExport, data)
+	t.D().ResettingHistogram("deal.retrieved").Update(int64(time.Since(t1)))
+
+	t.SyncClient.MustSignalEntry(ctx, testkit.StateStopMining)
+
+	time.Sleep(10 * time.Second) // wait for metrics to be emitted
+
+	// TODO broadcast published content CIDs to other clients
+	// TODO select a random piece of content published by some other client and retrieve it
+
+	t.SyncClient.MustSignalAndWait(ctx, testkit.StateDone, t.TestInstanceCount)
+	return nil
 }

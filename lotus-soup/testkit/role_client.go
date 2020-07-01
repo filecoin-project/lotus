@@ -19,10 +19,11 @@ import (
 type LotusClient struct {
 	*LotusNode
 
+	t          *TestEnvironment
 	MinerAddrs []MinerAddressesMsg
 }
 
-func prepareClient(t *TestEnvironment) (*LotusClient, error) {
+func PrepareClient(t *TestEnvironment) (*LotusClient, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), PrepareNodeTimeout)
 	defer cancel()
 
@@ -107,16 +108,17 @@ func prepareClient(t *TestEnvironment) (*LotusClient, error) {
 	t.RecordMessage("got %v miner addrs", len(addrs))
 
 	cl := &LotusClient{
+		t:          t,
 		LotusNode:  n,
 		MinerAddrs: addrs,
 	}
 	return cl, nil
 }
 
-func runDefaultClient(t *TestEnvironment, _ *LotusClient) error {
+func (c *LotusClient) RunDefault() error {
 	// run forever
-	t.RecordMessage("running default client forever")
-	t.WaitUntilAllDone()
+	c.t.RecordMessage("running default client forever")
+	c.t.WaitUntilAllDone()
 	return nil
 }
 

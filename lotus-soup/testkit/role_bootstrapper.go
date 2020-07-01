@@ -19,19 +19,15 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 )
 
-func runBootstrapper(t *TestEnvironment, node *LotusNode) error {
-	t.RecordMessage("running bootstrapper")
-	_, err := prepareBootstrapper(t)
-	if err != nil {
-		return err
-	}
+// Bootstrapper is a special kind of process that produces a genesis block with
+// the initial wallet balances and preseals for all enlisted miners and clients.
+type Bootstrapper struct {
+	*LotusNode
 
-	ctx := context.Background()
-	t.SyncClient.MustSignalAndWait(ctx, StateDone, t.TestInstanceCount)
-	return nil
+	t *TestEnvironment
 }
 
-func prepareBootstrapper(t *TestEnvironment) (*LotusNode, error) {
+func PrepareBootstrapper(t *TestEnvironment) (*Bootstrapper, error) {
 	var (
 		clients = t.IntParam("clients")
 		miners  = t.IntParam("miners")
@@ -159,5 +155,13 @@ func prepareBootstrapper(t *TestEnvironment) (*LotusNode, error) {
 	t.RecordMessage("waiting for all nodes to be ready")
 	t.SyncClient.MustSignalAndWait(ctx, StateReady, t.TestInstanceCount)
 
-	return n, nil
+	return &Bootstrapper{n, t}, nil
+}
+
+// RunDefault runs a default bootstrapper.
+func (b *Bootstrapper) RunDefault() error {
+	b.t.RecordMessage("running bootstrapper")
+	ctx := context.Background()
+	b.t.SyncClient.MustSignalAndWait(ctx, StateDone, b.t.TestInstanceCount)
+	return nil
 }

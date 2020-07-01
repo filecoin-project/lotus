@@ -37,9 +37,11 @@ import (
 
 type LotusMiner struct {
 	*LotusNode
+
+	t *TestEnvironment
 }
 
-func prepareMiner(t *TestEnvironment) (*LotusMiner, error) {
+func PrepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), PrepareNodeTimeout)
 	defer cancel()
 
@@ -235,11 +237,6 @@ func prepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 		panic(err)
 	}
 
-	err = startStorageMinerAPIServer(minerRepo, n.MinerApi)
-	if err != nil {
-		return nil, err
-	}
-
 	// add local storage for presealed sectors
 	err = n.MinerApi.StorageAddLocal(ctx, presealDir)
 	if err != nil {
@@ -283,11 +280,19 @@ func prepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 	t.RecordMessage("waiting for all nodes to be ready")
 	t.SyncClient.MustSignalAndWait(ctx, StateReady, t.TestInstanceCount)
 
-	return &LotusMiner{n}, err
+	m := &LotusMiner{n, t}
+
+	err = m.startStorageMinerAPIServer(minerRepo, n.MinerApi)
+	if err != nil {
+		return nil, err
+	}
+
+	return m, err
 }
 
-func runDefaultMiner(t *TestEnvironment, miner *LotusMiner) error {
+func (m *LotusMiner) RunDefault() error {
 	var (
+		t       = m.t
 		clients = t.IntParam("clients")
 		miners  = t.IntParam("miners")
 	)
@@ -297,7 +302,7 @@ func runDefaultMiner(t *TestEnvironment, miner *LotusMiner) error {
 	t.D().Gauge("miner.block-delay").Update(build.BlockDelay)
 
 	ctx := context.Background()
-	myActorAddr, err := miner.MinerApi.ActorAddress(ctx)
+	myActorAddr, err := m.MinerApi.ActorAddress(ctx)
 	if err != nil {
 		return err
 	}
@@ -306,7 +311,7 @@ func runDefaultMiner(t *TestEnvironment, miner *LotusMiner) error {
 	mine := true
 	done := make(chan struct{})
 
-	if miner.MineOne != nil {
+	if m.MineOne != nil {
 		go func() {
 			defer t.RecordMessage("shutting down mining")
 			defer close(done)
@@ -319,7 +324,7 @@ func runDefaultMiner(t *TestEnvironment, miner *LotusMiner) error {
 				t.SyncClient.MustSignalAndWait(ctx, stateMineNext, miners)
 
 				ch := make(chan struct{})
-				err := miner.MineOne(ctx, func(mined bool) {
+				err := m.MineOne(ctx, func(mined bool) {
 					if mined {
 						t.D().Counter(fmt.Sprintf("block.mine,miner=%s", myActorAddr)).Inc(1)
 					}
@@ -353,7 +358,7 @@ func runDefaultMiner(t *TestEnvironment, miner *LotusMiner) error {
 	return nil
 }
 
-func startStorageMinerAPIServer(repo *repo.MemRepo, minerApi api.StorageMiner) error {
+func (m *LotusMiner) startStorageMinerAPIServer(repo *repo.MemRepo, minerApi api.StorageMiner) error {
 	mux := mux.NewRouter()
 
 	rpcServer := jsonrpc.NewServer()

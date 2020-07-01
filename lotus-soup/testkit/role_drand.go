@@ -26,6 +26,8 @@ import (
 var PrepareDrandTimeout = time.Minute
 
 type DrandInstance struct {
+	t *TestEnvironment
+
 	Node        node.Node
 	GossipRelay *lp2p.GossipRelayNode
 
@@ -36,34 +38,37 @@ func (d *DrandInstance) Cleanup() error {
 	return os.RemoveAll(d.stateDir)
 }
 
-func runDrandNode(t *TestEnvironment, dr *DrandInstance) error {
-	t.RecordMessage("running drand node")
-	defer dr.Cleanup()
+func (d *DrandInstance) RunDefault() error {
+	d.t.RecordMessage("running drand node")
+	defer d.Cleanup()
 
 	// TODO add ability to halt / recover on demand
-	t.WaitUntilAllDone()
+	d.t.WaitUntilAllDone()
 	return nil
 }
 
-// prepareDrandNode starts a drand instance and runs a DKG with the other members of the composition group.
-// Once the chain is running, the leader publishes the chain info needed by lotus nodes on
-// drandConfigTopic
-func prepareDrandNode(t *TestEnvironment) (*DrandInstance, error) {
+// PrepareDrandInstance starts a drand instance and runs a DKG with the other
+// members of the composition group.
+//
+// Once the chain is running, the leader publishes the chain info needed by
+// lotus nodes on DrandConfigTopic.
+func PrepareDrandInstance(t *TestEnvironment) (*DrandInstance, error) {
+	var (
+		startTime = time.Now()
+		seq       = t.GroupSeq
+		isLeader  = seq == 1
+		nNodes    = t.TestGroupInstanceCount
+
+		myAddr         = t.NetClient.MustGetDataNetworkIP()
+		period         = t.DurationParam("drand_period")
+		threshold      = t.IntParam("drand_threshold")
+		runGossipRelay = t.BooleanParam("drand_gossip_relay")
+
+		beaconOffset = 3
+	)
+
 	ctx, cancel := context.WithTimeout(context.Background(), PrepareDrandTimeout)
 	defer cancel()
-
-	startTime := time.Now()
-
-	seq := t.GroupSeq
-	isLeader := seq == 1
-	nNodes := t.TestGroupInstanceCount
-
-	myAddr := t.NetClient.MustGetDataNetworkIP()
-	period := t.DurationParam("drand_period")
-	threshold := t.IntParam("drand_threshold")
-	runGossipRelay := t.BooleanParam("drand_gossip_relay")
-
-	beaconOffset := 3
 
 	stateDir, err := ioutil.TempDir("", fmt.Sprintf("drand-%d", t.GroupSeq))
 	if err != nil {
@@ -80,6 +85,7 @@ func prepareDrandNode(t *TestEnvironment) (*DrandInstance, error) {
 		PublicAddr  string
 		IsLeader    bool
 	}
+
 	addrTopic := sync.NewTopic("drand-addrs", &NodeAddr{})
 	var publicAddrs []string
 	var leaderAddr string
@@ -89,6 +95,7 @@ func prepareDrandNode(t *TestEnvironment) (*DrandInstance, error) {
 		PublicAddr:  n.PublicAddr(),
 		IsLeader:    isLeader,
 	}, ch)
+
 	for i := 0; i < nNodes; i++ {
 		select {
 		case msg := <-ch:
@@ -100,6 +107,7 @@ func prepareDrandNode(t *TestEnvironment) (*DrandInstance, error) {
 			return nil, fmt.Errorf("unable to read drand addrs from sync service: %w", err)
 		}
 	}
+
 	if leaderAddr == "" {
 		return nil, fmt.Errorf("got %d drand addrs, but no leader", len(publicAddrs))
 	}
@@ -215,6 +223,7 @@ func prepareDrandNode(t *TestEnvironment) (*DrandInstance, error) {
 	}
 
 	return &DrandInstance{
+		t:           t,
 		Node:        n,
 		GossipRelay: gossipRelay,
 		stateDir:    stateDir,

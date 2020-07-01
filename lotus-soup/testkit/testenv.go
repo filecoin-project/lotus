@@ -13,6 +13,8 @@ import (
 type TestEnvironment struct {
 	*runtime.RunEnv
 	*run.InitContext
+
+	Role string
 }
 
 // workaround for default params being wrapped in quote chars
@@ -28,7 +30,19 @@ func (t *TestEnvironment) DurationParam(name string) time.Duration {
 	return d
 }
 
+// WaitUntilAllDone waits until all instances in the test case are done.
 func (t *TestEnvironment) WaitUntilAllDone() {
 	ctx := context.Background()
 	t.SyncClient.MustSignalAndWait(ctx, StateDone, t.TestInstanceCount)
+}
+
+// WrapTestEnvironment takes a test case function that accepts a
+// *TestEnvironment, and adapts it to the original unwrapped SDK style
+// (run.InitializedTestCaseFn).
+func WrapTestEnvironment(f func(t *TestEnvironment) error) run.InitializedTestCaseFn {
+	return func(runenv *runtime.RunEnv, initCtx *run.InitContext) error {
+		t := &TestEnvironment{RunEnv: runenv, InitContext: initCtx}
+		t.Role = t.StringParam("role")
+		return f(t)
+	}
 }

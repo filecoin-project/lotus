@@ -14,16 +14,12 @@ import (
 )
 
 type PubsubTracer struct {
+	t      *TestEnvironment
 	host   host.Host
 	traced *traced.TraceCollector
 }
 
-func (tr *PubsubTracer) Stop() error {
-	tr.traced.Stop()
-	return tr.host.Close()
-}
-
-func preparePubsubTracer(t *TestEnvironment) (*PubsubTracer, error) {
+func PreparePubsubTracer(t *TestEnvironment) (*PubsubTracer, error) {
 	ctx := context.Background()
 
 	privk, _, err := crypto.GenerateEd25519Key(rand.Reader)
@@ -59,19 +55,25 @@ func preparePubsubTracer(t *TestEnvironment) (*PubsubTracer, error) {
 	t.RecordMessage("waiting for all nodes to be ready")
 	t.SyncClient.MustSignalAndWait(ctx, StateReady, t.TestInstanceCount)
 
-	return &PubsubTracer{host: host, traced: traced}, nil
+	tracer := &PubsubTracer{t: t, host: host, traced: traced}
+	return tracer, nil
 }
 
-func runPubsubTracer(t *TestEnvironment, tracer *PubsubTracer) error {
-	t.RecordMessage("running pubsub tracer")
+func (tr *PubsubTracer) RunDefault() error {
+	tr.t.RecordMessage("running pubsub tracer")
 
 	defer func() {
-		err := tracer.Stop()
+		err := tr.Stop()
 		if err != nil {
-			t.RecordMessage("error stoping tracer: %s", err)
+			tr.t.RecordMessage("error stoping tracer: %s", err)
 		}
 	}()
 
-	t.WaitUntilAllDone()
+	tr.t.WaitUntilAllDone()
 	return nil
+}
+
+func (tr *PubsubTracer) Stop() error {
+	tr.traced.Stop()
+	return tr.host.Close()
 }
