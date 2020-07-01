@@ -58,7 +58,12 @@ func GetMinerWorkerRaw(ctx context.Context, sm *StateManager, st cid.Cid, maddr 
 		return address.Undef, xerrors.Errorf("load state tree: %w", err)
 	}
 
-	return vm.ResolveToKeyAddr(state, cst, mas.Info.Worker)
+	info, err := mas.GetInfo(sm.cs.Store(ctx))
+	if err != nil {
+		return address.Address{}, err
+	}
+
+	return vm.ResolveToKeyAddr(state, cst, info.Worker)
 }
 
 func GetPower(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (power.Claim, power.Claim, error) {
@@ -206,7 +211,12 @@ func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *S
 		return nil, nil
 	}
 
-	spt, err := ffiwrapper.SealProofTypeFromSectorSize(mas.Info.SectorSize)
+	info, err := mas.GetInfo(sm.cs.Store(ctx))
+	if err != nil {
+		return nil, err
+	}
+
+	spt, err := ffiwrapper.SealProofTypeFromSectorSize(info.SectorSize)
 	if err != nil {
 		return nil, xerrors.Errorf("getting seal proof type: %w", err)
 	}
@@ -255,14 +265,14 @@ func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *S
 	return out, nil
 }
 
-func StateMinerInfo(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (miner.MinerInfo, error) {
+func StateMinerInfo(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (*miner.MinerInfo, error) {
 	var mas miner.State
 	_, err := sm.LoadActorStateRaw(ctx, maddr, &mas, ts.ParentState())
 	if err != nil {
-		return miner.MinerInfo{}, xerrors.Errorf("(get ssize) failed to load miner actor state: %w", err)
+		return nil, xerrors.Errorf("(get ssize) failed to load miner actor state: %w", err)
 	}
 
-	return mas.Info, nil
+	return mas.GetInfo(sm.cs.Store(ctx))
 }
 
 func GetMinerSlashed(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (bool, error) {
@@ -564,7 +574,12 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, bcn beacon.RandomBe
 		return nil, xerrors.Errorf("failed to get power: %w", err)
 	}
 
-	worker, err := sm.ResolveToKeyAddress(ctx, mas.GetWorker(), ts)
+	info, err := mas.GetInfo(sm.cs.Store(ctx))
+	if err != nil {
+		return nil, err
+	}
+
+	worker, err := sm.ResolveToKeyAddress(ctx, info.Worker, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("resolving worker address: %w", err)
 	}
@@ -574,7 +589,7 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, bcn beacon.RandomBe
 		NetworkPower:    tpow.QualityAdjPower,
 		Sectors:         sectors,
 		WorkerKey:       worker,
-		SectorSize:      mas.Info.SectorSize,
+		SectorSize:      info.SectorSize,
 		PrevBeaconEntry: *prev,
 		BeaconEntries:   entries,
 	}, nil

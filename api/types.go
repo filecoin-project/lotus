@@ -55,7 +55,7 @@ type MinerInfo struct {
 	WindowPoStPartitionSectors uint64
 }
 
-func NewApiMinerInfo(info miner.MinerInfo) MinerInfo {
+func NewApiMinerInfo(info *miner.MinerInfo) MinerInfo {
 	mi := MinerInfo{
 		Owner:                      info.Owner,
 		Worker:                     info.Worker,

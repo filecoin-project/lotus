@@ -61,7 +61,7 @@ type minerStateInfo struct {
 
 	// miner specific
 	state miner.State
-	info  miner.MinerInfo
+	info  *miner.MinerInfo
 
 	// tracked by power actor
 	rawPower big.Int
@@ -315,7 +315,7 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, headTs *types.
 					stateroot: c.stateroot,
 
 					state: miner.State{},
-					info:  miner.MinerInfo{},
+					info:  nil,
 
 					rawPower: big.Zero(),
 					qalPower: big.Zero(),
@@ -362,7 +362,11 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, headTs *types.
 					log.Error(err)
 					return
 				}
-				mi.info = mi.state.Info
+				mi.info, err = mi.state.GetInfo(&apiIpldStore{ctx, api})
+				if err != nil {
+					log.Error(err)
+					return
+				}
 			}
 
 			// TODO Get the Sector Count

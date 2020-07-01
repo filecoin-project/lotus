@@ -207,12 +207,13 @@ func WriteGenesisMiner(maddr address.Address, sbroot string, gm *genesis.Miner, 
 }
 
 func createDeals(m *genesis.Miner, k *wallet.Key, maddr address.Address, ssize abi.SectorSize) error {
-	for _, sector := range m.Sectors {
+	for i, sector := range m.Sectors {
 		proposal := &market.DealProposal{
 			PieceCID:             sector.CommD,
 			PieceSize:            abi.PaddedPieceSize(ssize),
 			Client:               k.Address,
 			Provider:             maddr,
+			Label:                fmt.Sprintf("%d", i),
 			StartEpoch:           0,
 			EndEpoch:             9001,
 			StoragePricePerEpoch: big.Zero(),

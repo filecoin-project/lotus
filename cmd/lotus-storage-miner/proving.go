@@ -7,6 +7,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
@@ -15,9 +16,11 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
+	"github.com/filecoin-project/lotus/api/apibstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/lib/adtutil"
 )
 
 var provingCmd = &cli.Command{
@@ -255,6 +258,7 @@ var provingDeadlinesCmd = &cli.Command{
 		}
 
 		var mas miner.State
+		var info *miner.MinerInfo
 		{
 			mact, err := api.StateGetActor(ctx, maddr, types.EmptyTSK)
 			if err != nil {
@@ -265,6 +269,11 @@ var provingDeadlinesCmd = &cli.Command{
 				return err
 			}
 			if err := mas.UnmarshalCBOR(bytes.NewReader(rmas)); err != nil {
+				return err
+			}
+
+			info, err = mas.GetInfo(adtutil.NewStore(ctx, cbor.NewCborStore(apibstore.NewAPIBlockstore(api))))
+			if err != nil {
 				return err
 			}
 		}
@@ -278,12 +287,12 @@ var provingDeadlinesCmd = &cli.Command{
 				return err
 			}
 
-			firstPartition, sectorCount, err := miner.PartitionsForDeadline(deadlines, mas.Info.WindowPoStPartitionSectors, uint64(i))
+			firstPartition, sectorCount, err := miner.PartitionsForDeadline(deadlines, info.WindowPoStPartitionSectors, uint64(i))
 			if err != nil {
 				return err
 			}
 
-			partitionCount := (sectorCount + mas.Info.WindowPoStPartitionSectors - 1) / mas.Info.WindowPoStPartitionSectors
+			partitionCount := (sectorCount + info.WindowPoStPartitionSectors - 1) / info.WindowPoStPartitionSectors
 
 			var provenPartitions uint64
 			{
