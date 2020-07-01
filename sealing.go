@@ -78,6 +78,8 @@ func New(api SealingAPI, events Events, maddr address.Address, ds datastore.Batc
 		verif:         verif,
 		unsealedInfos: make(map[abi.SectorNumber]UnsealedSectorInfo),
 		pcp:           pcp,
+
+		toUpgrade: map[abi.SectorNumber]struct{}{},
 	}
 
 	s.sectors = statemachine.New(namespace.Wrap(ds, datastore.NewKey(SectorStorePrefix)), s, SectorInfo{})

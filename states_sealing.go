@@ -169,11 +169,7 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 		DealIDs:       sector.dealIDs(),
 	}
 
-	replace := m.maybeUpgradableSector()
-	if replace != nil {
-		params.ReplaceCapacity = true
-		params.ReplaceSector = *replace
-	}
+	depositMinimum := m.tryUpgradeSector(params)
 
 	enc := new(bytes.Buffer)
 	if err := params.MarshalCBOR(enc); err != nil {
@@ -185,13 +181,15 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 		return xerrors.Errorf("getting initial pledge collateral: %w", err)
 	}
 
-	log.Infof("submitting precommit for sector (deposit: %s): ", sector.SectorNumber, collateral)
-	mcid, err := m.api.SendMsg(ctx.Context(), waddr, m.maddr, builtin.MethodsMiner.PreCommitSector, collateral, big.NewInt(1), 1000000, enc.Bytes())
+	deposit := big.Max(depositMinimum, collateral)
+
+	log.Infof("submitting precommit for sector (deposit: %s): ", sector.SectorNumber, deposit)
+	mcid, err := m.api.SendMsg(ctx.Context(), waddr, m.maddr, builtin.MethodsMiner.PreCommitSector, deposit, big.NewInt(1), 1000000, enc.Bytes())
 	if err != nil {
 		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("pushing message to mpool: %w", err)})
 	}
 
-	return ctx.Send(SectorPreCommitted{Message: mcid, PreCommitInfo: *params})
+	return ctx.Send(SectorPreCommitted{Message: mcid, PreCommitDeposit: deposit,  PreCommitInfo: *params})
 }
 
 func (m *Sealing) handlePreCommitWait(ctx statemachine.Context, sector SectorInfo) error {

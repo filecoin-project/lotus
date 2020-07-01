@@ -4,6 +4,8 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 )
 
 func (m *Sealing) MarkForUpgrade(id abi.SectorNumber) error {
@@ -37,6 +39,29 @@ func (m *Sealing) MarkForUpgrade(id abi.SectorNumber) error {
 	m.toUpgrade[id] = struct{}{}
 
 	return nil
+}
+
+func (m *Sealing) tryUpgradeSector(params *miner.SectorPreCommitInfo) big.Int {
+	replace := m.maybeUpgradableSector()
+	if replace != nil {
+		params.ReplaceCapacity = true
+		params.ReplaceSector = *replace
+
+		ri, err := m.GetSectorInfo(*replace)
+		if err != nil {
+			log.Errorf("error calling GetSectorInfo for replaced sector: %+v", err)
+			return big.Zero()
+		}
+
+		if params.Expiration < ri.PreCommitInfo.Expiration {
+			// TODO: Some limit on this
+			params.Expiration = ri.PreCommitInfo.Expiration
+		}
+
+		return ri.PreCommitDeposit
+	}
+
+	return big.Zero()
 }
 
 func (m *Sealing) maybeUpgradableSector() *abi.SectorNumber {
