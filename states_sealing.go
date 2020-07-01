@@ -169,6 +169,12 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 		DealIDs:       sector.dealIDs(),
 	}
 
+	replace := m.maybeUpgradableSector()
+	if replace != nil {
+		params.ReplaceCapacity = true
+		params.ReplaceSector = *replace
+	}
+
 	enc := new(bytes.Buffer)
 	if err := params.MarshalCBOR(enc); err != nil {
 		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("could not serialize pre-commit sector parameters: %w", err)})

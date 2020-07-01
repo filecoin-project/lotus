@@ -3,6 +3,7 @@ package sealing
 import (
 	"context"
 	"io"
+	"sync"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -55,6 +56,9 @@ type Sealing struct {
 
 	unsealedInfos map[abi.SectorNumber]UnsealedSectorInfo
 	pcp           PreCommitPolicy
+
+	upgradeLk sync.Mutex
+	toUpgrade map[abi.SectorNumber]struct{}
 }
 
 type UnsealedSectorInfo struct {
