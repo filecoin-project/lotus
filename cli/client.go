@@ -233,6 +233,11 @@ var clientDealCmd = &cli.Command{
 			Value: -1,
 		},
 		&cli.BoolFlag{
+			Name:  "fast-retrieval",
+			Usage: "indicates that data should be available for fast retrieval",
+			Value: true,
+		},
+		&cli.BoolFlag{
 			Name:  "verified-deal",
 			Usage: "indicate that the deal counts towards verified client total",
 			Value: false,
@@ -318,6 +323,7 @@ var clientDealCmd = &cli.Command{
 			EpochPrice:        types.BigInt(price),
 			MinBlocksDuration: uint64(dur),
 			DealStartEpoch:    abi.ChainEpoch(cctx.Int64("start-epoch")),
+			FastRetrieval:     cctx.Bool("fast-retrieval"),
 			VerifiedDeal:      cctx.Bool("verified-deal"),
 		})
 		if err != nil {
