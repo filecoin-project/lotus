@@ -115,12 +115,12 @@ func TestPredicates(t *testing.T) {
 	diffFn := preds.OnStorageMarketActorChanged(preds.OnDealStateChanged(preds.DealStateChangedForIDs(dealIds)))
 
 	// Diff a state against itself: expect no change
-	changed, _, err := diffFn(ctx, oldState, oldState)
+	changed, _, err := diffFn(ctx, oldState.Key(), oldState.Key())
 	require.NoError(t, err)
 	require.False(t, changed)
 
 	// Diff old state against new state
-	changed, val, err := diffFn(ctx, oldState, newState)
+	changed, val, err := diffFn(ctx, oldState.Key(), newState.Key())
 	require.NoError(t, err)
 	require.True(t, changed)
 
@@ -145,7 +145,7 @@ func TestPredicates(t *testing.T) {
 		t.Fatal("No state change so this should not be called")
 		return false, nil, nil
 	})
-	changed, _, err = actorDiffFn(ctx, oldState, oldState)
+	changed, _, err = actorDiffFn(ctx, oldState.Key(), oldState.Key())
 	require.NoError(t, err)
 	require.False(t, changed)
 
@@ -199,7 +199,7 @@ func TestMinerSectorChange(t *testing.T) {
 	preds := NewStatePredicates(api)
 
 	minerDiffFn := preds.OnMinerActorChange(minerAddr, preds.OnMinerSectorChange())
-	change, val, err := minerDiffFn(ctx, oldState, newState)
+	change, val, err := minerDiffFn(ctx, oldState.Key(), newState.Key())
 	require.NoError(t, err)
 	require.True(t, change)
 	require.NotNil(t, val)
@@ -217,7 +217,7 @@ func TestMinerSectorChange(t *testing.T) {
 	require.Equal(t, sectorChanges.Extended[0].From, si1)
 	require.Equal(t, sectorChanges.Extended[0].To, si1Ext)
 
-	change, val, err = minerDiffFn(ctx, oldState, oldState)
+	change, val, err = minerDiffFn(ctx, oldState.Key(), oldState.Key())
 	require.NoError(t, err)
 	require.False(t, change)
 	require.Nil(t, val)

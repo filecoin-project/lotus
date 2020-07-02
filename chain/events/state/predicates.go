@@ -45,18 +45,18 @@ func NewStatePredicates(api ChainAPI) *StatePredicates {
 // - changed: was there a change
 // - user: user-defined data representing the state change
 // - err
-type DiffFunc func(ctx context.Context, oldState, newState *types.TipSet) (changed bool, user UserData, err error)
+type DiffFunc func(ctx context.Context, oldState, newState types.TipSetKey) (changed bool, user UserData, err error)
 
 type DiffStateFunc func(ctx context.Context, oldActorStateHead, newActorStateHead cid.Cid) (changed bool, user UserData, err error)
 
 // OnActorStateChanged calls diffStateFunc when the state changes for the given actor
 func (sp *StatePredicates) OnActorStateChanged(addr address.Address, diffStateFunc DiffStateFunc) DiffFunc {
-	return func(ctx context.Context, oldState, newState *types.TipSet) (changed bool, user UserData, err error) {
-		oldActor, err := sp.api.StateGetActor(ctx, addr, oldState.Key())
+	return func(ctx context.Context, oldState, newState types.TipSetKey) (changed bool, user UserData, err error) {
+		oldActor, err := sp.api.StateGetActor(ctx, addr, oldState)
 		if err != nil {
 			return false, nil, err
 		}
-		newActor, err := sp.api.StateGetActor(ctx, addr, newState.Key())
+		newActor, err := sp.api.StateGetActor(ctx, addr, newState)
 		if err != nil {
 			return false, nil, err
 		}
