@@ -166,12 +166,12 @@ func TestMinerSectorChange(t *testing.T) {
 	store := cbornode.NewCborStore(bs)
 
 	nextID := uint64(0)
-	nextIdAddrF := func() address.Address {
-		defer func() { nextID += 1 }()
+	nextIDAddrF := func() address.Address {
+		defer func() { nextID++ }()
 		return tutils.NewIDAddr(t, nextID)
 	}
 
-	owner, worker := nextIdAddrF(), nextIdAddrF()
+	owner, worker := nextIDAddrF(), nextIDAddrF()
 	si0 := newSectorOnChainInfo(0, tutils.MakeCID("0"), big.NewInt(0), abi.ChainEpoch(0), abi.ChainEpoch(10))
 	si1 := newSectorOnChainInfo(1, tutils.MakeCID("1"), big.NewInt(1), abi.ChainEpoch(1), abi.ChainEpoch(11))
 	si2 := newSectorOnChainInfo(2, tutils.MakeCID("2"), big.NewInt(2), abi.ChainEpoch(2), abi.ChainEpoch(11))
@@ -183,10 +183,10 @@ func TestMinerSectorChange(t *testing.T) {
 	// 2 same
 	// 3 added
 	si1Ext := si1
-	si1Ext.Info.Expiration += 1
+	si1Ext.Info.Expiration++
 	newMinerC := createMinerState(ctx, t, store, owner, worker, []miner.SectorOnChainInfo{si1Ext, si2, si3})
 
-	minerAddr := nextIdAddrF()
+	minerAddr := nextIDAddrF()
 	oldState, err := mockTipset(minerAddr, 1)
 	require.NoError(t, err)
 	newState, err := mockTipset(minerAddr, 2)
@@ -200,6 +200,7 @@ func TestMinerSectorChange(t *testing.T) {
 
 	minerDiffFn := preds.OnMinerActorChange(minerAddr, preds.OnMinerSectorChange())
 	change, val, err := minerDiffFn(ctx, oldState, newState)
+	require.NoError(t, err)
 	require.True(t, change)
 	require.NotNil(t, val)
 
@@ -217,6 +218,7 @@ func TestMinerSectorChange(t *testing.T) {
 	require.Equal(t, sectorChanges.Extended[0].To, si1Ext)
 
 	change, val, err = minerDiffFn(ctx, oldState, oldState)
+	require.NoError(t, err)
 	require.False(t, change)
 	require.Nil(t, val)
 }
@@ -294,6 +296,7 @@ func createEmptyMinerState(ctx context.Context, t *testing.T, store *cbornode.Ba
 func createSectorsAMT(ctx context.Context, t *testing.T, store *cbornode.BasicIpldStore, sectors []miner.SectorOnChainInfo) cid.Cid {
 	root := amt.NewAMT(store)
 	for _, sector := range sectors {
+		sector := sector
 		err := root.Set(ctx, uint64(sector.Info.SectorNumber), &sector)
 		require.NoError(t, err)
 	}
