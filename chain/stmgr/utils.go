@@ -13,6 +13,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	amt "github.com/filecoin-project/go-amt-ipld/v2"
+	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -173,13 +174,34 @@ func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *S
 		return nil, xerrors.Errorf("(get sectors) failed to load miner actor state: %w", err)
 	}
 
-	// TODO: Optimization: we could avoid loaditg the whole proving set here if we had AMT.GetNth with bitfield filtering
-	sectorSet, err := GetProvingSetRaw(ctx, sm, mas)
-	if err != nil {
-		return nil, xerrors.Errorf("getting proving set: %w", err)
+	cst := cbor.NewCborStore(sm.cs.Blockstore())
+	var deadlines miner.Deadlines
+	if err := cst.Get(ctx, mas.Deadlines, &deadlines); err != nil {
+		return nil, xerrors.Errorf("failed to load deadlines: %w", err)
 	}
 
-	if len(sectorSet) == 0 {
+	notProving, err := abi.BitFieldUnion(mas.Faults, mas.Recoveries)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to union faults and recoveries: %w", err)
+	}
+
+	allSectors, err := bitfield.MultiMerge(append(deadlines.Due[:], mas.NewSectors)...)
+	if err != nil {
+		return nil, xerrors.Errorf("merging deadline bitfields failed: %w", err)
+	}
+
+	provingSectors, err := bitfield.SubtractBitField(allSectors, notProving)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to subtract non-proving sectors from set: %w", err)
+	}
+
+	numProvSect, err := provingSectors.Count()
+	if err != nil {
+		return nil, xerrors.Errorf("failed to count bits: %w", err)
+	}
+
+	// TODO(review): is this right? feels fishy to me
+	if numProvSect == 0 {
 		return nil, nil
 	}
 
@@ -198,17 +220,34 @@ func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *S
 		return nil, xerrors.Errorf("getting miner ID: %w", err)
 	}
 
-	ids, err := pv.GenerateWinningPoStSectorChallenge(ctx, wpt, abi.ActorID(mid), rand, uint64(len(sectorSet)))
+	ids, err := pv.GenerateWinningPoStSectorChallenge(ctx, wpt, abi.ActorID(mid), rand, numProvSect)
 	if err != nil {
 		return nil, xerrors.Errorf("generating winning post challenges: %w", err)
 	}
 
+	sectors, err := provingSectors.All(miner.SectorsMax)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to enumerate all sector IDs: %w", err)
+	}
+
+	sectorAmt, err := amt.LoadAMT(ctx, cst, mas.Sectors)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load sectors amt: %w", err)
+	}
+
 	out := make([]abi.SectorInfo, len(ids))
 	for i, n := range ids {
+		sid := sectors[n]
+
+		var sinfo miner.SectorOnChainInfo
+		if err := sectorAmt.Get(ctx, sid, &sinfo); err != nil {
+			return nil, xerrors.Errorf("failed to get sector %d: %w", sid, err)
+		}
+
 		out[i] = abi.SectorInfo{
 			SealProof:    spt,
-			SectorNumber: sectorSet[n].ID,
-			SealedCID:    sectorSet[n].Info.Info.SealedCID,
+			SectorNumber: sinfo.Info.SectorNumber,
+			SealedCID:    sinfo.Info.SealedCID,
 		}
 	}
 

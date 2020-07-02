@@ -191,6 +191,12 @@ health:
 .PHONY: health
 BINS+=health
 
+testground:
+	go build -tags testground -o /dev/null ./cmd/lotus
+
+.PHONY: testground
+BINS+=testground
+
 # MISC
 
 buildall: $(BINS)

@@ -666,18 +666,18 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) (er
 	// fast checks first
 
 	now := uint64(time.Now().Unix())
-	if h.Timestamp > now+build.AllowableClockDrift {
+	if h.Timestamp > now+build.AllowableClockDriftSecs {
 		return xerrors.Errorf("block was from the future (now=%d, blk=%d): %w", now, h.Timestamp, ErrTemporal)
 	}
 	if h.Timestamp > now {
 		log.Warn("Got block from the future, but within threshold", h.Timestamp, time.Now().Unix())
 	}
 
-	if h.Timestamp < baseTs.MinTimestamp()+(build.BlockDelay*uint64(h.Height-baseTs.Height())) {
+	if h.Timestamp < baseTs.MinTimestamp()+(build.BlockDelaySecs*uint64(h.Height-baseTs.Height())) {
 		log.Warn("timestamp funtimes: ", h.Timestamp, baseTs.MinTimestamp(), h.Height, baseTs.Height())
-		diff := (baseTs.MinTimestamp() + (build.BlockDelay * uint64(h.Height-baseTs.Height()))) - h.Timestamp
+		diff := (baseTs.MinTimestamp() + (build.BlockDelaySecs * uint64(h.Height-baseTs.Height()))) - h.Timestamp
 
-		return xerrors.Errorf("block was generated too soon (h.ts:%d < base.mints:%d + BLOCK_DELAY:%d * deltaH:%d; diff %d)", h.Timestamp, baseTs.MinTimestamp(), build.BlockDelay, h.Height-baseTs.Height(), diff)
+		return xerrors.Errorf("block was generated too soon (h.ts:%d < base.mints:%d + BLOCK_DELAY:%d * deltaH:%d; diff %d)", h.Timestamp, baseTs.MinTimestamp(), build.BlockDelaySecs, h.Height-baseTs.Height(), diff)
 	}
 
 	msgsCheck := async.Err(func() error {
@@ -1534,5 +1534,5 @@ func (syncer *Syncer) IsEpochBeyondCurrMax(epoch abi.ChainEpoch) bool {
 	}
 
 	now := uint64(time.Now().Unix())
-	return epoch > (abi.ChainEpoch((now-g.Timestamp)/build.BlockDelay) + MaxHeightDrift)
+	return epoch > (abi.ChainEpoch((now-g.Timestamp)/build.BlockDelaySecs) + MaxHeightDrift)
 }

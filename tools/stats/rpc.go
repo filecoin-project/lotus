@@ -114,7 +114,7 @@ sync_complete:
 			// If we get within 20 blocks of the current exected block height we
 			// consider sync complete. Block propagation is not always great but we still
 			// want to be recording stats as soon as we can
-			if timestampDelta < build.BlockDelay*20 {
+			if timestampDelta < int64(build.BlockDelaySecs)*20 {
 				return nil
 			}
 		}

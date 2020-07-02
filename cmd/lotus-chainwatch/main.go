@@ -18,6 +18,9 @@ var log = logging.Logger("chainwatch")
 
 func main() {
 	_ = logging.SetLogLevel("*", "INFO")
+	if err := logging.SetLogLevel("rpc", "error"); err != nil {
+		panic(err)
+	}
 
 	log.Info("Starting chainwatch")
 

@@ -211,11 +211,11 @@ var provingInfoCmd = &cli.Command{
 func epochTime(curr, e abi.ChainEpoch) string {
 	switch {
 	case curr > e:
-		return fmt.Sprintf("%d (%s ago)", e, time.Second*time.Duration(build.BlockDelay*(curr-e)))
+		return fmt.Sprintf("%d (%s ago)", e, time.Second*time.Duration(int64(build.BlockDelaySecs)*int64(curr-e)))
 	case curr == e:
 		return fmt.Sprintf("%d (now)", e)
 	case curr < e:
-		return fmt.Sprintf("%d (in %s)", e, time.Second*time.Duration(build.BlockDelay*(e-curr)))
+		return fmt.Sprintf("%d (in %s)", e, time.Second*time.Duration(int64(build.BlockDelaySecs)*int64(e-curr)))
 	}
 
 	panic("math broke")
