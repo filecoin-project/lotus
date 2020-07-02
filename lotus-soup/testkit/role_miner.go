@@ -170,7 +170,7 @@ func PrepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 		node.Online(),
 		node.Repo(nodeRepo),
 		withGenesis(genesisMsg.Genesis),
-		withApiEndpoint("/ip4/127.0.0.1/tcp/1234"),
+		withApiEndpoint("/ip4/0.0.0.0/tcp/1234"),
 		withListenAddress(minerIP),
 		withBootstrapper(genesisMsg.Bootstrapper),
 		withPubsubConfig(false, pubsubTracer),
@@ -192,7 +192,7 @@ func PrepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 		node.Online(),
 		node.Repo(minerRepo),
 		node.Override(new(api.FullNode), n.FullApi),
-		withApiEndpoint("/ip4/127.0.0.1/tcp/2345"),
+		withApiEndpoint("/ip4/0.0.0.0/tcp/2345"),
 		withMinerListenAddress(minerIP),
 	}
 
