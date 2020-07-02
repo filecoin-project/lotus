@@ -196,7 +196,6 @@ func (sp *StatePredicates) OnMinerSectorChange() DiffMinerActorStateFunc {
 			return false, nil, err
 		}
 
-		existingSectors := make(map[abi.SectorNumber]struct{})
 		var osi miner.SectorOnChainInfo
 
 		// find all sectors that were extended or removed
@@ -218,18 +217,19 @@ func (sp *StatePredicates) OnMinerSectorChange() DiffMinerActorStateFunc {
 				})
 			}
 
-			existingSectors[osi.Info.SectorNumber] = struct{}{}
+			// we don't update miners state filed with `newSectors.Root()` so this operation is safe.
+			if err := newSectors.Delete(uint64(osi.Info.SectorNumber)); err != nil {
+				return err
+			}
 			return nil
 		}); err != nil {
 			return false, nil, err
 		}
 
-		// find all sectors that were added
+		// all sectors that remain in newSectors are new
 		var nsi miner.SectorOnChainInfo
 		if err := newSectors.ForEach(&nsi, func(i int64) error {
-			if _, found := existingSectors[nsi.Info.SectorNumber]; !found {
-				sectorChanges.Added = append(sectorChanges.Added, nsi)
-			}
+			sectorChanges.Added = append(sectorChanges.Added, nsi)
 			return nil
 		}); err != nil {
 			return false, nil, err
