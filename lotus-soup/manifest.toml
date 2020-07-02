@@ -46,7 +46,7 @@ instances = { min = 1, max = 100, default = 5 }
   mining_mode = { type = "enum", default = "synchronized", options = ["synchronized", "natural"] }
 
 [[testcases]]
-name = "lotus-deal-stress-test"
+name = "deals-stress-test"
 instances = { min = 1, max = 100, default = 5 }
 
   [testcases.params]
