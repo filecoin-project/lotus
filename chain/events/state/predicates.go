@@ -182,7 +182,7 @@ func (sp *StatePredicates) OnMinerSectorChange() DiffMinerActorStateFunc {
 		}
 
 		// no sector changes
-		if oldState.Sectors.Equals(newState.Sectors.Sectors) {
+		if oldState.Sectors.Equals(newState.Sectors) {
 			return false, nil, nil
 		}
 
