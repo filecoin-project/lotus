@@ -3,7 +3,9 @@ package main
 import (
 	"bytes"
 	"fmt"
+
 	"github.com/filecoin-project/lotus/build"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/urfave/cli/v2"
@@ -199,7 +201,7 @@ var verifRegListVerifiersCmd = &cli.Command{
 			return err
 		}
 
-		vh, err := hamt.LoadNode(ctx, cst, st.Verifiers)
+		vh, err := hamt.LoadNode(ctx, cst, st.Verifiers, hamt.UseTreeBitWidth(5))
 		if err != nil {
 			return err
 		}
@@ -251,11 +253,12 @@ var verifRegListClientsCmd = &cli.Command{
 			return err
 		}
 
-		vh, err := hamt.LoadNode(ctx, cst, st.VerifiedClients)
+		vh, err := hamt.LoadNode(ctx, cst, st.VerifiedClients, hamt.UseTreeBitWidth(5))
 		if err != nil {
 			return err
 		}
 
+		var keys []string
 		if err := vh.ForEach(ctx, func(k string, val interface{}) error {
 			addr, err := address.NewFromBytes([]byte(k))
 			if err != nil {
@@ -268,11 +271,20 @@ var verifRegListClientsCmd = &cli.Command{
 				return err
 			}
 
-			fmt.Printf("%s: %s\n", addr, dcap)
+			fmt.Printf("%s: %s %v\n", addr, dcap, []byte(k))
+
+			keys = append(keys, k)
 
 			return nil
 		}); err != nil {
 			return err
+		}
+
+		for _, k := range keys {
+			_, err := vh.FindRaw(ctx, k)
+			if err != nil {
+				fmt.Println("failed to find key: ", []byte(k), err)
+			}
 		}
 
 		return nil
@@ -312,14 +324,15 @@ var verifRegCheckClientCmd = &cli.Command{
 			return err
 		}
 
-		vh, err := hamt.LoadNode(ctx, cst, st.VerifiedClients)
+		vh, err := hamt.LoadNode(ctx, cst, st.VerifiedClients, hamt.UseTreeBitWidth(5))
 		if err != nil {
 			return err
 		}
 
+		fmt.Println("key: ", caddr.Bytes())
 		var dcap verifreg.DataCap
 		if err := vh.Find(ctx, string(caddr.Bytes()), &dcap); err != nil {
-			return err
+			return xerrors.Errorf("failed to lookup address: %w", err)
 		}
 
 		fmt.Println(dcap)
@@ -361,7 +374,7 @@ var verifRegCheckVerifierCmd = &cli.Command{
 			return err
 		}
 
-		vh, err := hamt.LoadNode(ctx, cst, st.Verifiers)
+		vh, err := hamt.LoadNode(ctx, cst, st.Verifiers, hamt.UseTreeBitWidth(5))
 		if err != nil {
 			return err
 		}
