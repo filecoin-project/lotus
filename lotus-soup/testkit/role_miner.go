@@ -170,6 +170,7 @@ func PrepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 		node.Online(),
 		node.Repo(nodeRepo),
 		withGenesis(genesisMsg.Genesis),
+		withApiEndpoint("/ip4/0.0.0.0/tcp/1234"),
 		withListenAddress(minerIP),
 		withBootstrapper(genesisMsg.Bootstrapper),
 		withPubsubConfig(false, pubsubTracer),
@@ -191,7 +192,7 @@ func PrepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 		node.Online(),
 		node.Repo(minerRepo),
 		node.Override(new(api.FullNode), n.FullApi),
-		withApiEndpoint("/ip4/127.0.0.1/tcp/1234"),
+		withApiEndpoint("/ip4/0.0.0.0/tcp/2345"),
 		withMinerListenAddress(minerIP),
 	}
 
@@ -282,7 +283,12 @@ func PrepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 
 	m := &LotusMiner{n, t}
 
-	err = m.startStorageMinerAPIServer(minerRepo, n.MinerApi)
+	err = startClientAPIServer(nodeRepo, n.FullApi)
+	if err != nil {
+		return nil, err
+	}
+
+	err = startStorageMinerAPIServer(minerRepo, n.MinerApi)
 	if err != nil {
 		return nil, err
 	}
@@ -358,7 +364,7 @@ func (m *LotusMiner) RunDefault() error {
 	return nil
 }
 
-func (m *LotusMiner) startStorageMinerAPIServer(repo *repo.MemRepo, minerApi api.StorageMiner) error {
+func startStorageMinerAPIServer(repo *repo.MemRepo, minerApi api.StorageMiner) error {
 	mux := mux.NewRouter()
 
 	rpcServer := jsonrpc.NewServer()
