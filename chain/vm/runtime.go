@@ -264,6 +264,7 @@ func (rt *Runtime) CreateActor(codeID cid.Cid, address address.Address) {
 	if err != nil {
 		panic(aerrors.Fatalf("creating actor entry: %v", err))
 	}
+	_ = rt.chargeGasSafe(gasOnActorExec)
 }
 
 func (rt *Runtime) DeleteActor(addr address.Address) {
@@ -284,10 +285,10 @@ func (rt *Runtime) DeleteActor(addr address.Address) {
 	if err := rt.state.DeleteActor(rt.Message().Receiver()); err != nil {
 		panic(aerrors.Fatalf("failed to delete actor: %s", err))
 	}
+	_ = rt.chargeGasSafe(gasOnActorExec)
 }
 
 func (rt *Runtime) Syscalls() vmr.Syscalls {
-	// TODO: Make sure this is wrapped in something that charges gas for each of the calls
 	return rt.sys
 }
 
@@ -367,6 +368,7 @@ func (rt *Runtime) Send(to address.Address, method abi.MethodNum, m vmr.CBORMars
 		log.Warnf("vmctx send failed: to: %s, method: %d: ret: %d, err: %s", to, method, ret, err)
 		return nil, err.RetCode()
 	}
+	_ = rt.chargeGasSafe(gasOnActorExec)
 	return &dumbWrapperType{ret}, 0
 }
 
