@@ -221,6 +221,24 @@ func TestMinerSectorChange(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, change)
 	require.Nil(t, val)
+
+	change, val, err = minerDiffFn(ctx, newState.Key(), oldState.Key())
+	require.NoError(t, err)
+	require.True(t, change)
+	require.NotNil(t, val)
+
+	sectorChanges, ok = val.(*MinerSectorChanges)
+	require.True(t, ok)
+
+	require.Equal(t, len(sectorChanges.Added), 1)
+	require.Equal(t, sectorChanges.Added[0], si0)
+
+	require.Equal(t, len(sectorChanges.Removed), 1)
+	require.Equal(t, sectorChanges.Removed[0], si3)
+
+	require.Equal(t, len(sectorChanges.Extended), 1)
+	require.Equal(t, sectorChanges.Extended[0].To, si1)
+	require.Equal(t, sectorChanges.Extended[0].From, si1Ext)
 }
 
 func mockTipset(miner address.Address, timestamp uint64) (*types.TipSet, error) {
