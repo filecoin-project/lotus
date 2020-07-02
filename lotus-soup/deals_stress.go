@@ -28,16 +28,10 @@ func dealStressTest(t *testkit.TestEnvironment) error {
 	}
 
 	ctx := context.Background()
-	addrs, err := testkit.CollectMinerAddrs(t, ctx, t.IntParam("miners"))
-	if err != nil {
-		return err
-	}
-	t.RecordMessage("got %v miner addrs", len(addrs))
-
 	client := cl.FullApi
 
 	// select a random miner
-	minerAddr := addrs[rand.Intn(len(addrs))]
+	minerAddr := cl.MinerAddrs[rand.Intn(len(cl.MinerAddrs))]
 	if err := client.NetConnect(ctx, minerAddr.PeerAddr); err != nil {
 		return err
 	}
