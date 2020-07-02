@@ -299,26 +299,8 @@ var verifRegCheckClientCmd = &cli.Command{
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
-		act, err := api.StateGetActor(ctx, builtin.VerifiedRegistryActorAddr, types.EmptyTSK)
+		dcap, err := api.StateVerifiedClientStatus(ctx, caddr, types.EmptyTSK)
 		if err != nil {
-			return err
-		}
-
-		apibs := apibstore.NewAPIBlockstore(api)
-		cst := cbor.NewCborStore(apibs)
-
-		var st verifreg.State
-		if err := cst.Get(ctx, act.Head, &st); err != nil {
-			return err
-		}
-
-		vh, err := hamt.LoadNode(ctx, cst, st.VerifiedClients)
-		if err != nil {
-			return err
-		}
-
-		var dcap verifreg.DataCap
-		if err := vh.Find(ctx, string(caddr.Bytes()), &dcap); err != nil {
 			return err
 		}
 

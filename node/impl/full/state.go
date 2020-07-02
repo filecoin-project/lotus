@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	"strconv"
 
 	cid "github.com/ipfs/go-cid"
@@ -809,4 +810,35 @@ func (a *StateAPI) StateMinerAvailableBalance(ctx context.Context, maddr address
 	}
 
 	return types.BigAdd(st.GetAvailableBalance(act.Balance), vested), nil
+}
+
+// StateVerifiedClientStatus returns the data cap for the given address, or zero if the client is not registered
+func (a *StateAPI) StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (verifreg.DataCap, error) {
+	act, err := a.StateGetActor(ctx, builtin.VerifiedRegistryActorAddr, tsk)
+	if err != nil {
+		return verifreg.DataCap{}, err
+	}
+
+	cst := cbor.NewCborStore(a.StateManager.ChainStore().Blockstore())
+
+	var st verifreg.State
+	if err := cst.Get(ctx, act.Head, &st); err != nil {
+		return verifreg.DataCap{}, err
+	}
+
+	vh, err := hamt.LoadNode(ctx, cst, st.VerifiedClients)
+	if err != nil {
+		return verifreg.DataCap{}, err
+	}
+
+	var dcap verifreg.DataCap
+	if err := vh.Find(ctx, string(addr.Bytes()), &dcap); err != nil {
+		// If there is no entry in the data cap table, just return zero
+		if err == hamt.ErrNotFound {
+			return verifreg.DataCap{}, nil
+		}
+		return verifreg.DataCap{}, err
+	}
+
+	return dcap, nil
 }
