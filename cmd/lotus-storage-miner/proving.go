@@ -10,6 +10,7 @@ import (
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -51,6 +52,15 @@ var provingFaultsCmd = &cli.Command{
 		maddr, err := nodeApi.ActorAddress(ctx)
 		if err != nil {
 			return xerrors.Errorf("getting actor address: %w", err)
+		}
+
+		// override maddr is specified
+		if cctx.String("maddr") != "" {
+			var err error
+			maddr, err = address.NewFromString(cctx.String("maddr"))
+			if err != nil {
+				panic(err)
+			}
 		}
 
 		var mas miner.State
@@ -119,6 +129,15 @@ var provingInfoCmd = &cli.Command{
 		maddr, err := nodeApi.ActorAddress(ctx)
 		if err != nil {
 			return xerrors.Errorf("getting actor address: %w", err)
+		}
+
+		// override maddr is specified
+		if cctx.String("maddr") != "" {
+			var err error
+			maddr, err = address.NewFromString(cctx.String("maddr"))
+			if err != nil {
+				panic(err)
+			}
 		}
 
 		head, err := api.ChainHead(ctx)
@@ -242,6 +261,15 @@ var provingDeadlinesCmd = &cli.Command{
 		maddr, err := nodeApi.ActorAddress(ctx)
 		if err != nil {
 			return xerrors.Errorf("getting actor address: %w", err)
+		}
+
+		// override maddr is specified
+		if cctx.String("maddr") != "" {
+			var err error
+			maddr, err = address.NewFromString(cctx.String("maddr"))
+			if err != nil {
+				panic(err)
+			}
 		}
 
 		deadlines, err := api.StateMinerDeadlines(ctx, maddr, types.EmptyTSK)
