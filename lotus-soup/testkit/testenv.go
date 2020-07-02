@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
+
 	"github.com/testground/sdk-go/run"
 	"github.com/testground/sdk-go/runtime"
 )
@@ -28,6 +30,10 @@ func (t *TestEnvironment) DurationParam(name string) time.Duration {
 		panic(fmt.Errorf("invalid duration value for param '%s': %w", name, err))
 	}
 	return d
+}
+
+func (t *TestEnvironment) DebugSpew(format string, args... interface{}) {
+	t.RecordMessage(spew.Sprintf(format, args...))
 }
 
 // WaitUntilAllDone waits until all instances in the test case are done.

@@ -4,21 +4,24 @@
 
 [global]
   plan = "lotus-soup"
-  case = "deals-e2e"
+  case = "drand-halting"
   total_instances = 6
   builder = "docker:go"
   runner = "local:docker"
+
+[global.build]
+  selectors = ["testground"]
 
 [global.build_config]
   enable_go_build_cache = true
 
 [global.run.test_params]
-    clients = "1"
-    miners = "1"
-    balance = "2000"
-    sectors = "10"
-    random_beacon_type = "local-drand"
-    genesis_timestamp_offset = "0"
+  clients = "1"
+  miners = "1"
+  balance = "2000"
+  sectors = "10"
+  random_beacon_type = "local-drand"
+  genesis_timestamp_offset = "0"
 
 [[groups]]
   id = "bootstrapper"
@@ -45,6 +48,7 @@
     [groups.run.test_params]
       role = "miner"
 
+
 [[groups]]
   id = "clients"
   [groups.resources]
@@ -57,6 +61,7 @@
     [groups.run.test_params]
       role = "client"
 
+
 [[groups]]
   id = "drand"
   [groups.instances]
@@ -65,3 +70,6 @@
   [groups.run]
     [groups.run.test_params]
       role = "drand"
+      drand_period = "1s"
+      drand_log_level = "none"
+      suspend_events = "wait 20s -> halt -> wait 1m -> resume -> wait 2s -> halt -> wait 1m -> resume"
