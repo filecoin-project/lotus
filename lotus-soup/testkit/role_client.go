@@ -64,7 +64,7 @@ func PrepareClient(t *TestEnvironment) (*LotusClient, error) {
 		node.FullAPI(&n.FullApi),
 		node.Online(),
 		node.Repo(nodeRepo),
-		withApiEndpoint("/ip4/127.0.0.1/tcp/1234"),
+		withApiEndpoint("/ip4/0.0.0.0/tcp/1234"),
 		withGenesis(genesisMsg.Genesis),
 		withListenAddress(clientIP),
 		withBootstrapper(genesisMsg.Bootstrapper),

@@ -105,7 +105,7 @@ func PrepareBootstrapper(t *TestEnvironment) (*Bootstrapper, error) {
 		node.Online(),
 		node.Repo(repo.NewMemory(nil)),
 		node.Override(new(modules.Genesis), modtest.MakeGenesisMem(&genesisBuffer, genesisTemplate)),
-		withApiEndpoint("/ip4/127.0.0.1/tcp/1234"),
+		withApiEndpoint("/ip4/0.0.0.0/tcp/1234"),
 		withListenAddress(bootstrapperIP),
 		withBootstrapper(nil),
 		withPubsubConfig(true, pubsubTracerMaddr),
