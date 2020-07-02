@@ -251,8 +251,7 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 
 	// Post-seal
 	case Proving:
-		// TODO: track sector health / expiration
-		log.Infof("Proving sector %d", state.SectorNumber)
+		return m.handleProvingSector, nil
 	case Removing:
 		return m.handleRemoving, nil
 
