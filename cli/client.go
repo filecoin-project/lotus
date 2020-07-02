@@ -317,14 +317,12 @@ var clientDealCmd = &cli.Command{
 		}
 
 		// Check if the address is a verified client
-		dcap, err := api.StateVerifiedClientStatus(ctx, a, types.EmptyTSK)
-		if err != nil {
+		_, err = api.StateVerifiedClientStatus(ctx, a, types.EmptyTSK)
+		isVerified := true
+		if err == lapi.NotFoundErr {
+			isVerified = false
+		} else if err != nil {
 			return err
-		}
-
-		verifiedDeal := false
-		if !dcap.IsZero() {
-			verifiedDeal = true
 		}
 
 		// If the user has explicitly set the --verified-deal flag
@@ -332,12 +330,12 @@ var clientDealCmd = &cli.Command{
 			// If --verified-deal is true, but the address is not a verified
 			// client, return an error
 			verifiedDealParam := cctx.Bool("verified-deal")
-			if verifiedDealParam && dcap.IsZero() {
+			if verifiedDealParam && !isVerified {
 				return xerrors.Errorf("address %s does not have verified client status", a)
 			}
 
 			// Override the default
-			verifiedDeal = verifiedDealParam
+			isVerified = verifiedDealParam
 		}
 
 		proposal, err := api.ClientStartDeal(ctx, &lapi.StartDealParams{
@@ -348,7 +346,7 @@ var clientDealCmd = &cli.Command{
 			MinBlocksDuration: uint64(dur),
 			DealStartEpoch:    abi.ChainEpoch(cctx.Int64("start-epoch")),
 			FastRetrieval:     cctx.Bool("fast-retrieval"),
-			VerifiedDeal:      verifiedDeal,
+			VerifiedDeal:      isVerified,
 		})
 		if err != nil {
 			return err

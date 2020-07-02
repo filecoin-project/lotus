@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"golang.org/x/xerrors"
 	"time"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
@@ -535,3 +536,5 @@ type Fault struct {
 	Miner address.Address
 	Epoch abi.ChainEpoch
 }
+
+var NotFoundErr = xerrors.Errorf("Not found")

@@ -812,7 +812,9 @@ func (a *StateAPI) StateMinerAvailableBalance(ctx context.Context, maddr address
 	return types.BigAdd(st.GetAvailableBalance(act.Balance), vested), nil
 }
 
-// StateVerifiedClientStatus returns the data cap for the given address, or zero if the client is not registered
+// StateVerifiedClientStatus returns the data cap for the given address.
+// Returns ErrNotFound if there is not entry in the data cap table for the
+// address.
 func (a *StateAPI) StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (verifreg.DataCap, error) {
 	act, err := a.StateGetActor(ctx, builtin.VerifiedRegistryActorAddr, tsk)
 	if err != nil {
@@ -833,9 +835,8 @@ func (a *StateAPI) StateVerifiedClientStatus(ctx context.Context, addr address.A
 
 	var dcap verifreg.DataCap
 	if err := vh.Find(ctx, string(addr.Bytes()), &dcap); err != nil {
-		// If there is no entry in the data cap table, just return zero
 		if err == hamt.ErrNotFound {
-			return verifreg.DataCap{}, nil
+			return verifreg.DataCap{}, api.NotFoundErr
 		}
 		return verifreg.DataCap{}, err
 	}
