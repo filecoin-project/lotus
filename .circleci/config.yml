@@ -50,5 +50,4 @@ jobs:
       - setup
       - run:
           name: "build lotus-soup"
-          command: pushd lotus-soup && go build .
-
+          command: pushd lotus-soup && go build -tags=testground .
