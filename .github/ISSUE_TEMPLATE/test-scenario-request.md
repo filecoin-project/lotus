@@ -1,7 +1,7 @@
 ---
-name: 👯‍♀️ Test scenario request
+name: 👯‍♀️ Test scenario
 about: Suggest a test scenario for Project Oni to consider
-title: "[test request] "
+title: "[test scenario] "
 labels: hint/needs-analysis, hint/needs-triage, kind/test-scenario
 assignees: raulk
 
