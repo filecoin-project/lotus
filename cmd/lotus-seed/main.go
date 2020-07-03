@@ -90,7 +90,7 @@ var preSealCmd = &cli.Command{
 			Usage: "(optional) Key to use for signing / owner/worker addresses",
 		},
 		&cli.BoolFlag{
-			Name: "fake-sectors",
+			Name:  "fake-sectors",
 			Value: false,
 		},
 	},
