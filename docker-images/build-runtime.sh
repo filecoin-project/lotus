@@ -17,9 +17,10 @@ TAG=$1
 # Validate required arguments
 if [ -z "$TAG" ]
 then
-  echo -e "Please provide a tag for the push. For example: \`./push.sh v3\`"
+  echo -e "Please provide a tag for the build. For example: \`./build.sh v3\`"
   exit 2
 fi
 
-docker push "iptestground/oni-buildbase:$TAG"
-docker push "iptestground/oni-runtime:$TAG"
+dir="$(dirname "$0")"
+
+docker build -t "iptestground/oni-runtime:$TAG" -f "$dir/Dockerfile.oni-runtime" "$dir"
