@@ -96,7 +96,7 @@ func main() {
 	}
 }
 
-func getActorAddress(ctx context.Context, nodeApi api.StorageMiner, overrideMaddr string) (maddr address.Address, err error) {
+func getActorAddress(ctx context.Context, nodeAPI api.StorageMiner, overrideMaddr string) (maddr address.Address, err error) {
 	if overrideMaddr != "" {
 		maddr, err = address.NewFromString(overrideMaddr)
 		if err != nil {
@@ -104,7 +104,7 @@ func getActorAddress(ctx context.Context, nodeApi api.StorageMiner, overrideMadd
 		}
 	}
 
-	maddr, err = nodeApi.ActorAddress(ctx)
+	maddr, err = nodeAPI.ActorAddress(ctx)
 	if err != nil {
 		return maddr, xerrors.Errorf("getting actor address: %w", err)
 	}
