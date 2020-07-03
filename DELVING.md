@@ -60,11 +60,53 @@ This tells Testground to expose the following ports:
    $ FULLNODE_API_INFO=":/ip4/127.0.0.1/tcp/$port/http" lotus chain list
    [...]
    ```
-   
+
+---
+
+Alternatively, you could download gawk and setup a script in you .bashrc or .zshrc similar to:
+
+```
+lprt() {
+  NAME=$1
+  PORT=$2
+
+  docker ps --format "table {{.Names}}" | grep $NAME | xargs -I {} docker port {} $PORT | gawk --field-separator=":" '{print $2}'
+}
+
+envs() {
+  NAME=$1
+
+  local REMOTE_PORT_1234=$(lprt $NAME 1234)
+  local REMOTE_PORT_2345=$(lprt $NAME 2345)
+
+  export FULLNODE_API_INFO=":/ip4/127.0.0.1/tcp/$REMOTE_PORT_1234/http"
+  export STORAGE_API_INFO=":/ip4/127.0.0.1/tcp/$REMOTE_PORT_2345/http"
+
+  echo "Setting \$FULLNODE_API_INFO to $FULLNODE_API_INFO"
+  echo "Setting \$STORAGE_API_INFO to $STORAGE_API_INFO"
+}
+```
+
+Then call commands like:
+```
+envs miners-0
+lotus chain list
+```
+
 ### cluster:k8s
 
-WIP @nonsense.
-   
+Similar to `local:docker`, you pick a pod that you want to connect to and port-forward 1234 and 2345 to that specific pod, such as:
+
+```
+export PODNAME="tg-lotus-soup-ae620dfb2e19-miners-0"
+kubectl port-forward pods/$PODNAME 1234:1234 2345:2345
+
+export FULLNODE_API_INFO=":/ip4/127.0.0.1/tcp/1234/http"
+export STORAGE_API_INFO=":/ip4/127.0.0.1/tcp/2345/http"
+lotus-storage-miner storage-deals list
+lotus-storage-miner storage-deals get-ask
+```
+
 ### Useful commands / checks
 
 * **Making sure miners are on the same chain:** compare outputs of `lotus chain list`.
