@@ -15,7 +15,7 @@ import (
 )
 
 var cases = map[string]interface{}{
-	"deals-e2e": testkit.WrapTestEnvironment(dealsE2E),
+	"deals-e2e":     testkit.WrapTestEnvironment(dealsE2E),
 	"drand-halting": testkit.WrapTestEnvironment(dealsE2E),
 }
 
@@ -59,7 +59,7 @@ func dealsE2E(t *testkit.TestEnvironment) error {
 	client := cl.FullApi
 
 	// select a random miner
-	minerAddr := cl.MinerAddrs[rand.Intn(len(cl.MinerAddrs))]
+	minerAddr := cl.MinerAddrs[t.InitContext.GroupSeq-1]
 	if err := client.NetConnect(ctx, minerAddr.PeerAddr); err != nil {
 		return err
 	}

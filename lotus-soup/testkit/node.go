@@ -25,6 +25,8 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	influxdb "github.com/kpacha/opencensus-influxdb"
 
+	stats "github.com/filecoin-project/lotus/tools/stats"
+
 	"github.com/libp2p/go-libp2p-core/peer"
 	manet "github.com/multiformats/go-multiaddr-net"
 	"go.opencensus.io/stats"
@@ -38,6 +40,8 @@ func init() {
 
 	build.InsecurePoStValidation = true
 	build.DisableBuiltinAssets = true
+	build.BlockDelaySecs = 1
+	build.PropagationDelaySecs = 2
 
 	power.ConsensusMinerMinPower = big.NewInt(2048)
 	saminer.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
@@ -246,4 +250,27 @@ func registerAndExportMetrics(instanceName string) {
 	}
 	view.RegisterExporter(e)
 	view.SetReportingPeriod(5 * time.Second)
+}
+
+func collectStats(ctx context.Context, api api.FullNode) error {
+	var database string = "testground"
+	var headlag int = 3
+
+	influxAddr := os.Getenv("INFLUXDB_URL")
+	influxUser := ""
+	influxPass := ""
+
+	influx, err := stats.InfluxClient(influxAddr, influxUser, influxPass)
+	if err != nil {
+		return err
+	}
+
+	height, err := stats.GetLastRecordedHeight(influx, database)
+	if err != nil {
+		return err
+	}
+
+	go stats.Collect(ctx, api, influx, database, height, headlag)
+
+	return nil
 }

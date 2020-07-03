@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
@@ -33,8 +34,6 @@ import (
 	libp2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/testground/sdk-go/sync"
-
-	tstats "github.com/filecoin-project/oni/lotus-soup/stats"
 )
 
 type LotusMiner struct {
@@ -230,7 +229,9 @@ func PrepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 	registerAndExportMetrics(minerAddr.String())
 
 	// collect stats based on Travis' scripts
-	go tstats.Collect(n.FullApi)
+	if t.InitContext.GroupSeq == 1 {
+		go collectStats(n.FullApi)
+	}
 
 	// Bootstrap with full node
 	remoteAddrs, err := n.FullApi.NetAddrsListen(ctx)
@@ -378,6 +379,8 @@ func (m *LotusMiner) RunDefault() error {
 	if err != nil {
 		return err
 	}
+
+	time.Sleep(3600 * time.Second)
 
 	mine = false
 	<-done
