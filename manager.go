@@ -441,7 +441,8 @@ func (m *Manager) FinalizeSector(ctx context.Context, sector abi.SectorID, keepU
 }
 
 func (m *Manager) ReleaseUnsealed(ctx context.Context, sector abi.SectorID, safeToFree []storage.Range) error {
-	return xerrors.Errorf("implement me")
+	log.Warnw("ReleaseUnsealed todo")
+	return nil
 }
 
 func (m *Manager) Remove(ctx context.Context, sector abi.SectorID) error {
