@@ -25,7 +25,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	influxdb "github.com/kpacha/opencensus-influxdb"
 
-	stats "github.com/filecoin-project/lotus/tools/stats"
+	tstats "github.com/filecoin-project/lotus/tools/stats"
 
 	"github.com/libp2p/go-libp2p-core/peer"
 	manet "github.com/multiformats/go-multiaddr-net"
@@ -260,17 +260,20 @@ func collectStats(ctx context.Context, api api.FullNode) error {
 	influxUser := ""
 	influxPass := ""
 
-	influx, err := stats.InfluxClient(influxAddr, influxUser, influxPass)
+	influx, err := tstats.InfluxClient(influxAddr, influxUser, influxPass)
 	if err != nil {
 		return err
 	}
 
-	height, err := stats.GetLastRecordedHeight(influx, database)
+	height, err := tstats.GetLastRecordedHeight(influx, database)
 	if err != nil {
 		return err
 	}
 
-	go stats.Collect(ctx, api, influx, database, height, headlag)
+	go func() {
+		time.Sleep(15 * time.Second)
+		tstats.Collect(ctx, api, influx, database, height, headlag)
+	}()
 
 	return nil
 }

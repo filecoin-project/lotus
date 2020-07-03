@@ -92,7 +92,7 @@ func PrepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 	}
 
 	sectors := t.IntParam("sectors")
-	genMiner, _, err := seed.PreSeal(minerAddr, abi.RegisteredSealProof_StackedDrg2KiBV1, 0, sectors, presealDir, []byte("TODO: randomize this"), &walletKey.KeyInfo)
+	genMiner, _, err := seed.PreSeal(minerAddr, abi.RegisteredSealProof_StackedDrg2KiBV1, 0, sectors, presealDir, []byte("TODO: randomize this"), &walletKey.KeyInfo, false)
 	if err != nil {
 		return nil, err
 	}
@@ -230,7 +230,7 @@ func PrepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 
 	// collect stats based on Travis' scripts
 	if t.InitContext.GroupSeq == 1 {
-		go collectStats(n.FullApi)
+		go collectStats(ctx, n.FullApi)
 	}
 
 	// Bootstrap with full node
