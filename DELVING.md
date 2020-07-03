@@ -111,7 +111,8 @@ lotus-storage-miner storage-deals get-ask
 
 * **Making sure miners are on the same chain:** compare outputs of `lotus chain list`.
 * **Checking deals:** `lotus client list-deals`.
-* **Sector queries:** WIP @nonsense.
+* **Sector queries:** `lotus-storage-miner info` , `lotus-storage-miner proving info`
+
 
 ## Viewing logs of a particular container (local:docker)
 
