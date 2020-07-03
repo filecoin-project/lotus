@@ -141,4 +141,7 @@ These include:
 * if this is a CPU hotspot, a CPU profile would be useful.
 * if this is a memory issue, a heap dump would be useful.
 
+**When submitting bugs upstream (Lotus), make sure to indicate:**
 
+* Lotus commit.
+* FFI commit.
