@@ -1,4 +1,4 @@
-package main
+package stats
 
 import (
 	"bytes"
@@ -25,7 +25,11 @@ import (
 	_ "github.com/influxdata/influxdb1-client"
 	models "github.com/influxdata/influxdb1-client/models"
 	client "github.com/influxdata/influxdb1-client/v2"
+
+	logging "github.com/ipfs/go-log/v2"
 )
+
+var log = logging.Logger("stats")
 
 type PointList struct {
 	points []models.Point
