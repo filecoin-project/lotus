@@ -12,9 +12,9 @@ import (
 var log = logging.Logger("stats")
 
 const (
-	INFLUX_ADDR = "INFLUX_ADDR"
-	INFLUX_USER = "INFLUX_USER"
-	INFLUX_PASS = "INFLUX_PASS"
+	influxAddrEnvVar = "INFLUX_ADDR"
+	influxUserEnvVar = "INFLUX_USER"
+	influxPassEnvVar = "INFLUX_PASS"
 )
 
 func main() {
@@ -34,13 +34,9 @@ func main() {
 
 	flag.Parse()
 
-	influxAddr := os.Getenv(INFLUX_ADDR)
-	influxUser := os.Getenv(INFLUX_USER)
-	influxPass := os.Getenv(INFLUX_PASS)
-
 	ctx := context.Background()
 
-	influx, err := stats.InfluxClient(influxAddr, influxUser, influxPass)
+	influx, err := stats.InfluxClient(os.Getenv(influxAddrEnvVar), os.Getenv(influxUserEnvVar), os.Getenv(influxPassEnvVar))
 	if err != nil {
 		log.Fatal(err)
 	}
