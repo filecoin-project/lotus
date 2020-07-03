@@ -29,6 +29,7 @@ var sectorsCmd = &cli.Command{
 		sectorsPledgeCmd,
 		sectorsRemoveCmd,
 		sectorsMarkForUpgradeCmd,
+		sectorsStartSealCmd,
 	},
 }
 
@@ -265,6 +266,30 @@ var sectorsMarkForUpgradeCmd = &cli.Command{
 		}
 
 		return nodeApi.SectorMarkForUpgrade(ctx, abi.SectorNumber(id))
+	},
+}
+
+var sectorsStartSealCmd = &cli.Command{
+	Name:      "seal",
+	Usage:     "Manually start sealing a sector (filling any unused space with junk)",
+	ArgsUsage: "<sectorNum>",
+	Action: func(cctx *cli.Context) error {
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+		if cctx.Args().Len() != 1 {
+			return xerrors.Errorf("must pass sector number")
+		}
+
+		id, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
+		if err != nil {
+			return xerrors.Errorf("could not parse sector number: %w", err)
+		}
+
+		return nodeApi.SectorStartSealing(ctx, abi.SectorNumber(id))
 	},
 }
 
