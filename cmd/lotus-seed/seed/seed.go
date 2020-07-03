@@ -68,41 +68,12 @@ func PreSeal(maddr address.Address, spt abi.RegisteredSealProof, offset abi.Sect
 		sid := abi.SectorID{Miner: abi.ActorID(mid), Number: next}
 		next++
 
-		pi, err := sb.AddPiece(context.TODO(), sid, nil, abi.PaddedPieceSize(ssize).Unpadded(), rand.Reader)
+		preseal, err := presealSector(sb, sbfs, sid, spt, ssize, preimage)
 		if err != nil {
 			return nil, nil, err
 		}
 
-		trand := blake2b.Sum256(preimage)
-		ticket := abi.SealRandomness(trand[:])
-
-		fmt.Printf("sector-id: %d, piece info: %v\n", sid, pi)
-
-		in2, err := sb.SealPreCommit1(context.TODO(), sid, ticket, []abi.PieceInfo{pi})
-		if err != nil {
-			return nil, nil, xerrors.Errorf("commit: %w", err)
-		}
-
-		cids, err := sb.SealPreCommit2(context.TODO(), sid, in2)
-		if err != nil {
-			return nil, nil, xerrors.Errorf("commit: %w", err)
-		}
-
-		if err := sb.FinalizeSector(context.TODO(), sid, nil); err != nil {
-			return nil, nil, xerrors.Errorf("trim cache: %w", err)
-		}
-
-		if err := cleanupUnsealed(sbfs, sid); err != nil {
-			return nil, nil, xerrors.Errorf("remove unsealed file: %w", err)
-		}
-
-		log.Warn("PreCommitOutput: ", sid, cids.Sealed, cids.Unsealed)
-		sealedSectors = append(sealedSectors, &genesis.PreSeal{
-			CommR:     cids.Sealed,
-			CommD:     cids.Unsealed,
-			SectorID:  sid.Number,
-			ProofType: spt,
-		})
+		sealedSectors = append(sealedSectors, preseal)
 	}
 
 	var minerAddr *wallet.Key
@@ -163,6 +134,45 @@ func PreSeal(maddr address.Address, spt abi.RegisteredSealProof, offset abi.Sect
 	}
 
 	return miner, &minerAddr.KeyInfo, nil
+}
+
+func presealSector(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, sid abi.SectorID, spt abi.RegisteredSealProof, ssize abi.SectorSize, preimage []byte) (*genesis.PreSeal, error) {
+	pi, err := sb.AddPiece(context.TODO(), sid, nil, abi.PaddedPieceSize(ssize).Unpadded(), rand.Reader)
+	if err != nil {
+		return nil, err
+	}
+
+	trand := blake2b.Sum256(preimage)
+	ticket := abi.SealRandomness(trand[:])
+
+	fmt.Printf("sector-id: %d, piece info: %v\n", sid, pi)
+
+	in2, err := sb.SealPreCommit1(context.TODO(), sid, ticket, []abi.PieceInfo{pi})
+	if err != nil {
+		return nil, xerrors.Errorf("commit: %w", err)
+	}
+
+	cids, err := sb.SealPreCommit2(context.TODO(), sid, in2)
+	if err != nil {
+		return nil, xerrors.Errorf("commit: %w", err)
+	}
+
+	if err := sb.FinalizeSector(context.TODO(), sid, nil); err != nil {
+		return nil, xerrors.Errorf("trim cache: %w", err)
+	}
+
+	if err := cleanupUnsealed(sbfs, sid); err != nil {
+		return nil, xerrors.Errorf("remove unsealed file: %w", err)
+	}
+
+	log.Warn("PreCommitOutput: ", sid, cids.Sealed, cids.Unsealed)
+
+	return &genesis.PreSeal{
+		CommR:     cids.Sealed,
+		CommD:     cids.Unsealed,
+		SectorID:  sid.Number,
+		ProofType: spt,
+	}, nil
 }
 
 func cleanupUnsealed(sbfs *basicfs.Provider, sid abi.SectorID) error {
