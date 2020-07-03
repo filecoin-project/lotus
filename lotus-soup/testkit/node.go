@@ -40,8 +40,6 @@ func init() {
 
 	build.InsecurePoStValidation = true
 	build.DisableBuiltinAssets = true
-	build.BlockDelaySecs = 1
-	build.PropagationDelaySecs = 2
 
 	power.ConsensusMinerMinPower = big.NewInt(2048)
 	saminer.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{

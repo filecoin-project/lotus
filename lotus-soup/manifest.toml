@@ -7,8 +7,8 @@ runner = "local:docker"
 
 [builders."docker:go"]
 enabled = true
-build_base_image = "iptestground/oni-buildbase:v4"
-runtime_image = "iptestground/oni-runtime:v2-debug"
+build_base_image = "iptestground/oni-buildbase:v3"
+runtime_image = "iptestground/oni-runtime:v2"
 
 [runners."local:docker"]
 enabled = true
