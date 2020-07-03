@@ -15,6 +15,9 @@
 [global.build_config]
   enable_go_build_cache = true
 
+[global.run_config]
+  exposed_ports = ["6060", "1234", "2345"]
+
 [global.run.test_params]
   clients = "1"
   miners = "1"
@@ -22,6 +25,7 @@
   sectors = "10"
   random_beacon_type = "local-drand"
   genesis_timestamp_offset = "0"
+#  mining_mode = "natural"
 
 [[groups]]
   id = "bootstrapper"
