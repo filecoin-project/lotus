@@ -49,6 +49,10 @@ import (
 	"github.com/filecoin-project/lotus/metrics"
 )
 
+// Blocks that are more than MaxHeightDrift epochs above
+//the theoretical max height based on systime are quickly rejected
+const MaxHeightDrift = 5
+
 var log = logging.Logger("chain")
 
 var LocalIncoming = "incoming"
@@ -154,6 +158,11 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) bool {
 	ctx := context.Background()
 	if fts == nil {
 		log.Errorf("got nil tipset in InformNewHead")
+		return false
+	}
+
+	if syncer.IsEpochBeyondCurrMax(fts.TipSet().Height()) {
+		log.Errorf("Received block with impossibly large height %d", fts.TipSet().Height())
 		return false
 	}
 
@@ -657,18 +666,18 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) (er
 	// fast checks first
 
 	now := uint64(time.Now().Unix())
-	if h.Timestamp > now+build.AllowableClockDrift {
+	if h.Timestamp > now+build.AllowableClockDriftSecs {
 		return xerrors.Errorf("block was from the future (now=%d, blk=%d): %w", now, h.Timestamp, ErrTemporal)
 	}
 	if h.Timestamp > now {
 		log.Warn("Got block from the future, but within threshold", h.Timestamp, time.Now().Unix())
 	}
 
-	if h.Timestamp < baseTs.MinTimestamp()+(build.BlockDelay*uint64(h.Height-baseTs.Height())) {
+	if h.Timestamp < baseTs.MinTimestamp()+(build.BlockDelaySecs*uint64(h.Height-baseTs.Height())) {
 		log.Warn("timestamp funtimes: ", h.Timestamp, baseTs.MinTimestamp(), h.Height, baseTs.Height())
-		diff := (baseTs.MinTimestamp() + (build.BlockDelay * uint64(h.Height-baseTs.Height()))) - h.Timestamp
+		diff := (baseTs.MinTimestamp() + (build.BlockDelaySecs * uint64(h.Height-baseTs.Height()))) - h.Timestamp
 
-		return xerrors.Errorf("block was generated too soon (h.ts:%d < base.mints:%d + BLOCK_DELAY:%d * deltaH:%d; diff %d)", h.Timestamp, baseTs.MinTimestamp(), build.BlockDelay, h.Height-baseTs.Height(), diff)
+		return xerrors.Errorf("block was generated too soon (h.ts:%d < base.mints:%d + BLOCK_DELAY:%d * deltaH:%d; diff %d)", h.Timestamp, baseTs.MinTimestamp(), build.BlockDelaySecs, h.Height-baseTs.Height(), diff)
 	}
 
 	msgsCheck := async.Err(func() error {
@@ -1516,4 +1525,14 @@ func (syncer *Syncer) getLatestBeaconEntry(_ context.Context, ts *types.TipSet) 
 	}
 
 	return nil, xerrors.Errorf("found NO beacon entries in the 20 blocks prior to given tipset")
+}
+
+func (syncer *Syncer) IsEpochBeyondCurrMax(epoch abi.ChainEpoch) bool {
+	g, err := syncer.store.GetGenesis()
+	if err != nil {
+		return false
+	}
+
+	now := uint64(time.Now().Unix())
+	return epoch > (abi.ChainEpoch((now-g.Timestamp)/build.BlockDelaySecs) + MaxHeightDrift)
 }

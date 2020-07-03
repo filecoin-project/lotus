@@ -8,5 +8,5 @@ import (
 )
 
 func RandomBeacon() (beacon.RandomBeacon, error) {
-	return beacon.NewMockBeacon(build.BlockDelay * time.Second), nil
+	return beacon.NewMockBeacon(time.Duration(build.BlockDelaySecs) * time.Second), nil
 }

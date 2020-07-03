@@ -6,7 +6,7 @@ all: build
 unexport GOFLAGS
 
 GOVERSION:=$(shell go version | cut -d' ' -f 3 | cut -d. -f 2)
-ifeq ($(shell expr $(GOVERSION) \< 13), 1)
+ifeq ($(shell expr $(GOVERSION) \< 14), 1)
 $(warning Your Golang version is go 1.$(GOVERSION))
 $(error Update Golang to version $(shell grep '^go' go.mod))
 endif
@@ -190,6 +190,12 @@ health:
 
 .PHONY: health
 BINS+=health
+
+testground:
+	go build -tags testground -o /dev/null ./cmd/lotus
+
+.PHONY: testground
+BINS+=testground
 
 # MISC
 

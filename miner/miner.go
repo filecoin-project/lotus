@@ -42,7 +42,7 @@ func NewMiner(api api.FullNode, epp gen.WinningPoStProver, addr address.Address)
 		address: addr,
 		waitFunc: func(ctx context.Context, baseTime uint64) (func(bool), error) {
 			// Wait around for half the block time in case other parents come in
-			deadline := baseTime + build.PropagationDelay
+			deadline := baseTime + build.PropagationDelaySecs
 			time.Sleep(time.Until(time.Unix(int64(deadline), 0)))
 
 			return func(bool) {}, nil
@@ -140,7 +140,7 @@ func (m *Miner) mine(ctx context.Context) {
 		onDone, err := m.waitFunc(ctx, prebase.TipSet.MinTimestamp())
 		if err != nil {
 			log.Error(err)
-			return
+			continue
 		}
 
 		base, err := m.GetBestMiningCandidate(ctx)
@@ -150,7 +150,7 @@ func (m *Miner) mine(ctx context.Context) {
 		}
 		if base.TipSet.Equals(lastBase.TipSet) && lastBase.NullRounds == base.NullRounds {
 			log.Warnf("BestMiningCandidate from the previous round: %s (nulls:%d)", lastBase.TipSet.Cids(), lastBase.NullRounds)
-			m.niceSleep(build.BlockDelay * time.Second)
+			m.niceSleep(time.Duration(build.BlockDelaySecs) * time.Second)
 			continue
 		}
 
@@ -194,7 +194,7 @@ func (m *Miner) mine(ctx context.Context) {
 			// has enough time to form.
 			//
 			// See:  https://github.com/filecoin-project/lotus/issues/1845
-			nextRound := time.Unix(int64(base.TipSet.MinTimestamp()+uint64(build.BlockDelay*base.NullRounds))+int64(build.PropagationDelay), 0)
+			nextRound := time.Unix(int64(base.TipSet.MinTimestamp()+build.BlockDelaySecs*uint64(base.NullRounds))+int64(build.PropagationDelaySecs), 0)
 
 			select {
 			case <-time.After(time.Until(nextRound)):
@@ -215,6 +215,9 @@ type MiningBase struct {
 }
 
 func (m *Miner) GetBestMiningCandidate(ctx context.Context) (*MiningBase, error) {
+	m.lk.Lock()
+	defer m.lk.Unlock()
+
 	bts, err := m.api.ChainHead(ctx)
 	if err != nil {
 		return nil, err
@@ -252,12 +255,16 @@ func (m *Miner) hasPower(ctx context.Context, addr address.Address, ts *types.Ti
 	return mpower.MinerPower.QualityAdjPower.GreaterThanEqual(power.ConsensusMinerMinPower), nil
 }
 
-// mineOne mines a single block, and does so synchronously, if and only if we
-// have won the current round.
+// mineOne attempts to mine a single block, and does so synchronously, if and
+// only if we are eligible to mine.
 //
 // {hint/landmark}: This method coordinates all the steps involved in mining a
 // block, including the condition of whether mine or not at all depending on
 // whether we win the round or not.
+//
+// This method does the following:
+//
+//  1.
 func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*types.BlockMsg, error) {
 	log.Debugw("attempting to mine a block", "tipset", types.LogCids(base.TipSet.Cids()))
 	start := time.Now()
@@ -349,7 +356,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*types.BlockMsg,
 	tCreateBlock := time.Now()
 	dur := tCreateBlock.Sub(start)
 	log.Infow("mined new block", "cid", b.Cid(), "height", b.Header.Height, "took", dur)
-	if dur > time.Second*build.BlockDelay {
+	if dur > time.Second*time.Duration(build.BlockDelaySecs) {
 		log.Warn("CAUTION: block production took longer than the block delay. Your computer may not be fast enough to keep up")
 
 		log.Warnw("tMinerBaseInfo ", "duration", tMBI.Sub(start))
@@ -410,7 +417,7 @@ func (m *Miner) createBlock(base *MiningBase, addr address.Address, ticket *type
 		msgs = msgs[:build.BlockMessageLimit]
 	}
 
-	uts := base.TipSet.MinTimestamp() + uint64(build.BlockDelay*(base.NullRounds+1))
+	uts := base.TipSet.MinTimestamp() + build.BlockDelaySecs*(uint64(base.NullRounds)+1)
 
 	nheight := base.TipSet.Height() + base.NullRounds + 1
 
@@ -554,7 +561,7 @@ func SelectMessages(ctx context.Context, al ActorLookup, ts *types.TipSet, msgs 
 	}
 
 	if tooHighNonceMsgs > 0 {
-		log.Warnf("%d messages in mempool had too high nonce", tooLowFundMsgs)
+		log.Warnf("%d messages in mempool had too high nonce", tooHighNonceMsgs)
 	}
 
 	sm := time.Now()

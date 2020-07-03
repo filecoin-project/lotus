@@ -21,6 +21,7 @@ type ChainMsg interface {
 	Cid() cid.Cid
 	VMMessage() *Message
 	ToStorageBlock() (block.Block, error)
+	// FIXME: This is the *message* length, this name is misleading.
 	ChainLength() int
 }
 

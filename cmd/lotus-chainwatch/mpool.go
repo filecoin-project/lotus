@@ -46,7 +46,7 @@ func subMpool(ctx context.Context, api aapi.FullNode, st *storage) {
 			msgs[v.Message.Message.Cid()] = &v.Message.Message
 		}
 
-		log.Infof("Processing %d mpool updates", len(msgs))
+		log.Debugf("Processing %d mpool updates", len(msgs))
 
 		err := st.storeMessages(msgs)
 		if err != nil {

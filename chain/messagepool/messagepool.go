@@ -187,7 +187,7 @@ func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName) (*Messa
 
 	mp := &MessagePool{
 		closer:        make(chan struct{}),
-		repubTk:       time.NewTicker(build.BlockDelay * 10 * time.Second),
+		repubTk:       time.NewTicker(time.Duration(build.BlockDelaySecs) * 10 * time.Second),
 		localAddrs:    make(map[address.Address]struct{}),
 		pending:       make(map[address.Address]*msgSet),
 		minGasPrice:   types.NewInt(0),
