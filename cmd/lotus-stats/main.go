@@ -72,5 +72,5 @@ func main() {
 		}
 	}
 
-	stats.Collect(ctx, api, influx, database, height)
+	stats.Collect(ctx, api, influx, database, height, headlag)
 }

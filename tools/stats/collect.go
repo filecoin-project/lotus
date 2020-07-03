@@ -9,9 +9,7 @@ import (
 	client "github.com/influxdata/influxdb1-client/v2"
 )
 
-var headlag int = 3
-
-func Collect(ctx context.Context, api api.FullNode, influx client.Client, database string, height int64) {
+func Collect(ctx context.Context, api api.FullNode, influx client.Client, database string, height int64, headlag int) {
 	tipsetsCh, err := GetTips(ctx, api, abi.ChainEpoch(height), headlag)
 	if err != nil {
 		log.Fatal(err)
