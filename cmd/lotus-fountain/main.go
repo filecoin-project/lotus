@@ -4,9 +4,13 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"html/template"
+	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
+	"sort"
 	"strconv"
 	"time"
 
@@ -28,11 +32,46 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 )
 
 var log = logging.Logger("main")
 
 var sendPerRequest, _ = types.ParseFIL("50")
+
+var supportedSectors struct {
+	SectorSizes []struct {
+		Name    string
+		Value   uint64
+		Default bool
+	}
+}
+
+func init() {
+	for supportedSector, _ := range miner.SupportedProofTypes {
+		sectorSize, err := supportedSector.SectorSize()
+		if err != nil {
+			panic(err)
+		}
+
+		supportedSectors.SectorSizes = append(supportedSectors.SectorSizes, struct {
+			Name    string
+			Value   uint64
+			Default bool
+		}{
+			Name:    sectorSize.ShortString(),
+			Value:   uint64(sectorSize),
+			Default: false,
+		})
+
+	}
+
+	sort.Slice(supportedSectors.SectorSizes[:], func(i, j int) bool {
+		return supportedSectors.SectorSizes[i].Value < supportedSectors.SectorSizes[j].Value
+	})
+
+	supportedSectors.SectorSizes[0].Default = true
+}
 
 func main() {
 	logging.SetLogLevel("*", "INFO")
@@ -125,6 +164,7 @@ var runCmd = &cli.Command{
 		}
 
 		http.Handle("/", http.FileServer(rice.MustFindBox("site").HTTPBox()))
+		http.HandleFunc("/miner.html", h.minerhtml)
 		http.HandleFunc("/send", h.send)
 		http.HandleFunc("/mkminer", h.mkminer)
 		http.HandleFunc("/msgwait", h.msgwait)
@@ -151,6 +191,37 @@ type handler struct {
 	minerLimiter *Limiter
 
 	defaultMinerPeer peer.ID
+}
+
+func (h *handler) minerhtml(w http.ResponseWriter, r *http.Request) {
+	f, err := rice.MustFindBox("site").Open("_miner.html")
+	if err != nil {
+		w.WriteHeader(500)
+		_, _ = w.Write([]byte(err.Error()))
+		return
+	}
+
+	tmpl, err := ioutil.ReadAll(f)
+	if err != nil {
+		w.WriteHeader(500)
+		_, _ = w.Write([]byte(err.Error()))
+		return
+	}
+
+	var executedTmpl bytes.Buffer
+
+	t, err := template.New("miner.html").Parse(string(tmpl))
+	if err := t.Execute(&executedTmpl, supportedSectors); err != nil {
+		w.WriteHeader(500)
+		_, _ = w.Write([]byte(err.Error()))
+		return
+	}
+
+	if _, err := io.Copy(w, &executedTmpl); err != nil {
+		log.Errorf("failed to write template to string %s", err)
+	}
+
+	return
 }
 
 func (h *handler) send(w http.ResponseWriter, r *http.Request) {
