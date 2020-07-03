@@ -189,7 +189,7 @@ func builder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test.TestN
 		if err != nil {
 			t.Fatal(err)
 		}
-		genm, k, err := seed.PreSeal(maddr, abi.RegisteredSealProof_StackedDrg2KiBV1, 0, test.GenesisPreseals, tdir, []byte("make genesis mem random"), nil)
+		genm, k, err := seed.PreSeal(maddr, abi.RegisteredSealProof_StackedDrg2KiBV1, 0, test.GenesisPreseals, tdir, []byte("make genesis mem random"), nil, true)
 		if err != nil {
 			t.Fatal(err)
 		}
