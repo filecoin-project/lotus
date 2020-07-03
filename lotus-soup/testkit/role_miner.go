@@ -278,6 +278,23 @@ func PrepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 	}
 	t.SyncClient.MustPublish(ctx, MinersAddrsTopic, MinerAddressesMsg{addrinfo, actoraddress})
 
+	t.RecordMessage("connecting to all other miners")
+
+	// connect to all other miners.
+	minerCh := make(chan *MinerAddressesMsg, 16)
+	sctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	t.SyncClient.MustSubscribe(sctx, MinersAddrsTopic, minerCh)
+	for i := 0; i < t.IntParam("miners"); i++ {
+		if miner := <-minerCh; miner.ActorAddr != actoraddress {
+			err := n.FullApi.NetConnect(ctx, miner.PeerAddr)
+			if err != nil {
+				return nil, fmt.Errorf("failed to connect to miner %s on: %v", miner.ActorAddr, miner.PeerAddr)
+			}
+			t.RecordMessage("connected to miner %s on %v", miner.ActorAddr, miner.PeerAddr)
+		}
+	}
+
 	t.RecordMessage("waiting for all nodes to be ready")
 	t.SyncClient.MustSignalAndWait(ctx, StateReady, t.TestInstanceCount)
 
