@@ -158,6 +158,7 @@ func (m *Miner) mine(ctx context.Context) {
 		if err != nil {
 			log.Errorf("mining block failed: %+v", err)
 			m.niceSleep(time.Second)
+			onDone(false)
 			continue
 		}
 		lastBase = *base
