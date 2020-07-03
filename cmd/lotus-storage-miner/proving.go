@@ -48,7 +48,7 @@ var provingFaultsCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		maddr, err := getActorAddress(ctx, nodeApi, cctx.String("maddr"))
+		maddr, err := getActorAddress(ctx, nodeApi, cctx.String("actor"))
 		if err != nil {
 			return err
 		}
@@ -116,7 +116,7 @@ var provingInfoCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		maddr, err := getActorAddress(ctx, nodeApi, cctx.String("maddr"))
+		maddr, err := getActorAddress(ctx, nodeApi, cctx.String("actor"))
 		if err != nil {
 			return err
 		}
@@ -239,7 +239,7 @@ var provingDeadlinesCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		maddr, err := getActorAddress(ctx, nodeApi, cctx.String("maddr"))
+		maddr, err := getActorAddress(ctx, nodeApi, cctx.String("actor"))
 		if err != nil {
 			return err
 		}

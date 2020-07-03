@@ -67,8 +67,10 @@ func main() {
 		EnableBashCompletion: true,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:  "maddr",
-				Value: "",
+				Name:    "actor",
+				Value:   "",
+				Usage:   "specify other actor to check state for (read only)",
+				Aliases: []string{"a"},
 			},
 			&cli.StringFlag{
 				Name:    "repo",
