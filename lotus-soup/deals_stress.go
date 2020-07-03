@@ -79,6 +79,9 @@ func dealStressTest(t *testkit.TestEnvironment) error {
 		concurrentDeals = false
 	}
 
+	// this to avoid failure to get block
+	time.Sleep(2 * time.Second)
+
 	t.RecordMessage("starting storage deals")
 	if concurrentDeals {
 
