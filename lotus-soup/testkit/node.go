@@ -272,7 +272,7 @@ func collectStats(ctx context.Context, api api.FullNode) error {
 
 	go func() {
 		time.Sleep(15 * time.Second)
-		tstats.Collect(ctx, api, influx, database, height, headlag)
+		tstats.Collect(context.Background(), api, influx, database, height, headlag)
 	}()
 
 	return nil
