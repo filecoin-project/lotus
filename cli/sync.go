@@ -10,7 +10,6 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
 )
 
@@ -155,16 +154,17 @@ var syncCheckBadCmd = &cli.Command{
 }
 
 func SyncWait(ctx context.Context, napi api.FullNode) error {
+	var lastHeight abi.ChainEpoch
 	for {
 		state, err := napi.SyncState(ctx)
 		if err != nil {
 			return err
 		}
 
-		head, err := napi.ChainHead(ctx)
-		if err != nil {
-			return err
-		}
+		// head, err := napi.ChainHead(ctx)
+		// if err != nil {
+		// 	return err
+		// }
 
 		working := 0
 		for i, ss := range state.ActiveSyncs {
@@ -186,10 +186,15 @@ func SyncWait(ctx context.Context, napi api.FullNode) error {
 
 		fmt.Printf("\r\x1b[2KWorker %d: Target: %s\tState: %s\tHeight: %d", working, target, chain.SyncStageString(ss.Stage), ss.Height)
 
-		if time.Now().Unix()-int64(head.MinTimestamp()) < int64(build.BlockDelaySecs) {
+		if lastHeight == ss.Height && lastHeight != 0 {
 			fmt.Println("\nDone!")
 			return nil
 		}
+		lastHeight = ss.Height
+		//if time.Now().Unix()-int64(head.MinTimestamp()) < int64(build.BlockDelaySecs) {
+		//	fmt.Println("\nDone!")
+		//	return nil
+		//}
 
 		select {
 		case <-ctx.Done():
