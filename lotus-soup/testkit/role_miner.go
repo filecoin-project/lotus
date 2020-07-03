@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
@@ -379,8 +378,6 @@ func (m *LotusMiner) RunDefault() error {
 	if err != nil {
 		return err
 	}
-
-	time.Sleep(3600 * time.Second)
 
 	mine = false
 	<-done
