@@ -13,6 +13,7 @@ require (
 	github.com/filecoin-project/specs-actors v0.6.2-0.20200617175406-de392ca14121
 	github.com/gorilla/mux v1.7.4
 	github.com/influxdata/influxdb v1.8.0 // indirect
+	github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d
 	github.com/ipfs/go-cid v0.0.6
 	github.com/ipfs/go-datastore v0.4.4
 	github.com/ipfs/go-ipfs-files v0.0.8
@@ -27,7 +28,9 @@ require (
 	github.com/libp2p/go-libp2p-pubsub-tracer v0.0.0-20200626141350-e730b32bf1e6
 	github.com/multiformats/go-multiaddr v0.2.2
 	github.com/multiformats/go-multiaddr-net v0.1.5
+	github.com/multiformats/go-multihash v0.0.13
 	github.com/testground/sdk-go v0.2.3-0.20200630140907-cda3c5ac055b
+	github.com/whyrusleeping/cbor-gen v0.0.0-20200504204219-64967432584d
 	go.opencensus.io v0.22.4
 )
 

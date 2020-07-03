@@ -14,6 +14,8 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 
 	"github.com/filecoin-project/specs-actors/actors/crypto"
+
+	tstats "github.com/filecoin-project/oni/lotus-soup/stats"
 )
 
 type LotusClient struct {
@@ -89,6 +91,9 @@ func PrepareClient(t *TestEnvironment) (*LotusClient, error) {
 	}
 
 	registerAndExportMetrics(fmt.Sprintf("client_%d", t.GroupSeq))
+
+	// collect stats based on Travis' scripts
+	go tstats.Collect(n.FullApi)
 
 	t.RecordMessage("publish our address to the clients addr topic")
 	addrinfo, err := n.FullApi.NetAddrsListen(ctx)
