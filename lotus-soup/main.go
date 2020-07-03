@@ -59,7 +59,7 @@ func dealsE2E(t *testkit.TestEnvironment) error {
 	client := cl.FullApi
 
 	// select a random miner
-	minerAddr := cl.MinerAddrs[t.InitContext.GroupSeq-1]
+	minerAddr := cl.MinerAddrs[rand.Intn(len(cl.MinerAddrs))]
 	if err := client.NetConnect(ctx, minerAddr.PeerAddr); err != nil {
 		return err
 	}
