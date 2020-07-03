@@ -5,7 +5,7 @@
 [global]
   plan = "lotus-soup"
   case = "deals-e2e"
-  total_instances = 9
+  total_instances = 6
   builder = "docker:go"
   runner = "local:docker"
 
@@ -15,8 +15,9 @@
 [global.run.test_params]
   clients = "3"
   miners = "2"
-  genesis_timestamp_offset = "0"
+  genesis_timestamp_offset = "100000"
   balance = "2000000000"
+  sectors = "10"
   random_beacon_type = "mock"
 
 [[groups]]
@@ -29,7 +30,7 @@
       role = "bootstrapper"
 
 [[groups]]
-  id = "miners-big"
+  id = "miners"
   [groups.instances]
     count = 2
     percentage = 0.0
@@ -37,18 +38,6 @@
     [groups.run.test_params]
       role = "miner"
       mining_mode = "natural"
-      sectors = "8"
-
-[[groups]]
-  id = "miners-small"
-  [groups.instances]
-    count = 3
-    percentage = 0.0
-  [groups.run]
-    [groups.run.test_params]
-      role = "miner"
-      mining_mode = "natural"
-      sectors = "6"
 
 [[groups]]
   id = "clients"
