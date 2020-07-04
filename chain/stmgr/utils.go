@@ -38,7 +38,7 @@ func GetNetworkName(ctx context.Context, sm *StateManager, st cid.Cid) (dtypes.N
 	var state init_.State
 	_, err := sm.LoadActorStateRaw(ctx, builtin.InitActorAddr, &state, st)
 	if err != nil {
-		return "", xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
+		return "", xerrors.Errorf("(get sset) failed to load init actor state: %w", err)
 	}
 
 	return dtypes.NetworkName(state.NetworkName), nil
