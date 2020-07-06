@@ -69,7 +69,7 @@ type Local struct {
 type path struct {
 	local string // absolute local path
 
-	reserved int64
+	reserved     int64
 	reservations map[abi.SectorID]SectorFileType
 }
 
@@ -144,7 +144,7 @@ func (st *Local) OpenPath(ctx context.Context, p string) error {
 	out := &path{
 		local: p,
 
-		reserved: 0,
+		reserved:     0,
 		reservations: map[abi.SectorID]SectorFileType{},
 	}
 
@@ -253,7 +253,7 @@ func (st *Local) Reserve(ctx context.Context, sid abi.SectorID, spt abi.Register
 
 	st.localLk.Lock()
 
-	done := func(){}
+	done := func() {}
 	deferredDone := func() { done() }
 	defer func() {
 		st.localLk.Unlock()
