@@ -9,6 +9,7 @@ require (
 	github.com/GeertJohan/go.rice v1.0.0
 	github.com/Gurpartap/async v0.0.0-20180927173644-4f7f499dd9ee
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
+	github.com/alecthomas/jsonschema v0.0.0-20200530073317-71f438968921
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
 	github.com/buger/goterm v0.0.0-20200322175922-2f3e71b85129
 	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e
@@ -17,6 +18,16 @@ require (
 	github.com/detailyang/go-fallocate v0.0.0-20180908115635-432fa640bd2e
 	github.com/dgraph-io/badger/v2 v2.2007.2
 	github.com/docker/go-units v0.4.0
+	github.com/drand/drand v0.9.2-0.20200616080806-a94e9c1636a4
+	github.com/drand/kyber v1.1.0
+	github.com/etclabscore/go-openrpc-reflect v0.0.31
+	github.com/ethereum/go-ethereum v1.9.12
+	github.com/fatih/color v1.8.0
+	github.com/filecoin-project/chain-validation v0.0.6-0.20200615191232-6be1a8c6ed09
+	github.com/filecoin-project/filecoin-ffi v0.26.1-0.20200508175440-05b30afeb00d
+	github.com/filecoin-project/go-address v0.0.2-0.20200504173055-8b6f2fb2b3ef
+	github.com/filecoin-project/go-amt-ipld/v2 v2.0.1-0.20200424220931-6263827e49f2
+	github.com/filecoin-project/go-bitfield v0.0.2-0.20200629135455-587b27927d38
 	github.com/drand/drand v1.2.1
 	github.com/drand/kyber v1.1.4
 	github.com/dustin/go-humanize v1.0.0
@@ -113,12 +124,17 @@ require (
 	github.com/multiformats/go-multiaddr v0.3.1
 	github.com/multiformats/go-multiaddr-dns v0.2.0
 	github.com/multiformats/go-multibase v0.0.3
+	github.com/multiformats/go-multihash v0.0.13
+	github.com/open-rpc/meta-schema v0.0.43
+	github.com/opentracing/opentracing-go v1.1.0
+	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/multiformats/go-multihash v0.0.14
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/polydawn/refmt v0.0.0-20190809202753-05966cbd336a
 	github.com/prometheus/client_golang v1.6.0
 	github.com/raulk/clock v1.1.0
 	github.com/stretchr/testify v1.6.1
+	github.com/syndtr/goleveldb v1.0.1-0.20190923125748-758128399b1d
 	github.com/supranational/blst v0.1.1
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/urfave/cli/v2 v2.2.0
@@ -147,6 +163,12 @@ replace github.com/filecoin-project/lotus => ./
 replace github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v1.18.0
 
 replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
+
+replace github.com/filecoin-project/test-vectors => ./extern/test-vectors
+
+replace github.com/supranational/blst => ./extern/fil-blst/blst
+
+replace github.com/filecoin-project/fil-blst => ./extern/fil-blst
 
 replace github.com/filecoin-project/test-vectors => ./extern/test-vectors
 
