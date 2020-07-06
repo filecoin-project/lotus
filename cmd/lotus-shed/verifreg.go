@@ -3,7 +3,9 @@ package main
 import (
 	"bytes"
 	"fmt"
+	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/urfave/cli/v2"
@@ -301,6 +303,9 @@ var verifRegCheckClientCmd = &cli.Command{
 
 		dcap, err := api.StateVerifiedClientStatus(ctx, caddr, types.EmptyTSK)
 		if err != nil {
+			if err == lapi.NotFoundErr {
+				return xerrors.Errorf("client %s is not a verified client", err)
+			}
 			return err
 		}
 
