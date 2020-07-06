@@ -16,7 +16,6 @@ import (
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	modtest "github.com/filecoin-project/lotus/node/modules/testing"
-	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	saminer "github.com/filecoin-project/specs-actors/actors/builtin/miner"
@@ -24,6 +23,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	logging "github.com/ipfs/go-log/v2"
 	influxdb "github.com/kpacha/opencensus-influxdb"
+	ma "github.com/multiformats/go-multiaddr"
 
 	"github.com/libp2p/go-libp2p-core/peer"
 	manet "github.com/multiformats/go-multiaddr-net"
@@ -205,22 +205,17 @@ func GetRandomBeaconOpts(ctx context.Context, t *TestEnvironment) (node.Option, 
 	}
 }
 
-func startServer(repo *repo.MemRepo, srv *http.Server) error {
-	endpoint, err := repo.APIEndpoint()
-	if err != nil {
-		return err
-	}
-
+func startServer(endpoint ma.Multiaddr, srv *http.Server) (listenAddr string, err error) {
 	lst, err := manet.Listen(endpoint)
 	if err != nil {
-		return fmt.Errorf("could not listen: %w", err)
+		return "", fmt.Errorf("could not listen: %w", err)
 	}
 
 	go func() {
 		_ = srv.Serve(manet.NetListener(lst))
 	}()
 
-	return nil
+	return lst.Addr().String(), nil
 }
 
 func registerAndExportMetrics(instanceName string) {

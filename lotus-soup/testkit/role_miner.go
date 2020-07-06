@@ -170,7 +170,7 @@ func PrepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 		node.Online(),
 		node.Repo(nodeRepo),
 		withGenesis(genesisMsg.Genesis),
-		withApiEndpoint("/ip4/0.0.0.0/tcp/1234"),
+		withApiEndpoint(fmt.Sprintf("/ip4/0.0.0.0/tcp/%s", t.PortNumber("node_rpc", "0"))),
 		withListenAddress(minerIP),
 		withBootstrapper(genesisMsg.Bootstrapper),
 		withPubsubConfig(false, pubsubTracer),
@@ -192,7 +192,7 @@ func PrepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 		node.Online(),
 		node.Repo(minerRepo),
 		node.Override(new(api.FullNode), n.FullApi),
-		withApiEndpoint("/ip4/0.0.0.0/tcp/2345"),
+		withApiEndpoint(fmt.Sprintf("/ip4/0.0.0.0/tcp/%s", t.PortNumber("miner_rpc", "0"))),
 		withMinerListenAddress(minerIP),
 	}
 
@@ -300,12 +300,12 @@ func PrepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 
 	m := &LotusMiner{n, t}
 
-	err = startClientAPIServer(nodeRepo, n.FullApi)
+	err = startFullNodeAPIServer(t, nodeRepo, n.FullApi)
 	if err != nil {
 		return nil, err
 	}
 
-	err = startStorageMinerAPIServer(minerRepo, n.MinerApi)
+	err = startStorageMinerAPIServer(t, minerRepo, n.MinerApi)
 	if err != nil {
 		return nil, err
 	}
@@ -381,7 +381,7 @@ func (m *LotusMiner) RunDefault() error {
 	return nil
 }
 
-func startStorageMinerAPIServer(repo *repo.MemRepo, minerApi api.StorageMiner) error {
+func startStorageMinerAPIServer(t *TestEnvironment, repo *repo.MemRepo, minerApi api.StorageMiner) error {
 	mux := mux.NewRouter()
 
 	rpcServer := jsonrpc.NewServer()
@@ -396,7 +396,18 @@ func startStorageMinerAPIServer(repo *repo.MemRepo, minerApi api.StorageMiner) e
 		Next:   mux.ServeHTTP,
 	}
 
+	endpoint, err := repo.APIEndpoint()
+	if err != nil {
+		return fmt.Errorf("no API endpoint in repo: %w", err)
+	}
+
 	srv := &http.Server{Handler: ah}
 
-	return startServer(repo, srv)
+	listenAddr, err := startServer(endpoint, srv)
+	if err != nil {
+		return fmt.Errorf("failed to start storage miner API endpoint: %w", err)
+	}
+
+	t.RecordMessage("started storage miner API server at %s", listenAddr)
+	return nil
 }

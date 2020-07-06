@@ -16,7 +16,7 @@
   registry_type="aws"
 
 [global.run_config]
-  exposed_ports = ["6060", "1234", "2345"]
+  exposed_ports = { pprof = "6060", node_rpc = "1234", miner_rpc = "2345" }
 
 [global.run.test_params]
   clients = "10"

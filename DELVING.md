@@ -14,7 +14,7 @@ All our compositions should carry this fragment:
 
 ```toml
 [global.run_config]
-  exposed_ports = ["6060", "1234", "2345"]
+  exposed_ports = { pprof = "6060", node_rpc = "1234", miner_rpc = "2345" }
 ```
 
 This tells Testground to expose the following ports:

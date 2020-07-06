@@ -47,12 +47,12 @@ func withPubsubConfig(bootstrapper bool, pubsubTracer string) node.Option {
 }
 
 func withListenAddress(ip string) node.Option {
-	addrs := []string{fmt.Sprintf("/ip4/%s/tcp/4001", ip)}
+	addrs := []string{fmt.Sprintf("/ip4/%s/tcp/0", ip)}
 	return node.Override(node.StartListeningKey, lp2p.StartListening(addrs))
 }
 
 func withMinerListenAddress(ip string) node.Option {
-	addrs := []string{fmt.Sprintf("/ip4/%s/tcp/4002", ip)}
+	addrs := []string{fmt.Sprintf("/ip4/%s/tcp/0", ip)}
 	return node.Override(node.StartListeningKey, lp2p.StartListening(addrs))
 }
 
