@@ -34,8 +34,24 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/repo"
+	"github.com/filecoin-project/lotus/node/repo/importmgr"
 	"github.com/filecoin-project/lotus/paychmgr"
 )
+
+func ClientMultiDatastore(lc fx.Lifecycle, r repo.LockedRepo) (dtypes.ClientMultiDstore, error) {
+	mds, err := importmgr.NewMultiDstore(r, "/client")
+	if err != nil {
+		return nil, err
+	}
+
+	lc.Append(fx.Hook{
+		OnStop: func(ctx context.Context) error {
+			return mds.Close()
+		},
+	})
+
+	return mds, nil
+}
 
 func ClientFstore(r repo.LockedRepo) (dtypes.ClientFilestore, error) {
 	clientds, err := r.Datastore("/client")

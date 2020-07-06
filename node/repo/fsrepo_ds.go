@@ -178,6 +178,29 @@ func (fsr *fsLockedRepo) Datastore(ns string) (datastore.Batching, error) {
 	return ds, nil
 }
 
+func (fsr *fsLockedRepo) ListDatastores(ns string) ([]int64, error) {
+	k := datastore.NewKey(ns)
+	parts := k.List()
+	if len(parts) != 1 {
+		return nil, xerrors.Errorf("expected multi-datastore namespace to have 1 part")
+	}
+
+	fsr.dsLk.Lock()
+	defer fsr.dsLk.Unlock()
+
+	mds, ok := fsr.multiDs[parts[0]]
+	if !ok {
+		return nil, xerrors.Errorf("no multi-datastore with namespace %s", ns)
+	}
+
+	out := make([]int64, 0, len(mds))
+	for i := range mds {
+		out = append(out, i)
+	}
+
+	return out, nil
+}
+
 func (fsr *fsLockedRepo) DeleteDatastore(ns string) error {
 	k := datastore.NewKey(ns)
 	parts := k.List()
