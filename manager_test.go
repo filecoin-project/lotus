@@ -24,6 +24,10 @@ import (
 
 type testStorage stores.StorageConfig
 
+func (t testStorage) DiskUsage(path string) (int64, error) {
+	return 1, nil // close enough
+}
+
 func newTestStorage(t *testing.T) *testStorage {
 	tp, err := ioutil.TempDir(os.TempDir(), "sector-storage-test-")
 	require.NoError(t, err)
