@@ -151,7 +151,7 @@ func (s *WindowPoStScheduler) checkNextRecoveries(ctx context.Context, deadline 
 		return xerrors.Errorf("checking unrecovered sectors: %w", err)
 	}
 	
-	// check some unrecovered sectors can not recovered (such as cache file is missing) 
+	// if all sectors failed to recover, don't declare recoveries
 	sbfCount, err := sbf.Count()
 	if err != nil {
 		log.Errorf(" sbf.Count() | %v", err)
