@@ -54,7 +54,7 @@ type LotusNode struct {
 	FullApi  api.FullNode
 	MinerApi api.StorageMiner
 	StopFn   node.StopFunc
-	MineOne  func(context.Context, func(bool)) error
+	MineOne  func(context.Context, func(bool, error)) error
 }
 
 func (n *LotusNode) setWallet(ctx context.Context, walletKey *wallet.Key) error {

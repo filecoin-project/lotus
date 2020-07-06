@@ -197,10 +197,10 @@ func PrepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 	}
 
 	if t.StringParam("mining_mode") != "natural" {
-		mineBlock := make(chan func(bool))
+		mineBlock := make(chan func(bool, error))
 		minerOpts = append(minerOpts,
 			node.Override(new(*miner.Miner), miner.NewTestMiner(mineBlock, minerAddr)))
-		n.MineOne = func(ctx context.Context, cb func(bool)) error {
+		n.MineOne = func(ctx context.Context, cb func(bool, error)) error {
 			select {
 			case mineBlock <- cb:
 				return nil
@@ -352,7 +352,11 @@ func (m *LotusMiner) RunDefault() error {
 				t.SyncClient.MustSignalAndWait(ctx, stateMineNext, miners)
 
 				ch := make(chan struct{})
-				err := m.MineOne(ctx, func(mined bool) {
+				err := m.MineOne(ctx, func(mined bool, err error) {
+					if err != nil {
+						t.D().Counter("block.mine.err").Inc(1)
+						return
+					}
 					if mined {
 						t.D().Counter(fmt.Sprintf("block.mine,miner=%s", myActorAddr)).Inc(1)
 					}
