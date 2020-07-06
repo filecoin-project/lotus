@@ -36,7 +36,7 @@ func (bbr BadBlockReason) Linked(reason string, i ...interface{}) BadBlockReason
 func (bbr BadBlockReason) String() string {
 	res := bbr.Reason
 	if bbr.OriginalReason != nil {
-		res += " caused by: " + bbr.OriginalReason.String()
+		res += " caused by: " + fmt.Sprintf("%s %s", bbr.OriginalReason.TipSet, bbr.OriginalReason.String())
 	}
 	return res
 }
