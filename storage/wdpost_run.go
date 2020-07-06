@@ -154,10 +154,12 @@ func (s *WindowPoStScheduler) checkNextRecoveries(ctx context.Context, deadline 
 	// if all sectors failed to recover, don't declare recoveries
 	sbfCount, err := sbf.Count()
 	if err != nil {
-		log.Errorf(" sbf.Count() | %v", err)
-	} else if sbfCount == 0 {
-	 	log.Warnf("unrecovered exists sbf.Count() sectors can not recovery, exit this function.", err)
-	 return nil
+		return xerrors.Errorf("counting recovered sectors: %w", err)
+	}
+	
+	if sbfCount == 0 {
+	 	log.Warnw("No recoveries to declare", "deadline", deadline, "faulty", uc)
+	 	return nil
 	}
 
 	params := &miner.DeclareFaultsRecoveredParams{
