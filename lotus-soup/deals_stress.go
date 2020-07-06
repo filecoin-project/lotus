@@ -97,7 +97,7 @@ func dealStressTest(t *testkit.TestEnvironment) error {
 				time.Sleep(2 * time.Second)
 				t.RecordMessage("waiting for deal %d to be sealed", i)
 				testkit.WaitDealSealed(t, ctx, client, deal)
-				t.D().ResettingHistogram(fmt.Sprintf("deal.sealed,miner=", minerAddr.ActorAddr)).Update(int64(time.Since(t1)))
+				t.D().ResettingHistogram(fmt.Sprintf("deal.sealed,miner=%s", minerAddr.ActorAddr)).Update(int64(time.Since(t1)))
 			}(i)
 		}
 		t.RecordMessage("waiting for all deals to be sealed")
