@@ -3,15 +3,14 @@ package api
 import (
 	"bytes"
 	"context"
-
-	"github.com/ipfs/go-cid"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/sector-storage/stores"
 	"github.com/filecoin-project/sector-storage/storiface"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/ipfs/go-cid"
+	"time"
 )
 
 // StorageMiner is a low-level interface to the Filecoin network storage miner node
@@ -35,9 +34,15 @@ type StorageMiner interface {
 
 	SectorsRefs(context.Context) (map[string][]SealedRef, error)
 
-	// SectorStartSealing can be called on sectors in Empty on WaitDeals states
+	// SectorStartSealing can be called on sectors in Empty or WaitDeals states
 	// to trigger sealing early
 	SectorStartSealing(context.Context, abi.SectorNumber) error
+	// SectorSetSealDelay sets the time that a newly-created sector
+	// waits for more deals before it starts sealing
+	SectorSetSealDelay(context.Context, time.Duration) error
+	// SectorGetSealDelay gets the time that a newly-created sector
+	// waits for more deals before it starts sealing
+	SectorGetSealDelay(context.Context) (time.Duration, error)
 	SectorsUpdate(context.Context, abi.SectorNumber, SectorState) error
 	SectorRemove(context.Context, abi.SectorNumber) error
 	SectorMarkForUpgrade(ctx context.Context, id abi.SectorNumber) error
