@@ -352,7 +352,9 @@ func (m *LotusMiner) RunDefault() error {
 				t.SyncClient.MustSignalAndWait(ctx, stateMineNext, miners)
 
 				ch := make(chan error)
-				for {
+				const maxRetries = 100
+				success := false
+				for retries := 0; retries < maxRetries; retries++ {
 					err := m.MineOne(ctx, func(mined bool, err error) {
 						if mined {
 							t.D().Counter(fmt.Sprintf("block.mine,miner=%s", myActorAddr)).Inc(1)
@@ -365,10 +367,15 @@ func (m *LotusMiner) RunDefault() error {
 
 					miningErr := <-ch
 					if miningErr == nil {
+						success = true
 						break
 					}
 					t.D().Counter("block.mine.err").Inc(1)
-					t.RecordMessage("retrying block [%d] due to mining error: %s", i, miningErr)
+					t.RecordMessage("retrying block [%d] after %d attempts due to mining error: %s",
+						i, retries, miningErr)
+				}
+				if !success {
+					panic(fmt.Errorf("failed to mine block %d after %d retries", i, maxRetries))
 				}
 			}
 
