@@ -121,8 +121,7 @@ var keyinfoImportCmd = &cli.Command{
 			fmt.Printf("%s\n", peerid.String())
 
 			break
-		case wallet.KTSecp256k1:
-		case wallet.KTBLS:
+		case wallet.KTSecp256k1, wallet.KTBLS:
 			w, err := wallet.NewWallet(keystore)
 			if err != nil {
 				return err
@@ -223,8 +222,7 @@ var keyinfoInfoCmd = &cli.Command{
 			kio.PublicKey = base64.StdEncoding.EncodeToString(pkBytes)
 
 			break
-		case wallet.KTSecp256k1:
-		case wallet.KTBLS:
+		case wallet.KTSecp256k1, wallet.KTBLS:
 			kio.Type = keyInfo.Type
 
 			key, err := wallet.NewKey(keyInfo)
@@ -311,8 +309,7 @@ var keyinfoNewCmd = &cli.Command{
 			keyInfo = ki
 
 			break
-		case wallet.KTSecp256k1:
-		case wallet.KTBLS:
+		case wallet.KTSecp256k1, wallet.KTBLS:
 			key, err := wallet.GenerateKey(wallet.ActSigType(keyType))
 			if err != nil {
 				return err

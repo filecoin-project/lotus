@@ -23,71 +23,19 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/account"
-	"github.com/filecoin-project/specs-actors/actors/builtin/cron"
-	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	miner2 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
-	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
-	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/miner"
 )
-
-type methodMeta struct {
-	Name string
-
-	params reflect.Type
-	ret    reflect.Type
-}
-
-var methods = map[cid.Cid][]methodMeta{}
-
-func init() {
-	cidToMethods := map[cid.Cid][2]interface{}{
-		// builtin.SystemActorCodeID:        {builtin.MethodsSystem, system.Actor{} }- apparently it doesn't have methods
-		builtin.InitActorCodeID:             {builtin.MethodsInit, init_.Actor{}},
-		builtin.CronActorCodeID:             {builtin.MethodsCron, cron.Actor{}},
-		builtin.AccountActorCodeID:          {builtin.MethodsAccount, account.Actor{}},
-		builtin.StoragePowerActorCodeID:     {builtin.MethodsPower, power.Actor{}},
-		builtin.StorageMinerActorCodeID:     {builtin.MethodsMiner, miner2.Actor{}},
-		builtin.StorageMarketActorCodeID:    {builtin.MethodsMarket, market.Actor{}},
-		builtin.PaymentChannelActorCodeID:   {builtin.MethodsPaych, paych.Actor{}},
-		builtin.MultisigActorCodeID:         {builtin.MethodsMultisig, multisig.Actor{}},
-		builtin.RewardActorCodeID:           {builtin.MethodsReward, reward.Actor{}},
-		builtin.VerifiedRegistryActorCodeID: {builtin.MethodsVerifiedRegistry, verifreg.Actor{}},
-	}
-
-	for c, m := range cidToMethods {
-		rt := reflect.TypeOf(m[0])
-		nf := rt.NumField()
-
-		methods[c] = append(methods[c], methodMeta{
-			Name:   "Send",
-			params: reflect.TypeOf(new(adt.EmptyValue)),
-			ret:    reflect.TypeOf(new(adt.EmptyValue)),
-		})
-
-		exports := m[1].(abi.Invokee).Exports()
-		for i := 0; i < nf; i++ {
-			export := reflect.TypeOf(exports[i+1])
-
-			methods[c] = append(methods[c], methodMeta{
-				Name:   rt.Field(i).Name,
-				params: export.In(1),
-				ret:    export.Out(0),
-			})
-		}
-	}
-}
 
 var stateCmd = &cli.Command{
 	Name:  "state",
@@ -1191,7 +1139,7 @@ func codeStr(c cid.Cid) string {
 }
 
 func getMethod(code cid.Cid, method abi.MethodNum) string {
-	return methods[code][method].Name
+	return stmgr.MethodsMap[code][method].Name
 }
 
 func toFil(f types.BigInt) types.FIL {
@@ -1222,7 +1170,7 @@ func sumGas(changes []*types.GasTrace) types.GasTrace {
 }
 
 func jsonParams(code cid.Cid, method abi.MethodNum, params []byte) (string, error) {
-	re := reflect.New(methods[code][method].params.Elem())
+	re := reflect.New(stmgr.MethodsMap[code][method].Params.Elem())
 	p := re.Interface().(cbg.CBORUnmarshaler)
 	if err := p.UnmarshalCBOR(bytes.NewReader(params)); err != nil {
 		return "", err
@@ -1233,7 +1181,7 @@ func jsonParams(code cid.Cid, method abi.MethodNum, params []byte) (string, erro
 }
 
 func jsonReturn(code cid.Cid, method abi.MethodNum, ret []byte) (string, error) {
-	re := reflect.New(methods[code][method].ret.Elem())
+	re := reflect.New(stmgr.MethodsMap[code][method].Ret.Elem())
 	p := re.Interface().(cbg.CBORUnmarshaler)
 	if err := p.UnmarshalCBOR(bytes.NewReader(ret)); err != nil {
 		return "", err

@@ -76,6 +76,7 @@ var provingFaultsCmd = &cli.Command{
 		}
 		if len(faults) == 0 {
 			fmt.Println("no faulty sectors")
+			return nil
 		}
 		head, err := api.ChainHead(ctx)
 		if err != nil {

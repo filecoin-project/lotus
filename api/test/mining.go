@@ -34,7 +34,7 @@ func (ts *testSuite) testMining(t *testing.T) {
 	require.NoError(t, err)
 	<-newHeads
 
-	err = sn[0].MineOne(ctx, func(bool) {})
+	err = sn[0].MineOne(ctx, func(bool, error) {})
 	require.NoError(t, err)
 
 	<-newHeads
@@ -62,7 +62,7 @@ func (ts *testSuite) testMiningReal(t *testing.T) {
 	require.NoError(t, err)
 	<-newHeads
 
-	err = sn[0].MineOne(ctx, func(bool) {})
+	err = sn[0].MineOne(ctx, func(bool, error) {})
 	require.NoError(t, err)
 
 	<-newHeads
@@ -71,7 +71,7 @@ func (ts *testSuite) testMiningReal(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, abi.ChainEpoch(1), h2.Height())
 
-	err = sn[0].MineOne(ctx, func(bool) {})
+	err = sn[0].MineOne(ctx, func(bool, error) {})
 	require.NoError(t, err)
 
 	<-newHeads
@@ -132,7 +132,7 @@ func TestDealMining(t *testing.T, b APIBuilder, blocktime time.Duration, carExpo
 		prevExpect := 0
 		for atomic.LoadInt32(&mine) != 0 {
 			wait := make(chan int, 2)
-			mdone := func(mined bool) {
+			mdone := func(mined bool, err error) {
 				go func() {
 					n := 0
 					if mined {
