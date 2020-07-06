@@ -378,7 +378,8 @@ type DealInfo struct {
 }
 
 type MsgLookup struct {
-	Receipt types.MessageReceipt
+	Receipt   types.MessageReceipt
+	ReturnDec interface{}
 	// TODO: This should probably a tipsetkey?
 	TipSet *types.TipSet
 }
