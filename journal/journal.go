@@ -99,7 +99,7 @@ func (fsj *fsJournal) rollJournalFile() error {
 		fsj.fi.Close()
 	}
 
-	nfi, err := os.Create(filepath.Join(fsj.journalDir, fmt.Sprintf("lotus-journal-%d.ndjson", time.Now().Unix())))
+	nfi, err := os.Create(filepath.Join(fsj.journalDir, fmt.Sprintf("lotus-journal-%s.ndjson", time.Now().Format(time.RFC3339))))
 	if err != nil {
 		return xerrors.Errorf("failed to open journal file: %w", err)
 	}
