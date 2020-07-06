@@ -15,8 +15,8 @@ var cases = map[string]interface{}{
 }
 
 func init() {
-	build.BlockDelaySecs = 1
-	build.PropagationDelaySecs = 2
+	build.BlockDelaySecs = 2
+	build.PropagationDelaySecs = 4
 }
 
 func main() {

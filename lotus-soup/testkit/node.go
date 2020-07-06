@@ -34,7 +34,7 @@ import (
 )
 
 func init() {
-	_ = logging.SetLogLevel("*", "ERROR")
+	_ = logging.SetLogLevel("*", "WARN")
 
 	_ = os.Setenv("BELLMAN_NO_GPU", "1")
 
