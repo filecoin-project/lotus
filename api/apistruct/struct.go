@@ -2,7 +2,6 @@ package apistruct
 
 import (
 	"context"
-	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	"io"
 
 	"github.com/ipfs/go-cid"
@@ -20,6 +19,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
+	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-storage/storage"
 
