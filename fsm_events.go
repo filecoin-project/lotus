@@ -21,6 +21,10 @@ type globalMutator interface {
 	applyGlobal(state *SectorInfo) bool
 }
 
+type Ignorable interface {
+	Ignore()
+}
+
 // Global events
 
 type SectorRestart struct{}
@@ -83,6 +87,8 @@ func (evt SectorAddPiece) apply(state *SectorInfo) {
 type SectorStartPacking struct{}
 
 func (evt SectorStartPacking) apply(*SectorInfo) {}
+
+func (evt SectorStartPacking) Ignore() {}
 
 type SectorPacked struct{ FillerPieces []abi.PieceInfo }
 
