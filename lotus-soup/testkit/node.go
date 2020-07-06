@@ -245,27 +245,27 @@ func registerAndExportMetrics(instanceName string) {
 	view.SetReportingPeriod(5 * time.Second)
 }
 
-func collectStats(ctx context.Context, api api.FullNode) error {
-	var database string = "testground"
-	var headlag int = 3
+func collectStats(t *TestEnvironment, ctx context.Context, api api.FullNode) error {
+	t.RecordMessage("collecting blockchain stats")
 
 	influxAddr := os.Getenv("INFLUXDB_URL")
 	influxUser := ""
 	influxPass := ""
+	influxDb := "testground"
 
 	influx, err := tstats.InfluxClient(influxAddr, influxUser, influxPass)
 	if err != nil {
+		t.RecordMessage(err.Error())
 		return err
 	}
 
-	height, err := tstats.GetLastRecordedHeight(influx, database)
-	if err != nil {
-		return err
-	}
+	height := int64(0)
+	headlag := 3
 
 	go func() {
 		time.Sleep(15 * time.Second)
-		tstats.Collect(context.Background(), api, influx, database, height, headlag)
+		t.RecordMessage("calling tstats.Collect")
+		tstats.Collect(context.Background(), api, influx, influxDb, height, headlag)
 	}()
 
 	return nil
