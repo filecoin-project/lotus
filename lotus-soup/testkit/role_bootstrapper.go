@@ -3,6 +3,7 @@ package testkit
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/filecoin-project/lotus/build"
@@ -105,7 +106,7 @@ func PrepareBootstrapper(t *TestEnvironment) (*Bootstrapper, error) {
 		node.Online(),
 		node.Repo(repo.NewMemory(nil)),
 		node.Override(new(modules.Genesis), modtest.MakeGenesisMem(&genesisBuffer, genesisTemplate)),
-		withApiEndpoint("/ip4/0.0.0.0/tcp/1234"),
+		withApiEndpoint(fmt.Sprintf("/ip4/0.0.0.0/tcp/%s", t.PortNumber("node_rpc", "0"))),
 		withListenAddress(bootstrapperIP),
 		withBootstrapper(nil),
 		withPubsubConfig(true, pubsubTracerMaddr),

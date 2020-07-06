@@ -16,7 +16,6 @@ import (
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	modtest "github.com/filecoin-project/lotus/node/modules/testing"
-	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	saminer "github.com/filecoin-project/specs-actors/actors/builtin/miner"
@@ -24,6 +23,9 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	logging "github.com/ipfs/go-log/v2"
 	influxdb "github.com/kpacha/opencensus-influxdb"
+	ma "github.com/multiformats/go-multiaddr"
+
+	tstats "github.com/filecoin-project/lotus/tools/stats"
 
 	"github.com/libp2p/go-libp2p-core/peer"
 	manet "github.com/multiformats/go-multiaddr-net"
@@ -52,7 +54,7 @@ type LotusNode struct {
 	FullApi  api.FullNode
 	MinerApi api.StorageMiner
 	StopFn   node.StopFunc
-	MineOne  func(context.Context, func(bool)) error
+	MineOne  func(context.Context, func(bool, error)) error
 }
 
 func (n *LotusNode) setWallet(ctx context.Context, walletKey *wallet.Key) error {
@@ -205,22 +207,17 @@ func GetRandomBeaconOpts(ctx context.Context, t *TestEnvironment) (node.Option, 
 	}
 }
 
-func startServer(repo *repo.MemRepo, srv *http.Server) error {
-	endpoint, err := repo.APIEndpoint()
-	if err != nil {
-		return err
-	}
-
+func startServer(endpoint ma.Multiaddr, srv *http.Server) (listenAddr string, err error) {
 	lst, err := manet.Listen(endpoint)
 	if err != nil {
-		return fmt.Errorf("could not listen: %w", err)
+		return "", fmt.Errorf("could not listen: %w", err)
 	}
 
 	go func() {
 		_ = srv.Serve(manet.NetListener(lst))
 	}()
 
-	return nil
+	return lst.Addr().String(), nil
 }
 
 func registerAndExportMetrics(instanceName string) {
@@ -246,4 +243,30 @@ func registerAndExportMetrics(instanceName string) {
 	}
 	view.RegisterExporter(e)
 	view.SetReportingPeriod(5 * time.Second)
+}
+
+func collectStats(ctx context.Context, api api.FullNode) error {
+	var database string = "testground"
+	var headlag int = 3
+
+	influxAddr := os.Getenv("INFLUXDB_URL")
+	influxUser := ""
+	influxPass := ""
+
+	influx, err := tstats.InfluxClient(influxAddr, influxUser, influxPass)
+	if err != nil {
+		return err
+	}
+
+	height, err := tstats.GetLastRecordedHeight(influx, database)
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		time.Sleep(15 * time.Second)
+		tstats.Collect(context.Background(), api, influx, database, height, headlag)
+	}()
+
+	return nil
 }
