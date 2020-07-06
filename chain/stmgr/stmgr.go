@@ -121,10 +121,10 @@ func (sm *StateManager) ExecutionTrace(ctx context.Context, ts *types.TipSet) (c
 	var trace []*api.InvocResult
 	st, _, err := sm.computeTipSetState(ctx, ts.Blocks(), func(mcid cid.Cid, msg *types.Message, ret *vm.ApplyRet) error {
 		ir := &api.InvocResult{
-			Msg:                msg,
-			MsgRct:             &ret.MessageReceipt,
-			InternalExecutions: ret.InternalExecutions,
-			Duration:           ret.Duration,
+			Msg:            msg,
+			MsgRct:         &ret.MessageReceipt,
+			ExecutionTrace: ret.ExecutionTrace,
+			Duration:       ret.Duration,
 		}
 		if ret.ActorErr != nil {
 			ir.Error = ret.ActorErr.Error()
@@ -184,10 +184,9 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, pstate cid.Cid, bms []B
 
 		var err error
 		params, err := actors.SerializeParams(&reward.AwardBlockRewardParams{
-			Miner:       b.Miner,
-			Penalty:     penalty,
-			GasReward:   gasReward,
-			TicketCount: 1, // TODO: no longer need ticket count here.
+			Miner:     b.Miner,
+			Penalty:   penalty,
+			GasReward: gasReward,
 		})
 		if err != nil {
 			return cid.Undef, cid.Undef, xerrors.Errorf("failed to serialize award params: %w", err)
@@ -326,7 +325,7 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 		blkmsgs = append(blkmsgs, bm)
 	}
 
-	return sm.ApplyBlocks(ctx, pstate, blkmsgs, abi.ChainEpoch(blks[0].Height), r, cb)
+	return sm.ApplyBlocks(ctx, pstate, blkmsgs, blks[0].Height, r, cb)
 }
 
 func (sm *StateManager) parentState(ts *types.TipSet) cid.Cid {
@@ -382,8 +381,8 @@ func (sm *StateManager) LoadActorState(ctx context.Context, a address.Address, o
 	cst := cbor.NewCborStore(sm.cs.Blockstore())
 	if err := cst.Get(ctx, act.Head, out); err != nil {
 		var r cbg.Deferred
-		cst.Get(ctx, act.Head, &r)
-		fmt.Printf("badhead %x\n", r.Raw)
+		_ = cst.Get(ctx, act.Head, &r)
+		log.Errorw("bad actor head", "error", err, "raw", r.Raw, "address", a)
 
 		return nil, err
 	}
@@ -405,8 +404,8 @@ func (sm *StateManager) LoadActorStateRaw(ctx context.Context, a address.Address
 	return act, nil
 }
 
-// Similar to `vm.ResolveToKeyAddr` but does not allow `Actor` type of addresses. Uses the `TipSet` `ts`
-// to generate the VM state.
+// ResolveToKeyAddress is similar to `vm.ResolveToKeyAddr` but does not allow `Actor` type of addresses.
+// Uses the `TipSet` `ts` to generate the VM state.
 func (sm *StateManager) ResolveToKeyAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
 	switch addr.Protocol() {
 	case address.BLS, address.SECP256K1:
@@ -480,7 +479,10 @@ func (sm *StateManager) GetReceipt(ctx context.Context, msg cid.Cid, ts *types.T
 	return r, nil
 }
 
-func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid) (*types.TipSet, *types.MessageReceipt, error) {
+// WaitForMessage blocks until a message appears on chain. It looks backwards in the chain to see if this has already
+// happened. It guarantees that the message has been on chain for at least confidence epochs without being reverted
+// before returning.
+func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid, confidence uint64) (*types.TipSet, *types.MessageReceipt, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -528,6 +530,11 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid) (*type
 		close(backSearchWait)
 	}()
 
+	var candidateTs *types.TipSet
+	var candidateRcp *types.MessageReceipt
+	heightOfHead := head[0].Val.Height()
+	reverts := map[types.TipSetKey]bool{}
+
 	for {
 		select {
 		case notif, ok := <-tsub:
@@ -537,21 +544,44 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid) (*type
 			for _, val := range notif {
 				switch val.Type {
 				case store.HCRevert:
-					continue
+					if val.Val.Equals(candidateTs) {
+						candidateTs = nil
+						candidateRcp = nil
+					}
+					if backSearchWait != nil {
+						reverts[val.Val.Key()] = true
+					}
 				case store.HCApply:
+					if candidateTs != nil && val.Val.Height() >= candidateTs.Height()+abi.ChainEpoch(confidence) {
+						return candidateTs, candidateRcp, nil
+					}
 					r, err := sm.tipsetExecutedMessage(val.Val, mcid, msg.VMMessage())
 					if err != nil {
 						return nil, nil, err
 					}
 					if r != nil {
-						return val.Val, r, nil
+						if confidence == 0 {
+							return val.Val, r, err
+						}
+						candidateTs = val.Val
+						candidateRcp = r
 					}
+					heightOfHead = val.Val.Height()
 				}
 			}
 		case <-backSearchWait:
-			if backTs != nil {
-				return backTs, backRcp, nil
+			// check if we found the message in the chain and that is hasn't been reverted since we started searching
+			if backTs != nil && !reverts[backTs.Key()] {
+				// if head is at or past confidence interval, return immediately
+				if heightOfHead >= backTs.Height()+abi.ChainEpoch(confidence) {
+					return backTs, backRcp, nil
+				}
+
+				// wait for confidence interval
+				candidateTs = backTs
+				candidateRcp = backRcp
 			}
+			reverts = nil
 			backSearchWait = nil
 		case <-ctx.Done():
 			return nil, nil, ctx.Err()

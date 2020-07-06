@@ -34,7 +34,7 @@ func RecordValidator(ps peerstore.Peerstore) record.Validator {
 	}
 }
 
-const JWTSecretName = "auth-jwt-private"
+const JWTSecretName = "auth-jwt-private" //nolint:gosec
 
 type jwtPayload struct {
 	Allow []auth.Permission
@@ -88,4 +88,8 @@ func ConfigBootstrap(peers []string) func() (dtypes.BootstrapPeers, error) {
 
 func BuiltinBootstrap() (dtypes.BootstrapPeers, error) {
 	return build.BuiltinBootstrap()
+}
+
+func DrandBootstrap() (dtypes.DrandBootstrap, error) {
+	return build.DrandBootstrap()
 }

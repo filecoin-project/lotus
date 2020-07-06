@@ -6,7 +6,7 @@
 
 These steps will install the following dependencies:
 
-- go (1.13 or higher)
+- go (1.14 or higher)
 - gcc (7.4.0 or higher)
 - git (version 2 or higher)
 - bzr (some go dependency needs this)

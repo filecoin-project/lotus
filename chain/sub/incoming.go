@@ -57,8 +57,7 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 			return
 		}
 
-		//nolint:golint
-		src := peer.ID(msg.GetFrom())
+		src := msg.GetFrom()
 
 		go func() {
 			start := time.Now()
@@ -204,7 +203,7 @@ func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub
 		}
 	}
 
-	err = sigs.CheckBlockSignature(blk.Header, ctx, key)
+	err = sigs.CheckBlockSignature(ctx, blk.Header, key)
 	if err != nil {
 		log.Errorf("block signature verification failed: %s", err)
 		recordFailure("signature_verification_failed")

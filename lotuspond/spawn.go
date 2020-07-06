@@ -11,12 +11,13 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/filecoin-project/lotus/chain/types"
+
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	genesis2 "github.com/filecoin-project/lotus/chain/gen/genesis"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
@@ -24,8 +25,8 @@ import (
 )
 
 func init() {
-	miner.SupportedProofTypes = map[abi.RegisteredProof]struct{}{
-		abi.RegisteredProof_StackedDRG2KiBSeal: {},
+	miner.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
+		abi.RegisteredSealProof_StackedDrg2KiBV1: {},
 	}
 }
 
@@ -48,7 +49,7 @@ func (api *api) Spawn() (nodeInfo, error) {
 		}
 
 		sbroot := filepath.Join(dir, "preseal")
-		genm, ki, err := seed.PreSeal(genMiner, abi.RegisteredProof_StackedDRG2KiBSeal, 0, 2, sbroot, []byte("8"), nil)
+		genm, ki, err := seed.PreSeal(genMiner, abi.RegisteredSealProof_StackedDrg2KiBV1, 0, 2, sbroot, []byte("8"), nil, false)
 		if err != nil {
 			return nodeInfo{}, xerrors.Errorf("preseal failed: %w", err)
 		}
@@ -65,7 +66,7 @@ func (api *api) Spawn() (nodeInfo, error) {
 		template.Miners = append(template.Miners, *genm)
 		template.Accounts = append(template.Accounts, genesis.Actor{
 			Type:    genesis.TAccount,
-			Balance: big.NewInt(100000000000000),
+			Balance: types.FromFil(5000000),
 			Meta:    (&genesis.AccountMeta{Owner: genm.Owner}).ActorMeta(),
 		})
 
@@ -122,7 +123,7 @@ func (api *api) Spawn() (nodeInfo, error) {
 	info := nodeInfo{
 		Repo:    dir,
 		ID:      id,
-		ApiPort: 2500 + id,
+		APIPort: 2500 + id,
 		State:   NodeRunning,
 	}
 
@@ -171,7 +172,7 @@ func (api *api) SpawnStorage(fullNodeRepo string) (nodeInfo, error) {
 	initArgs := []string{"init", "--nosync"}
 	if fullNodeRepo == api.running[1].meta.Repo {
 		presealPrefix := filepath.Join(fullNodeRepo, "preseal")
-		initArgs = []string{"init", "--actor=t01000", "--genesis-miner", "--pre-sealed-sectors=" + presealPrefix, "--pre-sealed-metadata=" + filepath.Join(presealPrefix, "pre-seal-t0101.json")}
+		initArgs = []string{"init", "--actor=t01000", "--genesis-miner", "--pre-sealed-sectors=" + presealPrefix, "--pre-sealed-metadata=" + filepath.Join(presealPrefix, "pre-seal-t01000.json")}
 	}
 
 	id := atomic.AddInt32(&api.cmds, 1)
@@ -198,7 +199,7 @@ func (api *api) SpawnStorage(fullNodeRepo string) (nodeInfo, error) {
 	info := nodeInfo{
 		Repo:    dir,
 		ID:      id,
-		ApiPort: 2500 + id,
+		APIPort: 2500 + id,
 		State:   NodeRunning,
 
 		FullNode: fullNodeRepo,

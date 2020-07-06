@@ -15,7 +15,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"golang.org/x/xerrors"
 
-	"gopkg.in/urfave/cli.v2"
+	"github.com/urfave/cli/v2"
 )
 
 var walletCmd = &cli.Command{
@@ -113,7 +113,12 @@ var walletBalance = &cli.Command{
 			return err
 		}
 
-		fmt.Printf("%s\n", types.FIL(balance))
+		if balance.Equals(types.NewInt(0)) {
+			fmt.Printf("%s (warning: may display 0 if chain sync in progress)\n", types.FIL(balance))
+		} else {
+			fmt.Printf("%s\n", types.FIL(balance))
+		}
+
 		return nil
 	},
 }

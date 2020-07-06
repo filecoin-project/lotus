@@ -12,16 +12,17 @@ import (
 
 func init() {
 	power.ConsensusMinerMinPower = big.NewInt(2048)
-	miner.SupportedProofTypes = map[abi.RegisteredProof]struct{}{
-		abi.RegisteredProof_StackedDRG2KiBSeal: {},
+	miner.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
+		abi.RegisteredSealProof_StackedDrg2KiBV1: {},
 	}
 	verifreg.MinVerifiedDealSize = big.NewInt(256)
+
+	BuildType |= Build2k
 }
 
-// Seconds
-const BlockDelay = 2
+const BlockDelaySecs = uint64(2)
 
-const PropagationDelay = 3
+const PropagationDelaySecs = uint64(3)
 
 // SlashablePowerDelay is the number of epochs after ElectionPeriodStart, after
 // which the miner is slashed

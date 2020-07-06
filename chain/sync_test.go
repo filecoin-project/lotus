@@ -34,8 +34,8 @@ import (
 func init() {
 	build.InsecurePoStValidation = true
 	os.Setenv("TRUST_PARAMS", "1")
-	miner.SupportedProofTypes = map[abi.RegisteredProof]struct{}{
-		abi.RegisteredProof_StackedDRG2KiBSeal: {},
+	miner.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
+		abi.RegisteredSealProof_StackedDrg2KiBV1: {},
 	}
 	power.ConsensusMinerMinPower = big.NewInt(2048)
 	verifreg.MinVerifiedDealSize = big.NewInt(256)
@@ -408,7 +408,7 @@ func TestSyncBadTimestamp(t *testing.T) {
 
 	base := tu.g.CurTipset
 	tu.g.Timestamper = func(pts *types.TipSet, tl abi.ChainEpoch) uint64 {
-		return pts.MinTimestamp() + (build.BlockDelay / 2)
+		return pts.MinTimestamp() + (build.BlockDelaySecs / 2)
 	}
 
 	fmt.Println("BASE: ", base.Cids())
@@ -417,7 +417,7 @@ func TestSyncBadTimestamp(t *testing.T) {
 	a1 := tu.mineOnBlock(base, 0, nil, false, true)
 
 	tu.g.Timestamper = nil
-	tu.g.ResyncBankerNonce(a1.TipSet())
+	require.NoError(t, tu.g.ResyncBankerNonce(a1.TipSet()))
 
 	fmt.Println("After mine bad block!")
 	tu.printHeads()
@@ -479,7 +479,7 @@ func TestSyncFork(t *testing.T) {
 	a := tu.mineOnBlock(a1, p1, []int{0}, true, false)
 	a = tu.mineOnBlock(a, p1, []int{0}, true, false)
 
-	tu.g.ResyncBankerNonce(a1.TipSet())
+	require.NoError(t, tu.g.ResyncBankerNonce(a1.TipSet()))
 	// chain B will now be heaviest
 	b := tu.mineOnBlock(base, p2, []int{1}, true, false)
 	b = tu.mineOnBlock(b, p2, []int{1}, true, false)

@@ -11,7 +11,7 @@ import (
 type FIL BigInt
 
 func (f FIL) String() string {
-	r := new(big.Rat).SetFrac(f.Int, big.NewInt(build.FilecoinPrecision))
+	r := new(big.Rat).SetFrac(f.Int, big.NewInt(int64(build.FilecoinPrecision)))
 	if r.Sign() == 0 {
 		return "0"
 	}
@@ -33,7 +33,7 @@ func ParseFIL(s string) (FIL, error) {
 		return FIL{}, fmt.Errorf("failed to parse %q as a decimal number", s)
 	}
 
-	r = r.Mul(r, big.NewRat(build.FilecoinPrecision, 1))
+	r = r.Mul(r, big.NewRat(int64(build.FilecoinPrecision), 1))
 	if !r.IsInt() {
 		return FIL{}, fmt.Errorf("invalid FIL value: %q", s)
 	}

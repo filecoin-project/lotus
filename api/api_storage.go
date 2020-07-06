@@ -8,11 +8,10 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/sector-storage/stores"
 	"github.com/filecoin-project/sector-storage/storiface"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-
-	"github.com/filecoin-project/lotus/chain/types"
 )
 
 // StorageMiner is a low-level interface to the Filecoin network storage miner node
@@ -37,6 +36,7 @@ type StorageMiner interface {
 	SectorsRefs(context.Context) (map[string][]SealedRef, error)
 
 	SectorsUpdate(context.Context, abi.SectorNumber, SectorState) error
+	SectorRemove(context.Context, abi.SectorNumber) error
 
 	StorageList(ctx context.Context) (map[stores.ID][]stores.Decl, error)
 	StorageLocal(ctx context.Context) (map[stores.ID]string, error)
@@ -51,10 +51,21 @@ type StorageMiner interface {
 	MarketImportDealData(ctx context.Context, propcid cid.Cid, path string) error
 	MarketListDeals(ctx context.Context) ([]storagemarket.StorageDeal, error)
 	MarketListIncompleteDeals(ctx context.Context) ([]storagemarket.MinerDeal, error)
-	MarketSetPrice(context.Context, types.BigInt) error
+	MarketSetAsk(ctx context.Context, price types.BigInt, duration abi.ChainEpoch, minPieceSize abi.PaddedPieceSize, maxPieceSize abi.PaddedPieceSize) error
+	MarketGetAsk(ctx context.Context) (*storagemarket.SignedStorageAsk, error)
 
 	DealsImportData(ctx context.Context, dealPropCid cid.Cid, file string) error
 	DealsList(ctx context.Context) ([]storagemarket.StorageDeal, error)
+	DealsConsiderOnlineStorageDeals(context.Context) (bool, error)
+	DealsSetConsiderOnlineStorageDeals(context.Context, bool) error
+	DealsConsiderOnlineRetrievalDeals(context.Context) (bool, error)
+	DealsSetConsiderOnlineRetrievalDeals(context.Context, bool) error
+	DealsPieceCidBlocklist(context.Context) ([]cid.Cid, error)
+	DealsSetPieceCidBlocklist(context.Context, []cid.Cid) error
+	DealsConsiderOfflineStorageDeals(context.Context) (bool, error)
+	DealsSetConsiderOfflineStorageDeals(context.Context, bool) error
+	DealsConsiderOfflineRetrievalDeals(context.Context) (bool, error)
+	DealsSetConsiderOfflineRetrievalDeals(context.Context, bool) error
 
 	StorageAddLocal(ctx context.Context, path string) error
 }

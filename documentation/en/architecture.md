@@ -1,11 +1,11 @@
 # Lotus
 
 Lotus is an implementation of the [Filecoin Distributed Storage Network](https://filecoin.io/).
-A Lotus node syncs blockchains that follow the 
+A Lotus node syncs blockchains that follow the
 Filecoin protocol, validating the blocks and state transitions.
 The specification for the Filecoin protocol can be found [here](https://filecoin-project.github.io/specs/).
 
-For information on how to setup and operate a Lotus node, 
+For information on how to setup and operate a Lotus node,
 please follow the instructions [here](https://lotu.sh/en+getting-started).
 
 # Components
@@ -24,7 +24,7 @@ FIXME: No mention of block production here, cross-reference with schomatis's min
 - Other PL dependencies (IPFS, libp2p, IPLD? FIXME, missing)
 - External libraries used by Lotus and other deps (FIXME, missing)
 
-# Preliminaries 
+# Preliminaries
 
 We discuss some key Filecoin concepts here, aiming to explain them by contrasting them with analogous concepts
 in other well-known blockchains like Ethereum. We only provide brief descriptions here; elaboration
@@ -34,10 +34,10 @@ can be found in the [spec](https://filecoin-project.github.io/specs/).
 
 Unlike in Ethereum, a block can have multiple parents in Filecoin. We thus refer to the parent set of a block,
 instead of a single parent.
-A [tipset](https://filecoin-project.github.io/specs/#systems__filecoin_blockchain__struct__tipset) 
-is any set of blocks that share the same parent set. 
+A [tipset](https://filecoin-project.github.io/specs/#systems__filecoin_blockchain__struct__tipset)
+is any set of blocks that share the same parent set.
 
-There is no concept of "block difficulty" in Filecoin. Instead, 
+There is no concept of "block difficulty" in Filecoin. Instead,
 the weight of a tipset is simply the number of blocks in the chain that ends in that tipset. Note that a longer chain
 can have less weight than a shorter chain with more blocks per tipset.
 
@@ -49,8 +49,8 @@ We call the heaviest tipset in a chain the "head" of the chain.
 ### Actors and Messages
 
 An [Actor](https://filecoin-project.github.io/specs/#systems__filecoin_vm__actor)
- is analogous to a smart contract in Ethereum. Filecoin does not allow users to define their own 
-actors, but comes with several [builtin actors](https://github.com/filecoin-project/specs-actors), 
+ is analogous to a smart contract in Ethereum. Filecoin does not allow users to define their own
+actors, but comes with several [builtin actors](https://github.com/filecoin-project/specs-actors),
 which can be thought of as pre-compiled contracts.
 
 A [Message](https://filecoin-project.github.io/specs/#systems__filecoin_vm__message)
@@ -70,8 +70,8 @@ We now discuss the various stages of the sync process.
 
 ## Sync setup
 
-When a Lotus node connects to a new peer, we exchange the head of our chain 
-with the new peer through [the `hello` protocol](https://github.com/filecoin-project/lotus/blob/master/node/hello/hello.go). 
+When a Lotus node connects to a new peer, we exchange the head of our chain
+with the new peer through [the `hello` protocol](https://github.com/filecoin-project/lotus/blob/master/node/hello/hello.go).
 If the peer's head is heavier than ours, we try to sync to it. Note
 that we do NOT update our chain head at this stage.
 
@@ -79,7 +79,7 @@ that we do NOT update our chain head at this stage.
 
 Note: The API refers to these stages as `StageHeaders` and `StagePersistHeaders`.
 
-We proceed in the sync process by requesting block headers from the peer, 
+We proceed in the sync process by requesting block headers from the peer,
 moving back from their head, until we reach a tipset that we have in common
 (such a common tipset must exist, thought it may simply be the genesis block).
 The functionality can be found in `Syncer::collectHeaders()`.
@@ -90,7 +90,7 @@ drop part of our chain to connect to the peer's head (referred to as "forking").
 FIXME: This next para might be best replaced with a link to the validation doc
 Some of the possible causes of failure in this stage include:
 
-- The chain is linked to a block that we have previously marked as bad, 
+- The chain is linked to a block that we have previously marked as bad,
 and stored in a [`BadBlockCache`](https://github.com/filecoin-project/lotus/blob/master/chain/badtscache.go).
 - The beacon entries in a block are inconsistent (FIXME: more details about what is validated here wouldn't be bad).
 - Switching to this new chain would involve a chain reorganization beyond the allowed threshold (SPECK-CHECK).
@@ -101,7 +101,7 @@ Note: The API refers to this stage as `StageMessages`.
 
 Having acquired the headers and found a common tipset, we then move forward, requesting the full blocks, including the messages.
 
-For each block, we  first confirm the syntactic validity of the block (SPECK-CHECK), 
+For each block, we  first confirm the syntactic validity of the block (SPECK-CHECK),
 which includes the syntactic validity of messages included
 in the block.
 We then apply the messages, running all the state transitions, and compare the state root we calculate with the provided state root.
@@ -121,11 +121,11 @@ syntactic validation of messages.
 
 Note: The API refers to this stage as `StageSyncComplete`.
 
-If all validations pass we will now set that head as our heaviest tipset in 
+If all validations pass we will now set that head as our heaviest tipset in
 [`ChainStore`](https://github.com/filecoin-project/lotus/blob/master/chain/store/store.go).
 We already have the full state, since we calculated
 it during the sync process.
- 
+
 FIXME (aayush) I don't fuilly understand the next 2 paragraphs, but it seems important. Confirm and polish.
 Relevant issue in IPFS: https://github.com/ipfs/ipfs-docs/issues/264
 
@@ -135,7 +135,7 @@ FIXME: Create a further reading appendix, move this next para to it, along with 
 extraneous content
 This is one of the few items we store in `Datastore` by key, location, allowing its contents to change on every sync. This is reflected in the `(*ChainStore) writeHead()` function (called by `takeHeaviestTipSet()` above) where we reference the pointer by the explicit `chainHeadKey` address (the string `"head"`, not a hash embedded in a CID), and similarly in `(*ChainStore).Load()` when we start the node and create the `ChainStore`. Compare this to a Filecoin block or message which are immutable, stored in the `Blockstore` by CID, once created they never change.
 
-## Keeping up with the chain 
+## Keeping up with the chain
 
 A Lotus node also listens for new blocks broadcast by its peers over the `gossipsub` channel (see FIXME for more).
 If we have validated such a block's parent tipset, and adding it to our tipset at its height would lead to a heavier
@@ -144,11 +144,11 @@ process (indeed, it's the same codepath).
 
 # State
 
-In Filecoin, the chain state at any given point is  a collection of data stored under a root CID 
+In Filecoin, the chain state at any given point is  a collection of data stored under a root CID
 encapsulated in the [`StateTree`](https://github.com/filecoin-project/lotus/blob/master/chain/state/statetree.go),
-and accessed through the 
+and accessed through the
 [`StateManager`](https://github.com/filecoin-project/lotus/blob/master/chain/stmgr/stmgr.go).
-The state at the chain's head is thus easily tracked and updated in a state root CID. 
+The state at the chain's head is thus easily tracked and updated in a state root CID.
 (FIXME: Talk about CIDs somewhere,  we might want to explain some of the modify/flush/update-root mechanism here.))
 
 ## Calculating a Tipset State
@@ -156,7 +156,7 @@ The state at the chain's head is thus easily tracked and updated in a state root
 Recall that a tipset is a set of blocks that have identical parents (that is, that are built on top of the same tipset).
 The genesis tipset comprises the genesis block(s), and has some state corresponding to it.
 
-The methods `TipSetState()` and `computeTipSetState()` in 
+The methods `TipSetState()` and `computeTipSetState()` in
 [`StateManager`](https://github.com/filecoin-project/lotus/blob/master/chain/stmgr/stmgr.go)
  are responsible for computing
 the state that results from applying a tipset. This involves applying all the messages included
@@ -168,25 +168,25 @@ State Root (which is to be expected, since they have the same parent tipset)
 
 ### Preparing to apply a tipset
 
-When `StateManager::computeTipsetState()` is called with a tipset, `ts`, 
+When `StateManager::computeTipsetState()` is called with a tipset, `ts`,
 it retrieves the parent state root of the blocks in `ts`. It also creates a list of `BlockMessages`, which wraps the BLS
-and SecP messages in a block along with the miner that produced the block. 
+and SecP messages in a block along with the miner that produced the block.
 
-Control then flows to `StateManager::ApplyBlocks()`, which builds a VM to apply the messages given to it. The VM 
+Control then flows to `StateManager::ApplyBlocks()`, which builds a VM to apply the messages given to it. The VM
 is initialized with the parent state root of the blocks in `ts`. We apply the blocks in `ts` in order (see FIXME for
 ordering of blocks in a tipset).
 
 ### Applying a block
 
-For each block, we prepare to apply the ordered messages (first BLS, then SecP). Before applying a message, we check if 
+For each block, we prepare to apply the ordered messages (first BLS, then SecP). Before applying a message, we check if
 we have already applied a message with that CID within the scope of this method. If so, we simply skip that message;
 this is how duplicate messages included in the same tipset are skipped (with only the miner of the "first" block to
 include the message getting the reward). For the actual process of message application, see FIXME (need an
-internal link here), for now we 
-simply assume that the outcome of the VM applying a message is either an error, or a 
+internal link here), for now we
+simply assume that the outcome of the VM applying a message is either an error, or a
 [`MessageReceipt`](https://github.com/filecoin-project/lotus/blob/master/chain/types/message_receipt.go)
  and some
-other information. 
+other information.
 
 We treat an error from the VM as a showstopper; there is no recovery, and no meaningful state can be computed for `ts`.
 Given a successful receipt, we add the rewards and penalties to what the miner has earned so far. Once all the messages
@@ -205,8 +205,8 @@ is the computed state of the tipset.
 
 # Virtual Machine
 
-The Virtual Machine (VM) is responsible for executing messages. 
-The [Lotus Virtual Machine](https://github.com/filecoin-project/lotus/blob/master/chain/vm/vm.go) 
+The Virtual Machine (VM) is responsible for executing messages.
+The [Lotus Virtual Machine](https://github.com/filecoin-project/lotus/blob/master/chain/vm/vm.go)
 invokes the appropriate methods in the builtin actors, and provides
 a [`Runtime`](https://github.com/filecoin-project/specs-actors/blob/master/actors/runtime/runtime.go)
 interface to the [builtin actors](https://github.com/filecoin-project/specs-actors)
@@ -233,10 +233,10 @@ It then transfers the message's value to the recipient, creating a new account a
 ### Method Invocation
 
 We use reflection to translate a Filecoin message for the VM to an actual Go function, relying on the VM's
-[`invoker`](https://github.com/filecoin-project/lotus/blob/master/chain/vm/invoker.go) structure. 
+[`invoker`](https://github.com/filecoin-project/lotus/blob/master/chain/vm/invoker.go) structure.
 Each actor has its own set of codes defined in `specs-actors/actors/builtin/methods.go`.
 The `invoker` structure maps the builtin actors' CIDs
- to a list of `invokeFunc` (one per exported method), which each take the `Runtime` (for state manipulation) 
+ to a list of `invokeFunc` (one per exported method), which each take the `Runtime` (for state manipulation)
  and the serialized input parameters.
 
 FIXME (aayush) Polish this next para.
@@ -245,39 +245,39 @@ The basic layout (without reflection details) of `(*invoker).transform()` is as 
 
 ### Returning from the VM
 
-Once method invocation is complete (including any subcalls), we return to `ApplyMessage()`, which receives 
-the serialized response and the [`ActorError`](https://github.com/filecoin-project/lotus/blob/master/chain/actors/aerrors/error.go). 
+Once method invocation is complete (including any subcalls), we return to `ApplyMessage()`, which receives
+the serialized response and the [`ActorError`](https://github.com/filecoin-project/lotus/blob/master/chain/actors/aerrors/error.go).
 The sender will be charged the appropriate amount of gas for the returned response, which gets put into the
 [`MessageReceipt`](https://github.com/filecoin-project/lotus/blob/master/chain/types/message_receipt.go).
 
-The method then refunds any unused gas to the sender, sets up the gas reward for the miner, and 
+The method then refunds any unused gas to the sender, sets up the gas reward for the miner, and
 wraps all of this into an `ApplyRet`, which is returned.
 
 # Building a Lotus node
 
-When we launch a Lotus node with the command `./lotus daemon` 
+When we launch a Lotus node with the command `./lotus daemon`
 (see [here](https://github.com/filecoin-project/lotus/blob/master/cmd/lotus/daemon.go) for more),
 the node is created through [dependency injection](https://godoc.org/go.uber.org/fx).
-This relies on reflection, which makes some of the references hard to follow. 
+This relies on reflection, which makes some of the references hard to follow.
 The node sets up all of the subsystems it needs to run, such as the repository, the network connections, thechain sync
-service, etc. 
+service, etc.
 This setup is orchestrated through calls to the `node.Override` function.
-The structure of each call indicates the type of component it will set up 
+The structure of each call indicates the type of component it will set up
 (many defined in [`node/modules/dtypes/`](https://github.com/filecoin-project/lotus/tree/master/node/modules/dtypes)),
-and the function that will provide it. 
+and the function that will provide it.
 The dependency is implicit in the argument of the provider function.
 
 As an example, consider the `modules.ChainStore()` function that provides the
 [`ChainStore`](https://github.com/filecoin-project/lotus/blob/master/chain/store/store.go) structure.
 It takes as one of its parameters the [`ChainBlockstore`](https://github.com/filecoin-project/lotus/blob/master/node/modules/dtypes/storage.go)
-type, which becomes one of its dependencies. 
+type, which becomes one of its dependencies.
 For the node to be built successfully the `ChainBlockstore` will need to be provided before `ChainStore`, a requirement
 that is made explicit in another `Override()` call that sets the provider of that type as the `ChainBlockstore()` function.
 
 ## The Repository
 
 The repo is the directory where all of a node's information is stored. The node is entirely defined by its repo, which
-makes it easy to port to another location. This one-to-one relationship means we can speak 
+makes it easy to port to another location. This one-to-one relationship means we can speak
 of the node as the repo it is associated with, instead of the daemon process that runs from that repo.
 
 Only one daemon can run be running with an associated repo at a time.
@@ -292,17 +292,17 @@ lsof ~/.lotus/repo.lock
 Trying to launch a second daemon hooked to the same repo leads to a `repo is already locked (lotus daemon already running)`
 error.
 
-The `node.Repo()` function (`node/builder.go`) contains most of the dependencies (specified as `Override()` calls) 
+The `node.Repo()` function (`node/builder.go`) contains most of the dependencies (specified as `Override()` calls)
 needed to properly set up the node's repo. We list the most salient ones here.
 
 ### Datastore
 
-`Datastore` and `ChainBlockstore`: Data related to the node state is saved in the repo's `Datastore`, 
-an IPFS interface defined [here](github.com/ipfs/go-datastore/datastore.go). 
+`Datastore` and `ChainBlockstore`: Data related to the node state is saved in the repo's `Datastore`,
+an IPFS interface defined [here](https://github.com/ipfs/go-datastore/blob/master/datastore.go).
 Lotus creates this interface from a [Badger DB](https://github.com/dgraph-io/badger) in
  [`FsRepo`](https://github.com/filecoin-project/lotus/blob/master/node/repo/fsrepo.go).
 Every piece of data is fundamentally a key-value pair in the `datastore` directory of the repo.
-There are several abstractions laid on top of it that appear through the code depending on *how* we access it, 
+There are several abstractions laid on top of it that appear through the code depending on *how* we access it,
 but it is important to remember that we're always accessing it from the same place.
 
 FIXME: Maybe mention the `Batching` interface as the developer will stumble upon it before reaching the `Datastore` one.
@@ -314,8 +314,8 @@ FIXME: IPFS blocks vs Filecoin blocks ideally happens before this / here
 The [`Blockstore` interface](`github.com/ipfs/go-ipfs-blockstore/blockstore.go`) structures the key-value pair
 into the CID format for the key and the [`Block` interface](`github.com/ipfs/go-block-format/blocks.go`) for the value.
 The `Block` value is just a raw string of bytes addressed by its hash, which is included in the CID key.
- 
-`ChainBlockstore` creates a `Blockstore` in the repo under the `/blocks` namespace. 
+
+`ChainBlockstore` creates a `Blockstore` in the repo under the `/blocks` namespace.
 Every key stored there will have the `blocks` prefix so that it does not collide with other stores that use the same repo.
 
 FIXME: Link to IPFS documentation about DAG, CID, and related, especially we need a diagram that shows how do we wrap each datastore inside the next layer (datastore, batching, block store, gc, etc).
@@ -323,7 +323,7 @@ FIXME: Link to IPFS documentation about DAG, CID, and related, especially we nee
 #### Metadata
 
 `modules.Datastore()` creates a `dtypes.MetadataDS`, which is an alias for the basic `Datastore` interface.
-Metadata is stored here under the `/metadata` prefix. 
+Metadata is stored here under the `/metadata` prefix.
 (FIXME: Explain *what* is metadata in contrast with the block store, namely we store the pointer to the heaviest chain, we might just link to that unwritten section here later.)
 
 FIXME: Explain the key store related calls (maybe remove, per Schomatis)
@@ -331,10 +331,10 @@ FIXME: Explain the key store related calls (maybe remove, per Schomatis)
 ### LockedRepo
 
 `LockedRepo()`: This method doesn't create or initialize any new structures, but rather registers an
- `OnStop` [hook](https://godoc.org/go.uber.org/fx/internal/lifecycle#Hook) 
+ `OnStop` [hook](https://godoc.org/go.uber.org/fx/internal/lifecycle#Hook)
  that will close the locked repository associated with it on shutdown.
- 
- 
+
+
 ### Repo types / Node types
 
 FIXME: This section needs to be clarified / corrected...I don't fully understand the config differences (what do they have in common, if anything?)
@@ -351,19 +351,19 @@ As we said, the repo fully identifies the node so a repo type is also a *node* t
 FIXME: Much of this might need to be subsumed into the p2p section
 
 The `node.Online()` configuration function (`node/builder.go`) initializes components that involve connecting to,
-or interacting with, the Filecoin network. These connections are managed through the libp2p stack (FIXME link to this section when it exists). 
+or interacting with, the Filecoin network. These connections are managed through the libp2p stack (FIXME link to this section when it exists).
 We discuss some of the components found in the full node type (that is, included in the `ApplyIf(isType(repo.FullNode),` call).
 
 #### Chainstore
 
-`modules.ChainStore()` creates the [`store.ChainStore`](https://github.com/filecoin-project/lotus/blob/master/chain/store/store.go)) 
+`modules.ChainStore()` creates the [`store.ChainStore`](https://github.com/filecoin-project/lotus/blob/master/chain/store/store.go))
 that wraps the stores
- previously instantiated in `Repo()`. It is the main point of entry for the node to all chain-related data 
- (FIXME: this is incorrect, we sometimes access its underlying block store directly, and probably shouldn't). 
+ previously instantiated in `Repo()`. It is the main point of entry for the node to all chain-related data
+ (FIXME: this is incorrect, we sometimes access its underlying block store directly, and probably shouldn't).
  It also holds the crucial `heaviest` pointer, which indicates the current head of the chain.
- 
+
  #### ChainExchange and ChainBlockservice
-`ChainExchange()` and `ChainBlockservice()` establish a BitSwap connection (FIXME libp2p link) 
+`ChainExchange()` and `ChainBlockservice()` establish a BitSwap connection (FIXME libp2p link)
 to exchange chain information in the form of `blocks.Block`s stored in the repo. (See sync section for more details, the Filecoin blocks and messages are backed by these raw IPFS blocks that together form the different structures that define the state of the current/heaviest chain.)
 
 #### Incoming handlers
@@ -371,7 +371,7 @@ to exchange chain information in the form of `blocks.Block`s stored in the repo.
 and messages from the network (see `<undefined>` for more information about the topics the node is subscribed to, FIXME: should that be part of the libp2p section or should we expand on gossipsub separately?).
 
 #### Hello
-`RunHello()`: starts the services to both send (`(*Service).SayHello()`) and receive (`(*Service).HandleStream()`, `node/hello/hello.go`) 
+`RunHello()`: starts the services to both send (`(*Service).SayHello()`) and receive (`(*Service).HandleStream()`, `node/hello/hello.go`)
 `hello` messages. When nodes establish a new connection with each other, they exchange these messages
 to share chain-related information (namely their genesis block and their heaviest tipset).
 
@@ -381,12 +381,12 @@ to share chain-related information (namely their genesis block and their heavies
 ### Ordering the dependencies
 
 We can establish the dependency relations by looking at the parameters that each function needs and by understanding
-the architecture of the node and how the different components relate to each other (the chief purpose of this document). 
+the architecture of the node and how the different components relate to each other (the chief purpose of this document).
 
 As an example, the sync mechanism depends on the node being able to exchange different IPFS blocks with the network,
 so as to be able to request the "missing pieces" needed to construct the chain. This dependency is reflected by `NewSyncer()`
-having a `blocksync.BlockSync` parameter, which in turn depends on `ChainBlockservice()` and `ChainExchange()`. 
-The chain exchange service further depends on the chain store to save and retrieve chain data, which is reflected 
+having a `blocksync.BlockSync` parameter, which in turn depends on `ChainBlockservice()` and `ChainExchange()`.
+The chain exchange service further depends on the chain store to save and retrieve chain data, which is reflected
 in `ChainExchange()` having `ChainGCBlockstore` as a parameter (which is just a wrapper around `ChainBlockstore` capable
  of garbage collection).
 

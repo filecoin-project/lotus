@@ -3,29 +3,27 @@ package cli
 import (
 	"github.com/docker/go-units"
 	paramfetch "github.com/filecoin-project/go-paramfetch"
+	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
-	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/lotus/build"
 )
 
 var fetchParamCmd = &cli.Command{
-	Name:  "fetch-params",
-	Usage: "Fetch proving parameters",
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:  "proving-params",
-			Usage: "download params used creating proofs for given size, i.e. 32GiB",
-		},
-	},
+	Name:      "fetch-params",
+	Usage:     "Fetch proving parameters",
+	ArgsUsage: "[sectorSize]",
 	Action: func(cctx *cli.Context) error {
-		sectorSizeInt, err := units.RAMInBytes(cctx.String("proving-params"))
+		if !cctx.Args().Present() {
+			return xerrors.Errorf("must pass sector size to fetch params for (specify as \"32GiB\", for instance)")
+		}
+		sectorSizeInt, err := units.RAMInBytes(cctx.Args().First())
 		if err != nil {
-			return err
+			return xerrors.Errorf("error parsing sector size (specify as \"32GiB\", for instance): %w", err)
 		}
 		sectorSize := uint64(sectorSizeInt)
 
-		err = paramfetch.GetParams(ReqContext(cctx), build.ParametersJson(), sectorSize)
+		err = paramfetch.GetParams(ReqContext(cctx), build.ParametersJSON(), sectorSize)
 		if err != nil {
 			return xerrors.Errorf("fetching proof parameters: %w", err)
 		}

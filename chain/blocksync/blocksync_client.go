@@ -64,6 +64,11 @@ func (bs *BlockSync) processStatus(req *BlockSyncRequest, res *BlockSyncResponse
 	}
 }
 
+// GetBlocks fetches count blocks from the network, from the provided tipset
+// *backwards*, returning as many tipsets as count.
+//
+// {hint/usage}: This is used by the Syncer during normal chain syncing and when
+// resolving forks.
 func (bs *BlockSync) GetBlocks(ctx context.Context, tsk types.TipSetKey, count int) ([]*types.TipSet, error) {
 	ctx, span := trace.StartSpan(ctx, "bsync.GetBlocks")
 	defer span.End()
@@ -80,7 +85,9 @@ func (bs *BlockSync) GetBlocks(ctx context.Context, tsk types.TipSetKey, count i
 		Options:       BSOptBlocks,
 	}
 
+	// this peerset is sorted by latency and failure counting.
 	peers := bs.getPeers()
+
 	// randomize the first few peers so we don't always pick the same peer
 	shufflePrefix(peers)
 
@@ -283,14 +290,14 @@ func (bs *BlockSync) fetchBlocksBlockSync(ctx context.Context, p peer.ID, req *B
 		bs.RemovePeer(p)
 		return nil, xerrors.Errorf("failed to open stream to peer: %w", err)
 	}
-	s.SetWriteDeadline(time.Now().Add(5 * time.Second))
+	_ = s.SetWriteDeadline(time.Now().Add(5 * time.Second))
 
 	if err := cborutil.WriteCborRPC(s, req); err != nil {
-		s.SetWriteDeadline(time.Time{})
+		_ = s.SetWriteDeadline(time.Time{})
 		bs.syncPeers.logFailure(p, time.Since(start))
 		return nil, err
 	}
-	s.SetWriteDeadline(time.Time{})
+	_ = s.SetWriteDeadline(time.Time{})
 
 	var res BlockSyncResponse
 	r := incrt.New(s, 50<<10, 5*time.Second)
@@ -356,6 +363,7 @@ func (bs *BlockSync) RemovePeer(p peer.ID) {
 	bs.syncPeers.removePeer(p)
 }
 
+// getPeers returns a preference-sorted set of peers to query.
 func (bs *BlockSync) getPeers() []peer.ID {
 	return bs.syncPeers.prefSortedPeers()
 }
@@ -561,26 +569,30 @@ func (bpt *bsPeerTracker) logSuccess(p peer.ID, dur time.Duration) {
 	bpt.lk.Lock()
 	defer bpt.lk.Unlock()
 
-	if pi, ok := bpt.peers[p]; !ok {
+	var pi *peerStats
+	var ok bool
+	if pi, ok = bpt.peers[p]; !ok {
 		log.Warnw("log success called on peer not in tracker", "peerid", p.String())
 		return
-	} else {
-		pi.successes++
-
-		logTime(pi, dur)
 	}
+
+	pi.successes++
+	logTime(pi, dur)
 }
 
 func (bpt *bsPeerTracker) logFailure(p peer.ID, dur time.Duration) {
 	bpt.lk.Lock()
 	defer bpt.lk.Unlock()
-	if pi, ok := bpt.peers[p]; !ok {
+
+	var pi *peerStats
+	var ok bool
+	if pi, ok = bpt.peers[p]; !ok {
 		log.Warn("log failure called on peer not in tracker", "peerid", p.String())
 		return
-	} else {
-		pi.failures++
-		logTime(pi, dur)
 	}
+
+	pi.failures++
+	logTime(pi, dur)
 }
 
 func (bpt *bsPeerTracker) removePeer(p peer.ID) {

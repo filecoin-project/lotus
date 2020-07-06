@@ -115,7 +115,7 @@ func (ps *Store) ListChannels() ([]address.Address, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer res.Close()
+	defer res.Close() //nolint:errcheck
 
 	var out []address.Address
 	for {
@@ -144,7 +144,7 @@ func (ps *Store) findChan(filter func(*ChannelInfo) bool) (address.Address, erro
 	if err != nil {
 		return address.Undef, err
 	}
-	defer res.Close()
+	defer res.Close() //nolint:errcheck
 
 	var ci ChannelInfo
 

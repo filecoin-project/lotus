@@ -82,12 +82,12 @@ lotus-storage-miner sectors pledge
 Get **miner power** and **sector usage**:
 
 ```sh
-lotus-storage-miner state power
+lotus state power
 # returns total power
 
-lotus-storage-miner state power <miner>
+lotus state power <miner>
 
-lotus-storage-miner state sectors <miner>
+lotus state sectors <miner>
 ```
 
 ## Performance tuning

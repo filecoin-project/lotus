@@ -1,11 +1,12 @@
-package main
+package parmap
 
 import (
 	"reflect"
 	"sync"
 )
 
-func maparr(in interface{}) interface{} {
+// MapArr transforms map into slice of map values
+func MapArr(in interface{}) interface{} {
 	rin := reflect.ValueOf(in)
 	rout := reflect.MakeSlice(reflect.SliceOf(rin.Type().Elem()), rin.Len(), rin.Len())
 	var i int
@@ -19,7 +20,8 @@ func maparr(in interface{}) interface{} {
 	return rout.Interface()
 }
 
-func kmaparr(in interface{}) interface{} {
+// KMapArr transforms map into slice of map keys
+func KMapArr(in interface{}) interface{} {
 	rin := reflect.ValueOf(in)
 	rout := reflect.MakeSlice(reflect.SliceOf(rin.Type().Key()), rin.Len(), rin.Len())
 	var i int
@@ -33,8 +35,9 @@ func kmaparr(in interface{}) interface{} {
 	return rout.Interface()
 }
 
-// map[k]v => []func() (k, v)
-func kvmaparr(in interface{}) interface{} {
+// KVMapArr transforms map into slice of functions returning (key, val) pairs.
+// map[A]B => []func()(A, B)
+func KVMapArr(in interface{}) interface{} {
 	rin := reflect.ValueOf(in)
 
 	t := reflect.FuncOf([]reflect.Type{}, []reflect.Type{
@@ -59,7 +62,7 @@ func kvmaparr(in interface{}) interface{} {
 	return rout.Interface()
 }
 
-func par(concurrency int, arr interface{}, f interface{}) {
+func Par(concurrency int, arr interface{}, f interface{}) {
 	throttle := make(chan struct{}, concurrency)
 	var wg sync.WaitGroup
 

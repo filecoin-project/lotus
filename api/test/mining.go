@@ -82,7 +82,7 @@ func (ts *testSuite) testMiningReal(t *testing.T) {
 }
 
 func TestDealMining(t *testing.T, b APIBuilder, blocktime time.Duration, carExport bool) {
-	os.Setenv("BELLMAN_NO_GPU", "1")
+	_ = os.Setenv("BELLMAN_NO_GPU", "1")
 
 	// test making a deal with a fresh miner, and see if it starts to mine
 
@@ -126,6 +126,7 @@ func TestDealMining(t *testing.T, b APIBuilder, blocktime time.Duration, carExpo
 	minedTwo := make(chan struct{})
 
 	go func() {
+		doneMinedTwo := false
 		defer close(done)
 
 		prevExpect := 0
@@ -175,9 +176,9 @@ func TestDealMining(t *testing.T, b APIBuilder, blocktime time.Duration, carExpo
 				time.Sleep(blocktime)
 			}
 
-			if prevExpect == 2 && expect == 2 && minedTwo != nil {
+			if prevExpect == 2 && expect == 2 && !doneMinedTwo {
 				close(minedTwo)
-				minedTwo = nil
+				doneMinedTwo = true
 			}
 
 			prevExpect = expect

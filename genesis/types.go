@@ -22,13 +22,13 @@ type PreSeal struct {
 	CommD     cid.Cid
 	SectorID  abi.SectorNumber
 	Deal      market.DealProposal
-	ProofType abi.RegisteredProof
+	ProofType abi.RegisteredSealProof
 }
 
 type Miner struct {
 	Owner  address.Address
 	Worker address.Address
-	PeerId peer.ID
+	PeerId peer.ID //nolint:golint
 
 	MarketBalance abi.TokenAmount
 	PowerBalance  abi.TokenAmount

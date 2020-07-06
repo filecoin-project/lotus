@@ -41,6 +41,7 @@ func init() {
 func TestChainValidationMessageSuite(t *testing.T) {
 	f := factory.NewFactories()
 	for _, testCase := range suites.MessageTestCases() {
+		testCase := testCase
 		if TestSuiteSkipper.Skip(testCase) {
 			continue
 		}
@@ -53,6 +54,7 @@ func TestChainValidationMessageSuite(t *testing.T) {
 func TestChainValidationTipSetSuite(t *testing.T) {
 	f := factory.NewFactories()
 	for _, testCase := range suites.TipSetTestCases() {
+		testCase := testCase
 		if TestSuiteSkipper.Skip(testCase) {
 			continue
 		}

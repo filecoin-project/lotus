@@ -3,11 +3,13 @@ package client
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/filecoin-project/go-fil-markets/pieceio"
 	basicnode "github.com/ipld/go-ipld-prime/node/basic"
 	"github.com/ipld/go-ipld-prime/traversal/selector"
 	"github.com/ipld/go-ipld-prime/traversal/selector/builder"
+	"github.com/multiformats/go-multiaddr"
 
 	"io"
 	"os"
@@ -30,7 +32,7 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	rm "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -58,8 +60,8 @@ type API struct {
 	paych.PaychAPI
 
 	SMDealClient storagemarket.StorageClient
-	RetDiscovery retrievalmarket.PeerResolver
-	Retrieval    retrievalmarket.RetrievalClient
+	RetDiscovery rm.PeerResolver
+	Retrieval    rm.RetrievalClient
 	Chain        *store.ChainStore
 
 	LocalDAG   dtypes.ClientDAG
@@ -89,6 +91,15 @@ func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) 
 		return nil, xerrors.Errorf("failed getting peer ID: %w", err)
 	}
 
+	multiaddrs := make([]multiaddr.Multiaddr, 0, len(mi.Multiaddrs))
+	for _, a := range mi.Multiaddrs {
+		maddr, err := multiaddr.NewMultiaddrBytes(a)
+		if err != nil {
+			return nil, err
+		}
+		multiaddrs = append(multiaddrs, maddr)
+	}
+
 	md, err := a.StateMinerProvingDeadline(ctx, params.Miner, types.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("failed getting peer ID: %w", err)
@@ -103,7 +114,7 @@ func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) 
 		return nil, xerrors.New("data doesn't fit in a sector")
 	}
 
-	providerInfo := utils.NewStorageProviderInfo(params.Miner, mi.Worker, mi.SectorSize, mi.PeerId)
+	providerInfo := utils.NewStorageProviderInfo(params.Miner, mi.Worker, mi.SectorSize, mi.PeerId, multiaddrs)
 
 	dealStart := params.DealStartEpoch
 	if dealStart <= 0 { // unset, or explicitly 'epoch undefined'
@@ -201,23 +212,49 @@ func (a *API) ClientFindData(ctx context.Context, root cid.Cid) ([]api.QueryOffe
 
 	out := make([]api.QueryOffer, len(peers))
 	for k, p := range peers {
-		queryResponse, err := a.Retrieval.Query(ctx, p, root, retrievalmarket.QueryParams{})
-		if err != nil {
-			out[k] = api.QueryOffer{Err: err.Error(), Miner: p.Address, MinerPeerID: p.ID}
-		} else {
-			out[k] = api.QueryOffer{
-				Root:                    root,
-				Size:                    queryResponse.Size,
-				MinPrice:                queryResponse.PieceRetrievalPrice(),
-				PaymentInterval:         queryResponse.MaxPaymentInterval,
-				PaymentIntervalIncrease: queryResponse.MaxPaymentIntervalIncrease,
-				Miner:                   queryResponse.PaymentAddress, // TODO: check
-				MinerPeerID:             p.ID,
-			}
-		}
+		out[k] = a.makeRetrievalQuery(ctx, p, root, rm.QueryParams{})
 	}
 
 	return out, nil
+}
+
+func (a *API) ClientMinerQueryOffer(ctx context.Context, payload cid.Cid, miner address.Address) (api.QueryOffer, error) {
+	mi, err := a.StateMinerInfo(ctx, miner, types.EmptyTSK)
+	if err != nil {
+		return api.QueryOffer{}, err
+	}
+	rp := rm.RetrievalPeer{
+		Address: miner,
+		ID:      mi.PeerId,
+	}
+	return a.makeRetrievalQuery(ctx, rp, payload, rm.QueryParams{}), nil
+}
+
+func (a *API) makeRetrievalQuery(ctx context.Context, rp rm.RetrievalPeer, payload cid.Cid, qp rm.QueryParams) api.QueryOffer {
+	queryResponse, err := a.Retrieval.Query(ctx, rp, payload, qp)
+	if err != nil {
+		return api.QueryOffer{Err: err.Error(), Miner: rp.Address, MinerPeerID: rp.ID}
+	}
+	var errStr string
+	switch queryResponse.Status {
+	case rm.QueryResponseAvailable:
+		errStr = ""
+	case rm.QueryResponseUnavailable:
+		errStr = fmt.Sprintf("retrieval query offer was unavailable: %s", queryResponse.Message)
+	case rm.QueryResponseError:
+		errStr = fmt.Sprintf("retrieval query offer errored: %s", queryResponse.Message)
+	}
+
+	return api.QueryOffer{
+		Root:                    payload,
+		Size:                    queryResponse.Size,
+		MinPrice:                queryResponse.PieceRetrievalPrice(),
+		PaymentInterval:         queryResponse.MaxPaymentInterval,
+		PaymentIntervalIncrease: queryResponse.MaxPaymentIntervalIncrease,
+		Miner:                   queryResponse.PaymentAddress, // TODO: check
+		MinerPeerID:             rp.ID,
+		Err:                     errStr,
+	}
 }
 
 func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (cid.Cid, error) {
@@ -309,7 +346,7 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 			return err
 		}
 
-		order.MinerPeerID = mi.PeerId
+		order.MinerPeerID = peer.ID(mi.PeerId)
 	}
 
 	if order.Size == 0 {
@@ -318,13 +355,35 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 
 	retrievalResult := make(chan error, 1)
 
-	unsubscribe := a.Retrieval.SubscribeToEvents(func(event retrievalmarket.ClientEvent, state retrievalmarket.ClientDealState) {
+	unsubscribe := a.Retrieval.SubscribeToEvents(func(event rm.ClientEvent, state rm.ClientDealState) {
 		if state.PayloadCID.Equals(order.Root) {
 			switch state.Status {
-			case retrievalmarket.DealStatusFailed, retrievalmarket.DealStatusErrored:
-				retrievalResult <- xerrors.Errorf("Retrieval Error: %s", state.Message)
-			case retrievalmarket.DealStatusCompleted:
+			case rm.DealStatusCompleted:
 				retrievalResult <- nil
+			case rm.DealStatusRejected:
+				retrievalResult <- xerrors.Errorf("Retrieval Proposal Rejected: %s", state.Message)
+			case
+				rm.DealStatusDealNotFound,
+				rm.DealStatusErrored,
+				rm.DealStatusFailed:
+				retrievalResult <- xerrors.Errorf("Retrieval Error: %s", state.Message)
+			case
+				rm.DealStatusAccepted,
+				rm.DealStatusAwaitingAcceptance,
+				rm.DealStatusBlocksComplete,
+				rm.DealStatusFinalizing,
+				rm.DealStatusFundsNeeded,
+				rm.DealStatusFundsNeededLastPayment,
+				rm.DealStatusNew,
+				rm.DealStatusOngoing,
+				rm.DealStatusPaymentChannelAddingFunds,
+				rm.DealStatusPaymentChannelAllocatingLane,
+				rm.DealStatusPaymentChannelCreating,
+				rm.DealStatusPaymentChannelReady,
+				rm.DealStatusVerified:
+				return
+			default:
+				retrievalResult <- xerrors.Errorf("Unhandled Retrieval Status: %+v", state.Status)
 			}
 		}
 	})
@@ -334,7 +393,7 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 	_, err := a.Retrieval.Retrieve(
 		ctx,
 		order.Root,
-		retrievalmarket.NewParamsV0(ppb, order.PaymentInterval, order.PaymentIntervalIncrease),
+		rm.NewParamsV0(ppb, order.PaymentInterval, order.PaymentIntervalIncrease),
 		order.Total,
 		order.MinerPeerID,
 		order.Client,
@@ -382,7 +441,7 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 }
 
 func (a *API) ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.SignedStorageAsk, error) {
-	info := utils.NewStorageProviderInfo(miner, address.Undef, 0, p)
+	info := utils.NewStorageProviderInfo(miner, address.Undef, 0, p, nil)
 	signedAsk, err := a.SMDealClient.GetAsk(ctx, info)
 	if err != nil {
 		return nil, err
@@ -432,7 +491,7 @@ func (a *API) ClientGenCar(ctx context.Context, ref api.FileRef, outputPath stri
 		return err
 	}
 
-	defer bufferedDS.Remove(ctx, c)
+	defer bufferedDS.Remove(ctx, c) //nolint:errcheck
 	ssb := builder.NewSelectorSpecBuilder(basicnode.Style.Any)
 
 	// entire DAG selector
@@ -440,7 +499,6 @@ func (a *API) ClientGenCar(ctx context.Context, ref api.FileRef, outputPath stri
 		ssb.ExploreAll(ssb.ExploreRecursiveEdge())).Node()
 
 	f, err := os.Create(outputPath)
-	defer f.Close()
 	if err != nil {
 		return err
 	}
@@ -450,7 +508,7 @@ func (a *API) ClientGenCar(ctx context.Context, ref api.FileRef, outputPath stri
 		return err
 	}
 
-	return nil
+	return f.Close()
 }
 
 func (a *API) clientImport(ref api.FileRef, bufferedDS *ipld.BufferedDAG) (cid.Cid, error) {

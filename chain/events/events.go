@@ -19,7 +19,7 @@ import (
 
 var log = logging.Logger("events")
 
-// `curH`-`ts.Height` = `confidence`
+// HeightHandler `curH`-`ts.Height` = `confidence`
 type HeightHandler func(ctx context.Context, ts *types.TipSet, curH abi.ChainEpoch) error
 type RevertHandler func(ctx context.Context, ts *types.TipSet) error
 
@@ -31,7 +31,7 @@ type heightHandler struct {
 	revert RevertHandler
 }
 
-type eventApi interface {
+type eventAPI interface {
 	ChainNotify(context.Context) (<-chan []*api.HeadChange, error)
 	ChainGetBlockMessages(context.Context, cid.Cid) (*api.BlockMessages, error)
 	ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error)
@@ -42,7 +42,7 @@ type eventApi interface {
 }
 
 type Events struct {
-	api eventApi
+	api eventAPI
 
 	tsc *tipSetCache
 	lk  sync.Mutex
@@ -51,10 +51,10 @@ type Events struct {
 	readyOnce sync.Once
 
 	heightEvents
-	calledEvents
+	*hcEvents
 }
 
-func NewEvents(ctx context.Context, api eventApi) *Events {
+func NewEvents(ctx context.Context, api eventAPI) *Events {
 	gcConfidence := 2 * build.ForkLengthThreshold
 
 	tsc := newTSCache(gcConfidence, api.ChainGetTipSetByHeight)
@@ -67,25 +67,14 @@ func NewEvents(ctx context.Context, api eventApi) *Events {
 		heightEvents: heightEvents{
 			tsc:          tsc,
 			ctx:          ctx,
-			gcConfidence: abi.ChainEpoch(gcConfidence),
+			gcConfidence: gcConfidence,
 
 			heightTriggers:   map[uint64]*heightHandler{},
 			htTriggerHeights: map[abi.ChainEpoch][]uint64{},
 			htHeights:        map[abi.ChainEpoch][]uint64{},
 		},
 
-		calledEvents: calledEvents{
-			cs:           api,
-			tsc:          tsc,
-			ctx:          ctx,
-			gcConfidence: uint64(gcConfidence),
-
-			confQueue:   map[triggerH]map[msgH][]*queuedEvent{},
-			revertQueue: map[msgH][]triggerH{},
-			triggers:    map[triggerId]*callHandler{},
-			matchers:    map[triggerId][]MatchFunc{},
-			timeouts:    map[abi.ChainEpoch]map[triggerId]int{},
-		},
+		hcEvents: newHCEvents(ctx, api, tsc, uint64(gcConfidence)),
 	}
 
 	e.ready.Add(1)
@@ -143,7 +132,7 @@ func (e *Events) listenHeadChangesOnce(ctx context.Context) error {
 	}
 
 	e.readyOnce.Do(func() {
-		e.at = cur[0].Val.Height()
+		e.lastTs = cur[0].Val
 
 		e.ready.Done()
 	})
@@ -186,5 +175,5 @@ func (e *Events) headChange(rev, app []*types.TipSet) error {
 		return err
 	}
 
-	return e.headChangeCalled(rev, app)
+	return e.processHeadChangeEvent(rev, app)
 }

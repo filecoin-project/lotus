@@ -38,9 +38,11 @@ type LockedRepo interface {
 
 	// Returns config in this repo
 	Config() (interface{}, error)
+	SetConfig(func(interface{})) error
 
 	GetStorage() (stores.StorageConfig, error)
 	SetStorage(func(*stores.StorageConfig)) error
+	Stat(path string) (stores.FsStat, error)
 
 	// SetAPIEndpoint sets the endpoint of the current API
 	// so it can be read by API clients

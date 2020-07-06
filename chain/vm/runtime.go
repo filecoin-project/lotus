@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	gruntime "runtime"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -51,10 +52,12 @@ type Runtime struct {
 	origin      address.Address
 	originNonce uint64
 
-	internalExecutions []*types.ExecutionResult
-	numActorsCreated   uint64
-	allowInternal      bool
-	callerValidated    bool
+	executionTrace    types.ExecutionTrace
+	numActorsCreated  uint64
+	allowInternal     bool
+	callerValidated   bool
+	lastGasChargeTime time.Time
+	lastGasCharge     *types.GasTrace
 }
 
 func (rt *Runtime) TotalFilCircSupply() abi.TokenAmount {
@@ -107,8 +110,8 @@ type notFoundErr interface {
 	IsNotFound() bool
 }
 
-func (rs *Runtime) Get(c cid.Cid, o vmr.CBORUnmarshaler) bool {
-	if err := rs.cst.Get(context.TODO(), c, o); err != nil {
+func (rt *Runtime) Get(c cid.Cid, o vmr.CBORUnmarshaler) bool {
+	if err := rt.cst.Get(context.TODO(), c, o); err != nil {
 		var nfe notFoundErr
 		if xerrors.As(err, &nfe) && nfe.IsNotFound() {
 			if xerrors.As(err, new(cbor.SerializationError)) {
@@ -122,8 +125,8 @@ func (rs *Runtime) Get(c cid.Cid, o vmr.CBORUnmarshaler) bool {
 	return true
 }
 
-func (rs *Runtime) Put(x vmr.CBORMarshaler) cid.Cid {
-	c, err := rs.cst.Put(context.TODO(), x)
+func (rt *Runtime) Put(x vmr.CBORMarshaler) cid.Cid {
+	c, err := rt.cst.Put(context.TODO(), x)
 	if err != nil {
 		if xerrors.As(err, new(cbor.SerializationError)) {
 			panic(aerrors.Newf(exitcode.ErrSerialization, "failed to marshal cbor object %s", err))
@@ -135,7 +138,7 @@ func (rs *Runtime) Put(x vmr.CBORMarshaler) cid.Cid {
 
 var _ vmr.Runtime = (*Runtime)(nil)
 
-func (rs *Runtime) shimCall(f func() interface{}) (rval []byte, aerr aerrors.ActorError) {
+func (rt *Runtime) shimCall(f func() interface{}) (rval []byte, aerr aerrors.ActorError) {
 	defer func() {
 		if r := recover(); r != nil {
 			if ar, ok := r.(aerrors.ActorError); ok {
@@ -150,8 +153,8 @@ func (rs *Runtime) shimCall(f func() interface{}) (rval []byte, aerr aerrors.Act
 
 	ret := f()
 
-	if !rs.callerValidated {
-		rs.Abortf(exitcode.SysErrorIllegalActor, "Caller MUST be validated during method execution")
+	if !rt.callerValidated {
+		rt.Abortf(exitcode.SysErrorIllegalActor, "Caller MUST be validated during method execution")
 	}
 
 	switch ret := ret.(type) {
@@ -172,25 +175,25 @@ func (rs *Runtime) shimCall(f func() interface{}) (rval []byte, aerr aerrors.Act
 	}
 }
 
-func (rs *Runtime) Message() vmr.Message {
-	return rs.vmsg
+func (rt *Runtime) Message() vmr.Message {
+	return rt.vmsg
 }
 
-func (rs *Runtime) ValidateImmediateCallerAcceptAny() {
-	rs.abortIfAlreadyValidated()
+func (rt *Runtime) ValidateImmediateCallerAcceptAny() {
+	rt.abortIfAlreadyValidated()
 	return
 }
 
-func (rs *Runtime) CurrentBalance() abi.TokenAmount {
-	b, err := rs.GetBalance(rs.Message().Receiver())
+func (rt *Runtime) CurrentBalance() abi.TokenAmount {
+	b, err := rt.GetBalance(rt.Message().Receiver())
 	if err != nil {
-		rs.Abortf(exitcode.ExitCode(err.RetCode()), "get current balance: %v", err)
+		rt.Abortf(err.RetCode(), "get current balance: %v", err)
 	}
 	return b
 }
 
-func (rs *Runtime) GetActorCodeCID(addr address.Address) (ret cid.Cid, ok bool) {
-	act, err := rs.state.GetActor(addr)
+func (rt *Runtime) GetActorCodeCID(addr address.Address) (ret cid.Cid, ok bool) {
+	act, err := rt.state.GetActor(addr)
 	if err != nil {
 		if xerrors.Is(err, types.ErrActorNotFound) {
 			return cid.Undef, false
@@ -210,8 +213,8 @@ func (rt *Runtime) GetRandomness(personalization crypto.DomainSeparationTag, ran
 	return res
 }
 
-func (rs *Runtime) Store() vmr.Store {
-	return rs
+func (rt *Runtime) Store() vmr.Store {
+	return rt
 }
 
 func (rt *Runtime) NewActorAddress() address.Address {
@@ -236,12 +239,12 @@ func (rt *Runtime) NewActorAddress() address.Address {
 	return addr
 }
 
-func (rt *Runtime) CreateActor(codeId cid.Cid, address address.Address) {
-	if !builtin.IsBuiltinActor(codeId) {
+func (rt *Runtime) CreateActor(codeID cid.Cid, address address.Address) {
+	if !builtin.IsBuiltinActor(codeID) {
 		rt.Abortf(exitcode.SysErrorIllegalArgument, "Can only create built-in actors.")
 	}
 
-	if builtin.IsSingletonActor(codeId) {
+	if builtin.IsSingletonActor(codeID) {
 		rt.Abortf(exitcode.SysErrorIllegalArgument, "Can only have one instance of singleton actors.")
 	}
 
@@ -250,10 +253,10 @@ func (rt *Runtime) CreateActor(codeId cid.Cid, address address.Address) {
 		rt.Abortf(exitcode.SysErrorIllegalArgument, "Actor address already exists")
 	}
 
-	rt.ChargeGas(rt.Pricelist().OnCreateActor())
+	rt.chargeGas(rt.Pricelist().OnCreateActor())
 
 	err = rt.state.SetActor(address, &types.Actor{
-		Code:    codeId,
+		Code:    codeID,
 		Head:    EmptyObjectCid,
 		Nonce:   0,
 		Balance: big.Zero(),
@@ -261,10 +264,11 @@ func (rt *Runtime) CreateActor(codeId cid.Cid, address address.Address) {
 	if err != nil {
 		panic(aerrors.Fatalf("creating actor entry: %v", err))
 	}
+	_ = rt.chargeGasSafe(gasOnActorExec)
 }
 
 func (rt *Runtime) DeleteActor(addr address.Address) {
-	rt.ChargeGas(rt.Pricelist().OnDeleteActor())
+	rt.chargeGas(rt.Pricelist().OnDeleteActor())
 	act, err := rt.state.GetActor(rt.Message().Receiver())
 	if err != nil {
 		if xerrors.Is(err, types.ErrActorNotFound) {
@@ -281,14 +285,14 @@ func (rt *Runtime) DeleteActor(addr address.Address) {
 	if err := rt.state.DeleteActor(rt.Message().Receiver()); err != nil {
 		panic(aerrors.Fatalf("failed to delete actor: %s", err))
 	}
+	_ = rt.chargeGasSafe(gasOnActorExec)
 }
 
-func (rs *Runtime) Syscalls() vmr.Syscalls {
-	// TODO: Make sure this is wrapped in something that charges gas for each of the calls
-	return rs.sys
+func (rt *Runtime) Syscalls() vmr.Syscalls {
+	return rt.sys
 }
 
-func (rs *Runtime) StartSpan(name string) vmr.TraceSpan {
+func (rt *Runtime) StartSpan(name string) vmr.TraceSpan {
 	panic("implement me")
 }
 
@@ -308,12 +312,12 @@ func (rt *Runtime) Context() context.Context {
 	return rt.ctx
 }
 
-func (rs *Runtime) Abortf(code exitcode.ExitCode, msg string, args ...interface{}) {
-	log.Warnf("Abortf: ", fmt.Sprintf(msg, args...))
+func (rt *Runtime) Abortf(code exitcode.ExitCode, msg string, args ...interface{}) {
+	log.Warnf("Abortf: " + fmt.Sprintf(msg, args...))
 	panic(aerrors.NewfSkip(2, code, msg, args...))
 }
 
-func (rs *Runtime) AbortStateMsg(msg string) {
+func (rt *Runtime) AbortStateMsg(msg string) {
 	panic(aerrors.NewfSkip(3, 101, msg))
 }
 
@@ -331,8 +335,8 @@ func (rt *Runtime) ValidateImmediateCallerType(ts ...cid.Cid) {
 	rt.Abortf(exitcode.SysErrForbidden, "caller cid type %q was not one of %v", callerCid, ts)
 }
 
-func (rs *Runtime) CurrEpoch() abi.ChainEpoch {
-	return rs.height
+func (rt *Runtime) CurrEpoch() abi.ChainEpoch {
+	return rt.height
 }
 
 type dumbWrapperType struct {
@@ -343,31 +347,33 @@ func (dwt *dumbWrapperType) Into(um vmr.CBORUnmarshaler) error {
 	return um.UnmarshalCBOR(bytes.NewReader(dwt.val))
 }
 
-func (rs *Runtime) Send(to address.Address, method abi.MethodNum, m vmr.CBORMarshaler, value abi.TokenAmount) (vmr.SendReturn, exitcode.ExitCode) {
-	if !rs.allowInternal {
-		rs.Abortf(exitcode.SysErrorIllegalActor, "runtime.Send() is currently disallowed")
+func (rt *Runtime) Send(to address.Address, method abi.MethodNum, m vmr.CBORMarshaler, value abi.TokenAmount) (vmr.SendReturn, exitcode.ExitCode) {
+	if !rt.allowInternal {
+		rt.Abortf(exitcode.SysErrorIllegalActor, "runtime.Send() is currently disallowed")
 	}
 	var params []byte
 	if m != nil {
 		buf := new(bytes.Buffer)
 		if err := m.MarshalCBOR(buf); err != nil {
-			rs.Abortf(exitcode.SysErrInvalidParameters, "failed to marshal input parameters: %s", err)
+			rt.Abortf(exitcode.SysErrInvalidParameters, "failed to marshal input parameters: %s", err)
 		}
 		params = buf.Bytes()
 	}
 
-	ret, err := rs.internalSend(rs.Message().Receiver(), to, method, types.BigInt(value), params)
+	ret, err := rt.internalSend(rt.Message().Receiver(), to, method, value, params)
 	if err != nil {
 		if err.IsFatal() {
 			panic(err)
 		}
 		log.Warnf("vmctx send failed: to: %s, method: %d: ret: %d, err: %s", to, method, ret, err)
-		return nil, exitcode.ExitCode(err.RetCode())
+		return nil, err.RetCode()
 	}
+	_ = rt.chargeGasSafe(gasOnActorExec)
 	return &dumbWrapperType{ret}, 0
 }
 
 func (rt *Runtime) internalSend(from, to address.Address, method abi.MethodNum, value types.BigInt, params []byte) ([]byte, aerrors.ActorError) {
+
 	start := time.Now()
 	ctx, span := trace.StartSpan(rt.ctx, "vmc.Send")
 	defer span.End()
@@ -394,77 +400,62 @@ func (rt *Runtime) internalSend(from, to address.Address, method abi.MethodNum, 
 	}
 	defer st.ClearSnapshot()
 
-	ret, errSend, subrt := rt.vm.send(ctx, msg, rt, 0)
+	ret, errSend, subrt := rt.vm.send(ctx, msg, rt, nil, start)
 	if errSend != nil {
 		if errRevert := st.Revert(); errRevert != nil {
 			return nil, aerrors.Escalate(errRevert, "failed to revert state tree after failed subcall")
 		}
 	}
 
-	mr := types.MessageReceipt{
-		ExitCode: exitcode.ExitCode(aerrors.RetCode(errSend)),
-		Return:   ret,
-		GasUsed:  0,
-	}
-
-	er := types.ExecutionResult{
-		Msg:      msg,
-		MsgRct:   &mr,
-		Duration: time.Since(start),
-	}
-
-	if errSend != nil {
-		er.Error = errSend.Error()
-	}
-
 	if subrt != nil {
-		er.Subcalls = subrt.internalExecutions
 		rt.numActorsCreated = subrt.numActorsCreated
 	}
-	rt.internalExecutions = append(rt.internalExecutions, &er)
+	rt.executionTrace.Subcalls = append(rt.executionTrace.Subcalls, subrt.executionTrace)
 	return ret, errSend
 }
 
-func (rs *Runtime) State() vmr.StateHandle {
-	return &shimStateHandle{rs: rs}
+func (rt *Runtime) State() vmr.StateHandle {
+	return &shimStateHandle{rt: rt}
 }
 
 type shimStateHandle struct {
-	rs *Runtime
+	rt *Runtime
 }
 
 func (ssh *shimStateHandle) Create(obj vmr.CBORMarshaler) {
-	c := ssh.rs.Put(obj)
-	ssh.rs.stateCommit(EmptyObjectCid, c)
+	c := ssh.rt.Put(obj)
+	// TODO: handle error below
+	ssh.rt.stateCommit(EmptyObjectCid, c)
 }
 
 func (ssh *shimStateHandle) Readonly(obj vmr.CBORUnmarshaler) {
-	act, err := ssh.rs.state.GetActor(ssh.rs.Message().Receiver())
+	act, err := ssh.rt.state.GetActor(ssh.rt.Message().Receiver())
 	if err != nil {
-		ssh.rs.Abortf(exitcode.SysErrorIllegalArgument, "failed to get actor for Readonly state: %s", err)
+		ssh.rt.Abortf(exitcode.SysErrorIllegalArgument, "failed to get actor for Readonly state: %s", err)
 	}
-	ssh.rs.Get(act.Head, obj)
+	ssh.rt.Get(act.Head, obj)
 }
 
 func (ssh *shimStateHandle) Transaction(obj vmr.CBORer, f func() interface{}) interface{} {
 	if obj == nil {
-		ssh.rs.Abortf(exitcode.SysErrorIllegalActor, "Must not pass nil to Transaction()")
+		ssh.rt.Abortf(exitcode.SysErrorIllegalActor, "Must not pass nil to Transaction()")
 	}
 
-	act, err := ssh.rs.state.GetActor(ssh.rs.Message().Receiver())
+	act, err := ssh.rt.state.GetActor(ssh.rt.Message().Receiver())
 	if err != nil {
-		ssh.rs.Abortf(exitcode.SysErrorIllegalActor, "failed to get actor for Transaction: %s", err)
+		ssh.rt.Abortf(exitcode.SysErrorIllegalActor, "failed to get actor for Transaction: %s", err)
 	}
 	baseState := act.Head
-	ssh.rs.Get(baseState, obj)
+	ssh.rt.Get(baseState, obj)
 
-	ssh.rs.allowInternal = false
+	ssh.rt.allowInternal = false
 	out := f()
-	ssh.rs.allowInternal = true
+	ssh.rt.allowInternal = true
 
-	c := ssh.rs.Put(obj)
+	c := ssh.rt.Put(obj)
 
-	ssh.rs.stateCommit(baseState, c)
+	// TODO: handle error below
+	ssh.rt.stateCommit(baseState, c)
 
 	return out
 }
@@ -501,20 +492,76 @@ func (rt *Runtime) stateCommit(oldh, newh cid.Cid) aerrors.ActorError {
 	return nil
 }
 
-func (rt *Runtime) ChargeGas(toUse int64) {
-	err := rt.chargeGasSafe(toUse)
+func (rt *Runtime) finilizeGasTracing() {
+	if rt.lastGasCharge != nil {
+		rt.lastGasCharge.TimeTaken = time.Since(rt.lastGasChargeTime)
+	}
+}
+
+// ChargeGas is spec actors function
+func (rt *Runtime) ChargeGas(name string, compute int64, virtual int64) {
+	err := rt.chargeGasInternal(newGasCharge(name, compute, 0).WithVirtual(virtual, 0), 1)
 	if err != nil {
 		panic(err)
 	}
 }
 
-func (rt *Runtime) chargeGasSafe(toUse int64) aerrors.ActorError {
+func (rt *Runtime) chargeGas(gas GasCharge) {
+	err := rt.chargeGasInternal(gas, 1)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func (rt *Runtime) chargeGasFunc(skip int) func(GasCharge) {
+	return func(gas GasCharge) {
+		err := rt.chargeGasInternal(gas, 1+skip)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+}
+
+func (rt *Runtime) chargeGasInternal(gas GasCharge, skip int) aerrors.ActorError {
+	toUse := gas.Total()
+	var callers [10]uintptr
+	cout := gruntime.Callers(2+skip, callers[:])
+
+	now := time.Now()
+	if rt.lastGasCharge != nil {
+		rt.lastGasCharge.TimeTaken = now.Sub(rt.lastGasChargeTime)
+	}
+
+	gasTrace := types.GasTrace{
+		Name:  gas.Name,
+		Extra: gas.Extra,
+
+		TotalGas:   toUse,
+		ComputeGas: gas.ComputeGas,
+		StorageGas: gas.StorageGas,
+
+		TotalVirtualGas:   gas.VirtualCompute*GasComputeMulti + gas.VirtualStorage*GasStorageMulti,
+		VirtualComputeGas: gas.VirtualCompute,
+		VirtualStorageGas: gas.VirtualStorage,
+
+		Callers: callers[:cout],
+	}
+	rt.executionTrace.GasCharges = append(rt.executionTrace.GasCharges, &gasTrace)
+	rt.lastGasChargeTime = now
+	rt.lastGasCharge = &gasTrace
+
 	if rt.gasUsed+toUse > rt.gasAvailable {
 		rt.gasUsed = rt.gasAvailable
-		return aerrors.Newf(exitcode.SysErrOutOfGas, "not enough gas: used=%d, available=%d", rt.gasUsed, rt.gasAvailable)
+		return aerrors.Newf(exitcode.SysErrOutOfGas, "not enough gas: used=%d, available=%d",
+			rt.gasUsed, rt.gasAvailable)
 	}
 	rt.gasUsed += toUse
 	return nil
+}
+
+func (rt *Runtime) chargeGasSafe(gas GasCharge) aerrors.ActorError {
+	return rt.chargeGasInternal(gas, 1)
 }
 
 func (rt *Runtime) Pricelist() Pricelist {

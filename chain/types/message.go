@@ -21,6 +21,7 @@ type ChainMsg interface {
 	Cid() cid.Cid
 	VMMessage() *Message
 	ToStorageBlock() (block.Block, error)
+	// FIXME: This is the *message* length, this name is misleading.
 	ChainLength() int
 }
 
@@ -41,20 +42,16 @@ type Message struct {
 	Params []byte
 }
 
-func (t *Message) BlockMiner() address.Address {
-	panic("implement me")
+func (m *Message) Caller() address.Address {
+	return m.From
 }
 
-func (t *Message) Caller() address.Address {
-	return t.From
+func (m *Message) Receiver() address.Address {
+	return m.To
 }
 
-func (t *Message) Receiver() address.Address {
-	return t.To
-}
-
-func (t *Message) ValueReceived() abi.TokenAmount {
-	return t.Value
+func (m *Message) ValueReceived() abi.TokenAmount {
+	return m.Value
 }
 
 func DecodeMessage(b []byte) (*Message, error) {

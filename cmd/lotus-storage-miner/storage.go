@@ -14,8 +14,8 @@ import (
 	"github.com/fatih/color"
 	"github.com/google/uuid"
 	"github.com/mitchellh/go-homedir"
+	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
-	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -249,7 +249,7 @@ var storageListCmd = &cli.Command{
 
 type storedSector struct {
 	id    stores.ID
-	store stores.StorageInfo
+	store stores.SectorStorageInfo
 
 	unsealed, sealed, cache bool
 }

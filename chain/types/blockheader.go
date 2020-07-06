@@ -74,8 +74,8 @@ type BlockHeader struct {
 	validated bool // true if the signature has been validated
 }
 
-func (b *BlockHeader) ToStorageBlock() (block.Block, error) {
-	data, err := b.Serialize()
+func (blk *BlockHeader) ToStorageBlock() (block.Block, error) {
+	data, err := blk.Serialize()
 	if err != nil {
 		return nil, err
 	}
@@ -89,8 +89,8 @@ func (b *BlockHeader) ToStorageBlock() (block.Block, error) {
 	return block.NewBlockWithCid(data, c)
 }
 
-func (b *BlockHeader) Cid() cid.Cid {
-	sb, err := b.ToStorageBlock()
+func (blk *BlockHeader) Cid() cid.Cid {
+	sb, err := blk.ToStorageBlock()
 	if err != nil {
 		panic(err) // Not sure i'm entirely comfortable with this one, needs to be checked
 	}

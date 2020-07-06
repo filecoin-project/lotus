@@ -62,11 +62,11 @@ func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate 
 	}
 
 	return &api.InvocResult{
-		Msg:                msg,
-		MsgRct:             &ret.MessageReceipt,
-		InternalExecutions: ret.InternalExecutions,
-		Error:              errs,
-		Duration:           ret.Duration,
+		Msg:            msg,
+		MsgRct:         &ret.MessageReceipt,
+		ExecutionTrace: ret.ExecutionTrace,
+		Error:          errs,
+		Duration:       ret.Duration,
 	}, nil
 
 }

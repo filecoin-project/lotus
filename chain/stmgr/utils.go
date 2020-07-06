@@ -13,6 +13,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	amt "github.com/filecoin-project/go-amt-ipld/v2"
+	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -37,7 +38,7 @@ func GetNetworkName(ctx context.Context, sm *StateManager, st cid.Cid) (dtypes.N
 	var state init_.State
 	_, err := sm.LoadActorStateRaw(ctx, builtin.InitActorAddr, &state, st)
 	if err != nil {
-		return "", xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
+		return "", xerrors.Errorf("(get sset) failed to load init actor state: %w", err)
 	}
 
 	return dtypes.NetworkName(state.NetworkName), nil
@@ -138,6 +139,24 @@ func PreCommitInfo(ctx context.Context, sm *StateManager, maddr address.Address,
 	return *i, nil
 }
 
+func MinerSectorInfo(ctx context.Context, sm *StateManager, maddr address.Address, sid abi.SectorNumber, ts *types.TipSet) (*miner.SectorOnChainInfo, error) {
+	var mas miner.State
+	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
+	if err != nil {
+		return nil, xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
+	}
+
+	sectorInfo, ok, err := mas.GetSector(sm.cs.Store(ctx), sid)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, xerrors.New("sector not found")
+	}
+
+	return sectorInfo, nil
+}
+
 func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address, filter *abi.BitField, filterOut bool) ([]*api.ChainSectorInfo, error) {
 	var mas miner.State
 	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
@@ -155,13 +174,34 @@ func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *S
 		return nil, xerrors.Errorf("(get sectors) failed to load miner actor state: %w", err)
 	}
 
-	// TODO: Optimization: we could avoid loaditg the whole proving set here if we had AMT.GetNth with bitfield filtering
-	sectorSet, err := GetProvingSetRaw(ctx, sm, mas)
-	if err != nil {
-		return nil, xerrors.Errorf("getting proving set: %w", err)
+	cst := cbor.NewCborStore(sm.cs.Blockstore())
+	var deadlines miner.Deadlines
+	if err := cst.Get(ctx, mas.Deadlines, &deadlines); err != nil {
+		return nil, xerrors.Errorf("failed to load deadlines: %w", err)
 	}
 
-	if len(sectorSet) == 0 {
+	notProving, err := abi.BitFieldUnion(mas.Faults, mas.Recoveries)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to union faults and recoveries: %w", err)
+	}
+
+	allSectors, err := bitfield.MultiMerge(append(deadlines.Due[:], mas.NewSectors)...)
+	if err != nil {
+		return nil, xerrors.Errorf("merging deadline bitfields failed: %w", err)
+	}
+
+	provingSectors, err := bitfield.SubtractBitField(allSectors, notProving)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to subtract non-proving sectors from set: %w", err)
+	}
+
+	numProvSect, err := provingSectors.Count()
+	if err != nil {
+		return nil, xerrors.Errorf("failed to count bits: %w", err)
+	}
+
+	// TODO(review): is this right? feels fishy to me
+	if numProvSect == 0 {
 		return nil, nil
 	}
 
@@ -180,17 +220,34 @@ func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *S
 		return nil, xerrors.Errorf("getting miner ID: %w", err)
 	}
 
-	ids, err := pv.GenerateWinningPoStSectorChallenge(ctx, wpt, abi.ActorID(mid), rand, uint64(len(sectorSet)))
+	ids, err := pv.GenerateWinningPoStSectorChallenge(ctx, wpt, abi.ActorID(mid), rand, numProvSect)
 	if err != nil {
 		return nil, xerrors.Errorf("generating winning post challenges: %w", err)
 	}
 
+	sectors, err := provingSectors.All(miner.SectorsMax)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to enumerate all sector IDs: %w", err)
+	}
+
+	sectorAmt, err := amt.LoadAMT(ctx, cst, mas.Sectors)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load sectors amt: %w", err)
+	}
+
 	out := make([]abi.SectorInfo, len(ids))
 	for i, n := range ids {
+		sid := sectors[n]
+
+		var sinfo miner.SectorOnChainInfo
+		if err := sectorAmt.Get(ctx, sid, &sinfo); err != nil {
+			return nil, xerrors.Errorf("failed to get sector %d: %w", sid, err)
+		}
+
 		out[i] = abi.SectorInfo{
-			RegisteredProof: wpt,
-			SectorNumber:    sectorSet[n].ID,
-			SealedCID:       sectorSet[n].Info.Info.SealedCID,
+			SealProof:    spt,
+			SectorNumber: sinfo.Info.SectorNumber,
+			SealedCID:    sinfo.Info.SealedCID,
 		}
 	}
 
@@ -268,7 +325,7 @@ func GetMinerRecoveries(ctx context.Context, sm *StateManager, ts *types.TipSet,
 	return mas.Recoveries, nil
 }
 
-func GetStorageDeal(ctx context.Context, sm *StateManager, dealId abi.DealID, ts *types.TipSet) (*api.MarketDeal, error) {
+func GetStorageDeal(ctx context.Context, sm *StateManager, dealID abi.DealID, ts *types.TipSet) (*api.MarketDeal, error) {
 	var state market.State
 	if _, err := sm.LoadActorState(ctx, builtin.StorageMarketActorAddr, &state, ts); err != nil {
 		return nil, err
@@ -280,7 +337,7 @@ func GetStorageDeal(ctx context.Context, sm *StateManager, dealId abi.DealID, ts
 	}
 
 	var dp market.DealProposal
-	if err := da.Get(ctx, uint64(dealId), &dp); err != nil {
+	if err := da.Get(ctx, uint64(dealID), &dp); err != nil {
 		return nil, err
 	}
 
@@ -289,7 +346,7 @@ func GetStorageDeal(ctx context.Context, sm *StateManager, dealId abi.DealID, ts
 		return nil, err
 	}
 
-	st, found, err := sa.Get(dealId)
+	st, found, err := sa.Get(dealID)
 	if err != nil {
 		return nil, err
 	}

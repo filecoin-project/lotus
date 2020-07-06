@@ -45,6 +45,10 @@ var log = logging.Logger("gen")
 
 const msgsPerBlock = 20
 
+var ValidWpostForTesting = []abi.PoStProof{{
+	ProofBytes: []byte("valid proof"),
+}}
+
 type ChainGen struct {
 	msgsPerBlock int
 
@@ -89,8 +93,8 @@ func (m mybs) Get(c cid.Cid) (block.Block, error) {
 }
 
 func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
-	saminer.SupportedProofTypes = map[abi.RegisteredProof]struct{}{
-		abi.RegisteredProof_StackedDRG2KiBSeal: {},
+	saminer.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
+		abi.RegisteredSealProof_StackedDrg2KiBV1: {},
 	}
 
 	mr := repo.NewMemory(nil)
@@ -104,7 +108,7 @@ func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
 		return nil, xerrors.Errorf("failed to get metadata datastore: %w", err)
 	}
 
-	bds, err := lr.Datastore("/blocks")
+	bds, err := lr.Datastore("/chain")
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get blocks datastore: %w", err)
 	}
@@ -141,7 +145,7 @@ func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
 		return nil, err
 	}
 
-	genm1, k1, err := seed.PreSeal(maddr1, abi.RegisteredProof_StackedDRG2KiBPoSt, 0, numSectors, m1temp, []byte("some randomness"), nil)
+	genm1, k1, err := seed.PreSeal(maddr1, abi.RegisteredSealProof_StackedDrg2KiBV1, 0, numSectors, m1temp, []byte("some randomness"), nil, true)
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +157,7 @@ func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
 		return nil, err
 	}
 
-	genm2, k2, err := seed.PreSeal(maddr2, abi.RegisteredProof_StackedDRG2KiBPoSt, 0, numSectors, m2temp, []byte("some randomness"), nil)
+	genm2, k2, err := seed.PreSeal(maddr2, abi.RegisteredSealProof_StackedDrg2KiBV1, 0, numSectors, m2temp, []byte("some randomness"), nil, true)
 	if err != nil {
 		return nil, err
 	}
@@ -192,7 +196,7 @@ func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
 			*genm2,
 		},
 		NetworkName: "",
-		Timestamp:   uint64(time.Now().Add(-500 * build.BlockDelay * time.Second).Unix()),
+		Timestamp:   uint64(time.Now().Add(-500 * time.Duration(build.BlockDelaySecs) * time.Second).Unix()),
 	}
 
 	genb, err := genesis2.MakeGenesisBlock(context.TODO(), bs, sys, tpl)
@@ -219,6 +223,10 @@ func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
 	miners := []address.Address{maddr1, maddr2}
 
 	beac := beacon.NewMockBeacon(time.Second)
+	//beac, err := drand.NewDrandBeacon(tpl.Timestamp, build.BlockDelaySecs)
+	//if err != nil {
+	//return nil, xerrors.Errorf("creating drand beacon: %w", err)
+	//}
 
 	gen := &ChainGen{
 		bs:           bs,
@@ -406,7 +414,7 @@ func (cg *ChainGen) makeBlock(parents *types.TipSet, m address.Address, vrfticke
 	if cg.Timestamper != nil {
 		ts = cg.Timestamper(parents, height-parents.Height())
 	} else {
-		ts = parents.MinTimestamp() + uint64((height-parents.Height())*build.BlockDelay)
+		ts = parents.MinTimestamp() + uint64(height-parents.Height())*build.BlockDelaySecs
 	}
 
 	fblk, err := MinerCreateBlock(context.TODO(), cg.sm, cg.w, &api.BlockTemplate{
@@ -427,7 +435,7 @@ func (cg *ChainGen) makeBlock(parents *types.TipSet, m address.Address, vrfticke
 	return fblk, err
 }
 
-// This function is awkward. It's used to deal with messages made when
+// ResyncBankerNonce is used for dealing with messages made when
 // simulating forks
 func (cg *ChainGen) ResyncBankerNonce(ts *types.TipSet) error {
 	act, err := cg.sm.GetActor(cg.banker, ts)
@@ -529,16 +537,7 @@ func (wpp *wppProvider) GenerateCandidates(ctx context.Context, _ abi.PoStRandom
 }
 
 func (wpp *wppProvider) ComputeProof(context.Context, []abi.SectorInfo, abi.PoStRandomness) ([]abi.PoStProof, error) {
-	return []abi.PoStProof{{
-		ProofBytes: []byte("valid proof"),
-	}}, nil
-}
-
-type ProofInput struct {
-	sectors           []abi.SectorInfo
-	hvrf              []byte
-	challengedSectors []uint64
-	vrfout            []byte
+	return ValidWpostForTesting, nil
 }
 
 func IsRoundWinner(ctx context.Context, ts *types.TipSet, round abi.ChainEpoch,
@@ -614,6 +613,6 @@ func (m genFakeVerifier) VerifyWindowPoSt(ctx context.Context, info abi.WindowPo
 	panic("not supported")
 }
 
-func (m genFakeVerifier) GenerateWinningPoStSectorChallenge(ctx context.Context, proof abi.RegisteredProof, id abi.ActorID, randomness abi.PoStRandomness, u uint64) ([]uint64, error) {
+func (m genFakeVerifier) GenerateWinningPoStSectorChallenge(ctx context.Context, proof abi.RegisteredPoStProof, id abi.ActorID, randomness abi.PoStRandomness, u uint64) ([]uint64, error) {
 	panic("not supported")
 }

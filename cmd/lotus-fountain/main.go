@@ -4,9 +4,13 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"html/template"
+	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
+	"sort"
 	"strconv"
 	"time"
 
@@ -14,8 +18,8 @@ import (
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
-	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -28,11 +32,46 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 )
 
 var log = logging.Logger("main")
 
 var sendPerRequest, _ = types.ParseFIL("50")
+
+var supportedSectors struct {
+	SectorSizes []struct {
+		Name    string
+		Value   uint64
+		Default bool
+	}
+}
+
+func init() {
+	for supportedSector, _ := range miner.SupportedProofTypes {
+		sectorSize, err := supportedSector.SectorSize()
+		if err != nil {
+			panic(err)
+		}
+
+		supportedSectors.SectorSizes = append(supportedSectors.SectorSizes, struct {
+			Name    string
+			Value   uint64
+			Default bool
+		}{
+			Name:    sectorSize.ShortString(),
+			Value:   uint64(sectorSize),
+			Default: false,
+		})
+
+	}
+
+	sort.Slice(supportedSectors.SectorSizes[:], func(i, j int) bool {
+		return supportedSectors.SectorSizes[i].Value < supportedSectors.SectorSizes[j].Value
+	})
+
+	supportedSectors.SectorSizes[0].Default = true
+}
 
 func main() {
 	logging.SetLogLevel("*", "INFO")
@@ -46,7 +85,7 @@ func main() {
 	app := &cli.App{
 		Name:    "lotus-fountain",
 		Usage:   "Devnet token distribution utility",
-		Version: build.UserVersion,
+		Version: build.UserVersion(),
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    "repo",
@@ -125,6 +164,7 @@ var runCmd = &cli.Command{
 		}
 
 		http.Handle("/", http.FileServer(rice.MustFindBox("site").HTTPBox()))
+		http.HandleFunc("/miner.html", h.minerhtml)
 		http.HandleFunc("/send", h.send)
 		http.HandleFunc("/mkminer", h.mkminer)
 		http.HandleFunc("/msgwait", h.msgwait)
@@ -153,11 +193,42 @@ type handler struct {
 	defaultMinerPeer peer.ID
 }
 
+func (h *handler) minerhtml(w http.ResponseWriter, r *http.Request) {
+	f, err := rice.MustFindBox("site").Open("_miner.html")
+	if err != nil {
+		w.WriteHeader(500)
+		_, _ = w.Write([]byte(err.Error()))
+		return
+	}
+
+	tmpl, err := ioutil.ReadAll(f)
+	if err != nil {
+		w.WriteHeader(500)
+		_, _ = w.Write([]byte(err.Error()))
+		return
+	}
+
+	var executedTmpl bytes.Buffer
+
+	t, err := template.New("miner.html").Parse(string(tmpl))
+	if err := t.Execute(&executedTmpl, supportedSectors); err != nil {
+		w.WriteHeader(500)
+		_, _ = w.Write([]byte(err.Error()))
+		return
+	}
+
+	if _, err := io.Copy(w, &executedTmpl); err != nil {
+		log.Errorf("failed to write template to string %s", err)
+	}
+
+	return
+}
+
 func (h *handler) send(w http.ResponseWriter, r *http.Request) {
 	to, err := address.NewFromString(r.FormValue("address"))
 	if err != nil {
 		w.WriteHeader(400)
-		w.Write([]byte(err.Error()))
+		_, _ = w.Write([]byte(err.Error()))
 		return
 	}
 
@@ -204,25 +275,25 @@ func (h *handler) send(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		w.WriteHeader(400)
-		w.Write([]byte(err.Error()))
+		_, _ = w.Write([]byte(err.Error()))
 		return
 	}
 
-	w.Write([]byte(smsg.Cid().String()))
+	_, _ = w.Write([]byte(smsg.Cid().String()))
 }
 
 func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 	owner, err := address.NewFromString(r.FormValue("address"))
 	if err != nil {
 		w.WriteHeader(400)
-		w.Write([]byte(err.Error()))
+		_, _ = w.Write([]byte(err.Error()))
 		return
 	}
 
 	if owner.Protocol() != address.BLS {
 		w.WriteHeader(400)
-		w.Write([]byte("Miner address must use BLS. A BLS address starts with the prefix 't3'."))
-		w.Write([]byte("Please create a BLS address by running \"lotus wallet new bls\" while connected to a Lotus node."))
+		_, _ = w.Write([]byte("Miner address must use BLS. A BLS address starts with the prefix 't3'."))
+		_, _ = w.Write([]byte("Please create a BLS address by running \"lotus wallet new bls\" while connected to a Lotus node."))
 		return
 	}
 
@@ -294,7 +365,7 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 		Owner:         owner,
 		Worker:        owner,
 		SealProofType: spt,
-		Peer:          h.defaultMinerPeer,
+		Peer:          abi.PeerID(h.defaultMinerPeer),
 	})
 	if err != nil {
 		w.WriteHeader(400)
@@ -334,7 +405,7 @@ func (h *handler) msgwait(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mw, err := h.api.StateWaitMsg(r.Context(), c)
+	mw, err := h.api.StateWaitMsg(r.Context(), c, build.MessageConfidence)
 	if err != nil {
 		w.WriteHeader(400)
 		w.Write([]byte(err.Error()))
@@ -357,7 +428,7 @@ func (h *handler) msgwaitaddr(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mw, err := h.api.StateWaitMsg(r.Context(), c)
+	mw, err := h.api.StateWaitMsg(r.Context(), c, build.MessageConfidence)
 	if err != nil {
 		w.WriteHeader(400)
 		w.Write([]byte(err.Error()))

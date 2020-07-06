@@ -58,6 +58,8 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 
 	for i, m := range miners {
 		// Create miner through power actor
+		i := i
+		m := m
 
 		spt, err := ffiwrapper.SealProofTypeFromSectorSize(m.SectorSize)
 		if err != nil {
@@ -69,7 +71,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 			constructorParams := &power.CreateMinerParams{
 				Owner:         m.Worker,
 				Worker:        m.Worker,
-				Peer:          m.PeerId,
+				Peer:          []byte(m.PeerId),
 				SealProofType: spt,
 			}
 
@@ -154,6 +156,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 
 		// Commit sectors
 		for pi, preseal := range m.Sectors {
+			preseal := preseal
 			// TODO: Maybe check seal (Can just be snark inputs, doesn't go into the genesis file)
 
 			// check deals, get dealWeight
@@ -201,12 +204,12 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 			{
 				newSectorInfo := &miner.SectorOnChainInfo{
 					Info: miner.SectorPreCommitInfo{
-						RegisteredProof: preseal.ProofType,
-						SectorNumber:    preseal.SectorID,
-						SealedCID:       preseal.CommR,
-						SealRandEpoch:   0,
-						DealIDs:         []abi.DealID{dealIDs[pi]},
-						Expiration:      preseal.Deal.EndEpoch,
+						SealProof:     preseal.ProofType,
+						SectorNumber:  preseal.SectorID,
+						SealedCID:     preseal.CommR,
+						SealRandEpoch: 0,
+						DealIDs:       []abi.DealID{dealIDs[pi]},
+						Expiration:    preseal.Deal.EndEpoch,
 					},
 					ActivationEpoch:    0,
 					DealWeight:         dealWeight.DealWeight,
@@ -239,6 +242,9 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 		st.TotalQualityAdjPower = big.Sub(st.TotalQualityAdjPower, big.NewInt(1))
 		return nil
 	})
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("mutating state: %w", err)
+	}
 
 	c, err := vm.Flush(ctx)
 	if err != nil {

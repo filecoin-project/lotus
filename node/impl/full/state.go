@@ -15,6 +15,15 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-amt-ipld/v2"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	samsig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/beacon"
@@ -27,14 +36,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/lib/bufbstore"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/market"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	samsig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 )
 
 type StateAPI struct {
@@ -77,12 +78,17 @@ func (a *StateAPI) StateMinerProvingSet(ctx context.Context, addr address.Addres
 	return stmgr.GetProvingSetRaw(ctx, a.StateManager, mas)
 }
 
-func (a *StateAPI) StateMinerInfo(ctx context.Context, actor address.Address, tsk types.TipSetKey) (miner.MinerInfo, error) {
+func (a *StateAPI) StateMinerInfo(ctx context.Context, actor address.Address, tsk types.TipSetKey) (api.MinerInfo, error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
-		return miner.MinerInfo{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+		return api.MinerInfo{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
-	return stmgr.StateMinerInfo(ctx, a.StateManager, ts, actor)
+
+	mi, err := stmgr.StateMinerInfo(ctx, a.StateManager, ts, actor)
+	if err != nil {
+		return api.MinerInfo{}, err
+	}
+	return api.NewApiMinerInfo(mi), nil
 }
 
 func (a *StateAPI) StateMinerDeadlines(ctx context.Context, m address.Address, tsk types.TipSetKey) (*miner.Deadlines, error) {
@@ -237,11 +243,11 @@ func (a *StateAPI) StateReplay(ctx context.Context, tsk types.TipSetKey, mc cid.
 	}
 
 	return &api.InvocResult{
-		Msg:                m,
-		MsgRct:             &r.MessageReceipt,
-		InternalExecutions: r.InternalExecutions,
-		Error:              errstr,
-		Duration:           r.Duration,
+		Msg:            m,
+		MsgRct:         &r.MessageReceipt,
+		ExecutionTrace: r.ExecutionTrace,
+		Error:          errstr,
+		Duration:       r.Duration,
 	}, nil
 }
 
@@ -295,12 +301,17 @@ func (a *StateAPI) StateAccountKey(ctx context.Context, addr address.Address, ts
 	return a.StateManager.ResolveToKeyAddress(ctx, addr, ts)
 }
 
-func (a *StateAPI) StateReadState(ctx context.Context, act *types.Actor, tsk types.TipSetKey) (*api.ActorState, error) {
+func (a *StateAPI) StateReadState(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*api.ActorState, error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 	state, err := a.stateForTs(ctx, ts)
+	if err != nil {
+		return nil, err
+	}
+
+	act, err := state.GetActor(actor)
 	if err != nil {
 		return nil, err
 	}
@@ -344,10 +355,8 @@ func (a *StateAPI) MinerCreateBlock(ctx context.Context, bt *api.BlockTemplate) 
 	return &out, nil
 }
 
-func (a *StateAPI) StateWaitMsg(ctx context.Context, msg cid.Cid) (*api.MsgLookup, error) {
-	// TODO: consider using event system for this, expose confidence
-
-	ts, recpt, err := a.StateManager.WaitForMessage(ctx, msg)
+func (a *StateAPI) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64) (*api.MsgLookup, error) {
+	ts, recpt, err := a.StateManager.WaitForMessage(ctx, msg, confidence)
 	if err != nil {
 		return nil, err
 	}
@@ -422,7 +431,7 @@ func (a *StateAPI) StateMarketParticipants(ctx context.Context, tsk types.TipSet
 	if err != nil {
 		return nil, err
 	}
-	locked, err := hamt.LoadNode(ctx, cst, state.EscrowTable, hamt.UseTreeBitWidth(5))
+	locked, err := hamt.LoadNode(ctx, cst, state.LockedTable, hamt.UseTreeBitWidth(5))
 	if err != nil {
 		return nil, err
 	}
@@ -486,13 +495,11 @@ func (a *StateAPI) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (m
 
 		var s market.DealState
 		if err := sa.Get(ctx, i, &s); err != nil {
-			if err != nil {
-				if _, ok := err.(*amt.ErrNotFound); !ok {
-					return xerrors.Errorf("failed to get state for deal in proposals array: %w", err)
-				}
-
-				s.SectorStartEpoch = -1
+			if _, ok := err.(*amt.ErrNotFound); !ok {
+				return xerrors.Errorf("failed to get state for deal in proposals array: %w", err)
 			}
+
+			s.SectorStartEpoch = -1
 		}
 		out[strconv.FormatInt(int64(i), 10)] = api.MarketDeal{
 			Proposal: d,
@@ -578,6 +585,14 @@ func (a *StateAPI) StateSectorPreCommitInfo(ctx context.Context, maddr address.A
 		return miner.SectorPreCommitOnChainInfo{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 	return stmgr.PreCommitInfo(ctx, a.StateManager, maddr, n, ts)
+}
+
+func (a *StateAPI) StateSectorGetInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorOnChainInfo, error) {
+	ts, err := a.Chain.GetTipSetFromKey(tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+	return stmgr.MinerSectorInfo(ctx, a.StateManager, maddr, n, ts)
 }
 
 func (a *StateAPI) StateListMessages(ctx context.Context, match *types.Message, tsk types.TipSetKey, toheight abi.ChainEpoch) ([]cid.Cid, error) {
@@ -674,7 +689,7 @@ func (a *StateAPI) MsigGetAvailableBalance(ctx context.Context, addr address.Add
 		return act.Balance, nil
 	}
 
-	minBalance := types.BigDiv(types.BigInt(st.InitialBalance), types.NewInt(uint64(st.UnlockDuration)))
+	minBalance := types.BigDiv(st.InitialBalance, types.NewInt(uint64(st.UnlockDuration)))
 	minBalance = types.BigMul(minBalance, types.NewInt(uint64(offset)))
 	return types.BigSub(act.Balance, minBalance), nil
 }
@@ -739,7 +754,7 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 
 	initialPledge := big.Zero()
 	{
-		ssize, err := precommit.Info.RegisteredProof.SectorSize()
+		ssize, err := precommit.Info.SealProof.SectorSize()
 		if err != nil {
 			return types.EmptyInt, err
 		}

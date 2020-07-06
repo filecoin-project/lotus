@@ -13,6 +13,10 @@ import (
 )
 
 func BuiltinBootstrap() ([]peer.AddrInfo, error) {
+	if DisableBuiltinAssets {
+		return nil, nil
+	}
+
 	var out []peer.AddrInfo
 
 	b := rice.MustFindBox("bootstrap")
@@ -33,4 +37,13 @@ func BuiltinBootstrap() ([]peer.AddrInfo, error) {
 		return err
 	})
 	return out, err
+}
+
+func DrandBootstrap() ([]peer.AddrInfo, error) {
+	addrs := []string{
+		"/dnsaddr/pl-eu.testnet.drand.sh/",
+		"/dnsaddr/pl-us.testnet.drand.sh/",
+		"/dnsaddr/pl-sin.testnet.drand.sh/",
+	}
+	return addrutil.ParseAddresses(context.TODO(), addrs)
 }

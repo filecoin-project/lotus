@@ -4,8 +4,8 @@ import (
 	"os"
 
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/urfave/cli/v2"
 	"go.opencensus.io/trace"
-	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -22,7 +22,9 @@ func main() {
 	lotuslog.SetupLogLevels()
 
 	local := []*cli.Command{
-		dealsCmd,
+		actorCmd,
+		storageDealsCmd,
+		retrievalDealsCmd,
 		infoCmd,
 		initCmd,
 		rewardsCmd,
@@ -30,7 +32,6 @@ func main() {
 		stopCmd,
 		sectorsCmd,
 		storageCmd,
-		setPriceCmd,
 		workersCmd,
 		provingCmd,
 	}
@@ -56,10 +57,10 @@ func main() {
 	}
 
 	app := &cli.App{
-		Name:                  "lotus-storage-miner",
-		Usage:                 "Filecoin decentralized storage network storage miner",
-		Version:               build.UserVersion,
-		EnableShellCompletion: true,
+		Name:                 "lotus-storage-miner",
+		Usage:                "Filecoin decentralized storage network storage miner",
+		Version:              build.UserVersion(),
+		EnableBashCompletion: true,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    "repo",

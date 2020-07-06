@@ -32,7 +32,7 @@ type api struct {
 type nodeInfo struct {
 	Repo    string
 	ID      int32
-	ApiPort int32
+	APIPort int32
 	State   NodeState
 
 	FullNode string // only for storage nodes

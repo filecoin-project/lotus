@@ -255,12 +255,15 @@ func TestStateTreeConsistency(t *testing.T) {
 	}
 
 	for i, a := range addrs {
-		st.SetActor(a, &types.Actor{
+		err := st.SetActor(a, &types.Actor{
 			Code:    randomCid,
 			Head:    randomCid,
 			Balance: types.NewInt(uint64(10000 + i)),
 			Nonce:   uint64(1000 - i),
 		})
+		if err != nil {
+			t.Fatalf("while setting actor: %+v", err)
+		}
 	}
 
 	root, err := st.Flush(context.TODO())

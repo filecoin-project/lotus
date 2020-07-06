@@ -1,8 +1,6 @@
 package modules
 
 import (
-	"context"
-
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	eventbus "github.com/libp2p/go-eventbus"
@@ -15,7 +13,6 @@ import (
 
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/discovery"
-	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/beacon"
@@ -44,7 +41,7 @@ func RunHello(mctx helpers.MetricsCtx, lc fx.Lifecycle, h host.Host, svc *hello.
 			pic := evt.(event.EvtPeerIdentificationCompleted)
 			go func() {
 				if err := svc.SayHello(helpers.LifecycleCtx(mctx, lc), pic.Peer); err != nil {
-					log.Warnw("failed to say hello", "error", err)
+					log.Warnw("failed to say hello", "error", err, "peer", pic.Peer)
 					return
 				}
 			}()
@@ -100,21 +97,6 @@ func HandleIncomingMessages(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub
 	go sub.HandleIncomingMessages(ctx, mpool, msgsub)
 }
 
-func RunDealClient(mctx helpers.MetricsCtx, lc fx.Lifecycle, c storagemarket.StorageClient) {
-	ctx := helpers.LifecycleCtx(mctx, lc)
-
-	lc.Append(fx.Hook{
-		OnStart: func(context.Context) error {
-			c.Run(ctx)
-			return nil
-		},
-		OnStop: func(context.Context) error {
-			c.Stop()
-			return nil
-		},
-	})
-}
-
 func NewLocalDiscovery(ds dtypes.MetadataDS) *discovery.Local {
 	return discovery.NewLocal(namespace.Wrap(ds, datastore.NewKey("/deals/local")))
 }
@@ -123,12 +105,24 @@ func RetrievalResolver(l *discovery.Local) retrievalmarket.PeerResolver {
 	return discovery.Multi(l)
 }
 
-func RandomBeacon(cs *store.ChainStore, _ dtypes.AfterGenesisSet) (beacon.RandomBeacon, error) {
-	gen, err := cs.GetGenesis()
+type RandomBeaconParams struct {
+	fx.In
+
+	PubSub      *pubsub.PubSub `optional:"true"`
+	Cs          *store.ChainStore
+	DrandConfig dtypes.DrandConfig
+}
+
+func BuiltinDrandConfig() dtypes.DrandConfig {
+	return build.DrandConfig
+}
+
+func RandomBeacon(p RandomBeaconParams, _ dtypes.AfterGenesisSet) (beacon.RandomBeacon, error) {
+	gen, err := p.Cs.GetGenesis()
 	if err != nil {
 		return nil, err
 	}
 
-	//return beacon.NewMockBeacon(build.BlockDelay * time.Second)
-	return drand.NewDrandBeacon(gen.Timestamp, build.BlockDelay)
+	//return beacon.NewMockBeacon(build.BlockDelaySecs * time.Second)
+	return drand.NewDrandBeacon(gen.Timestamp, build.BlockDelaySecs, p.PubSub, p.DrandConfig)
 }

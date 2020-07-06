@@ -40,7 +40,11 @@ func (a *WalletAPI) WalletBalance(ctx context.Context, addr address.Address) (ty
 }
 
 func (a *WalletAPI) WalletSign(ctx context.Context, k address.Address, msg []byte) (*crypto.Signature, error) {
-	return a.Wallet.Sign(ctx, k, msg)
+	keyAddr, err := a.StateManager.ResolveToKeyAddress(ctx, k, nil)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to resolve ID address: %w", keyAddr)
+	}
+	return a.Wallet.Sign(ctx, keyAddr, msg)
 }
 
 func (a *WalletAPI) WalletSignMessage(ctx context.Context, k address.Address, msg *types.Message) (*types.SignedMessage, error) {

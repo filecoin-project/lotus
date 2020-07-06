@@ -10,7 +10,7 @@ import (
 
 	cid "github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
-	"gopkg.in/urfave/cli.v2"
+	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/go-jsonrpc"
 
@@ -36,7 +36,7 @@ func main() {
 	app := &cli.App{
 		Name:     "lotus-health",
 		Usage:    "Tools for monitoring lotus daemon health",
-		Version:  build.UserVersion,
+		Version:  build.UserVersion(),
 		Commands: local,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
@@ -63,7 +63,7 @@ var watchHeadCmd = &cli.Command{
 		},
 		&cli.IntFlag{
 			Name:  "interval",
-			Value: build.BlockDelay,
+			Value: int(build.BlockDelaySecs),
 			Usage: "interval in seconds between chain head checks",
 		},
 		&cli.StringFlag{
@@ -72,14 +72,15 @@ var watchHeadCmd = &cli.Command{
 			Usage: "systemd unit name to restart on health check failure",
 		},
 		&cli.IntFlag{
-			Name:  "api-timeout",
-			Value: build.BlockDelay,
+			Name: "api-timeout",
+			// TODO: this default value seems spurious.
+			Value: int(build.BlockDelaySecs),
 			Usage: "timeout between API retries",
 		},
 		&cli.IntFlag{
 			Name:  "api-retries",
 			Value: 8,
-			Usage: "number of API retry attemps",
+			Usage: "number of API retry attempts",
 		},
 	},
 	Action: func(c *cli.Context) error {
@@ -236,7 +237,7 @@ func waitForSyncComplete(ctx context.Context, a api.FullNode, r int, t time.Dura
 				return err
 			}
 
-			if time.Now().Unix()-int64(head.MinTimestamp()) < build.BlockDelay {
+			if time.Now().Unix()-int64(head.MinTimestamp()) < int64(build.BlockDelaySecs) {
 				return nil
 			}
 		}

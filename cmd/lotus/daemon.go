@@ -18,12 +18,12 @@ import (
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/mitchellh/go-homedir"
 	"github.com/multiformats/go-multiaddr"
+	"github.com/urfave/cli/v2"
 	"go.opencensus.io/plugin/runmetrics"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
 	"golang.org/x/xerrors"
-	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -32,6 +32,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/vm"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/peermgr"
+	"github.com/filecoin-project/lotus/lib/ulimit"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/modules"
@@ -113,6 +114,11 @@ var DaemonCmd = &cli.Command{
 			Name:  "profile",
 			Usage: "specify type of node",
 		},
+		&cli.BoolFlag{
+			Name:  "manage-fdlimit",
+			Usage: "manage open file limit",
+			Value: true,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		err := runmetrics.Enable(runmetrics.RunMetricOptions{
@@ -122,6 +128,13 @@ var DaemonCmd = &cli.Command{
 		if err != nil {
 			return xerrors.Errorf("enabling runtime metrics: %w", err)
 		}
+
+		if cctx.Bool("manage-fdlimit") {
+			if _, _, err := ulimit.ManageFdLimit(); err != nil {
+				log.Errorf("setting file descriptor limit: %s", err)
+			}
+		}
+
 		if prof := cctx.String("pprof"); prof != "" {
 			profile, err := os.Create(prof)
 			if err != nil {
@@ -163,7 +176,7 @@ var DaemonCmd = &cli.Command{
 			return xerrors.Errorf("repo init error: %w", err)
 		}
 
-		if err := paramfetch.GetParams(lcli.ReqContext(cctx), build.ParametersJson(), 0); err != nil {
+		if err := paramfetch.GetParams(lcli.ReqContext(cctx), build.ParametersJSON(), 0); err != nil {
 			return xerrors.Errorf("fetching proof parameters: %w", err)
 		}
 
@@ -179,6 +192,11 @@ var DaemonCmd = &cli.Command{
 
 		chainfile := cctx.String("import-chain")
 		if chainfile != "" {
+			chainfile, err := homedir.Expand(chainfile)
+			if err != nil {
+				return err
+			}
+
 			if err := ImportChain(r, chainfile); err != nil {
 				return err
 			}
@@ -304,9 +322,9 @@ func ImportChain(r repo.Repo, fname string) error {
 	if err != nil {
 		return err
 	}
-	defer lr.Close()
+	defer lr.Close() //nolint:errcheck
 
-	ds, err := lr.Datastore("/blocks")
+	ds, err := lr.Datastore("/chain")
 	if err != nil {
 		return err
 	}
