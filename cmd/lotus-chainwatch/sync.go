@@ -59,6 +59,10 @@ type minerStateInfo struct {
 	act       types.Actor
 	stateroot cid.Cid
 
+	// calculating changes
+	tsKey       types.TipSetKey
+	parentTsKey types.TipSetKey
+
 	// miner specific
 	state miner.State
 	info  miner.MinerInfo
@@ -71,9 +75,10 @@ type minerStateInfo struct {
 }
 
 type actorInfo struct {
-	stateroot cid.Cid
-	tsKey     types.TipSetKey
-	state     string
+	stateroot   cid.Cid
+	tsKey       types.TipSetKey
+	parentTsKey types.TipSetKey
+	state       string
 }
 
 func syncHead(ctx context.Context, api api.FullNode, st *storage, headTs *types.TipSet, maxBatch int) {
@@ -169,6 +174,8 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, headTs *types.
 
 			if len(bh.Parents) == 0 { // genesis case
 				genesisTs, _ := types.NewTipSet([]*types.BlockHeader{bh})
+				st.genesisTs = genesisTs
+
 				aadrs, err := api.StateListActors(ctx, genesisTs.Key())
 				if err != nil {
 					log.Error(err)
@@ -201,9 +208,10 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, headTs *types.
 						actors[addr] = map[types.Actor]actorInfo{}
 					}
 					actors[addr][*act] = actorInfo{
-						stateroot: bh.ParentStateRoot,
-						tsKey:     genesisTs.Key(),
-						state:     string(state),
+						stateroot:   bh.ParentStateRoot,
+						tsKey:       genesisTs.Key(),
+						parentTsKey: genesisTs.Key(),
+						state:       string(state),
 					}
 					addressToID[addr] = address.Undef
 					alk.Unlock()
@@ -237,7 +245,6 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, headTs *types.
 				}
 
 				ast, err := api.StateReadState(ctx, addr, pts.Key())
-
 				if err != nil {
 					log.Error(err)
 					return
@@ -256,9 +263,10 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, headTs *types.
 				}
 				// a change occurred for the actor with address `addr` and state `act` at tipset `pts`.
 				actors[addr][act] = actorInfo{
-					stateroot: bh.ParentStateRoot,
-					state:     string(state),
-					tsKey:     pts.Key(),
+					stateroot:   bh.ParentStateRoot,
+					state:       string(state),
+					tsKey:       pts.Key(),
+					parentTsKey: pts.Parents(),
 				}
 				addressToID[addr] = address.Undef
 				alk.Unlock()
@@ -313,6 +321,9 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, headTs *types.
 					addr:      addr,
 					act:       actor,
 					stateroot: c.stateroot,
+
+					tsKey:       c.tsKey,
+					parentTsKey: c.parentTsKey,
 
 					state: miner.State{},
 					info:  miner.MinerInfo{},
@@ -422,6 +433,12 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, headTs *types.
 
 		log.Info("Storing miner sectors heads")
 		if err := st.storeMinerSectorsHeads(minerTips, api); err != nil {
+			log.Error(err)
+			return
+		}
+
+		log.Info("updating miner sectors heads")
+		if err := st.updateMinerSectors(minerTips, api); err != nil {
 			log.Error(err)
 			return
 		}
