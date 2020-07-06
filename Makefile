@@ -178,7 +178,7 @@ BINS+=bench
 
 stats:
 	rm -f stats
-	go build -o stats ./tools/stats
+	go build -o stats ./cmd/lotus-stats
 	go run github.com/GeertJohan/go.rice/rice append --exec stats -i ./build
 .PHONY: stats
 BINS+=stats
