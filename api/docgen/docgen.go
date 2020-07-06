@@ -262,11 +262,11 @@ func parseApiASTInfo() (map[string]string, map[string]string) { //nolint:golint
 	groupDocs := make(map[string]string)
 	out := make(map[string]string)
 	for mn, node := range v.Methods {
-		cs := cmap.Filter(node).Comments()
-		if len(cs) == 0 {
+		comments := cmap.Filter(node).Comments()
+		if len(comments) == 0 {
 			out[mn] = noComment
 		} else {
-			for _, c := range cs {
+			for _, c := range comments {
 				if strings.HasPrefix(c.Text(), "MethodGroup:") {
 					parts := strings.Split(c.Text(), "\n")
 					groupName := strings.TrimSpace(parts[0][12:])
@@ -277,7 +277,7 @@ func parseApiASTInfo() (map[string]string, map[string]string) { //nolint:golint
 				}
 			}
 
-			last := cs[len(cs)-1].Text()
+			last := comments[len(comments)-1].Text()
 			if !strings.HasPrefix(last, "MethodGroup:") {
 				out[mn] = last
 			} else {
