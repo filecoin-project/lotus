@@ -49,6 +49,7 @@ type LocalStorage interface {
 	SetStorage(func(*StorageConfig)) error
 
 	Stat(path string) (FsStat, error)
+	DiskUsage(path string) (int64, error) // returns real disk usage for a file/directory
 }
 
 const MetaFile = "sectorstore.json"
@@ -72,20 +73,45 @@ type path struct {
 	reservations map[abi.SectorID]SectorFileType
 }
 
-type statFn func(path string) (FsStat, error)
-func (p *path) stat(st statFn) (FsStat, error) {
-	stat, err := st(p.local)
+func (p *path) stat(ls LocalStorage) (FsStat, error) {
+	stat, err := ls.Stat(p.local)
 	if err != nil {
 		return FsStat{}, err
 	}
 
 	stat.Reserved = p.reserved
-	stat.Available -= p.reserved
+
+	for id, ft := range p.reservations {
+		for _, fileType := range PathTypes {
+			if fileType&ft == 0 {
+				continue
+			}
+
+			used, err := ls.DiskUsage(p.sectorPath(id, fileType))
+			if err != nil {
+				log.Errorf("getting disk usage of '%s': %+v", p.sectorPath(id, fileType), err)
+				continue
+			}
+
+			stat.Reserved -= used
+		}
+	}
+
+	if stat.Reserved < 0 {
+		log.Warnf("negative reserved storage: p.reserved=%d, reserved: %d", p.reserved, stat.Reserved)
+		stat.Reserved = 0
+	}
+
+	stat.Available -= stat.Reserved
 	if stat.Available < 0 {
 		stat.Available = 0
 	}
 
 	return stat, err
+}
+
+func (p *path) sectorPath(sid abi.SectorID, fileType SectorFileType) string {
+	return filepath.Join(p.local, fileType.String(), SectorName(sid))
 }
 
 func NewLocal(ctx context.Context, ls LocalStorage, index SectorIndex, urls []string) (*Local, error) {
@@ -122,7 +148,7 @@ func (st *Local) OpenPath(ctx context.Context, p string) error {
 		reservations: map[abi.SectorID]SectorFileType{},
 	}
 
-	fst, err := out.stat(st.localStorage.Stat)
+	fst, err := out.stat(st.localStorage)
 	if err != nil {
 		return err
 	}
@@ -201,7 +227,7 @@ func (st *Local) reportHealth(ctx context.Context) {
 
 		toReport := map[ID]HealthReport{}
 		for id, p := range st.paths {
-			stat, err := p.stat(st.localStorage.Stat)
+			stat, err := p.stat(st.localStorage)
 
 			toReport[id] = HealthReport{
 				Stat: stat,
@@ -246,7 +272,7 @@ func (st *Local) Reserve(ctx context.Context, sid abi.SectorID, spt abi.Register
 			return nil, errPathNotFound
 		}
 
-		stat, err := p.stat(st.localStorage.Stat)
+		stat, err := p.stat(st.localStorage)
 		if err != nil {
 			return nil, err
 		}
@@ -306,7 +332,7 @@ func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, spt abi.Re
 				continue
 			}
 
-			spath := filepath.Join(p.local, fileType.String(), SectorName(sid))
+			spath := p.sectorPath(sid, fileType)
 			SetPathByType(&out, fileType, spath)
 			SetPathByType(&storageIDs, fileType, string(info.ID))
 
@@ -348,7 +374,7 @@ func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, spt abi.Re
 
 			// TODO: Check free space
 
-			best = filepath.Join(p.local, fileType.String(), SectorName(sid))
+			best = p.sectorPath(sid, fileType)
 			bestID = si.ID
 		}
 
@@ -464,7 +490,7 @@ func (st *Local) removeSector(ctx context.Context, sid abi.SectorID, typ SectorF
 		return xerrors.Errorf("dropping sector from index: %w", err)
 	}
 
-	spath := filepath.Join(p.local, typ.String(), SectorName(sid))
+	spath := p.sectorPath(sid, typ)
 	log.Infof("remove %s", spath)
 
 	if err := os.RemoveAll(spath); err != nil {
@@ -540,7 +566,7 @@ func (st *Local) FsStat(ctx context.Context, id ID) (FsStat, error) {
 		return FsStat{}, errPathNotFound
 	}
 
-	return p.stat(st.localStorage.Stat)
+	return p.stat(st.localStorage)
 }
 
 var _ Store = &Local{}
