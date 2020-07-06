@@ -79,6 +79,8 @@ func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// TODO: reserve local storage here
+
 	path := PathByType(paths, ft)
 	if path == "" {
 		log.Error("acquired path was empty")

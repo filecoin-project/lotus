@@ -361,7 +361,7 @@ func (i *Index) StorageBestAlloc(ctx context.Context, allocate SectorFileType, s
 			continue
 		}
 
-		if spaceReq > p.fsi.Available {
+		if spaceReq > uint64(p.fsi.Available) {
 			log.Debugf("not allocating on %s, out of space (available: %d, need: %d)", p.info.ID, p.fsi.Available, spaceReq)
 			continue
 		}

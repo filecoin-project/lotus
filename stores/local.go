@@ -67,6 +67,25 @@ type Local struct {
 
 type path struct {
 	local string // absolute local path
+
+	reserved int64
+	reservations map[abi.SectorID]SectorFileType
+}
+
+type statFn func(path string) (FsStat, error)
+func (p *path) stat(st statFn) (FsStat, error) {
+	stat, err := st(p.local)
+	if err != nil {
+		return FsStat{}, err
+	}
+
+	stat.Reserved = p.reserved
+	stat.Available -= p.reserved
+	if stat.Available < 0 {
+		stat.Available = 0
+	}
+
+	return stat, err
 }
 
 func NewLocal(ctx context.Context, ls LocalStorage, index SectorIndex, urls []string) (*Local, error) {
@@ -98,9 +117,12 @@ func (st *Local) OpenPath(ctx context.Context, p string) error {
 
 	out := &path{
 		local: p,
+
+		reserved: 0,
+		reservations: map[abi.SectorID]SectorFileType{},
 	}
 
-	fst, err := st.localStorage.Stat(p)
+	fst, err := out.stat(st.localStorage.Stat)
 	if err != nil {
 		return err
 	}
@@ -179,7 +201,7 @@ func (st *Local) reportHealth(ctx context.Context) {
 
 		toReport := map[ID]HealthReport{}
 		for id, p := range st.paths {
-			stat, err := st.localStorage.Stat(p.local)
+			stat, err := p.stat(st.localStorage.Stat)
 
 			toReport[id] = HealthReport{
 				Stat: stat,
@@ -195,6 +217,61 @@ func (st *Local) reportHealth(ctx context.Context) {
 			}
 		}
 	}
+}
+
+func (st *Local) Reserve(ctx context.Context, sid abi.SectorID, spt abi.RegisteredSealProof, ft SectorFileType, storageIDs SectorPaths, overheadTab map[SectorFileType]int) (func(), error) {
+	ssize, err := spt.SectorSize()
+	if err != nil {
+		return nil, xerrors.Errorf("getting sector size: %w", err)
+	}
+
+	st.localLk.Lock()
+
+	done := func(){}
+	deferredDone := func() { done() }
+	defer func() {
+		st.localLk.Unlock()
+		deferredDone()
+	}()
+
+	for _, fileType := range PathTypes {
+		if fileType&ft == 0 {
+			continue
+		}
+
+		id := ID(PathByType(storageIDs, fileType))
+
+		p, ok := st.paths[id]
+		if !ok {
+			return nil, errPathNotFound
+		}
+
+		stat, err := p.stat(st.localStorage.Stat)
+		if err != nil {
+			return nil, err
+		}
+
+		overhead := int64(overheadTab[fileType]) * int64(ssize) / FSOverheadDen
+
+		if stat.Available < overhead {
+			return nil, xerrors.Errorf("can't reserve %d bytes in '%s' (id:%s), only %d available", overhead, p.local, id, stat.Available)
+		}
+
+		p.reserved += overhead
+
+		prevDone := done
+		done = func() {
+			prevDone()
+
+			st.localLk.Lock()
+			defer st.localLk.Unlock()
+
+			p.reserved -= overhead
+		}
+	}
+
+	deferredDone = func() {}
+	return done, nil
 }
 
 func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, spt abi.RegisteredSealProof, existing SectorFileType, allocate SectorFileType, pathType PathType, op AcquireMode) (SectorPaths, SectorPaths, error) {
@@ -463,7 +540,7 @@ func (st *Local) FsStat(ctx context.Context, id ID) (FsStat, error) {
 		return FsStat{}, errPathNotFound
 	}
 
-	return st.localStorage.Stat(p.local)
+	return p.stat(st.localStorage.Stat)
 }
 
 var _ Store = &Local{}
