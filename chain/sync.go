@@ -536,7 +536,7 @@ func (syncer *Syncer) ValidateTipSet(ctx context.Context, fts *store.FullTipSet)
 		futures = append(futures, async.Err(func() error {
 			if err := syncer.ValidateBlock(ctx, b); err != nil {
 				if isPermanent(err) {
-					syncer.bad.Add(b.Cid(), err.Error())
+					syncer.bad.Add(b.Cid(), BadBlockReason{Reason: err.Error()})
 				}
 				return xerrors.Errorf("validating block %s: %w", b.Cid(), err)
 			}
@@ -1110,17 +1110,14 @@ func (syncer *Syncer) collectHeaders(ctx context.Context, from *types.TipSet, to
 		trace.Int64Attribute("toHeight", int64(to.Height())),
 	)
 
-	markBad := func(fmts string, args ...interface{}) {
-		for _, b := range from.Cids() {
-			syncer.bad.Add(b, fmt.Sprintf(fmts, args...))
-		}
-	}
-
 	// Check if the parents of the from block are in the denylist.
 	// i.e. if a fork of the chain has been requested that we know to be bad.
 	for _, pcid := range from.Parents().Cids() {
 		if reason, ok := syncer.bad.Has(pcid); ok {
-			markBad("linked to %s", pcid)
+			newReason := reason.Linked("linked to %s", pcid)
+			for _, b := range from.Cids() {
+				syncer.bad.Add(b, newReason)
+			}
 			return nil, xerrors.Errorf("chain linked to block marked previously as bad (%s, %s) (reason: %s)", from.Cids(), pcid, reason)
 		}
 	}
@@ -1132,7 +1129,7 @@ func (syncer *Syncer) collectHeaders(ctx context.Context, from *types.TipSet, to
 			return targetBE[i].Round < targetBE[j].Round
 		})
 		if !sorted {
-			syncer.bad.Add(from.Cids()[0], "wrong order of beacon entires")
+			syncer.bad.Add(from.Cids()[0], NewBadBlockReason(from.Cids(), "wrong order of beacon entires"))
 			return nil, xerrors.Errorf("wrong order of beacon entires")
 		}
 
@@ -1166,8 +1163,9 @@ loop:
 	for blockSet[len(blockSet)-1].Height() > untilHeight {
 		for _, bc := range at.Cids() {
 			if reason, ok := syncer.bad.Has(bc); ok {
+				newReason := reason.Linked("change contained %s", bc)
 				for _, b := range acceptedBlocks {
-					syncer.bad.Add(b, fmt.Sprintf("chain contained %s", bc))
+					syncer.bad.Add(b, newReason)
 				}
 
 				return nil, xerrors.Errorf("chain contained block marked previously as bad (%s, %s) (reason: %s)", from.Cids(), bc, reason)
@@ -1214,8 +1212,9 @@ loop:
 			}
 			for _, bc := range b.Cids() {
 				if reason, ok := syncer.bad.Has(bc); ok {
+					newReason := reason.Linked("change contained %s", bc)
 					for _, b := range acceptedBlocks {
-						syncer.bad.Add(b, fmt.Sprintf("chain contained %s", bc))
+						syncer.bad.Add(b, newReason)
 					}
 
 					return nil, xerrors.Errorf("chain contained block marked previously as bad (%s, %s) (reason: %s)", from.Cids(), bc, reason)
@@ -1246,7 +1245,7 @@ loop:
 				// TODO: we're marking this block bad in the same way that we mark invalid blocks bad. Maybe distinguish?
 				log.Warn("adding forked chain to our bad tipset cache")
 				for _, b := range from.Blocks() {
-					syncer.bad.Add(b.Cid(), "fork past finality")
+					syncer.bad.Add(b.Cid(), NewBadBlockReason(from.Cids(), "fork past finality"))
 				}
 			}
 			return nil, xerrors.Errorf("failed to sync fork: %w", err)
@@ -1499,12 +1498,14 @@ func (syncer *Syncer) State() []SyncerState {
 
 // MarkBad manually adds a block to the "bad blocks" cache.
 func (syncer *Syncer) MarkBad(blk cid.Cid) {
-	syncer.bad.Add(blk, "manually marked bad")
+	syncer.bad.Add(blk, NewBadBlockReason([]cid.Cid{blk}, "manually marked bad"))
 }
 
 func (syncer *Syncer) CheckBadBlockCache(blk cid.Cid) (string, bool) {
-	return syncer.bad.Has(blk)
+	bbr, ok := syncer.bad.Has(blk)
+	return bbr.String(), ok
 }
+
 func (syncer *Syncer) getLatestBeaconEntry(_ context.Context, ts *types.TipSet) (*types.BeaconEntry, error) {
 	cur := ts
 	for i := 0; i < 20; i++ {
