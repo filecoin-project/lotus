@@ -70,6 +70,10 @@ var msigCreateCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
+		if cctx.Args().Len() < 1 {
+			return fmt.Errorf("multisigs must have at least one signer")
+		}
+
 		var addrs []address.Address
 		for _, a := range cctx.Args().Slice() {
 			addr, err := address.NewFromString(a)
