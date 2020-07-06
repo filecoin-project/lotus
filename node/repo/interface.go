@@ -35,6 +35,7 @@ type LockedRepo interface {
 
 	// Returns datastore defined in this repo.
 	Datastore(namespace string) (datastore.Batching, error)
+	DeleteDatastore(namespace string) error
 
 	// Returns config in this repo
 	Config() (interface{}, error)
