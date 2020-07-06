@@ -28,7 +28,7 @@ import (
 var log = logging.Logger("miner")
 
 // returns a callback reporting whether we mined a blocks in this round
-type waitFunc func(ctx context.Context, baseTime uint64) (func(bool), error)
+type waitFunc func(ctx context.Context, baseTime uint64) (func(bool, error), error)
 
 func NewMiner(api api.FullNode, epp gen.WinningPoStProver, addr address.Address) *Miner {
 	arc, err := lru.NewARC(10000)
@@ -40,12 +40,12 @@ func NewMiner(api api.FullNode, epp gen.WinningPoStProver, addr address.Address)
 		api:     api,
 		epp:     epp,
 		address: addr,
-		waitFunc: func(ctx context.Context, baseTime uint64) (func(bool), error) {
+		waitFunc: func(ctx context.Context, baseTime uint64) (func(bool, error), error) {
 			// Wait around for half the block time in case other parents come in
 			deadline := baseTime + build.PropagationDelaySecs
 			time.Sleep(time.Until(time.Unix(int64(deadline), 0)))
 
-			return func(bool) {}, nil
+			return func(bool, error) {}, nil
 		},
 		minedBlockHeights: arc,
 	}
@@ -158,11 +158,12 @@ func (m *Miner) mine(ctx context.Context) {
 		if err != nil {
 			log.Errorf("mining block failed: %+v", err)
 			m.niceSleep(time.Second)
+			onDone(false, err)
 			continue
 		}
 		lastBase = *base
 
-		onDone(b != nil)
+		onDone(b != nil, nil)
 
 		if b != nil {
 			btime := time.Unix(int64(b.Header.Timestamp), 0)

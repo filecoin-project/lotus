@@ -186,7 +186,7 @@ func presealSector(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, sid abi.Sector
 }
 
 func presealSectorFake(sbfs *basicfs.Provider, sid abi.SectorID, spt abi.RegisteredSealProof, ssize abi.SectorSize) (*genesis.PreSeal, error) {
-	paths, done, err := sbfs.AcquireSector(context.TODO(), sid, 0, stores.FTSealed | stores.FTCache, true)
+	paths, done, err := sbfs.AcquireSector(context.TODO(), sid, 0, stores.FTSealed|stores.FTCache, true)
 	if err != nil {
 		return nil, xerrors.Errorf("acquire unsealed sector: %w", err)
 	}
