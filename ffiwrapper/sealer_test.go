@@ -121,7 +121,7 @@ func (s *seal) unseal(t *testing.T, sb *Sealer, sp *basicfs.Provider, si abi.Sec
 		t.Fatal("read wrong bytes")
 	}
 
-	p, sd, err := sp.AcquireSector(context.TODO(), si, stores.FTUnsealed, stores.FTNone, false)
+	p, sd, err := sp.AcquireSector(context.TODO(), si, stores.FTUnsealed, stores.FTNone, stores.PathStorage)
 	if err != nil {
 		t.Fatal(err)
 	}

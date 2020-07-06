@@ -398,12 +398,12 @@ func (st *Local) removeSector(ctx context.Context, sid abi.SectorID, typ SectorF
 }
 
 func (st *Local) MoveStorage(ctx context.Context, s abi.SectorID, spt abi.RegisteredSealProof, types SectorFileType) error {
-	dest, destIds, err := st.AcquireSector(ctx, s, spt, FTNone, types, false, AcquireMove)
+	dest, destIds, err := st.AcquireSector(ctx, s, spt, FTNone, types, PathStorage, AcquireMove)
 	if err != nil {
 		return xerrors.Errorf("acquire dest storage: %w", err)
 	}
 
-	src, srcIds, err := st.AcquireSector(ctx, s, spt, types, FTNone, false, AcquireMove)
+	src, srcIds, err := st.AcquireSector(ctx, s, spt, types, FTNone, PathStorage, AcquireMove)
 	if err != nil {
 		return xerrors.Errorf("acquire src storage: %w", err)
 	}

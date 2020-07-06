@@ -22,7 +22,7 @@ const (
 var FSOverheadSeal = map[SectorFileType]int{ // 10x overheads
 	FTUnsealed: 10,
 	FTSealed:   10,
-	FTCache:    70, // TODO: confirm for 32G
+	FTCache:    141, // 11 layers + D(2x ssize) + C + R
 }
 
 var FsOverheadFinalized = map[SectorFileType]int{

@@ -9,11 +9,11 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
-type PathType bool
+type PathType string
 
 const (
-	PathStorage = false
-	PathSealing = true
+	PathStorage = "storage"
+	PathSealing = "sealing"
 )
 
 type AcquireMode string

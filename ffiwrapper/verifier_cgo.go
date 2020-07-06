@@ -62,7 +62,7 @@ func (sb *Sealer) pubSectorToPriv(ctx context.Context, mid abi.ActorID, sectorIn
 
 		sid := abi.SectorID{Miner: mid, Number: s.SectorNumber}
 
-		paths, d, err := sb.sectors.AcquireSector(ctx, sid, stores.FTCache|stores.FTSealed, 0, false)
+		paths, d, err := sb.sectors.AcquireSector(ctx, sid, stores.FTCache|stores.FTSealed, 0, stores.PathStorage)
 		if err != nil {
 			log.Warnw("failed to acquire sector, skipping", "sector", sid, "error", err)
 			skipped = append(skipped, sid)
