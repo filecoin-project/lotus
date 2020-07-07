@@ -27,7 +27,7 @@ var (
 
 type InitialBalanceMsg struct {
 	Addr    address.Address
-	Balance int
+	Balance float64
 }
 
 type PresealMsg struct {

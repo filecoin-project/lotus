@@ -45,7 +45,7 @@ func PrepareClient(t *TestEnvironment) (*LotusClient, error) {
 	}
 
 	// publish the account ID/balance
-	balance := t.IntParam("balance")
+	balance := t.FloatParam("balance")
 	balanceMsg := &InitialBalanceMsg{Addr: walletKey.Address, Balance: balance}
 	t.SyncClient.Publish(ctx, BalanceTopic, balanceMsg)
 
