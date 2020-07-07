@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"math"
 
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -55,9 +54,13 @@ func NewManager(sm *stmgr.StateManager, pchstore *Store, api ManagerApi) *Manage
 }
 
 func maxLaneFromState(st *paych.State) (uint64, error) {
-	maxLane := uint64(math.MaxInt64)
+	if len(st.LaneStates) == 0 {
+		return 0, fmt.Errorf("no lane states for the channel found")
+	}
+
+	maxLane := st.LaneStates[0].ID
 	for _, state := range st.LaneStates {
-		if (state.ID)+1 > maxLane+1 {
+		if (state.ID) > maxLane {
 			maxLane = state.ID
 		}
 	}
