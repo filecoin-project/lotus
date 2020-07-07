@@ -356,7 +356,7 @@ type MinerSectors struct {
 
 type Import struct {
 	Key      int64
-	Err error
+	Err string
 
 	Root    *cid.Cid
 	Source   string

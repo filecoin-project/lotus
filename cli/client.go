@@ -210,7 +210,7 @@ var clientLocalCmd = &cli.Command{
 			}
 
 			fmt.Printf("%d: %s @%s (%s)\n", v.Key, cidStr, v.FilePath, v.Source)
-			if v.Err != nil {
+			if v.Err != "" {
 				fmt.Printf("\terror: %s\n", v.Err)
 			}
 		}

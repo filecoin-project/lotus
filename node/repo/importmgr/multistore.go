@@ -37,6 +37,8 @@ func NewMultiDstore(provider dsProvider, namespace string) (*MultiStore, error) 
 	mds := &MultiStore{
 		provider:  provider,
 		namespace: namespace,
+
+		open: map[int64]*Store{},
 	}
 
 	for _, i := range ids {

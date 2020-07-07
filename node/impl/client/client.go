@@ -3,7 +3,6 @@ package client
 import (
 	"context"
 	"fmt"
-
 	"io"
 	"os"
 
@@ -11,6 +10,7 @@ import (
 
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cidutil"
 	chunker "github.com/ipfs/go-ipfs-chunker"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	files "github.com/ipfs/go-ipfs-files"
@@ -25,6 +25,7 @@ import (
 	"github.com/ipld/go-ipld-prime/traversal/selector/builder"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/multiformats/go-multiaddr"
+	mh "github.com/multiformats/go-multihash"
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/go-address"
@@ -47,6 +48,7 @@ import (
 	"github.com/filecoin-project/lotus/node/repo/importmgr"
 )
 
+var DefaultHashFunction = uint64(mh.BLAKE2B_MIN + 31)
 const dealStartBuffer abi.ChainEpoch = 10000 // TODO: allow setting
 
 type API struct {
@@ -282,7 +284,7 @@ func (a *API) ClientImportLocal(ctx context.Context, f io.Reader) (cid.Cid, erro
 
 	id, st, err := a.imgr().NewStore()
 	if err != nil {
-		return cid.Cid{}, err
+		return cid.Undef, err
 	}
 	if err := a.imgr().AddLabel(id, "source", "import-local"); err != nil {
 		return cid.Cid{}, err
@@ -290,10 +292,19 @@ func (a *API) ClientImportLocal(ctx context.Context, f io.Reader) (cid.Cid, erro
 
 	bufferedDS := ipld.NewBufferedDAG(ctx, st.DAG)
 
+	prefix, err := merkledag.PrefixForCidVersion(1)
+	if err != nil {
+		return cid.Undef, err
+	}
+	prefix.MhType = DefaultHashFunction
+
 	params := ihelper.DagBuilderParams{
 		Maxlinks:   build.UnixfsLinksPerLevel,
 		RawLeaves:  true,
-		CidBuilder: cid.V1Builder{},
+		CidBuilder: cidutil.InlineBuilder{
+			Builder: prefix,
+			Limit:   126,
+		},
 		Dagserv:    bufferedDS,
 	}
 
@@ -318,7 +329,7 @@ func (a *API) ClientListImports(ctx context.Context) ([]api.Import, error) {
 		if err != nil {
 			out[i] = api.Import{
 				Key: id,
-				Err: xerrors.Errorf("getting info: %w", err),
+				Err: xerrors.Errorf("getting info: %w", err).Error(),
 			}
 			continue
 		}
@@ -332,7 +343,7 @@ func (a *API) ClientListImports(ctx context.Context) ([]api.Import, error) {
 		if info.Labels[importmgr.LRootCid] != "" {
 			c, err := cid.Parse(info.Labels[importmgr.LRootCid])
 			if err != nil {
-				ai.Err = err
+				ai.Err = err.Error()
 			} else {
 				ai.Root = &c
 			}
@@ -569,12 +580,20 @@ func (a *API) clientImport(ctx context.Context, ref api.FileRef, store *importmg
 
 	bufDs := ipld.NewBufferedDAG(ctx, store.DAG)
 
+	prefix, err := merkledag.PrefixForCidVersion(1)
+	if err != nil {
+		return cid.Undef, err
+	}
+	prefix.MhType = DefaultHashFunction
+
 	params := ihelper.DagBuilderParams{
 		Maxlinks:   build.UnixfsLinksPerLevel,
 		RawLeaves:  true,
-		CidBuilder: cid.V1Builder{},
+		CidBuilder: cidutil.InlineBuilder{
+			Builder: prefix,
+			Limit:   126,
+		},
 		Dagserv:    bufDs,
-		NoCopy:     true,
 	}
 
 	db, err := params.New(chunker.NewSizeSplitter(file, int64(build.UnixfsChunkSize)))
