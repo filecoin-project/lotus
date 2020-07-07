@@ -142,7 +142,9 @@ func (t *SectorInfo) sealingCtx(ctx context.Context) context.Context {
 	return ctx
 }
 
-func (t *SectorInfo) unsealedRanges(invert bool) []storage.Range {
+// Returns list of offset/length tuples of sector data ranges which clients
+// requested to keep unsealed
+func (t *SectorInfo) keepUnsealedRanges(invert bool) []storage.Range {
 	var out []storage.Range
 
 	var at abi.UnpaddedPieceSize

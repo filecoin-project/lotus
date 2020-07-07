@@ -356,7 +356,7 @@ func (m *Sealing) handleCommitWait(ctx statemachine.Context, sector SectorInfo) 
 func (m *Sealing) handleFinalizeSector(ctx statemachine.Context, sector SectorInfo) error {
 	// TODO: Maybe wait for some finality
 
-	if err := m.sealer.FinalizeSector(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorNumber), sector.unsealedRanges(false)); err != nil {
+	if err := m.sealer.FinalizeSector(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorNumber), sector.keepUnsealedRanges(false)); err != nil {
 		return ctx.Send(SectorFinalizeFailed{xerrors.Errorf("finalize sector: %w", err)})
 	}
 
@@ -367,7 +367,7 @@ func (m *Sealing) handleProvingSector(ctx statemachine.Context, sector SectorInf
 	// TODO: track sector health / expiration
 	log.Infof("Proving sector %d", sector.SectorNumber)
 
-	if err := m.sealer.ReleaseUnsealed(ctx.Context(), m.minerSector(sector.SectorNumber), sector.unsealedRanges(true)); err != nil {
+	if err := m.sealer.ReleaseUnsealed(ctx.Context(), m.minerSector(sector.SectorNumber), sector.keepUnsealedRanges(true)); err != nil {
 		log.Error(err)
 	}
 
