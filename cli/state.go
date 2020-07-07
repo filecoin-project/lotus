@@ -790,8 +790,8 @@ var stateComputeStateCmd = &cli.Command{
 	Usage: "Perform state computations",
 	Flags: []cli.Flag{
 		&cli.Uint64Flag{
-			Name:  "height",
-			Usage: "set the height to compute state at",
+			Name:  "vm-height",
+			Usage: "set the height that the vm will see",
 		},
 		&cli.BoolFlag{
 			Name:  "apply-mpool-messages",
@@ -820,7 +820,7 @@ var stateComputeStateCmd = &cli.Command{
 			return err
 		}
 
-		h := abi.ChainEpoch(cctx.Uint64("height"))
+		h := abi.ChainEpoch(cctx.Uint64("vm-height"))
 		if h == 0 {
 			if ts == nil {
 				head, err := api.ChainHead(ctx)

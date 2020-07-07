@@ -58,7 +58,7 @@ var msigCreateCmd = &cli.Command{
 			Value: "0",
 		},
 		&cli.StringFlag{
-			Name:  "sender",
+			Name:  "from",
 			Usage: "account to send the create message from",
 		},
 	},
@@ -85,7 +85,7 @@ var msigCreateCmd = &cli.Command{
 
 		// get the address we're going to use to create the multisig (can be one of the above, as long as they have funds)
 		var sendAddr address.Address
-		if send := cctx.String("sender"); send == "" {
+		if send := cctx.String("from"); send == "" {
 			defaddr, err := api.WalletDefaultAddress(ctx)
 			if err != nil {
 				return err
