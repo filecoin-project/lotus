@@ -1,16 +1,12 @@
 package importmgr
 
 import (
-	"context"
 	"fmt"
 	"path"
 	"sync"
 	"sync/atomic"
 
 	"github.com/hashicorp/go-multierror"
-	blocks "github.com/ipfs/go-block-format"
-	"github.com/ipfs/go-cid"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-datastore"
@@ -83,6 +79,17 @@ func (mds *MultiStore) Get(i int64) (*Store, error) {
 	return mds.open[i], err
 }
 
+func (mds *MultiStore) List() []int64 {
+	mds.lk.RLock()
+	defer mds.lk.RUnlock()
+	out := make([]int64, 0, len(mds.open))
+	for i := range mds.open {
+		out = append(out, i)
+	}
+
+	return out
+}
+
 func (mds *MultiStore) Delete(i int64) error {
 	mds.lk.Lock()
 	defer mds.lk.Unlock()
@@ -113,86 +120,3 @@ func (mds *MultiStore) Close() error {
 
 	return err
 }
-
-type multiReadBs struct {
-	// TODO: some caching
-	mds *MultiStore
-}
-
-func (m *multiReadBs) Has(cid cid.Cid) (bool, error) {
-	m.mds.lk.RLock()
-	defer m.mds.lk.RUnlock()
-
-	var merr error
-	for i, store := range m.mds.open {
-		has, err := store.Bstore.Has(cid)
-		if err != nil {
-			merr = multierror.Append(merr, xerrors.Errorf("has (ds %d): %w", i, err))
-			continue
-		}
-		if !has {
-			continue
-		}
-
-		return true, nil
-	}
-
-	return false, merr
-}
-
-func (m *multiReadBs) Get(cid cid.Cid) (blocks.Block, error) {
-	m.mds.lk.RLock()
-	defer m.mds.lk.RUnlock()
-
-	var merr error
-	for i, store := range m.mds.open {
-		has, err := store.Bstore.Has(cid)
-		if err != nil {
-			merr = multierror.Append(merr, xerrors.Errorf("has (ds %d): %w", i, err))
-			continue
-		}
-		if !has {
-			continue
-		}
-
-		val, err := store.Bstore.Get(cid)
-		if err != nil {
-			merr = multierror.Append(merr, xerrors.Errorf("get (ds %d): %w", i, err))
-			continue
-		}
-
-		return val, nil
-	}
-
-	if merr == nil {
-		return nil, datastore.ErrNotFound
-	}
-
-	return nil, merr
-}
-
-func (m *multiReadBs) DeleteBlock(cid cid.Cid) error {
-	return xerrors.Errorf("operation not supported")
-}
-
-func (m *multiReadBs) GetSize(cid cid.Cid) (int, error) {
-	return 0, xerrors.Errorf("operation not supported")
-}
-
-func (m *multiReadBs) Put(block blocks.Block) error {
-	return xerrors.Errorf("operation not supported")
-}
-
-func (m *multiReadBs) PutMany(blocks []blocks.Block) error {
-	return xerrors.Errorf("operation not supported")
-}
-
-func (m *multiReadBs) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
-	return nil, xerrors.Errorf("operation not supported")
-}
-
-func (m *multiReadBs) HashOnRead(enabled bool) {
-	return
-}
-
-var _ blockstore.Blockstore = &multiReadBs{}

@@ -435,8 +435,9 @@ func Repo(r repo.Repo) Option {
 			Override(new(dtypes.MetadataDS), modules.Datastore),
 			Override(new(dtypes.ChainBlockstore), modules.ChainBlockstore),
 
+			Override(new(dtypes.ClientImportMgr), modules.ClientImportMgr),
 			Override(new(dtypes.ClientMultiDstore), modules.ClientMultiDatastore),
-			Override(new(dtypes.ClientFilestore), modules.ClientFstore),
+
 			Override(new(dtypes.ClientBlockstore), modules.ClientBlockstore),
 
 			Override(new(ci.PrivKey), lp2p.PrivKey),

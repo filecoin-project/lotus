@@ -3,22 +3,33 @@ package importmgr
 import (
 	"encoding/json"
 	"fmt"
+
+	"golang.org/x/xerrors"
+
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	"golang.org/x/xerrors"
 )
 
 type Mgr struct {
-	mds *MultiStore
-	Bs blockstore.Blockstore
-	ds datastore.Batching
+	mds        *MultiStore
+	ds         datastore.Batching
+
+	Blockstore blockstore.Blockstore
 }
+
+type Label string
+const (
+	LSource = "source" // Function which created the import
+	LRootCid = "root" // Root CID
+	LFileName = "filename" // Local file path
+	LMTime = "mtime" // File modification timestamp
+)
 
 func New(mds *MultiStore, ds datastore.Batching) *Mgr {
 	return &Mgr{
 		mds: mds,
-		bs:  &multiReadBs{
+		Blockstore:  &multiReadBs{
 			mds: mds,
 		},
 
@@ -26,7 +37,7 @@ func New(mds *MultiStore, ds datastore.Batching) *Mgr {
 	}
 }
 
-type storeMeta struct {
+type StoreMeta struct {
 	Labels map[string]string
 }
 
@@ -37,7 +48,7 @@ func (m *Mgr) NewStore() (int64, *Store, error) {
 		return 0, nil, err
 	}
 
-	meta, err := json.Marshal(&storeMeta{Labels: map[string]string{
+	meta, err := json.Marshal(&StoreMeta{Labels: map[string]string{
 		"source": "unknown",
 	}})
 	if err != nil {
@@ -54,14 +65,14 @@ func (m *Mgr) AddLabel(id int64, key, value string) error { // source, file path
 		return xerrors.Errorf("getting metadata form datastore: %w", err)
 	}
 
-	var sm storeMeta
+	var sm StoreMeta
 	if err := json.Unmarshal(meta, &sm); err != nil {
 		return xerrors.Errorf("unmarshaling store meta: %w", err)
 	}
 
 	sm.Labels[key] = value
 
-	meta, err = json.Marshal(&storeMeta{})
+	meta, err = json.Marshal(&StoreMeta{})
 	if err != nil {
 		return xerrors.Errorf("marshaling store meta: %w", err)
 	}
@@ -69,6 +80,23 @@ func (m *Mgr) AddLabel(id int64, key, value string) error { // source, file path
 	return m.ds.Put(datastore.NewKey(fmt.Sprintf("%d", id)), meta)
 }
 
-// m.List
+func (m *Mgr) List() []int64 {
+	return m.mds.List()
+}
+
+func (m *Mgr) Info(id int64) (*StoreMeta, error) {
+	meta, err := m.ds.Get(datastore.NewKey(fmt.Sprintf("%d", id)))
+	if err != nil {
+		return nil, xerrors.Errorf("getting metadata form datastore: %w", err)
+	}
+
+	var sm StoreMeta
+	if err := json.Unmarshal(meta, &sm); err != nil {
+		return nil, xerrors.Errorf("unmarshaling store meta: %w", err)
+	}
+
+	return &sm, nil
+}
+
 // m.Info
 // m.Delete

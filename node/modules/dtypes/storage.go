@@ -3,7 +3,6 @@ package dtypes
 import (
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-filestore"
 	"github.com/ipfs/go-graphsync"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	exchange "github.com/ipfs/go-ipfs-exchange-interface"
@@ -29,7 +28,7 @@ type ChainExchange exchange.Interface
 type ChainBlockService bserv.BlockService
 
 type ClientMultiDstore *importmgr.MultiStore
-type ClientFilestore *filestore.Filestore
+type ClientImportMgr *importmgr.Mgr
 type ClientBlockstore blockstore.Blockstore
 type ClientDealStore *statestore.StateStore
 type ClientRequestValidator *requestvalidation.UnifiedRequestValidator

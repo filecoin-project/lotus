@@ -204,7 +204,15 @@ var clientLocalCmd = &cli.Command{
 		}
 
 		for _, v := range list {
-			fmt.Printf("%s %s %s %s\n", encoder.Encode(v.Key), v.FilePath, types.SizeStr(types.NewInt(v.Size)), v.Status)
+			cidStr := "<nil>"
+			if v.Root != nil {
+				cidStr = encoder.Encode(*v.Root)
+			}
+
+			fmt.Printf("%d: %s @%s (%s)\n", v.Key, cidStr, v.FilePath, v.Source)
+			if v.Err != nil {
+				fmt.Printf("\terror: %s\n", v.Err)
+			}
 		}
 		return nil
 	},

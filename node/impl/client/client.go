@@ -2,14 +2,7 @@ package client
 
 import (
 	"context"
-	"errors"
 	"fmt"
-
-	"github.com/filecoin-project/go-fil-markets/pieceio"
-	basicnode "github.com/ipld/go-ipld-prime/node/basic"
-	"github.com/ipld/go-ipld-prime/traversal/selector"
-	"github.com/ipld/go-ipld-prime/traversal/selector/builder"
-	"github.com/multiformats/go-multiaddr"
 
 	"io"
 	"os"
@@ -18,7 +11,6 @@ import (
 
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-filestore"
 	chunker "github.com/ipfs/go-ipfs-chunker"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	files "github.com/ipfs/go-ipfs-files"
@@ -28,10 +20,15 @@ import (
 	"github.com/ipfs/go-unixfs/importer/balanced"
 	ihelper "github.com/ipfs/go-unixfs/importer/helpers"
 	"github.com/ipld/go-car"
+	basicnode "github.com/ipld/go-ipld-prime/node/basic"
+	"github.com/ipld/go-ipld-prime/traversal/selector"
+	"github.com/ipld/go-ipld-prime/traversal/selector/builder"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/multiformats/go-multiaddr"
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/pieceio"
 	rm "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
@@ -46,6 +43,7 @@ import (
 	"github.com/filecoin-project/lotus/markets/utils"
 	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/impl/paych"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo/importmgr"
 )
 
@@ -64,7 +62,7 @@ type API struct {
 	Retrieval    rm.RetrievalClient
 	Chain        *store.ChainStore
 
-	Imports *importmgr.Mgr
+	Imports dtypes.ClientImportMgr
 }
 
 func calcDealExpiration(minDuration uint64, md *miner.DeadlineInfo, startEpoch abi.ChainEpoch) abi.ChainEpoch {
@@ -73,6 +71,10 @@ func calcDealExpiration(minDuration uint64, md *miner.DeadlineInfo, startEpoch a
 
 	// Align on miners ProvingPeriodBoundary
 	return minExp + miner.WPoStProvingPeriod - (minExp % miner.WPoStProvingPeriod) + (md.PeriodStart % miner.WPoStProvingPeriod) - 1
+}
+
+func (a *API) imgr() *importmgr.Mgr {
+	return a.Imports
 }
 
 func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) (*cid.Cid, error) {
@@ -193,7 +195,7 @@ func (a *API) ClientGetDealInfo(ctx context.Context, d cid.Cid) (*api.DealInfo, 
 func (a *API) ClientHasLocal(ctx context.Context, root cid.Cid) (bool, error) {
 	// TODO: check if we have the ENTIRE dag
 
-	offExch := merkledag.NewDAGService(blockservice.New(a.Imports.Bs, offline.Exchange(a.Imports.Bs)))
+	offExch := merkledag.NewDAGService(blockservice.New(a.Imports.Blockstore, offline.Exchange(a.Imports.Blockstore)))
 	_, err := offExch.Get(ctx, root)
 	if err == ipld.ErrNotFound {
 		return false, nil
@@ -258,11 +260,11 @@ func (a *API) makeRetrievalQuery(ctx context.Context, rp rm.RetrievalPeer, paylo
 }
 
 func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (cid.Cid, error) {
-	id, st, err := a.Imports.NewStore()
+	id, st, err := a.imgr().NewStore()
 	if err != nil {
 		return cid.Cid{}, err
 	}
-	if err := a.Imports.AddLabel(id, "source", "import"); err != nil {
+	if err := a.imgr().AddLabel(id, "source", "import"); err != nil {
 		return cid.Cid{}, err
 	}
 
@@ -278,11 +280,11 @@ func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (cid.Cid, error
 func (a *API) ClientImportLocal(ctx context.Context, f io.Reader) (cid.Cid, error) {
 	file := files.NewReaderFile(f)
 
-	id, st, err := a.Imports.NewStore()
+	id, st, err := a.imgr().NewStore()
 	if err != nil {
 		return cid.Cid{}, err
 	}
-	if err := a.Imports.AddLabel(id, "source", "import-local"); err != nil {
+	if err := a.imgr().AddLabel(id, "source", "import-local"); err != nil {
 		return cid.Cid{}, err
 	}
 
@@ -308,49 +310,38 @@ func (a *API) ClientImportLocal(ctx context.Context, f io.Reader) (cid.Cid, erro
 }
 
 func (a *API) ClientListImports(ctx context.Context) ([]api.Import, error) {
-	if a.Filestore == nil {
-		return nil, errors.New("listing imports is not supported with in-memory dag yet")
-	}
-	next, err := filestore.ListAll(a.Filestore, false)
-	if err != nil {
-		return nil, err
-	}
+	importIDs := a.imgr().List()
 
-	// TODO: make this less very bad by tracking root cids instead of using ListAll
-
-	out := make([]api.Import, 0)
-	lowest := make([]uint64, 0)
-	for {
-		r := next()
-		if r == nil {
-			return out, nil
+	out := make([]api.Import, len(importIDs))
+	for i, id := range importIDs {
+		info, err := a.imgr().Info(id)
+		if err != nil {
+			out[i] = api.Import{
+				Key: id,
+				Err: xerrors.Errorf("getting info: %w", err),
+			}
+			continue
 		}
-		matched := false
-		for i := range out {
-			if out[i].FilePath == r.FilePath {
-				matched = true
-				if lowest[i] > r.Offset {
-					lowest[i] = r.Offset
-					out[i] = api.Import{
-						Status:   r.Status,
-						Key:      r.Key,
-						FilePath: r.FilePath,
-						Size:     r.Size,
-					}
-				}
-				break
+
+		ai := api.Import{
+			Key:      id,
+			Source:   info.Labels[importmgr.LSource],
+			FilePath: info.Labels[importmgr.LFileName],
+		}
+
+		if info.Labels[importmgr.LRootCid] != "" {
+			c, err := cid.Parse(info.Labels[importmgr.LRootCid])
+			if err != nil {
+				ai.Err = err
+			} else {
+				ai.Root = &c
 			}
 		}
-		if !matched {
-			out = append(out, api.Import{
-				Status:   r.Status,
-				Key:      r.Key,
-				FilePath: r.FilePath,
-				Size:     r.Size,
-			})
-			lowest = append(lowest, r.Offset)
-		}
+
+		out[i] = ai
 	}
+
+	return out, nil
 }
 
 func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref *api.FileRef) error {
@@ -367,11 +358,11 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 		return xerrors.Errorf("cannot make retrieval deal for zero bytes")
 	}
 
-	id, st, err := a.Imports.NewStore()
+	id, st, err := a.imgr().NewStore()
 	if err != nil {
 		return err
 	}
-	if err := a.Imports.AddLabel(id, "source", "retrieval"); err != nil {
+	if err := a.imgr().AddLabel(id, "source", "retrieval"); err != nil {
 		return err
 	}
 
@@ -505,11 +496,11 @@ func (a *API) ClientCalcCommP(ctx context.Context, inpath string, miner address.
 }
 
 func (a *API) ClientGenCar(ctx context.Context, ref api.FileRef, outputPath string) error {
-	id, st, err := a.Imports.NewStore()
+	id, st, err := a.imgr().NewStore()
 	if err != nil {
 		return err
 	}
-	if err := a.Imports.AddLabel(id, "source", "gen-car"); err != nil {
+	if err := a.imgr().AddLabel(id, "source", "gen-car"); err != nil {
 		return err
 	}
 

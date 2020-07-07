@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-filestore"
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-address"
@@ -356,10 +355,12 @@ type MinerSectors struct {
 }
 
 type Import struct {
-	Status   filestore.Status
-	Key      cid.Cid
+	Key      int64
+	Err error
+
+	Root    *cid.Cid
+	Source   string
 	FilePath string
-	Size     uint64
 }
 
 type DealInfo struct {
