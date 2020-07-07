@@ -35,7 +35,7 @@ instances = { min = 1, max = 100, default = 5 }
   [testcases.params]
   clients   = { type = "int", default = 1 }
   miners    = { type = "int", default = 1 }
-  balance   = { type = "int", default = 1 }
+  balance   = { type = "float", default = 1 }
   sectors   = { type = "int", default = 1 }
   role      = { type = "string" }
 
@@ -64,7 +64,7 @@ instances = { min = 1, max = 100, default = 5 }
   [testcases.params]
   clients = { type = "int", default = 1 }
   miners = { type = "int", default = 1 }
-  balance = { type = "int", default = 1 }
+  balance = { type = "float", default = 1 }
   sectors = { type = "int", default = 1 }
   role = { type = "string" }
   genesis_timestamp_offset = { type = "int", default = 0 }
@@ -94,7 +94,7 @@ instances = { min = 1, max = 100, default = 5 }
   [testcases.params]
   clients = { type = "int", default = 1 }
   miners = { type = "int", default = 1 }
-  balance = { type = "int", default = 1 }
+  balance = { type = "float", default = 1 }
   sectors = { type = "int", default = 1 }
   role = { type = "string" }
 
@@ -127,7 +127,7 @@ instances = { min = 1, max = 100, default = 5 }
   [testcases.params]
   clients = { type = "int", default = 1 }
   miners = { type = "int", default = 1 }
-  balance = { type = "int", default = 1 }
+  balance = { type = "float", default = 1 }
   sectors = { type = "int", default = 1 }
   role = { type = "string" }
   genesis_timestamp_offset = { type = "int", default = 0 }
