@@ -813,33 +813,33 @@ func (a *StateAPI) StateMinerAvailableBalance(ctx context.Context, maddr address
 }
 
 // StateVerifiedClientStatus returns the data cap for the given address.
-// Returns ErrNotFound if there is not entry in the data cap table for the
+// Returns nil if there is no entry in the data cap table for the
 // address.
-func (a *StateAPI) StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (verifreg.DataCap, error) {
+func (a *StateAPI) StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*verifreg.DataCap, error) {
 	act, err := a.StateGetActor(ctx, builtin.VerifiedRegistryActorAddr, tsk)
 	if err != nil {
-		return verifreg.DataCap{}, err
+		return nil, err
 	}
 
 	cst := cbor.NewCborStore(a.StateManager.ChainStore().Blockstore())
 
 	var st verifreg.State
 	if err := cst.Get(ctx, act.Head, &st); err != nil {
-		return verifreg.DataCap{}, err
+		return nil, err
 	}
 
 	vh, err := hamt.LoadNode(ctx, cst, st.VerifiedClients)
 	if err != nil {
-		return verifreg.DataCap{}, err
+		return nil, err
 	}
-
+	
 	var dcap verifreg.DataCap
 	if err := vh.Find(ctx, string(addr.Bytes()), &dcap); err != nil {
 		if err == hamt.ErrNotFound {
-			return verifreg.DataCap{}, api.NotFoundErr
+			return nil, nil
 		}
-		return verifreg.DataCap{}, err
+		return nil, err
 	}
 
-	return dcap, nil
+	return &dcap, nil
 }

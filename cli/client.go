@@ -317,13 +317,12 @@ var clientDealCmd = &cli.Command{
 		}
 
 		// Check if the address is a verified client
-		_, err = api.StateVerifiedClientStatus(ctx, a, types.EmptyTSK)
-		isVerified := true
-		if err == lapi.NotFoundErr {
-			isVerified = false
-		} else if err != nil {
+		dcap, err := api.StateVerifiedClientStatus(ctx, a, types.EmptyTSK)
+		if err != nil {
 			return err
 		}
+
+		isVerified := dcap != nil
 
 		// If the user has explicitly set the --verified-deal flag
 		if cctx.IsSet("verified-deal") {
