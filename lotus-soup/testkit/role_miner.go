@@ -229,7 +229,7 @@ func PrepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 
 	// collect stats based on Travis' scripts
 	if t.InitContext.GroupSeq == 1 {
-		go collectStats(ctx, n.FullApi)
+		go collectStats(t, ctx, n.FullApi)
 	}
 
 	// Bootstrap with full node

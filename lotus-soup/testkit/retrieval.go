@@ -19,7 +19,7 @@ import (
 	"github.com/ipld/go-car"
 )
 
-func RetrieveData(t *TestEnvironment, ctx context.Context, err error, client api.FullNode, fcid cid.Cid, carExport bool, data []byte) {
+func RetrieveData(t *TestEnvironment, ctx context.Context, client api.FullNode, fcid cid.Cid, carExport bool, data []byte) {
 	t1 := time.Now()
 	offers, err := client.ClientFindData(ctx, fcid)
 	if err != nil {
