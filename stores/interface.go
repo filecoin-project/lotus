@@ -9,11 +9,11 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
-type PathType bool
+type PathType string
 
 const (
-	PathStorage = false
-	PathSealing = true
+	PathStorage = "storage"
+	PathSealing = "sealing"
 )
 
 type AcquireMode string
@@ -44,13 +44,14 @@ func Stat(path string) (FsStat, error) {
 	}
 
 	return FsStat{
-		Capacity:  stat.Blocks * uint64(stat.Bsize),
-		Available: stat.Bavail * uint64(stat.Bsize),
+		Capacity:  int64(stat.Blocks) * stat.Bsize,
+		Available: int64(stat.Bavail) * stat.Bsize,
 	}, nil
 }
 
 type FsStat struct {
-	Capacity  uint64
-	Available uint64 // Available to use for sector storage
-	Used      uint64
+	Capacity  int64
+	Available int64 // Available to use for sector storage
+	Used      int64
+	Reserved  int64
 }

@@ -43,9 +43,11 @@ func (m *Manager) CheckProvable(ctx context.Context, spt abi.RegisteredSealProof
 				return nil
 			}
 
-			lp, _, err := m.localStore.AcquireSector(ctx, sector, spt, stores.FTSealed|stores.FTCache, stores.FTNone, false, stores.AcquireMove)
+			lp, _, err := m.localStore.AcquireSector(ctx, sector, spt, stores.FTSealed|stores.FTCache, stores.FTNone, stores.PathStorage, stores.AcquireMove)
 			if err != nil {
-				return xerrors.Errorf("acquire sector in checkProvable: %w", err)
+				log.Warnw("CheckProvable Sector FAULT: acquire sector in checkProvable", "sector", sector, "error", err)
+				bad = append(bad, sector)
+				return nil
 			}
 
 			if lp.Sealed == "" || lp.Cache == "" {

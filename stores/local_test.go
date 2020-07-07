@@ -19,6 +19,10 @@ type TestingLocalStorage struct {
 	c    StorageConfig
 }
 
+func (t *TestingLocalStorage) DiskUsage(path string) (int64, error) {
+	return 1, nil
+}
+
 func (t *TestingLocalStorage) GetStorage() (StorageConfig, error) {
 	return t.c, nil
 }
