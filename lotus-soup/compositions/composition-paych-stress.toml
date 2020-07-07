@@ -1,11 +1,11 @@
 [metadata]
   name = "lotus-soup"
-  author = ""
+  author = "raulk"
 
 [global]
   plan = "lotus-soup"
-  case = "deals-e2e"
-  total_instances = 6
+  case = "paych-stress"
+  total_instances = 5   # 2 clients + 2 miners + 1 bootstrapper
   builder = "exec:go"
   runner = "local:exec"
 
@@ -19,37 +19,31 @@
   selectors = ["testground"]
 
 [global.run.test_params]
-  clients = "3"
+  clients = "2"
   miners = "2"
   genesis_timestamp_offset = "0"
-  balance = "2000000000"    ## be careful, this is in FIL.
+  balance = "30"    ## be careful, this is in FIL.
   sectors = "10"
   random_beacon_type = "mock"
   mining_mode = "natural"
+  lane_count = "8"
+  increments = "30" ## in FIL
 
 [[groups]]
   id = "bootstrapper"
-  [groups.instances]
-    count = 1
-    percentage = 0.0
-  [groups.run]
-    [groups.run.test_params]
-      role = "bootstrapper"
+  instances = { count = 1 }
+  [groups.run.test_params]
+    role = "bootstrapper"
 
 [[groups]]
   id = "miners"
-  [groups.instances]
-    count = 2
-    percentage = 0.0
-  [groups.run]
-    [groups.run.test_params]
-      role = "miner"
+  instances = { count = 2 }
+  [groups.run.test_params]
+    role = "miner"
 
 [[groups]]
   id = "clients"
-  [groups.instances]
-    count = 3
-    percentage = 0.0
-  [groups.run]
-    [groups.run.test_params]
-      role = "client"
+  # the first client will be on the receiving end; all others will be on the sending end.
+  instances = { count = 2 }
+  [groups.run.test_params]
+    role = "client"

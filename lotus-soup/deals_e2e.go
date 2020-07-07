@@ -50,12 +50,12 @@ func dealsE2E(t *testkit.TestEnvironment) error {
 
 	// select a random miner
 	minerAddr := cl.MinerAddrs[rand.Intn(len(cl.MinerAddrs))]
-	if err := client.NetConnect(ctx, minerAddr.PeerAddr); err != nil {
+	if err := client.NetConnect(ctx, minerAddr.MinerNetAddrs); err != nil {
 		return err
 	}
-	t.D().Counter(fmt.Sprintf("send-data-to,miner=%s", minerAddr.ActorAddr)).Inc(1)
+	t.D().Counter(fmt.Sprintf("send-data-to,miner=%s", minerAddr.MinerActorAddr)).Inc(1)
 
-	t.RecordMessage("selected %s as the miner", minerAddr.ActorAddr)
+	t.RecordMessage("selected %s as the miner", minerAddr.MinerActorAddr)
 
 	time.Sleep(2 * time.Second)
 
@@ -82,7 +82,7 @@ func dealsE2E(t *testkit.TestEnvironment) error {
 
 	// start deal
 	t1 := time.Now()
-	deal := testkit.StartDeal(ctx, minerAddr.ActorAddr, client, fcid)
+	deal := testkit.StartDeal(ctx, minerAddr.MinerActorAddr, client, fcid)
 	t.RecordMessage("started deal: %s", deal)
 
 	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this

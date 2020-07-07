@@ -9,44 +9,20 @@ import (
 	"time"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	modtest "github.com/filecoin-project/lotus/node/modules/testing"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
-	saminer "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
-	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
-	logging "github.com/ipfs/go-log/v2"
-	influxdb "github.com/kpacha/opencensus-influxdb"
-	ma "github.com/multiformats/go-multiaddr"
-
 	tstats "github.com/filecoin-project/lotus/tools/stats"
 
-	"github.com/libp2p/go-libp2p-core/peer"
-	manet "github.com/multiformats/go-multiaddr-net"
+	"github.com/kpacha/opencensus-influxdb"
+	ma "github.com/multiformats/go-multiaddr"
+	"github.com/multiformats/go-multiaddr-net"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 )
-
-func init() {
-	_ = logging.SetLogLevel("*", "WARN")
-
-	_ = os.Setenv("BELLMAN_NO_GPU", "1")
-
-	build.InsecurePoStValidation = true
-	build.DisableBuiltinAssets = true
-
-	power.ConsensusMinerMinPower = big.NewInt(2048)
-	saminer.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
-		abi.RegisteredSealProof_StackedDrg2KiBV1: {},
-	}
-	verifreg.MinVerifiedDealSize = big.NewInt(256)
-}
 
 var PrepareNodeTimeout = time.Minute
 
@@ -54,6 +30,7 @@ type LotusNode struct {
 	FullApi  api.FullNode
 	MinerApi api.StorageMiner
 	StopFn   node.StopFunc
+	Wallet   *wallet.Key
 	MineOne  func(context.Context, func(bool, error)) error
 }
 
@@ -67,6 +44,8 @@ func (n *LotusNode) setWallet(ctx context.Context, walletKey *wallet.Key) error 
 	if err != nil {
 		return err
 	}
+
+	n.Wallet = walletKey
 
 	return nil
 }
@@ -138,11 +117,11 @@ func CollectMinerAddrs(t *TestEnvironment, ctx context.Context, miners int) ([]M
 	return addrs, nil
 }
 
-func CollectClientAddrs(t *TestEnvironment, ctx context.Context, clients int) ([]peer.AddrInfo, error) {
-	ch := make(chan peer.AddrInfo)
+func CollectClientAddrs(t *TestEnvironment, ctx context.Context, clients int) ([]*ClientAddressesMsg, error) {
+	ch := make(chan *ClientAddressesMsg)
 	sub := t.SyncClient.MustSubscribe(ctx, ClientsAddrsTopic, ch)
 
-	addrs := make([]peer.AddrInfo, 0, clients)
+	addrs := make([]*ClientAddressesMsg, 0, clients)
 	for i := 0; i < clients; i++ {
 		select {
 		case a := <-ch:

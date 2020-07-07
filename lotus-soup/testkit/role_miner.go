@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	"contrib.go.opencensus.io/exporter/prometheus"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-jsonrpc/auth"
@@ -200,6 +201,7 @@ func PrepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 		mineBlock := make(chan func(bool, error))
 		minerOpts = append(minerOpts,
 			node.Override(new(*miner.Miner), miner.NewTestMiner(mineBlock, minerAddr)))
+
 		n.MineOne = func(ctx context.Context, cb func(bool, error)) error {
 			select {
 			case mineBlock <- cb:
@@ -232,16 +234,16 @@ func PrepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 		go collectStats(t, ctx, n.FullApi)
 	}
 
-	// Bootstrap with full node
-	remoteAddrs, err := n.FullApi.NetAddrsListen(ctx)
+	// Start listening on the full node.
+	fullNodeNetAddrs, err := n.FullApi.NetAddrsListen(ctx)
 	if err != nil {
 		panic(err)
 	}
 
-	err = n.MinerApi.NetConnect(ctx, remoteAddrs)
-	if err != nil {
-		panic(err)
-	}
+	// err = n.MinerApi.NetConnect(ctx, fullNodeNetAddrs)
+	// if err != nil {
+	// 	panic(err)
+	// }
 
 	// add local storage for presealed sectors
 	err = n.MinerApi.StorageAddLocal(ctx, presealDir)
@@ -273,31 +275,41 @@ func PrepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 	}
 
 	t.RecordMessage("publish our address to the miners addr topic")
-	actoraddress, err := n.MinerApi.ActorAddress(ctx)
+	minerActor, err := n.MinerApi.ActorAddress(ctx)
 	if err != nil {
 		return nil, err
 	}
-	addrinfo, err := n.MinerApi.NetAddrsListen(ctx)
+
+	minerNetAddrs, err := n.MinerApi.NetAddrsListen(ctx)
 	if err != nil {
 		return nil, err
 	}
-	t.SyncClient.MustPublish(ctx, MinersAddrsTopic, MinerAddressesMsg{addrinfo, actoraddress})
+
+	t.SyncClient.MustPublish(ctx, MinersAddrsTopic, MinerAddressesMsg{
+		FullNetAddrs:   fullNodeNetAddrs,
+		MinerNetAddrs:  minerNetAddrs,
+		MinerActorAddr: minerActor,
+	})
 
 	t.RecordMessage("connecting to all other miners")
 
-	// connect to all other miners.
+	// densely connect the miner's full nodes.
 	minerCh := make(chan *MinerAddressesMsg, 16)
 	sctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	t.SyncClient.MustSubscribe(sctx, MinersAddrsTopic, minerCh)
 	for i := 0; i < t.IntParam("miners"); i++ {
-		if miner := <-minerCh; miner.ActorAddr != actoraddress {
-			err := n.FullApi.NetConnect(ctx, miner.PeerAddr)
-			if err != nil {
-				return nil, fmt.Errorf("failed to connect to miner %s on: %v", miner.ActorAddr, miner.PeerAddr)
-			}
-			t.RecordMessage("connected to miner %s on %v", miner.ActorAddr, miner.PeerAddr)
+		m := <-minerCh
+		if m.MinerActorAddr == minerActor {
+			// once I find myself, I stop connecting to others, to avoid a simopen problem.
+			break
 		}
+		err := n.FullApi.NetConnect(ctx, m.FullNetAddrs)
+		if err != nil {
+			return nil, fmt.Errorf("failed to connect to miner %s on: %v", m.MinerActorAddr, m.FullNetAddrs)
+		}
+		t.RecordMessage("connected to full node of miner %s on %v", m.MinerActorAddr, m.FullNetAddrs)
+
 	}
 
 	t.RecordMessage("waiting for all nodes to be ready")
@@ -410,6 +422,15 @@ func startStorageMinerAPIServer(t *TestEnvironment, repo *repo.MemRepo, minerApi
 	mux.Handle("/rpc/v0", rpcServer)
 	mux.PathPrefix("/remote").HandlerFunc(minerApi.(*impl.StorageMinerAPI).ServeRemote)
 	mux.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
+
+	exporter, err := prometheus.NewExporter(prometheus.Options{
+		Namespace: "lotus",
+	})
+	if err != nil {
+		return err
+	}
+
+	mux.Handle("/debug/metrics", exporter)
 
 	ah := &auth.Handler{
 		Verify: minerApi.AuthVerify,

@@ -55,6 +55,16 @@ func PrepareBootstrapper(t *TestEnvironment) (*Bootstrapper, error) {
 		return nil, err
 	}
 
+	totalBalance := big.Zero()
+	for _, b := range balances {
+		totalBalance = big.Add(big.NewInt(int64(b.Balance)), totalBalance)
+	}
+
+	t.RecordMessage("TOTAL BALANCE: %s", totalBalance)
+	if max := types.TotalFilecoinInt; totalBalance.GreaterThanEqual(max) {
+		panic(fmt.Sprintf("total sum of balances is greater than max Filecoin ever; sum=%s, max=%s", totalBalance, max))
+	}
+
 	// then collect all preseals from miners
 	preseals, err := CollectPreseals(t, ctx, miners)
 	if err != nil {
@@ -66,10 +76,12 @@ func PrepareBootstrapper(t *TestEnvironment) (*Bootstrapper, error) {
 	var genesisMiners []genesis.Miner
 
 	for _, bm := range balances {
+		balance := big.Mul(big.NewInt(int64(bm.Balance)), types.NewInt(build.FilecoinPrecision))
+		t.RecordMessage("balance assigned to actor %s: %s AttoFIL", bm.Addr, balance)
 		genesisActors = append(genesisActors,
 			genesis.Actor{
 				Type:    genesis.TAccount,
-				Balance: big.Mul(big.NewInt(int64(bm.Balance)), types.NewInt(build.FilecoinPrecision)),
+				Balance: balance,
 				Meta:    (&genesis.AccountMeta{Owner: bm.Addr}).ActorMeta(),
 			})
 	}
