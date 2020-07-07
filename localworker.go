@@ -171,8 +171,10 @@ func (l *LocalWorker) FinalizeSector(ctx context.Context, sector abi.SectorID, k
 		return xerrors.Errorf("finalizing sector: %w", err)
 	}
 
-	if err := l.storage.Remove(ctx, sector, stores.FTUnsealed, true); err != nil {
-		return xerrors.Errorf("removing unsealed data: %w", err)
+	if len(keepUnsealed) == 0 {
+		if err := l.storage.Remove(ctx, sector, stores.FTUnsealed, true); err != nil {
+			return xerrors.Errorf("removing unsealed data: %w", err)
+		}
 	}
 
 	return nil
