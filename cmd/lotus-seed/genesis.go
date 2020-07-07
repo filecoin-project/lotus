@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 
 	"github.com/google/uuid"
@@ -10,6 +11,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 
 	"github.com/filecoin-project/lotus/build"
@@ -23,6 +25,7 @@ var genesisCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		genesisNewCmd,
 		genesisAddMinerCmd,
+		genesisAddMsigsCmd,
 	},
 }
 
@@ -138,6 +141,76 @@ var genesisAddMinerCmd = &cli.Command{
 			return err
 		}
 
+		return nil
+	},
+}
+
+type GenAccountEntry struct {
+	ID          string
+	CustodianID int
+	M           int
+	N           int
+	Addresses   []address.Address
+	Type        string
+	Sig1        string
+	Sig2        string
+}
+
+var genesisAddMsigsCmd = &cli.Command{
+	Name: "add-msigs",
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() < 2 {
+			return fmt.Errorf("must specify template file and csv file with accounts")
+		}
+
+		genf, err := homedir.Expand(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		var template genesis.Template
+		b, err := ioutil.ReadFile(genf)
+		if err != nil {
+			return xerrors.Errorf("read genesis template: %w", err)
+		}
+
+		if err := json.Unmarshal(b, &template); err != nil {
+			return xerrors.Errorf("unmarshal genesis template: %w", err)
+		}
+
+		var entries []GenAccountEntry
+		// TODO: parse that csv
+
+		for i, e := range entries {
+			if len(e.Addresses) != e.N {
+				return fmt.Errorf("entry %d had mismatch between 'N' and number of addresses", i)
+			}
+
+			msig := &genesis.MultisigMeta{
+				Signers:         e.Addresses,
+				Threshold:       e.M,
+				VestingDuration: 0, // TODO
+				VestingStart:    0, // TODO
+			}
+
+			act := genesis.Actor{
+				Type:    genesis.TMultisig,
+				Balance: abi.NewTokenAmount(0), // TODO
+				Meta:    msig.ActorMeta(),
+			}
+
+			template.Accounts = append(template.Accounts, act)
+
+		}
+
+		b, err = json.MarshalIndent(&template, "", "  ")
+		if err != nil {
+			return err
+		}
+
+		if err := ioutil.WriteFile(genf, b, 0644); err != nil {
+			return err
+		}
 		return nil
 	},
 }
