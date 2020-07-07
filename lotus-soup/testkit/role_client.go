@@ -97,8 +97,8 @@ func PrepareClient(t *TestEnvironment) (*LotusClient, error) {
 		return nil, err
 	}
 	t.SyncClient.MustPublish(ctx, ClientsAddrsTopic, &ClientAddressesMsg{
-		PeerAddr:   addrinfo,
-		WalletAddr: walletKey.Address,
+		PeerNetAddr: addrinfo,
+		WalletAddr:  walletKey.Address,
 	})
 
 	t.RecordMessage("waiting for all nodes to be ready")
