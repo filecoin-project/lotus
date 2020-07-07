@@ -258,7 +258,6 @@ var verifRegListClientsCmd = &cli.Command{
 			return err
 		}
 
-		var keys []string
 		if err := vh.ForEach(ctx, func(k string, val interface{}) error {
 			addr, err := address.NewFromBytes([]byte(k))
 			if err != nil {
@@ -271,20 +270,11 @@ var verifRegListClientsCmd = &cli.Command{
 				return err
 			}
 
-			fmt.Printf("%s: %s %v\n", addr, dcap, []byte(k))
-
-			keys = append(keys, k)
+			fmt.Printf("%s: %s\n", addr, dcap)
 
 			return nil
 		}); err != nil {
 			return err
-		}
-
-		for _, k := range keys {
-			_, err := vh.FindRaw(ctx, k)
-			if err != nil {
-				fmt.Println("failed to find key: ", []byte(k), err)
-			}
 		}
 
 		return nil
@@ -329,7 +319,6 @@ var verifRegCheckClientCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Println("key: ", caddr.Bytes())
 		var dcap verifreg.DataCap
 		if err := vh.Find(ctx, string(caddr.Bytes()), &dcap); err != nil {
 			return xerrors.Errorf("failed to lookup address: %w", err)
