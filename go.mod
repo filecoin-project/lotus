@@ -10,6 +10,7 @@ require (
 	github.com/Gurpartap/async v0.0.0-20180927173644-4f7f499dd9ee
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
 	github.com/coreos/go-systemd/v22 v22.0.0
+	github.com/dgraph-io/badger/v2 v2.0.3
 	github.com/docker/go-units v0.4.0
 	github.com/drand/drand v0.9.2-0.20200616080806-a94e9c1636a4
 	github.com/drand/kyber v1.1.0
