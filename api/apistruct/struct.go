@@ -157,7 +157,7 @@ type FullNodeStruct struct {
 		StateMinerSectorCount             func(context.Context, address.Address, types.TipSetKey) (api.MinerSectors, error)                                   `perm:"read"`
 		StateListMessages                 func(ctx context.Context, match *types.Message, tsk types.TipSetKey, toht abi.ChainEpoch) ([]cid.Cid, error)        `perm:"read"`
 		StateCompute                      func(context.Context, abi.ChainEpoch, []*types.Message, types.TipSetKey) (*api.ComputeStateOutput, error)           `perm:"read"`
-		StateVerifiedClientStatus         func(context.Context, address.Address, types.TipSetKey) (*verifreg.DataCap, error)                                   `perm:"read"`
+		StateVerifiedClientStatus         func(context.Context, address.Address, types.TipSetKey) (*verifreg.DataCap, error)                                  `perm:"read"`
 
 		MsigGetAvailableBalance func(context.Context, address.Address, types.TipSetKey) (types.BigInt, error)                                                                    `perm:"read"`
 		MsigCreate              func(context.Context, uint64, []address.Address, types.BigInt, address.Address, types.BigInt) (cid.Cid, error)                                   `perm:"sign"`
