@@ -2,15 +2,14 @@ package apistruct
 
 import (
 	"context"
-	"io"
-
-	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p-core/network"
-	"github.com/libp2p/go-libp2p-core/peer"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-jsonrpc/auth"
+	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p-core/network"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"io"
+	"time"
 
 	"github.com/filecoin-project/sector-storage/sealtasks"
 	"github.com/filecoin-project/sector-storage/stores"
@@ -206,6 +205,8 @@ type StorageMinerStruct struct {
 		SectorsList          func(context.Context) ([]abi.SectorNumber, error)               `perm:"read"`
 		SectorsRefs          func(context.Context) (map[string][]api.SealedRef, error)       `perm:"read"`
 		SectorStartSealing   func(context.Context, abi.SectorNumber) error                   `perm:"write"`
+		SectorSetSealDelay   func(context.Context, time.Duration) error                      `perm:"write"`
+		SectorGetSealDelay   func(context.Context) (time.Duration, error)                    `perm:"read"`
 		SectorsUpdate        func(context.Context, abi.SectorNumber, api.SectorState) error  `perm:"admin"`
 		SectorRemove         func(context.Context, abi.SectorNumber) error                   `perm:"admin"`
 		SectorMarkForUpgrade func(ctx context.Context, id abi.SectorNumber) error            `perm:"admin"`
@@ -796,6 +797,14 @@ func (c *StorageMinerStruct) SectorsRefs(ctx context.Context) (map[string][]api.
 
 func (c *StorageMinerStruct) SectorStartSealing(ctx context.Context, number abi.SectorNumber) error {
 	return c.Internal.SectorStartSealing(ctx, number)
+}
+
+func (c *StorageMinerStruct) SectorSetSealDelay(ctx context.Context, delay time.Duration) error {
+	return c.Internal.SectorSetSealDelay(ctx, delay)
+}
+
+func (c *StorageMinerStruct) SectorGetSealDelay(ctx context.Context) (time.Duration, error) {
+	return c.Internal.SectorGetSealDelay(ctx)
 }
 
 func (c *StorageMinerStruct) SectorsUpdate(ctx context.Context, id abi.SectorNumber, state api.SectorState) error {

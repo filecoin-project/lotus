@@ -29,8 +29,9 @@ type FullNode struct {
 type StorageMiner struct {
 	Common
 
-	Dealmaking DealmakingConfig
-	Storage    sectorstorage.SealerConfig
+	Dealmaking   DealmakingConfig
+	Storage      sectorstorage.SealerConfig
+	SealingDelay Duration
 }
 
 type DealmakingConfig struct {
@@ -132,6 +133,8 @@ func DefaultStorageMiner() *StorageMiner {
 			ConsiderOfflineRetrievalDeals: true,
 			PieceCidBlocklist:             []cid.Cid{},
 		},
+
+		SealingDelay: Duration(time.Hour),
 	}
 	cfg.Common.API.ListenAddress = "/ip4/127.0.0.1/tcp/2345/http"
 	cfg.Common.API.RemoteListenAddress = "127.0.0.1:2345"

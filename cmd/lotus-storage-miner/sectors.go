@@ -30,6 +30,7 @@ var sectorsCmd = &cli.Command{
 		sectorsRemoveCmd,
 		sectorsMarkForUpgradeCmd,
 		sectorsStartSealCmd,
+		sectorsSealDelayCmd,
 	},
 }
 
@@ -290,6 +291,32 @@ var sectorsStartSealCmd = &cli.Command{
 		}
 
 		return nodeApi.SectorStartSealing(ctx, abi.SectorNumber(id))
+	},
+}
+
+var sectorsSealDelayCmd = &cli.Command{
+	Name:      "set-seal-delay",
+	Usage:     "Set the time, in minutes, that a new sector waits for deals before sealing starts",
+	ArgsUsage: "<minutes>",
+	Action: func(cctx *cli.Context) error {
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+		if cctx.Args().Len() != 1 {
+			return xerrors.Errorf("must pass duration in minutes")
+		}
+
+		hs, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
+		if err != nil {
+			return xerrors.Errorf("could not parse sector number: %w", err)
+		}
+
+		delay := hs * uint64(time.Minute)
+
+		return nodeApi.SectorSetSealDelay(ctx, time.Duration(delay))
 	},
 }
 

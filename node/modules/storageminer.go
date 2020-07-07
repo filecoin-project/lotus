@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
-
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
 	"github.com/ipfs/go-blockservice"
@@ -22,6 +20,8 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/multierr"
 	"golang.org/x/xerrors"
+	"net/http"
+	"time"
 
 	"github.com/filecoin-project/go-address"
 	dtgraphsync "github.com/filecoin-project/go-data-transfer/impl/graphsync"
@@ -134,7 +134,7 @@ func SectorIDCounter(ds dtypes.MetadataDS) sealing.SectorIDCounter {
 	return &sidsc{sc}
 }
 
-func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api lapi.FullNode, h host.Host, ds dtypes.MetadataDS, sealer sectorstorage.SectorManager, sc sealing.SectorIDCounter, verif ffiwrapper.Verifier) (*storage.Miner, error) {
+func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api lapi.FullNode, h host.Host, ds dtypes.MetadataDS, sealer sectorstorage.SectorManager, sc sealing.SectorIDCounter, verif ffiwrapper.Verifier, gsd dtypes.GetSealingDelayFunc) (*storage.Miner, error) {
 	maddr, err := minerAddrFromDS(ds)
 	if err != nil {
 		return nil, err
@@ -157,7 +157,7 @@ func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api lapi.FullNode, h
 		return nil, err
 	}
 
-	sm, err := storage.NewMiner(api, maddr, worker, h, ds, sealer, sc, verif)
+	sm, err := storage.NewMiner(api, maddr, worker, h, ds, sealer, sc, verif, gsd)
 	if err != nil {
 		return nil, err
 	}
@@ -520,6 +520,24 @@ func NewSetConsiderOfflineRetrievalDealsConfigFunc(r repo.LockedRepo) (dtypes.Se
 	return func(b bool) (err error) {
 		err = mutateCfg(r, func(cfg *config.StorageMiner) {
 			cfg.Dealmaking.ConsiderOfflineRetrievalDeals = b
+		})
+		return
+	}, nil
+}
+
+func NewSetSealDelayFunc(r repo.LockedRepo) (dtypes.SetSealingDelayFunc, error) {
+	return func(delay time.Duration) (err error) {
+		err = mutateCfg(r, func(cfg *config.StorageMiner) {
+			cfg.SealingDelay = config.Duration(delay)
+		})
+		return
+	}, nil
+}
+
+func NewGetSealDelayFunc(r repo.LockedRepo) (dtypes.GetSealingDelayFunc, error) {
+	return func() (out time.Duration, err error) {
+		err = readCfg(r, func(cfg *config.StorageMiner) {
+			out = time.Duration(cfg.SealingDelay)
 		})
 		return
 	}, nil
