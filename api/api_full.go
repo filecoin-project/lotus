@@ -535,5 +535,3 @@ type Fault struct {
 	Miner address.Address
 	Epoch abi.ChainEpoch
 }
-
-var NotFoundErr = xerrors.Errorf("Not found")
