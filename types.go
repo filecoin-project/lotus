@@ -30,6 +30,7 @@ type Piece struct {
 type DealInfo struct {
 	DealID       abi.DealID
 	DealSchedule DealSchedule
+	KeepUnsealed bool
 }
 
 // DealSchedule communicates the time interval of a storage deal. The deal must
@@ -139,6 +140,32 @@ func (t *SectorInfo) sealingCtx(ctx context.Context) context.Context {
 	}
 
 	return ctx
+}
+
+// Returns list of offset/length tuples of sector data ranges which clients
+// requested to keep unsealed
+func (t *SectorInfo) keepUnsealedRanges(invert bool) []storage.Range {
+	var out []storage.Range
+
+	var at abi.UnpaddedPieceSize
+	for _, piece := range t.Pieces {
+		psize := piece.Piece.Size.Unpadded()
+		at += psize
+
+		if piece.DealInfo == nil {
+			continue
+		}
+		if piece.DealInfo.KeepUnsealed == invert {
+			continue
+		}
+
+		out = append(out, storage.Range{
+			Offset: at - psize,
+			Size:   psize,
+		})
+	}
+
+	return out
 }
 
 type SectorIDCounter interface {

@@ -132,7 +132,7 @@ func (t *DealInfo) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{162}); err != nil {
+	if _, err := w.Write([]byte{163}); err != nil {
 		return err
 	}
 
@@ -165,6 +165,22 @@ func (t *DealInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	if err := t.DealSchedule.MarshalCBOR(w); err != nil {
+		return err
+	}
+
+	// t.KeepUnsealed (bool) (bool)
+	if len("KeepUnsealed") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"KeepUnsealed\" was too long")
+	}
+
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("KeepUnsealed")))); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("KeepUnsealed")); err != nil {
+		return err
+	}
+
+	if err := cbg.WriteBool(w, t.KeepUnsealed); err != nil {
 		return err
 	}
 	return nil
@@ -224,6 +240,24 @@ func (t *DealInfo) UnmarshalCBOR(r io.Reader) error {
 					return xerrors.Errorf("unmarshaling t.DealSchedule: %w", err)
 				}
 
+			}
+			// t.KeepUnsealed (bool) (bool)
+		case "KeepUnsealed":
+
+			maj, extra, err = cbg.CborReadHeader(br)
+			if err != nil {
+				return err
+			}
+			if maj != cbg.MajOther {
+				return fmt.Errorf("booleans must be major type 7")
+			}
+			switch extra {
+			case 20:
+				t.KeepUnsealed = false
+			case 21:
+				t.KeepUnsealed = true
+			default:
+				return fmt.Errorf("booleans are either major type 7, value 20 or 21 (got %d)", extra)
 			}
 
 		default:
