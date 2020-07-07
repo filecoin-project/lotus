@@ -99,5 +99,14 @@ func (m *Mgr) Info(id int64) (*StoreMeta, error) {
 	return &sm, nil
 }
 
-// m.Info
-// m.Delete
+func (m *Mgr) Remove(id int64) error {
+	if err := m.mds.Delete(id); err != nil {
+		return xerrors.Errorf("removing import: %w", err)
+	}
+
+	if err := m.ds.Delete(datastore.NewKey(fmt.Sprintf("%d", id))); err != nil {
+		return xerrors.Errorf("removing import metadata: %w", err)
+	}
+
+	return nil
+}

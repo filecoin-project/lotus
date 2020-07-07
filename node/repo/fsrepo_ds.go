@@ -226,6 +226,8 @@ func (fsr *fsLockedRepo) DeleteDatastore(ns string) error {
 		return xerrors.Errorf("no multi-datastore with at index (namespace %s)", ns)
 	}
 
+	delete(mds, idx)
+
 	if err := ds.Close(); err != nil {
 		return xerrors.Errorf("closing datastore: %w", err)
 	}

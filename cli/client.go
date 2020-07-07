@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"text/tabwriter"
 
@@ -55,6 +56,7 @@ var clientCmd = &cli.Command{
 	Usage: "Make deals, store data, retrieve data",
 	Subcommands: []*cli.Command{
 		clientImportCmd,
+		clientDropCmd,
 		clientCommPCmd,
 		clientLocalCmd,
 		clientDealCmd,
@@ -74,6 +76,11 @@ var clientImportCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name:  "car",
 			Usage: "import from a car file instead of a regular file",
+		},
+		&cli.BoolFlag{
+			Name:    "quiet",
+			Aliases: []string{"q"},
+			Usage:   "Output root CID only",
 		},
 		&CidBaseFlag,
 	},
@@ -103,7 +110,46 @@ var clientImportCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Println(encoder.Encode(c))
+		if !cctx.Bool("quiet") {
+			fmt.Printf("Import %d, Root ", c.ImportID)
+		}
+		fmt.Println(encoder.Encode(c.Root))
+
+		return nil
+	},
+}
+
+var clientDropCmd = &cli.Command{
+	Name:      "drop",
+	Usage:     "Remove import",
+	ArgsUsage: "[import ID...]",
+	Action: func(cctx *cli.Context) error {
+		if !cctx.Args().Present() {
+			return xerrors.Errorf("no imports specified")
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		var ids []int64
+		for i, s := range cctx.Args().Slice() {
+			id, err := strconv.ParseInt(s, 10, 64)
+			if err != nil {
+				return xerrors.Errorf("parsing %d-th import ID: %w", i, err)
+			}
+
+			ids = append(ids, id)
+		}
+
+		for _, id := range ids {
+			if err := api.ClientRemoveImport(ctx, id); err != nil {
+				return xerrors.Errorf("removing import %d: %w", id, err)
+			}
+		}
 
 		return nil
 	},
@@ -202,6 +248,10 @@ var clientLocalCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
+
+		sort.Slice(list, func(i, j int) bool {
+			return list[i].Key < list[j].Key
+		})
 
 		for _, v := range list {
 			cidStr := "<nil>"

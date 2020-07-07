@@ -262,29 +262,36 @@ func (a *API) makeRetrievalQuery(ctx context.Context, rp rm.RetrievalPeer, paylo
 	}
 }
 
-func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (cid.Cid, error) {
+func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (*api.ImportRes, error) {
 	id, st, err := a.imgr().NewStore()
 	if err != nil {
-		return cid.Undef, err
+		return nil, err
 	}
 	if err := a.imgr().AddLabel(id, importmgr.LSource, "import"); err != nil {
-		return cid.Undef, err
+		return nil, err
 	}
 
 	if err := a.imgr().AddLabel(id, importmgr.LFileName, ref.Path); err != nil {
-		return cid.Undef, err
+		return nil, err
 	}
 
 	nd, err := a.clientImport(ctx, ref, st)
 	if err != nil {
-		return cid.Undef, err
+		return nil, err
 	}
 
 	if err := a.imgr().AddLabel(id, importmgr.LRootCid, nd.String()); err != nil {
-		return cid.Undef, err
+		return nil, err
 	}
 
-	return nd, nil
+	return &api.ImportRes{
+		Root:     nd,
+		ImportID: id,
+	}, nil
+}
+
+func (a *API) ClientRemoveImport(ctx context.Context, importID int64) error {
+	return a.imgr().Remove(importID)
 }
 
 func (a *API) ClientImportLocal(ctx context.Context, f io.Reader) (cid.Cid, error) {
