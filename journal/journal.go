@@ -27,6 +27,7 @@ func InitializeSystemJournal(dir string) error {
 func Add(sys string, val interface{}) {
 	if currentJournal == nil {
 		log.Warn("no journal configured")
+		return
 	}
 	currentJournal.AddEntry(sys, val)
 }
