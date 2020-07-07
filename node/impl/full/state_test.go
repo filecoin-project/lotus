@@ -79,11 +79,22 @@ func TestStateVerifiedClientStatus(t *testing.T) {
 		return nil
 	})
 
-	_, err = stree.Flush(ctx)
+	// Flush the state
+	root, err := stree.Flush(ctx)
+	require.NoError(t, err)
+
+	// Replace the head block's ParentStateRoot with the new state and add it
+	// to the chain
+	ts := sapi.Chain.GetHeaviestTipSet()
+	blks := ts.Blocks()
+	blks[0].ParentStateRoot = root
+	ts, err = types.NewTipSet(blks)
+	require.NoError(t, err)
+	err = sapi.Chain.AddBlock(ctx, blks[0])
 	require.NoError(t, err)
 
 	// Request for address should give back the expected data cap
-	dcap, err = sapi.StateVerifiedClientStatus(ctx, addr, types.EmptyTSK)
+	dcap, err = sapi.StateVerifiedClientStatus(ctx, addr, ts.Key())
 	require.NoError(t, err)
 	require.NotNil(t, dcap)
 	require.Equal(t, (*dcap).Int64(), 10)
