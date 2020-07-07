@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"sync"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -59,6 +60,8 @@ type Sealing struct {
 
 	upgradeLk sync.Mutex
 	toUpgrade map[abi.SectorNumber]struct{}
+
+	getSealDelay GetSealingDelayFunc
 }
 
 type UnsealedSectorInfo struct {
@@ -67,7 +70,7 @@ type UnsealedSectorInfo struct {
 	pieceSizes []abi.UnpaddedPieceSize
 }
 
-func New(api SealingAPI, events Events, maddr address.Address, ds datastore.Batching, sealer sectorstorage.SectorManager, sc SectorIDCounter, verif ffiwrapper.Verifier, pcp PreCommitPolicy) *Sealing {
+func New(api SealingAPI, events Events, maddr address.Address, ds datastore.Batching, sealer sectorstorage.SectorManager, sc SectorIDCounter, verif ffiwrapper.Verifier, pcp PreCommitPolicy, gsd GetSealingDelayFunc) *Sealing {
 	s := &Sealing{
 		api:    api,
 		events: events,
@@ -79,7 +82,8 @@ func New(api SealingAPI, events Events, maddr address.Address, ds datastore.Batc
 		unsealedInfos: make(map[abi.SectorNumber]UnsealedSectorInfo),
 		pcp:           pcp,
 
-		toUpgrade: map[abi.SectorNumber]struct{}{},
+		toUpgrade:    map[abi.SectorNumber]struct{}{},
+		getSealDelay: gsd,
 	}
 
 	s.sectors = statemachine.New(namespace.Wrap(ds, datastore.NewKey(SectorStorePrefix)), s, SectorInfo{})
@@ -203,6 +207,19 @@ func (m *Sealing) newSector() (abi.SectorNumber, error) {
 
 	if err != nil {
 		return 0, xerrors.Errorf("starting the sector fsm: %w", err)
+	}
+
+	sd, err := m.getSealDelay()
+	if err != nil {
+		return 0, xerrors.Errorf("getting the sealing delay: %w", err)
+	}
+
+	if sd > 0 {
+		timer := time.NewTimer(sd)
+		go func() {
+			<-timer.C
+			m.StartPacking(sid)
+		}()
 	}
 
 	m.unsealedInfos[sid] = UnsealedSectorInfo{

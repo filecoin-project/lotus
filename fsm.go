@@ -369,6 +369,11 @@ func planOne(ts ...func() (mut mutator, next SectorState)) func(events []statema
 			return nil
 		}
 
+		_, ok := events[0].User.(Ignorable)
+		if ok {
+			return nil
+		}
+
 		return xerrors.Errorf("planner for state %s received unexpected event %T (%+v)", state.State, events[0].User, events[0])
 	}
 }

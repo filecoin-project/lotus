@@ -3,6 +3,7 @@ package sealing
 import (
 	"bytes"
 	"context"
+	"time"
 
 	"github.com/ipfs/go-cid"
 
@@ -185,6 +186,8 @@ type MessageReceipt struct {
 	Return   []byte
 	GasUsed  int64
 }
+
+type GetSealingDelayFunc func() (time.Duration, error)
 
 func (mr *MessageReceipt) Equals(o *MessageReceipt) bool {
 	return mr.ExitCode == o.ExitCode && bytes.Equal(mr.Return, o.Return) && mr.GasUsed == o.GasUsed
