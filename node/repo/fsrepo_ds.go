@@ -83,7 +83,7 @@ func (fsr *fsLockedRepo) openMultiDatastores() (map[string]map[int64]datastore.B
 		out[p] = map[int64]datastore.Batching{}
 
 		for _, info := range di {
-			path = filepath.Join(path, info.Name())
+			path := filepath.Join(path, info.Name())
 
 			prefix := datastore.NewKey(p)
 
