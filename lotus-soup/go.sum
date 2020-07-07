@@ -27,6 +27,7 @@ cloud.google.com/go/storage v1.5.0/go.mod h1:tpKbwo567HUNpVclU5sGELwQWBDZ8gh0Zeo
 cloud.google.com/go/storage v1.6.0/go.mod h1:N7U0C8pVQ/+NIKOBQyamJIeKQKkZ+mxpohlUTyfDhBk=
 collectd.org v0.3.0/go.mod h1:A/8DzQBkF6abtvrT2j/AU/4tiBgJWYyh0y/oB/4MlWE=
 contrib.go.opencensus.io/exporter/jaeger v0.1.0/go.mod h1:VYianECmuFPwU37O699Vc1GOcy+y8kOsfaxHRImmjbA=
+contrib.go.opencensus.io/exporter/prometheus v0.1.0 h1:SByaIoWwNgMdPSgl5sMqM2KDE5H/ukPWBRo314xiDvg=
 contrib.go.opencensus.io/exporter/prometheus v0.1.0/go.mod h1:cGFniUXGZlKRjzOyuZJ6mgB+PgBcCIa79kEKR8YCW+A=
 dmitri.shuralyov.com/app/changes v0.0.0-20180602232624-0a106ad413e3/go.mod h1:Yl+fi1br7+Rr3LqpNJf1/uxUdtRUV+Tnj0o93V2B9MU=
 dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7gZCb22OMCxBHrMx7a5I7Hp++hsVxbQ4BYO7hU=
@@ -245,10 +246,6 @@ github.com/filecoin-project/go-statestore v0.1.0 h1:t56reH59843TwXHkMcwyuayStBIi
 github.com/filecoin-project/go-statestore v0.1.0/go.mod h1:LFc9hD+fRxPqiHiaqUEZOinUJB4WARkRfNl10O7kTnI=
 github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b h1:fkRZSPrYpk42PV3/lIXiL0LHetxde7vyYYvSsttQtfg=
 github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b/go.mod h1:Q0GQOBtKf1oE10eSXSlhN45kDBdGvEcVOqMiffqX+N8=
-github.com/filecoin-project/lotus v0.4.2-0.20200706092412-516e31d37cd7 h1:eE3a712/0rcnml1lqwtGHYz9JrX4vLqBk9yBdYtH9Jo=
-github.com/filecoin-project/lotus v0.4.2-0.20200706092412-516e31d37cd7/go.mod h1:uo3yDPhPlpHwdCKr0k41/a205WwlSclQamx+sQDKRMI=
-github.com/filecoin-project/lotus v0.4.2-0.20200706153752-f8b65d391143 h1:03PUHBPtjNmxdPbOL258pXLVE4Dz3xjsY86THGV1UQQ=
-github.com/filecoin-project/lotus v0.4.2-0.20200706153752-f8b65d391143/go.mod h1:uo3yDPhPlpHwdCKr0k41/a205WwlSclQamx+sQDKRMI=
 github.com/filecoin-project/lotus v0.4.2-0.20200706172415-cf6ac44b6ec5 h1:wsEkRwhcWvaZowowC2Kj9ueJ2vIRDqOxOcFvqqgHdxE=
 github.com/filecoin-project/lotus v0.4.2-0.20200706172415-cf6ac44b6ec5/go.mod h1:uo3yDPhPlpHwdCKr0k41/a205WwlSclQamx+sQDKRMI=
 github.com/filecoin-project/sector-storage v0.0.0-20200615154852-728a47ab99d6/go.mod h1:M59QnAeA/oV+Z8oHFLoNpGMv0LZ8Rll+vHVXX7GirPM=

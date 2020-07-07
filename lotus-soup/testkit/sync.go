@@ -12,7 +12,7 @@ var (
 	GenesisTopic      = sync.NewTopic("genesis", &GenesisMsg{})
 	BalanceTopic      = sync.NewTopic("balance", &InitialBalanceMsg{})
 	PresealTopic      = sync.NewTopic("preseal", &PresealMsg{})
-	ClientsAddrsTopic = sync.NewTopic("clients_addrs", &peer.AddrInfo{})
+	ClientsAddrsTopic = sync.NewTopic("clients_addrs", &ClientAddressesMsg{})
 	MinersAddrsTopic  = sync.NewTopic("miners_addrs", &MinerAddressesMsg{})
 	PubsubTracerTopic = sync.NewTopic("pubsub_tracer", &PubsubTracerMsg{})
 	DrandConfigTopic  = sync.NewTopic("drand_config", &DrandRuntimeInfo{})
@@ -40,9 +40,15 @@ type GenesisMsg struct {
 	Bootstrapper []byte
 }
 
+type ClientAddressesMsg struct {
+	PeerAddr   peer.AddrInfo
+	WalletAddr address.Address
+}
+
 type MinerAddressesMsg struct {
-	PeerAddr  peer.AddrInfo
-	ActorAddr address.Address
+	FullNetAddrs   peer.AddrInfo
+	MinerNetAddrs  peer.AddrInfo
+	MinerActorAddr address.Address
 }
 
 type PubsubTracerMsg struct {
