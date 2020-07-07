@@ -66,6 +66,8 @@ type API struct {
 	Chain        *store.ChainStore
 
 	Imports dtypes.ClientImportMgr
+
+	RetBstore dtypes.ClientBlockstore // TODO: try to remove
 }
 
 func calcDealExpiration(minDuration uint64, md *miner.DeadlineInfo, startEpoch abi.ChainEpoch) abi.ChainEpoch {
@@ -384,13 +386,13 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 		return xerrors.Errorf("cannot make retrieval deal for zero bytes")
 	}
 
-	id, st, err := a.imgr().NewStore()
+	/*id, st, err := a.imgr().NewStore()
 	if err != nil {
 		return err
 	}
 	if err := a.imgr().AddLabel(id, "source", "retrieval"); err != nil {
 		return err
-	}
+	}*/
 
 	retrievalResult := make(chan error, 1)
 
@@ -429,7 +431,7 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 
 	ppb := types.BigDiv(order.Total, types.NewInt(order.Size))
 
-	_, err = a.Retrieval.Retrieve(
+	_, err := a.Retrieval.Retrieve(
 		ctx,
 		order.Root,
 		rm.NewParamsV0(ppb, order.PaymentInterval, order.PaymentIntervalIncrease),
@@ -456,23 +458,25 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 		return nil
 	}
 
+	rdag := merkledag.NewDAGService(blockservice.New(a.RetBstore, offline.Exchange(a.RetBstore)))
+
 	if ref.IsCAR {
 		f, err := os.OpenFile(ref.Path, os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			return err
 		}
-		err = car.WriteCar(ctx, st.DAG, []cid.Cid{order.Root}, f)
+		err = car.WriteCar(ctx, rdag, []cid.Cid{order.Root}, f)
 		if err != nil {
 			return err
 		}
 		return f.Close()
 	}
 
-	nd, err := st.DAG.Get(ctx, order.Root)
+	nd, err := rdag.Get(ctx, order.Root)
 	if err != nil {
 		return xerrors.Errorf("ClientRetrieve: %w", err)
 	}
-	file, err := unixfile.NewUnixfsFile(ctx, st.DAG, nd)
+	file, err := unixfile.NewUnixfsFile(ctx, rdag, nd)
 	if err != nil {
 		return xerrors.Errorf("ClientRetrieve: %w", err)
 	}
