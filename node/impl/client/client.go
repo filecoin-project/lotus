@@ -264,15 +264,22 @@ func (a *API) makeRetrievalQuery(ctx context.Context, rp rm.RetrievalPeer, paylo
 func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (cid.Cid, error) {
 	id, st, err := a.imgr().NewStore()
 	if err != nil {
-		return cid.Cid{}, err
+		return cid.Undef, err
 	}
-	if err := a.imgr().AddLabel(id, "source", "import"); err != nil {
-		return cid.Cid{}, err
+	if err := a.imgr().AddLabel(id, importmgr.LSource, "import"); err != nil {
+		return cid.Undef, err
+	}
+
+	if err := a.imgr().AddLabel(id, importmgr.LFileName, ref.Path); err != nil {
+		return cid.Undef, err
 	}
 
 	nd, err := a.clientImport(ctx, ref, st)
-
 	if err != nil {
+		return cid.Undef, err
+	}
+
+	if err := a.imgr().AddLabel(id, importmgr.LRootCid, nd.String()); err != nil {
 		return cid.Undef, err
 	}
 

@@ -33,7 +33,7 @@ func New(mds *MultiStore, ds datastore.Batching) *Mgr {
 			mds: mds,
 		},
 
-		ds: namespace.Wrap(ds, datastore.NewKey("/stores")),
+		ds: datastore.NewLogDatastore(namespace.Wrap(ds, datastore.NewKey("/stores")), "storess"),
 	}
 }
 
@@ -72,7 +72,7 @@ func (m *Mgr) AddLabel(id int64, key, value string) error { // source, file path
 
 	sm.Labels[key] = value
 
-	meta, err = json.Marshal(&StoreMeta{})
+	meta, err = json.Marshal(&sm)
 	if err != nil {
 		return xerrors.Errorf("marshaling store meta: %w", err)
 	}
