@@ -1,22 +1,10 @@
 package main
 
 import (
-	"os"
-
 	"github.com/filecoin-project/oni/lotus-soup/paych"
 	"github.com/filecoin-project/oni/lotus-soup/testkit"
 
-	"github.com/filecoin-project/lotus/build"
-
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
-	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
-
 	"github.com/testground/sdk-go/run"
-
-	logging "github.com/ipfs/go-log/v2"
 )
 
 var cases = map[string]interface{}{
