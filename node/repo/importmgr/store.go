@@ -37,15 +37,15 @@ func openStore(ds datastore.Batching) (*Store, error) {
 	dag := merkledag.NewDAGService(bsvc)
 
 	return &Store{
-		ds:     ds,
+		ds: ds,
 
 		fm:     fm,
 		Fstore: fstore,
 
 		Bstore: ibs,
 
-		bsvc:   bsvc,
-		DAG:    dag,
+		bsvc: bsvc,
+		DAG:  dag,
 	}, nil
 }
 

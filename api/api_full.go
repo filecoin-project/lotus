@@ -355,10 +355,10 @@ type MinerSectors struct {
 }
 
 type Import struct {
-	Key      int64
+	Key int64
 	Err string
 
-	Root    *cid.Cid
+	Root     *cid.Cid
 	Source   string
 	FilePath string
 }

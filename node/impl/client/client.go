@@ -49,6 +49,7 @@ import (
 )
 
 var DefaultHashFunction = uint64(mh.BLAKE2B_MIN + 31)
+
 const dealStartBuffer abi.ChainEpoch = 10000 // TODO: allow setting
 
 type API struct {
@@ -306,13 +307,13 @@ func (a *API) ClientImportLocal(ctx context.Context, f io.Reader) (cid.Cid, erro
 	prefix.MhType = DefaultHashFunction
 
 	params := ihelper.DagBuilderParams{
-		Maxlinks:   build.UnixfsLinksPerLevel,
-		RawLeaves:  true,
+		Maxlinks:  build.UnixfsLinksPerLevel,
+		RawLeaves: true,
 		CidBuilder: cidutil.InlineBuilder{
 			Builder: prefix,
 			Limit:   126,
 		},
-		Dagserv:    bufferedDS,
+		Dagserv: bufferedDS,
 	}
 
 	db, err := params.New(chunker.NewSizeSplitter(file, int64(build.UnixfsChunkSize)))
@@ -594,13 +595,13 @@ func (a *API) clientImport(ctx context.Context, ref api.FileRef, store *importmg
 	prefix.MhType = DefaultHashFunction
 
 	params := ihelper.DagBuilderParams{
-		Maxlinks:   build.UnixfsLinksPerLevel,
-		RawLeaves:  true,
+		Maxlinks:  build.UnixfsLinksPerLevel,
+		RawLeaves: true,
 		CidBuilder: cidutil.InlineBuilder{
 			Builder: prefix,
 			Limit:   126,
 		},
-		Dagserv:    bufDs,
+		Dagserv: bufDs,
 	}
 
 	db, err := params.New(chunker.NewSizeSplitter(file, int64(build.UnixfsChunkSize)))

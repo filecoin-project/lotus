@@ -12,24 +12,25 @@ import (
 )
 
 type Mgr struct {
-	mds        *MultiStore
-	ds         datastore.Batching
+	mds *MultiStore
+	ds  datastore.Batching
 
 	Blockstore blockstore.Blockstore
 }
 
 type Label string
+
 const (
-	LSource = "source" // Function which created the import
-	LRootCid = "root" // Root CID
+	LSource   = "source"   // Function which created the import
+	LRootCid  = "root"     // Root CID
 	LFileName = "filename" // Local file path
-	LMTime = "mtime" // File modification timestamp
+	LMTime    = "mtime"    // File modification timestamp
 )
 
 func New(mds *MultiStore, ds datastore.Batching) *Mgr {
 	return &Mgr{
 		mds: mds,
-		Blockstore:  &multiReadBs{
+		Blockstore: &multiReadBs{
 			mds: mds,
 		},
 

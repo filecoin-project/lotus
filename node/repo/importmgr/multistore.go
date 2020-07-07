@@ -19,7 +19,7 @@ type dsProvider interface {
 }
 
 type MultiStore struct {
-	provider dsProvider
+	provider  dsProvider
 	namespace string
 
 	open map[int64]*Store
