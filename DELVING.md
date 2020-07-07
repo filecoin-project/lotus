@@ -112,7 +112,10 @@ lotus-storage-miner storage-deals get-ask
 * **Making sure miners are on the same chain:** compare outputs of `lotus chain list`.
 * **Checking deals:** `lotus client list-deals`.
 * **Sector queries:** `lotus-storage-miner info` , `lotus-storage-miner proving info`
-
+* **Sector sealing errors:**
+    * `STORAGE_API_INFO=":/ip4/127.0.0.1/tcp/53624/http" FULLNODE_API_INFO=":/ip4/127.0.0.1/tcp/53623/http" lotus-storage-miner sector info`
+    * `STORAGE_API_INFO=":/ip4/127.0.0.1/tcp/53624/http" FULLNODE_API_INFO=":/ip4/127.0.0.1/tcp/53623/http" lotus-storage-miner sector status <sector_no>`
+    * `STORAGE_API_INFO=":/ip4/127.0.0.1/tcp/53624/http" FULLNODE_API_INFO=":/ip4/127.0.0.1/tcp/53623/http" lotus-storage-miner sector status --log <sector_no>`
 
 ## Viewing logs of a particular container (local:docker)
 
