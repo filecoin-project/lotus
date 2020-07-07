@@ -61,8 +61,9 @@ func PrepareBootstrapper(t *TestEnvironment) (*Bootstrapper, error) {
 		totalBalance = big.Add(attoFil(b.Balance), totalBalance)
 	}
 
-	t.RecordMessage("TOTAL BALANCE: %s AttoFIL (%f FIL)", totalBalance, fractionalFil(totalBalance))
-	if max := types.TotalFilecoinInt; totalBalance.GreaterThanEqual(max) {
+	totalBalanceFil := attoFilToFil(totalBalance)
+	t.RecordMessage("TOTAL BALANCE: %s AttoFIL (%s FIL)", totalBalance, totalBalanceFil)
+	if max := types.TotalFilecoinInt; totalBalanceFil.GreaterThanEqual(max) {
 		panic(fmt.Sprintf("total sum of balances is greater than max Filecoin ever; sum=%s, max=%s", totalBalance, max))
 	}
 
@@ -188,12 +189,9 @@ func attoFil(f float64) big.Int {
 	return big.Int{Int: i}
 }
 
-// fractionalFil converts from AttoFIL to a fractional Fil value
-// possibly losing some precision due to floating point gremlins
-func fractionalFil(atto big.Int) float64 {
-	f := mbig.NewFloat(0)
-	f.SetInt(atto.Int)
-	f.Quo(f, mbig.NewFloat(float64(build.FilecoinPrecision)))
-	val, _ := f.Float64()
-	return val
+func attoFilToFil(atto big.Int) big.Int {
+	i := big.NewInt(0)
+	i.Add(i.Int, atto.Int)
+	i.Div(i.Int, big.NewIntUnsigned(build.FilecoinPrecision).Int)
+	return i
 }
