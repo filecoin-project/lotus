@@ -832,7 +832,7 @@ func (a *StateAPI) StateVerifiedClientStatus(ctx context.Context, addr address.A
 	if err != nil {
 		return nil, err
 	}
-	
+
 	var dcap verifreg.DataCap
 	if err := vh.Find(ctx, string(addr.Bytes()), &dcap); err != nil {
 		if err == hamt.ErrNotFound {
