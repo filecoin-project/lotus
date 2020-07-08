@@ -50,6 +50,9 @@
 - description: "Topic: Presealing"
   name: topic/presealing
   color: c619b5
+- description: "Topic: Deals"
+  name: topic/deals
+  color: c619b5
 
 ###
 ### Kinds
