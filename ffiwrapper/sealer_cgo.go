@@ -521,8 +521,7 @@ func (sb *Sealer) FinalizeSector(ctx context.Context, sector abi.SectorID, keepU
 			}
 		}
 
-
-		paths, done, err := sb.sectors.AcquireSector(ctx, sector, stores.FTUnsealed, 0, false)
+		paths, done, err := sb.sectors.AcquireSector(ctx, sector, stores.FTUnsealed, 0, stores.PathStorage)
 		if err != nil {
 			return xerrors.Errorf("acquiring sector cache path: %w", err)
 		}

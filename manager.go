@@ -3,6 +3,7 @@ package sectorstorage
 import (
 	"context"
 	"errors"
+	"github.com/filecoin-project/sector-storage/fsutil"
 	"io"
 	"net/http"
 
@@ -491,7 +492,7 @@ func (m *Manager) StorageLocal(ctx context.Context) (map[stores.ID]string, error
 	return out, nil
 }
 
-func (m *Manager) FsStat(ctx context.Context, id stores.ID) (stores.FsStat, error) {
+func (m *Manager) FsStat(ctx context.Context, id stores.ID) (fsutil.FsStat, error) {
 	return m.storage.FsStat(ctx, id)
 }
 

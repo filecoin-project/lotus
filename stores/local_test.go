@@ -3,6 +3,7 @@ package stores
 import (
 	"context"
 	"encoding/json"
+	"github.com/filecoin-project/sector-storage/fsutil"
 	"github.com/google/uuid"
 	"io/ioutil"
 	"os"
@@ -32,11 +33,10 @@ func (t *TestingLocalStorage) SetStorage(f func(*StorageConfig)) error {
 	return nil
 }
 
-func (t *TestingLocalStorage) Stat(path string) (FsStat, error) {
-	return FsStat{
+func (t *TestingLocalStorage) Stat(path string) (fsutil.FsStat, error) {
+	return fsutil.FsStat{
 		Capacity:  pathSize,
 		Available: pathSize,
-		Used:      0,
 	}, nil
 }
 

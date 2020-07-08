@@ -2,10 +2,7 @@ package stores
 
 import (
 	"context"
-	"syscall"
-
-	"golang.org/x/xerrors"
-
+	"github.com/filecoin-project/sector-storage/fsutil"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
@@ -34,24 +31,5 @@ type Store interface {
 	// move sectors into storage
 	MoveStorage(ctx context.Context, s abi.SectorID, spt abi.RegisteredSealProof, types SectorFileType) error
 
-	FsStat(ctx context.Context, id ID) (FsStat, error)
-}
-
-func Stat(path string) (FsStat, error) {
-	var stat syscall.Statfs_t
-	if err := syscall.Statfs(path, &stat); err != nil {
-		return FsStat{}, xerrors.Errorf("statfs: %w", err)
-	}
-
-	return FsStat{
-		Capacity:  int64(stat.Blocks) * stat.Bsize,
-		Available: int64(stat.Bavail) * stat.Bsize,
-	}, nil
-}
-
-type FsStat struct {
-	Capacity  int64
-	Available int64 // Available to use for sector storage
-	Used      int64
-	Reserved  int64
+	FsStat(ctx context.Context, id ID) (fsutil.FsStat, error)
 }

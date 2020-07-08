@@ -3,6 +3,7 @@ package stores
 import (
 	"context"
 	"encoding/json"
+	"github.com/filecoin-project/sector-storage/fsutil"
 	"io/ioutil"
 	"math/bits"
 	"math/rand"
@@ -48,7 +49,7 @@ type LocalStorage interface {
 	GetStorage() (StorageConfig, error)
 	SetStorage(func(*StorageConfig)) error
 
-	Stat(path string) (FsStat, error)
+	Stat(path string) (fsutil.FsStat, error)
 	DiskUsage(path string) (int64, error) // returns real disk usage for a file/directory
 }
 
@@ -73,10 +74,10 @@ type path struct {
 	reservations map[abi.SectorID]SectorFileType
 }
 
-func (p *path) stat(ls LocalStorage) (FsStat, error) {
+func (p *path) stat(ls LocalStorage) (fsutil.FsStat, error) {
 	stat, err := ls.Stat(p.local)
 	if err != nil {
-		return FsStat{}, err
+		return fsutil.FsStat{}, err
 	}
 
 	stat.Reserved = p.reserved
@@ -557,13 +558,13 @@ func (st *Local) MoveStorage(ctx context.Context, s abi.SectorID, spt abi.Regist
 
 var errPathNotFound = xerrors.Errorf("fsstat: path not found")
 
-func (st *Local) FsStat(ctx context.Context, id ID) (FsStat, error) {
+func (st *Local) FsStat(ctx context.Context, id ID) (fsutil.FsStat, error) {
 	st.localLk.RLock()
 	defer st.localLk.RUnlock()
 
 	p, ok := st.paths[id]
 	if !ok {
-		return FsStat{}, errPathNotFound
+		return fsutil.FsStat{}, errPathNotFound
 	}
 
 	return p.stat(st.localStorage)
