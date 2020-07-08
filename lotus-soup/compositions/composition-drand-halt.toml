@@ -12,11 +12,11 @@
 [global.build]
   selectors = ["testground"]
 
-[global.build_config]
-  enable_go_build_cache = true
-
 [global.run_config]
   exposed_ports = { pprof = "6060", node_rpc = "1234", miner_rpc = "2345" }
+
+[global.build_config]
+  enable_go_build_cache = true
 
 [global.run.test_params]
   clients = "1"
