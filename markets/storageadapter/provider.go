@@ -35,7 +35,7 @@ import (
 	sealing "github.com/filecoin-project/storage-fsm"
 )
 
-var log = logging.Logger("provideradapter")
+var log = logging.Logger("storageadapter")
 
 type ProviderNodeAdapter struct {
 	api.FullNode

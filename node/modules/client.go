@@ -3,6 +3,7 @@ package modules
 import (
 	"context"
 	"path/filepath"
+	"time"
 
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/ipfs/go-merkledag"
@@ -130,7 +131,7 @@ func NewClientRequestValidator(deals dtypes.ClientDealStore) dtypes.ClientReques
 
 func StorageClient(lc fx.Lifecycle, h host.Host, ibs dtypes.ClientBlockstore, r repo.LockedRepo, dataTransfer dtypes.ClientDataTransfer, discovery *discovery.Local, deals dtypes.ClientDatastore, scn storagemarket.StorageClientNode) (storagemarket.StorageClient, error) {
 	net := smnet.NewFromLibp2pHost(h)
-	c, err := storageimpl.NewClient(net, ibs, dataTransfer, discovery, deals, scn)
+	c, err := storageimpl.NewClient(net, ibs, dataTransfer, discovery, deals, scn, storageimpl.DealPollingInterval(time.Second))
 	if err != nil {
 		return nil, err
 	}
