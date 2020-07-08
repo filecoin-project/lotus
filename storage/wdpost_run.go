@@ -150,16 +150,16 @@ func (s *WindowPoStScheduler) checkNextRecoveries(ctx context.Context, deadline 
 	if err != nil {
 		return xerrors.Errorf("checking unrecovered sectors: %w", err)
 	}
-	
+
 	// if all sectors failed to recover, don't declare recoveries
 	sbfCount, err := sbf.Count()
 	if err != nil {
 		return xerrors.Errorf("counting recovered sectors: %w", err)
 	}
-	
+
 	if sbfCount == 0 {
-	 	log.Warnw("No recoveries to declare", "deadline", deadline, "faulty", uc)
-	 	return nil
+		log.Warnw("No recoveries to declare", "deadline", deadline, "faulty", uc)
+		return nil
 	}
 
 	params := &miner.DeclareFaultsRecoveredParams{
@@ -336,7 +336,7 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 	if err != nil {
 		return nil, xerrors.Errorf("get deadline count: %w", err)
 	}
-	if dc == 0 && di.Index !=0 {
+	if dc == 0 && di.Index != 0 {
 		return nil, errNoPartitions
 	}
 	{
