@@ -459,10 +459,10 @@ func TestAPIDealFlow(t *testing.T) {
 	logging.SetLogLevel("storageminer", "ERROR")
 
 	t.Run("TestDealFlow", func(t *testing.T) {
-		test.TestDealFlow(t, mockSbBuilder, 10*time.Millisecond, false)
+		test.TestDealFlow(t, mockSbBuilder, 10*time.Millisecond, false, false)
 	})
 	t.Run("WithExportedCAR", func(t *testing.T) {
-		test.TestDealFlow(t, mockSbBuilder, 10*time.Millisecond, true)
+		test.TestDealFlow(t, mockSbBuilder, 10*time.Millisecond, true, false)
 	})
 	t.Run("TestDoubleDealFlow", func(t *testing.T) {
 		test.TestDoubleDealFlow(t, mockSbBuilder, 10*time.Millisecond)
@@ -480,7 +480,13 @@ func TestAPIDealFlowReal(t *testing.T) {
 	logging.SetLogLevel("sub", "ERROR")
 	logging.SetLogLevel("storageminer", "ERROR")
 
-	test.TestDealFlow(t, builder, time.Second, false)
+	t.Run("basic", func(t *testing.T) {
+		test.TestDealFlow(t, builder, time.Second, false, false)
+	})
+
+	t.Run("fast-retrieval", func(t *testing.T) {
+		test.TestDealFlow(t, builder, time.Second, false, true)
+	})
 }
 
 func TestDealMining(t *testing.T) {

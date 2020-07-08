@@ -3,6 +3,7 @@ package impl
 import (
 	"context"
 	"encoding/json"
+	"github.com/filecoin-project/sector-storage/fsutil"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 	"net/http"
@@ -175,7 +176,7 @@ func (sm *StorageMinerAPI) SectorsRefs(context.Context) (map[string][]api.Sealed
 	return out, nil
 }
 
-func (sm *StorageMinerAPI) StorageStat(ctx context.Context, id stores.ID) (stores.FsStat, error) {
+func (sm *StorageMinerAPI) StorageStat(ctx context.Context, id stores.ID) (fsutil.FsStat, error) {
 	return sm.StorageMgr.FsStat(ctx, id)
 }
 

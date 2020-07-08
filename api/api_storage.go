@@ -3,14 +3,17 @@ package api
 import (
 	"bytes"
 	"context"
+	"time"
+
+	"github.com/ipfs/go-cid"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/sector-storage/fsutil"
 	"github.com/filecoin-project/sector-storage/stores"
 	"github.com/filecoin-project/sector-storage/storiface"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/ipfs/go-cid"
-	"time"
 )
 
 // StorageMiner is a low-level interface to the Filecoin network storage miner node
@@ -49,7 +52,7 @@ type StorageMiner interface {
 
 	StorageList(ctx context.Context) (map[stores.ID][]stores.Decl, error)
 	StorageLocal(ctx context.Context) (map[stores.ID]string, error)
-	StorageStat(ctx context.Context, id stores.ID) (stores.FsStat, error)
+	StorageStat(ctx context.Context, id stores.ID) (fsutil.FsStat, error)
 
 	// WorkerConnect tells the node to connect to workers RPC
 	WorkerConnect(context.Context, string) error

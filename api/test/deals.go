@@ -37,7 +37,7 @@ func init() {
 	build.InsecurePoStValidation = true
 }
 
-func TestDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, carExport bool) {
+func TestDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, carExport, fastRet bool) {
 	_ = os.Setenv("BELLMAN_NO_GPU", "1")
 
 	ctx := context.Background()
@@ -67,7 +67,7 @@ func TestDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, carExport
 		}
 	}()
 
-	makeDeal(t, ctx, 6, client, miner, carExport)
+	makeDeal(t, ctx, 6, client, miner, carExport, fastRet)
 
 	atomic.AddInt64(&mine, -1)
 	fmt.Println("shutting down mining")
@@ -105,15 +105,15 @@ func TestDoubleDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration) {
 		}
 	}()
 
-	makeDeal(t, ctx, 6, client, miner, false)
-	makeDeal(t, ctx, 7, client, miner, false)
+	makeDeal(t, ctx, 6, client, miner, false, false)
+	makeDeal(t, ctx, 7, client, miner, false, false)
 
 	atomic.AddInt64(&mine, -1)
 	fmt.Println("shutting down mining")
 	<-done
 }
 
-func makeDeal(t *testing.T, ctx context.Context, rseed int, client *impl.FullNodeAPI, miner TestStorageNode, carExport bool) {
+func makeDeal(t *testing.T, ctx context.Context, rseed int, client *impl.FullNodeAPI, miner TestStorageNode, carExport, fastRet bool) {
 	data := make([]byte, 1600)
 	rand.New(rand.NewSource(int64(rseed))).Read(data)
 
@@ -125,7 +125,7 @@ func makeDeal(t *testing.T, ctx context.Context, rseed int, client *impl.FullNod
 
 	fmt.Println("FILE CID: ", fcid)
 
-	deal := startDeal(t, ctx, miner, client, fcid)
+	deal := startDeal(t, ctx, miner, client, fcid, fastRet)
 
 	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
 	time.Sleep(time.Second)
@@ -136,7 +136,7 @@ func makeDeal(t *testing.T, ctx context.Context, rseed int, client *impl.FullNod
 	testRetrieval(t, ctx, err, client, fcid, carExport, data)
 }
 
-func startDeal(t *testing.T, ctx context.Context, miner TestStorageNode, client *impl.FullNodeAPI, fcid cid.Cid) *cid.Cid {
+func startDeal(t *testing.T, ctx context.Context, miner TestStorageNode, client *impl.FullNodeAPI, fcid cid.Cid, fastRet bool) *cid.Cid {
 	maddr, err := miner.ActorAddress(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -152,6 +152,7 @@ func startDeal(t *testing.T, ctx context.Context, miner TestStorageNode, client 
 		Miner:             maddr,
 		EpochPrice:        types.NewInt(1000000),
 		MinBlocksDuration: 100,
+		FastRetrieval:     fastRet,
 	})
 	if err != nil {
 		t.Fatalf("%+v", err)
