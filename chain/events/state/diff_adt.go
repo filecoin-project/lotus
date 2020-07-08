@@ -11,9 +11,9 @@ import (
 // Modify should be called when a value is modified in the array
 // Remove should be called when a value is removed from the array
 type AdtArrayDiff interface {
-	Add(val *typegen.Deferred) error
-	Modify(from, to *typegen.Deferred) error
-	Remove(val *typegen.Deferred) error
+	Add(key uint64, val *typegen.Deferred) error
+	Modify(key uint64, from, to *typegen.Deferred) error
+	Remove(key uint64, val *typegen.Deferred) error
 }
 
 // TODO Performance can be improved by diffing the underlying IPLD graph, e.g. https://github.com/ipfs/go-merkledag/blob/749fd8717d46b4f34c9ce08253070079c89bc56d/dagutils/diff.go#L104
@@ -33,13 +33,13 @@ func DiffAdtArray(preArr, curArr *adt.Array, out AdtArrayDiff) error {
 			return err
 		}
 		if !found {
-			if err := out.Remove(prevVal); err != nil {
+			if err := out.Remove(uint64(i), prevVal); err != nil {
 				return err
 			}
 			return nil
 		}
 
-		if err := out.Modify(prevVal, curVal); err != nil {
+		if err := out.Modify(uint64(i), prevVal, curVal); err != nil {
 			return err
 		}
 
@@ -50,6 +50,6 @@ func DiffAdtArray(preArr, curArr *adt.Array, out AdtArrayDiff) error {
 
 	curVal := new(typegen.Deferred)
 	return curArr.ForEach(curVal, func(i int64) error {
-		return out.Add(curVal)
+		return out.Add(uint64(i), curVal)
 	})
 }

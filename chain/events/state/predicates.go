@@ -172,7 +172,7 @@ type SectorExtensions struct {
 	To   miner.SectorOnChainInfo
 }
 
-func (m *MinerSectorChanges) Add(val *typegen.Deferred) error {
+func (m *MinerSectorChanges) Add(key uint64, val *typegen.Deferred) error {
 	si := new(miner.SectorOnChainInfo)
 	err := si.UnmarshalCBOR(bytes.NewReader(val.Raw))
 	if err != nil {
@@ -182,7 +182,7 @@ func (m *MinerSectorChanges) Add(val *typegen.Deferred) error {
 	return nil
 }
 
-func (m *MinerSectorChanges) Modify(from, to *typegen.Deferred) error {
+func (m *MinerSectorChanges) Modify(key uint64, from, to *typegen.Deferred) error {
 	siFrom := new(miner.SectorOnChainInfo)
 	err := siFrom.UnmarshalCBOR(bytes.NewReader(from.Raw))
 	if err != nil {
@@ -204,7 +204,7 @@ func (m *MinerSectorChanges) Modify(from, to *typegen.Deferred) error {
 	return nil
 }
 
-func (m *MinerSectorChanges) Remove(val *typegen.Deferred) error {
+func (m *MinerSectorChanges) Remove(key uint64, val *typegen.Deferred) error {
 	si := new(miner.SectorOnChainInfo)
 	err := si.UnmarshalCBOR(bytes.NewReader(val.Raw))
 	if err != nil {

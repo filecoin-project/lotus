@@ -41,54 +41,69 @@ func TestDiffAdtArray(t *testing.T) {
 	require.NoError(t, arrB.Set(5, runtime.CBORBytes{8})) // add
 	require.NoError(t, arrB.Set(6, runtime.CBORBytes{9})) // add
 
-	changes := &TestAdtDiff{
-		Added:    []runtime.CBORBytes{},
-		Modified: []TestAdtDiffModified{},
-		Removed:  []runtime.CBORBytes{},
-	}
+	changes := new(TestAdtDiff)
 
 	assert.NoError(t, DiffAdtArray(arrA, arrB, changes))
 	assert.NotNil(t, changes)
 
 	assert.Equal(t, 2, len(changes.Added))
-	assert.EqualValues(t, []byte{8}, changes.Added[0])
-	assert.EqualValues(t, []byte{9}, changes.Added[1])
+	// keys 5 and 6 were added
+	assert.EqualValues(t, uint64(5), changes.Added[0].key)
+	assert.EqualValues(t, []byte{8}, changes.Added[0].val)
+	assert.EqualValues(t, uint64(6), changes.Added[1].key)
+	assert.EqualValues(t, []byte{9}, changes.Added[1].val)
 
 	assert.Equal(t, 2, len(changes.Modified))
-	assert.EqualValues(t, []byte{0}, changes.Modified[0].From)
-	assert.EqualValues(t, []byte{1}, changes.Modified[0].To)
-	assert.EqualValues(t, []byte{0}, changes.Modified[1].From)
-	assert.EqualValues(t, []byte{6}, changes.Modified[1].To)
+	// keys 1 and 4 were modified
+	assert.EqualValues(t, uint64(1), changes.Modified[0].From.key)
+	assert.EqualValues(t, []byte{0}, changes.Modified[0].From.val)
+	assert.EqualValues(t, uint64(1), changes.Modified[0].To.key)
+	assert.EqualValues(t, []byte{1}, changes.Modified[0].To.val)
+	assert.EqualValues(t, uint64(4), changes.Modified[1].From.key)
+	assert.EqualValues(t, []byte{0}, changes.Modified[1].From.val)
+	assert.EqualValues(t, uint64(4), changes.Modified[1].To.key)
+	assert.EqualValues(t, []byte{6}, changes.Modified[1].To.val)
 
 	assert.Equal(t, 2, len(changes.Removed))
-	assert.EqualValues(t, []byte{0}, changes.Removed[0])
-	assert.EqualValues(t, []byte{1}, changes.Removed[1])
+	// keys 0 and 2 were deleted
+	assert.EqualValues(t, uint64(0), changes.Removed[0].key)
+	assert.EqualValues(t, []byte{0}, changes.Removed[0].val)
+	assert.EqualValues(t, uint64(2), changes.Removed[1].key)
+	assert.EqualValues(t, []byte{1}, changes.Removed[1].val)
+}
+
+type adtDiffResult struct {
+	key uint64
+	val runtime.CBORBytes
 }
 
 type TestAdtDiff struct {
-	Added    []runtime.CBORBytes
+	Added    []adtDiffResult
 	Modified []TestAdtDiffModified
-	Removed  []runtime.CBORBytes
+	Removed  []adtDiffResult
 }
 
 var _ AdtArrayDiff = &TestAdtDiff{}
 
 type TestAdtDiffModified struct {
-	From runtime.CBORBytes
-	To   runtime.CBORBytes
+	From adtDiffResult
+	To   adtDiffResult
 }
 
-func (t *TestAdtDiff) Add(val *typegen.Deferred) error {
+func (t *TestAdtDiff) Add(key uint64, val *typegen.Deferred) error {
 	v := new(runtime.CBORBytes)
 	err := v.UnmarshalCBOR(bytes.NewReader(val.Raw))
 	if err != nil {
 		return err
 	}
-	t.Added = append(t.Added, *v)
+	t.Added = append(t.Added, adtDiffResult{
+		key: key,
+		val: *v,
+	})
 	return nil
 }
 
-func (t *TestAdtDiff) Modify(from, to *typegen.Deferred) error {
+func (t *TestAdtDiff) Modify(key uint64, from, to *typegen.Deferred) error {
 	vFrom := new(runtime.CBORBytes)
 	err := vFrom.UnmarshalCBOR(bytes.NewReader(from.Raw))
 	if err != nil {
@@ -103,20 +118,29 @@ func (t *TestAdtDiff) Modify(from, to *typegen.Deferred) error {
 
 	if !bytes.Equal(*vFrom, *vTo) {
 		t.Modified = append(t.Modified, TestAdtDiffModified{
-			From: *vFrom,
-			To:   *vTo,
+			From: adtDiffResult{
+				key: key,
+				val: *vFrom,
+			},
+			To: adtDiffResult{
+				key: key,
+				val: *vTo,
+			},
 		})
 	}
 	return nil
 }
 
-func (t *TestAdtDiff) Remove(val *typegen.Deferred) error {
+func (t *TestAdtDiff) Remove(key uint64, val *typegen.Deferred) error {
 	v := new(runtime.CBORBytes)
 	err := v.UnmarshalCBOR(bytes.NewReader(val.Raw))
 	if err != nil {
 		return err
 	}
-	t.Removed = append(t.Removed, *v)
+	t.Removed = append(t.Removed, adtDiffResult{
+		key: key,
+		val: *v,
+	})
 	return nil
 }
 
