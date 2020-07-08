@@ -430,7 +430,7 @@ func (n *ProviderNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID
 		preds.OnDealStateChanged(
 			preds.DealStateChangedForIDs([]abi.DealID{dealID})))
 	match := func(oldTs, newTs *types.TipSet) (bool, events.StateChange, error) {
-		return dealDiff(ctx, oldTs, newTs)
+		return dealDiff(ctx, oldTs.Key(), newTs.Key())
 	}
 	if err := n.ev.StateChanged(checkFunc, stateChanged, revert, int(build.MessageConfidence)+1, build.SealRandomnessLookbackLimit, match); err != nil {
 		return xerrors.Errorf("failed to set up state changed handler: %w", err)
