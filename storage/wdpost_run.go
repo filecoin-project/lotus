@@ -332,7 +332,13 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 	if err != nil {
 		return nil, xerrors.Errorf("getting miner deadlines: %w", err)
 	}
-
+	dc, err := deadlines.Due[di.Index].Count()
+	if err != nil {
+		return nil, xerrors.Errorf("get deadline count: %w", err)
+	}
+	if dc == 0 && di.Index !=0 {
+		return nil, errNoPartitions
+	}
 	{
 		// check faults / recoveries for the *next* deadline. It's already too
 		// late to declare them for this deadline
@@ -369,10 +375,10 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 		return nil, xerrors.Errorf("getting deadline partition count: %w", err)
 	}
 
-	dc, err := deadlines.Due[di.Index].Count()
-	if err != nil {
-		return nil, xerrors.Errorf("get deadline count: %w", err)
-	}
+	//dc, err := deadlines.Due[di.Index].Count()
+	//if err != nil {
+	//	return nil, xerrors.Errorf("get deadline count: %w", err)
+	//}
 
 	log.Infof("di: %+v", di)
 	log.Infof("dc: %+v", dc)
@@ -380,9 +386,9 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 	log.Infof("pc: %+v", partitionCount)
 	log.Infof("ts: %+v (%d)", ts.Key(), ts.Height())
 
-	if partitionCount == 0 {
-		return nil, errNoPartitions
-	}
+	//if partitionCount == 0 {
+	//	return nil, errNoPartitions
+	//}
 
 	partitions := make([]uint64, partitionCount)
 	for i := range partitions {
