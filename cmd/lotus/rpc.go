@@ -78,7 +78,7 @@ func serveRPC(a api.FullNode, stop node.StopFunc, addr multiaddr.Multiaddr, shut
 			log.Errorf("graceful shutting down failed: %s", err)
 		}
 		log.Warn("Graceful shutdown successful")
-		log.Sync()
+		_ = log.Sync() //nolint:errcheck
 		close(shutdownDone)
 	}()
 	signal.Notify(sigCh, syscall.SIGTERM, syscall.SIGINT)
