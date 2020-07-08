@@ -316,6 +316,27 @@ var clientDealCmd = &cli.Command{
 			ref.TransferType = storagemarket.TTManual
 		}
 
+		// Check if the address is a verified client
+		dcap, err := api.StateVerifiedClientStatus(ctx, a, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		isVerified := dcap != nil
+
+		// If the user has explicitly set the --verified-deal flag
+		if cctx.IsSet("verified-deal") {
+			// If --verified-deal is true, but the address is not a verified
+			// client, return an error
+			verifiedDealParam := cctx.Bool("verified-deal")
+			if verifiedDealParam && !isVerified {
+				return xerrors.Errorf("address %s does not have verified client status", a)
+			}
+
+			// Override the default
+			isVerified = verifiedDealParam
+		}
+
 		proposal, err := api.ClientStartDeal(ctx, &lapi.StartDealParams{
 			Data:              ref,
 			Wallet:            a,
@@ -324,7 +345,7 @@ var clientDealCmd = &cli.Command{
 			MinBlocksDuration: uint64(dur),
 			DealStartEpoch:    abi.ChainEpoch(cctx.Int64("start-epoch")),
 			FastRetrieval:     cctx.Bool("fast-retrieval"),
-			VerifiedDeal:      cctx.Bool("verified-deal"),
+			VerifiedDeal:      isVerified,
 		})
 		if err != nil {
 			return err

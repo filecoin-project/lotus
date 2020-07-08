@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
+	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-storage/storage"
 
@@ -155,6 +156,7 @@ type FullNodeStruct struct {
 		StateMinerSectorCount             func(context.Context, address.Address, types.TipSetKey) (api.MinerSectors, error)                                   `perm:"read"`
 		StateListMessages                 func(ctx context.Context, match *types.Message, tsk types.TipSetKey, toht abi.ChainEpoch) ([]cid.Cid, error)        `perm:"read"`
 		StateCompute                      func(context.Context, abi.ChainEpoch, []*types.Message, types.TipSetKey) (*api.ComputeStateOutput, error)           `perm:"read"`
+		StateVerifiedClientStatus         func(context.Context, address.Address, types.TipSetKey) (*verifreg.DataCap, error)                                  `perm:"read"`
 
 		MsigGetAvailableBalance func(context.Context, address.Address, types.TipSetKey) (types.BigInt, error)                                                                    `perm:"read"`
 		MsigCreate              func(context.Context, uint64, []address.Address, types.BigInt, address.Address, types.BigInt) (cid.Cid, error)                                   `perm:"sign"`
@@ -689,6 +691,10 @@ func (c *FullNodeStruct) StateListMessages(ctx context.Context, match *types.Mes
 
 func (c *FullNodeStruct) StateCompute(ctx context.Context, height abi.ChainEpoch, msgs []*types.Message, tsk types.TipSetKey) (*api.ComputeStateOutput, error) {
 	return c.Internal.StateCompute(ctx, height, msgs, tsk)
+}
+
+func (c *FullNodeStruct) StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*verifreg.DataCap, error) {
+	return c.Internal.StateVerifiedClientStatus(ctx, addr, tsk)
 }
 
 func (c *FullNodeStruct) MsigGetAvailableBalance(ctx context.Context, a address.Address, tsk types.TipSetKey) (types.BigInt, error) {

@@ -24,6 +24,7 @@ import (
 	samsig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
+	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -831,4 +832,36 @@ func (a *StateAPI) StateMinerAvailableBalance(ctx context.Context, maddr address
 	}
 
 	return types.BigAdd(st.GetAvailableBalance(act.Balance), vested), nil
+}
+
+// StateVerifiedClientStatus returns the data cap for the given address.
+// Returns nil if there is no entry in the data cap table for the
+// address.
+func (a *StateAPI) StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*verifreg.DataCap, error) {
+	act, err := a.StateGetActor(ctx, builtin.VerifiedRegistryActorAddr, tsk)
+	if err != nil {
+		return nil, err
+	}
+
+	cst := cbor.NewCborStore(a.StateManager.ChainStore().Blockstore())
+
+	var st verifreg.State
+	if err := cst.Get(ctx, act.Head, &st); err != nil {
+		return nil, err
+	}
+
+	vh, err := hamt.LoadNode(ctx, cst, st.VerifiedClients)
+	if err != nil {
+		return nil, err
+	}
+
+	var dcap verifreg.DataCap
+	if err := vh.Find(ctx, string(addr.Bytes()), &dcap); err != nil {
+		if err == hamt.ErrNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &dcap, nil
 }
