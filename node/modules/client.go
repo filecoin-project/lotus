@@ -10,7 +10,9 @@ import (
 	"github.com/libp2p/go-libp2p-core/routing"
 	"go.uber.org/fx"
 
-	graphsyncimpl "github.com/filecoin-project/go-data-transfer/impl/graphsync"
+	dtimpl "github.com/filecoin-project/go-data-transfer/impl"
+	dtnet "github.com/filecoin-project/go-data-transfer/network"
+	dtgstransport "github.com/filecoin-project/go-data-transfer/transport/graphsync"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/discovery"
 	retrievalimpl "github.com/filecoin-project/go-fil-markets/retrievalmarket/impl"
@@ -72,9 +74,26 @@ func RegisterClientValidator(crv dtypes.ClientRequestValidator, dtm dtypes.Clien
 
 // NewClientGraphsyncDataTransfer returns a data transfer manager that just
 // uses the clients's Client DAG service for transfers
-func NewClientGraphsyncDataTransfer(h host.Host, gs dtypes.Graphsync, ds dtypes.MetadataDS) dtypes.ClientDataTransfer {
+func NewClientGraphsyncDataTransfer(lc fx.Lifecycle, h host.Host, gs dtypes.Graphsync, ds dtypes.MetadataDS) (dtypes.ClientDataTransfer, error) {
 	sc := storedcounter.New(ds, datastore.NewKey("/datatransfer/client/counter"))
-	return graphsyncimpl.NewGraphSyncDataTransfer(h, gs, sc)
+	net := dtnet.NewFromLibp2pHost(h)
+
+	dtDs := namespace.Wrap(ds, datastore.NewKey("/datatransfer/client/transfers"))
+	transport := dtgstransport.NewTransport(h.ID(), gs)
+	dt, err := dtimpl.NewDataTransfer(dtDs, net, transport, sc)
+	if err != nil {
+		return nil, err
+	}
+
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			return dt.Start(ctx)
+		},
+		OnStop: func(context.Context) error {
+			return dt.Stop()
+		},
+	})
+	return dt, nil
 }
 
 // NewClientDealStore creates a statestore for the client to store its deals

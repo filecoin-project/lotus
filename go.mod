@@ -21,9 +21,9 @@ require (
 	github.com/filecoin-project/go-bitfield v0.0.2-0.20200629135455-587b27927d38
 	github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
-	github.com/filecoin-project/go-data-transfer v0.3.0
+	github.com/filecoin-project/go-data-transfer v0.3.1-0.20200708074304-d9d9a1592def
 	github.com/filecoin-project/go-fil-commcid v0.0.0-20200208005934-2b8bd03caca5
-	github.com/filecoin-project/go-fil-markets v0.3.2
+	github.com/filecoin-project/go-fil-markets v0.3.2-0.20200708081536-41a79d726c68
 	github.com/filecoin-project/go-jsonrpc v0.1.1-0.20200602181149-522144ab4e24
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200701152213-3e0f0afdc261
 	github.com/filecoin-project/go-statestore v0.1.0
@@ -31,7 +31,7 @@ require (
 	github.com/filecoin-project/sector-storage v0.0.0-20200701092105-a2de752a3324
 	github.com/filecoin-project/specs-actors v0.7.1
 	github.com/filecoin-project/specs-storage v0.1.1-0.20200622113353-88a9704877ea
-	github.com/filecoin-project/storage-fsm v0.0.0-20200707191927-b838ed4e859e
+	github.com/filecoin-project/storage-fsm v0.0.0-20200707194229-bc5e298e2b4c
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/go-kit/kit v0.10.0
 	github.com/go-ole/go-ole v1.2.4 // indirect
@@ -52,7 +52,7 @@ require (
 	github.com/ipfs/go-ds-measure v0.1.0
 	github.com/ipfs/go-filestore v1.0.0
 	github.com/ipfs/go-fs-lock v0.0.1
-	github.com/ipfs/go-graphsync v0.0.6-0.20200504202014-9d5f2c26a103
+	github.com/ipfs/go-graphsync v0.0.6-0.20200708073926-caa872f68b2c
 	github.com/ipfs/go-hamt-ipld v0.1.1-0.20200605182717-0310ad2b0b1f
 	github.com/ipfs/go-ipfs-blockstore v1.0.0
 	github.com/ipfs/go-ipfs-chunker v0.0.5

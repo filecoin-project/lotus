@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
+	"time"
+
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
 	"github.com/ipfs/go-blockservice"
@@ -20,11 +23,11 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/multierr"
 	"golang.org/x/xerrors"
-	"net/http"
-	"time"
 
 	"github.com/filecoin-project/go-address"
-	dtgraphsync "github.com/filecoin-project/go-data-transfer/impl/graphsync"
+	dtimpl "github.com/filecoin-project/go-data-transfer/impl"
+	dtnet "github.com/filecoin-project/go-data-transfer/network"
+	dtgstransport "github.com/filecoin-project/go-data-transfer/transport/graphsync"
 	piecefilestore "github.com/filecoin-project/go-fil-markets/filestore"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
@@ -208,9 +211,26 @@ func RegisterProviderValidator(mrv dtypes.ProviderRequestValidator, dtm dtypes.P
 
 // NewProviderDAGServiceDataTransfer returns a data transfer manager that just
 // uses the provider's Staging DAG service for transfers
-func NewProviderDAGServiceDataTransfer(h host.Host, gs dtypes.StagingGraphsync, ds dtypes.MetadataDS) dtypes.ProviderDataTransfer {
+func NewProviderDAGServiceDataTransfer(lc fx.Lifecycle, h host.Host, gs dtypes.StagingGraphsync, ds dtypes.MetadataDS) (dtypes.ProviderDataTransfer, error) {
 	sc := storedcounter.New(ds, datastore.NewKey("/datatransfer/provider/counter"))
-	return dtgraphsync.NewGraphSyncDataTransfer(h, gs, sc)
+	net := dtnet.NewFromLibp2pHost(h)
+
+	dtDs := namespace.Wrap(ds, datastore.NewKey("/datatransfer/provider/transfers"))
+	transport := dtgstransport.NewTransport(h.ID(), gs)
+	dt, err := dtimpl.NewDataTransfer(dtDs, net, transport, sc)
+	if err != nil {
+		return nil, err
+	}
+
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			return dt.Start(ctx)
+		},
+		OnStop: func(context.Context) error {
+			return dt.Stop()
+		},
+	})
+	return dt, nil
 }
 
 // NewProviderDealStore creates a statestore for the client to store its deals
