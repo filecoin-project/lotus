@@ -471,6 +471,12 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, headTs *types.
 			return
 		}
 
+		minerPowerStartedAt := time.Now()
+		if err := st.storeMinerPower(minerTips); err != nil {
+			log.Error(err)
+		}
+		log.Infow("Stored miner power", "duration", time.Since(minerPowerStartedAt).String())
+
 		sectorStart := time.Now()
 		if err := st.storeSectors(minerTips, api); err != nil {
 			log.Error(err)

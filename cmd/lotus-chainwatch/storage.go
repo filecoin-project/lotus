@@ -305,6 +305,19 @@ create table if not exists chain_power
 	baseline_power text not null
 );
 
+/*
+* captures miner-specific power state for any given stateroot
+*/
+create table if not exists miner_power
+(
+	miner_id text not null,
+	stateroot text not null,
+	raw_bytes_power text not null,
+	quality_adjusted_power text not null,
+	constraint miner_power_pk
+		primary key (miner_id, stateroot)
+);
+
 /* used to tell when a miners sectors (proven-not-yet-expired) changed if the miner_sectors_cid's are different a new sector was added or removed (terminated/expired) */
 create table if not exists miner_sectors_heads
 (
@@ -532,7 +545,7 @@ func (st *storage) storeChainPower(rewardTips map[types.TipSetKey]*rewardStateIn
 			rewardState.stateroot.String(),
 			rewardState.baselinePower.String(),
 		); err != nil {
-			return xerrors.Errorf("exec prepared chain_power: %w", err)
+			log.Errorw("failed to store chain power", "stateroot", rewardState.stateroot, "error", err)
 		}
 	}
 
@@ -656,6 +669,50 @@ func (st *storage) storeMiners(minerTips map[types.TipSetKey][]*minerStateInfo) 
 	}
 
 	return tx.Commit()
+}
+
+// storeMinerPower captures miner actor state as it relates to power per miner captured on-chain
+func (st *storage) storeMinerPower(minerTips map[types.TipSetKey][]*minerStateInfo) error {
+	tx, err := st.db.Begin()
+	if err != nil {
+		return xerrors.Errorf("begin miner_power tx: %w", err)
+	}
+
+	if _, err := tx.Exec(`create temp table mp (like miner_power excluding constraints) on commit drop`); err != nil {
+		return xerrors.Errorf("prep miner_power temp: %w", err)
+	}
+
+	stmt, err := tx.Prepare(`copy cp (miner_id, stateroot, raw_bytes_power, quality_adjusted_power) from STDIN`)
+	if err != nil {
+		return xerrors.Errorf("prepare tmp miner_power: %w", err)
+	}
+
+	for _, miners := range minerTips {
+		for _, minerInfo := range miners {
+			if _, err := stmt.Exec(
+				minerInfo.addr.String(),
+				minerInfo.stateroot.String(),
+				minerInfo.rawPower.String(),
+				minerInfo.qalPower.String(),
+			); err != nil {
+				log.Errorw("failed to store miner power", "miner", minerInfo.addr, "stateroot", minerInfo.stateroot, "error", err)
+			}
+		}
+	}
+
+	if err := stmt.Close(); err != nil {
+		return xerrors.Errorf("close prepared miner_power: %w", err)
+	}
+
+	if _, err := tx.Exec(`insert into miner_power select * from mp on conflict do nothing`); err != nil {
+		return xerrors.Errorf("insert miner_power from tmp: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return xerrors.Errorf("commit miner_power tx: %w", err)
+	}
+
+	return nil
 }
 
 func (st *storage) storeMinerSectorsHeads(minerTips map[types.TipSetKey][]*minerStateInfo, api api.FullNode) error {
