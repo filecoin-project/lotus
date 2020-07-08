@@ -3,6 +3,7 @@ package stores
 import (
 	"context"
 	"encoding/json"
+	"github.com/filecoin-project/sector-storage/fsutil"
 	"io/ioutil"
 	"math/bits"
 	"mime"
@@ -270,7 +271,7 @@ func (r *Remote) deleteFromRemote(ctx context.Context, url string) error {
 	return nil
 }
 
-func (r *Remote) FsStat(ctx context.Context, id ID) (FsStat, error) {
+func (r *Remote) FsStat(ctx context.Context, id ID) (fsutil.FsStat, error) {
 	st, err := r.local.FsStat(ctx, id)
 	switch err {
 	case nil:
@@ -278,53 +279,53 @@ func (r *Remote) FsStat(ctx context.Context, id ID) (FsStat, error) {
 	case errPathNotFound:
 		break
 	default:
-		return FsStat{}, xerrors.Errorf("local stat: %w", err)
+		return fsutil.FsStat{}, xerrors.Errorf("local stat: %w", err)
 	}
 
 	si, err := r.index.StorageInfo(ctx, id)
 	if err != nil {
-		return FsStat{}, xerrors.Errorf("getting remote storage info: %w", err)
+		return fsutil.FsStat{}, xerrors.Errorf("getting remote storage info: %w", err)
 	}
 
 	if len(si.URLs) == 0 {
-		return FsStat{}, xerrors.Errorf("no known URLs for remote storage %s", id)
+		return fsutil.FsStat{}, xerrors.Errorf("no known URLs for remote storage %s", id)
 	}
 
 	rl, err := url.Parse(si.URLs[0])
 	if err != nil {
-		return FsStat{}, xerrors.Errorf("failed to parse url: %w", err)
+		return fsutil.FsStat{}, xerrors.Errorf("failed to parse url: %w", err)
 	}
 
 	rl.Path = gopath.Join(rl.Path, "stat", string(id))
 
 	req, err := http.NewRequest("GET", rl.String(), nil)
 	if err != nil {
-		return FsStat{}, xerrors.Errorf("request: %w", err)
+		return fsutil.FsStat{}, xerrors.Errorf("request: %w", err)
 	}
 	req.Header = r.auth
 	req = req.WithContext(ctx)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return FsStat{}, xerrors.Errorf("do request: %w", err)
+		return fsutil.FsStat{}, xerrors.Errorf("do request: %w", err)
 	}
 	switch resp.StatusCode {
 	case 200:
 		break
 	case 404:
-		return FsStat{}, errPathNotFound
+		return fsutil.FsStat{}, errPathNotFound
 	case 500:
 		b, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			return FsStat{}, xerrors.Errorf("fsstat: got http 500, then failed to read the error: %w", err)
+			return fsutil.FsStat{}, xerrors.Errorf("fsstat: got http 500, then failed to read the error: %w", err)
 		}
 
-		return FsStat{}, xerrors.Errorf("fsstat: got http 500: %s", string(b))
+		return fsutil.FsStat{}, xerrors.Errorf("fsstat: got http 500: %s", string(b))
 	}
 
-	var out FsStat
+	var out fsutil.FsStat
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return FsStat{}, xerrors.Errorf("decoding fsstat: %w", err)
+		return fsutil.FsStat{}, xerrors.Errorf("decoding fsstat: %w", err)
 	}
 
 	defer resp.Body.Close()

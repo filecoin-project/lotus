@@ -320,7 +320,7 @@ func (mgr *SectorMgr) FinalizeSector(context.Context, abi.SectorID, []storage.Ra
 }
 
 func (mgr *SectorMgr) ReleaseUnsealed(ctx context.Context, sector abi.SectorID, safeToFree []storage.Range) error {
-	panic("implement me")
+	return nil
 }
 
 func (mgr *SectorMgr) Remove(ctx context.Context, sector abi.SectorID) error {
