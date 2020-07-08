@@ -323,7 +323,6 @@ func (a *API) ClientImportLocal(ctx context.Context, f io.Reader) (cid.Cid, erro
 			Limit:   126,
 		},
 		Dagserv: bufferedDS,
-		NoCopy:  true,
 	}
 
 	db, err := params.New(chunker.NewSizeSplitter(file, int64(build.UnixfsChunkSize)))
