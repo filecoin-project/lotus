@@ -262,5 +262,5 @@
   name: status/rotten
   color: edb3a6
 - description: "Status: Discarded / Won't fix"
-    name: status/discarded
-    color: a0aec0
+  name: status/discarded
+  color: a0aec0
