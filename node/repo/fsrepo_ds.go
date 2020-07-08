@@ -27,8 +27,8 @@ var fsDatastores = map[string]func(path string) (datastore.Batching, error){
 
 func badgerDs(path string) (datastore.Batching, error) {
 	opts := badger.DefaultOptions
-	opts.Options = dgbadger.DefaultOptions("").WithCompactL0OnClose(false).
-		WithTruncate(true).WithValueThreshold(1 << 10)
+	opts.Options = dgbadger.DefaultOptions("").WithTruncate(true).
+		WithValueThreshold(1 << 10)
 
 	return badger.NewDatastore(path, &opts)
 }
