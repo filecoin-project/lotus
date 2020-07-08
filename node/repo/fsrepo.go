@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/sector-storage/fsutil"
 	"io"
 	"io/ioutil"
 	"os"
@@ -340,8 +341,16 @@ func (fsr *fsLockedRepo) SetStorage(c func(*stores.StorageConfig)) error {
 	return config.WriteStorageFile(fsr.join(fsStorageConfig), sc)
 }
 
-func (fsr *fsLockedRepo) Stat(path string) (stores.FsStat, error) {
-	return stores.Stat(path)
+func (fsr *fsLockedRepo) Stat(path string) (fsutil.FsStat, error) {
+	return fsutil.Statfs(path)
+}
+
+func (fsr *fsLockedRepo) DiskUsage(path string) (int64, error) {
+	si, err := fsutil.FileSize(path)
+	if err != nil {
+		return 0, err
+	}
+	return si.OnDisk, nil
 }
 
 func (fsr *fsLockedRepo) SetAPIEndpoint(ma multiaddr.Multiaddr) error {

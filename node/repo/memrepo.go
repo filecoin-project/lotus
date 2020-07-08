@@ -2,6 +2,7 @@ package repo
 
 import (
 	"encoding/json"
+	"github.com/filecoin-project/sector-storage/fsutil"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -77,8 +78,17 @@ func (lmem *lockedMemRepo) SetStorage(c func(*stores.StorageConfig)) error {
 	return nil
 }
 
-func (lmem *lockedMemRepo) Stat(path string) (stores.FsStat, error) {
-	return stores.Stat(path)
+func (lmem *lockedMemRepo) Stat(path string) (fsutil.FsStat, error) {
+	return fsutil.Statfs(path)
+}
+
+
+func (lmem *lockedMemRepo) DiskUsage(path string) (int64, error) {
+	si, err := fsutil.FileSize(path)
+	if err != nil {
+		return 0, err
+	}
+	return si.OnDisk, nil
 }
 
 func (lmem *lockedMemRepo) Path() string {
