@@ -1,10 +1,12 @@
 package state
 
 import (
+	"bytes"
 	"context"
 
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	typegen "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-amt-ipld/v2"
@@ -163,15 +165,59 @@ type MinerSectorChanges struct {
 	Removed  []miner.SectorOnChainInfo
 }
 
+var _ AdtArrayDiff = &MinerSectorChanges{}
+
 type SectorExtensions struct {
 	From miner.SectorOnChainInfo
 	To   miner.SectorOnChainInfo
 }
 
+func (m *MinerSectorChanges) Add(key uint64, val *typegen.Deferred) error {
+	si := new(miner.SectorOnChainInfo)
+	err := si.UnmarshalCBOR(bytes.NewReader(val.Raw))
+	if err != nil {
+		return err
+	}
+	m.Added = append(m.Added, *si)
+	return nil
+}
+
+func (m *MinerSectorChanges) Modify(key uint64, from, to *typegen.Deferred) error {
+	siFrom := new(miner.SectorOnChainInfo)
+	err := siFrom.UnmarshalCBOR(bytes.NewReader(from.Raw))
+	if err != nil {
+		return err
+	}
+
+	siTo := new(miner.SectorOnChainInfo)
+	err = siTo.UnmarshalCBOR(bytes.NewReader(to.Raw))
+	if err != nil {
+		return err
+	}
+
+	if siFrom.Info.Expiration != siTo.Info.Expiration {
+		m.Extended = append(m.Extended, SectorExtensions{
+			From: *siFrom,
+			To:   *siTo,
+		})
+	}
+	return nil
+}
+
+func (m *MinerSectorChanges) Remove(key uint64, val *typegen.Deferred) error {
+	si := new(miner.SectorOnChainInfo)
+	err := si.UnmarshalCBOR(bytes.NewReader(val.Raw))
+	if err != nil {
+		return err
+	}
+	m.Removed = append(m.Removed, *si)
+	return nil
+}
+
 func (sp *StatePredicates) OnMinerSectorChange() DiffMinerActorStateFunc {
 	return func(ctx context.Context, oldState, newState *miner.State) (changed bool, user UserData, err error) {
 		ctxStore := &contextStore{
-			ctx: context.TODO(),
+			ctx: ctx,
 			cst: sp.cst,
 		}
 
@@ -196,42 +242,7 @@ func (sp *StatePredicates) OnMinerSectorChange() DiffMinerActorStateFunc {
 			return false, nil, err
 		}
 
-		var osi miner.SectorOnChainInfo
-
-		// find all sectors that were extended or removed
-		if err := oldSectors.ForEach(&osi, func(i int64) error {
-			var nsi miner.SectorOnChainInfo
-			found, err := newSectors.Get(uint64(osi.Info.SectorNumber), &nsi)
-			if err != nil {
-				return err
-			}
-			if !found {
-				sectorChanges.Removed = append(sectorChanges.Removed, osi)
-				return nil
-			}
-
-			if nsi.Info.Expiration != osi.Info.Expiration {
-				sectorChanges.Extended = append(sectorChanges.Extended, SectorExtensions{
-					From: osi,
-					To:   nsi,
-				})
-			}
-
-			// we don't update miners state filed with `newSectors.Root()` so this operation is safe.
-			if err := newSectors.Delete(uint64(osi.Info.SectorNumber)); err != nil {
-				return err
-			}
-			return nil
-		}); err != nil {
-			return false, nil, err
-		}
-
-		// all sectors that remain in newSectors are new
-		var nsi miner.SectorOnChainInfo
-		if err := newSectors.ForEach(&nsi, func(i int64) error {
-			sectorChanges.Added = append(sectorChanges.Added, nsi)
-			return nil
-		}); err != nil {
+		if err := DiffAdtArray(oldSectors, newSectors, sectorChanges); err != nil {
 			return false, nil, err
 		}
 
@@ -242,21 +253,4 @@ func (sp *StatePredicates) OnMinerSectorChange() DiffMinerActorStateFunc {
 
 		return true, sectorChanges, nil
 	}
-}
-
-type contextStore struct {
-	ctx context.Context
-	cst *cbor.BasicIpldStore
-}
-
-func (cs *contextStore) Context() context.Context {
-	return cs.ctx
-}
-
-func (cs *contextStore) Get(ctx context.Context, c cid.Cid, out interface{}) error {
-	return cs.cst.Get(ctx, c, out)
-}
-
-func (cs *contextStore) Put(ctx context.Context, v interface{}) (cid.Cid, error) {
-	return cs.cst.Put(ctx, v)
 }
