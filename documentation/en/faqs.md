@@ -49,7 +49,7 @@ To update Lotus, follow the instructions [here](https://lotu.sh/en+updating-lotu
 ### How do I prepare a fresh installation of Lotus?
 
 Stop the Lotus daemon, and delete all related files, including sealed and chain data by 
-running `rm ~/.lotus ~/.lotusstorage`.
+running `rm ~/.lotus ~/.lotusminer`.
 
 Then, install Lotus afresh by following the instructions 
 found [here](https://docs.lotu.sh/en+getting-started).
@@ -126,7 +126,7 @@ Community-contributed Docker and Docker Compose examples are available
 ### How can I run two miners on the same machine?
 
 You can do so by changing the storage path variable for the second miner, e.g.,
-`LOTUS_MINER_PATH=~/.lotusstorage2`. You will also need to make sure that no ports collide.
+`LOTUS_MINER_PATH=~/.lotusminer2`. You will also need to make sure that no ports collide.
 
 ### How do I setup my own local devnet?     
 

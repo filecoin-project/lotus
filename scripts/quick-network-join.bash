@@ -34,13 +34,13 @@ EOF
 cat > "${BASEDIR}/scripts/env.fish" <<EOF
 set -x PATH ${BASEDIR}/bin \$PATH
 set -x LOTUS_PATH ${BASEDIR}/.lotus
-set -x LOTUS_MINER_PATH ${BASEDIR}/.lotusstorage
+set -x LOTUS_MINER_PATH ${BASEDIR}/.lotusminer
 EOF
 
 cat > "${BASEDIR}/scripts/env.bash" <<EOF
 export PATH=${BASEDIR}/bin:\$PATH
 export LOTUS_PATH=${BASEDIR}/.lotus
-export LOTUS_MINER_PATH=${BASEDIR}/.lotusstorage
+export LOTUS_MINER_PATH=${BASEDIR}/.lotusminer
 EOF
 
 cat > "${BASEDIR}/scripts/create_miner.bash" <<EOF
@@ -68,11 +68,11 @@ cat > "${BASEDIR}/scripts/pledge_sectors.bash" <<EOF
 
 set -x
 
-while [ ! -d ${BASEDIR}/.lotusstorage ]; do
+while [ ! -d ${BASEDIR}/.lotusminer ]; do
   sleep 5
 done
 
-while [ ! -f ${BASEDIR}/.lotusstorage/api ]; do
+while [ ! -f ${BASEDIR}/.lotusminer/api ]; do
   sleep 5
 done
 

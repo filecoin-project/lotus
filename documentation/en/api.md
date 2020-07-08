@@ -46,7 +46,7 @@ If the request requires authorization, add an authorization header:
 ```sh
 curl -X POST \
      -H "Content-Type: application/json" \
-     -H "Authorization: Bearer $(cat ~/.lotusstorage/token)" \
+     -H "Authorization: Bearer $(cat ~/.lotusminer/token)" \
      --data '{ "jsonrpc": "2.0", "method": "Filecoin.ChainHead", "params": [], "id": 3 }' \
      'http://127.0.0.1:1234/rpc/v0'
 ```
@@ -58,10 +58,10 @@ curl -X POST \
 To authorize your request, you will need to include the **JWT** in a HTTP header, for example:
 
 ```sh
--H "Authorization: Bearer $(cat ~/.lotusstorage/token)"
+-H "Authorization: Bearer $(cat ~/.lotusminer/token)"
 ```
 
-Admin token is stored in `~/.lotus/token` for the **Lotus Node** or `~/.lotusstorage/token` for the **Lotus Storage Miner**.
+Admin token is stored in `~/.lotus/token` for the **Lotus Node** or `~/.lotusminer/token` for the **Lotus Storage Miner**.
 
 ## How do I generate a token?
 

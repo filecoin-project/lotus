@@ -22,7 +22,7 @@ make lotus-seal-worker
 
 First, you will need to ensure your `lotus-miner`'s API is accessible over the network.
 
-To do this, open up `~/.lotusstorage/config.toml` (Or if you manually set `LOTUS_MINER_PATH`, look under that directory) and look for the API field.
+To do this, open up `~/.lotusminer/config.toml` (Or if you manually set `LOTUS_MINER_PATH`, look under that directory) and look for the API field.
 
 Default config:
 

@@ -81,7 +81,7 @@ func main() {
 			&cli.StringFlag{
 				Name:    FlagMinerRepo,
 				EnvVars: []string{"LOTUS_MINER_PATH"},
-				Value:   "~/.lotusstorage", // TODO: Consider XDG_DATA_HOME
+				Value:   "~/.lotusminer", // TODO: Consider XDG_DATA_HOME
 			},
 		},
 

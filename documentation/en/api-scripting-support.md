@@ -21,5 +21,5 @@ You can also use `lotus auth api-info --perm admin` to quickly create _API_INFO 
 
 - The **Lotus Node**'s `mutliaddr` is in `~/.lotus/api`.
 - The default token is in `~/.lotus/token`.
-- The **Lotus Storage Miner**'s `multiaddr` is in `~/.lotusstorage/config`.
-- The default token is in `~/.lotusstorage/token`.
+- The **Lotus Storage Miner**'s `multiaddr` is in `~/.lotusminer/config`.
+- The default token is in `~/.lotusminer/token`.

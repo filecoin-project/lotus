@@ -23,7 +23,7 @@ set -euo pipefail
 
 systemctl stop lotus-miner
 systemctl stop lotus-daemon
-mkdir -p .lotus .lotusstorage
+mkdir -p .lotus .lotusminer
 
 cd "$HOME/lotus-stage/"
 cp -f lotus lotus-miner /usr/local/bin

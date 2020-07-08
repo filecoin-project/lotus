@@ -2,7 +2,7 @@
 
 HOST=$1
 
-ssh "$HOST" '[ -e ~/.lotusstorage/token ]' && exit 0
+ssh "$HOST" '[ -e ~/.lotusminer/token ]' && exit 0
 
 ssh "$HOST" 'lotus wallet new bls > addr'
 ssh "$HOST" 'curl http://147.75.80.29:777/sendcoll?address=$(cat addr)' &

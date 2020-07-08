@@ -4,7 +4,7 @@ Depending on how your network is set up, you may need to set a static port to su
 
 ## Setup
 
-To change the random **swarm port**, you may edit the `config.toml` file located under `$LOTUS_MINER_PATH`. The default location of this file is `$HOME/.lotusstorage`.
+To change the random **swarm port**, you may edit the `config.toml` file located under `$LOTUS_MINER_PATH`. The default location of this file is `$HOME/.lotusminer`.
 
 To change the port to `1347`:
 
