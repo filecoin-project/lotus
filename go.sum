@@ -231,12 +231,12 @@ github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2 h1:a
 github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2/go.mod h1:pqTiPHobNkOVM5thSRsHYjyQfq7O5QSCMhvuu9JoDlg=
 github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03 h1:2pMXdBnCiXjfCYx/hLqFxccPoqsSveQFxVLvNxy9bus=
 github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03/go.mod h1:+viYnvGtUTgJRdy6oaeF4MTFKAfatX071MPDPBL11EQ=
-github.com/filecoin-project/go-data-transfer v0.3.1-0.20200708074304-d9d9a1592def h1:4rjLuy5vWpKfIVC9xiJP+sdC3FJjiYwJLKazBMKXQ3w=
-github.com/filecoin-project/go-data-transfer v0.3.1-0.20200708074304-d9d9a1592def/go.mod h1:5ksROBkSREsb2O4h5vBcGMr9lXTpfeyjHo8o0yxf6FQ=
+github.com/filecoin-project/go-data-transfer v0.4.0 h1:xiC0qVZten8VtqEs5rRjyz2n/nZ8prbZSWvAr1V+CBE=
+github.com/filecoin-project/go-data-transfer v0.4.0/go.mod h1:5ksROBkSREsb2O4h5vBcGMr9lXTpfeyjHo8o0yxf6FQ=
 github.com/filecoin-project/go-fil-commcid v0.0.0-20200208005934-2b8bd03caca5 h1:yvQJCW9mmi9zy+51xA01Ea2X7/dL7r8eKDPuGUjRmbo=
 github.com/filecoin-project/go-fil-commcid v0.0.0-20200208005934-2b8bd03caca5/go.mod h1:JbkIgFF/Z9BDlvrJO1FuKkaWsH673/UdFaiVS6uIHlA=
-github.com/filecoin-project/go-fil-markets v0.3.2-0.20200708081536-41a79d726c68 h1:ykVQK0Fg2hyQh79g2ll9C/oFarNGe0j2Ln/3uZpCYHA=
-github.com/filecoin-project/go-fil-markets v0.3.2-0.20200708081536-41a79d726c68/go.mod h1:7IcpygNaYVSETSwNAzE/StYoPRs3UnLDRyj2/miQBtw=
+github.com/filecoin-project/go-fil-markets v0.4.0 h1:toDPViYyQOHtUs6jl0KB9EzgdfCxXR11dZO/rqWbFtU=
+github.com/filecoin-project/go-fil-markets v0.4.0/go.mod h1:VAH6h+sWuhPAsSwAS9Kecx8MI/dIjFkrLO8jJUmLWQc=
 github.com/filecoin-project/go-jsonrpc v0.1.1-0.20200602181149-522144ab4e24 h1:Jc7vkplmZYVuaEcSXGHDwefvZIdoyyaoGDLqSr8Svms=
 github.com/filecoin-project/go-jsonrpc v0.1.1-0.20200602181149-522144ab4e24/go.mod h1:j6zV//WXIIY5kky873Q3iIKt/ViOE8rcijovmpxrXzM=
 github.com/filecoin-project/go-padreader v0.0.0-20200210211231-548257017ca6 h1:92PET+sx1Hb4W/8CgFwGuxaKbttwY+UNspYZTvXY0vs=
@@ -271,8 +271,6 @@ github.com/filecoin-project/specs-storage v0.1.1-0.20200622113353-88a9704877ea h
 github.com/filecoin-project/specs-storage v0.1.1-0.20200622113353-88a9704877ea/go.mod h1:Pr5ntAaxsh+sLG/LYiL4tKzvA83Vk5vLODYhfNwOg7k=
 github.com/filecoin-project/storage-fsm v0.0.0-20200707191927-b838ed4e859e h1:touwKs24SmZ1RCQzzW24jgbTHTKPKWF7evZTudQ4Z5g=
 github.com/filecoin-project/storage-fsm v0.0.0-20200707191927-b838ed4e859e/go.mod h1:SXO4VnXG056B/lXHL8HZv54eMqlsyynm+v93BlLwlOY=
-github.com/filecoin-project/storage-fsm v0.0.0-20200707194229-bc5e298e2b4c h1:F6guH363a+fpew1zkgoez4/U0RqW4ph6GVXR23lVwng=
-github.com/filecoin-project/storage-fsm v0.0.0-20200707194229-bc5e298e2b4c/go.mod h1:SXO4VnXG056B/lXHL8HZv54eMqlsyynm+v93BlLwlOY=
 github.com/flynn/go-shlex v0.0.0-20150515145356-3f9db97f8568/go.mod h1:xEzjJPgXI435gkrCt3MPfRiAkVrwSbHsst4LCFVfpJc=
 github.com/francoispqt/gojay v1.2.13 h1:d2m3sFjloqoIUQU3TsHBgj6qg/BVGlTBeHDUmyJnXKk=
 github.com/francoispqt/gojay v1.2.13/go.mod h1:ehT5mTG4ua4581f1++1WLG0vPdaA9HaiDsoyrBGkyDY=
