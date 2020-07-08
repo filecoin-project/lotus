@@ -51,9 +51,9 @@ var provingFaultsCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		maddr, err := nodeApi.ActorAddress(ctx)
+		maddr, err := getActorAddress(ctx, nodeApi, cctx.String("actor"))
 		if err != nil {
-			return xerrors.Errorf("getting actor address: %w", err)
+			return err
 		}
 
 		var mas miner.State
@@ -120,9 +120,9 @@ var provingInfoCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		maddr, err := nodeApi.ActorAddress(ctx)
+		maddr, err := getActorAddress(ctx, nodeApi, cctx.String("actor"))
 		if err != nil {
-			return xerrors.Errorf("getting actor address: %w", err)
+			return err
 		}
 
 		head, err := api.ChainHead(ctx)
@@ -138,11 +138,6 @@ var provingInfoCmd = &cli.Command{
 		deadlines, err := api.StateMinerDeadlines(ctx, maddr, head.Key())
 		if err != nil {
 			return xerrors.Errorf("getting miner deadlines: %w", err)
-		}
-
-		curDeadlineSectors, err := deadlines.Due[cd.Index].Count()
-		if err != nil {
-			return xerrors.Errorf("counting deadline sectors: %w", err)
 		}
 
 		var mas miner.State
@@ -203,7 +198,15 @@ var provingInfoCmd = &cli.Command{
 		fmt.Printf("New Sectors: %d\n\n", newSectors)
 
 		fmt.Printf("Deadline Index:       %d\n", cd.Index)
-		fmt.Printf("Deadline Sectors:     %d\n", curDeadlineSectors)
+
+		if cd.Index < uint64(len(deadlines.Due)) {
+			curDeadlineSectors, err := deadlines.Due[cd.Index].Count()
+			if err != nil {
+				return xerrors.Errorf("counting deadline sectors: %w", err)
+			}
+			fmt.Printf("Deadline Sectors:     %d\n", curDeadlineSectors)
+		}
+
 		fmt.Printf("Deadline Open:        %s\n", epochTime(cd.CurrentEpoch, cd.Open))
 		fmt.Printf("Deadline Close:       %s\n", epochTime(cd.CurrentEpoch, cd.Close))
 		fmt.Printf("Deadline Challenge:   %s\n", epochTime(cd.CurrentEpoch, cd.Challenge))
@@ -243,9 +246,9 @@ var provingDeadlinesCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		maddr, err := nodeApi.ActorAddress(ctx)
+		maddr, err := getActorAddress(ctx, nodeApi, cctx.String("actor"))
 		if err != nil {
-			return xerrors.Errorf("getting actor address: %w", err)
+			return err
 		}
 
 		deadlines, err := api.StateMinerDeadlines(ctx, maddr, types.EmptyTSK)

@@ -102,7 +102,7 @@ func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) 
 
 	md, err := a.StateMinerProvingDeadline(ctx, params.Miner, types.EmptyTSK)
 	if err != nil {
-		return nil, xerrors.Errorf("failed getting peer ID: %w", err)
+		return nil, xerrors.Errorf("failed getting miner's deadline info: %w", err)
 	}
 
 	rt, err := ffiwrapper.SealProofTypeFromSectorSize(mi.SectorSize)
