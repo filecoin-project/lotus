@@ -58,7 +58,7 @@ func PrepareBootstrapper(t *TestEnvironment) (*Bootstrapper, error) {
 
 	totalBalance := big.Zero()
 	for _, b := range balances {
-		totalBalance = big.Add(attoFil(b.Balance), totalBalance)
+		totalBalance = big.Add(filToAttoFil(b.Balance), totalBalance)
 	}
 
 	totalBalanceFil := attoFilToFil(totalBalance)
@@ -78,7 +78,7 @@ func PrepareBootstrapper(t *TestEnvironment) (*Bootstrapper, error) {
 	var genesisMiners []genesis.Miner
 
 	for _, bm := range balances {
-		balance := attoFil(bm.Balance)
+		balance := filToAttoFil(bm.Balance)
 		t.RecordMessage("balance assigned to actor %s: %s AttoFIL", bm.Addr, balance)
 		genesisActors = append(genesisActors,
 			genesis.Actor{
@@ -181,8 +181,8 @@ func (b *Bootstrapper) RunDefault() error {
 	return nil
 }
 
-// attoFil converts a fractional filecoin value into AttoFIL, rounding if necessary
-func attoFil(f float64) big.Int {
+// filToAttoFil converts a fractional filecoin value into AttoFIL, rounding if necessary
+func filToAttoFil(f float64) big.Int {
 	a := mbig.NewFloat(f)
 	a.Mul(a, mbig.NewFloat(float64(build.FilecoinPrecision)))
 	i, _ := a.Int(nil)
