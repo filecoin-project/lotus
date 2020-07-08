@@ -63,7 +63,7 @@ func PrepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 	}
 
 	// publish the account ID/balance
-	balance := t.IntParam("balance")
+	balance := t.FloatParam("balance")
 	balanceMsg := &InitialBalanceMsg{Addr: walletKey.Address, Balance: balance}
 	t.SyncClient.Publish(ctx, BalanceTopic, balanceMsg)
 

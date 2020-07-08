@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	mbig "math/big"
 	"time"
 
 	"github.com/filecoin-project/lotus/build"
@@ -57,11 +58,12 @@ func PrepareBootstrapper(t *TestEnvironment) (*Bootstrapper, error) {
 
 	totalBalance := big.Zero()
 	for _, b := range balances {
-		totalBalance = big.Add(big.NewInt(int64(b.Balance)), totalBalance)
+		totalBalance = big.Add(filToAttoFil(b.Balance), totalBalance)
 	}
 
-	t.RecordMessage("TOTAL BALANCE: %s", totalBalance)
-	if max := types.TotalFilecoinInt; totalBalance.GreaterThanEqual(max) {
+	totalBalanceFil := attoFilToFil(totalBalance)
+	t.RecordMessage("TOTAL BALANCE: %s AttoFIL (%s FIL)", totalBalance, totalBalanceFil)
+	if max := types.TotalFilecoinInt; totalBalanceFil.GreaterThanEqual(max) {
 		panic(fmt.Sprintf("total sum of balances is greater than max Filecoin ever; sum=%s, max=%s", totalBalance, max))
 	}
 
@@ -76,7 +78,7 @@ func PrepareBootstrapper(t *TestEnvironment) (*Bootstrapper, error) {
 	var genesisMiners []genesis.Miner
 
 	for _, bm := range balances {
-		balance := big.Mul(big.NewInt(int64(bm.Balance)), types.NewInt(build.FilecoinPrecision))
+		balance := filToAttoFil(bm.Balance)
 		t.RecordMessage("balance assigned to actor %s: %s AttoFIL", bm.Addr, balance)
 		genesisActors = append(genesisActors,
 			genesis.Actor{
@@ -177,4 +179,19 @@ func (b *Bootstrapper) RunDefault() error {
 	ctx := context.Background()
 	b.t.SyncClient.MustSignalAndWait(ctx, StateDone, b.t.TestInstanceCount)
 	return nil
+}
+
+// filToAttoFil converts a fractional filecoin value into AttoFIL, rounding if necessary
+func filToAttoFil(f float64) big.Int {
+	a := mbig.NewFloat(f)
+	a.Mul(a, mbig.NewFloat(float64(build.FilecoinPrecision)))
+	i, _ := a.Int(nil)
+	return big.Int{Int: i}
+}
+
+func attoFilToFil(atto big.Int) big.Int {
+	i := big.NewInt(0)
+	i.Add(i.Int, atto.Int)
+	i.Div(i.Int, big.NewIntUnsigned(build.FilecoinPrecision).Int)
+	return i
 }
