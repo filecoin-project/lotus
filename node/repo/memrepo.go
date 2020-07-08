@@ -243,6 +243,15 @@ func (lmem *lockedMemRepo) Datastore(ns string) (datastore.Batching, error) {
 	return namespace.Wrap(lmem.mem.datastore, datastore.NewKey(ns)), nil
 }
 
+func (lmem *lockedMemRepo) ListDatastores(ns string) ([]int64, error) {
+	return nil, nil
+}
+
+func (lmem *lockedMemRepo) DeleteDatastore(ns string) error {
+	/** poof **/
+	return nil
+}
+
 func (lmem *lockedMemRepo) Config() (interface{}, error) {
 	if err := lmem.checkToken(); err != nil {
 		return nil, err

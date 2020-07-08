@@ -226,9 +226,11 @@ type fsLockedRepo struct {
 	repoType RepoType
 	closer   io.Closer
 
-	ds     datastore.Batching
-	dsErr  error
-	dsOnce sync.Once
+	ds      map[string]datastore.Batching
+	multiDs map[string]map[int64]datastore.Batching
+	dsErr   error
+	dsOnce  sync.Once
+	dsLk    sync.Mutex
 
 	storageLk sync.Mutex
 	configLk  sync.Mutex
@@ -245,8 +247,10 @@ func (fsr *fsLockedRepo) Close() error {
 		return xerrors.Errorf("could not remove API file: %w", err)
 	}
 	if fsr.ds != nil {
-		if err := fsr.ds.Close(); err != nil {
-			return xerrors.Errorf("could not close datastore: %w", err)
+		for _, ds := range fsr.ds {
+			if err := ds.Close(); err != nil {
+				return xerrors.Errorf("could not close datastore: %w", err)
+			}
 		}
 	}
 

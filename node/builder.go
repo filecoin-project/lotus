@@ -234,7 +234,6 @@ func Online() Option {
 			Override(new(dtypes.ChainGCBlockstore), modules.ChainGCBlockstore),
 			Override(new(dtypes.ChainExchange), modules.ChainExchange),
 			Override(new(dtypes.ChainBlockService), modules.ChainBlockservice),
-			Override(new(dtypes.ClientDAG), testing.MemoryClientDag),
 
 			// Filecoin services
 			Override(new(*chain.Syncer), modules.NewSyncer),
@@ -440,9 +439,10 @@ func Repo(r repo.Repo) Option {
 			Override(new(dtypes.MetadataDS), modules.Datastore),
 			Override(new(dtypes.ChainBlockstore), modules.ChainBlockstore),
 
-			Override(new(dtypes.ClientFilestore), modules.ClientFstore),
+			Override(new(dtypes.ClientImportMgr), modules.ClientImportMgr),
+			Override(new(dtypes.ClientMultiDstore), modules.ClientMultiDatastore),
+
 			Override(new(dtypes.ClientBlockstore), modules.ClientBlockstore),
-			Override(new(dtypes.ClientDAG), modules.ClientDAG),
 
 			Override(new(ci.PrivKey), lp2p.PrivKey),
 			Override(new(ci.PubKey), ci.PrivKey.GetPublic),
