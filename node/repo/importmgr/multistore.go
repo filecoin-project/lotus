@@ -18,7 +18,7 @@ type dsProvider interface {
 	DeleteDatastore(namespace string) error
 }
 
-type 	MultiStore struct {
+type MultiStore struct {
 	provider  dsProvider
 	namespace string
 
