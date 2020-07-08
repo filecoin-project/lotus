@@ -189,7 +189,7 @@ func TestDealMining(t *testing.T, b APIBuilder, blocktime time.Duration, carExpo
 		}
 	}()
 
-	deal := startDeal(t, ctx, provider, client, fcid)
+	deal := startDeal(t, ctx, provider, client, fcid, false)
 
 	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
 	time.Sleep(time.Second)

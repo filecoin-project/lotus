@@ -146,7 +146,7 @@ func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte) (*runtime.Consen
 
 	// (3) return if no consensus fault by now
 	if consensusFault == nil {
-		return consensusFault, nil
+		return nil, xerrors.Errorf("no consensus fault detected")
 	}
 
 	// else

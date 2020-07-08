@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"context"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/events/state"
 
 	"golang.org/x/xerrors"
@@ -292,44 +291,44 @@ func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider 
 
 	var sectorNumber abi.SectorNumber
 	var sectorFound bool
-	matchEvent := func(msg *types.Message) (bool, error) {
+	matchEvent := func(msg *types.Message) (matchOnce bool, matched bool, err error) {
 		if msg.To != provider {
-			return false, nil
+			return true, false, nil
 		}
 
 		switch msg.Method {
 		case builtin.MethodsMiner.PreCommitSector:
 			var params miner.SectorPreCommitInfo
 			if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
-				return false, xerrors.Errorf("unmarshal pre commit: %w", err)
+				return true, false, xerrors.Errorf("unmarshal pre commit: %w", err)
 			}
 
 			for _, did := range params.DealIDs {
 				if did == abi.DealID(dealId) {
 					sectorNumber = params.SectorNumber
 					sectorFound = true
-					return false, nil
+					return true, false, nil
 				}
 			}
 
-			return false, nil
+			return true, false, nil
 		case builtin.MethodsMiner.ProveCommitSector:
 			var params miner.ProveCommitSectorParams
 			if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
-				return false, xerrors.Errorf("failed to unmarshal prove commit sector params: %w", err)
+				return true, false, xerrors.Errorf("failed to unmarshal prove commit sector params: %w", err)
 			}
 
 			if !sectorFound {
-				return false, nil
+				return true, false, nil
 			}
 
 			if params.SectorNumber != sectorNumber {
-				return false, nil
+				return true, false, nil
 			}
 
-			return true, nil
+			return false, true, nil
 		default:
-			return false, nil
+			return true, false, nil
 		}
 	}
 
@@ -341,16 +340,18 @@ func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider 
 }
 
 func (c *ClientNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID abi.DealID, onDealExpired storagemarket.DealExpiredCallback, onDealSlashed storagemarket.DealSlashedCallback) error {
-	var sd *api.MarketDeal
+	head, err := c.ChainHead(ctx)
+	if err != nil {
+		return xerrors.Errorf("client: failed to get chain head: %w", err)
+	}
+
+	sd, err := c.StateMarketStorageDeal(ctx, dealID, head.Key())
+	if err != nil {
+		return xerrors.Errorf("client: failed to look up deal %d on chain: %w", dealID, err)
+	}
 
 	// Called immediately to check if the deal has already expired or been slashed
 	checkFunc := func(ts *types.TipSet) (done bool, more bool, err error) {
-		sd, err = stmgr.GetStorageDeal(ctx, c.StateManager, dealID, ts)
-
-		if err != nil {
-			return false, false, xerrors.Errorf("client: failed to look up deal on chain: %w", err)
-		}
-
 		// Check if the deal has already expired
 		if sd.Proposal.EndEpoch <= ts.Height() {
 			onDealExpired(nil)
@@ -371,14 +372,15 @@ func (c *ClientNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID a
 	// Called when there was a match against the state change we're looking for
 	// and the chain has advanced to the confidence height
 	stateChanged := func(ts *types.TipSet, ts2 *types.TipSet, states events.StateChange, h abi.ChainEpoch) (more bool, err error) {
-		if states == nil {
-			log.Error("timed out waiting for deal expiry")
-			return false, nil
-		}
-
 		// Check if the deal has already expired
 		if sd.Proposal.EndEpoch <= ts2.Height() {
 			onDealExpired(nil)
+			return false, nil
+		}
+
+		// Timeout waiting for state change
+		if states == nil {
+			log.Error("timed out waiting for deal expiry")
 			return false, nil
 		}
 
@@ -415,9 +417,12 @@ func (c *ClientNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID a
 		preds.OnDealStateChanged(
 			preds.DealStateChangedForIDs([]abi.DealID{dealID})))
 	match := func(oldTs, newTs *types.TipSet) (bool, events.StateChange, error) {
-		return dealDiff(ctx, oldTs, newTs)
+		return dealDiff(ctx, oldTs.Key(), newTs.Key())
 	}
-	if err := c.ev.StateChanged(checkFunc, stateChanged, revert, int(build.MessageConfidence)+1, build.SealRandomnessLookbackLimit, match); err != nil {
+
+	// Wait until after the end epoch for the deal and then timeout
+	timeout := (sd.Proposal.EndEpoch - head.Height()) + 1
+	if err := c.ev.StateChanged(checkFunc, stateChanged, revert, int(build.MessageConfidence)+1, timeout, match); err != nil {
 		return xerrors.Errorf("failed to set up state changed handler: %w", err)
 	}
 

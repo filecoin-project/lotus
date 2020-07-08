@@ -1,19 +1,27 @@
 package state
 
 import (
+	"bytes"
 	"context"
+
+	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	typegen "github.com/whyrusleeping/cbor-gen"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-amt-ipld/v2"
-	"github.com/filecoin-project/lotus/api/apibstore"
-	"github.com/filecoin-project/lotus/chain/types"
+
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
-	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
+
+	"github.com/filecoin-project/lotus/api/apibstore"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
-// UserData is the data returned from the DiffFunc
+// UserData is the data returned from the DiffTipSetKeyFunc
 type UserData interface{}
 
 // ChainAPI abstracts out calls made by this class to external APIs
@@ -35,22 +43,22 @@ func NewStatePredicates(api ChainAPI) *StatePredicates {
 	}
 }
 
-// DiffFunc check if there's a change form oldState to newState, and returns
+// DiffTipSetKeyFunc check if there's a change form oldState to newState, and returns
 // - changed: was there a change
 // - user: user-defined data representing the state change
 // - err
-type DiffFunc func(ctx context.Context, oldState, newState *types.TipSet) (changed bool, user UserData, err error)
+type DiffTipSetKeyFunc func(ctx context.Context, oldState, newState types.TipSetKey) (changed bool, user UserData, err error)
 
-type DiffStateFunc func(ctx context.Context, oldActorStateHead, newActorStateHead cid.Cid) (changed bool, user UserData, err error)
+type DiffActorStateFunc func(ctx context.Context, oldActorStateHead, newActorStateHead cid.Cid) (changed bool, user UserData, err error)
 
 // OnActorStateChanged calls diffStateFunc when the state changes for the given actor
-func (sp *StatePredicates) OnActorStateChanged(addr address.Address, diffStateFunc DiffStateFunc) DiffFunc {
-	return func(ctx context.Context, oldState, newState *types.TipSet) (changed bool, user UserData, err error) {
-		oldActor, err := sp.api.StateGetActor(ctx, addr, oldState.Key())
+func (sp *StatePredicates) OnActorStateChanged(addr address.Address, diffStateFunc DiffActorStateFunc) DiffTipSetKeyFunc {
+	return func(ctx context.Context, oldState, newState types.TipSetKey) (changed bool, user UserData, err error) {
+		oldActor, err := sp.api.StateGetActor(ctx, addr, oldState)
 		if err != nil {
 			return false, nil, err
 		}
-		newActor, err := sp.api.StateGetActor(ctx, addr, newState.Key())
+		newActor, err := sp.api.StateGetActor(ctx, addr, newState)
 		if err != nil {
 			return false, nil, err
 		}
@@ -65,7 +73,7 @@ func (sp *StatePredicates) OnActorStateChanged(addr address.Address, diffStateFu
 type DiffStorageMarketStateFunc func(ctx context.Context, oldState *market.State, newState *market.State) (changed bool, user UserData, err error)
 
 // OnStorageMarketActorChanged calls diffStorageMarketState when the state changes for the market actor
-func (sp *StatePredicates) OnStorageMarketActorChanged(diffStorageMarketState DiffStorageMarketStateFunc) DiffFunc {
+func (sp *StatePredicates) OnStorageMarketActorChanged(diffStorageMarketState DiffStorageMarketStateFunc) DiffTipSetKeyFunc {
 	return sp.OnActorStateChanged(builtin.StorageMarketActorAddr, func(ctx context.Context, oldActorStateHead, newActorStateHead cid.Cid) (changed bool, user UserData, err error) {
 		var oldState market.State
 		if err := sp.cst.Get(ctx, oldActorStateHead, &oldState); err != nil {
@@ -140,5 +148,117 @@ func (sp *StatePredicates) DealStateChangedForIDs(dealIds []abi.DealID) DiffDeal
 			return true, changedDeals, nil
 		}
 		return false, nil, nil
+	}
+}
+
+type DiffMinerActorStateFunc func(ctx context.Context, oldState *miner.State, newState *miner.State) (changed bool, user UserData, err error)
+
+func (sp *StatePredicates) OnMinerActorChange(minerAddr address.Address, diffMinerActorState DiffMinerActorStateFunc) DiffTipSetKeyFunc {
+	return sp.OnActorStateChanged(minerAddr, func(ctx context.Context, oldActorStateHead, newActorStateHead cid.Cid) (changed bool, user UserData, err error) {
+		var oldState miner.State
+		if err := sp.cst.Get(ctx, oldActorStateHead, &oldState); err != nil {
+			return false, nil, err
+		}
+		var newState miner.State
+		if err := sp.cst.Get(ctx, newActorStateHead, &newState); err != nil {
+			return false, nil, err
+		}
+		return diffMinerActorState(ctx, &oldState, &newState)
+	})
+}
+
+type MinerSectorChanges struct {
+	Added    []miner.SectorOnChainInfo
+	Extended []SectorExtensions
+	Removed  []miner.SectorOnChainInfo
+}
+
+var _ AdtArrayDiff = &MinerSectorChanges{}
+
+type SectorExtensions struct {
+	From miner.SectorOnChainInfo
+	To   miner.SectorOnChainInfo
+}
+
+func (m *MinerSectorChanges) Add(key uint64, val *typegen.Deferred) error {
+	si := new(miner.SectorOnChainInfo)
+	err := si.UnmarshalCBOR(bytes.NewReader(val.Raw))
+	if err != nil {
+		return err
+	}
+	m.Added = append(m.Added, *si)
+	return nil
+}
+
+func (m *MinerSectorChanges) Modify(key uint64, from, to *typegen.Deferred) error {
+	siFrom := new(miner.SectorOnChainInfo)
+	err := siFrom.UnmarshalCBOR(bytes.NewReader(from.Raw))
+	if err != nil {
+		return err
+	}
+
+	siTo := new(miner.SectorOnChainInfo)
+	err = siTo.UnmarshalCBOR(bytes.NewReader(to.Raw))
+	if err != nil {
+		return err
+	}
+
+	if siFrom.Expiration != siTo.Expiration {
+		m.Extended = append(m.Extended, SectorExtensions{
+			From: *siFrom,
+			To:   *siTo,
+		})
+	}
+	return nil
+}
+
+func (m *MinerSectorChanges) Remove(key uint64, val *typegen.Deferred) error {
+	si := new(miner.SectorOnChainInfo)
+	err := si.UnmarshalCBOR(bytes.NewReader(val.Raw))
+	if err != nil {
+		return err
+	}
+	m.Removed = append(m.Removed, *si)
+	return nil
+}
+
+func (sp *StatePredicates) OnMinerSectorChange() DiffMinerActorStateFunc {
+	return func(ctx context.Context, oldState, newState *miner.State) (changed bool, user UserData, err error) {
+		ctxStore := &contextStore{
+			ctx: ctx,
+			cst: sp.cst,
+		}
+
+		sectorChanges := &MinerSectorChanges{
+			Added:    []miner.SectorOnChainInfo{},
+			Extended: []SectorExtensions{},
+			Removed:  []miner.SectorOnChainInfo{},
+		}
+
+		// no sector changes
+		if oldState.Sectors.Equals(newState.Sectors) {
+			return false, nil, nil
+		}
+
+		oldSectors, err := adt.AsArray(ctxStore, oldState.Sectors)
+		if err != nil {
+			return false, nil, err
+		}
+
+		newSectors, err := adt.AsArray(ctxStore, newState.Sectors)
+		if err != nil {
+			return false, nil, err
+		}
+
+		if err := DiffAdtArray(oldSectors, newSectors, sectorChanges); err != nil {
+			return false, nil, err
+		}
+
+		// nothing changed
+		if len(sectorChanges.Added)+len(sectorChanges.Extended)+len(sectorChanges.Removed) == 0 {
+			return false, nil, nil
+		}
+
+		return true, sectorChanges, nil
 	}
 }

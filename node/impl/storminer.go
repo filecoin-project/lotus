@@ -3,12 +3,13 @@ package impl
 import (
 	"context"
 	"encoding/json"
+	"github.com/filecoin-project/sector-storage/fsutil"
+	"github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
 	"net/http"
 	"os"
 	"strconv"
-
-	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
+	"time"
 
 	"github.com/filecoin-project/go-address"
 	storagemarket "github.com/filecoin-project/go-fil-markets/storagemarket"
@@ -53,6 +54,8 @@ type StorageMinerAPI struct {
 	SetConsiderOfflineStorageDealsConfigFunc   dtypes.SetConsiderOfflineStorageDealsConfigFunc
 	ConsiderOfflineRetrievalDealsConfigFunc    dtypes.ConsiderOfflineRetrievalDealsConfigFunc
 	SetConsiderOfflineRetrievalDealsConfigFunc dtypes.SetConsiderOfflineRetrievalDealsConfigFunc
+	SetSealingDelayFunc                        dtypes.SetSealingDelayFunc
+	GetSealingDelayFunc                        dtypes.GetSealingDelayFunc
 }
 
 func (sm *StorageMinerAPI) ServeRemote(w http.ResponseWriter, r *http.Request) {
@@ -173,12 +176,20 @@ func (sm *StorageMinerAPI) SectorsRefs(context.Context) (map[string][]api.Sealed
 	return out, nil
 }
 
-func (sm *StorageMinerAPI) StorageStat(ctx context.Context, id stores.ID) (stores.FsStat, error) {
+func (sm *StorageMinerAPI) StorageStat(ctx context.Context, id stores.ID) (fsutil.FsStat, error) {
 	return sm.StorageMgr.FsStat(ctx, id)
 }
 
 func (sm *StorageMinerAPI) SectorStartSealing(ctx context.Context, number abi.SectorNumber) error {
 	return sm.Miner.StartPackingSector(number)
+}
+
+func (sm *StorageMinerAPI) SectorSetSealDelay(ctx context.Context, delay time.Duration) error {
+	return sm.SetSealingDelayFunc(delay)
+}
+
+func (sm *StorageMinerAPI) SectorGetSealDelay(ctx context.Context) (time.Duration, error) {
+	return sm.GetSealingDelayFunc()
 }
 
 func (sm *StorageMinerAPI) SectorsUpdate(ctx context.Context, id abi.SectorNumber, state api.SectorState) error {
