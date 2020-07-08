@@ -200,8 +200,8 @@
 - description: "Hint: Needs Contributor"
   name: hint/needs-contributor
   color: 0623cc
-- description: "Hint: Needs Participation"
-  name: hint/needs-participation
+- description: "Hint: Needs Scoring"
+  name: hint/needs-scoring
   color: 0623cc
 - description: "Hint: Needs Decision"
   name: hint/needs-decision
