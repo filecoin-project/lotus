@@ -137,11 +137,6 @@ var provingInfoCmd = &cli.Command{
 			return xerrors.Errorf("getting miner deadlines: %w", err)
 		}
 
-		curDeadlineSectors, err := deadlines.Due[cd.Index].Count()
-		if err != nil {
-			return xerrors.Errorf("counting deadline sectors: %w", err)
-		}
-
 		var mas miner.State
 		{
 			mact, err := api.StateGetActor(ctx, maddr, types.EmptyTSK)
@@ -200,7 +195,15 @@ var provingInfoCmd = &cli.Command{
 		fmt.Printf("New Sectors: %d\n\n", newSectors)
 
 		fmt.Printf("Deadline Index:       %d\n", cd.Index)
-		fmt.Printf("Deadline Sectors:     %d\n", curDeadlineSectors)
+
+		if cd.Index < uint64(len(deadlines.Due)) {
+			curDeadlineSectors, err := deadlines.Due[cd.Index].Count()
+			if err != nil {
+				return xerrors.Errorf("counting deadline sectors: %w", err)
+			}
+			fmt.Printf("Deadline Sectors:     %d\n", curDeadlineSectors)
+		}
+
 		fmt.Printf("Deadline Open:        %s\n", epochTime(cd.CurrentEpoch, cd.Open))
 		fmt.Printf("Deadline Close:       %s\n", epochTime(cd.CurrentEpoch, cd.Close))
 		fmt.Printf("Deadline Challenge:   %s\n", epochTime(cd.CurrentEpoch, cd.Challenge))
