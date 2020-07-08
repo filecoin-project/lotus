@@ -2,12 +2,12 @@ package repo
 
 import (
 	"errors"
-	"github.com/filecoin-project/sector-storage/fsutil"
-
-	"github.com/filecoin-project/sector-storage/stores"
 
 	"github.com/ipfs/go-datastore"
 	"github.com/multiformats/go-multiaddr"
+
+	"github.com/filecoin-project/sector-storage/fsutil"
+	"github.com/filecoin-project/sector-storage/stores"
 
 	"github.com/filecoin-project/lotus/chain/types"
 )

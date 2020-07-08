@@ -2,7 +2,6 @@ package repo
 
 import (
 	"encoding/json"
-	"github.com/filecoin-project/sector-storage/fsutil"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -14,6 +13,8 @@ import (
 	dssync "github.com/ipfs/go-datastore/sync"
 	"github.com/multiformats/go-multiaddr"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/sector-storage/fsutil"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/config"
@@ -81,7 +82,6 @@ func (lmem *lockedMemRepo) SetStorage(c func(*stores.StorageConfig)) error {
 func (lmem *lockedMemRepo) Stat(path string) (fsutil.FsStat, error) {
 	return fsutil.Statfs(path)
 }
-
 
 func (lmem *lockedMemRepo) DiskUsage(path string) (int64, error) {
 	si, err := fsutil.FileSize(path)
