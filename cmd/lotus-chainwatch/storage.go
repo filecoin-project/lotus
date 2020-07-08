@@ -294,6 +294,17 @@ create table if not exists miner_info
 		primary key (miner_id)
 );
 
+/*
+* captures chain-specific power state for any given stateroot
+*/
+create table if not exists chain_power
+(
+	stateroot text not null
+		constraint chain_power_pk
+			primary key,
+	baseline_power text not null
+);
+
 /* used to tell when a miners sectors (proven-not-yet-expired) changed if the miner_sectors_cid's are different a new sector was added or removed (terminated/expired) */
 create table if not exists miner_sectors_heads
 (
@@ -495,6 +506,46 @@ func (st *storage) storeActors(actors map[address.Address]map[types.Actor]actorI
 
 	if err := tx.Commit(); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+// storeChainPower captures reward actor state as it relates to power captured on-chain
+func (st *storage) storeChainPower(rewardTips map[types.TipSetKey]*rewardStateInfo) error {
+	tx, err := st.db.Begin()
+	if err != nil {
+		return xerrors.Errorf("begin chain_power tx: %w", err)
+	}
+
+	if _, err := tx.Exec(`create temp table cp (like chain_power excluding constraints) on commit drop`); err != nil {
+		return xerrors.Errorf("prep chain_power temp: %w", err)
+	}
+
+	stmt, err := tx.Prepare(`copy cp (stateroot, baseline_power) from STDIN`)
+	if err != nil {
+		return xerrors.Errorf("prepare tmp chain_power: %w", err)
+	}
+
+	for _, rewardState := range rewardTips {
+		if _, err := stmt.Exec(
+			rewardState.stateroot.String(),
+			rewardState.baselinePower.String(),
+		); err != nil {
+			return xerrors.Errorf("exec prepared chain_power: %w", err)
+		}
+	}
+
+	if err := stmt.Close(); err != nil {
+		return xerrors.Errorf("close prepared chain_power: %w", err)
+	}
+
+	if _, err := tx.Exec(`insert into chain_power select * from cp on conflict do nothing`); err != nil {
+		return xerrors.Errorf("insert chain_power from tmp: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return xerrors.Errorf("commit chain_power tx: %w", err)
 	}
 
 	return nil
