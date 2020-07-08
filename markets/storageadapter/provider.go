@@ -95,7 +95,6 @@ func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagema
 			StartEpoch: deal.ClientDealProposal.Proposal.StartEpoch,
 			EndEpoch:   deal.ClientDealProposal.Proposal.EndEpoch,
 		},
-		KeepUnsealed: deal.FastRetrieval,
 	})
 	if err != nil {
 		return xerrors.Errorf("AddPiece failed: %s", err)
