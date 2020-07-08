@@ -254,7 +254,10 @@ func (sb *Sealer) UnsealPiece(ctx context.Context, sector abi.SectorID, offset s
 	defer sealed.Close()
 
 	var at, nextat abi.PaddedPieceSize
-	for {
+	first := true
+	for first || toUnseal.HasNext() {
+		first = false
+
 		piece, err := toUnseal.NextRun()
 		if err != nil {
 			return xerrors.Errorf("getting next range to unseal: %w", err)
