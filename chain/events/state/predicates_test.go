@@ -328,11 +328,11 @@ func createSectorsAMT(ctx context.Context, t *testing.T, store *cbornode.BasicIp
 func newSectorOnChainInfo(sectorNo abi.SectorNumber, sealed cid.Cid, weight big.Int, activation, expiration abi.ChainEpoch) miner.SectorOnChainInfo {
 	info := newSectorPreCommitInfo(sectorNo, sealed, expiration)
 	return miner.SectorOnChainInfo{
-		SectorNumber:       info.SectorNumber,
-		SealProof:          info.SealProof,
-		SealedCID:          info.SealedCID,
-		DealIDs:            info.DealIDs,
-		Expiration:         info.Expiration,
+		SectorNumber: info.SectorNumber,
+		SealProof:    info.SealProof,
+		SealedCID:    info.SealedCID,
+		DealIDs:      info.DealIDs,
+		Expiration:   info.Expiration,
 
 		Activation:         activation,
 		DealWeight:         weight,
