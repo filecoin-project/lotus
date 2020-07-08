@@ -58,10 +58,10 @@ deps: $(BUILD_DEPS)
 .PHONY: deps
 
 debug: GOFLAGS+=-tags=debug
-debug: lotus lotus-storage-miner lotus-seal-worker lotus-seed
+debug: lotus lotus-miner lotus-seal-worker lotus-seed
 
 2k: GOFLAGS+=-tags=2k
-2k: lotus lotus-storage-miner lotus-seal-worker lotus-seed
+2k: lotus lotus-miner lotus-seal-worker lotus-seed
 
 lotus: $(BUILD_DEPS)
 	rm -f lotus
@@ -71,12 +71,12 @@ lotus: $(BUILD_DEPS)
 .PHONY: lotus
 BINS+=lotus
 
-lotus-storage-miner: $(BUILD_DEPS)
-	rm -f lotus-storage-miner
-	go build $(GOFLAGS) -o lotus-storage-miner ./cmd/lotus-storage-miner
-	go run github.com/GeertJohan/go.rice/rice append --exec lotus-storage-miner -i ./build
-.PHONY: lotus-storage-miner
-BINS+=lotus-storage-miner
+lotus-miner: $(BUILD_DEPS)
+	rm -f lotus-miner
+	go build $(GOFLAGS) -o lotus-miner ./cmd/lotus-storage-miner
+	go run github.com/GeertJohan/go.rice/rice append --exec lotus-miner -i ./build
+.PHONY: lotus-miner
+BINS+=lotus-miner
 
 lotus-seal-worker: $(BUILD_DEPS)
 	rm -f lotus-seal-worker
@@ -92,7 +92,7 @@ lotus-shed: $(BUILD_DEPS)
 .PHONY: lotus-shed
 BINS+=lotus-shed
 
-build: lotus lotus-storage-miner lotus-seal-worker
+build: lotus lotus-miner lotus-seal-worker
 	@[[ $$(type -P "lotus") ]] && echo "Caution: you have \
 an existing lotus binary in your PATH. This may cause problems if you don't run 'sudo make install'" || true
 
@@ -100,7 +100,7 @@ an existing lotus binary in your PATH. This may cause problems if you don't run 
 
 install:
 	install -C ./lotus /usr/local/bin/lotus
-	install -C ./lotus-storage-miner /usr/local/bin/lotus-storage-miner
+	install -C ./lotus-miner /usr/local/bin/lotus-miner
 	install -C ./lotus-seal-worker /usr/local/bin/lotus-seal-worker
 
 install-services: install
@@ -115,7 +115,7 @@ install-services: install
 clean-services:
 	rm -f /usr/local/lib/systemd/system/lotus-daemon.service
 	rm -f /usr/local/lib/systemd/system/lotus-miner.service
-	rm -f /usr/local/lib/systemd/system/chainwatch.service
+	rm -f /usr/local/lib/systemd/system/lotus-chainwatch.service
 	systemctl daemon-reload
 
 # TOOLS
@@ -134,68 +134,68 @@ benchmarks:
 	@curl -X POST 'http://benchmark.kittyhawk.wtf/benchmark' -d '@bench.json' -u "${benchmark_http_cred}"
 .PHONY: benchmarks
 
-pond: 2k
-	go build -o pond ./lotuspond
+lotus-pond: 2k
+	go build -o lotus-pond ./lotuspond
 	(cd lotuspond/front && npm i && CI=false npm run build)
-.PHONY: pond
-BINS+=pond
+.PHONY: lotus-pond
+BINS+=lotus-pond
 
-townhall:
-	rm -f townhall
-	go build -o townhall ./cmd/lotus-townhall
+lotus-townhall:
+	rm -f lotus-townhall
+	go build -o lotus-townhall ./cmd/lotus-townhall
 	(cd ./cmd/lotus-townhall/townhall && npm i && npm run build)
-	go run github.com/GeertJohan/go.rice/rice append --exec townhall -i ./cmd/lotus-townhall -i ./build
-.PHONY: townhall
-BINS+=townhall
+	go run github.com/GeertJohan/go.rice/rice append --exec lotus-townhall -i ./cmd/lotus-townhall -i ./build
+.PHONY: lotus-townhall
+BINS+=lotus-townhall
 
-fountain:
-	rm -f fountain
-	go build -o fountain ./cmd/lotus-fountain
-	go run github.com/GeertJohan/go.rice/rice append --exec fountain -i ./cmd/lotus-fountain -i ./build
-.PHONY: fountain
-BINS+=fountain
+lotus-fountain:
+	rm -f lotus-fountain
+	go build -o lotus-fountain ./cmd/lotus-fountain
+	go run github.com/GeertJohan/go.rice/rice append --exec lotus-fountain -i ./cmd/lotus-fountain -i ./build
+.PHONY: lotus-fountain
+BINS+=lotus-fountain
 
-chainwatch:
-	rm -f chainwatch
-	go build -o chainwatch ./cmd/lotus-chainwatch
-	go run github.com/GeertJohan/go.rice/rice append --exec chainwatch -i ./cmd/lotus-chainwatch -i ./build
-.PHONY: chainwatch
-BINS+=chainwatch
+lotus-chainwatch:
+	rm -f lotus-chainwatch
+	go build -o lotus-chainwatch ./cmd/lotus-chainwatch
+	go run github.com/GeertJohan/go.rice/rice append --exec lotus-chainwatch -i ./cmd/lotus-chainwatch -i ./build
+.PHONY: lotus-chainwatch
+BINS+=lotus-chainwatch
 
 install-chainwatch-service: chainwatch
-	install -C ./chainwatch /usr/local/bin/chainwatch
-	install -C -m 0644 ./scripts/chainwatch.service /usr/local/lib/systemd/system/chainwatch.service
+	mkdir -p /etc/lotus
+	install -C ./lotus-chainwatch /usr/local/bin/lotus-chainwatch
+	install -C -m 0644 ./scripts/lotus-chainwatch.service /usr/local/lib/systemd/system/lotus-chainwatch.service
 	systemctl daemon-reload
 	@echo
 	@echo "chainwatch installed. Don't forget to 'systemctl enable chainwatch' for it to be enabled on startup."
 
-bench:
-	rm -f bench
-	go build -o bench ./cmd/lotus-bench
-	go run github.com/GeertJohan/go.rice/rice append --exec bench -i ./build
-.PHONY: bench
-BINS+=bench
+lotus-bench:
+	rm -f lotus-bench
+	go build -o lotus-bench ./cmd/lotus-bench
+	go run github.com/GeertJohan/go.rice/rice append --exec lotus-bench -i ./build
+.PHONY: lotus-bench
+BINS+=lotus-bench
 
-stats:
-	rm -f stats
-	go build -o stats ./tools/stats
-	go run github.com/GeertJohan/go.rice/rice append --exec stats -i ./build
-.PHONY: stats
-BINS+=stats
+lotus-stats:
+	rm -f lotus-stats
+	go build -o lotus-stats ./tools/stats
+	go run github.com/GeertJohan/go.rice/rice append --exec lotus-stats -i ./build
+.PHONY: lotus-stats
+BINS+=lotus-stats
 
-health:
+lotus-health:
 	rm -f lotus-health
 	go build -o lotus-health ./cmd/lotus-health
 	go run github.com/GeertJohan/go.rice/rice append --exec lotus-health -i ./build
+.PHONY: lotus-health
+BINS+=lotus-health
 
-.PHONY: health
-BINS+=health
+lotus-testground:
+	go build -tags lotus-testground -o /dev/null ./cmd/lotus
 
-testground:
-	go build -tags testground -o /dev/null ./cmd/lotus
-
-.PHONY: testground
-BINS+=testground
+.PHONY: lotus-testground
+BINS+=lotus-testground
 
 # MISC
 
@@ -203,15 +203,15 @@ buildall: $(BINS)
 
 completions:
 	./scripts/make-completions.sh lotus
-	./scripts/make-completions.sh lotus-storage-miner
+	./scripts/make-completions.sh lotus-miner
 .PHONY: completions
 
 install-completions:
 	mkdir -p /usr/share/bash-completion/completions /usr/local/share/zsh/site-functions/
 	install -C ./scripts/bash-completion/lotus /usr/share/bash-completion/completions/lotus
-	install -C ./scripts/bash-completion/lotus-storage-miner /usr/share/bash-completion/completions/lotus-storage-miner
+	install -C ./scripts/bash-completion/lotus-miner /usr/share/bash-completion/completions/lotus-miner
 	install -C ./scripts/zsh-completion/lotus /usr/local/share/zsh/site-functions/_lotus
-	install -C ./scripts/zsh-completion/lotus-storage-miner /usr/local/share/zsh/site-functions/_lotus-storage-miner
+	install -C ./scripts/zsh-completion/lotus-miner /usr/local/share/zsh/site-functions/_lotus-miner
 
 clean:
 	rm -rf $(CLEAN) $(BINS)

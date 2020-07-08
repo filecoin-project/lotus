@@ -36,7 +36,7 @@ import (
 
 var log = logging.Logger("main")
 
-const FlagStorageRepo = "workerrepo"
+const FlagWorkerRepo = "workerrepo"
 
 func main() {
 	lotuslog.SetupLogLevels()
@@ -53,14 +53,14 @@ func main() {
 		Version: build.UserVersion(),
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:    FlagStorageRepo,
-				EnvVars: []string{"WORKER_PATH"},
+				Name:    FlagWorkerRepo,
+				EnvVars: []string{"LOTUS_SEAL_WORKER_PATH"},
 				Value:   "~/.lotusworker", // TODO: Consider XDG_DATA_HOME
 			},
 			&cli.StringFlag{
-				Name:    "storagerepo",
-				EnvVars: []string{"LOTUS_STORAGE_PATH"},
-				Value:   "~/.lotusstorage", // TODO: Consider XDG_DATA_HOME
+				Name:    "miner-repo",
+				EnvVars: []string{"LOTUS_MINER_PATH"},
+				Value:   "~/.lotusminer", // TODO: Consider XDG_DATA_HOME
 			},
 			&cli.BoolFlag{
 				Name:  "enable-gpu-proving",
@@ -143,7 +143,7 @@ var runCmd = &cli.Command{
 			return err
 		}
 		if v.APIVersion != build.APIVersion {
-			return xerrors.Errorf("lotus-storage-miner API version doesn't match: local: ", api.Version{APIVersion: build.APIVersion})
+			return xerrors.Errorf("lotus-miner API version doesn't match: local: ", api.Version{APIVersion: build.APIVersion})
 		}
 		log.Infof("Remote version %s", v)
 
@@ -186,7 +186,7 @@ var runCmd = &cli.Command{
 
 		// Open repo
 
-		repoPath := cctx.String(FlagStorageRepo)
+		repoPath := cctx.String(FlagWorkerRepo)
 		r, err := repo.NewFS(repoPath)
 		if err != nil {
 			return err

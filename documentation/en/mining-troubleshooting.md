@@ -16,12 +16,12 @@ The **Bellman** lockfile is created to lock a GPU for a process. This bug can oc
 mining block failed: computing election proof: github.com/filecoin-project/lotus/miner.(*Miner).mineOne
 ```
 
-This bug occurs when the storage miner can't acquire the `bellman.lock`. To fix it you need to stop the `lotus-storage-miner` and remove `/tmp/bellman.lock`.
+This bug occurs when the storage miner can't acquire the `bellman.lock`. To fix it you need to stop the `lotus-miner` and remove `/tmp/bellman.lock`.
 
 ## Error: Failed to get api endpoint
 
 ```sh
-lotus-storage-miner info
+lotus-miner info
 # WARN  main  lotus-storage-miner/main.go:73  failed to get api endpoint: (/Users/myrmidon/.lotusstorage) %!w(*errors.errorString=&{API not running (no endpoint)}):
 ```
 
@@ -38,7 +38,7 @@ If you see this, that means your computer is too slow and your blocks are not in
 ## Error: No space left on device
 
 ```sh
-lotus-storage-miner sectors pledge
+lotus-miner sectors pledge
 # No space left on device (os error 28)
 ```
 

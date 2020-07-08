@@ -151,7 +151,7 @@ var initCmd = &cli.Command{
 
 		log.Info("Checking if repo exists")
 
-		repoPath := cctx.String(FlagStorageRepo)
+		repoPath := cctx.String(FlagMinerRepo)
 		r, err := repo.NewFS(repoPath)
 		if err != nil {
 			return err
@@ -162,7 +162,7 @@ var initCmd = &cli.Command{
 			return err
 		}
 		if ok {
-			return xerrors.Errorf("repo at '%s' is already initialized", cctx.String(FlagStorageRepo))
+			return xerrors.Errorf("repo at '%s' is already initialized", cctx.String(FlagMinerRepo))
 		}
 
 		log.Info("Checking full node version")
@@ -236,7 +236,7 @@ var initCmd = &cli.Command{
 		}
 
 		if err := storageMinerInit(ctx, cctx, api, r, ssize, gasPrice); err != nil {
-			log.Errorf("Failed to initialize lotus-storage-miner: %+v", err)
+			log.Errorf("Failed to initialize lotus-miner: %+v", err)
 			path, err := homedir.Expand(repoPath)
 			if err != nil {
 				return err
@@ -249,7 +249,7 @@ var initCmd = &cli.Command{
 		}
 
 		// TODO: Point to setting storage price, maybe do it interactively or something
-		log.Info("Storage miner successfully created, you can now start it with 'lotus-storage-miner run'")
+		log.Info("Storage miner successfully created, you can now start it with 'lotus-miner run'")
 
 		return nil
 	},

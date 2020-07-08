@@ -72,7 +72,7 @@ func flagForRepo(t repo.RepoType) string {
 	case repo.FullNode:
 		return "repo"
 	case repo.StorageMiner:
-		return "storagerepo"
+		return "miner-repo"
 	default:
 		panic(fmt.Sprintf("Unknown repo type: %v", t))
 	}

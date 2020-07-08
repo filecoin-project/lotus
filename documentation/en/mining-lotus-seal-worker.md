@@ -20,9 +20,9 @@ make lotus-seal-worker
 
 ## Setting up the Storage Miner
 
-First, you will need to ensure your `lotus-storage-miner`'s API is accessible over the network.
+First, you will need to ensure your `lotus-miner`'s API is accessible over the network.
 
-To do this, open up `~/.lotusstorage/config.toml` (Or if you manually set `LOTUS_STORAGE_PATH`, look under that directory) and look for the API field.
+To do this, open up `~/.lotusstorage/config.toml` (Or if you manually set `LOTUS_MINER_PATH`, look under that directory) and look for the API field.
 
 Default config:
 
@@ -52,10 +52,10 @@ lotus-seal-worker run --address 192.168.2.10:2345
 
 Replace `192.168.2.10:2345` with the proper IP and port.
 
-To check that the **Lotus Seal Worker** is connected to your **Lotus Storage Miner**, run `lotus-storage-miner workers list` and check that the remote worker count has increased.
+To check that the **Lotus Seal Worker** is connected to your **Lotus Storage Miner**, run `lotus-miner workers list` and check that the remote worker count has increased.
 
 ```sh
-why@computer ~/lotus> lotus-storage-miner workers list
+why@computer ~/lotus> lotus-miner workers list
 Worker 0, host computer
         CPU:  [                                                                ] 0 core(s) in use
         RAM:  [||||||||||||||||||                                              ] 28% 18.1 GiB/62.7 GiB

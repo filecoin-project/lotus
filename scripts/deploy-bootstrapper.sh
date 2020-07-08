@@ -10,7 +10,7 @@ log "> Deploying bootstrap node $host"
 log "Stopping lotus daemon"
 
 ssh "$host" 'systemctl stop lotus-daemon' &
-ssh "$host" 'systemctl stop lotus-storage-miner' &
+ssh "$host" 'systemctl stop lotus-miner' &
 
 wait
 
@@ -18,7 +18,7 @@ ssh "$host" 'rm -rf .lotus' &
 ssh "$host" 'rm -rf .lotusstorage' &
 
 scp -C lotus "${host}":/usr/local/bin/lotus &
-scp -C lotus-storage-miner "${host}":/usr/local/bin/lotus-storage-miner &
+scp -C lotus-miner "${host}":/usr/local/bin/lotus-miner &
 
 wait
 

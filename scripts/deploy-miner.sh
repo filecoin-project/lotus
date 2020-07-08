@@ -14,5 +14,5 @@ echo "SYNC WAIT"
 sleep 30
 
 ssh "$HOST" 'lotus sync wait'
-ssh "$HOST" 'lotus-storage-miner init --owner=$(cat addr)'
-ssh "$HOST" 'systemctl start lotus-storage-miner' &
+ssh "$HOST" 'lotus-miner init --owner=$(cat addr)'
+ssh "$HOST" 'systemctl start lotus-miner' &

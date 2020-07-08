@@ -20,7 +20,7 @@ import (
 
 var log = logging.Logger("main")
 
-const FlagStorageRepo = "storagerepo"
+const FlagMinerRepo = "miner-repo"
 
 func main() {
 	lotuslog.SetupLogLevels()
@@ -61,7 +61,7 @@ func main() {
 	}
 
 	app := &cli.App{
-		Name:                 "lotus-storage-miner",
+		Name:                 "lotus-miner",
 		Usage:                "Filecoin decentralized storage network storage miner",
 		Version:              build.UserVersion(),
 		EnableBashCompletion: true,
@@ -79,8 +79,8 @@ func main() {
 				Value:   "~/.lotus", // TODO: Consider XDG_DATA_HOME
 			},
 			&cli.StringFlag{
-				Name:    FlagStorageRepo,
-				EnvVars: []string{"LOTUS_STORAGE_PATH"},
+				Name:    FlagMinerRepo,
+				EnvVars: []string{"LOTUS_MINER_PATH"},
 				Value:   "~/.lotusstorage", // TODO: Consider XDG_DATA_HOME
 			},
 		},

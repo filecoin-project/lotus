@@ -72,7 +72,7 @@ To generate a JWT with custom permissions, use this command:
 lotus auth create-token --perm admin
 
 # Lotus Storage Miner
-lotus-storage-miner auth create-token --perm admin
+lotus-miner auth create-token --perm admin
 ```
 
 ## What authorization level should I use?

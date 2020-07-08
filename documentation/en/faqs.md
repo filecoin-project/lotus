@@ -126,7 +126,7 @@ Community-contributed Docker and Docker Compose examples are available
 ### How can I run two miners on the same machine?
 
 You can do so by changing the storage path variable for the second miner, e.g.,
-`LOTUS_STORAGE_PATH=~/.lotusstorage2`. You will also need to make sure that no ports collide.
+`LOTUS_MINER_PATH=~/.lotusstorage2`. You will also need to make sure that no ports collide.
 
 ### How do I setup my own local devnet?     
 

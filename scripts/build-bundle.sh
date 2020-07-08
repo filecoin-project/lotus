@@ -20,7 +20,7 @@ pushd bundle
 
 BINARIES=(
     "lotus"
-    "lotus-storage-miner"
+    "lotus-miner"
     "lotus-seal-worker"
 )
 
