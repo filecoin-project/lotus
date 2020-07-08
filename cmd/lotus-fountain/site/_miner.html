@@ -15,8 +15,9 @@
                 <span>Enter owner/worker address:</span>
                 <input type='text' name='address' style="width: 300px" placeholder="t3...">
                 <select name="sectorSize">
-                    <option selected value="34359738368">32GiB sectors</option>
-                    <option value="68719476736">64GiB sectors</option>
+                    {{range .SectorSizes}}
+                    <option {{if .Default}}selected{{end}} value="{{ .Value }}">{{ .Name }}</option>
+                    {{end}}
                 </select>
                 <button type='submit'>Create Miner</button>
             </form>

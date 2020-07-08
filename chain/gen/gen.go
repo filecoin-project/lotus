@@ -145,7 +145,7 @@ func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
 		return nil, err
 	}
 
-	genm1, k1, err := seed.PreSeal(maddr1, abi.RegisteredSealProof_StackedDrg2KiBV1, 0, numSectors, m1temp, []byte("some randomness"), nil)
+	genm1, k1, err := seed.PreSeal(maddr1, abi.RegisteredSealProof_StackedDrg2KiBV1, 0, numSectors, m1temp, []byte("some randomness"), nil, true)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +157,7 @@ func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
 		return nil, err
 	}
 
-	genm2, k2, err := seed.PreSeal(maddr2, abi.RegisteredSealProof_StackedDrg2KiBV1, 0, numSectors, m2temp, []byte("some randomness"), nil)
+	genm2, k2, err := seed.PreSeal(maddr2, abi.RegisteredSealProof_StackedDrg2KiBV1, 0, numSectors, m2temp, []byte("some randomness"), nil, true)
 	if err != nil {
 		return nil, err
 	}
