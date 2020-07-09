@@ -473,6 +473,14 @@ func (cs *ChainStore) NearestCommonAncestor(a, b *types.TipSet) (*types.TipSet, 
 	return cs.LoadTipSet(l[len(l)-1].Parents())
 }
 
+// ReorgOps takes two tipsets (which can be at different heights), and walks
+// their corresponding chains backwards one step at a time until we find
+// a common ancestor. It then returns the respective chain segments that fork
+// from the identified ancestor, in reverse order, where the first element of
+// each slice is the supplied tipset, and the last element is the common
+// ancenstor.
+//
+// If an error happens along the way, we return the error with nil slices.
 func (cs *ChainStore) ReorgOps(a, b *types.TipSet) ([]*types.TipSet, []*types.TipSet, error) {
 	left := a
 	right := b
@@ -803,6 +811,9 @@ func (cs *ChainStore) readMsgMetaCids(mmc cid.Cid) ([]cid.Cid, []cid.Cid, error)
 	return blscids, secpkcids, nil
 }
 
+// GetPath returns returns the sequence of atomic head change operations that
+// need to be applied in order to switch the head of the chain from the `from`
+// tipset to the `to` tipset.
 func (cs *ChainStore) GetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*api.HeadChange, error) {
 	fts, err := cs.LoadTipSet(from)
 	if err != nil {

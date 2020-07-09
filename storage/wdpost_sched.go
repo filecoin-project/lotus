@@ -20,6 +20,14 @@ import (
 
 const StartConfidence = 4 // TODO: config
 
+// WindowPoStScheduler is the component that keeps track of windowed PoSts that
+// need to be submitted, and takes care of doing so. It starts and stops the
+// running of windowed PoSt and the submission processes dynamically.
+//
+// WindowPoStScheduler operates by tracking head changes, and interrogating our
+// miner actor to obtain our next proving deadlines. When a new proving window
+// opens, we only act StartConfidence tipsets into it, in order to avoid
+// computational wastage in the event of potential/probable chain reorgs.
 type WindowPoStScheduler struct {
 	api              storageMinerApi
 	prover           storage.Prover
@@ -120,8 +128,11 @@ func (s *WindowPoStScheduler) Run(ctx context.Context) {
 
 			ctx, span := trace.StartSpan(ctx, "WindowPoStScheduler.headChange")
 
+			// Compute the lowest tipset we are reverting, and the highest
+			// tipset we're applying. This info is used to decide whether we
+			// abort any in-progress PoSt proofs for the reverted chain, and/or
+			// we start proving for the applied head.
 			var lowest, highest *types.TipSet = s.cur, nil
-
 			for _, change := range changes {
 				if change.Val == nil {
 					log.Errorf("change.Val was nil")
@@ -134,20 +145,25 @@ func (s *WindowPoStScheduler) Run(ctx context.Context) {
 				}
 			}
 
+			// Conditionally abort ongoing PoSts.
 			if err := s.revert(ctx, lowest); err != nil {
 				log.Error("handling head reverts in windowPost sched: %+v", err)
 			}
+			// Conditionally start proving.
 			if err := s.update(ctx, highest); err != nil {
 				log.Error("handling head updates in windowPost sched: %+v", err)
 			}
 
 			span.End()
+
 		case <-ctx.Done():
 			return
 		}
 	}
 }
 
+// revert may abort an active proof if after applying the head reverts, our
+// miner actor indicates that the proving deadlines differ.
 func (s *WindowPoStScheduler) revert(ctx context.Context, newLowest *types.TipSet) error {
 	if s.cur == newLowest {
 		return nil
@@ -166,6 +182,8 @@ func (s *WindowPoStScheduler) revert(ctx context.Context, newLowest *types.TipSe
 	return nil
 }
 
+// update initiates PoSt proving processes for the new head, if and only we're
+// at least StartConfidence tipsets into the start of our proving window.
 func (s *WindowPoStScheduler) update(ctx context.Context, new *types.TipSet) error {
 	if new == nil {
 		return xerrors.Errorf("no new tipset in WindowPoStScheduler.update")

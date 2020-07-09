@@ -107,7 +107,19 @@ func (s *WindowPoStScheduler) checkSectors(ctx context.Context, check *abi.BitFi
 	return &sbf, nil
 }
 
-func (s *WindowPoStScheduler) checkNextRecoveries(ctx context.Context, deadline uint64, deadlineSectors *abi.BitField, ts *types.TipSet) error {
+// checkAndDeclareRecoveries obtains our sectors currently marked as faulty on
+// chain, removes any sectors that we've already declared as recovered (but
+// whose proving window hasn't arrived yet). It then checks the health of the
+// remaining sectors that relevant to the provided deadline.
+//
+// If it finds newly recovered sectors that have not yet been reported as such,
+// it pushes to the network a `DeclareFaultsRecovered` message to our miner
+// actor, and waits for build.MessageConfidence confirmation tipsets before
+// returning.
+//
+// TODO(raulk): the waiting should happen in the background; as right now this
+//  is blocking/delaying the actual PoSt proofs generation and submission.
+func (s *WindowPoStScheduler) checkAndDeclareRecoveries(ctx context.Context, deadline uint64, deadlineSectors *abi.BitField, ts *types.TipSet) error {
 	faults, err := s.api.StateMinerFaults(ctx, s.actor, ts.Key())
 	if err != nil {
 		return xerrors.Errorf("getting on-chain faults: %w", err)
@@ -200,7 +212,18 @@ func (s *WindowPoStScheduler) checkNextRecoveries(ctx context.Context, deadline 
 	return nil
 }
 
-func (s *WindowPoStScheduler) checkNextFaults(ctx context.Context, deadline uint64, deadlineSectors *abi.BitField, ts *types.TipSet) error {
+// checkAndDeclareFaults gets the sectors we need to prove to the network in
+// the provided deadline, subtracting those sectors that we had previously
+// marked as faulty.
+//
+// It then verifies the health of the remaining sectors, and if any are
+// unhealthy, it pushes to the network a DeclareFaults message to our miner
+// actor, and waits for build.MessageConfidence confirmation tipsets before
+// returning.
+//
+// TODO(raulk): the waiting should happen in the background; as right now this
+//  is blocking/delaying the actual PoSt proofs generation and submission.
+func (s *WindowPoStScheduler) checkAndDeclareFaults(ctx context.Context, deadline uint64, deadlineSectors *abi.BitField, ts *types.TipSet) error {
 	dc, err := deadlineSectors.Count()
 	if err != nil {
 		return xerrors.Errorf("counting deadline sectors: %w", err)
@@ -338,12 +361,12 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 		// late to declare them for this deadline
 		declDeadline := (di.Index + 1) % miner.WPoStPeriodDeadlines
 
-		if err := s.checkNextRecoveries(ctx, declDeadline, deadlines.Due[declDeadline], ts); err != nil {
+		if err := s.checkAndDeclareRecoveries(ctx, declDeadline, deadlines.Due[declDeadline], ts); err != nil {
 			// TODO: This is potentially quite bad, but not even trying to post when this fails is objectively worse
 			log.Errorf("checking sector recoveries: %v", err)
 		}
 
-		if err := s.checkNextFaults(ctx, declDeadline, deadlines.Due[declDeadline], ts); err != nil {
+		if err := s.checkAndDeclareFaults(ctx, declDeadline, deadlines.Due[declDeadline], ts); err != nil {
 			// TODO: This is also potentially really bad, but we try to post anyways
 			log.Errorf("checking sector faults: %v", err)
 		}
