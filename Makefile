@@ -58,10 +58,10 @@ deps: $(BUILD_DEPS)
 .PHONY: deps
 
 debug: GOFLAGS+=-tags=debug
-debug: lotus lotus-miner lotus-seal-worker lotus-seed
+debug: lotus lotus-miner lotus-worker lotus-seed
 
 2k: GOFLAGS+=-tags=2k
-2k: lotus lotus-miner lotus-seal-worker lotus-seed
+2k: lotus lotus-miner lotus-worker lotus-seed
 
 lotus: $(BUILD_DEPS)
 	rm -f lotus
@@ -78,12 +78,12 @@ lotus-miner: $(BUILD_DEPS)
 .PHONY: lotus-miner
 BINS+=lotus-miner
 
-lotus-seal-worker: $(BUILD_DEPS)
-	rm -f lotus-seal-worker
-	go build $(GOFLAGS) -o lotus-seal-worker ./cmd/lotus-seal-worker
-	go run github.com/GeertJohan/go.rice/rice append --exec lotus-seal-worker -i ./build
-.PHONY: lotus-seal-worker
-BINS+=lotus-seal-worker
+lotus-worker: $(BUILD_DEPS)
+	rm -f lotus-worker
+	go build $(GOFLAGS) -o lotus-worker ./cmd/lotus-seal-worker
+	go run github.com/GeertJohan/go.rice/rice append --exec lotus-worker -i ./build
+.PHONY: lotus-worker
+BINS+=lotus-worker
 
 lotus-shed: $(BUILD_DEPS)
 	rm -f lotus-shed
@@ -92,7 +92,7 @@ lotus-shed: $(BUILD_DEPS)
 .PHONY: lotus-shed
 BINS+=lotus-shed
 
-build: lotus lotus-miner lotus-seal-worker
+build: lotus lotus-miner lotus-worker
 	@[[ $$(type -P "lotus") ]] && echo "Caution: you have \
 an existing lotus binary in your PATH. This may cause problems if you don't run 'sudo make install'" || true
 
@@ -101,7 +101,7 @@ an existing lotus binary in your PATH. This may cause problems if you don't run 
 install:
 	install -C ./lotus /usr/local/bin/lotus
 	install -C ./lotus-miner /usr/local/bin/lotus-miner
-	install -C ./lotus-seal-worker /usr/local/bin/lotus-seal-worker
+	install -C ./lotus-worker /usr/local/bin/lotus-worker
 
 install-services: install
 	mkdir -p /usr/local/lib/systemd/system

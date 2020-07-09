@@ -4,7 +4,7 @@ The **Lotus Seal Worker** is an extra process that can offload heavy processing 
 
 ## Note: Using the Lotus Seal Worker from China
 
-If you are trying to use `lotus-seal-worker` from China. You should set this **environment variable** on your machine:
+If you are trying to use `lotus-worker` from China. You should set this **environment variable** on your machine:
 
 ```sh
 IPFS_GATEWAY="https://proof-parameters.s3.cn-south-1.jdcloud-oss.com/ipfs/"
@@ -12,10 +12,10 @@ IPFS_GATEWAY="https://proof-parameters.s3.cn-south-1.jdcloud-oss.com/ipfs/"
 
 ## Get Started
 
-Make sure that the `lotus-seal-worker` is compiled and installed by running:
+Make sure that the `lotus-worker` is compiled and installed by running:
 
 ```sh
-make lotus-seal-worker
+make lotus-worker
 ```
 
 ## Setting up the Storage Miner
@@ -42,12 +42,12 @@ Next, you will need to [create an authentication token](https://docs.lotu.sh/en+
 
 ### Connect the Lotus Seal Worker
 
-On the machine that will run `lotus-seal-worker`, set the `STORAGE_API_INFO` environment variable to `TOKEN:STORAGE_NODE_MULTIADDR`. Where `TOKEN` is the token we created above, and `STORAGE_NODE_MULTIADDR` is the `multiaddr` of the **Lotus Storage Miner** API that was set in `config.toml`.
+On the machine that will run `lotus-worker`, set the `MINER_API_INFO` environment variable to `TOKEN:MINER_NODE_MULTIADDR`. Where `TOKEN` is the token we created above, and `NIMER_NODE_MULTIADDR` is the `multiaddr` of the **Lotus Storage Miner** API that was set in `config.toml`.
 
 Once this is set, run:
 
 ```sh
-lotus-seal-worker run --address 192.168.2.10:2345
+lotus-worker run --address 192.168.2.10:2345
 ```
 
 Replace `192.168.2.10:2345` with the proper IP and port.
@@ -77,5 +77,5 @@ To do so you have to first __disable all seal task types__ in the miner config. 
 You can then run the storage miner on your local-loopback interface; 
 
 ```sh
-lotus-seal-worker run --address 127.0.0.1:2345
+lotus-worker run --address 127.0.0.1:2345
 ```

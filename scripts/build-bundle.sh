@@ -21,7 +21,7 @@ pushd bundle
 BINARIES=(
     "lotus"
     "lotus-miner"
-    "lotus-seal-worker"
+    "lotus-worker"
 )
 
 export IPFS_PATH=`mktemp -d`

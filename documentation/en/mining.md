@@ -94,8 +94,8 @@ lotus state sectors <miner>
 
 ### `FIL_PROOFS_MAXIMIZE_CACHING=1` Environment variable
 
-This env var can be used with `lotus-miner`, `lotus-seal-worker`, and `lotus-bench` to make the precommit1 step faster at the cost of some memory use (1x sector size)
+This env var can be used with `lotus-miner`, `lotus-worker`, and `lotus-bench` to make the precommit1 step faster at the cost of some memory use (1x sector size)
 
 ### `FIL_PROOFS_USE_GPU_COLUMN_BUILDER=1` Environment variable
 
-This env var can be used with `lotus-miner`, `lotus-seal-worker`, and `lotus-bench` to enable experimental precommit2 GPU acceleration
+This env var can be used with `lotus-miner`, `lotus-worker`, and `lotus-bench` to enable experimental precommit2 GPU acceleration

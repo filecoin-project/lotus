@@ -36,7 +36,7 @@ import (
 
 var log = logging.Logger("main")
 
-const FlagWorkerRepo = "workerrepo"
+const FlagWorkerRepo = "worker-repo"
 
 func main() {
 	lotuslog.SetupLogLevels()
@@ -48,13 +48,13 @@ func main() {
 	}
 
 	app := &cli.App{
-		Name:    "lotus-seal-worker",
+		Name:    "lotus-worker",
 		Usage:   "Remote storage miner worker",
 		Version: build.UserVersion(),
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    FlagWorkerRepo,
-				EnvVars: []string{"LOTUS_SEAL_WORKER_PATH"},
+				EnvVars: []string{"LOTUS_WORKER_PATH"},
 				Value:   "~/.lotusworker", // TODO: Consider XDG_DATA_HOME
 			},
 			&cli.StringFlag{

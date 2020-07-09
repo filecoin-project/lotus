@@ -14,7 +14,7 @@ Using the [JWT you generated](https://lotu.sh/en+api#how-do-i-generate-a-token-1
 FULLNODE_API_INFO="JWT_TOKEN:/ip4/127.0.0.1/tcp/1234/http"
 
 # Lotus Storage Miner
-STORAGE_API_INFO="JWT_TOKEN:/ip4/127.0.0.1/tcp/2345/http"
+MINER_API_INFO="JWT_TOKEN:/ip4/127.0.0.1/tcp/2345/http"
 ```
 
 You can also use `lotus auth api-info --perm admin` to quickly create _API_INFO env vars

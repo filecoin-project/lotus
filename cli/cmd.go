@@ -83,7 +83,7 @@ func envForRepo(t repo.RepoType) string {
 	case repo.FullNode:
 		return "FULLNODE_API_INFO"
 	case repo.StorageMiner:
-		return "STORAGE_API_INFO"
+		return "MINER_API_INFO"
 	default:
 		panic(fmt.Sprintf("Unknown repo type: %v", t))
 	}
