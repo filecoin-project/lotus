@@ -61,11 +61,75 @@ Here are the basics of how to run the baseline deals end-to-end test case:
 testground daemon
 ```
 
-3. Run a composition for the baseline deals end-to-end test case
+3. Download required Docker images for the `lotus-soup` test plan
 
 ```
-testground run composition -f _compositions/composition.toml
+docker pull iptestground/oni-buildbase:v4
+docker pull iptestground/oni-runtime:v2
 ```
+
+Alternatively you can build them locally from the `docker-images` directory
+
+```
+cd docker-images
+./build-buildbase.sh v4
+./build-runtime.sh v2
+```
+
+4. Import the `lotus-soup` test plan into your Testground home directory
+
+```
+testground plan import --from ./lotus-soup
+```
+
+5. Init the `filecoin-ffi` Git submodule in the `extra` folder.
+
+```
+git submodule init
+```
+
+6. Compile the `filecoin-ffi` version locally (necessary if you use `local:exec`)
+
+```
+cd extra/filecoin-ffi
+make
+```
+
+7. Run a composition for the baseline deals end-to-end test case
+
+```
+testground run composition -f ./lotus-soup/_compositions/composition.toml
+```
+
+## Debugging
+
+Find commands and how-to guide on how to debug test plans at [DELVING.md](https://github.com/filecoin-project/oni/blob/master/DELVING.md)
+
+1. Querying the Lotus RPC API
+
+2. Useful commands / checks
+
+* Making sure miners are on the same chain
+
+* Checking deals
+
+* Sector queries
+
+* Sector sealing errors
+
+## `lotus-soup` Docker images history
+
+### oni-buildbase
+
+* `v1` => initial image locking in Filecoin FFI commit ca281af0b6c00314382a75ae869e5cb22c83655b.
+* `v2` => no changes; released only for aligning both images to aesthetically please @nonsense :D
+* `v3` => locking in Filecoin FFI commit 5342c7c97d1a1df4650629d14f2823d52889edd9.
+* `v4` => locking in FFI commit 6a143e06f923f3a4f544c7a652e8b4df420a3d28.
+
+### oni-runtime
+
+* `v1` => initial image with 2048 parameters.
+* `v2` => adds auxiliary tools: `net-tools netcat traceroute iputils-ping wget vim curl telnet iproute2 dnsutils`.
 
 ## Team composition
 

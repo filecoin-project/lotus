@@ -23,7 +23,7 @@ This tells Testground to expose the following ports:
 * `1234` => Lotus full node RPC.
 * `2345` => Lotus storage miner RPC.
 
-### local:docker
+### `local:docker`
 
 1. Install the `lotus` binary on your host.
 2. Find the container that you want to connect to in `docker ps`.
@@ -93,7 +93,7 @@ envs miners-0
 lotus chain list
 ```
 
-### cluster:k8s
+### `cluster:k8s`
 
 Similar to `local:docker`, you pick a pod that you want to connect to and port-forward 1234 and 2345 to that specific pod, such as:
 
@@ -117,7 +117,7 @@ lotus-storage-miner storage-deals get-ask
     * `STORAGE_API_INFO=":/ip4/127.0.0.1/tcp/53624/http" FULLNODE_API_INFO=":/ip4/127.0.0.1/tcp/53623/http" lotus-storage-miner sector status <sector_no>`
     * `STORAGE_API_INFO=":/ip4/127.0.0.1/tcp/53624/http" FULLNODE_API_INFO=":/ip4/127.0.0.1/tcp/53623/http" lotus-storage-miner sector status --log <sector_no>`
 
-## Viewing logs of a particular container (local:docker)
+## Viewing logs of a particular container `local:docker`
 
 This works for both started and stopped containers. Just get the container ID
 (in double angle brackets in Testground output, on every log line), and do a:
