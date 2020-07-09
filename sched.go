@@ -260,7 +260,7 @@ func (sh *scheduler) trySched() {
 		rand.Shuffle(len(acceptableWindows[sqi]), func(i, j int) {
 			acceptableWindows[sqi][i], acceptableWindows[sqi][j] = acceptableWindows[sqi][j], acceptableWindows[sqi][i]
 		})
-		sort.SliceStable(acceptableWindows, func(i, j int) bool {
+		sort.SliceStable(acceptableWindows[sqi], func(i, j int) bool {
 			wii := sh.openWindows[acceptableWindows[sqi][i]].worker
 			wji := sh.openWindows[acceptableWindows[sqi][j]].worker
 
@@ -344,7 +344,7 @@ func (sh *scheduler) trySched() {
 	// Rewrite sh.openWindows array, removing scheduled windows
 	newOpenWindows := make([]*schedWindowRequest, 0, len(sh.openWindows)-len(scheduledWindows))
 	for wnd, window := range sh.openWindows {
-		if _, scheduled := scheduledWindows[wnd]; !scheduled {
+		if _, scheduled := scheduledWindows[wnd]; scheduled {
 			// keep unscheduled windows open
 			continue
 		}
