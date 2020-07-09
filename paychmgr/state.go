@@ -74,7 +74,7 @@ func nextLaneFromState(st *paych.State) uint64 {
 func findLane(states []*paych.LaneState, lane uint64) *paych.LaneState {
 	var ls *paych.LaneState
 	for _, laneState := range states {
-		if uint64(laneState.ID) == lane {
+		if laneState.ID == lane {
 			ls = laneState
 			break
 		}

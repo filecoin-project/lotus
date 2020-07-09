@@ -93,7 +93,7 @@ func (pm *Manager) GetChannelInfo(addr address.Address) (*ChannelInfo, error) {
 	return pm.store.getChannelInfo(addr)
 }
 
-// checks if the given voucher is valid (is or could become spendable at some point)
+// CheckVoucherValid checks if the given voucher is valid (is or could become spendable at some point)
 func (pm *Manager) CheckVoucherValid(ctx context.Context, ch address.Address, sv *paych.SignedVoucher) error {
 	_, err := pm.checkVoucherValid(ctx, ch, sv)
 	return err
@@ -159,7 +159,7 @@ func (pm *Manager) checkVoucherValid(ctx context.Context, ch address.Address, sv
 	return pca, nil
 }
 
-// checks if the given voucher is currently spendable
+// CheckVoucherSpendable checks if the given voucher is currently spendable
 func (pm *Manager) CheckVoucherSpendable(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (bool, error) {
 	owner, err := pm.getPaychOwner(ctx, ch)
 	if err != nil {
@@ -321,9 +321,9 @@ func (pm *Manager) NextNonceForLane(ctx context.Context, ch address.Address, lan
 
 	var maxnonce uint64
 	for _, v := range vouchers {
-		if uint64(v.Voucher.Lane) == lane {
-			if uint64(v.Voucher.Nonce) > maxnonce {
-				maxnonce = uint64(v.Voucher.Nonce)
+		if v.Voucher.Lane == lane {
+			if v.Voucher.Nonce > maxnonce {
+				maxnonce = v.Voucher.Nonce
 			}
 		}
 	}

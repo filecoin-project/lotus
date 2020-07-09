@@ -93,8 +93,8 @@ func TestPaychOutbound(t *testing.T) {
 	toAcct := tutils.NewIDAddr(t, 202)
 
 	sm := newMockStateManager()
-	sm.setAccountState(fromAcct, account.State{from})
-	sm.setAccountState(toAcct, account.State{to})
+	sm.setAccountState(fromAcct, account.State{Address: from})
+	sm.setAccountState(toAcct, account.State{Address: to})
 	sm.setPaychState(ch, nil, paych.State{
 		From:            fromAcct,
 		To:              toAcct,
@@ -129,8 +129,8 @@ func TestPaychInbound(t *testing.T) {
 	toAcct := tutils.NewIDAddr(t, 202)
 
 	sm := newMockStateManager()
-	sm.setAccountState(fromAcct, account.State{from})
-	sm.setAccountState(toAcct, account.State{to})
+	sm.setAccountState(fromAcct, account.State{Address: from})
+	sm.setAccountState(toAcct, account.State{Address: to})
 	sm.setPaychState(ch, nil, paych.State{
 		From:            fromAcct,
 		To:              toAcct,
@@ -167,8 +167,8 @@ func TestCheckVoucherValid(t *testing.T) {
 	toAcct := tutils.NewActorAddr(t, "toAct")
 
 	sm := newMockStateManager()
-	sm.setAccountState(fromAcct, account.State{from})
-	sm.setAccountState(toAcct, account.State{to})
+	sm.setAccountState(fromAcct, account.State{Address: from})
+	sm.setAccountState(toAcct, account.State{Address: to})
 
 	tcases := []struct {
 		name          string
@@ -281,6 +281,7 @@ func TestCheckVoucherValid(t *testing.T) {
 	}}
 
 	for _, tcase := range tcases {
+		tcase := tcase
 		t.Run(tcase.name, func(t *testing.T) {
 			store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
 
@@ -319,7 +320,7 @@ func TestAddVoucherDelta(t *testing.T) {
 	ctx := context.Background()
 
 	// Set up a manager with a single payment channel
-	mgr, ch, fromKeyPrivate := testSetupMgrWithChannel(t, ctx)
+	mgr, ch, fromKeyPrivate := testSetupMgrWithChannel(ctx, t)
 
 	voucherLane := uint64(1)
 
@@ -361,7 +362,7 @@ func TestAddVoucherNextLane(t *testing.T) {
 	ctx := context.Background()
 
 	// Set up a manager with a single payment channel
-	mgr, ch, fromKeyPrivate := testSetupMgrWithChannel(t, ctx)
+	mgr, ch, fromKeyPrivate := testSetupMgrWithChannel(ctx, t)
 
 	minDelta := big.NewInt(0)
 	voucherAmount := big.NewInt(2)
@@ -402,7 +403,7 @@ func TestAddVoucherProof(t *testing.T) {
 	ctx := context.Background()
 
 	// Set up a manager with a single payment channel
-	mgr, ch, fromKeyPrivate := testSetupMgrWithChannel(t, ctx)
+	mgr, ch, fromKeyPrivate := testSetupMgrWithChannel(ctx, t)
 
 	nonce := uint64(1)
 	voucherAmount := big.NewInt(1)
@@ -449,7 +450,7 @@ func TestAllocateLane(t *testing.T) {
 	ctx := context.Background()
 
 	// Set up a manager with a single payment channel
-	mgr, ch, _ := testSetupMgrWithChannel(t, ctx)
+	mgr, ch, _ := testSetupMgrWithChannel(ctx, t)
 
 	// First lane should be 0
 	lane, err := mgr.AllocateLane(ch)
@@ -466,7 +467,7 @@ func TestNextNonceForLane(t *testing.T) {
 	ctx := context.Background()
 
 	// Set up a manager with a single payment channel
-	mgr, ch, key := testSetupMgrWithChannel(t, ctx)
+	mgr, ch, key := testSetupMgrWithChannel(ctx, t)
 
 	// Expect next nonce for non-existent lane to be 1
 	next, err := mgr.NextNonceForLane(ctx, ch, 1)
@@ -506,7 +507,7 @@ func TestNextNonceForLane(t *testing.T) {
 	require.EqualValues(t, next, 8)
 }
 
-func testSetupMgrWithChannel(t *testing.T, ctx context.Context) (*Manager, address.Address, []byte) {
+func testSetupMgrWithChannel(ctx context.Context, t *testing.T) (*Manager, address.Address, []byte) {
 	fromKeyPrivate, fromKeyPublic := testGenerateKeyPair(t)
 
 	ch := tutils.NewIDAddr(t, 100)
@@ -516,8 +517,8 @@ func testSetupMgrWithChannel(t *testing.T, ctx context.Context) (*Manager, addre
 	toAcct := tutils.NewActorAddr(t, "toAct")
 
 	sm := newMockStateManager()
-	sm.setAccountState(fromAcct, account.State{from})
-	sm.setAccountState(toAcct, account.State{to})
+	sm.setAccountState(fromAcct, account.State{Address: from})
+	sm.setAccountState(toAcct, account.State{Address: to})
 
 	act := &types.Actor{
 		Code:    builtin.AccountActorCodeID,
