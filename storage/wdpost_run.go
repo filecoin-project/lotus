@@ -314,12 +314,12 @@ func (s *WindowPoStScheduler) getSectorsToProve(ctx context.Context, deadlineSec
 		return nil, xerrors.Errorf("failed to intersect proof sectors with faults: %w", err)
 	}
 
-	recoveries, err := s.api.StateMinerRecoveries(ctx, s.actor, ts.Key())
-	if err != nil {
-		return nil, xerrors.Errorf("getting on-chain recoveries: %w", err)
-	}
-
 	if !ignoreRecoveries {
+		recoveries, err := s.api.StateMinerRecoveries(ctx, s.actor, ts.Key())
+		if err != nil {
+			return nil, xerrors.Errorf("getting on-chain recoveries: %w", err)
+		}
+
 		expectedRecoveries, err := bitfield.IntersectBitField(faults, recoveries)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to intersect recoveries with faults: %w", err)
