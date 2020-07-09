@@ -359,7 +359,8 @@ create table if not exists market_deal_proposals
     state_root text not null,
     
     piece_cid text not null,
-    piece_size bigint not null,
+    padded_piece_size bigint not null,
+    unpadded_piece_size bigint not null,
     verified_deal bool not null,
     
     client_id text not null,
@@ -1005,7 +1006,7 @@ func (st *storage) storeMarketActorDealProposals(marketTips map[types.TipSetKey]
 		return xerrors.Errorf("prep temp: %w", err)
 	}
 
-	stmt, err := tx.Prepare(`copy mdp (deal_id, state_root, piece_cid, piece_size, verified_deal, client_id, provider_id, start_epoch, end_epoch, storage_price_per_epoch, provider_collateral, client_collateral) from STDIN`)
+	stmt, err := tx.Prepare(`copy mdp (deal_id, state_root, piece_cid, padded_piece_size, unpadded_piece_size, verified_deal, client_id, provider_id, start_epoch, end_epoch, storage_price_per_epoch, provider_collateral, client_collateral) from STDIN`)
 	if err != nil {
 		return err
 	}
@@ -1027,6 +1028,7 @@ func (st *storage) storeMarketActorDealProposals(marketTips map[types.TipSetKey]
 				mt.stateroot.String(),
 				ds.Proposal.PieceCID.String(),
 				ds.Proposal.PieceSize,
+				ds.Proposal.PieceSize.Unpadded(),
 				ds.Proposal.VerifiedDeal,
 				ds.Proposal.Client.String(),
 				ds.Proposal.Provider.String(),
