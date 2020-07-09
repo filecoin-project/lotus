@@ -228,7 +228,7 @@ func (a *API) ClientFindData(ctx context.Context, root cid.Cid, piece *cid.Cid) 
 	return out, nil
 }
 
-func (a *API) ClientMinerQueryOffer(ctx context.Context, payload cid.Cid, miner address.Address) (api.QueryOffer, error) {
+func (a *API) ClientMinerQueryOffer(ctx context.Context, miner address.Address, root cid.Cid, piece *cid.Cid) (api.QueryOffer, error) {
 	mi, err := a.StateMinerInfo(ctx, miner, types.EmptyTSK)
 	if err != nil {
 		return api.QueryOffer{}, err
@@ -237,7 +237,7 @@ func (a *API) ClientMinerQueryOffer(ctx context.Context, payload cid.Cid, miner 
 		Address: miner,
 		ID:      mi.PeerId,
 	}
-	return a.makeRetrievalQuery(ctx, rp, payload, nil, rm.QueryParams{}), nil
+	return a.makeRetrievalQuery(ctx, rp, root, piece, rm.QueryParams{}), nil
 }
 
 func (a *API) makeRetrievalQuery(ctx context.Context, rp rm.RetrievalPeer, payload cid.Cid, piece *cid.Cid, qp rm.QueryParams) api.QueryOffer {

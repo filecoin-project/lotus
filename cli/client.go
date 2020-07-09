@@ -575,7 +575,7 @@ var clientRetrieveCmd = &cli.Command{
 			if err != nil {
 				return err
 			}
-			offer, err = fapi.ClientMinerQueryOffer(ctx, file, minerAddr)
+			offer, err = fapi.ClientMinerQueryOffer(ctx, minerAddr, file, pieceCid)
 			if err != nil {
 				return err
 			}
