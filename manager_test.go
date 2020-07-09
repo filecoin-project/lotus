@@ -22,6 +22,10 @@ import (
 	"github.com/filecoin-project/sector-storage/stores"
 )
 
+func init() {
+	logging.SetAllLoggers(logging.LevelDebug)
+}
+
 type testStorage stores.StorageConfig
 
 func newTestStorage(t *testing.T) *testStorage {

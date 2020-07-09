@@ -88,7 +88,7 @@ type schedWindowRequest struct {
 
 type schedWindow struct {
 	worker    WorkerID
-	allocated *activeResources
+	allocated activeResources
 	todo      []*workerRequest
 }
 
@@ -132,10 +132,12 @@ func newScheduler(spt abi.RegisteredSealProof) *scheduler {
 		watchClosing:  make(chan WorkerID),
 		workerClosing: make(chan WorkerID),
 
-		schedule: make(chan *workerRequest),
-		closing:  make(chan struct{}),
+		schedule:       make(chan *workerRequest),
+		windowRequests: make(chan *schedWindowRequest),
 
 		schedQueue: &requestQueue{},
+
+		closing: make(chan struct{}),
 	}
 }
 
@@ -295,7 +297,7 @@ func (sh *scheduler) trySched() {
 			wr := sh.workers[wid].info.Resources
 
 			// TODO: allow bigger windows
-			if windows[wnd].allocated.canHandleRequest(needRes, wid, wr) {
+			if !windows[wnd].allocated.canHandleRequest(needRes, wid, wr) {
 				continue
 			}
 
@@ -303,6 +305,11 @@ func (sh *scheduler) trySched() {
 
 			selectedWindow = wnd
 			break
+		}
+
+		if selectedWindow < 0 {
+			// all windows full
+			continue
 		}
 
 		windows[selectedWindow].todo = append(windows[selectedWindow].todo, task)
@@ -327,6 +334,7 @@ func (sh *scheduler) trySched() {
 
 		scheduledWindows[wnd] = struct{}{}
 
+		window := window // copy
 		select {
 		case sh.openWindows[wnd].done <- &window:
 		default:
@@ -390,6 +398,7 @@ func (sh *scheduler) runWorker(wid WorkerID) {
 			case w := <-scheduledWindows:
 				activeWindows = append(activeWindows, w)
 			case <-taskDone:
+				log.Debugw("task done", "workerid", wid)
 			case <-sh.closing:
 				return
 			case <-workerClosing:

@@ -384,8 +384,8 @@ func (i *Index) StorageBestAlloc(ctx context.Context, allocate SectorFileType, s
 	}
 
 	sort.Slice(candidates, func(i, j int) bool {
-		iw := big.Mul(big.NewInt(int64(candidates[i].fsi.Available)), big.NewInt(int64(candidates[i].info.Weight)))
-		jw := big.Mul(big.NewInt(int64(candidates[j].fsi.Available)), big.NewInt(int64(candidates[j].info.Weight)))
+		iw := big.Mul(big.NewInt(candidates[i].fsi.Available), big.NewInt(int64(candidates[i].info.Weight)))
+		jw := big.Mul(big.NewInt(candidates[j].fsi.Available), big.NewInt(int64(candidates[j].info.Weight)))
 
 		return iw.GreaterThan(jw)
 	})

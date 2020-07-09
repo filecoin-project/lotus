@@ -13,6 +13,7 @@ import (
 
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/sector-storage/fsutil"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
