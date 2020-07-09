@@ -366,7 +366,7 @@ func TestAddVoucherNextLane(t *testing.T) {
 	minDelta := big.NewInt(0)
 	voucherAmount := big.NewInt(2)
 
-	// Add a voucher in lane: 2
+	// Add a voucher in lane 2
 	nonce := uint64(1)
 	voucherLane := uint64(2)
 	sv := testCreateVoucher(t, voucherLane, nonce, voucherAmount, fromKeyPrivate)
@@ -377,8 +377,7 @@ func TestAddVoucherNextLane(t *testing.T) {
 	require.NoError(t, err)
 	require.EqualValues(t, ci.NextLane, 3)
 
-	// Add a voucher in lane: 1
-	nonce++
+	// Add a voucher in lane 1
 	voucherLane = uint64(1)
 	sv = testCreateVoucher(t, voucherLane, nonce, voucherAmount, fromKeyPrivate)
 	_, err = mgr.AddVoucher(ctx, ch, sv, nil, minDelta)
@@ -388,9 +387,8 @@ func TestAddVoucherNextLane(t *testing.T) {
 	require.NoError(t, err)
 	require.EqualValues(t, ci.NextLane, 3)
 
-	// Add a voucher in lane: 5
-	nonce++
-	voucherLane = uint64(1)
+	// Add a voucher in lane 5
+	voucherLane = uint64(5)
 	sv = testCreateVoucher(t, voucherLane, nonce, voucherAmount, fromKeyPrivate)
 	_, err = mgr.AddVoucher(ctx, ch, sv, nil, minDelta)
 	require.NoError(t, err)
@@ -453,13 +451,15 @@ func TestAllocateLane(t *testing.T) {
 	// Set up a manager with a single payment channel
 	mgr, ch, _ := testSetupMgrWithChannel(t, ctx)
 
+	// First lane should be 0
 	lane, err := mgr.AllocateLane(ch)
 	require.NoError(t, err)
-	require.EqualValues(t, lane, 1)
+	require.EqualValues(t, lane, 0)
 
+	// Next lane should be 1
 	lane, err = mgr.AllocateLane(ch)
 	require.NoError(t, err)
-	require.EqualValues(t, lane, 2)
+	require.EqualValues(t, lane, 1)
 }
 
 func TestNextNonceForLane(t *testing.T) {

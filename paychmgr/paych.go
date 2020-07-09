@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"math"
 
 	"github.com/filecoin-project/lotus/api"
 
@@ -82,14 +81,18 @@ func newManager(sm StateManagerApi, pchstore *Store) *Manager {
 	}
 }
 
-func maxLaneFromState(st *paych.State) (uint64, error) {
-	maxLane := uint64(math.MaxInt64)
+func nextLaneFromState(st *paych.State) uint64 {
+	if len(st.LaneStates) == 0 {
+		return 0
+	}
+
+	maxLane := st.LaneStates[0].ID
 	for _, state := range st.LaneStates {
-		if (state.ID)+1 > maxLane+1 {
+		if state.ID > maxLane {
 			maxLane = state.ID
 		}
 	}
-	return maxLane, nil
+	return maxLane + 1
 }
 
 func (pm *Manager) TrackInboundChannel(ctx context.Context, ch address.Address) error {
@@ -110,28 +113,18 @@ func (pm *Manager) TrackInboundChannel(ctx context.Context, ch address.Address) 
 	}
 	to := account.Address
 
-	maxLane, err := maxLaneFromState(st)
-	if err != nil {
-		return err
-	}
-
 	return pm.store.TrackChannel(&ChannelInfo{
 		Channel: ch,
 		Control: to,
 		Target:  from,
 
 		Direction: DirInbound,
-		NextLane:  maxLane + 1,
+		NextLane:  nextLaneFromState(st),
 	})
 }
 
 func (pm *Manager) loadOutboundChannelInfo(ctx context.Context, ch address.Address) (*ChannelInfo, error) {
 	_, st, err := pm.loadPaychState(ctx, ch)
-	if err != nil {
-		return nil, err
-	}
-
-	maxLane, err := maxLaneFromState(st)
 	if err != nil {
 		return nil, err
 	}
@@ -154,7 +147,7 @@ func (pm *Manager) loadOutboundChannelInfo(ctx context.Context, ch address.Addre
 		Target:  to,
 
 		Direction: DirOutbound,
-		NextLane:  maxLane + 1,
+		NextLane:  nextLaneFromState(st),
 	}, nil
 }
 
@@ -365,7 +358,7 @@ func (pm *Manager) AddVoucher(ctx context.Context, ch address.Address, sv *paych
 		Proof:   proof,
 	})
 
-	if ci.NextLane <= (sv.Lane) {
+	if ci.NextLane <= sv.Lane {
 		ci.NextLane = sv.Lane + 1
 	}
 
