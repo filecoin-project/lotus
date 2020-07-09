@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"math"
 	"sync"
 	"time"
@@ -79,6 +80,20 @@ type minerStateInfo struct {
 	qalPower big.Int
 	ssize    uint64
 	psize    uint64
+}
+
+type marketStateInfo struct {
+	// common
+	act       types.Actor
+	stateroot cid.Cid
+
+	// calculating changes
+	// calculating changes
+	tsKey       types.TipSetKey
+	parentTsKey types.TipSetKey
+
+	// market actor specific
+	state market.State
 }
 
 type actorInfo struct {
@@ -313,23 +328,28 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, headTs *types.
 
 		log.Infof("Getting actor change info")
 
+		// highly likely that the market actor will change at every epoch
+		marketActorChanges := make(map[types.TipSetKey]*marketStateInfo, len(changes))
+
 		minerChanges := 0
 		for addr, m := range actors {
 			for actor, c := range m {
-				// reward actor
-				if actor.Code == builtin.RewardActorCodeID {
-					rewardTips[c.tsKey] = &rewardStateInfo{
-						stateroot:     c.stateroot,
-						baselinePower: big.Zero(),
-					}
+				// only want actors with head change events
+				if _, found := headsSeen[actor.Head]; found {
 					continue
 				}
+				headsSeen[actor.Head] = struct{}{}
 
-				// miner actors with head change events
-				if actor.Code == builtin.StorageMinerActorCodeID {
-					if _, found := headsSeen[actor.Head]; found {
-						continue
+				switch actor.Code {
+				case builtin.StorageMarketActorCodeID:
+					marketActorChanges[c.tsKey] = &marketStateInfo{
+						act:         actor,
+						stateroot:   c.stateroot,
+						tsKey:       c.tsKey,
+						parentTsKey: c.parentTsKey,
+						state:       market.State{},
 					}
+				case builtin.StorageMinerActorCodeID:
 					minerChanges++
 
 					minerTips[c.tsKey] = append(minerTips[c.tsKey], &minerStateInfo{
@@ -346,10 +366,14 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, headTs *types.
 						rawPower: big.Zero(),
 						qalPower: big.Zero(),
 					})
-
-					headsSeen[actor.Head] = struct{}{}
+				// reward actor
+				case builtin.RewardActorCodeID:
+					rewardTips[c.tsKey] = &rewardStateInfo{
+						stateroot:     c.stateroot,
+						baselinePower: big.Zero(),
+					}
 				}
-				continue
+
 			}
 		}
 
@@ -435,6 +459,21 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, headTs *types.
 		})
 		log.Infow("Completed Miner Processing", "duration", time.Since(minerProcessingStartedAt).String(), "processed", minerChanges)
 
+		log.Info("Getting market actor info")
+		// TODO: consider taking the min of the array length and using that for concurrency param, e.g:
+		// concurrency := math.Min(len(marketActorChanges), 50)
+		parmap.Par(50, parmap.MapArr(marketActorChanges), func(mrktInfo *marketStateInfo) {
+			astb, err := api.ChainReadObj(ctx, mrktInfo.act.Head)
+			if err != nil {
+				log.Error(err)
+				return
+			}
+			if err := mrktInfo.state.UnmarshalCBOR(bytes.NewReader(astb)); err != nil {
+				log.Error(err)
+				return
+			}
+		})
+
 		log.Info("Getting receipts")
 
 		receipts := fetchParentReceipts(ctx, api, toSync)
@@ -492,6 +531,17 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, headTs *types.
 
 		log.Info("updating miner sectors heads")
 		if err := st.updateMinerSectors(minerTips, api); err != nil {
+			log.Error(err)
+			return
+		}
+
+		log.Info("Storing market actor info")
+		if err := st.storeMarketActorDealProposals(marketActorChanges, api); err != nil {
+			log.Error(err)
+			return
+		}
+
+		if err := st.storeMarketActorDealStates(marketActorChanges, api); err != nil {
 			log.Error(err)
 			return
 		}
