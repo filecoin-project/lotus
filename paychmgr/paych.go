@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/filecoin-project/lotus/api"
+
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
@@ -34,9 +36,23 @@ type ManagerApi struct {
 	full.StateAPI
 }
 
+type StateManagerApi interface {
+	LoadActorState(ctx context.Context, a address.Address, out interface{}, ts *types.TipSet) (*types.Actor, error)
+	Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*api.InvocResult, error)
+}
+
+//type StateApi interface {
+//	StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64) (*api.MsgLookup, error)
+//}
+//
+//type MpoolApi interface {
+//	MpoolPushMessage(ctx context.Context, msg *types.Message) (*types.SignedMessage, error)
+//}
+
 type Manager struct {
 	store *Store
-	sm    *stmgr.StateManager
+	//sm    *stmgr.StateManager
+	sm StateManagerApi
 
 	mpool  full.MpoolAPI
 	wallet full.WalletAPI
@@ -51,6 +67,18 @@ func NewManager(sm *stmgr.StateManager, pchstore *Store, api ManagerApi) *Manage
 		mpool:  api.MpoolAPI,
 		wallet: api.WalletAPI,
 		state:  api.StateAPI,
+	}
+}
+
+// Used by the tests to supply mocks
+func newManager(sm StateManagerApi, pchstore *Store) *Manager {
+	return &Manager{
+		store: pchstore,
+		sm:    sm,
+
+		//mpool:  api.MpoolAPI,
+		//wallet: api.WalletAPI,
+		//state:  api.StateAPI,
 	}
 }
 
@@ -186,6 +214,7 @@ func (pm *Manager) CheckVoucherValid(ctx context.Context, ch address.Address, sv
 			return fmt.Errorf("nonce too low")
 		}
 
+		// TODO: return error if ls.Redeemed > vs.Amount
 		sendAmount = types.BigSub(sv.Amount, ls.Redeemed)
 	}
 
@@ -284,10 +313,19 @@ func (pm *Manager) AddVoucher(ctx context.Context, ch address.Address, sv *paych
 		return types.NewInt(0), err
 	}
 
+	// TODO: I believe this check is redundant because
+	// CheckVoucherValid() already returns an error if laneState.Nonce >= sv.Nonce
 	if minDelta.GreaterThan(types.NewInt(0)) && laneState.Nonce > sv.Nonce {
 		return types.NewInt(0), xerrors.Errorf("already storing voucher with higher nonce; %d > %d", laneState.Nonce, sv.Nonce)
 	}
 
+	// TODO:
+	// It's possible to repeatedly add a voucher with the same proof:
+	// 1. add a voucher with proof P1
+	// 2. add a voucher with proof P2
+	// 3. add a voucher with proof P2 (again)
+	// Voucher with proof P2 has been added twice
+	//
 	// look for duplicates
 	for i, v := range ci.Vouchers {
 		eq, err := cborutil.Equals(sv, v.Voucher)
@@ -297,6 +335,8 @@ func (pm *Manager) AddVoucher(ctx context.Context, ch address.Address, sv *paych
 		if !eq {
 			continue
 		}
+		// TODO: CBOR encoding / decoding changes nil into []byte{}, so instead of
+		// checking v.Proof against nil we should check len(v.Proof) == 0
 		if v.Proof != nil {
 			if !bytes.Equal(v.Proof, proof) {
 				log.Warnf("AddVoucher: multiple proofs for single voucher, storing both")
@@ -333,6 +373,7 @@ func (pm *Manager) AddVoucher(ctx context.Context, ch address.Address, sv *paych
 }
 
 func (pm *Manager) AllocateLane(ch address.Address) (uint64, error) {
+	// TODO: should this take into account lane state?
 	return pm.store.AllocateLane(ch)
 }
 
@@ -355,6 +396,7 @@ func (pm *Manager) OutboundChanTo(from, to address.Address) (address.Address, er
 }
 
 func (pm *Manager) NextNonceForLane(ctx context.Context, ch address.Address, lane uint64) (uint64, error) {
+	// TODO: should this take into account lane state?
 	vouchers, err := pm.store.VouchersForPaych(ch)
 	if err != nil {
 		return 0, err
