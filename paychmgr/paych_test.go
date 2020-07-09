@@ -435,7 +435,7 @@ func TestAddVoucherProof(t *testing.T) {
 
 	// Add same voucher with proof
 	proof = []byte{1}
-	_, err = mgr.AddVoucher(ctx, ch, sv, nil, minDelta)
+	_, err = mgr.AddVoucher(ctx, ch, sv, proof, minDelta)
 	require.NoError(t, err)
 
 	// Should add proof to existing voucher
@@ -478,31 +478,32 @@ func TestNextNonceForLane(t *testing.T) {
 	voucherAmount = big.NewInt(2)
 
 	// Add vouchers such that we have
-	// lane 1: nonce 3
 	// lane 1: nonce 2
-	// lane 2: nonce 5
+	// lane 1: nonce 4
+	// lane 2: nonce 7
 	voucherLane := uint64(1)
-	for _, nonce := range []uint64{3, 2} {
+	for _, nonce := range []uint64{2, 4} {
+		voucherAmount = big.Add(voucherAmount, big.NewInt(1))
 		sv := testCreateVoucher(t, voucherLane, nonce, voucherAmount, key)
 		_, err := mgr.AddVoucher(ctx, ch, sv, nil, minDelta)
 		require.NoError(t, err)
 	}
 
 	voucherLane = uint64(2)
-	nonce := uint64(5)
+	nonce := uint64(7)
 	sv := testCreateVoucher(t, voucherLane, nonce, voucherAmount, key)
 	_, err = mgr.AddVoucher(ctx, ch, sv, nil, minDelta)
 	require.NoError(t, err)
 
-	// Expect next nonce for lane 1 to be 4
+	// Expect next nonce for lane 1 to be 5
 	next, err = mgr.NextNonceForLane(ctx, ch, 1)
 	require.NoError(t, err)
-	require.EqualValues(t, next, 4)
+	require.EqualValues(t, next, 5)
 
-	// Expect next nonce for lane 2 to be 6
+	// Expect next nonce for lane 2 to be 8
 	next, err = mgr.NextNonceForLane(ctx, ch, 2)
 	require.NoError(t, err)
-	require.EqualValues(t, next, 6)
+	require.EqualValues(t, next, 8)
 }
 
 func testSetupMgrWithChannel(t *testing.T, ctx context.Context) (*Manager, address.Address, []byte) {
