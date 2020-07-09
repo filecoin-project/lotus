@@ -156,6 +156,11 @@ var setAskCmd = &cli.Command{
 			Usage:    "Set the price of the ask (specified as FIL / GiB / Epoch) to `PRICE`",
 			Required: true,
 		},
+		&cli.Uint64Flag{
+			Name:     "verified-price",
+			Usage:    "Set the price of the ask (specified as FIL / GiB / Epoch) to `VERIFIED_PRICE`",
+			Required: true,
+		},
 		&cli.StringFlag{
 			Name:        "duration",
 			Usage:       "Set duration of ask (a quantity of time after which the ask expires) `DURATION`",
@@ -184,6 +189,7 @@ var setAskCmd = &cli.Command{
 		defer closer()
 
 		pri := types.NewInt(cctx.Uint64("price"))
+		verifiedPri := types.NewInt(cctx.Uint64("verified-price"))
 
 		dur, err := time.ParseDuration(cctx.String("duration"))
 		if err != nil {
@@ -226,7 +232,7 @@ var setAskCmd = &cli.Command{
 			return xerrors.Errorf("max piece size (w/bit-padding) %s cannot exceed miner sector size %s", types.SizeStr(types.NewInt(uint64(max))), types.SizeStr(types.NewInt(uint64(smax))))
 		}
 
-		return api.MarketSetAsk(ctx, pri, abi.ChainEpoch(qty), abi.PaddedPieceSize(min), abi.PaddedPieceSize(max))
+		return api.MarketSetAsk(ctx, pri, verifiedPri, abi.ChainEpoch(qty), abi.PaddedPieceSize(min), abi.PaddedPieceSize(max))
 	},
 }
 
@@ -260,7 +266,7 @@ var getAskCmd = &cli.Command{
 		}
 
 		w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
-		fmt.Fprintf(w, "Price per GiB / Epoch\tMin. Piece Size (w/bit-padding)\tMax. Piece Size (w/bit-padding)\tExpiry (Epoch)\tExpiry (Appx. Rem. Time)\tSeq. No.\n")
+		fmt.Fprintf(w, "Price per GiB / Epoch\tVerified\tMin. Piece Size (w/bit-padding)\tMax. Piece Size (w/bit-padding)\tExpiry (Epoch)\tExpiry (Appx. Rem. Time)\tSeq. No.\n")
 		if ask == nil {
 			fmt.Fprintf(w, "<miner does not have an ask>\n")
 
@@ -278,7 +284,7 @@ var getAskCmd = &cli.Command{
 			rem = (time.Second * time.Duration(int64(dlt)*int64(build.BlockDelaySecs))).String()
 		}
 
-		fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%s\t%d\n", ask.Price, types.SizeStr(types.NewInt(uint64(ask.MinPieceSize))), types.SizeStr(types.NewInt(uint64(ask.MaxPieceSize))), ask.Expiry, rem, ask.SeqNo)
+		fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%s\t%d\n", ask.Price, ask.VerifiedPrice, types.SizeStr(types.NewInt(uint64(ask.MinPieceSize))), types.SizeStr(types.NewInt(uint64(ask.MaxPieceSize))), ask.Expiry, rem, ask.SeqNo)
 
 		return w.Flush()
 	},
