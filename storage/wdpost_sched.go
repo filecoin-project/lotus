@@ -82,48 +82,57 @@ func deadlineEquals(a, b *miner.DeadlineInfo) bool {
 func (s *WindowPoStScheduler) Run(ctx context.Context) {
 	defer s.abortActivePoSt()
 
-	var notifs <-chan []*api.HeadChange
-	var err error
-	var gotCur bool
+	var (
+		notifs <-chan []*api.HeadChange
+		err    error
+	)
+
+	// Subscribe to chain changes notification. When a subscription error
+	// occurs during actual consumption, we attempt to recreate the
+	// subscription.
+Resubscribe:
+	sctx, cancel := context.WithCancel(ctx)
+	notifs, err = s.api.ChainNotify(sctx)
+	if err != nil {
+		log.Errorf("ChainNotify error: %+v")
+		time.Sleep(10 * time.Second)
+		cancel()
+		goto Resubscribe
+	}
+
+	// The first notification we get must be for the current head.
+	// If we get anything else we resubscribe.
+	// TODO panic instead, sincs this is an unmet assertion and it's highly
+	//  indicative of a bug.
+	switch curr, ok := <-notifs; {
+	case !ok:
+		log.Warn("WindowPoStScheduler notifs channel closed")
+		cancel()
+		goto Resubscribe
+	case len(curr) != 1:
+		log.Errorf("expected first notif to have len = 1")
+		cancel()
+		goto Resubscribe
+	case curr[0].Type != store.HCCurrent:
+		log.Errorf("expected first notif to tell current ts")
+		cancel()
+		goto Resubscribe
+	default:
+		err := s.update(ctx, curr[0].Val)
+		if err != nil {
+			log.Errorf("%+v", err)
+		}
+	}
 
 	// not fine to panic after this point
 	for {
-		if notifs == nil {
-			notifs, err = s.api.ChainNotify(ctx)
-			if err != nil {
-				log.Errorf("ChainNotify error: %+v")
-
-				time.Sleep(10 * time.Second)
-				continue
-			}
-
-			gotCur = false
-		}
-
 		select {
 		case changes, ok := <-notifs:
 			if !ok {
 				log.Warn("WindowPoStScheduler notifs channel closed")
 				notifs = nil
-				continue
-			}
-
-			if !gotCur {
-				if len(changes) != 1 {
-					log.Errorf("expected first notif to have len = 1")
-					continue
-				}
-				if changes[0].Type != store.HCCurrent {
-					log.Errorf("expected first notif to tell current ts")
-					continue
-				}
-
-				if err := s.update(ctx, changes[0].Val); err != nil {
-					log.Errorf("%+v", err)
-				}
-
-				gotCur = true
-				continue
+				cancel()
+				goto Resubscribe
 			}
 
 			ctx, span := trace.StartSpan(ctx, "WindowPoStScheduler.headChange")
@@ -157,6 +166,7 @@ func (s *WindowPoStScheduler) Run(ctx context.Context) {
 			span.End()
 
 		case <-ctx.Done():
+			cancel()
 			return
 		}
 	}
