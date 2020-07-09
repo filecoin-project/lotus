@@ -203,7 +203,7 @@ type FullNode interface {
 	// ClientHasLocal indicates whether a certain CID is locally stored.
 	ClientHasLocal(ctx context.Context, root cid.Cid) (bool, error)
 	// ClientFindData identifies peers that have a certain file, and returns QueryOffers (one per peer).
-	ClientFindData(ctx context.Context, root cid.Cid) ([]QueryOffer, error)
+	ClientFindData(ctx context.Context, root cid.Cid, piece *cid.Cid) ([]QueryOffer, error)
 	// ClientMinerQueryOffer returns a QueryOffer for the specific miner and file.
 	ClientMinerQueryOffer(ctx context.Context, root cid.Cid, miner address.Address) (QueryOffer, error)
 	// ClientRetrieve initiates the retrieval of a file, as specified in the order.
@@ -460,7 +460,8 @@ type MinerPower struct {
 type QueryOffer struct {
 	Err string
 
-	Root cid.Cid
+	Root  cid.Cid
+	Piece *cid.Cid
 
 	Size                    uint64
 	MinPrice                types.BigInt
@@ -473,6 +474,7 @@ type QueryOffer struct {
 func (o *QueryOffer) Order(client address.Address) RetrievalOrder {
 	return RetrievalOrder{
 		Root:                    o.Root,
+		Piece:                   o.Piece,
 		Size:                    o.Size,
 		Total:                   o.MinPrice,
 		PaymentInterval:         o.PaymentInterval,
@@ -496,8 +498,9 @@ type MarketDeal struct {
 
 type RetrievalOrder struct {
 	// TODO: make this less unixfs specific
-	Root cid.Cid
-	Size uint64
+	Root  cid.Cid
+	Piece *cid.Cid
+	Size  uint64
 	// TODO: support offset
 	Total                   types.BigInt
 	PaymentInterval         uint64
