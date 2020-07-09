@@ -503,6 +503,10 @@ var clientRetrieveCmd = &cli.Command{
 			Usage: "miner address for retrieval, if not present it'll use local discovery",
 		},
 		&cli.StringFlag{
+			Name:  "maxPrice",
+			Usage: "maximum price the client is willing to consider",
+		},
+		&cli.StringFlag{
 			Name:  "pieceCid",
 			Usage: "require data to be retrieved from a specific Piece CID",
 		},
@@ -560,6 +564,11 @@ var clientRetrieveCmd = &cli.Command{
 		minerStrAddr := cctx.String("miner")
 		if minerStrAddr == "" { // Local discovery
 			offers, err := fapi.ClientFindData(ctx, file, pieceCid)
+
+			// sort by price low to high
+			sort.Slice(offers, func(i, j int) bool {
+				return offers[i].MinPrice.LessThan(offers[j].MinPrice)
+			})
 			if err != nil {
 				return err
 			}
@@ -582,6 +591,17 @@ var clientRetrieveCmd = &cli.Command{
 		}
 		if offer.Err != "" {
 			return fmt.Errorf("The received offer errored: %s", offer.Err)
+		}
+
+		if cctx.String("maxPrice") != "" {
+			maxPrice, err := types.ParseFIL(cctx.String("maxPrice"))
+			if err != nil {
+				return err
+			}
+
+			if offer.MinPrice.GreaterThan(types.BigInt(maxPrice)) {
+				return xerrors.Errorf("Failed to find offer satisfying maxPrice: %w", maxPrice)
+			}
 		}
 
 		ref := &lapi.FileRef{
