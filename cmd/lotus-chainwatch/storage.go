@@ -381,14 +381,14 @@ create table if not exists market_deal_states
 (
     deal_id bigint not null,
     
-    state_root text not null,
-    
     sector_start_epoch bigint not null,
     last_update_epoch bigint not null,
     slash_epoch bigint not null,
-
+    
+    state_root text not null,
+    
 	constraint market_deal_states_pk
-		primary key (deal_id)
+		primary key (deal_id,sector_start_epoch,last_update_epoch,slash_epoch)
     
 );
 
@@ -948,7 +948,7 @@ func (st *storage) updateMinerSectors(minerTips map[types.TipSetKey][]*minerStat
 	return updateTx.Commit()
 }
 
-func (st *storage) storeMarketActorDealStates(marketTips map[types.TipSetKey]*marketStateInfo, api api.FullNode) error {
+func (st *storage) storeMarketActorDealStates(marketTips map[types.TipSetKey]*marketStateInfo, tipHeights []tipsetKeyHeight, api api.FullNode) error {
 	tx, err := st.db.Begin()
 	if err != nil {
 		return err
@@ -956,12 +956,14 @@ func (st *storage) storeMarketActorDealStates(marketTips map[types.TipSetKey]*ma
 	if _, err := tx.Exec(`create temp table mds (like market_deal_states excluding constraints) on commit drop;`); err != nil {
 		return err
 	}
-	stmt, err := tx.Prepare(`copy mds (deal_id, state_root, sector_start_epoch, last_update_epoch, slash_epoch) from STDIN`)
+	stmt, err := tx.Prepare(`copy mds (deal_id, sector_start_epoch, last_update_epoch, slash_epoch, state_root) from STDIN`)
 	if err != nil {
 		return err
 	}
-	for tskey, mt := range marketTips {
-		dealStates, err := api.StateMarketDeals(context.TODO(), tskey)
+	for _, th := range tipHeights {
+		mt := marketTips[th.tsKey]
+		log.Infow("store deal state", "height", th.height, "tipset", th.tsKey, "minerTS", mt.tsKey)
+		dealStates, err := api.StateMarketDeals(context.TODO(), mt.tsKey)
 		if err != nil {
 			return err
 		}
@@ -974,10 +976,10 @@ func (st *storage) storeMarketActorDealStates(marketTips map[types.TipSetKey]*ma
 
 			if _, err := stmt.Exec(
 				id,
-				mt.stateroot.String(),
 				ds.State.SectorStartEpoch,
 				ds.State.LastUpdatedEpoch,
 				ds.State.SlashEpoch,
+				mt.stateroot.String(),
 			); err != nil {
 				return err
 			}
@@ -993,10 +995,9 @@ func (st *storage) storeMarketActorDealStates(marketTips map[types.TipSetKey]*ma
 	}
 
 	return tx.Commit()
-
 }
 
-func (st *storage) storeMarketActorDealProposals(marketTips map[types.TipSetKey]*marketStateInfo, api api.FullNode) error {
+func (st *storage) storeMarketActorDealProposals(marketTips map[types.TipSetKey]*marketStateInfo, tipHeights []tipsetKeyHeight, api api.FullNode) error {
 	tx, err := st.db.Begin()
 	if err != nil {
 		return err
@@ -1011,8 +1012,10 @@ func (st *storage) storeMarketActorDealProposals(marketTips map[types.TipSetKey]
 		return err
 	}
 
-	for tskey, mt := range marketTips {
-		dealStates, err := api.StateMarketDeals(context.TODO(), tskey)
+	// insert in sorted order (lowest height -> highest height) since dealid is pk of table.
+	for _, th := range tipHeights {
+		mt := marketTips[th.tsKey]
+		dealStates, err := api.StateMarketDeals(context.TODO(), mt.tsKey)
 		if err != nil {
 			return err
 		}

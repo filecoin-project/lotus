@@ -6,8 +6,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"math"
+	"sort"
 	"sync"
 	"time"
 
@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
@@ -103,6 +104,11 @@ type actorInfo struct {
 	state       string
 }
 
+type tipsetKeyHeight struct {
+	height abi.ChainEpoch
+	tsKey  types.TipSetKey
+}
+
 func syncHead(ctx context.Context, api api.FullNode, st *storage, headTs *types.TipSet, maxBatch int) {
 	var alk sync.Mutex
 
@@ -184,6 +190,9 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, headTs *types.
 
 		log.Infow("Starting Sync", "height", minH, "numBlocks", len(toSync), "maxBatch", maxBatch)
 
+		// relate tipset keys to height so they may be processed in ascending order.
+		var tipHeights []tipsetKeyHeight
+		tipsSeen := make(map[types.TipSetKey]struct{})
 		// map of addresses to changed actors
 		var changes map[string]types.Actor
 		// collect all actor state that has changes between block headers
@@ -291,8 +300,19 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, headTs *types.
 					parentTsKey: pts.Parents(),
 				}
 				addressToID[addr] = address.Undef
+				if _, ok := tipsSeen[pts.Key()]; !ok {
+					tipHeights = append(tipHeights, tipsetKeyHeight{
+						height: pts.Height(),
+						tsKey:  pts.Key(),
+					})
+				}
+				tipsSeen[pts.Key()] = struct{}{}
 				alk.Unlock()
 			}
+		})
+		// sort tipHeights in ascending order.
+		sort.Slice(tipHeights, func(i, j int) bool {
+			return tipHeights[i].height < tipHeights[j].height
 		})
 
 		// map of tipset to reward state
@@ -536,12 +556,12 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, headTs *types.
 		}
 
 		log.Info("Storing market actor info")
-		if err := st.storeMarketActorDealProposals(marketActorChanges, api); err != nil {
+		if err := st.storeMarketActorDealProposals(marketActorChanges, tipHeights, api); err != nil {
 			log.Error(err)
 			return
 		}
 
-		if err := st.storeMarketActorDealStates(marketActorChanges, api); err != nil {
+		if err := st.storeMarketActorDealStates(marketActorChanges, tipHeights, api); err != nil {
 			log.Error(err)
 			return
 		}
