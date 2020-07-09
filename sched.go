@@ -87,7 +87,6 @@ type schedWindowRequest struct {
 }
 
 type schedWindow struct {
-	worker    WorkerID
 	allocated activeResources
 	todo      []*workerRequest
 }
