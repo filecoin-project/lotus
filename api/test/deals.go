@@ -132,8 +132,10 @@ func makeDeal(t *testing.T, ctx context.Context, rseed int, client *impl.FullNod
 	waitDealSealed(t, ctx, miner, client, deal)
 
 	// Retrieval
+	info, err := client.ClientGetDealInfo(ctx, *deal)
+	require.NoError(t, err)
 
-	testRetrieval(t, ctx, err, client, fcid, carExport, data)
+	testRetrieval(t, ctx, err, client, fcid, &info.PieceCID, carExport, data)
 }
 
 func startDeal(t *testing.T, ctx context.Context, miner TestStorageNode, client *impl.FullNodeAPI, fcid cid.Cid, fastRet bool) *cid.Cid {
@@ -199,8 +201,8 @@ func startSealingWaiting(t *testing.T, ctx context.Context, miner TestStorageNod
 	}
 }
 
-func testRetrieval(t *testing.T, ctx context.Context, err error, client *impl.FullNodeAPI, fcid cid.Cid, carExport bool, data []byte) {
-	offers, err := client.ClientFindData(ctx, fcid)
+func testRetrieval(t *testing.T, ctx context.Context, err error, client *impl.FullNodeAPI, fcid cid.Cid, piece *cid.Cid, carExport bool, data []byte) {
+	offers, err := client.ClientFindData(ctx, fcid, piece)
 	if err != nil {
 		t.Fatal(err)
 	}

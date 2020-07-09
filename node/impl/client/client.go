@@ -211,21 +211,24 @@ func (a *API) ClientHasLocal(ctx context.Context, root cid.Cid) (bool, error) {
 	return true, nil
 }
 
-func (a *API) ClientFindData(ctx context.Context, root cid.Cid) ([]api.QueryOffer, error) {
+func (a *API) ClientFindData(ctx context.Context, root cid.Cid, piece *cid.Cid) ([]api.QueryOffer, error) {
 	peers, err := a.RetDiscovery.GetPeers(root)
 	if err != nil {
 		return nil, err
 	}
 
-	out := make([]api.QueryOffer, len(peers))
-	for k, p := range peers {
-		out[k] = a.makeRetrievalQuery(ctx, p, root, rm.QueryParams{})
+	out := make([]api.QueryOffer, 0, len(peers))
+	for _, p := range peers {
+		if piece != nil && !piece.Equals(*p.PieceCID) {
+			continue
+		}
+		out = append(out, a.makeRetrievalQuery(ctx, p, root, piece, rm.QueryParams{}))
 	}
 
 	return out, nil
 }
 
-func (a *API) ClientMinerQueryOffer(ctx context.Context, payload cid.Cid, miner address.Address) (api.QueryOffer, error) {
+func (a *API) ClientMinerQueryOffer(ctx context.Context, miner address.Address, root cid.Cid, piece *cid.Cid) (api.QueryOffer, error) {
 	mi, err := a.StateMinerInfo(ctx, miner, types.EmptyTSK)
 	if err != nil {
 		return api.QueryOffer{}, err
@@ -234,10 +237,10 @@ func (a *API) ClientMinerQueryOffer(ctx context.Context, payload cid.Cid, miner 
 		Address: miner,
 		ID:      mi.PeerId,
 	}
-	return a.makeRetrievalQuery(ctx, rp, payload, rm.QueryParams{}), nil
+	return a.makeRetrievalQuery(ctx, rp, root, piece, rm.QueryParams{}), nil
 }
 
-func (a *API) makeRetrievalQuery(ctx context.Context, rp rm.RetrievalPeer, payload cid.Cid, qp rm.QueryParams) api.QueryOffer {
+func (a *API) makeRetrievalQuery(ctx context.Context, rp rm.RetrievalPeer, payload cid.Cid, piece *cid.Cid, qp rm.QueryParams) api.QueryOffer {
 	queryResponse, err := a.Retrieval.Query(ctx, rp, payload, qp)
 	if err != nil {
 		return api.QueryOffer{Err: err.Error(), Miner: rp.Address, MinerPeerID: rp.ID}
@@ -254,6 +257,7 @@ func (a *API) makeRetrievalQuery(ctx context.Context, rp rm.RetrievalPeer, paylo
 
 	return api.QueryOffer{
 		Root:                    payload,
+		Piece:                   piece,
 		Size:                    queryResponse.Size,
 		MinPrice:                queryResponse.PieceRetrievalPrice(),
 		PaymentInterval:         queryResponse.MaxPaymentInterval,
