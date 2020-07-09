@@ -24,8 +24,10 @@
 [global.run.test_params]
   clients = "10"
   miners = "3"
-  genesis_timestamp_offset = "100000"
-  balance = "2000"
+  genesis_timestamp_offset = "0"
+  balance = "20000000" # These balances will work for maximum 100 nodes, as TotalFilecoin is 2B
+  random_beacon_type = "mock"
+  mining_mode = "natural"
 
 [[groups]]
   id = "bootstrapper"

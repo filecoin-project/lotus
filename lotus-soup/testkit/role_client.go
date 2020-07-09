@@ -148,11 +148,13 @@ func (c *LotusClient) RunDefault() error {
 
 func startFullNodeAPIServer(t *TestEnvironment, repo *repo.MemRepo, api api.FullNode) error {
 	rpcServer := jsonrpc.NewServer()
-	rpcServer.Register("Filecoin", apistruct.PermissionedFullAPI(api))
+	rpcServer.Register("Filecoin", api)
 
 	ah := &auth.Handler{
-		Verify: api.AuthVerify,
-		Next:   rpcServer.ServeHTTP,
+		Verify: func(ctx context.Context, token string) ([]auth.Permission, error) {
+			return apistruct.AllPermissions, nil
+		},
+		Next: rpcServer.ServeHTTP,
 	}
 
 	http.Handle("/rpc/v0", ah)

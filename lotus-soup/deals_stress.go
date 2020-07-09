@@ -72,7 +72,7 @@ func dealStressTest(t *testkit.TestEnvironment) error {
 
 		data = append(data, dealData)
 		files = append(files, dealFile)
-		cids = append(cids, dealCid)
+		cids = append(cids, dealCid.Root)
 	}
 
 	concurrentDeals := true

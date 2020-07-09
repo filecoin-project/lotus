@@ -82,7 +82,7 @@ func dealsE2E(t *testkit.TestEnvironment) error {
 
 	// start deal
 	t1 := time.Now()
-	deal := testkit.StartDeal(ctx, minerAddr.MinerActorAddr, client, fcid)
+	deal := testkit.StartDeal(ctx, minerAddr.MinerActorAddr, client, fcid.Root)
 	t.RecordMessage("started deal: %s", deal)
 
 	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
@@ -95,7 +95,7 @@ func dealsE2E(t *testkit.TestEnvironment) error {
 	carExport := true
 
 	t.RecordMessage("trying to retrieve %s", fcid)
-	testkit.RetrieveData(t, ctx, client, fcid, carExport, data)
+	testkit.RetrieveData(t, ctx, client, fcid.Root, carExport, data)
 	t.D().ResettingHistogram("deal.retrieved").Update(int64(time.Since(t1)))
 
 	t.SyncClient.MustSignalEntry(ctx, testkit.StateStopMining)

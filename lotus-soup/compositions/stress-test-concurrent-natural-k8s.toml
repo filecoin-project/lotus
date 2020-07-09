@@ -25,7 +25,7 @@
   clients = "6"
   miners = "2"
   genesis_timestamp_offset = "0"
-  balance = "200000"
+  balance = "20000000" # These balances will work for maximum 100 nodes, as TotalFilecoin is 2B
   sectors = "100"
   random_beacon_type = "mock"
 

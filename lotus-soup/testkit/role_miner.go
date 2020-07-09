@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"time"
 
 	"contrib.go.opencensus.io/exporter/prometheus"
 	"github.com/filecoin-project/go-address"
@@ -34,6 +35,10 @@ import (
 	libp2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/testground/sdk-go/sync"
+)
+
+const (
+	sealDelay = 30 * time.Second
 )
 
 type LotusMiner struct {
@@ -245,6 +250,20 @@ func PrepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 	// 	panic(err)
 	// }
 
+	// set seal delay to lower value than 1 hour
+	err = n.MinerApi.SectorSetSealDelay(ctx, sealDelay)
+	if err != nil {
+		return nil, err
+	}
+
+	// print out the admin auth token
+	token, err := n.MinerApi.AuthNew(ctx, apistruct.AllPermissions)
+	if err != nil {
+		return nil, err
+	}
+
+	t.RecordMessage("Auth token: %s", string(token))
+
 	// add local storage for presealed sectors
 	err = n.MinerApi.StorageAddLocal(ctx, presealDir)
 	if err != nil {
@@ -417,7 +436,7 @@ func startStorageMinerAPIServer(t *TestEnvironment, repo *repo.MemRepo, minerApi
 	mux := mux.NewRouter()
 
 	rpcServer := jsonrpc.NewServer()
-	rpcServer.Register("Filecoin", apistruct.PermissionedStorMinerAPI(minerApi))
+	rpcServer.Register("Filecoin", minerApi)
 
 	mux.Handle("/rpc/v0", rpcServer)
 	mux.PathPrefix("/remote").HandlerFunc(minerApi.(*impl.StorageMinerAPI).ServeRemote)
@@ -433,8 +452,10 @@ func startStorageMinerAPIServer(t *TestEnvironment, repo *repo.MemRepo, minerApi
 	mux.Handle("/debug/metrics", exporter)
 
 	ah := &auth.Handler{
-		Verify: minerApi.AuthVerify,
-		Next:   mux.ServeHTTP,
+		Verify: func(ctx context.Context, token string) ([]auth.Permission, error) {
+			return apistruct.AllPermissions, nil
+		},
+		Next: mux.ServeHTTP,
 	}
 
 	endpoint, err := repo.APIEndpoint()
