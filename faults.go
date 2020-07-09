@@ -91,10 +91,18 @@ func (m *Manager) CheckProvable(ctx context.Context, spt abi.RegisteredSealProof
 
 func addCachePathsForSectorSize(chk map[string]int64, cacheDir string, ssize abi.SectorSize) {
 	switch ssize {
+	case 2 << 10:
+		fallthrough
+	case 8 << 20:
+		fallthrough
 	case 512 << 20:
 		chk[filepath.Join(cacheDir, "sc-02-data-tree-r-last.dat")] = 0
 	case 32 << 30:
 		for i := 0; i < 8; i++ {
+			chk[filepath.Join(cacheDir, fmt.Sprintf("sc-02-data-tree-r-last-%d.dat", i))] = 0
+		}
+	case 64 << 30:
+		for i := 0; i < 16; i++ {
 			chk[filepath.Join(cacheDir, fmt.Sprintf("sc-02-data-tree-r-last-%d.dat", i))] = 0
 		}
 	default:
