@@ -308,9 +308,9 @@ type FullNode interface {
 	// MsigGetAvailableBalance returns the portion of a multisig's balance that can be withdrawn or spent
 	MsigGetAvailableBalance(context.Context, address.Address, types.TipSetKey) (types.BigInt, error)
 	// MsigGetAvailableBalance creates a multisig wallet
-	// It takes the following params: <required number of senders>, <approving addresses>, <initial balance>,
-	// <sender address of the create msg>, <gas price>
-	MsigCreate(context.Context, int64, []address.Address, types.BigInt, address.Address, types.BigInt) (cid.Cid, error)
+	// It takes the following params: <required number of senders>, <approving addresses>, <unlock duration>
+	//<initial balance>, <sender address of the create msg>, <gas price>
+	MsigCreate(context.Context, int64, []address.Address, abi.ChainEpoch, types.BigInt, address.Address, types.BigInt) (cid.Cid, error)
 	// MsigPropose proposes a multisig message
 	// It takes the following params: <multisig address>, <recipient address>, <value to transfer>,
 	// <sender address of the propose msg>, <method to call in the proposed message>, <params to include in the proposed message>

@@ -158,7 +158,7 @@ type FullNodeStruct struct {
 		StateCompute                      func(context.Context, abi.ChainEpoch, []*types.Message, types.TipSetKey) (*api.ComputeStateOutput, error)           `perm:"read"`
 
 		MsigGetAvailableBalance func(context.Context, address.Address, types.TipSetKey) (types.BigInt, error)                                                                    `perm:"read"`
-		MsigCreate              func(context.Context, int64, []address.Address, types.BigInt, address.Address, types.BigInt) (cid.Cid, error)                                    `perm:"sign"`
+		MsigCreate              func(context.Context, int64, []address.Address, abi.ChainEpoch, types.BigInt, address.Address, types.BigInt) (cid.Cid, error)                    `perm:"sign"`
 		MsigPropose             func(context.Context, address.Address, address.Address, types.BigInt, address.Address, uint64, []byte) (cid.Cid, error)                          `perm:"sign"`
 		MsigApprove             func(context.Context, address.Address, uint64, address.Address, address.Address, types.BigInt, address.Address, uint64, []byte) (cid.Cid, error) `perm:"sign"`
 		MsigCancel              func(context.Context, address.Address, uint64, address.Address, address.Address, types.BigInt, address.Address, uint64, []byte) (cid.Cid, error) `perm:"sign"`
@@ -692,8 +692,8 @@ func (c *FullNodeStruct) MsigGetAvailableBalance(ctx context.Context, a address.
 	return c.Internal.MsigGetAvailableBalance(ctx, a, tsk)
 }
 
-func (c *FullNodeStruct) MsigCreate(ctx context.Context, req int64, addrs []address.Address, val types.BigInt, src address.Address, gp types.BigInt) (cid.Cid, error) {
-	return c.Internal.MsigCreate(ctx, req, addrs, val, src, gp)
+func (c *FullNodeStruct) MsigCreate(ctx context.Context, req int64, addrs []address.Address, duration abi.ChainEpoch, val types.BigInt, src address.Address, gp types.BigInt) (cid.Cid, error) {
+	return c.Internal.MsigCreate(ctx, req, addrs, duration, val, src, gp)
 }
 
 func (c *FullNodeStruct) MsigPropose(ctx context.Context, msig address.Address, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (cid.Cid, error) {

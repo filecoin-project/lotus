@@ -26,7 +26,7 @@ type MsigAPI struct {
 	MpoolAPI  MpoolAPI
 }
 
-func (a *MsigAPI) MsigCreate(ctx context.Context, req int64, addrs []address.Address, val types.BigInt, src address.Address, gp types.BigInt) (cid.Cid, error) {
+func (a *MsigAPI) MsigCreate(ctx context.Context, req int64, addrs []address.Address, duration abi.ChainEpoch, val types.BigInt, src address.Address, gp types.BigInt) (cid.Cid, error) {
 
 	lenAddrs := int64(len(addrs))
 
@@ -50,6 +50,7 @@ func (a *MsigAPI) MsigCreate(ctx context.Context, req int64, addrs []address.Add
 	msigParams := &samsig.ConstructorParams{
 		Signers:               addrs,
 		NumApprovalsThreshold: req,
+		UnlockDuration:        duration,
 	}
 
 	enc, actErr := actors.SerializeParams(msigParams)
