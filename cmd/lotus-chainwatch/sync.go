@@ -555,13 +555,20 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, headTs *types.
 			return
 		}
 
-		log.Info("Storing market actor info")
+		log.Info("Storing market actor deal proposal info")
 		if err := st.storeMarketActorDealProposals(marketActorChanges, tipHeights, api); err != nil {
 			log.Error(err)
 			return
 		}
 
+		log.Info("Storing market actor deal state info")
 		if err := st.storeMarketActorDealStates(marketActorChanges, tipHeights, api); err != nil {
+			log.Error(err)
+			return
+		}
+
+		log.Info("Updating market actor deal proposal info")
+		if err := st.updateMarketActorDealProposals(marketActorChanges, tipHeights, api); err != nil {
 			log.Error(err)
 			return
 		}
