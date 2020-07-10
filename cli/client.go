@@ -595,7 +595,7 @@ var clientRetrieveCmd = &cli.Command{
 			return fmt.Errorf("The received offer errored: %s", offer.Err)
 		}
 
-		maxPrice := types.NewInt(DefaultMaxRetrievePrice)
+		maxPrice := types.FromFil(DefaultMaxRetrievePrice)
 
 		if cctx.String("maxPrice") != "" {
 			maxPriceFil, err := types.ParseFIL(cctx.String("maxPrice"))
