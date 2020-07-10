@@ -299,7 +299,7 @@ create table if not exists miner_info
 */
 create table if not exists chain_power
 (
-	stateroot text not null
+	state_root text not null
 		constraint chain_power_pk
 			primary key,
 	baseline_power text not null
@@ -311,11 +311,11 @@ create table if not exists chain_power
 create table if not exists miner_power
 (
 	miner_id text not null,
-	stateroot text not null,
+	state_root text not null,
 	raw_bytes_power text not null,
 	quality_adjusted_power text not null,
 	constraint miner_power_pk
-		primary key (miner_id, stateroot)
+		primary key (miner_id, state_root)
 );
 
 /* used to tell when a miners sectors (proven-not-yet-expired) changed if the miner_sectors_cid's are different a new sector was added or removed (terminated/expired) */
@@ -535,7 +535,7 @@ func (st *storage) storeChainPower(rewardTips map[types.TipSetKey]*rewardStateIn
 		return xerrors.Errorf("prep chain_power temp: %w", err)
 	}
 
-	stmt, err := tx.Prepare(`copy cp (stateroot, baseline_power) from STDIN`)
+	stmt, err := tx.Prepare(`copy cp (state_root, baseline_power) from STDIN`)
 	if err != nil {
 		return xerrors.Errorf("prepare tmp chain_power: %w", err)
 	}
@@ -545,7 +545,7 @@ func (st *storage) storeChainPower(rewardTips map[types.TipSetKey]*rewardStateIn
 			rewardState.stateroot.String(),
 			rewardState.baselinePower.String(),
 		); err != nil {
-			log.Errorw("failed to store chain power", "stateroot", rewardState.stateroot, "error", err)
+			log.Errorw("failed to store chain power", "state_root", rewardState.stateroot, "error", err)
 		}
 	}
 
@@ -682,7 +682,7 @@ func (st *storage) storeMinerPower(minerTips map[types.TipSetKey][]*minerStateIn
 		return xerrors.Errorf("prep miner_power temp: %w", err)
 	}
 
-	stmt, err := tx.Prepare(`copy cp (miner_id, stateroot, raw_bytes_power, quality_adjusted_power) from STDIN`)
+	stmt, err := tx.Prepare(`copy mp (miner_id, state_root, raw_bytes_power, quality_adjusted_power) from STDIN`)
 	if err != nil {
 		return xerrors.Errorf("prepare tmp miner_power: %w", err)
 	}

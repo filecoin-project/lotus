@@ -317,7 +317,7 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, headTs *types.
 		for addr, m := range actors {
 			for actor, c := range m {
 				// reward actor
-				if actor.Code != builtin.RewardActorCodeID {
+				if actor.Code == builtin.RewardActorCodeID {
 					rewardTips[c.tsKey] = &rewardStateInfo{
 						stateroot:     c.stateroot,
 						baselinePower: big.Zero(),
@@ -326,7 +326,7 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, headTs *types.
 				}
 
 				// miner actors with head change events
-				if actor.Code != builtin.StorageMinerActorCodeID {
+				if actor.Code == builtin.StorageMinerActorCodeID {
 					if _, found := headsSeen[actor.Head]; found {
 						continue
 					}
