@@ -271,6 +271,8 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 		return cid.Undef, xerrors.Errorf("mutating state: %w", err)
 	}
 
+	// TODO: Should we re-ConstructState for the reward actor using rawPow as currRealizedPower here?
+
 	c, err := vm.Flush(ctx)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("flushing vm: %w", err)
@@ -326,7 +328,7 @@ func dealWeight(ctx context.Context, vm *vm.VM, maddr address.Address, dealIDs [
 }
 
 func currentEpochBlockReward(ctx context.Context, vm *vm.VM, maddr address.Address) (abi.TokenAmount, error) {
-	rwret, err := doExecValue(ctx, vm, builtin.RewardActorAddr, maddr, big.Zero(), builtin.MethodsReward.LastPerEpochReward, nil)
+	rwret, err := doExecValue(ctx, vm, builtin.RewardActorAddr, maddr, big.Zero(), builtin.MethodsReward.ThisEpochReward, nil)
 	if err != nil {
 		return abi.TokenAmount{}, err
 	}

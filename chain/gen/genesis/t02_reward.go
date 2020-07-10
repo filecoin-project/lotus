@@ -2,6 +2,7 @@ package genesis
 
 import (
 	"context"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -14,8 +15,9 @@ import (
 func SetupRewardActor(bs bstore.Blockstore) (*types.Actor, error) {
 	cst := cbor.NewCborStore(bs)
 
-	st := reward.ConstructState()
-	st.LastPerEpochReward = types.FromFil(100)
+	z := big.Zero()
+	st := reward.ConstructState(&z)
+	st.ThisEpochReward = types.FromFil(100)
 
 	hcid, err := cst.Put(context.TODO(), st)
 	if err != nil {
