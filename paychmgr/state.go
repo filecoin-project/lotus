@@ -121,6 +121,11 @@ func (pm *Manager) laneState(state *paych.State, ch address.Address) (map[uint64
 
 // Get the total redeemed amount across all lanes, after applying the voucher
 func (pm *Manager) totalRedeemedWithVoucher(laneStates map[uint64]*paych.LaneState, sv *paych.SignedVoucher) (big.Int, error) {
+	// TODO: merges
+	if len(sv.Merges) != 0 {
+		return big.Int{}, xerrors.Errorf("dont currently support paych lane merges")
+	}
+
 	total := big.NewInt(0)
 	for _, ls := range laneStates {
 		total = big.Add(total, ls.Redeemed)
