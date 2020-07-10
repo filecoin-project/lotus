@@ -112,7 +112,7 @@ func SectorSetSizes(ctx context.Context, sm *StateManager, maddr address.Address
 		return api.MinerSectors{}, xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
 	}
 
-	notProving, err := abi.BitFieldUnion(mas.Faults, mas.Recoveries)
+	notProving, err := bitfield.MultiMerge(mas.Faults, mas.Recoveries)
 	if err != nil {
 		return api.MinerSectors{}, err
 	}
@@ -193,7 +193,7 @@ func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *S
 		return nil, xerrors.Errorf("failed to load deadlines: %w", err)
 	}
 
-	notProving, err := abi.BitFieldUnion(mas.Faults, mas.Recoveries)
+	notProving, err := bitfield.MultiMerge(mas.Faults, mas.Recoveries)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to union faults and recoveries: %w", err)
 	}
@@ -485,7 +485,7 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 }
 
 func GetProvingSetRaw(ctx context.Context, sm *StateManager, mas miner.State) ([]*api.ChainSectorInfo, error) {
-	notProving, err := abi.BitFieldUnion(mas.Faults, mas.Recoveries)
+	notProving, err := bitfield.MultiMerge(mas.Faults, mas.Recoveries)
 	if err != nil {
 		return nil, err
 	}
