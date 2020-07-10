@@ -262,21 +262,42 @@ func TestCheckVoucherValid(t *testing.T) {
 		toSend:        big.NewInt(9),
 		voucherAmount: big.NewInt(2),
 	}, {
-		// required balance = toSend + (voucher - redeemed)
-		//                  = 0 + (11 - 2)
-		//                  = 9
-		// So required balance: 9 < actor balance: 10
-		name:          "passes when voucher - redeemed < balance",
+		// voucher supersedes lane 1 redeemed so
+		// lane 1 effective redeemed = voucher amount
+		//
+		// required balance = toSend + total redeemed
+		//                  = 1 + 6 (lane1)
+		//                  = 7
+		// So required balance: 7 < actor balance: 10
+		name:          "passes when voucher + total redeemed <= balance",
 		key:           fromKeyPrivate,
 		actorBalance:  big.NewInt(10),
-		toSend:        big.NewInt(0),
-		voucherAmount: big.NewInt(11),
+		toSend:        big.NewInt(1),
+		voucherAmount: big.NewInt(6),
 		voucherLane:   1,
-		voucherNonce:  3,
+		voucherNonce:  2,
 		laneStates: []*paych.LaneState{{
-			ID:       1,
-			Redeemed: big.NewInt(2),
-			Nonce:    2,
+			ID:       1, // Lane 1 (same as voucher lane 1)
+			Redeemed: big.NewInt(4),
+			Nonce:    1,
+		}},
+	}, {
+		// required balance = toSend + total redeemed
+		//                  = 1 + 4 (lane 2) + 6 (voucher lane 1)
+		//                  = 11
+		// So required balance: 11 > actor balance: 10
+		name:          "fails when voucher + total redeemed > balance",
+		expectError:   true,
+		key:           fromKeyPrivate,
+		actorBalance:  big.NewInt(10),
+		toSend:        big.NewInt(1),
+		voucherAmount: big.NewInt(6),
+		voucherLane:   1,
+		voucherNonce:  1,
+		laneStates: []*paych.LaneState{{
+			ID:       2, // Lane 2 (different from voucher lane 1)
+			Redeemed: big.NewInt(4),
+			Nonce:    1,
 		}},
 	}}
 
@@ -314,6 +335,139 @@ func TestCheckVoucherValid(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestCheckVoucherValidCountingAllLanes(t *testing.T) {
+	ctx := context.Background()
+
+	fromKeyPrivate, fromKeyPublic := testGenerateKeyPair(t)
+
+	ch := tutils.NewIDAddr(t, 100)
+	from := tutils.NewSECP256K1Addr(t, string(fromKeyPublic))
+	to := tutils.NewSECP256K1Addr(t, "secpTo")
+	fromAcct := tutils.NewActorAddr(t, "fromAct")
+	toAcct := tutils.NewActorAddr(t, "toAct")
+	minDelta := big.NewInt(0)
+
+	sm := newMockStateManager()
+	sm.setAccountState(fromAcct, account.State{Address: from})
+	sm.setAccountState(toAcct, account.State{Address: to})
+
+	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
+
+	actorBalance := big.NewInt(10)
+	toSend := big.NewInt(1)
+	laneStates := []*paych.LaneState{{
+		ID:       1,
+		Nonce:    1,
+		Redeemed: big.NewInt(3),
+	}, {
+		ID:       2,
+		Nonce:    1,
+		Redeemed: big.NewInt(4),
+	}}
+
+	act := &types.Actor{
+		Code:    builtin.AccountActorCodeID,
+		Head:    cid.Cid{},
+		Nonce:   0,
+		Balance: actorBalance,
+	}
+	sm.setPaychState(ch, act, paych.State{
+		From:            fromAcct,
+		To:              toAcct,
+		ToSend:          toSend,
+		SettlingAt:      abi.ChainEpoch(0),
+		MinSettleHeight: abi.ChainEpoch(0),
+		LaneStates:      laneStates,
+	})
+
+	mgr := newManager(sm, store)
+	err := mgr.TrackInboundChannel(ctx, ch)
+	require.NoError(t, err)
+
+	//
+	// Should not be possible to add a voucher with a value such that
+	// <total lane Redeemed> + toSend > <actor balance>
+	//
+	// lane 1 redeemed:                   3
+	// voucher amount (lane 1):           6
+	// lane 1 redeemed (with voucher):    6
+	//
+	// Lane 1:             6
+	// Lane 2:             4
+	// toSend:             1
+	//                     --
+	// total:              11
+	//
+	// actor balance is 10 so total is too high.
+	//
+	voucherLane := uint64(1)
+	voucherNonce := uint64(2)
+	voucherAmount := big.NewInt(6)
+	sv := testCreateVoucher(t, voucherLane, voucherNonce, voucherAmount, fromKeyPrivate)
+	err = mgr.CheckVoucherValid(ctx, ch, sv)
+	require.Error(t, err)
+
+	//
+	// lane 1 redeemed:                   3
+	// voucher amount (lane 1):           4
+	// lane 1 redeemed (with voucher):    4
+	//
+	// Lane 1:             4
+	// Lane 2:             4
+	// toSend:             1
+	//                     --
+	// total:              9
+	//
+	// actor balance is 10 so total is ok.
+	//
+	voucherAmount = big.NewInt(4)
+	sv = testCreateVoucher(t, voucherLane, voucherNonce, voucherAmount, fromKeyPrivate)
+	err = mgr.CheckVoucherValid(ctx, ch, sv)
+	require.NoError(t, err)
+
+	// Add voucher to lane 1, so Lane 1 effective redeemed
+	// (with first voucher) is now 4
+	_, err = mgr.AddVoucher(ctx, ch, sv, nil, minDelta)
+	require.NoError(t, err)
+
+	//
+	// lane 1 redeemed:                   4
+	// voucher amount (lane 1):           6
+	// lane 1 redeemed (with voucher):    6
+	//
+	// Lane 1:             6
+	// Lane 2:             4
+	// toSend:             1
+	//                     --
+	// total:              11
+	//
+	// actor balance is 10 so total is too high.
+	//
+	voucherNonce++
+	voucherAmount = big.NewInt(6)
+	sv = testCreateVoucher(t, voucherLane, voucherNonce, voucherAmount, fromKeyPrivate)
+	err = mgr.CheckVoucherValid(ctx, ch, sv)
+	require.Error(t, err)
+
+	//
+	// lane 1 redeemed:                   4
+	// voucher amount (lane 1):           5
+	// lane 1 redeemed (with voucher):    5
+	//
+	// Lane 1:             5
+	// Lane 2:             4
+	// toSend:             1
+	//                     --
+	// total:              10
+	//
+	// actor balance is 10 so total is ok.
+	//
+	voucherAmount = big.NewInt(5)
+	sv = testCreateVoucher(t, voucherLane, voucherNonce, voucherAmount, fromKeyPrivate)
+	err = mgr.CheckVoucherValid(ctx, ch, sv)
+	require.NoError(t, err)
 }
 
 func TestAddVoucherDelta(t *testing.T) {
@@ -524,7 +678,7 @@ func testSetupMgrWithChannel(ctx context.Context, t *testing.T) (*Manager, addre
 		Code:    builtin.AccountActorCodeID,
 		Head:    cid.Cid{},
 		Nonce:   0,
-		Balance: big.NewInt(10),
+		Balance: big.NewInt(20),
 	}
 	sm.setPaychState(ch, act, paych.State{
 		From:            fromAcct,

@@ -5,6 +5,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+
 	"github.com/filecoin-project/lotus/api"
 
 	cborutil "github.com/filecoin-project/go-cbor-util"
@@ -99,14 +101,14 @@ func (pm *Manager) CheckVoucherValid(ctx context.Context, ch address.Address, sv
 	return err
 }
 
-func (pm *Manager) checkVoucherValid(ctx context.Context, ch address.Address, sv *paych.SignedVoucher) (*paych.State, error) {
-	act, pca, err := pm.loadPaychState(ctx, ch)
+func (pm *Manager) checkVoucherValid(ctx context.Context, ch address.Address, sv *paych.SignedVoucher) (map[uint64]*paych.LaneState, error) {
+	act, pchState, err := pm.loadPaychState(ctx, ch)
 	if err != nil {
 		return nil, err
 	}
 
 	var account account.State
-	_, err = pm.sm.LoadActorState(ctx, pca.From, &account, nil)
+	_, err = pm.sm.LoadActorState(ctx, pchState.From, &account, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -125,29 +127,47 @@ func (pm *Manager) checkVoucherValid(ctx context.Context, ch address.Address, sv
 		return nil, err
 	}
 
-	sendAmount := sv.Amount
-
 	// Check the voucher against the highest known voucher nonce / value
-	ls, err := pm.laneState(pca, ch, sv.Lane)
+	laneStates, err := pm.laneState(pchState, ch)
 	if err != nil {
 		return nil, err
 	}
-	// If there has been at least once voucher redeemed, and the voucher
-	// nonce value is less than the highest known nonce
-	if ls.Redeemed.Int64() > 0 && sv.Nonce <= ls.Nonce {
+
+	// If the new voucher nonce value is less than the highest known
+	// nonce for the lane
+	ls, lsExists := laneStates[sv.Lane]
+	if lsExists && sv.Nonce <= ls.Nonce {
 		return nil, fmt.Errorf("nonce too low")
 	}
+
 	// If the voucher amount is less than the highest known voucher amount
-	if sv.Amount.LessThanEqual(ls.Redeemed) {
+	if lsExists && sv.Amount.LessThanEqual(ls.Redeemed) {
 		return nil, fmt.Errorf("voucher amount is lower than amount for voucher with lower nonce")
 	}
 
-	// Only send the difference between the voucher amount and what has already
-	// been redeemed
-	sendAmount = types.BigSub(sv.Amount, ls.Redeemed)
+	// Total redeemed is the total redeemed amount for all lanes, including
+	// the new voucher
+	// eg
+	//
+	// lane 1 redeemed:            3
+	// lane 2 redeemed:            2
+	// voucher for lane 1:         5
+	//
+	// Voucher supersedes lane 1 redeemed, therefore
+	// effective lane 1 redeemed:  5
+	//
+	// lane 1:  5
+	// lane 2:  2
+	//          -
+	// total:   7
+	totalRedeemed, err := pm.totalRedeemedWithVoucher(laneStates, sv)
+	if err != nil {
+		return nil, err
+	}
 
-	// TODO: also account for vouchers on other lanes we've received
-	newTotal := types.BigAdd(sendAmount, pca.ToSend)
+	// Total required balance = total redeemed + toSend
+	// Must not exceed actor balance
+	newTotal := types.BigAdd(totalRedeemed, pchState.ToSend)
 	if act.Balance.LessThan(newTotal) {
 		return nil, fmt.Errorf("not enough funds in channel to cover voucher")
 	}
@@ -156,7 +176,7 @@ func (pm *Manager) checkVoucherValid(ctx context.Context, ch address.Address, sv
 		return nil, fmt.Errorf("dont currently support paych lane merges")
 	}
 
-	return pca, nil
+	return laneStates, nil
 }
 
 // CheckVoucherSpendable checks if the given voucher is currently spendable
@@ -260,21 +280,22 @@ func (pm *Manager) AddVoucher(ctx context.Context, ch address.Address, sv *paych
 	}
 
 	// Check voucher validity
-	pchState, err := pm.checkVoucherValid(ctx, ch, sv)
+	laneStates, err := pm.checkVoucherValid(ctx, ch, sv)
 	if err != nil {
 		return types.NewInt(0), err
 	}
 
 	// The change in value is the delta between the voucher amount and
-	// the highest previous voucher amount
-	laneState, err := pm.laneState(pchState, ch, sv.Lane)
-	if err != nil {
-		return types.NewInt(0), err
+	// the highest previous voucher amount for the lane
+	laneState, exists := laneStates[sv.Lane]
+	redeemed := big.NewInt(0)
+	if exists {
+		redeemed = laneState.Redeemed
 	}
 
-	delta := types.BigSub(sv.Amount, laneState.Redeemed)
+	delta := types.BigSub(sv.Amount, redeemed)
 	if minDelta.GreaterThan(delta) {
-		return delta, xerrors.Errorf("addVoucher: supplied token amount too low; minD=%s, D=%s; laneAmt=%s; v.Amt=%s", minDelta, delta, laneState.Redeemed, sv.Amount)
+		return delta, xerrors.Errorf("addVoucher: supplied token amount too low; minD=%s, D=%s; laneAmt=%s; v.Amt=%s", minDelta, delta, redeemed, sv.Amount)
 	}
 
 	ci.Vouchers = append(ci.Vouchers, &VoucherInfo{
