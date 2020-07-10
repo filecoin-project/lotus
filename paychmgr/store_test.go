@@ -60,7 +60,7 @@ func TestStore(t *testing.T) {
 	require.Len(t, vouchers, 1)
 
 	// Requesting voucher for non-existent channel should error
-	vouchers, err = store.VouchersForPaych(tutils.NewIDAddr(t, 300))
+	_, err = store.VouchersForPaych(tutils.NewIDAddr(t, 300))
 	require.Equal(t, err, ErrChannelNotTracked)
 
 	// Allocate lane for channel
@@ -74,7 +74,7 @@ func TestStore(t *testing.T) {
 	require.Equal(t, lane, uint64(1))
 
 	// Allocate next lane for non-existent channel should error
-	lane, err = store.AllocateLane(tutils.NewIDAddr(t, 300))
+	_, err = store.AllocateLane(tutils.NewIDAddr(t, 300))
 	require.Equal(t, err, ErrChannelNotTracked)
 }
 

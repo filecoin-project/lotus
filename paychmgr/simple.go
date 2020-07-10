@@ -75,7 +75,7 @@ func (pm *Manager) waitForPaychCreateMsg(ctx context.Context, mcid cid.Cid) {
 	}
 	paychaddr := decodedReturn.RobustAddress
 
-	ci, err := pm.loadOutboundChannelInfo(ctx, paychaddr)
+	ci, err := pm.loadStateChannelInfo(ctx, paychaddr, DirOutbound)
 	if err != nil {
 		log.Errorf("loading channel info: %w", err)
 		return
