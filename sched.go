@@ -528,6 +528,16 @@ func (sh *scheduler) dropWorker(wid WorkerID) {
 	w := sh.workers[wid]
 	delete(sh.workers, wid)
 
+	newWindows := make([]*schedWindowRequest, 0, len(sh.openWindows))
+	for _, window := range sh.openWindows {
+		if window.worker != wid {
+			newWindows = append(newWindows, window)
+		}
+	}
+	sh.openWindows = newWindows
+
+	// TODO: sync close worker goroutine
+
 	go func() {
 		if err := w.w.Close(); err != nil {
 			log.Warnf("closing worker %d: %+v", err)
