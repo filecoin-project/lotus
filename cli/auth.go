@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -126,6 +127,9 @@ var authApiInfoToken = &cli.Command{
 		}
 
 		envVar := envForRepo(t)
+		if _, ok := os.LookupEnv(envForRepo(t)); !ok {
+			envVar = envForRepoDeprecation(t)
+		}
 
 		// TODO: Log in audit log when it is implemented
 

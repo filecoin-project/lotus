@@ -191,11 +191,10 @@ lotus-health:
 .PHONY: lotus-health
 BINS+=lotus-health
 
-lotus-testground:
-	go build -tags lotus-testground -o /dev/null ./cmd/lotus
-
-.PHONY: lotus-testground
-BINS+=lotus-testground
+testground:
+	go build -tags testground -o /dev/null ./cmd/lotus
+.PHONY: testground
+BINS+=testground
 
 # MISC
 

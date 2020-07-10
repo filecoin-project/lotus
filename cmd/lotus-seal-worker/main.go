@@ -37,6 +37,8 @@ import (
 var log = logging.Logger("main")
 
 const FlagWorkerRepo = "worker-repo"
+// TODO remove after deprecation period
+const FlagWorkerRepoDeprecation = "workerrepo"
 
 func main() {
 	lotuslog.SetupLogLevels()
@@ -54,13 +56,17 @@ func main() {
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    FlagWorkerRepo,
-				EnvVars: []string{"LOTUS_WORKER_PATH"},
+				Aliases: []string{FlagWorkerRepoDeprecation},
+				EnvVars: []string{"LOTUS_WORKER_PATH", "WORKER_PATH"},
 				Value:   "~/.lotusworker", // TODO: Consider XDG_DATA_HOME
+				Usage:   fmt.Sprintf("Specify worker repo path. flag %s and env WORKER_PATH are DEPRECATION, will REMOVE SOON", FlagWorkerRepoDeprecation),
 			},
 			&cli.StringFlag{
 				Name:    "miner-repo",
-				EnvVars: []string{"LOTUS_MINER_PATH"},
+				Aliases: []string{"storagerepo"},
+				EnvVars: []string{"LOTUS_MINER_PATH", "LOTUS_STORAGE_PATH"},
 				Value:   "~/.lotusminer", // TODO: Consider XDG_DATA_HOME
+				Usage:   fmt.Sprintf("Specify miner repo path. flag storagerepo and env LOTUS_STORAGE_PATH are DEPRECATION, will REMOVE SOON"),
 			},
 			&cli.BoolFlag{
 				Name:  "enable-gpu-proving",

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -21,6 +22,8 @@ import (
 var log = logging.Logger("main")
 
 const FlagMinerRepo = "miner-repo"
+// TODO remove after deprecation period
+const FlagMinerRepoDeprecation = "storagerepo"
 
 func main() {
 	lotuslog.SetupLogLevels()
@@ -80,8 +83,10 @@ func main() {
 			},
 			&cli.StringFlag{
 				Name:    FlagMinerRepo,
-				EnvVars: []string{"LOTUS_MINER_PATH"},
+				Aliases: []string{FlagMinerRepoDeprecation},
+				EnvVars: []string{"LOTUS_MINER_PATH", "LOTUS_STORAGE_PATH"},
 				Value:   "~/.lotusminer", // TODO: Consider XDG_DATA_HOME
+				Usage:   fmt.Sprintf("Specify miner repo path. flag(%s) and env(LOTUS_STORAGE_PATH) are DEPRECATION, will REMOVE SOON", FlagMinerRepoDeprecation),
 			},
 		},
 
