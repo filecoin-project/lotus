@@ -485,6 +485,8 @@ var clientFindCmd = &cli.Command{
 	},
 }
 
+const DefaultMaxRetrievePrice = 1
+
 var clientRetrieveCmd = &cli.Command{
 	Name:      "retrieve",
 	Usage:     "retrieve data from network",
@@ -504,7 +506,7 @@ var clientRetrieveCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:  "maxPrice",
-			Usage: "maximum price the client is willing to consider",
+			Usage: fmt.Sprintf("maximum price the client is willing to consider (default: %d FIL)", DefaultMaxRetrievePrice),
 		},
 		&cli.StringFlag{
 			Name:  "pieceCid",
@@ -593,15 +595,19 @@ var clientRetrieveCmd = &cli.Command{
 			return fmt.Errorf("The received offer errored: %s", offer.Err)
 		}
 
+		maxPrice := types.NewInt(DefaultMaxRetrievePrice)
+
 		if cctx.String("maxPrice") != "" {
-			maxPrice, err := types.ParseFIL(cctx.String("maxPrice"))
+			maxPriceFil, err := types.ParseFIL(cctx.String("maxPrice"))
 			if err != nil {
-				return err
+				return xerrors.Errorf("parsing maxPrice: %w", err)
 			}
 
-			if offer.MinPrice.GreaterThan(types.BigInt(maxPrice)) {
-				return xerrors.Errorf("Failed to find offer satisfying maxPrice: %w", maxPrice)
-			}
+			maxPrice = types.BigInt(maxPriceFil)
+		}
+
+		if offer.MinPrice.GreaterThan(maxPrice) {
+			return xerrors.Errorf("failed to find offer satisfying maxPrice: %s", maxPrice)
 		}
 
 		ref := &lapi.FileRef{
