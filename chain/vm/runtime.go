@@ -578,3 +578,16 @@ func (rt *Runtime) abortIfAlreadyValidated() {
 	}
 	rt.callerValidated = true
 }
+
+func (rt *Runtime) Log(level vmr.LogLevel, msg string, args ...interface{}) {
+	switch level {
+	case vmr.DEBUG:
+		log.Debugf(msg, args)
+	case vmr.INFO:
+		log.Infof(msg, args)
+	case vmr.WARN:
+		log.Warnf(msg, args)
+	case vmr.ERROR:
+		log.Errorf(msg, args)
+	}
+}
