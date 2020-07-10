@@ -8,10 +8,10 @@ import (
 )
 
 var cases = map[string]interface{}{
-	"deals-e2e":         testkit.WrapTestEnvironment(dealsE2E),
-	"deals-stress-test": testkit.WrapTestEnvironment(dealStressTest),
-	"drand-halting":     testkit.WrapTestEnvironment(dealsE2E),
-	"paych-stress":      testkit.WrapTestEnvironment(paych.Stress),
+	"deals-e2e":     testkit.WrapTestEnvironment(dealsE2E),
+	"deals-stress":  testkit.WrapTestEnvironment(dealsStress),
+	"drand-halting": testkit.WrapTestEnvironment(dealsE2E),
+	"paych-stress":  testkit.WrapTestEnvironment(paych.Stress),
 }
 
 func main() {

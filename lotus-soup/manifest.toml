@@ -88,7 +88,7 @@ instances = { min = 1, max = 100, default = 5 }
 
 
 [[testcases]]
-name = "deals-stress-test"
+name = "deals-stress"
 instances = { min = 1, max = 100, default = 5 }
 
   [testcases.params]

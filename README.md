@@ -6,6 +6,16 @@ Our mandate is:
 
 ➡️  Find out more about our goals, requirements, execution plan, and team culture, in our [Project Description](https://docs.google.com/document/d/16jYL--EWYpJhxT9bakYq7ZBGLQ9SB940Wd1lTDOAbNE).
 
+## Table of Contents
+
+- [Testing topics](#testing-topics)
+- [Repository contents](#repository-contents)
+- [Running the test cases](#running-the-test-cases)
+- [Catalog](#catalog)
+- [Debugging](#debugging)
+- [Docker images changelog](#docker-images-changelog)
+- [Team](#team)
+
 ## Testing topics
 
 These are the topics we are currently centering our testing efforts on. Our testing efforts include fault induction, stress tests, and end-to-end testing.
@@ -98,12 +108,40 @@ make
 7. Run a composition for the baseline deals end-to-end test case
 
 ```
-testground run composition -f ./lotus-soup/_compositions/composition.toml
+testground run composition -f ./lotus-soup/_compositions/baseline.toml
 ```
+
+## Catalog
+
+### Test cases part of `lotus-soup`
+
+* `deals-e2e` - Deals end-to-end test case. Clients pick a miner at random, start a deal, wait for it to be sealed, and try to retrieve from another random miner who offers back the data.
+* `drand-halting` - Test case that instructs Drand with a sequence of halt/resume/wait events, while running deals between clients and miners at the same time.
+* `deals-stress` - Deals stress test case. Clients pick a miner and send multiple deals (concurrently or serially) in order to test how many deals miners can handle.
+* `paych-stress` - A test case exercising various payment channel stress tests.
+
+### Compositions part of `lotus-soup`
+
+* `baseline-docker-5-1.toml` - Runs a `baseline` test (deals e2e test) with a network of 5 clients and 1 miner targeting `local:docker`
+* `baseline-k8s-10-3.toml` - Runs a `baseline` test (deals e2e test) with a network of 10 clients and 3 miner targeting `cluster:k8s`
+* `baseline-k8s-3-1.toml` - Runs a `baseline` test (deals e2e test) with a network of 3 clients and 1 miner targeting `cluster:k8s`
+* `baseline-k8s-3-2.toml` - Runs a `baseline` test (deals e2e test) with a network of 3 clients and 2 miner targeting `cluster:k8s`
+* `baseline.toml` - Runs a `baseline` test (deals e2e test) with a network of 3 clients and 2 miner targeting `local:exec`
+* `deals-stress-concurrent-natural-k8s.toml`
+* `deals-stress-concurrent-natural.toml`
+* `deals-stress-concurrent.toml`
+* `deals-stress-serial-natural.toml`
+* `deals-stress-serial.toml`
+* `drand-halt.toml`
+* `local-drand.toml`
+* `natural.toml`
+* `paych-stress.toml`
+* `pubsub-tracer.toml`
+
 
 ## Debugging
 
-Find commands and how-to guide on how to debug test plans at [DELVING.md](https://github.com/filecoin-project/oni/blob/master/DELVING.md)
+Find commands and how-to guides on debugging test plans at [DELVING.md](https://github.com/filecoin-project/oni/blob/master/DELVING.md)
 
 1. Querying the Lotus RPC API
 
@@ -117,7 +155,7 @@ Find commands and how-to guide on how to debug test plans at [DELVING.md](https:
 
 * Sector sealing errors
 
-## `lotus-soup` Docker images history
+## Docker images changelog
 
 ### oni-buildbase
 
@@ -131,7 +169,8 @@ Find commands and how-to guide on how to debug test plans at [DELVING.md](https:
 * `v1` => initial image with 2048 parameters.
 * `v2` => adds auxiliary tools: `net-tools netcat traceroute iputils-ping wget vim curl telnet iproute2 dnsutils`.
 
-## Team composition
+
+## Team
 
 * [@raulk](https://github.com/raulk) (Captain + TL)
 * [@nonsense](https://github.com/nonsense) (Testground TG + engineer)

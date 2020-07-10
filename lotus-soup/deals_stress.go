@@ -15,7 +15,7 @@ import (
 	"github.com/filecoin-project/oni/lotus-soup/testkit"
 )
 
-func dealStressTest(t *testkit.TestEnvironment) error {
+func dealsStress(t *testkit.TestEnvironment) error {
 	// Dispatch/forward non-client roles to defaults.
 	if t.Role != "client" {
 		return testkit.HandleDefaultRole(t)
