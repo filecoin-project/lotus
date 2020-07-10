@@ -95,7 +95,7 @@ testground plan import --from ./lotus-soup
 5. Init the `filecoin-ffi` Git submodule in the `extra` folder.
 
 ```
-git submodule init
+git submodule update --init --recursive
 ```
 
 6. Compile the `filecoin-ffi` version locally (necessary if you use `local:exec`)
