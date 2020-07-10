@@ -485,6 +485,8 @@ var clientFindCmd = &cli.Command{
 	},
 }
 
+const DefaultMaxRetrievePrice = 1
+
 var clientRetrieveCmd = &cli.Command{
 	Name:      "retrieve",
 	Usage:     "retrieve data from network",
@@ -501,6 +503,10 @@ var clientRetrieveCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:  "miner",
 			Usage: "miner address for retrieval, if not present it'll use local discovery",
+		},
+		&cli.StringFlag{
+			Name:  "maxPrice",
+			Usage: fmt.Sprintf("maximum price the client is willing to consider (default: %d FIL)", DefaultMaxRetrievePrice),
 		},
 		&cli.StringFlag{
 			Name:  "pieceCid",
@@ -560,6 +566,11 @@ var clientRetrieveCmd = &cli.Command{
 		minerStrAddr := cctx.String("miner")
 		if minerStrAddr == "" { // Local discovery
 			offers, err := fapi.ClientFindData(ctx, file, pieceCid)
+
+			// sort by price low to high
+			sort.Slice(offers, func(i, j int) bool {
+				return offers[i].MinPrice.LessThan(offers[j].MinPrice)
+			})
 			if err != nil {
 				return err
 			}
@@ -582,6 +593,21 @@ var clientRetrieveCmd = &cli.Command{
 		}
 		if offer.Err != "" {
 			return fmt.Errorf("The received offer errored: %s", offer.Err)
+		}
+
+		maxPrice := types.FromFil(DefaultMaxRetrievePrice)
+
+		if cctx.String("maxPrice") != "" {
+			maxPriceFil, err := types.ParseFIL(cctx.String("maxPrice"))
+			if err != nil {
+				return xerrors.Errorf("parsing maxPrice: %w", err)
+			}
+
+			maxPrice = types.BigInt(maxPriceFil)
+		}
+
+		if offer.MinPrice.GreaterThan(maxPrice) {
+			return xerrors.Errorf("failed to find offer satisfying maxPrice: %s", maxPrice)
 		}
 
 		ref := &lapi.FileRef{
