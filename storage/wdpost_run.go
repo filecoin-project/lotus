@@ -430,7 +430,7 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 		snums = append(snums, si.SectorNumber)
 	}
 
-	tsStart := time.Now()
+	tsStart := build.Clock.Now()
 
 	log.Infow("generating windowPost",
 		"sectors", len(ssi))

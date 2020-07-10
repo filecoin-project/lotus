@@ -28,6 +28,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -285,7 +286,7 @@ func checkMessage(msg *types.Message) error {
 }
 
 func (vm *VM) ApplyImplicitMessage(ctx context.Context, msg *types.Message) (*ApplyRet, error) {
-	start := time.Now()
+	start := build.Clock.Now()
 	ret, actorErr, rt := vm.send(ctx, msg, nil, nil, start)
 	rt.finilizeGasTracing()
 	return &ApplyRet{
@@ -302,7 +303,7 @@ func (vm *VM) ApplyImplicitMessage(ctx context.Context, msg *types.Message) (*Ap
 }
 
 func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet, error) {
-	start := time.Now()
+	start := build.Clock.Now()
 	ctx, span := trace.StartSpan(ctx, "vm.ApplyMessage")
 	defer span.End()
 	msg := cmsg.VMMessage()

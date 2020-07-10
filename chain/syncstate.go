@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -48,7 +49,7 @@ func (ss *SyncerState) SetStage(v api.SyncStateStage) {
 	defer ss.lk.Unlock()
 	ss.Stage = v
 	if v == api.StageSyncComplete {
-		ss.End = time.Now()
+		ss.End = build.Clock.Now()
 	}
 }
 
@@ -64,7 +65,7 @@ func (ss *SyncerState) Init(base, target *types.TipSet) {
 	ss.Stage = api.StageHeaders
 	ss.Height = 0
 	ss.Message = ""
-	ss.Start = time.Now()
+	ss.Start = build.Clock.Now()
 	ss.End = time.Time{}
 }
 
@@ -87,7 +88,7 @@ func (ss *SyncerState) Error(err error) {
 	defer ss.lk.Unlock()
 	ss.Message = err.Error()
 	ss.Stage = api.StageSyncErrored
-	ss.End = time.Now()
+	ss.End = build.Clock.Now()
 }
 
 func (ss *SyncerState) Snapshot() SyncerState {
