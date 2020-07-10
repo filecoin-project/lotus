@@ -8,7 +8,6 @@ import (
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 )
 
@@ -63,7 +62,7 @@ func (m *multiReadBs) Get(cid cid.Cid) (blocks.Block, error) {
 	}
 
 	if merr == nil {
-		return nil, datastore.ErrNotFound
+		return nil, blockstore.ErrNotFound
 	}
 
 	return nil, merr
