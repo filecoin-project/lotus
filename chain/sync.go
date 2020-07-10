@@ -1103,8 +1103,8 @@ func (syncer *Syncer) collectHeaders(ctx context.Context, incoming *types.TipSet
 	ss := extractSyncState(ctx)
 
 	span.AddAttributes(
-		trace.Int64Attribute("fromHeight", int64(incoming.Height())),
-		trace.Int64Attribute("toHeight", int64(known.Height())),
+		trace.Int64Attribute("incomingHeight", int64(incoming.Height())),
+		trace.Int64Attribute("knownHeight", int64(known.Height())),
 	)
 
 	// Check if the parents of the from block are in the denylist.
