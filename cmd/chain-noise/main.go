@@ -20,7 +20,7 @@ import (
 func main() {
 	app := &cli.App{
 		Name:  "chain-noise",
-		Usage: "Generate some spam transactions in the network",
+		Usage: "Generate some spam transactions in the network",// 创建一些垃圾交易发送到网络；
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    "repo",
@@ -57,6 +57,7 @@ var runCmd = &cli.Command{
 	},
 }
 
+// 随机创建20个地址，发送一些小额的交易
 func sendSmallFundsTxs(ctx context.Context, api api.FullNode, from address.Address, rate int) error {
 	var sendSet []address.Address
 	for i := 0; i < 20; i++ {
@@ -68,6 +69,7 @@ func sendSmallFundsTxs(ctx context.Context, api api.FullNode, from address.Addre
 		sendSet = append(sendSet, naddr)
 	}
 
+	// 定时器
 	tick := time.NewTicker(time.Second / time.Duration(rate))
 	for {
 		select {

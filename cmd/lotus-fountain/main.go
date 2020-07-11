@@ -45,7 +45,7 @@ func main() {
 
 	app := &cli.App{
 		Name:    "lotus-fountain",
-		Usage:   "Devnet token distribution utility",
+		Usage:   "Devnet token distribution utility",// 本地测试网token代币分发工具；
 		Version: build.UserVersion(),
 		Flags: []cli.Flag{
 			&cli.StringFlag{

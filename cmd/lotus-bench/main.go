@@ -78,7 +78,7 @@ func main() {
 
 	app := &cli.App{
 		Name:    "lotus-bench",
-		Usage:   "Benchmark performance of lotus on your hardware",
+		Usage:   "Benchmark performance of lotus on your hardware", // 在你的硬件设备上测试lotus benchmark
 		Version: build.UserVersion(),
 		Commands: []*cli.Command{
 			proveCmd,

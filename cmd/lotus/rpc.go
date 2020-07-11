@@ -46,6 +46,7 @@ func serveRPC(a api.FullNode, stop node.StopFunc, addr multiaddr.Multiaddr, shut
 
 	http.Handle("/rest/v0/import", importAH)
 
+	// 使用prometheus 普罗米修斯
 	exporter, err := prometheus.NewExporter(prometheus.Options{
 		Namespace: "lotus",
 	})

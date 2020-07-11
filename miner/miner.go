@@ -252,12 +252,14 @@ func (m *Miner) hasPower(ctx context.Context, addr address.Address, ts *types.Ti
 	return mpower.MinerPower.QualityAdjPower.GreaterThanEqual(power.ConsensusMinerMinPower), nil
 }
 
+// 挖块
 func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*types.BlockMsg, error) {
 	log.Debugw("attempting to mine a block", "tipset", types.LogCids(base.TipSet.Cids()))
 	start := time.Now()
 
 	round := base.TipSet.Height() + base.NullRounds + 1
 
+	// MinerGetBaseInfo函数获取基本信息，包括需要抽取的sector信息
 	mbi, err := m.api.MinerGetBaseInfo(ctx, m.address, round, base.TipSet.Key())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get mining base info: %w", err)
@@ -321,6 +323,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*types.BlockMsg,
 
 	tSeed := time.Now()
 
+	// ComputeProof函数计算winningPoSt证明。
 	postProof, err := m.epp.ComputeProof(ctx, mbi.Sectors, prand)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to compute winning post proof: %w", err)

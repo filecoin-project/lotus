@@ -46,6 +46,7 @@ const (
 	preTemplateFlag = "genesis-template"
 )
 
+// 停止lotus daemon后台进程
 var daemonStopCmd = &cli.Command{
 	Name:  "stop",
 	Usage: "Stop a running lotus daemon",
@@ -66,6 +67,7 @@ var daemonStopCmd = &cli.Command{
 	},
 }
 
+// 这是go-lotus daemon 启动后台进程的命令
 // DaemonCmd is the `go-lotus daemon` command
 var DaemonCmd = &cli.Command{
 	Name:  "daemon",
@@ -86,12 +88,12 @@ var DaemonCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:   "import-key",
-			Usage:  "on first run, import a default key from a given file",
+			Usage:  "on first run, import a default key from a given file",// 初次运行，从指定文件导入默认key;
 			Hidden: true,
 		},
 		&cli.StringFlag{
 			Name:  "genesis",
-			Usage: "genesis file to use for first node run",
+			Usage: "genesis file to use for first node run",// 初次运行，使用创世文件;
 		},
 		&cli.BoolFlag{
 			Name:  "bootstrap",
@@ -99,19 +101,19 @@ var DaemonCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:  "import-chain",
-			Usage: "on first run, load chain from given file",
+			Usage: "on first run, load chain from given file",// 初次运行，从给定文件加载链数据；
 		},
 		&cli.BoolFlag{
 			Name:  "halt-after-import",
-			Usage: "halt the process after importing chain from file",
+			Usage: "halt the process after importing chain from file",// 从文件加载链数据后，暂停进程；
 		},
 		&cli.StringFlag{
 			Name:  "pprof",
-			Usage: "specify name of file for writing cpu profile to",
+			Usage: "specify name of file for writing cpu profile to",// 把cpu配置信息写入指定名字文件中；
 		},
 		&cli.StringFlag{
 			Name:  "profile",
-			Usage: "specify type of node",
+			Usage: "specify type of node",// 指定node节点的类型；
 		},
 	},
 	Action: func(cctx *cli.Context) error {
