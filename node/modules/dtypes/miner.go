@@ -27,12 +27,12 @@ type ConsiderOnlineRetrievalDealsConfigFunc func() (bool, error)
 type SetConsiderOnlineRetrievalDealsConfigFunc func(bool) error
 
 // StorageDealPieceCidBlocklistConfigFunc is a function which reads from miner
-// config to obtain a list of CIDs for which the storage miner will not accept
+// config to obtain a list of CIDs for which the miner will not accept
 // storage proposals.
 type StorageDealPieceCidBlocklistConfigFunc func() ([]cid.Cid, error)
 
 // SetStorageDealPieceCidBlocklistConfigFunc is a function which is used to set a
-// list of CIDs for which the storage miner will reject deal proposals.
+// list of CIDs for which the miner will reject deal proposals.
 type SetStorageDealPieceCidBlocklistConfigFunc func([]cid.Cid) error
 
 // ConsiderOfflineStorageDealsConfigFunc is a function which reads from miner

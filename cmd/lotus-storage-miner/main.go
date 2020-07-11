@@ -65,7 +65,7 @@ func main() {
 
 	app := &cli.App{
 		Name:                 "lotus-miner",
-		Usage:                "Filecoin decentralized storage network storage miner",
+		Usage:                "Filecoin decentralized storage network miner",
 		Version:              build.UserVersion(),
 		EnableBashCompletion: true,
 		Flags: []cli.Flag{

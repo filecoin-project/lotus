@@ -1,8 +1,8 @@
-# Lotus Seal Worker
+# Lotus Worker
 
-The **Lotus Seal Worker** is an extra process that can offload heavy processing tasks from your **Lotus Storage Miner**. The sealing process automatically runs in the **Lotus Storage Miner** process, but you can use the Seal Worker on another machine communicating over a fast network to free up resources on the machine running the mining process.
+The **Lotus Worker** is an extra process that can offload heavy processing tasks from your **Lotus Miner**. The sealing process automatically runs in the **Lotus Miner** process, but you can use the Worker on another machine communicating over a fast network to free up resources on the machine running the mining process.
 
-## Note: Using the Lotus Seal Worker from China
+## Note: Using the Lotus Worker from China
 
 If you are trying to use `lotus-worker` from China. You should set this **environment variable** on your machine:
 
@@ -18,7 +18,7 @@ Make sure that the `lotus-worker` is compiled and installed by running:
 make lotus-worker
 ```
 
-## Setting up the Storage Miner
+## Setting up the Miner
 
 First, you will need to ensure your `lotus-miner`'s API is accessible over the network.
 
@@ -40,9 +40,9 @@ A more permissive and less secure option is to change it to `0.0.0.0`. This will
 
 Next, you will need to [create an authentication token](https://docs.lotu.sh/en+api-scripting-support#generate-a-jwt-46). All Lotus APIs require authentication tokens to ensure your processes are as secure against attackers attempting to make unauthenticated requests to them.
 
-### Connect the Lotus Seal Worker
+### Connect the Lotus Worker
 
-On the machine that will run `lotus-worker`, set the `MINER_API_INFO` environment variable to `TOKEN:MINER_NODE_MULTIADDR`. Where `TOKEN` is the token we created above, and `NIMER_NODE_MULTIADDR` is the `multiaddr` of the **Lotus Storage Miner** API that was set in `config.toml`.
+On the machine that will run `lotus-worker`, set the `MINER_API_INFO` environment variable to `TOKEN:MINER_NODE_MULTIADDR`. Where `TOKEN` is the token we created above, and `NIMER_NODE_MULTIADDR` is the `multiaddr` of the **Lotus Miner** API that was set in `config.toml`.
 
 Once this is set, run:
 
@@ -52,7 +52,7 @@ lotus-worker run --address 192.168.2.10:2345
 
 Replace `192.168.2.10:2345` with the proper IP and port.
 
-To check that the **Lotus Seal Worker** is connected to your **Lotus Storage Miner**, run `lotus-miner workers list` and check that the remote worker count has increased.
+To check that the **Lotus Worker** is connected to your **Lotus Miner**, run `lotus-miner workers list` and check that the remote worker count has increased.
 
 ```sh
 why@computer ~/lotus> lotus-miner workers list
@@ -71,10 +71,10 @@ Worker 1, host othercomputer
 
 ### Running locally for manually managing process priority
 
-You can also run the **Lotus Seal Worker** on the same machine as your **Lotus Storage Miner**, so you can manually manage the process priority.
+You can also run the **Lotus Worker** on the same machine as your **Lotus Miner**, so you can manually manage the process priority.
 To do so you have to first __disable all seal task types__ in the miner config. This is important to prevent conflicts between the two processes.
 
-You can then run the storage miner on your local-loopback interface; 
+You can then run the miner on your local-loopback interface; 
 
 ```sh
 lotus-worker run --address 127.0.0.1:2345

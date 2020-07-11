@@ -147,7 +147,7 @@ class StorageNode extends React.Component {
     }
 
     return <Window
-      title={"Storage Miner Node " + this.props.node.ID}
+      title={"Miner Node " + this.props.node.ID}
       initialPosition={{x: this.props.node.ID*30, y: this.props.node.ID * 30}}
       onClose={this.stop} >
       <div className="CristalScroll">

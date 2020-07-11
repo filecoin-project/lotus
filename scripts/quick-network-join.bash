@@ -122,7 +122,7 @@ while true; do
 
   echo
   echo
-  echo Storage Miner Info
+  echo Miner Info
   lotus-miner info
 
   echo

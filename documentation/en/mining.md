@@ -4,7 +4,7 @@ Here are instructions to learn how to perform storage mining. For hardware speci
 
 It is useful to [join the Testnet](https://docs.lotu.sh/en+join-testnet) prior to attempting storage mining for the first time.
 
-## Note: Using the Lotus Storage Miner from China
+## Note: Using the Lotus Miner from China
 
 If you are trying to use `lotus-miner` from China. You should set this **environment variable** on your machine.
 
@@ -35,10 +35,10 @@ With your wallet address:
 The task will be complete when you see:
 
 ```sh
-New storage miners address is: <YOUR_NEW_MINING_ADDRESS>
+New miners address is: <YOUR_NEW_MINING_ADDRESS>
 ```
 
-## Initialize the storage miner
+## Initialize the miner
 
 In a CLI window, use the following command to start your miner:
 

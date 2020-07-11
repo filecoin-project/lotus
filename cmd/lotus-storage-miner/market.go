@@ -357,7 +357,7 @@ var dealsListCmd = &cli.Command{
 
 var getBlocklistCmd = &cli.Command{
 	Name:  "get-blocklist",
-	Usage: "List the contents of the storage miner's piece CID blocklist",
+	Usage: "List the contents of the miner's piece CID blocklist",
 	Flags: []cli.Flag{
 		&CidBaseFlag,
 	},
@@ -388,7 +388,7 @@ var getBlocklistCmd = &cli.Command{
 
 var setBlocklistCmd = &cli.Command{
 	Name:      "set-blocklist",
-	Usage:     "Set the storage miner's list of blocklisted piece CIDs",
+	Usage:     "Set the miner's list of blocklisted piece CIDs",
 	ArgsUsage: "[<path-of-file-containing-newline-delimited-piece-CIDs> (optional, will read from stdin if omitted)]",
 	Flags:     []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
@@ -435,7 +435,7 @@ var setBlocklistCmd = &cli.Command{
 
 var resetBlocklistCmd = &cli.Command{
 	Name:  "reset-blocklist",
-	Usage: "Remove all entries from the storage miner's piece CID blocklist",
+	Usage: "Remove all entries from the miner's piece CID blocklist",
 	Flags: []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := lcli.GetStorageMinerAPI(cctx)

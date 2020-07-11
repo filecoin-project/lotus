@@ -18,9 +18,9 @@ Options:
 
 For now, you can look into different files to find methods available to you based on your needs:
 
-- [Both Lotus node + storage miner APIs](https://github.com/filecoin-project/lotus/blob/master/api/api_common.go)
+- [Both Lotus node + miner APIs](https://github.com/filecoin-project/lotus/blob/master/api/api_common.go)
 - [Lotus node API](https://github.com/filecoin-project/lotus/blob/master/api/api_full.go)
-- [Storage miner API](https://github.com/filecoin-project/lotus/blob/master/api/api_storage.go)
+- [Lotus miner API](https://github.com/filecoin-project/lotus/blob/master/api/api_storage.go)
 
 The necessary permissions for each are in [api/struct.go](https://github.com/filecoin-project/lotus/blob/master/api/struct.go).
 
@@ -61,7 +61,7 @@ To authorize your request, you will need to include the **JWT** in a HTTP header
 -H "Authorization: Bearer $(cat ~/.lotusminer/token)"
 ```
 
-Admin token is stored in `~/.lotus/token` for the **Lotus Node** or `~/.lotusminer/token` for the **Lotus Storage Miner**.
+Admin token is stored in `~/.lotus/token` for the **Lotus Node** or `~/.lotusminer/token` for the **Lotus Miner**.
 
 ## How do I generate a token?
 
@@ -71,7 +71,7 @@ To generate a JWT with custom permissions, use this command:
 # Lotus Node
 lotus auth create-token --perm admin
 
-# Lotus Storage Miner
+# Lotus Miner
 lotus-miner auth create-token --perm admin
 ```
 

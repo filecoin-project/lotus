@@ -4,7 +4,7 @@ SESSION=$(cat /proc/sys/kernel/random/uuid)
 
 tmux -2 new-session -d -s $SESSION
 
-tmux new-window -t $SESSION:1 -n 'Storage Miner'
+tmux new-window -t $SESSION:1 -n 'Miner'
 
 tmux split-window -h
 

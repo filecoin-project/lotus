@@ -1,5 +1,5 @@
 [Unit]
-Description=Lotus Storage Miner
+Description=Lotus Miner
 After=network.target
 After=lotus-daemon.service
 Requires=lotus-daemon.service

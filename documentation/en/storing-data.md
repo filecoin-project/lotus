@@ -59,4 +59,4 @@ lotus client list-deals
 
 Upon success, this command will return a **Deal CID**.
 
-The storage miner will need to **seal** the file before it can be retrieved. If the **Lotus Storage Miner** is not running on a machine designed for sealing, the process will take a very long time.
+The miner will need to **seal** the file before it can be retrieved. If the **Lotus Miner** is not running on a machine designed for sealing, the process will take a very long time.

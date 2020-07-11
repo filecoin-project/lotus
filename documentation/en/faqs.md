@@ -22,9 +22,9 @@ along the way. It can also facilitate the creation of new storage deals. If you 
 interested in providing your own storage to the network, and do not want to produce blocks
 yourself, then the Lotus Node is all you need!
 
-The Lotus Storage Miner does everything you need for the registration of storage, and the
-production of new blocks. The Lotus Storage Miner communicates with the network
-by talking to a Lotus Node over the JSON-RPC API.
+The Lotus Miner does everything you need for the registration of storage, and the
+production of new blocks. The Lotus Miner communicates with the network by talking 
+to a Lotus Node over the JSON-RPC API.
 
 ## Setting up a Lotus Node
 

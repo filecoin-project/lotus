@@ -23,7 +23,7 @@ import (
 
 var infoCmd = &cli.Command{
 	Name:  "info",
-	Usage: "Print storage miner info",
+	Usage: "Print miner info",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{Name: "color"},
 	},

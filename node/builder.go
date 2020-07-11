@@ -108,7 +108,7 @@ const (
 
 	RegisterClientValidatorKey
 
-	// storage miner
+	// miner
 	GetParamsKey
 	HandleDealsKey
 	HandleRetrievalKey
@@ -274,7 +274,7 @@ func Online() Option {
 			Override(new(*market.FundMgr), market.NewFundMgr),
 		),
 
-		// Storage miner
+		// miner
 		ApplyIf(func(s *Settings) bool { return s.nodeType == repo.StorageMiner },
 			Override(new(api.Common), From(new(common.CommonAPI))),
 			Override(new(sectorstorage.StorageAuth), modules.StorageAuth),

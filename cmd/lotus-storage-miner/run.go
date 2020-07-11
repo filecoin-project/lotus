@@ -30,7 +30,7 @@ import (
 
 var runCmd = &cli.Command{
 	Name:  "run",
-	Usage: "Start a lotus storage miner process",
+	Usage: "Start a lotus miner process",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "api",

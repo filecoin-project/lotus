@@ -414,7 +414,7 @@ func (h *handler) msgwait(w http.ResponseWriter, r *http.Request) {
 
 	if mw.Receipt.ExitCode != 0 {
 		w.WriteHeader(400)
-		w.Write([]byte(xerrors.Errorf("create storage miner failed: exit code %d", mw.Receipt.ExitCode).Error()))
+		w.Write([]byte(xerrors.Errorf("create miner failed: exit code %d", mw.Receipt.ExitCode).Error()))
 		return
 	}
 	w.WriteHeader(200)
@@ -437,7 +437,7 @@ func (h *handler) msgwaitaddr(w http.ResponseWriter, r *http.Request) {
 
 	if mw.Receipt.ExitCode != 0 {
 		w.WriteHeader(400)
-		w.Write([]byte(xerrors.Errorf("create storage miner failed: exit code %d", mw.Receipt.ExitCode).Error()))
+		w.Write([]byte(xerrors.Errorf("create miner failed: exit code %d", mw.Receipt.ExitCode).Error()))
 		return
 	}
 	w.WriteHeader(200)

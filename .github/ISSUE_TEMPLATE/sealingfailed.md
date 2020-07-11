@@ -25,9 +25,9 @@ The output of `./lotus-miner sectors list`.
 
 The output of `./lotus-miner sectors status --log <sectorId>` for the failed sector(s).
 
-**Lotus storage miner logs**
+**Lotus miner logs**
 
-Please go through the logs of your storage miner, and include screenshots of any error-like messages you find.
+Please go through the logs of your miner, and include screenshots of any error-like messages you find.
 
 **Version**
 
