@@ -26,8 +26,6 @@ import (
 type FullNode interface {
 	Common
 
-	// TODO: TipSetKeys
-
 	// MethodGroup: Chain
 	// The Chain method group contains methods for interacting with the
 	// blockchain, but that do not require any form of state computation.
@@ -320,10 +318,9 @@ type FullNode interface {
 	// <sender address of the approve msg>, <method to call in the proposed message>, <params to include in the proposed message>
 	MsigApprove(context.Context, address.Address, uint64, address.Address, address.Address, types.BigInt, address.Address, uint64, []byte) (cid.Cid, error)
 	// MsigCancel cancels a previously-proposed multisig message
-	// It takes the following params: <multisig address>, <proposed message ID>, <proposer address>, <recipient address>, <value to transfer>,
+	// It takes the following params: <multisig address>, <proposed message ID>, <recipient address>, <value to transfer>,
 	// <sender address of the cancel msg>, <method to call in the proposed message>, <params to include in the proposed message>
-	// TODO: You can't cancel someone else's proposed message, so "src" and "proposer" here are redundant
-	MsigCancel(context.Context, address.Address, uint64, address.Address, address.Address, types.BigInt, address.Address, uint64, []byte) (cid.Cid, error)
+	MsigCancel(context.Context, address.Address, uint64, address.Address, types.BigInt, address.Address, uint64, []byte) (cid.Cid, error)
 
 	MarketEnsureAvailable(context.Context, address.Address, address.Address, types.BigInt) (cid.Cid, error)
 	// MarketFreeBalance
@@ -380,8 +377,8 @@ type DealInfo struct {
 type MsgLookup struct {
 	Receipt   types.MessageReceipt
 	ReturnDec interface{}
-	// TODO: This should probably a tipsetkey?
-	TipSet *types.TipSet
+	TipSet    types.TipSetKey
+	Height    abi.ChainEpoch
 }
 
 type BlockMessages struct {

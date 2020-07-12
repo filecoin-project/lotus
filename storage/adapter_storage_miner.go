@@ -93,8 +93,8 @@ func (s SealingAPIAdapter) StateWaitMsg(ctx context.Context, mcid cid.Cid) (seal
 			Return:   wmsg.Receipt.Return,
 			GasUsed:  wmsg.Receipt.GasUsed,
 		},
-		TipSetTok: wmsg.TipSet.Key().Bytes(),
-		Height:    wmsg.TipSet.Height(),
+		TipSetTok: wmsg.TipSet.Bytes(),
+		Height:    wmsg.Height,
 	}, nil
 }
 
