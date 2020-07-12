@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"text/tabwriter"
 	"time"
 
@@ -296,6 +297,7 @@ var storageDealsCmd = &cli.Command{
 		setBlocklistCmd,
 		getBlocklistCmd,
 		resetBlocklistCmd,
+		setSealDurationCmd,
 	},
 }
 
@@ -445,5 +447,31 @@ var resetBlocklistCmd = &cli.Command{
 		defer closer()
 
 		return api.DealsSetPieceCidBlocklist(lcli.DaemonContext(cctx), []cid.Cid{})
+	},
+}
+
+var setSealDurationCmd = &cli.Command{
+	Name:      "set-seal-duration",
+	Usage:     "Set the expected time, in minutes, that you expect sealing sectors to take. Deals that start before this duration will be rejected.",
+	ArgsUsage: "<minutes>",
+	Action: func(cctx *cli.Context) error {
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+		if cctx.Args().Len() != 1 {
+			return xerrors.Errorf("must pass duration in minutes")
+		}
+
+		hs, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
+		if err != nil {
+			return xerrors.Errorf("could not parse duration: %w", err)
+		}
+
+		delay := hs * uint64(time.Minute)
+
+		return nodeApi.SectorSetExpectedSealDuration(ctx, time.Duration(delay))
 	},
 }

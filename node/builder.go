@@ -326,6 +326,8 @@ func Online() Option {
 			Override(new(dtypes.SetConsiderOfflineRetrievalDealsConfigFunc), modules.NewSetConsiderOfflineRetrievalDealsConfigFunc),
 			Override(new(dtypes.SetSealingDelayFunc), modules.NewSetSealDelayFunc),
 			Override(new(dtypes.GetSealingDelayFunc), modules.NewGetSealDelayFunc),
+			Override(new(dtypes.SetExpectedSealDurationFunc), modules.NewSetExpectedSealDurationFunc),
+			Override(new(dtypes.GetExpectedSealDurationFunc), modules.NewGetExpectedSealDurationFunc),
 		),
 	)
 }
