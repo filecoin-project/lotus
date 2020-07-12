@@ -598,45 +598,65 @@ func GeneratePieceCIDFromFile(proofType abi.RegisteredSealProof, piece io.Reader
 	return pieceCID, werr()
 }
 
-func GenerateUnsealedCID(proofType abi.RegisteredSealProof, pieces []abi.PieceInfo) (cid.Cid, error) {
-	allPieces := make([]abi.PieceInfo, 0, len(pieces))
+func GetRequiredPadding(oldLength abi.PaddedPieceSize, newPieceLength abi.PaddedPieceSize) ([]abi.PaddedPieceSize, abi.PaddedPieceSize) {
+
+	padPieces := make([]abi.PaddedPieceSize, 0)
+
+	toFill := uint64(-oldLength % newPieceLength)
+
+	n := bits.OnesCount64(toFill)
 	var sum abi.PaddedPieceSize
+	for i := 0; i < n; i++ {
+		next := bits.TrailingZeros64(toFill)
+		psize := uint64(1) << uint(next)
+		toFill ^= psize
 
-	padTo := func(s abi.PaddedPieceSize, trailing bool) {
-		// pad remaining space with 0 CommPs
-		toFill := uint64(-sum % s)
-		if trailing && sum == 0 {
-			toFill = uint64(s)
-		}
-
-		n := bits.OnesCount64(toFill)
-		for i := 0; i < n; i++ {
-			next := bits.TrailingZeros64(toFill)
-			psize := uint64(1) << uint(next)
-			toFill ^= psize
-
-			padded := abi.PaddedPieceSize(psize)
-			allPieces = append(allPieces, abi.PieceInfo{
-				Size:     padded,
-				PieceCID: zerocomm.ZeroPieceCommitment(padded.Unpadded()),
-			})
-			sum += padded
-		}
+		padded := abi.PaddedPieceSize(psize)
+		padPieces = append(padPieces, padded)
+		sum += padded
 	}
 
-	for _, p := range pieces {
-		padTo(p.Size, false)
+	return padPieces, sum
+}
 
-		allPieces = append(allPieces, p)
-		sum += p.Size
-	}
-
+func GenerateUnsealedCID(proofType abi.RegisteredSealProof, pieces []abi.PieceInfo) (cid.Cid, error) {
 	ssize, err := proofType.SectorSize()
 	if err != nil {
 		return cid.Undef, err
 	}
 
-	padTo(abi.PaddedPieceSize(ssize), true)
+	pssize := abi.PaddedPieceSize(ssize)
+	allPieces := make([]abi.PieceInfo, 0, len(pieces))
+	if len(pieces) == 0 {
+		allPieces = append(allPieces, abi.PieceInfo{
+			Size:     pssize,
+			PieceCID: zerocomm.ZeroPieceCommitment(pssize.Unpadded()),
+		})
+	} else {
+		var sum abi.PaddedPieceSize
+
+		padTo := func(pads []abi.PaddedPieceSize) {
+			for _, p := range pads {
+				allPieces = append(allPieces, abi.PieceInfo{
+					Size:     p,
+					PieceCID: zerocomm.ZeroPieceCommitment(p.Unpadded()),
+				})
+
+				sum += p
+			}
+		}
+
+		for _, p := range pieces {
+			ps, _ := GetRequiredPadding(sum, p.Size)
+			padTo(ps)
+
+			allPieces = append(allPieces, p)
+			sum += p.Size
+		}
+
+		ps, _ := GetRequiredPadding(sum, pssize)
+		padTo(ps)
+	}
 
 	return ffi.GenerateUnsealedCID(proofType, allPieces)
 }
