@@ -54,6 +54,11 @@ running `rm ~/.lotus ~/.lotusminer`.
 Then, install Lotus afresh by following the instructions 
 found [here](https://docs.lotu.sh/en+getting-started).
 
+### Can I configure where the node's config and data goes?
+
+Yes! The `LOTUS_PATH` variable sets the path for where the Lotus node's data is written.
+The `LOTUS_MINER_PATH` variable does the same for miner-specific information.
+
 ## Interacting with a Lotus Node
 
 ### How can I communicate with a Lotus Node?
@@ -131,8 +136,3 @@ You can do so by changing the storage path variable for the second miner, e.g.,
 ### How do I setup my own local devnet?     
 
 Follow the instructions found [here](https://lotu.sh/en+setup-local-dev-net).
-
-### Are there any other implementations of Filecoin?
-
-Yes! Check out the [go-filecoin](https://github.com/filecoin-project/go-filecoin#filecoin-go-filecoin)
-implementation, which is fully interoperable with Lotus!
