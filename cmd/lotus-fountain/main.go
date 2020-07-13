@@ -37,8 +37,6 @@ import (
 
 var log = logging.Logger("main")
 
-var sendPerRequest, _ = types.ParseFIL("50")
-
 var supportedSectors struct {
 	SectorSizes []struct {
 		Name    string
@@ -114,8 +112,18 @@ var runCmd = &cli.Command{
 		&cli.StringFlag{
 			Name: "from",
 		},
+		&cli.StringFlag{
+			Name:    "amount",
+			EnvVars: []string{"LOTUS_FOUNTAIN_AMOUNT"},
+			Value:   "50",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
+		sendPerRequest, err := types.ParseFIL(cctx.String("amount"))
+		if err != nil {
+			return err
+		}
+
 		nodeApi, closer, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -141,9 +149,10 @@ var runCmd = &cli.Command{
 		}
 
 		h := &handler{
-			ctx:  ctx,
-			api:  nodeApi,
-			from: from,
+			ctx:            ctx,
+			api:            nodeApi,
+			from:           from,
+			sendPerRequest: sendPerRequest,
 			limiter: NewLimiter(LimiterConfig{
 				TotalRate:   time.Second,
 				TotalBurst:  256,
@@ -185,7 +194,8 @@ type handler struct {
 	ctx context.Context
 	api api.FullNode
 
-	from address.Address
+	from           address.Address
+	sendPerRequest types.FIL
 
 	limiter      *Limiter
 	minerLimiter *Limiter
@@ -266,7 +276,7 @@ func (h *handler) send(w http.ResponseWriter, r *http.Request) {
 	}
 
 	smsg, err := h.api.MpoolPushMessage(h.ctx, &types.Message{
-		Value: types.BigInt(sendPerRequest),
+		Value: types.BigInt(h.sendPerRequest),
 		From:  h.from,
 		To:    to,
 
@@ -340,7 +350,7 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	smsg, err := h.api.MpoolPushMessage(h.ctx, &types.Message{
-		Value: types.BigInt(sendPerRequest),
+		Value: types.BigInt(h.sendPerRequest),
 		From:  h.from,
 		To:    owner,
 
