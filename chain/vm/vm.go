@@ -35,6 +35,7 @@ import (
 )
 
 var log = logging.Logger("vm")
+var actorLog = logging.Logger("actors")
 var gasOnActorExec = newGasCharge("OnActorExec", 0, 0)
 
 // ResolveToKeyAddr returns the public key type of address (`BLS`/`SECP256K1`) of an account actor identified by `addr`.
