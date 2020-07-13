@@ -582,12 +582,12 @@ func (rt *Runtime) abortIfAlreadyValidated() {
 func (rt *Runtime) Log(level vmr.LogLevel, msg string, args ...interface{}) {
 	switch level {
 	case vmr.DEBUG:
-		log.Debugf(msg, args)
+		actorLog.Debugf(msg, args)
 	case vmr.INFO:
-		log.Infof(msg, args)
+		actorLog.Infof(msg, args)
 	case vmr.WARN:
-		log.Warnf(msg, args)
+		actorLog.Warnf(msg, args)
 	case vmr.ERROR:
-		log.Errorf(msg, args)
+		actorLog.Errorf(msg, args)
 	}
 }
