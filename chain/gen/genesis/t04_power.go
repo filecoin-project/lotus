@@ -23,11 +23,11 @@ func SetupStoragePowerActor(bs bstore.Blockstore) (*types.Actor, error) {
 	}
 
 	sms := &power.State{
-		TotalRawBytePower:        big.NewInt(0),
-		TotalBytesCommitted:        big.NewInt(0),
-		TotalQualityAdjPower:     big.NewInt(0),
-		TotalQABytesCommitted:     big.NewInt(0),
-		TotalPledgeCollateral:    big.NewInt(0),
+		TotalRawBytePower:       big.NewInt(0),
+		TotalBytesCommitted:     big.NewInt(0),
+		TotalQualityAdjPower:    big.NewInt(0),
+		TotalQABytesCommitted:   big.NewInt(0),
+		TotalPledgeCollateral:   big.NewInt(0),
 		MinerCount:              0,
 		MinerAboveMinPowerCount: 0,
 		CronEventQueue:          emptyhamt,
