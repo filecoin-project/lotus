@@ -162,7 +162,7 @@ type FullNode interface {
 	WalletNew(context.Context, crypto.SigType) (address.Address, error)
 	// WalletHas indicates whether the given address is in the wallet.
 	WalletHas(context.Context, address.Address) (bool, error)
-	// WalletHas indicates whether the given address is in the wallet.
+	// WalletList lists all the addresses in the wallet.
 	WalletList(context.Context) ([]address.Address, error)
 	// WalletBalance returns the balance of the given address at the current head of the chain.
 	WalletBalance(context.Context, address.Address) (types.BigInt, error)
