@@ -15,7 +15,7 @@ require (
 	github.com/drand/drand v0.9.2-0.20200616080806-a94e9c1636a4
 	github.com/drand/kyber v1.1.0
 	github.com/fatih/color v1.8.0
-	github.com/filecoin-project/chain-validation v0.0.6-0.20200712051019-ccbec7d61977
+	github.com/filecoin-project/chain-validation v0.0.6-0.20200713102302-1bc823b1e01d
 	github.com/filecoin-project/filecoin-ffi v0.26.1-0.20200508175440-05b30afeb00d
 	github.com/filecoin-project/go-address v0.0.2-0.20200504173055-8b6f2fb2b3ef
 	github.com/filecoin-project/go-amt-ipld/v2 v2.0.1-0.20200424220931-6263827e49f2
