@@ -349,6 +349,10 @@ func zipTipSetAndMessages(bs cbor.IpldStore, ts *types.TipSet, allbmsgs []*types
 
 	fts := &store.FullTipSet{}
 	for bi, b := range ts.Blocks() {
+		if msgc := len(bmi[bi]) + len(smi[bi]); msgc > build.BlockMessageLimit {
+			return nil, fmt.Errorf("block %q has too many messages (%d)", b.Cid(), msgc)
+		}
+
 		var smsgs []*types.SignedMessage
 		var smsgCids []cbg.CBORMarshaler
 		for _, m := range smi[bi] {
@@ -363,10 +367,6 @@ func zipTipSetAndMessages(bs cbor.IpldStore, ts *types.TipSet, allbmsgs []*types
 			bmsgs = append(bmsgs, allbmsgs[m])
 			c := cbg.CborCid(allbmsgs[m].Cid())
 			bmsgCids = append(bmsgCids, &c)
-		}
-
-		if msgc := len(bmsgCids) + len(smsgCids); msgc > build.BlockMessageLimit {
-			return nil, fmt.Errorf("block %q has too many messages (%d)", b.Cid(), msgc)
 		}
 
 		mrcid, err := computeMsgMeta(bs, bmsgCids, smsgCids)
