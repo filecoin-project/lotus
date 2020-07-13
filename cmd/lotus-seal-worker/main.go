@@ -236,7 +236,7 @@ var runCmd = &cli.Command{
 
 			{
 				// init datastore for r.Exists
-				_, err := lr.Datastore("/")
+				_, err := lr.Datastore("/metadata")
 				if err != nil {
 					return err
 				}

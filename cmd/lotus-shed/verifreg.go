@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/urfave/cli/v2"
@@ -199,7 +200,7 @@ var verifRegListVerifiersCmd = &cli.Command{
 			return err
 		}
 
-		vh, err := hamt.LoadNode(ctx, cst, st.Verifiers)
+		vh, err := hamt.LoadNode(ctx, cst, st.Verifiers, hamt.UseTreeBitWidth(5))
 		if err != nil {
 			return err
 		}
@@ -251,7 +252,7 @@ var verifRegListClientsCmd = &cli.Command{
 			return err
 		}
 
-		vh, err := hamt.LoadNode(ctx, cst, st.VerifiedClients)
+		vh, err := hamt.LoadNode(ctx, cst, st.VerifiedClients, hamt.UseTreeBitWidth(5))
 		if err != nil {
 			return err
 		}
@@ -346,7 +347,7 @@ var verifRegCheckVerifierCmd = &cli.Command{
 			return err
 		}
 
-		vh, err := hamt.LoadNode(ctx, cst, st.Verifiers)
+		vh, err := hamt.LoadNode(ctx, cst, st.Verifiers, hamt.UseTreeBitWidth(5))
 		if err != nil {
 			return err
 		}
