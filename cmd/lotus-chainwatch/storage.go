@@ -644,6 +644,8 @@ func (st *storage) storeMiners(minerTips map[types.TipSetKey][]*minerStateInfo) 
 					pid = peerid.String()
 				}
 			}
+
+			panic("TODO")
 			if _, err := stmt.Exec(
 				miner.addr.String(),
 				miner.info.Owner.String(),
@@ -652,7 +654,7 @@ func (st *storage) storeMiners(minerTips map[types.TipSetKey][]*minerStateInfo) 
 				miner.info.SectorSize.ShortString(),
 				miner.state.PreCommitDeposits.String(),
 				miner.state.LockedFunds.String(),
-				miner.state.NextDeadlineToProcessFaults,
+				0, //miner.state.NextDeadlineToProcessFaults,
 			); err != nil {
 				log.Errorw("failed to store miner state", "state", miner.state, "info", miner.info, "error", err)
 				return err

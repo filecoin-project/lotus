@@ -302,7 +302,7 @@ var provingDeadlinesCmd = &cli.Command{
 			if di.Index == uint64(dlIdx) {
 				cur += "\t(current)"
 			}
-			_, _ = fmt.Fprintf(tw, "%d\t%d\t%d\t%d%s\n", dlIdx, len(partitions), provenPartitions)
+			_, _ = fmt.Fprintf(tw, "%d\t%d\t%d%s\n", dlIdx, len(partitions), provenPartitions, cur)
 		}
 
 		return tw.Flush()

@@ -125,14 +125,14 @@ type FullNodeStruct struct {
 		ClientCalcCommP       func(ctx context.Context, inpath string, miner address.Address) (*api.CommPRet, error)                 `perm:"read"`
 		ClientGenCar          func(ctx context.Context, ref api.FileRef, outpath string) error                                       `perm:"write"`
 
-		StateNetworkName                  func(context.Context) (dtypes.NetworkName, error)                                                            `perm:"read"`
-		StateMinerSectors                 func(context.Context, address.Address, *abi.BitField, bool, types.TipSetKey) ([]*api.ChainSectorInfo, error) `perm:"read"`
-		StateMinerProvingSet              func(context.Context, address.Address, types.TipSetKey) ([]*api.ChainSectorInfo, error)                      `perm:"read"`
-		StateMinerProvingDeadline         func(context.Context, address.Address, types.TipSetKey) (*miner.DeadlineInfo, error)                         `perm:"read"`
-		StateMinerPower                   func(context.Context, address.Address, types.TipSetKey) (*api.MinerPower, error)                             `perm:"read"`
-		StateMinerInfo                    func(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)                               `perm:"read"`
-		StateMinerDeadlines               func(context.Context, address.Address, types.TipSetKey) ([]*miner.Deadline, error)                           `perm:"read"`
-		StateMinerPartitions              func(context.Context, address.Address, uint64, types.TipSetKey) ([]*miner.Partition, error)
+		StateNetworkName                  func(context.Context) (dtypes.NetworkName, error)                                                                   `perm:"read"`
+		StateMinerSectors                 func(context.Context, address.Address, *abi.BitField, bool, types.TipSetKey) ([]*api.ChainSectorInfo, error)        `perm:"read"`
+		StateMinerProvingSet              func(context.Context, address.Address, types.TipSetKey) ([]*api.ChainSectorInfo, error)                             `perm:"read"`
+		StateMinerProvingDeadline         func(context.Context, address.Address, types.TipSetKey) (*miner.DeadlineInfo, error)                                `perm:"read"`
+		StateMinerPower                   func(context.Context, address.Address, types.TipSetKey) (*api.MinerPower, error)                                    `perm:"read"`
+		StateMinerInfo                    func(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)                                      `perm:"read"`
+		StateMinerDeadlines               func(context.Context, address.Address, types.TipSetKey) ([]*miner.Deadline, error)                                  `perm:"read"`
+		StateMinerPartitions              func(context.Context, address.Address, uint64, types.TipSetKey) ([]*miner.Partition, error)                         `perm:"read"`
 		StateMinerFaults                  func(context.Context, address.Address, types.TipSetKey) (*abi.BitField, error)                                      `perm:"read"`
 		StateAllMinerFaults               func(context.Context, abi.ChainEpoch, types.TipSetKey) ([]*api.Fault, error)                                        `perm:"read"`
 		StateMinerRecoveries              func(context.Context, address.Address, types.TipSetKey) (*abi.BitField, error)                                      `perm:"read"`
