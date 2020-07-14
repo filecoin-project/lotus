@@ -88,12 +88,30 @@ func (a *StateAPI) StateMinerInfo(ctx context.Context, actor address.Address, ts
 	return api.NewApiMinerInfo(mi), nil
 }
 
-func (a *StateAPI) StateMinerDeadlines(ctx context.Context, m address.Address, tsk types.TipSetKey) (*miner.Deadlines, error) {
-	ts, err := a.Chain.GetTipSetFromKey(tsk)
-	if err != nil {
-		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
-	}
-	return stmgr.GetMinerDeadlines(ctx, a.StateManager, ts, m)
+func (a *StateAPI) StateMinerDeadlines(ctx context.Context, m address.Address, tsk types.TipSetKey) ([]*miner.Deadline, error) {
+	var out []*miner.Deadline
+	return out, a.StateManager.WithParentStateTsk(tsk,
+		a.StateManager.WithActor(m,
+			a.StateManager.WithActorState(ctx,
+				a.StateManager.WithDeadlines(
+					a.StateManager.WithEachDeadline(
+						func(store adt.Store, idx uint64, deadline *miner.Deadline) error {
+							out = append(out, deadline)
+							return nil
+				})))))
+}
+
+func (a *StateAPI) StateMinerPartitions(ctx context.Context, m address.Address, dlIdx uint64, tsk types.TipSetKey) ([]*miner.Partition, error) {
+	var out []*miner.Partition
+	return out, a.StateManager.WithParentStateTsk(tsk,
+		a.StateManager.WithActor(m,
+			a.StateManager.WithActorState(ctx,
+				a.StateManager.WithDeadlines(
+					a.StateManager.WithDeadline(dlIdx,
+						a.StateManager.WithEachPartition(func(store adt.Store, partIdx uint64, partition *miner.Partition) error {
+							out = append(out, partition)
+							return nil
+						}))))))
 }
 
 func (a *StateAPI) StateMinerProvingDeadline(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*miner.DeadlineInfo, error) {
