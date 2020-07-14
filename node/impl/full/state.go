@@ -852,7 +852,7 @@ func (a *StateAPI) StateVerifiedClientStatus(ctx context.Context, addr address.A
 		return nil, err
 	}
 
-	vh, err := hamt.LoadNode(ctx, cst, st.VerifiedClients)
+	vh, err := hamt.LoadNode(ctx, cst, st.VerifiedClients, hamt.UseTreeBitWidth(5))
 	if err != nil {
 		return nil, err
 	}
