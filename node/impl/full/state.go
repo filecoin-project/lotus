@@ -98,7 +98,7 @@ func (a *StateAPI) StateMinerDeadlines(ctx context.Context, m address.Address, t
 						func(store adt.Store, idx uint64, deadline *miner.Deadline) error {
 							out = append(out, deadline)
 							return nil
-				})))))
+						})))))
 }
 
 func (a *StateAPI) StateMinerPartitions(ctx context.Context, m address.Address, dlIdx uint64, tsk types.TipSetKey) ([]*miner.Partition, error) {

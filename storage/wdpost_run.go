@@ -157,7 +157,6 @@ func (s *WindowPoStScheduler) checkNextRecoveries(ctx context.Context, dlIdx uin
 		})
 	}
 
-
 	if len(params.Recoveries) == 0 {
 		if faulty != 0 {
 			log.Warnw("No recoveries to declare", "deadline", dlIdx, "faulty", faulty)
@@ -166,7 +165,7 @@ func (s *WindowPoStScheduler) checkNextRecoveries(ctx context.Context, dlIdx uin
 		return nil
 	}
 
-		enc, aerr := actors.SerializeParams(params)
+	enc, aerr := actors.SerializeParams(params)
 	if aerr != nil {
 		return xerrors.Errorf("could not serialize declare recoveries parameters: %w", aerr)
 	}
@@ -292,7 +291,7 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 	defer declWait.Wait()
 	declWait.Add(1)
 
-	go func(){
+	go func() {
 		defer declWait.Done()
 
 		// check faults / recoveries for the *next* deadline. It's already too
@@ -385,7 +384,7 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 		}
 
 		params.Partitions[partIdx] = miner.PoStPartition{
-			Index: uint64(partIdx),
+			Index:   uint64(partIdx),
 			Skipped: skipped,
 		}
 	}
