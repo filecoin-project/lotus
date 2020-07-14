@@ -11,7 +11,6 @@ import (
 
 	cborutil "github.com/filecoin-project/go-cbor-util"
 
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 
@@ -127,7 +126,7 @@ func (bss *BlockSyncService) HandleStream(s inet.Stream) {
 	}
 
 	writeDeadline := 60 * time.Second
-	_ = s.SetDeadline(build.Clock.Now().Add(writeDeadline))
+	_ = s.SetDeadline(time.Now().Add(writeDeadline)) // always use real time for socket/stream deadlines.
 	if err := cborutil.WriteCborRPC(s, resp); err != nil {
 		log.Warnw("failed to write back response for handle stream", "err", err, "peer", s.Conn().RemotePeer())
 		return

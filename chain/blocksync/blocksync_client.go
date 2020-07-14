@@ -291,7 +291,7 @@ func (bs *BlockSync) fetchBlocksBlockSync(ctx context.Context, p peer.ID, req *B
 		bs.RemovePeer(p)
 		return nil, xerrors.Errorf("failed to open stream to peer: %w", err)
 	}
-	_ = s.SetWriteDeadline(build.Clock.Now().Add(5 * time.Second))
+	_ = s.SetWriteDeadline(time.Now().Add(5 * time.Second)) // always use real time for socket/stream deadlines.
 
 	if err := cborutil.WriteCborRPC(s, req); err != nil {
 		_ = s.SetWriteDeadline(time.Time{})
