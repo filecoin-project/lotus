@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"os"
 	"sort"
 	"strconv"
@@ -55,6 +56,11 @@ var msigCreateCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:  "value",
 			Usage: "initial funds to give to multisig",
+			Value: "0",
+		},
+		&cli.StringFlag{
+			Name:  "duration",
+			Usage: "length of the period over which funds unlock",
 			Value: "0",
 		},
 		&cli.StringFlag{
@@ -114,9 +120,11 @@ var msigCreateCmd = &cli.Command{
 			required = uint64(len(addrs))
 		}
 
+		d := abi.ChainEpoch(cctx.Uint64("duration"))
+
 		gp := types.NewInt(1)
 
-		msgCid, err := api.MsigCreate(ctx, required, addrs, intVal, sendAddr, gp)
+		msgCid, err := api.MsigCreate(ctx, required, addrs, d, intVal, sendAddr, gp)
 		if err != nil {
 			return err
 		}

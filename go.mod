@@ -15,7 +15,7 @@ require (
 	github.com/drand/drand v0.9.2-0.20200616080806-a94e9c1636a4
 	github.com/drand/kyber v1.1.0
 	github.com/fatih/color v1.8.0
-	github.com/filecoin-project/chain-validation v0.0.6-0.20200701165912-3b6aaaa32a66
+	github.com/filecoin-project/chain-validation v0.0.6-0.20200713102302-1bc823b1e01d
 	github.com/filecoin-project/filecoin-ffi v0.26.1-0.20200508175440-05b30afeb00d
 	github.com/filecoin-project/go-address v0.0.2-0.20200504173055-8b6f2fb2b3ef
 	github.com/filecoin-project/go-amt-ipld/v2 v2.0.1-0.20200424220931-6263827e49f2
@@ -29,10 +29,10 @@ require (
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200701152213-3e0f0afdc261
 	github.com/filecoin-project/go-statestore v0.1.0
 	github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b
-	github.com/filecoin-project/sector-storage v0.0.0-20200709184611-f0dae546b517
-	github.com/filecoin-project/specs-actors v0.7.1
+	github.com/filecoin-project/sector-storage v0.0.0-20200712023225-1d67dcfa3c15
+	github.com/filecoin-project/specs-actors v0.7.2
 	github.com/filecoin-project/specs-storage v0.1.1-0.20200622113353-88a9704877ea
-	github.com/filecoin-project/storage-fsm v0.0.0-20200707194229-bc5e298e2b4c
+	github.com/filecoin-project/storage-fsm v0.0.0-20200712045002-6e92d6a6f080
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/go-kit/kit v0.10.0
 	github.com/go-ole/go-ole v1.2.4 // indirect

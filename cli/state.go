@@ -337,7 +337,11 @@ var stateReplaySetCmd = &cli.Command{
 					return xerrors.Errorf("finding message in chain: %w", err)
 				}
 
-				ts, err = fapi.ChainGetTipSet(ctx, r.TipSet.Parents())
+				childTs, err := fapi.ChainGetTipSet(ctx, r.TipSet)
+				if err != nil {
+					return xerrors.Errorf("loading tipset: %w", err)
+				}
+				ts, err = fapi.ChainGetTipSet(ctx, childTs.Parents())
 			}
 			if err != nil {
 				return err
