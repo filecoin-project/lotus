@@ -16,7 +16,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
-// StorageMiner is a low-level interface to the Filecoin network miner node
+// StorageMiner is a low-level interface to the Filecoin network storage miner node
 type StorageMiner interface {
 	Common
 
