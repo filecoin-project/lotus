@@ -4,14 +4,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	big2 "math/big"
-	"sort"
 	"sync"
 	"time"
 
 	address "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	lru "github.com/hashicorp/golang-lru"
@@ -485,19 +482,10 @@ func SelectMessages(ctx context.Context, al ActorLookup, ts *types.TipSet, msgs 
 		fallback: al,
 	}).StateGetActor
 
-	type senderMeta struct {
-		lastReward   abi.TokenAmount
-		lastGasLimit int64
-
-		gasReward []abi.TokenAmount
-		gasLimit  []int64
-
-		msgs []*types.SignedMessage
-	}
-
+	out := make([]*types.SignedMessage, 0, build.BlockMessageLimit)
 	inclNonces := make(map[address.Address]uint64)
-	inclBalances := make(map[address.Address]big.Int)
-	outBySender := make(map[address.Address]*senderMeta)
+	inclBalances := make(map[address.Address]types.BigInt)
+	inclCount := make(map[address.Address]int)
 
 	tooLowFundMsgs := 0
 	tooHighNonceMsgs := 0
@@ -505,10 +493,6 @@ func SelectMessages(ctx context.Context, al ActorLookup, ts *types.TipSet, msgs 
 	start := time.Now()
 	vmValid := time.Duration(0)
 	getbal := time.Duration(0)
-
-	sort.Slice(msgs, func(i, j int) bool {
-		return msgs[i].Message.Nonce < msgs[j].Message.Nonce
-	})
 
 	for _, msg := range msgs {
 		vmstart := time.Now()
@@ -565,78 +549,11 @@ func SelectMessages(ctx context.Context, al ActorLookup, ts *types.TipSet, msgs 
 
 		inclNonces[from] = msg.Message.Nonce + 1
 		inclBalances[from] = types.BigSub(inclBalances[from], msg.Message.RequiredFunds())
-		sm := outBySender[from]
-		if sm == nil {
-			sm = &senderMeta{
-				lastReward: big.Zero(),
-			}
-		}
+		inclCount[from]++
 
-		sm.gasLimit = append(sm.gasLimit, sm.lastGasLimit+msg.Message.GasLimit)
-		sm.lastGasLimit = sm.gasLimit[len(sm.gasLimit)-1]
-
-		estimatedReward := big.Mul(types.NewInt(uint64(msg.Message.GasLimit)), msg.Message.GasPrice)
-		// TODO: estimatedReward = estimatedReward * (guessActualGasUse(msg) / msg.GasLimit)
-
-		sm.gasReward = append(sm.gasReward, big.Add(sm.lastReward, estimatedReward))
-		sm.lastReward = sm.gasReward[len(sm.gasReward)-1]
-
-		sm.msgs = append(sm.msgs, msg)
-
-		outBySender[from] = sm
-	}
-
-	gasLimitLeft := int64(build.BlockGasLimit)
-
-	out := make([]*types.SignedMessage, 0, build.BlockMessageLimit)
-	{
-		for {
-			var bestSender address.Address
-			var nBest int
-			var bestGasToReward float64
-
-			// TODO: This is O(n^2)-ish, could use something like container/heap to cache this math
-			for sender, meta := range outBySender {
-				for n := range meta.msgs {
-					if meta.gasLimit[n] > gasLimitLeft {
-						break
-					}
-
-					if n+len(out) > build.BlockMessageLimit {
-						break
-					}
-
-					gasToReward, _ := new(big2.Float).SetInt(meta.gasReward[n].Int).Float64()
-					gasToReward /= float64(meta.gasLimit[n])
-
-					if gasToReward >= bestGasToReward {
-						bestSender = sender
-						nBest = n + 1
-						bestGasToReward = gasToReward
-					}
-				}
-			}
-
-			if nBest == 0 {
-				break // block gas limit reached
-			}
-
-			{
-				out = append(out, outBySender[bestSender].msgs[:nBest]...)
-				gasLimitLeft -= outBySender[bestSender].gasLimit[nBest-1]
-
-				outBySender[bestSender].msgs = outBySender[bestSender].msgs[nBest:]
-				outBySender[bestSender].gasLimit = outBySender[bestSender].gasLimit[nBest:]
-				outBySender[bestSender].gasReward = outBySender[bestSender].gasReward[nBest:]
-
-				if len(outBySender[bestSender].msgs) == 0 {
-					delete(outBySender, bestSender)
-				}
-			}
-
-			if len(out) >= build.BlockMessageLimit {
-				break
-			}
+		out = append(out, msg)
+		if len(out) >= build.BlockMessageLimit {
+			break
 		}
 	}
 
