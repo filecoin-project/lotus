@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-address"
+
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -75,7 +76,7 @@ func TestMessageFiltering(t *testing.T) {
 			To:       a1,
 			Nonce:    2,
 			Value:    types.NewInt(150),
-			GasLimit: (100),
+			GasLimit: 100,
 			GasPrice: types.NewInt(1),
 		},
 	}
@@ -89,8 +90,8 @@ func TestMessageFiltering(t *testing.T) {
 		t.Fatal("filtering didnt work as expected")
 	}
 
-	m1 := outmsgs[2].Message
-	if m1.From != msgs[2].From || m1.Nonce != msgs[2].Nonce {
+	was, expected := outmsgs[0].Message, msgs[2]
+	if was.From != expected.From || was.Nonce != expected.Nonce {
 		t.Fatal("filtering bad")
 	}
 }
