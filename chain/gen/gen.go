@@ -438,7 +438,11 @@ func (cg *ChainGen) makeBlock(parents *types.TipSet, m address.Address, vrfticke
 // ResyncBankerNonce is used for dealing with messages made when
 // simulating forks
 func (cg *ChainGen) ResyncBankerNonce(ts *types.TipSet) error {
-	act, err := cg.sm.GetActor(cg.banker, ts)
+	var act *types.Actor
+	err := cg.sm.WithParentState(ts, cg.sm.WithActor(cg.banker, func(a *types.Actor) error {
+		act = a
+		return nil
+	}))
 	if err != nil {
 		return err
 	}

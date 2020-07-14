@@ -67,6 +67,8 @@ func (t *VoucherInfo) MarshalCBOR(w io.Writer) error {
 }
 
 func (t *VoucherInfo) UnmarshalCBOR(r io.Reader) error {
+	*t = VoucherInfo{}
+
 	br := cbg.GetPeeker(r)
 	scratch := make([]byte, 8)
 
@@ -265,6 +267,8 @@ func (t *ChannelInfo) MarshalCBOR(w io.Writer) error {
 }
 
 func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) error {
+	*t = ChannelInfo{}
+
 	br := cbg.GetPeeker(r)
 	scratch := make([]byte, 8)
 

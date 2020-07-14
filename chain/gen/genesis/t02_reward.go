@@ -16,7 +16,7 @@ func SetupRewardActor(bs bstore.Blockstore) (*types.Actor, error) {
 	cst := cbor.NewCborStore(bs)
 
 	z := big.Zero()
-	st := reward.ConstructState(&z)
+	st := reward.ConstructState(z)
 	st.ThisEpochReward = types.FromFil(100)
 
 	hcid, err := cst.Put(context.TODO(), st)
