@@ -254,6 +254,8 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		return m.handleProvingSector, nil
 	case Removing:
 		return m.handleRemoving, nil
+	case Removed:
+		return nil, nil
 
 		// Faults
 	case Faulty:
