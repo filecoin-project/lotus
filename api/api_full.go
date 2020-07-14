@@ -268,6 +268,8 @@ type FullNode interface {
 	StateSectorPreCommitInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error)
 	// StateSectorGetInfo returns the on-chain info for the specified miner's sector
 	StateSectorGetInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*miner.SectorOnChainInfo, error)
+	// StateSectorPartition finds deadline/partition with the specified sector
+	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok types.TipSetKey) (*SectorLocation, error)
 	StatePledgeCollateral(context.Context, types.TipSetKey) (types.BigInt, error)
 	// StateSearchMsg searches for a message in the chain, and returns its receipt and the tipset where it was executed
 	StateSearchMsg(context.Context, cid.Cid) (*MsgLookup, error)
@@ -356,6 +358,11 @@ type FileRef struct {
 type MinerSectors struct {
 	Sset uint64
 	Pset uint64
+}
+
+type SectorLocation struct {
+	Deadline  uint64
+	Partition uint64
 }
 
 type ImportRes struct {

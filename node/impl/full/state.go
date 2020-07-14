@@ -3,9 +3,8 @@ package full
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
-	"github.com/filecoin-project/go-bitfield"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"strconv"
 
 	cid "github.com/ipfs/go-cid"
@@ -17,6 +16,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-amt-ipld/v2"
+	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
@@ -27,6 +27,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -41,6 +42,8 @@ import (
 	"github.com/filecoin-project/lotus/lib/bufbstore"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
+
+var errBreakForeach = errors.New("break")
 
 type StateAPI struct {
 	fx.In
@@ -631,6 +634,45 @@ func (a *StateAPI) StateSectorGetInfo(ctx context.Context, maddr address.Address
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 	return stmgr.MinerSectorInfo(ctx, a.StateManager, maddr, n, ts)
+}
+
+func (a *StateAPI) StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*api.SectorLocation, error) {
+	var found *api.SectorLocation
+
+	err := a.StateManager.WithParentStateTsk(tsk,
+		a.StateManager.WithActor(maddr,
+			a.StateManager.WithActorState(ctx,
+				a.StateManager.WithDeadlines(func(store adt.Store, deadlines *miner.Deadlines) error {
+					err := a.StateManager.WithEachDeadline(func(store adt.Store, di uint64, deadline *miner.Deadline) error {
+						return a.StateManager.WithEachPartition(func(store adt.Store, pi uint64, partition *miner.Partition) error {
+							set, err := partition.Sectors.IsSet(uint64(sectorNumber))
+							if err != nil {
+								return xerrors.Errorf("is set: %w", err)
+							}
+							if set {
+								found = &api.SectorLocation{
+									Deadline:  di,
+									Partition: pi,
+								}
+								return errBreakForeach
+							}
+							return nil
+						})(store, di, deadline)
+					})(store, deadlines)
+					if err == errBreakForeach {
+						err = nil
+					}
+					return err
+				}))))
+	if err != nil {
+		return nil, err
+	}
+
+	if found == nil {
+
+	}
+
+	return found, nil
 }
 
 func (a *StateAPI) StateListMessages(ctx context.Context, match *types.Message, tsk types.TipSetKey, toheight abi.ChainEpoch) ([]cid.Cid, error) {
