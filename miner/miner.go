@@ -170,14 +170,18 @@ func (m *Miner) mine(ctx context.Context) {
 
 		if b != nil {
 			btime := time.Unix(int64(b.Header.Timestamp), 0)
-			if build.Clock.Now().Before(btime) {
+			now := build.Clock.Now()
+			switch {
+			case btime == now:
+				// block timestamp is perfectly aligned with time.
+			case btime.After(now):
 				if !m.niceSleep(build.Clock.Until(btime)) {
 					log.Warnf("received interrupt while waiting to broadcast block, will shutdown after block is sent out")
 					build.Clock.Sleep(build.Clock.Until(btime))
 				}
-			} else {
-				log.Warnw("mined block in the past", "block-time", btime,
-					"time", build.Clock.Now(), "duration", build.Clock.Since(btime))
+			default:
+				log.Warnw("mined block in the past",
+					"block-time", btime, "time", build.Clock.Now(), "difference", build.Clock.Since(btime))
 			}
 
 			// TODO: should do better 'anti slash' protection here
