@@ -34,13 +34,13 @@ Then, in another console, import the genesis miner key:
 Set up the genesis miner:
 
 ```sh
-./lotus-storage-miner init --genesis-miner --actor=t01000 --sector-size=2KiB --pre-sealed-sectors=~/.genesis-sectors --pre-sealed-metadata=~/.genesis-sectors/pre-seal-t01000.json --nosync
+./lotus-miner init --genesis-miner --actor=t01000 --sector-size=2KiB --pre-sealed-sectors=~/.genesis-sectors --pre-sealed-metadata=~/.genesis-sectors/pre-seal-t01000.json --nosync
 ```
 
 Now, finally, start up the miner:
 
 ```sh
-./lotus-storage-miner run --nosync
+./lotus-miner run --nosync
 ```
 
 If all went well, you will have your own local Lotus Devnet running.

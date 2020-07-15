@@ -344,7 +344,7 @@ At the end of the `Repo()` function we see two mutually exclusive configuration 
 			ApplyIf(isType(repo.FullNode), ConfigFullNode(c)),
 			ApplyIf(isType(repo.StorageMiner), ConfigStorageMiner(c)),
 ```
-As we said, the repo fully identifies the node so a repo type is also a *node* type, in this case a full node or a storage miner. (FIXME: What is the difference between the two, does *full* imply miner?) In this case the `daemon` command will create a `FullNode`, this is specified in the command logic itself in `main.DaemonCmd()`, the `FsRepo` created (and passed to `node.Repo()`) will be initiated with that type (see `(*FsRepo).Init(t RepoType)`).
+As we said, the repo fully identifies the node so a repo type is also a *node* type, in this case a full node or a miner. (FIXME: What is the difference between the two, does *full* imply miner?) In this case the `daemon` command will create a `FullNode`, this is specified in the command logic itself in `main.DaemonCmd()`, the `FsRepo` created (and passed to `node.Repo()`) will be initiated with that type (see `(*FsRepo).Init(t RepoType)`).
 
 ## Online
 

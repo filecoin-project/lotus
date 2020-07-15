@@ -93,10 +93,10 @@ jobs:
       - store_artifacts:
           path: lotus
       - store_artifacts:
-          path: lotus-storage-miner
+          path: lotus-miner
       - store_artifacts:
-          path: lotus-seal-worker
-      - run: mkdir linux && mv lotus lotus-storage-miner lotus-seal-worker linux/
+          path: lotus-worker
+      - run: mkdir linux && mv lotus lotus-miner lotus-worker linux/
       - persist_to_workspace:
           root: "."
           paths:
@@ -223,10 +223,10 @@ jobs:
       - store_artifacts:
           path: lotus
       - store_artifacts:
-          path: lotus-storage-miner
+          path: lotus-miner
       - store_artifacts:
-          path: lotus-seal-worker
-      - run: mkdir darwin && mv lotus lotus-storage-miner lotus-seal-worker darwin/
+          path: lotus-worker
+      - run: mkdir darwin && mv lotus lotus-miner lotus-worker darwin/
       - persist_to_workspace:
           root: "."
           paths:

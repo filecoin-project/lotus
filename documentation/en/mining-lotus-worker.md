@@ -1,10 +1,10 @@
-# Lotus Seal Worker
+# Lotus Worker
 
-The **Lotus Seal Worker** is an extra process that can offload heavy processing tasks from your **Lotus Storage Miner**. The sealing process automatically runs in the **Lotus Storage Miner** process, but you can use the Seal Worker on another machine communicating over a fast network to free up resources on the machine running the mining process.
+The **Lotus Worker** is an extra process that can offload heavy processing tasks from your **Lotus Miner**. The sealing process automatically runs in the **Lotus Miner** process, but you can use the Worker on another machine communicating over a fast network to free up resources on the machine running the mining process.
 
-## Note: Using the Lotus Seal Worker from China
+## Note: Using the Lotus Worker from China
 
-If you are trying to use `lotus-seal-worker` from China. You should set this **environment variable** on your machine:
+If you are trying to use `lotus-worker` from China. You should set this **environment variable** on your machine:
 
 ```sh
 IPFS_GATEWAY="https://proof-parameters.s3.cn-south-1.jdcloud-oss.com/ipfs/"
@@ -12,17 +12,17 @@ IPFS_GATEWAY="https://proof-parameters.s3.cn-south-1.jdcloud-oss.com/ipfs/"
 
 ## Get Started
 
-Make sure that the `lotus-seal-worker` is compiled and installed by running:
+Make sure that the `lotus-worker` is compiled and installed by running:
 
 ```sh
-make lotus-seal-worker
+make lotus-worker
 ```
 
-## Setting up the Storage Miner
+## Setting up the Miner
 
-First, you will need to ensure your `lotus-storage-miner`'s API is accessible over the network.
+First, you will need to ensure your `lotus-miner`'s API is accessible over the network.
 
-To do this, open up `~/.lotusstorage/config.toml` (Or if you manually set `LOTUS_STORAGE_PATH`, look under that directory) and look for the API field.
+To do this, open up `~/.lotusminer/config.toml` (Or if you manually set `LOTUS_MINER_PATH`, look under that directory) and look for the API field.
 
 Default config:
 
@@ -40,22 +40,22 @@ A more permissive and less secure option is to change it to `0.0.0.0`. This will
 
 Next, you will need to [create an authentication token](https://docs.lotu.sh/en+api-scripting-support#generate-a-jwt-46). All Lotus APIs require authentication tokens to ensure your processes are as secure against attackers attempting to make unauthenticated requests to them.
 
-### Connect the Lotus Seal Worker
+### Connect the Lotus Worker
 
-On the machine that will run `lotus-seal-worker`, set the `STORAGE_API_INFO` environment variable to `TOKEN:STORAGE_NODE_MULTIADDR`. Where `TOKEN` is the token we created above, and `STORAGE_NODE_MULTIADDR` is the `multiaddr` of the **Lotus Storage Miner** API that was set in `config.toml`.
+On the machine that will run `lotus-worker`, set the `MINER_API_INFO` environment variable to `TOKEN:MINER_NODE_MULTIADDR`. Where `TOKEN` is the token we created above, and `NIMER_NODE_MULTIADDR` is the `multiaddr` of the **Lotus Miner** API that was set in `config.toml`.
 
 Once this is set, run:
 
 ```sh
-lotus-seal-worker run --address 192.168.2.10:2345
+lotus-worker run --address 192.168.2.10:2345
 ```
 
 Replace `192.168.2.10:2345` with the proper IP and port.
 
-To check that the **Lotus Seal Worker** is connected to your **Lotus Storage Miner**, run `lotus-storage-miner workers list` and check that the remote worker count has increased.
+To check that the **Lotus Worker** is connected to your **Lotus Miner**, run `lotus-miner workers list` and check that the remote worker count has increased.
 
 ```sh
-why@computer ~/lotus> lotus-storage-miner workers list
+why@computer ~/lotus> lotus-miner workers list
 Worker 0, host computer
         CPU:  [                                                                ] 0 core(s) in use
         RAM:  [||||||||||||||||||                                              ] 28% 18.1 GiB/62.7 GiB
@@ -71,11 +71,11 @@ Worker 1, host othercomputer
 
 ### Running locally for manually managing process priority
 
-You can also run the **Lotus Seal Worker** on the same machine as your **Lotus Storage Miner**, so you can manually manage the process priority.
+You can also run the **Lotus Worker** on the same machine as your **Lotus Miner**, so you can manually manage the process priority.
 To do so you have to first __disable all seal task types__ in the miner config. This is important to prevent conflicts between the two processes.
 
-You can then run the storage miner on your local-loopback interface; 
+You can then run the miner on your local-loopback interface; 
 
 ```sh
-lotus-seal-worker run --address 127.0.0.1:2345
+lotus-worker run --address 127.0.0.1:2345
 ```

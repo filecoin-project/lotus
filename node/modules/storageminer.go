@@ -585,7 +585,7 @@ func mutateCfg(r repo.LockedRepo, mutator func(*config.StorageMiner)) error {
 	setConfigErr := r.SetConfig(func(raw interface{}) {
 		cfg, ok := raw.(*config.StorageMiner)
 		if !ok {
-			typeErr = errors.New("expected storage miner config")
+			typeErr = errors.New("expected miner config")
 			return
 		}
 

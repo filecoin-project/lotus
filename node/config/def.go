@@ -25,7 +25,7 @@ type FullNode struct {
 
 // // Common
 
-// StorageMiner is a storage miner config
+// StorageMiner is a miner config
 type StorageMiner struct {
 	Common
 
