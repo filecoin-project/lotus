@@ -90,6 +90,12 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message) (*t
 	if msg.Nonce != 0 {
 		return nil, xerrors.Errorf("MpoolPushMessage expects message nonce to be 0, was %d", msg.Nonce)
 	}
+	if msg.GasLimit == 0 {
+		msg.GasLimit = 100_000_000 // TODO: gas limit estimation
+	}
+	if types.BigCmp(msg.GasPrice, types.NewInt(0)) == 0 {
+		msg.GasPrice = types.NewInt(1) // TODO: gas price estimation
+	}
 
 	return a.Mpool.PushWithNonce(ctx, msg.From, func(from address.Address, nonce uint64) (*types.SignedMessage, error) {
 		msg.Nonce = nonce

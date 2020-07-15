@@ -91,7 +91,7 @@ const VerifSigCacheSize = 32000
 
 // TODO: If this is gonna stay, it should move to specs-actors
 const BlockMessageLimit = 512
-const BlockGasLimit = 100_000_000_000
+const BlockGasLimit = 7_500_000_000
 
 var DrandConfig = dtypes.DrandConfig{
 	Servers: []string{
