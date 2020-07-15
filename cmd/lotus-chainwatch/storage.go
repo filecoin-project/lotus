@@ -294,6 +294,30 @@ create table if not exists miner_info
 		primary key (miner_id)
 );
 
+/*
+* captures chain-specific power state for any given stateroot
+*/
+create table if not exists chain_power
+(
+	state_root text not null
+		constraint chain_power_pk
+			primary key,
+	baseline_power text not null
+);
+
+/*
+* captures miner-specific power state for any given stateroot
+*/
+create table if not exists miner_power
+(
+	miner_id text not null,
+	state_root text not null,
+	raw_bytes_power text not null,
+	quality_adjusted_power text not null,
+	constraint miner_power_pk
+		primary key (miner_id, state_root)
+);
+
 /* used to tell when a miners sectors (proven-not-yet-expired) changed if the miner_sectors_cid's are different a new sector was added or removed (terminated/expired) */
 create table if not exists miner_sectors_heads
 (
@@ -500,6 +524,46 @@ func (st *storage) storeActors(actors map[address.Address]map[types.Actor]actorI
 	return nil
 }
 
+// storeChainPower captures reward actor state as it relates to power captured on-chain
+func (st *storage) storeChainPower(rewardTips map[types.TipSetKey]*rewardStateInfo) error {
+	tx, err := st.db.Begin()
+	if err != nil {
+		return xerrors.Errorf("begin chain_power tx: %w", err)
+	}
+
+	if _, err := tx.Exec(`create temp table cp (like chain_power excluding constraints) on commit drop`); err != nil {
+		return xerrors.Errorf("prep chain_power temp: %w", err)
+	}
+
+	stmt, err := tx.Prepare(`copy cp (state_root, baseline_power) from STDIN`)
+	if err != nil {
+		return xerrors.Errorf("prepare tmp chain_power: %w", err)
+	}
+
+	for _, rewardState := range rewardTips {
+		if _, err := stmt.Exec(
+			rewardState.stateroot.String(),
+			rewardState.baselinePower.String(),
+		); err != nil {
+			log.Errorw("failed to store chain power", "state_root", rewardState.stateroot, "error", err)
+		}
+	}
+
+	if err := stmt.Close(); err != nil {
+		return xerrors.Errorf("close prepared chain_power: %w", err)
+	}
+
+	if _, err := tx.Exec(`insert into chain_power select * from cp on conflict do nothing`); err != nil {
+		return xerrors.Errorf("insert chain_power from tmp: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return xerrors.Errorf("commit chain_power tx: %w", err)
+	}
+
+	return nil
+}
+
 type storeSectorsAPI interface {
 	StateMinerSectors(context.Context, address.Address, *abi.BitField, bool, types.TipSetKey) ([]*api.ChainSectorInfo, error)
 }
@@ -530,12 +594,12 @@ func (st *storage) storeSectors(minerTips map[types.TipSetKey][]*minerStateInfo,
 				if _, err := stmt.Exec(
 					miner.addr.String(),
 					uint64(sector.ID),
-					int64(sector.Info.ActivationEpoch),
-					int64(sector.Info.Info.Expiration),
+					int64(sector.Info.Activation),
+					int64(sector.Info.Expiration),
 					sector.Info.DealWeight.String(),
 					sector.Info.VerifiedDealWeight.String(),
-					sector.Info.Info.SealedCID.String(),
-					int64(sector.Info.Info.SealRandEpoch),
+					sector.Info.SealedCID.String(),
+					0, // TODO: Not there now?
 				); err != nil {
 					return err
 				}
@@ -605,6 +669,50 @@ func (st *storage) storeMiners(minerTips map[types.TipSetKey][]*minerStateInfo) 
 	}
 
 	return tx.Commit()
+}
+
+// storeMinerPower captures miner actor state as it relates to power per miner captured on-chain
+func (st *storage) storeMinerPower(minerTips map[types.TipSetKey][]*minerStateInfo) error {
+	tx, err := st.db.Begin()
+	if err != nil {
+		return xerrors.Errorf("begin miner_power tx: %w", err)
+	}
+
+	if _, err := tx.Exec(`create temp table mp (like miner_power excluding constraints) on commit drop`); err != nil {
+		return xerrors.Errorf("prep miner_power temp: %w", err)
+	}
+
+	stmt, err := tx.Prepare(`copy mp (miner_id, state_root, raw_bytes_power, quality_adjusted_power) from STDIN`)
+	if err != nil {
+		return xerrors.Errorf("prepare tmp miner_power: %w", err)
+	}
+
+	for _, miners := range minerTips {
+		for _, minerInfo := range miners {
+			if _, err := stmt.Exec(
+				minerInfo.addr.String(),
+				minerInfo.stateroot.String(),
+				minerInfo.rawPower.String(),
+				minerInfo.qalPower.String(),
+			); err != nil {
+				log.Errorw("failed to store miner power", "miner", minerInfo.addr, "stateroot", minerInfo.stateroot, "error", err)
+			}
+		}
+	}
+
+	if err := stmt.Close(); err != nil {
+		return xerrors.Errorf("close prepared miner_power: %w", err)
+	}
+
+	if _, err := tx.Exec(`insert into miner_power select * from mp on conflict do nothing`); err != nil {
+		return xerrors.Errorf("insert miner_power from tmp: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return xerrors.Errorf("commit miner_power tx: %w", err)
+	}
+
+	return nil
 }
 
 func (st *storage) storeMinerSectorsHeads(minerTips map[types.TipSetKey][]*minerStateInfo, api api.FullNode) error {
@@ -687,7 +795,7 @@ func (st *storage) updateMinerSectors(minerTips map[types.TipSetKey][]*minerStat
 				}
 
 				for _, sector := range sectors {
-					if _, err := eventStmt.Exec(sector.Info.Info.SectorNumber, "ADDED", miner.addr.String(), miner.stateroot.String()); err != nil {
+					if _, err := eventStmt.Exec(sector.Info.SectorNumber, "ADDED", miner.addr.String(), miner.stateroot.String()); err != nil {
 						return err
 					}
 				}
@@ -705,17 +813,17 @@ func (st *storage) updateMinerSectors(minerTips map[types.TipSetKey][]*minerStat
 				log.Debugw("sector changes for miner", "miner", miner.addr.String(), "Added", len(changes.Added), "Extended", len(changes.Extended), "Removed", len(changes.Removed), "oldState", miner.parentTsKey, "newState", miner.tsKey)
 
 				for _, extended := range changes.Extended {
-					if _, err := eventStmt.Exec(extended.To.Info.SectorNumber, "EXTENDED", miner.addr.String(), miner.stateroot.String()); err != nil {
+					if _, err := eventStmt.Exec(extended.To.SectorNumber, "EXTENDED", miner.addr.String(), miner.stateroot.String()); err != nil {
 						return err
 					}
 					sectorUpdates = append(sectorUpdates, sectorUpdate{
 						terminationEpoch: 0,
 						terminated:       false,
-						expirationEpoch:  extended.To.Info.Expiration,
-						sectorID:         extended.To.Info.SectorNumber,
+						expirationEpoch:  extended.To.Expiration,
+						sectorID:         extended.To.SectorNumber,
 						minerID:          miner.addr,
 					})
-					log.Debugw("sector extended", "miner", miner.addr.String(), "sector", extended.To.Info.SectorNumber, "old", extended.To.Info.Expiration, "new", extended.From.Info.Expiration)
+					log.Debugw("sector extended", "miner", miner.addr.String(), "sector", extended.To.SectorNumber, "old", extended.To.Expiration, "new", extended.From.Expiration)
 				}
 				curTs, err := api.ChainGetTipSet(context.TODO(), miner.tsKey)
 				if err != nil {
@@ -724,27 +832,27 @@ func (st *storage) updateMinerSectors(minerTips map[types.TipSetKey][]*minerStat
 
 				for _, removed := range changes.Removed {
 					// decide if they were terminated or extended
-					if removed.Info.Expiration > curTs.Height() {
-						if _, err := eventStmt.Exec(removed.Info.SectorNumber, "TERMINATED", miner.addr.String(), miner.stateroot.String()); err != nil {
+					if removed.Expiration > curTs.Height() {
+						if _, err := eventStmt.Exec(removed.SectorNumber, "TERMINATED", miner.addr.String(), miner.stateroot.String()); err != nil {
 							return err
 						}
-						log.Debugw("sector terminated", "miner", miner.addr.String(), "sector", removed.Info.SectorNumber, "old", "sectorExpiration", removed.Info.Expiration, "terminationEpoch", curTs.Height())
+						log.Debugw("sector terminated", "miner", miner.addr.String(), "sector", removed.SectorNumber, "old", "sectorExpiration", removed.Expiration, "terminationEpoch", curTs.Height())
 						sectorUpdates = append(sectorUpdates, sectorUpdate{
 							terminationEpoch: curTs.Height(),
 							terminated:       true,
-							expirationEpoch:  removed.Info.Expiration,
-							sectorID:         removed.Info.SectorNumber,
+							expirationEpoch:  removed.Expiration,
+							sectorID:         removed.SectorNumber,
 							minerID:          miner.addr,
 						})
 					}
-					if _, err := eventStmt.Exec(removed.Info.SectorNumber, "EXPIRED", miner.addr.String(), miner.stateroot.String()); err != nil {
+					if _, err := eventStmt.Exec(removed.SectorNumber, "EXPIRED", miner.addr.String(), miner.stateroot.String()); err != nil {
 						return err
 					}
-					log.Debugw("sector removed", "miner", miner.addr.String(), "sector", removed.Info.SectorNumber, "old", "sectorExpiration", removed.Info.Expiration, "currEpoch", curTs.Height())
+					log.Debugw("sector removed", "miner", miner.addr.String(), "sector", removed.SectorNumber, "old", "sectorExpiration", removed.Expiration, "currEpoch", curTs.Height())
 				}
 
 				for _, added := range changes.Added {
-					if _, err := eventStmt.Exec(miner.addr.String(), added.Info.SectorNumber, miner.stateroot.String(), "ADDED"); err != nil {
+					if _, err := eventStmt.Exec(miner.addr.String(), added.SectorNumber, miner.stateroot.String(), "ADDED"); err != nil {
 						return err
 					}
 				}

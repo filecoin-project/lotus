@@ -186,7 +186,7 @@ func presealSector(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, sid abi.Sector
 }
 
 func presealSectorFake(sbfs *basicfs.Provider, sid abi.SectorID, spt abi.RegisteredSealProof, ssize abi.SectorSize) (*genesis.PreSeal, error) {
-	paths, done, err := sbfs.AcquireSector(context.TODO(), sid, 0, stores.FTSealed|stores.FTCache, true)
+	paths, done, err := sbfs.AcquireSector(context.TODO(), sid, 0, stores.FTSealed|stores.FTCache, stores.PathSealing)
 	if err != nil {
 		return nil, xerrors.Errorf("acquire unsealed sector: %w", err)
 	}
@@ -251,12 +251,13 @@ func WriteGenesisMiner(maddr address.Address, sbroot string, gm *genesis.Miner, 
 }
 
 func createDeals(m *genesis.Miner, k *wallet.Key, maddr address.Address, ssize abi.SectorSize) error {
-	for _, sector := range m.Sectors {
+	for i, sector := range m.Sectors {
 		proposal := &market.DealProposal{
 			PieceCID:             sector.CommD,
 			PieceSize:            abi.PaddedPieceSize(ssize),
 			Client:               k.Address,
 			Provider:             maddr,
+			Label:                fmt.Sprintf("%d", i),
 			StartEpoch:           0,
 			EndEpoch:             9001,
 			StoragePricePerEpoch: big.Zero(),

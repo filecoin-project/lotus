@@ -43,7 +43,7 @@ func TestBigIntSerializationRoundTrip(t *testing.T) {
 
 func TestFilRoundTrip(t *testing.T) {
 	testValues := []string{
-		"0", "1", "1.001", "100.10001", "101100", "5000.01", "5000",
+		"0 FIL", "1 FIL", "1.001 FIL", "100.10001 FIL", "101100 FIL", "5000.01 FIL", "5000 FIL",
 	}
 
 	for _, v := range testValues {
@@ -82,7 +82,7 @@ func TestSizeStrUnitsSymmetry(t *testing.T) {
 	s := rand.NewSource(time.Now().UnixNano())
 	r := rand.New(s)
 
-	for i := 0; i < 1000000; i++ {
+	for i := 0; i < 10000; i++ {
 		n := r.Uint64()
 		l := strings.ReplaceAll(units.BytesSize(float64(n)), " ", "")
 		r := strings.ReplaceAll(SizeStr(NewInt(n)), " ", "")

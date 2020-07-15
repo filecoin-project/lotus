@@ -30,7 +30,7 @@ const ForkLengthThreshold = Finality
 var BlocksPerEpoch = uint64(builtin.ExpectedLeadersPerEpoch)
 
 // Epochs
-const Finality = miner.ChainFinalityish
+const Finality = miner.ChainFinality
 const MessageConfidence = uint64(5)
 
 // constants for Weight calculation

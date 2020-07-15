@@ -143,7 +143,7 @@ type BlockMessages struct {
 	Miner         address.Address
 	BlsMessages   []types.ChainMsg
 	SecpkMessages []types.ChainMsg
-	TicketCount   int64
+	WinCount      int64
 }
 
 type ExecCallback func(cid.Cid, *types.Message, *vm.ApplyRet) error
@@ -187,6 +187,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, pstate cid.Cid, bms []B
 			Miner:     b.Miner,
 			Penalty:   penalty,
 			GasReward: gasReward,
+			WinCount:  b.WinCount,
 		})
 		if err != nil {
 			return cid.Undef, cid.Undef, xerrors.Errorf("failed to serialize award params: %w", err)
@@ -311,7 +312,7 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 			Miner:         b.Miner,
 			BlsMessages:   make([]types.ChainMsg, 0, len(bms)),
 			SecpkMessages: make([]types.ChainMsg, 0, len(sms)),
-			TicketCount:   1, //int64(len(b.EPostProof.Proofs)), // TODO fix this
+			WinCount:      b.ElectionProof.WinCount,
 		}
 
 		for _, m := range bms {

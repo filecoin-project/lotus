@@ -23,6 +23,8 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	samsig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
+	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -385,7 +387,8 @@ func (a *StateAPI) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uin
 	return &api.MsgLookup{
 		Receipt:   *recpt,
 		ReturnDec: returndec,
-		TipSet:    ts,
+		TipSet:    ts.Key(),
+		Height:    ts.Height(),
 	}, nil
 }
 
@@ -398,7 +401,8 @@ func (a *StateAPI) StateSearchMsg(ctx context.Context, msg cid.Cid) (*api.MsgLoo
 	if ts != nil {
 		return &api.MsgLookup{
 			Receipt: *recpt,
-			TipSet:  ts,
+			TipSet:  ts.Key(),
+			Height:  ts.Height(),
 		}, nil
 	} else {
 		return nil, nil
@@ -719,39 +723,53 @@ func (a *StateAPI) MsigGetAvailableBalance(ctx context.Context, addr address.Add
 var initialPledgeNum = types.NewInt(103)
 var initialPledgeDen = types.NewInt(100)
 
-func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr address.Address, snum abi.SectorNumber, tsk types.TipSetKey) (types.BigInt, error) {
+func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr address.Address, pci miner.SectorPreCommitInfo, tsk types.TipSetKey) (types.BigInt, error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	act, err := a.StateManager.GetActor(maddr, ts)
-	if err != nil {
-		return types.EmptyInt, err
-	}
-
 	as := store.ActorStore(ctx, a.Chain.Blockstore())
 
-	var st miner.State
-	if err := as.Get(ctx, act.Head, &st); err != nil {
-		return types.EmptyInt, err
+	var minerState miner.State
+	{
+		act, err := a.StateManager.GetActor(maddr, ts)
+		if err != nil {
+			return types.EmptyInt, err
+		}
+		if err := as.Get(ctx, act.Head, &minerState); err != nil {
+			return types.EmptyInt, err
+		}
 	}
 
-	precommit, found, err := st.GetPrecommittedSector(as, snum)
-	if err != nil {
-		return types.EmptyInt, err
+	var powerState power.State
+	{
+		act, err := a.StateManager.GetActor(builtin.StoragePowerActorAddr, ts)
+		if err != nil {
+			return types.EmptyInt, err
+		}
+		if err := as.Get(ctx, act.Head, &powerState); err != nil {
+			return types.EmptyInt, err
+		}
 	}
 
-	if !found {
-		return types.EmptyInt, xerrors.Errorf("no precommit found for sector %d", snum)
+	var rewardState reward.State
+	{
+		act, err := a.StateManager.GetActor(builtin.RewardActorAddr, ts)
+		if err != nil {
+			return types.EmptyInt, err
+		}
+		if err := as.Get(ctx, act.Head, &rewardState); err != nil {
+			return types.EmptyInt, err
+		}
 	}
 
-	var dealWeights market.VerifyDealsOnSectorProveCommitReturn
+	var dealWeights market.VerifyDealsForActivationReturn
 	{
 		var err error
-		params, err := actors.SerializeParams(&market.VerifyDealsOnSectorProveCommitParams{
-			DealIDs:      precommit.Info.DealIDs,
-			SectorExpiry: precommit.Info.Expiration,
+		params, err := actors.SerializeParams(&market.VerifyDealsForActivationParams{
+			DealIDs:      pci.DealIDs,
+			SectorExpiry: pci.Expiration,
 		})
 		if err != nil {
 			return types.EmptyInt, err
@@ -760,7 +778,7 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 		ret, err := a.StateManager.Call(ctx, &types.Message{
 			From:     maddr,
 			To:       builtin.StorageMarketActorAddr,
-			Method:   builtin.MethodsMarket.VerifyDealsOnSectorProveCommit,
+			Method:   builtin.MethodsMarket.VerifyDealsForActivation,
 			GasLimit: 100000000000,
 			GasPrice: types.NewInt(0),
 			Params:   params,
@@ -774,41 +792,20 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 		}
 	}
 
-	initialPledge := big.Zero()
-	{
-		ssize, err := precommit.Info.SealProof.SectorSize()
-		if err != nil {
-			return types.EmptyInt, err
-		}
-
-		params, err := actors.SerializeParams(&power.OnSectorProveCommitParams{
-			Weight: power.SectorStorageWeightDesc{
-				SectorSize:         ssize,
-				Duration:           precommit.Info.Expiration - ts.Height(), // NB: not exactly accurate, but should always lead us to *over* estimate, not under
-				DealWeight:         dealWeights.DealWeight,
-				VerifiedDealWeight: dealWeights.VerifiedDealWeight,
-			},
-		})
-		if err != nil {
-			return types.EmptyInt, err
-		}
-
-		ret, err := a.StateManager.Call(ctx, &types.Message{
-			From:     maddr,
-			To:       builtin.StoragePowerActorAddr,
-			Method:   builtin.MethodsPower.OnSectorProveCommit,
-			GasLimit: 10000000000,
-			GasPrice: types.NewInt(0),
-			Params:   params,
-		}, ts)
-		if err != nil {
-			return types.EmptyInt, err
-		}
-
-		if err := initialPledge.UnmarshalCBOR(bytes.NewReader(ret.MsgRct.Return)); err != nil {
-			return types.BigInt{}, err
-		}
+	ssize, err := pci.SealProof.SectorSize()
+	if err != nil {
+		return types.EmptyInt, err
 	}
+
+	duration := pci.Expiration - ts.Height() // NB: not exactly accurate, but should always lead us to *over* estimate, not under
+
+	circSupply, err := a.StateManager.CirculatingSupply(ctx, ts)
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("getting circulating supply: %w", err)
+	}
+
+	sectorWeight := miner.QAPowerForWeight(ssize, duration, dealWeights.DealWeight, dealWeights.VerifiedDealWeight)
+	initialPledge := miner.InitialPledgeForPower(sectorWeight, powerState.TotalQualityAdjPower, powerState.TotalPledgeCollateral, rewardState.ThisEpochReward, circSupply)
 
 	return types.BigDiv(types.BigMul(initialPledge, initialPledgeNum), initialPledgeDen), nil
 }
@@ -837,4 +834,36 @@ func (a *StateAPI) StateMinerAvailableBalance(ctx context.Context, maddr address
 	}
 
 	return types.BigAdd(st.GetAvailableBalance(act.Balance), vested), nil
+}
+
+// StateVerifiedClientStatus returns the data cap for the given address.
+// Returns nil if there is no entry in the data cap table for the
+// address.
+func (a *StateAPI) StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*verifreg.DataCap, error) {
+	act, err := a.StateGetActor(ctx, builtin.VerifiedRegistryActorAddr, tsk)
+	if err != nil {
+		return nil, err
+	}
+
+	cst := cbor.NewCborStore(a.StateManager.ChainStore().Blockstore())
+
+	var st verifreg.State
+	if err := cst.Get(ctx, act.Head, &st); err != nil {
+		return nil, err
+	}
+
+	vh, err := hamt.LoadNode(ctx, cst, st.VerifiedClients, hamt.UseTreeBitWidth(5))
+	if err != nil {
+		return nil, err
+	}
+
+	var dcap verifreg.DataCap
+	if err := vh.Find(ctx, string(addr.Bytes()), &dcap); err != nil {
+		if err == hamt.ErrNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &dcap, nil
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"text/tabwriter"
 
@@ -55,6 +56,7 @@ var clientCmd = &cli.Command{
 	Usage: "Make deals, store data, retrieve data",
 	Subcommands: []*cli.Command{
 		clientImportCmd,
+		clientDropCmd,
 		clientCommPCmd,
 		clientLocalCmd,
 		clientDealCmd,
@@ -75,6 +77,11 @@ var clientImportCmd = &cli.Command{
 			Name:  "car",
 			Usage: "import from a car file instead of a regular file",
 		},
+		&cli.BoolFlag{
+			Name:    "quiet",
+			Aliases: []string{"q"},
+			Usage:   "Output root CID only",
+		},
 		&CidBaseFlag,
 	},
 	Action: func(cctx *cli.Context) error {
@@ -84,6 +91,11 @@ var clientImportCmd = &cli.Command{
 		}
 		defer closer()
 		ctx := ReqContext(cctx)
+
+		if cctx.NArg() != 1 {
+			return xerrors.New("expected input path as the only arg")
+		}
+
 		absPath, err := filepath.Abs(cctx.Args().First())
 		if err != nil {
 			return err
@@ -103,7 +115,46 @@ var clientImportCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Println(encoder.Encode(c))
+		if !cctx.Bool("quiet") {
+			fmt.Printf("Import %d, Root ", c.ImportID)
+		}
+		fmt.Println(encoder.Encode(c.Root))
+
+		return nil
+	},
+}
+
+var clientDropCmd = &cli.Command{
+	Name:      "drop",
+	Usage:     "Remove import",
+	ArgsUsage: "[import ID...]",
+	Action: func(cctx *cli.Context) error {
+		if !cctx.Args().Present() {
+			return xerrors.Errorf("no imports specified")
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		var ids []int64
+		for i, s := range cctx.Args().Slice() {
+			id, err := strconv.ParseInt(s, 10, 64)
+			if err != nil {
+				return xerrors.Errorf("parsing %d-th import ID: %w", i, err)
+			}
+
+			ids = append(ids, id)
+		}
+
+		for _, id := range ids {
+			if err := api.ClientRemoveImport(ctx, id); err != nil {
+				return xerrors.Errorf("removing import %d: %w", id, err)
+			}
+		}
 
 		return nil
 	},
@@ -203,8 +254,20 @@ var clientLocalCmd = &cli.Command{
 			return err
 		}
 
+		sort.Slice(list, func(i, j int) bool {
+			return list[i].Key < list[j].Key
+		})
+
 		for _, v := range list {
-			fmt.Printf("%s %s %s %s\n", encoder.Encode(v.Key), v.FilePath, types.SizeStr(types.NewInt(v.Size)), v.Status)
+			cidStr := "<nil>"
+			if v.Root != nil {
+				cidStr = encoder.Encode(*v.Root)
+			}
+
+			fmt.Printf("%d: %s @%s (%s)\n", v.Key, cidStr, v.FilePath, v.Source)
+			if v.Err != "" {
+				fmt.Printf("\terror: %s\n", v.Err)
+			}
 		}
 		return nil
 	},
@@ -231,6 +294,16 @@ var clientDealCmd = &cli.Command{
 			Name:  "start-epoch",
 			Usage: "specify the epoch that the deal should start at",
 			Value: -1,
+		},
+		&cli.BoolFlag{
+			Name:  "fast-retrieval",
+			Usage: "indicates that data should be available for fast retrieval",
+			Value: true,
+		},
+		&cli.BoolFlag{
+			Name:  "verified-deal",
+			Usage: "indicate that the deal counts towards verified client total",
+			Value: false,
 		},
 		&CidBaseFlag,
 	},
@@ -306,6 +379,27 @@ var clientDealCmd = &cli.Command{
 			ref.TransferType = storagemarket.TTManual
 		}
 
+		// Check if the address is a verified client
+		dcap, err := api.StateVerifiedClientStatus(ctx, a, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		isVerified := dcap != nil
+
+		// If the user has explicitly set the --verified-deal flag
+		if cctx.IsSet("verified-deal") {
+			// If --verified-deal is true, but the address is not a verified
+			// client, return an error
+			verifiedDealParam := cctx.Bool("verified-deal")
+			if verifiedDealParam && !isVerified {
+				return xerrors.Errorf("address %s does not have verified client status", a)
+			}
+
+			// Override the default
+			isVerified = verifiedDealParam
+		}
+
 		proposal, err := api.ClientStartDeal(ctx, &lapi.StartDealParams{
 			Data:              ref,
 			Wallet:            a,
@@ -313,6 +407,8 @@ var clientDealCmd = &cli.Command{
 			EpochPrice:        types.BigInt(price),
 			MinBlocksDuration: uint64(dur),
 			DealStartEpoch:    abi.ChainEpoch(cctx.Int64("start-epoch")),
+			FastRetrieval:     cctx.Bool("fast-retrieval"),
+			VerifiedDeal:      isVerified,
 		})
 		if err != nil {
 			return err
@@ -333,6 +429,12 @@ var clientFindCmd = &cli.Command{
 	Name:      "find",
 	Usage:     "find data in the network",
 	ArgsUsage: "[dataCid]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "pieceCid",
+			Usage: "require data to be retrieved from a specific Piece CID",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Args().Present() {
 			fmt.Println("Usage: find [CID]")
@@ -362,7 +464,16 @@ var clientFindCmd = &cli.Command{
 			fmt.Println("LOCAL")
 		}
 
-		offers, err := api.ClientFindData(ctx, file)
+		var pieceCid *cid.Cid
+		if cctx.String("pieceCid") != "" {
+			parsed, err := cid.Parse(cctx.String("pieceCid"))
+			if err != nil {
+				return err
+			}
+			pieceCid = &parsed
+		}
+
+		offers, err := api.ClientFindData(ctx, file, pieceCid)
 		if err != nil {
 			return err
 		}
@@ -378,6 +489,8 @@ var clientFindCmd = &cli.Command{
 		return nil
 	},
 }
+
+const DefaultMaxRetrievePrice = 1
 
 var clientRetrieveCmd = &cli.Command{
 	Name:      "retrieve",
@@ -395,6 +508,14 @@ var clientRetrieveCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:  "miner",
 			Usage: "miner address for retrieval, if not present it'll use local discovery",
+		},
+		&cli.StringFlag{
+			Name:  "maxPrice",
+			Usage: fmt.Sprintf("maximum price the client is willing to consider (default: %d FIL)", DefaultMaxRetrievePrice),
+		},
+		&cli.StringFlag{
+			Name:  "pieceCid",
+			Usage: "require data to be retrieved from a specific Piece CID",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -437,10 +558,24 @@ var clientRetrieveCmd = &cli.Command{
 			return nil
 		}*/ // TODO: fix
 
+		var pieceCid *cid.Cid
+		if cctx.String("pieceCid") != "" {
+			parsed, err := cid.Parse(cctx.String("pieceCid"))
+			if err != nil {
+				return err
+			}
+			pieceCid = &parsed
+		}
+
 		var offer api.QueryOffer
 		minerStrAddr := cctx.String("miner")
 		if minerStrAddr == "" { // Local discovery
-			offers, err := fapi.ClientFindData(ctx, file)
+			offers, err := fapi.ClientFindData(ctx, file, pieceCid)
+
+			// sort by price low to high
+			sort.Slice(offers, func(i, j int) bool {
+				return offers[i].MinPrice.LessThan(offers[j].MinPrice)
+			})
 			if err != nil {
 				return err
 			}
@@ -456,13 +591,28 @@ var clientRetrieveCmd = &cli.Command{
 			if err != nil {
 				return err
 			}
-			offer, err = fapi.ClientMinerQueryOffer(ctx, file, minerAddr)
+			offer, err = fapi.ClientMinerQueryOffer(ctx, minerAddr, file, pieceCid)
 			if err != nil {
 				return err
 			}
 		}
 		if offer.Err != "" {
 			return fmt.Errorf("The received offer errored: %s", offer.Err)
+		}
+
+		maxPrice := types.FromFil(DefaultMaxRetrievePrice)
+
+		if cctx.String("maxPrice") != "" {
+			maxPriceFil, err := types.ParseFIL(cctx.String("maxPrice"))
+			if err != nil {
+				return xerrors.Errorf("parsing maxPrice: %w", err)
+			}
+
+			maxPrice = types.BigInt(maxPriceFil)
+		}
+
+		if offer.MinPrice.GreaterThan(maxPrice) {
+			return xerrors.Errorf("failed to find offer satisfying maxPrice: %s", maxPrice)
 		}
 
 		ref := &lapi.FileRef{

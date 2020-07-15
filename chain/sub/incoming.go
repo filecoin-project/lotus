@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/filecoin-project/lotus/lib/adtutil"
 	"sync"
 	"time"
 
@@ -210,6 +211,12 @@ func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub
 		return pubsub.ValidationReject
 	}
 
+	if blk.Header.ElectionProof.WinCount < 1 {
+		log.Errorf("block is not claiming to be winning")
+		recordFailure("not_winning")
+		return pubsub.ValidationReject
+	}
+
 	// it's a good block! make sure we've only seen it once
 	if bv.recvBlocks.add(blk.Header.Cid()) > 0 {
 		// TODO: once these changes propagate to the network, we can consider
@@ -311,7 +318,12 @@ func (bv *BlockValidator) getMinerWorkerKey(ctx context.Context, msg *types.Bloc
 		return address.Undef, err
 	}
 
-	worker := mst.Info.Worker
+	info, err := mst.GetInfo(adtutil.NewStore(ctx, cst))
+	if err != nil {
+		return address.Undef, err
+	}
+
+	worker := info.Worker
 	key, err = bv.stmgr.ResolveToKeyAddress(ctx, worker, ts)
 	if err != nil {
 		return address.Undef, err

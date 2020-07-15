@@ -44,7 +44,7 @@ var infoCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		maddr, err := nodeApi.ActorAddress(ctx)
+		maddr, err := getActorAddress(ctx, nodeApi, cctx.String("actor"))
 		if err != nil {
 			return err
 		}

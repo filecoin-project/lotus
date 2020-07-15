@@ -3,6 +3,10 @@ package paychmgr
 import (
 	"context"
 
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+
+	"github.com/filecoin-project/specs-actors/actors/builtin/account"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	xerrors "golang.org/x/xerrors"
@@ -20,55 +24,91 @@ func (pm *Manager) loadPaychState(ctx context.Context, ch address.Address) (*typ
 	return act, &pcast, nil
 }
 
-func findLane(states []*paych.LaneState, lane uint64) *paych.LaneState {
-	var ls *paych.LaneState
-	for _, laneState := range states {
-		if uint64(laneState.ID) == lane {
-			ls = laneState
-			break
-		}
+func (pm *Manager) loadStateChannelInfo(ctx context.Context, ch address.Address, dir uint64) (*ChannelInfo, error) {
+	_, st, err := pm.loadPaychState(ctx, ch)
+	if err != nil {
+		return nil, err
 	}
-	return ls
+
+	var account account.State
+	_, err = pm.sm.LoadActorState(ctx, st.From, &account, nil)
+	if err != nil {
+		return nil, err
+	}
+	from := account.Address
+	_, err = pm.sm.LoadActorState(ctx, st.To, &account, nil)
+	if err != nil {
+		return nil, err
+	}
+	to := account.Address
+
+	ci := &ChannelInfo{
+		Channel:   ch,
+		Direction: dir,
+		NextLane:  nextLaneFromState(st),
+	}
+
+	if dir == DirOutbound {
+		ci.Control = from
+		ci.Target = to
+	} else {
+		ci.Control = to
+		ci.Target = from
+	}
+
+	return ci, nil
 }
 
-func (pm *Manager) laneState(ctx context.Context, ch address.Address, lane uint64) (paych.LaneState, error) {
-	_, state, err := pm.loadPaychState(ctx, ch)
-	if err != nil {
-		return paych.LaneState{}, err
+func nextLaneFromState(st *paych.State) uint64 {
+	if len(st.LaneStates) == 0 {
+		return 0
 	}
 
+	maxLane := st.LaneStates[0].ID
+	for _, state := range st.LaneStates {
+		if state.ID > maxLane {
+			maxLane = state.ID
+		}
+	}
+	return maxLane + 1
+}
+
+// laneState gets the LaneStates from chain, then applies all vouchers in
+// the data store over the chain state
+func (pm *Manager) laneState(state *paych.State, ch address.Address) (map[uint64]*paych.LaneState, error) {
 	// TODO: we probably want to call UpdateChannelState with all vouchers to be fully correct
 	//  (but technically dont't need to)
-	// TODO: make sure this is correct
+	laneStates := make(map[uint64]*paych.LaneState, len(state.LaneStates))
 
-	ls := findLane(state.LaneStates, lane)
-	if ls == nil {
-		ls = &paych.LaneState{
-			ID:       lane,
-			Redeemed: types.NewInt(0),
-			Nonce:    0,
-		}
+	// Get the lane state from the chain
+	for _, laneState := range state.LaneStates {
+		laneStates[laneState.ID] = laneState
 	}
 
+	// Apply locally stored vouchers
 	vouchers, err := pm.store.VouchersForPaych(ch)
-	if err != nil {
-		if err == ErrChannelNotTracked {
-			return *ls, nil
-		}
-		return paych.LaneState{}, err
+	if err != nil && err != ErrChannelNotTracked {
+		return nil, err
 	}
 
 	for _, v := range vouchers {
 		for range v.Voucher.Merges {
-			return paych.LaneState{}, xerrors.Errorf("paych merges not handled yet")
+			return nil, xerrors.Errorf("paych merges not handled yet")
 		}
 
-		if v.Voucher.Lane != lane {
-			continue
+		// If there's a voucher for a lane that isn't in chain state just
+		// create it
+		ls, ok := laneStates[v.Voucher.Lane]
+		if !ok {
+			ls = &paych.LaneState{
+				ID:       v.Voucher.Lane,
+				Redeemed: types.NewInt(0),
+				Nonce:    0,
+			}
+			laneStates[v.Voucher.Lane] = ls
 		}
 
 		if v.Voucher.Nonce < ls.Nonce {
-			log.Warnf("Found outdated voucher: ch=%s, lane=%d, v.nonce=%d lane.nonce=%d", ch, lane, v.Voucher.Nonce, ls.Nonce)
 			continue
 		}
 
@@ -76,5 +116,36 @@ func (pm *Manager) laneState(ctx context.Context, ch address.Address, lane uint6
 		ls.Redeemed = v.Voucher.Amount
 	}
 
-	return *ls, nil
+	return laneStates, nil
+}
+
+// Get the total redeemed amount across all lanes, after applying the voucher
+func (pm *Manager) totalRedeemedWithVoucher(laneStates map[uint64]*paych.LaneState, sv *paych.SignedVoucher) (big.Int, error) {
+	// TODO: merges
+	if len(sv.Merges) != 0 {
+		return big.Int{}, xerrors.Errorf("dont currently support paych lane merges")
+	}
+
+	total := big.NewInt(0)
+	for _, ls := range laneStates {
+		total = big.Add(total, ls.Redeemed)
+	}
+
+	lane, ok := laneStates[sv.Lane]
+	if ok {
+		// If the voucher is for an existing lane, and the voucher nonce
+		// and is higher than the lane nonce
+		if sv.Nonce > lane.Nonce {
+			// Add the delta between the redeemed amount and the voucher
+			// amount to the total
+			delta := big.Sub(sv.Amount, lane.Redeemed)
+			total = big.Add(total, delta)
+		}
+	} else {
+		// If the voucher is *not* for an existing lane, just add its
+		// value (implicitly a new lane will be created for the voucher)
+		total = big.Add(total, sv.Amount)
+	}
+
+	return total, nil
 }

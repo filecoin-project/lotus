@@ -1,12 +1,16 @@
 package main
 
 import (
+	"context"
 	"os"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
 	"go.opencensus.io/trace"
+	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
@@ -63,6 +67,12 @@ func main() {
 		EnableBashCompletion: true,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
+				Name:    "actor",
+				Value:   "",
+				Usage:   "specify other actor to check state for (read only)",
+				Aliases: []string{"a"},
+			},
+			&cli.StringFlag{
 				Name:    "repo",
 				EnvVars: []string{"LOTUS_PATH"},
 				Hidden:  true,
@@ -84,4 +94,20 @@ func main() {
 		log.Warnf("%+v", err)
 		os.Exit(1)
 	}
+}
+
+func getActorAddress(ctx context.Context, nodeAPI api.StorageMiner, overrideMaddr string) (maddr address.Address, err error) {
+	if overrideMaddr != "" {
+		maddr, err = address.NewFromString(overrideMaddr)
+		if err != nil {
+			return maddr, err
+		}
+	}
+
+	maddr, err = nodeAPI.ActorAddress(ctx)
+	if err != nil {
+		return maddr, xerrors.Errorf("getting actor address: %w", err)
+	}
+
+	return maddr, nil
 }

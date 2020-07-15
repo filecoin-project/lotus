@@ -28,6 +28,9 @@ var sectorsCmd = &cli.Command{
 		sectorsUpdateCmd,
 		sectorsPledgeCmd,
 		sectorsRemoveCmd,
+		sectorsMarkForUpgradeCmd,
+		sectorsStartSealCmd,
+		sectorsSealDelayCmd,
 	},
 }
 
@@ -240,6 +243,80 @@ var sectorsRemoveCmd = &cli.Command{
 		}
 
 		return nodeApi.SectorRemove(ctx, abi.SectorNumber(id))
+	},
+}
+
+var sectorsMarkForUpgradeCmd = &cli.Command{
+	Name:      "mark-for-upgrade",
+	Usage:     "Mark a committed capacity sector for replacement by a sector with deals",
+	ArgsUsage: "<sectorNum>",
+	Action: func(cctx *cli.Context) error {
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+		if cctx.Args().Len() != 1 {
+			return xerrors.Errorf("must pass sector number")
+		}
+
+		id, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
+		if err != nil {
+			return xerrors.Errorf("could not parse sector number: %w", err)
+		}
+
+		return nodeApi.SectorMarkForUpgrade(ctx, abi.SectorNumber(id))
+	},
+}
+
+var sectorsStartSealCmd = &cli.Command{
+	Name:      "seal",
+	Usage:     "Manually start sealing a sector (filling any unused space with junk)",
+	ArgsUsage: "<sectorNum>",
+	Action: func(cctx *cli.Context) error {
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+		if cctx.Args().Len() != 1 {
+			return xerrors.Errorf("must pass sector number")
+		}
+
+		id, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
+		if err != nil {
+			return xerrors.Errorf("could not parse sector number: %w", err)
+		}
+
+		return nodeApi.SectorStartSealing(ctx, abi.SectorNumber(id))
+	},
+}
+
+var sectorsSealDelayCmd = &cli.Command{
+	Name:      "set-seal-delay",
+	Usage:     "Set the time, in minutes, that a new sector waits for deals before sealing starts",
+	ArgsUsage: "<minutes>",
+	Action: func(cctx *cli.Context) error {
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+		if cctx.Args().Len() != 1 {
+			return xerrors.Errorf("must pass duration in minutes")
+		}
+
+		hs, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
+		if err != nil {
+			return xerrors.Errorf("could not parse sector number: %w", err)
+		}
+
+		delay := hs * uint64(time.Minute)
+
+		return nodeApi.SectorSetSealDelay(ctx, time.Duration(delay))
 	},
 }
 

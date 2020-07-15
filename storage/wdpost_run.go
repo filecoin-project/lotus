@@ -150,16 +150,16 @@ func (s *WindowPoStScheduler) checkNextRecoveries(ctx context.Context, deadline 
 	if err != nil {
 		return xerrors.Errorf("checking unrecovered sectors: %w", err)
 	}
-	
+
 	// if all sectors failed to recover, don't declare recoveries
 	sbfCount, err := sbf.Count()
 	if err != nil {
 		return xerrors.Errorf("counting recovered sectors: %w", err)
 	}
-	
+
 	if sbfCount == 0 {
-	 	log.Warnw("No recoveries to declare", "deadline", deadline, "faulty", uc)
-	 	return nil
+		log.Warnw("No recoveries to declare", "deadline", deadline, "faulty", uc)
+		return nil
 	}
 
 	params := &miner.DeclareFaultsRecoveredParams{
@@ -474,8 +474,8 @@ func (s *WindowPoStScheduler) sortedSectorInfo(ctx context.Context, deadlineSect
 	for k, sector := range sset {
 		sbsi[k] = abi.SectorInfo{
 			SectorNumber: sector.ID,
-			SealedCID:    sector.Info.Info.SealedCID,
-			SealProof:    sector.Info.Info.SealProof,
+			SealedCID:    sector.Info.SealedCID,
+			SealProof:    sector.Info.SealProof,
 		}
 	}
 

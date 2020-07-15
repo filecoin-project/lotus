@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	"github.com/filecoin-project/specs-actors/actors/builtin/cron"
@@ -64,7 +65,12 @@ func GetMinerWorkerRaw(ctx context.Context, sm *StateManager, st cid.Cid, maddr 
 		return address.Undef, xerrors.Errorf("load state tree: %w", err)
 	}
 
-	return vm.ResolveToKeyAddr(state, cst, mas.Info.Worker)
+	info, err := mas.GetInfo(sm.cs.Store(ctx))
+	if err != nil {
+		return address.Address{}, err
+	}
+
+	return vm.ResolveToKeyAddr(state, cst, info.Worker)
 }
 
 func GetPower(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (power.Claim, power.Claim, error) {
@@ -106,7 +112,7 @@ func SectorSetSizes(ctx context.Context, sm *StateManager, maddr address.Address
 		return api.MinerSectors{}, xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
 	}
 
-	notProving, err := abi.BitFieldUnion(mas.Faults, mas.Recoveries)
+	notProving, err := bitfield.MultiMerge(mas.Faults, mas.Recoveries)
 	if err != nil {
 		return api.MinerSectors{}, err
 	}
@@ -187,7 +193,7 @@ func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *S
 		return nil, xerrors.Errorf("failed to load deadlines: %w", err)
 	}
 
-	notProving, err := abi.BitFieldUnion(mas.Faults, mas.Recoveries)
+	notProving, err := bitfield.MultiMerge(mas.Faults, mas.Recoveries)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to union faults and recoveries: %w", err)
 	}
@@ -212,7 +218,12 @@ func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *S
 		return nil, nil
 	}
 
-	spt, err := ffiwrapper.SealProofTypeFromSectorSize(mas.Info.SectorSize)
+	info, err := mas.GetInfo(sm.cs.Store(ctx))
+	if err != nil {
+		return nil, err
+	}
+
+	spt, err := ffiwrapper.SealProofTypeFromSectorSize(info.SectorSize)
 	if err != nil {
 		return nil, xerrors.Errorf("getting seal proof type: %w", err)
 	}
@@ -253,22 +264,22 @@ func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *S
 
 		out[i] = abi.SectorInfo{
 			SealProof:    spt,
-			SectorNumber: sinfo.Info.SectorNumber,
-			SealedCID:    sinfo.Info.SealedCID,
+			SectorNumber: sinfo.SectorNumber,
+			SealedCID:    sinfo.SealedCID,
 		}
 	}
 
 	return out, nil
 }
 
-func StateMinerInfo(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (miner.MinerInfo, error) {
+func StateMinerInfo(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (*miner.MinerInfo, error) {
 	var mas miner.State
 	_, err := sm.LoadActorStateRaw(ctx, maddr, &mas, ts.ParentState())
 	if err != nil {
-		return miner.MinerInfo{}, xerrors.Errorf("(get ssize) failed to load miner actor state: %w", err)
+		return nil, xerrors.Errorf("(get ssize) failed to load miner actor state: %w", err)
 	}
 
-	return mas.Info, nil
+	return mas.GetInfo(sm.cs.Store(ctx))
 }
 
 func GetMinerSlashed(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (bool, error) {
@@ -474,7 +485,7 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 }
 
 func GetProvingSetRaw(ctx context.Context, sm *StateManager, mas miner.State) ([]*api.ChainSectorInfo, error) {
-	notProving, err := abi.BitFieldUnion(mas.Faults, mas.Recoveries)
+	notProving, err := bitfield.MultiMerge(mas.Faults, mas.Recoveries)
 	if err != nil {
 		return nil, err
 	}
@@ -570,7 +581,12 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, bcn beacon.RandomBe
 		return nil, xerrors.Errorf("failed to get power: %w", err)
 	}
 
-	worker, err := sm.ResolveToKeyAddress(ctx, mas.GetWorker(), ts)
+	info, err := mas.GetInfo(sm.cs.Store(ctx))
+	if err != nil {
+		return nil, err
+	}
+
+	worker, err := sm.ResolveToKeyAddress(ctx, info.Worker, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("resolving worker address: %w", err)
 	}
@@ -580,10 +596,35 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, bcn beacon.RandomBe
 		NetworkPower:    tpow.QualityAdjPower,
 		Sectors:         sectors,
 		WorkerKey:       worker,
-		SectorSize:      mas.Info.SectorSize,
+		SectorSize:      info.SectorSize,
 		PrevBeaconEntry: *prev,
 		BeaconEntries:   entries,
 	}, nil
+}
+
+func (sm *StateManager) CirculatingSupply(ctx context.Context, ts *types.TipSet) (abi.TokenAmount, error) {
+	if ts == nil {
+		ts = sm.cs.GetHeaviestTipSet()
+	}
+
+	st, _, err := sm.TipSetState(ctx, ts)
+	if err != nil {
+		return big.Zero(), err
+	}
+
+	r := store.NewChainRand(sm.cs, ts.Cids(), ts.Height())
+	vmi, err := vm.NewVM(st, ts.Height(), r, sm.cs.Blockstore(), sm.cs.VMSys())
+	if err != nil {
+		return big.Zero(), err
+	}
+
+	unsafeVM := &vm.UnsafeVM{VM: vmi}
+	rt := unsafeVM.MakeRuntime(ctx, &types.Message{
+		GasLimit: 1_000_000_000,
+		From:     builtin.SystemActorAddr,
+	}, builtin.SystemActorAddr, 0, 0, 0)
+
+	return rt.TotalFilCircSupply(), nil
 }
 
 type methodMeta struct {

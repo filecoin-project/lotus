@@ -30,7 +30,7 @@ func (bbr BadBlockReason) Linked(reason string, i ...interface{}) BadBlockReason
 	if bbr.OriginalReason != nil {
 		or = bbr.OriginalReason
 	}
-	return BadBlockReason{Reason: reason, OriginalReason: or}
+	return BadBlockReason{Reason: fmt.Sprintf(reason, i...), OriginalReason: or}
 }
 
 func (bbr BadBlockReason) String() string {

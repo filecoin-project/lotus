@@ -7,6 +7,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
@@ -15,9 +16,11 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
+	"github.com/filecoin-project/lotus/api/apibstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/lib/adtutil"
 )
 
 var provingCmd = &cli.Command{
@@ -48,9 +51,9 @@ var provingFaultsCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		maddr, err := nodeApi.ActorAddress(ctx)
+		maddr, err := getActorAddress(ctx, nodeApi, cctx.String("actor"))
 		if err != nil {
-			return xerrors.Errorf("getting actor address: %w", err)
+			return err
 		}
 
 		var mas miner.State
@@ -117,9 +120,9 @@ var provingInfoCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		maddr, err := nodeApi.ActorAddress(ctx)
+		maddr, err := getActorAddress(ctx, nodeApi, cctx.String("actor"))
 		if err != nil {
-			return xerrors.Errorf("getting actor address: %w", err)
+			return err
 		}
 
 		head, err := api.ChainHead(ctx)
@@ -135,11 +138,6 @@ var provingInfoCmd = &cli.Command{
 		deadlines, err := api.StateMinerDeadlines(ctx, maddr, head.Key())
 		if err != nil {
 			return xerrors.Errorf("getting miner deadlines: %w", err)
-		}
-
-		curDeadlineSectors, err := deadlines.Due[cd.Index].Count()
-		if err != nil {
-			return xerrors.Errorf("counting deadline sectors: %w", err)
 		}
 
 		var mas miner.State
@@ -200,7 +198,15 @@ var provingInfoCmd = &cli.Command{
 		fmt.Printf("New Sectors: %d\n\n", newSectors)
 
 		fmt.Printf("Deadline Index:       %d\n", cd.Index)
-		fmt.Printf("Deadline Sectors:     %d\n", curDeadlineSectors)
+
+		if cd.Index < uint64(len(deadlines.Due)) {
+			curDeadlineSectors, err := deadlines.Due[cd.Index].Count()
+			if err != nil {
+				return xerrors.Errorf("counting deadline sectors: %w", err)
+			}
+			fmt.Printf("Deadline Sectors:     %d\n", curDeadlineSectors)
+		}
+
 		fmt.Printf("Deadline Open:        %s\n", epochTime(cd.CurrentEpoch, cd.Open))
 		fmt.Printf("Deadline Close:       %s\n", epochTime(cd.CurrentEpoch, cd.Close))
 		fmt.Printf("Deadline Challenge:   %s\n", epochTime(cd.CurrentEpoch, cd.Challenge))
@@ -240,9 +246,9 @@ var provingDeadlinesCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		maddr, err := nodeApi.ActorAddress(ctx)
+		maddr, err := getActorAddress(ctx, nodeApi, cctx.String("actor"))
 		if err != nil {
-			return xerrors.Errorf("getting actor address: %w", err)
+			return err
 		}
 
 		deadlines, err := api.StateMinerDeadlines(ctx, maddr, types.EmptyTSK)
@@ -256,6 +262,7 @@ var provingDeadlinesCmd = &cli.Command{
 		}
 
 		var mas miner.State
+		var info *miner.MinerInfo
 		{
 			mact, err := api.StateGetActor(ctx, maddr, types.EmptyTSK)
 			if err != nil {
@@ -266,6 +273,11 @@ var provingDeadlinesCmd = &cli.Command{
 				return err
 			}
 			if err := mas.UnmarshalCBOR(bytes.NewReader(rmas)); err != nil {
+				return err
+			}
+
+			info, err = mas.GetInfo(adtutil.NewStore(ctx, cbor.NewCborStore(apibstore.NewAPIBlockstore(api))))
+			if err != nil {
 				return err
 			}
 		}
@@ -279,12 +291,12 @@ var provingDeadlinesCmd = &cli.Command{
 				return err
 			}
 
-			firstPartition, sectorCount, err := miner.PartitionsForDeadline(deadlines, mas.Info.WindowPoStPartitionSectors, uint64(i))
+			firstPartition, sectorCount, err := miner.PartitionsForDeadline(deadlines, info.WindowPoStPartitionSectors, uint64(i))
 			if err != nil {
 				return err
 			}
 
-			partitionCount := (sectorCount + mas.Info.WindowPoStPartitionSectors - 1) / mas.Info.WindowPoStPartitionSectors
+			partitionCount := (sectorCount + info.WindowPoStPartitionSectors - 1) / info.WindowPoStPartitionSectors
 
 			var provenPartitions uint64
 			{

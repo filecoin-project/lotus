@@ -154,6 +154,10 @@ func TestDealMining(t *testing.T, b APIBuilder, blocktime time.Duration, carExpo
 			expect += <-wait
 
 			time.Sleep(blocktime)
+			if expect == 0 {
+				// null block
+				continue
+			}
 
 			for {
 				n := 0
@@ -185,12 +189,12 @@ func TestDealMining(t *testing.T, b APIBuilder, blocktime time.Duration, carExpo
 		}
 	}()
 
-	deal := startDeal(t, ctx, provider, client, fcid)
+	deal := startDeal(t, ctx, provider, client, fcid, false)
 
 	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
 	time.Sleep(time.Second)
 
-	waitDealSealed(t, ctx, client, deal)
+	waitDealSealed(t, ctx, provider, client, deal)
 
 	<-minedTwo
 

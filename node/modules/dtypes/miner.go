@@ -1,10 +1,10 @@
 package dtypes
 
 import (
-	"github.com/ipfs/go-cid"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/ipfs/go-cid"
+	"time"
 )
 
 type MinerAddress address.Address
@@ -50,3 +50,9 @@ type ConsiderOfflineRetrievalDealsConfigFunc func() (bool, error)
 // SetConsiderOfflineRetrievalDealsConfigFunc is a function which is used to
 // disable or enable retrieval deal acceptance.
 type SetConsiderOfflineRetrievalDealsConfigFunc func(bool) error
+
+// SetSealingDelay sets how long a sector waits for more deals before sealing begins.
+type SetSealingDelayFunc func(time.Duration) error
+
+// GetSealingDelay returns how long a sector waits for more deals before sealing begins.
+type GetSealingDelayFunc func() (time.Duration, error)

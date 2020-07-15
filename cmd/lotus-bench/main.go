@@ -612,7 +612,7 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, par
 					if !skipunseal {
 						log.Infof("[%d] Unsealing sector", i)
 						{
-							p, done, err := sbfs.AcquireSector(context.TODO(), abi.SectorID{Miner: mid, Number: 1}, stores.FTUnsealed, stores.FTNone, true)
+							p, done, err := sbfs.AcquireSector(context.TODO(), abi.SectorID{Miner: mid, Number: 1}, stores.FTUnsealed, stores.FTNone, stores.PathSealing)
 							if err != nil {
 								return xerrors.Errorf("acquire unsealed sector for removing: %w", err)
 							}

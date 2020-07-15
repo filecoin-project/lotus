@@ -93,7 +93,6 @@ func (e *heightEvents) headChangeAt(rev, app []*types.TipSet) error {
 				if hnd.called {
 					return nil
 				}
-				hnd.called = true
 
 				triggerH := h - abi.ChainEpoch(hnd.confidence)
 
@@ -108,6 +107,7 @@ func (e *heightEvents) headChangeAt(rev, app []*types.TipSet) error {
 				e.lk.Unlock()
 				err = handle(ctx, incTs, h)
 				e.lk.Lock()
+				hnd.called = true
 				span.End()
 
 				if err != nil {

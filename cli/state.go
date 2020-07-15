@@ -234,7 +234,7 @@ var stateSectorsCmd = &cli.Command{
 		}
 
 		for _, s := range sectors {
-			fmt.Printf("%d: %x\n", s.Info.Info.SectorNumber, s.Info.Info.SealedCID)
+			fmt.Printf("%d: %x\n", s.Info.SectorNumber, s.Info.SealedCID)
 		}
 
 		return nil
@@ -274,7 +274,7 @@ var stateProvingSetCmd = &cli.Command{
 		}
 
 		for _, s := range sectors {
-			fmt.Printf("%d: %x\n", s.Info.Info.SectorNumber, s.Info.Info.SealedCID)
+			fmt.Printf("%d: %x\n", s.Info.SectorNumber, s.Info.SealedCID)
 		}
 
 		return nil
@@ -337,7 +337,11 @@ var stateReplaySetCmd = &cli.Command{
 					return xerrors.Errorf("finding message in chain: %w", err)
 				}
 
-				ts, err = fapi.ChainGetTipSet(ctx, r.TipSet.Parents())
+				childTs, err := fapi.ChainGetTipSet(ctx, r.TipSet)
+				if err != nil {
+					return xerrors.Errorf("loading tipset: %w", err)
+				}
+				ts, err = fapi.ChainGetTipSet(ctx, childTs.Parents())
 			}
 			if err != nil {
 				return err

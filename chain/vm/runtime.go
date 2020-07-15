@@ -366,7 +366,7 @@ func (rt *Runtime) Send(to address.Address, method abi.MethodNum, m vmr.CBORMars
 			panic(err)
 		}
 		log.Warnf("vmctx send failed: to: %s, method: %d: ret: %d, err: %s", to, method, ret, err)
-		return nil, err.RetCode()
+		return &dumbWrapperType{nil}, err.RetCode()
 	}
 	_ = rt.chargeGasSafe(gasOnActorExec)
 	return &dumbWrapperType{ret}, 0
@@ -577,4 +577,17 @@ func (rt *Runtime) abortIfAlreadyValidated() {
 		rt.Abortf(exitcode.SysErrorIllegalActor, "Method must validate caller identity exactly once")
 	}
 	rt.callerValidated = true
+}
+
+func (rt *Runtime) Log(level vmr.LogLevel, msg string, args ...interface{}) {
+	switch level {
+	case vmr.DEBUG:
+		actorLog.Debugf(msg, args)
+	case vmr.INFO:
+		actorLog.Infof(msg, args)
+	case vmr.WARN:
+		actorLog.Warnf(msg, args)
+	case vmr.ERROR:
+		actorLog.Errorf(msg, args)
+	}
 }

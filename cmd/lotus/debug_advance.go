@@ -3,6 +3,9 @@
 package main
 
 import (
+	"encoding/binary"
+	"time"
+
 	"github.com/filecoin-project/go-address"
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -68,11 +71,21 @@ func init() {
 
 			}
 			// TODO: beacon
+			ep := &types.ElectionProof{}
+			ep.WinCount = ep.ComputeWinCount(types.NewInt(1), types.NewInt(1))
+			for ep.WinCount == 0 {
+				fakeVrf := make([]byte, 8)
+				unixNow := uint64(time.Now().UnixNano())
+				binary.LittleEndian.PutUint64(fakeVrf, unixNow)
+
+				ep.VRFProof = fakeVrf
+				ep.WinCount = ep.ComputeWinCount(types.NewInt(1), types.NewInt(1))
+			}
 
 			uts := head.MinTimestamp() + uint64(build.BlockDelaySecs)
 			nheight := head.Height() + 1
 			blk, err := api.MinerCreateBlock(ctx, &lapi.BlockTemplate{
-				addr, head.Key(), ticket, &types.ElectionProof{}, nil, msgs, nheight, uts, gen.ValidWpostForTesting,
+				addr, head.Key(), ticket, ep, nil, msgs, nheight, uts, gen.ValidWpostForTesting,
 			})
 			if err != nil {
 				return xerrors.Errorf("creating block: %w", err)
