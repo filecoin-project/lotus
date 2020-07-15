@@ -632,7 +632,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) (er
 	defer span.End()
 
 	if build.InsecurePoStValidation {
-		log.Warn("insecure test validation is enabled, if you see this outside of a test, it is a severe bug!")
+		log.Warn("[INSECURE-POST-VALIDATION] if you see this outside of a test, it is a severe bug!")
 	}
 
 	if err := blockSanityChecks(b.Header); err != nil {
@@ -863,13 +863,13 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) (er
 func (syncer *Syncer) VerifyWinningPoStProof(ctx context.Context, h *types.BlockHeader, prevBeacon types.BeaconEntry, lbst cid.Cid, waddr address.Address) error {
 	if build.InsecurePoStValidation {
 		if len(h.WinPoStProof) == 0 {
-			return xerrors.Errorf("[TESTING] No winning post proof given")
+			return xerrors.Errorf("[INSECURE-POST-VALIDATION] No winning post proof given")
 		}
 
 		if string(h.WinPoStProof[0].ProofBytes) == "valid proof" {
 			return nil
 		}
-		return xerrors.Errorf("[TESTING] winning post was invalid")
+		return xerrors.Errorf("[INSECURE-POST-VALIDATION] winning post was invalid")
 	}
 
 	buf := new(bytes.Buffer)

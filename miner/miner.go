@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	address "github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
@@ -592,6 +592,14 @@ func SelectMessages(ctx context.Context, al ActorLookup, ts *types.TipSet, msgs 
 
 	gasLimitLeft := int64(build.BlockGasLimit)
 
+	orderedSenders := make([]address.Address, 0, len(outBySender))
+	for k := range outBySender {
+		orderedSenders = append(orderedSenders, k)
+	}
+	sort.Slice(orderedSenders, func(i, j int) bool {
+		return bytes.Compare(orderedSenders[i].Bytes(), orderedSenders[j].Bytes()) == -1
+	})
+
 	out := make([]*types.SignedMessage, 0, build.BlockMessageLimit)
 	{
 		for {
@@ -600,7 +608,11 @@ func SelectMessages(ctx context.Context, al ActorLookup, ts *types.TipSet, msgs 
 			var bestGasToReward float64
 
 			// TODO: This is O(n^2)-ish, could use something like container/heap to cache this math
-			for sender, meta := range outBySender {
+			for _, sender := range orderedSenders {
+				meta, ok := outBySender[sender]
+				if !ok {
+					continue
+				}
 				for n := range meta.msgs {
 					if meta.gasLimit[n] > gasLimitLeft {
 						break
