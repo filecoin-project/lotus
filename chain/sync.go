@@ -950,13 +950,22 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 		return xerrors.Errorf("failed to load base state tree: %w", err)
 	}
 
+	pl := vm.PricelistByEpoch(baseTs.Height())
+	var sumGasLimit int64
 	checkMsg := func(msg types.ChainMsg) error {
 		m := msg.VMMessage()
 
 		// Phase 1: syntactic validation, as defined in the spec
-		minGas := vm.PricelistByEpoch(baseTs.Height()).OnChainMessage(msg.ChainLength())
+		minGas := pl.OnChainMessage(msg.ChainLength())
 		if err := m.ValidForBlockInclusion(minGas.Total()); err != nil {
 			return err
+		}
+
+		// ValidForBlockInclusion checks if any single message does not exceed BlockGasLimit
+		// So below is overflow safe
+		sumGasLimit += m.GasLimit
+		if sumGasLimit > build.BlockGasLimit {
+			return xerrors.Errorf("block gas limit exceeded")
 		}
 
 		// Phase 2: (Partial) semantic validation:
