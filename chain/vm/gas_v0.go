@@ -121,7 +121,7 @@ func (pl *pricelistV0) OnMethodInvocation(value abi.TokenAmount, methodNum abi.M
 }
 
 // OnIpldGet returns the gas used for storing an object
-func (pl *pricelistV0) OnIpldGet(dataSize int) GasCharge {
+func (pl *pricelistV0) OnIpldGet() GasCharge {
 	return newGasCharge("OnIpldGet", pl.ipldGetBase, 0)
 }
 

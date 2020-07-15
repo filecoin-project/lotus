@@ -71,12 +71,12 @@ type gasChargingBlocks struct {
 }
 
 func (bs *gasChargingBlocks) Get(c cid.Cid) (block.Block, error) {
-	bs.chargeGas(newGasCharge("OnIpldGetStart", 0, 0))
+	bs.chargeGas(bs.pricelist.OnIpldGet())
 	blk, err := bs.under.Get(c)
 	if err != nil {
 		return nil, aerrors.Escalate(err, "failed to get block from blockstore")
 	}
-	bs.chargeGas(bs.pricelist.OnIpldGet(len(blk.RawData())))
+	bs.chargeGas(newGasCharge("OnIpldGetEnd", 0, 0).WithExtra(len(blk.RawData())))
 	bs.chargeGas(gasOnActorExec)
 
 	return blk, nil

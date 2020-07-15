@@ -65,7 +65,7 @@ type Pricelist interface {
 	OnMethodInvocation(value abi.TokenAmount, methodNum abi.MethodNum) GasCharge
 
 	// OnIpldGet returns the gas used for storing an object
-	OnIpldGet(dataSize int) GasCharge
+	OnIpldGet() GasCharge
 	// OnIpldPut returns the gas used for storing an object
 	OnIpldPut(dataSize int) GasCharge
 

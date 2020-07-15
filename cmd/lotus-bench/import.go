@@ -405,16 +405,19 @@ func getExtras(ex interface{}) (*string, *float64) {
 func tallyGasCharges(charges map[string]*stats, et types.ExecutionTrace) {
 	for i, gc := range et.GasCharges {
 		name := gc.Name
-		if name == "OnIpldGetStart" {
+		if name == "OnIpldGetEnd" {
 			continue
 		}
 		tt := float64(gc.TimeTaken.Nanoseconds())
 		if name == "OnIpldGet" {
-			prev := et.GasCharges[i-1]
-			if prev.Name != "OnIpldGetStart" {
-				log.Warn("OnIpldGet without OnIpldGetStart")
+			next := &types.GasTrace{}
+			if i+1 < len(et.GasCharges) {
+				next = et.GasCharges[i+1]
 			}
-			tt += float64(prev.TimeTaken.Nanoseconds())
+			if next.Name != "OnIpldGetEnd" {
+				log.Warn("OnIpldGet without OnIpldGetEnd")
+			}
+			tt += float64(next.TimeTaken.Nanoseconds())
 		}
 		eType, eSize := getExtras(gc.Extra)
 		if eType != nil {
