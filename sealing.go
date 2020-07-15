@@ -29,7 +29,7 @@ const SectorStorePrefix = "/sectors"
 var log = logging.Logger("sectors")
 
 type SectorLocation struct {
-	Deadline uint64
+	Deadline  uint64
 	Partition uint64
 }
 
