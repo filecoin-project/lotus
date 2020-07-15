@@ -44,7 +44,7 @@ func TestMessageFiltering(t *testing.T) {
 			To:       a1,
 			Nonce:    3,
 			Value:    types.NewInt(500),
-			GasLimit: 50,
+			GasLimit: 100_000_000,
 			GasPrice: types.NewInt(1),
 		},
 		{
@@ -52,7 +52,7 @@ func TestMessageFiltering(t *testing.T) {
 			To:       a1,
 			Nonce:    4,
 			Value:    types.NewInt(500),
-			GasLimit: 50,
+			GasLimit: 100_000_000,
 			GasPrice: types.NewInt(1),
 		},
 		{
@@ -60,7 +60,7 @@ func TestMessageFiltering(t *testing.T) {
 			To:       a1,
 			Nonce:    1,
 			Value:    types.NewInt(800),
-			GasLimit: 100,
+			GasLimit: 100_000_000,
 			GasPrice: types.NewInt(1),
 		},
 		{
@@ -68,7 +68,7 @@ func TestMessageFiltering(t *testing.T) {
 			To:       a1,
 			Nonce:    0,
 			Value:    types.NewInt(800),
-			GasLimit: 100,
+			GasLimit: 100_000_000,
 			GasPrice: types.NewInt(1),
 		},
 		{
