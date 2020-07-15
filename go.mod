@@ -12,8 +12,8 @@ require (
 	github.com/coreos/go-systemd/v22 v22.0.0
 	github.com/dgraph-io/badger/v2 v2.0.3
 	github.com/docker/go-units v0.4.0
-	github.com/drand/drand v0.9.2-0.20200616080806-a94e9c1636a4
-	github.com/drand/kyber v1.1.0
+	github.com/drand/drand v1.0.3-0.20200714175734-29705eaf09d4
+	github.com/drand/kyber v1.1.1
 	github.com/fatih/color v1.8.0
 	github.com/filecoin-project/chain-validation v0.0.6-0.20200713102302-1bc823b1e01d
 	github.com/filecoin-project/filecoin-ffi v0.26.1-0.20200508175440-05b30afeb00d
