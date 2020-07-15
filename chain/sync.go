@@ -620,7 +620,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) (er
 		return nil
 	}
 
-	validationStart := time.Now()
+	validationStart := build.Clock.Now()
 	defer func() {
 		dur := time.Since(validationStart)
 		durMilli := dur.Seconds() * float64(1000)
@@ -665,12 +665,12 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) (er
 
 	// fast checks first
 
-	now := uint64(time.Now().Unix())
+	now := uint64(build.Clock.Now().Unix())
 	if h.Timestamp > now+build.AllowableClockDriftSecs {
 		return xerrors.Errorf("block was from the future (now=%d, blk=%d): %w", now, h.Timestamp, ErrTemporal)
 	}
 	if h.Timestamp > now {
-		log.Warn("Got block from the future, but within threshold", h.Timestamp, time.Now().Unix())
+		log.Warn("Got block from the future, but within threshold", h.Timestamp, build.Clock.Now().Unix())
 	}
 
 	if h.Timestamp < baseTs.MinTimestamp()+(build.BlockDelaySecs*uint64(h.Height-baseTs.Height())) {
@@ -1535,6 +1535,6 @@ func (syncer *Syncer) IsEpochBeyondCurrMax(epoch abi.ChainEpoch) bool {
 		return false
 	}
 
-	now := uint64(time.Now().Unix())
+	now := uint64(build.Clock.Now().Unix())
 	return epoch > (abi.ChainEpoch((now-g.Timestamp)/build.BlockDelaySecs) + MaxHeightDrift)
 }

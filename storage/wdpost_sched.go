@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -85,7 +86,7 @@ func (s *WindowPoStScheduler) Run(ctx context.Context) {
 			if err != nil {
 				log.Errorf("ChainNotify error: %+v")
 
-				time.Sleep(10 * time.Second)
+				build.Clock.Sleep(10 * time.Second)
 				continue
 			}
 

@@ -23,12 +23,15 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+
+	"github.com/raulk/clock"
 )
 
 var log = logging.Logger("messagepool")
@@ -66,7 +69,7 @@ type MessagePool struct {
 	lk sync.Mutex
 
 	closer  chan struct{}
-	repubTk *time.Ticker
+	repubTk *clock.Ticker
 
 	localAddrs map[address.Address]struct{}
 
@@ -187,7 +190,7 @@ func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName) (*Messa
 
 	mp := &MessagePool{
 		closer:        make(chan struct{}),
-		repubTk:       time.NewTicker(time.Duration(build.BlockDelaySecs) * 10 * time.Second),
+		repubTk:       build.Clock.Ticker(time.Duration(build.BlockDelaySecs) * 10 * time.Second),
 		localAddrs:    make(map[address.Address]struct{}),
 		pending:       make(map[address.Address]*msgSet),
 		minGasPrice:   types.NewInt(0),

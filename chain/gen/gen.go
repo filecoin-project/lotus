@@ -196,7 +196,7 @@ func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
 			*genm2,
 		},
 		NetworkName: "",
-		Timestamp:   uint64(time.Now().Add(-500 * time.Duration(build.BlockDelaySecs) * time.Second).Unix()),
+		Timestamp:   uint64(build.Clock.Now().Add(-500 * time.Duration(build.BlockDelaySecs) * time.Second).Unix()),
 	}
 
 	genb, err := genesis2.MakeGenesisBlock(context.TODO(), bs, sys, tpl)

@@ -7,7 +7,6 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"time"
 
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
@@ -20,6 +19,7 @@ import (
 
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/gen"
 	genesis2 "github.com/filecoin-project/lotus/chain/gen/genesis"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -71,7 +71,7 @@ func MakeGenesis(outFile, genesisTemplate string) func(bs dtypes.ChainBlockstore
 			}
 
 			if template.Timestamp == 0 {
-				template.Timestamp = uint64(time.Now().Unix())
+				template.Timestamp = uint64(build.Clock.Now().Unix())
 			}
 
 			b, err := genesis2.MakeGenesisBlock(context.TODO(), bs, syscalls, template)
