@@ -63,6 +63,8 @@ func (a *PaychAPI) PaychNewPayment(ctx context.Context, from, to address.Address
 
 	for i, v := range vouchers {
 		sv, err := a.paychVoucherCreate(ctx, ch.Channel, paych.SignedVoucher{
+			ChannelAddr: ch.Channel,
+
 			Amount: v.Amount,
 			Lane:   uint64(lane),
 
@@ -161,7 +163,7 @@ func (a *PaychAPI) PaychVoucherAdd(ctx context.Context, ch address.Address, sv *
 // actual additional value of this voucher will only be the difference between
 // the two.
 func (a *PaychAPI) PaychVoucherCreate(ctx context.Context, pch address.Address, amt types.BigInt, lane uint64) (*paych.SignedVoucher, error) {
-	return a.paychVoucherCreate(ctx, pch, paych.SignedVoucher{Amount: amt, Lane: lane})
+	return a.paychVoucherCreate(ctx, pch, paych.SignedVoucher{ChannelAddr: pch, Amount: amt, Lane: lane})
 }
 
 func (a *PaychAPI) paychVoucherCreate(ctx context.Context, pch address.Address, voucher paych.SignedVoucher) (*paych.SignedVoucher, error) {

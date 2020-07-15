@@ -325,7 +325,7 @@ func TestCheckVoucherValid(t *testing.T) {
 			err := mgr.TrackInboundChannel(ctx, ch)
 			require.NoError(t, err)
 
-			sv := testCreateVoucher(t, tcase.voucherLane, tcase.voucherNonce, tcase.voucherAmount, tcase.key)
+			sv := testCreateVoucher(t, ch, tcase.voucherLane, tcase.voucherNonce, tcase.voucherAmount, tcase.key)
 
 			err = mgr.CheckVoucherValid(ctx, ch, sv)
 			if tcase.expectError {
@@ -405,7 +405,7 @@ func TestCheckVoucherValidCountingAllLanes(t *testing.T) {
 	voucherLane := uint64(1)
 	voucherNonce := uint64(2)
 	voucherAmount := big.NewInt(6)
-	sv := testCreateVoucher(t, voucherLane, voucherNonce, voucherAmount, fromKeyPrivate)
+	sv := testCreateVoucher(t, ch, voucherLane, voucherNonce, voucherAmount, fromKeyPrivate)
 	err = mgr.CheckVoucherValid(ctx, ch, sv)
 	require.Error(t, err)
 
@@ -423,7 +423,7 @@ func TestCheckVoucherValidCountingAllLanes(t *testing.T) {
 	// actor balance is 10 so total is ok.
 	//
 	voucherAmount = big.NewInt(4)
-	sv = testCreateVoucher(t, voucherLane, voucherNonce, voucherAmount, fromKeyPrivate)
+	sv = testCreateVoucher(t, ch, voucherLane, voucherNonce, voucherAmount, fromKeyPrivate)
 	err = mgr.CheckVoucherValid(ctx, ch, sv)
 	require.NoError(t, err)
 
@@ -447,7 +447,7 @@ func TestCheckVoucherValidCountingAllLanes(t *testing.T) {
 	//
 	voucherNonce++
 	voucherAmount = big.NewInt(6)
-	sv = testCreateVoucher(t, voucherLane, voucherNonce, voucherAmount, fromKeyPrivate)
+	sv = testCreateVoucher(t, ch, voucherLane, voucherNonce, voucherAmount, fromKeyPrivate)
 	err = mgr.CheckVoucherValid(ctx, ch, sv)
 	require.Error(t, err)
 
@@ -465,7 +465,7 @@ func TestCheckVoucherValidCountingAllLanes(t *testing.T) {
 	// actor balance is 10 so total is ok.
 	//
 	voucherAmount = big.NewInt(5)
-	sv = testCreateVoucher(t, voucherLane, voucherNonce, voucherAmount, fromKeyPrivate)
+	sv = testCreateVoucher(t, ch, voucherLane, voucherNonce, voucherAmount, fromKeyPrivate)
 	err = mgr.CheckVoucherValid(ctx, ch, sv)
 	require.NoError(t, err)
 }
@@ -482,14 +482,14 @@ func TestAddVoucherDelta(t *testing.T) {
 	minDelta := big.NewInt(2)
 	nonce := uint64(1)
 	voucherAmount := big.NewInt(1)
-	sv := testCreateVoucher(t, voucherLane, nonce, voucherAmount, fromKeyPrivate)
+	sv := testCreateVoucher(t, ch, voucherLane, nonce, voucherAmount, fromKeyPrivate)
 	_, err := mgr.AddVoucher(ctx, ch, sv, nil, minDelta)
 	require.Error(t, err)
 
 	// Expect success when adding a voucher whose amount is equal to minDelta
 	nonce++
 	voucherAmount = big.NewInt(2)
-	sv = testCreateVoucher(t, voucherLane, nonce, voucherAmount, fromKeyPrivate)
+	sv = testCreateVoucher(t, ch, voucherLane, nonce, voucherAmount, fromKeyPrivate)
 	delta, err := mgr.AddVoucher(ctx, ch, sv, nil, minDelta)
 	require.NoError(t, err)
 	require.EqualValues(t, delta.Int64(), 2)
@@ -497,7 +497,7 @@ func TestAddVoucherDelta(t *testing.T) {
 	// Check that delta is correct when there's an existing voucher
 	nonce++
 	voucherAmount = big.NewInt(5)
-	sv = testCreateVoucher(t, voucherLane, nonce, voucherAmount, fromKeyPrivate)
+	sv = testCreateVoucher(t, ch, voucherLane, nonce, voucherAmount, fromKeyPrivate)
 	delta, err = mgr.AddVoucher(ctx, ch, sv, nil, minDelta)
 	require.NoError(t, err)
 	require.EqualValues(t, delta.Int64(), 3)
@@ -506,7 +506,7 @@ func TestAddVoucherDelta(t *testing.T) {
 	nonce = uint64(1)
 	voucherAmount = big.NewInt(6)
 	voucherLane = uint64(2)
-	sv = testCreateVoucher(t, voucherLane, nonce, voucherAmount, fromKeyPrivate)
+	sv = testCreateVoucher(t, ch, voucherLane, nonce, voucherAmount, fromKeyPrivate)
 	delta, err = mgr.AddVoucher(ctx, ch, sv, nil, minDelta)
 	require.NoError(t, err)
 	require.EqualValues(t, delta.Int64(), 6)
@@ -524,7 +524,7 @@ func TestAddVoucherNextLane(t *testing.T) {
 	// Add a voucher in lane 2
 	nonce := uint64(1)
 	voucherLane := uint64(2)
-	sv := testCreateVoucher(t, voucherLane, nonce, voucherAmount, fromKeyPrivate)
+	sv := testCreateVoucher(t, ch, voucherLane, nonce, voucherAmount, fromKeyPrivate)
 	_, err := mgr.AddVoucher(ctx, ch, sv, nil, minDelta)
 	require.NoError(t, err)
 
@@ -534,7 +534,7 @@ func TestAddVoucherNextLane(t *testing.T) {
 
 	// Add a voucher in lane 1
 	voucherLane = uint64(1)
-	sv = testCreateVoucher(t, voucherLane, nonce, voucherAmount, fromKeyPrivate)
+	sv = testCreateVoucher(t, ch, voucherLane, nonce, voucherAmount, fromKeyPrivate)
 	_, err = mgr.AddVoucher(ctx, ch, sv, nil, minDelta)
 	require.NoError(t, err)
 
@@ -544,7 +544,7 @@ func TestAddVoucherNextLane(t *testing.T) {
 
 	// Add a voucher in lane 5
 	voucherLane = uint64(5)
-	sv = testCreateVoucher(t, voucherLane, nonce, voucherAmount, fromKeyPrivate)
+	sv = testCreateVoucher(t, ch, voucherLane, nonce, voucherAmount, fromKeyPrivate)
 	_, err = mgr.AddVoucher(ctx, ch, sv, nil, minDelta)
 	require.NoError(t, err)
 
@@ -567,7 +567,7 @@ func TestAddVoucherProof(t *testing.T) {
 
 	// Add a voucher with no proof
 	var proof []byte
-	sv := testCreateVoucher(t, voucherLane, nonce, voucherAmount, fromKeyPrivate)
+	sv := testCreateVoucher(t, ch, voucherLane, nonce, voucherAmount, fromKeyPrivate)
 	_, err := mgr.AddVoucher(ctx, ch, sv, nil, minDelta)
 	require.NoError(t, err)
 
@@ -639,14 +639,14 @@ func TestNextNonceForLane(t *testing.T) {
 	voucherLane := uint64(1)
 	for _, nonce := range []uint64{2, 4} {
 		voucherAmount = big.Add(voucherAmount, big.NewInt(1))
-		sv := testCreateVoucher(t, voucherLane, nonce, voucherAmount, key)
+		sv := testCreateVoucher(t, ch, voucherLane, nonce, voucherAmount, key)
 		_, err := mgr.AddVoucher(ctx, ch, sv, nil, minDelta)
 		require.NoError(t, err)
 	}
 
 	voucherLane = uint64(2)
 	nonce := uint64(7)
-	sv := testCreateVoucher(t, voucherLane, nonce, voucherAmount, key)
+	sv := testCreateVoucher(t, ch, voucherLane, nonce, voucherAmount, key)
 	_, err = mgr.AddVoucher(ctx, ch, sv, nil, minDelta)
 	require.NoError(t, err)
 
@@ -704,8 +704,9 @@ func testGenerateKeyPair(t *testing.T) ([]byte, []byte) {
 	return priv, pub
 }
 
-func testCreateVoucher(t *testing.T, voucherLane uint64, nonce uint64, voucherAmount big.Int, key []byte) *paych.SignedVoucher {
+func testCreateVoucher(t *testing.T, ch address.Address, voucherLane uint64, nonce uint64, voucherAmount big.Int, key []byte) *paych.SignedVoucher {
 	sv := &paych.SignedVoucher{
+		ChannelAddr: ch,
 		Lane:   voucherLane,
 		Nonce:  nonce,
 		Amount: voucherAmount,

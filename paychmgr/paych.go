@@ -102,6 +102,10 @@ func (pm *Manager) CheckVoucherValid(ctx context.Context, ch address.Address, sv
 }
 
 func (pm *Manager) checkVoucherValid(ctx context.Context, ch address.Address, sv *paych.SignedVoucher) (map[uint64]*paych.LaneState, error) {
+	if sv.ChannelAddr != ch {
+		return nil, xerrors.Errorf("voucher ChannelAddr doesn't match channel address, got %s, expected %s", sv.ChannelAddr, ch)
+	}
+
 	act, pchState, err := pm.loadPaychState(ctx, ch)
 	if err != nil {
 		return nil, err
