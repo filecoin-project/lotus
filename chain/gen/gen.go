@@ -468,7 +468,7 @@ func getRandomMessages(cg *ChainGen) ([]*types.SignedMessage, error) {
 
 			Method: 0,
 
-			GasLimit: 10000,
+			GasLimit: 100_000_000,
 			GasPrice: types.NewInt(0),
 		}
 

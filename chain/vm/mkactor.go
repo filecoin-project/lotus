@@ -30,6 +30,10 @@ var EmptyObjectCid cid.Cid
 
 // TryCreateAccountActor creates account actors from only BLS/SECP256K1 addresses.
 func TryCreateAccountActor(rt *Runtime, addr address.Address) (*types.Actor, aerrors.ActorError) {
+	if err := rt.chargeGasSafe(PricelistByEpoch(rt.height).OnCreateActor()); err != nil {
+		return nil, err
+	}
+
 	addrID, err := rt.state.RegisterNewAddress(addr)
 	if err != nil {
 		return nil, aerrors.Escalate(err, "registering actor address")
@@ -49,10 +53,6 @@ func TryCreateAccountActor(rt *Runtime, addr address.Address) (*types.Actor, aer
 		return nil, aerrors.Escalate(err, "couldn't serialize params for actor construction")
 	}
 	// call constructor on account
-
-	if err := rt.chargeGasSafe(PricelistByEpoch(rt.height).OnCreateActor()); err != nil {
-		return nil, err
-	}
 
 	_, aerr = rt.internalSend(builtin.SystemActorAddr, addrID, builtin.MethodsAccount.Constructor, big.Zero(), p)
 	if aerr != nil {

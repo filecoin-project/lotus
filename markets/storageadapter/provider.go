@@ -78,7 +78,7 @@ func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemark
 		From:     mi.Worker,
 		Value:    types.NewInt(0),
 		GasPrice: types.NewInt(0),
-		GasLimit: 1000000,
+		GasLimit: 600_000_000,
 		Method:   builtin.MethodsMarket.PublishStorageDeals,
 		Params:   params,
 	})
@@ -175,7 +175,7 @@ func (n *ProviderNodeAdapter) AddFunds(ctx context.Context, addr address.Address
 		From:     addr,
 		Value:    amount,
 		GasPrice: types.NewInt(0),
-		GasLimit: 1000000,
+		GasLimit: 200_000_000,
 		Method:   builtin.MethodsMarket.AddBalance,
 	})
 	if err != nil {
