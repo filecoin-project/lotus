@@ -51,5 +51,6 @@ var PieceComms = [Levels - Skip][32]byte{
 
 func ZeroPieceCommitment(sz abi.UnpaddedPieceSize) cid.Cid {
 	level := bits.TrailingZeros64(uint64(sz.Padded())) - Skip - 5 // 2^5 = 32
-	return commcid.PieceCommitmentV1ToCID(PieceComms[level][:])
+	commP, _ := commcid.PieceCommitmentV1ToCID(PieceComms[level][:])
+	return commP
 }

@@ -5,16 +5,16 @@ go 1.13
 require (
 	github.com/detailyang/go-fallocate v0.0.0-20180908115635-432fa640bd2e
 	github.com/elastic/go-sysinfo v1.3.0
-	github.com/filecoin-project/filecoin-ffi v0.0.0-20200326153646-e899cc1dd072
+	github.com/filecoin-project/filecoin-ffi v0.30.4-0.20200716204036-cddc56607e1d
 	github.com/filecoin-project/go-bitfield v0.0.4-0.20200703174658-f4a5758051a1
-	github.com/filecoin-project/go-fil-commcid v0.0.0-20200208005934-2b8bd03caca5
+	github.com/filecoin-project/go-fil-commcid v0.0.0-20200716160307-8f644712406f
 	github.com/filecoin-project/go-paramfetch v0.0.1
 	github.com/filecoin-project/specs-actors v0.6.1
 	github.com/filecoin-project/specs-storage v0.1.1-0.20200622113353-88a9704877ea
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/mux v1.7.4
 	github.com/hashicorp/go-multierror v1.0.0
-	github.com/ipfs/go-cid v0.0.5
+	github.com/ipfs/go-cid v0.0.6
 	github.com/ipfs/go-ipfs-files v0.0.7
 	github.com/ipfs/go-log v1.0.3
 	github.com/ipfs/go-log/v2 v2.0.3
