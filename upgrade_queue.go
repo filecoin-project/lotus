@@ -1,6 +1,8 @@
 package sealing
 
 import (
+	"context"
+
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -41,11 +43,19 @@ func (m *Sealing) MarkForUpgrade(id abi.SectorNumber) error {
 	return nil
 }
 
-func (m *Sealing) tryUpgradeSector(params *miner.SectorPreCommitInfo) big.Int {
+func (m *Sealing) tryUpgradeSector(ctx context.Context, params *miner.SectorPreCommitInfo) big.Int {
 	replace := m.maybeUpgradableSector()
 	if replace != nil {
+		loc, err := m.api.StateSectorPartition(ctx, m.maddr, *replace, nil)
+		if err != nil {
+			log.Errorf("error calling StateSectorPartition for replaced sector: %+v", err)
+			return big.Zero()
+		}
+
 		params.ReplaceCapacity = true
-		params.ReplaceSector = *replace
+		params.ReplaceSectorNumber = *replace
+		params.ReplaceSectorDeadline = loc.Deadline
+		params.ReplaceSectorPartition = loc.Partition
 
 		ri, err := m.GetSectorInfo(*replace)
 		if err != nil {
