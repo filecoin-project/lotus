@@ -126,7 +126,7 @@ func (a *StateAPI) StateMinerProvingDeadline(ctx context.Context, addr address.A
 		return nil, xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
 	}
 
-	return miner.ComputeProvingPeriodDeadline(mas.ProvingPeriodStart, ts.Height()), nil
+	return mas.DeadlineInfo(ts.Height()).NextNotElapsed(), nil
 }
 
 func (a *StateAPI) StateMinerFaults(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.BitField, error) {
