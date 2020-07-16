@@ -12,6 +12,7 @@ import (
 	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
+	"github.com/filecoin-project/sector-storage/fsutil"
 	"github.com/filecoin-project/sector-storage/storiface"
 )
 
@@ -212,6 +213,28 @@ func (pf *partialFile) MarkAllocated(offset storiface.PaddedByteIndex, size abi.
 	}
 
 	if err := writeTrailer(int64(pf.maxPiece), pf.file, ored); err != nil {
+		return xerrors.Errorf("writing trailer: %w", err)
+	}
+
+	return nil
+}
+
+func (pf *partialFile) Free(offset storiface.PaddedByteIndex, size abi.PaddedPieceSize) error {
+	have, err := pf.allocated.RunIterator()
+	if err != nil {
+		return err
+	}
+
+	if err := fsutil.Deallocate(pf.file, int64(offset), int64(size)); err != nil {
+		return xerrors.Errorf("deallocating: %w", err)
+	}
+
+	s, err := rlepluslazy.Subtract(have, pieceRun(offset, size))
+	if err != nil {
+		return err
+	}
+
+	if err := writeTrailer(int64(pf.maxPiece), pf.file, s); err != nil {
 		return xerrors.Errorf("writing trailer: %w", err)
 	}
 
