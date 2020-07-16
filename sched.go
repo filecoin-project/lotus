@@ -69,6 +69,7 @@ type scheduler struct {
 	openWindows []*schedWindowRequest
 
 	closing chan struct{}
+	testSync chan struct{} // used for testing
 }
 
 type workerHandle struct {
@@ -195,6 +196,9 @@ func (sh *scheduler) runSched() {
 			heap.Push(sh.schedQueue, req)
 			sh.trySched()
 
+			if sh.testSync != nil {
+				sh.testSync <- struct{}{}
+			}
 		case req := <-sh.windowRequests:
 			sh.openWindows = append(sh.openWindows, req)
 			sh.trySched()
@@ -225,6 +229,8 @@ func (sh *scheduler) trySched() {
 
 	windows := make([]schedWindow, len(sh.openWindows))
 	acceptableWindows := make([][]int, sh.schedQueue.Len())
+
+	log.Debugf("trySched %d queued; %d open windows", sh.schedQueue.Len(), len(windows))
 
 	// Step 1
 	for sqi := 0; sqi < sh.schedQueue.Len(); sqi++ {
@@ -295,10 +301,14 @@ func (sh *scheduler) trySched() {
 			wid := sh.openWindows[wnd].worker
 			wr := sh.workers[wid].info.Resources
 
+			log.Debugf("trySched try assign sqi:%d sector %d to window %d", sqi, task.sector.Number, wnd)
+
 			// TODO: allow bigger windows
 			if !windows[wnd].allocated.canHandleRequest(needRes, wid, wr) {
 				continue
 			}
+
+			log.Debugf("trySched ASSIGNED sqi:%d sector %d to window %d", sqi, task.sector.Number, wnd)
 
 			windows[wnd].allocated.add(wr, needRes)
 
@@ -419,6 +429,7 @@ func (sh *scheduler) runWorker(wid WorkerID) {
 						break assignLoop
 					}
 
+					log.Debugf("assign worker sector %d", todo.sector.Number)
 					err := sh.assignWorker(taskDone, wid, worker, todo)
 					sh.workersLk.Unlock()
 
