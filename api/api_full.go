@@ -269,7 +269,11 @@ type FullNode interface {
 	// StateSectorPreCommitInfo returns the PreCommit info for the specified miner's sector
 	StateSectorPreCommitInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error)
 	// StateSectorGetInfo returns the on-chain info for the specified miner's sector
+	// NOTE: returned info.Expiration may not be accurate in some cases, use StateSectorExpiration to get accurate
+	// expiration epoch
 	StateSectorGetInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*miner.SectorOnChainInfo, error)
+	// StateSectorExpiration returns epoch at which given sector will expire
+	StateSectorExpiration(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*SectorExpiration, error)
 	// StateSectorPartition finds deadline/partition with the specified sector
 	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok types.TipSetKey) (*SectorLocation, error)
 	StatePledgeCollateral(context.Context, types.TipSetKey) (types.BigInt, error)
@@ -360,6 +364,14 @@ type FileRef struct {
 type MinerSectors struct {
 	Sset uint64
 	Pset uint64
+}
+
+type SectorExpiration struct {
+	OnTime abi.ChainEpoch
+
+	// non-zero if sector is faulty, epoch at which it will it will be
+	// permanently removed if it doesn't recover
+	Early abi.ChainEpoch
 }
 
 type SectorLocation struct {

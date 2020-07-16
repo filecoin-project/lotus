@@ -654,13 +654,13 @@ func (a *StateAPI) StateSectorGetInfo(ctx context.Context, maddr address.Address
 	return stmgr.MinerSectorInfo(ctx, a.StateManager, maddr, n, ts)
 }
 
-func (a *StateAPI) StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*api.SectorLocation, error) {
-	var found *api.SectorLocation
+type sectorPartitionCb func(store adt.Store, mas *miner.State, di uint64, pi uint64, part *miner.Partition) error
 
-	err := a.StateManager.WithParentStateTsk(tsk,
+func (a *StateAPI) sectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey, cb sectorPartitionCb) error {
+	return a.StateManager.WithParentStateTsk(tsk,
 		a.StateManager.WithActor(maddr,
-			a.StateManager.WithActorState(ctx,
-				a.StateManager.WithDeadlines(func(store adt.Store, deadlines *miner.Deadlines) error {
+			a.StateManager.WithActorState(ctx, func(store adt.Store, mas *miner.State) error {
+				return a.StateManager.WithDeadlines(func(store adt.Store, deadlines *miner.Deadlines) error {
 					err := a.StateManager.WithEachDeadline(func(store adt.Store, di uint64, deadline *miner.Deadline) error {
 						return a.StateManager.WithEachPartition(func(store adt.Store, pi uint64, partition *miner.Partition) error {
 							set, err := partition.Sectors.IsSet(uint64(sectorNumber))
@@ -668,10 +668,10 @@ func (a *StateAPI) StateSectorPartition(ctx context.Context, maddr address.Addre
 								return xerrors.Errorf("is set: %w", err)
 							}
 							if set {
-								found = &api.SectorLocation{
-									Deadline:  di,
-									Partition: pi,
+								if err := cb(store, mas, di, pi, partition); err != nil {
+									return err
 								}
+
 								return errBreakForeach
 							}
 							return nil
@@ -681,7 +681,65 @@ func (a *StateAPI) StateSectorPartition(ctx context.Context, maddr address.Addre
 						err = nil
 					}
 					return err
-				}))))
+				})(store, mas)
+			})))
+}
+
+func (a *StateAPI) StateSectorExpiration(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*api.SectorExpiration, error) {
+	var onTimeEpoch, earlyEpoch abi.ChainEpoch
+
+	err := a.sectorPartition(ctx, maddr, sectorNumber, tsk, func(store adt.Store, mas *miner.State, di uint64, pi uint64, part *miner.Partition) error {
+		quant := mas.QuantEndOfDeadline()
+		expirations, err := miner.LoadExpirationQueue(store, part.ExpirationsEpochs, quant)
+		if err != nil {
+			return xerrors.Errorf("loading expiration queue: %w", err)
+		}
+
+		var eset miner.ExpirationSet
+		return expirations.Array.ForEach(&eset, func(epoch int64) error {
+			set, err := eset.OnTimeSectors.IsSet(uint64(sectorNumber))
+			if err != nil {
+				return xerrors.Errorf("checking if sector is in onTime set: %w", err)
+			}
+			if set {
+				onTimeEpoch = abi.ChainEpoch(epoch)
+			}
+
+			set, err = eset.EarlySectors.IsSet(uint64(sectorNumber))
+			if err != nil {
+				return xerrors.Errorf("checking if sector is in early set: %w", err)
+			}
+			if set {
+				earlyEpoch = abi.ChainEpoch(epoch)
+			}
+
+			return nil
+		})
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if onTimeEpoch == 0 {
+		return nil, xerrors.Errorf("expiration for sector %d not found", sectorNumber)
+	}
+
+	return &api.SectorExpiration{
+		OnTime: onTimeEpoch,
+		Early:  earlyEpoch,
+	}, nil
+}
+
+func (a *StateAPI) StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*api.SectorLocation, error) {
+	var found *api.SectorLocation
+
+	err := a.sectorPartition(ctx, maddr, sectorNumber, tsk, func(store adt.Store, mas *miner.State, di, pi uint64, partition *miner.Partition) error {
+		found = &api.SectorLocation{
+			Deadline:  di,
+			Partition: pi,
+		}
+		return errBreakForeach
+	})
 	if err != nil {
 		return nil, err
 	}
