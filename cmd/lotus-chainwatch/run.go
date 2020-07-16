@@ -2,8 +2,9 @@ package main
 
 import (
 	"database/sql"
-	_ "github.com/lib/pq"
 	"os"
+
+	_ "github.com/lib/pq"
 
 	lcli "github.com/filecoin-project/lotus/cli"
 	logging "github.com/ipfs/go-log/v2"
@@ -18,10 +19,6 @@ var runCmd = &cli.Command{
 	Name:  "run",
 	Usage: "Start lotus chainwatch",
 	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:  "front",
-			Value: "127.0.0.1:8418",
-		},
 		&cli.IntFlag{
 			Name:  "max-batch",
 			Value: 1000,
