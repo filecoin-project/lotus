@@ -20,7 +20,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
@@ -587,7 +586,7 @@ func copyRec(from, to blockstore.Blockstore, root cid.Cid, cp func(block.Block) 
 	}
 
 	for _, link := range links {
-		if link.Prefix().MhType == mh.IDENTITY || link.Prefix().MhType == uint64(commcid.FC_SEALED_V1) || link.Prefix().MhType == uint64(commcid.FC_UNSEALED_V1) {
+		if link.Prefix().MhType == mh.IDENTITY || link.Prefix().Codec == cid.FilCommitmentSealed || link.Prefix().Codec == cid.FilCommitmentUnsealed {
 			continue
 		}
 
