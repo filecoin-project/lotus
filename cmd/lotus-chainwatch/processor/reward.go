@@ -89,7 +89,7 @@ func (p *Processor) HandleRewardChanges(ctx context.Context, rewardTips ActorTip
 func (p *Processor) processRewardActors(ctx context.Context, rewardTips ActorTips) ([]rewardActorInfo, error) {
 	start := time.Now()
 	defer func() {
-		log.Infow("Processed Reward Actors", "duration", time.Since(start).String())
+		log.Debugw("Processed Reward Actors", "duration", time.Since(start).String())
 	}()
 
 	var out []rewardActorInfo
@@ -125,7 +125,7 @@ func (p *Processor) processRewardActors(ctx context.Context, rewardTips ActorTip
 func (p *Processor) persistRewardActors(ctx context.Context, rewards []rewardActorInfo) error {
 	start := time.Now()
 	defer func() {
-		log.Infow("Persisted Reward Actors", "duration", time.Since(start).String())
+		log.Debugw("Persisted Reward Actors", "duration", time.Since(start).String())
 	}()
 
 	if err := p.storeChainPower(rewards); err != nil {

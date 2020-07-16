@@ -128,7 +128,7 @@ func (p *Processor) HandleCommonActorsChanges(ctx context.Context, actors map[ci
 func (p Processor) storeActorAddresses(ctx context.Context, actors map[cid.Cid]ActorTips) error {
 	start := time.Now()
 	defer func() {
-		log.Infow("Stored Actor Addresses", "duration", time.Since(start).String())
+		log.Debugw("Stored Actor Addresses", "duration", time.Since(start).String())
 	}()
 
 	addressToID := map[address.Address]address.Address{}
@@ -217,7 +217,7 @@ create temp table iam (like id_address_map excluding constraints) on commit drop
 func (p *Processor) storeActorHeads(actors map[cid.Cid]ActorTips) error {
 	start := time.Now()
 	defer func() {
-		log.Infow("Stored Actor Heads", "duration", time.Since(start).String())
+		log.Debugw("Stored Actor Heads", "duration", time.Since(start).String())
 	}()
 	// Basic
 	tx, err := p.db.Begin()
@@ -259,7 +259,7 @@ func (p *Processor) storeActorHeads(actors map[cid.Cid]ActorTips) error {
 func (p *Processor) storeActorStates(actors map[cid.Cid]ActorTips) error {
 	start := time.Now()
 	defer func() {
-		log.Infow("Stored Actor States", "duration", time.Since(start).String())
+		log.Debugw("Stored Actor States", "duration", time.Since(start).String())
 	}()
 	// States
 	tx, err := p.db.Begin()
