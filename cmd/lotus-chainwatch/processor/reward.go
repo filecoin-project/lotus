@@ -64,7 +64,10 @@ create materialized view if not exists top_miners_by_base_reward as
 		miner,
 		total_reward
 	from total_rewards_by_miner
-	group by 2, 3
+	group by 2, 3;
+
+create index if not exists top_miners_by_base_reward_miner_index
+	on top_miners_by_base_reward (miner);
 `); err != nil {
 		return err
 	}
