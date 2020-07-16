@@ -2,6 +2,7 @@ package full
 
 import (
 	"context"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
@@ -135,6 +136,33 @@ func (a *MsigAPI) MsigPropose(ctx context.Context, msig address.Address, to addr
 	return smsg.Cid(), nil
 }
 
+func (a *MsigAPI) MsigSwapPropose(ctx context.Context, msig address.Address, src address.Address, oldAdd address.Address, newAdd address.Address) (cid.Cid, error) {
+	enc, actErr := serializeSwapParams(oldAdd, newAdd)
+	if actErr != nil {
+		return cid.Undef, actErr
+	}
+
+	return a.MsigPropose(ctx, msig, msig, big.Zero(), src, uint64(builtin.MethodsMultisig.SwapSigner), enc)
+}
+
+func (a *MsigAPI) MsigSwapApprove(ctx context.Context, msig address.Address, src address.Address, txID uint64, proposer address.Address, oldAdd address.Address, newAdd address.Address) (cid.Cid, error) {
+	enc, actErr := serializeSwapParams(oldAdd, newAdd)
+	if actErr != nil {
+		return cid.Undef, actErr
+	}
+
+	return a.MsigApprove(ctx, msig, txID, proposer, msig, big.Zero(), src, uint64(builtin.MethodsMultisig.SwapSigner), enc)
+}
+
+func (a *MsigAPI) MsigSwapCancel(ctx context.Context, msig address.Address, src address.Address, txID uint64, oldAdd address.Address, newAdd address.Address) (cid.Cid, error) {
+	enc, actErr := serializeSwapParams(oldAdd, newAdd)
+	if actErr != nil {
+		return cid.Undef, actErr
+	}
+
+	return a.MsigCancel(ctx, msig, txID, msig, big.Zero(), src, uint64(builtin.MethodsMultisig.SwapSigner), enc)
+}
+
 func (a *MsigAPI) MsigApprove(ctx context.Context, msig address.Address, txID uint64, proposer address.Address, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (cid.Cid, error) {
 	return a.msigApproveOrCancel(ctx, api.MsigApprove, msig, txID, proposer, to, amt, src, method, params)
 }
@@ -222,4 +250,16 @@ func (a *MsigAPI) msigApproveOrCancel(ctx context.Context, operation api.MsigPro
 	}
 
 	return smsg.Cid(), nil
+}
+
+func serializeSwapParams(old address.Address, new address.Address) ([]byte, error) {
+	enc, actErr := actors.SerializeParams(&samsig.SwapSignerParams{
+		From: old,
+		To:   new,
+	})
+	if actErr != nil {
+		return nil, actErr
+	}
+
+	return enc, nil
 }

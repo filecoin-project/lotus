@@ -14,7 +14,7 @@ var sendCmd = &cli.Command{
 	ArgsUsage: "[targetAddress] [amount]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:  "source",
+			Name:  "from",
 			Usage: "optionally specify the account to send funds from",
 		},
 		&cli.StringFlag{
@@ -52,7 +52,7 @@ var sendCmd = &cli.Command{
 		}
 
 		var fromAddr address.Address
-		if from := cctx.String("source"); from == "" {
+		if from := cctx.String("from"); from == "" {
 			defaddr, err := api.WalletDefaultAddress(ctx)
 			if err != nil {
 				return err
