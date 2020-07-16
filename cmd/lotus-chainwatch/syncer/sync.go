@@ -120,10 +120,10 @@ create unique index if not exists block_cid_uindex
 create materialized view if not exists state_heights
     as select distinct height, parentstateroot from blocks;
 
-create index if not exists state_heights_index
+create index if not exists state_heights_height_index
 	on state_heights (height);
 
-create index if not exists state_heights_height_index
+create index if not exists state_heights_parentstateroot_index
 	on state_heights (parentstateroot);
 `); err != nil {
 		return err
