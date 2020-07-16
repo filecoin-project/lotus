@@ -11,7 +11,6 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/go-amt-ipld/v2"
-	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
@@ -206,7 +205,7 @@ func (a *ChainAPI) ChainStatObj(ctx context.Context, obj cid.Cid, base cid.Cid) 
 	var collect = true
 
 	walker := func(ctx context.Context, c cid.Cid) ([]*ipld.Link, error) {
-		if c.Prefix().MhType == uint64(commcid.FC_SEALED_V1) || c.Prefix().MhType == uint64(commcid.FC_UNSEALED_V1) {
+		if c.Prefix().Codec == cid.FilCommitmentSealed || c.Prefix().Codec == cid.FilCommitmentUnsealed {
 			return []*ipld.Link{}, nil
 		}
 
