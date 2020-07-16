@@ -102,6 +102,12 @@ func (p *Processor) Start(ctx context.Context) {
 					log.Fatalw("Failed to get unprocessed blocks", "error", err)
 				}
 
+				if len(toProcess) == 0 {
+					log.Debugw("No unprocessed blocks. Wait then try again...")
+					time.Sleep(time.Second * 10)
+					continue
+				}
+
 				// TODO special case genesis state handling here to avoid all the special cases that will be needed for it else where
 				// before doing "normal" processing.
 
