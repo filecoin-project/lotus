@@ -707,9 +707,9 @@ func testGenerateKeyPair(t *testing.T) ([]byte, []byte) {
 func testCreateVoucher(t *testing.T, ch address.Address, voucherLane uint64, nonce uint64, voucherAmount big.Int, key []byte) *paych.SignedVoucher {
 	sv := &paych.SignedVoucher{
 		ChannelAddr: ch,
-		Lane:   voucherLane,
-		Nonce:  nonce,
-		Amount: voucherAmount,
+		Lane:        voucherLane,
+		Nonce:       nonce,
+		Amount:      voucherAmount,
 	}
 
 	signingBytes, err := sv.SigningBytes()

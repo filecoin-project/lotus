@@ -140,7 +140,7 @@ type FullNodeStruct struct {
 		StateMinerAvailableBalance        func(context.Context, address.Address, types.TipSetKey) (types.BigInt, error)                                       `perm:"read"`
 		StateSectorPreCommitInfo          func(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error) `perm:"read"`
 		StateSectorGetInfo                func(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*miner.SectorOnChainInfo, error)         `perm:"read"`
-		StateSectorExpiration func(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*api.SectorExpiration, error)     `perm:"read"`
+		StateSectorExpiration             func(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*api.SectorExpiration, error)            `perm:"read"`
 		StateSectorPartition              func(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*api.SectorLocation, error)              `perm:"read"`
 		StateCall                         func(context.Context, *types.Message, types.TipSetKey) (*api.InvocResult, error)                                    `perm:"read"`
 		StateReplay                       func(context.Context, types.TipSetKey, cid.Cid) (*api.InvocResult, error)                                           `perm:"read"`
