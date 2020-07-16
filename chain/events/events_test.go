@@ -1004,8 +1004,6 @@ func TestRemoveTriggersOnMessage(t *testing.T) {
 		return false, true, nil
 	}, func(msg *types.Message, rec *types.MessageReceipt, ts *types.TipSet, curH abi.ChainEpoch) (bool, error) {
 		require.Equal(t, false, applied)
-		fmt.Println(msg == nil)
-		fmt.Println(curH)
 		applied = true
 		return more, nil
 	}, func(_ context.Context, ts *types.TipSet) error {
@@ -1066,4 +1064,251 @@ func TestRemoveTriggersOnMessage(t *testing.T) {
 
 	require.Equal(t, true, applied)
 	require.Equal(t, false, reverted)
+}
+
+type testStateChange struct {
+	from string
+	to   string
+}
+
+func TestStateChanged(t *testing.T) {
+	fcs := &fakeCS{
+		t: t,
+		h: 1,
+
+		msgs:    map[cid.Cid]fakeMsg{},
+		blkMsgs: map[cid.Cid]cid.Cid{},
+		tsc:     newTSCache(2*build.ForkLengthThreshold, nil),
+	}
+	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, nil, 1, dummyCid)))
+
+	events := NewEvents(context.Background(), fcs)
+
+	more := true
+	var applied, reverted bool
+	var appliedData StateChange
+	var appliedOldTs *types.TipSet
+	var appliedNewTs *types.TipSet
+	var appliedH abi.ChainEpoch
+	var matchData StateChange
+
+	confidence := 3
+	timeout := abi.ChainEpoch(20)
+
+	err := events.StateChanged(func(ts *types.TipSet) (d bool, m bool, e error) {
+		return false, true, nil
+	}, func(oldTs, newTs *types.TipSet, data StateChange, curH abi.ChainEpoch) (bool, error) {
+		require.Equal(t, false, applied)
+		applied = true
+		appliedData = data
+		appliedOldTs = oldTs
+		appliedNewTs = newTs
+		appliedH = curH
+		return more, nil
+	}, func(_ context.Context, ts *types.TipSet) error {
+		reverted = true
+		return nil
+	}, confidence, timeout, func(oldTs, newTs *types.TipSet) (bool, StateChange, error) {
+		if matchData == nil {
+			return false, matchData, nil
+		}
+
+		d := matchData
+		matchData = nil
+		return true, d, nil
+	})
+	require.NoError(t, err)
+
+	// create few blocks to make sure nothing get's randomly called
+
+	fcs.advance(0, 4, nil) // H=5
+	require.Equal(t, false, applied)
+	require.Equal(t, false, reverted)
+
+	// create state change (but below confidence threshold)
+	matchData = testStateChange{from: "a", to: "b"}
+	fcs.advance(0, 3, nil)
+
+	require.Equal(t, false, applied)
+	require.Equal(t, false, reverted)
+
+	// create additional block so we are above confidence threshold
+
+	fcs.advance(0, 2, nil) // H=10 (confidence=3, apply)
+
+	require.Equal(t, true, applied)
+	require.Equal(t, false, reverted)
+	applied = false
+
+	// dip below confidence (should not apply again)
+	fcs.advance(2, 2, nil) // H=10 (confidence=3, apply)
+
+	require.Equal(t, false, applied)
+	require.Equal(t, false, reverted)
+
+	// Change happens from 5 -> 6
+	require.Equal(t, abi.ChainEpoch(5), appliedOldTs.Height())
+	require.Equal(t, abi.ChainEpoch(6), appliedNewTs.Height())
+
+	// Actually applied (with confidence) at 9
+	require.Equal(t, abi.ChainEpoch(9), appliedH)
+
+	// Make sure the state change was correctly passed through
+	rcvd := appliedData.(testStateChange)
+	require.Equal(t, "a", rcvd.from)
+	require.Equal(t, "b", rcvd.to)
+}
+
+func TestStateChangedRevert(t *testing.T) {
+	fcs := &fakeCS{
+		t: t,
+		h: 1,
+
+		msgs:    map[cid.Cid]fakeMsg{},
+		blkMsgs: map[cid.Cid]cid.Cid{},
+		tsc:     newTSCache(2*build.ForkLengthThreshold, nil),
+	}
+	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, nil, 1, dummyCid)))
+
+	events := NewEvents(context.Background(), fcs)
+
+	more := true
+	var applied, reverted bool
+	var matchData StateChange
+
+	confidence := 1
+	timeout := abi.ChainEpoch(20)
+
+	err := events.StateChanged(func(ts *types.TipSet) (d bool, m bool, e error) {
+		return false, true, nil
+	}, func(oldTs, newTs *types.TipSet, data StateChange, curH abi.ChainEpoch) (bool, error) {
+		require.Equal(t, false, applied)
+		applied = true
+		return more, nil
+	}, func(_ context.Context, ts *types.TipSet) error {
+		reverted = true
+		return nil
+	}, confidence, timeout, func(oldTs, newTs *types.TipSet) (bool, StateChange, error) {
+		if matchData == nil {
+			return false, matchData, nil
+		}
+
+		d := matchData
+		matchData = nil
+		return true, d, nil
+	})
+	require.NoError(t, err)
+
+	fcs.advance(0, 2, nil) // H=3
+
+	// Make a state change from TS at height 3 to TS at height 4
+	matchData = testStateChange{from: "a", to: "b"}
+	fcs.advance(0, 1, nil) // H=4
+
+	// Haven't yet reached confidence
+	require.Equal(t, false, applied)
+	require.Equal(t, false, reverted)
+
+	// Advance to reach confidence level
+	fcs.advance(0, 1, nil) // H=5
+
+	// Should now have called the handler
+	require.Equal(t, true, applied)
+	require.Equal(t, false, reverted)
+	applied = false
+
+	// Advance 3 more TS
+	fcs.advance(0, 3, nil) // H=8
+
+	require.Equal(t, false, applied)
+	require.Equal(t, false, reverted)
+
+	// Regress but not so far as to cause a revert
+	fcs.advance(3, 1, nil) // H=6
+
+	require.Equal(t, false, applied)
+	require.Equal(t, false, reverted)
+
+	// Regress back to state where change happened
+	fcs.advance(3, 1, nil) // H=4
+
+	// Expect revert to have happened
+	require.Equal(t, false, applied)
+	require.Equal(t, true, reverted)
+}
+
+func TestStateChangedTimeout(t *testing.T) {
+	fcs := &fakeCS{
+		t: t,
+		h: 1,
+
+		msgs:    map[cid.Cid]fakeMsg{},
+		blkMsgs: map[cid.Cid]cid.Cid{},
+		tsc:     newTSCache(2*build.ForkLengthThreshold, nil),
+	}
+	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, nil, 1, dummyCid)))
+
+	events := NewEvents(context.Background(), fcs)
+
+	called := false
+
+	err := events.StateChanged(func(ts *types.TipSet) (d bool, m bool, e error) {
+		return false, true, nil
+	}, func(oldTs, newTs *types.TipSet, data StateChange, curH abi.ChainEpoch) (bool, error) {
+		called = true
+		require.Nil(t, data)
+		require.Equal(t, abi.ChainEpoch(20), newTs.Height())
+		require.Equal(t, abi.ChainEpoch(23), curH)
+		return false, nil
+	}, func(_ context.Context, ts *types.TipSet) error {
+		t.Fatal("revert on timeout")
+		return nil
+	}, 3, 20, func(oldTs, newTs *types.TipSet) (bool, StateChange, error) {
+		return false, nil, nil
+	})
+
+	require.NoError(t, err)
+
+	fcs.advance(0, 21, nil)
+	require.False(t, called)
+
+	fcs.advance(0, 5, nil)
+	require.True(t, called)
+	called = false
+
+	// with check func reporting done
+
+	fcs = &fakeCS{
+		t: t,
+		h: 1,
+
+		msgs:    map[cid.Cid]fakeMsg{},
+		blkMsgs: map[cid.Cid]cid.Cid{},
+		tsc:     newTSCache(2*build.ForkLengthThreshold, nil),
+	}
+	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, nil, 1, dummyCid)))
+
+	events = NewEvents(context.Background(), fcs)
+
+	err = events.StateChanged(func(ts *types.TipSet) (d bool, m bool, e error) {
+		return true, true, nil
+	}, func(oldTs, newTs *types.TipSet, data StateChange, curH abi.ChainEpoch) (bool, error) {
+		called = true
+		require.Nil(t, data)
+		require.Equal(t, abi.ChainEpoch(20), newTs.Height())
+		require.Equal(t, abi.ChainEpoch(23), curH)
+		return false, nil
+	}, func(_ context.Context, ts *types.TipSet) error {
+		t.Fatal("revert on timeout")
+		return nil
+	}, 3, 20, func(oldTs, newTs *types.TipSet) (bool, StateChange, error) {
+		return false, nil, nil
+	})
+	require.NoError(t, err)
+
+	fcs.advance(0, 21, nil)
+	require.False(t, called)
+
+	fcs.advance(0, 5, nil)
+	require.False(t, called)
 }

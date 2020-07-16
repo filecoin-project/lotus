@@ -150,6 +150,17 @@ func (s *WindowPoStScheduler) checkNextRecoveries(ctx context.Context, deadline 
 	if err != nil {
 		return xerrors.Errorf("checking unrecovered sectors: %w", err)
 	}
+	
+	// if all sectors failed to recover, don't declare recoveries
+	sbfCount, err := sbf.Count()
+	if err != nil {
+		return xerrors.Errorf("counting recovered sectors: %w", err)
+	}
+	
+	if sbfCount == 0 {
+	 	log.Warnw("No recoveries to declare", "deadline", deadline, "faulty", uc)
+	 	return nil
+	}
 
 	params := &miner.DeclareFaultsRecoveredParams{
 		Recoveries: []miner.RecoveryDeclaration{{Deadline: deadline, Sectors: sbf}},
@@ -383,17 +394,14 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 		return nil, xerrors.Errorf("get need prove sectors: %w", err)
 	}
 
-	var skipped *abi.BitField
-	{
-		good, err := s.checkSectors(ctx, nps)
-		if err != nil {
-			return nil, xerrors.Errorf("checking sectors to skip: %w", err)
-		}
+	good, err := s.checkSectors(ctx, nps)
+	if err != nil {
+		return nil, xerrors.Errorf("checking sectors to skip: %w", err)
+	}
 
-		skipped, err = bitfield.SubtractBitField(nps, good)
-		if err != nil {
-			return nil, xerrors.Errorf("nps - good: %w", err)
-		}
+	skipped, err := bitfield.SubtractBitField(nps, good)
+	if err != nil {
+		return nil, xerrors.Errorf("nps - good: %w", err)
 	}
 
 	skipCount, err := skipped.Count()
@@ -401,7 +409,7 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 		return nil, xerrors.Errorf("getting skipped sector count: %w", err)
 	}
 
-	ssi, err := s.sortedSectorInfo(ctx, nps, ts)
+	ssi, err := s.sortedSectorInfo(ctx, good, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("getting sorted sector info: %w", err)
 	}

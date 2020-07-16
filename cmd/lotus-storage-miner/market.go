@@ -50,33 +50,100 @@ func GetCidEncoder(cctx *cli.Context) (cidenc.Encoder, error) {
 	return e, nil
 }
 
-var enableCmd = &cli.Command{
-	Name:  "enable",
-	Usage: "Configure the miner to consider storage deal proposals",
-	Flags: []cli.Flag{},
-	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetStorageMinerAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer closer()
-
-		return api.DealsSetAcceptingStorageDeals(lcli.DaemonContext(cctx), true)
+var storageDealSelectionCmd = &cli.Command{
+	Name:  "selection",
+	Usage: "Configure acceptance criteria for storage deal proposals",
+	Subcommands: []*cli.Command{
+		storageDealSelectionShowCmd,
+		storageDealSelectionResetCmd,
+		storageDealSelectionRejectCmd,
 	},
 }
 
-var disableCmd = &cli.Command{
-	Name:  "disable",
-	Usage: "Configure the miner to reject all storage deal proposals",
-	Flags: []cli.Flag{},
+var storageDealSelectionShowCmd = &cli.Command{
+	Name:  "list",
+	Usage: "List storage deal proposal selection criteria",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		smapi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		return api.DealsSetAcceptingStorageDeals(lcli.DaemonContext(cctx), false)
+		onlineOk, err := smapi.DealsConsiderOnlineStorageDeals(lcli.DaemonContext(cctx))
+		if err != nil {
+			return err
+		}
+
+		offlineOk, err := smapi.DealsConsiderOfflineStorageDeals(lcli.DaemonContext(cctx))
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("considering online storage deals: %t\n", onlineOk)
+		fmt.Printf("considering offline storage deals: %t\n", offlineOk)
+
+		return nil
+	},
+}
+
+var storageDealSelectionResetCmd = &cli.Command{
+	Name:  "reset",
+	Usage: "Reset storage deal proposal selection criteria to default values",
+	Action: func(cctx *cli.Context) error {
+		smapi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		err = smapi.DealsSetConsiderOnlineStorageDeals(lcli.DaemonContext(cctx), true)
+		if err != nil {
+			return err
+		}
+
+		err = smapi.DealsSetConsiderOfflineStorageDeals(lcli.DaemonContext(cctx), true)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	},
+}
+
+var storageDealSelectionRejectCmd = &cli.Command{
+	Name:  "reject",
+	Usage: "Configure criteria which necessitate automatic rejection",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name: "online",
+		},
+		&cli.BoolFlag{
+			Name: "offline",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		smapi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		if cctx.Bool("online") {
+			err = smapi.DealsSetConsiderOnlineStorageDeals(lcli.DaemonContext(cctx), false)
+			if err != nil {
+				return err
+			}
+		}
+
+		if cctx.Bool("offline") {
+			err = smapi.DealsSetConsiderOfflineStorageDeals(lcli.DaemonContext(cctx), false)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
 	},
 }
 
@@ -123,7 +190,7 @@ var setAskCmd = &cli.Command{
 			return xerrors.Errorf("cannot parse duration: %w", err)
 		}
 
-		qty := dur.Seconds() / build.BlockDelay
+		qty := dur.Seconds() / float64(build.BlockDelaySecs)
 
 		min, err := units.RAMInBytes(cctx.String("min-piece-size"))
 		if err != nil {
@@ -208,7 +275,7 @@ var getAskCmd = &cli.Command{
 		dlt := ask.Expiry - head.Height()
 		rem := "<expired>"
 		if dlt > 0 {
-			rem = (time.Second * time.Duration(dlt*build.BlockDelay)).String()
+			rem = (time.Second * time.Duration(int64(dlt)*int64(build.BlockDelaySecs))).String()
 		}
 
 		fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%s\t%d\n", ask.Price, types.SizeStr(types.NewInt(uint64(ask.MinPieceSize))), types.SizeStr(types.NewInt(uint64(ask.MaxPieceSize))), ask.Expiry, rem, ask.SeqNo)
@@ -217,14 +284,13 @@ var getAskCmd = &cli.Command{
 	},
 }
 
-var dealsCmd = &cli.Command{
-	Name:  "deals",
-	Usage: "interact with your deals",
+var storageDealsCmd = &cli.Command{
+	Name:  "storage-deals",
+	Usage: "Manage storage deals and related configuration",
 	Subcommands: []*cli.Command{
 		dealsImportDataCmd,
 		dealsListCmd,
-		enableCmd,
-		disableCmd,
+		storageDealSelectionCmd,
 		setAskCmd,
 		getAskCmd,
 		setBlocklistCmd,

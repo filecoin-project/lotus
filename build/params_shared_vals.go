@@ -1,10 +1,9 @@
+// +build !testground
+
 package build
 
 import (
 	"math/big"
-	"sort"
-
-	"github.com/libp2p/go-libp2p-core/protocol"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -12,32 +11,6 @@ import (
 
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
-
-func DefaultSectorSize() abi.SectorSize {
-	szs := make([]abi.SectorSize, 0, len(miner.SupportedProofTypes))
-	for spt := range miner.SupportedProofTypes {
-		ss, err := spt.SectorSize()
-		if err != nil {
-			panic(err)
-		}
-
-		szs = append(szs, ss)
-	}
-
-	sort.Slice(szs, func(i, j int) bool {
-		return szs[i] < szs[j]
-	})
-
-	return szs[0]
-}
-
-// Core network constants
-
-func BlocksTopic(netName dtypes.NetworkName) string   { return "/fil/blocks/" + string(netName) }
-func MessagesTopic(netName dtypes.NetworkName) string { return "/fil/msgs/" + string(netName) }
-func DhtProtocolName(netName dtypes.NetworkName) protocol.ID {
-	return protocol.ID("/fil/kad/" + string(netName))
-}
 
 // /////
 // Storage
@@ -48,8 +21,7 @@ const UnixfsLinksPerLevel = 1024
 // /////
 // Consensus / Network
 
-// Seconds
-const AllowableClockDrift = 1
+const AllowableClockDriftSecs = uint64(1)
 
 // Epochs
 const ForkLengthThreshold = Finality
@@ -59,12 +31,12 @@ var BlocksPerEpoch = uint64(builtin.ExpectedLeadersPerEpoch)
 
 // Epochs
 const Finality = miner.ChainFinalityish
-const MessageConfidence = 5
+const MessageConfidence = uint64(5)
 
 // constants for Weight calculation
 // The ratio of weight contributed by short-term vs long-term factors in a given round
 const WRatioNum = int64(1)
-const WRatioDen = 2
+const WRatioDen = uint64(2)
 
 // /////
 // Proofs
@@ -82,25 +54,25 @@ const MaxSealLookback = SealRandomnessLookbackLimit + 2000 // TODO: Get from spe
 // Mining
 
 // Epochs
-const TicketRandomnessLookback = 1
+const TicketRandomnessLookback = abi.ChainEpoch(1)
 
-const WinningPoStSectorSetLookback = 10
+const WinningPoStSectorSetLookback = abi.ChainEpoch(10)
 
 // /////
 // Devnet settings
 
-const TotalFilecoin = 2_000_000_000
-const MiningRewardTotal = 1_400_000_000
+const TotalFilecoin = uint64(2_000_000_000)
+const MiningRewardTotal = uint64(1_400_000_000)
 
-const FilecoinPrecision = 1_000_000_000_000_000_000
+const FilecoinPrecision = uint64(1_000_000_000_000_000_000)
 
 var InitialRewardBalance *big.Int
 
 // TODO: Move other important consts here
 
 func init() {
-	InitialRewardBalance = big.NewInt(MiningRewardTotal)
-	InitialRewardBalance = InitialRewardBalance.Mul(InitialRewardBalance, big.NewInt(FilecoinPrecision))
+	InitialRewardBalance = big.NewInt(int64(MiningRewardTotal))
+	InitialRewardBalance = InitialRewardBalance.Mul(InitialRewardBalance, big.NewInt(int64(FilecoinPrecision)))
 }
 
 // Sync
@@ -121,4 +93,11 @@ const VerifSigCacheSize = 32000
 const BlockMessageLimit = 512
 const BlockGasLimit = 100_000_000_000
 
-var DrandChain = `{"public_key":"922a2e93828ff83345bae533f5172669a26c02dc76d6bf59c80892e12ab1455c229211886f35bb56af6d5bea981024df","period":25,"genesis_time":1590445175,"hash":"138a324aa6540f93d0dad002aa89454b1bec2b6e948682cde6bd4db40f4b7c9b"}`
+var DrandConfig = dtypes.DrandConfig{
+	Servers: []string{
+		"https://pl-eu.testnet.drand.sh",
+		"https://pl-us.testnet.drand.sh",
+		"https://pl-sin.testnet.drand.sh",
+	},
+	ChainInfoJSON: `{"public_key":"922a2e93828ff83345bae533f5172669a26c02dc76d6bf59c80892e12ab1455c229211886f35bb56af6d5bea981024df","period":25,"genesis_time":1590445175,"hash":"138a324aa6540f93d0dad002aa89454b1bec2b6e948682cde6bd4db40f4b7c9b"}`,
+}

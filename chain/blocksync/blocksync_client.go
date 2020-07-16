@@ -64,6 +64,11 @@ func (bs *BlockSync) processStatus(req *BlockSyncRequest, res *BlockSyncResponse
 	}
 }
 
+// GetBlocks fetches count blocks from the network, from the provided tipset
+// *backwards*, returning as many tipsets as count.
+//
+// {hint/usage}: This is used by the Syncer during normal chain syncing and when
+// resolving forks.
 func (bs *BlockSync) GetBlocks(ctx context.Context, tsk types.TipSetKey, count int) ([]*types.TipSet, error) {
 	ctx, span := trace.StartSpan(ctx, "bsync.GetBlocks")
 	defer span.End()
@@ -80,7 +85,9 @@ func (bs *BlockSync) GetBlocks(ctx context.Context, tsk types.TipSetKey, count i
 		Options:       BSOptBlocks,
 	}
 
+	// this peerset is sorted by latency and failure counting.
 	peers := bs.getPeers()
+
 	// randomize the first few peers so we don't always pick the same peer
 	shufflePrefix(peers)
 
@@ -356,6 +363,7 @@ func (bs *BlockSync) RemovePeer(p peer.ID) {
 	bs.syncPeers.removePeer(p)
 }
 
+// getPeers returns a preference-sorted set of peers to query.
 func (bs *BlockSync) getPeers() []peer.ID {
 	return bs.syncPeers.prefSortedPeers()
 }

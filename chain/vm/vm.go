@@ -35,6 +35,7 @@ import (
 )
 
 var log = logging.Logger("vm")
+var gasOnActorExec = newGasCharge("OnActorExec", 0, 0)
 
 // ResolveToKeyAddr returns the public key type of address (`BLS`/`SECP256K1`) of an account actor identified by `addr`.
 func ResolveToKeyAddr(state types.StateTree, cst cbor.IpldStore, addr address.Address) (address.Address, aerrors.ActorError) {
@@ -68,11 +69,13 @@ type gasChargingBlocks struct {
 }
 
 func (bs *gasChargingBlocks) Get(c cid.Cid) (block.Block, error) {
+	bs.chargeGas(newGasCharge("OnIpldGetStart", 0, 0))
 	blk, err := bs.under.Get(c)
 	if err != nil {
 		return nil, aerrors.Escalate(err, "failed to get block from blockstore")
 	}
 	bs.chargeGas(bs.pricelist.OnIpldGet(len(blk.RawData())))
+	bs.chargeGas(gasOnActorExec)
 
 	return blk, nil
 }
@@ -83,6 +86,7 @@ func (bs *gasChargingBlocks) Put(blk block.Block) error {
 	if err := bs.under.Put(blk); err != nil {
 		return aerrors.Escalate(err, "failed to write data to disk")
 	}
+	bs.chargeGas(gasOnActorExec)
 	return nil
 }
 
@@ -231,7 +235,9 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 
 		if msg.Method != 0 {
 			var ret []byte
+			_ = rt.chargeGasSafe(gasOnActorExec)
 			ret, err := vm.Invoke(toActor, rt, msg.Method, msg.Params)
+			_ = rt.chargeGasSafe(newGasCharge("OnActorExecDone", 0, 0))
 			return ret, err
 		}
 		return nil, nil

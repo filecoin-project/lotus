@@ -36,6 +36,7 @@ type StorageMiner interface {
 	SectorsRefs(context.Context) (map[string][]SealedRef, error)
 
 	SectorsUpdate(context.Context, abi.SectorNumber, SectorState) error
+	SectorRemove(context.Context, abi.SectorNumber) error
 
 	StorageList(ctx context.Context) (map[stores.ID][]stores.Decl, error)
 	StorageLocal(ctx context.Context) (map[stores.ID]string, error)
@@ -55,9 +56,16 @@ type StorageMiner interface {
 
 	DealsImportData(ctx context.Context, dealPropCid cid.Cid, file string) error
 	DealsList(ctx context.Context) ([]storagemarket.StorageDeal, error)
-	DealsSetAcceptingStorageDeals(context.Context, bool) error
+	DealsConsiderOnlineStorageDeals(context.Context) (bool, error)
+	DealsSetConsiderOnlineStorageDeals(context.Context, bool) error
+	DealsConsiderOnlineRetrievalDeals(context.Context) (bool, error)
+	DealsSetConsiderOnlineRetrievalDeals(context.Context, bool) error
 	DealsPieceCidBlocklist(context.Context) ([]cid.Cid, error)
 	DealsSetPieceCidBlocklist(context.Context, []cid.Cid) error
+	DealsConsiderOfflineStorageDeals(context.Context) (bool, error)
+	DealsSetConsiderOfflineStorageDeals(context.Context, bool) error
+	DealsConsiderOfflineRetrievalDeals(context.Context) (bool, error)
+	DealsSetConsiderOfflineRetrievalDeals(context.Context, bool) error
 
 	StorageAddLocal(ctx context.Context, path string) error
 }

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"sort"
 	"time"
 
@@ -13,6 +12,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	sealing "github.com/filecoin-project/storage-fsm"
 
 	"github.com/filecoin-project/lotus/api"
@@ -44,7 +44,7 @@ var infoCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		maddr, err := nodeApi.ActorAddress(ctx)
+		maddr, err := getActorAddress(ctx, nodeApi, cctx.String("actor"))
 		if err != nil {
 			return err
 		}
@@ -128,7 +128,7 @@ var infoCmd = &cli.Command{
 				if expWinChance > 1 {
 					expWinChance = 1
 				}
-				winRate := time.Duration(float64(time.Second*build.BlockDelay) / expWinChance)
+				winRate := time.Duration(float64(time.Second*time.Duration(build.BlockDelaySecs)) / expWinChance)
 				winPerDay := float64(time.Hour*24) / float64(winRate)
 
 				fmt.Print("Expected block win rate: ")

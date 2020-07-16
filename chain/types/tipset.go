@@ -112,6 +112,10 @@ func NewTipSet(blks []*BlockHeader) (*TipSet, error) {
 			return nil, fmt.Errorf("cannot create tipset with mismatching heights")
 		}
 
+		if len(blks[0].Parents) != len(b.Parents) {
+			return nil, fmt.Errorf("cannot create tipset with mismatching number of parents")
+		}
+
 		for i, cid := range b.Parents {
 			if cid != blks[0].Parents[i] {
 				return nil, fmt.Errorf("cannot create tipset with mismatching parents")

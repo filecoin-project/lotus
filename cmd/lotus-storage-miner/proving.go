@@ -26,6 +26,76 @@ var provingCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		provingInfoCmd,
 		provingDeadlinesCmd,
+		provingFaultsCmd,
+	},
+}
+
+var provingFaultsCmd = &cli.Command{
+	Name:  "faults",
+	Usage: "View the currently known proving faulty sectors information",
+	Action: func(cctx *cli.Context) error {
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		api, acloser, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer acloser()
+
+		ctx := lcli.ReqContext(cctx)
+
+		maddr, err := getActorAddress(ctx, nodeApi, cctx.String("actor"))
+		if err != nil {
+			return err
+		}
+
+		var mas miner.State
+		{
+			mact, err := api.StateGetActor(ctx, maddr, types.EmptyTSK)
+			if err != nil {
+				return err
+			}
+			rmas, err := api.ChainReadObj(ctx, mact.Head)
+			if err != nil {
+				return err
+			}
+			if err := mas.UnmarshalCBOR(bytes.NewReader(rmas)); err != nil {
+				return err
+			}
+		}
+		faults, err := mas.Faults.All(100000000000)
+		if err != nil {
+			return err
+		}
+		if len(faults) == 0 {
+			fmt.Println("no faulty sectors")
+			return nil
+		}
+		head, err := api.ChainHead(ctx)
+		if err != nil {
+			return xerrors.Errorf("getting chain head: %w", err)
+		}
+		deadlines, err := api.StateMinerDeadlines(ctx, maddr, head.Key())
+		if err != nil {
+			return xerrors.Errorf("getting miner deadlines: %w", err)
+		}
+		tw := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
+		_, _ = fmt.Fprintln(tw, "deadline\tsectors")
+		for deadline, sectors := range deadlines.Due {
+			intersectSectors, _ := bitfield.IntersectBitField(sectors, mas.Faults)
+			if intersectSectors != nil {
+				allSectors, _ := intersectSectors.All(100000000000)
+				for _, num := range allSectors {
+					_, _ = fmt.Fprintf(tw, "%d\t%d\n", deadline, num)
+				}
+			}
+
+		}
+		return tw.Flush()
 	},
 }
 
@@ -47,9 +117,9 @@ var provingInfoCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		maddr, err := nodeApi.ActorAddress(ctx)
+		maddr, err := getActorAddress(ctx, nodeApi, cctx.String("actor"))
 		if err != nil {
-			return xerrors.Errorf("getting actor address: %w", err)
+			return err
 		}
 
 		head, err := api.ChainHead(ctx)
@@ -65,11 +135,6 @@ var provingInfoCmd = &cli.Command{
 		deadlines, err := api.StateMinerDeadlines(ctx, maddr, head.Key())
 		if err != nil {
 			return xerrors.Errorf("getting miner deadlines: %w", err)
-		}
-
-		curDeadlineSectors, err := deadlines.Due[cd.Index].Count()
-		if err != nil {
-			return xerrors.Errorf("counting deadline sectors: %w", err)
 		}
 
 		var mas miner.State
@@ -130,7 +195,15 @@ var provingInfoCmd = &cli.Command{
 		fmt.Printf("New Sectors: %d\n\n", newSectors)
 
 		fmt.Printf("Deadline Index:       %d\n", cd.Index)
-		fmt.Printf("Deadline Sectors:     %d\n", curDeadlineSectors)
+
+		if cd.Index < uint64(len(deadlines.Due)) {
+			curDeadlineSectors, err := deadlines.Due[cd.Index].Count()
+			if err != nil {
+				return xerrors.Errorf("counting deadline sectors: %w", err)
+			}
+			fmt.Printf("Deadline Sectors:     %d\n", curDeadlineSectors)
+		}
+
 		fmt.Printf("Deadline Open:        %s\n", epochTime(cd.CurrentEpoch, cd.Open))
 		fmt.Printf("Deadline Close:       %s\n", epochTime(cd.CurrentEpoch, cd.Close))
 		fmt.Printf("Deadline Challenge:   %s\n", epochTime(cd.CurrentEpoch, cd.Challenge))
@@ -142,11 +215,11 @@ var provingInfoCmd = &cli.Command{
 func epochTime(curr, e abi.ChainEpoch) string {
 	switch {
 	case curr > e:
-		return fmt.Sprintf("%d (%s ago)", e, time.Second*time.Duration(build.BlockDelay*(curr-e)))
+		return fmt.Sprintf("%d (%s ago)", e, time.Second*time.Duration(int64(build.BlockDelaySecs)*int64(curr-e)))
 	case curr == e:
 		return fmt.Sprintf("%d (now)", e)
 	case curr < e:
-		return fmt.Sprintf("%d (in %s)", e, time.Second*time.Duration(build.BlockDelay*(e-curr)))
+		return fmt.Sprintf("%d (in %s)", e, time.Second*time.Duration(int64(build.BlockDelaySecs)*int64(e-curr)))
 	}
 
 	panic("math broke")
@@ -170,9 +243,9 @@ var provingDeadlinesCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		maddr, err := nodeApi.ActorAddress(ctx)
+		maddr, err := getActorAddress(ctx, nodeApi, cctx.String("actor"))
 		if err != nil {
-			return xerrors.Errorf("getting actor address: %w", err)
+			return err
 		}
 
 		deadlines, err := api.StateMinerDeadlines(ctx, maddr, types.EmptyTSK)

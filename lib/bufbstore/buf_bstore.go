@@ -108,6 +108,15 @@ func (bs *BufferedBS) GetSize(c cid.Cid) (int, error) {
 }
 
 func (bs *BufferedBS) Put(blk block.Block) error {
+	has, err := bs.read.Has(blk.Cid())
+	if err != nil {
+		return err
+	}
+
+	if has {
+		return nil
+	}
+
 	return bs.write.Put(blk)
 }
 

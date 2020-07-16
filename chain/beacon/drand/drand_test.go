@@ -7,10 +7,13 @@ import (
 	dchain "github.com/drand/drand/chain"
 	hclient "github.com/drand/drand/client/http"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/filecoin-project/lotus/build"
 )
 
 func TestPrintGroupInfo(t *testing.T) {
-	c, err := hclient.New(drandServers[0], nil, nil)
+	server := build.DrandConfig.Servers[0]
+	c, err := hclient.New(server, nil, nil)
 	assert.NoError(t, err)
 	cg := c.(interface {
 		FetchChainInfo(groupHash []byte) (*dchain.Info, error)

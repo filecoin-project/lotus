@@ -150,6 +150,17 @@ func aggregateSignatures(sigs []crypto.Signature) (*crypto.Signature, error) {
 	}
 
 	aggSig := bls.Aggregate(blsSigs)
+	if aggSig == nil {
+		if len(sigs) > 0 {
+			return nil, xerrors.Errorf("bls.Aggregate returned nil with %d signatures", len(sigs))
+		}
+
+		return &crypto.Signature{
+			Type: crypto.SigTypeBLS,
+			Data: new(bls.Signature)[:],
+		}, nil
+	}
+
 	return &crypto.Signature{
 		Type: crypto.SigTypeBLS,
 		Data: aggSig[:],

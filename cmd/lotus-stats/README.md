@@ -1,6 +1,6 @@
-# Stats
+# lotus-stats
 
-Stats is a small tool to push chain information into influxdb
+`lotus-stats` is a small tool to push chain information into influxdb
 
 ## Setup
 
@@ -14,13 +14,13 @@ INFLUX_PASS=""
 
 ## Usage
 
-Stats will be default look in `~/.lotus` to connect to a running daemon and resume collecting stats from last record block height.
+lotus-stats will be default look in `~/.lotus` to connect to a running daemon and resume collecting stats from last record block height.
 
-For other usage see `./stats --help`
+For other usage see `./lotus-stats --help`
 
 ```
-go build -o stats *.go 
-. env.stats && ./stats
+go build -o lotus-stats *.go 
+. env.stats && ./lotus-stats
 ```
 
 

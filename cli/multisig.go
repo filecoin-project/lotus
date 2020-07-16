@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"os"
 	"sort"
 	"strconv"
@@ -50,7 +51,8 @@ var msigCreateCmd = &cli.Command{
 	ArgsUsage: "[address1 address2 ...]",
 	Flags: []cli.Flag{
 		&cli.Int64Flag{
-			Name: "required",
+			Name:  "required",
+			Usage: "number of required approvals (uses number of signers provided if omitted)",
 		},
 		&cli.StringFlag{
 			Name:  "value",
@@ -58,7 +60,12 @@ var msigCreateCmd = &cli.Command{
 			Value: "0",
 		},
 		&cli.StringFlag{
-			Name:  "sender",
+			Name:  "duration",
+			Usage: "length of the period over which funds unlock",
+			Value: "0",
+		},
+		&cli.StringFlag{
+			Name:  "from",
 			Usage: "account to send the create message from",
 		},
 	},
@@ -69,6 +76,10 @@ var msigCreateCmd = &cli.Command{
 		}
 		defer closer()
 		ctx := ReqContext(cctx)
+
+		if cctx.Args().Len() < 1 {
+			return fmt.Errorf("multisigs must have at least one signer")
+		}
 
 		var addrs []address.Address
 		for _, a := range cctx.Args().Slice() {
@@ -81,7 +92,7 @@ var msigCreateCmd = &cli.Command{
 
 		// get the address we're going to use to create the multisig (can be one of the above, as long as they have funds)
 		var sendAddr address.Address
-		if send := cctx.String("sender"); send == "" {
+		if send := cctx.String("from"); send == "" {
 			defaddr, err := api.WalletDefaultAddress(ctx)
 			if err != nil {
 				return err
@@ -110,9 +121,11 @@ var msigCreateCmd = &cli.Command{
 			required = int64(len(addrs))
 		}
 
+		d := abi.ChainEpoch(cctx.Uint64("duration"))
+
 		gp := types.NewInt(1)
 
-		msgCid, err := api.MsigCreate(ctx, required, addrs, intVal, sendAddr, gp)
+		msgCid, err := api.MsigCreate(ctx, required, addrs, d, intVal, sendAddr, gp)
 		if err != nil {
 			return err
 		}
