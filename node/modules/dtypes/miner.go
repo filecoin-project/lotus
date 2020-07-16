@@ -56,3 +56,11 @@ type SetSealingDelayFunc func(time.Duration) error
 
 // GetSealingDelay returns how long a sector waits for more deals before sealing begins.
 type GetSealingDelayFunc func() (time.Duration, error)
+
+// SetExpectedSealDurationFunc is a function which is used to set how long sealing is expected to take.
+// Deals that would need to start earlier than this duration will be rejected.
+type SetExpectedSealDurationFunc func(time.Duration) error
+
+// GetExpectedSealDurationFunc is a function which reads from miner
+// too determine how long sealing is expected to take
+type GetExpectedSealDurationFunc func() (time.Duration, error)

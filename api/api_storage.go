@@ -46,6 +46,10 @@ type StorageMiner interface {
 	// SectorGetSealDelay gets the time that a newly-created sector
 	// waits for more deals before it starts sealing
 	SectorGetSealDelay(context.Context) (time.Duration, error)
+	// SectorSetExpectedSealDuration sets the expected time for a sector to seal
+	SectorSetExpectedSealDuration(context.Context, time.Duration) error
+	// SectorGetExpectedSealDuration gets the expected time for a sector to seal
+	SectorGetExpectedSealDuration(context.Context) (time.Duration, error)
 	SectorsUpdate(context.Context, abi.SectorNumber, SectorState) error
 	SectorRemove(context.Context, abi.SectorNumber) error
 	SectorMarkForUpgrade(ctx context.Context, id abi.SectorNumber) error
