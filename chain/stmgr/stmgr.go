@@ -696,7 +696,7 @@ func (sm *StateManager) MarketBalance(ctx context.Context, addr address.Address,
 		return api.MarketBalance{}, err
 	}
 	if ehas {
-		out.Escrow, err = et.Get(addr)
+		out.Escrow, _, err = et.Get(addr)
 		if err != nil {
 			return api.MarketBalance{}, xerrors.Errorf("getting escrow balance: %w", err)
 		}
@@ -713,7 +713,7 @@ func (sm *StateManager) MarketBalance(ctx context.Context, addr address.Address,
 		return api.MarketBalance{}, err
 	}
 	if lhas {
-		out.Locked, err = lt.Get(addr)
+		out.Locked, _, err = lt.Get(addr)
 		if err != nil {
 			return api.MarketBalance{}, xerrors.Errorf("getting locked balance: %w", err)
 		}
