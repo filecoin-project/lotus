@@ -199,6 +199,9 @@ var genesisAddMsigsCmd = &cli.Command{
 		for _, e := range records {
 			var addrs []address.Address
 			for _, a := range e[7:] {
+				if a == "" {
+					continue
+				}
 				addr, err := address.NewFromString(a)
 				if err != nil {
 					return err
