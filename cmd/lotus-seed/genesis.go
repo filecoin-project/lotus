@@ -1,9 +1,12 @@
 package main
 
 import (
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os"
+	"strconv"
 
 	"github.com/google/uuid"
 	"github.com/mitchellh/go-homedir"
@@ -168,6 +171,11 @@ var genesisAddMsigsCmd = &cli.Command{
 			return err
 		}
 
+		csvf, err := homedir.Expand(cctx.Args().Get(1))
+		if err != nil {
+			return err
+		}
+
 		var template genesis.Template
 		b, err := ioutil.ReadFile(genf)
 		if err != nil {
@@ -178,8 +186,49 @@ var genesisAddMsigsCmd = &cli.Command{
 			return xerrors.Errorf("unmarshal genesis template: %w", err)
 		}
 
+		fileReader, err := os.Open(csvf)
+		if err != nil {
+			return xerrors.Errorf("read multisig csv: %w", err)
+		}
+		r := csv.NewReader(fileReader)
+		records, err := r.ReadAll()
+		if err != nil {
+			return xerrors.Errorf("read multisig csv: %w", err)
+		}
 		var entries []GenAccountEntry
-		// TODO: parse that csv
+		for _, e := range records {
+			var addrs []address.Address
+			for _, a := range e[7:] {
+				addr, err := address.NewFromString(a)
+				if err != nil {
+					return err
+				}
+				addrs = append(addrs, addr)
+			}
+			custodianID, err := strconv.Atoi(e[1])
+			if err != nil {
+				return xerrors.Errorf("Custodian ID must be integer")
+			}
+			threshold, err := strconv.Atoi(e[2])
+			if err != nil {
+				return xerrors.Errorf("Threshold must be integer")
+			}
+			num, err := strconv.Atoi(e[3])
+			if err != nil {
+				return xerrors.Errorf("Number of addresses be integer")
+			}
+			entry := GenAccountEntry{
+				ID: e[0],
+				CustodianID: custodianID,
+				M: threshold,
+				N: num,
+				Type: e[4],
+				Sig1: e[5],
+				Sig2: e[6],
+				Addresses: addrs,
+			}
+			entries = append(entries, entry)
+		}
 
 		for i, e := range entries {
 			if len(e.Addresses) != e.N {
