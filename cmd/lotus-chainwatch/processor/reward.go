@@ -7,6 +7,7 @@ import (
 
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
@@ -15,7 +16,11 @@ import (
 type rewardActorInfo struct {
 	common actorInfo
 
+	// expected power in bytes during this epoch
 	baselinePower big.Int
+
+	// base reward in attofil for each block found during this epoch
+	baseBlockReward big.Int
 }
 
 func (p *Processor) setupRewards() error {
@@ -26,8 +31,18 @@ func (p *Processor) setupRewards() error {
 
 	if _, err := tx.Exec(`
 /*
-* captures chain-specific power state for any given stateroot
+* captures base block reward per miner per state root and does not
+* include penalties or gas reward
 */
+create table if not exists base_block_rewards
+(
+	state_root text not null
+		constraint block_rewards_pk
+			primary key,
+	base_block_reward numeric not null
+);
+
+/* captures chain-specific power state for any given stateroot */
 create table if not exists chain_power
 (
 	state_root text not null
@@ -35,6 +50,21 @@ create table if not exists chain_power
 			primary key,
 	baseline_power text not null
 );
+
+create materialized view if not exists top_miners_by_base_reward as
+	with total_rewards_by_miner as (
+		select
+			b.miner,
+			sum(bbr.base_block_reward) as total_reward
+		from blocks b
+		inner join base_block_rewards bbr on b.parentstateroot = bbr.state_root
+		group by 1
+	) select
+		rank() over (order by total_reward desc),
+		miner,
+		total_reward
+	from total_rewards_by_miner
+	group by 2, 3
 `); err != nil {
 		return err
 	}
@@ -84,6 +114,7 @@ func (p *Processor) processRewardActors(ctx context.Context, rewardTips ActorTip
 				return nil, xerrors.Errorf("unmarshal state (@ %s): %w", rw.common.stateroot.String(), err)
 			}
 
+			rw.baseBlockReward = rewardActorState.LastPerEpochReward
 			rw.baselinePower = rewardActorState.BaselinePower
 			out = append(out, rw)
 		}
@@ -98,6 +129,10 @@ func (p *Processor) persistRewardActors(ctx context.Context, rewards []rewardAct
 	}()
 
 	if err := p.storeChainPower(rewards); err != nil {
+		return err
+	}
+
+	if err := p.storeBaseBlockReward(rewards); err != nil {
 		return err
 	}
 
@@ -138,6 +173,46 @@ func (p *Processor) storeChainPower(rewards []rewardActorInfo) error {
 
 	if err := tx.Commit(); err != nil {
 		return xerrors.Errorf("commit chain_power tx: %w", err)
+	}
+
+	return nil
+}
+
+func (p *Processor) storeBaseBlockReward(rewards []rewardActorInfo) error {
+	tx, err := p.db.Begin()
+	if err != nil {
+		return xerrors.Errorf("begin base_block_reward tx: %w", err)
+	}
+
+	if _, err := tx.Exec(`create temp table bbr (like base_block_rewards excluding constraints) on commit drop`); err != nil {
+		return xerrors.Errorf("prep base_block_reward temp: %w", err)
+	}
+
+	stmt, err := tx.Prepare(`copy bbr (state_root, base_block_reward) from STDIN`)
+	if err != nil {
+		return xerrors.Errorf("prepare tmp base_block_reward: %w", err)
+	}
+
+	for _, rewardState := range rewards {
+		baseBlockReward := big.Div(rewardState.baseBlockReward, big.NewIntUnsigned(build.BlocksPerEpoch))
+		if _, err := stmt.Exec(
+			rewardState.common.stateroot.String(),
+			baseBlockReward.String(),
+		); err != nil {
+			log.Errorw("failed to store base block reward", "state_root", rewardState.common.stateroot, "error", err)
+		}
+	}
+
+	if err := stmt.Close(); err != nil {
+		return xerrors.Errorf("close prepared base_block_reward: %w", err)
+	}
+
+	if _, err := tx.Exec(`insert into base_block_rewards select * from bbr on conflict do nothing`); err != nil {
+		return xerrors.Errorf("insert base_block_reward from tmp: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return xerrors.Errorf("commit base_block_reward tx: %w", err)
 	}
 
 	return nil
