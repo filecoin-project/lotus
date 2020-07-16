@@ -173,7 +173,7 @@ func TestSchedStartStop(t *testing.T) {
 }
 
 func TestSched(t *testing.T) {
-	ctx, done := context.WithTimeout(context.Background(), 20 * time.Second)
+	ctx, done := context.WithTimeout(context.Background(), 20*time.Second)
 	defer done()
 
 	spt := abi.RegisteredSealProof_StackedDrg32GiBV1
@@ -183,7 +183,7 @@ func TestSched(t *testing.T) {
 		taskTypes map[sealtasks.TaskType]struct{}
 	}
 
-	noopPrepare := func(ctx context.Context, w Worker) error {
+	noopAction := func(ctx context.Context, w Worker) error {
 		return nil
 	}
 
@@ -214,7 +214,7 @@ func TestSched(t *testing.T) {
 					Number: sid,
 				}
 
-				err := sched.Schedule(ctx, sectorNum, taskType, sel, noopPrepare, func(ctx context.Context, w Worker) error {
+				err := sched.Schedule(ctx, sectorNum, taskType, sel, func(ctx context.Context, w Worker) error {
 					wi, err := w.Info(ctx)
 					require.NoError(t, err)
 
@@ -232,7 +232,7 @@ func TestSched(t *testing.T) {
 					log.Info("OUT ", taskName)
 
 					return nil
-				})
+				}, noopAction)
 				require.NoError(t, err, fmt.Sprint(l, l2))
 			}()
 
@@ -396,7 +396,7 @@ func TestSched(t *testing.T) {
 			sched(prefix+"-a", "fred", sid, sealtasks.TTPreCommit1),
 			schedAssert(prefix+"-a"),
 
-			sched(prefix+"-b", "fred", sid + 1, sealtasks.TTPreCommit1),
+			sched(prefix+"-b", "fred", sid+1, sealtasks.TTPreCommit1),
 			schedAssert(prefix+"-b"),
 		)
 	}
@@ -408,42 +408,30 @@ func TestSched(t *testing.T) {
 		)
 	}
 
-	for i := 0; i < 100; i++ {
+	// run this one a bunch of times, it had a very annoying tendency to fail randomly
+	for i := 0; i < 40; i++ {
 		t.Run("pc1-pc2-prio", testFunc([]workerSpec{
 			{name: "fred", taskTypes: map[sealtasks.TaskType]struct{}{sealtasks.TTPreCommit1: {}, sealtasks.TTPreCommit2: {}}},
 		}, []task{
-			// fill exec/fetch buffers
+			// fill queues
 			twoPC1("w0", 0, taskStarted),
 			twoPC1("w1", 2, taskNotScheduled),
 
-			// fill worker windows
-			twoPC1("w2", 4, taskNotScheduled),
-			//twoPC1("w3", taskNotScheduled),
-
 			// windowed
 
-			sched("t1", "fred", 6, sealtasks.TTPreCommit1),
+			sched("t1", "fred", 8, sealtasks.TTPreCommit1),
 			taskNotScheduled("t1"),
 
-			sched("t2", "fred", 7, sealtasks.TTPreCommit1),
+			sched("t2", "fred", 9, sealtasks.TTPreCommit1),
 			taskNotScheduled("t2"),
 
-			sched("t3", "fred", 8, sealtasks.TTPreCommit2),
+			sched("t3", "fred", 10, sealtasks.TTPreCommit2),
 			taskNotScheduled("t3"),
 
 			twoPC1Act("w0", taskDone),
 			twoPC1Act("w1", taskStarted),
-			twoPC1Act("w2", taskNotScheduled),
-			//twoPC1Act("w3", taskNotScheduled),
 
 			twoPC1Act("w1", taskDone),
-			twoPC1Act("w2", taskStarted),
-			//twoPC1Act("w3", taskNotScheduled),
-
-			twoPC1Act("w2", taskDone),
-			//twoPC1Act("w3", taskStarted),
-
-			//twoPC1Act("w3", taskDone),
 
 			taskStarted("t3"),
 			taskNotScheduled("t1"),

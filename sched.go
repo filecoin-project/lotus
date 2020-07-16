@@ -68,7 +68,7 @@ type scheduler struct {
 	schedQueue  *requestQueue
 	openWindows []*schedWindowRequest
 
-	closing chan struct{}
+	closing  chan struct{}
 	testSync chan struct{} // used for testing
 }
 
