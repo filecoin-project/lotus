@@ -367,7 +367,10 @@ func (sh *scheduler) trySched() {
 
 func (sh *scheduler) runWorker(wid WorkerID) {
 	go func() {
+		sh.workersLk.Lock()
 		worker := sh.workers[wid]
+		sh.workersLk.Unlock()
+
 		scheduledWindows := make(chan *schedWindow, SchedWindows)
 		taskDone := make(chan struct{}, 1)
 		windowsRequested := 0
