@@ -335,6 +335,18 @@ type FullNode interface {
 	// It takes the following params: <multisig address>, <proposed message ID>, <recipient address>, <value to transfer>,
 	// <sender address of the cancel msg>, <method to call in the proposed message>, <params to include in the proposed message>
 	MsigCancel(context.Context, address.Address, uint64, address.Address, types.BigInt, address.Address, uint64, []byte) (cid.Cid, error)
+	// MsigSwapPropose proposes swapping 2 signers in the multisig
+	// It takes the following params: <multisig address>, <sender address of the propose msg>,
+	// <old signer> <new signer>
+	MsigSwapPropose(context.Context, address.Address, address.Address, address.Address, address.Address) (cid.Cid, error)
+	// MsigSwapApprove approves a previously proposed SwapSigner
+	// It takes the following params: <multisig address>, <sender address of the approve msg>, <proposed message ID>,
+	// <proposer address>, <old signer> <new signer>
+	MsigSwapApprove(context.Context, address.Address, address.Address, uint64, address.Address, address.Address, address.Address) (cid.Cid, error)
+	// MsigSwapCancel cancels a previously proposed SwapSigner message
+	// It takes the following params: <multisig address>, <sender address of the cancel msg>, <proposed message ID>,
+	// <old signer> <new signer>
+	MsigSwapCancel(context.Context, address.Address, address.Address, uint64, address.Address, address.Address) (cid.Cid, error)
 
 	MarketEnsureAvailable(context.Context, address.Address, address.Address, types.BigInt) (cid.Cid, error)
 	// MarketFreeBalance
