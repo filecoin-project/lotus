@@ -176,12 +176,12 @@ func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
 		Accounts: []genesis.Actor{
 			{
 				Type:    genesis.TAccount,
-				Balance: types.FromFil(40_000_000),
+				Balance: types.FromFil(20_000_000),
 				Meta:    (&genesis.AccountMeta{Owner: mk1}).ActorMeta(),
 			},
 			{
 				Type:    genesis.TAccount,
-				Balance: types.FromFil(40_000_000),
+				Balance: types.FromFil(20_000_000),
 				Meta:    (&genesis.AccountMeta{Owner: mk2}).ActorMeta(),
 			},
 			{
