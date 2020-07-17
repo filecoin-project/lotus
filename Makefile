@@ -158,7 +158,6 @@ BINS+=fountain
 chainwatch:
 	rm -f chainwatch
 	go build -o chainwatch ./cmd/lotus-chainwatch
-	go run github.com/GeertJohan/go.rice/rice append --exec chainwatch -i ./cmd/lotus-chainwatch -i ./build
 .PHONY: chainwatch
 BINS+=chainwatch
 

@@ -10,6 +10,7 @@ require (
 	github.com/Gurpartap/async v0.0.0-20180927173644-4f7f499dd9ee
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
 	github.com/coreos/go-systemd/v22 v22.0.0
+	github.com/dgraph-io/badger/v2 v2.0.3
 	github.com/docker/go-units v0.4.0
 	github.com/drand/drand v0.9.2-0.20200616080806-a94e9c1636a4
 	github.com/drand/kyber v1.1.0
@@ -48,7 +49,7 @@ require (
 	github.com/ipfs/go-cid v0.0.6
 	github.com/ipfs/go-cidutil v0.0.2
 	github.com/ipfs/go-datastore v0.4.4
-	github.com/ipfs/go-ds-badger2 v0.1.0
+	github.com/ipfs/go-ds-badger2 v0.1.1-0.20200708190120-187fc06f714e
 	github.com/ipfs/go-ds-leveldb v0.4.2
 	github.com/ipfs/go-ds-measure v0.1.0
 	github.com/ipfs/go-filestore v1.0.0
@@ -74,7 +75,7 @@ require (
 	github.com/ipld/go-car v0.1.1-0.20200526133713-1c7508d55aae
 	github.com/ipld/go-ipld-prime v0.0.2-0.20200428162820-8b59dc292b8e
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/lib/pq v1.2.0
+	github.com/lib/pq v1.7.0
 	github.com/libp2p/go-eventbus v0.2.1
 	github.com/libp2p/go-libp2p v0.10.0
 	github.com/libp2p/go-libp2p-connmgr v0.2.4
@@ -117,6 +118,7 @@ require (
 	go.uber.org/multierr v1.5.0
 	go.uber.org/zap v1.15.0
 	go4.org v0.0.0-20190313082347-94abd6928b1d // indirect
+	golang.org/x/sync v0.0.0-20200317015054-43a5402ce75a
 	golang.org/x/sys v0.0.0-20200602225109-6fdc65e7d980
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0
 	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543

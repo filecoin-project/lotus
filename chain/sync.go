@@ -349,6 +349,10 @@ func zipTipSetAndMessages(bs cbor.IpldStore, ts *types.TipSet, allbmsgs []*types
 
 	fts := &store.FullTipSet{}
 	for bi, b := range ts.Blocks() {
+		if msgc := len(bmi[bi]) + len(smi[bi]); msgc > build.BlockMessageLimit {
+			return nil, fmt.Errorf("block %q has too many messages (%d)", b.Cid(), msgc)
+		}
+
 		var smsgs []*types.SignedMessage
 		var smsgCids []cbg.CBORMarshaler
 		for _, m := range smi[bi] {
@@ -363,10 +367,6 @@ func zipTipSetAndMessages(bs cbor.IpldStore, ts *types.TipSet, allbmsgs []*types
 			bmsgs = append(bmsgs, allbmsgs[m])
 			c := cbg.CborCid(allbmsgs[m].Cid())
 			bmsgCids = append(bmsgCids, &c)
-		}
-
-		if msgc := len(bmsgCids) + len(smsgCids); msgc > build.BlockMessageLimit {
-			return nil, fmt.Errorf("block %q has too many messages (%d)", b.Cid(), msgc)
 		}
 
 		mrcid, err := computeMsgMeta(bs, bmsgCids, smsgCids)
@@ -536,7 +536,7 @@ func (syncer *Syncer) ValidateTipSet(ctx context.Context, fts *store.FullTipSet)
 		futures = append(futures, async.Err(func() error {
 			if err := syncer.ValidateBlock(ctx, b); err != nil {
 				if isPermanent(err) {
-					syncer.bad.Add(b.Cid(), BadBlockReason{Reason: err.Error()})
+					syncer.bad.Add(b.Cid(), NewBadBlockReason([]cid.Cid{b.Cid()}, err.Error()))
 				}
 				return xerrors.Errorf("validating block %s: %w", b.Cid(), err)
 			}
@@ -1069,16 +1069,13 @@ func extractSyncState(ctx context.Context) *SyncerState {
 
 // collectHeaders collects the headers from the blocks between any two tipsets.
 //
-// `from` is the heaviest/projected/target tipset we have learned about, and
-// `to` is usually an anchor tipset we already have in our view of the chain
+// `incoming` is the heaviest/projected/target tipset we have learned about, and
+// `known` is usually an anchor tipset we already have in our view of the chain
 // (which could be the genesis).
 //
 // collectHeaders checks if portions of the chain are in our ChainStore; falling
 // down to the network to retrieve the missing parts. If during the process, any
 // portion we receive is in our denylist (bad list), we short-circuit.
-//
-// {hint/naming}: `from` and `to` is in inverse order. `from` is the highest,
-// and `to` is the lowest. This method traverses the chain backwards.
 //
 // {hint/usage}: This is used by collectChain, which is in turn called from the
 // main Sync method (Syncer#Sync), so it's a pretty central method.
@@ -1089,7 +1086,7 @@ func extractSyncState(ctx context.Context) *SyncerState {
 //     bad.
 //  2. Check the consistency of beacon entries in the from tipset. We check
 //     total equality of the BeaconEntries in each block.
-//  3. Travers the chain backwards, for each tipset:
+//  3. Traverse the chain backwards, for each tipset:
 //  	3a. Load it from the chainstore; if found, it move on to its parent.
 //      3b. Query our peers via BlockSync in batches, requesting up to a
 //      maximum of 500 tipsets every time.
@@ -1100,40 +1097,40 @@ func extractSyncState(ctx context.Context) *SyncerState {
 //
 // All throughout the process, we keep checking if the received blocks are in
 // the deny list, and short-circuit the process if so.
-func (syncer *Syncer) collectHeaders(ctx context.Context, from *types.TipSet, to *types.TipSet) ([]*types.TipSet, error) {
+func (syncer *Syncer) collectHeaders(ctx context.Context, incoming *types.TipSet, known *types.TipSet) ([]*types.TipSet, error) {
 	ctx, span := trace.StartSpan(ctx, "collectHeaders")
 	defer span.End()
 	ss := extractSyncState(ctx)
 
 	span.AddAttributes(
-		trace.Int64Attribute("fromHeight", int64(from.Height())),
-		trace.Int64Attribute("toHeight", int64(to.Height())),
+		trace.Int64Attribute("incomingHeight", int64(incoming.Height())),
+		trace.Int64Attribute("knownHeight", int64(known.Height())),
 	)
 
 	// Check if the parents of the from block are in the denylist.
 	// i.e. if a fork of the chain has been requested that we know to be bad.
-	for _, pcid := range from.Parents().Cids() {
+	for _, pcid := range incoming.Parents().Cids() {
 		if reason, ok := syncer.bad.Has(pcid); ok {
 			newReason := reason.Linked("linked to %s", pcid)
-			for _, b := range from.Cids() {
+			for _, b := range incoming.Cids() {
 				syncer.bad.Add(b, newReason)
 			}
-			return nil, xerrors.Errorf("chain linked to block marked previously as bad (%s, %s) (reason: %s)", from.Cids(), pcid, reason)
+			return nil, xerrors.Errorf("chain linked to block marked previously as bad (%s, %s) (reason: %s)", incoming.Cids(), pcid, reason)
 		}
 	}
 
 	{
 		// ensure consistency of beacon entires
-		targetBE := from.Blocks()[0].BeaconEntries
+		targetBE := incoming.Blocks()[0].BeaconEntries
 		sorted := sort.SliceIsSorted(targetBE, func(i, j int) bool {
 			return targetBE[i].Round < targetBE[j].Round
 		})
 		if !sorted {
-			syncer.bad.Add(from.Cids()[0], NewBadBlockReason(from.Cids(), "wrong order of beacon entires"))
+			syncer.bad.Add(incoming.Cids()[0], NewBadBlockReason(incoming.Cids(), "wrong order of beacon entires"))
 			return nil, xerrors.Errorf("wrong order of beacon entires")
 		}
 
-		for _, bh := range from.Blocks()[1:] {
+		for _, bh := range incoming.Blocks()[1:] {
 			if len(targetBE) != len(bh.BeaconEntries) {
 				// cannot mark bad, I think @Kubuxu
 				return nil, xerrors.Errorf("tipset contained different number for beacon entires")
@@ -1148,12 +1145,12 @@ func (syncer *Syncer) collectHeaders(ctx context.Context, from *types.TipSet, to
 		}
 	}
 
-	blockSet := []*types.TipSet{from}
+	blockSet := []*types.TipSet{incoming}
 
-	at := from.Parents()
+	at := incoming.Parents()
 
 	// we want to sync all the blocks until the height above the block we have
-	untilHeight := to.Height() + 1
+	untilHeight := known.Height() + 1
 
 	ss.SetHeight(blockSet[len(blockSet)-1].Height())
 
@@ -1168,7 +1165,7 @@ loop:
 					syncer.bad.Add(b, newReason)
 				}
 
-				return nil, xerrors.Errorf("chain contained block marked previously as bad (%s, %s) (reason: %s)", from.Cids(), bc, reason)
+				return nil, xerrors.Errorf("chain contained block marked previously as bad (%s, %s) (reason: %s)", incoming.Cids(), bc, reason)
 			}
 		}
 
@@ -1217,7 +1214,7 @@ loop:
 						syncer.bad.Add(b, newReason)
 					}
 
-					return nil, xerrors.Errorf("chain contained block marked previously as bad (%s, %s) (reason: %s)", from.Cids(), bc, reason)
+					return nil, xerrors.Errorf("chain contained block marked previously as bad (%s, %s) (reason: %s)", incoming.Cids(), bc, reason)
 				}
 			}
 			blockSet = append(blockSet, b)
@@ -1229,23 +1226,23 @@ loop:
 		at = blks[len(blks)-1].Parents()
 	}
 
-	if !types.CidArrsEqual(blockSet[len(blockSet)-1].Parents().Cids(), to.Cids()) {
-		last := blockSet[len(blockSet)-1]
-		if last.Parents() == to.Parents() {
+	// base is the tipset in the candidate chain at the height equal to our known tipset height.
+	if base := blockSet[len(blockSet)-1]; !types.CidArrsEqual(base.Parents().Cids(), known.Cids()) {
+		if base.Parents() == known.Parents() {
 			// common case: receiving a block thats potentially part of the same tipset as our best block
 			return blockSet, nil
 		}
 
 		// We have now ascertained that this is *not* a 'fast forward'
 
-		log.Warnf("(fork detected) synced header chain (%s - %d) does not link to our best block (%s - %d)", from.Cids(), from.Height(), to.Cids(), to.Height())
-		fork, err := syncer.syncFork(ctx, last, to)
+		log.Warnf("(fork detected) synced header chain (%s - %d) does not link to our best block (%s - %d)", incoming.Cids(), incoming.Height(), known.Cids(), known.Height())
+		fork, err := syncer.syncFork(ctx, base, known)
 		if err != nil {
 			if xerrors.Is(err, ErrForkTooLong) {
 				// TODO: we're marking this block bad in the same way that we mark invalid blocks bad. Maybe distinguish?
 				log.Warn("adding forked chain to our bad tipset cache")
-				for _, b := range from.Blocks() {
-					syncer.bad.Add(b.Cid(), NewBadBlockReason(from.Cids(), "fork past finality"))
+				for _, b := range incoming.Blocks() {
+					syncer.bad.Add(b.Cid(), NewBadBlockReason(incoming.Cids(), "fork past finality"))
 				}
 			}
 			return nil, xerrors.Errorf("failed to sync fork: %w", err)
@@ -1265,13 +1262,13 @@ var ErrForkTooLong = fmt.Errorf("fork longer than threshold")
 // If the fork is too long (build.ForkLengthThreshold), we add the entire subchain to the
 // denylist. Else, we find the common ancestor, and add the missing chain
 // fragment until the fork point to the returned []TipSet.
-func (syncer *Syncer) syncFork(ctx context.Context, from *types.TipSet, to *types.TipSet) ([]*types.TipSet, error) {
-	tips, err := syncer.Bsync.GetBlocks(ctx, from.Parents(), int(build.ForkLengthThreshold))
+func (syncer *Syncer) syncFork(ctx context.Context, incoming *types.TipSet, known *types.TipSet) ([]*types.TipSet, error) {
+	tips, err := syncer.Bsync.GetBlocks(ctx, incoming.Parents(), int(build.ForkLengthThreshold))
 	if err != nil {
 		return nil, err
 	}
 
-	nts, err := syncer.store.LoadTipSet(to.Parents())
+	nts, err := syncer.store.LoadTipSet(known.Parents())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load next local tipset: %w", err)
 	}
@@ -1281,7 +1278,7 @@ func (syncer *Syncer) syncFork(ctx context.Context, from *types.TipSet, to *type
 			if !syncer.Genesis.Equals(nts) {
 				return nil, xerrors.Errorf("somehow synced chain that linked back to a different genesis (bad genesis: %s)", nts.Key())
 			}
-			return nil, xerrors.Errorf("synced chain forked at genesis, refusing to sync")
+			return nil, xerrors.Errorf("synced chain forked at genesis, refusing to sync; incoming: %s")
 		}
 
 		if nts.Equals(tips[cur]) {
