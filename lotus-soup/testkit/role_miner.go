@@ -256,6 +256,12 @@ func PrepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 		return nil, err
 	}
 
+	// set expected seal duration to 1 minute
+	err = n.MinerApi.SectorSetExpectedSealDuration(ctx, 1*time.Minute)
+	if err != nil {
+		return nil, err
+	}
+
 	// print out the admin auth token
 	token, err := n.MinerApi.AuthNew(ctx, apistruct.AllPermissions)
 	if err != nil {

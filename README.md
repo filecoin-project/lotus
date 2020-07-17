@@ -13,6 +13,7 @@ Our mandate is:
 - [Running the test cases](#running-the-test-cases)
 - [Catalog](#catalog)
 - [Debugging](#debugging)
+- [Dependencies](#dependencies)
 - [Docker images changelog](#docker-images-changelog)
 - [Team](#team)
 
@@ -74,7 +75,7 @@ testground daemon
 3. Download required Docker images for the `lotus-soup` test plan
 
 ```
-docker pull iptestground/oni-buildbase:v4
+docker pull iptestground/oni-buildbase:v5
 docker pull iptestground/oni-runtime:v2
 ```
 
@@ -82,7 +83,7 @@ Alternatively you can build them locally from the `docker-images` directory
 
 ```
 cd docker-images
-./build-buildbase.sh v4
+./build-buildbase.sh v5
 ./build-runtime.sh v2
 ```
 
@@ -155,6 +156,31 @@ Find commands and how-to guides on debugging test plans at [DELVING.md](https://
 
 * Sector sealing errors
 
+## Dependencies
+
+Our current test plan `lotus-soup` is building programatically the Lotus filecoin implementation and therefore requires all it's dependencies. The build process is slightly more complicated than a normal Go project, because we are binding a bit of Rust code. Lotus codebase is in Go, however its `proofs` and `crypto` libraries are in Rust (BLS signatures, SNARK verification, etc.).
+
+Depending on the runner you want to use to run the test plan, these dependencies are included in the build process in a different way, which you should be aware of should you require to use the test plan with a newer version of Lotus:
+
+### Filecoin FFI libraries
+
+* `local:docker`
+
+The Rust libraries are included in the Filecoin FFI Git submodule, which is part of the `iptestground/oni-buildbase` image. If the FFI changes on Lotus, we have to rebuild this image with the `./docker-images/build-buildbase.sh vX` command, where X is the next version (see [Docker images changelog](#docker-images-changelog)
+below).
+
+* `local:exec`
+
+The Rust libraries are included via the `extra` directory. Make sure that the test plan reference to Lotus in `go.mod` and the `extra` directory are pointing to the same commit of the FFI git submodule. You also need to compile the `extra/filecoin-ffi` libraries with `make`.
+
+* `cluster:k8s`
+
+The same process as for `local:docker`, however you need to make sure that the respective `iptestground/oni-buildbase` image is available as a public Docker image, so that the Kubernetes cluster can download it.
+
+### proof parameters
+
+Additional to the Filecoin FFI Git submodules, we are also bundling `proof parameters` in the `iptestground/oni-runtime` image. If these change, you will need to rebuild that image with `./docker-images/build-runtime.sh vX` command, where X is the next version. These parameters are downloaded automatically for `local:exec` if they are not present.
+
 ## Docker images changelog
 
 ### oni-buildbase
@@ -162,7 +188,8 @@ Find commands and how-to guides on debugging test plans at [DELVING.md](https://
 * `v1` => initial image locking in Filecoin FFI commit ca281af0b6c00314382a75ae869e5cb22c83655b.
 * `v2` => no changes; released only for aligning both images to aesthetically please @nonsense :D
 * `v3` => locking in Filecoin FFI commit 5342c7c97d1a1df4650629d14f2823d52889edd9.
-* `v4` => locking in FFI commit 6a143e06f923f3a4f544c7a652e8b4df420a3d28.
+* `v4` => locking in Filecoin FFI commit 6a143e06f923f3a4f544c7a652e8b4df420a3d28.
+* `v5` => locking in Filecoin FFI commit cddc56607e1d851ea6d09d49404bd7db70cb3c2e.
 
 ### oni-runtime
 

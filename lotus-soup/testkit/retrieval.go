@@ -21,7 +21,7 @@ import (
 
 func RetrieveData(t *TestEnvironment, ctx context.Context, client api.FullNode, fcid cid.Cid, carExport bool, data []byte) {
 	t1 := time.Now()
-	offers, err := client.ClientFindData(ctx, fcid)
+	offers, err := client.ClientFindData(ctx, fcid, nil)
 	if err != nil {
 		panic(err)
 	}
