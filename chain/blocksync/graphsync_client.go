@@ -12,6 +12,7 @@ import (
 
 	store "github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/journal"
 
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	basicnode "github.com/ipld/go-ipld-prime/node/basic"
@@ -138,7 +139,7 @@ func (bs *BlockSync) fetchBlocksGraphSync(ctx context.Context, p peer.ID, req *B
 	}
 
 	// Now pull the data we fetched out of the chainstore (where it should now be persisted)
-	tempcs := store.NewChainStore(bs.bserv.Blockstore(), datastore.NewMapDatastore(), nil)
+	tempcs := store.NewChainStore(bs.bserv.Blockstore(), datastore.NewMapDatastore(), nil, journal.NilJournal())
 
 	opts := ParseBSOptions(req.Options)
 	tsk := types.NewTipSetKey(req.Start...)

@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/journal"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
@@ -85,7 +86,7 @@ var importBenchCmd = &cli.Command{
 		}
 		bs = cbs
 		ds := datastore.NewMapDatastore()
-		cs := store.NewChainStore(bs, ds, vm.Syscalls(ffiwrapper.ProofVerifier))
+		cs := store.NewChainStore(bs, ds, vm.Syscalls(ffiwrapper.ProofVerifier), journal.NilJournal())
 		stm := stmgr.NewStateManager(cs)
 
 		prof, err := os.Create("import-bench.prof")

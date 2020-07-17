@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/journal"
 
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -336,7 +337,7 @@ func ImportChain(r repo.Repo, fname string) error {
 
 	bs := blockstore.NewBlockstore(ds)
 
-	cst := store.NewChainStore(bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier))
+	cst := store.NewChainStore(bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier), journal.NilJournal())
 
 	log.Info("importing chain from file...")
 	ts, err := cst.Import(fi)

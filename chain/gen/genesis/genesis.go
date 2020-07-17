@@ -24,6 +24,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/genesis"
+	"github.com/filecoin-project/lotus/journal"
 )
 
 const AccountStart = 100
@@ -302,7 +303,7 @@ func MakeGenesisBlock(ctx context.Context, bs bstore.Blockstore, sys runtime.Sys
 	}
 
 	// temp chainstore
-	cs := store.NewChainStore(bs, datastore.NewMapDatastore(), sys)
+	cs := store.NewChainStore(bs, datastore.NewMapDatastore(), sys, journal.NilJournal())
 
 	// Verify PreSealed Data
 	stateroot, err = VerifyPreSealedData(ctx, cs, stateroot, template)
