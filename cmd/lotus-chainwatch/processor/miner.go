@@ -4,17 +4,17 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"strings"
+	//"strings"
 	"sync"
 	"time"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/chain/events/state"
+	//"github.com/filecoin-project/lotus/chain/events/state"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 
-	"github.com/libp2p/go-libp2p-core/peer"
+	//"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -263,32 +263,33 @@ func (p *Processor) storeMinersActorState(miners []minerActorInfo) error {
 	if err != nil {
 		return err
 	}
-	for _, m := range miners {
-		var pid string
-		if len(m.state.Info.PeerId) != 0 {
-			peerid, err := peer.IDFromBytes(m.state.Info.PeerId)
-			if err != nil {
-				// this should "never happen", but if it does we should still store info about the miner.
-				log.Warnw("failed to decode peerID", "peerID (bytes)", m.state.Info.PeerId, "miner", m.common.addr, "tipset", m.common.tsKey.String())
-			} else {
-				pid = peerid.String()
-			}
-		}
-		if _, err := stmt.Exec(
-			m.common.addr.String(),
-			m.state.Info.Owner.String(),
-			m.state.Info.Worker.String(),
-			pid,
-			m.state.Info.SectorSize.ShortString(),
-			m.state.PreCommitDeposits.String(),
-			m.state.LockedFunds.String(),
-			m.state.NextDeadlineToProcessFaults,
-		); err != nil {
-			log.Errorw("failed to store miner state", "state", m.state, "info", m.state.Info, "error", err)
-			return xerrors.Errorf("failed to store miner state: %w", err)
-		}
+	// TODO: Consume new Actor API
+	//for _, m := range miners {
+	//var pid string
+	//if len(m.state.Info.PeerId) != 0 {
+	//peerid, err := peer.IDFromBytes(m.state.Info.PeerId)
+	//if err != nil {
+	//// this should "never happen", but if it does we should still store info about the miner.
+	//log.Warnw("failed to decode peerID", "peerID (bytes)", m.state.Info.PeerId, "miner", m.common.addr, "tipset", m.common.tsKey.String())
+	//} else {
+	//pid = peerid.String()
+	//}
+	//}
+	//if _, err := stmt.Exec(
+	//m.common.addr.String(),
+	//m.state.Info.Owner.String(),
+	//m.state.Info.Worker.String(),
+	//pid,
+	//m.state.Info.SectorSize.ShortString(),
+	//m.state.PreCommitDeposits.String(),
+	//m.state.LockedFunds.String(),
+	//m.state.NextDeadlineToProcessFaults,
+	//); err != nil {
+	//log.Errorw("failed to store miner state", "state", m.state, "info", m.state.Info, "error", err)
+	//return xerrors.Errorf("failed to store miner state: %w", err)
+	//}
 
-	}
+	//}
 	if err := stmt.Close(); err != nil {
 		return err
 	}
@@ -380,12 +381,17 @@ func (p *Processor) storeMinersSectorState(miners []minerActorInfo) error {
 				if _, err := stmt.Exec(
 					m.common.addr.String(),
 					uint64(sector.ID),
-					int64(sector.Info.ActivationEpoch),
-					int64(sector.Info.Info.Expiration),
+					// TODO: Consume new Actor API
+					//int64(sector.Info.ActivationEpoch),
+					0,
+					//int64(sector.Info.Info.Expiration),
+					0,
 					sector.Info.DealWeight.String(),
 					sector.Info.VerifiedDealWeight.String(),
-					sector.Info.Info.SealedCID.String(),
-					int64(sector.Info.Info.SealRandEpoch),
+					//sector.Info.Info.SealedCID.String(),
+					"",
+					//int64(sector.Info.Info.SealRandEpoch),
+					0,
 				); err != nil {
 					return err
 				}
@@ -466,7 +472,7 @@ func (p *Processor) updateMinersSectors(ctx context.Context, miners []minerActor
 		log.Debugw("Updated Miners Sectors", "duration", time.Since(start).String())
 	}()
 
-	pred := state.NewStatePredicates(p.node)
+	//pred := state.NewStatePredicates(p.node)
 
 	eventTx, err := p.db.Begin()
 	if err != nil {
@@ -493,86 +499,87 @@ func (p *Processor) updateMinersSectors(ctx context.Context, miners []minerActor
 		updateWg.Done()
 	}()
 
-	minerGrp, ctx := errgroup.WithContext(ctx)
-	complete := 0
-	for _, m := range miners {
-		m := m
-		minerGrp.Go(func() error {
-			// special case genesis miners
-			sectorDiffFn := pred.OnMinerActorChange(m.common.addr, pred.OnMinerSectorChange())
-			changed, val, err := sectorDiffFn(ctx, m.common.parentTsKey, m.common.tsKey)
-			if err != nil {
-				if strings.Contains(err.Error(), "address not found") {
-					return nil
-				}
-				log.Errorw("error getting miner sector diff", "miner", m.common.addr, "error", err)
-				return err
-			}
-			if !changed {
-				complete++
-				return nil
-			}
-			changes, ok := val.(*state.MinerSectorChanges)
-			if !ok {
-				log.Fatalw("Developer Error")
-			}
-			log.Debugw("sector changes for miner", "miner", m.common.addr.String(), "Added", len(changes.Added), "Extended", len(changes.Extended), "Removed", len(changes.Removed), "oldState", m.common.parentTsKey, "newState", m.common.tsKey)
+	// TODO: Resolve Actor interface shift
+	//minerGrp, ctx := errgroup.WithContext(ctx)
+	//complete := 0
+	//for _, m := range miners {
+	//m := m
+	//minerGrp.Go(func() error {
+	//// special case genesis miners
+	//sectorDiffFn := pred.OnMinerActorChange(m.common.addr, pred.OnMinerSectorChange())
+	//changed, val, err := sectorDiffFn(ctx, m.common.parentTsKey, m.common.tsKey)
+	//if err != nil {
+	//if strings.Contains(err.Error(), "address not found") {
+	//return nil
+	//}
+	//log.Errorw("error getting miner sector diff", "miner", m.common.addr, "error", err)
+	//return err
+	//}
+	//if !changed {
+	//complete++
+	//return nil
+	//}
+	//changes, ok := val.(*state.MinerSectorChanges)
+	//if !ok {
+	//log.Fatalw("Developer Error")
+	//}
+	//log.Debugw("sector changes for miner", "miner", m.common.addr.String(), "Added", len(changes.Added), "Extended", len(changes.Extended), "Removed", len(changes.Removed), "oldState", m.common.parentTsKey, "newState", m.common.tsKey)
 
-			for _, extended := range changes.Extended {
-				if _, err := eventStmt.Exec(extended.To.Info.SectorNumber, "EXTENDED", m.common.addr.String(), m.common.stateroot.String()); err != nil {
-					return err
-				}
-				sectorUpdatesCh <- sectorUpdate{
-					terminationEpoch: 0,
-					terminated:       false,
-					expirationEpoch:  extended.To.Info.Expiration,
-					sectorID:         extended.From.Info.SectorNumber,
-					minerID:          m.common.addr,
-				}
+	//for _, extended := range changes.Extended {
+	//if _, err := eventStmt.Exec(extended.To.Info.SectorNumber, "EXTENDED", m.common.addr.String(), m.common.stateroot.String()); err != nil {
+	//return err
+	//}
+	//sectorUpdatesCh <- sectorUpdate{
+	//terminationEpoch: 0,
+	//terminated:       false,
+	//expirationEpoch:  extended.To.Info.Expiration,
+	//sectorID:         extended.From.Info.SectorNumber,
+	//minerID:          m.common.addr,
+	//}
 
-				log.Debugw("sector extended", "miner", m.common.addr.String(), "sector", extended.To.Info.SectorNumber, "old", extended.To.Info.Expiration, "new", extended.From.Info.Expiration)
-			}
-			curTs, err := p.node.ChainGetTipSet(ctx, m.common.tsKey)
-			if err != nil {
-				return err
-			}
+	//log.Debugw("sector extended", "miner", m.common.addr.String(), "sector", extended.To.Info.SectorNumber, "old", extended.To.Info.Expiration, "new", extended.From.Info.Expiration)
+	//}
+	//curTs, err := p.node.ChainGetTipSet(ctx, m.common.tsKey)
+	//if err != nil {
+	//return err
+	//}
 
-			for _, removed := range changes.Removed {
-				log.Debugw("removed", "miner", m.common.addr)
-				// decide if they were terminated or extended
-				if removed.Info.Expiration > curTs.Height() {
-					if _, err := eventStmt.Exec(removed.Info.SectorNumber, "TERMINATED", m.common.addr.String(), m.common.stateroot.String()); err != nil {
-						return err
-					}
-					log.Debugw("sector terminated", "miner", m.common.addr.String(), "sector", removed.Info.SectorNumber, "old", "sectorExpiration", removed.Info.Expiration, "terminationEpoch", curTs.Height())
-					sectorUpdatesCh <- sectorUpdate{
-						terminationEpoch: curTs.Height(),
-						terminated:       true,
-						expirationEpoch:  removed.Info.Expiration,
-						sectorID:         removed.Info.SectorNumber,
-						minerID:          m.common.addr,
-					}
+	//for _, removed := range changes.Removed {
+	//log.Debugw("removed", "miner", m.common.addr)
+	//// decide if they were terminated or extended
+	//if removed.Info.Expiration > curTs.Height() {
+	//if _, err := eventStmt.Exec(removed.Info.SectorNumber, "TERMINATED", m.common.addr.String(), m.common.stateroot.String()); err != nil {
+	//return err
+	//}
+	//log.Debugw("sector terminated", "miner", m.common.addr.String(), "sector", removed.Info.SectorNumber, "old", "sectorExpiration", removed.Info.Expiration, "terminationEpoch", curTs.Height())
+	//sectorUpdatesCh <- sectorUpdate{
+	//terminationEpoch: curTs.Height(),
+	//terminated:       true,
+	//expirationEpoch:  removed.Info.Expiration,
+	//sectorID:         removed.Info.SectorNumber,
+	//minerID:          m.common.addr,
+	//}
 
-				}
-				if _, err := eventStmt.Exec(removed.Info.SectorNumber, "EXPIRED", m.common.addr.String(), m.common.stateroot.String()); err != nil {
-					return err
-				}
-				log.Debugw("sector removed", "miner", m.common.addr.String(), "sector", removed.Info.SectorNumber, "old", "sectorExpiration", removed.Info.Expiration, "currEpoch", curTs.Height())
-			}
+	//}
+	//if _, err := eventStmt.Exec(removed.Info.SectorNumber, "EXPIRED", m.common.addr.String(), m.common.stateroot.String()); err != nil {
+	//return err
+	//}
+	//log.Debugw("sector removed", "miner", m.common.addr.String(), "sector", removed.Info.SectorNumber, "old", "sectorExpiration", removed.Info.Expiration, "currEpoch", curTs.Height())
+	//}
 
-			for _, added := range changes.Added {
-				if _, err := eventStmt.Exec(added.Info.SectorNumber, "ADDED", m.common.addr.String(), m.common.stateroot.String()); err != nil {
-					return err
-				}
-			}
-			complete++
-			log.Debugw("Update Done", "complete", complete, "added", len(changes.Added), "removed", len(changes.Removed), "modified", len(changes.Extended))
-			return nil
-		})
-	}
-	if err := minerGrp.Wait(); err != nil {
-		return err
-	}
+	//for _, added := range changes.Added {
+	//if _, err := eventStmt.Exec(added.Info.SectorNumber, "ADDED", m.common.addr.String(), m.common.stateroot.String()); err != nil {
+	//return err
+	//}
+	//}
+	//complete++
+	//log.Debugw("Update Done", "complete", complete, "added", len(changes.Added), "removed", len(changes.Removed), "modified", len(changes.Extended))
+	//return nil
+	//})
+	//}
+	//if err := minerGrp.Wait(); err != nil {
+	//return err
+	//}
 	close(sectorUpdatesCh)
 	// wait for the update channel to be drained
 	updateWg.Wait()
