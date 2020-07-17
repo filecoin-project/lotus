@@ -169,7 +169,7 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 		DealIDs:       sector.dealIDs(),
 	}
 
-	depositMinimum := m.tryUpgradeSector(params)
+	depositMinimum := m.tryUpgradeSector(ctx.Context(), params)
 
 	enc := new(bytes.Buffer)
 	if err := params.MarshalCBOR(enc); err != nil {
