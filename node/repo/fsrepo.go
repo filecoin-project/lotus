@@ -229,7 +229,6 @@ type fsLockedRepo struct {
 	ds     map[string]datastore.Batching
 	dsErr  error
 	dsOnce sync.Once
-	dsLk   sync.Mutex
 
 	storageLk sync.Mutex
 	configLk  sync.Mutex

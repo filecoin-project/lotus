@@ -81,6 +81,9 @@ func (mds *MultiStore) Get(i int) (*Store, error) {
 
 	var err error
 	mds.open[i], err = openStore(wds)
+	if err != nil {
+		return nil, xerrors.Errorf("could not open new store: %w", err)
+	}
 
 	stores := make([]int, 0, len(mds.open))
 	for k := range mds.open {
@@ -131,22 +134,28 @@ func (mds *MultiStore) Delete(i int) error {
 	if err != nil {
 		return xerrors.Errorf("query error: %w", err)
 	}
+	defer qres.Close() //nolint:errcheck
 
 	b, err := store.ds.Batch()
 	if err != nil {
 		return xerrors.Errorf("batch error: %w", err)
 	}
+
 	for r := range qres.Next() {
 		if r.Error != nil {
-			_ = qres.Close()
 			_ = b.Commit()
 			return xerrors.Errorf("iterator error: %w", err)
 		}
-		b.Delete(datastore.NewKey(r.Key))
+		err := b.Delete(datastore.NewKey(r.Key))
+		if err != nil {
+			_ = b.Commit()
+			return xerrors.Errorf("adding to batch: %w", err)
+		}
 	}
+
 	err = b.Commit()
 	if err != nil {
-		return xerrors.Errorf("commiting: %w", err)
+		return xerrors.Errorf("committing: %w", err)
 	}
 
 	return nil
