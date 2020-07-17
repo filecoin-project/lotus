@@ -53,3 +53,54 @@ func DiffAdtArray(preArr, curArr *adt.Array, out AdtArrayDiff) error {
 		return out.Add(uint64(i), curVal)
 	})
 }
+
+// TODO Performance can be improved by diffing the underlying IPLD graph, e.g. https://github.com/ipfs/go-merkledag/blob/749fd8717d46b4f34c9ce08253070079c89bc56d/dagutils/diff.go#L104
+// CBOR Marshaling will likely be the largest performance bottleneck here.
+
+// AdtMapDiff generalizes adt.Map diffing by accepting a Deferred type that can unmarshalled to its corresponding struct
+// in an interface implantation.
+// AsKey should return the Keyer implementation specific to the map
+// Add should be called when a new k,v is added to the map
+// Modify should be called when a value is modified in the map
+// Remove should be called when a value is removed from the map
+type AdtMapDiff interface {
+	AsKey(key string) (adt.Keyer, error)
+	Add(key string, val *typegen.Deferred) error
+	Modify(key string, from, to *typegen.Deferred) error
+	Remove(key string, val *typegen.Deferred) error
+}
+
+func DiffAdtMap(preMap, curMap *adt.Map, out AdtMapDiff) error {
+	prevVal := new(typegen.Deferred)
+	if err := preMap.ForEach(prevVal, func(key string) error {
+		curVal := new(typegen.Deferred)
+		k, err := out.AsKey(key)
+		if err != nil {
+			return err
+		}
+
+		found, err := curMap.Get(k, curVal)
+		if err != nil {
+			return err
+		}
+		if !found {
+			if err := out.Remove(key, prevVal); err != nil {
+				return err
+			}
+			return nil
+		}
+
+		if err := out.Modify(key, prevVal, curVal); err != nil {
+			return err
+		}
+
+		return curMap.Delete(k)
+	}); err != nil {
+		return err
+	}
+
+	curVal := new(typegen.Deferred)
+	return curMap.ForEach(curVal, func(key string) error {
+		return out.Add(key, curVal)
+	})
+}
