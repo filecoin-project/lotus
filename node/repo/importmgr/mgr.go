@@ -42,7 +42,7 @@ type StoreMeta struct {
 	Labels map[string]string
 }
 
-func (m *Mgr) NewStore() (int64, *Store, error) {
+func (m *Mgr) NewStore() (int, *Store, error) {
 	id := m.mds.Next()
 	st, err := m.mds.Get(id)
 	if err != nil {
@@ -60,7 +60,7 @@ func (m *Mgr) NewStore() (int64, *Store, error) {
 	return id, st, err
 }
 
-func (m *Mgr) AddLabel(id int64, key, value string) error { // source, file path, data CID..
+func (m *Mgr) AddLabel(id int, key, value string) error { // source, file path, data CID..
 	meta, err := m.ds.Get(datastore.NewKey(fmt.Sprintf("%d", id)))
 	if err != nil {
 		return xerrors.Errorf("getting metadata form datastore: %w", err)
@@ -81,11 +81,11 @@ func (m *Mgr) AddLabel(id int64, key, value string) error { // source, file path
 	return m.ds.Put(datastore.NewKey(fmt.Sprintf("%d", id)), meta)
 }
 
-func (m *Mgr) List() []int64 {
+func (m *Mgr) List() []int {
 	return m.mds.List()
 }
 
-func (m *Mgr) Info(id int64) (*StoreMeta, error) {
+func (m *Mgr) Info(id int) (*StoreMeta, error) {
 	meta, err := m.ds.Get(datastore.NewKey(fmt.Sprintf("%d", id)))
 	if err != nil {
 		return nil, xerrors.Errorf("getting metadata form datastore: %w", err)
@@ -99,7 +99,7 @@ func (m *Mgr) Info(id int64) (*StoreMeta, error) {
 	return &sm, nil
 }
 
-func (m *Mgr) Remove(id int64) error {
+func (m *Mgr) Remove(id int) error {
 	if err := m.mds.Delete(id); err != nil {
 		return xerrors.Errorf("removing import: %w", err)
 	}

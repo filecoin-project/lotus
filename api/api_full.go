@@ -191,7 +191,7 @@ type FullNode interface {
 	// ClientImport imports file under the specified path into filestore.
 	ClientImport(ctx context.Context, ref FileRef) (*ImportRes, error)
 	// ClientRemoveImport removes file import
-	ClientRemoveImport(ctx context.Context, importID int64) error
+	ClientRemoveImport(ctx context.Context, importID int) error
 	// ClientStartDeal proposes a deal with a miner.
 	ClientStartDeal(ctx context.Context, params *StartDealParams) (*cid.Cid, error)
 	// ClientGetDealInfo returns the latest information about a given deal.
@@ -393,11 +393,11 @@ type SectorLocation struct {
 
 type ImportRes struct {
 	Root     cid.Cid
-	ImportID int64
+	ImportID int
 }
 
 type Import struct {
-	Key int64
+	Key int
 	Err string
 
 	Root     *cid.Cid
