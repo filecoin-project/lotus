@@ -10,6 +10,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
@@ -25,7 +26,7 @@ func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate 
 	}
 
 	if msg.GasLimit == 0 {
-		msg.GasLimit = 10000000000
+		msg.GasLimit = build.BlockGasLimit
 	}
 	if msg.GasPrice == types.EmptyInt {
 		msg.GasPrice = types.NewInt(0)

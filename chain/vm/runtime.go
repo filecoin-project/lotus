@@ -550,7 +550,8 @@ func (rt *Runtime) chargeGasInternal(gas GasCharge, skip int) aerrors.ActorError
 	rt.lastGasChargeTime = now
 	rt.lastGasCharge = &gasTrace
 
-	if rt.gasUsed+toUse > rt.gasAvailable {
+	// overflow safe
+	if rt.gasUsed > rt.gasAvailable-toUse {
 		rt.gasUsed = rt.gasAvailable
 		return aerrors.Newf(exitcode.SysErrOutOfGas, "not enough gas: used=%d, available=%d",
 			rt.gasUsed, rt.gasAvailable)
