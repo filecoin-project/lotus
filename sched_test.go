@@ -119,6 +119,7 @@ func (s *schedTestWorker) Closing(ctx context.Context) (<-chan struct{}, error) 
 
 func (s *schedTestWorker) Close() error {
 	if !s.closed {
+		log.Info("close schedTestWorker")
 		s.closed = true
 		close(s.closing)
 	}
@@ -169,11 +170,11 @@ func TestSchedStartStop(t *testing.T) {
 
 	addTestWorker(t, sched, stores.NewIndex(), "fred", nil)
 
-	sched.schedClose()
+	require.NoError(t, sched.Close(context.TODO()))
 }
 
 func TestSched(t *testing.T) {
-	ctx, done := context.WithTimeout(context.Background(), 20*time.Second)
+	ctx, done := context.WithTimeout(context.Background(), 30*time.Second)
 	defer done()
 
 	spt := abi.RegisteredSealProof_StackedDrg32GiBV1
@@ -301,7 +302,7 @@ func TestSched(t *testing.T) {
 			log.Info("wait for async stuff")
 			rm.wg.Wait()
 
-			sched.schedClose()
+			require.NoError(t, sched.Close(context.TODO()))
 		}
 	}
 

@@ -489,8 +489,8 @@ func (m *Manager) FsStat(ctx context.Context, id stores.ID) (fsutil.FsStat, erro
 	return m.storage.FsStat(ctx, id)
 }
 
-func (m *Manager) Close() error {
-	return m.sched.Close()
+func (m *Manager) Close(ctx context.Context) error {
+	return m.sched.Close(ctx)
 }
 
 var _ SectorManager = &Manager{}

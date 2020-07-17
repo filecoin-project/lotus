@@ -3,6 +3,7 @@ package sectorstorage
 import (
 	"container/heap"
 	"context"
+	"fmt"
 	"math/rand"
 	"sort"
 	"sync"
@@ -69,6 +70,7 @@ type scheduler struct {
 	openWindows []*schedWindowRequest
 
 	closing  chan struct{}
+	closed   chan struct{}
 	testSync chan struct{} // used for testing
 }
 
@@ -79,6 +81,11 @@ type workerHandle struct {
 
 	preparing *activeResources
 	active    *activeResources
+
+	// for sync manager goroutine closing
+	cleanupStarted bool
+	closedMgr      chan struct{}
+	closingMgr     chan struct{}
 }
 
 type schedWindowRequest struct {
@@ -138,6 +145,7 @@ func newScheduler(spt abi.RegisteredSealProof) *scheduler {
 		schedQueue: &requestQueue{},
 
 		closing: make(chan struct{}),
+		closed:  make(chan struct{}),
 	}
 }
 
@@ -182,6 +190,8 @@ func (r *workerRequest) respond(err error) {
 }
 
 func (sh *scheduler) runSched() {
+	defer close(sh.closed)
+
 	go sh.runWorkerWatcher()
 
 	for {
@@ -366,10 +376,22 @@ func (sh *scheduler) trySched() {
 }
 
 func (sh *scheduler) runWorker(wid WorkerID) {
+	var ready sync.WaitGroup
+	ready.Add(1)
+	defer ready.Wait()
+
 	go func() {
 		sh.workersLk.Lock()
-		worker := sh.workers[wid]
+		worker, found := sh.workers[wid]
 		sh.workersLk.Unlock()
+
+		ready.Done()
+
+		if !found {
+			panic(fmt.Sprintf("worker %d not found", wid))
+		}
+
+		defer close(worker.closedMgr)
 
 		scheduledWindows := make(chan *schedWindow, SchedWindows)
 		taskDone := make(chan struct{}, 1)
@@ -403,6 +425,8 @@ func (sh *scheduler) runWorker(wid WorkerID) {
 					return
 				case <-workerClosing:
 					return
+				case <-worker.closingMgr:
+					return
 				}
 			}
 
@@ -414,6 +438,8 @@ func (sh *scheduler) runWorker(wid WorkerID) {
 			case <-sh.closing:
 				return
 			case <-workerClosing:
+				return
+			case <-worker.closingMgr:
 				return
 			}
 
@@ -518,6 +544,9 @@ func (sh *scheduler) assignWorker(taskDone chan struct{}, wid WorkerID, w *worke
 }
 
 func (sh *scheduler) newWorker(w *workerHandle) {
+	w.closedMgr = make(chan struct{})
+	w.closingMgr = make(chan struct{})
+
 	sh.workersLk.Lock()
 
 	id := sh.nextWorker
@@ -526,13 +555,13 @@ func (sh *scheduler) newWorker(w *workerHandle) {
 
 	sh.workersLk.Unlock()
 
+	sh.runWorker(id)
+
 	select {
 	case sh.watchClosing <- id:
 	case <-sh.closing:
 		return
 	}
-
-	sh.runWorker(id)
 }
 
 func (sh *scheduler) dropWorker(wid WorkerID) {
@@ -540,37 +569,59 @@ func (sh *scheduler) dropWorker(wid WorkerID) {
 	defer sh.workersLk.Unlock()
 
 	w := sh.workers[wid]
+
+	sh.workerCleanup(wid, w)
+
 	delete(sh.workers, wid)
+}
 
-	newWindows := make([]*schedWindowRequest, 0, len(sh.openWindows))
-	for _, window := range sh.openWindows {
-		if window.worker != wid {
-			newWindows = append(newWindows, window)
-		}
+func (sh *scheduler) workerCleanup(wid WorkerID, w *workerHandle) {
+	if !w.cleanupStarted {
+		close(w.closingMgr)
 	}
-	sh.openWindows = newWindows
+	select {
+	case <-w.closedMgr:
+	case <-time.After(time.Second):
+		log.Errorf("timeout closing worker manager goroutine %d", wid)
+	}
 
-	// TODO: sync close worker goroutine
+	if !w.cleanupStarted {
+		w.cleanupStarted = true
 
-	go func() {
-		if err := w.w.Close(); err != nil {
-			log.Warnf("closing worker %d: %+v", err)
+		newWindows := make([]*schedWindowRequest, 0, len(sh.openWindows))
+		for _, window := range sh.openWindows {
+			if window.worker != wid {
+				newWindows = append(newWindows, window)
+			}
 		}
-	}()
+		sh.openWindows = newWindows
+
+		log.Debugf("dropWorker %d", wid)
+
+		go func() {
+			if err := w.w.Close(); err != nil {
+				log.Warnf("closing worker %d: %+v", err)
+			}
+		}()
+	}
 }
 
 func (sh *scheduler) schedClose() {
 	sh.workersLk.Lock()
 	defer sh.workersLk.Unlock()
+	log.Debugf("closing scheduler")
 
 	for i, w := range sh.workers {
-		if err := w.w.Close(); err != nil {
-			log.Errorf("closing worker %d: %+v", i, err)
-		}
+		sh.workerCleanup(i, w)
 	}
 }
 
-func (sh *scheduler) Close() error {
+func (sh *scheduler) Close(ctx context.Context) error {
 	close(sh.closing)
+	select {
+	case <-sh.closed:
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 	return nil
 }
