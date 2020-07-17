@@ -168,14 +168,14 @@ func (sb *Sealer) AddPiece(ctx context.Context, sector abi.SectorID, existingPie
 		return abi.PieceInfo{}, xerrors.Errorf("generate unsealed CID: %w", err)
 	}
 
-	commp, err := commcid.CIDToDataCommitmentV1(pieceCID)
-	if err != nil {
+	// validate that the pieceCID was properly formed
+	if _, err := commcid.CIDToPieceCommitmentV1(pieceCID); err != nil {
 		return abi.PieceInfo{}, err
 	}
 
 	return abi.PieceInfo{
 		Size:     pieceSize.Padded(),
-		PieceCID: commcid.PieceCommitmentV1ToCID(commp),
+		PieceCID: pieceCID,
 	}, nil
 }
 
