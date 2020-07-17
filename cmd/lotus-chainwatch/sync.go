@@ -419,7 +419,8 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, headTs *types.
 				return
 			}
 
-			rewardInfo.baselinePower = rewardActorState.BaselinePower
+			panic("TODO")
+			//rewardInfo.baselinePower = rewardActorState.BaselinePower
 		})
 		log.Infow("Completed Reward Processing", "duration", time.Since(rewardProcessingStartedAt).String(), "processed", len(rewardTips))
 

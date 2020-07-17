@@ -534,12 +534,16 @@ func (vm *VM) MutateState(ctx context.Context, addr address.Address, fn interfac
 	return nil
 }
 
-func linksForObj(blk block.Block) ([]cid.Cid, error) {
+func linksForObj(blk block.Block, cb func(cid.Cid)) error {
 	switch blk.Cid().Prefix().Codec {
 	case cid.DagCBOR:
-		return cbg.ScanForLinks(bytes.NewReader(blk.RawData()))
+		err := cbg.ScanForLinks(bytes.NewReader(blk.RawData()), cb)
+		if err != nil {
+			return xerrors.Errorf("cbg.ScanForLinks: %w", err)
+		}
+		return nil
 	default:
-		return nil, xerrors.Errorf("vm flush copy method only supports dag cbor")
+		return xerrors.Errorf("vm flush copy method only supports dag cbor")
 	}
 }
 
@@ -557,7 +561,7 @@ func Copy(from, to blockstore.Blockstore, root cid.Cid) error {
 	}
 
 	if err := copyRec(from, to, root, batchCp); err != nil {
-		return err
+		return xerrors.Errorf("copyRec: %w", err)
 	}
 
 	if len(batch) > 0 {
@@ -580,31 +584,40 @@ func copyRec(from, to blockstore.Blockstore, root cid.Cid, cp func(block.Block) 
 		return xerrors.Errorf("get %s failed: %w", root, err)
 	}
 
-	links, err := linksForObj(blk)
-	if err != nil {
-		return err
-	}
+	var lerr error
+	err = linksForObj(blk, func(link cid.Cid) {
+		if lerr != nil {
+			// Theres no erorr return on linksForObj callback :(
+			return
+		}
 
-	for _, link := range links {
 		if link.Prefix().MhType == mh.IDENTITY || link.Prefix().Codec == cid.FilCommitmentSealed || link.Prefix().Codec == cid.FilCommitmentUnsealed {
-			continue
+			return
 		}
 
 		has, err := to.Has(link)
 		if err != nil {
-			return err
+			lerr = xerrors.Errorf("has: %w", err)
+			return
 		}
 		if has {
-			continue
+			return
 		}
 
 		if err := copyRec(from, to, link, cp); err != nil {
-			return err
+			lerr = err
+			return
 		}
+	})
+	if err != nil {
+		return xerrors.Errorf("linksForObj (%x): %w", blk.RawData(), err)
+	}
+	if lerr != nil {
+		return lerr
 	}
 
 	if err := cp(blk); err != nil {
-		return err
+		return xerrors.Errorf("copy: %w", err)
 	}
 	return nil
 }

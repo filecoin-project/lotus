@@ -287,7 +287,12 @@ func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, stateroot ci
 		}
 	}
 
-	return vm.Flush(ctx)
+	st, err := vm.Flush(ctx)
+	if err != nil {
+		return cid.Cid{}, xerrors.Errorf("vm flush: %w", err)
+	}
+
+	return st, nil
 }
 
 func MakeGenesisBlock(ctx context.Context, bs bstore.Blockstore, sys runtime.Syscalls, template genesis.Template) (*GenesisBootstrap, error) {

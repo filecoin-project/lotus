@@ -243,8 +243,8 @@ type FullNode interface {
 	// If the filterOut boolean is set to true, any sectors in the filter are excluded.
 	// If false, only those sectors in the filter are included.
 	StateMinerSectors(context.Context, address.Address, *abi.BitField, bool, types.TipSetKey) ([]*ChainSectorInfo, error)
-	// StateMinerProvingSet returns info about those sectors that a given miner is actively proving.
-	StateMinerProvingSet(context.Context, address.Address, types.TipSetKey) ([]*ChainSectorInfo, error)
+	// StateMinerActiveSectors returns info about sectors that a given miner is actively proving.
+	StateMinerActiveSectors(context.Context, address.Address, types.TipSetKey) ([]*ChainSectorInfo, error)
 	// StateMinerProvingDeadline calculates the deadline at some epoch for a proving period
 	// and returns the deadline-related calculations.
 	StateMinerProvingDeadline(context.Context, address.Address, types.TipSetKey) (*miner.DeadlineInfo, error)
@@ -253,7 +253,9 @@ type FullNode interface {
 	// StateMinerInfo returns info about the indicated miner
 	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (MinerInfo, error)
 	// StateMinerDeadlines returns all the proving deadlines for the given miner
-	StateMinerDeadlines(context.Context, address.Address, types.TipSetKey) (*miner.Deadlines, error)
+	StateMinerDeadlines(context.Context, address.Address, types.TipSetKey) ([]*miner.Deadline, error)
+	// StateMinerPartitions loads miner partitions for the specified miner/deadline
+	StateMinerPartitions(context.Context, address.Address, uint64, types.TipSetKey) ([]*miner.Partition, error)
 	// StateMinerFaults returns a bitfield indicating the faulty sectors of the given miner
 	StateMinerFaults(context.Context, address.Address, types.TipSetKey) (*abi.BitField, error)
 	// StateAllMinerFaults returns all non-expired Faults that occur within lookback epochs of the given tipset
@@ -267,7 +269,13 @@ type FullNode interface {
 	// StateSectorPreCommitInfo returns the PreCommit info for the specified miner's sector
 	StateSectorPreCommitInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error)
 	// StateSectorGetInfo returns the on-chain info for the specified miner's sector
+	// NOTE: returned info.Expiration may not be accurate in some cases, use StateSectorExpiration to get accurate
+	// expiration epoch
 	StateSectorGetInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*miner.SectorOnChainInfo, error)
+	// StateSectorExpiration returns epoch at which given sector will expire
+	StateSectorExpiration(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*SectorExpiration, error)
+	// StateSectorPartition finds deadline/partition with the specified sector
+	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok types.TipSetKey) (*SectorLocation, error)
 	StatePledgeCollateral(context.Context, types.TipSetKey) (types.BigInt, error)
 	// StateSearchMsg searches for a message in the chain, and returns its receipt and the tipset where it was executed
 	StateSearchMsg(context.Context, cid.Cid) (*MsgLookup, error)
@@ -356,6 +364,19 @@ type FileRef struct {
 type MinerSectors struct {
 	Sset uint64
 	Pset uint64
+}
+
+type SectorExpiration struct {
+	OnTime abi.ChainEpoch
+
+	// non-zero if sector is faulty, epoch at which it will be permanently
+	// removed if it doesn't recover
+	Early abi.ChainEpoch
+}
+
+type SectorLocation struct {
+	Deadline  uint64
+	Partition uint64
 }
 
 type ImportRes struct {

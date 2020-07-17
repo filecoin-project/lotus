@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
-	"github.com/ipfs/go-cid"
+	cid "github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 )
@@ -146,6 +146,8 @@ func (t *BlockHeader) MarshalCBOR(w io.Writer) error {
 }
 
 func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
+	*t = BlockHeader{}
+
 	br := cbg.GetPeeker(r)
 	scratch := make([]byte, 8)
 
@@ -470,6 +472,8 @@ func (t *Ticket) MarshalCBOR(w io.Writer) error {
 }
 
 func (t *Ticket) UnmarshalCBOR(r io.Reader) error {
+	*t = Ticket{}
+
 	br := cbg.GetPeeker(r)
 	scratch := make([]byte, 8)
 
@@ -545,6 +549,8 @@ func (t *ElectionProof) MarshalCBOR(w io.Writer) error {
 }
 
 func (t *ElectionProof) UnmarshalCBOR(r io.Reader) error {
+	*t = ElectionProof{}
+
 	br := cbg.GetPeeker(r)
 	scratch := make([]byte, 8)
 
@@ -688,6 +694,8 @@ func (t *Message) MarshalCBOR(w io.Writer) error {
 }
 
 func (t *Message) UnmarshalCBOR(r io.Reader) error {
+	*t = Message{}
+
 	br := cbg.GetPeeker(r)
 	scratch := make([]byte, 8)
 
@@ -861,6 +869,8 @@ func (t *SignedMessage) MarshalCBOR(w io.Writer) error {
 }
 
 func (t *SignedMessage) UnmarshalCBOR(r io.Reader) error {
+	*t = SignedMessage{}
+
 	br := cbg.GetPeeker(r)
 	scratch := make([]byte, 8)
 
@@ -926,6 +936,8 @@ func (t *MsgMeta) MarshalCBOR(w io.Writer) error {
 }
 
 func (t *MsgMeta) UnmarshalCBOR(r io.Reader) error {
+	*t = MsgMeta{}
+
 	br := cbg.GetPeeker(r)
 	scratch := make([]byte, 8)
 
@@ -1007,6 +1019,8 @@ func (t *Actor) MarshalCBOR(w io.Writer) error {
 }
 
 func (t *Actor) UnmarshalCBOR(r io.Reader) error {
+	*t = Actor{}
+
 	br := cbg.GetPeeker(r)
 	scratch := make([]byte, 8)
 
@@ -1123,6 +1137,8 @@ func (t *MessageReceipt) MarshalCBOR(w io.Writer) error {
 }
 
 func (t *MessageReceipt) UnmarshalCBOR(r io.Reader) error {
+	*t = MessageReceipt{}
+
 	br := cbg.GetPeeker(r)
 	scratch := make([]byte, 8)
 
@@ -1257,6 +1273,8 @@ func (t *BlockMsg) MarshalCBOR(w io.Writer) error {
 }
 
 func (t *BlockMsg) UnmarshalCBOR(r io.Reader) error {
+	*t = BlockMsg{}
+
 	br := cbg.GetPeeker(r)
 	scratch := make([]byte, 8)
 
@@ -1407,6 +1425,8 @@ func (t *ExpTipSet) MarshalCBOR(w io.Writer) error {
 }
 
 func (t *ExpTipSet) UnmarshalCBOR(r io.Reader) error {
+	*t = ExpTipSet{}
+
 	br := cbg.GetPeeker(r)
 	scratch := make([]byte, 8)
 
@@ -1542,6 +1562,8 @@ func (t *BeaconEntry) MarshalCBOR(w io.Writer) error {
 }
 
 func (t *BeaconEntry) UnmarshalCBOR(r io.Reader) error {
+	*t = BeaconEntry{}
+
 	br := cbg.GetPeeker(r)
 	scratch := make([]byte, 8)
 

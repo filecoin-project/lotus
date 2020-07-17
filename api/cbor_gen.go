@@ -91,6 +91,8 @@ func (t *PaymentInfo) MarshalCBOR(w io.Writer) error {
 }
 
 func (t *PaymentInfo) UnmarshalCBOR(r io.Reader) error {
+	*t = PaymentInfo{}
+
 	br := cbg.GetPeeker(r)
 	scratch := make([]byte, 8)
 
@@ -256,6 +258,8 @@ func (t *SealedRef) MarshalCBOR(w io.Writer) error {
 }
 
 func (t *SealedRef) UnmarshalCBOR(r io.Reader) error {
+	*t = SealedRef{}
+
 	br := cbg.GetPeeker(r)
 	scratch := make([]byte, 8)
 
@@ -378,6 +382,8 @@ func (t *SealedRefs) MarshalCBOR(w io.Writer) error {
 }
 
 func (t *SealedRefs) UnmarshalCBOR(r io.Reader) error {
+	*t = SealedRefs{}
+
 	br := cbg.GetPeeker(r)
 	scratch := make([]byte, 8)
 
@@ -505,6 +511,8 @@ func (t *SealTicket) MarshalCBOR(w io.Writer) error {
 }
 
 func (t *SealTicket) UnmarshalCBOR(r io.Reader) error {
+	*t = SealTicket{}
+
 	br := cbg.GetPeeker(r)
 	scratch := make([]byte, 8)
 
@@ -647,6 +655,8 @@ func (t *SealSeed) MarshalCBOR(w io.Writer) error {
 }
 
 func (t *SealSeed) UnmarshalCBOR(r io.Reader) error {
+	*t = SealSeed{}
+
 	br := cbg.GetPeeker(r)
 	scratch := make([]byte, 8)
 

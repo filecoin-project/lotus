@@ -36,7 +36,11 @@ func (a *WalletAPI) WalletList(ctx context.Context) ([]address.Address, error) {
 }
 
 func (a *WalletAPI) WalletBalance(ctx context.Context, addr address.Address) (types.BigInt, error) {
-	return a.StateManager.GetBalance(addr, nil)
+	var bal types.BigInt
+	return bal, a.StateManager.WithParentStateTsk(types.EmptyTSK, a.StateManager.WithActor(addr, func(act *types.Actor) error {
+		bal = act.Balance
+		return nil
+	}))
 }
 
 func (a *WalletAPI) WalletSign(ctx context.Context, k address.Address, msg []byte) (*crypto.Signature, error) {
