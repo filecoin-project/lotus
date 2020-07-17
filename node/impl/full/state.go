@@ -70,9 +70,42 @@ func (a *StateAPI) StateMinerSectors(ctx context.Context, addr address.Address, 
 	return stmgr.GetMinerSectorSet(ctx, a.StateManager, ts, addr, filter, filterOut)
 }
 
-func (a *StateAPI) StateMinerProvingSet(ctx context.Context, addr address.Address, tsk types.TipSetKey) ([]*api.ChainSectorInfo, error) {
-	// TODO
-	return nil, xerrors.Errorf("TODO FIXME")
+func (a *StateAPI) StateMinerProvingSet(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]*api.ChainSectorInfo, error) {
+	var out []*api.ChainSectorInfo
+
+	err := a.StateManager.WithParentStateTsk(tsk,
+		a.StateManager.WithActor(maddr,
+			a.StateManager.WithActorState(ctx, func(store adt.Store, mas *miner.State) error {
+				var allActive []*abi.BitField
+
+				err := a.StateManager.WithDeadlines(
+					a.StateManager.WithEachDeadline(
+						a.StateManager.WithEachPartition(func(store adt.Store, partIdx uint64, partition *miner.Partition) error {
+							active, err := partition.ActiveSectors()
+							if err != nil {
+								return xerrors.Errorf("partition.ActiveSectors: %w", err)
+							}
+
+							allActive = append(allActive, active)
+							return nil
+						})))(store, mas)
+				if err != nil {
+					return xerrors.Errorf("with deadlines: %w", err)
+				}
+
+				active, err := bitfield.MultiMerge(allActive...)
+				if err != nil {
+					return xerrors.Errorf("merging active sector bitfields: %w", err)
+				}
+
+				out, err = stmgr.LoadSectorsFromSet(ctx, a.Chain.Blockstore(), mas.Sectors, active, false)
+				return err
+			})))
+	if err != nil {
+		return nil, xerrors.Errorf("getting active sectors from partitions: %w", err)
+	}
+
+	return out, nil
 }
 
 func (a *StateAPI) StateMinerInfo(ctx context.Context, actor address.Address, tsk types.TipSetKey) (api.MinerInfo, error) {

@@ -246,19 +246,19 @@ var stateProvingSetCmd = &cli.Command{
 	Usage:     "Query the proving set of a miner",
 	ArgsUsage: "[minerAddress]",
 	Action: func(cctx *cli.Context) error {
-		/*api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)*/
+		ctx := ReqContext(cctx)
 
 		if !cctx.Args().Present() {
 			return fmt.Errorf("must specify miner to list sectors for")
 		}
 
-		/*maddr, err := address.NewFromString(cctx.Args().First())
+		maddr, err := address.NewFromString(cctx.Args().First())
 		if err != nil {
 			return err
 		}
@@ -267,17 +267,15 @@ var stateProvingSetCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		*/
-		// TODO: Fix me
 
-		/*sectors, err := api.StateMinerProvingSet(ctx, maddr, ts.Key())
+		sectors, err := api.StateMinerProvingSet(ctx, maddr, ts.Key())
 		if err != nil {
 			return err
 		}
 
 		for _, s := range sectors {
 			fmt.Printf("%d: %x\n", s.Info.SectorNumber, s.Info.SealedCID)
-		}*/
+		}
 
 		return nil
 	},

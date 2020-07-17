@@ -138,20 +138,20 @@ var sectorsListCmd = &cli.Command{
 			return err
 		}
 
-		/*pset, err := fullApi.StateMinerProvingSet(ctx, maddr, types.EmptyTSK)
+		pset, err := fullApi.StateMinerProvingSet(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
 		provingIDs := make(map[abi.SectorNumber]struct{}, len(pset))
 		for _, info := range pset {
 			provingIDs[info.ID] = struct{}{}
-		}*/
+		}
 
 		sset, err := fullApi.StateMinerSectors(ctx, maddr, nil, true, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
-		commitedIDs := make(map[abi.SectorNumber]struct{}, 0) //, len(pset))
+		commitedIDs := make(map[abi.SectorNumber]struct{}, len(pset))
 		for _, info := range sset {
 			commitedIDs[info.ID] = struct{}{}
 		}
@@ -170,7 +170,7 @@ var sectorsListCmd = &cli.Command{
 			}
 
 			_, inSSet := commitedIDs[s]
-			inPSet := true //_, inPSet := provingIDs[s] // TODO: Fix maaaybe
+			_, inPSet := provingIDs[s]
 
 			fmt.Fprintf(w, "%d: %s\tsSet: %s\tpSet: %s\ttktH: %d\tseedH: %d\tdeals: %v\n",
 				s,
