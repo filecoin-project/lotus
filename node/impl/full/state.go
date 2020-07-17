@@ -70,7 +70,7 @@ func (a *StateAPI) StateMinerSectors(ctx context.Context, addr address.Address, 
 	return stmgr.GetMinerSectorSet(ctx, a.StateManager, ts, addr, filter, filterOut)
 }
 
-func (a *StateAPI) StateMinerProvingSet(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]*api.ChainSectorInfo, error) {
+func (a *StateAPI) StateMinerActiveSectors(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]*api.ChainSectorInfo, error) {
 	var out []*api.ChainSectorInfo
 
 	err := a.StateManager.WithParentStateTsk(tsk,

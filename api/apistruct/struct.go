@@ -581,7 +581,7 @@ func (c *FullNodeStruct) StateMinerSectors(ctx context.Context, addr address.Add
 	return c.Internal.StateMinerSectors(ctx, addr, filter, filterOut, tsk)
 }
 
-func (c *FullNodeStruct) StateMinerProvingSet(ctx context.Context, addr address.Address, tsk types.TipSetKey) ([]*api.ChainSectorInfo, error) {
+func (c *FullNodeStruct) StateMinerActiveSectors(ctx context.Context, addr address.Address, tsk types.TipSetKey) ([]*api.ChainSectorInfo, error) {
 	return c.Internal.StateMinerProvingSet(ctx, addr, tsk)
 }
 

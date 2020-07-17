@@ -243,8 +243,8 @@ type FullNode interface {
 	// If the filterOut boolean is set to true, any sectors in the filter are excluded.
 	// If false, only those sectors in the filter are included.
 	StateMinerSectors(context.Context, address.Address, *abi.BitField, bool, types.TipSetKey) ([]*ChainSectorInfo, error)
-	// StateMinerProvingSet returns info about those sectors that a given miner is actively proving.
-	StateMinerProvingSet(context.Context, address.Address, types.TipSetKey) ([]*ChainSectorInfo, error)
+	// StateMinerActiveSectors returns info about sectors that a given miner is actively proving.
+	StateMinerActiveSectors(context.Context, address.Address, types.TipSetKey) ([]*ChainSectorInfo, error)
 	// StateMinerProvingDeadline calculates the deadline at some epoch for a proving period
 	// and returns the deadline-related calculations.
 	StateMinerProvingDeadline(context.Context, address.Address, types.TipSetKey) (*miner.DeadlineInfo, error)
