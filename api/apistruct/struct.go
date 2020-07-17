@@ -113,7 +113,7 @@ type FullNodeStruct struct {
 
 		ClientImport          func(ctx context.Context, ref api.FileRef) (*api.ImportRes, error)                                     `perm:"admin"`
 		ClientListImports     func(ctx context.Context) ([]api.Import, error)                                                        `perm:"write"`
-		ClientRemoveImport    func(ctx context.Context, importID int64) error                                                        `perm:"admin"`
+		ClientRemoveImport    func(ctx context.Context, importID int) error                                                          `perm:"admin"`
 		ClientHasLocal        func(ctx context.Context, root cid.Cid) (bool, error)                                                  `perm:"write"`
 		ClientFindData        func(ctx context.Context, root cid.Cid, piece *cid.Cid) ([]api.QueryOffer, error)                      `perm:"read"`
 		ClientMinerQueryOffer func(ctx context.Context, miner address.Address, root cid.Cid, piece *cid.Cid) (api.QueryOffer, error) `perm:"read"`
@@ -354,7 +354,7 @@ func (c *FullNodeStruct) ClientListImports(ctx context.Context) ([]api.Import, e
 	return c.Internal.ClientListImports(ctx)
 }
 
-func (c *FullNodeStruct) ClientRemoveImport(ctx context.Context, importID int64) error {
+func (c *FullNodeStruct) ClientRemoveImport(ctx context.Context, importID int) error {
 	return c.Internal.ClientRemoveImport(ctx, importID)
 }
 

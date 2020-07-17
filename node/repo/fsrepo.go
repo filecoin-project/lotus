@@ -226,11 +226,9 @@ type fsLockedRepo struct {
 	repoType RepoType
 	closer   io.Closer
 
-	ds      map[string]datastore.Batching
-	multiDs map[string]map[int64]datastore.Batching
-	dsErr   error
-	dsOnce  sync.Once
-	dsLk    sync.Mutex
+	ds     map[string]datastore.Batching
+	dsErr  error
+	dsOnce sync.Once
 
 	storageLk sync.Mutex
 	configLk  sync.Mutex

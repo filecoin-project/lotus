@@ -140,14 +140,14 @@ var clientDropCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		var ids []int64
+		var ids []int
 		for i, s := range cctx.Args().Slice() {
-			id, err := strconv.ParseInt(s, 10, 64)
+			id, err := strconv.ParseInt(s, 10, 0)
 			if err != nil {
 				return xerrors.Errorf("parsing %d-th import ID: %w", i, err)
 			}
 
-			ids = append(ids, id)
+			ids = append(ids, int(id))
 		}
 
 		for _, id := range ids {
