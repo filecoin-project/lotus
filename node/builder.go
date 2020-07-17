@@ -57,6 +57,7 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/paychmgr"
+	"github.com/filecoin-project/lotus/paychmgr/settler"
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 	sectorstorage "github.com/filecoin-project/sector-storage"
@@ -118,6 +119,7 @@ const (
 	// daemon
 	ExtractApiKey
 	HeadMetricsKey
+	SettlePaymentChannelsKey
 	RunPeerTaggerKey
 	JournalKey
 
@@ -272,6 +274,7 @@ func Online() Option {
 			Override(new(*paychmgr.Store), paychmgr.NewStore),
 			Override(new(*paychmgr.Manager), paychmgr.NewManager),
 			Override(new(*market.FundMgr), market.NewFundMgr),
+			Override(SettlePaymentChannelsKey, settler.SettlePaymentChannels),
 		),
 
 		// miner
