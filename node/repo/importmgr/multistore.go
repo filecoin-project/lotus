@@ -66,6 +66,24 @@ func (mds *MultiStore) Next() int {
 	return mds.next
 }
 
+func (mds *MultiStore) updateStores() error {
+	stores := make([]int, 0, len(mds.open))
+	for k := range mds.open {
+		stores = append(stores, k)
+	}
+	sort.Ints(stores)
+
+	listBytes, err := json.Marshal(stores)
+	if err != nil {
+		return xerrors.Errorf("could not marshal list: %w", err)
+	}
+	err = mds.ds.Put(dsListKey, listBytes)
+	if err != nil {
+		return xerrors.Errorf("could not save stores list: %w", err)
+	}
+	return nil
+}
+
 func (mds *MultiStore) Get(i int) (*Store, error) {
 	mds.lk.Lock()
 	defer mds.lk.Unlock()
@@ -85,22 +103,12 @@ func (mds *MultiStore) Get(i int) (*Store, error) {
 		return nil, xerrors.Errorf("could not open new store: %w", err)
 	}
 
-	stores := make([]int, 0, len(mds.open))
-	for k := range mds.open {
-		stores = append(stores, k)
-	}
-	sort.Ints(stores)
-
-	listBytes, err := json.Marshal(stores)
+	err = mds.updateStores()
 	if err != nil {
-		return nil, xerrors.Errorf("could not marshal list: %w", err)
-	}
-	err = mds.ds.Put(dsListKey, listBytes)
-	if err != nil {
-		return nil, xerrors.Errorf("could not save stores list: %w", err)
+		return nil, xerrors.Errorf("updating stores: %w", err)
 	}
 
-	return mds.open[i], err
+	return mds.open[i], nil
 }
 
 func (mds *MultiStore) List() []int {
@@ -128,6 +136,11 @@ func (mds *MultiStore) Delete(i int) error {
 	err := store.Close()
 	if err != nil {
 		return xerrors.Errorf("closing store: %w", err)
+	}
+
+	err = mds.updateStores()
+	if err != nil {
+		return xerrors.Errorf("updating stores: %w", err)
 	}
 
 	qres, err := store.ds.Query(query.Query{KeysOnly: true})
