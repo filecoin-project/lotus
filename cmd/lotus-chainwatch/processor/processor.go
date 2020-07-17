@@ -29,6 +29,8 @@ type Processor struct {
 
 	node api.FullNode
 
+	genesisTs *types.TipSet
+
 	// number of blocks processed at a time
 	batch int
 }
@@ -85,6 +87,12 @@ func (p *Processor) Start(ctx context.Context) {
 
 	if err := p.setupSchemas(); err != nil {
 		log.Fatalw("Failed to setup processor", "error", err)
+	}
+
+	var err error
+	p.genesisTs, err = p.node.ChainGetGenesis(ctx)
+	if err != nil {
+		log.Fatalw("Failed to get genesis state from lotus", "error", err.Error())
 	}
 
 	go p.subMpool(ctx)
@@ -173,6 +181,10 @@ func (p *Processor) Start(ctx context.Context) {
 
 func (p *Processor) refreshViews() error {
 	if _, err := p.db.Exec(`refresh materialized view state_heights`); err != nil {
+		return err
+	}
+
+	if _, err := p.db.Exec(`refresh materialized view miner_sectors_view`); err != nil {
 		return err
 	}
 
