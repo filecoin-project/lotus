@@ -111,8 +111,11 @@ func TestMemJournal_Observe(t *testing.T) {
 
 	require.Eventually(t, func() bool { return len(journal.Entries()) == 100 }, 1*time.Second, 100*time.Millisecond)
 
-	o1 := journal.Observe(context.TODO(), false, EventType{"spaceship", "wheezing-1"})
-	o2 := journal.Observe(context.TODO(), true, EventType{"spaceship", "wheezing-1"}, EventType{"spaceship", "wheezing-2"})
+	et1 := journal.RegisterEventType("spaceship", "wheezing-1")
+	et2 := journal.RegisterEventType("spaceship", "wheezing-2")
+
+	o1 := journal.Observe(context.TODO(), false, et1)
+	o2 := journal.Observe(context.TODO(), true, et1, et2)
 	o3 := journal.Observe(context.TODO(), true)
 
 	time.Sleep(1 * time.Second)
@@ -160,13 +163,15 @@ func TestMemJournal_ObserverCancellation(t *testing.T) {
 
 	require.Len(t, o1, 100) // has not moved.
 	require.Len(t, o2, 150) // should have 100 old entries + 50 new entries
-
 }
 
 func addEntries(journal *MemJournal, count int) {
 	for i := 0; i < count; i++ {
 		eventIdx := i % 10
-		journal.AddEntry(EventType{"spaceship", fmt.Sprintf("wheezing-%d", eventIdx)}, HeadChangeEvt{
+
+		// RegisterEventType is not _really_ intended to be used this way (on every write).
+		et := journal.RegisterEventType("spaceship", fmt.Sprintf("wheezing-%d", eventIdx))
+		journal.AddEntry(et, HeadChangeEvt{
 			From:        types.TipSetKey{},
 			FromHeight:  abi.ChainEpoch(i),
 			To:          types.TipSetKey{},

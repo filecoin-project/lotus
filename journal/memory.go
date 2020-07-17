@@ -21,7 +21,7 @@ type (
 )
 
 type MemJournal struct {
-	disabledTracker
+	*eventTypeFactory
 
 	entries   []*Entry
 	index     map[string]map[string][]*Entry
@@ -52,7 +52,7 @@ func (o *observer) dispatch(entry *Entry) {
 
 func NewMemoryJournal(lc fx.Lifecycle, disabled []EventType) *MemJournal {
 	m := &MemJournal{
-		disabledTracker: newDisabledTracker(disabled),
+		eventTypeFactory: newEventTypeFactory(disabled),
 
 		index:      make(map[string]map[string][]*Entry, 16),
 		observers:  make([]observer, 0, 16),
@@ -72,6 +72,11 @@ func NewMemoryJournal(lc fx.Lifecycle, disabled []EventType) *MemJournal {
 }
 
 func (m *MemJournal) AddEntry(evtType EventType, obj interface{}) {
+	if !evtType.enabled || !evtType.safe {
+		// tried to record a disabled event type, or used an invalid EventType.
+		return
+	}
+
 	entry := &Entry{
 		EventType: evtType,
 		Timestamp: build.Clock.Now(),
@@ -109,8 +114,12 @@ func (m *MemJournal) Clear() {
 func (m *MemJournal) Observe(ctx context.Context, replay bool, include ...EventType) <-chan *Entry {
 	var acc map[EventType]struct{}
 	if include != nil {
-		acc = make(map[EventType]struct{}, 16)
+		acc = make(map[EventType]struct{}, len(include))
 		for _, et := range include {
+			if !et.enabled {
+				// skip over disabled event type.
+				continue
+			}
 			acc[et] = struct{}{}
 		}
 	}

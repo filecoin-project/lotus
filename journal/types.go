@@ -1,11 +1,32 @@
 package journal
 
-import "time"
+import (
+	"sync"
+	"time"
+)
 
 // EventType represents the signature of an event.
 type EventType struct {
 	System string
 	Event  string
+
+	// enabled stores whether this event type is enabled.
+	enabled bool
+
+	// safe is a sentinel marker that's set to true if this EventType was
+	// constructed correctly (via Journal#RegisterEventType).
+	safe bool
+}
+
+// Enabled returns whether this event type is enabled in the journaling
+// subsystem. Users are advised to check this before actually attempting to
+// add a journal entry, as it helps bypass object construction for events that
+// would be discarded anyway.
+//
+// All event types are enabled by default, and specific event types can only
+// be disabled at Journal construction time.
+func (et EventType) Enabled() bool {
+	return et.enabled
 }
 
 // Journal represents an audit trail of system actions.
@@ -17,12 +38,11 @@ type EventType struct {
 // For cleanliness and type safety, we recommend to use typed events. See the
 // *Evt struct types in this package for more info.
 type Journal interface {
-	// IsEnabled allows components to check if a given event type is enabled.
-	// All event types are enabled by default, and specific event types can only
-	// be disabled at construction type. Components are advised to check if the
-	// journal event types they record are enabled as soon as possible, and hold
-	// on to the answer all throughout the lifetime of the process.
-	IsEnabled(evtType EventType) bool
+	// RegisterEventType introduces a new event type to this journal, and
+	// returns an EventType token that components can later use to check whether
+	// journalling for that type is enabled/suppressed, and to tag journal
+	// entries appropriately.
+	RegisterEventType(system, event string) EventType
 
 	// AddEntry adds an entry to this journal. See godocs on the Journal type
 	// for more info.
@@ -42,19 +62,43 @@ type Entry struct {
 	Data      interface{}
 }
 
-// disabledTracker is an embeddable mixin that takes care of tracking disabled
-// event types.
-type disabledTracker map[EventType]struct{}
+// eventTypeFactory is an embeddable mixin that takes care of tracking disabled
+// event types, and returning initialized/safe EventTypes when requested.
+type eventTypeFactory struct {
+	sync.Mutex
 
-func newDisabledTracker(disabled []EventType) disabledTracker {
-	dis := make(map[EventType]struct{}, len(disabled))
-	for _, et := range disabled {
-		dis[et] = struct{}{}
-	}
-	return dis
+	m map[string]EventType
 }
 
-func (d disabledTracker) IsEnabled(evtType EventType) bool {
-	_, ok := d[evtType]
-	return !ok
+func newEventTypeFactory(disabled []EventType) *eventTypeFactory {
+	ret := &eventTypeFactory{
+		m: make(map[string]EventType, len(disabled)+32), // + extra capacity.
+	}
+
+	for _, et := range disabled {
+		et.enabled, et.safe = false, true
+		ret.m[et.System+":"+et.Event] = et
+	}
+
+	return ret
+}
+
+func (d *eventTypeFactory) RegisterEventType(system, event string) EventType {
+	d.Lock()
+	defer d.Unlock()
+
+	key := system + ":" + event
+	if et, ok := d.m[key]; ok {
+		return et
+	}
+
+	et := EventType{
+		System:  system,
+		Event:   event,
+		enabled: true,
+		safe:    true,
+	}
+
+	d.m[key] = et
+	return et
 }

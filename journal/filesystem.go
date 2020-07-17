@@ -21,7 +21,7 @@ var log = logging.Logger("journal")
 
 // fsJournal is a basic journal backed by files on a filesystem.
 type fsJournal struct {
-	disabledTracker
+	*eventTypeFactory
 
 	dir       string
 	sizeLimit int64
@@ -44,11 +44,11 @@ func OpenFSJournal(lr repo.LockedRepo, lc fx.Lifecycle, disabled []EventType) (J
 	}
 
 	f := &fsJournal{
-		disabledTracker: newDisabledTracker(disabled),
-		dir:             dir,
-		sizeLimit:       1 << 30,
-		incoming:        make(chan *Entry, 32),
-		closing:         make(chan struct{}),
+		eventTypeFactory: newEventTypeFactory(disabled),
+		dir:              dir,
+		sizeLimit:        1 << 30,
+		incoming:         make(chan *Entry, 32),
+		closing:          make(chan struct{}),
 	}
 
 	if err := f.rollJournalFile(); err != nil {
