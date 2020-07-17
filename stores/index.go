@@ -29,9 +29,6 @@ type StorageInfo struct {
 
 	CanSeal  bool
 	CanStore bool
-
-	LastHeartbeat time.Time
-	HeartbeatErr  error
 }
 
 type HealthReport struct {

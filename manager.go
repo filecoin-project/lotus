@@ -208,7 +208,7 @@ func (m *Manager) ReadPiece(ctx context.Context, sink io.Writer, sector abi.Sect
 
 	var selector WorkerSelector
 	if len(best) == 0 { // new
-		selector, err = newAllocSelector(ctx, m.index, stores.FTUnsealed, stores.PathSealing)
+		selector = newAllocSelector(ctx, m.index, stores.FTUnsealed, stores.PathSealing)
 	} else { // append to existing
 		selector, err = newExistingSelector(ctx, m.index, sector, stores.FTUnsealed, false)
 	}
@@ -269,7 +269,7 @@ func (m *Manager) AddPiece(ctx context.Context, sector abi.SectorID, existingPie
 	var selector WorkerSelector
 	var err error
 	if len(existingPieces) == 0 { // new
-		selector, err = newAllocSelector(ctx, m.index, stores.FTUnsealed, stores.PathSealing)
+		selector = newAllocSelector(ctx, m.index, stores.FTUnsealed, stores.PathSealing)
 	} else { // use existing
 		selector, err = newExistingSelector(ctx, m.index, sector, stores.FTUnsealed, false)
 	}
@@ -300,10 +300,7 @@ func (m *Manager) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticke
 
 	// TODO: also consider where the unsealed data sits
 
-	selector, err := newAllocSelector(ctx, m.index, stores.FTCache|stores.FTSealed, stores.PathSealing)
-	if err != nil {
-		return nil, xerrors.Errorf("creating path selector: %w", err)
-	}
+	selector := newAllocSelector(ctx, m.index, stores.FTCache|stores.FTSealed, stores.PathSealing)
 
 	err = m.sched.Schedule(ctx, sector, sealtasks.TTPreCommit1, selector, schedFetch(sector, stores.FTUnsealed, stores.PathSealing, stores.AcquireMove), func(ctx context.Context, w Worker) error {
 		p, err := w.SealPreCommit1(ctx, sector, ticket, pieces)
@@ -417,11 +414,7 @@ func (m *Manager) FinalizeSector(ctx context.Context, sector abi.SectorID, keepU
 		return err
 	}
 
-	fetchSel, err := newAllocSelector(ctx, m.index, stores.FTCache|stores.FTSealed, stores.PathStorage)
-	if err != nil {
-		return xerrors.Errorf("creating fetchSel: %w", err)
-	}
-
+	fetchSel := newAllocSelector(ctx, m.index, stores.FTCache|stores.FTSealed, stores.PathStorage)
 	moveUnsealed := unsealed
 	{
 		if len(keepUnsealed) == 0 {
@@ -496,8 +489,8 @@ func (m *Manager) FsStat(ctx context.Context, id stores.ID) (fsutil.FsStat, erro
 	return m.storage.FsStat(ctx, id)
 }
 
-func (m *Manager) Close() error {
-	return m.sched.Close()
+func (m *Manager) Close(ctx context.Context) error {
+	return m.sched.Close(ctx)
 }
 
 var _ SectorManager = &Manager{}
