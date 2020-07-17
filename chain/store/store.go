@@ -54,6 +54,11 @@ var blockValidationCacheKeyPrefix = dstore.NewKey("blockValidation")
 // ReorgNotifee represents a callback that gets called upon reorgs.
 type ReorgNotifee func(rev, app []*types.TipSet) error
 
+// Journal event types.
+const (
+	evtTypeHeadChange = iota
+)
+
 // ChainStore is the main point of access to chain data.
 //
 // Raw chain data is stored in the Blockstore, with relevant markers (genesis,
@@ -85,10 +90,12 @@ type ChainStore struct {
 	tsCache *lru.ARCCache
 
 	vmcalls runtime.Syscalls
-	journal journal.Journal
+
+	journal  journal.Journal
+	evtTypes [1]journal.EventType
 }
 
-func NewChainStore(bs bstore.Blockstore, ds dstore.Batching, vmcalls runtime.Syscalls, journal journal.Journal) *ChainStore {
+func NewChainStore(bs bstore.Blockstore, ds dstore.Batching, vmcalls runtime.Syscalls, jrnl journal.Journal) *ChainStore {
 	c, _ := lru.NewARC(2048)
 	tsc, _ := lru.NewARC(4096)
 	cs := &ChainStore{
@@ -99,7 +106,11 @@ func NewChainStore(bs bstore.Blockstore, ds dstore.Batching, vmcalls runtime.Sys
 		mmCache:  c,
 		tsCache:  tsc,
 		vmcalls:  vmcalls,
-		journal:  journal,
+		journal:  jrnl,
+	}
+
+	cs.evtTypes = [1]journal.EventType{
+		evtTypeHeadChange: jrnl.RegisterEventType("sync", "head_change"),
 	}
 
 	ci := NewChainIndex(cs.LoadTipSet)
@@ -328,13 +339,15 @@ func (cs *ChainStore) reorgWorker(ctx context.Context, initialNotifees []ReorgNo
 					continue
 				}
 
-				cs.journal.AddEntry(journal.EventType{"sync", "head_change"}, map[string]interface{}{
-					"from":        r.old.Key(),
-					"from_height": r.old.Height(),
-					"to":          r.new.Key(),
-					"to_height":   r.new.Height(),
-					"rev_cnt":     len(revert),
-					"apply_cnt":   len(apply),
+				journal.MaybeAddEntry(cs.journal, cs.evtTypes[evtTypeHeadChange], func() interface{} {
+					return journal.HeadChangeEvt{
+						From:        r.old.Key(),
+						FromHeight:  r.old.Height(),
+						To:          r.new.Key(),
+						ToHeight:    r.new.Height(),
+						RevertCount: len(revert),
+						ApplyCount:  len(apply),
+					}
 				})
 
 				// reverse the apply array
