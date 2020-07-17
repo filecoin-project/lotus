@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/mitchellh/go-homedir"
@@ -19,6 +20,7 @@ import (
 
 	"github.com/filecoin-project/lotus/build"
 	genesis2 "github.com/filecoin-project/lotus/chain/gen/genesis"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/genesis"
 )
 
@@ -149,14 +151,17 @@ var genesisAddMinerCmd = &cli.Command{
 }
 
 type GenAccountEntry struct {
-	ID          string
-	CustodianID int
-	M           int
-	N           int
-	Addresses   []address.Address
-	Type        string
-	Sig1        string
-	Sig2        string
+	Version       int
+	ID            string
+	Amount        types.FIL
+	VestingMonths int
+	CustodianID   int
+	M             int
+	N             int
+	Addresses     []address.Address
+	Type          string
+	Sig1          string
+	Sig2          string
 }
 
 var genesisAddMsigsCmd = &cli.Command{
@@ -186,51 +191,9 @@ var genesisAddMsigsCmd = &cli.Command{
 			return xerrors.Errorf("unmarshal genesis template: %w", err)
 		}
 
-		fileReader, err := os.Open(csvf)
+		entries, err := parseMultisigCsv(csvf)
 		if err != nil {
-			return xerrors.Errorf("read multisig csv: %w", err)
-		}
-		r := csv.NewReader(fileReader)
-		records, err := r.ReadAll()
-		if err != nil {
-			return xerrors.Errorf("read multisig csv: %w", err)
-		}
-		var entries []GenAccountEntry
-		for _, e := range records {
-			var addrs []address.Address
-			for _, a := range e[7:] {
-				if a == "" {
-					continue
-				}
-				addr, err := address.NewFromString(a)
-				if err != nil {
-					return err
-				}
-				addrs = append(addrs, addr)
-			}
-			custodianID, err := strconv.Atoi(e[1])
-			if err != nil {
-				return xerrors.Errorf("Custodian ID must be integer")
-			}
-			threshold, err := strconv.Atoi(e[2])
-			if err != nil {
-				return xerrors.Errorf("Threshold must be integer")
-			}
-			num, err := strconv.Atoi(e[3])
-			if err != nil {
-				return xerrors.Errorf("Number of addresses be integer")
-			}
-			entry := GenAccountEntry{
-				ID: e[0],
-				CustodianID: custodianID,
-				M: threshold,
-				N: num,
-				Type: e[4],
-				Sig1: e[5],
-				Sig2: e[6],
-				Addresses: addrs,
-			}
-			entries = append(entries, entry)
+			return xerrors.Errorf("parsing multisig csv file: %w", err)
 		}
 
 		for i, e := range entries {
@@ -241,13 +204,13 @@ var genesisAddMsigsCmd = &cli.Command{
 			msig := &genesis.MultisigMeta{
 				Signers:         e.Addresses,
 				Threshold:       e.M,
-				VestingDuration: 0, // TODO
-				VestingStart:    0, // TODO
+				VestingDuration: monthsToBlocks(e.VestingMonths),
+				VestingStart:    0,
 			}
 
 			act := genesis.Actor{
 				Type:    genesis.TMultisig,
-				Balance: abi.NewTokenAmount(0), // TODO
+				Balance: abi.TokenAmount(e.Amount),
 				Meta:    msig.ActorMeta(),
 			}
 
@@ -265,4 +228,74 @@ var genesisAddMsigsCmd = &cli.Command{
 		}
 		return nil
 	},
+}
+
+func monthsToBlocks(nmonths int) int {
+	days := uint64((365 * nmonths) / 12)
+	return int(days * 24 * 60 * 60 / build.BlockDelaySecs)
+}
+
+func parseMultisigCsv(csvf string) ([]GenAccountEntry, error) {
+	fileReader, err := os.Open(csvf)
+	if err != nil {
+		return nil, xerrors.Errorf("read multisig csv: %w", err)
+	}
+	r := csv.NewReader(fileReader)
+	records, err := r.ReadAll()
+	if err != nil {
+		return nil, xerrors.Errorf("read multisig csv: %w", err)
+	}
+	var entries []GenAccountEntry
+	for i, e := range records[1:] {
+		var addrs []address.Address
+		addrStrs := strings.Split(strings.TrimSpace(e[7]), ":")
+		for j, a := range addrStrs {
+			addr, err := address.NewFromString(a)
+			if err != nil {
+				return nil, xerrors.Errorf("failed to parse address %d in row %d (%q): %w", j, i, a, err)
+			}
+			addrs = append(addrs, addr)
+		}
+
+		balance, err := types.ParseFIL(e[2])
+		if err != nil {
+			return nil, xerrors.Errorf("failed to parse account balance: %w", err)
+		}
+
+		vesting, err := strconv.Atoi(e[3])
+		if err != nil {
+			return nil, xerrors.Errorf("failed to parse vesting duration for record %d: %w", i, err)
+		}
+
+		custodianID, err := strconv.Atoi(e[4])
+		if err != nil {
+			return nil, xerrors.Errorf("failed to parse custodianID in record %d: %w", i, err)
+		}
+		threshold, err := strconv.Atoi(e[5])
+		if err != nil {
+			return nil, xerrors.Errorf("failed to parse multisigM in record %d: %w", i, err)
+		}
+		num, err := strconv.Atoi(e[6])
+		if err != nil {
+			return nil, xerrors.Errorf("Number of addresses be integer: %w", err)
+		}
+		if e[0] != "1" {
+			return nil, xerrors.Errorf("record version must be 1")
+		}
+		entries = append(entries, GenAccountEntry{
+			Version:       1,
+			ID:            e[1],
+			Amount:        balance,
+			CustodianID:   custodianID,
+			VestingMonths: vesting,
+			M:             threshold,
+			N:             num,
+			Type:          e[8],
+			Sig1:          e[9],
+			Sig2:          e[10],
+			Addresses:     addrs,
+		})
+	}
+
+	return entries, nil
 }
