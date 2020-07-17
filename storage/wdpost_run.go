@@ -389,6 +389,11 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 		}
 	}
 
+	if len(sinfos) == 0 {
+		// nothing to prove..
+		return nil, errNoPartitions
+	}
+
 	log.Infow("running windowPost",
 		"chain-random", rand,
 		"deadline", di,
