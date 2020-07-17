@@ -37,6 +37,7 @@ import (
 var log = logging.Logger("main")
 
 const FlagWorkerRepo = "worker-repo"
+
 // TODO remove after deprecation period
 const FlagWorkerRepoDeprecation = "workerrepo"
 
