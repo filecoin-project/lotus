@@ -5,6 +5,7 @@ import (
 	"context"
 	"time"
 
+	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/build"
@@ -131,15 +132,23 @@ func (p *Processor) persistRewardActors(ctx context.Context, rewards []rewardAct
 		log.Debugw("Persisted Reward Actors", "duration", time.Since(start).String())
 	}()
 
-	if err := p.storeChainPower(rewards); err != nil {
-		return err
-	}
+	grp, ctx := errgroup.WithContext(ctx)
 
-	if err := p.storeBaseBlockReward(rewards); err != nil {
-		return err
-	}
+	grp.Go(func() error {
+		if err := p.storeChainPower(rewards); err != nil {
+			return err
+		}
+		return nil
+	})
 
-	return nil
+	grp.Go(func() error {
+		if err := p.storeBaseBlockReward(rewards); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	return grp.Wait()
 }
 
 func (p *Processor) storeChainPower(rewards []rewardActorInfo) error {

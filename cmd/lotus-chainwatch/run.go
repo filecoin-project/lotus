@@ -29,6 +29,9 @@ var runCmd = &cli.Command{
 		if err := logging.SetLogLevel("*", ll); err != nil {
 			return err
 		}
+		if err := logging.SetLogLevel("rpc", "error"); err != nil {
+			return err
+		}
 
 		api, closer, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
