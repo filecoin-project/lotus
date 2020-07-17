@@ -5,7 +5,9 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-address"
+
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/stretchr/testify/assert"
 )
 
 func mustIDAddr(i uint64) address.Address {
@@ -25,11 +27,11 @@ func TestMessageFiltering(t *testing.T) {
 	actors := map[address.Address]*types.Actor{
 		a1: {
 			Nonce:   3,
-			Balance: types.NewInt(1200),
+			Balance: types.FromFil(1200),
 		},
 		a2: {
 			Nonce:   1,
-			Balance: types.NewInt(1000),
+			Balance: types.FromFil(1000),
 		},
 	}
 
@@ -42,40 +44,40 @@ func TestMessageFiltering(t *testing.T) {
 			From:     a1,
 			To:       a1,
 			Nonce:    3,
-			Value:    types.NewInt(500),
-			GasLimit: 50,
+			Value:    types.FromFil(500),
+			GasLimit: 100_000_000,
 			GasPrice: types.NewInt(1),
 		},
 		{
 			From:     a1,
 			To:       a1,
 			Nonce:    4,
-			Value:    types.NewInt(500),
-			GasLimit: 50,
+			Value:    types.FromFil(500),
+			GasLimit: 100_000_000,
 			GasPrice: types.NewInt(1),
 		},
 		{
 			From:     a2,
 			To:       a1,
 			Nonce:    1,
-			Value:    types.NewInt(800),
-			GasLimit: 100,
+			Value:    types.FromFil(800),
+			GasLimit: 100_000_000,
 			GasPrice: types.NewInt(1),
 		},
 		{
 			From:     a2,
 			To:       a1,
 			Nonce:    0,
-			Value:    types.NewInt(800),
-			GasLimit: 100,
+			Value:    types.FromFil(800),
+			GasLimit: 100_000_000,
 			GasPrice: types.NewInt(1),
 		},
 		{
 			From:     a2,
 			To:       a1,
 			Nonce:    2,
-			Value:    types.NewInt(150),
-			GasLimit: (100),
+			Value:    types.FromFil(150),
+			GasLimit: 100,
 			GasPrice: types.NewInt(1),
 		},
 	}
@@ -85,12 +87,10 @@ func TestMessageFiltering(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if len(outmsgs) != 3 {
-		t.Fatal("filtering didnt work as expected")
-	}
+	assert.Len(t, outmsgs, 3, "filtering didnt work as expected")
 
-	m1 := outmsgs[2].Message
-	if m1.From != msgs[2].From || m1.Nonce != msgs[2].Nonce {
+	was, expected := outmsgs[0].Message, msgs[2]
+	if was.From != expected.From || was.Nonce != expected.Nonce {
 		t.Fatal("filtering bad")
 	}
 }

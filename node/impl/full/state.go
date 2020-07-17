@@ -897,7 +897,7 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 			From:     maddr,
 			To:       builtin.StorageMarketActorAddr,
 			Method:   builtin.MethodsMarket.VerifyDealsForActivation,
-			GasLimit: 100000000000,
+			GasLimit: 100_000_000,
 			GasPrice: types.NewInt(0),
 			Params:   params,
 		}, ts)
@@ -969,7 +969,7 @@ func (a *StateAPI) StateVerifiedClientStatus(ctx context.Context, addr address.A
 		return nil, err
 	}
 
-	vh, err := hamt.LoadNode(ctx, cst, st.VerifiedClients)
+	vh, err := hamt.LoadNode(ctx, cst, st.VerifiedClients, hamt.UseTreeBitWidth(5))
 	if err != nil {
 		return nil, err
 	}

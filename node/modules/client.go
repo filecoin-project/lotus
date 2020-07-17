@@ -2,8 +2,9 @@ package modules
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/lib/bufbstore"
 	"time"
+
+	"github.com/filecoin-project/lotus/lib/bufbstore"
 
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -128,9 +129,9 @@ func StorageClient(lc fx.Lifecycle, h host.Host, ibs dtypes.ClientBlockstore, r 
 }
 
 // RetrievalClient creates a new retrieval client attached to the client blockstore
-func RetrievalClient(h host.Host, bs dtypes.ClientBlockstore, pmgr *paychmgr.Manager, payapi payapi.PaychAPI, resolver retrievalmarket.PeerResolver, ds dtypes.MetadataDS, chainapi full.ChainAPI) (retrievalmarket.RetrievalClient, error) {
+func RetrievalClient(h host.Host, bs dtypes.ClientBlockstore, dt dtypes.ClientDataTransfer, pmgr *paychmgr.Manager, payapi payapi.PaychAPI, resolver retrievalmarket.PeerResolver, ds dtypes.MetadataDS, chainapi full.ChainAPI) (retrievalmarket.RetrievalClient, error) {
 	adapter := retrievaladapter.NewRetrievalClientNode(pmgr, payapi, chainapi)
 	network := rmnet.NewFromLibp2pHost(h)
 	sc := storedcounter.New(ds, datastore.NewKey("/retr"))
-	return retrievalimpl.NewClient(network, bs, adapter, resolver, namespace.Wrap(ds, datastore.NewKey("/retrievals/client")), sc)
+	return retrievalimpl.NewClient(network, bs, dt, adapter, resolver, namespace.Wrap(ds, datastore.NewKey("/retrievals/client")), sc)
 }

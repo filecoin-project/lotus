@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
-	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	saminer "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
@@ -196,7 +195,7 @@ func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
 			*genm2,
 		},
 		NetworkName: "",
-		Timestamp:   uint64(time.Now().Add(-500 * time.Duration(build.BlockDelaySecs) * time.Second).Unix()),
+		Timestamp:   uint64(build.Clock.Now().Add(-500 * time.Duration(build.BlockDelaySecs) * time.Second).Unix()),
 	}
 
 	genb, err := genesis2.MakeGenesisBlock(context.TODO(), bs, sys, tpl)
@@ -284,7 +283,7 @@ func (cg *ChainGen) GenesisCar() ([]byte, error) {
 
 func CarWalkFunc(nd format.Node) (out []*format.Link, err error) {
 	for _, link := range nd.Links() {
-		if link.Cid.Prefix().MhType == uint64(commcid.FC_SEALED_V1) || link.Cid.Prefix().MhType == uint64(commcid.FC_UNSEALED_V1) {
+		if link.Cid.Prefix().Codec == cid.FilCommitmentSealed || link.Cid.Prefix().Codec == cid.FilCommitmentUnsealed {
 			continue
 		}
 		out = append(out, link)
@@ -472,7 +471,7 @@ func getRandomMessages(cg *ChainGen) ([]*types.SignedMessage, error) {
 
 			Method: 0,
 
-			GasLimit: 10000,
+			GasLimit: 100_000_000,
 			GasPrice: types.NewInt(0),
 		}
 

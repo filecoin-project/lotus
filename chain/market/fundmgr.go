@@ -70,7 +70,7 @@ func (fm *FundMgr) EnsureAvailable(ctx context.Context, addr, wallet address.Add
 		From:     wallet,
 		Value:    toAdd,
 		GasPrice: types.NewInt(0),
-		GasLimit: 1000000,
+		GasLimit: 100_000_000,
 		Method:   builtin.MethodsMarket.AddBalance,
 		Params:   params,
 	})

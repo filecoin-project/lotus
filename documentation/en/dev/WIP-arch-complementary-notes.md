@@ -32,7 +32,7 @@ Gossip sub spec and some introduction.
 
 # Look at the constructor of a miner
 
-Follow the `lotus-storage-miner` command to see how a miner is created, from the command to the message to the storage power logic.
+Follow the `lotus-miner` command to see how a miner is created, from the command to the message to the storage power logic.
 
 # Directory structure so far, main structures seen, their relation
 

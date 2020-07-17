@@ -5,11 +5,11 @@ import (
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
+
+	"github.com/filecoin-project/lotus/build"
 )
 
 var log = logging.Logger("incrt")
-
-var now = time.Now
 
 type ReaderDeadline interface {
 	Read([]byte) (int, error)
@@ -45,7 +45,7 @@ func (err errNoWait) Timeout() bool {
 }
 
 func (crt *incrt) Read(buf []byte) (int, error) {
-	start := now()
+	start := build.Clock.Now()
 	if crt.wait == 0 {
 		return 0, errNoWait{}
 	}
@@ -59,7 +59,7 @@ func (crt *incrt) Read(buf []byte) (int, error) {
 
 	_ = crt.rd.SetReadDeadline(time.Time{})
 	if err == nil {
-		dur := now().Sub(start)
+		dur := build.Clock.Now().Sub(start)
 		crt.wait -= dur
 		crt.wait += time.Duration(n) * crt.waitPerByte
 		if crt.wait < 0 {

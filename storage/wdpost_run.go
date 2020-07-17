@@ -176,7 +176,7 @@ func (s *WindowPoStScheduler) checkNextRecoveries(ctx context.Context, dlIdx uin
 		Method:   builtin.MethodsMiner.DeclareFaultsRecovered,
 		Params:   enc,
 		Value:    types.NewInt(0),
-		GasLimit: 10000000, // i dont know help
+		GasLimit: 100_000_000, // i dont know help
 		GasPrice: types.NewInt(2),
 	}
 
@@ -260,7 +260,7 @@ func (s *WindowPoStScheduler) checkNextFaults(ctx context.Context, dlIdx uint64,
 		Method:   builtin.MethodsMiner.DeclareFaults,
 		Params:   enc,
 		Value:    types.NewInt(0), // TODO: Is there a fee?
-		GasLimit: 10000000,        // i dont know help
+		GasLimit: 100_000_000,        // i dont know help
 		GasPrice: types.NewInt(2),
 	}
 
@@ -395,7 +395,7 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 		"height", ts.Height(),
 		"skipped", skipCount)
 
-	tsStart := time.Now()
+	tsStart := build.Clock.Now()
 
 	log.Infow("generating windowPost", "sectors", len(sinfos))
 

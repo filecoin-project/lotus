@@ -52,7 +52,7 @@ type FullNode interface {
 	// the specified block.
 	ChainGetParentReceipts(ctx context.Context, blockCid cid.Cid) ([]*types.MessageReceipt, error)
 
-	// ChainGetParentReceipts returns messages stored in parent tipset of the
+	// ChainGetParentMessages returns messages stored in parent tipset of the
 	// specified block.
 	ChainGetParentMessages(ctx context.Context, blockCid cid.Cid) ([]Message, error)
 
@@ -319,7 +319,7 @@ type FullNode interface {
 
 	// MsigGetAvailableBalance returns the portion of a multisig's balance that can be withdrawn or spent
 	MsigGetAvailableBalance(context.Context, address.Address, types.TipSetKey) (types.BigInt, error)
-	// MsigGetAvailableBalance creates a multisig wallet
+	// MsigCreate creates a multisig wallet
 	// It takes the following params: <required number of senders>, <approving addresses>, <unlock duration>
 	//<initial balance>, <sender address of the create msg>, <gas price>
 	MsigCreate(context.Context, uint64, []address.Address, abi.ChainEpoch, types.BigInt, address.Address, types.BigInt) (cid.Cid, error)

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"text/tabwriter"
 	"time"
 
@@ -296,6 +297,7 @@ var storageDealsCmd = &cli.Command{
 		setBlocklistCmd,
 		getBlocklistCmd,
 		resetBlocklistCmd,
+		setSealDurationCmd,
 	},
 }
 
@@ -357,7 +359,7 @@ var dealsListCmd = &cli.Command{
 
 var getBlocklistCmd = &cli.Command{
 	Name:  "get-blocklist",
-	Usage: "List the contents of the storage miner's piece CID blocklist",
+	Usage: "List the contents of the miner's piece CID blocklist",
 	Flags: []cli.Flag{
 		&CidBaseFlag,
 	},
@@ -388,7 +390,7 @@ var getBlocklistCmd = &cli.Command{
 
 var setBlocklistCmd = &cli.Command{
 	Name:      "set-blocklist",
-	Usage:     "Set the storage miner's list of blocklisted piece CIDs",
+	Usage:     "Set the miner's list of blocklisted piece CIDs",
 	ArgsUsage: "[<path-of-file-containing-newline-delimited-piece-CIDs> (optional, will read from stdin if omitted)]",
 	Flags:     []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
@@ -435,7 +437,7 @@ var setBlocklistCmd = &cli.Command{
 
 var resetBlocklistCmd = &cli.Command{
 	Name:  "reset-blocklist",
-	Usage: "Remove all entries from the storage miner's piece CID blocklist",
+	Usage: "Remove all entries from the miner's piece CID blocklist",
 	Flags: []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := lcli.GetStorageMinerAPI(cctx)
@@ -445,5 +447,31 @@ var resetBlocklistCmd = &cli.Command{
 		defer closer()
 
 		return api.DealsSetPieceCidBlocklist(lcli.DaemonContext(cctx), []cid.Cid{})
+	},
+}
+
+var setSealDurationCmd = &cli.Command{
+	Name:      "set-seal-duration",
+	Usage:     "Set the expected time, in minutes, that you expect sealing sectors to take. Deals that start before this duration will be rejected.",
+	ArgsUsage: "<minutes>",
+	Action: func(cctx *cli.Context) error {
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+		if cctx.Args().Len() != 1 {
+			return xerrors.Errorf("must pass duration in minutes")
+		}
+
+		hs, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
+		if err != nil {
+			return xerrors.Errorf("could not parse duration: %w", err)
+		}
+
+		delay := hs * uint64(time.Minute)
+
+		return nodeApi.SectorSetExpectedSealDuration(ctx, time.Duration(delay))
 	},
 }

@@ -317,7 +317,7 @@ func MakeGenesisBlock(ctx context.Context, bs bstore.Blockstore, sys runtime.Sys
 
 	stateroot, err = SetupStorageMiners(ctx, cs, stateroot, template.Miners)
 	if err != nil {
-		return nil, xerrors.Errorf("setup storage miners failed: %w", err)
+		return nil, xerrors.Errorf("setup miners failed: %w", err)
 	}
 
 	cst := cbor.NewCborStore(bs)

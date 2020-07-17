@@ -51,7 +51,8 @@ var msigCreateCmd = &cli.Command{
 	ArgsUsage: "[address1 address2 ...]",
 	Flags: []cli.Flag{
 		&cli.Int64Flag{
-			Name: "required",
+			Name:  "required",
+			Usage: "number of required approvals (uses number of signers provided if omitted)",
 		},
 		&cli.StringFlag{
 			Name:  "value",

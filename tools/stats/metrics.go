@@ -66,7 +66,7 @@ func NewInfluxWriteQueue(ctx context.Context, influx client.Client) *InfluxWrite
 				for i := 0; i < maxRetries; i++ {
 					if err := influx.Write(batch); err != nil {
 						log.Warnw("Failed to write batch", "error", err)
-						time.Sleep(time.Second * 15)
+						build.Clock.Sleep(15 * time.Second)
 						continue
 					}
 
@@ -104,7 +104,7 @@ func InfluxNewBatch() (client.BatchPoints, error) {
 }
 
 func NewPoint(name string, value interface{}) models.Point {
-	pt, _ := models.NewPoint(name, models.Tags{}, map[string]interface{}{"value": value}, time.Now())
+	pt, _ := models.NewPoint(name, models.Tags{}, map[string]interface{}{"value": value}, build.Clock.Now())
 	return pt
 }
 

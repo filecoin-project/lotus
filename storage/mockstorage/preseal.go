@@ -45,7 +45,7 @@ func PreSeal(ssize abi.SectorSize, maddr address.Address, sectors int) (*genesis
 		preseal.CommD = zerocomm.ZeroPieceCommitment(abi.PaddedPieceSize(ssize).Unpadded())
 		d, _ := commcid.CIDToPieceCommitmentV1(preseal.CommD)
 		r := mock.CommDR(d)
-		preseal.CommR = commcid.ReplicaCommitmentV1ToCID(r[:])
+		preseal.CommR, _ = commcid.ReplicaCommitmentV1ToCID(r[:])
 		preseal.SectorID = abi.SectorNumber(i + 1)
 		preseal.Deal = market.DealProposal{
 			PieceCID:             preseal.CommD,

@@ -25,7 +25,7 @@ type FullNode struct {
 
 // // Common
 
-// StorageMiner is a storage miner config
+// StorageMiner is a miner config
 type StorageMiner struct {
 	Common
 
@@ -40,6 +40,7 @@ type DealmakingConfig struct {
 	ConsiderOnlineRetrievalDeals  bool
 	ConsiderOfflineRetrievalDeals bool
 	PieceCidBlocklist             []cid.Cid
+	ExpectedSealDuration          Duration
 }
 
 // API contains configs for API endpoint
@@ -132,6 +133,8 @@ func DefaultStorageMiner() *StorageMiner {
 			ConsiderOnlineRetrievalDeals:  true,
 			ConsiderOfflineRetrievalDeals: true,
 			PieceCidBlocklist:             []cid.Cid{},
+			// TODO: It'd be nice to set this based on sector size
+			ExpectedSealDuration: Duration(time.Hour * 12),
 		},
 
 		SealingDelay: Duration(time.Hour),

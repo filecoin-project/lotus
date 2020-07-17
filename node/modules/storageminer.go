@@ -335,7 +335,19 @@ func NewStorageAsk(ctx helpers.MetricsCtx, fapi lapi.FullNode, ds dtypes.Metadat
 	return storedAsk, nil
 }
 
-func StorageProvider(minerAddress dtypes.MinerAddress, ffiConfig *ffiwrapper.Config, storedAsk *storedask.StoredAsk, h host.Host, ds dtypes.MetadataDS, ibs dtypes.StagingBlockstore, r repo.LockedRepo, pieceStore dtypes.ProviderPieceStore, dataTransfer dtypes.ProviderDataTransfer, spn storagemarket.StorageProviderNode, onlineOk dtypes.ConsiderOnlineStorageDealsConfigFunc, offlineOk dtypes.ConsiderOfflineStorageDealsConfigFunc, blocklistFunc dtypes.StorageDealPieceCidBlocklistConfigFunc) (storagemarket.StorageProvider, error) {
+func StorageProvider(minerAddress dtypes.MinerAddress,
+	ffiConfig *ffiwrapper.Config,
+	storedAsk *storedask.StoredAsk,
+	h host.Host, ds dtypes.MetadataDS,
+	ibs dtypes.StagingBlockstore,
+	r repo.LockedRepo,
+	pieceStore dtypes.ProviderPieceStore,
+	dataTransfer dtypes.ProviderDataTransfer,
+	spn storagemarket.StorageProviderNode,
+	onlineOk dtypes.ConsiderOnlineStorageDealsConfigFunc,
+	offlineOk dtypes.ConsiderOfflineStorageDealsConfigFunc,
+	blocklistFunc dtypes.StorageDealPieceCidBlocklistConfigFunc,
+	expectedSealTimeFunc dtypes.GetExpectedSealDurationFunc) (storagemarket.StorageProvider, error) {
 	net := smnet.NewFromLibp2pHost(h)
 	store, err := piecefilestore.NewLocalFileStore(piecefilestore.OsPath(r.Path()))
 	if err != nil {
@@ -375,6 +387,22 @@ func StorageProvider(minerAddress dtypes.MinerAddress, ffiConfig *ffiwrapper.Con
 			}
 		}
 
+		sealDuration, err := expectedSealTimeFunc()
+		if err != nil {
+			return false, "miner error", err
+		}
+
+		sealEpochs := sealDuration / (time.Duration(build.BlockDelaySecs) * time.Second)
+		_, ht, err := spn.GetChainHead(ctx)
+		if err != nil {
+			return false, "failed to get chain head", err
+		}
+		earliest := abi.ChainEpoch(sealEpochs) + ht
+		if deal.Proposal.StartEpoch < earliest {
+			log.Warnf("proposed deal would start before sealing can be completed; rejecting storage deal proposal from client: %s", deal.Proposal.PieceCID, deal.Client.String())
+			return false, fmt.Sprintf("cannot seal a sector before %s", deal.Proposal.StartEpoch), nil
+		}
+
 		return true, "", nil
 	})
 
@@ -387,7 +415,7 @@ func StorageProvider(minerAddress dtypes.MinerAddress, ffiConfig *ffiwrapper.Con
 }
 
 // RetrievalProvider creates a new retrieval provider attached to the provider blockstore
-func RetrievalProvider(h host.Host, miner *storage.Miner, sealer sectorstorage.SectorManager, full lapi.FullNode, ds dtypes.MetadataDS, pieceStore dtypes.ProviderPieceStore, ibs dtypes.StagingBlockstore, onlineOk dtypes.ConsiderOnlineRetrievalDealsConfigFunc, offlineOk dtypes.ConsiderOfflineRetrievalDealsConfigFunc) (retrievalmarket.RetrievalProvider, error) {
+func RetrievalProvider(h host.Host, miner *storage.Miner, sealer sectorstorage.SectorManager, full lapi.FullNode, ds dtypes.MetadataDS, pieceStore dtypes.ProviderPieceStore, ibs dtypes.StagingBlockstore, dt dtypes.ProviderDataTransfer, onlineOk dtypes.ConsiderOnlineRetrievalDealsConfigFunc, offlineOk dtypes.ConsiderOfflineRetrievalDealsConfigFunc) (retrievalmarket.RetrievalProvider, error) {
 	adapter := retrievaladapter.NewRetrievalProviderNode(miner, sealer, full)
 
 	maddr, err := minerAddrFromDS(ds)
@@ -420,7 +448,7 @@ func RetrievalProvider(h host.Host, miner *storage.Miner, sealer sectorstorage.S
 		return true, "", nil
 	})
 
-	return retrievalimpl.NewProvider(maddr, adapter, netwk, pieceStore, ibs, namespace.Wrap(ds, datastore.NewKey("/retrievals/provider")), opt)
+	return retrievalimpl.NewProvider(maddr, adapter, netwk, pieceStore, ibs, dt, namespace.Wrap(ds, datastore.NewKey("/retrievals/provider")), opt)
 }
 
 func SectorStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, ls stores.LocalStorage, si stores.SectorIndex, cfg *ffiwrapper.Config, sc sectorstorage.SealerConfig, urls sectorstorage.URLs, sa sectorstorage.StorageAuth) (*sectorstorage.Manager, error) {
@@ -563,6 +591,24 @@ func NewGetSealDelayFunc(r repo.LockedRepo) (dtypes.GetSealingDelayFunc, error) 
 	}, nil
 }
 
+func NewSetExpectedSealDurationFunc(r repo.LockedRepo) (dtypes.SetExpectedSealDurationFunc, error) {
+	return func(delay time.Duration) (err error) {
+		err = mutateCfg(r, func(cfg *config.StorageMiner) {
+			cfg.Dealmaking.ExpectedSealDuration = config.Duration(delay)
+		})
+		return
+	}, nil
+}
+
+func NewGetExpectedSealDurationFunc(r repo.LockedRepo) (dtypes.GetExpectedSealDurationFunc, error) {
+	return func() (out time.Duration, err error) {
+		err = readCfg(r, func(cfg *config.StorageMiner) {
+			out = time.Duration(cfg.Dealmaking.ExpectedSealDuration)
+		})
+		return
+	}, nil
+}
+
 func readCfg(r repo.LockedRepo, accessor func(*config.StorageMiner)) error {
 	raw, err := r.Config()
 	if err != nil {
@@ -585,7 +631,7 @@ func mutateCfg(r repo.LockedRepo, mutator func(*config.StorageMiner)) error {
 	setConfigErr := r.SetConfig(func(raw interface{}) {
 		cfg, ok := raw.(*config.StorageMiner)
 		if !ok {
-			typeErr = errors.New("expected storage miner config")
+			typeErr = errors.New("expected miner config")
 			return
 		}
 
