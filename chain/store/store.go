@@ -85,9 +85,10 @@ type ChainStore struct {
 	tsCache *lru.ARCCache
 
 	vmcalls runtime.Syscalls
+	journal journal.Journal
 }
 
-func NewChainStore(bs bstore.Blockstore, ds dstore.Batching, vmcalls runtime.Syscalls) *ChainStore {
+func NewChainStore(bs bstore.Blockstore, ds dstore.Batching, vmcalls runtime.Syscalls, journal journal.Journal) *ChainStore {
 	c, _ := lru.NewARC(2048)
 	tsc, _ := lru.NewARC(4096)
 	cs := &ChainStore{
@@ -98,6 +99,7 @@ func NewChainStore(bs bstore.Blockstore, ds dstore.Batching, vmcalls runtime.Sys
 		mmCache:  c,
 		tsCache:  tsc,
 		vmcalls:  vmcalls,
+		journal:  journal,
 	}
 
 	ci := NewChainIndex(cs.LoadTipSet)
@@ -326,12 +328,13 @@ func (cs *ChainStore) reorgWorker(ctx context.Context, initialNotifees []ReorgNo
 					continue
 				}
 
-				journal.Add("sync", map[string]interface{}{
-					"op":    "headChange",
-					"from":  r.old.Key(),
-					"to":    r.new.Key(),
-					"rev":   len(revert),
-					"apply": len(apply),
+				cs.journal.AddEntry(journal.EventType{"sync", "head_change"}, map[string]interface{}{
+					"from":        r.old.Key(),
+					"from_height": r.old.Height(),
+					"to":          r.new.Key(),
+					"to_height":   r.new.Height(),
+					"rev_cnt":     len(revert),
+					"apply_cnt":   len(apply),
 				})
 
 				// reverse the apply array

@@ -41,6 +41,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/lib/peermgr"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
@@ -119,7 +120,7 @@ const (
 	ExtractApiKey
 	HeadMetricsKey
 	RunPeerTaggerKey
-	JournalKey
+	InitJournalKey
 
 	SetApiEndpointKey
 
@@ -151,8 +152,9 @@ func defaults() []Option {
 		Override(new(record.Validator), modules.RecordValidator),
 		Override(new(dtypes.Bootstrapper), dtypes.Bootstrapper(false)),
 		Override(new(dtypes.ShutdownChan), make(chan struct{})),
-		Override(JournalKey, modules.SetupJournal),
+		Override(new(journal.Journal), journal.OpenFSJournal),
 
+		Override(InitJournalKey, func(j *journal.Journal) { /* forces the creation of the journal at startup */ }),
 		// Filecoin modules
 
 	}

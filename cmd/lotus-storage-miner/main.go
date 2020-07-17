@@ -22,6 +22,7 @@ import (
 var log = logging.Logger("main")
 
 const FlagMinerRepo = "miner-repo"
+
 // TODO remove after deprecation period
 const FlagMinerRepoDeprecation = "storagerepo"
 

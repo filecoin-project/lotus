@@ -256,7 +256,7 @@ func (s *WindowPoStScheduler) checkNextFaults(ctx context.Context, deadline uint
 		Method:   builtin.MethodsMiner.DeclareFaults,
 		Params:   enc,
 		Value:    types.NewInt(0), // TODO: Is there a fee?
-		GasLimit: 100_000_000,        // i dont know help
+		GasLimit: 100_000_000,     // i dont know help
 		GasPrice: types.NewInt(2),
 	}
 
