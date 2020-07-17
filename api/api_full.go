@@ -369,8 +369,8 @@ type MinerSectors struct {
 type SectorExpiration struct {
 	OnTime abi.ChainEpoch
 
-	// non-zero if sector is faulty, epoch at which it will it will be
-	// permanently removed if it doesn't recover
+	// non-zero if sector is faulty, epoch at which it will be permanently
+	// removed if it doesn't recover
 	Early abi.ChainEpoch
 }
 
