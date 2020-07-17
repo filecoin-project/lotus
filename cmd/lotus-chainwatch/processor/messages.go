@@ -120,7 +120,7 @@ func (p *Processor) persistMessagesAndReceipts(ctx context.Context, blocks map[c
 func (p *Processor) storeReceipts(recs map[mrec]*types.MessageReceipt) error {
 	start := time.Now()
 	defer func() {
-		log.Infow("Persisted Receipts", "duration", time.Since(start).String())
+		log.Debugw("Persisted Receipts", "duration", time.Since(start).String())
 	}()
 	tx, err := p.db.Begin()
 	if err != nil {
@@ -164,7 +164,7 @@ create temp table recs (like receipts excluding constraints) on commit drop;
 func (p *Processor) storeMsgInclusions(incls map[cid.Cid][]cid.Cid) error {
 	start := time.Now()
 	defer func() {
-		log.Infow("Persisted Message Inclusions", "duration", time.Since(start).String())
+		log.Debugw("Persisted Message Inclusions", "duration", time.Since(start).String())
 	}()
 	tx, err := p.db.Begin()
 	if err != nil {

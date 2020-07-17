@@ -161,7 +161,7 @@ func (p *Processor) HandleMinerChanges(ctx context.Context, minerTips ActorTips)
 func (p *Processor) processMiners(ctx context.Context, minerTips map[types.TipSetKey][]actorInfo) ([]minerActorInfo, error) {
 	start := time.Now()
 	defer func() {
-		log.Infow("Processed Miners", "duration", time.Since(start).String())
+		log.Debugw("Processed Miners", "duration", time.Since(start).String())
 	}()
 
 	var out []minerActorInfo
@@ -208,7 +208,7 @@ func (p *Processor) processMiners(ctx context.Context, minerTips map[types.TipSe
 func (p *Processor) persistMiners(ctx context.Context, miners []minerActorInfo) error {
 	start := time.Now()
 	defer func() {
-		log.Infow("Persisted Miners", "duration", time.Since(start).String())
+		log.Debugw("Persisted Miners", "duration", time.Since(start).String())
 	}()
 
 	grp, _ := errgroup.WithContext(ctx)
@@ -247,7 +247,7 @@ func (p *Processor) persistMiners(ctx context.Context, miners []minerActorInfo) 
 func (p *Processor) storeMinersActorState(miners []minerActorInfo) error {
 	start := time.Now()
 	defer func() {
-		log.Infow("Stored Miners Actor State", "duration", time.Since(start).String())
+		log.Debugw("Stored Miners Actor State", "duration", time.Since(start).String())
 	}()
 
 	tx, err := p.db.Begin()
@@ -303,7 +303,7 @@ func (p *Processor) storeMinersActorState(miners []minerActorInfo) error {
 func (p *Processor) storeMinersPower(miners []minerActorInfo) error {
 	start := time.Now()
 	defer func() {
-		log.Infow("Stored Miners Power", "duration", time.Since(start).String())
+		log.Debugw("Stored Miners Power", "duration", time.Since(start).String())
 	}()
 
 	tx, err := p.db.Begin()
@@ -350,7 +350,7 @@ func (p *Processor) storeMinersPower(miners []minerActorInfo) error {
 func (p *Processor) storeMinersSectorState(miners []minerActorInfo) error {
 	start := time.Now()
 	defer func() {
-		log.Infow("Stored Miners Sector State", "duration", time.Since(start).String())
+		log.Debugw("Stored Miners Sector State", "duration", time.Since(start).String())
 	}()
 
 	tx, err := p.db.Begin()
@@ -412,7 +412,7 @@ func (p *Processor) storeMinersSectorState(miners []minerActorInfo) error {
 func (p *Processor) storeMinersSectorHeads(miners []minerActorInfo) error {
 	start := time.Now()
 	defer func() {
-		log.Infow("Stored Miners Sector Heads", "duration", time.Since(start).String())
+		log.Debugw("Stored Miners Sector Heads", "duration", time.Since(start).String())
 	}()
 
 	tx, err := p.db.Begin()
@@ -460,10 +460,10 @@ func (p *Processor) updateMiners(ctx context.Context, miners []minerActorInfo) e
 }
 
 func (p *Processor) updateMinersSectors(ctx context.Context, miners []minerActorInfo) error {
-	log.Infow("Updating Miners Sectors", "#miners", len(miners))
+	log.Debugw("Updating Miners Sectors", "#miners", len(miners))
 	start := time.Now()
 	defer func() {
-		log.Infow("Updated Miners Sectors", "duration", time.Since(start).String())
+		log.Debugw("Updated Miners Sectors", "duration", time.Since(start).String())
 	}()
 
 	pred := state.NewStatePredicates(p.node)
@@ -530,7 +530,7 @@ func (p *Processor) updateMinersSectors(ctx context.Context, miners []minerActor
 					minerID:          m.common.addr,
 				}
 
-				log.Infow("sector extended", "miner", m.common.addr.String(), "sector", extended.To.Info.SectorNumber, "old", extended.To.Info.Expiration, "new", extended.From.Info.Expiration)
+				log.Debugw("sector extended", "miner", m.common.addr.String(), "sector", extended.To.Info.SectorNumber, "old", extended.To.Info.Expiration, "new", extended.From.Info.Expiration)
 			}
 			curTs, err := p.node.ChainGetTipSet(ctx, m.common.tsKey)
 			if err != nil {
@@ -538,13 +538,13 @@ func (p *Processor) updateMinersSectors(ctx context.Context, miners []minerActor
 			}
 
 			for _, removed := range changes.Removed {
-				log.Infow("removed", "miner", m.common.addr)
+				log.Debugw("removed", "miner", m.common.addr)
 				// decide if they were terminated or extended
 				if removed.Info.Expiration > curTs.Height() {
 					if _, err := eventStmt.Exec(removed.Info.SectorNumber, "TERMINATED", m.common.addr.String(), m.common.stateroot.String()); err != nil {
 						return err
 					}
-					log.Infow("sector terminated", "miner", m.common.addr.String(), "sector", removed.Info.SectorNumber, "old", "sectorExpiration", removed.Info.Expiration, "terminationEpoch", curTs.Height())
+					log.Debugw("sector terminated", "miner", m.common.addr.String(), "sector", removed.Info.SectorNumber, "old", "sectorExpiration", removed.Info.Expiration, "terminationEpoch", curTs.Height())
 					sectorUpdatesCh <- sectorUpdate{
 						terminationEpoch: curTs.Height(),
 						terminated:       true,
@@ -557,7 +557,7 @@ func (p *Processor) updateMinersSectors(ctx context.Context, miners []minerActor
 				if _, err := eventStmt.Exec(removed.Info.SectorNumber, "EXPIRED", m.common.addr.String(), m.common.stateroot.String()); err != nil {
 					return err
 				}
-				log.Infow("sector removed", "miner", m.common.addr.String(), "sector", removed.Info.SectorNumber, "old", "sectorExpiration", removed.Info.Expiration, "currEpoch", curTs.Height())
+				log.Debugw("sector removed", "miner", m.common.addr.String(), "sector", removed.Info.SectorNumber, "old", "sectorExpiration", removed.Info.Expiration, "currEpoch", curTs.Height())
 			}
 
 			for _, added := range changes.Added {

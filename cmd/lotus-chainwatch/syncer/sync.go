@@ -120,10 +120,10 @@ create unique index if not exists block_cid_uindex
 create materialized view if not exists state_heights
     as select distinct height, parentstateroot from blocks;
 
-create index if not exists state_heights_index
+create index if not exists state_heights_height_index
 	on state_heights (height);
 
-create index if not exists state_heights_height_index
+create index if not exists state_heights_parentstateroot_index
 	on state_heights (parentstateroot);
 `); err != nil {
 		return err
@@ -133,7 +133,7 @@ create index if not exists state_heights_height_index
 }
 
 func (s *Syncer) Start(ctx context.Context) {
-	log.Info("Starting Syncer")
+	log.Debug("Starting Syncer")
 
 	if err := s.setupSchemas(); err != nil {
 		log.Fatal(err)
@@ -217,7 +217,7 @@ func (s *Syncer) unsyncedBlocks(ctx context.Context, head *types.TipSet, since t
 
 		toSync[bh.Cid()] = bh
 		if len(toSync)%500 == 10 {
-			log.Infow("To visit", "toVisit", toVisit.Len(), "toSync", len(toSync), "current_height", bh.Height)
+			log.Debugw("To visit", "toVisit", toVisit.Len(), "toSync", len(toSync), "current_height", bh.Height)
 		}
 
 		if len(bh.Parents) == 0 {

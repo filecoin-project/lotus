@@ -6,10 +6,10 @@ import (
 	"hash/crc32"
 	"strconv"
 
-	"golang.org/x/xerrors"
-
 	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
+	"golang.org/x/xerrors"
 )
 
 var dotCmd = &cli.Command{
@@ -17,6 +17,11 @@ var dotCmd = &cli.Command{
 	Usage:     "generate dot graphs",
 	ArgsUsage: "<minHeight> <toseeHeight>",
 	Action: func(cctx *cli.Context) error {
+		ll := cctx.String("log-level")
+		if err := logging.SetLogLevel("*", ll); err != nil {
+			return err
+		}
+
 		db, err := sql.Open("postgres", cctx.String("db"))
 		if err != nil {
 			return err

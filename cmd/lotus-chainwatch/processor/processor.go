@@ -81,7 +81,7 @@ func (p *Processor) setupSchemas() error {
 }
 
 func (p *Processor) Start(ctx context.Context) {
-	log.Info("Starting Processor")
+	log.Debug("Starting Processor")
 
 	if err := p.setupSchemas(); err != nil {
 		log.Fatalw("Failed to setup processor", "error", err)
@@ -94,12 +94,18 @@ func (p *Processor) Start(ctx context.Context) {
 		for {
 			select {
 			case <-ctx.Done():
-				log.Infow("Stopping Processor...")
+				log.Debugw("Stopping Processor...")
 				return
 			default:
 				toProcess, err := p.unprocessedBlocks(ctx, p.batch)
 				if err != nil {
 					log.Fatalw("Failed to get unprocessed blocks", "error", err)
+				}
+
+				if len(toProcess) == 0 {
+					log.Debugw("No unprocessed blocks. Wait then try again...")
+					time.Sleep(time.Second * 10)
+					continue
 				}
 
 				// TODO special case genesis state handling here to avoid all the special cases that will be needed for it else where
@@ -176,7 +182,7 @@ func (p *Processor) refreshViews() error {
 func (p *Processor) collectActorChanges(ctx context.Context, toProcess map[cid.Cid]*types.BlockHeader) (map[cid.Cid]ActorTips, error) {
 	start := time.Now()
 	defer func() {
-		log.Infow("Collected Actor Changes", "duration", time.Since(start).String())
+		log.Debugw("Collected Actor Changes", "duration", time.Since(start).String())
 	}()
 	// ActorCode - > tipset->[]actorInfo
 	out := map[cid.Cid]ActorTips{}
@@ -191,7 +197,7 @@ func (p *Processor) collectActorChanges(ctx context.Context, toProcess map[cid.C
 	parmap.Par(50, parmap.MapArr(toProcess), func(bh *types.BlockHeader) {
 		paDone++
 		if paDone%100 == 0 {
-			log.Infow("Collecting actor changes", "done", paDone, "percent", (paDone*100)/len(toProcess))
+			log.Debugw("Collecting actor changes", "done", paDone, "percent", (paDone*100)/len(toProcess))
 		}
 
 		pts, err := p.node.ChainGetTipSet(ctx, types.NewTipSetKey(bh.Parents...))
@@ -255,7 +261,7 @@ func (p *Processor) collectActorChanges(ctx context.Context, toProcess map[cid.C
 func (p *Processor) unprocessedBlocks(ctx context.Context, batch int) (map[cid.Cid]*types.BlockHeader, error) {
 	start := time.Now()
 	defer func() {
-		log.Infow("Gathered Blocks to process", "duration", time.Since(start).String())
+		log.Debugw("Gathered Blocks to process", "duration", time.Since(start).String())
 	}()
 	rows, err := p.db.Query(`
 with toProcess as (
@@ -299,7 +305,7 @@ where rnk <= $1
 func (p *Processor) markBlocksProcessed(ctx context.Context, processed map[cid.Cid]*types.BlockHeader) error {
 	start := time.Now()
 	defer func() {
-		log.Infow("Marked blocks as Processed", "duration", time.Since(start).String())
+		log.Debugw("Marked blocks as Processed", "duration", time.Since(start).String())
 	}()
 	tx, err := p.db.Begin()
 	if err != nil {
