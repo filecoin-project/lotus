@@ -191,14 +191,17 @@ func startSealingWaiting(t *testing.T, ctx context.Context, miner TestStorageNod
 	snums, err := miner.SectorsList(ctx)
 	require.NoError(t, err)
 
+	fmt.Printf("Miner sector states: ")
 	for _, snum := range snums {
 		si, err := miner.SectorsStatus(ctx, snum)
 		require.NoError(t, err)
 
+		fmt.Printf("%s ", si.State)
 		if si.State == api.SectorState(sealing.WaitDeals) {
 			require.NoError(t, miner.SectorStartSealing(ctx, snum))
 		}
 	}
+	fmt.Println("")
 }
 
 func testRetrieval(t *testing.T, ctx context.Context, err error, client *impl.FullNodeAPI, fcid cid.Cid, piece *cid.Cid, carExport bool, data []byte) {
