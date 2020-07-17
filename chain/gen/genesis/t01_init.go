@@ -13,8 +13,6 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-address"
-
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/genesis"
 )
@@ -33,12 +31,6 @@ func SetupInitActor(bs bstore.Blockstore, netname string, initialActors []genesi
 
 	for i, a := range initialActors {
 		if a.Type == genesis.TMultisig {
-			addr, _ := address.NewActorAddress(a.Meta)
-			fmt.Printf("init set %s t0%d\n", addr, AccountStart+uint64(i))
-
-			if err := amap.Set(context.TODO(), string(addr.Bytes()), AccountStart+uint64(i)); err != nil {
-				return nil, err
-			}
 			continue
 		}
 

@@ -257,25 +257,25 @@ func parseMultisigCsv(csvf string) ([]GenAccountEntry, error) {
 			addrs = append(addrs, addr)
 		}
 
-		balance, err := types.ParseFIL(e[2])
+		balance, err := types.ParseFIL(strings.TrimSpace(e[2]))
 		if err != nil {
 			return nil, xerrors.Errorf("failed to parse account balance: %w", err)
 		}
 
-		vesting, err := strconv.Atoi(e[3])
+		vesting, err := strconv.Atoi(strings.TrimSpace(e[3]))
 		if err != nil {
 			return nil, xerrors.Errorf("failed to parse vesting duration for record %d: %w", i, err)
 		}
 
-		custodianID, err := strconv.Atoi(e[4])
+		custodianID, err := strconv.Atoi(strings.TrimSpace(e[4]))
 		if err != nil {
 			return nil, xerrors.Errorf("failed to parse custodianID in record %d: %w", i, err)
 		}
-		threshold, err := strconv.Atoi(e[5])
+		threshold, err := strconv.Atoi(strings.TrimSpace(e[5]))
 		if err != nil {
 			return nil, xerrors.Errorf("failed to parse multisigM in record %d: %w", i, err)
 		}
-		num, err := strconv.Atoi(e[6])
+		num, err := strconv.Atoi(strings.TrimSpace(e[6]))
 		if err != nil {
 			return nil, xerrors.Errorf("Number of addresses be integer: %w", err)
 		}
