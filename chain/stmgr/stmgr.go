@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	amt "github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -236,7 +237,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, pstate cid.Cid, bms []B
 		Nonce:    ca.Nonce,
 		Value:    types.NewInt(0),
 		GasPrice: types.NewInt(0),
-		GasLimit: 1 << 30, // Make super sure this is never too little
+		GasLimit: build.BlockGasLimit * 10, // Make super sure this is never too little
 		Method:   builtin.MethodsCron.EpochTick,
 		Params:   nil,
 	}
