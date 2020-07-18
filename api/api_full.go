@@ -374,8 +374,8 @@ type FileRef struct {
 }
 
 type MinerSectors struct {
-	Sset uint64
-	Pset uint64
+	Sectors uint64
+	Active    uint64
 }
 
 type SectorExpiration struct {
