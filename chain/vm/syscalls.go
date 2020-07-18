@@ -32,15 +32,26 @@ func init() {
 
 // Actual type is defined in chain/types/vmcontext.go because the VMContext interface is there
 
-func Syscalls(verifier ffiwrapper.Verifier) runtime.Syscalls {
-	return &syscallShim{verifier: verifier}
+type SyscallBuilder func(ctx context.Context, cstate *state.StateTree, cst cbor.IpldStore) runtime.Syscalls
+
+func Syscalls(verifier ffiwrapper.Verifier) SyscallBuilder {
+	return func(ctx context.Context, cstate *state.StateTree, cst cbor.IpldStore) runtime.Syscalls {
+		return &syscallShim{
+			ctx: ctx,
+
+			cstate: cstate,
+			cst:    cst,
+
+			verifier: verifier,
+		}
+	}
 }
 
 type syscallShim struct {
 	ctx context.Context
 
 	cstate   *state.StateTree
-	cst      *cbor.BasicIpldStore
+	cst      cbor.IpldStore
 	verifier ffiwrapper.Verifier
 }
 

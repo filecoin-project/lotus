@@ -25,7 +25,6 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
 
-	"github.com/filecoin-project/specs-actors/actors/runtime"
 	storage2 "github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
@@ -227,7 +226,7 @@ func Online() Option {
 			Override(HandleIncomingMessagesKey, modules.HandleIncomingMessages),
 
 			Override(new(ffiwrapper.Verifier), ffiwrapper.ProofVerifier),
-			Override(new(runtime.Syscalls), vm.Syscalls),
+			Override(new(vm.SyscallBuilder), vm.Syscalls),
 			Override(new(*store.ChainStore), modules.ChainStore),
 			Override(new(*stmgr.StateManager), stmgr.NewStateManager),
 			Override(new(*wallet.Wallet), wallet.NewWallet),
