@@ -668,7 +668,51 @@ func (a *StateAPI) StateChangedActors(ctx context.Context, old cid.Cid, new cid.
 }
 
 func (a *StateAPI) StateMinerSectorCount(ctx context.Context, addr address.Address, tsk types.TipSetKey) (api.MinerSectors, error) {
-	return api.MinerSectors{}, xerrors.Errorf("TODO: FIXME") // TODO
+	var out api.MinerSectors
+
+	err := a.StateManager.WithParentStateTsk(tsk,
+		a.StateManager.WithActor(addr,
+			a.StateManager.WithActorState(ctx, func(store adt.Store, mas *miner.State) error {
+				var allActive []*abi.BitField
+
+				err := a.StateManager.WithDeadlines(
+					a.StateManager.WithEachDeadline(
+						a.StateManager.WithEachPartition(func(store adt.Store, partIdx uint64, partition *miner.Partition) error {
+							active, err := partition.ActiveSectors()
+							if err != nil {
+								return xerrors.Errorf("partition.ActiveSectors: %w", err)
+							}
+
+							allActive = append(allActive, active)
+							return nil
+						})))(store, mas)
+				if err != nil {
+					return xerrors.Errorf("with deadlines: %w", err)
+				}
+
+				active, err := bitfield.MultiMerge(allActive...)
+				if err != nil {
+					return xerrors.Errorf("merging active sector bitfields: %w", err)
+				}
+
+				out.Active, err = active.Count()
+				if err != nil {
+					return xerrors.Errorf("counting active sectors: %w", err)
+				}
+
+				sarr, err := adt.AsArray(store, mas.Sectors)
+				if err != nil {
+					return err
+				}
+
+				out.Sectors = sarr.Length()
+				return nil
+			})))
+	if err != nil {
+		return api.MinerSectors{}, err
+	}
+
+	return out, nil
 }
 
 func (a *StateAPI) StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error) {
