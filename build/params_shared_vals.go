@@ -95,8 +95,9 @@ const BlockGasLimit = 7_500_000_000
 
 var DrandConfig = dtypes.DrandConfig{
 	Servers: []string{
-		"https://dev1.drand.sh",
-		"https://dev1.drand.sh",
+		"https://pl-eu.testnet.drand.sh",
+		"https://pl-us.testnet.drand.sh",
+		"https://pl-sin.testnet.drand.sh",
 	},
-	ChainInfoJSON: `{"public_key":"88fdb6f22fcbe671bf91befbf723e159e5934f785168b437c03424cde6361cff5f5d3034390260f210438946f21d867d","period":30,"genesis_time":1589461830,"hash":"e89c9efe5af86ac79fc5d1c0ee0aaa64a81a97bb55d0acc4d2497cc2a0087afe","groupHash":"8f16f0105250b51f34e41fb845d09668b2e3db008dacb3c2d461f0bb2349b854"}`,
+	ChainInfoJSON: `{"public_key":"922a2e93828ff83345bae533f5172669a26c02dc76d6bf59c80892e12ab1455c229211886f35bb56af6d5bea981024df","period":25,"genesis_time":1590445175,"hash":"84b2234fb34e835dccd048255d7ad3194b81af7d978c3bf157e3469592ae4e02","groupHash":"4dd408e5fdff9323c76a9b6f087ba8fdc5a6da907bd9217d9d10f2287d081957"}`,
 }
