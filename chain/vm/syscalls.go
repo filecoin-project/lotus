@@ -74,11 +74,6 @@ func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte) (*runtime.Consen
 
 	// (0) cheap preliminary checks
 
-	// are blocks the same?
-	if bytes.Equal(a, b) {
-		return nil, fmt.Errorf("no consensus fault: submitted blocks are the same")
-	}
-
 	// can blocks be decoded properly?
 	var blockA, blockB types.BlockHeader
 	if decodeErr := blockA.UnmarshalCBOR(bytes.NewReader(a)); decodeErr != nil {
@@ -87,6 +82,11 @@ func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte) (*runtime.Consen
 
 	if decodeErr := blockB.UnmarshalCBOR(bytes.NewReader(b)); decodeErr != nil {
 		return nil, xerrors.Errorf("cannot decode second block header: %f", decodeErr)
+	}
+
+	// are blocks the same?
+	if blockA.Cid().Equals(blockB.Cid()) {
+		return nil, fmt.Errorf("no consensus fault: submitted blocks are the same")
 	}
 
 	// (1) check conditions necessary to any consensus fault
