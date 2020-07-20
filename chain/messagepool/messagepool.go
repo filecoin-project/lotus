@@ -875,6 +875,7 @@ func (mp *MessagePool) loadLocal() error {
 
 const MinGasPrice = 0
 
+//TODO: remove replaced by Gas module
 func (mp *MessagePool) EstimateGasPrice(ctx context.Context, nblocksincl uint64, sender address.Address, gaslimit int64, tsk types.TipSetKey) (types.BigInt, error) {
 	// TODO: something smarter obviously
 	switch nblocksincl {
