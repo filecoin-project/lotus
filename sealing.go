@@ -76,6 +76,7 @@ type UnsealedSectorMap struct {
 }
 
 type UnsealedSectorInfo struct {
+	numDeals uint64
 	// stored should always equal sum of pieceSizes.Padded()
 	stored     uint64
 	pieceSizes []abi.UnpaddedPieceSize
@@ -128,16 +129,17 @@ func (m *Sealing) AddPieceToAnySector(ctx context.Context, size abi.UnpaddedPiec
 	}
 
 	m.unsealedInfoMap.mux.Lock()
-	defer m.unsealedInfoMap.mux.Unlock()
 
 	sid, pads, err := m.getSectorAndPadding(size)
 	if err != nil {
+		m.unsealedInfoMap.mux.Unlock()
 		return 0, 0, xerrors.Errorf("getting available sector: %w", err)
 	}
 
 	for _, p := range pads {
 		err = m.addPiece(ctx, sid, p.Unpadded(), m.pledgeReader(p.Unpadded()), nil)
 		if err != nil {
+			m.unsealedInfoMap.mux.Unlock()
 			return 0, 0, xerrors.Errorf("writing pads: %w", err)
 		}
 	}
@@ -146,7 +148,13 @@ func (m *Sealing) AddPieceToAnySector(ctx context.Context, size abi.UnpaddedPiec
 	err = m.addPiece(ctx, sid, size, r, &d)
 
 	if err != nil {
+		m.unsealedInfoMap.mux.Unlock()
 		return 0, 0, xerrors.Errorf("adding piece to sector: %w", err)
+	}
+
+	m.unsealedInfoMap.mux.Unlock()
+	if m.unsealedInfoMap.infos[sid].numDeals == getDealPerSectorLimit(m.sealer.SectorSize()) {
+		m.StartPacking(sid)
 	}
 
 	return sid, offset, nil
@@ -170,7 +178,12 @@ func (m *Sealing) addPiece(ctx context.Context, sectorID abi.SectorNumber, size 
 	}
 
 	ui := m.unsealedInfoMap.infos[sectorID]
+	num := m.unsealedInfoMap.infos[sectorID].numDeals
+	if di != nil {
+		num = num + 1
+	}
 	m.unsealedInfoMap.infos[sectorID] = UnsealedSectorInfo{
+		numDeals:   num,
 		stored:     ui.stored + uint64(piece.Piece.Size),
 		pieceSizes: append(ui.pieceSizes, piece.Piece.Size.Unpadded()),
 	}
@@ -213,6 +226,7 @@ func (m *Sealing) getSectorAndPadding(size abi.UnpaddedPieceSize) (abi.SectorNum
 	}
 
 	m.unsealedInfoMap.infos[ns] = UnsealedSectorInfo{
+		numDeals:   0,
 		stored:     0,
 		pieceSizes: nil,
 	}
@@ -292,4 +306,12 @@ func (m *Sealing) minerSector(num abi.SectorNumber) abi.SectorID {
 
 func (m *Sealing) Address() address.Address {
 	return m.maddr
+}
+
+func getDealPerSectorLimit(size abi.SectorSize) uint64 {
+	if size < 64<<30 {
+		return 256
+	} else {
+		return 512
+	}
 }
