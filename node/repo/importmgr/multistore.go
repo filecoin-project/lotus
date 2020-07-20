@@ -1,44 +1,47 @@
 package importmgr
 
 import (
+	"encoding/json"
 	"fmt"
-	"path"
+	"sort"
 	"sync"
-	"sync/atomic"
 
-	"github.com/hashicorp/go-multierror"
+	"go.uber.org/multierr"
 	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-datastore"
+	ktds "github.com/ipfs/go-datastore/keytransform"
+	"github.com/ipfs/go-datastore/query"
 )
 
-type dsProvider interface {
-	Datastore(namespace string) (datastore.Batching, error)
-	ListDatastores(namespace string) ([]int64, error)
-	DeleteDatastore(namespace string) error
-}
-
 type MultiStore struct {
-	provider  dsProvider
-	namespace string
+	ds datastore.Batching
 
-	open map[int64]*Store
-	next int64
+	open map[int]*Store
+	next int
 
 	lk sync.RWMutex
 }
 
-func NewMultiDstore(provider dsProvider, namespace string) (*MultiStore, error) {
-	ids, err := provider.ListDatastores(namespace)
-	if err != nil {
-		return nil, xerrors.Errorf("listing datastores: %w", err)
+var dsListKey = datastore.NewKey("/list")
+var dsMultiKey = datastore.NewKey("/multi")
+
+func NewMultiDstore(ds datastore.Batching) (*MultiStore, error) {
+	listBytes, err := ds.Get(dsListKey)
+	if xerrors.Is(err, datastore.ErrNotFound) {
+		listBytes, _ = json.Marshal([]int{})
+	} else if err != nil {
+		return nil, xerrors.Errorf("could not read multistore list: %w", err)
+	}
+
+	var ids []int
+	if err := json.Unmarshal(listBytes, &ids); err != nil {
+		return nil, xerrors.Errorf("could not unmarshal multistore list: %w", err)
 	}
 
 	mds := &MultiStore{
-		provider:  provider,
-		namespace: namespace,
-
-		open: map[int64]*Store{},
+		ds:   ds,
+		open: map[int]*Store{},
 	}
 
 	for _, i := range ids {
@@ -55,15 +58,33 @@ func NewMultiDstore(provider dsProvider, namespace string) (*MultiStore, error) 
 	return mds, nil
 }
 
-func (mds *MultiStore) path(i int64) string {
-	return path.Join("/", mds.namespace, fmt.Sprintf("%d", i))
+func (mds *MultiStore) Next() int {
+	mds.lk.Lock()
+	defer mds.lk.Unlock()
+
+	mds.next++
+	return mds.next
 }
 
-func (mds *MultiStore) Next() int64 {
-	return atomic.AddInt64(&mds.next, 1)
+func (mds *MultiStore) updateStores() error {
+	stores := make([]int, 0, len(mds.open))
+	for k := range mds.open {
+		stores = append(stores, k)
+	}
+	sort.Ints(stores)
+
+	listBytes, err := json.Marshal(stores)
+	if err != nil {
+		return xerrors.Errorf("could not marshal list: %w", err)
+	}
+	err = mds.ds.Put(dsListKey, listBytes)
+	if err != nil {
+		return xerrors.Errorf("could not save stores list: %w", err)
+	}
+	return nil
 }
 
-func (mds *MultiStore) Get(i int64) (*Store, error) {
+func (mds *MultiStore) Get(i int) (*Store, error) {
 	mds.lk.Lock()
 	defer mds.lk.Unlock()
 
@@ -72,40 +93,85 @@ func (mds *MultiStore) Get(i int64) (*Store, error) {
 		return store, nil
 	}
 
-	ds, err := mds.provider.Datastore(mds.path(i))
+	wds := ktds.Wrap(mds.ds, ktds.PrefixTransform{
+		Prefix: dsMultiKey.ChildString(fmt.Sprintf("%d", i)),
+	})
+
+	var err error
+	mds.open[i], err = openStore(wds)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("could not open new store: %w", err)
 	}
 
-	mds.open[i], err = openStore(ds)
-	return mds.open[i], err
+	err = mds.updateStores()
+	if err != nil {
+		return nil, xerrors.Errorf("updating stores: %w", err)
+	}
+
+	return mds.open[i], nil
 }
 
-func (mds *MultiStore) List() []int64 {
+func (mds *MultiStore) List() []int {
 	mds.lk.RLock()
 	defer mds.lk.RUnlock()
-	out := make([]int64, 0, len(mds.open))
+
+	out := make([]int, 0, len(mds.open))
 	for i := range mds.open {
 		out = append(out, i)
 	}
+	sort.Ints(out)
 
 	return out
 }
 
-func (mds *MultiStore) Delete(i int64) error {
+func (mds *MultiStore) Delete(i int) error {
 	mds.lk.Lock()
 	defer mds.lk.Unlock()
 
 	store, ok := mds.open[i]
-	if ok {
-		if err := store.Close(); err != nil {
-			return xerrors.Errorf("closing sub-datastore %d: %w", i, err)
-		}
-
-		delete(mds.open, i)
+	if !ok {
+		return nil
+	}
+	delete(mds.open, i)
+	err := store.Close()
+	if err != nil {
+		return xerrors.Errorf("closing store: %w", err)
 	}
 
-	return mds.provider.DeleteDatastore(mds.path(i))
+	err = mds.updateStores()
+	if err != nil {
+		return xerrors.Errorf("updating stores: %w", err)
+	}
+
+	qres, err := store.ds.Query(query.Query{KeysOnly: true})
+	if err != nil {
+		return xerrors.Errorf("query error: %w", err)
+	}
+	defer qres.Close() //nolint:errcheck
+
+	b, err := store.ds.Batch()
+	if err != nil {
+		return xerrors.Errorf("batch error: %w", err)
+	}
+
+	for r := range qres.Next() {
+		if r.Error != nil {
+			_ = b.Commit()
+			return xerrors.Errorf("iterator error: %w", err)
+		}
+		err := b.Delete(datastore.NewKey(r.Key))
+		if err != nil {
+			_ = b.Commit()
+			return xerrors.Errorf("adding to batch: %w", err)
+		}
+	}
+
+	err = b.Commit()
+	if err != nil {
+		return xerrors.Errorf("committing: %w", err)
+	}
+
+	return nil
 }
 
 func (mds *MultiStore) Close() error {
@@ -113,12 +179,10 @@ func (mds *MultiStore) Close() error {
 	defer mds.lk.Unlock()
 
 	var err error
-	for i, store := range mds.open {
-		cerr := store.Close()
-		if cerr != nil {
-			err = multierror.Append(err, xerrors.Errorf("closing sub-datastore %d: %w", i, cerr))
-		}
+	for _, s := range mds.open {
+		err = multierr.Append(err, s.Close())
 	}
+	mds.open = make(map[int]*Store)
 
 	return err
 }

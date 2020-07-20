@@ -296,7 +296,7 @@ func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (*api.ImportRes
 	}, nil
 }
 
-func (a *API) ClientRemoveImport(ctx context.Context, importID int64) error {
+func (a *API) ClientRemoveImport(ctx context.Context, importID int) error {
 	return a.imgr().Remove(importID)
 }
 

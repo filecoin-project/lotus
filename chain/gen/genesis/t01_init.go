@@ -30,6 +30,10 @@ func SetupInitActor(bs bstore.Blockstore, netname string, initialActors []genesi
 	amap := hamt.NewNode(cst, hamt.UseTreeBitWidth(5)) // TODO: use spec adt map
 
 	for i, a := range initialActors {
+		if a.Type == genesis.TMultisig {
+			continue
+		}
+
 		if a.Type != genesis.TAccount {
 			return nil, xerrors.Errorf("unsupported account type: %s", a.Type) // TODO: Support msig (skip here)
 		}

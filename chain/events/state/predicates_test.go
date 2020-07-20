@@ -436,7 +436,16 @@ func createEmptyMinerState(ctx context.Context, t *testing.T, store *cbornode.Ba
 	emptyMap, err := store.Put(context.TODO(), hamt.NewNode(store, hamt.UseTreeBitWidth(5)))
 	require.NoError(t, err)
 
-	emptyDeadlines := miner.ConstructDeadlines()
+	emptyDeadline, err := store.Put(context.TODO(), &miner.Deadline{
+		Partitions:        emptyArrayCid,
+		ExpirationsEpochs: emptyArrayCid,
+		PostSubmissions:   abi.NewBitField(),
+		EarlyTerminations: abi.NewBitField(),
+		LiveSectors:       0,
+	})
+	require.NoError(t, err)
+
+	emptyDeadlines := miner.ConstructDeadlines(emptyDeadline)
 	emptyDeadlinesCid, err := store.Put(context.Background(), emptyDeadlines)
 	require.NoError(t, err)
 

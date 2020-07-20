@@ -138,20 +138,20 @@ var sectorsListCmd = &cli.Command{
 			return err
 		}
 
-		pset, err := fullApi.StateMinerProvingSet(ctx, maddr, types.EmptyTSK)
+		activeSet, err := fullApi.StateMinerActiveSectors(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
-		provingIDs := make(map[abi.SectorNumber]struct{}, len(pset))
-		for _, info := range pset {
-			provingIDs[info.ID] = struct{}{}
+		activeIDs := make(map[abi.SectorNumber]struct{}, len(activeSet))
+		for _, info := range activeSet {
+			activeIDs[info.ID] = struct{}{}
 		}
 
 		sset, err := fullApi.StateMinerSectors(ctx, maddr, nil, true, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
-		commitedIDs := make(map[abi.SectorNumber]struct{}, len(pset))
+		commitedIDs := make(map[abi.SectorNumber]struct{}, len(activeSet))
 		for _, info := range sset {
 			commitedIDs[info.ID] = struct{}{}
 		}
@@ -170,13 +170,13 @@ var sectorsListCmd = &cli.Command{
 			}
 
 			_, inSSet := commitedIDs[s]
-			_, inPSet := provingIDs[s]
+			_, inASet := activeIDs[s]
 
-			fmt.Fprintf(w, "%d: %s\tsSet: %s\tpSet: %s\ttktH: %d\tseedH: %d\tdeals: %v\n",
+			fmt.Fprintf(w, "%d: %s\tsSet: %s\tactive: %s\ttktH: %d\tseedH: %d\tdeals: %v\n",
 				s,
 				st.State,
 				yesno(inSSet),
-				yesno(inPSet),
+				yesno(inASet),
 				st.Ticket.Epoch,
 				st.Seed.Epoch,
 				st.Deals,

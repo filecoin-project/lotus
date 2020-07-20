@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 
@@ -188,6 +189,9 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 		err = vm.MutateState(ctx, builtin.StoragePowerActorAddr, func(cst cbor.IpldStore, st *power.State) error {
 			st.TotalQualityAdjPower = qaPow
 			st.TotalRawBytePower = rawPow
+
+			st.ThisEpochQualityAdjPower = qaPow
+			st.ThisEpochRawBytePower = rawPow
 			return nil
 		})
 		if err != nil {
@@ -235,8 +239,8 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 					return cid.Undef, xerrors.Errorf("getting current total power: %w", err)
 				}
 
-				pledge := miner.InitialPledgeForPower(sectorWeight, tpow.QualityAdjPower, tpow.PledgeCollateral, epochReward, circSupply(ctx, vm, minerInfos[i].maddr))
-
+				pledge := miner.InitialPledgeForPower(sectorWeight, tpow.QualityAdjPower, epochReward.ThisEpochBaselinePower, tpow.PledgeCollateral, epochReward.ThisEpochReward, circSupply(ctx, vm, minerInfos[i].maddr))
+				fmt.Println(types.FIL(pledge))
 				_, err = doExecValue(ctx, vm, minerInfos[i].maddr, m.Worker, pledge, builtin.MethodsMiner.PreCommitSector, mustEnc(params))
 				if err != nil {
 					return cid.Undef, xerrors.Errorf("failed to confirm presealed sectors: %w", err)
@@ -327,18 +331,18 @@ func dealWeight(ctx context.Context, vm *vm.VM, maddr address.Address, dealIDs [
 	return dealWeights, nil
 }
 
-func currentEpochBlockReward(ctx context.Context, vm *vm.VM, maddr address.Address) (abi.TokenAmount, error) {
+func currentEpochBlockReward(ctx context.Context, vm *vm.VM, maddr address.Address) (*reward.ThisEpochRewardReturn, error) {
 	rwret, err := doExecValue(ctx, vm, builtin.RewardActorAddr, maddr, big.Zero(), builtin.MethodsReward.ThisEpochReward, nil)
 	if err != nil {
-		return abi.TokenAmount{}, err
+		return nil, err
 	}
 
-	epochReward := abi.NewTokenAmount(0)
+	var epochReward reward.ThisEpochRewardReturn
 	if err := epochReward.UnmarshalCBOR(bytes.NewReader(rwret)); err != nil {
-		return abi.TokenAmount{}, err
+		return nil, err
 	}
 
-	return epochReward, nil
+	return &epochReward, nil
 }
 
 func circSupply(ctx context.Context, vmi *vm.VM, maddr address.Address) abi.TokenAmount {

@@ -195,6 +195,7 @@ func startSealingWaiting(t *testing.T, ctx context.Context, miner TestStorageNod
 		si, err := miner.SectorsStatus(ctx, snum)
 		require.NoError(t, err)
 
+		t.Logf("Sector state: %s", si.State)
 		if si.State == api.SectorState(sealing.WaitDeals) {
 			require.NoError(t, miner.SectorStartSealing(ctx, snum))
 		}

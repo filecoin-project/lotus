@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	amt "github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -236,7 +237,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, pstate cid.Cid, bms []B
 		Nonce:    ca.Nonce,
 		Value:    types.NewInt(0),
 		GasPrice: types.NewInt(0),
-		GasLimit: 1 << 30, // Make super sure this is never too little
+		GasLimit: build.BlockGasLimit * 10, // Make super sure this is never too little
 		Method:   builtin.MethodsCron.EpochTick,
 		Params:   nil,
 	}
@@ -337,72 +338,8 @@ func (sm *StateManager) parentState(ts *types.TipSet) cid.Cid {
 	return ts.ParentState()
 }
 
-func (sm *StateManager) GetActor(addr address.Address, ts *types.TipSet) (*types.Actor, error) {
-	cst := cbor.NewCborStore(sm.cs.Blockstore())
-	state, err := state.LoadStateTree(cst, sm.parentState(ts))
-	if err != nil {
-		return nil, xerrors.Errorf("load state tree: %w", err)
-	}
-
-	return state.GetActor(addr)
-}
-
-func (sm *StateManager) getActorRaw(addr address.Address, st cid.Cid) (*types.Actor, error) {
-	cst := cbor.NewCborStore(sm.cs.Blockstore())
-	state, err := state.LoadStateTree(cst, st)
-	if err != nil {
-		return nil, xerrors.Errorf("load state tree: %w", err)
-	}
-
-	return state.GetActor(addr)
-}
-
-func (sm *StateManager) GetBalance(addr address.Address, ts *types.TipSet) (types.BigInt, error) {
-	act, err := sm.GetActor(addr, ts)
-	if err != nil {
-		if xerrors.Is(err, types.ErrActorNotFound) {
-			return types.NewInt(0), nil
-		}
-		return types.EmptyInt, xerrors.Errorf("get actor: %w", err)
-	}
-
-	return act.Balance, nil
-}
-
 func (sm *StateManager) ChainStore() *store.ChainStore {
 	return sm.cs
-}
-
-func (sm *StateManager) LoadActorState(ctx context.Context, a address.Address, out interface{}, ts *types.TipSet) (*types.Actor, error) {
-	act, err := sm.GetActor(a, ts)
-	if err != nil {
-		return nil, err
-	}
-
-	cst := cbor.NewCborStore(sm.cs.Blockstore())
-	if err := cst.Get(ctx, act.Head, out); err != nil {
-		var r cbg.Deferred
-		_ = cst.Get(ctx, act.Head, &r)
-		log.Errorw("bad actor head", "error", err, "raw", r.Raw, "address", a)
-
-		return nil, err
-	}
-
-	return act, nil
-}
-
-func (sm *StateManager) LoadActorStateRaw(ctx context.Context, a address.Address, out interface{}, st cid.Cid) (*types.Actor, error) {
-	act, err := sm.getActorRaw(a, st)
-	if err != nil {
-		return nil, err
-	}
-
-	cst := cbor.NewCborStore(sm.cs.Blockstore())
-	if err := cst.Get(ctx, act.Head, out); err != nil {
-		return nil, err
-	}
-
-	return act, nil
 }
 
 // ResolveToKeyAddress is similar to `vm.ResolveToKeyAddr` but does not allow `Actor` type of addresses.
@@ -636,7 +573,8 @@ func (sm *StateManager) searchBackForMsg(ctx context.Context, from *types.TipSet
 		default:
 		}
 
-		act, err := sm.GetActor(m.VMMessage().From, cur)
+		var act types.Actor
+		err := sm.WithParentState(cur, sm.WithActor(m.VMMessage().From, GetActor(&act)))
 		if err != nil {
 			return nil, nil, err
 		}
@@ -759,7 +697,7 @@ func (sm *StateManager) MarketBalance(ctx context.Context, addr address.Address,
 		return api.MarketBalance{}, err
 	}
 	if ehas {
-		out.Escrow, err = et.Get(addr)
+		out.Escrow, _, err = et.Get(addr)
 		if err != nil {
 			return api.MarketBalance{}, xerrors.Errorf("getting escrow balance: %w", err)
 		}
@@ -776,7 +714,7 @@ func (sm *StateManager) MarketBalance(ctx context.Context, addr address.Address,
 		return api.MarketBalance{}, err
 	}
 	if lhas {
-		out.Locked, err = lt.Get(addr)
+		out.Locked, _, err = lt.Get(addr)
 		if err != nil {
 			return api.MarketBalance{}, xerrors.Errorf("getting locked balance: %w", err)
 		}

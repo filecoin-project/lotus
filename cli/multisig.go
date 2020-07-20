@@ -6,11 +6,12 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 	"os"
 	"sort"
 	"strconv"
 	"text/tabwriter"
+
+	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	"github.com/filecoin-project/go-address"
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
@@ -31,17 +32,14 @@ import (
 var multisigCmd = &cli.Command{
 	Name:  "msig",
 	Usage: "Interact with a multisig wallet",
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:  "source",
-			Usage: "specify the account to send propose from",
-		},
-	},
 	Subcommands: []*cli.Command{
 		msigCreateCmd,
 		msigInspectCmd,
 		msigProposeCmd,
 		msigApproveCmd,
+		msigSwapProposeCmd,
+		msigSwapApproveCmd,
+		msigSwapCancelCmd,
 	},
 }
 
@@ -187,12 +185,19 @@ var msigInspectCmd = &cli.Command{
 			return err
 		}
 
+		head, err := api.ChainHead(ctx)
+		if err != nil {
+			return err
+		}
+
 		var mstate samsig.State
 		if err := mstate.UnmarshalCBOR(bytes.NewReader(obj)); err != nil {
 			return err
 		}
 
-		fmt.Printf("Balance: %sfil\n", types.FIL(act.Balance))
+		locked := mstate.AmountLocked(head.Height() - mstate.StartEpoch)
+		fmt.Printf("Balance: %s\n", types.FIL(act.Balance))
+		fmt.Printf("Spendable: %s\n", types.FIL(types.BigSub(act.Balance, locked)))
 		fmt.Printf("Threshold: %d / %d\n", mstate.NumApprovalsThreshold, len(mstate.Signers))
 		fmt.Println("Signers:")
 		for _, s := range mstate.Signers {
@@ -277,7 +282,7 @@ var msigProposeCmd = &cli.Command{
 	ArgsUsage: "[multisigAddress destinationAddress value <methodId methodParams> (optional)]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:  "source",
+			Name:  "from",
 			Usage: "account to send the propose message from",
 		},
 	},
@@ -329,8 +334,8 @@ var msigProposeCmd = &cli.Command{
 		}
 
 		var from address.Address
-		if cctx.IsSet("source") {
-			f, err := address.NewFromString(cctx.String("source"))
+		if cctx.IsSet("from") {
+			f, err := address.NewFromString(cctx.String("from"))
 			if err != nil {
 				return err
 			}
@@ -376,7 +381,7 @@ var msigApproveCmd = &cli.Command{
 	ArgsUsage: "[multisigAddress messageId proposerAddress destination value <methodId methodParams> (optional)]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:  "source",
+			Name:  "from",
 			Usage: "account to send the approve message from",
 		},
 	},
@@ -445,8 +450,8 @@ var msigApproveCmd = &cli.Command{
 		}
 
 		var from address.Address
-		if cctx.IsSet("source") {
-			f, err := address.NewFromString(cctx.String("source"))
+		if cctx.IsSet("from") {
+			f, err := address.NewFromString(cctx.String("from"))
 			if err != nil {
 				return err
 			}
@@ -473,6 +478,237 @@ var msigApproveCmd = &cli.Command{
 
 		if wait.Receipt.ExitCode != 0 {
 			return fmt.Errorf("approve returned exit %d", wait.Receipt.ExitCode)
+		}
+
+		return nil
+	},
+}
+
+var msigSwapProposeCmd = &cli.Command{
+	Name:      "swap-propose",
+	Usage:     "Propose to swap signers",
+	ArgsUsage: "[multisigAddress oldAddress newAddress]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "account to send the approve message from",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		if cctx.Args().Len() != 3 {
+			return fmt.Errorf("must pass multisig address, old signer address, new signer address")
+		}
+
+		msig, err := address.NewFromString(cctx.Args().Get(0))
+		if err != nil {
+			return err
+		}
+
+		oldAdd, err := address.NewFromString(cctx.Args().Get(1))
+		if err != nil {
+			return err
+		}
+
+		newAdd, err := address.NewFromString(cctx.Args().Get(2))
+		if err != nil {
+			return err
+		}
+
+		var from address.Address
+		if cctx.IsSet("from") {
+			f, err := address.NewFromString(cctx.String("from"))
+			if err != nil {
+				return err
+			}
+			from = f
+		} else {
+			defaddr, err := api.WalletDefaultAddress(ctx)
+			if err != nil {
+				return err
+			}
+			from = defaddr
+		}
+
+		msgCid, err := api.MsigSwapPropose(ctx, msig, from, oldAdd, newAdd)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("sent swap proposal in message: ", msgCid)
+
+		wait, err := api.StateWaitMsg(ctx, msgCid, build.MessageConfidence)
+		if err != nil {
+			return err
+		}
+
+		if wait.Receipt.ExitCode != 0 {
+			return fmt.Errorf("swap proposal returned exit %d", wait.Receipt.ExitCode)
+		}
+
+		return nil
+	},
+}
+
+var msigSwapApproveCmd = &cli.Command{
+	Name:      "swap-approve",
+	Usage:     "Approve a message to swap signers",
+	ArgsUsage: "[multisigAddress proposerAddress txId oldAddress newAddress]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "account to send the approve message from",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		if cctx.Args().Len() != 5 {
+			return fmt.Errorf("must pass multisig address, proposer address, transaction id, old signer address, new signer address")
+		}
+
+		msig, err := address.NewFromString(cctx.Args().Get(0))
+		if err != nil {
+			return err
+		}
+
+		prop, err := address.NewFromString(cctx.Args().Get(1))
+		if err != nil {
+			return err
+		}
+
+		txid, err := strconv.ParseUint(cctx.Args().Get(2), 10, 64)
+		if err != nil {
+			return err
+		}
+
+		oldAdd, err := address.NewFromString(cctx.Args().Get(3))
+		if err != nil {
+			return err
+		}
+
+		newAdd, err := address.NewFromString(cctx.Args().Get(4))
+		if err != nil {
+			return err
+		}
+
+		var from address.Address
+		if cctx.IsSet("from") {
+			f, err := address.NewFromString(cctx.String("from"))
+			if err != nil {
+				return err
+			}
+			from = f
+		} else {
+			defaddr, err := api.WalletDefaultAddress(ctx)
+			if err != nil {
+				return err
+			}
+			from = defaddr
+		}
+
+		msgCid, err := api.MsigSwapApprove(ctx, msig, from, txid, prop, oldAdd, newAdd)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("sent swap approval in message: ", msgCid)
+
+		wait, err := api.StateWaitMsg(ctx, msgCid, build.MessageConfidence)
+		if err != nil {
+			return err
+		}
+
+		if wait.Receipt.ExitCode != 0 {
+			return fmt.Errorf("swap approval returned exit %d", wait.Receipt.ExitCode)
+		}
+
+		return nil
+	},
+}
+
+var msigSwapCancelCmd = &cli.Command{
+	Name:      "swap-cancel",
+	Usage:     "Cancel a message to swap signers",
+	ArgsUsage: "[multisigAddress txId oldAddress newAddress]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "account to send the approve message from",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		if cctx.Args().Len() != 4 {
+			return fmt.Errorf("must pass multisig address, transaction id, old signer address, new signer address")
+		}
+
+		msig, err := address.NewFromString(cctx.Args().Get(0))
+		if err != nil {
+			return err
+		}
+
+		txid, err := strconv.ParseUint(cctx.Args().Get(1), 10, 64)
+		if err != nil {
+			return err
+		}
+
+		oldAdd, err := address.NewFromString(cctx.Args().Get(2))
+		if err != nil {
+			return err
+		}
+
+		newAdd, err := address.NewFromString(cctx.Args().Get(3))
+		if err != nil {
+			return err
+		}
+
+		var from address.Address
+		if cctx.IsSet("from") {
+			f, err := address.NewFromString(cctx.String("from"))
+			if err != nil {
+				return err
+			}
+			from = f
+		} else {
+			defaddr, err := api.WalletDefaultAddress(ctx)
+			if err != nil {
+				return err
+			}
+			from = defaddr
+		}
+
+		msgCid, err := api.MsigSwapCancel(ctx, msig, from, txid, oldAdd, newAdd)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("sent swap approval in message: ", msgCid)
+
+		wait, err := api.StateWaitMsg(ctx, msgCid, build.MessageConfidence)
+		if err != nil {
+			return err
+		}
+
+		if wait.Receipt.ExitCode != 0 {
+			return fmt.Errorf("swap approval returned exit %d", wait.Receipt.ExitCode)
 		}
 
 		return nil

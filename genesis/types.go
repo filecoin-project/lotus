@@ -51,7 +51,18 @@ func (am *AccountMeta) ActorMeta() json.RawMessage {
 }
 
 type MultisigMeta struct {
-	// TODO
+	Signers         []address.Address
+	Threshold       int
+	VestingDuration int
+	VestingStart    int
+}
+
+func (mm *MultisigMeta) ActorMeta() json.RawMessage {
+	out, err := json.Marshal(mm)
+	if err != nil {
+		panic(err)
+	}
+	return out
 }
 
 type Actor struct {

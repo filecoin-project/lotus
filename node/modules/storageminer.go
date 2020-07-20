@@ -460,13 +460,7 @@ func SectorStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, ls stores.LocalStor
 	}
 
 	lc.Append(fx.Hook{
-		OnStop: func(_ context.Context) error {
-			if err := sst.Close(); err != nil {
-				log.Errorf("%+v", err)
-			}
-
-			return nil
-		},
+		OnStop: sst.Close,
 	})
 
 	return sst, nil

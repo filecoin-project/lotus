@@ -83,14 +83,14 @@ func TestCCUpgrade(t *testing.T, b APIBuilder, blocktime time.Duration) {
 	// Validate upgrade
 
 	{
-		si, err := client.StateSectorGetInfo(ctx, maddr, CC, types.EmptyTSK)
+		exp, err := client.StateSectorExpiration(ctx, maddr, CC, types.EmptyTSK)
 		require.NoError(t, err)
-		require.Greater(t, 50000, int(si.Expiration))
+		require.Greater(t, 50000, int(exp.OnTime))
 	}
 	{
-		si, err := client.StateSectorGetInfo(ctx, maddr, Upgraded, types.EmptyTSK)
+		exp, err := client.StateSectorExpiration(ctx, maddr, Upgraded, types.EmptyTSK)
 		require.NoError(t, err)
-		require.Less(t, 50000, int(si.Expiration))
+		require.Less(t, 50000, int(exp.OnTime))
 	}
 
 	fmt.Println("shutting down mining")
