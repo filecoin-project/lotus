@@ -156,6 +156,7 @@ jobs:
       - download-params
       - go/install-gotestsum:
           gobin: $HOME/.local/bin
+          version: 0.5.2
       - run:
           name: go test
           environment:

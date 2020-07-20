@@ -107,7 +107,7 @@ func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, a
 		Params:   enc,
 		Value:    types.NewInt(0),
 		GasPrice: types.NewInt(0),
-		GasLimit: 100_000_000,
+		GasLimit: 0,
 	}
 
 	_, err = tnd.MpoolPushMessage(ctx, msg)
