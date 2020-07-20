@@ -40,6 +40,7 @@ func (a *GasAPI) GasEstimateGasLimit(ctx context.Context, msgIn *types.Message,
 
 	msg := &(*msgIn)
 	msg.GasLimit = build.BlockGasLimit
+	msg.GasPrice = types.NewInt(1)
 
 	ts, err := a.Cs.GetTipSetFromKey(tsk)
 	if err != nil {
@@ -47,8 +48,11 @@ func (a *GasAPI) GasEstimateGasLimit(ctx context.Context, msgIn *types.Message,
 	}
 
 	res, err := a.Stmgr.CallWithGas(ctx, msg, ts)
+	if err != nil {
+		return -1, xerrors.Errorf("CallWithGas failed: %w", err)
+	}
 	if res.MsgRct.ExitCode != exitcode.Ok {
-		return -1, xerrors.Errorf("could not apply message: exit %s, reason: %s", res.MsgRct.ExitCode, res.Error)
+		return -1, xerrors.Errorf("message execution failed: exit %s, reason: %s", res.MsgRct.ExitCode, res.Error)
 	}
 
 	return res.MsgRct.GasUsed, nil
