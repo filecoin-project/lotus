@@ -26,7 +26,7 @@ var rewardsRedeemCmd = &cli.Command{
 		&cli.Int64Flag{
 			Name:  "gas-limit",
 			Usage: "set gas limit",
-			Value: 100000,
+			Value: 100_000_000,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
