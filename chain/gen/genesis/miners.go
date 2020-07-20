@@ -198,6 +198,11 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 		if err != nil {
 			return cid.Undef, xerrors.Errorf("mutating state: %w", err)
 		}
+
+		err = vm.MutateState(ctx, builtin.RewardActorAddr, func(sct cbor.IpldStore, st *reward.State) error {
+			st = reward.ConstructState(qaPow)
+			return nil
+		})
 	}
 
 	for i, m := range miners {

@@ -39,8 +39,8 @@ func testGeneration(t testing.TB, n int, msgs int, sectors int) {
 }
 
 func TestChainGeneration(t *testing.T) {
-	testGeneration(t, 10, 20, 1)
-	testGeneration(t, 10, 20, 25)
+	t.Run("10-20-1", func(t *testing.T) { testGeneration(t, 10, 20, 1) })
+	t.Run("10-20-25", func(t *testing.T) { testGeneration(t, 10, 20, 25) })
 }
 
 func BenchmarkChainGeneration(b *testing.B) {
