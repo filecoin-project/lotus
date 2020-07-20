@@ -107,7 +107,12 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, ts 
 	}
 
 	fromKey, err := sm.ResolveToKeyAddress(ctx, msg.From, ts)
+	if err != nil {
+		return nil, xerrors.Errorf("could not resolve key: %w", err)
+	}
+
 	var msgApply types.ChainMsg
+
 	switch fromKey.Protocol() {
 	case address.BLS:
 		msgApply = msg

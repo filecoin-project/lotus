@@ -38,7 +38,7 @@ func (a *GasAPI) GasEstimateGasPrice(ctx context.Context, nblocksincl uint64,
 func (a *GasAPI) GasEstimateGasLimit(ctx context.Context, msgIn *types.Message,
 	tsk types.TipSetKey) (int64, error) {
 
-	msg := &(*msgIn)
+	msg := *msgIn
 	msg.GasLimit = build.BlockGasLimit
 	msg.GasPrice = types.NewInt(1)
 
@@ -47,7 +47,7 @@ func (a *GasAPI) GasEstimateGasLimit(ctx context.Context, msgIn *types.Message,
 		return -1, xerrors.Errorf("could not get tipset: %w", err)
 	}
 
-	res, err := a.Stmgr.CallWithGas(ctx, msg, ts)
+	res, err := a.Stmgr.CallWithGas(ctx, &msg, ts)
 	if err != nil {
 		return -1, xerrors.Errorf("CallWithGas failed: %w", err)
 	}
