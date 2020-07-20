@@ -101,7 +101,8 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message) (*t
 		}
 		msg.GasLimit = int64(float64(gasLimit) * GasMargin)
 	}
-	if types.BigCmp(msg.GasPrice, types.NewInt(0)) == 0 {
+
+	if msg.GasPrice == types.EmptyInt || types.BigCmp(msg.GasPrice, types.NewInt(0)) == 0 {
 		gasPrice, err := a.GasEstimateGasPrice(ctx, 2, msg.From, msg.GasLimit, types.TipSetKey{})
 		if err != nil {
 			return nil, xerrors.Errorf("estimating gas price: %w", err)
