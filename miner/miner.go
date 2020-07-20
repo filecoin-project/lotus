@@ -91,11 +91,12 @@ func (m *Miner) Start(ctx context.Context) error {
 
 func (m *Miner) Stop(ctx context.Context) error {
 	m.lk.Lock()
-	defer m.lk.Unlock()
 
 	m.stopping = make(chan struct{})
 	stopping := m.stopping
 	close(m.stop)
+
+	m.lk.Unlock()
 
 	select {
 	case <-stopping:
