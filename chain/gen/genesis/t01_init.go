@@ -17,7 +17,7 @@ import (
 	"github.com/filecoin-project/lotus/genesis"
 )
 
-func SetupInitActor(bs bstore.Blockstore, netname string, initialActors []genesis.Actor) (*types.Actor, error) {
+func SetupInitActor(bs bstore.Blockstore, netname string, initialActors []genesis.Actor, rootVerifier genesis.Actor) (*types.Actor, error) {
 	if len(initialActors) > MaxAccounts {
 		return nil, xerrors.New("too many initial actors")
 	}
@@ -50,8 +50,14 @@ func SetupInitActor(bs bstore.Blockstore, netname string, initialActors []genesi
 		}
 	}
 
-	if err := amap.Set(context.TODO(), string(RootVerifierAddr.Bytes()), 80); err != nil {
-		return nil, err
+	if rootVerifier.Type == genesis.TAccount {
+		var ainfo genesis.AccountMeta
+		if err := json.Unmarshal(rootVerifier.Meta, &ainfo); err != nil {
+			return nil, xerrors.Errorf("unmarshaling account meta: %w", err)
+		}
+		if err := amap.Set(context.TODO(), string(ainfo.Owner.Bytes()), 80); err != nil {
+			return nil, err
+		}
 	}
 
 	if err := amap.Flush(context.TODO()); err != nil {
