@@ -418,6 +418,8 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 		return nil, xerrors.Errorf("received proofs back from generate window post")
 	}
 
+	params.Proofs = postOut
+
 	for _, sector := range postSkipped {
 		params.Partitions[sidToPart[sector.Number]].Skipped.Set(uint64(sector.Number))
 	}
