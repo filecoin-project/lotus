@@ -216,8 +216,8 @@ github.com/fatih/color v1.7.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5Kwzbycv
 github.com/fatih/color v1.8.0 h1:5bzFgL+oy7JITMTxUPJ00n7VxmYd/PdMp5mHFX40/RY=
 github.com/fatih/color v1.8.0/go.mod h1:3l45GVGkyrnYNl9HoIjnp2NnNWvh6hLAqD8yTfGjnw8=
 github.com/fd/go-nat v1.0.0/go.mod h1:BTBu/CKvMmOMUPkKVef1pngt2WFH/lg7E6yQnulfp6E=
-github.com/filecoin-project/chain-validation v0.0.6-0.20200717222607-ced2bcb96ec0 h1:orVeRgvZ6D52O3tE+/9UyuXKFOFT6iE9x2ncFZAgegM=
-github.com/filecoin-project/chain-validation v0.0.6-0.20200717222607-ced2bcb96ec0/go.mod h1:ikB0DDO3N4nF0Yn3aAgUqofggbLvUnITJKsrEzI1E08=
+github.com/filecoin-project/chain-validation v0.0.6-0.20200720093255-843129967fdf h1:7SkS/gSZv4ljQaQeDu4SfnF9CcvQuT9QCEf3+Hn1jp8=
+github.com/filecoin-project/chain-validation v0.0.6-0.20200720093255-843129967fdf/go.mod h1:9xZvimiD8wsZbTNTUoACMPzXj4/fpIxeZBV2YjQcLhI=
 github.com/filecoin-project/go-address v0.0.0-20200107215422-da8eea2842b5/go.mod h1:SAOwJoakQ8EPjwNIsiakIQKsoKdkcbx8U3IapgCg9R0=
 github.com/filecoin-project/go-address v0.0.2-0.20200218010043-eb9bb40ed5be/go.mod h1:SAOwJoakQ8EPjwNIsiakIQKsoKdkcbx8U3IapgCg9R0=
 github.com/filecoin-project/go-address v0.0.2-0.20200504173055-8b6f2fb2b3ef h1:Wi5E+P1QfHP8IF27eUiTx5vYfqQZwfPxzq3oFEq8w8U=
@@ -269,7 +269,6 @@ github.com/filecoin-project/specs-actors v0.6.1/go.mod h1:dRdy3cURykh2R8O/DKqy8o
 github.com/filecoin-project/specs-actors v0.7.0/go.mod h1:+z0htZu/wLBDbOLcQTKKUEC2rkUTFzL2KJ/bRAVWkws=
 github.com/filecoin-project/specs-actors v0.7.3-0.20200716231407-60a2ae96d2e6 h1:F+GcBdKPdW/wTv6bMJxG9Zj1dc0UGkO6uNOQmKP/g1o=
 github.com/filecoin-project/specs-actors v0.7.3-0.20200716231407-60a2ae96d2e6/go.mod h1:JOMUa7EijvpOO4ofD1yeHNmqohkmmnhTvz/IpB6so4c=
-github.com/filecoin-project/specs-actors v0.7.3-0.20200717200758-365408676dbb/go.mod h1:JOMUa7EijvpOO4ofD1yeHNmqohkmmnhTvz/IpB6so4c=
 github.com/filecoin-project/specs-actors v0.8.1-0.20200720061236-f4719fdd7d90 h1:E8M5FyB53tuRXHO5KAAi9DlksOl54ULImW57MrUfyDY=
 github.com/filecoin-project/specs-actors v0.8.1-0.20200720061236-f4719fdd7d90/go.mod h1:JOMUa7EijvpOO4ofD1yeHNmqohkmmnhTvz/IpB6so4c=
 github.com/filecoin-project/specs-storage v0.1.0 h1:PkDgTOT5W5Ao7752onjDl4QSv+sgOVdJbvFjOnD5w94=
