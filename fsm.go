@@ -295,7 +295,7 @@ func planCommitting(events []statemachine.Event, state *SectorInfo) error {
 		case SectorComputeProofFailed:
 			state.State = ComputeProofFailed
 		case SectorSealPreCommit1Failed:
-			state.State = CommitFailed
+			state.State = SealPreCommit1Failed
 		case SectorCommitFailed:
 			state.State = CommitFailed
 		default:
