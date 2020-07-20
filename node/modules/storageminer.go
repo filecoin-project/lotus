@@ -42,6 +42,7 @@ import (
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/go-storedcounter"
+	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/node/config"
 	sectorstorage "github.com/filecoin-project/sector-storage"
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
@@ -137,7 +138,34 @@ func SectorIDCounter(ds dtypes.MetadataDS) sealing.SectorIDCounter {
 	return &sidsc{sc}
 }
 
-func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api lapi.FullNode, h host.Host, ds dtypes.MetadataDS, sealer sectorstorage.SectorManager, sc sealing.SectorIDCounter, verif ffiwrapper.Verifier, gsd dtypes.GetSealingDelayFunc) (*storage.Miner, error) {
+type StorageMinerParams struct {
+	fx.In
+
+	Lifecycle         fx.Lifecycle
+	MetricsCtx        helpers.MetricsCtx
+	API               lapi.FullNode
+	Host              host.Host
+	MetadataDS        dtypes.MetadataDS
+	Sealer            sectorstorage.SectorManager
+	SectorIDCounter   sealing.SectorIDCounter
+	Verifier          ffiwrapper.Verifier
+	GetSealingDelayFn dtypes.GetSealingDelayFunc
+	Journal           journal.Journal
+}
+
+func StorageMiner(params StorageMinerParams) (*storage.Miner, error) {
+	var (
+		ds     = params.MetadataDS
+		mctx   = params.MetricsCtx
+		lc     = params.Lifecycle
+		api    = params.API
+		sealer = params.Sealer
+		h      = params.Host
+		sc     = params.SectorIDCounter
+		verif  = params.Verifier
+		gsd    = params.GetSealingDelayFn
+		jrnl   = params.Journal
+	)
 	maddr, err := minerAddrFromDS(ds)
 	if err != nil {
 		return nil, err
@@ -155,7 +183,7 @@ func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api lapi.FullNode, h
 		return nil, err
 	}
 
-	fps, err := storage.NewWindowedPoStScheduler(api, sealer, sealer, maddr, worker)
+	fps, err := storage.NewWindowedPoStScheduler(api, sealer, sealer, maddr, worker, jrnl)
 	if err != nil {
 		return nil, err
 	}

@@ -209,7 +209,7 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 
 		// var newAddress address.Address
 
-		if (info.Type == genesis.TAccount) {
+		if info.Type == genesis.TAccount {
 			var ainfo genesis.AccountMeta
 			if err := json.Unmarshal(info.Meta, &ainfo); err != nil {
 				return nil, xerrors.Errorf("unmarshaling account meta: %w", err)
@@ -226,7 +226,7 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 			if err != nil {
 				return nil, xerrors.Errorf("setting account from actmap: %w", err)
 			}
-		} else if (info.Type == genesis.TMultisig) {
+		} else if info.Type == genesis.TMultisig {
 			var ainfo genesis.MultisigMeta
 			if err := json.Unmarshal(info.Meta, &ainfo); err != nil {
 				return nil, xerrors.Errorf("unmarshaling account meta: %w", err)
@@ -238,12 +238,12 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 			}
 
 			st, err := cst.Put(ctx, &multisig.State{
-				Signers: ainfo.Signers,
+				Signers:               ainfo.Signers,
 				NumApprovalsThreshold: uint64(ainfo.Threshold),
-				StartEpoch: abi.ChainEpoch(ainfo.VestingStart),
-				UnlockDuration: abi.ChainEpoch(ainfo.VestingDuration),
-				PendingTxns: pending,
-				InitialBalance: info.Balance,
+				StartEpoch:            abi.ChainEpoch(ainfo.VestingStart),
+				UnlockDuration:        abi.ChainEpoch(ainfo.VestingDuration),
+				PendingTxns:           pending,
+				InitialBalance:        info.Balance,
 			})
 			if err != nil {
 				return nil, err

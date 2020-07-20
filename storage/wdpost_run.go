@@ -14,17 +14,29 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/ipfs/go-cid"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/journal"
 )
 
 var errNoPartitions = errors.New("no partitions")
 
-func (s *WindowPoStScheduler) failPost(deadline *miner.DeadlineInfo) {
+func (s *WindowPoStScheduler) failPost(err error, deadline *miner.DeadlineInfo) {
+	journal.MaybeAddEntry(s.jrnl, s.evtTypes[evtTypeWindowPoSt], func() interface{} {
+		return WindowPoStEvt{
+			State:    "failed",
+			Deadline: s.activeDeadline,
+			Height:   s.cur.Height(),
+			TipSet:   s.cur.Cids(),
+			Error:    err,
+		}
+	})
+
 	log.Errorf("TODO")
 	/*s.failLk.Lock()
 	if eps > s.failed {
@@ -39,6 +51,15 @@ func (s *WindowPoStScheduler) doPost(ctx context.Context, deadline *miner.Deadli
 	s.abort = abort
 	s.activeDeadline = deadline
 
+	journal.MaybeAddEntry(s.jrnl, s.evtTypes[evtTypeWindowPoSt], func() interface{} {
+		return WindowPoStEvt{
+			State:    "started",
+			Deadline: s.activeDeadline,
+			Height:   s.cur.Height(),
+			TipSet:   s.cur.Cids(),
+		}
+	})
+
 	go func() {
 		defer abort()
 
@@ -52,14 +73,23 @@ func (s *WindowPoStScheduler) doPost(ctx context.Context, deadline *miner.Deadli
 		case nil:
 			if err := s.submitPost(ctx, proof); err != nil {
 				log.Errorf("submitPost failed: %+v", err)
-				s.failPost(deadline)
+				s.failPost(err, deadline)
 				return
 			}
 		default:
 			log.Errorf("runPost failed: %+v", err)
-			s.failPost(deadline)
+			s.failPost(err, deadline)
 			return
 		}
+
+		journal.MaybeAddEntry(s.jrnl, s.evtTypes[evtTypeWindowPoSt], func() interface{} {
+			return WindowPoStEvt{
+				State:    "succeeded",
+				Deadline: s.activeDeadline,
+				Height:   s.cur.Height(),
+				TipSet:   s.cur.Cids(),
+			}
+		})
 	}()
 }
 
@@ -112,11 +142,29 @@ func (s *WindowPoStScheduler) checkNextRecoveries(ctx context.Context, dlIdx uin
 	ctx, span := trace.StartSpan(ctx, "storage.checkNextRecoveries")
 	defer span.End()
 
+	var sm *types.SignedMessage
+	faulty := uint64(0)
 	params := &miner.DeclareFaultsRecoveredParams{
 		Recoveries: []miner.RecoveryDeclaration{},
 	}
 
-	faulty := uint64(0)
+	defer journal.MaybeAddEntry(s.jrnl, s.evtTypes[evtTypeWindowPoSt], func() interface{} {
+		var mcid cid.Cid
+		if sm != nil {
+			mcid = sm.Cid()
+		}
+
+		return WindowPoStEvt{
+			State:    "recoveries_processed",
+			Deadline: s.activeDeadline,
+			Height:   s.cur.Height(),
+			TipSet:   s.cur.Cids(),
+			Recoveries: &WindowPoStEvt_Recoveries{
+				Declarations: params.Recoveries,
+				MessageCID:   mcid,
+			},
+		}
+	})
 
 	for partIdx, partition := range partitions {
 		unrecovered, err := bitfield.SubtractBitField(partition.Faults, partition.Recoveries)
@@ -180,7 +228,8 @@ func (s *WindowPoStScheduler) checkNextRecoveries(ctx context.Context, dlIdx uin
 		GasPrice: types.NewInt(2),
 	}
 
-	sm, err := s.api.MpoolPushMessage(ctx, msg)
+	var err error
+	sm, err = s.api.MpoolPushMessage(ctx, msg)
 	if err != nil {
 		return xerrors.Errorf("pushing message to mpool: %w", err)
 	}
@@ -203,11 +252,28 @@ func (s *WindowPoStScheduler) checkNextFaults(ctx context.Context, dlIdx uint64,
 	ctx, span := trace.StartSpan(ctx, "storage.checkNextFaults")
 	defer span.End()
 
+	var sm *types.SignedMessage
+	bad := uint64(0)
 	params := &miner.DeclareFaultsParams{
 		Faults: []miner.FaultDeclaration{},
 	}
 
-	bad := uint64(0)
+	defer journal.MaybeAddEntry(s.jrnl, s.evtTypes[evtTypeWindowPoSt], func() interface{} {
+		var mcid cid.Cid
+		if sm != nil {
+			mcid = sm.Cid()
+		}
+		return WindowPoStEvt{
+			State:    "faults_processed",
+			Deadline: s.activeDeadline,
+			Height:   s.cur.Height(),
+			TipSet:   s.cur.Cids(),
+			Faults: &WindowPoStEvt_Faults{
+				Declarations: params.Faults,
+				MessageCID:   mcid,
+			},
+		}
+	})
 
 	for partIdx, partition := range partitions {
 		toCheck, err := partition.ActiveSectors()
@@ -264,7 +330,8 @@ func (s *WindowPoStScheduler) checkNextFaults(ctx context.Context, dlIdx uint64,
 		GasPrice: types.NewInt(2),
 	}
 
-	sm, err := s.api.MpoolPushMessage(ctx, msg)
+	var err error
+	sm, err = s.api.MpoolPushMessage(ctx, msg)
 	if err != nil {
 		return xerrors.Errorf("pushing message to mpool: %w", err)
 	}
@@ -450,6 +517,26 @@ func (s *WindowPoStScheduler) submitPost(ctx context.Context, proof *miner.Submi
 	ctx, span := trace.StartSpan(ctx, "storage.commitPost")
 	defer span.End()
 
+	var sm *types.SignedMessage
+
+	defer journal.MaybeAddEntry(s.jrnl, s.evtTypes[evtTypeWindowPoSt], func() interface{} {
+		var mcid cid.Cid
+		if sm != nil {
+			mcid = sm.Cid()
+		}
+
+		return WindowPoStEvt{
+			State:    "proofs_processed",
+			Deadline: s.activeDeadline,
+			Height:   s.cur.Height(),
+			TipSet:   s.cur.Cids(),
+			Proofs: &WindowPoStEvt_Proofs{
+				Partitions: proof.Partitions,
+				MessageCID: mcid,
+			},
+		}
+	})
+
 	enc, aerr := actors.SerializeParams(proof)
 	if aerr != nil {
 		return xerrors.Errorf("could not serialize submit post parameters: %w", aerr)
@@ -467,7 +554,8 @@ func (s *WindowPoStScheduler) submitPost(ctx context.Context, proof *miner.Submi
 	}
 
 	// TODO: consider maybe caring about the output
-	sm, err := s.api.MpoolPushMessage(ctx, msg)
+	var err error
+	sm, err = s.api.MpoolPushMessage(ctx, msg)
 	if err != nil {
 		return xerrors.Errorf("pushing message to mpool: %w", err)
 	}

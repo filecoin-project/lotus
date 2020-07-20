@@ -59,6 +59,15 @@ const (
 	evtTypeHeadChange = iota
 )
 
+type HeadChangeEvt struct {
+	From        types.TipSetKey
+	FromHeight  abi.ChainEpoch
+	To          types.TipSetKey
+	ToHeight    abi.ChainEpoch
+	RevertCount int
+	ApplyCount  int
+}
+
 // ChainStore is the main point of access to chain data.
 //
 // Raw chain data is stored in the Blockstore, with relevant markers (genesis,
@@ -340,7 +349,7 @@ func (cs *ChainStore) reorgWorker(ctx context.Context, initialNotifees []ReorgNo
 				}
 
 				journal.MaybeAddEntry(cs.journal, cs.evtTypes[evtTypeHeadChange], func() interface{} {
-					return journal.HeadChangeEvt{
+					return HeadChangeEvt{
 						From:        r.old.Key(),
 						FromHeight:  r.old.Height(),
 						To:          r.new.Key(),

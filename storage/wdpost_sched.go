@@ -17,9 +17,15 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/journal"
 )
 
 const StartConfidence = 4 // TODO: config
+
+// Journal event types.
+const (
+	evtTypeWindowPoSt = iota
+)
 
 type WindowPoStScheduler struct {
 	api              storageMinerApi
@@ -36,12 +42,14 @@ type WindowPoStScheduler struct {
 	// if a post is in progress, this indicates for which ElectionPeriodStart
 	activeDeadline *miner.DeadlineInfo
 	abort          context.CancelFunc
+	jrnl           journal.Journal
+	evtTypes       [1]journal.EventType
 
-	//failed abi.ChainEpoch // eps
-	//failLk sync.Mutex
+	// failed abi.ChainEpoch // eps
+	// failLk sync.Mutex
 }
 
-func NewWindowedPoStScheduler(api storageMinerApi, sb storage.Prover, ft sectorstorage.FaultTracker, actor address.Address, worker address.Address) (*WindowPoStScheduler, error) {
+func NewWindowedPoStScheduler(api storageMinerApi, sb storage.Prover, ft sectorstorage.FaultTracker, actor address.Address, worker address.Address, jrnl journal.Journal) (*WindowPoStScheduler, error) {
 	mi, err := api.StateMinerInfo(context.TODO(), actor, types.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("getting sector size: %w", err)
@@ -61,6 +69,10 @@ func NewWindowedPoStScheduler(api storageMinerApi, sb storage.Prover, ft sectors
 
 		actor:  actor,
 		worker: worker,
+		jrnl:   jrnl,
+		evtTypes: [...]journal.EventType{
+			evtTypeWindowPoSt: jrnl.RegisterEventType("storage", "wdpost"),
+		},
 	}, nil
 }
 
@@ -213,6 +225,15 @@ func (s *WindowPoStScheduler) abortActivePoSt() {
 	if s.abort != nil {
 		s.abort()
 	}
+
+	journal.MaybeAddEntry(s.jrnl, s.evtTypes[evtTypeWindowPoSt], func() interface{} {
+		return WindowPoStEvt{
+			State:    "abort",
+			Deadline: s.activeDeadline,
+			Height:   s.cur.Height(),
+			TipSet:   s.cur.Cids(),
+		}
+	})
 
 	log.Warnf("Aborting Window PoSt (Deadline: %+v)", s.activeDeadline)
 

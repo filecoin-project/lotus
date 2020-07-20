@@ -5,6 +5,9 @@ import (
 	"time"
 )
 
+// DisabledEvents is the set of event types whose journaling is suppressed.
+type DisabledEvents []EventType
+
 // EventType represents the signature of an event.
 type EventType struct {
 	System string
@@ -70,7 +73,7 @@ type eventTypeFactory struct {
 	m map[string]EventType
 }
 
-func newEventTypeFactory(disabled []EventType) *eventTypeFactory {
+func newEventTypeFactory(disabled DisabledEvents) *eventTypeFactory {
 	ret := &eventTypeFactory{
 		m: make(map[string]EventType, len(disabled)+32), // + extra capacity.
 	}

@@ -50,7 +50,7 @@ func (o *observer) dispatch(entry *Entry) {
 	}
 }
 
-func NewMemoryJournal(lc fx.Lifecycle, disabled []EventType) *MemJournal {
+func NewMemoryJournal(lc fx.Lifecycle, disabled DisabledEvents) *MemJournal {
 	m := &MemJournal{
 		eventTypeFactory: newEventTypeFactory(disabled),
 

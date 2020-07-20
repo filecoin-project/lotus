@@ -153,6 +153,7 @@ func defaults() []Option {
 		Override(new(dtypes.Bootstrapper), dtypes.Bootstrapper(false)),
 		Override(new(dtypes.ShutdownChan), make(chan struct{})),
 		Override(new(journal.Journal), journal.OpenFSJournal),
+		Override(new(journal.DisabledEvents), journal.DisabledEvents{}),
 
 		Override(InitJournalKey, func(j *journal.Journal) { /* forces the creation of the journal at startup */ }),
 		// Filecoin modules
