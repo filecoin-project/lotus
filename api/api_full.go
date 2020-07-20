@@ -375,7 +375,7 @@ type FileRef struct {
 
 type MinerSectors struct {
 	Sectors uint64
-	Active    uint64
+	Active  uint64
 }
 
 type SectorExpiration struct {
