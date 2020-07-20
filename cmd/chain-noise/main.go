@@ -77,7 +77,7 @@ func sendSmallFundsTxs(ctx context.Context, api api.FullNode, from address.Addre
 				From:     from,
 				To:       sendSet[rand.Intn(20)],
 				Value:    types.NewInt(1),
-				GasLimit: 100_000_000,
+				GasLimit: 0,
 				GasPrice: types.NewInt(0),
 			}
 
