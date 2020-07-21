@@ -80,7 +80,7 @@ var mpoolPending = &cli.Command{
 
 var mpoolSub = &cli.Command{
 	Name:  "sub",
-	Usage: "Subscibe to mpool changes",
+	Usage: "Subscribe to mpool changes",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {

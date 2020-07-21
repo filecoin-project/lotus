@@ -3,6 +3,7 @@ package test
 import (
 	"context"
 	"fmt"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 
@@ -41,26 +42,36 @@ func TestPledgeSector(t *testing.T, b APIBuilder, blocktime time.Duration, nSect
 
 	mine := true
 	done := make(chan struct{})
+	blockNotif := make(chan struct{}, 1)
 	go func() {
 		defer close(done)
 		for mine {
 			build.Clock.Sleep(blocktime)
-			if err := sn[0].MineOne(ctx, func(bool, error) {}); err != nil {
+			if err := sn[0].MineOne(ctx, func(bool, error) {
+				select {
+				case blockNotif <- struct{}{}:
+				default:
+				}
+
+			}); err != nil {
 				t.Error(err)
 			}
 		}
 	}()
 
-	pledgeSectors(t, ctx, miner, nSectors)
+	pledgeSectors(t, ctx, miner, nSectors, blockNotif)
 
 	mine = false
 	<-done
 }
 
-func pledgeSectors(t *testing.T, ctx context.Context, miner TestStorageNode, n int) {
+func pledgeSectors(t *testing.T, ctx context.Context, miner TestStorageNode, n int, blockNotif <-chan struct{}) {
 	for i := 0; i < n; i++ {
 		err := miner.PledgeSector(ctx)
 		require.NoError(t, err)
+		if i%3 == 0 && blockNotif != nil {
+			<-blockNotif
+		}
 	}
 
 	for {
@@ -131,7 +142,7 @@ func TestWindowPost(t *testing.T, b APIBuilder, blocktime time.Duration, nSector
 		}
 	}()
 
-	pledgeSectors(t, ctx, miner, nSectors)
+	pledgeSectors(t, ctx, miner, nSectors, nil)
 
 	maddr, err := miner.ActorAddress(ctx)
 	require.NoError(t, err)

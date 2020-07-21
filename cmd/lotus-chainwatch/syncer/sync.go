@@ -110,7 +110,8 @@ create table if not exists blocks
 	miner text not null,
 	timestamp bigint not null,
 	ticket bytea not null,
-	eprof bytea,
+	election_proof bytea,
+	win_count bigint,
 	forksig bigint not null
 );
 
@@ -401,15 +402,16 @@ create temp table b (like blocks excluding constraints) on commit drop;
 		}
 	}
 
-	stmt2, err := tx.Prepare(`copy b (cid, parentWeight, parentStateRoot, height, miner, "timestamp", ticket, eprof, forksig) from stdin`)
+	stmt2, err := tx.Prepare(`copy b (cid, parentWeight, parentStateRoot, height, miner, "timestamp", ticket, election_proof, win_count, forksig) from stdin`)
 	if err != nil {
 		return err
 	}
 
 	for _, bh := range bhs {
-		var eprof interface{}
+		var eproof, winCount interface{}
 		if bh.ElectionProof != nil {
-			eprof = bh.ElectionProof.VRFProof
+			eproof = bh.ElectionProof.VRFProof
+			winCount = bh.ElectionProof.WinCount
 		}
 
 		if bh.Ticket == nil {
@@ -428,7 +430,8 @@ create temp table b (like blocks excluding constraints) on commit drop;
 			bh.Miner.String(),
 			bh.Timestamp,
 			bh.Ticket.VRFProof,
-			eprof,
+			eproof,
+			winCount,
 			bh.ForkSignaling); err != nil {
 			log.Error(err)
 		}

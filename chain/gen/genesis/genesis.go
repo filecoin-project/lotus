@@ -6,6 +6,7 @@ import (
 
 	"github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
@@ -63,6 +64,7 @@ The process:
       - market.AddFunds with correct value
       - market.PublishDeals for related sectors
     - Set network power in the power actor to what we'll have after genesis creation
+	- Recreate reward actor state with the right power
     - For each precommitted sector
       - Get deal weight
       - Calculate QA Power
@@ -140,7 +142,8 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 	}
 
 	// Setup reward
-	rewact, err := SetupRewardActor(bs)
+	// RewardActor's state is overrwritten by SetupStorageMiners
+	rewact, err := SetupRewardActor(bs, big.Zero())
 	if err != nil {
 		return nil, xerrors.Errorf("setup init actor: %w", err)
 	}

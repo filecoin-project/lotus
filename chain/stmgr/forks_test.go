@@ -179,7 +179,7 @@ func TestForkHeightTriggers(t *testing.T) {
 		To:       builtin.InitActorAddr,
 		Method:   builtin.MethodsInit.Exec,
 		Params:   enc,
-		GasLimit: 100_000_000,
+		GasLimit: types.TestGasLimit,
 		GasPrice: types.NewInt(0),
 	}
 	sig, err := cg.Wallet().Sign(ctx, cg.Banker(), m.Cid().Bytes())
@@ -206,7 +206,7 @@ func TestForkHeightTriggers(t *testing.T) {
 			Method:   2,
 			Params:   nil,
 			Nonce:    nonce,
-			GasLimit: 100_000_000,
+			GasLimit: types.TestGasLimit,
 			GasPrice: types.NewInt(0),
 		}
 		nonce++

@@ -101,6 +101,16 @@ type FullNode interface {
 	// ChainExport returns a stream of bytes with CAR dump of chain data.
 	ChainExport(context.Context, types.TipSetKey) (<-chan []byte, error)
 
+	// GasEstimateGasLimit estimates gas used by the message and returns it.
+	// It fails if message fails to execute.
+	GasEstimateGasLimit(context.Context, *types.Message, types.TipSetKey) (int64, error)
+
+	// GasEstimateGasPrice estimates what gas price should be used for a
+	// message to have high likelihood of inclusion in `nblocksincl` epochs.
+
+	GasEstimateGasPrice(_ context.Context, nblocksincl uint64,
+		sender address.Address, gaslimit int64, tsk types.TipSetKey) (types.BigInt, error)
+
 	// MethodGroup: Sync
 	// The Sync method group contains methods for interacting with and
 	// observing the lotus sync service.
@@ -143,8 +153,8 @@ type FullNode interface {
 	MpoolGetNonce(context.Context, address.Address) (uint64, error)
 	MpoolSub(context.Context) (<-chan MpoolUpdate, error)
 
-	// MpoolEstimateGasPrice estimates what gas price should be used for a
-	// message to have high likelihood of inclusion in `nblocksincl` epochs.
+	// MpoolEstimateGasPrice is depracated
+	// Deprecated: use GasEstimateGasPrice instead
 	MpoolEstimateGasPrice(ctx context.Context, nblocksincl uint64, sender address.Address, gaslimit int64, tsk types.TipSetKey) (types.BigInt, error)
 
 	// MethodGroup: Miner

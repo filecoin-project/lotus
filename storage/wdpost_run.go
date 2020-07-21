@@ -224,7 +224,7 @@ func (s *WindowPoStScheduler) checkNextRecoveries(ctx context.Context, dlIdx uin
 		Method:   builtin.MethodsMiner.DeclareFaultsRecovered,
 		Params:   enc,
 		Value:    types.NewInt(0),
-		GasLimit: 100_000_000, // i dont know help
+		GasLimit: 0,
 		GasPrice: types.NewInt(2),
 	}
 
@@ -326,7 +326,7 @@ func (s *WindowPoStScheduler) checkNextFaults(ctx context.Context, dlIdx uint64,
 		Method:   builtin.MethodsMiner.DeclareFaults,
 		Params:   enc,
 		Value:    types.NewInt(0), // TODO: Is there a fee?
-		GasLimit: 100_000_000,     // i dont know help
+		GasLimit: 0,
 		GasPrice: types.NewInt(2),
 	}
 
@@ -484,6 +484,8 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 	if len(postOut) == 0 {
 		return nil, xerrors.Errorf("received proofs back from generate window post")
 	}
+
+	params.Proofs = postOut
 
 	for _, sector := range postSkipped {
 		params.Partitions[sidToPart[sector.Number]].Skipped.Set(uint64(sector.Number))

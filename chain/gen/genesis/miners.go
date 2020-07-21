@@ -146,6 +146,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 			params := &market.PublishStorageDealsParams{}
 			for _, preseal := range m.Sectors {
 				preseal.Deal.VerifiedDeal = true
+				preseal.Deal.EndEpoch = minerInfos[i].presealExp
 				params.Deals = append(params.Deals, market.ClientDealProposal{
 					Proposal:        preseal.Deal,
 					ClientSignature: crypto.Signature{Type: crypto.SigTypeBLS}, // TODO: do we want to sign these? Or do we want to fake signatures for genesis setup?
@@ -197,6 +198,11 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 		if err != nil {
 			return cid.Undef, xerrors.Errorf("mutating state: %w", err)
 		}
+
+		err = vm.MutateState(ctx, builtin.RewardActorAddr, func(sct cbor.IpldStore, st *reward.State) error {
+			st = reward.ConstructState(qaPow)
+			return nil
+		})
 	}
 
 	for i, m := range miners {

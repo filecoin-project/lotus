@@ -76,7 +76,7 @@ var verifRegAddVerifierCmd = &cli.Command{
 			From:     fromk,
 			Method:   builtin.MethodsVerifiedRegistry.AddVerifier,
 			GasPrice: types.NewInt(1),
-			GasLimit: 100_000_000,
+			GasLimit: 0,
 			Params:   params,
 		}
 
@@ -152,7 +152,7 @@ var verifRegVerifyClientCmd = &cli.Command{
 			From:     fromk,
 			Method:   builtin.MethodsVerifiedRegistry.AddVerifiedClient,
 			GasPrice: types.NewInt(1),
-			GasLimit: 100_000_000,
+			GasLimit: 0,
 			Params:   params,
 		}
 
