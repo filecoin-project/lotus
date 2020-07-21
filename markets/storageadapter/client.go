@@ -7,6 +7,7 @@ import (
 	"context"
 
 	"github.com/filecoin-project/lotus/chain/events/state"
+	"github.com/filecoin-project/lotus/journal"
 
 	"golang.org/x/xerrors"
 
@@ -43,6 +44,9 @@ type ClientNodeAdapter struct {
 	cs *store.ChainStore
 	fm *market.FundMgr
 	ev *events.Events
+
+	jrnl     journal.Journal
+	evtTypes [4]journal.EventType
 }
 
 type clientApi struct {
@@ -50,7 +54,7 @@ type clientApi struct {
 	full.StateAPI
 }
 
-func NewClientNodeAdapter(state full.StateAPI, chain full.ChainAPI, mpool full.MpoolAPI, sm *stmgr.StateManager, cs *store.ChainStore, fm *market.FundMgr) storagemarket.StorageClientNode {
+func NewClientNodeAdapter(state full.StateAPI, chain full.ChainAPI, mpool full.MpoolAPI, sm *stmgr.StateManager, cs *store.ChainStore, fm *market.FundMgr, jrnl journal.Journal) storagemarket.StorageClientNode {
 	return &ClientNodeAdapter{
 		StateAPI: state,
 		ChainAPI: chain,
@@ -60,6 +64,13 @@ func NewClientNodeAdapter(state full.StateAPI, chain full.ChainAPI, mpool full.M
 		cs: cs,
 		fm: fm,
 		ev: events.NewEvents(context.TODO(), &clientApi{chain, state}),
+
+		jrnl: jrnl,
+		evtTypes: [...]journal.EventType{
+			evtTypeDealSectorCommitted: jrnl.RegisterEventType("markets:storage:client", "deal_sector_committed"),
+			evtTypeDealExpired:         jrnl.RegisterEventType("markets:storage:client", "deal_expired"),
+			evtTypeDealSlashed:         jrnl.RegisterEventType("markets:storage:client", "deal_slashed"),
+		},
 	}
 }
 
@@ -235,7 +246,14 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 		return 0, err
 	}
 
-	return res.IDs[dealIdx], nil
+	dealID := res.IDs[dealIdx]
+	journal.MaybeAddEntry(c.jrnl, c.evtTypes[evtTypeDealAccepted], func() interface{} {
+		deal := deal // copy and strip fields we don't want to log to the journal
+		deal.ClientSignature = crypto.Signature{}
+		return ClientDealAcceptedEvt{ID: dealID, Deal: deal, Height: c.cs.GetHeaviestTipSet().Height()}
+	})
+
+	return dealID, nil
 }
 
 func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealId abi.DealID, cb storagemarket.DealSectorCommittedCallback) error {
@@ -277,6 +295,10 @@ func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider 
 		}
 
 		log.Infof("Storage deal %d activated at epoch %d", dealId, sd.State.SectorStartEpoch)
+
+		journal.MaybeAddEntry(c.jrnl, c.evtTypes[evtTypeDealSectorCommitted], func() interface{} {
+			return ClientDealSectorCommittedEvt{ID: dealId, State: sd.State, Height: curH}
+		})
 
 		cb(nil)
 
