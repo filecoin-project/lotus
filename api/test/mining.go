@@ -89,7 +89,7 @@ func TestDealMining(t *testing.T, b APIBuilder, blocktime time.Duration, carExpo
 	ctx := context.Background()
 	n, sn := b(t, 1, []StorageMiner{
 		{Full: 0, Preseal: PresealGenesis},
-		{Full: 0, Preseal: 0}, // TODO: Add support for storage miners on non-first full node
+		{Full: 0, Preseal: 0}, // TODO: Add support for miners on non-first full node
 	})
 	client := n[0].FullNode.(*impl.FullNodeAPI)
 	provider := sn[1]
@@ -154,6 +154,10 @@ func TestDealMining(t *testing.T, b APIBuilder, blocktime time.Duration, carExpo
 			expect += <-wait
 
 			time.Sleep(blocktime)
+			if expect == 0 {
+				// null block
+				continue
+			}
 
 			for {
 				n := 0
@@ -185,12 +189,12 @@ func TestDealMining(t *testing.T, b APIBuilder, blocktime time.Duration, carExpo
 		}
 	}()
 
-	deal := startDeal(t, ctx, provider, client, fcid)
+	deal := startDeal(t, ctx, provider, client, fcid, false)
 
 	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
 	time.Sleep(time.Second)
 
-	waitDealSealed(t, ctx, client, deal)
+	waitDealSealed(t, ctx, provider, client, deal)
 
 	<-minedTwo
 

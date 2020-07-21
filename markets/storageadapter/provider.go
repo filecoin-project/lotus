@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 
@@ -25,6 +26,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/events"
+	"github.com/filecoin-project/lotus/chain/events/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/markets/utils"
@@ -33,7 +35,7 @@ import (
 	sealing "github.com/filecoin-project/storage-fsm"
 )
 
-var log = logging.Logger("provideradapter")
+var log = logging.Logger("storageadapter")
 
 type ProviderNodeAdapter struct {
 	api.FullNode
@@ -76,7 +78,7 @@ func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemark
 		From:     mi.Worker,
 		Value:    types.NewInt(0),
 		GasPrice: types.NewInt(0),
-		GasLimit: 1000000,
+		GasLimit: 600_000_000,
 		Method:   builtin.MethodsMarket.PublishStorageDeals,
 		Params:   params,
 	})
@@ -93,6 +95,7 @@ func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagema
 			StartEpoch: deal.ClientDealProposal.Proposal.StartEpoch,
 			EndEpoch:   deal.ClientDealProposal.Proposal.EndEpoch,
 		},
+		KeepUnsealed: deal.FastRetrieval,
 	})
 	if err != nil {
 		return xerrors.Errorf("AddPiece failed: %s", err)
@@ -172,7 +175,7 @@ func (n *ProviderNodeAdapter) AddFunds(ctx context.Context, addr address.Address
 		From:     addr,
 		Value:    amount,
 		GasPrice: types.NewInt(0),
-		GasLimit: 1000000,
+		GasLimit: 200_000_000,
 		Method:   builtin.MethodsMarket.AddBalance,
 	})
 	if err != nil {
@@ -279,44 +282,44 @@ func (n *ProviderNodeAdapter) OnDealSectorCommitted(ctx context.Context, provide
 	var sectorNumber abi.SectorNumber
 	var sectorFound bool
 
-	matchEvent := func(msg *types.Message) (bool, error) {
+	matchEvent := func(msg *types.Message) (matchOnce bool, matched bool, err error) {
 		if msg.To != provider {
-			return false, nil
+			return true, false, nil
 		}
 
 		switch msg.Method {
 		case builtin.MethodsMiner.PreCommitSector:
 			var params miner.SectorPreCommitInfo
 			if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
-				return false, xerrors.Errorf("unmarshal pre commit: %w", err)
+				return true, false, xerrors.Errorf("unmarshal pre commit: %w", err)
 			}
 
 			for _, did := range params.DealIDs {
 				if did == abi.DealID(dealID) {
 					sectorNumber = params.SectorNumber
 					sectorFound = true
-					return false, nil
+					return true, false, nil
 				}
 			}
 
-			return false, nil
+			return true, false, nil
 		case builtin.MethodsMiner.ProveCommitSector:
 			var params miner.ProveCommitSectorParams
 			if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
-				return false, xerrors.Errorf("failed to unmarshal prove commit sector params: %w", err)
+				return true, false, xerrors.Errorf("failed to unmarshal prove commit sector params: %w", err)
 			}
 
 			if !sectorFound {
-				return false, nil
+				return true, false, nil
 			}
 
 			if params.SectorNumber != sectorNumber {
-				return false, nil
+				return true, false, nil
 			}
 
-			return true, nil
+			return false, true, nil
 		default:
-			return false, nil
+			return true, false, nil
 		}
 
 	}
@@ -343,6 +346,104 @@ func (n *ProviderNodeAdapter) WaitForMessage(ctx context.Context, mcid cid.Cid, 
 		return cb(0, nil, err)
 	}
 	return cb(receipt.Receipt.ExitCode, receipt.Receipt.Return, nil)
+}
+
+func (n *ProviderNodeAdapter) GetDataCap(ctx context.Context, addr address.Address, encodedTs shared.TipSetToken) (*verifreg.DataCap, error) {
+	tsk, err := types.TipSetKeyFromBytes(encodedTs)
+	if err != nil {
+		return nil, err
+	}
+	return n.StateVerifiedClientStatus(ctx, addr, tsk)
+}
+
+func (n *ProviderNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID abi.DealID, onDealExpired storagemarket.DealExpiredCallback, onDealSlashed storagemarket.DealSlashedCallback) error {
+	head, err := n.ChainHead(ctx)
+	if err != nil {
+		return xerrors.Errorf("client: failed to get chain head: %w", err)
+	}
+
+	sd, err := n.StateMarketStorageDeal(ctx, dealID, head.Key())
+	if err != nil {
+		return xerrors.Errorf("client: failed to look up deal %d on chain: %w", dealID, err)
+	}
+
+	// Called immediately to check if the deal has already expired or been slashed
+	checkFunc := func(ts *types.TipSet) (done bool, more bool, err error) {
+		// Check if the deal has already expired
+		if sd.Proposal.EndEpoch <= ts.Height() {
+			onDealExpired(nil)
+			return true, false, nil
+		}
+
+		// If there is no deal assume it's already been slashed
+		if sd.State.SectorStartEpoch < 0 {
+			onDealSlashed(ts.Height(), nil)
+			return true, false, nil
+		}
+
+		// No events have occurred yet, so return
+		// done: false, more: true (keep listening for events)
+		return false, true, nil
+	}
+
+	// Called when there was a match against the state change we're looking for
+	// and the chain has advanced to the confidence height
+	stateChanged := func(ts *types.TipSet, ts2 *types.TipSet, states events.StateChange, h abi.ChainEpoch) (more bool, err error) {
+		// Check if the deal has already expired
+		if sd.Proposal.EndEpoch <= ts2.Height() {
+			onDealExpired(nil)
+			return false, nil
+		}
+
+		// Timeout waiting for state change
+		if states == nil {
+			log.Error("timed out waiting for deal expiry")
+			return false, nil
+		}
+
+		changedDeals, ok := states.(state.ChangedDeals)
+		if !ok {
+			panic("Expected state.ChangedDeals")
+		}
+
+		deal, ok := changedDeals[dealID]
+		if !ok {
+			// No change to deal
+			return true, nil
+		}
+
+		// Deal was slashed
+		if deal.To == nil {
+			onDealSlashed(ts2.Height(), nil)
+			return false, nil
+		}
+
+		return true, nil
+	}
+
+	// Called when there was a chain reorg and the state change was reverted
+	revert := func(ctx context.Context, ts *types.TipSet) error {
+		// TODO: Is it ok to just ignore this?
+		log.Warn("deal state reverted; TODO: actually handle this!")
+		return nil
+	}
+
+	// Watch for state changes to the deal
+	preds := state.NewStatePredicates(n)
+	dealDiff := preds.OnStorageMarketActorChanged(
+		preds.OnDealStateChanged(
+			preds.DealStateChangedForIDs([]abi.DealID{dealID})))
+	match := func(oldTs, newTs *types.TipSet) (bool, events.StateChange, error) {
+		return dealDiff(ctx, oldTs.Key(), newTs.Key())
+	}
+
+	// Wait until after the end epoch for the deal and then timeout
+	timeout := (sd.Proposal.EndEpoch - head.Height()) + 1
+	if err := n.ev.StateChanged(checkFunc, stateChanged, revert, int(build.MessageConfidence)+1, timeout, match); err != nil {
+		return xerrors.Errorf("failed to set up state changed handler: %w", err)
+	}
+
+	return nil
 }
 
 var _ storagemarket.StorageProviderNode = &ProviderNodeAdapter{}

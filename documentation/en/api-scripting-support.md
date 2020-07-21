@@ -1,6 +1,6 @@
 # Remote API Support
 
-You may want to delegate the work **Lotus Storage Miner** or **Lotus Node** performs to other machines. 
+You may want to delegate the work **Lotus Miner** or **Lotus Node** performs to other machines. 
 Here is how to setup the necessary authorization and environment variables.
 
 ## Environment variables
@@ -13,13 +13,13 @@ Using the [JWT you generated](https://lotu.sh/en+api#how-do-i-generate-a-token-1
 # Lotus Node
 FULLNODE_API_INFO="JWT_TOKEN:/ip4/127.0.0.1/tcp/1234/http"
 
-# Lotus Storage Miner
-STORAGE_API_INFO="JWT_TOKEN:/ip4/127.0.0.1/tcp/2345/http"
+# Lotus Miner
+MINER_API_INFO="JWT_TOKEN:/ip4/127.0.0.1/tcp/2345/http"
 ```
 
 You can also use `lotus auth api-info --perm admin` to quickly create _API_INFO env vars
 
 - The **Lotus Node**'s `mutliaddr` is in `~/.lotus/api`.
 - The default token is in `~/.lotus/token`.
-- The **Lotus Storage Miner**'s `multiaddr` is in `~/.lotusstorage/config`.
-- The default token is in `~/.lotusstorage/token`.
+- The **Lotus Miner**'s `multiaddr` is in `~/.lotusminer/config`.
+- The default token is in `~/.lotusminer/token`.

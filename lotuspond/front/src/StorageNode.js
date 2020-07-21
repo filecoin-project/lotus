@@ -127,7 +127,7 @@ class StorageNode extends React.Component {
       runtime = (
         <div>
           <div>v{this.state.version.Version}, <abbr title={this.state.id}>{this.state.id.substr(-8)}</abbr>, {this.state.peers} peers</div>
-          <div>Repo: LOTUS_STORAGE_PATH={this.props.node.Repo}</div>
+          <div>Repo: LOTUS_MINER_PATH={this.props.node.Repo}</div>
           <div>
             {pledgeSector} {sealStaged}
           </div>
@@ -147,7 +147,7 @@ class StorageNode extends React.Component {
     }
 
     return <Window
-      title={"Storage Miner Node " + this.props.node.ID}
+      title={"Miner Node " + this.props.node.ID}
       initialPosition={{x: this.props.node.ID*30, y: this.props.node.ID * 30}}
       onClose={this.stop} >
       <div className="CristalScroll">

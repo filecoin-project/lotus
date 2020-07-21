@@ -25,12 +25,13 @@ type FullNode struct {
 
 // // Common
 
-// StorageMiner is a storage miner config
+// StorageMiner is a miner config
 type StorageMiner struct {
 	Common
 
-	Dealmaking DealmakingConfig
-	Storage    sectorstorage.SealerConfig
+	Dealmaking   DealmakingConfig
+	Storage      sectorstorage.SealerConfig
+	SealingDelay Duration
 }
 
 type DealmakingConfig struct {
@@ -39,6 +40,7 @@ type DealmakingConfig struct {
 	ConsiderOnlineRetrievalDeals  bool
 	ConsiderOfflineRetrievalDeals bool
 	PieceCidBlocklist             []cid.Cid
+	ExpectedSealDuration          Duration
 }
 
 // API contains configs for API endpoint
@@ -131,7 +133,11 @@ func DefaultStorageMiner() *StorageMiner {
 			ConsiderOnlineRetrievalDeals:  true,
 			ConsiderOfflineRetrievalDeals: true,
 			PieceCidBlocklist:             []cid.Cid{},
+			// TODO: It'd be nice to set this based on sector size
+			ExpectedSealDuration: Duration(time.Hour * 12),
 		},
+
+		SealingDelay: Duration(time.Hour),
 	}
 	cfg.Common.API.ListenAddress = "/ip4/127.0.0.1/tcp/2345/http"
 	cfg.Common.API.RemoteListenAddress = "127.0.0.1:2345"

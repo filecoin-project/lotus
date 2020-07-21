@@ -27,9 +27,9 @@ type MsigAPI struct {
 	MpoolAPI  MpoolAPI
 }
 
-func (a *MsigAPI) MsigCreate(ctx context.Context, req int64, addrs []address.Address, duration abi.ChainEpoch, val types.BigInt, src address.Address, gp types.BigInt) (cid.Cid, error) {
+func (a *MsigAPI) MsigCreate(ctx context.Context, req uint64, addrs []address.Address, duration abi.ChainEpoch, val types.BigInt, src address.Address, gp types.BigInt) (cid.Cid, error) {
 
-	lenAddrs := int64(len(addrs))
+	lenAddrs := uint64(len(addrs))
 
 	if lenAddrs < req {
 		return cid.Undef, xerrors.Errorf("cannot require signing of more addresses than provided for multisig")
@@ -77,7 +77,7 @@ func (a *MsigAPI) MsigCreate(ctx context.Context, req int64, addrs []address.Add
 		Method:   builtin.MethodsInit.Exec,
 		Params:   enc,
 		GasPrice: gp,
-		GasLimit: 1000000,
+		GasLimit: 100_000_000,
 		Value:    val,
 	}
 
@@ -124,7 +124,7 @@ func (a *MsigAPI) MsigPropose(ctx context.Context, msig address.Address, to addr
 		Value:    types.NewInt(0),
 		Method:   builtin.MethodsMultisig.Propose,
 		Params:   enc,
-		GasLimit: 100000,
+		GasLimit: 100_000_000,
 		GasPrice: types.NewInt(1),
 	}
 
@@ -240,7 +240,7 @@ func (a *MsigAPI) msigApproveOrCancel(ctx context.Context, operation api.MsigPro
 		Value:    types.NewInt(0),
 		Method:   msigResponseMethod,
 		Params:   enc,
-		GasLimit: 100000,
+		GasLimit: 100_000_000,
 		GasPrice: types.NewInt(1),
 	}
 

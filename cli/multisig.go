@@ -6,11 +6,12 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 	"os"
 	"sort"
 	"strconv"
 	"text/tabwriter"
+
+	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	"github.com/filecoin-project/go-address"
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
@@ -113,9 +114,9 @@ var msigCreateCmd = &cli.Command{
 
 		intVal := types.BigInt(filval)
 
-		required := cctx.Int64("required")
+		required := cctx.Uint64("required")
 		if required == 0 {
-			required = int64(len(addrs))
+			required = uint64(len(addrs))
 		}
 
 		d := abi.ChainEpoch(cctx.Uint64("duration"))
@@ -184,12 +185,19 @@ var msigInspectCmd = &cli.Command{
 			return err
 		}
 
+		head, err := api.ChainHead(ctx)
+		if err != nil {
+			return err
+		}
+
 		var mstate samsig.State
 		if err := mstate.UnmarshalCBOR(bytes.NewReader(obj)); err != nil {
 			return err
 		}
 
-		fmt.Printf("Balance: %sfil\n", types.FIL(act.Balance))
+		locked := mstate.AmountLocked(head.Height() - mstate.StartEpoch)
+		fmt.Printf("Balance: %s\n", types.FIL(act.Balance))
+		fmt.Printf("Spendable: %s\n", types.FIL(types.BigSub(act.Balance, locked)))
 		fmt.Printf("Threshold: %d / %d\n", mstate.NumApprovalsThreshold, len(mstate.Signers))
 		fmt.Println("Signers:")
 		for _, s := range mstate.Signers {

@@ -11,6 +11,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 
@@ -68,7 +69,7 @@ func sendSmallFundsTxs(ctx context.Context, api api.FullNode, from address.Addre
 		sendSet = append(sendSet, naddr)
 	}
 
-	tick := time.NewTicker(time.Second / time.Duration(rate))
+	tick := build.Clock.Ticker(time.Second / time.Duration(rate))
 	for {
 		select {
 		case <-tick.C:
@@ -76,7 +77,7 @@ func sendSmallFundsTxs(ctx context.Context, api api.FullNode, from address.Addre
 				From:     from,
 				To:       sendSet[rand.Intn(20)],
 				Value:    types.NewInt(1),
-				GasLimit: 100000,
+				GasLimit: 100_000_000,
 				GasPrice: types.NewInt(0),
 			}
 

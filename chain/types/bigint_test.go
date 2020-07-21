@@ -82,7 +82,7 @@ func TestSizeStrUnitsSymmetry(t *testing.T) {
 	s := rand.NewSource(time.Now().UnixNano())
 	r := rand.New(s)
 
-	for i := 0; i < 1000000; i++ {
+	for i := 0; i < 10000; i++ {
 		n := r.Uint64()
 		l := strings.ReplaceAll(units.BytesSize(float64(n)), " ", "")
 		r := strings.ReplaceAll(SizeStr(NewInt(n)), " ", "")

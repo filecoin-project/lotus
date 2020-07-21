@@ -30,7 +30,7 @@ const ForkLengthThreshold = Finality
 var BlocksPerEpoch = uint64(builtin.ExpectedLeadersPerEpoch)
 
 // Epochs
-const Finality = miner.ChainFinalityish
+const Finality = miner.ChainFinality
 const MessageConfidence = uint64(5)
 
 // constants for Weight calculation
@@ -62,7 +62,7 @@ const WinningPoStSectorSetLookback = abi.ChainEpoch(10)
 // Devnet settings
 
 const TotalFilecoin = uint64(2_000_000_000)
-const MiningRewardTotal = uint64(1_400_000_000)
+const MiningRewardTotal = uint64(1_900_000_000)
 
 const FilecoinPrecision = uint64(1_000_000_000_000_000_000)
 
@@ -91,7 +91,7 @@ const VerifSigCacheSize = 32000
 
 // TODO: If this is gonna stay, it should move to specs-actors
 const BlockMessageLimit = 512
-const BlockGasLimit = 100_000_000_000
+const BlockGasLimit = 7_500_000_000
 
 var DrandConfig = dtypes.DrandConfig{
 	Servers: []string{
@@ -99,5 +99,5 @@ var DrandConfig = dtypes.DrandConfig{
 		"https://pl-us.testnet.drand.sh",
 		"https://pl-sin.testnet.drand.sh",
 	},
-	ChainInfoJSON: `{"public_key":"922a2e93828ff83345bae533f5172669a26c02dc76d6bf59c80892e12ab1455c229211886f35bb56af6d5bea981024df","period":25,"genesis_time":1590445175,"hash":"138a324aa6540f93d0dad002aa89454b1bec2b6e948682cde6bd4db40f4b7c9b"}`,
+	ChainInfoJSON: `{"public_key":"922a2e93828ff83345bae533f5172669a26c02dc76d6bf59c80892e12ab1455c229211886f35bb56af6d5bea981024df","period":25,"genesis_time":1590445175,"hash":"84b2234fb34e835dccd048255d7ad3194b81af7d978c3bf157e3469592ae4e02","groupHash":"4dd408e5fdff9323c76a9b6f087ba8fdc5a6da907bd9217d9d10f2287d081957"}`,
 }

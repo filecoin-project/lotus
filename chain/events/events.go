@@ -99,7 +99,7 @@ func (e *Events) listenHeadChanges(ctx context.Context) {
 			log.Warnf("not restarting listenHeadChanges: context error: %s", ctx.Err())
 			return
 		}
-		time.Sleep(time.Second)
+		build.Clock.Sleep(time.Second)
 		log.Info("restarting listenHeadChanges")
 	}
 }

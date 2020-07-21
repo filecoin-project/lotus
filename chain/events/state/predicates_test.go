@@ -122,11 +122,9 @@ func TestMarketPredicates(t *testing.T) {
 		LastUpdatedEpoch: 3,
 		SlashEpoch:       0,
 	}
-	newDeal2 := &market.DealState{
-		SectorStartEpoch: 4,
-		LastUpdatedEpoch: 6,
-		SlashEpoch:       6,
-	}
+
+	// deal 2 removed
+
 	// added
 	newDeal3 := &market.DealState{
 		SectorStartEpoch: 1,
@@ -135,7 +133,7 @@ func TestMarketPredicates(t *testing.T) {
 	}
 	newDeals := map[abi.DealID]*market.DealState{
 		abi.DealID(1): newDeal1,
-		abi.DealID(2): newDeal2,
+		// deal 2 was removed
 		abi.DealID(3): newDeal3,
 	}
 
@@ -197,9 +195,16 @@ func TestMarketPredicates(t *testing.T) {
 			t.Fatal("Unexpected change to LastUpdatedEpoch")
 		}
 		deal2 := changedDealIDs[abi.DealID(2)]
-		if deal2.From.SlashEpoch != 0 || deal2.To.SlashEpoch != 6 {
-			t.Fatal("Unexpected change to SlashEpoch")
+		if deal2.From.LastUpdatedEpoch != 5 || deal2.To != nil {
+			t.Fatal("Expected To to be nil")
 		}
+
+		// Diff with non-existent deal.
+		noDeal := []abi.DealID{4}
+		diffNoDealFn := preds.OnStorageMarketActorChanged(preds.OnDealStateChanged(preds.DealStateChangedForIDs(noDeal)))
+		changed, _, err = diffNoDealFn(ctx, oldState.Key(), newState.Key())
+		require.NoError(t, err)
+		require.False(t, changed)
 
 		// Test that OnActorStateChanged does not call the callback if the state has not changed
 		mockAddr, err := address.NewFromString("t01")
@@ -241,16 +246,14 @@ func TestMarketPredicates(t *testing.T) {
 		require.Equal(t, abi.DealID(3), changedDeals.Added[0].ID)
 		require.Equal(t, *newDeal3, changedDeals.Added[0].Deal)
 
-		require.Len(t, changedDeals.Removed, 0)
+		require.Len(t, changedDeals.Removed, 1)
 
-		require.Len(t, changedDeals.Modified, 2)
+		require.Len(t, changedDeals.Modified, 1)
 		require.Equal(t, abi.DealID(1), changedDeals.Modified[0].ID)
 		require.Equal(t, newDeal1, changedDeals.Modified[0].To)
 		require.Equal(t, oldDeal1, changedDeals.Modified[0].From)
 
-		require.Equal(t, abi.DealID(2), changedDeals.Modified[1].ID)
-		require.Equal(t, oldDeal2, changedDeals.Modified[1].From)
-		require.Equal(t, newDeal2, changedDeals.Modified[1].To)
+		require.Equal(t, abi.DealID(2), changedDeals.Removed[0].ID)
 	})
 
 	t.Run("deal proposal array predicate", func(t *testing.T) {
@@ -290,18 +293,18 @@ func TestMinerSectorChange(t *testing.T) {
 	}
 
 	owner, worker := nextIDAddrF(), nextIDAddrF()
-	si0 := newSectorOnChainInfo(0, tutils.MakeCID("0"), big.NewInt(0), abi.ChainEpoch(0), abi.ChainEpoch(10))
-	si1 := newSectorOnChainInfo(1, tutils.MakeCID("1"), big.NewInt(1), abi.ChainEpoch(1), abi.ChainEpoch(11))
-	si2 := newSectorOnChainInfo(2, tutils.MakeCID("2"), big.NewInt(2), abi.ChainEpoch(2), abi.ChainEpoch(11))
+	si0 := newSectorOnChainInfo(0, tutils.MakeCID("0", &miner.SealedCIDPrefix), big.NewInt(0), abi.ChainEpoch(0), abi.ChainEpoch(10))
+	si1 := newSectorOnChainInfo(1, tutils.MakeCID("1", &miner.SealedCIDPrefix), big.NewInt(1), abi.ChainEpoch(1), abi.ChainEpoch(11))
+	si2 := newSectorOnChainInfo(2, tutils.MakeCID("2", &miner.SealedCIDPrefix), big.NewInt(2), abi.ChainEpoch(2), abi.ChainEpoch(11))
 	oldMinerC := createMinerState(ctx, t, store, owner, worker, []miner.SectorOnChainInfo{si0, si1, si2})
 
-	si3 := newSectorOnChainInfo(3, tutils.MakeCID("3"), big.NewInt(3), abi.ChainEpoch(3), abi.ChainEpoch(12))
+	si3 := newSectorOnChainInfo(3, tutils.MakeCID("3", &miner.SealedCIDPrefix), big.NewInt(3), abi.ChainEpoch(3), abi.ChainEpoch(12))
 	// 0 delete
 	// 1 extend
 	// 2 same
 	// 3 added
 	si1Ext := si1
-	si1Ext.Info.Expiration++
+	si1Ext.Expiration++
 	newMinerC := createMinerState(ctx, t, store, owner, worker, []miner.SectorOnChainInfo{si1Ext, si2, si3})
 
 	minerAddr := nextIDAddrF()
@@ -433,11 +436,22 @@ func createEmptyMinerState(ctx context.Context, t *testing.T, store *cbornode.Ba
 	emptyMap, err := store.Put(context.TODO(), hamt.NewNode(store, hamt.UseTreeBitWidth(5)))
 	require.NoError(t, err)
 
-	emptyDeadlines := miner.ConstructDeadlines()
+	emptyDeadline, err := store.Put(context.TODO(), &miner.Deadline{
+		Partitions:        emptyArrayCid,
+		ExpirationsEpochs: emptyArrayCid,
+		PostSubmissions:   abi.NewBitField(),
+		EarlyTerminations: abi.NewBitField(),
+		LiveSectors:       0,
+	})
+	require.NoError(t, err)
+
+	emptyDeadlines := miner.ConstructDeadlines(emptyDeadline)
 	emptyDeadlinesCid, err := store.Put(context.Background(), emptyDeadlines)
 	require.NoError(t, err)
 
-	state, err := miner.ConstructState(emptyArrayCid, emptyMap, emptyDeadlinesCid, owner, worker, abi.PeerID{'1'}, nil, abi.RegisteredSealProof_StackedDrg64GiBV1, 0)
+	minerInfo := emptyMap
+
+	state, err := miner.ConstructState(minerInfo, 123, emptyArrayCid, emptyMap, emptyDeadlinesCid)
 	require.NoError(t, err)
 	return state
 
@@ -447,7 +461,7 @@ func createSectorsAMT(ctx context.Context, t *testing.T, store *cbornode.BasicIp
 	root := amt.NewAMT(store)
 	for _, sector := range sectors {
 		sector := sector
-		err := root.Set(ctx, uint64(sector.Info.SectorNumber), &sector)
+		err := root.Set(ctx, uint64(sector.SectorNumber), &sector)
 		require.NoError(t, err)
 	}
 	rootCid, err := root.Flush(ctx)
@@ -459,10 +473,16 @@ func createSectorsAMT(ctx context.Context, t *testing.T, store *cbornode.BasicIp
 func newSectorOnChainInfo(sectorNo abi.SectorNumber, sealed cid.Cid, weight big.Int, activation, expiration abi.ChainEpoch) miner.SectorOnChainInfo {
 	info := newSectorPreCommitInfo(sectorNo, sealed, expiration)
 	return miner.SectorOnChainInfo{
-		Info:               *info,
-		ActivationEpoch:    activation,
+		SectorNumber: info.SectorNumber,
+		SealProof:    info.SealProof,
+		SealedCID:    info.SealedCID,
+		DealIDs:      info.DealIDs,
+		Expiration:   info.Expiration,
+
+		Activation:         activation,
 		DealWeight:         weight,
 		VerifiedDealWeight: weight,
+		InitialPledge:      big.Zero(),
 	}
 }
 

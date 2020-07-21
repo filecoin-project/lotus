@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/filecoin-project/lotus/lib/adtutil"
 	"sync"
 	"time"
 
@@ -60,7 +61,7 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 		src := msg.GetFrom()
 
 		go func() {
-			start := time.Now()
+			start := build.Clock.Now()
 			log.Debug("about to fetch messages for block from pubsub")
 			bmsgs, err := s.Bsync.FetchMessagesByCids(context.TODO(), blk.BlsMessages)
 			if err != nil {
@@ -74,9 +75,9 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 				return
 			}
 
-			took := time.Since(start)
+			took := build.Clock.Since(start)
 			log.Infow("new block over pubsub", "cid", blk.Header.Cid(), "source", msg.GetFrom(), "msgfetch", took)
-			if delay := time.Now().Unix() - int64(blk.Header.Timestamp); delay > 5 {
+			if delay := build.Clock.Now().Unix() - int64(blk.Header.Timestamp); delay > 5 {
 				log.Warnf("Received block with large delay %d from miner %s", delay, blk.Header.Miner)
 			}
 
@@ -141,9 +142,9 @@ func (bv *BlockValidator) flagPeer(p peer.ID) {
 
 func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub.Message) pubsub.ValidationResult {
 	// track validation time
-	begin := time.Now()
+	begin := build.Clock.Now()
 	defer func() {
-		log.Debugf("block validation time: %s", time.Since(begin))
+		log.Debugf("block validation time: %s", build.Clock.Since(begin))
 	}()
 
 	stats.Record(ctx, metrics.BlockReceived.M(1))
@@ -210,6 +211,12 @@ func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub
 		return pubsub.ValidationReject
 	}
 
+	if blk.Header.ElectionProof.WinCount < 1 {
+		log.Errorf("block is not claiming to be winning")
+		recordFailure("not_winning")
+		return pubsub.ValidationReject
+	}
+
 	// it's a good block! make sure we've only seen it once
 	if bv.recvBlocks.add(blk.Header.Cid()) > 0 {
 		// TODO: once these changes propagate to the network, we can consider
@@ -226,7 +233,7 @@ func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub
 func (bv *BlockValidator) isChainNearSynced() bool {
 	ts := bv.chain.GetHeaviestTipSet()
 	timestamp := ts.MinTimestamp()
-	now := time.Now().UnixNano()
+	now := build.Clock.Now().UnixNano()
 	cutoff := uint64(now) - uint64(6*time.Hour)
 	return timestamp > cutoff
 }
@@ -311,7 +318,12 @@ func (bv *BlockValidator) getMinerWorkerKey(ctx context.Context, msg *types.Bloc
 		return address.Undef, err
 	}
 
-	worker := mst.Info.Worker
+	info, err := mst.GetInfo(adtutil.NewStore(ctx, cst))
+	if err != nil {
+		return address.Undef, err
+	}
+
+	worker := info.Worker
 	key, err = bv.stmgr.ResolveToKeyAddress(ctx, worker, ts)
 	if err != nil {
 		return address.Undef, err

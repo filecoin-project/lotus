@@ -2,15 +2,7 @@ package client
 
 import (
 	"context"
-	"errors"
 	"fmt"
-
-	"github.com/filecoin-project/go-fil-markets/pieceio"
-	basicnode "github.com/ipld/go-ipld-prime/node/basic"
-	"github.com/ipld/go-ipld-prime/traversal/selector"
-	"github.com/ipld/go-ipld-prime/traversal/selector/builder"
-	"github.com/multiformats/go-multiaddr"
-
 	"io"
 	"os"
 
@@ -18,7 +10,7 @@ import (
 
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-filestore"
+	"github.com/ipfs/go-cidutil"
 	chunker "github.com/ipfs/go-ipfs-chunker"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	files "github.com/ipfs/go-ipfs-files"
@@ -28,10 +20,16 @@ import (
 	"github.com/ipfs/go-unixfs/importer/balanced"
 	ihelper "github.com/ipfs/go-unixfs/importer/helpers"
 	"github.com/ipld/go-car"
+	basicnode "github.com/ipld/go-ipld-prime/node/basic"
+	"github.com/ipld/go-ipld-prime/traversal/selector"
+	"github.com/ipld/go-ipld-prime/traversal/selector/builder"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/multiformats/go-multiaddr"
+	mh "github.com/multiformats/go-multihash"
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/pieceio"
 	rm "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
@@ -47,7 +45,10 @@ import (
 	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/impl/paych"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/filecoin-project/lotus/node/repo/importmgr"
 )
+
+var DefaultHashFunction = uint64(mh.BLAKE2B_MIN + 31)
 
 const dealStartBuffer abi.ChainEpoch = 10000 // TODO: allow setting
 
@@ -64,9 +65,9 @@ type API struct {
 	Retrieval    rm.RetrievalClient
 	Chain        *store.ChainStore
 
-	LocalDAG   dtypes.ClientDAG
-	Blockstore dtypes.ClientBlockstore
-	Filestore  dtypes.ClientFilestore `optional:"true"`
+	Imports dtypes.ClientImportMgr
+
+	RetBstore dtypes.ClientBlockstore // TODO: try to remove
 }
 
 func calcDealExpiration(minDuration uint64, md *miner.DeadlineInfo, startEpoch abi.ChainEpoch) abi.ChainEpoch {
@@ -75,6 +76,10 @@ func calcDealExpiration(minDuration uint64, md *miner.DeadlineInfo, startEpoch a
 
 	// Align on miners ProvingPeriodBoundary
 	return minExp + miner.WPoStProvingPeriod - (minExp % miner.WPoStProvingPeriod) + (md.PeriodStart % miner.WPoStProvingPeriod) - 1
+}
+
+func (a *API) imgr() *importmgr.Mgr {
+	return a.Imports
 }
 
 func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) (*cid.Cid, error) {
@@ -136,6 +141,8 @@ func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) 
 		params.EpochPrice,
 		big.Zero(),
 		rt,
+		params.FastRetrieval,
+		params.VerifiedDeal,
 	)
 
 	if err != nil {
@@ -193,7 +200,7 @@ func (a *API) ClientGetDealInfo(ctx context.Context, d cid.Cid) (*api.DealInfo, 
 func (a *API) ClientHasLocal(ctx context.Context, root cid.Cid) (bool, error) {
 	// TODO: check if we have the ENTIRE dag
 
-	offExch := merkledag.NewDAGService(blockservice.New(a.Blockstore, offline.Exchange(a.Blockstore)))
+	offExch := merkledag.NewDAGService(blockservice.New(a.Imports.Blockstore, offline.Exchange(a.Imports.Blockstore)))
 	_, err := offExch.Get(ctx, root)
 	if err == ipld.ErrNotFound {
 		return false, nil
@@ -204,21 +211,24 @@ func (a *API) ClientHasLocal(ctx context.Context, root cid.Cid) (bool, error) {
 	return true, nil
 }
 
-func (a *API) ClientFindData(ctx context.Context, root cid.Cid) ([]api.QueryOffer, error) {
+func (a *API) ClientFindData(ctx context.Context, root cid.Cid, piece *cid.Cid) ([]api.QueryOffer, error) {
 	peers, err := a.RetDiscovery.GetPeers(root)
 	if err != nil {
 		return nil, err
 	}
 
-	out := make([]api.QueryOffer, len(peers))
-	for k, p := range peers {
-		out[k] = a.makeRetrievalQuery(ctx, p, root, rm.QueryParams{})
+	out := make([]api.QueryOffer, 0, len(peers))
+	for _, p := range peers {
+		if piece != nil && !piece.Equals(*p.PieceCID) {
+			continue
+		}
+		out = append(out, a.makeRetrievalQuery(ctx, p, root, piece, rm.QueryParams{}))
 	}
 
 	return out, nil
 }
 
-func (a *API) ClientMinerQueryOffer(ctx context.Context, payload cid.Cid, miner address.Address) (api.QueryOffer, error) {
+func (a *API) ClientMinerQueryOffer(ctx context.Context, miner address.Address, root cid.Cid, piece *cid.Cid) (api.QueryOffer, error) {
 	mi, err := a.StateMinerInfo(ctx, miner, types.EmptyTSK)
 	if err != nil {
 		return api.QueryOffer{}, err
@@ -227,10 +237,10 @@ func (a *API) ClientMinerQueryOffer(ctx context.Context, payload cid.Cid, miner 
 		Address: miner,
 		ID:      mi.PeerId,
 	}
-	return a.makeRetrievalQuery(ctx, rp, payload, rm.QueryParams{}), nil
+	return a.makeRetrievalQuery(ctx, rp, root, piece, rm.QueryParams{}), nil
 }
 
-func (a *API) makeRetrievalQuery(ctx context.Context, rp rm.RetrievalPeer, payload cid.Cid, qp rm.QueryParams) api.QueryOffer {
+func (a *API) makeRetrievalQuery(ctx context.Context, rp rm.RetrievalPeer, payload cid.Cid, piece *cid.Cid, qp rm.QueryParams) api.QueryOffer {
 	queryResponse, err := a.Retrieval.Query(ctx, rp, payload, qp)
 	if err != nil {
 		return api.QueryOffer{Err: err.Error(), Miner: rp.Address, MinerPeerID: rp.ID}
@@ -247,6 +257,7 @@ func (a *API) makeRetrievalQuery(ctx context.Context, rp rm.RetrievalPeer, paylo
 
 	return api.QueryOffer{
 		Root:                    payload,
+		Piece:                   piece,
 		Size:                    queryResponse.Size,
 		MinPrice:                queryResponse.PieceRetrievalPrice(),
 		PaymentInterval:         queryResponse.MaxPaymentInterval,
@@ -257,28 +268,65 @@ func (a *API) makeRetrievalQuery(ctx context.Context, rp rm.RetrievalPeer, paylo
 	}
 }
 
-func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (cid.Cid, error) {
-
-	bufferedDS := ipld.NewBufferedDAG(ctx, a.LocalDAG)
-	nd, err := a.clientImport(ref, bufferedDS)
-
+func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (*api.ImportRes, error) {
+	id, st, err := a.imgr().NewStore()
 	if err != nil {
-		return cid.Undef, err
+		return nil, err
+	}
+	if err := a.imgr().AddLabel(id, importmgr.LSource, "import"); err != nil {
+		return nil, err
 	}
 
-	return nd, nil
+	if err := a.imgr().AddLabel(id, importmgr.LFileName, ref.Path); err != nil {
+		return nil, err
+	}
+
+	nd, err := a.clientImport(ctx, ref, st)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := a.imgr().AddLabel(id, importmgr.LRootCid, nd.String()); err != nil {
+		return nil, err
+	}
+
+	return &api.ImportRes{
+		Root:     nd,
+		ImportID: id,
+	}, nil
+}
+
+func (a *API) ClientRemoveImport(ctx context.Context, importID int) error {
+	return a.imgr().Remove(importID)
 }
 
 func (a *API) ClientImportLocal(ctx context.Context, f io.Reader) (cid.Cid, error) {
 	file := files.NewReaderFile(f)
 
-	bufferedDS := ipld.NewBufferedDAG(ctx, a.LocalDAG)
+	id, st, err := a.imgr().NewStore()
+	if err != nil {
+		return cid.Undef, err
+	}
+	if err := a.imgr().AddLabel(id, "source", "import-local"); err != nil {
+		return cid.Cid{}, err
+	}
+
+	bufferedDS := ipld.NewBufferedDAG(ctx, st.DAG)
+
+	prefix, err := merkledag.PrefixForCidVersion(1)
+	if err != nil {
+		return cid.Undef, err
+	}
+	prefix.MhType = DefaultHashFunction
 
 	params := ihelper.DagBuilderParams{
-		Maxlinks:   build.UnixfsLinksPerLevel,
-		RawLeaves:  true,
-		CidBuilder: nil,
-		Dagserv:    bufferedDS,
+		Maxlinks:  build.UnixfsLinksPerLevel,
+		RawLeaves: true,
+		CidBuilder: cidutil.InlineBuilder{
+			Builder: prefix,
+			Limit:   126,
+		},
+		Dagserv: bufferedDS,
 	}
 
 	db, err := params.New(chunker.NewSizeSplitter(file, int64(build.UnixfsChunkSize)))
@@ -294,49 +342,38 @@ func (a *API) ClientImportLocal(ctx context.Context, f io.Reader) (cid.Cid, erro
 }
 
 func (a *API) ClientListImports(ctx context.Context) ([]api.Import, error) {
-	if a.Filestore == nil {
-		return nil, errors.New("listing imports is not supported with in-memory dag yet")
-	}
-	next, err := filestore.ListAll(a.Filestore, false)
-	if err != nil {
-		return nil, err
-	}
+	importIDs := a.imgr().List()
 
-	// TODO: make this less very bad by tracking root cids instead of using ListAll
-
-	out := make([]api.Import, 0)
-	lowest := make([]uint64, 0)
-	for {
-		r := next()
-		if r == nil {
-			return out, nil
+	out := make([]api.Import, len(importIDs))
+	for i, id := range importIDs {
+		info, err := a.imgr().Info(id)
+		if err != nil {
+			out[i] = api.Import{
+				Key: id,
+				Err: xerrors.Errorf("getting info: %w", err).Error(),
+			}
+			continue
 		}
-		matched := false
-		for i := range out {
-			if out[i].FilePath == r.FilePath {
-				matched = true
-				if lowest[i] > r.Offset {
-					lowest[i] = r.Offset
-					out[i] = api.Import{
-						Status:   r.Status,
-						Key:      r.Key,
-						FilePath: r.FilePath,
-						Size:     r.Size,
-					}
-				}
-				break
+
+		ai := api.Import{
+			Key:      id,
+			Source:   info.Labels[importmgr.LSource],
+			FilePath: info.Labels[importmgr.LFileName],
+		}
+
+		if info.Labels[importmgr.LRootCid] != "" {
+			c, err := cid.Parse(info.Labels[importmgr.LRootCid])
+			if err != nil {
+				ai.Err = err.Error()
+			} else {
+				ai.Root = &c
 			}
 		}
-		if !matched {
-			out = append(out, api.Import{
-				Status:   r.Status,
-				Key:      r.Key,
-				FilePath: r.FilePath,
-				Size:     r.Size,
-			})
-			lowest = append(lowest, r.Offset)
-		}
+
+		out[i] = ai
 	}
+
+	return out, nil
 }
 
 func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref *api.FileRef) error {
@@ -346,12 +383,20 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 			return err
 		}
 
-		order.MinerPeerID = peer.ID(mi.PeerId)
+		order.MinerPeerID = mi.PeerId
 	}
 
 	if order.Size == 0 {
 		return xerrors.Errorf("cannot make retrieval deal for zero bytes")
 	}
+
+	/*id, st, err := a.imgr().NewStore()
+	if err != nil {
+		return err
+	}
+	if err := a.imgr().AddLabel(id, "source", "retrieval"); err != nil {
+		return err
+	}*/
 
 	retrievalResult := make(chan error, 1)
 
@@ -364,26 +409,8 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 				retrievalResult <- xerrors.Errorf("Retrieval Proposal Rejected: %s", state.Message)
 			case
 				rm.DealStatusDealNotFound,
-				rm.DealStatusErrored,
-				rm.DealStatusFailed:
+				rm.DealStatusErrored:
 				retrievalResult <- xerrors.Errorf("Retrieval Error: %s", state.Message)
-			case
-				rm.DealStatusAccepted,
-				rm.DealStatusAwaitingAcceptance,
-				rm.DealStatusBlocksComplete,
-				rm.DealStatusFinalizing,
-				rm.DealStatusFundsNeeded,
-				rm.DealStatusFundsNeededLastPayment,
-				rm.DealStatusNew,
-				rm.DealStatusOngoing,
-				rm.DealStatusPaymentChannelAddingFunds,
-				rm.DealStatusPaymentChannelAllocatingLane,
-				rm.DealStatusPaymentChannelCreating,
-				rm.DealStatusPaymentChannelReady,
-				rm.DealStatusVerified:
-				return
-			default:
-				retrievalResult <- xerrors.Errorf("Unhandled Retrieval Status: %+v", state.Status)
 			}
 		}
 	})
@@ -397,7 +424,7 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 		order.Total,
 		order.MinerPeerID,
 		order.Client,
-		order.Miner)
+		order.Miner) // TODO: pass the store here   somehow
 	if err != nil {
 		return xerrors.Errorf("Retrieve failed: %w", err)
 	}
@@ -417,23 +444,25 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 		return nil
 	}
 
+	rdag := merkledag.NewDAGService(blockservice.New(a.RetBstore, offline.Exchange(a.RetBstore)))
+
 	if ref.IsCAR {
 		f, err := os.OpenFile(ref.Path, os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			return err
 		}
-		err = car.WriteCar(ctx, a.LocalDAG, []cid.Cid{order.Root}, f)
+		err = car.WriteCar(ctx, rdag, []cid.Cid{order.Root}, f)
 		if err != nil {
 			return err
 		}
 		return f.Close()
 	}
 
-	nd, err := a.LocalDAG.Get(ctx, order.Root)
+	nd, err := rdag.Get(ctx, order.Root)
 	if err != nil {
 		return xerrors.Errorf("ClientRetrieve: %w", err)
 	}
-	file, err := unixfile.NewUnixfsFile(ctx, a.LocalDAG, nd)
+	file, err := unixfile.NewUnixfsFile(ctx, rdag, nd)
 	if err != nil {
 		return xerrors.Errorf("ClientRetrieve: %w", err)
 	}
@@ -483,14 +512,22 @@ func (a *API) ClientCalcCommP(ctx context.Context, inpath string, miner address.
 }
 
 func (a *API) ClientGenCar(ctx context.Context, ref api.FileRef, outputPath string) error {
+	id, st, err := a.imgr().NewStore()
+	if err != nil {
+		return err
+	}
+	if err := a.imgr().AddLabel(id, "source", "gen-car"); err != nil {
+		return err
+	}
 
-	bufferedDS := ipld.NewBufferedDAG(ctx, a.LocalDAG)
-	c, err := a.clientImport(ref, bufferedDS)
+	bufferedDS := ipld.NewBufferedDAG(ctx, st.DAG)
+	c, err := a.clientImport(ctx, ref, st)
 
 	if err != nil {
 		return err
 	}
 
+	// TODO: does that defer mean to remove the whole blockstore?
 	defer bufferedDS.Remove(ctx, c) //nolint:errcheck
 	ssb := builder.NewSelectorSpecBuilder(basicnode.Style.Any)
 
@@ -503,7 +540,7 @@ func (a *API) ClientGenCar(ctx context.Context, ref api.FileRef, outputPath stri
 		return err
 	}
 
-	sc := car.NewSelectiveCar(ctx, a.Blockstore, []car.Dag{{Root: c, Selector: allSelector}})
+	sc := car.NewSelectiveCar(ctx, st.Bstore, []car.Dag{{Root: c, Selector: allSelector}})
 	if err = sc.Write(f); err != nil {
 		return err
 	}
@@ -511,7 +548,7 @@ func (a *API) ClientGenCar(ctx context.Context, ref api.FileRef, outputPath stri
 	return f.Close()
 }
 
-func (a *API) clientImport(ref api.FileRef, bufferedDS *ipld.BufferedDAG) (cid.Cid, error) {
+func (a *API) clientImport(ctx context.Context, ref api.FileRef, store *importmgr.Store) (cid.Cid, error) {
 	f, err := os.Open(ref.Path)
 	if err != nil {
 		return cid.Undef, err
@@ -528,13 +565,13 @@ func (a *API) clientImport(ref api.FileRef, bufferedDS *ipld.BufferedDAG) (cid.C
 	}
 
 	if ref.IsCAR {
-		var store car.Store
-		if a.Filestore == nil {
-			store = a.Blockstore
+		var st car.Store
+		if store.Fstore == nil {
+			st = store.Bstore
 		} else {
-			store = (*filestore.Filestore)(a.Filestore)
+			st = store.Fstore
 		}
-		result, err := car.LoadCar(store, file)
+		result, err := car.LoadCar(st, file)
 		if err != nil {
 			return cid.Undef, err
 		}
@@ -546,12 +583,23 @@ func (a *API) clientImport(ref api.FileRef, bufferedDS *ipld.BufferedDAG) (cid.C
 		return result.Roots[0], nil
 	}
 
+	bufDs := ipld.NewBufferedDAG(ctx, store.DAG)
+
+	prefix, err := merkledag.PrefixForCidVersion(1)
+	if err != nil {
+		return cid.Undef, err
+	}
+	prefix.MhType = DefaultHashFunction
+
 	params := ihelper.DagBuilderParams{
-		Maxlinks:   build.UnixfsLinksPerLevel,
-		RawLeaves:  true,
-		CidBuilder: nil,
-		Dagserv:    bufferedDS,
-		NoCopy:     true,
+		Maxlinks:  build.UnixfsLinksPerLevel,
+		RawLeaves: true,
+		CidBuilder: cidutil.InlineBuilder{
+			Builder: prefix,
+			Limit:   126,
+		},
+		Dagserv: bufDs,
+		NoCopy:  true,
 	}
 
 	db, err := params.New(chunker.NewSizeSplitter(file, int64(build.UnixfsChunkSize)))
@@ -563,7 +611,7 @@ func (a *API) clientImport(ref api.FileRef, bufferedDS *ipld.BufferedDAG) (cid.C
 		return cid.Undef, err
 	}
 
-	if err := bufferedDS.Commit(); err != nil {
+	if err := bufDs.Commit(); err != nil {
 		return cid.Undef, err
 	}
 

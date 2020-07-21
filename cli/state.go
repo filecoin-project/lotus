@@ -49,7 +49,7 @@ var stateCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		statePowerCmd,
 		stateSectorsCmd,
-		stateProvingSetCmd,
+		stateActiveSectorsCmd,
 		statePledgeCollateralCmd,
 		stateListActorsCmd,
 		stateListMinersCmd,
@@ -234,16 +234,16 @@ var stateSectorsCmd = &cli.Command{
 		}
 
 		for _, s := range sectors {
-			fmt.Printf("%d: %x\n", s.Info.Info.SectorNumber, s.Info.Info.SealedCID)
+			fmt.Printf("%d: %x\n", s.Info.SectorNumber, s.Info.SealedCID)
 		}
 
 		return nil
 	},
 }
 
-var stateProvingSetCmd = &cli.Command{
-	Name:      "proving",
-	Usage:     "Query the proving set of a miner",
+var stateActiveSectorsCmd = &cli.Command{
+	Name:      "active-sectors",
+	Usage:     "Query the active sector set of a miner",
 	ArgsUsage: "[minerAddress]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -268,13 +268,13 @@ var stateProvingSetCmd = &cli.Command{
 			return err
 		}
 
-		sectors, err := api.StateMinerProvingSet(ctx, maddr, ts.Key())
+		sectors, err := api.StateMinerActiveSectors(ctx, maddr, ts.Key())
 		if err != nil {
 			return err
 		}
 
 		for _, s := range sectors {
-			fmt.Printf("%d: %x\n", s.Info.Info.SectorNumber, s.Info.Info.SealedCID)
+			fmt.Printf("%d: %x\n", s.Info.SectorNumber, s.Info.SealedCID)
 		}
 
 		return nil

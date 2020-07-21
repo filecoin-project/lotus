@@ -12,8 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ipfs/go-cid"
+	"github.com/stretchr/testify/require"
 
+	"github.com/ipfs/go-cid"
 	files "github.com/ipfs/go-ipfs-files"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/ipld/go-car"
@@ -21,6 +22,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	sealing "github.com/filecoin-project/storage-fsm"
 	dag "github.com/ipfs/go-merkledag"
 	dstest "github.com/ipfs/go-merkledag/test"
 	unixfile "github.com/ipfs/go-unixfs/file"
@@ -35,7 +37,7 @@ func init() {
 	build.InsecurePoStValidation = true
 }
 
-func TestDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, carExport bool) {
+func TestDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, carExport, fastRet bool) {
 	_ = os.Setenv("BELLMAN_NO_GPU", "1")
 
 	ctx := context.Background()
@@ -65,7 +67,7 @@ func TestDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, carExport
 		}
 	}()
 
-	makeDeal(t, ctx, 6, client, miner, carExport)
+	makeDeal(t, ctx, 6, client, miner, carExport, fastRet)
 
 	atomic.AddInt64(&mine, -1)
 	fmt.Println("shutting down mining")
@@ -103,15 +105,15 @@ func TestDoubleDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration) {
 		}
 	}()
 
-	makeDeal(t, ctx, 6, client, miner, false)
-	makeDeal(t, ctx, 7, client, miner, false)
+	makeDeal(t, ctx, 6, client, miner, false, false)
+	makeDeal(t, ctx, 7, client, miner, false, false)
 
 	atomic.AddInt64(&mine, -1)
 	fmt.Println("shutting down mining")
 	<-done
 }
 
-func makeDeal(t *testing.T, ctx context.Context, rseed int, client *impl.FullNodeAPI, miner TestStorageNode, carExport bool) {
+func makeDeal(t *testing.T, ctx context.Context, rseed int, client *impl.FullNodeAPI, miner TestStorageNode, carExport, fastRet bool) {
 	data := make([]byte, 1600)
 	rand.New(rand.NewSource(int64(rseed))).Read(data)
 
@@ -123,18 +125,20 @@ func makeDeal(t *testing.T, ctx context.Context, rseed int, client *impl.FullNod
 
 	fmt.Println("FILE CID: ", fcid)
 
-	deal := startDeal(t, ctx, miner, client, fcid)
+	deal := startDeal(t, ctx, miner, client, fcid, fastRet)
 
 	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
 	time.Sleep(time.Second)
-	waitDealSealed(t, ctx, client, deal)
+	waitDealSealed(t, ctx, miner, client, deal)
 
 	// Retrieval
+	info, err := client.ClientGetDealInfo(ctx, *deal)
+	require.NoError(t, err)
 
-	testRetrieval(t, ctx, err, client, fcid, carExport, data)
+	testRetrieval(t, ctx, err, client, fcid, &info.PieceCID, carExport, data)
 }
 
-func startDeal(t *testing.T, ctx context.Context, miner TestStorageNode, client *impl.FullNodeAPI, fcid cid.Cid) *cid.Cid {
+func startDeal(t *testing.T, ctx context.Context, miner TestStorageNode, client *impl.FullNodeAPI, fcid cid.Cid, fastRet bool) *cid.Cid {
 	maddr, err := miner.ActorAddress(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -150,6 +154,7 @@ func startDeal(t *testing.T, ctx context.Context, miner TestStorageNode, client 
 		Miner:             maddr,
 		EpochPrice:        types.NewInt(1000000),
 		MinBlocksDuration: 100,
+		FastRetrieval:     fastRet,
 	})
 	if err != nil {
 		t.Fatalf("%+v", err)
@@ -157,7 +162,7 @@ func startDeal(t *testing.T, ctx context.Context, miner TestStorageNode, client 
 	return deal
 }
 
-func waitDealSealed(t *testing.T, ctx context.Context, client *impl.FullNodeAPI, deal *cid.Cid) {
+func waitDealSealed(t *testing.T, ctx context.Context, miner TestStorageNode, client *impl.FullNodeAPI, deal *cid.Cid) {
 loop:
 	for {
 		di, err := client.ClientGetDealInfo(ctx, *deal)
@@ -165,6 +170,8 @@ loop:
 			t.Fatal(err)
 		}
 		switch di.State {
+		case storagemarket.StorageDealSealing:
+			startSealingWaiting(t, ctx, miner)
 		case storagemarket.StorageDealProposalRejected:
 			t.Fatal("deal rejected")
 		case storagemarket.StorageDealFailing:
@@ -180,8 +187,23 @@ loop:
 	}
 }
 
-func testRetrieval(t *testing.T, ctx context.Context, err error, client *impl.FullNodeAPI, fcid cid.Cid, carExport bool, data []byte) {
-	offers, err := client.ClientFindData(ctx, fcid)
+func startSealingWaiting(t *testing.T, ctx context.Context, miner TestStorageNode) {
+	snums, err := miner.SectorsList(ctx)
+	require.NoError(t, err)
+
+	for _, snum := range snums {
+		si, err := miner.SectorsStatus(ctx, snum)
+		require.NoError(t, err)
+
+		t.Logf("Sector state: %s", si.State)
+		if si.State == api.SectorState(sealing.WaitDeals) {
+			require.NoError(t, miner.SectorStartSealing(ctx, snum))
+		}
+	}
+}
+
+func testRetrieval(t *testing.T, ctx context.Context, err error, client *impl.FullNodeAPI, fcid cid.Cid, piece *cid.Cid, carExport bool, data []byte) {
+	offers, err := client.ClientFindData(ctx, fcid, piece)
 	if err != nil {
 		t.Fatal(err)
 	}

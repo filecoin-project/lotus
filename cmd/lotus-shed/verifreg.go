@@ -4,11 +4,10 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/filecoin-project/lotus/build"
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/urfave/cli/v2"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -77,7 +76,7 @@ var verifRegAddVerifierCmd = &cli.Command{
 			From:     fromk,
 			Method:   builtin.MethodsVerifiedRegistry.AddVerifier,
 			GasPrice: types.NewInt(1),
-			GasLimit: 300000,
+			GasLimit: 100_000_000,
 			Params:   params,
 		}
 
@@ -153,7 +152,7 @@ var verifRegVerifyClientCmd = &cli.Command{
 			From:     fromk,
 			Method:   builtin.MethodsVerifiedRegistry.AddVerifiedClient,
 			GasPrice: types.NewInt(1),
-			GasLimit: 300000,
+			GasLimit: 100_000_000,
 			Params:   params,
 		}
 
@@ -301,30 +300,15 @@ var verifRegCheckClientCmd = &cli.Command{
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
-		act, err := api.StateGetActor(ctx, builtin.VerifiedRegistryActorAddr, types.EmptyTSK)
+		dcap, err := api.StateVerifiedClientStatus(ctx, caddr, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
-
-		apibs := apibstore.NewAPIBlockstore(api)
-		cst := cbor.NewCborStore(apibs)
-
-		var st verifreg.State
-		if err := cst.Get(ctx, act.Head, &st); err != nil {
-			return err
+		if dcap == nil {
+			return xerrors.Errorf("client %s is not a verified client", err)
 		}
 
-		vh, err := hamt.LoadNode(ctx, cst, st.VerifiedClients, hamt.UseTreeBitWidth(5))
-		if err != nil {
-			return err
-		}
-
-		var dcap verifreg.DataCap
-		if err := vh.Find(ctx, string(caddr.Bytes()), &dcap); err != nil {
-			return xerrors.Errorf("failed to lookup address: %w", err)
-		}
-
-		fmt.Println(dcap)
+		fmt.Println(*dcap)
 
 		return nil
 	},

@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"go.opencensus.io/stats"
@@ -107,7 +108,7 @@ func (pmgr *PeerMgr) Disconnect(p peer.ID) {
 }
 
 func (pmgr *PeerMgr) Run(ctx context.Context) {
-	tick := time.NewTicker(time.Second * 5)
+	tick := build.Clock.Ticker(time.Second * 5)
 	for {
 		select {
 		case <-tick.C:

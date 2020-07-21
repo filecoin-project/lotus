@@ -28,6 +28,9 @@ var sectorsCmd = &cli.Command{
 		sectorsUpdateCmd,
 		sectorsPledgeCmd,
 		sectorsRemoveCmd,
+		sectorsMarkForUpgradeCmd,
+		sectorsStartSealCmd,
+		sectorsSealDelayCmd,
 	},
 }
 
@@ -135,20 +138,20 @@ var sectorsListCmd = &cli.Command{
 			return err
 		}
 
-		pset, err := fullApi.StateMinerProvingSet(ctx, maddr, types.EmptyTSK)
+		activeSet, err := fullApi.StateMinerActiveSectors(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
-		provingIDs := make(map[abi.SectorNumber]struct{}, len(pset))
-		for _, info := range pset {
-			provingIDs[info.ID] = struct{}{}
+		activeIDs := make(map[abi.SectorNumber]struct{}, len(activeSet))
+		for _, info := range activeSet {
+			activeIDs[info.ID] = struct{}{}
 		}
 
 		sset, err := fullApi.StateMinerSectors(ctx, maddr, nil, true, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
-		commitedIDs := make(map[abi.SectorNumber]struct{}, len(pset))
+		commitedIDs := make(map[abi.SectorNumber]struct{}, len(activeSet))
 		for _, info := range sset {
 			commitedIDs[info.ID] = struct{}{}
 		}
@@ -167,13 +170,13 @@ var sectorsListCmd = &cli.Command{
 			}
 
 			_, inSSet := commitedIDs[s]
-			_, inPSet := provingIDs[s]
+			_, inASet := activeIDs[s]
 
-			fmt.Fprintf(w, "%d: %s\tsSet: %s\tpSet: %s\ttktH: %d\tseedH: %d\tdeals: %v\n",
+			fmt.Fprintf(w, "%d: %s\tsSet: %s\tactive: %s\ttktH: %d\tseedH: %d\tdeals: %v\n",
 				s,
 				st.State,
 				yesno(inSSet),
-				yesno(inPSet),
+				yesno(inASet),
 				st.Ticket.Epoch,
 				st.Seed.Epoch,
 				st.Deals,
@@ -240,6 +243,80 @@ var sectorsRemoveCmd = &cli.Command{
 		}
 
 		return nodeApi.SectorRemove(ctx, abi.SectorNumber(id))
+	},
+}
+
+var sectorsMarkForUpgradeCmd = &cli.Command{
+	Name:      "mark-for-upgrade",
+	Usage:     "Mark a committed capacity sector for replacement by a sector with deals",
+	ArgsUsage: "<sectorNum>",
+	Action: func(cctx *cli.Context) error {
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+		if cctx.Args().Len() != 1 {
+			return xerrors.Errorf("must pass sector number")
+		}
+
+		id, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
+		if err != nil {
+			return xerrors.Errorf("could not parse sector number: %w", err)
+		}
+
+		return nodeApi.SectorMarkForUpgrade(ctx, abi.SectorNumber(id))
+	},
+}
+
+var sectorsStartSealCmd = &cli.Command{
+	Name:      "seal",
+	Usage:     "Manually start sealing a sector (filling any unused space with junk)",
+	ArgsUsage: "<sectorNum>",
+	Action: func(cctx *cli.Context) error {
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+		if cctx.Args().Len() != 1 {
+			return xerrors.Errorf("must pass sector number")
+		}
+
+		id, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
+		if err != nil {
+			return xerrors.Errorf("could not parse sector number: %w", err)
+		}
+
+		return nodeApi.SectorStartSealing(ctx, abi.SectorNumber(id))
+	},
+}
+
+var sectorsSealDelayCmd = &cli.Command{
+	Name:      "set-seal-delay",
+	Usage:     "Set the time, in minutes, that a new sector waits for deals before sealing starts",
+	ArgsUsage: "<minutes>",
+	Action: func(cctx *cli.Context) error {
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+		if cctx.Args().Len() != 1 {
+			return xerrors.Errorf("must pass duration in minutes")
+		}
+
+		hs, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
+		if err != nil {
+			return xerrors.Errorf("could not parse sector number: %w", err)
+		}
+
+		delay := hs * uint64(time.Minute)
+
+		return nodeApi.SectorSetSealDelay(ctx, time.Duration(delay))
 	},
 }
 

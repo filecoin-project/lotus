@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/json"
+	"github.com/filecoin-project/lotus/lib/adtutil"
 	"io"
 	"os"
 	"sync"
@@ -894,27 +895,7 @@ func (cs *ChainStore) Blockstore() bstore.Blockstore {
 }
 
 func ActorStore(ctx context.Context, bs blockstore.Blockstore) adt.Store {
-	return &astore{
-		cst: cbor.NewCborStore(bs),
-		ctx: ctx,
-	}
-}
-
-type astore struct {
-	cst cbor.IpldStore
-	ctx context.Context
-}
-
-func (a *astore) Context() context.Context {
-	return a.ctx
-}
-
-func (a *astore) Get(ctx context.Context, c cid.Cid, out interface{}) error {
-	return a.cst.Get(ctx, c, out)
-}
-
-func (a *astore) Put(ctx context.Context, v interface{}) (cid.Cid, error) {
-	return a.cst.Put(ctx, v)
+	return adtutil.NewStore(ctx, cbor.NewCborStore(bs))
 }
 
 func (cs *ChainStore) Store(ctx context.Context) adt.Store {
@@ -1046,21 +1027,25 @@ func recurseLinks(bs blockstore.Blockstore, root cid.Cid, in []cid.Cid) ([]cid.C
 		return nil, xerrors.Errorf("recurse links get (%s) failed: %w", root, err)
 	}
 
-	top, err := cbg.ScanForLinks(bytes.NewReader(data.RawData()))
+	var rerr error
+	err = cbg.ScanForLinks(bytes.NewReader(data.RawData()), func(c cid.Cid) {
+		if rerr != nil {
+			// No error return on ScanForLinks :(
+			return
+		}
+
+		in = append(in, c)
+		var err error
+		in, err = recurseLinks(bs, c, in)
+		if err != nil {
+			rerr = err
+		}
+	})
 	if err != nil {
 		return nil, xerrors.Errorf("scanning for links failed: %w", err)
 	}
 
-	in = append(in, top...)
-	for _, c := range top {
-		var err error
-		in, err = recurseLinks(bs, c, in)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return in, nil
+	return in, rerr
 }
 
 func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, w io.Writer) error {

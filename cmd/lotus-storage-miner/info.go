@@ -23,7 +23,7 @@ import (
 
 var infoCmd = &cli.Command{
 	Name:  "info",
-	Usage: "Print storage miner info",
+	Usage: "Print miner info",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{Name: "color"},
 	},
@@ -106,16 +106,16 @@ var infoCmd = &cli.Command{
 			return xerrors.Errorf("counting faults: %w", err)
 		}
 
-		fmt.Printf("\tCommitted: %s\n", types.SizeStr(types.BigMul(types.NewInt(secCounts.Sset), types.NewInt(uint64(mi.SectorSize)))))
+		fmt.Printf("\tCommitted: %s\n", types.SizeStr(types.BigMul(types.NewInt(secCounts.Sectors), types.NewInt(uint64(mi.SectorSize)))))
 		if nfaults == 0 {
-			fmt.Printf("\tProving: %s\n", types.SizeStr(types.BigMul(types.NewInt(secCounts.Pset), types.NewInt(uint64(mi.SectorSize)))))
+			fmt.Printf("\tProving: %s\n", types.SizeStr(types.BigMul(types.NewInt(secCounts.Active), types.NewInt(uint64(mi.SectorSize)))))
 		} else {
 			var faultyPercentage float64
-			if secCounts.Sset != 0 {
-				faultyPercentage = float64(10000*nfaults/secCounts.Sset) / 100.
+			if secCounts.Sectors != 0 {
+				faultyPercentage = float64(10000*nfaults/secCounts.Sectors) / 100.
 			}
 			fmt.Printf("\tProving: %s (%s Faulty, %.2f%%)\n",
-				types.SizeStr(types.BigMul(types.NewInt(secCounts.Pset), types.NewInt(uint64(mi.SectorSize)))),
+				types.SizeStr(types.BigMul(types.NewInt(secCounts.Sectors), types.NewInt(uint64(mi.SectorSize)))),
 				types.SizeStr(types.BigMul(types.NewInt(nfaults), types.NewInt(uint64(mi.SectorSize)))),
 				faultyPercentage)
 		}

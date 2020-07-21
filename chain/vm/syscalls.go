@@ -16,6 +16,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/adtutil"
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
@@ -73,11 +74,6 @@ func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte) (*runtime.Consen
 
 	// (0) cheap preliminary checks
 
-	// are blocks the same?
-	if bytes.Equal(a, b) {
-		return nil, fmt.Errorf("no consensus fault: submitted blocks are the same")
-	}
-
 	// can blocks be decoded properly?
 	var blockA, blockB types.BlockHeader
 	if decodeErr := blockA.UnmarshalCBOR(bytes.NewReader(a)); decodeErr != nil {
@@ -86,6 +82,11 @@ func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte) (*runtime.Consen
 
 	if decodeErr := blockB.UnmarshalCBOR(bytes.NewReader(b)); decodeErr != nil {
 		return nil, xerrors.Errorf("cannot decode second block header: %f", decodeErr)
+	}
+
+	// are blocks the same?
+	if blockA.Cid().Equals(blockB.Cid()) {
+		return nil, fmt.Errorf("no consensus fault: submitted blocks are the same")
 	}
 
 	// (1) check conditions necessary to any consensus fault
@@ -145,7 +146,7 @@ func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte) (*runtime.Consen
 
 	// (3) return if no consensus fault by now
 	if consensusFault == nil {
-		return consensusFault, nil
+		return nil, xerrors.Errorf("no consensus fault detected")
 	}
 
 	// else
@@ -179,8 +180,13 @@ func (ss *syscallShim) VerifyBlockSig(blk *types.BlockHeader) error {
 		return err
 	}
 
+	info, err := mas.GetInfo(adtutil.NewStore(ss.ctx, ss.cst))
+	if err != nil {
+		return err
+	}
+
 	// and use to get resolved workerKey
-	waddr, err := ResolveToKeyAddr(ss.cstate, ss.cst, mas.Info.Worker)
+	waddr, err := ResolveToKeyAddr(ss.cstate, ss.cst, info.Worker)
 	if err != nil {
 		return err
 	}

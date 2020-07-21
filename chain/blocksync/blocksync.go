@@ -126,7 +126,7 @@ func (bss *BlockSyncService) HandleStream(s inet.Stream) {
 	}
 
 	writeDeadline := 60 * time.Second
-	_ = s.SetDeadline(time.Now().Add(writeDeadline))
+	_ = s.SetDeadline(time.Now().Add(writeDeadline)) // always use real time for socket/stream deadlines.
 	if err := cborutil.WriteCborRPC(s, resp); err != nil {
 		log.Warnw("failed to write back response for handle stream", "err", err, "peer", s.Conn().RemotePeer())
 		return

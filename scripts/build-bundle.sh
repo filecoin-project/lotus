@@ -20,8 +20,8 @@ pushd bundle
 
 BINARIES=(
     "lotus"
-    "lotus-storage-miner"
-    "lotus-seal-worker"
+    "lotus-miner"
+    "lotus-worker"
 )
 
 export IPFS_PATH=`mktemp -d`

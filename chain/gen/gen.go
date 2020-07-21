@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
-	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	saminer "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
@@ -177,12 +176,12 @@ func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
 		Accounts: []genesis.Actor{
 			{
 				Type:    genesis.TAccount,
-				Balance: types.FromFil(40000),
+				Balance: types.FromFil(20_000_000),
 				Meta:    (&genesis.AccountMeta{Owner: mk1}).ActorMeta(),
 			},
 			{
 				Type:    genesis.TAccount,
-				Balance: types.FromFil(40000),
+				Balance: types.FromFil(20_000_000),
 				Meta:    (&genesis.AccountMeta{Owner: mk2}).ActorMeta(),
 			},
 			{
@@ -196,7 +195,7 @@ func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
 			*genm2,
 		},
 		NetworkName: "",
-		Timestamp:   uint64(time.Now().Add(-500 * time.Duration(build.BlockDelaySecs) * time.Second).Unix()),
+		Timestamp:   uint64(build.Clock.Now().Add(-500 * time.Duration(build.BlockDelaySecs) * time.Second).Unix()),
 	}
 
 	genb, err := genesis2.MakeGenesisBlock(context.TODO(), bs, sys, tpl)
@@ -284,7 +283,7 @@ func (cg *ChainGen) GenesisCar() ([]byte, error) {
 
 func CarWalkFunc(nd format.Node) (out []*format.Link, err error) {
 	for _, link := range nd.Links() {
-		if link.Cid.Prefix().MhType == uint64(commcid.FC_SEALED_V1) || link.Cid.Prefix().MhType == uint64(commcid.FC_UNSEALED_V1) {
+		if link.Cid.Prefix().Codec == cid.FilCommitmentSealed || link.Cid.Prefix().Codec == cid.FilCommitmentUnsealed {
 			continue
 		}
 		out = append(out, link)
@@ -438,7 +437,8 @@ func (cg *ChainGen) makeBlock(parents *types.TipSet, m address.Address, vrfticke
 // ResyncBankerNonce is used for dealing with messages made when
 // simulating forks
 func (cg *ChainGen) ResyncBankerNonce(ts *types.TipSet) error {
-	act, err := cg.sm.GetActor(cg.banker, ts)
+	var act types.Actor
+	err := cg.sm.WithParentState(ts, cg.sm.WithActor(cg.banker, stmgr.GetActor(&act)))
 	if err != nil {
 		return err
 	}
@@ -468,7 +468,7 @@ func getRandomMessages(cg *ChainGen) ([]*types.SignedMessage, error) {
 
 			Method: 0,
 
-			GasLimit: 10000,
+			GasLimit: 100_000_000,
 			GasPrice: types.NewInt(0),
 		}
 
@@ -558,12 +558,14 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, round abi.ChainEpoch,
 		return nil, xerrors.Errorf("failed to compute VRF: %w", err)
 	}
 
-	// TODO: wire in real power
-	if !types.IsTicketWinner(vrfout, mbi.MinerPower, mbi.NetworkPower) {
+	ep := &types.ElectionProof{VRFProof: vrfout}
+	j := ep.ComputeWinCount(mbi.MinerPower, mbi.NetworkPower)
+	ep.WinCount = j
+	if j < 1 {
 		return nil, nil
 	}
 
-	return &types.ElectionProof{VRFProof: vrfout}, nil
+	return ep, nil
 }
 
 type SignFunc func(context.Context, address.Address, []byte) (*crypto.Signature, error)

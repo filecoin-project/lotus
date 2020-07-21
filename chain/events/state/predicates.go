@@ -279,17 +279,22 @@ func (sp *StatePredicates) DealStateChangedForIDs(dealIds []abi.DealID) DiffAdtA
 			var oldDealPtr, newDealPtr *market.DealState
 			var oldDeal, newDeal market.DealState
 
-			_, err := oldDealStateArray.Get(uint64(dealID), &oldDeal)
+			// If the deal has been removed, we just set it to nil
+			found, err := oldDealStateArray.Get(uint64(dealID), &oldDeal)
 			if err != nil {
 				return false, nil, err
 			}
-			oldDealPtr = &oldDeal
+			if found {
+				oldDealPtr = &oldDeal
+			}
 
-			_, err = newDealStateArray.Get(uint64(dealID), &newDeal)
+			found, err = newDealStateArray.Get(uint64(dealID), &newDeal)
 			if err != nil {
 				return false, nil, err
 			}
-			newDealPtr = &newDeal
+			if found {
+				newDealPtr = &newDeal
+			}
 
 			if oldDeal != newDeal {
 				changedDeals[dealID] = DealStateChange{dealID, oldDealPtr, newDealPtr}
@@ -354,7 +359,7 @@ func (m *MinerSectorChanges) Modify(key uint64, from, to *typegen.Deferred) erro
 		return err
 	}
 
-	if siFrom.Info.Expiration != siTo.Info.Expiration {
+	if siFrom.Expiration != siTo.Expiration {
 		m.Extended = append(m.Extended, SectorExtensions{
 			From: *siFrom,
 			To:   *siTo,

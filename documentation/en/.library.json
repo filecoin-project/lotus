@@ -83,9 +83,9 @@
       "value": null,
       "posts": [
         {
-          "title": "Lotus Seal Worker",
-          "slug": "en+lotus-seal-worker",
-          "github": "en/mining-lotus-seal-worker.md",
+          "title": "Lotus Worker",
+          "slug": "en+lotus-worker",
+          "github": "en/mining-lotus-worker.md",
           "value": null
         },
         {

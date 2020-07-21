@@ -620,7 +620,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) (er
 		return nil
 	}
 
-	validationStart := time.Now()
+	validationStart := build.Clock.Now()
 	defer func() {
 		dur := time.Since(validationStart)
 		durMilli := dur.Seconds() * float64(1000)
@@ -632,7 +632,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) (er
 	defer span.End()
 
 	if build.InsecurePoStValidation {
-		log.Warn("insecure test validation is enabled, if you see this outside of a test, it is a severe bug!")
+		log.Warn("[INSECURE-POST-VALIDATION] if you see this outside of a test, it is a severe bug!")
 	}
 
 	if err := blockSanityChecks(b.Header); err != nil {
@@ -665,12 +665,12 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) (er
 
 	// fast checks first
 
-	now := uint64(time.Now().Unix())
+	now := uint64(build.Clock.Now().Unix())
 	if h.Timestamp > now+build.AllowableClockDriftSecs {
 		return xerrors.Errorf("block was from the future (now=%d, blk=%d): %w", now, h.Timestamp, ErrTemporal)
 	}
 	if h.Timestamp > now {
-		log.Warn("Got block from the future, but within threshold", h.Timestamp, time.Now().Unix())
+		log.Warn("Got block from the future, but within threshold", h.Timestamp, build.Clock.Now().Unix())
 	}
 
 	if h.Timestamp < baseTs.MinTimestamp()+(build.BlockDelaySecs*uint64(h.Height-baseTs.Height())) {
@@ -725,6 +725,10 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) (er
 	}
 
 	winnerCheck := async.Err(func() error {
+		if h.ElectionProof.WinCount < 1 {
+			return xerrors.Errorf("block is not claiming to be a winner")
+		}
+
 		rBeacon := *prevBeacon
 		if len(h.BeaconEntries) != 0 {
 			rBeacon = h.BeaconEntries[len(h.BeaconEntries)-1]
@@ -734,7 +738,6 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) (er
 			return xerrors.Errorf("failed to marshal miner address to cbor: %w", err)
 		}
 
-		//TODO: DST from spec actors when it is there
 		vrfBase, err := store.DrawRandomness(rBeacon.Data, crypto.DomainSeparationTag_ElectionProofProduction, h.Height, buf.Bytes())
 		if err != nil {
 			return xerrors.Errorf("could not draw randomness: %w", err)
@@ -758,8 +761,9 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) (er
 			return xerrors.Errorf("failed getting power: %w", err)
 		}
 
-		if !types.IsTicketWinner(h.ElectionProof.VRFProof, mpow.QualityAdjPower, tpow.QualityAdjPower) {
-			return xerrors.Errorf("miner created a block but was not a winner")
+		j := h.ElectionProof.ComputeWinCount(mpow.QualityAdjPower, tpow.QualityAdjPower)
+		if h.ElectionProof.WinCount != j {
+			return xerrors.Errorf("miner claims wrong number of wins: miner: %d, computed: %d", h.ElectionProof.WinCount, j)
 		}
 
 		return nil
@@ -859,13 +863,13 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) (er
 func (syncer *Syncer) VerifyWinningPoStProof(ctx context.Context, h *types.BlockHeader, prevBeacon types.BeaconEntry, lbst cid.Cid, waddr address.Address) error {
 	if build.InsecurePoStValidation {
 		if len(h.WinPoStProof) == 0 {
-			return xerrors.Errorf("[TESTING] No winning post proof given")
+			return xerrors.Errorf("[INSECURE-POST-VALIDATION] No winning post proof given")
 		}
 
 		if string(h.WinPoStProof[0].ProofBytes) == "valid proof" {
 			return nil
 		}
-		return xerrors.Errorf("[TESTING] winning post was invalid")
+		return xerrors.Errorf("[INSECURE-POST-VALIDATION] winning post was invalid")
 	}
 
 	buf := new(bytes.Buffer)
@@ -946,13 +950,22 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 		return xerrors.Errorf("failed to load base state tree: %w", err)
 	}
 
+	pl := vm.PricelistByEpoch(baseTs.Height())
+	var sumGasLimit int64
 	checkMsg := func(msg types.ChainMsg) error {
 		m := msg.VMMessage()
 
 		// Phase 1: syntactic validation, as defined in the spec
-		minGas := vm.PricelistByEpoch(baseTs.Height()).OnChainMessage(msg.ChainLength())
+		minGas := pl.OnChainMessage(msg.ChainLength())
 		if err := m.ValidForBlockInclusion(minGas.Total()); err != nil {
 			return err
+		}
+
+		// ValidForBlockInclusion checks if any single message does not exceed BlockGasLimit
+		// So below is overflow safe
+		sumGasLimit += m.GasLimit
+		if sumGasLimit > build.BlockGasLimit {
+			return xerrors.Errorf("block gas limit exceeded")
 		}
 
 		// Phase 2: (Partial) semantic validation:
@@ -1531,6 +1544,6 @@ func (syncer *Syncer) IsEpochBeyondCurrMax(epoch abi.ChainEpoch) bool {
 		return false
 	}
 
-	now := uint64(time.Now().Unix())
+	now := uint64(build.Clock.Now().Unix())
 	return epoch > (abi.ChainEpoch((now-g.Timestamp)/build.BlockDelaySecs) + MaxHeightDrift)
 }

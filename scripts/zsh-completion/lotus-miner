@@ -1,4 +1,6 @@
-#!/usr/bin/env bash
+#!/usr/bin/env zsh
+autoload -U compinit && compinit;
+autoload -U bashcompinit && bashcompinit;
 _cli_bash_autocomplete() {
      local cur opts base;
      COMPREPLY=();
@@ -7,4 +9,4 @@ _cli_bash_autocomplete() {
      COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) );
      return 0;
 };
-complete -F _cli_bash_autocomplete lotus-storage-miner
+complete -F _cli_bash_autocomplete lotus-miner
