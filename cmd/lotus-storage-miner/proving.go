@@ -75,7 +75,7 @@ var provingFaultsCmd = &cli.Command{
 			return xerrors.Errorf("getting miner deadlines: %w", err)
 		}
 		tw := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
-		_, _ = fmt.Fprintln(tw, "deadline\tpartition\tsectors")
+		_, _ = fmt.Fprintln(tw, "deadline\tpartition\tsectorNumber")
 		for dlIdx := range deadlines {
 			partitions, err := api.StateMinerPartitions(ctx, maddr, uint64(dlIdx), types.EmptyTSK)
 			if err != nil {
