@@ -577,7 +577,7 @@ var clientRetrieveCmd = &cli.Command{
 			var cleaned []api.QueryOffer
 			// filter out offers that errored
 			for _, o := range offers {
-				if o.Err != "" {
+				if o.Err == "" {
 					cleaned = append(cleaned, o)
 				}
 			}
