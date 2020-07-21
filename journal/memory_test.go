@@ -71,7 +71,7 @@ func TestMemJournal_Close(t *testing.T) {
 	time.Sleep(500 * time.Millisecond)
 
 NextChannel:
-	for _, ch := range []<-chan *Entry{o1, o2, o3} {
+	for _, ch := range []<-chan *Event{o1, o2, o3} {
 		for {
 			select {
 			case _, more := <-ch:
@@ -171,7 +171,7 @@ func addEntries(journal *MemJournal, count int) {
 
 		// RegisterEventType is not _really_ intended to be used this way (on every write).
 		et := journal.RegisterEventType("spaceship", fmt.Sprintf("wheezing-%d", eventIdx))
-		journal.AddEntry(et, HeadChangeEvt{
+		journal.RecordEvent(et, HeadChangeEvt{
 			From:        types.TipSetKey{},
 			FromHeight:  abi.ChainEpoch(i),
 			To:          types.TipSetKey{},

@@ -247,7 +247,7 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 	}
 
 	dealID := res.IDs[dealIdx]
-	journal.MaybeAddEntry(c.jrnl, c.evtTypes[evtTypeDealAccepted], func() interface{} {
+	journal.MaybeRecordEvent(c.jrnl, c.evtTypes[evtTypeDealAccepted], func() interface{} {
 		deal := deal // copy and strip fields we don't want to log to the journal
 		deal.ClientSignature = crypto.Signature{}
 		return ClientDealAcceptedEvt{ID: dealID, Deal: deal, Height: c.cs.GetHeaviestTipSet().Height()}
@@ -296,7 +296,7 @@ func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider 
 
 		log.Infof("Storage deal %d activated at epoch %d", dealId, sd.State.SectorStartEpoch)
 
-		journal.MaybeAddEntry(c.jrnl, c.evtTypes[evtTypeDealSectorCommitted], func() interface{} {
+		journal.MaybeRecordEvent(c.jrnl, c.evtTypes[evtTypeDealSectorCommitted], func() interface{} {
 			return ClientDealSectorCommittedEvt{ID: dealId, State: sd.State, Height: curH}
 		})
 

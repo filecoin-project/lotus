@@ -134,7 +134,7 @@ func (m *Miner) Run(ctx context.Context) error {
 }
 
 func (m *Miner) handleSealingNotifications(before, after sealing.SectorInfo) {
-	journal.MaybeAddEntry(m.jrnl, m.sealingEvtType, func() interface{} {
+	journal.MaybeRecordEvent(m.jrnl, m.sealingEvtType, func() interface{} {
 		return SealingStateEvt{
 			SectorNumber: before.SectorNumber,
 			SectorType:   before.SectorType,

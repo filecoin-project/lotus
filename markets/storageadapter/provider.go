@@ -115,7 +115,7 @@ func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagema
 
 	log.Warnf("New Deal: deal %d", deal.DealID)
 
-	journal.MaybeAddEntry(n.jrnl, n.evtTypes[evtTypeDealAccepted], func() interface{} {
+	journal.MaybeRecordEvent(n.jrnl, n.evtTypes[evtTypeDealAccepted], func() interface{} {
 		deal := deal // copy and strip fields we don't want to log to the journal
 		deal.ClientSignature = crypto.Signature{}
 		return MinerDealAcceptedEvt{ID: deal.DealID, Deal: deal}
@@ -287,7 +287,7 @@ func (n *ProviderNodeAdapter) OnDealSectorCommitted(ctx context.Context, provide
 
 		log.Infof("Storage deal %d activated at epoch %d", dealID, sd.State.SectorStartEpoch)
 
-		journal.MaybeAddEntry(n.jrnl, n.evtTypes[evtTypeDealSectorCommitted], func() interface{} {
+		journal.MaybeRecordEvent(n.jrnl, n.evtTypes[evtTypeDealSectorCommitted], func() interface{} {
 			return MinerDealSectorCommittedEvt{ID: dealID, State: sd.State, Height: curH}
 		})
 
@@ -397,7 +397,7 @@ func (n *ProviderNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID
 		// Check if the deal has already expired
 		if sd.Proposal.EndEpoch <= height {
 			onDealExpired(nil)
-			journal.MaybeAddEntry(n.jrnl, n.evtTypes[evtTypeDealExpired], func() interface{} {
+			journal.MaybeRecordEvent(n.jrnl, n.evtTypes[evtTypeDealExpired], func() interface{} {
 				return MinerDealExpiredEvt{ID: dealID, State: sd.State, Height: height}
 			})
 			return true, false, nil
@@ -406,7 +406,7 @@ func (n *ProviderNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID
 		// If there is no deal assume it's already been slashed
 		if sd.State.SectorStartEpoch < 0 {
 			onDealSlashed(height, nil)
-			journal.MaybeAddEntry(n.jrnl, n.evtTypes[evtTypeDealSlashed], func() interface{} {
+			journal.MaybeRecordEvent(n.jrnl, n.evtTypes[evtTypeDealSlashed], func() interface{} {
 				return MinerDealSlashedEvt{ID: dealID, State: sd.State, Height: height}
 			})
 			return true, false, nil
@@ -425,7 +425,7 @@ func (n *ProviderNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID
 		// Check if the deal has already expired
 		if sd.Proposal.EndEpoch <= height {
 			onDealExpired(nil)
-			journal.MaybeAddEntry(n.jrnl, n.evtTypes[evtTypeDealExpired], func() interface{} {
+			journal.MaybeRecordEvent(n.jrnl, n.evtTypes[evtTypeDealExpired], func() interface{} {
 				return MinerDealExpiredEvt{ID: dealID, State: sd.State, Height: height}
 			})
 			return false, nil
@@ -451,7 +451,7 @@ func (n *ProviderNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID
 		// Deal was slashed
 		if deal.To == nil {
 			onDealSlashed(height, nil)
-			journal.MaybeAddEntry(n.jrnl, n.evtTypes[evtTypeDealSlashed], func() interface{} {
+			journal.MaybeRecordEvent(n.jrnl, n.evtTypes[evtTypeDealSlashed], func() interface{} {
 				return MinerDealSlashedEvt{ID: dealID, State: sd.State, Height: height}
 			})
 			return false, nil

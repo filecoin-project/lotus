@@ -315,7 +315,7 @@ func (mp *MessagePool) repubLocal() {
 				log.Errorf("errors while republishing: %+v", errout)
 			}
 
-			journal.MaybeAddEntry(mp.jrnl, mp.evtTypes[evtTypeMpoolRepub], func() interface{} {
+			journal.MaybeRecordEvent(mp.jrnl, mp.evtTypes[evtTypeMpoolRepub], func() interface{} {
 				msgs := make([]MessagePoolEvt_Message, 0, len(outputMsgs))
 				for _, m := range outputMsgs {
 					msgs = append(msgs, MessagePoolEvt_Message{Message: m.Message, CID: m.Cid()})
@@ -492,7 +492,7 @@ func (mp *MessagePool) addLocked(m *types.SignedMessage) error {
 		Message: m,
 	}, localUpdates)
 
-	journal.MaybeAddEntry(mp.jrnl, mp.evtTypes[evtTypeMpoolAdd], func() interface{} {
+	journal.MaybeRecordEvent(mp.jrnl, mp.evtTypes[evtTypeMpoolAdd], func() interface{} {
 		return MessagePoolEvt{
 			Action:   "add",
 			Messages: []MessagePoolEvt_Message{{Message: m.Message, CID: m.Cid()}},
@@ -632,7 +632,7 @@ func (mp *MessagePool) Remove(from address.Address, nonce uint64) {
 			Message: m,
 		}, localUpdates)
 
-		journal.MaybeAddEntry(mp.jrnl, mp.evtTypes[evtTypeMpoolRemove], func() interface{} {
+		journal.MaybeRecordEvent(mp.jrnl, mp.evtTypes[evtTypeMpoolRemove], func() interface{} {
 			return MessagePoolEvt{
 				Action:   "remove",
 				Messages: []MessagePoolEvt_Message{{Message: m.Message, CID: m.Cid()}}}

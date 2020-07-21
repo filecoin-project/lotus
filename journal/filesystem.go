@@ -30,7 +30,7 @@ type fsJournal struct {
 	fi    *os.File
 	fSize int64
 
-	incoming chan *Entry
+	incoming chan *Event
 
 	closing chan struct{}
 }
@@ -47,7 +47,7 @@ func OpenFSJournal(lr repo.LockedRepo, lc fx.Lifecycle, disabled DisabledEvents)
 		eventTypeFactory: newEventTypeFactory(disabled),
 		dir:              dir,
 		sizeLimit:        1 << 30,
-		incoming:         make(chan *Entry, 32),
+		incoming:         make(chan *Event, 32),
 		closing:          make(chan struct{}),
 	}
 
@@ -64,8 +64,8 @@ func OpenFSJournal(lr repo.LockedRepo, lc fx.Lifecycle, disabled DisabledEvents)
 	return f, nil
 }
 
-func (f *fsJournal) AddEntry(evtType EventType, obj interface{}) {
-	je := &Entry{
+func (f *fsJournal) RecordEvent(evtType EventType, obj interface{}) {
+	je := &Event{
 		EventType: evtType,
 		Timestamp: build.Clock.Now(),
 		Data:      obj,
@@ -73,7 +73,7 @@ func (f *fsJournal) AddEntry(evtType EventType, obj interface{}) {
 	select {
 	case f.incoming <- je:
 	case <-f.closing:
-		log.Warnw("journal closed but tried to log event", "entry", je)
+		log.Warnw("journal closed but tried to log event", "event", je)
 	}
 }
 
@@ -82,8 +82,8 @@ func (f *fsJournal) Close() error {
 	return nil
 }
 
-func (f *fsJournal) putEntry(je *Entry) error {
-	b, err := json.Marshal(je)
+func (f *fsJournal) putEvent(evt *Event) error {
+	b, err := json.Marshal(evt)
 	if err != nil {
 		return err
 	}
@@ -120,8 +120,8 @@ func (f *fsJournal) runLoop() {
 	for {
 		select {
 		case je := <-f.incoming:
-			if err := f.putEntry(je); err != nil {
-				log.Errorw("failed to write out journal entry", "entry", je, "err", err)
+			if err := f.putEvent(je); err != nil {
+				log.Errorw("failed to write out journal event", "event", je, "err", err)
 			}
 		case <-f.closing:
 			_ = f.fi.Close()

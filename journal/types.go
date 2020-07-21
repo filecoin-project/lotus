@@ -47,18 +47,18 @@ type Journal interface {
 	// entries appropriately.
 	RegisterEventType(system, event string) EventType
 
-	// AddEntry adds an entry to this journal. See godocs on the Journal type
+	// RecordEvent records this event to the journal. See godocs on the Journal type
 	// for more info.
-	AddEntry(evtType EventType, data interface{})
+	RecordEvent(evtType EventType, data interface{})
 
 	// Close closes this journal for further writing.
 	Close() error
 }
 
-// Entry represents a journal entry.
+// Event represents a journal entry.
 //
 // See godocs on Journal for more information.
-type Entry struct {
+type Event struct {
 	EventType
 
 	Timestamp time.Time

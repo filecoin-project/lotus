@@ -17,17 +17,17 @@ type (
 		replay   bool
 	}
 	rmObserverCtrl *observer
-	getEntriesCtrl chan []*Entry
+	getEntriesCtrl chan []*Event
 )
 
 type MemJournal struct {
 	*eventTypeFactory
 
-	entries   []*Entry
-	index     map[string]map[string][]*Entry
+	entries   []*Event
+	index     map[string]map[string][]*Event
 	observers []observer
 
-	incomingCh chan *Entry
+	incomingCh chan *Event
 	controlCh  chan interface{}
 
 	state  int32 // guarded by atomic; 0=closed, 1=running.
@@ -38,10 +38,10 @@ var _ Journal = (*MemJournal)(nil)
 
 type observer struct {
 	accept map[EventType]struct{}
-	ch     chan *Entry
+	ch     chan *Event
 }
 
-func (o *observer) dispatch(entry *Entry) {
+func (o *observer) dispatch(entry *Event) {
 	if o.accept == nil {
 		o.ch <- entry
 	}
@@ -54,9 +54,9 @@ func NewMemoryJournal(lc fx.Lifecycle, disabled DisabledEvents) *MemJournal {
 	m := &MemJournal{
 		eventTypeFactory: newEventTypeFactory(disabled),
 
-		index:      make(map[string]map[string][]*Entry, 16),
+		index:      make(map[string]map[string][]*Event, 16),
 		observers:  make([]observer, 0, 16),
-		incomingCh: make(chan *Entry, 256),
+		incomingCh: make(chan *Event, 256),
 		controlCh:  make(chan interface{}, 16),
 		state:      1,
 		closed:     make(chan struct{}),
@@ -71,13 +71,13 @@ func NewMemoryJournal(lc fx.Lifecycle, disabled DisabledEvents) *MemJournal {
 	return m
 }
 
-func (m *MemJournal) AddEntry(evtType EventType, obj interface{}) {
+func (m *MemJournal) RecordEvent(evtType EventType, obj interface{}) {
 	if !evtType.enabled || !evtType.safe {
 		// tried to record a disabled event type, or used an invalid EventType.
 		return
 	}
 
-	entry := &Entry{
+	entry := &Event{
 		EventType: evtType,
 		Timestamp: build.Clock.Now(),
 		Data:      obj,
@@ -111,7 +111,7 @@ func (m *MemJournal) Clear() {
 // be replayed. To restrict the event types this observer will sent, use the
 // include argument. If no include set is passed, the observer will receive all
 // events types.
-func (m *MemJournal) Observe(ctx context.Context, replay bool, include ...EventType) <-chan *Entry {
+func (m *MemJournal) Observe(ctx context.Context, replay bool, include ...EventType) <-chan *Event {
 	var acc map[EventType]struct{}
 	if include != nil {
 		acc = make(map[EventType]struct{}, len(include))
@@ -124,7 +124,7 @@ func (m *MemJournal) Observe(ctx context.Context, replay bool, include ...EventT
 		}
 	}
 
-	ch := make(chan *Entry, 256)
+	ch := make(chan *Event, 256)
 	o := &observer{
 		accept: acc,
 		ch:     ch,
@@ -151,8 +151,8 @@ func (m *MemJournal) Observe(ctx context.Context, replay bool, include ...EventT
 }
 
 // Entries gets a snapshot of stored entries.
-func (m *MemJournal) Entries() []*Entry {
-	ch := make(chan []*Entry)
+func (m *MemJournal) Entries() []*Event {
+	ch := make(chan []*Event)
 	m.controlCh <- getEntriesCtrl(ch)
 	return <-ch
 }
@@ -191,7 +191,7 @@ func (m *MemJournal) process() {
 				}
 			}
 		case getEntriesCtrl:
-			cpy := make([]*Entry, len(m.entries))
+			cpy := make([]*Event, len(m.entries))
 			copy(cpy, m.entries)
 			msg <- cpy
 			close(msg)
@@ -200,7 +200,7 @@ func (m *MemJournal) process() {
 
 	processClose := func() {
 		m.entries = nil
-		m.index = make(map[string]map[string][]*Entry, 16)
+		m.index = make(map[string]map[string][]*Event, 16)
 		for _, o := range m.observers {
 			close(o.ch)
 		}
@@ -225,7 +225,7 @@ func (m *MemJournal) process() {
 			m.entries = append(m.entries, entry)
 			events := m.index[entry.System]
 			if events == nil {
-				events = make(map[string][]*Entry, 16)
+				events = make(map[string][]*Event, 16)
 				m.index[entry.System] = events
 			}
 

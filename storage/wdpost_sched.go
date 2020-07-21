@@ -247,7 +247,7 @@ func (s *WindowPoStScheduler) abortActivePoSt() {
 	if s.abort != nil {
 		s.abort()
 
-		journal.MaybeAddEntry(s.jrnl, s.wdPoStEvtType, func() interface{} {
+		journal.MaybeRecordEvent(s.jrnl, s.wdPoStEvtType, func() interface{} {
 			return WindowPoStEvt{
 				State:    "abort",
 				Deadline: s.activeDeadline,
