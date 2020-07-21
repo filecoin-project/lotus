@@ -2,8 +2,6 @@ package cli
 
 import (
 	"fmt"
-	"os"
-
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
@@ -126,14 +124,9 @@ var authApiInfoToken = &cli.Command{
 			return xerrors.Errorf("could not get API info: %w", err)
 		}
 
-		envVar := envForRepo(t)
-		if _, ok := os.LookupEnv(envForRepo(t)); !ok {
-			envVar = envForRepoDeprecation(t)
-		}
-
 		// TODO: Log in audit log when it is implemented
 
-		fmt.Printf("%s=%s:%s\n", envVar, string(token), ainfo.Addr)
+		fmt.Printf("%s=%s:%s\n", envForRepo(t), string(token), ainfo.Addr)
 		return nil
 	},
 }
