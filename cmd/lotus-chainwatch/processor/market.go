@@ -91,7 +91,7 @@ func (p *Processor) HandleMarketChanges(ctx context.Context, marketTips ActorTip
 func (p *Processor) processMarket(ctx context.Context, marketTips ActorTips) ([]marketActorInfo, error) {
 	start := time.Now()
 	defer func() {
-		log.Infow("Processed Market", "duration", time.Since(start).String())
+		log.Debugw("Processed Market", "duration", time.Since(start).String())
 	}()
 
 	var out []marketActorInfo
@@ -107,7 +107,7 @@ func (p *Processor) processMarket(ctx context.Context, marketTips ActorTips) ([]
 func (p *Processor) persistMarket(ctx context.Context, info []marketActorInfo) error {
 	start := time.Now()
 	defer func() {
-		log.Infow("Persisted Market", "duration", time.Since(start).String())
+		log.Debugw("Persisted Market", "duration", time.Since(start).String())
 	}()
 
 	grp, ctx := errgroup.WithContext(ctx)
@@ -140,7 +140,7 @@ func (p *Processor) updateMarket(ctx context.Context, info []marketActorInfo) er
 func (p *Processor) storeMarketActorDealStates(marketTips []marketActorInfo) error {
 	start := time.Now()
 	defer func() {
-		log.Infow("Stored Market Deal States", "duration", time.Since(start).String())
+		log.Debugw("Stored Market Deal States", "duration", time.Since(start).String())
 	}()
 	tx, err := p.db.Begin()
 	if err != nil {
@@ -191,7 +191,7 @@ func (p *Processor) storeMarketActorDealStates(marketTips []marketActorInfo) err
 func (p *Processor) storeMarketActorDealProposals(ctx context.Context, marketTips []marketActorInfo) error {
 	start := time.Now()
 	defer func() {
-		log.Infow("Stored Market Deal Proposals", "duration", time.Since(start).String())
+		log.Debugw("Stored Market Deal Proposals", "duration", time.Since(start).String())
 	}()
 	tx, err := p.db.Begin()
 	if err != nil {
@@ -255,7 +255,7 @@ func (p *Processor) storeMarketActorDealProposals(ctx context.Context, marketTip
 func (p *Processor) updateMarketActorDealProposals(ctx context.Context, marketTip []marketActorInfo) error {
 	start := time.Now()
 	defer func() {
-		log.Infow("Updated Market Deal Proposals", "duration", time.Since(start).String())
+		log.Debugw("Updated Market Deal Proposals", "duration", time.Since(start).String())
 	}()
 	pred := state.NewStatePredicates(p.node)
 

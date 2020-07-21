@@ -3,7 +3,6 @@ package state
 import (
 	"bytes"
 	"context"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -412,5 +411,80 @@ func (sp *StatePredicates) OnMinerSectorChange() DiffMinerActorStateFunc {
 		}
 
 		return true, sectorChanges, nil
+	}
+}
+
+type MinerPreCommitChanges struct {
+	Added   []miner.SectorPreCommitOnChainInfo
+	Removed []miner.SectorPreCommitOnChainInfo
+}
+
+func (m *MinerPreCommitChanges) AsKey(key string) (adt.Keyer, error) {
+	sector, err := adt.ParseUIntKey(key)
+	if err != nil {
+		return nil, err
+	}
+	return miner.SectorKey(abi.SectorNumber(sector)), nil
+}
+
+func (m *MinerPreCommitChanges) Add(key string, val *typegen.Deferred) error {
+	sp := new(miner.SectorPreCommitOnChainInfo)
+	err := sp.UnmarshalCBOR(bytes.NewReader(val.Raw))
+	if err != nil {
+		return err
+	}
+	m.Added = append(m.Added, *sp)
+	return nil
+}
+
+func (m *MinerPreCommitChanges) Modify(key string, from, to *typegen.Deferred) error {
+	return nil
+}
+
+func (m *MinerPreCommitChanges) Remove(key string, val *typegen.Deferred) error {
+	sp := new(miner.SectorPreCommitOnChainInfo)
+	err := sp.UnmarshalCBOR(bytes.NewReader(val.Raw))
+	if err != nil {
+		return err
+	}
+	m.Removed = append(m.Removed, *sp)
+	return nil
+}
+
+func (sp *StatePredicates) OnMinerPreCommitChange() DiffMinerActorStateFunc {
+	return func(ctx context.Context, oldState, newState *miner.State) (changed bool, user UserData, err error) {
+		ctxStore := &contextStore{
+			ctx: ctx,
+			cst: sp.cst,
+		}
+
+		precommitChanges := &MinerPreCommitChanges{
+			Added:   []miner.SectorPreCommitOnChainInfo{},
+			Removed: []miner.SectorPreCommitOnChainInfo{},
+		}
+
+		if oldState.PreCommittedSectors.Equals(newState.PreCommittedSectors) {
+			return false, nil, nil
+		}
+
+		oldPrecommits, err := adt.AsMap(ctxStore, oldState.PreCommittedSectors)
+		if err != nil {
+			return false, nil, err
+		}
+
+		newPrecommits, err := adt.AsMap(ctxStore, newState.PreCommittedSectors)
+		if err != nil {
+			return false, nil, err
+		}
+
+		if err := DiffAdtMap(oldPrecommits, newPrecommits, precommitChanges); err != nil {
+			return false, nil, err
+		}
+
+		if len(precommitChanges.Added)+len(precommitChanges.Removed) == 0 {
+			return false, nil, nil
+		}
+
+		return true, precommitChanges, nil
 	}
 }
