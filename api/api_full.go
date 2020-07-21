@@ -57,7 +57,7 @@ type FullNode interface {
 	ChainGetParentMessages(ctx context.Context, blockCid cid.Cid) ([]Message, error)
 
 	// ChainGetTipSetByHeight looks back for a tipset at the specified epoch.
-	// If there are no blocks at the specified epoch, a tipset at higher epoch
+	// If there are no blocks at the specified epoch, a tipset at an earlier epoch
 	// will be returned.
 	ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error)
 
