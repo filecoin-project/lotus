@@ -73,11 +73,17 @@ const (
 	evtTypeMpoolRepub
 )
 
-// MessagePoolEvt is the journal event type emitted by the MessagePool.
+// MessagePoolEvt is the journal entry for message pool events.
 type MessagePoolEvt struct {
-	Action      string
-	MessageCIDs []cid.Cid
-	Error       error `json:",omitempty"`
+	Action   string
+	Messages []MessagePoolEvt_Message
+	Error    error `json:",omitempty"`
+}
+
+type MessagePoolEvt_Message struct {
+	types.Message
+
+	CID cid.Cid
 }
 
 type MessagePool struct {
@@ -310,14 +316,14 @@ func (mp *MessagePool) repubLocal() {
 			}
 
 			journal.MaybeAddEntry(mp.jrnl, mp.evtTypes[evtTypeMpoolRepub], func() interface{} {
-				cids := make([]cid.Cid, 0, len(outputMsgs))
+				msgs := make([]MessagePoolEvt_Message, 0, len(outputMsgs))
 				for _, m := range outputMsgs {
-					cids = append(cids, m.Cid())
+					msgs = append(msgs, MessagePoolEvt_Message{Message: m.Message, CID: m.Cid()})
 				}
 				return MessagePoolEvt{
-					Action:      "repub",
-					MessageCIDs: cids,
-					Error:       errout,
+					Action:   "repub",
+					Messages: msgs,
+					Error:    errout,
 				}
 			})
 
@@ -488,8 +494,8 @@ func (mp *MessagePool) addLocked(m *types.SignedMessage) error {
 
 	journal.MaybeAddEntry(mp.jrnl, mp.evtTypes[evtTypeMpoolAdd], func() interface{} {
 		return MessagePoolEvt{
-			Action:      "add",
-			MessageCIDs: []cid.Cid{m.Cid()},
+			Action:   "add",
+			Messages: []MessagePoolEvt_Message{{Message: m.Message, CID: m.Cid()}},
 		}
 	})
 
@@ -628,9 +634,8 @@ func (mp *MessagePool) Remove(from address.Address, nonce uint64) {
 
 		journal.MaybeAddEntry(mp.jrnl, mp.evtTypes[evtTypeMpoolRemove], func() interface{} {
 			return MessagePoolEvt{
-				Action:      "remove",
-				MessageCIDs: []cid.Cid{m.Cid()},
-			}
+				Action:   "remove",
+				Messages: []MessagePoolEvt_Message{{Message: m.Message, CID: m.Cid()}}}
 		})
 	}
 
