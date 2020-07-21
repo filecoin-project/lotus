@@ -82,6 +82,9 @@ type workerHandle struct {
 	preparing *activeResources
 	active    *activeResources
 
+	// stats / tracking
+	wt *workTracker
+
 	// for sync manager goroutine closing
 	cleanupStarted bool
 	closedMgr      chan struct{}
@@ -486,7 +489,7 @@ func (sh *scheduler) assignWorker(taskDone chan struct{}, wid WorkerID, w *worke
 	w.preparing.add(w.info.Resources, needRes)
 
 	go func() {
-		err := req.prepare(req.ctx, w.w)
+		err := req.prepare(req.ctx, w.wt.worker(w.w))
 		sh.workersLk.Lock()
 
 		if err != nil {
@@ -519,7 +522,7 @@ func (sh *scheduler) assignWorker(taskDone chan struct{}, wid WorkerID, w *worke
 			case <-sh.closing:
 			}
 
-			err = req.work(req.ctx, w.w)
+			err = req.work(req.ctx, w.wt.worker(w.w))
 
 			select {
 			case req.ret <- workerResponse{err: err}:

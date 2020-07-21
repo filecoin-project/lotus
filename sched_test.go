@@ -156,7 +156,10 @@ func addTestWorker(t *testing.T, sched *scheduler, index *stores.Index, name str
 	require.NoError(t, err)
 
 	sched.newWorkers <- &workerHandle{
-		w:         w,
+		w: w,
+		wt: &workTracker{
+			running: map[uint64]storiface.WorkerJob{},
+		},
 		info:      info,
 		preparing: &activeResources{},
 		active:    &activeResources{},
