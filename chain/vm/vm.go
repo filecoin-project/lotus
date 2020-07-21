@@ -391,7 +391,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 				GasUsed:  0,
 			},
 			ActorErr: aerrors.Newf(exitcode.SysErrSenderStateInvalid,
-				"actor balance less than needed: %s < %s", fromActor.Balance, totalCost),
+				"actor balance less than needed: %s < %s", types.FIL(fromActor.Balance), types.FIL(totalCost)),
 			Penalty:  minerPenaltyAmount,
 			Duration: time.Since(start),
 		}, nil
