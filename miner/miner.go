@@ -3,6 +3,8 @@ package miner
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"encoding/binary"
 	"fmt"
 	big2 "math/big"
 	"sort"
@@ -33,6 +35,14 @@ var log = logging.Logger("miner")
 // returns a callback reporting whether we mined a blocks in this round
 type waitFunc func(ctx context.Context, baseTime uint64) (func(bool, error), error)
 
+func randTimeOffset(width time.Duration) time.Duration {
+	buf := make([]byte, 8)
+	rand.Reader.Read(buf)
+	val := time.Duration(binary.BigEndian.Uint64(buf) % uint64(width))
+
+	return val - (width / 2)
+}
+
 func NewMiner(api api.FullNode, epp gen.WinningPoStProver, addr address.Address) *Miner {
 	arc, err := lru.NewARC(10000)
 	if err != nil {
@@ -46,7 +56,11 @@ func NewMiner(api api.FullNode, epp gen.WinningPoStProver, addr address.Address)
 		waitFunc: func(ctx context.Context, baseTime uint64) (func(bool, error), error) {
 			// Wait around for half the block time in case other parents come in
 			deadline := baseTime + build.PropagationDelaySecs
-			build.Clock.Sleep(build.Clock.Until(time.Unix(int64(deadline), 0)))
+			baseT := time.Unix(int64(deadline), 0)
+
+			baseT = baseT.Add(randTimeOffset(time.Second))
+
+			build.Clock.Sleep(build.Clock.Until(baseT))
 
 			return func(bool, error) {}, nil
 		},
