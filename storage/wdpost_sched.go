@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/ipfs/go-cid"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
@@ -22,10 +23,32 @@ import (
 
 const StartConfidence = 4 // TODO: config
 
-// Journal event types.
-const (
-	evtTypeWindowPoSt = iota
-)
+type WindowPoStEvt struct {
+	State    string
+	Deadline *miner.DeadlineInfo
+	Height   abi.ChainEpoch
+	TipSet   []cid.Cid
+	Error    error `json:",omitempty"`
+
+	Proofs     *WindowPoStEvt_Proofs     `json:",omitempty"`
+	Recoveries *WindowPoStEvt_Recoveries `json:",omitempty"`
+	Faults     *WindowPoStEvt_Faults     `json:",omitempty"`
+}
+
+type WindowPoStEvt_Proofs struct {
+	Partitions []miner.PoStPartition
+	MessageCID cid.Cid `json:",omitempty"`
+}
+
+type WindowPoStEvt_Recoveries struct {
+	Declarations []miner.RecoveryDeclaration
+	MessageCID   cid.Cid `json:",omitempty"`
+}
+
+type WindowPoStEvt_Faults struct {
+	Declarations []miner.FaultDeclaration
+	MessageCID   cid.Cid `json:",omitempty"`
+}
 
 type WindowPoStScheduler struct {
 	api              storageMinerApi
@@ -42,8 +65,9 @@ type WindowPoStScheduler struct {
 	// if a post is in progress, this indicates for which ElectionPeriodStart
 	activeDeadline *miner.DeadlineInfo
 	abort          context.CancelFunc
-	jrnl           journal.Journal
-	evtTypes       [1]journal.EventType
+
+	jrnl          journal.Journal
+	wdPoStEvtType journal.EventType
 
 	// failed abi.ChainEpoch // eps
 	// failLk sync.Mutex
@@ -67,12 +91,10 @@ func NewWindowedPoStScheduler(api storageMinerApi, sb storage.Prover, ft sectors
 		proofType:        rt,
 		partitionSectors: mi.WindowPoStPartitionSectors,
 
-		actor:  actor,
-		worker: worker,
-		jrnl:   jrnl,
-		evtTypes: [...]journal.EventType{
-			evtTypeWindowPoSt: jrnl.RegisterEventType("storage", "wdpost"),
-		},
+		actor:         actor,
+		worker:        worker,
+		jrnl:          jrnl,
+		wdPoStEvtType: jrnl.RegisterEventType("storage", "wdpost"),
 	}, nil
 }
 
@@ -224,18 +246,18 @@ func (s *WindowPoStScheduler) abortActivePoSt() {
 
 	if s.abort != nil {
 		s.abort()
+
+		journal.MaybeAddEntry(s.jrnl, s.wdPoStEvtType, func() interface{} {
+			return WindowPoStEvt{
+				State:    "abort",
+				Deadline: s.activeDeadline,
+				Height:   s.cur.Height(),
+				TipSet:   s.cur.Cids(),
+			}
+		})
+
+		log.Warnf("Aborting Window PoSt (Deadline: %+v)", s.activeDeadline)
 	}
-
-	journal.MaybeAddEntry(s.jrnl, s.evtTypes[evtTypeWindowPoSt], func() interface{} {
-		return WindowPoStEvt{
-			State:    "abort",
-			Deadline: s.activeDeadline,
-			Height:   s.cur.Height(),
-			TipSet:   s.cur.Cids(),
-		}
-	})
-
-	log.Warnf("Aborting Window PoSt (Deadline: %+v)", s.activeDeadline)
 
 	s.activeDeadline = nil
 	s.abort = nil

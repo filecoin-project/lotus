@@ -188,7 +188,7 @@ func StorageMiner(params StorageMinerParams) (*storage.Miner, error) {
 		return nil, err
 	}
 
-	sm, err := storage.NewMiner(api, maddr, worker, h, ds, sealer, sc, verif, gsd)
+	sm, err := storage.NewMiner(api, maddr, worker, h, ds, sealer, sc, verif, gsd, jrnl)
 	if err != nil {
 		return nil, err
 	}

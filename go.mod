@@ -32,7 +32,7 @@ require (
 	github.com/filecoin-project/sector-storage v0.0.0-20200717213554-a109ef9cbeab
 	github.com/filecoin-project/specs-actors v0.7.3-0.20200717200758-365408676dbb
 	github.com/filecoin-project/specs-storage v0.1.1-0.20200622113353-88a9704877ea
-	github.com/filecoin-project/storage-fsm v0.0.0-20200717125541-d575c3a5f7f2
+	github.com/filecoin-project/storage-fsm v0.0.0-20200721113842-ab98dc7ab341
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/go-kit/kit v0.10.0
 	github.com/go-ole/go-ole v1.2.4 // indirect

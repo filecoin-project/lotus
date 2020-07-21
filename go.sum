@@ -275,8 +275,8 @@ github.com/filecoin-project/specs-storage v0.1.0 h1:PkDgTOT5W5Ao7752onjDl4QSv+sg
 github.com/filecoin-project/specs-storage v0.1.0/go.mod h1:Pr5ntAaxsh+sLG/LYiL4tKzvA83Vk5vLODYhfNwOg7k=
 github.com/filecoin-project/specs-storage v0.1.1-0.20200622113353-88a9704877ea h1:iixjULRQFPn7Q9KlIqfwLJnlAXO10bbkI+xy5GKGdLY=
 github.com/filecoin-project/specs-storage v0.1.1-0.20200622113353-88a9704877ea/go.mod h1:Pr5ntAaxsh+sLG/LYiL4tKzvA83Vk5vLODYhfNwOg7k=
-github.com/filecoin-project/storage-fsm v0.0.0-20200717125541-d575c3a5f7f2 h1:A9zUXOMuVnSTp9a0i0KtHkB05hA8mRWVLls6Op9Czuo=
-github.com/filecoin-project/storage-fsm v0.0.0-20200717125541-d575c3a5f7f2/go.mod h1:1CGbd11KkHuyWPT+xwwCol1zl/jnlpiKD2L4fzKxaiI=
+github.com/filecoin-project/storage-fsm v0.0.0-20200721113842-ab98dc7ab341 h1:4catrjuFXo/VcQcmvAMyeBYEp35IHFi+Tqz0dNAJp54=
+github.com/filecoin-project/storage-fsm v0.0.0-20200721113842-ab98dc7ab341/go.mod h1:1CGbd11KkHuyWPT+xwwCol1zl/jnlpiKD2L4fzKxaiI=
 github.com/flynn/go-shlex v0.0.0-20150515145356-3f9db97f8568/go.mod h1:xEzjJPgXI435gkrCt3MPfRiAkVrwSbHsst4LCFVfpJc=
 github.com/flynn/noise v0.0.0-20180327030543-2492fe189ae6 h1:u/UEqS66A5ckRmS4yNpjmVH56sVtS/RfclBAYocb4as=
 github.com/flynn/noise v0.0.0-20180327030543-2492fe189ae6/go.mod h1:1i71OnUq3iUe1ma7Lr6yG6/rjvM3emb6yoL7xLFzcVQ=
