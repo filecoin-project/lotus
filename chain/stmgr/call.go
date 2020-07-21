@@ -106,6 +106,17 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, ts 
 		)
 	}
 
+	vmi, err := vm.NewVM(state, ts.Height(), r, sm.cs.Blockstore(), sm.cs.VMSys())
+	if err != nil {
+		return nil, xerrors.Errorf("failed to set up vm: %w", err)
+	}
+	fromActor, err := vmi.StateTree().GetActor(msg.From)
+	if err != nil {
+		return nil, xerrors.Errorf("call raw get actor: %s", err)
+	}
+
+	msg.Nonce = fromActor.Nonce
+
 	fromKey, err := sm.ResolveToKeyAddress(ctx, msg.From, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("could not resolve key: %w", err)
@@ -126,18 +137,6 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, ts 
 		}
 
 	}
-
-	vmi, err := vm.NewVM(state, ts.Height(), r, sm.cs.Blockstore(), sm.cs.VMSys())
-	if err != nil {
-		return nil, xerrors.Errorf("failed to set up vm: %w", err)
-	}
-
-	fromActor, err := vmi.StateTree().GetActor(msg.From)
-	if err != nil {
-		return nil, xerrors.Errorf("call raw get actor: %s", err)
-	}
-
-	msg.Nonce = fromActor.Nonce
 
 	ret, err := vmi.ApplyMessage(ctx, msgApply)
 	if err != nil {
