@@ -2,6 +2,7 @@ package full
 
 import (
 	"context"
+
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 
 	"github.com/filecoin-project/go-address"
@@ -115,7 +116,7 @@ func (a *MsigAPI) MsigPropose(ctx context.Context, msig address.Address, to addr
 		Params: params,
 	})
 	if actErr != nil {
-		return cid.Undef, actErr
+		return cid.Undef, xerrors.Errorf("failed to serialize parameters: %w", actErr)
 	}
 
 	msg := &types.Message{
@@ -130,7 +131,7 @@ func (a *MsigAPI) MsigPropose(ctx context.Context, msig address.Address, to addr
 
 	smsg, err := a.MpoolAPI.MpoolPushMessage(ctx, msg)
 	if err != nil {
-		return cid.Undef, nil
+		return cid.Undef, xerrors.Errorf("failed to push message: %w", err)
 	}
 
 	return smsg.Cid(), nil

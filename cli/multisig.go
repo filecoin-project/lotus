@@ -364,12 +364,17 @@ var msigProposeCmd = &cli.Command{
 			return fmt.Errorf("proposal returned exit %d", wait.Receipt.ExitCode)
 		}
 
-		_, v, err := cbg.CborReadHeader(bytes.NewReader(wait.Receipt.Return))
-		if err != nil {
-			return err
+		var retval samsig.ProposeReturn
+		if err := retval.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return)); err != nil {
+			return fmt.Errorf("failed to unmarshal propose return value: %w", err)
 		}
 
-		fmt.Printf("Transaction ID: %d\n", v)
+		fmt.Printf("Transaction ID: %d\n", retval.TxnID)
+		if retval.Applied {
+			fmt.Printf("Transaction was executed during propose\n")
+			fmt.Printf("Exit Code: %d\n", retval.Code)
+			fmt.Printf("Return Value: %x\n", retval.Ret)
+		}
 
 		return nil
 	},
