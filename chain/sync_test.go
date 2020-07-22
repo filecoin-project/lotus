@@ -170,7 +170,7 @@ func (tu *syncTestUtil) pushTsExpectErr(to int, fts *store.FullTipSet, experr bo
 	}
 }
 
-func (tu *syncTestUtil) mineOnBlock(blk *store.FullTipSet, src int, miners []int, wait, fail bool) *store.FullTipSet {
+func (tu *syncTestUtil) mineOnBlock(blk *store.FullTipSet, to int, miners []int, wait, fail bool) *store.FullTipSet {
 	if miners == nil {
 		for i := range tu.g.Miners {
 			miners = append(miners, i)
@@ -188,9 +188,9 @@ func (tu *syncTestUtil) mineOnBlock(blk *store.FullTipSet, src int, miners []int
 	require.NoError(tu.t, err)
 
 	if fail {
-		tu.pushTsExpectErr(src, mts.TipSet, true)
+		tu.pushTsExpectErr(to, mts.TipSet, true)
 	} else {
-		tu.pushFtsAndWait(src, mts.TipSet, wait)
+		tu.pushFtsAndWait(to, mts.TipSet, wait)
 	}
 
 	return mts.TipSet
@@ -465,7 +465,7 @@ func TestSyncBadWinningPoSt(t *testing.T) {
 	tu.g.SetWinningPoStProver(tu.g.Miners[1], &badWpp{})
 
 	// now ensure that new blocks are not accepted
-	tu.mineOnBlock(base, 0, nil, false, true)
+	tu.mineOnBlock(base, client, nil, false, true)
 }
 
 func (tu *syncTestUtil) loadChainToNode(to int) {
