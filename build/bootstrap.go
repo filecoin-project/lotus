@@ -38,7 +38,3 @@ func BuiltinBootstrap() ([]peer.AddrInfo, error) {
 	})
 	return out, err
 }
-
-func DrandBootstrap() ([]peer.AddrInfo, error) {
-	return addrutil.ParseAddresses(context.TODO(), DrandConfig().Relays)
-}
