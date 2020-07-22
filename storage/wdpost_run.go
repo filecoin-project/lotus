@@ -382,10 +382,6 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 			sidToPart[si.SectorNumber] = uint64(partIdx)
 		}
 
-		//if len(ssi) == 0 {
-		//	log.Warn("attempted to run windowPost without any sectors...")
-		//	return nil, xerrors.Errorf("no sectors to run windowPost on")
-		//}
 
 		params.Partitions[partIdx] = miner.PoStPartition{
 			Index:   uint64(partIdx),
