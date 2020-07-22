@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strconv"
 
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -20,6 +21,7 @@ var mpoolCmd = &cli.Command{
 		mpoolPending,
 		mpoolSub,
 		mpoolStat,
+		mpoolReplaceCmd,
 	},
 }
 
@@ -225,6 +227,85 @@ var mpoolStat = &cli.Command{
 			fmt.Printf("%s, past: %d, cur: %d, future: %d\n", stat.addr, stat.past, stat.cur, stat.future)
 		}
 
+		return nil
+	},
+}
+
+var mpoolReplaceCmd = &cli.Command{
+	Name:  "replace",
+	Usage: "replace a message in the mempool",
+	Flags: []cli.Flag{
+		&cli.Int64Flag{
+			Name:  "gas-price",
+			Usage: "gas price for new message",
+		},
+		&cli.Int64Flag{
+			Name:  "gas-limit",
+			Usage: "gas price for new message",
+		},
+	},
+	ArgsUsage: "[from] [nonce]",
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() < 2 {
+			return cli.ShowCommandHelp(cctx, cctx.Command.Name)
+		}
+
+		from, err := address.NewFromString(cctx.Args().Get(0))
+		if err != nil {
+			return err
+		}
+
+		nonce, err := strconv.ParseUint(cctx.Args().Get(1), 10, 64)
+		if err != nil {
+			return err
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		ts, err := api.ChainHead(ctx)
+		if err != nil {
+			return xerrors.Errorf("getting chain head: %w", err)
+		}
+
+		pending, err := api.MpoolPending(ctx, ts.Key())
+		if err != nil {
+			return err
+		}
+
+		var found *types.SignedMessage
+		for _, p := range pending {
+			if p.Message.From == from && p.Message.Nonce == nonce {
+				found = p
+				break
+			}
+		}
+
+		if found == nil {
+			return fmt.Errorf("no pending message found from %s with nonce %d", from, nonce)
+		}
+
+		msg := found.Message
+
+		msg.GasLimit = cctx.Int64("gas-limit")
+		msg.GasPrice = types.NewInt(uint64(cctx.Int64("gas-price")))
+
+		smsg, err := api.WalletSignMessage(ctx, msg.From, &msg)
+		if err != nil {
+			return fmt.Errorf("failed to sign message: %w", err)
+		}
+
+		cid, err := api.MpoolPush(ctx, smsg)
+		if err != nil {
+			return fmt.Errorf("failed to push new message to mempool: %w", err)
+		}
+
+		fmt.Println("new message cid: ", cid)
 		return nil
 	},
 }
