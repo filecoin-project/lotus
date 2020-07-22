@@ -161,7 +161,7 @@ func (a *PaychAPI) PaychCollect(ctx context.Context, addr address.Address) (cid.
 		Method: builtin.MethodsPaych.Collect,
 		Nonce:  nonce,
 
-		GasLimit: 100_000_000,
+		GasLimit: 0,
 		GasPrice: types.NewInt(0),
 	}
 

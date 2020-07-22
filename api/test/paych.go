@@ -9,6 +9,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/lotus/api"
+	"github.com/ipfs/go-cid"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/events"
@@ -72,10 +75,8 @@ func TestPaymentChannels(t *testing.T, b APIBuilder, blocktime time.Duration) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	res, err := paymentCreator.StateWaitMsg(ctx, channelInfo.ChannelMessage, 1)
-	if res.Receipt.ExitCode != 0 {
-		t.Fatal("did not successfully create payment channel")
-	}
+
+	res := waitForMessage(ctx, t, paymentCreator, channelInfo.ChannelMessage, time.Second, "channel create")
 	var params initactor.ExecReturn
 	err = params.UnmarshalCBOR(bytes.NewReader(res.Receipt.Return))
 	if err != nil {
@@ -123,10 +124,8 @@ func TestPaymentChannels(t *testing.T, b APIBuilder, blocktime time.Duration) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	res, err = paymentCreator.StateWaitMsg(ctx, settleMsgCid, 1)
-	if err != nil {
-		t.Fatal(err)
-	}
+
+	res = waitForMessage(ctx, t, paymentCreator, settleMsgCid, time.Second, "settle")
 	if res.Receipt.ExitCode != 0 {
 		t.Fatal("Unable to settle payment channel")
 	}
@@ -158,7 +157,11 @@ func TestPaymentChannels(t *testing.T, b APIBuilder, blocktime time.Duration) {
 		return preds.OnPaymentChannelActorChanged(channel, preds.OnToSendAmountChanges())(ctx, oldTs.Key(), newTs.Key())
 	})
 
-	<-finished
+	select {
+	case <-finished:
+	case <-time.After(time.Second):
+		t.Fatal("Timed out waiting for receiver to submit vouchers")
+	}
 
 	// collect funds (from receiver, though either party can do it)
 	collectMsg, err := paymentReceiver.PaychCollect(ctx, channel)
@@ -191,6 +194,23 @@ func TestPaymentChannels(t *testing.T, b APIBuilder, blocktime time.Duration) {
 
 	// shut down mining
 	bm.stop()
+}
+
+func waitForMessage(ctx context.Context, t *testing.T, paymentCreator TestNode, msgCid cid.Cid, duration time.Duration, desc string) *api.MsgLookup {
+	ctx, cancel := context.WithTimeout(ctx, duration)
+	defer cancel()
+
+	fmt.Println("Waiting for", desc)
+	res, err := paymentCreator.StateWaitMsg(ctx, msgCid, 1)
+	if err != nil {
+		fmt.Println("Error waiting for", desc, err)
+		t.Fatal(err)
+	}
+	if res.Receipt.ExitCode != 0 {
+		t.Fatal("did not successfully send %s", desc)
+	}
+	fmt.Println("Confirmed", desc)
+	return res
 }
 
 type blockMiner struct {
@@ -243,8 +263,8 @@ func sendFunds(ctx context.Context, t *testing.T, sender TestNode, addr address.
 		From:     senderAddr,
 		To:       addr,
 		Value:    amount,
-		GasLimit: 100_000_000,
-		GasPrice: abi.NewTokenAmount(1000),
+		GasLimit: 0,
+		GasPrice: abi.NewTokenAmount(0),
 	}
 
 	sm, err := sender.MpoolPushMessage(ctx, msg)
