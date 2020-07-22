@@ -162,6 +162,7 @@ func (a *API) ClientListDeals(ctx context.Context) ([]api.DealInfo, error) {
 	for k, v := range deals {
 		out[k] = api.DealInfo{
 			ProposalCid: v.ProposalCid,
+			DataRef:     v.DataRef,
 			State:       v.State,
 			Message:     v.Message,
 			Provider:    v.Proposal.Provider,

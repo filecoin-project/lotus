@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -65,6 +66,7 @@ var clientCmd = &cli.Command{
 		clientQueryAskCmd,
 		clientListDeals,
 		clientCarGenCmd,
+		clientGetDealCmd,
 	},
 }
 
@@ -483,7 +485,7 @@ var clientFindCmd = &cli.Command{
 				fmt.Printf("ERR %s@%s: %s\n", offer.Miner, offer.MinerPeerID, offer.Err)
 				continue
 			}
-			fmt.Printf("RETRIEVAL %s@%s-%sfil-%s\n", offer.Miner, offer.MinerPeerID, types.FIL(offer.MinPrice), types.SizeStr(types.NewInt(offer.Size)))
+			fmt.Printf("RETRIEVAL %s@%s-%s-%s\n", offer.Miner, offer.MinerPeerID, types.FIL(offer.MinPrice), types.SizeStr(types.NewInt(offer.Size)))
 		}
 
 		return nil
@@ -571,6 +573,16 @@ var clientRetrieveCmd = &cli.Command{
 		minerStrAddr := cctx.String("miner")
 		if minerStrAddr == "" { // Local discovery
 			offers, err := fapi.ClientFindData(ctx, file, pieceCid)
+
+			var cleaned []api.QueryOffer
+			// filter out offers that errored
+			for _, o := range offers {
+				if o.Err == "" {
+					cleaned = append(cleaned, o)
+				}
+			}
+
+			offers = cleaned
 
 			// sort by price low to high
 			sort.Slice(offers, func(i, j int) bool {
@@ -778,4 +790,51 @@ var clientListDeals = &cli.Command{
 type deal struct {
 	LocalDeal        lapi.DealInfo
 	OnChainDealState market.DealState
+}
+
+var clientGetDealCmd = &cli.Command{
+	Name:  "get-deal",
+	Usage: "Print detailed deal information",
+	Action: func(cctx *cli.Context) error {
+		if !cctx.Args().Present() {
+			return cli.ShowCommandHelp(cctx, cctx.Command.Name)
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		propcid, err := cid.Decode(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		di, err := api.ClientGetDealInfo(ctx, propcid)
+		if err != nil {
+			return err
+		}
+
+		out := map[string]interface{}{
+			"DealInfo: ": di,
+		}
+
+		if di.DealID != 0 {
+			onChain, err := api.StateMarketStorageDeal(ctx, di.DealID, types.EmptyTSK)
+			if err != nil {
+				return err
+			}
+
+			out["OnChain"] = onChain
+		}
+
+		b, err := json.MarshalIndent(out, "", "  ")
+		if err != nil {
+			return err
+		}
+		fmt.Println(b)
+		return nil
+	},
 }
