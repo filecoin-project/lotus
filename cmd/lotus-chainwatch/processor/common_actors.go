@@ -207,7 +207,8 @@ create temp table iam (like id_address_map excluding constraints) on commit drop
 		return err
 	}
 
-	if _, err := tx.Exec(`insert into id_address_map select * from iam on conflict do nothing `); err != nil {
+	// HACK until chain watch can handle reorgs we need to update this table when ID -> PubKey mappings change
+	if _, err := tx.Exec(`insert into id_address_map select * from iam on conflict (id) do update set address = EXCLUDED.address`); err != nil {
 		return xerrors.Errorf("actor put: %w", err)
 	}
 
