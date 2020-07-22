@@ -58,7 +58,7 @@ func TestPaymentChannels(t *testing.T, b APIBuilder, blocktime time.Duration) {
 		t.Fatal(err)
 	}
 
-	sendFunds(ctx, t, paymentCreator, receiverAddr, abi.NewTokenAmount(1000))
+	sendFunds(ctx, t, paymentCreator, receiverAddr, abi.NewTokenAmount(1e10))
 
 	// setup the payment channel
 	createrAddr, err := paymentCreator.WalletDefaultAddress(ctx)
