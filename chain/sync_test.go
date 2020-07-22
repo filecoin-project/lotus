@@ -449,7 +449,7 @@ func (wpp badWpp) ComputeProof(context.Context, []abi.SectorInfo, abi.PoStRandom
 }
 
 func TestSyncBadWinningPoSt(t *testing.T) {
-	H := 10
+	H := 15
 	tu := prepSyncTest(t, H)
 
 	client := tu.addClientNode()
@@ -460,13 +460,12 @@ func TestSyncBadWinningPoSt(t *testing.T) {
 
 	base := tu.g.CurTipset
 
+	// both miners now produce invalid winning posts
 	tu.g.SetWinningPoStProver(tu.g.Miners[0], &badWpp{})
 	tu.g.SetWinningPoStProver(tu.g.Miners[1], &badWpp{})
-	a1 := tu.mineOnBlock(base, 0, nil, false, true)
 
-	fmt.Println(a1)
-
-	t.Fatal("WIP: TODO")
+	// now ensure that new blocks are not accepted
+	tu.mineOnBlock(base, 0, nil, false, true)
 }
 
 func (tu *syncTestUtil) loadChainToNode(to int) {
