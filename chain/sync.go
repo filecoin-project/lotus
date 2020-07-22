@@ -1057,6 +1057,10 @@ func (syncer *Syncer) verifyBlsAggregate(ctx context.Context, sig *crypto.Signat
 		trace.Int64Attribute("msgCount", int64(len(msgs))),
 	)
 
+	if len(msgs) == 0 {
+		return nil
+	}
+
 	bmsgs := make([]bls.Message, len(msgs))
 	for i, m := range msgs {
 		bmsgs[i] = m.Bytes()
