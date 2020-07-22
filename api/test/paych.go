@@ -66,12 +66,8 @@ func TestPaymentChannels(t *testing.T, b APIBuilder, blocktime time.Duration) {
 		t.Fatal(err)
 	}
 
-	initBalance, err := paymentCreator.WalletBalance(ctx, createrAddr)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	channelInfo, err := paymentCreator.PaychGet(ctx, createrAddr, receiverAddr, abi.NewTokenAmount(100000))
+	channelAmt := int64(100000)
+	channelInfo, err := paymentCreator.PaychGet(ctx, createrAddr, receiverAddr, abi.NewTokenAmount(channelAmt))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,6 +79,7 @@ func TestPaymentChannels(t *testing.T, b APIBuilder, blocktime time.Duration) {
 		t.Fatal(err)
 	}
 	channel := params.RobustAddress
+
 	// allocate three lanes
 	var lanes []uint64
 	for i := 0; i < 3; i++ {
@@ -93,7 +90,9 @@ func TestPaymentChannels(t *testing.T, b APIBuilder, blocktime time.Duration) {
 		lanes = append(lanes, lane)
 	}
 
-	// make two vouchers each for each lane, then save on the other side
+	// Make two vouchers each for each lane, then save on the other side
+	// Note that the voucher with a value of 2000 has a higher nonce, so it
+	// supersedes the voucher with a value of 1000
 	for _, lane := range lanes {
 		vouch1, err := paymentCreator.PaychVoucherCreate(ctx, channel, abi.NewTokenAmount(1000), lane)
 		if err != nil {
@@ -128,6 +127,11 @@ func TestPaymentChannels(t *testing.T, b APIBuilder, blocktime time.Duration) {
 	res = waitForMessage(ctx, t, paymentCreator, settleMsgCid, time.Second*10, "settle")
 	if res.Receipt.ExitCode != 0 {
 		t.Fatal("Unable to settle payment channel")
+	}
+
+	creatorPreCollectBalance, err := paymentCreator.WalletBalance(ctx, createrAddr)
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	// wait for the receiver to submit their vouchers
@@ -176,20 +180,21 @@ func TestPaymentChannels(t *testing.T, b APIBuilder, blocktime time.Duration) {
 		t.Fatal("unable to collect on payment channel")
 	}
 
-	// Finally, check the balance for the receiver and creator
+	// Finally, check the balance for the creator
 	currentCreatorBalance, err := paymentCreator.WalletBalance(ctx, createrAddr)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !big.Sub(initBalance, currentCreatorBalance).Equals(abi.NewTokenAmount(7000)) {
-		t.Fatal("did not send correct funds from creator")
-	}
-	currentReceiverBalance, err := paymentReceiver.WalletBalance(ctx, receiverAddr)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !currentReceiverBalance.Equals(abi.NewTokenAmount(7000)) {
-		t.Fatal("did not receive correct funds on receiver")
+
+	// The highest nonce voucher that the creator sent on each lane is 2000
+	totalVouchers := int64(len(lanes) * 2000)
+	// When receiver submits the tokens to the chain, creator should get a
+	// refund on the remaining balance, which is
+	// channel amount - total voucher value
+	expectedRefund := channelAmt - totalVouchers
+	delta := big.Sub(currentCreatorBalance, creatorPreCollectBalance)
+	if !delta.Equals(abi.NewTokenAmount(expectedRefund)) {
+		t.Fatalf("did not send correct funds from creator: expected %d, got %d", expectedRefund, delta)
 	}
 
 	// shut down mining
