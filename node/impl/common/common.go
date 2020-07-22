@@ -122,7 +122,7 @@ func (a *CommonAPI) Version(context.Context) (api.Version, error) {
 		Version:    build.UserVersion(),
 		APIVersion: build.APIVersion,
 
-		BlockDelay: build.BlockDelay,
+		BlockDelay: build.BlockDelaySecs,
 	}, nil
 }
 
@@ -137,6 +137,10 @@ func (a *CommonAPI) LogSetLevel(ctx context.Context, subsystem, level string) er
 func (a *CommonAPI) Shutdown(ctx context.Context) error {
 	a.ShutdownChan <- struct{}{}
 	return nil
+}
+
+func (a *CommonAPI) Closing(ctx context.Context) (<-chan struct{}, error) {
+	return make(chan struct{}), nil // relies on jsonrpc closing
 }
 
 var _ api.Common = &CommonAPI{}

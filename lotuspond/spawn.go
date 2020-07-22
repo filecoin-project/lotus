@@ -25,8 +25,8 @@ import (
 )
 
 func init() {
-	miner.SupportedProofTypes = map[abi.RegisteredProof]struct{}{
-		abi.RegisteredProof_StackedDRG2KiBSeal: {},
+	miner.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
+		abi.RegisteredSealProof_StackedDrg2KiBV1: {},
 	}
 }
 
@@ -49,7 +49,7 @@ func (api *api) Spawn() (nodeInfo, error) {
 		}
 
 		sbroot := filepath.Join(dir, "preseal")
-		genm, ki, err := seed.PreSeal(genMiner, abi.RegisteredProof_StackedDRG2KiBSeal, 0, 2, sbroot, []byte("8"), nil)
+		genm, ki, err := seed.PreSeal(genMiner, abi.RegisteredSealProof_StackedDrg2KiBV1, 0, 2, sbroot, []byte("8"), nil, false)
 		if err != nil {
 			return nodeInfo{}, xerrors.Errorf("preseal failed: %w", err)
 		}
@@ -176,10 +176,10 @@ func (api *api) SpawnStorage(fullNodeRepo string) (nodeInfo, error) {
 	}
 
 	id := atomic.AddInt32(&api.cmds, 1)
-	cmd := exec.Command("./lotus-storage-miner", initArgs...)
+	cmd := exec.Command("./lotus-miner", initArgs...)
 	cmd.Stderr = io.MultiWriter(os.Stderr, errlogfile)
 	cmd.Stdout = io.MultiWriter(os.Stdout, logfile)
-	cmd.Env = append(os.Environ(), "LOTUS_STORAGE_PATH="+dir, "LOTUS_PATH="+fullNodeRepo)
+	cmd.Env = append(os.Environ(), "LOTUS_MINER_PATH="+dir, "LOTUS_PATH="+fullNodeRepo)
 	if err := cmd.Run(); err != nil {
 		return nodeInfo{}, err
 	}
@@ -188,10 +188,10 @@ func (api *api) SpawnStorage(fullNodeRepo string) (nodeInfo, error) {
 
 	mux := newWsMux()
 
-	cmd = exec.Command("./lotus-storage-miner", "run", "--api", fmt.Sprintf("%d", 2500+id), "--nosync")
+	cmd = exec.Command("./lotus-miner", "run", "--api", fmt.Sprintf("%d", 2500+id), "--nosync")
 	cmd.Stderr = io.MultiWriter(os.Stderr, errlogfile, mux.errpw)
 	cmd.Stdout = io.MultiWriter(os.Stdout, logfile, mux.outpw)
-	cmd.Env = append(os.Environ(), "LOTUS_STORAGE_PATH="+dir, "LOTUS_PATH="+fullNodeRepo)
+	cmd.Env = append(os.Environ(), "LOTUS_MINER_PATH="+dir, "LOTUS_PATH="+fullNodeRepo)
 	if err := cmd.Start(); err != nil {
 		return nodeInfo{}, err
 	}
@@ -248,7 +248,7 @@ func (api *api) RestartNode(id int32) (nodeInfo, error) {
 
 	var cmd *exec.Cmd
 	if nd.meta.Storage {
-		cmd = exec.Command("./lotus-storage-miner", "run", "--api", fmt.Sprintf("%d", 2500+id), "--nosync")
+		cmd = exec.Command("./lotus-miner", "run", "--api", fmt.Sprintf("%d", 2500+id), "--nosync")
 	} else {
 		cmd = exec.Command("./lotus", "daemon", "--api", fmt.Sprintf("%d", 2500+id))
 	}

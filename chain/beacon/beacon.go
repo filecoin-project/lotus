@@ -2,12 +2,13 @@ package beacon
 
 import (
 	"context"
-	"time"
 
-	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 var log = logging.Logger("beacon")
@@ -17,6 +18,10 @@ type Response struct {
 	Err   error
 }
 
+// RandomBeacon represents a system that provides randomness to Lotus.
+// Other components interrogate the RandomBeacon to acquire randomness that's
+// valid for a specific chain epoch. Also to verify beacon entries that have
+// been posted on chain.
 type RandomBeacon interface {
 	Entry(context.Context, uint64) <-chan Response
 	VerifyEntry(types.BeaconEntry, types.BeaconEntry) error
@@ -48,7 +53,7 @@ func ValidateBlockValues(b RandomBeacon, h *types.BlockHeader, prevEntry types.B
 }
 
 func BeaconEntriesForBlock(ctx context.Context, beacon RandomBeacon, round abi.ChainEpoch, prev types.BeaconEntry) ([]types.BeaconEntry, error) {
-	start := time.Now()
+	start := build.Clock.Now()
 
 	maxRound := beacon.MaxBeaconRoundForEpoch(round, prev)
 	if maxRound == prev.Round {
@@ -77,7 +82,7 @@ func BeaconEntriesForBlock(ctx context.Context, beacon RandomBeacon, round abi.C
 		}
 	}
 
-	log.Debugw("fetching beacon entries", "took", time.Since(start), "numEntries", len(out))
+	log.Debugw("fetching beacon entries", "took", build.Clock.Since(start), "numEntries", len(out))
 	reverse(out)
 	return out, nil
 }

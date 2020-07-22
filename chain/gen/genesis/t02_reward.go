@@ -3,6 +3,8 @@ package genesis
 import (
 	"context"
 
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -11,11 +13,10 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 )
 
-func SetupRewardActor(bs bstore.Blockstore) (*types.Actor, error) {
+func SetupRewardActor(bs bstore.Blockstore, qaPower big.Int) (*types.Actor, error) {
 	cst := cbor.NewCborStore(bs)
 
-	st := reward.ConstructState()
-	st.LastPerEpochReward = types.FromFil(100)
+	st := reward.ConstructState(qaPower)
 
 	hcid, err := cst.Put(context.TODO(), st)
 	if err != nil {

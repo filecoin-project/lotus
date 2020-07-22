@@ -13,11 +13,13 @@ import (
 )
 
 type Common interface {
-	// Auth
+
+	// MethodGroup: Auth
+
 	AuthVerify(ctx context.Context, token string) ([]auth.Permission, error)
 	AuthNew(ctx context.Context, perms []auth.Permission) ([]byte, error)
 
-	// network
+	// MethodGroup: Net
 
 	NetConnectedness(context.Context, peer.ID) (network.Connectedness, error)
 	NetPeers(context.Context) ([]peer.AddrInfo, error)
@@ -26,6 +28,8 @@ type Common interface {
 	NetDisconnect(context.Context, peer.ID) error
 	NetFindPeer(context.Context, peer.ID) (peer.AddrInfo, error)
 	NetPubsubScores(context.Context) ([]PubsubScore, error)
+
+	// MethodGroup: Common
 
 	// ID returns peerID of libp2p node backing this API
 	ID(context.Context) (peer.ID, error)
@@ -38,6 +42,8 @@ type Common interface {
 
 	// trigger graceful shutdown
 	Shutdown(context.Context) error
+
+	Closing(context.Context) (<-chan struct{}, error)
 }
 
 // Version provides various build-time information

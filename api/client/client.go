@@ -34,7 +34,7 @@ func NewFullNodeRPC(addr string, requestHeader http.Header) (api.FullNode, jsonr
 	return &res, closer, err
 }
 
-// NewStorageMinerRPC creates a new http jsonrpc client for storage miner
+// NewStorageMinerRPC creates a new http jsonrpc client for miner
 func NewStorageMinerRPC(addr string, requestHeader http.Header) (api.StorageMiner, jsonrpc.ClientCloser, error) {
 	var res apistruct.StorageMinerStruct
 	closer, err := jsonrpc.NewMergeClient(addr, "Filecoin",

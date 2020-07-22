@@ -21,6 +21,7 @@ import (
 	"golang.org/x/xerrors"
 
 	cborutil "github.com/filecoin-project/go-cbor-util"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	incrt "github.com/filecoin-project/lotus/lib/increadtimeout"
@@ -64,6 +65,11 @@ func (bs *BlockSync) processStatus(req *BlockSyncRequest, res *BlockSyncResponse
 	}
 }
 
+// GetBlocks fetches count blocks from the network, from the provided tipset
+// *backwards*, returning as many tipsets as count.
+//
+// {hint/usage}: This is used by the Syncer during normal chain syncing and when
+// resolving forks.
 func (bs *BlockSync) GetBlocks(ctx context.Context, tsk types.TipSetKey, count int) ([]*types.TipSet, error) {
 	ctx, span := trace.StartSpan(ctx, "bsync.GetBlocks")
 	defer span.End()
@@ -80,11 +86,13 @@ func (bs *BlockSync) GetBlocks(ctx context.Context, tsk types.TipSetKey, count i
 		Options:       BSOptBlocks,
 	}
 
+	// this peerset is sorted by latency and failure counting.
 	peers := bs.getPeers()
+
 	// randomize the first few peers so we don't always pick the same peer
 	shufflePrefix(peers)
 
-	start := time.Now()
+	start := build.Clock.Now()
 	var oerr error
 
 	for _, p := range peers {
@@ -110,7 +118,7 @@ func (bs *BlockSync) GetBlocks(ctx context.Context, tsk types.TipSetKey, count i
 			if err != nil {
 				return nil, xerrors.Errorf("success response from peer failed to process: %w", err)
 			}
-			bs.syncPeers.logGlobalSuccess(time.Since(start))
+			bs.syncPeers.logGlobalSuccess(build.Clock.Since(start))
 			bs.host.ConnManager().TagPeer(p, "bsync", 25)
 			return resp, nil
 		}
@@ -190,7 +198,7 @@ func (bs *BlockSync) GetChainMessages(ctx context.Context, h *types.TipSet, coun
 	}
 
 	var err error
-	start := time.Now()
+	start := build.Clock.Now()
 
 	for _, p := range peers {
 		res, rerr := bs.sendRequestToPeer(ctx, p, req)
@@ -201,7 +209,7 @@ func (bs *BlockSync) GetChainMessages(ctx context.Context, h *types.TipSet, coun
 		}
 
 		if res.Status == StatusOK {
-			bs.syncPeers.logGlobalSuccess(time.Since(start))
+			bs.syncPeers.logGlobalSuccess(build.Clock.Since(start))
 			return res.Chain, nil
 		}
 
@@ -277,17 +285,17 @@ func (bs *BlockSync) fetchBlocksBlockSync(ctx context.Context, p peer.ID, req *B
 	ctx, span := trace.StartSpan(ctx, "blockSyncFetch")
 	defer span.End()
 
-	start := time.Now()
+	start := build.Clock.Now()
 	s, err := bs.host.NewStream(inet.WithNoDial(ctx, "should already have connection"), p, BlockSyncProtocolID)
 	if err != nil {
 		bs.RemovePeer(p)
 		return nil, xerrors.Errorf("failed to open stream to peer: %w", err)
 	}
-	_ = s.SetWriteDeadline(time.Now().Add(5 * time.Second))
+	_ = s.SetWriteDeadline(time.Now().Add(5 * time.Second)) // always use real time for socket/stream deadlines.
 
 	if err := cborutil.WriteCborRPC(s, req); err != nil {
 		_ = s.SetWriteDeadline(time.Time{})
-		bs.syncPeers.logFailure(p, time.Since(start))
+		bs.syncPeers.logFailure(p, build.Clock.Since(start))
 		return nil, err
 	}
 	_ = s.SetWriteDeadline(time.Time{})
@@ -295,7 +303,7 @@ func (bs *BlockSync) fetchBlocksBlockSync(ctx context.Context, p peer.ID, req *B
 	var res BlockSyncResponse
 	r := incrt.New(s, 50<<10, 5*time.Second)
 	if err := cborutil.ReadCborRPC(bufio.NewReader(r), &res); err != nil {
-		bs.syncPeers.logFailure(p, time.Since(start))
+		bs.syncPeers.logFailure(p, build.Clock.Since(start))
 		return nil, err
 	}
 
@@ -307,7 +315,7 @@ func (bs *BlockSync) fetchBlocksBlockSync(ctx context.Context, p peer.ID, req *B
 		)
 	}
 
-	bs.syncPeers.logSuccess(p, time.Since(start))
+	bs.syncPeers.logSuccess(p, build.Clock.Since(start))
 	return &res, nil
 }
 
@@ -356,6 +364,7 @@ func (bs *BlockSync) RemovePeer(p peer.ID) {
 	bs.syncPeers.removePeer(p)
 }
 
+// getPeers returns a preference-sorted set of peers to query.
 func (bs *BlockSync) getPeers() []peer.ID {
 	return bs.syncPeers.prefSortedPeers()
 }
@@ -467,7 +476,7 @@ func (bpt *bsPeerTracker) addPeer(p peer.ID) {
 		return
 	}
 	bpt.peers[p] = &peerStats{
-		firstSeen: time.Now(),
+		firstSeen: build.Clock.Now(),
 	}
 
 }

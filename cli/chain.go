@@ -221,6 +221,9 @@ var chainStatObjCmd = &cli.Command{
 		base := cid.Undef
 		if cctx.IsSet("base") {
 			base, err = cid.Decode(cctx.String("base"))
+			if err != nil {
+				return err
+			}
 		}
 
 		stats, err := api.ChainStatObj(ctx, obj, base)
@@ -932,7 +935,7 @@ var slashConsensusFault = &cli.Command{
 			From:     def,
 			Value:    types.NewInt(0),
 			GasPrice: types.NewInt(1),
-			GasLimit: 10000000,
+			GasLimit: 0,
 			Method:   builtin.MethodsMiner.ReportConsensusFault,
 			Params:   enc,
 		}

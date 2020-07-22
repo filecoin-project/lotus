@@ -14,8 +14,8 @@ import (
 )
 
 func init() {
-	miner.SupportedProofTypes = map[abi.RegisteredProof]struct{}{
-		abi.RegisteredProof_StackedDRG2KiBSeal: {},
+	miner.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
+		abi.RegisteredSealProof_StackedDrg2KiBV1: {},
 	}
 	power.ConsensusMinerMinPower = big.NewInt(2048)
 	verifreg.MinVerifiedDealSize = big.NewInt(256)
@@ -39,8 +39,8 @@ func testGeneration(t testing.TB, n int, msgs int, sectors int) {
 }
 
 func TestChainGeneration(t *testing.T) {
-	testGeneration(t, 10, 20, 1)
-	testGeneration(t, 10, 20, 25)
+	t.Run("10-20-1", func(t *testing.T) { testGeneration(t, 10, 20, 1) })
+	t.Run("10-20-25", func(t *testing.T) { testGeneration(t, 10, 20, 25) })
 }
 
 func BenchmarkChainGeneration(b *testing.B) {

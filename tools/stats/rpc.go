@@ -1,4 +1,4 @@
-package main
+package stats
 
 import (
 	"context"
@@ -52,7 +52,7 @@ sync_complete:
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-time.After(5 * time.Second):
+		case <-build.Clock.After(5 * time.Second):
 			state, err := napi.SyncState(ctx)
 			if err != nil {
 				return err
@@ -97,13 +97,13 @@ sync_complete:
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-time.After(5 * time.Second):
+		case <-build.Clock.After(5 * time.Second):
 			head, err := napi.ChainHead(ctx)
 			if err != nil {
 				return err
 			}
 
-			timestampDelta := time.Now().Unix() - int64(head.MinTimestamp())
+			timestampDelta := build.Clock.Now().Unix() - int64(head.MinTimestamp())
 
 			log.Infow(
 				"Waiting for reasonable head height",
@@ -114,7 +114,7 @@ sync_complete:
 			// If we get within 20 blocks of the current exected block height we
 			// consider sync complete. Block propagation is not always great but we still
 			// want to be recording stats as soon as we can
-			if timestampDelta < build.BlockDelay*20 {
+			if timestampDelta < int64(build.BlockDelaySecs)*20 {
 				return nil
 			}
 		}

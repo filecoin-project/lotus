@@ -1,6 +1,7 @@
-package main
+package stats
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -13,13 +14,22 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
+
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
+
+	cbg "github.com/whyrusleeping/cbor-gen"
 
 	_ "github.com/influxdata/influxdb1-client"
 	models "github.com/influxdata/influxdb1-client/models"
 	client "github.com/influxdata/influxdb1-client/v2"
+
+	logging "github.com/ipfs/go-log/v2"
 )
+
+var log = logging.Logger("stats")
 
 type PointList struct {
 	points []models.Point
@@ -56,7 +66,7 @@ func NewInfluxWriteQueue(ctx context.Context, influx client.Client) *InfluxWrite
 				for i := 0; i < maxRetries; i++ {
 					if err := influx.Write(batch); err != nil {
 						log.Warnw("Failed to write batch", "error", err)
-						time.Sleep(time.Second * 15)
+						build.Clock.Sleep(15 * time.Second)
 						continue
 					}
 
@@ -94,7 +104,7 @@ func InfluxNewBatch() (client.BatchPoints, error) {
 }
 
 func NewPoint(name string, value interface{}) models.Point {
-	pt, _ := models.NewPoint(name, models.Tags{}, map[string]interface{}{"value": value}, time.Now())
+	pt, _ := models.NewPoint(name, models.Tags{}, map[string]interface{}{"value": value}, build.Clock.Now())
 	return pt
 }
 
@@ -124,7 +134,7 @@ func RecordTipsetPoints(ctx context.Context, api api.FullNode, pl *PointList, ti
 		if err != nil {
 			return err
 		}
-		p := NewPoint("chain.election", 1)
+		p := NewPoint("chain.election", blockheader.ElectionProof.WinCount)
 		p.AddTag("miner", blockheader.Miner.String())
 		pl.AddPoint(p)
 
@@ -135,18 +145,49 @@ func RecordTipsetPoints(ctx context.Context, api api.FullNode, pl *PointList, ti
 	return nil
 }
 
-func RecordTipsetStatePoints(ctx context.Context, api api.FullNode, pl *PointList, tipset *types.TipSet) error {
-	pc, err := api.StatePledgeCollateral(ctx, tipset.Key())
+type apiIpldStore struct {
+	ctx context.Context
+	api api.FullNode
+}
+
+func (ht *apiIpldStore) Context() context.Context {
+	return ht.ctx
+}
+
+func (ht *apiIpldStore) Get(ctx context.Context, c cid.Cid, out interface{}) error {
+	raw, err := ht.api.ChainReadObj(ctx, c)
 	if err != nil {
 		return err
 	}
 
+	cu, ok := out.(cbg.CBORUnmarshaler)
+	if ok {
+		if err := cu.UnmarshalCBOR(bytes.NewReader(raw)); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	return fmt.Errorf("Object does not implement CBORUnmarshaler")
+}
+
+func (ht *apiIpldStore) Put(ctx context.Context, v interface{}) (cid.Cid, error) {
+	return cid.Undef, fmt.Errorf("Put is not implemented on apiIpldStore")
+}
+
+func RecordTipsetStatePoints(ctx context.Context, api api.FullNode, pl *PointList, tipset *types.TipSet) error {
 	attoFil := types.NewInt(build.FilecoinPrecision).Int
 
-	pcFil := new(big.Rat).SetFrac(pc.Int, attoFil)
-	pcFilFloat, _ := pcFil.Float64()
-	p := NewPoint("chain.pledge_collateral", pcFilFloat)
-	pl.AddPoint(p)
+	//TODO: StatePledgeCollateral API is not implemented and is commented out - re-enable this block once the API is implemented again.
+	//pc, err := api.StatePledgeCollateral(ctx, tipset.Key())
+	//if err != nil {
+	//return err
+	//}
+
+	//pcFil := new(big.Rat).SetFrac(pc.Int, attoFil)
+	//pcFilFloat, _ := pcFil.Float64()
+	//p := NewPoint("chain.pledge_collateral", pcFilFloat)
+	//pl.AddPoint(p)
 
 	netBal, err := api.WalletBalance(ctx, builtin.RewardActorAddr)
 	if err != nil {
@@ -155,27 +196,61 @@ func RecordTipsetStatePoints(ctx context.Context, api api.FullNode, pl *PointLis
 
 	netBalFil := new(big.Rat).SetFrac(netBal.Int, attoFil)
 	netBalFilFloat, _ := netBalFil.Float64()
-	p = NewPoint("network.balance", netBalFilFloat)
+	p := NewPoint("network.balance", netBalFilFloat)
 	pl.AddPoint(p)
 
-	power, err := api.StateMinerPower(ctx, address.Address{}, tipset.Key())
+	totalPower, err := api.StateMinerPower(ctx, address.Address{}, tipset.Key())
 	if err != nil {
 		return err
 	}
 
-	p = NewPoint("chain.power", power.TotalPower.QualityAdjPower.Int64())
+	p = NewPoint("chain.power", totalPower.TotalPower.QualityAdjPower.Int64())
 	pl.AddPoint(p)
 
-	miners, err := api.StateListMiners(ctx, tipset.Key())
-	for _, miner := range miners {
-		power, err := api.StateMinerPower(ctx, miner, tipset.Key())
+	powerActor, err := api.StateGetActor(ctx, builtin.StoragePowerActorAddr, tipset.Key())
+	if err != nil {
+		return err
+	}
+
+	powerRaw, err := api.ChainReadObj(ctx, powerActor.Head)
+	if err != nil {
+		return err
+	}
+
+	var powerActorState power.State
+
+	if err := powerActorState.UnmarshalCBOR(bytes.NewReader(powerRaw)); err != nil {
+		return fmt.Errorf("failed to unmarshal power actor state: %w", err)
+	}
+
+	s := &apiIpldStore{ctx, api}
+	mp, err := adt.AsMap(s, powerActorState.Claims)
+	if err != nil {
+		return err
+	}
+
+	err = mp.ForEach(nil, func(key string) error {
+		addr, err := address.NewFromBytes([]byte(key))
 		if err != nil {
 			return err
 		}
 
-		p = NewPoint("chain.miner_power", power.MinerPower.QualityAdjPower.Int64())
-		p.AddTag("miner", miner.String())
+		var claim power.Claim
+		keyerAddr := adt.AddrKey(addr)
+		mp.Get(keyerAddr, &claim)
+
+		if claim.QualityAdjPower.Int64() == 0 {
+			return nil
+		}
+
+		p = NewPoint("chain.miner_power", claim.QualityAdjPower.Int64())
+		p.AddTag("miner", addr.String())
 		pl.AddPoint(p)
+
+		return nil
+	})
+	if err != nil {
+		return err
 	}
 
 	return nil

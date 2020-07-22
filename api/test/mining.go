@@ -34,7 +34,7 @@ func (ts *testSuite) testMining(t *testing.T) {
 	require.NoError(t, err)
 	<-newHeads
 
-	err = sn[0].MineOne(ctx, func(bool) {})
+	err = sn[0].MineOne(ctx, func(bool, error) {})
 	require.NoError(t, err)
 
 	<-newHeads
@@ -62,7 +62,7 @@ func (ts *testSuite) testMiningReal(t *testing.T) {
 	require.NoError(t, err)
 	<-newHeads
 
-	err = sn[0].MineOne(ctx, func(bool) {})
+	err = sn[0].MineOne(ctx, func(bool, error) {})
 	require.NoError(t, err)
 
 	<-newHeads
@@ -71,7 +71,7 @@ func (ts *testSuite) testMiningReal(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, abi.ChainEpoch(1), h2.Height())
 
-	err = sn[0].MineOne(ctx, func(bool) {})
+	err = sn[0].MineOne(ctx, func(bool, error) {})
 	require.NoError(t, err)
 
 	<-newHeads
@@ -89,7 +89,7 @@ func TestDealMining(t *testing.T, b APIBuilder, blocktime time.Duration, carExpo
 	ctx := context.Background()
 	n, sn := b(t, 1, []StorageMiner{
 		{Full: 0, Preseal: PresealGenesis},
-		{Full: 0, Preseal: 0}, // TODO: Add support for storage miners on non-first full node
+		{Full: 0, Preseal: 0}, // TODO: Add support for miners on non-first full node
 	})
 	client := n[0].FullNode.(*impl.FullNodeAPI)
 	provider := sn[1]
@@ -126,12 +126,13 @@ func TestDealMining(t *testing.T, b APIBuilder, blocktime time.Duration, carExpo
 	minedTwo := make(chan struct{})
 
 	go func() {
+		doneMinedTwo := false
 		defer close(done)
 
 		prevExpect := 0
 		for atomic.LoadInt32(&mine) != 0 {
 			wait := make(chan int, 2)
-			mdone := func(mined bool) {
+			mdone := func(mined bool, err error) {
 				go func() {
 					n := 0
 					if mined {
@@ -153,6 +154,10 @@ func TestDealMining(t *testing.T, b APIBuilder, blocktime time.Duration, carExpo
 			expect += <-wait
 
 			time.Sleep(blocktime)
+			if expect == 0 {
+				// null block
+				continue
+			}
 
 			for {
 				n := 0
@@ -175,21 +180,21 @@ func TestDealMining(t *testing.T, b APIBuilder, blocktime time.Duration, carExpo
 				time.Sleep(blocktime)
 			}
 
-			if prevExpect == 2 && expect == 2 && minedTwo != nil {
+			if prevExpect == 2 && expect == 2 && !doneMinedTwo {
 				close(minedTwo)
-				minedTwo = nil
+				doneMinedTwo = true
 			}
 
 			prevExpect = expect
 		}
 	}()
 
-	deal := startDeal(t, ctx, provider, client, fcid)
+	deal := startDeal(t, ctx, provider, client, fcid, false)
 
 	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
 	time.Sleep(time.Second)
 
-	waitDealSealed(t, ctx, client, deal)
+	waitDealSealed(t, ctx, provider, client, deal)
 
 	<-minedTwo
 

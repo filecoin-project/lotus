@@ -18,13 +18,30 @@ const (
 )
 
 type GasCharge struct {
-	Name       string
+	Name  string
+	Extra interface{}
+
 	ComputeGas int64
 	StorageGas int64
+
+	VirtualCompute int64
+	VirtualStorage int64
 }
 
 func (g GasCharge) Total() int64 {
 	return g.ComputeGas*GasComputeMulti + g.StorageGas*GasStorageMulti
+}
+func (g GasCharge) WithVirtual(compute, storage int64) GasCharge {
+	out := g
+	out.VirtualCompute = compute
+	out.VirtualStorage = storage
+	return out
+}
+
+func (g GasCharge) WithExtra(extra interface{}) GasCharge {
+	out := g
+	out.Extra = extra
+	return out
 }
 
 func newGasCharge(name string, computeGas int64, storageGas int64) GasCharge {
@@ -48,7 +65,7 @@ type Pricelist interface {
 	OnMethodInvocation(value abi.TokenAmount, methodNum abi.MethodNum) GasCharge
 
 	// OnIpldGet returns the gas used for storing an object
-	OnIpldGet(dataSize int) GasCharge
+	OnIpldGet() GasCharge
 	// OnIpldPut returns the gas used for storing an object
 	OnIpldPut(dataSize int) GasCharge
 
@@ -59,7 +76,7 @@ type Pricelist interface {
 
 	OnVerifySignature(sigType crypto.SigType, planTextSize int) (GasCharge, error)
 	OnHashing(dataSize int) GasCharge
-	OnComputeUnsealedSectorCid(proofType abi.RegisteredProof, pieces []abi.PieceInfo) GasCharge
+	OnComputeUnsealedSectorCid(proofType abi.RegisteredSealProof, pieces []abi.PieceInfo) GasCharge
 	OnVerifySeal(info abi.SealVerifyInfo) GasCharge
 	OnVerifyPost(info abi.WindowPoStVerifyInfo) GasCharge
 	OnVerifyConsensusFault() GasCharge
@@ -67,30 +84,35 @@ type Pricelist interface {
 
 var prices = map[abi.ChainEpoch]Pricelist{
 	abi.ChainEpoch(0): &pricelistV0{
-		onChainMessageBase:        0,
-		onChainMessagePerByte:     2,
-		onChainReturnValuePerByte: 8,
-		sendBase:                  5,
-		sendTransferFunds:         5,
-		sendInvokeMethod:          10,
-		ipldGetBase:               10,
-		ipldGetPerByte:            1,
-		ipldPutBase:               20,
-		ipldPutPerByte:            2,
-		createActorBase:           40, // IPLD put + 20
-		createActorExtra:          500,
-		deleteActor:               -500, // -createActorExtra
-		// Dragons: this cost is not persistable, create a LinearCost{a,b} struct that has a `.Cost(x) -> ax + b`
-		verifySignature: map[crypto.SigType]func(int64) int64{
-			crypto.SigTypeBLS:       func(x int64) int64 { return 3*x + 2 },
-			crypto.SigTypeSecp256k1: func(x int64) int64 { return 3*x + 2 },
+		onChainMessageComputeBase:    137137,
+		onChainMessageStorageBase:    0, // TODO gas
+		onChainMessageStoragePerByte: 2, // TODO gas
+
+		onChainReturnValuePerByte: 8, // TODO gas
+
+		sendBase:                97236,
+		sendTransferFunds:       96812,
+		sendTransferOnlyPremium: 347806,
+		sendInvokeMethod:        -3110,
+
+		ipldGetBase:    417230,
+		ipldPutBase:    396100,
+		ipldPutPerByte: 2, // TODO gas
+
+		createActorCompute: 750011,
+		createActorStorage: 500,  // TODO gas
+		deleteActor:        -500, // -createActorStorage
+
+		verifySignature: map[crypto.SigType]int64{
+			crypto.SigTypeBLS:       219946580,
+			crypto.SigTypeSecp256k1: 6726720,
 		},
-		hashingBase:                  5,
-		hashingPerByte:               2,
-		computeUnsealedSectorCidBase: 100,
-		verifySealBase:               2000,
-		verifyPostBase:               700,
-		verifyConsensusFault:         10,
+
+		hashingBase:                  110685,
+		computeUnsealedSectorCidBase: 431890,
+		verifySealBase:               2000, // TODO gas , it VerifySeal syscall is not used
+		verifyPostBase:               2621447835,
+		verifyConsensusFault:         495422,
 	},
 }
 
@@ -126,30 +148,40 @@ func (ps pricedSyscalls) VerifySignature(signature crypto.Signature, signer addr
 		return err
 	}
 	ps.chargeGas(c)
+	defer ps.chargeGas(gasOnActorExec)
+
 	return ps.under.VerifySignature(signature, signer, plaintext)
 }
 
 // Hashes input data using blake2b with 256 bit output.
 func (ps pricedSyscalls) HashBlake2b(data []byte) [32]byte {
 	ps.chargeGas(ps.pl.OnHashing(len(data)))
+	defer ps.chargeGas(gasOnActorExec)
+
 	return ps.under.HashBlake2b(data)
 }
 
 // Computes an unsealed sector CID (CommD) from its constituent piece CIDs (CommPs) and sizes.
-func (ps pricedSyscalls) ComputeUnsealedSectorCID(reg abi.RegisteredProof, pieces []abi.PieceInfo) (cid.Cid, error) {
+func (ps pricedSyscalls) ComputeUnsealedSectorCID(reg abi.RegisteredSealProof, pieces []abi.PieceInfo) (cid.Cid, error) {
 	ps.chargeGas(ps.pl.OnComputeUnsealedSectorCid(reg, pieces))
+	defer ps.chargeGas(gasOnActorExec)
+
 	return ps.under.ComputeUnsealedSectorCID(reg, pieces)
 }
 
 // Verifies a sector seal proof.
 func (ps pricedSyscalls) VerifySeal(vi abi.SealVerifyInfo) error {
 	ps.chargeGas(ps.pl.OnVerifySeal(vi))
+	defer ps.chargeGas(gasOnActorExec)
+
 	return ps.under.VerifySeal(vi)
 }
 
 // Verifies a proof of spacetime.
 func (ps pricedSyscalls) VerifyPoSt(vi abi.WindowPoStVerifyInfo) error {
 	ps.chargeGas(ps.pl.OnVerifyPost(vi))
+	defer ps.chargeGas(gasOnActorExec)
+
 	return ps.under.VerifyPoSt(vi)
 }
 
@@ -165,10 +197,21 @@ func (ps pricedSyscalls) VerifyPoSt(vi abi.WindowPoStVerifyInfo) error {
 // Returns nil and an error if the headers don't prove a fault.
 func (ps pricedSyscalls) VerifyConsensusFault(h1 []byte, h2 []byte, extra []byte) (*runtime.ConsensusFault, error) {
 	ps.chargeGas(ps.pl.OnVerifyConsensusFault())
+	defer ps.chargeGas(gasOnActorExec)
+
 	return ps.under.VerifyConsensusFault(h1, h2, extra)
 }
 
 func (ps pricedSyscalls) BatchVerifySeals(inp map[address.Address][]abi.SealVerifyInfo) (map[address.Address][]bool, error) {
-	ps.chargeGas(newGasCharge("BatchVerifySeals", 0, 0)) // TODO: this is only called by the cron actor. Should we even charge gas?
+	count := int64(0)
+	for _, svis := range inp {
+		count += int64(len(svis))
+	}
+
+	gasChargeSum := newGasCharge("BatchVerifySeals", 0, 0)
+	gasChargeSum = gasChargeSum.WithExtra(count).WithVirtual(15075005*count+899741502, 0)
+	ps.chargeGas(gasChargeSum) // real gas charged by actors
+	defer ps.chargeGas(gasOnActorExec)
+
 	return ps.under.BatchVerifySeals(inp)
 }

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"io"
 	"os"
 	"reflect"
 	"sort"
@@ -23,71 +24,19 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/account"
-	"github.com/filecoin-project/specs-actors/actors/builtin/cron"
-	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	miner2 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
-	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
-	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/miner"
 )
-
-type methodMeta struct {
-	Name string
-
-	params reflect.Type
-	ret    reflect.Type
-}
-
-var methods = map[cid.Cid][]methodMeta{}
-
-func init() {
-	cidToMethods := map[cid.Cid][2]interface{}{
-		// builtin.SystemActorCodeID:        {builtin.MethodsSystem, system.Actor{} }- apparently it doesn't have methods
-		builtin.InitActorCodeID:             {builtin.MethodsInit, init_.Actor{}},
-		builtin.CronActorCodeID:             {builtin.MethodsCron, cron.Actor{}},
-		builtin.AccountActorCodeID:          {builtin.MethodsAccount, account.Actor{}},
-		builtin.StoragePowerActorCodeID:     {builtin.MethodsPower, power.Actor{}},
-		builtin.StorageMinerActorCodeID:     {builtin.MethodsMiner, miner2.Actor{}},
-		builtin.StorageMarketActorCodeID:    {builtin.MethodsMarket, market.Actor{}},
-		builtin.PaymentChannelActorCodeID:   {builtin.MethodsPaych, paych.Actor{}},
-		builtin.MultisigActorCodeID:         {builtin.MethodsMultisig, multisig.Actor{}},
-		builtin.RewardActorCodeID:           {builtin.MethodsReward, reward.Actor{}},
-		builtin.VerifiedRegistryActorCodeID: {builtin.MethodsVerifiedRegistry, verifreg.Actor{}},
-	}
-
-	for c, m := range cidToMethods {
-		rt := reflect.TypeOf(m[0])
-		nf := rt.NumField()
-
-		methods[c] = append(methods[c], methodMeta{
-			Name:   "Send",
-			params: reflect.TypeOf(new(adt.EmptyValue)),
-			ret:    reflect.TypeOf(new(adt.EmptyValue)),
-		})
-
-		exports := m[1].(abi.Invokee).Exports()
-		for i := 0; i < nf; i++ {
-			export := reflect.TypeOf(exports[i+1])
-
-			methods[c] = append(methods[c], methodMeta{
-				Name:   rt.Field(i).Name,
-				params: export.In(1),
-				ret:    export.Out(0),
-			})
-		}
-	}
-}
 
 var stateCmd = &cli.Command{
 	Name:  "state",
@@ -101,7 +50,7 @@ var stateCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		statePowerCmd,
 		stateSectorsCmd,
-		stateProvingSetCmd,
+		stateActiveSectorsCmd,
 		statePledgeCollateralCmd,
 		stateListActorsCmd,
 		stateListMinersCmd,
@@ -286,16 +235,16 @@ var stateSectorsCmd = &cli.Command{
 		}
 
 		for _, s := range sectors {
-			fmt.Printf("%d: %x\n", s.Info.Info.SectorNumber, s.Info.Info.SealedCID)
+			fmt.Printf("%d: %x\n", s.Info.SectorNumber, s.Info.SealedCID)
 		}
 
 		return nil
 	},
 }
 
-var stateProvingSetCmd = &cli.Command{
-	Name:      "proving",
-	Usage:     "Query the proving set of a miner",
+var stateActiveSectorsCmd = &cli.Command{
+	Name:      "active-sectors",
+	Usage:     "Query the active sector set of a miner",
 	ArgsUsage: "[minerAddress]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -320,13 +269,13 @@ var stateProvingSetCmd = &cli.Command{
 			return err
 		}
 
-		sectors, err := api.StateMinerProvingSet(ctx, maddr, ts.Key())
+		sectors, err := api.StateMinerActiveSectors(ctx, maddr, ts.Key())
 		if err != nil {
 			return err
 		}
 
 		for _, s := range sectors {
-			fmt.Printf("%d: %x\n", s.Info.Info.SectorNumber, s.Info.Info.SealedCID)
+			fmt.Printf("%d: %x\n", s.Info.SectorNumber, s.Info.SealedCID)
 		}
 
 		return nil
@@ -351,7 +300,7 @@ var stateReplaySetCmd = &cli.Command{
 			return fmt.Errorf("message cid was invalid: %s", err)
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		fapi, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -373,7 +322,7 @@ var stateReplaySetCmd = &cli.Command{
 			if len(tscids) > 0 {
 				var headers []*types.BlockHeader
 				for _, c := range tscids {
-					h, err := api.ChainGetBlock(ctx, c)
+					h, err := fapi.ChainGetBlock(ctx, c)
 					if err != nil {
 						return err
 					}
@@ -383,12 +332,17 @@ var stateReplaySetCmd = &cli.Command{
 
 				ts, err = types.NewTipSet(headers)
 			} else {
-				r, err := api.StateWaitMsg(ctx, mcid, build.MessageConfidence)
+				var r *api.MsgLookup
+				r, err = fapi.StateWaitMsg(ctx, mcid, build.MessageConfidence)
 				if err != nil {
 					return xerrors.Errorf("finding message in chain: %w", err)
 				}
 
-				ts, err = api.ChainGetTipSet(ctx, r.TipSet.Parents())
+				childTs, err := fapi.ChainGetTipSet(ctx, r.TipSet)
+				if err != nil {
+					return xerrors.Errorf("loading tipset: %w", err)
+				}
+				ts, err = fapi.ChainGetTipSet(ctx, childTs.Parents())
 			}
 			if err != nil {
 				return err
@@ -396,7 +350,7 @@ var stateReplaySetCmd = &cli.Command{
 
 		}
 
-		res, err := api.StateReplay(ctx, ts.Key(), mcid)
+		res, err := fapi.StateReplay(ctx, ts.Key(), mcid)
 		if err != nil {
 			return xerrors.Errorf("replay call failed: %w", err)
 		}
@@ -741,12 +695,7 @@ var stateReadStateCmd = &cli.Command{
 			return err
 		}
 
-		act, err := api.StateGetActor(ctx, addr, ts.Key())
-		if err != nil {
-			return err
-		}
-
-		as, err := api.StateReadState(ctx, act, ts.Key())
+		as, err := api.StateReadState(ctx, addr, ts.Key())
 		if err != nil {
 			return err
 		}
@@ -846,8 +795,8 @@ var stateComputeStateCmd = &cli.Command{
 	Usage: "Perform state computations",
 	Flags: []cli.Flag{
 		&cli.Uint64Flag{
-			Name:  "height",
-			Usage: "set the height to compute state at",
+			Name:  "vm-height",
+			Usage: "set the height that the vm will see",
 		},
 		&cli.BoolFlag{
 			Name:  "apply-mpool-messages",
@@ -876,7 +825,7 @@ var stateComputeStateCmd = &cli.Command{
 			return err
 		}
 
-		h := abi.ChainEpoch(cctx.Uint64("height"))
+		h := abi.ChainEpoch(cctx.Uint64("vm-height"))
 		if h == 0 {
 			if ts == nil {
 				head, err := api.ChainHead(ctx)
@@ -926,7 +875,7 @@ var stateComputeStateCmd = &cli.Command{
 				return c.Code, nil
 			}
 
-			return computeStateHTMLTempl(ts, stout, getCode)
+			return ComputeStateHTMLTempl(os.Stdout, ts, stout, getCode)
 		}
 
 		fmt.Println("computed state cid: ", stout.Root)
@@ -970,6 +919,7 @@ var compStateTemplate = `
    }
    .slow-true-false { color: #660; }
    .slow-true-true { color: #f80; }
+   .deemp { color: #444; }
    table {
     font-size: 12px;
     border-collapse: collapse;
@@ -1059,8 +1009,20 @@ var compStateMsg = `
 <summary>Gas Trace</summary>
 <table>
  <tr><th>Name</th><th>Total/Compute/Storage</th><th>Time Taken</th><th>Location</th></tr>
+ {{define "virt" -}}
+ {{- if . -}}
+ <span class="deemp">+({{.}})</span>
+ {{- end -}}
+ {{- end}}
+
+ {{define "gasC" -}}
+ <td>{{.TotalGas}}{{template "virt" .TotalVirtualGas }}/{{.ComputeGas}}{{template "virt" .VirtualComputeGas}}/{{.StorageGas}}{{template "virt" .VirtualStorageGas}}</td>
+ {{- end}}
+
  {{range .GasCharges}}
- <tr><td>{{.Name}}</td><td>{{.TotalGas}}/{{.ComputeGas}}/{{.StorageGas}}</td><td>{{.TimeTaken}}</td>
+ <tr><td>{{.Name}}{{if .Extra}}:{{.Extra}}{{end}}</td>
+ {{template "gasC" .}}
+ <td>{{.TimeTaken}}</td>
   <td>
    {{ $fImp := FirstImportant .Location }}
    {{ if $fImp }}
@@ -1097,7 +1059,10 @@ var compStateMsg = `
   </td></tr>
   {{end}}
   {{with SumGas .GasCharges}}
-  <tr class="sum"><td><b>Sum</b></td><td>{{.TotalGas}}/{{.ComputeGas}}/{{.StorageGas}}</td><td>{{.TimeTaken}}</td><td></td></tr>
+  <tr class="sum"><td><b>Sum</b></td>
+  {{template "gasC" .}}
+  <td>{{.TimeTaken}}</td>
+  <td></td></tr>
   {{end}}
 </table>
 </details>
@@ -1117,7 +1082,7 @@ type compStateHTMLIn struct {
 	Comp   *api.ComputeStateOutput
 }
 
-func computeStateHTMLTempl(ts *types.TipSet, o *api.ComputeStateOutput, getCode func(addr address.Address) (cid.Cid, error)) error {
+func ComputeStateHTMLTempl(w io.Writer, ts *types.TipSet, o *api.ComputeStateOutput, getCode func(addr address.Address) (cid.Cid, error)) error {
 	t, err := template.New("compute_state").Funcs(map[string]interface{}{
 		"GetCode":    getCode,
 		"GetMethod":  getMethod,
@@ -1150,7 +1115,7 @@ func computeStateHTMLTempl(ts *types.TipSet, o *api.ComputeStateOutput, getCode 
 		return err
 	}
 
-	return t.ExecuteTemplate(os.Stdout, "compute_state", &compStateHTMLIn{
+	return t.ExecuteTemplate(w, "compute_state", &compStateHTMLIn{
 		TipSet: ts,
 		Comp:   o,
 	})
@@ -1179,7 +1144,7 @@ func codeStr(c cid.Cid) string {
 }
 
 func getMethod(code cid.Cid, method abi.MethodNum) string {
-	return methods[code][method].Name
+	return stmgr.MethodsMap[code][method].Name
 }
 
 func toFil(f types.BigInt) types.FIL {
@@ -1200,14 +1165,17 @@ func sumGas(changes []*types.GasTrace) types.GasTrace {
 		out.TotalGas += gc.TotalGas
 		out.ComputeGas += gc.ComputeGas
 		out.StorageGas += gc.StorageGas
-		out.TimeTaken += gc.TimeTaken
+
+		out.TotalVirtualGas += gc.TotalVirtualGas
+		out.VirtualComputeGas += gc.VirtualComputeGas
+		out.VirtualStorageGas += gc.VirtualStorageGas
 	}
 
 	return out
 }
 
 func jsonParams(code cid.Cid, method abi.MethodNum, params []byte) (string, error) {
-	re := reflect.New(methods[code][method].params.Elem())
+	re := reflect.New(stmgr.MethodsMap[code][method].Params.Elem())
 	p := re.Interface().(cbg.CBORUnmarshaler)
 	if err := p.UnmarshalCBOR(bytes.NewReader(params)); err != nil {
 		return "", err
@@ -1218,7 +1186,7 @@ func jsonParams(code cid.Cid, method abi.MethodNum, params []byte) (string, erro
 }
 
 func jsonReturn(code cid.Cid, method abi.MethodNum, ret []byte) (string, error) {
-	re := reflect.New(methods[code][method].ret.Elem())
+	re := reflect.New(stmgr.MethodsMap[code][method].Ret.Elem())
 	p := re.Interface().(cbg.CBORUnmarshaler)
 	if err := p.UnmarshalCBOR(bytes.NewReader(ret)); err != nil {
 		return "", err

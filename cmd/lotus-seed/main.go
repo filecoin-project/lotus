@@ -89,6 +89,10 @@ var preSealCmd = &cli.Command{
 			Value: "",
 			Usage: "(optional) Key to use for signing / owner/worker addresses",
 		},
+		&cli.BoolFlag{
+			Name:  "fake-sectors",
+			Value: false,
+		},
 	},
 	Action: func(c *cli.Context) error {
 		sdir := c.String("sector-dir")
@@ -126,7 +130,7 @@ var preSealCmd = &cli.Command{
 			return err
 		}
 
-		gm, key, err := seed.PreSeal(maddr, rp, abi.SectorNumber(c.Uint64("sector-offset")), c.Int("num-sectors"), sbroot, []byte(c.String("ticket-preimage")), k)
+		gm, key, err := seed.PreSeal(maddr, rp, abi.SectorNumber(c.Uint64("sector-offset")), c.Int("num-sectors"), sbroot, []byte(c.String("ticket-preimage")), k, c.Bool("fake-sectors"))
 		if err != nil {
 			return err
 		}

@@ -66,13 +66,11 @@ func (fm *FundMgr) EnsureAvailable(ctx context.Context, addr, wallet address.Add
 	}
 
 	smsg, err := fm.mpool.MpoolPushMessage(ctx, &types.Message{
-		To:       builtin.StorageMarketActorAddr,
-		From:     wallet,
-		Value:    toAdd,
-		GasPrice: types.NewInt(0),
-		GasLimit: 1000000,
-		Method:   builtin.MethodsMarket.AddBalance,
-		Params:   params,
+		To:     builtin.StorageMarketActorAddr,
+		From:   wallet,
+		Value:  toAdd,
+		Method: builtin.MethodsMarket.AddBalance,
+		Params: params,
 	})
 	if err != nil {
 		return cid.Undef, err

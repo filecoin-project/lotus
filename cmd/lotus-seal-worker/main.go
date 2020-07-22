@@ -3,11 +3,14 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
 	"path/filepath"
+	"syscall"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -33,7 +36,10 @@ import (
 
 var log = logging.Logger("main")
 
-const FlagStorageRepo = "workerrepo"
+const FlagWorkerRepo = "worker-repo"
+
+// TODO remove after deprecation period
+const FlagWorkerRepoDeprecation = "workerrepo"
 
 func main() {
 	lotuslog.SetupLogLevels()
@@ -45,19 +51,23 @@ func main() {
 	}
 
 	app := &cli.App{
-		Name:    "lotus-seal-worker",
-		Usage:   "Remote storage miner worker",
+		Name:    "lotus-worker",
+		Usage:   "Remote miner worker",
 		Version: build.UserVersion(),
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:    FlagStorageRepo,
-				EnvVars: []string{"WORKER_PATH"},
+				Name:    FlagWorkerRepo,
+				Aliases: []string{FlagWorkerRepoDeprecation},
+				EnvVars: []string{"LOTUS_WORKER_PATH", "WORKER_PATH"},
 				Value:   "~/.lotusworker", // TODO: Consider XDG_DATA_HOME
+				Usage:   fmt.Sprintf("Specify worker repo path. flag %s and env WORKER_PATH are DEPRECATION, will REMOVE SOON", FlagWorkerRepoDeprecation),
 			},
 			&cli.StringFlag{
-				Name:    "storagerepo",
-				EnvVars: []string{"LOTUS_STORAGE_PATH"},
-				Value:   "~/.lotusstorage", // TODO: Consider XDG_DATA_HOME
+				Name:    "miner-repo",
+				Aliases: []string{"storagerepo"},
+				EnvVars: []string{"LOTUS_MINER_PATH", "LOTUS_STORAGE_PATH"},
+				Value:   "~/.lotusminer", // TODO: Consider XDG_DATA_HOME
+				Usage:   fmt.Sprintf("Specify miner repo path. flag storagerepo and env LOTUS_STORAGE_PATH are DEPRECATION, will REMOVE SOON"),
 			},
 			&cli.BoolFlag{
 				Name:  "enable-gpu-proving",
@@ -117,11 +127,19 @@ var runCmd = &cli.Command{
 		}
 
 		// Connect to storage-miner
-
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
-		if err != nil {
-			return xerrors.Errorf("getting miner api: %w", err)
+		var nodeApi api.StorageMiner
+		var closer func()
+		var err error
+		for {
+			nodeApi, closer, err = lcli.GetStorageMinerAPI(cctx)
+			if err == nil {
+				break
+			}
+			fmt.Printf("\r\x1b[0KConnecting to miner API... (%s)", err)
+			time.Sleep(time.Second)
+			continue
 		}
+
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 		ctx, cancel := context.WithCancel(ctx)
@@ -132,9 +150,11 @@ var runCmd = &cli.Command{
 			return err
 		}
 		if v.APIVersion != build.APIVersion {
-			return xerrors.Errorf("lotus-storage-miner API version doesn't match: local: ", api.Version{APIVersion: build.APIVersion})
+			return xerrors.Errorf("lotus-miner API version doesn't match: local: ", api.Version{APIVersion: build.APIVersion})
 		}
 		log.Infof("Remote version %s", v)
+
+		watchMinerConn(ctx, cctx, nodeApi)
 
 		// Check params
 
@@ -173,7 +193,7 @@ var runCmd = &cli.Command{
 
 		// Open repo
 
-		repoPath := cctx.String(FlagStorageRepo)
+		repoPath := cctx.String(FlagWorkerRepo)
 		r, err := repo.NewFS(repoPath)
 		if err != nil {
 			return err
@@ -223,7 +243,7 @@ var runCmd = &cli.Command{
 
 			{
 				// init datastore for r.Exists
-				_, err := lr.Datastore("/")
+				_, err := lr.Datastore("/metadata")
 				if err != nil {
 					return err
 				}
@@ -316,4 +336,43 @@ var runCmd = &cli.Command{
 
 		return srv.Serve(nl)
 	},
+}
+
+func watchMinerConn(ctx context.Context, cctx *cli.Context, nodeApi api.StorageMiner) {
+	go func() {
+		closing, err := nodeApi.Closing(ctx)
+		if err != nil {
+			log.Errorf("failed to get remote closing channel: %+v", err)
+		}
+
+		select {
+		case <-closing:
+		case <-ctx.Done():
+		}
+
+		if ctx.Err() != nil {
+			return // graceful shutdown
+		}
+
+		log.Warnf("Connection with miner node lost, restarting")
+
+		exe, err := os.Executable()
+		if err != nil {
+			log.Errorf("getting executable for auto-restart: %+v", err)
+		}
+
+		log.Sync()
+
+		// TODO: there are probably cleaner/more graceful ways to restart,
+		//  but this is good enough for now (FSM can recover from the mess this creates)
+		if err := syscall.Exec(exe, []string{exe, "run",
+			fmt.Sprintf("--address=%s", cctx.String("address")),
+			fmt.Sprintf("--no-local-storage=%t", cctx.Bool("no-local-storage")),
+			fmt.Sprintf("--precommit1=%t", cctx.Bool("precommit1")),
+			fmt.Sprintf("--precommit2=%t", cctx.Bool("precommit2")),
+			fmt.Sprintf("--commit=%t", cctx.Bool("commit")),
+		}, os.Environ()); err != nil {
+			fmt.Println(err)
+		}
+	}()
 }

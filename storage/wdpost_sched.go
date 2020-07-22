@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -24,7 +25,7 @@ type WindowPoStScheduler struct {
 	api              storageMinerApi
 	prover           storage.Prover
 	faultTracker     sectorstorage.FaultTracker
-	proofType        abi.RegisteredProof
+	proofType        abi.RegisteredPoStProof
 	partitionSectors uint64
 
 	actor  address.Address
@@ -85,7 +86,7 @@ func (s *WindowPoStScheduler) Run(ctx context.Context) {
 			if err != nil {
 				log.Errorf("ChainNotify error: %+v")
 
-				time.Sleep(10 * time.Second)
+				build.Clock.Sleep(10 * time.Second)
 				continue
 			}
 

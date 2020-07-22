@@ -37,8 +37,8 @@ import (
 )
 
 func init() {
-	miner.SupportedProofTypes = map[abi.RegisteredProof]struct{}{
-		abi.RegisteredProof_StackedDRG2KiBSeal: {},
+	miner.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
+		abi.RegisteredSealProof_StackedDrg2KiBV1: {},
 	}
 	power.ConsensusMinerMinPower = big.NewInt(2048)
 	verifreg.MinVerifiedDealSize = big.NewInt(256)
@@ -179,7 +179,7 @@ func TestForkHeightTriggers(t *testing.T) {
 		To:       builtin.InitActorAddr,
 		Method:   builtin.MethodsInit.Exec,
 		Params:   enc,
-		GasLimit: 10000,
+		GasLimit: types.TestGasLimit,
 		GasPrice: types.NewInt(0),
 	}
 	sig, err := cg.Wallet().Sign(ctx, cg.Banker(), m.Cid().Bytes())
@@ -206,7 +206,7 @@ func TestForkHeightTriggers(t *testing.T) {
 			Method:   2,
 			Params:   nil,
 			Nonce:    nonce,
-			GasLimit: 10000,
+			GasLimit: types.TestGasLimit,
 			GasPrice: types.NewInt(0),
 		}
 		nonce++

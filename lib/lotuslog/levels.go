@@ -18,4 +18,6 @@ func SetupLogLevels() {
 		_ = logging.SetLogLevel("stores", "DEBUG")
 		_ = logging.SetLogLevel("nat", "INFO")
 	}
+	// Always mute RtRefreshManager because it breaks terminals
+	_ = logging.SetLogLevel("dht/RtRefreshManager", "FATAL")
 }

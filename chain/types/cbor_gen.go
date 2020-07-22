@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
-	"github.com/ipfs/go-cid"
+	cid "github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 )
@@ -146,6 +146,8 @@ func (t *BlockHeader) MarshalCBOR(w io.Writer) error {
 }
 
 func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
+	*t = BlockHeader{}
+
 	br := cbg.GetPeeker(r)
 	scratch := make([]byte, 8)
 
@@ -470,6 +472,8 @@ func (t *Ticket) MarshalCBOR(w io.Writer) error {
 }
 
 func (t *Ticket) UnmarshalCBOR(r io.Reader) error {
+	*t = Ticket{}
+
 	br := cbg.GetPeeker(r)
 	scratch := make([]byte, 8)
 
@@ -505,7 +509,7 @@ func (t *Ticket) UnmarshalCBOR(r io.Reader) error {
 	return nil
 }
 
-var lengthBufElectionProof = []byte{129}
+var lengthBufElectionProof = []byte{130}
 
 func (t *ElectionProof) MarshalCBOR(w io.Writer) error {
 	if t == nil {
@@ -517,6 +521,17 @@ func (t *ElectionProof) MarshalCBOR(w io.Writer) error {
 	}
 
 	scratch := make([]byte, 9)
+
+	// t.WinCount (int64) (int64)
+	if t.WinCount >= 0 {
+		if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajUnsignedInt, uint64(t.WinCount)); err != nil {
+			return err
+		}
+	} else {
+		if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajNegativeInt, uint64(-t.WinCount-1)); err != nil {
+			return err
+		}
+	}
 
 	// t.VRFProof ([]uint8) (slice)
 	if len(t.VRFProof) > cbg.ByteArrayMaxLen {
@@ -534,6 +549,8 @@ func (t *ElectionProof) MarshalCBOR(w io.Writer) error {
 }
 
 func (t *ElectionProof) UnmarshalCBOR(r io.Reader) error {
+	*t = ElectionProof{}
+
 	br := cbg.GetPeeker(r)
 	scratch := make([]byte, 8)
 
@@ -545,10 +562,35 @@ func (t *ElectionProof) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 1 {
+	if extra != 2 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
+	// t.WinCount (int64) (int64)
+	{
+		maj, extra, err := cbg.CborReadHeaderBuf(br, scratch)
+		var extraI int64
+		if err != nil {
+			return err
+		}
+		switch maj {
+		case cbg.MajUnsignedInt:
+			extraI = int64(extra)
+			if extraI < 0 {
+				return fmt.Errorf("int64 positive overflow")
+			}
+		case cbg.MajNegativeInt:
+			extraI = int64(extra)
+			if extraI < 0 {
+				return fmt.Errorf("int64 negative oveflow")
+			}
+			extraI = -1 - extraI
+		default:
+			return fmt.Errorf("wrong type for int64 field: %d", maj)
+		}
+
+		t.WinCount = int64(extraI)
+	}
 	// t.VRFProof ([]uint8) (slice)
 
 	maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
@@ -652,6 +694,8 @@ func (t *Message) MarshalCBOR(w io.Writer) error {
 }
 
 func (t *Message) UnmarshalCBOR(r io.Reader) error {
+	*t = Message{}
+
 	br := cbg.GetPeeker(r)
 	scratch := make([]byte, 8)
 
@@ -825,6 +869,8 @@ func (t *SignedMessage) MarshalCBOR(w io.Writer) error {
 }
 
 func (t *SignedMessage) UnmarshalCBOR(r io.Reader) error {
+	*t = SignedMessage{}
+
 	br := cbg.GetPeeker(r)
 	scratch := make([]byte, 8)
 
@@ -890,6 +936,8 @@ func (t *MsgMeta) MarshalCBOR(w io.Writer) error {
 }
 
 func (t *MsgMeta) UnmarshalCBOR(r io.Reader) error {
+	*t = MsgMeta{}
+
 	br := cbg.GetPeeker(r)
 	scratch := make([]byte, 8)
 
@@ -971,6 +1019,8 @@ func (t *Actor) MarshalCBOR(w io.Writer) error {
 }
 
 func (t *Actor) UnmarshalCBOR(r io.Reader) error {
+	*t = Actor{}
+
 	br := cbg.GetPeeker(r)
 	scratch := make([]byte, 8)
 
@@ -1087,6 +1137,8 @@ func (t *MessageReceipt) MarshalCBOR(w io.Writer) error {
 }
 
 func (t *MessageReceipt) UnmarshalCBOR(r io.Reader) error {
+	*t = MessageReceipt{}
+
 	br := cbg.GetPeeker(r)
 	scratch := make([]byte, 8)
 
@@ -1221,6 +1273,8 @@ func (t *BlockMsg) MarshalCBOR(w io.Writer) error {
 }
 
 func (t *BlockMsg) UnmarshalCBOR(r io.Reader) error {
+	*t = BlockMsg{}
+
 	br := cbg.GetPeeker(r)
 	scratch := make([]byte, 8)
 
@@ -1371,6 +1425,8 @@ func (t *ExpTipSet) MarshalCBOR(w io.Writer) error {
 }
 
 func (t *ExpTipSet) UnmarshalCBOR(r io.Reader) error {
+	*t = ExpTipSet{}
+
 	br := cbg.GetPeeker(r)
 	scratch := make([]byte, 8)
 
@@ -1506,6 +1562,8 @@ func (t *BeaconEntry) MarshalCBOR(w io.Writer) error {
 }
 
 func (t *BeaconEntry) UnmarshalCBOR(r io.Reader) error {
+	*t = BeaconEntry{}
+
 	br := cbg.GetPeeker(r)
 	scratch := make([]byte, 8)
 

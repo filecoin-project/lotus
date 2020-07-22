@@ -253,7 +253,7 @@ func (rt *Runtime) CreateActor(codeID cid.Cid, address address.Address) {
 		rt.Abortf(exitcode.SysErrorIllegalArgument, "Actor address already exists")
 	}
 
-	rt.ChargeGas(rt.Pricelist().OnCreateActor())
+	rt.chargeGas(rt.Pricelist().OnCreateActor())
 
 	err = rt.state.SetActor(address, &types.Actor{
 		Code:    codeID,
@@ -264,10 +264,11 @@ func (rt *Runtime) CreateActor(codeID cid.Cid, address address.Address) {
 	if err != nil {
 		panic(aerrors.Fatalf("creating actor entry: %v", err))
 	}
+	_ = rt.chargeGasSafe(gasOnActorExec)
 }
 
 func (rt *Runtime) DeleteActor(addr address.Address) {
-	rt.ChargeGas(rt.Pricelist().OnDeleteActor())
+	rt.chargeGas(rt.Pricelist().OnDeleteActor())
 	act, err := rt.state.GetActor(rt.Message().Receiver())
 	if err != nil {
 		if xerrors.Is(err, types.ErrActorNotFound) {
@@ -284,10 +285,10 @@ func (rt *Runtime) DeleteActor(addr address.Address) {
 	if err := rt.state.DeleteActor(rt.Message().Receiver()); err != nil {
 		panic(aerrors.Fatalf("failed to delete actor: %s", err))
 	}
+	_ = rt.chargeGasSafe(gasOnActorExec)
 }
 
 func (rt *Runtime) Syscalls() vmr.Syscalls {
-	// TODO: Make sure this is wrapped in something that charges gas for each of the calls
 	return rt.sys
 }
 
@@ -312,7 +313,7 @@ func (rt *Runtime) Context() context.Context {
 }
 
 func (rt *Runtime) Abortf(code exitcode.ExitCode, msg string, args ...interface{}) {
-	log.Warnf("Abortf: ", fmt.Sprintf(msg, args...))
+	log.Warnf("Abortf: " + fmt.Sprintf(msg, args...))
 	panic(aerrors.NewfSkip(2, code, msg, args...))
 }
 
@@ -365,14 +366,14 @@ func (rt *Runtime) Send(to address.Address, method abi.MethodNum, m vmr.CBORMars
 			panic(err)
 		}
 		log.Warnf("vmctx send failed: to: %s, method: %d: ret: %d, err: %s", to, method, ret, err)
-		return nil, err.RetCode()
+		return &dumbWrapperType{nil}, err.RetCode()
 	}
+	_ = rt.chargeGasSafe(gasOnActorExec)
 	return &dumbWrapperType{ret}, 0
 }
 
 func (rt *Runtime) internalSend(from, to address.Address, method abi.MethodNum, value types.BigInt, params []byte) ([]byte, aerrors.ActorError) {
-
-	start := time.Now()
+	start := build.Clock.Now()
 	ctx, span := trace.StartSpan(rt.ctx, "vmc.Send")
 	defer span.End()
 	if span.IsRecordingEvents() {
@@ -408,7 +409,7 @@ func (rt *Runtime) internalSend(from, to address.Address, method abi.MethodNum, 
 	if subrt != nil {
 		rt.numActorsCreated = subrt.numActorsCreated
 	}
-	rt.executionTrace.Subcalls = append(rt.executionTrace.Subcalls, subrt.executionTrace) //&er)
+	rt.executionTrace.Subcalls = append(rt.executionTrace.Subcalls, subrt.executionTrace)
 	return ret, errSend
 }
 
@@ -496,7 +497,15 @@ func (rt *Runtime) finilizeGasTracing() {
 	}
 }
 
-func (rt *Runtime) ChargeGas(gas GasCharge) {
+// ChargeGas is spec actors function
+func (rt *Runtime) ChargeGas(name string, compute int64, virtual int64) {
+	err := rt.chargeGasInternal(newGasCharge(name, compute, 0).WithVirtual(virtual, 0), 1)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func (rt *Runtime) chargeGas(gas GasCharge) {
 	err := rt.chargeGasInternal(gas, 1)
 	if err != nil {
 		panic(err)
@@ -518,25 +527,34 @@ func (rt *Runtime) chargeGasInternal(gas GasCharge, skip int) aerrors.ActorError
 	var callers [10]uintptr
 	cout := gruntime.Callers(2+skip, callers[:])
 
-	now := time.Now()
+	now := build.Clock.Now()
 	if rt.lastGasCharge != nil {
 		rt.lastGasCharge.TimeTaken = now.Sub(rt.lastGasChargeTime)
 	}
 
 	gasTrace := types.GasTrace{
-		Name:       gas.Name,
+		Name:  gas.Name,
+		Extra: gas.Extra,
+
 		TotalGas:   toUse,
 		ComputeGas: gas.ComputeGas,
 		StorageGas: gas.StorageGas,
-		Callers:    callers[:cout],
+
+		TotalVirtualGas:   gas.VirtualCompute*GasComputeMulti + gas.VirtualStorage*GasStorageMulti,
+		VirtualComputeGas: gas.VirtualCompute,
+		VirtualStorageGas: gas.VirtualStorage,
+
+		Callers: callers[:cout],
 	}
 	rt.executionTrace.GasCharges = append(rt.executionTrace.GasCharges, &gasTrace)
 	rt.lastGasChargeTime = now
 	rt.lastGasCharge = &gasTrace
 
-	if rt.gasUsed+toUse > rt.gasAvailable {
+	// overflow safe
+	if rt.gasUsed > rt.gasAvailable-toUse {
 		rt.gasUsed = rt.gasAvailable
-		return aerrors.Newf(exitcode.SysErrOutOfGas, "not enough gas: used=%d, available=%d", rt.gasUsed, rt.gasAvailable)
+		return aerrors.Newf(exitcode.SysErrOutOfGas, "not enough gas: used=%d, available=%d",
+			rt.gasUsed, rt.gasAvailable)
 	}
 	rt.gasUsed += toUse
 	return nil
@@ -559,4 +577,17 @@ func (rt *Runtime) abortIfAlreadyValidated() {
 		rt.Abortf(exitcode.SysErrorIllegalActor, "Method must validate caller identity exactly once")
 	}
 	rt.callerValidated = true
+}
+
+func (rt *Runtime) Log(level vmr.LogLevel, msg string, args ...interface{}) {
+	switch level {
+	case vmr.DEBUG:
+		actorLog.Debugf(msg, args)
+	case vmr.INFO:
+		actorLog.Infof(msg, args)
+	case vmr.WARN:
+		actorLog.Warnf(msg, args)
+	case vmr.ERROR:
+		actorLog.Errorf(msg, args)
+	}
 }

@@ -6,10 +6,13 @@ import (
 
 	"github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
+	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
@@ -59,8 +62,15 @@ The process:
       - power.CreateMiner, set msg value to PowerBalance
       - market.AddFunds with correct value
       - market.PublishDeals for related sectors
-      - Set precommits
-      - Commit presealed sectors
+    - Set network power in the power actor to what we'll have after genesis creation
+	- Recreate reward actor state with the right power
+    - For each precommitted sector
+      - Get deal weight
+      - Calculate QA Power
+      - Remove fake power from the power actor
+      - Calculate pledge
+      - Precommit
+      - Confirm valid
 
 Data Types:
 
@@ -131,7 +141,8 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 	}
 
 	// Setup reward
-	rewact, err := SetupRewardActor(bs)
+	// RewardActor's state is overrwritten by SetupStorageMiners
+	rewact, err := SetupRewardActor(bs, big.Zero())
 	if err != nil {
 		return nil, xerrors.Errorf("setup init actor: %w", err)
 	}
@@ -189,8 +200,8 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 
 	// Create accounts
 	for id, info := range template.Accounts {
-		if info.Type != genesis.TAccount {
-			return nil, xerrors.New("unsupported account type") // TODO: msigs
+		if info.Type != genesis.TAccount && info.Type != genesis.TMultisig {
+			return nil, xerrors.New("unsupported account type")
 		}
 
 		ida, err := address.NewIDAddress(uint64(AccountStart + id))
@@ -198,24 +209,57 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 			return nil, err
 		}
 
-		var ainfo genesis.AccountMeta
-		if err := json.Unmarshal(info.Meta, &ainfo); err != nil {
-			return nil, xerrors.Errorf("unmarshaling account meta: %w", err)
+		// var newAddress address.Address
+
+		if info.Type == genesis.TAccount {
+			var ainfo genesis.AccountMeta
+			if err := json.Unmarshal(info.Meta, &ainfo); err != nil {
+				return nil, xerrors.Errorf("unmarshaling account meta: %w", err)
+			}
+			st, err := cst.Put(ctx, &account.State{Address: ainfo.Owner})
+			if err != nil {
+				return nil, err
+			}
+			err = state.SetActor(ida, &types.Actor{
+				Code:    builtin.AccountActorCodeID,
+				Balance: info.Balance,
+				Head:    st,
+			})
+			if err != nil {
+				return nil, xerrors.Errorf("setting account from actmap: %w", err)
+			}
+		} else if info.Type == genesis.TMultisig {
+			var ainfo genesis.MultisigMeta
+			if err := json.Unmarshal(info.Meta, &ainfo); err != nil {
+				return nil, xerrors.Errorf("unmarshaling account meta: %w", err)
+			}
+
+			pending, err := adt.MakeEmptyMap(adt.WrapStore(ctx, cst)).Root()
+			if err != nil {
+				return nil, xerrors.Errorf("failed to create empty map: %v", err)
+			}
+
+			st, err := cst.Put(ctx, &multisig.State{
+				Signers:               ainfo.Signers,
+				NumApprovalsThreshold: uint64(ainfo.Threshold),
+				StartEpoch:            abi.ChainEpoch(ainfo.VestingStart),
+				UnlockDuration:        abi.ChainEpoch(ainfo.VestingDuration),
+				PendingTxns:           pending,
+				InitialBalance:        info.Balance,
+			})
+			if err != nil {
+				return nil, err
+			}
+			err = state.SetActor(ida, &types.Actor{
+				Code:    builtin.MultisigActorCodeID,
+				Balance: info.Balance,
+				Head:    st,
+			})
+			if err != nil {
+				return nil, xerrors.Errorf("setting account from actmap: %w", err)
+			}
 		}
 
-		st, err := cst.Put(ctx, &account.State{Address: ainfo.Owner})
-		if err != nil {
-			return nil, err
-		}
-
-		err = state.SetActor(ida, &types.Actor{
-			Code:    builtin.AccountActorCodeID,
-			Balance: info.Balance,
-			Head:    st,
-		})
-		if err != nil {
-			return nil, xerrors.Errorf("setting account from actmap: %w", err)
-		}
 	}
 
 	vregroot, err := address.NewIDAddress(80)
@@ -281,7 +325,12 @@ func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, stateroot ci
 		}
 	}
 
-	return vm.Flush(ctx)
+	st, err := vm.Flush(ctx)
+	if err != nil {
+		return cid.Cid{}, xerrors.Errorf("vm flush: %w", err)
+	}
+
+	return st, nil
 }
 
 func MakeGenesisBlock(ctx context.Context, bs bstore.Blockstore, sys runtime.Syscalls, template genesis.Template) (*GenesisBootstrap, error) {
@@ -306,7 +355,7 @@ func MakeGenesisBlock(ctx context.Context, bs bstore.Blockstore, sys runtime.Sys
 
 	stateroot, err = SetupStorageMiners(ctx, cs, stateroot, template.Miners)
 	if err != nil {
-		return nil, xerrors.Errorf("setup storage miners failed: %w", err)
+		return nil, xerrors.Errorf("setup miners failed: %w", err)
 	}
 
 	cst := cbor.NewCborStore(bs)

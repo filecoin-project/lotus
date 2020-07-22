@@ -9,6 +9,8 @@ import (
 	"os"
 	"sync"
 
+	"github.com/filecoin-project/lotus/lib/adtutil"
+
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/minio/blake2b-simd"
 
@@ -20,6 +22,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/metrics"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/trace"
@@ -47,10 +50,20 @@ import (
 var log = logging.Logger("chainstore")
 
 var chainHeadKey = dstore.NewKey("head")
+var blockValidationCacheKeyPrefix = dstore.NewKey("blockValidation")
 
 // ReorgNotifee represents a callback that gets called upon reorgs.
 type ReorgNotifee func(rev, app []*types.TipSet) error
 
+// ChainStore is the main point of access to chain data.
+//
+// Raw chain data is stored in the Blockstore, with relevant markers (genesis,
+// latest head tipset references) being tracked in the Datastore (key-value
+// store).
+//
+// To alleviate disk access, the ChainStore has two ARC caches:
+//   1. a tipset cache
+//   2. a block => messages references cache.
 type ChainStore struct {
 	bs bstore.Blockstore
 	ds dstore.Datastore
@@ -217,6 +230,22 @@ func (cs *ChainStore) SubscribeHeadChanges(f ReorgNotifee) {
 	cs.reorgNotifeeCh <- f
 }
 
+func (cs *ChainStore) IsBlockValidated(ctx context.Context, blkid cid.Cid) (bool, error) {
+	key := blockValidationCacheKeyPrefix.Instance(blkid.String())
+
+	return cs.ds.Has(key)
+}
+
+func (cs *ChainStore) MarkBlockAsValidated(ctx context.Context, blkid cid.Cid) error {
+	key := blockValidationCacheKeyPrefix.Instance(blkid.String())
+
+	if err := cs.ds.Put(key, []byte{0}); err != nil {
+		return xerrors.Errorf("cache block validation: %w", err)
+	}
+
+	return nil
+}
+
 func (cs *ChainStore) SetGenesis(b *types.BlockHeader) error {
 	ts, err := types.NewTipSet([]*types.BlockHeader{b})
 	if err != nil {
@@ -249,6 +278,9 @@ func (cs *ChainStore) PutTipSet(ctx context.Context, ts *types.TipSet) error {
 	return nil
 }
 
+// MaybeTakeHeavierTipSet evaluates the incoming tipset and locks it in our
+// internal state as our new head, if and only if it is heavier than the current
+// head.
 func (cs *ChainStore) MaybeTakeHeavierTipSet(ctx context.Context, ts *types.TipSet) error {
 	cs.heaviestLk.Lock()
 	defer cs.heaviestLk.Unlock()
@@ -295,6 +327,14 @@ func (cs *ChainStore) reorgWorker(ctx context.Context, initialNotifees []ReorgNo
 					continue
 				}
 
+				journal.Add("sync", map[string]interface{}{
+					"op":    "headChange",
+					"from":  r.old.Key(),
+					"to":    r.new.Key(),
+					"rev":   len(revert),
+					"apply": len(apply),
+				})
+
 				// reverse the apply array
 				for i := len(apply)/2 - 1; i >= 0; i-- {
 					opp := len(apply) - 1 - i
@@ -314,6 +354,9 @@ func (cs *ChainStore) reorgWorker(ctx context.Context, initialNotifees []ReorgNo
 	return out
 }
 
+// takeHeaviestTipSet actually sets the incoming tipset as our head both in
+// memory and in the ChainStore. It also sends a notification to deliver to
+// ReorgNotifees.
 func (cs *ChainStore) takeHeaviestTipSet(ctx context.Context, ts *types.TipSet) error {
 	_, span := trace.StartSpan(ctx, "takeHeaviestTipSet")
 	defer span.End()
@@ -351,6 +394,7 @@ func (cs *ChainStore) SetHead(ts *types.TipSet) error {
 	return cs.takeHeaviestTipSet(context.TODO(), ts)
 }
 
+// Contains returns whether our BlockStore has all blocks in the supplied TipSet.
 func (cs *ChainStore) Contains(ts *types.TipSet) (bool, error) {
 	for _, c := range ts.Cids() {
 		has, err := cs.bs.Has(c)
@@ -365,6 +409,8 @@ func (cs *ChainStore) Contains(ts *types.TipSet) (bool, error) {
 	return true, nil
 }
 
+// GetBlock fetches a BlockHeader with the supplied CID. It returns
+// blockstore.ErrNotFound if the block was not found in the BlockStore.
 func (cs *ChainStore) GetBlock(c cid.Cid) (*types.BlockHeader, error) {
 	sb, err := cs.bs.Get(c)
 	if err != nil {
@@ -457,6 +503,7 @@ func (cs *ChainStore) ReorgOps(a, b *types.TipSet) ([]*types.TipSet, []*types.Ti
 	return leftChain, rightChain, nil
 }
 
+// GetHeaviestTipSet returns the current heaviest tipset known (i.e. our head).
 func (cs *ChainStore) GetHeaviestTipSet() *types.TipSet {
 	cs.heaviestLk.Lock()
 	defer cs.heaviestLk.Unlock()
@@ -613,7 +660,7 @@ func (cs *ChainStore) GetCMessage(c cid.Cid) (types.ChainMsg, error) {
 		return m, nil
 	}
 	if err != bstore.ErrNotFound {
-		log.Warn("GetCMessage: unexpected error getting unsigned message: %s", err)
+		log.Warnf("GetCMessage: unexpected error getting unsigned message: %s", err)
 	}
 
 	return cs.GetSignedMessage(c)
@@ -849,27 +896,7 @@ func (cs *ChainStore) Blockstore() bstore.Blockstore {
 }
 
 func ActorStore(ctx context.Context, bs blockstore.Blockstore) adt.Store {
-	return &astore{
-		cst: cbor.NewCborStore(bs),
-		ctx: ctx,
-	}
-}
-
-type astore struct {
-	cst cbor.IpldStore
-	ctx context.Context
-}
-
-func (a *astore) Context() context.Context {
-	return a.ctx
-}
-
-func (a *astore) Get(ctx context.Context, c cid.Cid, out interface{}) error {
-	return a.cst.Get(ctx, c, out)
-}
-
-func (a *astore) Put(ctx context.Context, v interface{}) (cid.Cid, error) {
-	return a.cst.Put(ctx, v)
+	return adtutil.NewStore(ctx, cbor.NewCborStore(bs))
 }
 
 func (cs *ChainStore) Store(ctx context.Context) adt.Store {
@@ -1001,21 +1028,25 @@ func recurseLinks(bs blockstore.Blockstore, root cid.Cid, in []cid.Cid) ([]cid.C
 		return nil, xerrors.Errorf("recurse links get (%s) failed: %w", root, err)
 	}
 
-	top, err := cbg.ScanForLinks(bytes.NewReader(data.RawData()))
+	var rerr error
+	err = cbg.ScanForLinks(bytes.NewReader(data.RawData()), func(c cid.Cid) {
+		if rerr != nil {
+			// No error return on ScanForLinks :(
+			return
+		}
+
+		in = append(in, c)
+		var err error
+		in, err = recurseLinks(bs, c, in)
+		if err != nil {
+			rerr = err
+		}
+	})
 	if err != nil {
 		return nil, xerrors.Errorf("scanning for links failed: %w", err)
 	}
 
-	in = append(in, top...)
-	for _, c := range top {
-		var err error
-		in, err = recurseLinks(bs, c, in)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return in, nil
+	return in, rerr
 }
 
 func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, w io.Writer) error {

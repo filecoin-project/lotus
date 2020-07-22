@@ -3,12 +3,13 @@ package impl
 import (
 	"context"
 	"encoding/json"
+	"github.com/filecoin-project/sector-storage/fsutil"
+	"github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
 	"net/http"
 	"os"
 	"strconv"
-
-	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
+	"time"
 
 	"github.com/filecoin-project/go-address"
 	storagemarket "github.com/filecoin-project/go-fil-markets/storagemarket"
@@ -25,6 +26,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/impl/common"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
@@ -41,6 +43,21 @@ type StorageMinerAPI struct {
 	Full            api.FullNode
 	StorageMgr      *sectorstorage.Manager `optional:"true"`
 	*stores.Index
+
+	ConsiderOnlineStorageDealsConfigFunc       dtypes.ConsiderOnlineStorageDealsConfigFunc
+	SetConsiderOnlineStorageDealsConfigFunc    dtypes.SetConsiderOnlineStorageDealsConfigFunc
+	ConsiderOnlineRetrievalDealsConfigFunc     dtypes.ConsiderOnlineRetrievalDealsConfigFunc
+	SetConsiderOnlineRetrievalDealsConfigFunc  dtypes.SetConsiderOnlineRetrievalDealsConfigFunc
+	StorageDealPieceCidBlocklistConfigFunc     dtypes.StorageDealPieceCidBlocklistConfigFunc
+	SetStorageDealPieceCidBlocklistConfigFunc  dtypes.SetStorageDealPieceCidBlocklistConfigFunc
+	ConsiderOfflineStorageDealsConfigFunc      dtypes.ConsiderOfflineStorageDealsConfigFunc
+	SetConsiderOfflineStorageDealsConfigFunc   dtypes.SetConsiderOfflineStorageDealsConfigFunc
+	ConsiderOfflineRetrievalDealsConfigFunc    dtypes.ConsiderOfflineRetrievalDealsConfigFunc
+	SetConsiderOfflineRetrievalDealsConfigFunc dtypes.SetConsiderOfflineRetrievalDealsConfigFunc
+	SetSealingDelayFunc                        dtypes.SetSealingDelayFunc
+	GetSealingDelayFunc                        dtypes.GetSealingDelayFunc
+	GetExpectedSealDurationFunc                dtypes.GetExpectedSealDurationFunc
+	SetExpectedSealDurationFunc                dtypes.SetExpectedSealDurationFunc
 }
 
 func (sm *StorageMinerAPI) ServeRemote(w http.ResponseWriter, r *http.Request) {
@@ -161,12 +178,40 @@ func (sm *StorageMinerAPI) SectorsRefs(context.Context) (map[string][]api.Sealed
 	return out, nil
 }
 
-func (sm *StorageMinerAPI) StorageStat(ctx context.Context, id stores.ID) (stores.FsStat, error) {
+func (sm *StorageMinerAPI) StorageStat(ctx context.Context, id stores.ID) (fsutil.FsStat, error) {
 	return sm.StorageMgr.FsStat(ctx, id)
+}
+
+func (sm *StorageMinerAPI) SectorStartSealing(ctx context.Context, number abi.SectorNumber) error {
+	return sm.Miner.StartPackingSector(number)
+}
+
+func (sm *StorageMinerAPI) SectorSetSealDelay(ctx context.Context, delay time.Duration) error {
+	return sm.SetSealingDelayFunc(delay)
+}
+
+func (sm *StorageMinerAPI) SectorGetSealDelay(ctx context.Context) (time.Duration, error) {
+	return sm.GetSealingDelayFunc()
+}
+
+func (sm *StorageMinerAPI) SectorSetExpectedSealDuration(ctx context.Context, delay time.Duration) error {
+	return sm.SetExpectedSealDurationFunc(delay)
+}
+
+func (sm *StorageMinerAPI) SectorGetExpectedSealDuration(ctx context.Context) (time.Duration, error) {
+	return sm.GetExpectedSealDurationFunc()
 }
 
 func (sm *StorageMinerAPI) SectorsUpdate(ctx context.Context, id abi.SectorNumber, state api.SectorState) error {
 	return sm.Miner.ForceSectorState(ctx, id, sealing.SectorState(state))
+}
+
+func (sm *StorageMinerAPI) SectorRemove(ctx context.Context, id abi.SectorNumber) error {
+	return sm.Miner.RemoveSector(ctx, id)
+}
+
+func (sm *StorageMinerAPI) SectorMarkForUpgrade(ctx context.Context, id abi.SectorNumber) error {
+	return sm.Miner.MarkForUpgrade(id)
 }
 
 func (sm *StorageMinerAPI) WorkerConnect(ctx context.Context, url string) error {
@@ -198,12 +243,61 @@ func (sm *StorageMinerAPI) MarketListIncompleteDeals(ctx context.Context) ([]sto
 	return sm.StorageProvider.ListLocalDeals()
 }
 
-func (sm *StorageMinerAPI) MarketSetPrice(ctx context.Context, p types.BigInt) error {
-	return sm.StorageProvider.AddAsk(abi.TokenAmount(p), 60*60*24*100) // lasts for 100 days?
+func (sm *StorageMinerAPI) MarketSetAsk(ctx context.Context, price types.BigInt, duration abi.ChainEpoch, minPieceSize abi.PaddedPieceSize, maxPieceSize abi.PaddedPieceSize) error {
+	options := []storagemarket.StorageAskOption{
+		storagemarket.MinPieceSize(minPieceSize),
+		storagemarket.MaxPieceSize(maxPieceSize),
+	}
+
+	return sm.StorageProvider.SetAsk(price, duration, options...)
+}
+
+func (sm *StorageMinerAPI) MarketGetAsk(ctx context.Context) (*storagemarket.SignedStorageAsk, error) {
+	return sm.StorageProvider.GetAsk(), nil
 }
 
 func (sm *StorageMinerAPI) DealsList(ctx context.Context) ([]storagemarket.StorageDeal, error) {
 	return sm.StorageProvider.ListDeals(ctx)
+}
+
+func (sm *StorageMinerAPI) DealsConsiderOnlineStorageDeals(ctx context.Context) (bool, error) {
+	return sm.ConsiderOnlineStorageDealsConfigFunc()
+}
+
+func (sm *StorageMinerAPI) DealsSetConsiderOnlineStorageDeals(ctx context.Context, b bool) error {
+	return sm.SetConsiderOnlineStorageDealsConfigFunc(b)
+}
+
+func (sm *StorageMinerAPI) DealsConsiderOnlineRetrievalDeals(ctx context.Context) (bool, error) {
+	return sm.ConsiderOnlineRetrievalDealsConfigFunc()
+}
+
+func (sm *StorageMinerAPI) DealsSetConsiderOnlineRetrievalDeals(ctx context.Context, b bool) error {
+	return sm.SetConsiderOnlineRetrievalDealsConfigFunc(b)
+}
+
+func (sm *StorageMinerAPI) DealsConsiderOfflineStorageDeals(ctx context.Context) (bool, error) {
+	return sm.ConsiderOfflineStorageDealsConfigFunc()
+}
+
+func (sm *StorageMinerAPI) DealsSetConsiderOfflineStorageDeals(ctx context.Context, b bool) error {
+	return sm.SetConsiderOfflineStorageDealsConfigFunc(b)
+}
+
+func (sm *StorageMinerAPI) DealsConsiderOfflineRetrievalDeals(ctx context.Context) (bool, error) {
+	return sm.ConsiderOfflineRetrievalDealsConfigFunc()
+}
+
+func (sm *StorageMinerAPI) DealsSetConsiderOfflineRetrievalDeals(ctx context.Context, b bool) error {
+	return sm.SetConsiderOfflineRetrievalDealsConfigFunc(b)
+}
+
+func (sm *StorageMinerAPI) DealsGetExpectedSealDurationFunc(ctx context.Context) (time.Duration, error) {
+	return sm.GetExpectedSealDurationFunc()
+}
+
+func (sm *StorageMinerAPI) DealsSetExpectedSealDurationFunc(ctx context.Context, d time.Duration) error {
+	return sm.SetExpectedSealDurationFunc(d)
 }
 
 func (sm *StorageMinerAPI) DealsImportData(ctx context.Context, deal cid.Cid, fname string) error {
@@ -214,6 +308,14 @@ func (sm *StorageMinerAPI) DealsImportData(ctx context.Context, deal cid.Cid, fn
 	defer fi.Close() //nolint:errcheck
 
 	return sm.StorageProvider.ImportDataForDeal(ctx, deal, fi)
+}
+
+func (sm *StorageMinerAPI) DealsPieceCidBlocklist(ctx context.Context) ([]cid.Cid, error) {
+	return sm.StorageDealPieceCidBlocklistConfigFunc()
+}
+
+func (sm *StorageMinerAPI) DealsSetPieceCidBlocklist(ctx context.Context, cids []cid.Cid) error {
+	return sm.SetStorageDealPieceCidBlocklistConfigFunc(cids)
 }
 
 func (sm *StorageMinerAPI) StorageAddLocal(ctx context.Context, path string) error {

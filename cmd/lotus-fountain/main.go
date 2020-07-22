@@ -4,9 +4,13 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"html/template"
+	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
+	"sort"
 	"strconv"
 	"time"
 
@@ -28,11 +32,44 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 )
 
 var log = logging.Logger("main")
 
-var sendPerRequest, _ = types.ParseFIL("50")
+var supportedSectors struct {
+	SectorSizes []struct {
+		Name    string
+		Value   uint64
+		Default bool
+	}
+}
+
+func init() {
+	for supportedSector, _ := range miner.SupportedProofTypes {
+		sectorSize, err := supportedSector.SectorSize()
+		if err != nil {
+			panic(err)
+		}
+
+		supportedSectors.SectorSizes = append(supportedSectors.SectorSizes, struct {
+			Name    string
+			Value   uint64
+			Default bool
+		}{
+			Name:    sectorSize.ShortString(),
+			Value:   uint64(sectorSize),
+			Default: false,
+		})
+
+	}
+
+	sort.Slice(supportedSectors.SectorSizes[:], func(i, j int) bool {
+		return supportedSectors.SectorSizes[i].Value < supportedSectors.SectorSizes[j].Value
+	})
+
+	supportedSectors.SectorSizes[0].Default = true
+}
 
 func main() {
 	logging.SetLogLevel("*", "INFO")
@@ -75,8 +112,18 @@ var runCmd = &cli.Command{
 		&cli.StringFlag{
 			Name: "from",
 		},
+		&cli.StringFlag{
+			Name:    "amount",
+			EnvVars: []string{"LOTUS_FOUNTAIN_AMOUNT"},
+			Value:   "50",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
+		sendPerRequest, err := types.ParseFIL(cctx.String("amount"))
+		if err != nil {
+			return err
+		}
+
 		nodeApi, closer, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -102,9 +149,10 @@ var runCmd = &cli.Command{
 		}
 
 		h := &handler{
-			ctx:  ctx,
-			api:  nodeApi,
-			from: from,
+			ctx:            ctx,
+			api:            nodeApi,
+			from:           from,
+			sendPerRequest: sendPerRequest,
 			limiter: NewLimiter(LimiterConfig{
 				TotalRate:   time.Second,
 				TotalBurst:  256,
@@ -125,6 +173,7 @@ var runCmd = &cli.Command{
 		}
 
 		http.Handle("/", http.FileServer(rice.MustFindBox("site").HTTPBox()))
+		http.HandleFunc("/miner.html", h.minerhtml)
 		http.HandleFunc("/send", h.send)
 		http.HandleFunc("/mkminer", h.mkminer)
 		http.HandleFunc("/msgwait", h.msgwait)
@@ -145,12 +194,44 @@ type handler struct {
 	ctx context.Context
 	api api.FullNode
 
-	from address.Address
+	from           address.Address
+	sendPerRequest types.FIL
 
 	limiter      *Limiter
 	minerLimiter *Limiter
 
 	defaultMinerPeer peer.ID
+}
+
+func (h *handler) minerhtml(w http.ResponseWriter, r *http.Request) {
+	f, err := rice.MustFindBox("site").Open("_miner.html")
+	if err != nil {
+		w.WriteHeader(500)
+		_, _ = w.Write([]byte(err.Error()))
+		return
+	}
+
+	tmpl, err := ioutil.ReadAll(f)
+	if err != nil {
+		w.WriteHeader(500)
+		_, _ = w.Write([]byte(err.Error()))
+		return
+	}
+
+	var executedTmpl bytes.Buffer
+
+	t, err := template.New("miner.html").Parse(string(tmpl))
+	if err := t.Execute(&executedTmpl, supportedSectors); err != nil {
+		w.WriteHeader(500)
+		_, _ = w.Write([]byte(err.Error()))
+		return
+	}
+
+	if _, err := io.Copy(w, &executedTmpl); err != nil {
+		log.Errorf("failed to write template to string %s", err)
+	}
+
+	return
 }
 
 func (h *handler) send(w http.ResponseWriter, r *http.Request) {
@@ -195,12 +276,12 @@ func (h *handler) send(w http.ResponseWriter, r *http.Request) {
 	}
 
 	smsg, err := h.api.MpoolPushMessage(h.ctx, &types.Message{
-		Value: types.BigInt(sendPerRequest),
+		Value: types.BigInt(h.sendPerRequest),
 		From:  h.from,
 		To:    to,
 
 		GasPrice: types.NewInt(0),
-		GasLimit: 10000,
+		GasLimit: 0,
 	})
 	if err != nil {
 		w.WriteHeader(400)
@@ -269,12 +350,12 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	smsg, err := h.api.MpoolPushMessage(h.ctx, &types.Message{
-		Value: types.BigInt(sendPerRequest),
+		Value: types.BigInt(h.sendPerRequest),
 		From:  h.from,
 		To:    owner,
 
 		GasPrice: types.NewInt(0),
-		GasLimit: 10000,
+		GasLimit: 0,
 	})
 	if err != nil {
 		w.WriteHeader(400)
@@ -310,7 +391,7 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 		Method: builtin.MethodsPower.CreateMiner,
 		Params: params,
 
-		GasLimit: 10000000,
+		GasLimit: 0,
 		GasPrice: types.NewInt(0),
 	}
 
@@ -343,7 +424,7 @@ func (h *handler) msgwait(w http.ResponseWriter, r *http.Request) {
 
 	if mw.Receipt.ExitCode != 0 {
 		w.WriteHeader(400)
-		w.Write([]byte(xerrors.Errorf("create storage miner failed: exit code %d", mw.Receipt.ExitCode).Error()))
+		w.Write([]byte(xerrors.Errorf("create miner failed: exit code %d", mw.Receipt.ExitCode).Error()))
 		return
 	}
 	w.WriteHeader(200)
@@ -366,7 +447,7 @@ func (h *handler) msgwaitaddr(w http.ResponseWriter, r *http.Request) {
 
 	if mw.Receipt.ExitCode != 0 {
 		w.WriteHeader(400)
-		w.Write([]byte(xerrors.Errorf("create storage miner failed: exit code %d", mw.Receipt.ExitCode).Error()))
+		w.Write([]byte(xerrors.Errorf("create miner failed: exit code %d", mw.Receipt.ExitCode).Error()))
 		return
 	}
 	w.WriteHeader(200)

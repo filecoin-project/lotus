@@ -50,12 +50,12 @@ type MinerInfo struct {
 	WorkerChangeEpoch          abi.ChainEpoch
 	PeerId                     peer.ID
 	Multiaddrs                 []abi.Multiaddrs
-	SealProofType              abi.RegisteredProof
+	SealProofType              abi.RegisteredSealProof
 	SectorSize                 abi.SectorSize
 	WindowPoStPartitionSectors uint64
 }
 
-func NewApiMinerInfo(info miner.MinerInfo) MinerInfo {
+func NewApiMinerInfo(info *miner.MinerInfo) MinerInfo {
 	mi := MinerInfo{
 		Owner:                      info.Owner,
 		Worker:                     info.Worker,

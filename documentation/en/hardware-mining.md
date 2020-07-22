@@ -1,6 +1,6 @@
 # Protocol Labs Standard Testing Configuration
 
-> This documentation page describes the standard testing configuration the Protocol Labs team has used to test **Lotus Storage Miner**s on Lotus. There is no guarantee this testing configuration will be suitable for Filecoin storage mining at MainNet launch. If you need to buy new hardware to join the Filecoin Testnet, we recommend to buy no more hardware than you require for testing. To learn more please read this [Protocol Labs Standard Testing Configuration post](https://filecoin.io/blog/filecoin-testnet-mining/).
+> This documentation page describes the standard testing configuration the Protocol Labs team has used to test **Lotus Miner**s on Lotus. There is no guarantee this testing configuration will be suitable for Filecoin storage mining at MainNet launch. If you need to buy new hardware to join the Filecoin Testnet, we recommend to buy no more hardware than you require for testing. To learn more please read this [Protocol Labs Standard Testing Configuration post](https://filecoin.io/blog/filecoin-testnet-mining/).
 
 **Sector sizes** and **minimum pledged storage** required to mine blocks are two very important Filecoin Testnet parameters that impact hardware decisions. We will continue to refine all parameters during Testnet.
 
@@ -15,6 +15,8 @@ The setup below is a minimal example for sealing 32 GiB sectors on Lotus:
 - 128 GiB of RAM
 
 Note that 1GB sectors don't require as high of specs, but are likely to be removed as we improve the performance of 32GB sector sealing.
+
+For the first part of the sealing process, AMD CPU's are __highly recommended__, because of the `Intel SHA Extensions` instruction set that is available there ever since the `Zen` microarchitecture. Hence, AMD CPU's seem to perform much better on the testnet than other CPU's. Contrary to what the name implies, this extended instruction set is not available on recent Intel desktop/server chips. 
 
 ## Testnet discoveries
 
@@ -33,7 +35,7 @@ GPUs are a must for getting **block rewards**. Here are a few that have been con
 
 ## Testing other GPUs
 
-If you want to test a GPU that is not explicitly supported, use the following global**environment variable**:
+If you want to test a GPU that is not explicitly supported, use the following global **environment variable**:
 
 ```sh
 BELLMAN_CUSTOM_GPU="<NAME>:<NUMBER_OF_CORES>"
@@ -49,4 +51,4 @@ To get the number of cores for your GPU, you will need to check your card’s sp
 
 ## Benchmarking
 
-Here is a [benchmarking tool](https://github.com/filecoin-project/lotus/tree/testnet-staging/cmd/lotus-bench) and a [GitHub issue thread](https://github.com/filecoin-project/lotus/issues/694) for those who wish to experiment with and contribute hardware setups for the **Filecoin Testnet**.
+Here is a [benchmarking tool](https://github.com/filecoin-project/lotus/tree/master/cmd/lotus-bench) and a [GitHub issue thread](https://github.com/filecoin-project/lotus/issues/694) for those who wish to experiment with and contribute hardware setups for the **Filecoin Testnet**.

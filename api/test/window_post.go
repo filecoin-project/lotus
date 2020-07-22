@@ -3,7 +3,10 @@ package test
 import (
 	"context"
 	"fmt"
+
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
+
 	"os"
 	"strings"
 	"testing"
@@ -35,30 +38,40 @@ func TestPledgeSector(t *testing.T, b APIBuilder, blocktime time.Duration, nSect
 	if err := miner.NetConnect(ctx, addrinfo); err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(time.Second)
+	build.Clock.Sleep(time.Second)
 
 	mine := true
 	done := make(chan struct{})
+	blockNotif := make(chan struct{}, 1)
 	go func() {
 		defer close(done)
 		for mine {
-			time.Sleep(blocktime)
-			if err := sn[0].MineOne(ctx, func(bool) {}); err != nil {
+			build.Clock.Sleep(blocktime)
+			if err := sn[0].MineOne(ctx, func(bool, error) {
+				select {
+				case blockNotif <- struct{}{}:
+				default:
+				}
+
+			}); err != nil {
 				t.Error(err)
 			}
 		}
 	}()
 
-	pledgeSectors(t, ctx, miner, nSectors)
+	pledgeSectors(t, ctx, miner, nSectors, blockNotif)
 
 	mine = false
 	<-done
 }
 
-func pledgeSectors(t *testing.T, ctx context.Context, miner TestStorageNode, n int) {
+func pledgeSectors(t *testing.T, ctx context.Context, miner TestStorageNode, n int, blockNotif <-chan struct{}) {
 	for i := 0; i < n; i++ {
 		err := miner.PledgeSector(ctx)
 		require.NoError(t, err)
+		if i%3 == 0 && blockNotif != nil {
+			<-blockNotif
+		}
 	}
 
 	for {
@@ -69,7 +82,7 @@ func pledgeSectors(t *testing.T, ctx context.Context, miner TestStorageNode, n i
 			break
 		}
 
-		time.Sleep(100 * time.Millisecond)
+		build.Clock.Sleep(100 * time.Millisecond)
 	}
 
 	fmt.Printf("All sectors is fsm\n")
@@ -94,7 +107,7 @@ func pledgeSectors(t *testing.T, ctx context.Context, miner TestStorageNode, n i
 			}
 		}
 
-		time.Sleep(100 * time.Millisecond)
+		build.Clock.Sleep(100 * time.Millisecond)
 		fmt.Printf("WaitSeal: %d\n", len(s))
 	}
 }
@@ -115,21 +128,21 @@ func TestWindowPost(t *testing.T, b APIBuilder, blocktime time.Duration, nSector
 	if err := miner.NetConnect(ctx, addrinfo); err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(time.Second)
+	build.Clock.Sleep(time.Second)
 
 	mine := true
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
 		for mine {
-			time.Sleep(blocktime)
-			if err := sn[0].MineOne(ctx, func(bool) {}); err != nil {
+			build.Clock.Sleep(blocktime)
+			if err := sn[0].MineOne(ctx, func(bool, error) {}); err != nil {
 				t.Error(err)
 			}
 		}
 	}()
 
-	pledgeSectors(t, ctx, miner, nSectors)
+	pledgeSectors(t, ctx, miner, nSectors, nil)
 
 	maddr, err := miner.ActorAddress(ctx)
 	require.NoError(t, err)
@@ -150,7 +163,7 @@ func TestWindowPost(t *testing.T, b APIBuilder, blocktime time.Duration, nSector
 		if head.Height()%100 == 0 {
 			fmt.Printf("@%d\n", head.Height())
 		}
-		time.Sleep(blocktime)
+		build.Clock.Sleep(blocktime)
 	}
 
 	p, err := client.StateMinerPower(ctx, maddr, types.EmptyTSK)

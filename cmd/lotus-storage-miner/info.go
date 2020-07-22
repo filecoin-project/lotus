@@ -12,6 +12,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	sealing "github.com/filecoin-project/storage-fsm"
 
 	"github.com/filecoin-project/lotus/api"
@@ -22,7 +23,7 @@ import (
 
 var infoCmd = &cli.Command{
 	Name:  "info",
-	Usage: "Print storage miner info",
+	Usage: "Print miner info",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{Name: "color"},
 	},
@@ -43,7 +44,7 @@ var infoCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		maddr, err := nodeApi.ActorAddress(ctx)
+		maddr, err := getActorAddress(ctx, nodeApi, cctx.String("actor"))
 		if err != nil {
 			return err
 		}
@@ -105,30 +106,34 @@ var infoCmd = &cli.Command{
 			return xerrors.Errorf("counting faults: %w", err)
 		}
 
-		fmt.Printf("\tCommitted: %s\n", types.SizeStr(types.BigMul(types.NewInt(secCounts.Sset), types.NewInt(uint64(mi.SectorSize)))))
+		fmt.Printf("\tCommitted: %s\n", types.SizeStr(types.BigMul(types.NewInt(secCounts.Sectors), types.NewInt(uint64(mi.SectorSize)))))
 		if nfaults == 0 {
-			fmt.Printf("\tProving: %s\n", types.SizeStr(types.BigMul(types.NewInt(secCounts.Pset), types.NewInt(uint64(mi.SectorSize)))))
+			fmt.Printf("\tProving: %s\n", types.SizeStr(types.BigMul(types.NewInt(secCounts.Active), types.NewInt(uint64(mi.SectorSize)))))
 		} else {
 			var faultyPercentage float64
-			if secCounts.Sset != 0 {
-				faultyPercentage = float64(10000*nfaults/secCounts.Sset) / 100.
+			if secCounts.Sectors != 0 {
+				faultyPercentage = float64(10000*nfaults/secCounts.Sectors) / 100.
 			}
 			fmt.Printf("\tProving: %s (%s Faulty, %.2f%%)\n",
-				types.SizeStr(types.BigMul(types.NewInt(secCounts.Pset), types.NewInt(uint64(mi.SectorSize)))),
+				types.SizeStr(types.BigMul(types.NewInt(secCounts.Sectors), types.NewInt(uint64(mi.SectorSize)))),
 				types.SizeStr(types.BigMul(types.NewInt(nfaults), types.NewInt(uint64(mi.SectorSize)))),
 				faultyPercentage)
 		}
 
-		expWinChance := float64(types.BigMul(qpercI, types.NewInt(build.BlocksPerEpoch)).Int64()) / 1000000
-		if expWinChance > 0 {
-			if expWinChance > 1 {
-				expWinChance = 1
-			}
-			winRate := time.Duration(float64(time.Second*build.BlockDelay) / expWinChance)
-			winPerDay := float64(time.Hour*24) / float64(winRate)
+		if pow.MinerPower.RawBytePower.LessThan(power.ConsensusMinerMinPower) {
+			fmt.Print("Below minimum power threshold, no blocks will be won")
+		} else {
+			expWinChance := float64(types.BigMul(qpercI, types.NewInt(build.BlocksPerEpoch)).Int64()) / 1000000
+			if expWinChance > 0 {
+				if expWinChance > 1 {
+					expWinChance = 1
+				}
+				winRate := time.Duration(float64(time.Second*time.Duration(build.BlockDelaySecs)) / expWinChance)
+				winPerDay := float64(time.Hour*24) / float64(winRate)
 
-			fmt.Print("Expected block win rate: ")
-			color.Blue("%.4f/day (every %s)", winPerDay, winRate.Truncate(time.Second))
+				fmt.Print("Expected block win rate: ")
+				color.Blue("%.4f/day (every %s)", winPerDay, winRate.Truncate(time.Second))
+			}
 		}
 
 		fmt.Println()

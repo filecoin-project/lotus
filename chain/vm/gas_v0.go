@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 )
@@ -19,8 +20,9 @@ type pricelistV0 struct {
 	// Together, these account for the cost of message propagation and validation,
 	// up to but excluding any actual processing by the VM.
 	// This is the cost a block producer burns when including an invalid message.
-	onChainMessageBase    int64
-	onChainMessagePerByte int64
+	onChainMessageComputeBase    int64
+	onChainMessageStorageBase    int64
+	onChainMessageStoragePerByte int64
 
 	// Gas cost charged to the originator of a non-nil return value produced
 	// by an on-chain message is given by:
@@ -40,15 +42,17 @@ type pricelistV0 struct {
 	// already accounted for).
 	sendTransferFunds int64
 
+	// Gsa cost charged, in addition to SendBase, if message only transfers funds.
+	sendTransferOnlyPremium int64
+
 	// Gas cost charged, in addition to SendBase, if a message invokes
 	// a method on the receiver.
 	// Accounts for the cost of loading receiver code and method dispatch.
 	sendInvokeMethod int64
 
-	// Gas cost (Base + len*PerByte) for any Get operation to the IPLD store
+	// Gas cost for any Get operation to the IPLD store
 	// in the runtime VM context.
-	ipldGetBase    int64
-	ipldGetPerByte int64
+	ipldGetBase int64
 
 	// Gas cost (Base + len*PerByte) for any Put operation to the IPLD store
 	// in the runtime VM context.
@@ -63,18 +67,17 @@ type pricelistV0 struct {
 	//
 	// Note: this costs assume that the extra will be partially or totally refunded while
 	// the base is covering for the put.
-	createActorBase  int64
-	createActorExtra int64
+	createActorCompute int64
+	createActorStorage int64
 
 	// Gas cost for deleting an actor.
 	//
 	// Note: this partially refunds the create cost to incentivise the deletion of the actors.
 	deleteActor int64
 
-	verifySignature map[crypto.SigType]func(len int64) int64
+	verifySignature map[crypto.SigType]int64
 
-	hashingBase    int64
-	hashingPerByte int64
+	hashingBase int64
 
 	computeUnsealedSectorCidBase int64
 	verifySealBase               int64
@@ -86,7 +89,8 @@ var _ Pricelist = (*pricelistV0)(nil)
 
 // OnChainMessage returns the gas used for storing a message of a given size in the chain.
 func (pl *pricelistV0) OnChainMessage(msgSize int) GasCharge {
-	return newGasCharge("OnChainMessage", 0, pl.onChainMessageBase+pl.onChainMessagePerByte*int64(msgSize))
+	return newGasCharge("OnChainMessage", pl.onChainMessageComputeBase,
+		pl.onChainMessageStorageBase+pl.onChainMessageStoragePerByte*int64(msgSize))
 }
 
 // OnChainReturnValue returns the gas used for storing the response of a message in the chain.
@@ -97,28 +101,39 @@ func (pl *pricelistV0) OnChainReturnValue(dataSize int) GasCharge {
 // OnMethodInvocation returns the gas used when invoking a method.
 func (pl *pricelistV0) OnMethodInvocation(value abi.TokenAmount, methodNum abi.MethodNum) GasCharge {
 	ret := pl.sendBase
-	if value != abi.NewTokenAmount(0) {
+	extra := ""
+
+	if big.Cmp(value, abi.NewTokenAmount(0)) != 0 {
 		ret += pl.sendTransferFunds
+		if methodNum == builtin.MethodSend {
+			// transfer only
+			ret += pl.sendTransferOnlyPremium
+		}
+		extra += "t"
 	}
+
 	if methodNum != builtin.MethodSend {
+		extra += "i"
+		// running actors is cheaper becase we hand over to actors
 		ret += pl.sendInvokeMethod
 	}
-	return newGasCharge("OnMethodInvocation", ret, 0)
+	return newGasCharge("OnMethodInvocation", ret, 0).WithExtra(extra)
 }
 
 // OnIpldGet returns the gas used for storing an object
-func (pl *pricelistV0) OnIpldGet(dataSize int) GasCharge {
-	return newGasCharge(fmt.Sprintf("OnIpldGet:%db", dataSize), pl.ipldGetBase+int64(dataSize)*pl.ipldGetPerByte, 0)
+func (pl *pricelistV0) OnIpldGet() GasCharge {
+	return newGasCharge("OnIpldGet", pl.ipldGetBase, 0)
 }
 
 // OnIpldPut returns the gas used for storing an object
 func (pl *pricelistV0) OnIpldPut(dataSize int) GasCharge {
-	return newGasCharge(fmt.Sprintf("OnIpldPut:%db", dataSize), pl.ipldPutBase, int64(dataSize)*pl.ipldPutPerByte)
+	return newGasCharge("OnIpldPut", pl.ipldPutBase, int64(dataSize)*pl.ipldPutPerByte).
+		WithExtra(dataSize)
 }
 
 // OnCreateActor returns the gas used for creating an actor
 func (pl *pricelistV0) OnCreateActor() GasCharge {
-	return newGasCharge("OnCreateActor", pl.createActorBase, pl.createActorExtra)
+	return newGasCharge("OnCreateActor", pl.createActorCompute, pl.createActorStorage)
 }
 
 // OnDeleteActor returns the gas used for deleting an actor
@@ -127,36 +142,41 @@ func (pl *pricelistV0) OnDeleteActor() GasCharge {
 }
 
 // OnVerifySignature
+
 func (pl *pricelistV0) OnVerifySignature(sigType crypto.SigType, planTextSize int) (GasCharge, error) {
-	costFn, ok := pl.verifySignature[sigType]
+	cost, ok := pl.verifySignature[sigType]
 	if !ok {
 		return GasCharge{}, fmt.Errorf("cost function for signature type %d not supported", sigType)
 	}
+
 	sigName, _ := sigType.Name()
-	return newGasCharge("OnVerifySignature/"+sigName, costFn(int64(planTextSize)), 0), nil
+	return newGasCharge("OnVerifySignature", cost, 0).
+		WithExtra(map[string]interface{}{
+			"type": sigName,
+			"size": planTextSize,
+		}), nil
 }
 
 // OnHashing
 func (pl *pricelistV0) OnHashing(dataSize int) GasCharge {
-	return newGasCharge("OnHashing", pl.hashingBase+int64(dataSize)*pl.hashingPerByte, 0)
+	return newGasCharge("OnHashing", pl.hashingBase, 0).WithExtra(dataSize)
 }
 
 // OnComputeUnsealedSectorCid
-func (pl *pricelistV0) OnComputeUnsealedSectorCid(proofType abi.RegisteredProof, pieces []abi.PieceInfo) GasCharge {
-	// TODO: this needs more cost tunning, check with @lotus
+func (pl *pricelistV0) OnComputeUnsealedSectorCid(proofType abi.RegisteredSealProof, pieces []abi.PieceInfo) GasCharge {
 	return newGasCharge("OnComputeUnsealedSectorCid", pl.computeUnsealedSectorCidBase, 0)
 }
 
 // OnVerifySeal
 func (pl *pricelistV0) OnVerifySeal(info abi.SealVerifyInfo) GasCharge {
 	// TODO: this needs more cost tunning, check with @lotus
+	// this is not used
 	return newGasCharge("OnVerifySeal", pl.verifySealBase, 0)
 }
 
 // OnVerifyPost
 func (pl *pricelistV0) OnVerifyPost(info abi.WindowPoStVerifyInfo) GasCharge {
-	// TODO: this needs more cost tunning, check with @lotus
-	return newGasCharge("OnVerifyPost", pl.verifyPostBase, 0)
+	return newGasCharge("OnVerifyPost", pl.verifyPostBase, 0).WithExtra(len(info.ChallengedSectors))
 }
 
 // OnVerifyConsensusFault
