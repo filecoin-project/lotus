@@ -433,6 +433,41 @@ func TestSyncBadTimestamp(t *testing.T) {
 	}
 }
 
+type badWpp struct{}
+
+func (wpp badWpp) GenerateCandidates(context.Context, abi.PoStRandomness, uint64) ([]uint64, error) {
+	return []uint64{1}, nil
+}
+
+func (wpp badWpp) ComputeProof(context.Context, []abi.SectorInfo, abi.PoStRandomness) ([]abi.PoStProof, error) {
+	return []abi.PoStProof{
+		abi.PoStProof{
+			PoStProof:  abi.RegisteredPoStProof_StackedDrgWinning2KiBV1,
+			ProofBytes: []byte("evil"),
+		},
+	}, nil
+}
+
+func TestSyncBadWinningPoSt(t *testing.T) {
+	H := 15
+	tu := prepSyncTest(t, H)
+
+	client := tu.addClientNode()
+
+	require.NoError(t, tu.mn.LinkAll())
+	tu.connect(client, 0)
+	tu.waitUntilSync(0, client)
+
+	base := tu.g.CurTipset
+
+	// both miners now produce invalid winning posts
+	tu.g.SetWinningPoStProver(tu.g.Miners[0], &badWpp{})
+	tu.g.SetWinningPoStProver(tu.g.Miners[1], &badWpp{})
+
+	// now ensure that new blocks are not accepted
+	tu.mineOnBlock(base, 0, nil, false, true)
+}
+
 func (tu *syncTestUtil) loadChainToNode(to int) {
 	// utility to simulate incoming blocks without miner process
 	// TODO: should call syncer directly, this won't work correctly in all cases
