@@ -212,7 +212,7 @@ func waitForMessage(ctx context.Context, t *testing.T, paymentCreator TestNode, 
 		t.Fatal(err)
 	}
 	if res.Receipt.ExitCode != 0 {
-		t.Fatal("did not successfully send %s", desc)
+		t.Fatalf("did not successfully send %s", desc)
 	}
 	fmt.Println("Confirmed", desc)
 	return res
