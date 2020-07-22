@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 )
 
-func NewStore(ctx context.Context, cst *cbor.BasicIpldStore) adt.Store {
+func NewStore(ctx context.Context, cst cbor.IpldStore) adt.Store {
 	return &store{
 		cst: cst,
 		ctx: ctx,

@@ -185,7 +185,7 @@ func (pm *Manager) checkVoucherValid(ctx context.Context, ch address.Address, sv
 
 // CheckVoucherSpendable checks if the given voucher is currently spendable
 func (pm *Manager) CheckVoucherSpendable(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (bool, error) {
-	owner, err := pm.getPaychOwner(ctx, ch)
+	recipient, err := pm.getPaychRecipient(ctx, ch)
 	if err != nil {
 		return false, err
 	}
@@ -222,7 +222,7 @@ func (pm *Manager) CheckVoucherSpendable(ctx context.Context, ch address.Address
 	}
 
 	ret, err := pm.sm.Call(ctx, &types.Message{
-		From:   owner,
+		From:   recipient,
 		To:     ch,
 		Method: builtin.MethodsPaych.UpdateChannelState,
 		Params: enc,
@@ -238,13 +238,13 @@ func (pm *Manager) CheckVoucherSpendable(ctx context.Context, ch address.Address
 	return true, nil
 }
 
-func (pm *Manager) getPaychOwner(ctx context.Context, ch address.Address) (address.Address, error) {
+func (pm *Manager) getPaychRecipient(ctx context.Context, ch address.Address) (address.Address, error) {
 	var state paych.State
 	if _, err := pm.sm.LoadActorState(ctx, ch, &state, nil); err != nil {
 		return address.Address{}, err
 	}
 
-	return state.From, nil
+	return state.To, nil
 }
 
 func (pm *Manager) AddVoucher(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, proof []byte, minDelta types.BigInt) (types.BigInt, error) {
