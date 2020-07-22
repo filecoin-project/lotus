@@ -851,6 +851,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) (er
 				"%d errors occurred:\n\t%s\n\n",
 				len(es), strings.Join(points, "\n\t"))
 		}
+		return mulErr
 	}
 
 	if err := syncer.store.MarkBlockAsValidated(ctx, b.Cid()); err != nil {
@@ -908,7 +909,7 @@ func (syncer *Syncer) VerifyWinningPoStProof(ctx context.Context, h *types.Block
 	}
 
 	if !ok {
-		log.Errorf("invalid winning post (%x; %v)", rand, sectors)
+		log.Errorf("invalid winning post (block: %s, %x; %v)", h.Cid(), rand, sectors)
 		return xerrors.Errorf("winning post was invalid")
 	}
 
