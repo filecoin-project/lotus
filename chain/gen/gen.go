@@ -361,6 +361,10 @@ func (cg *ChainGen) NextTipSet() (*MinedTipSet, error) {
 	return mts, nil
 }
 
+func (cg *ChainGen) SetWinningPoStProver(m address.Address, wpp WinningPoStProver) {
+	cg.eppProvs[m] = wpp
+}
+
 func (cg *ChainGen) NextTipSetFromMiners(base *types.TipSet, miners []address.Address) (*MinedTipSet, error) {
 	var blks []*types.FullBlock
 
