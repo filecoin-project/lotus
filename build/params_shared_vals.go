@@ -8,8 +8,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
 // /////
@@ -92,12 +90,3 @@ const VerifSigCacheSize = 32000
 // TODO: If this is gonna stay, it should move to specs-actors
 const BlockMessageLimit = 512
 const BlockGasLimit = 7_500_000_000
-
-var DrandConfig = dtypes.DrandConfig{
-	Servers: []string{
-		"https://pl-eu.testnet.drand.sh",
-		"https://pl-us.testnet.drand.sh",
-		"https://pl-sin.testnet.drand.sh",
-	},
-	ChainInfoJSON: `{"public_key":"922a2e93828ff83345bae533f5172669a26c02dc76d6bf59c80892e12ab1455c229211886f35bb56af6d5bea981024df","period":25,"genesis_time":1590445175,"hash":"84b2234fb34e835dccd048255d7ad3194b81af7d978c3bf157e3469592ae4e02","groupHash":"4dd408e5fdff9323c76a9b6f087ba8fdc5a6da907bd9217d9d10f2287d081957"}`,
-}
