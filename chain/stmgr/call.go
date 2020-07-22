@@ -86,7 +86,7 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 	return sm.CallRaw(ctx, msg, state, r, ts.Height())
 }
 
-func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, ts *types.TipSet) (*api.InvocResult, error) {
+func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs []types.ChainMsg, ts *types.TipSet) (*api.InvocResult, error) {
 	ctx, span := trace.StartSpan(ctx, "statemanager.CallWithGas")
 	defer span.End()
 
@@ -110,6 +110,13 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, ts 
 	if err != nil {
 		return nil, xerrors.Errorf("failed to set up vm: %w", err)
 	}
+	for i, m := range priorMsgs {
+		_, err := vmi.ApplyMessage(ctx, m)
+		if err != nil {
+			return nil, xerrors.Errorf("applying prior message (%d, %s): %w", i, m.Cid(), err)
+		}
+	}
+
 	fromActor, err := vmi.StateTree().GetActor(msg.From)
 	if err != nil {
 		return nil, xerrors.Errorf("call raw get actor: %s", err)

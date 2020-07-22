@@ -617,6 +617,14 @@ func (mp *MessagePool) Pending() ([]*types.SignedMessage, *types.TipSet) {
 
 	return out, mp.curTs
 }
+func (mp *MessagePool) PendingFor(a address.Address) ([]*types.SignedMessage, *types.TipSet) {
+	mp.curTsLk.Lock()
+	defer mp.curTsLk.Unlock()
+
+	mp.lk.Lock()
+	defer mp.lk.Unlock()
+	return mp.pendingFor(a), mp.curTs
+}
 
 func (mp *MessagePool) pendingFor(a address.Address) []*types.SignedMessage {
 	mset := mp.pending[a]
