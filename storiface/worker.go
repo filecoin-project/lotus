@@ -1,5 +1,12 @@
 package storiface
 
+import (
+	"time"
+
+	"github.com/filecoin-project/sector-storage/sealtasks"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+)
+
 type WorkerInfo struct {
 	Hostname string
 
@@ -23,4 +30,12 @@ type WorkerStats struct {
 	MemUsedMax uint64
 	GpuUsed    bool
 	CpuUse     uint64
+}
+
+type WorkerJob struct {
+	ID     uint64
+	Sector abi.SectorID
+	Task   sealtasks.TaskType
+
+	Start time.Time
 }

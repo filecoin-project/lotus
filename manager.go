@@ -166,7 +166,10 @@ func (m *Manager) AddWorker(ctx context.Context, w Worker) error {
 	}
 
 	m.sched.newWorkers <- &workerHandle{
-		w:         w,
+		w: w,
+		wt: &workTracker{
+			running: map[uint64]storiface.WorkerJob{},
+		},
 		info:      info,
 		preparing: &activeResources{},
 		active:    &activeResources{},
