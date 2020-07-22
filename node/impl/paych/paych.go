@@ -114,32 +114,18 @@ func (a *PaychAPI) PaychSettle(ctx context.Context, addr address.Address) (cid.C
 		return cid.Undef, err
 	}
 
-	nonce, err := a.MpoolGetNonce(ctx, ci.Control)
-	if err != nil {
-		return cid.Undef, err
-	}
-
 	msg := &types.Message{
 		To:     addr,
 		From:   ci.Control,
 		Value:  types.NewInt(0),
 		Method: builtin.MethodsPaych.Settle,
-		Nonce:  nonce,
-
-		GasLimit: 0,
-		GasPrice: types.NewInt(0),
 	}
+	smgs, err := a.MpoolPushMessage(ctx, msg)
 
-	smsg, err := a.WalletSignMessage(ctx, ci.Control, msg)
 	if err != nil {
 		return cid.Undef, err
 	}
-
-	if _, err := a.MpoolPush(ctx, smsg); err != nil {
-		return cid.Undef, err
-	}
-
-	return smsg.Cid(), nil
+	return smgs.Cid(), nil
 }
 
 func (a *PaychAPI) PaychCollect(ctx context.Context, addr address.Address) (cid.Cid, error) {
@@ -149,28 +135,15 @@ func (a *PaychAPI) PaychCollect(ctx context.Context, addr address.Address) (cid.
 		return cid.Undef, err
 	}
 
-	nonce, err := a.MpoolGetNonce(ctx, ci.Control)
-	if err != nil {
-		return cid.Undef, err
-	}
-
 	msg := &types.Message{
 		To:     addr,
 		From:   ci.Control,
 		Value:  types.NewInt(0),
 		Method: builtin.MethodsPaych.Collect,
-		Nonce:  nonce,
-
-		GasLimit: 0,
-		GasPrice: types.NewInt(0),
 	}
 
-	smsg, err := a.WalletSignMessage(ctx, ci.Control, msg)
+	smsg, err := a.MpoolPushMessage(ctx, msg)
 	if err != nil {
-		return cid.Undef, err
-	}
-
-	if _, err := a.MpoolPush(ctx, smsg); err != nil {
 		return cid.Undef, err
 	}
 
@@ -253,11 +226,6 @@ func (a *PaychAPI) PaychVoucherSubmit(ctx context.Context, ch address.Address, s
 		return cid.Undef, err
 	}
 
-	nonce, err := a.MpoolGetNonce(ctx, ci.Control)
-	if err != nil {
-		return cid.Undef, err
-	}
-
 	if sv.Extra != nil || len(sv.SecretPreimage) > 0 {
 		return cid.Undef, fmt.Errorf("cant handle more advanced payment channel stuff yet")
 	}
@@ -270,25 +238,17 @@ func (a *PaychAPI) PaychVoucherSubmit(ctx context.Context, ch address.Address, s
 	}
 
 	msg := &types.Message{
-		From:     ci.Control,
-		To:       ch,
-		Value:    types.NewInt(0),
-		Nonce:    nonce,
-		Method:   builtin.MethodsPaych.UpdateChannelState,
-		Params:   enc,
-		GasLimit: 0,
-		GasPrice: types.NewInt(0),
+		From:   ci.Control,
+		To:     ch,
+		Value:  types.NewInt(0),
+		Method: builtin.MethodsPaych.UpdateChannelState,
+		Params: enc,
 	}
 
-	smsg, err := a.WalletSignMessage(ctx, ci.Control, msg)
+	smsg, err := a.MpoolPushMessage(ctx, msg)
 	if err != nil {
 		return cid.Undef, err
 	}
 
-	if _, err := a.MpoolPush(ctx, smsg); err != nil {
-		return cid.Undef, err
-	}
-
-	// TODO: should we wait for it...?
 	return smsg.Cid(), nil
 }

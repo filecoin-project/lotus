@@ -125,7 +125,7 @@ func TestPaymentChannels(t *testing.T, b APIBuilder, blocktime time.Duration) {
 		t.Fatal(err)
 	}
 
-	res = waitForMessage(ctx, t, paymentCreator, settleMsgCid, time.Second, "settle")
+	res = waitForMessage(ctx, t, paymentCreator, settleMsgCid, time.Second*10, "settle")
 	if res.Receipt.ExitCode != 0 {
 		t.Fatal("Unable to settle payment channel")
 	}

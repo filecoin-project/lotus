@@ -552,6 +552,7 @@ func TestPaymentChannels(t *testing.T) {
 	logging.SetLogLevel("chainstore", "ERROR")
 	logging.SetLogLevel("chain", "ERROR")
 	logging.SetLogLevel("sub", "ERROR")
+	logging.SetLogLevel("pubsub", "ERROR")
 	logging.SetLogLevel("storageminer", "ERROR")
 
 	test.TestPaymentChannels(t, mockSbBuilder, 5*time.Millisecond)
