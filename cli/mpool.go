@@ -10,6 +10,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -22,6 +23,7 @@ var mpoolCmd = &cli.Command{
 		mpoolSub,
 		mpoolStat,
 		mpoolReplaceCmd,
+		mpoolFindCmd,
 	},
 }
 
@@ -306,6 +308,89 @@ var mpoolReplaceCmd = &cli.Command{
 		}
 
 		fmt.Println("new message cid: ", cid)
+		return nil
+	},
+}
+
+var mpoolFindCmd = &cli.Command{
+	Name:  "find",
+	Usage: "find a message in the mempool",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "search for messages with given 'from' address",
+		},
+		&cli.StringFlag{
+			Name:  "to",
+			Usage: "search for messages with given 'to' address",
+		},
+		&cli.Int64Flag{
+			Name:  "method",
+			Usage: "search for messages with given method",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		pending, err := api.MpoolPending(ctx, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		var toFilter, fromFilter address.Address
+		if cctx.IsSet("to") {
+			a, err := address.NewFromString(cctx.String("to"))
+			if err != nil {
+				return fmt.Errorf("'to' address was invalid: %w", err)
+			}
+
+			toFilter = a
+		}
+
+		if cctx.IsSet("from") {
+			a, err := address.NewFromString(cctx.String("from"))
+			if err != nil {
+				return fmt.Errorf("'from' address was invalid: %w", err)
+			}
+
+			fromFilter = a
+		}
+
+		var methodFilter *abi.MethodNum
+		if cctx.IsSet("method") {
+			m := abi.MethodNum(cctx.Int64("method"))
+			methodFilter = &m
+		}
+
+		var out []*types.SignedMessage
+		for _, m := range pending {
+			if toFilter != address.Undef && m.Message.To != toFilter {
+				continue
+			}
+
+			if fromFilter != address.Undef && m.Message.From != fromFilter {
+				continue
+			}
+
+			if methodFilter != nil && *methodFilter != m.Message.Method {
+				continue
+			}
+
+			out = append(out, m)
+		}
+
+		b, err := json.MarshalIndent(out, "", "  ")
+		if err != nil {
+			return err
+		}
+
+		fmt.Println(string(b))
 		return nil
 	},
 }
