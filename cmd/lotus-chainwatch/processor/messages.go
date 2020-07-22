@@ -74,7 +74,7 @@ create table if not exists receipts
 	state text not null,
 	idx int not null,
 	exit int not null,
-	gas_used int not null,
+	gas_used bigint not null,
 	return bytea,
 	constraint receipts_pk
 		primary key (msg, state)

@@ -2,6 +2,7 @@ package full
 
 import (
 	"context"
+
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 
 	"github.com/filecoin-project/go-address"
@@ -77,7 +78,7 @@ func (a *MsigAPI) MsigCreate(ctx context.Context, req uint64, addrs []address.Ad
 		Method:   builtin.MethodsInit.Exec,
 		Params:   enc,
 		GasPrice: gp,
-		GasLimit: 100_000_000,
+		GasLimit: 0,
 		Value:    val,
 	}
 
@@ -115,7 +116,7 @@ func (a *MsigAPI) MsigPropose(ctx context.Context, msig address.Address, to addr
 		Params: params,
 	})
 	if actErr != nil {
-		return cid.Undef, actErr
+		return cid.Undef, xerrors.Errorf("failed to serialize parameters: %w", actErr)
 	}
 
 	msg := &types.Message{
@@ -124,13 +125,13 @@ func (a *MsigAPI) MsigPropose(ctx context.Context, msig address.Address, to addr
 		Value:    types.NewInt(0),
 		Method:   builtin.MethodsMultisig.Propose,
 		Params:   enc,
-		GasLimit: 100_000_000,
+		GasLimit: 0,
 		GasPrice: types.NewInt(1),
 	}
 
 	smsg, err := a.MpoolAPI.MpoolPushMessage(ctx, msg)
 	if err != nil {
-		return cid.Undef, nil
+		return cid.Undef, xerrors.Errorf("failed to push message: %w", err)
 	}
 
 	return smsg.Cid(), nil
@@ -240,7 +241,7 @@ func (a *MsigAPI) msigApproveOrCancel(ctx context.Context, operation api.MsigPro
 		Value:    types.NewInt(0),
 		Method:   msigResponseMethod,
 		Params:   enc,
-		GasLimit: 100_000_000,
+		GasLimit: 0,
 		GasPrice: types.NewInt(1),
 	}
 

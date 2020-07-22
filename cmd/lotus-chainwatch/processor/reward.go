@@ -118,11 +118,8 @@ func (p *Processor) processRewardActors(ctx context.Context, rewardTips ActorTip
 				return nil, xerrors.Errorf("unmarshal state (@ %s): %w", rw.common.stateroot.String(), err)
 			}
 
-			// TODO: Resolve Actor API shift
-			//rw.baseBlockReward = rewardActorState.LastPerEpochReward
-			//rw.baselinePower = rewardActorState.BaselinePower
-			rw.baseBlockReward = big.Zero()
-			rw.baselinePower = big.Zero()
+			rw.baseBlockReward = rewardActorState.ThisEpochReward
+			rw.baselinePower = rewardActorState.ThisEpochBaselinePower
 			out = append(out, rw)
 		}
 	}

@@ -37,7 +37,7 @@ func (pm *Manager) createPaych(ctx context.Context, from, to address.Address, am
 		Value:    amt,
 		Method:   builtin.MethodsInit.Exec,
 		Params:   enc,
-		GasLimit: 100_000_000,
+		GasLimit: 0,
 		GasPrice: types.NewInt(0),
 	}
 
@@ -92,7 +92,7 @@ func (pm *Manager) addFunds(ctx context.Context, ch address.Address, from addres
 		From:     from,
 		Value:    amt,
 		Method:   0,
-		GasLimit: 100_000_000,
+		GasLimit: 0,
 		GasPrice: types.NewInt(0),
 	}
 

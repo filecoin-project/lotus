@@ -974,7 +974,7 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 			From:     maddr,
 			To:       builtin.StorageMarketActorAddr,
 			Method:   builtin.MethodsMarket.VerifyDealsForActivation,
-			GasLimit: 100_000_000,
+			GasLimit: 0,
 			GasPrice: types.NewInt(0),
 			Params:   params,
 		}, ts)

@@ -586,7 +586,7 @@ func (sm *StateManager) CirculatingSupply(ctx context.Context, ts *types.TipSet)
 
 	unsafeVM := &vm.UnsafeVM{VM: vmi}
 	rt := unsafeVM.MakeRuntime(ctx, &types.Message{
-		GasLimit: 1_000_000_000,
+		GasLimit: 100e6,
 		From:     builtin.SystemActorAddr,
 	}, builtin.SystemActorAddr, 0, 0, 0)
 
