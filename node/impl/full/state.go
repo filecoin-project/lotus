@@ -8,14 +8,12 @@ import (
 	"strconv"
 
 	cid "github.com/ipfs/go-cid"
-	"github.com/ipfs/go-hamt-ipld"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -522,30 +520,27 @@ func (a *StateAPI) StateMarketParticipants(ctx context.Context, tsk types.TipSet
 	if _, err := a.StateManager.LoadActorState(ctx, builtin.StorageMarketActorAddr, &state, ts); err != nil {
 		return nil, err
 	}
-	cst := cbor.NewCborStore(a.StateManager.ChainStore().Blockstore())
-	escrow, err := hamt.LoadNode(ctx, cst, state.EscrowTable, hamt.UseTreeBitWidth(5)) // todo: adt map
+	store := a.StateManager.ChainStore().Store(ctx)
+	escrow, err := adt.AsMap(store, state.EscrowTable)
 	if err != nil {
 		return nil, err
 	}
-	locked, err := hamt.LoadNode(ctx, cst, state.LockedTable, hamt.UseTreeBitWidth(5))
+	locked, err := adt.AsMap(store, state.LockedTable)
 	if err != nil {
 		return nil, err
 	}
 
-	err = escrow.ForEach(ctx, func(k string, val interface{}) error {
-		cv := val.(*cbg.Deferred)
+	var es, lk abi.TokenAmount
+	err = escrow.ForEach(&es, func(k string) error {
 		a, err := address.NewFromBytes([]byte(k))
 		if err != nil {
 			return err
 		}
 
-		var es abi.TokenAmount
-		if err := es.UnmarshalCBOR(bytes.NewReader(cv.Raw)); err != nil {
+		if found, err := locked.Get(adt.AddrKey(a), &lk); err != nil {
 			return err
-		}
-		var lk abi.TokenAmount
-		if err := locked.Find(ctx, k, &es); err != nil {
-			return err
+		} else if !found {
+			return fmt.Errorf("locked funds not found")
 		}
 
 		out[a.String()] = api.MarketBalance{
@@ -572,29 +567,23 @@ func (a *StateAPI) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (m
 		return nil, err
 	}
 
-	blks := cbor.NewCborStore(a.StateManager.ChainStore().Blockstore())
-	da, err := amt.LoadAMT(ctx, blks, state.Proposals)
+	store := a.StateManager.ChainStore().Store(ctx)
+	da, err := adt.AsArray(store, state.Proposals)
 	if err != nil {
 		return nil, err
 	}
 
-	sa, err := amt.LoadAMT(ctx, blks, state.States)
+	sa, err := adt.AsArray(store, state.States)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := da.ForEach(ctx, func(i uint64, v *cbg.Deferred) error {
-		var d market.DealProposal
-		if err := d.UnmarshalCBOR(bytes.NewReader(v.Raw)); err != nil {
-			return err
-		}
-
+	var d market.DealProposal
+	if err := da.ForEach(&d, func(i int64) error {
 		var s market.DealState
-		if err := sa.Get(ctx, i, &s); err != nil {
-			if _, ok := err.(*amt.ErrNotFound); !ok {
-				return xerrors.Errorf("failed to get state for deal in proposals array: %w", err)
-			}
-
+		if found, err := sa.Get(uint64(i), &s); err != nil {
+			return xerrors.Errorf("failed to get state for deal in proposals array: %w", err)
+		} else if !found {
 			s.SectorStartEpoch = -1
 		}
 		out[strconv.FormatInt(int64(i), 10)] = api.MarketDeal{
@@ -617,46 +606,50 @@ func (a *StateAPI) StateMarketStorageDeal(ctx context.Context, dealId abi.DealID
 }
 
 func (a *StateAPI) StateChangedActors(ctx context.Context, old cid.Cid, new cid.Cid) (map[string]types.Actor, error) {
-	cst := cbor.NewCborStore(a.Chain.Blockstore())
+	store := adt.WrapStore(ctx, cbor.NewCborStore(a.Chain.Blockstore()))
 
-	nh, err := hamt.LoadNode(ctx, cst, new, hamt.UseTreeBitWidth(5))
+	nh, err := adt.AsMap(store, new)
 	if err != nil {
 		return nil, err
 	}
 
-	oh, err := hamt.LoadNode(ctx, cst, old, hamt.UseTreeBitWidth(5))
+	oh, err := adt.AsMap(store, old)
 	if err != nil {
 		return nil, err
 	}
 
 	out := map[string]types.Actor{}
 
-	err = nh.ForEach(ctx, func(k string, nval interface{}) error {
-		ncval := nval.(*cbg.Deferred)
+	var (
+		ncval, ocval cbg.Deferred
+		buf          = bytes.NewReader(nil)
+	)
+	err = nh.ForEach(&ncval, func(k string) error {
 		var act types.Actor
 
-		var ocval cbg.Deferred
+		addr, err := address.NewFromBytes([]byte(k))
+		if err != nil {
+			return xerrors.Errorf("address in state tree was not valid: %w", err)
+		}
 
-		switch err := oh.Find(ctx, k, &ocval); err {
-		case nil:
-			if bytes.Equal(ocval.Raw, ncval.Raw) {
-				return nil // not changed
-			}
-			fallthrough
-		case hamt.ErrNotFound:
-			if err := act.UnmarshalCBOR(bytes.NewReader(ncval.Raw)); err != nil {
-				return err
-			}
-
-			addr, err := address.NewFromBytes([]byte(k))
-			if err != nil {
-				return xerrors.Errorf("address in state tree was not valid: %w", err)
-			}
-
-			out[addr.String()] = act
-		default:
+		found, err := oh.Get(adt.AddrKey(addr), &ocval)
+		if err != nil {
 			return err
 		}
+
+		if found && bytes.Equal(ocval.Raw, ncval.Raw) {
+			return nil // not changed
+		}
+
+		buf.Reset(ncval.Raw)
+		err = act.UnmarshalCBOR(buf)
+		buf.Reset(nil)
+
+		if err != nil {
+			return err
+		}
+
+		out[addr.String()] = act
 
 		return nil
 	})
@@ -1039,24 +1032,23 @@ func (a *StateAPI) StateVerifiedClientStatus(ctx context.Context, addr address.A
 		return nil, err
 	}
 
-	cst := cbor.NewCborStore(a.StateManager.ChainStore().Blockstore())
+	store := a.StateManager.ChainStore().Store(ctx)
 
 	var st verifreg.State
-	if err := cst.Get(ctx, act.Head, &st); err != nil {
+	if err := store.Get(ctx, act.Head, &st); err != nil {
 		return nil, err
 	}
 
-	vh, err := hamt.LoadNode(ctx, cst, st.VerifiedClients, hamt.UseTreeBitWidth(5))
+	vh, err := adt.AsMap(store, st.VerifiedClients)
 	if err != nil {
 		return nil, err
 	}
 
 	var dcap verifreg.DataCap
-	if err := vh.Find(ctx, string(addr.Bytes()), &dcap); err != nil {
-		if err == hamt.ErrNotFound {
-			return nil, nil
-		}
+	if found, err := vh.Get(adt.AddrKey(addr), &dcap); err != nil {
 		return nil, err
+	} else if !found {
+		return nil, nil
 	}
 
 	return &dcap, nil

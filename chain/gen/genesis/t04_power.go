@@ -2,11 +2,12 @@ package genesis
 
 import (
 	"context"
+
 	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
-	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
@@ -14,10 +15,8 @@ import (
 )
 
 func SetupStoragePowerActor(bs bstore.Blockstore) (*types.Actor, error) {
-	ctx := context.TODO()
-	cst := cbor.NewCborStore(bs)
-	nd := hamt.NewNode(cst, hamt.UseTreeBitWidth(5))
-	emptyhamt, err := cst.Put(ctx, nd)
+	store := adt.WrapStore(context.TODO(), cbor.NewCborStore(bs))
+	emptyhamt, err := adt.MakeEmptyMap(store).Root()
 	if err != nil {
 		return nil, err
 	}
@@ -36,7 +35,7 @@ func SetupStoragePowerActor(bs bstore.Blockstore) (*types.Actor, error) {
 		ProofValidationBatch:    nil,
 	}
 
-	stcid, err := cst.Put(ctx, sms)
+	stcid, err := store.Put(store.Context(), sms)
 	if err != nil {
 		return nil, err
 	}

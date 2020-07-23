@@ -6,11 +6,12 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/types"
@@ -26,8 +27,8 @@ func SetupInitActor(bs bstore.Blockstore, netname string, initialActors []genesi
 	ias.NextID = MinerStart
 	ias.NetworkName = netname
 
-	cst := cbor.NewCborStore(bs)
-	amap := hamt.NewNode(cst, hamt.UseTreeBitWidth(5)) // TODO: use spec adt map
+	store := adt.WrapStore(context.TODO(), cbor.NewCborStore(bs))
+	amap := adt.MakeEmptyMap(store)
 
 	for i, a := range initialActors {
 		if a.Type == genesis.TMultisig {
@@ -43,28 +44,26 @@ func SetupInitActor(bs bstore.Blockstore, netname string, initialActors []genesi
 			return nil, xerrors.Errorf("unmarshaling account meta: %w", err)
 		}
 
-		fmt.Printf("init set %s t0%d\n", ainfo.Owner, AccountStart+uint64(i))
+		fmt.Printf("init set %s t0%d\n", ainfo.Owner, AccountStart+int64(i))
 
-		if err := amap.Set(context.TODO(), string(ainfo.Owner.Bytes()), AccountStart+uint64(i)); err != nil {
+		value := cbg.CborInt(AccountStart + int64(i))
+		if err := amap.Put(adt.AddrKey(ainfo.Owner), &value); err != nil {
 			return nil, err
 		}
 	}
 
-	if err := amap.Set(context.TODO(), string(RootVerifierAddr.Bytes()), 80); err != nil {
+	value := cbg.CborInt(80)
+	if err := amap.Put(adt.AddrKey(RootVerifierAddr), &value); err != nil {
 		return nil, err
 	}
 
-	if err := amap.Flush(context.TODO()); err != nil {
-		return nil, err
-	}
-	amapcid, err := cst.Put(context.TODO(), amap)
+	amapaddr, err := amap.Root()
 	if err != nil {
 		return nil, err
 	}
+	ias.AddressMap = amapaddr
 
-	ias.AddressMap = amapcid
-
-	statecid, err := cst.Put(context.TODO(), &ias)
+	statecid, err := store.Put(store.Context(), &ias)
 	if err != nil {
 		return nil, err
 	}

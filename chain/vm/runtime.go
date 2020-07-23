@@ -20,7 +20,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
-	hamt "github.com/ipfs/go-hamt-ipld"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/trace"
@@ -464,7 +463,7 @@ func (rt *Runtime) GetBalance(a address.Address) (types.BigInt, aerrors.ActorErr
 	switch err {
 	default:
 		return types.EmptyInt, aerrors.Escalate(err, "failed to look up actor balance")
-	case hamt.ErrNotFound:
+	case types.ErrActorNotFound:
 		return types.NewInt(0), nil
 	case nil:
 		return act.Balance, nil

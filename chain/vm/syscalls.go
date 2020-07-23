@@ -16,12 +16,12 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/adtutil"
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
 )
@@ -191,7 +191,7 @@ func (ss *syscallShim) VerifyBlockSig(blk *types.BlockHeader) error {
 		return err
 	}
 
-	info, err := mas.GetInfo(adtutil.NewStore(ss.ctx, ss.cst))
+	info, err := mas.GetInfo(adt.WrapStore(ss.ctx, ss.cst))
 	if err != nil {
 		return err
 	}

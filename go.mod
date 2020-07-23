@@ -18,7 +18,6 @@ require (
 	github.com/filecoin-project/chain-validation v0.0.6-0.20200720093255-843129967fdf
 	github.com/filecoin-project/filecoin-ffi v0.30.4-0.20200716204036-cddc56607e1d
 	github.com/filecoin-project/go-address v0.0.2-0.20200504173055-8b6f2fb2b3ef
-	github.com/filecoin-project/go-amt-ipld/v2 v2.0.1-0.20200424220931-6263827e49f2
 	github.com/filecoin-project/go-bitfield v0.0.4-0.20200703174658-f4a5758051a1
 	github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
@@ -54,7 +53,7 @@ require (
 	github.com/ipfs/go-filestore v1.0.0
 	github.com/ipfs/go-fs-lock v0.0.1
 	github.com/ipfs/go-graphsync v0.0.6-0.20200715142715-e2f27c4754e6
-	github.com/ipfs/go-hamt-ipld v0.1.1-0.20200605182717-0310ad2b0b1f
+	github.com/ipfs/go-hamt-ipld v0.1.1-0.20200605182717-0310ad2b0b1f // indirect
 	github.com/ipfs/go-ipfs-blockstore v1.0.0
 	github.com/ipfs/go-ipfs-chunker v0.0.5
 	github.com/ipfs/go-ipfs-ds-help v1.0.0
