@@ -95,6 +95,7 @@ var runCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:  "address",
 			Usage: "Locally reachable address",
+			Value: "0.0.0.0",
 		},
 		&cli.BoolFlag{
 			Name:  "no-local-storage",
@@ -121,10 +122,6 @@ var runCmd = &cli.Command{
 			if err := os.Setenv("BELLMAN_NO_GPU", "true"); err != nil {
 				return xerrors.Errorf("could not set no-gpu env: %+v", err)
 			}
-		}
-
-		if cctx.String("address") == "" {
-			return xerrors.Errorf("--address flag is required")
 		}
 
 		// Connect to storage-miner
