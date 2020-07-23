@@ -21,6 +21,8 @@ var paychCmd = &cli.Command{
 		paychGetCmd,
 		paychListCmd,
 		paychVoucherCmd,
+		paychSettleCmd,
+		paychCloseCmd,
 	},
 }
 
@@ -86,6 +88,86 @@ var paychListCmd = &cli.Command{
 		for _, v := range chs {
 			fmt.Println(v.String())
 		}
+		return nil
+	},
+}
+
+var paychSettleCmd = &cli.Command{
+	Name:      "settle",
+	Usage:     "Settle a payment channel",
+	ArgsUsage: "[channelAddress]",
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() != 1 {
+			return fmt.Errorf("must pass payment channel address")
+		}
+
+		ch, err := address.NewFromString(cctx.Args().Get(0))
+		if err != nil {
+			return fmt.Errorf("failed to parse payment channel address: %s", err)
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		mcid, err := api.PaychSettle(ctx, ch)
+		if err != nil {
+			return err
+		}
+
+		mwait, err := api.StateWaitMsg(ctx, mcid, build.MessageConfidence)
+		if err != nil {
+			return nil
+		}
+		if mwait.Receipt.ExitCode != 0 {
+			return fmt.Errorf("settle message execution failed (exit code %d)", mwait.Receipt.ExitCode)
+		}
+
+		fmt.Printf("Settled channel %s\n", ch)
+		return nil
+	},
+}
+
+var paychCloseCmd = &cli.Command{
+	Name:      "collect",
+	Usage:     "Collect funds for a payment channel",
+	ArgsUsage: "[channelAddress]",
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() != 1 {
+			return fmt.Errorf("must pass payment channel address")
+		}
+
+		ch, err := address.NewFromString(cctx.Args().Get(0))
+		if err != nil {
+			return fmt.Errorf("failed to parse payment channel address: %s", err)
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		mcid, err := api.PaychCollect(ctx, ch)
+		if err != nil {
+			return err
+		}
+
+		mwait, err := api.StateWaitMsg(ctx, mcid, build.MessageConfidence)
+		if err != nil {
+			return nil
+		}
+		if mwait.Receipt.ExitCode != 0 {
+			return fmt.Errorf("collect message execution failed (exit code %d)", mwait.Receipt.ExitCode)
+		}
+
+		fmt.Printf("Collected funds for channel %s\n", ch)
 		return nil
 	},
 }
