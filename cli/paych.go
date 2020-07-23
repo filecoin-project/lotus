@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
+
 	"github.com/filecoin-project/lotus/build"
 
 	"github.com/filecoin-project/go-address"
@@ -29,22 +30,22 @@ var paychGetCmd = &cli.Command{
 	ArgsUsage: "[fromAddress toAddress amount]",
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Len() != 3 {
-			return fmt.Errorf("must pass three arguments: <from> <to> <available funds>")
+			return ShowHelp(cctx, fmt.Errorf("must pass three arguments: <from> <to> <available funds>"))
 		}
 
 		from, err := address.NewFromString(cctx.Args().Get(0))
 		if err != nil {
-			return fmt.Errorf("failed to parse from address: %s", err)
+			return ShowHelp(cctx, fmt.Errorf("failed to parse from address: %s", err))
 		}
 
 		to, err := address.NewFromString(cctx.Args().Get(1))
 		if err != nil {
-			return fmt.Errorf("failed to parse to address: %s", err)
+			return ShowHelp(cctx, fmt.Errorf("failed to parse to address: %s", err))
 		}
 
 		amt, err := types.BigFromString(cctx.Args().Get(2))
 		if err != nil {
-			return fmt.Errorf("parsing amount failed: %s", err)
+			return ShowHelp(cctx, fmt.Errorf("parsing amount failed: %s", err))
 		}
 
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -115,7 +116,7 @@ var paychVoucherCreateCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Len() != 2 {
-			return fmt.Errorf("must pass two arguments: <channel> <amount>")
+			return ShowHelp(cctx, fmt.Errorf("must pass two arguments: <channel> <amount>"))
 		}
 
 		ch, err := address.NewFromString(cctx.Args().Get(0))
@@ -159,7 +160,7 @@ var paychVoucherCheckCmd = &cli.Command{
 	ArgsUsage: "[channelAddress voucher]",
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Len() != 2 {
-			return fmt.Errorf("must pass payment channel address and voucher to validate")
+			return ShowHelp(cctx, fmt.Errorf("must pass payment channel address and voucher to validate"))
 		}
 
 		ch, err := address.NewFromString(cctx.Args().Get(0))
@@ -195,7 +196,7 @@ var paychVoucherAddCmd = &cli.Command{
 	ArgsUsage: "[channelAddress voucher]",
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Len() != 2 {
-			return fmt.Errorf("must pass payment channel address and voucher")
+			return ShowHelp(cctx, fmt.Errorf("must pass payment channel address and voucher"))
 		}
 
 		ch, err := address.NewFromString(cctx.Args().Get(0))
@@ -237,7 +238,7 @@ var paychVoucherListCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Len() != 1 {
-			return fmt.Errorf("must pass payment channel address")
+			return ShowHelp(cctx, fmt.Errorf("must pass payment channel address"))
 		}
 
 		ch, err := address.NewFromString(cctx.Args().Get(0))
@@ -281,7 +282,7 @@ var paychVoucherBestSpendableCmd = &cli.Command{
 	ArgsUsage: "[channelAddress]",
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Len() != 1 {
-			return fmt.Errorf("must pass payment channel address")
+			return ShowHelp(cctx, fmt.Errorf("must pass payment channel address"))
 		}
 
 		ch, err := address.NewFromString(cctx.Args().Get(0))
@@ -336,7 +337,7 @@ var paychVoucherSubmitCmd = &cli.Command{
 	ArgsUsage: "[channelAddress voucher]",
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Len() != 2 {
-			return fmt.Errorf("must pass payment channel address and voucher")
+			return ShowHelp(cctx, fmt.Errorf("must pass payment channel address and voucher"))
 		}
 
 		ch, err := address.NewFromString(cctx.Args().Get(0))
