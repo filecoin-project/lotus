@@ -67,7 +67,11 @@ type FullNode interface {
 
 	// ChainHasObj checks if a given CID exists in the chain blockstore.
 	ChainHasObj(context.Context, cid.Cid) (bool, error)
-	ChainStatObj(context.Context, cid.Cid, cid.Cid) (ObjStat, error)
+
+	// ChainStatObj returns statistics about the graph referenced by 'obj'.
+	// If 'base' is also specified, then the returned stat will be a diff
+	// between the two objects.
+	ChainStatObj(ctx context.Context, obj cid.Cid, base cid.Cid) (ObjStat, error)
 
 	// ChainSetHead forcefully sets current chain head. Use with caution.
 	ChainSetHead(context.Context, types.TipSetKey) error
