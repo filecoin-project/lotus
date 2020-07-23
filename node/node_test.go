@@ -546,3 +546,14 @@ func TestCCUpgrade(t *testing.T) {
 
 	test.TestCCUpgrade(t, mockSbBuilder, 5*time.Millisecond)
 }
+
+func TestPaymentChannels(t *testing.T) {
+	logging.SetLogLevel("miner", "ERROR")
+	logging.SetLogLevel("chainstore", "ERROR")
+	logging.SetLogLevel("chain", "ERROR")
+	logging.SetLogLevel("sub", "ERROR")
+	logging.SetLogLevel("pubsub", "ERROR")
+	logging.SetLogLevel("storageminer", "ERROR")
+
+	test.TestPaymentChannels(t, mockSbBuilder, 5*time.Millisecond)
+}

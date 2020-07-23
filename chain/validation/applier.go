@@ -10,7 +10,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/puppet"
-	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/ipfs/go-cid"
 
 	vtypes "github.com/filecoin-project/chain-validation/chain/types"
@@ -25,12 +24,12 @@ import (
 // Applier applies messages to state trees and storage.
 type Applier struct {
 	stateWrapper *StateWrapper
-	syscalls     runtime.Syscalls
+	syscalls     vm.SyscallBuilder
 }
 
 var _ vstate.Applier = &Applier{}
 
-func NewApplier(sw *StateWrapper, syscalls runtime.Syscalls) *Applier {
+func NewApplier(sw *StateWrapper, syscalls vm.SyscallBuilder) *Applier {
 	return &Applier{sw, syscalls}
 }
 

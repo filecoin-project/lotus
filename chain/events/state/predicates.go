@@ -3,6 +3,7 @@ package state
 import (
 	"bytes"
 	"context"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -12,6 +13,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/api/apibstore"
@@ -491,5 +493,42 @@ func (sp *StatePredicates) OnMinerPreCommitChange() DiffMinerActorStateFunc {
 		}
 
 		return true, precommitChanges, nil
+	}
+}
+
+// DiffPaymentChannelStateFunc is function that compares two states for the payment channel
+type DiffPaymentChannelStateFunc func(ctx context.Context, oldState *paych.State, newState *paych.State) (changed bool, user UserData, err error)
+
+// OnPaymentChannelActorChanged calls diffPaymentChannelState when the state changes for the the payment channel actor
+func (sp *StatePredicates) OnPaymentChannelActorChanged(paychAddr address.Address, diffPaymentChannelState DiffPaymentChannelStateFunc) DiffTipSetKeyFunc {
+	return sp.OnActorStateChanged(paychAddr, func(ctx context.Context, oldActorStateHead, newActorStateHead cid.Cid) (changed bool, user UserData, err error) {
+		var oldState paych.State
+		if err := sp.cst.Get(ctx, oldActorStateHead, &oldState); err != nil {
+			return false, nil, err
+		}
+		var newState paych.State
+		if err := sp.cst.Get(ctx, newActorStateHead, &newState); err != nil {
+			return false, nil, err
+		}
+		return diffPaymentChannelState(ctx, &oldState, &newState)
+	})
+}
+
+// PayChToSendChange is a difference in the amount to send on a payment channel when the money is collected
+type PayChToSendChange struct {
+	OldToSend abi.TokenAmount
+	NewToSend abi.TokenAmount
+}
+
+// OnToSendAmountChanges monitors changes on the total amount to send from one party to the other on a payment channel
+func (sp *StatePredicates) OnToSendAmountChanges() DiffPaymentChannelStateFunc {
+	return func(ctx context.Context, oldState *paych.State, newState *paych.State) (changed bool, user UserData, err error) {
+		if oldState.ToSend.Equals(newState.ToSend) {
+			return false, nil, nil
+		}
+		return true, &PayChToSendChange{
+			OldToSend: oldState.ToSend,
+			NewToSend: newState.ToSend,
+		}, nil
 	}
 }

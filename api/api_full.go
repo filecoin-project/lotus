@@ -367,7 +367,8 @@ type FullNode interface {
 	PaychGet(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*ChannelInfo, error)
 	PaychList(context.Context) ([]address.Address, error)
 	PaychStatus(context.Context, address.Address) (*PaychStatus, error)
-	PaychClose(context.Context, address.Address) (cid.Cid, error)
+	PaychSettle(context.Context, address.Address) (cid.Cid, error)
+	PaychCollect(context.Context, address.Address) (cid.Cid, error)
 	PaychAllocateLane(ctx context.Context, ch address.Address) (uint64, error)
 	PaychNewPayment(ctx context.Context, from, to address.Address, vouchers []VoucherSpec) (*PaymentInfo, error)
 	PaychVoucherCheckValid(context.Context, address.Address, *paych.SignedVoucher) error

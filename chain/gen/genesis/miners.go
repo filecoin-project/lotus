@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/filecoin-project/lotus/chain/state"
 	"math/rand"
 
 	"github.com/ipfs/go-cid"
@@ -46,8 +47,16 @@ func (fss *fakedSigSyscalls) VerifySignature(signature crypto.Signature, signer 
 	return nil
 }
 
+func mkFakedSigSyscalls(base vm.SyscallBuilder) vm.SyscallBuilder {
+	return func(ctx context.Context, cstate *state.StateTree, cst cbor.IpldStore) runtime.Syscalls {
+		return &fakedSigSyscalls{
+			base(ctx, cstate, cst),
+		}
+	}
+}
+
 func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid, miners []genesis.Miner) (cid.Cid, error) {
-	vm, err := vm.NewVM(sroot, 0, &fakeRand{}, cs.Blockstore(), &fakedSigSyscalls{cs.VMSys()})
+	vm, err := vm.NewVM(sroot, 0, &fakeRand{}, cs.Blockstore(), mkFakedSigSyscalls(cs.VMSys()))
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to create NewVM: %w", err)
 	}
