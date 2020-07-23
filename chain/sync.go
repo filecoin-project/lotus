@@ -27,7 +27,6 @@ import (
 
 	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
-	amt "github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -256,15 +255,13 @@ func (syncer *Syncer) ValidateMsgMeta(fblk *types.FullBlock) error {
 	}
 
 	// Collect the CIDs of both types of messages separately: BLS and Secpk.
-	var bcids, scids []cbg.CBORMarshaler
+	var bcids, scids []cid.Cid
 	for _, m := range fblk.BlsMessages {
-		c := cbg.CborCid(m.Cid())
-		bcids = append(bcids, &c)
+		bcids = append(bcids, m.Cid())
 	}
 
 	for _, m := range fblk.SecpkMessages {
-		c := cbg.CborCid(m.Cid())
-		scids = append(scids, &c)
+		scids = append(scids, m.Cid())
 	}
 
 	// TODO: IMPORTANT(GARBAGE). These message puts and the msgmeta
@@ -354,19 +351,17 @@ func zipTipSetAndMessages(bs cbor.IpldStore, ts *types.TipSet, allbmsgs []*types
 		}
 
 		var smsgs []*types.SignedMessage
-		var smsgCids []cbg.CBORMarshaler
+		var smsgCids []cid.Cid
 		for _, m := range smi[bi] {
 			smsgs = append(smsgs, allsmsgs[m])
-			c := cbg.CborCid(allsmsgs[m].Cid())
-			smsgCids = append(smsgCids, &c)
+			smsgCids = append(smsgCids, allsmsgs[m].Cid())
 		}
 
 		var bmsgs []*types.Message
-		var bmsgCids []cbg.CBORMarshaler
+		var bmsgCids []cid.Cid
 		for _, m := range bmi[bi] {
 			bmsgs = append(bmsgs, allbmsgs[m])
-			c := cbg.CborCid(allbmsgs[m].Cid())
-			bmsgCids = append(bmsgCids, &c)
+			bmsgCids = append(bmsgCids, allbmsgs[m].Cid())
 		}
 
 		mrcid, err := computeMsgMeta(bs, bmsgCids, smsgCids)
@@ -392,19 +387,36 @@ func zipTipSetAndMessages(bs cbor.IpldStore, ts *types.TipSet, allbmsgs []*types
 
 // computeMsgMeta computes the root CID of the combined arrays of message CIDs
 // of both types (BLS and Secpk).
-func computeMsgMeta(bs cbor.IpldStore, bmsgCids, smsgCids []cbg.CBORMarshaler) (cid.Cid, error) {
-	ctx := context.TODO()
-	bmroot, err := amt.FromArray(ctx, bs, bmsgCids)
+func computeMsgMeta(bs cbor.IpldStore, bmsgCids, smsgCids []cid.Cid) (cid.Cid, error) {
+	store := adt.WrapStore(context.TODO(), bs)
+	bmArr := adt.MakeEmptyArray(store)
+	smArr := adt.MakeEmptyArray(store)
+
+	for i, m := range bmsgCids {
+		c := cbg.CborCid(m)
+		if err := bmArr.Set(uint64(i), &c); err != nil {
+			return cid.Undef, err
+		}
+	}
+
+	for i, m := range smsgCids {
+		c := cbg.CborCid(m)
+		if err := smArr.Set(uint64(i), &c); err != nil {
+			return cid.Undef, err
+		}
+	}
+
+	bmroot, err := bmArr.Root()
 	if err != nil {
 		return cid.Undef, err
 	}
 
-	smroot, err := amt.FromArray(ctx, bs, smsgCids)
+	smroot, err := smArr.Root()
 	if err != nil {
 		return cid.Undef, err
 	}
 
-	mrcid, err := bs.Put(ctx, &types.MsgMeta{
+	mrcid, err := store.Put(store.Context(), &types.MsgMeta{
 		BlsMessages:   bmroot,
 		SecpkMessages: smroot,
 	})
@@ -993,18 +1005,21 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 		return nil
 	}
 
-	var blsCids []cbg.CBORMarshaler
+	store := adt.WrapStore(ctx, cst)
 
+	bmArr := adt.MakeEmptyArray(store)
 	for i, m := range b.BlsMessages {
 		if err := checkMsg(m); err != nil {
 			return xerrors.Errorf("block had invalid bls message at index %d: %w", i, err)
 		}
 
 		c := cbg.CborCid(m.Cid())
-		blsCids = append(blsCids, &c)
+		if err := bmArr.Set(uint64(i), &c); err != nil {
+			return xerrors.Errorf("failed to put bls message at index %d: %w", i, err)
+		}
 	}
 
-	var secpkCids []cbg.CBORMarshaler
+	smArr := adt.MakeEmptyArray(store)
 	for i, m := range b.SecpkMessages {
 		if err := checkMsg(m); err != nil {
 			return xerrors.Errorf("block had invalid secpk message at index %d: %w", i, err)
@@ -1022,17 +1037,19 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 		}
 
 		c := cbg.CborCid(m.Cid())
-		secpkCids = append(secpkCids, &c)
+		if err := smArr.Set(uint64(i), &c); err != nil {
+			return xerrors.Errorf("failed to put secpk message at index %d: %w", i, err)
+		}
 	}
 
-	bmroot, err := amt.FromArray(ctx, cst, blsCids)
+	bmroot, err := bmArr.Root()
 	if err != nil {
-		return xerrors.Errorf("failed to build amt from bls msg cids: %w", err)
+		return err
 	}
 
-	smroot, err := amt.FromArray(ctx, cst, secpkCids)
+	smroot, err := smArr.Root()
 	if err != nil {
-		return xerrors.Errorf("failed to build amt from bls msg cids: %w", err)
+		return err
 	}
 
 	mrcid, err := cst.Put(ctx, &types.MsgMeta{

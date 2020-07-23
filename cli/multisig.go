@@ -12,15 +12,14 @@ import (
 	"text/tabwriter"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/go-address"
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	samsig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	cid "github.com/ipfs/go-cid"
-	"github.com/ipfs/go-hamt-ipld"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/urfave/cli/v2"
-	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
@@ -237,24 +236,20 @@ var msigInspectCmd = &cli.Command{
 
 func GetMultisigPending(ctx context.Context, lapi api.FullNode, hroot cid.Cid) (map[int64]*samsig.Transaction, error) {
 	bs := apibstore.NewAPIBlockstore(lapi)
-	cst := cbor.NewCborStore(bs)
+	store := adt.WrapStore(ctx, cbor.NewCborStore(bs))
 
-	nd, err := hamt.LoadNode(ctx, cst, hroot, hamt.UseTreeBitWidth(5))
+	nd, err := adt.AsMap(store, hroot)
 	if err != nil {
 		return nil, err
 	}
 
 	txs := make(map[int64]*samsig.Transaction)
-	err = nd.ForEach(ctx, func(k string, val interface{}) error {
-		d := val.(*cbg.Deferred)
-		var tx samsig.Transaction
-		if err := tx.UnmarshalCBOR(bytes.NewReader(d.Raw)); err != nil {
-			return err
-		}
-
+	var tx samsig.Transaction
+	err = nd.ForEach(&tx, func(k string) error {
 		txid, _ := binary.Varint([]byte(k))
 
-		txs[txid] = &tx
+		cpy := tx // copy so we don't clobber on future iterations.
+		txs[txid] = &cpy
 		return nil
 	})
 	if err != nil {

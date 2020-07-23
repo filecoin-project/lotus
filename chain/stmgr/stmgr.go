@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/go-address"
-	amt "github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -25,7 +24,6 @@ import (
 
 	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/ipfs/go-cid"
-	hamt "github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
@@ -253,8 +251,13 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, pstate cid.Cid, bms []B
 		return cid.Undef, cid.Undef, xerrors.Errorf("CheckProofSubmissions exit was non-zero: %d", ret.ExitCode)
 	}
 
-	bs := cbor.NewCborStore(sm.cs.Blockstore())
-	rectroot, err := amt.FromArray(ctx, bs, receipts)
+	rectarr := adt.MakeEmptyArray(sm.cs.Store(ctx))
+	for i, receipt := range receipts {
+		if err := rectarr.Set(uint64(i), receipt); err != nil {
+			return cid.Undef, cid.Undef, xerrors.Errorf("failed to build receipts amt: %w", err)
+		}
+	}
+	rectroot, err := rectarr.Root()
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("failed to build receipts amt: %w", err)
 	}
@@ -651,14 +654,13 @@ func (sm *StateManager) ListAllActors(ctx context.Context, ts *types.TipSet) ([]
 		return nil, err
 	}
 
-	cst := cbor.NewCborStore(sm.cs.Blockstore())
-	r, err := hamt.LoadNode(ctx, cst, st, hamt.UseTreeBitWidth(5))
+	r, err := adt.AsMap(sm.cs.Store(ctx), st)
 	if err != nil {
 		return nil, err
 	}
 
 	var out []address.Address
-	err = r.ForEach(ctx, func(k string, val interface{}) error {
+	err = r.ForEach(nil, func(k string) error {
 		addr, err := address.NewFromBytes([]byte(k))
 		if err != nil {
 			return xerrors.Errorf("address in state tree was not valid: %w", err)

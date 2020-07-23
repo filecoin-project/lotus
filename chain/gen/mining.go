@@ -4,8 +4,8 @@ import (
 	"context"
 
 	bls "github.com/filecoin-project/filecoin-ffi"
-	amt "github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	cid "github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -78,17 +78,17 @@ func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wal
 		}
 	}
 
-	bs := cbor.NewCborStore(sm.ChainStore().Blockstore())
-	blsmsgroot, err := amt.FromArray(ctx, bs, toIfArr(blsMsgCids))
+	store := sm.ChainStore().Store(ctx)
+	blsmsgroot, err := toArray(store, blsMsgCids)
 	if err != nil {
 		return nil, xerrors.Errorf("building bls amt: %w", err)
 	}
-	secpkmsgroot, err := amt.FromArray(ctx, bs, toIfArr(secpkMsgCids))
+	secpkmsgroot, err := toArray(store, secpkMsgCids)
 	if err != nil {
 		return nil, xerrors.Errorf("building secpk amt: %w", err)
 	}
 
-	mmcid, err := bs.Put(ctx, &types.MsgMeta{
+	mmcid, err := store.Put(store.Context(), &types.MsgMeta{
 		BlsMessages:   blsmsgroot,
 		SecpkMessages: secpkmsgroot,
 	})
@@ -167,11 +167,13 @@ func aggregateSignatures(sigs []crypto.Signature) (*crypto.Signature, error) {
 	}, nil
 }
 
-func toIfArr(cids []cid.Cid) []cbg.CBORMarshaler {
-	out := make([]cbg.CBORMarshaler, 0, len(cids))
-	for _, c := range cids {
+func toArray(store adt.Store, cids []cid.Cid) (cid.Cid, error) {
+	arr := adt.MakeEmptyArray(store)
+	for i, c := range cids {
 		oc := cbg.CborCid(c)
-		out = append(out, &oc)
+		if err := arr.Set(uint64(i), &oc); err != nil {
+			return cid.Undef, err
+		}
 	}
-	return out
+	return arr.Root()
 }

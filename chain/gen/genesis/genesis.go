@@ -12,7 +12,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-amt-ipld/v2"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
@@ -358,9 +357,8 @@ func MakeGenesisBlock(ctx context.Context, bs bstore.Blockstore, sys vm.SyscallB
 		return nil, xerrors.Errorf("setup miners failed: %w", err)
 	}
 
-	cst := cbor.NewCborStore(bs)
-
-	emptyroot, err := amt.FromArray(ctx, cst, nil)
+	store := adt.WrapStore(ctx, cbor.NewCborStore(bs))
+	emptyroot, err := adt.MakeEmptyArray(store).Root()
 	if err != nil {
 		return nil, xerrors.Errorf("amt build failed: %w", err)
 	}

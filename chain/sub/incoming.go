@@ -4,15 +4,14 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/filecoin-project/lotus/lib/adtutil"
 	"sync"
 	"time"
 
 	"golang.org/x/xerrors"
 
 	address "github.com/filecoin-project/go-address"
-	amt "github.com/filecoin-project/go-amt-ipld/v2"
 	miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/ipfs/go-cid"
 	dstore "github.com/ipfs/go-datastore"
@@ -239,31 +238,36 @@ func (bv *BlockValidator) isChainNearSynced() bool {
 }
 
 func (bv *BlockValidator) validateMsgMeta(ctx context.Context, msg *types.BlockMsg) error {
-	var bcids, scids []cbg.CBORMarshaler
-	for _, m := range msg.BlsMessages {
-		c := cbg.CborCid(m)
-		bcids = append(bcids, &c)
-	}
-
-	for _, m := range msg.SecpkMessages {
-		c := cbg.CborCid(m)
-		scids = append(scids, &c)
-	}
-
 	// TODO there has to be a simpler way to do this without the blockstore dance
-	bs := cbor.NewCborStore(bstore.NewBlockstore(dstore.NewMapDatastore()))
+	store := adt.WrapStore(ctx, cbor.NewCborStore(bstore.NewBlockstore(dstore.NewMapDatastore())))
+	bmArr := adt.MakeEmptyArray(store)
+	smArr := adt.MakeEmptyArray(store)
 
-	bmroot, err := amt.FromArray(ctx, bs, bcids)
+	for i, m := range msg.BlsMessages {
+		c := cbg.CborCid(m)
+		if err := bmArr.Set(uint64(i), &c); err != nil {
+			return err
+		}
+	}
+
+	for i, m := range msg.SecpkMessages {
+		c := cbg.CborCid(m)
+		if err := smArr.Set(uint64(i), &c); err != nil {
+			return err
+		}
+	}
+
+	bmroot, err := bmArr.Root()
 	if err != nil {
 		return err
 	}
 
-	smroot, err := amt.FromArray(ctx, bs, scids)
+	smroot, err := smArr.Root()
 	if err != nil {
 		return err
 	}
 
-	mrcid, err := bs.Put(ctx, &types.MsgMeta{
+	mrcid, err := store.Put(store.Context(), &types.MsgMeta{
 		BlsMessages:   bmroot,
 		SecpkMessages: smroot,
 	})
@@ -318,7 +322,7 @@ func (bv *BlockValidator) getMinerWorkerKey(ctx context.Context, msg *types.Bloc
 		return address.Undef, err
 	}
 
-	info, err := mst.GetInfo(adtutil.NewStore(ctx, cst))
+	info, err := mst.GetInfo(adt.WrapStore(ctx, cst))
 	if err != nil {
 		return address.Undef, err
 	}
