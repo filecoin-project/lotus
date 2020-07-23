@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/urfave/cli/v2"
+	"golang.org/x/xerrors"
 )
 
 type PrintHelpErr struct {
@@ -36,8 +37,8 @@ func RunApp(app *cli.App) {
 		} else {
 			fmt.Printf("ERROR: %s\n\n", err)
 		}
-		phe, ok := err.(*PrintHelpErr)
-		if ok {
+		var phe *PrintHelpErr
+		if xerrors.As(err, &phe) {
 			cli.ShowCommandHelp(phe.Ctx, phe.Ctx.Command.Name)
 		}
 		os.Exit(1)
