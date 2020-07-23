@@ -8,10 +8,10 @@ import (
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types/mock"
+	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	datastore "github.com/ipfs/go-datastore"
 	syncds "github.com/ipfs/go-datastore/sync"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -30,7 +30,7 @@ func TestIndexSeeks(t *testing.T) {
 
 	ctx := context.TODO()
 
-	nbs := blockstore.NewBlockstore(syncds.MutexWrap(datastore.NewMapDatastore()))
+	nbs := blockstore.NewTemporarySync()
 	cs := store.NewChainStore(nbs, syncds.MutexWrap(datastore.NewMapDatastore()), nil)
 
 	_, err = cs.Import(bytes.NewReader(gencar))

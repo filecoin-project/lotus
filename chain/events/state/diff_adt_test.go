@@ -8,14 +8,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	ds "github.com/ipfs/go-datastore"
-	ds_sync "github.com/ipfs/go-datastore/sync"
-	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	typegen "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
+
+	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 )
 
 func TestDiffAdtArray(t *testing.T) {
@@ -146,7 +145,7 @@ func (t *TestAdtDiff) Remove(key uint64, val *typegen.Deferred) error {
 
 func newContextStore() *contextStore {
 	ctx := context.Background()
-	bs := bstore.NewBlockstore(ds_sync.MutexWrap(ds.NewMapDatastore()))
+	bs := bstore.NewTemporarySync()
 	store := cbornode.NewCborStore(bs)
 	return &contextStore{
 		ctx: ctx,

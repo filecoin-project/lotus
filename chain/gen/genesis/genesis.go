@@ -3,12 +3,12 @@ package genesis
 import (
 	"context"
 	"encoding/json"
+
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
-	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
@@ -28,6 +28,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/genesis"
+	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 )
 
 const AccountStart = 100

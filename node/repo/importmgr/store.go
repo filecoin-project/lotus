@@ -5,10 +5,11 @@ import (
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	"github.com/ipfs/go-filestore"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/ipfs/go-merkledag"
+
+	"github.com/filecoin-project/lotus/lib/blockstore"
 )
 
 type Store struct {
@@ -31,7 +32,7 @@ func openStore(ds datastore.Batching) (*Store, error) {
 	fm.AllowFiles = true
 
 	fstore := filestore.NewFilestore(bs, fm)
-	ibs := blockstore.NewIdStore(fstore)
+	ibs := blockstore.WrapIDStore(fstore)
 
 	bsvc := blockservice.New(ibs, offline.Exchange(ibs))
 	dag := merkledag.NewDAGService(bsvc)

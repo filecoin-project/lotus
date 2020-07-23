@@ -9,13 +9,13 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/genesis"
+	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 )
 
 func SetupInitActor(bs bstore.Blockstore, netname string, initialActors []genesis.Actor) (*types.Actor, error) {

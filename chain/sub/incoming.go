@@ -14,8 +14,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/ipfs/go-cid"
-	dstore "github.com/ipfs/go-datastore"
-	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
 	connmgr "github.com/libp2p/go-libp2p-core/connmgr"
@@ -32,6 +30,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/lib/bufbstore"
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/metrics"
@@ -239,7 +238,7 @@ func (bv *BlockValidator) isChainNearSynced() bool {
 
 func (bv *BlockValidator) validateMsgMeta(ctx context.Context, msg *types.BlockMsg) error {
 	// TODO there has to be a simpler way to do this without the blockstore dance
-	store := adt.WrapStore(ctx, cbor.NewCborStore(bstore.NewBlockstore(dstore.NewMapDatastore())))
+	store := adt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewTemporary()))
 	bmArr := adt.MakeEmptyArray(store)
 	smArr := adt.MakeEmptyArray(store)
 

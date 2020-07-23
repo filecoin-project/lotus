@@ -275,6 +275,8 @@ github.com/filecoin-project/specs-actors v0.7.3-0.20200716231407-60a2ae96d2e6/go
 github.com/filecoin-project/specs-actors v0.8.1-0.20200720115956-cd051eabf328/go.mod h1:0+CxQ5Jeii3522irTvhKRDpr4GG1bj5Erq3p/d38DzY=
 github.com/filecoin-project/specs-actors v0.8.1-0.20200723200253-a3c01bc62f99 h1:li6OZVhGNrQihzKhUy7x4vwKgUCExnpVSj746VMkq1I=
 github.com/filecoin-project/specs-actors v0.8.1-0.20200723200253-a3c01bc62f99/go.mod h1:TLvIheTVl0EIuyncuKSTVXPULaj7gzhLup5CLZ/S+uM=
+github.com/filecoin-project/specs-actors v0.8.1-0.20200724013208-278e08bfe8df h1:nK7fWhCGJHjNYk1ZVf5YYrwHaHK17VEeELDpUUOsBPw=
+github.com/filecoin-project/specs-actors v0.8.1-0.20200724013208-278e08bfe8df/go.mod h1:TLvIheTVl0EIuyncuKSTVXPULaj7gzhLup5CLZ/S+uM=
 github.com/filecoin-project/specs-storage v0.1.0 h1:PkDgTOT5W5Ao7752onjDl4QSv+sgOVdJbvFjOnD5w94=
 github.com/filecoin-project/specs-storage v0.1.0/go.mod h1:Pr5ntAaxsh+sLG/LYiL4tKzvA83Vk5vLODYhfNwOg7k=
 github.com/filecoin-project/specs-storage v0.1.1-0.20200622113353-88a9704877ea h1:iixjULRQFPn7Q9KlIqfwLJnlAXO10bbkI+xy5GKGdLY=
@@ -490,6 +492,8 @@ github.com/ipfs/go-cid v0.0.5/go.mod h1:plgt+Y5MnOey4vO4UlUazGqdbEXuFYitED67Fexh
 github.com/ipfs/go-cid v0.0.6-0.20200501230655-7c82f3b81c00/go.mod h1:plgt+Y5MnOey4vO4UlUazGqdbEXuFYitED67FexhXog=
 github.com/ipfs/go-cid v0.0.6 h1:go0y+GcDOGeJIV01FeBsta4FHngoA4Wz7KMeLkXAhMs=
 github.com/ipfs/go-cid v0.0.6/go.mod h1:6Ux9z5e+HpkQdckYoX1PG/6xqKspzlEIR5SDmgqgC/I=
+github.com/ipfs/go-cid v0.0.7 h1:ysQJVJA3fNDF1qigJbsSQOdjhVLsOEoPdh0+R97k3jY=
+github.com/ipfs/go-cid v0.0.7/go.mod h1:6Ux9z5e+HpkQdckYoX1PG/6xqKspzlEIR5SDmgqgC/I=
 github.com/ipfs/go-cidutil v0.0.2 h1:CNOboQf1t7Qp0nuNh8QMmhJs0+Q//bRL1axtCnIB1Yo=
 github.com/ipfs/go-cidutil v0.0.2/go.mod h1:ewllrvrxG6AMYStla3GD7Cqn+XYSLqjK0vc+086tB6s=
 github.com/ipfs/go-datastore v0.0.1/go.mod h1:d4KVXhMt913cLBEI/PXAy6ko+W7e9AhyAKBGh803qeE=

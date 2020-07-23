@@ -20,7 +20,9 @@ import (
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/journal"
+	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/metrics"
+
 	"go.opencensus.io/stats"
 	"go.opencensus.io/trace"
 	"go.uber.org/multierr"
@@ -31,8 +33,6 @@ import (
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	dstore "github.com/ipfs/go-datastore"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
 	car "github.com/ipld/go-car"
@@ -896,7 +896,7 @@ func (cs *ChainStore) Blockstore() bstore.Blockstore {
 	return cs.bs
 }
 
-func ActorStore(ctx context.Context, bs blockstore.Blockstore) adt.Store {
+func ActorStore(ctx context.Context, bs bstore.Blockstore) adt.Store {
 	return adt.WrapStore(ctx, cbor.NewCborStore(bs))
 }
 
@@ -1019,7 +1019,7 @@ func (cs *ChainStore) GetTipsetByHeight(ctx context.Context, h abi.ChainEpoch, t
 	return cs.LoadTipSet(lbts.Parents())
 }
 
-func recurseLinks(bs blockstore.Blockstore, root cid.Cid, in []cid.Cid) ([]cid.Cid, error) {
+func recurseLinks(bs bstore.Blockstore, root cid.Cid, in []cid.Cid) ([]cid.Cid, error) {
 	if root.Prefix().Codec != cid.DagCBOR {
 		return in, nil
 	}
