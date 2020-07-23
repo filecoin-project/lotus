@@ -117,12 +117,14 @@ func (ms *msgSet) add(m *types.SignedMessage) error {
 			minPrice := exms.Message.GasPrice
 			minPrice = types.BigAdd(minPrice, types.BigDiv(types.BigMul(minPrice, rbfNum), rbfDenom))
 			minPrice = types.BigAdd(minPrice, types.NewInt(1))
-			if types.BigCmp(m.Message.GasPrice, minPrice) > 0 {
+			if types.BigCmp(m.Message.GasPrice, minPrice) >= 0 {
 				log.Infow("add with RBF", "oldprice", exms.Message.GasPrice,
 					"newprice", m.Message.GasPrice, "addr", m.Message.From, "nonce", m.Message.Nonce)
 			} else {
 				log.Info("add with duplicate nonce")
-				return xerrors.Errorf("message to %s with nonce %d already in mpool", m.Message.To, m.Message.Nonce)
+				return xerrors.Errorf("message from %s with nonce %d already in mpool,"+
+					" increase GasPrice to %s from %s to trigger replace by fee",
+					m.Message.From, m.Message.Nonce, minPrice, m.Message.GasPrice)
 			}
 		}
 	}
