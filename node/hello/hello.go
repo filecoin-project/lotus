@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	xerrors "golang.org/x/xerrors"
 
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/ipfs/go-cid"
@@ -125,7 +126,7 @@ func (hs *Service) HandleStream(s inet.Stream) {
 func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
 	s, err := hs.h.NewStream(ctx, pid, ProtocolID)
 	if err != nil {
-		return err
+		return xerrors.Errorf("error opening stream: %w", err)
 	}
 
 	hts := hs.cs.GetHeaviestTipSet()
@@ -149,7 +150,7 @@ func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
 
 	t0 := build.Clock.Now()
 	if err := cborutil.WriteCborRPC(s, hmsg); err != nil {
-		return err
+		return xerrors.Errorf("writing rpc to peer: %w", err)
 	}
 
 	go func() {
