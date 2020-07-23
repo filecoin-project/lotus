@@ -94,7 +94,7 @@ var runCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "address",
-			Usage: "Locally reachable address",
+			Usage: "locally reachable address",
 			Value: "0.0.0.0",
 		},
 		&cli.BoolFlag{
@@ -115,6 +115,11 @@ var runCmd = &cli.Command{
 			Name:  "commit",
 			Usage: "enable commit (32G sectors: all cores or GPUs, 128GiB Memory + 64GiB swap)",
 			Value: true,
+		},
+		&cli.StringFlag{
+			Name:  "timeout",
+			Usage: "used when address is unspecified. must be a valid duration recognized by golang's time.ParseDuration function",
+			Value: "30m",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -257,7 +262,22 @@ var runCmd = &cli.Command{
 		}
 
 		log.Info("Opening local storage; connecting to master")
+		const unspecifiedAddress = "0.0.0.0"
 		address := cctx.String("address")
+		addressSlice := strings.Split(address, ":")
+		if ip := net.ParseIP(addressSlice[0]); ip != nil {
+			if ip.String() == unspecifiedAddress {
+				timeout, err := time.ParseDuration(cctx.String("timeout"))
+				if err != nil {
+					return err
+				}
+				rip, err := extractRoutableIP(timeout)
+				if err != nil {
+					return err
+				}
+				address = rip + ":" + addressSlice[1]
+			}
+		}
 
 		localStore, err := stores.NewLocal(ctx, lr, nodeApi, []string{"http://" + address + "/remote"})
 		if err != nil {
@@ -326,18 +346,6 @@ var runCmd = &cli.Command{
 		log.Info("Waiting for tasks")
 
 		go func() {
-			const unspecifiedAddress = "0.0.0.0"
-			addressSlice := strings.Split(address, ":")
-			if ip := net.ParseIP(addressSlice[0]); ip != nil {
-				if ip.String() == unspecifiedAddress {
-					rip, err := extractRoutableIP()
-					if err != nil {
-						log.Error(err)
-						return
-					}
-					address = rip + ":" + addressSlice[1]
-				}
-			}
 			if err := nodeApi.WorkerConnect(ctx, "ws://"+address+"/rpc/v0"); err != nil {
 				log.Errorf("Registering worker failed: %+v", err)
 				cancel()
@@ -388,7 +396,7 @@ func watchMinerConn(ctx context.Context, cctx *cli.Context, nodeApi api.StorageM
 	}()
 }
 
-func extractRoutableIP() (string, error) {
+func extractRoutableIP(timeout time.Duration) (string, error) {
 	minerMultiAddrKey := "MINER_API_INFO"
 	deprecatedMinerMultiAddrKey := "STORAGE_API_INFO"
 	env, ok := os.LookupEnv(minerMultiAddrKey)
@@ -396,12 +404,12 @@ func extractRoutableIP() (string, error) {
 		// TODO remove after deprecation period
 		env, ok = os.LookupEnv(deprecatedMinerMultiAddrKey)
 		if ok {
-			log.Warnf("Use deprecation env(%s) value, please use env(%s) instead.", deprecatedMinerMultiAddrKey, minerMultiAddrKey)
+			log.Warnf("Using a deprecated env(%s) value, please use env(%s) instead.", deprecatedMinerMultiAddrKey, minerMultiAddrKey)
 		}
 		return "", xerrors.New("MINER_API_INFO environment variable required to extract IP")
 	}
 	minerAddr := strings.Split(env, "/")
-	conn, err := net.Dial("tcp", minerAddr[2]+":"+minerAddr[4])
+	conn, err := net.DialTimeout("tcp", minerAddr[2]+":"+minerAddr[4], timeout)
 	if err != nil {
 		return "", err
 	}
