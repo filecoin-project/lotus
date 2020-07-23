@@ -258,7 +258,9 @@ func (sh *scheduler) trySched() {
 				continue
 			}
 
-			ok, err := task.sel.Ok(task.ctx, task.taskType, sh.spt, worker)
+			rpcCtx, cancel := context.WithTimeout(task.ctx, SelectorTimeout)
+			ok, err := task.sel.Ok(rpcCtx, task.taskType, sh.spt, worker)
+			cancel()
 			if err != nil {
 				log.Errorf("trySched(1) req.sel.Ok error: %+v", err)
 				continue
