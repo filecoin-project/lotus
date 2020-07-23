@@ -390,6 +390,7 @@ func (fsr *fsLockedRepo) List() ([]string, error) {
 	if err != nil {
 		return nil, xerrors.Errorf("opening dir to list keystore: %w", err)
 	}
+	defer dir.Close() //nolint:errcheck
 	files, err := dir.Readdir(-1)
 	if err != nil {
 		return nil, xerrors.Errorf("reading keystore dir: %w", err)

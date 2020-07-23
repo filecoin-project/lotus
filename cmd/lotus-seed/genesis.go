@@ -240,6 +240,7 @@ func parseMultisigCsv(csvf string) ([]GenAccountEntry, error) {
 	if err != nil {
 		return nil, xerrors.Errorf("read multisig csv: %w", err)
 	}
+	defer fileReader.Close() //nolint:errcheck
 	r := csv.NewReader(fileReader)
 	records, err := r.ReadAll()
 	if err != nil {

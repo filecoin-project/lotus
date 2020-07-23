@@ -466,6 +466,7 @@ var importAnalyzeCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
+		defer fi.Close() //nolint:errcheck
 
 		const nWorkers = 16
 		jsonIn := make(chan []byte, 2*nWorkers)
