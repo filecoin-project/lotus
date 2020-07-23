@@ -331,7 +331,7 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 
 	params := &miner.SubmitWindowedPoStParams{
 		Deadline:   di.Index,
-		Partitions: make([]miner.PoStPartition, len(partitions)),
+		Partitions: make([]miner.PoStPartition, 0, len(partitions)),
 		Proofs:     nil,
 	}
 
@@ -382,10 +382,10 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 			sidToPart[si.SectorNumber] = uint64(partIdx)
 		}
 
-		params.Partitions[partIdx] = miner.PoStPartition{
+		params.Partitions = append(params.Partitions, miner.PoStPartition{
 			Index:   uint64(partIdx),
 			Skipped: skipped,
-		}
+		})
 	}
 
 	if len(sinfos) == 0 {
