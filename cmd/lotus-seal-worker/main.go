@@ -95,7 +95,7 @@ var runCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:  "address",
 			Usage: "locally reachable address",
-			Value: "0.0.0.0",
+			Value: "0.0.0.0:3456",
 		},
 		&cli.BoolFlag{
 			Name:  "no-local-storage",
