@@ -46,10 +46,21 @@ var genesisNewCmd = &cli.Command{
 		if !cctx.Args().Present() {
 			return xerrors.New("seed genesis new [genesis.json]")
 		}
-
+		rootkey, _ := address.NewIDAddress(80)
+		defaultRootkey := genesis.MultisigMeta{
+			Signers:         []address.Address{rootkey},
+			Threshold:       1,
+			VestingDuration: 0,
+			VestingStart:    0,
+		}
 		out := genesis.Template{
-			Accounts:    []genesis.Actor{},
-			Miners:      []genesis.Miner{},
+			Accounts: []genesis.Actor{},
+			Miners:   []genesis.Miner{},
+			VerifregRootKey: genesis.Actor{
+				Type:    genesis.TMultisig,
+				Balance: big.NewInt(0),
+				Meta:    defaultRootkey.ActorMeta(),
+			},
 			NetworkName: cctx.String("network-name"),
 		}
 		if out.NetworkName == "" {
