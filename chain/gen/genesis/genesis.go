@@ -3,6 +3,8 @@ package genesis
 import (
 	"context"
 	"encoding/json"
+	"github.com/filecoin-project/lotus/lib/sigs"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -281,6 +283,43 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 		return nil, xerrors.Errorf("setting account from actmap: %w", err)
 	}
 
+	// Setup the first verifier as ID-address 81
+	// TODO: remove this
+	skBytes, err := sigs.Generate(crypto.SigTypeBLS)
+	if err != nil {
+		return nil, xerrors.Errorf("creating random verifier secret key: %w", err)
+	}
+
+	verifierPk, err := sigs.ToPublic(crypto.SigTypeBLS, skBytes)
+	if err != nil {
+		return nil, xerrors.Errorf("creating random verifier public key: %w", err)
+	}
+
+	verifierAd, err := address.NewBLSAddress(verifierPk)
+	if err != nil {
+		return nil, xerrors.Errorf("creating random verifier address: %w", err)
+	}
+
+	verifierId, err := address.NewIDAddress(81)
+	if err != nil {
+		return nil, err
+	}
+
+	verifierState, err := cst.Put(ctx, &account.State{Address: verifierAd})
+	if err != nil {
+		return nil, err
+	}
+
+	err = state.SetActor(verifierId, &types.Actor{
+		Code:    builtin.AccountActorCodeID,
+		Balance: types.NewInt(0),
+		Head:    verifierState,
+	})
+
+	if err != nil {
+		return nil, xerrors.Errorf("setting account from actmap: %w", err)
+	}
+
 	return state, nil
 }
 
@@ -295,7 +334,7 @@ func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, stateroot ci
 		}
 	}
 
-	verifier, err := address.NewIDAddress(80)
+	verifier, err := address.NewIDAddress(81)
 	if err != nil {
 		return cid.Undef, err
 	}
