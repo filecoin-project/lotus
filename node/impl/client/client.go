@@ -494,6 +494,7 @@ func (a *API) ClientCalcCommP(ctx context.Context, inpath string, miner address.
 	if err != nil {
 		return nil, err
 	}
+	defer rdr.Close()
 
 	stat, err := rdr.Stat()
 	if err != nil {
@@ -554,6 +555,7 @@ func (a *API) clientImport(ctx context.Context, ref api.FileRef, store *importmg
 	if err != nil {
 		return cid.Undef, err
 	}
+	defer f.Close()
 
 	stat, err := f.Stat()
 	if err != nil {

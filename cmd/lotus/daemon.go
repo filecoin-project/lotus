@@ -317,6 +317,7 @@ func ImportChain(r repo.Repo, fname string) error {
 	if err != nil {
 		return err
 	}
+	defer fi.Close() //nolint:errcheck
 
 	lr, err := r.Lock(repo.FullNode)
 	if err != nil {
