@@ -114,7 +114,7 @@ type RandomBeaconParams struct {
 }
 
 func BuiltinDrandConfig() dtypes.DrandConfig {
-	return build.DrandConfig
+	return build.DrandConfig()
 }
 
 func RandomBeacon(p RandomBeaconParams, _ dtypes.AfterGenesisSet) (beacon.RandomBeacon, error) {

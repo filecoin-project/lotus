@@ -12,7 +12,7 @@ import (
 )
 
 func TestPrintGroupInfo(t *testing.T) {
-	server := build.DrandConfig.Servers[0]
+	server := build.DrandConfig().Servers[0]
 	c, err := hclient.New(server, nil, nil)
 	assert.NoError(t, err)
 	cg := c.(interface {
