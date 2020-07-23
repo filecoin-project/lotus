@@ -251,15 +251,16 @@ var sectorsMarkForUpgradeCmd = &cli.Command{
 	Usage:     "Mark a committed capacity sector for replacement by a sector with deals",
 	ArgsUsage: "<sectorNum>",
 	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() != 1 {
+			return lcli.ShowHelp(cctx, xerrors.Errorf("must pass sector number"))
+		}
+
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
-		if cctx.Args().Len() != 1 {
-			return xerrors.Errorf("must pass sector number")
-		}
 
 		id, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
 		if err != nil {
