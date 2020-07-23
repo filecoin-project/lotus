@@ -380,8 +380,12 @@ func mockSbBuilder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test
 		}
 	}
 
+
 	for i, def := range storage {
 		// TODO: support non-bootstrap miners
+
+		minerID := abi.ActorID(genesis2.MinerStart + uint64(i))
+
 		if def.Full != 0 {
 			t.Fatal("storage nodes only supported on the first full node")
 		}
@@ -394,9 +398,17 @@ func mockSbBuilder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test
 			return nil, nil
 		}
 
+		sectors := make([]abi.SectorID, len(genms[i].Sectors))
+		for i, sector := range genms[i].Sectors {
+			sectors[i] = abi.SectorID{
+				Miner:  minerID,
+				Number: sector.SectorID,
+			}
+		}
+
 		storers[i] = testStorageNode(ctx, t, genms[i].Worker, maddrs[i], pidKeys[i], f, mn, node.Options(
 			node.Override(new(sectorstorage.SectorManager), func() (sectorstorage.SectorManager, error) {
-				return mock.NewMockSectorMgr(build.DefaultSectorSize()), nil
+				return mock.NewMockSectorMgr(build.DefaultSectorSize(), sectors), nil
 			}),
 			node.Override(new(ffiwrapper.Verifier), mock.MockVerifier),
 			node.Unset(new(*sectorstorage.Manager)),
@@ -534,7 +546,7 @@ func TestWindowedPost(t *testing.T) {
 	logging.SetLogLevel("sub", "ERROR")
 	logging.SetLogLevel("storageminer", "ERROR")
 
-	test.TestWindowPost(t, mockSbBuilder, 5*time.Millisecond, 10)
+	test.TestWindowPost(t, mockSbBuilder, 2*time.Millisecond, 10)
 }
 
 func TestCCUpgrade(t *testing.T) {
