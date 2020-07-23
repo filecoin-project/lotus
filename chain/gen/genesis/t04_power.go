@@ -8,10 +8,10 @@ import (
 
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
-	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/lotus/chain/types"
+	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 )
 
 func SetupStoragePowerActor(bs bstore.Blockstore) (*types.Actor, error) {

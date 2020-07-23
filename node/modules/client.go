@@ -4,12 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/filecoin-project/lotus/lib/bufbstore"
-	"golang.org/x/xerrors"
-
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	"github.com/libp2p/go-libp2p-core/host"
 	"go.uber.org/fx"
+	"golang.org/x/xerrors"
 
 	dtimpl "github.com/filecoin-project/go-data-transfer/impl"
 	dtnet "github.com/filecoin-project/go-data-transfer/network"
@@ -26,7 +22,10 @@ import (
 	"github.com/filecoin-project/go-storedcounter"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
+	"github.com/libp2p/go-libp2p-core/host"
 
+	"github.com/filecoin-project/lotus/lib/blockstore"
+	"github.com/filecoin-project/lotus/lib/bufbstore"
 	"github.com/filecoin-project/lotus/markets/retrievaladapter"
 	"github.com/filecoin-project/lotus/node/impl/full"
 	payapi "github.com/filecoin-project/lotus/node/impl/paych"
@@ -64,9 +63,9 @@ func ClientBlockstore(imgr dtypes.ClientImportMgr) dtypes.ClientBlockstore {
 	// TODO: This isn't.. the best
 	//  - If it's easy to pass per-retrieval blockstores with markets we don't need this
 	//  - If it's not easy, we need to store this in a separate datastore on disk
-	defaultWrite := blockstore.NewBlockstore(datastore.NewMapDatastore())
+	defaultWrite := blockstore.NewTemporary()
 
-	return blockstore.NewIdStore(bufbstore.NewTieredBstore(imgr.Blockstore, defaultWrite))
+	return bufbstore.NewTieredBstore(imgr.Blockstore, defaultWrite)
 }
 
 // RegisterClientValidator is an initialization hook that registers the client

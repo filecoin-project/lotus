@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-address"
-	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -12,6 +11,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/chain/types"
+	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 )
 
 var RootVerifierAddr address.Address

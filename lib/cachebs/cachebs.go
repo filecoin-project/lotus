@@ -6,9 +6,9 @@ import (
 	lru "github.com/hashicorp/golang-lru"
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	bstore "github.com/ipfs/go-ipfs-blockstore"
 	logging "github.com/ipfs/go-log/v2"
+
+	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 )
 
 var log = logging.Logger("cachebs")
@@ -18,15 +18,17 @@ type CacheBS struct {
 	bs    bstore.Blockstore
 }
 
-func NewBufferedBstore(base blockstore.Blockstore, size int) *CacheBS {
+func NewBufferedBstore(base bstore.Blockstore, size int) bstore.Blockstore {
 	c, err := lru.NewARC(size)
 	if err != nil {
 		panic(err)
 	}
-	return &CacheBS{
+	// Wrap this in an ID blockstore to avoid caching blocks inlined into
+	// CIDs.
+	return bstore.WrapIDStore(&CacheBS{
 		cache: c,
 		bs:    base,
-	}
+	})
 }
 
 var _ (bstore.Blockstore) = &CacheBS{}

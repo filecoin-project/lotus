@@ -4,9 +4,9 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/multiformats/go-multiaddr"
 
+	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/lib/bufbstore"
 	"github.com/filecoin-project/lotus/lib/ipfsbstore"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -20,7 +20,7 @@ import (
 func IpfsClientBlockstore(ipfsMaddr string, useForRetrieval bool) func(helpers.MetricsCtx, fx.Lifecycle, dtypes.ClientImportMgr) (dtypes.ClientBlockstore, error) {
 	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, localStore dtypes.ClientImportMgr) (dtypes.ClientBlockstore, error) {
 		var err error
-		var ipfsbs *ipfsbstore.IpfsBstore
+		var ipfsbs blockstore.Blockstore
 		if ipfsMaddr != "" {
 			var ma multiaddr.Multiaddr
 			ma, err = multiaddr.NewMultiaddr(ipfsMaddr)
@@ -34,10 +34,11 @@ func IpfsClientBlockstore(ipfsMaddr string, useForRetrieval bool) func(helpers.M
 		if err != nil {
 			return nil, xerrors.Errorf("constructing ipfs blockstore: %w", err)
 		}
+		ipfsbs = blockstore.WrapIDStore(ipfsbs)
 		var ws blockstore.Blockstore
 		ws = ipfsbs
 		if !useForRetrieval {
-			ws = blockstore.NewIdStore(localStore.Blockstore)
+			ws = blockstore.WrapIDStore(localStore.Blockstore)
 		}
 		return bufbstore.NewTieredBstore(ipfsbs, ws), nil
 	}

@@ -5,11 +5,11 @@ import (
 	"io"
 	"os"
 
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/ipld/go-car"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -48,7 +48,6 @@ var importCarCmd = &cli.Command{
 		}
 
 		bs := blockstore.NewBlockstore(ds)
-		bs = blockstore.NewIdStore(bs)
 
 		cr, err := car.NewCarReader(f)
 		if err != nil {

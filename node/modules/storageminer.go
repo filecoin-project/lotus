@@ -7,6 +7,10 @@ import (
 	"net/http"
 	"time"
 
+	"go.uber.org/fx"
+	"go.uber.org/multierr"
+	"golang.org/x/xerrors"
+
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
 	"github.com/ipfs/go-blockservice"
@@ -16,13 +20,9 @@ import (
 	graphsync "github.com/ipfs/go-graphsync/impl"
 	gsnet "github.com/ipfs/go-graphsync/network"
 	"github.com/ipfs/go-graphsync/storeutil"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/ipfs/go-merkledag"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/routing"
-	"go.uber.org/fx"
-	"go.uber.org/multierr"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	dtimpl "github.com/filecoin-project/go-data-transfer/impl"
@@ -42,7 +42,6 @@ import (
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/go-storedcounter"
-	"github.com/filecoin-project/lotus/node/config"
 	sectorstorage "github.com/filecoin-project/sector-storage"
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/sector-storage/stores"
@@ -53,8 +52,10 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/markets/retrievaladapter"
 	"github.com/filecoin-project/lotus/miner"
+	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -252,10 +253,7 @@ func StagingBlockstore(r repo.LockedRepo) (dtypes.StagingBlockstore, error) {
 		return nil, err
 	}
 
-	bs := blockstore.NewBlockstore(stagingds)
-	ibs := blockstore.NewIdStore(bs)
-
-	return ibs, nil
+	return blockstore.NewBlockstore(stagingds), nil
 }
 
 // StagingDAG is a DAGService for the StagingBlockstore

@@ -8,7 +8,8 @@ import (
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
+
+	"github.com/filecoin-project/lotus/lib/blockstore"
 )
 
 type multiReadBs struct {

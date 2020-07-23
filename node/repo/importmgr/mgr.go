@@ -8,7 +8,8 @@ import (
 
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
+
+	"github.com/filecoin-project/lotus/lib/blockstore"
 )
 
 type Mgr struct {
