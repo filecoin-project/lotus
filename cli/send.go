@@ -29,6 +29,10 @@ var sendCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() != 2 {
+			return ShowHelp(cctx, fmt.Errorf("'send' expects two arguments, target and amount"))
+		}
+
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -37,18 +41,14 @@ var sendCmd = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
-		if cctx.Args().Len() != 2 {
-			return fmt.Errorf("'send' expects two arguments, target and amount")
-		}
-
 		toAddr, err := address.NewFromString(cctx.Args().Get(0))
 		if err != nil {
-			return err
+			return ShowHelp(cctx, fmt.Errorf("failed to parse target address: %w", err))
 		}
 
 		val, err := types.ParseFIL(cctx.Args().Get(1))
 		if err != nil {
-			return err
+			return ShowHelp(cctx, fmt.Errorf("failed to parse amount: %w", err))
 		}
 
 		var fromAddr address.Address
