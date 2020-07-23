@@ -18,7 +18,7 @@ require (
 	github.com/filecoin-project/chain-validation v0.0.6-0.20200723172316-9bf82042e34b
 	github.com/filecoin-project/filecoin-ffi v0.30.4-0.20200716204036-cddc56607e1d
 	github.com/filecoin-project/go-address v0.0.2-0.20200504173055-8b6f2fb2b3ef
-	github.com/filecoin-project/go-bitfield v0.0.4-0.20200703174658-f4a5758051a1
+	github.com/filecoin-project/go-bitfield v0.1.0
 	github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
 	github.com/filecoin-project/go-data-transfer v0.4.1-0.20200715144713-b3311844e1a5
@@ -29,7 +29,7 @@ require (
 	github.com/filecoin-project/go-statestore v0.1.0
 	github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b
 	github.com/filecoin-project/sector-storage v0.0.0-20200723200950-ed2e57dde6df
-	github.com/filecoin-project/specs-actors v0.8.1-0.20200723162553-e688f5796ae2
+	github.com/filecoin-project/specs-actors v0.8.1-0.20200723200253-a3c01bc62f99
 	github.com/filecoin-project/specs-storage v0.1.1-0.20200622113353-88a9704877ea
 	github.com/filecoin-project/storage-fsm v0.0.0-20200720190000-2cfe2fe3c334
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
@@ -53,7 +53,6 @@ require (
 	github.com/ipfs/go-filestore v1.0.0
 	github.com/ipfs/go-fs-lock v0.0.1
 	github.com/ipfs/go-graphsync v0.0.6-0.20200715142715-e2f27c4754e6
-	github.com/ipfs/go-hamt-ipld v0.1.1-0.20200605182717-0310ad2b0b1f // indirect
 	github.com/ipfs/go-ipfs-blockstore v1.0.0
 	github.com/ipfs/go-ipfs-chunker v0.0.5
 	github.com/ipfs/go-ipfs-ds-help v1.0.0
