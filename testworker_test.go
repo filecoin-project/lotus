@@ -37,7 +37,7 @@ func newTestWorker(wcfg WorkerConfig, lstor *stores.Local) *testWorker {
 		acceptTasks: acceptTasks,
 		lstor:       lstor,
 
-		mockSeal: mock.NewMockSectorMgr(ssize),
+		mockSeal: mock.NewMockSectorMgr(ssize, nil),
 	}
 }
 
