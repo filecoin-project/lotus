@@ -109,7 +109,7 @@ func (bs *BufferedBS) GetSize(c cid.Cid) (int, error) {
 		return bs.write.GetSize(c)
 	}
 
-	return 0, err
+	return s, err
 }
 
 func (bs *BufferedBS) Put(blk block.Block) error {
