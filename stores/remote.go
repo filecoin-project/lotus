@@ -29,6 +29,8 @@ type Remote struct {
 	index SectorIndex
 	auth  http.Header
 
+	limit chan struct{}
+
 	fetchLk  sync.Mutex
 	fetching map[abi.SectorID]chan struct{}
 }
@@ -41,11 +43,13 @@ func (r *Remote) RemoveCopies(ctx context.Context, s abi.SectorID, types SectorF
 	return r.local.RemoveCopies(ctx, s, types)
 }
 
-func NewRemote(local *Local, index SectorIndex, auth http.Header) *Remote {
+func NewRemote(local *Local, index SectorIndex, auth http.Header, fetchLimit int) *Remote {
 	return &Remote{
 		local: local,
 		index: index,
 		auth:  auth,
+
+		limit: make(chan struct{}, fetchLimit),
 
 		fetching: map[abi.SectorID]chan struct{}{},
 	}
@@ -164,6 +168,21 @@ func (r *Remote) acquireFromRemote(ctx context.Context, s abi.SectorID, spt abi.
 
 func (r *Remote) fetch(ctx context.Context, url, outname string) error {
 	log.Infof("Fetch %s -> %s", url, outname)
+
+	if len(r.limit) >= cap(r.limit) {
+		log.Infof("Throttling fetch, %d already running", len(r.limit))
+	}
+
+	// TODO: Smarter throttling
+	//  * Priority (just going sequentially is still pretty good)
+	//  * Per interface
+	//  * Aware of remote load
+	select {
+	case r.limit <- struct{}{}:
+		defer func() { <-r.limit }()
+	case <-ctx.Done():
+		return xerrors.Errorf("context error while waiting for fetch limiter: %w", ctx.Err())
+	}
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {

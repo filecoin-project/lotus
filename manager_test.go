@@ -95,7 +95,7 @@ func newTestMgr(ctx context.Context, t *testing.T) (*Manager, *stores.Local, *st
 	prover, err := ffiwrapper.New(&readonlyProvider{stor: lstor}, cfg)
 	require.NoError(t, err)
 
-	stor := stores.NewRemote(lstor, si, nil)
+	stor := stores.NewRemote(lstor, si, nil, 6000)
 
 	m := &Manager{
 		scfg: cfg,
