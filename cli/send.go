@@ -32,6 +32,11 @@ var sendCmd = &cli.Command{
 			Value: "0",
 		},
 		&cli.Int64Flag{
+			Name:  "gas-limit",
+			Usage: "specify gas limit",
+			Value: 0,
+		},
+		&cli.Int64Flag{
 			Name:  "nonce",
 			Usage: "specify the nonce to use",
 			Value: -1,
@@ -121,6 +126,7 @@ var sendCmd = &cli.Command{
 			To:       toAddr,
 			Value:    types.BigInt(val),
 			GasPrice: gp,
+			GasLimit: cctx.Int64("gas-limit"),
 			Method:   method,
 			Params:   params,
 		}
