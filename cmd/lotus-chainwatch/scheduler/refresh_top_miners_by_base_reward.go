@@ -24,7 +24,7 @@ func setupTopMinerByBaseRewardSchema(ctx context.Context, db *sql.DB) error {
 			with total_rewards_by_miner as (
 				select
 					b.miner,
-					sum(bbr.base_block_reward) as total_reward
+					sum(bbr.base_block_reward * b.win_count) as total_reward
 				from blocks b
 				inner join base_block_rewards bbr on b.parentstateroot = bbr.state_root
 				group by 1
