@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/filecoin-project/go-multistore"
 	"github.com/filecoin-project/lotus/lib/bufbstore"
 	"golang.org/x/xerrors"
 
@@ -42,7 +43,7 @@ func ClientMultiDatastore(lc fx.Lifecycle, r repo.LockedRepo) (dtypes.ClientMult
 		return nil, xerrors.Errorf("getting datastore out of reop: %w", err)
 	}
 
-	mds, err := importmgr.NewMultiDstore(ds)
+	mds, err := multistore.NewMultiDstore(ds)
 	if err != nil {
 		return nil, err
 	}

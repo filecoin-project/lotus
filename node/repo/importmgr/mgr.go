@@ -9,10 +9,12 @@ import (
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
+
+	"github.com/filecoin-project/go-multistore"
 )
 
 type Mgr struct {
-	mds *MultiStore
+	mds *multistore.MultiStore
 	ds  datastore.Batching
 
 	Blockstore blockstore.Blockstore
@@ -27,12 +29,10 @@ const (
 	LMTime    = "mtime"    // File modification timestamp
 )
 
-func New(mds *MultiStore, ds datastore.Batching) *Mgr {
+func New(mds *multistore.MultiStore, ds datastore.Batching) *Mgr {
 	return &Mgr{
-		mds: mds,
-		Blockstore: &multiReadBs{
-			mds: mds,
-		},
+		mds:        mds,
+		Blockstore: mds.MultiReadBlockstore(),
 
 		ds: datastore.NewLogDatastore(namespace.Wrap(ds, datastore.NewKey("/stores")), "storess"),
 	}
@@ -42,7 +42,7 @@ type StoreMeta struct {
 	Labels map[string]string
 }
 
-func (m *Mgr) NewStore() (int, *Store, error) {
+func (m *Mgr) NewStore() (int, *multistore.Store, error) {
 	id := m.mds.Next()
 	st, err := m.mds.Get(id)
 	if err != nil {
