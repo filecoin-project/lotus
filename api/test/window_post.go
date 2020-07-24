@@ -97,7 +97,7 @@ func pledgeSectors(t *testing.T, ctx context.Context, miner TestStorageNode, n i
 
 	for len(toCheck) > 0 {
 		for n := range toCheck {
-			st, err := miner.SectorsStatus(ctx, n)
+			st, err := miner.SectorsStatus(ctx, n, false)
 			require.NoError(t, err)
 			if st.State == api.SectorState(sealing.Proving) {
 				delete(toCheck, n)
