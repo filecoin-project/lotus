@@ -51,30 +51,11 @@ create table if not exists chain_power
 			primary key,
 	baseline_power text not null
 );
-
-create materialized view if not exists top_miners_by_base_reward as
-	with total_rewards_by_miner as (
-		select
-			b.miner,
-			sum(bbr.base_block_reward) as total_reward
-		from blocks b
-		inner join base_block_rewards bbr on b.parentstateroot = bbr.state_root
-		group by 1
-	) select
-		rank() over (order by total_reward desc),
-		miner,
-		total_reward
-	from total_rewards_by_miner
-	group by 2, 3;
-
-create index if not exists top_miners_by_base_reward_miner_index
-	on top_miners_by_base_reward (miner);
 `); err != nil {
 		return err
 	}
 
 	return tx.Commit()
-
 }
 
 func (p *Processor) HandleRewardChanges(ctx context.Context, rewardTips ActorTips) error {
