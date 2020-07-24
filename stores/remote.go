@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	gopath "path"
+	"path/filepath"
 	"sort"
 	"sync"
 
@@ -23,6 +24,8 @@ import (
 	"github.com/filecoin-project/sector-storage/storiface"
 	"github.com/filecoin-project/sector-storage/tarutil"
 )
+
+var FetchTempSubdir = "fetching"
 
 type Remote struct {
 	local *Local
@@ -124,6 +127,16 @@ func (r *Remote) AcquireSector(ctx context.Context, s abi.SectorID, spt abi.Regi
 	return paths, stores, nil
 }
 
+func tempDest(spath string) (string, error) {
+	st, b := filepath.Split(spath)
+	tempdir := filepath.Join(st, FetchTempSubdir)
+	if err := os.MkdirAll(tempdir, 755); err != nil {
+		return "", xerrors.Errorf("creating temp fetch dir: %w", err)
+	}
+
+	return filepath.Join(tempdir, b), nil
+}
+
 func (r *Remote) acquireFromRemote(ctx context.Context, s abi.SectorID, spt abi.RegisteredSealProof, fileType SectorFileType, pathType PathType, op AcquireMode) (string, ID, string, error) {
 	si, err := r.index.StorageFindSector(ctx, s, fileType, false)
 	if err != nil {
@@ -150,9 +163,16 @@ func (r *Remote) acquireFromRemote(ctx context.Context, s abi.SectorID, spt abi.
 		// TODO: see what we have local, prefer that
 
 		for _, url := range info.URLs {
-			tempDest := dest + ".fetch"
+			tempDest, err := tempDest(dest)
+			if err != nil {
+				return "", "", "", err
+			}
 
-			err := r.fetch(ctx, url, tempDest)
+			if err := os.RemoveAll(dest); err != nil {
+				return "", "", "", xerrors.Errorf("removing dest: %w", err)
+			}
+
+			err = r.fetch(ctx, url, tempDest)
 			if err != nil {
 				merr = multierror.Append(merr, xerrors.Errorf("fetch error %s (storage %s) -> %s: %w", url, info.ID, tempDest, err))
 				continue

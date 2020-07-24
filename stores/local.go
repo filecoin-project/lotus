@@ -3,7 +3,6 @@ package stores
 import (
 	"context"
 	"encoding/json"
-	"github.com/filecoin-project/sector-storage/fsutil"
 	"io/ioutil"
 	"math/bits"
 	"math/rand"
@@ -14,6 +13,7 @@ import (
 
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/sector-storage/fsutil"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
@@ -179,6 +179,10 @@ func (st *Local) OpenPath(ctx context.Context, p string) error {
 		}
 
 		for _, ent := range ents {
+			if ent.Name() == FetchTempSubdir {
+				continue
+			}
+
 			sid, err := ParseSectorID(ent.Name())
 			if err != nil {
 				return xerrors.Errorf("parse sector id %s: %w", ent.Name(), err)
