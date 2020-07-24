@@ -225,7 +225,7 @@ func sectorsInfo(ctx context.Context, napi api.StorageMiner) error {
 		"Total": len(sectors),
 	}
 	for _, s := range sectors {
-		st, err := napi.SectorsStatus(ctx, s)
+		st, err := napi.SectorsStatus(ctx, s, false)
 		if err != nil {
 			return err
 		}

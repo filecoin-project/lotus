@@ -58,6 +58,10 @@ var sectorsStatusCmd = &cli.Command{
 			Name:  "log",
 			Usage: "display event log",
 		},
+		&cli.BoolFlag{
+			Name:  "on-chain-info",
+			Usage: "show sector on chain info",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
@@ -76,7 +80,8 @@ var sectorsStatusCmd = &cli.Command{
 			return err
 		}
 
-		status, err := nodeApi.SectorsStatus(ctx, abi.SectorNumber(id))
+		onChainInfo := cctx.Bool("on-chain-info")
+		status, err := nodeApi.SectorsStatus(ctx, abi.SectorNumber(id), onChainInfo)
 		if err != nil {
 			return err
 		}
@@ -94,6 +99,19 @@ var sectorsStatusCmd = &cli.Command{
 		fmt.Printf("Retries:\t%d\n", status.Retries)
 		if status.LastErr != "" {
 			fmt.Printf("Last Error:\t\t%s\n", status.LastErr)
+		}
+
+		if onChainInfo {
+			fmt.Printf("\nSector On Chain Info\n")
+			fmt.Printf("SealProof:\t\t%x\n", status.SealProof)
+			fmt.Printf("Activation:\t\t%v\n", status.Activation)
+			fmt.Printf("Expiration:\t\t%v\n", status.Expiration)
+			fmt.Printf("DealWeight:\t\t%v\n", status.DealWeight)
+			fmt.Printf("VerifiedDealWeight:\t\t%v\n", status.VerifiedDealWeight)
+			fmt.Printf("InitialPledge:\t\t%v\n", status.InitialPledge)
+			fmt.Printf("\nExpiration Info\n")
+			fmt.Printf("OnTime:\t\t%v\n", status.OnTime)
+			fmt.Printf("Early:\t\t%v\n", status.Early)
 		}
 
 		if cctx.Bool("log") {
@@ -163,7 +181,7 @@ var sectorsListCmd = &cli.Command{
 		w := tabwriter.NewWriter(os.Stdout, 8, 4, 1, ' ', 0)
 
 		for _, s := range list {
-			st, err := nodeApi.SectorsStatus(ctx, s)
+			st, err := nodeApi.SectorsStatus(ctx, s, false)
 			if err != nil {
 				fmt.Fprintf(w, "%d:\tError: %s\n", s, err)
 				continue
