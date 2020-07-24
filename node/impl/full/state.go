@@ -952,8 +952,12 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 		return types.EmptyInt, err
 	}
 
-	var dealWeights market.VerifyDealsForActivationReturn
-	{
+	dealWeights := market.VerifyDealsForActivationReturn{
+		DealWeight:         big.Zero(),
+		VerifiedDealWeight: big.Zero(),
+	}
+
+	if len(pci.DealIDs) != 0 {
 		var err error
 		params, err := actors.SerializeParams(&market.VerifyDealsForActivationParams{
 			DealIDs:      pci.DealIDs,
@@ -980,10 +984,12 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 		}
 	}
 
-	ssize, err := pci.SealProof.SectorSize()
+	mi, err := a.StateMinerInfo(ctx, maddr, tsk)
 	if err != nil {
 		return types.EmptyInt, err
 	}
+
+	ssize := mi.SectorSize
 
 	duration := pci.Expiration - ts.Height() // NB: not exactly accurate, but should always lead us to *over* estimate, not under
 

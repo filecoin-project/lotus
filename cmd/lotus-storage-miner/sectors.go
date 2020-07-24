@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"os"
 	"sort"
 	"strconv"
@@ -31,6 +32,7 @@ var sectorsCmd = &cli.Command{
 		sectorsMarkForUpgradeCmd,
 		sectorsStartSealCmd,
 		sectorsSealDelayCmd,
+		sectorsCapacityCollateralCmd,
 	},
 }
 
@@ -318,6 +320,53 @@ var sectorsSealDelayCmd = &cli.Command{
 		delay := hs * uint64(time.Minute)
 
 		return nodeApi.SectorSetSealDelay(ctx, time.Duration(delay))
+	},
+}
+
+var sectorsCapacityCollateralCmd = &cli.Command{
+	Name:  "get-cc-collateral",
+	Usage: "Get the collateral required to pledge a committed capacity sector",
+	Flags: []cli.Flag{
+		&cli.Uint64Flag{
+			Name:  "expiration",
+			Usage: "the epoch when the sector will expire",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+
+		mApi, mCloser, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer mCloser()
+
+		nApi, nCloser, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer nCloser()
+
+		ctx := lcli.ReqContext(cctx)
+
+		maddr, err := mApi.ActorAddress(ctx)
+		if err != nil {
+			return err
+		}
+
+		pci := miner.SectorPreCommitInfo{
+			Expiration: abi.ChainEpoch(cctx.Uint64("expiration")),
+		}
+		if pci.Expiration == 0 {
+			pci.Expiration = miner.MaxSectorExpirationExtension
+		}
+		pc, err := nApi.StateMinerInitialPledgeCollateral(ctx, maddr, pci, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Estimated collateral: %s\n", types.FIL(pc))
+
+		return nil
 	},
 }
 
