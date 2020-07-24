@@ -21,7 +21,9 @@ const UnixfsLinksPerLevel = 1024
 
 const AllowableClockDriftSecs = uint64(1)
 
-// Epochs
+
+// PARAM_SPEC
+// Forks that differ from the main chain longer than this threshold are rejected.
 const ForkLengthThreshold = Finality
 
 // Blocks (e)
