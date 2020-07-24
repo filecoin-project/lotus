@@ -547,6 +547,9 @@ func linksForObj(blk block.Block, cb func(cid.Cid)) error {
 			return xerrors.Errorf("cbg.ScanForLinks: %w", err)
 		}
 		return nil
+	case cid.Raw:
+		// We implicitly have all children of raw blocks.
+		return nil
 	default:
 		return xerrors.Errorf("vm flush copy method only supports dag cbor")
 	}
@@ -596,17 +599,27 @@ func copyRec(from, to blockstore.Blockstore, root cid.Cid, cp func(block.Block) 
 			return
 		}
 
-		if link.Prefix().MhType == mh.IDENTITY || link.Prefix().Codec == cid.FilCommitmentSealed || link.Prefix().Codec == cid.FilCommitmentUnsealed {
+		prefix := link.Prefix()
+		if prefix.Codec == cid.FilCommitmentSealed || prefix.Codec == cid.FilCommitmentUnsealed {
 			return
 		}
 
-		has, err := to.Has(link)
-		if err != nil {
-			lerr = xerrors.Errorf("has: %w", err)
-			return
-		}
-		if has {
-			return
+		// We always have blocks inlined into CIDs, but we may not have their children.
+		if prefix.MhType == mh.IDENTITY {
+			// Unless the inlined block has no children.
+			if prefix.Codec == cid.Raw {
+				return
+			}
+		} else {
+			// If we have an object, we already have its children, skip the object.
+			has, err := to.Has(link)
+			if err != nil {
+				lerr = xerrors.Errorf("has: %w", err)
+				return
+			}
+			if has {
+				return
+			}
 		}
 
 		if err := copyRec(from, to, link, cp); err != nil {
