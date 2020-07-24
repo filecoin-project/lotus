@@ -56,7 +56,19 @@ const MaxSealLookback = SealRandomnessLookbackLimit + 2000 // TODO: Get from spe
 // Epochs
 const TicketRandomnessLookback = abi.ChainEpoch(1)
 
-const WinningPoStSectorSetLookback = abi.ChainEpoch(10)
+// PARAM_SPEC
+// Power Table Lookback for leader election
+// This lookback is used for calculating the eligible power for leader election
+// and the sector set used for WinningPoSt.
+// If this parameter is set to be larger than 0 this has implication on:
+// (1) mantaining pledge longer than expiration
+// (2) mantaining a sector around for longer than expiratin (or WinningPoSt may fail)
+// Motivation: The choice of the value for this parameter guarantees that:
+// (1) a miner could not game the weight function by removing power in other chains
+// (2) the miner could not have changed their miner key to change challenged sectors
+//     or to change the key used in leader election (and increase their probability 
+//     of winning)
+const WinningPoStSectorSetLookback = Finality
 
 // /////
 // Devnet settings
