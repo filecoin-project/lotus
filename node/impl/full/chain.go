@@ -4,19 +4,16 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"strconv"
 	"strings"
 	"sync"
 
-	"github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -26,6 +23,7 @@ import (
 	"github.com/ipfs/go-path"
 	"github.com/ipfs/go-path/resolver"
 	mh "github.com/multiformats/go-multihash"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -265,8 +263,17 @@ func (a *ChainAPI) ChainTipSetWeight(ctx context.Context, tsk types.TipSetKey) (
 	return a.Chain.Weight(ctx, ts)
 }
 
+// This allows us to lookup string keys in the actor's adt.Map type.
+type stringKey string
+
+func (s stringKey) Key() string {
+	return (string)(s)
+}
+
 func resolveOnce(bs blockstore.Blockstore) func(ctx context.Context, ds ipld.NodeGetter, nd ipld.Node, names []string) (*ipld.Link, []string, error) {
 	return func(ctx context.Context, ds ipld.NodeGetter, nd ipld.Node, names []string) (*ipld.Link, []string, error) {
+		store := adt.WrapStore(ctx, cbor.NewCborStore(bs))
+
 		if strings.HasPrefix(names[0], "@Ha:") {
 			addr, err := address.NewFromString(names[0][4:])
 			if err != nil {
@@ -290,7 +297,7 @@ func resolveOnce(bs blockstore.Blockstore) func(ctx context.Context, ds ipld.Nod
 		if strings.HasPrefix(names[0], "@Hu:") {
 			i, err := strconv.ParseUint(names[0][4:], 10, 64)
 			if err != nil {
-				return nil, nil, xerrors.Errorf("parsing int64: %w", err)
+				return nil, nil, xerrors.Errorf("parsing uint64: %w", err)
 			}
 
 			ik := adt.UIntKey(i)
@@ -299,16 +306,20 @@ func resolveOnce(bs blockstore.Blockstore) func(ctx context.Context, ds ipld.Nod
 		}
 
 		if strings.HasPrefix(names[0], "@H:") {
-			cst := cbor.NewCborStore(bs)
-
-			h, err := hamt.LoadNode(ctx, cst, nd.Cid(), hamt.UseTreeBitWidth(5))
+			h, err := adt.AsMap(store, nd.Cid())
 			if err != nil {
 				return nil, nil, xerrors.Errorf("resolving hamt link: %w", err)
 			}
 
-			var m interface{}
-			if err := h.Find(ctx, names[0][3:], &m); err != nil {
+			var deferred cbg.Deferred
+			if found, err := h.Get(stringKey(names[0][3:]), &deferred); err != nil {
 				return nil, nil, xerrors.Errorf("resolve hamt: %w", err)
+			} else if !found {
+				return nil, nil, xerrors.Errorf("resolve hamt: not found")
+			}
+			var m interface{}
+			if err := cbor.DecodeInto(deferred.Raw, &m); err != nil {
+				return nil, nil, xerrors.Errorf("failed to decode cbor object: %w", err)
 			}
 			if c, ok := m.(cid.Cid); ok {
 				return &ipld.Link{
@@ -337,7 +348,7 @@ func resolveOnce(bs blockstore.Blockstore) func(ctx context.Context, ds ipld.Nod
 		}
 
 		if strings.HasPrefix(names[0], "@A:") {
-			a, err := amt.LoadAMT(ctx, cbor.NewCborStore(bs), nd.Cid())
+			a, err := adt.AsArray(store, nd.Cid())
 			if err != nil {
 				return nil, nil, xerrors.Errorf("load amt: %w", err)
 			}
@@ -347,11 +358,17 @@ func resolveOnce(bs blockstore.Blockstore) func(ctx context.Context, ds ipld.Nod
 				return nil, nil, xerrors.Errorf("parsing amt index: %w", err)
 			}
 
-			var m interface{}
-			if err := a.Get(ctx, idx, &m); err != nil {
-				return nil, nil, xerrors.Errorf("amt get: %w", err)
+			var deferred cbg.Deferred
+			if found, err := a.Get(idx, &deferred); err != nil {
+				return nil, nil, xerrors.Errorf("resolve amt: %w", err)
+			} else if !found {
+				return nil, nil, xerrors.Errorf("resolve amt: not found")
 			}
-			fmt.Printf("AG %T %v\n", m, m)
+			var m interface{}
+			if err := cbor.DecodeInto(deferred.Raw, &m); err != nil {
+				return nil, nil, xerrors.Errorf("failed to decode cbor object: %w", err)
+			}
+
 			if c, ok := m.(cid.Cid); ok {
 				return &ipld.Link{
 					Name: names[0][3:],

@@ -12,15 +12,14 @@ import (
 	"text/tabwriter"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/go-address"
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	samsig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	cid "github.com/ipfs/go-cid"
-	"github.com/ipfs/go-hamt-ipld"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/urfave/cli/v2"
-	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
@@ -68,16 +67,16 @@ var msigCreateCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() < 1 {
+			return ShowHelp(cctx, fmt.Errorf("multisigs must have at least one signer"))
+		}
+
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 		ctx := ReqContext(cctx)
-
-		if cctx.Args().Len() < 1 {
-			return fmt.Errorf("multisigs must have at least one signer")
-		}
 
 		var addrs []address.Address
 		for _, a := range cctx.Args().Slice() {
@@ -159,16 +158,16 @@ var msigInspectCmd = &cli.Command{
 	ArgsUsage: "[address]",
 	Flags:     []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
+		if !cctx.Args().Present() {
+			return ShowHelp(cctx, fmt.Errorf("must specify address of multisig to inspect"))
+		}
+
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 		ctx := ReqContext(cctx)
-
-		if !cctx.Args().Present() {
-			return fmt.Errorf("must specify address of multisig to inspect")
-		}
 
 		maddr, err := address.NewFromString(cctx.Args().First())
 		if err != nil {
@@ -237,24 +236,20 @@ var msigInspectCmd = &cli.Command{
 
 func GetMultisigPending(ctx context.Context, lapi api.FullNode, hroot cid.Cid) (map[int64]*samsig.Transaction, error) {
 	bs := apibstore.NewAPIBlockstore(lapi)
-	cst := cbor.NewCborStore(bs)
+	store := adt.WrapStore(ctx, cbor.NewCborStore(bs))
 
-	nd, err := hamt.LoadNode(ctx, cst, hroot, hamt.UseTreeBitWidth(5))
+	nd, err := adt.AsMap(store, hroot)
 	if err != nil {
 		return nil, err
 	}
 
 	txs := make(map[int64]*samsig.Transaction)
-	err = nd.ForEach(ctx, func(k string, val interface{}) error {
-		d := val.(*cbg.Deferred)
-		var tx samsig.Transaction
-		if err := tx.UnmarshalCBOR(bytes.NewReader(d.Raw)); err != nil {
-			return err
-		}
-
+	var tx samsig.Transaction
+	err = nd.ForEach(&tx, func(k string) error {
 		txid, _ := binary.Varint([]byte(k))
 
-		txs[txid] = &tx
+		cpy := tx // copy so we don't clobber on future iterations.
+		txs[txid] = &cpy
 		return nil
 	})
 	if err != nil {
@@ -287,20 +282,20 @@ var msigProposeCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() < 3 {
+			return ShowHelp(cctx, fmt.Errorf("must pass at least multisig address, destination, and value"))
+		}
+
+		if cctx.Args().Len() > 3 && cctx.Args().Len() != 5 {
+			return ShowHelp(cctx, fmt.Errorf("must either pass three or five arguments"))
+		}
+
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 		ctx := ReqContext(cctx)
-
-		if cctx.Args().Len() < 3 {
-			return fmt.Errorf("must pass multisig address, destination, and value")
-		}
-
-		if cctx.Args().Len() > 3 && cctx.Args().Len() != 5 {
-			return fmt.Errorf("usage: msig propose <msig addr> <desination> <value> [ <method> <params> ]")
-		}
 
 		msig, err := address.NewFromString(cctx.Args().Get(0))
 		if err != nil {
@@ -391,20 +386,20 @@ var msigApproveCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() < 5 {
+			return ShowHelp(cctx, fmt.Errorf("must pass multisig address, message ID, proposer address, destination, and value"))
+		}
+
+		if cctx.Args().Len() > 5 && cctx.Args().Len() != 7 {
+			return ShowHelp(cctx, fmt.Errorf("usage: msig approve <msig addr> <message ID> <proposer address> <desination> <value> [ <method> <params> ]"))
+		}
+
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 		ctx := ReqContext(cctx)
-
-		if cctx.Args().Len() < 5 {
-			return fmt.Errorf("must pass multisig address, message ID, proposer address, destination, and value")
-		}
-
-		if cctx.Args().Len() > 5 && cctx.Args().Len() != 7 {
-			return fmt.Errorf("usage: msig approve <msig addr> <message ID> <proposer address> <desination> <value> [ <method> <params> ]")
-		}
 
 		msig, err := address.NewFromString(cctx.Args().Get(0))
 		if err != nil {
@@ -500,16 +495,16 @@ var msigSwapProposeCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() != 3 {
+			return ShowHelp(cctx, fmt.Errorf("must pass multisig address, old signer address, new signer address"))
+		}
+
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 		ctx := ReqContext(cctx)
-
-		if cctx.Args().Len() != 3 {
-			return fmt.Errorf("must pass multisig address, old signer address, new signer address")
-		}
 
 		msig, err := address.NewFromString(cctx.Args().Get(0))
 		if err != nil {
@@ -572,16 +567,16 @@ var msigSwapApproveCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() != 5 {
+			return ShowHelp(cctx, fmt.Errorf("must pass multisig address, proposer address, transaction id, old signer address, new signer address"))
+		}
+
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 		ctx := ReqContext(cctx)
-
-		if cctx.Args().Len() != 5 {
-			return fmt.Errorf("must pass multisig address, proposer address, transaction id, old signer address, new signer address")
-		}
 
 		msig, err := address.NewFromString(cctx.Args().Get(0))
 		if err != nil {
@@ -654,16 +649,16 @@ var msigSwapCancelCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() != 4 {
+			return ShowHelp(cctx, fmt.Errorf("must pass multisig address, transaction id, old signer address, new signer address"))
+		}
+
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 		ctx := ReqContext(cctx)
-
-		if cctx.Args().Len() != 4 {
-			return fmt.Errorf("must pass multisig address, transaction id, old signer address, new signer address")
-		}
 
 		msig, err := address.NewFromString(cctx.Args().Get(0))
 		if err != nil {

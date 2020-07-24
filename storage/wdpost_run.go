@@ -331,7 +331,7 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 
 	params := &miner.SubmitWindowedPoStParams{
 		Deadline:   di.Index,
-		Partitions: make([]miner.PoStPartition, len(partitions)),
+		Partitions: make([]miner.PoStPartition, 0, len(partitions)),
 		Proofs:     nil,
 	}
 
@@ -373,20 +373,19 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 			return nil, xerrors.Errorf("getting sorted sector info: %w", err)
 		}
 
+		if len(ssi) == 0 {
+			continue
+		}
+
 		sinfos = append(sinfos, ssi...)
 		for _, si := range ssi {
 			sidToPart[si.SectorNumber] = uint64(partIdx)
 		}
 
-		if len(ssi) == 0 {
-			log.Warn("attempted to run windowPost without any sectors...")
-			return nil, xerrors.Errorf("no sectors to run windowPost on")
-		}
-
-		params.Partitions[partIdx] = miner.PoStPartition{
+		params.Partitions = append(params.Partitions, miner.PoStPartition{
 			Index:   uint64(partIdx),
 			Skipped: skipped,
-		}
+		})
 	}
 
 	if len(sinfos) == 0 {
@@ -458,14 +457,12 @@ func (s *WindowPoStScheduler) submitPost(ctx context.Context, proof *miner.Submi
 	}
 
 	msg := &types.Message{
-		To:     s.actor,
-		From:   s.worker,
-		Method: builtin.MethodsMiner.SubmitWindowedPoSt,
-		Params: enc,
-		Value:  types.NewInt(1000), // currently hard-coded late fee in actor, returned if not late
-		// TODO: Gaslimit needs to be calculated accurately. Before that, use the largest Gaslimit
-		GasLimit: build.BlockGasLimit,
-		GasPrice: types.NewInt(1),
+		To:       s.actor,
+		From:     s.worker,
+		Method:   builtin.MethodsMiner.SubmitWindowedPoSt,
+		Params:   enc,
+		Value:    types.NewInt(1000), // currently hard-coded late fee in actor, returned if not late
+		GasPrice: types.NewInt(3),
 	}
 
 	// TODO: consider maybe caring about the output

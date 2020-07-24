@@ -82,16 +82,16 @@ var sectorsStatusCmd = &cli.Command{
 		}
 
 		fmt.Printf("SectorID:\t%d\n", status.SectorID)
-		fmt.Printf("Status:\t%s\n", status.State)
-		fmt.Printf("CommD:\t\t%x\n", status.CommD)
-		fmt.Printf("CommR:\t\t%x\n", status.CommR)
+		fmt.Printf("Status:\t\t%s\n", status.State)
+		fmt.Printf("CIDcommD:\t%s\n", status.CommD)
+		fmt.Printf("CIDcommR:\t%s\n", status.CommR)
 		fmt.Printf("Ticket:\t\t%x\n", status.Ticket.Value)
-		fmt.Printf("TicketH:\t\t%d\n", status.Ticket.Epoch)
+		fmt.Printf("TicketH:\t%d\n", status.Ticket.Epoch)
 		fmt.Printf("Seed:\t\t%x\n", status.Seed.Value)
 		fmt.Printf("SeedH:\t\t%d\n", status.Seed.Epoch)
 		fmt.Printf("Proof:\t\t%x\n", status.Proof)
 		fmt.Printf("Deals:\t\t%v\n", status.Deals)
-		fmt.Printf("Retries:\t\t%d\n", status.Retries)
+		fmt.Printf("Retries:\t%d\n", status.Retries)
 		if status.LastErr != "" {
 			fmt.Printf("Last Error:\t\t%s\n", status.LastErr)
 		}
@@ -251,15 +251,16 @@ var sectorsMarkForUpgradeCmd = &cli.Command{
 	Usage:     "Mark a committed capacity sector for replacement by a sector with deals",
 	ArgsUsage: "<sectorNum>",
 	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() != 1 {
+			return lcli.ShowHelp(cctx, xerrors.Errorf("must pass sector number"))
+		}
+
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
-		if cctx.Args().Len() != 1 {
-			return xerrors.Errorf("must pass sector number")
-		}
 
 		id, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
 		if err != nil {

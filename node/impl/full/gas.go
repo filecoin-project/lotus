@@ -5,6 +5,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -17,6 +18,7 @@ type GasAPI struct {
 	fx.In
 	Stmgr *stmgr.StateManager
 	Cs    *store.ChainStore
+	Mpool *messagepool.MessagePool
 }
 
 const MinGasPrice = 1
@@ -35,19 +37,25 @@ func (a *GasAPI) GasEstimateGasPrice(ctx context.Context, nblocksincl uint64,
 	}
 }
 
-func (a *GasAPI) GasEstimateGasLimit(ctx context.Context, msgIn *types.Message,
-	tsk types.TipSetKey) (int64, error) {
+func (a *GasAPI) GasEstimateGasLimit(ctx context.Context, msgIn *types.Message, _ types.TipSetKey) (int64, error) {
 
 	msg := *msgIn
 	msg.GasLimit = build.BlockGasLimit
 	msg.GasPrice = types.NewInt(1)
 
-	ts, err := a.Cs.GetTipSetFromKey(tsk)
+	currTs := a.Cs.GetHeaviestTipSet()
+	fromA, err := a.Stmgr.ResolveToKeyAddress(ctx, msgIn.From, currTs)
 	if err != nil {
-		return -1, xerrors.Errorf("could not get tipset: %w", err)
+		return -1, xerrors.Errorf("getting key address: %w", err)
 	}
 
-	res, err := a.Stmgr.CallWithGas(ctx, &msg, ts)
+	pending, ts := a.Mpool.PendingFor(fromA)
+	priorMsgs := make([]types.ChainMsg, 0, len(pending))
+	for _, m := range pending {
+		priorMsgs = append(priorMsgs, m)
+	}
+
+	res, err := a.Stmgr.CallWithGas(ctx, &msg, priorMsgs, ts)
 	if err != nil {
 		return -1, xerrors.Errorf("CallWithGas failed: %w", err)
 	}

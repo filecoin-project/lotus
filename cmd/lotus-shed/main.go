@@ -27,6 +27,8 @@ func main() {
 		fetchParamCmd,
 		proofsCmd,
 		verifRegCmd,
+		miscCmd,
+		mpoolCmd,
 	}
 
 	app := &cli.App{

@@ -41,7 +41,9 @@ func RunHello(mctx helpers.MetricsCtx, lc fx.Lifecycle, h host.Host, svc *hello.
 			pic := evt.(event.EvtPeerIdentificationCompleted)
 			go func() {
 				if err := svc.SayHello(helpers.LifecycleCtx(mctx, lc), pic.Peer); err != nil {
-					log.Warnw("failed to say hello", "error", err, "peer", pic.Peer)
+					protos, _ := h.Peerstore().GetProtocols(pic.Peer)
+					agent, _ := h.Peerstore().Get(pic.Peer, "AgentVersion")
+					log.Warnw("failed to say hello", "error", err, "peer", pic.Peer, "supported", protos, "agent", agent)
 					return
 				}
 			}()
@@ -114,7 +116,7 @@ type RandomBeaconParams struct {
 }
 
 func BuiltinDrandConfig() dtypes.DrandConfig {
-	return build.DrandConfig
+	return build.DrandConfig()
 }
 
 func RandomBeacon(p RandomBeaconParams, _ dtypes.AfterGenesisSet) (beacon.RandomBeacon, error) {

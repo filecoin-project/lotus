@@ -25,9 +25,13 @@ type IpfsBstore struct {
 }
 
 func NewIpfsBstore(ctx context.Context) (*IpfsBstore, error) {
-	api, err := httpapi.NewLocalApi()
+	localApi, err := httpapi.NewLocalApi()
 	if err != nil {
 		return nil, xerrors.Errorf("getting local ipfs api: %w", err)
+	}
+	api, err := localApi.WithOptions(options.Api.Offline(true))
+	if err != nil {
+		return nil, xerrors.Errorf("setting offline mode: %s", err)
 	}
 
 	return &IpfsBstore{
@@ -37,9 +41,13 @@ func NewIpfsBstore(ctx context.Context) (*IpfsBstore, error) {
 }
 
 func NewRemoteIpfsBstore(ctx context.Context, maddr multiaddr.Multiaddr) (*IpfsBstore, error) {
-	api, err := httpapi.NewApi(maddr)
+	httpApi, err := httpapi.NewApi(maddr)
 	if err != nil {
-		return nil, xerrors.Errorf("getting remote ipfs api: %w", err)
+		return nil, xerrors.Errorf("setting remote ipfs api: %w", err)
+	}
+	api, err := httpApi.WithOptions(options.Api.Offline(true))
+	if err != nil {
+		return nil, xerrors.Errorf("applying offline mode: %s", err)
 	}
 
 	return &IpfsBstore{
@@ -55,6 +63,13 @@ func (i *IpfsBstore) DeleteBlock(cid cid.Cid) error {
 func (i *IpfsBstore) Has(cid cid.Cid) (bool, error) {
 	_, err := i.api.Block().Stat(i.ctx, path.IpldPath(cid))
 	if err != nil {
+		// The underlying client is running in Offline mode.
+		// Stat() will fail with an err if the block isn't in the
+		// blockstore. If that's the case, return false without
+		// an error since that's the original intention of this method.
+		if err.Error() == "blockservice: key not found" {
+			return false, nil
+		}
 		return false, xerrors.Errorf("getting ipfs block: %w", err)
 	}
 

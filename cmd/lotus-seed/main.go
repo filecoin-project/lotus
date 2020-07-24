@@ -155,6 +155,9 @@ var aggregateManifestsCmd = &cli.Command{
 			}
 
 			inputs = append(inputs, val)
+			if err := fi.Close(); err != nil {
+				return err
+			}
 		}
 
 		output := make(map[string]genesis.Miner)

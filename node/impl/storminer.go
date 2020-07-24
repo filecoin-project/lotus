@@ -74,6 +74,10 @@ func (sm *StorageMinerAPI) WorkerStats(context.Context) (map[uint64]storiface.Wo
 	return sm.StorageMgr.WorkerStats(), nil
 }
 
+func (sm *StorageMinerAPI) WorkerJobs(ctx context.Context) (map[uint64][]storiface.WorkerJob, error) {
+	return sm.StorageMgr.WorkerJobs(), nil
+}
+
 func (sm *StorageMinerAPI) ActorAddress(context.Context) (address.Address, error) {
 	return sm.Miner.Address(), nil
 }

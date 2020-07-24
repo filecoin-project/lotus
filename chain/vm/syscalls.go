@@ -16,12 +16,12 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/adtutil"
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
 )
@@ -32,15 +32,26 @@ func init() {
 
 // Actual type is defined in chain/types/vmcontext.go because the VMContext interface is there
 
-func Syscalls(verifier ffiwrapper.Verifier) runtime.Syscalls {
-	return &syscallShim{verifier: verifier}
+type SyscallBuilder func(ctx context.Context, cstate *state.StateTree, cst cbor.IpldStore) runtime.Syscalls
+
+func Syscalls(verifier ffiwrapper.Verifier) SyscallBuilder {
+	return func(ctx context.Context, cstate *state.StateTree, cst cbor.IpldStore) runtime.Syscalls {
+		return &syscallShim{
+			ctx: ctx,
+
+			cstate: cstate,
+			cst:    cst,
+
+			verifier: verifier,
+		}
+	}
 }
 
 type syscallShim struct {
 	ctx context.Context
 
 	cstate   *state.StateTree
-	cst      *cbor.BasicIpldStore
+	cst      cbor.IpldStore
 	verifier ffiwrapper.Verifier
 }
 
@@ -180,7 +191,7 @@ func (ss *syscallShim) VerifyBlockSig(blk *types.BlockHeader) error {
 		return err
 	}
 
-	info, err := mas.GetInfo(adtutil.NewStore(ss.ctx, ss.cst))
+	info, err := mas.GetInfo(adt.WrapStore(ss.ctx, ss.cst))
 	if err != nil {
 		return err
 	}

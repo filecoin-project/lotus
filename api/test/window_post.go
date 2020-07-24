@@ -175,7 +175,65 @@ func TestWindowPost(t *testing.T, b APIBuilder, blocktime time.Duration, nSector
 	require.Equal(t, p.MinerPower, p.TotalPower)
 	require.Equal(t, p.MinerPower.RawBytePower, types.NewInt(uint64(ssz)*uint64(nSectors+GenesisPreseals)))
 
-	// TODO: Inject faults here
+	// Drop 2 sectors from deadline 2 partition 0 (full partition / deadline)
+	{
+		parts, err := client.StateMinerPartitions(ctx, maddr, 2, types.EmptyTSK)
+		require.NoError(t, err)
+		require.Greater(t, len(parts), 0)
+
+		n, err := parts[0].Sectors.Count()
+		require.NoError(t, err)
+		require.Equal(t, uint64(2), n)
+
+		// Drop the partition
+		err = parts[0].Sectors.ForEach(func(sid uint64) error {
+			return miner.SectorRemove(ctx, abi.SectorNumber(sid))
+		})
+		require.NoError(t, err)
+	}
+
+	// Drop 1 sectors from deadline 3 partition 0
+	{
+		parts, err := client.StateMinerPartitions(ctx, maddr, 3, types.EmptyTSK)
+		require.NoError(t, err)
+		require.Greater(t, len(parts), 0)
+
+		n, err := parts[0].Sectors.Count()
+		require.NoError(t, err)
+		require.Equal(t, uint64(2), n)
+
+		// Drop the sector
+		s, err := parts[0].Sectors.First()
+		require.NoError(t, err)
+
+		err = miner.SectorRemove(ctx, abi.SectorNumber(s))
+		require.NoError(t, err)
+	}
+
+	di, err = client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
+	require.NoError(t, err)
+
+	for {
+		head, err := client.ChainHead(ctx)
+		require.NoError(t, err)
+
+		if head.Height() > di.PeriodStart+(miner2.WPoStProvingPeriod)+2 {
+			break
+		}
+
+		if head.Height()%100 == 0 {
+			fmt.Printf("@%d\n", head.Height())
+		}
+		build.Clock.Sleep(blocktime)
+	}
+
+	p, err = client.StateMinerPower(ctx, maddr, types.EmptyTSK)
+	require.NoError(t, err)
+
+	require.Equal(t, p.MinerPower, p.TotalPower)
+
+	sectors := p.MinerPower.RawBytePower.Uint64() / uint64(ssz)
+	require.Equal(t, nSectors+GenesisPreseals - 3, int(sectors)) // -3 just removed sectors
 
 	mine = false
 	<-done

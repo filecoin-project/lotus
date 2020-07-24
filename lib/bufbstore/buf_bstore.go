@@ -104,7 +104,12 @@ func (bs *BufferedBS) Get(c cid.Cid) (block.Block, error) {
 }
 
 func (bs *BufferedBS) GetSize(c cid.Cid) (int, error) {
-	panic("nyi")
+	s, err := bs.read.GetSize(c)
+	if err == bstore.ErrNotFound || s == 0 {
+		return bs.write.GetSize(c)
+	}
+
+	return s, err
 }
 
 func (bs *BufferedBS) Put(blk block.Block) error {

@@ -24,7 +24,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
-	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 
 	"github.com/filecoin-project/lotus/build"
@@ -115,7 +114,7 @@ func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, origin addres
 		Atlas:  vm.cst.Atlas,
 	}
 	rt.sys = pricedSyscalls{
-		under:     vm.Syscalls,
+		under:     vm.Syscalls(ctx, vm.cstate, rt.cst),
 		chargeGas: rt.chargeGasFunc(1),
 		pl:        rt.pricelist,
 	}
@@ -148,10 +147,10 @@ type VM struct {
 	inv         *Invoker
 	rand        Rand
 
-	Syscalls runtime.Syscalls
+	Syscalls SyscallBuilder
 }
 
-func NewVM(base cid.Cid, height abi.ChainEpoch, r Rand, cbs blockstore.Blockstore, syscalls runtime.Syscalls) (*VM, error) {
+func NewVM(base cid.Cid, height abi.ChainEpoch, r Rand, cbs blockstore.Blockstore, syscalls SyscallBuilder) (*VM, error) {
 	buf := bufbstore.NewBufferedBstore(cbs)
 	cst := cbor.NewCborStore(buf)
 	state, err := state.LoadStateTree(cst, base)
@@ -347,6 +346,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 					ExitCode: exitcode.SysErrSenderInvalid,
 					GasUsed:  0,
 				},
+				ActorErr: aerrors.Newf(exitcode.SysErrSenderInvalid, "actor not found: %s", msg.From),
 				Penalty:  minerPenaltyAmount,
 				Duration: time.Since(start),
 			}, nil
@@ -361,6 +361,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 				ExitCode: exitcode.SysErrSenderInvalid,
 				GasUsed:  0,
 			},
+			ActorErr: aerrors.Newf(exitcode.SysErrSenderInvalid, "send from not account actor: %s", fromActor.Code),
 			Penalty:  minerPenaltyAmount,
 			Duration: time.Since(start),
 		}, nil
@@ -373,6 +374,8 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 				ExitCode: exitcode.SysErrSenderStateInvalid,
 				GasUsed:  0,
 			},
+			ActorErr: aerrors.Newf(exitcode.SysErrSenderStateInvalid,
+				"actor nonce invalid: msg:%d != state:%d", msg.Nonce, fromActor.Nonce),
 			Penalty:  minerPenaltyAmount,
 			Duration: time.Since(start),
 		}, nil
@@ -386,6 +389,8 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 				ExitCode: exitcode.SysErrSenderStateInvalid,
 				GasUsed:  0,
 			},
+			ActorErr: aerrors.Newf(exitcode.SysErrSenderStateInvalid,
+				"actor balance less than needed: %s < %s", types.FIL(fromActor.Balance), types.FIL(totalCost)),
 			Penalty:  minerPenaltyAmount,
 			Duration: time.Since(start),
 		}, nil

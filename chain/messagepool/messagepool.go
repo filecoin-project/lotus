@@ -117,12 +117,14 @@ func (ms *msgSet) add(m *types.SignedMessage) error {
 			minPrice := exms.Message.GasPrice
 			minPrice = types.BigAdd(minPrice, types.BigDiv(types.BigMul(minPrice, rbfNum), rbfDenom))
 			minPrice = types.BigAdd(minPrice, types.NewInt(1))
-			if types.BigCmp(m.Message.GasPrice, minPrice) > 0 {
+			if types.BigCmp(m.Message.GasPrice, minPrice) >= 0 {
 				log.Infow("add with RBF", "oldprice", exms.Message.GasPrice,
 					"newprice", m.Message.GasPrice, "addr", m.Message.From, "nonce", m.Message.Nonce)
 			} else {
 				log.Info("add with duplicate nonce")
-				return xerrors.Errorf("message to %s with nonce %d already in mpool", m.Message.To, m.Message.Nonce)
+				return xerrors.Errorf("message from %s with nonce %d already in mpool,"+
+					" increase GasPrice to %s from %s to trigger replace by fee",
+					m.Message.From, m.Message.Nonce, minPrice, m.Message.GasPrice)
 			}
 		}
 	}
@@ -616,6 +618,14 @@ func (mp *MessagePool) Pending() ([]*types.SignedMessage, *types.TipSet) {
 	}
 
 	return out, mp.curTs
+}
+func (mp *MessagePool) PendingFor(a address.Address) ([]*types.SignedMessage, *types.TipSet) {
+	mp.curTsLk.Lock()
+	defer mp.curTsLk.Unlock()
+
+	mp.lk.Lock()
+	defer mp.lk.Unlock()
+	return mp.pendingFor(a), mp.curTs
 }
 
 func (mp *MessagePool) pendingFor(a address.Address) []*types.SignedMessage {

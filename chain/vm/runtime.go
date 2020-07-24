@@ -20,7 +20,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
-	hamt "github.com/ipfs/go-hamt-ipld"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/trace"
@@ -464,7 +463,7 @@ func (rt *Runtime) GetBalance(a address.Address) (types.BigInt, aerrors.ActorErr
 	switch err {
 	default:
 		return types.EmptyInt, aerrors.Escalate(err, "failed to look up actor balance")
-	case hamt.ErrNotFound:
+	case types.ErrActorNotFound:
 		return types.NewInt(0), nil
 	case nil:
 		return act.Balance, nil
@@ -582,12 +581,12 @@ func (rt *Runtime) abortIfAlreadyValidated() {
 func (rt *Runtime) Log(level vmr.LogLevel, msg string, args ...interface{}) {
 	switch level {
 	case vmr.DEBUG:
-		actorLog.Debugf(msg, args)
+		actorLog.Debugf(msg, args...)
 	case vmr.INFO:
-		actorLog.Infof(msg, args)
+		actorLog.Infof(msg, args...)
 	case vmr.WARN:
-		actorLog.Warnf(msg, args)
+		actorLog.Warnf(msg, args...)
 	case vmr.ERROR:
-		actorLog.Errorf(msg, args)
+		actorLog.Errorf(msg, args...)
 	}
 }

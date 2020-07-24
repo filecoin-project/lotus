@@ -2,11 +2,10 @@ package genesis
 
 import (
 	"context"
-	"github.com/ipfs/go-hamt-ipld"
 
-	"github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
@@ -14,20 +13,20 @@ import (
 )
 
 func SetupStorageMarketActor(bs bstore.Blockstore) (*types.Actor, error) {
-	cst := cbor.NewCborStore(bs)
+	store := adt.WrapStore(context.TODO(), cbor.NewCborStore(bs))
 
-	a, err := amt.NewAMT(cst).Flush(context.TODO())
+	a, err := adt.MakeEmptyArray(store).Root()
 	if err != nil {
 		return nil, err
 	}
-	h, err := cst.Put(context.TODO(), hamt.NewNode(cst, hamt.UseTreeBitWidth(5)))
+	h, err := adt.MakeEmptyMap(store).Root()
 	if err != nil {
 		return nil, err
 	}
 
 	sms := market.ConstructState(a, h, h)
 
-	stcid, err := cst.Put(context.TODO(), sms)
+	stcid, err := store.Put(store.Context(), sms)
 	if err != nil {
 		return nil, err
 	}

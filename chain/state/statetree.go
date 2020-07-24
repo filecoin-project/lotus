@@ -9,7 +9,6 @@ import (
 
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
-	hamt "github.com/ipfs/go-hamt-ipld"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/trace"
@@ -23,7 +22,7 @@ var log = logging.Logger("statetree")
 
 // StateTree stores actors state by their ID.
 type StateTree struct {
-	root  *hamt.Node
+	root  *adt.Map
 	Store cbor.IpldStore
 
 	snaps *stateSnaps
@@ -117,15 +116,16 @@ func (ss *stateSnaps) deleteActor(addr address.Address) {
 }
 
 func NewStateTree(cst cbor.IpldStore) (*StateTree, error) {
+
 	return &StateTree{
-		root:  hamt.NewNode(cst, hamt.UseTreeBitWidth(5)),
+		root:  adt.MakeEmptyMap(adt.WrapStore(context.TODO(), cst)),
 		Store: cst,
 		snaps: newStateSnaps(),
 	}, nil
 }
 
 func LoadStateTree(cst cbor.IpldStore, c cid.Cid) (*StateTree, error) {
-	nd, err := hamt.LoadNode(context.Background(), cst, c, hamt.UseTreeBitWidth(5))
+	nd, err := adt.AsMap(adt.WrapStore(context.TODO(), cst), c)
 	if err != nil {
 		log.Errorf("loading hamt node %s failed: %s", c, err)
 		return nil, err
@@ -206,12 +206,10 @@ func (st *StateTree) GetActor(addr address.Address) (*types.Actor, error) {
 	}
 
 	var act types.Actor
-	err = st.root.Find(context.TODO(), string(addr.Bytes()), &act)
-	if err != nil {
-		if err == hamt.ErrNotFound {
-			return nil, types.ErrActorNotFound
-		}
+	if found, err := st.root.Get(adt.AddrKey(addr), &act); err != nil {
 		return nil, xerrors.Errorf("hamt find failed: %w", err)
+	} else if !found {
+		return nil, types.ErrActorNotFound
 	}
 
 	st.snaps.setActor(addr, &act)
@@ -253,21 +251,17 @@ func (st *StateTree) Flush(ctx context.Context) (cid.Cid, error) {
 
 	for addr, sto := range st.snaps.layers[0].actors {
 		if sto.Delete {
-			if err := st.root.Delete(ctx, string(addr.Bytes())); err != nil {
+			if err := st.root.Delete(adt.AddrKey(addr)); err != nil {
 				return cid.Undef, err
 			}
 		} else {
-			if err := st.root.Set(ctx, string(addr.Bytes()), &sto.Act); err != nil {
+			if err := st.root.Put(adt.AddrKey(addr), &sto.Act); err != nil {
 				return cid.Undef, err
 			}
 		}
 	}
 
-	if err := st.root.Flush(ctx); err != nil {
-		return cid.Undef, err
-	}
-
-	return st.Store.Put(ctx, st.root)
+	return st.root.Root()
 }
 
 func (st *StateTree) Snapshot(ctx context.Context) error {

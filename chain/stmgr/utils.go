@@ -13,7 +13,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	amt "github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -258,7 +257,7 @@ func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *S
 		return nil, xerrors.Errorf("failed to enumerate all sector IDs: %w", err)
 	}
 
-	sectorAmt, err := amt.LoadAMT(ctx, sm.cs.Store(ctx), mas.Sectors)
+	sectorAmt, err := adt.AsArray(sm.cs.Store(ctx), mas.Sectors)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load sectors amt: %w", err)
 	}
@@ -268,8 +267,10 @@ func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *S
 		sid := sectors[n]
 
 		var sinfo miner.SectorOnChainInfo
-		if err := sectorAmt.Get(ctx, sid, &sinfo); err != nil {
+		if found, err := sectorAmt.Get(sid, &sinfo); err != nil {
 			return nil, xerrors.Errorf("failed to get sector %d: %w", sid, err)
+		} else if !found {
+			return nil, xerrors.Errorf("failed to find sector %d", sid)
 		}
 
 		out[i] = abi.SectorInfo{
@@ -328,18 +329,21 @@ func GetStorageDeal(ctx context.Context, sm *StateManager, dealID abi.DealID, ts
 	if _, err := sm.LoadActorState(ctx, builtin.StorageMarketActorAddr, &state, ts); err != nil {
 		return nil, err
 	}
+	store := sm.ChainStore().Store(ctx)
 
-	da, err := amt.LoadAMT(ctx, cbor.NewCborStore(sm.ChainStore().Blockstore()), state.Proposals)
+	da, err := adt.AsArray(store, state.Proposals)
 	if err != nil {
 		return nil, err
 	}
 
 	var dp market.DealProposal
-	if err := da.Get(ctx, uint64(dealID), &dp); err != nil {
+	if found, err := da.Get(uint64(dealID), &dp); err != nil {
 		return nil, err
+	} else if !found {
+		return nil, xerrors.Errorf("deal %d not found", dealID)
 	}
 
-	sa, err := market.AsDealStateArray(sm.ChainStore().Store(ctx), state.States)
+	sa, err := market.AsDealStateArray(store, state.States)
 	if err != nil {
 		return nil, err
 	}
@@ -391,15 +395,16 @@ func ListMinerActors(ctx context.Context, sm *StateManager, ts *types.TipSet) ([
 }
 
 func LoadSectorsFromSet(ctx context.Context, bs blockstore.Blockstore, ssc cid.Cid, filter *abi.BitField, filterOut bool) ([]*api.ChainSectorInfo, error) {
-	a, err := amt.LoadAMT(ctx, cbor.NewCborStore(bs), ssc)
+	a, err := adt.AsArray(store.ActorStore(ctx, bs), ssc)
 	if err != nil {
 		return nil, err
 	}
 
 	var sset []*api.ChainSectorInfo
-	if err := a.ForEach(ctx, func(i uint64, v *cbg.Deferred) error {
+	var v cbg.Deferred
+	if err := a.ForEach(&v, func(i int64) error {
 		if filter != nil {
-			set, err := filter.IsSet(i)
+			set, err := filter.IsSet(uint64(i))
 			if err != nil {
 				return xerrors.Errorf("filter check error: %w", err)
 			}

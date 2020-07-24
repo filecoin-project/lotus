@@ -15,22 +15,21 @@ require (
 	github.com/drand/drand v1.0.3-0.20200714175734-29705eaf09d4
 	github.com/drand/kyber v1.1.1
 	github.com/fatih/color v1.8.0
-	github.com/filecoin-project/chain-validation v0.0.6-0.20200720093255-843129967fdf
+	github.com/filecoin-project/chain-validation v0.0.6-0.20200723211224-ffdcb7a20fe8
 	github.com/filecoin-project/filecoin-ffi v0.30.4-0.20200716204036-cddc56607e1d
 	github.com/filecoin-project/go-address v0.0.2-0.20200504173055-8b6f2fb2b3ef
-	github.com/filecoin-project/go-amt-ipld/v2 v2.0.1-0.20200424220931-6263827e49f2
-	github.com/filecoin-project/go-bitfield v0.0.4-0.20200703174658-f4a5758051a1
+	github.com/filecoin-project/go-bitfield v0.1.0
 	github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
-	github.com/filecoin-project/go-data-transfer v0.4.1-0.20200715144713-b3311844e1a5
+	github.com/filecoin-project/go-data-transfer v0.5.0
 	github.com/filecoin-project/go-fil-commcid v0.0.0-20200716160307-8f644712406f
-	github.com/filecoin-project/go-fil-markets v0.4.1-0.20200715201050-c141144ea312
+	github.com/filecoin-project/go-fil-markets v0.5.1
 	github.com/filecoin-project/go-jsonrpc v0.1.1-0.20200602181149-522144ab4e24
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200701152213-3e0f0afdc261
 	github.com/filecoin-project/go-statestore v0.1.0
 	github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b
-	github.com/filecoin-project/sector-storage v0.0.0-20200717213554-a109ef9cbeab
-	github.com/filecoin-project/specs-actors v0.8.1-0.20200720115956-cd051eabf328
+	github.com/filecoin-project/sector-storage v0.0.0-20200723200950-ed2e57dde6df
+	github.com/filecoin-project/specs-actors v0.8.1-0.20200724015154-3c690d9b7e1d
 	github.com/filecoin-project/specs-storage v0.1.1-0.20200622113353-88a9704877ea
 	github.com/filecoin-project/storage-fsm v0.0.0-20200720190000-2cfe2fe3c334
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
@@ -53,8 +52,7 @@ require (
 	github.com/ipfs/go-ds-measure v0.1.0
 	github.com/ipfs/go-filestore v1.0.0
 	github.com/ipfs/go-fs-lock v0.0.1
-	github.com/ipfs/go-graphsync v0.0.6-0.20200715142715-e2f27c4754e6
-	github.com/ipfs/go-hamt-ipld v0.1.1-0.20200605182717-0310ad2b0b1f
+	github.com/ipfs/go-graphsync v0.0.6-0.20200715204712-ef06b3d32e83
 	github.com/ipfs/go-ipfs-blockstore v1.0.0
 	github.com/ipfs/go-ipfs-chunker v0.0.5
 	github.com/ipfs/go-ipfs-ds-help v1.0.0
@@ -109,7 +107,7 @@ require (
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/urfave/cli/v2 v2.2.0
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
-	github.com/whyrusleeping/cbor-gen v0.0.0-20200715143311-227fab5a2377
+	github.com/whyrusleeping/cbor-gen v0.0.0-20200723182808-cb5de1c427f5
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
 	github.com/whyrusleeping/pubsub v0.0.0-20131020042734-02de8aa2db3d
 	github.com/xorcare/golden v0.6.1-0.20191112154924-b87f686d7542
