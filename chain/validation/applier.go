@@ -135,7 +135,7 @@ func (a *Applier) applyMessage(epoch abi.ChainEpoch, lm types.ChainMsg) (vtypes.
 	ctx := context.TODO()
 	base := a.stateWrapper.Root()
 
-	lotusVM, err := vm.NewVM(base, epoch, &vmRand{}, a.stateWrapper.bs, a.syscalls)
+	lotusVM, err := vm.NewVM(base, epoch, &vmRand{}, a.stateWrapper.bs, a.syscalls, nil)
 	// need to modify the VM invoker to add the puppet actor
 	chainValInvoker := vm.NewInvoker()
 	chainValInvoker.Register(puppet.PuppetActorCodeID, puppet.Actor{}, puppet.State{})
