@@ -9,6 +9,7 @@ import (
 	format "github.com/ipfs/go-ipld-format"
 
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/requestvalidation"
+	"github.com/filecoin-project/go-multistore"
 
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
@@ -27,7 +28,7 @@ type ChainGCBlockstore blockstore.GCBlockstore
 type ChainExchange exchange.Interface
 type ChainBlockService bserv.BlockService
 
-type ClientMultiDstore *importmgr.MultiStore
+type ClientMultiDstore *multistore.MultiStore
 type ClientImportMgr *importmgr.Mgr
 type ClientBlockstore blockstore.Blockstore
 type ClientDealStore *statestore.StateStore
