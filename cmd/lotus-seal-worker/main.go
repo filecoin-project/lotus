@@ -116,6 +116,11 @@ var runCmd = &cli.Command{
 			Usage: "enable commit (32G sectors: all cores or GPUs, 128GiB Memory + 64GiB swap)",
 			Value: true,
 		},
+		&cli.IntFlag{
+			Name:  "parallel-fetch-limit",
+			Usage: "maximum fetch operations to run in parallel",
+			Value: 5,
+		},
 		&cli.StringFlag{
 			Name:  "timeout",
 			Usage: "used when address is unspecified. must be a valid duration recognized by golang's time.ParseDuration function",
@@ -295,7 +300,7 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("could not get api info: %w", err)
 		}
 
-		remote := stores.NewRemote(localStore, nodeApi, sminfo.AuthHeader())
+		remote := stores.NewRemote(localStore, nodeApi, sminfo.AuthHeader(), cctx.Int("parallel-fetch-limit"))
 
 		// Create / expose the worker
 
