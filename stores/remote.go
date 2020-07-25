@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	gopath "path"
+	"path/filepath"
 	"sort"
 	"sync"
 
@@ -24,10 +25,14 @@ import (
 	"github.com/filecoin-project/sector-storage/tarutil"
 )
 
+var FetchTempSubdir = "fetching"
+
 type Remote struct {
 	local *Local
 	index SectorIndex
 	auth  http.Header
+
+	limit chan struct{}
 
 	fetchLk  sync.Mutex
 	fetching map[abi.SectorID]chan struct{}
@@ -41,11 +46,13 @@ func (r *Remote) RemoveCopies(ctx context.Context, s abi.SectorID, types SectorF
 	return r.local.RemoveCopies(ctx, s, types)
 }
 
-func NewRemote(local *Local, index SectorIndex, auth http.Header) *Remote {
+func NewRemote(local *Local, index SectorIndex, auth http.Header, fetchLimit int) *Remote {
 	return &Remote{
 		local: local,
 		index: index,
 		auth:  auth,
+
+		limit: make(chan struct{}, fetchLimit),
 
 		fetching: map[abi.SectorID]chan struct{}{},
 	}
@@ -120,6 +127,16 @@ func (r *Remote) AcquireSector(ctx context.Context, s abi.SectorID, spt abi.Regi
 	return paths, stores, nil
 }
 
+func tempDest(spath string) (string, error) {
+	st, b := filepath.Split(spath)
+	tempdir := filepath.Join(st, FetchTempSubdir)
+	if err := os.MkdirAll(tempdir, 755); err != nil {
+		return "", xerrors.Errorf("creating temp fetch dir: %w", err)
+	}
+
+	return filepath.Join(tempdir, b), nil
+}
+
 func (r *Remote) acquireFromRemote(ctx context.Context, s abi.SectorID, spt abi.RegisteredSealProof, fileType SectorFileType, pathType PathType, op AcquireMode) (string, ID, string, error) {
 	si, err := r.index.StorageFindSector(ctx, s, fileType, false)
 	if err != nil {
@@ -146,10 +163,23 @@ func (r *Remote) acquireFromRemote(ctx context.Context, s abi.SectorID, spt abi.
 		// TODO: see what we have local, prefer that
 
 		for _, url := range info.URLs {
-			err := r.fetch(ctx, url, dest)
+			tempDest, err := tempDest(dest)
 			if err != nil {
-				merr = multierror.Append(merr, xerrors.Errorf("fetch error %s (storage %s) -> %s: %w", url, info.ID, dest, err))
+				return "", "", "", err
+			}
+
+			if err := os.RemoveAll(dest); err != nil {
+				return "", "", "", xerrors.Errorf("removing dest: %w", err)
+			}
+
+			err = r.fetch(ctx, url, tempDest)
+			if err != nil {
+				merr = multierror.Append(merr, xerrors.Errorf("fetch error %s (storage %s) -> %s: %w", url, info.ID, tempDest, err))
 				continue
+			}
+
+			if err := move(tempDest, dest); err != nil {
+				return "", "", "", xerrors.Errorf("fetch move error (storage %s) %s -> %s: %w", info.ID, tempDest, dest, err)
 			}
 
 			if merr != nil {
@@ -164,6 +194,21 @@ func (r *Remote) acquireFromRemote(ctx context.Context, s abi.SectorID, spt abi.
 
 func (r *Remote) fetch(ctx context.Context, url, outname string) error {
 	log.Infof("Fetch %s -> %s", url, outname)
+
+	if len(r.limit) >= cap(r.limit) {
+		log.Infof("Throttling fetch, %d already running", len(r.limit))
+	}
+
+	// TODO: Smarter throttling
+	//  * Priority (just going sequentially is still pretty good)
+	//  * Per interface
+	//  * Aware of remote load
+	select {
+	case r.limit <- struct{}{}:
+		defer func() { <-r.limit }()
+	case <-ctx.Done():
+		return xerrors.Errorf("context error while waiting for fetch limiter: %w", ctx.Err())
+	}
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
