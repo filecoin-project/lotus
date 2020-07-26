@@ -153,13 +153,21 @@ func aggregateSignatures(sigs []crypto.Signature) (*crypto.Signature, error) {
 			return nil, xerrors.Errorf("bls.Aggregate returned nil with %d signatures", len(sigs))
 		}
 
-		// Note: for blst this condition should not happen - nil should not be returned
+		// Note: for blst this condition should not happen - nil should not
+		// be returned
 		return &crypto.Signature{
 			Type: crypto.SigTypeBLS,
 			Data: new(bls.Signature).Compress(),
 		}, nil
 	}
-	aggSig := aggregator.ToAffine().Compress()
+	aggSigAff := aggregator.ToAffine()
+	if aggSigAff == nil {
+		return &crypto.Signature{
+			Type: crypto.SigTypeBLS,
+			Data: new(bls.Signature).Compress(),
+		}, nil
+	}
+	aggSig := aggSigAff.Compress()
 	return &crypto.Signature{
 		Type: crypto.SigTypeBLS,
 		Data: aggSig,

@@ -28,21 +28,22 @@ func (blsSigner) GenPrivate() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("bls signature error generating random data")
 	}
-	pk := blst.KeyGen(ikm[:]).Serialize()
+	// Note private keys seem to be serialized little-endian!
+	pk := blst.KeyGen(ikm[:]).ToLEndian()
 	return pk, nil
 }
 
 func (blsSigner) ToPublic(priv []byte) ([]byte, error) {
-	pk := new(SecretKey).Deserialize(priv)
-	if pk == nil {
+	pk := new(SecretKey).FromLEndian(priv)
+	if pk == nil || !pk.Valid() {
 		return nil, fmt.Errorf("bls signature invalid private key")
 	}
 	return new(PublicKey).From(pk).Compress(), nil
 }
 
 func (blsSigner) Sign(p []byte, msg []byte) ([]byte, error) {
-	pk := new(SecretKey).Deserialize(p)
-	if pk == nil {
+	pk := new(SecretKey).FromLEndian(p)
+	if pk == nil || !pk.Valid() {
 		return nil, fmt.Errorf("bls signature invalid private key")
 	}
 	return new(Signature).Sign(pk, msg, []byte(DST)).Compress(), nil
