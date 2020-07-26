@@ -23,7 +23,6 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
-	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -433,7 +432,7 @@ func (sm *StateManager) ResolveToKeyAddress(ctx context.Context, addr address.Ad
 	return vm.ResolveToKeyAddr(tree, cst, addr)
 }
 
-func (sm *StateManager) GetBlsPublicKey(ctx context.Context, addr address.Address, ts *types.TipSet) (pubk bls.PublicKey, err error) {
+func (sm *StateManager) GetBlsPublicKey(ctx context.Context, addr address.Address, ts *types.TipSet) (pubk []byte, err error) {
 	kaddr, err := sm.ResolveToKeyAddress(ctx, addr, ts)
 	if err != nil {
 		return pubk, xerrors.Errorf("failed to resolve address to key address: %w", err)
@@ -443,8 +442,7 @@ func (sm *StateManager) GetBlsPublicKey(ctx context.Context, addr address.Addres
 		return pubk, xerrors.Errorf("address must be BLS address to load bls public key")
 	}
 
-	copy(pubk[:], kaddr.Payload())
-	return pubk, nil
+	return kaddr.Payload(), nil
 }
 
 func (sm *StateManager) LookupID(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {

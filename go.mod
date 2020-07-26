@@ -106,6 +106,7 @@ require (
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/stretchr/testify v1.6.1
+	github.com/supranational/blst v0.1.1
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/urfave/cli/v2 v2.2.0
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
