@@ -109,6 +109,40 @@ make
 testground run composition -f ./lotus-soup/_compositions/baseline.toml
 ```
 
+## Batch-running randomised test cases
+
+The Oni testkit supports [range parameters](https://github.com/filecoin-project/oni/blob/master/lotus-soup/testkit/testenv_ranges.go),
+which test cases can use to generate random values, either at the instance level
+(each instance computes a random value within range), or at the run level (one
+instance computes the values, and propagates them to all other instances via the
+sync service).
+
+For example:
+
+```toml
+latency_range   = '["20ms", "500ms"]'
+loss_range      = '[0, 0.2]'
+```
+
+Could pick a random latency between 20ms and 500ms, and a packet loss
+probability between 0 and 0.2. We could apply those values through the
+`netclient.ConfigureNetwork` Testground SDK API.
+
+Randomized range-based parameters are specially interesting when combined with
+batch runs, as it enables Monte Carlo approaches to testing.
+
+The Oni codebase includes a batch test run driver in package `lotus-soup/runner`.
+You can point it at a composition file that uses range parameters and tell it to
+run N iterations of the test:
+
+```shell script
+$ go run ./runner -runs 5 _compositions/net-chaos/latency.toml
+```
+
+This will run the test as many times as instructed, and will place all outputs
+in a temporary directory. You can pass a concrete output directory with
+the `-output` flag. 
+
 ## Catalog
 
 ### Test cases part of `lotus-soup`
