@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"golang.org/x/xerrors"
 	"os"
@@ -24,6 +25,7 @@ var sealingCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		sealingJobsCmd,
 		sealingWorkersCmd,
+		sealingSchedDiagCmd,
 	},
 }
 
@@ -174,5 +176,33 @@ var sealingJobsCmd = &cli.Command{
 		}
 
 		return tw.Flush()
+	},
+}
+
+var sealingSchedDiagCmd = &cli.Command{
+	Name:  "sched-diag",
+	Usage: "Dump internal scheduler state",
+	Action: func(cctx *cli.Context) error {
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := lcli.ReqContext(cctx)
+
+		st, err := nodeApi.SealingSchedDiag(ctx)
+		if err != nil {
+			return err
+		}
+
+		j, err := json.MarshalIndent(&st, "", "  ")
+		if err != nil {
+			return err
+		}
+
+		fmt.Println(string(j))
+
+		return nil
 	},
 }

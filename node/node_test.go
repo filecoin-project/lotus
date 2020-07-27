@@ -380,7 +380,6 @@ func mockSbBuilder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test
 		}
 	}
 
-
 	for i, def := range storage {
 		// TODO: support non-bootstrap miners
 

@@ -231,6 +231,8 @@ type StorageMinerStruct struct {
 		WorkerStats   func(context.Context) (map[uint64]storiface.WorkerStats, error) `perm:"admin"`
 		WorkerJobs    func(context.Context) (map[uint64][]storiface.WorkerJob, error) `perm:"admin"`
 
+		SealingSchedDiag func(context.Context) (interface{}, error) `perm:"admin"`
+
 		StorageList          func(context.Context) (map[stores.ID][]stores.Decl, error)                                                                                    `perm:"admin"`
 		StorageLocal         func(context.Context) (map[stores.ID]string, error)                                                                                           `perm:"admin"`
 		StorageStat          func(context.Context, stores.ID) (fsutil.FsStat, error)                                                                                       `perm:"admin"`
@@ -900,6 +902,10 @@ func (c *StorageMinerStruct) WorkerStats(ctx context.Context) (map[uint64]storif
 
 func (c *StorageMinerStruct) WorkerJobs(ctx context.Context) (map[uint64][]storiface.WorkerJob, error) {
 	return c.Internal.WorkerJobs(ctx)
+}
+
+func (c *StorageMinerStruct) SealingSchedDiag(ctx context.Context) (interface{}, error) {
+	return c.Internal.SealingSchedDiag(ctx)
 }
 
 func (c *StorageMinerStruct) StorageAttach(ctx context.Context, si stores.StorageInfo, st fsutil.FsStat) error {
