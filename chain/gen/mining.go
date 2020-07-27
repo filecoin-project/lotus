@@ -3,7 +3,6 @@ package gen
 import (
 	"context"
 
-	bls "github.com/filecoin-project/filecoin-ffi"
 	amt "github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	cid "github.com/ipfs/go-cid"
@@ -17,6 +16,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/filecoin-project/lotus/lib/sigs/bls"
 )
 
 func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wallet, bt *api.BlockTemplate) (*types.FullBlock, error) {
@@ -142,28 +142,35 @@ func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wal
 }
 
 func aggregateSignatures(sigs []crypto.Signature) (*crypto.Signature, error) {
-	var blsSigs []bls.Signature
-	for _, s := range sigs {
-		var bsig bls.Signature
-		copy(bsig[:], s.Data)
-		blsSigs = append(blsSigs, bsig)
+	sigsS := make([][]byte, len(sigs))
+	for i := 0; i < len(sigs); i++ {
+		sigsS[i] = sigs[i].Data
 	}
 
-	aggSig := bls.Aggregate(blsSigs)
-	if aggSig == nil {
+	aggregator := new(bls.AggregateSignature).AggregateCompressed(sigsS)
+	if aggregator == nil {
 		if len(sigs) > 0 {
 			return nil, xerrors.Errorf("bls.Aggregate returned nil with %d signatures", len(sigs))
 		}
 
+		// Note: for blst this condition should not happen - nil should not
+		// be returned
 		return &crypto.Signature{
 			Type: crypto.SigTypeBLS,
-			Data: new(bls.Signature)[:],
+			Data: new(bls.Signature).Compress(),
 		}, nil
 	}
-
+	aggSigAff := aggregator.ToAffine()
+	if aggSigAff == nil {
+		return &crypto.Signature{
+			Type: crypto.SigTypeBLS,
+			Data: new(bls.Signature).Compress(),
+		}, nil
+	}
+	aggSig := aggSigAff.Compress()
 	return &crypto.Signature{
 		Type: crypto.SigTypeBLS,
-		Data: aggSig[:],
+		Data: aggSig,
 	}, nil
 }
 
