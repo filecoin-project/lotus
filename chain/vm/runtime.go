@@ -72,7 +72,7 @@ func (rt *Runtime) TotalFilCircSupply() abi.TokenAmount {
 		rt.Abortf(exitcode.ErrIllegalState, "failed to get reward actor for computing total supply: %s", err)
 	}
 
-	filMined := types.BigSub(types.FromFil(build.TotalFilecoin), rew.Balance)
+	filMined := types.BigSub(types.FromFil(build.MiningRewardTotal), rew.Balance)
 
 	burnt, err := rt.state.GetActor(builtin.BurntFundsActorAddr)
 	if err != nil {
