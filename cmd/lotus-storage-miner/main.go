@@ -41,6 +41,7 @@ func main() {
 		lcli.WithCategory("storage", provingCmd),
 		lcli.WithCategory("storage", storageCmd),
 		lcli.WithCategory("storage", sealingCmd),
+		lcli.WithCategory("retrieval", piecesCmd),
 	}
 	jaeger := tracing.SetupJaegerTracing("lotus")
 	defer func() {

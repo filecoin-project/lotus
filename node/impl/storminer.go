@@ -3,16 +3,18 @@ package impl
 import (
 	"context"
 	"encoding/json"
-	"github.com/filecoin-project/sector-storage/fsutil"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
-	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
 	"net/http"
 	"os"
 	"strconv"
 	"time"
 
+	"github.com/filecoin-project/sector-storage/fsutil"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/piecestore"
 	storagemarket "github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	sectorstorage "github.com/filecoin-project/sector-storage"
@@ -38,6 +40,7 @@ type StorageMinerAPI struct {
 	ProofsConfig *ffiwrapper.Config
 	SectorBlocks *sectorblocks.SectorBlocks
 
+	PieceStore      piecestore.PieceStore
 	StorageProvider storagemarket.StorageProvider
 	Miner           *storage.Miner
 	BlockMiner      *miner.Miner
@@ -366,6 +369,33 @@ func (sm *StorageMinerAPI) StorageAddLocal(ctx context.Context, path string) err
 	}
 
 	return sm.StorageMgr.AddLocalStorage(ctx, path)
+}
+
+func (sm *StorageMinerAPI) PiecesListPieces(ctx context.Context) ([]cid.Cid, error) {
+	panic("nyi")
+	//return sm.PieceStore.ListPieceInfoKeys(ctx)
+}
+
+func (sm *StorageMinerAPI) PiecesListCidInfos(ctx context.Context) ([]cid.Cid, error) {
+	panic("nyi")
+	//return sm.PieceStore.ListCidInfoKeys(ctx)
+}
+
+func (sm *StorageMinerAPI) PiecesGetPieceInfo(ctx context.Context, pieceCid cid.Cid) (*piecestore.PieceInfo, error) {
+	pi, err := sm.PieceStore.GetPieceInfo(pieceCid)
+	if err != nil {
+		return nil, err
+	}
+	return &pi, nil
+}
+
+func (sm *StorageMinerAPI) PiecesGetCIDInfo(ctx context.Context, payloadCid cid.Cid) (*piecestore.CIDInfo, error) {
+	ci, err := sm.PieceStore.GetCIDInfo(payloadCid)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ci, nil
 }
 
 var _ api.StorageMiner = &StorageMinerAPI{}

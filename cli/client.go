@@ -69,6 +69,7 @@ var clientCmd = &cli.Command{
 		WithCategory("retrieval", clientRetrieveCmd),
 		WithCategory("util", clientCommPCmd),
 		WithCategory("util", clientCarGenCmd),
+		WithCategory("util", clientInfoCmd),
 	},
 }
 
@@ -841,6 +842,53 @@ var clientGetDealCmd = &cli.Command{
 			return err
 		}
 		fmt.Println(b)
+		return nil
+	},
+}
+
+var clientInfoCmd = &cli.Command{
+	Name:  "info",
+	Usage: "Print storage market client information",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "client",
+			Usage: "specify storage client address",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		var addr address.Address
+		if clientFlag := cctx.String("client"); clientFlag != "" {
+			ca, err := address.NewFromString("client")
+			if err != nil {
+				return err
+			}
+
+			addr = ca
+		} else {
+			def, err := api.WalletDefaultAddress(ctx)
+			if err != nil {
+				return err
+			}
+			addr = def
+		}
+
+		balance, err := api.StateMarketBalance(ctx, addr, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Client Market Info:\n")
+
+		fmt.Printf("Locked Funds:\t%s\n", types.FIL(balance.Locked))
+		fmt.Printf("Escrowed Funds:\t%s\n", types.FIL(balance.Escrow))
+
 		return nil
 	},
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-multistore"
@@ -263,6 +264,11 @@ type StorageMinerStruct struct {
 		DealsSetPieceCidBlocklist             func(context.Context, []cid.Cid) error                            `perm:"admin"`
 
 		StorageAddLocal func(ctx context.Context, path string) error `perm:"admin"`
+
+		PiecesListPieces   func(ctx context.Context) ([]cid.Cid, error)                               `perm:"read"`
+		PiecesListCidInfos func(ctx context.Context) ([]cid.Cid, error)                               `perm:"read"`
+		PiecesGetPieceInfo func(ctx context.Context, pieceCid cid.Cid) (*piecestore.PieceInfo, error) `perm:"read"`
+		PiecesGetCIDInfo   func(ctx context.Context, payloadCid cid.Cid) (*piecestore.CIDInfo, error) `perm:"read"`
 	}
 }
 
@@ -1037,6 +1043,22 @@ func (c *StorageMinerStruct) DealsSetConsiderOfflineRetrievalDeals(ctx context.C
 
 func (c *StorageMinerStruct) StorageAddLocal(ctx context.Context, path string) error {
 	return c.Internal.StorageAddLocal(ctx, path)
+}
+
+func (c *StorageMinerStruct) PiecesListPieces(ctx context.Context) ([]cid.Cid, error) {
+	return c.Internal.PiecesListPieces(ctx)
+}
+
+func (c *StorageMinerStruct) PiecesListCidInfos(ctx context.Context) ([]cid.Cid, error) {
+	return c.Internal.PiecesListCidInfos(ctx)
+}
+
+func (c *StorageMinerStruct) PiecesGetPieceInfo(ctx context.Context, pieceCid cid.Cid) (*piecestore.PieceInfo, error) {
+	return c.Internal.PiecesGetPieceInfo(ctx, pieceCid)
+}
+
+func (c *StorageMinerStruct) PiecesGetCIDInfo(ctx context.Context, payloadCid cid.Cid) (*piecestore.CIDInfo, error) {
+	return c.Internal.PiecesGetCIDInfo(ctx, payloadCid)
 }
 
 // WorkerStruct

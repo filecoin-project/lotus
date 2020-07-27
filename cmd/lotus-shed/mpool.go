@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 
+	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/urfave/cli/v2"
@@ -43,8 +44,14 @@ var minerSelectMsgsCmd = &cli.Command{
 			return err
 		}
 
+		var totalGas int64
+		for _, f := range filtered {
+			totalGas += f.Message.GasLimit
+		}
+
 		fmt.Println("mempool input messages: ", len(msgs))
 		fmt.Println("filtered messages: ", len(filtered))
+		fmt.Printf("total gas limit of selected messages: %d / %d (%0.2f%%)\n", totalGas, build.BlockGasLimit, 100*float64(totalGas)/float64(build.BlockGasLimit))
 		return nil
 	},
 }
