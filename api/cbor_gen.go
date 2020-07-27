@@ -317,7 +317,7 @@ func (t *SealedRef) UnmarshalCBOR(r io.Reader) error {
 				if maj != cbg.MajUnsignedInt {
 					return fmt.Errorf("wrong type for uint64 field")
 				}
-				t.Offset = uint64(extra)
+				t.Offset = abi.PaddedPieceSize(extra)
 
 			}
 			// t.Size (abi.UnpaddedPieceSize) (uint64)
