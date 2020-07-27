@@ -45,7 +45,7 @@ var paychGetCmd = &cli.Command{
 			return ShowHelp(cctx, fmt.Errorf("failed to parse to address: %s", err))
 		}
 
-		amt, err := types.BigFromString(cctx.Args().Get(2))
+		amt, err := types.ParseFIL(cctx.Args().Get(2))
 		if err != nil {
 			return ShowHelp(cctx, fmt.Errorf("parsing amount failed: %s", err))
 		}
@@ -58,7 +58,7 @@ var paychGetCmd = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
-		info, err := api.PaychGet(ctx, from, to, amt)
+		info, err := api.PaychGet(ctx, from, to, types.BigInt(amt))
 		if err != nil {
 			return err
 		}
