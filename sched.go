@@ -1,7 +1,6 @@
 package sectorstorage
 
 import (
-	"container/heap"
 	"context"
 	"fmt"
 	"math/rand"
@@ -222,7 +221,7 @@ func (sh *scheduler) runSched() {
 			sh.dropWorker(wid)
 
 		case req := <-sh.schedule:
-			heap.Push(sh.schedQueue, req)
+			sh.schedQueue.Push(req)
 			sh.trySched()
 
 			if sh.testSync != nil {
@@ -381,7 +380,7 @@ func (sh *scheduler) trySched() {
 
 		windows[selectedWindow].todo = append(windows[selectedWindow].todo, task)
 
-		heap.Remove(sh.schedQueue, sqi)
+		sh.schedQueue.Remove(sqi)
 		sqi--
 		scheduled++
 	}
