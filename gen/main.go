@@ -63,8 +63,9 @@ func main() {
 	}
 
 	err = gen.WriteTupleEncodersToFile("./chain/blocksync/cbor_gen.go", "blocksync",
-		blocksync.BlockSyncRequest{},
-		blocksync.BlockSyncResponse{},
+		blocksync.Request{},
+		blocksync.Response{},
+		blocksync.CompactedMessages{},
 		blocksync.BSTipSet{},
 	)
 	if err != nil {

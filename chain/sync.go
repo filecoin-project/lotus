@@ -1384,7 +1384,7 @@ func (syncer *Syncer) iterFullTipsets(ctx context.Context, headers []*types.TipS
 
 		nextI := (i + 1) - batchSize // want to fetch batchSize values, 'i' points to last one we want to fetch, so its 'inclusive' of our request, thus we need to add one to our request start index
 
-		var bstout []*blocksync.BSTipSet
+		var bstout []*blocksync.CompactedMessages
 		for len(bstout) < batchSize {
 			next := headers[nextI]
 
@@ -1405,10 +1405,10 @@ func (syncer *Syncer) iterFullTipsets(ctx context.Context, headers []*types.TipS
 
 			this := headers[i-bsi]
 			bstip := bstout[len(bstout)-(bsi+1)]
-			fts, err := zipTipSetAndMessages(blks, this, bstip.BlsMessages, bstip.SecpkMessages, bstip.BlsMsgIncludes, bstip.SecpkMsgIncludes)
+			fts, err := zipTipSetAndMessages(blks, this, bstip.Bls, bstip.Secpk, bstip.BlsIncludes, bstip.SecpkIncludes)
 			if err != nil {
 				log.Warnw("zipping failed", "error", err, "bsi", bsi, "i", i,
-					"height", this.Height(), "bstip-height", bstip.Blocks[0].Height,
+					"height", this.Height(),
 					"next-height", i+batchSize)
 				return xerrors.Errorf("message processing failed: %w", err)
 			}
@@ -1431,15 +1431,15 @@ func (syncer *Syncer) iterFullTipsets(ctx context.Context, headers []*types.TipS
 	return nil
 }
 
-func persistMessages(bs bstore.Blockstore, bst *blocksync.BSTipSet) error {
-	for _, m := range bst.BlsMessages {
+func persistMessages(bs bstore.Blockstore, bst *blocksync.CompactedMessages) error {
+	for _, m := range bst.Bls {
 		//log.Infof("putting BLS message: %s", m.Cid())
 		if _, err := store.PutMessage(bs, m); err != nil {
 			log.Errorf("failed to persist messages: %+v", err)
 			return xerrors.Errorf("BLS message processing failed: %w", err)
 		}
 	}
-	for _, m := range bst.SecpkMessages {
+	for _, m := range bst.Secpk {
 		if m.Signature.Type != crypto.SigTypeSecp256k1 {
 			return xerrors.Errorf("unknown signature type on message %s: %q", m.Cid(), m.Signature.Type)
 		}

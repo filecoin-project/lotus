@@ -239,7 +239,7 @@ func Online() Option {
 
 			// Filecoin services
 			Override(new(*chain.Syncer), modules.NewSyncer),
-			Override(new(*blocksync.BlockSync), blocksync.NewBlockSyncClient),
+			Override(new(*blocksync.BlockSync), blocksync.NewClient),
 			Override(new(*messagepool.MessagePool), modules.MessagePool),
 
 			Override(new(modules.Genesis), modules.ErrorGenesis),
