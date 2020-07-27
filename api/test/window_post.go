@@ -233,7 +233,7 @@ func TestWindowPost(t *testing.T, b APIBuilder, blocktime time.Duration, nSector
 	require.Equal(t, p.MinerPower, p.TotalPower)
 
 	sectors := p.MinerPower.RawBytePower.Uint64() / uint64(ssz)
-	require.Equal(t, nSectors+GenesisPreseals - 3, int(sectors)) // -3 just removed sectors
+	require.Equal(t, nSectors+GenesisPreseals-3, int(sectors)) // -3 just removed sectors
 
 	mine = false
 	<-done
