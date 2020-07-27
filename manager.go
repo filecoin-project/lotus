@@ -494,6 +494,10 @@ func (m *Manager) FsStat(ctx context.Context, id stores.ID) (fsutil.FsStat, erro
 	return m.storage.FsStat(ctx, id)
 }
 
+func (m *Manager) SchedDiag(ctx context.Context) (interface{}, error) {
+	return m.sched.Info(ctx)
+}
+
 func (m *Manager) Close(ctx context.Context) error {
 	return m.sched.Close(ctx)
 }
