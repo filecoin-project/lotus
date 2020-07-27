@@ -36,8 +36,8 @@ func (q *requestQueue) Remove(i int) *workerRequest {
 	old := *q
 	n := len(old)
 	item := old[i]
-	old[i] = old[n - 1]
-	old[n - 1] = nil
+	old[i] = old[n-1]
+	old[n-1] = nil
 	item.index = -1
 	*q = old[0 : n-1]
 	sort.Sort(q)

@@ -124,8 +124,8 @@ type workerRequest struct {
 	index int // The index of the item in the heap.
 
 	indexHeap int
-	ret chan<- workerResponse
-	ctx context.Context
+	ret       chan<- workerResponse
+	ctx       context.Context
 }
 
 type workerResponse struct {
@@ -203,7 +203,7 @@ type SchedDiagRequestInfo struct {
 }
 
 type SchedDiagInfo struct {
-	Requests []SchedDiagRequestInfo
+	Requests    []SchedDiagRequestInfo
 	OpenWindows []WorkerID
 }
 
@@ -671,7 +671,7 @@ func (sh *scheduler) Info(ctx context.Context) (interface{}, error) {
 	}
 
 	select {
-	case res := <- ch:
+	case res := <-ch:
 		return res, nil
 	case <-ctx.Done():
 		return nil, ctx.Err()
