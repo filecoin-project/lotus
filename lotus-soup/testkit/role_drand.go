@@ -179,6 +179,8 @@ func PrepareDrandInstance(t *TestEnvironment) (*DrandInstance, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), PrepareDrandTimeout)
 	defer cancel()
 
+	ApplyNetworkParameters(t)
+
 	startTime := time.Now()
 
 	seq := t.GroupSeq
