@@ -1,6 +1,6 @@
 ## Color palette
 
-# yellows:  dba355 d8a038 d8bd36 edd17d
+# yellows:  dba355 d8a038 d8bd36 edd17d fbca04
 # greens:   92ef92 6bbf3b 1cef5c 75b72d 9fea8f c6e84e c1f45a b8d613 fcf0b5 
 # reds:     dd362a
 # blues:    5b91c6 2a7d93 0bb1ed
@@ -19,6 +19,14 @@
 - description: "Extra attention is needed"
   name: "help wanted"
   color: 008672
+
+## Work streams
+- description: "Workstream: End-to-end Tests"
+  name: "workstream/e2e-tests"
+  color: fbca04
+- description: "Workstream: VM Conformance Tests"
+  name: "workstream/vm-conformance-tests"
+  color: fbca04
 
 ###
 ### Topics
