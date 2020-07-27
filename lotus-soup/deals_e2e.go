@@ -8,7 +8,14 @@ import (
 	"os"
 	"time"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/testground/sdk-go/sync"
+
+	mbig "math/big"
+
+	"github.com/filecoin-project/lotus/build"
 
 	"github.com/filecoin-project/oni/lotus-soup/testkit"
 )
@@ -38,7 +45,8 @@ func dealsE2E(t *testkit.TestEnvironment) error {
 	}
 
 	// This is a client role
-	t.RecordMessage("running client")
+	fastRetrieval := t.BooleanParam("fast_retrieval")
+	t.RecordMessage("running client, with fast retrieval set to: %v", fastRetrieval)
 
 	cl, err := testkit.PrepareClient(t)
 	if err != nil {
@@ -57,7 +65,14 @@ func dealsE2E(t *testkit.TestEnvironment) error {
 
 	t.RecordMessage("selected %s as the miner", minerAddr.MinerActorAddr)
 
-	time.Sleep(2 * time.Second)
+	if fastRetrieval {
+		err = initPaymentChannel(t, ctx, cl, minerAddr)
+		if err != nil {
+			return err
+		}
+	}
+
+	time.Sleep(12 * time.Second)
 
 	// generate 1600 bytes of random data
 	data := make([]byte, 1600)
@@ -82,7 +97,7 @@ func dealsE2E(t *testkit.TestEnvironment) error {
 
 	// start deal
 	t1 := time.Now()
-	deal := testkit.StartDeal(ctx, minerAddr.MinerActorAddr, client, fcid.Root)
+	deal := testkit.StartDeal(ctx, minerAddr.MinerActorAddr, client, fcid.Root, fastRetrieval)
 	t.RecordMessage("started deal: %s", deal)
 
 	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
@@ -92,10 +107,14 @@ func dealsE2E(t *testkit.TestEnvironment) error {
 	testkit.WaitDealSealed(t, ctx, client, deal)
 	t.D().ResettingHistogram("deal.sealed").Update(int64(time.Since(t1)))
 
+	// wait for all client deals to be sealed before trying to retrieve
+	t.SyncClient.MustSignalAndWait(ctx, sync.State("done-sealing"), t.IntParam("clients"))
+
 	carExport := true
 
 	t.RecordMessage("trying to retrieve %s", fcid)
-	testkit.RetrieveData(t, ctx, client, fcid.Root, carExport, data)
+	t1 = time.Now()
+	_ = testkit.RetrieveData(t, ctx, client, fcid.Root, nil, carExport, data)
 	t.D().ResettingHistogram("deal.retrieved").Update(int64(time.Since(t1)))
 
 	t.SyncClient.MustSignalEntry(ctx, testkit.StateStopMining)
@@ -106,5 +125,52 @@ func dealsE2E(t *testkit.TestEnvironment) error {
 	// TODO select a random piece of content published by some other client and retrieve it
 
 	t.SyncClient.MustSignalAndWait(ctx, testkit.StateDone, t.TestInstanceCount)
+	return nil
+}
+
+// filToAttoFil converts a fractional filecoin value into AttoFIL, rounding if necessary
+func filToAttoFil(f float64) big.Int {
+	a := mbig.NewFloat(f)
+	a.Mul(a, mbig.NewFloat(float64(build.FilecoinPrecision)))
+	i, _ := a.Int(nil)
+	return big.Int{Int: i}
+}
+
+func initPaymentChannel(t *testkit.TestEnvironment, ctx context.Context, cl *testkit.LotusClient, minerAddr testkit.MinerAddressesMsg) error {
+	recv := minerAddr
+	balance := filToAttoFil(10)
+	t.RecordMessage("my balance: %d", balance)
+	t.RecordMessage("creating payment channel; from=%s, to=%s, funds=%d", cl.Wallet.Address, recv.WalletAddr, balance)
+
+	channel, err := cl.FullApi.PaychGet(ctx, cl.Wallet.Address, recv.WalletAddr, balance)
+	if err != nil {
+		return fmt.Errorf("failed to create payment channel: %w", err)
+	}
+
+	if addr := channel.Channel; addr != address.Undef {
+		return fmt.Errorf("expected an Undef channel address, got: %s", addr)
+	}
+
+	t.RecordMessage("payment channel created; msg_cid=%s", channel.ChannelMessage)
+	t.RecordMessage("waiting for payment channel message to appear on chain")
+
+	// wait for the channel creation message to appear on chain.
+	_, err = cl.FullApi.StateWaitMsg(ctx, channel.ChannelMessage, 2)
+	if err != nil {
+		return fmt.Errorf("failed while waiting for payment channel creation msg to appear on chain: %w", err)
+	}
+
+	// need to wait so that the channel is tracked.
+	// the full API waits for build.MessageConfidence (=1 in tests) before tracking the channel.
+	// we wait for 2 confirmations, so we have the assurance the channel is tracked.
+
+	t.RecordMessage("reloading paych; now it should have an address")
+	channel, err = cl.FullApi.PaychGet(ctx, cl.Wallet.Address, recv.WalletAddr, big.Zero())
+	if err != nil {
+		return fmt.Errorf("failed to reload payment channel: %w", err)
+	}
+
+	t.RecordMessage("channel address: %s", channel.Channel)
+
 	return nil
 }

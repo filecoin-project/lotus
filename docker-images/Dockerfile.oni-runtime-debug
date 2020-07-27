@@ -12,8 +12,10 @@ RUN go get github.com/filecoin-project/go-paramfetch/paramfetch
 COPY /proof-parameters.json /
 RUN paramfetch 2048 /proof-parameters.json
 
+ARG LOTUS_COMMIT=e21ea53
+
 ## for debug purposes
-RUN apt update && apt install -y mesa-opencl-icd ocl-icd-opencl-dev gcc git bzr jq pkg-config curl && git clone https://github.com/filecoin-project/lotus.git && cd lotus/ && git checkout next && make clean && make all && make install
+RUN apt update && apt install -y mesa-opencl-icd ocl-icd-opencl-dev gcc git bzr jq pkg-config curl && git clone https://github.com/filecoin-project/lotus.git && cd lotus/ && git checkout ${LOTUS_COMMIT} && make clean && make all && make install
 
 FROM ubuntu:18.04
 
@@ -22,7 +24,7 @@ COPY --from=downloader /var/tmp/filecoin-proof-parameters /var/tmp/filecoin-proo
 
 ## for debug purposes
 COPY --from=downloader /usr/local/bin/lotus /usr/local/bin/lll
-COPY --from=downloader /usr/local/bin/lotus-storage-miner /usr/local/bin/lsm
+COPY --from=downloader /usr/local/bin/lotus-miner /usr/local/bin/lm
 
 ENV FULLNODE_API_INFO="dummytoken:/ip4/127.0.0.1/tcp/1234/http"
 ENV STORAGE_API_INFO="dummytoken:/ip4/127.0.0.1/tcp/2345/http"

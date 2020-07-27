@@ -15,6 +15,8 @@ import (
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/gorilla/mux"
+	"github.com/hashicorp/go-multierror"
 )
 
 type LotusClient struct {
@@ -75,7 +77,6 @@ func PrepareClient(t *TestEnvironment) (*LotusClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	n.StopFn = stop
 
 	// set the wallet
 	err = n.setWallet(ctx, walletKey)
@@ -84,9 +85,16 @@ func PrepareClient(t *TestEnvironment) (*LotusClient, error) {
 		return nil, err
 	}
 
-	err = startFullNodeAPIServer(t, nodeRepo, n.FullApi)
+	fullSrv, err := startFullNodeAPIServer(t, nodeRepo, n.FullApi)
 	if err != nil {
 		return nil, err
+	}
+
+	n.StopFn = func(ctx context.Context) error {
+		var err *multierror.Error
+		err = multierror.Append(fullSrv.Shutdown(ctx))
+		err = multierror.Append(stop(ctx))
+		return err.ErrorOrNil()
 	}
 
 	registerAndExportMetrics(fmt.Sprintf("client_%d", t.GroupSeq))
@@ -146,40 +154,42 @@ func (c *LotusClient) RunDefault() error {
 	return nil
 }
 
-func startFullNodeAPIServer(t *TestEnvironment, repo *repo.MemRepo, api api.FullNode) error {
+func startFullNodeAPIServer(t *TestEnvironment, repo repo.Repo, api api.FullNode) (*http.Server, error) {
+	mux := mux.NewRouter()
+
 	rpcServer := jsonrpc.NewServer()
 	rpcServer.Register("Filecoin", api)
 
-	ah := &auth.Handler{
-		Verify: func(ctx context.Context, token string) ([]auth.Permission, error) {
-			return apistruct.AllPermissions, nil
-		},
-		Next: rpcServer.ServeHTTP,
-	}
-
-	http.Handle("/rpc/v0", ah)
+	mux.Handle("/rpc/v0", rpcServer)
 
 	exporter, err := prometheus.NewExporter(prometheus.Options{
 		Namespace: "lotus",
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	http.Handle("/debug/metrics", exporter)
+	mux.Handle("/debug/metrics", exporter)
 
-	srv := &http.Server{Handler: http.DefaultServeMux}
+	ah := &auth.Handler{
+		Verify: func(ctx context.Context, token string) ([]auth.Permission, error) {
+			return apistruct.AllPermissions, nil
+		},
+		Next: mux.ServeHTTP,
+	}
+
+	srv := &http.Server{Handler: ah}
 
 	endpoint, err := repo.APIEndpoint()
 	if err != nil {
-		return fmt.Errorf("no API endpoint in repo: %w", err)
+		return nil, fmt.Errorf("no API endpoint in repo: %w", err)
 	}
 
 	listenAddr, err := startServer(endpoint, srv)
 	if err != nil {
-		return fmt.Errorf("failed to start client API endpoint: %w", err)
+		return nil, fmt.Errorf("failed to start client API endpoint: %w", err)
 	}
 
 	t.RecordMessage("started node API server at %s", listenAddr)
-	return nil
+	return srv, nil
 }

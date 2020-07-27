@@ -14,6 +14,7 @@ var (
 	PresealTopic      = sync.NewTopic("preseal", &PresealMsg{})
 	ClientsAddrsTopic = sync.NewTopic("clients_addrs", &ClientAddressesMsg{})
 	MinersAddrsTopic  = sync.NewTopic("miners_addrs", &MinerAddressesMsg{})
+	SlashedMinerTopic = sync.NewTopic("slashed_miner", &SlashedMinerMsg{})
 	PubsubTracerTopic = sync.NewTopic("pubsub_tracer", &PubsubTracerMsg{})
 	DrandConfigTopic  = sync.NewTopic("drand_config", &DrandRuntimeInfo{})
 )
@@ -23,6 +24,7 @@ var (
 	StateDone            = sync.State("done")
 	StateStopMining      = sync.State("stop-mining")
 	StateMinerPickSeqNum = sync.State("miner-pick-seq-num")
+	StateAbortTest       = sync.State("abort-test")
 )
 
 type InitialBalanceMsg struct {
@@ -48,6 +50,11 @@ type ClientAddressesMsg struct {
 type MinerAddressesMsg struct {
 	FullNetAddrs   peer.AddrInfo
 	MinerNetAddrs  peer.AddrInfo
+	MinerActorAddr address.Address
+	WalletAddr     address.Address
+}
+
+type SlashedMinerMsg struct {
 	MinerActorAddr address.Address
 }
 

@@ -75,16 +75,13 @@ testground daemon
 3. Download required Docker images for the `lotus-soup` test plan
 
 ```
-docker pull iptestground/oni-buildbase:v5
-docker pull iptestground/oni-runtime:v2
+make pull-images
 ```
 
-Alternatively you can build them locally from the `docker-images` directory
+Alternatively you can build them locally with
 
 ```
-cd docker-images
-./build-buildbase.sh v5
-./build-runtime.sh v2
+make build-images
 ```
 
 4. Import the `lotus-soup` test plan into your Testground home directory
@@ -166,7 +163,7 @@ Depending on the runner you want to use to run the test plan, these dependencies
 
 * `local:docker`
 
-The Rust libraries are included in the Filecoin FFI Git submodule, which is part of the `iptestground/oni-buildbase` image. If the FFI changes on Lotus, we have to rebuild this image with the `./docker-images/build-buildbase.sh vX` command, where X is the next version (see [Docker images changelog](#docker-images-changelog)
+The Rust libraries are included in the Filecoin FFI Git submodule, which is part of the `iptestground/oni-buildbase` image. If the FFI changes on Lotus, we have to rebuild this image with the `make build-images` command, where X is the next version (see [Docker images changelog](#docker-images-changelog)
 below).
 
 * `local:exec`
@@ -179,7 +176,7 @@ The same process as for `local:docker`, however you need to make sure that the r
 
 ### proof parameters
 
-Additional to the Filecoin FFI Git submodules, we are also bundling `proof parameters` in the `iptestground/oni-runtime` image. If these change, you will need to rebuild that image with `./docker-images/build-runtime.sh vX` command, where X is the next version. These parameters are downloaded automatically for `local:exec` if they are not present.
+Additional to the Filecoin FFI Git submodules, we are also bundling `proof parameters` in the `iptestground/oni-runtime` image. If these change, you will need to rebuild that image with `make build-images` command, where X is the next version. These parameters are downloaded automatically for `local:exec` if they are not present.
 
 ## Docker images changelog
 
@@ -195,6 +192,11 @@ Additional to the Filecoin FFI Git submodules, we are also bundling `proof param
 
 * `v1` => initial image with 2048 parameters.
 * `v2` => adds auxiliary tools: `net-tools netcat traceroute iputils-ping wget vim curl telnet iproute2 dnsutils`.
+
+### oni-runtime-debug
+
+* `v1` => initial image
+* `v2` => locking in Lotus commit e21ea53
 
 
 ## Team

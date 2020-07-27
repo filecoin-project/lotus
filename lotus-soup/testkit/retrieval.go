@@ -3,6 +3,7 @@ package testkit
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -19,7 +20,7 @@ import (
 	"github.com/ipld/go-car"
 )
 
-func RetrieveData(t *TestEnvironment, ctx context.Context, client api.FullNode, fcid cid.Cid, carExport bool, data []byte) {
+func RetrieveData(t *TestEnvironment, ctx context.Context, client api.FullNode, fcid cid.Cid, _ *cid.Cid, carExport bool, data []byte) error {
 	t1 := time.Now()
 	offers, err := client.ClientFindData(ctx, fcid, nil)
 	if err != nil {
@@ -42,7 +43,7 @@ func RetrieveData(t *TestEnvironment, ctx context.Context, client api.FullNode, 
 
 	caddr, err := client.WalletDefaultAddress(ctx)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	ref := &api.FileRef{
@@ -52,13 +53,13 @@ func RetrieveData(t *TestEnvironment, ctx context.Context, client api.FullNode, 
 	t1 = time.Now()
 	err = client.ClientRetrieve(ctx, offers[0].Order(caddr), ref)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	t.D().ResettingHistogram("retrieve-data").Update(int64(time.Since(t1)))
 
 	rdata, err := ioutil.ReadFile(filepath.Join(rpath, "ret"))
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	if carExport {
@@ -66,10 +67,12 @@ func RetrieveData(t *TestEnvironment, ctx context.Context, client api.FullNode, 
 	}
 
 	if !bytes.Equal(rdata, data) {
-		panic("wrong data retrieved")
+		return errors.New("wrong data retrieved")
 	}
 
 	t.RecordMessage("retrieved successfully")
+
+	return nil
 }
 
 func ExtractCarData(ctx context.Context, rdata []byte, rpath string) []byte {

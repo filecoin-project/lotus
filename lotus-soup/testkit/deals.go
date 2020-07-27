@@ -3,16 +3,18 @@ package testkit
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
+
+	tstats "github.com/filecoin-project/lotus/tools/stats"
 )
 
-func StartDeal(ctx context.Context, minerActorAddr address.Address, client api.FullNode, fcid cid.Cid) *cid.Cid {
+func StartDeal(ctx context.Context, minerActorAddr address.Address, client api.FullNode, fcid cid.Cid, fastRetrieval bool) *cid.Cid {
 	addr, err := client.WalletDefaultAddress(ctx)
 	if err != nil {
 		panic(err)
@@ -24,7 +26,7 @@ func StartDeal(ctx context.Context, minerActorAddr address.Address, client api.F
 		Miner:             minerActorAddr,
 		EpochPrice:        types.NewInt(1000000),
 		MinBlocksDuration: 1000,
-		FastRetrieval:     false,
+		FastRetrieval:     fastRetrieval,
 	})
 	if err != nil {
 		panic(err)
@@ -33,8 +35,20 @@ func StartDeal(ctx context.Context, minerActorAddr address.Address, client api.F
 }
 
 func WaitDealSealed(t *TestEnvironment, ctx context.Context, client api.FullNode, deal *cid.Cid) {
-loop:
-	for {
+	height := 0
+	headlag := 3
+
+	cctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	tipsetsCh, err := tstats.GetTips(cctx, client, abi.ChainEpoch(height), headlag)
+	if err != nil {
+		panic(err)
+	}
+
+	for tipset := range tipsetsCh {
+		t.RecordMessage("got tipset: height %d", tipset.Height())
+
 		di, err := client.ClientGetDealInfo(ctx, *deal)
 		if err != nil {
 			panic(err)
@@ -48,9 +62,9 @@ loop:
 			panic(fmt.Sprintf("deal errored %s", di.Message))
 		case storagemarket.StorageDealActive:
 			t.RecordMessage("completed deal: %s", di)
-			break loop
+			return
 		}
+
 		t.RecordMessage("deal state: %s", storagemarket.DealStates[di.State])
-		time.Sleep(2 * time.Second)
 	}
 }

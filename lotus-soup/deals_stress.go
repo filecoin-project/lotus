@@ -92,7 +92,7 @@ func dealsStress(t *testkit.TestEnvironment) error {
 			go func(i int) {
 				defer wg1.Done()
 				t1 := time.Now()
-				deal := testkit.StartDeal(ctx, minerAddr.MinerActorAddr, client, cids[i])
+				deal := testkit.StartDeal(ctx, minerAddr.MinerActorAddr, client, cids[i], false)
 				t.RecordMessage("started storage deal %d -> %s", i, deal)
 				time.Sleep(2 * time.Second)
 				t.RecordMessage("waiting for deal %d to be sealed", i)
@@ -111,7 +111,8 @@ func dealsStress(t *testkit.TestEnvironment) error {
 				defer wg2.Done()
 				t.RecordMessage("retrieving data for deal %d", i)
 				t1 := time.Now()
-				testkit.RetrieveData(t, ctx, client, cids[i], true, data[i])
+				_ = testkit.RetrieveData(t, ctx, client, cids[i], nil, true, data[i])
+
 				t.RecordMessage("retrieved data for deal %d", i)
 				t.D().ResettingHistogram("deal.retrieved").Update(int64(time.Since(t1)))
 			}(i)
@@ -123,7 +124,7 @@ func dealsStress(t *testkit.TestEnvironment) error {
 	} else {
 
 		for i := 0; i < deals; i++ {
-			deal := testkit.StartDeal(ctx, minerAddr.MinerActorAddr, client, cids[i])
+			deal := testkit.StartDeal(ctx, minerAddr.MinerActorAddr, client, cids[i], false)
 			t.RecordMessage("started storage deal %d -> %s", i, deal)
 			time.Sleep(2 * time.Second)
 			t.RecordMessage("waiting for deal %d to be sealed", i)
@@ -132,7 +133,7 @@ func dealsStress(t *testkit.TestEnvironment) error {
 
 		for i := 0; i < deals; i++ {
 			t.RecordMessage("retrieving data for deal %d", i)
-			testkit.RetrieveData(t, ctx, client, cids[i], true, data[i])
+			_ = testkit.RetrieveData(t, ctx, client, cids[i], nil, true, data[i])
 			t.RecordMessage("retrieved data for deal %d", i)
 		}
 	}

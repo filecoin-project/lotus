@@ -15,8 +15,8 @@
   "editable": true,
   "gnetId": null,
   "graphTooltip": 0,
-  "id": 16,
-  "iteration": 1594055543533,
+  "id": 15,
+  "iteration": 1595335476624,
   "links": [],
   "panels": [
     {
@@ -1588,13 +1588,19 @@
       "steppedLine": false,
       "targets": [
         {
-          "alias": "deal.retrieved - 95% max",
+          "alias": "deal.retrieved - 95% max ($tag_run)",
           "groupBy": [
             {
               "params": [
                 "$myinterval"
               ],
               "type": "time"
+            },
+            {
+              "params": [
+                "run"
+              ],
+              "type": "tag"
             },
             {
               "params": [
@@ -1625,6 +1631,61 @@
               {
                 "params": [],
                 "type": "max"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "run",
+              "operator": "=~",
+              "value": "/^$runid$/"
+            }
+          ]
+        },
+        {
+          "alias": "deal.retrieved - min ($tag_run)",
+          "groupBy": [
+            {
+              "params": [
+                "$myinterval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "run"
+              ],
+              "type": "tag"
+            },
+            {
+              "params": [
+                "run"
+              ],
+              "type": "tag"
+            },
+            {
+              "params": [
+                "0"
+              ],
+              "type": "fill"
+            }
+          ],
+          "measurement": "diagnostics.deal.retrieved.histogram",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "min"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "min"
               }
             ]
           ],
@@ -1957,7 +2018,7 @@
       }
     }
   ],
-  "refresh": "10s",
+  "refresh": "5s",
   "schemaVersion": 25,
   "style": "dark",
   "tags": [],
@@ -2022,7 +2083,7 @@
     ]
   },
   "time": {
-    "from": "now-30m",
+    "from": "now-15m",
     "to": "now"
   },
   "timepicker": {
