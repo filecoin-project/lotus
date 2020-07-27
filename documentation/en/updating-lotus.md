@@ -10,5 +10,5 @@ git pull origin master
 make clean && make build
 
 # instal binaries in correct location
-make install
+make install // or sudo make install if necessary
 ```
