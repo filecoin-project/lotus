@@ -63,6 +63,9 @@ type StorageMiner interface {
 	WorkerStats(context.Context) (map[uint64]storiface.WorkerStats, error)
 	WorkerJobs(context.Context) (map[uint64][]storiface.WorkerJob, error)
 
+	// SealingSchedDiag dumps internal sealing scheduler state
+	SealingSchedDiag(context.Context) (interface{}, error)
+
 	stores.SectorIndex
 
 	MarketImportDealData(ctx context.Context, propcid cid.Cid, path string) error

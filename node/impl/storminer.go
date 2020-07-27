@@ -229,6 +229,10 @@ func (sm *StorageMinerAPI) WorkerConnect(ctx context.Context, url string) error 
 	return sm.StorageMgr.AddWorker(ctx, w)
 }
 
+func (sm *StorageMinerAPI) SealingSchedDiag(ctx context.Context) (interface{}, error) {
+	return sm.StorageMgr.SchedDiag(ctx)
+}
+
 func (sm *StorageMinerAPI) MarketImportDealData(ctx context.Context, propCid cid.Cid, path string) error {
 	fi, err := os.Open(path)
 	if err != nil {
