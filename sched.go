@@ -122,6 +122,7 @@ type workerRequest struct {
 
 	index int // The index of the item in the heap.
 
+	indexHeap int
 	ret chan<- workerResponse
 	ctx context.Context
 }
@@ -250,6 +251,7 @@ func (sh *scheduler) trySched() {
 		task := (*sh.schedQueue)[sqi]
 		needRes := ResourceTable[task.taskType][sh.spt]
 
+		task.indexHeap = sqi
 		for wnd, windowRequest := range sh.openWindows {
 			worker := sh.workers[windowRequest.worker]
 
@@ -312,7 +314,7 @@ func (sh *scheduler) trySched() {
 		needRes := ResourceTable[task.taskType][sh.spt]
 
 		selectedWindow := -1
-		for _, wnd := range acceptableWindows[sqi+scheduled] {
+		for _, wnd := range acceptableWindows[task.indexHeap] {
 			wid := sh.openWindows[wnd].worker
 			wr := sh.workers[wid].info.Resources
 
