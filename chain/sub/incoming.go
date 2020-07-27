@@ -191,14 +191,14 @@ func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub
 	// if we can't find it, we check whether we are (near) synced in the chain.
 	// if we are not synced we cannot validate the block and we must ignore it.
 	// if we are synced and the miner is unknown, then the block is rejcected.
-	key, err := bv.getMinerWorkerKey(ctx, blk)
+	key, err := bv.checkPowerAndGetWorkerKey(ctx, blk.Header)
 	if err != nil {
 		if bv.isChainNearSynced() {
-			log.Warnf("received block message from unknown miner over pubsub; rejecting message")
+			log.Warnf("received block from unknown miner or miner that doesn't meet min power over pubsub; rejecting message")
 			recordFailure("unknown_miner")
 			return pubsub.ValidationReject
 		} else {
-			log.Warnf("cannot validate block message; unknown miner in unsynced chain")
+			log.Warnf("cannot validate block message; unknown miner or miner that doesn't meet min power in unsynced chain")
 			return pubsub.ValidationIgnore
 		}
 	}
@@ -283,59 +283,82 @@ func (bv *BlockValidator) validateMsgMeta(ctx context.Context, msg *types.BlockM
 	return nil
 }
 
-func (bv *BlockValidator) getMinerWorkerKey(ctx context.Context, msg *types.BlockMsg) (address.Address, error) {
-	addr := msg.Header.Miner
+func (bv *BlockValidator) checkPowerAndGetWorkerKey(ctx context.Context, bh *types.BlockHeader) (address.Address, error) {
+	addr := bh.Miner
 
 	bv.mx.Lock()
 	key, ok := bv.keycache[addr.String()]
 	bv.mx.Unlock()
-	if ok {
-		return key, nil
+	if !ok {
+		// TODO I have a feeling all this can be simplified by cleverer DI to use the API
+		ts := bv.chain.GetHeaviestTipSet()
+		st, _, err := bv.stmgr.TipSetState(ctx, ts)
+		if err != nil {
+			return address.Undef, err
+		}
+		buf := bufbstore.NewBufferedBstore(bv.chain.Blockstore())
+		cst := cbor.NewCborStore(buf)
+		state, err := state.LoadStateTree(cst, st)
+		if err != nil {
+			return address.Undef, err
+		}
+		act, err := state.GetActor(addr)
+		if err != nil {
+			return address.Undef, err
+		}
+
+		blk, err := bv.chain.Blockstore().Get(act.Head)
+		if err != nil {
+			return address.Undef, err
+		}
+		aso := blk.RawData()
+
+		var mst miner.State
+		err = mst.UnmarshalCBOR(bytes.NewReader(aso))
+		if err != nil {
+			return address.Undef, err
+		}
+
+		info, err := mst.GetInfo(adt.WrapStore(ctx, cst))
+		if err != nil {
+			return address.Undef, err
+		}
+
+		worker := info.Worker
+		key, err = bv.stmgr.ResolveToKeyAddress(ctx, worker, ts)
+		if err != nil {
+			return address.Undef, err
+		}
+
+		bv.mx.Lock()
+		bv.keycache[addr.String()] = key
+		bv.mx.Unlock()
 	}
 
-	// TODO I have a feeling all this can be simplified by cleverer DI to use the API
-	ts := bv.chain.GetHeaviestTipSet()
-	st, _, err := bv.stmgr.TipSetState(ctx, ts)
+	// we check that the miner met the minimum power at the lookback tipset
+
+	baseTs, err := bv.stmgr.ChainStore().LoadTipSet(types.NewTipSetKey(bh.Parents...))
 	if err != nil {
-		return address.Undef, err
-	}
-	buf := bufbstore.NewBufferedBstore(bv.chain.Blockstore())
-	cst := cbor.NewCborStore(buf)
-	state, err := state.LoadStateTree(cst, st)
-	if err != nil {
-		return address.Undef, err
-	}
-	act, err := state.GetActor(addr)
-	if err != nil {
+		log.Warnf("failed to load parent tipset of incoming block")
 		return address.Undef, err
 	}
 
-	blk, err := bv.chain.Blockstore().Get(act.Head)
+	lbts, err := stmgr.GetLookbackTipSetForRound(ctx, bv.stmgr, baseTs, bh.Height)
 	if err != nil {
-		return address.Undef, err
-	}
-	aso := blk.RawData()
-
-	var mst miner.State
-	err = mst.UnmarshalCBOR(bytes.NewReader(aso))
-	if err != nil {
+		log.Warnf("failed to load lookback tipset for incoming block")
 		return address.Undef, err
 	}
 
-	info, err := mst.GetInfo(adt.WrapStore(ctx, cst))
+	hmp, err := stmgr.MinerHasMinPower(ctx, bv.stmgr, bh.Miner, lbts)
 	if err != nil {
+		log.Warnf("failed to determine if incoming block's miner has minimum power")
 		return address.Undef, err
 	}
 
-	worker := info.Worker
-	key, err = bv.stmgr.ResolveToKeyAddress(ctx, worker, ts)
-	if err != nil {
-		return address.Undef, err
+	if !hmp {
+		log.Warnf("incoming block's miner does not have minimum power")
+		return address.Undef, xerrors.New("incoming block's miner does not have minimum power")
 	}
-
-	bv.mx.Lock()
-	bv.keycache[addr.String()] = key
-	bv.mx.Unlock()
 
 	return key, nil
 }

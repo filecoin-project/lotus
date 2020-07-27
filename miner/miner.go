@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	lru "github.com/hashicorp/golang-lru"
 
@@ -269,15 +268,6 @@ func (m *Miner) GetBestMiningCandidate(ctx context.Context) (*MiningBase, error)
 	return m.lastWork, nil
 }
 
-func (m *Miner) hasPower(ctx context.Context, addr address.Address, ts *types.TipSet) (bool, error) {
-	mpower, err := m.api.StateMinerPower(ctx, addr, ts.Key())
-	if err != nil {
-		return false, err
-	}
-
-	return mpower.MinerPower.QualityAdjPower.GreaterThanEqual(power.ConsensusMinerMinPower), nil
-}
-
 // mineOne attempts to mine a single block, and does so synchronously, if and
 // only if we are eligible to mine.
 //
@@ -301,6 +291,10 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*types.BlockMsg,
 	if mbi == nil {
 		return nil, nil
 	}
+	if !mbi.HasMinPower {
+		// slashed or just have no power yet
+		return nil, nil
+	}
 
 	tMBI := build.Clock.Now()
 
@@ -308,15 +302,6 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*types.BlockMsg,
 
 	tDrand := build.Clock.Now()
 	bvals := mbi.BeaconEntries
-
-	hasPower, err := m.hasPower(ctx, m.address, base.TipSet)
-	if err != nil {
-		return nil, xerrors.Errorf("checking if miner is slashed: %w", err)
-	}
-	if !hasPower {
-		// slashed or just have no power yet
-		return nil, nil
-	}
 
 	tPowercheck := build.Clock.Now()
 

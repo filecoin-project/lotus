@@ -637,6 +637,7 @@ type MiningBaseInfo struct {
 	SectorSize      abi.SectorSize
 	PrevBeaconEntry types.BeaconEntry
 	BeaconEntries   []types.BeaconEntry
+	HasMinPower     bool
 }
 
 type BlockTemplate struct {
