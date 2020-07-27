@@ -147,14 +147,14 @@ func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid abi.SectorNumb
 		LastErr: info.LastErr,
 		Log:     log,
 		// on chain info
-		SealProof: 0,
-		Activation: 0,
-		Expiration: 0,
-		DealWeight: big.Zero(),
+		SealProof:          0,
+		Activation:         0,
+		Expiration:         0,
+		DealWeight:         big.Zero(),
 		VerifiedDealWeight: big.Zero(),
-		InitialPledge: big.Zero(),
-		OnTime: 0,
-		Early: 0,
+		InitialPledge:      big.Zero(),
+		OnTime:             0,
+		Early:              0,
 	}
 
 	if !showOnChainInfo {

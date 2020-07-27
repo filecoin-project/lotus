@@ -174,7 +174,6 @@ func TestSenondDealRetrieval(t *testing.T, b APIBuilder, blocktime time.Duration
 		rand.New(rand.NewSource(int64(3))).Read(data1)
 		r := bytes.NewReader(data1)
 
-
 		fcid1, err := client.ClientImportLocal(ctx, r)
 		if err != nil {
 			t.Fatal(err)
