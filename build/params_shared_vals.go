@@ -59,8 +59,8 @@ const WinningPoStSectorSetLookback = abi.ChainEpoch(10)
 // /////
 // Devnet settings
 
-const TotalFilecoin = uint64(2_000_000_000)
-const MiningRewardTotal = uint64(1_100_000_000)
+const FilBase = uint64(2_000_000_000)
+const FilAllocStorageMining = uint64(1_100_000_000)
 
 const FilecoinPrecision = uint64(1_000_000_000_000_000_000)
 
@@ -69,7 +69,7 @@ var InitialRewardBalance *big.Int
 // TODO: Move other important consts here
 
 func init() {
-	InitialRewardBalance = big.NewInt(int64(MiningRewardTotal))
+	InitialRewardBalance = big.NewInt(int64(FilAllocStorageMining))
 	InitialRewardBalance = InitialRewardBalance.Mul(InitialRewardBalance, big.NewInt(int64(FilecoinPrecision)))
 }
 
