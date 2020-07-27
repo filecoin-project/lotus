@@ -64,7 +64,7 @@ func NewSectorBlocks(miner *storage.Miner, ds dtypes.MetadataDS) *SectorBlocks {
 	return sbc
 }
 
-func (st *SectorBlocks) writeRef(dealID abi.DealID, sectorID abi.SectorNumber, offset uint64, size abi.UnpaddedPieceSize) error {
+func (st *SectorBlocks) writeRef(dealID abi.DealID, sectorID abi.SectorNumber, offset abi.PaddedPieceSize, size abi.UnpaddedPieceSize) error {
 	st.keyLk.Lock() // TODO: make this multithreaded
 	defer st.keyLk.Unlock()
 
@@ -102,7 +102,7 @@ func (st *SectorBlocks) AddPiece(ctx context.Context, size abi.UnpaddedPieceSize
 		return 0, err
 	}
 
-	err = st.writeRef(d.DealID, sn, offset, size)
+	err = st.writeRef(d.DealID, sn, abi.PaddedPieceSize(offset), size)
 	if err != nil {
 		return 0, xerrors.Errorf("writeRef: %w", err)
 	}

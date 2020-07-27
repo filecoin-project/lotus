@@ -137,7 +137,7 @@ type SectorInfo struct {
 
 type SealedRef struct {
 	SectorID abi.SectorNumber
-	Offset   uint64
+	Offset   abi.PaddedPieceSize
 	Size     abi.UnpaddedPieceSize
 }
 
