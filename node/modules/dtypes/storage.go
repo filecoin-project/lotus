@@ -50,3 +50,4 @@ type ProviderDataTransfer datatransfer.Manager
 type StagingDAG format.DAGService
 type StagingBlockstore blockstore.Blockstore
 type StagingGraphsync graphsync.GraphExchange
+type StagingMultiDstore *multistore.MultiStore

@@ -21,11 +21,11 @@ require (
 	github.com/filecoin-project/go-bitfield v0.1.0
 	github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
-	github.com/filecoin-project/go-data-transfer v0.5.0
+	github.com/filecoin-project/go-data-transfer v0.5.1
 	github.com/filecoin-project/go-fil-commcid v0.0.0-20200716160307-8f644712406f
-	github.com/filecoin-project/go-fil-markets v0.5.1
+	github.com/filecoin-project/go-fil-markets v0.5.2-0.20200728110539-caae3fda6623
 	github.com/filecoin-project/go-jsonrpc v0.1.1-0.20200602181149-522144ab4e24
-	github.com/filecoin-project/go-multistore v0.0.1
+	github.com/filecoin-project/go-multistore v0.0.2
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200701152213-3e0f0afdc261
 	github.com/filecoin-project/go-statestore v0.1.0
 	github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b
@@ -53,7 +53,7 @@ require (
 	github.com/ipfs/go-ds-measure v0.1.0
 	github.com/ipfs/go-filestore v1.0.0
 	github.com/ipfs/go-fs-lock v0.0.1
-	github.com/ipfs/go-graphsync v0.0.6-0.20200715204712-ef06b3d32e83
+	github.com/ipfs/go-graphsync v0.0.6-0.20200721211002-c376cbe14c0a
 	github.com/ipfs/go-ipfs-blockstore v1.0.0
 	github.com/ipfs/go-ipfs-chunker v0.0.5
 	github.com/ipfs/go-ipfs-ds-help v1.0.0

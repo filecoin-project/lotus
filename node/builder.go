@@ -298,6 +298,7 @@ func Online() Option {
 			Override(new(*storage.Miner), modules.StorageMiner),
 			Override(new(dtypes.NetworkName), modules.StorageNetworkName),
 
+			Override(new(dtypes.StagingMultiDstore), modules.StagingMultiDatastore),
 			Override(new(dtypes.StagingBlockstore), modules.StagingBlockstore),
 			Override(new(dtypes.StagingDAG), modules.StagingDAG),
 			Override(new(dtypes.StagingGraphsync), modules.StagingGraphsync),
