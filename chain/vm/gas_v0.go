@@ -176,7 +176,18 @@ func (pl *pricelistV0) OnVerifySeal(info abi.SealVerifyInfo) GasCharge {
 
 // OnVerifyPost
 func (pl *pricelistV0) OnVerifyPost(info abi.WindowPoStVerifyInfo) GasCharge {
-	return newGasCharge("OnVerifyPost", pl.verifyPostBase, 0).WithExtra(len(info.ChallengedSectors))
+	sectorSize := "unknown"
+	if len(info.ChallengedSectors) != 0 {
+		ss, err := info.ChallengedSectors[0].SealProof.SectorSize()
+		if err == nil {
+			sectorSize = ss.ShortString()
+		}
+	}
+	return newGasCharge("OnVerifyPost", pl.verifyPostBase, 0).
+		WithExtra(map[string]interface{}{
+			"type": sectorSize,
+			"size": len(info.ChallengedSectors),
+		})
 }
 
 // OnVerifyConsensusFault
