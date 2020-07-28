@@ -273,6 +273,7 @@ func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, spt abi.Re
 
 			best = filepath.Join(p.local, fileType.String(), SectorName(sid))
 			bestID = si.ID
+			break
 		}
 
 		if best == "" {
