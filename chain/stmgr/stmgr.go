@@ -36,11 +36,12 @@ var log = logging.Logger("statemgr")
 type StateManager struct {
 	cs *store.ChainStore
 
-	stCache      map[string][]cid.Cid
-	compWait     map[string]chan struct{}
-	stlk         sync.Mutex
-	newVM        func(cid.Cid, abi.ChainEpoch, vm.Rand, blockstore.Blockstore, vm.SyscallBuilder, vm.VestedCalculator) (*vm.VM, error)
-	genesisMsigs []multisig.State
+	stCache       map[string][]cid.Cid
+	compWait      map[string]chan struct{}
+	stlk          sync.Mutex
+	genesisMsigLk sync.Mutex
+	newVM         func(cid.Cid, abi.ChainEpoch, vm.Rand, blockstore.Blockstore, vm.SyscallBuilder, vm.VestedCalculator) (*vm.VM, error)
+	genesisMsigs  []multisig.State
 }
 
 func NewStateManager(cs *store.ChainStore) *StateManager {
@@ -852,7 +853,8 @@ func (sm *StateManager) setupGenesisMsigs(ctx context.Context) error {
 }
 
 func (sm *StateManager) GetVestedFunds(ctx context.Context, height abi.ChainEpoch) (abi.TokenAmount, error) {
-
+	sm.genesisMsigLk.Lock()
+	defer sm.genesisMsigLk.Unlock()
 	if sm.genesisMsigs == nil {
 		err := sm.setupGenesisMsigs(ctx)
 		if err != nil {

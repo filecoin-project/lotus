@@ -73,6 +73,9 @@ func (rt *Runtime) TotalFilCircSupply() abi.TokenAmount {
 	}
 
 	filMined := types.BigSub(types.FromFil(build.FilAllocStorageMining), rew.Balance)
+	if filMined.LessThan(big.Zero()) {
+		filMined = big.Zero()
+	}
 
 	burnt, err := rt.state.GetActor(builtin.BurntFundsActorAddr)
 	if err != nil {
@@ -109,6 +112,10 @@ func (rt *Runtime) TotalFilCircSupply() abi.TokenAmount {
 	ret := types.BigAdd(filVested, filMined)
 	ret = types.BigSub(ret, filBurned)
 	ret = types.BigSub(ret, filLocked)
+
+	if ret.LessThan(big.Zero()) {
+		ret = big.Zero()
+	}
 	return ret
 }
 
