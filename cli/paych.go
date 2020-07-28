@@ -28,7 +28,7 @@ var paychCmd = &cli.Command{
 
 var paychGetCmd = &cli.Command{
 	Name:      "get",
-	Usage:     "Create a new payment channel or get existing one",
+	Usage:     "Create a new payment channel or get existing one and add amount to it",
 	ArgsUsage: "[fromAddress toAddress amount]",
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Len() != 3 {

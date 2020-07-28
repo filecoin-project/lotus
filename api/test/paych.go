@@ -1,18 +1,17 @@
 package test
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"os"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
-	initactor "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/ipfs/go-cid"
 
@@ -77,13 +76,10 @@ func TestPaymentChannels(t *testing.T, b APIBuilder, blocktime time.Duration) {
 		t.Fatal(err)
 	}
 
-	res := waitForMessage(ctx, t, paymentCreator, channelInfo.ChannelMessage, time.Second, "channel create")
-	var params initactor.ExecReturn
-	err = params.UnmarshalCBOR(bytes.NewReader(res.Receipt.Return))
+	channel, err := paymentCreator.PaychGetWaitReady(ctx, channelInfo.ChannelMessage)
 	if err != nil {
 		t.Fatal(err)
 	}
-	channel := params.RobustAddress
 
 	// allocate three lanes
 	var lanes []uint64
@@ -129,7 +125,7 @@ func TestPaymentChannels(t *testing.T, b APIBuilder, blocktime time.Duration) {
 		t.Fatal(err)
 	}
 
-	res = waitForMessage(ctx, t, paymentCreator, settleMsgCid, time.Second*10, "settle")
+	res := waitForMessage(ctx, t, paymentCreator, settleMsgCid, time.Second*10, "settle")
 	if res.Receipt.ExitCode != 0 {
 		t.Fatal("Unable to settle payment channel")
 	}
