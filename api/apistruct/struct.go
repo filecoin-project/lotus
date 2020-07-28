@@ -183,7 +183,8 @@ type FullNodeStruct struct {
 
 		MarketEnsureAvailable func(context.Context, address.Address, address.Address, types.BigInt) (cid.Cid, error) `perm:"sign"`
 
-		PaychGet                   func(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*api.ChannelInfo, error)   `perm:"sign"`
+		PaychGet                   func(ctx context.Context, from, to address.Address, amt types.BigInt) (*api.ChannelInfo, error)           `perm:"sign"`
+		PaychGetWaitReady          func(context.Context, cid.Cid) (address.Address, error)                                                   `perm:"sign"` // TODO: is perm:"sign" correct?
 		PaychList                  func(context.Context) ([]address.Address, error)                                                          `perm:"read"`
 		PaychStatus                func(context.Context, address.Address) (*api.PaychStatus, error)                                          `perm:"read"`
 		PaychSettle                func(context.Context, address.Address) (cid.Cid, error)                                                   `perm:"sign"`
@@ -803,8 +804,12 @@ func (c *FullNodeStruct) MarketEnsureAvailable(ctx context.Context, addr, wallet
 	return c.Internal.MarketEnsureAvailable(ctx, addr, wallet, amt)
 }
 
-func (c *FullNodeStruct) PaychGet(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*api.ChannelInfo, error) {
-	return c.Internal.PaychGet(ctx, from, to, ensureFunds)
+func (c *FullNodeStruct) PaychGet(ctx context.Context, from, to address.Address, amt types.BigInt) (*api.ChannelInfo, error) {
+	return c.Internal.PaychGet(ctx, from, to, amt)
+}
+
+func (c *FullNodeStruct) PaychGetWaitReady(ctx context.Context, mcid cid.Cid) (address.Address, error) {
+	return c.Internal.PaychGetWaitReady(ctx, mcid)
 }
 
 func (c *FullNodeStruct) PaychList(ctx context.Context) ([]address.Address, error) {

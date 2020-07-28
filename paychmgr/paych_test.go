@@ -104,13 +104,15 @@ func TestPaychOutbound(t *testing.T) {
 		LaneStates:      []*paych.LaneState{},
 	})
 
-	mgr := newManager(sm, store)
-	err := mgr.TrackOutboundChannel(ctx, ch)
+	mgr, err := newManager(sm, store, nil)
+	require.NoError(t, err)
+
+	err = mgr.TrackOutboundChannel(ctx, ch)
 	require.NoError(t, err)
 
 	ci, err := mgr.GetChannelInfo(ch)
 	require.NoError(t, err)
-	require.Equal(t, ci.Channel, ch)
+	require.Equal(t, *ci.Channel, ch)
 	require.Equal(t, ci.Control, from)
 	require.Equal(t, ci.Target, to)
 	require.EqualValues(t, ci.Direction, DirOutbound)
@@ -140,13 +142,15 @@ func TestPaychInbound(t *testing.T) {
 		LaneStates:      []*paych.LaneState{},
 	})
 
-	mgr := newManager(sm, store)
-	err := mgr.TrackInboundChannel(ctx, ch)
+	mgr, err := newManager(sm, store, nil)
+	require.NoError(t, err)
+
+	err = mgr.TrackInboundChannel(ctx, ch)
 	require.NoError(t, err)
 
 	ci, err := mgr.GetChannelInfo(ch)
 	require.NoError(t, err)
-	require.Equal(t, ci.Channel, ch)
+	require.Equal(t, *ci.Channel, ch)
 	require.Equal(t, ci.Control, to)
 	require.Equal(t, ci.Target, from)
 	require.EqualValues(t, ci.Direction, DirInbound)
@@ -321,8 +325,10 @@ func TestCheckVoucherValid(t *testing.T) {
 				LaneStates:      tcase.laneStates,
 			})
 
-			mgr := newManager(sm, store)
-			err := mgr.TrackInboundChannel(ctx, ch)
+			mgr, err := newManager(sm, store, nil)
+			require.NoError(t, err)
+
+			err = mgr.TrackInboundChannel(ctx, ch)
 			require.NoError(t, err)
 
 			sv := testCreateVoucher(t, ch, tcase.voucherLane, tcase.voucherNonce, tcase.voucherAmount, tcase.key)
@@ -382,8 +388,10 @@ func TestCheckVoucherValidCountingAllLanes(t *testing.T) {
 		LaneStates:      laneStates,
 	})
 
-	mgr := newManager(sm, store)
-	err := mgr.TrackInboundChannel(ctx, ch)
+	mgr, err := newManager(sm, store, nil)
+	require.NoError(t, err)
+
+	err = mgr.TrackInboundChannel(ctx, ch)
 	require.NoError(t, err)
 
 	//
@@ -690,8 +698,10 @@ func testSetupMgrWithChannel(ctx context.Context, t *testing.T) (*Manager, addre
 	})
 
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
-	mgr := newManager(sm, store)
-	err := mgr.TrackInboundChannel(ctx, ch)
+	mgr, err := newManager(sm, store, nil)
+	require.NoError(t, err)
+
+	err = mgr.TrackInboundChannel(ctx, ch)
 	require.NoError(t, err)
 	return mgr, ch, fromKeyPrivate
 }
