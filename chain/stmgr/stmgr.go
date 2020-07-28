@@ -717,34 +717,18 @@ func (sm *StateManager) MarketBalance(ctx context.Context, addr address.Address,
 	if err != nil {
 		return api.MarketBalance{}, err
 	}
-	ehas, err := et.Has(addr)
+	out.Escrow, err = et.Get(addr)
 	if err != nil {
-		return api.MarketBalance{}, err
-	}
-	if ehas {
-		out.Escrow, _, err = et.Get(addr)
-		if err != nil {
-			return api.MarketBalance{}, xerrors.Errorf("getting escrow balance: %w", err)
-		}
-	} else {
-		out.Escrow = big.Zero()
+		return api.MarketBalance{}, xerrors.Errorf("getting escrow balance: %w", err)
 	}
 
 	lt, err := adt.AsBalanceTable(sm.cs.Store(ctx), state.LockedTable)
 	if err != nil {
 		return api.MarketBalance{}, err
 	}
-	lhas, err := lt.Has(addr)
+	out.Locked, err = lt.Get(addr)
 	if err != nil {
-		return api.MarketBalance{}, err
-	}
-	if lhas {
-		out.Locked, _, err = lt.Get(addr)
-		if err != nil {
-			return api.MarketBalance{}, xerrors.Errorf("getting locked balance: %w", err)
-		}
-	} else {
-		out.Locked = big.Zero()
+		return api.MarketBalance{}, xerrors.Errorf("getting locked balance: %w", err)
 	}
 
 	return out, nil

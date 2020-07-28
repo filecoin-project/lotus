@@ -235,6 +235,8 @@ github.com/filecoin-project/go-bitfield v0.0.4-0.20200703174658-f4a5758051a1 h1:
 github.com/filecoin-project/go-bitfield v0.0.4-0.20200703174658-f4a5758051a1/go.mod h1:Ry9/iUlWSyjPUzlAvdnfy4Gtvrq4kWmWDztCU1yEgJY=
 github.com/filecoin-project/go-bitfield v0.1.0 h1:ZDAQjvXuLzbrLnwfFruQFJP7IhImmXLuO+8i2qeAczM=
 github.com/filecoin-project/go-bitfield v0.1.0/go.mod h1:CNl9WG8hgR5mttCnUErjcQjGvuiZjRqK9rHVBsQF4oM=
+github.com/filecoin-project/go-bitfield v0.1.1 h1:ioLGippGXLS93uBMbpSwVPD7h2Oz1FYq/WPYDfT7W/A=
+github.com/filecoin-project/go-bitfield v0.1.1/go.mod h1:CNl9WG8hgR5mttCnUErjcQjGvuiZjRqK9rHVBsQF4oM=
 github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2 h1:av5fw6wmm58FYMgJeoB/lK9XXrgdugYiTqkdxjTy9k8=
 github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2/go.mod h1:pqTiPHobNkOVM5thSRsHYjyQfq7O5QSCMhvuu9JoDlg=
 github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03 h1:2pMXdBnCiXjfCYx/hLqFxccPoqsSveQFxVLvNxy9bus=
@@ -279,6 +281,8 @@ github.com/filecoin-project/specs-actors v0.8.1-0.20200723200253-a3c01bc62f99 h1
 github.com/filecoin-project/specs-actors v0.8.1-0.20200723200253-a3c01bc62f99/go.mod h1:TLvIheTVl0EIuyncuKSTVXPULaj7gzhLup5CLZ/S+uM=
 github.com/filecoin-project/specs-actors v0.8.1-0.20200724060953-964aec9ab294 h1:WGSmvWiPZZ8YY8RIepfN/vQQMbaqqMtsCitKBUWX8V4=
 github.com/filecoin-project/specs-actors v0.8.1-0.20200724060953-964aec9ab294/go.mod h1:TLvIheTVl0EIuyncuKSTVXPULaj7gzhLup5CLZ/S+uM=
+github.com/filecoin-project/specs-actors v0.8.1-0.20200728130932-33f4d6eb316b h1:E3cJHaDN37gD60mFuIwg+/Mt6G5rrg0tTU5rBHQIG5o=
+github.com/filecoin-project/specs-actors v0.8.1-0.20200728130932-33f4d6eb316b/go.mod h1:U1qnlL3MjJnE6n3MTUUVhlmpJodx+fo26cC0aiL1jeo=
 github.com/filecoin-project/specs-storage v0.1.0/go.mod h1:Pr5ntAaxsh+sLG/LYiL4tKzvA83Vk5vLODYhfNwOg7k=
 github.com/filecoin-project/specs-storage v0.1.1-0.20200622113353-88a9704877ea h1:iixjULRQFPn7Q9KlIqfwLJnlAXO10bbkI+xy5GKGdLY=
 github.com/filecoin-project/specs-storage v0.1.1-0.20200622113353-88a9704877ea/go.mod h1:Pr5ntAaxsh+sLG/LYiL4tKzvA83Vk5vLODYhfNwOg7k=
