@@ -88,7 +88,7 @@ func (a *Applier) ApplyTipSetMessages(epoch abi.ChainEpoch, blocks []vtypes.Bloc
 	}
 
 	var receipts []vtypes.MessageReceipt
-	sroot, _, err := sm.ApplyBlocks(context.TODO(), a.stateWrapper.Root(), bms, epoch, &randWrapper{rnd}, func(c cid.Cid, msg *types.Message, ret *vm.ApplyRet) error {
+	sroot, _, err := sm.ApplyBlocks(context.TODO(), epoch-1, a.stateWrapper.Root(), bms, epoch, &randWrapper{rnd}, func(c cid.Cid, msg *types.Message, ret *vm.ApplyRet) error {
 		if msg.From == builtin.SystemActorAddr {
 			return nil // ignore reward and cron calls
 		}
