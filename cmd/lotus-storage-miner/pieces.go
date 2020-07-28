@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"text/tabwriter"
 
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/ipfs/go-cid"
@@ -92,11 +94,12 @@ var piecesInfoCmd = &cli.Command{
 		}
 
 		fmt.Println("Piece: ", pi.PieceCID)
-		fmt.Println("Deals:\nDealID\tSectorID\tLength\tOffset")
+		w := tabwriter.NewWriter(os.Stdout, 4, 4, 2, ' ', 0)
+		fmt.Fprintln(w, "Deals:\nDealID\tSectorID\tLength\tOffset")
 		for _, d := range pi.Deals {
-			fmt.Printf("%d\t%d\t%d\t%d\n", d.DealID, d.SectorID, d.Length, d.Offset)
+			fmt.Fprintf(w, "%d\t%d\t%d\t%d\n", d.DealID, d.SectorID, d.Length, d.Offset)
 		}
-		return nil
+		return w.Flush()
 	},
 }
 
@@ -126,10 +129,12 @@ var piecesCidInfoCmd = &cli.Command{
 		}
 
 		fmt.Println("Info for: ", ci.CID)
-		fmt.Printf("PieceCid\tOffset\tSize\n")
+
+		w := tabwriter.NewWriter(os.Stdout, 4, 4, 2, ' ', 0)
+		fmt.Fprintf(w, "PieceCid\tOffset\tSize\n")
 		for _, loc := range ci.PieceBlockLocations {
-			fmt.Printf("%s\t%d\t%d\n", loc.PieceCID, loc.RelOffset, loc.BlockSize)
+			fmt.Fprintf(w, "%s\t%d\t%d\n", loc.PieceCID, loc.RelOffset, loc.BlockSize)
 		}
-		return nil
+		return w.Flush()
 	},
 }

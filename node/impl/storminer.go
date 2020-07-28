@@ -15,6 +15,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
+	retrievalmarket "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	storagemarket "github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	sectorstorage "github.com/filecoin-project/sector-storage"
@@ -40,12 +41,13 @@ type StorageMinerAPI struct {
 	ProofsConfig *ffiwrapper.Config
 	SectorBlocks *sectorblocks.SectorBlocks
 
-	PieceStore      dtypes.ProviderPieceStore
-	StorageProvider storagemarket.StorageProvider
-	Miner           *storage.Miner
-	BlockMiner      *miner.Miner
-	Full            api.FullNode
-	StorageMgr      *sectorstorage.Manager `optional:"true"`
+	PieceStore        dtypes.ProviderPieceStore
+	StorageProvider   storagemarket.StorageProvider
+	RetrievalProvider retrievalmarket.RetrievalProvider
+	Miner             *storage.Miner
+	BlockMiner        *miner.Miner
+	Full              api.FullNode
+	StorageMgr        *sectorstorage.Manager `optional:"true"`
 	*stores.Index
 
 	ConsiderOnlineStorageDealsConfigFunc       dtypes.ConsiderOnlineStorageDealsConfigFunc
@@ -301,6 +303,15 @@ func (sm *StorageMinerAPI) MarketGetAsk(ctx context.Context) (*storagemarket.Sig
 	return sm.StorageProvider.GetAsk(), nil
 }
 
+func (sm *StorageMinerAPI) MarketSetRetrievalAsk(ctx context.Context, rask *retrievalmarket.Ask) error {
+	sm.RetrievalProvider.SetAsk(rask)
+	return nil
+}
+
+func (sm *StorageMinerAPI) MarketGetRetrievalAsk(ctx context.Context) (*retrievalmarket.Ask, error) {
+	return sm.RetrievalProvider.GetAsk(), nil
+}
+
 func (sm *StorageMinerAPI) DealsList(ctx context.Context) ([]storagemarket.StorageDeal, error) {
 	return sm.StorageProvider.ListDeals(ctx)
 }
@@ -372,13 +383,11 @@ func (sm *StorageMinerAPI) StorageAddLocal(ctx context.Context, path string) err
 }
 
 func (sm *StorageMinerAPI) PiecesListPieces(ctx context.Context) ([]cid.Cid, error) {
-	panic("nyi")
-	//return sm.PieceStore.ListPieceInfoKeys(ctx)
+	return sm.PieceStore.ListPieceInfoKeys()
 }
 
 func (sm *StorageMinerAPI) PiecesListCidInfos(ctx context.Context) ([]cid.Cid, error) {
-	panic("nyi")
-	//return sm.PieceStore.ListCidInfoKeys(ctx)
+	return sm.PieceStore.ListCidInfoKeys()
 }
 
 func (sm *StorageMinerAPI) PiecesGetPieceInfo(ctx context.Context, pieceCid cid.Cid) (*piecestore.PieceInfo, error) {

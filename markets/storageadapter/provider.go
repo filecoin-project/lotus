@@ -230,6 +230,7 @@ func (n *ProviderNodeAdapter) LocatePieceForDealWithinSector(ctx context.Context
 	if bestSi.State == sealing.UndefinedSectorState {
 		return 0, 0, 0, xerrors.New("no sealed sector found")
 	}
+	// TODO(review) is this offset actually padded?
 	return best.SectorID, best.Offset, best.Size.Padded(), nil
 }
 
