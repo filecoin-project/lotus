@@ -410,6 +410,7 @@ func tallyGasCharges(charges map[string]*stats, et types.ExecutionTrace) {
 		}
 		tt := float64(gc.TimeTaken.Nanoseconds())
 		if name == "OnVerifyPost" && tt > 2e9 {
+			log.Warnf("Skipping abnormally long OnVerifyPost: %fs", tt/1e9)
 			// discard initial very long OnVerifyPost
 			continue
 		}
