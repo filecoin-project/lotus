@@ -382,7 +382,6 @@ func mockSbBuilder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test
 		}
 	}
 
-
 	for i, def := range storage {
 		// TODO: support non-bootstrap miners
 
@@ -494,12 +493,18 @@ func TestAPIDealFlowReal(t *testing.T) {
 	logging.SetLogLevel("sub", "ERROR")
 	logging.SetLogLevel("storageminer", "ERROR")
 
+	saminer.PreCommitChallengeDelay = 5
+
 	t.Run("basic", func(t *testing.T) {
 		test.TestDealFlow(t, builder, time.Second, false, false)
 	})
 
 	t.Run("fast-retrieval", func(t *testing.T) {
 		test.TestDealFlow(t, builder, time.Second, false, true)
+	})
+
+	t.Run("retrieval-second", func(t *testing.T) {
+		test.TestSenondDealRetrieval(t, builder, time.Second)
 	})
 }
 

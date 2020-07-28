@@ -97,7 +97,7 @@ func pledgeSectors(t *testing.T, ctx context.Context, miner TestStorageNode, n i
 
 	for len(toCheck) > 0 {
 		for n := range toCheck {
-			st, err := miner.SectorsStatus(ctx, n)
+			st, err := miner.SectorsStatus(ctx, n, false)
 			require.NoError(t, err)
 			if st.State == api.SectorState(sealing.Proving) {
 				delete(toCheck, n)
@@ -233,7 +233,7 @@ func TestWindowPost(t *testing.T, b APIBuilder, blocktime time.Duration, nSector
 	require.Equal(t, p.MinerPower, p.TotalPower)
 
 	sectors := p.MinerPower.RawBytePower.Uint64() / uint64(ssz)
-	require.Equal(t, nSectors+GenesisPreseals - 3, int(sectors)) // -3 just removed sectors
+	require.Equal(t, nSectors+GenesisPreseals-3, int(sectors)) // -3 just removed sectors
 
 	mine = false
 	<-done

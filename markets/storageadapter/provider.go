@@ -225,7 +225,7 @@ func (n *ProviderNodeAdapter) LocatePieceForDealWithinSector(ctx context.Context
 	if bestSi.State == sealing.UndefinedSectorState {
 		return 0, 0, 0, xerrors.New("no sealed sector found")
 	}
-	return uint64(best.SectorID), best.Offset, uint64(best.Size), nil
+	return uint64(best.SectorID), uint64(best.Offset.Unpadded()), uint64(best.Size), nil
 }
 
 func (n *ProviderNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, cb storagemarket.DealSectorCommittedCallback) error {

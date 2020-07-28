@@ -215,21 +215,23 @@ type StorageMinerStruct struct {
 
 		PledgeSector func(context.Context) error `perm:"write"`
 
-		SectorsStatus                 func(context.Context, abi.SectorNumber) (api.SectorInfo, error) `perm:"read"`
-		SectorsList                   func(context.Context) ([]abi.SectorNumber, error)               `perm:"read"`
-		SectorsRefs                   func(context.Context) (map[string][]api.SealedRef, error)       `perm:"read"`
-		SectorStartSealing            func(context.Context, abi.SectorNumber) error                   `perm:"write"`
-		SectorSetSealDelay            func(context.Context, time.Duration) error                      `perm:"write"`
-		SectorGetSealDelay            func(context.Context) (time.Duration, error)                    `perm:"read"`
-		SectorSetExpectedSealDuration func(context.Context, time.Duration) error                      `perm:"write"`
-		SectorGetExpectedSealDuration func(context.Context) (time.Duration, error)                    `perm:"read"`
-		SectorsUpdate                 func(context.Context, abi.SectorNumber, api.SectorState) error  `perm:"admin"`
-		SectorRemove                  func(context.Context, abi.SectorNumber) error                   `perm:"admin"`
-		SectorMarkForUpgrade          func(ctx context.Context, id abi.SectorNumber) error            `perm:"admin"`
+		SectorsStatus                 func(ctx context.Context, sid abi.SectorNumber, showOnChainInfo bool) (api.SectorInfo, error) `perm:"read"`
+		SectorsList                   func(context.Context) ([]abi.SectorNumber, error)                                             `perm:"read"`
+		SectorsRefs                   func(context.Context) (map[string][]api.SealedRef, error)                                     `perm:"read"`
+		SectorStartSealing            func(context.Context, abi.SectorNumber) error                                                 `perm:"write"`
+		SectorSetSealDelay            func(context.Context, time.Duration) error                                                    `perm:"write"`
+		SectorGetSealDelay            func(context.Context) (time.Duration, error)                                                  `perm:"read"`
+		SectorSetExpectedSealDuration func(context.Context, time.Duration) error                                                    `perm:"write"`
+		SectorGetExpectedSealDuration func(context.Context) (time.Duration, error)                                                  `perm:"read"`
+		SectorsUpdate                 func(context.Context, abi.SectorNumber, api.SectorState) error                                `perm:"admin"`
+		SectorRemove                  func(context.Context, abi.SectorNumber) error                                                 `perm:"admin"`
+		SectorMarkForUpgrade          func(ctx context.Context, id abi.SectorNumber) error                                          `perm:"admin"`
 
 		WorkerConnect func(context.Context, string) error                             `perm:"admin"` // TODO: worker perm
 		WorkerStats   func(context.Context) (map[uint64]storiface.WorkerStats, error) `perm:"admin"`
 		WorkerJobs    func(context.Context) (map[uint64][]storiface.WorkerJob, error) `perm:"admin"`
+
+		SealingSchedDiag func(context.Context) (interface{}, error) `perm:"admin"`
 
 		StorageList          func(context.Context) (map[stores.ID][]stores.Decl, error)                                                                                    `perm:"admin"`
 		StorageLocal         func(context.Context) (map[stores.ID]string, error)                                                                                           `perm:"admin"`
@@ -845,8 +847,8 @@ func (c *StorageMinerStruct) PledgeSector(ctx context.Context) error {
 }
 
 // Get the status of a given sector by ID
-func (c *StorageMinerStruct) SectorsStatus(ctx context.Context, sid abi.SectorNumber) (api.SectorInfo, error) {
-	return c.Internal.SectorsStatus(ctx, sid)
+func (c *StorageMinerStruct) SectorsStatus(ctx context.Context, sid abi.SectorNumber, showOnChainInfo bool) (api.SectorInfo, error) {
+	return c.Internal.SectorsStatus(ctx, sid, showOnChainInfo)
 }
 
 // List all staged sectors
@@ -900,6 +902,10 @@ func (c *StorageMinerStruct) WorkerStats(ctx context.Context) (map[uint64]storif
 
 func (c *StorageMinerStruct) WorkerJobs(ctx context.Context) (map[uint64][]storiface.WorkerJob, error) {
 	return c.Internal.WorkerJobs(ctx)
+}
+
+func (c *StorageMinerStruct) SealingSchedDiag(ctx context.Context) (interface{}, error) {
+	return c.Internal.SealingSchedDiag(ctx)
 }
 
 func (c *StorageMinerStruct) StorageAttach(ctx context.Context, si stores.StorageInfo, st fsutil.FsStat) error {

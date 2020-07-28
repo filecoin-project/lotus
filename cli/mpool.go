@@ -225,9 +225,18 @@ var mpoolStat = &cli.Command{
 			return out[i].addr < out[j].addr
 		})
 
+		var total mpStat
+
 		for _, stat := range out {
-			fmt.Printf("%s, past: %d, cur: %d, future: %d\n", stat.addr, stat.past, stat.cur, stat.future)
+			total.past += stat.past
+			total.cur += stat.cur
+			total.future += stat.future
+
+			fmt.Printf("%s: past: %d, cur: %d, future: %d\n", stat.addr, stat.past, stat.cur, stat.future)
 		}
+
+		fmt.Println("-----")
+		fmt.Printf("total: past: %d, cur: %d, future: %d\n", total.past, total.cur, total.future)
 
 		return nil
 	},

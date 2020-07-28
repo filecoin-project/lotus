@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"os"
 	"sort"
 	"strconv"
@@ -31,6 +32,7 @@ var sectorsCmd = &cli.Command{
 		sectorsMarkForUpgradeCmd,
 		sectorsStartSealCmd,
 		sectorsSealDelayCmd,
+		sectorsCapacityCollateralCmd,
 	},
 }
 
@@ -58,6 +60,10 @@ var sectorsStatusCmd = &cli.Command{
 			Name:  "log",
 			Usage: "display event log",
 		},
+		&cli.BoolFlag{
+			Name:  "on-chain-info",
+			Usage: "show sector on chain info",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
@@ -76,7 +82,8 @@ var sectorsStatusCmd = &cli.Command{
 			return err
 		}
 
-		status, err := nodeApi.SectorsStatus(ctx, abi.SectorNumber(id))
+		onChainInfo := cctx.Bool("on-chain-info")
+		status, err := nodeApi.SectorsStatus(ctx, abi.SectorNumber(id), onChainInfo)
 		if err != nil {
 			return err
 		}
@@ -94,6 +101,19 @@ var sectorsStatusCmd = &cli.Command{
 		fmt.Printf("Retries:\t%d\n", status.Retries)
 		if status.LastErr != "" {
 			fmt.Printf("Last Error:\t\t%s\n", status.LastErr)
+		}
+
+		if onChainInfo {
+			fmt.Printf("\nSector On Chain Info\n")
+			fmt.Printf("SealProof:\t\t%x\n", status.SealProof)
+			fmt.Printf("Activation:\t\t%v\n", status.Activation)
+			fmt.Printf("Expiration:\t\t%v\n", status.Expiration)
+			fmt.Printf("DealWeight:\t\t%v\n", status.DealWeight)
+			fmt.Printf("VerifiedDealWeight:\t\t%v\n", status.VerifiedDealWeight)
+			fmt.Printf("InitialPledge:\t\t%v\n", status.InitialPledge)
+			fmt.Printf("\nExpiration Info\n")
+			fmt.Printf("OnTime:\t\t%v\n", status.OnTime)
+			fmt.Printf("Early:\t\t%v\n", status.Early)
 		}
 
 		if cctx.Bool("log") {
@@ -163,7 +183,7 @@ var sectorsListCmd = &cli.Command{
 		w := tabwriter.NewWriter(os.Stdout, 8, 4, 1, ' ', 0)
 
 		for _, s := range list {
-			st, err := nodeApi.SectorsStatus(ctx, s)
+			st, err := nodeApi.SectorsStatus(ctx, s, false)
 			if err != nil {
 				fmt.Fprintf(w, "%d:\tError: %s\n", s, err)
 				continue
@@ -318,6 +338,53 @@ var sectorsSealDelayCmd = &cli.Command{
 		delay := hs * uint64(time.Minute)
 
 		return nodeApi.SectorSetSealDelay(ctx, time.Duration(delay))
+	},
+}
+
+var sectorsCapacityCollateralCmd = &cli.Command{
+	Name:  "get-cc-collateral",
+	Usage: "Get the collateral required to pledge a committed capacity sector",
+	Flags: []cli.Flag{
+		&cli.Uint64Flag{
+			Name:  "expiration",
+			Usage: "the epoch when the sector will expire",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+
+		mApi, mCloser, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer mCloser()
+
+		nApi, nCloser, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer nCloser()
+
+		ctx := lcli.ReqContext(cctx)
+
+		maddr, err := mApi.ActorAddress(ctx)
+		if err != nil {
+			return err
+		}
+
+		pci := miner.SectorPreCommitInfo{
+			Expiration: abi.ChainEpoch(cctx.Uint64("expiration")),
+		}
+		if pci.Expiration == 0 {
+			pci.Expiration = miner.MaxSectorExpirationExtension
+		}
+		pc, err := nApi.StateMinerInitialPledgeCollateral(ctx, maddr, pci, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Estimated collateral: %s\n", types.FIL(pc))
+
+		return nil
 	},
 }
 

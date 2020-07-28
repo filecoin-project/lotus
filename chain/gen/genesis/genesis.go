@@ -320,7 +320,16 @@ func createAccount(ctx context.Context, bs bstore.Blockstore, cst cbor.IpldStore
 func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, stateroot cid.Cid, template genesis.Template) (cid.Cid, error) {
 	verifNeeds := make(map[address.Address]abi.PaddedPieceSize)
 	var sum abi.PaddedPieceSize
+
+	vm, err := vm.NewVM(stateroot, 0, &fakeRand{}, cs.Blockstore(), mkFakedSigSyscalls(cs.VMSys()))
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to create NewVM: %w", err)
+	}
+
 	for _, m := range template.Miners {
+
+		// Add the miner to the market actor's balance table
+		_, err = doExec(ctx, vm, builtin.StorageMarketActorAddr, m.Owner, builtin.MethodsMarket.AddBalance, mustEnc(adt.Empty))
 		for _, s := range m.Sectors {
 			amt := s.Deal.PieceSize
 			verifNeeds[s.Deal.Client] += amt
@@ -344,6 +353,7 @@ func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, stateroot ci
 	}
 
 	_, err = doExecValue(ctx, vm, builtin.VerifiedRegistryActorAddr, verifregRoot, types.NewInt(0), builtin.MethodsVerifiedRegistry.AddVerifier, mustEnc(&verifreg.AddVerifierParams{
+
 		Address:   verifier,
 		Allowance: abi.NewStoragePower(int64(sum)), // eh, close enough
 
