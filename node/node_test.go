@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http/httptest"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -281,6 +282,21 @@ func builder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test.TestN
 		t.Fatal(err)
 	}
 
+	if len(storers) > 0 {
+		// Mine 2 blocks to setup some CE stuff in some actors
+		var wait sync.Mutex
+		wait.Lock()
+
+		storers[0].MineOne(ctx, miner.MineReq{Done: func(bool, error) {
+			wait.Unlock()
+		}})
+		wait.Lock()
+		storers[0].MineOne(ctx, miner.MineReq{Done: func(bool, error) {
+			wait.Unlock()
+		}})
+		wait.Lock()
+	}
+
 	return fulls, storers
 }
 
@@ -418,6 +434,21 @@ func mockSbBuilder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test
 
 	if err := mn.LinkAll(); err != nil {
 		t.Fatal(err)
+	}
+
+	if len(storers) > 0 {
+		// Mine 2 blocks to setup some CE stuff in some actors
+		var wait sync.Mutex
+		wait.Lock()
+
+		storers[0].MineOne(ctx, miner.MineReq{Done: func(bool, error) {
+			wait.Unlock()
+		}})
+		wait.Lock()
+		storers[0].MineOne(ctx, miner.MineReq{Done: func(bool, error) {
+			wait.Unlock()
+		}})
+		wait.Lock()
 	}
 
 	return fulls, storers

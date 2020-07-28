@@ -923,6 +923,86 @@ func (a *StateAPI) MsigGetAvailableBalance(ctx context.Context, addr address.Add
 var initialPledgeNum = types.NewInt(103)
 var initialPledgeDen = types.NewInt(100)
 
+func (a *StateAPI) StateMinerPreCommitDepositForPower(ctx context.Context, maddr address.Address, pci miner.SectorPreCommitInfo, tsk types.TipSetKey) (types.BigInt, error) {
+	ts, err := a.Chain.GetTipSetFromKey(tsk)
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	var minerState miner.State
+	var powerState power.State
+	var rewardState reward.State
+
+	err = a.StateManager.WithParentStateTsk(tsk, func(state *state.StateTree) error {
+		if err := a.StateManager.WithActor(maddr, a.StateManager.WithActorState(ctx, &minerState))(state); err != nil {
+			return xerrors.Errorf("getting miner state: %w", err)
+		}
+
+		if err := a.StateManager.WithActor(builtin.StoragePowerActorAddr, a.StateManager.WithActorState(ctx, &powerState))(state); err != nil {
+			return xerrors.Errorf("getting power state: %w", err)
+		}
+
+		if err := a.StateManager.WithActor(builtin.RewardActorAddr, a.StateManager.WithActorState(ctx, &rewardState))(state); err != nil {
+			return xerrors.Errorf("getting reward state: %w", err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return types.EmptyInt, err
+	}
+
+	dealWeights := market.VerifyDealsForActivationReturn{
+		DealWeight:         big.Zero(),
+		VerifiedDealWeight: big.Zero(),
+	}
+
+	if len(pci.DealIDs) != 0 {
+		var err error
+		params, err := actors.SerializeParams(&market.VerifyDealsForActivationParams{
+			DealIDs:      pci.DealIDs,
+			SectorExpiry: pci.Expiration,
+		})
+		if err != nil {
+			return types.EmptyInt, err
+		}
+
+		ret, err := a.StateManager.Call(ctx, &types.Message{
+			From:     maddr,
+			To:       builtin.StorageMarketActorAddr,
+			Method:   builtin.MethodsMarket.VerifyDealsForActivation,
+			GasLimit: 0,
+			GasPrice: types.NewInt(0),
+			Params:   params,
+		}, ts)
+		if err != nil {
+			return types.EmptyInt, err
+		}
+
+		if err := dealWeights.UnmarshalCBOR(bytes.NewReader(ret.MsgRct.Return)); err != nil {
+			return types.BigInt{}, err
+		}
+	}
+
+	mi, err := a.StateMinerInfo(ctx, maddr, tsk)
+	if err != nil {
+		return types.EmptyInt, err
+	}
+
+	ssize := mi.SectorSize
+
+	duration := pci.Expiration - ts.Height() // NB: not exactly accurate, but should always lead us to *over* estimate, not under
+
+	sectorWeight := miner.QAPowerForWeight(ssize, duration, dealWeights.DealWeight, dealWeights.VerifiedDealWeight)
+	deposit := miner.PreCommitDepositForPower(
+		rewardState.ThisEpochRewardSmoothed,
+		powerState.ThisEpochQAPowerSmoothed,
+		sectorWeight,
+	)
+
+	return types.BigDiv(types.BigMul(deposit, initialPledgeNum), initialPledgeDen), nil
+}
+
 func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr address.Address, pci miner.SectorPreCommitInfo, tsk types.TipSetKey) (types.BigInt, error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
@@ -999,8 +1079,6 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 	}
 
 	sectorWeight := miner.QAPowerForWeight(ssize, duration, dealWeights.DealWeight, dealWeights.VerifiedDealWeight)
-	initialPledge := miner.InitialPledgeForPower(sectorWeight, powerState.TotalQualityAdjPower, reward.SlowConvenientBaselineForEpoch(ts.Height()), powerState.TotalPledgeCollateral, rewardState.ThisEpochReward, circSupply)
-	/* Use with newer actors
 	initialPledge := miner.InitialPledgeForPower(
 		sectorWeight,
 		rewardState.ThisEpochBaselinePower,
@@ -1008,7 +1086,7 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 		rewardState.ThisEpochRewardSmoothed,
 		powerState.ThisEpochQAPowerSmoothed,
 		circSupply,
-	)*/
+	)
 
 	return types.BigDiv(types.BigMul(initialPledge, initialPledgeNum), initialPledgeDen), nil
 }

@@ -247,17 +247,14 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 					return cid.Undef, xerrors.Errorf("getting current total power: %w", err)
 				}
 
-				pledge := miner.InitialPledgeForPower(sectorWeight, tpow.QualityAdjPower, epochReward.ThisEpochBaselinePower, tpow.PledgeCollateral, epochReward.ThisEpochReward, circSupply(ctx, vm, minerInfos[i].maddr))
-				/*
-					Use with newer actors:
-					pledge := miner.InitialPledgeForPower(
-						sectorWeight,
-						epochReward.ThisEpochBaselinePower,
-						tpow.PledgeCollateral,
-						epochReward.ThisEpochRewardSmoothed,
-						tpow.QualityAdjPowerSmoothed,
-						circSupply(ctx, vm, minerInfos[i].maddr),
-					)*/
+				pledge := miner.InitialPledgeForPower(
+					sectorWeight,
+					epochReward.ThisEpochBaselinePower,
+					tpow.PledgeCollateral,
+					epochReward.ThisEpochRewardSmoothed,
+					tpow.QualityAdjPowerSmoothed,
+					circSupply(ctx, vm, minerInfos[i].maddr),
+				)
 
 				fmt.Println(types.FIL(pledge))
 				_, err = doExecValue(ctx, vm, minerInfos[i].maddr, m.Worker, pledge, builtin.MethodsMiner.PreCommitSector, mustEnc(params))

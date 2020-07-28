@@ -49,6 +49,15 @@ func (s SealingAPIAdapter) StateMinerSectorSize(ctx context.Context, maddr addre
 	return mi.SectorSize, nil
 }
 
+func (s SealingAPIAdapter) StateMinerPreCommitDepositForPower(ctx context.Context, a address.Address, pci miner.SectorPreCommitInfo, tok sealing.TipSetToken) (big.Int, error) {
+	tsk, err := types.TipSetKeyFromBytes(tok)
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("failed to unmarshal TipSetToken to TipSetKey: %w", err)
+	}
+
+	return s.delegate.StateMinerPreCommitDepositForPower(ctx, a, pci, tsk)
+}
+
 func (s SealingAPIAdapter) StateMinerInitialPledgeCollateral(ctx context.Context, a address.Address, pci miner.SectorPreCommitInfo, tok sealing.TipSetToken) (big.Int, error) {
 	tsk, err := types.TipSetKeyFromBytes(tok)
 	if err != nil {

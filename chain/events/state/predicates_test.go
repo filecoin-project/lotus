@@ -479,6 +479,7 @@ func newSectorOnChainInfo(sectorNo abi.SectorNumber, sealed cid.Cid, weight big.
 		DealWeight:         weight,
 		VerifiedDealWeight: weight,
 		InitialPledge:      big.Zero(),
+		ExpectedDayReward:  big.Zero(),
 	}
 }
 
