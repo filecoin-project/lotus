@@ -85,6 +85,27 @@ func (a *API) imgr() *importmgr.Mgr {
 }
 
 func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) (*cid.Cid, error) {
+	var storeID *multistore.StoreID
+	if params.Data.TransferType == storagemarket.TTGraphsync {
+		importIDs := a.imgr().List()
+		for _, importID := range importIDs {
+			info, err := a.imgr().Info(importID)
+			if err != nil {
+				continue
+			}
+			if info.Labels[importmgr.LRootCid] == "" {
+				continue
+			}
+			c, err := cid.Parse(info.Labels[importmgr.LRootCid])
+			if err != nil {
+				continue
+			}
+			if c.Equals(params.Data.Root) {
+				storeID = &importID
+				break
+			}
+		}
+	}
 	exist, err := a.WalletHas(ctx, params.Wallet)
 	if err != nil {
 		return nil, xerrors.Errorf("failed getting addr from wallet: %w", params.Wallet)
@@ -133,19 +154,19 @@ func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) 
 		dealStart = ts.Height() + dealStartBuffer
 	}
 
-	result, err := a.SMDealClient.ProposeStorageDeal(
-		ctx,
-		params.Wallet,
-		&providerInfo,
-		params.Data,
-		dealStart,
-		calcDealExpiration(params.MinBlocksDuration, md, dealStart),
-		params.EpochPrice,
-		big.Zero(),
-		rt,
-		params.FastRetrieval,
-		params.VerifiedDeal,
-	)
+	result, err := a.SMDealClient.ProposeStorageDeal(ctx, storagemarket.ProposeStorageDealParams{
+		Addr:          params.Wallet,
+		Info:          &providerInfo,
+		Data:          params.Data,
+		StartEpoch:    dealStart,
+		EndEpoch:      calcDealExpiration(params.MinBlocksDuration, md, dealStart),
+		Price:         params.EpochPrice,
+		Collateral:    big.Zero(),
+		Rt:            rt,
+		FastRetrieval: params.FastRetrieval,
+		VerifiedDeal:  params.VerifiedDeal,
+		StoreID:       storeID,
+	})
 
 	if err != nil {
 		return nil, xerrors.Errorf("failed to start deal: %w", err)
@@ -300,7 +321,7 @@ func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (*api.ImportRes
 	}, nil
 }
 
-func (a *API) ClientRemoveImport(ctx context.Context, importID int) error {
+func (a *API) ClientRemoveImport(ctx context.Context, importID multistore.StoreID) error {
 	return a.imgr().Remove(importID)
 }
 
@@ -340,6 +361,9 @@ func (a *API) ClientImportLocal(ctx context.Context, f io.Reader) (cid.Cid, erro
 	nd, err := balanced.Layout(db)
 	if err != nil {
 		return cid.Undef, err
+	}
+	if err := a.imgr().AddLabel(id, "root", nd.Cid().String()); err != nil {
+		return cid.Cid{}, err
 	}
 
 	return nd.Cid(), bufferedDS.Commit()
@@ -425,6 +449,15 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 	if err != nil {
 		return xerrors.Errorf("Error in retrieval params: %s", err)
 	}
+	storeID, store, err := a.imgr().NewStore()
+	if err != nil {
+		return xerrors.Errorf("Error setting up new store: %w", err)
+	}
+
+	defer func() {
+		_ = a.imgr().Remove(storeID)
+	}()
+
 	_, err = a.Retrieval.Retrieve(
 		ctx,
 		order.Root,
@@ -432,7 +465,8 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 		order.Total,
 		order.MinerPeerID,
 		order.Client,
-		order.Miner) // TODO: pass the store here   somehow
+		order.Miner,
+		&storeID) // TODO: should we ignore storeID if we are using the IPFS blockstore?
 	if err != nil {
 		return xerrors.Errorf("Retrieve failed: %w", err)
 	}
@@ -452,28 +486,27 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 		return nil
 	}
 
-	rdag := merkledag.NewDAGService(blockservice.New(a.RetBstore, offline.Exchange(a.RetBstore)))
-
 	if ref.IsCAR {
 		f, err := os.OpenFile(ref.Path, os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			return err
 		}
-		err = car.WriteCar(ctx, rdag, []cid.Cid{order.Root}, f)
+		err = car.WriteCar(ctx, store.DAG, []cid.Cid{order.Root}, f)
 		if err != nil {
 			return err
 		}
 		return f.Close()
 	}
 
-	nd, err := rdag.Get(ctx, order.Root)
+	nd, err := store.DAG.Get(ctx, order.Root)
 	if err != nil {
 		return xerrors.Errorf("ClientRetrieve: %w", err)
 	}
-	file, err := unixfile.NewUnixfsFile(ctx, rdag, nd)
+	file, err := unixfile.NewUnixfsFile(ctx, store.DAG, nd)
 	if err != nil {
 		return xerrors.Errorf("ClientRetrieve: %w", err)
 	}
+
 	return files.WriteTo(file, ref.Path)
 }
 

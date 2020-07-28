@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/go-multistore"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
@@ -201,7 +202,7 @@ type FullNode interface {
 	// ClientImport imports file under the specified path into filestore.
 	ClientImport(ctx context.Context, ref FileRef) (*ImportRes, error)
 	// ClientRemoveImport removes file import
-	ClientRemoveImport(ctx context.Context, importID int) error
+	ClientRemoveImport(ctx context.Context, importID multistore.StoreID) error
 	// ClientStartDeal proposes a deal with a miner.
 	ClientStartDeal(ctx context.Context, params *StartDealParams) (*cid.Cid, error)
 	// ClientGetDealInfo returns the latest information about a given deal.
@@ -404,11 +405,11 @@ type SectorLocation struct {
 
 type ImportRes struct {
 	Root     cid.Cid
-	ImportID int
+	ImportID multistore.StoreID
 }
 
 type Import struct {
-	Key int
+	Key multistore.StoreID
 	Err string
 
 	Root     *cid.Cid
