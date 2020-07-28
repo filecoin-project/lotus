@@ -21,7 +21,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/gen"
-	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	. "github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -122,37 +121,33 @@ func TestForkHeightTriggers(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	stmgr.ForksAtHeight[testForkHeight] = func(ctx context.Context, sm *StateManager, pstate cid.Cid) (cid.Cid, error) {
+	stmgr.ForksAtHeight[testForkHeight] = func(ctx context.Context, sm *StateManager, st types.StateTree) error {
 		cst := cbor.NewCborStore(sm.ChainStore().Blockstore())
-		st, err := state.LoadStateTree(cst, pstate)
-		if err != nil {
-			return cid.Undef, err
-		}
 
 		act, err := st.GetActor(taddr)
 		if err != nil {
-			return cid.Undef, err
+			return err
 		}
 
 		var tas testActorState
 		if err := cst.Get(ctx, act.Head, &tas); err != nil {
-			return cid.Undef, xerrors.Errorf("in fork handler, failed to run get: %w", err)
+			return xerrors.Errorf("in fork handler, failed to run get: %w", err)
 		}
 
 		tas.HasUpgraded = 55
 
 		ns, err := cst.Put(ctx, &tas)
 		if err != nil {
-			return cid.Undef, err
+			return err
 		}
 
 		act.Head = ns
 
 		if err := st.SetActor(taddr, act); err != nil {
-			return cid.Undef, err
+			return err
 		}
 
-		return st.Flush(ctx)
+		return nil
 	}
 
 	inv.Register(builtin.PaymentChannelActorCodeID, &testActor{}, &testActorState{})

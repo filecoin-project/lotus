@@ -18,6 +18,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/go-multistore"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 
@@ -56,17 +57,17 @@ var clientCmd = &cli.Command{
 	Name:  "client",
 	Usage: "Make deals, store data, retrieve data",
 	Subcommands: []*cli.Command{
-		clientImportCmd,
-		clientDropCmd,
-		clientCommPCmd,
-		clientLocalCmd,
-		clientDealCmd,
-		clientFindCmd,
-		clientRetrieveCmd,
-		clientQueryAskCmd,
-		clientListDeals,
-		clientCarGenCmd,
-		clientGetDealCmd,
+		WithCategory("storage", clientDealCmd),
+		WithCategory("storage", clientQueryAskCmd),
+		WithCategory("storage", clientListDeals),
+		WithCategory("storage", clientGetDealCmd),
+		WithCategory("data", clientImportCmd),
+		WithCategory("data", clientDropCmd),
+		WithCategory("data", clientLocalCmd),
+		WithCategory("retrieval", clientFindCmd),
+		WithCategory("retrieval", clientRetrieveCmd),
+		WithCategory("util", clientCommPCmd),
+		WithCategory("util", clientCarGenCmd),
 	},
 }
 
@@ -142,14 +143,14 @@ var clientDropCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		var ids []int
+		var ids []multistore.StoreID
 		for i, s := range cctx.Args().Slice() {
 			id, err := strconv.ParseInt(s, 10, 0)
 			if err != nil {
 				return xerrors.Errorf("parsing %d-th import ID: %w", i, err)
 			}
 
-			ids = append(ids, int(id))
+			ids = append(ids, multistore.StoreID(id))
 		}
 
 		for _, id := range ids {
@@ -164,7 +165,7 @@ var clientDropCmd = &cli.Command{
 
 var clientCommPCmd = &cli.Command{
 	Name:      "commP",
-	Usage:     "calculate the piece-cid (commP) of a CAR file",
+	Usage:     "Calculate the piece-cid (commP) of a CAR file",
 	ArgsUsage: "[inputFile minerAddress]",
 	Flags: []cli.Flag{
 		&CidBaseFlag,
@@ -204,7 +205,7 @@ var clientCommPCmd = &cli.Command{
 
 var clientCarGenCmd = &cli.Command{
 	Name:      "generate-car",
-	Usage:     "generate a car file from input",
+	Usage:     "Generate a car file from input",
 	ArgsUsage: "[inputPath outputPath]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -429,7 +430,7 @@ var clientDealCmd = &cli.Command{
 
 var clientFindCmd = &cli.Command{
 	Name:      "find",
-	Usage:     "find data in the network",
+	Usage:     "Find data in the network",
 	ArgsUsage: "[dataCid]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
@@ -496,7 +497,7 @@ const DefaultMaxRetrievePrice = 1
 
 var clientRetrieveCmd = &cli.Command{
 	Name:      "retrieve",
-	Usage:     "retrieve data from network",
+	Usage:     "Retrieve data from network",
 	ArgsUsage: "[dataCid outputPath]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
@@ -642,7 +643,7 @@ var clientRetrieveCmd = &cli.Command{
 
 var clientQueryAskCmd = &cli.Command{
 	Name:      "query-ask",
-	Usage:     "find a miners ask",
+	Usage:     "Find a miners ask",
 	ArgsUsage: "[minerAddress]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{

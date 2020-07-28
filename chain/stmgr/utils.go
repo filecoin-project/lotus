@@ -439,15 +439,20 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 		return cid.Undef, nil, err
 	}
 
-	fstate, err := sm.handleStateForks(ctx, base, height, ts.Height())
+	r := store.NewChainRand(sm.cs, ts.Cids(), height)
+	vmi, err := vm.NewVM(base, height, r, sm.cs.Blockstore(), sm.cs.VMSys())
 	if err != nil {
 		return cid.Undef, nil, err
 	}
 
-	r := store.NewChainRand(sm.cs, ts.Cids(), height)
-	vmi, err := vm.NewVM(fstate, height, r, sm.cs.Blockstore(), sm.cs.VMSys())
-	if err != nil {
-		return cid.Undef, nil, err
+	for i := ts.Height(); i < height; i++ {
+		// handle state forks
+		err = sm.handleStateForks(ctx, vmi.StateTree(), i)
+		if err != nil {
+			return cid.Undef, nil, xerrors.Errorf("error handling state forks: %w", err)
+		}
+
+		// TODO: should we also run cron here?
 	}
 
 	for i, msg := range msgs {

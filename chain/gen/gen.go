@@ -10,6 +10,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	saminer "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	block "github.com/ipfs/go-block-format"
@@ -89,6 +90,21 @@ func (m mybs) Get(c cid.Cid) (block.Block, error) {
 	}
 
 	return b, nil
+}
+
+var rootkey, _ = address.NewIDAddress(80)
+
+var rootkeyMultisig = genesis.MultisigMeta{
+	Signers:         []address.Address{rootkey},
+	Threshold:       1,
+	VestingDuration: 0,
+	VestingStart:    0,
+}
+
+var DefaultVerifregRootkeyActor = genesis.Actor{
+	Type:    genesis.TMultisig,
+	Balance: big.NewInt(0),
+	Meta:    rootkeyMultisig.ActorMeta(),
 }
 
 func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
@@ -194,8 +210,9 @@ func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
 			*genm1,
 			*genm2,
 		},
-		NetworkName: "",
-		Timestamp:   uint64(build.Clock.Now().Add(-500 * time.Duration(build.BlockDelaySecs) * time.Second).Unix()),
+		VerifregRootKey: DefaultVerifregRootkeyActor,
+		NetworkName:     "",
+		Timestamp:       uint64(build.Clock.Now().Add(-500 * time.Duration(build.BlockDelaySecs) * time.Second).Unix()),
 	}
 
 	genb, err := genesis2.MakeGenesisBlock(context.TODO(), bs, sys, tpl)

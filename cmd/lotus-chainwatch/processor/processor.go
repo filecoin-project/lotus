@@ -119,7 +119,7 @@ func (p *Processor) Start(ctx context.Context) {
 				// TODO special case genesis state handling here to avoid all the special cases that will be needed for it else where
 				// before doing "normal" processing.
 
-				actorChanges, err := p.collectActorChanges(ctx, toProcess)
+				actorChanges, nullRounds, err := p.collectActorChanges(ctx, toProcess)
 				if err != nil {
 					log.Fatalw("Failed to collect actor changes", "error", err)
 				}
@@ -141,7 +141,7 @@ func (p *Processor) Start(ctx context.Context) {
 				})
 
 				grp.Go(func() error {
-					if err := p.HandleRewardChanges(ctx, actorChanges[builtin.RewardActorCodeID]); err != nil {
+					if err := p.HandleRewardChanges(ctx, actorChanges[builtin.RewardActorCodeID], nullRounds); err != nil {
 						return xerrors.Errorf("Failed to handle reward changes: %w", err)
 					}
 					return nil
@@ -191,7 +191,7 @@ func (p *Processor) refreshViews() error {
 	return nil
 }
 
-func (p *Processor) collectActorChanges(ctx context.Context, toProcess map[cid.Cid]*types.BlockHeader) (map[cid.Cid]ActorTips, error) {
+func (p *Processor) collectActorChanges(ctx context.Context, toProcess map[cid.Cid]*types.BlockHeader) (map[cid.Cid]ActorTips, []types.TipSetKey, error) {
 	start := time.Now()
 	defer func() {
 		log.Debugw("Collected Actor Changes", "duration", time.Since(start).String())
@@ -204,6 +204,9 @@ func (p *Processor) collectActorChanges(ctx context.Context, toProcess map[cid.C
 	var changes map[string]types.Actor
 	actorsSeen := map[cid.Cid]struct{}{}
 
+	var nullRounds []types.TipSetKey
+	var nullBlkMu sync.Mutex
+
 	// collect all actor state that has changes between block headers
 	paDone := 0
 	parmap.Par(50, parmap.MapArr(toProcess), func(bh *types.BlockHeader) {
@@ -215,6 +218,12 @@ func (p *Processor) collectActorChanges(ctx context.Context, toProcess map[cid.C
 		pts, err := p.node.ChainGetTipSet(ctx, types.NewTipSetKey(bh.Parents...))
 		if err != nil {
 			panic(err)
+		}
+
+		if pts.ParentState().Equals(bh.ParentStateRoot) {
+			nullBlkMu.Lock()
+			nullRounds = append(nullRounds, pts.Key())
+			nullBlkMu.Unlock()
 		}
 
 		// collect all actors that had state changes between the blockheader parent-state and its grandparent-state.
@@ -232,12 +241,12 @@ func (p *Processor) collectActorChanges(ctx context.Context, toProcess map[cid.C
 
 			addr, err := address.NewFromString(a)
 			if err != nil {
-				panic(err)
+				log.Fatal(err.Error())
 			}
 
 			ast, err := p.node.StateReadState(ctx, addr, pts.Key())
 			if err != nil {
-				panic(err)
+				log.Fatal(err.Error())
 			}
 
 			// TODO look here for an empty state, maybe thats a sign the actor was deleted?
@@ -267,7 +276,7 @@ func (p *Processor) collectActorChanges(ctx context.Context, toProcess map[cid.C
 			outMu.Unlock()
 		}
 	})
-	return out, nil
+	return out, nullRounds, nil
 }
 
 func (p *Processor) unprocessedBlocks(ctx context.Context, batch int) (map[cid.Cid]*types.BlockHeader, error) {

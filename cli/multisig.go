@@ -156,7 +156,12 @@ var msigInspectCmd = &cli.Command{
 	Name:      "inspect",
 	Usage:     "Inspect a multisig wallet",
 	ArgsUsage: "[address]",
-	Flags:     []cli.Flag{},
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "vesting",
+			Usage: "Include vesting details",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Args().Present() {
 			return ShowHelp(cctx, fmt.Errorf("must specify address of multisig to inspect"))
@@ -197,6 +202,13 @@ var msigInspectCmd = &cli.Command{
 		locked := mstate.AmountLocked(head.Height() - mstate.StartEpoch)
 		fmt.Printf("Balance: %s\n", types.FIL(act.Balance))
 		fmt.Printf("Spendable: %s\n", types.FIL(types.BigSub(act.Balance, locked)))
+
+		if cctx.Bool("vesting") {
+			fmt.Printf("InitialBalance: %s\n", types.FIL(mstate.InitialBalance))
+			fmt.Printf("StartEpoch: %d\n", mstate.StartEpoch)
+			fmt.Printf("UnlockDuration: %d\n", mstate.UnlockDuration)
+		}
+
 		fmt.Printf("Threshold: %d / %d\n", mstate.NumApprovalsThreshold, len(mstate.Signers))
 		fmt.Println("Signers:")
 		for _, s := range mstate.Signers {

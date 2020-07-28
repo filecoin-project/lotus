@@ -36,6 +36,7 @@ import (
 	"github.com/filecoin-project/lotus/api/test"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/gen"
 	genesis2 "github.com/filecoin-project/lotus/chain/gen/genesis"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
@@ -211,11 +212,11 @@ func builder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test.TestN
 		maddrs = append(maddrs, maddr)
 		genms = append(genms, *genm)
 	}
-
 	templ := &genesis.Template{
-		Accounts:  genaccs,
-		Miners:    genms,
-		Timestamp: uint64(time.Now().Unix() - 10000), // some time sufficiently far in the past
+		Accounts:        genaccs,
+		Miners:          genms,
+		Timestamp:       uint64(time.Now().Unix() - 10000), // some time sufficiently far in the past
+		VerifregRootKey: gen.DefaultVerifregRootkeyActor,
 	}
 
 	// END PRESEAL SECTION
@@ -347,9 +348,10 @@ func mockSbBuilder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test
 		genms = append(genms, *genm)
 	}
 	templ := &genesis.Template{
-		Accounts:  genaccs,
-		Miners:    genms,
-		Timestamp: uint64(time.Now().Unix()) - (build.BlockDelaySecs * 20000),
+		Accounts:        genaccs,
+		Miners:          genms,
+		Timestamp:       uint64(time.Now().Unix()) - (build.BlockDelaySecs * 20000),
+		VerifregRootKey: gen.DefaultVerifregRootkeyActor,
 	}
 
 	// END PRESEAL SECTION
@@ -379,7 +381,6 @@ func mockSbBuilder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test
 			t.Fatalf("%+v", err)
 		}
 	}
-
 
 	for i, def := range storage {
 		// TODO: support non-bootstrap miners
@@ -492,12 +493,18 @@ func TestAPIDealFlowReal(t *testing.T) {
 	logging.SetLogLevel("sub", "ERROR")
 	logging.SetLogLevel("storageminer", "ERROR")
 
+	saminer.PreCommitChallengeDelay = 5
+
 	t.Run("basic", func(t *testing.T) {
 		test.TestDealFlow(t, builder, time.Second, false, false)
 	})
 
 	t.Run("fast-retrieval", func(t *testing.T) {
 		test.TestDealFlow(t, builder, time.Second, false, true)
+	})
+
+	t.Run("retrieval-second", func(t *testing.T) {
+		test.TestSenondDealRetrieval(t, builder, time.Second)
 	})
 }
 

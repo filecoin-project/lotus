@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-jsonrpc/auth"
+	"github.com/filecoin-project/go-multistore"
 	"github.com/filecoin-project/sector-storage/fsutil"
 	"github.com/filecoin-project/sector-storage/sealtasks"
 	"github.com/filecoin-project/sector-storage/stores"
@@ -115,7 +116,7 @@ type FullNodeStruct struct {
 
 		ClientImport          func(ctx context.Context, ref api.FileRef) (*api.ImportRes, error)                                     `perm:"admin"`
 		ClientListImports     func(ctx context.Context) ([]api.Import, error)                                                        `perm:"write"`
-		ClientRemoveImport    func(ctx context.Context, importID int) error                                                          `perm:"admin"`
+		ClientRemoveImport    func(ctx context.Context, importID multistore.StoreID) error                                           `perm:"admin"`
 		ClientHasLocal        func(ctx context.Context, root cid.Cid) (bool, error)                                                  `perm:"write"`
 		ClientFindData        func(ctx context.Context, root cid.Cid, piece *cid.Cid) ([]api.QueryOffer, error)                      `perm:"read"`
 		ClientMinerQueryOffer func(ctx context.Context, miner address.Address, root cid.Cid, piece *cid.Cid) (api.QueryOffer, error) `perm:"read"`
@@ -215,21 +216,23 @@ type StorageMinerStruct struct {
 
 		PledgeSector func(context.Context) error `perm:"write"`
 
-		SectorsStatus                 func(context.Context, abi.SectorNumber) (api.SectorInfo, error) `perm:"read"`
-		SectorsList                   func(context.Context) ([]abi.SectorNumber, error)               `perm:"read"`
-		SectorsRefs                   func(context.Context) (map[string][]api.SealedRef, error)       `perm:"read"`
-		SectorStartSealing            func(context.Context, abi.SectorNumber) error                   `perm:"write"`
-		SectorSetSealDelay            func(context.Context, time.Duration) error                      `perm:"write"`
-		SectorGetSealDelay            func(context.Context) (time.Duration, error)                    `perm:"read"`
-		SectorSetExpectedSealDuration func(context.Context, time.Duration) error                      `perm:"write"`
-		SectorGetExpectedSealDuration func(context.Context) (time.Duration, error)                    `perm:"read"`
-		SectorsUpdate                 func(context.Context, abi.SectorNumber, api.SectorState) error  `perm:"admin"`
-		SectorRemove                  func(context.Context, abi.SectorNumber) error                   `perm:"admin"`
-		SectorMarkForUpgrade          func(ctx context.Context, id abi.SectorNumber) error            `perm:"admin"`
+		SectorsStatus                 func(ctx context.Context, sid abi.SectorNumber, showOnChainInfo bool) (api.SectorInfo, error) `perm:"read"`
+		SectorsList                   func(context.Context) ([]abi.SectorNumber, error)                                             `perm:"read"`
+		SectorsRefs                   func(context.Context) (map[string][]api.SealedRef, error)                                     `perm:"read"`
+		SectorStartSealing            func(context.Context, abi.SectorNumber) error                                                 `perm:"write"`
+		SectorSetSealDelay            func(context.Context, time.Duration) error                                                    `perm:"write"`
+		SectorGetSealDelay            func(context.Context) (time.Duration, error)                                                  `perm:"read"`
+		SectorSetExpectedSealDuration func(context.Context, time.Duration) error                                                    `perm:"write"`
+		SectorGetExpectedSealDuration func(context.Context) (time.Duration, error)                                                  `perm:"read"`
+		SectorsUpdate                 func(context.Context, abi.SectorNumber, api.SectorState) error                                `perm:"admin"`
+		SectorRemove                  func(context.Context, abi.SectorNumber) error                                                 `perm:"admin"`
+		SectorMarkForUpgrade          func(ctx context.Context, id abi.SectorNumber) error                                          `perm:"admin"`
 
 		WorkerConnect func(context.Context, string) error                             `perm:"admin"` // TODO: worker perm
 		WorkerStats   func(context.Context) (map[uint64]storiface.WorkerStats, error) `perm:"admin"`
 		WorkerJobs    func(context.Context) (map[uint64][]storiface.WorkerJob, error) `perm:"admin"`
+
+		SealingSchedDiag func(context.Context) (interface{}, error) `perm:"admin"`
 
 		StorageList          func(context.Context) (map[stores.ID][]stores.Decl, error)                                                                                    `perm:"admin"`
 		StorageLocal         func(context.Context) (map[stores.ID]string, error)                                                                                           `perm:"admin"`
@@ -358,7 +361,7 @@ func (c *FullNodeStruct) ClientListImports(ctx context.Context) ([]api.Import, e
 	return c.Internal.ClientListImports(ctx)
 }
 
-func (c *FullNodeStruct) ClientRemoveImport(ctx context.Context, importID int) error {
+func (c *FullNodeStruct) ClientRemoveImport(ctx context.Context, importID multistore.StoreID) error {
 	return c.Internal.ClientRemoveImport(ctx, importID)
 }
 
@@ -845,8 +848,8 @@ func (c *StorageMinerStruct) PledgeSector(ctx context.Context) error {
 }
 
 // Get the status of a given sector by ID
-func (c *StorageMinerStruct) SectorsStatus(ctx context.Context, sid abi.SectorNumber) (api.SectorInfo, error) {
-	return c.Internal.SectorsStatus(ctx, sid)
+func (c *StorageMinerStruct) SectorsStatus(ctx context.Context, sid abi.SectorNumber, showOnChainInfo bool) (api.SectorInfo, error) {
+	return c.Internal.SectorsStatus(ctx, sid, showOnChainInfo)
 }
 
 // List all staged sectors
@@ -900,6 +903,10 @@ func (c *StorageMinerStruct) WorkerStats(ctx context.Context) (map[uint64]storif
 
 func (c *StorageMinerStruct) WorkerJobs(ctx context.Context) (map[uint64][]storiface.WorkerJob, error) {
 	return c.Internal.WorkerJobs(ctx)
+}
+
+func (c *StorageMinerStruct) SealingSchedDiag(ctx context.Context) (interface{}, error) {
+	return c.Internal.SealingSchedDiag(ctx)
 }
 
 func (c *StorageMinerStruct) StorageAttach(ctx context.Context, si stores.StorageInfo, st fsutil.FsStat) error {

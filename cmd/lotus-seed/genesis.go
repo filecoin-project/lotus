@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/gen"
 	genesis2 "github.com/filecoin-project/lotus/chain/gen/genesis"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/genesis"
@@ -46,11 +47,11 @@ var genesisNewCmd = &cli.Command{
 		if !cctx.Args().Present() {
 			return xerrors.New("seed genesis new [genesis.json]")
 		}
-
 		out := genesis.Template{
-			Accounts:    []genesis.Actor{},
-			Miners:      []genesis.Miner{},
-			NetworkName: cctx.String("network-name"),
+			Accounts:        []genesis.Actor{},
+			Miners:          []genesis.Miner{},
+			VerifregRootKey: gen.DefaultVerifregRootkeyActor,
+			NetworkName:     cctx.String("network-name"),
 		}
 		if out.NetworkName == "" {
 			out.NetworkName = "localnet-" + uuid.New().String()
