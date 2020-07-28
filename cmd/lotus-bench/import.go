@@ -409,6 +409,12 @@ func tallyGasCharges(charges map[string]*stats, et types.ExecutionTrace) {
 			continue
 		}
 		tt := float64(gc.TimeTaken.Nanoseconds())
+		if name == "OnVerifyPost" && tt > 2e9 {
+			// discard initial very long OnVerifyPost
+			continue
+		}
+		eType, eSize := getExtras(gc.Extra)
+
 		if name == "OnIpldGet" {
 			next := &types.GasTrace{}
 			if i+1 < len(et.GasCharges) {
@@ -416,14 +422,18 @@ func tallyGasCharges(charges map[string]*stats, et types.ExecutionTrace) {
 			}
 			if next.Name != "OnIpldGetEnd" {
 				log.Warn("OnIpldGet without OnIpldGetEnd")
+			} else {
+				_, size := getExtras(next.Extra)
+				eSize = size
 			}
-			tt += float64(next.TimeTaken.Nanoseconds())
 		}
-		eType, eSize := getExtras(gc.Extra)
 		if eType != nil {
 			name += "-" + *eType
 		}
-		compGas := gc.VirtualComputeGas
+		compGas := gc.ComputeGas
+		if compGas == 0 {
+			compGas = gc.VirtualComputeGas
+		}
 		if compGas == 0 {
 			compGas = 1
 		}
