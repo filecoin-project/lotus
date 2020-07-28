@@ -111,8 +111,22 @@ var prices = map[abi.ChainEpoch]Pricelist{
 		hashingBase:                  110685,
 		computeUnsealedSectorCidBase: 431890,
 		verifySealBase:               2000, // TODO gas , it VerifySeal syscall is not used
-		verifyPostBase:               2621447835,
-		verifyConsensusFault:         495422,
+		verifyPostLookup: map[abi.RegisteredPoStProof]scalingCost{
+			abi.RegisteredPoStProof_StackedDrgWindow512MiBV1: {
+				flat:  106102820,
+				scale: 10238878,
+			},
+			abi.RegisteredPoStProof_StackedDrgWindow32GiBV1: {
+				flat:  1165718059,
+				scale: 166657,
+			},
+			abi.RegisteredPoStProof_StackedDrgWindow64GiBV1: {
+				// TODO, for now the same as 32GiB
+				flat:  1165718059,
+				scale: 166657,
+			},
+		},
+		verifyConsensusFault: 495422,
 	},
 }
 
