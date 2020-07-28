@@ -165,7 +165,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 			Nonce:    ca.Nonce,
 			Value:    types.NewInt(0),
 			GasPrice: types.NewInt(0),
-			GasLimit: build.BlockGasLimit * 10, // Make super sure this is never too little
+			GasLimit: build.BlockGasLimit * 10000, // Make super sure this is never too little
 			Method:   builtin.MethodsCron.EpochTick,
 			Params:   nil,
 		}
