@@ -147,7 +147,7 @@ type BlockMessages struct {
 type ExecCallback func(cid.Cid, *types.Message, *vm.ApplyRet) error
 
 func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEpoch, pstate cid.Cid, bms []BlockMessages, epoch abi.ChainEpoch, r vm.Rand, cb ExecCallback) (cid.Cid, cid.Cid, error) {
-	vmi, err := sm.newVM(pstate, parentEpoch+1, r, sm.cs.Blockstore(), sm.cs.VMSys())
+	vmi, err := sm.newVM(pstate, parentEpoch, r, sm.cs.Blockstore(), sm.cs.VMSys())
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("instantiating VM failed: %w", err)
 	}
@@ -185,10 +185,18 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 		return nil
 	}
 
-	// run cron for null rounds if any
-	for i := parentEpoch + 1; i < epoch; i++ {
-		if err := runCron(); err != nil {
-			return cid.Cid{}, cid.Cid{}, err
+	for i := parentEpoch; i < epoch; i++ {
+		// handle state forks
+		err = sm.handleStateForks(ctx, vmi.StateTree(), i)
+		if err != nil {
+			return cid.Undef, cid.Undef, xerrors.Errorf("error handling state forks: %w", err)
+		}
+
+		if i > parentEpoch {
+			// run cron for null rounds if any
+			if err := runCron(); err != nil {
+				return cid.Cid{}, cid.Cid{}, err
+			}
 		}
 
 		vmi.SetBlockHeight(i + 1)
@@ -302,18 +310,13 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 
 	var parentEpoch abi.ChainEpoch
 	pstate := blks[0].ParentStateRoot
-	if len(blks[0].Parents) > 0 { // don't support forks on genesis
+	if len(blks[0].Parents) > 0 {
 		parent, err := sm.cs.GetBlock(blks[0].Parents[0])
 		if err != nil {
 			return cid.Undef, cid.Undef, xerrors.Errorf("getting parent block: %w", err)
 		}
 
 		parentEpoch = parent.Height
-
-		pstate, err = sm.handleStateForks(ctx, blks[0].ParentStateRoot, blks[0].Height, parent.Height)
-		if err != nil {
-			return cid.Undef, cid.Undef, xerrors.Errorf("error handling state forks: %w", err)
-		}
 	}
 
 	cids := make([]cid.Cid, len(blks))
