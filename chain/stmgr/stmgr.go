@@ -146,10 +146,44 @@ type BlockMessages struct {
 
 type ExecCallback func(cid.Cid, *types.Message, *vm.ApplyRet) error
 
-func (sm *StateManager) ApplyBlocks(ctx context.Context, pstate cid.Cid, bms []BlockMessages, epoch abi.ChainEpoch, r vm.Rand, cb ExecCallback) (cid.Cid, cid.Cid, error) {
-	vmi, err := sm.newVM(pstate, epoch, r, sm.cs.Blockstore(), sm.cs.VMSys())
+func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEpoch, pstate cid.Cid, bms []BlockMessages, epoch abi.ChainEpoch, r vm.Rand, cb ExecCallback) (cid.Cid, cid.Cid, error) {
+	vmi, err := sm.newVM(pstate, parentEpoch+1, r, sm.cs.Blockstore(), sm.cs.VMSys())
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("instantiating VM failed: %w", err)
+	}
+
+	// run cron for null rounds if any
+	for i := parentEpoch + 1; i < epoch; i++ {
+		// TODO: this nonce-getting is a tiny bit ugly
+		ca, err := vmi.StateTree().GetActor(builtin.SystemActorAddr)
+		if err != nil {
+			return cid.Undef, cid.Undef, err
+		}
+
+		cronMsg := &types.Message{
+			To:       builtin.CronActorAddr,
+			From:     builtin.SystemActorAddr,
+			Nonce:    ca.Nonce,
+			Value:    types.NewInt(0),
+			GasPrice: types.NewInt(0),
+			GasLimit: build.BlockGasLimit * 10, // Make super sure this is never too little
+			Method:   builtin.MethodsCron.EpochTick,
+			Params:   nil,
+		}
+		ret, err := vmi.ApplyImplicitMessage(ctx, cronMsg)
+		if err != nil {
+			return cid.Undef, cid.Undef, err
+		}
+		if cb != nil {
+			if err := cb(cronMsg.Cid(), cronMsg, ret); err != nil {
+				return cid.Undef, cid.Undef, xerrors.Errorf("callback failed on cron message: %w", err)
+			}
+		}
+		if ret.ExitCode != 0 {
+			return cid.Undef, cid.Undef, xerrors.Errorf("CheckProofSubmissions exit was non-zero: %d", ret.ExitCode)
+		}
+
+		vmi.SetBlockHeight(i + 1)
 	}
 
 	var receipts []cbg.CBORMarshaler
@@ -222,33 +256,35 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, pstate cid.Cid, bms []B
 
 	}
 
-	// TODO: this nonce-getting is a tiny bit ugly
-	ca, err := vmi.StateTree().GetActor(builtin.SystemActorAddr)
-	if err != nil {
-		return cid.Undef, cid.Undef, err
-	}
-
-	cronMsg := &types.Message{
-		To:       builtin.CronActorAddr,
-		From:     builtin.SystemActorAddr,
-		Nonce:    ca.Nonce,
-		Value:    types.NewInt(0),
-		GasPrice: types.NewInt(0),
-		GasLimit: build.BlockGasLimit * 10, // Make super sure this is never too little
-		Method:   builtin.MethodsCron.EpochTick,
-		Params:   nil,
-	}
-	ret, err := vmi.ApplyImplicitMessage(ctx, cronMsg)
-	if err != nil {
-		return cid.Undef, cid.Undef, err
-	}
-	if cb != nil {
-		if err := cb(cronMsg.Cid(), cronMsg, ret); err != nil {
-			return cid.Undef, cid.Undef, xerrors.Errorf("callback failed on cron message: %w", err)
+	{
+		// TODO: this nonce-getting is a tiny bit ugly
+		ca, err := vmi.StateTree().GetActor(builtin.SystemActorAddr)
+		if err != nil {
+			return cid.Undef, cid.Undef, err
 		}
-	}
-	if ret.ExitCode != 0 {
-		return cid.Undef, cid.Undef, xerrors.Errorf("CheckProofSubmissions exit was non-zero: %d", ret.ExitCode)
+
+		cronMsg := &types.Message{
+			To:       builtin.CronActorAddr,
+			From:     builtin.SystemActorAddr,
+			Nonce:    ca.Nonce,
+			Value:    types.NewInt(0),
+			GasPrice: types.NewInt(0),
+			GasLimit: build.BlockGasLimit * 10, // Make super sure this is never too little
+			Method:   builtin.MethodsCron.EpochTick,
+			Params:   nil,
+		}
+		ret, err := vmi.ApplyImplicitMessage(ctx, cronMsg)
+		if err != nil {
+			return cid.Undef, cid.Undef, err
+		}
+		if cb != nil {
+			if err := cb(cronMsg.Cid(), cronMsg, ret); err != nil {
+				return cid.Undef, cid.Undef, xerrors.Errorf("callback failed on cron message: %w", err)
+			}
+		}
+		if ret.ExitCode != 0 {
+			return cid.Undef, cid.Undef, xerrors.Errorf("CheckProofSubmissions exit was non-zero: %d", ret.ExitCode)
+		}
 	}
 
 	rectarr := adt.MakeEmptyArray(sm.cs.Store(ctx))
@@ -284,12 +320,15 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 		}
 	}
 
+	var parentEpoch abi.ChainEpoch
 	pstate := blks[0].ParentStateRoot
 	if len(blks[0].Parents) > 0 { // don't support forks on genesis
 		parent, err := sm.cs.GetBlock(blks[0].Parents[0])
 		if err != nil {
 			return cid.Undef, cid.Undef, xerrors.Errorf("getting parent block: %w", err)
 		}
+
+		parentEpoch = parent.Height
 
 		pstate, err = sm.handleStateForks(ctx, blks[0].ParentStateRoot, blks[0].Height, parent.Height)
 		if err != nil {
@@ -329,7 +368,7 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 		blkmsgs = append(blkmsgs, bm)
 	}
 
-	return sm.ApplyBlocks(ctx, pstate, blkmsgs, blks[0].Height, r, cb)
+	return sm.ApplyBlocks(ctx, parentEpoch, pstate, blkmsgs, blks[0].Height, r, cb)
 }
 
 func (sm *StateManager) parentState(ts *types.TipSet) cid.Cid {
