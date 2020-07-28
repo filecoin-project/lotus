@@ -152,12 +152,11 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 		return cid.Undef, cid.Undef, xerrors.Errorf("instantiating VM failed: %w", err)
 	}
 
-	// run cron for null rounds if any
-	for i := parentEpoch + 1; i < epoch; i++ {
+	runCron := func() error {
 		// TODO: this nonce-getting is a tiny bit ugly
 		ca, err := vmi.StateTree().GetActor(builtin.SystemActorAddr)
 		if err != nil {
-			return cid.Undef, cid.Undef, err
+			return err
 		}
 
 		cronMsg := &types.Message{
@@ -172,15 +171,24 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 		}
 		ret, err := vmi.ApplyImplicitMessage(ctx, cronMsg)
 		if err != nil {
-			return cid.Undef, cid.Undef, err
+			return err
 		}
 		if cb != nil {
 			if err := cb(cronMsg.Cid(), cronMsg, ret); err != nil {
-				return cid.Undef, cid.Undef, xerrors.Errorf("callback failed on cron message: %w", err)
+				return xerrors.Errorf("callback failed on cron message: %w", err)
 			}
 		}
 		if ret.ExitCode != 0 {
-			return cid.Undef, cid.Undef, xerrors.Errorf("CheckProofSubmissions exit was non-zero: %d", ret.ExitCode)
+			return xerrors.Errorf("CheckProofSubmissions exit was non-zero: %d", ret.ExitCode)
+		}
+
+		return nil
+	}
+
+	// run cron for null rounds if any
+	for i := parentEpoch + 1; i < epoch; i++ {
+		if err := runCron(); err != nil {
+			return cid.Cid{}, cid.Cid{}, err
 		}
 
 		vmi.SetBlockHeight(i + 1)
@@ -253,38 +261,10 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 		if ret.ExitCode != 0 {
 			return cid.Undef, cid.Undef, xerrors.Errorf("reward application message failed (exit %d): %s", ret.ExitCode, ret.ActorErr)
 		}
-
 	}
 
-	{
-		// TODO: this nonce-getting is a tiny bit ugly
-		ca, err := vmi.StateTree().GetActor(builtin.SystemActorAddr)
-		if err != nil {
-			return cid.Undef, cid.Undef, err
-		}
-
-		cronMsg := &types.Message{
-			To:       builtin.CronActorAddr,
-			From:     builtin.SystemActorAddr,
-			Nonce:    ca.Nonce,
-			Value:    types.NewInt(0),
-			GasPrice: types.NewInt(0),
-			GasLimit: build.BlockGasLimit * 10, // Make super sure this is never too little
-			Method:   builtin.MethodsCron.EpochTick,
-			Params:   nil,
-		}
-		ret, err := vmi.ApplyImplicitMessage(ctx, cronMsg)
-		if err != nil {
-			return cid.Undef, cid.Undef, err
-		}
-		if cb != nil {
-			if err := cb(cronMsg.Cid(), cronMsg, ret); err != nil {
-				return cid.Undef, cid.Undef, xerrors.Errorf("callback failed on cron message: %w", err)
-			}
-		}
-		if ret.ExitCode != 0 {
-			return cid.Undef, cid.Undef, xerrors.Errorf("CheckProofSubmissions exit was non-zero: %d", ret.ExitCode)
-		}
+	if err := runCron(); err != nil {
+		return cid.Cid{}, cid.Cid{}, err
 	}
 
 	rectarr := adt.MakeEmptyArray(sm.cs.Store(ctx))
