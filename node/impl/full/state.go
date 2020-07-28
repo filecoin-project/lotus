@@ -999,6 +999,8 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 	}
 
 	sectorWeight := miner.QAPowerForWeight(ssize, duration, dealWeights.DealWeight, dealWeights.VerifiedDealWeight)
+	initialPledge := miner.InitialPledgeForPower(sectorWeight, powerState.TotalQualityAdjPower, reward.SlowConvenientBaselineForEpoch(ts.Height()), powerState.TotalPledgeCollateral, rewardState.ThisEpochReward, circSupply)
+	/* Use with newer actors
 	initialPledge := miner.InitialPledgeForPower(
 		sectorWeight,
 		rewardState.ThisEpochBaselinePower,
@@ -1006,7 +1008,7 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 		rewardState.ThisEpochRewardSmoothed,
 		powerState.ThisEpochQAPowerSmoothed,
 		circSupply,
-	)
+	)*/
 
 	return types.BigDiv(types.BigMul(initialPledge, initialPledgeNum), initialPledgeDen), nil
 }

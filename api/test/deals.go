@@ -238,7 +238,7 @@ func startDeal(t *testing.T, ctx context.Context, miner TestStorageNode, client 
 		Wallet:            addr,
 		Miner:             maddr,
 		EpochPrice:        types.NewInt(1000000),
-		MinBlocksDuration: 100,
+		MinBlocksDuration: uint64(build.MinDealDuration),
 		FastRetrieval:     fastRet,
 	})
 	if err != nil {

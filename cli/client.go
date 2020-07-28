@@ -3,6 +3,7 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/lotus/build"
 	"os"
 	"path/filepath"
 	"sort"
@@ -342,6 +343,10 @@ var clientDealCmd = &cli.Command{
 		dur, err := strconv.ParseInt(cctx.Args().Get(3), 10, 32)
 		if err != nil {
 			return err
+		}
+
+		if abi.ChainEpoch(dur) < build.MinDealDuration {
+			return xerrors.Errorf("minimum deal duration is %d blocks", build.MinDealDuration)
 		}
 
 		var a address.Address
