@@ -108,7 +108,7 @@ func (p *Processor) processRewardActors(ctx context.Context, rewardTips ActorTip
 	}
 	for _, tsKey := range nullRounds {
 		var rw rewardActorInfo
-		tipset , err := p.node.ChainGetTipSet(ctx, tsKey)
+		tipset, err := p.node.ChainGetTipSet(ctx, tsKey)
 		if err != nil {
 			return nil, err
 		}

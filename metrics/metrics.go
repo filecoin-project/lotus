@@ -105,7 +105,7 @@ var DefaultViews = append([]*view.View{
 	MessageValidationFailureView,
 	MessageValidationSuccessView,
 	PeerCountView,
-	},
+},
 	rpcmetrics.DefaultViews...)
 
 // SinceInMilliseconds returns the duration of time since the provide time as a float64.
