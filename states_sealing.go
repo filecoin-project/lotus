@@ -176,7 +176,7 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("could not serialize pre-commit sector parameters: %w", err)})
 	}
 
-	collateral, err := m.api.StateMinerInitialPledgeCollateral(ctx.Context(), m.maddr, *params, tok)
+	collateral, err := m.api.StateMinerPreCommitDepositForPower(ctx.Context(), m.maddr, *params, tok)
 	if err != nil {
 		return xerrors.Errorf("getting initial pledge collateral: %w", err)
 	}
