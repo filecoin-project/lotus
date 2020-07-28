@@ -3,8 +3,6 @@ package genesis
 import (
 	"context"
 	"encoding/json"
-	"github.com/filecoin-project/lotus/lib/sigs"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -21,6 +19,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/chain/state"
@@ -28,6 +27,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/genesis"
+	"github.com/filecoin-project/lotus/lib/sigs"
 )
 
 const AccountStart = 100
@@ -133,7 +133,7 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 
 	// Create init actor
 
-	initact, err := SetupInitActor(bs, template.NetworkName, template.Accounts)
+	initact, err := SetupInitActor(bs, template.NetworkName, template.Accounts, template.VerifregRootKey)
 	if err != nil {
 		return nil, xerrors.Errorf("setup init actor: %w", err)
 	}
@@ -210,55 +210,8 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 			return nil, err
 		}
 
-		// var newAddress address.Address
-
-		if info.Type == genesis.TAccount {
-			var ainfo genesis.AccountMeta
-			if err := json.Unmarshal(info.Meta, &ainfo); err != nil {
-				return nil, xerrors.Errorf("unmarshaling account meta: %w", err)
-			}
-			st, err := cst.Put(ctx, &account.State{Address: ainfo.Owner})
-			if err != nil {
-				return nil, err
-			}
-			err = state.SetActor(ida, &types.Actor{
-				Code:    builtin.AccountActorCodeID,
-				Balance: info.Balance,
-				Head:    st,
-			})
-			if err != nil {
-				return nil, xerrors.Errorf("setting account from actmap: %w", err)
-			}
-		} else if info.Type == genesis.TMultisig {
-			var ainfo genesis.MultisigMeta
-			if err := json.Unmarshal(info.Meta, &ainfo); err != nil {
-				return nil, xerrors.Errorf("unmarshaling account meta: %w", err)
-			}
-
-			pending, err := adt.MakeEmptyMap(adt.WrapStore(ctx, cst)).Root()
-			if err != nil {
-				return nil, xerrors.Errorf("failed to create empty map: %v", err)
-			}
-
-			st, err := cst.Put(ctx, &multisig.State{
-				Signers:               ainfo.Signers,
-				NumApprovalsThreshold: uint64(ainfo.Threshold),
-				StartEpoch:            abi.ChainEpoch(ainfo.VestingStart),
-				UnlockDuration:        abi.ChainEpoch(ainfo.VestingDuration),
-				PendingTxns:           pending,
-				InitialBalance:        info.Balance,
-			})
-			if err != nil {
-				return nil, err
-			}
-			err = state.SetActor(ida, &types.Actor{
-				Code:    builtin.MultisigActorCodeID,
-				Balance: info.Balance,
-				Head:    st,
-			})
-			if err != nil {
-				return nil, xerrors.Errorf("setting account from actmap: %w", err)
-			}
+		if err = createAccount(ctx, bs, cst, state, ida, info); err != nil {
+			return nil, err
 		}
 
 	}
@@ -268,19 +221,8 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 		return nil, err
 	}
 
-	vrst, err := cst.Put(ctx, &account.State{Address: RootVerifierAddr})
-	if err != nil {
+	if err = createAccount(ctx, bs, cst, state, vregroot, template.VerifregRootKey); err != nil {
 		return nil, err
-	}
-
-	err = state.SetActor(vregroot, &types.Actor{
-		Code:    builtin.AccountActorCodeID,
-		Balance: types.NewInt(0),
-		Head:    vrst,
-	})
-
-	if err != nil {
-		return nil, xerrors.Errorf("setting account from actmap: %w", err)
 	}
 
 	// Setup the first verifier as ID-address 81
@@ -323,6 +265,58 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 	return state, nil
 }
 
+func createAccount(ctx context.Context, bs bstore.Blockstore, cst cbor.IpldStore, state *state.StateTree, ida address.Address, info genesis.Actor) error {
+	if info.Type == genesis.TAccount {
+		var ainfo genesis.AccountMeta
+		if err := json.Unmarshal(info.Meta, &ainfo); err != nil {
+			return xerrors.Errorf("unmarshaling account meta: %w", err)
+		}
+		st, err := cst.Put(ctx, &account.State{Address: ainfo.Owner})
+		if err != nil {
+			return err
+		}
+		err = state.SetActor(ida, &types.Actor{
+			Code:    builtin.AccountActorCodeID,
+			Balance: info.Balance,
+			Head:    st,
+		})
+		if err != nil {
+			return xerrors.Errorf("setting account from actmap: %w", err)
+		}
+	} else if info.Type == genesis.TMultisig {
+		var ainfo genesis.MultisigMeta
+		if err := json.Unmarshal(info.Meta, &ainfo); err != nil {
+			return xerrors.Errorf("unmarshaling account meta: %w", err)
+		}
+		pending, err := adt.MakeEmptyMap(adt.WrapStore(ctx, cst)).Root()
+		if err != nil {
+			return xerrors.Errorf("failed to create empty map: %v", err)
+		}
+
+		st, err := cst.Put(ctx, &multisig.State{
+			Signers:               ainfo.Signers,
+			NumApprovalsThreshold: uint64(ainfo.Threshold),
+			StartEpoch:            abi.ChainEpoch(ainfo.VestingStart),
+			UnlockDuration:        abi.ChainEpoch(ainfo.VestingDuration),
+			PendingTxns:           pending,
+			InitialBalance:        info.Balance,
+		})
+		if err != nil {
+			return err
+		}
+		err = state.SetActor(ida, &types.Actor{
+			Code:    builtin.MultisigActorCodeID,
+			Balance: info.Balance,
+			Head:    st,
+		})
+		if err != nil {
+			return xerrors.Errorf("setting account from actmap: %w", err)
+		}
+	}
+
+	return nil
+}
+
 func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, stateroot cid.Cid, template genesis.Template) (cid.Cid, error) {
 	verifNeeds := make(map[address.Address]abi.PaddedPieceSize)
 	var sum abi.PaddedPieceSize
@@ -343,18 +337,24 @@ func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, stateroot ci
 		}
 	}
 
+	verifregRoot, err := address.NewIDAddress(80)
+	if err != nil {
+		return cid.Undef, err
+	}
+
 	verifier, err := address.NewIDAddress(81)
 	if err != nil {
 		return cid.Undef, err
 	}
 
-	_, err = doExecValue(ctx, vm, builtin.VerifiedRegistryActorAddr, RootVerifierAddr, types.NewInt(0), builtin.MethodsVerifiedRegistry.AddVerifier, mustEnc(&verifreg.AddVerifierParams{
+	_, err = doExecValue(ctx, vm, builtin.VerifiedRegistryActorAddr, verifregRoot, types.NewInt(0), builtin.MethodsVerifiedRegistry.AddVerifier, mustEnc(&verifreg.AddVerifierParams{
+
 		Address:   verifier,
 		Allowance: abi.NewStoragePower(int64(sum)), // eh, close enough
 
 	}))
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("failed to failed to create verifier: %w", err)
+		return cid.Undef, xerrors.Errorf("failed to create verifier: %w", err)
 	}
 
 	for c, amt := range verifNeeds {
