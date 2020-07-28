@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"text/tabwriter"
 
+	"github.com/fatih/color"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-cidutil/cidenc"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -737,6 +738,11 @@ var clientListDeals = &cli.Command{
 			Aliases: []string{"v"},
 			Usage:   "print verbose deal details",
 		},
+		&cli.BoolFlag{
+			Name:  "color",
+			Usage: "use color in display output",
+			Value: true,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -780,6 +786,8 @@ var clientListDeals = &cli.Command{
 			}
 		}
 
+		color := cctx.Bool("color")
+
 		w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
 		if cctx.Bool("verbose") {
 			fmt.Fprintf(w, "DealCid\tDealId\tProvider\tState\tOn Chain?\tSlashed?\tPieceCID\tSize\tPrice\tDuration\tMessage\n")
@@ -795,7 +803,7 @@ var clientListDeals = &cli.Command{
 				}
 
 				price := types.FIL(types.BigMul(d.LocalDeal.PricePerEpoch, types.NewInt(d.LocalDeal.Duration)))
-				fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d\t%s\n", d.LocalDeal.ProposalCid, d.LocalDeal.DealID, d.LocalDeal.Provider, storagemarket.DealStates[d.LocalDeal.State], onChain, slashed, d.LocalDeal.PieceCID, types.SizeStr(types.NewInt(d.LocalDeal.Size)), price, d.LocalDeal.Duration, d.LocalDeal.Message)
+				fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d\t%s\n", d.LocalDeal.ProposalCid, d.LocalDeal.DealID, d.LocalDeal.Provider, dealStateString(color, d.LocalDeal.State), onChain, slashed, d.LocalDeal.PieceCID, types.SizeStr(types.NewInt(d.LocalDeal.Size)), price, d.LocalDeal.Duration, d.LocalDeal.Message)
 			}
 		} else {
 			fmt.Fprintf(w, "DealCid\tDealId\tProvider\tState\tOn Chain?\tSlashed?\tPieceCID\tSize\tPrice\tDuration\n")
@@ -818,12 +826,28 @@ var clientListDeals = &cli.Command{
 				piece = "..." + piece[len(piece)-8:]
 
 				price := types.FIL(types.BigMul(d.LocalDeal.PricePerEpoch, types.NewInt(d.LocalDeal.Duration)))
-				fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d\n", propcid, d.LocalDeal.DealID, d.LocalDeal.Provider, storagemarket.DealStates[d.LocalDeal.State], onChain, slashed, piece, types.SizeStr(types.NewInt(d.LocalDeal.Size)), price, d.LocalDeal.Duration)
+				fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d\n", propcid, d.LocalDeal.DealID, d.LocalDeal.Provider, dealStateString(color, d.LocalDeal.State), onChain, slashed, piece, types.SizeStr(types.NewInt(d.LocalDeal.Size)), price, d.LocalDeal.Duration)
 			}
 
 		}
 		return w.Flush()
 	},
+}
+
+func dealStateString(c bool, state storagemarket.StorageDealStatus) string {
+	s := storagemarket.DealStates[state]
+	if !c {
+		return s
+	}
+
+	switch state {
+	case storagemarket.StorageDealError, storagemarket.StorageDealExpired:
+		return color.RedString(s)
+	case storagemarket.StorageDealActive:
+		return color.GreenString(s)
+	default:
+		return s
+	}
 }
 
 type deal struct {
