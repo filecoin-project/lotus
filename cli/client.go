@@ -529,8 +529,7 @@ var clientRetrieveCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 2 {
-			fmt.Println("Usage: retrieve [CID] [outfile]")
-			return nil
+			return ShowHelp(cctx, fmt.Errorf("incorrect number of arguments"))
 		}
 
 		fapi, closer, err := GetFullNodeAPI(cctx)
@@ -732,6 +731,13 @@ var clientQueryAskCmd = &cli.Command{
 var clientListDeals = &cli.Command{
 	Name:  "list-deals",
 	Usage: "List storage market deals",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:    "verbose",
+			Aliases: []string{"v"},
+			Usage:   "print verbose deal details",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -775,20 +781,46 @@ var clientListDeals = &cli.Command{
 		}
 
 		w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
-		fmt.Fprintf(w, "DealCid\tDealId\tProvider\tState\tOn Chain?\tSlashed?\tPieceCID\tSize\tPrice\tDuration\tMessage\n")
-		for _, d := range deals {
-			onChain := "N"
-			if d.OnChainDealState.SectorStartEpoch != -1 {
-				onChain = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SectorStartEpoch)
+		if cctx.Bool("verbose") {
+			fmt.Fprintf(w, "DealCid\tDealId\tProvider\tState\tOn Chain?\tSlashed?\tPieceCID\tSize\tPrice\tDuration\tMessage\n")
+			for _, d := range deals {
+				onChain := "N"
+				if d.OnChainDealState.SectorStartEpoch != -1 {
+					onChain = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SectorStartEpoch)
+				}
+
+				slashed := "N"
+				if d.OnChainDealState.SlashEpoch != -1 {
+					slashed = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SlashEpoch)
+				}
+
+				price := types.FIL(types.BigMul(d.LocalDeal.PricePerEpoch, types.NewInt(d.LocalDeal.Duration)))
+				fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d\t%s\n", d.LocalDeal.ProposalCid, d.LocalDeal.DealID, d.LocalDeal.Provider, storagemarket.DealStates[d.LocalDeal.State], onChain, slashed, d.LocalDeal.PieceCID, types.SizeStr(types.NewInt(d.LocalDeal.Size)), price, d.LocalDeal.Duration, d.LocalDeal.Message)
+			}
+		} else {
+			fmt.Fprintf(w, "DealCid\tDealId\tProvider\tState\tOn Chain?\tSlashed?\tPieceCID\tSize\tPrice\tDuration\n")
+
+			for _, d := range deals {
+				propcid := d.LocalDeal.ProposalCid.String()
+				propcid = "..." + propcid[len(propcid)-8:]
+
+				onChain := "N"
+				if d.OnChainDealState.SectorStartEpoch != -1 {
+					onChain = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SectorStartEpoch)
+				}
+
+				slashed := "N"
+				if d.OnChainDealState.SlashEpoch != -1 {
+					slashed = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SlashEpoch)
+				}
+
+				piece := d.LocalDeal.PieceCID.String()
+				piece = "..." + piece[len(piece)-8:]
+
+				price := types.FIL(types.BigMul(d.LocalDeal.PricePerEpoch, types.NewInt(d.LocalDeal.Duration)))
+				fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d\n", propcid, d.LocalDeal.DealID, d.LocalDeal.Provider, storagemarket.DealStates[d.LocalDeal.State], onChain, slashed, piece, types.SizeStr(types.NewInt(d.LocalDeal.Size)), price, d.LocalDeal.Duration)
 			}
 
-			slashed := "N"
-			if d.OnChainDealState.SlashEpoch != -1 {
-				slashed = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SlashEpoch)
-			}
-
-			price := types.FIL(types.BigMul(d.LocalDeal.PricePerEpoch, types.NewInt(d.LocalDeal.Duration)))
-			fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d\t%s\n", d.LocalDeal.ProposalCid, d.LocalDeal.DealID, d.LocalDeal.Provider, storagemarket.DealStates[d.LocalDeal.State], onChain, slashed, d.LocalDeal.PieceCID, types.SizeStr(types.NewInt(d.LocalDeal.Size)), price, d.LocalDeal.Duration, d.LocalDeal.Message)
 		}
 		return w.Flush()
 	},
@@ -841,7 +873,7 @@ var clientGetDealCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		fmt.Println(b)
+		fmt.Println(string(b))
 		return nil
 	},
 }

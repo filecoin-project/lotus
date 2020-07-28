@@ -40,7 +40,7 @@ type StorageMinerAPI struct {
 	ProofsConfig *ffiwrapper.Config
 	SectorBlocks *sectorblocks.SectorBlocks
 
-	PieceStore      piecestore.PieceStore
+	PieceStore      dtypes.ProviderPieceStore
 	StorageProvider storagemarket.StorageProvider
 	Miner           *storage.Miner
 	BlockMiner      *miner.Miner
