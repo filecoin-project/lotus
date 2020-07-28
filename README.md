@@ -1,8 +1,12 @@
-![Lotus](documentation/images/lotus_logo_h.png)
+<p align="center">
+  <a href="https://docs.lotu.sh/" title="Lotus Docs">
+    <img src="documentation/images/lotus_logo_h.png" alt="Project Lotus Logo" width="244" />
+  </a>
+</p>
 
-# Project Lotus - 莲
+<h1 align="center">Project Lotus - 莲</h1>
 
-Lotus is an implementation of the Filecoin Distributed Storage Network. For more details about Filecoin, check out the [Filecoin Spec](https://github.com/filecoin-project/specs).
+Lotus is an implementation of the Filecoin Distributed Storage Network. For more details about Filecoin, check out the [Filecoin Spec](https://spec.filecoin.io).
 
 ## Building & Documentation
 
@@ -14,12 +18,28 @@ Please send an email to security@filecoin.org. See our [security policy](SECURIT
 
 ## Development
 
-All work is tracked via issues. An attempt at keeping an up-to-date view on remaining work is in the [lotus testnet github project board](https://github.com/filecoin-project/lotus/projects/1).
-
 The main branches under development at the moment are:
 * [`master`](https://github.com/filecoin-project/lotus): current testnet.
 * [`next`](https://github.com/filecoin-project/lotus/tree/next): working branch with chain-breaking changes.
 * [`ntwk-calibration`](https://github.com/filecoin-project/lotus/tree/ntwk-calibration): devnet running one of `next` commits.
+
+### Tracker
+
+All work is tracked via issues. An attempt at keeping an up-to-date view on remaining work is in the [lotus github project board](https://github.com/orgs/filecoin-project/projects/8).
+
+### Packages
+
+The lotus Filecoin implementation unfolds into the following packages:
+
+- [This repo](https://github.com/filecoin-project/lotus)
+- [lotus-docs](https://github.com/filecoin-project/lotus-docs)
+- [go-fil-markets](https://github.com/filecoin-project/go-fil-markets)
+- [go-storage-market](https://github.com/filecoin-project/go-storage-market)
+- [go-storage-miner](https://github.com/filecoin-project/go-storage-miner)
+- [storage-fsm](https://github.com/filecoin-project/storage-fsm)
+- [sector-storage](https://github.com/filecoin-project/sector-storage)
+- [specs-storage](https://github.com/filecoin-project/specs-storage)
+- [spec-actors](https://github.com/filecoin-project/specs-actors) which has its own [kanban work tracker](https://app.zenhub.com/workspaces/actors-5ee6f3aa87591f0016c05685/board)
 
 ## License
 
