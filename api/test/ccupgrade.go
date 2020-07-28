@@ -40,7 +40,7 @@ func TestCCUpgrade(t *testing.T, b APIBuilder, blocktime time.Duration) {
 		defer close(done)
 		for atomic.LoadInt64(&mine) == 1 {
 			time.Sleep(blocktime)
-			if err := sn[0].MineOne(ctx, func(bool, error) {}); err != nil {
+			if err := sn[0].MineOne(ctx, MineNext); err != nil {
 				t.Error(err)
 			}
 		}

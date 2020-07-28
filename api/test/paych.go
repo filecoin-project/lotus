@@ -9,19 +9,21 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	initactor "github.com/filecoin-project/specs-actors/actors/builtin/init"
+	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
+
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/events/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
-	initactor "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
+	"github.com/filecoin-project/lotus/miner"
 )
 
 func TestPaymentChannels(t *testing.T, b APIBuilder, blocktime time.Duration) {
@@ -167,6 +169,8 @@ func TestPaymentChannels(t *testing.T, b APIBuilder, blocktime time.Duration) {
 		t.Fatal("Timed out waiting for receiver to submit vouchers")
 	}
 
+	atomic.StoreInt64(&bm.nulls, paych.SettleDelay)
+
 	// collect funds (from receiver, though either party can do it)
 	collectMsg, err := paymentReceiver.PaychCollect(ctx, channel)
 	if err != nil {
@@ -224,6 +228,7 @@ type blockMiner struct {
 	miner     TestStorageNode
 	blocktime time.Duration
 	mine      int64
+	nulls     int64
 	done      chan struct{}
 }
 
@@ -244,7 +249,11 @@ func (bm *blockMiner) mineBlocks() {
 		defer close(bm.done)
 		for atomic.LoadInt64(&bm.mine) == 1 {
 			time.Sleep(bm.blocktime)
-			if err := bm.miner.MineOne(bm.ctx, func(bool, error) {}); err != nil {
+			nulls := atomic.SwapInt64(&bm.nulls, 0)
+			if err := bm.miner.MineOne(bm.ctx, miner.MineReq{
+				InjectNulls: abi.ChainEpoch(nulls),
+				Done:        func(bool, error) {},
+			}); err != nil {
 				bm.t.Error(err)
 			}
 		}

@@ -33,7 +33,7 @@ import (
 var log = logging.Logger("miner")
 
 // returns a callback reporting whether we mined a blocks in this round
-type waitFunc func(ctx context.Context, baseTime uint64) (func(bool, error), error)
+type waitFunc func(ctx context.Context, baseTime uint64) (func(bool, error), abi.ChainEpoch, error)
 
 func randTimeOffset(width time.Duration) time.Duration {
 	buf := make([]byte, 8)
@@ -53,7 +53,7 @@ func NewMiner(api api.FullNode, epp gen.WinningPoStProver, addr address.Address)
 		api:     api,
 		epp:     epp,
 		address: addr,
-		waitFunc: func(ctx context.Context, baseTime uint64) (func(bool, error), error) {
+		waitFunc: func(ctx context.Context, baseTime uint64) (func(bool, error), abi.ChainEpoch, error) {
 			// Wait around for half the block time in case other parents come in
 			deadline := baseTime + build.PropagationDelaySecs
 			baseT := time.Unix(int64(deadline), 0)
@@ -62,7 +62,7 @@ func NewMiner(api api.FullNode, epp gen.WinningPoStProver, addr address.Address)
 
 			build.Clock.Sleep(build.Clock.Until(baseT))
 
-			return func(bool, error) {}, nil
+			return func(bool, error) {}, 0, nil
 		},
 		minedBlockHeights: arc,
 	}
@@ -155,7 +155,7 @@ func (m *Miner) mine(ctx context.Context) {
 		}
 
 		// Wait until propagation delay period after block we plan to mine on
-		onDone, err := m.waitFunc(ctx, prebase.TipSet.MinTimestamp())
+		onDone, injectNulls, err := m.waitFunc(ctx, prebase.TipSet.MinTimestamp())
 		if err != nil {
 			log.Error(err)
 			continue
@@ -171,6 +171,8 @@ func (m *Miner) mine(ctx context.Context) {
 			m.niceSleep(time.Duration(build.BlockDelaySecs) * time.Second)
 			continue
 		}
+
+		base.NullRounds += injectNulls // testing
 
 		b, err := m.mineOne(ctx, base)
 		if err != nil {

@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/impl"
 )
 
@@ -34,7 +35,7 @@ func (ts *testSuite) testMining(t *testing.T) {
 	require.NoError(t, err)
 	<-newHeads
 
-	err = sn[0].MineOne(ctx, func(bool, error) {})
+	err = sn[0].MineOne(ctx, MineNext)
 	require.NoError(t, err)
 
 	<-newHeads
@@ -62,7 +63,7 @@ func (ts *testSuite) testMiningReal(t *testing.T) {
 	require.NoError(t, err)
 	<-newHeads
 
-	err = sn[0].MineOne(ctx, func(bool, error) {})
+	err = sn[0].MineOne(ctx, MineNext)
 	require.NoError(t, err)
 
 	<-newHeads
@@ -71,7 +72,7 @@ func (ts *testSuite) testMiningReal(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, abi.ChainEpoch(1), h2.Height())
 
-	err = sn[0].MineOne(ctx, func(bool, error) {})
+	err = sn[0].MineOne(ctx, MineNext)
 	require.NoError(t, err)
 
 	<-newHeads
@@ -142,11 +143,11 @@ func TestDealMining(t *testing.T, b APIBuilder, blocktime time.Duration, carExpo
 				}()
 			}
 
-			if err := sn[0].MineOne(ctx, mdone); err != nil {
+			if err := sn[0].MineOne(ctx, miner.MineReq{Done: mdone}); err != nil {
 				t.Error(err)
 			}
 
-			if err := sn[1].MineOne(ctx, mdone); err != nil {
+			if err := sn[1].MineOne(ctx, miner.MineReq{Done: mdone}); err != nil {
 				t.Error(err)
 			}
 

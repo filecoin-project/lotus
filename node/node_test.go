@@ -117,7 +117,7 @@ func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, a
 	// start node
 	var minerapi api.StorageMiner
 
-	mineBlock := make(chan func(bool, error))
+	mineBlock := make(chan miner.MineReq)
 	// TODO: use stop
 	_, err = node.New(ctx,
 		node.StorageMiner(&minerapi),
@@ -142,9 +142,9 @@ func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, a
 
 	err = minerapi.NetConnect(ctx, remoteAddrs)
 	require.NoError(t, err)*/
-	mineOne := func(ctx context.Context, cb func(bool, error)) error {
+	mineOne := func(ctx context.Context, req miner.MineReq) error {
 		select {
-		case mineBlock <- cb:
+		case mineBlock <- req:
 			return nil
 		case <-ctx.Done():
 			return ctx.Err()
