@@ -99,3 +99,23 @@ This env var can be used with `lotus-storage-miner`, `lotus-seal-worker`, and `l
 ### `FIL_PROOFS_USE_GPU_COLUMN_BUILDER=1` Environment variable
 
 This env var can be used with `lotus-storage-miner`, `lotus-seal-worker`, and `lotus-bench` to enable experimental precommit2 GPU acceleration
+
+### Setting multiaddresses
+
+It it possible to set multiaddresses for the miner to listen on in a miner's `config.toml` file 
+(by default, it is located at `~/.lotusminer/config.toml`). 
+
+Once added, set the on-chain record of your miner's listen addresses:
+ 
+ ```
+ lotus-miner actor set-addrs <multiaddr_1> <multiaddr_2> ... <multiaddr_n>
+```
+
+This updates the `MinerInfo` object in your miner's actor, which will be looked up
+when a client attempts to make a deal. Any number of addresses can be provided.
+
+For example:
+
+```
+ lotus-miner actor set-addrs /ip4/123.123.73.123/tcp/12345 /ip4/223.223.83.223/tcp/23456 
+```
