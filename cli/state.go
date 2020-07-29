@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/multiformats/go-multiaddr"
 	"html/template"
 	"io"
 	"os"
@@ -105,6 +106,15 @@ var stateMinerInfo = &cli.Command{
 		fmt.Printf("Worker:\t%s\n", mi.Worker)
 		fmt.Printf("PeerID:\t%s\n", mi.PeerId)
 		fmt.Printf("SectorSize:\t%s (%d)\n", types.SizeStr(types.NewInt(uint64(mi.SectorSize))), mi.SectorSize)
+		fmt.Printf("Multiaddrs: \t")
+		for _, addr := range mi.Multiaddrs {
+			a, err := multiaddr.NewMultiaddrBytes(addr)
+			if err != nil {
+				return xerrors.Errorf("undecodable listen address: %w", err)
+			}
+			fmt.Printf("%s ", a)
+		}
+		fmt.Println()
 
 		return nil
 	},
