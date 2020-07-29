@@ -14,20 +14,22 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/lib/blockstore"
+
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
-	cbg "github.com/whyrusleeping/cbor-gen"
+
 	"golang.org/x/xerrors"
 
 	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/ipfs/go-cid"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/trace"
 )
 
@@ -150,7 +152,7 @@ type BlockMessages struct {
 type ExecCallback func(cid.Cid, *types.Message, *vm.ApplyRet) error
 
 func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEpoch, pstate cid.Cid, bms []BlockMessages, epoch abi.ChainEpoch, r vm.Rand, cb ExecCallback) (cid.Cid, cid.Cid, error) {
-	vmi, err := sm.newVM(pstate, parentEpoch, r, sm.cs.Blockstore(), sm.cs.VMSys(), sm.GetVestedFunds)
+	vmi, err := sm.newVM(pstate, epoch, r, sm.cs.Blockstore(), sm.cs.VMSys(), sm.GetVestedFunds)
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("instantiating VM failed: %w", err)
 	}
@@ -718,34 +720,18 @@ func (sm *StateManager) MarketBalance(ctx context.Context, addr address.Address,
 	if err != nil {
 		return api.MarketBalance{}, err
 	}
-	ehas, err := et.Has(addr)
+	out.Escrow, err = et.Get(addr)
 	if err != nil {
-		return api.MarketBalance{}, err
-	}
-	if ehas {
-		out.Escrow, _, err = et.Get(addr)
-		if err != nil {
-			return api.MarketBalance{}, xerrors.Errorf("getting escrow balance: %w", err)
-		}
-	} else {
-		out.Escrow = big.Zero()
+		return api.MarketBalance{}, xerrors.Errorf("getting escrow balance: %w", err)
 	}
 
 	lt, err := adt.AsBalanceTable(sm.cs.Store(ctx), state.LockedTable)
 	if err != nil {
 		return api.MarketBalance{}, err
 	}
-	lhas, err := lt.Has(addr)
+	out.Locked, err = lt.Get(addr)
 	if err != nil {
-		return api.MarketBalance{}, err
-	}
-	if lhas {
-		out.Locked, _, err = lt.Get(addr)
-		if err != nil {
-			return api.MarketBalance{}, xerrors.Errorf("getting locked balance: %w", err)
-		}
-	} else {
-		out.Locked = big.Zero()
+		return api.MarketBalance{}, xerrors.Errorf("getting locked balance: %w", err)
 	}
 
 	return out, nil

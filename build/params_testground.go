@@ -59,4 +59,7 @@ var (
 		v = v.Mul(v, big.NewInt(int64(FilecoinPrecision)))
 		return v
 	}()
+	// Actor consts
+	// TODO: Pull from actors when its made not private
+	MinDealDuration = abi.ChainEpoch(180 * builtin.EpochsInDay)
 )

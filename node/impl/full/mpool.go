@@ -88,7 +88,7 @@ func (a *MpoolAPI) MpoolPush(ctx context.Context, smsg *types.SignedMessage) (ci
 }
 
 // GasMargin sets by how much should gas limit be increased over test execution
-var GasMargin = 1.2
+var GasMargin = 1.5
 
 func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message) (*types.SignedMessage, error) {
 	if msg.Nonce != 0 {

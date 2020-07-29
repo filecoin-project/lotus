@@ -21,16 +21,17 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/lib/blockstore"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
+
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger2"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/urfave/cli/v2"
+	"golang.org/x/xerrors"
 )
 
 type TipSetExec struct {

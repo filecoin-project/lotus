@@ -6,11 +6,10 @@ import (
 
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-multistore"
+	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
-
-	"github.com/filecoin-project/go-multistore"
 )
 
 type Mgr struct {

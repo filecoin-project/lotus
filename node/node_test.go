@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http/httptest"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -117,7 +118,7 @@ func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, a
 	// start node
 	var minerapi api.StorageMiner
 
-	mineBlock := make(chan func(bool, error))
+	mineBlock := make(chan miner.MineReq)
 	// TODO: use stop
 	_, err = node.New(ctx,
 		node.StorageMiner(&minerapi),
@@ -142,9 +143,9 @@ func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, a
 
 	err = minerapi.NetConnect(ctx, remoteAddrs)
 	require.NoError(t, err)*/
-	mineOne := func(ctx context.Context, cb func(bool, error)) error {
+	mineOne := func(ctx context.Context, req miner.MineReq) error {
 		select {
-		case mineBlock <- cb:
+		case mineBlock <- req:
 			return nil
 		case <-ctx.Done():
 			return ctx.Err()
@@ -279,6 +280,21 @@ func builder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test.TestN
 
 	if err := mn.LinkAll(); err != nil {
 		t.Fatal(err)
+	}
+
+	if len(storers) > 0 {
+		// Mine 2 blocks to setup some CE stuff in some actors
+		var wait sync.Mutex
+		wait.Lock()
+
+		storers[0].MineOne(ctx, miner.MineReq{Done: func(bool, error) {
+			wait.Unlock()
+		}})
+		wait.Lock()
+		storers[0].MineOne(ctx, miner.MineReq{Done: func(bool, error) {
+			wait.Unlock()
+		}})
+		wait.Lock()
 	}
 
 	return fulls, storers
@@ -418,6 +434,21 @@ func mockSbBuilder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test
 
 	if err := mn.LinkAll(); err != nil {
 		t.Fatal(err)
+	}
+
+	if len(storers) > 0 {
+		// Mine 2 blocks to setup some CE stuff in some actors
+		var wait sync.Mutex
+		wait.Lock()
+
+		storers[0].MineOne(ctx, miner.MineReq{Done: func(bool, error) {
+			wait.Unlock()
+		}})
+		wait.Lock()
+		storers[0].MineOne(ctx, miner.MineReq{Done: func(bool, error) {
+			wait.Unlock()
+		}})
+		wait.Lock()
 	}
 
 	return fulls, storers

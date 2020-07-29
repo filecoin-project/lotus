@@ -8,9 +8,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-cid"
-	ds "github.com/ipfs/go-datastore"
-	ds_sync "github.com/ipfs/go-datastore/sync"
-	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-address"
@@ -23,6 +20,7 @@ import (
 	tutils "github.com/filecoin-project/specs-actors/support/testing"
 
 	"github.com/filecoin-project/lotus/chain/types"
+	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 )
 
 var dummyCid cid.Cid
@@ -66,7 +64,7 @@ func (m mockAPI) setActor(tsk types.TipSetKey, act *types.Actor) {
 
 func TestMarketPredicates(t *testing.T) {
 	ctx := context.Background()
-	bs := bstore.NewBlockstore(ds_sync.MutexWrap(ds.NewMapDatastore()))
+	bs := bstore.NewTemporarySync()
 	store := adt.WrapStore(ctx, cbornode.NewCborStore(bs))
 
 	oldDeal1 := &market.DealState{
@@ -281,7 +279,7 @@ func TestMarketPredicates(t *testing.T) {
 
 func TestMinerSectorChange(t *testing.T) {
 	ctx := context.Background()
-	bs := bstore.NewBlockstore(ds_sync.MutexWrap(ds.NewMapDatastore()))
+	bs := bstore.NewTemporarySync()
 	store := adt.WrapStore(ctx, cbornode.NewCborStore(bs))
 
 	nextID := uint64(0)
@@ -481,6 +479,7 @@ func newSectorOnChainInfo(sectorNo abi.SectorNumber, sealed cid.Cid, weight big.
 		DealWeight:         weight,
 		VerifiedDealWeight: weight,
 		InitialPledge:      big.Zero(),
+		ExpectedDayReward:  big.Zero(),
 	}
 }
 

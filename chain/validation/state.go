@@ -3,20 +3,20 @@ package validation
 import (
 	"context"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"golang.org/x/xerrors"
 
 	vstate "github.com/filecoin-project/chain-validation/state"
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/blockstore"
 )
 
 var _ vstate.VMWrapper = &StateWrapper{}
@@ -34,7 +34,7 @@ type StateWrapper struct {
 }
 
 func NewState() *StateWrapper {
-	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
+	bs := blockstore.NewTemporary()
 	cst := cbor.NewCborStore(bs)
 	// Put EmptyObjectCid value in the store. When an actor is initially created its Head is set to this value.
 	_, err := cst.Put(context.TODO(), map[string]string{})

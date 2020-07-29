@@ -11,7 +11,6 @@ import (
 
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	"github.com/multiformats/go-multihash"
 	xerrors "golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -76,8 +75,7 @@ func (blk *BlockHeader) ToStorageBlock() (block.Block, error) {
 		return nil, err
 	}
 
-	pref := cid.NewPrefixV1(cid.DagCBOR, multihash.BLAKE2B_MIN+31)
-	c, err := pref.Sum(data)
+	c, err := abi.CidBuilder.Sum(data)
 	if err != nil {
 		return nil, err
 	}
@@ -145,13 +143,12 @@ func (mm *MsgMeta) Cid() cid.Cid {
 }
 
 func (mm *MsgMeta) ToStorageBlock() (block.Block, error) {
-	buf := new(bytes.Buffer)
-	if err := mm.MarshalCBOR(buf); err != nil {
+	var buf bytes.Buffer
+	if err := mm.MarshalCBOR(&buf); err != nil {
 		return nil, xerrors.Errorf("failed to marshal MsgMeta: %w", err)
 	}
 
-	pref := cid.NewPrefixV1(cid.DagCBOR, multihash.BLAKE2B_MIN+31)
-	c, err := pref.Sum(buf.Bytes())
+	c, err := abi.CidBuilder.Sum(buf.Bytes())
 	if err != nil {
 		return nil, err
 	}

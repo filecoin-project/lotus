@@ -90,3 +90,7 @@ const VerifSigCacheSize = 32000
 // TODO: If this is gonna stay, it should move to specs-actors
 const BlockMessageLimit = 512
 const BlockGasLimit = 7_500_000_000
+
+// Actor consts
+// TODO: Pull from actors when its made not private
+var MinDealDuration = abi.ChainEpoch(180 * builtin.EpochsInDay)

@@ -7,8 +7,6 @@ import (
 	"github.com/filecoin-project/go-multistore"
 	"golang.org/x/xerrors"
 
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	"github.com/libp2p/go-libp2p-core/host"
 	"go.uber.org/fx"
 
 	dtimpl "github.com/filecoin-project/go-data-transfer/impl"
@@ -26,7 +24,9 @@ import (
 	"github.com/filecoin-project/go-storedcounter"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
+	"github.com/libp2p/go-libp2p-core/host"
 
+	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/markets/retrievaladapter"
 	"github.com/filecoin-project/lotus/node/impl/full"
 	payapi "github.com/filecoin-project/lotus/node/impl/paych"
@@ -62,7 +62,7 @@ func ClientImportMgr(mds dtypes.ClientMultiDstore, ds dtypes.MetadataDS) dtypes.
 
 func ClientBlockstore(imgr dtypes.ClientImportMgr) dtypes.ClientBlockstore {
 	// in most cases this is now unused in normal operations -- however, it's important to preserve for the IPFS use case
-	return blockstore.NewBlockstore(datastore.NewMapDatastore())
+	return blockstore.NewTemporary()
 }
 
 // RegisterClientValidator is an initialization hook that registers the client

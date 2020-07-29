@@ -22,6 +22,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/miner"
 	sealing "github.com/filecoin-project/storage-fsm"
 	dag "github.com/ipfs/go-merkledag"
 	dstest "github.com/ipfs/go-merkledag/test"
@@ -31,6 +32,11 @@ import (
 	"github.com/filecoin-project/lotus/node/impl"
 	ipld "github.com/ipfs/go-ipld-format"
 )
+
+var MineNext = miner.MineReq{
+	InjectNulls: 0,
+	Done:        func(bool, error) {},
+}
 
 func init() {
 	logging.SetAllLoggers(logging.LevelInfo)
@@ -61,7 +67,7 @@ func TestDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, carExport
 		defer close(done)
 		for atomic.LoadInt64(&mine) == 1 {
 			time.Sleep(blocktime)
-			if err := sn[0].MineOne(ctx, func(bool, error) {}); err != nil {
+			if err := sn[0].MineOne(ctx, MineNext); err != nil {
 				t.Error(err)
 			}
 		}
@@ -99,7 +105,7 @@ func TestDoubleDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration) {
 		defer close(done)
 		for atomic.LoadInt64(&mine) == 1 {
 			time.Sleep(blocktime)
-			if err := sn[0].MineOne(ctx, func(bool, error) {}); err != nil {
+			if err := sn[0].MineOne(ctx, MineNext); err != nil {
 				t.Error(err)
 			}
 		}
@@ -163,7 +169,7 @@ func TestSenondDealRetrieval(t *testing.T, b APIBuilder, blocktime time.Duration
 		defer close(done)
 		for atomic.LoadInt64(&mine) == 1 {
 			time.Sleep(blocktime)
-			if err := sn[0].MineOne(ctx, func(bool, error) {}); err != nil {
+			if err := sn[0].MineOne(ctx, MineNext); err != nil {
 				t.Error(err)
 			}
 		}
@@ -232,7 +238,7 @@ func startDeal(t *testing.T, ctx context.Context, miner TestStorageNode, client 
 		Wallet:            addr,
 		Miner:             maddr,
 		EpochPrice:        types.NewInt(1000000),
-		MinBlocksDuration: 100,
+		MinBlocksDuration: uint64(build.MinDealDuration),
 		FastRetrieval:     fastRet,
 	})
 	if err != nil {
