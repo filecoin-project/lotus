@@ -9,6 +9,11 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 )
 
+type scalingCost struct {
+	flat  int64
+	scale int64
+}
+
 type pricelistV0 struct {
 	///////////////////////////////////////////////////////////////////////////
 	// System operations
@@ -81,7 +86,7 @@ type pricelistV0 struct {
 
 	computeUnsealedSectorCidBase int64
 	verifySealBase               int64
-	verifyPostBase               int64
+	verifyPostLookup             map[abi.RegisteredPoStProof]scalingCost
 	verifyConsensusFault         int64
 }
 
@@ -176,7 +181,27 @@ func (pl *pricelistV0) OnVerifySeal(info abi.SealVerifyInfo) GasCharge {
 
 // OnVerifyPost
 func (pl *pricelistV0) OnVerifyPost(info abi.WindowPoStVerifyInfo) GasCharge {
-	return newGasCharge("OnVerifyPost", pl.verifyPostBase, 0).WithExtra(len(info.ChallengedSectors))
+	sectorSize := "unknown"
+	var proofType abi.RegisteredPoStProof
+
+	if len(info.Proofs) != 0 {
+		proofType = info.Proofs[0].PoStProof
+		ss, err := info.Proofs[0].PoStProof.SectorSize()
+		if err == nil {
+			sectorSize = ss.ShortString()
+		}
+	}
+
+	cost, ok := pl.verifyPostLookup[proofType]
+	if !ok {
+		cost = pl.verifyPostLookup[abi.RegisteredPoStProof_StackedDrgWindow512MiBV1]
+	}
+
+	return newGasCharge("OnVerifyPost", cost.flat+int64(len(info.ChallengedSectors))*cost.scale, 0).
+		WithExtra(map[string]interface{}{
+			"type": sectorSize,
+			"size": len(info.ChallengedSectors),
+		})
 }
 
 // OnVerifyConsensusFault
