@@ -24,6 +24,7 @@ var mpoolCmd = &cli.Command{
 		mpoolStat,
 		mpoolReplaceCmd,
 		mpoolFindCmd,
+		mpoolRemoveCmd,
 	},
 }
 
@@ -400,6 +401,64 @@ var mpoolFindCmd = &cli.Command{
 		}
 
 		fmt.Println(string(b))
+		return nil
+	},
+}
+
+var mpoolRemoveCmd = &cli.Command{
+	Name:  "remove",
+	Usage: "remove a message in the mempool",
+	ArgsUsage: "[from] [nonce]",
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() < 2 {
+			return cli.ShowCommandHelp(cctx, cctx.Command.Name)
+		}
+
+		from, err := address.NewFromString(cctx.Args().Get(0))
+		if err != nil {
+			return err
+		}
+
+		nonce, err := strconv.ParseUint(cctx.Args().Get(1), 10, 64)
+		if err != nil {
+			return err
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+		ts, err := api.ChainHead(ctx)
+		if err != nil {
+			return xerrors.Errorf("getting chain head: %w", err)
+		}
+
+		pending, err := api.MpoolPending(ctx, ts.Key())
+		if err != nil {
+			return err
+		}
+
+		var found *types.SignedMessage
+		for _, p := range pending {
+			if p.Message.From == from && p.Message.Nonce == nonce {
+				found = p
+				break
+			}
+		}
+
+		if found == nil {
+			return fmt.Errorf("no message found from %s with nonce %d", from, nonce)
+		}
+
+		cid,err := api.MpoolRemove(ctx,found)
+		if err != nil{
+			return fmt.Errorf("remove message error: %s", err)
+		}
+
+		fmt.Println(cid)
 		return nil
 	},
 }

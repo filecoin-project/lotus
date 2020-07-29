@@ -852,7 +852,7 @@ var stateComputeStateCmd = &cli.Command{
 				return err
 			}
 
-			pmsgs, err = miner.SelectMessages(ctx, api.StateGetActor, ts, pmsgs)
+			pmsgs, err = miner.SelectMessages(ctx, api.StateGetActor,api.MpoolRemove, ts, pmsgs)
 			if err != nil {
 				return err
 			}

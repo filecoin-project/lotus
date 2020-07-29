@@ -38,7 +38,7 @@ var minerSelectMsgsCmd = &cli.Command{
 			return err
 		}
 
-		filtered, err := miner.SelectMessages(ctx, api.StateGetActor, head, msgs)
+		filtered, err := miner.SelectMessages(ctx, api.StateGetActor,api.MpoolRemove, head, msgs)
 		if err != nil {
 			return err
 		}

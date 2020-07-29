@@ -87,6 +87,11 @@ func (a *MpoolAPI) MpoolPush(ctx context.Context, smsg *types.SignedMessage) (ci
 	return a.Mpool.Push(smsg)
 }
 
+func (a *MpoolAPI) MpoolRemove(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, error) {
+	a.Mpool.Remove(smsg.Message.From, smsg.Message.Nonce)
+	return smsg.Cid(), nil
+}
+
 // GasMargin sets by how much should gas limit be increased over test execution
 var GasMargin = 1.5
 

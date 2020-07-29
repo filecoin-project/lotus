@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
+	"github.com/ipfs/go-cid"
 	big2 "math/big"
 	"sort"
 	"sync"
@@ -417,7 +418,7 @@ func (m *Miner) computeTicket(ctx context.Context, brand *types.BeaconEntry, bas
 
 func (m *Miner) createBlock(base *MiningBase, addr address.Address, ticket *types.Ticket,
 	eproof *types.ElectionProof, bvals []types.BeaconEntry, wpostProof []abi.PoStProof, pending []*types.SignedMessage) (*types.BlockMsg, error) {
-	msgs, err := SelectMessages(context.TODO(), m.api.StateGetActor, base.TipSet, pending)
+	msgs, err := SelectMessages(context.TODO(), m.api.StateGetActor,m.api.MpoolRemove, base.TipSet, pending)
 	if err != nil {
 		return nil, xerrors.Errorf("message filtering failed: %w", err)
 	}
@@ -474,6 +475,7 @@ func (c *cachedActorLookup) StateGetActor(ctx context.Context, a address.Address
 }
 
 type ActorLookup func(context.Context, address.Address, types.TipSetKey) (*types.Actor, error)
+type MPoolRemoveMsg func(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, error)
 
 func countFrom(msgs []*types.SignedMessage, from address.Address) (out int) {
 	for _, msg := range msgs {
@@ -484,7 +486,7 @@ func countFrom(msgs []*types.SignedMessage, from address.Address) (out int) {
 	return out
 }
 
-func SelectMessages(ctx context.Context, al ActorLookup, ts *types.TipSet, msgs []*types.SignedMessage) ([]*types.SignedMessage, error) {
+func SelectMessages(ctx context.Context, al ActorLookup,remove MPoolRemoveMsg, ts *types.TipSet, msgs []*types.SignedMessage) ([]*types.SignedMessage, error) {
 	al = (&cachedActorLookup{
 		tsk:      ts.Key(),
 		cache:    map[address.Address]actCacheEntry{},
@@ -555,7 +557,10 @@ func SelectMessages(ctx context.Context, al ActorLookup, ts *types.TipSet, msgs 
 
 		if inclBalances[from].LessThan(msg.Message.RequiredFunds()) {
 			tooLowFundMsgs++
-			// todo: drop from mpool
+			_,err:=remove(ctx,msg)
+			if err != nil {
+				log.Warnf("failed to remove lowFund message from mempool: %+v", err)
+			}
 			continue
 		}
 

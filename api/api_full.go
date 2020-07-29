@@ -149,6 +149,9 @@ type FullNode interface {
 	// MpoolPush pushes a signed message to mempool.
 	MpoolPush(context.Context, *types.SignedMessage) (cid.Cid, error)
 
+	//MpoolRemove remove a message from mempool.
+	MpoolRemove(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, error)
+
 	// MpoolPushMessage atomically assigns a nonce, signs, and pushes a message
 	// to mempool.
 	MpoolPushMessage(context.Context, *types.Message) (*types.SignedMessage, error)

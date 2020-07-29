@@ -2,6 +2,7 @@ package miner
 
 import (
 	"context"
+	"github.com/ipfs/go-cid"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
@@ -37,6 +38,10 @@ func TestMessageFiltering(t *testing.T) {
 
 	af := func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*types.Actor, error) {
 		return actors[addr], nil
+	}
+
+	rmMessage := func(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, error){
+		return cid.Cid{}, nil
 	}
 
 	msgs := []types.Message{
@@ -82,7 +87,7 @@ func TestMessageFiltering(t *testing.T) {
 		},
 	}
 
-	outmsgs, err := SelectMessages(ctx, af, &types.TipSet{}, wrapMsgs(msgs))
+	outmsgs, err := SelectMessages(ctx, af,rmMessage, &types.TipSet{}, wrapMsgs(msgs))
 	if err != nil {
 		t.Fatal(err)
 	}
