@@ -28,6 +28,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 
@@ -310,7 +311,22 @@ func (mp *MessagePool) addLocal(m *types.SignedMessage, msgb []byte) error {
 	return nil
 }
 
+func (mp *MessagePool) verifyMsgBeforePush(m *types.SignedMessage) error {
+	mp.curTsLk.Lock()
+	minGas := vm.PricelistByEpoch(mp.curTs.Height()).OnChainMessage(m.ChainLength())
+	mp.curTsLk.Unlock()
+
+	if err := m.VMMessage().ValidForBlockInclusion(minGas.Total()); err != nil {
+		return xerrors.Errorf("message will not be included in a block: %w", err)
+	}
+	return nil
+}
+
 func (mp *MessagePool) Push(m *types.SignedMessage) (cid.Cid, error) {
+	if err := mp.verifyMsgBeforePush(m); err != nil {
+		return cid.Undef, err
+	}
+
 	msgb, err := m.Serialize()
 	if err != nil {
 		return cid.Undef, err
@@ -556,6 +572,10 @@ func (mp *MessagePool) PushWithNonce(ctx context.Context, addr address.Address, 
 
 	msg, err := cb(fromKey, nonce)
 	if err != nil {
+		return nil, err
+	}
+
+	if err := mp.verifyMsgBeforePush(msg); err != nil {
 		return nil, err
 	}
 
