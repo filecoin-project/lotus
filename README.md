@@ -25,7 +25,7 @@ The main branches under development at the moment are:
 
 ### Tracker
 
-All work is tracked via issues. An attempt at keeping an up-to-date view on remaining work is in the [lotus github project board](https://github.com/orgs/filecoin-project/projects/8).
+All work is tracked via issues. An attempt at keeping an up-to-date view on remaining work towards Mainnet launch can be seen at the [lotus github project board](https://github.com/orgs/filecoin-project/projects/8). The issues labeled with `incentives` are there to identify the issues needed for Space Race launch.
 
 ### Packages
 
@@ -35,7 +35,6 @@ The lotus Filecoin implementation unfolds into the following packages:
 - [lotus-docs](https://github.com/filecoin-project/lotus-docs)
 - [go-fil-markets](https://github.com/filecoin-project/go-fil-markets)
 - [go-storage-market](https://github.com/filecoin-project/go-storage-market)
-- [go-storage-miner](https://github.com/filecoin-project/go-storage-miner)
 - [storage-fsm](https://github.com/filecoin-project/storage-fsm)
 - [sector-storage](https://github.com/filecoin-project/sector-storage)
 - [specs-storage](https://github.com/filecoin-project/specs-storage)
