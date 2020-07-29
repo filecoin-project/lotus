@@ -52,7 +52,7 @@ import (
 
 var DefaultHashFunction = uint64(mh.BLAKE2B_MIN + 31)
 
-const dealStartBuffer abi.ChainEpoch = 10000 // TODO: allow setting
+const dealStartBufferHours uint64 = 24
 
 type API struct {
 	fx.In
@@ -151,7 +151,8 @@ func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) 
 			return nil, xerrors.Errorf("failed getting chain height: %w", err)
 		}
 
-		dealStart = ts.Height() + dealStartBuffer
+		blocksPerHour := 60 * 60 / build.BlockDelaySecs
+		dealStart = ts.Height() + abi.ChainEpoch(dealStartBufferHours*blocksPerHour)
 	}
 
 	result, err := a.SMDealClient.ProposeStorageDeal(ctx, storagemarket.ProposeStorageDealParams{
