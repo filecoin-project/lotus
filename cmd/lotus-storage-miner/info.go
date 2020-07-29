@@ -154,6 +154,13 @@ var infoCmd = &cli.Command{
 
 		fmt.Println()
 
+		sealdur, err := nodeApi.SectorGetExpectedSealDuration(ctx)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Expected Seal Duration: %s\n\n", sealdur)
+
 		fmt.Println("Sectors:")
 		err = sectorsInfo(ctx, nodeApi)
 		if err != nil {
