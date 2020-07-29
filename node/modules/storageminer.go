@@ -420,7 +420,7 @@ func StorageProvider(minerAddress dtypes.MinerAddress,
 		}
 		earliest := abi.ChainEpoch(sealEpochs) + ht
 		if deal.Proposal.StartEpoch < earliest {
-			log.Warnf("proposed deal would start before sealing can be completed; rejecting storage deal proposal from client: %s", deal.Proposal.PieceCID, deal.Client.String())
+			log.Warnw("proposed deal would start before sealing can be completed; rejecting storage deal proposal from client", "piece_cid", deal.Proposal.PieceCID, "client", deal.Client.String(), "seal_duration", sealDuration, "earliest", earliest, "curepoch", ht)
 			return false, fmt.Sprintf("cannot seal a sector before %s", deal.Proposal.StartEpoch), nil
 		}
 
