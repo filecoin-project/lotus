@@ -32,7 +32,6 @@ All work is tracked via issues. An attempt at keeping an up-to-date view on rema
 The lotus Filecoin implementation unfolds into the following packages:
 
 - [This repo](https://github.com/filecoin-project/lotus)
-- [lotus-docs](https://github.com/filecoin-project/lotus-docs)
 - [storage-fsm](https://github.com/filecoin-project/storage-fsm)
 - [sector-storage](https://github.com/filecoin-project/sector-storage)
 - [specs-storage](https://github.com/filecoin-project/specs-storage)
