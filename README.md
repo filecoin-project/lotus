@@ -33,11 +33,11 @@ The lotus Filecoin implementation unfolds into the following packages:
 
 - [This repo](https://github.com/filecoin-project/lotus)
 - [lotus-docs](https://github.com/filecoin-project/lotus-docs)
-- [go-fil-markets](https://github.com/filecoin-project/go-fil-markets)
 - [storage-fsm](https://github.com/filecoin-project/storage-fsm)
 - [sector-storage](https://github.com/filecoin-project/sector-storage)
 - [specs-storage](https://github.com/filecoin-project/specs-storage)
-- [spec-actors](https://github.com/filecoin-project/specs-actors) which has its own [kanban work tracker](https://app.zenhub.com/workspaces/actors-5ee6f3aa87591f0016c05685/board)
+- [go-fil-markets](https://github.com/filecoin-project/go-fil-markets) which has its own [kanban work tracker available here](https://app.zenhub.com/workspaces/markets-shared-components-5daa144a7046a60001c6e253/board)
+- [spec-actors](https://github.com/filecoin-project/specs-actors) which has its own [kanban work tracker available here](https://app.zenhub.com/workspaces/actors-5ee6f3aa87591f0016c05685/board)
 
 ## License
 
