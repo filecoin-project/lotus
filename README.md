@@ -34,7 +34,6 @@ The lotus Filecoin implementation unfolds into the following packages:
 - [This repo](https://github.com/filecoin-project/lotus)
 - [lotus-docs](https://github.com/filecoin-project/lotus-docs)
 - [go-fil-markets](https://github.com/filecoin-project/go-fil-markets)
-- [go-storage-market](https://github.com/filecoin-project/go-storage-market)
 - [storage-fsm](https://github.com/filecoin-project/storage-fsm)
 - [sector-storage](https://github.com/filecoin-project/sector-storage)
 - [specs-storage](https://github.com/filecoin-project/specs-storage)
