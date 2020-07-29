@@ -440,7 +440,7 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 	}
 
 	r := store.NewChainRand(sm.cs, ts.Cids(), height)
-	vmi, err := vm.NewVM(base, height, r, sm.cs.Blockstore(), sm.cs.VMSys())
+	vmi, err := vm.NewVM(base, height, r, sm.cs.Blockstore(), sm.cs.VMSys(), sm.GetVestedFunds)
 	if err != nil {
 		return cid.Undef, nil, err
 	}
@@ -567,6 +567,11 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, bcn beacon.RandomBe
 		return nil, xerrors.Errorf("resolving worker address: %w", err)
 	}
 
+	hmp, err := MinerHasMinPower(ctx, sm, maddr, lbts)
+	if err != nil {
+		return nil, xerrors.Errorf("determining if miner has min power failed: %w", err)
+	}
+
 	return &api.MiningBaseInfo{
 		MinerPower:      mpow.QualityAdjPower,
 		NetworkPower:    tpow.QualityAdjPower,
@@ -575,6 +580,7 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, bcn beacon.RandomBe
 		SectorSize:      info.SectorSize,
 		PrevBeaconEntry: *prev,
 		BeaconEntries:   entries,
+		HasMinPower:     hmp,
 	}, nil
 }
 
@@ -589,7 +595,7 @@ func (sm *StateManager) CirculatingSupply(ctx context.Context, ts *types.TipSet)
 	}
 
 	r := store.NewChainRand(sm.cs, ts.Cids(), ts.Height())
-	vmi, err := vm.NewVM(st, ts.Height(), r, sm.cs.Blockstore(), sm.cs.VMSys())
+	vmi, err := vm.NewVM(st, ts.Height(), r, sm.cs.Blockstore(), sm.cs.VMSys(), sm.GetVestedFunds)
 	if err != nil {
 		return big.Zero(), err
 	}
@@ -658,4 +664,14 @@ func GetReturnType(ctx context.Context, sm *StateManager, to address.Address, me
 
 	m := MethodsMap[act.Code][method]
 	return reflect.New(m.Ret.Elem()).Interface().(cbg.CBORUnmarshaler), nil
+}
+
+func MinerHasMinPower(ctx context.Context, sm *StateManager, addr address.Address, ts *types.TipSet) (bool, error) {
+	var ps power.State
+	_, err := sm.LoadActorState(ctx, builtin.StoragePowerActorAddr, &ps, ts)
+	if err != nil {
+		return false, xerrors.Errorf("loading power actor state: %w", err)
+	}
+
+	return ps.MinerNominalPowerMeetsConsensusMinimum(sm.ChainStore().Store(ctx), addr)
 }

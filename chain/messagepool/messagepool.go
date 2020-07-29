@@ -40,6 +40,8 @@ const futureDebug = false
 
 const ReplaceByFeeRatio = 1.25
 
+const repubMsgLimit = 5
+
 var (
 	rbfNum   = types.NewInt(uint64((ReplaceByFeeRatio - 1) * 256))
 	rbfDenom = types.NewInt(256)
@@ -267,6 +269,10 @@ func (mp *MessagePool) repubLocal() {
 
 			if len(outputMsgs) != 0 {
 				log.Infow("republishing local messages", "n", len(outputMsgs))
+			}
+
+			if len(outputMsgs) > repubMsgLimit {
+				outputMsgs = outputMsgs[:repubMsgLimit]
 			}
 
 			for _, msg := range outputMsgs {

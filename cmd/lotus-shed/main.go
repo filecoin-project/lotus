@@ -21,7 +21,7 @@ func main() {
 		keyinfoCmd,
 		noncefix,
 		bigIntParseCmd,
-		staterootStatsCmd,
+		staterootCmd,
 		importCarCmd,
 		commpToCidCmd,
 		fetchParamCmd,

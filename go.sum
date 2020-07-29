@@ -244,8 +244,8 @@ github.com/filecoin-project/go-data-transfer v0.5.1/go.mod h1:PRs78hp9u8T4G2Jce5
 github.com/filecoin-project/go-fil-commcid v0.0.0-20200208005934-2b8bd03caca5/go.mod h1:JbkIgFF/Z9BDlvrJO1FuKkaWsH673/UdFaiVS6uIHlA=
 github.com/filecoin-project/go-fil-commcid v0.0.0-20200716160307-8f644712406f h1:GxJzR3oRIMTPtpZ0b7QF8FKPK6/iPAc7trhlL5k/g+s=
 github.com/filecoin-project/go-fil-commcid v0.0.0-20200716160307-8f644712406f/go.mod h1:Eaox7Hvus1JgPrL5+M3+h7aSPHc0cVqpSxA+TxIEpZQ=
-github.com/filecoin-project/go-fil-markets v0.5.2-0.20200728110539-caae3fda6623 h1:LuX25+rzM56XX+M4413ngRA+RAhm88vlFbsvbVtpcDc=
-github.com/filecoin-project/go-fil-markets v0.5.2-0.20200728110539-caae3fda6623/go.mod h1:zDhwmUy/AS/xCJOayW7Cedff9SDuSdGIWRnGXBDjcOk=
+github.com/filecoin-project/go-fil-markets v0.5.2 h1:4xW3JoPnPDKP+f4s/tWLmuYaReGdjetHZT7qgXivdiw=
+github.com/filecoin-project/go-fil-markets v0.5.2/go.mod h1:zDhwmUy/AS/xCJOayW7Cedff9SDuSdGIWRnGXBDjcOk=
 github.com/filecoin-project/go-jsonrpc v0.1.1-0.20200602181149-522144ab4e24 h1:Jc7vkplmZYVuaEcSXGHDwefvZIdoyyaoGDLqSr8Svms=
 github.com/filecoin-project/go-jsonrpc v0.1.1-0.20200602181149-522144ab4e24/go.mod h1:j6zV//WXIIY5kky873Q3iIKt/ViOE8rcijovmpxrXzM=
 github.com/filecoin-project/go-multistore v0.0.2 h1:JZEddnXXt3mMzHi7bi9IH7Yi1NpGLy19J5Lk/xbxBMs=

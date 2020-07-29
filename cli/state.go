@@ -131,7 +131,15 @@ func LoadTipSet(ctx context.Context, cctx *cli.Context, api api.FullNode) (*type
 		return nil, nil
 	}
 
+	return ParseTipSetRef(ctx, api, tss)
+}
+
+func ParseTipSetRef(ctx context.Context, api api.FullNode, tss string) (*types.TipSet, error) {
 	if tss[0] == '@' {
+		if tss == "@head" {
+			return api.ChainHead(ctx)
+		}
+
 		var h uint64
 		if _, err := fmt.Sscanf(tss, "@%d", &h); err != nil {
 			return nil, xerrors.Errorf("parsing height tipset ref: %w", err)
