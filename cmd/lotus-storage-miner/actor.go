@@ -29,7 +29,7 @@ var actorSetAddrsCmd = &cli.Command{
 		&cli.Int64Flag{
 			Name:  "gas-limit",
 			Usage: "set gas limit",
-			Value: 100000,
+			Value: 0,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
