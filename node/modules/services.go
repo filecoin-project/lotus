@@ -43,13 +43,26 @@ func RunHello(mctx helpers.MetricsCtx, lc fx.Lifecycle, h host.Host, svc *hello.
 				if err := svc.SayHello(helpers.LifecycleCtx(mctx, lc), pic.Peer); err != nil {
 					protos, _ := h.Peerstore().GetProtocols(pic.Peer)
 					agent, _ := h.Peerstore().Get(pic.Peer, "AgentVersion")
-					log.Warnw("failed to say hello", "error", err, "peer", pic.Peer, "supported", protos, "agent", agent)
+					if protosContains(protos, hello.ProtocolID) {
+						log.Warnw("failed to say hello", "error", err, "peer", pic.Peer, "supported", protos, "agent", agent)
+					} else {
+						log.Debugw("failed to say hello", "error", err, "peer", pic.Peer, "supported", protos, "agent", agent)
+					}
 					return
 				}
 			}()
 		}
 	}()
 	return nil
+}
+
+func protosContains(protos []string, search string) bool {
+	for _, p := range protos {
+		if p == search {
+			return true
+		}
+	}
+	return false
 }
 
 func RunPeerMgr(mctx helpers.MetricsCtx, lc fx.Lifecycle, pmgr *peermgr.PeerMgr) {
