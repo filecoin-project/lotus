@@ -13,7 +13,7 @@ import (
 var log = logging.Logger("scheduler")
 
 // Scheduler manages the execution of jobs triggered
-// by tickers. Not externally configuable at runtime.
+// by tickers. Not externally configurable at runtime.
 type Scheduler struct {
 	db *sql.DB
 }
@@ -44,7 +44,7 @@ func (s *Scheduler) Start(ctx context.Context) {
 		if err := refreshTopMinerByBaseReward(ctx, s.db); err != nil {
 			log.Errorf(err.Error())
 		}
-		refreshTopMinerCh := time.NewTicker(6 * time.Hour)
+		refreshTopMinerCh := time.NewTicker(30 * time.Second)
 		defer refreshTopMinerCh.Stop()
 		for {
 			select {
