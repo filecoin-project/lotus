@@ -15,21 +15,45 @@
 - name: area/ux
   color: 00A4E0
   description: "Area: UX"
-- name: area/node
+- name: area/chain/vm
+  color: 00A4E2
+  description: "Area: Chain/VM"
+- name: area/chain/sync
+  color: 00A4E2
+  description: "Area: Chain/Sync"
+- name: area/chain/misc
+  color: 00A4E2
+  description: "Area: Chain/Misc"
+- name: area/sealing/fsm
   color: 0bb1ed
-  description: "Area: Sealing"
-- name: area/relay
+  description: "Area: Sealing/FSM"
+- name: area/sealing/storage
   color: 0EB4F0
-  description: "Area: Retrieval"
-- name: area/client
+  description: "Area: Sealing/Storage"
+- name: area/proving
+  color: 0EB4F0
+  description: "Area: Proving"
+- name: area/mining
   color: 10B6F2
-  description: "Area: Chain"
-- name: area/docs
+  description: "Area: Mining"
+- name: area/client/storage
   color: 13B9F5
-  description: "Area: Miner"
-- name: area/testing
+  description: "Area: Client/Storage"
+- name: area/client/retrieval
   color: 15BBF7
-  description: "Area: Core"
+  description: "Area: Client/Retrieval"
+- name: area/wallet
+  color: 15BBF7
+  description: "Area: Wallet"
+- name: area/payment-channel
+  color: ff6767
+  description: "Area: Payment Channel"
+- name: area/multisig
+  color: fff0ff
+  description: "Area: Multisig"
+- name: area/networking
+  color: 273f8a
+  description: "Area: Networking"
 
 ###
 ### Kinds
