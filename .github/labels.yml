@@ -10,6 +10,13 @@
   description: "Extra attention is needed"
 
 ###
+### Goals
+#
+- name: goal/incentives
+  color: ff004d
+  description: "Incentinet"
+
+###
 ### Areas
 #
 - name: area/ux
