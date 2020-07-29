@@ -138,6 +138,8 @@ func (vm *UnsafeVM) MakeRuntime(ctx context.Context, msg *types.Message, origin 
 	return vm.VM.makeRuntime(ctx, msg, origin, originNonce, usedGas, nac)
 }
 
+type VestedCalculator func(context.Context, abi.ChainEpoch) (abi.TokenAmount, error)
+
 type VM struct {
 	cstate      *state.StateTree
 	base        cid.Cid
@@ -146,11 +148,12 @@ type VM struct {
 	blockHeight abi.ChainEpoch
 	inv         *Invoker
 	rand        Rand
+	vc          VestedCalculator
 
 	Syscalls SyscallBuilder
 }
 
-func NewVM(base cid.Cid, height abi.ChainEpoch, r Rand, cbs blockstore.Blockstore, syscalls SyscallBuilder) (*VM, error) {
+func NewVM(base cid.Cid, height abi.ChainEpoch, r Rand, cbs blockstore.Blockstore, syscalls SyscallBuilder, vestedCalc VestedCalculator) (*VM, error) {
 	buf := bufbstore.NewBufferedBstore(cbs)
 	cst := cbor.NewCborStore(buf)
 	state, err := state.LoadStateTree(cst, base)
@@ -166,6 +169,7 @@ func NewVM(base cid.Cid, height abi.ChainEpoch, r Rand, cbs blockstore.Blockstor
 		blockHeight: height,
 		inv:         NewInvoker(),
 		rand:        r, // TODO: Probably should be a syscall
+		vc:          vestedCalc,
 		Syscalls:    syscalls,
 	}, nil
 }
@@ -660,6 +664,10 @@ func (vm *VM) Invoke(act *types.Actor, rt *Runtime, method abi.MethodNum, params
 
 func (vm *VM) SetInvoker(i *Invoker) {
 	vm.inv = i
+}
+
+func (vm *VM) GetVestedFunds(ctx context.Context) (abi.TokenAmount, error) {
+	return vm.vc(ctx, vm.blockHeight)
 }
 
 func (vm *VM) incrementNonce(addr address.Address) error {

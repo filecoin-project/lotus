@@ -7,7 +7,6 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/vm"
 	big2 "github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
@@ -72,45 +71,4 @@ func (cs *ChainStore) Weight(ctx context.Context, ts *types.TipSet) (types.BigIn
 	out = out.Add(out, eWeight)
 
 	return types.BigInt{Int: out}, nil
-}
-
-// todo: dedupe with state manager
-func (cs *ChainStore) call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error) {
-	bstate := ts.ParentState()
-
-	r := NewChainRand(cs, ts.Cids(), ts.Height())
-
-	vmi, err := vm.NewVM(bstate, ts.Height(), r, cs.bs, cs.vmcalls)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to set up vm: %w", err)
-	}
-
-	if msg.GasLimit == 0 {
-		msg.GasLimit = 10000000000
-	}
-	if msg.GasPrice == types.EmptyInt {
-		msg.GasPrice = types.NewInt(0)
-	}
-	if msg.Value == types.EmptyInt {
-		msg.Value = types.NewInt(0)
-	}
-
-	fromActor, err := vmi.StateTree().GetActor(msg.From)
-	if err != nil {
-		return nil, xerrors.Errorf("call raw get actor: %s", err)
-	}
-
-	msg.Nonce = fromActor.Nonce
-
-	// TODO: maybe just use the invoker directly?
-	// TODO: use signed message length for secp messages
-	ret, err := vmi.ApplyMessage(ctx, msg)
-	if err != nil {
-		return nil, xerrors.Errorf("apply message failed: %w", err)
-	}
-
-	if ret.ActorErr != nil {
-		log.Warnf("chain call failed: %s", ret.ActorErr)
-	}
-	return &ret.MessageReceipt, nil
 }
