@@ -6,6 +6,10 @@
 
 > A finite state machine used for sector storage
 
+## Disclaimer
+
+Please report your issues with regards to storage-fsm at the [lotus issue tracker](https://github.com/filecoin-project/lotus/issues)
+
 ## License
 
 The Filecoin Project is dual-licensed under Apache 2.0 and MIT terms:
