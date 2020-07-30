@@ -145,10 +145,15 @@ func openPartialFile(maxPieceSize abi.PaddedPieceSize, path string) (*partialFil
 			return xerrors.Errorf("getting trailer run iterator: %w", err)
 		}
 
-		lastSet, err := rlepluslazy.LastIndex(it, true)
+		f, err := rlepluslazy.Fill(it)
+		if err != nil {
+			return xerrors.Errorf("filling bitfield: %w", err)
+		}
+		lastSet, err := rlepluslazy.Count(f)
 		if err != nil {
 			return xerrors.Errorf("finding last set byte index: %w", err)
 		}
+
 		if lastSet > uint64(maxPieceSize) {
 			return xerrors.Errorf("last set byte at index higher than sector size: %d > %d", lastSet, maxPieceSize)
 		}
