@@ -381,6 +381,7 @@ func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, spt abi.Re
 
 			best = p.sectorPath(sid, fileType)
 			bestID = si.ID
+			break
 		}
 
 		if best == "" {
