@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/genesis"
 	"github.com/filecoin-project/lotus/node"
@@ -93,9 +94,10 @@ func PrepareBootstrapper(t *TestEnvironment) (*Bootstrapper, error) {
 	}
 
 	genesisTemplate := genesis.Template{
-		Accounts:  genesisActors,
-		Miners:    genesisMiners,
-		Timestamp: uint64(time.Now().Unix()) - uint64(t.IntParam("genesis_timestamp_offset")), // this needs to be in the past
+		Accounts:        genesisActors,
+		Miners:          genesisMiners,
+		Timestamp:       uint64(time.Now().Unix()) - uint64(t.IntParam("genesis_timestamp_offset")),
+		VerifregRootKey: gen.DefaultVerifregRootkeyActor,
 	}
 
 	// dump the genesis block

@@ -231,6 +231,7 @@ Additional to the Filecoin FFI Git submodules, we are also bundling `proof param
 
 * `v1` => initial image
 * `v2` => locking in Lotus commit e21ea53
+* `v3` => locking in Lotus commit d557c40
 
 
 ## Team

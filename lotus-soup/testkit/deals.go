@@ -21,11 +21,14 @@ func StartDeal(ctx context.Context, minerActorAddr address.Address, client api.F
 	}
 
 	deal, err := client.ClientStartDeal(ctx, &api.StartDealParams{
-		Data:              &storagemarket.DataRef{Root: fcid},
+		Data: &storagemarket.DataRef{
+			TransferType: storagemarket.TTGraphsync,
+			Root:         fcid,
+		},
 		Wallet:            addr,
 		Miner:             minerActorAddr,
-		EpochPrice:        types.NewInt(1000000),
-		MinBlocksDuration: 1000,
+		EpochPrice:        types.NewInt(1000),
+		MinBlocksDuration: 640000,
 		FastRetrieval:     fastRetrieval,
 	})
 	if err != nil {

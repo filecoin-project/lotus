@@ -560,7 +560,7 @@ func sectorsList(t *testkit.TestEnvironment, m *testkit.LotusMiner, maddr addres
 	i := SectorInfo{Sectors: list, SectorStates: make(map[abi.SectorNumber]api.SectorInfo, len(list))}
 
 	for _, s := range list {
-		st, err := m.MinerApi.SectorsStatus(ctx, s)
+		st, err := m.MinerApi.SectorsStatus(ctx, s, true)
 		if err != nil {
 			fmt.Fprintf(w, "%d:\tError: %s\n", s, err)
 			continue
@@ -756,7 +756,7 @@ func info(t *testkit.TestEnvironment, m *testkit.LotusMiner, maddr address.Addre
 		"Total": len(sectors),
 	}
 	for _, s := range sectors {
-		st, err := m.MinerApi.SectorsStatus(ctx, s)
+		st, err := m.MinerApi.SectorsStatus(ctx, s, true)
 		if err != nil {
 			return nil, err
 		}

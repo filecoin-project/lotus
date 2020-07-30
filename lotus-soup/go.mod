@@ -8,18 +8,18 @@ require (
 	github.com/davecgh/go-spew v1.1.1
 	github.com/drand/drand v1.0.3-0.20200714175734-29705eaf09d4
 	github.com/filecoin-project/go-address v0.0.2-0.20200504173055-8b6f2fb2b3ef
-	github.com/filecoin-project/go-fil-markets v0.5.1
+	github.com/filecoin-project/go-fil-markets v0.5.2
 	github.com/filecoin-project/go-jsonrpc v0.1.1-0.20200602181149-522144ab4e24
 	github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b
-	github.com/filecoin-project/lotus v0.4.2-0.20200724113535-7410c057c6b2
-	github.com/filecoin-project/sector-storage v0.0.0-20200723200950-ed2e57dde6df
-	github.com/filecoin-project/specs-actors v0.8.1-0.20200724015154-3c690d9b7e1d
-	github.com/filecoin-project/storage-fsm v0.0.0-20200720190000-2cfe2fe3c334
+	github.com/filecoin-project/lotus v0.4.3-0.20200729013254-5df0ee7935e0
+	github.com/filecoin-project/sector-storage v0.0.0-20200727112136-9377cb376d25
+	github.com/filecoin-project/specs-actors v0.8.1-0.20200728182452-1476088f645b
+	github.com/filecoin-project/storage-fsm v0.0.0-20200728185042-33f96f051f20
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/mux v1.7.4
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/influxdata/influxdb v1.8.0 // indirect
-	github.com/ipfs/go-cid v0.0.6
+	github.com/ipfs/go-cid v0.0.7
 	github.com/ipfs/go-datastore v0.4.4
 	github.com/ipfs/go-ipfs-files v0.0.8
 	github.com/ipfs/go-ipld-format v0.2.0
