@@ -286,7 +286,7 @@ type WorkerStruct struct {
 		MoveStorage     func(ctx context.Context, sector abi.SectorID) error                                                                                                                                       `perm:"admin"`
 
 		UnsealPiece func(context.Context, abi.SectorID, storiface.UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) error `perm:"admin"`
-		ReadPiece   func(context.Context, io.Writer, abi.SectorID, storiface.UnpaddedByteIndex, abi.UnpaddedPieceSize) error                   `perm:"admin"`
+		ReadPiece   func(context.Context, io.Writer, abi.SectorID, storiface.UnpaddedByteIndex, abi.UnpaddedPieceSize) (bool, error)           `perm:"admin"`
 
 		Fetch func(context.Context, abi.SectorID, stores.SectorFileType, stores.PathType, stores.AcquireMode) error `perm:"admin"`
 
@@ -1093,7 +1093,7 @@ func (w *WorkerStruct) UnsealPiece(ctx context.Context, id abi.SectorID, index s
 	return w.Internal.UnsealPiece(ctx, id, index, size, randomness, c)
 }
 
-func (w *WorkerStruct) ReadPiece(ctx context.Context, writer io.Writer, id abi.SectorID, index storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) error {
+func (w *WorkerStruct) ReadPiece(ctx context.Context, writer io.Writer, id abi.SectorID, index storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (bool, error) {
 	return w.Internal.ReadPiece(ctx, writer, id, index, size)
 }
 
