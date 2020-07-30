@@ -111,7 +111,7 @@ func (s *seal) unseal(t *testing.T, sb *Sealer, sp *basicfs.Provider, si abi.Sec
 	defer done()
 
 	var b bytes.Buffer
-	err := sb.ReadPiece(context.TODO(), &b, si, 0, 1016)
+	_, err := sb.ReadPiece(context.TODO(), &b, si, 0, 1016)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,7 +130,7 @@ func (s *seal) unseal(t *testing.T, sb *Sealer, sp *basicfs.Provider, si abi.Sec
 	}
 	sd()
 
-	err = sb.ReadPiece(context.TODO(), &b, si, 0, 1016)
+	_, err = sb.ReadPiece(context.TODO(), &b, si, 0, 1016)
 	if err == nil {
 		t.Fatal("HOW?!")
 	}
@@ -141,7 +141,7 @@ func (s *seal) unseal(t *testing.T, sb *Sealer, sp *basicfs.Provider, si abi.Sec
 	}
 
 	b.Reset()
-	err = sb.ReadPiece(context.TODO(), &b, si, 0, 1016)
+	_, err = sb.ReadPiece(context.TODO(), &b, si, 0, 1016)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,14 +150,17 @@ func (s *seal) unseal(t *testing.T, sb *Sealer, sp *basicfs.Provider, si abi.Sec
 	require.Equal(t, expect, b.Bytes())
 
 	b.Reset()
-	err = sb.ReadPiece(context.TODO(), &b, si, 0, 2032)
+	have, err := sb.ReadPiece(context.TODO(), &b, si, 0, 2032)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	expect = append(expect, bytes.Repeat([]byte{0}, 1016)...)
-	if !bytes.Equal(b.Bytes(), expect) {
-		t.Fatal("read wrong bytes")
+	if have {
+		t.Errorf("didn't expect to read things")
+	}
+
+	if b.Len() != 0 {
+		t.Fatal("read bytes")
 	}
 }
 

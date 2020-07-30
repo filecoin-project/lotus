@@ -285,7 +285,7 @@ func (pf *partialFile) HasAllocated(offset storiface.UnpaddedByteIndex, size abi
 		return false, err
 	}
 
-	u, err := rlepluslazy.Union(have, pieceRun(offset.Padded(), size.Padded()))
+	u, err := rlepluslazy.And(have, pieceRun(offset.Padded(), size.Padded()))
 	if err != nil {
 		return false, err
 	}

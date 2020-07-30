@@ -53,7 +53,7 @@ func (t *testWorker) UnsealPiece(ctx context.Context, id abi.SectorID, index sto
 	panic("implement me")
 }
 
-func (t *testWorker) ReadPiece(ctx context.Context, writer io.Writer, id abi.SectorID, index storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) error {
+func (t *testWorker) ReadPiece(ctx context.Context, writer io.Writer, id abi.SectorID, index storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (bool, error) {
 	panic("implement me")
 }
 
