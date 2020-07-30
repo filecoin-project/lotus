@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/urfave/cli/v2"
@@ -45,7 +46,18 @@ var minerSelectMsgsCmd = &cli.Command{
 		}
 
 		var totalGas int64
-		for _, f := range filtered {
+		for i, f := range filtered {
+			from := f.Message.From.String()
+			if len(from) > 8 {
+				from = "..." + from[len(from)-8:]
+			}
+
+			to := f.Message.To.String()
+			if len(to) > 8 {
+				to = "..." + to[len(to)-8:]
+			}
+
+			fmt.Printf("%d: %s -> %s, method %d, gasPrice %s, gasLimit %d, val %s\n", i, from, to, f.Message.Method, f.Message.GasPrice, f.Message.GasLimit, types.FIL(f.Message.Value))
 			totalGas += f.Message.GasLimit
 		}
 
