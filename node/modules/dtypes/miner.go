@@ -1,10 +1,14 @@
 package dtypes
 
 import (
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/ipfs/go-cid"
+	"context"
 	"time"
+
+	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
 type MinerAddress address.Address
@@ -64,3 +68,5 @@ type SetExpectedSealDurationFunc func(time.Duration) error
 // GetExpectedSealDurationFunc is a function which reads from miner
 // too determine how long sealing is expected to take
 type GetExpectedSealDurationFunc func() (time.Duration, error)
+
+type DealFilter func(ctx context.Context, deal storagemarket.MinerDeal) (bool, string, error)
