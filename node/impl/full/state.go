@@ -1152,10 +1152,10 @@ var dealProviderCollateralDen = types.NewInt(100)
 
 // StateDealProviderCollateralBounds returns the min and max collateral a storage provider
 // can issue. It takes the deal size and verified status as parameters.
-func (a *StateAPI) StateDealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, verified bool, tsk types.TipSetKey) (abi.TokenAmount, abi.TokenAmount, error) {
+func (a *StateAPI) StateDealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, verified bool, tsk types.TipSetKey) (api.DealCollateralBounds, error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
-		return big.Zero(), big.Zero(), xerrors.Errorf("loading tipset %s: %w", tsk, err)
+		return api.DealCollateralBounds{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
 	var powerState power.State
@@ -1174,14 +1174,17 @@ func (a *StateAPI) StateDealProviderCollateralBounds(ctx context.Context, size a
 	})
 
 	if err != nil {
-		return big.Zero(), big.Zero(), xerrors.Errorf("getting power and reward actor states: %w")
+		return api.DealCollateralBounds{}, xerrors.Errorf("getting power and reward actor states: %w")
 	}
 
 	circ, err := a.StateManager.CirculatingSupply(ctx, ts)
 	if err != nil {
-		return big.Zero(), big.Zero(), xerrors.Errorf("getting total circulating supply: %w")
+		return api.DealCollateralBounds{}, xerrors.Errorf("getting total circulating supply: %w")
 	}
 
 	min, max := market.DealProviderCollateralBounds(size, verified, powerState.ThisEpochQualityAdjPower, rewardState.ThisEpochBaselinePower, circ)
-	return types.BigDiv(types.BigMul(min, dealProviderCollateralNum), dealProviderCollateralDen), max, nil
+	return api.DealCollateralBounds{
+		Min: types.BigDiv(types.BigMul(min, dealProviderCollateralNum), dealProviderCollateralDen),
+		Max: max,
+	}, nil
 }

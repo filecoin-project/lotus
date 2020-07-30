@@ -96,18 +96,18 @@ func (st *SectorBlocks) writeRef(dealID abi.DealID, sectorID abi.SectorNumber, o
 	return st.keys.Put(DealIDToDsKey(dealID), newRef) // TODO: batch somehow
 }
 
-func (st *SectorBlocks) AddPiece(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, d sealing.DealInfo) (abi.SectorNumber, error) {
+func (st *SectorBlocks) AddPiece(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, d sealing.DealInfo) (abi.SectorNumber, abi.PaddedPieceSize, error) {
 	sn, offset, err := st.Miner.AddPieceToAnySector(ctx, size, r, d)
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 
-	err = st.writeRef(d.DealID, sn, abi.PaddedPieceSize(offset), size)
+	err = st.writeRef(d.DealID, sn, offset, size)
 	if err != nil {
-		return 0, xerrors.Errorf("writeRef: %w", err)
+		return 0, 0, xerrors.Errorf("writeRef: %w", err)
 	}
 
-	return sn, nil
+	return sn, offset, nil
 }
 
 func (st *SectorBlocks) List() (map[uint64][]api.SealedRef, error) {

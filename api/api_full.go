@@ -331,7 +331,7 @@ type FullNode interface {
 	StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*verifreg.DataCap, error)
 	// StateDealProviderCollateralBounds returns the min and max collateral a storage provider
 	// can issue. It takes the deal size and verified status as parameters.
-	StateDealProviderCollateralBounds(context.Context, abi.PaddedPieceSize, bool, types.TipSetKey) (abi.TokenAmount, abi.TokenAmount, error)
+	StateDealProviderCollateralBounds(context.Context, abi.PaddedPieceSize, bool, types.TipSetKey) (DealCollateralBounds, error)
 
 	// MethodGroup: Msig
 	// The Msig methods are used to interact with multisig wallets on the
@@ -636,6 +636,11 @@ type MpoolUpdate struct {
 type ComputeStateOutput struct {
 	Root  cid.Cid
 	Trace []*InvocResult
+}
+
+type DealCollateralBounds struct {
+	Min abi.TokenAmount
+	Max abi.TokenAmount
 }
 
 type MiningBaseInfo struct {

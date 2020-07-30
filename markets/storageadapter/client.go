@@ -239,7 +239,12 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 }
 
 func (c *ClientNodeAdapter) DealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, isVerified bool) (abi.TokenAmount, abi.TokenAmount, error) {
-	return c.StateDealProviderCollateralBounds(ctx, size, isVerified, types.EmptyTSK)
+	bounds, err := c.StateDealProviderCollateralBounds(ctx, size, isVerified, types.EmptyTSK)
+	if err != nil {
+		return abi.TokenAmount{}, abi.TokenAmount{}, err
+	}
+
+	return bounds.Min, bounds.Max, nil
 }
 
 func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealId abi.DealID, cb storagemarket.DealSectorCommittedCallback) error {
