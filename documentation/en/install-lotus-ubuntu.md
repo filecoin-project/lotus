@@ -36,18 +36,19 @@ cd lotus/
 
 ### Build the Lotus binaries from source and install
 
+! **If you are running an AMD platform or if your CPU supports SHA extensions you will want to build the Filecoin proofs natively**
+
 ```sh
 make clean && make all
 sudo make install
 ```
 
+#### Native Filecoin FFI building
+
+```sh
+env env RUSTFLAGS="-C target-cpu=native -g" FFI_BUILD_FROM_SOURCE=1 make clean deps all
+sudo make install
+```
+
+
 After installing Lotus, you can run the `lotus` command directly from your CLI to see usage documentation. Next, you can join the [Lotus Testnet](https://docs.lotu.sh/en+join-testnet).
-
-### Interopnet
-
-If you seek a smaller network to test, you can join the `interopnet`. Please note that this network is meant for developers - it resets much more often, and is much smaller. To join this network, checkout the branch `interopnet` instead of `master` before building and installing;
-```
-git checkout interopnet
-```
-
-Please also note that this documentation (if viewed on the website) might not be up to date with the interopnet. For the latest documentation on the interopnet branch, see the [Lotus Documentation Interopnet Branch on GitHub](https://github.com/filecoin-project/lotus/tree/interopnet/documentation/en)
