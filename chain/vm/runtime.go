@@ -5,9 +5,10 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	samarket "github.com/filecoin-project/specs-actors/actors/builtin/market"
 	gruntime "runtime"
 	"time"
+
+	samarket "github.com/filecoin-project/specs-actors/actors/builtin/market"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -170,6 +171,8 @@ func (rt *Runtime) shimCall(f func() interface{}) (rval []byte, aerr aerrors.Act
 				aerr = ar
 				return
 			}
+			//log.Desugar().WithOptions(zap.AddStacktrace(zapcore.ErrorLevel)).
+			//Sugar().Errorf("spec actors failure: %s", r)
 			log.Errorf("spec actors failure: %s", r)
 			aerr = aerrors.Newf(1, "spec actors failure: %s", r)
 		}
