@@ -10,7 +10,7 @@ The sector-storage project provides a implementation-nonspecific reference imple
 
 ## Disclaimer
 
-Please report your issues with regards to storage-fsm at the [lotus issue tracker](https://github.com/filecoin-project/lotus/issues)
+Please report your issues with regards to sector-storage at the [lotus issue tracker](https://github.com/filecoin-project/lotus/issues)
 
 ## Architecture
 
