@@ -1,6 +1,7 @@
 package blocksync
 
 import (
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/store"
 	"time"
 
@@ -15,7 +16,11 @@ var log = logging.Logger("blocksync")
 
 const BlockSyncProtocolID = "/fil/sync/blk/0.0.1"
 
-const MaxRequestLength = 800
+// FIXME: Bumped from original 800 to this to accommodate `syncFork()`
+//  use of `GetBlocks()`. It seems the expectation of that API is to
+//  fetch any amount of blocks leaving it to the internal logic here
+//  to partition and reassemble the requests if they go above the maximum.
+const MaxRequestLength = uint64(build.ForkLengthThreshold)
 
 // Extracted constants from the code.
 // FIXME: Should be reviewed and confirmed.
