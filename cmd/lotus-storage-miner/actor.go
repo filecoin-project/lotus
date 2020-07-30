@@ -24,7 +24,7 @@ var actorCmd = &cli.Command{
 
 var actorSetAddrsCmd = &cli.Command{
 	Name:  "set-addrs",
-	Usage: "set addresses that your miner can be publically dialed on",
+	Usage: "set addresses that your miner can be publicly dialed on",
 	Flags: []cli.Flag{
 		&cli.Int64Flag{
 			Name:  "gas-limit",
