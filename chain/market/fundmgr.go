@@ -58,7 +58,9 @@ func (fm *FundMgr) EnsureAvailable(ctx context.Context, addr, wallet address.Add
 	fm.available[addr] = avail
 
 	fm.lk.Unlock()
-
+	if toAdd.Equals(types.NewInt(0)){
+		return cid.Undef, nil
+	}
 	var err error
 	params, err := actors.SerializeParams(&addr)
 	if err != nil {
