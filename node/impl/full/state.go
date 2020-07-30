@@ -920,7 +920,7 @@ func (a *StateAPI) MsigGetAvailableBalance(ctx context.Context, addr address.Add
 	return types.BigSub(act.Balance, minBalance), nil
 }
 
-var initialPledgeNum = types.NewInt(103)
+var initialPledgeNum = types.NewInt(110)
 var initialPledgeDen = types.NewInt(100)
 
 func (a *StateAPI) StateMinerPreCommitDepositForPower(ctx context.Context, maddr address.Address, pci miner.SectorPreCommitInfo, tsk types.TipSetKey) (types.BigInt, error) {
