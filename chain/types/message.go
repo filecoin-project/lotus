@@ -106,10 +106,7 @@ func (m *Message) Cid() cid.Cid {
 }
 
 func (m *Message) RequiredFunds() BigInt {
-	return BigAdd(
-		m.Value,
-		BigMul(m.GasPrice, NewInt(uint64(m.GasLimit))),
-	)
+	return BigMul(m.GasPrice, NewInt(uint64(m.GasLimit)))
 }
 
 func (m *Message) VMMessage() *Message {
