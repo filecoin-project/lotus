@@ -237,10 +237,10 @@ func (l *LocalWorker) UnsealPiece(ctx context.Context, sector abi.SectorID, inde
 	return nil
 }
 
-func (l *LocalWorker) ReadPiece(ctx context.Context, writer io.Writer, sector abi.SectorID, index storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) error {
+func (l *LocalWorker) ReadPiece(ctx context.Context, writer io.Writer, sector abi.SectorID, index storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (bool, error) {
 	sb, err := l.sb()
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	return sb.ReadPiece(ctx, writer, sector, index, size)
