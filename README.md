@@ -8,6 +8,10 @@
 
 The sector-storage project provides a implementation-nonspecific reference implementation of the [specs-storage](https://github.com/filecoin-project/specs-storage) interface.
 
+## Disclaimer
+
+Please report your issues with regards to sector-storage at the [lotus issue tracker](https://github.com/filecoin-project/lotus/issues)
+
 ## Architecture
 
 ![high-level architecture](docs/sector-storage.svg)
