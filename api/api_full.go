@@ -329,6 +329,9 @@ type FullNode interface {
 	// Returns nil if there is no entry in the data cap table for the
 	// address.
 	StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*verifreg.DataCap, error)
+	// StateDealProviderCollateralBounds returns the min and max collateral a storage provider
+	// can issue. It takes the deal size and verified status as parameters.
+	StateDealProviderCollateralBounds(context.Context, abi.PaddedPieceSize, bool, types.TipSetKey) (abi.TokenAmount, abi.TokenAmount, error)
 
 	// MethodGroup: Msig
 	// The Msig methods are used to interact with multisig wallets on the

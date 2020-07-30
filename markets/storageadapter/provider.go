@@ -228,6 +228,10 @@ func (n *ProviderNodeAdapter) LocatePieceForDealWithinSector(ctx context.Context
 	return uint64(best.SectorID), uint64(best.Offset.Unpadded()), uint64(best.Size), nil
 }
 
+func (n *ProviderNodeAdapter) DealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, isVerified bool) (abi.TokenAmount, abi.TokenAmount, error) {
+	return n.StateDealProviderCollateralBounds(ctx, size, isVerified, types.EmptyTSK)
+}
+
 func (n *ProviderNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, cb storagemarket.DealSectorCommittedCallback) error {
 	checkFunc := func(ts *types.TipSet) (done bool, more bool, err error) {
 		sd, err := n.StateMarketStorageDeal(ctx, dealID, ts.Key())
