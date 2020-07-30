@@ -371,7 +371,6 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 		}, nil
 	}
 
-	// TODO: We should remove this, we might punish miners for no fault of their own
 	if msg.Nonce != fromActor.Nonce {
 		return &ApplyRet{
 			MessageReceipt: types.MessageReceipt{
@@ -386,15 +385,14 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 	}
 
 	gascost := types.BigMul(types.NewInt(uint64(msg.GasLimit)), msg.GasPrice)
-	totalCost := types.BigAdd(gascost, msg.Value)
-	if fromActor.Balance.LessThan(totalCost) {
+	if fromActor.Balance.LessThan(gascost) {
 		return &ApplyRet{
 			MessageReceipt: types.MessageReceipt{
 				ExitCode: exitcode.SysErrSenderStateInvalid,
 				GasUsed:  0,
 			},
 			ActorErr: aerrors.Newf(exitcode.SysErrSenderStateInvalid,
-				"actor balance less than needed: %s < %s", types.FIL(fromActor.Balance), types.FIL(totalCost)),
+				"actor balance less than needed: %s < %s", types.FIL(fromActor.Balance), types.FIL(gascost)),
 			Penalty:  minerPenaltyAmount,
 			Duration: time.Since(start),
 		}, nil
