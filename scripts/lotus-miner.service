@@ -10,4 +10,4 @@ Environment=GOLOG_FILE="/var/log/lotus/miner.log"
 Environment=GOLOG_LOG_FMT="json"
 
 [Install]
-WantedBy=multiuser.target
+WantedBy=multi-user.target
