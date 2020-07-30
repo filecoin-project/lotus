@@ -2,6 +2,7 @@ package market
 
 import (
 	"context"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"sync"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -52,29 +53,33 @@ func (fm *FundMgr) EnsureAvailable(ctx context.Context, addr, wallet address.Add
 	if avail.LessThan(types.NewInt(0)) {
 		// TODO: some rules around adding more to avoid doing stuff on-chain
 		//  all the time
-		toAdd = types.BigSub(toAdd, avail)
+		toAdd = avail.Neg()
 		avail = types.NewInt(0)
 	}
 	fm.available[addr] = avail
 
 	fm.lk.Unlock()
 
-	var err error
-	params, err := actors.SerializeParams(&addr)
-	if err != nil {
-		return cid.Undef, err
-	}
+	if toAdd.LessThanEqual(big.Zero()) {
+		return cid.Undef, nil
+	} else {
+		var err error
+		params, err := actors.SerializeParams(&addr)
+		if err != nil {
+			return cid.Undef, err
+		}
 
-	smsg, err := fm.mpool.MpoolPushMessage(ctx, &types.Message{
-		To:     builtin.StorageMarketActorAddr,
-		From:   wallet,
-		Value:  toAdd,
-		Method: builtin.MethodsMarket.AddBalance,
-		Params: params,
-	})
-	if err != nil {
-		return cid.Undef, err
-	}
+		smsg, err := fm.mpool.MpoolPushMessage(ctx, &types.Message{
+			To:     builtin.StorageMarketActorAddr,
+			From:   wallet,
+			Value:  toAdd,
+			Method: builtin.MethodsMarket.AddBalance,
+			Params: params,
+		})
+		if err != nil {
+			return cid.Undef, err
+		}
 
-	return smsg.Cid(), nil
+		return smsg.Cid(), nil
+	}
 }
