@@ -480,11 +480,12 @@ func newSectorOnChainInfo(sectorNo abi.SectorNumber, sealed cid.Cid, weight big.
 		DealIDs:      info.DealIDs,
 		Expiration:   info.Expiration,
 
-		Activation:         activation,
-		DealWeight:         weight,
-		VerifiedDealWeight: weight,
-		InitialPledge:      big.Zero(),
-		ExpectedDayReward:  big.Zero(),
+		Activation:            activation,
+		DealWeight:            weight,
+		VerifiedDealWeight:    weight,
+		InitialPledge:         big.Zero(),
+		ExpectedDayReward:     big.Zero(),
+		ExpectedStoragePledge: big.Zero(),
 	}
 }
 
