@@ -10,6 +10,8 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/piecestore"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-multistore"
@@ -215,6 +217,8 @@ type StorageMinerStruct struct {
 		MarketListIncompleteDeals func(ctx context.Context) ([]storagemarket.MinerDeal, error)                                                                                     `perm:"read"`
 		MarketSetAsk              func(ctx context.Context, price types.BigInt, duration abi.ChainEpoch, minPieceSize abi.PaddedPieceSize, maxPieceSize abi.PaddedPieceSize) error `perm:"admin"`
 		MarketGetAsk              func(ctx context.Context) (*storagemarket.SignedStorageAsk, error)                                                                               `perm:"read"`
+		MarketSetRetrievalAsk     func(ctx context.Context, rask *retrievalmarket.Ask) error                                                                                       `perm:"admin"`
+		MarketGetRetrievalAsk     func(ctx context.Context) (*retrievalmarket.Ask, error)                                                                                          `perm:"read"`
 
 		PledgeSector func(context.Context) error `perm:"write"`
 
@@ -263,6 +267,11 @@ type StorageMinerStruct struct {
 		DealsSetPieceCidBlocklist             func(context.Context, []cid.Cid) error                            `perm:"admin"`
 
 		StorageAddLocal func(ctx context.Context, path string) error `perm:"admin"`
+
+		PiecesListPieces   func(ctx context.Context) ([]cid.Cid, error)                               `perm:"read"`
+		PiecesListCidInfos func(ctx context.Context) ([]cid.Cid, error)                               `perm:"read"`
+		PiecesGetPieceInfo func(ctx context.Context, pieceCid cid.Cid) (*piecestore.PieceInfo, error) `perm:"read"`
+		PiecesGetCIDInfo   func(ctx context.Context, payloadCid cid.Cid) (*piecestore.CIDInfo, error) `perm:"read"`
 	}
 }
 
@@ -987,6 +996,14 @@ func (c *StorageMinerStruct) MarketGetAsk(ctx context.Context) (*storagemarket.S
 	return c.Internal.MarketGetAsk(ctx)
 }
 
+func (c *StorageMinerStruct) MarketSetRetrievalAsk(ctx context.Context, rask *retrievalmarket.Ask) error {
+	return c.Internal.MarketSetRetrievalAsk(ctx, rask)
+}
+
+func (c *StorageMinerStruct) MarketGetRetrievalAsk(ctx context.Context) (*retrievalmarket.Ask, error) {
+	return c.Internal.MarketGetRetrievalAsk(ctx)
+}
+
 func (c *StorageMinerStruct) DealsImportData(ctx context.Context, dealPropCid cid.Cid, file string) error {
 	return c.Internal.DealsImportData(ctx, dealPropCid, file)
 }
@@ -1037,6 +1054,22 @@ func (c *StorageMinerStruct) DealsSetConsiderOfflineRetrievalDeals(ctx context.C
 
 func (c *StorageMinerStruct) StorageAddLocal(ctx context.Context, path string) error {
 	return c.Internal.StorageAddLocal(ctx, path)
+}
+
+func (c *StorageMinerStruct) PiecesListPieces(ctx context.Context) ([]cid.Cid, error) {
+	return c.Internal.PiecesListPieces(ctx)
+}
+
+func (c *StorageMinerStruct) PiecesListCidInfos(ctx context.Context) ([]cid.Cid, error) {
+	return c.Internal.PiecesListCidInfos(ctx)
+}
+
+func (c *StorageMinerStruct) PiecesGetPieceInfo(ctx context.Context, pieceCid cid.Cid) (*piecestore.PieceInfo, error) {
+	return c.Internal.PiecesGetPieceInfo(ctx, pieceCid)
+}
+
+func (c *StorageMinerStruct) PiecesGetCIDInfo(ctx context.Context, payloadCid cid.Cid) (*piecestore.CIDInfo, error) {
+	return c.Internal.PiecesGetCIDInfo(ctx, payloadCid)
 }
 
 // WorkerStruct

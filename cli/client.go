@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"text/tabwriter"
 
+	"github.com/fatih/color"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-cidutil/cidenc"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -69,6 +70,7 @@ var clientCmd = &cli.Command{
 		WithCategory("retrieval", clientRetrieveCmd),
 		WithCategory("util", clientCommPCmd),
 		WithCategory("util", clientCarGenCmd),
+		WithCategory("util", clientInfoCmd),
 	},
 }
 
@@ -528,8 +530,7 @@ var clientRetrieveCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 2 {
-			fmt.Println("Usage: retrieve [CID] [outfile]")
-			return nil
+			return ShowHelp(cctx, fmt.Errorf("incorrect number of arguments"))
 		}
 
 		fapi, closer, err := GetFullNodeAPI(cctx)
@@ -731,6 +732,18 @@ var clientQueryAskCmd = &cli.Command{
 var clientListDeals = &cli.Command{
 	Name:  "list-deals",
 	Usage: "List storage market deals",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:    "verbose",
+			Aliases: []string{"v"},
+			Usage:   "print verbose deal details",
+		},
+		&cli.BoolFlag{
+			Name:  "color",
+			Usage: "use color in display output",
+			Value: true,
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -773,24 +786,68 @@ var clientListDeals = &cli.Command{
 			}
 		}
 
+		color := cctx.Bool("color")
+
 		w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
-		fmt.Fprintf(w, "DealCid\tDealId\tProvider\tState\tOn Chain?\tSlashed?\tPieceCID\tSize\tPrice\tDuration\tMessage\n")
-		for _, d := range deals {
-			onChain := "N"
-			if d.OnChainDealState.SectorStartEpoch != -1 {
-				onChain = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SectorStartEpoch)
+		if cctx.Bool("verbose") {
+			fmt.Fprintf(w, "DealCid\tDealId\tProvider\tState\tOn Chain?\tSlashed?\tPieceCID\tSize\tPrice\tDuration\tMessage\n")
+			for _, d := range deals {
+				onChain := "N"
+				if d.OnChainDealState.SectorStartEpoch != -1 {
+					onChain = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SectorStartEpoch)
+				}
+
+				slashed := "N"
+				if d.OnChainDealState.SlashEpoch != -1 {
+					slashed = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SlashEpoch)
+				}
+
+				price := types.FIL(types.BigMul(d.LocalDeal.PricePerEpoch, types.NewInt(d.LocalDeal.Duration)))
+				fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d\t%s\n", d.LocalDeal.ProposalCid, d.LocalDeal.DealID, d.LocalDeal.Provider, dealStateString(color, d.LocalDeal.State), onChain, slashed, d.LocalDeal.PieceCID, types.SizeStr(types.NewInt(d.LocalDeal.Size)), price, d.LocalDeal.Duration, d.LocalDeal.Message)
+			}
+		} else {
+			fmt.Fprintf(w, "DealCid\tDealId\tProvider\tState\tOn Chain?\tSlashed?\tPieceCID\tSize\tPrice\tDuration\n")
+
+			for _, d := range deals {
+				propcid := d.LocalDeal.ProposalCid.String()
+				propcid = "..." + propcid[len(propcid)-8:]
+
+				onChain := "N"
+				if d.OnChainDealState.SectorStartEpoch != -1 {
+					onChain = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SectorStartEpoch)
+				}
+
+				slashed := "N"
+				if d.OnChainDealState.SlashEpoch != -1 {
+					slashed = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SlashEpoch)
+				}
+
+				piece := d.LocalDeal.PieceCID.String()
+				piece = "..." + piece[len(piece)-8:]
+
+				price := types.FIL(types.BigMul(d.LocalDeal.PricePerEpoch, types.NewInt(d.LocalDeal.Duration)))
+				fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d\n", propcid, d.LocalDeal.DealID, d.LocalDeal.Provider, dealStateString(color, d.LocalDeal.State), onChain, slashed, piece, types.SizeStr(types.NewInt(d.LocalDeal.Size)), price, d.LocalDeal.Duration)
 			}
 
-			slashed := "N"
-			if d.OnChainDealState.SlashEpoch != -1 {
-				slashed = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SlashEpoch)
-			}
-
-			price := types.FIL(types.BigMul(d.LocalDeal.PricePerEpoch, types.NewInt(d.LocalDeal.Duration)))
-			fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d\t%s\n", d.LocalDeal.ProposalCid, d.LocalDeal.DealID, d.LocalDeal.Provider, storagemarket.DealStates[d.LocalDeal.State], onChain, slashed, d.LocalDeal.PieceCID, types.SizeStr(types.NewInt(d.LocalDeal.Size)), price, d.LocalDeal.Duration, d.LocalDeal.Message)
 		}
 		return w.Flush()
 	},
+}
+
+func dealStateString(c bool, state storagemarket.StorageDealStatus) string {
+	s := storagemarket.DealStates[state]
+	if !c {
+		return s
+	}
+
+	switch state {
+	case storagemarket.StorageDealError, storagemarket.StorageDealExpired:
+		return color.RedString(s)
+	case storagemarket.StorageDealActive:
+		return color.GreenString(s)
+	default:
+		return s
+	}
 }
 
 type deal struct {
@@ -840,7 +897,54 @@ var clientGetDealCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		fmt.Println(b)
+		fmt.Println(string(b))
+		return nil
+	},
+}
+
+var clientInfoCmd = &cli.Command{
+	Name:  "info",
+	Usage: "Print storage market client information",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "client",
+			Usage: "specify storage client address",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		var addr address.Address
+		if clientFlag := cctx.String("client"); clientFlag != "" {
+			ca, err := address.NewFromString("client")
+			if err != nil {
+				return err
+			}
+
+			addr = ca
+		} else {
+			def, err := api.WalletDefaultAddress(ctx)
+			if err != nil {
+				return err
+			}
+			addr = def
+		}
+
+		balance, err := api.StateMarketBalance(ctx, addr, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Client Market Info:\n")
+
+		fmt.Printf("Locked Funds:\t%s\n", types.FIL(balance.Locked))
+		fmt.Printf("Escrowed Funds:\t%s\n", types.FIL(balance.Escrow))
+
 		return nil
 	},
 }

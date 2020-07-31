@@ -3,16 +3,19 @@ package impl
 import (
 	"context"
 	"encoding/json"
-	"github.com/filecoin-project/sector-storage/fsutil"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
-	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
 	"net/http"
 	"os"
 	"strconv"
 	"time"
 
+	"github.com/filecoin-project/sector-storage/fsutil"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/piecestore"
+	retrievalmarket "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	storagemarket "github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	sectorstorage "github.com/filecoin-project/sector-storage"
@@ -38,11 +41,13 @@ type StorageMinerAPI struct {
 	ProofsConfig *ffiwrapper.Config
 	SectorBlocks *sectorblocks.SectorBlocks
 
-	StorageProvider storagemarket.StorageProvider
-	Miner           *storage.Miner
-	BlockMiner      *miner.Miner
-	Full            api.FullNode
-	StorageMgr      *sectorstorage.Manager `optional:"true"`
+	PieceStore        dtypes.ProviderPieceStore
+	StorageProvider   storagemarket.StorageProvider
+	RetrievalProvider retrievalmarket.RetrievalProvider
+	Miner             *storage.Miner
+	BlockMiner        *miner.Miner
+	Full              api.FullNode
+	StorageMgr        *sectorstorage.Manager `optional:"true"`
 	*stores.Index
 
 	ConsiderOnlineStorageDealsConfigFunc       dtypes.ConsiderOnlineStorageDealsConfigFunc
@@ -298,6 +303,15 @@ func (sm *StorageMinerAPI) MarketGetAsk(ctx context.Context) (*storagemarket.Sig
 	return sm.StorageProvider.GetAsk(), nil
 }
 
+func (sm *StorageMinerAPI) MarketSetRetrievalAsk(ctx context.Context, rask *retrievalmarket.Ask) error {
+	sm.RetrievalProvider.SetAsk(rask)
+	return nil
+}
+
+func (sm *StorageMinerAPI) MarketGetRetrievalAsk(ctx context.Context) (*retrievalmarket.Ask, error) {
+	return sm.RetrievalProvider.GetAsk(), nil
+}
+
 func (sm *StorageMinerAPI) DealsList(ctx context.Context) ([]storagemarket.StorageDeal, error) {
 	return sm.StorageProvider.ListDeals(ctx)
 }
@@ -366,6 +380,31 @@ func (sm *StorageMinerAPI) StorageAddLocal(ctx context.Context, path string) err
 	}
 
 	return sm.StorageMgr.AddLocalStorage(ctx, path)
+}
+
+func (sm *StorageMinerAPI) PiecesListPieces(ctx context.Context) ([]cid.Cid, error) {
+	return sm.PieceStore.ListPieceInfoKeys()
+}
+
+func (sm *StorageMinerAPI) PiecesListCidInfos(ctx context.Context) ([]cid.Cid, error) {
+	return sm.PieceStore.ListCidInfoKeys()
+}
+
+func (sm *StorageMinerAPI) PiecesGetPieceInfo(ctx context.Context, pieceCid cid.Cid) (*piecestore.PieceInfo, error) {
+	pi, err := sm.PieceStore.GetPieceInfo(pieceCid)
+	if err != nil {
+		return nil, err
+	}
+	return &pi, nil
+}
+
+func (sm *StorageMinerAPI) PiecesGetCIDInfo(ctx context.Context, payloadCid cid.Cid) (*piecestore.CIDInfo, error) {
+	ci, err := sm.PieceStore.GetCIDInfo(payloadCid)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ci, nil
 }
 
 var _ api.StorageMiner = &StorageMinerAPI{}
