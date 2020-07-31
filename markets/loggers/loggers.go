@@ -10,20 +10,20 @@ var log = logging.Logger("markets")
 
 // StorageClientLogger logs events from the storage client
 func StorageClientLogger(event storagemarket.ClientEvent, deal storagemarket.ClientDeal) {
-	log.Infof("Storage Event: %s, Proposal CID: %s, State: %s, Message: %s", storagemarket.ClientEvents[event], deal.ProposalCid, storagemarket.DealStates[deal.State], deal.Message)
+	log.Infow("Storage Event", "Name", storagemarket.ClientEvents[event], "Proposal CID", deal.ProposalCid, "State", storagemarket.DealStates[deal.State], "Message", deal.Message)
 }
 
 // StorageProviderLogger logs events from the storage provider
 func StorageProviderLogger(event storagemarket.ProviderEvent, deal storagemarket.MinerDeal) {
-	log.Infof("Storage Event: %s, Proposal CID: %s, State: %s, Message: %s", storagemarket.ProviderEvents[event], deal.ProposalCid, storagemarket.DealStates[deal.State], deal.Message)
+	log.Infow("Storage Event", "Name", storagemarket.ProviderEvents[event], "Proposal CID", deal.ProposalCid, "State", storagemarket.DealStates[deal.State], "Message", deal.Message)
 }
 
 // RetrievalClientLogger logs events from the retrieval client
 func RetrievalClientLogger(event retrievalmarket.ClientEvent, deal retrievalmarket.ClientDealState) {
-	log.Infof("Retrieval Event: %s, Deal ID: %d, State: %s, Message: %s", retrievalmarket.ClientEvents[event], deal.ID, retrievalmarket.DealStatuses[deal.Status], deal.Message)
+	log.Infow("Retrieval Event", "Name", retrievalmarket.ClientEvents[event], "Deal ID", deal.ID, "State", retrievalmarket.DealStatuses[deal.Status], "Message", deal.Message)
 }
 
 // RetrievalProviderLogger logs events from the retrieval provider
 func RetrievalProviderLogger(event retrievalmarket.ProviderEvent, deal retrievalmarket.ProviderDealState) {
-	log.Infof("Retrieval Event: %s, Deal ID: %s, State: %s, Message: %s", retrievalmarket.ProviderEvents[event], deal.Identifier().String(), retrievalmarket.DealStatuses[deal.Status], deal.Message)
+	log.Infow("Retrieval Event", "Name", retrievalmarket.ProviderEvents[event], "Deal ID", deal.ID, "Receiver", deal.Receiver, "State", retrievalmarket.DealStatuses[deal.Status], "Message", deal.Message)
 }
