@@ -78,8 +78,7 @@ func (server *BlockSyncService) HandleStream(stream inet.Stream) {
 }
 
 // Validate and service the request. We return either a protocol
-// response or an internal error. The protocol response may signal
-// a protocol error itself (e.g., invalid request).
+// response or an internal error.
 func (server *BlockSyncService) processRequest(
 	ctx context.Context,
 	req *Request,
@@ -198,7 +197,7 @@ func collectChainSegment(
 				return nil, xerrors.Errorf("gather messages failed: %w", err)
 			}
 
-			// FIXME: Pass the response to the `gatherMessages` and set all this there.
+			// FIXME: Pass the response to `gatherMessages()` and set all this there.
 			bst.Messages = &CompactedMessages{}
 			bst.Messages.Bls = bmsgs
 			bst.Messages.BlsIncludes = bmincl
