@@ -163,11 +163,11 @@ type validatedResponse struct {
 // Decompress messages and form full tipsets with them. The headers
 // need to have been requested as well.
 func (res *validatedResponse) toFullTipSets() ([]*store.FullTipSet) {
-	if len(res.tipsets) == 0 {
+	if len(res.tipsets) == 0 || len(res.tipsets) != len(res.messages) {
 		// This decompression can only be done if both headers and
-		// messages are returned in the response.
-		// FIXME: Do we need to check the messages are present also? The validation
-		//  would seem to imply this is unnecessary, can be added just in case.
+		// messages are returned in the response. (The second check
+		// is already implied by the guarantees of `validatedResponse`,
+		// added here just for completeness.)
 		return nil
 	}
 	ftsList := make([]*store.FullTipSet, len(res.tipsets))
