@@ -71,6 +71,7 @@ type API struct {
 	Imports dtypes.ClientImportMgr
 
 	CombinedBstore dtypes.ClientBlockstore // TODO: try to remove
+	RetrievalStoreMgr dtypes.ClientRetrievalStoreManager
 }
 
 func calcDealExpiration(minDuration uint64, md *miner.DeadlineInfo, startEpoch abi.ChainEpoch) abi.ChainEpoch {
@@ -451,6 +452,16 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 	if err != nil {
 		return xerrors.Errorf("Error in retrieval params: %s", err)
 	}
+
+	store, err := a.RetrievalStoreMgr.NewStore()
+	if err != nil {
+		return xerrors.Errorf("Error setting up new store: %w", err)
+	}
+
+	defer func() {
+		_ = a.RetrievalStoreMgr.ReleaseStore(store)
+	}()
+
 	_, err = a.Retrieval.Retrieve(
 		ctx,
 		order.Root,
@@ -459,7 +470,7 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 		order.MinerPeerID,
 		order.Client,
 		order.Miner,
-		nil) // TODO: pass the store here   somehow
+		store.StoreID())
 
 	if err != nil {
 		return xerrors.Errorf("Retrieve failed: %w", err)
@@ -480,7 +491,7 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 		return nil
 	}
 
-	rdag := merkledag.NewDAGService(blockservice.New(a.RetBstore, offline.Exchange(a.RetBstore)))
+	rdag := store.DAGService()
 
 	if ref.IsCAR {
 		f, err := os.OpenFile(ref.Path, os.O_CREATE|os.O_WRONLY, 0644)
