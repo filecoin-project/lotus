@@ -2,7 +2,6 @@ package modules
 
 import (
 	"context"
-	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/funds"
 	"time"
 
 	"github.com/filecoin-project/go-multistore"
@@ -19,6 +18,7 @@ import (
 	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
+	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/funds"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/requestvalidation"
 	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-statestore"
@@ -64,7 +64,7 @@ func ClientImportMgr(mds dtypes.ClientMultiDstore, ds dtypes.MetadataDS) dtypes.
 
 func ClientBlockstore(imgr dtypes.ClientImportMgr) dtypes.ClientBlockstore {
 	// in most cases this is now unused in normal operations -- however, it's important to preserve for the IPFS use case
-	return blockstore.NewTemporary()
+	return blockstore.WrapIDStore(imgr.Blockstore)
 }
 
 // RegisterClientValidator is an initialization hook that registers the client

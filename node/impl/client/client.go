@@ -34,6 +34,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-multistore"
+	"github.com/filecoin-project/go-padreader"
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
@@ -69,7 +70,7 @@ type API struct {
 
 	Imports dtypes.ClientImportMgr
 
-	RetBstore dtypes.ClientBlockstore // TODO: try to remove
+	CombinedBstore dtypes.ClientBlockstore // TODO: try to remove
 }
 
 func calcDealExpiration(minDuration uint64, md *miner.DeadlineInfo, startEpoch abi.ChainEpoch) abi.ChainEpoch {
@@ -551,6 +552,31 @@ func (a *API) ClientCalcCommP(ctx context.Context, inpath string, miner address.
 	return &api.CommPRet{
 		Root: commP,
 		Size: pieceSize,
+	}, nil
+}
+
+type lenWriter int64
+
+func (w *lenWriter) Write(p []byte) (n int, err error) {
+	*w += lenWriter(len(p))
+	return len(p), nil
+}
+
+func (a *API) ClientDealSize(ctx context.Context, root cid.Cid) (api.DataSize, error) {
+	dag := merkledag.NewDAGService(blockservice.New(a.CombinedBstore, offline.Exchange(a.CombinedBstore)))
+
+	w := lenWriter(0)
+
+	err := car.WriteCar(ctx, dag, []cid.Cid{root}, &w)
+	if err != nil {
+		return api.DataSize{}, err
+	}
+
+	up := padreader.PaddedSize(uint64(w))
+
+	return api.DataSize{
+		PayloadSize: int64(w),
+		PieceSize:   up.Padded(),
 	}, nil
 }
 

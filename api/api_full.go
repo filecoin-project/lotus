@@ -227,6 +227,8 @@ type FullNode interface {
 	ClientCalcCommP(ctx context.Context, inpath string, miner address.Address) (*CommPRet, error)
 	// ClientGenCar generates a CAR file for the specified file.
 	ClientGenCar(ctx context.Context, ref FileRef, outpath string) error
+	// ClientDealSize calculates real deal data size
+	ClientDealSize(ctx context.Context, root cid.Cid) (DataSize, error)
 
 	// ClientUnimport removes references to the specified file from filestore
 	//ClientUnimport(path string)
@@ -664,6 +666,11 @@ type BlockTemplate struct {
 	Epoch            abi.ChainEpoch
 	Timestamp        uint64
 	WinningPoStProof []abi.PoStProof
+}
+
+type DataSize struct {
+	PayloadSize int64
+	PieceSize   abi.PaddedPieceSize
 }
 
 type CommPRet struct {
