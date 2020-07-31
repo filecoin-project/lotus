@@ -55,6 +55,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/blockstore"
+	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/lotus/markets/retrievaladapter"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/config"
@@ -182,6 +183,7 @@ func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api lapi.FullNode, h
 func HandleRetrieval(host host.Host, lc fx.Lifecycle, m retrievalmarket.RetrievalProvider) {
 	lc.Append(fx.Hook{
 		OnStart: func(context.Context) error {
+			m.SubscribeToEvents(marketevents.RetrievalProviderLogger)
 			return m.Start()
 		},
 		OnStop: func(context.Context) error {
@@ -195,6 +197,7 @@ func HandleDeals(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, h sto
 
 	lc.Append(fx.Hook{
 		OnStart: func(context.Context) error {
+			h.SubscribeToEvents(marketevents.StorageProviderLogger)
 			return h.Start(ctx)
 		},
 		OnStop: func(context.Context) error {
@@ -433,12 +436,7 @@ func StorageProvider(minerAddress dtypes.MinerAddress,
 		return true, "", nil
 	})
 
-	p, err := storageimpl.NewProvider(net, namespace.Wrap(ds, datastore.NewKey("/deals/provider")), store, mds, pieceStore, dataTransfer, spn, address.Address(minerAddress), ffiConfig.SealProofType, storedAsk, funds, opt)
-	if err != nil {
-		return p, err
-	}
-
-	return p, nil
+	return storageimpl.NewProvider(net, namespace.Wrap(ds, datastore.NewKey("/deals/provider")), store, mds, pieceStore, dataTransfer, spn, address.Address(minerAddress), ffiConfig.SealProofType, storedAsk, funds, opt)
 }
 
 // RetrievalProvider creates a new retrieval provider attached to the provider blockstore
