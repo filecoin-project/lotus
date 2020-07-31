@@ -120,7 +120,7 @@ func (t *trackedWorker) UnsealPiece(ctx context.Context, id abi.SectorID, index 
 	return t.Worker.UnsealPiece(ctx, id, index, size, randomness, cid)
 }
 
-func (t *trackedWorker) ReadPiece(ctx context.Context, writer io.Writer, id abi.SectorID, index storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) error {
+func (t *trackedWorker) ReadPiece(ctx context.Context, writer io.Writer, id abi.SectorID, index storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (bool, error) {
 	defer t.tracker.track(id, sealtasks.TTReadUnsealed)()
 
 	return t.Worker.ReadPiece(ctx, writer, id, index, size)

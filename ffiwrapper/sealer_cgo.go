@@ -361,10 +361,10 @@ func (sb *Sealer) UnsealPiece(ctx context.Context, sector abi.SectorID, offset s
 	return nil
 }
 
-func (sb *Sealer) ReadPiece(ctx context.Context, writer io.Writer, sector abi.SectorID, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) error {
+func (sb *Sealer) ReadPiece(ctx context.Context, writer io.Writer, sector abi.SectorID, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (bool, error) {
 	path, done, err := sb.sectors.AcquireSector(ctx, sector, stores.FTUnsealed, stores.FTNone, stores.PathStorage)
 	if err != nil {
-		return xerrors.Errorf("acquire unsealed sector path: %w", err)
+		return false, xerrors.Errorf("acquire unsealed sector path: %w", err)
 	}
 	defer done()
 
@@ -372,30 +372,41 @@ func (sb *Sealer) ReadPiece(ctx context.Context, writer io.Writer, sector abi.Se
 
 	pf, err := openPartialFile(maxPieceSize, path.Unsealed)
 	if xerrors.Is(err, os.ErrNotExist) {
-		return xerrors.Errorf("opening partial file: %w", err)
+		return false, xerrors.Errorf("opening partial file: %w", err)
+	}
+
+	ok, err := pf.HasAllocated(offset, size)
+	if err != nil {
+		pf.Close()
+		return false, err
+	}
+
+	if !ok {
+		pf.Close()
+		return false, nil
 	}
 
 	f, err := pf.Reader(offset.Padded(), size.Padded())
 	if err != nil {
 		pf.Close()
-		return xerrors.Errorf("getting partial file reader: %w", err)
+		return false, xerrors.Errorf("getting partial file reader: %w", err)
 	}
 
 	upr, err := fr32.NewUnpadReader(f, size.Padded())
 	if err != nil {
-		return xerrors.Errorf("creating unpadded reader: %w", err)
+		return false, xerrors.Errorf("creating unpadded reader: %w", err)
 	}
 
 	if _, err := io.CopyN(writer, upr, int64(size)); err != nil {
 		pf.Close()
-		return xerrors.Errorf("reading unsealed file: %w", err)
+		return false, xerrors.Errorf("reading unsealed file: %w", err)
 	}
 
 	if err := pf.Close(); err != nil {
-		return xerrors.Errorf("closing partial file: %w", err)
+		return false, xerrors.Errorf("closing partial file: %w", err)
 	}
 
-	return nil
+	return false, nil
 }
 
 func (sb *Sealer) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, pieces []abi.PieceInfo) (out storage.PreCommit1Out, err error) {

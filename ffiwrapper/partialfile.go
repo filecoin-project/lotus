@@ -279,6 +279,25 @@ func (pf *partialFile) Allocated() (rlepluslazy.RunIterator, error) {
 	return pf.allocated.RunIterator()
 }
 
+func (pf *partialFile) HasAllocated(offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (bool, error) {
+	have, err := pf.Allocated()
+	if err != nil {
+		return false, err
+	}
+
+	u, err := rlepluslazy.And(have, pieceRun(offset.Padded(), size.Padded()))
+	if err != nil {
+		return false, err
+	}
+
+	uc, err := rlepluslazy.Count(u)
+	if err != nil {
+		return false, err
+	}
+
+	return abi.PaddedPieceSize(uc) == size.Padded(), nil
+}
+
 func pieceRun(offset storiface.PaddedByteIndex, size abi.PaddedPieceSize) rlepluslazy.RunIterator {
 	var runs []rlepluslazy.Run
 	if offset > 0 {

@@ -34,7 +34,7 @@ type Worker interface {
 
 	Fetch(ctx context.Context, s abi.SectorID, ft stores.SectorFileType, ptype stores.PathType, am stores.AcquireMode) error
 	UnsealPiece(context.Context, abi.SectorID, storiface.UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) error
-	ReadPiece(context.Context, io.Writer, abi.SectorID, storiface.UnpaddedByteIndex, abi.UnpaddedPieceSize) error
+	ReadPiece(context.Context, io.Writer, abi.SectorID, storiface.UnpaddedByteIndex, abi.UnpaddedPieceSize) (bool, error)
 
 	TaskTypes(context.Context) (map[sealtasks.TaskType]struct{}, error)
 
@@ -221,7 +221,28 @@ func (m *Manager) ReadPiece(ctx context.Context, sink io.Writer, sector abi.Sect
 		return xerrors.Errorf("creating unsealPiece selector: %w", err)
 	}
 
-	// TODO: Optimization: don't send unseal to a worker if the requested range is already unsealed
+	var readOk bool
+
+	if len(best) > 0 {
+		// There is unsealed sector, see if we can read from it
+
+		selector, err = newExistingSelector(ctx, m.index, sector, stores.FTUnsealed, false)
+		if err != nil {
+			return xerrors.Errorf("creating readPiece selector: %w", err)
+		}
+
+		err = m.sched.Schedule(ctx, sector, sealtasks.TTReadUnsealed, selector, schedFetch(sector, stores.FTUnsealed, stores.PathSealing, stores.AcquireMove), func(ctx context.Context, w Worker) error {
+			readOk, err = w.ReadPiece(ctx, sink, sector, offset, size)
+			return err
+		})
+		if err != nil {
+			return xerrors.Errorf("reading piece from sealed sector: %w", err)
+		}
+
+		if readOk {
+			return nil
+		}
+	}
 
 	unsealFetch := func(ctx context.Context, worker Worker) error {
 		if err := worker.Fetch(ctx, sector, stores.FTSealed|stores.FTCache, stores.PathSealing, stores.AcquireCopy); err != nil {
@@ -249,10 +270,15 @@ func (m *Manager) ReadPiece(ctx context.Context, sink io.Writer, sector abi.Sect
 	}
 
 	err = m.sched.Schedule(ctx, sector, sealtasks.TTReadUnsealed, selector, schedFetch(sector, stores.FTUnsealed, stores.PathSealing, stores.AcquireMove), func(ctx context.Context, w Worker) error {
-		return w.ReadPiece(ctx, sink, sector, offset, size)
+		readOk, err = w.ReadPiece(ctx, sink, sector, offset, size)
+		return err
 	})
 	if err != nil {
 		return xerrors.Errorf("reading piece from sealed sector: %w", err)
+	}
+
+	if readOk {
+		return xerrors.Errorf("failed to read unsealed piece")
 	}
 
 	return nil
