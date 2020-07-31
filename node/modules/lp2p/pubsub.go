@@ -301,7 +301,7 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 			return nil, err
 		}
 
-		trw := newTracerWrapper(tr)
+		trw := newTracerWrapper(tr, build.BlocksTopic(in.Nn))
 		options = append(options, pubsub.WithEventTracer(trw))
 	}
 
@@ -317,12 +317,27 @@ func HashMsgId(m *pubsub_pb.Message) string {
 	return string(hash[:])
 }
 
-func newTracerWrapper(tr pubsub.EventTracer) pubsub.EventTracer {
-	return &tracerWrapper{tr: tr}
+func newTracerWrapper(tr pubsub.EventTracer, topics ...string) pubsub.EventTracer {
+	topicsMap := make(map[string]struct{})
+	for _, topic := range topics {
+		topicsMap[topic] = struct{}{}
+	}
+	return &tracerWrapper{tr: tr, topics: topicsMap}
 }
 
 type tracerWrapper struct {
-	tr pubsub.EventTracer
+	tr     pubsub.EventTracer
+	topics map[string]struct{}
+}
+
+func (trw *tracerWrapper) traceMessage(topics []string) bool {
+	for _, topic := range topics {
+		_, ok := trw.topics[topic]
+		if ok {
+			return true
+		}
+	}
+	return false
 }
 
 func (trw *tracerWrapper) Trace(evt *pubsub_pb.TraceEvent) {
@@ -330,12 +345,18 @@ func (trw *tracerWrapper) Trace(evt *pubsub_pb.TraceEvent) {
 	// JOIN/LEAVE/GRAFT/PRUNE/PUBLISH/DELIVER. This significantly reduces bandwidth usage and still
 	// collects enough data to recover the state of the mesh and compute message delivery latency
 	// distributions.
+	// Furthermore, we only trace message publication and deliveries for specified topics
+	// (here just the blocks topic).
 	// TODO: hook all events into local metrics for inspection through the dashboard
 	switch evt.GetType() {
 	case pubsub_pb.TraceEvent_PUBLISH_MESSAGE:
-		trw.tr.Trace(evt)
+		if trw.traceMessage(evt.GetPublishMessage().Topics) {
+			trw.tr.Trace(evt)
+		}
 	case pubsub_pb.TraceEvent_DELIVER_MESSAGE:
-		trw.tr.Trace(evt)
+		if trw.traceMessage(evt.GetDeliverMessage().Topics) {
+			trw.tr.Trace(evt)
+		}
 	case pubsub_pb.TraceEvent_JOIN:
 		trw.tr.Trace(evt)
 	case pubsub_pb.TraceEvent_LEAVE:
