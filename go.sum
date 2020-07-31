@@ -270,6 +270,8 @@ github.com/filecoin-project/specs-actors v0.7.3-0.20200716231407-60a2ae96d2e6/go
 github.com/filecoin-project/specs-actors v0.8.2/go.mod h1:Q3ACV5kBLvqPaYbthc/J1lGMJ5OwogmD9pzdtPRMdCw=
 github.com/filecoin-project/specs-actors v0.8.5 h1:NjeaKe/gccookBtBBgJVX80MHYt7toqcAUAiI751x4A=
 github.com/filecoin-project/specs-actors v0.8.5/go.mod h1:Q3ACV5kBLvqPaYbthc/J1lGMJ5OwogmD9pzdtPRMdCw=
+github.com/filecoin-project/specs-actors v0.8.6 h1:EnmrHqpzURzGeSDbeui/snQTVzl/RXoSEgAf5xMREaI=
+github.com/filecoin-project/specs-actors v0.8.6/go.mod h1:QRihI/fadrhWzt7HH6mT32upOdDFpSYCFnr3JEI1L50=
 github.com/filecoin-project/specs-storage v0.1.1-0.20200622113353-88a9704877ea h1:iixjULRQFPn7Q9KlIqfwLJnlAXO10bbkI+xy5GKGdLY=
 github.com/filecoin-project/specs-storage v0.1.1-0.20200622113353-88a9704877ea/go.mod h1:Pr5ntAaxsh+sLG/LYiL4tKzvA83Vk5vLODYhfNwOg7k=
 github.com/filecoin-project/storage-fsm v0.0.0-20200730122205-d423ae90d8d4 h1:Eg7Ia3iRWKMXpS7bU8ufarQJyGsBor7eGgfrAHfn8HA=
@@ -1397,6 +1399,7 @@ github.com/whyrusleeping/cbor-gen v0.0.0-20200710004633-5379fc63235d/go.mod h1:f
 github.com/whyrusleeping/cbor-gen v0.0.0-20200715143311-227fab5a2377/go.mod h1:fgkXqYy7bV2cFeIEOkVTZS/WjXARfBqSH6Q2qHL33hQ=
 github.com/whyrusleeping/cbor-gen v0.0.0-20200723182808-cb5de1c427f5 h1:dJgLhFKggti1Xd7GczL4DetAUyx68RhpCKCfV71ongg=
 github.com/whyrusleeping/cbor-gen v0.0.0-20200723182808-cb5de1c427f5/go.mod h1:fgkXqYy7bV2cFeIEOkVTZS/WjXARfBqSH6Q2qHL33hQ=
+github.com/whyrusleeping/cbor-gen v0.0.0-20200723185710-6a3894a6352b/go.mod h1:fgkXqYy7bV2cFeIEOkVTZS/WjXARfBqSH6Q2qHL33hQ=
 github.com/whyrusleeping/chunker v0.0.0-20181014151217-fe64bd25879f h1:jQa4QT2UP9WYv2nzyawpKMOCl+Z/jW7djv2/J50lj9E=
 github.com/whyrusleeping/chunker v0.0.0-20181014151217-fe64bd25879f/go.mod h1:p9UJB6dDgdPgMJZs7UjUOdulKyRr9fqkS+6JKAInPy8=
 github.com/whyrusleeping/go-ctrlnet v0.0.0-20180313164037-f564fbbdaa95/go.mod h1:SJqKCCPXRfBFCwXjfNT/skfsceF7+MBFLI2OrvuRA7g=

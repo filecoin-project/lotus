@@ -32,7 +32,7 @@ require (
 	github.com/filecoin-project/go-statestore v0.1.0
 	github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b
 	github.com/filecoin-project/sector-storage v0.0.0-20200730203805-7153e1dd05b5
-	github.com/filecoin-project/specs-actors v0.8.5
+	github.com/filecoin-project/specs-actors v0.8.6
 	github.com/filecoin-project/specs-storage v0.1.1-0.20200622113353-88a9704877ea
 	github.com/filecoin-project/storage-fsm v0.0.0-20200730122205-d423ae90d8d4
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
@@ -111,7 +111,7 @@ require (
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/urfave/cli/v2 v2.2.0
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
-	github.com/whyrusleeping/cbor-gen v0.0.0-20200723182808-cb5de1c427f5
+	github.com/whyrusleeping/cbor-gen v0.0.0-20200723185710-6a3894a6352b
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
 	github.com/whyrusleeping/pubsub v0.0.0-20131020042734-02de8aa2db3d
 	github.com/xorcare/golden v0.6.1-0.20191112154924-b87f686d7542
