@@ -2,7 +2,6 @@ package retrievaladapter
 
 import (
 	"context"
-	"fmt"
 	"io"
 
 	"github.com/filecoin-project/go-address"
@@ -12,7 +11,6 @@ import (
 	"github.com/filecoin-project/sector-storage/storiface"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
-	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
