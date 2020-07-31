@@ -131,10 +131,18 @@ type BSTipSet struct {
     Messages *CompactedMessages
 }
 
-// FIXME: Describe format. The `Includes` seem to index
-//  from block to message.
-// FIXME: The logic of this function should belong to it, not
-//  to the consumer.
+// All messages of a single tipset compacted together instead
+// of grouped by block to save space, since there are normally
+// many repeated messages per tipset in different blocks.
+//
+// `BlsIncludes`/`SecpkIncludes` matches `Bls`/`Secpk` messages
+// to blocks in the tipsets with the format:
+// `BlsIncludes[BI][MI]`
+//  * BI: block index in the tipset.
+//  * MI: message index in `Bls` list
+//
+// FIXME: The logic to decompress this structure should belong
+//  to itself, not to the consumer.
 type CompactedMessages struct {
 	Bls    []*types.Message
 	BlsIncludes [][]uint64
