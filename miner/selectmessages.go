@@ -42,6 +42,7 @@ func SelectMessages(ctx context.Context, al ActorLookup, ts *types.TipSet, msgs 
 	start := build.Clock.Now()
 	vmValid := time.Duration(0)
 	getbal := time.Duration(0)
+	guessGasDur := time.Duration(0)
 
 	sort.Slice(msgs, func(i, j int) bool {
 		return msgs[i].Message.Nonce < msgs[j].Message.Nonce
@@ -112,8 +113,14 @@ func SelectMessages(ctx context.Context, al ActorLookup, ts *types.TipSet, msgs 
 		sm.gasLimit = append(sm.gasLimit, sm.lastGasLimit+msg.Message.GasLimit)
 		sm.lastGasLimit = sm.gasLimit[len(sm.gasLimit)-1]
 
-		estimatedReward := big.Mul(types.NewInt(uint64(msg.Message.GasLimit)), msg.Message.GasPrice)
-		// TODO: estimatedReward = estimatedReward * (guessActualGasUse(msg) / msg.GasLimit)
+		guessGasStart := build.Clock.Now()
+		guessedGas, err := GuessGasUsed(ctx, ts.Key(), msg, al)
+		guessGasDur += build.Clock.Since(guessGasStart)
+		if err != nil {
+			log.Infow("failed to guess gas", "to", msg.Message.To, "method", msg.Message.Method, "err", err)
+		}
+
+		estimatedReward := big.Mul(types.NewInt(uint64(guessedGas)), msg.Message.GasPrice)
 
 		sm.gasReward = append(sm.gasReward, big.Add(sm.lastReward, estimatedReward))
 		sm.lastReward = sm.gasReward[len(sm.gasReward)-1]
@@ -203,6 +210,7 @@ func SelectMessages(ctx context.Context, al ActorLookup, ts *types.TipSet, msgs 
 			"duration", sm.Sub(start),
 			"vmvalidate", vmValid,
 			"getbalance", getbal,
+			"guessgas", guessGasDur,
 			"msgs", len(msgs))
 	}
 
