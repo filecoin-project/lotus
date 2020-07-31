@@ -33,7 +33,7 @@ func (t *PaymentInfo) MarshalCBOR(w io.Writer) error {
 	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len("Channel"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, "Channel"); err != nil {
+	if _, err := io.WriteString(w, string("Channel")); err != nil {
 		return err
 	}
 
@@ -49,7 +49,7 @@ func (t *PaymentInfo) MarshalCBOR(w io.Writer) error {
 	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len("ChannelMessage"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, "ChannelMessage"); err != nil {
+	if _, err := io.WriteString(w, string("ChannelMessage")); err != nil {
 		return err
 	}
 
@@ -71,7 +71,7 @@ func (t *PaymentInfo) MarshalCBOR(w io.Writer) error {
 	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len("Vouchers"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, "Vouchers"); err != nil {
+	if _, err := io.WriteString(w, string("Vouchers")); err != nil {
 		return err
 	}
 
@@ -214,7 +214,7 @@ func (t *SealedRef) MarshalCBOR(w io.Writer) error {
 	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len("SectorID"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, "SectorID"); err != nil {
+	if _, err := io.WriteString(w, string("SectorID")); err != nil {
 		return err
 	}
 
@@ -222,7 +222,7 @@ func (t *SealedRef) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.Offset (uint64) (uint64)
+	// t.Offset (abi.PaddedPieceSize) (uint64)
 	if len("Offset") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"Offset\" was too long")
 	}
@@ -230,7 +230,7 @@ func (t *SealedRef) MarshalCBOR(w io.Writer) error {
 	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len("Offset"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, "Offset"); err != nil {
+	if _, err := io.WriteString(w, string("Offset")); err != nil {
 		return err
 	}
 
@@ -246,7 +246,7 @@ func (t *SealedRef) MarshalCBOR(w io.Writer) error {
 	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len("Size"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, "Size"); err != nil {
+	if _, err := io.WriteString(w, string("Size")); err != nil {
 		return err
 	}
 
@@ -305,7 +305,7 @@ func (t *SealedRef) UnmarshalCBOR(r io.Reader) error {
 				t.SectorID = abi.SectorNumber(extra)
 
 			}
-			// t.Offset (uint64) (uint64)
+			// t.Offset (abi.PaddedPieceSize) (uint64)
 		case "Offset":
 
 			{
@@ -362,7 +362,7 @@ func (t *SealedRefs) MarshalCBOR(w io.Writer) error {
 	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len("Refs"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, "Refs"); err != nil {
+	if _, err := io.WriteString(w, string("Refs")); err != nil {
 		return err
 	}
 
@@ -470,7 +470,7 @@ func (t *SealTicket) MarshalCBOR(w io.Writer) error {
 	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len("Value"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, "Value"); err != nil {
+	if _, err := io.WriteString(w, string("Value")); err != nil {
 		return err
 	}
 
@@ -482,7 +482,7 @@ func (t *SealTicket) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := w.Write(t.Value); err != nil {
+	if _, err := w.Write(t.Value[:]); err != nil {
 		return err
 	}
 
@@ -494,7 +494,7 @@ func (t *SealTicket) MarshalCBOR(w io.Writer) error {
 	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len("Epoch"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, "Epoch"); err != nil {
+	if _, err := io.WriteString(w, string("Epoch")); err != nil {
 		return err
 	}
 
@@ -557,8 +557,12 @@ func (t *SealTicket) UnmarshalCBOR(r io.Reader) error {
 			if maj != cbg.MajByteString {
 				return fmt.Errorf("expected byte array")
 			}
-			t.Value = make([]byte, extra)
-			if _, err := io.ReadFull(br, t.Value); err != nil {
+
+			if extra > 0 {
+				t.Value = make([]uint8, extra)
+			}
+
+			if _, err := io.ReadFull(br, t.Value[:]); err != nil {
 				return err
 			}
 			// t.Epoch (abi.ChainEpoch) (int64)
@@ -614,7 +618,7 @@ func (t *SealSeed) MarshalCBOR(w io.Writer) error {
 	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len("Value"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, "Value"); err != nil {
+	if _, err := io.WriteString(w, string("Value")); err != nil {
 		return err
 	}
 
@@ -626,7 +630,7 @@ func (t *SealSeed) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := w.Write(t.Value); err != nil {
+	if _, err := w.Write(t.Value[:]); err != nil {
 		return err
 	}
 
@@ -638,7 +642,7 @@ func (t *SealSeed) MarshalCBOR(w io.Writer) error {
 	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len("Epoch"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, "Epoch"); err != nil {
+	if _, err := io.WriteString(w, string("Epoch")); err != nil {
 		return err
 	}
 
@@ -701,8 +705,12 @@ func (t *SealSeed) UnmarshalCBOR(r io.Reader) error {
 			if maj != cbg.MajByteString {
 				return fmt.Errorf("expected byte array")
 			}
-			t.Value = make([]byte, extra)
-			if _, err := io.ReadFull(br, t.Value); err != nil {
+
+			if extra > 0 {
+				t.Value = make([]uint8, extra)
+			}
+
+			if _, err := io.ReadFull(br, t.Value[:]); err != nil {
 				return err
 			}
 			// t.Epoch (abi.ChainEpoch) (int64)

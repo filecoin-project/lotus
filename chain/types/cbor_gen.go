@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 )
@@ -465,7 +465,7 @@ func (t *Ticket) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := w.Write(t.VRFProof); err != nil {
+	if _, err := w.Write(t.VRFProof[:]); err != nil {
 		return err
 	}
 	return nil
@@ -502,8 +502,12 @@ func (t *Ticket) UnmarshalCBOR(r io.Reader) error {
 	if maj != cbg.MajByteString {
 		return fmt.Errorf("expected byte array")
 	}
-	t.VRFProof = make([]byte, extra)
-	if _, err := io.ReadFull(br, t.VRFProof); err != nil {
+
+	if extra > 0 {
+		t.VRFProof = make([]uint8, extra)
+	}
+
+	if _, err := io.ReadFull(br, t.VRFProof[:]); err != nil {
 		return err
 	}
 	return nil
@@ -542,7 +546,7 @@ func (t *ElectionProof) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := w.Write(t.VRFProof); err != nil {
+	if _, err := w.Write(t.VRFProof[:]); err != nil {
 		return err
 	}
 	return nil
@@ -604,8 +608,12 @@ func (t *ElectionProof) UnmarshalCBOR(r io.Reader) error {
 	if maj != cbg.MajByteString {
 		return fmt.Errorf("expected byte array")
 	}
-	t.VRFProof = make([]byte, extra)
-	if _, err := io.ReadFull(br, t.VRFProof); err != nil {
+
+	if extra > 0 {
+		t.VRFProof = make([]uint8, extra)
+	}
+
+	if _, err := io.ReadFull(br, t.VRFProof[:]); err != nil {
 		return err
 	}
 	return nil
@@ -687,7 +695,7 @@ func (t *Message) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := w.Write(t.Params); err != nil {
+	if _, err := w.Write(t.Params[:]); err != nil {
 		return err
 	}
 	return nil
@@ -838,8 +846,12 @@ func (t *Message) UnmarshalCBOR(r io.Reader) error {
 	if maj != cbg.MajByteString {
 		return fmt.Errorf("expected byte array")
 	}
-	t.Params = make([]byte, extra)
-	if _, err := io.ReadFull(br, t.Params); err != nil {
+
+	if extra > 0 {
+		t.Params = make([]uint8, extra)
+	}
+
+	if _, err := io.ReadFull(br, t.Params[:]); err != nil {
 		return err
 	}
 	return nil
@@ -1119,7 +1131,7 @@ func (t *MessageReceipt) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := w.Write(t.Return); err != nil {
+	if _, err := w.Write(t.Return[:]); err != nil {
 		return err
 	}
 
@@ -1192,8 +1204,12 @@ func (t *MessageReceipt) UnmarshalCBOR(r io.Reader) error {
 	if maj != cbg.MajByteString {
 		return fmt.Errorf("expected byte array")
 	}
-	t.Return = make([]byte, extra)
-	if _, err := io.ReadFull(br, t.Return); err != nil {
+
+	if extra > 0 {
+		t.Return = make([]uint8, extra)
+	}
+
+	if _, err := io.ReadFull(br, t.Return[:]); err != nil {
 		return err
 	}
 	// t.GasUsed (int64) (int64)
@@ -1555,7 +1571,7 @@ func (t *BeaconEntry) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := w.Write(t.Data); err != nil {
+	if _, err := w.Write(t.Data[:]); err != nil {
 		return err
 	}
 	return nil
@@ -1606,8 +1622,12 @@ func (t *BeaconEntry) UnmarshalCBOR(r io.Reader) error {
 	if maj != cbg.MajByteString {
 		return fmt.Errorf("expected byte array")
 	}
-	t.Data = make([]byte, extra)
-	if _, err := io.ReadFull(br, t.Data); err != nil {
+
+	if extra > 0 {
+		t.Data = make([]uint8, extra)
+	}
+
+	if _, err := io.ReadFull(br, t.Data[:]); err != nil {
 		return err
 	}
 	return nil
