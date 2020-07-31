@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -353,13 +352,24 @@ var dealsListCmd = &cli.Command{
 			return err
 		}
 
-		data, err := json.MarshalIndent(deals, "", "  ")
-		if err != nil {
-			return err
+		w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
+
+		_, _ = fmt.Fprintf(w, "ProposalCid\tDealId\tState\tClient\tSize\tPrice\tDuration\n")
+
+		for _, deal := range deals {
+			pc, err := deal.Proposal.Cid()
+			if err != nil {
+				return err
+			}
+			propcid := pc.String()
+			propcid = "..." + propcid[len(propcid)-8:]
+
+			fil := types.FIL(types.BigMul(deal.Proposal.StoragePricePerEpoch, types.NewInt(uint64(deal.Proposal.Duration()))))
+
+			_, _ = fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\t%s\t%s\n", propcid, deal.DealID, storagemarket.DealStates[deal.State], deal.Proposal.Client, units.BytesSize(float64(deal.Proposal.PieceSize)), fil, deal.Proposal.Duration())
 		}
 
-		fmt.Println(string(data))
-		return nil
+		return w.Flush()
 	},
 }
 

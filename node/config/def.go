@@ -41,6 +41,8 @@ type DealmakingConfig struct {
 	ConsiderOfflineRetrievalDeals bool
 	PieceCidBlocklist             []cid.Cid
 	ExpectedSealDuration          Duration
+
+	Filter string
 }
 
 // API contains configs for API endpoint
