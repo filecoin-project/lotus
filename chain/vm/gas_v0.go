@@ -197,7 +197,10 @@ func (pl *pricelistV0) OnVerifyPost(info abi.WindowPoStVerifyInfo) GasCharge {
 		cost = pl.verifyPostLookup[abi.RegisteredPoStProof_StackedDrgWindow512MiBV1]
 	}
 
-	return newGasCharge("OnVerifyPost", cost.flat+int64(len(info.ChallengedSectors))*cost.scale, 0).
+	gasUsed := cost.flat + int64(len(info.ChallengedSectors))*cost.scale
+	gasUsed /= 2 // XXX: this is an artificial discount
+
+	return newGasCharge("OnVerifyPost", gasUsed, 0).
 		WithExtra(map[string]interface{}{
 			"type": sectorSize,
 			"size": len(info.ChallengedSectors),
