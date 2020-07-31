@@ -129,6 +129,7 @@ type FullNodeStruct struct {
 		ClientQueryAsk        func(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.SignedStorageAsk, error)   `perm:"read"`
 		ClientCalcCommP       func(ctx context.Context, inpath string, miner address.Address) (*api.CommPRet, error)                 `perm:"read"`
 		ClientGenCar          func(ctx context.Context, ref api.FileRef, outpath string) error                                       `perm:"write"`
+		ClientDealSize        func(ctx context.Context, root cid.Cid) (api.DataSize, error)                                          `perm:"read"`
 
 		StateNetworkName                   func(context.Context) (dtypes.NetworkName, error)                                                                   `perm:"read"`
 		StateMinerSectors                  func(context.Context, address.Address, *abi.BitField, bool, types.TipSetKey) ([]*api.ChainSectorInfo, error)        `perm:"read"`
@@ -416,6 +417,10 @@ func (c *FullNodeStruct) ClientCalcCommP(ctx context.Context, inpath string, min
 
 func (c *FullNodeStruct) ClientGenCar(ctx context.Context, ref api.FileRef, outpath string) error {
 	return c.Internal.ClientGenCar(ctx, ref, outpath)
+}
+
+func (c *FullNodeStruct) ClientDealSize(ctx context.Context, root cid.Cid) (api.DataSize, error) {
+	return c.Internal.ClientDealSize(ctx, root)
 }
 
 func (c *FullNodeStruct) GasEstimateGasPrice(ctx context.Context, nblocksincl uint64,

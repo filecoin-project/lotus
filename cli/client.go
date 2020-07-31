@@ -3,13 +3,14 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/lotus/build"
 	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"text/tabwriter"
+	"time"
 
+	"github.com/docker/go-units"
 	"github.com/fatih/color"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-cidutil/cidenc"
@@ -22,10 +23,12 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-multistore"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 
 	"github.com/filecoin-project/lotus/api"
 	lapi "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -314,6 +317,10 @@ var clientDealCmd = &cli.Command{
 		&CidBaseFlag,
 	},
 	Action: func(cctx *cli.Context) error {
+		if !cctx.Args().Present() {
+			return interactiveDeal(cctx)
+		}
+
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -433,6 +440,197 @@ var clientDealCmd = &cli.Command{
 
 		return nil
 	},
+}
+
+func interactiveDeal(cctx *cli.Context) error {
+	api, closer, err := GetFullNodeAPI(cctx)
+	if err != nil {
+		return err
+	}
+	defer closer()
+	ctx := ReqContext(cctx)
+
+	state := "import"
+
+	var data cid.Cid
+	var days int
+	var maddr address.Address
+	var ask storagemarket.StorageAsk
+	var epochPrice big.Int
+	var epochs abi.ChainEpoch
+
+	var a address.Address
+	if from := cctx.String("from"); from != "" {
+		faddr, err := address.NewFromString(from)
+		if err != nil {
+			return xerrors.Errorf("failed to parse 'from' address: %w", err)
+		}
+		a = faddr
+	} else {
+		def, err := api.WalletDefaultAddress(ctx)
+		if err != nil {
+			return err
+		}
+		a = def
+	}
+
+	printErr := func(err error) {
+		fmt.Printf("%s %s\n", color.RedString("Error:"), err.Error())
+	}
+
+	for {
+		// TODO: better exit handling
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+
+		switch state {
+		case "import":
+			fmt.Print("Data CID (from " + color.YellowString("lotus client import") + "): ")
+
+			var cidStr string
+			_, err := fmt.Scan(&cidStr)
+			if err != nil {
+				printErr(xerrors.Errorf("reading cid string: %w", err))
+				continue
+			}
+
+			data, err = cid.Parse(cidStr)
+			if err != nil {
+				printErr(xerrors.Errorf("parsing cid string: %w", err))
+				continue
+			}
+
+			state = "duration"
+		case "duration":
+			fmt.Print("Deal duration (days): ")
+
+			_, err := fmt.Scan(&days)
+			if err != nil {
+				printErr(xerrors.Errorf("parsing duration: %w", err))
+				continue
+			}
+
+			state = "miner"
+		case "miner":
+			fmt.Print("Miner Address (t0..): ")
+			var maddrStr string
+
+			_, err := fmt.Scan(&maddrStr)
+			if err != nil {
+				printErr(xerrors.Errorf("reading miner address: %w", err))
+				continue
+			}
+
+			maddr, err = address.NewFromString(maddrStr)
+			if err != nil {
+				printErr(xerrors.Errorf("parsing miner address: %w", err))
+				continue
+			}
+
+			state = "query"
+		case "query":
+			color.Blue(".. querying miner ask")
+
+			mi, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+			if err != nil {
+				printErr(xerrors.Errorf("failed to get peerID for miner: %w", err))
+				state = "miner"
+				continue
+			}
+
+			a, err := api.ClientQueryAsk(ctx, mi.PeerId, maddr)
+			if err != nil {
+				printErr(xerrors.Errorf("failed to query ask: %w", err))
+				state = "miner"
+				continue
+			}
+
+			ask = *a.Ask
+
+			// TODO: run more validation
+			state = "confirm"
+		case "confirm":
+			fromBal, err := api.WalletBalance(ctx, a)
+			if err != nil {
+				return xerrors.Errorf("checking from address balance: %w", err)
+			}
+
+			color.Blue(".. calculating data size\n")
+			ds, err := api.ClientDealSize(ctx, data)
+			if err != nil {
+				return err
+			}
+
+			dur := 24 * time.Hour * time.Duration(days)
+
+			epochs = abi.ChainEpoch(dur / (time.Duration(build.BlockDelaySecs) * time.Second))
+			// TODO: do some more or epochs math (round to miner PP, deal start buffer)
+
+			gib := types.NewInt(1 << 30)
+
+			// TODO: price is based on PaddedPieceSize, right?
+			epochPrice = types.BigDiv(types.BigMul(ask.Price, types.NewInt(uint64(ds.PieceSize))), gib)
+			totalPrice := types.BigMul(epochPrice, types.NewInt(uint64(epochs)))
+
+			fmt.Printf("-----\n")
+			fmt.Printf("Proposing from %s\n", a)
+			fmt.Printf("\tBalance: %s\n", types.FIL(fromBal))
+			fmt.Printf("\n")
+			fmt.Printf("Piece size: %s (Payload size: %s)\n", units.BytesSize(float64(ds.PieceSize)), units.BytesSize(float64(ds.PayloadSize)))
+			fmt.Printf("Duration: %s\n", dur)
+			fmt.Printf("Total price: ~%s (%s per epoch)\n", types.FIL(totalPrice), types.FIL(epochPrice))
+
+			state = "accept"
+		case "accept":
+			fmt.Print("\nAccept (yes/no): ")
+
+			var yn string
+			_, err := fmt.Scan(&yn)
+			if err != nil {
+				return err
+			}
+
+			if yn == "no" {
+				return nil
+			}
+
+			if yn != "yes" {
+				fmt.Println("Type in full 'yes' or 'no'")
+				continue
+			}
+
+			state = "execute"
+		case "execute":
+			color.Blue(".. executing")
+			proposal, err := api.ClientStartDeal(ctx, &lapi.StartDealParams{
+				Data: &storagemarket.DataRef{
+					TransferType: storagemarket.TTGraphsync,
+					Root:         data,
+				},
+				Wallet:            a,
+				Miner:             maddr,
+				EpochPrice:        epochPrice,
+				MinBlocksDuration: uint64(epochs),
+				DealStartEpoch:    abi.ChainEpoch(cctx.Int64("start-epoch")),
+				FastRetrieval:     cctx.Bool("fast-retrieval"),
+				VerifiedDeal:      false, // TODO: Allow setting
+			})
+			if err != nil {
+				return err
+			}
+
+			encoder, err := GetCidEncoder(cctx)
+			if err != nil {
+				return err
+			}
+
+			fmt.Println("\nDeal CID:", color.GreenString(encoder.Encode(*proposal)))
+			return nil
+		default:
+			return xerrors.Errorf("unknown state: %s", state)
+		}
+	}
 }
 
 var clientFindCmd = &cli.Command{
