@@ -73,7 +73,7 @@ var runCmd = &cli.Command{
 		sync := syncer.NewSyncer(db, api)
 		sync.Start(ctx)
 
-		proc := processor.NewProcessor(db, api, maxBatch)
+		proc := processor.NewProcessor(ctx, db, api, maxBatch)
 		proc.Start(ctx)
 
 		sched := scheduler.PrepareScheduler(db)
