@@ -23,7 +23,6 @@ import (
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
-	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -31,6 +30,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
+	blst "github.com/supranational/blst/bindings/go"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -44,6 +44,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/vm"
 	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/lib/sigs"
+	"github.com/filecoin-project/lotus/lib/sigs/bls"
 	"github.com/filecoin-project/lotus/metrics"
 )
 
@@ -938,7 +939,7 @@ func (syncer *Syncer) VerifyWinningPoStProof(ctx context.Context, h *types.Block
 func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock, baseTs *types.TipSet) error {
 	{
 		var sigCids []cid.Cid // this is what we get for people not wanting the marshalcbor method on the cid type
-		var pubks []bls.PublicKey
+		var pubks [][]byte
 
 		for _, m := range b.BlsMessages {
 			sigCids = append(sigCids, m.Cid())
@@ -1073,28 +1074,27 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 	return nil
 }
 
-func (syncer *Syncer) verifyBlsAggregate(ctx context.Context, sig *crypto.Signature, msgs []cid.Cid, pubks []bls.PublicKey) error {
+func (syncer *Syncer) verifyBlsAggregate(ctx context.Context, sig *crypto.Signature, msgs []cid.Cid, pubks [][]byte) error {
 	_, span := trace.StartSpan(ctx, "syncer.verifyBlsAggregate")
 	defer span.End()
 	span.AddAttributes(
 		trace.Int64Attribute("msgCount", int64(len(msgs))),
 	)
 
+	msgsS := make([]blst.Message, len(msgs))
+	for i := 0; i < len(msgs); i++ {
+		msgsS[i] = msgs[i].Bytes()
+	}
+
 	if len(msgs) == 0 {
 		return nil
 	}
 
-	bmsgs := make([]bls.Message, len(msgs))
-	for i, m := range msgs {
-		bmsgs[i] = m.Bytes()
-	}
-
-	var bsig bls.Signature
-	copy(bsig[:], sig.Data)
-	if !bls.HashVerify(&bsig, bmsgs, pubks) {
+	valid := new(bls.Signature).AggregateVerifyCompressed(sig.Data, pubks,
+		msgsS, []byte(bls.DST))
+	if !valid {
 		return xerrors.New("bls aggregate signature failed to verify")
 	}
-
 	return nil
 }
 

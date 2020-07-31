@@ -1,7 +1,9 @@
 package cli
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 
@@ -55,6 +57,12 @@ var netPeers = &cli.Command{
 var netScores = &cli.Command{
 	Name:  "scores",
 	Usage: "Print peers' pubsub scores",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "extended",
+			Usage: "print extended peer scores in json",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetAPI(cctx)
 		if err != nil {
@@ -67,8 +75,18 @@ var netScores = &cli.Command{
 			return err
 		}
 
-		for _, peer := range scores {
-			fmt.Printf("%s, %f\n", peer.ID, peer.Score)
+		if cctx.Bool("extended") {
+			enc := json.NewEncoder(os.Stdout)
+			for _, peer := range scores {
+				err := enc.Encode(peer)
+				if err != nil {
+					return err
+				}
+			}
+		} else {
+			for _, peer := range scores {
+				fmt.Printf("%s, %f\n", peer.ID, peer.Score.Score)
+			}
 		}
 
 		return nil
