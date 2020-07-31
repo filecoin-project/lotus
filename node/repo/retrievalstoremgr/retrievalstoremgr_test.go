@@ -55,7 +55,8 @@ func TestMultistoreRetrievalStoreManager(t *testing.T) {
 	})
 
 	t.Run("delete stores", func(t *testing.T) {
-		retrievalStoreMgr.ReleaseStore(stores[4])
+		err := retrievalStoreMgr.ReleaseStore(stores[4])
+		require.NoError(t, err)
 		storeIndexes := multiDS.List()
 		require.Len(t, storeIndexes, 4)
 
@@ -105,7 +106,8 @@ func TestBlockstoreRetrievalStoreManager(t *testing.T) {
 	})
 
 	t.Run("release store has no effect", func(t *testing.T) {
-		retrievalStoreMgr.ReleaseStore(stores[4])
+		err := retrievalStoreMgr.ReleaseStore(stores[4])
+		require.NoError(t, err)
 		qres, err := ds.Query(query.Query{KeysOnly: true})
 		require.NoError(t, err)
 		all, err := qres.Rest()
