@@ -153,27 +153,28 @@ type CompactedMessages struct {
 
 // Response that has been validated according to the protocol
 // and can be safely accessed.
-// FIXME: Maybe rename to verified, keep consistent naming.
-type ValidatedResponse struct {
-	Tipsets []*types.TipSet
-	Messages []*CompactedMessages
+type validatedResponse struct {
+	tipsets  []*types.TipSet
+	// List of all messages per tipset (grouped by tipset,
+	// not by block, hence a single index like `tipsets`).
+	messages []*CompactedMessages
 }
 
 // Decompress messages and form full tipsets with them. The headers
 // need to have been requested as well.
-func (res *ValidatedResponse) toFullTipSets() ([]*store.FullTipSet) {
-	if len(res.Tipsets) == 0 {
+func (res *validatedResponse) toFullTipSets() ([]*store.FullTipSet) {
+	if len(res.tipsets) == 0 {
 		// This decompression can only be done if both headers and
 		// messages are returned in the response.
 		// FIXME: Do we need to check the messages are present also? The validation
 		//  would seem to imply this is unnecessary, can be added just in case.
 		return nil
 	}
-	ftsList := make([]*store.FullTipSet, len(res.Tipsets))
-	for tipsetIdx := range res.Tipsets {
+	ftsList := make([]*store.FullTipSet, len(res.tipsets))
+	for tipsetIdx := range res.tipsets {
 		fts := &store.FullTipSet{} // FIXME: We should use the `NewFullTipSet` API.
-		msgs := res.Messages[tipsetIdx]
-		for blockIdx, b := range res.Tipsets[tipsetIdx].Blocks() {
+		msgs := res.messages[tipsetIdx]
+		for blockIdx, b := range res.tipsets[tipsetIdx].Blocks() {
 			fb := &types.FullBlock{
 				Header: b,
 			}

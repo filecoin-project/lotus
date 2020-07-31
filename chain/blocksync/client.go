@@ -48,7 +48,7 @@ func NewClient(
 // Main logic of the client request service. The provided `Request`
 // is sent to the `singlePeer` if one is indicated or to all available
 // ones otherwise. The response is processed and validated according
-// to the `Request` options. Either a `ValidatedResponse` is returned
+// to the `Request` options. Either a `validatedResponse` is returned
 // (which can be safely accessed), or an `error` that may represent
 // either a response error status, a failed validation or an internal
 // error.
@@ -66,7 +66,7 @@ func (client *BlockSync) doRequest(
 	ctx context.Context,
 	req *Request,
 	singlePeer *peer.ID,
-) (*ValidatedResponse, error) {
+) (*validatedResponse, error) {
 		// Validate request.
 		if req.Length == 0 {
 			return nil, xerrors.Errorf("invalid request of length 0")
@@ -138,7 +138,7 @@ func (client *BlockSync) doRequest(
 
 // Process and validate response. Check the status and that the information
 // returned matches the request (and its integrity). Extract the information
-// into a `ValidatedResponse` for the external-facing APIs to select what they
+// into a `validatedResponse` for the external-facing APIs to select what they
 // want.
 //
 // We are conflating in the single error returned both status and validation
@@ -148,7 +148,7 @@ func (client *BlockSync) processResponse(
 	req *Request,
 	res *Response,
 	// FIXME: Add the `peer` as argument once we implement penalties.
-) (*ValidatedResponse, error) {
+) (*validatedResponse, error) {
 	err := res.statusToError()
 	if err != nil {
 		return nil, xerrors.Errorf("status error: %s", err)
@@ -175,25 +175,25 @@ func (client *BlockSync) processResponse(
 		return nil, xerrors.Errorf("got less than requested without a proper status: %s", res.Status)
 	}
 
-	validRes := &ValidatedResponse{}
+	validRes := &validatedResponse{}
 	if options.IncludeHeaders {
 		// Check for valid block sets and extract them into `TipSet`s.
-		validRes.Tipsets = make([]*types.TipSet, resLength)
+		validRes.tipsets = make([]*types.TipSet, resLength)
 		for i := 0; i < resLength; i++ {
-			validRes.Tipsets[i], err = types.NewTipSet(res.Chain[i].Blocks)
+			validRes.tipsets[i], err = types.NewTipSet(res.Chain[i].Blocks)
 			if err != nil {
 				return nil, xerrors.Errorf("invalid tipset blocks at height (head - %d): %w", i, err)
 			}
 		}
 
 		// Check that the returned head matches the one requested.
-		if !types.CidArrsEqual(validRes.Tipsets[0].Cids(), req.Head) {
+		if !types.CidArrsEqual(validRes.tipsets[0].Cids(), req.Head) {
 			return nil, xerrors.Errorf("returned chain head does not match request")
 		}
 
 		// Check `TipSet` are connected (valid chain).
-		for i := 0; i < len(validRes.Tipsets) - 1; i++ {
-			if validRes.Tipsets[i].IsChildOf(validRes.Tipsets[i+1]) == false {
+		for i := 0; i < len(validRes.tipsets) - 1; i++ {
+			if validRes.tipsets[i].IsChildOf(validRes.tipsets[i+1]) == false {
 				return nil, fmt.Errorf("tipsets are not connected at height (head - %d)/(head - %d)",
 					i, i+1)
 				// FIXME: Maybe give more information here, like CIDs.
@@ -202,12 +202,12 @@ func (client *BlockSync) processResponse(
 	}
 
 	if options.IncludeMessages {
-		validRes.Messages = make([]*CompactedMessages, resLength)
+		validRes.messages = make([]*CompactedMessages, resLength)
 		for i := 0; i < resLength; i++ {
 			if res.Chain[i].Messages == nil {
 				return nil, xerrors.Errorf("no messages included for tipset at height (head - %d): %w", i)
 			}
-			validRes.Messages[i] = res.Chain[i].Messages
+			validRes.messages[i] = res.Chain[i].Messages
 		}
 
 		if options.IncludeHeaders {
@@ -276,7 +276,7 @@ func (client *BlockSync) GetBlocks(
 		return nil, err
 	}
 
-	return validRes.Tipsets, nil
+	return validRes.tipsets, nil
 }
 
 func (client *BlockSync) GetFullTipSet(
@@ -321,7 +321,7 @@ func (client *BlockSync) GetChainMessages(
 		return nil, err
 	}
 
-	return validRes.Messages, nil
+	return validRes.messages, nil
 }
 
 // Send a request to a peer. Write request in the stream and read the
