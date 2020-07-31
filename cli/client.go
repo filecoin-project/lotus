@@ -84,6 +84,11 @@ var clientImportCmd = &cli.Command{
 		}
 		defer closer()
 		ctx := ReqContext(cctx)
+
+		if cctx.NArg() != 1 {
+			return xerrors.New("expected input path as the only arg")
+		}
+
 		absPath, err := filepath.Abs(cctx.Args().First())
 		if err != nil {
 			return err
@@ -385,8 +390,8 @@ var clientRetrieveCmd = &cli.Command{
 	ArgsUsage: "[dataCid outputPath]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:  "address",
-			Usage: "address to use for transactions",
+			Name:  "from",
+			Usage: "address to send transactions from",
 		},
 		&cli.BoolFlag{
 			Name:  "car",
@@ -411,8 +416,8 @@ var clientRetrieveCmd = &cli.Command{
 		ctx := ReqContext(cctx)
 
 		var payer address.Address
-		if cctx.String("address") != "" {
-			payer, err = address.NewFromString(cctx.String("address"))
+		if cctx.String("from") != "" {
+			payer, err = address.NewFromString(cctx.String("from"))
 		} else {
 			payer, err = fapi.WalletDefaultAddress(ctx)
 		}
@@ -498,7 +503,7 @@ var clientQueryAskCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 1 {
-			fmt.Println("Usage: query-ask [address]")
+			fmt.Println("Usage: query-ask [minerAddress]")
 			return nil
 		}
 

@@ -19,30 +19,14 @@ import (
 	logging "github.com/ipfs/go-log"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
 var log = logging.Logger("drand")
-
-var drandServers = []string{
-	"https://pl-eu.testnet.drand.sh",
-	"https://pl-us.testnet.drand.sh",
-	"https://pl-sin.testnet.drand.sh",
-}
-
-var drandChain *dchain.Info
-
-func init() {
-
-	var err error
-	drandChain, err = dchain.InfoFromJSON(bytes.NewReader([]byte(build.DrandChain)))
-	if err != nil {
-		panic("could not unmarshal chain info: " + err.Error())
-	}
-}
 
 type drandPeer struct {
 	addr string
@@ -57,6 +41,13 @@ func (dp *drandPeer) IsTLS() bool {
 	return dp.tls
 }
 
+// DrandBeacon connects Lotus with a drand network in order to provide
+// randomness to the system in a way that's aligned with Filecoin rounds/epochs.
+//
+// We connect to drand peers via their public HTTP endpoints. The peers are
+// enumerated in the drandServers variable.
+//
+// The root trust for the Drand chain is configured from build.DrandChain.
 type DrandBeacon struct {
 	client dclient.Client
 
@@ -73,16 +64,21 @@ type DrandBeacon struct {
 	localCache map[uint64]types.BeaconEntry
 }
 
-func NewDrandBeacon(genesisTs, interval uint64, ps *pubsub.PubSub) (*DrandBeacon, error) {
+func NewDrandBeacon(genesisTs, interval uint64, ps *pubsub.PubSub, config dtypes.DrandConfig) (*DrandBeacon, error) {
 	if genesisTs == 0 {
 		panic("what are you doing this cant be zero")
+	}
+
+	drandChain, err := dchain.InfoFromJSON(bytes.NewReader([]byte(config.ChainInfoJSON)))
+	if err != nil {
+		return nil, xerrors.Errorf("unable to unmarshal drand chain info: %w", err)
 	}
 
 	dlogger := dlog.NewKitLoggerFrom(kzap.NewZapSugarLogger(
 		log.SugaredLogger.Desugar(), zapcore.InfoLevel))
 
 	var clients []dclient.Client
-	for _, url := range drandServers {
+	for _, url := range config.Servers {
 		hc, err := hclient.NewWithInfo(url, drandChain, nil)
 		if err != nil {
 			return nil, xerrors.Errorf("could not create http drand client: %w", err)

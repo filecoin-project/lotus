@@ -359,10 +359,8 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, metadata string,
 		}*/
 	}
 
-	log.Infof("Setting next sector ID to %d", maxSectorID+1)
-
 	buf := make([]byte, binary.MaxVarintLen64)
-	size := binary.PutUvarint(buf, uint64(maxSectorID+1))
+	size := binary.PutUvarint(buf, uint64(maxSectorID))
 	return mds.Put(datastore.NewKey(modules.StorageCounterDSPrefix), buf[:size])
 }
 

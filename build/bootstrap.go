@@ -13,6 +13,10 @@ import (
 )
 
 func BuiltinBootstrap() ([]peer.AddrInfo, error) {
+	if DisableBuiltinAssets {
+		return nil, nil
+	}
+
 	var out []peer.AddrInfo
 
 	b := rice.MustFindBox("bootstrap")

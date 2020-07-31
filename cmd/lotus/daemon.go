@@ -32,6 +32,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/vm"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/peermgr"
+	"github.com/filecoin-project/lotus/lib/ulimit"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/modules"
@@ -113,6 +114,11 @@ var DaemonCmd = &cli.Command{
 			Name:  "profile",
 			Usage: "specify type of node",
 		},
+		&cli.BoolFlag{
+			Name:  "manage-fdlimit",
+			Usage: "manage open file limit",
+			Value: true,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		err := runmetrics.Enable(runmetrics.RunMetricOptions{
@@ -122,6 +128,13 @@ var DaemonCmd = &cli.Command{
 		if err != nil {
 			return xerrors.Errorf("enabling runtime metrics: %w", err)
 		}
+
+		if cctx.Bool("manage-fdlimit") {
+			if _, _, err := ulimit.ManageFdLimit(); err != nil {
+				log.Errorf("setting file descriptor limit: %s", err)
+			}
+		}
+
 		if prof := cctx.String("pprof"); prof != "" {
 			profile, err := os.Create(prof)
 			if err != nil {

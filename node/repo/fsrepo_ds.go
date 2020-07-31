@@ -1,16 +1,18 @@
 package repo
 
 import (
+	"os"
+	"path/filepath"
+
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/mount"
 	"github.com/ipfs/go-datastore/namespace"
 	"golang.org/x/xerrors"
-	"os"
-	"path/filepath"
 
+	dgbadger "github.com/dgraph-io/badger/v2"
 	badger "github.com/ipfs/go-ds-badger2"
 	levelds "github.com/ipfs/go-ds-leveldb"
-	"github.com/ipfs/go-ds-measure"
+	measure "github.com/ipfs/go-ds-measure"
 	ldbopts "github.com/syndtr/goleveldb/leveldb/opt"
 )
 
@@ -25,7 +27,8 @@ var fsDatastores = map[string]func(path string) (datastore.Batching, error){
 
 func badgerDs(path string) (datastore.Batching, error) {
 	opts := badger.DefaultOptions
-	opts.Truncate = true
+	opts.Options = dgbadger.DefaultOptions("").WithTruncate(true).
+		WithValueThreshold(1 << 10)
 
 	return badger.NewDatastore(path, &opts)
 }

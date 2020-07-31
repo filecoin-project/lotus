@@ -15,6 +15,15 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-amt-ipld/v2"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	samsig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/beacon"
@@ -27,14 +36,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/lib/bufbstore"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/market"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	samsig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 )
 
 type StateAPI struct {
@@ -300,12 +301,17 @@ func (a *StateAPI) StateAccountKey(ctx context.Context, addr address.Address, ts
 	return a.StateManager.ResolveToKeyAddress(ctx, addr, ts)
 }
 
-func (a *StateAPI) StateReadState(ctx context.Context, act *types.Actor, tsk types.TipSetKey) (*api.ActorState, error) {
+func (a *StateAPI) StateReadState(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*api.ActorState, error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 	state, err := a.stateForTs(ctx, ts)
+	if err != nil {
+		return nil, err
+	}
+
+	act, err := state.GetActor(actor)
 	if err != nil {
 		return nil, err
 	}
@@ -355,9 +361,32 @@ func (a *StateAPI) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uin
 		return nil, err
 	}
 
+	var returndec interface{}
+	if recpt.ExitCode == 0 && len(recpt.Return) > 0 {
+		cmsg, err := a.Chain.GetCMessage(msg)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to load message after successful receipt search: %w", err)
+		}
+
+		vmsg := cmsg.VMMessage()
+
+		t, err := stmgr.GetReturnType(ctx, a.StateManager, vmsg.To, vmsg.Method, ts)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to get return type: %w", err)
+		}
+
+		if err := t.UnmarshalCBOR(bytes.NewReader(recpt.Return)); err != nil {
+			return nil, err
+		}
+
+		returndec = t
+	}
+
 	return &api.MsgLookup{
-		Receipt: *recpt,
-		TipSet:  ts,
+		Receipt:   *recpt,
+		ReturnDec: returndec,
+		TipSet:    ts.Key(),
+		Height:    ts.Height(),
 	}, nil
 }
 
@@ -370,7 +399,8 @@ func (a *StateAPI) StateSearchMsg(ctx context.Context, msg cid.Cid) (*api.MsgLoo
 	if ts != nil {
 		return &api.MsgLookup{
 			Receipt: *recpt,
-			TipSet:  ts,
+			TipSet:  ts.Key(),
+			Height:  ts.Height(),
 		}, nil
 	} else {
 		return nil, nil
@@ -425,7 +455,7 @@ func (a *StateAPI) StateMarketParticipants(ctx context.Context, tsk types.TipSet
 	if err != nil {
 		return nil, err
 	}
-	locked, err := hamt.LoadNode(ctx, cst, state.EscrowTable, hamt.UseTreeBitWidth(5))
+	locked, err := hamt.LoadNode(ctx, cst, state.LockedTable, hamt.UseTreeBitWidth(5))
 	if err != nil {
 		return nil, err
 	}
@@ -489,13 +519,11 @@ func (a *StateAPI) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (m
 
 		var s market.DealState
 		if err := sa.Get(ctx, i, &s); err != nil {
-			if err != nil {
-				if _, ok := err.(*amt.ErrNotFound); !ok {
-					return xerrors.Errorf("failed to get state for deal in proposals array: %w", err)
-				}
-
-				s.SectorStartEpoch = -1
+			if _, ok := err.(*amt.ErrNotFound); !ok {
+				return xerrors.Errorf("failed to get state for deal in proposals array: %w", err)
 			}
+
+			s.SectorStartEpoch = -1
 		}
 		out[strconv.FormatInt(int64(i), 10)] = api.MarketDeal{
 			Proposal: d,

@@ -17,6 +17,10 @@ type Response struct {
 	Err   error
 }
 
+// RandomBeacon represents a system that provides randomness to Lotus.
+// Other components interrogate the RandomBeacon to acquire randomness that's
+// valid for a specific chain epoch. Also to verify beacon entries that have
+// been posted on chain.
 type RandomBeacon interface {
 	Entry(context.Context, uint64) <-chan Response
 	VerifyEntry(types.BeaconEntry, types.BeaconEntry) error

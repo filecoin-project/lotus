@@ -41,7 +41,7 @@ func RunHello(mctx helpers.MetricsCtx, lc fx.Lifecycle, h host.Host, svc *hello.
 			pic := evt.(event.EvtPeerIdentificationCompleted)
 			go func() {
 				if err := svc.SayHello(helpers.LifecycleCtx(mctx, lc), pic.Peer); err != nil {
-					log.Warnw("failed to say hello", "error", err)
+					log.Warnw("failed to say hello", "error", err, "peer", pic.Peer)
 					return
 				}
 			}()
@@ -108,8 +108,13 @@ func RetrievalResolver(l *discovery.Local) retrievalmarket.PeerResolver {
 type RandomBeaconParams struct {
 	fx.In
 
-	PubSub *pubsub.PubSub `optional:"true"`
-	Cs     *store.ChainStore
+	PubSub      *pubsub.PubSub `optional:"true"`
+	Cs          *store.ChainStore
+	DrandConfig dtypes.DrandConfig
+}
+
+func BuiltinDrandConfig() dtypes.DrandConfig {
+	return build.DrandConfig
 }
 
 func RandomBeacon(p RandomBeaconParams, _ dtypes.AfterGenesisSet) (beacon.RandomBeacon, error) {
@@ -118,6 +123,6 @@ func RandomBeacon(p RandomBeaconParams, _ dtypes.AfterGenesisSet) (beacon.Random
 		return nil, err
 	}
 
-	//return beacon.NewMockBeacon(build.BlockDelay * time.Second)
-	return drand.NewDrandBeacon(gen.Timestamp, build.BlockDelay, p.PubSub)
+	//return beacon.NewMockBeacon(build.BlockDelaySecs * time.Second)
+	return drand.NewDrandBeacon(gen.Timestamp, build.BlockDelaySecs, p.PubSub, p.DrandConfig)
 }

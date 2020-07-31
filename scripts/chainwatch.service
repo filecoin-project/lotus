@@ -1,0 +1,15 @@
+[Unit]
+Description=Chainwatch
+After=lotus-daemon.service
+Requires=lotus-daemon.service
+
+[Service]
+Environment=GOLOG_FILE="/var/log/lotus/chainwatch.log"
+Environment=GOLOG_LOG_FMT="json"
+Environment=LOTUS_DB=""
+Environment=LOTUS_PATH="%h/.lotus"
+EnvironmentFile=-/etc/lotus/chainwatch.env
+ExecStart=/usr/local/bin/chainwatch run
+
+[Install]
+WantedBy=multi-user.target

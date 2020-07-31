@@ -43,9 +43,16 @@ type StorageMinerAPI struct {
 	StorageMgr      *sectorstorage.Manager `optional:"true"`
 	*stores.Index
 
-	SetAcceptingStorageDealsConfigFunc        dtypes.SetAcceptingStorageDealsConfigFunc
-	StorageDealPieceCidBlocklistConfigFunc    dtypes.StorageDealPieceCidBlocklistConfigFunc
-	SetStorageDealPieceCidBlocklistConfigFunc dtypes.SetStorageDealPieceCidBlocklistConfigFunc
+	ConsiderOnlineStorageDealsConfigFunc       dtypes.ConsiderOnlineStorageDealsConfigFunc
+	SetConsiderOnlineStorageDealsConfigFunc    dtypes.SetConsiderOnlineStorageDealsConfigFunc
+	ConsiderOnlineRetrievalDealsConfigFunc     dtypes.ConsiderOnlineRetrievalDealsConfigFunc
+	SetConsiderOnlineRetrievalDealsConfigFunc  dtypes.SetConsiderOnlineRetrievalDealsConfigFunc
+	StorageDealPieceCidBlocklistConfigFunc     dtypes.StorageDealPieceCidBlocklistConfigFunc
+	SetStorageDealPieceCidBlocklistConfigFunc  dtypes.SetStorageDealPieceCidBlocklistConfigFunc
+	ConsiderOfflineStorageDealsConfigFunc      dtypes.ConsiderOfflineStorageDealsConfigFunc
+	SetConsiderOfflineStorageDealsConfigFunc   dtypes.SetConsiderOfflineStorageDealsConfigFunc
+	ConsiderOfflineRetrievalDealsConfigFunc    dtypes.ConsiderOfflineRetrievalDealsConfigFunc
+	SetConsiderOfflineRetrievalDealsConfigFunc dtypes.SetConsiderOfflineRetrievalDealsConfigFunc
 }
 
 func (sm *StorageMinerAPI) ServeRemote(w http.ResponseWriter, r *http.Request) {
@@ -174,6 +181,10 @@ func (sm *StorageMinerAPI) SectorsUpdate(ctx context.Context, id abi.SectorNumbe
 	return sm.Miner.ForceSectorState(ctx, id, sealing.SectorState(state))
 }
 
+func (sm *StorageMinerAPI) SectorRemove(ctx context.Context, id abi.SectorNumber) error {
+	return sm.Miner.RemoveSector(ctx, id)
+}
+
 func (sm *StorageMinerAPI) WorkerConnect(ctx context.Context, url string) error {
 	w, err := connectRemoteWorker(ctx, sm, url)
 	if err != nil {
@@ -220,8 +231,36 @@ func (sm *StorageMinerAPI) DealsList(ctx context.Context) ([]storagemarket.Stora
 	return sm.StorageProvider.ListDeals(ctx)
 }
 
-func (sm *StorageMinerAPI) DealsSetAcceptingStorageDeals(ctx context.Context, b bool) error {
-	return sm.SetAcceptingStorageDealsConfigFunc(b)
+func (sm *StorageMinerAPI) DealsConsiderOnlineStorageDeals(ctx context.Context) (bool, error) {
+	return sm.ConsiderOnlineStorageDealsConfigFunc()
+}
+
+func (sm *StorageMinerAPI) DealsSetConsiderOnlineStorageDeals(ctx context.Context, b bool) error {
+	return sm.SetConsiderOnlineStorageDealsConfigFunc(b)
+}
+
+func (sm *StorageMinerAPI) DealsConsiderOnlineRetrievalDeals(ctx context.Context) (bool, error) {
+	return sm.ConsiderOnlineRetrievalDealsConfigFunc()
+}
+
+func (sm *StorageMinerAPI) DealsSetConsiderOnlineRetrievalDeals(ctx context.Context, b bool) error {
+	return sm.SetConsiderOnlineRetrievalDealsConfigFunc(b)
+}
+
+func (sm *StorageMinerAPI) DealsConsiderOfflineStorageDeals(ctx context.Context) (bool, error) {
+	return sm.ConsiderOfflineStorageDealsConfigFunc()
+}
+
+func (sm *StorageMinerAPI) DealsSetConsiderOfflineStorageDeals(ctx context.Context, b bool) error {
+	return sm.SetConsiderOfflineStorageDealsConfigFunc(b)
+}
+
+func (sm *StorageMinerAPI) DealsConsiderOfflineRetrievalDeals(ctx context.Context) (bool, error) {
+	return sm.ConsiderOfflineRetrievalDealsConfigFunc()
+}
+
+func (sm *StorageMinerAPI) DealsSetConsiderOfflineRetrievalDeals(ctx context.Context, b bool) error {
+	return sm.SetConsiderOfflineRetrievalDealsConfigFunc(b)
 }
 
 func (sm *StorageMinerAPI) DealsImportData(ctx context.Context, deal cid.Cid, fname string) error {

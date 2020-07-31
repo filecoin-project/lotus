@@ -43,7 +43,7 @@ func TestPledgeSector(t *testing.T, b APIBuilder, blocktime time.Duration, nSect
 		defer close(done)
 		for mine {
 			time.Sleep(blocktime)
-			if err := sn[0].MineOne(ctx, func(bool) {}); err != nil {
+			if err := sn[0].MineOne(ctx, func(bool, error) {}); err != nil {
 				t.Error(err)
 			}
 		}
@@ -123,7 +123,7 @@ func TestWindowPost(t *testing.T, b APIBuilder, blocktime time.Duration, nSector
 		defer close(done)
 		for mine {
 			time.Sleep(blocktime)
-			if err := sn[0].MineOne(ctx, func(bool) {}); err != nil {
+			if err := sn[0].MineOne(ctx, func(bool, error) {}); err != nil {
 				t.Error(err)
 			}
 		}

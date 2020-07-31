@@ -186,7 +186,7 @@ func SyncWait(ctx context.Context, napi api.FullNode) error {
 
 		fmt.Printf("\r\x1b[2KWorker %d: Target: %s\tState: %s\tHeight: %d", working, target, chain.SyncStageString(ss.Stage), ss.Height)
 
-		if time.Now().Unix()-int64(head.MinTimestamp()) < build.BlockDelay {
+		if time.Now().Unix()-int64(head.MinTimestamp()) < int64(build.BlockDelaySecs) {
 			fmt.Println("\nDone!")
 			return nil
 		}
