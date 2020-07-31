@@ -389,7 +389,11 @@ func watchMinerConn(ctx context.Context, cctx *cli.Context, nodeApi api.StorageM
 
 		// TODO: there are probably cleaner/more graceful ways to restart,
 		//  but this is good enough for now (FSM can recover from the mess this creates)
-		if err := syscall.Exec(exe, []string{exe, "run",
+		if err := syscall.Exec(exe, []string{exe,
+			fmt.Sprintf("--worker-repo=%s", cctx.String("worker-repo")),
+			fmt.Sprintf("--miner-repo=%s", cctx.String("miner-repo")),
+			fmt.Sprintf("--enable-gpu-proving=%t", cctx.Bool("enable-gpu-proving")),
+			"run",
 			fmt.Sprintf("--address=%s", cctx.String("address")),
 			fmt.Sprintf("--no-local-storage=%t", cctx.Bool("no-local-storage")),
 			fmt.Sprintf("--precommit1=%t", cctx.Bool("precommit1")),
