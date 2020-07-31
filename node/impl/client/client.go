@@ -451,15 +451,6 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 	if err != nil {
 		return xerrors.Errorf("Error in retrieval params: %s", err)
 	}
-	storeID, store, err := a.imgr().NewStore()
-	if err != nil {
-		return xerrors.Errorf("Error setting up new store: %w", err)
-	}
-
-	defer func() {
-		_ = a.imgr().Remove(storeID)
-	}()
-
 	_, err = a.Retrieval.Retrieve(
 		ctx,
 		order.Root,
@@ -468,7 +459,8 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 		order.MinerPeerID,
 		order.Client,
 		order.Miner,
-		&storeID) // TODO: should we ignore storeID if we are using the IPFS blockstore?
+		nil) // TODO: pass the store here   somehow
+
 	if err != nil {
 		return xerrors.Errorf("Retrieve failed: %w", err)
 	}
@@ -488,27 +480,28 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 		return nil
 	}
 
+	rdag := merkledag.NewDAGService(blockservice.New(a.RetBstore, offline.Exchange(a.RetBstore)))
+
 	if ref.IsCAR {
 		f, err := os.OpenFile(ref.Path, os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			return err
 		}
-		err = car.WriteCar(ctx, store.DAG, []cid.Cid{order.Root}, f)
+		err = car.WriteCar(ctx, rdag, []cid.Cid{order.Root}, f)
 		if err != nil {
 			return err
 		}
 		return f.Close()
 	}
 
-	nd, err := store.DAG.Get(ctx, order.Root)
+	nd, err := rdag.Get(ctx, order.Root)
 	if err != nil {
 		return xerrors.Errorf("ClientRetrieve: %w", err)
 	}
-	file, err := unixfile.NewUnixfsFile(ctx, store.DAG, nd)
+	file, err := unixfile.NewUnixfsFile(ctx, rdag, nd)
 	if err != nil {
 		return xerrors.Errorf("ClientRetrieve: %w", err)
 	}
-
 	return files.WriteTo(file, ref.Path)
 }
 
