@@ -26,7 +26,7 @@ require (
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
 	github.com/filecoin-project/go-data-transfer v0.5.3-0.20200731171043-3cb77ab72923
 	github.com/filecoin-project/go-fil-commcid v0.0.0-20200716160307-8f644712406f
-	github.com/filecoin-project/go-fil-markets v0.5.3-0.20200731173109-e72c40e5f01d
+	github.com/filecoin-project/go-fil-markets v0.5.3-0.20200731191349-05110623f114
 	github.com/filecoin-project/go-jsonrpc v0.1.1-0.20200602181149-522144ab4e24
 	github.com/filecoin-project/go-multistore v0.0.2
 	github.com/filecoin-project/go-padreader v0.0.0-20200210211231-548257017ca6
