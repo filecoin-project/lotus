@@ -2,6 +2,7 @@ package modules
 
 import (
 	"context"
+	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/funds"
 	"time"
 
 	"github.com/filecoin-project/go-multistore"
@@ -112,9 +113,15 @@ func NewClientRequestValidator(deals dtypes.ClientDealStore) dtypes.ClientReques
 	return requestvalidation.NewUnifiedRequestValidator(nil, deals)
 }
 
-func StorageClient(lc fx.Lifecycle, h host.Host, ibs dtypes.ClientBlockstore, mds dtypes.ClientMultiDstore, r repo.LockedRepo, dataTransfer dtypes.ClientDataTransfer, discovery *discovery.Local, deals dtypes.ClientDatastore, scn storagemarket.StorageClientNode) (storagemarket.StorageClient, error) {
+type ClientDealFunds funds.DealFunds
+
+func NewClientDealFunds(ds dtypes.MetadataDS) (ClientDealFunds, error) {
+	return funds.NewDealFunds(ds, datastore.NewKey("/marketfunds/client"))
+}
+
+func StorageClient(lc fx.Lifecycle, h host.Host, ibs dtypes.ClientBlockstore, mds dtypes.ClientMultiDstore, r repo.LockedRepo, dataTransfer dtypes.ClientDataTransfer, discovery *discovery.Local, deals dtypes.ClientDatastore, scn storagemarket.StorageClientNode, dealFunds ClientDealFunds) (storagemarket.StorageClient, error) {
 	net := smnet.NewFromLibp2pHost(h)
-	c, err := storageimpl.NewClient(net, ibs, mds, dataTransfer, discovery, deals, scn, storageimpl.DealPollingInterval(time.Second))
+	c, err := storageimpl.NewClient(net, ibs, mds, dataTransfer, discovery, deals, scn, dealFunds, storageimpl.DealPollingInterval(time.Second))
 	if err != nil {
 		return nil, err
 	}

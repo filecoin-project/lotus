@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/funds"
 	"net/http"
 	"time"
 
@@ -354,6 +355,12 @@ func NewStorageAsk(ctx helpers.MetricsCtx, fapi lapi.FullNode, ds dtypes.Metadat
 	return storedAsk, nil
 }
 
+type ProviderDealFunds funds.DealFunds
+
+func NewProviderDealFunds(ds dtypes.MetadataDS) (ProviderDealFunds, error) {
+	return funds.NewDealFunds(ds, datastore.NewKey("/marketfunds/provider"))
+}
+
 func StorageProvider(minerAddress dtypes.MinerAddress,
 	ffiConfig *ffiwrapper.Config,
 	storedAsk *storedask.StoredAsk,
@@ -363,6 +370,7 @@ func StorageProvider(minerAddress dtypes.MinerAddress,
 	pieceStore dtypes.ProviderPieceStore,
 	dataTransfer dtypes.ProviderDataTransfer,
 	spn storagemarket.StorageProviderNode,
+	funds ProviderDealFunds,
 	onlineOk dtypes.ConsiderOnlineStorageDealsConfigFunc,
 	offlineOk dtypes.ConsiderOfflineStorageDealsConfigFunc,
 	blocklistFunc dtypes.StorageDealPieceCidBlocklistConfigFunc,
@@ -425,7 +433,7 @@ func StorageProvider(minerAddress dtypes.MinerAddress,
 		return true, "", nil
 	})
 
-	p, err := storageimpl.NewProvider(net, namespace.Wrap(ds, datastore.NewKey("/deals/provider")), store, mds, pieceStore, dataTransfer, spn, address.Address(minerAddress), ffiConfig.SealProofType, storedAsk, opt)
+	p, err := storageimpl.NewProvider(net, namespace.Wrap(ds, datastore.NewKey("/deals/provider")), store, mds, pieceStore, dataTransfer, spn, address.Address(minerAddress), ffiConfig.SealProofType, storedAsk, funds, opt)
 	if err != nil {
 		return p, err
 	}

@@ -16,7 +16,7 @@ func (m *Miner) Address() address.Address {
 	return m.sealing.Address()
 }
 
-func (m *Miner) AddPieceToAnySector(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, d sealing.DealInfo) (abi.SectorNumber, uint64, error) {
+func (m *Miner) AddPieceToAnySector(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, d sealing.DealInfo) (abi.SectorNumber, abi.PaddedPieceSize, error) {
 	return m.sealing.AddPieceToAnySector(ctx, size, r, d)
 }
 

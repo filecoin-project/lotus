@@ -2,6 +2,7 @@ package state
 
 import (
 	"context"
+	"github.com/filecoin-project/go-bitfield"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -447,7 +448,11 @@ func createEmptyMinerState(ctx context.Context, t *testing.T, store adt.Store, o
 
 	minerInfo := emptyMap
 
-	state, err := miner.ConstructState(minerInfo, 123, emptyArrayCid, emptyMap, emptyDeadlinesCid)
+	emptyBitfield := bitfield.NewFromSet(nil)
+	emptyBitfieldCid, err := store.Put(context.Background(), emptyBitfield)
+	require.NoError(t, err)
+
+	state, err := miner.ConstructState(minerInfo, 123, emptyBitfieldCid, emptyArrayCid, emptyMap, emptyDeadlinesCid)
 	require.NoError(t, err)
 	return state
 
@@ -475,11 +480,12 @@ func newSectorOnChainInfo(sectorNo abi.SectorNumber, sealed cid.Cid, weight big.
 		DealIDs:      info.DealIDs,
 		Expiration:   info.Expiration,
 
-		Activation:         activation,
-		DealWeight:         weight,
-		VerifiedDealWeight: weight,
-		InitialPledge:      big.Zero(),
-		ExpectedDayReward:  big.Zero(),
+		Activation:            activation,
+		DealWeight:            weight,
+		VerifiedDealWeight:    weight,
+		InitialPledge:         big.Zero(),
+		ExpectedDayReward:     big.Zero(),
+		ExpectedStoragePledge: big.Zero(),
 	}
 }
 
