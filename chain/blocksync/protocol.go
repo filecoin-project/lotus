@@ -20,7 +20,9 @@ const BlockSyncProtocolID = "/fil/sync/blk/0.0.1"
 //  use of `GetBlocks()`. It seems the expectation of that API is to
 //  fetch any amount of blocks leaving it to the internal logic here
 //  to partition and reassemble the requests if they go above the maximum.
-const MaxRequestLength = uint64(build.ForkLengthThreshold)
+//  (Also as a consequence of this temporarily removing the `const`
+//   qualifier to avoid "const initializer [...] is not a constant" error.)
+var MaxRequestLength = uint64(build.ForkLengthThreshold)
 
 // Extracted constants from the code.
 // FIXME: Should be reviewed and confirmed.
