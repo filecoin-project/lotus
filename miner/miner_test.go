@@ -72,7 +72,7 @@ func TestSelectNotOverLimited(t *testing.T) {
 			Nonce:    uint64(1 + i),
 			Value:    types.FromFil(0),
 			GasLimit: 10 * gasUsed,
-			GasPrice: types.NewInt(1),
+			GasPrice: types.NewInt(9),
 		})
 	}
 	outmsgs, err := SelectMessages(ctx, af, &types.TipSet{}, wrapMsgs(append(goodMsgs, badMsgs...)))
