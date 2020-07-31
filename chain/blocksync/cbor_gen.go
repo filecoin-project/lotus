@@ -7,7 +7,7 @@ import (
 	"io"
 
 	"github.com/filecoin-project/lotus/chain/types"
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 )
@@ -174,7 +174,7 @@ func (t *BlockSyncResponse) MarshalCBOR(w io.Writer) error {
 	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len(t.Message))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, t.Message); err != nil {
+	if _, err := io.WriteString(w, string(t.Message)); err != nil {
 		return err
 	}
 	return nil
