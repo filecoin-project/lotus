@@ -26,14 +26,18 @@ func (ts *testSuite) testMining(t *testing.T) {
 	ctx := context.Background()
 	apis, sn := ts.makeNodes(t, 1, oneMiner)
 	api := apis[0]
-
-	h1, err := api.ChainHead(ctx)
-	require.NoError(t, err)
-	require.Equal(t, abi.ChainEpoch(1), h1.Height())
+	//minerAddr, _ := address.NewIDAddress(1000)
 
 	newHeads, err := api.ChainNotify(ctx)
 	require.NoError(t, err)
-	<-newHeads
+	initHead := (<-newHeads)[0]
+	if initHead.Val.Height() != 2 {
+		<-newHeads
+	}
+
+	h1, err := api.ChainHead(ctx)
+	require.NoError(t, err)
+	require.Equal(t, abi.ChainEpoch(2), h1.Height())
 
 	err = sn[0].MineOne(ctx, MineNext)
 	require.NoError(t, err)
@@ -42,7 +46,7 @@ func (ts *testSuite) testMining(t *testing.T) {
 
 	h2, err := api.ChainHead(ctx)
 	require.NoError(t, err)
-	require.Equal(t, abi.ChainEpoch(2), h2.Height())
+	require.Equal(t, abi.ChainEpoch(3), h2.Height())
 }
 
 func (ts *testSuite) testMiningReal(t *testing.T) {
@@ -55,13 +59,16 @@ func (ts *testSuite) testMiningReal(t *testing.T) {
 	apis, sn := ts.makeNodes(t, 1, oneMiner)
 	api := apis[0]
 
-	h1, err := api.ChainHead(ctx)
-	require.NoError(t, err)
-	require.Equal(t, abi.ChainEpoch(1), h1.Height())
-
 	newHeads, err := api.ChainNotify(ctx)
 	require.NoError(t, err)
-	<-newHeads
+	initHead := (<-newHeads)[0]
+	if initHead.Val.Height() != 2 {
+		<-newHeads
+	}
+
+	h1, err := api.ChainHead(ctx)
+	require.NoError(t, err)
+	require.Equal(t, abi.ChainEpoch(2), h1.Height())
 
 	err = sn[0].MineOne(ctx, MineNext)
 	require.NoError(t, err)
@@ -70,7 +77,7 @@ func (ts *testSuite) testMiningReal(t *testing.T) {
 
 	h2, err := api.ChainHead(ctx)
 	require.NoError(t, err)
-	require.Equal(t, abi.ChainEpoch(2), h2.Height())
+	require.Equal(t, abi.ChainEpoch(3), h2.Height())
 
 	err = sn[0].MineOne(ctx, MineNext)
 	require.NoError(t, err)
@@ -79,7 +86,7 @@ func (ts *testSuite) testMiningReal(t *testing.T) {
 
 	h2, err = api.ChainHead(ctx)
 	require.NoError(t, err)
-	require.Equal(t, abi.ChainEpoch(3), h2.Height())
+	require.Equal(t, abi.ChainEpoch(4), h2.Height())
 }
 
 func TestDealMining(t *testing.T, b APIBuilder, blocktime time.Duration, carExport bool) {
