@@ -3,7 +3,6 @@ package messagepool
 import (
 	"bytes"
 	"context"
-	"fmt"
 	big2 "math/big"
 	"sort"
 	"time"
@@ -235,7 +234,6 @@ func (mp *MessagePool) pruneMessages(ctx context.Context, ts *types.TipSet) erro
 			"msgs", len(msgs))
 	}
 
-	fmt.Println("GOOD: ", len(out))
 	good := make(map[cid.Cid]bool)
 	for _, m := range out {
 		good[m.Cid()] = true
