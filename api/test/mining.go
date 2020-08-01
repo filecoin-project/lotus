@@ -26,7 +26,6 @@ func (ts *testSuite) testMining(t *testing.T) {
 	ctx := context.Background()
 	apis, sn := ts.makeNodes(t, 1, oneMiner)
 	api := apis[0]
-	//minerAddr, _ := address.NewIDAddress(1000)
 
 	newHeads, err := api.ChainNotify(ctx)
 	require.NoError(t, err)
