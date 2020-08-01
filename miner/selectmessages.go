@@ -120,6 +120,11 @@ func SelectMessages(ctx context.Context, al ActorLookup, ts *types.TipSet, msgs 
 			log.Infow("failed to guess gas", "to", msg.Message.To, "method", msg.Message.Method, "err", err)
 		}
 
+		overEstimate := float64(msg.Message.GasLimit) / float64(guessedGas)
+		if overEstimate > 5 {
+			log.Warnf("skipping a message for overestimating its gas too much")
+			continue
+		}
 		estimatedReward := big.Mul(types.NewInt(uint64(guessedGas)), msg.Message.GasPrice)
 
 		sm.gasReward = append(sm.gasReward, big.Add(sm.lastReward, estimatedReward))
