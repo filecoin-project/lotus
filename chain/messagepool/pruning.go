@@ -164,7 +164,7 @@ func (mp *MessagePool) pruneMessages(ctx context.Context, ts *types.TipSet) erro
 		return bytes.Compare(orderedSenders[i].Bytes(), orderedSenders[j].Bytes()) == -1
 	})
 
-	out := make([]*types.SignedMessage, 0, build.BlockMessageLimit)
+	out := make([]*types.SignedMessage, 0, mp.maxTxPoolSizeLo)
 	{
 		for {
 			var bestSender address.Address
