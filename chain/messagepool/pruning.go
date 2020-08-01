@@ -1,8 +1,10 @@
 package messagepool
 
 import (
+	"sort"
 	"time"
 
+	"github.com/filecoin-project/lotus/chain/types"
 	"golang.org/x/xerrors"
 )
 
@@ -33,4 +35,43 @@ func (mp *MessagePool) pruneExcessMessages() error {
 	}
 
 	// Step 2. prune messages with the lowest gas prices
+
+	log.Warnf("still need to prune %d messages", pruneCount)
+	return nil
+}
+
+func (mp *MessagePool) pruneFutureMessages() (int, error) {
+	for addr, ms := range mp.pending {
+		if _, ok := mp.localAddrs[addr]; ok {
+			continue
+		}
+
+		act, err := mp.api.StateGetActor(addr, nil)
+		if err != nil {
+			return 0, err
+		}
+
+		allmsgs := make([]*types.SignedMessage, 0, len(ms.msgs))
+		for _, m := range ms.msgs {
+			allmsgs = append(allmsgs, m)
+		}
+
+		sort.Slice(allmsgs, func(i, j int) bool {
+			return allmsgs[i].Message.Nonce < allmsgs[j].Message.Nonce
+		})
+
+		start := act.Nonce
+		for i := 0; i < len(allmsgs); i++ {
+			if allmsgs[i].Message.Nonce == start {
+				start++
+			} else {
+				ms.nextNonce = start
+				for ; i < len(allmsgs); i++ {
+					delete(ms.msgs, allmsgs[i].Message.Nonce)
+				}
+				break
+			}
+		}
+
+	}
 }
