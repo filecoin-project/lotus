@@ -83,14 +83,16 @@ func (a *GasAPI) GasEstimateGasPrice(ctx context.Context, nblocksincl uint64,
 	// todo: account for how full blocks are
 
 	at := gasUsed / 2
+	prev := big.Zero()
 
 	for _, price := range prices {
 		at -= price.used
 		if at > 0 {
+			prev = price.price
 			continue
 		}
 
-		return price.price, nil
+		return types.BigAdd(big.Div(types.BigAdd(price.price, prev), types.NewInt(2)), big.NewInt(1)), nil
 	}
 
 	switch nblocksincl {
