@@ -101,18 +101,6 @@ func SelectMessages(ctx context.Context, al ActorLookup, ts *types.TipSet, msgs 
 			continue
 		}
 
-		inclNonces[from] = msg.Message.Nonce + 1
-		inclBalances[from] = types.BigSub(inclBalances[from], msg.Message.RequiredFunds())
-		sm := outBySender[from]
-		if sm == nil {
-			sm = &senderMeta{
-				lastReward: big.Zero(),
-			}
-		}
-
-		sm.gasLimit = append(sm.gasLimit, sm.lastGasLimit+msg.Message.GasLimit)
-		sm.lastGasLimit = sm.gasLimit[len(sm.gasLimit)-1]
-
 		guessGasStart := build.Clock.Now()
 		guessedGas, err := GuessGasUsed(ctx, ts.Key(), msg, al)
 		guessGasDur += build.Clock.Since(guessGasStart)
@@ -125,6 +113,19 @@ func SelectMessages(ctx context.Context, al ActorLookup, ts *types.TipSet, msgs 
 			log.Warnf("skipping a message for overestimating its gas too much")
 			continue
 		}
+
+		inclNonces[from] = msg.Message.Nonce + 1
+		inclBalances[from] = types.BigSub(inclBalances[from], msg.Message.RequiredFunds())
+		sm := outBySender[from]
+		if sm == nil {
+			sm = &senderMeta{
+				lastReward: big.Zero(),
+			}
+		}
+
+		sm.gasLimit = append(sm.gasLimit, sm.lastGasLimit+msg.Message.GasLimit)
+		sm.lastGasLimit = sm.gasLimit[len(sm.gasLimit)-1]
+
 		estimatedReward := big.Mul(types.NewInt(uint64(guessedGas)), msg.Message.GasPrice)
 
 		sm.gasReward = append(sm.gasReward, big.Add(sm.lastReward, estimatedReward))
