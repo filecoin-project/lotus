@@ -42,12 +42,12 @@ func (a *GasAPI) GasEstimateGasPrice(ctx context.Context, nblocksincl uint64,
 	var blocks int
 
 	ts := a.Chain.GetHeaviestTipSet()
-	for i := uint64(0); i < nblocksincl * 2; i++ {
+	for i := uint64(0); i < nblocksincl*2; i++ {
 		if len(ts.Parents().Cids()) == 0 {
 			break // genesis
 		}
 
-			pts, err := a.Chain.LoadTipSet(ts.Parents())
+		pts, err := a.Chain.LoadTipSet(ts.Parents())
 		if err != nil {
 			return types.BigInt{}, err
 		}

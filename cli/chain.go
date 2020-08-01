@@ -978,4 +978,3 @@ var chainGasPriceCmd = &cli.Command{
 		return nil
 	},
 }
-

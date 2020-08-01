@@ -70,7 +70,7 @@ type API struct {
 
 	Imports dtypes.ClientImportMgr
 
-	CombinedBstore dtypes.ClientBlockstore // TODO: try to remove
+	CombinedBstore    dtypes.ClientBlockstore // TODO: try to remove
 	RetrievalStoreMgr dtypes.ClientRetrievalStoreManager
 }
 
