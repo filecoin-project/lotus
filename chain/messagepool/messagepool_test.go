@@ -14,7 +14,12 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
+	logging "github.com/ipfs/go-log/v2"
 )
+
+func init() {
+	_ = logging.SetLogLevel("*", "INFO")
+}
 
 type testMpoolAPI struct {
 	cb func(rev, app []*types.TipSet) error
@@ -274,6 +279,9 @@ func TestPruningSimple(t *testing.T) {
 
 	mp.maxTxPoolSizeHi = 40
 	mp.maxTxPoolSizeLo = 10
+
+	bmsgs, _ := mp.Pending()
+	fmt.Println("MESSAGES BEFORE: ", len(bmsgs))
 
 	mp.Prune()
 
