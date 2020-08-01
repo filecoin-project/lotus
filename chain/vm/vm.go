@@ -441,19 +441,21 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 	var errcode exitcode.ExitCode
 	var gasUsed int64
 
-	if errcode = aerrors.RetCode(actorErr); errcode != 0 {
-		// revert all state changes since snapshot
-		if err := st.Revert(); err != nil {
-			return nil, xerrors.Errorf("revert state failed: %w", err)
-		}
-	}
-
 	rt.finilizeGasTracing()
 
 	gasUsed = rt.gasUsed
 	if gasUsed < 0 {
 		gasUsed = 0
 	}
+
+	if errcode = aerrors.RetCode(actorErr); errcode != 0 {
+		// revert all state changes since snapshot
+		if err := st.Revert(); err != nil {
+			return nil, xerrors.Errorf("revert state failed: %w", err)
+		}
+		gasUsed = msg.GasLimit
+	}
+
 	// refund unused gas
 	refund := types.BigMul(types.NewInt(uint64(msg.GasLimit-gasUsed)), msg.GasPrice)
 	if err := vm.transferFromGasHolder(msg.From, gasHolder, refund); err != nil {
