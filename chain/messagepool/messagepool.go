@@ -243,6 +243,10 @@ func (mp *MessagePool) Close() error {
 }
 
 func (mp *MessagePool) Prune() {
+	//so, its a single slot buffered channel. The first send fills the channel,
+	//the second send goes through when the pruning starts,
+	//and the third send goes through (and noops) after the pruning finishes
+	//and goes through the loop again
 	mp.pruneTrigger <- struct{}{}
 	mp.pruneTrigger <- struct{}{}
 	mp.pruneTrigger <- struct{}{}
