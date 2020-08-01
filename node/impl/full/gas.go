@@ -2,6 +2,8 @@ package full
 
 import (
 	"context"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"sort"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/build"
@@ -17,7 +19,7 @@ import (
 type GasAPI struct {
 	fx.In
 	Stmgr *stmgr.StateManager
-	Cs    *store.ChainStore
+	Chain *store.ChainStore
 	Mpool *messagepool.MessagePool
 }
 
@@ -26,11 +28,75 @@ const MinGasPrice = 1
 func (a *GasAPI) GasEstimateGasPrice(ctx context.Context, nblocksincl uint64,
 	sender address.Address, gaslimit int64, tsk types.TipSetKey) (types.BigInt, error) {
 
-	// TODO: something smarter obviously
+	if nblocksincl == 0 {
+		nblocksincl = 1
+	}
+
+	type gasMeta struct {
+		price big.Int
+		used  int64
+	}
+
+	var prices []gasMeta
+	var gasUsed int64
+	var blocks int
+
+	ts := a.Chain.GetHeaviestTipSet()
+	for i := uint64(0); i < nblocksincl * 2; i++ {
+		if len(ts.Parents().Cids()) == 0 {
+			break // genesis
+		}
+
+			pts, err := a.Chain.LoadTipSet(ts.Parents())
+		if err != nil {
+			return types.BigInt{}, err
+		}
+
+		blocks += len(pts.Blocks())
+
+		msgs, err := a.Chain.MessagesForTipset(pts)
+		if err != nil {
+			return types.BigInt{}, xerrors.Errorf("loading messages: %w", err)
+		}
+
+		for i, msg := range msgs {
+			r, err := a.Chain.GetParentReceipt(ts.MinTicketBlock(), i)
+			if err != nil {
+				return types.BigInt{}, xerrors.Errorf("getting receipt: %w", err)
+			}
+
+			prices = append(prices, gasMeta{
+				price: msg.VMMessage().GasPrice,
+				used:  r.GasUsed,
+			})
+			gasUsed += r.GasUsed
+		}
+
+		ts = pts
+	}
+
+	sort.Slice(prices, func(i, j int) bool {
+		// sort desc by price
+		return prices[i].price.GreaterThan(prices[j].price)
+	})
+
+	// todo: account for how full blocks are
+
+	at := gasUsed / 2
+
+	for _, price := range prices {
+		at -= price.used
+		if at > 0 {
+			continue
+		}
+
+		return price.price, nil
+	}
+
 	switch nblocksincl {
-	case 0:
-		return types.NewInt(MinGasPrice + 2), nil
 	case 1:
+		return types.NewInt(MinGasPrice + 2), nil
+	case 2:
 		return types.NewInt(MinGasPrice + 1), nil
 	default:
 		return types.NewInt(MinGasPrice), nil
@@ -43,7 +109,7 @@ func (a *GasAPI) GasEstimateGasLimit(ctx context.Context, msgIn *types.Message, 
 	msg.GasLimit = build.BlockGasLimit
 	msg.GasPrice = types.NewInt(1)
 
-	currTs := a.Cs.GetHeaviestTipSet()
+	currTs := a.Chain.GetHeaviestTipSet()
 	fromA, err := a.Stmgr.ResolveToKeyAddress(ctx, msgIn.From, currTs)
 	if err != nil {
 		return -1, xerrors.Errorf("getting key address: %w", err)

@@ -46,6 +46,7 @@ var chainCmd = &cli.Command{
 		chainBisectCmd,
 		chainExportCmd,
 		slashConsensusFault,
+		chainGasPriceCmd,
 	},
 }
 
@@ -950,3 +951,31 @@ var slashConsensusFault = &cli.Command{
 		return nil
 	},
 }
+
+var chainGasPriceCmd = &cli.Command{
+	Name:  "gas-price",
+	Usage: "Estimate gas prices",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		nb := []int{1, 2, 3, 5, 10, 20, 50, 100, 300}
+		for _, nblocks := range nb {
+			addr := builtin.SystemActorAddr // TODO: make real when used in GasEstimateGasPrice
+
+			est, err := api.GasEstimateGasPrice(ctx, uint64(nblocks), addr, 10000, types.EmptyTSK)
+			if err != nil {
+				return err
+			}
+
+			fmt.Printf("%d blocks: %s (%s)\n", nblocks, est, types.FIL(est))
+		}
+
+		return nil
+	},
+}
+
