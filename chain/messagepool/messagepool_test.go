@@ -233,3 +233,49 @@ func TestRevertMessages(t *testing.T) {
 	}
 
 }
+
+func TestPruningSimple(t *testing.T) {
+	tma := newTestMpoolAPI()
+
+	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ds := datastore.NewMapDatastore()
+
+	mp, err := New(tma, ds, "mptest")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sender, err := w.GenerateKey(crypto.SigTypeBLS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	target := mock.Address(1001)
+
+	for i := 0; i < 5; i++ {
+		smsg := mock.MkMessage(sender, target, uint64(i), w)
+		if err := mp.Add(smsg); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	for i := 10; i < 50; i++ {
+		smsg := mock.MkMessage(sender, target, uint64(i), w)
+		if err := mp.Add(smsg); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	mp.maxTxPoolSizeHi = 40
+	mp.maxTxPoolSizeLo = 10
+
+	mp.Prune()
+
+	msgs, _ := mp.Pending()
+	if len(msgs) != 5 {
+		t.Fatal("expected only 5 messages in pool")
+	}
+}

@@ -9,13 +9,14 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/messagepool/gasguess"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 )
 
-func SelectMessages(ctx context.Context, al ActorLookup, ts *types.TipSet, msgs []*types.SignedMessage) ([]*types.SignedMessage, error) {
+func SelectMessages(ctx context.Context, al gasguess.ActorLookup, ts *types.TipSet, msgs []*types.SignedMessage) ([]*types.SignedMessage, error) {
 	al = (&cachedActorLookup{
 		tsk:      ts.Key(),
 		cache:    map[address.Address]actCacheEntry{},
@@ -114,7 +115,7 @@ func SelectMessages(ctx context.Context, al ActorLookup, ts *types.TipSet, msgs 
 		sm.lastGasLimit = sm.gasLimit[len(sm.gasLimit)-1]
 
 		guessGasStart := build.Clock.Now()
-		guessedGas, err := GuessGasUsed(ctx, ts.Key(), msg, al)
+		guessedGas, err := gasguess.GuessGasUsed(ctx, ts.Key(), msg, al)
 		guessGasDur += build.Clock.Since(guessGasStart)
 		if err != nil {
 			log.Infow("failed to guess gas", "to", msg.Message.To, "method", msg.Message.Method, "err", err)

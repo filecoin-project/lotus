@@ -242,6 +242,12 @@ func (mp *MessagePool) Close() error {
 	return nil
 }
 
+func (mp *MessagePool) Prune() {
+	mp.pruneTrigger <- struct{}{}
+	mp.pruneTrigger <- struct{}{}
+	mp.pruneTrigger <- struct{}{}
+}
+
 func (mp *MessagePool) runLoop() {
 	for {
 		select {
@@ -627,6 +633,10 @@ func (mp *MessagePool) Remove(from address.Address, nonce uint64) {
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
+	mp.remove(from, nonce)
+}
+
+func (mp *MessagePool) remove(from address.Address, nonce uint64) {
 	mset, ok := mp.pending[from]
 	if !ok {
 		return
