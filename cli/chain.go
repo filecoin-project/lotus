@@ -932,13 +932,11 @@ var slashConsensusFault = &cli.Command{
 		}
 
 		msg := &types.Message{
-			To:       maddr,
-			From:     def,
-			Value:    types.NewInt(0),
-			GasPrice: types.NewInt(1),
-			GasLimit: 0,
-			Method:   builtin.MethodsMiner.ReportConsensusFault,
-			Params:   enc,
+			To:     maddr,
+			From:   def,
+			Value:  types.NewInt(0),
+			Method: builtin.MethodsMiner.ReportConsensusFault,
+			Params: enc,
 		}
 
 		smsg, err := api.MpoolPushMessage(ctx, msg)

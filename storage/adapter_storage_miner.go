@@ -122,13 +122,11 @@ func (s SealingAPIAdapter) StateComputeDataCommitment(ctx context.Context, maddr
 	}
 
 	ccmt := &types.Message{
-		To:       builtin.StorageMarketActorAddr,
-		From:     maddr,
-		Value:    types.NewInt(0),
-		GasPrice: types.NewInt(0),
-		GasLimit: 0,
-		Method:   builtin.MethodsMarket.ComputeDataCommitment,
-		Params:   ccparams,
+		To:     builtin.StorageMarketActorAddr,
+		From:   maddr,
+		Value:  types.NewInt(0),
+		Method: builtin.MethodsMarket.ComputeDataCommitment,
+		Params: ccparams,
 	}
 	r, err := s.delegate.StateCall(ctx, ccmt, tsk)
 	if err != nil {

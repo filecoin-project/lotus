@@ -69,12 +69,10 @@ var verifRegAddVerifierCmd = &cli.Command{
 		ctx := lcli.ReqContext(cctx)
 
 		msg := &types.Message{
-			To:       builtin.VerifiedRegistryActorAddr,
-			From:     fromk,
-			Method:   builtin.MethodsVerifiedRegistry.AddVerifier,
-			GasPrice: types.NewInt(1),
-			GasLimit: 0,
-			Params:   params,
+			To:     builtin.VerifiedRegistryActorAddr,
+			From:   fromk,
+			Method: builtin.MethodsVerifiedRegistry.AddVerifier,
+			Params: params,
 		}
 
 		smsg, err := api.MpoolPushMessage(ctx, msg)
