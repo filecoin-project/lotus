@@ -249,6 +249,9 @@ func TestPruningSimple(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	a := mock.MkBlock(nil, 1, 1)
+	tma.applyBlock(t, a)
+
 	sender, err := w.GenerateKey(crypto.SigTypeBLS)
 	if err != nil {
 		t.Fatal(err)
@@ -276,6 +279,6 @@ func TestPruningSimple(t *testing.T) {
 
 	msgs, _ := mp.Pending()
 	if len(msgs) != 5 {
-		t.Fatal("expected only 5 messages in pool")
+		t.Fatal("expected only 5 messages in pool, got: ", len(msgs))
 	}
 }
