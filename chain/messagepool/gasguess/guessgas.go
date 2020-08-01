@@ -1,4 +1,4 @@
-package miner
+package gasguess
 
 import (
 	"context"
@@ -13,15 +13,17 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 )
 
+type ActorLookup func(context.Context, address.Address, types.TipSetKey) (*types.Actor, error)
+
 const failedGasGuessRatio = 0.5
 const failedGasGuessMax = 25_000_000
 
-type costKey struct {
-	code cid.Cid
-	m    abi.MethodNum
+type CostKey struct {
+	Code cid.Cid
+	M    abi.MethodNum
 }
 
-var costs = map[costKey]int64{
+var Costs = map[CostKey]int64{
 	{builtin.InitActorCodeID, 2}:          8916753,
 	{builtin.StorageMarketActorCodeID, 2}: 6955002,
 	{builtin.StorageMarketActorCodeID, 4}: 245436108,
@@ -63,7 +65,7 @@ func GuessGasUsed(ctx context.Context, tsk types.TipSetKey, msg *types.SignedMes
 		return failedGuess(msg), xerrors.Errorf("could not lookup actor: %w", err)
 	}
 
-	guess, ok := costs[costKey{to.Code, msg.Message.Method}]
+	guess, ok := Costs[CostKey{to.Code, msg.Message.Method}]
 	if !ok {
 		return failedGuess(msg), xerrors.Errorf("unknown code-method combo")
 	}

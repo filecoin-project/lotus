@@ -14,7 +14,12 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
+	logging "github.com/ipfs/go-log/v2"
 )
+
+func init() {
+	_ = logging.SetLogLevel("*", "INFO")
+}
 
 type testMpoolAPI struct {
 	cb func(rev, app []*types.TipSet) error
@@ -232,4 +237,53 @@ func TestRevertMessages(t *testing.T) {
 		t.Fatal("expected three messages in mempool")
 	}
 
+}
+
+func TestPruningSimple(t *testing.T) {
+	tma := newTestMpoolAPI()
+
+	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ds := datastore.NewMapDatastore()
+
+	mp, err := New(tma, ds, "mptest")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a := mock.MkBlock(nil, 1, 1)
+	tma.applyBlock(t, a)
+
+	sender, err := w.GenerateKey(crypto.SigTypeBLS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	target := mock.Address(1001)
+
+	for i := 0; i < 5; i++ {
+		smsg := mock.MkMessage(sender, target, uint64(i), w)
+		if err := mp.Add(smsg); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	for i := 10; i < 50; i++ {
+		smsg := mock.MkMessage(sender, target, uint64(i), w)
+		if err := mp.Add(smsg); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	mp.maxTxPoolSizeHi = 40
+	mp.maxTxPoolSizeLo = 10
+
+	mp.Prune()
+
+	msgs, _ := mp.Pending()
+	if len(msgs) != 5 {
+		t.Fatal("expected only 5 messages in pool, got: ", len(msgs))
+	}
 }
