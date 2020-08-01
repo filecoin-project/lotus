@@ -280,9 +280,6 @@ func TestPruningSimple(t *testing.T) {
 	mp.maxTxPoolSizeHi = 40
 	mp.maxTxPoolSizeLo = 10
 
-	bmsgs, _ := mp.Pending()
-	fmt.Println("MESSAGES BEFORE: ", len(bmsgs))
-
 	mp.Prune()
 
 	msgs, _ := mp.Pending()
