@@ -179,7 +179,7 @@ func (mp *MessagePool) pruneMessages(ctx context.Context, ts *types.TipSet) erro
 				}
 				for n := range meta.msgs {
 
-					if n+len(out) > mp.maxTxPoolSizeLo {
+					if n+len(out) >= mp.maxTxPoolSizeLo {
 						break
 					}
 
