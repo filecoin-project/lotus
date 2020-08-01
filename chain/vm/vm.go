@@ -37,6 +37,11 @@ var log = logging.Logger("vm")
 var actorLog = logging.Logger("actors")
 var gasOnActorExec = newGasCharge("OnActorExec", 0, 0)
 
+const (
+	gasOveruseNum   = 3
+	gasOveruseDenom = 10
+)
+
 // ResolveToKeyAddr returns the public key type of address (`BLS`/`SECP256K1`) of an account actor identified by `addr`.
 func ResolveToKeyAddr(state types.StateTree, cst cbor.IpldStore, addr address.Address) (address.Address, aerrors.ActorError) {
 	if addr.Protocol() == address.BLS || addr.Protocol() == address.SECP256K1 {
@@ -454,10 +459,25 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 	if gasUsed < 0 {
 		gasUsed = 0
 	}
+
+	allowedGasOverUsed := gasUsed + (gasUsed*gasOveruseNum)/gasOveruseDenom
+	gasToBurn := msg.GasLimit - allowedGasOverUsed
+	if gasToBurn < 0 {
+		gasToBurn = 0
+	}
+
 	// refund unused gas
-	refund := types.BigMul(types.NewInt(uint64(msg.GasLimit-gasUsed)), msg.GasPrice)
+	refund := types.BigMul(types.NewInt(uint64(msg.GasLimit-gasUsed-gasToBurn)), msg.GasPrice)
 	if err := vm.transferFromGasHolder(msg.From, gasHolder, refund); err != nil {
 		return nil, xerrors.Errorf("failed to refund gas")
+	}
+
+	if gasToBurn > 0 {
+		// burn overallocated gas
+		burn := types.BigMul(types.NewInt(uint64(gasToBurn)), msg.GasPrice)
+		if err := vm.transferFromGasHolder(builtin.BurntFundsActorAddr, gasHolder, burn); err != nil {
+			return nil, xerrors.Errorf("failed to refund gas")
+		}
 	}
 
 	gasReward := types.BigMul(msg.GasPrice, types.NewInt(uint64(gasUsed)))
