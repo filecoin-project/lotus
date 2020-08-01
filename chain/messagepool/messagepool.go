@@ -44,8 +44,8 @@ const ReplaceByFeeRatio = 1.25
 
 const repubMsgLimit = 5
 
-var MemPoolSizeLimitHiDefault = 50000
-var MemPoolSizeLimitLoDefault = 40000
+var MemPoolSizeLimitHiDefault = 30000
+var MemPoolSizeLimitLoDefault = 20000
 
 var (
 	rbfNum   = types.NewInt(uint64((ReplaceByFeeRatio - 1) * 256))
