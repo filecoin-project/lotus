@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/libp2p/go-libp2p-core/peer"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	ma "github.com/multiformats/go-multiaddr"
 )
 
@@ -40,7 +41,7 @@ type ObjStat struct {
 
 type PubsubScore struct {
 	ID    peer.ID
-	Score float64
+	Score *pubsub.PeerScoreSnapshot
 }
 
 type MinerInfo struct {
