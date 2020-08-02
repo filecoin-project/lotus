@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/messagepool/gasguess"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/stretchr/testify/assert"
 )
@@ -49,7 +50,7 @@ func TestSelectNotOverLimited(t *testing.T) {
 		return actors[addr], nil
 	}
 
-	gasUsed := costs[costKey{builtin.StorageMinerActorCodeID, 4}]
+	gasUsed := gasguess.Costs[gasguess.CostKey{builtin.StorageMinerActorCodeID, 4}]
 
 	var goodMsgs []types.Message
 	for i := int64(0); i < build.BlockGasLimit/gasUsed+10; i++ {

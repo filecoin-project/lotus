@@ -28,6 +28,7 @@ type MsigAPI struct {
 	MpoolAPI  MpoolAPI
 }
 
+// TODO: remove gp (gasPrice) from arguemnts
 func (a *MsigAPI) MsigCreate(ctx context.Context, req uint64, addrs []address.Address, duration abi.ChainEpoch, val types.BigInt, src address.Address, gp types.BigInt) (cid.Cid, error) {
 
 	lenAddrs := uint64(len(addrs))
@@ -45,7 +46,7 @@ func (a *MsigAPI) MsigCreate(ctx context.Context, req uint64, addrs []address.Ad
 	}
 
 	if gp == types.EmptyInt {
-		gp = types.NewInt(1)
+		gp = types.NewInt(0)
 	}
 
 	// Set up constructor parameters for multisig
@@ -77,9 +78,8 @@ func (a *MsigAPI) MsigCreate(ctx context.Context, req uint64, addrs []address.Ad
 		From:     src,
 		Method:   builtin.MethodsInit.Exec,
 		Params:   enc,
-		GasPrice: gp,
-		GasLimit: 0,
 		Value:    val,
+		GasPrice: gp,
 	}
 
 	// send the message out to the network
@@ -120,13 +120,11 @@ func (a *MsigAPI) MsigPropose(ctx context.Context, msig address.Address, to addr
 	}
 
 	msg := &types.Message{
-		To:       msig,
-		From:     src,
-		Value:    types.NewInt(0),
-		Method:   builtin.MethodsMultisig.Propose,
-		Params:   enc,
-		GasLimit: 0,
-		GasPrice: types.NewInt(1),
+		To:     msig,
+		From:   src,
+		Value:  types.NewInt(0),
+		Method: builtin.MethodsMultisig.Propose,
+		Params: enc,
 	}
 
 	smsg, err := a.MpoolAPI.MpoolPushMessage(ctx, msg)
@@ -236,13 +234,11 @@ func (a *MsigAPI) msigApproveOrCancel(ctx context.Context, operation api.MsigPro
 	}
 
 	msg := &types.Message{
-		To:       msig,
-		From:     src,
-		Value:    types.NewInt(0),
-		Method:   msigResponseMethod,
-		Params:   enc,
-		GasLimit: 0,
-		GasPrice: types.NewInt(1),
+		To:     msig,
+		From:   src,
+		Value:  types.NewInt(0),
+		Method: msigResponseMethod,
+		Params: enc,
 	}
 
 	smsg, err := a.MpoolAPI.MpoolPushMessage(ctx, msg)

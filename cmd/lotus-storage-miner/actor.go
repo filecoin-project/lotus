@@ -78,7 +78,6 @@ var actorSetAddrsCmd = &cli.Command{
 			To:       maddr,
 			From:     minfo.Worker,
 			Value:    types.NewInt(0),
-			GasPrice: types.NewInt(1),
 			GasLimit: gasLimit,
 			Method:   18,
 			Params:   params,

@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/gen"
+	"github.com/filecoin-project/lotus/chain/messagepool/gasguess"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 
@@ -448,7 +449,7 @@ type actCacheEntry struct {
 type cachedActorLookup struct {
 	tsk      types.TipSetKey
 	cache    map[address.Address]actCacheEntry
-	fallback ActorLookup
+	fallback gasguess.ActorLookup
 }
 
 func (c *cachedActorLookup) StateGetActor(ctx context.Context, a address.Address, tsk types.TipSetKey) (*types.Actor, error) {

@@ -171,13 +171,11 @@ func (s *WindowPoStScheduler) checkNextRecoveries(ctx context.Context, dlIdx uin
 	}
 
 	msg := &types.Message{
-		To:       s.actor,
-		From:     s.worker,
-		Method:   builtin.MethodsMiner.DeclareFaultsRecovered,
-		Params:   enc,
-		Value:    types.NewInt(0),
-		GasLimit: 0,
-		GasPrice: types.NewInt(2),
+		To:     s.actor,
+		From:   s.worker,
+		Method: builtin.MethodsMiner.DeclareFaultsRecovered,
+		Params: enc,
+		Value:  types.NewInt(0),
 	}
 
 	sm, err := s.api.MpoolPushMessage(ctx, msg)
@@ -255,13 +253,11 @@ func (s *WindowPoStScheduler) checkNextFaults(ctx context.Context, dlIdx uint64,
 	}
 
 	msg := &types.Message{
-		To:       s.actor,
-		From:     s.worker,
-		Method:   builtin.MethodsMiner.DeclareFaults,
-		Params:   enc,
-		Value:    types.NewInt(0), // TODO: Is there a fee?
-		GasLimit: 0,
-		GasPrice: types.NewInt(2),
+		To:     s.actor,
+		From:   s.worker,
+		Method: builtin.MethodsMiner.DeclareFaults,
+		Params: enc,
+		Value:  types.NewInt(0), // TODO: Is there a fee?
 	}
 
 	sm, err := s.api.MpoolPushMessage(ctx, msg)
@@ -457,12 +453,11 @@ func (s *WindowPoStScheduler) submitPost(ctx context.Context, proof *miner.Submi
 	}
 
 	msg := &types.Message{
-		To:       s.actor,
-		From:     s.worker,
-		Method:   builtin.MethodsMiner.SubmitWindowedPoSt,
-		Params:   enc,
-		Value:    types.NewInt(1000), // currently hard-coded late fee in actor, returned if not late
-		GasPrice: types.NewInt(3),
+		To:     s.actor,
+		From:   s.worker,
+		Method: builtin.MethodsMiner.SubmitWindowedPoSt,
+		Params: enc,
+		Value:  types.NewInt(1000), // currently hard-coded late fee in actor, returned if not late
 	}
 
 	// TODO: consider maybe caring about the output

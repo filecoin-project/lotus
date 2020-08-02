@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
@@ -27,6 +28,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	types "github.com/filecoin-project/lotus/chain/types"
 )
@@ -46,6 +48,7 @@ var chainCmd = &cli.Command{
 		chainBisectCmd,
 		chainExportCmd,
 		slashConsensusFault,
+		chainGasPriceCmd,
 	},
 }
 
@@ -364,6 +367,10 @@ var chainListCmd = &cli.Command{
 			Usage: "specify the format to print out tipsets",
 			Value: "<height>: (<time>) <blocks>",
 		},
+		&cli.BoolFlag{
+			Name:  "gas-stats",
+			Usage: "view gas statistics for the chain",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -405,8 +412,64 @@ var chainListCmd = &cli.Command{
 			tss = append(tss, head)
 		}
 
-		for i := len(tss) - 1; i >= 0; i-- {
-			printTipSet(cctx.String("format"), tss[i])
+		if cctx.Bool("gas-stats") {
+			otss := make([]*types.TipSet, 0, len(tss))
+			for i := len(tss) - 1; i >= 0; i-- {
+				otss = append(otss, tss[i])
+			}
+			tss = otss
+			for i, ts := range tss {
+				fmt.Printf("%d: %d blocks\n", ts.Height(), len(ts.Blocks()))
+
+				for _, b := range ts.Blocks() {
+					msgs, err := api.ChainGetBlockMessages(ctx, b.Cid())
+					if err != nil {
+						return err
+					}
+					var limitSum int64
+					psum := big.NewInt(0)
+					for _, m := range msgs.BlsMessages {
+						limitSum += m.GasLimit
+						psum = big.Add(psum, m.GasPrice)
+					}
+
+					for _, m := range msgs.SecpkMessages {
+						limitSum += m.Message.GasLimit
+						psum = big.Add(psum, m.Message.GasPrice)
+					}
+
+					avgprice := big.Div(psum, big.NewInt(int64(len(msgs.BlsMessages)+len(msgs.SecpkMessages))))
+
+					fmt.Printf("\t%s: \t%d msgs, gasLimit: %d / %d (%0.2f%%), avgPrice: %s\n", b.Miner, len(msgs.BlsMessages)+len(msgs.SecpkMessages), limitSum, build.BlockGasLimit, 100*float64(limitSum)/float64(build.BlockGasLimit), avgprice)
+				}
+				if i < len(tss)-1 {
+					msgs, err := api.ChainGetParentMessages(ctx, tss[i+1].Blocks()[0].Cid())
+					if err != nil {
+						return err
+					}
+					var limitSum int64
+					for _, m := range msgs {
+						limitSum += m.Message.GasLimit
+					}
+
+					recpts, err := api.ChainGetParentReceipts(ctx, tss[i+1].Blocks()[0].Cid())
+					if err != nil {
+						return err
+					}
+
+					var gasUsed int64
+					for _, r := range recpts {
+						gasUsed += r.GasUsed
+					}
+
+					fmt.Printf("\ttipset: \t%d msgs, %d / %d (%0.2f%%)\n", len(msgs), gasUsed, limitSum, 100*float64(gasUsed)/float64(limitSum))
+				}
+				fmt.Println()
+			}
+		} else {
+			for i := len(tss) - 1; i >= 0; i-- {
+				printTipSet(cctx.String("format"), tss[i])
+			}
 		}
 		return nil
 	},
@@ -931,13 +994,11 @@ var slashConsensusFault = &cli.Command{
 		}
 
 		msg := &types.Message{
-			To:       maddr,
-			From:     def,
-			Value:    types.NewInt(0),
-			GasPrice: types.NewInt(1),
-			GasLimit: 0,
-			Method:   builtin.MethodsMiner.ReportConsensusFault,
-			Params:   enc,
+			To:     maddr,
+			From:   def,
+			Value:  types.NewInt(0),
+			Method: builtin.MethodsMiner.ReportConsensusFault,
+			Params: enc,
 		}
 
 		smsg, err := api.MpoolPushMessage(ctx, msg)
@@ -946,6 +1007,33 @@ var slashConsensusFault = &cli.Command{
 		}
 
 		fmt.Println(smsg.Cid())
+
+		return nil
+	},
+}
+
+var chainGasPriceCmd = &cli.Command{
+	Name:  "gas-price",
+	Usage: "Estimate gas prices",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		nb := []int{1, 2, 3, 5, 10, 20, 50, 100, 300}
+		for _, nblocks := range nb {
+			addr := builtin.SystemActorAddr // TODO: make real when used in GasEstimateGasPrice
+
+			est, err := api.GasEstimateGasPrice(ctx, uint64(nblocks), addr, 10000, types.EmptyTSK)
+			if err != nil {
+				return err
+			}
+
+			fmt.Printf("%d blocks: %s (%s)\n", nblocks, est, types.FIL(est))
+		}
 
 		return nil
 	},
