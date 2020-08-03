@@ -236,7 +236,7 @@ func (mgr *SectorMgr) SealCommit2(ctx context.Context, sid abi.SectorID, phase1O
 
 // Test Instrumentation Methods
 
-func (mgr *SectorMgr) FailSector(sid abi.SectorID) error {
+func (mgr *SectorMgr) MarkFailed(sid abi.SectorID, failed bool) error {
 	mgr.lk.Lock()
 	defer mgr.lk.Unlock()
 	ss, ok := mgr.sectors[sid]
@@ -244,7 +244,7 @@ func (mgr *SectorMgr) FailSector(sid abi.SectorID) error {
 		return fmt.Errorf("no such sector in storage")
 	}
 
-	ss.failed = true
+	ss.failed = failed
 	return nil
 }
 
