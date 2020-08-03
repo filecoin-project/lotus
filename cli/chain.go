@@ -438,7 +438,12 @@ var chainListCmd = &cli.Command{
 						psum = big.Add(psum, m.Message.GasPrice)
 					}
 
-					avgprice := big.Div(psum, big.NewInt(int64(len(msgs.BlsMessages)+len(msgs.SecpkMessages))))
+					lenmsgs := len(msgs.BlsMessages) + len(msgs.SecpkMessages)
+
+					avgprice := big.Zero()
+					if lenmsgs > 0 {
+						avgprice = big.Div(psum, big.NewInt(int64(lenmsgs)))
+					}
 
 					fmt.Printf("\t%s: \t%d msgs, gasLimit: %d / %d (%0.2f%%), avgPrice: %s\n", b.Miner, len(msgs.BlsMessages)+len(msgs.SecpkMessages), limitSum, build.BlockGasLimit, 100*float64(limitSum)/float64(build.BlockGasLimit), avgprice)
 				}
