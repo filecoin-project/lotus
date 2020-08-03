@@ -2,7 +2,6 @@ package validation
 
 import (
 	"context"
-
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -37,6 +36,7 @@ func (a *Applier) ApplyMessage(epoch abi.ChainEpoch, message *vtypes.Message) (v
 	lm := toLotusMsg(message)
 	receipt, penalty, reward, err := a.applyMessage(epoch, lm)
 	return vtypes.ApplyMessageResult{
+		Msg:     *message,
 		Receipt: receipt,
 		Penalty: penalty,
 		Reward:  reward,
@@ -57,6 +57,7 @@ func (a *Applier) ApplySignedMessage(epoch abi.ChainEpoch, msg *vtypes.SignedMes
 	// TODO: Validate the sig first
 	receipt, penalty, reward, err := a.applyMessage(epoch, lm)
 	return vtypes.ApplyMessageResult{
+		Msg:     msg.Message,
 		Receipt: receipt,
 		Penalty: penalty,
 		Reward:  reward,
@@ -176,8 +177,8 @@ func toLotusMsg(msg *vtypes.Message) *types.Message {
 		Nonce:  msg.CallSeqNum,
 		Method: msg.Method,
 
-		Value:    types.BigInt{Int: msg.Value.Int},
-		GasPrice: types.BigInt{Int: msg.GasPrice.Int},
+		Value:    msg.Value,
+		GasPrice: msg.GasPrice,
 		GasLimit: msg.GasLimit,
 
 		Params: msg.Params,
