@@ -776,10 +776,10 @@ func (p *Processor) diffPartition(prevPart, curPart miner.Partition) (*Partition
 	}
 
 	expired := abi.NewBitField()
-	var bf *abi.BitField
-	if err := terminatedEarlyArr.ForEach(bf, func(i int64) error {
+	var bf abi.BitField
+	if err := terminatedEarlyArr.ForEach(&bf, func(i int64) error {
 		// expired = all removals - termination
-		expirations, err := bitfield.SubtractBitField(allRemovedSectors, bf)
+		expirations, err := bitfield.SubtractBitField(allRemovedSectors, &bf)
 		if err != nil {
 			return err
 		}
