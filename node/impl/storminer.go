@@ -48,6 +48,7 @@ type StorageMinerAPI struct {
 	BlockMiner        *miner.Miner
 	Full              api.FullNode
 	StorageMgr        *sectorstorage.Manager `optional:"true"`
+	IStorageMgr       sectorstorage.SectorManager
 	*stores.Index
 
 	ConsiderOnlineStorageDealsConfigFunc       dtypes.ConsiderOnlineStorageDealsConfigFunc

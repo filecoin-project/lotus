@@ -288,11 +288,13 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 	declWait.Add(1)
 
 	go func() {
+		// TODO: extract from runPost, run on fault cutoff boundaries
+
 		defer declWait.Done()
 
 		// check faults / recoveries for the *next* deadline. It's already too
 		// late to declare them for this deadline
-		declDeadline := (di.Index + 1) % miner.WPoStPeriodDeadlines
+		declDeadline := (di.Index + 2) % miner.WPoStPeriodDeadlines
 
 		partitions, err := s.api.StateMinerPartitions(ctx, s.actor, declDeadline, ts.Key())
 		if err != nil {

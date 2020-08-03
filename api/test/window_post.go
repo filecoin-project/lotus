@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
 
 	"os"
 	"strings"
@@ -14,10 +12,14 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/sector-storage/mock"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	miner2 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	sealing "github.com/filecoin-project/storage-fsm"
 
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	bminer "github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/impl"
@@ -151,7 +153,10 @@ func TestWindowPost(t *testing.T, b APIBuilder, blocktime time.Duration, nSector
 	di, err := client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
 
-	fmt.Printf("Running one proving periods\n")
+	mid, err := address.IDFromAddress(maddr)
+	require.NoError(t, err)
+
+	fmt.Printf("Running one proving period\n")
 
 	for {
 		head, err := client.ChainHead(ctx)
@@ -176,6 +181,8 @@ func TestWindowPost(t *testing.T, b APIBuilder, blocktime time.Duration, nSector
 	require.Equal(t, p.MinerPower, p.TotalPower)
 	require.Equal(t, p.MinerPower.RawBytePower, types.NewInt(uint64(ssz)*uint64(nSectors+GenesisPreseals)))
 
+	fmt.Printf("Drop some sectors\n")
+
 	// Drop 2 sectors from deadline 2 partition 0 (full partition / deadline)
 	{
 		parts, err := client.StateMinerPartitions(ctx, maddr, 2, types.EmptyTSK)
@@ -188,10 +195,15 @@ func TestWindowPost(t *testing.T, b APIBuilder, blocktime time.Duration, nSector
 
 		// Drop the partition
 		err = parts[0].Sectors.ForEach(func(sid uint64) error {
-			return miner.SectorRemove(ctx, abi.SectorNumber(sid))
+			return miner.StorageMiner.(*impl.StorageMinerAPI).IStorageMgr.(*mock.SectorMgr).MarkFailed(abi.SectorID{
+				Miner:  abi.ActorID(mid),
+				Number: abi.SectorNumber(sid),
+			}, true)
 		})
 		require.NoError(t, err)
 	}
+
+	var s abi.SectorID
 
 	// Drop 1 sectors from deadline 3 partition 0
 	{
@@ -204,12 +216,49 @@ func TestWindowPost(t *testing.T, b APIBuilder, blocktime time.Duration, nSector
 		require.Equal(t, uint64(2), n)
 
 		// Drop the sector
-		s, err := parts[0].Sectors.First()
+		sn, err := parts[0].Sectors.First()
 		require.NoError(t, err)
 
-		err = miner.SectorRemove(ctx, abi.SectorNumber(s))
+		s = abi.SectorID{
+			Miner:  abi.ActorID(mid),
+			Number: abi.SectorNumber(sn),
+		}
+
+		err = miner.StorageMiner.(*impl.StorageMinerAPI).IStorageMgr.(*mock.SectorMgr).MarkFailed(s, true)
 		require.NoError(t, err)
 	}
+
+	di, err = client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
+	require.NoError(t, err)
+
+	fmt.Printf("Go through another PP, wait for sectors to become faulty\n")
+
+	for {
+		head, err := client.ChainHead(ctx)
+		require.NoError(t, err)
+
+		if head.Height() > di.PeriodStart+(miner2.WPoStProvingPeriod)+2 {
+			break
+		}
+
+		if head.Height()%100 == 0 {
+			fmt.Printf("@%d\n", head.Height())
+		}
+		build.Clock.Sleep(blocktime)
+	}
+
+	p, err = client.StateMinerPower(ctx, maddr, types.EmptyTSK)
+	require.NoError(t, err)
+
+	require.Equal(t, p.MinerPower, p.TotalPower)
+
+	sectors := p.MinerPower.RawBytePower.Uint64() / uint64(ssz)
+	require.Equal(t, nSectors+GenesisPreseals-3, int(sectors)) // -3 just removed sectors
+
+	fmt.Printf("Recover one sector\n")
+
+	err = miner.StorageMiner.(*impl.StorageMinerAPI).IStorageMgr.(*mock.SectorMgr).MarkFailed(s, false)
+	require.NoError(t, err)
 
 	di, err = client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
@@ -233,8 +282,8 @@ func TestWindowPost(t *testing.T, b APIBuilder, blocktime time.Duration, nSector
 
 	require.Equal(t, p.MinerPower, p.TotalPower)
 
-	sectors := p.MinerPower.RawBytePower.Uint64() / uint64(ssz)
-	require.Equal(t, nSectors+GenesisPreseals-3, int(sectors)) // -3 just removed sectors
+	sectors = p.MinerPower.RawBytePower.Uint64() / uint64(ssz)
+	require.Equal(t, nSectors+GenesisPreseals-2, int(sectors)) // -2 not recovered sectors
 
 	mine = false
 	<-done
