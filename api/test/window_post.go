@@ -62,13 +62,13 @@ func TestPledgeSector(t *testing.T, b APIBuilder, blocktime time.Duration, nSect
 		}
 	}()
 
-	pledgeSectors(t, ctx, miner, nSectors, blockNotif)
+	pledgeSectors(t, ctx, miner, nSectors, 0, blockNotif)
 
 	mine = false
 	<-done
 }
 
-func pledgeSectors(t *testing.T, ctx context.Context, miner TestStorageNode, n int, blockNotif <-chan struct{}) {
+func pledgeSectors(t *testing.T, ctx context.Context, miner TestStorageNode, n, existing int, blockNotif <-chan struct{}) {
 	for i := 0; i < n; i++ {
 		err := miner.PledgeSector(ctx)
 		require.NoError(t, err)
@@ -81,7 +81,7 @@ func pledgeSectors(t *testing.T, ctx context.Context, miner TestStorageNode, n i
 		s, err := miner.SectorsList(ctx) // Note - the test builder doesn't import genesis sectors into FSM
 		require.NoError(t, err)
 		fmt.Printf("Sectors: %d\n", len(s))
-		if len(s) >= n {
+		if len(s) >= n + existing {
 			break
 		}
 
@@ -145,7 +145,7 @@ func TestWindowPost(t *testing.T, b APIBuilder, blocktime time.Duration, nSector
 		}
 	}()
 
-	pledgeSectors(t, ctx, miner, nSectors, nil)
+	pledgeSectors(t, ctx, miner, nSectors, 0, nil)
 
 	maddr, err := miner.ActorAddress(ctx)
 	require.NoError(t, err)
@@ -284,6 +284,36 @@ func TestWindowPost(t *testing.T, b APIBuilder, blocktime time.Duration, nSector
 
 	sectors = p.MinerPower.RawBytePower.Uint64() / uint64(ssz)
 	require.Equal(t, nSectors+GenesisPreseals-2, int(sectors)) // -2 not recovered sectors
+
+	// pledge a sector after recovery
+
+	pledgeSectors(t, ctx, miner, 1, nSectors, nil)
+
+	{
+		// wait a bit more
+
+		head, err := client.ChainHead(ctx)
+		require.NoError(t, err)
+
+		waitUntil := head.Height() + 10
+
+		for {
+			head, err := client.ChainHead(ctx)
+			require.NoError(t, err)
+
+			if head.Height() > waitUntil {
+				break
+			}
+		}
+	}
+
+	p, err = client.StateMinerPower(ctx, maddr, types.EmptyTSK)
+	require.NoError(t, err)
+
+	require.Equal(t, p.MinerPower, p.TotalPower)
+
+	sectors = p.MinerPower.RawBytePower.Uint64() / uint64(ssz)
+	require.Equal(t, nSectors+GenesisPreseals-2+1, int(sectors)) // -2 not recovered sectors + 1 just pledged
 
 	mine = false
 	<-done

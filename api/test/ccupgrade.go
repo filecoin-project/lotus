@@ -54,7 +54,7 @@ func TestCCUpgrade(t *testing.T, b APIBuilder, blocktime time.Duration) {
 	CC := abi.SectorNumber(GenesisPreseals + 1)
 	Upgraded := CC + 1
 
-	pledgeSectors(t, ctx, miner, 1, nil)
+	pledgeSectors(t, ctx, miner, 1, 0, nil)
 
 	sl, err := miner.SectorsList(ctx)
 	if err != nil {
