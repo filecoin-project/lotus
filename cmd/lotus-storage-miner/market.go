@@ -357,11 +357,7 @@ var dealsListCmd = &cli.Command{
 		_, _ = fmt.Fprintf(w, "ProposalCid\tDealId\tState\tClient\tSize\tPrice\tDuration\n")
 
 		for _, deal := range deals {
-			pc, err := deal.Proposal.Cid()
-			if err != nil {
-				return err
-			}
-			propcid := pc.String()
+			propcid := deal.ProposalCid.String()
 			propcid = "..." + propcid[len(propcid)-8:]
 
 			fil := types.FIL(types.BigMul(deal.Proposal.StoragePricePerEpoch, types.NewInt(uint64(deal.Proposal.Duration()))))
