@@ -29,7 +29,6 @@ func SelectMessages(ctx context.Context, al gasguess.ActorLookup, ts *types.TipS
 
 		gasReward []abi.TokenAmount
 		gasLimit  []int64
-		gasOffset int64
 
 		msgs []*types.SignedMessage
 	}
@@ -88,6 +87,7 @@ func SelectMessages(ctx context.Context, al gasguess.ActorLookup, ts *types.TipS
 		getbal += build.Clock.Since(getBalStart)
 
 		if inclBalances[from].LessThan(msg.Message.RequiredFunds()) {
+			log.Warnf("message had too low funds: %s %d %s %s %s", from, msg.Message.Nonce, inclBalances[from], msg.Message.Value, msg.Message.RequiredFunds())
 			tooLowFundMsgs++
 			// todo: drop from mpool
 			continue
@@ -156,7 +156,7 @@ func SelectMessages(ctx context.Context, al gasguess.ActorLookup, ts *types.TipS
 					continue
 				}
 				for n := range meta.msgs {
-					if meta.gasLimit[n]-meta.gasOffset > gasLimitLeft {
+					if meta.gasLimit[n] > gasLimitLeft {
 						break
 					}
 
@@ -165,7 +165,7 @@ func SelectMessages(ctx context.Context, al gasguess.ActorLookup, ts *types.TipS
 					}
 
 					gasToReward, _ := new(big2.Float).SetInt(meta.gasReward[n].Int).Float64()
-					gasToReward /= float64(meta.gasLimit[n] - meta.gasOffset)
+					gasToReward /= float64(meta.gasLimit[n])
 
 					if gasToReward >= bestGasToReward {
 						bestSender = sender
@@ -176,17 +176,26 @@ func SelectMessages(ctx context.Context, al gasguess.ActorLookup, ts *types.TipS
 			}
 
 			if nBest == 0 {
+				log.Warning("nBest is zero: ", gasLimitLeft)
 				break // block gas limit reached
 			}
 
 			{
 				out = append(out, outBySender[bestSender].msgs[:nBest]...)
-				gasLimitLeft -= outBySender[bestSender].gasLimit[nBest-1] - outBySender[bestSender].gasOffset
 
-				outBySender[bestSender].gasOffset += outBySender[bestSender].gasLimit[nBest-1]
+				seqGasLimit := outBySender[bestSender].gasLimit[nBest-1]
+				seqGasReward := outBySender[bestSender].gasReward[nBest-1]
+
+				gasLimitLeft -= seqGasLimit
+
 				outBySender[bestSender].msgs = outBySender[bestSender].msgs[nBest:]
 				outBySender[bestSender].gasLimit = outBySender[bestSender].gasLimit[nBest:]
 				outBySender[bestSender].gasReward = outBySender[bestSender].gasReward[nBest:]
+
+				for i := range outBySender[bestSender].gasLimit {
+					outBySender[bestSender].gasLimit[i] -= seqGasLimit
+					outBySender[bestSender].gasReward[i] = big.Sub(outBySender[bestSender].gasReward[i], seqGasReward)
+				}
 
 				if len(outBySender[bestSender].msgs) == 0 {
 					delete(outBySender, bestSender)
