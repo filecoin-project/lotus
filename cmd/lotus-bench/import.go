@@ -104,6 +104,16 @@ var importBenchCmd = &cli.Command{
 			return err
 		}
 
+		gb, err := cs.GetTipsetByHeight(context.TODO(), 0, head, true)
+		if err != nil {
+			return err
+		}
+
+		err = cs.SetGenesis(gb.Blocks()[0])
+		if err != nil {
+			return err
+		}
+
 		if h := cctx.Int64("height"); h != 0 {
 			tsh, err := cs.GetTipsetByHeight(context.TODO(), abi.ChainEpoch(h), head, true)
 			if err != nil {
