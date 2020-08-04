@@ -40,7 +40,7 @@ func (mp *MessagePool) selectMessages(ts *types.TipSet) []*types.SignedMessage {
 	// 1. Create a list of dependent message chains with maximal gas reward per limit consumed
 	var chains []*msgChain
 	for actor, mset := range mp.pending {
-		next := mp.createChains(actor, mset, ts)
+		next := mp.createMessageChains(actor, mset, ts)
 		chains = append(chains, next...)
 	}
 
@@ -53,9 +53,10 @@ func (mp *MessagePool) selectMessages(ts *types.TipSet) []*types.SignedMessage {
 	//    the block gas limit.
 	result := make([]*types.SignedMessage, 0, mp.maxTxPoolSizeLo)
 	gasLimit := build.BlockGasLimit
-	minGas := TODO
+	minGas := guessgas.MinGas
 	last := len(chains)
 	for i, chain := range chains {
+		// does it fit in the block?
 		if chain.gasLimit <= gasLimit {
 			gasLimit -= chain.gasLimit
 			result = append(result, chain.msgs...)
@@ -73,17 +74,23 @@ func (mp *MessagePool) selectMessages(ts *types.TipSet) []*types.SignedMessage {
 	// dependency cannot be (fully) included.
 	// We do this in a loop because the blocker might have been inordinately large and we might
 	// have to do it multiple times to satisfy tail packing.
+	al := func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*types.Actor, error) {
+		return mp.api.StateGetActor(addr, ts)
+	}
+
 tailLoop:
 	for gasLimit >= minGas && last < len(chains) {
 		// trim
-		chains[last].Trim(gasLimit)
+		chains[last].Trim(gasLimit, al)
 
 		// push down
-		for i := last; i < len(chains)-1; i++ {
-			if chains[i].Before(chains[i+1]) {
-				break
+		if mc.valid {
+			for i := last; i < len(chains)-1; i++ {
+				if chains[i].Before(chains[i+1]) {
+					break
+				}
+				chains[i], chains[i+1] = chains[i+1], chains[i]
 			}
-			chains[i], chains[i+1] = chains[i+1], chains[i]
 		}
 
 		// select the next (valid and fitting) chain for inclusion
@@ -110,7 +117,7 @@ tailLoop:
 	return result
 }
 
-func (mp *MessagePool) createChains(actor address.Address, mset *msgSet, ts *types.TipSet) []*msgChain {
+func (mp *MessagePool) createMessageChains(actor address.Address, mset *msgSet, ts *types.TipSet) []*msgChain {
 	// TODO
 	return nil
 }
@@ -120,6 +127,39 @@ func (self *msgChain) Before(other *msgChain) bool {
 		(self.gasPerf == other.gasPerf && self.gasReward > other.gasReward)
 }
 
-func (mc *msgChain) Trim(uint64 gasLimit) {
-	// TODO
+func (mc *msgChain) Trim(uint64 gasLimit, al func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*types.Actor, error)) {
+	i := len(mc.msgs) - 1
+	for i >= 0 && mc.gasLimit > gasLimit {
+		gasLimit -= mc.msgs[i].GasLimit
+		gasUsed, _ := gasguess.GuessGasUsed(context.TODO(), types.EmptyTSK, mc.msgs[i], al)
+		mc.gasReward -= msg.GasPrice * gasUsed
+		mc.gasLimit -= mc.msgs[i].GasLimit
+		if mc.gasLimit > 0 {
+			mc.gasPerf = mc.gasReward * build.BlockGasLimit / mc.gasLimit
+		} else {
+			mc.gasPerf = 0
+		}
+		i--
+	}
+
+	if i < 0 {
+		mc.msgs = nil
+		mc.valid = false
+	} else {
+		mc.msgs = mc.msgs[:i]
+	}
+
+	if mc.next != nil {
+		mc.next.invalidate()
+		mc.next = nil
+	}
+}
+
+func (mc *msgChain) invalidate() {
+	mc.valid = false
+	mc.msgs = nil
+	if mc.next != nil {
+		mc.next.invalidate()
+		mc.next = nil
+	}
 }
