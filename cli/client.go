@@ -30,6 +30,7 @@ import (
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/tablewriter"
 )
 
 var CidBaseFlag = cli.StringFlag{
@@ -986,8 +987,8 @@ var clientListDeals = &cli.Command{
 
 		color := cctx.Bool("color")
 
-		w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
 		if cctx.Bool("verbose") {
+			w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
 			fmt.Fprintf(w, "DealCid\tDealId\tProvider\tState\tOn Chain?\tSlashed?\tPieceCID\tSize\tPrice\tDuration\tMessage\n")
 			for _, d := range deals {
 				onChain := "N"
@@ -1003,8 +1004,19 @@ var clientListDeals = &cli.Command{
 				price := types.FIL(types.BigMul(d.LocalDeal.PricePerEpoch, types.NewInt(d.LocalDeal.Duration)))
 				fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d\t%s\n", d.LocalDeal.ProposalCid, d.LocalDeal.DealID, d.LocalDeal.Provider, dealStateString(color, d.LocalDeal.State), onChain, slashed, d.LocalDeal.PieceCID, types.SizeStr(types.NewInt(d.LocalDeal.Size)), price, d.LocalDeal.Duration, d.LocalDeal.Message)
 			}
+			return w.Flush()
 		} else {
-			fmt.Fprintf(w, "DealCid\tDealId\tProvider\tState\tOn Chain?\tSlashed?\tPieceCID\tSize\tPrice\tDuration\n")
+			w := tablewriter.New(tablewriter.Col("DealCid"),
+				tablewriter.Col("DealId"),
+				tablewriter.Col("Provider"),
+				tablewriter.Col("State"),
+				tablewriter.Col("On Chain?"),
+				tablewriter.Col("Slashed?"),
+				tablewriter.Col("PieceCID"),
+				tablewriter.Col("Size"),
+				tablewriter.Col("Price"),
+				tablewriter.Col("Duration"),
+				tablewriter.NewLineCol("Message"))
 
 			for _, d := range deals {
 				propcid := d.LocalDeal.ProposalCid.String()
@@ -1024,11 +1036,24 @@ var clientListDeals = &cli.Command{
 				piece = "..." + piece[len(piece)-8:]
 
 				price := types.FIL(types.BigMul(d.LocalDeal.PricePerEpoch, types.NewInt(d.LocalDeal.Duration)))
-				fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d\n", propcid, d.LocalDeal.DealID, d.LocalDeal.Provider, dealStateString(color, d.LocalDeal.State), onChain, slashed, piece, types.SizeStr(types.NewInt(d.LocalDeal.Size)), price, d.LocalDeal.Duration)
+
+				w.Write(map[string]interface{}{
+					"DealCid": propcid,
+					"DealId":d.LocalDeal.DealID,
+					"Provider":d.LocalDeal.Provider,
+					"State":dealStateString(color, d.LocalDeal.State),
+					"On Chain?":onChain,
+					"Slashed?":slashed,
+					"PieceCID":piece,
+					"Size":types.SizeStr(types.NewInt(d.LocalDeal.Size)),
+					"Price":price,
+					"Duration":d.LocalDeal.Duration,
+					"Message":d.LocalDeal.Message,
+				})
 			}
 
+			return w.Flush(os.Stdout)
 		}
-		return w.Flush()
 	},
 }
 
