@@ -200,16 +200,19 @@ var storageListCmd = &cli.Command{
 
 			var barCols = int64(50)
 			set := (st.Capacity - st.Available) * barCols / st.Capacity
-			bar := strings.Repeat("|", int(set)) + strings.Repeat(" ", int(barCols-set))
+			used := (st.Capacity - (st.Available + st.Reserved)) * barCols / st.Capacity
+			reserved := set - used
+			bar := strings.Repeat("#", int(used)) + strings.Repeat("*", int(reserved)) + strings.Repeat(" ", int(barCols-set))
 
 			fmt.Printf("\t[%s] %s/%s %s\n", color.New(percCol).Sprint(bar),
 				types.SizeStr(types.NewInt(uint64(st.Capacity-st.Available))),
 				types.SizeStr(types.NewInt(uint64(st.Capacity))),
 				color.New(percCol).Sprintf("%d%%", usedPercent))
-			fmt.Printf("\t%s; %s; %s\n",
+			fmt.Printf("\t%s; %s; %s; Reserved: %s\n",
 				color.YellowString("Unsealed: %d", cnt[0]),
 				color.GreenString("Sealed: %d", cnt[1]),
-				color.BlueString("Caches: %d", cnt[2]))
+				color.BlueString("Caches: %d", cnt[2]),
+				types.SizeStr(types.NewInt(uint64(st.Reserved))))
 
 			si, err := nodeApi.StorageInfo(ctx, s.ID)
 			if err != nil {
