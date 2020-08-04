@@ -1244,6 +1244,22 @@ loop:
 		}
 		log.Info("Got blocks: ", blks[0].Height(), len(blks))
 
+		// Check that the fetched segment of the chain matches what we already
+		// have. Since we fetch from the head backwards our reassembled chain
+		// is sorted in reverse here: we have a child -> parent order, our last
+		// tipset then should be child of the first tipset retrieved.
+		// FIXME: The reassembly logic should be part of the `BlockSync`
+		//  service, the consumer should not be concerned with the
+		//  `MaxRequestLength` limitation, it should just be able to request
+		//  an segment of arbitrary length. The same burden is put on
+		//  `syncFork()` which needs to be aware this as well.
+		if blockSet[len(blockSet)-1].IsChildOf(blks[0]) == false {
+			return nil, xerrors.Errorf("retrieved segments of the chain are not connected at heights %d/%d",
+				blockSet[len(blockSet)-1].Height(), blks[0].Height())
+			// A successful `GetBlocks()` call is guaranteed to fetch at least
+			// one tipset so the acess `blks[0]` is safe.
+		}
+
 		for _, b := range blks {
 			if b.Height() < untilHeight {
 				break loop
