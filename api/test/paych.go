@@ -27,8 +27,6 @@ import (
 )
 
 func TestPaymentChannels(t *testing.T, b APIBuilder, blocktime time.Duration) {
-	t.Skip("fixme")
-
 	_ = os.Setenv("BELLMAN_NO_GPU", "1")
 
 	ctx := context.Background()
@@ -130,11 +128,6 @@ func TestPaymentChannels(t *testing.T, b APIBuilder, blocktime time.Duration) {
 		t.Fatal("Unable to settle payment channel")
 	}
 
-	creatorPreCollectBalance, err := paymentCreator.WalletBalance(ctx, createrAddr)
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	// wait for the receiver to submit their vouchers
 	ev := events.NewEvents(ctx, paymentCreator)
 	preds := state.NewStatePredicates(paymentCreator)
@@ -168,24 +161,12 @@ func TestPaymentChannels(t *testing.T, b APIBuilder, blocktime time.Duration) {
 		t.Fatal("Timed out waiting for receiver to submit vouchers")
 	}
 
-	atomic.StoreInt64(&bm.nulls, paych.SettleDelay)
+	// wait for the settlement period to pass before collecting
+	waitForBlocks(ctx, t, bm, paymentReceiver, receiverAddr, paych.SettleDelay)
 
-	{
-		// wait for a block
-		m, err := paymentCreator.MpoolPushMessage(ctx, &types.Message{
-			To:       builtin.BurntFundsActorAddr,
-			From:     createrAddr,
-			Value:    types.NewInt(0),
-			GasPrice: big.Zero(),
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		_, err = paymentCreator.StateWaitMsg(ctx, m.Cid(), 3)
-		if err != nil {
-			t.Fatal(err)
-		}
+	creatorPreCollectBalance, err := paymentCreator.WalletBalance(ctx, createrAddr)
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	// collect funds (from receiver, though either party can do it)
@@ -193,7 +174,7 @@ func TestPaymentChannels(t *testing.T, b APIBuilder, blocktime time.Duration) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	res, err = paymentReceiver.StateWaitMsg(ctx, collectMsg, 1)
+	res, err = paymentReceiver.StateWaitMsg(ctx, collectMsg, 3)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -209,6 +190,7 @@ func TestPaymentChannels(t *testing.T, b APIBuilder, blocktime time.Duration) {
 
 	// The highest nonce voucher that the creator sent on each lane is 2000
 	totalVouchers := int64(len(lanes) * 2000)
+
 	// When receiver submits the tokens to the chain, creator should get a
 	// refund on the remaining balance, which is
 	// channel amount - total voucher value
@@ -220,6 +202,36 @@ func TestPaymentChannels(t *testing.T, b APIBuilder, blocktime time.Duration) {
 
 	// shut down mining
 	bm.stop()
+}
+
+func waitForBlocks(ctx context.Context, t *testing.T, bm *blockMiner, paymentReceiver TestNode, receiverAddr address.Address, count int) {
+	// We need to add null blocks in batches, if we add too many the chain can't sync
+	batchSize := 60
+	for i := 0; i < count; i += batchSize {
+		size := batchSize
+		if i > count {
+			size = count - i
+		}
+
+		// Add a batch of null blocks
+		atomic.StoreInt64(&bm.nulls, int64(size-1))
+
+		// Add a real block
+		m, err := paymentReceiver.MpoolPushMessage(ctx, &types.Message{
+			To:       builtin.BurntFundsActorAddr,
+			From:     receiverAddr,
+			Value:    types.NewInt(0),
+			GasPrice: big.Zero(),
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		_, err = paymentReceiver.StateWaitMsg(ctx, m.Cid(), 1)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
 }
 
 func waitForMessage(ctx context.Context, t *testing.T, paymentCreator TestNode, msgCid cid.Cid, duration time.Duration, desc string) *api.MsgLookup {
