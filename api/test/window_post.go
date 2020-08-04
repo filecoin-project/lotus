@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-
 	"os"
 	"strings"
 	"testing"
@@ -81,7 +80,7 @@ func pledgeSectors(t *testing.T, ctx context.Context, miner TestStorageNode, n, 
 		s, err := miner.SectorsList(ctx) // Note - the test builder doesn't import genesis sectors into FSM
 		require.NoError(t, err)
 		fmt.Printf("Sectors: %d\n", len(s))
-		if len(s) >= n + existing {
+		if len(s) >= n+existing {
 			break
 		}
 

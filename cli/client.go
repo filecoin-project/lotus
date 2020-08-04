@@ -1038,17 +1038,17 @@ var clientListDeals = &cli.Command{
 				price := types.FIL(types.BigMul(d.LocalDeal.PricePerEpoch, types.NewInt(d.LocalDeal.Duration)))
 
 				w.Write(map[string]interface{}{
-					"DealCid": propcid,
-					"DealId":d.LocalDeal.DealID,
-					"Provider":d.LocalDeal.Provider,
-					"State":dealStateString(color, d.LocalDeal.State),
-					"On Chain?":onChain,
-					"Slashed?":slashed,
-					"PieceCID":piece,
-					"Size":types.SizeStr(types.NewInt(d.LocalDeal.Size)),
-					"Price":price,
-					"Duration":d.LocalDeal.Duration,
-					"Message":d.LocalDeal.Message,
+					"DealCid":   propcid,
+					"DealId":    d.LocalDeal.DealID,
+					"Provider":  d.LocalDeal.Provider,
+					"State":     dealStateString(color, d.LocalDeal.State),
+					"On Chain?": onChain,
+					"Slashed?":  slashed,
+					"PieceCID":  piece,
+					"Size":      types.SizeStr(types.NewInt(d.LocalDeal.Size)),
+					"Price":     price,
+					"Duration":  d.LocalDeal.Duration,
+					"Message":   d.LocalDeal.Message,
 				})
 			}
 

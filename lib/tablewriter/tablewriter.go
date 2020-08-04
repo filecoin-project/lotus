@@ -45,7 +45,7 @@ func (w *TableWriter) Write(r map[string]interface{}) {
 	// this can cause columns to be out of order, but will at least work
 	byColID := map[int]string{}
 
-	cloop:
+cloop:
 	for col, val := range r {
 		for i, column := range w.cols {
 			if column.Name == col {
