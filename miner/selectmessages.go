@@ -29,6 +29,7 @@ func SelectMessages(ctx context.Context, al gasguess.ActorLookup, ts *types.TipS
 
 		gasReward []abi.TokenAmount
 		gasLimit  []int64
+		gasOffset int64
 
 		msgs []*types.SignedMessage
 	}
@@ -155,7 +156,7 @@ func SelectMessages(ctx context.Context, al gasguess.ActorLookup, ts *types.TipS
 					continue
 				}
 				for n := range meta.msgs {
-					if meta.gasLimit[n] > gasLimitLeft {
+					if meta.gasLimit[n]-meta.gasOffset > gasLimitLeft {
 						break
 					}
 
@@ -164,7 +165,7 @@ func SelectMessages(ctx context.Context, al gasguess.ActorLookup, ts *types.TipS
 					}
 
 					gasToReward, _ := new(big2.Float).SetInt(meta.gasReward[n].Int).Float64()
-					gasToReward /= float64(meta.gasLimit[n])
+					gasToReward /= float64(meta.gasLimit[n] - meta.gasOffset)
 
 					if gasToReward >= bestGasToReward {
 						bestSender = sender
@@ -180,8 +181,9 @@ func SelectMessages(ctx context.Context, al gasguess.ActorLookup, ts *types.TipS
 
 			{
 				out = append(out, outBySender[bestSender].msgs[:nBest]...)
-				gasLimitLeft -= outBySender[bestSender].gasLimit[nBest-1]
+				gasLimitLeft -= outBySender[bestSender].gasLimit[nBest-1] - outBySender[bestSender].gasOffset
 
+				outBySender[bestSender].gasOffset += outBySender[bestSender].gasLimit[nBest-1]
 				outBySender[bestSender].msgs = outBySender[bestSender].msgs[nBest:]
 				outBySender[bestSender].gasLimit = outBySender[bestSender].gasLimit[nBest:]
 				outBySender[bestSender].gasReward = outBySender[bestSender].gasReward[nBest:]
