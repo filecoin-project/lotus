@@ -466,7 +466,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 		// burn overallocated gas
 		burn := types.BigMul(types.NewInt(uint64(gasToBurn)), msg.GasPrice)
 		if err := vm.transferFromGasHolder(builtin.BurntFundsActorAddr, gasHolder, burn); err != nil {
-			return nil, xerrors.Errorf("failed to refund gas")
+			return nil, xerrors.Errorf("failed to burn over estimated gas")
 		}
 	}
 
