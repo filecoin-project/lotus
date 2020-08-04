@@ -2,9 +2,13 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"text/tabwriter"
+
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"github.com/urfave/cli/v2"
 
 	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/urfave/cli/v2"
 )
 
 var retrievalDealsCmd = &cli.Command{
@@ -12,6 +16,7 @@ var retrievalDealsCmd = &cli.Command{
 	Usage: "Manage retrieval deals and related configuration",
 	Subcommands: []*cli.Command{
 		retrievalDealSelectionCmd,
+		retrievalDealsListCmd,
 	},
 }
 
@@ -109,5 +114,37 @@ var retrievalDealSelectionRejectCmd = &cli.Command{
 		}
 
 		return nil
+	},
+}
+
+var retrievalDealsListCmd = &cli.Command{
+	Name:  "list",
+	Usage: "List all active retrieval deals for this miner",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		deals, err := api.MarketListRetrievalDeals(lcli.DaemonContext(cctx))
+		if err != nil {
+			return err
+		}
+
+		w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
+
+		_, _ = fmt.Fprintf(w, "Receiver\tPayload\tState\n")
+
+		for _, deal := range deals {
+			_, _ = fmt.Fprint(w, "%v", deal)
+			receiver := deal.Receiver.String()
+			pc := deal.PayloadCID.String()
+			payload := "..." + pc[len(pc)-8:]
+			status := retrievalmarket.DealStatuses[deal.Status]
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", receiver, payload, status)
+		}
+
+		return w.Flush()
 	},
 }
