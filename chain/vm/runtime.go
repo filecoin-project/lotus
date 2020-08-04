@@ -294,7 +294,8 @@ func (rt *Runtime) CreateActor(codeID cid.Cid, address address.Address) {
 	_ = rt.chargeGasSafe(gasOnActorExec)
 }
 
-// Deletes the executing actor from the state tree, transferring any balance to beneficiary.
+// DeleteActor deletes the executing actor from the state tree, transferring
+// any balance to beneficiary.
 // Aborts if the beneficiary does not exist.
 // May only be called by the actor itself.
 func (rt *Runtime) DeleteActor(beneficiary address.Address) {
