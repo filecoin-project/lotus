@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/messagepool/gasguess"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/vm"
 )
 
 type msgChain struct {
@@ -141,7 +142,6 @@ func (mp *MessagePool) createMessageChains(actor address.Address, mset *msgSet, 
 		return a
 	}
 
-	minGas := guessgas.MinGas
 	a, _ := mp.api.StateGetActor(actor, nil)
 	curNonce := a.Nonce
 	balance := a.Balance
@@ -155,6 +155,7 @@ func (mp *MessagePool) createMessageChains(actor address.Address, mset *msgSet, 
 		}
 		curNonce++
 
+		minGas := vm.PricelistByEpoch(ts.Height()).OnChainMessage(m.ChainLength())
 		if m.GasLimit < minGas {
 			break
 		}
