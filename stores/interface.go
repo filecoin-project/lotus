@@ -9,15 +9,15 @@ import (
 type PathType string
 
 const (
-	PathStorage = "storage"
-	PathSealing = "sealing"
+	PathStorage PathType = "storage"
+	PathSealing PathType = "sealing"
 )
 
 type AcquireMode string
 
 const (
-	AcquireMove = "move"
-	AcquireCopy = "copy"
+	AcquireMove AcquireMode = "move"
+	AcquireCopy AcquireMode = "copy"
 )
 
 type Store interface {
