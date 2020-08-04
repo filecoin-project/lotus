@@ -54,10 +54,10 @@ func (pm *Manager) accessorCacheKey(from address.Address, to address.Address) st
 	return from.String() + "->" + to.String()
 }
 
-// addAccessorToCache adds a channel accessor to a cache. Note that channelInfo
-// may be nil if the channel hasn't been created yet, but we still want to
-// reference the same channel accessor for a given from/to, so that all
-// attempts to access a channel use the same lock (the lock on the accessor)
+// addAccessorToCache adds a channel accessor to the cache. Note that the
+// channel may not have been created yet, but we still want to reference
+// the same channel accessor for a given from/to, so that all attempts to
+// access a channel use the same lock (the lock on the accessor)
 func (pm *Manager) addAccessorToCache(from address.Address, to address.Address) *channelAccessor {
 	key := pm.accessorCacheKey(from, to)
 	ca := newChannelAccessor(pm)
