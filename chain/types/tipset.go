@@ -226,5 +226,9 @@ func (ts *TipSet) Contains(oc cid.Cid) bool {
 }
 
 func (ts *TipSet) IsChildOf(parent *TipSet) bool {
-	return CidArrsEqual(ts.Parents().Cids(), parent.Cids())
+	return CidArrsEqual(ts.Parents().Cids(), parent.Cids()) &&
+		// FIXME: The height check might go beyond what is meant by
+		//  "parent", but many parts of the code rely on the tipset's
+		//  height for their processing logic at the moment to obviate it.
+		ts.height > parent.height
 }
