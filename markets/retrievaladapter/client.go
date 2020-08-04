@@ -1,20 +1,15 @@
 package retrievaladapter
 
 import (
-	"bytes"
 	"context"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	initactor "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
-	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/node/impl/full"
 	payapi "github.com/filecoin-project/lotus/node/impl/paych"
 	"github.com/filecoin-project/lotus/paychmgr"
@@ -73,29 +68,13 @@ func (rcn *retrievalClientNode) GetChainHead(ctx context.Context) (shared.TipSet
 // WaitForPaymentChannelAddFunds waits messageCID to appear on chain. If it doesn't appear within
 // defaultMsgWaitTimeout it returns error
 func (rcn *retrievalClientNode) WaitForPaymentChannelAddFunds(messageCID cid.Cid) error {
-	_, mr, err := rcn.chainapi.StateManager.WaitForMessage(context.TODO(), messageCID, build.MessageConfidence)
-
+	_, err := rcn.payapi.PaychMgr.GetPaychWaitReady(context.TODO(), messageCID)
 	if err != nil {
 		return err
-	}
-	if mr.ExitCode != exitcode.Ok {
-		return xerrors.Errorf("wait for payment channel to add funds failed. exit code: %d", mr.ExitCode)
 	}
 	return nil
 }
 
 func (rcn *retrievalClientNode) WaitForPaymentChannelCreation(messageCID cid.Cid) (address.Address, error) {
-	_, mr, err := rcn.chainapi.StateManager.WaitForMessage(context.TODO(), messageCID, build.MessageConfidence)
-
-	if err != nil {
-		return address.Undef, err
-	}
-	if mr.ExitCode != exitcode.Ok {
-		return address.Undef, xerrors.Errorf("payment channel creation failed. exit code: %d", mr.ExitCode)
-	}
-	var retval initactor.ExecReturn
-	if err := retval.UnmarshalCBOR(bytes.NewReader(mr.Return)); err != nil {
-		return address.Undef, err
-	}
-	return retval.RobustAddress, nil
+	return rcn.payapi.PaychMgr.GetPaychWaitReady(context.TODO(), messageCID)
 }
