@@ -67,6 +67,8 @@ create table if not exists sector_precommit_info
     replace_sector_partition bigint,
     replace_sector_number bigint,
     
+    unique (miner_id, sector_id),
+    
     constraint sector_precommit_info_pk
 		primary key (miner_id, sector_id, sealed_cid)
     
@@ -155,6 +157,12 @@ type MinerSectorsEvent struct {
 	SectorIDs []uint64
 	StateRoot cid.Cid
 	Event     SectorLifecycleEvent
+}
+
+type SectorDealEvent struct {
+	MinerID  address.Address
+	SectorID uint64
+	DealIDs  []abi.DealID
 }
 
 type PartitionStatus struct {
@@ -261,14 +269,18 @@ func (p *Processor) persistMiners(ctx context.Context, miners []minerActorInfo) 
 	preCommitEvents := make(chan *MinerSectorsEvent, 8)
 	sectorEvents := make(chan *MinerSectorsEvent, 8)
 	partitionEvents := make(chan *MinerSectorsEvent, 8)
+	p.sectorDealEvents = make(chan *SectorDealEvent, 8)
 
 	grp.Go(func() error {
 		return p.storeMinerSectorEvents(ctx, sectorEvents, preCommitEvents, partitionEvents)
 	})
 
 	grp.Go(func() error {
-		defer close(preCommitEvents)
-		return p.storeMinerPreCommitInfo(ctx, miners, preCommitEvents)
+		defer func() {
+			close(preCommitEvents)
+			close(p.sectorDealEvents)
+		}()
+		return p.storeMinerPreCommitInfo(ctx, miners, preCommitEvents, p.sectorDealEvents)
 	})
 
 	grp.Go(func() error {
@@ -284,7 +296,7 @@ func (p *Processor) persistMiners(ctx context.Context, miners []minerActorInfo) 
 	return grp.Wait()
 }
 
-func (p *Processor) storeMinerPreCommitInfo(ctx context.Context, miners []minerActorInfo, events chan<- *MinerSectorsEvent) error {
+func (p *Processor) storeMinerPreCommitInfo(ctx context.Context, miners []minerActorInfo, sectorEvents chan<- *MinerSectorsEvent, sectorDeals chan<- *SectorDealEvent) error {
 	tx, err := p.db.Begin()
 	if err != nil {
 		return err
@@ -319,6 +331,13 @@ func (p *Processor) storeMinerPreCommitInfo(ctx context.Context, miners []minerA
 
 		preCommitAdded := make([]uint64, len(changes.Added))
 		for i, added := range changes.Added {
+			if len(added.Info.DealIDs) > 0 {
+				sectorDeals <- &SectorDealEvent{
+					MinerID:  m.common.addr,
+					SectorID: uint64(added.Info.SectorNumber),
+					DealIDs:  added.Info.DealIDs,
+				}
+			}
 			if added.Info.ReplaceCapacity {
 				if _, err := stmt.Exec(
 					m.common.addr.String(),
@@ -362,7 +381,7 @@ func (p *Processor) storeMinerPreCommitInfo(ctx context.Context, miners []minerA
 			preCommitAdded[i] = uint64(added.Info.SectorNumber)
 		}
 		if len(preCommitAdded) > 0 {
-			events <- &MinerSectorsEvent{
+			sectorEvents <- &MinerSectorsEvent{
 				MinerID:   m.common.addr,
 				StateRoot: m.common.stateroot,
 				SectorIDs: preCommitAdded,
@@ -379,7 +398,7 @@ func (p *Processor) storeMinerPreCommitInfo(ctx context.Context, miners []minerA
 			}
 		}
 		if len(preCommitExpired) > 0 {
-			events <- &MinerSectorsEvent{
+			sectorEvents <- &MinerSectorsEvent{
 				MinerID:   m.common.addr,
 				StateRoot: m.common.stateroot,
 				SectorIDs: preCommitExpired,

@@ -36,6 +36,9 @@ type Processor struct {
 
 	// number of blocks processed at a time
 	batch int
+
+	// process communication channels
+	sectorDealEvents chan *SectorDealEvent
 }
 
 type ActorTips map[types.TipSetKey][]actorInfo
@@ -64,11 +67,12 @@ func NewProcessor(ctx context.Context, db *sql.DB, node api.FullNode, batch int)
 }
 
 func (p *Processor) setupSchemas() error {
-	if err := p.setupMarket(); err != nil {
+	// maintain order, subsequent calls create tables with foreign keys.
+	if err := p.setupMiners(); err != nil {
 		return err
 	}
 
-	if err := p.setupMiners(); err != nil {
+	if err := p.setupMarket(); err != nil {
 		return err
 	}
 
