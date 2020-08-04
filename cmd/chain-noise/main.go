@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"math/rand"
 	"os"
 	"time"
@@ -41,6 +42,18 @@ func main() {
 
 var runCmd = &cli.Command{
 	Name: "run",
+	Flags: []cli.Flag{
+		&cli.IntFlag{
+			Name:  "rate",
+			Usage: "specify message sending rate to attempt",
+			Value: 10,
+		},
+		&cli.Int64Flag{
+			Name:  "gasPrice",
+			Usage: "Specify gas price to use (0 for auto)",
+			Value: 0,
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		addr, err := address.NewFromString(cctx.Args().First())
 		if err != nil {
@@ -54,11 +67,11 @@ var runCmd = &cli.Command{
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
-		return sendSmallFundsTxs(ctx, api, addr, 5)
+		return sendSmallFundsTxs(ctx, api, addr, cctx.Int("rate"), cctx.Int64("gasPrice"))
 	},
 }
 
-func sendSmallFundsTxs(ctx context.Context, api api.FullNode, from address.Address, rate int) error {
+func sendSmallFundsTxs(ctx context.Context, api api.FullNode, from address.Address, rate int, gasprice int64) error {
 	var sendSet []address.Address
 	for i := 0; i < 20; i++ {
 		naddr, err := api.WalletNew(ctx, crypto.SigTypeSecp256k1)
@@ -69,6 +82,11 @@ func sendSmallFundsTxs(ctx context.Context, api api.FullNode, from address.Addre
 		sendSet = append(sendSet, naddr)
 	}
 
+	curnonce, err := api.MpoolGetNonce(ctx, from)
+	if err != nil {
+		return err
+	}
+
 	tick := build.Clock.Ticker(time.Second / time.Duration(rate))
 	for {
 		select {
@@ -77,15 +95,26 @@ func sendSmallFundsTxs(ctx context.Context, api api.FullNode, from address.Addre
 				From:     from,
 				To:       sendSet[rand.Intn(20)],
 				Value:    types.NewInt(1),
-				GasLimit: 0,
-				GasPrice: types.NewInt(0),
+				GasLimit: 1300000,
+				GasPrice: types.NewInt(uint64(gasprice)),
+				Nonce:    curnonce,
 			}
+			curnonce++
 
-			smsg, err := api.MpoolPushMessage(ctx, msg)
+			s := time.Now()
+			smsg, err := api.WalletSignMessage(ctx, from, msg)
 			if err != nil {
 				return err
 			}
-			fmt.Println("Message sent: ", smsg.Cid())
+			signtime := time.Since(s)
+
+			s = time.Now()
+			c, err := api.MpoolPush(ctx, smsg)
+			if err != nil {
+				return err
+			}
+			pushtime := time.Since(s)
+			log.Println("Message sent: ", c, signtime, pushtime)
 		case <-ctx.Done():
 			return nil
 		}
