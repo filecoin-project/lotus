@@ -172,13 +172,13 @@ func (t *LatencyMessage) MarshalCBOR(w io.Writer) error {
 
 	scratch := make([]byte, 9)
 
-	// t.TArrial (int64) (int64)
-	if t.TArrial >= 0 {
-		if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajUnsignedInt, uint64(t.TArrial)); err != nil {
+	// t.TArrival (int64) (int64)
+	if t.TArrival >= 0 {
+		if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajUnsignedInt, uint64(t.TArrival)); err != nil {
 			return err
 		}
 	} else {
-		if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajNegativeInt, uint64(-t.TArrial-1)); err != nil {
+		if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajNegativeInt, uint64(-t.TArrival-1)); err != nil {
 			return err
 		}
 	}
@@ -212,7 +212,7 @@ func (t *LatencyMessage) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.TArrial (int64) (int64)
+	// t.TArrival (int64) (int64)
 	{
 		maj, extra, err := cbg.CborReadHeaderBuf(br, scratch)
 		var extraI int64
@@ -235,7 +235,7 @@ func (t *LatencyMessage) UnmarshalCBOR(r io.Reader) error {
 			return fmt.Errorf("wrong type for int64 field: %d", maj)
 		}
 
-		t.TArrial = int64(extraI)
+		t.TArrival = int64(extraI)
 	}
 	// t.TSent (int64) (int64)
 	{
