@@ -170,3 +170,74 @@ func wrapMsgs(msgs []types.Message) []*types.SignedMessage {
 	}
 	return out
 }
+
+func TestMessageFilteringSenderHopping(t *testing.T) {
+	ctx := context.TODO()
+	a1 := mustIDAddr(1)
+	a2 := mustIDAddr(2)
+
+	actors := map[address.Address]*types.Actor{
+		a1: {
+			Nonce:   0,
+			Balance: types.FromFil(1200),
+		},
+		a2: {
+			Nonce:   0,
+			Balance: types.FromFil(1000),
+		},
+	}
+
+	af := func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*types.Actor, error) {
+		return actors[addr], nil
+	}
+
+	msgs := []types.Message{
+		{
+			From:     a1,
+			To:       a1,
+			Nonce:    0,
+			Value:    types.FromFil(500),
+			GasLimit: 2_000_000_000,
+			GasPrice: types.NewInt(100),
+		},
+		{
+			From:     a1,
+			To:       a1,
+			Nonce:    1,
+			Value:    types.FromFil(500),
+			GasLimit: 2_000_000_000,
+			GasPrice: types.NewInt(1),
+		},
+		{
+			From:     a2,
+			To:       a1,
+			Nonce:    0,
+			Value:    types.FromFil(1),
+			GasLimit: 1_000_000_000,
+			GasPrice: types.NewInt(1),
+		},
+		{
+			From:     a2,
+			To:       a1,
+			Nonce:    1,
+			Value:    types.FromFil(1),
+			GasLimit: 1_000_000_000,
+			GasPrice: types.NewInt(1),
+		},
+		{
+			From:     a2,
+			To:       a1,
+			Nonce:    2,
+			Value:    types.FromFil(1),
+			GasLimit: 100_000_000,
+			GasPrice: types.NewInt(1),
+		},
+	}
+
+	outmsgs, err := SelectMessages(ctx, af, &types.TipSet{}, wrapMsgs(msgs))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Len(t, outmsgs, 5, "filtering didnt work as expected")
+}
