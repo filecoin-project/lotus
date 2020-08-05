@@ -49,46 +49,49 @@
         }
       }
     },
+    "state_tree": {
+      "additionalProperties": false,
+      "required": [
+        "root_cid"
+      ],
+      "properties": {
+        "root_cid": {
+          "additionalProperties": false,
+          "required": [
+            "/"
+          ],
+          "properties": {
+            "/": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
     "preconditions": {
       "title": "execution preconditions",
       "description": "preconditions that need to be applied and satisfied before this test vector can be executed",
-      "type": "object",
       "additionalProperties": false,
       "properties": {
+        "epoch": {
+          "type": "integer"
+        },
         "state_tree": {
           "title": "state tree to seed",
           "description": "state tree to seed before applying this test vector; mapping of actor addresses => serialized state",
-          "type": "object",
-          "additionalProperties": {
-            "$ref": "#/definitions/hex"
-          },
-          "examples": [
-            {
-              "t01": "0x0123456789abcdef",
-              "t02": "0x0123456789abcdef",
-              "t03": "0x0123456789abcdef"
-            }
-          ]
+          "$ref": "#/definitions/state_tree"
         }
       }
     },
     "postconditions": {
       "title": "execution preconditions",
       "description": "postconditions that need to be satisfied after execution for this test vector to pass",
-      "type": "object",
       "additionalProperties": false,
       "properties": {
         "state_tree": {
           "title": "state tree postconditions",
           "description": "state tree postconditions that must be true for this test vector to pass",
-          "type": "object",
-          "properties": {
-            "car_bytes": {
-              "title": "the hex-encoded CAR containing the full state tree",
-              "description": "the hex-encoded CAR containing the full state tree, for debugging/diffing purposes",
-              "$ref": "#/definitions/hex"
-            }
-          }
+          "$ref": "#/definitions/state_tree"
         }
       }
     },
@@ -120,6 +123,11 @@
     "_meta": {
       "$ref": "#/definitions/meta"
     },
+    "car_bytes": {
+      "title": "car containing state trees",
+      "description": "the gzipped, hex-encoded CAR containing the pre- and post-condition state trees for this test vector",
+      "$ref": "#/definitions/hex"
+    },
     "preconditions": {
       "$ref": "#/definitions/preconditions"
     },
@@ -137,7 +145,9 @@
         }
       },
       "then": {
-        "required": ["apply_message"],
+        "required": [
+          "apply_message"
+        ],
         "properties": {
           "apply_message": {
             "$ref": "#/definitions/apply_message"

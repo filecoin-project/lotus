@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/ipfs/go-cid"
 )
 
 // Class represents the type of test this instance is.
@@ -39,8 +40,7 @@ type GenerationData struct {
 
 // StateTree represents a state tree within preconditions and postconditions.
 type StateTree struct {
-	// CAR is the car representation of a state tree
-	CAR HexEncodedBytes `json:"car_hex"`
+	RootCID cid.Cid `json:"root_cid"`
 }
 
 // HexEncodedBytes is a hex-encoded binary value.
@@ -81,9 +81,15 @@ func (heb *HexEncodedBytes) UnmarshalJSON(v []byte) error {
 
 // TestVector is a single test case
 type TestVector struct {
-	Class        `json:"class"`
-	Selector     `json:"selector"`
-	Meta         *Metadata       `json:"_meta"`
+	Class    `json:"class"`
+	Selector `json:"selector"`
+	Meta     *Metadata `json:"_meta"`
+
+	// CAR binary data to be loaded into the test environment, usually a CAR
+	// containing multiple state trees, addressed by root CID from the relevant
+	// objects.
+	CAR HexEncodedBytes `json:"car_hex"`
+
 	Pre          *Preconditions  `json:"preconditions"`
 	ApplyMessage HexEncodedBytes `json:"apply_message"`
 	Post         *Postconditions `json:"postconditions"`

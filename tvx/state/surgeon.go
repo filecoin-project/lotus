@@ -121,7 +121,7 @@ func (sg *Surgeon) GetAccessedActors(ctx context.Context, a api.FullNode, mid ci
 
 // WriteCAR recursively writes the tree referenced by the root as a CAR into the
 // supplied io.Writer.
-func (sg *Surgeon) WriteCAR(w io.Writer, root cid.Cid) error {
+func (sg *Surgeon) WriteCAR(w io.Writer, roots ...cid.Cid) error {
 	carWalkFn := func(nd format.Node) (out []*format.Link, err error) {
 		for _, link := range nd.Links() {
 			if link.Cid.Prefix().Codec == cid.FilCommitmentSealed || link.Cid.Prefix().Codec == cid.FilCommitmentUnsealed {
@@ -131,7 +131,7 @@ func (sg *Surgeon) WriteCAR(w io.Writer, root cid.Cid) error {
 		}
 		return out, nil
 	}
-	return car.WriteCarWithWalker(sg.ctx, sg.stores.DAGService, []cid.Cid{root}, w, carWalkFn)
+	return car.WriteCarWithWalker(sg.ctx, sg.stores.DAGService, roots, w, carWalkFn)
 }
 
 // pluckActorStates plucks the state from the supplied actors at the given

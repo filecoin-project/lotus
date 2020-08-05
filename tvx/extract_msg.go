@@ -131,29 +131,15 @@ func runExtractMsg(c *cli.Context) error {
 		return err
 	}
 
-	getZippedCAR := func(root cid.Cid) ([]byte, error) {
-		out := new(bytes.Buffer)
-		gw := gzip.NewWriter(out)
-		if err := g.WriteCAR(gw, root); err != nil {
-			return nil, err
-		}
-		if err = gw.Flush(); err != nil {
-			return nil, err
-		}
-		if err = gw.Close(); err != nil {
-			return nil, err
-		}
-
-		return out.Bytes(), nil
-	}
-
-	pretree, err := getZippedCAR(preroot)
-	if err != nil {
+	out := new(bytes.Buffer)
+	gw := gzip.NewWriter(out)
+	if err := g.WriteCAR(gw, preroot, postroot); err != nil {
 		return err
 	}
-
-	posttree, err := getZippedCAR(postroot)
-	if err != nil {
+	if err = gw.Flush(); err != nil {
+		return err
+	}
+	if err = gw.Close(); err != nil {
 		return err
 	}
 
@@ -174,16 +160,17 @@ func runExtractMsg(c *cli.Context) error {
 				Version: version.String(),
 			},
 		},
+		CAR: out.Bytes(),
 		Pre: &Preconditions{
 			Epoch: ts.Height(),
 			StateTree: &StateTree{
-				CAR: pretree,
+				RootCID: preroot,
 			},
 		},
 		ApplyMessage: msgBytes,
 		Post: &Postconditions{
 			StateTree: &StateTree{
-				CAR: posttree,
+				RootCID: postroot,
 			},
 		},
 	}

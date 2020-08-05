@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -66,8 +67,9 @@ func runExamineCmd(_ *cli.Context) error {
 		return err
 	}
 
-	examine := func(encoded []byte) error {
-		tree, err := state.RecoverStateTree(context.TODO(), encoded)
+	examine := func(root cid.Cid) error {
+		encoded := tv.CAR
+		tree, err := state.RecoverStateTree(context.TODO(), encoded, root)
 		if err != nil {
 			return err
 		}
@@ -96,14 +98,14 @@ func runExamineCmd(_ *cli.Context) error {
 
 	if examineFlags.pre {
 		log.Print("examining precondition tree")
-		if err := examine(tv.Pre.StateTree.CAR); err != nil {
+		if err := examine(tv.Pre.StateTree.RootCID); err != nil {
 			return err
 		}
 	}
 
 	if examineFlags.post {
 		log.Print("examining postcondition tree")
-		if err := examine(tv.Post.StateTree.CAR); err != nil {
+		if err := examine(tv.Post.StateTree.RootCID); err != nil {
 			return err
 		}
 	}

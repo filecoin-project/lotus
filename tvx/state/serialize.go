@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/state"
 	bs "github.com/filecoin-project/lotus/lib/blockstore"
+	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/ipfs/go-ipld-format"
@@ -15,7 +16,7 @@ import (
 )
 
 // RecoverStateTree parses a car encoding of a state tree back to a structured format
-func RecoverStateTree(ctx context.Context, raw []byte) (*state.StateTree, error) {
+func RecoverStateTree(ctx context.Context, raw []byte, root cid.Cid) (*state.StateTree, error) {
 	buf := bytes.NewBuffer(raw)
 	store := bs.NewTemporary()
 	gr, err := gzip.NewReader(buf)
@@ -28,14 +29,12 @@ func RecoverStateTree(ctx context.Context, raw []byte) (*state.StateTree, error)
 	if err != nil {
 		return nil, err
 	}
-	if len(ch.Roots) != 1 {
-		return nil, fmt.Errorf("car should have 1 root, has %d", len(ch.Roots))
-	}
+
 	cborstore := cbor.NewCborStore(store)
 
-	fmt.Printf("root is %s\n", ch.Roots[0])
+	fmt.Printf("roots are %v\n", ch.Roots)
 
-	nd, err := hamt.LoadNode(ctx, cborstore, ch.Roots[0], hamt.UseTreeBitWidth(5))
+	nd, err := hamt.LoadNode(ctx, cborstore, root, hamt.UseTreeBitWidth(5))
 	if err != nil {
 		return nil, err
 	}
@@ -51,5 +50,5 @@ func RecoverStateTree(ctx context.Context, raw []byte) (*state.StateTree, error)
 		return nil, err
 	}
 
-	return state.LoadStateTree(cborstore, ch.Roots[0])
+	return state.LoadStateTree(cborstore, root)
 }
