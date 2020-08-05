@@ -37,8 +37,8 @@ const WRITE_RES_DEADLINE = 60 * time.Second
 type Request struct {
 	// List of ordered CIDs comprising a `TipSetKey` from where to start
 	// fetching backwards.
-	// FIXME: Why don't we send a `TipSetKey` instead of converting back
-	//  and forth?
+	// FIXME: Consider using `TipSetKey` now (introduced after the creation
+	//  of this protocol) instead of converting back and forth.
 	Head []cid.Cid
 	// Number of block sets to fetch from `Head` (inclusive, should always
 	// be in the range `[1, MaxRequestLength]`).
