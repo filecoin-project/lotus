@@ -27,11 +27,6 @@ type msgChain struct {
 }
 
 func (mp *MessagePool) SelectMessages() []*types.SignedMessage {
-	start := time.Now()
-	defer func() {
-		log.Infof("message selection took %s", time.Since(start))
-	}()
-
 	mp.curTsLk.Lock()
 	ts := mp.curTs
 	mp.curTsLk.Unlock()
@@ -43,6 +38,11 @@ func (mp *MessagePool) SelectMessages() []*types.SignedMessage {
 }
 
 func (mp *MessagePool) selectMessages(ts *types.TipSet) []*types.SignedMessage {
+	start := time.Now()
+	defer func() {
+		log.Infof("message selection took %s", time.Since(start))
+	}()
+
 	// 1. Create a list of dependent message chains with maximal gas reward per limit consumed
 	var chains []*msgChain
 	for actor, mset := range mp.pending {
