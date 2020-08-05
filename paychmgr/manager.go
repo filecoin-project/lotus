@@ -4,6 +4,8 @@ import (
 	"context"
 	"sync"
 
+	"github.com/filecoin-project/lotus/node/modules/helpers"
+
 	"github.com/ipfs/go-datastore"
 
 	"golang.org/x/sync/errgroup"
@@ -58,20 +60,18 @@ type Manager struct {
 	state  full.StateAPI
 }
 
-type paychAPIImpl struct {
-	full.MpoolAPI
-	full.StateAPI
-}
+func NewManager(mctx helpers.MetricsCtx, lc fx.Lifecycle, sm *stmgr.StateManager, pchstore *Store, api ManagerApi) *Manager {
+	ctx := helpers.LifecycleCtx(mctx, lc)
+	ctx, shutdown := context.WithCancel(ctx)
 
-func NewManager(sm *stmgr.StateManager, pchstore *Store, api ManagerApi) *Manager {
 	return &Manager{
+		ctx:      ctx,
+		shutdown: shutdown,
 		store:    pchstore,
 		sm:       sm,
 		sa:       &stateAccessor{sm: sm},
 		channels: make(map[string]*channelAccessor),
-		// TODO: Is this the correct way to do this or can I do something different
-		// with dependency injection?
-		pchapi: &paychAPIImpl{api.MpoolAPI, api.StateAPI},
+		pchapi:   &api,
 
 		mpool:  api.MpoolAPI,
 		wallet: api.WalletAPI,
@@ -88,14 +88,14 @@ func newManager(sm StateManagerApi, pchstore *Store, pchapi paychApi) (*Manager,
 		channels: make(map[string]*channelAccessor),
 		pchapi:   pchapi,
 	}
-	return pm, pm.Start(context.Background())
+	return pm, pm.Start()
 }
 
 // HandleManager is called by dependency injection to set up hooks
 func HandleManager(lc fx.Lifecycle, pm *Manager) {
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			return pm.Start(ctx)
+			return pm.Start()
 		},
 		OnStop: func(context.Context) error {
 			return pm.Stop()
@@ -108,9 +108,7 @@ func HandleManager(lc fx.Lifecycle, pm *Manager) {
 // Outstanding messages can occur if an add funds message was sent
 // and then lotus was shut down or crashed before the result was
 // received.
-func (pm *Manager) Start(ctx context.Context) error {
-	pm.ctx, pm.shutdown = context.WithCancel(ctx)
-
+func (pm *Manager) Start() error {
 	cis, err := pm.store.WithPendingAddFunds()
 	if err != nil {
 		return err

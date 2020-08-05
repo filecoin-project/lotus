@@ -184,7 +184,7 @@ type FullNodeStruct struct {
 		MarketEnsureAvailable func(context.Context, address.Address, address.Address, types.BigInt) (cid.Cid, error) `perm:"sign"`
 
 		PaychGet                   func(ctx context.Context, from, to address.Address, amt types.BigInt) (*api.ChannelInfo, error)           `perm:"sign"`
-		PaychGetWaitReady          func(context.Context, cid.Cid) (address.Address, error)                                                   `perm:"sign"` // TODO: is perm:"sign" correct?
+		PaychGetWaitReady          func(context.Context, cid.Cid) (address.Address, error)                                                   `perm:"sign"`
 		PaychList                  func(context.Context) ([]address.Address, error)                                                          `perm:"read"`
 		PaychStatus                func(context.Context, address.Address) (*api.PaychStatus, error)                                          `perm:"read"`
 		PaychSettle                func(context.Context, address.Address) (cid.Cid, error)                                                   `perm:"sign"`
