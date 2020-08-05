@@ -188,11 +188,13 @@ func (mp *MessagePool) createMessageChains(actor address.Address, mset *msgSet, 
 			break
 		}
 
-		gasReward := mp.getGasReward(m, ts)
-		if gasReward.Cmp(balance) > 0 {
+		required := m.Message.RequiredFunds().Int
+		if balance.Cmp(required) < 0 {
 			break
 		}
-		balance = new(big.Int).Sub(balance, gasReward)
+		balance = new(big.Int).Sub(balance, required)
+
+		gasReward := mp.getGasReward(m, ts)
 		rewards = append(rewards, gasReward)
 	}
 
