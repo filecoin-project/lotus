@@ -107,6 +107,14 @@ type FullNode interface {
 	// ChainExport returns a stream of bytes with CAR dump of chain data.
 	ChainExport(context.Context, types.TipSetKey) (<-chan []byte, error)
 
+	// MethodGroup: Beacon
+	// The Beacon method group contains methods for interacting with the random beacon (DRAND)
+
+	// BeaconGetEntry returns the beacon entry for the given filecoin epoch. If
+	// the entry has not yet been produced, the call will block until the entry
+	// becomes available
+	BeaconGetEntry(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error)
+
 	// GasEstimateGasLimit estimates gas used by the message and returns it.
 	// It fails if message fails to execute.
 	GasEstimateGasLimit(context.Context, *types.Message, types.TipSetKey) (int64, error)
