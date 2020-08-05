@@ -19,15 +19,17 @@ const (
 	FTNone SectorFileType = 0
 )
 
+const FSOverheadDen = 10
+
 var FSOverheadSeal = map[SectorFileType]int{ // 10x overheads
-	FTUnsealed: 10,
-	FTSealed:   10,
-	FTCache:    70, // TODO: confirm for 32G
+	FTUnsealed: FSOverheadDen,
+	FTSealed:   FSOverheadDen,
+	FTCache:    141, // 11 layers + D(2x ssize) + C + R
 }
 
 var FsOverheadFinalized = map[SectorFileType]int{
-	FTUnsealed: 10,
-	FTSealed:   10,
+	FTUnsealed: FSOverheadDen,
+	FTSealed:   FSOverheadDen,
 	FTCache:    2,
 }
 
@@ -67,7 +69,7 @@ func (t SectorFileType) SealSpaceUse(spt abi.RegisteredSealProof) (uint64, error
 			return 0, xerrors.Errorf("no seal overhead info for %s", pathType)
 		}
 
-		need += uint64(oh) * uint64(ssize) / 10
+		need += uint64(oh) * uint64(ssize) / FSOverheadDen
 	}
 
 	return need, nil

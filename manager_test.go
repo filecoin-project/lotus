@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/sector-storage/fsutil"
 	"github.com/filecoin-project/sector-storage/sealtasks"
 	logging "github.com/ipfs/go-log"
 	"io/ioutil"
@@ -22,7 +23,15 @@ import (
 	"github.com/filecoin-project/sector-storage/stores"
 )
 
+func init() {
+	logging.SetAllLoggers(logging.LevelDebug)
+}
+
 type testStorage stores.StorageConfig
+
+func (t testStorage) DiskUsage(path string) (int64, error) {
+	return 1, nil // close enough
+}
 
 func newTestStorage(t *testing.T) *testStorage {
 	tp, err := ioutil.TempDir(os.TempDir(), "sector-storage-test-")
@@ -65,8 +74,8 @@ func (t *testStorage) SetStorage(f func(*stores.StorageConfig)) error {
 	return nil
 }
 
-func (t *testStorage) Stat(path string) (stores.FsStat, error) {
-	return stores.Stat(path)
+func (t *testStorage) Stat(path string) (fsutil.FsStat, error) {
+	return fsutil.Statfs(path)
 }
 
 var _ stores.LocalStorage = &testStorage{}
@@ -86,7 +95,7 @@ func newTestMgr(ctx context.Context, t *testing.T) (*Manager, *stores.Local, *st
 	prover, err := ffiwrapper.New(&readonlyProvider{stor: lstor}, cfg)
 	require.NoError(t, err)
 
-	stor := stores.NewRemote(lstor, si, nil)
+	stor := stores.NewRemote(lstor, si, nil, 6000)
 
 	m := &Manager{
 		scfg: cfg,

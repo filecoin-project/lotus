@@ -74,7 +74,11 @@ func (sh *scheduler) runWorkerWatcher() {
 
 			caseToWorker[toSet] = wid
 		default:
-			wid := caseToWorker[n]
+			wid, found := caseToWorker[n]
+			if !found {
+				log.Errorf("worker ID not found for case %d", n)
+				continue
+			}
 
 			delete(caseToWorker, n)
 			cases[n] = reflect.SelectCase{

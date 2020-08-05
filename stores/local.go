@@ -13,6 +13,7 @@ import (
 
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/sector-storage/fsutil"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
@@ -48,7 +49,11 @@ type LocalStorage interface {
 	GetStorage() (StorageConfig, error)
 	SetStorage(func(*StorageConfig)) error
 
-	Stat(path string) (FsStat, error)
+	Stat(path string) (fsutil.FsStat, error)
+
+	// returns real disk usage for a file/directory
+	// os.ErrNotExit when file doesn't exist
+	DiskUsage(path string) (int64, error)
 }
 
 const MetaFile = "sectorstore.json"
@@ -67,6 +72,60 @@ type Local struct {
 
 type path struct {
 	local string // absolute local path
+
+	reserved     int64
+	reservations map[abi.SectorID]SectorFileType
+}
+
+func (p *path) stat(ls LocalStorage) (fsutil.FsStat, error) {
+	stat, err := ls.Stat(p.local)
+	if err != nil {
+		return fsutil.FsStat{}, xerrors.Errorf("stat %s: %w", p.local, err)
+	}
+
+	stat.Reserved = p.reserved
+
+	for id, ft := range p.reservations {
+		for _, fileType := range PathTypes {
+			if fileType&ft == 0 {
+				continue
+			}
+
+			sp := p.sectorPath(id, fileType)
+
+			used, err := ls.DiskUsage(sp)
+			if err == os.ErrNotExist {
+				p, ferr := tempFetchDest(sp, false)
+				if ferr != nil {
+					return fsutil.FsStat{}, ferr
+				}
+
+				used, err = ls.DiskUsage(p)
+			}
+			if err != nil {
+				log.Errorf("getting disk usage of '%s': %+v", p.sectorPath(id, fileType), err)
+				continue
+			}
+
+			stat.Reserved -= used
+		}
+	}
+
+	if stat.Reserved < 0 {
+		log.Warnf("negative reserved storage: p.reserved=%d, reserved: %d", p.reserved, stat.Reserved)
+		stat.Reserved = 0
+	}
+
+	stat.Available -= stat.Reserved
+	if stat.Available < 0 {
+		stat.Available = 0
+	}
+
+	return stat, err
+}
+
+func (p *path) sectorPath(sid abi.SectorID, fileType SectorFileType) string {
+	return filepath.Join(p.local, fileType.String(), SectorName(sid))
 }
 
 func NewLocal(ctx context.Context, ls LocalStorage, index SectorIndex, urls []string) (*Local, error) {
@@ -98,9 +157,12 @@ func (st *Local) OpenPath(ctx context.Context, p string) error {
 
 	out := &path{
 		local: p,
+
+		reserved:     0,
+		reservations: map[abi.SectorID]SectorFileType{},
 	}
 
-	fst, err := st.localStorage.Stat(p)
+	fst, err := out.stat(st.localStorage)
 	if err != nil {
 		return err
 	}
@@ -130,6 +192,10 @@ func (st *Local) OpenPath(ctx context.Context, p string) error {
 		}
 
 		for _, ent := range ents {
+			if ent.Name() == FetchTempSubdir {
+				continue
+			}
+
 			sid, err := ParseSectorID(ent.Name())
 			if err != nil {
 				return xerrors.Errorf("parse sector id %s: %w", ent.Name(), err)
@@ -179,7 +245,7 @@ func (st *Local) reportHealth(ctx context.Context) {
 
 		toReport := map[ID]HealthReport{}
 		for id, p := range st.paths {
-			stat, err := st.localStorage.Stat(p.local)
+			stat, err := p.stat(st.localStorage)
 
 			toReport[id] = HealthReport{
 				Stat: stat,
@@ -195,6 +261,61 @@ func (st *Local) reportHealth(ctx context.Context) {
 			}
 		}
 	}
+}
+
+func (st *Local) Reserve(ctx context.Context, sid abi.SectorID, spt abi.RegisteredSealProof, ft SectorFileType, storageIDs SectorPaths, overheadTab map[SectorFileType]int) (func(), error) {
+	ssize, err := spt.SectorSize()
+	if err != nil {
+		return nil, xerrors.Errorf("getting sector size: %w", err)
+	}
+
+	st.localLk.Lock()
+
+	done := func() {}
+	deferredDone := func() { done() }
+	defer func() {
+		st.localLk.Unlock()
+		deferredDone()
+	}()
+
+	for _, fileType := range PathTypes {
+		if fileType&ft == 0 {
+			continue
+		}
+
+		id := ID(PathByType(storageIDs, fileType))
+
+		p, ok := st.paths[id]
+		if !ok {
+			return nil, errPathNotFound
+		}
+
+		stat, err := p.stat(st.localStorage)
+		if err != nil {
+			return nil, xerrors.Errorf("getting local storage stat: %w", err)
+		}
+
+		overhead := int64(overheadTab[fileType]) * int64(ssize) / FSOverheadDen
+
+		if stat.Available < overhead {
+			return nil, xerrors.Errorf("can't reserve %d bytes in '%s' (id:%s), only %d available", overhead, p.local, id, stat.Available)
+		}
+
+		p.reserved += overhead
+
+		prevDone := done
+		done = func() {
+			prevDone()
+
+			st.localLk.Lock()
+			defer st.localLk.Unlock()
+
+			p.reserved -= overhead
+		}
+	}
+
+	deferredDone = func() {}
+	return done, nil
 }
 
 func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, spt abi.RegisteredSealProof, existing SectorFileType, allocate SectorFileType, pathType PathType, op AcquireMode) (SectorPaths, SectorPaths, error) {
@@ -229,7 +350,7 @@ func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, spt abi.Re
 				continue
 			}
 
-			spath := filepath.Join(p.local, fileType.String(), SectorName(sid))
+			spath := p.sectorPath(sid, fileType)
 			SetPathByType(&out, fileType, spath)
 			SetPathByType(&storageIDs, fileType, string(info.ID))
 
@@ -271,8 +392,9 @@ func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, spt abi.Re
 
 			// TODO: Check free space
 
-			best = filepath.Join(p.local, fileType.String(), SectorName(sid))
+			best = p.sectorPath(sid, fileType)
 			bestID = si.ID
+			break
 		}
 
 		if best == "" {
@@ -387,7 +509,7 @@ func (st *Local) removeSector(ctx context.Context, sid abi.SectorID, typ SectorF
 		return xerrors.Errorf("dropping sector from index: %w", err)
 	}
 
-	spath := filepath.Join(p.local, typ.String(), SectorName(sid))
+	spath := p.sectorPath(sid, typ)
 	log.Infof("remove %s", spath)
 
 	if err := os.RemoveAll(spath); err != nil {
@@ -398,12 +520,12 @@ func (st *Local) removeSector(ctx context.Context, sid abi.SectorID, typ SectorF
 }
 
 func (st *Local) MoveStorage(ctx context.Context, s abi.SectorID, spt abi.RegisteredSealProof, types SectorFileType) error {
-	dest, destIds, err := st.AcquireSector(ctx, s, spt, FTNone, types, false, AcquireMove)
+	dest, destIds, err := st.AcquireSector(ctx, s, spt, FTNone, types, PathStorage, AcquireMove)
 	if err != nil {
 		return xerrors.Errorf("acquire dest storage: %w", err)
 	}
 
-	src, srcIds, err := st.AcquireSector(ctx, s, spt, types, FTNone, false, AcquireMove)
+	src, srcIds, err := st.AcquireSector(ctx, s, spt, types, FTNone, PathStorage, AcquireMove)
 	if err != nil {
 		return xerrors.Errorf("acquire src storage: %w", err)
 	}
@@ -454,16 +576,16 @@ func (st *Local) MoveStorage(ctx context.Context, s abi.SectorID, spt abi.Regist
 
 var errPathNotFound = xerrors.Errorf("fsstat: path not found")
 
-func (st *Local) FsStat(ctx context.Context, id ID) (FsStat, error) {
+func (st *Local) FsStat(ctx context.Context, id ID) (fsutil.FsStat, error) {
 	st.localLk.RLock()
 	defer st.localLk.RUnlock()
 
 	p, ok := st.paths[id]
 	if !ok {
-		return FsStat{}, errPathNotFound
+		return fsutil.FsStat{}, errPathNotFound
 	}
 
-	return st.localStorage.Stat(p.local)
+	return p.stat(st.localStorage)
 }
 
 var _ Store = &Local{}

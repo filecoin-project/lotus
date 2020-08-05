@@ -1,6 +1,6 @@
 package sectorstorage
 
-import "container/heap"
+import "sort"
 
 type requestQueue []*workerRequest
 
@@ -24,21 +24,22 @@ func (q requestQueue) Swap(i, j int) {
 	q[j].index = j
 }
 
-func (q *requestQueue) Push(x interface{}) {
+func (q *requestQueue) Push(x *workerRequest) {
 	n := len(*q)
-	item := x.(*workerRequest)
+	item := x
 	item.index = n
 	*q = append(*q, item)
+	sort.Sort(q)
 }
 
-func (q *requestQueue) Pop() interface{} {
+func (q *requestQueue) Remove(i int) *workerRequest {
 	old := *q
 	n := len(old)
-	item := old[n-1]
-	old[n-1] = nil  // avoid memory leak
-	item.index = -1 // for safety
+	item := old[i]
+	old[i] = old[n-1]
+	old[n-1] = nil
+	item.index = -1
 	*q = old[0 : n-1]
+	sort.Sort(q)
 	return item
 }
-
-var _ heap.Interface = &requestQueue{}

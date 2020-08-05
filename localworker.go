@@ -61,14 +61,22 @@ type localWorkerPathProvider struct {
 }
 
 func (l *localWorkerPathProvider) AcquireSector(ctx context.Context, sector abi.SectorID, existing stores.SectorFileType, allocate stores.SectorFileType, sealing stores.PathType) (stores.SectorPaths, func(), error) {
+
 	paths, storageIDs, err := l.w.storage.AcquireSector(ctx, sector, l.w.scfg.SealProofType, existing, allocate, sealing, l.op)
 	if err != nil {
 		return stores.SectorPaths{}, nil, err
 	}
 
+	releaseStorage, err := l.w.localStore.Reserve(ctx, sector, l.w.scfg.SealProofType, allocate, storageIDs, stores.FSOverheadSeal)
+	if err != nil {
+		return stores.SectorPaths{}, nil, xerrors.Errorf("reserving storage space: %w", err)
+	}
+
 	log.Debugf("acquired sector %d (e:%d; a:%d): %v", sector, existing, allocate, paths)
 
 	return paths, func() {
+		releaseStorage()
+
 		for _, fileType := range pathTypes {
 			if fileType&allocate == 0 {
 				continue
@@ -171,8 +179,10 @@ func (l *LocalWorker) FinalizeSector(ctx context.Context, sector abi.SectorID, k
 		return xerrors.Errorf("finalizing sector: %w", err)
 	}
 
-	if err := l.storage.Remove(ctx, sector, stores.FTUnsealed, true); err != nil {
-		return xerrors.Errorf("removing unsealed data: %w", err)
+	if len(keepUnsealed) == 0 {
+		if err := l.storage.Remove(ctx, sector, stores.FTUnsealed, true); err != nil {
+			return xerrors.Errorf("removing unsealed data: %w", err)
+		}
 	}
 
 	return nil
@@ -227,10 +237,10 @@ func (l *LocalWorker) UnsealPiece(ctx context.Context, sector abi.SectorID, inde
 	return nil
 }
 
-func (l *LocalWorker) ReadPiece(ctx context.Context, writer io.Writer, sector abi.SectorID, index storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) error {
+func (l *LocalWorker) ReadPiece(ctx context.Context, writer io.Writer, sector abi.SectorID, index storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (bool, error) {
 	sb, err := l.sb()
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	return sb.ReadPiece(ctx, writer, sector, index, size)

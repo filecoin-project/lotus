@@ -28,6 +28,30 @@ var order = map[TaskType]int{
 	TTReadUnsealed: 0,
 }
 
+var shortNames = map[TaskType]string{
+	TTAddPiece: "AP ",
+
+	TTPreCommit1: "PC1",
+	TTPreCommit2: "PC2",
+	TTCommit1:    "C1 ",
+	TTCommit2:    "C2 ",
+
+	TTFinalize: "FIN",
+
+	TTFetch:        "GET",
+	TTUnseal:       "UNS",
+	TTReadUnsealed: "RD ",
+}
+
 func (a TaskType) Less(b TaskType) bool {
 	return order[a] < order[b]
+}
+
+func (a TaskType) Short() string {
+	n, ok := shortNames[a]
+	if !ok {
+		return "UNK"
+	}
+
+	return n
 }

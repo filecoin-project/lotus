@@ -3,6 +3,7 @@ package sectorstorage
 import (
 	"context"
 	"errors"
+	"github.com/filecoin-project/sector-storage/fsutil"
 	"io"
 	"net/http"
 
@@ -33,7 +34,7 @@ type Worker interface {
 
 	Fetch(ctx context.Context, s abi.SectorID, ft stores.SectorFileType, ptype stores.PathType, am stores.AcquireMode) error
 	UnsealPiece(context.Context, abi.SectorID, storiface.UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) error
-	ReadPiece(context.Context, io.Writer, abi.SectorID, storiface.UnpaddedByteIndex, abi.UnpaddedPieceSize) error
+	ReadPiece(context.Context, io.Writer, abi.SectorID, storiface.UnpaddedByteIndex, abi.UnpaddedPieceSize) (bool, error)
 
 	TaskTypes(context.Context) (map[sealtasks.TaskType]struct{}, error)
 
@@ -75,6 +76,8 @@ type Manager struct {
 }
 
 type SealerConfig struct {
+	ParallelFetchLimit int
+
 	// Local worker config
 	AllowPreCommit1 bool
 	AllowPreCommit2 bool
@@ -95,7 +98,7 @@ func New(ctx context.Context, ls stores.LocalStorage, si stores.SectorIndex, cfg
 		return nil, xerrors.Errorf("creating prover instance: %w", err)
 	}
 
-	stor := stores.NewRemote(lstor, si, http.Header(sa))
+	stor := stores.NewRemote(lstor, si, http.Header(sa), sc.ParallelFetchLimit)
 
 	m := &Manager{
 		scfg: cfg,
@@ -165,7 +168,10 @@ func (m *Manager) AddWorker(ctx context.Context, w Worker) error {
 	}
 
 	m.sched.newWorkers <- &workerHandle{
-		w:         w,
+		w: w,
+		wt: &workTracker{
+			running: map[uint64]storiface.WorkerJob{},
+		},
 		info:      info,
 		preparing: &activeResources{},
 		active:    &activeResources{},
@@ -207,23 +213,38 @@ func (m *Manager) ReadPiece(ctx context.Context, sink io.Writer, sector abi.Sect
 
 	var selector WorkerSelector
 	if len(best) == 0 { // new
-		selector, err = newAllocSelector(ctx, m.index, stores.FTUnsealed, stores.PathSealing)
+		selector = newAllocSelector(m.index, stores.FTUnsealed, stores.PathSealing)
 	} else { // append to existing
-		selector, err = newExistingSelector(ctx, m.index, sector, stores.FTUnsealed, false)
-	}
-	if err != nil {
-		return xerrors.Errorf("creating unsealPiece selector: %w", err)
+		selector = newExistingSelector(m.index, sector, stores.FTUnsealed, false)
 	}
 
-	// TODO: Optimization: don't send unseal to a worker if the requested range is already unsealed
+	var readOk bool
+
+	if len(best) > 0 {
+		// There is unsealed sector, see if we can read from it
+
+		selector = newExistingSelector(m.index, sector, stores.FTUnsealed, false)
+
+		err = m.sched.Schedule(ctx, sector, sealtasks.TTReadUnsealed, selector, schedFetch(sector, stores.FTUnsealed, stores.PathSealing, stores.AcquireMove), func(ctx context.Context, w Worker) error {
+			readOk, err = w.ReadPiece(ctx, sink, sector, offset, size)
+			return err
+		})
+		if err != nil {
+			return xerrors.Errorf("reading piece from sealed sector: %w", err)
+		}
+
+		if readOk {
+			return nil
+		}
+	}
 
 	unsealFetch := func(ctx context.Context, worker Worker) error {
-		if err := worker.Fetch(ctx, sector, stores.FTSealed|stores.FTCache, true, stores.AcquireCopy); err != nil {
+		if err := worker.Fetch(ctx, sector, stores.FTSealed|stores.FTCache, stores.PathSealing, stores.AcquireCopy); err != nil {
 			return xerrors.Errorf("copy sealed/cache sector data: %w", err)
 		}
 
 		if len(best) > 0 {
-			if err := worker.Fetch(ctx, sector, stores.FTUnsealed, true, stores.AcquireMove); err != nil {
+			if err := worker.Fetch(ctx, sector, stores.FTUnsealed, stores.PathSealing, stores.AcquireMove); err != nil {
 				return xerrors.Errorf("copy unsealed sector data: %w", err)
 			}
 		}
@@ -237,16 +258,18 @@ func (m *Manager) ReadPiece(ctx context.Context, sink io.Writer, sector abi.Sect
 		return err
 	}
 
-	selector, err = newExistingSelector(ctx, m.index, sector, stores.FTUnsealed, false)
-	if err != nil {
-		return xerrors.Errorf("creating readPiece selector: %w", err)
-	}
+	selector = newExistingSelector(m.index, sector, stores.FTUnsealed, false)
 
 	err = m.sched.Schedule(ctx, sector, sealtasks.TTReadUnsealed, selector, schedFetch(sector, stores.FTUnsealed, stores.PathSealing, stores.AcquireMove), func(ctx context.Context, w Worker) error {
-		return w.ReadPiece(ctx, sink, sector, offset, size)
+		readOk, err = w.ReadPiece(ctx, sink, sector, offset, size)
+		return err
 	})
 	if err != nil {
 		return xerrors.Errorf("reading piece from sealed sector: %w", err)
+	}
+
+	if readOk {
+		return xerrors.Errorf("failed to read unsealed piece")
 	}
 
 	return nil
@@ -268,12 +291,9 @@ func (m *Manager) AddPiece(ctx context.Context, sector abi.SectorID, existingPie
 	var selector WorkerSelector
 	var err error
 	if len(existingPieces) == 0 { // new
-		selector, err = newAllocSelector(ctx, m.index, stores.FTUnsealed, stores.PathSealing)
+		selector = newAllocSelector(m.index, stores.FTUnsealed, stores.PathSealing)
 	} else { // use existing
-		selector, err = newExistingSelector(ctx, m.index, sector, stores.FTUnsealed, false)
-	}
-	if err != nil {
-		return abi.PieceInfo{}, xerrors.Errorf("creating path selector: %w", err)
+		selector = newExistingSelector(m.index, sector, stores.FTUnsealed, false)
 	}
 
 	var out abi.PieceInfo
@@ -299,10 +319,7 @@ func (m *Manager) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticke
 
 	// TODO: also consider where the unsealed data sits
 
-	selector, err := newAllocSelector(ctx, m.index, stores.FTCache|stores.FTSealed, stores.PathSealing)
-	if err != nil {
-		return nil, xerrors.Errorf("creating path selector: %w", err)
-	}
+	selector := newAllocSelector(m.index, stores.FTCache|stores.FTSealed, stores.PathSealing)
 
 	err = m.sched.Schedule(ctx, sector, sealtasks.TTPreCommit1, selector, schedFetch(sector, stores.FTUnsealed, stores.PathSealing, stores.AcquireMove), func(ctx context.Context, w Worker) error {
 		p, err := w.SealPreCommit1(ctx, sector, ticket, pieces)
@@ -324,10 +341,7 @@ func (m *Manager) SealPreCommit2(ctx context.Context, sector abi.SectorID, phase
 		return storage.SectorCids{}, xerrors.Errorf("acquiring sector lock: %w", err)
 	}
 
-	selector, err := newExistingSelector(ctx, m.index, sector, stores.FTCache|stores.FTSealed, true)
-	if err != nil {
-		return storage.SectorCids{}, xerrors.Errorf("creating path selector: %w", err)
-	}
+	selector := newExistingSelector(m.index, sector, stores.FTCache|stores.FTSealed, true)
 
 	err = m.sched.Schedule(ctx, sector, sealtasks.TTPreCommit2, selector, schedFetch(sector, stores.FTCache|stores.FTSealed, stores.PathSealing, stores.AcquireMove), func(ctx context.Context, w Worker) error {
 		p, err := w.SealPreCommit2(ctx, sector, phase1Out)
@@ -351,10 +365,7 @@ func (m *Manager) SealCommit1(ctx context.Context, sector abi.SectorID, ticket a
 	// NOTE: We set allowFetch to false in so that we always execute on a worker
 	// with direct access to the data. We want to do that because this step is
 	// generally very cheap / fast, and transferring data is not worth the effort
-	selector, err := newExistingSelector(ctx, m.index, sector, stores.FTCache|stores.FTSealed, false)
-	if err != nil {
-		return storage.Commit1Out{}, xerrors.Errorf("creating path selector: %w", err)
-	}
+	selector := newExistingSelector(m.index, sector, stores.FTCache|stores.FTSealed, false)
 
 	err = m.sched.Schedule(ctx, sector, sealtasks.TTCommit1, selector, schedFetch(sector, stores.FTCache|stores.FTSealed, stores.PathSealing, stores.AcquireMove), func(ctx context.Context, w Worker) error {
 		p, err := w.SealCommit1(ctx, sector, ticket, seed, pieces, cids)
@@ -402,12 +413,9 @@ func (m *Manager) FinalizeSector(ctx context.Context, sector abi.SectorID, keepU
 		}
 	}
 
-	selector, err := newExistingSelector(ctx, m.index, sector, stores.FTCache|stores.FTSealed, false)
-	if err != nil {
-		return xerrors.Errorf("creating path selector: %w", err)
-	}
+	selector := newExistingSelector(m.index, sector, stores.FTCache|stores.FTSealed, false)
 
-	err = m.sched.Schedule(ctx, sector, sealtasks.TTFinalize, selector,
+	err := m.sched.Schedule(ctx, sector, sealtasks.TTFinalize, selector,
 		schedFetch(sector, stores.FTCache|stores.FTSealed|unsealed, stores.PathSealing, stores.AcquireMove),
 		func(ctx context.Context, w Worker) error {
 			return w.FinalizeSector(ctx, sector, keepUnsealed)
@@ -416,11 +424,7 @@ func (m *Manager) FinalizeSector(ctx context.Context, sector abi.SectorID, keepU
 		return err
 	}
 
-	fetchSel, err := newAllocSelector(ctx, m.index, stores.FTCache|stores.FTSealed, stores.PathStorage)
-	if err != nil {
-		return xerrors.Errorf("creating fetchSel: %w", err)
-	}
-
+	fetchSel := newAllocSelector(m.index, stores.FTCache|stores.FTSealed, stores.PathStorage)
 	moveUnsealed := unsealed
 	{
 		if len(keepUnsealed) == 0 {
@@ -441,7 +445,8 @@ func (m *Manager) FinalizeSector(ctx context.Context, sector abi.SectorID, keepU
 }
 
 func (m *Manager) ReleaseUnsealed(ctx context.Context, sector abi.SectorID, safeToFree []storage.Range) error {
-	return xerrors.Errorf("implement me")
+	log.Warnw("ReleaseUnsealed todo")
+	return nil
 }
 
 func (m *Manager) Remove(ctx context.Context, sector abi.SectorID) error {
@@ -464,10 +469,7 @@ func (m *Manager) Remove(ctx context.Context, sector abi.SectorID) error {
 		}
 	}
 
-	selector, err := newExistingSelector(ctx, m.index, sector, stores.FTCache|stores.FTSealed, false)
-	if err != nil {
-		return xerrors.Errorf("creating selector: %w", err)
-	}
+	selector := newExistingSelector(m.index, sector, stores.FTCache|stores.FTSealed, false)
 
 	return m.sched.Schedule(ctx, sector, sealtasks.TTFinalize, selector,
 		schedFetch(sector, stores.FTCache|stores.FTSealed|unsealed, stores.PathStorage, stores.AcquireMove),
@@ -490,12 +492,16 @@ func (m *Manager) StorageLocal(ctx context.Context) (map[stores.ID]string, error
 	return out, nil
 }
 
-func (m *Manager) FsStat(ctx context.Context, id stores.ID) (stores.FsStat, error) {
+func (m *Manager) FsStat(ctx context.Context, id stores.ID) (fsutil.FsStat, error) {
 	return m.storage.FsStat(ctx, id)
 }
 
-func (m *Manager) Close() error {
-	return m.sched.Close()
+func (m *Manager) SchedDiag(ctx context.Context) (interface{}, error) {
+	return m.sched.Info(ctx)
+}
+
+func (m *Manager) Close(ctx context.Context) error {
+	return m.sched.Close(ctx)
 }
 
 var _ SectorManager = &Manager{}

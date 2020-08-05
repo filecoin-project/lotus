@@ -2,6 +2,7 @@ package stores
 
 import (
 	"context"
+	"github.com/filecoin-project/sector-storage/fsutil"
 	"net/url"
 	gopath "path"
 	"sort"
@@ -28,13 +29,10 @@ type StorageInfo struct {
 
 	CanSeal  bool
 	CanStore bool
-
-	LastHeartbeat time.Time
-	HeartbeatErr  error
 }
 
 type HealthReport struct {
-	Stat FsStat
+	Stat fsutil.FsStat
 	Err  error
 }
 
@@ -50,7 +48,7 @@ type SectorStorageInfo struct {
 }
 
 type SectorIndex interface { // part of storage-miner api
-	StorageAttach(context.Context, StorageInfo, FsStat) error
+	StorageAttach(context.Context, StorageInfo, fsutil.FsStat) error
 	StorageInfo(context.Context, ID) (StorageInfo, error)
 	StorageReportHealth(context.Context, ID, HealthReport) error
 
@@ -77,7 +75,7 @@ type declMeta struct {
 
 type storageEntry struct {
 	info *StorageInfo
-	fsi  FsStat
+	fsi  fsutil.FsStat
 
 	lastHeartbeat time.Time
 	heartbeatErr  error
@@ -130,7 +128,7 @@ func (i *Index) StorageList(ctx context.Context) (map[ID][]Decl, error) {
 	return out, nil
 }
 
-func (i *Index) StorageAttach(ctx context.Context, si StorageInfo, st FsStat) error {
+func (i *Index) StorageAttach(ctx context.Context, si StorageInfo, st fsutil.FsStat) error {
 	i.lk.Lock()
 	defer i.lk.Unlock()
 
@@ -361,7 +359,7 @@ func (i *Index) StorageBestAlloc(ctx context.Context, allocate SectorFileType, s
 			continue
 		}
 
-		if spaceReq > p.fsi.Available {
+		if spaceReq > uint64(p.fsi.Available) {
 			log.Debugf("not allocating on %s, out of space (available: %d, need: %d)", p.info.ID, p.fsi.Available, spaceReq)
 			continue
 		}

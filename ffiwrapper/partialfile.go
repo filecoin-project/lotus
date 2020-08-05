@@ -12,6 +12,7 @@ import (
 	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
+	"github.com/filecoin-project/sector-storage/fsutil"
 	"github.com/filecoin-project/sector-storage/storiface"
 )
 
@@ -144,10 +145,15 @@ func openPartialFile(maxPieceSize abi.PaddedPieceSize, path string) (*partialFil
 			return xerrors.Errorf("getting trailer run iterator: %w", err)
 		}
 
-		lastSet, err := rlepluslazy.LastIndex(it, true)
+		f, err := rlepluslazy.Fill(it)
+		if err != nil {
+			return xerrors.Errorf("filling bitfield: %w", err)
+		}
+		lastSet, err := rlepluslazy.Count(f)
 		if err != nil {
 			return xerrors.Errorf("finding last set byte index: %w", err)
 		}
+
 		if lastSet > uint64(maxPieceSize) {
 			return xerrors.Errorf("last set byte at index higher than sector size: %d > %d", lastSet, maxPieceSize)
 		}
@@ -218,6 +224,28 @@ func (pf *partialFile) MarkAllocated(offset storiface.PaddedByteIndex, size abi.
 	return nil
 }
 
+func (pf *partialFile) Free(offset storiface.PaddedByteIndex, size abi.PaddedPieceSize) error {
+	have, err := pf.allocated.RunIterator()
+	if err != nil {
+		return err
+	}
+
+	if err := fsutil.Deallocate(pf.file, int64(offset), int64(size)); err != nil {
+		return xerrors.Errorf("deallocating: %w", err)
+	}
+
+	s, err := rlepluslazy.Subtract(have, pieceRun(offset, size))
+	if err != nil {
+		return err
+	}
+
+	if err := writeTrailer(int64(pf.maxPiece), pf.file, s); err != nil {
+		return xerrors.Errorf("writing trailer: %w", err)
+	}
+
+	return nil
+}
+
 func (pf *partialFile) Reader(offset storiface.PaddedByteIndex, size abi.PaddedPieceSize) (*os.File, error) {
 	if _, err := pf.file.Seek(int64(offset), io.SeekStart); err != nil {
 		return nil, xerrors.Errorf("seek piece start: %w", err)
@@ -249,6 +277,25 @@ func (pf *partialFile) Reader(offset storiface.PaddedByteIndex, size abi.PaddedP
 
 func (pf *partialFile) Allocated() (rlepluslazy.RunIterator, error) {
 	return pf.allocated.RunIterator()
+}
+
+func (pf *partialFile) HasAllocated(offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (bool, error) {
+	have, err := pf.Allocated()
+	if err != nil {
+		return false, err
+	}
+
+	u, err := rlepluslazy.And(have, pieceRun(offset.Padded(), size.Padded()))
+	if err != nil {
+		return false, err
+	}
+
+	uc, err := rlepluslazy.Count(u)
+	if err != nil {
+		return false, err
+	}
+
+	return abi.PaddedPieceSize(uc) == size.Padded(), nil
 }
 
 func pieceRun(offset storiface.PaddedByteIndex, size abi.PaddedPieceSize) rlepluslazy.RunIterator {

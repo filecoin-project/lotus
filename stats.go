@@ -20,3 +20,16 @@ func (m *Manager) WorkerStats() map[uint64]storiface.WorkerStats {
 
 	return out
 }
+
+func (m *Manager) WorkerJobs() map[uint64][]storiface.WorkerJob {
+	m.sched.workersLk.Lock()
+	defer m.sched.workersLk.Unlock()
+
+	out := map[uint64][]storiface.WorkerJob{}
+
+	for id, handle := range m.sched.workers {
+		out[uint64(id)] = handle.wt.Running()
+	}
+
+	return out
+}
