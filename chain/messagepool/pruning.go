@@ -30,11 +30,13 @@ func (mp *MessagePool) pruneMessages(ctx context.Context, ts *types.TipSet) erro
 		log.Infof("message pruning took %s", time.Since(start))
 	}()
 
+	pending, _ := mp.getPendingMessages(ts, ts)
+
 	// Collect all messages to track which ones to remove and create chains for block inclusion
 	pruneMsgs := make(map[cid.Cid]*types.SignedMessage, mp.currentSize)
 	var chains []*msgChain
-	for actor, mset := range mp.pending {
-		for _, m := range mset.msgs {
+	for actor, mset := range pending {
+		for _, m := range mset {
 			pruneMsgs[m.Message.Cid()] = m
 		}
 		actorChains := mp.createMessageChains(actor, mset, ts)
