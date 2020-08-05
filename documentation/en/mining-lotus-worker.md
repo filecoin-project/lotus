@@ -50,9 +50,9 @@ Once this is set, run:
 lotus-worker run
 ```
 
-If you are running multiple workers on the same host, you will nee to speciy the `--listen` flag and ensure each worker is on a different port.
+If you are running multiple workers on the same host, you will need to specify the `--listen` flag and ensure each worker is on a different port.
 
-To check that the **Lotus Worker** is connected to your **Lotus Miner**, run `lotus-miner workers list` and check that the remote worker count has increased.
+To check that the **Lotus Worker** is connected to your **Lotus Miner**, run `lotus-miner sealing workers` and check that the remote worker count has increased.
 
 ```sh
 why@computer ~/lotus> lotus-miner sealing workers
