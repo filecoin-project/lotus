@@ -286,7 +286,7 @@ func (mp *MessagePool) createMessageChains(actor address.Address, mset *msgSet, 
 
 func (self *msgChain) Before(other *msgChain) bool {
 	return self.gasPerf > other.gasPerf ||
-		(self.gasPerf == other.gasPerf && self.gasReward.Cmp(other.gasReward) < 0)
+		(self.gasPerf == other.gasPerf && self.gasReward.Cmp(other.gasReward) > 0)
 }
 
 func (mc *msgChain) Trim(gasLimit int64, mp *MessagePool, ts *types.TipSet) {
