@@ -17,7 +17,7 @@ type allocSelector struct {
 	ptype stores.PathType
 }
 
-func newAllocSelector(ctx context.Context, index stores.SectorIndex, alloc stores.SectorFileType, ptype stores.PathType) *allocSelector {
+func newAllocSelector(index stores.SectorIndex, alloc stores.SectorFileType, ptype stores.PathType) *allocSelector {
 	return &allocSelector{
 		index: index,
 		alloc: alloc,
