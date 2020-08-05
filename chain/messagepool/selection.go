@@ -219,7 +219,7 @@ func (mp *MessagePool) createMessageChains(actor address.Address, mset *msgSet, 
 		chain.msgs = []*types.SignedMessage{m}
 		chain.gasReward = rewards[i]
 		chain.gasLimit = m.Message.GasLimit
-		chain.gasPerf = mp.getGasPerf(curChain.gasReward, curChain.gasLimit)
+		chain.gasPerf = mp.getGasPerf(chain.gasReward, chain.gasLimit)
 		chain.valid = true
 		return chain
 	}
