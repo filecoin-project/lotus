@@ -1,7 +1,9 @@
 package messagepool
 
 import (
-	"slice"
+	"context"
+	"math/big"
+	"sort"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -10,12 +12,13 @@ import (
 	"github.com/filecoin-project/lotus/chain/messagepool/gasguess"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
+	abig "github.com/filecoin-project/specs-actors/actors/abi/big"
 )
 
 type msgChain struct {
 	msgs      []*types.SignedMessage
-	gasReward uint64
-	gasLimit  uint64
+	gasReward *big.Int
+	gasLimit  int64
 	gasPerf   float64
 	valid     bool
 	next      *msgChain
@@ -46,15 +49,15 @@ func (mp *MessagePool) selectMessages(ts *types.TipSet) []*types.SignedMessage {
 	}
 
 	// 2. Sort the chains
-	slice.Sort(chains, func(i, j int) bool {
+	sort.Slice(chains, func(i, j int) bool {
 		return chains[i].Before(chains[j])
 	})
 
 	// 3. Merge the head chains to produce the list of messages selected for inclusion, subject to
 	//    the block gas limit.
 	result := make([]*types.SignedMessage, 0, mp.maxTxPoolSizeLo)
-	gasLimit := build.BlockGasLimit
-	minGas := guessgas.MinGas
+	gasLimit := int64(build.BlockGasLimit)
+	minGas := int64(gasguess.MinGas)
 	last := len(chains)
 	for i, chain := range chains {
 		// does it fit in the block?
@@ -75,17 +78,13 @@ func (mp *MessagePool) selectMessages(ts *types.TipSet) []*types.SignedMessage {
 	// dependency cannot be (fully) included.
 	// We do this in a loop because the blocker might have been inordinately large and we might
 	// have to do it multiple times to satisfy tail packing.
-	al := func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*types.Actor, error) {
-		return mp.api.StateGetActor(addr, ts)
-	}
-
 tailLoop:
 	for gasLimit >= minGas && last < len(chains) {
 		// trim
-		chains[last].Trim(gasLimit, al)
+		chains[last].Trim(gasLimit, mp, ts)
 
 		// push down if it hasn't been invalidated
-		if mc.valid {
+		if chains[last].valid {
 			for i := last; i < len(chains)-1; i++ {
 				if chains[i].Before(chains[i+1]) {
 					break
@@ -107,7 +106,7 @@ tailLoop:
 				continue
 			}
 			// this chain needs to be trimmed
-			last := i
+			last = i
 			continue tailLoop
 		}
 
@@ -119,6 +118,24 @@ tailLoop:
 	return result
 }
 
+func (mp *MessagePool) getGasReward(msg *types.SignedMessage, ts *types.TipSet) *big.Int {
+	al := func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*types.Actor, error) {
+		return mp.api.StateGetActor(addr, ts)
+	}
+	gasUsed, _ := gasguess.GuessGasUsed(context.TODO(), types.EmptyTSK, msg, al)
+	gasReward := abig.Mul(msg.Message.GasPrice, types.NewInt(uint64(gasUsed)))
+	return gasReward.Int
+}
+
+func (mp *MessagePool) getGasPerf(gasReward *big.Int, gasLimit int64) float64 {
+	// gasPerf = gasReward * build.BlockGasLimit / gasLimit
+	a := new(big.Rat).SetInt(new(big.Int).Mul(gasReward, big.NewInt(build.BlockGasLimit)))
+	b := big.NewRat(1, gasLimit)
+	c := new(big.Rat).Mul(a, b)
+	r, _ := c.Float64()
+	return r
+}
+
 func (mp *MessagePool) createMessageChains(actor address.Address, mset *msgSet, ts *types.TipSet) []*msgChain {
 	// collect all messages
 	msgs := make([]*types.SignedMessage, 0, len(mset.msgs))
@@ -127,8 +144,8 @@ func (mp *MessagePool) createMessageChains(actor address.Address, mset *msgSet, 
 	}
 
 	// sort by nonce
-	slice.Sort(msgs, func(i, j int) bool {
-		return msgs[i].Nonce < msgs[j].Nonce
+	sort.Slice(msgs, func(i, j int) bool {
+		return msgs[i].Message.Nonce < msgs[j].Message.Nonce
 	})
 
 	// sanity checks:
@@ -138,39 +155,34 @@ func (mp *MessagePool) createMessageChains(actor address.Address, mset *msgSet, 
 	//   cannot exceed the block limit; drop all messages that exceed the limit
 	// - the total gasReward cannot exceed the actor's balance; drop all messages that exceed
 	//   the balance
-	al := func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*types.Actor, error) {
-		return a
-	}
-
 	a, _ := mp.api.StateGetActor(actor, nil)
 	curNonce := a.Nonce
-	balance := a.Balance
-	gasLimit := 0
+	balance := a.Balance.Int
+	gasLimit := int64(0)
 	i := 0
-	rewards := make([]uint64, 0, len(msgs))
+	rewards := make([]*big.Int, 0, len(msgs))
 	for i = 0; i < len(msgs); i++ {
 		m := msgs[i]
-		if m.Nonce != curNonce {
+		if m.Message.Nonce != curNonce {
 			break
 		}
 		curNonce++
 
-		minGas := vm.PricelistByEpoch(ts.Height()).OnChainMessage(m.ChainLength())
-		if m.GasLimit < minGas {
+		minGas := vm.PricelistByEpoch(ts.Height()).OnChainMessage(m.ChainLength()).Total()
+		if m.Message.GasLimit < minGas {
 			break
 		}
 
-		gasLimit += m.GasLimit
+		gasLimit += m.Message.GasLimit
 		if gasLimit > build.BlockGasLimit {
 			break
 		}
 
-		gasUsed, _ := gasguess.GuessGasUsed(context.TODO(), types.EmptyTSK, m, al)
-		gasReward := gasUsed * m.GasPrice
-		if gasReward > balance {
+		gasReward := mp.getGasReward(m, ts)
+		if gasReward.Cmp(balance) > 0 {
 			break
 		}
-		balance -= gasReward
+		balance = new(big.Int).Sub(balance, gasReward)
 		rewards = append(rewards, gasReward)
 	}
 
@@ -194,8 +206,8 @@ func (mp *MessagePool) createMessageChains(actor address.Address, mset *msgSet, 
 		chain := new(msgChain)
 		chain.msgs = []*types.SignedMessage{m}
 		chain.gasReward = rewards[i]
-		chain.gasLimit = m.GasLimit
-		chain.gasPerf = curChain.gasRewards * build.BlockGasLimit / curChain.GasLimit
+		chain.gasLimit = m.Message.GasLimit
+		chain.gasPerf = mp.getGasPerf(curChain.gasReward, curChain.gasLimit)
 		chain.valid = true
 		return chain
 	}
@@ -207,9 +219,9 @@ func (mp *MessagePool) createMessageChains(actor address.Address, mset *msgSet, 
 			continue
 		}
 
-		gasReward = curChain.gasReward + rewards[i]
-		gasLimit = curChain.gasLimit + m.GasLimit
-		gasPerf = gasReward * build.BlockGasLimit / gasLimit
+		gasReward := new(big.Int).Add(curChain.gasReward, rewards[i])
+		gasLimit := curChain.gasLimit + m.Message.GasLimit
+		gasPerf := mp.getGasPerf(gasReward, gasLimit)
 
 		// try to add the message to the current chain -- if it decreases the gasPerf, then make a
 		// new chain
@@ -232,9 +244,9 @@ func (mp *MessagePool) createMessageChains(actor address.Address, mset *msgSet, 
 		for i := len(chains) - 1; i > 0; i-- {
 			if chains[i].gasPerf > chains[i-1].gasPerf {
 				chains[i-1].msgs = append(chains[i-1].msgs, chains[i].msgs...)
-				chains[i-1].gasReward += chains[i].gasReward
+				chains[i-1].gasReward = new(big.Int).Add(chains[i-1].gasReward, chains[i].gasReward)
 				chains[i-1].gasLimit += chains[i].gasLimit
-				chains[i-1].gasperf = chains[i-1].gasReward * build.BlockGasLimit / chains[i-1].gasLimit
+				chains[i-1].gasPerf = mp.getGasPerf(chains[i-1].gasReward, chains[i-1].gasLimit)
 				chains[i].valid = false
 				merged++
 			}
@@ -245,7 +257,7 @@ func (mp *MessagePool) createMessageChains(actor address.Address, mset *msgSet, 
 		}
 
 		// drop invalidated chains
-		newChains = make([]*msgChain, 0, len(chains)-merged)
+		newChains := make([]*msgChain, 0, len(chains)-merged)
 		for _, c := range chains {
 			if c.valid {
 				newChains = append(newChains, c)
@@ -264,18 +276,18 @@ func (mp *MessagePool) createMessageChains(actor address.Address, mset *msgSet, 
 
 func (self *msgChain) Before(other *msgChain) bool {
 	return self.gasPerf > other.gasPerf ||
-		(self.gasPerf == other.gasPerf && self.gasReward > other.gasReward)
+		(self.gasPerf == other.gasPerf && self.gasReward.Cmp(other.gasReward) < 0)
 }
 
-func (mc *msgChain) Trim(uint64 gasLimit, al func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*types.Actor, error)) {
+func (mc *msgChain) Trim(gasLimit int64, mp *MessagePool, ts *types.TipSet) {
 	i := len(mc.msgs) - 1
 	for i >= 0 && mc.gasLimit > gasLimit {
-		gasLimit -= mc.msgs[i].GasLimit
-		gasUsed, _ := gasguess.GuessGasUsed(context.TODO(), types.EmptyTSK, mc.msgs[i], al)
-		mc.gasReward -= msg.GasPrice * gasUsed
-		mc.gasLimit -= mc.msgs[i].GasLimit
+		gasLimit -= mc.msgs[i].Message.GasLimit
+		gasReward := mp.getGasReward(mc.msgs[i], ts)
+		mc.gasReward = new(big.Int).Sub(mc.gasReward, gasReward)
+		mc.gasLimit -= mc.msgs[i].Message.GasLimit
 		if mc.gasLimit > 0 {
-			mc.gasPerf = mc.gasReward * build.BlockGasLimit / mc.gasLimit
+			mc.gasPerf = mp.getGasPerf(mc.gasReward, mc.gasLimit)
 		} else {
 			mc.gasPerf = 0
 		}
