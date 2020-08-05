@@ -50,7 +50,10 @@ type LocalStorage interface {
 	SetStorage(func(*StorageConfig)) error
 
 	Stat(path string) (fsutil.FsStat, error)
-	DiskUsage(path string) (int64, error) // returns real disk usage for a file/directory
+
+	// returns real disk usage for a file/directory
+	// os.ErrNotExit when file doesn't exist
+	DiskUsage(path string) (int64, error)
 }
 
 const MetaFile = "sectorstore.json"
@@ -77,7 +80,7 @@ type path struct {
 func (p *path) stat(ls LocalStorage) (fsutil.FsStat, error) {
 	stat, err := ls.Stat(p.local)
 	if err != nil {
-		return fsutil.FsStat{}, err
+		return fsutil.FsStat{}, xerrors.Errorf("stat %s: %w", p.local, err)
 	}
 
 	stat.Reserved = p.reserved
@@ -88,7 +91,17 @@ func (p *path) stat(ls LocalStorage) (fsutil.FsStat, error) {
 				continue
 			}
 
-			used, err := ls.DiskUsage(p.sectorPath(id, fileType))
+			sp := p.sectorPath(id, fileType)
+
+			used, err := ls.DiskUsage(sp)
+			if err == os.ErrNotExist {
+				p, ferr := tempFetchDest(sp, false)
+				if ferr != nil {
+					return fsutil.FsStat{}, ferr
+				}
+
+				used, err = ls.DiskUsage(p)
+			}
 			if err != nil {
 				log.Errorf("getting disk usage of '%s': %+v", p.sectorPath(id, fileType), err)
 				continue
@@ -279,7 +292,7 @@ func (st *Local) Reserve(ctx context.Context, sid abi.SectorID, spt abi.Register
 
 		stat, err := p.stat(st.localStorage)
 		if err != nil {
-			return nil, err
+			return nil, xerrors.Errorf("getting local storage stat: %w", err)
 		}
 
 		overhead := int64(overheadTab[fileType]) * int64(ssize) / FSOverheadDen

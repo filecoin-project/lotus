@@ -12,17 +12,17 @@ import (
 )
 
 type existingSelector struct {
-	index stores.SectorIndex
-	sector abi.SectorID
-	alloc stores.SectorFileType
+	index      stores.SectorIndex
+	sector     abi.SectorID
+	alloc      stores.SectorFileType
 	allowFetch bool
 }
 
 func newExistingSelector(index stores.SectorIndex, sector abi.SectorID, alloc stores.SectorFileType, allowFetch bool) *existingSelector {
 	return &existingSelector{
-		index: index,
-		sector: sector,
-		alloc: alloc,
+		index:      index,
+		sector:     sector,
+		alloc:      alloc,
 		allowFetch: allowFetch,
 	}
 }
