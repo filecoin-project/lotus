@@ -30,7 +30,7 @@ type BlockSync struct {
 	// FIXME: We should have a reduced interface here, initialized
 	//  just with our protocol ID, we shouldn't be able to open *any*
 	//  connection.
-	host  host.Host
+	host host.Host
 
 	peerTracker *bsPeerTracker
 }
@@ -191,7 +191,7 @@ func (client *BlockSync) processResponse(
 		}
 
 		// Check `TipSet`s are connected (valid chain).
-		for i := 0; i < len(validRes.tipsets) - 1; i++ {
+		for i := 0; i < len(validRes.tipsets)-1; i++ {
 			if validRes.tipsets[i].IsChildOf(validRes.tipsets[i+1]) == false {
 				return nil, fmt.Errorf("tipsets are not connected at height (head - %d)/(head - %d)",
 					i, i+1)
@@ -305,7 +305,7 @@ func (client *BlockSync) GetChainMessages(
 	ctx context.Context,
 	head *types.TipSet,
 	length uint64,
-	) ([]*CompactedMessages, error) {
+) ([]*CompactedMessages, error) {
 	ctx, span := trace.StartSpan(ctx, "GetChainMessages")
 	defer span.End()
 

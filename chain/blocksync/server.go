@@ -18,7 +18,6 @@ import (
 	inet "github.com/libp2p/go-libp2p-core/network"
 )
 
-
 // BlockSyncService is the component that services BlockSync requests from
 // peers.
 //
@@ -101,7 +100,7 @@ func (server *BlockSyncService) processRequest(
 func validateRequest(
 	ctx context.Context,
 	req *Request,
-) ( *validatedRequest, *Response) {
+) (*validatedRequest, *Response) {
 	_, span := trace.StartSpan(ctx, "blocksync.ValidateRequest")
 	defer span.End()
 
@@ -118,7 +117,7 @@ func validateRequest(
 	validReq.length = req.Length
 	if validReq.length > MaxRequestLength {
 		return nil, &Response{
-			Status:       BadRequest,
+			Status: BadRequest,
 			ErrorMessage: fmt.Sprintf("request length over maximum allowed (%d)",
 				MaxRequestLength),
 		}
@@ -151,7 +150,7 @@ func validateRequest(
 func (server *BlockSyncService) serviceRequest(
 	ctx context.Context,
 	req *validatedRequest,
-	) (*Response, error) {
+) (*Response, error) {
 	_, span := trace.StartSpan(ctx, "blocksync.ServiceRequest")
 	defer span.End()
 
@@ -178,7 +177,7 @@ func (server *BlockSyncService) serviceRequest(
 func collectChainSegment(
 	cs *store.ChainStore,
 	req *validatedRequest,
-	) ([]*BSTipSet, error) {
+) ([]*BSTipSet, error) {
 	var bstips []*BSTipSet
 
 	cur := req.head

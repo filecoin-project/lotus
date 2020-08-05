@@ -1,4 +1,5 @@
 package blocksync
+
 // FIXME: This needs to be reviewed.
 
 import (

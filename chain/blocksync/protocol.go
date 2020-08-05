@@ -29,7 +29,7 @@ var MaxRequestLength = uint64(build.ForkLengthThreshold)
 const SUCCESS_PEER_TAG_VALUE = 25
 const WRITE_REQ_DEADLINE = 5 * time.Second
 const READ_RES_DEADLINE = WRITE_REQ_DEADLINE
-const READ_RES_MIN_SPEED = 50<<10
+const READ_RES_MIN_SPEED = 50 << 10
 const SHUFFLE_PEERS_PREFIX = 5
 const WRITE_RES_DEADLINE = 60 * time.Second
 
@@ -83,7 +83,7 @@ func parseOptions(optfield uint64) *parsedOptions {
 
 // FIXME: Rename. Make private.
 type Response struct {
-	Status       status
+	Status status
 	// String that complements the error status when converting to an
 	// internal error (see `statusToError()`).
 	ErrorMessage string
@@ -92,6 +92,7 @@ type Response struct {
 }
 
 type status uint64
+
 const (
 	Ok status = 0
 	// We could not fetch all blocks requested (but at least we returned
@@ -127,8 +128,8 @@ func (res *Response) statusToError() error {
 
 // FIXME: Rename.
 type BSTipSet struct {
-	Blocks []*types.BlockHeader
-    Messages *CompactedMessages
+	Blocks   []*types.BlockHeader
+	Messages *CompactedMessages
 }
 
 // All messages of a single tipset compacted together instead
@@ -144,17 +145,17 @@ type BSTipSet struct {
 // FIXME: The logic to decompress this structure should belong
 //  to itself, not to the consumer.
 type CompactedMessages struct {
-	Bls    []*types.Message
+	Bls         []*types.Message
 	BlsIncludes [][]uint64
 
-	Secpk    []*types.SignedMessage
+	Secpk         []*types.SignedMessage
 	SecpkIncludes [][]uint64
 }
 
 // Response that has been validated according to the protocol
 // and can be safely accessed.
 type validatedResponse struct {
-	tipsets  []*types.TipSet
+	tipsets []*types.TipSet
 	// List of all messages per tipset (grouped by tipset,
 	// not by block, hence a single index like `tipsets`).
 	messages []*CompactedMessages
@@ -162,7 +163,7 @@ type validatedResponse struct {
 
 // Decompress messages and form full tipsets with them. The headers
 // need to have been requested as well.
-func (res *validatedResponse) toFullTipSets() ([]*store.FullTipSet) {
+func (res *validatedResponse) toFullTipSets() []*store.FullTipSet {
 	if len(res.tipsets) == 0 || len(res.tipsets) != len(res.messages) {
 		// This decompression can only be done if both headers and
 		// messages are returned in the response. (The second check
