@@ -14,15 +14,6 @@ import (
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	samarket "github.com/filecoin-project/specs-actors/actors/builtin/market"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
-	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
-	"github.com/ipfs/go-cid"
-	"github.com/multiformats/go-multiaddr"
-
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/market"
@@ -32,6 +23,13 @@ import (
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/markets/utils"
 	"github.com/filecoin-project/lotus/node/impl/full"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	samarket "github.com/filecoin-project/specs-actors/actors/builtin/market"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
+	"github.com/ipfs/go-cid"
 )
 
 type ClientNodeAdapter struct {
@@ -77,21 +75,12 @@ func (c *ClientNodeAdapter) ListStorageProviders(ctx context.Context, encodedTs 
 	var out []*storagemarket.StorageProviderInfo
 
 	for _, addr := range addresses {
-		mi, err := c.StateMinerInfo(ctx, addr, tsk)
+		mi, err := c.GetMinerInfo(ctx, addr, encodedTs)
 		if err != nil {
 			return nil, err
 		}
 
-		multiaddrs := make([]multiaddr.Multiaddr, 0, len(mi.Multiaddrs))
-		for _, a := range mi.Multiaddrs {
-			maddr, err := multiaddr.NewMultiaddrBytes(a)
-			if err != nil {
-				return nil, err
-			}
-			multiaddrs = append(multiaddrs, maddr)
-		}
-		storageProviderInfo := utils.NewStorageProviderInfo(addr, mi.Worker, mi.SectorSize, mi.PeerId, multiaddrs)
-		out = append(out, &storageProviderInfo)
+		out = append(out, mi)
 	}
 
 	return out, nil
@@ -523,15 +512,8 @@ func (c *ClientNodeAdapter) GetMinerInfo(ctx context.Context, addr address.Addre
 	if err != nil {
 		return nil, err
 	}
-	multiaddrs := make([]multiaddr.Multiaddr, 0, len(mi.Multiaddrs))
-	for _, a := range mi.Multiaddrs {
-		maddr, err := multiaddr.NewMultiaddrBytes(a)
-		if err != nil {
-			return nil, err
-		}
-		multiaddrs = append(multiaddrs, maddr)
-	}
-	out := utils.NewStorageProviderInfo(addr, mi.Worker, mi.SectorSize, mi.PeerId, multiaddrs)
+
+	out := utils.NewStorageProviderInfo(addr, mi.Worker, mi.SectorSize, mi.PeerId, mi.Multiaddrs)
 	return &out, nil
 }
 
