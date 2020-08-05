@@ -122,7 +122,12 @@ func (mp *MessagePool) getGasReward(msg *types.SignedMessage, ts *types.TipSet) 
 	al := func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*types.Actor, error) {
 		return mp.api.StateGetActor(addr, ts)
 	}
-	gasUsed, _ := gasguess.GuessGasUsed(context.TODO(), types.EmptyTSK, msg, al)
+	gasUsed, err := gasguess.GuessGasUsed(context.TODO(), types.EmptyTSK, msg, al)
+	if err != nil {
+		// if we start seeing this warning we may have a problem with spammers!
+		log.Warnf("Cannot guess gas usage for message: %s; using MaxGas=%d", err, gasguess.MaxGas)
+		gasUsed = int64(gasguess.MaxGas)
+	}
 	gasReward := abig.Mul(msg.Message.GasPrice, types.NewInt(uint64(gasUsed)))
 	return gasReward.Int
 }
