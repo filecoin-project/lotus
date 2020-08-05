@@ -134,15 +134,21 @@ var retrievalDealsListCmd = &cli.Command{
 
 		w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
 
-		_, _ = fmt.Fprintf(w, "Receiver\tPayload\tState\n")
+		_, _ = fmt.Fprintf(w, "Receiver\tDealID\tPayload\tState\tPricePerByte\tBytesSent\tMessage\n")
 
 		for _, deal := range deals {
-			_, _ = fmt.Fprint(w, "%v", deal)
-			receiver := deal.Receiver.String()
-			pc := deal.PayloadCID.String()
-			payload := "..." + pc[len(pc)-8:]
-			status := retrievalmarket.DealStatuses[deal.Status]
-			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", receiver, payload, status)
+			payloadCid := deal.PayloadCID.String()
+
+			_, _ = fmt.Fprintf(w,
+				"%s\t%d\t%s\t%s\t%s\t%d\t%s\n",
+				deal.Receiver.String(),
+				deal.ID,
+				"..."+payloadCid[len(payloadCid)-8:],
+				retrievalmarket.DealStatuses[deal.Status],
+				deal.PricePerByte.String(),
+				deal.TotalSent,
+				deal.Message,
+			)
 		}
 
 		return w.Flush()
