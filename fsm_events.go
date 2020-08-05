@@ -1,10 +1,13 @@
 package sealing
 
 import (
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-storage/storage"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-storage/storage"
 )
 
 type mutator interface {
@@ -16,6 +19,10 @@ type globalMutator interface {
 	// applyGlobal applies the event to the state. If if returns true,
 	//  event processing should be interrupted
 	applyGlobal(state *SectorInfo) bool
+}
+
+type Ignorable interface {
+	Ignore()
 }
 
 // Global events
@@ -50,14 +57,38 @@ func (evt SectorForceState) applyGlobal(state *SectorInfo) bool {
 type SectorStart struct {
 	ID         abi.SectorNumber
 	SectorType abi.RegisteredSealProof
-	Pieces     []Piece
 }
 
 func (evt SectorStart) apply(state *SectorInfo) {
 	state.SectorNumber = evt.ID
+	state.SectorType = evt.SectorType
+}
+
+type SectorStartCC struct {
+	ID         abi.SectorNumber
+	SectorType abi.RegisteredSealProof
+	Pieces     []Piece
+}
+
+func (evt SectorStartCC) apply(state *SectorInfo) {
+	state.SectorNumber = evt.ID
 	state.Pieces = evt.Pieces
 	state.SectorType = evt.SectorType
 }
+
+type SectorAddPiece struct {
+	NewPiece Piece
+}
+
+func (evt SectorAddPiece) apply(state *SectorInfo) {
+	state.Pieces = append(state.Pieces, evt.NewPiece)
+}
+
+type SectorStartPacking struct{}
+
+func (evt SectorStartPacking) apply(*SectorInfo) {}
+
+func (evt SectorStartPacking) Ignore() {}
 
 type SectorPacked struct{ FillerPieces []abi.PieceInfo }
 
@@ -129,11 +160,15 @@ func (evt SectorChainPreCommitFailed) FormatError(xerrors.Printer) (next error) 
 func (evt SectorChainPreCommitFailed) apply(*SectorInfo)                        {}
 
 type SectorPreCommitted struct {
-	Message cid.Cid
+	Message          cid.Cid
+	PreCommitDeposit big.Int
+	PreCommitInfo    miner.SectorPreCommitInfo
 }
 
 func (evt SectorPreCommitted) apply(state *SectorInfo) {
 	state.PreCommitMessage = &evt.Message
+	state.PreCommitDeposit = evt.PreCommitDeposit
+	state.PreCommitInfo = &evt.PreCommitInfo
 }
 
 type SectorSeedReady struct {

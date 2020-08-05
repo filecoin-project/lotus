@@ -40,7 +40,7 @@ func (m *Sealing) handlePacking(ctx statemachine.Context, sector SectorInfo) err
 		log.Warnf("Creating %d filler pieces for sector %d", len(fillerSizes), sector.SectorNumber)
 	}
 
-	fillerPieces, err := m.pledgeSector(ctx.Context(), m.minerSector(sector.SectorNumber), sector.existingPieceSizes(), fillerSizes...)
+	fillerPieces, err := m.pledgeSector(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorNumber), sector.existingPieceSizes(), fillerSizes...)
 	if err != nil {
 		return xerrors.Errorf("filling up the sector (%v): %w", fillerSizes, err)
 	}
@@ -169,18 +169,27 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 		DealIDs:       sector.dealIDs(),
 	}
 
+	depositMinimum := m.tryUpgradeSector(ctx.Context(), params)
+
 	enc := new(bytes.Buffer)
 	if err := params.MarshalCBOR(enc); err != nil {
 		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("could not serialize pre-commit sector parameters: %w", err)})
 	}
 
-	log.Info("submitting precommit for sector: ", sector.SectorNumber)
-	mcid, err := m.api.SendMsg(ctx.Context(), waddr, m.maddr, builtin.MethodsMiner.PreCommitSector, big.NewInt(0), big.NewInt(1), 1000000, enc.Bytes())
+	collateral, err := m.api.StateMinerPreCommitDepositForPower(ctx.Context(), m.maddr, *params, tok)
+	if err != nil {
+		return xerrors.Errorf("getting initial pledge collateral: %w", err)
+	}
+
+	deposit := big.Max(depositMinimum, collateral)
+
+	log.Infof("submitting precommit for sector %d (deposit: %s): ", sector.SectorNumber, deposit)
+	mcid, err := m.api.SendMsg(ctx.Context(), waddr, m.maddr, builtin.MethodsMiner.PreCommitSector, deposit, big.NewInt(0), 0, enc.Bytes())
 	if err != nil {
 		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("pushing message to mpool: %w", err)})
 	}
 
-	return ctx.Send(SectorPreCommitted{Message: mcid})
+	return ctx.Send(SectorPreCommitted{Message: mcid, PreCommitDeposit: deposit, PreCommitInfo: *params})
 }
 
 func (m *Sealing) handlePreCommitWait(ctx statemachine.Context, sector SectorInfo) error {
@@ -206,7 +215,13 @@ func (m *Sealing) handlePreCommitWait(ctx statemachine.Context, sector SectorInf
 }
 
 func (m *Sealing) handleWaitSeed(ctx statemachine.Context, sector SectorInfo) error {
-	pci, err := m.api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, sector.SectorNumber, sector.PreCommitTipSet)
+	tok, _, err := m.api.ChainHead(ctx.Context())
+	if err != nil {
+		log.Errorf("handleCommitting: api error, not proceeding: %+v", err)
+		return nil
+	}
+
+	pci, err := m.api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, sector.SectorNumber, tok)
 	if err != nil {
 		return xerrors.Errorf("getting precommit info: %w", err)
 	}
@@ -216,7 +231,15 @@ func (m *Sealing) handleWaitSeed(ctx statemachine.Context, sector SectorInfo) er
 
 	randHeight := pci.PreCommitEpoch + miner.PreCommitChallengeDelay
 
-	err = m.events.ChainAt(func(ectx context.Context, tok TipSetToken, curH abi.ChainEpoch) error {
+	err = m.events.ChainAt(func(ectx context.Context, _ TipSetToken, curH abi.ChainEpoch) error {
+		// in case of null blocks the randomness can land after the tipset we
+		// get from the events API
+		tok, _, err := m.api.ChainHead(ctx.Context())
+		if err != nil {
+			log.Errorf("handleCommitting: api error, not proceeding: %+v", err)
+			return nil
+		}
+
 		buf := new(bytes.Buffer)
 		if err := m.maddr.MarshalCBOR(buf); err != nil {
 			return err
@@ -291,13 +314,26 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 		return nil
 	}
 
-	collateral, err := m.api.StateMinerInitialPledgeCollateral(ctx.Context(), m.maddr, sector.SectorNumber, tok)
+	collateral, err := m.api.StateMinerInitialPledgeCollateral(ctx.Context(), m.maddr, *sector.PreCommitInfo, tok)
 	if err != nil {
 		return xerrors.Errorf("getting initial pledge collateral: %w", err)
 	}
 
+	pci, err := m.api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, sector.SectorNumber, tok)
+	if err != nil {
+		return xerrors.Errorf("getting precommit info: %w", err)
+	}
+	if pci == nil {
+		return ctx.Send(SectorCommitFailed{error: xerrors.Errorf("precommit info not found on chain")})
+	}
+
+	collateral = big.Sub(collateral, pci.PreCommitDeposit)
+	if collateral.LessThan(big.Zero()) {
+		collateral = big.Zero()
+	}
+
 	// TODO: check seed / ticket are up to date
-	mcid, err := m.api.SendMsg(ctx.Context(), waddr, m.maddr, builtin.MethodsMiner.ProveCommitSector, collateral, big.NewInt(1), 1000000, enc.Bytes())
+	mcid, err := m.api.SendMsg(ctx.Context(), waddr, m.maddr, builtin.MethodsMiner.ProveCommitSector, collateral, big.NewInt(0), 0, enc.Bytes())
 	if err != nil {
 		return ctx.Send(SectorCommitFailed{xerrors.Errorf("pushing message to mpool: %w", err)})
 	}
@@ -334,9 +370,23 @@ func (m *Sealing) handleCommitWait(ctx statemachine.Context, sector SectorInfo) 
 func (m *Sealing) handleFinalizeSector(ctx statemachine.Context, sector SectorInfo) error {
 	// TODO: Maybe wait for some finality
 
-	if err := m.sealer.FinalizeSector(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorNumber), nil); err != nil {
+	if err := m.sealer.FinalizeSector(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorNumber), sector.keepUnsealedRanges(false)); err != nil {
 		return ctx.Send(SectorFinalizeFailed{xerrors.Errorf("finalize sector: %w", err)})
 	}
 
 	return ctx.Send(SectorFinalized{})
+}
+
+func (m *Sealing) handleProvingSector(ctx statemachine.Context, sector SectorInfo) error {
+	// TODO: track sector health / expiration
+	log.Infof("Proving sector %d", sector.SectorNumber)
+
+	if err := m.sealer.ReleaseUnsealed(ctx.Context(), m.minerSector(sector.SectorNumber), sector.keepUnsealedRanges(true)); err != nil {
+		log.Error(err)
+	}
+
+	// TODO: Watch termination
+	// TODO: Auto-extend if set
+
+	return nil
 }

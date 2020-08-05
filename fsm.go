@@ -34,8 +34,16 @@ func (m *Sealing) Plan(events []statemachine.Event, user interface{}) (interface
 var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *SectorInfo) error{
 	// Sealing
 
-	UndefinedSectorState: planOne(on(SectorStart{}, Packing)),
-	Packing:              planOne(on(SectorPacked{}, PreCommit1)),
+	UndefinedSectorState: planOne(
+		on(SectorStart{}, Empty),
+		on(SectorStartCC{}, Packing),
+	),
+	Empty: planOne(on(SectorAddPiece{}, WaitDeals)),
+	WaitDeals: planOne(
+		on(SectorAddPiece{}, WaitDeals),
+		on(SectorStartPacking{}, Packing),
+	),
+	Packing: planOne(on(SectorPacked{}, PreCommit1)),
 	PreCommit1: planOne(
 		on(SectorPreCommit1{}, PreCommit2),
 		on(SectorSealPreCommit1Failed{}, SealPreCommit1Failed),
@@ -96,6 +104,8 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorRetryComputeProof{}, Committing),
 		on(SectorRetryInvalidProof{}, Committing),
 		on(SectorRetryPreCommitWait{}, PreCommitWait),
+		on(SectorChainPreCommitFailed{}, PreCommitFailed),
+		on(SectorRetryPreCommit{}, PreCommitting),
 	),
 	FinalizeFailed: planOne(
 		on(SectorRetryFinalize{}, FinalizeSector),
@@ -141,6 +151,17 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 			l.Trace = fmt.Sprintf("%+v", err)
 		}
 
+		if len(state.Log) > 8000 {
+			log.Warnw("truncating sector log", "sector", state.SectorNumber)
+			state.Log[2000] = Log{
+				Timestamp: uint64(time.Now().Unix()),
+				Message:   "truncating log (above 8000 entries)",
+				Kind:      fmt.Sprintf("truncate"),
+			}
+
+			state.Log = append(state.Log[:2000], state.Log[:6000]...)
+		}
+
 		state.Log = append(state.Log, l)
 	}
 
@@ -158,49 +179,56 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 
 	/*
 
-		*   Empty
-		|   |
-		|   v
-		*<- Packing <- incoming
-		|   |
-		|   v
-		*<- PreCommit1 <--> SealPreCommit1Failed
-		|   |       ^          ^^
-		|   |       *----------++----\
-		|   v       v          ||    |
-		*<- PreCommit2 --------++--> SealPreCommit2Failed
-		|   |                  ||
-		|   v          /-------/|
-		*   PreCommitting <-----+---> PreCommitFailed
-		|   |                   |     ^
-		|   v                   |     |
-		*<- WaitSeed -----------+-----/
-		|   |||  ^              |
-		|   |||  \--------*-----/
-		|   |||           |
-		|   vvv      v----+----> ComputeProofFailed
-		*<- Committing    |
-		|   |        ^--> CommitFailed
-		|   v             ^
-		*<- CommitWait ---/
-		|   |
-		|   v
-		|   FinalizeSector <--> FinalizeFailed
-		|   |
-		|   v
-		*<- Proving
-		|
-		v
-		FailedUnrecoverable
+			*   Empty <- incoming deals
+			|   |
+			|   v
+		    *<- WaitDeals <- incoming deals
+			|   |
+			|   v
+			*<- Packing <- incoming committed capacity
+			|   |
+			|   v
+			*<- PreCommit1 <--> SealPreCommit1Failed
+			|   |       ^          ^^
+			|   |       *----------++----\
+			|   v       v          ||    |
+			*<- PreCommit2 --------++--> SealPreCommit2Failed
+			|   |                  ||
+			|   v          /-------/|
+			*   PreCommitting <-----+---> PreCommitFailed
+			|   |                   |     ^
+			|   v                   |     |
+			*<- WaitSeed -----------+-----/
+			|   |||  ^              |
+			|   |||  \--------*-----/
+			|   |||           |
+			|   vvv      v----+----> ComputeProofFailed
+			*<- Committing    |
+			|   |        ^--> CommitFailed
+			|   v             ^
+			*<- CommitWait ---/
+			|   |
+			|   v
+			|   FinalizeSector <--> FinalizeFailed
+			|   |
+			|   v
+			*<- Proving
+			|
+			v
+			FailedUnrecoverable
 
-		UndefinedSectorState <- ¯\_(ツ)_/¯
-			|                     ^
-			*---------------------/
+			UndefinedSectorState <- ¯\_(ツ)_/¯
+				|                     ^
+				*---------------------/
 
 	*/
 
 	switch state.State {
 	// Happy path
+	case Empty:
+		fallthrough
+	case WaitDeals:
+		log.Infof("Waiting for deals %d", state.SectorNumber)
 	case Packing:
 		return m.handlePacking, nil
 	case PreCommit1:
@@ -236,10 +264,11 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 
 	// Post-seal
 	case Proving:
-		// TODO: track sector health / expiration
-		log.Infof("Proving sector %d", state.SectorNumber)
+		return m.handleProvingSector, nil
 	case Removing:
 		return m.handleRemoving, nil
+	case Removed:
+		return nil, nil
 
 		// Faults
 	case Faulty:
@@ -352,6 +381,11 @@ func planOne(ts ...func() (mut mutator, next SectorState)) func(events []statema
 
 			events[0].User.(mutator).apply(state)
 			state.State = next
+			return nil
+		}
+
+		_, ok := events[0].User.(Ignorable)
+		if ok {
 			return nil
 		}
 

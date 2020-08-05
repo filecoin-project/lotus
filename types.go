@@ -3,11 +3,14 @@ package sealing
 import (
 	"bytes"
 	"context"
+	"time"
 
 	"github.com/ipfs/go-cid"
 
 	sectorstorage "github.com/filecoin-project/sector-storage"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/filecoin-project/specs-storage/storage"
 )
@@ -28,6 +31,7 @@ type Piece struct {
 type DealInfo struct {
 	DealID       abi.DealID
 	DealSchedule DealSchedule
+	KeepUnsealed bool
 }
 
 // DealSchedule communicates the time interval of a storage deal. The deal must
@@ -67,6 +71,8 @@ type SectorInfo struct {
 	CommR *cid.Cid
 	Proof []byte
 
+	PreCommitInfo    *miner.SectorPreCommitInfo
+	PreCommitDeposit big.Int
 	PreCommitMessage *cid.Cid
 	PreCommitTipSet  TipSetToken
 
@@ -137,6 +143,32 @@ func (t *SectorInfo) sealingCtx(ctx context.Context) context.Context {
 	return ctx
 }
 
+// Returns list of offset/length tuples of sector data ranges which clients
+// requested to keep unsealed
+func (t *SectorInfo) keepUnsealedRanges(invert bool) []storage.Range {
+	var out []storage.Range
+
+	var at abi.UnpaddedPieceSize
+	for _, piece := range t.Pieces {
+		psize := piece.Piece.Size.Unpadded()
+		at += psize
+
+		if piece.DealInfo == nil {
+			continue
+		}
+		if piece.DealInfo.KeepUnsealed == invert {
+			continue
+		}
+
+		out = append(out, storage.Range{
+			Offset: at - psize,
+			Size:   psize,
+		})
+	}
+
+	return out
+}
+
 type SectorIDCounter interface {
 	Next() (abi.SectorNumber, error)
 }
@@ -154,6 +186,8 @@ type MessageReceipt struct {
 	Return   []byte
 	GasUsed  int64
 }
+
+type GetSealingDelayFunc func() (time.Duration, error)
 
 func (mr *MessageReceipt) Equals(o *MessageReceipt) bool {
 	return mr.ExitCode == o.ExitCode && bytes.Equal(mr.Return, o.Return) && mr.GasUsed == o.GasUsed

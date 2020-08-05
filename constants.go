@@ -6,7 +6,7 @@ import (
 )
 
 // Epochs
-const SealRandomnessLookback = miner.ChainFinalityish
+const SealRandomnessLookback = miner.ChainFinality
 
 // Epochs
 func SealRandomnessLookbackLimit(spt abi.RegisteredSealProof) abi.ChainEpoch {
