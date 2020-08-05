@@ -238,7 +238,7 @@ var CommonCommands = []*cli.Command{
 	logCmd,
 	waitApiCmd,
 	fetchParamCmd,
-	versionCmd,
+	VersionCmd,
 }
 
 var Commands = []*cli.Command{
@@ -256,7 +256,7 @@ var Commands = []*cli.Command{
 	WithCategory("developer", fetchParamCmd),
 	WithCategory("network", netCmd),
 	WithCategory("network", syncCmd),
-	versionCmd,
+	VersionCmd,
 }
 
 func WithCategory(cat string, cmd *cli.Command) *cli.Command {
