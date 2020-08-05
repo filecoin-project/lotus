@@ -284,9 +284,9 @@ func (mp *MessagePool) createMessageChains(actor address.Address, mset *msgSet, 
 	return chains
 }
 
-func (self *msgChain) Before(other *msgChain) bool {
-	return self.gasPerf > other.gasPerf ||
-		(self.gasPerf == other.gasPerf && self.gasReward.Cmp(other.gasReward) > 0)
+func (mc *msgChain) Before(other *msgChain) bool {
+	return mc.gasPerf > other.gasPerf ||
+		(mc.gasPerf == other.gasPerf && mc.gasReward.Cmp(other.gasReward) > 0)
 }
 
 func (mc *msgChain) Trim(gasLimit int64, mp *MessagePool, ts *types.TipSet) {
