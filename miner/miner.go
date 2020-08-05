@@ -347,15 +347,15 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*types.BlockMsg,
 	}
 
 	// get pending messages early,
-	pending, err := m.api.MpoolPending(context.TODO(), base.TipSet.Key())
+	msgs, err := m.api.MpoolSelect(context.TODO(), base.TipSet.Key())
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get pending messages: %w", err)
+		return nil, xerrors.Errorf("failed to select messages for block: %w", err)
 	}
 
 	tPending := build.Clock.Now()
 
 	// TODO: winning post proof
-	b, err := m.createBlock(base, m.address, ticket, winner, bvals, postProof, pending)
+	b, err := m.createBlock(base, m.address, ticket, winner, bvals, postProof, msgs)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to create block: %w", err)
 	}
@@ -412,17 +412,7 @@ func (m *Miner) computeTicket(ctx context.Context, brand *types.BeaconEntry, bas
 }
 
 func (m *Miner) createBlock(base *MiningBase, addr address.Address, ticket *types.Ticket,
-	eproof *types.ElectionProof, bvals []types.BeaconEntry, wpostProof []abi.PoStProof, pending []*types.SignedMessage) (*types.BlockMsg, error) {
-	msgs, err := SelectMessages(context.TODO(), m.api.StateGetActor, base.TipSet, pending)
-	if err != nil {
-		return nil, xerrors.Errorf("message filtering failed: %w", err)
-	}
-
-	if len(msgs) > build.BlockMessageLimit {
-		log.Error("SelectMessages returned too many messages: ", len(msgs))
-		msgs = msgs[:build.BlockMessageLimit]
-	}
-
+	eproof *types.ElectionProof, bvals []types.BeaconEntry, wpostProof []abi.PoStProof, msgs []*types.SignedMessage) (*types.BlockMsg, error) {
 	uts := base.TipSet.MinTimestamp() + build.BlockDelaySecs*(uint64(base.NullRounds)+1)
 
 	nheight := base.TipSet.Height() + base.NullRounds + 1
