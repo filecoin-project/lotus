@@ -12,18 +12,19 @@ import (
 )
 
 type existingSelector struct {
-	best []stores.SectorStorageInfo
+	index stores.SectorIndex
+	sector abi.SectorID
+	alloc stores.SectorFileType
+	allowFetch bool
 }
 
-func newExistingSelector(ctx context.Context, index stores.SectorIndex, sector abi.SectorID, alloc stores.SectorFileType, allowFetch bool) (*existingSelector, error) {
-	best, err := index.StorageFindSector(ctx, sector, alloc, allowFetch)
-	if err != nil {
-		return nil, err
-	}
-
+func newExistingSelector(index stores.SectorIndex, sector abi.SectorID, alloc stores.SectorFileType, allowFetch bool) *existingSelector {
 	return &existingSelector{
-		best: best,
-	}, nil
+		index: index,
+		sector: sector,
+		alloc: alloc,
+		allowFetch: allowFetch,
+	}
 }
 
 func (s *existingSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi.RegisteredSealProof, whnd *workerHandle) (bool, error) {
@@ -45,7 +46,12 @@ func (s *existingSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt 
 		have[path.ID] = struct{}{}
 	}
 
-	for _, info := range s.best {
+	best, err := s.index.StorageFindSector(ctx, s.sector, s.alloc, s.allowFetch)
+	if err != nil {
+		return false, xerrors.Errorf("finding best storage: %w", err)
+	}
+
+	for _, info := range best {
 		if _, ok := have[info.ID]; ok {
 			return true, nil
 		}
