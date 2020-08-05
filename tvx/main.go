@@ -33,6 +33,7 @@ func main() {
 			extractMsgCmd,
 			execLotusCmd,
 			examineCmd,
+			suiteMessagesCmd,
 		},
 	}
 
