@@ -308,7 +308,7 @@ func (mc *msgChain) Trim(gasLimit int64, mp *MessagePool, ts *types.TipSet) {
 		mc.msgs = nil
 		mc.valid = false
 	} else {
-		mc.msgs = mc.msgs[:i]
+		mc.msgs = mc.msgs[:i+1]
 	}
 
 	if mc.next != nil {
