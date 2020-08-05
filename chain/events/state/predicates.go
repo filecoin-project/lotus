@@ -10,6 +10,7 @@ import (
 	typegen "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
@@ -84,6 +85,50 @@ func (sp *StatePredicates) OnStorageMarketActorChanged(diffStorageMarketState Di
 		}
 		return diffStorageMarketState(ctx, &oldState, &newState)
 	})
+}
+
+type BalanceTables struct {
+	EscrowTable *adt.BalanceTable
+	LockedTable *adt.BalanceTable
+}
+
+// DiffBalanceTablesFunc compares two balance tables
+type DiffBalanceTablesFunc func(ctx context.Context, oldBalanceTable, newBalanceTable BalanceTables) (changed bool, user UserData, err error)
+
+// OnBalanceChanged runs when the escrow table for available balances changes
+func (sp *StatePredicates) OnBalanceChanged(diffBalances DiffBalanceTablesFunc) DiffStorageMarketStateFunc {
+	return func(ctx context.Context, oldState *market.State, newState *market.State) (changed bool, user UserData, err error) {
+		if oldState.EscrowTable.Equals(newState.EscrowTable) && oldState.LockedTable.Equals(newState.LockedTable) {
+			return false, nil, nil
+		}
+
+		ctxStore := &contextStore{
+			ctx: ctx,
+			cst: sp.cst,
+		}
+
+		oldEscrowRoot, err := adt.AsBalanceTable(ctxStore, oldState.EscrowTable)
+		if err != nil {
+			return false, nil, err
+		}
+
+		oldLockedRoot, err := adt.AsBalanceTable(ctxStore, oldState.LockedTable)
+		if err != nil {
+			return false, nil, err
+		}
+
+		newEscrowRoot, err := adt.AsBalanceTable(ctxStore, newState.EscrowTable)
+		if err != nil {
+			return false, nil, err
+		}
+
+		newLockedRoot, err := adt.AsBalanceTable(ctxStore, newState.LockedTable)
+		if err != nil {
+			return false, nil, err
+		}
+
+		return diffBalances(ctx, BalanceTables{oldEscrowRoot, oldLockedRoot}, BalanceTables{newEscrowRoot, newLockedRoot})
+	}
 }
 
 type DiffAdtArraysFunc func(ctx context.Context, oldDealStateRoot, newDealStateRoot *adt.Array) (changed bool, user UserData, err error)
@@ -304,6 +349,57 @@ func (sp *StatePredicates) DealStateChangedForIDs(dealIds []abi.DealID) DiffAdtA
 		}
 		if len(changedDeals) > 0 {
 			return true, changedDeals, nil
+		}
+		return false, nil, nil
+	}
+}
+
+// ChangedBalances is a set of changes to deal state
+type ChangedBalances map[address.Address]BalanceChange
+
+// BalanceChange is a change in balance from -> to
+type BalanceChange struct {
+	From abi.TokenAmount
+	To   abi.TokenAmount
+}
+
+// AvailableBalanceChangedForAddresses detects changes in the escrow table for the given addresses
+func (sp *StatePredicates) AvailableBalanceChangedForAddresses(getAddrs func() []address.Address) DiffBalanceTablesFunc {
+	return func(ctx context.Context, oldBalances, newBalances BalanceTables) (changed bool, user UserData, err error) {
+		changedBalances := make(ChangedBalances)
+		addrs := getAddrs()
+		for _, addr := range addrs {
+			// If the deal has been removed, we just set it to nil
+			oldEscrowBalance, err := oldBalances.EscrowTable.Get(addr)
+			if err != nil {
+				return false, nil, err
+			}
+
+			oldLockedBalance, err := oldBalances.LockedTable.Get(addr)
+			if err != nil {
+				return false, nil, err
+			}
+
+			oldBalance := big.Sub(oldEscrowBalance, oldLockedBalance)
+
+			newEscrowBalance, err := newBalances.EscrowTable.Get(addr)
+			if err != nil {
+				return false, nil, err
+			}
+
+			newLockedBalance, err := newBalances.LockedTable.Get(addr)
+			if err != nil {
+				return false, nil, err
+			}
+
+			newBalance := big.Sub(newEscrowBalance, newLockedBalance)
+
+			if !oldBalance.Equals(newBalance) {
+				changedBalances[addr] = BalanceChange{oldBalance, newBalance}
+			}
+		}
+		if len(changedBalances) > 0 {
+			return true, changedBalances, nil
 		}
 		return false, nil, nil
 	}
