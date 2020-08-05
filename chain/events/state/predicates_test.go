@@ -540,8 +540,8 @@ func createEmptyMinerState(ctx context.Context, t *testing.T, store adt.Store, o
 	emptyDeadline, err := store.Put(context.TODO(), &miner.Deadline{
 		Partitions:        emptyArrayCid,
 		ExpirationsEpochs: emptyArrayCid,
-		PostSubmissions:   abi.NewBitField(),
-		EarlyTerminations: abi.NewBitField(),
+		PostSubmissions:   bitfield.New(),
+		EarlyTerminations: bitfield.New(),
 		LiveSectors:       0,
 	})
 	require.NoError(t, err)

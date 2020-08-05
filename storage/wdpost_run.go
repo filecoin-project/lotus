@@ -62,15 +62,15 @@ func (s *WindowPoStScheduler) doPost(ctx context.Context, deadline *miner.Deadli
 	}()
 }
 
-func (s *WindowPoStScheduler) checkSectors(ctx context.Context, check *abi.BitField) (*abi.BitField, error) {
+func (s *WindowPoStScheduler) checkSectors(ctx context.Context, check abi.BitField) (abi.BitField, error) {
 	spt, err := s.proofType.RegisteredSealProof()
 	if err != nil {
-		return nil, xerrors.Errorf("getting seal proof type: %w", err)
+		return bitfield.BitField{}, xerrors.Errorf("getting seal proof type: %w", err)
 	}
 
 	mid, err := address.IDFromAddress(s.actor)
 	if err != nil {
-		return nil, err
+		return bitfield.BitField{}, err
 	}
 
 	sectors := make(map[abi.SectorID]struct{})
@@ -86,12 +86,12 @@ func (s *WindowPoStScheduler) checkSectors(ctx context.Context, check *abi.BitFi
 		return nil
 	})
 	if err != nil {
-		return nil, xerrors.Errorf("iterating over bitfield: %w", err)
+		return bitfield.BitField{}, xerrors.Errorf("iterating over bitfield: %w", err)
 	}
 
 	bad, err := s.faultTracker.CheckProvable(ctx, spt, tocheck)
 	if err != nil {
-		return nil, xerrors.Errorf("checking provable sectors: %w", err)
+		return bitfield.BitField{}, xerrors.Errorf("checking provable sectors: %w", err)
 	}
 	for _, id := range bad {
 		delete(sectors, id)
@@ -101,10 +101,10 @@ func (s *WindowPoStScheduler) checkSectors(ctx context.Context, check *abi.BitFi
 
 	sbf := bitfield.New()
 	for s := range sectors {
-		(&sbf).Set(uint64(s.Number))
+		sbf.Set(uint64(s.Number))
 	}
 
-	return &sbf, nil
+	return sbf, nil
 }
 
 func (s *WindowPoStScheduler) checkNextRecoveries(ctx context.Context, dlIdx uint64, partitions []*miner.Partition) error {
@@ -420,8 +420,8 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 	return params, nil
 }
 
-func (s *WindowPoStScheduler) sectorInfo(ctx context.Context, deadlineSectors *abi.BitField, ts *types.TipSet) ([]abi.SectorInfo, error) {
-	sset, err := s.api.StateMinerSectors(ctx, s.actor, deadlineSectors, false, ts.Key())
+func (s *WindowPoStScheduler) sectorInfo(ctx context.Context, deadlineSectors abi.BitField, ts *types.TipSet) ([]abi.SectorInfo, error) {
+	sset, err := s.api.StateMinerSectors(ctx, s.actor, &deadlineSectors, false, ts.Key())
 	if err != nil {
 		return nil, err
 	}

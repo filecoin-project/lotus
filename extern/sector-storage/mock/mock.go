@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"sync"
 
+	"github.com/filecoin-project/go-bitfield"
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-storage/storage"
@@ -291,7 +292,7 @@ func (mgr *SectorMgr) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorI
 }
 
 func generateFakePoSt(sectorInfo []abi.SectorInfo, rpt func(abi.RegisteredSealProof) (abi.RegisteredPoStProof, error), randomness abi.PoStRandomness) []abi.PoStProof {
-	sectors := abi.NewBitField()
+	sectors := bitfield.New()
 	for _, info := range sectorInfo {
 		sectors.Set(uint64(info.SectorNumber))
 	}
@@ -415,12 +416,12 @@ func (m mockVerif) VerifyWindowPoSt(ctx context.Context, info abi.WindowPoStVeri
 		return false, xerrors.Errorf("bad randomness")
 	}
 
-	sectors := abi.NewBitField()
+	sectors := bitfield.New()
 	if err := sectors.UnmarshalCBOR(bytes.NewReader(proof.ProofBytes[len(info.Randomness):])); err != nil {
 		return false, xerrors.Errorf("unmarshaling sectors bitfield from \"proof\": %w", err)
 	}
 
-	challenged := abi.NewBitField()
+	challenged := bitfield.New()
 	for _, sector := range info.ChallengedSectors {
 		challenged.Set(uint64(sector.SectorNumber))
 	}
