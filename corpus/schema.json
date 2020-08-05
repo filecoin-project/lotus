@@ -95,9 +95,15 @@
         }
       }
     },
-    "apply_message": {
-      "title": "message to apply, hex-encoded",
-      "$ref": "#/definitions/hex"
+    "apply_messages": {
+      "title": "messages to apply, hex-encoded",
+      "type": "array",
+      "items": [
+        {
+          "type": "string",
+          "$ref": "#/definitions/hex"
+        }
+      ]
     }
   },
   "required": [
@@ -146,11 +152,11 @@
       },
       "then": {
         "required": [
-          "apply_message"
+          "apply_messages"
         ],
         "properties": {
-          "apply_message": {
-            "$ref": "#/definitions/apply_message"
+          "apply_messages": {
+            "$ref": "#/definitions/apply_messages"
           }
         }
       }

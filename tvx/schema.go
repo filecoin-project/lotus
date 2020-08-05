@@ -90,7 +90,7 @@ type TestVector struct {
 	// objects.
 	CAR HexEncodedBytes `json:"car_hex"`
 
-	Pre          *Preconditions  `json:"preconditions"`
-	ApplyMessage HexEncodedBytes `json:"apply_message"`
-	Post         *Postconditions `json:"postconditions"`
+	Pre           *Preconditions    `json:"preconditions"`
+	ApplyMessages []HexEncodedBytes `json:"apply_messages"`
+	Post          *Postconditions   `json:"postconditions"`
 }

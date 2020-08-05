@@ -167,7 +167,7 @@ func runExtractMsg(c *cli.Context) error {
 				RootCID: preroot,
 			},
 		},
-		ApplyMessage: msgBytes,
+		ApplyMessages: []HexEncodedBytes{msgBytes},
 		Post: &Postconditions{
 			StateTree: &StateTree{
 				RootCID: postroot,
