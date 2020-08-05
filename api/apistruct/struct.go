@@ -215,6 +215,7 @@ type StorageMinerStruct struct {
 
 		MarketImportDealData      func(context.Context, cid.Cid, string) error                                                                                                                                 `perm:"write"`
 		MarketListDeals           func(ctx context.Context) ([]storagemarket.StorageDeal, error)                                                                                                               `perm:"read"`
+		MarketListRetrievalDeals  func(ctx context.Context) ([]retrievalmarket.ProviderDealState, error)                                                                                                       `perm:"read"`
 		MarketListIncompleteDeals func(ctx context.Context) ([]storagemarket.MinerDeal, error)                                                                                                                 `perm:"read"`
 		MarketSetAsk              func(ctx context.Context, price types.BigInt, verifiedPrice types.BigInt, duration abi.ChainEpoch, minPieceSize abi.PaddedPieceSize, maxPieceSize abi.PaddedPieceSize) error `perm:"admin"`
 		MarketGetAsk              func(ctx context.Context) (*storagemarket.SignedStorageAsk, error)                                                                                                           `perm:"read"`
@@ -396,6 +397,7 @@ func (c *FullNodeStruct) ClientMinerQueryOffer(ctx context.Context, miner addres
 func (c *FullNodeStruct) ClientStartDeal(ctx context.Context, params *api.StartDealParams) (*cid.Cid, error) {
 	return c.Internal.ClientStartDeal(ctx, params)
 }
+
 func (c *FullNodeStruct) ClientGetDealInfo(ctx context.Context, deal cid.Cid) (*api.DealInfo, error) {
 	return c.Internal.ClientGetDealInfo(ctx, deal)
 }
@@ -987,6 +989,10 @@ func (c *StorageMinerStruct) MarketImportDealData(ctx context.Context, propcid c
 
 func (c *StorageMinerStruct) MarketListDeals(ctx context.Context) ([]storagemarket.StorageDeal, error) {
 	return c.Internal.MarketListDeals(ctx)
+}
+
+func (c *StorageMinerStruct) MarketListRetrievalDeals(ctx context.Context) ([]retrievalmarket.ProviderDealState, error) {
+	return c.Internal.MarketListRetrievalDeals(ctx)
 }
 
 func (c *StorageMinerStruct) MarketListIncompleteDeals(ctx context.Context) ([]storagemarket.MinerDeal, error) {

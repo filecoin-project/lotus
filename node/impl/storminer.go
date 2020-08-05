@@ -287,6 +287,17 @@ func (sm *StorageMinerAPI) MarketListDeals(ctx context.Context) ([]storagemarket
 	return sm.StorageProvider.ListDeals(ctx)
 }
 
+func (sm *StorageMinerAPI) MarketListRetrievalDeals(ctx context.Context) ([]retrievalmarket.ProviderDealState, error) {
+	var out []retrievalmarket.ProviderDealState
+	deals := sm.RetrievalProvider.ListDeals()
+
+	for _, deal := range deals {
+		out = append(out, deal)
+	}
+
+	return out, nil
+}
+
 func (sm *StorageMinerAPI) MarketListIncompleteDeals(ctx context.Context) ([]storagemarket.MinerDeal, error) {
 	return sm.StorageProvider.ListLocalDeals()
 }
@@ -315,6 +326,10 @@ func (sm *StorageMinerAPI) MarketGetRetrievalAsk(ctx context.Context) (*retrieva
 
 func (sm *StorageMinerAPI) DealsList(ctx context.Context) ([]storagemarket.StorageDeal, error) {
 	return sm.StorageProvider.ListDeals(ctx)
+}
+
+func (sm *StorageMinerAPI) RetrievalDealsList(ctx context.Context) (map[retrievalmarket.ProviderDealIdentifier]retrievalmarket.ProviderDealState, error) {
+	return sm.RetrievalProvider.ListDeals(), nil
 }
 
 func (sm *StorageMinerAPI) DealsConsiderOnlineStorageDeals(ctx context.Context) (bool, error) {
