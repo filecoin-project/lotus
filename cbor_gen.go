@@ -1350,7 +1350,7 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 				return err
 			}
 
-			if extra > cbg.MaxLength {
+			if extra > cbg.MaxLength+1 { // +1 placed here to recover broken state machines in calibration net; feel free to drop
 				return fmt.Errorf("t.Log: array too large (%d)", extra)
 			}
 

@@ -50,7 +50,7 @@ func checkPieces(ctx context.Context, si SectorInfo, api SealingAPI) error {
 
 		proposal, err := api.StateMarketStorageDeal(ctx, p.DealInfo.DealID, tok)
 		if err != nil {
-			return &ErrApi{xerrors.Errorf("getting deal %d for piece %d: %w", p.DealInfo.DealID, i, err)}
+			return &ErrInvalidDeals{xerrors.Errorf("getting deal %d for piece %d: %w", p.DealInfo.DealID, i, err)}
 		}
 
 		if proposal.PieceCID != p.Piece.PieceCID {
@@ -92,9 +92,9 @@ func checkPrecommit(ctx context.Context, maddr address.Address, si SectorInfo, t
 
 	if pci != nil {
 		if pci.Info.SealRandEpoch != si.TicketEpoch {
-			return &ErrBadTicket{}
+			return &ErrBadTicket{xerrors.Errorf("bad ticket epoch: %d != %d", pci.Info.SealRandEpoch, si.TicketEpoch)}
 		}
-		return &ErrPrecommitOnChain{}
+		return &ErrPrecommitOnChain{xerrors.Errorf("precommit already on chain")}
 	}
 
 	return nil

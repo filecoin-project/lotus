@@ -104,6 +104,8 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorRetryComputeProof{}, Committing),
 		on(SectorRetryInvalidProof{}, Committing),
 		on(SectorRetryPreCommitWait{}, PreCommitWait),
+		on(SectorChainPreCommitFailed{}, PreCommitFailed),
+		on(SectorRetryPreCommit{}, PreCommitting),
 	),
 	FinalizeFailed: planOne(
 		on(SectorRetryFinalize{}, FinalizeSector),
@@ -147,6 +149,17 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 
 		if err, iserr := event.User.(xerrors.Formatter); iserr {
 			l.Trace = fmt.Sprintf("%+v", err)
+		}
+
+		if len(state.Log) > 8000 {
+			log.Warnw("truncating sector log", "sector", state.SectorNumber)
+			state.Log[2000] = Log{
+				Timestamp: uint64(time.Now().Unix()),
+				Message:   "truncating log (above 8000 entries)",
+				Kind:      fmt.Sprintf("truncate"),
+			}
+
+			state.Log = append(state.Log[:2000], state.Log[:6000]...)
 		}
 
 		state.Log = append(state.Log, l)
