@@ -71,17 +71,24 @@ func (pchapi *mockPaychAPI) receiveMsgResponse(mcid cid.Cid, receipt types.Messa
 	if call, ok := pchapi.waitingCalls[mcid]; ok {
 		delete(pchapi.waitingCalls, mcid)
 		call.response <- receipt
+		return
 	}
 
 	pchapi.responses[mcid] = receipt
 }
 
+// Send success response for any waiting calls
 func (pchapi *mockPaychAPI) close() {
-	for mcid := range pchapi.waitingCalls {
-		pchapi.receiveMsgResponse(mcid, types.MessageReceipt{
-			ExitCode: 0,
-			Return:   []byte{},
-		})
+	pchapi.lk.Lock()
+	defer pchapi.lk.Unlock()
+
+	success := types.MessageReceipt{
+		ExitCode: 0,
+		Return:   []byte{},
+	}
+	for mcid, call := range pchapi.waitingCalls {
+		delete(pchapi.waitingCalls, mcid)
+		call.response <- success
 	}
 }
 
