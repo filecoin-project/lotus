@@ -175,7 +175,7 @@ func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, 
 }
 
 func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *StateManager, st cid.Cid, maddr address.Address, rand abi.PoStRandomness) ([]abi.SectorInfo, error) {
-	var partsProving []*abi.BitField
+	var partsProving []abi.BitField
 	var mas *miner.State
 	var info *miner.MinerInfo
 

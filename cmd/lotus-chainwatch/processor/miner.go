@@ -166,11 +166,11 @@ type SectorDealEvent struct {
 }
 
 type PartitionStatus struct {
-	Terminated *abi.BitField
-	Expired    *abi.BitField
-	Faulted    *abi.BitField
-	InRecovery *abi.BitField
-	Recovered  *abi.BitField
+	Terminated abi.BitField
+	Expired    abi.BitField
+	Faulted    abi.BitField
+	InRecovery abi.BitField
+	Recovered  abi.BitField
 }
 
 type minerActorInfo struct {
@@ -798,7 +798,7 @@ func (p *Processor) diffPartition(prevPart, curPart miner.Partition) (*Partition
 	var bf abi.BitField
 	if err := terminatedEarlyArr.ForEach(&bf, func(i int64) error {
 		// expired = all removals - termination
-		expirations, err := bitfield.SubtractBitField(allRemovedSectors, &bf)
+		expirations, err := bitfield.SubtractBitField(allRemovedSectors, bf)
 		if err != nil {
 			return err
 		}
