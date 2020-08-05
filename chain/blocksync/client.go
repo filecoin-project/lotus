@@ -378,14 +378,12 @@ func (client *BlockSync) sendRequestToPeer(
 	_ = stream.SetWriteDeadline(time.Now().Add(WRITE_REQ_DEADLINE))
 	if err := cborutil.WriteCborRPC(stream, req); err != nil {
 		_ = stream.SetWriteDeadline(time.Time{})
-		// FIXME: What's the point of setting a blank deadline that won't time out?
-		//  Is this our way of clearing the old one?
 		client.peerTracker.logFailure(peer, build.Clock.Since(connectionStart))
 		// FIXME: Should we also remove peer here?
 		return nil, err
 	}
-	// FIXME: Same, why are we doing this again here?
-	_ = stream.SetWriteDeadline(time.Time{})
+	_ = stream.SetWriteDeadline(time.Time{}) // clear deadline // FIXME: Needs
+	//  its own API (https://github.com/libp2p/go-libp2p-core/issues/162).
 
 	// Read response.
 	var res Response

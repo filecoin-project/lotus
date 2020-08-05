@@ -71,10 +71,12 @@ func (server *BlockSyncService) HandleStream(stream inet.Stream) {
 
 	_ = stream.SetDeadline(time.Now().Add(WRITE_RES_DEADLINE))
 	if err := cborutil.WriteCborRPC(stream, resp); err != nil {
+		_ = stream.SetDeadline(time.Time{})
 		log.Warnw("failed to write back response for handle stream",
 			"err", err, "peer", stream.Conn().RemotePeer())
 		return
 	}
+	_ = stream.SetDeadline(time.Time{})
 }
 
 // Validate and service the request. We return either a protocol
