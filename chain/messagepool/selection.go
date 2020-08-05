@@ -15,6 +15,8 @@ import (
 	abig "github.com/filecoin-project/specs-actors/actors/abi/big"
 )
 
+var bigBlockGasLimit = big.NewInt(build.BlockGasLimit)
+
 type msgChain struct {
 	msgs      []*types.SignedMessage
 	gasReward *big.Int
@@ -124,9 +126,12 @@ func (mp *MessagePool) getGasReward(msg *types.SignedMessage, ts *types.TipSet) 
 	}
 	gasUsed, err := gasguess.GuessGasUsed(context.TODO(), types.EmptyTSK, msg, al)
 	if err != nil {
-		// if we start seeing this warning we may have a problem with spammers!
-		log.Warnf("Cannot guess gas usage for message: %s; using MaxGas=%d", err, gasguess.MaxGas)
 		gasUsed = int64(gasguess.MaxGas)
+		if gasUsed > msg.Message.GasLimit/2 {
+			gasUsed = msg.Message.GasLimit / 2
+		}
+		// if we start seeing this warning we may have a problem with spammers!
+		log.Warnf("Cannot guess gas usage for message: %s; using %d", err, gasUsed)
 	}
 	gasReward := abig.Mul(msg.Message.GasPrice, types.NewInt(uint64(gasUsed)))
 	return gasReward.Int
@@ -134,7 +139,7 @@ func (mp *MessagePool) getGasReward(msg *types.SignedMessage, ts *types.TipSet) 
 
 func (mp *MessagePool) getGasPerf(gasReward *big.Int, gasLimit int64) float64 {
 	// gasPerf = gasReward * build.BlockGasLimit / gasLimit
-	a := new(big.Rat).SetInt(new(big.Int).Mul(gasReward, big.NewInt(build.BlockGasLimit)))
+	a := new(big.Rat).SetInt(new(big.Int).Mul(gasReward, bigBlockGasLimit))
 	b := big.NewRat(1, gasLimit)
 	c := new(big.Rat).Mul(a, b)
 	r, _ := c.Float64()
