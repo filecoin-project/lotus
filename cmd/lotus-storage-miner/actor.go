@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
-
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli/v2"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
@@ -52,6 +52,15 @@ var actorSetAddrsCmd = &cli.Command{
 			maddr, err := ma.NewMultiaddr(a)
 			if err != nil {
 				return fmt.Errorf("failed to parse %q as a multiaddr: %w", a, err)
+			}
+
+			_, err = maddr.ValueForProtocol(ma.P_P2P)
+			switch err {
+			case ma.ErrProtocolNotFound:
+				return xerrors.Errorf("multiaddr must end with /p2p/[PeerID]")
+			case nil:
+			default:
+				return xerrors.Errorf("looking for /p2p/ protocol in multiaddr: %w", err)
 			}
 
 			addrs = append(addrs, maddr.Bytes())
