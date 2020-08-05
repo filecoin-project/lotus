@@ -29,6 +29,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/pieceio"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	rm "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
@@ -260,7 +261,7 @@ func (a *API) ClientMinerQueryOffer(ctx context.Context, miner address.Address, 
 func (a *API) makeRetrievalQuery(ctx context.Context, rp rm.RetrievalPeer, payload cid.Cid, piece *cid.Cid, qp rm.QueryParams) api.QueryOffer {
 	queryResponse, err := a.Retrieval.Query(ctx, rp, payload, qp)
 	if err != nil {
-		return api.QueryOffer{Err: err.Error(), Miner: rp.Address, MinerPeerID: rp.ID}
+		return api.QueryOffer{Err: err.Error(), Miner: rp.Address, MinerPeer: rp}
 	}
 	var errStr string
 	switch queryResponse.Status {
@@ -281,7 +282,7 @@ func (a *API) makeRetrievalQuery(ctx context.Context, rp rm.RetrievalPeer, paylo
 		PaymentInterval:         queryResponse.MaxPaymentInterval,
 		PaymentIntervalIncrease: queryResponse.MaxPaymentIntervalIncrease,
 		Miner:                   queryResponse.PaymentAddress, // TODO: check
-		MinerPeerID:             rp.ID,
+		MinerPeer:               rp,
 		Err:                     errStr,
 	}
 }
@@ -398,13 +399,16 @@ func (a *API) ClientListImports(ctx context.Context) ([]api.Import, error) {
 }
 
 func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref *api.FileRef) error {
-	if order.MinerPeerID == "" {
+	if order.MinerPeer.ID == "" {
 		mi, err := a.StateMinerInfo(ctx, order.Miner, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
 
-		order.MinerPeerID = mi.PeerId
+		order.MinerPeer = retrievalmarket.RetrievalPeer{
+			ID:      mi.PeerId,
+			Address: order.Miner,
+		}
 	}
 
 	if order.Size == 0 {
@@ -457,7 +461,7 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 		order.Root,
 		params,
 		order.Total,
-		order.MinerPeerID,
+		order.MinerPeer,
 		order.Client,
 		order.Miner,
 		store.StoreID())
