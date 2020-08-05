@@ -164,8 +164,8 @@ func (s SealingAPIAdapter) StateSectorPreCommitInfo(ctx context.Context, maddr a
 	if err := state.UnmarshalCBOR(bytes.NewReader(st)); err != nil {
 		return nil, xerrors.Errorf("handleSealFailed(%d): temp error: unmarshaling miner state: %+v", sectorNumber, err)
 	}
-
-	precommits, err := adt.AsMap(store.ActorStore(ctx, apibstore.NewAPIBlockstore(s.delegate)), state.PreCommittedSectors)
+	stor := store.ActorStore(ctx, apibstore.NewAPIBlockstore(s.delegate))
+	precommits, err := adt.AsMap(stor, state.PreCommittedSectors)
 	if err != nil {
 		return nil, err
 	}
@@ -176,6 +176,18 @@ func (s SealingAPIAdapter) StateSectorPreCommitInfo(ctx context.Context, maddr a
 		return nil, err
 	}
 	if !ok {
+		var allocated abi.BitField
+		if err := stor.Get(ctx, state.AllocatedSectors, &allocated); err != nil {
+			return nil, xerrors.Errorf("loading allocated sector bitfield: %w", err)
+		}
+		set, err := allocated.IsSet(uint64(sectorNumber))
+		if err != nil {
+			return nil, xerrors.Errorf("checking if sector is allocated: %w", err)
+		}
+		if set {
+			return nil, xerrors.Errorf("sectorNumber is allocated")
+		}
+
 		return nil, nil
 	}
 
