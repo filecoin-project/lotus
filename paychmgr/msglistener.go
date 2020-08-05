@@ -43,6 +43,9 @@ func (ml *msgListeners) fireMsgComplete(mcid cid.Cid, err error) {
 }
 
 func (ml *msgListeners) unsubscribe(sub string) {
+	ml.lk.Lock()
+	defer ml.lk.Unlock()
+
 	for i, l := range ml.listeners {
 		if l.id == sub {
 			ml.removeListener(i)

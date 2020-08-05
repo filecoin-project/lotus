@@ -181,7 +181,10 @@ func (pm *Manager) GetPaych(ctx context.Context, from, to address.Address, amt t
 // The returned channel address can safely be used against the Manager methods.
 func (pm *Manager) GetPaychWaitReady(ctx context.Context, mcid cid.Cid) (address.Address, error) {
 	// Find the channel associated with the message CID
+	pm.lk.Lock()
 	ci, err := pm.store.ByMessageCid(mcid)
+	pm.lk.Unlock()
+
 	if err != nil {
 		if err == datastore.ErrNotFound {
 			return address.Undef, xerrors.Errorf("Could not find wait msg cid %s", mcid)

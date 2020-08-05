@@ -38,7 +38,7 @@ func TestPaychSettle(t *testing.T) {
 
 	// Send channel create response
 	response := testChannelResponse(t, expch)
-	pchapi.finishWaitingCalls(response)
+	pchapi.receiveMsgResponse(mcid, response)
 
 	// Get the channel address
 	ch, err := mgr.GetPaychWaitReady(ctx, mcid)
@@ -61,7 +61,7 @@ func TestPaychSettle(t *testing.T) {
 
 	// Send new channel create response
 	response2 := testChannelResponse(t, expch2)
-	pchapi.finishWaitingCalls(response2)
+	pchapi.receiveMsgResponse(mcid2, response2)
 
 	time.Sleep(10 * time.Millisecond)
 
