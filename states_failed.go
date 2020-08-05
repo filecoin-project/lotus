@@ -81,6 +81,8 @@ func (m *Sealing) handlePreCommitFailed(ctx statemachine.Context, sector SectorI
 			return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("ticket expired error: %w", err)})
 		case *ErrBadTicket:
 			return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("bad expired: %w", err)})
+		case *ErrNoPrecommit:
+			return ctx.Send(SectorRetryPreCommit{})
 		case *ErrPrecommitOnChain:
 			// noop
 		default:
@@ -152,10 +154,12 @@ func (m *Sealing) handleCommitFailed(ctx statemachine.Context, sector SectorInfo
 			return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("ticket expired error: %w", err)})
 		case *ErrBadTicket:
 			return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("bad expired: %w", err)})
+		case nil:
+			return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("no precommit: %w", err)})
 		case *ErrPrecommitOnChain:
 			// noop, this is expected
 		default:
-			return xerrors.Errorf("checkPrecommit sanity check error: %w", err)
+			return xerrors.Errorf("checkPrecommit sanity check error (%T): %w", err, err)
 		}
 	}
 
@@ -180,8 +184,10 @@ func (m *Sealing) handleCommitFailed(ctx statemachine.Context, sector SectorInfo
 		case *ErrPrecommitOnChain:
 			log.Errorf("no precommit on chain, will retry: %+v", err)
 			return ctx.Send(SectorRetryPreCommitWait{})
+		case *ErrNoPrecommit:
+			return ctx.Send(SectorRetryPreCommit{})
 		default:
-			return xerrors.Errorf("checkCommit sanity check error: %w", err)
+			return xerrors.Errorf("checkCommit sanity check error (%T): %w", err, err)
 		}
 	}
 
