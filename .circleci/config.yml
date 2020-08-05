@@ -41,16 +41,24 @@ workflows:
   version: 2
   main:
     jobs:
-      - build-linux
+      - tvx-build-test-linux
+      - soup-build-linux
 
 jobs:
-  build-linux:
+  tvx-build-test-linux:
+    executor: linux
+    steps:
+      - setup
+      - run:
+          name: "build tvx"
+          command: pushd tvx && go build .
+      - run:
+          name: "run messages test vector suite"
+          command: pushd tvx && ./tvx suite-messages | ./tvx exec-lotus
+  soup-build-linux:
     executor: linux
     steps:
       - setup
       - run:
           name: "build lotus-soup"
           command: pushd lotus-soup && go build -tags=testground .
-      - run:
-          name: "build tvx"
-          command: pushd tvx && go build .
