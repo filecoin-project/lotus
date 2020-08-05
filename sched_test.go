@@ -207,7 +207,7 @@ func TestSched(t *testing.T) {
 			done := make(chan struct{})
 			rm.done[taskName] = done
 
-			sel := newAllocSelector(ctx, index, stores.FTCache, stores.PathSealing)
+			sel := newAllocSelector(index, stores.FTCache, stores.PathSealing)
 
 			rm.wg.Add(1)
 			go func() {
