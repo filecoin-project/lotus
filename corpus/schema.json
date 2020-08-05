@@ -1,0 +1,149 @@
+{
+  "$id": "https://filecoin.io/oni/schemas/test-vector.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "a filecoin VM test vector",
+  "type": "object",
+  "definitions": {
+    "hex": {
+      "title": "hex value",
+      "description": "a hex value prefixed with 0x, and accepting only lowercase characters; 0x represents an empty byte array",
+      "type": "string",
+      "pattern": "0x[0-9a-f]*",
+      "examples": [
+        "0xa1b2c3",
+        "0x"
+      ]
+    },
+    "meta": {
+      "title": "metadata",
+      "description": "metadata about this test vector, such as its id, version, data about its generation, etc.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "gen": {
+          "title": "generation metadata",
+          "description": "metadata about how this test vector was generated",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "source": {
+              "type": "string",
+              "examples": [
+                "lotus",
+                "dsl"
+              ]
+            },
+            "version": {
+              "type": "string",
+              "examples": [
+                "0.4.1+git.27d74337+api0.8.1"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "preconditions": {
+      "title": "execution preconditions",
+      "description": "preconditions that need to be applied and satisfied before this test vector can be executed",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "state_tree": {
+          "title": "state tree to seed",
+          "description": "state tree to seed before applying this test vector; mapping of actor addresses => serialized state",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/hex"
+          },
+          "examples": [
+            {
+              "t01": "0x0123456789abcdef",
+              "t02": "0x0123456789abcdef",
+              "t03": "0x0123456789abcdef"
+            }
+          ]
+        }
+      }
+    },
+    "postconditions": {
+      "title": "execution preconditions",
+      "description": "postconditions that need to be satisfied after execution for this test vector to pass",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "state_tree": {
+          "title": "state tree postconditions",
+          "description": "state tree postconditions that must be true for this test vector to pass",
+          "type": "object",
+          "properties": {
+            "car_bytes": {
+              "title": "the hex-encoded CAR containing the full state tree",
+              "description": "the hex-encoded CAR containing the full state tree, for debugging/diffing purposes",
+              "$ref": "#/definitions/hex"
+            }
+          }
+        }
+      }
+    },
+    "apply_message": {
+      "title": "message to apply, hex-encoded",
+      "$ref": "#/definitions/hex"
+    }
+  },
+  "required": [
+    "class"
+  ],
+  "properties": {
+    "class": {
+      "title": "test vector class",
+      "description": "test vector class; depending on the value, the apply_* property to provide (and its schema) will vary; the relevant apply property is apply_[class]",
+      "type": "string",
+      "enum": [
+        "message",
+        "block",
+        "tipset",
+        "chain"
+      ]
+    },
+    "selector": {
+      "title": "selector the driver can use to determine if this test vector applies",
+      "description": "format TBD",
+      "type": "string"
+    },
+    "_meta": {
+      "$ref": "#/definitions/meta"
+    },
+    "preconditions": {
+      "$ref": "#/definitions/preconditions"
+    },
+    "postconditions": {
+      "$ref": "#/definitions/postconditions"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "class": {
+            "const": "message"
+          }
+        }
+      },
+      "then": {
+        "required": ["apply_message"],
+        "properties": {
+          "apply_message": {
+            "$ref": "#/definitions/apply_message"
+          }
+        }
+      }
+    }
+  ]
+}
