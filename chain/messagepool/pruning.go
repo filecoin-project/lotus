@@ -10,12 +10,6 @@ import (
 )
 
 func (mp *MessagePool) pruneExcessMessages() error {
-
-	start := time.Now()
-	defer func() {
-		log.Infow("message pruning complete", "took", time.Since(start))
-	}()
-
 	mp.curTsLk.Lock()
 	ts := mp.curTs
 	mp.curTsLk.Unlock()
