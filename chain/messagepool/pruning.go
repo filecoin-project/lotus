@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
 )
 
 func (mp *MessagePool) pruneExcessMessages() error {
@@ -30,6 +31,11 @@ func (mp *MessagePool) pruneMessages(ctx context.Context, ts *types.TipSet) erro
 		log.Infof("message pruning took %s", time.Since(start))
 	}()
 
+	baseFee, err := mp.api.ChainComputeBaseFee(ctx, ts)
+	if err != nil {
+		return xerrors.Errorf("computing basefee: %w", err)
+	}
+
 	pending, _ := mp.getPendingMessages(ts, ts)
 
 	// Collect all messages to track which ones to remove and create chains for block inclusion
@@ -39,7 +45,7 @@ func (mp *MessagePool) pruneMessages(ctx context.Context, ts *types.TipSet) erro
 		for _, m := range mset {
 			pruneMsgs[m.Message.Cid()] = m
 		}
-		actorChains := mp.createMessageChains(actor, mset, ts)
+		actorChains := mp.createMessageChains(actor, mset, baseFee, ts)
 		chains = append(chains, actorChains...)
 	}
 

@@ -140,6 +140,10 @@ func (tma *testMpoolAPI) LoadTipSet(tsk types.TipSetKey) (*types.TipSet, error) 
 	return nil, fmt.Errorf("tipset not found")
 }
 
+func (tma *testMpoolAPI) ChainComputeBaseFee(ctx context.Context, ts *types.TipSet) (types.BigInt, error) {
+	return types.NewInt(100), nil
+}
+
 func assertNonce(t *testing.T, mp *MessagePool, addr address.Address, val uint64) {
 	t.Helper()
 	n, err := mp.GetNonce(addr)
