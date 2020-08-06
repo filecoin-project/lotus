@@ -4,7 +4,6 @@ import (
 	"context"
 	"sync"
 	"testing"
-	"time"
 
 	cborrpc "github.com/filecoin-project/go-cbor-util"
 
@@ -30,31 +29,39 @@ type waitingCall struct {
 	response chan types.MessageReceipt
 }
 
+type waitingResponse struct {
+	receipt types.MessageReceipt
+	done    chan struct{}
+}
+
 type mockPaychAPI struct {
-	lk           sync.Mutex
-	messages     map[cid.Cid]*types.SignedMessage
-	waitingCalls map[cid.Cid]*waitingCall
-	responses    map[cid.Cid]types.MessageReceipt
+	lk               sync.Mutex
+	messages         map[cid.Cid]*types.SignedMessage
+	waitingCalls     map[cid.Cid]*waitingCall
+	waitingResponses map[cid.Cid]*waitingResponse
 }
 
 func newMockPaychAPI() *mockPaychAPI {
 	return &mockPaychAPI{
-		messages:     make(map[cid.Cid]*types.SignedMessage),
-		waitingCalls: make(map[cid.Cid]*waitingCall),
-		responses:    make(map[cid.Cid]types.MessageReceipt),
+		messages:         make(map[cid.Cid]*types.SignedMessage),
+		waitingCalls:     make(map[cid.Cid]*waitingCall),
+		waitingResponses: make(map[cid.Cid]*waitingResponse),
 	}
 }
 
 func (pchapi *mockPaychAPI) StateWaitMsg(ctx context.Context, mcid cid.Cid, confidence uint64) (*api.MsgLookup, error) {
-	response := make(chan types.MessageReceipt)
-
 	pchapi.lk.Lock()
 
-	if receipt, ok := pchapi.responses[mcid]; ok {
-		defer pchapi.lk.Unlock()
+	response := make(chan types.MessageReceipt)
 
-		delete(pchapi.responses, mcid)
-		return &api.MsgLookup{Receipt: receipt}, nil
+	if response, ok := pchapi.waitingResponses[mcid]; ok {
+		defer pchapi.lk.Unlock()
+		defer func() {
+			go close(response.done)
+		}()
+
+		delete(pchapi.waitingResponses, mcid)
+		return &api.MsgLookup{Receipt: response.receipt}, nil
 	}
 
 	pchapi.waitingCalls[mcid] = &waitingCall{response: response}
@@ -66,15 +73,21 @@ func (pchapi *mockPaychAPI) StateWaitMsg(ctx context.Context, mcid cid.Cid, conf
 
 func (pchapi *mockPaychAPI) receiveMsgResponse(mcid cid.Cid, receipt types.MessageReceipt) {
 	pchapi.lk.Lock()
-	defer pchapi.lk.Unlock()
 
 	if call, ok := pchapi.waitingCalls[mcid]; ok {
+		defer pchapi.lk.Unlock()
+
 		delete(pchapi.waitingCalls, mcid)
 		call.response <- receipt
 		return
 	}
 
-	pchapi.responses[mcid] = receipt
+	done := make(chan struct{})
+	pchapi.waitingResponses[mcid] = &waitingResponse{receipt: receipt, done: done}
+
+	pchapi.lk.Unlock()
+
+	<-done
 }
 
 // Send success response for any waiting calls
@@ -240,9 +253,6 @@ func TestPaychGetCreateChannelThenAddFunds(t *testing.T) {
 		require.Nil(t, ci.AddFundsMsg)
 	}()
 
-	// Give the go routine above a moment to run
-	time.Sleep(time.Millisecond * 10)
-
 	// 3. Send create channel response
 	pchapi.receiveMsgResponse(createMsgCid, response)
 
@@ -290,14 +300,13 @@ func TestPaychGetCreateChannelWithErrorThenCreateAgain(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, address.Undef, ch2)
 
-		time.Sleep(time.Millisecond * 10)
-
 		// 4. Send a success response
 		ch := tutils.NewIDAddr(t, 100)
 		successResponse := testChannelResponse(t, ch)
 		pchapi.receiveMsgResponse(mcid2, successResponse)
 
-		time.Sleep(time.Millisecond * 10)
+		_, err = mgr.GetPaychWaitReady(ctx, mcid2)
+		require.NoError(t, err)
 
 		// Should have one channel, whose address is the channel that was created
 		cis, err := mgr.ListChannels()
@@ -309,9 +318,6 @@ func TestPaychGetCreateChannelWithErrorThenCreateAgain(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, amt2, ci.Amount)
 	}()
-
-	// Give the go routine above a moment to run
-	time.Sleep(time.Millisecond * 10)
 
 	// 3. Send error response to first channel create
 	pchapi.receiveMsgResponse(mcid1, errResponse)
@@ -341,28 +347,23 @@ func TestPaychGetRecoverAfterError(t *testing.T) {
 	_, mcid, err := mgr.GetPaych(ctx, from, to, amt)
 	require.NoError(t, err)
 
-	time.Sleep(time.Millisecond * 10)
-
 	// Send error create channel response
 	pchapi.receiveMsgResponse(mcid, types.MessageReceipt{
 		ExitCode: 1, // error
 		Return:   []byte{},
 	})
 
-	time.Sleep(time.Millisecond * 10)
-
 	// Send create message for a channel again
 	amt2 := big.NewInt(7)
 	_, mcid2, err := mgr.GetPaych(ctx, from, to, amt2)
 	require.NoError(t, err)
 
-	time.Sleep(time.Millisecond * 10)
-
 	// Send success create channel response
 	response := testChannelResponse(t, ch)
 	pchapi.receiveMsgResponse(mcid2, response)
 
-	time.Sleep(time.Millisecond * 10)
+	_, err = mgr.GetPaychWaitReady(ctx, mcid2)
+	require.NoError(t, err)
 
 	// Should have one channel, whose address is the channel that was created
 	cis, err := mgr.ListChannels()
@@ -399,20 +400,14 @@ func TestPaychGetRecoverAfterAddFundsError(t *testing.T) {
 	_, mcid1, err := mgr.GetPaych(ctx, from, to, amt)
 	require.NoError(t, err)
 
-	time.Sleep(time.Millisecond * 10)
-
 	// Send success create channel response
 	response := testChannelResponse(t, ch)
 	pchapi.receiveMsgResponse(mcid1, response)
-
-	time.Sleep(time.Millisecond * 10)
 
 	// Send add funds message for channel
 	amt2 := big.NewInt(5)
 	_, mcid2, err := mgr.GetPaych(ctx, from, to, amt2)
 	require.NoError(t, err)
-
-	time.Sleep(time.Millisecond * 10)
 
 	// Send error add funds response
 	pchapi.receiveMsgResponse(mcid2, types.MessageReceipt{
@@ -420,7 +415,8 @@ func TestPaychGetRecoverAfterAddFundsError(t *testing.T) {
 		Return:   []byte{},
 	})
 
-	time.Sleep(time.Millisecond * 10)
+	_, err = mgr.GetPaychWaitReady(ctx, mcid2)
+	require.Error(t, err)
 
 	// Should have one channel, whose address is the channel that was created
 	cis, err := mgr.ListChannels()
@@ -440,15 +436,14 @@ func TestPaychGetRecoverAfterAddFundsError(t *testing.T) {
 	_, mcid3, err := mgr.GetPaych(ctx, from, to, amt3)
 	require.NoError(t, err)
 
-	time.Sleep(time.Millisecond * 10)
-
 	// Send success add funds response
 	pchapi.receiveMsgResponse(mcid3, types.MessageReceipt{
 		ExitCode: 0,
 		Return:   []byte{},
 	})
 
-	time.Sleep(time.Millisecond * 10)
+	_, err = mgr.GetPaychWaitReady(ctx, mcid3)
+	require.NoError(t, err)
 
 	// Should have one channel, whose address is the channel that was created
 	cis, err = mgr.ListChannels()
@@ -487,7 +482,7 @@ func TestPaychGetRestartAfterCreateChannelMsg(t *testing.T) {
 	_, createMsgCid, err := mgr.GetPaych(ctx, from, to, amt)
 	require.NoError(t, err)
 
-	// Simulate shutting down lotus
+	// Simulate shutting down system
 	pchapi.close()
 
 	// Create a new manager with the same datastore
@@ -540,9 +535,6 @@ func TestPaychGetRestartAfterCreateChannelMsg(t *testing.T) {
 		require.Nil(t, ci.CreateMsg)
 	}()
 
-	// Give the go routine above a moment to run
-	time.Sleep(time.Millisecond * 10)
-
 	// 3. Send create channel response
 	pchapi2.receiveMsgResponse(createMsgCid, response)
 
@@ -571,30 +563,22 @@ func TestPaychGetRestartAfterAddFundsMsg(t *testing.T) {
 	_, mcid1, err := mgr.GetPaych(ctx, from, to, amt)
 	require.NoError(t, err)
 
-	time.Sleep(time.Millisecond * 10)
-
 	// Send success create channel response
 	response := testChannelResponse(t, ch)
 	pchapi.receiveMsgResponse(mcid1, response)
-
-	time.Sleep(time.Millisecond * 10)
 
 	// Send add funds message for channel
 	amt2 := big.NewInt(5)
 	_, mcid2, err := mgr.GetPaych(ctx, from, to, amt2)
 	require.NoError(t, err)
 
-	time.Sleep(time.Millisecond * 10)
-
-	// Simulate shutting down lotus
+	// Simulate shutting down system
 	pchapi.close()
 
 	// Create a new manager with the same datastore
 	sm2 := newMockStateManager()
 	pchapi2 := newMockPaychAPI()
 	defer pchapi2.close()
-
-	time.Sleep(time.Millisecond * 10)
 
 	mgr2, err := newManager(sm2, store, pchapi2)
 	require.NoError(t, err)
@@ -605,7 +589,8 @@ func TestPaychGetRestartAfterAddFundsMsg(t *testing.T) {
 		Return:   []byte{},
 	})
 
-	time.Sleep(time.Millisecond * 10)
+	_, err = mgr2.GetPaychWaitReady(ctx, mcid2)
+	require.NoError(t, err)
 
 	// Should have one channel, whose address is the channel that was created
 	cis, err := mgr2.ListChannels()
@@ -643,25 +628,16 @@ func TestPaychGetWait(t *testing.T) {
 	_, createMsgCid, err := mgr.GetPaych(ctx, from, to, amt)
 	require.NoError(t, err)
 
-	done := make(chan address.Address)
+	expch := tutils.NewIDAddr(t, 100)
 	go func() {
-		// 2. Wait till ready
-		ch, err := mgr.GetPaychWaitReady(ctx, createMsgCid)
-		require.NoError(t, err)
-
-		done <- ch
+		// 3. Send response
+		response := testChannelResponse(t, expch)
+		pchapi.receiveMsgResponse(createMsgCid, response)
 	}()
 
-	time.Sleep(time.Millisecond * 10)
-
-	// 3. Send response
-	expch := tutils.NewIDAddr(t, 100)
-	response := testChannelResponse(t, expch)
-	pchapi.receiveMsgResponse(createMsgCid, response)
-
-	time.Sleep(time.Millisecond * 10)
-
-	ch := <-done
+	// 2. Wait till ready
+	ch, err := mgr.GetPaychWaitReady(ctx, createMsgCid)
+	require.NoError(t, err)
 	require.Equal(t, expch, ch)
 
 	// 4. Wait again - message has already been received so should
@@ -675,27 +651,19 @@ func TestPaychGetWait(t *testing.T) {
 	_, addFundsMsgCid, err := mgr.GetPaych(ctx, from, to, amt2)
 	require.NoError(t, err)
 
-	time.Sleep(time.Millisecond * 10)
-
 	go func() {
-		// 5. Wait for add funds
-		ch, err := mgr.GetPaychWaitReady(ctx, addFundsMsgCid)
-		require.NoError(t, err)
-		require.Equal(t, expch, ch)
-
-		done <- ch
+		// 6. Send add funds response
+		addFundsResponse := types.MessageReceipt{
+			ExitCode: 0,
+			Return:   []byte{},
+		}
+		pchapi.receiveMsgResponse(addFundsMsgCid, addFundsResponse)
 	}()
 
-	time.Sleep(time.Millisecond * 10)
-
-	// 6. Send add funds response
-	addFundsResponse := types.MessageReceipt{
-		ExitCode: 0,
-		Return:   []byte{},
-	}
-	pchapi.receiveMsgResponse(addFundsMsgCid, addFundsResponse)
-
-	<-done
+	// 5. Wait for add funds
+	ch, err = mgr.GetPaychWaitReady(ctx, addFundsMsgCid)
+	require.NoError(t, err)
+	require.Equal(t, expch, ch)
 }
 
 // TestPaychGetWaitErr tests that GetPaychWaitReady correctly handles errors
@@ -735,9 +703,6 @@ func TestPaychGetWaitErr(t *testing.T) {
 		require.NotNil(t, err)
 	}()
 
-	// Give the wait a moment to start before sending response
-	time.Sleep(time.Millisecond * 10)
-
 	// 3. Send error response to create channel
 	response := types.MessageReceipt{
 		ExitCode: 1, // error
@@ -770,7 +735,6 @@ func TestPaychGetWaitCtx(t *testing.T) {
 
 	// When the context is cancelled, should unblock wait
 	go func() {
-		time.Sleep(time.Millisecond * 10)
 		cancel()
 	}()
 
