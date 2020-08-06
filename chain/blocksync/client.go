@@ -96,8 +96,9 @@ func (client *BlockSync) doRequest(
 	// return on the first successful response.
 	// FIXME: Doing this serially isn't great, but fetching in parallel
 	//  may not be a good idea either. Think about this more.
-	startTime := build.Clock.Now()
-	// FIXME: Should we track time per peer instead of a global one?
+	globalTime := build.Clock.Now()
+	// Global time used to track what is the expected time we will need to get
+	// a response if a client fails us.
 	for _, peer := range peers {
 		select {
 		case <-ctx.Done():
@@ -123,7 +124,7 @@ func (client *BlockSync) doRequest(
 			continue
 		}
 
-		client.peerTracker.logGlobalSuccess(build.Clock.Since(startTime))
+		client.peerTracker.logGlobalSuccess(build.Clock.Since(globalTime))
 		client.host.ConnManager().TagPeer(peer, "bsync", SUCCESS_PEER_TAG_VALUE)
 		return validRes, nil
 	}
