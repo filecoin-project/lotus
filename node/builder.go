@@ -5,8 +5,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/filecoin-project/lotus/markets/dealfilter"
-
 	logging "github.com/ipfs/go-log"
 	ci "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -111,6 +109,7 @@ const (
 	HandleIncomingMessagesKey
 
 	RegisterClientValidatorKey
+	HandlePaymentChannelManagerKey
 
 	// miner
 	GetParamsKey
@@ -279,6 +278,7 @@ func Online() Option {
 			Override(new(*paychmgr.Store), paychmgr.NewStore),
 			Override(new(*paychmgr.Manager), paychmgr.NewManager),
 			Override(new(*market.FundMgr), market.StartFundManager),
+			Override(HandlePaymentChannelManagerKey, paychmgr.HandleManager),
 			Override(SettlePaymentChannelsKey, settler.SettlePaymentChannels),
 		),
 

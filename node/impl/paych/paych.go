@@ -28,8 +28,8 @@ type PaychAPI struct {
 	PaychMgr *paychmgr.Manager
 }
 
-func (a *PaychAPI) PaychGet(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*api.ChannelInfo, error) {
-	ch, mcid, err := a.PaychMgr.GetPaych(ctx, from, to, ensureFunds)
+func (a *PaychAPI) PaychGet(ctx context.Context, from, to address.Address, amt types.BigInt) (*api.ChannelInfo, error) {
+	ch, mcid, err := a.PaychMgr.GetPaych(ctx, from, to, amt)
 	if err != nil {
 		return nil, err
 	}
@@ -38,6 +38,10 @@ func (a *PaychAPI) PaychGet(ctx context.Context, from, to address.Address, ensur
 		Channel:        ch,
 		ChannelMessage: mcid,
 	}, nil
+}
+
+func (a *PaychAPI) PaychGetWaitReady(ctx context.Context, mcid cid.Cid) (address.Address, error) {
+	return a.PaychMgr.GetPaychWaitReady(ctx, mcid)
 }
 
 func (a *PaychAPI) PaychAllocateLane(ctx context.Context, ch address.Address) (uint64, error) {
@@ -66,7 +70,7 @@ func (a *PaychAPI) PaychNewPayment(ctx context.Context, from, to address.Address
 			ChannelAddr: ch.Channel,
 
 			Amount: v.Amount,
-			Lane:   uint64(lane),
+			Lane:   lane,
 
 			Extra:           v.Extra,
 			TimeLockMin:     v.TimeLockMin,
@@ -108,24 +112,7 @@ func (a *PaychAPI) PaychStatus(ctx context.Context, pch address.Address) (*api.P
 }
 
 func (a *PaychAPI) PaychSettle(ctx context.Context, addr address.Address) (cid.Cid, error) {
-
-	ci, err := a.PaychMgr.GetChannelInfo(addr)
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	msg := &types.Message{
-		To:     addr,
-		From:   ci.Control,
-		Value:  types.NewInt(0),
-		Method: builtin.MethodsPaych.Settle,
-	}
-	smgs, err := a.MpoolPushMessage(ctx, msg)
-
-	if err != nil {
-		return cid.Undef, err
-	}
-	return smgs.Cid(), nil
+	return a.PaychMgr.Settle(ctx, addr)
 }
 
 func (a *PaychAPI) PaychCollect(ctx context.Context, addr address.Address) (cid.Cid, error) {

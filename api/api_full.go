@@ -377,7 +377,8 @@ type FullNode interface {
 	// MethodGroup: Paych
 	// The Paych methods are for interacting with and managing payment channels
 
-	PaychGet(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*ChannelInfo, error)
+	PaychGet(ctx context.Context, from, to address.Address, amt types.BigInt) (*ChannelInfo, error)
+	PaychGetWaitReady(context.Context, cid.Cid) (address.Address, error)
 	PaychList(context.Context) ([]address.Address, error)
 	PaychStatus(context.Context, address.Address) (*PaychStatus, error)
 	PaychSettle(context.Context, address.Address) (cid.Cid, error)

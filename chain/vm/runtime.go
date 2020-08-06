@@ -294,7 +294,11 @@ func (rt *Runtime) CreateActor(codeID cid.Cid, address address.Address) {
 	_ = rt.chargeGasSafe(gasOnActorExec)
 }
 
-func (rt *Runtime) DeleteActor(addr address.Address) {
+// DeleteActor deletes the executing actor from the state tree, transferring
+// any balance to beneficiary.
+// Aborts if the beneficiary does not exist.
+// May only be called by the actor itself.
+func (rt *Runtime) DeleteActor(beneficiary address.Address) {
 	rt.chargeGas(rt.Pricelist().OnDeleteActor())
 	act, err := rt.state.GetActor(rt.Message().Receiver())
 	if err != nil {
@@ -304,11 +308,13 @@ func (rt *Runtime) DeleteActor(addr address.Address) {
 		panic(aerrors.Fatalf("failed to get actor: %s", err))
 	}
 	if !act.Balance.IsZero() {
-		if err := rt.vm.transfer(rt.Message().Receiver(), builtin.BurntFundsActorAddr, act.Balance); err != nil {
-			panic(aerrors.Fatalf("failed to transfer balance to burnt funds actor: %s", err))
+		// Transfer the executing actor's balance to the beneficiary
+		if err := rt.vm.transfer(rt.Message().Receiver(), beneficiary, act.Balance); err != nil {
+			panic(aerrors.Fatalf("failed to transfer balance to beneficiary actor: %s", err))
 		}
 	}
 
+	// Delete the executing actor
 	if err := rt.state.DeleteActor(rt.Message().Receiver()); err != nil {
 		panic(aerrors.Fatalf("failed to delete actor: %s", err))
 	}
