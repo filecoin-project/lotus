@@ -5,6 +5,8 @@ import (
 	"errors"
 	"time"
 
+	"github.com/filecoin-project/lotus/markets/dealfilter"
+
 	logging "github.com/ipfs/go-log"
 	ci "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -276,7 +278,7 @@ func Online() Option {
 
 			Override(new(*paychmgr.Store), paychmgr.NewStore),
 			Override(new(*paychmgr.Manager), paychmgr.NewManager),
-			Override(new(*market.FundMgr), market.NewFundMgr),
+			Override(new(*market.FundMgr), market.StartFundManager),
 			Override(SettlePaymentChannelsKey, settler.SettlePaymentChannels),
 		),
 
