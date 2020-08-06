@@ -3,7 +3,6 @@ package modules
 import (
 	"bytes"
 	"context"
-	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
@@ -21,6 +20,7 @@ import (
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/blocksync"
+	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"

@@ -3,11 +3,14 @@ package miner
 import (
 	"context"
 
+	lru "github.com/hashicorp/golang-lru"
+	ds "github.com/ipfs/go-datastore"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/gen"
+	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	lru "github.com/hashicorp/golang-lru"
 )
 
 type MineReq struct {
@@ -28,6 +31,7 @@ func NewTestMiner(nextCh <-chan MineReq, addr address.Address) func(api.FullNode
 			epp:               epp,
 			minedBlockHeights: arc,
 			address:           addr,
+			sf:                slashfilter.New(ds.NewMapDatastore()),
 		}
 
 		if err := m.Start(context.TODO()); err != nil {

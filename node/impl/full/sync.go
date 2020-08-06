@@ -2,7 +2,6 @@ package full
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 
 	cid "github.com/ipfs/go-cid"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -12,6 +11,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
+	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
@@ -20,9 +20,9 @@ type SyncAPI struct {
 	fx.In
 
 	SlashFilter *slashfilter.SlashFilter
-	Syncer  *chain.Syncer
-	PubSub  *pubsub.PubSub
-	NetName dtypes.NetworkName
+	Syncer      *chain.Syncer
+	PubSub      *pubsub.PubSub
+	NetName     dtypes.NetworkName
 }
 
 func (a *SyncAPI) SyncState(ctx context.Context) (*api.SyncState, error) {

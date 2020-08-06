@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	ds "github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/peer"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
@@ -22,6 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/gen"
+	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	mocktypes "github.com/filecoin-project/lotus/chain/types/mock"
@@ -418,6 +420,8 @@ func TestSyncBadTimestamp(t *testing.T) {
 
 	tu.g.Timestamper = nil
 	require.NoError(t, tu.g.ResyncBankerNonce(a1.TipSet()))
+
+	tu.nds[0].(*impl.FullNodeAPI).SlashFilter = slashfilter.New(ds.NewMapDatastore())
 
 	fmt.Println("After mine bad block!")
 	tu.printHeads()

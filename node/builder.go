@@ -3,8 +3,6 @@ package node
 import (
 	"context"
 	"errors"
-	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
-	"github.com/filecoin-project/lotus/markets/dealfilter"
 	"time"
 
 	logging "github.com/ipfs/go-log"
@@ -33,6 +31,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/blocksync"
 	"github.com/filecoin-project/lotus/chain/gen"
+	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/market"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/metrics"
@@ -45,6 +44,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/peermgr"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
+	"github.com/filecoin-project/lotus/markets/dealfilter"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/config"

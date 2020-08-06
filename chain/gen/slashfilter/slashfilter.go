@@ -14,7 +14,7 @@ import (
 )
 
 type SlashFilter struct {
-	byEpoch ds.Datastore // double-fork mining faults, parent-grinding fault
+	byEpoch   ds.Datastore // double-fork mining faults, parent-grinding fault
 	byParents ds.Datastore // time-offset mining faults
 }
 

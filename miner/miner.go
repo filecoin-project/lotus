@@ -62,7 +62,7 @@ func NewMiner(api api.FullNode, epp gen.WinningPoStProver, addr address.Address,
 			return func(bool, error) {}, 0, nil
 		},
 
-		sf: sf,
+		sf:                sf,
 		minedBlockHeights: arc,
 	}
 }
@@ -81,7 +81,7 @@ type Miner struct {
 
 	lastWork *MiningBase
 
-	sf *slashfilter.SlashFilter
+	sf                *slashfilter.SlashFilter
 	minedBlockHeights *lru.ARCCache
 }
 
