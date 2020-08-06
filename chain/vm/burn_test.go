@@ -31,7 +31,7 @@ func TestGasBurn(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
-			refund, toBurn := ComputeGasOutputs(test.used, test.limit)
+			refund, toBurn := ComputeGasOverestimationBurn(test.used, test.limit)
 			assert.Equal(t, test.refund, refund, "refund")
 			assert.Equal(t, test.burn, toBurn, "burned")
 		})
