@@ -86,7 +86,8 @@ type FullNodeStruct struct {
 		ChainExport            func(context.Context, types.TipSetKey) (<-chan []byte, error)                                                      `perm:"read"`
 
 		GasEsitmateGasPremium func(context.Context, uint64, address.Address, int64, types.TipSetKey) (types.BigInt, error) `perm:"read"`
-		GasEstimateGasLimit func(context.Context, *types.Message, types.TipSetKey) (int64, error)                        `perm:"read"`
+		GasEstimateGasLimit   func(context.Context, *types.Message, types.TipSetKey) (int64, error)                        `perm:"read"`
+		GasEstimateFeeCapfunc func(context.Context, int64, types.TipSetKey) (types.BigInt, error)                          `prem:"read"`
 
 		SyncState          func(context.Context) (*api.SyncState, error)                `perm:"read"`
 		SyncSubmitBlock    func(ctx context.Context, blk *types.BlockMsg) error         `perm:"write"`
@@ -431,6 +432,10 @@ func (c *FullNodeStruct) ClientDealSize(ctx context.Context, root cid.Cid) (api.
 func (c *FullNodeStruct) GasEsitmateGasPremium(ctx context.Context, nblocksincl uint64,
 	sender address.Address, gaslimit int64, tsk types.TipSetKey) (types.BigInt, error) {
 	return c.Internal.GasEsitmateGasPremium(ctx, nblocksincl, sender, gaslimit, tsk)
+}
+func (c *FullNodeStruct) GasEstimateFeeCap(ctx context.Context, maxqueueblks int64,
+	tsk types.TipSetKey) (types.BigInt, error) {
+	return c.Internal.GasEstimateFeeCapfunc(ctx, maxqueueblks, tsk)
 }
 
 func (c *FullNodeStruct) GasEstimateGasLimit(ctx context.Context, msg *types.Message,

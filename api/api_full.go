@@ -107,6 +107,9 @@ type FullNode interface {
 	// ChainExport returns a stream of bytes with CAR dump of chain data.
 	ChainExport(context.Context, types.TipSetKey) (<-chan []byte, error)
 
+	// GasEstimateFeeCap estimates gas fee cap
+	GasEstimateFeeCap(context.Context, int64, types.TipSetKey) (types.BigInt, error)
+
 	// GasEstimateGasLimit estimates gas used by the message and returns it.
 	// It fails if message fails to execute.
 	GasEstimateGasLimit(context.Context, *types.Message, types.TipSetKey) (int64, error)
