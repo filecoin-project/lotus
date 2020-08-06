@@ -407,6 +407,7 @@ func (ca *channelAccessor) mutateChannelInfo(channelID string, mutate func(*Chan
 	// the message, and then record that the message was sent.
 	if err != nil {
 		log.Errorf("Error reading channel info from store: %s", err)
+		return
 	}
 
 	mutate(channelInfo)
