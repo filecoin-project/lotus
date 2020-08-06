@@ -283,3 +283,147 @@ func TestMessageChains(t *testing.T) {
 	}
 
 }
+
+func TestBasicMessageSelection(t *testing.T) {
+	mp, tma := makeTestMpool()
+
+	// the actors
+	w1, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a1, err := w1.GenerateKey(crypto.SigTypeBLS)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	w2, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a2, err := w2.GenerateKey(crypto.SigTypeBLS)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	block := mock.MkBlock(nil, 1, 1)
+	ts := mock.TipSet(block)
+	tma.applyBlock(t, block)
+
+	gasLimit := gasguess.Costs[gasguess.CostKey{builtin.StorageMarketActorCodeID, 2}]
+
+	tma.setBalance(a1, 1) // in FIL
+	tma.setBalance(a2, 1) // in FIL
+
+	// we create 10 messages from each actor to another, with the first actor paying higher
+	// gas prices than the second; we expect message selection to order his messages first
+	for i := 0; i < 10; i++ {
+		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(2*i+1))
+		mustAdd(t, mp, m)
+	}
+
+	for i := 0; i < 10; i++ {
+		m := makeTestMessage(w2, a2, a1, uint64(i), gasLimit, uint64(i+1))
+		mustAdd(t, mp, m)
+	}
+
+	msgs, err := mp.SelectMessages(ts)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(msgs) != 20 {
+		t.Fatalf("exptected 20 messages, got %d", len(msgs))
+	}
+
+	nextNonce := 0
+	for i := 0; i < 10; i++ {
+		if msgs[i].Message.From != a1 {
+			t.Fatalf("expected message from actor a1")
+		}
+		if msgs[i].Message.Nonce != uint64(nextNonce) {
+			t.Fatalf("expected nonce %d, got %d", msgs[i].Message.Nonce, nextNonce)
+		}
+		nextNonce++
+	}
+
+	nextNonce = 0
+	for i := 10; i < 20; i++ {
+		if msgs[i].Message.From != a2 {
+			t.Fatalf("expected message from actor a2")
+		}
+		if msgs[i].Message.Nonce != uint64(nextNonce) {
+			t.Fatalf("expected nonce %d, got %d", msgs[i].Message.Nonce, nextNonce)
+		}
+		nextNonce++
+	}
+
+	// now we make a block with all the messages and advance the chain
+	block2 := mock.MkBlock(ts, 2, 2)
+	tma.setBlockMessages(block2, msgs...)
+	tma.applyBlock(t, block2)
+
+	// we should have no pending messages in the mpool
+	pend, ts2 := mp.Pending()
+	if len(pend) != 0 {
+		t.Fatalf("expected no pending messages, but got %d", len(pend))
+	}
+
+	// create a block and advance the chain without applying to the mpool
+	msgs = nil
+	for i := 10; i < 20; i++ {
+		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(2*i+1))
+		msgs = append(msgs, m)
+		m = makeTestMessage(w2, a2, a1, uint64(i), gasLimit, uint64(i+1))
+		msgs = append(msgs, m)
+	}
+	block3 := mock.MkBlock(ts2, 3, 3)
+	tma.setBlockMessages(block3, msgs...)
+	ts3 := mock.TipSet(block3)
+
+	// now create another set of messages and add them to the mpool
+	for i := 20; i < 30; i++ {
+		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(2*i+1))
+		mustAdd(t, mp, m)
+		m = makeTestMessage(w2, a2, a1, uint64(i), gasLimit, uint64(i+1))
+		mustAdd(t, mp, m)
+	}
+
+	// select messages in the last tipset; this should include the missed messages as well as
+	// the last messages we added, with the first actor's messages first
+	// first we need to update the nonce on the tma
+	tma.setStateNonce(a1, 10)
+	tma.setStateNonce(a2, 10)
+
+	msgs, err = mp.SelectMessages(ts3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(msgs) != 40 {
+		t.Fatalf("expected 40 messages, got %d", len(msgs))
+	}
+
+	nextNonce = 10
+	for i := 0; i < 20; i++ {
+		if msgs[i].Message.From != a1 {
+			t.Fatalf("expected message from actor a1")
+		}
+		if msgs[i].Message.Nonce != uint64(nextNonce) {
+			t.Fatalf("expected nonce %d, got %d", msgs[i].Message.Nonce, nextNonce)
+		}
+		nextNonce++
+	}
+
+	nextNonce = 10
+	for i := 20; i < 40; i++ {
+		if msgs[i].Message.From != a2 {
+			t.Fatalf("expected message from actor a2")
+		}
+		if msgs[i].Message.Nonce != uint64(nextNonce) {
+			t.Fatalf("expected nonce %d, got %d", msgs[i].Message.Nonce, nextNonce)
+		}
+		nextNonce++
+	}
+}
