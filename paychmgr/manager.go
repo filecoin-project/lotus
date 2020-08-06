@@ -8,8 +8,6 @@ import (
 
 	"github.com/ipfs/go-datastore"
 
-	"golang.org/x/sync/errgroup"
-
 	xerrors "golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
@@ -103,42 +101,9 @@ func HandleManager(lc fx.Lifecycle, pm *Manager) {
 	})
 }
 
-// Start checks the datastore to see if there are any channels that have
-// outstanding add funds messages, and if so, waits on the messages.
-// Outstanding messages can occur if an add funds message was sent
-// and then lotus was shut down or crashed before the result was
-// received.
+// Start restarts tracking of any messages that were sent to chain.
 func (pm *Manager) Start() error {
-	cis, err := pm.store.WithPendingAddFunds()
-	if err != nil {
-		return err
-	}
-
-	group := errgroup.Group{}
-	for _, chanInfo := range cis {
-		ci := chanInfo
-		if ci.CreateMsg != nil {
-			group.Go(func() error {
-				ca, err := pm.accessorByFromTo(ci.Control, ci.Target)
-				if err != nil {
-					return xerrors.Errorf("error initializing payment channel manager %s -> %s: %s", ci.Control, ci.Target, err)
-				}
-				go ca.waitForPaychCreateMsg(ci.Control, ci.Target, *ci.CreateMsg, nil)
-				return nil
-			})
-		} else if ci.AddFundsMsg != nil {
-			group.Go(func() error {
-				ca, err := pm.accessorByAddress(*ci.Channel)
-				if err != nil {
-					return xerrors.Errorf("error initializing payment channel manager %s: %s", ci.Channel, err)
-				}
-				go ca.waitForAddFundsMsg(ci.Control, ci.Target, *ci.AddFundsMsg, nil)
-				return nil
-			})
-		}
-	}
-
-	return group.Wait()
+	return pm.restartPending()
 }
 
 // Stop shuts down any processes used by the manager

@@ -284,7 +284,7 @@ func TestPaychGetCreateChannelWithErrorThenCreateAgain(t *testing.T) {
 
 		// 2. Should block until create channel has completed.
 		//    Because first channel create fails, this request
-		//    should be for channel create.
+		//    should be for channel create again.
 		amt2 := big.NewInt(5)
 		ch2, mcid2, err := mgr.GetPaych(ctx, from, to, amt2)
 		require.NoError(t, err)

@@ -150,7 +150,7 @@ func (ps *Store) findChans(filter func(*ChannelInfo) bool, max int) ([]ChannelIn
 			return nil, err
 		}
 
-		ci, err := unmarshallChannelInfo(&stored, res)
+		ci, err := unmarshallChannelInfo(&stored, res.Value)
 		if err != nil {
 			return nil, err
 		}
@@ -313,11 +313,25 @@ func (ps *Store) WithPendingAddFunds() ([]ChannelInfo, error) {
 	}, 0)
 }
 
-// createChannel creates an outbound channel for the given from / to, ensuring
+// ByChannelID gets channel info by channel ID
+func (ps *Store) ByChannelID(channelID string) (*ChannelInfo, error) {
+	var stored ChannelInfo
+
+	res, err := ps.ds.Get(dskeyForChannel(channelID))
+	if err != nil {
+		if err == datastore.ErrNotFound {
+			return nil, ErrChannelNotTracked
+		}
+		return nil, err
+	}
+
+	return unmarshallChannelInfo(&stored, res)
+}
+
+// CreateChannel creates an outbound channel for the given from / to, ensuring
 // it has a higher sequence number than any existing channel with the same from / to
-func (ps *Store) createChannel(from address.Address, to address.Address, createMsgCid cid.Cid, amt types.BigInt) (*ChannelInfo, error) {
+func (ps *Store) CreateChannel(from address.Address, to address.Address, createMsgCid cid.Cid, amt types.BigInt) (*ChannelInfo, error) {
 	ci := &ChannelInfo{
-		ChannelID:     uuid.New().String(),
 		Direction:     DirOutbound,
 		NextLane:      0,
 		Control:       from,
@@ -341,15 +355,22 @@ func (ps *Store) createChannel(from address.Address, to address.Address, createM
 	return ci, err
 }
 
+// RemoveChannel removes the channel with the given channel ID
+func (ps *Store) RemoveChannel(channelID string) error {
+	return ps.ds.Delete(dskeyForChannel(channelID))
+}
+
 // The datastore key used to identify the channel info
-func dskeyForChannel(ci *ChannelInfo) datastore.Key {
-	chanKey := fmt.Sprintf("%s->%s", ci.Control.String(), ci.Target.String())
-	return datastore.KeyWithNamespaces([]string{dsKeyChannelInfo, chanKey})
+func dskeyForChannel(channelID string) datastore.Key {
+	return datastore.KeyWithNamespaces([]string{dsKeyChannelInfo, channelID})
 }
 
 // putChannelInfo stores the channel info in the datastore
 func (ps *Store) putChannelInfo(ci *ChannelInfo) error {
-	k := dskeyForChannel(ci)
+	if len(ci.ChannelID) == 0 {
+		ci.ChannelID = uuid.New().String()
+	}
+	k := dskeyForChannel(ci.ChannelID)
 
 	b, err := marshallChannelInfo(ci)
 	if err != nil {
@@ -380,8 +401,8 @@ func marshallChannelInfo(ci *ChannelInfo) ([]byte, error) {
 	return cborrpc.Dump(ci)
 }
 
-func unmarshallChannelInfo(stored *ChannelInfo, res dsq.Result) (*ChannelInfo, error) {
-	if err := stored.UnmarshalCBOR(bytes.NewReader(res.Value)); err != nil {
+func unmarshallChannelInfo(stored *ChannelInfo, value []byte) (*ChannelInfo, error) {
+	if err := stored.UnmarshalCBOR(bytes.NewReader(value)); err != nil {
 		return nil, err
 	}
 

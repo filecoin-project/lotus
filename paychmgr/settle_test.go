@@ -69,4 +69,9 @@ func TestPaychSettle(t *testing.T) {
 	ch2, err := mgr.GetPaychWaitReady(ctx, mcid2)
 	require.NoError(t, err)
 	require.NotEqual(t, ch, ch2)
+
+	// There should now be two channels
+	cis, err := mgr.ListChannels()
+	require.NoError(t, err)
+	require.Len(t, cis, 2)
 }
