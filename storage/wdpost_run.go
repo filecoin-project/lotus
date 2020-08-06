@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"sync"
 	"time"
 
 	"github.com/filecoin-project/go-bitfield"
@@ -283,31 +282,25 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 	ctx, span := trace.StartSpan(ctx, "storage.runPost")
 	defer span.End()
 
-	var declWait sync.WaitGroup
-	defer declWait.Wait()
-	declWait.Add(1)
-
 	go func() {
 		// TODO: extract from runPost, run on fault cutoff boundaries
-
-		defer declWait.Done()
 
 		// check faults / recoveries for the *next* deadline. It's already too
 		// late to declare them for this deadline
 		declDeadline := (di.Index + 2) % miner.WPoStPeriodDeadlines
 
-		partitions, err := s.api.StateMinerPartitions(ctx, s.actor, declDeadline, ts.Key())
+		partitions, err := s.api.StateMinerPartitions(context.TODO(), s.actor, declDeadline, ts.Key())
 		if err != nil {
 			log.Errorf("getting partitions: %v", err)
 			return
 		}
 
-		if err := s.checkNextRecoveries(ctx, declDeadline, partitions); err != nil {
+		if err := s.checkNextRecoveries(context.TODO(), declDeadline, partitions); err != nil {
 			// TODO: This is potentially quite bad, but not even trying to post when this fails is objectively worse
 			log.Errorf("checking sector recoveries: %v", err)
 		}
 
-		if err := s.checkNextFaults(ctx, declDeadline, partitions); err != nil {
+		if err := s.checkNextFaults(context.TODO(), declDeadline, partitions); err != nil {
 			// TODO: This is also potentially really bad, but we try to post anyways
 			log.Errorf("checking sector faults: %v", err)
 		}
