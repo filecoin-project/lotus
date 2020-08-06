@@ -18,6 +18,9 @@ type ActorLookup func(context.Context, address.Address, types.TipSetKey) (*types
 const failedGasGuessRatio = 0.5
 const failedGasGuessMax = 25_000_000
 
+const MinGas = 1298450
+const MaxGas = 1600271356
+
 type CostKey struct {
 	Code cid.Cid
 	M    abi.MethodNum
