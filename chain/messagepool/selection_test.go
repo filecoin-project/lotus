@@ -127,11 +127,42 @@ func TestMessageChains(t *testing.T) {
 		}
 	}
 
-	// test3: 10 messages from a1 to a2, with gasPerf increasing in groups of 3; it should
-	//        make 4 chains, the first 3 with 3 messages and the last with a single message
+	// test3a: 10 messages from a1 to a2, with gasPerf increasing in groups of 3; it should
+	//         merge them in two chains, one with 9 messages and one with the last message
 	mset = make(map[uint64]*types.SignedMessage)
 	for i := 0; i < 10; i++ {
 		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(1+i%3))
+		mset[uint64(i)] = m
+	}
+
+	chains = mp.createMessageChains(a1, mset, ts)
+	if len(chains) != 2 {
+		t.Fatal("expected 1 chain")
+	}
+
+	if len(chains[0].msgs) != 9 {
+		t.Fatalf("expected 9 messages in the chain but got %d", len(chains[0].msgs))
+	}
+	if len(chains[1].msgs) != 1 {
+		t.Fatalf("expected 1 messages in the chain but got %d", len(chains[1].msgs))
+	}
+	nextNonce := 0
+	for _, chain := range chains {
+		for _, m := range chain.msgs {
+			if m.Message.Nonce != uint64(nextNonce) {
+				t.Fatalf("expected nonce %d but got %d", nextNonce, m.Message.Nonce)
+			}
+			nextNonce++
+		}
+	}
+
+	// test3b: 10 messages from a1 to a2, with gasPerf decreasing in groups of 3 with a bias for the
+	//        earlier chains; it should make 4 chains, the first 3 with 3 messages and the last with
+	//        a single message
+	mset = make(map[uint64]*types.SignedMessage)
+	for i := 0; i < 10; i++ {
+		bias := (12 - i) / 3
+		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(1+i%3+bias))
 		mset[uint64(i)] = m
 	}
 
@@ -148,7 +179,7 @@ func TestMessageChains(t *testing.T) {
 			t.Fatalf("expected %d message in chain %d but got %d", expectedLen, i, len(chain.msgs))
 		}
 	}
-	nextNonce := 0
+	nextNonce = 0
 	for _, chain := range chains {
 		for _, m := range chain.msgs {
 			if m.Message.Nonce != uint64(nextNonce) {

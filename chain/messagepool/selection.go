@@ -60,7 +60,7 @@ func (mp *MessagePool) selectMessages(curTs, ts *types.TipSet) ([]*types.SignedM
 	}
 
 	// 2. Sort the chains
-	sort.SliceStable(chains, func(i, j int) bool {
+	sort.Slice(chains, func(i, j int) bool {
 		return chains[i].Before(chains[j])
 	})
 
@@ -373,7 +373,7 @@ func (mp *MessagePool) createMessageChains(actor address.Address, mset map[uint6
 		merged := 0
 
 		for i := len(chains) - 1; i > 0; i-- {
-			if chains[i].gasPerf > chains[i-1].gasPerf {
+			if chains[i].gasPerf >= chains[i-1].gasPerf {
 				chains[i-1].msgs = append(chains[i-1].msgs, chains[i].msgs...)
 				chains[i-1].gasReward = new(big.Int).Add(chains[i-1].gasReward, chains[i].gasReward)
 				chains[i-1].gasLimit += chains[i].gasLimit
