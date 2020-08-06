@@ -103,9 +103,14 @@ func executeTestVector(tv TestVector) error {
 
 		for i, m := range tv.ApplyMessages {
 			fmt.Printf("decoding message %v\n", i)
-			msg, err := types.DecodeMessage(m)
+			msg, err := types.DecodeMessage(m.Bytes)
 			if err != nil {
 				return err
+			}
+
+			// add an epoch if we have set one
+			if m.Epoch != nil {
+				epoch = *m.Epoch
 			}
 
 			fmt.Printf("executing message %v\n", i)

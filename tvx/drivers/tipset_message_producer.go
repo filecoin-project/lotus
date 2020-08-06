@@ -50,7 +50,7 @@ func (tb *TipSetMessageBuilder) apply() vtypes.ApplyTipSetResult {
 		blks = append(blks, b.build())
 	}
 	result, err := tb.driver.applier.ApplyTipSetMessages(tb.driver.ExeCtx.Epoch, blks, tb.driver.Randomness())
-	require.NoError(t, err)
+	require.NoError(T, err)
 
 	//t.driver.StateTracker.TrackResult(result)
 	return result
@@ -63,16 +63,16 @@ func (tb *TipSetMessageBuilder) validateResult(result vtypes.ApplyTipSetResult) 
 	}
 
 	if len(result.Receipts) > len(expected) {
-		t.Fatalf("ApplyTipSetMessages returned more result than expected. Expected: %d, Actual: %d", len(expected), len(result.Receipts))
+		T.Fatalf("ApplyTipSetMessages returned more result than expected. Expected: %d, Actual: %d", len(expected), len(result.Receipts))
 		return
 	}
 
 	for i := range result.Receipts {
 		if tb.driver.Config.ValidateExitCode() {
-			assert.Equal(t, expected[i].ExitCode, result.Receipts[i].ExitCode, "Message Number: %d Expected ExitCode: %s Actual ExitCode: %s", i, expected[i].ExitCode.Error(), result.Receipts[i].ExitCode.Error())
+			assert.Equal(T, expected[i].ExitCode, result.Receipts[i].ExitCode, "Message Number: %d Expected ExitCode: %s Actual ExitCode: %s", i, expected[i].ExitCode.Error(), result.Receipts[i].ExitCode.Error())
 		}
 		if tb.driver.Config.ValidateReturnValue() {
-			assert.Equal(t, expected[i].ReturnVal, result.Receipts[i].ReturnValue, "Message Number: %d Expected ReturnValue: %v Actual ReturnValue: %v", i, expected[i].ReturnVal, result.Receipts[i].ReturnValue)
+			assert.Equal(T, expected[i].ReturnVal, result.Receipts[i].ReturnValue, "Message Number: %d Expected ReturnValue: %v Actual ReturnValue: %v", i, expected[i].ReturnVal, result.Receipts[i].ReturnValue)
 		}
 	}
 }
@@ -177,13 +177,13 @@ func (bb *BlockBuilder) toSignedMessage(m *types.Message) *types.SignedMessage {
 		from = bb.TD.ActorPubKey(from)
 	}
 	if from.Protocol() != address.SECP256K1 {
-		t.Fatalf("Invalid address for SECP signature, address protocol: %v", from.Protocol())
+		T.Fatalf("Invalid address for SECP signature, address protocol: %v", from.Protocol())
 	}
 	raw, err := m.Serialize()
-	require.NoError(t, err)
+	require.NoError(T, err)
 
 	sig, err := bb.TD.Wallet().Sign(from, raw)
-	require.NoError(t, err)
+	require.NoError(T, err)
 
 	return &types.SignedMessage{
 		Message:   *m,

@@ -5,7 +5,7 @@ import (
 	"os"
 )
 
-var t dummyTestingT
+var T dummyTestingT
 
 type dummyTestingT struct{}
 

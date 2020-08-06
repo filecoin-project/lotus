@@ -65,19 +65,19 @@ func (d *StateDriver) Randomness() RandomnessSource {
 
 func (d *StateDriver) GetState(c cid.Cid, out cbg.CBORUnmarshaler) {
 	err := d.st.StoreGet(c, out)
-	require.NoError(t, err)
+	require.NoError(T, err)
 }
 
 func (d *StateDriver) PutState(in cbg.CBORMarshaler) cid.Cid {
 	c, err := d.st.StorePut(in)
-	require.NoError(t, err)
+	require.NoError(T, err)
 	return c
 }
 
 func (d *StateDriver) GetActorState(actorAddr address.Address, out cbg.CBORUnmarshaler) {
 	actor, err := d.State().Actor(actorAddr)
-	require.NoError(t, err)
-	require.NotNil(t, actor)
+	require.NoError(T, err)
+	require.NotNil(T, actor)
 
 	d.GetState(actor.Head(), out)
 }
@@ -91,22 +91,22 @@ func (d *StateDriver) NewAccountActor(addrType address.Protocol, balanceAttoFil 
 	case address.BLS:
 		addr = d.w.NewBLSAccountAddress()
 	default:
-		require.FailNowf(t, "unsupported address", "protocol for account actor: %v", addrType)
+		require.FailNowf(T, "unsupported address", "protocol for account actor: %v", addrType)
 	}
 
 	_, idAddr, err := d.st.CreateActor(builtin_spec.AccountActorCodeID, addr, balanceAttoFil, &account_spec.State{Address: addr})
-	require.NoError(t, err)
+	require.NoError(T, err)
 	d.actorIDMap[idAddr] = addr
 	return addr, idAddr
 }
 
 func (d *StateDriver) ActorPubKey(idAddress address.Address) address.Address {
 	if idAddress.Protocol() != address.ID {
-		t.Fatalf("ActorPubKey methods expects ID protocol address. actual: %v", idAddress.Protocol())
+		T.Fatalf("ActorPubKey methods expects ID protocol address. actual: %v", idAddress.Protocol())
 	}
 	pubkeyAddr, found := d.actorIDMap[idAddress]
 	if !found {
-		t.Fatalf("Failed to find pubkey address for: %s", idAddress)
+		T.Fatalf("Failed to find pubkey address for: %s", idAddress)
 	}
 	return pubkeyAddr
 }
@@ -131,9 +131,9 @@ func (d *StateDriver) newMinerAccountActor(sealProofType abi_spec.RegisteredSeal
 	}
 
 	ss, err := sealProofType.SectorSize()
-	require.NoError(t, err)
+	require.NoError(T, err)
 	ps, err := sealProofType.WindowPoStPartitionSectors()
-	require.NoError(t, err)
+	require.NoError(T, err)
 	mi := &miner_spec.MinerInfo{
 		Owner:                      minerOwnerID,
 		Worker:                     minerWorkerID,
@@ -145,15 +145,15 @@ func (d *StateDriver) newMinerAccountActor(sealProofType abi_spec.RegisteredSeal
 		WindowPoStPartitionSectors: ps,
 	}
 	mc, err := d.st.StorePut(mi)
-	require.NoError(t, err)
+	require.NoError(T, err)
 
 	// create the miner actor s.t. it exists in the init actors map
 	minerState, err := miner_spec.ConstructState(mc, periodBoundary, EmptyBitfieldCid, EmptyArrayCid, EmptyMapCid, EmptyDeadlinesCid)
 
-	require.NoError(t, err)
+	require.NoError(T, err)
 	_, minerActorIDAddr, err := d.State().CreateActor(builtin_spec.StorageMinerActorCodeID, minerActorAddrs.RobustAddress, big_spec.Zero(), minerState)
-	require.NoError(t, err)
-	require.Equal(t, expectedMinerActorIDAddress, minerActorIDAddr)
+	require.NoError(T, err)
+	require.Equal(T, expectedMinerActorIDAddress, minerActorIDAddr)
 
 	// a miner actor has been created, exists in the state tree, and has an entry in the init actor.
 	// next update the storage power actor to track the miner
@@ -163,18 +163,18 @@ func (d *StateDriver) newMinerAccountActor(sealProofType abi_spec.RegisteredSeal
 
 	// set the miners claim
 	hm, err := adt_spec.AsMap(AsStore(d.State()), spa.Claims)
-	require.NoError(t, err)
+	require.NoError(T, err)
 
 	// add claim for the miner
 	err = hm.Put(adt_spec.AddrKey(minerActorIDAddr), &power_spec.Claim{
 		RawBytePower:    abi_spec.NewStoragePower(0),
 		QualityAdjPower: abi_spec.NewTokenAmount(0),
 	})
-	require.NoError(t, err)
+	require.NoError(T, err)
 
 	// save the claim
 	spa.Claims, err = hm.Root()
-	require.NoError(t, err)
+	require.NoError(T, err)
 
 	// update miner count
 	spa.MinerCount += 1

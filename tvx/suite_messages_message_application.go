@@ -27,7 +27,7 @@ func MessageTest_MessageApplicationEdgecases() error {
 		preroot := td.GetStateRoot()
 
 		msg := td.MessageProducer.Transfer(alice, alice, chain.Value(transferAmnt), chain.Nonce(0), chain.GasPrice(1), chain.GasLimit(8))
-		v.ApplyMessages = append(v.ApplyMessages, chain.MustSerialize(msg))
+		v.ApplyMessages = append(v.ApplyMessages, Message{Bytes: chain.MustSerialize(msg)})
 
 		td.ApplyFailure(
 			msg,
@@ -52,26 +52,25 @@ func MessageTest_MessageApplicationEdgecases() error {
 	}
 
 	err = func(testname string) error {
-		//TODO: this test is broken, fix later
-		return nil
 		td := drivers.NewTestDriver()
 
 		v := newEmptyMessageVector()
-
 		alice, _ := td.NewAccountActor(drivers.SECP, aliceBal)
 
 		preroot := td.GetStateRoot()
 		msg := td.MessageProducer.Transfer(alice, alice, chain.Value(transferAmnt), chain.Nonce(0), chain.GasPrice(10), chain.GasLimit(1))
+		v.ApplyMessages = append(v.ApplyMessages, Message{Bytes: chain.MustSerialize(msg)})
+
 		// Expect Message application to fail due to lack of gas
 		td.ApplyFailure(
 			msg,
 			exitcode_spec.SysErrOutOfGas)
 
-		// Expect Message application to fail due to lack of gas when sender is unknown
 		unknown := chain.MustNewIDAddr(10000000)
 		msg = td.MessageProducer.Transfer(unknown, alice, chain.Value(transferAmnt), chain.Nonce(0), chain.GasPrice(10), chain.GasLimit(1))
-		v.ApplyMessages = append(v.ApplyMessages, chain.MustSerialize(msg))
+		v.ApplyMessages = append(v.ApplyMessages, Message{Bytes: chain.MustSerialize(msg)})
 
+		// Expect Message application to fail due to lack of gas when sender is unknown
 		td.ApplyFailure(
 			msg,
 			exitcode_spec.SysErrOutOfGas)
@@ -110,7 +109,7 @@ func MessageTest_MessageApplicationEdgecases() error {
 		newAccountA := chain.MustNewSECP256K1Addr("1")
 
 		msg := td.MessageProducer.Transfer(alice, newAccountA, chain.Value(transferAmnt), chain.Nonce(aliceNonceF()))
-		v.ApplyMessages = append(v.ApplyMessages, chain.MustSerialize(msg))
+		v.ApplyMessages = append(v.ApplyMessages, Message{Bytes: chain.MustSerialize(msg)})
 
 		// get the "true" gas cost of applying the message
 		result := td.ApplyOk(msg)
@@ -121,7 +120,7 @@ func MessageTest_MessageApplicationEdgecases() error {
 		newAccountB := chain.MustNewSECP256K1Addr("2")
 		for tryGas := trueGas - gasStep; tryGas > 0; tryGas -= gasStep {
 			msg := td.MessageProducer.Transfer(alice, newAccountB, chain.Value(transferAmnt), chain.Nonce(aliceNonceF()), chain.GasPrice(1), chain.GasLimit(tryGas))
-			v.ApplyMessages = append(v.ApplyMessages, chain.MustSerialize(msg))
+			v.ApplyMessages = append(v.ApplyMessages, Message{Bytes: chain.MustSerialize(msg)})
 
 			td.ApplyFailure(
 				msg,
@@ -148,8 +147,6 @@ func MessageTest_MessageApplicationEdgecases() error {
 	}
 
 	err = func(testname string) error {
-		//TODO: this test is broken, fix me
-		return nil
 		td := drivers.NewTestDriver()
 
 		v := newEmptyMessageVector()
@@ -159,7 +156,7 @@ func MessageTest_MessageApplicationEdgecases() error {
 		preroot := td.GetStateRoot()
 
 		msg := td.MessageProducer.Transfer(alice, alice, chain.Value(transferAmnt), chain.Nonce(1))
-		v.ApplyMessages = append(v.ApplyMessages, chain.MustSerialize(msg))
+		v.ApplyMessages = append(v.ApplyMessages, Message{Bytes: chain.MustSerialize(msg)})
 
 		// Expect Message application to fail due to callseqnum being invalid: 1 instead of 0
 		td.ApplyFailure(
@@ -168,7 +165,7 @@ func MessageTest_MessageApplicationEdgecases() error {
 
 		unknown := chain.MustNewIDAddr(10000000)
 		msg = td.MessageProducer.Transfer(unknown, alice, chain.Value(transferAmnt), chain.Nonce(1))
-		v.ApplyMessages = append(v.ApplyMessages, chain.MustSerialize(msg))
+		v.ApplyMessages = append(v.ApplyMessages, Message{Bytes: chain.MustSerialize(msg)})
 
 		// Expect message application to fail due to unknow actor when call seq num is also incorrect
 		td.ApplyFailure(
@@ -221,7 +218,7 @@ func MessageTest_MessageApplicationEdgecases() error {
 		preroot := td.GetStateRoot()
 
 		msg := td.MessageProducer.CreatePaymentChannelActor(sender, receiver, chain.Value(toSend), chain.Nonce(0))
-		v.ApplyMessages = append(v.ApplyMessages, chain.MustSerialize(msg))
+		v.ApplyMessages = append(v.ApplyMessages, Message{Bytes: chain.MustSerialize(msg)})
 
 		td.ApplyExpect(
 			msg,
@@ -242,7 +239,7 @@ func MessageTest_MessageApplicationEdgecases() error {
 				Signature:       pcSig, // construct with invalid signature
 			},
 		}, chain.Nonce(1), chain.Value(big_spec.Zero()))
-		v.ApplyMessages = append(v.ApplyMessages, chain.MustSerialize(msg))
+		v.ApplyMessages = append(v.ApplyMessages, Message{Bytes: chain.MustSerialize(msg)})
 
 		// message application fails due to invalid argument (signature).
 		td.ApplyFailure(
@@ -278,7 +275,7 @@ func MessageTest_MessageApplicationEdgecases() error {
 
 		msg := td.MessageProducer.MarketComputeDataCommitment(alice, alice, nil, chain.Nonce(0))
 
-		v.ApplyMessages = append(v.ApplyMessages, chain.MustSerialize(msg))
+		v.ApplyMessages = append(v.ApplyMessages, Message{Bytes: chain.MustSerialize(msg)})
 
 		// message application fails because ComputeDataCommitment isn't defined
 		// on the recipient actor
@@ -317,7 +314,7 @@ func MessageTest_MessageApplicationEdgecases() error {
 		unknownA := chain.MustNewIDAddr(10000000)
 		msg := td.MessageProducer.Transfer(alice, unknownA, chain.Value(transferAmnt), chain.Nonce(0))
 
-		v.ApplyMessages = append(v.ApplyMessages, chain.MustSerialize(msg))
+		v.ApplyMessages = append(v.ApplyMessages, Message{Bytes: chain.MustSerialize(msg)})
 
 		td.ApplyFailure(
 			msg,
@@ -326,7 +323,7 @@ func MessageTest_MessageApplicationEdgecases() error {
 		// Sending a message to non-existing actor address must produce an error.
 		unknownB := chain.MustNewActorAddr("1234")
 		msg = td.MessageProducer.Transfer(alice, unknownB, chain.Value(transferAmnt), chain.Nonce(1))
-		v.ApplyMessages = append(v.ApplyMessages, chain.MustSerialize(msg))
+		v.ApplyMessages = append(v.ApplyMessages, Message{Bytes: chain.MustSerialize(msg)})
 
 		td.ApplyFailure(
 			msg,

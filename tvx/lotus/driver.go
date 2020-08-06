@@ -32,10 +32,10 @@ func (d *Driver) ExecuteMessage(msg *types.Message, preroot cid.Cid, bs blocksto
 
 	actor, err := st.GetActor(msg.From)
 	if err != nil {
-		return nil, cid.Undef, err
+		fmt.Println("from actor not found: ", msg.From)
+	} else {
+		fmt.Println("from actor found: ", actor)
 	}
-
-	fmt.Println("from actor found: ", actor)
 
 	fmt.Println("creating vm")
 	lvm, err := vm.NewVM(preroot, epoch, &vmRand{}, bs, mkFakedSigSyscalls(vm.Syscalls(ffiwrapper.ProofVerifier)), nil)
