@@ -26,7 +26,7 @@ func makeTestMessage(w *wallet.Wallet, from, to address.Address, nonce uint64, g
 		Value:      types.FromFil(0),
 		Nonce:      nonce,
 		GasLimit:   gasLimit,
-		GasFeeCap:  types.NewInt(gasPrice + 100),
+		GasFeeCap:  types.NewInt(gasPrice),
 		GasPremium: types.NewInt(gasPrice),
 	}
 	sig, err := w.Sign(context.TODO(), from, msg.Cid().Bytes())
@@ -272,7 +272,7 @@ func TestMessageChains(t *testing.T) {
 
 	chains = mp.createMessageChains(a1, mset, ts)
 	if len(chains) != 1 {
-		t.Fatal("expected a single chain")
+		t.Fatalf("expected a single chain: got %d", len(chains))
 	}
 	if len(chains[0].msgs) != 2 {
 		t.Fatalf("expected %d message in the chain but got %d", 2, len(chains[0].msgs))
