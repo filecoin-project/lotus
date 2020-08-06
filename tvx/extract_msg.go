@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -101,27 +102,55 @@ func runExtractMsg(c *cli.Context) error {
 		fmt.Println("\t", k.String())
 	}
 
-	// get the tipset on which this message was mined.
-	ts, err := api.ChainGetTipSet(ctx, msgInfo.TipSet)
+	// get the tipset on which this message was "executed".
+	// https://github.com/filecoin-project/lotus/issues/2847
+	execTs, err := api.ChainGetTipSet(ctx, msgInfo.TipSet)
 	if err != nil {
 		return err
 	}
 
-	// get the previous tipset, on top of which the message was executed.
-	prevTs, err := api.ChainGetTipSet(ctx, ts.Parents())
+	// get the previous tipset, on which this message was mined.
+	includedTs, err := api.ChainGetTipSet(ctx, execTs.Parents())
 	if err != nil {
 		return err
+	}
+
+	// Warn if the block contains more messages from this sender, preceding the
+	// extracted message.
+	//
+	// TODO https://github.com/filecoin-project/oni/issues/195
+	for _, b := range includedTs.Blocks() {
+		messages, err := api.ChainGetBlockMessages(ctx, b.Cid())
+		if err != nil {
+			return err
+		}
+		for _, other := range messages.BlsMessages {
+			if other.Cid() == mid {
+				break
+			}
+			if other.From == msg.From && other.Nonce < msg.Nonce {
+				log.Printf("WARN: tipset includes preceding message with lower nonce from same sender; this extraction won't work")
+			}
+		}
+		for _, m := range messages.SecpkMessages {
+			if m.Message.Cid() == mid {
+				break
+			}
+			if m.Message.From == msg.From && m.Message.Nonce < msg.Nonce {
+				log.Printf("WARN: tipset includes preceding message with lower nonce from same sender; this extraction won't work")
+			}
+		}
 	}
 
 	fmt.Println("getting the _before_ filtered state tree")
-	preroot, err := g.GetMaskedStateTree(prevTs.Parents(), retain)
+	preroot, err := g.GetMaskedStateTree(includedTs.Parents(), retain)
 	if err != nil {
 		return err
 	}
 
 	driver := lotus.NewDriver(ctx)
 
-	_, postroot, err := driver.ExecuteMessage(msg, preroot, pst.Blockstore, ts.Height())
+	_, postroot, err := driver.ExecuteMessage(msg, preroot, pst.Blockstore, execTs.Height())
 	if err != nil {
 		return fmt.Errorf("failed to execute message: %w", err)
 	}
@@ -162,7 +191,7 @@ func runExtractMsg(c *cli.Context) error {
 		},
 		CAR: out.Bytes(),
 		Pre: &Preconditions{
-			Epoch: ts.Height(),
+			Epoch: execTs.Height(),
 			StateTree: &StateTree{
 				RootCID: preroot,
 			},

@@ -18,14 +18,25 @@ type vmRand struct {
 }
 
 func (*vmRand) GetRandomness(ctx context.Context, dst crypto.DomainSeparationTag, h abi.ChainEpoch, input []byte) ([]byte, error) {
-	return []byte("i_am_random"), nil
+	return []byte("i_am_random_____i_am_random_____"), nil // 32 bytes.
 }
 
 type fakedSigSyscalls struct {
 	runtime.Syscalls
 }
 
-func (fss *fakedSigSyscalls) VerifySignature(_ crypto.Signature, _ address.Address, plaintext []byte) error {
+// TODO VerifySignature this will always succeed; but we want to be able to test failures too.
+func (fss *fakedSigSyscalls) VerifySignature(_ crypto.Signature, _ address.Address, _ []byte) error {
+	return nil
+}
+
+// TODO VerifySeal this will always succeed; but we want to be able to test failures too.
+func (fss *fakedSigSyscalls) VerifySeal(_ abi.SealVerifyInfo) error {
+	return nil
+}
+
+// TODO VerifyPoSt this will always succeed; but we want to be able to test failures too.
+func (fss *fakedSigSyscalls) VerifyPoSt(_ abi.WindowPoStVerifyInfo) error {
 	return nil
 }
 
