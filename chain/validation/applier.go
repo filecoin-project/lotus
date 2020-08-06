@@ -106,7 +106,7 @@ func (a *Applier) ApplyTipSetMessages(epoch abi.ChainEpoch, blocks []vtypes.Bloc
 			GasUsed: vtypes.GasUnits(ret.GasUsed),
 		})
 		return nil
-	}, abi.NewTokenAmount(0))
+	}, abi.NewTokenAmount(100))
 	if err != nil {
 		return vtypes.ApplyTipSetResult{}, err
 	}
@@ -145,7 +145,7 @@ func (a *Applier) applyMessage(epoch abi.ChainEpoch, lm types.ChainMsg) (vtypes.
 		Bstore:     a.stateWrapper.bs,
 		Syscalls:   a.syscalls,
 		VestedCalc: nil,
-		BaseFee:    types.NewInt(0), // TODO: basefee
+		BaseFee:    abi.NewTokenAmount(100),
 	}
 
 	lotusVM, err := vm.NewVM(vmopt)
@@ -191,8 +191,8 @@ func toLotusMsg(msg *vtypes.Message) *types.Message {
 
 		Value:      msg.Value,
 		GasLimit:   msg.GasLimit,
-		GasFeeCap:  msg.GasPrice, // TODO: update chian val to use GasFeeCap
-		GasPremium: big.Zero(),
+		GasFeeCap:  msg.GasFeeCap,
+		GasPremium: msg.GasPremium,
 
 		Params: msg.Params,
 	}
