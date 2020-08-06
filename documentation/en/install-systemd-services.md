@@ -79,7 +79,7 @@ Removing the `lotus-daemon` service will automatically remove the depending serv
 
 ## Controlling services
 
-All service can be controlled with the `systemctl`. A few basic control commands are listed below. To get detailed infos about the cpabilities of the `systemctl` command please consult your distributions man pages by running: 
+All service can be controlled with the `systemctl`. A few basic control commands are listed below. To get detailed infos about the capabilities of the `systemctl` command please consult your distributions man pages by running: 
 
 ```sh
 $ man systemctl
