@@ -199,8 +199,8 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) bool {
 
 	syncer.Bsync.AddPeer(from)
 
-	bestPweight := syncer.store.GetHeaviestTipSet().Blocks()[0].ParentWeight
-	targetWeight := fts.TipSet().Blocks()[0].ParentWeight
+	bestPweight := syncer.store.GetHeaviestTipSet().ParentWeight()
+	targetWeight := fts.TipSet().ParentWeight()
 	if targetWeight.LessThan(bestPweight) {
 		var miners []string
 		for _, blk := range fts.TipSet().Blocks() {
@@ -671,8 +671,6 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) (er
 		return xerrors.Errorf("failed to get latest beacon entry: %w", err)
 	}
 
-	//nulls := h.Height - (baseTs.Height() + 1)
-
 	// fast checks first
 	nulls := h.Height - (baseTs.Height() + 1)
 	if tgtTs := baseTs.MinTimestamp() + build.BlockDelaySecs*uint64(nulls+1); h.Timestamp != tgtTs {
@@ -700,6 +698,15 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) (er
 		}
 		return nil
 	})
+	pweight, err := syncer.store.Weight(ctx, baseTs)
+	if err != nil {
+		return xerrors.Errorf("getting parent weight: %w", err)
+	}
+
+	if types.BigCmp(pweight, b.Header.ParentWeight) != 0 {
+		return xerrors.Errorf("parrent weight different: %s (header) != %s (computed)",
+			b.Header.ParentWeight, pweight)
+	}
 
 	// Stuff that needs stateroot / worker address
 	stateroot, precp, err := syncer.sm.TipSetState(ctx, baseTs)
@@ -994,7 +1001,6 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 				return xerrors.Errorf("failed to get actor: %w", err)
 			}
 
-			// redundant check
 			if !act.IsAccountActor() {
 				return xerrors.New("Sender must be an account actor")
 			}
