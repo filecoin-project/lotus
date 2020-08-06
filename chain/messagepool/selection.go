@@ -277,7 +277,7 @@ func (mp *MessagePool) createMessageChains(actor address.Address, mset map[uint6
 	//   cannot exceed the block limit; drop all messages that exceed the limit
 	// - the total gasReward cannot exceed the actor's balance; drop all messages that exceed
 	//   the balance
-	a, _ := mp.api.StateGetActor(actor, nil)
+	a, _ := mp.api.StateGetActor(actor, ts)
 	curNonce := a.Nonce
 	balance := a.Balance.Int
 	gasLimit := int64(0)
