@@ -47,15 +47,15 @@ On the machine that will run `lotus-worker`, set the `MINER_API_INFO` environmen
 Once this is set, run:
 
 ```sh
-lotus-worker run --address 192.168.2.10:2345
+lotus-worker run
 ```
 
-Replace `192.168.2.10:2345` with the proper IP and port.
+If you are running multiple workers on the same host, you will need to specify the `--listen` flag and ensure each worker is on a different port.
 
-To check that the **Lotus Worker** is connected to your **Lotus Miner**, run `lotus-miner workers list` and check that the remote worker count has increased.
+To check that the **Lotus Worker** is connected to your **Lotus Miner**, run `lotus-miner sealing workers` and check that the remote worker count has increased.
 
 ```sh
-why@computer ~/lotus> lotus-miner workers list
+why@computer ~/lotus> lotus-miner sealing workers
 Worker 0, host computer
         CPU:  [                                                                ] 0 core(s) in use
         RAM:  [||||||||||||||||||                                              ] 28% 18.1 GiB/62.7 GiB
@@ -77,5 +77,5 @@ To do so you have to first __disable all seal task types__ in the miner config. 
 You can then run the miner on your local-loopback interface; 
 
 ```sh
-lotus-worker run --address 127.0.0.1:2345
+lotus-worker run
 ```

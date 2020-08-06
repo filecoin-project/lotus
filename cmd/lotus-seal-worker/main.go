@@ -93,9 +93,13 @@ var runCmd = &cli.Command{
 	Usage: "Start lotus worker",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:  "address",
-			Usage: "locally reachable address",
+			Name:  "listen",
+			Usage: "host address and port the worker api will listen on",
 			Value: "0.0.0.0:3456",
+		},
+		&cli.StringFlag{
+			Name:   "address",
+			Hidden: true,
 		},
 		&cli.BoolFlag{
 			Name:  "no-local-storage",
@@ -123,9 +127,19 @@ var runCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:  "timeout",
-			Usage: "used when address is unspecified. must be a valid duration recognized by golang's time.ParseDuration function",
+			Usage: "used when 'listen' is unspecified. must be a valid duration recognized by golang's time.ParseDuration function",
 			Value: "30m",
 		},
+	},
+	Before: func(cctx *cli.Context) error {
+		if cctx.IsSet("address") {
+			log.Warnf("The '--address' flag is deprecated, it has been replaced by '--listen'")
+			if err := cctx.Set("listen", cctx.String("address")); err != nil {
+				return err
+			}
+		}
+
+		return nil
 	},
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Bool("enable-gpu-proving") {
@@ -268,7 +282,7 @@ var runCmd = &cli.Command{
 
 		log.Info("Opening local storage; connecting to master")
 		const unspecifiedAddress = "0.0.0.0"
-		address := cctx.String("address")
+		address := cctx.String("listen")
 		addressSlice := strings.Split(address, ":")
 		if ip := net.ParseIP(addressSlice[0]); ip != nil {
 			if ip.String() == unspecifiedAddress {
@@ -394,7 +408,7 @@ func watchMinerConn(ctx context.Context, cctx *cli.Context, nodeApi api.StorageM
 			fmt.Sprintf("--miner-repo=%s", cctx.String("miner-repo")),
 			fmt.Sprintf("--enable-gpu-proving=%t", cctx.Bool("enable-gpu-proving")),
 			"run",
-			fmt.Sprintf("--address=%s", cctx.String("address")),
+			fmt.Sprintf("--listen=%s", cctx.String("listen")),
 			fmt.Sprintf("--no-local-storage=%t", cctx.Bool("no-local-storage")),
 			fmt.Sprintf("--precommit1=%t", cctx.Bool("precommit1")),
 			fmt.Sprintf("--precommit2=%t", cctx.Bool("precommit2")),
