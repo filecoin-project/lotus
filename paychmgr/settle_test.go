@@ -3,7 +3,6 @@ package paychmgr
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/ipfs/go-cid"
 
@@ -34,8 +33,6 @@ func TestPaychSettle(t *testing.T) {
 	_, mcid, err := mgr.GetPaych(ctx, from, to, amt)
 	require.NoError(t, err)
 
-	time.Sleep(10 * time.Millisecond)
-
 	// Send channel create response
 	response := testChannelResponse(t, expch)
 	pchapi.receiveMsgResponse(mcid, response)
@@ -57,13 +54,9 @@ func TestPaychSettle(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEqual(t, cid.Undef, mcid2)
 
-	time.Sleep(10 * time.Millisecond)
-
 	// Send new channel create response
 	response2 := testChannelResponse(t, expch2)
 	pchapi.receiveMsgResponse(mcid2, response2)
-
-	time.Sleep(10 * time.Millisecond)
 
 	// Make sure the new channel is different from the old channel
 	ch2, err := mgr.GetPaychWaitReady(ctx, mcid2)
