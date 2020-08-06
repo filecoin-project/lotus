@@ -298,6 +298,24 @@ func (sm *StorageMinerAPI) MarketListRetrievalDeals(ctx context.Context) ([]retr
 	return out, nil
 }
 
+func (sm *StorageMinerAPI) MarketGetDealUpdates(ctx context.Context, d cid.Cid) (<-chan storagemarket.MinerDeal, error) {
+	results := make(chan storagemarket.MinerDeal)
+	unsub := sm.StorageProvider.SubscribeToEvents(func(evt storagemarket.ProviderEvent, deal storagemarket.MinerDeal) {
+		if deal.ProposalCid.Equals(d) {
+			select {
+			case results <- deal:
+			case <-ctx.Done():
+			}
+		}
+	})
+	go func() {
+		<-ctx.Done()
+		unsub()
+		close(results)
+	}()
+	return results, nil
+}
+
 func (sm *StorageMinerAPI) MarketListIncompleteDeals(ctx context.Context) ([]storagemarket.MinerDeal, error) {
 	return sm.StorageProvider.ListLocalDeals()
 }

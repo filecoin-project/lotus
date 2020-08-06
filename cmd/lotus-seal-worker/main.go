@@ -111,6 +111,11 @@ var runCmd = &cli.Command{
 			Value: true,
 		},
 		&cli.BoolFlag{
+			Name:  "unseal",
+			Usage: "enable unsealing (32G sectors: 1 core, 128GiB Memory)",
+			Value: true,
+		},
+		&cli.BoolFlag{
 			Name:  "precommit2",
 			Usage: "enable precommit2 (32G sectors: all cores, 96GiB Memory)",
 			Value: true,
@@ -201,6 +206,9 @@ var runCmd = &cli.Command{
 
 		if cctx.Bool("precommit1") {
 			taskTypes = append(taskTypes, sealtasks.TTPreCommit1)
+		}
+		if cctx.Bool("unseal") {
+			taskTypes = append(taskTypes, sealtasks.TTUnseal)
 		}
 		if cctx.Bool("precommit2") {
 			taskTypes = append(taskTypes, sealtasks.TTPreCommit2)
