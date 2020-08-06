@@ -98,26 +98,17 @@ an existing lotus binary in your PATH. This may cause problems if you don't run 
 
 .PHONY: build
 
-install:
+install: install-daemon install-miner install-worker
+
+install-daemon:
 	install -C ./lotus /usr/local/bin/lotus
+	
+install-miner:	
 	install -C ./lotus-storage-miner /usr/local/bin/lotus-storage-miner
+	
+install-worker: 
 	install -C ./lotus-seal-worker /usr/local/bin/lotus-seal-worker
-
-install-services: install
-	mkdir -p /usr/local/lib/systemd/system
-	mkdir -p /var/log/lotus
-	install -C -m 0644 ./scripts/lotus-daemon.service /usr/local/lib/systemd/system/lotus-daemon.service
-	install -C -m 0644 ./scripts/lotus-miner.service /usr/local/lib/systemd/system/lotus-miner.service
-	systemctl daemon-reload
-	@echo
-	@echo "lotus-daemon and lotus-miner services installed. Don't forget to 'systemctl enable lotus-daemon|lotus-miner' for it to be enabled on startup."
-
-clean-services:
-	rm -f /usr/local/lib/systemd/system/lotus-daemon.service
-	rm -f /usr/local/lib/systemd/system/lotus-miner.service
-	rm -f /usr/local/lib/systemd/system/chainwatch.service
-	systemctl daemon-reload
-
+	
 # TOOLS
 
 lotus-seed: $(BUILD_DEPS)
@@ -161,13 +152,6 @@ chainwatch:
 .PHONY: chainwatch
 BINS+=chainwatch
 
-install-chainwatch-service: chainwatch
-	install -C ./chainwatch /usr/local/bin/chainwatch
-	install -C -m 0644 ./scripts/chainwatch.service /usr/local/lib/systemd/system/chainwatch.service
-	systemctl daemon-reload
-	@echo
-	@echo "chainwatch installed. Don't forget to 'systemctl enable chainwatch' for it to be enabled on startup."
-
 bench:
 	rm -f bench
 	go build -o bench ./cmd/lotus-bench
@@ -195,6 +179,65 @@ testground:
 
 .PHONY: testground
 BINS+=testground
+
+install-chainwatch: chainwatch
+	install -C ./chainwatch /usr/local/bin/chainwatch
+
+# SYSTEMD
+
+install-daemon-service: install-daemon
+	mkdir -p /etc/systemd/system
+	mkdir -p /var/log/lotus
+	install -C -m 0644 ./scripts/lotus-daemon.service /etc/systemd/system/lotus-daemon.service
+	systemctl daemon-reload
+	@echo
+	@echo "lotus-daemon service installed. Don't forget to run 'sudo systemctl start lotus-daemon' to start it and 'sudo systemctl enable lotus-daemon' for it to be enabled on startup."
+
+install-miner-service: install-miner install-daemon-service
+	mkdir -p /etc/systemd/system
+	mkdir -p /var/log/lotus
+	install -C -m 0644 ./scripts/lotus-miner.service /etc/systemd/system/lotus-miner.service
+	systemctl daemon-reload
+	@echo
+	@echo "lotus-miner service installed. Don't forget to run 'sudo systemctl start lotus-miner' to start it and 'sudo systemctl enable lotus-miner' for it to be enabled on startup."
+
+install-chainwatch-service: install-chainwatch install-daemon-service
+	mkdir -p /etc/systemd/system
+	mkdir -p /var/log/lotus
+	install -C -m 0644 ./scripts/lotus-chainwatch.service /etc/systemd/system/lotus-chainwatch.service
+	systemctl daemon-reload
+	@echo
+	@echo "chainwatch service installed. Don't forget to run 'sudo systemctl start lotus-chainwatch' to start it and 'sudo systemctl enable lotus-chainwatch' for it to be enabled on startup."
+	
+install-main-services: install-miner-service
+
+install-all-services: install-main-services install-chainwatch-service
+
+install-services: install-main-services
+
+clean-daemon-service: clean-miner-service clean-chainwatch-service	
+	-systemctl stop lotus-daemon
+	-systemctl disable lotus-daemon
+	rm -f /etc/systemd/system/lotus-daemon.service
+	systemctl daemon-reload
+
+clean-miner-service:	
+	-systemctl stop lotus-miner
+	-systemctl disable lotus-miner
+	rm -f /etc/systemd/system/lotus-miner.service
+	systemctl daemon-reload
+	
+clean-chainwatch-service:
+	-systemctl stop chainwatch
+	-systemctl disable chainwatch
+	rm -f /etc/systemd/system/lotus-chainwatch.service
+	systemctl daemon-reload	
+	
+clean-main-services: clean-daemon-service
+	
+clean-all-services: clean-main-services	
+
+clean-services: clean-all-services
 
 # MISC
 
