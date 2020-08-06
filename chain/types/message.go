@@ -35,6 +35,7 @@ type Message struct {
 	Value abi.TokenAmount
 
 	// TODO: remove
+	// TODO: remove
 	GasLimit   int64
 	GasFeeCap  abi.TokenAmount
 	GasPremium abi.TokenAmount
