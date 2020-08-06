@@ -407,6 +407,8 @@ func (client *BlockSync) sendRequestToPeer(
 	}
 
 	client.peerTracker.logSuccess(peer, build.Clock.Since(connectionStart))
+	// FIXME: We should really log a success only after we validate the response.
+	//  It might be a bit hard to do.
 	return &res, nil
 }
 
