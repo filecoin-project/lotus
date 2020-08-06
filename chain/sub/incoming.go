@@ -10,6 +10,8 @@ import (
 	"golang.org/x/xerrors"
 
 	address "github.com/filecoin-project/go-address"
+	blocks "github.com/ipfs/go-block-format"
+	bserv "github.com/ipfs/go-blockservice"
 	miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	lru "github.com/hashicorp/golang-lru"
@@ -38,7 +40,7 @@ import (
 
 var log = logging.Logger("sub")
 
-func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *chain.Syncer, cmgr connmgr.ConnManager) {
+func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *chain.Syncer, bserv bserv.BlockService, cmgr connmgr.ConnManager) {
 	for {
 		msg, err := bsub.Next(ctx)
 		if err != nil {
@@ -61,13 +63,13 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 		go func() {
 			start := build.Clock.Now()
 			log.Debug("about to fetch messages for block from pubsub")
-			bmsgs, err := s.Bsync.FetchMessagesByCids(context.TODO(), blk.BlsMessages)
+			bmsgs, err := FetchMessagesByCids(context.TODO(), bserv, blk.BlsMessages)
 			if err != nil {
 				log.Errorf("failed to fetch all bls messages for block received over pubusb: %s; source: %s", err, src)
 				return
 			}
 
-			smsgs, err := s.Bsync.FetchSignedMessagesByCids(context.TODO(), blk.SecpkMessages)
+			smsgs, err := FetchSignedMessagesByCids(context.TODO(), bserv, blk.SecpkMessages)
 			if err != nil {
 				log.Errorf("failed to fetch all secpk messages for block received over pubusb: %s; source: %s", err, src)
 				return
@@ -88,6 +90,108 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 			}
 		}()
 	}
+}
+
+func FetchMessagesByCids(
+	ctx context.Context,
+	bserv bserv.BlockService,
+	cids []cid.Cid,
+) ([]*types.Message, error) {
+	out := make([]*types.Message, len(cids))
+
+	err := fetchCids(ctx, bserv, cids, func(i int, b blocks.Block) error {
+		msg, err := types.DecodeMessage(b.RawData())
+		if err != nil {
+			return err
+		}
+
+		// FIXME: We already sort in `fetchCids`, we are duplicating too much work,
+		//  we don't need to pass the index.
+		if out[i] != nil {
+			return fmt.Errorf("received duplicate message")
+		}
+
+		out[i] = msg
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// FIXME: Duplicate of above.
+func FetchSignedMessagesByCids(
+	ctx context.Context,
+	bserv bserv.BlockService,
+	cids []cid.Cid,
+) ([]*types.SignedMessage, error) {
+	out := make([]*types.SignedMessage, len(cids))
+
+	err := fetchCids(ctx, bserv, cids, func(i int, b blocks.Block) error {
+		smsg, err := types.DecodeSignedMessage(b.RawData())
+		if err != nil {
+			return err
+		}
+
+		if out[i] != nil {
+			return fmt.Errorf("received duplicate message")
+		}
+
+		out[i] = smsg
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// Fetch `cids` from the block service, apply `cb` on each of them. Used
+//  by the fetch message functions above.
+// We check that each block is received only once and we do not received
+//  blocks we did not request.
+func fetchCids(
+	ctx context.Context,
+	bserv bserv.BlockService,
+	cids []cid.Cid,
+	cb func(int, blocks.Block) error,
+) error {
+	// FIXME: Why don't we use the context here?
+	fetchedBlocks := bserv.GetBlocks(context.TODO(), cids)
+
+	cidIndex := make(map[cid.Cid]int)
+	for i, c := range cids {
+		cidIndex[c] = i
+	}
+
+	for i := 0; i < len(cids); i++ {
+		select {
+		case block, ok := <-fetchedBlocks:
+			if !ok {
+				// Closed channel, no more blocks fetched, check if we have all
+				// of the CIDs requested.
+				// FIXME: Review this check. We don't call the callback on the
+				//  last index?
+				if i == len(cids)-1 {
+					break
+				}
+
+				return fmt.Errorf("failed to fetch all messages")
+			}
+
+			ix, ok := cidIndex[block.Cid()]
+			if !ok {
+				return fmt.Errorf("received message we didnt ask for")
+			}
+
+			if err := cb(ix, block); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 type BlockValidator struct {
