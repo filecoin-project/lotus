@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"golang.org/x/xerrors"
 
@@ -34,18 +33,9 @@ func init() {
 			if err != nil {
 				return err
 			}
-			pending, err := api.MpoolPending(ctx, head.Key())
+			msgs, err := api.MpoolSelect(ctx, head.Key())
 			if err != nil {
 				return err
-			}
-
-			msgs, err := miner.SelectMessages(ctx, api.StateGetActor, head, pending)
-			if err != nil {
-				return err
-			}
-			if len(msgs) > build.BlockMessageLimit {
-				log.Error("SelectMessages returned too many messages: ", len(msgs))
-				msgs = msgs[:build.BlockMessageLimit]
 			}
 
 			addr, _ := address.NewIDAddress(1000)
