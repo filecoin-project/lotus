@@ -5,8 +5,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/filecoin-project/lotus/markets/dealfilter"
-
 	logging "github.com/ipfs/go-log"
 	ci "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
