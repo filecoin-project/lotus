@@ -37,6 +37,8 @@ func badgerDs(path string) (datastore.Batching, error) {
 func levelDs(path string) (datastore.Batching, error) {
 	return levelds.NewDatastore(path, &levelds.Options{
 		Compression: ldbopts.NoCompression,
+		NoSync:      false,
+		Strict:      ldbopts.StrictAll,
 	})
 }
 
