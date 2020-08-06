@@ -511,6 +511,9 @@ func TestAPIDealFlow(t *testing.T) {
 	t.Run("TestDoubleDealFlow", func(t *testing.T) {
 		test.TestDoubleDealFlow(t, mockSbBuilder, 10*time.Millisecond)
 	})
+	t.Run("TestFastRetrievalDealFlow", func(t *testing.T) {
+		test.TestFastRetrievalDealFlow(t, mockSbBuilder, 10*time.Millisecond)
+	})
 }
 
 func TestAPIDealFlowReal(t *testing.T) {

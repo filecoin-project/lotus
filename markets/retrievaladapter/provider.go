@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/sector-storage/storiface"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
+	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -57,7 +58,11 @@ func (rpn *retrievalProviderNode) UnsealSector(ctx context.Context, sectorID abi
 
 	r, w := io.Pipe()
 	go func() {
-		err := rpn.sealer.ReadPiece(ctx, w, sid, storiface.UnpaddedByteIndex(offset), length, si.TicketValue, *si.CommD)
+		var commD cid.Cid
+		if si.CommD != nil {
+			commD = *si.CommD
+		}
+		err := rpn.sealer.ReadPiece(ctx, w, sid, storiface.UnpaddedByteIndex(offset), length, si.TicketValue, commD)
 		_ = w.CloseWithError(err)
 	}()
 

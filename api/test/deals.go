@@ -144,6 +144,61 @@ func makeDeal(t *testing.T, ctx context.Context, rseed int, client *impl.FullNod
 	testRetrieval(t, ctx, err, client, fcid, &info.PieceCID, carExport, data)
 }
 
+func TestFastRetrievalDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration) {
+	_ = os.Setenv("BELLMAN_NO_GPU", "1")
+
+	ctx := context.Background()
+	n, sn := b(t, 1, oneMiner)
+	client := n[0].FullNode.(*impl.FullNodeAPI)
+	miner := sn[0]
+
+	addrinfo, err := client.NetAddrsListen(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := miner.NetConnect(ctx, addrinfo); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(time.Second)
+
+	mine := int64(1)
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for atomic.LoadInt64(&mine) == 1 {
+			time.Sleep(blocktime)
+			if err := sn[0].MineOne(ctx, MineNext); err != nil {
+				t.Error(err)
+			}
+		}
+	}()
+
+	data := make([]byte, 1600)
+	rand.New(rand.NewSource(int64(8))).Read(data)
+
+	r := bytes.NewReader(data)
+	fcid, err := client.ClientImportLocal(ctx, r)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	fmt.Println("FILE CID: ", fcid)
+
+	deal := startDeal(t, ctx, miner, client, fcid, true)
+
+	waitDealPublished(t, ctx, miner, deal)
+	fmt.Println("deal published, retrieving")
+	// Retrieval
+	info, err := client.ClientGetDealInfo(ctx, *deal)
+	require.NoError(t, err)
+
+	testRetrieval(t, ctx, err, client, fcid, &info.PieceCID, false, data)
+	atomic.AddInt64(&mine, -1)
+	fmt.Println("shutting down mining")
+	<-done
+}
+
 func TestSenondDealRetrieval(t *testing.T, b APIBuilder, blocktime time.Duration) {
 	_ = os.Setenv("BELLMAN_NO_GPU", "1")
 
@@ -272,6 +327,34 @@ loop:
 		}
 		fmt.Println("Deal state: ", storagemarket.DealStates[di.State])
 		time.Sleep(time.Second / 2)
+	}
+}
+
+func waitDealPublished(t *testing.T, ctx context.Context, miner TestStorageNode, deal *cid.Cid) {
+	subCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	updates, err := miner.MarketGetDealUpdates(subCtx, *deal)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for {
+		select {
+		case <-ctx.Done():
+			t.Fatal("context timeout")
+		case di := <-updates:
+			switch di.State {
+			case storagemarket.StorageDealProposalRejected:
+				t.Fatal("deal rejected")
+			case storagemarket.StorageDealFailing:
+				t.Fatal("deal failed")
+			case storagemarket.StorageDealError:
+				t.Fatal("deal errored", di.Message)
+			case storagemarket.StorageDealFinalizing, storagemarket.StorageDealSealing, storagemarket.StorageDealActive:
+				fmt.Println("COMPLETE", di)
+				return
+			}
+			fmt.Println("Deal state: ", storagemarket.DealStates[di.State])
+		}
 	}
 }
 
