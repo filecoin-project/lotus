@@ -27,8 +27,13 @@ var sendCmd = &cli.Command{
 			Usage: "optionally specify the account to send funds from",
 		},
 		&cli.StringFlag{
-			Name:  "gas-price",
+			Name:  "gas-premium",
 			Usage: "specify gas price to use in AttoFIL",
+			Value: "0",
+		},
+		&cli.StringFlag{
+			Name:  "gas-feecap",
+			Usage: "specify gas fee cap to use in AttoFIL",
 			Value: "0",
 		},
 		&cli.Int64Flag{
@@ -99,6 +104,10 @@ var sendCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
+		gfc, err := types.BigFromString(cctx.String("gas-feecap"))
+		if err != nil {
+			return err
+		}
 
 		method := abi.MethodNum(cctx.Uint64("method"))
 
@@ -122,13 +131,14 @@ var sendCmd = &cli.Command{
 		}
 
 		msg := &types.Message{
-			From:     fromAddr,
-			To:       toAddr,
-			Value:    types.BigInt(val),
-			GasPrice: gp,
-			GasLimit: cctx.Int64("gas-limit"),
-			Method:   method,
-			Params:   params,
+			From:       fromAddr,
+			To:         toAddr,
+			Value:      types.BigInt(val),
+			GasPremium: gp,
+			GasFeeCap:  gfc,
+			GasLimit:   cctx.Int64("gas-limit"),
+			Method:     method,
+			Params:     params,
 		}
 
 		if cctx.Int64("nonce") > 0 {

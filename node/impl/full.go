@@ -32,9 +32,9 @@ type FullNodeAPI struct {
 }
 
 // MpoolEstimateGasPrice estimates gas price
-// Deprecated: used GasEstimateGasPrice instead
+// Deprecated: used GasEsitmateGasPremium instead
 func (fa *FullNodeAPI) MpoolEstimateGasPrice(ctx context.Context, nblocksincl uint64, sender address.Address, limit int64, tsk types.TipSetKey) (types.BigInt, error) {
-	return fa.GasEstimateGasPrice(ctx, nblocksincl, sender, limit, tsk)
+	return fa.GasEsitmateGasPremium(ctx, nblocksincl, sender, limit, tsk)
 }
 
 var _ api.FullNode = &FullNodeAPI{}

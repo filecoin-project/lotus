@@ -677,11 +677,6 @@ func (t *Message) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.GasPrice (big.Int) (struct)
-	if err := t.GasPrice.MarshalCBOR(w); err != nil {
-		return err
-	}
-
 	// t.GasLimit (int64) (int64)
 	if t.GasLimit >= 0 {
 		if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajUnsignedInt, uint64(t.GasLimit)); err != nil {
@@ -811,10 +806,6 @@ func (t *Message) UnmarshalCBOR(r io.Reader) error {
 	// t.GasPrice (big.Int) (struct)
 
 	{
-
-		if err := t.GasPrice.UnmarshalCBOR(br); err != nil {
-			return xerrors.Errorf("unmarshaling t.GasPrice: %w", err)
-		}
 
 	}
 	// t.GasLimit (int64) (int64)

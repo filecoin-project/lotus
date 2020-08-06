@@ -207,7 +207,7 @@ func (mp *MessagePool) getPendingMessages(curTs, ts *types.TipSet) (map[address.
 			if dupNonce {
 				// duplicate nonce, selfishly keep the message with the highest GasPrice
 				// if the gas prices are the same, keep the one with the highest GasLimit
-				switch m.Message.GasPrice.Int.Cmp(other.Message.GasPrice.Int) {
+				switch m.Message.GasPremium.Int.Cmp(other.Message.GasPremium.Int) {
 				case 0:
 					if m.Message.GasLimit > other.Message.GasLimit {
 						mset[m.Message.Nonce] = m

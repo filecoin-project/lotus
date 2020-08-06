@@ -112,12 +112,12 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message) (*t
 		msg.GasLimit = int64(float64(gasLimit) * GasMargin)
 	}
 
-	if msg.GasPrice == types.EmptyInt || types.BigCmp(msg.GasPrice, types.NewInt(0)) == 0 {
-		gasPrice, err := a.GasEstimateGasPrice(ctx, 2, msg.From, msg.GasLimit, types.TipSetKey{})
+	if msg.GasPremium == types.EmptyInt || types.BigCmp(msg.GasPremium, types.NewInt(0)) == 0 {
+		gasPrice, err := a.GasEsitmateGasPremium(ctx, 2, msg.From, msg.GasLimit, types.TipSetKey{})
 		if err != nil {
 			return nil, xerrors.Errorf("estimating gas price: %w", err)
 		}
-		msg.GasPrice = gasPrice
+		msg.GasPremium = gasPrice
 	}
 	if msg.GasPremium == types.EmptyInt || types.BigCmp(msg.GasPremium, types.NewInt(0)) == 0 {
 		msg.GasPremium = types.NewInt(100)

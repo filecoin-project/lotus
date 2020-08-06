@@ -40,9 +40,13 @@ func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate 
 	if msg.GasLimit == 0 {
 		msg.GasLimit = build.BlockGasLimit
 	}
-	if msg.GasPrice == types.EmptyInt {
-		msg.GasPrice = types.NewInt(0)
+	if msg.GasFeeCap == types.EmptyInt {
+		msg.GasFeeCap = types.NewInt(0)
 	}
+	if msg.GasPremium == types.EmptyInt {
+		msg.GasPremium = types.NewInt(0)
+	}
+
 	if msg.Value == types.EmptyInt {
 		msg.Value = types.NewInt(0)
 	}
@@ -50,7 +54,7 @@ func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate 
 	if span.IsRecordingEvents() {
 		span.AddAttributes(
 			trace.Int64Attribute("gas_limit", msg.GasLimit),
-			trace.Int64Attribute("gas_price", int64(msg.GasPrice.Uint64())),
+			trace.StringAttribute("gas_feecap", msg.GasFeeCap.String()),
 			trace.StringAttribute("value", msg.Value.String()),
 		)
 	}
@@ -111,7 +115,7 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 	if span.IsRecordingEvents() {
 		span.AddAttributes(
 			trace.Int64Attribute("gas_limit", msg.GasLimit),
-			trace.Int64Attribute("gas_price", int64(msg.GasPrice.Uint64())),
+			trace.StringAttribute("gas_feecap", msg.GasFeeCap.String()),
 			trace.StringAttribute("value", msg.Value.String()),
 		)
 	}

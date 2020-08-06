@@ -146,14 +146,15 @@ func MakeUnsignedMessageVectors() []vectors.UnsignedMessageVector {
 		rand.Read(params)
 
 		msg := &types.Message{
-			To:       to,
-			From:     from,
-			Value:    types.NewInt(rand.Uint64()),
-			Method:   abi.MethodNum(rand.Uint64()),
-			GasPrice: types.NewInt(rand.Uint64()),
-			GasLimit: rand.Int63(),
-			Nonce:    rand.Uint64(),
-			Params:   params,
+			To:         to,
+			From:       from,
+			Value:      types.NewInt(rand.Uint64()),
+			Method:     abi.MethodNum(rand.Uint64()),
+			GasFeeCap:  types.NewInt(rand.Uint64()),
+			GasPremium: types.NewInt(rand.Uint64()),
+			GasLimit:   rand.Int63(),
+			Nonce:      rand.Uint64(),
+			Params:     params,
 		}
 
 		ser, err := msg.Serialize()

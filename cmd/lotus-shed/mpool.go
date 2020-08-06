@@ -51,7 +51,7 @@ var minerSelectMsgsCmd = &cli.Command{
 				to = "..." + to[len(to)-8:]
 			}
 
-			fmt.Printf("%d: %s -> %s, method %d, gasPrice %s, gasLimit %d, val %s\n", i, from, to, f.Message.Method, f.Message.GasPrice, f.Message.GasLimit, types.FIL(f.Message.Value))
+			fmt.Printf("%d: %s -> %s, method %d, gasFeecap %s, gasPremium %s, gasLimit %d, val %s\n", i, from, to, f.Message.Method, f.Message.GasFeeCap, f.Message.GasPremium, f.Message.GasLimit, types.FIL(f.Message.Value))
 			totalGas += f.Message.GasLimit
 		}
 

@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/multiformats/go-multiaddr"
 	"html/template"
 	"io"
 	"os"
@@ -14,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/multiformats/go-multiaddr"
 
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -1383,13 +1384,11 @@ var stateCallCmd = &cli.Command{
 		}
 
 		ret, err := api.StateCall(ctx, &types.Message{
-			From:     froma,
-			To:       toa,
-			Value:    types.BigInt(value),
-			GasLimit: 10000000000,
-			GasPrice: types.NewInt(0),
-			Method:   abi.MethodNum(method),
-			Params:   params,
+			From:   froma,
+			To:     toa,
+			Value:  types.BigInt(value),
+			Method: abi.MethodNum(method),
+			Params: params,
 		}, ts.Key())
 		if err != nil {
 			return fmt.Errorf("state call failed: %s", err)

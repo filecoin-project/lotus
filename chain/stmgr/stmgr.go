@@ -175,14 +175,15 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 		}
 
 		cronMsg := &types.Message{
-			To:       builtin.CronActorAddr,
-			From:     builtin.SystemActorAddr,
-			Nonce:    ca.Nonce,
-			Value:    types.NewInt(0),
-			GasPrice: types.NewInt(0),
-			GasLimit: build.BlockGasLimit * 10000, // Make super sure this is never too little
-			Method:   builtin.MethodsCron.EpochTick,
-			Params:   nil,
+			To:         builtin.CronActorAddr,
+			From:       builtin.SystemActorAddr,
+			Nonce:      ca.Nonce,
+			Value:      types.NewInt(0),
+			GasFeeCap:  types.NewInt(0),
+			GasPremium: types.NewInt(0),
+			GasLimit:   build.BlockGasLimit * 10000, // Make super sure this is never too little
+			Method:     builtin.MethodsCron.EpochTick,
+			Params:     nil,
 		}
 		ret, err := vmi.ApplyImplicitMessage(ctx, cronMsg)
 		if err != nil {
@@ -262,14 +263,15 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 		}
 
 		rwMsg := &types.Message{
-			From:     builtin.SystemActorAddr,
-			To:       builtin.RewardActorAddr,
-			Nonce:    sysAct.Nonce,
-			Value:    types.NewInt(0),
-			GasPrice: types.NewInt(0),
-			GasLimit: 1 << 30,
-			Method:   builtin.MethodsReward.AwardBlockReward,
-			Params:   params,
+			From:       builtin.SystemActorAddr,
+			To:         builtin.RewardActorAddr,
+			Nonce:      sysAct.Nonce,
+			Value:      types.NewInt(0),
+			GasFeeCap:  types.NewInt(0),
+			GasPremium: types.NewInt(0),
+			GasLimit:   1 << 30,
+			Method:     builtin.MethodsReward.AwardBlockReward,
+			Params:     params,
 		}
 		ret, err := vmi.ApplyImplicitMessage(ctx, rwMsg)
 		if err != nil {

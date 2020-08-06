@@ -489,8 +489,9 @@ func getRandomMessages(cg *ChainGen) ([]*types.SignedMessage, error) {
 
 			Method: 0,
 
-			GasLimit: 100_000_000,
-			GasPrice: types.NewInt(0),
+			GasLimit:   100_000_000,
+			GasFeeCap:  types.NewInt(0),
+			GasPremium: types.NewInt(0),
 		}
 
 		sig, err := cg.w.Sign(context.TODO(), cg.banker, msg.Cid().Bytes())

@@ -246,8 +246,12 @@ var mpoolReplaceCmd = &cli.Command{
 	Name:  "replace",
 	Usage: "replace a message in the mempool",
 	Flags: []cli.Flag{
-		&cli.Int64Flag{
-			Name:  "gas-price",
+		&cli.StringFlag{
+			Name:  "gas-feecap",
+			Usage: "gas feecap for new message",
+		},
+		&cli.StringFlag{
+			Name:  "gas-premium",
 			Usage: "gas price for new message",
 		},
 		&cli.Int64Flag{
@@ -304,7 +308,15 @@ var mpoolReplaceCmd = &cli.Command{
 		msg := found.Message
 
 		msg.GasLimit = cctx.Int64("gas-limit")
-		msg.GasPrice = types.NewInt(uint64(cctx.Int64("gas-price")))
+		msg.GasPremium, err = types.BigFromString(cctx.String("gas-premium"))
+		if err != nil {
+			return fmt.Errorf("parsing gas-premium: %w", err)
+		}
+		// TODO: estiamte fee cap here
+		msg.GasFeeCap, err = types.BigFromString(cctx.String("gas-feecap"))
+		if err != nil {
+			return fmt.Errorf("parsing gas-feecap: %w", err)
+		}
 
 		smsg, err := api.WalletSignMessage(ctx, msg.From, &msg)
 		if err != nil {

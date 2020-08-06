@@ -85,7 +85,7 @@ type FullNodeStruct struct {
 		ChainGetPath           func(context.Context, types.TipSetKey, types.TipSetKey) ([]*api.HeadChange, error)                                 `perm:"read"`
 		ChainExport            func(context.Context, types.TipSetKey) (<-chan []byte, error)                                                      `perm:"read"`
 
-		GasEstimateGasPrice func(context.Context, uint64, address.Address, int64, types.TipSetKey) (types.BigInt, error) `perm:"read"`
+		GasEsitmateGasPremium func(context.Context, uint64, address.Address, int64, types.TipSetKey) (types.BigInt, error) `perm:"read"`
 		GasEstimateGasLimit func(context.Context, *types.Message, types.TipSetKey) (int64, error)                        `perm:"read"`
 
 		SyncState          func(context.Context) (*api.SyncState, error)                `perm:"read"`
@@ -427,9 +427,9 @@ func (c *FullNodeStruct) ClientDealSize(ctx context.Context, root cid.Cid) (api.
 	return c.Internal.ClientDealSize(ctx, root)
 }
 
-func (c *FullNodeStruct) GasEstimateGasPrice(ctx context.Context, nblocksincl uint64,
+func (c *FullNodeStruct) GasEsitmateGasPremium(ctx context.Context, nblocksincl uint64,
 	sender address.Address, gaslimit int64, tsk types.TipSetKey) (types.BigInt, error) {
-	return c.Internal.GasEstimateGasPrice(ctx, nblocksincl, sender, gaslimit, tsk)
+	return c.Internal.GasEsitmateGasPremium(ctx, nblocksincl, sender, gaslimit, tsk)
 }
 
 func (c *FullNodeStruct) GasEstimateGasLimit(ctx context.Context, msg *types.Message,
@@ -458,7 +458,7 @@ func (c *FullNodeStruct) MpoolSub(ctx context.Context) (<-chan api.MpoolUpdate, 
 }
 
 func (c *FullNodeStruct) MpoolEstimateGasPrice(ctx context.Context, nblocksincl uint64, sender address.Address, limit int64, tsk types.TipSetKey) (types.BigInt, error) {
-	return c.Internal.GasEstimateGasPrice(ctx, nblocksincl, sender, limit, tsk)
+	return c.Internal.GasEsitmateGasPremium(ctx, nblocksincl, sender, limit, tsk)
 }
 
 func (c *FullNodeStruct) MinerGetBaseInfo(ctx context.Context, maddr address.Address, epoch abi.ChainEpoch, tsk types.TipSetKey) (*api.MiningBaseInfo, error) {

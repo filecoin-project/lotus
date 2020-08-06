@@ -103,13 +103,11 @@ func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, a
 	require.NoError(t, err)
 
 	msg := &types.Message{
-		To:       act,
-		From:     waddr,
-		Method:   builtin.MethodsMiner.ChangePeerID,
-		Params:   enc,
-		Value:    types.NewInt(0),
-		GasPrice: types.NewInt(0),
-		GasLimit: 0,
+		To:     act,
+		From:   waddr,
+		Method: builtin.MethodsMiner.ChangePeerID,
+		Params: enc,
+		Value:  types.NewInt(0),
 	}
 
 	_, err = tnd.MpoolPushMessage(ctx, msg)

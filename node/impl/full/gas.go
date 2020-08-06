@@ -27,7 +27,7 @@ type GasAPI struct {
 
 const MinGasPrice = 1
 
-func (a *GasAPI) GasEstimateGasPrice(ctx context.Context, nblocksincl uint64,
+func (a *GasAPI) GasEsitmateGasPremium(ctx context.Context, nblocksincl uint64,
 	sender address.Address, gaslimit int64, tsk types.TipSetKey) (types.BigInt, error) {
 
 	if nblocksincl == 0 {
@@ -68,7 +68,7 @@ func (a *GasAPI) GasEstimateGasPrice(ctx context.Context, nblocksincl uint64,
 			}
 
 			prices = append(prices, gasMeta{
-				price: msg.VMMessage().GasPrice,
+				price: msg.VMMessage().GasPremium,
 				used:  r.GasUsed,
 			})
 			gasUsed += r.GasUsed

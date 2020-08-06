@@ -279,9 +279,6 @@ func (h *handler) send(w http.ResponseWriter, r *http.Request) {
 		Value: types.BigInt(h.sendPerRequest),
 		From:  h.from,
 		To:    to,
-
-		GasPrice: types.NewInt(0),
-		GasLimit: 0,
 	})
 	if err != nil {
 		w.WriteHeader(400)
@@ -353,9 +350,6 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 		Value: types.BigInt(h.sendPerRequest),
 		From:  h.from,
 		To:    owner,
-
-		GasPrice: types.NewInt(0),
-		GasLimit: 0,
 	})
 	if err != nil {
 		w.WriteHeader(400)
@@ -390,9 +384,6 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 
 		Method: builtin.MethodsPower.CreateMiner,
 		Params: params,
-
-		GasLimit: 0,
-		GasPrice: types.NewInt(0),
 	}
 
 	signed, err := h.api.MpoolPushMessage(r.Context(), createStorageMinerMsg)

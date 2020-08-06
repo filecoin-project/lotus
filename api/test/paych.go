@@ -218,10 +218,9 @@ func waitForBlocks(ctx context.Context, t *testing.T, bm *blockMiner, paymentRec
 
 		// Add a real block
 		m, err := paymentReceiver.MpoolPushMessage(ctx, &types.Message{
-			To:       builtin.BurntFundsActorAddr,
-			From:     receiverAddr,
-			Value:    types.NewInt(0),
-			GasPrice: big.Zero(),
+			To:    builtin.BurntFundsActorAddr,
+			From:  receiverAddr,
+			Value: types.NewInt(0),
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -303,11 +302,9 @@ func sendFunds(ctx context.Context, t *testing.T, sender TestNode, addr address.
 	}
 
 	msg := &types.Message{
-		From:     senderAddr,
-		To:       addr,
-		Value:    amount,
-		GasLimit: 0,
-		GasPrice: abi.NewTokenAmount(0),
+		From:  senderAddr,
+		To:    addr,
+		Value: amount,
 	}
 
 	sm, err := sender.MpoolPushMessage(ctx, msg)

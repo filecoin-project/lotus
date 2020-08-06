@@ -190,7 +190,6 @@ func toLotusMsg(msg *vtypes.Message) *types.Message {
 		Method: msg.Method,
 
 		Value:      msg.Value,
-		GasPrice:   msg.GasPrice,
 		GasLimit:   msg.GasLimit,
 		GasFeeCap:  msg.GasPrice, // TODO: update chian val to use GasFeeCap
 		GasPremium: big.Zero(),

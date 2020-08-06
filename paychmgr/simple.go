@@ -241,13 +241,11 @@ func (ca *channelAccessor) createPaych(ctx context.Context, from, to address.Add
 	}
 
 	msg := &types.Message{
-		To:       builtin.InitActorAddr,
-		From:     from,
-		Value:    amt,
-		Method:   builtin.MethodsInit.Exec,
-		Params:   enc,
-		GasLimit: 0,
-		GasPrice: types.NewInt(0),
+		To:     builtin.InitActorAddr,
+		From:   from,
+		Value:  amt,
+		Method: builtin.MethodsInit.Exec,
+		Params: enc,
 	}
 
 	smsg, err := ca.api.MpoolPushMessage(ctx, msg)
@@ -323,12 +321,10 @@ func (ca *channelAccessor) waitPaychCreateMsg(channelID string, mcid cid.Cid) er
 // addFunds sends a message to add funds to the channel and returns the message cid
 func (ca *channelAccessor) addFunds(ctx context.Context, channelInfo *ChannelInfo, amt types.BigInt, cb onCompleteFn) (*cid.Cid, error) {
 	msg := &types.Message{
-		To:       *channelInfo.Channel,
-		From:     channelInfo.Control,
-		Value:    amt,
-		Method:   0,
-		GasLimit: 0,
-		GasPrice: types.NewInt(0),
+		To:     *channelInfo.Channel,
+		From:   channelInfo.Control,
+		Value:  amt,
+		Method: 0,
 	}
 
 	smsg, err := ca.api.MpoolPushMessage(ctx, msg)
