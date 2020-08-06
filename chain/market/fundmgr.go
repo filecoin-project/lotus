@@ -52,7 +52,7 @@ func StartFundManager(lc fx.Lifecycle, api API) *FundMgr {
 			match := func(oldTs, newTs *types.TipSet) (bool, events.StateChange, error) {
 				return dealDiffFn(ctx, oldTs.Key(), newTs.Key())
 			}
-			return ev.StateChanged(fm.checkFunc, fm.stateChanged, fm.revert, int(build.MessageConfidence+1), events.NoTimeout, match)
+			return ev.StateChanged(fm.checkFunc, fm.stateChanged, fm.revert, int(build.MessageConfidence), events.NoTimeout, match)
 		},
 	})
 	return fm
@@ -61,6 +61,7 @@ func StartFundManager(lc fx.Lifecycle, api API) *FundMgr {
 type fundMgrAPI interface {
 	StateMarketBalance(context.Context, address.Address, types.TipSetKey) (api.MarketBalance, error)
 	MpoolPushMessage(context.Context, *types.Message) (*types.SignedMessage, error)
+	StateLookupID(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 }
 
 func newFundMgr(api fundMgrAPI) *FundMgr {
@@ -110,8 +111,12 @@ func (fm *FundMgr) getAddresses() []address.Address {
 // EnsureAvailable looks at the available balance in escrow for a given
 // address, and if less than the passed in amount, adds the difference
 func (fm *FundMgr) EnsureAvailable(ctx context.Context, addr, wallet address.Address, amt types.BigInt) (cid.Cid, error) {
+	idAddr, err := fm.api.StateLookupID(ctx, addr, types.EmptyTSK)
+	if err != nil {
+		return cid.Undef, err
+	}
 	fm.lk.Lock()
-	avail, ok := fm.available[addr]
+	avail, ok := fm.available[idAddr]
 	if !ok {
 		bal, err := fm.api.StateMarketBalance(ctx, addr, types.EmptyTSK)
 		if err != nil {
@@ -126,14 +131,13 @@ func (fm *FundMgr) EnsureAvailable(ctx context.Context, addr, wallet address.Add
 	if toAdd.LessThan(types.NewInt(0)) {
 		toAdd = types.NewInt(0)
 	}
-	fm.available[addr] = big.Add(avail, toAdd)
+	fm.available[idAddr] = big.Add(avail, toAdd)
 	fm.lk.Unlock()
 
 	if toAdd.LessThanEqual(big.Zero()) {
 		return cid.Undef, nil
 	}
 
-	var err error
 	params, err := actors.SerializeParams(&addr)
 	if err != nil {
 		return cid.Undef, err

@@ -26,8 +26,12 @@ type fakeAPI struct {
 	signature          crypto.Signature
 	receivedMessage    *types.Message
 	pushMessageErr     error
+	lookupIDErr        error
 }
 
+func (fapi *fakeAPI) StateLookupID(_ context.Context, addr address.Address, _ types.TipSetKey) (address.Address, error) {
+	return addr, fapi.lookupIDErr
+}
 func (fapi *fakeAPI) StateMarketBalance(context.Context, address.Address, types.TipSetKey) (api.MarketBalance, error) {
 	return fapi.returnedBalance, fapi.returnedBalanceErr
 }
@@ -65,6 +69,7 @@ func TestAddFunds(t *testing.T) {
 		addAmounts         []abi.TokenAmount
 		pushMessageErr     error
 		expectedResults    []expectedResult
+		lookupIDErr        error
 	}{
 		"succeeds, trivial case": {
 			returnedBalance: api.MarketBalance{Escrow: abi.NewTokenAmount(0), Locked: abi.NewTokenAmount(0)},
@@ -130,6 +135,15 @@ func TestAddFunds(t *testing.T) {
 				},
 			},
 		},
+		"error looking up address": {
+			lookupIDErr: errors.New("something went wrong"),
+			addAmounts:  []abi.TokenAmount{abi.NewTokenAmount(100)},
+			expectedResults: []expectedResult{
+				{
+					err: errors.New("something went wrong"),
+				},
+			},
+		},
 	}
 
 	for testCase, data := range testCases {
@@ -147,6 +161,7 @@ func TestAddFunds(t *testing.T) {
 					Data: sig,
 				},
 				pushMessageErr: data.pushMessageErr,
+				lookupIDErr:    data.lookupIDErr,
 			}
 			fundMgr := newFundMgr(fapi)
 			addr := tutils.NewIDAddr(t, uint64(rand.Uint32()))
