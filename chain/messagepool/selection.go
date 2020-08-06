@@ -1,7 +1,6 @@
 package messagepool
 
 import (
-	"context"
 	"math/big"
 	"sort"
 	"time"
@@ -233,19 +232,7 @@ func (mp *MessagePool) getPendingMessages(curTs, ts *types.TipSet) (map[address.
 }
 
 func (mp *MessagePool) getGasReward(msg *types.SignedMessage, ts *types.TipSet) *big.Int {
-	al := func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*types.Actor, error) {
-		return mp.api.StateGetActor(addr, ts)
-	}
-	gasUsed, err := gasguess.GuessGasUsed(context.TODO(), types.EmptyTSK, msg, al)
-	if err != nil {
-		gasUsed = int64(gasguess.MaxGas)
-		if gasUsed > msg.Message.GasLimit/2 {
-			gasUsed = msg.Message.GasLimit / 2
-		}
-		// if we start seeing this warning we may have a problem with spammers!
-		log.Warnf("Cannot guess gas usage for message: %s; using %d", err, gasUsed)
-	}
-	gasReward := abig.Mul(msg.Message.GasPrice, types.NewInt(uint64(gasUsed)))
+	gasReward := abig.Mul(msg.Message.GasPremium, types.NewInt(uint64(msg.Message.GasLimit)))
 	return gasReward.Int
 }
 

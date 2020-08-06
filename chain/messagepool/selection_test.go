@@ -20,13 +20,14 @@ import (
 
 func makeTestMessage(w *wallet.Wallet, from, to address.Address, nonce uint64, gasLimit int64, gasPrice uint64) *types.SignedMessage {
 	msg := &types.Message{
-		From:     from,
-		To:       to,
-		Method:   2,
-		Value:    types.FromFil(0),
-		Nonce:    nonce,
-		GasLimit: gasLimit,
-		GasPrice: types.NewInt(gasPrice),
+		From:       from,
+		To:         to,
+		Method:     2,
+		Value:      types.FromFil(0),
+		Nonce:      nonce,
+		GasLimit:   gasLimit,
+		GasFeeCap:  types.NewInt(gasPrice + 100),
+		GasPremium: types.NewInt(gasPrice),
 	}
 	sig, err := w.Sign(context.TODO(), from, msg.Cid().Bytes())
 	if err != nil {
