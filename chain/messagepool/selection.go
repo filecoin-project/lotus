@@ -60,7 +60,7 @@ func (mp *MessagePool) selectMessages(curTs, ts *types.TipSet) ([]*types.SignedM
 	}
 
 	// 2. Sort the chains
-	sort.Slice(chains, func(i, j int) bool {
+	sort.SliceStable(chains, func(i, j int) bool {
 		return chains[i].Before(chains[j])
 	})
 

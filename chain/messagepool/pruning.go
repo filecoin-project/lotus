@@ -44,7 +44,7 @@ func (mp *MessagePool) pruneMessages(ctx context.Context, ts *types.TipSet) erro
 	}
 
 	// Sort the chains
-	sort.Slice(chains, func(i, j int) bool {
+	sort.SliceStable(chains, func(i, j int) bool {
 		return chains[i].Before(chains[j])
 	})
 
