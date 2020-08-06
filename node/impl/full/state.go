@@ -759,7 +759,7 @@ func (a *StateAPI) StateSectorExpiration(ctx context.Context, maddr address.Addr
 	var onTimeEpoch, earlyEpoch abi.ChainEpoch
 
 	err := a.sectorPartition(ctx, maddr, sectorNumber, tsk, func(store adt.Store, mas *miner.State, di uint64, pi uint64, part *miner.Partition) error {
-		quant := mas.QuantEndOfDeadline()
+		quant := mas.QuantSpecForDeadline(di)
 		expirations, err := miner.LoadExpirationQueue(store, part.ExpirationsEpochs, quant)
 		if err != nil {
 			return xerrors.Errorf("loading expiration queue: %w", err)
