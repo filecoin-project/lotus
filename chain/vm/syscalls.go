@@ -139,6 +139,10 @@ func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte) (*runtime.Consen
 	// Here extra is the "witness", a third block that shows the connection between A and B as
 	// A's sibling and B's parent.
 	// Specifically, since A is of lower height, it must be that B was mined omitting A from its tipset
+	//
+	//      B
+	//      |
+	//  [A, C]
 	var blockC types.BlockHeader
 	if len(extra) > 0 {
 		if decodeErr := blockC.UnmarshalCBOR(bytes.NewReader(extra)); decodeErr != nil {

@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
+	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"sync"
 	"time"
 
@@ -39,7 +40,7 @@ func randTimeOffset(width time.Duration) time.Duration {
 	return val - (width / 2)
 }
 
-func NewMiner(api api.FullNode, epp gen.WinningPoStProver, addr address.Address) *Miner {
+func NewMiner(api api.FullNode, epp gen.WinningPoStProver, addr address.Address, sf *slashfilter.SlashFilter) *Miner {
 	arc, err := lru.NewARC(10000)
 	if err != nil {
 		panic(err)
@@ -60,6 +61,8 @@ func NewMiner(api api.FullNode, epp gen.WinningPoStProver, addr address.Address)
 
 			return func(bool, error) {}, 0, nil
 		},
+
+		sf: sf,
 		minedBlockHeights: arc,
 	}
 }
@@ -78,6 +81,7 @@ type Miner struct {
 
 	lastWork *MiningBase
 
+	sf *slashfilter.SlashFilter
 	minedBlockHeights *lru.ARCCache
 }
 
@@ -197,7 +201,11 @@ func (m *Miner) mine(ctx context.Context) {
 					"block-time", btime, "time", build.Clock.Now(), "difference", build.Clock.Since(btime))
 			}
 
-			// TODO: should do better 'anti slash' protection here
+			if err := m.sf.MinedBlock(b.Header, base.TipSet.Height()+base.NullRounds); err != nil {
+				log.Errorf("<!!> SLASH FILTER ERROR: %s", err)
+				continue
+			}
+
 			blkKey := fmt.Sprintf("%d", b.Header.Height)
 			if _, ok := m.minedBlockHeights.Get(blkKey); ok {
 				log.Warnw("Created a block at the same height as another block we've created", "height", b.Header.Height, "miner", b.Header.Miner, "parents", b.Header.Parents)
@@ -205,6 +213,7 @@ func (m *Miner) mine(ctx context.Context) {
 			}
 
 			m.minedBlockHeights.Add(blkKey, true)
+
 			if err := m.api.SyncSubmitBlock(ctx, b); err != nil {
 				log.Errorf("failed to submit newly mined block: %s", err)
 			}

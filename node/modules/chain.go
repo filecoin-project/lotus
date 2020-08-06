@@ -3,6 +3,7 @@ package modules
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
@@ -166,4 +167,8 @@ func NewSyncer(lc fx.Lifecycle, sm *stmgr.StateManager, bsync *blocksync.BlockSy
 		},
 	})
 	return syncer, nil
+}
+
+func NewSlashFilter(ds dtypes.MetadataDS) *slashfilter.SlashFilter {
+	return slashfilter.New(ds)
 }

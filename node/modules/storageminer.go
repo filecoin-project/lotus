@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/funds"
+	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"net/http"
 	"time"
 
@@ -311,13 +312,13 @@ func StagingGraphsync(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.Stagi
 	return gs
 }
 
-func SetupBlockProducer(lc fx.Lifecycle, ds dtypes.MetadataDS, api lapi.FullNode, epp gen.WinningPoStProver) (*miner.Miner, error) {
+func SetupBlockProducer(lc fx.Lifecycle, ds dtypes.MetadataDS, api lapi.FullNode, epp gen.WinningPoStProver, sf *slashfilter.SlashFilter) (*miner.Miner, error) {
 	minerAddr, err := minerAddrFromDS(ds)
 	if err != nil {
 		return nil, err
 	}
 
-	m := miner.NewMiner(api, epp, minerAddr)
+	m := miner.NewMiner(api, epp, minerAddr, sf)
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {

@@ -2,6 +2,7 @@ package full
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 
 	cid "github.com/ipfs/go-cid"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -18,6 +19,7 @@ import (
 type SyncAPI struct {
 	fx.In
 
+	SlashFilter *slashfilter.SlashFilter
 	Syncer  *chain.Syncer
 	PubSub  *pubsub.PubSub
 	NetName dtypes.NetworkName
@@ -44,6 +46,16 @@ func (a *SyncAPI) SyncState(ctx context.Context) (*api.SyncState, error) {
 }
 
 func (a *SyncAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) error {
+	parent, err := a.Syncer.ChainStore().GetBlock(blk.Header.Parents[0])
+	if err != nil {
+		return xerrors.Errorf("loading parent block: %w", err)
+	}
+
+	if err := a.SlashFilter.MinedBlock(blk.Header, parent.Height); err != nil {
+		log.Errorf("<!!> SLASH FILTER ERROR: %s", err)
+		return xerrors.Errorf("<!!> SLASH FILTER ERROR: %w", err)
+	}
+
 	// TODO: should we have some sort of fast path to adding a local block?
 	bmsgs, err := a.Syncer.ChainStore().LoadMessagesFromCids(blk.BlsMessages)
 	if err != nil {

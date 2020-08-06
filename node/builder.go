@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"errors"
+	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/markets/dealfilter"
 	"time"
 
@@ -214,6 +215,7 @@ func Online() Option {
 		libp2p(),
 
 		// common
+		Override(new(*slashfilter.SlashFilter), modules.NewSlashFilter),
 
 		// Full node
 
