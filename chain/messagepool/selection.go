@@ -41,9 +41,6 @@ func (mp *MessagePool) SelectMessages(ts *types.TipSet) ([]*types.SignedMessage,
 
 func (mp *MessagePool) selectMessages(curTs, ts *types.TipSet) ([]*types.SignedMessage, error) {
 	start := time.Now()
-	defer func() {
-		log.Infof("message selection took %s", time.Since(start))
-	}()
 
 	baseFee, err := mp.api.ChainComputeBaseFee(context.TODO(), ts)
 	if err != nil {
@@ -56,6 +53,14 @@ func (mp *MessagePool) selectMessages(curTs, ts *types.TipSet) ([]*types.SignedM
 	if err != nil {
 		return nil, err
 	}
+	if len(pending) == 0 {
+		return nil, nil
+	}
+
+	// defer only here so if we have no pending messages we don't spam
+	defer func() {
+		log.Infof("message selection took %s", time.Since(start))
+	}()
 
 	// 1. Create a list of dependent message chains with maximal gas reward per limit consumed
 	var chains []*msgChain
@@ -70,6 +75,9 @@ func (mp *MessagePool) selectMessages(curTs, ts *types.TipSet) ([]*types.SignedM
 	})
 	if len(chains) != 0 && chains[0].gasPerf < 0 {
 		log.Warnw("all messages in mpool have negative has performance", "bestGasPerf", chains[0].gasPerf)
+		//for i, m := range chains[0].msgs {
+		//log.Warnf("msg %d %+v", i, m.Message)
+		//}
 		return nil, nil
 	}
 
