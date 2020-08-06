@@ -293,8 +293,12 @@ func checkMessage(msg *types.Message) error {
 		return xerrors.Errorf("message has negative gas limit")
 	}
 
-	if msg.GasPrice == types.EmptyInt {
-		return xerrors.Errorf("message gas no gas price set")
+	if msg.GasFeeCap == types.EmptyInt {
+		return xerrors.Errorf("message fee cap not set")
+	}
+
+	if msg.GasPremium == types.EmptyInt {
+		return xerrors.Errorf("message gas premium not set")
 	}
 
 	if msg.Value == types.EmptyInt {
