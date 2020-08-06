@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -36,4 +37,42 @@ func TestGasBurn(t *testing.T) {
 			assert.Equal(t, test.burn, toBurn, "burned")
 		})
 	}
+}
+
+func TestGasOutputs(t *testing.T) {
+	baseFee := types.NewInt(10)
+	tests := []struct {
+		used  int64
+		limit int64
+
+		feeCap  uint64
+		premium uint64
+
+		BaseFeeBurn        uint64
+		OverEstimationBurn uint64
+		MinerPenalty       uint64
+		MinerTip           uint64
+		Refund             uint64
+	}{
+		{100, 110, 11, 1, 1000, 0, 0, 110, 100},
+		{100, 130, 11, 1, 1000, 60, 0, 130, 240},
+		{100, 110, 10, 1, 1000, 0, 0, 0, 100},
+		{100, 110, 6, 1, 600, 0, 400, 0, 60},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
+			output := ComputeGasOutputs(test.used, test.limit, baseFee, types.NewInt(test.feeCap), types.NewInt(test.premium))
+			i2s := func(i uint64) string {
+				return fmt.Sprintf("%d", i)
+			}
+			assert.Equal(t, i2s(test.BaseFeeBurn), output.BaseFeeBurn.String(), "BaseFeeBurn")
+			assert.Equal(t, i2s(test.OverEstimationBurn), output.OverEstimationBurn.String(), "OverEstimationBurn")
+			assert.Equal(t, i2s(test.MinerPenalty), output.MinerPenalty.String(), "MinerPenalty")
+			assert.Equal(t, i2s(test.MinerTip), output.MinerTip.String(), "MinerTip")
+			assert.Equal(t, i2s(test.Refund), output.Refund.String(), "Refund")
+		})
+	}
+
 }
