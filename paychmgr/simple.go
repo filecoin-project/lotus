@@ -400,20 +400,20 @@ func (ca *channelAccessor) waitAddFundsMsg(channelID string, mcid cid.Cid) error
 func (ca *channelAccessor) mutateChannelInfo(channelID string, mutate func(*ChannelInfo)) {
 	channelInfo, err := ca.store.ByChannelID(channelID)
 
-	// If there's an error reading or writing to the store just log an error.
+	// Panic if there's an error reading or writing to the store.
 	// For now we're assuming it's unlikely to happen in practice.
 	// Later we may want to implement a transactional approach, whereby
 	// we record to the store that we're going to send a message, send
 	// the message, and then record that the message was sent.
 	if err != nil {
-		log.Errorf("Error reading channel info from store: %s", err)
+		panic(fmt.Sprintf("Error reading channel info from store: %s", err))
 	}
 
 	mutate(channelInfo)
 
 	err = ca.store.putChannelInfo(channelInfo)
 	if err != nil {
-		log.Errorf("Error writing channel info to store: %s", err)
+		panic(fmt.Sprintf("Error writing channel info to store: %s", err))
 	}
 }
 
