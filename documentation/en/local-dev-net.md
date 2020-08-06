@@ -28,7 +28,7 @@ Create the genesis block and start up the first node:
 Then, in another console, import the genesis miner key:
 
 ```sh
-./lotus wallet import ~/.genesis-sectors/pre-seal-t01000.key
+./lotus wallet import --as-default ~/.genesis-sectors/pre-seal-t01000.key
 ```
 
 Set up the genesis miner:

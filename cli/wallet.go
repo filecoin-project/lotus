@@ -215,6 +215,10 @@ var walletImport = &cli.Command{
 			Usage: "specify input format for key",
 			Value: "hex-lotus",
 		},
+		&cli.BoolFlag{
+			Name:  "as-default",
+			Usage: "import the given key as your new default key",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -285,6 +289,12 @@ var walletImport = &cli.Command{
 		addr, err := api.WalletImport(ctx, &ki)
 		if err != nil {
 			return err
+		}
+
+		if cctx.Bool("as-default") {
+			if err := api.WalletSetDefault(ctx, addr); err != nil {
+				return fmt.Errorf("failed to set default key: %w", err)
+			}
 		}
 
 		fmt.Printf("imported key %s successfully!\n", addr)
