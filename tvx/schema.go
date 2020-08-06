@@ -3,8 +3,10 @@ package main
 import (
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/ipfs/go-cid"
 )
 
@@ -29,6 +31,8 @@ type Selector string
 type Metadata struct {
 	ID      string         `json:"id"`
 	Version string         `json:"version"`
+	Desc    string         `json:"description"`
+	Comment string         `json:"comment"`
 	Gen     GenerationData `json:"gen"`
 }
 
@@ -54,9 +58,17 @@ type Preconditions struct {
 	StateTree *StateTree     `json:"state_tree"`
 }
 
+// Receipt represents a receipt to match against.
+type Receipt struct {
+	ExitCode    exitcode.ExitCode `json:"exit_code"`
+	ReturnValue HexEncodedBytes   `json:"return"`
+	GasUsed     int64             `json:"gas_used"`
+}
+
 // Postconditions contain a representation of VM state at th end of the test
 type Postconditions struct {
 	StateTree *StateTree `json:"state_tree"`
+	Receipts  []*Receipt `json:"receipts"`
 }
 
 // MarshalJSON implements json.Marshal for HexEncodedBytes
@@ -93,4 +105,16 @@ type TestVector struct {
 	Pre           *Preconditions    `json:"preconditions"`
 	ApplyMessages []HexEncodedBytes `json:"apply_messages"`
 	Post          *Postconditions   `json:"postconditions"`
+}
+
+// Validate validates this test vector against the JSON schema, and applies
+// further validation rules that cannot be enforced through JSON Schema.
+func (tv TestVector) Validate() error {
+	// TODO validate against JSON Schema.
+	if tv.Class == ClassMessage {
+		if len(tv.Post.Receipts) != len(tv.ApplyMessages) {
+			return fmt.Errorf("length of postcondition receipts must match length of messages to apply")
+		}
+	}
+	return nil
 }

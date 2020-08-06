@@ -21,9 +21,19 @@
       "additionalProperties": false,
       "properties": {
         "id": {
+          "title": "a unique identifier that identifies this test vector",
           "type": "string"
         },
         "version": {
+          "title": "the version of this test vector",
+          "type": "string"
+        },
+        "description": {
+          "title": "an optional description of the test vector",
+          "type": "string"
+        },
+        "comment": {
+          "title": "optional comments about this test vector, e.g. applicability, hints, rationale, etc.",
           "type": "string"
         },
         "gen": {
@@ -68,6 +78,26 @@
         }
       }
     },
+    "receipt": {
+      "type": "object",
+      "required": [
+        "exit_code",
+        "return",
+        "gas_used"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "exit_code": {
+          "type": "number"
+        },
+        "return": {
+          "$ref": "#/definitions/hex"
+        },
+        "gas_used": {
+          "type": "number"
+        }
+      }
+    },
     "preconditions": {
       "title": "execution preconditions",
       "description": "preconditions that need to be applied and satisfied before this test vector can be executed",
@@ -92,18 +122,23 @@
           "title": "state tree postconditions",
           "description": "state tree postconditions that must be true for this test vector to pass",
           "$ref": "#/definitions/state_tree"
+        },
+        "receipts": {
+          "title": "receipts to match",
+          "description": "receipts to match, required when using messages-class test vectors; length of this array MUST be equal to length of apply_messages",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/receipt"
+          }
         }
       }
     },
     "apply_messages": {
-      "title": "messages to apply, hex-encoded",
+      "title": "messages to apply, along with the receipt to expect for each",
       "type": "array",
-      "items": [
-        {
-          "type": "string",
-          "$ref": "#/definitions/hex"
-        }
-      ]
+      "items": {
+        "$ref": "#/definitions/hex"
+      }
     }
   },
   "required": [
@@ -115,7 +150,7 @@
       "description": "test vector class; depending on the value, the apply_* property to provide (and its schema) will vary; the relevant apply property is apply_[class]",
       "type": "string",
       "enum": [
-        "message",
+        "messages",
         "block",
         "tipset",
         "chain"
@@ -146,7 +181,7 @@
       "if": {
         "properties": {
           "class": {
-            "const": "message"
+            "const": "messages"
           }
         }
       },
