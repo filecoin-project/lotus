@@ -117,7 +117,7 @@ tailLoop:
 				continue
 			}
 			// this chain needs to be trimmed
-			last = i
+			last += i
 			continue tailLoop
 		}
 
