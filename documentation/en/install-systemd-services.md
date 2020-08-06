@@ -8,7 +8,7 @@ The services expect their binaries to be present in `/usr/local/bin/`. You can u
 $ sudo make install
 ```
 
-for `lotus(-daemon)` and `lotus-storage-miner` and 
+for `lotus` and `lotus-storage-miner` and 
 
 ```sh
 $ sudo make install-chainwatch
@@ -50,9 +50,9 @@ $ sudo make install-miner-service
 
 ### Notes
 
-When nstalling the `lotus-miner` and/or `lotus-chainwatch` service the `lotus-daemon` service gets automatically installed since the other two services depend on it being installed to run.
+When installing the `lotus-miner` and/or `lotus-chainwatch` service the `lotus-daemon` service gets automatically installed since the other two services depend on it being installed to run.
 
-All `install *service*` commands will install the latest binaries in the lotus build folders to `/usr/local/bin/`. If you do not want to use the latest build binaries please copy the `*.service` files by hand.
+All `install-*-service*` commands will install the latest binaries in the lotus build folders to `/usr/local/bin/`. If you do not want to use the latest build binaries please copy the `*.service` files by hand.
 
 ## Removing via `make`
 
@@ -72,11 +72,20 @@ $ sudo make clean-daemon-services
 
 ### Notes
 
-Removing the `lotus-daemon` service will automatically remove the depending services `lotus-miner` and `lotus-chainwatch`
+The services will be stoppend and disabled when removed.
+
+Removing the `lotus-daemon` service will automatically remove the depending services `lotus-miner` and `lotus-chainwatch`.
 
 
 ## Controlling services
-### Start/Stop
+
+All service can be controlled with the `systemctl`. A few basic control commands are listed below. To get detailed infos about the cpabilities of the `systemctl` command please consult your distributions man pages by running: 
+
+```sh
+$ man systemctl
+```
+
+### Start/Stop services
 
 You can start the services by running:
 
@@ -113,7 +122,7 @@ $ sudo systemctl disable lotus-chainwatch
 ```
 ### Notes
 
-Systemd will not let services be enabled or started without their dependencies. Starting the `lotus-chainwatch` and/or `lotus-miner` service with automatically start the `lotus-daemon` service (if installed!). Stopping the `lotus-daemon` service will stop the other two services. The same pattern is executed for enabling and disabling the services. 
+Systemd will not let services be enabled or started without their requirements. Starting the `lotus-chainwatch` and/or `lotus-miner` service with automatically start the `lotus-daemon` service (if installed!). Stopping the `lotus-daemon` service will stop the other two services. The same pattern is executed for enabling and disabling the services. 
 
 ## Interacting with service logs
 
