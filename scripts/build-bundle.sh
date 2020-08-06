@@ -45,8 +45,8 @@ do
     popd
     rm -rf "${ARCH}"
 
-    sha512sum "lotus_${CIRCLE_TAG}_${ARCH}-amd64.tar.gz" | cut -d" " -f1 > "lotus_${CIRCLE_TAG}_${ARCH}-amd64.tar.gz.sha512"
+    sha512sum "lotus_${CIRCLE_TAG}_${ARCH}-amd64.tar.gz" > "lotus_${CIRCLE_TAG}_${ARCH}-amd64.tar.gz.sha512"
 
-    ipfs add "lotus_${CIRCLE_TAG}_${ARCH}-amd64.tar.gz" | cut -d" " -f2 > "lotus_${CIRCLE_TAG}_${ARCH}-amd64.tar.gz.cid"
+    ipfs add -q "lotus_${CIRCLE_TAG}_${ARCH}-amd64.tar.gz" > "lotus_${CIRCLE_TAG}_${ARCH}-amd64.tar.gz.cid"
 done
 popd
