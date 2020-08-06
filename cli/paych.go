@@ -58,12 +58,20 @@ var paychGetCmd = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
+		// Send a message to chain to create channel / add funds to existing
+		// channel
 		info, err := api.PaychGet(ctx, from, to, types.BigInt(amt))
 		if err != nil {
 			return err
 		}
 
-		fmt.Println(info.Channel.String())
+		// Wait for the message to be confirmed
+		chAddr, err := api.PaychGetWaitReady(ctx, info.ChannelMessage)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println(chAddr)
 		return nil
 	},
 }
