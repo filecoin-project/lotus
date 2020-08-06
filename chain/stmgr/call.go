@@ -22,7 +22,17 @@ func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate 
 	ctx, span := trace.StartSpan(ctx, "statemanager.CallRaw")
 	defer span.End()
 
-	vmi, err := vm.NewVM(bstate, bheight, r, sm.cs.Blockstore(), sm.cs.VMSys(), sm.GetVestedFunds)
+	vmopt := &vm.VMOpts{
+		StateBase:  bstate,
+		Epoch:      bheight,
+		Rand:       r,
+		Bstore:     sm.cs.Blockstore(),
+		Syscalls:   sm.cs.VMSys(),
+		VestedCalc: sm.GetVestedFunds,
+		BaseFee:    types.NewInt(0),
+	}
+
+	vmi, err := vm.NewVM(vmopt)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to set up vm: %w", err)
 	}
@@ -106,7 +116,16 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 		)
 	}
 
-	vmi, err := vm.NewVM(state, ts.Height(), r, sm.cs.Blockstore(), sm.cs.VMSys(), sm.GetVestedFunds)
+	vmopt := &vm.VMOpts{
+		StateBase:  state,
+		Epoch:      ts.Height(),
+		Rand:       r,
+		Bstore:     sm.cs.Blockstore(),
+		Syscalls:   sm.cs.VMSys(),
+		VestedCalc: sm.GetVestedFunds,
+		BaseFee:    ts.Blocks()[0].ParentBaseFee,
+	}
+	vmi, err := vm.NewVM(vmopt)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to set up vm: %w", err)
 	}

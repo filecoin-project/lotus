@@ -3,8 +3,9 @@ package stmgr
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	"sync"
+
+	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
@@ -14,7 +15,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
-	"github.com/filecoin-project/lotus/lib/blockstore"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
@@ -41,7 +41,7 @@ type StateManager struct {
 	compWait      map[string]chan struct{}
 	stlk          sync.Mutex
 	genesisMsigLk sync.Mutex
-	newVM         func(cid.Cid, abi.ChainEpoch, vm.Rand, blockstore.Blockstore, vm.SyscallBuilder, vm.VestedCalculator) (*vm.VM, error)
+	newVM         func(*vm.VMOpts) (*vm.VM, error)
 	genesisMsigs  []multisig.State
 }
 
@@ -150,8 +150,19 @@ type BlockMessages struct {
 
 type ExecCallback func(cid.Cid, *types.Message, *vm.ApplyRet) error
 
-func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEpoch, pstate cid.Cid, bms []BlockMessages, epoch abi.ChainEpoch, r vm.Rand, cb ExecCallback) (cid.Cid, cid.Cid, error) {
-	vmi, err := sm.newVM(pstate, epoch, r, sm.cs.Blockstore(), sm.cs.VMSys(), sm.GetVestedFunds)
+func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEpoch, pstate cid.Cid, bms []BlockMessages, epoch abi.ChainEpoch, r vm.Rand, cb ExecCallback, baseFee abi.TokenAmount) (cid.Cid, cid.Cid, error) {
+
+	vmopt := &vm.VMOpts{
+		StateBase:  pstate,
+		Epoch:      epoch,
+		Rand:       r,
+		Bstore:     sm.cs.Blockstore(),
+		Syscalls:   sm.cs.VMSys(),
+		VestedCalc: sm.GetVestedFunds,
+		BaseFee:    baseFee,
+	}
+
+	vmi, err := sm.newVM(vmopt)
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("instantiating VM failed: %w", err)
 	}
@@ -354,8 +365,9 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 
 		blkmsgs = append(blkmsgs, bm)
 	}
+	baseFee := blks[0].ParentBaseFee
 
-	return sm.ApplyBlocks(ctx, parentEpoch, pstate, blkmsgs, blks[0].Height, r, cb)
+	return sm.ApplyBlocks(ctx, parentEpoch, pstate, blkmsgs, blks[0].Height, r, cb, baseFee)
 }
 
 func (sm *StateManager) parentState(ts *types.TipSet) cid.Cid {
@@ -764,7 +776,7 @@ func (sm *StateManager) ValidateChain(ctx context.Context, ts *types.TipSet) err
 	return nil
 }
 
-func (sm *StateManager) SetVMConstructor(nvm func(cid.Cid, abi.ChainEpoch, vm.Rand, blockstore.Blockstore, vm.SyscallBuilder, vm.VestedCalculator) (*vm.VM, error)) {
+func (sm *StateManager) SetVMConstructor(nvm func(*vm.VMOpts) (*vm.VM, error)) {
 	sm.newVM = nvm
 }
 

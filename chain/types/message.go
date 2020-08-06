@@ -32,10 +32,13 @@ type Message struct {
 
 	Nonce uint64
 
-	Value BigInt
+	Value abi.TokenAmount
 
-	GasPrice BigInt
-	GasLimit int64
+	// TODO: remove
+	GasPrice   BigInt
+	GasLimit   int64
+	GasFeeCap  abi.TokenAmount
+	GasPremium abi.TokenAmount
 
 	Method abi.MethodNum
 	Params []byte
@@ -106,7 +109,7 @@ func (m *Message) Cid() cid.Cid {
 }
 
 func (m *Message) RequiredFunds() BigInt {
-	return BigMul(m.GasPrice, NewInt(uint64(m.GasLimit)))
+	return BigMul(m.GasFeeCap, NewInt(uint64(m.GasLimit)))
 }
 
 func (m *Message) VMMessage() *Message {

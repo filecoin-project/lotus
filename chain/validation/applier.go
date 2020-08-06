@@ -2,6 +2,7 @@ package validation
 
 import (
 	"context"
+
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -89,6 +90,7 @@ func (a *Applier) ApplyTipSetMessages(epoch abi.ChainEpoch, blocks []vtypes.Bloc
 	}
 
 	var receipts []vtypes.MessageReceipt
+	// TODO: base fee
 	sroot, _, err := sm.ApplyBlocks(context.TODO(), epoch-1, a.stateWrapper.Root(), bms, epoch, &randWrapper{rnd}, func(c cid.Cid, msg *types.Message, ret *vm.ApplyRet) error {
 		if msg.From == builtin.SystemActorAddr {
 			return nil // ignore reward and cron calls
@@ -104,7 +106,7 @@ func (a *Applier) ApplyTipSetMessages(epoch abi.ChainEpoch, blocks []vtypes.Bloc
 			GasUsed: vtypes.GasUnits(ret.GasUsed),
 		})
 		return nil
-	})
+	}, abi.NewTokenAmount(0))
 	if err != nil {
 		return vtypes.ApplyTipSetResult{}, err
 	}
@@ -136,7 +138,17 @@ func (a *Applier) applyMessage(epoch abi.ChainEpoch, lm types.ChainMsg) (vtypes.
 	ctx := context.TODO()
 	base := a.stateWrapper.Root()
 
-	lotusVM, err := vm.NewVM(base, epoch, &vmRand{}, a.stateWrapper.bs, a.syscalls, nil)
+	vmopt := &vm.VMOpts{
+		StateBase:  base,
+		Epoch:      epoch,
+		Rand:       &vmRand{},
+		Bstore:     a.stateWrapper.bs,
+		Syscalls:   a.syscalls,
+		VestedCalc: nil,
+		BaseFee:    types.NewInt(0), // TODO: basefee
+	}
+
+	lotusVM, err := vm.NewVM(vmopt)
 	// need to modify the VM invoker to add the puppet actor
 	chainValInvoker := vm.NewInvoker()
 	chainValInvoker.Register(puppet.PuppetActorCodeID, puppet.Actor{}, puppet.State{})

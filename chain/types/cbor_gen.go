@@ -16,7 +16,7 @@ import (
 
 var _ = xerrors.Errorf
 
-var lengthBufBlockHeader = []byte{143}
+var lengthBufBlockHeader = []byte{144}
 
 func (t *BlockHeader) MarshalCBOR(w io.Writer) error {
 	if t == nil {
@@ -142,6 +142,10 @@ func (t *BlockHeader) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
+	// t.ParentBaseFee (big.Int) (struct)
+	if err := t.ParentBaseFee.MarshalCBOR(w); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -159,7 +163,7 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 15 {
+	if extra != 16 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -440,6 +444,15 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 		t.ForkSignaling = uint64(extra)
 
 	}
+	// t.ParentBaseFee (big.Int) (struct)
+
+	{
+
+		if err := t.ParentBaseFee.UnmarshalCBOR(br); err != nil {
+			return xerrors.Errorf("unmarshaling t.ParentBaseFee: %w", err)
+		}
+
+	}
 	return nil
 }
 
@@ -619,7 +632,7 @@ func (t *ElectionProof) UnmarshalCBOR(r io.Reader) error {
 	return nil
 }
 
-var lengthBufMessage = []byte{137}
+var lengthBufMessage = []byte{139}
 
 func (t *Message) MarshalCBOR(w io.Writer) error {
 	if t == nil {
@@ -680,6 +693,16 @@ func (t *Message) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
+	// t.GasFeeCap (big.Int) (struct)
+	if err := t.GasFeeCap.MarshalCBOR(w); err != nil {
+		return err
+	}
+
+	// t.GasPremium (big.Int) (struct)
+	if err := t.GasPremium.MarshalCBOR(w); err != nil {
+		return err
+	}
+
 	// t.Method (abi.MethodNum) (uint64)
 
 	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajUnsignedInt, uint64(t.Method)); err != nil {
@@ -715,7 +738,7 @@ func (t *Message) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 9 {
+	if extra != 11 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -818,6 +841,24 @@ func (t *Message) UnmarshalCBOR(r io.Reader) error {
 		}
 
 		t.GasLimit = int64(extraI)
+	}
+	// t.GasFeeCap (big.Int) (struct)
+
+	{
+
+		if err := t.GasFeeCap.UnmarshalCBOR(br); err != nil {
+			return xerrors.Errorf("unmarshaling t.GasFeeCap: %w", err)
+		}
+
+	}
+	// t.GasPremium (big.Int) (struct)
+
+	{
+
+		if err := t.GasPremium.UnmarshalCBOR(br); err != nil {
+			return xerrors.Errorf("unmarshaling t.GasPremium: %w", err)
+		}
+
 	}
 	// t.Method (abi.MethodNum) (uint64)
 

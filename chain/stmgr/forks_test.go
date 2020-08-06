@@ -25,11 +25,9 @@ import (
 	. "github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
-	"github.com/filecoin-project/lotus/lib/blockstore"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
 
-	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -151,8 +149,8 @@ func TestForkHeightTriggers(t *testing.T) {
 	}
 
 	inv.Register(builtin.PaymentChannelActorCodeID, &testActor{}, &testActorState{})
-	sm.SetVMConstructor(func(c cid.Cid, h abi.ChainEpoch, r vm.Rand, b blockstore.Blockstore, s vm.SyscallBuilder, vc vm.VestedCalculator) (*vm.VM, error) {
-		nvm, err := vm.NewVM(c, h, r, b, s, sm.GetVestedFunds)
+	sm.SetVMConstructor(func(vmopt *vm.VMOpts) (*vm.VM, error) {
+		nvm, err := vm.NewVM(vmopt)
 		if err != nil {
 			return nil, err
 		}

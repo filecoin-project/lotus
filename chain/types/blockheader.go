@@ -65,6 +65,9 @@ type BlockHeader struct {
 
 	ForkSignaling uint64 // 14
 
+	// ParentBaseFee is the base fee after executing parent tipset
+	ParentBaseFee abi.TokenAmount // 15
+
 	// internal
 	validated bool // true if the signature has been validated
 }

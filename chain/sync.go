@@ -698,6 +698,18 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) (er
 		}
 		return nil
 	})
+
+	baseFeeCheck := async.Err(func() error {
+		baseFee, err := syncer.store.ComputeBaseFee(ctx, baseTs)
+		if err != nil {
+			return xerrors.Errorf("computing base fee: %w", err)
+		}
+		if types.BigCmp(baseFee, b.Header.ParentBaseFee) != 0 {
+			return xerrors.Errorf("base fee doesn't match: %s (header) != %s (computed)",
+				b.Header.ParentBaseFee, baseFee)
+		}
+		return nil
+	})
 	pweight, err := syncer.store.Weight(ctx, baseTs)
 	if err != nil {
 		return xerrors.Errorf("getting parent weight: %w", err)
@@ -850,6 +862,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) (er
 		wproofCheck,
 		winnerCheck,
 		msgsCheck,
+		baseFeeCheck,
 	}
 
 	var merr error

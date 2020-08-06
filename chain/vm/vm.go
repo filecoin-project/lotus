@@ -7,6 +7,8 @@ import (
 	"reflect"
 	"time"
 
+	bstore "github.com/filecoin-project/lotus/lib/blockstore"
+
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 
 	block "github.com/ipfs/go-block-format"
@@ -149,28 +151,40 @@ type VM struct {
 	inv         *Invoker
 	rand        Rand
 	vc          VestedCalculator
+	baseFee     abi.TokenAmount
 
 	Syscalls SyscallBuilder
 }
 
-func NewVM(base cid.Cid, height abi.ChainEpoch, r Rand, cbs blockstore.Blockstore, syscalls SyscallBuilder, vestedCalc VestedCalculator) (*VM, error) {
-	buf := bufbstore.NewBufferedBstore(cbs)
+type VMOpts struct {
+	StateBase  cid.Cid
+	Epoch      abi.ChainEpoch
+	Rand       Rand
+	Bstore     bstore.Blockstore
+	Syscalls   SyscallBuilder
+	VestedCalc VestedCalculator
+	BaseFee    abi.TokenAmount
+}
+
+func NewVM(opts *VMOpts) (*VM, error) {
+	buf := bufbstore.NewBufferedBstore(opts.Bstore)
 	cst := cbor.NewCborStore(buf)
-	state, err := state.LoadStateTree(cst, base)
+	state, err := state.LoadStateTree(cst, opts.StateBase)
 	if err != nil {
 		return nil, err
 	}
 
 	return &VM{
 		cstate:      state,
-		base:        base,
+		base:        opts.StateBase,
 		cst:         cst,
 		buf:         buf,
-		blockHeight: height,
+		blockHeight: opts.Epoch,
 		inv:         NewInvoker(),
-		rand:        r, // TODO: Probably should be a syscall
-		vc:          vestedCalc,
-		Syscalls:    syscalls,
+		rand:        opts.Rand, // TODO: Probably should be a syscall
+		vc:          opts.VestedCalc,
+		Syscalls:    opts.Syscalls,
+		baseFee:     opts.BaseFee,
 	}, nil
 }
 

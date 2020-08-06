@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/filecoin-project/lotus/chain/state"
 	"math/rand"
+
+	"github.com/filecoin-project/lotus/chain/state"
 
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -60,7 +61,17 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 		return big.Zero(), nil
 	}
 
-	vm, err := vm.NewVM(sroot, 0, &fakeRand{}, cs.Blockstore(), mkFakedSigSyscalls(cs.VMSys()), vc)
+	vmopt := &vm.VMOpts{
+		StateBase:  sroot,
+		Epoch:      0,
+		Rand:       &fakeRand{},
+		Bstore:     cs.Blockstore(),
+		Syscalls:   mkFakedSigSyscalls(cs.VMSys()),
+		VestedCalc: vc,
+		BaseFee:    types.NewInt(0),
+	}
+
+	vm, err := vm.NewVM(vmopt)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to create NewVM: %w", err)
 	}
