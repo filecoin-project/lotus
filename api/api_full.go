@@ -144,7 +144,6 @@ type FullNode interface {
 	// manages all incoming and outgoing 'messages' going over the network.
 
 	// MpoolPending returns pending mempool messages.
-	// Deprecated: use MpoolSelect instead
 	MpoolPending(context.Context, types.TipSetKey) ([]*types.SignedMessage, error)
 
 	// MpoolSelect returns a list of pending messages for inclusion in the next block
