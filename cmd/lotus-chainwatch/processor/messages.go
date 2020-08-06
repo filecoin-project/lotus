@@ -30,9 +30,9 @@ create table if not exists messages
 	"to" text not null,
 	nonce bigint not null,
 	value text not null,
-	gasfeecap bigint not null,
-	gaspremium bigint not null,
-	gaslimit bigint not null,
+	gas_fee_cap bigint not null,
+	gas_premium bigint not null,
+	gas_limit bigint not null,
 	method bigint,
 	params bytea
 );
@@ -220,7 +220,7 @@ create temp table msgs (like messages excluding constraints) on commit drop;
 		return xerrors.Errorf("prep temp: %w", err)
 	}
 
-	stmt, err := tx.Prepare(`copy msgs (cid, "from", "to", nonce, "value", gaspremium, gasfeecap gaslimit, method, params) from stdin `)
+	stmt, err := tx.Prepare(`copy msgs (cid, "from", "to", nonce, "value", gas_premium, gas_fee_cap, gas_limit, method, params) from stdin `)
 	if err != nil {
 		return err
 	}
@@ -232,8 +232,8 @@ create temp table msgs (like messages excluding constraints) on commit drop;
 			m.To.String(),
 			m.Nonce,
 			m.Value.String(),
-			m.GasFeeCap.String(),
 			m.GasPremium.String(),
+			m.GasFeeCap.String(),
 			m.GasLimit,
 			m.Method,
 			m.Params,
