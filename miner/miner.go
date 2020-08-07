@@ -181,12 +181,12 @@ func (m *Miner) mine(ctx context.Context) {
 				continue
 			}
 
-			// just wait for the beacon entry to become available before we select our final mining base
+			/*// just wait for the beacon entry to become available before we select our final mining base
 			_, err = m.api.BeaconGetEntry(ctx, prebase.TipSet.Height()+prebase.NullRounds+1)
 			if err != nil {
 				log.Errorf("failed getting beacon entry: %s", err)
 				continue
-			}
+			}*/
 
 			base = prebase
 		}
@@ -396,7 +396,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*types.BlockMsg,
 
 	tCreateBlock := build.Clock.Now()
 	dur := tCreateBlock.Sub(start)
-	log.Infow("mined new block", "cid", b.Cid(), "height", b.Header.Height, "took", dur)
+	log.Infow("mined new block", "cid", b.Cid(), "height", b.Header.Height, "miner", b.Header.Miner, "parents", len(b.Header.Parents), "took", dur)
 	if dur > time.Second*time.Duration(build.BlockDelaySecs) {
 		log.Warnw("CAUTION: block production took longer than the block delay. Your computer may not be fast enough to keep up",
 			"tMinerBaseInfo ", tMBI.Sub(start),
