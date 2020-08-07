@@ -88,7 +88,7 @@ const VerifSigCacheSize = 32000
 // Limits
 
 // TODO: If this is gonna stay, it should move to specs-actors
-const BlockMessageLimit = 512
+const BlockMessageLimit = 10000
 const BlockGasLimit = 10_000_000_000
 const BlockGasTarget = BlockGasLimit / 2
 const BaseFeeMaxChangeDenom = 8 // 12.5%
