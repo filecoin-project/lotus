@@ -22,7 +22,7 @@ func init() {
 }
 
 func testGeneration(t testing.TB, n int, msgs int, sectors int) {
-	g, err := NewGeneratorWithSectors(sectors)
+	g, err := NewGeneratorWithSectors(sectors, nil)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
