@@ -1,6 +1,8 @@
 package messagepool
 
 import (
+	"time"
+
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -8,6 +10,7 @@ var (
 	ReplaceByFeeRatioDefault  = 1.25
 	MemPoolSizeLimitHiDefault = 30000
 	MemPoolSizeLimitLoDefault = 20000
+	PruneCooldownDefault      = time.Minute
 )
 
 func (mp *MessagePool) GetConfig() *types.MpoolConfig {
@@ -29,5 +32,6 @@ func DefaultConfig() *types.MpoolConfig {
 		SizeLimitHigh:     MemPoolSizeLimitHiDefault,
 		SizeLimitLow:      MemPoolSizeLimitLoDefault,
 		ReplaceByFeeRatio: ReplaceByFeeRatioDefault,
+		PruneCooldown:     PruneCooldownDefault,
 	}
 }

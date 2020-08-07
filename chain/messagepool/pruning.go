@@ -23,7 +23,17 @@ func (mp *MessagePool) pruneExcessMessages() error {
 		return nil
 	}
 
-	return mp.pruneMessages(context.TODO(), ts)
+	select {
+	case <-mp.pruneCooldown:
+		err := mp.pruneMessages(context.TODO(), ts)
+		go func() {
+			time.Sleep(mp.cfg.PruneCooldown)
+			mp.pruneCooldown <- struct{}{}
+		}()
+		return err
+	default:
+		return xerrors.New("cannot prune before cooldown")
+	}
 }
 
 func (mp *MessagePool) pruneMessages(ctx context.Context, ts *types.TipSet) error {

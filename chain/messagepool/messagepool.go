@@ -91,6 +91,9 @@ type MessagePool struct {
 	// pruneTrigger is a channel used to trigger a mempool pruning
 	pruneTrigger chan struct{}
 
+	// pruneCooldown is a channel used to allow a cooldown time between prunes
+	pruneCooldown chan struct{}
+
 	blsSigCache *lru.TwoQueueCache
 
 	changes *lps.PubSub
@@ -209,22 +212,26 @@ func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName) (*Messa
 	cfg := DefaultConfig()
 
 	mp := &MessagePool{
-		closer:       make(chan struct{}),
-		repubTk:      build.Clock.Ticker(time.Duration(build.BlockDelaySecs) * 10 * time.Second),
-		localAddrs:   make(map[address.Address]struct{}),
-		pending:      make(map[address.Address]*msgSet),
-		minGasPrice:  types.NewInt(0),
-		pruneTrigger: make(chan struct{}, 1),
-		blsSigCache:  cache,
-		sigValCache:  verifcache,
-		changes:      lps.New(50),
-		localMsgs:    namespace.Wrap(ds, datastore.NewKey(localMsgsDs)),
-		api:          api,
-		netName:      netName,
-		cfg:          cfg,
-		rbfNum:       types.NewInt(uint64((cfg.ReplaceByFeeRatio - 1) * RbfDenom)),
-		rbfDenom:     types.NewInt(RbfDenom),
+		closer:        make(chan struct{}),
+		repubTk:       build.Clock.Ticker(time.Duration(build.BlockDelaySecs) * 10 * time.Second),
+		localAddrs:    make(map[address.Address]struct{}),
+		pending:       make(map[address.Address]*msgSet),
+		minGasPrice:   types.NewInt(0),
+		pruneTrigger:  make(chan struct{}, 1),
+		pruneCooldown: make(chan struct{}, 1),
+		blsSigCache:   cache,
+		sigValCache:   verifcache,
+		changes:       lps.New(50),
+		localMsgs:     namespace.Wrap(ds, datastore.NewKey(localMsgsDs)),
+		api:           api,
+		netName:       netName,
+		cfg:           cfg,
+		rbfNum:        types.NewInt(uint64((cfg.ReplaceByFeeRatio - 1) * RbfDenom)),
+		rbfDenom:      types.NewInt(RbfDenom),
 	}
+
+	// enable initial prunes
+	mp.pruneCooldown <- struct{}{}
 
 	if err := mp.loadLocal(); err != nil {
 		log.Errorf("loading local messages: %+v", err)
@@ -249,10 +256,12 @@ func (mp *MessagePool) Close() error {
 }
 
 func (mp *MessagePool) Prune() {
-	//so, its a single slot buffered channel. The first send fills the channel,
-	//the second send goes through when the pruning starts,
-	//and the third send goes through (and noops) after the pruning finishes
-	//and goes through the loop again
+	// this magic incantation of triggering prune thrice is here to make the Prune method
+	// synchronous:
+	// so, its a single slot buffered channel. The first send fills the channel,
+	// the second send goes through when the pruning starts,
+	// and the third send goes through (and noops) after the pruning finishes
+	// and goes through the loop again
 	mp.pruneTrigger <- struct{}{}
 	mp.pruneTrigger <- struct{}{}
 	mp.pruneTrigger <- struct{}{}
