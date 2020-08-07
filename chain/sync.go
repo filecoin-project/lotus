@@ -1353,7 +1353,7 @@ func (syncer *Syncer) syncFork(ctx context.Context, incoming *types.TipSet, know
 			if !syncer.Genesis.Equals(nts) {
 				return nil, xerrors.Errorf("somehow synced chain that linked back to a different genesis (bad genesis: %s)", nts.Key())
 			}
-			return nil, xerrors.Errorf("synced chain forked at genesis, refusing to sync; incoming: %s")
+			return nil, xerrors.Errorf("synced chain forked at genesis, refusing to sync; incoming: %s", incoming.Cids())
 		}
 
 		if nts.Equals(tips[cur]) {
