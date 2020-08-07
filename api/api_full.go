@@ -116,7 +116,7 @@ type FullNode interface {
 	BeaconGetEntry(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error)
 
 	// GasEstimateFeeCap estimates gas fee cap
-	GasEstimateFeeCap(context.Context, int64, types.TipSetKey) (types.BigInt, error)
+	GasEstimateFeeCap(context.Context, *types.Message, int64, types.TipSetKey) (types.BigInt, error)
 
 	// GasEstimateGasLimit estimates gas used by the message and returns it.
 	// It fails if message fails to execute.

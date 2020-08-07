@@ -27,17 +27,35 @@ type GasAPI struct {
 }
 
 const MinGasPremium = 10e3
-const BaseFeeEstimNBlocks = 20
+const MaxSpendOnFeeDenom = 100
 
-func (a *GasAPI) GasEstimateFeeCap(ctx context.Context, maxqueueblks int64,
+func (a *GasAPI) GasEstimateFeeCap(ctx context.Context, msg *types.Message, maxqueueblks int64,
 	tsk types.TipSetKey) (types.BigInt, error) {
 	ts := a.Chain.GetHeaviestTipSet()
 
-	parentBaseFee := ts.Blocks()[0].ParentBaseFee
-	increaseFactor := math.Pow(1+float64(1/build.BaseFeeMaxChangeDenom), BaseFeeEstimNBlocks)
+	var act types.Actor
+	err := a.Stmgr.WithParentState(ts, a.Stmgr.WithActor(msg.From, stmgr.GetActor(&act)))
+	if err != nil {
+		return types.NewInt(0), xerrors.Errorf("getting actor: %w", err)
+	}
 
-	out := types.BigMul(parentBaseFee, types.NewInt(uint64(increaseFactor*(1<<8))))
-	out = types.BigDiv(out, types.NewInt(1<<8))
+	parentBaseFee := ts.Blocks()[0].ParentBaseFee
+	increaseFactor := math.Pow(1+float64(1/build.BaseFeeMaxChangeDenom), float64(maxqueueblks))
+
+	feeInFuture := types.BigMul(parentBaseFee, types.NewInt(uint64(increaseFactor*(1<<8))))
+	feeInFuture = types.BigDiv(feeInFuture, types.NewInt(1<<8))
+
+	gasLimitBig := types.NewInt(uint64(msg.GasLimit))
+	maxAccepted := types.BigDiv(act.Balance, types.NewInt(MaxSpendOnFeeDenom))
+	expectedFee := types.BigMul(feeInFuture, gasLimitBig)
+
+	out := feeInFuture
+	if types.BigCmp(expectedFee, maxAccepted) > 0 {
+		log.Warnf("Expected fee for message higher than tolerance: %s > %s, setting to tolerance",
+			types.FIL(expectedFee), types.FIL(maxAccepted))
+		out = types.BigDiv(maxAccepted, gasLimitBig)
+	}
+
 	return out, nil
 }
 
