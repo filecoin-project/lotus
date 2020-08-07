@@ -164,6 +164,12 @@ func NewWinningPoStProver(api api.FullNode, prover storage.Prover, verifier ffiw
 		return nil, err
 	}
 
+	if build.InsecurePoStValidation {
+		log.Warn("*****************************************************************************")
+		log.Warn(" Generating fake PoSt proof! You should only see this while running tests! ")
+		log.Warn("*****************************************************************************")
+	}
+
 	return &StorageWpp{prover, verifier, abi.ActorID(miner), wpt}, nil
 }
 
@@ -182,7 +188,6 @@ func (wpp *StorageWpp) GenerateCandidates(ctx context.Context, randomness abi.Po
 
 func (wpp *StorageWpp) ComputeProof(ctx context.Context, ssi []abi.SectorInfo, rand abi.PoStRandomness) ([]abi.PoStProof, error) {
 	if build.InsecurePoStValidation {
-		log.Warn("[INSECURE-POST-VALIDATION] Generating fake PoSt proof! You should only see this while running tests!")
 		return []abi.PoStProof{{ProofBytes: []byte("valid proof")}}, nil
 	}
 
