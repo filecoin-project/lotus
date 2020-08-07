@@ -112,6 +112,7 @@ create table if not exists blocks
 	ticket bytea not null,
 	election_proof bytea,
 	win_count bigint,
+	parent_base_fee text not null,
 	forksig bigint not null
 );
 
@@ -402,7 +403,7 @@ create temp table b (like blocks excluding constraints) on commit drop;
 		}
 	}
 
-	stmt2, err := tx.Prepare(`copy b (cid, parentWeight, parentStateRoot, height, miner, "timestamp", ticket, election_proof, win_count, forksig) from stdin`)
+	stmt2, err := tx.Prepare(`copy b (cid, parentWeight, parentStateRoot, height, miner, "timestamp", ticket, election_proof, win_count, parent_base_fee, forksig) from stdin`)
 	if err != nil {
 		return err
 	}
@@ -432,6 +433,7 @@ create temp table b (like blocks excluding constraints) on commit drop;
 			bh.Ticket.VRFProof,
 			eproof,
 			winCount,
+			bh.ParentBaseFee.String(),
 			bh.ForkSignaling); err != nil {
 			log.Error(err)
 		}
