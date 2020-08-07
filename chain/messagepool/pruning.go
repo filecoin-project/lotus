@@ -5,6 +5,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
@@ -38,10 +39,26 @@ func (mp *MessagePool) pruneMessages(ctx context.Context, ts *types.TipSet) erro
 
 	pending, _ := mp.getPendingMessages(ts, ts)
 
+	// priority actors -- not pruned
+	priority := make(map[address.Address]struct{})
+	for _, actor := range mp.cfg.PriorityAddrs {
+		priority[actor] = struct{}{}
+	}
+
 	// Collect all messages to track which ones to remove and create chains for block inclusion
 	pruneMsgs := make(map[cid.Cid]*types.SignedMessage, mp.currentSize)
+	keepCount := 0
+
 	var chains []*msgChain
 	for actor, mset := range pending {
+		// we never prune priority actors
+		_, keep := priority[actor]
+		if keep {
+			keepCount += len(mset)
+			continue
+		}
+
+		// not a priority actor, track the messages and create chains
 		for _, m := range mset {
 			pruneMsgs[m.Message.Cid()] = m
 		}
@@ -56,7 +73,6 @@ func (mp *MessagePool) pruneMessages(ctx context.Context, ts *types.TipSet) erro
 
 	// Keep messages (remove them from pruneMsgs) from chains while we are under the low water mark
 	loWaterMark := mp.cfg.SizeLimitLow
-	keepCount := 0
 keepLoop:
 	for _, chain := range chains {
 		for _, m := range chain.msgs {
