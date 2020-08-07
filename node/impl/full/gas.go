@@ -40,7 +40,7 @@ func (a *GasAPI) GasEstimateFeeCap(ctx context.Context, msg *types.Message, maxq
 	}
 
 	parentBaseFee := ts.Blocks()[0].ParentBaseFee
-	increaseFactor := math.Pow(1+float64(1/build.BaseFeeMaxChangeDenom), float64(maxqueueblks))
+	increaseFactor := math.Pow(1.+1./float64(build.BaseFeeMaxChangeDenom), float64(maxqueueblks))
 
 	feeInFuture := types.BigMul(parentBaseFee, types.NewInt(uint64(increaseFactor*(1<<8))))
 	feeInFuture = types.BigDiv(feeInFuture, types.NewInt(1<<8))

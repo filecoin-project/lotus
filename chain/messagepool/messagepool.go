@@ -222,7 +222,7 @@ func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName) (*Messa
 	mp := &MessagePool{
 		ds:            ds,
 		closer:        make(chan struct{}),
-		repubTk:       build.Clock.Ticker(time.Duration(build.BlockDelaySecs) * 10 * time.Second),
+		repubTk:       build.Clock.Ticker(time.Duration(build.BlockDelaySecs) * time.Second),
 		localAddrs:    make(map[address.Address]struct{}),
 		pending:       make(map[address.Address]*msgSet),
 		minGasPrice:   types.NewInt(0),
@@ -973,6 +973,8 @@ func (mp *MessagePool) loadLocal() error {
 
 			log.Errorf("adding local message: %+v", err)
 		}
+
+		mp.localAddrs[sm.Message.From] = struct{}{}
 	}
 
 	return nil
