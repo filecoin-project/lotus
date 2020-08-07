@@ -199,6 +199,7 @@ type processTipSetApi interface {
 	ChainGetParentMessages(ctx context.Context, blockCid cid.Cid) ([]api.Message, error)
 	ChainGetParentReceipts(ctx context.Context, blockCid cid.Cid) ([]*types.MessageReceipt, error)
 	StateMinerInitialPledgeCollateral(ctx context.Context, addr address.Address, precommitInfo miner.SectorPreCommitInfo, tsk types.TipSetKey) (types.BigInt, error)
+	StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error)
 	MpoolPushMessage(ctx context.Context, msg *types.Message) (*types.SignedMessage, error)
 	GasEsitmateGasPremium(ctx context.Context, nblocksincl uint64, sender address.Address, gaslimit int64, tsk types.TipSetKey) (types.BigInt, error)
 	WalletBalance(ctx context.Context, addr address.Address) (types.BigInt, error)
@@ -234,6 +235,17 @@ func ProcessTipset(ctx context.Context, api processTipSetApi, tipset *types.TipS
 	count := 0
 	for i, msg := range msgs {
 		m := msg.Message
+
+		a, err := api.StateGetActor(ctx, m.To, tipset.Key())
+		if err != nil {
+			log.Warnw("failed to look up state actor", "actor", m.To)
+			continue
+		}
+
+		if a.Code != builtin.StorageMinerActorCodeID {
+			continue
+		}
+
 		// we only care to look at PreCommitSector messages
 		if m.Method != builtin.MethodsMiner.PreCommitSector {
 			continue
