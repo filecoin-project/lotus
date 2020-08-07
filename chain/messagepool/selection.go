@@ -74,8 +74,8 @@ func (mp *MessagePool) selectMessages(curTs, ts *types.TipSet) ([]*types.SignedM
 		return chains[i].Before(chains[j])
 	})
 
-	if len(chains) != 0 && chains[0].gasPerf < 0 {
-		log.Warnw("all messages in mpool have negative has performance", "bestGasPerf", chains[0].gasPerf)
+	if len(chains) != 0 && chains[0].gasPerf <= 0 {
+		log.Warnw("all messages in mpool have non-positive gas performance", "bestGasPerf", chains[0].gasPerf)
 		return nil, nil
 	}
 
