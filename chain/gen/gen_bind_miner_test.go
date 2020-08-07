@@ -2,9 +2,10 @@ package gen_test
 
 import (
 	"context"
+	"testing"
+
 	"github.com/filecoin-project/lotus/genesis"
 	"gotest.tools/assert"
-	"testing"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/gen"

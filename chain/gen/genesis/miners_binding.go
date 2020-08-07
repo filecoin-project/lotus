@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
@@ -70,14 +71,16 @@ func setupBindMiners(ctx context.Context, vm *vm.VM, accounts []genesis.Actor) e
 				SealProofType: m.SealProof,
 			}
 
-			err := vm.MutateState(ctx, builtin.InitActorAddr, func(cst cbor.IpldStore, st *init_.State) error {
-				id, err := address.IDFromAddress(m.Address)
-				if err != nil {
-					return err
-				}
+			id, err := address.IDFromAddress(m.Address)
+			if err != nil {
+				return err
+			}
+
+			err = vm.MutateState(ctx, builtin.InitActorAddr, func(cst cbor.IpldStore, st *init_.State) error {
 				st.NextID = abi.ActorID(id)
 				return nil
 			})
+
 			if err != nil {
 				return xerrors.Errorf("mutating state: %w", err)
 			}
