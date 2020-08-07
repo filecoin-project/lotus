@@ -29,6 +29,7 @@ type FullNodeAPI struct {
 	full.MsigAPI
 	full.WalletAPI
 	full.SyncAPI
+	full.BeaconAPI
 }
 
 // MpoolEstimateGasPrice estimates gas price
