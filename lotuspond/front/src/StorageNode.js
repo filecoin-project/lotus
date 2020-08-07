@@ -59,7 +59,7 @@ class StorageNode extends React.Component {
       token: token,
     }))
 
-    const client = new Client(`ws://127.0.0.1:${this.props.node.ApiPort}/rpc/v0?token=${token}`)
+    const client = new Client(`ws://127.0.0.1:${this.props.node.APIPort}/rpc/v0?token=${token}`)
     client.on('open', async () => {
       this.setState(() => ({
         state: stateConnected,
