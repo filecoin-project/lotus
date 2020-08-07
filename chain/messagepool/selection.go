@@ -81,7 +81,7 @@ func (mp *MessagePool) selectMessages(curTs, ts *types.TipSet) ([]*types.SignedM
 
 	// 3. Merge the head chains to produce the list of messages selected for inclusion, subject to
 	//    the block gas limit.
-	result := make([]*types.SignedMessage, 0, mp.maxTxPoolSizeLo)
+	result := make([]*types.SignedMessage, 0, mp.cfg.SizeLimitLow)
 	gasLimit := int64(build.BlockGasLimit)
 	minGas := int64(gasguess.MinGas)
 	last := len(chains)

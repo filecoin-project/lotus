@@ -18,7 +18,7 @@ func (mp *MessagePool) pruneExcessMessages() error {
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
-	if mp.currentSize < mp.maxTxPoolSizeHi {
+	if mp.currentSize < mp.cfg.SizeLimitHigh {
 		return nil
 	}
 
@@ -55,11 +55,12 @@ func (mp *MessagePool) pruneMessages(ctx context.Context, ts *types.TipSet) erro
 	})
 
 	// Keep messages (remove them from pruneMsgs) from chains while we are under the low water mark
+	loWaterMark := mp.cfg.SizeLimitLow
 	keepCount := 0
 keepLoop:
 	for _, chain := range chains {
 		for _, m := range chain.msgs {
-			if keepCount < MemPoolSizeLimitLoDefault {
+			if keepCount < loWaterMark {
 				delete(pruneMsgs, m.Message.Cid())
 				keepCount++
 			} else {
