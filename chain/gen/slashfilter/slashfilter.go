@@ -72,7 +72,7 @@ func (f *SlashFilter) MinedBlock(bh *types.BlockHeader, parentEpoch abi.ChainEpo
 			}
 
 			if !found {
-				return xerrors.Errorf("produced block would trigger 'parent-grinding fault' consensus fault; bh: %s, expected parent: %s", bh.Cid(), parent)
+				return xerrors.Errorf("produced block would trigger 'parent-grinding fault' consensus fault; miner: %s; bh: %s, expected parent: %s", bh.Miner, bh.Cid(), parent)
 			}
 		}
 	}
@@ -105,7 +105,7 @@ func checkFault(t ds.Datastore, key ds.Key, bh *types.BlockHeader, faultType str
 			return err
 		}
 
-		return xerrors.Errorf("produced block would trigger '%s' consensus fault; bh: %s, other: %s", faultType, bh.Cid(), other)
+		return xerrors.Errorf("produced block would trigger '%s' consensus fault; miner: %s; bh: %s, other: %s", faultType, bh.Miner, bh.Cid(), other)
 	}
 
 	return nil

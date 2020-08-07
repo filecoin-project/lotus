@@ -378,22 +378,22 @@ func (a *StateAPI) StateReadState(ctx context.Context, actor address.Address, ts
 	}
 	state, err := a.stateForTs(ctx, ts)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("getting state for tipset: %w", err)
 	}
 
 	act, err := state.GetActor(actor)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("getting actor: %w", err)
 	}
 
 	blk, err := state.Store.(*cbor.BasicIpldStore).Blocks.Get(act.Head)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("getting actor head: %w", err)
 	}
 
 	oif, err := vm.DumpActorState(act.Code, blk.RawData())
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("dumping actor state (a:%s): %w", actor, err)
 	}
 
 	return &api.ActorState{

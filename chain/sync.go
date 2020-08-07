@@ -1302,7 +1302,7 @@ loop:
 	}
 
 	// base is the tipset in the candidate chain at the height equal to our known tipset height.
-	if base := blockSet[len(blockSet)-1]; !types.CidArrsSubset(base.Parents().Cids(), known.Cids()) {
+	if base := blockSet[len(blockSet)-1]; !types.CidArrsEqual(base.Parents().Cids(), known.Cids()) {
 		if base.Parents() == known.Parents() {
 			// common case: receiving a block thats potentially part of the same tipset as our best block
 			return blockSet, nil

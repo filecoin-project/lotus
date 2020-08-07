@@ -20,6 +20,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
+	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
 	"github.com/filecoin-project/lotus/genesis"
 )
@@ -69,6 +70,7 @@ func (api *api) Spawn() (nodeInfo, error) {
 			Balance: types.FromFil(5000000),
 			Meta:    (&genesis.AccountMeta{Owner: genm.Owner}).ActorMeta(),
 		})
+		template.VerifregRootKey = gen.DefaultVerifregRootkeyActor
 
 		tb, err := json.Marshal(&template)
 		if err != nil {
