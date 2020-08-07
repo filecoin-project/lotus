@@ -33,6 +33,8 @@ import (
 
 const AccountStart = 100
 const MinerStart = 1000
+const FinalMinerStart = uint64(2000)
+
 const MaxAccounts = MinerStart - AccountStart
 
 var log = logging.Logger("genesis")
