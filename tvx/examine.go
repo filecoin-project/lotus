@@ -14,6 +14,7 @@ import (
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
+	"github.com/filecoin-project/oni/tvx/schema"
 	"github.com/filecoin-project/oni/tvx/state"
 )
 
@@ -62,7 +63,7 @@ func runExamineCmd(_ *cli.Context) error {
 		return err
 	}
 
-	var tv TestVector
+	var tv schema.TestVector
 	if err := json.NewDecoder(file).Decode(&tv); err != nil {
 		return err
 	}

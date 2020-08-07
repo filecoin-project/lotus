@@ -12,6 +12,7 @@ import (
 
 	"github.com/filecoin-project/oni/tvx/chain"
 	"github.com/filecoin-project/oni/tvx/drivers"
+	"github.com/filecoin-project/oni/tvx/schema"
 )
 
 func MessageTest_Paych() error {
@@ -20,8 +21,6 @@ func MessageTest_Paych() error {
 
 	err := func(testname string) error {
 		td := drivers.NewTestDriver()
-
-		v := newEmptyMessageVector()
 
 		// will create and send on payment channel
 		sender, senderID := td.NewAccountActor(drivers.SECP, initialBal)
@@ -32,11 +31,11 @@ func MessageTest_Paych() error {
 		preroot := td.GetStateRoot()
 
 		// the _expected_ address of the payment channel
-		paychAddr := chain.MustNewIDAddr(chain.MustIdFromAddress(receiverID) + 1)
+		paychAddr := chain.MustNewIDAddr(chain.MustIDFromAddress(receiverID) + 1)
 		createRet := td.ComputeInitActorExecReturn(sender, 0, 0, paychAddr)
 
 		msg := td.MessageProducer.CreatePaymentChannelActor(sender, receiver, chain.Value(toSend), chain.Nonce(0))
-		v.ApplyMessages = append(v.ApplyMessages, Message{Bytes: chain.MustSerialize(msg)})
+		td.Vector.ApplyMessages = append(td.Vector.ApplyMessages, schema.Message{Bytes: chain.MustSerialize(msg)})
 
 		// init actor creates the payment channel
 		td.ApplyExpect(
@@ -51,13 +50,13 @@ func MessageTest_Paych() error {
 
 		postroot := td.GetStateRoot()
 
-		v.CAR = td.MustMarshalGzippedCAR(preroot, postroot)
-		v.Pre.StateTree.RootCID = preroot
-		v.Post.StateTree.RootCID = postroot
+		td.Vector.CAR = td.MustMarshalGzippedCAR(preroot, postroot)
+		td.Vector.Pre.StateTree.RootCID = preroot
+		td.Vector.Post.StateTree.RootCID = postroot
 
 		// encode and output
 		enc := json.NewEncoder(os.Stdout)
-		if err := enc.Encode(&v); err != nil {
+		if err := enc.Encode(&td.Vector); err != nil {
 			return err
 		}
 
@@ -69,8 +68,6 @@ func MessageTest_Paych() error {
 
 	err = func(testname string) error {
 		td := drivers.NewTestDriver()
-
-		v := newEmptyMessageVector()
 
 		//const pcTimeLock = abi_spec.ChainEpoch(1)
 		const pcTimeLock = abi_spec.ChainEpoch(0)
@@ -91,11 +88,11 @@ func MessageTest_Paych() error {
 		preroot := td.GetStateRoot()
 
 		// the _expected_ address of the payment channel
-		paychAddr := chain.MustNewIDAddr(chain.MustIdFromAddress(receiverID) + 1)
+		paychAddr := chain.MustNewIDAddr(chain.MustIDFromAddress(receiverID) + 1)
 		createRet := td.ComputeInitActorExecReturn(sender, 0, 0, paychAddr)
 
 		msg := td.MessageProducer.CreatePaymentChannelActor(sender, receiver, chain.Value(toSend), chain.Nonce(0))
-		v.ApplyMessages = append(v.ApplyMessages, Message{Bytes: chain.MustSerialize(msg)})
+		td.Vector.ApplyMessages = append(td.Vector.ApplyMessages, schema.Message{Bytes: chain.MustSerialize(msg)})
 		td.ApplyExpect(
 			msg,
 			chain.MustSerialize(&createRet))
@@ -115,7 +112,7 @@ func MessageTest_Paych() error {
 				Signature:       pcSig,
 			},
 		}, chain.Nonce(1), chain.Value(big_spec.Zero()))
-		v.ApplyMessages = append(v.ApplyMessages, Message{Bytes: chain.MustSerialize(msg)})
+		td.Vector.ApplyMessages = append(td.Vector.ApplyMessages, schema.Message{Bytes: chain.MustSerialize(msg)})
 		td.ApplyOk(msg)
 
 		var pcState paych_spec.State
@@ -128,13 +125,13 @@ func MessageTest_Paych() error {
 
 		postroot := td.GetStateRoot()
 
-		v.CAR = td.MustMarshalGzippedCAR(preroot, postroot)
-		v.Pre.StateTree.RootCID = preroot
-		v.Post.StateTree.RootCID = postroot
+		td.Vector.CAR = td.MustMarshalGzippedCAR(preroot, postroot)
+		td.Vector.Pre.StateTree.RootCID = preroot
+		td.Vector.Post.StateTree.RootCID = postroot
 
 		// encode and output
 		enc := json.NewEncoder(os.Stdout)
-		if err := enc.Encode(&v); err != nil {
+		if err := enc.Encode(&td.Vector); err != nil {
 			return err
 		}
 
@@ -147,18 +144,16 @@ func MessageTest_Paych() error {
 	err = func(testname string) error {
 		td := drivers.NewTestDriver()
 
-		v := newEmptyMessageVector()
-
 		// create the payment channel
 		sender, _ := td.NewAccountActor(drivers.SECP, initialBal)
 		receiver, receiverID := td.NewAccountActor(drivers.SECP, initialBal)
-		paychAddr := chain.MustNewIDAddr(chain.MustIdFromAddress(receiverID) + 1)
+		paychAddr := chain.MustNewIDAddr(chain.MustIDFromAddress(receiverID) + 1)
 		initRet := td.ComputeInitActorExecReturn(sender, 0, 0, paychAddr)
 
 		preroot := td.GetStateRoot()
 
 		msg := td.MessageProducer.CreatePaymentChannelActor(sender, receiver, chain.Value(toSend), chain.Nonce(0))
-		v.ApplyMessages = append(v.ApplyMessages, Message{Bytes: chain.MustSerialize(msg)})
+		td.Vector.ApplyMessages = append(td.Vector.ApplyMessages, schema.Message{Bytes: chain.MustSerialize(msg)})
 		td.ApplyExpect(
 			msg,
 			chain.MustSerialize(&initRet))
@@ -183,21 +178,21 @@ func MessageTest_Paych() error {
 			},
 		}, chain.Nonce(1), chain.Value(big_spec.Zero()))
 
-		v.ApplyMessages = append(v.ApplyMessages, Message{Bytes: chain.MustSerialize(msg)})
+		td.Vector.ApplyMessages = append(td.Vector.ApplyMessages, schema.Message{Bytes: chain.MustSerialize(msg)})
 
 		td.ApplyOk(msg)
 
 		// settle the payment channel so it may be collected
 
 		msg = td.MessageProducer.PaychSettle(receiver, paychAddr, nil, chain.Value(big_spec.Zero()), chain.Nonce(0))
-		v.ApplyMessages = append(v.ApplyMessages, Message{Bytes: chain.MustSerialize(msg)})
+		td.Vector.ApplyMessages = append(td.Vector.ApplyMessages, schema.Message{Bytes: chain.MustSerialize(msg)})
 		settleResult := td.ApplyOk(msg)
 
 		// advance the epoch so the funds may be redeemed.
 		td.ExeCtx.Epoch += paych_spec.SettleDelay
 
 		msg = td.MessageProducer.PaychCollect(receiver, paychAddr, nil, chain.Nonce(1), chain.Value(big_spec.Zero()))
-		v.ApplyMessages = append(v.ApplyMessages, Message{Epoch: &td.ExeCtx.Epoch, Bytes: chain.MustSerialize(msg)})
+		td.Vector.ApplyMessages = append(td.Vector.ApplyMessages, schema.Message{Epoch: &td.ExeCtx.Epoch, Bytes: chain.MustSerialize(msg)})
 
 		collectResult := td.ApplyOk(msg)
 
@@ -208,13 +203,13 @@ func MessageTest_Paych() error {
 
 		postroot := td.GetStateRoot()
 
-		v.CAR = td.MustMarshalGzippedCAR(preroot, postroot)
-		v.Pre.StateTree.RootCID = preroot
-		v.Post.StateTree.RootCID = postroot
+		td.Vector.CAR = td.MustMarshalGzippedCAR(preroot, postroot)
+		td.Vector.Pre.StateTree.RootCID = preroot
+		td.Vector.Post.StateTree.RootCID = postroot
 
 		// encode and output
 		enc := json.NewEncoder(os.Stdout)
-		if err := enc.Encode(&v); err != nil {
+		if err := enc.Encode(&td.Vector); err != nil {
 			return err
 		}
 

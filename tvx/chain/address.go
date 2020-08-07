@@ -44,7 +44,7 @@ func MustNewActorAddr(data string) addr.Address {
 	return address
 }
 
-func MustIdFromAddress(a addr.Address) uint64 {
+func MustIDFromAddress(a addr.Address) uint64 {
 	if a.Protocol() != addr.ID {
 		panic("must be ID protocol address")
 	}

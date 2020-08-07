@@ -14,6 +14,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/oni/tvx/lotus"
+	"github.com/filecoin-project/oni/tvx/schema"
 	"github.com/filecoin-project/oni/tvx/state"
 )
 
@@ -178,27 +179,27 @@ func runExtractMsg(c *cli.Context) error {
 	}
 
 	// Write out the test vector.
-	vector := TestVector{
-		Class:    ClassMessage,
+	vector := schema.TestVector{
+		Class:    schema.ClassMessage,
 		Selector: "",
-		Meta: &Metadata{
+		Meta: &schema.Metadata{
 			ID:      "TK",
 			Version: "TK",
-			Gen: GenerationData{
+			Gen: schema.GenerationData{
 				Source:  "TK",
 				Version: version.String(),
 			},
 		},
 		CAR: out.Bytes(),
-		Pre: &Preconditions{
+		Pre: &schema.Preconditions{
 			Epoch: execTs.Height(),
-			StateTree: &StateTree{
+			StateTree: &schema.StateTree{
 				RootCID: preroot,
 			},
 		},
-		ApplyMessages: []Message{{Bytes: msgBytes}},
-		Post: &Postconditions{
-			StateTree: &StateTree{
+		ApplyMessages: []schema.Message{{Bytes: msgBytes}},
+		Post: &schema.Postconditions{
+			StateTree: &schema.StateTree{
 				RootCID: postroot,
 			},
 		},

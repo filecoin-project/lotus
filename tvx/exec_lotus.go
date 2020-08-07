@@ -15,6 +15,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/oni/tvx/lotus"
+	"github.com/filecoin-project/oni/tvx/schema"
 )
 
 var execLotusFlags struct {
@@ -44,7 +45,7 @@ func runExecLotus(_ *cli.Context) error {
 
 		var (
 			dec = json.NewDecoder(file)
-			tv  TestVector
+			tv  schema.TestVector
 		)
 
 		if err = dec.Decode(&tv); err != nil {
@@ -55,7 +56,7 @@ func runExecLotus(_ *cli.Context) error {
 	default:
 		dec := json.NewDecoder(os.Stdin)
 		for {
-			var tv TestVector
+			var tv schema.TestVector
 
 			err := dec.Decode(&tv)
 			if err == io.EOF {
@@ -73,7 +74,7 @@ func runExecLotus(_ *cli.Context) error {
 	}
 }
 
-func executeTestVector(tv TestVector) error {
+func executeTestVector(tv schema.TestVector) error {
 	fmt.Println("executing test vector")
 	switch tv.Class {
 	case "message":

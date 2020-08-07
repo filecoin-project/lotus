@@ -12,6 +12,7 @@ import (
 
 	"github.com/filecoin-project/oni/tvx/chain"
 	"github.com/filecoin-project/oni/tvx/drivers"
+	"github.com/filecoin-project/oni/tvx/schema"
 )
 
 func MessageTest_MessageApplicationEdgecases() error {
@@ -21,13 +22,12 @@ func MessageTest_MessageApplicationEdgecases() error {
 	err := func(testname string) error {
 		td := drivers.NewTestDriver()
 
-		v := newEmptyMessageVector()
 		alice, _ := td.NewAccountActor(drivers.SECP, aliceBal)
 
 		preroot := td.GetStateRoot()
 
 		msg := td.MessageProducer.Transfer(alice, alice, chain.Value(transferAmnt), chain.Nonce(0), chain.GasPrice(1), chain.GasLimit(8))
-		v.ApplyMessages = append(v.ApplyMessages, Message{Bytes: chain.MustSerialize(msg)})
+		td.Vector.ApplyMessages = append(td.Vector.ApplyMessages, schema.Message{Bytes: chain.MustSerialize(msg)})
 
 		td.ApplyFailure(
 			msg,
@@ -35,13 +35,13 @@ func MessageTest_MessageApplicationEdgecases() error {
 
 		postroot := td.GetStateRoot()
 
-		v.CAR = td.MustMarshalGzippedCAR(preroot, postroot)
-		v.Pre.StateTree.RootCID = preroot
-		v.Post.StateTree.RootCID = postroot
+		td.Vector.CAR = td.MustMarshalGzippedCAR(preroot, postroot)
+		td.Vector.Pre.StateTree.RootCID = preroot
+		td.Vector.Post.StateTree.RootCID = postroot
 
 		// encode and output
 		enc := json.NewEncoder(os.Stdout)
-		if err := enc.Encode(&v); err != nil {
+		if err := enc.Encode(&td.Vector); err != nil {
 			return err
 		}
 
@@ -54,12 +54,11 @@ func MessageTest_MessageApplicationEdgecases() error {
 	err = func(testname string) error {
 		td := drivers.NewTestDriver()
 
-		v := newEmptyMessageVector()
 		alice, _ := td.NewAccountActor(drivers.SECP, aliceBal)
 
 		preroot := td.GetStateRoot()
 		msg := td.MessageProducer.Transfer(alice, alice, chain.Value(transferAmnt), chain.Nonce(0), chain.GasPrice(10), chain.GasLimit(1))
-		v.ApplyMessages = append(v.ApplyMessages, Message{Bytes: chain.MustSerialize(msg)})
+		td.Vector.ApplyMessages = append(td.Vector.ApplyMessages, schema.Message{Bytes: chain.MustSerialize(msg)})
 
 		// Expect Message application to fail due to lack of gas
 		td.ApplyFailure(
@@ -68,7 +67,7 @@ func MessageTest_MessageApplicationEdgecases() error {
 
 		unknown := chain.MustNewIDAddr(10000000)
 		msg = td.MessageProducer.Transfer(unknown, alice, chain.Value(transferAmnt), chain.Nonce(0), chain.GasPrice(10), chain.GasLimit(1))
-		v.ApplyMessages = append(v.ApplyMessages, Message{Bytes: chain.MustSerialize(msg)})
+		td.Vector.ApplyMessages = append(td.Vector.ApplyMessages, schema.Message{Bytes: chain.MustSerialize(msg)})
 
 		// Expect Message application to fail due to lack of gas when sender is unknown
 		td.ApplyFailure(
@@ -77,13 +76,13 @@ func MessageTest_MessageApplicationEdgecases() error {
 
 		postroot := td.GetStateRoot()
 
-		v.CAR = td.MustMarshalGzippedCAR(preroot, postroot)
-		v.Pre.StateTree.RootCID = preroot
-		v.Post.StateTree.RootCID = postroot
+		td.Vector.CAR = td.MustMarshalGzippedCAR(preroot, postroot)
+		td.Vector.Pre.StateTree.RootCID = preroot
+		td.Vector.Post.StateTree.RootCID = postroot
 
 		// encode and output
 		enc := json.NewEncoder(os.Stdout)
-		if err := enc.Encode(&v); err != nil {
+		if err := enc.Encode(&td.Vector); err != nil {
 			return err
 		}
 
@@ -96,8 +95,6 @@ func MessageTest_MessageApplicationEdgecases() error {
 	err = func(testname string) error {
 		td := drivers.NewTestDriver()
 
-		v := newEmptyMessageVector()
-
 		alice, _ := td.NewAccountActor(drivers.SECP, aliceBal)
 		preroot := td.GetStateRoot()
 
@@ -109,7 +106,7 @@ func MessageTest_MessageApplicationEdgecases() error {
 		newAccountA := chain.MustNewSECP256K1Addr("1")
 
 		msg := td.MessageProducer.Transfer(alice, newAccountA, chain.Value(transferAmnt), chain.Nonce(aliceNonceF()))
-		v.ApplyMessages = append(v.ApplyMessages, Message{Bytes: chain.MustSerialize(msg)})
+		td.Vector.ApplyMessages = append(td.Vector.ApplyMessages, schema.Message{Bytes: chain.MustSerialize(msg)})
 
 		// get the "true" gas cost of applying the message
 		result := td.ApplyOk(msg)
@@ -120,7 +117,7 @@ func MessageTest_MessageApplicationEdgecases() error {
 		newAccountB := chain.MustNewSECP256K1Addr("2")
 		for tryGas := trueGas - gasStep; tryGas > 0; tryGas -= gasStep {
 			msg := td.MessageProducer.Transfer(alice, newAccountB, chain.Value(transferAmnt), chain.Nonce(aliceNonceF()), chain.GasPrice(1), chain.GasLimit(tryGas))
-			v.ApplyMessages = append(v.ApplyMessages, Message{Bytes: chain.MustSerialize(msg)})
+			td.Vector.ApplyMessages = append(td.Vector.ApplyMessages, schema.Message{Bytes: chain.MustSerialize(msg)})
 
 			td.ApplyFailure(
 				msg,
@@ -130,13 +127,13 @@ func MessageTest_MessageApplicationEdgecases() error {
 
 		postroot := td.GetStateRoot()
 
-		v.CAR = td.MustMarshalGzippedCAR(preroot, postroot)
-		v.Pre.StateTree.RootCID = preroot
-		v.Post.StateTree.RootCID = postroot
+		td.Vector.CAR = td.MustMarshalGzippedCAR(preroot, postroot)
+		td.Vector.Pre.StateTree.RootCID = preroot
+		td.Vector.Post.StateTree.RootCID = postroot
 
 		// encode and output
 		enc := json.NewEncoder(os.Stdout)
-		if err := enc.Encode(&v); err != nil {
+		if err := enc.Encode(&td.Vector); err != nil {
 			return err
 		}
 
@@ -149,14 +146,12 @@ func MessageTest_MessageApplicationEdgecases() error {
 	err = func(testname string) error {
 		td := drivers.NewTestDriver()
 
-		v := newEmptyMessageVector()
-
 		alice, _ := td.NewAccountActor(drivers.SECP, aliceBal)
 
 		preroot := td.GetStateRoot()
 
 		msg := td.MessageProducer.Transfer(alice, alice, chain.Value(transferAmnt), chain.Nonce(1))
-		v.ApplyMessages = append(v.ApplyMessages, Message{Bytes: chain.MustSerialize(msg)})
+		td.Vector.ApplyMessages = append(td.Vector.ApplyMessages, schema.Message{Bytes: chain.MustSerialize(msg)})
 
 		// Expect Message application to fail due to callseqnum being invalid: 1 instead of 0
 		td.ApplyFailure(
@@ -165,7 +160,7 @@ func MessageTest_MessageApplicationEdgecases() error {
 
 		unknown := chain.MustNewIDAddr(10000000)
 		msg = td.MessageProducer.Transfer(unknown, alice, chain.Value(transferAmnt), chain.Nonce(1))
-		v.ApplyMessages = append(v.ApplyMessages, Message{Bytes: chain.MustSerialize(msg)})
+		td.Vector.ApplyMessages = append(td.Vector.ApplyMessages, schema.Message{Bytes: chain.MustSerialize(msg)})
 
 		// Expect message application to fail due to unknow actor when call seq num is also incorrect
 		td.ApplyFailure(
@@ -174,13 +169,13 @@ func MessageTest_MessageApplicationEdgecases() error {
 
 		postroot := td.GetStateRoot()
 
-		v.CAR = td.MustMarshalGzippedCAR(preroot, postroot)
-		v.Pre.StateTree.RootCID = preroot
-		v.Post.StateTree.RootCID = postroot
+		td.Vector.CAR = td.MustMarshalGzippedCAR(preroot, postroot)
+		td.Vector.Pre.StateTree.RootCID = preroot
+		td.Vector.Post.StateTree.RootCID = postroot
 
 		// encode and output
 		enc := json.NewEncoder(os.Stdout)
-		if err := enc.Encode(&v); err != nil {
+		if err := enc.Encode(&td.Vector); err != nil {
 			return err
 		}
 
@@ -192,8 +187,6 @@ func MessageTest_MessageApplicationEdgecases() error {
 
 	err = func(testname string) error {
 		td := drivers.NewTestDriver()
-
-		v := newEmptyMessageVector()
 
 		const pcTimeLock = abi_spec.ChainEpoch(10)
 		const pcLane = uint64(123)
@@ -212,13 +205,13 @@ func MessageTest_MessageApplicationEdgecases() error {
 		receiver, receiverID := td.NewAccountActor(drivers.SECP, initialBal)
 
 		// the _expected_ address of the payment channel
-		paychAddr := chain.MustNewIDAddr(chain.MustIdFromAddress(receiverID) + 1)
+		paychAddr := chain.MustNewIDAddr(chain.MustIDFromAddress(receiverID) + 1)
 		createRet := td.ComputeInitActorExecReturn(sender, 0, 0, paychAddr)
 
 		preroot := td.GetStateRoot()
 
 		msg := td.MessageProducer.CreatePaymentChannelActor(sender, receiver, chain.Value(toSend), chain.Nonce(0))
-		v.ApplyMessages = append(v.ApplyMessages, Message{Bytes: chain.MustSerialize(msg)})
+		td.Vector.ApplyMessages = append(td.Vector.ApplyMessages, schema.Message{Bytes: chain.MustSerialize(msg)})
 
 		td.ApplyExpect(
 			msg,
@@ -239,7 +232,7 @@ func MessageTest_MessageApplicationEdgecases() error {
 				Signature:       pcSig, // construct with invalid signature
 			},
 		}, chain.Nonce(1), chain.Value(big_spec.Zero()))
-		v.ApplyMessages = append(v.ApplyMessages, Message{Bytes: chain.MustSerialize(msg)})
+		td.Vector.ApplyMessages = append(td.Vector.ApplyMessages, schema.Message{Bytes: chain.MustSerialize(msg)})
 
 		// message application fails due to invalid argument (signature).
 		td.ApplyFailure(
@@ -248,13 +241,13 @@ func MessageTest_MessageApplicationEdgecases() error {
 
 		postroot := td.GetStateRoot()
 
-		v.CAR = td.MustMarshalGzippedCAR(preroot, postroot)
-		v.Pre.StateTree.RootCID = preroot
-		v.Post.StateTree.RootCID = postroot
+		td.Vector.CAR = td.MustMarshalGzippedCAR(preroot, postroot)
+		td.Vector.Pre.StateTree.RootCID = preroot
+		td.Vector.Post.StateTree.RootCID = postroot
 
 		// encode and output
 		enc := json.NewEncoder(os.Stdout)
-		if err := enc.Encode(&v); err != nil {
+		if err := enc.Encode(&td.Vector); err != nil {
 			return err
 		}
 
@@ -267,15 +260,13 @@ func MessageTest_MessageApplicationEdgecases() error {
 	err = func(testname string) error {
 		td := drivers.NewTestDriver()
 
-		v := newEmptyMessageVector()
-
 		alice, _ := td.NewAccountActor(drivers.SECP, aliceBal)
 
 		preroot := td.GetStateRoot()
 
 		msg := td.MessageProducer.MarketComputeDataCommitment(alice, alice, nil, chain.Nonce(0))
 
-		v.ApplyMessages = append(v.ApplyMessages, Message{Bytes: chain.MustSerialize(msg)})
+		td.Vector.ApplyMessages = append(td.Vector.ApplyMessages, schema.Message{Bytes: chain.MustSerialize(msg)})
 
 		// message application fails because ComputeDataCommitment isn't defined
 		// on the recipient actor
@@ -285,13 +276,13 @@ func MessageTest_MessageApplicationEdgecases() error {
 
 		postroot := td.GetStateRoot()
 
-		v.CAR = td.MustMarshalGzippedCAR(preroot, postroot)
-		v.Pre.StateTree.RootCID = preroot
-		v.Post.StateTree.RootCID = postroot
+		td.Vector.CAR = td.MustMarshalGzippedCAR(preroot, postroot)
+		td.Vector.Pre.StateTree.RootCID = preroot
+		td.Vector.Post.StateTree.RootCID = postroot
 
 		// encode and output
 		enc := json.NewEncoder(os.Stdout)
-		if err := enc.Encode(&v); err != nil {
+		if err := enc.Encode(&td.Vector); err != nil {
 			return err
 		}
 
@@ -304,8 +295,6 @@ func MessageTest_MessageApplicationEdgecases() error {
 	err = func(testname string) error {
 		td := drivers.NewTestDriver()
 
-		v := newEmptyMessageVector()
-
 		alice, _ := td.NewAccountActor(drivers.SECP, aliceBal)
 
 		preroot := td.GetStateRoot()
@@ -314,7 +303,7 @@ func MessageTest_MessageApplicationEdgecases() error {
 		unknownA := chain.MustNewIDAddr(10000000)
 		msg := td.MessageProducer.Transfer(alice, unknownA, chain.Value(transferAmnt), chain.Nonce(0))
 
-		v.ApplyMessages = append(v.ApplyMessages, Message{Bytes: chain.MustSerialize(msg)})
+		td.Vector.ApplyMessages = append(td.Vector.ApplyMessages, schema.Message{Bytes: chain.MustSerialize(msg)})
 
 		td.ApplyFailure(
 			msg,
@@ -323,7 +312,7 @@ func MessageTest_MessageApplicationEdgecases() error {
 		// Sending a message to non-existing actor address must produce an error.
 		unknownB := chain.MustNewActorAddr("1234")
 		msg = td.MessageProducer.Transfer(alice, unknownB, chain.Value(transferAmnt), chain.Nonce(1))
-		v.ApplyMessages = append(v.ApplyMessages, Message{Bytes: chain.MustSerialize(msg)})
+		td.Vector.ApplyMessages = append(td.Vector.ApplyMessages, schema.Message{Bytes: chain.MustSerialize(msg)})
 
 		td.ApplyFailure(
 			msg,
@@ -331,13 +320,13 @@ func MessageTest_MessageApplicationEdgecases() error {
 
 		postroot := td.GetStateRoot()
 
-		v.CAR = td.MustMarshalGzippedCAR(preroot, postroot)
-		v.Pre.StateTree.RootCID = preroot
-		v.Post.StateTree.RootCID = postroot
+		td.Vector.CAR = td.MustMarshalGzippedCAR(preroot, postroot)
+		td.Vector.Pre.StateTree.RootCID = preroot
+		td.Vector.Post.StateTree.RootCID = postroot
 
 		// encode and output
 		enc := json.NewEncoder(os.Stdout)
-		if err := enc.Encode(&v); err != nil {
+		if err := enc.Encode(&td.Vector); err != nil {
 			return err
 		}
 

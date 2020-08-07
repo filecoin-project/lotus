@@ -15,11 +15,12 @@ import (
 
 	"github.com/filecoin-project/oni/tvx/chain"
 	"github.com/filecoin-project/oni/tvx/drivers"
+	"github.com/filecoin-project/oni/tvx/schema"
 )
 
 var suiteMessagesCmd = &cli.Command{
 	Name:        "suite-messages",
-	Description: "",
+	Description: "generate test vectors from the messages test suite adapted from github.com/filecoin-project/chain-validation",
 	Action:      suiteMessages,
 }
 
@@ -90,8 +91,6 @@ func MessageTest_AccountActorCreation() error {
 		err := func() error {
 			td := drivers.NewTestDriver()
 
-			v := newEmptyMessageVector()
-
 			existingAccountAddr, _ := td.NewAccountActor(tc.existingActorType, tc.existingActorBal)
 
 			preroot := td.GetStateRoot()
@@ -101,7 +100,7 @@ func MessageTest_AccountActorCreation() error {
 			if err != nil {
 				return err
 			}
-			v.ApplyMessages = []Message{{Bytes: b}}
+			td.Vector.ApplyMessages = []schema.Message{{Bytes: b}}
 			result := td.ApplyFailure(
 				msg,
 				tc.expExitCode,
@@ -115,13 +114,13 @@ func MessageTest_AccountActorCreation() error {
 
 			postroot := td.GetStateRoot()
 
-			v.CAR = td.MustMarshalGzippedCAR(preroot, postroot)
-			v.Pre.StateTree.RootCID = preroot
-			v.Post.StateTree.RootCID = postroot
+			td.Vector.CAR = td.MustMarshalGzippedCAR(preroot, postroot)
+			td.Vector.Pre.StateTree.RootCID = preroot
+			td.Vector.Post.StateTree.RootCID = postroot
 
 			// encode and output
 			enc := json.NewEncoder(os.Stdout)
-			if err := enc.Encode(&v); err != nil {
+			if err := enc.Encode(&td.Vector); err != nil {
 				return err
 			}
 
@@ -139,8 +138,6 @@ func MessageTest_AccountActorCreation() error {
 func MessageTest_InitActorSequentialIDAddressCreate() error {
 	td := drivers.NewTestDriver()
 
-	v := newEmptyMessageVector()
-
 	var initialBal = abi_spec.NewTokenAmount(200_000_000_000)
 	var toSend = abi_spec.NewTokenAmount(10_000)
 
@@ -148,8 +145,8 @@ func MessageTest_InitActorSequentialIDAddressCreate() error {
 
 	receiver, receiverID := td.NewAccountActor(drivers.SECP, initialBal)
 
-	firstPaychAddr := chain.MustNewIDAddr(chain.MustIdFromAddress(receiverID) + 1)
-	secondPaychAddr := chain.MustNewIDAddr(chain.MustIdFromAddress(receiverID) + 2)
+	firstPaychAddr := chain.MustNewIDAddr(chain.MustIDFromAddress(receiverID) + 1)
+	secondPaychAddr := chain.MustNewIDAddr(chain.MustIDFromAddress(receiverID) + 2)
 
 	firstInitRet := td.ComputeInitActorExecReturn(sender, 0, 0, firstPaychAddr)
 	secondInitRet := td.ComputeInitActorExecReturn(sender, 1, 0, secondPaychAddr)
@@ -166,7 +163,7 @@ func MessageTest_InitActorSequentialIDAddressCreate() error {
 	if err != nil {
 		return err
 	}
-	v.ApplyMessages = append(v.ApplyMessages, Message{Bytes: b1})
+	td.Vector.ApplyMessages = append(td.Vector.ApplyMessages, schema.Message{Bytes: b1})
 
 	msg2 := td.MessageProducer.CreatePaymentChannelActor(sender, receiver, chain.Value(toSend), chain.Nonce(1))
 	td.ApplyExpect(
@@ -178,40 +175,19 @@ func MessageTest_InitActorSequentialIDAddressCreate() error {
 	if err != nil {
 		return err
 	}
-	v.ApplyMessages = append(v.ApplyMessages, Message{Bytes: b2})
+	td.Vector.ApplyMessages = append(td.Vector.ApplyMessages, schema.Message{Bytes: b2})
 
 	postroot := td.GetStateRoot()
 
-	v.CAR = td.MustMarshalGzippedCAR(preroot, postroot)
-	v.Pre.StateTree.RootCID = preroot
-	v.Post.StateTree.RootCID = postroot
+	td.Vector.CAR = td.MustMarshalGzippedCAR(preroot, postroot)
+	td.Vector.Pre.StateTree.RootCID = preroot
+	td.Vector.Post.StateTree.RootCID = postroot
 
 	// encode and output
 	enc := json.NewEncoder(os.Stdout)
-	if err := enc.Encode(&v); err != nil {
+	if err := enc.Encode(&td.Vector); err != nil {
 		return err
 	}
 
 	return nil
-}
-
-func newEmptyMessageVector() TestVector {
-	return TestVector{
-		Class:    ClassMessage,
-		Selector: "",
-		Meta: &Metadata{
-			ID:      "TK",
-			Version: "TK",
-			Gen: GenerationData{
-				Source:  "TK",
-				Version: "TK",
-			},
-		},
-		Pre: &Preconditions{
-			StateTree: &StateTree{},
-		},
-		Post: &Postconditions{
-			StateTree: &StateTree{},
-		},
-	}
 }

@@ -120,7 +120,7 @@ func (d *StateDriver) newMinerAccountActor(sealProofType abi_spec.RegisteredSeal
 	// creat a miner, owner, and its worker
 	minerOwnerPk, minerOwnerID := d.NewAccountActor(address.SECP256K1, big_spec.NewInt(1_000_000_000))
 	minerWorkerPk, minerWorkerID := d.NewAccountActor(address.BLS, big_spec.Zero())
-	expectedMinerActorIDAddress := chain.MustNewIDAddr(chain.MustIdFromAddress(minerWorkerID) + 1)
+	expectedMinerActorIDAddress := chain.MustNewIDAddr(chain.MustIDFromAddress(minerWorkerID) + 1)
 	minerActorAddrs := computeInitActorExecReturn(minerWorkerPk, 0, 1, expectedMinerActorIDAddress)
 
 	d.minerInfo = &MinerInfo{

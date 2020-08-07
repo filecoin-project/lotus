@@ -44,6 +44,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/oni/tvx/chain"
 	vtypes "github.com/filecoin-project/oni/tvx/chain/types"
+	"github.com/filecoin-project/oni/tvx/schema"
 )
 
 var (
@@ -235,6 +236,25 @@ func NewTestDriver() *TestDriver {
 	checkRet := true
 	config := NewConfig(checkExit, checkRet)
 
+	vector := schema.TestVector{
+		Class:    schema.ClassMessage,
+		Selector: "",
+		Meta: &schema.Metadata{
+			ID:      "TK",
+			Version: "TK",
+			Gen: schema.GenerationData{
+				Source:  "TK",
+				Version: "TK",
+			},
+		},
+		Pre: &schema.Preconditions{
+			StateTree: &schema.StateTree{},
+		},
+		Post: &schema.Postconditions{
+			StateTree: &schema.StateTree{},
+		},
+	}
+
 	return &TestDriver{
 		StateDriver: sd,
 
@@ -244,6 +264,7 @@ func NewTestDriver() *TestDriver {
 		SysCalls:        syscalls,
 
 		applier: applier,
+		Vector:  &vector,
 	}
 }
 
@@ -265,6 +286,9 @@ type TestDriver struct {
 	Config *Config
 
 	SysCalls *ChainValidationSysCalls
+	// Vector is the test vector that is used when methods are called on the
+	// driver that apply messages.
+	Vector *schema.TestVector
 }
 
 //

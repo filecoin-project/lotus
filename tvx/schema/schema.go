@@ -1,4 +1,4 @@
-package main
+package schema
 
 import (
 	"encoding/hex"
