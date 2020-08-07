@@ -74,7 +74,7 @@ func (mp *MessagePool) selectMessages(curTs, ts *types.TipSet) ([]*types.SignedM
 		return chains[i].Before(chains[j])
 	})
 
-	if len(chains) != 0 && chains[0].gasPerf <= 0 {
+	if len(chains) != 0 && chains[0].gasPerf < 0 {
 		log.Warnw("all messages in mpool have non-positive gas performance", "bestGasPerf", chains[0].gasPerf)
 		return nil, nil
 	}
@@ -87,14 +87,14 @@ func (mp *MessagePool) selectMessages(curTs, ts *types.TipSet) ([]*types.SignedM
 	last := len(chains)
 	for i, chain := range chains {
 		// does it fit in the block?
-		if chain.gasLimit <= gasLimit && chain.gasPerf > 0 {
+		if chain.gasLimit <= gasLimit && chain.gasPerf >= 0 {
 			gasLimit -= chain.gasLimit
 			result = append(result, chain.msgs...)
 			continue
 		}
 
 		// did we run out of performing chains?
-		if chain.gasPerf <= 0 {
+		if chain.gasPerf < 0 {
 			break
 		}
 
@@ -131,14 +131,14 @@ tailLoop:
 				continue
 			}
 			// does it fit in the bock?
-			if chain.gasLimit <= gasLimit && chain.gasPerf > 0 {
+			if chain.gasLimit <= gasLimit && chain.gasPerf >= 0 {
 				gasLimit -= chain.gasLimit
 				result = append(result, chain.msgs...)
 				continue
 			}
 
-			// if gasPerf <= 0 we have no more profitable chains
-			if chain.gasPerf <= 0 {
+			// if gasPerf < 0 we have no more profitable chains
+			if chain.gasPerf < 0 {
 				break tailLoop
 			}
 
