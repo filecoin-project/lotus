@@ -95,6 +95,7 @@ func MessageTest_ValueTransferSimple() error {
 	for _, tc := range testCases {
 		err := func(testname string) error {
 			td := drivers.NewTestDriver()
+			td.Vector.Meta.Desc = testname
 
 			// Create the to and from actors with balance in the state tree
 			_, _, err := td.State().CreateActor(builtin_spec.AccountActorCodeID, tc.sender, tc.senderBal, &account_spec.State{Address: tc.sender})
@@ -154,6 +155,7 @@ func MessageTest_ValueTransferAdvance() error {
 
 	err := func(testname string) error {
 		td := drivers.NewTestDriver()
+		td.Vector.Meta.Desc = testname
 
 		alice, _ := td.NewAccountActor(drivers.SECP, aliceInitialBalance)
 		transferAmnt := abi_spec.NewTokenAmount(10)
@@ -183,6 +185,7 @@ func MessageTest_ValueTransferAdvance() error {
 
 	err = func(testname string) error {
 		td := drivers.NewTestDriver()
+		td.Vector.Meta.Desc = testname
 
 		alice, aliceId := td.NewAccountActor(drivers.SECP, aliceInitialBalance)
 		transferAmnt := abi_spec.NewTokenAmount(10)
@@ -213,6 +216,7 @@ func MessageTest_ValueTransferAdvance() error {
 
 	err = func(testname string) error {
 		td := drivers.NewTestDriver()
+		td.Vector.Meta.Desc = testname
 
 		alice, aliceId := td.NewAccountActor(drivers.SECP, aliceInitialBalance)
 		transferAmnt := abi_spec.NewTokenAmount(10)
@@ -243,6 +247,7 @@ func MessageTest_ValueTransferAdvance() error {
 
 	err = func(testname string) error {
 		td := drivers.NewTestDriver()
+		td.Vector.Meta.Desc = testname
 
 		alice, aliceId := td.NewAccountActor(drivers.SECP, aliceInitialBalance)
 		transferAmnt := abi_spec.NewTokenAmount(10)
@@ -273,6 +278,7 @@ func MessageTest_ValueTransferAdvance() error {
 
 	err = func(testname string) error {
 		td := drivers.NewTestDriver()
+		td.Vector.Meta.Desc = testname
 
 		alice, _ := td.NewAccountActor(drivers.SECP, aliceInitialBalance)
 		receiver := td.Wallet().NewSECP256k1AccountAddress()
@@ -303,6 +309,7 @@ func MessageTest_ValueTransferAdvance() error {
 
 	err = func(testname string) error {
 		td := drivers.NewTestDriver()
+		td.Vector.Meta.Desc = testname
 
 		alice, _ := td.NewAccountActor(drivers.SECP, aliceInitialBalance)
 		unknown := td.Wallet().NewSECP256k1AccountAddress()
@@ -334,6 +341,7 @@ func MessageTest_ValueTransferAdvance() error {
 
 	err = func(testname string) error {
 		td := drivers.NewTestDriver()
+		td.Vector.Meta.Desc = testname
 
 		sender := td.Wallet().NewSECP256k1AccountAddress()
 		receiver := td.Wallet().NewSECP256k1AccountAddress()

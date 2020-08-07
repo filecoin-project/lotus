@@ -20,6 +20,7 @@ func MessageTest_Paych() error {
 
 	err := func(testname string) error {
 		td := drivers.NewTestDriver()
+		td.Vector.Meta.Desc = testname
 
 		// will create and send on payment channel
 		sender, senderID := td.NewAccountActor(drivers.SECP, initialBal)
@@ -63,6 +64,7 @@ func MessageTest_Paych() error {
 
 	err = func(testname string) error {
 		td := drivers.NewTestDriver()
+		td.Vector.Meta.Desc = testname
 
 		//const pcTimeLock = abi_spec.ChainEpoch(1)
 		const pcTimeLock = abi_spec.ChainEpoch(0)
@@ -133,6 +135,7 @@ func MessageTest_Paych() error {
 
 	err = func(testname string) error {
 		td := drivers.NewTestDriver()
+		td.Vector.Meta.Desc = testname
 
 		// create the payment channel
 		sender, _ := td.NewAccountActor(drivers.SECP, initialBal)

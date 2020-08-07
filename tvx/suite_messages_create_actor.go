@@ -91,6 +91,7 @@ func MessageTest_AccountActorCreation() error {
 	for _, tc := range testCases {
 		err := func() error {
 			td := drivers.NewTestDriver()
+			td.Vector.Meta.Desc = tc.desc
 
 			existingAccountAddr, _ := td.NewAccountActor(tc.existingActorType, tc.existingActorBal)
 
