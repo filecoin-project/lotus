@@ -34,7 +34,7 @@ func (a *GasAPI) GasEstimateFeeCap(ctx context.Context, maxqueueblks int64,
 	ts := a.Chain.GetHeaviestTipSet()
 
 	parentBaseFee := ts.Blocks()[0].ParentBaseFee
-	increaseFactor := math.Pow(1+1/build.BaseFeeMaxChangeDenom, BaseFeeEstimNBlocks)
+	increaseFactor := math.Pow(1+float64(1/build.BaseFeeMaxChangeDenom), BaseFeeEstimNBlocks)
 
 	out := types.BigMul(parentBaseFee, types.NewInt(uint64(increaseFactor*(1<<8))))
 	out = types.BigDiv(out, types.NewInt(1<<8))
