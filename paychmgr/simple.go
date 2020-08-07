@@ -143,32 +143,6 @@ func (ca *channelAccessor) msgWaitComplete(mcid cid.Cid, err error) {
 	}
 }
 
-// callOnComplete calls the onComplete callback for a task
-func (ca *channelAccessor) callOnComplete(mcid cid.Cid, err error, cb onCompleteFn) {
-	if cb == nil {
-		return
-	}
-
-	if err != nil {
-		go cb(&paychFundsRes{err: err})
-		return
-	}
-
-	// Get the channel address
-	ci, storeErr := ca.store.ByMessageCid(mcid)
-	if storeErr != nil {
-		log.Errorf("getting channel by message cid: %s", err)
-		go cb(&paychFundsRes{err: storeErr})
-		return
-	}
-
-	if ci.Channel == nil {
-		panic("channel address is nil when calling onComplete callback")
-	}
-
-	go cb(&paychFundsRes{channel: *ci.Channel, mcid: mcid, err: err})
-}
-
 // processTask checks the state of the channel and takes appropriate action
 // (see description of getPaych).
 // Note that processTask may be called repeatedly in the same state, and should
