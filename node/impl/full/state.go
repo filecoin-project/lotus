@@ -1184,3 +1184,12 @@ func (a *StateAPI) StateDealProviderCollateralBounds(ctx context.Context, size a
 		Max: max,
 	}, nil
 }
+
+func (a *StateAPI) StateCirculatingSupply(ctx context.Context, tsk types.TipSetKey) (abi.TokenAmount, error) {
+	ts, err := a.Chain.GetTipSetFromKey(tsk)
+	if err != nil {
+		return abi.TokenAmount{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	return stmgr.GetCirculatingSupply(ctx, a.StateManager, ts)
+}
