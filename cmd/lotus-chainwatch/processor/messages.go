@@ -30,8 +30,8 @@ create table if not exists messages
 	"to" text not null,
 	nonce bigint not null,
 	value text not null,
-	gas_fee_cap bigint not null,
-	gas_premium bigint not null,
+	gas_fee_cap text not null,
+	gas_premium text not null,
 	gas_limit bigint not null,
 	method bigint,
 	params bytea
