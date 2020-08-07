@@ -214,10 +214,11 @@ func (m *Miner) mine(ctx context.Context) {
 
 		if b != nil {
 			journal.Add("blockMined", map[string]interface{}{
-				"parents": base.TipSet.Cids(),
-				"nulls":   base.NullRounds,
-				"epoch":   b.Header.Height,
-				"cid":     b.Header.Cid(),
+				"parents":   base.TipSet.Cids(),
+				"nulls":     base.NullRounds,
+				"epoch":     b.Header.Height,
+				"timestamp": b.Header.Timestamp,
+				"cid":       b.Header.Cid(),
 			})
 
 			btime := time.Unix(int64(b.Header.Timestamp), 0)
