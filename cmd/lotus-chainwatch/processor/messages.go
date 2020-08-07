@@ -28,6 +28,7 @@ create table if not exists messages
 			primary key,
 	"from" text not null,
 	"to" text not null,
+	size_bytes bigint not null,
 	nonce bigint not null,
 	value text not null,
 	gas_fee_cap text not null,
@@ -220,16 +221,22 @@ create temp table msgs (like messages excluding constraints) on commit drop;
 		return xerrors.Errorf("prep temp: %w", err)
 	}
 
-	stmt, err := tx.Prepare(`copy msgs (cid, "from", "to", nonce, "value", gas_premium, gas_fee_cap, gas_limit, method, params) from stdin `)
+	stmt, err := tx.Prepare(`copy msgs (cid, "from", "to", size_bytes, nonce, "value", gas_premium, gas_fee_cap, gas_limit, method, params) from stdin `)
 	if err != nil {
 		return err
 	}
 
 	for c, m := range msgs {
+		var msgBytes int
+		if b, err := m.Serialize(); err == nil {
+			msgBytes = len(b)
+		}
+
 		if _, err := stmt.Exec(
 			c.String(),
 			m.From.String(),
 			m.To.String(),
+			msgBytes,
 			m.Nonce,
 			m.Value.String(),
 			m.GasPremium.String(),
