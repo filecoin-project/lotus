@@ -30,13 +30,12 @@ type msgChain struct {
 
 func (mp *MessagePool) SelectMessages(ts *types.TipSet) ([]*types.SignedMessage, error) {
 	mp.curTsLk.Lock()
-	curTs := mp.curTs
-	mp.curTsLk.Unlock()
+	defer mp.curTsLk.Unlock()
 
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
-	return mp.selectMessages(curTs, ts)
+	return mp.selectMessages(mp.curTs, ts)
 }
 
 func (mp *MessagePool) selectMessages(curTs, ts *types.TipSet) ([]*types.SignedMessage, error) {
