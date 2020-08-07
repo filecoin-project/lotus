@@ -524,7 +524,6 @@ func (mc *msgChain) Before(other *msgChain) bool {
 func (mc *msgChain) Trim(gasLimit int64, mp *MessagePool, baseFee types.BigInt, ts *types.TipSet, priority bool) {
 	i := len(mc.msgs) - 1
 	for i >= 0 && (mc.gasLimit > gasLimit || (!priority && mc.gasPerf < 0)) {
-		gasLimit -= mc.msgs[i].Message.GasLimit
 		gasReward := mp.getGasReward(mc.msgs[i], baseFee, ts)
 		mc.gasReward = new(big.Int).Sub(mc.gasReward, gasReward)
 		mc.gasLimit -= mc.msgs[i].Message.GasLimit
