@@ -175,6 +175,10 @@ func NewMinersRefund() *MinersRefund {
 }
 
 func (m *MinersRefund) Track(addr address.Address, value types.BigInt) {
+	if _, ok := m.refunds[addr]; !ok {
+		m.refunds[addr] = types.NewInt(0)
+	}
+
 	m.refunds[addr] = types.BigAdd(m.refunds[addr], value)
 }
 
@@ -274,7 +278,7 @@ func ProcessTipset(ctx context.Context, api processTipSetApi, tipset *types.TipS
 		log.Infow("processing message", "from", m.From, "to", m.To, "value", m.Value.String(), "gas_fee_cap", m.GasFeeCap.String(), "gas_premium", m.GasPremium.String(), "gas_used", fmt.Sprintf("%d", recps[i].GasUsed), "refund", refundValue.String())
 
 		count = count + 1
-		refunds.Track(m.To, refundValue)
+		refunds.Track(m.From, refundValue)
 	}
 
 	if refunds.Count() == 0 {
