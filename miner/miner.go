@@ -22,6 +22,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/messagepool/gasguess"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/journal"
 
 	logging "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/trace"
@@ -212,6 +213,14 @@ func (m *Miner) mine(ctx context.Context) {
 		onDone(b != nil, nil)
 
 		if b != nil {
+			journal.Add("blockMined", map[string]interface{}{
+				"parents":   base.TipSet.Cids(),
+				"nulls":     base.NullRounds,
+				"epoch":     b.Header.Height,
+				"timestamp": b.Header.Timestamp,
+				"cid":       b.Header.Cid(),
+			})
+
 			btime := time.Unix(int64(b.Header.Timestamp), 0)
 			now := build.Clock.Now()
 			switch {
