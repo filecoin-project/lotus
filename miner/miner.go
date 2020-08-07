@@ -6,9 +6,10 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
-	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"sync"
 	"time"
+
+	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -147,25 +148,49 @@ func (m *Miner) mine(ctx context.Context) {
 		default:
 		}
 
-		prebase, err := m.GetBestMiningCandidate(ctx)
-		if err != nil {
-			log.Errorf("failed to get best mining candidate: %s", err)
-			m.niceSleep(time.Second * 5)
-			continue
+		var base *MiningBase
+		var onDone func(bool, error)
+		var injectNulls abi.ChainEpoch
+
+		for {
+			prebase, err := m.GetBestMiningCandidate(ctx)
+			if err != nil {
+				log.Errorf("failed to get best mining candidate: %s", err)
+				m.niceSleep(time.Second * 5)
+				continue
+			}
+
+			if base != nil && base.TipSet.Height() == prebase.TipSet.Height() && base.NullRounds == prebase.NullRounds {
+				break
+			}
+			if base != nil {
+				onDone(false, nil)
+			}
+
+			// TODO: need to change the orchestration here. the problem is that
+			// we are waiting *after* we enter this loop and selecta mining
+			// candidate, which is almost certain to change in multiminer
+			// tests. Instead, we should block before entering the loop, so
+			// that when the test 'MineOne' function is triggered, we pull our
+			// best mining candidate at that time.
+
+			// Wait until propagation delay period after block we plan to mine on
+			onDone, injectNulls, err = m.waitFunc(ctx, prebase.TipSet.MinTimestamp())
+			if err != nil {
+				log.Error(err)
+				continue
+			}
+
+			// just wait for the beacon entry to become available before we select our final mining base
+			_, err = m.api.BeaconGetEntry(ctx, prebase.TipSet.Height()+prebase.NullRounds+1)
+			if err != nil {
+				log.Errorf("failed getting beacon entry: %s", err)
+				continue
+			}
+
+			base = prebase
 		}
 
-		// Wait until propagation delay period after block we plan to mine on
-		onDone, injectNulls, err := m.waitFunc(ctx, prebase.TipSet.MinTimestamp())
-		if err != nil {
-			log.Error(err)
-			continue
-		}
-
-		base, err := m.GetBestMiningCandidate(ctx)
-		if err != nil {
-			log.Errorf("failed to get best mining candidate: %s", err)
-			continue
-		}
 		if base.TipSet.Equals(lastBase.TipSet) && lastBase.NullRounds == base.NullRounds {
 			log.Warnf("BestMiningCandidate from the previous round: %s (nulls:%d)", lastBase.TipSet.Cids(), lastBase.NullRounds)
 			m.niceSleep(time.Duration(build.BlockDelaySecs) * time.Second)

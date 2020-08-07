@@ -25,6 +25,7 @@ type FullNodeAPI struct {
 	full.MsigAPI
 	full.WalletAPI
 	full.SyncAPI
+	full.BeaconAPI
 }
 
 var _ api.FullNode = &FullNodeAPI{}

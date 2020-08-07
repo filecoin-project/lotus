@@ -85,6 +85,8 @@ type FullNodeStruct struct {
 		ChainGetPath           func(context.Context, types.TipSetKey, types.TipSetKey) ([]*api.HeadChange, error)                                 `perm:"read"`
 		ChainExport            func(context.Context, types.TipSetKey) (<-chan []byte, error)                                                      `perm:"read"`
 
+		BeaconGetEntry func(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) `perm:"read"`
+
 		GasEsitmateGasPremium func(context.Context, uint64, address.Address, int64, types.TipSetKey) (types.BigInt, error) `perm:"read"`
 		GasEstimateGasLimit   func(context.Context, *types.Message, types.TipSetKey) (int64, error)                        `perm:"read"`
 		GasEstimateFeeCap     func(context.Context, int64, types.TipSetKey) (types.BigInt, error)                          `perm:"read"`
@@ -597,6 +599,10 @@ func (c *FullNodeStruct) ChainGetPath(ctx context.Context, from types.TipSetKey,
 
 func (c *FullNodeStruct) ChainExport(ctx context.Context, tsk types.TipSetKey) (<-chan []byte, error) {
 	return c.Internal.ChainExport(ctx, tsk)
+}
+
+func (c *FullNodeStruct) BeaconGetEntry(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) {
+	return c.Internal.BeaconGetEntry(ctx, epoch)
 }
 
 func (c *FullNodeStruct) SyncState(ctx context.Context) (*api.SyncState, error) {
