@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -321,7 +322,16 @@ func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, stateroot ci
 	verifNeeds := make(map[address.Address]abi.PaddedPieceSize)
 	var sum abi.PaddedPieceSize
 
-	vm, err := vm.NewVM(stateroot, 0, &fakeRand{}, cs.Blockstore(), mkFakedSigSyscalls(cs.VMSys()), nil)
+	vmopt := vm.VMOpts{
+		StateBase:  stateroot,
+		Epoch:      0,
+		Rand:       &fakeRand{},
+		Bstore:     cs.Blockstore(),
+		Syscalls:   mkFakedSigSyscalls(cs.VMSys()),
+		VestedCalc: nil,
+		BaseFee:    types.NewInt(0),
+	}
+	vm, err := vm.NewVM(&vmopt)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to create NewVM: %w", err)
 	}
@@ -443,6 +453,7 @@ func MakeGenesisBlock(ctx context.Context, bs bstore.Blockstore, sys vm.SyscallB
 				Data:  make([]byte, 32),
 			},
 		},
+		ParentBaseFee: abi.NewTokenAmount(build.InitialBaseFee),
 	}
 
 	sb, err := b.ToStorageBlock()

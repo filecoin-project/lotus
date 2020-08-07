@@ -281,7 +281,10 @@ func RecordTipsetMessagesPoints(ctx context.Context, api api.FullNode, pl *Point
 	msgn := make(map[msgTag][]cid.Cid)
 
 	for i, msg := range msgs {
-		p := NewPoint("chain.message_gasprice", msg.Message.GasPrice.Int64())
+		// FIXME: use float so this doesn't overflow
+		p := NewPoint("chain.message_gaspremium", msg.Message.GasPremium.Int64())
+		pl.AddPoint(p)
+		p = NewPoint("chain.message_gasfeecap", msg.Message.GasFeeCap.Int64())
 		pl.AddPoint(p)
 
 		bs, err := msg.Message.Serialize()

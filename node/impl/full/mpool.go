@@ -111,12 +111,20 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message) (*t
 		msg.GasLimit = int64(float64(gasLimit) * GasMargin)
 	}
 
-	if msg.GasPrice == types.EmptyInt || types.BigCmp(msg.GasPrice, types.NewInt(0)) == 0 {
-		gasPrice, err := a.GasEstimateGasPrice(ctx, 2, msg.From, msg.GasLimit, types.TipSetKey{})
+	if msg.GasPremium == types.EmptyInt || types.BigCmp(msg.GasPremium, types.NewInt(0)) == 0 {
+		gasPremium, err := a.GasEsitmateGasPremium(ctx, 2, msg.From, msg.GasLimit, types.TipSetKey{})
 		if err != nil {
 			return nil, xerrors.Errorf("estimating gas price: %w", err)
 		}
-		msg.GasPrice = gasPrice
+		msg.GasPremium = gasPremium
+	}
+
+	if msg.GasFeeCap == types.EmptyInt || types.BigCmp(msg.GasFeeCap, types.NewInt(0)) == 0 {
+		feeCap, err := a.GasEstimateFeeCap(ctx, 20, types.EmptyTSK)
+		if err != nil {
+			return nil, xerrors.Errorf("estimating fee cap: %w", err)
+		}
+		msg.GasFeeCap = feeCap
 	}
 
 	return a.Mpool.PushWithNonce(ctx, msg.From, func(from address.Address, nonce uint64) (*types.SignedMessage, error) {

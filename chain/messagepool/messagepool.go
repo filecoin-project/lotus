@@ -126,17 +126,17 @@ func (ms *msgSet) add(m *types.SignedMessage) (bool, error) {
 	if has {
 		if m.Cid() != exms.Cid() {
 			// check if RBF passes
-			minPrice := exms.Message.GasPrice
+			minPrice := exms.Message.GasPremium
 			minPrice = types.BigAdd(minPrice, types.BigDiv(types.BigMul(minPrice, rbfNum), rbfDenom))
 			minPrice = types.BigAdd(minPrice, types.NewInt(1))
-			if types.BigCmp(m.Message.GasPrice, minPrice) >= 0 {
-				log.Infow("add with RBF", "oldprice", exms.Message.GasPrice,
-					"newprice", m.Message.GasPrice, "addr", m.Message.From, "nonce", m.Message.Nonce)
+			if types.BigCmp(m.Message.GasPremium, minPrice) >= 0 {
+				log.Infow("add with RBF", "oldpremium", exms.Message.GasPremium,
+					"newpremium", m.Message.GasPremium, "addr", m.Message.From, "nonce", m.Message.Nonce)
 			} else {
 				log.Info("add with duplicate nonce")
 				return false, xerrors.Errorf("message from %s with nonce %d already in mpool,"+
-					" increase GasPrice to %s from %s to trigger replace by fee",
-					m.Message.From, m.Message.Nonce, minPrice, m.Message.GasPrice)
+					" increase GasPremium to %s from %s to trigger replace by fee",
+					m.Message.From, m.Message.Nonce, minPrice, m.Message.GasPremium)
 			}
 		}
 	}
@@ -154,6 +154,7 @@ type Provider interface {
 	MessagesForBlock(*types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error)
 	MessagesForTipset(*types.TipSet) ([]types.ChainMsg, error)
 	LoadTipSet(tsk types.TipSetKey) (*types.TipSet, error)
+	ChainComputeBaseFee(ctx context.Context, ts *types.TipSet) (types.BigInt, error)
 }
 
 type mpoolProvider struct {
@@ -162,7 +163,7 @@ type mpoolProvider struct {
 }
 
 func NewProvider(sm *stmgr.StateManager, ps *pubsub.PubSub) Provider {
-	return &mpoolProvider{sm, ps}
+	return &mpoolProvider{sm: sm, ps: ps}
 }
 
 func (mpp *mpoolProvider) SubscribeHeadChanges(cb func(rev, app []*types.TipSet) error) *types.TipSet {
@@ -197,6 +198,14 @@ func (mpp *mpoolProvider) MessagesForTipset(ts *types.TipSet) ([]types.ChainMsg,
 
 func (mpp *mpoolProvider) LoadTipSet(tsk types.TipSetKey) (*types.TipSet, error) {
 	return mpp.sm.ChainStore().LoadTipSet(tsk)
+}
+
+func (mpp *mpoolProvider) ChainComputeBaseFee(ctx context.Context, ts *types.TipSet) (types.BigInt, error) {
+	baseFee, err := mpp.sm.ChainStore().ComputeBaseFee(ctx, ts)
+	if err != nil {
+		return types.NewInt(0), xerrors.Errorf("computing base fee at %s: %w", ts, err)
+	}
+	return baseFee, nil
 }
 
 func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName) (*MessagePool, error) {

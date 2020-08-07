@@ -45,10 +45,6 @@ func (a *MsigAPI) MsigCreate(ctx context.Context, req uint64, addrs []address.Ad
 		return cid.Undef, xerrors.Errorf("must provide source address")
 	}
 
-	if gp == types.EmptyInt {
-		gp = types.NewInt(0)
-	}
-
 	// Set up constructor parameters for multisig
 	msigParams := &samsig.ConstructorParams{
 		Signers:               addrs,
@@ -74,12 +70,11 @@ func (a *MsigAPI) MsigCreate(ctx context.Context, req uint64, addrs []address.Ad
 
 	// now we create the message to send this with
 	msg := types.Message{
-		To:       builtin.InitActorAddr,
-		From:     src,
-		Method:   builtin.MethodsInit.Exec,
-		Params:   enc,
-		Value:    val,
-		GasPrice: gp,
+		To:     builtin.InitActorAddr,
+		From:   src,
+		Method: builtin.MethodsInit.Exec,
+		Params: enc,
+		Value:  val,
 	}
 
 	// send the message out to the network

@@ -32,10 +32,11 @@ type Message struct {
 
 	Nonce uint64
 
-	Value BigInt
+	Value abi.TokenAmount
 
-	GasPrice BigInt
-	GasLimit int64
+	GasLimit   int64
+	GasFeeCap  abi.TokenAmount
+	GasPremium abi.TokenAmount
 
 	Method abi.MethodNum
 	Params []byte
@@ -106,7 +107,7 @@ func (m *Message) Cid() cid.Cid {
 }
 
 func (m *Message) RequiredFunds() BigInt {
-	return BigMul(m.GasPrice, NewInt(uint64(m.GasLimit)))
+	return BigMul(m.GasFeeCap, NewInt(uint64(m.GasLimit)))
 }
 
 func (m *Message) VMMessage() *Message {
@@ -138,8 +139,12 @@ func (m *Message) ValidForBlockInclusion(minGas int64) error {
 		return xerrors.New("'Value' field cannot be greater than total filecoin supply")
 	}
 
-	if m.GasPrice.LessThan(big.Zero()) {
-		return xerrors.New("'GasPrice' field cannot be negative")
+	if m.GasFeeCap.LessThan(big.Zero()) {
+		return xerrors.New("'GasFeeCap' field cannot be negative")
+	}
+
+	if m.GasPremium.LessThan(big.Zero()) {
+		return xerrors.New("'GasPremium' field cannot be negative")
 	}
 
 	if m.GasLimit > build.BlockGasLimit {

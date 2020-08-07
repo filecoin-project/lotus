@@ -968,12 +968,10 @@ func (a *StateAPI) StateMinerPreCommitDepositForPower(ctx context.Context, maddr
 		}
 
 		ret, err := a.StateManager.Call(ctx, &types.Message{
-			From:     maddr,
-			To:       builtin.StorageMarketActorAddr,
-			Method:   builtin.MethodsMarket.VerifyDealsForActivation,
-			GasLimit: 0,
-			GasPrice: types.NewInt(0),
-			Params:   params,
+			From:   maddr,
+			To:     builtin.StorageMarketActorAddr,
+			Method: builtin.MethodsMarket.VerifyDealsForActivation,
+			Params: params,
 		}, ts)
 		if err != nil {
 			return types.EmptyInt, err
@@ -1048,12 +1046,10 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 		}
 
 		ret, err := a.StateManager.Call(ctx, &types.Message{
-			From:     maddr,
-			To:       builtin.StorageMarketActorAddr,
-			Method:   builtin.MethodsMarket.VerifyDealsForActivation,
-			GasLimit: 0,
-			GasPrice: types.NewInt(0),
-			Params:   params,
+			From:   maddr,
+			To:     builtin.StorageMarketActorAddr,
+			Method: builtin.MethodsMarket.VerifyDealsForActivation,
+			Params: params,
 		}, ts)
 		if err != nil {
 			return types.EmptyInt, err

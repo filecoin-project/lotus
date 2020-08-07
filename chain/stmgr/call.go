@@ -22,7 +22,17 @@ func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate 
 	ctx, span := trace.StartSpan(ctx, "statemanager.CallRaw")
 	defer span.End()
 
-	vmi, err := vm.NewVM(bstate, bheight, r, sm.cs.Blockstore(), sm.cs.VMSys(), sm.GetVestedFunds)
+	vmopt := &vm.VMOpts{
+		StateBase:  bstate,
+		Epoch:      bheight,
+		Rand:       r,
+		Bstore:     sm.cs.Blockstore(),
+		Syscalls:   sm.cs.VMSys(),
+		VestedCalc: sm.GetVestedFunds,
+		BaseFee:    types.NewInt(0),
+	}
+
+	vmi, err := vm.NewVM(vmopt)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to set up vm: %w", err)
 	}
@@ -30,9 +40,13 @@ func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate 
 	if msg.GasLimit == 0 {
 		msg.GasLimit = build.BlockGasLimit
 	}
-	if msg.GasPrice == types.EmptyInt {
-		msg.GasPrice = types.NewInt(0)
+	if msg.GasFeeCap == types.EmptyInt {
+		msg.GasFeeCap = types.NewInt(0)
 	}
+	if msg.GasPremium == types.EmptyInt {
+		msg.GasPremium = types.NewInt(0)
+	}
+
 	if msg.Value == types.EmptyInt {
 		msg.Value = types.NewInt(0)
 	}
@@ -40,7 +54,7 @@ func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate 
 	if span.IsRecordingEvents() {
 		span.AddAttributes(
 			trace.Int64Attribute("gas_limit", msg.GasLimit),
-			trace.Int64Attribute("gas_price", int64(msg.GasPrice.Uint64())),
+			trace.StringAttribute("gas_feecap", msg.GasFeeCap.String()),
 			trace.StringAttribute("value", msg.Value.String()),
 		)
 	}
@@ -101,12 +115,21 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 	if span.IsRecordingEvents() {
 		span.AddAttributes(
 			trace.Int64Attribute("gas_limit", msg.GasLimit),
-			trace.Int64Attribute("gas_price", int64(msg.GasPrice.Uint64())),
+			trace.StringAttribute("gas_feecap", msg.GasFeeCap.String()),
 			trace.StringAttribute("value", msg.Value.String()),
 		)
 	}
 
-	vmi, err := vm.NewVM(state, ts.Height(), r, sm.cs.Blockstore(), sm.cs.VMSys(), sm.GetVestedFunds)
+	vmopt := &vm.VMOpts{
+		StateBase:  state,
+		Epoch:      ts.Height(),
+		Rand:       r,
+		Bstore:     sm.cs.Blockstore(),
+		Syscalls:   sm.cs.VMSys(),
+		VestedCalc: sm.GetVestedFunds,
+		BaseFee:    ts.Blocks()[0].ParentBaseFee,
+	}
+	vmi, err := vm.NewVM(vmopt)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to set up vm: %w", err)
 	}

@@ -20,13 +20,14 @@ import (
 
 func makeTestMessage(w *wallet.Wallet, from, to address.Address, nonce uint64, gasLimit int64, gasPrice uint64) *types.SignedMessage {
 	msg := &types.Message{
-		From:     from,
-		To:       to,
-		Method:   2,
-		Value:    types.FromFil(0),
-		Nonce:    nonce,
-		GasLimit: gasLimit,
-		GasPrice: types.NewInt(gasPrice),
+		From:       from,
+		To:         to,
+		Method:     2,
+		Value:      types.FromFil(0),
+		Nonce:      nonce,
+		GasLimit:   gasLimit,
+		GasFeeCap:  types.NewInt(100 + gasPrice),
+		GasPremium: types.NewInt(gasPrice),
 	}
 	sig, err := w.Sign(context.TODO(), from, msg.Cid().Bytes())
 	if err != nil {
@@ -89,8 +90,9 @@ func TestMessageChains(t *testing.T) {
 		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(i+1))
 		mset[uint64(i)] = m
 	}
+	baseFee := types.NewInt(0)
 
-	chains := mp.createMessageChains(a1, mset, ts)
+	chains := mp.createMessageChains(a1, mset, baseFee, ts)
 	if len(chains) != 1 {
 		t.Fatal("expected a single chain")
 	}
@@ -111,7 +113,7 @@ func TestMessageChains(t *testing.T) {
 		mset[uint64(i)] = m
 	}
 
-	chains = mp.createMessageChains(a1, mset, ts)
+	chains = mp.createMessageChains(a1, mset, baseFee, ts)
 	if len(chains) != 10 {
 		t.Fatal("expected 10 chains")
 	}
@@ -135,7 +137,7 @@ func TestMessageChains(t *testing.T) {
 		mset[uint64(i)] = m
 	}
 
-	chains = mp.createMessageChains(a1, mset, ts)
+	chains = mp.createMessageChains(a1, mset, baseFee, ts)
 	if len(chains) != 2 {
 		t.Fatal("expected 1 chain")
 	}
@@ -166,7 +168,7 @@ func TestMessageChains(t *testing.T) {
 		mset[uint64(i)] = m
 	}
 
-	chains = mp.createMessageChains(a1, mset, ts)
+	chains = mp.createMessageChains(a1, mset, baseFee, ts)
 	if len(chains) != 4 {
 		t.Fatal("expected 4 chains")
 	}
@@ -199,7 +201,7 @@ func TestMessageChains(t *testing.T) {
 		mset[uint64(i)] = m
 	}
 
-	chains = mp.createMessageChains(a1, mset, ts)
+	chains = mp.createMessageChains(a1, mset, baseFee, ts)
 	if len(chains) != 1 {
 		t.Fatal("expected a single chain")
 	}
@@ -225,7 +227,7 @@ func TestMessageChains(t *testing.T) {
 		mset[uint64(i)] = m
 	}
 
-	chains = mp.createMessageChains(a1, mset, ts)
+	chains = mp.createMessageChains(a1, mset, baseFee, ts)
 	if len(chains) != 1 {
 		t.Fatal("expected a single chain")
 	}
@@ -248,7 +250,7 @@ func TestMessageChains(t *testing.T) {
 		mset[uint64(i)] = makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(i+1))
 	}
 
-	chains = mp.createMessageChains(a1, mset, ts)
+	chains = mp.createMessageChains(a1, mset, baseFee, ts)
 	if len(chains) != 1 {
 		t.Fatal("expected a single chain")
 	}
@@ -262,16 +264,16 @@ func TestMessageChains(t *testing.T) {
 	}
 
 	// test5: insufficient balance for all messages
-	tma.setBalanceRaw(a1, types.NewInt(uint64(3*gasLimit+1)))
+	tma.setBalanceRaw(a1, types.NewInt(uint64((300)*gasLimit+1)))
 
 	mset = make(map[uint64]*types.SignedMessage)
 	for i := 0; i < 10; i++ {
 		mset[uint64(i)] = makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(i+1))
 	}
 
-	chains = mp.createMessageChains(a1, mset, ts)
+	chains = mp.createMessageChains(a1, mset, baseFee, ts)
 	if len(chains) != 1 {
-		t.Fatal("expected a single chain")
+		t.Fatalf("expected a single chain: got %d", len(chains))
 	}
 	if len(chains[0].msgs) != 2 {
 		t.Fatalf("expected %d message in the chain but got %d", 2, len(chains[0].msgs))

@@ -30,20 +30,21 @@ type msgChain struct {
 
 func (mp *MessagePool) SelectMessages(ts *types.TipSet) ([]*types.SignedMessage, error) {
 	mp.curTsLk.Lock()
-	curTs := mp.curTs
-	mp.curTsLk.Unlock()
+	defer mp.curTsLk.Unlock()
 
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
-	return mp.selectMessages(curTs, ts)
+	return mp.selectMessages(mp.curTs, ts)
 }
 
 func (mp *MessagePool) selectMessages(curTs, ts *types.TipSet) ([]*types.SignedMessage, error) {
 	start := time.Now()
-	defer func() {
-		log.Infof("message selection took %s", time.Since(start))
-	}()
+
+	baseFee, err := mp.api.ChainComputeBaseFee(context.TODO(), ts)
+	if err != nil {
+		return nil, xerrors.Errorf("computing basefee: %w", err)
+	}
 
 	// 0. Load messages for the target tipset; if it is the same as the current tipset in the mpool
 	//    then this is just the pending messages
@@ -51,11 +52,19 @@ func (mp *MessagePool) selectMessages(curTs, ts *types.TipSet) ([]*types.SignedM
 	if err != nil {
 		return nil, err
 	}
+	if len(pending) == 0 {
+		return nil, nil
+	}
+
+	// defer only here so if we have no pending messages we don't spam
+	defer func() {
+		log.Infof("message selection took %s", time.Since(start))
+	}()
 
 	// 1. Create a list of dependent message chains with maximal gas reward per limit consumed
 	var chains []*msgChain
 	for actor, mset := range pending {
-		next := mp.createMessageChains(actor, mset, ts)
+		next := mp.createMessageChains(actor, mset, baseFee, ts)
 		chains = append(chains, next...)
 	}
 
@@ -63,6 +72,13 @@ func (mp *MessagePool) selectMessages(curTs, ts *types.TipSet) ([]*types.SignedM
 	sort.Slice(chains, func(i, j int) bool {
 		return chains[i].Before(chains[j])
 	})
+	if len(chains) != 0 && chains[0].gasPerf < 0 {
+		log.Warnw("all messages in mpool have negative has performance", "bestGasPerf", chains[0].gasPerf)
+		//for i, m := range chains[0].msgs {
+		//log.Warnf("msg %d %+v", i, m.Message)
+		//}
+		return nil, nil
+	}
 
 	// 3. Merge the head chains to produce the list of messages selected for inclusion, subject to
 	//    the block gas limit.
@@ -72,7 +88,7 @@ func (mp *MessagePool) selectMessages(curTs, ts *types.TipSet) ([]*types.SignedM
 	last := len(chains)
 	for i, chain := range chains {
 		// does it fit in the block?
-		if chain.gasLimit <= gasLimit {
+		if chain.gasLimit <= gasLimit && chain.gasPerf > 0 {
 			gasLimit -= chain.gasLimit
 			result = append(result, chain.msgs...)
 			continue
@@ -92,7 +108,7 @@ func (mp *MessagePool) selectMessages(curTs, ts *types.TipSet) ([]*types.SignedM
 tailLoop:
 	for gasLimit >= minGas && last < len(chains) {
 		// trim
-		chains[last].Trim(gasLimit, mp, ts)
+		chains[last].Trim(gasLimit, mp, baseFee, ts)
 
 		// push down if it hasn't been invalidated
 		if chains[last].valid {
@@ -111,7 +127,7 @@ tailLoop:
 				continue
 			}
 			// does it fit in the bock?
-			if chain.gasLimit <= gasLimit {
+			if chain.gasLimit <= gasLimit && chain.gasPerf > 0 {
 				gasLimit -= chain.gasLimit
 				result = append(result, chain.msgs...)
 				continue
@@ -208,7 +224,7 @@ func (mp *MessagePool) getPendingMessages(curTs, ts *types.TipSet) (map[address.
 			if dupNonce {
 				// duplicate nonce, selfishly keep the message with the highest GasPrice
 				// if the gas prices are the same, keep the one with the highest GasLimit
-				switch m.Message.GasPrice.Int.Cmp(other.Message.GasPrice.Int) {
+				switch m.Message.GasPremium.Int.Cmp(other.Message.GasPremium.Int) {
 				case 0:
 					if m.Message.GasLimit > other.Message.GasLimit {
 						mset[m.Message.Nonce] = m
@@ -232,20 +248,12 @@ func (mp *MessagePool) getPendingMessages(curTs, ts *types.TipSet) (map[address.
 	}
 }
 
-func (mp *MessagePool) getGasReward(msg *types.SignedMessage, ts *types.TipSet) *big.Int {
-	al := func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*types.Actor, error) {
-		return mp.api.StateGetActor(addr, ts)
+func (mp *MessagePool) getGasReward(msg *types.SignedMessage, baseFee types.BigInt, ts *types.TipSet) *big.Int {
+	gasReward := abig.Mul(msg.Message.GasPremium, types.NewInt(uint64(msg.Message.GasLimit)))
+	maxReward := types.BigSub(msg.Message.GasFeeCap, baseFee)
+	if types.BigCmp(maxReward, gasReward) < 0 {
+		gasReward = maxReward
 	}
-	gasUsed, err := gasguess.GuessGasUsed(context.TODO(), types.EmptyTSK, msg, al)
-	if err != nil {
-		gasUsed = int64(gasguess.MaxGas)
-		if gasUsed > msg.Message.GasLimit/2 {
-			gasUsed = msg.Message.GasLimit / 2
-		}
-		// if we start seeing this warning we may have a problem with spammers!
-		log.Warnf("Cannot guess gas usage for message: %s; using %d", err, gasUsed)
-	}
-	gasReward := abig.Mul(msg.Message.GasPrice, types.NewInt(uint64(gasUsed)))
 	return gasReward.Int
 }
 
@@ -258,7 +266,7 @@ func (mp *MessagePool) getGasPerf(gasReward *big.Int, gasLimit int64) float64 {
 	return r
 }
 
-func (mp *MessagePool) createMessageChains(actor address.Address, mset map[uint64]*types.SignedMessage, ts *types.TipSet) []*msgChain {
+func (mp *MessagePool) createMessageChains(actor address.Address, mset map[uint64]*types.SignedMessage, baseFee types.BigInt, ts *types.TipSet) []*msgChain {
 	// collect all messages
 	msgs := make([]*types.SignedMessage, 0, len(mset))
 	for _, m := range mset {
@@ -320,7 +328,7 @@ func (mp *MessagePool) createMessageChains(actor address.Address, mset map[uint6
 			balance = new(big.Int).Sub(balance, value)
 		}
 
-		gasReward := mp.getGasReward(m, ts)
+		gasReward := mp.getGasReward(m, baseFee, ts)
 		rewards = append(rewards, gasReward)
 	}
 
@@ -417,11 +425,11 @@ func (mc *msgChain) Before(other *msgChain) bool {
 		(mc.gasPerf == other.gasPerf && mc.gasReward.Cmp(other.gasReward) > 0)
 }
 
-func (mc *msgChain) Trim(gasLimit int64, mp *MessagePool, ts *types.TipSet) {
+func (mc *msgChain) Trim(gasLimit int64, mp *MessagePool, baseFee types.BigInt, ts *types.TipSet) {
 	i := len(mc.msgs) - 1
 	for i >= 0 && mc.gasLimit > gasLimit {
 		gasLimit -= mc.msgs[i].Message.GasLimit
-		gasReward := mp.getGasReward(mc.msgs[i], ts)
+		gasReward := mp.getGasReward(mc.msgs[i], baseFee, ts)
 		mc.gasReward = new(big.Int).Sub(mc.gasReward, gasReward)
 		mc.gasLimit -= mc.msgs[i].Message.GasLimit
 		if mc.gasLimit > 0 {

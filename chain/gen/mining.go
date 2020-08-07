@@ -109,6 +109,12 @@ func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wal
 	}
 	next.ParentWeight = pweight
 
+	baseFee, err := sm.ChainStore().ComputeBaseFee(ctx, pts)
+	if err != nil {
+		return nil, xerrors.Errorf("computing base fee: %w", err)
+	}
+	next.ParentBaseFee = baseFee
+
 	cst := cbor.NewCborStore(sm.ChainStore().Blockstore())
 	tree, err := state.LoadStateTree(cst, st)
 	if err != nil {

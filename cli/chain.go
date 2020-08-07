@@ -430,22 +430,22 @@ var chainListCmd = &cli.Command{
 					psum := big.NewInt(0)
 					for _, m := range msgs.BlsMessages {
 						limitSum += m.GasLimit
-						psum = big.Add(psum, m.GasPrice)
+						psum = big.Add(psum, m.GasPremium)
 					}
 
 					for _, m := range msgs.SecpkMessages {
 						limitSum += m.Message.GasLimit
-						psum = big.Add(psum, m.Message.GasPrice)
+						psum = big.Add(psum, m.Message.GasPremium)
 					}
 
 					lenmsgs := len(msgs.BlsMessages) + len(msgs.SecpkMessages)
 
-					avgprice := big.Zero()
+					avgpremium := big.Zero()
 					if lenmsgs > 0 {
-						avgprice = big.Div(psum, big.NewInt(int64(lenmsgs)))
+						avgpremium = big.Div(psum, big.NewInt(int64(lenmsgs)))
 					}
 
-					fmt.Printf("\t%s: \t%d msgs, gasLimit: %d / %d (%0.2f%%), avgPrice: %s\n", b.Miner, len(msgs.BlsMessages)+len(msgs.SecpkMessages), limitSum, build.BlockGasLimit, 100*float64(limitSum)/float64(build.BlockGasLimit), avgprice)
+					fmt.Printf("\t%s: \t%d msgs, gasLimit: %d / %d (%0.2f%%), avgPrice: %s\n", b.Miner, len(msgs.BlsMessages)+len(msgs.SecpkMessages), limitSum, build.BlockGasLimit, 100*float64(limitSum)/float64(build.BlockGasLimit), avgpremium)
 				}
 				if i < len(tss)-1 {
 					msgs, err := api.ChainGetParentMessages(ctx, tss[i+1].Blocks()[0].Cid())
@@ -1030,9 +1030,9 @@ var chainGasPriceCmd = &cli.Command{
 
 		nb := []int{1, 2, 3, 5, 10, 20, 50, 100, 300}
 		for _, nblocks := range nb {
-			addr := builtin.SystemActorAddr // TODO: make real when used in GasEstimateGasPrice
+			addr := builtin.SystemActorAddr // TODO: make real when used in GasEsitmateGasPremium
 
-			est, err := api.GasEstimateGasPrice(ctx, uint64(nblocks), addr, 10000, types.EmptyTSK)
+			est, err := api.GasEsitmateGasPremium(ctx, uint64(nblocks), addr, 10000, types.EmptyTSK)
 			if err != nil {
 				return err
 			}

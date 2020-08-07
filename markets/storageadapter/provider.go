@@ -74,13 +74,11 @@ func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemark
 
 	// TODO: We may want this to happen after fetching data
 	smsg, err := n.MpoolPushMessage(ctx, &types.Message{
-		To:       builtin.StorageMarketActorAddr,
-		From:     mi.Worker,
-		Value:    types.NewInt(0),
-		GasPrice: types.NewInt(0),
-		GasLimit: 0,
-		Method:   builtin.MethodsMarket.PublishStorageDeals,
-		Params:   params,
+		To:     builtin.StorageMarketActorAddr,
+		From:   mi.Worker,
+		Value:  types.NewInt(0),
+		Method: builtin.MethodsMarket.PublishStorageDeals,
+		Params: params,
 	})
 	if err != nil {
 		return cid.Undef, err
@@ -175,12 +173,10 @@ func (n *ProviderNodeAdapter) EnsureFunds(ctx context.Context, addr, wallet addr
 func (n *ProviderNodeAdapter) AddFunds(ctx context.Context, addr address.Address, amount abi.TokenAmount) (cid.Cid, error) {
 	// (Provider Node API)
 	smsg, err := n.MpoolPushMessage(ctx, &types.Message{
-		To:       builtin.StorageMarketActorAddr,
-		From:     addr,
-		Value:    amount,
-		GasPrice: types.NewInt(0),
-		GasLimit: 0,
-		Method:   builtin.MethodsMarket.AddBalance,
+		To:     builtin.StorageMarketActorAddr,
+		From:   addr,
+		Value:  amount,
+		Method: builtin.MethodsMarket.AddBalance,
 	})
 	if err != nil {
 		return cid.Undef, err

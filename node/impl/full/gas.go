@@ -2,6 +2,7 @@ package full
 
 import (
 	"context"
+	"math"
 	"sort"
 
 	"github.com/filecoin-project/lotus/build"
@@ -26,9 +27,22 @@ type GasAPI struct {
 }
 
 const MinGasPrice = 1
+const BaseFeeEstimNBlocks = 20
 
-func (a *GasAPI) GasEstimateGasPrice(ctx context.Context, nblocksincl uint64,
-	sender address.Address, gaslimit int64, tsk types.TipSetKey) (types.BigInt, error) {
+func (a *GasAPI) GasEstimateFeeCap(ctx context.Context, maxqueueblks int64,
+	tsk types.TipSetKey) (types.BigInt, error) {
+	ts := a.Chain.GetHeaviestTipSet()
+
+	parentBaseFee := ts.Blocks()[0].ParentBaseFee
+	increaseFactor := math.Pow(1+float64(1/build.BaseFeeMaxChangeDenom), BaseFeeEstimNBlocks)
+
+	out := types.BigMul(parentBaseFee, types.NewInt(uint64(increaseFactor*(1<<8))))
+	out = types.BigDiv(out, types.NewInt(1<<8))
+	return out, nil
+}
+
+func (a *GasAPI) GasEsitmateGasPremium(ctx context.Context, nblocksincl uint64,
+	sender address.Address, gaslimit int64, _ types.TipSetKey) (types.BigInt, error) {
 
 	if nblocksincl == 0 {
 		nblocksincl = 1
@@ -68,7 +82,7 @@ func (a *GasAPI) GasEstimateGasPrice(ctx context.Context, nblocksincl uint64,
 			}
 
 			prices = append(prices, gasMeta{
-				price: msg.VMMessage().GasPrice,
+				price: msg.VMMessage().GasPremium,
 				used:  r.GasUsed,
 			})
 			gasUsed += r.GasUsed
@@ -111,7 +125,8 @@ func (a *GasAPI) GasEstimateGasLimit(ctx context.Context, msgIn *types.Message, 
 
 	msg := *msgIn
 	msg.GasLimit = build.BlockGasLimit
-	msg.GasPrice = types.NewInt(1)
+	msg.GasFeeCap = types.NewInt(build.MinimumBaseFee + 1)
+	msg.GasPremium = types.NewInt(1)
 
 	currTs := a.Chain.GetHeaviestTipSet()
 	fromA, err := a.Stmgr.ResolveToKeyAddress(ctx, msgIn.From, currTs)

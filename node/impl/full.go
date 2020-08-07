@@ -1,13 +1,9 @@
 package impl
 
 import (
-	"context"
-
 	logging "github.com/ipfs/go-log/v2"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/impl/client"
 	"github.com/filecoin-project/lotus/node/impl/common"
 	"github.com/filecoin-project/lotus/node/impl/full"
@@ -30,12 +26,6 @@ type FullNodeAPI struct {
 	full.WalletAPI
 	full.SyncAPI
 	full.BeaconAPI
-}
-
-// MpoolEstimateGasPrice estimates gas price
-// Deprecated: used GasEstimateGasPrice instead
-func (fa *FullNodeAPI) MpoolEstimateGasPrice(ctx context.Context, nblocksincl uint64, sender address.Address, limit int64, tsk types.TipSetKey) (types.BigInt, error) {
-	return fa.GasEstimateGasPrice(ctx, nblocksincl, sender, limit, tsk)
 }
 
 var _ api.FullNode = &FullNodeAPI{}

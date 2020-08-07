@@ -123,12 +123,10 @@ func (c *ClientNodeAdapter) ListClientDeals(ctx context.Context, addr address.Ad
 func (c *ClientNodeAdapter) AddFunds(ctx context.Context, addr address.Address, amount abi.TokenAmount) (cid.Cid, error) {
 	// (Provider Node API)
 	smsg, err := c.MpoolPushMessage(ctx, &types.Message{
-		To:       builtin.StorageMarketActorAddr,
-		From:     addr,
-		Value:    amount,
-		GasPrice: types.NewInt(0),
-		GasLimit: 0,
-		Method:   builtin.MethodsMarket.AddBalance,
+		To:     builtin.StorageMarketActorAddr,
+		From:   addr,
+		Value:  amount,
+		Method: builtin.MethodsMarket.AddBalance,
 	})
 	if err != nil {
 		return cid.Undef, err

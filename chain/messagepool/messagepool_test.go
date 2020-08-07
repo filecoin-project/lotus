@@ -87,7 +87,7 @@ func (tma *testMpoolAPI) PubSubPublish(string, []byte) error {
 func (tma *testMpoolAPI) StateGetActor(addr address.Address, ts *types.TipSet) (*types.Actor, error) {
 	balance, ok := tma.balance[addr]
 	if !ok {
-		balance = types.NewInt(90000000)
+		balance = types.NewInt(1000e6)
 		tma.balance[addr] = balance
 	}
 	return &types.Actor{
@@ -138,6 +138,10 @@ func (tma *testMpoolAPI) LoadTipSet(tsk types.TipSetKey) (*types.TipSet, error) 
 	}
 
 	return nil, fmt.Errorf("tipset not found")
+}
+
+func (tma *testMpoolAPI) ChainComputeBaseFee(ctx context.Context, ts *types.TipSet) (types.BigInt, error) {
+	return types.NewInt(100), nil
 }
 
 func assertNonce(t *testing.T, mp *MessagePool, addr address.Address, val uint64) {

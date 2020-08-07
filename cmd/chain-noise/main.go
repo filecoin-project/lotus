@@ -74,11 +74,9 @@ func sendSmallFundsTxs(ctx context.Context, api api.FullNode, from address.Addre
 		select {
 		case <-tick.C:
 			msg := &types.Message{
-				From:     from,
-				To:       sendSet[rand.Intn(20)],
-				Value:    types.NewInt(1),
-				GasLimit: 0,
-				GasPrice: types.NewInt(0),
+				From:  from,
+				To:    sendSet[rand.Intn(20)],
+				Value: types.NewInt(1),
 			}
 
 			smsg, err := api.MpoolPushMessage(ctx, msg)
