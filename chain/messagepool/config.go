@@ -24,17 +24,17 @@ func loadConfig(ds dtypes.MetadataDS) (*types.MpoolConfig, error) {
 		return nil, err
 	}
 
-	if haveCfg {
-		cfgBytes, err := ds.Get(ConfigKey)
-		if err != nil {
-			return nil, err
-		}
-		cfg := new(types.MpoolConfig)
-		err = json.Unmarshal(cfgBytes, cfg)
-		return cfg, err
-	} else {
+	if !haveCfg {
 		return DefaultConfig(), nil
 	}
+
+	cfgBytes, err := ds.Get(ConfigKey)
+	if err != nil {
+		return nil, err
+	}
+	cfg := new(types.MpoolConfig)
+	err = json.Unmarshal(cfgBytes, cfg)
+	return cfg, err
 }
 
 func saveConfig(cfg *types.MpoolConfig, ds dtypes.MetadataDS) error {
