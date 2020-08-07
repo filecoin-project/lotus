@@ -6,9 +6,10 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
-	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"sync"
 	"time"
+
+	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -162,6 +163,16 @@ func (m *Miner) mine(ctx context.Context) {
 			if base != nil && base.TipSet.Height() == prebase.TipSet.Height() && base.NullRounds == prebase.NullRounds {
 				break
 			}
+			if base != nil {
+				onDone(false, nil)
+			}
+
+			// TODO: need to change the orchestration here. the problem is that
+			// we are waiting *after* we enter this loop and selecta mining
+			// candidate, which is almost certain to change in multiminer
+			// tests. Instead, we should block before entering the loop, so
+			// that when the test 'MineOne' function is triggered, we pull our
+			// best mining candidate at that time.
 
 			// Wait until propagation delay period after block we plan to mine on
 			onDone, injectNulls, err = m.waitFunc(ctx, prebase.TipSet.MinTimestamp())
