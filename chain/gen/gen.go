@@ -154,7 +154,6 @@ func NewGeneratorWithSectors(numSectors int, bindMiners []genesis.BindMiner) (*C
 		return nil, xerrors.Errorf("failed to generate binder key: %w", err)
 	}
 
-
 	receievers := make([]address.Address, msgsPerBlock)
 	for r := range receievers {
 		receievers[r], err = w.GenerateKey(crypto.SigTypeBLS)
