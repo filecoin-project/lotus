@@ -125,7 +125,7 @@ func (a *GasAPI) GasEstimateGasLimit(ctx context.Context, msgIn *types.Message, 
 
 	msg := *msgIn
 	msg.GasLimit = build.BlockGasLimit
-	msg.GasFeeCap = types.NewInt(build.MinimumBaseFee + 1)
+	msg.GasFeeCap = types.NewInt(uint64(build.MinimumBaseFee) + 1)
 	msg.GasPremium = types.NewInt(1)
 
 	currTs := a.Chain.GetHeaviestTipSet()
