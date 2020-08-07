@@ -10,6 +10,20 @@ import (
 	"golang.org/x/xerrors"
 )
 
+func computeNextBaseFee(baseFee types.BigInt, gasLimitUsed int64, noOfBlocks int) types.BigInt {
+	delta := gasLimitUsed/int64(noOfBlocks) - build.BlockGasTarget
+
+	change := big.Mul(baseFee, big.NewInt(delta))
+	change = big.Div(change, big.NewInt(build.BlockGasTarget))
+	change = big.Div(change, big.NewInt(build.BaseFeeMaxChangeDenom))
+
+	nextBaseFee := big.Add(baseFee, change)
+	if big.Cmp(nextBaseFee, big.NewInt(build.MinimumBaseFee)) < 0 {
+		nextBaseFee = big.NewInt(build.MinimumBaseFee)
+	}
+	return nextBaseFee
+}
+
 func (cs *ChainStore) ComputeBaseFee(ctx context.Context, ts *types.TipSet) (abi.TokenAmount, error) {
 	zero := abi.NewTokenAmount(0)
 	totalLimit := int64(0)
@@ -27,16 +41,5 @@ func (cs *ChainStore) ComputeBaseFee(ctx context.Context, ts *types.TipSet) (abi
 	}
 	parentBaseFee := ts.Blocks()[0].ParentBaseFee
 
-	delta := totalLimit/int64(len(ts.Blocks())) - build.BlockGasTarget
-
-	change := big.Mul(parentBaseFee, big.NewInt(delta))
-	change = big.Div(change, big.NewInt(build.BlockGasTarget))
-	change = big.Div(change, big.NewInt(build.BaseFeeMaxChangeDenom))
-
-	baseFee := big.Add(parentBaseFee, change)
-	if big.Cmp(baseFee, big.NewInt(build.MinimumBaseFee)) < 0 {
-		baseFee = big.NewInt(build.MinimumBaseFee)
-	}
-
-	return baseFee, nil
+	return computeNextBaseFee(parentBaseFee, totalLimit, len(ts.Blocks())), nil
 }
