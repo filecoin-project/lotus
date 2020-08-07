@@ -148,47 +148,24 @@ func (m *Miner) mine(ctx context.Context) {
 		default:
 		}
 
-		var base *MiningBase
-		var onDone func(bool, error)
-		var injectNulls abi.ChainEpoch
+		prebase, err := m.GetBestMiningCandidate(ctx)
+		if err != nil {
+			log.Errorf("failed to get best mining candidate: %s", err)
+			m.niceSleep(time.Second * 5)
+			continue
+		}
 
-		for {
-			prebase, err := m.GetBestMiningCandidate(ctx)
-			if err != nil {
-				log.Errorf("failed to get best mining candidate: %s", err)
-				m.niceSleep(time.Second * 5)
-				continue
-			}
+		// Wait until propagation delay period after block we plan to mine on
+		onDone, injectNulls, err := m.waitFunc(ctx, prebase.TipSet.MinTimestamp())
+		if err != nil {
+			log.Error(err)
+			continue
+		}
 
-			if base != nil && base.TipSet.Height() == prebase.TipSet.Height() && base.NullRounds == prebase.NullRounds {
-				break
-			}
-			if base != nil {
-				onDone(false, nil)
-			}
-
-			// TODO: need to change the orchestration here. the problem is that
-			// we are waiting *after* we enter this loop and selecta mining
-			// candidate, which is almost certain to change in multiminer
-			// tests. Instead, we should block before entering the loop, so
-			// that when the test 'MineOne' function is triggered, we pull our
-			// best mining candidate at that time.
-
-			// Wait until propagation delay period after block we plan to mine on
-			onDone, injectNulls, err = m.waitFunc(ctx, prebase.TipSet.MinTimestamp())
-			if err != nil {
-				log.Error(err)
-				continue
-			}
-
-			/*// just wait for the beacon entry to become available before we select our final mining base
-			_, err = m.api.BeaconGetEntry(ctx, prebase.TipSet.Height()+prebase.NullRounds+1)
-			if err != nil {
-				log.Errorf("failed getting beacon entry: %s", err)
-				continue
-			}*/
-
-			base = prebase
+		base, err := m.GetBestMiningCandidate(ctx)
+		if err != nil {
+			log.Errorf("failed to get best mining candidate: %s", err)
+			continue
 		}
 
 		if base.TipSet.Equals(lastBase.TipSet) && lastBase.NullRounds == base.NullRounds {
