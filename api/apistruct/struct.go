@@ -463,10 +463,6 @@ func (c *FullNodeStruct) MpoolSub(ctx context.Context) (<-chan api.MpoolUpdate, 
 	return c.Internal.MpoolSub(ctx)
 }
 
-func (c *FullNodeStruct) MpoolEstimateGasPrice(ctx context.Context, nblocksincl uint64, sender address.Address, limit int64, tsk types.TipSetKey) (types.BigInt, error) {
-	return c.Internal.GasEsitmateGasPremium(ctx, nblocksincl, sender, limit, tsk)
-}
-
 func (c *FullNodeStruct) MinerGetBaseInfo(ctx context.Context, maddr address.Address, epoch abi.ChainEpoch, tsk types.TipSetKey) (*api.MiningBaseInfo, error) {
 	return c.Internal.MinerGetBaseInfo(ctx, maddr, epoch, tsk)
 }

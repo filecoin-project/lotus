@@ -165,10 +165,6 @@ type FullNode interface {
 	MpoolGetNonce(context.Context, address.Address) (uint64, error)
 	MpoolSub(context.Context) (<-chan MpoolUpdate, error)
 
-	// MpoolEstimateGasPrice is depracated
-	// Deprecated: use GasEsitmateGasPremium instead
-	MpoolEstimateGasPrice(ctx context.Context, nblocksincl uint64, sender address.Address, gaslimit int64, tsk types.TipSetKey) (types.BigInt, error)
-
 	// MethodGroup: Miner
 
 	MinerGetBaseInfo(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*MiningBaseInfo, error)
