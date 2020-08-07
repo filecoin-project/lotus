@@ -138,6 +138,12 @@ func NewSyncer(sm *stmgr.StateManager, bsync *blocksync.BlockSync, connmgr connm
 		incoming: pubsub.New(50),
 	}
 
+	if build.InsecurePoStValidation {
+		log.Warn("*********************************************************************************************")
+		log.Warn(" [INSECURE-POST-VALIDATION] Insecure test validation is enabled. If you see this outside of a test, it is a severe bug! ")
+		log.Warn("*********************************************************************************************")
+	}
+
 	s.syncmgr = NewSyncManager(s.Sync)
 	return s, nil
 }
@@ -640,10 +646,6 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) (er
 
 	ctx, span := trace.StartSpan(ctx, "validateBlock")
 	defer span.End()
-
-	if build.InsecurePoStValidation {
-		log.Warn("[INSECURE-POST-VALIDATION] if you see this outside of a test, it is a severe bug!")
-	}
 
 	if err := blockSanityChecks(b.Header); err != nil {
 		return xerrors.Errorf("incoming header failed basic sanity checks: %w", err)
