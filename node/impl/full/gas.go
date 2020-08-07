@@ -26,7 +26,7 @@ type GasAPI struct {
 	Mpool *messagepool.MessagePool
 }
 
-const MinGasPrice = 1
+const MinGasPremium = 10e3
 const BaseFeeEstimNBlocks = 20
 
 func (a *GasAPI) GasEstimateFeeCap(ctx context.Context, maxqueueblks int64,
@@ -50,11 +50,10 @@ func (a *GasAPI) GasEsitmateGasPremium(ctx context.Context, nblocksincl uint64,
 
 	type gasMeta struct {
 		price big.Int
-		used  int64
+		limit int64
 	}
 
 	var prices []gasMeta
-	var gasUsed int64
 	var blocks int
 
 	ts := a.Chain.GetHeaviestTipSet()
@@ -74,18 +73,11 @@ func (a *GasAPI) GasEsitmateGasPremium(ctx context.Context, nblocksincl uint64,
 		if err != nil {
 			return types.BigInt{}, xerrors.Errorf("loading messages: %w", err)
 		}
-
-		for i, msg := range msgs {
-			r, err := a.Chain.GetParentReceipt(ts.MinTicketBlock(), i)
-			if err != nil {
-				return types.BigInt{}, xerrors.Errorf("getting receipt: %w", err)
-			}
-
+		for _, msg := range msgs {
 			prices = append(prices, gasMeta{
 				price: msg.VMMessage().GasPremium,
-				used:  r.GasUsed,
+				limit: msg.VMMessage().GasLimit,
 			})
-			gasUsed += r.GasUsed
 		}
 
 		ts = pts
@@ -98,14 +90,18 @@ func (a *GasAPI) GasEsitmateGasPremium(ctx context.Context, nblocksincl uint64,
 
 	// todo: account for how full blocks are
 
-	at := gasUsed / 2
+	at := build.BlockGasTarget * int64(blocks) / 2
 	prev := big.Zero()
 
 	for _, price := range prices {
-		at -= price.used
+		at -= price.limit
 		if at > 0 {
 			prev = price.price
 			continue
+		}
+
+		if prev.Equals(big.Zero()) {
+			return types.BigAdd(price.price, big.NewInt(1)), nil
 		}
 
 		return types.BigAdd(big.Div(types.BigAdd(price.price, prev), types.NewInt(2)), big.NewInt(1)), nil
@@ -113,11 +109,11 @@ func (a *GasAPI) GasEsitmateGasPremium(ctx context.Context, nblocksincl uint64,
 
 	switch nblocksincl {
 	case 1:
-		return types.NewInt(MinGasPrice + 2), nil
+		return types.NewInt(2 * MinGasPremium), nil
 	case 2:
-		return types.NewInt(MinGasPrice + 1), nil
+		return types.NewInt(1.5 * MinGasPremium), nil
 	default:
-		return types.NewInt(MinGasPrice), nil
+		return types.NewInt(MinGasPremium), nil
 	}
 }
 
