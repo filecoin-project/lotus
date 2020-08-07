@@ -385,6 +385,7 @@ func (mp *MessagePool) createMessageChains(actor address.Address, mset map[uint6
 	curNonce := a.Nonce
 	balance := a.Balance.Int
 	gasLimit := int64(0)
+	skip := 0
 	i := 0
 	rewards := make([]*big.Int, 0, len(msgs))
 	for i = 0; i < len(msgs); i++ {
@@ -393,6 +394,7 @@ func (mp *MessagePool) createMessageChains(actor address.Address, mset map[uint6
 		if m.Message.Nonce < curNonce {
 			log.Warnf("encountered message from actor %s with nonce (%d) less than the current nonce (%d)",
 				actor, m.Message.Nonce, curNonce)
+			skip++
 			continue
 		}
 
@@ -430,7 +432,7 @@ func (mp *MessagePool) createMessageChains(actor address.Address, mset map[uint6
 
 	// check we have a sane set of messages to construct the chains
 	if i > 0 {
-		msgs = msgs[:i]
+		msgs = msgs[skip:i]
 	} else {
 		return nil
 	}
