@@ -3,7 +3,7 @@ package gen_test
 import (
 	"context"
 	"github.com/filecoin-project/lotus/genesis"
-	"gotest.tools/assert"
+	"github.com/stretchr/testify/assert"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
@@ -26,14 +26,14 @@ func TestBindMiners(t *testing.T) {
 		t.Fatal(err)
 	}
 	bminer2, err := address.NewIDAddress(2022)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 
 	cg, err := gen.NewGeneratorWithBindMiners([]genesis.BindMiner{
 		{Address: bminer1, SealProof: abi.RegisteredSealProof_StackedDrg2KiBV1},
 		{Address: bminer2, SealProof: abi.RegisteredSealProof_StackedDrg2KiBV1},
 	})
 
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 
 	sm := NewStateManager(cg.ChainStore())
 
@@ -41,8 +41,8 @@ func TestBindMiners(t *testing.T) {
 
 	ts := sm.ChainStore().GetHeaviestTipSet()
 	_, err = StateMinerInfo(ctx, sm, ts, bminer1)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 	_, err = StateMinerInfo(ctx, sm, ts, bminer2)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 
 }

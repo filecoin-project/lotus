@@ -100,7 +100,7 @@ var sendCmd = &cli.Command{
 			fromAddr = addr
 		}
 
-		gp, err := types.BigFromString(cctx.String("gas-price"))
+		gp, err := types.BigFromString(cctx.String("gas-premium"))
 		if err != nil {
 			return err
 		}

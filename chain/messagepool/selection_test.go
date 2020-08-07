@@ -429,3 +429,66 @@ func TestBasicMessageSelection(t *testing.T) {
 		nextNonce++
 	}
 }
+
+func TestMessageSelectionTrimming(t *testing.T) {
+	mp, tma := makeTestMpool()
+
+	// the actors
+	w1, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a1, err := w1.GenerateKey(crypto.SigTypeBLS)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	w2, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a2, err := w2.GenerateKey(crypto.SigTypeBLS)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	block := mock.MkBlock(nil, 1, 1)
+	ts := mock.TipSet(block)
+	tma.applyBlock(t, block)
+
+	gasLimit := gasguess.Costs[gasguess.CostKey{builtin.StorageMarketActorCodeID, 2}]
+
+	tma.setBalance(a1, 1) // in FIL
+	tma.setBalance(a2, 1) // in FIL
+
+	// make many small chains for the two actors
+	nMessages := int((build.BlockGasLimit / gasLimit) + 1)
+	for i := 0; i < nMessages; i++ {
+		bias := (nMessages - i) / 3
+		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(1+i%3+bias))
+		mustAdd(t, mp, m)
+		m = makeTestMessage(w2, a2, a1, uint64(i), gasLimit, uint64(1+i%3+bias))
+		mustAdd(t, mp, m)
+	}
+
+	msgs, err := mp.SelectMessages(ts)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expected := int(build.BlockGasLimit / gasLimit)
+	if len(msgs) != expected {
+		t.Fatalf("expected %d messages, bug got %d", expected, len(msgs))
+	}
+
+	mGasLimit := int64(0)
+	for _, m := range msgs {
+		mGasLimit += m.Message.GasLimit
+	}
+	if mGasLimit > build.BlockGasLimit {
+		t.Fatal("selected messages gas limit exceeds block gas limit!")
+	}
+
+}

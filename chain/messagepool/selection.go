@@ -52,6 +52,7 @@ func (mp *MessagePool) selectMessages(curTs, ts *types.TipSet) ([]*types.SignedM
 	if err != nil {
 		return nil, err
 	}
+
 	if len(pending) == 0 {
 		return nil, nil
 	}
@@ -72,11 +73,9 @@ func (mp *MessagePool) selectMessages(curTs, ts *types.TipSet) ([]*types.SignedM
 	sort.Slice(chains, func(i, j int) bool {
 		return chains[i].Before(chains[j])
 	})
-	if len(chains) != 0 && chains[0].gasPerf < 0 {
-		log.Warnw("all messages in mpool have negative has performance", "bestGasPerf", chains[0].gasPerf)
-		//for i, m := range chains[0].msgs {
-		//log.Warnf("msg %d %+v", i, m.Message)
-		//}
+
+	if len(chains) != 0 && chains[0].gasPerf <= 0 {
+		log.Warnw("all messages in mpool have non-positive gas performance", "bestGasPerf", chains[0].gasPerf)
 		return nil, nil
 	}
 
@@ -92,6 +91,11 @@ func (mp *MessagePool) selectMessages(curTs, ts *types.TipSet) ([]*types.SignedM
 			gasLimit -= chain.gasLimit
 			result = append(result, chain.msgs...)
 			continue
+		}
+
+		// did we run out of performing chains?
+		if chain.gasPerf <= 0 {
+			break
 		}
 
 		// we can't fit this chain because of block gasLimit -- we are at the edge
@@ -132,6 +136,12 @@ tailLoop:
 				result = append(result, chain.msgs...)
 				continue
 			}
+
+			// if gasPerf <= 0 we have no more profitable chains
+			if chain.gasPerf <= 0 {
+				break tailLoop
+			}
+
 			// this chain needs to be trimmed
 			last += i
 			continue tailLoop
@@ -427,7 +437,7 @@ func (mc *msgChain) Before(other *msgChain) bool {
 
 func (mc *msgChain) Trim(gasLimit int64, mp *MessagePool, baseFee types.BigInt, ts *types.TipSet) {
 	i := len(mc.msgs) - 1
-	for i >= 0 && mc.gasLimit > gasLimit {
+	for i >= 0 && (mc.gasLimit > gasLimit || mc.gasPerf < 0) {
 		gasLimit -= mc.msgs[i].Message.GasLimit
 		gasReward := mp.getGasReward(mc.msgs[i], baseFee, ts)
 		mc.gasReward = new(big.Int).Sub(mc.gasReward, gasReward)

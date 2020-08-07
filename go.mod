@@ -80,7 +80,7 @@ require (
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/lib/pq v1.7.0
 	github.com/libp2p/go-eventbus v0.2.1
-	github.com/libp2p/go-libp2p v0.10.2
+	github.com/libp2p/go-libp2p v0.10.3
 	github.com/libp2p/go-libp2p-connmgr v0.2.4
 	github.com/libp2p/go-libp2p-core v0.6.1
 	github.com/libp2p/go-libp2p-discovery v0.5.0
@@ -129,7 +129,6 @@ require (
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0
 	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543
 	google.golang.org/api v0.25.0 // indirect
-	gotest.tools v2.2.0+incompatible
 	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
 )
 
