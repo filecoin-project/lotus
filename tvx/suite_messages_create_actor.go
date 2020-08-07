@@ -1,7 +1,7 @@
 package main
 
 import (
-	"encoding/json"
+	"fmt"
 	"os"
 
 	"github.com/hashicorp/go-multierror"
@@ -119,10 +119,7 @@ func MessageTest_AccountActorCreation() error {
 			td.Vector.Post.StateTree.RootCID = postroot
 
 			// encode and output
-			enc := json.NewEncoder(os.Stdout)
-			if err := enc.Encode(&td.Vector); err != nil {
-				return err
-			}
+			fmt.Fprintln(os.Stdout, string(td.Vector.MustMarshalJSON()))
 
 			return nil
 		}()
@@ -184,10 +181,7 @@ func MessageTest_InitActorSequentialIDAddressCreate() error {
 	td.Vector.Post.StateTree.RootCID = postroot
 
 	// encode and output
-	enc := json.NewEncoder(os.Stdout)
-	if err := enc.Encode(&td.Vector); err != nil {
-		return err
-	}
+	fmt.Fprintln(os.Stdout, string(td.Vector.MustMarshalJSON()))
 
 	return nil
 }

@@ -123,3 +123,12 @@ func (tv TestVector) Validate() error {
 	}
 	return nil
 }
+
+// MustMarshalJSON encodes the test vector to JSON and panics if it errors.
+func (tv TestVector) MustMarshalJSON() []byte {
+	b, err := json.Marshal(&tv)
+	if err != nil {
+		panic(err)
+	}
+	return b
+}

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"encoding/json"
+	"fmt"
 	"os"
 
 	abi_spec "github.com/filecoin-project/specs-actors/actors/abi"
@@ -55,10 +55,7 @@ func MessageTest_Paych() error {
 		td.Vector.Post.StateTree.RootCID = postroot
 
 		// encode and output
-		enc := json.NewEncoder(os.Stdout)
-		if err := enc.Encode(&td.Vector); err != nil {
-			return err
-		}
+		fmt.Fprintln(os.Stdout, string(td.Vector.MustMarshalJSON()))
 
 		return nil
 	}("happy path constructor")
@@ -130,10 +127,7 @@ func MessageTest_Paych() error {
 		td.Vector.Post.StateTree.RootCID = postroot
 
 		// encode and output
-		enc := json.NewEncoder(os.Stdout)
-		if err := enc.Encode(&td.Vector); err != nil {
-			return err
-		}
+		fmt.Fprintln(os.Stdout, string(td.Vector.MustMarshalJSON()))
 
 		return nil
 	}("happy path update")
@@ -208,10 +202,7 @@ func MessageTest_Paych() error {
 		td.Vector.Post.StateTree.RootCID = postroot
 
 		// encode and output
-		enc := json.NewEncoder(os.Stdout)
-		if err := enc.Encode(&td.Vector); err != nil {
-			return err
-		}
+		fmt.Fprintln(os.Stdout, string(td.Vector.MustMarshalJSON()))
 
 		return nil
 	}("happy path collect")

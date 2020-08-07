@@ -1,7 +1,7 @@
 package main
 
 import (
-	"encoding/json"
+	"fmt"
 	"os"
 
 	abi_spec "github.com/filecoin-project/specs-actors/actors/abi"
@@ -40,10 +40,7 @@ func MessageTest_MessageApplicationEdgecases() error {
 		td.Vector.Post.StateTree.RootCID = postroot
 
 		// encode and output
-		enc := json.NewEncoder(os.Stdout)
-		if err := enc.Encode(&td.Vector); err != nil {
-			return err
-		}
+		fmt.Fprintln(os.Stdout, string(td.Vector.MustMarshalJSON()))
 
 		return nil
 	}("fail to cover gas cost for message receipt on chain")
@@ -81,10 +78,7 @@ func MessageTest_MessageApplicationEdgecases() error {
 		td.Vector.Post.StateTree.RootCID = postroot
 
 		// encode and output
-		enc := json.NewEncoder(os.Stdout)
-		if err := enc.Encode(&td.Vector); err != nil {
-			return err
-		}
+		fmt.Fprintln(os.Stdout, string(td.Vector.MustMarshalJSON()))
 
 		return nil
 	}("not enough gas to pay message on-chain-size cost")
@@ -132,10 +126,7 @@ func MessageTest_MessageApplicationEdgecases() error {
 		td.Vector.Post.StateTree.RootCID = postroot
 
 		// encode and output
-		enc := json.NewEncoder(os.Stdout)
-		if err := enc.Encode(&td.Vector); err != nil {
-			return err
-		}
+		fmt.Fprintln(os.Stdout, string(td.Vector.MustMarshalJSON()))
 
 		return nil
 	}("fail not enough gas to cover account actor creation")
@@ -174,10 +165,7 @@ func MessageTest_MessageApplicationEdgecases() error {
 		td.Vector.Post.StateTree.RootCID = postroot
 
 		// encode and output
-		enc := json.NewEncoder(os.Stdout)
-		if err := enc.Encode(&td.Vector); err != nil {
-			return err
-		}
+		fmt.Fprintln(os.Stdout, string(td.Vector.MustMarshalJSON()))
 
 		return nil
 	}("invalid actor nonce")
@@ -246,10 +234,7 @@ func MessageTest_MessageApplicationEdgecases() error {
 		td.Vector.Post.StateTree.RootCID = postroot
 
 		// encode and output
-		enc := json.NewEncoder(os.Stdout)
-		if err := enc.Encode(&td.Vector); err != nil {
-			return err
-		}
+		fmt.Fprintln(os.Stdout, string(td.Vector.MustMarshalJSON()))
 
 		return nil
 	}("abort during actor execution")
@@ -281,10 +266,7 @@ func MessageTest_MessageApplicationEdgecases() error {
 		td.Vector.Post.StateTree.RootCID = postroot
 
 		// encode and output
-		enc := json.NewEncoder(os.Stdout)
-		if err := enc.Encode(&td.Vector); err != nil {
-			return err
-		}
+		fmt.Fprintln(os.Stdout, string(td.Vector.MustMarshalJSON()))
 
 		return nil
 	}("invalid method for receiver")
@@ -325,10 +307,7 @@ func MessageTest_MessageApplicationEdgecases() error {
 		td.Vector.Post.StateTree.RootCID = postroot
 
 		// encode and output
-		enc := json.NewEncoder(os.Stdout)
-		if err := enc.Encode(&td.Vector); err != nil {
-			return err
-		}
+		fmt.Fprintln(os.Stdout, string(td.Vector.MustMarshalJSON()))
 
 		return nil
 	}("receiver ID/Actor address does not exist")
