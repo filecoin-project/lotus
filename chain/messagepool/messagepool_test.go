@@ -298,8 +298,8 @@ func TestPruningSimple(t *testing.T) {
 		}
 	}
 
-	mp.maxTxPoolSizeHi = 40
-	mp.maxTxPoolSizeLo = 10
+	mp.cfg.SizeLimitHigh = 40
+	mp.cfg.SizeLimitLow = 10
 
 	mp.Prune()
 
