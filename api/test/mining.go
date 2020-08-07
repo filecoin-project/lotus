@@ -140,6 +140,7 @@ func TestDealMining(t *testing.T, b APIBuilder, blocktime time.Duration, carExpo
 	go func() {
 		defer close(done)
 
+		complChan := minedTwo
 		for atomic.LoadInt32(&mine) != 0 {
 			wait := make(chan int)
 			mdone := func(mined bool, err error) {
@@ -184,8 +185,9 @@ func TestDealMining(t *testing.T, b APIBuilder, blocktime time.Duration, carExpo
 
 			}
 
-			if nodeOneMined {
-				close(minedTwo)
+			if nodeOneMined && complChan != nil {
+				close(complChan)
+				complChan = nil
 			}
 
 		}
