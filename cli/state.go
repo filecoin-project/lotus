@@ -55,6 +55,7 @@ var stateCmd = &cli.Command{
 		statePledgeCollateralCmd,
 		stateListActorsCmd,
 		stateListMinersCmd,
+		stateCircSupplyCmd,
 		stateGetActorCmd,
 		stateLookupIDCmd,
 		stateReplaySetCmd,
@@ -1517,4 +1518,32 @@ func parseParamsForMethod(act cid.Cid, method uint64, args []string) ([]byte, er
 		return nil, fmt.Errorf("failed to marshal param object: %s", err)
 	}
 	return buf.Bytes(), nil
+}
+
+var stateCircSupplyCmd = &cli.Command{
+	Name:  "circulating-supply",
+	Usage: "Get the current circulating supply of filecoin",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		ts, err := LoadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
+
+		circ, err := api.StateCirculatingSupply(ctx, ts.Key())
+		if err != nil {
+			return err
+		}
+
+		fmt.Println(types.FIL(circ))
+
+		return nil
+	},
 }

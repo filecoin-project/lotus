@@ -351,6 +351,9 @@ type FullNode interface {
 	// can issue. It takes the deal size and verified status as parameters.
 	StateDealProviderCollateralBounds(context.Context, abi.PaddedPieceSize, bool, types.TipSetKey) (DealCollateralBounds, error)
 
+	// StateCirculatingSupply returns the circulating supply of Filecoin at the given tipset
+	StateCirculatingSupply(context.Context, types.TipSetKey) (abi.TokenAmount, error)
+
 	// MethodGroup: Msig
 	// The Msig methods are used to interact with multisig wallets on the
 	// filecoin network

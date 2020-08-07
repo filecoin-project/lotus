@@ -693,3 +693,30 @@ func MinerHasMinPower(ctx context.Context, sm *StateManager, addr address.Addres
 
 	return ps.MinerNominalPowerMeetsConsensusMinimum(sm.ChainStore().Store(ctx), addr)
 }
+
+func GetCirculatingSupply(ctx context.Context, sm *StateManager, ts *types.TipSet) (abi.TokenAmount, error) {
+	if ts == nil {
+		ts = sm.cs.GetHeaviestTipSet()
+	}
+
+	r := store.NewChainRand(sm.cs, ts.Cids(), ts.Height())
+	vmopt := &vm.VMOpts{
+		StateBase:  ts.ParentState(),
+		Epoch:      ts.Height(),
+		Rand:       r,
+		Bstore:     sm.cs.Blockstore(),
+		Syscalls:   sm.cs.VMSys(),
+		VestedCalc: sm.GetVestedFunds,
+		BaseFee:    ts.Blocks()[0].ParentBaseFee,
+	}
+	vmi, err := vm.NewVM(vmopt)
+	if err != nil {
+		return abi.NewTokenAmount(0), err
+	}
+
+	uvm := &vm.UnsafeVM{vmi}
+
+	rt := uvm.MakeRuntime(ctx, &types.Message{From: builtin.InitActorAddr, GasLimit: 10000000}, builtin.InitActorAddr, 0, 0, 0)
+
+	return rt.TotalFilCircSupply(), nil
+}
