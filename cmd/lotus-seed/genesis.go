@@ -4,13 +4,14 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"github.com/docker/go-units"
-	"github.com/filecoin-project/lotus/lib/tablewriter"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/docker/go-units"
+	"github.com/filecoin-project/lotus/lib/tablewriter"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
 
 	"github.com/google/uuid"
 	"github.com/mitchellh/go-homedir"

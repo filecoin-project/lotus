@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"math/rand"
+
+	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 
 	"github.com/filecoin-project/lotus/chain/state"
 
