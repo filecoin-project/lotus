@@ -25,6 +25,15 @@ type MpoolAPI struct {
 	Mpool *messagepool.MessagePool
 }
 
+func (a *MpoolAPI) MpoolGetConfig(context.Context) (*types.MpoolConfig, error) {
+	return a.Mpool.GetConfig(), nil
+}
+
+func (a *MpoolAPI) MpoolSetConfig(ctx context.Context, cfg *types.MpoolConfig) error {
+	a.Mpool.SetConfig(cfg)
+	return nil
+}
+
 func (a *MpoolAPI) MpoolSelect(ctx context.Context, tsk types.TipSetKey) ([]*types.SignedMessage, error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {

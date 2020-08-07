@@ -173,6 +173,11 @@ type FullNode interface {
 	MpoolGetNonce(context.Context, address.Address) (uint64, error)
 	MpoolSub(context.Context) (<-chan MpoolUpdate, error)
 
+	// MpoolGetConfig returns (a copy of) the current mpool config
+	MpoolGetConfig(context.Context) (*types.MpoolConfig, error)
+	// MpoolSetConfig sets the mpool config to (a copy of) the supplied config
+	MpoolSetConfig(context.Context, *types.MpoolConfig) error
+
 	// MethodGroup: Miner
 
 	MinerGetBaseInfo(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*MiningBaseInfo, error)
