@@ -67,6 +67,8 @@ const (
 type MessagePool struct {
 	lk sync.Mutex
 
+	ds dtypes.MetadataDS
+
 	closer  chan struct{}
 	repubTk *clock.Ticker
 
@@ -209,9 +211,16 @@ func (mpp *mpoolProvider) ChainComputeBaseFee(ctx context.Context, ts *types.Tip
 func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName) (*MessagePool, error) {
 	cache, _ := lru.New2Q(build.BlsSignatureCacheSize)
 	verifcache, _ := lru.New2Q(build.VerifSigCacheSize)
-	cfg := DefaultConfig()
+
+	cfg, err := loadConfig(ds)
+	if err != nil {
+		if err != nil {
+			return nil, xerrors.Errorf("error loading mpool config: %w", err)
+		}
+	}
 
 	mp := &MessagePool{
+		ds:            ds,
 		closer:        make(chan struct{}),
 		repubTk:       build.Clock.Ticker(time.Duration(build.BlockDelaySecs) * 10 * time.Second),
 		localAddrs:    make(map[address.Address]struct{}),
