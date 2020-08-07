@@ -71,7 +71,7 @@ func ComputeGasOutputs(gasUsed, gasLimit int64, baseFee, feeCap, gasPremium abi.
 		baseFeeToPay = feeCap
 		out.MinerPenalty = big.Mul(big.Sub(baseFee, feeCap), gasUsedBig)
 	}
-	out.BaseFeeBurn = big.Mul(baseFeeToPay, big.NewInt(gasUsed))
+	out.BaseFeeBurn = big.Mul(baseFeeToPay, gasUsedBig)
 
 	minerTip := gasPremium
 	if big.Cmp(big.Add(baseFeeToPay, minerTip), feeCap) > 0 {

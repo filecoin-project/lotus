@@ -140,7 +140,11 @@ func (m *Message) ValidForBlockInclusion(minGas int64) error {
 	}
 
 	if m.GasFeeCap.LessThan(big.Zero()) {
-		return xerrors.New("'GasPrice' field cannot be negative")
+		return xerrors.New("'GasFeeCap' field cannot be negative")
+	}
+
+	if m.GasPremium.LessThan(big.Zero()) {
+		return xerrors.New("'GasPremium' field cannot be negative")
 	}
 
 	if m.GasLimit > build.BlockGasLimit {

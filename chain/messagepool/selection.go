@@ -88,7 +88,7 @@ func (mp *MessagePool) selectMessages(curTs, ts *types.TipSet) ([]*types.SignedM
 	last := len(chains)
 	for i, chain := range chains {
 		// does it fit in the block?
-		if chain.gasLimit <= gasLimit {
+		if chain.gasLimit <= gasLimit && chain.gasPerf > 0 {
 			gasLimit -= chain.gasLimit
 			result = append(result, chain.msgs...)
 			continue
@@ -127,7 +127,7 @@ tailLoop:
 				continue
 			}
 			// does it fit in the bock?
-			if chain.gasLimit <= gasLimit {
+			if chain.gasLimit <= gasLimit && chain.gasPerf > 0 {
 				gasLimit -= chain.gasLimit
 				result = append(result, chain.msgs...)
 				continue
