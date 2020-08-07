@@ -107,7 +107,11 @@ var DefaultVerifregRootkeyActor = genesis.Actor{
 	Meta:    rootkeyMultisig.ActorMeta(),
 }
 
-func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
+func NewGeneratorWithBindMiners(bindMiners []genesis.BindMiner) (*ChainGen, error) {
+	return NewGeneratorWithSectors(1, bindMiners)
+}
+
+func NewGeneratorWithSectors(numSectors int, bindMiners []genesis.BindMiner) (*ChainGen, error) {
 	saminer.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
 		abi.RegisteredSealProof_StackedDrg2KiBV1: {},
 	}
@@ -144,6 +148,12 @@ func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
 	if err != nil {
 		return nil, xerrors.Errorf("failed to generate banker key: %w", err)
 	}
+
+	binder, err := w.GenerateKey(crypto.SigTypeBLS)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to generate binder key: %w", err)
+	}
+
 
 	receievers := make([]address.Address, msgsPerBlock)
 	for r := range receievers {
@@ -205,12 +215,19 @@ func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
 				Balance: types.FromFil(50000),
 				Meta:    (&genesis.AccountMeta{Owner: banker}).ActorMeta(),
 			},
+			{
+				Type:       genesis.TAccount,
+				Balance:    types.NewInt(2),
+				BindMiners: bindMiners,
+				Meta:       (&genesis.AccountMeta{Owner: binder}).ActorMeta(),
+			},
 		},
 		Miners: []genesis.Miner{
 			*genm1,
 			*genm2,
 		},
 		VerifregRootKey: DefaultVerifregRootkeyActor,
+		InitIDStart:     2000,
 		NetworkName:     "",
 		Timestamp:       uint64(build.Clock.Now().Add(-500 * time.Duration(build.BlockDelaySecs) * time.Second).Unix()),
 	}
@@ -269,7 +286,7 @@ func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
 }
 
 func NewGenerator() (*ChainGen, error) {
-	return NewGeneratorWithSectors(1)
+	return NewGeneratorWithSectors(1, nil)
 }
 
 func (cg *ChainGen) StateManager() *stmgr.StateManager {

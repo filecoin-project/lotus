@@ -405,7 +405,7 @@ func MakeGenesisBlock(ctx context.Context, bs bstore.Blockstore, sys vm.SyscallB
 		return nil, xerrors.Errorf("failed to verify presealed data: %w", err)
 	}
 
-	stateroot, err = SetupStorageMiners(ctx, cs, stateroot, template.Miners)
+	stateroot, err = SetupStorageMiners(ctx, cs, stateroot, template)
 	if err != nil {
 		return nil, xerrors.Errorf("setup miners failed: %w", err)
 	}

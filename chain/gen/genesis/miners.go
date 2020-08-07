@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math/rand"
 
+	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
+
 	"github.com/filecoin-project/lotus/chain/state"
 
 	"github.com/ipfs/go-cid"
@@ -56,7 +58,10 @@ func mkFakedSigSyscalls(base vm.SyscallBuilder) vm.SyscallBuilder {
 	}
 }
 
-func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid, miners []genesis.Miner) (cid.Cid, error) {
+func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid, template genesis.Template) (cid.Cid, error) {
+	miners := template.Miners
+	accounts := template.Accounts
+
 	csc := func(context.Context, abi.ChainEpoch, *state.StateTree) (abi.TokenAmount, error) {
 		return big.Zero(), nil
 	}
@@ -308,10 +313,28 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 
 	// TODO: Should we re-ConstructState for the reward actor using rawPow as currRealizedPower here?
 
+	{
+		err = setupBindMiners(ctx, vm, accounts)
+		if err != nil {
+			return cid.Undef, err
+		}
+	}
+
 	c, err := vm.Flush(ctx)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("flushing vm: %w", err)
 	}
+
+	{
+		err = vm.MutateState(ctx, builtin.InitActorAddr, func(cst cbor.IpldStore, st *init_.State) error {
+			st.NextID = abi.ActorID(template.InitIDStart)
+			return nil
+		})
+		if err != nil {
+			return cid.Undef, xerrors.Errorf("mutating state: %w", err)
+		}
+	}
+
 	return c, nil
 }
 

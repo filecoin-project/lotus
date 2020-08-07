@@ -65,11 +65,16 @@ func (mm *MultisigMeta) ActorMeta() json.RawMessage {
 	return out
 }
 
-type Actor struct {
-	Type    ActorType
-	Balance abi.TokenAmount
+type BindMiner struct {
+	SealProof abi.RegisteredSealProof
+	Address   address.Address
+}
 
-	Meta json.RawMessage
+type Actor struct {
+	Type       ActorType
+	Balance    abi.TokenAmount
+	BindMiners []BindMiner
+	Meta       json.RawMessage
 }
 
 type Template struct {
@@ -77,6 +82,7 @@ type Template struct {
 	Miners   []Miner
 
 	NetworkName string
+	InitIDStart uint64
 	Timestamp   uint64 `json:",omitempty"`
 
 	VerifregRootKey Actor

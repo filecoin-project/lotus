@@ -4,6 +4,9 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"github.com/docker/go-units"
+	"github.com/filecoin-project/lotus/lib/tablewriter"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"io/ioutil"
 	"os"
 	"strconv"
@@ -32,6 +35,8 @@ var genesisCmd = &cli.Command{
 		genesisNewCmd,
 		genesisAddMinerCmd,
 		genesisAddMsigsCmd,
+		genesisAccountInfo,
+		genesisBindAccountMinerCmd,
 	},
 }
 
@@ -51,6 +56,7 @@ var genesisNewCmd = &cli.Command{
 			Accounts:        []genesis.Actor{},
 			Miners:          []genesis.Miner{},
 			VerifregRootKey: gen.DefaultVerifregRootkeyActor,
+			InitIDStart:     genesis2.MinerStart,
 			NetworkName:     cctx.String("network-name"),
 		}
 		if out.NetworkName == "" {
@@ -300,4 +306,187 @@ func parseMultisigCsv(csvf string) ([]GenAccountEntry, error) {
 	}
 
 	return entries, nil
+}
+
+var genesisAccountInfo = &cli.Command{
+	Name:        "info",
+	Description: "list genesis account info",
+	Usage:       "[genesis.json]",
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() != 1 {
+			return xerrors.New("seed genesis info [genesis.json]")
+		}
+		genf, err := homedir.Expand(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+		var template genesis.Template
+		genb, err := ioutil.ReadFile(genf)
+		if err != nil {
+			return xerrors.Errorf("read genesis template: %w", err)
+		}
+
+		if err := json.Unmarshal(genb, &template); err != nil {
+			return xerrors.Errorf("unmarshal genesis template: %w", err)
+		}
+		return printAccounts(template)
+	},
+}
+
+var genesisBindAccountMinerCmd = &cli.Command{
+	Name:        "bind-miner",
+	Description: "genesis bind account and  miner",
+	Usage:       "[genesis.json] [wallet address] [storage miner address]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "sector-size",
+			Value: "32GiB",
+			Usage: "specify size of sectors to bind miner",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() != 3 {
+			return xerrors.New("seed genesis bind-miner [genesis.json] [wallet address] [storage miner address]")
+		}
+		genf, err := homedir.Expand(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+		var template genesis.Template
+		genb, err := ioutil.ReadFile(genf)
+		if err != nil {
+			return xerrors.Errorf("read genesis template: %w", err)
+		}
+
+		if err := json.Unmarshal(genb, &template); err != nil {
+			return xerrors.Errorf("unmarshal genesis template: %w", err)
+		}
+		walletAddr, err := address.NewFromString(cctx.Args().Get(1))
+		if err != nil {
+			return err
+		}
+		minerAddr, err := address.NewFromString(cctx.Args().Get(2))
+		if err != nil {
+			return err
+		}
+		sectorSizeInt, err := units.RAMInBytes(cctx.String("sector-size"))
+		if err != nil {
+			return err
+		}
+		sectorSize := abi.SectorSize(sectorSizeInt)
+		spt, err := ffiwrapper.SealProofTypeFromSectorSize(sectorSize)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("bind before:\n")
+		_ = printAccounts(template)
+
+		isExistAccountActor := false
+		for index, account := range template.Accounts {
+			meta, err := genesis2.GetAccountMeta(account)
+			if err != nil {
+				return err
+			}
+			//check template account ids
+			if addressIndexOf(account.BindMiners, minerAddr) {
+				return xerrors.Errorf("miner address %v already bind with account %v", meta.Owner, minerAddr)
+			}
+
+			if meta.Owner == walletAddr {
+				isExistAccountActor = true
+				account.BindMiners = append(account.BindMiners, genesis.BindMiner{
+					Address:   minerAddr,
+					SealProof: spt,
+				})
+				minBalance := abi.NewTokenAmount(int64(len(account.BindMiners)))
+				if types.BigCmp(account.Balance, minBalance) == -1 {
+					template.Accounts[index].Balance = minBalance
+					fmt.Printf("Giving %s some balance:%v\n", walletAddr, types.FIL(account.Balance))
+				}
+				template.Accounts[index].BindMiners = account.BindMiners
+			}
+		}
+
+		if !isExistAccountActor {
+			act := genesis.Actor{
+				Type:       genesis.TAccount,
+				Balance:    abi.NewTokenAmount(1),
+				BindMiners: []genesis.BindMiner{{Address: minerAddr, SealProof: spt}},
+				Meta:       (&genesis.AccountMeta{Owner: walletAddr}).ActorMeta(),
+			}
+			fmt.Printf("Adding and Giving %s some balance:%v\n", walletAddr, types.FIL(act.Balance))
+			template.Accounts = append(template.Accounts, act)
+		}
+
+		maxMinerActorID, err := getMaxMinerID(template)
+		if err != nil {
+			return err
+		}
+		if maxMinerActorID > genesis2.MinerStart {
+			template.InitIDStart = maxMinerActorID + 1
+		} else {
+			template.InitIDStart = genesis2.MinerStart
+		}
+		fmt.Printf("bind after:\n")
+		_ = printAccounts(template)
+		genb, err = json.MarshalIndent(&template, "", "  ")
+		if err != nil {
+			return err
+		}
+
+		if err := ioutil.WriteFile(genf, genb, 0600); err != nil {
+			return err
+		}
+
+		return nil
+	},
+}
+
+func getMaxMinerID(template genesis.Template) (uint64, error) {
+	max := uint64(len(template.Miners))
+	for _, account := range template.Accounts {
+		for _, m := range account.BindMiners {
+			id, err := address.IDFromAddress(m.Address)
+			if err != nil {
+				return 0, err
+			}
+			if id > max {
+				max = id
+			}
+		}
+	}
+	return max, nil
+}
+
+func printAccounts(template genesis.Template) error {
+
+	w := tablewriter.New(
+		tablewriter.Col("Owner"),
+		tablewriter.Col("Type"),
+		tablewriter.Col("Balance"),
+		tablewriter.Col("Miners"),
+	)
+	for _, account := range template.Accounts {
+		meta, err := genesis2.GetAccountMeta(account)
+		if err != nil {
+			return err
+		}
+		w.Write(map[string]interface{}{
+			"Owner":   meta.Owner,
+			"Type":    account.Type,
+			"Balance": types.FIL(account.Balance),
+			"Miners":  account.BindMiners,
+		})
+	}
+	return w.Flush(os.Stdout)
+}
+
+func addressIndexOf(addrs []genesis.BindMiner, addr address.Address) bool {
+	for _, v := range addrs {
+		if v.Address == addr {
+			return true
+		}
+	}
+	return false
 }
