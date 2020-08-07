@@ -12,7 +12,6 @@ import (
 
 	"github.com/filecoin-project/oni/tvx/chain"
 	"github.com/filecoin-project/oni/tvx/drivers"
-	"github.com/filecoin-project/oni/tvx/schema"
 )
 
 func MessageTest_Paych() error {
@@ -35,7 +34,6 @@ func MessageTest_Paych() error {
 		createRet := td.ComputeInitActorExecReturn(sender, 0, 0, paychAddr)
 
 		msg := td.MessageProducer.CreatePaymentChannelActor(sender, receiver, chain.Value(toSend), chain.Nonce(0))
-		td.Vector.ApplyMessages = append(td.Vector.ApplyMessages, schema.Message{Bytes: chain.MustSerialize(msg)})
 
 		// init actor creates the payment channel
 		td.ApplyExpect(
@@ -89,7 +87,6 @@ func MessageTest_Paych() error {
 		createRet := td.ComputeInitActorExecReturn(sender, 0, 0, paychAddr)
 
 		msg := td.MessageProducer.CreatePaymentChannelActor(sender, receiver, chain.Value(toSend), chain.Nonce(0))
-		td.Vector.ApplyMessages = append(td.Vector.ApplyMessages, schema.Message{Bytes: chain.MustSerialize(msg)})
 		td.ApplyExpect(
 			msg,
 			chain.MustSerialize(&createRet))
@@ -109,7 +106,6 @@ func MessageTest_Paych() error {
 				Signature:       pcSig,
 			},
 		}, chain.Nonce(1), chain.Value(big_spec.Zero()))
-		td.Vector.ApplyMessages = append(td.Vector.ApplyMessages, schema.Message{Bytes: chain.MustSerialize(msg)})
 		td.ApplyOk(msg)
 
 		var pcState paych_spec.State
@@ -147,7 +143,6 @@ func MessageTest_Paych() error {
 		preroot := td.GetStateRoot()
 
 		msg := td.MessageProducer.CreatePaymentChannelActor(sender, receiver, chain.Value(toSend), chain.Nonce(0))
-		td.Vector.ApplyMessages = append(td.Vector.ApplyMessages, schema.Message{Bytes: chain.MustSerialize(msg)})
 		td.ApplyExpect(
 			msg,
 			chain.MustSerialize(&initRet))
@@ -172,22 +167,17 @@ func MessageTest_Paych() error {
 			},
 		}, chain.Nonce(1), chain.Value(big_spec.Zero()))
 
-		td.Vector.ApplyMessages = append(td.Vector.ApplyMessages, schema.Message{Bytes: chain.MustSerialize(msg)})
-
 		td.ApplyOk(msg)
 
 		// settle the payment channel so it may be collected
 
 		msg = td.MessageProducer.PaychSettle(receiver, paychAddr, nil, chain.Value(big_spec.Zero()), chain.Nonce(0))
-		td.Vector.ApplyMessages = append(td.Vector.ApplyMessages, schema.Message{Bytes: chain.MustSerialize(msg)})
 		settleResult := td.ApplyOk(msg)
 
 		// advance the epoch so the funds may be redeemed.
 		td.ExeCtx.Epoch += paych_spec.SettleDelay
 
 		msg = td.MessageProducer.PaychCollect(receiver, paychAddr, nil, chain.Nonce(1), chain.Value(big_spec.Zero()))
-		td.Vector.ApplyMessages = append(td.Vector.ApplyMessages, schema.Message{Epoch: &td.ExeCtx.Epoch, Bytes: chain.MustSerialize(msg)})
-
 		collectResult := td.ApplyOk(msg)
 
 		// receiver_balance = initial_balance + paych_send - settle_paych_msg_gas - collect_paych_msg_gas

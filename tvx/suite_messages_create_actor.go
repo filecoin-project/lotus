@@ -15,7 +15,6 @@ import (
 
 	"github.com/filecoin-project/oni/tvx/chain"
 	"github.com/filecoin-project/oni/tvx/drivers"
-	"github.com/filecoin-project/oni/tvx/schema"
 )
 
 var suiteMessagesCmd = &cli.Command{
@@ -96,11 +95,6 @@ func MessageTest_AccountActorCreation() error {
 			preroot := td.GetStateRoot()
 
 			msg := td.MessageProducer.Transfer(existingAccountAddr, tc.newActorAddr, chain.Value(tc.newActorInitBal), chain.Nonce(0))
-			b, err := msg.Serialize()
-			if err != nil {
-				return err
-			}
-			td.Vector.ApplyMessages = []schema.Message{{Bytes: b}}
 			result := td.ApplyFailure(
 				msg,
 				tc.expExitCode,
@@ -156,23 +150,11 @@ func MessageTest_InitActorSequentialIDAddressCreate() error {
 		chain.MustSerialize(&firstInitRet),
 	)
 
-	b1, err := msg1.Serialize()
-	if err != nil {
-		return err
-	}
-	td.Vector.ApplyMessages = append(td.Vector.ApplyMessages, schema.Message{Bytes: b1})
-
 	msg2 := td.MessageProducer.CreatePaymentChannelActor(sender, receiver, chain.Value(toSend), chain.Nonce(1))
 	td.ApplyExpect(
 		msg2,
 		chain.MustSerialize(&secondInitRet),
 	)
-
-	b2, err := msg2.Serialize()
-	if err != nil {
-		return err
-	}
-	td.Vector.ApplyMessages = append(td.Vector.ApplyMessages, schema.Message{Bytes: b2})
 
 	postroot := td.GetStateRoot()
 
