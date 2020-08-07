@@ -370,6 +370,13 @@ var genesisBindAccountMinerCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
+		mid, err := address.IDFromAddress(minerAddr)
+		if err != nil {
+			return err
+		}
+		if mid > genesis2.FinalMinerStart {
+			return xerrors.Errorf("miner id %v can't greater than final miner start %v", mid, genesis2.FinalMinerStart)
+		}
 		sectorSizeInt, err := units.RAMInBytes(cctx.String("sector-size"))
 		if err != nil {
 			return err
@@ -425,7 +432,7 @@ var genesisBindAccountMinerCmd = &cli.Command{
 			return err
 		}
 		if maxMinerActorID > genesis2.MinerStart {
-			template.InitIDStart = maxMinerActorID + 1
+			template.InitIDStart = genesis2.FinalMinerStart
 		} else {
 			template.InitIDStart = genesis2.MinerStart
 		}
