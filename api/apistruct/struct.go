@@ -97,6 +97,8 @@ type FullNodeStruct struct {
 		SyncMarkBad        func(ctx context.Context, bcid cid.Cid) error                `perm:"admin"`
 		SyncCheckBad       func(ctx context.Context, bcid cid.Cid) (string, error)      `perm:"read"`
 
+		MpoolGetConfig   func(context.Context) (*types.MpoolConfig, error)                      `perm:"read"`
+		MpoolSetConfig   func(context.Context, *types.MpoolConfig) error                        `perm:"write"`
 		MpoolSelect      func(context.Context, types.TipSetKey) ([]*types.SignedMessage, error) `perm:"read"`
 		MpoolPending     func(context.Context, types.TipSetKey) ([]*types.SignedMessage, error) `perm:"read"`
 		MpoolPush        func(context.Context, *types.SignedMessage) (cid.Cid, error)           `perm:"write"`
@@ -443,6 +445,14 @@ func (c *FullNodeStruct) GasEstimateFeeCap(ctx context.Context, maxqueueblks int
 func (c *FullNodeStruct) GasEstimateGasLimit(ctx context.Context, msg *types.Message,
 	tsk types.TipSetKey) (int64, error) {
 	return c.Internal.GasEstimateGasLimit(ctx, msg, tsk)
+}
+
+func (c *FullNodeStruct) MpoolGetConfig(ctx context.Context) (*types.MpoolConfig, error) {
+	return c.Internal.MpoolGetConfig(ctx)
+}
+
+func (c *FullNodeStruct) MpoolSetConfig(ctx context.Context, cfg *types.MpoolConfig) error {
+	return c.Internal.MpoolSetConfig(ctx, cfg)
 }
 
 func (c *FullNodeStruct) MpoolSelect(ctx context.Context, tsk types.TipSetKey) ([]*types.SignedMessage, error) {
