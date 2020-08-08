@@ -109,6 +109,9 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 	}
 
 	state, _, err := sm.TipSetState(ctx, ts)
+	if err != nil {
+		return nil, xerrors.Errorf("computing tipset state: %w", err)
+	}
 
 	r := store.NewChainRand(sm.cs, ts.Cids(), ts.Height())
 
