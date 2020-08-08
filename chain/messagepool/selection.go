@@ -59,7 +59,7 @@ func (mp *MessagePool) selectMessages(curTs, ts *types.TipSet) ([]*types.SignedM
 
 	// defer only here so if we have no pending messages we don't spam
 	defer func() {
-		log.Infof("message selection took %s", time.Since(start))
+		log.Infow("message selection done", "took", time.Since(start))
 	}()
 
 	// 0b. Select all priority messages that fit in the block
@@ -90,6 +90,7 @@ func (mp *MessagePool) selectMessages(curTs, ts *types.TipSet) ([]*types.SignedM
 
 	// 3. Merge the head chains to produce the list of messages selected for inclusion, subject to
 	//    the block gas limit.
+	startMerge := time.Now()
 	last := len(chains)
 	for i, chain := range chains {
 		// does it fit in the block?
@@ -108,6 +109,7 @@ func (mp *MessagePool) selectMessages(curTs, ts *types.TipSet) ([]*types.SignedM
 		last = i
 		break
 	}
+	log.Infow("merge message chains done", "took", time.Since(startMerge))
 
 	// 4. We have reached the edge of what we can fit wholesale; if we still have available gasLimit
 	// to pack some more chains, then trim the last chain and push it down.
@@ -115,6 +117,7 @@ func (mp *MessagePool) selectMessages(curTs, ts *types.TipSet) ([]*types.SignedM
 	// dependency cannot be (fully) included.
 	// We do this in a loop because the blocker might have been inordinately large and we might
 	// have to do it multiple times to satisfy tail packing.
+	startTail := time.Now()
 tailLoop:
 	for gasLimit >= minGas && last < len(chains) {
 		// trim
@@ -157,11 +160,17 @@ tailLoop:
 		// -- mark the end.
 		last = len(chains)
 	}
+	log.Infow("pack tail chains done", "took", time.Since(startTail))
 
 	return result, nil
 }
 
 func (mp *MessagePool) selectPriorityMessages(pending map[address.Address]map[uint64]*types.SignedMessage, baseFee types.BigInt, ts *types.TipSet) ([]*types.SignedMessage, int64) {
+	start := time.Now()
+	defer func() {
+		log.Infow("select priority messages done", "took", time.Since(start))
+	}()
+
 	result := make([]*types.SignedMessage, 0, mp.cfg.SizeLimitLow)
 	gasLimit := int64(build.BlockGasLimit)
 	minGas := int64(gasguess.MinGas)
@@ -242,6 +251,11 @@ tailLoop:
 }
 
 func (mp *MessagePool) getPendingMessages(curTs, ts *types.TipSet) (map[address.Address]map[uint64]*types.SignedMessage, error) {
+	start := time.Now()
+	defer func() {
+		log.Infow("get pending messages done", "took", time.Since(start))
+	}()
+
 	result := make(map[address.Address]map[uint64]*types.SignedMessage)
 	haveCids := make(map[cid.Cid]struct{})
 
