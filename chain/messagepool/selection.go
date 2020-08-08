@@ -72,11 +72,13 @@ func (mp *MessagePool) selectMessages(curTs, ts *types.TipSet) ([]*types.SignedM
 	}
 
 	// 1. Create a list of dependent message chains with maximal gas reward per limit consumed
+	startChains := time.Now()
 	var chains []*msgChain
 	for actor, mset := range pending {
 		next := mp.createMessageChains(actor, mset, baseFee, ts)
 		chains = append(chains, next...)
 	}
+	log.Infow("create message chains done", "took", time.Since(startChains))
 
 	// 2. Sort the chains
 	sort.Slice(chains, func(i, j int) bool {
