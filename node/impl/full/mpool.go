@@ -113,18 +113,28 @@ func (a *MpoolAPI) MpoolPush(ctx context.Context, smsg *types.SignedMessage) (ci
 
 func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message) (*types.SignedMessage, error) {
 	{
+		fromA, err := a.Stmgr.ResolveToKeyAddress(ctx, msg.From, nil)
+		if err != nil {
+			return nil, xerrors.Errorf("getting key address: %w", err)
+		}
+
 		a.PushLocks.Lock()
 		if a.PushLocks.m == nil {
 			a.PushLocks.m = make(map[address.Address]chan struct{})
 		}
-		lk, ok := a.PushLocks.m[msg.From]
+		lk, ok := a.PushLocks.m[fromA]
 		if !ok {
 			lk = make(chan struct{}, 1)
 			a.PushLocks.m[msg.From] = lk
 		}
 		a.PushLocks.Unlock()
 
-		lk <- struct{}{}
+		select {
+		case lk <- struct{}{}:
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+
 		defer func() {
 			<-lk
 		}()
@@ -150,7 +160,7 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message) (*t
 	}
 
 	if msg.GasFeeCap == types.EmptyInt || types.BigCmp(msg.GasFeeCap, types.NewInt(0)) == 0 {
-		feeCap, err := a.GasEstimateFeeCap(ctx, msg, 20, types.EmptyTSK)
+		feeCap, err := a.GasEstimateFeeCap(ctx, msg, 10, types.EmptyTSK)
 		if err != nil {
 			return nil, xerrors.Errorf("estimating fee cap: %w", err)
 		}

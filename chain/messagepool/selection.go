@@ -254,12 +254,14 @@ tailLoop:
 
 func (mp *MessagePool) getPendingMessages(curTs, ts *types.TipSet) (map[address.Address]map[uint64]*types.SignedMessage, error) {
 	start := time.Now()
-	defer func() {
-		log.Infow("get pending messages done", "took", time.Since(start))
-	}()
 
 	result := make(map[address.Address]map[uint64]*types.SignedMessage)
 	haveCids := make(map[cid.Cid]struct{})
+	defer func() {
+		if time.Since(start) > time.Millisecond {
+			log.Infow("get pending messages done", "took", time.Since(start))
+		}
+	}()
 
 	// are we in sync?
 	inSync := false

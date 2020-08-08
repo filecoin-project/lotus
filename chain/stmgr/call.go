@@ -108,7 +108,7 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 		ts = sm.cs.GetHeaviestTipSet()
 	}
 
-	state := ts.ParentState()
+	state, _, err := sm.TipSetState(ctx, ts)
 
 	r := store.NewChainRand(sm.cs, ts.Cids(), ts.Height())
 
@@ -122,7 +122,7 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 
 	vmopt := &vm.VMOpts{
 		StateBase:  state,
-		Epoch:      ts.Height(),
+		Epoch:      ts.Height() + 1,
 		Rand:       r,
 		Bstore:     sm.cs.Blockstore(),
 		Syscalls:   sm.cs.VMSys(),
