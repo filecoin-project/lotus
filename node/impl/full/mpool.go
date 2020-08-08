@@ -2,6 +2,7 @@ package full
 
 import (
 	"context"
+	"sync"
 
 	"github.com/ipfs/go-cid"
 	"go.uber.org/fx"
@@ -23,6 +24,11 @@ type MpoolAPI struct {
 	Chain *store.ChainStore
 
 	Mpool *messagepool.MessagePool
+
+	PushLocks struct {
+		m map[address.Address]chan struct{}
+		sync.Mutex
+	} `name:"verymuchunique" optional:"true"`
 }
 
 func (a *MpoolAPI) MpoolGetConfig(context.Context) (*types.MpoolConfig, error) {
@@ -105,9 +111,25 @@ func (a *MpoolAPI) MpoolPush(ctx context.Context, smsg *types.SignedMessage) (ci
 	return a.Mpool.Push(smsg)
 }
 
-// GasMargin sets by how much should gas used be increased over test execution
-
 func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message) (*types.SignedMessage, error) {
+	{
+		a.PushLocks.Lock()
+		if a.PushLocks.m == nil {
+			a.PushLocks.m = make(map[address.Address]chan struct{})
+		}
+		lk, ok := a.PushLocks.m[msg.From]
+		if !ok {
+			lk = make(chan struct{}, 1)
+			a.PushLocks.m[msg.From] = lk
+		}
+		a.PushLocks.Unlock()
+
+		lk <- struct{}{}
+		defer func() {
+			<-lk
+		}()
+	}
+
 	if msg.Nonce != 0 {
 		return nil, xerrors.Errorf("MpoolPushMessage expects message nonce to be 0, was %d", msg.Nonce)
 	}
