@@ -286,6 +286,78 @@ func TestMessageChains(t *testing.T) {
 
 }
 
+func TestMessageChainSkipping(t *testing.T) {
+	// regression test for chain skip bug
+
+	mp, tma := makeTestMpool()
+
+	// the actors
+	w1, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a1, err := w1.GenerateKey(crypto.SigTypeBLS)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	w2, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a2, err := w2.GenerateKey(crypto.SigTypeBLS)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	block := mock.MkBlock(nil, 1, 1)
+	ts := mock.TipSet(block)
+
+	gasLimit := gasguess.Costs[gasguess.CostKey{builtin.StorageMarketActorCodeID, 2}]
+	baseFee := types.NewInt(0)
+
+	tma.setBalance(a1, 1) // in FIL
+	tma.setStateNonce(a1, 10)
+
+	mset := make(map[uint64]*types.SignedMessage)
+	for i := 0; i < 20; i++ {
+		bias := (20 - i) / 3
+		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(1+i%3+bias))
+		mset[uint64(i)] = m
+	}
+
+	chains := mp.createMessageChains(a1, mset, baseFee, ts)
+	if len(chains) != 4 {
+		t.Fatalf("expected 4 chains, got %d", len(chains))
+	}
+	for i, chain := range chains {
+		var expectedLen int
+		switch {
+		case i == 0:
+			expectedLen = 2
+		case i > 2:
+			expectedLen = 2
+		default:
+			expectedLen = 3
+		}
+		if len(chain.msgs) != expectedLen {
+			t.Fatalf("expected %d message in chain %d but got %d", expectedLen, i, len(chain.msgs))
+		}
+	}
+	nextNonce := 10
+	for _, chain := range chains {
+		for _, m := range chain.msgs {
+			if m.Message.Nonce != uint64(nextNonce) {
+				t.Fatalf("expected nonce %d but got %d", nextNonce, m.Message.Nonce)
+			}
+			nextNonce++
+		}
+	}
+
+}
+
 func TestBasicMessageSelection(t *testing.T) {
 	mp, tma := makeTestMpool()
 
