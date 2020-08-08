@@ -153,7 +153,7 @@ func (a *GasAPI) GasEstimateGasLimit(ctx context.Context, msgIn *types.Message, 
 	for _, m := range pending {
 		priorMsgs = append(priorMsgs, m)
 	}
-	log.Warnf("added %d prior msgs")
+	log.Warnf("added %d prior msgs", len(priorMsgs))
 
 	res, err := a.Stmgr.CallWithGas(ctx, &msg, priorMsgs, ts)
 	if err != nil {
