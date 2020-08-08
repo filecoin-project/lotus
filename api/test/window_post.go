@@ -44,16 +44,11 @@ func TestPledgeSector(t *testing.T, b APIBuilder, blocktime time.Duration, nSect
 
 	mine := true
 	done := make(chan struct{})
-	blockNotif := make(chan struct{}, 1)
 	go func() {
 		defer close(done)
 		for mine {
 			build.Clock.Sleep(blocktime)
 			if err := sn[0].MineOne(ctx, bminer.MineReq{Done: func(bool, error) {
-				select {
-				case blockNotif <- struct{}{}:
-				default:
-				}
 
 			}}); err != nil {
 				t.Error(err)
@@ -61,7 +56,7 @@ func TestPledgeSector(t *testing.T, b APIBuilder, blocktime time.Duration, nSect
 		}
 	}()
 
-	pledgeSectors(t, ctx, miner, nSectors, 0, blockNotif)
+	pledgeSectors(t, ctx, miner, nSectors, 0, nil)
 
 	mine = false
 	<-done
