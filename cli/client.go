@@ -975,13 +975,13 @@ var clientListDeals = &cli.Command{
 			} else {
 				onChain, err := api.StateMarketStorageDeal(ctx, v.DealID, head.Key())
 				if err != nil {
-					return err
+					deals = append(deals, deal{LocalDeal: v})
+				} else {
+					deals = append(deals, deal{
+						LocalDeal:        v,
+						OnChainDealState: onChain.State,
+					})
 				}
-
-				deals = append(deals, deal{
-					LocalDeal:        v,
-					OnChainDealState: onChain.State,
-				})
 			}
 		}
 

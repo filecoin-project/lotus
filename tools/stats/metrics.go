@@ -129,6 +129,12 @@ func RecordTipsetPoints(ctx context.Context, api api.FullNode, pl *PointList, ti
 	p = NewPoint("chain.blocktime", tsTime.Unix())
 	pl.AddPoint(p)
 
+	baseFeeBig := tipset.Blocks()[0].ParentBaseFee.Copy()
+	baseFeeRat := new(big.Rat).SetFrac(baseFeeBig.Int, new(big.Int).SetUint64(build.FilecoinPrecision))
+	baseFeeFloat, _ := baseFeeRat.Float64()
+	p = NewPoint("chain.basefee", baseFeeFloat)
+	pl.AddPoint(p)
+
 	for _, blockheader := range tipset.Blocks() {
 		bs, err := blockheader.Serialize()
 		if err != nil {

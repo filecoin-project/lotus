@@ -40,17 +40,9 @@ var log = logging.Logger("messagepool")
 
 const futureDebug = false
 
-const ReplaceByFeeRatio = 1.25
-
 const repubMsgLimit = 5
 
-var MemPoolSizeLimitHiDefault = 30000
-var MemPoolSizeLimitLoDefault = 20000
-
-var (
-	rbfNum   = types.NewInt(uint64((ReplaceByFeeRatio - 1) * 256))
-	rbfDenom = types.NewInt(256)
-)
+const RbfDenom = 256
 
 var (
 	ErrMessageTooBig = errors.New("message too big")
@@ -75,6 +67,8 @@ const (
 type MessagePool struct {
 	lk sync.Mutex
 
+	ds dtypes.MetadataDS
+
 	closer  chan struct{}
 	repubTk *clock.Ticker
 
@@ -85,16 +79,22 @@ type MessagePool struct {
 	curTsLk sync.Mutex // DO NOT LOCK INSIDE lk
 	curTs   *types.TipSet
 
+	cfgLk sync.Mutex
+	cfg   *types.MpoolConfig
+
+	rbfNum, rbfDenom types.BigInt
+
 	api Provider
 
 	minGasPrice types.BigInt
 
-	currentSize     int
-	maxTxPoolSizeHi int
-	maxTxPoolSizeLo int
+	currentSize int
 
 	// pruneTrigger is a channel used to trigger a mempool pruning
 	pruneTrigger chan struct{}
+
+	// pruneCooldown is a channel used to allow a cooldown time between prunes
+	pruneCooldown chan struct{}
 
 	blsSigCache *lru.TwoQueueCache
 
@@ -118,7 +118,7 @@ func newMsgSet() *msgSet {
 	}
 }
 
-func (ms *msgSet) add(m *types.SignedMessage) (bool, error) {
+func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool) (bool, error) {
 	if len(ms.msgs) == 0 || m.Message.Nonce >= ms.nextNonce {
 		ms.nextNonce = m.Message.Nonce + 1
 	}
@@ -127,7 +127,7 @@ func (ms *msgSet) add(m *types.SignedMessage) (bool, error) {
 		if m.Cid() != exms.Cid() {
 			// check if RBF passes
 			minPrice := exms.Message.GasPremium
-			minPrice = types.BigAdd(minPrice, types.BigDiv(types.BigMul(minPrice, rbfNum), rbfDenom))
+			minPrice = types.BigAdd(minPrice, types.BigDiv(types.BigMul(minPrice, mp.rbfNum), mp.rbfDenom))
 			minPrice = types.BigAdd(minPrice, types.NewInt(1))
 			if types.BigCmp(m.Message.GasPremium, minPrice) >= 0 {
 				log.Infow("add with RBF", "oldpremium", exms.Message.GasPremium,
@@ -212,22 +212,35 @@ func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName) (*Messa
 	cache, _ := lru.New2Q(build.BlsSignatureCacheSize)
 	verifcache, _ := lru.New2Q(build.VerifSigCacheSize)
 
-	mp := &MessagePool{
-		closer:          make(chan struct{}),
-		repubTk:         build.Clock.Ticker(time.Duration(build.BlockDelaySecs) * 10 * time.Second),
-		localAddrs:      make(map[address.Address]struct{}),
-		pending:         make(map[address.Address]*msgSet),
-		minGasPrice:     types.NewInt(0),
-		maxTxPoolSizeHi: MemPoolSizeLimitHiDefault,
-		maxTxPoolSizeLo: MemPoolSizeLimitLoDefault,
-		pruneTrigger:    make(chan struct{}, 1),
-		blsSigCache:     cache,
-		sigValCache:     verifcache,
-		changes:         lps.New(50),
-		localMsgs:       namespace.Wrap(ds, datastore.NewKey(localMsgsDs)),
-		api:             api,
-		netName:         netName,
+	cfg, err := loadConfig(ds)
+	if err != nil {
+		if err != nil {
+			return nil, xerrors.Errorf("error loading mpool config: %w", err)
+		}
 	}
+
+	mp := &MessagePool{
+		ds:            ds,
+		closer:        make(chan struct{}),
+		repubTk:       build.Clock.Ticker(time.Duration(build.BlockDelaySecs) * time.Second),
+		localAddrs:    make(map[address.Address]struct{}),
+		pending:       make(map[address.Address]*msgSet),
+		minGasPrice:   types.NewInt(0),
+		pruneTrigger:  make(chan struct{}, 1),
+		pruneCooldown: make(chan struct{}, 1),
+		blsSigCache:   cache,
+		sigValCache:   verifcache,
+		changes:       lps.New(50),
+		localMsgs:     namespace.Wrap(ds, datastore.NewKey(localMsgsDs)),
+		api:           api,
+		netName:       netName,
+		cfg:           cfg,
+		rbfNum:        types.NewInt(uint64((cfg.ReplaceByFeeRatio - 1) * RbfDenom)),
+		rbfDenom:      types.NewInt(RbfDenom),
+	}
+
+	// enable initial prunes
+	mp.pruneCooldown <- struct{}{}
 
 	if err := mp.loadLocal(); err != nil {
 		log.Errorf("loading local messages: %+v", err)
@@ -252,10 +265,12 @@ func (mp *MessagePool) Close() error {
 }
 
 func (mp *MessagePool) Prune() {
-	//so, its a single slot buffered channel. The first send fills the channel,
-	//the second send goes through when the pruning starts,
-	//and the third send goes through (and noops) after the pruning finishes
-	//and goes through the loop again
+	// this magic incantation of triggering prune thrice is here to make the Prune method
+	// synchronous:
+	// so, its a single slot buffered channel. The first send fills the channel,
+	// the second send goes through when the pruning starts,
+	// and the third send goes through (and noops) after the pruning finishes
+	// and goes through the loop again
 	mp.pruneTrigger <- struct{}{}
 	mp.pruneTrigger <- struct{}{}
 	mp.pruneTrigger <- struct{}{}
@@ -499,7 +514,7 @@ func (mp *MessagePool) addLocked(m *types.SignedMessage) error {
 		mp.pending[m.Message.From] = mset
 	}
 
-	incr, err := mset.add(m)
+	incr, err := mset.add(m, mp)
 	if err != nil {
 		log.Info(err)
 		return err // TODO(review): this error return was dropped at some point, was it on purpose?
@@ -507,7 +522,7 @@ func (mp *MessagePool) addLocked(m *types.SignedMessage) error {
 
 	if incr {
 		mp.currentSize++
-		if mp.currentSize > mp.maxTxPoolSizeHi {
+		if mp.currentSize > mp.cfg.SizeLimitHigh {
 			// send signal to prune messages if it hasnt already been sent
 			select {
 			case mp.pruneTrigger <- struct{}{}:
@@ -958,6 +973,8 @@ func (mp *MessagePool) loadLocal() error {
 
 			log.Errorf("adding local message: %+v", err)
 		}
+
+		mp.localAddrs[sm.Message.From] = struct{}{}
 	}
 
 	return nil

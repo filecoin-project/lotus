@@ -89,7 +89,7 @@ type FullNodeStruct struct {
 
 		GasEsitmateGasPremium func(context.Context, uint64, address.Address, int64, types.TipSetKey) (types.BigInt, error) `perm:"read"`
 		GasEstimateGasLimit   func(context.Context, *types.Message, types.TipSetKey) (int64, error)                        `perm:"read"`
-		GasEstimateFeeCap     func(context.Context, int64, types.TipSetKey) (types.BigInt, error)                          `perm:"read"`
+		GasEstimateFeeCap     func(context.Context, *types.Message, int64, types.TipSetKey) (types.BigInt, error)          `perm:"read"`
 
 		SyncState          func(context.Context) (*api.SyncState, error)                `perm:"read"`
 		SyncSubmitBlock    func(ctx context.Context, blk *types.BlockMsg) error         `perm:"write"`
@@ -97,6 +97,8 @@ type FullNodeStruct struct {
 		SyncMarkBad        func(ctx context.Context, bcid cid.Cid) error                `perm:"admin"`
 		SyncCheckBad       func(ctx context.Context, bcid cid.Cid) (string, error)      `perm:"read"`
 
+		MpoolGetConfig   func(context.Context) (*types.MpoolConfig, error)                      `perm:"read"`
+		MpoolSetConfig   func(context.Context, *types.MpoolConfig) error                        `perm:"write"`
 		MpoolSelect      func(context.Context, types.TipSetKey) ([]*types.SignedMessage, error) `perm:"read"`
 		MpoolPending     func(context.Context, types.TipSetKey) ([]*types.SignedMessage, error) `perm:"read"`
 		MpoolPush        func(context.Context, *types.SignedMessage) (cid.Cid, error)           `perm:"write"`
@@ -175,6 +177,7 @@ type FullNodeStruct struct {
 		StateCompute                       func(context.Context, abi.ChainEpoch, []*types.Message, types.TipSetKey) (*api.ComputeStateOutput, error)           `perm:"read"`
 		StateVerifiedClientStatus          func(context.Context, address.Address, types.TipSetKey) (*verifreg.DataCap, error)                                  `perm:"read"`
 		StateDealProviderCollateralBounds  func(context.Context, abi.PaddedPieceSize, bool, types.TipSetKey) (api.DealCollateralBounds, error)                 `perm:"read"`
+		StateCirculatingSupply             func(context.Context, types.TipSetKey) (abi.TokenAmount, error)                                                     `perm:"read"`
 
 		MsigGetAvailableBalance func(context.Context, address.Address, types.TipSetKey) (types.BigInt, error)                                                                    `perm:"read"`
 		MsigCreate              func(context.Context, uint64, []address.Address, abi.ChainEpoch, types.BigInt, address.Address, types.BigInt) (cid.Cid, error)                   `perm:"sign"`
@@ -435,14 +438,22 @@ func (c *FullNodeStruct) GasEsitmateGasPremium(ctx context.Context, nblocksincl 
 	sender address.Address, gaslimit int64, tsk types.TipSetKey) (types.BigInt, error) {
 	return c.Internal.GasEsitmateGasPremium(ctx, nblocksincl, sender, gaslimit, tsk)
 }
-func (c *FullNodeStruct) GasEstimateFeeCap(ctx context.Context, maxqueueblks int64,
-	tsk types.TipSetKey) (types.BigInt, error) {
-	return c.Internal.GasEstimateFeeCap(ctx, maxqueueblks, tsk)
+func (c *FullNodeStruct) GasEstimateFeeCap(ctx context.Context, msg *types.Message,
+	maxqueueblks int64, tsk types.TipSetKey) (types.BigInt, error) {
+	return c.Internal.GasEstimateFeeCap(ctx, msg, maxqueueblks, tsk)
 }
 
 func (c *FullNodeStruct) GasEstimateGasLimit(ctx context.Context, msg *types.Message,
 	tsk types.TipSetKey) (int64, error) {
 	return c.Internal.GasEstimateGasLimit(ctx, msg, tsk)
+}
+
+func (c *FullNodeStruct) MpoolGetConfig(ctx context.Context) (*types.MpoolConfig, error) {
+	return c.Internal.MpoolGetConfig(ctx)
+}
+
+func (c *FullNodeStruct) MpoolSetConfig(ctx context.Context, cfg *types.MpoolConfig) error {
+	return c.Internal.MpoolSetConfig(ctx, cfg)
 }
 
 func (c *FullNodeStruct) MpoolSelect(ctx context.Context, tsk types.TipSetKey) ([]*types.SignedMessage, error) {
@@ -779,6 +790,10 @@ func (c *FullNodeStruct) StateVerifiedClientStatus(ctx context.Context, addr add
 
 func (c *FullNodeStruct) StateDealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, verified bool, tsk types.TipSetKey) (api.DealCollateralBounds, error) {
 	return c.Internal.StateDealProviderCollateralBounds(ctx, size, verified, tsk)
+}
+
+func (c *FullNodeStruct) StateCirculatingSupply(ctx context.Context, tsk types.TipSetKey) (abi.TokenAmount, error) {
+	return c.Internal.StateCirculatingSupply(ctx, tsk)
 }
 
 func (c *FullNodeStruct) MsigGetAvailableBalance(ctx context.Context, a address.Address, tsk types.TipSetKey) (types.BigInt, error) {

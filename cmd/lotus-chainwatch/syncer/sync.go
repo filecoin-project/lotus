@@ -4,6 +4,7 @@ import (
 	"container/list"
 	"context"
 	"database/sql"
+	"fmt"
 	"sync"
 	"time"
 
@@ -40,6 +41,14 @@ func (s *Syncer) setupSchemas() error {
 	}
 
 	if _, err := tx.Exec(`
+/* tracks circulating fil available on the network at each tipset */
+create table if not exists chain_economics
+(
+	parent_state_root text not null
+		constraint chain_economics_pk primary key,
+	circulating_fil text not null
+);
+
 create table if not exists block_cids
 (
 	cid text not null
@@ -112,6 +121,7 @@ create table if not exists blocks
 	ticket bytea not null,
 	election_proof bytea,
 	win_count bigint,
+	parent_base_fee text not null,
 	forksig bigint not null
 );
 
@@ -170,6 +180,10 @@ func (s *Syncer) Start(ctx context.Context) {
 					unsynced, err := s.unsyncedBlocks(ctx, change.Val, lastSynced)
 					if err != nil {
 						log.Errorw("failed to gather unsynced blocks", "error", err)
+					}
+
+					if err := s.storeCirculatingSupply(ctx, change.Val); err != nil {
+						log.Errorw("failed to store circulating supply", "error", err)
 					}
 
 					if len(unsynced) == 0 {
@@ -261,6 +275,24 @@ func (s *Syncer) syncedBlocks(timestamp time.Time) (map[cid.Cid]struct{}, error)
 		out[ci] = struct{}{}
 	}
 	return out, nil
+}
+
+func (s *Syncer) storeCirculatingSupply(ctx context.Context, tipset *types.TipSet) error {
+	supply, err := s.node.StateCirculatingSupply(ctx, tipset.Key())
+	if err != nil {
+		return err
+	}
+
+	ceInsert := `insert into chain_economics (parent_state_root, circulating_fil) values ('%s', '%s');`
+
+	if _, err := s.db.Exec(fmt.Sprintf(ceInsert,
+		tipset.ParentState().String(),
+		supply.String(),
+	)); err != nil {
+		return xerrors.Errorf("insert circulating supply for tipset (%s): %w", tipset.Key().String(), err)
+	}
+
+	return nil
 }
 
 func (s *Syncer) storeHeaders(bhs map[cid.Cid]*types.BlockHeader, sync bool, timestamp time.Time) error {
@@ -402,7 +434,7 @@ create temp table b (like blocks excluding constraints) on commit drop;
 		}
 	}
 
-	stmt2, err := tx.Prepare(`copy b (cid, parentWeight, parentStateRoot, height, miner, "timestamp", ticket, election_proof, win_count, forksig) from stdin`)
+	stmt2, err := tx.Prepare(`copy b (cid, parentWeight, parentStateRoot, height, miner, "timestamp", ticket, election_proof, win_count, parent_base_fee, forksig) from stdin`)
 	if err != nil {
 		return err
 	}
@@ -432,6 +464,7 @@ create temp table b (like blocks excluding constraints) on commit drop;
 			bh.Ticket.VRFProof,
 			eproof,
 			winCount,
+			bh.ParentBaseFee.String(),
 			bh.ForkSignaling); err != nil {
 			log.Error(err)
 		}

@@ -166,6 +166,13 @@ lotus-stats:
 .PHONY: lotus-stats
 BINS+=lotus-stats
 
+lotus-pcr:
+	rm -f lotus-pcr
+	go build $(GOFLAGS) -o lotus-pcr ./cmd/lotus-pcr
+	go run github.com/GeertJohan/go.rice/rice append --exec lotus-pcr -i ./build
+.PHONY: lotus-pcr
+BINS+=lotus-pcr
+
 lotus-health:
 	rm -f lotus-health
 	go build -o lotus-health ./cmd/lotus-health
