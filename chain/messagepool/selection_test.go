@@ -564,3 +564,82 @@ func TestMessageSelectionTrimming(t *testing.T) {
 	}
 
 }
+
+func TestPriorityMessageSelection(t *testing.T) {
+	mp, tma := makeTestMpool()
+
+	// the actors
+	w1, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a1, err := w1.GenerateKey(crypto.SigTypeBLS)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	w2, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a2, err := w2.GenerateKey(crypto.SigTypeBLS)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	block := mock.MkBlock(nil, 1, 1)
+	ts := mock.TipSet(block)
+	tma.applyBlock(t, block)
+
+	gasLimit := gasguess.Costs[gasguess.CostKey{builtin.StorageMarketActorCodeID, 2}]
+
+	tma.setBalance(a1, 1) // in FIL
+	tma.setBalance(a2, 1) // in FIL
+
+	mp.cfg.PriorityAddrs = []address.Address{a1}
+
+	nMessages := 10
+	for i := 0; i < nMessages; i++ {
+		bias := (nMessages - i) / 3
+		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(1+i%3+bias))
+		mustAdd(t, mp, m)
+		m = makeTestMessage(w2, a2, a1, uint64(i), gasLimit, uint64(1+i%3+bias))
+		mustAdd(t, mp, m)
+	}
+
+	msgs, err := mp.SelectMessages(ts)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(msgs) != 20 {
+		t.Fatalf("expected 20 messages but got %d", len(msgs))
+	}
+
+	// messages from a1 must be first
+	nextNonce := uint64(0)
+	for i := 0; i < 10; i++ {
+		m := msgs[i]
+		if m.Message.From != a1 {
+			t.Fatal("expected messages from a1 before messages from a2")
+		}
+		if m.Message.Nonce != nextNonce {
+			t.Fatalf("expected nonce %d but got %d", nextNonce, m.Message.Nonce)
+		}
+		nextNonce++
+	}
+
+	nextNonce = 0
+	for i := 10; i < 20; i++ {
+		m := msgs[i]
+		if m.Message.From != a2 {
+			t.Fatal("expected messages from a2 after messages from a1")
+		}
+		if m.Message.Nonce != nextNonce {
+			t.Fatalf("expected nonce %d but got %d", nextNonce, m.Message.Nonce)
+		}
+		nextNonce++
+	}
+}
