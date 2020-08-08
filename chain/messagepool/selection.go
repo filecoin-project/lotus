@@ -59,7 +59,7 @@ func (mp *MessagePool) selectMessages(curTs, ts *types.TipSet) ([]*types.SignedM
 
 	// defer only here so if we have no pending messages we don't spam
 	defer func() {
-		log.Infof("message selection took %s", time.Since(start))
+		log.Infow("message selection done", "took", time.Since(start))
 	}()
 
 	// 0b. Select all priority messages that fit in the block
@@ -109,7 +109,7 @@ func (mp *MessagePool) selectMessages(curTs, ts *types.TipSet) ([]*types.SignedM
 		last = i
 		break
 	}
-	log.Infof("merge message chains; took %s", time.Since(startMerge))
+	log.Infow("merge message chains done", "took", time.Since(startMerge))
 
 	// 4. We have reached the edge of what we can fit wholesale; if we still have available gasLimit
 	// to pack some more chains, then trim the last chain and push it down.
@@ -160,7 +160,7 @@ tailLoop:
 		// -- mark the end.
 		last = len(chains)
 	}
-	log.Infof("pack tail chains; took %s", time.Since(startTail))
+	log.Infow("pack tail chains done", "took", time.Since(startTail))
 
 	return result, nil
 }
@@ -168,7 +168,7 @@ tailLoop:
 func (mp *MessagePool) selectPriorityMessages(pending map[address.Address]map[uint64]*types.SignedMessage, baseFee types.BigInt, ts *types.TipSet) ([]*types.SignedMessage, int64) {
 	start := time.Now()
 	defer func() {
-		log.Infof("select priority messages; took %s", time.Since(start))
+		log.Infow("select priority messages done", "took", time.Since(start))
 	}()
 
 	result := make([]*types.SignedMessage, 0, mp.cfg.SizeLimitLow)
@@ -253,7 +253,7 @@ tailLoop:
 func (mp *MessagePool) getPendingMessages(curTs, ts *types.TipSet) (map[address.Address]map[uint64]*types.SignedMessage, error) {
 	start := time.Now()
 	defer func() {
-		log.Infof("get pending messages; took %s", time.Since(start))
+		log.Infow("get pending messages done", "took", time.Since(start))
 	}()
 
 	result := make(map[address.Address]map[uint64]*types.SignedMessage)
