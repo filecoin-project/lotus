@@ -45,7 +45,9 @@ type StateManager struct {
 	newVM         func(*vm.VMOpts) (*vm.VM, error)
 	genesisMsigs  []multisig.State
 	// info about the Accounts in the genesis state
-	genesisActors []genesisActor
+	genesisActors      []genesisActor
+	genesisPledge      abi.TokenAmount
+	genesisMarketFunds abi.TokenAmount
 }
 
 func NewStateManager(cs *store.ChainStore) *StateManager {
@@ -809,6 +811,16 @@ func (sm *StateManager) setupGenesisActors(ctx context.Context) error {
 		return xerrors.Errorf("loading state tree: %w", err)
 	}
 
+	sm.genesisMarketFunds, err = getFilMarketLocked(ctx, sTree)
+	if err != nil {
+		return xerrors.Errorf("setting up genesis market funds: %w", err)
+	}
+
+	sm.genesisPledge, err = getFilPowerLocked(ctx, sTree)
+	if err != nil {
+		return xerrors.Errorf("setting up genesis pledge: %w", err)
+	}
+
 	r, err := adt.AsMap(sm.cs.Store(ctx), st)
 	if err != nil {
 		return xerrors.Errorf("getting genesis actors: %w", err)
@@ -875,14 +887,6 @@ func (sm *StateManager) setupGenesisActors(ctx context.Context) error {
 // - For Multisigs, it counts the actual amounts that have vested at the given epoch
 // - For Accounts, it counts max(currentBalance - genesisBalance, 0).
 func (sm *StateManager) GetFilVested(ctx context.Context, height abi.ChainEpoch, st *state.StateTree) (abi.TokenAmount, error) {
-	sm.genesisMsigLk.Lock()
-	defer sm.genesisMsigLk.Unlock()
-	if sm.genesisMsigs == nil || sm.genesisActors == nil {
-		err := sm.setupGenesisActors(ctx)
-		if err != nil {
-			return big.Zero(), xerrors.Errorf("failed to setup genesis information: %w", err)
-		}
-	}
 	vf := big.Zero()
 	for _, v := range sm.genesisMsigs {
 		au := big.Sub(v.InitialBalance, v.AmountLocked(height))
@@ -918,7 +922,7 @@ func GetFilMined(ctx context.Context, st *state.StateTree) (abi.TokenAmount, err
 	return fm, nil
 }
 
-func GetFilLocked(ctx context.Context, st *state.StateTree) (abi.TokenAmount, error) {
+func getFilMarketLocked(ctx context.Context, st *state.StateTree) (abi.TokenAmount, error) {
 	mactor, err := st.GetActor(builtin.StorageMarketActorAddr)
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("failed to load market actor: %w", err)
@@ -929,9 +933,12 @@ func GetFilLocked(ctx context.Context, st *state.StateTree) (abi.TokenAmount, er
 		return big.Zero(), xerrors.Errorf("failed to load market state: %w", err)
 	}
 
-	filMarketLocked := types.BigAdd(mst.TotalClientLockedCollateral, mst.TotalProviderLockedCollateral)
-	filMarketLocked = types.BigAdd(filMarketLocked, mst.TotalClientStorageFee)
+	fml := types.BigAdd(mst.TotalClientLockedCollateral, mst.TotalProviderLockedCollateral)
+	fml = types.BigAdd(fml, mst.TotalClientStorageFee)
+	return fml, nil
+}
 
+func getFilPowerLocked(ctx context.Context, st *state.StateTree) (abi.TokenAmount, error) {
 	pactor, err := st.GetActor(builtin.StoragePowerActorAddr)
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("failed to load power actor: %w", err)
@@ -941,8 +948,33 @@ func GetFilLocked(ctx context.Context, st *state.StateTree) (abi.TokenAmount, er
 	if err := st.Store.Get(ctx, pactor.Head, &pst); err != nil {
 		return big.Zero(), xerrors.Errorf("failed to load power state: %w", err)
 	}
+	return pst.TotalPledgeCollateral, nil
+}
 
-	return types.BigAdd(filMarketLocked, pst.TotalPledgeCollateral), nil
+func (sm *StateManager) GetFilLocked(ctx context.Context, st *state.StateTree) (abi.TokenAmount, error) {
+
+	filMarketLocked, err := getFilMarketLocked(ctx, st)
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("failed to get filMarketLocked: %w", err)
+	}
+	// TODO: We should probably slowly phase genesisMarketFunds into TotalCircSupply, instead of considering them locked forever
+	filMarketLocked = types.BigSub(filMarketLocked, sm.genesisMarketFunds)
+	if filMarketLocked.LessThan(big.Zero()) {
+		filMarketLocked = big.Zero()
+	}
+
+	filPowerLocked, err := getFilPowerLocked(ctx, st)
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("failed to get filPowerLocked: %w", err)
+	}
+
+	// TODO: We should probably slowly phase genesisPledge into TotalCircSupply, instead of considering them locked forever
+	filPowerLocked = types.BigSub(filPowerLocked, sm.genesisPledge)
+	if filPowerLocked.LessThan(big.Zero()) {
+		filPowerLocked = big.Zero()
+	}
+
+	return types.BigAdd(filMarketLocked, filPowerLocked), nil
 }
 
 func GetFilBurnt(ctx context.Context, st *state.StateTree) (abi.TokenAmount, error) {
@@ -955,6 +987,15 @@ func GetFilBurnt(ctx context.Context, st *state.StateTree) (abi.TokenAmount, err
 }
 
 func (sm *StateManager) GetCirculatingSupply(ctx context.Context, height abi.ChainEpoch, st *state.StateTree) (abi.TokenAmount, error) {
+	sm.genesisMsigLk.Lock()
+	defer sm.genesisMsigLk.Unlock()
+	if sm.genesisMsigs == nil || sm.genesisActors == nil {
+		err := sm.setupGenesisActors(ctx)
+		if err != nil {
+			return big.Zero(), xerrors.Errorf("failed to setup genesis information: %w", err)
+		}
+	}
+
 	filVested, err := sm.GetFilVested(ctx, height, st)
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("failed to calculate filVested: %w", err)
@@ -970,7 +1011,7 @@ func (sm *StateManager) GetCirculatingSupply(ctx context.Context, height abi.Cha
 		return big.Zero(), xerrors.Errorf("failed to calculate filBurnt: %w", err)
 	}
 
-	filLocked, err := GetFilLocked(ctx, st)
+	filLocked, err := sm.GetFilLocked(ctx, st)
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("failed to calculate filLocked: %w", err)
 	}

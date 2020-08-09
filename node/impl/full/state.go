@@ -1071,7 +1071,7 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 
 	duration := pci.Expiration - ts.Height() // NB: not exactly accurate, but should always lead us to *over* estimate, not under
 
-	circSupply, err := a.StateManager.CirculatingSupply(ctx, ts)
+	circSupply, err := a.StateCirculatingSupply(ctx, ts.Key())
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("getting circulating supply: %w", err)
 	}
@@ -1175,7 +1175,7 @@ func (a *StateAPI) StateDealProviderCollateralBounds(ctx context.Context, size a
 		return api.DealCollateralBounds{}, xerrors.Errorf("getting power and reward actor states: %w")
 	}
 
-	circ, err := a.StateManager.CirculatingSupply(ctx, ts)
+	circ, err := a.StateCirculatingSupply(ctx, ts.Key())
 	if err != nil {
 		return api.DealCollateralBounds{}, xerrors.Errorf("getting total circulating supply: %w")
 	}

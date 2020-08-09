@@ -15,7 +15,6 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	"github.com/filecoin-project/specs-actors/actors/builtin/cron"
@@ -591,40 +590,6 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, bcn beacon.RandomBe
 		BeaconEntries:   entries,
 		HasMinPower:     hmp,
 	}, nil
-}
-
-func (sm *StateManager) CirculatingSupply(ctx context.Context, ts *types.TipSet) (abi.TokenAmount, error) {
-	if ts == nil {
-		ts = sm.cs.GetHeaviestTipSet()
-	}
-
-	st, _, err := sm.TipSetState(ctx, ts)
-	if err != nil {
-		return big.Zero(), err
-	}
-
-	r := store.NewChainRand(sm.cs, ts.Cids(), ts.Height())
-	vmopt := &vm.VMOpts{
-		StateBase:      st,
-		Epoch:          ts.Height(),
-		Rand:           r,
-		Bstore:         sm.cs.Blockstore(),
-		Syscalls:       sm.cs.VMSys(),
-		CircSupplyCalc: sm.GetCirculatingSupply,
-		BaseFee:        ts.Blocks()[0].ParentBaseFee,
-	}
-	vmi, err := vm.NewVM(vmopt)
-	if err != nil {
-		return big.Zero(), err
-	}
-
-	unsafeVM := &vm.UnsafeVM{VM: vmi}
-	rt := unsafeVM.MakeRuntime(ctx, &types.Message{
-		GasLimit: 100e6,
-		From:     builtin.SystemActorAddr,
-	}, builtin.SystemActorAddr, 0, 0, 0)
-
-	return rt.TotalFilCircSupply(), nil
 }
 
 type methodMeta struct {
