@@ -43,11 +43,7 @@ type StateManager struct {
 	stlk          sync.Mutex
 	genesisMsigLk sync.Mutex
 	newVM         func(*vm.VMOpts) (*vm.VM, error)
-	genesisMsigs  []multisig.State
-	// info about the Accounts in the genesis state
-	genesisActors      []genesisActor
-	genesisPledge      abi.TokenAmount
-	genesisMarketFunds abi.TokenAmount
+	genInfo       *genesisInfo
 }
 
 func NewStateManager(cs *store.ChainStore) *StateManager {
@@ -778,9 +774,12 @@ func (sm *StateManager) SetVMConstructor(nvm func(*vm.VMOpts) (*vm.VM, error)) {
 	sm.newVM = nvm
 }
 
-type GenesisMsigEntry struct {
-	totalFunds abi.TokenAmount
-	unitVest   abi.TokenAmount
+type genesisInfo struct {
+	genesisMsigs []multisig.State
+	// info about the Accounts in the genesis state
+	genesisActors      []genesisActor
+	genesisPledge      abi.TokenAmount
+	genesisMarketFunds abi.TokenAmount
 }
 
 type genesisActor struct {
@@ -790,6 +789,9 @@ type genesisActor struct {
 
 // sets up information about the non-multisig actors in the genesis state
 func (sm *StateManager) setupGenesisActors(ctx context.Context) error {
+
+	gi := genesisInfo{}
+
 	gb, err := sm.cs.GetGenesis()
 	if err != nil {
 		return xerrors.Errorf("getting genesis block: %w", err)
@@ -811,12 +813,12 @@ func (sm *StateManager) setupGenesisActors(ctx context.Context) error {
 		return xerrors.Errorf("loading state tree: %w", err)
 	}
 
-	sm.genesisMarketFunds, err = getFilMarketLocked(ctx, sTree)
+	gi.genesisMarketFunds, err = getFilMarketLocked(ctx, sTree)
 	if err != nil {
 		return xerrors.Errorf("setting up genesis market funds: %w", err)
 	}
 
-	sm.genesisPledge, err = getFilPowerLocked(ctx, sTree)
+	gi.genesisPledge, err = getFilPowerLocked(ctx, sTree)
 	if err != nil {
 		return xerrors.Errorf("setting up genesis pledge: %w", err)
 	}
@@ -858,7 +860,7 @@ func (sm *StateManager) setupGenesisActors(ctx context.Context) error {
 				return xerrors.Errorf("resolving address: %w", err)
 			}
 
-			sm.genesisActors = append(sm.genesisActors, genesisActor{
+			gi.genesisActors = append(gi.genesisActors, genesisActor{
 				addr:    kid,
 				initBal: act.Balance,
 			})
@@ -870,15 +872,17 @@ func (sm *StateManager) setupGenesisActors(ctx context.Context) error {
 		return xerrors.Errorf("error setting up genesis infos: %w", err)
 	}
 
-	sm.genesisMsigs = make([]multisig.State, 0, len(totalsByEpoch))
+	gi.genesisMsigs = make([]multisig.State, 0, len(totalsByEpoch))
 	for k, v := range totalsByEpoch {
 		ns := multisig.State{
 			InitialBalance: v,
 			UnlockDuration: k,
 			PendingTxns:    cid.Undef,
 		}
-		sm.genesisMsigs = append(sm.genesisMsigs, ns)
+		gi.genesisMsigs = append(gi.genesisMsigs, ns)
 	}
+
+	sm.genInfo = &gi
 
 	return nil
 }
@@ -888,12 +892,12 @@ func (sm *StateManager) setupGenesisActors(ctx context.Context) error {
 // - For Accounts, it counts max(currentBalance - genesisBalance, 0).
 func (sm *StateManager) GetFilVested(ctx context.Context, height abi.ChainEpoch, st *state.StateTree) (abi.TokenAmount, error) {
 	vf := big.Zero()
-	for _, v := range sm.genesisMsigs {
+	for _, v := range sm.genInfo.genesisMsigs {
 		au := big.Sub(v.InitialBalance, v.AmountLocked(height))
 		vf = big.Add(vf, au)
 	}
 
-	for _, v := range sm.genesisActors {
+	for _, v := range sm.genInfo.genesisActors {
 		act, err := st.GetActor(v.addr)
 		if err != nil {
 			return big.Zero(), xerrors.Errorf("failed to get actor: %w", err)
@@ -958,7 +962,7 @@ func (sm *StateManager) GetFilLocked(ctx context.Context, st *state.StateTree) (
 		return big.Zero(), xerrors.Errorf("failed to get filMarketLocked: %w", err)
 	}
 	// TODO: We should probably slowly phase genesisMarketFunds into TotalCircSupply, instead of considering them locked forever
-	filMarketLocked = types.BigSub(filMarketLocked, sm.genesisMarketFunds)
+	filMarketLocked = types.BigSub(filMarketLocked, sm.genInfo.genesisMarketFunds)
 	if filMarketLocked.LessThan(big.Zero()) {
 		filMarketLocked = big.Zero()
 	}
@@ -969,7 +973,7 @@ func (sm *StateManager) GetFilLocked(ctx context.Context, st *state.StateTree) (
 	}
 
 	// TODO: We should probably slowly phase genesisPledge into TotalCircSupply, instead of considering them locked forever
-	filPowerLocked = types.BigSub(filPowerLocked, sm.genesisPledge)
+	filPowerLocked = types.BigSub(filPowerLocked, sm.genInfo.genesisPledge)
 	if filPowerLocked.LessThan(big.Zero()) {
 		filPowerLocked = big.Zero()
 	}
@@ -989,7 +993,7 @@ func GetFilBurnt(ctx context.Context, st *state.StateTree) (abi.TokenAmount, err
 func (sm *StateManager) GetCirculatingSupply(ctx context.Context, height abi.ChainEpoch, st *state.StateTree) (abi.TokenAmount, error) {
 	sm.genesisMsigLk.Lock()
 	defer sm.genesisMsigLk.Unlock()
-	if sm.genesisMsigs == nil || sm.genesisActors == nil {
+	if sm.genInfo == nil {
 		err := sm.setupGenesisActors(ctx)
 		if err != nil {
 			return big.Zero(), xerrors.Errorf("failed to setup genesis information: %w", err)
