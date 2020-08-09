@@ -8,13 +8,10 @@ import (
 	gruntime "runtime"
 	"time"
 
-	samarket "github.com/filecoin-project/specs-actors/actors/builtin/market"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	sapower "github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	vmr "github.com/filecoin-project/specs-actors/actors/runtime"
@@ -61,62 +58,12 @@ type Runtime struct {
 }
 
 func (rt *Runtime) TotalFilCircSupply() abi.TokenAmount {
-
-	filVested, err := rt.vm.GetVestedFunds(rt.ctx)
+	cs, err := rt.vm.GetCircSupply(rt.ctx)
 	if err != nil {
-		rt.Abortf(exitcode.ErrIllegalState, "failed to get vested funds for computing total supply: %s", err)
+		rt.Abortf(exitcode.ErrIllegalState, "failed to get total circ supply: %s", err)
 	}
 
-	rew, err := rt.state.GetActor(builtin.RewardActorAddr)
-	if err != nil {
-		rt.Abortf(exitcode.ErrIllegalState, "failed to get reward actor for computing total supply: %s", err)
-	}
-
-	filMined := types.BigSub(types.FromFil(build.FilAllocStorageMining), rew.Balance)
-	if filMined.LessThan(big.Zero()) {
-		filMined = big.Zero()
-	}
-
-	burnt, err := rt.state.GetActor(builtin.BurntFundsActorAddr)
-	if err != nil {
-		rt.Abortf(exitcode.ErrIllegalState, "failed to get reward actor for computing total supply: %s", err)
-	}
-
-	filBurned := burnt.Balance
-
-	market, err := rt.state.GetActor(builtin.StorageMarketActorAddr)
-	if err != nil {
-		rt.Abortf(exitcode.ErrIllegalState, "failed to get reward actor for computing total supply: %s", err)
-	}
-
-	var mst samarket.State
-	if err := rt.cst.Get(rt.ctx, market.Head, &mst); err != nil {
-		rt.Abortf(exitcode.ErrIllegalState, "failed to get market state: %s", err)
-	}
-
-	filMarketLocked := types.BigAdd(mst.TotalClientLockedCollateral, mst.TotalProviderLockedCollateral)
-	filMarketLocked = types.BigAdd(filMarketLocked, mst.TotalClientStorageFee)
-
-	power, err := rt.state.GetActor(builtin.StoragePowerActorAddr)
-	if err != nil {
-		rt.Abortf(exitcode.ErrIllegalState, "failed to get reward actor for computing total supply: %s", err)
-	}
-
-	var pst sapower.State
-	if err := rt.cst.Get(rt.ctx, power.Head, &pst); err != nil {
-		rt.Abortf(exitcode.ErrIllegalState, "failed to get storage power state: %s", err)
-	}
-
-	filLocked := types.BigAdd(filMarketLocked, pst.TotalPledgeCollateral)
-
-	ret := types.BigAdd(filVested, filMined)
-	ret = types.BigSub(ret, filBurned)
-	ret = types.BigSub(ret, filLocked)
-
-	if ret.LessThan(big.Zero()) {
-		ret = big.Zero()
-	}
-	return ret
+	return cs
 }
 
 func (rt *Runtime) ResolveAddress(addr address.Address) (ret address.Address, ok bool) {

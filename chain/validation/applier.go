@@ -148,13 +148,13 @@ func (a *Applier) applyMessage(epoch abi.ChainEpoch, lm types.ChainMsg) (vtypes.
 	base := a.stateWrapper.Root()
 
 	vmopt := &vm.VMOpts{
-		StateBase:  base,
-		Epoch:      epoch,
-		Rand:       &vmRand{},
-		Bstore:     a.stateWrapper.bs,
-		Syscalls:   a.syscalls,
-		VestedCalc: nil,
-		BaseFee:    abi.NewTokenAmount(100),
+		StateBase:      base,
+		Epoch:          epoch,
+		Rand:           &vmRand{},
+		Bstore:         a.stateWrapper.bs,
+		Syscalls:       a.syscalls,
+		CircSupplyCalc: nil,
+		BaseFee:        abi.NewTokenAmount(100),
 	}
 
 	lotusVM, err := vm.NewVM(vmopt)

@@ -1193,5 +1193,13 @@ func (a *StateAPI) StateCirculatingSupply(ctx context.Context, tsk types.TipSetK
 		return abi.TokenAmount{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	return stmgr.GetCirculatingSupply(ctx, a.StateManager, ts)
+	st, _, err := a.StateManager.TipSetState(ctx, ts)
+	if err != nil {
+		return big.Zero(), err
+	}
+
+	cst := cbor.NewCborStore(a.Chain.Blockstore())
+	sTree, err := state.LoadStateTree(cst, st)
+
+	return a.StateManager.GetCirculatingSupply(ctx, ts.Height(), sTree)
 }

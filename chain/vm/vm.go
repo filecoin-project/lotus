@@ -140,30 +140,30 @@ func (vm *UnsafeVM) MakeRuntime(ctx context.Context, msg *types.Message, origin 
 	return vm.VM.makeRuntime(ctx, msg, origin, originNonce, usedGas, nac)
 }
 
-type VestedCalculator func(context.Context, abi.ChainEpoch, *state.StateTree) (abi.TokenAmount, error)
+type CircSupplyCalculator func(context.Context, abi.ChainEpoch, *state.StateTree) (abi.TokenAmount, error)
 
 type VM struct {
-	cstate      *state.StateTree
-	base        cid.Cid
-	cst         *cbor.BasicIpldStore
-	buf         *bufbstore.BufferedBS
-	blockHeight abi.ChainEpoch
-	inv         *Invoker
-	rand        Rand
-	vc          VestedCalculator
-	baseFee     abi.TokenAmount
+	cstate         *state.StateTree
+	base           cid.Cid
+	cst            *cbor.BasicIpldStore
+	buf            *bufbstore.BufferedBS
+	blockHeight    abi.ChainEpoch
+	inv            *Invoker
+	rand           Rand
+	circSupplyCalc CircSupplyCalculator
+	baseFee        abi.TokenAmount
 
 	Syscalls SyscallBuilder
 }
 
 type VMOpts struct {
-	StateBase  cid.Cid
-	Epoch      abi.ChainEpoch
-	Rand       Rand
-	Bstore     bstore.Blockstore
-	Syscalls   SyscallBuilder
-	VestedCalc VestedCalculator
-	BaseFee    abi.TokenAmount
+	StateBase      cid.Cid
+	Epoch          abi.ChainEpoch
+	Rand           Rand
+	Bstore         bstore.Blockstore
+	Syscalls       SyscallBuilder
+	CircSupplyCalc CircSupplyCalculator
+	BaseFee        abi.TokenAmount
 }
 
 func NewVM(opts *VMOpts) (*VM, error) {
@@ -175,16 +175,16 @@ func NewVM(opts *VMOpts) (*VM, error) {
 	}
 
 	return &VM{
-		cstate:      state,
-		base:        opts.StateBase,
-		cst:         cst,
-		buf:         buf,
-		blockHeight: opts.Epoch,
-		inv:         NewInvoker(),
-		rand:        opts.Rand, // TODO: Probably should be a syscall
-		vc:          opts.VestedCalc,
-		Syscalls:    opts.Syscalls,
-		baseFee:     opts.BaseFee,
+		cstate:         state,
+		base:           opts.StateBase,
+		cst:            cst,
+		buf:            buf,
+		blockHeight:    opts.Epoch,
+		inv:            NewInvoker(),
+		rand:           opts.Rand, // TODO: Probably should be a syscall
+		circSupplyCalc: opts.CircSupplyCalc,
+		Syscalls:       opts.Syscalls,
+		baseFee:        opts.BaseFee,
 	}, nil
 }
 
@@ -714,8 +714,8 @@ func (vm *VM) SetInvoker(i *Invoker) {
 	vm.inv = i
 }
 
-func (vm *VM) GetVestedFunds(ctx context.Context) (abi.TokenAmount, error) {
-	return vm.vc(ctx, vm.blockHeight, vm.cstate)
+func (vm *VM) GetCircSupply(ctx context.Context) (abi.TokenAmount, error) {
+	return vm.circSupplyCalc(ctx, vm.blockHeight, vm.cstate)
 }
 
 func (vm *VM) incrementNonce(addr address.Address) error {

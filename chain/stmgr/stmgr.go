@@ -3,6 +3,7 @@ package stmgr
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"sync"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
@@ -148,13 +149,13 @@ type ExecCallback func(cid.Cid, *types.Message, *vm.ApplyRet) error
 func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEpoch, pstate cid.Cid, bms []store.BlockMessages, epoch abi.ChainEpoch, r vm.Rand, cb ExecCallback, baseFee abi.TokenAmount) (cid.Cid, cid.Cid, error) {
 
 	vmopt := &vm.VMOpts{
-		StateBase:  pstate,
-		Epoch:      epoch,
-		Rand:       r,
-		Bstore:     sm.cs.Blockstore(),
-		Syscalls:   sm.cs.VMSys(),
-		VestedCalc: sm.GetVestedFunds,
-		BaseFee:    baseFee,
+		StateBase:      pstate,
+		Epoch:          epoch,
+		Rand:           r,
+		Bstore:         sm.cs.Blockstore(),
+		Syscalls:       sm.cs.VMSys(),
+		CircSupplyCalc: sm.GetCirculatingSupply,
+		BaseFee:        baseFee,
 	}
 
 	vmi, err := sm.newVM(vmopt)
@@ -873,7 +874,7 @@ func (sm *StateManager) setupGenesisActors(ctx context.Context) error {
 // GetVestedFunds returns all funds that have "left" actors that are in the genesis state:
 // - For Multisigs, it counts the actual amounts that have vested at the given epoch
 // - For Accounts, it counts max(currentBalance - genesisBalance, 0).
-func (sm *StateManager) GetVestedFunds(ctx context.Context, height abi.ChainEpoch, st *state.StateTree) (abi.TokenAmount, error) {
+func (sm *StateManager) GetFilVested(ctx context.Context, height abi.ChainEpoch, st *state.StateTree) (abi.TokenAmount, error) {
 	sm.genesisMsigLk.Lock()
 	defer sm.genesisMsigLk.Unlock()
 	if sm.genesisMsigs == nil || sm.genesisActors == nil {
@@ -902,4 +903,85 @@ func (sm *StateManager) GetVestedFunds(ctx context.Context, height abi.ChainEpoc
 	}
 
 	return vf, nil
+}
+
+func GetFilMined(ctx context.Context, st *state.StateTree) (abi.TokenAmount, error) {
+	rew, err := st.GetActor(builtin.RewardActorAddr)
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("failed to load reward actor state: %w", err)
+	}
+
+	fm := types.BigSub(types.FromFil(build.FilAllocStorageMining), rew.Balance)
+	if fm.LessThan(big.Zero()) {
+		fm = big.Zero()
+	}
+	return fm, nil
+}
+
+func GetFilLocked(ctx context.Context, st *state.StateTree) (abi.TokenAmount, error) {
+	mactor, err := st.GetActor(builtin.StorageMarketActorAddr)
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("failed to load market actor: %w", err)
+	}
+
+	var mst market.State
+	if err := st.Store.Get(ctx, mactor.Head, &mst); err != nil {
+		return big.Zero(), xerrors.Errorf("failed to load market state: %w", err)
+	}
+
+	filMarketLocked := types.BigAdd(mst.TotalClientLockedCollateral, mst.TotalProviderLockedCollateral)
+	filMarketLocked = types.BigAdd(filMarketLocked, mst.TotalClientStorageFee)
+
+	pactor, err := st.GetActor(builtin.StoragePowerActorAddr)
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("failed to load power actor: %w", err)
+	}
+
+	var pst power.State
+	if err := st.Store.Get(ctx, pactor.Head, &pst); err != nil {
+		return big.Zero(), xerrors.Errorf("failed to load power state: %w", err)
+	}
+
+	return types.BigAdd(filMarketLocked, pst.TotalPledgeCollateral), nil
+}
+
+func GetFilBurnt(ctx context.Context, st *state.StateTree) (abi.TokenAmount, error) {
+	burnt, err := st.GetActor(builtin.BurntFundsActorAddr)
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("failed to load burnt actor: %w", err)
+	}
+
+	return burnt.Balance, nil
+}
+
+func (sm *StateManager) GetCirculatingSupply(ctx context.Context, height abi.ChainEpoch, st *state.StateTree) (abi.TokenAmount, error) {
+	filVested, err := sm.GetFilVested(ctx, height, st)
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("failed to calculate filVested: %w", err)
+	}
+
+	filMined, err := GetFilMined(ctx, st)
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("failed to calculate filMined: %w", err)
+	}
+
+	filBurnt, err := GetFilBurnt(ctx, st)
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("failed to calculate filBurnt: %w", err)
+	}
+
+	filLocked, err := GetFilLocked(ctx, st)
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("failed to calculate filLocked: %w", err)
+	}
+
+	ret := types.BigAdd(filVested, filMined)
+	ret = types.BigSub(ret, filBurnt)
+	ret = types.BigSub(ret, filLocked)
+
+	if ret.LessThan(big.Zero()) {
+		ret = big.Zero()
+	}
+
+	return ret, nil
 }

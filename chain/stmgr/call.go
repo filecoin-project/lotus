@@ -23,13 +23,13 @@ func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate 
 	defer span.End()
 
 	vmopt := &vm.VMOpts{
-		StateBase:  bstate,
-		Epoch:      bheight,
-		Rand:       r,
-		Bstore:     sm.cs.Blockstore(),
-		Syscalls:   sm.cs.VMSys(),
-		VestedCalc: sm.GetVestedFunds,
-		BaseFee:    types.NewInt(0),
+		StateBase:      bstate,
+		Epoch:          bheight,
+		Rand:           r,
+		Bstore:         sm.cs.Blockstore(),
+		Syscalls:       sm.cs.VMSys(),
+		CircSupplyCalc: sm.GetCirculatingSupply,
+		BaseFee:        types.NewInt(0),
 	}
 
 	vmi, err := vm.NewVM(vmopt)
@@ -124,13 +124,13 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 	}
 
 	vmopt := &vm.VMOpts{
-		StateBase:  state,
-		Epoch:      ts.Height() + 1,
-		Rand:       r,
-		Bstore:     sm.cs.Blockstore(),
-		Syscalls:   sm.cs.VMSys(),
-		VestedCalc: sm.GetVestedFunds,
-		BaseFee:    ts.Blocks()[0].ParentBaseFee,
+		StateBase:      state,
+		Epoch:          ts.Height() + 1,
+		Rand:           r,
+		Bstore:         sm.cs.Blockstore(),
+		Syscalls:       sm.cs.VMSys(),
+		CircSupplyCalc: sm.GetCirculatingSupply,
+		BaseFee:        ts.Blocks()[0].ParentBaseFee,
 	}
 	vmi, err := vm.NewVM(vmopt)
 	if err != nil {
