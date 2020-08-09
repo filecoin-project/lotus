@@ -43,6 +43,8 @@ type StateManager struct {
 	genesisMsigLk sync.Mutex
 	newVM         func(*vm.VMOpts) (*vm.VM, error)
 	genesisMsigs  []multisig.State
+	// info about the Accounts in the genesis state
+	genesisActors []genesisActor
 }
 
 func NewStateManager(cs *store.ChainStore) *StateManager {
@@ -778,7 +780,13 @@ type GenesisMsigEntry struct {
 	unitVest   abi.TokenAmount
 }
 
-func (sm *StateManager) setupGenesisMsigs(ctx context.Context) error {
+type genesisActor struct {
+	addr    address.Address
+	initBal abi.TokenAmount
+}
+
+// sets up information about the non-multisig actors in the genesis state
+func (sm *StateManager) setupGenesisActors(ctx context.Context) error {
 	gb, err := sm.cs.GetGenesis()
 	if err != nil {
 		return xerrors.Errorf("getting genesis block: %w", err)
@@ -792,6 +800,12 @@ func (sm *StateManager) setupGenesisMsigs(ctx context.Context) error {
 	st, _, err := sm.TipSetState(ctx, gts)
 	if err != nil {
 		return xerrors.Errorf("getting genesis tipset state: %w", err)
+	}
+
+	cst := cbor.NewCborStore(sm.cs.Blockstore())
+	sTree, err := state.LoadStateTree(cst, st)
+	if err != nil {
+		return xerrors.Errorf("loading state tree: %w", err)
 	}
 
 	r, err := adt.AsMap(sm.cs.Store(ctx), st)
@@ -820,12 +834,27 @@ func (sm *StateManager) setupGenesisMsigs(ctx context.Context) error {
 				totalsByEpoch[s.UnlockDuration] = s.InitialBalance
 			}
 
+		} else if act.Code == builtin.AccountActorCodeID {
+			kaddr, err := address.NewFromBytes([]byte(k))
+			if err != nil {
+				return xerrors.Errorf("decoding address: %w", err)
+			}
+
+			kid, err := sTree.LookupID(kaddr)
+			if err != nil {
+				return xerrors.Errorf("resolving address: %w", err)
+			}
+
+			sm.genesisActors = append(sm.genesisActors, genesisActor{
+				addr:    kid,
+				initBal: act.Balance,
+			})
 		}
 		return nil
 	})
 
 	if err != nil {
-		return xerrors.Errorf("error setting up composite genesis multisigs: %w", err)
+		return xerrors.Errorf("error setting up genesis infos: %w", err)
 	}
 
 	sm.genesisMsigs = make([]multisig.State, 0, len(totalsByEpoch))
@@ -841,13 +870,16 @@ func (sm *StateManager) setupGenesisMsigs(ctx context.Context) error {
 	return nil
 }
 
-func (sm *StateManager) GetVestedFunds(ctx context.Context, height abi.ChainEpoch) (abi.TokenAmount, error) {
+// GetVestedFunds returns all funds that have "left" actors that are in the genesis state:
+// - For Multisigs, it counts the actual amounts that have vested at the given epoch
+// - For Accounts, it counts max(currentBalance - genesisBalance, 0).
+func (sm *StateManager) GetVestedFunds(ctx context.Context, height abi.ChainEpoch, st *state.StateTree) (abi.TokenAmount, error) {
 	sm.genesisMsigLk.Lock()
 	defer sm.genesisMsigLk.Unlock()
-	if sm.genesisMsigs == nil {
-		err := sm.setupGenesisMsigs(ctx)
+	if sm.genesisMsigs == nil || sm.genesisActors == nil {
+		err := sm.setupGenesisActors(ctx)
 		if err != nil {
-			return big.Zero(), xerrors.Errorf("failed to setup genesis msig entries: %w", err)
+			return big.Zero(), xerrors.Errorf("failed to setup genesis information: %w", err)
 		}
 	}
 	vf := big.Zero()
@@ -855,5 +887,19 @@ func (sm *StateManager) GetVestedFunds(ctx context.Context, height abi.ChainEpoc
 		au := big.Sub(v.InitialBalance, v.AmountLocked(height))
 		vf = big.Add(vf, au)
 	}
+
+	for _, v := range sm.genesisActors {
+		act, err := st.GetActor(v.addr)
+		if err != nil {
+			return big.Zero(), xerrors.Errorf("failed to get actor: %w", err)
+		}
+
+		// TODO: We should probably slowly phase initBal into TotalCircSupply, instead of considering them locked forever
+		diff := big.Sub(v.initBal, act.Balance)
+		if diff.GreaterThan(big.Zero()) {
+			vf = big.Add(vf, diff)
+		}
+	}
+
 	return vf, nil
 }

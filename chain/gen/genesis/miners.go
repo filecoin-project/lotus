@@ -57,7 +57,7 @@ func mkFakedSigSyscalls(base vm.SyscallBuilder) vm.SyscallBuilder {
 }
 
 func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid, miners []genesis.Miner) (cid.Cid, error) {
-	vc := func(context.Context, abi.ChainEpoch) (abi.TokenAmount, error) {
+	vc := func(context.Context, abi.ChainEpoch, *state.StateTree) (abi.TokenAmount, error) {
 		return big.Zero(), nil
 	}
 

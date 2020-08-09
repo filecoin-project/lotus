@@ -140,7 +140,7 @@ func (vm *UnsafeVM) MakeRuntime(ctx context.Context, msg *types.Message, origin 
 	return vm.VM.makeRuntime(ctx, msg, origin, originNonce, usedGas, nac)
 }
 
-type VestedCalculator func(context.Context, abi.ChainEpoch) (abi.TokenAmount, error)
+type VestedCalculator func(context.Context, abi.ChainEpoch, *state.StateTree) (abi.TokenAmount, error)
 
 type VM struct {
 	cstate      *state.StateTree
@@ -715,7 +715,7 @@ func (vm *VM) SetInvoker(i *Invoker) {
 }
 
 func (vm *VM) GetVestedFunds(ctx context.Context) (abi.TokenAmount, error) {
-	return vm.vc(ctx, vm.blockHeight)
+	return vm.vc(ctx, vm.blockHeight, vm.cstate)
 }
 
 func (vm *VM) incrementNonce(addr address.Address) error {
