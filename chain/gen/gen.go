@@ -272,6 +272,10 @@ func NewGenerator() (*ChainGen, error) {
 	return NewGeneratorWithSectors(1)
 }
 
+func (cg *ChainGen) StateManager() *stmgr.StateManager {
+	return cg.sm
+}
+
 func (cg *ChainGen) SetStateManager(sm *stmgr.StateManager) {
 	cg.sm = sm
 }
@@ -383,15 +387,32 @@ func (cg *ChainGen) SetWinningPoStProver(m address.Address, wpp WinningPoStProve
 }
 
 func (cg *ChainGen) NextTipSetFromMiners(base *types.TipSet, miners []address.Address) (*MinedTipSet, error) {
-	var blks []*types.FullBlock
-
-	msgs, err := cg.GetMessages(cg)
+	ms, err := cg.GetMessages(cg)
 	if err != nil {
 		return nil, xerrors.Errorf("get random messages: %w", err)
 	}
 
+	msgs := make([][]*types.SignedMessage, len(miners))
+	for i := range msgs {
+		msgs[i] = ms
+	}
+
+	fts, err := cg.NextTipSetFromMinersWithMessages(base, miners, msgs)
+	if err != nil {
+		return nil, err
+	}
+
+	return &MinedTipSet{
+		TipSet:   fts,
+		Messages: ms,
+	}, nil
+}
+
+func (cg *ChainGen) NextTipSetFromMinersWithMessages(base *types.TipSet, miners []address.Address, msgs [][]*types.SignedMessage) (*store.FullTipSet, error) {
+	var blks []*types.FullBlock
+
 	for round := base.Height() + 1; len(blks) == 0; round++ {
-		for _, m := range miners {
+		for mi, m := range miners {
 			bvals, et, ticket, err := cg.nextBlockProof(context.TODO(), base, m, round)
 			if err != nil {
 				return nil, xerrors.Errorf("next block proof: %w", err)
@@ -404,7 +425,7 @@ func (cg *ChainGen) NextTipSetFromMiners(base *types.TipSet, miners []address.Ad
 					return nil, err
 				}
 
-				fblk, err := cg.makeBlock(base, m, ticket, et, bvals, round, wpost, msgs)
+				fblk, err := cg.makeBlock(base, m, ticket, et, bvals, round, wpost, msgs[mi])
 				if err != nil {
 					return nil, xerrors.Errorf("making a block for next tipset failed: %w", err)
 				}
@@ -418,12 +439,7 @@ func (cg *ChainGen) NextTipSetFromMiners(base *types.TipSet, miners []address.Ad
 		}
 	}
 
-	fts := store.NewFullTipSet(blks)
-
-	return &MinedTipSet{
-		TipSet:   fts,
-		Messages: msgs,
-	}, nil
+	return store.NewFullTipSet(blks), nil
 }
 
 func (cg *ChainGen) makeBlock(parents *types.TipSet, m address.Address, vrfticket *types.Ticket,
