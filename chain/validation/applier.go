@@ -71,9 +71,9 @@ func (a *Applier) ApplyTipSetMessages(epoch abi.ChainEpoch, blocks []vtypes.Bloc
 	cs := store.NewChainStore(a.stateWrapper.bs, a.stateWrapper.ds, a.syscalls)
 	sm := stmgr.NewStateManager(cs)
 
-	var bms []stmgr.BlockMessages
+	var bms []store.BlockMessages
 	for _, b := range blocks {
-		bm := stmgr.BlockMessages{
+		bm := store.BlockMessages{
 			Miner:    b.Miner,
 			WinCount: 1,
 		}

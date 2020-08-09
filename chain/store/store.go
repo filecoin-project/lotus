@@ -707,9 +707,15 @@ func (cs *ChainStore) readAMTCids(root cid.Cid) ([]cid.Cid, error) {
 	return cids, nil
 }
 
-func (cs *ChainStore) MessagesForTipset(ts *types.TipSet) ([]types.ChainMsg, error) {
+type BlockMessages struct {
+	Miner         address.Address
+	BlsMessages   []types.ChainMsg
+	SecpkMessages []types.ChainMsg
+	WinCount      int64
+}
+
+func (cs *ChainStore) BlockMsgsForTipset(ts *types.TipSet) ([]BlockMessages, error) {
 	applied := make(map[address.Address]uint64)
-	balances := make(map[address.Address]types.BigInt)
 
 	cst := cbor.NewCborStore(cs.bs)
 	st, err := state.LoadStateTree(cst, ts.Blocks()[0].ParentStateRoot)
@@ -725,43 +731,80 @@ func (cs *ChainStore) MessagesForTipset(ts *types.TipSet) ([]types.ChainMsg, err
 			}
 
 			applied[a] = act.Nonce
-			balances[a] = act.Balance
 		}
 		return nil
 	}
 
-	var out []types.ChainMsg
+	selectMsg := func(m *types.Message) (bool, error) {
+		if err := preloadAddr(m.From); err != nil {
+			return false, err
+		}
+
+		if applied[m.From] != m.Nonce {
+			return false, nil
+		}
+		applied[m.From]++
+
+		return true, nil
+	}
+
+	var out []BlockMessages
 	for _, b := range ts.Blocks() {
+
 		bms, sms, err := cs.MessagesForBlock(b)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to get messages for block: %w", err)
 		}
 
-		cmsgs := make([]types.ChainMsg, 0, len(bms)+len(sms))
-		for _, m := range bms {
-			cmsgs = append(cmsgs, m)
+		bm := BlockMessages{
+			Miner:         b.Miner,
+			BlsMessages:   make([]types.ChainMsg, 0, len(bms)),
+			SecpkMessages: make([]types.ChainMsg, 0, len(sms)),
+			WinCount:      b.ElectionProof.WinCount,
 		}
-		for _, sm := range sms {
-			cmsgs = append(cmsgs, sm)
+
+		for _, bmsg := range bms {
+			b, err := selectMsg(bmsg.VMMessage())
+			if err != nil {
+				return nil, xerrors.Errorf("failed to decide whether to select message for block: %w", err)
+			}
+
+			if b {
+				bm.BlsMessages = append(bm.BlsMessages, bmsg)
+			}
 		}
 
-		for _, cm := range cmsgs {
-			m := cm.VMMessage()
-			if err := preloadAddr(m.From); err != nil {
-				return nil, err
+		for _, smsg := range sms {
+			b, err := selectMsg(smsg.VMMessage())
+			if err != nil {
+				return nil, xerrors.Errorf("failed to decide whether to select message for block: %w", err)
 			}
 
-			if applied[m.From] != m.Nonce {
-				continue
+			if b {
+				bm.SecpkMessages = append(bm.SecpkMessages, smsg)
 			}
-			applied[m.From]++
+		}
 
-			if balances[m.From].LessThan(m.RequiredFunds()) {
-				continue
-			}
-			balances[m.From] = types.BigSub(balances[m.From], m.RequiredFunds())
+		out = append(out, bm)
+	}
 
-			out = append(out, cm)
+	return out, nil
+}
+
+func (cs *ChainStore) MessagesForTipset(ts *types.TipSet) ([]types.ChainMsg, error) {
+	bmsgs, err := cs.BlockMsgsForTipset(ts)
+	if err != nil {
+		return nil, err
+	}
+
+	var out []types.ChainMsg
+	for _, bm := range bmsgs {
+		for _, blsm := range bm.BlsMessages {
+			out = append(out, blsm)
+		}
+
+		for _, secm := range bm.SecpkMessages {
+			out = append(out, secm)
 		}
 	}
 

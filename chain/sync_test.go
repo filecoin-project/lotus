@@ -547,7 +547,7 @@ func TestSyncFork(t *testing.T) {
 	phead()
 }
 
-// This message crafts a tipset with 2 blocks, A and B.
+// This test crafts a tipset with 2 blocks, A and B.
 // A and B both include _different_ messages from sender X with nonce N (where N is the correct nonce for X).
 // We can confirm that the state can be correctly computed, and that `MessagesForTipset` behaves as expected.
 func TestDuplicateNonce(t *testing.T) {
