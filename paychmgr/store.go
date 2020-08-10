@@ -328,8 +328,7 @@ func (ps *Store) ByChannelID(channelID string) (*ChannelInfo, error) {
 	return unmarshallChannelInfo(&stored, res)
 }
 
-// CreateChannel creates an outbound channel for the given from / to, ensuring
-// it has a higher sequence number than any existing channel with the same from / to
+// CreateChannel creates an outbound channel for the given from / to
 func (ps *Store) CreateChannel(from address.Address, to address.Address, createMsgCid cid.Cid, amt types.BigInt) (*ChannelInfo, error) {
 	ci := &ChannelInfo{
 		Direction:     DirOutbound,
