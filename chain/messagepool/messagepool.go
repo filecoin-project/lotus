@@ -39,6 +39,8 @@ const futureDebug = false
 
 const RbfDenom = 256
 
+var RepublishInterval = time.Duration(build.BlockDelaySecs+build.PropagationDelaySecs) * time.Second
+
 var (
 	ErrMessageTooBig = errors.New("message too big")
 
@@ -156,7 +158,7 @@ func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName) (*Messa
 	mp := &MessagePool{
 		ds:            ds,
 		closer:        make(chan struct{}),
-		repubTk:       build.Clock.Ticker(time.Duration(build.BlockDelaySecs) * time.Second),
+		repubTk:       build.Clock.Ticker(RepublishInterval),
 		localAddrs:    make(map[address.Address]struct{}),
 		pending:       make(map[address.Address]*msgSet),
 		minGasPrice:   types.NewInt(0),
