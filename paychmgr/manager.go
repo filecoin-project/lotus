@@ -242,3 +242,11 @@ func (pm *Manager) Settle(ctx context.Context, addr address.Address) (cid.Cid, e
 	}
 	return ca.settle(ctx, addr)
 }
+
+func (pm *Manager) Collect(ctx context.Context, addr address.Address) (cid.Cid, error) {
+	ca, err := pm.accessorByAddress(addr)
+	if err != nil {
+		return cid.Undef, err
+	}
+	return ca.collect(ctx, addr)
+}
