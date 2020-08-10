@@ -417,3 +417,27 @@ func (ca *channelAccessor) settle(ctx context.Context, ch address.Address) (cid.
 
 	return smgs.Cid(), err
 }
+
+func (ca *channelAccessor) collect(ctx context.Context, ch address.Address) (cid.Cid, error) {
+	ca.lk.Lock()
+	defer ca.lk.Unlock()
+
+	ci, err := ca.store.ByAddress(ch)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	msg := &types.Message{
+		To:     ch,
+		From:   ci.Control,
+		Value:  types.NewInt(0),
+		Method: builtin.MethodsPaych.Collect,
+	}
+
+	smsg, err := ca.api.MpoolPushMessage(ctx, msg)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	return smsg.Cid(), nil
+}
