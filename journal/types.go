@@ -29,7 +29,17 @@ type EventType struct {
 // All event types are enabled by default, and specific event types can only
 // be disabled at Journal construction time.
 func (et EventType) Enabled() bool {
-	return et.enabled
+	return et.safe && et.enabled
+}
+
+// EventTypeFactory is a component that constructs tracked EventType tokens,
+// for usage with a Journal.
+type EventTypeFactory interface {
+	// RegisterEventType introduces a new event type to a journal, and
+	// returns an EventType token that components can later use to check whether
+	// journalling for that type is enabled/suppressed, and to tag journal
+	// entries appropriately.
+	RegisterEventType(system, event string) EventType
 }
 
 // Journal represents an audit trail of system actions.
@@ -41,11 +51,7 @@ func (et EventType) Enabled() bool {
 // For cleanliness and type safety, we recommend to use typed events. See the
 // *Evt struct types in this package for more info.
 type Journal interface {
-	// RegisterEventType introduces a new event type to this journal, and
-	// returns an EventType token that components can later use to check whether
-	// journalling for that type is enabled/suppressed, and to tag journal
-	// entries appropriately.
-	RegisterEventType(system, event string) EventType
+	EventTypeFactory
 
 	// RecordEvent records this event to the journal. See godocs on the Journal type
 	// for more info.
@@ -65,6 +71,22 @@ type Event struct {
 	Data      interface{}
 }
 
+// MaybeRecordEvent is a convenience function that evaluates if the EventType is
+// enabled, and if so, it calls the supplier to create the event and
+// subsequently journal.RecordEvent on the provided journal to record it.
+//
+// This is safe to call with a nil Journal, either because the value is nil,
+// or because a journal obtained through NilJournal() is in use.
+func MaybeRecordEvent(journal Journal, evtType EventType, supplier func() interface{}) {
+	if journal == nil || journal == nilj {
+		return
+	}
+	if !evtType.Enabled() {
+		return
+	}
+	journal.RecordEvent(evtType, supplier())
+}
+
 // eventTypeFactory is an embeddable mixin that takes care of tracking disabled
 // event types, and returning initialized/safe EventTypes when requested.
 type eventTypeFactory struct {
@@ -73,7 +95,9 @@ type eventTypeFactory struct {
 	m map[string]EventType
 }
 
-func newEventTypeFactory(disabled DisabledEvents) *eventTypeFactory {
+var _ EventTypeFactory = (*eventTypeFactory)(nil)
+
+func NewEventTypeFactory(disabled DisabledEvents) EventTypeFactory {
 	ret := &eventTypeFactory{
 		m: make(map[string]EventType, len(disabled)+32), // + extra capacity.
 	}
