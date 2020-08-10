@@ -138,4 +138,6 @@ replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 
 replace github.com/filecoin-project/sector-storage => ./extern/sector-storage
 
+replace github.com/filecoin-project/storage-fsm => ./extern/storage-fsm
+
 replace github.com/dgraph-io/badger/v2 => github.com/dgraph-io/badger/v2 v2.0.1-rc1.0.20200716180832-3ab515320794
