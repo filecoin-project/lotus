@@ -30,5 +30,3 @@ require (
 	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543
 	honnef.co/go/tools v0.0.1-2020.1.3 // indirect
 )
-
-replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
