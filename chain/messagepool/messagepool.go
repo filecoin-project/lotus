@@ -18,6 +18,7 @@ import (
 	"github.com/ipfs/go-datastore/namespace"
 	"github.com/ipfs/go-datastore/query"
 	logging "github.com/ipfs/go-log/v2"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	lps "github.com/whyrusleeping/pubsub"
 	"golang.org/x/xerrors"
 
@@ -39,7 +40,7 @@ const futureDebug = false
 
 const RbfDenom = 256
 
-var RepublishInterval = time.Duration(build.BlockDelaySecs+build.PropagationDelaySecs) * time.Second
+var RepublishInterval = pubsub.TimeCacheDuration + time.Duration(5*build.BlockDelaySecs+build.PropagationDelaySecs)*time.Second
 
 var (
 	ErrMessageTooBig = errors.New("message too big")
