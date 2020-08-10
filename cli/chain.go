@@ -419,7 +419,8 @@ var chainListCmd = &cli.Command{
 			}
 			tss = otss
 			for i, ts := range tss {
-				fmt.Printf("%d: %d blocks\n", ts.Height(), len(ts.Blocks()))
+				pbf := ts.Blocks()[0].ParentBaseFee
+				fmt.Printf("%d: %d blocks (baseFee: %s -> maxFee: %s)\n", ts.Height(), len(ts.Blocks()), ts.Blocks()[0].ParentBaseFee, types.FIL(types.BigMul(pbf, types.NewInt(build.BlockGasLimit))))
 
 				for _, b := range ts.Blocks() {
 					msgs, err := api.ChainGetBlockMessages(ctx, b.Cid())
@@ -445,7 +446,7 @@ var chainListCmd = &cli.Command{
 						avgpremium = big.Div(psum, big.NewInt(int64(lenmsgs)))
 					}
 
-					fmt.Printf("\t%s: \t%d msgs, gasLimit: %d / %d (%0.2f%%), avgPrice: %s\n", b.Miner, len(msgs.BlsMessages)+len(msgs.SecpkMessages), limitSum, build.BlockGasLimit, 100*float64(limitSum)/float64(build.BlockGasLimit), avgpremium)
+					fmt.Printf("\t%s: \t%d msgs, gasLimit: %d / %d (%0.2f%%), avgPremium: %s\n", b.Miner, len(msgs.BlsMessages)+len(msgs.SecpkMessages), limitSum, build.BlockGasLimit, 100*float64(limitSum)/float64(build.BlockGasLimit), avgpremium)
 				}
 				if i < len(tss)-1 {
 					msgs, err := api.ChainGetParentMessages(ctx, tss[i+1].Blocks()[0].Cid())

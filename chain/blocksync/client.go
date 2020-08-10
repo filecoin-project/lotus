@@ -393,7 +393,7 @@ func (client *BlockSync) sendRequestToPeer(
 		&res)
 	if err != nil {
 		client.peerTracker.logFailure(peer, build.Clock.Since(connectionStart))
-		return nil, err
+		return nil, xerrors.Errorf("failed to read blocksync response: %w", err)
 	}
 
 	// FIXME: Move all this together at the top using a defer as done elsewhere.
