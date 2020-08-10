@@ -2,6 +2,7 @@ package full
 
 import (
 	"context"
+	"sync"
 
 	"github.com/ipfs/go-cid"
 	"go.uber.org/fx"
@@ -23,6 +24,11 @@ type MpoolAPI struct {
 	Chain *store.ChainStore
 
 	Mpool *messagepool.MessagePool
+
+	PushLocks struct {
+		m map[address.Address]chan struct{}
+		sync.Mutex
+	} `name:"verymuchunique" optional:"true"`
 }
 
 func (a *MpoolAPI) MpoolGetConfig(context.Context) (*types.MpoolConfig, error) {
@@ -105,10 +111,35 @@ func (a *MpoolAPI) MpoolPush(ctx context.Context, smsg *types.SignedMessage) (ci
 	return a.Mpool.Push(smsg)
 }
 
-// GasMargin sets by how much should gas used be increased over test execution
-var GasMargin = 1.5
-
 func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message) (*types.SignedMessage, error) {
+	{
+		fromA, err := a.Stmgr.ResolveToKeyAddress(ctx, msg.From, nil)
+		if err != nil {
+			return nil, xerrors.Errorf("getting key address: %w", err)
+		}
+
+		a.PushLocks.Lock()
+		if a.PushLocks.m == nil {
+			a.PushLocks.m = make(map[address.Address]chan struct{})
+		}
+		lk, ok := a.PushLocks.m[fromA]
+		if !ok {
+			lk = make(chan struct{}, 1)
+			a.PushLocks.m[msg.From] = lk
+		}
+		a.PushLocks.Unlock()
+
+		select {
+		case lk <- struct{}{}:
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+
+		defer func() {
+			<-lk
+		}()
+	}
+
 	if msg.Nonce != 0 {
 		return nil, xerrors.Errorf("MpoolPushMessage expects message nonce to be 0, was %d", msg.Nonce)
 	}
@@ -117,7 +148,7 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message) (*t
 		if err != nil {
 			return nil, xerrors.Errorf("estimating gas used: %w", err)
 		}
-		msg.GasLimit = int64(float64(gasLimit) * GasMargin)
+		msg.GasLimit = int64(float64(gasLimit) * a.Mpool.GetConfig().GasLimitOverestimation)
 	}
 
 	if msg.GasPremium == types.EmptyInt || types.BigCmp(msg.GasPremium, types.NewInt(0)) == 0 {
@@ -129,7 +160,7 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message) (*t
 	}
 
 	if msg.GasFeeCap == types.EmptyInt || types.BigCmp(msg.GasFeeCap, types.NewInt(0)) == 0 {
-		feeCap, err := a.GasEstimateFeeCap(ctx, msg, 20, types.EmptyTSK)
+		feeCap, err := a.GasEstimateFeeCap(ctx, msg, 10, types.EmptyTSK)
 		if err != nil {
 			return nil, xerrors.Errorf("estimating fee cap: %w", err)
 		}

@@ -14,6 +14,7 @@ var (
 	MemPoolSizeLimitHiDefault = 30000
 	MemPoolSizeLimitLoDefault = 20000
 	PruneCooldownDefault      = time.Minute
+	GasLimitOverestimation    = 1.25
 
 	ConfigKey = datastore.NewKey("/mpool/config")
 )
@@ -34,6 +35,10 @@ func loadConfig(ds dtypes.MetadataDS) (*types.MpoolConfig, error) {
 	}
 	cfg := new(types.MpoolConfig)
 	err = json.Unmarshal(cfgBytes, cfg)
+	if cfg.GasLimitOverestimation == 0 {
+		// TODO: remove in next reset
+		cfg.GasLimitOverestimation = GasLimitOverestimation
+	}
 	return cfg, err
 }
 
@@ -65,9 +70,10 @@ func (mp *MessagePool) SetConfig(cfg *types.MpoolConfig) {
 
 func DefaultConfig() *types.MpoolConfig {
 	return &types.MpoolConfig{
-		SizeLimitHigh:     MemPoolSizeLimitHiDefault,
-		SizeLimitLow:      MemPoolSizeLimitLoDefault,
-		ReplaceByFeeRatio: ReplaceByFeeRatioDefault,
-		PruneCooldown:     PruneCooldownDefault,
+		SizeLimitHigh:          MemPoolSizeLimitHiDefault,
+		SizeLimitLow:           MemPoolSizeLimitLoDefault,
+		ReplaceByFeeRatio:      ReplaceByFeeRatioDefault,
+		PruneCooldown:          PruneCooldownDefault,
+		GasLimitOverestimation: GasLimitOverestimation,
 	}
 }

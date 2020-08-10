@@ -510,7 +510,7 @@ func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubs
 		)
 		stats.Record(ctx, metrics.MessageValidationFailure.M(1))
 		switch {
-		case xerrors.Is(err, messagepool.ErrBroadcastAnyway):
+		case xerrors.Is(err, messagepool.ErrBroadcastAnyway) || xerrors.Is(err, messagepool.ErrRBFTooLowPremium):
 			return pubsub.ValidationIgnore
 		default:
 			return pubsub.ValidationReject
