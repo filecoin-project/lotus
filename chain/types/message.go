@@ -118,6 +118,17 @@ func (m *Message) Equals(o *Message) bool {
 	return m.Cid() == o.Cid()
 }
 
+func (m *Message) EqualCall(o *Message) bool {
+	m1 := *m
+	m2 := *o
+
+	m1.GasLimit, m2.GasLimit = 0, 0
+	m1.GasFeeCap, m2.GasFeeCap = big.Zero(), big.Zero()
+	m1.GasPremium, m2.GasPremium = big.Zero(), big.Zero()
+
+	return (&m1).Equals(&m2)
+}
+
 func (m *Message) ValidForBlockInclusion(minGas int64) error {
 	if m.Version != 0 {
 		return xerrors.New("'Version' unsupported")

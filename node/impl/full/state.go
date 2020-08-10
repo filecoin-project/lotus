@@ -426,7 +426,7 @@ func (a *StateAPI) MinerCreateBlock(ctx context.Context, bt *api.BlockTemplate) 
 }
 
 func (a *StateAPI) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64) (*api.MsgLookup, error) {
-	ts, recpt, err := a.StateManager.WaitForMessage(ctx, msg, confidence)
+	ts, recpt, found, err := a.StateManager.WaitForMessage(ctx, msg, confidence)
 	if err != nil {
 		return nil, err
 	}
@@ -453,6 +453,7 @@ func (a *StateAPI) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uin
 	}
 
 	return &api.MsgLookup{
+		Message:   found,
 		Receipt:   *recpt,
 		ReturnDec: returndec,
 		TipSet:    ts.Key(),
@@ -461,13 +462,14 @@ func (a *StateAPI) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uin
 }
 
 func (a *StateAPI) StateSearchMsg(ctx context.Context, msg cid.Cid) (*api.MsgLookup, error) {
-	ts, recpt, err := a.StateManager.SearchForMessage(ctx, msg)
+	ts, recpt, found, err := a.StateManager.SearchForMessage(ctx, msg)
 	if err != nil {
 		return nil, err
 	}
 
 	if ts != nil {
 		return &api.MsgLookup{
+			Message: found,
 			Receipt: *recpt,
 			TipSet:  ts.Key(),
 			Height:  ts.Height(),
