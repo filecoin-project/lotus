@@ -914,16 +914,17 @@ func (sm *StateManager) GetFilVested(ctx context.Context, height abi.ChainEpoch,
 }
 
 func GetFilMined(ctx context.Context, st *state.StateTree) (abi.TokenAmount, error) {
-	rew, err := st.GetActor(builtin.RewardActorAddr)
+	ractor, err := st.GetActor(builtin.RewardActorAddr)
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("failed to load reward actor state: %w", err)
 	}
 
-	fm := types.BigSub(types.FromFil(build.FilAllocStorageMining), rew.Balance)
-	if fm.LessThan(big.Zero()) {
-		fm = big.Zero()
+	var rst reward.State
+	if err := st.Store.Get(ctx, ractor.Head, &rst); err != nil {
+		return big.Zero(), xerrors.Errorf("failed to load reward state: %w", err)
 	}
-	return fm, nil
+
+	return rst.TotalMined, nil
 }
 
 func getFilMarketLocked(ctx context.Context, st *state.StateTree) (abi.TokenAmount, error) {
