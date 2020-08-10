@@ -558,6 +558,22 @@ func (td *TestDriver) GetStateRoot() cid.Cid {
 	return td.st.stateRoot
 }
 
+func (td *TestDriver) UpdatePreStateRoot() {
+	td.Vector.Pre.StateTree.RootCID = td.st.stateRoot
+}
+
+func (td *TestDriver) UpdatePostStateRoot() {
+	td.Vector.Post.StateTree.RootCID = td.st.stateRoot
+}
+
+func (td *TestDriver) MustSerialize(w io.Writer) {
+	td.Vector.Post.StateTree.RootCID = td.st.stateRoot
+
+	td.Vector.CAR = td.MustMarshalGzippedCAR(td.Vector.Pre.StateTree.RootCID, td.Vector.Post.StateTree.RootCID)
+
+	fmt.Fprintln(w, string(td.Vector.MustMarshalJSON()))
+}
+
 func (td *TestDriver) MustMarshalGzippedCAR(roots ...cid.Cid) []byte {
 	var b bytes.Buffer
 	gw := gzip.NewWriter(&b)

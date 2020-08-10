@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/puppet"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 )
@@ -39,6 +40,13 @@ func (d *Driver) ExecuteMessage(msg *types.Message, preroot cid.Cid, bs blocksto
 
 	fmt.Println("creating vm")
 	lvm, err := vm.NewVM(preroot, epoch, &vmRand{}, bs, mkFakedSigSyscalls(vm.Syscalls(ffiwrapper.ProofVerifier)), nil)
+	if err != nil {
+		return nil, cid.Undef, err
+	}
+	// need to modify the VM invoker to add the puppet actor
+	chainValInvoker := vm.NewInvoker()
+	chainValInvoker.Register(puppet.PuppetActorCodeID, puppet.Actor{}, puppet.State{})
+	lvm.SetInvoker(chainValInvoker)
 	if err != nil {
 		return nil, cid.Undef, err
 	}

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	abi_spec "github.com/filecoin-project/specs-actors/actors/abi"
@@ -24,7 +23,7 @@ func MessageTest_MessageApplicationEdgecases() error {
 
 		alice, _ := td.NewAccountActor(drivers.SECP, aliceBal)
 
-		preroot := td.GetStateRoot()
+		td.UpdatePreStateRoot()
 
 		msg := td.MessageProducer.Transfer(alice, alice, chain.Value(transferAmnt), chain.Nonce(0), chain.GasPrice(1), chain.GasLimit(8))
 
@@ -32,14 +31,7 @@ func MessageTest_MessageApplicationEdgecases() error {
 			msg,
 			exitcode_spec.SysErrOutOfGas)
 
-		postroot := td.GetStateRoot()
-
-		td.Vector.CAR = td.MustMarshalGzippedCAR(preroot, postroot)
-		td.Vector.Pre.StateTree.RootCID = preroot
-		td.Vector.Post.StateTree.RootCID = postroot
-
-		// encode and output
-		fmt.Fprintln(os.Stdout, string(td.Vector.MustMarshalJSON()))
+		td.MustSerialize(os.Stdout)
 
 		return nil
 	}("fail to cover gas cost for message receipt on chain")
@@ -53,7 +45,8 @@ func MessageTest_MessageApplicationEdgecases() error {
 
 		alice, _ := td.NewAccountActor(drivers.SECP, aliceBal)
 
-		preroot := td.GetStateRoot()
+		td.UpdatePreStateRoot()
+
 		msg := td.MessageProducer.Transfer(alice, alice, chain.Value(transferAmnt), chain.Nonce(0), chain.GasPrice(10), chain.GasLimit(1))
 
 		// Expect Message application to fail due to lack of gas
@@ -69,14 +62,7 @@ func MessageTest_MessageApplicationEdgecases() error {
 			msg,
 			exitcode_spec.SysErrOutOfGas)
 
-		postroot := td.GetStateRoot()
-
-		td.Vector.CAR = td.MustMarshalGzippedCAR(preroot, postroot)
-		td.Vector.Pre.StateTree.RootCID = preroot
-		td.Vector.Post.StateTree.RootCID = postroot
-
-		// encode and output
-		fmt.Fprintln(os.Stdout, string(td.Vector.MustMarshalJSON()))
+		td.MustSerialize(os.Stdout)
 
 		return nil
 	}("not enough gas to pay message on-chain-size cost")
@@ -89,7 +75,7 @@ func MessageTest_MessageApplicationEdgecases() error {
 		td.Vector.Meta.Desc = testname
 
 		alice, _ := td.NewAccountActor(drivers.SECP, aliceBal)
-		preroot := td.GetStateRoot()
+		td.UpdatePreStateRoot()
 
 		aliceNonce := uint64(0)
 		aliceNonceF := func() uint64 {
@@ -116,14 +102,7 @@ func MessageTest_MessageApplicationEdgecases() error {
 			)
 		}
 
-		postroot := td.GetStateRoot()
-
-		td.Vector.CAR = td.MustMarshalGzippedCAR(preroot, postroot)
-		td.Vector.Pre.StateTree.RootCID = preroot
-		td.Vector.Post.StateTree.RootCID = postroot
-
-		// encode and output
-		fmt.Fprintln(os.Stdout, string(td.Vector.MustMarshalJSON()))
+		td.MustSerialize(os.Stdout)
 
 		return nil
 	}("fail not enough gas to cover account actor creation")
@@ -137,7 +116,7 @@ func MessageTest_MessageApplicationEdgecases() error {
 
 		alice, _ := td.NewAccountActor(drivers.SECP, aliceBal)
 
-		preroot := td.GetStateRoot()
+		td.UpdatePreStateRoot()
 
 		msg := td.MessageProducer.Transfer(alice, alice, chain.Value(transferAmnt), chain.Nonce(1))
 
@@ -154,14 +133,7 @@ func MessageTest_MessageApplicationEdgecases() error {
 			msg,
 			exitcode_spec.SysErrSenderInvalid)
 
-		postroot := td.GetStateRoot()
-
-		td.Vector.CAR = td.MustMarshalGzippedCAR(preroot, postroot)
-		td.Vector.Pre.StateTree.RootCID = preroot
-		td.Vector.Post.StateTree.RootCID = postroot
-
-		// encode and output
-		fmt.Fprintln(os.Stdout, string(td.Vector.MustMarshalJSON()))
+		td.MustSerialize(os.Stdout)
 
 		return nil
 	}("invalid actor nonce")
@@ -193,7 +165,7 @@ func MessageTest_MessageApplicationEdgecases() error {
 		paychAddr := chain.MustNewIDAddr(chain.MustIDFromAddress(receiverID) + 1)
 		createRet := td.ComputeInitActorExecReturn(sender, 0, 0, paychAddr)
 
-		preroot := td.GetStateRoot()
+		td.UpdatePreStateRoot()
 
 		msg := td.MessageProducer.CreatePaymentChannelActor(sender, receiver, chain.Value(toSend), chain.Nonce(0))
 
@@ -222,14 +194,7 @@ func MessageTest_MessageApplicationEdgecases() error {
 			msg,
 			exitcode_spec.ErrIllegalArgument)
 
-		postroot := td.GetStateRoot()
-
-		td.Vector.CAR = td.MustMarshalGzippedCAR(preroot, postroot)
-		td.Vector.Pre.StateTree.RootCID = preroot
-		td.Vector.Post.StateTree.RootCID = postroot
-
-		// encode and output
-		fmt.Fprintln(os.Stdout, string(td.Vector.MustMarshalJSON()))
+		td.MustSerialize(os.Stdout)
 
 		return nil
 	}("abort during actor execution")
@@ -243,7 +208,7 @@ func MessageTest_MessageApplicationEdgecases() error {
 
 		alice, _ := td.NewAccountActor(drivers.SECP, aliceBal)
 
-		preroot := td.GetStateRoot()
+		td.UpdatePreStateRoot()
 
 		msg := td.MessageProducer.MarketComputeDataCommitment(alice, alice, nil, chain.Nonce(0))
 
@@ -253,14 +218,7 @@ func MessageTest_MessageApplicationEdgecases() error {
 			msg,
 			exitcode_spec.SysErrInvalidMethod)
 
-		postroot := td.GetStateRoot()
-
-		td.Vector.CAR = td.MustMarshalGzippedCAR(preroot, postroot)
-		td.Vector.Pre.StateTree.RootCID = preroot
-		td.Vector.Post.StateTree.RootCID = postroot
-
-		// encode and output
-		fmt.Fprintln(os.Stdout, string(td.Vector.MustMarshalJSON()))
+		td.MustSerialize(os.Stdout)
 
 		return nil
 	}("invalid method for receiver")
@@ -275,7 +233,7 @@ func MessageTest_MessageApplicationEdgecases() error {
 
 		alice, _ := td.NewAccountActor(drivers.SECP, aliceBal)
 
-		preroot := td.GetStateRoot()
+		td.UpdatePreStateRoot()
 
 		// Sending a message to non-existent ID address must produce an error.
 		unknownA := chain.MustNewIDAddr(10000000)
@@ -293,14 +251,7 @@ func MessageTest_MessageApplicationEdgecases() error {
 			msg,
 			exitcode_spec.SysErrInvalidReceiver)
 
-		postroot := td.GetStateRoot()
-
-		td.Vector.CAR = td.MustMarshalGzippedCAR(preroot, postroot)
-		td.Vector.Pre.StateTree.RootCID = preroot
-		td.Vector.Post.StateTree.RootCID = postroot
-
-		// encode and output
-		fmt.Fprintln(os.Stdout, string(td.Vector.MustMarshalJSON()))
+		td.MustSerialize(os.Stdout)
 
 		return nil
 	}("receiver ID/Actor address does not exist")

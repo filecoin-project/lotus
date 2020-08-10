@@ -75,7 +75,7 @@ func runExecLotus(_ *cli.Context) error {
 }
 
 func executeTestVector(tv schema.TestVector) error {
-	fmt.Println("executing test vector")
+	fmt.Println("executing test vector:", tv.Meta.Desc)
 	switch tv.Class {
 	case "message":
 		var (
