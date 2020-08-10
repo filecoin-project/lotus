@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 	"testing"
+	"time"
 
 	cborrpc "github.com/filecoin-project/go-cbor-util"
 
@@ -740,4 +741,293 @@ func TestPaychGetWaitCtx(t *testing.T) {
 
 	_, err = mgr.GetPaychWaitReady(ctx, mcid)
 	require.Error(t, ctx.Err(), err)
+}
+
+// TestPaychGetMergeAddFunds tests that if a create channel is in
+// progress and two add funds are queued up behind it, the two add funds
+// will be merged
+func TestPaychGetMergeAddFunds(t *testing.T) {
+	ctx := context.Background()
+	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
+
+	ch := tutils.NewIDAddr(t, 100)
+	from := tutils.NewIDAddr(t, 101)
+	to := tutils.NewIDAddr(t, 102)
+
+	sm := newMockStateManager()
+	pchapi := newMockPaychAPI()
+	defer pchapi.close()
+
+	mgr, err := newManager(sm, store, pchapi)
+	require.NoError(t, err)
+
+	// Send create message for a channel with value 10
+	createAmt := big.NewInt(10)
+	_, createMsgCid, err := mgr.GetPaych(ctx, from, to, createAmt)
+	require.NoError(t, err)
+
+	// Queue up two add funds requests behind create channel
+	//var addFundsQueuedUp sync.WaitGroup
+	//addFundsQueuedUp.Add(2)
+	var addFundsSent sync.WaitGroup
+	addFundsSent.Add(2)
+
+	addFundsAmt1 := big.NewInt(5)
+	addFundsAmt2 := big.NewInt(3)
+	var addFundsCh1 address.Address
+	var addFundsCh2 address.Address
+	var addFundsMcid1 cid.Cid
+	var addFundsMcid2 cid.Cid
+	go func() {
+		//go addFundsQueuedUp.Done()
+		defer addFundsSent.Done()
+
+		// Request add funds - should block until create channel has completed
+		addFundsCh1, addFundsMcid1, err = mgr.GetPaych(ctx, from, to, addFundsAmt1)
+		require.NoError(t, err)
+	}()
+
+	go func() {
+		//go addFundsQueuedUp.Done()
+		defer addFundsSent.Done()
+
+		// Request add funds again - should merge with waiting add funds request
+		addFundsCh2, addFundsMcid2, err = mgr.GetPaych(ctx, from, to, addFundsAmt2)
+		require.NoError(t, err)
+	}()
+	// Wait for add funds requests to be queued up
+	waitForQueueSize(t, mgr, from, to, 2)
+
+	// Send create channel response
+	response := testChannelResponse(t, ch)
+	pchapi.receiveMsgResponse(createMsgCid, response)
+
+	// Wait for create channel response
+	chres, err := mgr.GetPaychWaitReady(ctx, createMsgCid)
+	require.NoError(t, err)
+	require.Equal(t, ch, chres)
+
+	// Wait for add funds requests to be sent
+	addFundsSent.Wait()
+
+	// Expect add funds requests to have same channel as create channel and
+	// same message cid as each other (because they should have been merged)
+	require.Equal(t, ch, addFundsCh1)
+	require.Equal(t, ch, addFundsCh2)
+	require.Equal(t, addFundsMcid1, addFundsMcid2)
+
+	// Send success add funds response
+	pchapi.receiveMsgResponse(addFundsMcid1, types.MessageReceipt{
+		ExitCode: 0,
+		Return:   []byte{},
+	})
+
+	// Wait for add funds response
+	addFundsCh, err := mgr.GetPaychWaitReady(ctx, addFundsMcid1)
+	require.NoError(t, err)
+	require.Equal(t, ch, addFundsCh)
+
+	// Make sure that one create channel message and one add funds message was
+	// sent
+	require.Equal(t, 2, pchapi.pushedMessageCount())
+
+	// Check create message amount is correct
+	createMsg := pchapi.pushedMessages(createMsgCid)
+	require.Equal(t, from, createMsg.Message.From)
+	require.Equal(t, builtin.InitActorAddr, createMsg.Message.To)
+	require.Equal(t, createAmt, createMsg.Message.Value)
+
+	// Check merged add funds amount is the sum of the individual
+	// amounts
+	addFundsMsg := pchapi.pushedMessages(addFundsMcid1)
+	require.Equal(t, from, addFundsMsg.Message.From)
+	require.Equal(t, ch, addFundsMsg.Message.To)
+	require.Equal(t, types.BigAdd(addFundsAmt1, addFundsAmt2), addFundsMsg.Message.Value)
+}
+
+// TestPaychGetMergeAddFundsCtxCancelOne tests that when a queued add funds
+// request is cancelled, its amount is removed from the total merged add funds
+func TestPaychGetMergeAddFundsCtxCancelOne(t *testing.T) {
+	ctx := context.Background()
+	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
+
+	ch := tutils.NewIDAddr(t, 100)
+	from := tutils.NewIDAddr(t, 101)
+	to := tutils.NewIDAddr(t, 102)
+
+	sm := newMockStateManager()
+	pchapi := newMockPaychAPI()
+	defer pchapi.close()
+
+	mgr, err := newManager(sm, store, pchapi)
+	require.NoError(t, err)
+
+	// Send create message for a channel with value 10
+	createAmt := big.NewInt(10)
+	_, createMsgCid, err := mgr.GetPaych(ctx, from, to, createAmt)
+	require.NoError(t, err)
+
+	// Queue up two add funds requests behind create channel
+	var addFundsSent sync.WaitGroup
+	addFundsSent.Add(2)
+
+	addFundsAmt1 := big.NewInt(5)
+	addFundsAmt2 := big.NewInt(3)
+	var addFundsCh2 address.Address
+	var addFundsMcid2 cid.Cid
+	var addFundsErr1 error
+	addFundsCtx1, cancelAddFundsCtx1 := context.WithCancel(ctx)
+	go func() {
+		defer addFundsSent.Done()
+
+		// Request add funds - should block until create channel has completed
+		_, _, addFundsErr1 = mgr.GetPaych(addFundsCtx1, from, to, addFundsAmt1)
+	}()
+
+	go func() {
+		defer addFundsSent.Done()
+
+		// Request add funds again - should merge with waiting add funds request
+		addFundsCh2, addFundsMcid2, err = mgr.GetPaych(ctx, from, to, addFundsAmt2)
+		require.NoError(t, err)
+	}()
+	// Wait for add funds requests to be queued up
+	waitForQueueSize(t, mgr, from, to, 2)
+
+	// Cancel the first add funds request
+	cancelAddFundsCtx1()
+
+	// Send create channel response
+	response := testChannelResponse(t, ch)
+	pchapi.receiveMsgResponse(createMsgCid, response)
+
+	// Wait for create channel response
+	chres, err := mgr.GetPaychWaitReady(ctx, createMsgCid)
+	require.NoError(t, err)
+	require.Equal(t, ch, chres)
+
+	// Wait for add funds requests to be sent
+	addFundsSent.Wait()
+
+	// Expect first add funds request to have been cancelled
+	require.NotNil(t, addFundsErr1)
+	require.Equal(t, ch, addFundsCh2)
+
+	// Send success add funds response
+	pchapi.receiveMsgResponse(addFundsMcid2, types.MessageReceipt{
+		ExitCode: 0,
+		Return:   []byte{},
+	})
+
+	// Wait for add funds response
+	addFundsCh, err := mgr.GetPaychWaitReady(ctx, addFundsMcid2)
+	require.NoError(t, err)
+	require.Equal(t, ch, addFundsCh)
+
+	// Make sure that one create channel message and one add funds message was
+	// sent
+	require.Equal(t, 2, pchapi.pushedMessageCount())
+
+	// Check create message amount is correct
+	createMsg := pchapi.pushedMessages(createMsgCid)
+	require.Equal(t, from, createMsg.Message.From)
+	require.Equal(t, builtin.InitActorAddr, createMsg.Message.To)
+	require.Equal(t, createAmt, createMsg.Message.Value)
+
+	// Check merged add funds amount only includes the second add funds amount
+	// (because first was cancelled)
+	addFundsMsg := pchapi.pushedMessages(addFundsMcid2)
+	require.Equal(t, from, addFundsMsg.Message.From)
+	require.Equal(t, ch, addFundsMsg.Message.To)
+	require.Equal(t, addFundsAmt2, addFundsMsg.Message.Value)
+}
+
+// TestPaychGetMergeAddFundsCtxCancelAll tests that when all queued add funds
+// requests are cancelled, no add funds message is sent
+func TestPaychGetMergeAddFundsCtxCancelAll(t *testing.T) {
+	ctx := context.Background()
+	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
+
+	ch := tutils.NewIDAddr(t, 100)
+	from := tutils.NewIDAddr(t, 101)
+	to := tutils.NewIDAddr(t, 102)
+
+	sm := newMockStateManager()
+	pchapi := newMockPaychAPI()
+	defer pchapi.close()
+
+	mgr, err := newManager(sm, store, pchapi)
+	require.NoError(t, err)
+
+	// Send create message for a channel with value 10
+	createAmt := big.NewInt(10)
+	_, createMsgCid, err := mgr.GetPaych(ctx, from, to, createAmt)
+	require.NoError(t, err)
+
+	// Queue up two add funds requests behind create channel
+	var addFundsSent sync.WaitGroup
+	addFundsSent.Add(2)
+
+	var addFundsErr1 error
+	var addFundsErr2 error
+	addFundsCtx1, cancelAddFundsCtx1 := context.WithCancel(ctx)
+	addFundsCtx2, cancelAddFundsCtx2 := context.WithCancel(ctx)
+	go func() {
+		defer addFundsSent.Done()
+
+		// Request add funds - should block until create channel has completed
+		_, _, addFundsErr1 = mgr.GetPaych(addFundsCtx1, from, to, big.NewInt(5))
+	}()
+
+	go func() {
+		defer addFundsSent.Done()
+
+		// Request add funds again - should merge with waiting add funds request
+		_, _, addFundsErr2 = mgr.GetPaych(addFundsCtx2, from, to, big.NewInt(3))
+		require.NoError(t, err)
+	}()
+	// Wait for add funds requests to be queued up
+	waitForQueueSize(t, mgr, from, to, 2)
+
+	// Cancel all add funds requests
+	cancelAddFundsCtx1()
+	cancelAddFundsCtx2()
+
+	// Send create channel response
+	response := testChannelResponse(t, ch)
+	pchapi.receiveMsgResponse(createMsgCid, response)
+
+	// Wait for create channel response
+	chres, err := mgr.GetPaychWaitReady(ctx, createMsgCid)
+	require.NoError(t, err)
+	require.Equal(t, ch, chres)
+
+	// Wait for add funds requests to error out
+	addFundsSent.Wait()
+
+	require.NotNil(t, addFundsErr1)
+	require.NotNil(t, addFundsErr2)
+
+	// Make sure that just the create channel message was sent
+	require.Equal(t, 1, pchapi.pushedMessageCount())
+
+	// Check create message amount is correct
+	createMsg := pchapi.pushedMessages(createMsgCid)
+	require.Equal(t, from, createMsg.Message.From)
+	require.Equal(t, builtin.InitActorAddr, createMsg.Message.To)
+	require.Equal(t, createAmt, createMsg.Message.Value)
+}
+
+// waitForQueueSize waits for the funds request queue to be of the given size
+func waitForQueueSize(t *testing.T, mgr *Manager, from address.Address, to address.Address, size int) {
+	ca, err := mgr.accessorByFromTo(from, to)
+	require.NoError(t, err)
+
+	for {
+		if ca.queueSize() == size {
+			return
+		}
+
+		time.Sleep(time.Millisecond)
+	}
 }
