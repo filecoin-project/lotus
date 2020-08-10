@@ -19,7 +19,6 @@ import (
 	"github.com/ipfs/go-datastore/query"
 	logging "github.com/ipfs/go-log/v2"
 	lps "github.com/whyrusleeping/pubsub"
-	"go.uber.org/multierr"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -37,8 +36,6 @@ import (
 var log = logging.Logger("messagepool")
 
 const futureDebug = false
-
-const repubMsgLimit = 5
 
 const RbfDenom = 256
 
@@ -217,63 +214,8 @@ func (mp *MessagePool) runLoop() {
 	for {
 		select {
 		case <-mp.repubTk.C:
-			mp.lk.Lock()
-
-			msgsForAddr := make(map[address.Address][]*types.SignedMessage)
-			for a := range mp.localAddrs {
-				msgsForAddr[a] = mp.pendingFor(a)
-			}
-
-			mp.lk.Unlock()
-
-			var errout error
-			outputMsgs := []*types.SignedMessage{}
-
-			for a, msgs := range msgsForAddr {
-				a, err := mp.api.StateGetActor(a, nil)
-				if err != nil {
-					errout = multierr.Append(errout, xerrors.Errorf("could not get actor state: %w", err))
-					continue
-				}
-
-				curNonce := a.Nonce
-				for _, m := range msgs {
-					if m.Message.Nonce < curNonce {
-						continue
-					}
-					if m.Message.Nonce != curNonce {
-						break
-					}
-					outputMsgs = append(outputMsgs, m)
-					curNonce++
-				}
-
-			}
-
-			if len(outputMsgs) != 0 {
-				log.Infow("republishing local messages", "n", len(outputMsgs))
-			}
-
-			if len(outputMsgs) > repubMsgLimit {
-				outputMsgs = outputMsgs[:repubMsgLimit]
-			}
-
-			for _, msg := range outputMsgs {
-				msgb, err := msg.Serialize()
-				if err != nil {
-					errout = multierr.Append(errout, xerrors.Errorf("could not serialize: %w", err))
-					continue
-				}
-
-				err = mp.api.PubSubPublish(build.MessagesTopic(mp.netName), msgb)
-				if err != nil {
-					errout = multierr.Append(errout, xerrors.Errorf("could not publish: %w", err))
-					continue
-				}
-			}
-
-			if errout != nil {
-				log.Errorf("errors while republishing: %+v", errout)
+			if err := mp.republishPendingMessages(); err != nil {
+				log.Errorf("error while republishing messages: %s", err)
 			}
 		case <-mp.pruneTrigger:
 			if err := mp.pruneExcessMessages(); err != nil {
@@ -284,7 +226,6 @@ func (mp *MessagePool) runLoop() {
 			return
 		}
 	}
-
 }
 
 func (mp *MessagePool) addLocal(m *types.SignedMessage, msgb []byte) error {
