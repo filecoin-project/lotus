@@ -12,6 +12,7 @@ import (
 
 	"github.com/docker/go-units"
 	"github.com/fatih/color"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-cidutil/cidenc"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -837,12 +838,32 @@ var clientRetrieveCmd = &cli.Command{
 			Path:  cctx.Args().Get(1),
 			IsCAR: cctx.Bool("car"),
 		}
-		if err := fapi.ClientRetrieve(ctx, offer.Order(payer), ref); err != nil {
-			return xerrors.Errorf("Retrieval Failed: %w", err)
+		updates, err := fapi.ClientRetrieve(ctx, offer.Order(payer), ref)
+		if err != nil {
+			return xerrors.Errorf("error setting up retrieval: %w", err)
 		}
 
-		fmt.Println("Success")
-		return nil
+		for {
+			select {
+			case evt, chOpen := <-updates:
+
+				fmt.Printf("Retrieval Event: %s, State: %s, BytesReceived: %d, PaymentSent: %s\n",
+					retrievalmarket.ClientEvents[evt.Event],
+					retrievalmarket.DealStatuses[evt.Status],
+					evt.BytesReceived,
+					evt.FundsSpent.String(),
+				)
+
+				if !chOpen {
+					fmt.Println("Success")
+					return nil
+				}
+
+				if evt.Err != nil {
+					return xerrors.Errorf("Retrieval Failed: %w", err)
+				}
+			}
+		}
 	},
 }
 
