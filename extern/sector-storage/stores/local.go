@@ -334,7 +334,7 @@ func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, spt abi.Re
 			continue
 		}
 
-		si, err := st.index.StorageFindSector(ctx, sid, fileType, false)
+		si, err := st.index.StorageFindSector(ctx, sid, fileType, spt, false)
 		if err != nil {
 			log.Warnf("finding existing sector %d(t:%d) failed: %+v", sid, fileType, err)
 			continue
@@ -441,7 +441,7 @@ func (st *Local) Remove(ctx context.Context, sid abi.SectorID, typ SectorFileTyp
 		return xerrors.New("delete expects one file type")
 	}
 
-	si, err := st.index.StorageFindSector(ctx, sid, typ, false)
+	si, err := st.index.StorageFindSector(ctx, sid, typ, 0, false)
 	if err != nil {
 		return xerrors.Errorf("finding existing sector %d(t:%d) failed: %w", sid, typ, err)
 	}
@@ -464,7 +464,7 @@ func (st *Local) RemoveCopies(ctx context.Context, sid abi.SectorID, typ SectorF
 		return xerrors.New("delete expects one file type")
 	}
 
-	si, err := st.index.StorageFindSector(ctx, sid, typ, false)
+	si, err := st.index.StorageFindSector(ctx, sid, typ, 0, false)
 	if err != nil {
 		return xerrors.Errorf("finding existing sector %d(t:%d) failed: %w", sid, typ, err)
 	}

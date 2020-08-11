@@ -257,7 +257,7 @@ type StorageMinerStruct struct {
 		StorageAttach        func(context.Context, stores.StorageInfo, fsutil.FsStat) error                                                                                `perm:"admin"`
 		StorageDeclareSector func(context.Context, stores.ID, abi.SectorID, stores.SectorFileType, bool) error                                                             `perm:"admin"`
 		StorageDropSector    func(context.Context, stores.ID, abi.SectorID, stores.SectorFileType) error                                                                   `perm:"admin"`
-		StorageFindSector    func(context.Context, abi.SectorID, stores.SectorFileType, bool) ([]stores.SectorStorageInfo, error)                                          `perm:"admin"`
+		StorageFindSector    func(context.Context, abi.SectorID, stores.SectorFileType, abi.RegisteredSealProof, bool) ([]stores.SectorStorageInfo, error)                 `perm:"admin"`
 		StorageInfo          func(context.Context, stores.ID) (stores.StorageInfo, error)                                                                                  `perm:"admin"`
 		StorageBestAlloc     func(ctx context.Context, allocate stores.SectorFileType, spt abi.RegisteredSealProof, sealing stores.PathType) ([]stores.StorageInfo, error) `perm:"admin"`
 		StorageReportHealth  func(ctx context.Context, id stores.ID, report stores.HealthReport) error                                                                     `perm:"admin"`
@@ -980,8 +980,8 @@ func (c *StorageMinerStruct) StorageDropSector(ctx context.Context, storageId st
 	return c.Internal.StorageDropSector(ctx, storageId, s, ft)
 }
 
-func (c *StorageMinerStruct) StorageFindSector(ctx context.Context, si abi.SectorID, types stores.SectorFileType, allowFetch bool) ([]stores.SectorStorageInfo, error) {
-	return c.Internal.StorageFindSector(ctx, si, types, allowFetch)
+func (c *StorageMinerStruct) StorageFindSector(ctx context.Context, si abi.SectorID, types stores.SectorFileType, spt abi.RegisteredSealProof, allowFetch bool) ([]stores.SectorStorageInfo, error) {
+	return c.Internal.StorageFindSector(ctx, si, types, spt, allowFetch)
 }
 
 func (c *StorageMinerStruct) StorageList(ctx context.Context) (map[stores.ID][]stores.Decl, error) {
