@@ -25,7 +25,7 @@ func buildType() string {
 }
 
 // BuildVersion is the local build version, set by build system
-const BuildVersion = "0.4.3"
+const BuildVersion = "0.4.4"
 
 func UserVersion() string {
 	return BuildVersion + buildType() + CurrentCommit
@@ -53,7 +53,7 @@ func (ve Version) EqMajorMinor(v2 Version) bool {
 }
 
 // APIVersion is a semver version of the rpc api exposed
-var APIVersion Version = newVer(0, 9, 0)
+var APIVersion Version = newVer(0, 10, 0)
 
 //nolint:varcheck,deadcode
 const (

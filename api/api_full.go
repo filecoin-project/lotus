@@ -122,10 +122,10 @@ type FullNode interface {
 	// It fails if message fails to execute.
 	GasEstimateGasLimit(context.Context, *types.Message, types.TipSetKey) (int64, error)
 
-	// GasEsitmateGasPremium estimates what gas price should be used for a
+	// GasEstimateGasPremium estimates what gas price should be used for a
 	// message to have high likelihood of inclusion in `nblocksincl` epochs.
 
-	GasEsitmateGasPremium(_ context.Context, nblocksincl uint64,
+	GasEstimateGasPremium(_ context.Context, nblocksincl uint64,
 		sender address.Address, gaslimit int64, tsk types.TipSetKey) (types.BigInt, error)
 
 	// MethodGroup: Sync
