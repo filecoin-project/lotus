@@ -3,9 +3,13 @@ package stmgr
 import (
 	"context"
 	"fmt"
+	"os"
 	"sync"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
+
+	"github.com/frrist/specs-actors-model/ent"
+	_ "github.com/lib/pq"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
@@ -37,6 +41,8 @@ var log = logging.Logger("statemgr")
 type StateManager struct {
 	cs *store.ChainStore
 
+	dbClient *ent.Client
+
 	stCache       map[string][]cid.Cid
 	compWait      map[string]chan struct{}
 	stlk          sync.Mutex
@@ -46,12 +52,24 @@ type StateManager struct {
 }
 
 func NewStateManager(cs *store.ChainStore) *StateManager {
-	return &StateManager{
+	sm := &StateManager{
 		newVM:    vm.NewVM,
 		cs:       cs,
 		stCache:  make(map[string][]cid.Cid),
 		compWait: make(map[string]chan struct{}),
 	}
+	if connStr := os.Getenv("SPECS_MODEL_CONNECTION_STRING"); len(connStr) > 0 {
+		// TODO close the connection when lotus quits, this will require handling outside the scope of MVP.
+		c, err := ent.Open("postgres", connStr)
+		if err != nil {
+			panic(err)
+		}
+		if err := c.Schema.Create(context.Background()); err != nil {
+			log.Fatalf("failed creating schema resources: %v", err)
+		}
+		sm.dbClient = c
+	}
+	return sm
 }
 
 func cidsToKey(cids []cid.Cid) string {
@@ -111,6 +129,36 @@ func (sm *StateManager) TipSetState(ctx context.Context, ts *types.TipSet) (st c
 		return ts.Blocks()[0].ParentStateRoot, ts.Blocks()[0].ParentMessageReceipts, nil
 	}
 
+	if sm.dbClient != nil {
+		// add a transaction to context, will be accessed later in specs-actors
+		tx, err := sm.dbClient.Tx(ctx)
+		if err != nil {
+			panic(err)
+		}
+		ctx = ent.NewTxContext(ctx, tx)
+		// mutate all tables that have a state_root field to include the parent state of ts.
+		// for the MVP this is just the miners table.
+		sm.dbClient.Use(func(next ent.Mutator) ent.Mutator {
+			return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+				_, has := m.Field("state_root")
+				if has {
+					if err := m.SetField("state_root", ts.ParentState().String()); err != nil {
+						return nil, err
+					}
+				}
+				return next.Mutate(ctx, m)
+			})
+		})
+		defer func() {
+			// iff the tipset's state was successfully computer commit the transaction.
+			if err == nil {
+				if err := tx.Commit(); err != nil {
+					log.Errorw("Failed to commit specs-model transaction", "error", err.Error())
+				}
+			}
+		}()
+	}
+
 	st, rec, err = sm.computeTipSetState(ctx, ts.Blocks(), nil)
 	if err != nil {
 		return cid.Undef, cid.Undef, err
@@ -151,7 +199,6 @@ type BlockMessages struct {
 type ExecCallback func(cid.Cid, *types.Message, *vm.ApplyRet) error
 
 func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEpoch, pstate cid.Cid, bms []BlockMessages, epoch abi.ChainEpoch, r vm.Rand, cb ExecCallback, baseFee abi.TokenAmount) (cid.Cid, cid.Cid, error) {
-
 	vmopt := &vm.VMOpts{
 		StateBase:  pstate,
 		Epoch:      epoch,
