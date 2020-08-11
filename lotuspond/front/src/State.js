@@ -22,7 +22,7 @@ class State extends React.Component {
 
   async componentDidMount() {
     const tipset = this.props.tipset || await this.props.client.call("Filecoin.ChainHead", [])
-    const actstate = await this.props.client.call('Filecoin.StateReadState', [this.props.actor, tipset.Cids])
+    const actstate = await this.props.client.call('Filecoin.StateReadState', [this.props.addr, tipset.Cids])
 
     const c = new CID(this.props.actor.Code['/'])
     const mh = multihash.decode(c.multihash)
@@ -80,7 +80,7 @@ class PowerState extends React.Component {
   async componentDidMount() {
     const tipset = await this.props.client.call("Filecoin.ChainHead", []) // TODO: from props
     const actors = await this.props.client.call("Filecoin.StateListMiners", [tipset.Cids])
-    const state = await this.props.client.call('Filecoin.StateReadState', [this.props.actor, tipset.Cids])
+    const state = await this.props.client.call('Filecoin.StateReadState', [this.props.addr, tipset.Cids])
 
     this.setState({actors, state})
   }
@@ -107,7 +107,7 @@ class MarketState extends React.Component {
     const tipset = await this.props.client.call("Filecoin.ChainHead", []) // TODO: from props
     const participants = await this.props.client.call("Filecoin.StateMarketParticipants", [tipset.Cids])
     const deals = await this.props.client.call("Filecoin.StateMarketDeals", [tipset.Cids])
-    const state = await this.props.client.call('Filecoin.StateReadState', [this.props.actor, tipset.Cids])
+    const state = await this.props.client.call('Filecoin.StateReadState', [this.props.addr, tipset.Cids])
     this.setState({participants, deals, nextDeal: state.State.NextDealID})
   }
 
@@ -153,7 +153,7 @@ class MinerState extends React.Component {
   async componentDidMount() {
     const tipset = await this.props.client.call("Filecoin.ChainHead", []) // TODO: from props
 
-    const state = await this.props.client.call('Filecoin.StateReadState', [this.props.actor, tipset.Cids])
+    const state = await this.props.client.call('Filecoin.StateReadState', [this.props.addr, tipset.Cids])
     const sectorSize = await this.props.client.call("Filecoin.StateMinerSectorSize", [this.props.addr, tipset.Cids])
     const worker = await this.props.client.call("Filecoin.StateMinerWorker", [this.props.addr, tipset.Cids])
 

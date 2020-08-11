@@ -37,6 +37,7 @@ import (
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/genesis"
@@ -101,8 +102,8 @@ var initCmd = &cli.Command{
 			Usage: "don't use storageminer repo for sector storage",
 		},
 		&cli.StringFlag{
-			Name:  "gas-price",
-			Usage: "set gas price for initialization messages in AttoFIL",
+			Name:  "gas-premium",
+			Usage: "set gas premium for initialization messages in AttoFIL",
 			Value: "0",
 		},
 	},
@@ -115,7 +116,7 @@ var initCmd = &cli.Command{
 		}
 		ssize := abi.SectorSize(sectorSizeInt)
 
-		gasPrice, err := types.BigFromString(cctx.String("gas-price"))
+		gasPrice, err := types.BigFromString(cctx.String("gas-premium"))
 		if err != nil {
 			return xerrors.Errorf("failed to parse gas-price flag: %s", err)
 		}
@@ -436,7 +437,7 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 
 			smgr, err := sectorstorage.New(ctx, lr, stores.NewIndex(), &ffiwrapper.Config{
 				SealProofType: spt,
-			}, sectorstorage.SealerConfig{true, true, true, true}, nil, sa)
+			}, sectorstorage.SealerConfig{10, true, true, true, true}, nil, sa)
 			if err != nil {
 				return err
 			}
@@ -445,7 +446,7 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 				return err
 			}
 
-			m := miner.NewMiner(api, epp, a)
+			m := miner.NewMiner(api, epp, a, slashfilter.New(mds))
 			{
 				if err := m.Start(ctx); err != nil {
 					return xerrors.Errorf("failed to start up genesis miner: %w", err)
@@ -551,13 +552,12 @@ func configureStorageMiner(ctx context.Context, api lapi.FullNode, addr address.
 	}
 
 	msg := &types.Message{
-		To:       addr,
-		From:     mi.Worker,
-		Method:   builtin.MethodsMiner.ChangePeerID,
-		Params:   enc,
-		Value:    types.NewInt(0),
-		GasPrice: gasPrice,
-		GasLimit: 0,
+		To:         addr,
+		From:       mi.Worker,
+		Method:     builtin.MethodsMiner.ChangePeerID,
+		Params:     enc,
+		Value:      types.NewInt(0),
+		GasPremium: gasPrice,
 	}
 
 	smsg, err := api.MpoolPushMessage(ctx, msg)
@@ -636,8 +636,8 @@ func createStorageMiner(ctx context.Context, api lapi.FullNode, peerid peer.ID, 
 		Method: builtin.MethodsPower.CreateMiner,
 		Params: params,
 
-		GasLimit: 0,
-		GasPrice: gasPrice,
+		GasLimit:   0,
+		GasPremium: gasPrice,
 	}
 
 	signed, err := api.MpoolPushMessage(ctx, createStorageMinerMsg)

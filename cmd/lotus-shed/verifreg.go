@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
@@ -16,10 +15,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
-	"github.com/ipfs/go-hamt-ipld"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	cbor "github.com/ipfs/go-ipld-cbor"
-
-	cbg "github.com/whyrusleeping/cbor-gen"
 )
 
 var verifRegCmd = &cli.Command{
@@ -72,12 +69,10 @@ var verifRegAddVerifierCmd = &cli.Command{
 		ctx := lcli.ReqContext(cctx)
 
 		msg := &types.Message{
-			To:       builtin.VerifiedRegistryActorAddr,
-			From:     fromk,
-			Method:   builtin.MethodsVerifiedRegistry.AddVerifier,
-			GasPrice: types.NewInt(1),
-			GasLimit: 0,
-			Params:   params,
+			To:     builtin.VerifiedRegistryActorAddr,
+			From:   fromk,
+			Method: builtin.MethodsVerifiedRegistry.AddVerifier,
+			Params: params,
 		}
 
 		smsg, err := api.MpoolPushMessage(ctx, msg)
@@ -148,12 +143,10 @@ var verifRegVerifyClientCmd = &cli.Command{
 		ctx := lcli.ReqContext(cctx)
 
 		msg := &types.Message{
-			To:       builtin.VerifiedRegistryActorAddr,
-			From:     fromk,
-			Method:   builtin.MethodsVerifiedRegistry.AddVerifiedClient,
-			GasPrice: types.NewInt(1),
-			GasLimit: 0,
-			Params:   params,
+			To:     builtin.VerifiedRegistryActorAddr,
+			From:   fromk,
+			Method: builtin.MethodsVerifiedRegistry.AddVerifiedClient,
+			Params: params,
 		}
 
 		smsg, err := api.MpoolPushMessage(ctx, msg)
@@ -193,27 +186,22 @@ var verifRegListVerifiersCmd = &cli.Command{
 		}
 
 		apibs := apibstore.NewAPIBlockstore(api)
-		cst := cbor.NewCborStore(apibs)
+		store := adt.WrapStore(ctx, cbor.NewCborStore(apibs))
 
 		var st verifreg.State
-		if err := cst.Get(ctx, act.Head, &st); err != nil {
+		if err := store.Get(ctx, act.Head, &st); err != nil {
 			return err
 		}
 
-		vh, err := hamt.LoadNode(ctx, cst, st.Verifiers, hamt.UseTreeBitWidth(5))
+		vh, err := adt.AsMap(store, st.Verifiers)
 		if err != nil {
 			return err
 		}
 
-		if err := vh.ForEach(ctx, func(k string, val interface{}) error {
+		var dcap verifreg.DataCap
+		if err := vh.ForEach(&dcap, func(k string) error {
 			addr, err := address.NewFromBytes([]byte(k))
 			if err != nil {
-				return err
-			}
-
-			var dcap verifreg.DataCap
-
-			if err := dcap.UnmarshalCBOR(bytes.NewReader(val.(*cbg.Deferred).Raw)); err != nil {
 				return err
 			}
 
@@ -245,27 +233,22 @@ var verifRegListClientsCmd = &cli.Command{
 		}
 
 		apibs := apibstore.NewAPIBlockstore(api)
-		cst := cbor.NewCborStore(apibs)
+		store := adt.WrapStore(ctx, cbor.NewCborStore(apibs))
 
 		var st verifreg.State
-		if err := cst.Get(ctx, act.Head, &st); err != nil {
+		if err := store.Get(ctx, act.Head, &st); err != nil {
 			return err
 		}
 
-		vh, err := hamt.LoadNode(ctx, cst, st.VerifiedClients, hamt.UseTreeBitWidth(5))
+		vh, err := adt.AsMap(store, st.VerifiedClients)
 		if err != nil {
 			return err
 		}
 
-		if err := vh.ForEach(ctx, func(k string, val interface{}) error {
+		var dcap verifreg.DataCap
+		if err := vh.ForEach(&dcap, func(k string) error {
 			addr, err := address.NewFromBytes([]byte(k))
 			if err != nil {
-				return err
-			}
-
-			var dcap verifreg.DataCap
-
-			if err := dcap.UnmarshalCBOR(bytes.NewReader(val.(*cbg.Deferred).Raw)); err != nil {
 				return err
 			}
 
@@ -340,21 +323,23 @@ var verifRegCheckVerifierCmd = &cli.Command{
 		}
 
 		apibs := apibstore.NewAPIBlockstore(api)
-		cst := cbor.NewCborStore(apibs)
+		store := adt.WrapStore(ctx, cbor.NewCborStore(apibs))
 
 		var st verifreg.State
-		if err := cst.Get(ctx, act.Head, &st); err != nil {
+		if err := store.Get(ctx, act.Head, &st); err != nil {
 			return err
 		}
 
-		vh, err := hamt.LoadNode(ctx, cst, st.Verifiers, hamt.UseTreeBitWidth(5))
+		vh, err := adt.AsMap(store, st.Verifiers)
 		if err != nil {
 			return err
 		}
 
 		var dcap verifreg.DataCap
-		if err := vh.Find(ctx, string(vaddr.Bytes()), &dcap); err != nil {
+		if found, err := vh.Get(adt.AddrKey(vaddr), &dcap); err != nil {
 			return err
+		} else if !found {
+			return fmt.Errorf("not found")
 		}
 
 		fmt.Println(dcap)

@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
@@ -30,18 +29,19 @@ func main() {
 	lotuslog.SetupLogLevels()
 
 	local := []*cli.Command{
-		actorCmd,
-		storageDealsCmd,
-		retrievalDealsCmd,
-		infoCmd,
 		initCmd,
-		rewardsCmd,
 		runCmd,
 		stopCmd,
-		sectorsCmd,
-		storageCmd,
-		workersCmd,
-		provingCmd,
+		lcli.WithCategory("chain", actorCmd),
+		lcli.WithCategory("chain", rewardsCmd),
+		lcli.WithCategory("chain", infoCmd),
+		lcli.WithCategory("market", storageDealsCmd),
+		lcli.WithCategory("market", retrievalDealsCmd),
+		lcli.WithCategory("storage", sectorsCmd),
+		lcli.WithCategory("storage", provingCmd),
+		lcli.WithCategory("storage", storageCmd),
+		lcli.WithCategory("storage", sealingCmd),
+		lcli.WithCategory("retrieval", piecesCmd),
 	}
 	jaeger := tracing.SetupJaegerTracing("lotus")
 	defer func() {
@@ -76,6 +76,9 @@ func main() {
 				Usage:   "specify other actor to check state for (read only)",
 				Aliases: []string{"a"},
 			},
+			&cli.BoolFlag{
+				Name: "color",
+			},
 			&cli.StringFlag{
 				Name:    "repo",
 				EnvVars: []string{"LOTUS_PATH"},
@@ -96,10 +99,7 @@ func main() {
 	app.Setup()
 	app.Metadata["repoType"] = repo.StorageMiner
 
-	if err := app.Run(os.Args); err != nil {
-		log.Warnf("%+v", err)
-		os.Exit(1)
-	}
+	lcli.RunApp(app)
 }
 
 func getActorAddress(ctx context.Context, nodeAPI api.StorageMiner, overrideMaddr string) (maddr address.Address, err error) {
@@ -108,6 +108,7 @@ func getActorAddress(ctx context.Context, nodeAPI api.StorageMiner, overrideMadd
 		if err != nil {
 			return maddr, err
 		}
+		return
 	}
 
 	maddr, err = nodeAPI.ActorAddress(ctx)

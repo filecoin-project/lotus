@@ -7,13 +7,11 @@ import (
 	"reflect"
 
 	cid "github.com/ipfs/go-cid"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	amt "github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -39,6 +37,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
@@ -258,7 +257,7 @@ func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *S
 		return nil, xerrors.Errorf("failed to enumerate all sector IDs: %w", err)
 	}
 
-	sectorAmt, err := amt.LoadAMT(ctx, sm.cs.Store(ctx), mas.Sectors)
+	sectorAmt, err := adt.AsArray(sm.cs.Store(ctx), mas.Sectors)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load sectors amt: %w", err)
 	}
@@ -268,8 +267,10 @@ func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *S
 		sid := sectors[n]
 
 		var sinfo miner.SectorOnChainInfo
-		if err := sectorAmt.Get(ctx, sid, &sinfo); err != nil {
+		if found, err := sectorAmt.Get(sid, &sinfo); err != nil {
 			return nil, xerrors.Errorf("failed to get sector %d: %w", sid, err)
+		} else if !found {
+			return nil, xerrors.Errorf("failed to find sector %d", sid)
 		}
 
 		out[i] = abi.SectorInfo{
@@ -328,18 +329,21 @@ func GetStorageDeal(ctx context.Context, sm *StateManager, dealID abi.DealID, ts
 	if _, err := sm.LoadActorState(ctx, builtin.StorageMarketActorAddr, &state, ts); err != nil {
 		return nil, err
 	}
+	store := sm.ChainStore().Store(ctx)
 
-	da, err := amt.LoadAMT(ctx, cbor.NewCborStore(sm.ChainStore().Blockstore()), state.Proposals)
+	da, err := adt.AsArray(store, state.Proposals)
 	if err != nil {
 		return nil, err
 	}
 
 	var dp market.DealProposal
-	if err := da.Get(ctx, uint64(dealID), &dp); err != nil {
+	if found, err := da.Get(uint64(dealID), &dp); err != nil {
 		return nil, err
+	} else if !found {
+		return nil, xerrors.Errorf("deal %d not found", dealID)
 	}
 
-	sa, err := market.AsDealStateArray(sm.ChainStore().Store(ctx), state.States)
+	sa, err := market.AsDealStateArray(store, state.States)
 	if err != nil {
 		return nil, err
 	}
@@ -391,15 +395,16 @@ func ListMinerActors(ctx context.Context, sm *StateManager, ts *types.TipSet) ([
 }
 
 func LoadSectorsFromSet(ctx context.Context, bs blockstore.Blockstore, ssc cid.Cid, filter *abi.BitField, filterOut bool) ([]*api.ChainSectorInfo, error) {
-	a, err := amt.LoadAMT(ctx, cbor.NewCborStore(bs), ssc)
+	a, err := adt.AsArray(store.ActorStore(ctx, bs), ssc)
 	if err != nil {
 		return nil, err
 	}
 
 	var sset []*api.ChainSectorInfo
-	if err := a.ForEach(ctx, func(i uint64, v *cbg.Deferred) error {
+	var v cbg.Deferred
+	if err := a.ForEach(&v, func(i int64) error {
 		if filter != nil {
-			set, err := filter.IsSet(i)
+			set, err := filter.IsSet(uint64(i))
 			if err != nil {
 				return xerrors.Errorf("filter check error: %w", err)
 			}
@@ -434,15 +439,29 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 		return cid.Undef, nil, err
 	}
 
-	fstate, err := sm.handleStateForks(ctx, base, height, ts.Height())
+	r := store.NewChainRand(sm.cs, ts.Cids(), height)
+	vmopt := &vm.VMOpts{
+		StateBase:  base,
+		Epoch:      height,
+		Rand:       r,
+		Bstore:     sm.cs.Blockstore(),
+		Syscalls:   sm.cs.VMSys(),
+		VestedCalc: sm.GetVestedFunds,
+		BaseFee:    ts.Blocks()[0].ParentBaseFee,
+	}
+	vmi, err := vm.NewVM(vmopt)
 	if err != nil {
 		return cid.Undef, nil, err
 	}
 
-	r := store.NewChainRand(sm.cs, ts.Cids(), height)
-	vmi, err := vm.NewVM(fstate, height, r, sm.cs.Blockstore(), sm.cs.VMSys())
-	if err != nil {
-		return cid.Undef, nil, err
+	for i := ts.Height(); i < height; i++ {
+		// handle state forks
+		err = sm.handleStateForks(ctx, vmi.StateTree(), i)
+		if err != nil {
+			return cid.Undef, nil, xerrors.Errorf("error handling state forks: %w", err)
+		}
+
+		// TODO: should we also run cron here?
 	}
 
 	for i, msg := range msgs {
@@ -557,6 +576,11 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, bcn beacon.RandomBe
 		return nil, xerrors.Errorf("resolving worker address: %w", err)
 	}
 
+	hmp, err := MinerHasMinPower(ctx, sm, maddr, lbts)
+	if err != nil {
+		return nil, xerrors.Errorf("determining if miner has min power failed: %w", err)
+	}
+
 	return &api.MiningBaseInfo{
 		MinerPower:      mpow.QualityAdjPower,
 		NetworkPower:    tpow.QualityAdjPower,
@@ -565,6 +589,7 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, bcn beacon.RandomBe
 		SectorSize:      info.SectorSize,
 		PrevBeaconEntry: *prev,
 		BeaconEntries:   entries,
+		HasMinPower:     hmp,
 	}, nil
 }
 
@@ -579,7 +604,16 @@ func (sm *StateManager) CirculatingSupply(ctx context.Context, ts *types.TipSet)
 	}
 
 	r := store.NewChainRand(sm.cs, ts.Cids(), ts.Height())
-	vmi, err := vm.NewVM(st, ts.Height(), r, sm.cs.Blockstore(), sm.cs.VMSys())
+	vmopt := &vm.VMOpts{
+		StateBase:  st,
+		Epoch:      ts.Height(),
+		Rand:       r,
+		Bstore:     sm.cs.Blockstore(),
+		Syscalls:   sm.cs.VMSys(),
+		VestedCalc: sm.GetVestedFunds,
+		BaseFee:    ts.Blocks()[0].ParentBaseFee,
+	}
+	vmi, err := vm.NewVM(vmopt)
 	if err != nil {
 		return big.Zero(), err
 	}
@@ -648,4 +682,41 @@ func GetReturnType(ctx context.Context, sm *StateManager, to address.Address, me
 
 	m := MethodsMap[act.Code][method]
 	return reflect.New(m.Ret.Elem()).Interface().(cbg.CBORUnmarshaler), nil
+}
+
+func MinerHasMinPower(ctx context.Context, sm *StateManager, addr address.Address, ts *types.TipSet) (bool, error) {
+	var ps power.State
+	_, err := sm.LoadActorState(ctx, builtin.StoragePowerActorAddr, &ps, ts)
+	if err != nil {
+		return false, xerrors.Errorf("loading power actor state: %w", err)
+	}
+
+	return ps.MinerNominalPowerMeetsConsensusMinimum(sm.ChainStore().Store(ctx), addr)
+}
+
+func GetCirculatingSupply(ctx context.Context, sm *StateManager, ts *types.TipSet) (abi.TokenAmount, error) {
+	if ts == nil {
+		ts = sm.cs.GetHeaviestTipSet()
+	}
+
+	r := store.NewChainRand(sm.cs, ts.Cids(), ts.Height())
+	vmopt := &vm.VMOpts{
+		StateBase:  ts.ParentState(),
+		Epoch:      ts.Height(),
+		Rand:       r,
+		Bstore:     sm.cs.Blockstore(),
+		Syscalls:   sm.cs.VMSys(),
+		VestedCalc: sm.GetVestedFunds,
+		BaseFee:    ts.Blocks()[0].ParentBaseFee,
+	}
+	vmi, err := vm.NewVM(vmopt)
+	if err != nil {
+		return abi.NewTokenAmount(0), err
+	}
+
+	uvm := &vm.UnsafeVM{vmi}
+
+	rt := uvm.MakeRuntime(ctx, &types.Message{From: builtin.InitActorAddr, GasLimit: 10000000}, builtin.InitActorAddr, 0, 0, 0)
+
+	return rt.TotalFilCircSupply(), nil
 }

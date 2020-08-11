@@ -7,6 +7,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/fatih/color"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
@@ -32,6 +33,8 @@ var provingFaultsCmd = &cli.Command{
 	Name:  "faults",
 	Usage: "View the currently known proving faulty sectors information",
 	Action: func(cctx *cli.Context) error {
+		color.NoColor = !cctx.Bool("color")
+
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
@@ -65,6 +68,8 @@ var provingFaultsCmd = &cli.Command{
 				return err
 			}
 		}
+
+		fmt.Printf("Miner: %s\n", color.BlueString("%s", maddr))
 
 		head, err := api.ChainHead(ctx)
 		if err != nil {
@@ -101,6 +106,8 @@ var provingInfoCmd = &cli.Command{
 	Name:  "info",
 	Usage: "View current state information",
 	Action: func(cctx *cli.Context) error {
+		color.NoColor = !cctx.Bool("color")
+
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
@@ -134,6 +141,8 @@ var provingInfoCmd = &cli.Command{
 		if err != nil {
 			return xerrors.Errorf("getting miner deadlines: %w", err)
 		}
+
+		fmt.Printf("Miner: %s\n", color.BlueString("%s", maddr))
 
 		var mas miner.State
 		{
@@ -240,6 +249,8 @@ var provingDeadlinesCmd = &cli.Command{
 	Name:  "deadlines",
 	Usage: "View the current proving period deadlines information",
 	Action: func(cctx *cli.Context) error {
+		color.NoColor = !cctx.Bool("color")
+
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
@@ -284,8 +295,10 @@ var provingDeadlinesCmd = &cli.Command{
 			}
 		}
 
+		fmt.Printf("Miner: %s\n", color.BlueString("%s", maddr))
+
 		tw := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
-		_, _ = fmt.Fprintln(tw, "deadline\tpartitions\tsectors\tproven")
+		_, _ = fmt.Fprintln(tw, "deadline\tpartitions\tsectors (faults)\tproven partitions")
 
 		for dlIdx, deadline := range deadlines {
 			partitions, err := api.StateMinerPartitions(ctx, maddr, uint64(dlIdx), types.EmptyTSK)
@@ -298,11 +311,30 @@ var provingDeadlinesCmd = &cli.Command{
 				return err
 			}
 
+			sectors := uint64(0)
+			faults := uint64(0)
+
+			for _, partition := range partitions {
+				sc, err := partition.Sectors.Count()
+				if err != nil {
+					return err
+				}
+
+				sectors += sc
+
+				fc, err := partition.Faults.Count()
+				if err != nil {
+					return err
+				}
+
+				faults += fc
+			}
+
 			var cur string
 			if di.Index == uint64(dlIdx) {
 				cur += "\t(current)"
 			}
-			_, _ = fmt.Fprintf(tw, "%d\t%d\t%d%s\n", dlIdx, len(partitions), provenPartitions, cur)
+			_, _ = fmt.Fprintf(tw, "%d\t%d\t%d (%d)\t%d%s\n", dlIdx, len(partitions), sectors, faults, provenPartitions, cur)
 		}
 
 		return tw.Flush()

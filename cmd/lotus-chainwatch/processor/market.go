@@ -61,6 +61,20 @@ create table if not exists market_deal_states
     
 );
 
+create table if not exists minerid_dealid_sectorid 
+(
+    deal_id bigint not null
+        constraint sectors_sector_ids_id_fk
+            references market_deal_proposals(deal_id),
+
+    sector_id bigint not null,
+    miner_id text not null,
+    foreign key (sector_id, miner_id) references sector_precommit_info(sector_id, miner_id),
+
+    constraint miner_sector_deal_ids_pk
+        primary key (miner_id, sector_id, deal_id)
+);
+
 `); err != nil {
 		return err
 	}
@@ -80,6 +94,12 @@ func (p *Processor) HandleMarketChanges(ctx context.Context, marketTips ActorTip
 
 	if err := p.persistMarket(ctx, marketChanges); err != nil {
 		log.Fatalw("Failed to persist market actors", "error", err)
+	}
+
+	// we persist the dealID <--> minerID,sectorID here since the dealID needs to be stored above first
+	if err := p.storePreCommitDealInfo(p.sectorDealEvents); err != nil {
+		close(p.sectorDealEvents)
+		return err
 	}
 
 	if err := p.updateMarket(ctx, marketChanges); err != nil {
@@ -249,6 +269,48 @@ func (p *Processor) storeMarketActorDealProposals(ctx context.Context, marketTip
 	}
 
 	return tx.Commit()
+
+}
+
+func (p *Processor) storePreCommitDealInfo(dealEvents <-chan *SectorDealEvent) error {
+	tx, err := p.db.Begin()
+	if err != nil {
+		return err
+	}
+
+	if _, err := tx.Exec(`create temp table mds (like minerid_dealid_sectorid excluding constraints) on commit  drop;`); err != nil {
+		return xerrors.Errorf("Failed to create temp table for minerid_dealid_sectorid: %w", err)
+	}
+
+	stmt, err := tx.Prepare(`copy mds (deal_id, miner_id, sector_id) from STDIN`)
+	if err != nil {
+		return xerrors.Errorf("Failed to prepare minerid_dealid_sectorid statement: %w", err)
+	}
+
+	for sde := range dealEvents {
+		for _, did := range sde.DealIDs {
+			if _, err := stmt.Exec(
+				uint64(did),
+				sde.MinerID.String(),
+				sde.SectorID,
+			); err != nil {
+				return err
+			}
+		}
+	}
+
+	if err := stmt.Close(); err != nil {
+		return xerrors.Errorf("Failed to close miner sector deals statement: %w", err)
+	}
+
+	if _, err := tx.Exec(`insert into minerid_dealid_sectorid select * from mds on conflict do nothing`); err != nil {
+		return xerrors.Errorf("Failed to insert into miner deal sector table: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return xerrors.Errorf("Failed to commit miner deal sector table: %w", err)
+	}
+	return nil
 
 }
 

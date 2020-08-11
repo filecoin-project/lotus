@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -64,10 +65,12 @@ var keyinfoImportCmd = &cli.Command{
 			input = os.Stdin
 		} else {
 			var err error
-			input, err = os.Open(cctx.Args().First())
+			inputFile, err := os.Open(cctx.Args().First())
 			if err != nil {
 				return err
 			}
+			defer inputFile.Close()
+			input = bufio.NewReader(inputFile)
 		}
 
 		encoded, err := ioutil.ReadAll(input)
@@ -174,10 +177,12 @@ var keyinfoInfoCmd = &cli.Command{
 			input = os.Stdin
 		} else {
 			var err error
-			input, err = os.Open(cctx.Args().First())
+			inputFile, err := os.Open(cctx.Args().First())
 			if err != nil {
 				return err
 			}
+			defer inputFile.Close()
+			input = bufio.NewReader(inputFile)
 		}
 
 		encoded, err := ioutil.ReadAll(input)

@@ -22,7 +22,17 @@ func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate 
 	ctx, span := trace.StartSpan(ctx, "statemanager.CallRaw")
 	defer span.End()
 
-	vmi, err := vm.NewVM(bstate, bheight, r, sm.cs.Blockstore(), sm.cs.VMSys())
+	vmopt := &vm.VMOpts{
+		StateBase:  bstate,
+		Epoch:      bheight,
+		Rand:       r,
+		Bstore:     sm.cs.Blockstore(),
+		Syscalls:   sm.cs.VMSys(),
+		VestedCalc: sm.GetVestedFunds,
+		BaseFee:    types.NewInt(0),
+	}
+
+	vmi, err := vm.NewVM(vmopt)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to set up vm: %w", err)
 	}
@@ -30,9 +40,13 @@ func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate 
 	if msg.GasLimit == 0 {
 		msg.GasLimit = build.BlockGasLimit
 	}
-	if msg.GasPrice == types.EmptyInt {
-		msg.GasPrice = types.NewInt(0)
+	if msg.GasFeeCap == types.EmptyInt {
+		msg.GasFeeCap = types.NewInt(0)
 	}
+	if msg.GasPremium == types.EmptyInt {
+		msg.GasPremium = types.NewInt(0)
+	}
+
 	if msg.Value == types.EmptyInt {
 		msg.Value = types.NewInt(0)
 	}
@@ -40,7 +54,7 @@ func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate 
 	if span.IsRecordingEvents() {
 		span.AddAttributes(
 			trace.Int64Attribute("gas_limit", msg.GasLimit),
-			trace.Int64Attribute("gas_price", int64(msg.GasPrice.Uint64())),
+			trace.StringAttribute("gas_feecap", msg.GasFeeCap.String()),
 			trace.StringAttribute("value", msg.Value.String()),
 		)
 	}
@@ -86,7 +100,7 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 	return sm.CallRaw(ctx, msg, state, r, ts.Height())
 }
 
-func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, ts *types.TipSet) (*api.InvocResult, error) {
+func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs []types.ChainMsg, ts *types.TipSet) (*api.InvocResult, error) {
 	ctx, span := trace.StartSpan(ctx, "statemanager.CallWithGas")
 	defer span.End()
 
@@ -94,22 +108,41 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, ts 
 		ts = sm.cs.GetHeaviestTipSet()
 	}
 
-	state := ts.ParentState()
+	state, _, err := sm.TipSetState(ctx, ts)
+	if err != nil {
+		return nil, xerrors.Errorf("computing tipset state: %w", err)
+	}
 
 	r := store.NewChainRand(sm.cs, ts.Cids(), ts.Height())
 
 	if span.IsRecordingEvents() {
 		span.AddAttributes(
 			trace.Int64Attribute("gas_limit", msg.GasLimit),
-			trace.Int64Attribute("gas_price", int64(msg.GasPrice.Uint64())),
+			trace.StringAttribute("gas_feecap", msg.GasFeeCap.String()),
 			trace.StringAttribute("value", msg.Value.String()),
 		)
 	}
 
-	vmi, err := vm.NewVM(state, ts.Height(), r, sm.cs.Blockstore(), sm.cs.VMSys())
+	vmopt := &vm.VMOpts{
+		StateBase:  state,
+		Epoch:      ts.Height() + 1,
+		Rand:       r,
+		Bstore:     sm.cs.Blockstore(),
+		Syscalls:   sm.cs.VMSys(),
+		VestedCalc: sm.GetVestedFunds,
+		BaseFee:    ts.Blocks()[0].ParentBaseFee,
+	}
+	vmi, err := vm.NewVM(vmopt)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to set up vm: %w", err)
 	}
+	for i, m := range priorMsgs {
+		_, err := vmi.ApplyMessage(ctx, m)
+		if err != nil {
+			return nil, xerrors.Errorf("applying prior message (%d, %s): %w", i, m.Cid(), err)
+		}
+	}
+
 	fromActor, err := vmi.StateTree().GetActor(msg.From)
 	if err != nil {
 		return nil, xerrors.Errorf("call raw get actor: %s", err)

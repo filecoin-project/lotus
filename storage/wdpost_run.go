@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"sync"
 	"time"
 
 	"github.com/filecoin-project/go-bitfield"
@@ -219,13 +218,11 @@ func (s *WindowPoStScheduler) checkNextRecoveries(ctx context.Context, dlIdx uin
 	}
 
 	msg := &types.Message{
-		To:       s.actor,
-		From:     s.worker,
-		Method:   builtin.MethodsMiner.DeclareFaultsRecovered,
-		Params:   enc,
-		Value:    types.NewInt(0),
-		GasLimit: 0,
-		GasPrice: types.NewInt(2),
+		To:     s.actor,
+		From:   s.worker,
+		Method: builtin.MethodsMiner.DeclareFaultsRecovered,
+		Params: enc,
+		Value:  types.NewInt(0),
 	}
 
 	var err error
@@ -321,13 +318,11 @@ func (s *WindowPoStScheduler) checkNextFaults(ctx context.Context, dlIdx uint64,
 	}
 
 	msg := &types.Message{
-		To:       s.actor,
-		From:     s.worker,
-		Method:   builtin.MethodsMiner.DeclareFaults,
-		Params:   enc,
-		Value:    types.NewInt(0), // TODO: Is there a fee?
-		GasLimit: 0,
-		GasPrice: types.NewInt(2),
+		To:     s.actor,
+		From:   s.worker,
+		Method: builtin.MethodsMiner.DeclareFaults,
+		Params: enc,
+		Value:  types.NewInt(0), // TODO: Is there a fee?
 	}
 
 	var err error
@@ -354,29 +349,25 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 	ctx, span := trace.StartSpan(ctx, "storage.runPost")
 	defer span.End()
 
-	var declWait sync.WaitGroup
-	defer declWait.Wait()
-	declWait.Add(1)
-
 	go func() {
-		defer declWait.Done()
+		// TODO: extract from runPost, run on fault cutoff boundaries
 
 		// check faults / recoveries for the *next* deadline. It's already too
 		// late to declare them for this deadline
-		declDeadline := (di.Index + 1) % miner.WPoStPeriodDeadlines
+		declDeadline := (di.Index + 2) % miner.WPoStPeriodDeadlines
 
-		partitions, err := s.api.StateMinerPartitions(ctx, s.actor, declDeadline, ts.Key())
+		partitions, err := s.api.StateMinerPartitions(context.TODO(), s.actor, declDeadline, ts.Key())
 		if err != nil {
 			log.Errorf("getting partitions: %v", err)
 			return
 		}
 
-		if err := s.checkNextRecoveries(ctx, declDeadline, partitions); err != nil {
+		if err := s.checkNextRecoveries(context.TODO(), declDeadline, partitions); err != nil {
 			// TODO: This is potentially quite bad, but not even trying to post when this fails is objectively worse
 			log.Errorf("checking sector recoveries: %v", err)
 		}
 
-		if err := s.checkNextFaults(ctx, declDeadline, partitions); err != nil {
+		if err := s.checkNextFaults(context.TODO(), declDeadline, partitions); err != nil {
 			// TODO: This is also potentially really bad, but we try to post anyways
 			log.Errorf("checking sector faults: %v", err)
 		}
@@ -398,7 +389,7 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 
 	params := &miner.SubmitWindowedPoStParams{
 		Deadline:   di.Index,
-		Partitions: make([]miner.PoStPartition, len(partitions)),
+		Partitions: make([]miner.PoStPartition, 0, len(partitions)),
 		Proofs:     nil,
 	}
 
@@ -440,20 +431,19 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 			return nil, xerrors.Errorf("getting sorted sector info: %w", err)
 		}
 
+		if len(ssi) == 0 {
+			continue
+		}
+
 		sinfos = append(sinfos, ssi...)
 		for _, si := range ssi {
 			sidToPart[si.SectorNumber] = uint64(partIdx)
 		}
 
-		if len(ssi) == 0 {
-			log.Warn("attempted to run windowPost without any sectors...")
-			return nil, xerrors.Errorf("no sectors to run windowPost on")
-		}
-
-		params.Partitions[partIdx] = miner.PoStPartition{
+		params.Partitions = append(params.Partitions, miner.PoStPartition{
 			Index:   uint64(partIdx),
 			Skipped: skipped,
-		}
+		})
 	}
 
 	if len(sinfos) == 0 {
@@ -550,9 +540,6 @@ func (s *WindowPoStScheduler) submitPost(ctx context.Context, proof *miner.Submi
 		Method: builtin.MethodsMiner.SubmitWindowedPoSt,
 		Params: enc,
 		Value:  types.NewInt(1000), // currently hard-coded late fee in actor, returned if not late
-		// TODO: Gaslimit needs to be calculated accurately. Before that, use the largest Gaslimit
-		GasLimit: build.BlockGasLimit,
-		GasPrice: types.NewInt(1),
 	}
 
 	// TODO: consider maybe caring about the output

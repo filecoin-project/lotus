@@ -129,12 +129,18 @@ func RecordTipsetPoints(ctx context.Context, api api.FullNode, pl *PointList, ti
 	p = NewPoint("chain.blocktime", tsTime.Unix())
 	pl.AddPoint(p)
 
+	baseFeeBig := tipset.Blocks()[0].ParentBaseFee.Copy()
+	baseFeeRat := new(big.Rat).SetFrac(baseFeeBig.Int, new(big.Int).SetUint64(build.FilecoinPrecision))
+	baseFeeFloat, _ := baseFeeRat.Float64()
+	p = NewPoint("chain.basefee", baseFeeFloat)
+	pl.AddPoint(p)
+
 	for _, blockheader := range tipset.Blocks() {
 		bs, err := blockheader.Serialize()
 		if err != nil {
 			return err
 		}
-		p := NewPoint("chain.election", 1)
+		p := NewPoint("chain.election", blockheader.ElectionProof.WinCount)
 		p.AddTag("miner", blockheader.Miner.String())
 		pl.AddPoint(p)
 
@@ -281,7 +287,10 @@ func RecordTipsetMessagesPoints(ctx context.Context, api api.FullNode, pl *Point
 	msgn := make(map[msgTag][]cid.Cid)
 
 	for i, msg := range msgs {
-		p := NewPoint("chain.message_gasprice", msg.Message.GasPrice.Int64())
+		// FIXME: use float so this doesn't overflow
+		p := NewPoint("chain.message_gaspremium", msg.Message.GasPremium.Int64())
+		pl.AddPoint(p)
+		p = NewPoint("chain.message_gasfeecap", msg.Message.GasFeeCap.Int64())
 		pl.AddPoint(p)
 
 		bs, err := msg.Message.Serialize()

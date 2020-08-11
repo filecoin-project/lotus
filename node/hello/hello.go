@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	xerrors "golang.org/x/xerrors"
 
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/ipfs/go-cid"
@@ -33,8 +34,8 @@ type HelloMessage struct {
 	GenesisHash          cid.Cid
 }
 type LatencyMessage struct {
-	TArrial int64
-	TSent   int64
+	TArrival int64
+	TSent    int64
 }
 
 type NewStreamFunc func(context.Context, peer.ID, ...protocol.ID) (inet.Stream, error)
@@ -85,8 +86,8 @@ func (hs *Service) HandleStream(s inet.Stream) {
 
 		sent := build.Clock.Now()
 		msg := &LatencyMessage{
-			TArrial: arrived.UnixNano(),
-			TSent:   sent.UnixNano(),
+			TArrival: arrived.UnixNano(),
+			TSent:    sent.UnixNano(),
 		}
 		if err := cborutil.WriteCborRPC(s, msg); err != nil {
 			log.Debugf("error while responding to latency: %v", err)
@@ -125,7 +126,7 @@ func (hs *Service) HandleStream(s inet.Stream) {
 func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
 	s, err := hs.h.NewStream(ctx, pid, ProtocolID)
 	if err != nil {
-		return err
+		return xerrors.Errorf("error opening stream: %w", err)
 	}
 
 	hts := hs.cs.GetHeaviestTipSet()
@@ -149,7 +150,7 @@ func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
 
 	t0 := build.Clock.Now()
 	if err := cborutil.WriteCborRPC(s, hmsg); err != nil {
-		return err
+		return xerrors.Errorf("writing rpc to peer: %w", err)
 	}
 
 	go func() {
@@ -170,8 +171,8 @@ func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
 		}
 
 		if err == nil {
-			if lmsg.TArrial != 0 && lmsg.TSent != 0 {
-				t1 := time.Unix(0, lmsg.TArrial)
+			if lmsg.TArrival != 0 && lmsg.TSent != 0 {
+				t1 := time.Unix(0, lmsg.TArrival)
 				t2 := time.Unix(0, lmsg.TSent)
 				offset := t0.Sub(t1) + t3.Sub(t2)
 				offset /= 2

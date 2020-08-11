@@ -40,7 +40,7 @@ func TestCCUpgrade(t *testing.T, b APIBuilder, blocktime time.Duration) {
 		defer close(done)
 		for atomic.LoadInt64(&mine) == 1 {
 			time.Sleep(blocktime)
-			if err := sn[0].MineOne(ctx, func(bool, error) {}); err != nil {
+			if err := sn[0].MineOne(ctx, MineNext); err != nil {
 				t.Error(err)
 			}
 		}
@@ -54,7 +54,7 @@ func TestCCUpgrade(t *testing.T, b APIBuilder, blocktime time.Duration) {
 	CC := abi.SectorNumber(GenesisPreseals + 1)
 	Upgraded := CC + 1
 
-	pledgeSectors(t, ctx, miner, 1, nil)
+	pledgeSectors(t, ctx, miner, 1, 0, nil)
 
 	sl, err := miner.SectorsList(ctx)
 	if err != nil {

@@ -238,28 +238,28 @@ var CommonCommands = []*cli.Command{
 	logCmd,
 	waitApiCmd,
 	fetchParamCmd,
-	versionCmd,
+	VersionCmd,
 }
 
 var Commands = []*cli.Command{
-	withCategory("basic", sendCmd),
-	withCategory("basic", walletCmd),
-	withCategory("basic", clientCmd),
-	withCategory("basic", multisigCmd),
-	withCategory("basic", paychCmd),
-	withCategory("developer", authCmd),
-	withCategory("developer", mpoolCmd),
-	withCategory("developer", stateCmd),
-	withCategory("developer", chainCmd),
-	withCategory("developer", logCmd),
-	withCategory("developer", waitApiCmd),
-	withCategory("developer", fetchParamCmd),
-	withCategory("network", netCmd),
-	withCategory("network", syncCmd),
-	versionCmd,
+	WithCategory("basic", sendCmd),
+	WithCategory("basic", walletCmd),
+	WithCategory("basic", clientCmd),
+	WithCategory("basic", multisigCmd),
+	WithCategory("basic", paychCmd),
+	WithCategory("developer", authCmd),
+	WithCategory("developer", mpoolCmd),
+	WithCategory("developer", stateCmd),
+	WithCategory("developer", chainCmd),
+	WithCategory("developer", logCmd),
+	WithCategory("developer", waitApiCmd),
+	WithCategory("developer", fetchParamCmd),
+	WithCategory("network", netCmd),
+	WithCategory("network", syncCmd),
+	VersionCmd,
 }
 
-func withCategory(cat string, cmd *cli.Command) *cli.Command {
+func WithCategory(cat string, cmd *cli.Command) *cli.Command {
 	cmd.Category = cat
 	return cmd
 }

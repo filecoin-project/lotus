@@ -86,12 +86,10 @@ var noncefix = &cli.Command{
 
 		for i := start; i < end; i++ {
 			msg := &types.Message{
-				From:     addr,
-				To:       addr,
-				Value:    types.NewInt(1),
-				GasLimit: 0,
-				GasPrice: types.NewInt(1),
-				Nonce:    i,
+				From:  addr,
+				To:    addr,
+				Value: types.NewInt(1),
+				Nonce: i,
 			}
 			smsg, err := api.WalletSignMessage(ctx, addr, msg)
 			if err != nil {

@@ -8,6 +8,8 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/piecestore"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/sector-storage/fsutil"
@@ -30,7 +32,7 @@ type StorageMiner interface {
 	PledgeSector(context.Context) error
 
 	// Get the status of a given sector by ID
-	SectorsStatus(context.Context, abi.SectorNumber) (SectorInfo, error)
+	SectorsStatus(ctx context.Context, sid abi.SectorNumber, showOnChainInfo bool) (SectorInfo, error)
 
 	// List all staged sectors
 	SectorsList(context.Context) ([]abi.SectorNumber, error)
@@ -61,14 +63,22 @@ type StorageMiner interface {
 	// WorkerConnect tells the node to connect to workers RPC
 	WorkerConnect(context.Context, string) error
 	WorkerStats(context.Context) (map[uint64]storiface.WorkerStats, error)
+	WorkerJobs(context.Context) (map[uint64][]storiface.WorkerJob, error)
+
+	// SealingSchedDiag dumps internal sealing scheduler state
+	SealingSchedDiag(context.Context) (interface{}, error)
 
 	stores.SectorIndex
 
 	MarketImportDealData(ctx context.Context, propcid cid.Cid, path string) error
 	MarketListDeals(ctx context.Context) ([]storagemarket.StorageDeal, error)
+	MarketListRetrievalDeals(ctx context.Context) ([]retrievalmarket.ProviderDealState, error)
+	MarketGetDealUpdates(ctx context.Context, d cid.Cid) (<-chan storagemarket.MinerDeal, error)
 	MarketListIncompleteDeals(ctx context.Context) ([]storagemarket.MinerDeal, error)
-	MarketSetAsk(ctx context.Context, price types.BigInt, duration abi.ChainEpoch, minPieceSize abi.PaddedPieceSize, maxPieceSize abi.PaddedPieceSize) error
+	MarketSetAsk(ctx context.Context, price types.BigInt, verifiedPrice types.BigInt, duration abi.ChainEpoch, minPieceSize abi.PaddedPieceSize, maxPieceSize abi.PaddedPieceSize) error
 	MarketGetAsk(ctx context.Context) (*storagemarket.SignedStorageAsk, error)
+	MarketSetRetrievalAsk(ctx context.Context, rask *retrievalmarket.Ask) error
+	MarketGetRetrievalAsk(ctx context.Context) (*retrievalmarket.Ask, error)
 
 	DealsImportData(ctx context.Context, dealPropCid cid.Cid, file string) error
 	DealsList(ctx context.Context) ([]storagemarket.StorageDeal, error)
@@ -84,6 +94,11 @@ type StorageMiner interface {
 	DealsSetConsiderOfflineRetrievalDeals(context.Context, bool) error
 
 	StorageAddLocal(ctx context.Context, path string) error
+
+	PiecesListPieces(ctx context.Context) ([]cid.Cid, error)
+	PiecesListCidInfos(ctx context.Context) ([]cid.Cid, error)
+	PiecesGetPieceInfo(ctx context.Context, pieceCid cid.Cid) (*piecestore.PieceInfo, error)
+	PiecesGetCIDInfo(ctx context.Context, payloadCid cid.Cid) (*piecestore.CIDInfo, error)
 }
 
 type SealRes struct {
@@ -116,11 +131,24 @@ type SectorInfo struct {
 	LastErr string
 
 	Log []SectorLog
+
+	// On Chain Info
+	SealProof          abi.RegisteredSealProof // The seal proof type implies the PoSt proof/s
+	Activation         abi.ChainEpoch          // Epoch during which the sector proof was accepted
+	Expiration         abi.ChainEpoch          // Epoch during which the sector expires
+	DealWeight         abi.DealWeight          // Integral of active deals over sector lifetime
+	VerifiedDealWeight abi.DealWeight          // Integral of active verified deals over sector lifetime
+	InitialPledge      abi.TokenAmount         // Pledge collected to commit this sector
+	// Expiration Info
+	OnTime abi.ChainEpoch
+	// non-zero if sector is faulty, epoch at which it will be permanently
+	// removed if it doesn't recover
+	Early abi.ChainEpoch
 }
 
 type SealedRef struct {
 	SectorID abi.SectorNumber
-	Offset   uint64
+	Offset   abi.PaddedPieceSize
 	Size     abi.UnpaddedPieceSize
 }
 

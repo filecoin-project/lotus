@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/miner"
 )
 
 type TestNode struct {
@@ -18,7 +19,7 @@ type TestNode struct {
 type TestStorageNode struct {
 	api.StorageMiner
 
-	MineOne func(context.Context, func(bool, error)) error
+	MineOne func(context.Context, miner.MineReq) error
 }
 
 var PresealGenesis = -1

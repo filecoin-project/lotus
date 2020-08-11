@@ -16,7 +16,7 @@ import (
 
 var _ = xerrors.Errorf
 
-var lengthBufBlockHeader = []byte{143}
+var lengthBufBlockHeader = []byte{144}
 
 func (t *BlockHeader) MarshalCBOR(w io.Writer) error {
 	if t == nil {
@@ -142,6 +142,10 @@ func (t *BlockHeader) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
+	// t.ParentBaseFee (big.Int) (struct)
+	if err := t.ParentBaseFee.MarshalCBOR(w); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -159,7 +163,7 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 15 {
+	if extra != 16 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -440,6 +444,15 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 		t.ForkSignaling = uint64(extra)
 
 	}
+	// t.ParentBaseFee (big.Int) (struct)
+
+	{
+
+		if err := t.ParentBaseFee.UnmarshalCBOR(br); err != nil {
+			return xerrors.Errorf("unmarshaling t.ParentBaseFee: %w", err)
+		}
+
+	}
 	return nil
 }
 
@@ -465,7 +478,7 @@ func (t *Ticket) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := w.Write(t.VRFProof); err != nil {
+	if _, err := w.Write(t.VRFProof[:]); err != nil {
 		return err
 	}
 	return nil
@@ -502,8 +515,12 @@ func (t *Ticket) UnmarshalCBOR(r io.Reader) error {
 	if maj != cbg.MajByteString {
 		return fmt.Errorf("expected byte array")
 	}
-	t.VRFProof = make([]byte, extra)
-	if _, err := io.ReadFull(br, t.VRFProof); err != nil {
+
+	if extra > 0 {
+		t.VRFProof = make([]uint8, extra)
+	}
+
+	if _, err := io.ReadFull(br, t.VRFProof[:]); err != nil {
 		return err
 	}
 	return nil
@@ -542,7 +559,7 @@ func (t *ElectionProof) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := w.Write(t.VRFProof); err != nil {
+	if _, err := w.Write(t.VRFProof[:]); err != nil {
 		return err
 	}
 	return nil
@@ -604,14 +621,18 @@ func (t *ElectionProof) UnmarshalCBOR(r io.Reader) error {
 	if maj != cbg.MajByteString {
 		return fmt.Errorf("expected byte array")
 	}
-	t.VRFProof = make([]byte, extra)
-	if _, err := io.ReadFull(br, t.VRFProof); err != nil {
+
+	if extra > 0 {
+		t.VRFProof = make([]uint8, extra)
+	}
+
+	if _, err := io.ReadFull(br, t.VRFProof[:]); err != nil {
 		return err
 	}
 	return nil
 }
 
-var lengthBufMessage = []byte{137}
+var lengthBufMessage = []byte{138}
 
 func (t *Message) MarshalCBOR(w io.Writer) error {
 	if t == nil {
@@ -656,11 +677,6 @@ func (t *Message) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.GasPrice (big.Int) (struct)
-	if err := t.GasPrice.MarshalCBOR(w); err != nil {
-		return err
-	}
-
 	// t.GasLimit (int64) (int64)
 	if t.GasLimit >= 0 {
 		if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajUnsignedInt, uint64(t.GasLimit)); err != nil {
@@ -670,6 +686,16 @@ func (t *Message) MarshalCBOR(w io.Writer) error {
 		if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajNegativeInt, uint64(-t.GasLimit-1)); err != nil {
 			return err
 		}
+	}
+
+	// t.GasFeeCap (big.Int) (struct)
+	if err := t.GasFeeCap.MarshalCBOR(w); err != nil {
+		return err
+	}
+
+	// t.GasPremium (big.Int) (struct)
+	if err := t.GasPremium.MarshalCBOR(w); err != nil {
+		return err
 	}
 
 	// t.Method (abi.MethodNum) (uint64)
@@ -687,7 +713,7 @@ func (t *Message) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := w.Write(t.Params); err != nil {
+	if _, err := w.Write(t.Params[:]); err != nil {
 		return err
 	}
 	return nil
@@ -707,7 +733,7 @@ func (t *Message) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 9 {
+	if extra != 10 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -777,15 +803,6 @@ func (t *Message) UnmarshalCBOR(r io.Reader) error {
 		}
 
 	}
-	// t.GasPrice (big.Int) (struct)
-
-	{
-
-		if err := t.GasPrice.UnmarshalCBOR(br); err != nil {
-			return xerrors.Errorf("unmarshaling t.GasPrice: %w", err)
-		}
-
-	}
 	// t.GasLimit (int64) (int64)
 	{
 		maj, extra, err := cbg.CborReadHeaderBuf(br, scratch)
@@ -810,6 +827,24 @@ func (t *Message) UnmarshalCBOR(r io.Reader) error {
 		}
 
 		t.GasLimit = int64(extraI)
+	}
+	// t.GasFeeCap (big.Int) (struct)
+
+	{
+
+		if err := t.GasFeeCap.UnmarshalCBOR(br); err != nil {
+			return xerrors.Errorf("unmarshaling t.GasFeeCap: %w", err)
+		}
+
+	}
+	// t.GasPremium (big.Int) (struct)
+
+	{
+
+		if err := t.GasPremium.UnmarshalCBOR(br); err != nil {
+			return xerrors.Errorf("unmarshaling t.GasPremium: %w", err)
+		}
+
 	}
 	// t.Method (abi.MethodNum) (uint64)
 
@@ -838,8 +873,12 @@ func (t *Message) UnmarshalCBOR(r io.Reader) error {
 	if maj != cbg.MajByteString {
 		return fmt.Errorf("expected byte array")
 	}
-	t.Params = make([]byte, extra)
-	if _, err := io.ReadFull(br, t.Params); err != nil {
+
+	if extra > 0 {
+		t.Params = make([]uint8, extra)
+	}
+
+	if _, err := io.ReadFull(br, t.Params[:]); err != nil {
 		return err
 	}
 	return nil
@@ -1119,7 +1158,7 @@ func (t *MessageReceipt) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := w.Write(t.Return); err != nil {
+	if _, err := w.Write(t.Return[:]); err != nil {
 		return err
 	}
 
@@ -1192,8 +1231,12 @@ func (t *MessageReceipt) UnmarshalCBOR(r io.Reader) error {
 	if maj != cbg.MajByteString {
 		return fmt.Errorf("expected byte array")
 	}
-	t.Return = make([]byte, extra)
-	if _, err := io.ReadFull(br, t.Return); err != nil {
+
+	if extra > 0 {
+		t.Return = make([]uint8, extra)
+	}
+
+	if _, err := io.ReadFull(br, t.Return[:]); err != nil {
 		return err
 	}
 	// t.GasUsed (int64) (int64)
@@ -1555,7 +1598,7 @@ func (t *BeaconEntry) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := w.Write(t.Data); err != nil {
+	if _, err := w.Write(t.Data[:]); err != nil {
 		return err
 	}
 	return nil
@@ -1606,8 +1649,12 @@ func (t *BeaconEntry) UnmarshalCBOR(r io.Reader) error {
 	if maj != cbg.MajByteString {
 		return fmt.Errorf("expected byte array")
 	}
-	t.Data = make([]byte, extra)
-	if _, err := io.ReadFull(br, t.Data); err != nil {
+
+	if extra > 0 {
+		t.Data = make([]uint8, extra)
+	}
+
+	if _, err := io.ReadFull(br, t.Data[:]); err != nil {
 		return err
 	}
 	return nil

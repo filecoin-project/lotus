@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	datastore "github.com/ipfs/go-datastore"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
@@ -18,6 +17,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -100,7 +100,7 @@ func TestChainExportImport(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	nbs := blockstore.NewBlockstore(datastore.NewMapDatastore())
+	nbs := blockstore.NewTemporary()
 	cs := store.NewChainStore(nbs, datastore.NewMapDatastore(), nil)
 
 	root, err := cs.Import(buf)

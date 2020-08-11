@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
@@ -24,6 +25,7 @@ import (
 )
 
 func init() {
+	verifreg.MinVerifiedDealSize = big.NewInt(2048)
 	power.ConsensusMinerMinPower = big.NewInt(2048)
 }
 
@@ -137,7 +139,8 @@ func MakeUnsignedMessageVectors() []vectors.UnsignedMessageVector {
 		if err != nil {
 			panic(err)
 		}
-		to, err := address.NewIDAddress(rand.Uint64())
+		uint63mask := uint64(1<<63 - 1)
+		to, err := address.NewIDAddress(rand.Uint64() & uint63mask)
 		if err != nil {
 			panic(err)
 		}
@@ -146,14 +149,15 @@ func MakeUnsignedMessageVectors() []vectors.UnsignedMessageVector {
 		rand.Read(params)
 
 		msg := &types.Message{
-			To:       to,
-			From:     from,
-			Value:    types.NewInt(rand.Uint64()),
-			Method:   abi.MethodNum(rand.Uint64()),
-			GasPrice: types.NewInt(rand.Uint64()),
-			GasLimit: rand.Int63(),
-			Nonce:    rand.Uint64(),
-			Params:   params,
+			To:         to,
+			From:       from,
+			Value:      types.NewInt(rand.Uint64()),
+			Method:     abi.MethodNum(rand.Uint64()),
+			GasFeeCap:  types.NewInt(rand.Uint64()),
+			GasPremium: types.NewInt(rand.Uint64()),
+			GasLimit:   rand.Int63(),
+			Nonce:      rand.Uint64() & (1<<63 - 1),
+			Params:     params,
 		}
 
 		ser, err := msg.Serialize()

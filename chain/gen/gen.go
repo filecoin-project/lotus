@@ -10,12 +10,12 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	saminer "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	format "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log/v2"
@@ -36,6 +36,7 @@ import (
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
 	"github.com/filecoin-project/lotus/genesis"
 	"github.com/filecoin-project/lotus/journal"
+	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
@@ -92,6 +93,21 @@ func (m mybs) Get(c cid.Cid) (block.Block, error) {
 	return b, nil
 }
 
+var rootkey, _ = address.NewIDAddress(80)
+
+var rootkeyMultisig = genesis.MultisigMeta{
+	Signers:         []address.Address{rootkey},
+	Threshold:       1,
+	VestingDuration: 0,
+	VestingStart:    0,
+}
+
+var DefaultVerifregRootkeyActor = genesis.Actor{
+	Type:    genesis.TMultisig,
+	Balance: big.NewInt(0),
+	Meta:    rootkeyMultisig.ActorMeta(),
+}
+
 func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
 	saminer.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
 		abi.RegisteredSealProof_StackedDrg2KiBV1: {},
@@ -113,7 +129,7 @@ func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
 		return nil, xerrors.Errorf("failed to get blocks datastore: %w", err)
 	}
 
-	bs := mybs{blockstore.NewIdStore(blockstore.NewBlockstore(bds))}
+	bs := mybs{blockstore.NewBlockstore(bds)}
 
 	ks, err := lr.KeyStore()
 	if err != nil {
@@ -195,8 +211,9 @@ func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
 			*genm1,
 			*genm2,
 		},
-		NetworkName: "",
-		Timestamp:   uint64(build.Clock.Now().Add(-500 * time.Duration(build.BlockDelaySecs) * time.Second).Unix()),
+		VerifregRootKey: DefaultVerifregRootkeyActor,
+		NetworkName:     "",
+		Timestamp:       uint64(build.Clock.Now().Add(-500 * time.Duration(build.BlockDelaySecs) * time.Second).Unix()),
 	}
 
 	genb, err := genesis2.MakeGenesisBlock(context.TODO(), bs, sys, tpl)
@@ -362,6 +379,10 @@ func (cg *ChainGen) NextTipSet() (*MinedTipSet, error) {
 	return mts, nil
 }
 
+func (cg *ChainGen) SetWinningPoStProver(m address.Address, wpp WinningPoStProver) {
+	cg.eppProvs[m] = wpp
+}
+
 func (cg *ChainGen) NextTipSetFromMiners(base *types.TipSet, miners []address.Address) (*MinedTipSet, error) {
 	var blks []*types.FullBlock
 
@@ -469,8 +490,9 @@ func getRandomMessages(cg *ChainGen) ([]*types.SignedMessage, error) {
 
 			Method: 0,
 
-			GasLimit: 100_000_000,
-			GasPrice: types.NewInt(0),
+			GasLimit:   100_000_000,
+			GasFeeCap:  types.NewInt(0),
+			GasPremium: types.NewInt(0),
 		}
 
 		sig, err := cg.w.Sign(context.TODO(), cg.banker, msg.Cid().Bytes())

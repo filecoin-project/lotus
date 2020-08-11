@@ -17,8 +17,9 @@ func TestStore(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, addrs, 0)
 
+	ch := tutils.NewIDAddr(t, 100)
 	ci := &ChannelInfo{
-		Channel: tutils.NewIDAddr(t, 100),
+		Channel: &ch,
 		Control: tutils.NewIDAddr(t, 101),
 		Target:  tutils.NewIDAddr(t, 102),
 
@@ -26,8 +27,9 @@ func TestStore(t *testing.T) {
 		Vouchers:  []*VoucherInfo{{Voucher: nil, Proof: []byte{}}},
 	}
 
+	ch2 := tutils.NewIDAddr(t, 200)
 	ci2 := &ChannelInfo{
-		Channel: tutils.NewIDAddr(t, 200),
+		Channel: &ch2,
 		Control: tutils.NewIDAddr(t, 201),
 		Target:  tutils.NewIDAddr(t, 202),
 
@@ -55,7 +57,7 @@ func TestStore(t *testing.T) {
 	require.Contains(t, addrsStrings(addrs), "t0200")
 
 	// Request vouchers for channel
-	vouchers, err := store.VouchersForPaych(ci.Channel)
+	vouchers, err := store.VouchersForPaych(*ci.Channel)
 	require.NoError(t, err)
 	require.Len(t, vouchers, 1)
 
@@ -64,12 +66,12 @@ func TestStore(t *testing.T) {
 	require.Equal(t, err, ErrChannelNotTracked)
 
 	// Allocate lane for channel
-	lane, err := store.AllocateLane(ci.Channel)
+	lane, err := store.AllocateLane(*ci.Channel)
 	require.NoError(t, err)
 	require.Equal(t, lane, uint64(0))
 
 	// Allocate next lane for channel
-	lane, err = store.AllocateLane(ci.Channel)
+	lane, err = store.AllocateLane(*ci.Channel)
 	require.NoError(t, err)
 	require.Equal(t, lane, uint64(1))
 

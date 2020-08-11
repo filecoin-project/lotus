@@ -2,6 +2,8 @@ package main
 
 import (
 	"database/sql"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 
 	_ "github.com/lib/pq"
@@ -12,6 +14,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/cmd/lotus-chainwatch/processor"
+	"github.com/filecoin-project/lotus/cmd/lotus-chainwatch/scheduler"
 	"github.com/filecoin-project/lotus/cmd/lotus-chainwatch/syncer"
 )
 
@@ -25,6 +28,9 @@ var runCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		go func() {
+			http.ListenAndServe(":6060", nil)
+		}()
 		ll := cctx.String("log-level")
 		if err := logging.SetLogLevel("*", ll); err != nil {
 			return err
@@ -67,8 +73,11 @@ var runCmd = &cli.Command{
 		sync := syncer.NewSyncer(db, api)
 		sync.Start(ctx)
 
-		proc := processor.NewProcessor(db, api, maxBatch)
+		proc := processor.NewProcessor(ctx, db, api, maxBatch)
 		proc.Start(ctx)
+
+		sched := scheduler.PrepareScheduler(db)
+		sched.Start(ctx)
 
 		<-ctx.Done()
 		os.Exit(0)

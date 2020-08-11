@@ -132,7 +132,7 @@ func (pmgr *PeerMgr) Run(ctx context.Context) {
 			if pcount < pmgr.minFilPeers {
 				pmgr.expandPeers()
 			} else if pcount > pmgr.maxFilPeers {
-				log.Debug("peer count about threshold: %d > %d", pcount, pmgr.maxFilPeers)
+				log.Debugf("peer count about threshold: %d > %d", pcount, pmgr.maxFilPeers)
 			}
 			stats.Record(ctx, metrics.PeerCount.M(int64(pmgr.getPeerCount())))
 		case <-pmgr.done:

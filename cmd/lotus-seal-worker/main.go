@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -92,8 +93,13 @@ var runCmd = &cli.Command{
 	Usage: "Start lotus worker",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:  "address",
-			Usage: "Locally reachable address",
+			Name:  "listen",
+			Usage: "host address and port the worker api will listen on",
+			Value: "0.0.0.0:3456",
+		},
+		&cli.StringFlag{
+			Name:   "address",
+			Hidden: true,
 		},
 		&cli.BoolFlag{
 			Name:  "no-local-storage",
@@ -102,6 +108,11 @@ var runCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name:  "precommit1",
 			Usage: "enable precommit1 (32G sectors: 1 core, 128GiB Memory)",
+			Value: true,
+		},
+		&cli.BoolFlag{
+			Name:  "unseal",
+			Usage: "enable unsealing (32G sectors: 1 core, 128GiB Memory)",
 			Value: true,
 		},
 		&cli.BoolFlag{
@@ -114,16 +125,32 @@ var runCmd = &cli.Command{
 			Usage: "enable commit (32G sectors: all cores or GPUs, 128GiB Memory + 64GiB swap)",
 			Value: true,
 		},
+		&cli.IntFlag{
+			Name:  "parallel-fetch-limit",
+			Usage: "maximum fetch operations to run in parallel",
+			Value: 5,
+		},
+		&cli.StringFlag{
+			Name:  "timeout",
+			Usage: "used when 'listen' is unspecified. must be a valid duration recognized by golang's time.ParseDuration function",
+			Value: "30m",
+		},
+	},
+	Before: func(cctx *cli.Context) error {
+		if cctx.IsSet("address") {
+			log.Warnf("The '--address' flag is deprecated, it has been replaced by '--listen'")
+			if err := cctx.Set("listen", cctx.String("address")); err != nil {
+				return err
+			}
+		}
+
+		return nil
 	},
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Bool("enable-gpu-proving") {
 			if err := os.Setenv("BELLMAN_NO_GPU", "true"); err != nil {
 				return xerrors.Errorf("could not set no-gpu env: %+v", err)
 			}
-		}
-
-		if cctx.String("address") == "" {
-			return xerrors.Errorf("--address flag is required")
 		}
 
 		// Connect to storage-miner
@@ -179,6 +206,9 @@ var runCmd = &cli.Command{
 
 		if cctx.Bool("precommit1") {
 			taskTypes = append(taskTypes, sealtasks.TTPreCommit1)
+		}
+		if cctx.Bool("unseal") {
+			taskTypes = append(taskTypes, sealtasks.TTUnseal)
 		}
 		if cctx.Bool("precommit2") {
 			taskTypes = append(taskTypes, sealtasks.TTPreCommit2)
@@ -259,8 +289,24 @@ var runCmd = &cli.Command{
 		}
 
 		log.Info("Opening local storage; connecting to master")
+		const unspecifiedAddress = "0.0.0.0"
+		address := cctx.String("listen")
+		addressSlice := strings.Split(address, ":")
+		if ip := net.ParseIP(addressSlice[0]); ip != nil {
+			if ip.String() == unspecifiedAddress {
+				timeout, err := time.ParseDuration(cctx.String("timeout"))
+				if err != nil {
+					return err
+				}
+				rip, err := extractRoutableIP(timeout)
+				if err != nil {
+					return err
+				}
+				address = rip + ":" + addressSlice[1]
+			}
+		}
 
-		localStore, err := stores.NewLocal(ctx, lr, nodeApi, []string{"http://" + cctx.String("address") + "/remote"})
+		localStore, err := stores.NewLocal(ctx, lr, nodeApi, []string{"http://" + address + "/remote"})
 		if err != nil {
 			return err
 		}
@@ -276,7 +322,7 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("could not get api info: %w", err)
 		}
 
-		remote := stores.NewRemote(localStore, nodeApi, sminfo.AuthHeader())
+		remote := stores.NewRemote(localStore, nodeApi, sminfo.AuthHeader(), cctx.Int("parallel-fetch-limit"))
 
 		// Create / expose the worker
 
@@ -289,7 +335,7 @@ var runCmd = &cli.Command{
 
 		mux := mux.NewRouter()
 
-		log.Info("Setting up control endpoint at " + cctx.String("address"))
+		log.Info("Setting up control endpoint at " + address)
 
 		rpcServer := jsonrpc.NewServer()
 		rpcServer.Register("Filecoin", apistruct.PermissionedWorkerAPI(workerApi))
@@ -319,7 +365,7 @@ var runCmd = &cli.Command{
 			log.Warn("Graceful shutdown successful")
 		}()
 
-		nl, err := net.Listen("tcp", cctx.String("address"))
+		nl, err := net.Listen("tcp", address)
 		if err != nil {
 			return err
 		}
@@ -327,7 +373,7 @@ var runCmd = &cli.Command{
 		log.Info("Waiting for tasks")
 
 		go func() {
-			if err := nodeApi.WorkerConnect(ctx, "ws://"+cctx.String("address")+"/rpc/v0"); err != nil {
+			if err := nodeApi.WorkerConnect(ctx, "ws://"+address+"/rpc/v0"); err != nil {
 				log.Errorf("Registering worker failed: %+v", err)
 				cancel()
 				return
@@ -365,8 +411,12 @@ func watchMinerConn(ctx context.Context, cctx *cli.Context, nodeApi api.StorageM
 
 		// TODO: there are probably cleaner/more graceful ways to restart,
 		//  but this is good enough for now (FSM can recover from the mess this creates)
-		if err := syscall.Exec(exe, []string{exe, "run",
-			fmt.Sprintf("--address=%s", cctx.String("address")),
+		if err := syscall.Exec(exe, []string{exe,
+			fmt.Sprintf("--worker-repo=%s", cctx.String("worker-repo")),
+			fmt.Sprintf("--miner-repo=%s", cctx.String("miner-repo")),
+			fmt.Sprintf("--enable-gpu-proving=%t", cctx.Bool("enable-gpu-proving")),
+			"run",
+			fmt.Sprintf("--listen=%s", cctx.String("listen")),
 			fmt.Sprintf("--no-local-storage=%t", cctx.Bool("no-local-storage")),
 			fmt.Sprintf("--precommit1=%t", cctx.Bool("precommit1")),
 			fmt.Sprintf("--precommit2=%t", cctx.Bool("precommit2")),
@@ -375,4 +425,28 @@ func watchMinerConn(ctx context.Context, cctx *cli.Context, nodeApi api.StorageM
 			fmt.Println(err)
 		}
 	}()
+}
+
+func extractRoutableIP(timeout time.Duration) (string, error) {
+	minerMultiAddrKey := "MINER_API_INFO"
+	deprecatedMinerMultiAddrKey := "STORAGE_API_INFO"
+	env, ok := os.LookupEnv(minerMultiAddrKey)
+	if !ok {
+		// TODO remove after deprecation period
+		env, ok = os.LookupEnv(deprecatedMinerMultiAddrKey)
+		if ok {
+			log.Warnf("Using a deprecated env(%s) value, please use env(%s) instead.", deprecatedMinerMultiAddrKey, minerMultiAddrKey)
+		}
+		return "", xerrors.New("MINER_API_INFO environment variable required to extract IP")
+	}
+	minerAddr := strings.Split(env, "/")
+	conn, err := net.DialTimeout("tcp", minerAddr[2]+":"+minerAddr[4], timeout)
+	if err != nil {
+		return "", err
+	}
+	defer conn.Close()
+
+	localAddr := conn.LocalAddr().(*net.TCPAddr)
+
+	return strings.Split(localAddr.IP.String(), ":")[0], nil
 }
