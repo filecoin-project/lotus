@@ -142,6 +142,10 @@ func (m *Message) ValidForBlockInclusion(minGas int64) error {
 		return xerrors.New("'From' address cannot be empty")
 	}
 
+	if m.Value.Int == nil {
+		return xerrors.New("'Value' cannot be nil")
+	}
+
 	if m.Value.LessThan(big.Zero()) {
 		return xerrors.New("'Value' field cannot be negative")
 	}
@@ -150,8 +154,16 @@ func (m *Message) ValidForBlockInclusion(minGas int64) error {
 		return xerrors.New("'Value' field cannot be greater than total filecoin supply")
 	}
 
+	if m.GasFeeCap.Int == nil {
+		return xerrors.New("'GasFeeCap' cannot be nil")
+	}
+
 	if m.GasFeeCap.LessThan(big.Zero()) {
 		return xerrors.New("'GasFeeCap' field cannot be negative")
+	}
+
+	if m.GasPremium.Int == nil {
+		return xerrors.New("'GasPremium' cannot be nil")
 	}
 
 	if m.GasPremium.LessThan(big.Zero()) {
