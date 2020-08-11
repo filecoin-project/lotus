@@ -860,8 +860,10 @@ var clientRetrieveCmd = &cli.Command{
 				}
 
 				if evt.Err != nil {
-					return xerrors.Errorf("Retrieval Failed: %w", err)
+					return xerrors.Errorf("retrieval failed: %w", err)
 				}
+			case <-ctx.Done():
+				return xerrors.Errorf("retrieval timed out")
 			}
 		}
 	},

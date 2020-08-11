@@ -399,15 +399,9 @@ func testRetrieval(t *testing.T, ctx context.Context, err error, client *impl.Fu
 		IsCAR: carExport,
 	}
 	updates, err := client.ClientRetrieve(ctx, offers[0].Order(caddr), ref)
-	for {
-		select {
-		case update, ok := <-updates:
-			if !ok {
-				break
-			}
-			if update.Err != nil {
-				t.Fatalf("%+v", err)
-			}
+	for update := range updates {
+		if update.Err != nil {
+			t.Fatalf("%+v", err)
 		}
 	}
 
