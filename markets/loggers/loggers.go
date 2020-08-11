@@ -34,5 +34,5 @@ type RetrievalEvent struct {
 	Status        retrievalmarket.DealStatus
 	BytesReceived uint64
 	FundsSpent    abi.TokenAmount
-	Err           error
+	Err           string
 }

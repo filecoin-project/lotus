@@ -846,12 +846,11 @@ var clientRetrieveCmd = &cli.Command{
 		for {
 			select {
 			case evt, chOpen := <-updates:
-
-				fmt.Printf("Retrieval Event: %s, State: %s, BytesReceived: %d, PaymentSent: %s\n",
+				fmt.Printf("> Recv: %s, Paid %s, %s (%s)\n",
+					types.SizeStr(types.NewInt(evt.BytesReceived)),
+					types.FIL(evt.FundsSpent),
 					retrievalmarket.ClientEvents[evt.Event],
 					retrievalmarket.DealStatuses[evt.Status],
-					evt.BytesReceived,
-					evt.FundsSpent.String(),
 				)
 
 				if !chOpen {
@@ -859,8 +858,8 @@ var clientRetrieveCmd = &cli.Command{
 					return nil
 				}
 
-				if evt.Err != nil {
-					return xerrors.Errorf("retrieval failed: %w", err)
+				if evt.Err != "" {
+					return xerrors.Errorf("retrieval failed: %v", err)
 				}
 			case <-ctx.Done():
 				return xerrors.Errorf("retrieval timed out")

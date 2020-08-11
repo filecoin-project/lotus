@@ -410,7 +410,11 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 	defer close(events)
 
 	finish := func(e error) {
-		events <- marketevents.RetrievalEvent{Err: e}
+		errStr := ""
+		if e != nil {
+			errStr = e.Error()
+		}
+		events <- marketevents.RetrievalEvent{Err: errStr}
 	}
 
 	if order.MinerPeer.ID == "" {

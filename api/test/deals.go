@@ -400,8 +400,8 @@ func testRetrieval(t *testing.T, ctx context.Context, err error, client *impl.Fu
 	}
 	updates, err := client.ClientRetrieve(ctx, offers[0].Order(caddr), ref)
 	for update := range updates {
-		if update.Err != nil {
-			t.Fatalf("%+v", err)
+		if update.Err != "" {
+			t.Fatalf("%v", err)
 		}
 	}
 
