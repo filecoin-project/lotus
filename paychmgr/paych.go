@@ -35,12 +35,13 @@ type channelAccessor struct {
 
 func newChannelAccessor(pm *Manager) *channelAccessor {
 	return &channelAccessor{
-		lk:      &channelLock{globalLock: &pm.lk},
-		sm:      pm.sm,
-		sa:      &stateAccessor{sm: pm.sm},
-		api:     pm.pchapi,
-		store:   pm.store,
-		waitCtx: pm.ctx,
+		lk:           &channelLock{globalLock: &pm.lk},
+		sm:           pm.sm,
+		sa:           &stateAccessor{sm: pm.sm},
+		api:          pm.pchapi,
+		store:        pm.store,
+		msgListeners: newMsgListeners(),
+		waitCtx:      pm.ctx,
 	}
 }
 

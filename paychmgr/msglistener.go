@@ -1,61 +1,56 @@
 package paychmgr
 
 import (
-	"sync"
+	"golang.org/x/xerrors"
 
-	"github.com/google/uuid"
+	"github.com/hannahhoward/go-pubsub"
+
 	"github.com/ipfs/go-cid"
 )
 
-type msgListener struct {
-	id string
-	cb func(c cid.Cid, err error)
-}
-
 type msgListeners struct {
-	lk        sync.Mutex
-	listeners []*msgListener
+	ps *pubsub.PubSub
 }
 
-func (ml *msgListeners) onMsg(mcid cid.Cid, cb func(error)) string {
-	ml.lk.Lock()
-	defer ml.lk.Unlock()
-
-	l := &msgListener{
-		id: uuid.New().String(),
-		cb: func(c cid.Cid, err error) {
-			if mcid.Equals(c) {
-				cb(err)
-			}
-		},
-	}
-	ml.listeners = append(ml.listeners, l)
-	return l.id
+type msgCompleteEvt struct {
+	mcid cid.Cid
+	err  error
 }
 
-func (ml *msgListeners) fireMsgComplete(mcid cid.Cid, err error) {
-	ml.lk.Lock()
-	defer ml.lk.Unlock()
+type subscriberFn func(msgCompleteEvt)
 
-	for _, l := range ml.listeners {
-		l.cb(mcid, err)
-	}
+func newMsgListeners() msgListeners {
+	ps := pubsub.New(func(event pubsub.Event, subFn pubsub.SubscriberFn) error {
+		evt, ok := event.(msgCompleteEvt)
+		if !ok {
+			return xerrors.Errorf("wrong type of event")
+		}
+		sub, ok := subFn.(subscriberFn)
+		if !ok {
+			return xerrors.Errorf("wrong type of subscriber")
+		}
+		sub(evt)
+		return nil
+	})
+	return msgListeners{ps: ps}
 }
 
-func (ml *msgListeners) unsubscribe(sub string) {
-	ml.lk.Lock()
-	defer ml.lk.Unlock()
-
-	for i, l := range ml.listeners {
-		if l.id == sub {
-			ml.removeListener(i)
-			return
+// onMsgComplete registers a callback for when the message with the given cid
+// completes
+func (ml *msgListeners) onMsgComplete(mcid cid.Cid, cb func(error)) pubsub.Unsubscribe {
+	var fn subscriberFn = func(evt msgCompleteEvt) {
+		if mcid.Equals(evt.mcid) {
+			cb(evt.err)
 		}
 	}
+	return ml.ps.Subscribe(fn)
 }
 
-func (ml *msgListeners) removeListener(i int) {
-	copy(ml.listeners[i:], ml.listeners[i+1:])
-	ml.listeners[len(ml.listeners)-1] = nil
-	ml.listeners = ml.listeners[:len(ml.listeners)-1]
+// fireMsgComplete is called when a message completes
+func (ml *msgListeners) fireMsgComplete(mcid cid.Cid, err error) {
+	e := ml.ps.Publish(msgCompleteEvt{mcid: mcid, err: err})
+	if e != nil {
+		// In theory we shouldn't ever get an error here
+		log.Errorf("unexpected error publishing message complete: %s", e)
+	}
 }

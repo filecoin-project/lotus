@@ -640,7 +640,7 @@ type onMsgRes struct {
 func (ca *channelAccessor) msgPromise(ctx context.Context, mcid cid.Cid) chan onMsgRes {
 	promise := make(chan onMsgRes)
 	triggerUnsub := make(chan struct{})
-	sub := ca.msgListeners.onMsg(mcid, func(err error) {
+	unsub := ca.msgListeners.onMsgComplete(mcid, func(err error) {
 		close(triggerUnsub)
 
 		// Use a go-routine so as not to block the event handler loop
@@ -671,7 +671,7 @@ func (ca *channelAccessor) msgPromise(ctx context.Context, mcid cid.Cid) chan on
 		case <-triggerUnsub:
 		}
 
-		ca.msgListeners.unsubscribe(sub)
+		unsub()
 	}()
 
 	return promise
