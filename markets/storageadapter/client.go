@@ -43,7 +43,9 @@ type ClientNodeAdapter struct {
 	fm *market.FundMgr
 	ev *events.Events
 
-	jrnl     journal.Journal
+	jrnl journal.Journal
+
+	// index 0 is unused, as it corresponds to evtTypeDealAccepted, a provider-only event.
 	evtTypes [4]journal.EventType
 }
 
