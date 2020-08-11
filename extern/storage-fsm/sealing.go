@@ -51,6 +51,8 @@ type SealingAPI interface {
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 }
 
+type SectorStateNotifee func(before, after SectorInfo)
+
 type Sealing struct {
 	api    SealingAPI
 	events Events
@@ -69,6 +71,8 @@ type Sealing struct {
 	toUpgrade map[abi.SectorNumber]struct{}
 
 	getSealDelay GetSealingDelayFunc
+
+	notifee SectorStateNotifee
 }
 
 type UnsealedSectorMap struct {
@@ -83,7 +87,7 @@ type UnsealedSectorInfo struct {
 	pieceSizes []abi.UnpaddedPieceSize
 }
 
-func New(api SealingAPI, events Events, maddr address.Address, ds datastore.Batching, sealer sectorstorage.SectorManager, sc SectorIDCounter, verif ffiwrapper.Verifier, pcp PreCommitPolicy, gsd GetSealingDelayFunc) *Sealing {
+func New(api SealingAPI, events Events, maddr address.Address, ds datastore.Batching, sealer sectorstorage.SectorManager, sc SectorIDCounter, verif ffiwrapper.Verifier, pcp PreCommitPolicy, gsd GetSealingDelayFunc, notifee SectorStateNotifee) *Sealing {
 	s := &Sealing{
 		api:    api,
 		events: events,
@@ -100,6 +104,7 @@ func New(api SealingAPI, events Events, maddr address.Address, ds datastore.Batc
 
 		toUpgrade:    map[abi.SectorNumber]struct{}{},
 		getSealDelay: gsd,
+		notifee:      notifee,
 	}
 
 	s.sectors = statemachine.New(namespace.Wrap(ds, datastore.NewKey(SectorStorePrefix)), s, SectorInfo{})
