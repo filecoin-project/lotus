@@ -87,7 +87,7 @@ type FullNodeStruct struct {
 
 		BeaconGetEntry func(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) `perm:"read"`
 
-		GasEsitmateGasPremium func(context.Context, uint64, address.Address, int64, types.TipSetKey) (types.BigInt, error) `perm:"read"`
+		GasEstimateGasPremium func(context.Context, uint64, address.Address, int64, types.TipSetKey) (types.BigInt, error) `perm:"read"`
 		GasEstimateGasLimit   func(context.Context, *types.Message, types.TipSetKey) (int64, error)                        `perm:"read"`
 		GasEstimateFeeCap     func(context.Context, *types.Message, int64, types.TipSetKey) (types.BigInt, error)          `perm:"read"`
 
@@ -434,9 +434,9 @@ func (c *FullNodeStruct) ClientDealSize(ctx context.Context, root cid.Cid) (api.
 	return c.Internal.ClientDealSize(ctx, root)
 }
 
-func (c *FullNodeStruct) GasEsitmateGasPremium(ctx context.Context, nblocksincl uint64,
+func (c *FullNodeStruct) GasEstimateGasPremium(ctx context.Context, nblocksincl uint64,
 	sender address.Address, gaslimit int64, tsk types.TipSetKey) (types.BigInt, error) {
-	return c.Internal.GasEsitmateGasPremium(ctx, nblocksincl, sender, gaslimit, tsk)
+	return c.Internal.GasEstimateGasPremium(ctx, nblocksincl, sender, gaslimit, tsk)
 }
 func (c *FullNodeStruct) GasEstimateFeeCap(ctx context.Context, msg *types.Message,
 	maxqueueblks int64, tsk types.TipSetKey) (types.BigInt, error) {
