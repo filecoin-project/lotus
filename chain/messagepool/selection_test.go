@@ -2,6 +2,8 @@ package messagepool
 
 import (
 	"context"
+	"math/big"
+	"math/rand"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
@@ -12,6 +14,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
@@ -814,7 +817,6 @@ func TestOptimalMessageSelection3(t *testing.T) {
 
 	for _, a := range actors {
 		tma.setBalance(a, 1) // in FIL
-		tma.setBalance(a, 1) // in FIL
 	}
 
 	nMessages := int(build.BlockGasLimit/gasLimit) + 1
@@ -854,5 +856,108 @@ func TestOptimalMessageSelection3(t *testing.T) {
 			t.Fatalf("expected nonce %d but got %d", nextNonce, m.Message.Nonce)
 		}
 		nextNonce++
+	}
+}
+
+func testCompetitiveMessageSelection(t *testing.T) {
+	// in this test we use 100 actors and send 10 blocks of messages.
+	// actors send with an exponentially decreasing premium.
+	// a number of miners select with varying ticket quality and we compare the
+	// capacity and rewards of greedy selection -vs- optimal selection
+
+	mp, tma := makeTestMpool()
+
+	nActors := 100
+	// the actors
+	var actors []address.Address
+	var wallets []*wallet.Wallet
+
+	for i := 0; i < nActors; i++ {
+		w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		a, err := w.GenerateKey(crypto.SigTypeSecp256k1)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		actors = append(actors, a)
+		wallets = append(wallets, w)
+	}
+
+	block := mock.MkBlock(nil, 1, 1)
+	ts := mock.TipSet(block)
+	tma.applyBlock(t, block)
+
+	gasLimit := gasguess.Costs[gasguess.CostKey{builtin.StorageMarketActorCodeID, 2}]
+	baseFee := types.NewInt(0)
+
+	for _, a := range actors {
+		tma.setBalance(a, 1) // in FIL
+	}
+
+	nMessages := 10 * int(build.BlockGasLimit/gasLimit)
+	nonces := make([]uint64, nActors)
+	for i := 0; i < nMessages; i++ {
+		from := rand.Intn(nActors)
+		to := rand.Intn(nActors)
+		premium := 1 + rand.Intn(1000)
+		nonce := nonces[from]
+		nonces[from]++
+		m := makeTestMessage(wallets[from], actors[from], actors[to], uint64(nonce), gasLimit, uint64(premium))
+		mustAdd(t, mp, m)
+	}
+
+	// 1. greedy selection
+	greedyMsgs, err := mp.selectMessagesGreedy(ts, ts)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// 2. optimal selection
+	nMiners := 10
+	optMsgs := make(map[cid.Cid]*types.SignedMessage)
+	for i := 0; i < nMiners; i++ {
+		tq := rand.Float64()
+		msgs, err := mp.SelectMessages(ts, tq)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, m := range msgs {
+			optMsgs[m.Cid()] = m
+		}
+	}
+
+	t.Log("greedy capacity", len(greedyMsgs))
+	t.Log("optimal capacity", len(optMsgs))
+	if len(greedyMsgs) > len(optMsgs) {
+		t.Fatal("greedy capacity higher than optimal capacity; wtf")
+	}
+
+	greedyReward := big.NewInt(0)
+	for _, m := range greedyMsgs {
+		greedyReward.Add(greedyReward, mp.getGasReward(m, baseFee, ts))
+	}
+
+	optReward := big.NewInt(0)
+	for _, m := range optMsgs {
+		optReward.Add(optReward, mp.getGasReward(m, baseFee, ts))
+	}
+
+	t.Log("greedy reward", greedyReward)
+	t.Log("optimal reward", optReward)
+	if greedyReward.Cmp(optReward) > 0 {
+		t.Fatal("greedy reward higher than optimal reward; booh")
+	}
+}
+
+func TestCompetitiveMessageSelection(t *testing.T) {
+	seeds := []int64{1947, 1976, 2020, 2100, 10000}
+	for _, seed := range seeds {
+		t.Log("running competitve message selection with seed", seed)
+		rand.Seed(seed)
+		testCompetitiveMessageSelection(t)
 	}
 }
