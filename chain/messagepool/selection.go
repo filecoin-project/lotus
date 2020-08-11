@@ -104,13 +104,12 @@ func (mp *MessagePool) selectMessagesOptimal(curTs, ts *types.TipSet, tq float64
 	}
 
 	// 3. Parition chains into blocks (without trimming)
-	//    we use the residual gas limit from the priority message selection as those message
-	//    will be unconditionally included
-	residualGasLimit := gasLimit
+	//    we use the full blockGasLimit (as opposed to the residual gas limit from the
+	//    priority message selection) as we have to account for what other miners are doing
 	nextChain := 0
 	partitions := make([][]*msgChain, MaxBlocks)
 	for i := 0; i < MaxBlocks && nextChain < len(chains); i++ {
-		gasLimit := residualGasLimit
+		gasLimit := int64(build.BlockGasLimit)
 		for nextChain < len(chains) {
 			chain := chains[nextChain]
 			partitions[i] = append(partitions[i], chain)
