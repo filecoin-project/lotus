@@ -1031,9 +1031,9 @@ var chainGasPriceCmd = &cli.Command{
 
 		nb := []int{1, 2, 3, 5, 10, 20, 50, 100, 300}
 		for _, nblocks := range nb {
-			addr := builtin.SystemActorAddr // TODO: make real when used in GasEsitmateGasPremium
+			addr := builtin.SystemActorAddr // TODO: make real when used in GasEstimateGasPremium
 
-			est, err := api.GasEsitmateGasPremium(ctx, uint64(nblocks), addr, 10000, types.EmptyTSK)
+			est, err := api.GasEstimateGasPremium(ctx, uint64(nblocks), addr, 10000, types.EmptyTSK)
 			if err != nil {
 				return err
 			}
