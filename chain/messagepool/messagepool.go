@@ -55,7 +55,8 @@ var (
 
 	ErrInvalidToAddr = errors.New("message had invalid to address")
 
-	ErrBroadcastAnyway = errors.New("broadcasting message despite validation fail")
+	ErrBroadcastAnyway  = errors.New("broadcasting message despite validation fail")
+	ErrRBFTooLowPremium = errors.New("replace by fee has too low GasPremium")
 )
 
 const (
@@ -135,8 +136,9 @@ func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool) (bool, error) {
 			} else {
 				log.Info("add with duplicate nonce")
 				return false, xerrors.Errorf("message from %s with nonce %d already in mpool,"+
-					" increase GasPremium to %s from %s to trigger replace by fee",
-					m.Message.From, m.Message.Nonce, minPrice, m.Message.GasPremium)
+					" increase GasPremium to %s from %s to trigger replace by fee: %w",
+					m.Message.From, m.Message.Nonce, minPrice, m.Message.GasPremium,
+					ErrRBFTooLowPremium)
 			}
 		}
 	}
@@ -517,7 +519,7 @@ func (mp *MessagePool) addLocked(m *types.SignedMessage) error {
 	incr, err := mset.add(m, mp)
 	if err != nil {
 		log.Info(err)
-		return err // TODO(review): this error return was dropped at some point, was it on purpose?
+		return err
 	}
 
 	if incr {

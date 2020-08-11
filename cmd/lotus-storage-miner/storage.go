@@ -294,17 +294,17 @@ var storageFindCmd = &cli.Command{
 			Number: abi.SectorNumber(snum),
 		}
 
-		u, err := nodeApi.StorageFindSector(ctx, sid, stores.FTUnsealed, false)
+		u, err := nodeApi.StorageFindSector(ctx, sid, stores.FTUnsealed, 0, false)
 		if err != nil {
 			return xerrors.Errorf("finding unsealed: %w", err)
 		}
 
-		s, err := nodeApi.StorageFindSector(ctx, sid, stores.FTSealed, false)
+		s, err := nodeApi.StorageFindSector(ctx, sid, stores.FTSealed, 0, false)
 		if err != nil {
 			return xerrors.Errorf("finding sealed: %w", err)
 		}
 
-		c, err := nodeApi.StorageFindSector(ctx, sid, stores.FTCache, false)
+		c, err := nodeApi.StorageFindSector(ctx, sid, stores.FTCache, 0, false)
 		if err != nil {
 			return xerrors.Errorf("finding cache: %w", err)
 		}

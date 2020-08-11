@@ -59,7 +59,7 @@ func (a *GasAPI) GasEstimateFeeCap(ctx context.Context, msg *types.Message, maxq
 	return out, nil
 }
 
-func (a *GasAPI) GasEsitmateGasPremium(ctx context.Context, nblocksincl uint64,
+func (a *GasAPI) GasEstimateGasPremium(ctx context.Context, nblocksincl uint64,
 	sender address.Address, gaslimit int64, _ types.TipSetKey) (types.BigInt, error) {
 
 	if nblocksincl == 0 {

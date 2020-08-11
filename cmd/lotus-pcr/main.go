@@ -205,7 +205,7 @@ type processTipSetApi interface {
 	StateMinerInitialPledgeCollateral(ctx context.Context, addr address.Address, precommitInfo miner.SectorPreCommitInfo, tsk types.TipSetKey) (types.BigInt, error)
 	StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error)
 	MpoolPushMessage(ctx context.Context, msg *types.Message) (*types.SignedMessage, error)
-	GasEsitmateGasPremium(ctx context.Context, nblocksincl uint64, sender address.Address, gaslimit int64, tsk types.TipSetKey) (types.BigInt, error)
+	GasEstimateGasPremium(ctx context.Context, nblocksincl uint64, sender address.Address, gaslimit int64, tsk types.TipSetKey) (types.BigInt, error)
 	WalletBalance(ctx context.Context, addr address.Address) (types.BigInt, error)
 }
 
@@ -293,7 +293,7 @@ func ProcessTipset(ctx context.Context, api processTipSetApi, tipset *types.TipS
 		refundValue := refunds.GetRefund(maddr)
 
 		// We want to try and ensure these messages get mined quickly
-		gasPremium, err := api.GasEsitmateGasPremium(ctx, 0, wallet, 0, tipset.Key())
+		gasPremium, err := api.GasEstimateGasPremium(ctx, 0, wallet, 0, tipset.Key())
 		if err != nil {
 			log.Warnw("failed to estimate gas premium", "err", err)
 			continue

@@ -116,25 +116,7 @@ func (a *PaychAPI) PaychSettle(ctx context.Context, addr address.Address) (cid.C
 }
 
 func (a *PaychAPI) PaychCollect(ctx context.Context, addr address.Address) (cid.Cid, error) {
-
-	ci, err := a.PaychMgr.GetChannelInfo(addr)
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	msg := &types.Message{
-		To:     addr,
-		From:   ci.Control,
-		Value:  types.NewInt(0),
-		Method: builtin.MethodsPaych.Collect,
-	}
-
-	smsg, err := a.MpoolPushMessage(ctx, msg)
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	return smsg.Cid(), nil
+	return a.PaychMgr.Collect(ctx, addr)
 }
 
 func (a *PaychAPI) PaychVoucherCheckValid(ctx context.Context, ch address.Address, sv *paych.SignedVoucher) error {
