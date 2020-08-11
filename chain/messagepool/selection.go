@@ -58,8 +58,8 @@ func (mp *MessagePool) selectMessagesOptimal(curTs, ts *types.TipSet, tq float64
 		return nil, xerrors.Errorf("computing basefee: %w", err)
 	}
 
-	// 0. Load messages from the targeti tipset; if it is the same as the current tipset in
-	//    the mpoll, then this is just the pending messages
+	// 0. Load messages from the target tipset; if it is the same as the current tipset in
+	//    the mpool, then this is just the pending messages
 	pending, err := mp.getPendingMessages(curTs, ts)
 	if err != nil {
 		return nil, err
