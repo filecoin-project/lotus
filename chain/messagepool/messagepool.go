@@ -371,17 +371,19 @@ func (mp *MessagePool) runLoop() {
 				log.Errorf("errors while republishing: %+v", errout)
 			}
 
-			journal.MaybeRecordEvent(mp.jrnl, mp.evtTypes[evtTypeMpoolRepub], func() interface{} {
-				msgs := make([]MessagePoolEvt_Message, 0, len(outputMsgs))
-				for _, m := range outputMsgs {
-					msgs = append(msgs, MessagePoolEvt_Message{Message: m.Message, CID: m.Cid()})
-				}
-				return MessagePoolEvt{
-					Action:   "repub",
-					Messages: msgs,
-					Error:    errout,
-				}
-			})
+			if len(outputMsgs) > 0 {
+				journal.MaybeRecordEvent(mp.jrnl, mp.evtTypes[evtTypeMpoolRepub], func() interface{} {
+					msgs := make([]MessagePoolEvt_Message, 0, len(outputMsgs))
+					for _, m := range outputMsgs {
+						msgs = append(msgs, MessagePoolEvt_Message{Message: m.Message, CID: m.Cid()})
+					}
+					return MessagePoolEvt{
+						Action:   "repub",
+						Messages: msgs,
+						Error:    errout,
+					}
+				})
+			}
 
 		case <-mp.pruneTrigger:
 			if err := mp.pruneExcessMessages(); err != nil {
