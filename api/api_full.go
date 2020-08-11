@@ -396,7 +396,7 @@ type FullNode interface {
 	// The Paych methods are for interacting with and managing payment channels
 
 	PaychGet(ctx context.Context, from, to address.Address, amt types.BigInt) (*ChannelInfo, error)
-	PaychGetWaitReady(context.Context, cid.Cid) (address.Address, error)
+	PaychGetWaitReady(context.Context, PaychWaitSentinel) (address.Address, error)
 	PaychList(context.Context) ([]address.Address, error)
 	PaychStatus(context.Context, address.Address) (*PaychStatus, error)
 	PaychSettle(context.Context, address.Address) (cid.Cid, error)
@@ -507,15 +507,17 @@ type PaychStatus struct {
 	Direction   PCHDir
 }
 
+type PaychWaitSentinel cid.Cid
+
 type ChannelInfo struct {
-	Channel        address.Address
-	ChannelMessage cid.Cid
+	Channel      address.Address
+	WaitSentinel PaychWaitSentinel
 }
 
 type PaymentInfo struct {
-	Channel        address.Address
-	ChannelMessage *cid.Cid
-	Vouchers       []*paych.SignedVoucher
+	Channel      address.Address
+	WaitSentinel PaychWaitSentinel
+	Vouchers     []*paych.SignedVoucher
 }
 
 type VoucherSpec struct {

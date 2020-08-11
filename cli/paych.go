@@ -66,7 +66,7 @@ var paychGetCmd = &cli.Command{
 		}
 
 		// Wait for the message to be confirmed
-		chAddr, err := api.PaychGetWaitReady(ctx, info.ChannelMessage)
+		chAddr, err := api.PaychGetWaitReady(ctx, info.WaitSentinel)
 		if err != nil {
 			return err
 		}

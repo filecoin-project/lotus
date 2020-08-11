@@ -43,6 +43,7 @@ func main() {
 	}
 
 	err = gen.WriteMapEncodersToFile("./api/cbor_gen.go", "api",
+		api.PaychWaitSentinel{},
 		api.PaymentInfo{},
 		api.SealedRef{},
 		api.SealedRefs{},
