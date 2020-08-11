@@ -3,7 +3,6 @@ package messagepool
 import (
 	"context"
 	"math/big"
-	"math/rand"
 	"sort"
 	"time"
 
@@ -279,24 +278,6 @@ tailLoop:
 	log.Infow("pack tail chains done", "took", time.Since(startTail))
 
 	return result, nil
-}
-
-func (mp *MessagePool) blockProbabilities(tq float64) []float64 {
-	// TODO FIXME fit in the actual probability distribution
-	//      this just makes a dummy random distribution for testing purposes
-	bps := make([]float64, MaxBlocks)
-	norm := 0.0
-	for i := 0; i < MaxBlocks; i++ {
-		p := rand.Float64()
-		bps[i] = p
-		norm += p
-	}
-	// normalize to make it a distribution
-	for i := 0; i < MaxBlocks; i++ {
-		bps[i] /= norm
-	}
-
-	return bps
 }
 
 func (mp *MessagePool) selectMessagesGreedy(curTs, ts *types.TipSet) ([]*types.SignedMessage, error) {
