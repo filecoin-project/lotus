@@ -61,16 +61,34 @@ func (s *WindowPoStScheduler) doPost(ctx context.Context, deadline *miner.Deadli
 		ctx, span := trace.StartSpan(ctx, "WindowPoStScheduler.doPost")
 		defer span.End()
 
+		// recordEvent records a successful proofs_processed event in the
+		// journal, even if it was a noop (no partitions).
+		recordEvent := func(partitions []miner.PoStPartition, mcid cid.Cid) {
+			journal.MaybeRecordEvent(s.jrnl, s.wdPoStEvtType, func() interface{} {
+				return s.enrichWithTipset(WindowPoStEvt{
+					State:    "proofs_processed",
+					Deadline: s.activeDeadline,
+					Proofs: &WindowPoStEvt_Proofs{
+						Partitions: partitions,
+						MessageCID: mcid,
+					},
+				})
+			})
+		}
+
 		proof, err := s.runPost(ctx, *deadline, ts)
 		switch err {
 		case errNoPartitions:
+			recordEvent(nil, cid.Undef)
 			return
 		case nil:
-			if err := s.submitPost(ctx, proof); err != nil {
+			sm, err := s.submitPost(ctx, proof)
+			if err != nil {
 				log.Errorf("submitPost failed: %+v", err)
 				s.failPost(err, deadline)
 				return
 			}
+			recordEvent(proof.Partitions, sm.Cid())
 		default:
 			log.Errorf("runPost failed: %+v", err)
 			s.failPost(err, deadline)
@@ -495,31 +513,15 @@ func (s *WindowPoStScheduler) sectorInfo(ctx context.Context, deadlineSectors *a
 	return sbsi, nil
 }
 
-func (s *WindowPoStScheduler) submitPost(ctx context.Context, proof *miner.SubmitWindowedPoStParams) error {
+func (s *WindowPoStScheduler) submitPost(ctx context.Context, proof *miner.SubmitWindowedPoStParams) (*types.SignedMessage, error) {
 	ctx, span := trace.StartSpan(ctx, "storage.commitPost")
 	defer span.End()
 
 	var sm *types.SignedMessage
 
-	defer journal.MaybeRecordEvent(s.jrnl, s.wdPoStEvtType, func() interface{} {
-		var mcid cid.Cid
-		if sm != nil {
-			mcid = sm.Cid()
-		}
-
-		return s.enrichWithTipset(WindowPoStEvt{
-			State:    "proofs_processed",
-			Deadline: s.activeDeadline,
-			Proofs: &WindowPoStEvt_Proofs{
-				Partitions: proof.Partitions,
-				MessageCID: mcid,
-			},
-		})
-	})
-
 	enc, aerr := actors.SerializeParams(proof)
 	if aerr != nil {
-		return xerrors.Errorf("could not serialize submit post parameters: %w", aerr)
+		return nil, xerrors.Errorf("could not serialize submit post parameters: %w", aerr)
 	}
 
 	msg := &types.Message{
@@ -534,7 +536,7 @@ func (s *WindowPoStScheduler) submitPost(ctx context.Context, proof *miner.Submi
 	var err error
 	sm, err = s.api.MpoolPushMessage(ctx, msg)
 	if err != nil {
-		return xerrors.Errorf("pushing message to mpool: %w", err)
+		return nil, xerrors.Errorf("pushing message to mpool: %w", err)
 	}
 
 	log.Infof("Submitted window post: %s", sm.Cid())
@@ -553,5 +555,5 @@ func (s *WindowPoStScheduler) submitPost(ctx context.Context, proof *miner.Submi
 		log.Errorf("Submitting window post %s failed: exit %d", sm.Cid(), rec.Receipt.ExitCode)
 	}()
 
-	return nil
+	return sm, nil
 }
