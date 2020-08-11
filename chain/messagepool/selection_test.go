@@ -20,6 +20,7 @@ import (
 
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
+	logging "github.com/ipfs/go-log"
 )
 
 func makeTestMessage(w *wallet.Wallet, from, to address.Address, nonce uint64, gasLimit int64, gasPrice uint64) *types.SignedMessage {
@@ -930,44 +931,48 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand) {
 		nMiners = 1
 	}
 
-	optMsgs := make(map[cid.Cid]*types.SignedMessage)
-	for i := 0; i < nMiners; i++ {
-		tq := rng.Float64()
-		msgs, err := mp.SelectMessages(ts, tq)
-		if err != nil {
-			t.Fatal(err)
+	logging.SetLogLevel("messagepool", "error")
+	for i := 0; i < 1; i++ {
+		optMsgs := make(map[cid.Cid]*types.SignedMessage)
+		for j := 0; j < nMiners; j++ {
+			tq := rng.Float64()
+			msgs, err := mp.SelectMessages(ts, tq)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, m := range msgs {
+				optMsgs[m.Cid()] = m
+			}
 		}
-		for _, m := range msgs {
-			optMsgs[m.Cid()] = m
+
+		t.Logf("nMiners: %d", nMiners)
+		t.Logf("greedy capacity %d, optimal capacity %d (x%.1f)", len(greedyMsgs),
+			len(optMsgs), float64(len(optMsgs))/float64(len(greedyMsgs)))
+		if len(greedyMsgs) > len(optMsgs) {
+			t.Fatal("greedy capacity higher than optimal capacity; wtf")
+		}
+
+		greedyReward := big.NewInt(0)
+		for _, m := range greedyMsgs {
+			greedyReward.Add(greedyReward, mp.getGasReward(m, baseFee, ts))
+		}
+
+		optReward := big.NewInt(0)
+		for _, m := range optMsgs {
+			optReward.Add(optReward, mp.getGasReward(m, baseFee, ts))
+		}
+
+		nMinersBig := big.NewInt(int64(nMiners))
+		greedyAvgReward, _ := new(big.Rat).SetFrac(greedyReward, nMinersBig).Float64()
+		optimalAvgReward, _ := new(big.Rat).SetFrac(optReward, nMinersBig).Float64()
+		t.Logf("greedy reward: %.0f, optimal reward: %.0f (x%.1f)", greedyAvgReward,
+			optimalAvgReward, optimalAvgReward/greedyAvgReward)
+
+		if greedyReward.Cmp(optReward) > 0 {
+			t.Fatal("greedy reward raw higher than optimal reward; booh")
 		}
 	}
-
-	t.Logf("nMiners: %d", nMiners)
-	t.Logf("greedy capacity %d, optimal capacity %d (x%.1f)", len(greedyMsgs),
-		len(optMsgs), float64(len(optMsgs))/float64(len(greedyMsgs)))
-	if len(greedyMsgs) > len(optMsgs) {
-		t.Fatal("greedy capacity higher than optimal capacity; wtf")
-	}
-
-	greedyReward := big.NewInt(0)
-	for _, m := range greedyMsgs {
-		greedyReward.Add(greedyReward, mp.getGasReward(m, baseFee, ts))
-	}
-
-	optReward := big.NewInt(0)
-	for _, m := range optMsgs {
-		optReward.Add(optReward, mp.getGasReward(m, baseFee, ts))
-	}
-
-	nMinersBig := big.NewInt(int64(nMiners))
-	greedyAvgReward, _ := new(big.Rat).SetFrac(greedyReward, nMinersBig).Float64()
-	optimalAvgReward, _ := new(big.Rat).SetFrac(optReward, nMinersBig).Float64()
-	t.Logf("greedy reward: %f, optimal reward: %f (x%.1f)", greedyAvgReward,
-		optimalAvgReward, optimalAvgReward/greedyAvgReward)
-
-	if greedyReward.Cmp(optReward) > 0 {
-		t.Fatal("greedy reward raw higher than optimal reward; booh")
-	}
+	logging.SetLogLevel("messagepool", "info")
 }
 
 func TestCompetitiveMessageSelection(t *testing.T) {

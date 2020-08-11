@@ -111,13 +111,14 @@ func (mp *MessagePool) selectMessagesOptimal(curTs, ts *types.TipSet, tq float64
 		gasLimit := int64(build.BlockGasLimit)
 		for nextChain < len(chains) {
 			chain := chains[nextChain]
-			partitions[i] = append(partitions[i], chain)
 			nextChain++
+			partitions[i] = append(partitions[i], chain)
 			gasLimit -= chain.gasLimit
 			if gasLimit < minGas {
 				break
 			}
 		}
+
 	}
 
 	// 4. Compute effective performance for each chain, based on the partition they fall into
@@ -606,11 +607,11 @@ func (mp *MessagePool) getPendingMessages(curTs, ts *types.TipSet) (map[address.
 }
 
 func (mp *MessagePool) getGasReward(msg *types.SignedMessage, baseFee types.BigInt, ts *types.TipSet) *big.Int {
-	gasReward := abig.Mul(msg.Message.GasPremium, types.NewInt(uint64(msg.Message.GasLimit)))
-	maxReward := types.BigSub(msg.Message.GasFeeCap, baseFee)
-	if types.BigCmp(maxReward, gasReward) < 0 {
-		gasReward = maxReward
+	maxPremium := types.BigSub(msg.Message.GasFeeCap, baseFee)
+	if types.BigCmp(maxPremium, msg.Message.GasPremium) < 0 {
+		maxPremium = msg.Message.GasPremium
 	}
+	gasReward := abig.Mul(maxPremium, types.NewInt(uint64(msg.Message.GasLimit)))
 	return gasReward.Int
 }
 
@@ -795,7 +796,13 @@ func (mc *msgChain) Trim(gasLimit int64, mp *MessagePool, baseFee types.BigInt, 
 		mc.gasReward = new(big.Int).Sub(mc.gasReward, gasReward)
 		mc.gasLimit -= mc.msgs[i].Message.GasLimit
 		if mc.gasLimit > 0 {
+			bp := 1.0
+			if mc.effPerf != 0 {
+				bp = mc.effPerf / mc.gasPerf
+			}
+
 			mc.gasPerf = mp.getGasPerf(mc.gasReward, mc.gasLimit)
+			mc.effPerf = bp * mc.gasPerf
 		} else {
 			mc.gasPerf = 0
 		}
