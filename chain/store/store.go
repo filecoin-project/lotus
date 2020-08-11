@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"io"
 	"os"
+	"strconv"
 	"sync"
 
 	"github.com/filecoin-project/specs-actors/actors/crypto"
@@ -50,6 +51,18 @@ var log = logging.Logger("chainstore")
 var chainHeadKey = dstore.NewKey("head")
 var blockValidationCacheKeyPrefix = dstore.NewKey("blockValidation")
 
+var DefaultTipSetCacheSize = 8192
+
+func init() {
+	if s := os.Getenv("LOTUS_CHAIN_TIPSET_CACHE"); s != "" {
+		tscs, err := strconv.Atoi(s)
+		if err != nil {
+			log.Errorf("failed to parse 'LOTUS_CHAIN_TIPSET_CACHE' env var: %s", err)
+		}
+		DefaultTipSetCacheSize = tscs
+	}
+}
+
 // ReorgNotifee represents a callback that gets called upon reorgs.
 type ReorgNotifee func(rev, app []*types.TipSet) error
 
@@ -88,7 +101,7 @@ type ChainStore struct {
 
 func NewChainStore(bs bstore.Blockstore, ds dstore.Batching, vmcalls runtime.Syscalls) *ChainStore {
 	c, _ := lru.NewARC(2048)
-	tsc, _ := lru.NewARC(4096)
+	tsc, _ := lru.NewARC(DefaultTipSetCacheSize)
 	cs := &ChainStore{
 		bs:       bs,
 		ds:       ds,
