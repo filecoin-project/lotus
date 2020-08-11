@@ -465,6 +465,7 @@ type DealInfo struct {
 }
 
 type MsgLookup struct {
+	Message   cid.Cid // Can be different than requested, in case it was replaced, but only gas values changed
 	Receipt   types.MessageReceipt
 	ReturnDec interface{}
 	TipSet    types.TipSetKey
