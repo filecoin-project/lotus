@@ -12,7 +12,7 @@ import (
 )
 
 type stateAccessor struct {
-	sm StateManagerApi
+	sm stateManagerAPI
 }
 
 func (ca *stateAccessor) loadPaychState(ctx context.Context, ch address.Address) (*types.Actor, *paych.State, error) {

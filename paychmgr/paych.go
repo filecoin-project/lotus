@@ -24,9 +24,8 @@ type channelAccessor struct {
 	// waitCtx is used by processes that wait for things to be confirmed
 	// on chain
 	waitCtx       context.Context
-	sm            StateManagerApi
 	sa            *stateAccessor
-	api           paychApi
+	api           managerAPI
 	store         *Store
 	lk            *channelLock
 	fundsReqQueue []*fundsReq
@@ -36,8 +35,7 @@ type channelAccessor struct {
 func newChannelAccessor(pm *Manager) *channelAccessor {
 	return &channelAccessor{
 		lk:           &channelLock{globalLock: &pm.lk},
-		sm:           pm.sm,
-		sa:           &stateAccessor{sm: pm.sm},
+		sa:           pm.sa,
 		api:          pm.pchapi,
 		store:        pm.store,
 		msgListeners: newMsgListeners(),
@@ -70,7 +68,7 @@ func (ca *channelAccessor) checkVoucherValidUnlocked(ctx context.Context, ch add
 	}
 
 	var actState account.State
-	_, err = ca.sm.LoadActorState(ctx, pchState.From, &actState, nil)
+	_, err = ca.api.LoadActorState(ctx, pchState.From, &actState, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -181,7 +179,7 @@ func (ca *channelAccessor) checkVoucherSpendable(ctx context.Context, ch address
 		return false, err
 	}
 
-	ret, err := ca.sm.Call(ctx, &types.Message{
+	ret, err := ca.api.Call(ctx, &types.Message{
 		From:   recipient,
 		To:     ch,
 		Method: builtin.MethodsPaych.UpdateChannelState,
@@ -200,7 +198,7 @@ func (ca *channelAccessor) checkVoucherSpendable(ctx context.Context, ch address
 
 func (ca *channelAccessor) getPaychRecipient(ctx context.Context, ch address.Address) (address.Address, error) {
 	var state paych.State
-	if _, err := ca.sm.LoadActorState(ctx, ch, &state, nil); err != nil {
+	if _, err := ca.api.LoadActorState(ctx, ch, &state, nil); err != nil {
 		return address.Address{}, err
 	}
 
