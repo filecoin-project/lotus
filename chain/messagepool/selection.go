@@ -454,6 +454,9 @@ func (mp *MessagePool) createMessageChains(actor address.Address, mset map[uint6
 	} else {
 		return nil
 	}
+	if len(msgs) == 0 {
+		return nil
+	}
 
 	// ok, now we can construct the chains using the messages we have
 	// invariant: each chain has a bigger gasPerf than the next -- otherwise they can be merged
