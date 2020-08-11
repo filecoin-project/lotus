@@ -123,7 +123,7 @@ func (m *Sealing) checkCommit(ctx context.Context, si SectorInfo, proof []byte, 
 		return err
 	}
 
-	seed, err := m.api.ChainGetRandomness(ctx, tok, crypto.DomainSeparationTag_InteractiveSealChallengeSeed, si.SeedEpoch, buf.Bytes())
+	seed, err := m.api.ChainGetRandomnessFromBeacon(ctx, tok, crypto.DomainSeparationTag_InteractiveSealChallengeSeed, si.SeedEpoch, buf.Bytes())
 	if err != nil {
 		return &ErrApi{xerrors.Errorf("failed to get randomness for computing seal proof: %w", err)}
 	}

@@ -310,7 +310,18 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 	if err := s.actor.MarshalCBOR(buf); err != nil {
 		return nil, xerrors.Errorf("failed to marshal address to cbor: %w", err)
 	}
-	rand, err := s.api.ChainGetRandomness(ctx, ts.Key(), crypto.DomainSeparationTag_WindowedPoStChallengeSeed, di.Challenge, buf.Bytes())
+	// TODO: This needs to use the beacon now.
+	rand, err := s.api.ChainGetRandomnessFromBeacon(ctx, ts.Key(), crypto.DomainSeparationTag_WindowedPoStChallengeSeed, di.Challenge, buf.Bytes())
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get chain randomness for windowPost (ts=%d; deadline=%d): %w", ts.Height(), di, err)
+	}
+
+	// TODO: we should probably compute this when _submitting_ the ticket to
+	// get a fresher value. If it's more than ChallengeWindow epochs out of
+	// date by the time we submit, it'll be rejected.
+	// TODO: we need a better lookback value, but I'm not sure what it should be.
+	commEpoch := ts.Height() - StartConfidence
+	commRand, err := s.api.ChainGetRandomnessFromTickets(ctx, ts.Key(), crypto.DomainSeparationTag_PoStChainCommit, commEpoch, nil)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get chain randomness for windowPost (ts=%d; deadline=%d): %w", ts.Height(), di, err)
 	}
@@ -321,9 +332,11 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 	}
 
 	params := &miner.SubmitWindowedPoStParams{
-		Deadline:   di.Index,
-		Partitions: make([]miner.PoStPartition, 0, len(partitions)),
-		Proofs:     nil,
+		Deadline:         di.Index,
+		Partitions:       make([]miner.PoStPartition, 0, len(partitions)),
+		Proofs:           nil,
+		ChainCommitEpoch: commEpoch,
+		ChainCommitRand:  commRand,
 	}
 
 	var sinfos []abi.SectorInfo
