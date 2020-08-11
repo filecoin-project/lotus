@@ -693,7 +693,7 @@ func (mp *MessagePool) createMessageChains(actor address.Address, mset map[uint6
 	}
 
 	// check we have a sane set of messages to construct the chains
-	if i > 0 {
+	if i > skip {
 		msgs = msgs[skip:i]
 	} else {
 		return nil
