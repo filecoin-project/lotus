@@ -2,6 +2,7 @@ package messagepool
 
 import (
 	"context"
+	"math"
 	"math/big"
 	"math/rand"
 	"testing"
@@ -859,7 +860,7 @@ func TestOptimalMessageSelection3(t *testing.T) {
 	}
 }
 
-func testCompetitiveMessageSelection(t *testing.T) {
+func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand) {
 	// in this test we use 100 actors and send 10 blocks of messages.
 	// actors send with an exponentially decreasing premium.
 	// a number of miners select with varying ticket quality and we compare the
@@ -867,7 +868,7 @@ func testCompetitiveMessageSelection(t *testing.T) {
 
 	mp, tma := makeTestMpool()
 
-	nActors := 100
+	nActors := 300
 	// the actors
 	var actors []address.Address
 	var wallets []*wallet.Wallet
@@ -899,11 +900,12 @@ func testCompetitiveMessageSelection(t *testing.T) {
 	}
 
 	nMessages := 10 * int(build.BlockGasLimit/gasLimit)
+	t.Log("nMessages", nMessages)
 	nonces := make([]uint64, nActors)
 	for i := 0; i < nMessages; i++ {
-		from := rand.Intn(nActors)
-		to := rand.Intn(nActors)
-		premium := 1 + rand.Intn(1000)
+		from := rng.Intn(nActors)
+		to := rng.Intn(nActors)
+		premium := 20000*math.Exp(-3.*rand.Float64()) + 5000
 		nonce := nonces[from]
 		nonces[from]++
 		m := makeTestMessage(wallets[from], actors[from], actors[to], uint64(nonce), gasLimit, uint64(premium))
@@ -917,10 +919,20 @@ func testCompetitiveMessageSelection(t *testing.T) {
 	}
 
 	// 2. optimal selection
-	nMiners := 10
+	minersRand := rng.Float64()
+	winerProba := noWinnersProb()
+	i := 0
+	for ; i < MaxBlocks && minersRand > 0; i++ {
+		minersRand -= winerProba[i]
+	}
+	nMiners := i
+	if nMiners == 0 {
+		nMiners = 1
+	}
+
 	optMsgs := make(map[cid.Cid]*types.SignedMessage)
 	for i := 0; i < nMiners; i++ {
-		tq := rand.Float64()
+		tq := rng.Float64()
 		msgs, err := mp.SelectMessages(ts, tq)
 		if err != nil {
 			t.Fatal(err)
@@ -930,8 +942,9 @@ func testCompetitiveMessageSelection(t *testing.T) {
 		}
 	}
 
-	t.Log("greedy capacity", len(greedyMsgs))
-	t.Log("optimal capacity", len(optMsgs))
+	t.Logf("nMiners: %d", nMiners)
+	t.Logf("greedy capacity %d, optimal capacity %d (x%.1f)", len(greedyMsgs),
+		len(optMsgs), float64(len(optMsgs))/float64(len(greedyMsgs)))
 	if len(greedyMsgs) > len(optMsgs) {
 		t.Fatal("greedy capacity higher than optimal capacity; wtf")
 	}
@@ -946,10 +959,14 @@ func testCompetitiveMessageSelection(t *testing.T) {
 		optReward.Add(optReward, mp.getGasReward(m, baseFee, ts))
 	}
 
-	t.Log("greedy reward", greedyReward)
-	t.Log("optimal reward", optReward)
+	nMinersBig := big.NewInt(int64(nMiners))
+	greedyAvgReward, _ := new(big.Rat).SetFrac(greedyReward, nMinersBig).Float64()
+	optimalAvgReward, _ := new(big.Rat).SetFrac(optReward, nMinersBig).Float64()
+	t.Logf("greedy reward: %f, optimal reward: %f (x%.1f)", greedyAvgReward,
+		optimalAvgReward, optimalAvgReward/greedyAvgReward)
+
 	if greedyReward.Cmp(optReward) > 0 {
-		t.Fatal("greedy reward higher than optimal reward; booh")
+		t.Fatal("greedy reward raw higher than optimal reward; booh")
 	}
 }
 
@@ -957,7 +974,6 @@ func TestCompetitiveMessageSelection(t *testing.T) {
 	seeds := []int64{1947, 1976, 2020, 2100, 10000}
 	for _, seed := range seeds {
 		t.Log("running competitve message selection with seed", seed)
-		rand.Seed(seed)
-		testCompetitiveMessageSelection(t)
+		testCompetitiveMessageSelection(t, rand.New(rand.NewSource(seed)))
 	}
 }
