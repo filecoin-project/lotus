@@ -33,7 +33,7 @@ func init() {
 			if err != nil {
 				return err
 			}
-			msgs, err := api.MpoolSelect(ctx, head.Key())
+			msgs, err := api.MpoolSelect(ctx, head.Key(), 1)
 			if err != nil {
 				return err
 			}
