@@ -123,14 +123,18 @@ func (mp *MessagePool) selectMessagesOptimal(curTs, ts *types.TipSet, tq float64
 
 	// 4. Compute effective performance for each chain, based on the partition they fall into
 	//    The effective performance is the gasPerf of the chain * block probability
-	//    Note that we don't have to do anything special about residues that didn't fit in any
-	//    partition because these will already have an effective perf of 0 and will be pushed
-	//    to the end by virtue of smaller gasPerf.
 	blockProb := mp.blockProbabilities(tq)
+	effChains := 0
 	for i := 0; i < MaxBlocks; i++ {
 		for _, chain := range partitions[i] {
 			chain.SetEffectivePerf(blockProb[i])
 		}
+		effChains += len(partitions[i])
+	}
+
+	// nullify the effective performance of chains that don't fit in any partition
+	for _, chain := range chains[effChains:] {
+		chain.SetNullEffectivePerf()
 	}
 
 	// 5. Resort the chains based on effective performance
@@ -841,6 +845,14 @@ func (mc *msgChain) Invalidate() {
 
 func (mc *msgChain) SetEffectivePerf(bp float64) {
 	mc.effPerf = mc.gasPerf * bp
+}
+
+func (mc *msgChain) SetNullEffectivePerf() {
+	if mc.gasPerf < 0 {
+		mc.effPerf = mc.gasPerf
+	} else {
+		mc.effPerf = 0
+	}
 }
 
 func (mc *msgChain) BeforeEffective(other *msgChain) bool {
