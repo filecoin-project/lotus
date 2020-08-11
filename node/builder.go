@@ -255,6 +255,7 @@ func Online() Option {
 			Override(new(*peermgr.PeerMgr), peermgr.NewPeerMgr),
 
 			Override(new(dtypes.Graphsync), modules.Graphsync),
+			Override(new(*dtypes.MpoolLocker), new(dtypes.MpoolLocker)),
 
 			Override(RunHelloKey, modules.RunHello),
 			Override(RunBlockSyncKey, modules.RunBlockSync),
