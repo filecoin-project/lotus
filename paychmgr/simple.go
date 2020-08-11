@@ -8,8 +8,6 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
-	"github.com/filecoin-project/lotus/api"
-
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -24,11 +22,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 )
-
-type paychApi interface {
-	StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64) (*api.MsgLookup, error)
-	MpoolPushMessage(ctx context.Context, msg *types.Message) (*types.SignedMessage, error)
-}
 
 // paychFundsRes is the response to a create channel or add funds request
 type paychFundsRes struct {

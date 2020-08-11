@@ -2,8 +2,6 @@ package paychmgr
 
 import (
 	"context"
-	"fmt"
-	"sync"
 	"testing"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -24,63 +22,11 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 
 	ds "github.com/ipfs/go-datastore"
 	ds_sync "github.com/ipfs/go-datastore/sync"
 )
-
-type testPchState struct {
-	actor *types.Actor
-	state paych.State
-}
-
-type mockStateManager struct {
-	lk           sync.Mutex
-	accountState map[address.Address]account.State
-	paychState   map[address.Address]testPchState
-	response     *api.InvocResult
-}
-
-func newMockStateManager() *mockStateManager {
-	return &mockStateManager{
-		accountState: make(map[address.Address]account.State),
-		paychState:   make(map[address.Address]testPchState),
-	}
-}
-
-func (sm *mockStateManager) setAccountState(a address.Address, state account.State) {
-	sm.lk.Lock()
-	defer sm.lk.Unlock()
-	sm.accountState[a] = state
-}
-
-func (sm *mockStateManager) setPaychState(a address.Address, actor *types.Actor, state paych.State) {
-	sm.lk.Lock()
-	defer sm.lk.Unlock()
-	sm.paychState[a] = testPchState{actor, state}
-}
-
-func (sm *mockStateManager) LoadActorState(ctx context.Context, a address.Address, out interface{}, ts *types.TipSet) (*types.Actor, error) {
-	sm.lk.Lock()
-	defer sm.lk.Unlock()
-
-	if outState, ok := out.(*account.State); ok {
-		*outState = sm.accountState[a]
-		return nil, nil
-	}
-	if outState, ok := out.(*paych.State); ok {
-		info := sm.paychState[a]
-		*outState = info.state
-		return info.actor, nil
-	}
-	panic(fmt.Sprintf("unexpected state type %v", out))
-}
-
-func (sm *mockStateManager) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*api.InvocResult, error) {
-	return sm.response, nil
-}
 
 func TestPaychOutbound(t *testing.T) {
 	ctx := context.Background()
@@ -92,10 +38,10 @@ func TestPaychOutbound(t *testing.T) {
 	fromAcct := tutils.NewIDAddr(t, 201)
 	toAcct := tutils.NewIDAddr(t, 202)
 
-	sm := newMockStateManager()
-	sm.setAccountState(fromAcct, account.State{Address: from})
-	sm.setAccountState(toAcct, account.State{Address: to})
-	sm.setPaychState(ch, nil, paych.State{
+	mock := newMockManagerAPI()
+	mock.setAccountState(fromAcct, account.State{Address: from})
+	mock.setAccountState(toAcct, account.State{Address: to})
+	mock.setPaychState(ch, nil, paych.State{
 		From:            fromAcct,
 		To:              toAcct,
 		ToSend:          big.NewInt(0),
@@ -104,7 +50,7 @@ func TestPaychOutbound(t *testing.T) {
 		LaneStates:      []*paych.LaneState{},
 	})
 
-	mgr, err := newManager(sm, store, nil)
+	mgr, err := newManager(store, mock)
 	require.NoError(t, err)
 
 	err = mgr.TrackOutboundChannel(ctx, ch)
@@ -130,10 +76,10 @@ func TestPaychInbound(t *testing.T) {
 	fromAcct := tutils.NewIDAddr(t, 201)
 	toAcct := tutils.NewIDAddr(t, 202)
 
-	sm := newMockStateManager()
-	sm.setAccountState(fromAcct, account.State{Address: from})
-	sm.setAccountState(toAcct, account.State{Address: to})
-	sm.setPaychState(ch, nil, paych.State{
+	mock := newMockManagerAPI()
+	mock.setAccountState(fromAcct, account.State{Address: from})
+	mock.setAccountState(toAcct, account.State{Address: to})
+	mock.setPaychState(ch, nil, paych.State{
 		From:            fromAcct,
 		To:              toAcct,
 		ToSend:          big.NewInt(0),
@@ -142,7 +88,7 @@ func TestPaychInbound(t *testing.T) {
 		LaneStates:      []*paych.LaneState{},
 	})
 
-	mgr, err := newManager(sm, store, nil)
+	mgr, err := newManager(store, mock)
 	require.NoError(t, err)
 
 	err = mgr.TrackInboundChannel(ctx, ch)
@@ -170,9 +116,9 @@ func TestCheckVoucherValid(t *testing.T) {
 	fromAcct := tutils.NewActorAddr(t, "fromAct")
 	toAcct := tutils.NewActorAddr(t, "toAct")
 
-	sm := newMockStateManager()
-	sm.setAccountState(fromAcct, account.State{Address: from})
-	sm.setAccountState(toAcct, account.State{Address: to})
+	mock := newMockManagerAPI()
+	mock.setAccountState(fromAcct, account.State{Address: from})
+	mock.setAccountState(toAcct, account.State{Address: to})
 
 	tcases := []struct {
 		name          string
@@ -316,7 +262,7 @@ func TestCheckVoucherValid(t *testing.T) {
 				Nonce:   0,
 				Balance: tcase.actorBalance,
 			}
-			sm.setPaychState(ch, act, paych.State{
+			mock.setPaychState(ch, act, paych.State{
 				From:            fromAcct,
 				To:              toAcct,
 				ToSend:          tcase.toSend,
@@ -325,7 +271,7 @@ func TestCheckVoucherValid(t *testing.T) {
 				LaneStates:      tcase.laneStates,
 			})
 
-			mgr, err := newManager(sm, store, nil)
+			mgr, err := newManager(store, mock)
 			require.NoError(t, err)
 
 			err = mgr.TrackInboundChannel(ctx, ch)
@@ -355,9 +301,9 @@ func TestCheckVoucherValidCountingAllLanes(t *testing.T) {
 	toAcct := tutils.NewActorAddr(t, "toAct")
 	minDelta := big.NewInt(0)
 
-	sm := newMockStateManager()
-	sm.setAccountState(fromAcct, account.State{Address: from})
-	sm.setAccountState(toAcct, account.State{Address: to})
+	mock := newMockManagerAPI()
+	mock.setAccountState(fromAcct, account.State{Address: from})
+	mock.setAccountState(toAcct, account.State{Address: to})
 
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
 
@@ -379,7 +325,7 @@ func TestCheckVoucherValidCountingAllLanes(t *testing.T) {
 		Nonce:   0,
 		Balance: actorBalance,
 	}
-	sm.setPaychState(ch, act, paych.State{
+	mock.setPaychState(ch, act, paych.State{
 		From:            fromAcct,
 		To:              toAcct,
 		ToSend:          toSend,
@@ -388,7 +334,7 @@ func TestCheckVoucherValidCountingAllLanes(t *testing.T) {
 		LaneStates:      laneStates,
 	})
 
-	mgr, err := newManager(sm, store, nil)
+	mgr, err := newManager(store, mock)
 	require.NoError(t, err)
 
 	err = mgr.TrackInboundChannel(ctx, ch)
@@ -678,9 +624,9 @@ func testSetupMgrWithChannel(ctx context.Context, t *testing.T) (*Manager, addre
 	fromAcct := tutils.NewActorAddr(t, "fromAct")
 	toAcct := tutils.NewActorAddr(t, "toAct")
 
-	sm := newMockStateManager()
-	sm.setAccountState(fromAcct, account.State{Address: from})
-	sm.setAccountState(toAcct, account.State{Address: to})
+	mock := newMockManagerAPI()
+	mock.setAccountState(fromAcct, account.State{Address: from})
+	mock.setAccountState(toAcct, account.State{Address: to})
 
 	act := &types.Actor{
 		Code:    builtin.AccountActorCodeID,
@@ -688,7 +634,7 @@ func testSetupMgrWithChannel(ctx context.Context, t *testing.T) (*Manager, addre
 		Nonce:   0,
 		Balance: big.NewInt(20),
 	}
-	sm.setPaychState(ch, act, paych.State{
+	mock.setPaychState(ch, act, paych.State{
 		From:            fromAcct,
 		To:              toAcct,
 		ToSend:          big.NewInt(0),
@@ -698,7 +644,7 @@ func testSetupMgrWithChannel(ctx context.Context, t *testing.T) (*Manager, addre
 	})
 
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
-	mgr, err := newManager(sm, store, nil)
+	mgr, err := newManager(store, mock)
 	require.NoError(t, err)
 
 	err = mgr.TrackInboundChannel(ctx, ch)

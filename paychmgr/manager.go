@@ -27,17 +27,36 @@ import (
 
 var log = logging.Logger("paych")
 
-type ManagerApi struct {
+// PaychAPI is used by dependency injection to pass the consituent APIs to NewManager()
+type PaychAPI struct {
 	fx.In
 
 	full.MpoolAPI
-	full.WalletAPI
 	full.StateAPI
 }
 
-type StateManagerApi interface {
+// stateManagerAPI defines the methods needed from StateManager
+type stateManagerAPI interface {
 	LoadActorState(ctx context.Context, a address.Address, out interface{}, ts *types.TipSet) (*types.Actor, error)
 	Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*api.InvocResult, error)
+}
+
+// paychAPI defines the API methods needed by the payment channel manager
+type paychAPI interface {
+	StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64) (*api.MsgLookup, error)
+	MpoolPushMessage(ctx context.Context, msg *types.Message) (*types.SignedMessage, error)
+}
+
+// managerAPI defines all methods needed by the manager
+type managerAPI interface {
+	stateManagerAPI
+	paychAPI
+}
+
+// managerAPIImpl is used to create a composite that implements managerAPI
+type managerAPIImpl struct {
+	stateManagerAPI
+	paychAPI
 }
 
 type Manager struct {
@@ -46,43 +65,33 @@ type Manager struct {
 	shutdown context.CancelFunc
 
 	store  *Store
-	sm     StateManagerApi
 	sa     *stateAccessor
-	pchapi paychApi
+	pchapi managerAPI
 
 	lk       sync.RWMutex
 	channels map[string]*channelAccessor
-
-	mpool  full.MpoolAPI
-	wallet full.WalletAPI
-	state  full.StateAPI
 }
 
-func NewManager(mctx helpers.MetricsCtx, lc fx.Lifecycle, sm *stmgr.StateManager, pchstore *Store, api ManagerApi) *Manager {
+func NewManager(mctx helpers.MetricsCtx, lc fx.Lifecycle, sm *stmgr.StateManager, pchstore *Store, api PaychAPI) *Manager {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 	ctx, shutdown := context.WithCancel(ctx)
 
+	impl := &managerAPIImpl{stateManagerAPI: sm, paychAPI: &api}
 	return &Manager{
 		ctx:      ctx,
 		shutdown: shutdown,
 		store:    pchstore,
-		sm:       sm,
-		sa:       &stateAccessor{sm: sm},
+		sa:       &stateAccessor{sm: impl},
 		channels: make(map[string]*channelAccessor),
-		pchapi:   &api,
-
-		mpool:  api.MpoolAPI,
-		wallet: api.WalletAPI,
-		state:  api.StateAPI,
+		pchapi:   impl,
 	}
 }
 
 // newManager is used by the tests to supply mocks
-func newManager(sm StateManagerApi, pchstore *Store, pchapi paychApi) (*Manager, error) {
+func newManager(pchstore *Store, pchapi managerAPI) (*Manager, error) {
 	pm := &Manager{
 		store:    pchstore,
-		sm:       sm,
-		sa:       &stateAccessor{sm: sm},
+		sa:       &stateAccessor{sm: pchapi},
 		channels: make(map[string]*channelAccessor),
 		pchapi:   pchapi,
 	}

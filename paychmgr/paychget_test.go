@@ -12,7 +12,6 @@ import (
 
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 
 	"github.com/filecoin-project/go-address"
@@ -25,109 +24,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 )
-
-type waitingCall struct {
-	response chan types.MessageReceipt
-}
-
-type waitingResponse struct {
-	receipt types.MessageReceipt
-	done    chan struct{}
-}
-
-type mockPaychAPI struct {
-	lk               sync.Mutex
-	messages         map[cid.Cid]*types.SignedMessage
-	waitingCalls     map[cid.Cid]*waitingCall
-	waitingResponses map[cid.Cid]*waitingResponse
-}
-
-func newMockPaychAPI() *mockPaychAPI {
-	return &mockPaychAPI{
-		messages:         make(map[cid.Cid]*types.SignedMessage),
-		waitingCalls:     make(map[cid.Cid]*waitingCall),
-		waitingResponses: make(map[cid.Cid]*waitingResponse),
-	}
-}
-
-func (pchapi *mockPaychAPI) StateWaitMsg(ctx context.Context, mcid cid.Cid, confidence uint64) (*api.MsgLookup, error) {
-	pchapi.lk.Lock()
-
-	response := make(chan types.MessageReceipt)
-
-	if response, ok := pchapi.waitingResponses[mcid]; ok {
-		defer pchapi.lk.Unlock()
-		defer func() {
-			go close(response.done)
-		}()
-
-		delete(pchapi.waitingResponses, mcid)
-		return &api.MsgLookup{Receipt: response.receipt}, nil
-	}
-
-	pchapi.waitingCalls[mcid] = &waitingCall{response: response}
-	pchapi.lk.Unlock()
-
-	receipt := <-response
-	return &api.MsgLookup{Receipt: receipt}, nil
-}
-
-func (pchapi *mockPaychAPI) receiveMsgResponse(mcid cid.Cid, receipt types.MessageReceipt) {
-	pchapi.lk.Lock()
-
-	if call, ok := pchapi.waitingCalls[mcid]; ok {
-		defer pchapi.lk.Unlock()
-
-		delete(pchapi.waitingCalls, mcid)
-		call.response <- receipt
-		return
-	}
-
-	done := make(chan struct{})
-	pchapi.waitingResponses[mcid] = &waitingResponse{receipt: receipt, done: done}
-
-	pchapi.lk.Unlock()
-
-	<-done
-}
-
-// Send success response for any waiting calls
-func (pchapi *mockPaychAPI) close() {
-	pchapi.lk.Lock()
-	defer pchapi.lk.Unlock()
-
-	success := types.MessageReceipt{
-		ExitCode: 0,
-		Return:   []byte{},
-	}
-	for mcid, call := range pchapi.waitingCalls {
-		delete(pchapi.waitingCalls, mcid)
-		call.response <- success
-	}
-}
-
-func (pchapi *mockPaychAPI) MpoolPushMessage(ctx context.Context, msg *types.Message) (*types.SignedMessage, error) {
-	pchapi.lk.Lock()
-	defer pchapi.lk.Unlock()
-
-	smsg := &types.SignedMessage{Message: *msg}
-	pchapi.messages[smsg.Cid()] = smsg
-	return smsg, nil
-}
-
-func (pchapi *mockPaychAPI) pushedMessages(c cid.Cid) *types.SignedMessage {
-	pchapi.lk.Lock()
-	defer pchapi.lk.Unlock()
-
-	return pchapi.messages[c]
-}
-
-func (pchapi *mockPaychAPI) pushedMessageCount() int {
-	pchapi.lk.Lock()
-	defer pchapi.lk.Unlock()
-
-	return len(pchapi.messages)
-}
 
 func testChannelResponse(t *testing.T, ch address.Address) types.MessageReceipt {
 	createChannelRet := init_.ExecReturn{
@@ -152,11 +48,10 @@ func TestPaychGetCreateChannelMsg(t *testing.T) {
 	from := tutils.NewIDAddr(t, 101)
 	to := tutils.NewIDAddr(t, 102)
 
-	sm := newMockStateManager()
-	pchapi := newMockPaychAPI()
-	defer pchapi.close()
+	mock := newMockManagerAPI()
+	defer mock.close()
 
-	mgr, err := newManager(sm, store, pchapi)
+	mgr, err := newManager(store, mock)
 	require.NoError(t, err)
 
 	amt := big.NewInt(10)
@@ -164,7 +59,7 @@ func TestPaychGetCreateChannelMsg(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, address.Undef, ch)
 
-	pushedMsg := pchapi.pushedMessages(mcid)
+	pushedMsg := mock.pushedMessages(mcid)
 	require.Equal(t, from, pushedMsg.Message.From)
 	require.Equal(t, builtin.InitActorAddr, pushedMsg.Message.To)
 	require.Equal(t, amt, pushedMsg.Message.Value)
@@ -180,11 +75,10 @@ func TestPaychGetCreateChannelThenAddFunds(t *testing.T) {
 	from := tutils.NewIDAddr(t, 101)
 	to := tutils.NewIDAddr(t, 102)
 
-	sm := newMockStateManager()
-	pchapi := newMockPaychAPI()
-	defer pchapi.close()
+	mock := newMockManagerAPI()
+	defer mock.close()
 
-	mgr, err := newManager(sm, store, pchapi)
+	mgr, err := newManager(store, mock)
 	require.NoError(t, err)
 
 	// Send create message for a channel with value 10
@@ -234,7 +128,7 @@ func TestPaychGetCreateChannelThenAddFunds(t *testing.T) {
 		require.Nil(t, ci.CreateMsg)
 
 		// Trigger add funds confirmation
-		pchapi.receiveMsgResponse(addFundsMsgCid, types.MessageReceipt{ExitCode: 0})
+		mock.receiveMsgResponse(addFundsMsgCid, types.MessageReceipt{ExitCode: 0})
 
 		// Wait for add funds confirmation to be processed by manager
 		_, err = mgr.GetPaychWaitReady(ctx, addFundsMsgCid)
@@ -255,7 +149,7 @@ func TestPaychGetCreateChannelThenAddFunds(t *testing.T) {
 	}()
 
 	// 3. Send create channel response
-	pchapi.receiveMsgResponse(createMsgCid, response)
+	mock.receiveMsgResponse(createMsgCid, response)
 
 	<-done
 }
@@ -270,11 +164,10 @@ func TestPaychGetCreateChannelWithErrorThenCreateAgain(t *testing.T) {
 	from := tutils.NewIDAddr(t, 101)
 	to := tutils.NewIDAddr(t, 102)
 
-	sm := newMockStateManager()
-	pchapi := newMockPaychAPI()
-	defer pchapi.close()
+	mock := newMockManagerAPI()
+	defer mock.close()
 
-	mgr, err := newManager(sm, store, pchapi)
+	mgr, err := newManager(store, mock)
 	require.NoError(t, err)
 
 	// Send create message for a channel
@@ -304,7 +197,7 @@ func TestPaychGetCreateChannelWithErrorThenCreateAgain(t *testing.T) {
 		// 4. Send a success response
 		ch := tutils.NewIDAddr(t, 100)
 		successResponse := testChannelResponse(t, ch)
-		pchapi.receiveMsgResponse(mcid2, successResponse)
+		mock.receiveMsgResponse(mcid2, successResponse)
 
 		_, err = mgr.GetPaychWaitReady(ctx, mcid2)
 		require.NoError(t, err)
@@ -321,7 +214,7 @@ func TestPaychGetCreateChannelWithErrorThenCreateAgain(t *testing.T) {
 	}()
 
 	// 3. Send error response to first channel create
-	pchapi.receiveMsgResponse(mcid1, errResponse)
+	mock.receiveMsgResponse(mcid1, errResponse)
 
 	<-done
 }
@@ -336,11 +229,10 @@ func TestPaychGetRecoverAfterError(t *testing.T) {
 	from := tutils.NewIDAddr(t, 101)
 	to := tutils.NewIDAddr(t, 102)
 
-	sm := newMockStateManager()
-	pchapi := newMockPaychAPI()
-	defer pchapi.close()
+	mock := newMockManagerAPI()
+	defer mock.close()
 
-	mgr, err := newManager(sm, store, pchapi)
+	mgr, err := newManager(store, mock)
 	require.NoError(t, err)
 
 	// Send create message for a channel
@@ -349,7 +241,7 @@ func TestPaychGetRecoverAfterError(t *testing.T) {
 	require.NoError(t, err)
 
 	// Send error create channel response
-	pchapi.receiveMsgResponse(mcid, types.MessageReceipt{
+	mock.receiveMsgResponse(mcid, types.MessageReceipt{
 		ExitCode: 1, // error
 		Return:   []byte{},
 	})
@@ -361,7 +253,7 @@ func TestPaychGetRecoverAfterError(t *testing.T) {
 
 	// Send success create channel response
 	response := testChannelResponse(t, ch)
-	pchapi.receiveMsgResponse(mcid2, response)
+	mock.receiveMsgResponse(mcid2, response)
 
 	_, err = mgr.GetPaychWaitReady(ctx, mcid2)
 	require.NoError(t, err)
@@ -389,11 +281,10 @@ func TestPaychGetRecoverAfterAddFundsError(t *testing.T) {
 	from := tutils.NewIDAddr(t, 101)
 	to := tutils.NewIDAddr(t, 102)
 
-	sm := newMockStateManager()
-	pchapi := newMockPaychAPI()
-	defer pchapi.close()
+	mock := newMockManagerAPI()
+	defer mock.close()
 
-	mgr, err := newManager(sm, store, pchapi)
+	mgr, err := newManager(store, mock)
 	require.NoError(t, err)
 
 	// Send create message for a channel
@@ -403,7 +294,7 @@ func TestPaychGetRecoverAfterAddFundsError(t *testing.T) {
 
 	// Send success create channel response
 	response := testChannelResponse(t, ch)
-	pchapi.receiveMsgResponse(mcid1, response)
+	mock.receiveMsgResponse(mcid1, response)
 
 	// Send add funds message for channel
 	amt2 := big.NewInt(5)
@@ -411,7 +302,7 @@ func TestPaychGetRecoverAfterAddFundsError(t *testing.T) {
 	require.NoError(t, err)
 
 	// Send error add funds response
-	pchapi.receiveMsgResponse(mcid2, types.MessageReceipt{
+	mock.receiveMsgResponse(mcid2, types.MessageReceipt{
 		ExitCode: 1, // error
 		Return:   []byte{},
 	})
@@ -438,7 +329,7 @@ func TestPaychGetRecoverAfterAddFundsError(t *testing.T) {
 	require.NoError(t, err)
 
 	// Send success add funds response
-	pchapi.receiveMsgResponse(mcid3, types.MessageReceipt{
+	mock.receiveMsgResponse(mcid3, types.MessageReceipt{
 		ExitCode: 0,
 		Return:   []byte{},
 	})
@@ -472,10 +363,9 @@ func TestPaychGetRestartAfterCreateChannelMsg(t *testing.T) {
 	from := tutils.NewIDAddr(t, 101)
 	to := tutils.NewIDAddr(t, 102)
 
-	sm := newMockStateManager()
-	pchapi := newMockPaychAPI()
+	mock := newMockManagerAPI()
 
-	mgr, err := newManager(sm, store, pchapi)
+	mgr, err := newManager(store, mock)
 	require.NoError(t, err)
 
 	// Send create message for a channel with value 10
@@ -484,14 +374,13 @@ func TestPaychGetRestartAfterCreateChannelMsg(t *testing.T) {
 	require.NoError(t, err)
 
 	// Simulate shutting down system
-	pchapi.close()
+	mock.close()
 
 	// Create a new manager with the same datastore
-	sm2 := newMockStateManager()
-	pchapi2 := newMockPaychAPI()
-	defer pchapi2.close()
+	mock2 := newMockManagerAPI()
+	defer mock2.close()
 
-	mgr2, err := newManager(sm2, store, pchapi2)
+	mgr2, err := newManager(store, mock2)
 	require.NoError(t, err)
 
 	// Should have no channels yet (message sent but channel not created)
@@ -537,7 +426,7 @@ func TestPaychGetRestartAfterCreateChannelMsg(t *testing.T) {
 	}()
 
 	// 3. Send create channel response
-	pchapi2.receiveMsgResponse(createMsgCid, response)
+	mock2.receiveMsgResponse(createMsgCid, response)
 
 	<-done
 }
@@ -553,10 +442,9 @@ func TestPaychGetRestartAfterAddFundsMsg(t *testing.T) {
 	from := tutils.NewIDAddr(t, 101)
 	to := tutils.NewIDAddr(t, 102)
 
-	sm := newMockStateManager()
-	pchapi := newMockPaychAPI()
+	mock := newMockManagerAPI()
 
-	mgr, err := newManager(sm, store, pchapi)
+	mgr, err := newManager(store, mock)
 	require.NoError(t, err)
 
 	// Send create message for a channel
@@ -566,7 +454,7 @@ func TestPaychGetRestartAfterAddFundsMsg(t *testing.T) {
 
 	// Send success create channel response
 	response := testChannelResponse(t, ch)
-	pchapi.receiveMsgResponse(mcid1, response)
+	mock.receiveMsgResponse(mcid1, response)
 
 	// Send add funds message for channel
 	amt2 := big.NewInt(5)
@@ -574,18 +462,17 @@ func TestPaychGetRestartAfterAddFundsMsg(t *testing.T) {
 	require.NoError(t, err)
 
 	// Simulate shutting down system
-	pchapi.close()
+	mock.close()
 
 	// Create a new manager with the same datastore
-	sm2 := newMockStateManager()
-	pchapi2 := newMockPaychAPI()
-	defer pchapi2.close()
+	mock2 := newMockManagerAPI()
+	defer mock2.close()
 
-	mgr2, err := newManager(sm2, store, pchapi2)
+	mgr2, err := newManager(store, mock2)
 	require.NoError(t, err)
 
 	// Send success add funds response
-	pchapi2.receiveMsgResponse(mcid2, types.MessageReceipt{
+	mock2.receiveMsgResponse(mcid2, types.MessageReceipt{
 		ExitCode: 0,
 		Return:   []byte{},
 	})
@@ -617,11 +504,10 @@ func TestPaychGetWait(t *testing.T) {
 	from := tutils.NewIDAddr(t, 101)
 	to := tutils.NewIDAddr(t, 102)
 
-	sm := newMockStateManager()
-	pchapi := newMockPaychAPI()
-	defer pchapi.close()
+	mock := newMockManagerAPI()
+	defer mock.close()
 
-	mgr, err := newManager(sm, store, pchapi)
+	mgr, err := newManager(store, mock)
 	require.NoError(t, err)
 
 	// 1. Get
@@ -633,7 +519,7 @@ func TestPaychGetWait(t *testing.T) {
 	go func() {
 		// 3. Send response
 		response := testChannelResponse(t, expch)
-		pchapi.receiveMsgResponse(createMsgCid, response)
+		mock.receiveMsgResponse(createMsgCid, response)
 	}()
 
 	// 2. Wait till ready
@@ -658,7 +544,7 @@ func TestPaychGetWait(t *testing.T) {
 			ExitCode: 0,
 			Return:   []byte{},
 		}
-		pchapi.receiveMsgResponse(addFundsMsgCid, addFundsResponse)
+		mock.receiveMsgResponse(addFundsMsgCid, addFundsResponse)
 	}()
 
 	// 5. Wait for add funds
@@ -675,11 +561,10 @@ func TestPaychGetWaitErr(t *testing.T) {
 	from := tutils.NewIDAddr(t, 101)
 	to := tutils.NewIDAddr(t, 102)
 
-	sm := newMockStateManager()
-	pchapi := newMockPaychAPI()
-	defer pchapi.close()
+	mock := newMockManagerAPI()
+	defer mock.close()
 
-	mgr, err := newManager(sm, store, pchapi)
+	mgr, err := newManager(store, mock)
 	require.NoError(t, err)
 
 	// 1. Create channel
@@ -709,7 +594,7 @@ func TestPaychGetWaitErr(t *testing.T) {
 		ExitCode: 1, // error
 		Return:   []byte{},
 	}
-	pchapi.receiveMsgResponse(mcid, response)
+	mock.receiveMsgResponse(mcid, response)
 
 	<-done
 }
@@ -723,11 +608,10 @@ func TestPaychGetWaitCtx(t *testing.T) {
 	from := tutils.NewIDAddr(t, 101)
 	to := tutils.NewIDAddr(t, 102)
 
-	sm := newMockStateManager()
-	pchapi := newMockPaychAPI()
-	defer pchapi.close()
+	mock := newMockManagerAPI()
+	defer mock.close()
 
-	mgr, err := newManager(sm, store, pchapi)
+	mgr, err := newManager(store, mock)
 	require.NoError(t, err)
 
 	amt := big.NewInt(10)
@@ -754,11 +638,10 @@ func TestPaychGetMergeAddFunds(t *testing.T) {
 	from := tutils.NewIDAddr(t, 101)
 	to := tutils.NewIDAddr(t, 102)
 
-	sm := newMockStateManager()
-	pchapi := newMockPaychAPI()
-	defer pchapi.close()
+	mock := newMockManagerAPI()
+	defer mock.close()
 
-	mgr, err := newManager(sm, store, pchapi)
+	mgr, err := newManager(store, mock)
 	require.NoError(t, err)
 
 	// Send create message for a channel with value 10
@@ -800,7 +683,7 @@ func TestPaychGetMergeAddFunds(t *testing.T) {
 
 	// Send create channel response
 	response := testChannelResponse(t, ch)
-	pchapi.receiveMsgResponse(createMsgCid, response)
+	mock.receiveMsgResponse(createMsgCid, response)
 
 	// Wait for create channel response
 	chres, err := mgr.GetPaychWaitReady(ctx, createMsgCid)
@@ -817,7 +700,7 @@ func TestPaychGetMergeAddFunds(t *testing.T) {
 	require.Equal(t, addFundsMcid1, addFundsMcid2)
 
 	// Send success add funds response
-	pchapi.receiveMsgResponse(addFundsMcid1, types.MessageReceipt{
+	mock.receiveMsgResponse(addFundsMcid1, types.MessageReceipt{
 		ExitCode: 0,
 		Return:   []byte{},
 	})
@@ -829,17 +712,17 @@ func TestPaychGetMergeAddFunds(t *testing.T) {
 
 	// Make sure that one create channel message and one add funds message was
 	// sent
-	require.Equal(t, 2, pchapi.pushedMessageCount())
+	require.Equal(t, 2, mock.pushedMessageCount())
 
 	// Check create message amount is correct
-	createMsg := pchapi.pushedMessages(createMsgCid)
+	createMsg := mock.pushedMessages(createMsgCid)
 	require.Equal(t, from, createMsg.Message.From)
 	require.Equal(t, builtin.InitActorAddr, createMsg.Message.To)
 	require.Equal(t, createAmt, createMsg.Message.Value)
 
 	// Check merged add funds amount is the sum of the individual
 	// amounts
-	addFundsMsg := pchapi.pushedMessages(addFundsMcid1)
+	addFundsMsg := mock.pushedMessages(addFundsMcid1)
 	require.Equal(t, from, addFundsMsg.Message.From)
 	require.Equal(t, ch, addFundsMsg.Message.To)
 	require.Equal(t, types.BigAdd(addFundsAmt1, addFundsAmt2), addFundsMsg.Message.Value)
@@ -855,11 +738,10 @@ func TestPaychGetMergeAddFundsCtxCancelOne(t *testing.T) {
 	from := tutils.NewIDAddr(t, 101)
 	to := tutils.NewIDAddr(t, 102)
 
-	sm := newMockStateManager()
-	pchapi := newMockPaychAPI()
-	defer pchapi.close()
+	mock := newMockManagerAPI()
+	defer mock.close()
 
-	mgr, err := newManager(sm, store, pchapi)
+	mgr, err := newManager(store, mock)
 	require.NoError(t, err)
 
 	// Send create message for a channel with value 10
@@ -899,7 +781,7 @@ func TestPaychGetMergeAddFundsCtxCancelOne(t *testing.T) {
 
 	// Send create channel response
 	response := testChannelResponse(t, ch)
-	pchapi.receiveMsgResponse(createMsgCid, response)
+	mock.receiveMsgResponse(createMsgCid, response)
 
 	// Wait for create channel response
 	chres, err := mgr.GetPaychWaitReady(ctx, createMsgCid)
@@ -914,7 +796,7 @@ func TestPaychGetMergeAddFundsCtxCancelOne(t *testing.T) {
 	require.Equal(t, ch, addFundsCh2)
 
 	// Send success add funds response
-	pchapi.receiveMsgResponse(addFundsMcid2, types.MessageReceipt{
+	mock.receiveMsgResponse(addFundsMcid2, types.MessageReceipt{
 		ExitCode: 0,
 		Return:   []byte{},
 	})
@@ -926,17 +808,17 @@ func TestPaychGetMergeAddFundsCtxCancelOne(t *testing.T) {
 
 	// Make sure that one create channel message and one add funds message was
 	// sent
-	require.Equal(t, 2, pchapi.pushedMessageCount())
+	require.Equal(t, 2, mock.pushedMessageCount())
 
 	// Check create message amount is correct
-	createMsg := pchapi.pushedMessages(createMsgCid)
+	createMsg := mock.pushedMessages(createMsgCid)
 	require.Equal(t, from, createMsg.Message.From)
 	require.Equal(t, builtin.InitActorAddr, createMsg.Message.To)
 	require.Equal(t, createAmt, createMsg.Message.Value)
 
 	// Check merged add funds amount only includes the second add funds amount
 	// (because first was cancelled)
-	addFundsMsg := pchapi.pushedMessages(addFundsMcid2)
+	addFundsMsg := mock.pushedMessages(addFundsMcid2)
 	require.Equal(t, from, addFundsMsg.Message.From)
 	require.Equal(t, ch, addFundsMsg.Message.To)
 	require.Equal(t, addFundsAmt2, addFundsMsg.Message.Value)
@@ -952,11 +834,10 @@ func TestPaychGetMergeAddFundsCtxCancelAll(t *testing.T) {
 	from := tutils.NewIDAddr(t, 101)
 	to := tutils.NewIDAddr(t, 102)
 
-	sm := newMockStateManager()
-	pchapi := newMockPaychAPI()
-	defer pchapi.close()
+	mock := newMockManagerAPI()
+	defer mock.close()
 
-	mgr, err := newManager(sm, store, pchapi)
+	mgr, err := newManager(store, mock)
 	require.NoError(t, err)
 
 	// Send create message for a channel with value 10
@@ -995,7 +876,7 @@ func TestPaychGetMergeAddFundsCtxCancelAll(t *testing.T) {
 
 	// Send create channel response
 	response := testChannelResponse(t, ch)
-	pchapi.receiveMsgResponse(createMsgCid, response)
+	mock.receiveMsgResponse(createMsgCid, response)
 
 	// Wait for create channel response
 	chres, err := mgr.GetPaychWaitReady(ctx, createMsgCid)
@@ -1009,10 +890,10 @@ func TestPaychGetMergeAddFundsCtxCancelAll(t *testing.T) {
 	require.NotNil(t, addFundsErr2)
 
 	// Make sure that just the create channel message was sent
-	require.Equal(t, 1, pchapi.pushedMessageCount())
+	require.Equal(t, 1, mock.pushedMessageCount())
 
 	// Check create message amount is correct
-	createMsg := pchapi.pushedMessages(createMsgCid)
+	createMsg := mock.pushedMessages(createMsgCid)
 	require.Equal(t, from, createMsg.Message.From)
 	require.Equal(t, builtin.InitActorAddr, createMsg.Message.To)
 	require.Equal(t, createAmt, createMsg.Message.Value)
