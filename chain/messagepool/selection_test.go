@@ -403,7 +403,7 @@ func TestBasicMessageSelection(t *testing.T) {
 		mustAdd(t, mp, m)
 	}
 
-	msgs, err := mp.SelectMessages(ts)
+	msgs, err := mp.SelectMessages(ts, 1.0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -471,7 +471,7 @@ func TestBasicMessageSelection(t *testing.T) {
 	tma.setStateNonce(a1, 10)
 	tma.setStateNonce(a2, 10)
 
-	msgs, err = mp.SelectMessages(ts3)
+	msgs, err = mp.SelectMessages(ts3, 1.0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -545,7 +545,7 @@ func TestMessageSelectionTrimming(t *testing.T) {
 		mustAdd(t, mp, m)
 	}
 
-	msgs, err := mp.SelectMessages(ts)
+	msgs, err := mp.SelectMessages(ts, 1.0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -609,7 +609,7 @@ func TestPriorityMessageSelection(t *testing.T) {
 		mustAdd(t, mp, m)
 	}
 
-	msgs, err := mp.SelectMessages(ts)
+	msgs, err := mp.SelectMessages(ts, 1.0)
 	if err != nil {
 		t.Fatal(err)
 	}
