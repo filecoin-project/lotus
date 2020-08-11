@@ -2,7 +2,6 @@ package full
 
 import (
 	"context"
-	"sync"
 
 	"github.com/ipfs/go-cid"
 	"go.uber.org/fx"
@@ -13,6 +12,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
 type MpoolAPI struct {
@@ -25,10 +25,7 @@ type MpoolAPI struct {
 
 	Mpool *messagepool.MessagePool
 
-	PushLocks struct {
-		m map[address.Address]chan struct{}
-		sync.Mutex
-	} `name:"verymuchunique" optional:"true"`
+	PushLocks *dtypes.MpoolLocker
 }
 
 func (a *MpoolAPI) MpoolGetConfig(context.Context) (*types.MpoolConfig, error) {
@@ -40,13 +37,13 @@ func (a *MpoolAPI) MpoolSetConfig(ctx context.Context, cfg *types.MpoolConfig) e
 	return nil
 }
 
-func (a *MpoolAPI) MpoolSelect(ctx context.Context, tsk types.TipSetKey) ([]*types.SignedMessage, error) {
+func (a *MpoolAPI) MpoolSelect(ctx context.Context, tsk types.TipSetKey, ticketQuality float64) ([]*types.SignedMessage, error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	return a.Mpool.SelectMessages(ts)
+	return a.Mpool.SelectMessages(ts, ticketQuality)
 }
 
 func (a *MpoolAPI) MpoolPending(ctx context.Context, tsk types.TipSetKey) ([]*types.SignedMessage, error) {
@@ -117,27 +114,11 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message) (*t
 		if err != nil {
 			return nil, xerrors.Errorf("getting key address: %w", err)
 		}
-
-		a.PushLocks.Lock()
-		if a.PushLocks.m == nil {
-			a.PushLocks.m = make(map[address.Address]chan struct{})
+		done, err := a.PushLocks.TakeLock(ctx, fromA)
+		if err != nil {
+			return nil, xerrors.Errorf("taking lock: %w", err)
 		}
-		lk, ok := a.PushLocks.m[fromA]
-		if !ok {
-			lk = make(chan struct{}, 1)
-			a.PushLocks.m[msg.From] = lk
-		}
-		a.PushLocks.Unlock()
-
-		select {
-		case lk <- struct{}{}:
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		}
-
-		defer func() {
-			<-lk
-		}()
+		defer done()
 	}
 
 	if msg.Nonce != 0 {

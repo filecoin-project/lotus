@@ -391,7 +391,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*types.BlockMsg,
 	}
 
 	// get pending messages early,
-	msgs, err := m.api.MpoolSelect(context.TODO(), base.TipSet.Key())
+	msgs, err := m.api.MpoolSelect(context.TODO(), base.TipSet.Key(), ticket.Quality())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to select messages for block: %w", err)
 	}

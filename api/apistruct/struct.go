@@ -97,9 +97,11 @@ type FullNodeStruct struct {
 		SyncMarkBad        func(ctx context.Context, bcid cid.Cid) error                `perm:"admin"`
 		SyncCheckBad       func(ctx context.Context, bcid cid.Cid) (string, error)      `perm:"read"`
 
-		MpoolGetConfig   func(context.Context) (*types.MpoolConfig, error)                      `perm:"read"`
-		MpoolSetConfig   func(context.Context, *types.MpoolConfig) error                        `perm:"write"`
-		MpoolSelect      func(context.Context, types.TipSetKey) ([]*types.SignedMessage, error) `perm:"read"`
+		MpoolGetConfig func(context.Context) (*types.MpoolConfig, error) `perm:"read"`
+		MpoolSetConfig func(context.Context, *types.MpoolConfig) error   `perm:"write"`
+
+		MpoolSelect func(context.Context, types.TipSetKey, float64) ([]*types.SignedMessage, error) `perm:"read"`
+
 		MpoolPending     func(context.Context, types.TipSetKey) ([]*types.SignedMessage, error) `perm:"read"`
 		MpoolPush        func(context.Context, *types.SignedMessage) (cid.Cid, error)           `perm:"write"`
 		MpoolPushMessage func(context.Context, *types.Message) (*types.SignedMessage, error)    `perm:"sign"`
@@ -456,8 +458,8 @@ func (c *FullNodeStruct) MpoolSetConfig(ctx context.Context, cfg *types.MpoolCon
 	return c.Internal.MpoolSetConfig(ctx, cfg)
 }
 
-func (c *FullNodeStruct) MpoolSelect(ctx context.Context, tsk types.TipSetKey) ([]*types.SignedMessage, error) {
-	return c.Internal.MpoolSelect(ctx, tsk)
+func (c *FullNodeStruct) MpoolSelect(ctx context.Context, tsk types.TipSetKey, tq float64) ([]*types.SignedMessage, error) {
+	return c.Internal.MpoolSelect(ctx, tsk, tq)
 }
 
 func (c *FullNodeStruct) MpoolPending(ctx context.Context, tsk types.TipSetKey) ([]*types.SignedMessage, error) {

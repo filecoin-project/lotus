@@ -159,7 +159,7 @@ type FullNode interface {
 	MpoolPending(context.Context, types.TipSetKey) ([]*types.SignedMessage, error)
 
 	// MpoolSelect returns a list of pending messages for inclusion in the next block
-	MpoolSelect(context.Context, types.TipSetKey) ([]*types.SignedMessage, error)
+	MpoolSelect(context.Context, types.TipSetKey, float64) ([]*types.SignedMessage, error)
 
 	// MpoolPush pushes a signed message to mempool.
 	MpoolPush(context.Context, *types.SignedMessage) (cid.Cid, error)
