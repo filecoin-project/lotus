@@ -90,7 +90,9 @@ func (mp *MessagePool) selectMessagesOptimal(curTs, ts *types.TipSet, tq float64
 		next := mp.createMessageChains(actor, mset, baseFee, ts)
 		chains = append(chains, next...)
 	}
-	log.Infow("create message chains done", "took", time.Since(startChains))
+	if dt := time.Since(startChains); dt > time.Millisecond {
+		log.Infow("create message chains done", "took", dt)
+	}
 
 	// 2. Sort the chains
 	sort.Slice(chains, func(i, j int) bool {
@@ -187,7 +189,9 @@ func (mp *MessagePool) selectMessagesOptimal(curTs, ts *types.TipSet, tq float64
 		last = i
 		break
 	}
-	log.Infow("merge message chains done", "took", time.Since(startMerge))
+	if dt := time.Since(startMerge); dt > time.Millisecond {
+		log.Infow("merge message chains done", "took", dt)
+	}
 
 	// 7. We have reached the edge of what can fit wholesale; if we still hae available
 	//    gasLimit to pack some more chains, then trim the last chain and push it down.
@@ -276,7 +280,9 @@ tailLoop:
 		// gas to spare; end the loop.
 		break
 	}
-	log.Infow("pack tail chains done", "took", time.Since(startTail))
+	if dt := time.Since(startTail); dt > time.Millisecond {
+		log.Infow("pack tail chains done", "took", dt)
+	}
 
 	return result, nil
 }
@@ -321,7 +327,9 @@ func (mp *MessagePool) selectMessagesGreedy(curTs, ts *types.TipSet) ([]*types.S
 		next := mp.createMessageChains(actor, mset, baseFee, ts)
 		chains = append(chains, next...)
 	}
-	log.Infow("create message chains done", "took", time.Since(startChains))
+	if dt := time.Since(startChains); dt > time.Millisecond {
+		log.Infow("create message chains done", "took", dt)
+	}
 
 	// 2. Sort the chains
 	sort.Slice(chains, func(i, j int) bool {
@@ -354,7 +362,9 @@ func (mp *MessagePool) selectMessagesGreedy(curTs, ts *types.TipSet) ([]*types.S
 		last = i
 		break
 	}
-	log.Infow("merge message chains done", "took", time.Since(startMerge))
+	if dt := time.Since(startMerge); dt > time.Millisecond {
+		log.Infow("merge message chains done", "took", dt)
+	}
 
 	// 4. We have reached the edge of what we can fit wholesale; if we still have available gasLimit
 	// to pack some more chains, then trim the last chain and push it down.
@@ -406,7 +416,9 @@ tailLoop:
 		// gas to spare; end the loop
 		break
 	}
-	log.Infow("pack tail chains done", "took", time.Since(startTail))
+	if dt := time.Since(startTail); dt > time.Millisecond {
+		log.Infow("pack tail chains done", "took", dt)
+	}
 
 	return result, nil
 }
@@ -414,7 +426,9 @@ tailLoop:
 func (mp *MessagePool) selectPriorityMessages(pending map[address.Address]map[uint64]*types.SignedMessage, baseFee types.BigInt, ts *types.TipSet) ([]*types.SignedMessage, int64) {
 	start := time.Now()
 	defer func() {
-		log.Infow("select priority messages done", "took", time.Since(start))
+		if dt := time.Since(start); dt > time.Millisecond {
+			log.Infow("select priority messages done", "took", dt)
+		}
 	}()
 
 	result := make([]*types.SignedMessage, 0, mp.cfg.SizeLimitLow)
@@ -502,8 +516,8 @@ func (mp *MessagePool) getPendingMessages(curTs, ts *types.TipSet) (map[address.
 	result := make(map[address.Address]map[uint64]*types.SignedMessage)
 	haveCids := make(map[cid.Cid]struct{})
 	defer func() {
-		if time.Since(start) > time.Millisecond {
-			log.Infow("get pending messages done", "took", time.Since(start))
+		if dt := time.Since(start); dt > time.Millisecond {
+			log.Infow("get pending messages done", "took", dt)
 		}
 	}()
 
