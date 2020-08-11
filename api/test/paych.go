@@ -74,7 +74,7 @@ func TestPaymentChannels(t *testing.T, b APIBuilder, blocktime time.Duration) {
 		t.Fatal(err)
 	}
 
-	channel, err := paymentCreator.PaychGetWaitReady(ctx, channelInfo.ChannelMessage)
+	channel, err := paymentCreator.PaychGetWaitReady(ctx, channelInfo.WaitSentinel)
 	if err != nil {
 		t.Fatal(err)
 	}

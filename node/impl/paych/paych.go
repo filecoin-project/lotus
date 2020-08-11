@@ -35,13 +35,13 @@ func (a *PaychAPI) PaychGet(ctx context.Context, from, to address.Address, amt t
 	}
 
 	return &api.ChannelInfo{
-		Channel:        ch,
-		ChannelMessage: mcid,
+		Channel:      ch,
+		WaitSentinel: api.PaychWaitSentinel(mcid),
 	}, nil
 }
 
-func (a *PaychAPI) PaychGetWaitReady(ctx context.Context, mcid cid.Cid) (address.Address, error) {
-	return a.PaychMgr.GetPaychWaitReady(ctx, mcid)
+func (a *PaychAPI) PaychGetWaitReady(ctx context.Context, sentinel api.PaychWaitSentinel) (address.Address, error) {
+	return a.PaychMgr.GetPaychWaitReady(ctx, cid.Cid(sentinel))
 }
 
 func (a *PaychAPI) PaychAllocateLane(ctx context.Context, ch address.Address) (uint64, error) {
@@ -84,15 +84,10 @@ func (a *PaychAPI) PaychNewPayment(ctx context.Context, from, to address.Address
 		svs[i] = sv
 	}
 
-	var pchCid *cid.Cid
-	if ch.ChannelMessage != cid.Undef {
-		pchCid = &ch.ChannelMessage
-	}
-
 	return &api.PaymentInfo{
-		Channel:        ch.Channel,
-		ChannelMessage: pchCid,
-		Vouchers:       svs,
+		Channel:      ch.Channel,
+		WaitSentinel: ch.WaitSentinel,
+		Vouchers:     svs,
 	}, nil
 }
 
