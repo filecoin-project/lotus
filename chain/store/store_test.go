@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/node/repo"
 )
@@ -67,7 +68,7 @@ func BenchmarkGetRandomness(b *testing.B) {
 
 	bs := blockstore.NewBlockstore(bds)
 
-	cs := store.NewChainStore(bs, mds, nil)
+	cs := store.NewChainStore(bs, mds, nil, journal.NilJournal())
 
 	b.ResetTimer()
 
@@ -101,7 +102,7 @@ func TestChainExportImport(t *testing.T) {
 	}
 
 	nbs := blockstore.NewTemporary()
-	cs := store.NewChainStore(nbs, datastore.NewMapDatastore(), nil)
+	cs := store.NewChainStore(nbs, datastore.NewMapDatastore(), nil, journal.NilJournal())
 
 	root, err := cs.Import(buf)
 	if err != nil {
