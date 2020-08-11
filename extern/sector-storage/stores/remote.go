@@ -170,7 +170,7 @@ func tempFetchDest(spath string, create bool) (string, error) {
 }
 
 func (r *Remote) acquireFromRemote(ctx context.Context, s abi.SectorID, fileType SectorFileType, dest string) (string, error) {
-	si, err := r.index.StorageFindSector(ctx, s, fileType, false)
+	si, err := r.index.StorageFindSector(ctx, s, fileType, 0, false)
 	if err != nil {
 		return "", err
 	}
@@ -300,7 +300,7 @@ func (r *Remote) Remove(ctx context.Context, sid abi.SectorID, typ SectorFileTyp
 		return xerrors.Errorf("remove from local: %w", err)
 	}
 
-	si, err := r.index.StorageFindSector(ctx, sid, typ, false)
+	si, err := r.index.StorageFindSector(ctx, sid, typ, 0, false)
 	if err != nil {
 		return xerrors.Errorf("finding existing sector %d(t:%d) failed: %w", sid, typ, err)
 	}

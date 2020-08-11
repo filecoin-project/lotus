@@ -54,7 +54,7 @@ type SectorIndex interface { // part of storage-miner api
 
 	StorageDeclareSector(ctx context.Context, storageId ID, s abi.SectorID, ft SectorFileType, primary bool) error
 	StorageDropSector(ctx context.Context, storageId ID, s abi.SectorID, ft SectorFileType) error
-	StorageFindSector(ctx context.Context, sector abi.SectorID, ft SectorFileType, allowFetch bool) ([]SectorStorageInfo, error)
+	StorageFindSector(ctx context.Context, sector abi.SectorID, ft SectorFileType, spt abi.RegisteredSealProof, allowFetch bool) ([]SectorStorageInfo, error)
 
 	StorageBestAlloc(ctx context.Context, allocate SectorFileType, spt abi.RegisteredSealProof, pathType PathType) ([]StorageInfo, error)
 
@@ -245,7 +245,7 @@ func (i *Index) StorageDropSector(ctx context.Context, storageId ID, s abi.Secto
 	return nil
 }
 
-func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft SectorFileType, allowFetch bool) ([]SectorStorageInfo, error) {
+func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft SectorFileType, spt abi.RegisteredSealProof, allowFetch bool) ([]SectorStorageInfo, error) {
 	i.lk.RLock()
 	defer i.lk.RUnlock()
 
@@ -296,7 +296,31 @@ func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft Sector
 	}
 
 	if allowFetch {
+		spaceReq, err := ft.SealSpaceUse(spt)
+		if err != nil {
+			return nil, xerrors.Errorf("estimating required space: %w", err)
+		}
+
 		for id, st := range i.stores {
+			if !st.info.CanSeal {
+				continue
+			}
+
+			if spaceReq > uint64(st.fsi.Available) {
+				log.Debugf("not selecting on %s, out of space (available: %d, need: %d)", st.info.ID, st.fsi.Available, spaceReq)
+				continue
+			}
+
+			if time.Since(st.lastHeartbeat) > SkippedHeartbeatThresh {
+				log.Debugf("not selecting on %s, didn't receive heartbeats for %s", st.info.ID, time.Since(st.lastHeartbeat))
+				continue
+			}
+
+			if st.heartbeatErr != nil {
+				log.Debugf("not selecting on %s, heartbeat error: %s", st.info.ID, st.heartbeatErr)
+				continue
+			}
+
 			if _, ok := storageIDs[id]; ok {
 				continue
 			}
