@@ -811,12 +811,15 @@ func (mc *msgChain) Trim(gasLimit int64, mp *MessagePool, baseFee types.BigInt, 
 		mc.gasLimit -= mc.msgs[i].Message.GasLimit
 		if mc.gasLimit > 0 {
 			bp := 1.0
-			if mc.effPerf != 0 {
+			if mc.gasPerf != 0 { // prevent div by 0
 				bp = mc.effPerf / mc.gasPerf
 			}
 
 			mc.gasPerf = mp.getGasPerf(mc.gasReward, mc.gasLimit)
-			mc.effPerf = bp * mc.gasPerf
+
+			if mc.effPerf != 0 { // keep effPerf 0 if it is 0
+				mc.effPerf = bp * mc.gasPerf
+			}
 		} else {
 			mc.gasPerf = 0
 		}
