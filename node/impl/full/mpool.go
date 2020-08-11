@@ -43,7 +43,6 @@ func (a *MpoolAPI) MpoolSelect(ctx context.Context, tsk types.TipSetKey, ticketQ
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	// TODO FIXME compute (or pass in) the actual ticket quality!
 	return a.Mpool.SelectMessages(ts, ticketQuality)
 }
 

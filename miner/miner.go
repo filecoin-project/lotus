@@ -6,12 +6,10 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
-	"math/big"
 	"sync"
 	"time"
 
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
-	"github.com/minio/blake2b-simd"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -392,14 +390,8 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*types.BlockMsg,
 		return nil, xerrors.Errorf("failed to compute winning post proof: %w", err)
 	}
 
-	ticketHash := blake2b.Sum256(ticket.VRFProof)
-	ticketNum := types.BigFromBytes(ticketHash[:]).Int
-	ticketDenu := big.NewInt(1)
-	ticketDenu.Lsh(ticketDenu, 256)
-	tq, _ := new(big.Rat).SetFrac(ticketNum, ticketDenu).Float64()
-	tq = 1 - tq
 	// get pending messages early,
-	msgs, err := m.api.MpoolSelect(context.TODO(), base.TipSet.Key(), tq)
+	msgs, err := m.api.MpoolSelect(context.TODO(), base.TipSet.Key(), ticket.Quality())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to select messages for block: %w", err)
 	}
