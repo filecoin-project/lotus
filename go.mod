@@ -18,7 +18,7 @@ require (
 	github.com/drand/drand v1.0.3-0.20200714175734-29705eaf09d4
 	github.com/drand/kyber v1.1.1
 	github.com/fatih/color v1.8.0
-	github.com/filecoin-project/chain-validation v0.0.6-0.20200812173150-c013d785a8d5
+	github.com/filecoin-project/chain-validation v0.0.6-0.20200813000554-40c22fe26eef
 	github.com/filecoin-project/filecoin-ffi v0.30.4-0.20200716204036-cddc56607e1d
 	github.com/filecoin-project/go-address v0.0.3
 	github.com/filecoin-project/go-amt-ipld/v2 v2.1.1-0.20200731171407-e559a0579161 // indirect
@@ -35,7 +35,7 @@ require (
 	github.com/filecoin-project/go-statestore v0.1.0
 	github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b
 	github.com/filecoin-project/sector-storage v0.0.0-20200810171746-eac70842d8e0
-	github.com/filecoin-project/specs-actors v0.8.7-0.20200811223639-8db91253c07a
+	github.com/filecoin-project/specs-actors v0.9.2
 	github.com/filecoin-project/specs-storage v0.1.1-0.20200730063404-f7db367e9401
 	github.com/filecoin-project/storage-fsm v0.0.0-20200805013058-9d9ea4e6331f
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
@@ -115,7 +115,7 @@ require (
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/urfave/cli/v2 v2.2.0
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
-	github.com/whyrusleeping/cbor-gen v0.0.0-20200811225321-4fed70922d45
+	github.com/whyrusleeping/cbor-gen v0.0.0-20200812213548-958ddffe352c
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
 	github.com/whyrusleeping/pubsub v0.0.0-20131020042734-02de8aa2db3d
 	github.com/xorcare/golden v0.6.1-0.20191112154924-b87f686d7542

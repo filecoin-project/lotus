@@ -3,6 +3,8 @@ package paychmgr
 import (
 	"context"
 
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
+
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 
 	"github.com/filecoin-project/go-address"
@@ -43,10 +45,15 @@ func (ca *stateAccessor) loadStateChannelInfo(ctx context.Context, ch address.Ad
 	}
 	to := account.Address
 
+	nextLane, err := ca.nextLaneFromState(ctx, st)
+	if err != nil {
+		return nil, err
+	}
+
 	ci := &ChannelInfo{
 		Channel:   &ch,
 		Direction: dir,
-		NextLane:  nextLaneFromState(st),
+		NextLane:  nextLane,
 	}
 
 	if dir == DirOutbound {
@@ -60,16 +67,24 @@ func (ca *stateAccessor) loadStateChannelInfo(ctx context.Context, ch address.Ad
 	return ci, nil
 }
 
-func nextLaneFromState(st *paych.State) uint64 {
-	if len(st.LaneStates) == 0 {
-		return 0
+func (ca *stateAccessor) nextLaneFromState(ctx context.Context, st *paych.State) (uint64, error) {
+	store := ca.sm.AdtStore(ctx)
+	laneStates, err := adt.AsArray(store, st.LaneStates)
+	if err != nil {
+		return 0, err
+	}
+	if laneStates.Length() == 0 {
+		return 0, nil
 	}
 
-	maxLane := st.LaneStates[0].ID
-	for _, state := range st.LaneStates {
-		if state.ID > maxLane {
-			maxLane = state.ID
+	maxLane := uint64(0)
+	var ls paych.LaneState
+	laneStates.ForEach(&ls, func(i int64) error {
+		if ls.ID > maxLane {
+			maxLane = ls.ID
 		}
-	}
-	return maxLane + 1
+		return nil
+	})
+
+	return maxLane + 1, nil
 }

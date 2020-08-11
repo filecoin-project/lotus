@@ -47,7 +47,6 @@ func TestPaychOutbound(t *testing.T) {
 		ToSend:          big.NewInt(0),
 		SettlingAt:      abi.ChainEpoch(0),
 		MinSettleHeight: abi.ChainEpoch(0),
-		LaneStates:      []*paych.LaneState{},
 	})
 
 	mgr, err := newManager(store, mock)
@@ -85,7 +84,6 @@ func TestPaychInbound(t *testing.T) {
 		ToSend:          big.NewInt(0),
 		SettlingAt:      abi.ChainEpoch(0),
 		MinSettleHeight: abi.ChainEpoch(0),
-		LaneStates:      []*paych.LaneState{},
 	})
 
 	mgr, err := newManager(store, mock)
@@ -262,13 +260,17 @@ func TestCheckVoucherValid(t *testing.T) {
 				Nonce:   0,
 				Balance: tcase.actorBalance,
 			}
+
+			laneStates, err := mock.storeLaneStates(tcase.laneStates)
+			require.NoError(t, err)
+
 			mock.setPaychState(ch, act, paych.State{
 				From:            fromAcct,
 				To:              toAcct,
 				ToSend:          tcase.toSend,
 				SettlingAt:      abi.ChainEpoch(0),
 				MinSettleHeight: abi.ChainEpoch(0),
-				LaneStates:      tcase.laneStates,
+				LaneStates:      laneStates,
 			})
 
 			mgr, err := newManager(store, mock)
@@ -325,13 +327,16 @@ func TestCheckVoucherValidCountingAllLanes(t *testing.T) {
 		Nonce:   0,
 		Balance: actorBalance,
 	}
+
+	lsCid, err := mock.storeLaneStates(laneStates)
+	require.NoError(t, err)
 	mock.setPaychState(ch, act, paych.State{
 		From:            fromAcct,
 		To:              toAcct,
 		ToSend:          toSend,
 		SettlingAt:      abi.ChainEpoch(0),
 		MinSettleHeight: abi.ChainEpoch(0),
-		LaneStates:      laneStates,
+		LaneStates:      lsCid,
 	})
 
 	mgr, err := newManager(store, mock)
@@ -640,7 +645,6 @@ func testSetupMgrWithChannel(ctx context.Context, t *testing.T) (*Manager, addre
 		ToSend:          big.NewInt(0),
 		SettlingAt:      abi.ChainEpoch(0),
 		MinSettleHeight: abi.ChainEpoch(0),
-		LaneStates:      []*paych.LaneState{},
 	})
 
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
