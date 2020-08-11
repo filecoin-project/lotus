@@ -1,7 +1,6 @@
 package journal
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -10,7 +9,6 @@ import (
 	"time"
 
 	logging "github.com/ipfs/go-log"
-	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/build"
@@ -33,11 +31,12 @@ type fsJournal struct {
 	incoming chan *Event
 
 	closing chan struct{}
+	closed  chan struct{}
 }
 
 // OpenFSJournal constructs a rolling filesystem journal, with a default
 // per-file size limit of 1GiB.
-func OpenFSJournal(lr repo.LockedRepo, lc fx.Lifecycle, disabled DisabledEvents) (Journal, error) {
+func OpenFSJournal(lr repo.LockedRepo, disabled DisabledEvents) (Journal, error) {
 	dir := filepath.Join(lr.Path(), "journal")
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to mk directory %s for file journal: %w", dir, err)
@@ -49,15 +48,12 @@ func OpenFSJournal(lr repo.LockedRepo, lc fx.Lifecycle, disabled DisabledEvents)
 		sizeLimit:        1 << 30,
 		incoming:         make(chan *Event, 32),
 		closing:          make(chan struct{}),
+		closed:           make(chan struct{}),
 	}
 
 	if err := f.rollJournalFile(); err != nil {
 		return nil, err
 	}
-
-	lc.Append(fx.Hook{
-		OnStop: func(_ context.Context) error { return f.Close() },
-	})
 
 	go f.runLoop()
 
@@ -79,6 +75,7 @@ func (f *fsJournal) RecordEvent(evtType EventType, obj interface{}) {
 
 func (f *fsJournal) Close() error {
 	close(f.closing)
+	<-f.closed
 	return nil
 }
 
@@ -117,6 +114,8 @@ func (f *fsJournal) rollJournalFile() error {
 }
 
 func (f *fsJournal) runLoop() {
+	defer close(f.closed)
+
 	for {
 		select {
 		case je := <-f.incoming:
