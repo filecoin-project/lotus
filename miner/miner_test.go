@@ -2,6 +2,7 @@ package miner
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/build"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
@@ -15,6 +16,46 @@ func mustIDAddr(i uint64) address.Address {
 	}
 
 	return a
+}
+
+func TestMessageLimit(t *testing.T) {
+	ctx := context.TODO()
+	a1 := mustIDAddr(1)
+
+	actors := map[address.Address]*types.Actor{
+		a1: {
+			Nonce:   0,
+			Balance: types.NewInt(50000000),
+		},
+	}
+
+	af := func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*types.Actor, error) {
+		return actors[addr], nil
+	}
+
+	var msgs []types.Message
+
+	for i := 0; i < 550; i++ {
+		t := types.Message{
+			From:     a1,
+			To:       a1,
+			Nonce:    uint64(i),
+			Value:    types.NewInt(1),
+			GasLimit: 50,
+			GasPrice: types.NewInt(1),
+		}
+		msgs = append(msgs, t)
+	}
+
+	sm, err := SelectMessages(ctx, af, &types.TipSet{}, wrapMsgs(msgs))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(sm) > build.BlockMessageLimit {
+		t.Fatalf("block is exceeding the BlockMessageLimit")
+	}
+
 }
 
 func TestMessageFiltering(t *testing.T) {
