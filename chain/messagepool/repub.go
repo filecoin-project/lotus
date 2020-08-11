@@ -11,7 +11,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-const repubMsgLimit = 5
+const repubMsgLimit = 30
 
 func (mp *MessagePool) republishPendingMessages() error {
 	mp.curTsLk.Lock()
