@@ -27,13 +27,11 @@ var errNoPartitions = errors.New("no partitions")
 
 func (s *WindowPoStScheduler) failPost(err error, deadline *miner.DeadlineInfo) {
 	journal.MaybeRecordEvent(s.jrnl, s.wdPoStEvtType, func() interface{} {
-		return WindowPoStEvt{
+		return s.enrichWithTipset(WindowPoStEvt{
 			State:    "failed",
 			Deadline: s.activeDeadline,
-			Height:   s.cur.Height(),
-			TipSet:   s.cur.Cids(),
 			Error:    err,
-		}
+		})
 	})
 
 	log.Errorf("TODO")
@@ -51,12 +49,10 @@ func (s *WindowPoStScheduler) doPost(ctx context.Context, deadline *miner.Deadli
 	s.activeDeadline = deadline
 
 	journal.MaybeRecordEvent(s.jrnl, s.wdPoStEvtType, func() interface{} {
-		return WindowPoStEvt{
+		return s.enrichWithTipset(WindowPoStEvt{
 			State:    "started",
 			Deadline: s.activeDeadline,
-			Height:   s.cur.Height(),
-			TipSet:   s.cur.Cids(),
-		}
+		})
 	})
 
 	go func() {
@@ -82,12 +78,10 @@ func (s *WindowPoStScheduler) doPost(ctx context.Context, deadline *miner.Deadli
 		}
 
 		journal.MaybeRecordEvent(s.jrnl, s.wdPoStEvtType, func() interface{} {
-			return WindowPoStEvt{
+			return s.enrichWithTipset(WindowPoStEvt{
 				State:    "succeeded",
 				Deadline: s.activeDeadline,
-				Height:   s.cur.Height(),
-				TipSet:   s.cur.Cids(),
-			}
+			})
 		})
 	}()
 }
@@ -153,16 +147,14 @@ func (s *WindowPoStScheduler) checkNextRecoveries(ctx context.Context, dlIdx uin
 			mcid = sm.Cid()
 		}
 
-		return WindowPoStEvt{
+		return s.enrichWithTipset(WindowPoStEvt{
 			State:    "recoveries_processed",
 			Deadline: s.activeDeadline,
-			Height:   s.cur.Height(),
-			TipSet:   s.cur.Cids(),
 			Recoveries: &WindowPoStEvt_Recoveries{
 				Declarations: params.Recoveries,
 				MessageCID:   mcid,
 			},
-		}
+		})
 	})
 
 	for partIdx, partition := range partitions {
@@ -260,16 +252,14 @@ func (s *WindowPoStScheduler) checkNextFaults(ctx context.Context, dlIdx uint64,
 		if sm != nil {
 			mcid = sm.Cid()
 		}
-		return WindowPoStEvt{
+		return s.enrichWithTipset(WindowPoStEvt{
 			State:    "faults_processed",
 			Deadline: s.activeDeadline,
-			Height:   s.cur.Height(),
-			TipSet:   s.cur.Cids(),
 			Faults: &WindowPoStEvt_Faults{
 				Declarations: params.Faults,
 				MessageCID:   mcid,
 			},
-		}
+		})
 	})
 
 	for partIdx, partition := range partitions {
@@ -517,16 +507,14 @@ func (s *WindowPoStScheduler) submitPost(ctx context.Context, proof *miner.Submi
 			mcid = sm.Cid()
 		}
 
-		return WindowPoStEvt{
+		return s.enrichWithTipset(WindowPoStEvt{
 			State:    "proofs_processed",
 			Deadline: s.activeDeadline,
-			Height:   s.cur.Height(),
-			TipSet:   s.cur.Cids(),
 			Proofs: &WindowPoStEvt_Proofs{
 				Partitions: proof.Partitions,
 				MessageCID: mcid,
 			},
-		}
+		})
 	})
 
 	enc, aerr := actors.SerializeParams(proof)

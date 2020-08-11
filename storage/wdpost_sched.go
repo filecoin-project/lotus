@@ -140,12 +140,13 @@ func (s *WindowPoStScheduler) Run(ctx context.Context) {
 					log.Errorf("expected first notif to have len = 1")
 					continue
 				}
-				if changes[0].Type != store.HCCurrent {
+				chg := changes[0]
+				if chg.Type != store.HCCurrent {
 					log.Errorf("expected first notif to tell current ts")
 					continue
 				}
 
-				if err := s.update(ctx, changes[0].Val); err != nil {
+				if err := s.update(ctx, chg.Val); err != nil {
 					log.Errorf("%+v", err)
 				}
 
@@ -248,12 +249,10 @@ func (s *WindowPoStScheduler) abortActivePoSt() {
 		s.abort()
 
 		journal.MaybeRecordEvent(s.jrnl, s.wdPoStEvtType, func() interface{} {
-			return WindowPoStEvt{
+			return s.enrichWithTipset(WindowPoStEvt{
 				State:    "abort",
 				Deadline: s.activeDeadline,
-				Height:   s.cur.Height(),
-				TipSet:   s.cur.Cids(),
-			}
+			})
 		})
 
 		log.Warnf("Aborting Window PoSt (Deadline: %+v)", s.activeDeadline)
@@ -261,4 +260,14 @@ func (s *WindowPoStScheduler) abortActivePoSt() {
 
 	s.activeDeadline = nil
 	s.abort = nil
+}
+
+// enrichWithTipset enriches a WindowPoStEvt with tipset information,
+// if available.
+func (s *WindowPoStScheduler) enrichWithTipset(evt WindowPoStEvt) WindowPoStEvt {
+	if s.cur != nil {
+		evt.Height = s.cur.Height()
+		evt.TipSet = s.cur.Cids()
+	}
+	return evt
 }

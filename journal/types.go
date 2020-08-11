@@ -3,7 +3,11 @@ package journal
 import (
 	"sync"
 	"time"
+
+	logging "github.com/ipfs/go-log"
 )
+
+var log = logging.Logger("journal")
 
 var (
 	// DefaultDisabledEvents lists the journal events disabled by
@@ -28,6 +32,10 @@ type EventType struct {
 	// safe is a sentinel marker that's set to true if this EventType was
 	// constructed correctly (via Journal#RegisterEventType).
 	safe bool
+}
+
+func (et EventType) String() string {
+	return et.System + ":" + et.Event
 }
 
 // Enabled returns whether this event type is enabled in the journaling
@@ -84,9 +92,17 @@ type Event struct {
 // enabled, and if so, it calls the supplier to create the event and
 // subsequently journal.RecordEvent on the provided journal to record it.
 //
+// It also recovers from panics raised when calling the supplier function.
+//
 // This is safe to call with a nil Journal, either because the value is nil,
 // or because a journal obtained through NilJournal() is in use.
 func MaybeRecordEvent(journal Journal, evtType EventType, supplier func() interface{}) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Warnf("recovered from panic while recording journal event; type=%s, err=%v", evtType, r)
+		}
+	}()
+
 	if journal == nil || journal == nilj {
 		return
 	}

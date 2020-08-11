@@ -8,14 +8,11 @@ import (
 	"sync"
 	"time"
 
-	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/node/repo"
 )
-
-var log = logging.Logger("journal")
 
 // fsJournal is a basic journal backed by files on a filesystem.
 type fsJournal struct {
