@@ -171,7 +171,8 @@ func (db *DrandBeacon) VerifyEntry(curr types.BeaconEntry, prev types.BeaconEntr
 		return nil
 	}
 	if be := db.getCachedValue(curr.Round); be != nil {
-		return be
+		// return no error if the value is in the cache already
+		return nil
 	}
 	b := &dchain.Beacon{
 		PreviousSig: prev.Data,
