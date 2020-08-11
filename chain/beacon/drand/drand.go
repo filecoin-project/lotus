@@ -170,6 +170,9 @@ func (db *DrandBeacon) VerifyEntry(curr types.BeaconEntry, prev types.BeaconEntr
 		// TODO handle genesis better
 		return nil
 	}
+	if be := db.getCachedValue(curr.Round); be != nil {
+		return be
+	}
 	b := &dchain.Beacon{
 		PreviousSig: prev.Data,
 		Round:       curr.Round,
