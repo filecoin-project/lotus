@@ -850,6 +850,7 @@ func (sm *StateManager) setupGenesisActors(ctx context.Context) error {
 			}
 
 		} else if act.Code == builtin.AccountActorCodeID {
+			// should only ever be "faucet" accounts in testnets
 			kaddr, err := address.NewFromBytes([]byte(k))
 			if err != nil {
 				return xerrors.Errorf("decoding address: %w", err)
@@ -897,18 +898,21 @@ func (sm *StateManager) GetFilVested(ctx context.Context, height abi.ChainEpoch,
 		vf = big.Add(vf, au)
 	}
 
+	// these should only ever be "faucet" accounts in testnets
 	for _, v := range sm.genInfo.genesisActors {
 		act, err := st.GetActor(v.addr)
 		if err != nil {
 			return big.Zero(), xerrors.Errorf("failed to get actor: %w", err)
 		}
 
-		// TODO: We should probably slowly phase initBal into TotalCircSupply, instead of considering them locked forever
 		diff := big.Sub(v.initBal, act.Balance)
 		if diff.GreaterThan(big.Zero()) {
 			vf = big.Add(vf, diff)
 		}
 	}
+
+	vf = big.Add(vf, sm.genInfo.genesisPledge)
+	vf = big.Add(vf, sm.genInfo.genesisMarketFunds)
 
 	return vf, nil
 }
@@ -962,21 +966,10 @@ func (sm *StateManager) GetFilLocked(ctx context.Context, st *state.StateTree) (
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("failed to get filMarketLocked: %w", err)
 	}
-	// TODO: We should probably slowly phase genesisMarketFunds into TotalCircSupply, instead of considering them locked forever
-	filMarketLocked = types.BigSub(filMarketLocked, sm.genInfo.genesisMarketFunds)
-	if filMarketLocked.LessThan(big.Zero()) {
-		filMarketLocked = big.Zero()
-	}
 
 	filPowerLocked, err := getFilPowerLocked(ctx, st)
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("failed to get filPowerLocked: %w", err)
-	}
-
-	// TODO: We should probably slowly phase genesisPledge into TotalCircSupply, instead of considering them locked forever
-	filPowerLocked = types.BigSub(filPowerLocked, sm.genInfo.genesisPledge)
-	if filPowerLocked.LessThan(big.Zero()) {
-		filPowerLocked = big.Zero()
 	}
 
 	return types.BigAdd(filMarketLocked, filPowerLocked), nil
