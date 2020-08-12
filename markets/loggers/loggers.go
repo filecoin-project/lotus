@@ -3,6 +3,7 @@ package marketevents
 import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	logging "github.com/ipfs/go-log/v2"
 )
 
@@ -26,4 +27,12 @@ func RetrievalClientLogger(event retrievalmarket.ClientEvent, deal retrievalmark
 // RetrievalProviderLogger logs events from the retrieval provider
 func RetrievalProviderLogger(event retrievalmarket.ProviderEvent, deal retrievalmarket.ProviderDealState) {
 	log.Infow("retrieval event", "name", retrievalmarket.ProviderEvents[event], "deal ID", deal.ID, "receiver", deal.Receiver, "state", retrievalmarket.DealStatuses[deal.Status], "message", deal.Message)
+}
+
+type RetrievalEvent struct {
+	Event         retrievalmarket.ClientEvent
+	Status        retrievalmarket.DealStatus
+	BytesReceived uint64
+	FundsSpent    abi.TokenAmount
+	Err           string
 }
