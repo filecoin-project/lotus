@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding"
 	"fmt"
 	"math/big"
 	"strings"
@@ -25,6 +26,20 @@ func (f FIL) Format(s fmt.State, ch rune) {
 	default:
 		f.Int.Format(s, ch)
 	}
+}
+
+func (f FIL) MarshalText() (text []byte, err error) {
+	return []byte(f.String()), nil
+}
+
+func (f FIL) UnmarshalText(text []byte) error {
+	p, err := ParseFIL(string(text))
+	if err != nil {
+		return err
+	}
+
+	f.Int.Set(p.Int)
+	return nil
 }
 
 func ParseFIL(s string) (FIL, error) {
@@ -61,3 +76,6 @@ func ParseFIL(s string) (FIL, error) {
 
 	return FIL{r.Num()}, nil
 }
+
+var _ encoding.TextMarshaler = (*FIL)(nil)
+var _ encoding.TextUnmarshaler = (*FIL)(nil)
