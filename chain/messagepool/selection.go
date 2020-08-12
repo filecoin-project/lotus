@@ -27,6 +27,7 @@ type msgChain struct {
 	gasLimit  int64
 	gasPerf   float64
 	effPerf   float64
+	bp        float64
 	valid     bool
 	merged    bool
 	next      *msgChain
@@ -810,18 +811,13 @@ func (mc *msgChain) Trim(gasLimit int64, mp *MessagePool, baseFee types.BigInt, 
 		mc.gasReward = new(big.Int).Sub(mc.gasReward, gasReward)
 		mc.gasLimit -= mc.msgs[i].Message.GasLimit
 		if mc.gasLimit > 0 {
-			bp := 1.0
-			if mc.gasPerf != 0 { // prevent div by 0
-				bp = mc.effPerf / mc.gasPerf
-			}
-
 			mc.gasPerf = mp.getGasPerf(mc.gasReward, mc.gasLimit)
-
-			if mc.effPerf != 0 { // keep effPerf 0 if it is 0
-				mc.effPerf = bp * mc.gasPerf
+			if mc.bp != 0 {
+				mc.setEffPerf()
 			}
 		} else {
 			mc.gasPerf = 0
+			mc.effPerf = 0
 		}
 		i--
 	}
@@ -849,7 +845,17 @@ func (mc *msgChain) Invalidate() {
 }
 
 func (mc *msgChain) SetEffectivePerf(bp float64) {
-	mc.effPerf = mc.gasPerf * bp
+	mc.bp = bp
+	mc.setEffPerf()
+}
+
+func (mc *msgChain) setEffPerf() {
+	effPerf := mc.gasPerf * mc.bp
+	if mc.prev != nil {
+		effPerf = (effPerf*float64(mc.gasLimit) + mc.prev.effPerf*float64(mc.prev.gasLimit)) / float64(mc.gasLimit+mc.prev.gasLimit)
+	}
+	mc.effPerf = effPerf
+
 }
 
 func (mc *msgChain) SetNullEffectivePerf() {
