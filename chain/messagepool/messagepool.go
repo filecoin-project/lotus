@@ -68,6 +68,8 @@ type MessagePool struct {
 
 	ds dtypes.MetadataDS
 
+	addSema chan struct{}
+
 	closer  chan struct{}
 	repubTk *clock.Ticker
 
@@ -158,6 +160,7 @@ func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName) (*Messa
 
 	mp := &MessagePool{
 		ds:            ds,
+		addSema:       make(chan struct{}, 1),
 		closer:        make(chan struct{}),
 		repubTk:       build.Clock.Ticker(RepublishInterval),
 		localAddrs:    make(map[address.Address]struct{}),
@@ -251,6 +254,12 @@ func (mp *MessagePool) verifyMsgBeforePush(m *types.SignedMessage, epoch abi.Cha
 }
 
 func (mp *MessagePool) Push(m *types.SignedMessage) (cid.Cid, error) {
+	// serialize push access to reduce lock contention
+	mp.addSema <- struct{}{}
+	defer func() {
+		<-mp.addSema
+	}()
+
 	mp.curTsLk.Lock()
 	epoch := mp.curTs.Height()
 	mp.curTsLk.Unlock()
@@ -295,6 +304,12 @@ func (mp *MessagePool) Add(m *types.SignedMessage) error {
 		log.Warnf("mpooladd signature verification failed: %s", err)
 		return err
 	}
+
+	// serialize push access to reduce lock contention
+	mp.addSema <- struct{}{}
+	defer func() {
+		<-mp.addSema
+	}()
 
 	mp.curTsLk.Lock()
 	defer mp.curTsLk.Unlock()
@@ -494,6 +509,12 @@ func (mp *MessagePool) getStateBalance(addr address.Address, ts *types.TipSet) (
 }
 
 func (mp *MessagePool) PushWithNonce(ctx context.Context, addr address.Address, cb func(address.Address, uint64) (*types.SignedMessage, error)) (*types.SignedMessage, error) {
+	// serialize push access to reduce lock contention
+	mp.addSema <- struct{}{}
+	defer func() {
+		<-mp.addSema
+	}()
+
 	mp.curTsLk.Lock()
 	defer mp.curTsLk.Unlock()
 
