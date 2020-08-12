@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -21,6 +22,13 @@ func (f *fakeChain) ChainHead(ctx context.Context) (sealing.TipSetToken, abi.Cha
 	return []byte{1, 2, 3}, f.h, nil
 }
 
+func fakePieceCid(t *testing.T) cid.Cid {
+	comm := [32]byte{1, 2, 3}
+	fakePieceCid, err := commcid.ReplicaCommitmentV1ToCID(comm[:])
+	require.NoError(t, err)
+	return fakePieceCid
+}
+
 func TestBasicPolicyEmptySector(t *testing.T) {
 	policy := sealing.NewBasicPreCommitPolicy(&fakeChain{
 		h: abi.ChainEpoch(55),
@@ -29,7 +37,7 @@ func TestBasicPolicyEmptySector(t *testing.T) {
 	exp, err := policy.Expiration(context.Background())
 	require.NoError(t, err)
 
-	assert.Equal(t, 3455, int(exp))
+	assert.Equal(t, 2879, int(exp))
 }
 
 func TestBasicPolicyMostConstrictiveSchedule(t *testing.T) {
@@ -41,7 +49,7 @@ func TestBasicPolicyMostConstrictiveSchedule(t *testing.T) {
 		{
 			Piece: abi.PieceInfo{
 				Size:     abi.PaddedPieceSize(1024),
-				PieceCID: commcid.ReplicaCommitmentV1ToCID([]byte{1, 2, 3}),
+				PieceCID: fakePieceCid(t),
 			},
 			DealInfo: &sealing.DealInfo{
 				DealID: abi.DealID(42),
@@ -54,7 +62,7 @@ func TestBasicPolicyMostConstrictiveSchedule(t *testing.T) {
 		{
 			Piece: abi.PieceInfo{
 				Size:     abi.PaddedPieceSize(1024),
-				PieceCID: commcid.ReplicaCommitmentV1ToCID([]byte{1, 2, 3}),
+				PieceCID: fakePieceCid(t),
 			},
 			DealInfo: &sealing.DealInfo{
 				DealID: abi.DealID(43),
@@ -69,7 +77,7 @@ func TestBasicPolicyMostConstrictiveSchedule(t *testing.T) {
 	exp, err := policy.Expiration(context.Background(), pieces...)
 	require.NoError(t, err)
 
-	assert.Equal(t, 3466, int(exp))
+	assert.Equal(t, 2890, int(exp))
 }
 
 func TestBasicPolicyIgnoresExistingScheduleIfExpired(t *testing.T) {
@@ -81,7 +89,7 @@ func TestBasicPolicyIgnoresExistingScheduleIfExpired(t *testing.T) {
 		{
 			Piece: abi.PieceInfo{
 				Size:     abi.PaddedPieceSize(1024),
-				PieceCID: commcid.ReplicaCommitmentV1ToCID([]byte{1, 2, 3}),
+				PieceCID: fakePieceCid(t),
 			},
 			DealInfo: &sealing.DealInfo{
 				DealID: abi.DealID(44),
@@ -96,7 +104,7 @@ func TestBasicPolicyIgnoresExistingScheduleIfExpired(t *testing.T) {
 	exp, err := policy.Expiration(context.Background(), pieces...)
 	require.NoError(t, err)
 
-	assert.Equal(t, 3455, int(exp))
+	assert.Equal(t, 2879, int(exp))
 }
 
 func TestMissingDealIsIgnored(t *testing.T) {
@@ -108,7 +116,7 @@ func TestMissingDealIsIgnored(t *testing.T) {
 		{
 			Piece: abi.PieceInfo{
 				Size:     abi.PaddedPieceSize(1024),
-				PieceCID: commcid.ReplicaCommitmentV1ToCID([]byte{1, 2, 3}),
+				PieceCID: fakePieceCid(t),
 			},
 			DealInfo: &sealing.DealInfo{
 				DealID: abi.DealID(44),
@@ -121,7 +129,7 @@ func TestMissingDealIsIgnored(t *testing.T) {
 		{
 			Piece: abi.PieceInfo{
 				Size:     abi.PaddedPieceSize(1024),
-				PieceCID: commcid.ReplicaCommitmentV1ToCID([]byte{1, 2, 3}),
+				PieceCID: fakePieceCid(t),
 			},
 			DealInfo: nil,
 		},
@@ -130,5 +138,5 @@ func TestMissingDealIsIgnored(t *testing.T) {
 	exp, err := policy.Expiration(context.Background(), pieces...)
 	require.NoError(t, err)
 
-	assert.Equal(t, 3466, int(exp))
+	assert.Equal(t, 2890, int(exp))
 }

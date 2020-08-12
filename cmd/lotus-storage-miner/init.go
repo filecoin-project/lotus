@@ -437,7 +437,13 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 
 			smgr, err := sectorstorage.New(ctx, lr, stores.NewIndex(), &ffiwrapper.Config{
 				SealProofType: spt,
-			}, sectorstorage.SealerConfig{10, true, true, true, true}, nil, sa)
+			}, sectorstorage.SealerConfig{
+				ParallelFetchLimit: 10,
+				AllowPreCommit1:    true,
+				AllowPreCommit2:    true,
+				AllowCommit:        true,
+				AllowUnseal:        true,
+			}, nil, sa)
 			if err != nil {
 				return err
 			}
