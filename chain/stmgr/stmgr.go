@@ -111,7 +111,7 @@ func (sm *StateManager) TipSetState(ctx context.Context, ts *types.TipSet) (st c
 		return ts.Blocks()[0].ParentStateRoot, ts.Blocks()[0].ParentMessageReceipts, nil
 	}
 
-	st, rec, err = sm.computeTipSetState(ctx, ts.Blocks(), nil)
+	st, rec, err = sm.computeTipSetState(ctx, ts, nil)
 	if err != nil {
 		return cid.Undef, cid.Undef, err
 	}
@@ -121,7 +121,7 @@ func (sm *StateManager) TipSetState(ctx context.Context, ts *types.TipSet) (st c
 
 func (sm *StateManager) ExecutionTrace(ctx context.Context, ts *types.TipSet) (cid.Cid, []*api.InvocResult, error) {
 	var trace []*api.InvocResult
-	st, _, err := sm.computeTipSetState(ctx, ts.Blocks(), func(mcid cid.Cid, msg *types.Message, ret *vm.ApplyRet) error {
+	st, _, err := sm.computeTipSetState(ctx, ts, func(mcid cid.Cid, msg *types.Message, ret *vm.ApplyRet) error {
 		ir := &api.InvocResult{
 			Msg:            msg,
 			MsgRct:         &ret.MessageReceipt,
@@ -141,16 +141,9 @@ func (sm *StateManager) ExecutionTrace(ctx context.Context, ts *types.TipSet) (c
 	return st, trace, nil
 }
 
-type BlockMessages struct {
-	Miner         address.Address
-	BlsMessages   []types.ChainMsg
-	SecpkMessages []types.ChainMsg
-	WinCount      int64
-}
-
 type ExecCallback func(cid.Cid, *types.Message, *vm.ApplyRet) error
 
-func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEpoch, pstate cid.Cid, bms []BlockMessages, epoch abi.ChainEpoch, r vm.Rand, cb ExecCallback, baseFee abi.TokenAmount) (cid.Cid, cid.Cid, error) {
+func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEpoch, pstate cid.Cid, bms []store.BlockMessages, epoch abi.ChainEpoch, r vm.Rand, cb ExecCallback, baseFee abi.TokenAmount) (cid.Cid, cid.Cid, error) {
 
 	vmopt := &vm.VMOpts{
 		StateBase:  pstate,
@@ -311,9 +304,11 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 	return st, rectroot, nil
 }
 
-func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.BlockHeader, cb ExecCallback) (cid.Cid, cid.Cid, error) {
+func (sm *StateManager) computeTipSetState(ctx context.Context, ts *types.TipSet, cb ExecCallback) (cid.Cid, cid.Cid, error) {
 	ctx, span := trace.StartSpan(ctx, "computeTipSetState")
 	defer span.End()
+
+	blks := ts.Blocks()
 
 	for i := 0; i < len(blks); i++ {
 		for j := i + 1; j < len(blks); j++ {
@@ -343,30 +338,11 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 
 	r := store.NewChainRand(sm.cs, cids, blks[0].Height)
 
-	var blkmsgs []BlockMessages
-	for _, b := range blks {
-		bms, sms, err := sm.cs.MessagesForBlock(b)
-		if err != nil {
-			return cid.Undef, cid.Undef, xerrors.Errorf("failed to get messages for block: %w", err)
-		}
-
-		bm := BlockMessages{
-			Miner:         b.Miner,
-			BlsMessages:   make([]types.ChainMsg, 0, len(bms)),
-			SecpkMessages: make([]types.ChainMsg, 0, len(sms)),
-			WinCount:      b.ElectionProof.WinCount,
-		}
-
-		for _, m := range bms {
-			bm.BlsMessages = append(bm.BlsMessages, m)
-		}
-
-		for _, m := range sms {
-			bm.SecpkMessages = append(bm.SecpkMessages, m)
-		}
-
-		blkmsgs = append(blkmsgs, bm)
+	blkmsgs, err := sm.cs.BlockMsgsForTipset(ts)
+	if err != nil {
+		return cid.Undef, cid.Undef, xerrors.Errorf("getting block messages for tipset: %w", err)
 	}
+
 	baseFee := blks[0].ParentBaseFee
 
 	return sm.ApplyBlocks(ctx, parentEpoch, pstate, blkmsgs, blks[0].Height, r, cb, baseFee)

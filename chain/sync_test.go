@@ -3,6 +3,7 @@ package chain_test
 import (
 	"context"
 	"fmt"
+	"github.com/ipfs/go-cid"
 	"os"
 	"testing"
 	"time"
@@ -172,7 +173,7 @@ func (tu *syncTestUtil) pushTsExpectErr(to int, fts *store.FullTipSet, experr bo
 	}
 }
 
-func (tu *syncTestUtil) mineOnBlock(blk *store.FullTipSet, to int, miners []int, wait, fail bool) *store.FullTipSet {
+func (tu *syncTestUtil) mineOnBlock(blk *store.FullTipSet, to int, miners []int, wait, fail bool, msgs [][]*types.SignedMessage) *store.FullTipSet {
 	if miners == nil {
 		for i := range tu.g.Miners {
 			miners = append(miners, i)
@@ -186,20 +187,28 @@ func (tu *syncTestUtil) mineOnBlock(blk *store.FullTipSet, to int, miners []int,
 
 	fmt.Println("Miner mining block: ", maddrs)
 
-	mts, err := tu.g.NextTipSetFromMiners(blk.TipSet(), maddrs)
-	require.NoError(tu.t, err)
-
-	if fail {
-		tu.pushTsExpectErr(to, mts.TipSet, true)
+	var nts *store.FullTipSet
+	var err error
+	if msgs != nil {
+		nts, err = tu.g.NextTipSetFromMinersWithMessages(blk.TipSet(), maddrs, msgs)
+		require.NoError(tu.t, err)
 	} else {
-		tu.pushFtsAndWait(to, mts.TipSet, wait)
+		mt, err := tu.g.NextTipSetFromMiners(blk.TipSet(), maddrs)
+		require.NoError(tu.t, err)
+		nts = mt.TipSet
 	}
 
-	return mts.TipSet
+	if fail {
+		tu.pushTsExpectErr(to, nts, true)
+	} else {
+		tu.pushFtsAndWait(to, nts, wait)
+	}
+
+	return nts
 }
 
 func (tu *syncTestUtil) mineNewBlock(src int, miners []int) {
-	mts := tu.mineOnBlock(tu.g.CurTipset, src, miners, true, false)
+	mts := tu.mineOnBlock(tu.g.CurTipset, src, miners, true, false, nil)
 	tu.g.CurTipset = mts
 }
 
@@ -416,7 +425,7 @@ func TestSyncBadTimestamp(t *testing.T) {
 	fmt.Println("BASE: ", base.Cids())
 	tu.printHeads()
 
-	a1 := tu.mineOnBlock(base, 0, nil, false, true)
+	a1 := tu.mineOnBlock(base, 0, nil, false, true, nil)
 
 	tu.g.Timestamper = nil
 	require.NoError(t, tu.g.ResyncBankerNonce(a1.TipSet()))
@@ -425,7 +434,7 @@ func TestSyncBadTimestamp(t *testing.T) {
 
 	fmt.Println("After mine bad block!")
 	tu.printHeads()
-	a2 := tu.mineOnBlock(base, 0, nil, true, false)
+	a2 := tu.mineOnBlock(base, 0, nil, true, false, nil)
 
 	tu.waitUntilSync(0, client)
 
@@ -469,7 +478,7 @@ func TestSyncBadWinningPoSt(t *testing.T) {
 	tu.g.SetWinningPoStProver(tu.g.Miners[1], &badWpp{})
 
 	// now ensure that new blocks are not accepted
-	tu.mineOnBlock(base, client, nil, false, true)
+	tu.mineOnBlock(base, client, nil, false, true, nil)
 }
 
 func (tu *syncTestUtil) loadChainToNode(to int) {
@@ -514,16 +523,16 @@ func TestSyncFork(t *testing.T) {
 	fmt.Println("Mining base: ", base.TipSet().Cids(), base.TipSet().Height())
 
 	// The two nodes fork at this point into 'a' and 'b'
-	a1 := tu.mineOnBlock(base, p1, []int{0}, true, false)
-	a := tu.mineOnBlock(a1, p1, []int{0}, true, false)
-	a = tu.mineOnBlock(a, p1, []int{0}, true, false)
+	a1 := tu.mineOnBlock(base, p1, []int{0}, true, false, nil)
+	a := tu.mineOnBlock(a1, p1, []int{0}, true, false, nil)
+	a = tu.mineOnBlock(a, p1, []int{0}, true, false, nil)
 
 	require.NoError(t, tu.g.ResyncBankerNonce(a1.TipSet()))
 	// chain B will now be heaviest
-	b := tu.mineOnBlock(base, p2, []int{1}, true, false)
-	b = tu.mineOnBlock(b, p2, []int{1}, true, false)
-	b = tu.mineOnBlock(b, p2, []int{1}, true, false)
-	b = tu.mineOnBlock(b, p2, []int{1}, true, false)
+	b := tu.mineOnBlock(base, p2, []int{1}, true, false, nil)
+	b = tu.mineOnBlock(b, p2, []int{1}, true, false, nil)
+	b = tu.mineOnBlock(b, p2, []int{1}, true, false, nil)
+	b = tu.mineOnBlock(b, p2, []int{1}, true, false, nil)
 
 	fmt.Println("A: ", a.Cids(), a.TipSet().Height())
 	fmt.Println("B: ", b.Cids(), b.TipSet().Height())
@@ -536,6 +545,99 @@ func TestSyncFork(t *testing.T) {
 	tu.waitUntilSyncTarget(p2, b.TipSet())
 
 	phead()
+}
+
+// This test crafts a tipset with 2 blocks, A and B.
+// A and B both include _different_ messages from sender X with nonce N (where N is the correct nonce for X).
+// We can confirm that the state can be correctly computed, and that `MessagesForTipset` behaves as expected.
+func TestDuplicateNonce(t *testing.T) {
+	H := 10
+	tu := prepSyncTest(t, H)
+
+	base := tu.g.CurTipset
+
+	// Produce a message from the banker to the rcvr
+	makeMsg := func(rcvr address.Address) *types.SignedMessage {
+
+		ba, err := tu.nds[0].StateGetActor(context.TODO(), tu.g.Banker(), base.TipSet().Key())
+		require.NoError(t, err)
+		msg := types.Message{
+			To:   rcvr,
+			From: tu.g.Banker(),
+
+			Nonce: ba.Nonce,
+
+			Value: types.NewInt(1),
+
+			Method: 0,
+
+			GasLimit:   100_000_000,
+			GasFeeCap:  types.NewInt(0),
+			GasPremium: types.NewInt(0),
+		}
+
+		sig, err := tu.g.Wallet().Sign(context.TODO(), tu.g.Banker(), msg.Cid().Bytes())
+		require.NoError(t, err)
+
+		return &types.SignedMessage{
+			Message:   msg,
+			Signature: *sig,
+		}
+	}
+
+	msgs := make([][]*types.SignedMessage, 2)
+	// Each miner includes a message from the banker with the same nonce, but to different addresses
+	for k, _ := range msgs {
+		msgs[k] = []*types.SignedMessage{makeMsg(tu.g.Miners[k])}
+	}
+
+	ts1 := tu.mineOnBlock(base, 0, []int{0, 1}, true, false, msgs)
+
+	tu.waitUntilSyncTarget(0, ts1.TipSet())
+
+	// mine another tipset
+
+	ts2 := tu.mineOnBlock(ts1, 0, []int{0, 1}, true, false, make([][]*types.SignedMessage, 2))
+	tu.waitUntilSyncTarget(0, ts2.TipSet())
+
+	var includedMsg cid.Cid
+	var skippedMsg cid.Cid
+	r0, err0 := tu.nds[0].StateGetReceipt(context.TODO(), msgs[0][0].Cid(), ts2.TipSet().Key())
+	r1, err1 := tu.nds[0].StateGetReceipt(context.TODO(), msgs[1][0].Cid(), ts2.TipSet().Key())
+
+	if err0 == nil {
+		require.Error(t, err1, "at least one of the StateGetReceipt calls should fail")
+		require.True(t, r0.ExitCode.IsSuccess())
+		includedMsg = msgs[0][0].Message.Cid()
+		skippedMsg = msgs[1][0].Message.Cid()
+	} else {
+		require.NoError(t, err1, "both the StateGetReceipt calls should not fail")
+		require.True(t, r1.ExitCode.IsSuccess())
+		includedMsg = msgs[1][0].Message.Cid()
+		skippedMsg = msgs[0][0].Message.Cid()
+	}
+
+	_, rslts, err := tu.g.StateManager().ExecutionTrace(context.TODO(), ts1.TipSet())
+	require.NoError(t, err)
+	found := false
+	for _, v := range rslts {
+		if v.Msg.Cid() == skippedMsg {
+			t.Fatal("skipped message should not be in exec trace")
+		}
+
+		if v.Msg.Cid() == includedMsg {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Fatal("included message should be in exec trace")
+	}
+
+	mft, err := tu.g.ChainStore().MessagesForTipset(ts1.TipSet())
+	require.NoError(t, err)
+	require.True(t, len(mft) == 1, "only expecting one message for this tipset")
+	require.Equal(t, includedMsg, mft[0].VMMessage().Cid(), "messages for tipset didn't contain expected message")
 }
 
 func BenchmarkSyncBasic(b *testing.B) {
