@@ -24,7 +24,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
-	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 
@@ -190,7 +189,8 @@ func NewVM(opts *VMOpts) (*VM, error) {
 }
 
 type Rand interface {
-	GetRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
+	GetChainRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
+	GetBeaconRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
 }
 
 type ApplyRet struct {
@@ -240,7 +240,7 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 		_ = rt.chargeGasSafe(newGasCharge("OnGetActor", 0, 0))
 		toActor, err := st.GetActor(msg.To)
 		if err != nil {
-			if xerrors.Is(err, init_.ErrAddressNotFound) {
+			if xerrors.Is(err, types.ErrActorNotFound) {
 				a, err := TryCreateAccountActor(rt, msg.To)
 				if err != nil {
 					return nil, aerrors.Wrapf(err, "could not create account")

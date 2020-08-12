@@ -20,14 +20,12 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	lps "github.com/whyrusleeping/pubsub"
-	"go.uber.org/multierr"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/lib/sigs"
@@ -40,9 +38,12 @@ var log = logging.Logger("messagepool")
 
 const futureDebug = false
 
-const repubMsgLimit = 5
+var rbfNumBig = types.NewInt(uint64((ReplaceByFeeRatioDefault - 1) * RbfDenom))
+var rbfDenomBig = types.NewInt(RbfDenom)
 
 const RbfDenom = 256
+
+var RepublishInterval = pubsub.TimeCacheDuration + time.Duration(5*build.BlockDelaySecs+build.PropagationDelaySecs)*time.Second
 
 var (
 	ErrMessageTooBig = errors.New("message too big")
@@ -57,6 +58,8 @@ var (
 
 	ErrBroadcastAnyway  = errors.New("broadcasting message despite validation fail")
 	ErrRBFTooLowPremium = errors.New("replace by fee has too low GasPremium")
+
+	ErrTryAgain = errors.New("state inconsistency while signing message; please try again")
 )
 
 const (
@@ -70,6 +73,8 @@ type MessagePool struct {
 
 	ds dtypes.MetadataDS
 
+	addSema chan struct{}
+
 	closer  chan struct{}
 	repubTk *clock.Ticker
 
@@ -82,8 +87,6 @@ type MessagePool struct {
 
 	cfgLk sync.Mutex
 	cfg   *types.MpoolConfig
-
-	rbfNum, rbfDenom types.BigInt
 
 	api Provider
 
@@ -128,7 +131,7 @@ func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool) (bool, error) {
 		if m.Cid() != exms.Cid() {
 			// check if RBF passes
 			minPrice := exms.Message.GasPremium
-			minPrice = types.BigAdd(minPrice, types.BigDiv(types.BigMul(minPrice, mp.rbfNum), mp.rbfDenom))
+			minPrice = types.BigAdd(minPrice, types.BigDiv(types.BigMul(minPrice, rbfNumBig), rbfDenomBig))
 			minPrice = types.BigAdd(minPrice, types.NewInt(1))
 			if types.BigCmp(m.Message.GasPremium, minPrice) >= 0 {
 				log.Infow("add with RBF", "oldpremium", exms.Message.GasPremium,
@@ -147,69 +150,6 @@ func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool) (bool, error) {
 	return !has, nil
 }
 
-type Provider interface {
-	SubscribeHeadChanges(func(rev, app []*types.TipSet) error) *types.TipSet
-	PutMessage(m types.ChainMsg) (cid.Cid, error)
-	PubSubPublish(string, []byte) error
-	StateGetActor(address.Address, *types.TipSet) (*types.Actor, error)
-	StateAccountKey(context.Context, address.Address, *types.TipSet) (address.Address, error)
-	MessagesForBlock(*types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error)
-	MessagesForTipset(*types.TipSet) ([]types.ChainMsg, error)
-	LoadTipSet(tsk types.TipSetKey) (*types.TipSet, error)
-	ChainComputeBaseFee(ctx context.Context, ts *types.TipSet) (types.BigInt, error)
-}
-
-type mpoolProvider struct {
-	sm *stmgr.StateManager
-	ps *pubsub.PubSub
-}
-
-func NewProvider(sm *stmgr.StateManager, ps *pubsub.PubSub) Provider {
-	return &mpoolProvider{sm: sm, ps: ps}
-}
-
-func (mpp *mpoolProvider) SubscribeHeadChanges(cb func(rev, app []*types.TipSet) error) *types.TipSet {
-	mpp.sm.ChainStore().SubscribeHeadChanges(cb)
-	return mpp.sm.ChainStore().GetHeaviestTipSet()
-}
-
-func (mpp *mpoolProvider) PutMessage(m types.ChainMsg) (cid.Cid, error) {
-	return mpp.sm.ChainStore().PutMessage(m)
-}
-
-func (mpp *mpoolProvider) PubSubPublish(k string, v []byte) error {
-	return mpp.ps.Publish(k, v)
-}
-
-func (mpp *mpoolProvider) StateGetActor(addr address.Address, ts *types.TipSet) (*types.Actor, error) {
-	var act types.Actor
-	return &act, mpp.sm.WithParentState(ts, mpp.sm.WithActor(addr, stmgr.GetActor(&act)))
-}
-
-func (mpp *mpoolProvider) StateAccountKey(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
-	return mpp.sm.ResolveToKeyAddress(ctx, addr, ts)
-}
-
-func (mpp *mpoolProvider) MessagesForBlock(h *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error) {
-	return mpp.sm.ChainStore().MessagesForBlock(h)
-}
-
-func (mpp *mpoolProvider) MessagesForTipset(ts *types.TipSet) ([]types.ChainMsg, error) {
-	return mpp.sm.ChainStore().MessagesForTipset(ts)
-}
-
-func (mpp *mpoolProvider) LoadTipSet(tsk types.TipSetKey) (*types.TipSet, error) {
-	return mpp.sm.ChainStore().LoadTipSet(tsk)
-}
-
-func (mpp *mpoolProvider) ChainComputeBaseFee(ctx context.Context, ts *types.TipSet) (types.BigInt, error) {
-	baseFee, err := mpp.sm.ChainStore().ComputeBaseFee(ctx, ts)
-	if err != nil {
-		return types.NewInt(0), xerrors.Errorf("computing base fee at %s: %w", ts, err)
-	}
-	return baseFee, nil
-}
-
 func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName) (*MessagePool, error) {
 	cache, _ := lru.New2Q(build.BlsSignatureCacheSize)
 	verifcache, _ := lru.New2Q(build.VerifSigCacheSize)
@@ -223,8 +163,9 @@ func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName) (*Messa
 
 	mp := &MessagePool{
 		ds:            ds,
+		addSema:       make(chan struct{}, 1),
 		closer:        make(chan struct{}),
-		repubTk:       build.Clock.Ticker(time.Duration(build.BlockDelaySecs) * time.Second),
+		repubTk:       build.Clock.Ticker(RepublishInterval),
 		localAddrs:    make(map[address.Address]struct{}),
 		pending:       make(map[address.Address]*msgSet),
 		minGasPrice:   types.NewInt(0),
@@ -237,8 +178,6 @@ func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName) (*Messa
 		api:           api,
 		netName:       netName,
 		cfg:           cfg,
-		rbfNum:        types.NewInt(uint64((cfg.ReplaceByFeeRatio - 1) * RbfDenom)),
-		rbfDenom:      types.NewInt(RbfDenom),
 	}
 
 	// enable initial prunes
@@ -282,63 +221,8 @@ func (mp *MessagePool) runLoop() {
 	for {
 		select {
 		case <-mp.repubTk.C:
-			mp.lk.Lock()
-
-			msgsForAddr := make(map[address.Address][]*types.SignedMessage)
-			for a := range mp.localAddrs {
-				msgsForAddr[a] = mp.pendingFor(a)
-			}
-
-			mp.lk.Unlock()
-
-			var errout error
-			outputMsgs := []*types.SignedMessage{}
-
-			for a, msgs := range msgsForAddr {
-				a, err := mp.api.StateGetActor(a, nil)
-				if err != nil {
-					errout = multierr.Append(errout, xerrors.Errorf("could not get actor state: %w", err))
-					continue
-				}
-
-				curNonce := a.Nonce
-				for _, m := range msgs {
-					if m.Message.Nonce < curNonce {
-						continue
-					}
-					if m.Message.Nonce != curNonce {
-						break
-					}
-					outputMsgs = append(outputMsgs, m)
-					curNonce++
-				}
-
-			}
-
-			if len(outputMsgs) != 0 {
-				log.Infow("republishing local messages", "n", len(outputMsgs))
-			}
-
-			if len(outputMsgs) > repubMsgLimit {
-				outputMsgs = outputMsgs[:repubMsgLimit]
-			}
-
-			for _, msg := range outputMsgs {
-				msgb, err := msg.Serialize()
-				if err != nil {
-					errout = multierr.Append(errout, xerrors.Errorf("could not serialize: %w", err))
-					continue
-				}
-
-				err = mp.api.PubSubPublish(build.MessagesTopic(mp.netName), msgb)
-				if err != nil {
-					errout = multierr.Append(errout, xerrors.Errorf("could not publish: %w", err))
-					continue
-				}
-			}
-
-			if errout != nil {
-				log.Errorf("errors while republishing: %+v", errout)
+			if err := mp.republishPendingMessages(); err != nil {
+				log.Errorf("error while republishing messages: %s", err)
 			}
 		case <-mp.pruneTrigger:
 			if err := mp.pruneExcessMessages(); err != nil {
@@ -349,7 +233,6 @@ func (mp *MessagePool) runLoop() {
 			return
 		}
 	}
-
 }
 
 func (mp *MessagePool) addLocal(m *types.SignedMessage, msgb []byte) error {
@@ -372,6 +255,12 @@ func (mp *MessagePool) verifyMsgBeforePush(m *types.SignedMessage, epoch abi.Cha
 }
 
 func (mp *MessagePool) Push(m *types.SignedMessage) (cid.Cid, error) {
+	// serialize push access to reduce lock contention
+	mp.addSema <- struct{}{}
+	defer func() {
+		<-mp.addSema
+	}()
+
 	mp.curTsLk.Lock()
 	epoch := mp.curTs.Height()
 	mp.curTsLk.Unlock()
@@ -416,6 +305,12 @@ func (mp *MessagePool) Add(m *types.SignedMessage) error {
 		log.Warnf("mpooladd signature verification failed: %s", err)
 		return err
 	}
+
+	// serialize push access to reduce lock contention
+	mp.addSema <- struct{}{}
+	defer func() {
+		<-mp.addSema
+	}()
 
 	mp.curTsLk.Lock()
 	defer mp.curTsLk.Unlock()
@@ -615,29 +510,62 @@ func (mp *MessagePool) getStateBalance(addr address.Address, ts *types.TipSet) (
 }
 
 func (mp *MessagePool) PushWithNonce(ctx context.Context, addr address.Address, cb func(address.Address, uint64) (*types.SignedMessage, error)) (*types.SignedMessage, error) {
-	mp.curTsLk.Lock()
-	defer mp.curTsLk.Unlock()
+	// serialize push access to reduce lock contention
+	mp.addSema <- struct{}{}
+	defer func() {
+		<-mp.addSema
+	}()
 
+	mp.curTsLk.Lock()
 	mp.lk.Lock()
-	defer mp.lk.Unlock()
+
+	curTs := mp.curTs
 
 	fromKey := addr
 	if fromKey.Protocol() == address.ID {
 		var err error
 		fromKey, err = mp.api.StateAccountKey(ctx, fromKey, mp.curTs)
 		if err != nil {
+			mp.lk.Unlock()
+			mp.curTsLk.Unlock()
 			return nil, xerrors.Errorf("resolving sender key: %w", err)
 		}
 	}
 
 	nonce, err := mp.getNonceLocked(fromKey, mp.curTs)
 	if err != nil {
+		mp.lk.Unlock()
+		mp.curTsLk.Unlock()
 		return nil, xerrors.Errorf("get nonce locked failed: %w", err)
 	}
+
+	// release the locks for signing
+	mp.lk.Unlock()
+	mp.curTsLk.Unlock()
 
 	msg, err := cb(fromKey, nonce)
 	if err != nil {
 		return nil, err
+	}
+
+	// reacquire the locks and check state for consistency
+	mp.curTsLk.Lock()
+	defer mp.curTsLk.Unlock()
+
+	if mp.curTs != curTs {
+		return nil, ErrTryAgain
+	}
+
+	mp.lk.Lock()
+	defer mp.lk.Unlock()
+
+	nonce2, err := mp.getNonceLocked(fromKey, mp.curTs)
+	if err != nil {
+		return nil, xerrors.Errorf("get nonce locked failed: %w", err)
+	}
+
+	if nonce2 != nonce {
+		return nil, ErrTryAgain
 	}
 
 	if err := mp.verifyMsgBeforePush(msg, mp.curTs.Height()); err != nil {

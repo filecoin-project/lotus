@@ -18,25 +18,25 @@ require (
 	github.com/drand/drand v1.0.3-0.20200714175734-29705eaf09d4
 	github.com/drand/kyber v1.1.1
 	github.com/fatih/color v1.8.0
-	github.com/filecoin-project/chain-validation v0.0.6-0.20200807023228-a084d8d9919e
+	github.com/filecoin-project/chain-validation v0.0.6-0.20200812173150-c013d785a8d5
 	github.com/filecoin-project/filecoin-ffi v0.30.4-0.20200716204036-cddc56607e1d
-	github.com/filecoin-project/go-address v0.0.2-0.20200504173055-8b6f2fb2b3ef
+	github.com/filecoin-project/go-address v0.0.3
 	github.com/filecoin-project/go-amt-ipld/v2 v2.1.1-0.20200731171407-e559a0579161 // indirect
-	github.com/filecoin-project/go-bitfield v0.1.2
+	github.com/filecoin-project/go-bitfield v0.2.0
 	github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
-	github.com/filecoin-project/go-data-transfer v0.5.3
+	github.com/filecoin-project/go-data-transfer v0.6.0
 	github.com/filecoin-project/go-fil-commcid v0.0.0-20200716160307-8f644712406f
-	github.com/filecoin-project/go-fil-markets v0.5.4
+	github.com/filecoin-project/go-fil-markets v0.5.4-0.20200811210447-4b1ab3c87fcb
 	github.com/filecoin-project/go-jsonrpc v0.1.1-0.20200602181149-522144ab4e24
 	github.com/filecoin-project/go-multistore v0.0.3
 	github.com/filecoin-project/go-padreader v0.0.0-20200210211231-548257017ca6
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200701152213-3e0f0afdc261
 	github.com/filecoin-project/go-statestore v0.1.0
 	github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b
-	github.com/filecoin-project/sector-storage v0.0.0-20200805173933-deec7a2658d4
-	github.com/filecoin-project/specs-actors v0.8.7-0.20200805174427-9d42fb163883
-	github.com/filecoin-project/specs-storage v0.1.1-0.20200622113353-88a9704877ea
+	github.com/filecoin-project/sector-storage v0.0.0-20200810171746-eac70842d8e0
+	github.com/filecoin-project/specs-actors v0.8.7-0.20200811223639-8db91253c07a
+	github.com/filecoin-project/specs-storage v0.1.1-0.20200730063404-f7db367e9401
 	github.com/filecoin-project/storage-fsm v0.0.0-20200805013058-9d9ea4e6331f
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/go-kit/kit v0.10.0
@@ -60,7 +60,7 @@ require (
 	github.com/ipfs/go-filestore v1.0.0
 	github.com/ipfs/go-fs-lock v0.0.1
 	github.com/ipfs/go-graphsync v0.1.0
-	github.com/ipfs/go-ipfs-blockstore v1.0.0
+	github.com/ipfs/go-ipfs-blockstore v1.0.1
 	github.com/ipfs/go-ipfs-chunker v0.0.5
 	github.com/ipfs/go-ipfs-ds-help v1.0.0
 	github.com/ipfs/go-ipfs-exchange-interface v0.0.1
@@ -72,7 +72,7 @@ require (
 	github.com/ipfs/go-ipld-format v0.2.0
 	github.com/ipfs/go-log v1.0.4
 	github.com/ipfs/go-log/v2 v2.1.2-0.20200626104915-0016c0b4b3e4
-	github.com/ipfs/go-merkledag v0.3.1
+	github.com/ipfs/go-merkledag v0.3.2
 	github.com/ipfs/go-path v0.0.7
 	github.com/ipfs/go-unixfs v0.2.4
 	github.com/ipfs/interface-go-ipfs-core v0.2.3
@@ -87,13 +87,13 @@ require (
 	github.com/libp2p/go-libp2p-discovery v0.5.0
 	github.com/libp2p/go-libp2p-kad-dht v0.8.3
 	github.com/libp2p/go-libp2p-mplex v0.2.4
+	github.com/libp2p/go-libp2p-noise v0.1.1
 	github.com/libp2p/go-libp2p-peer v0.2.0
 	github.com/libp2p/go-libp2p-peerstore v0.2.6
 	github.com/libp2p/go-libp2p-pubsub v0.3.4
 	github.com/libp2p/go-libp2p-quic-transport v0.7.1
 	github.com/libp2p/go-libp2p-record v0.1.3
 	github.com/libp2p/go-libp2p-routing-helpers v0.2.3
-	github.com/libp2p/go-libp2p-secio v0.2.2
 	github.com/libp2p/go-libp2p-swarm v0.2.8
 	github.com/libp2p/go-libp2p-tls v0.1.3
 	github.com/libp2p/go-libp2p-yamux v0.2.8
@@ -115,7 +115,7 @@ require (
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/urfave/cli/v2 v2.2.0
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
-	github.com/whyrusleeping/cbor-gen v0.0.0-20200723185710-6a3894a6352b
+	github.com/whyrusleeping/cbor-gen v0.0.0-20200811225321-4fed70922d45
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
 	github.com/whyrusleeping/pubsub v0.0.0-20131020042734-02de8aa2db3d
 	github.com/xorcare/golden v0.6.1-0.20191112154924-b87f686d7542
@@ -128,7 +128,7 @@ require (
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
 	golang.org/x/sys v0.0.0-20200602225109-6fdc65e7d980
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0
-	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543
+	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
 	google.golang.org/api v0.25.0 // indirect
 	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
 )

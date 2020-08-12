@@ -74,7 +74,7 @@ func (a *StateAPI) StateMinerActiveSectors(ctx context.Context, maddr address.Ad
 	err := a.StateManager.WithParentStateTsk(tsk,
 		a.StateManager.WithActor(maddr,
 			a.StateManager.WithActorState(ctx, func(store adt.Store, mas *miner.State) error {
-				var allActive []*abi.BitField
+				var allActive []abi.BitField
 
 				err := a.StateManager.WithDeadlines(
 					a.StateManager.WithEachDeadline(
@@ -96,7 +96,7 @@ func (a *StateAPI) StateMinerActiveSectors(ctx context.Context, maddr address.Ad
 					return xerrors.Errorf("merging active sector bitfields: %w", err)
 				}
 
-				out, err = stmgr.LoadSectorsFromSet(ctx, a.Chain.Blockstore(), mas.Sectors, active, false)
+				out, err = stmgr.LoadSectorsFromSet(ctx, a.Chain.Blockstore(), mas.Sectors, &active, false)
 				return err
 			})))
 	if err != nil {
@@ -160,8 +160,8 @@ func (a *StateAPI) StateMinerProvingDeadline(ctx context.Context, addr address.A
 	return mas.DeadlineInfo(ts.Height()).NextNotElapsed(), nil
 }
 
-func (a *StateAPI) StateMinerFaults(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.BitField, error) {
-	out := abi.NewBitField()
+func (a *StateAPI) StateMinerFaults(ctx context.Context, addr address.Address, tsk types.TipSetKey) (abi.BitField, error) {
+	out := bitfield.New()
 
 	err := a.StateManager.WithParentStateTsk(tsk,
 		a.StateManager.WithActor(addr,
@@ -173,7 +173,7 @@ func (a *StateAPI) StateMinerFaults(ctx context.Context, addr address.Address, t
 							return err
 						}))))))
 	if err != nil {
-		return nil, err
+		return bitfield.BitField{}, err
 	}
 
 	return out, err
@@ -203,7 +203,7 @@ func (a *StateAPI) StateAllMinerFaults(ctx context.Context, lookback abi.ChainEp
 			return nil, xerrors.Errorf("failed to load miner actor state %s: %w", m, err)
 		}
 
-		err = mas.ForEachFaultEpoch(a.Chain.Store(ctx), func(faultStart abi.ChainEpoch, faults *abi.BitField) error {
+		err = mas.ForEachFaultEpoch(a.Chain.Store(ctx), func(faultStart abi.ChainEpoch, faults abi.BitField) error {
 			if faultStart >= cutoff {
 				allFaults = append(allFaults, &api.Fault{
 					Miner: m,
@@ -222,8 +222,8 @@ func (a *StateAPI) StateAllMinerFaults(ctx context.Context, lookback abi.ChainEp
 	return allFaults, nil*/
 }
 
-func (a *StateAPI) StateMinerRecoveries(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.BitField, error) {
-	out := abi.NewBitField()
+func (a *StateAPI) StateMinerRecoveries(ctx context.Context, addr address.Address, tsk types.TipSetKey) (abi.BitField, error) {
+	out := bitfield.New()
 
 	err := a.StateManager.WithParentStateTsk(tsk,
 		a.StateManager.WithActor(addr,
@@ -235,7 +235,7 @@ func (a *StateAPI) StateMinerRecoveries(ctx context.Context, addr address.Addres
 							return err
 						}))))))
 	if err != nil {
-		return nil, err
+		return bitfield.BitField{}, err
 	}
 
 	return out, err
@@ -668,7 +668,7 @@ func (a *StateAPI) StateMinerSectorCount(ctx context.Context, addr address.Addre
 	err := a.StateManager.WithParentStateTsk(tsk,
 		a.StateManager.WithActor(addr,
 			a.StateManager.WithActorState(ctx, func(store adt.Store, mas *miner.State) error {
-				var allActive []*abi.BitField
+				var allActive []abi.BitField
 
 				err := a.StateManager.WithDeadlines(
 					a.StateManager.WithEachDeadline(

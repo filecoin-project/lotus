@@ -70,7 +70,7 @@ func (m *Sealing) getTicket(ctx statemachine.Context, sector SectorInfo) (abi.Se
 		ticketEpoch = pci.Info.SealRandEpoch
 	}
 
-	rand, err := m.api.ChainGetRandomness(ctx.Context(), tok, crypto.DomainSeparationTag_SealRandomness, ticketEpoch, buf.Bytes())
+	rand, err := m.api.ChainGetRandomnessFromTickets(ctx.Context(), tok, crypto.DomainSeparationTag_SealRandomness, ticketEpoch, buf.Bytes())
 	if err != nil {
 		return nil, 0, err
 	}
@@ -159,6 +159,13 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 		return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("handlePreCommitting: failed to compute pre-commit expiry: %w", err)})
 	}
 
+	// Sectors must last _at least_ MinSectorExpiration + MaxSealDuration.
+	// TODO: The "+10" allows the pre-commit to take 10 blocks to be accepted.
+	if minExpiration := height + miner.MaxSealDuration[sector.SectorType] + miner.MinSectorExpiration + 10; expiration < minExpiration {
+		expiration = minExpiration
+	}
+	// TODO: enforce a reasonable _maximum_ sector lifetime?
+
 	params := &miner.SectorPreCommitInfo{
 		Expiration:   expiration,
 		SectorNumber: sector.SectorNumber,
@@ -244,7 +251,7 @@ func (m *Sealing) handleWaitSeed(ctx statemachine.Context, sector SectorInfo) er
 		if err := m.maddr.MarshalCBOR(buf); err != nil {
 			return err
 		}
-		rand, err := m.api.ChainGetRandomness(ectx, tok, crypto.DomainSeparationTag_InteractiveSealChallengeSeed, randHeight, buf.Bytes())
+		rand, err := m.api.ChainGetRandomnessFromBeacon(ectx, tok, crypto.DomainSeparationTag_InteractiveSealChallengeSeed, randHeight, buf.Bytes())
 		if err != nil {
 			err = xerrors.Errorf("failed to get randomness for computing seal proof (ch %d; rh %d; tsk %x): %w", curH, randHeight, tok, err)
 

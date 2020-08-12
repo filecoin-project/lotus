@@ -3,8 +3,8 @@ package lp2p
 import (
 	"github.com/libp2p/go-libp2p"
 	metrics "github.com/libp2p/go-libp2p-core/metrics"
+	noise "github.com/libp2p/go-libp2p-noise"
 	libp2pquic "github.com/libp2p/go-libp2p-quic-transport"
-	secio "github.com/libp2p/go-libp2p-secio"
 	tls "github.com/libp2p/go-libp2p-tls"
 )
 
@@ -23,9 +23,9 @@ func Security(enabled, preferTLS bool) interface{} {
 	}
 	return func() (opts Libp2pOpts) {
 		if preferTLS {
-			opts.Opts = append(opts.Opts, libp2p.ChainOptions(libp2p.Security(tls.ID, tls.New), libp2p.Security(secio.ID, secio.New)))
+			opts.Opts = append(opts.Opts, libp2p.ChainOptions(libp2p.Security(tls.ID, tls.New), libp2p.Security(noise.ID, noise.New)))
 		} else {
-			opts.Opts = append(opts.Opts, libp2p.ChainOptions(libp2p.Security(secio.ID, secio.New), libp2p.Security(tls.ID, tls.New)))
+			opts.Opts = append(opts.Opts, libp2p.ChainOptions(libp2p.Security(noise.ID, noise.New), libp2p.Security(tls.ID, tls.New)))
 		}
 		return opts
 	}

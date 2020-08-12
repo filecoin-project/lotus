@@ -71,7 +71,8 @@
     "WithdrawBalance",
     "ConfirmSectorProofsValid",
     "ChangeMultiaddrs",
-    "CompactPartitions"
+    "CompactPartitions",
+    "CompactSectorNumbers"
   ],
   "fil/1/storagepower": [
     "Send",

@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 )
 
 type MpoolAPI struct {
@@ -35,8 +36,7 @@ func (a *MpoolAPI) MpoolGetConfig(context.Context) (*types.MpoolConfig, error) {
 }
 
 func (a *MpoolAPI) MpoolSetConfig(ctx context.Context, cfg *types.MpoolConfig) error {
-	a.Mpool.SetConfig(cfg)
-	return nil
+	return a.Mpool.SetConfig(cfg)
 }
 
 func (a *MpoolAPI) MpoolSelect(ctx context.Context, tsk types.TipSetKey, ticketQuality float64) ([]*types.SignedMessage, error) {
@@ -168,12 +168,12 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, max
 		if err != nil {
 			return nil, xerrors.Errorf("estimating fee cap: %w", err)
 		}
-		msg.GasFeeCap = feeCap
+		msg.GasFeeCap = big.Add(feeCap, msg.GasPremium)
 	}
 
 	capGasFee(msg, maxFee)
 
-	return a.Mpool.PushWithNonce(ctx, msg.From, func(from address.Address, nonce uint64) (*types.SignedMessage, error) {
+	sign := func(from address.Address, nonce uint64) (*types.SignedMessage, error) {
 		msg.Nonce = nonce
 		if msg.From.Protocol() == address.ID {
 			log.Warnf("Push from ID address (%s), adjusting to %s", msg.From, from)
@@ -190,7 +190,17 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, max
 		}
 
 		return a.WalletSignMessage(ctx, from, msg)
-	})
+	}
+
+	var m *types.SignedMessage
+	var err error
+again:
+	m, err = a.Mpool.PushWithNonce(ctx, msg.From, sign)
+	if err == messagepool.ErrTryAgain {
+		log.Debugf("temporary failure while pushing message: %s; retrying", err)
+		goto again
+	}
+	return m, err
 }
 
 func (a *MpoolAPI) MpoolGetNonce(ctx context.Context, addr address.Address) (uint64, error) {
