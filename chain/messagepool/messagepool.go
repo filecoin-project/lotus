@@ -55,6 +55,8 @@ var (
 
 	ErrBroadcastAnyway  = errors.New("broadcasting message despite validation fail")
 	ErrRBFTooLowPremium = errors.New("replace by fee has too low GasPremium")
+
+	ErrTryAgain = errors.New("state inconsistency while signing message; please try again")
 )
 
 const (
@@ -516,28 +518,55 @@ func (mp *MessagePool) PushWithNonce(ctx context.Context, addr address.Address, 
 	}()
 
 	mp.curTsLk.Lock()
-	defer mp.curTsLk.Unlock()
-
 	mp.lk.Lock()
-	defer mp.lk.Unlock()
+
+	curTs := mp.curTs
 
 	fromKey := addr
 	if fromKey.Protocol() == address.ID {
 		var err error
 		fromKey, err = mp.api.StateAccountKey(ctx, fromKey, mp.curTs)
 		if err != nil {
+			mp.lk.Unlock()
+			mp.curTsLk.Unlock()
 			return nil, xerrors.Errorf("resolving sender key: %w", err)
 		}
 	}
 
 	nonce, err := mp.getNonceLocked(fromKey, mp.curTs)
 	if err != nil {
+		mp.lk.Unlock()
+		mp.curTsLk.Unlock()
 		return nil, xerrors.Errorf("get nonce locked failed: %w", err)
 	}
+
+	// release the locks for signing
+	mp.lk.Unlock()
+	mp.curTsLk.Unlock()
 
 	msg, err := cb(fromKey, nonce)
 	if err != nil {
 		return nil, err
+	}
+
+	// reacquire the locks and check state for consistency
+	mp.curTsLk.Lock()
+	defer mp.curTsLk.Unlock()
+
+	if mp.curTs != curTs {
+		return nil, ErrTryAgain
+	}
+
+	mp.lk.Lock()
+	defer mp.lk.Unlock()
+
+	nonce2, err := mp.getNonceLocked(fromKey, mp.curTs)
+	if err != nil {
+		return nil, xerrors.Errorf("get nonce locked failed: %w", err)
+	}
+
+	if nonce2 != nonce {
+		return nil, ErrTryAgain
 	}
 
 	if err := mp.verifyMsgBeforePush(msg, mp.curTs.Height()); err != nil {
