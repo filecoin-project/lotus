@@ -7,6 +7,8 @@ import (
 	"github.com/ipfs/go-cid"
 
 	sectorstorage "github.com/filecoin-project/sector-storage"
+
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 // Common is common config between full node and miner
@@ -29,8 +31,10 @@ type FullNode struct {
 type StorageMiner struct {
 	Common
 
-	Dealmaking   DealmakingConfig
-	Storage      sectorstorage.SealerConfig
+	Dealmaking DealmakingConfig
+	Storage    sectorstorage.SealerConfig
+	Fees       MinerFeeConfig
+
 	SealingDelay Duration
 }
 
@@ -43,6 +47,12 @@ type DealmakingConfig struct {
 	ExpectedSealDuration          Duration
 
 	Filter string
+}
+
+type MinerFeeConfig struct {
+	MaxPreCommitGasFee  types.FIL
+	MaxCommitGasFee     types.FIL
+	MaxWindowPoStGasFee types.FIL
 }
 
 // API contains configs for API endpoint
@@ -141,6 +151,12 @@ func DefaultStorageMiner() *StorageMiner {
 			PieceCidBlocklist:             []cid.Cid{},
 			// TODO: It'd be nice to set this based on sector size
 			ExpectedSealDuration: Duration(time.Hour * 12),
+		},
+
+		Fees: MinerFeeConfig{
+			MaxPreCommitGasFee:  types.FIL(types.FromFil(1)),
+			MaxCommitGasFee:     types.FIL(types.FromFil(1)),
+			MaxWindowPoStGasFee: types.FIL(types.FromFil(50)),
 		},
 
 		SealingDelay: Duration(time.Hour),
