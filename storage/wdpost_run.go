@@ -10,6 +10,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
@@ -177,7 +178,7 @@ func (s *WindowPoStScheduler) checkNextRecoveries(ctx context.Context, dlIdx uin
 		Value:  types.NewInt(0),
 	}
 
-	sm, err := s.api.MpoolPushMessage(ctx, msg)
+	sm, err := s.api.MpoolPushMessage(ctx, msg, big.Zero())
 	if err != nil {
 		return xerrors.Errorf("pushing message to mpool: %w", err)
 	}
@@ -259,7 +260,7 @@ func (s *WindowPoStScheduler) checkNextFaults(ctx context.Context, dlIdx uint64,
 		Value:  types.NewInt(0), // TODO: Is there a fee?
 	}
 
-	sm, err := s.api.MpoolPushMessage(ctx, msg)
+	sm, err := s.api.MpoolPushMessage(ctx, msg, big.Zero())
 	if err != nil {
 		return xerrors.Errorf("pushing message to mpool: %w", err)
 	}
@@ -456,7 +457,7 @@ func (s *WindowPoStScheduler) submitPost(ctx context.Context, proof *miner.Submi
 	}
 
 	// TODO: consider maybe caring about the output
-	sm, err := s.api.MpoolPushMessage(ctx, msg)
+	sm, err := s.api.MpoolPushMessage(ctx, msg, big.Zero())
 	if err != nil {
 		return xerrors.Errorf("pushing message to mpool: %w", err)
 	}

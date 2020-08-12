@@ -166,7 +166,11 @@ type FullNode interface {
 
 	// MpoolPushMessage atomically assigns a nonce, signs, and pushes a message
 	// to mempool.
-	MpoolPushMessage(context.Context, *types.Message) (*types.SignedMessage, error)
+	// maxFee is only used when GasFeeCap/GasPremium fields aren't specified
+	//
+	// When maxFee is set to 0, MpoolPushMessage will guess appropriate fee
+	// based on current chain conditions
+	MpoolPushMessage(ctx context.Context, msg *types.Message, maxFee abi.TokenAmount) (*types.SignedMessage, error)
 
 	// MpoolGetNonce gets next nonce for the specified sender.
 	// Note that this method may not be atomic. Use MpoolPushMessage instead.

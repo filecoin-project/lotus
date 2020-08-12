@@ -65,7 +65,7 @@ type storageMinerApi interface {
 	StateMinerFaults(context.Context, address.Address, types.TipSetKey) (*abi.BitField, error)
 	StateMinerRecoveries(context.Context, address.Address, types.TipSetKey) (*abi.BitField, error)
 
-	MpoolPushMessage(context.Context, *types.Message) (*types.SignedMessage, error)
+	MpoolPushMessage(context.Context, *types.Message, abi.TokenAmount) (*types.SignedMessage, error)
 
 	ChainHead(context.Context) (*types.TipSet, error)
 	ChainNotify(context.Context) (<-chan []*api.HeadChange, error)

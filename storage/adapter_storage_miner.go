@@ -249,7 +249,7 @@ func (s SealingAPIAdapter) SendMsg(ctx context.Context, from, to address.Address
 		Params:     params,
 	}
 
-	smsg, err := s.delegate.MpoolPushMessage(ctx, &msg)
+	smsg, err := s.delegate.MpoolPushMessage(ctx, &msg, big.Zero())
 	if err != nil {
 		return cid.Undef, err
 	}

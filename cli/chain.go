@@ -1007,7 +1007,7 @@ var slashConsensusFault = &cli.Command{
 			Params: enc,
 		}
 
-		smsg, err := api.MpoolPushMessage(ctx, msg)
+		smsg, err := api.MpoolPushMessage(ctx, msg, big.Zero())
 		if err != nil {
 			return err
 		}

@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
@@ -79,7 +80,7 @@ func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemark
 		Value:  types.NewInt(0),
 		Method: builtin.MethodsMarket.PublishStorageDeals,
 		Params: params,
-	})
+	}, big.Zero())
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -177,7 +178,7 @@ func (n *ProviderNodeAdapter) AddFunds(ctx context.Context, addr address.Address
 		From:   addr,
 		Value:  amount,
 		Method: builtin.MethodsMarket.AddBalance,
-	})
+	}, big.Zero())
 	if err != nil {
 		return cid.Undef, err
 	}

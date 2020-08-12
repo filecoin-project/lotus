@@ -2,6 +2,8 @@ package full
 
 import (
 	"context"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 
 	"github.com/ipfs/go-cid"
 	"go.uber.org/fx"
@@ -108,7 +110,28 @@ func (a *MpoolAPI) MpoolPush(ctx context.Context, smsg *types.SignedMessage) (ci
 	return a.Mpool.Push(smsg)
 }
 
-func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message) (*types.SignedMessage, error) {
+func capGasFee(msg *types.Message, maxFee abi.TokenAmount) {
+	if maxFee.Equals(big.Zero()) {
+		return
+	}
+
+	chainFee := types.BigMul(msg.GasFeeCap, types.NewInt(uint64(msg.GasLimit)))
+	minerFee := types.BigMul(msg.GasPremium, types.NewInt(uint64(msg.GasLimit)))
+
+	if big.Add(chainFee, minerFee).LessThanEqual(maxFee) {
+		return
+	}
+
+	// scale chain/miner fee down proportionally to fit in our budget
+	// TODO: there are probably smarter things we can do here to optimize
+	//  message inclusion latency
+
+	totalFee := big.Add(chainFee, minerFee)
+	msg.GasFeeCap = big.Div(big.Mul(chainFee, maxFee), totalFee)
+	msg.GasPremium = big.Div(big.Mul(minerFee, maxFee), totalFee)
+}
+
+func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, maxFee abi.TokenAmount) (*types.SignedMessage, error) {
 	{
 		fromA, err := a.Stmgr.ResolveToKeyAddress(ctx, msg.From, nil)
 		if err != nil {
@@ -147,6 +170,8 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message) (*t
 		}
 		msg.GasFeeCap = feeCap
 	}
+
+	capGasFee(msg, maxFee)
 
 	return a.Mpool.PushWithNonce(ctx, msg.From, func(from address.Address, nonce uint64) (*types.SignedMessage, error) {
 		msg.Nonce = nonce
