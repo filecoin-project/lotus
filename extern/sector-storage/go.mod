@@ -23,10 +23,11 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/stretchr/testify v1.6.1
 	go.opencensus.io v0.22.3
-	golang.org/x/crypto v0.0.0-20200317142112-1b76d66859c6 // indirect
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
-	golang.org/x/sys v0.0.0-20200317113312-5766fd39f98d // indirect
-	golang.org/x/tools v0.0.0-20200318150045-ba25ddc85566 // indirect
 	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543
 	honnef.co/go/tools v0.0.1-2020.1.3 // indirect
 )
+
+replace github.com/filecoin-project/storage-fsm => ../storage-fsm
+
+replace github.com/filecoin-project/filecoin-ffi => ../filecoin-ffi

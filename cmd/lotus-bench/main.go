@@ -743,5 +743,5 @@ func bps(data abi.SectorSize, d time.Duration) string {
 	bdata := new(big.Int).SetUint64(uint64(data))
 	bdata = bdata.Mul(bdata, big.NewInt(time.Second.Nanoseconds()))
 	bps := bdata.Div(bdata, big.NewInt(d.Nanoseconds()))
-	return types.SizeStr(types.BigInt{bps}) + "/s"
+	return types.SizeStr(types.BigInt{Int: bps}) + "/s"
 }

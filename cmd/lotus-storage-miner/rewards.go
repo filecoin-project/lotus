@@ -54,7 +54,7 @@ var rewardsRedeemCmd = &cli.Command{
 		}
 
 		params, err := actors.SerializeParams(&miner.WithdrawBalanceParams{
-			mact.Balance, // Default to attempting to withdraw all the extra funds in the miner actor
+			AmountRequested: mact.Balance, // Default to attempting to withdraw all the extra funds in the miner actor
 		})
 		if err != nil {
 			return err

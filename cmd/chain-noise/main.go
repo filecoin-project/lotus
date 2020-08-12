@@ -88,6 +88,4 @@ func sendSmallFundsTxs(ctx context.Context, api api.FullNode, from address.Addre
 			return nil
 		}
 	}
-
-	return nil
 }
