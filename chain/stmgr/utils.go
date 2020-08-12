@@ -658,3 +658,21 @@ func MinerHasMinPower(ctx context.Context, sm *StateManager, addr address.Addres
 
 	return ps.MinerNominalPowerMeetsConsensusMinimum(sm.ChainStore().Store(ctx), addr)
 }
+
+func CheckTotalFIL(ctx context.Context, sm *StateManager, ts *types.TipSet) (abi.TokenAmount, error) {
+	str, err := state.LoadStateTree(sm.ChainStore().Store(ctx), ts.ParentState())
+	if err != nil {
+		return abi.TokenAmount{}, err
+	}
+
+	sum := types.NewInt(0)
+	err = str.ForEach(func(a address.Address, act *types.Actor) error {
+		sum = types.BigAdd(sum, act.Balance)
+		return nil
+	})
+	if err != nil {
+		return abi.TokenAmount{}, err
+	}
+
+	return sum, nil
+}
