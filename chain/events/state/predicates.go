@@ -666,7 +666,6 @@ type DiffInitActorStateFunc func(ctx context.Context, oldState *init_.State, new
 func (i *InitActorAddressChanges) AsKey(key string) (adt.Keyer, error) {
 	addr , err := address.NewFromBytes([]byte(key))
 	if err != nil {
-		panic(err)
 		return nil, err
 	}
 	return adt.AddrKey(addr), nil
@@ -675,17 +674,14 @@ func (i *InitActorAddressChanges) AsKey(key string) (adt.Keyer, error) {
 func (i *InitActorAddressChanges) Add(key string, val *typegen.Deferred) error {
 	pkAddr, err := address.NewFromBytes([]byte(key))
 	if err != nil {
-		panic(err)
 		return err
 	}
 	id := new(typegen.CborInt)
 	if err := id.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
-		panic(err)
 		return err
 	}
 	idAddr, err := address.NewIDAddress(uint64(*id))
 	if err != nil {
-		panic(err)
 		return err
 	}
 	i.Added = append(i.Added, AddressPair{
@@ -698,29 +694,24 @@ func (i *InitActorAddressChanges) Add(key string, val *typegen.Deferred) error {
 func (i *InitActorAddressChanges) Modify(key string, from, to *typegen.Deferred) error {
 	pkAddr, err := address.NewFromBytes([]byte(key))
 	if err != nil {
-		panic(err)
 		return err
 	}
 
 	fromID := new(typegen.CborInt)
 	if err := fromID.UnmarshalCBOR(bytes.NewReader(from.Raw)); err != nil {
-		panic(err)
 		return err
 	}
 	fromIDAddr, err := address.NewIDAddress(uint64(*fromID))
 	if err != nil {
-		panic(err)
 		return err
 	}
 
 	toID := new(typegen.CborInt)
 	if err := toID.UnmarshalCBOR(bytes.NewReader(to.Raw)); err != nil {
-		panic(err)
 		return err
 	}
 	toIDAddr, err := address.NewIDAddress(uint64(*toID))
 	if err != nil {
-		panic(err)
 		return err
 	}
 
@@ -740,17 +731,14 @@ func (i *InitActorAddressChanges) Modify(key string, from, to *typegen.Deferred)
 func (i *InitActorAddressChanges) Remove(key string, val *typegen.Deferred) error {
 	pkAddr, err := address.NewFromBytes([]byte(key))
 	if err != nil {
-		panic(err)
 		return err
 	}
 	id := new(typegen.CborInt)
 	if err := id.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
-		panic(err)
 		return err
 	}
 	idAddr, err := address.NewIDAddress(uint64(*id))
 	if err != nil {
-		panic(err)
 		return err
 	}
 	i.Removed = append(i.Removed, AddressPair{
