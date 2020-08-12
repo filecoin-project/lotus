@@ -52,7 +52,7 @@ class Address extends React.Component {
       balance = await this.props.client.call('Filecoin.WalletBalance', [this.props.addr])
       actor = await this.props.client.call('Filecoin.StateGetActor', [this.props.addr, (this.props.ts || {}).Cids])
 
-      actorInfo = await this.actorInfo(actor)
+      actorInfo = await this.actorInfo(actor, this.props.addr)
       if(this.props.miner) {
         minerInfo = await this.props.client.call('Filecoin.StateMinerPower', [this.props.addr, (this.props.ts || {}).Cids])
       }
@@ -70,7 +70,7 @@ class Address extends React.Component {
     this.props.mountWindow((onClose) => <State addr={this.props.addr} actor={this.state.actor} client={this.props.client} onClose={onClose} mountWindow={this.props.mountWindow}/>)
   }
 
-  async actorInfo(actor) {
+  async actorInfo(actor, addr) {
     const c = new CID(actor.Code['/'])
     const mh = multihash.decode(c.multihash) // TODO: check identity
 
@@ -82,7 +82,7 @@ class Address extends React.Component {
     let info = <span>({mh.digest.toString()}{method})</span>
     switch(mh.digest.toString()) {
       case 'paych':
-        const actstate = await this.props.client.call('Filecoin.StateReadState', [actor, (this.props.ts || {}).Cids])
+        const actstate = await this.props.client.call('Filecoin.StateReadState', [addr, (this.props.ts || {}).Cids])
         info = <span>({mh.digest.toString()}{method} to <Address nobalance={true} client={this.props.client} addr={actstate.State.To} mountWindow={this.props.mountWindow}/>)</span>
     }
 
@@ -97,10 +97,10 @@ class Address extends React.Component {
   render() {
     let add20k = <span/>
     if(this.props.addN) {
-      add20k = <span>&nbsp;<a href="#" onClick={() => this.props.addN(this.props.addr, 200000)}>[+200k]</a></span>
+      add20k = <span>&nbsp;<a href="#" onClick={() => this.props.addN(this.props.addr, 2e+18)}>[+2]</a></span>
       if (this.props.add10k) {
-        add20k = <span>{add20k}&nbsp;<a href="#" onClick={() => this.props.addN(this.props.addr, 2000000)}>[+2M]</a></span>
-        add20k = <span>{add20k}&nbsp;<a href="#" onClick={() => this.props.addN(this.props.addr, 20000000)}>[+20M]</a></span>
+        add20k = <span>{add20k}&nbsp;<a href="#" onClick={() => this.props.addN(this.props.addr, 20e+18)}>[+20]</a></span>
+        add20k = <span>{add20k}&nbsp;<a href="#" onClick={() => this.props.addN(this.props.addr, 200e+18)}>[+200]</a></span>
         add20k = <span>{add20k}&nbsp;<a href="#" onClick={() => this.addColl()}>[<abbr title="min collateral">+C</abbr>]</a></span>
       }
     }
@@ -138,7 +138,7 @@ class Address extends React.Component {
 
     let minerInfo = <span/>
     if(this.state.minerInfo) {
-      minerInfo = <span>&nbsp;Power: {this.state.minerInfo.MinerPower} ({this.state.minerInfo.MinerPower/this.state.minerInfo.TotalPower*100}%)</span>
+      minerInfo = <span>&nbsp;Power: {this.state.minerInfo.MinerPower.QualityAdjPower} ({this.state.minerInfo.MinerPower.QualityAdjPower/this.state.minerInfo.TotalPower.QualityAdjPower*100}%)</span>
     }
 
     return <span data-tip data-for={this.props.addr}>{addr}{balance}{actInfo}{nonce}{add20k}{transfer}{minerInfo}</span>

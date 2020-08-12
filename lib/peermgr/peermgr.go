@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"go.opencensus.io/stats"
@@ -50,9 +51,11 @@ type PeerMgr struct {
 	dht *dht.IpfsDHT
 
 	notifee *net.NotifyBundle
+
+	done chan struct{}
 }
 
-func NewPeerMgr(h host.Host, dht *dht.IpfsDHT, bootstrap dtypes.BootstrapPeers) *PeerMgr {
+func NewPeerMgr(lc fx.Lifecycle, h host.Host, dht *dht.IpfsDHT, bootstrap dtypes.BootstrapPeers) *PeerMgr {
 	pm := &PeerMgr{
 		h:             h,
 		dht:           dht,
@@ -63,7 +66,15 @@ func NewPeerMgr(h host.Host, dht *dht.IpfsDHT, bootstrap dtypes.BootstrapPeers) 
 
 		maxFilPeers: MaxFilPeers,
 		minFilPeers: MinFilPeers,
+
+		done: make(chan struct{}),
 	}
+
+	lc.Append(fx.Hook{
+		OnStop: func(ctx context.Context) error {
+			return pm.Stop(ctx)
+		},
+	})
 
 	pm.notifee = &net.NotifyBundle{
 		DisconnectedF: func(_ net.Network, c net.Conn) {
@@ -106,8 +117,14 @@ func (pmgr *PeerMgr) Disconnect(p peer.ID) {
 	}
 }
 
+func (pmgr *PeerMgr) Stop(ctx context.Context) error {
+	log.Warn("closing peermgr done")
+	close(pmgr.done)
+	return nil
+}
+
 func (pmgr *PeerMgr) Run(ctx context.Context) {
-	tick := time.NewTicker(time.Second * 5)
+	tick := build.Clock.Ticker(time.Second * 5)
 	for {
 		select {
 		case <-tick.C:
@@ -115,9 +132,12 @@ func (pmgr *PeerMgr) Run(ctx context.Context) {
 			if pcount < pmgr.minFilPeers {
 				pmgr.expandPeers()
 			} else if pcount > pmgr.maxFilPeers {
-				log.Debug("peer count about threshold: %d > %d", pcount, pmgr.maxFilPeers)
+				log.Debugf("peer count about threshold: %d > %d", pcount, pmgr.maxFilPeers)
 			}
 			stats.Record(ctx, metrics.PeerCount.M(int64(pmgr.getPeerCount())))
+		case <-pmgr.done:
+			log.Warn("exiting peermgr run")
+			return
 		}
 	}
 }

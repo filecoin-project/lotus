@@ -10,6 +10,8 @@ import (
 
 	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/lotus/build"
 )
 
 func InitializeSystemJournal(dir string) error {
@@ -98,12 +100,14 @@ func (fsj *fsJournal) putEntry(je *JournalEntry) error {
 	return nil
 }
 
+const RFC3339nocolon = "2006-01-02T150405Z0700"
+
 func (fsj *fsJournal) rollJournalFile() error {
 	if fsj.fi != nil {
 		fsj.fi.Close()
 	}
 
-	nfi, err := os.Create(filepath.Join(fsj.journalDir, fmt.Sprintf("lotus-journal-%s.ndjson", time.Now().Format(time.RFC3339))))
+	nfi, err := os.Create(filepath.Join(fsj.journalDir, fmt.Sprintf("lotus-journal-%s.ndjson", build.Clock.Now().Format(RFC3339nocolon))))
 	if err != nil {
 		return xerrors.Errorf("failed to open journal file: %w", err)
 	}
@@ -130,7 +134,7 @@ func (fsj *fsJournal) runLoop() {
 func (fsj *fsJournal) AddEntry(system string, obj interface{}) {
 	je := &JournalEntry{
 		System:    system,
-		Timestamp: time.Now(),
+		Timestamp: build.Clock.Now(),
 		Val:       obj,
 	}
 	select {

@@ -5,7 +5,7 @@ orbs:
 executors:
   golang:
     docker:
-      - image: circleci/golang:1.14.2
+      - image: circleci/golang:1.14.6
     resource_class: 2xlarge
   ubuntu:
     docker:
@@ -93,10 +93,10 @@ jobs:
       - store_artifacts:
           path: lotus
       - store_artifacts:
-          path: lotus-storage-miner
+          path: lotus-miner
       - store_artifacts:
-          path: lotus-seal-worker
-      - run: mkdir linux && mv lotus lotus-storage-miner lotus-seal-worker linux/
+          path: lotus-worker
+      - run: mkdir linux && mv lotus lotus-miner lotus-worker linux/
       - persist_to_workspace:
           root: "."
           paths:
@@ -134,7 +134,7 @@ jobs:
         description: Test suite name to report to CircleCI.
       gotestsum-format:
         type: string
-        default: short
+        default: pkgname-and-test-fails
         description: gotestsum format. https://github.com/gotestyourself/gotestsum#format
       coverage:
         type: string
@@ -156,21 +156,27 @@ jobs:
       - download-params
       - go/install-gotestsum:
           gobin: $HOME/.local/bin
+          version: 0.5.2
       - run:
           name: go test
           environment:
-            GOTESTSUM_JUNITFILE: /tmp/test-reports/<< parameters.test-suite-name >>/junit.xml
-            GOTESTSUM_FORMAT: << parameters.gotestsum-format >>
             LOTUS_TEST_WINDOW_POST: << parameters.winpost-test >>
           command: |
             mkdir -p /tmp/test-reports/<< parameters.test-suite-name >>
-            gotestsum -- \
+            mkdir -p /tmp/test-artifacts
+            gotestsum \
+              --format << parameters.gotestsum-format >> \
+              --junitfile /tmp/test-reports/<< parameters.test-suite-name >>/junit.xml \
+              --jsonfile /tmp/test-artifacts/<< parameters.test-suite-name >>.json \
+              -- \
               << parameters.coverage >> \
               << parameters.go-test-flags >> \
               << parameters.packages >>
           no_output_timeout: 30m
       - store_test_results:
           path: /tmp/test-reports
+      - store_artifacts:
+          path: /tmp/test-artifacts/<< parameters.test-suite-name >>.json
       - when:
           condition: << parameters.codecov-upload >>
           steps:
@@ -223,10 +229,10 @@ jobs:
       - store_artifacts:
           path: lotus
       - store_artifacts:
-          path: lotus-storage-miner
+          path: lotus-miner
       - store_artifacts:
-          path: lotus-seal-worker
-      - run: mkdir darwin && mv lotus lotus-storage-miner lotus-seal-worker darwin/
+          path: lotus-worker
+      - run: mkdir darwin && mv lotus lotus-miner lotus-worker darwin/
       - persist_to_workspace:
           root: "."
           paths:
@@ -314,16 +320,19 @@ workflows:
   ci:
     jobs:
       - lint-changes:
-          args: "--new-from-rev origin/master"
+          args: "--new-from-rev origin/next"
       - mod-tidy-check
       - gofmt
       - test:
           codecov-upload: true
+          test-suite-name: full
       - test-window-post:
           go-test-flags: "-run=TestWindowedPost"
           winpost-test: "1"
+          test-suite-name: window-post
       - test-short:
           go-test-flags: "--timeout 10m --short"
+          test-suite-name: short
           filters:
             tags:
               only:

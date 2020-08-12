@@ -74,13 +74,11 @@ func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemark
 
 	// TODO: We may want this to happen after fetching data
 	smsg, err := n.MpoolPushMessage(ctx, &types.Message{
-		To:       builtin.StorageMarketActorAddr,
-		From:     mi.Worker,
-		Value:    types.NewInt(0),
-		GasPrice: types.NewInt(0),
-		GasLimit: 1000000,
-		Method:   builtin.MethodsMarket.PublishStorageDeals,
-		Params:   params,
+		To:     builtin.StorageMarketActorAddr,
+		From:   mi.Worker,
+		Value:  types.NewInt(0),
+		Method: builtin.MethodsMarket.PublishStorageDeals,
+		Params: params,
 	})
 	if err != nil {
 		return cid.Undef, err
@@ -88,8 +86,8 @@ func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemark
 	return smsg.Cid(), nil
 }
 
-func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagemarket.MinerDeal, pieceSize abi.UnpaddedPieceSize, pieceData io.Reader) error {
-	_, err := n.secb.AddPiece(ctx, pieceSize, pieceData, sealing.DealInfo{
+func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagemarket.MinerDeal, pieceSize abi.UnpaddedPieceSize, pieceData io.Reader) (*storagemarket.PackingResult, error) {
+	p, offset, err := n.secb.AddPiece(ctx, pieceSize, pieceData, sealing.DealInfo{
 		DealID: deal.DealID,
 		DealSchedule: sealing.DealSchedule{
 			StartEpoch: deal.ClientDealProposal.Proposal.StartEpoch,
@@ -98,11 +96,15 @@ func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagema
 		KeepUnsealed: deal.FastRetrieval,
 	})
 	if err != nil {
-		return xerrors.Errorf("AddPiece failed: %s", err)
+		return nil, xerrors.Errorf("AddPiece failed: %s", err)
 	}
 	log.Warnf("New Deal: deal %d", deal.DealID)
 
-	return nil
+	return &storagemarket.PackingResult{
+		SectorNumber: p,
+		Offset:       offset,
+		Size:         pieceSize.Padded(),
+	}, nil
 }
 
 func (n *ProviderNodeAdapter) VerifySignature(ctx context.Context, sig crypto.Signature, addr address.Address, input []byte, encodedTs shared.TipSetToken) (bool, error) {
@@ -171,12 +173,10 @@ func (n *ProviderNodeAdapter) EnsureFunds(ctx context.Context, addr, wallet addr
 func (n *ProviderNodeAdapter) AddFunds(ctx context.Context, addr address.Address, amount abi.TokenAmount) (cid.Cid, error) {
 	// (Provider Node API)
 	smsg, err := n.MpoolPushMessage(ctx, &types.Message{
-		To:       builtin.StorageMarketActorAddr,
-		From:     addr,
-		Value:    amount,
-		GasPrice: types.NewInt(0),
-		GasLimit: 1000000,
-		Method:   builtin.MethodsMarket.AddBalance,
+		To:     builtin.StorageMarketActorAddr,
+		From:   addr,
+		Value:  amount,
+		Method: builtin.MethodsMarket.AddBalance,
 	})
 	if err != nil {
 		return cid.Undef, err
@@ -199,7 +199,8 @@ func (n *ProviderNodeAdapter) GetBalance(ctx context.Context, addr address.Addre
 	return utils.ToSharedBalance(bal), nil
 }
 
-func (n *ProviderNodeAdapter) LocatePieceForDealWithinSector(ctx context.Context, dealID abi.DealID, encodedTs shared.TipSetToken) (sectorID uint64, offset uint64, length uint64, err error) {
+// TODO: why doesnt this method take in a sector ID?
+func (n *ProviderNodeAdapter) LocatePieceForDealWithinSector(ctx context.Context, dealID abi.DealID, encodedTs shared.TipSetToken) (sectorID abi.SectorNumber, offset abi.PaddedPieceSize, length abi.PaddedPieceSize, err error) {
 	refs, err := n.secb.GetRefs(dealID)
 	if err != nil {
 		return 0, 0, 0, err
@@ -225,7 +226,16 @@ func (n *ProviderNodeAdapter) LocatePieceForDealWithinSector(ctx context.Context
 	if bestSi.State == sealing.UndefinedSectorState {
 		return 0, 0, 0, xerrors.New("no sealed sector found")
 	}
-	return uint64(best.SectorID), best.Offset, uint64(best.Size), nil
+	return best.SectorID, best.Offset, best.Size.Padded(), nil
+}
+
+func (n *ProviderNodeAdapter) DealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, isVerified bool) (abi.TokenAmount, abi.TokenAmount, error) {
+	bounds, err := n.StateDealProviderCollateralBounds(ctx, size, isVerified, types.EmptyTSK)
+	if err != nil {
+		return abi.TokenAmount{}, abi.TokenAmount{}, err
+	}
+
+	return bounds.Min, bounds.Max, nil
 }
 
 func (n *ProviderNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, cb storagemarket.DealSectorCommittedCallback) error {

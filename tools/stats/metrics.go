@@ -66,7 +66,7 @@ func NewInfluxWriteQueue(ctx context.Context, influx client.Client) *InfluxWrite
 				for i := 0; i < maxRetries; i++ {
 					if err := influx.Write(batch); err != nil {
 						log.Warnw("Failed to write batch", "error", err)
-						time.Sleep(time.Second * 15)
+						build.Clock.Sleep(15 * time.Second)
 						continue
 					}
 
@@ -104,7 +104,7 @@ func InfluxNewBatch() (client.BatchPoints, error) {
 }
 
 func NewPoint(name string, value interface{}) models.Point {
-	pt, _ := models.NewPoint(name, models.Tags{}, map[string]interface{}{"value": value}, time.Now())
+	pt, _ := models.NewPoint(name, models.Tags{}, map[string]interface{}{"value": value}, build.Clock.Now())
 	return pt
 }
 
@@ -129,12 +129,18 @@ func RecordTipsetPoints(ctx context.Context, api api.FullNode, pl *PointList, ti
 	p = NewPoint("chain.blocktime", tsTime.Unix())
 	pl.AddPoint(p)
 
+	baseFeeBig := tipset.Blocks()[0].ParentBaseFee.Copy()
+	baseFeeRat := new(big.Rat).SetFrac(baseFeeBig.Int, new(big.Int).SetUint64(build.FilecoinPrecision))
+	baseFeeFloat, _ := baseFeeRat.Float64()
+	p = NewPoint("chain.basefee", baseFeeFloat)
+	pl.AddPoint(p)
+
 	for _, blockheader := range tipset.Blocks() {
 		bs, err := blockheader.Serialize()
 		if err != nil {
 			return err
 		}
-		p := NewPoint("chain.election", 1)
+		p := NewPoint("chain.election", blockheader.ElectionProof.WinCount)
 		p.AddTag("miner", blockheader.Miner.String())
 		pl.AddPoint(p)
 
@@ -176,17 +182,18 @@ func (ht *apiIpldStore) Put(ctx context.Context, v interface{}) (cid.Cid, error)
 }
 
 func RecordTipsetStatePoints(ctx context.Context, api api.FullNode, pl *PointList, tipset *types.TipSet) error {
-	pc, err := api.StatePledgeCollateral(ctx, tipset.Key())
-	if err != nil {
-		return err
-	}
-
 	attoFil := types.NewInt(build.FilecoinPrecision).Int
 
-	pcFil := new(big.Rat).SetFrac(pc.Int, attoFil)
-	pcFilFloat, _ := pcFil.Float64()
-	p := NewPoint("chain.pledge_collateral", pcFilFloat)
-	pl.AddPoint(p)
+	//TODO: StatePledgeCollateral API is not implemented and is commented out - re-enable this block once the API is implemented again.
+	//pc, err := api.StatePledgeCollateral(ctx, tipset.Key())
+	//if err != nil {
+	//return err
+	//}
+
+	//pcFil := new(big.Rat).SetFrac(pc.Int, attoFil)
+	//pcFilFloat, _ := pcFil.Float64()
+	//p := NewPoint("chain.pledge_collateral", pcFilFloat)
+	//pl.AddPoint(p)
 
 	netBal, err := api.WalletBalance(ctx, builtin.RewardActorAddr)
 	if err != nil {
@@ -195,7 +202,7 @@ func RecordTipsetStatePoints(ctx context.Context, api api.FullNode, pl *PointLis
 
 	netBalFil := new(big.Rat).SetFrac(netBal.Int, attoFil)
 	netBalFilFloat, _ := netBalFil.Float64()
-	p = NewPoint("network.balance", netBalFilFloat)
+	p := NewPoint("network.balance", netBalFilFloat)
 	pl.AddPoint(p)
 
 	totalPower, err := api.StateMinerPower(ctx, address.Address{}, tipset.Key())
@@ -280,7 +287,10 @@ func RecordTipsetMessagesPoints(ctx context.Context, api api.FullNode, pl *Point
 	msgn := make(map[msgTag][]cid.Cid)
 
 	for i, msg := range msgs {
-		p := NewPoint("chain.message_gasprice", msg.Message.GasPrice.Int64())
+		// FIXME: use float so this doesn't overflow
+		p := NewPoint("chain.message_gaspremium", msg.Message.GasPremium.Int64())
+		pl.AddPoint(p)
+		p = NewPoint("chain.message_gasfeecap", msg.Message.GasFeeCap.Int64())
 		pl.AddPoint(p)
 
 		bs, err := msg.Message.Serialize()

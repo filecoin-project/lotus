@@ -1,12 +1,17 @@
 package metrics
 
 import (
+	"time"
+
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
 
 	rpcmetrics "github.com/filecoin-project/go-jsonrpc/metrics"
 )
+
+// Distribution
+var defaultMillisecondsDistribution = view.Distribution(0.01, 0.05, 0.1, 0.3, 0.6, 0.8, 1, 2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 25, 30, 40, 50, 65, 80, 100, 130, 160, 200, 250, 300, 400, 500, 650, 800, 1000, 2000, 5000, 10000, 20000, 50000, 100000)
 
 // Global Tags
 var (
@@ -66,7 +71,7 @@ var (
 	}
 	BlockValidationDurationView = &view.View{
 		Measure:     BlockValidationDurationMilliseconds,
-		Aggregation: view.Sum(),
+		Aggregation: defaultMillisecondsDistribution,
 	}
 	MessageReceivedView = &view.View{
 		Measure:     MessageReceived,
@@ -99,4 +104,11 @@ var DefaultViews = append([]*view.View{
 	MessageReceivedView,
 	MessageValidationFailureView,
 	MessageValidationSuccessView,
-	PeerCountView}, rpcmetrics.DefaultViews...)
+	PeerCountView,
+},
+	rpcmetrics.DefaultViews...)
+
+// SinceInMilliseconds returns the duration of time since the provide time as a float64.
+func SinceInMilliseconds(startTime time.Time) float64 {
+	return float64(time.Since(startTime).Nanoseconds()) / 1e6
+}

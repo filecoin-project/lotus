@@ -1,0 +1,4 @@
+[submodule "extern/filecoin-ffi"]
+	path = extern/filecoin-ffi
+	url = git@github.com:filecoin-project/filecoin-ffi
+	branch = master

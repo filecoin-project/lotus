@@ -48,12 +48,15 @@ type Miner struct {
 type storageMinerApi interface {
 	// Call a read only method on actors (no interaction with the chain required)
 	StateCall(context.Context, *types.Message, types.TipSetKey) (*api.InvocResult, error)
-	StateMinerDeadlines(ctx context.Context, maddr address.Address, tok types.TipSetKey) (*miner.Deadlines, error)
+	StateMinerDeadlines(ctx context.Context, maddr address.Address, tok types.TipSetKey) ([]*miner.Deadline, error)
+	StateMinerPartitions(context.Context, address.Address, uint64, types.TipSetKey) ([]*miner.Partition, error)
 	StateMinerSectors(context.Context, address.Address, *abi.BitField, bool, types.TipSetKey) ([]*api.ChainSectorInfo, error)
 	StateSectorPreCommitInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error)
 	StateSectorGetInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*miner.SectorOnChainInfo, error)
+	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok types.TipSetKey) (*api.SectorLocation, error)
 	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)
 	StateMinerProvingDeadline(context.Context, address.Address, types.TipSetKey) (*miner.DeadlineInfo, error)
+	StateMinerPreCommitDepositForPower(context.Context, address.Address, miner.SectorPreCommitInfo, types.TipSetKey) (types.BigInt, error)
 	StateMinerInitialPledgeCollateral(context.Context, address.Address, miner.SectorPreCommitInfo, types.TipSetKey) (types.BigInt, error)
 	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64) (*api.MsgLookup, error) // TODO: removeme eventually
 	StateGetActor(ctx context.Context, actor address.Address, ts types.TipSetKey) (*types.Actor, error)
@@ -161,13 +164,19 @@ func NewWinningPoStProver(api api.FullNode, prover storage.Prover, verifier ffiw
 		return nil, err
 	}
 
+	if build.InsecurePoStValidation {
+		log.Warn("*****************************************************************************")
+		log.Warn(" Generating fake PoSt proof! You should only see this while running tests! ")
+		log.Warn("*****************************************************************************")
+	}
+
 	return &StorageWpp{prover, verifier, abi.ActorID(miner), wpt}, nil
 }
 
 var _ gen.WinningPoStProver = (*StorageWpp)(nil)
 
 func (wpp *StorageWpp) GenerateCandidates(ctx context.Context, randomness abi.PoStRandomness, eligibleSectorCount uint64) ([]uint64, error) {
-	start := time.Now()
+	start := build.Clock.Now()
 
 	cds, err := wpp.verifier.GenerateWinningPoStSectorChallenge(ctx, wpp.winnRpt, wpp.miner, randomness, eligibleSectorCount)
 	if err != nil {
@@ -179,13 +188,12 @@ func (wpp *StorageWpp) GenerateCandidates(ctx context.Context, randomness abi.Po
 
 func (wpp *StorageWpp) ComputeProof(ctx context.Context, ssi []abi.SectorInfo, rand abi.PoStRandomness) ([]abi.PoStProof, error) {
 	if build.InsecurePoStValidation {
-		log.Warn("Generating fake EPost proof! You should only see this while running tests!")
 		return []abi.PoStProof{{ProofBytes: []byte("valid proof")}}, nil
 	}
 
 	log.Infof("Computing WinningPoSt ;%+v; %v", ssi, rand)
 
-	start := time.Now()
+	start := build.Clock.Now()
 	proof, err := wpp.prover.GenerateWinningPoSt(ctx, wpp.miner, ssi, rand)
 	if err != nil {
 		return nil, err

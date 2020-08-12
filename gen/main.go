@@ -35,6 +35,7 @@ func main() {
 	err = gen.WriteMapEncodersToFile("./paychmgr/cbor_gen.go", "paychmgr",
 		paychmgr.VoucherInfo{},
 		paychmgr.ChannelInfo{},
+		paychmgr.MsgInfo{},
 	)
 	if err != nil {
 		fmt.Println(err)
@@ -42,6 +43,7 @@ func main() {
 	}
 
 	err = gen.WriteMapEncodersToFile("./api/cbor_gen.go", "api",
+		api.PaychWaitSentinel{},
 		api.PaymentInfo{},
 		api.SealedRef{},
 		api.SealedRefs{},
@@ -63,8 +65,9 @@ func main() {
 	}
 
 	err = gen.WriteTupleEncodersToFile("./chain/blocksync/cbor_gen.go", "blocksync",
-		blocksync.BlockSyncRequest{},
-		blocksync.BlockSyncResponse{},
+		blocksync.Request{},
+		blocksync.Response{},
+		blocksync.CompactedMessages{},
 		blocksync.BSTipSet{},
 	)
 	if err != nil {

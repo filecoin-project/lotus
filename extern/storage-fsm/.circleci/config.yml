@@ -1,0 +1,79 @@
+version: 2.1
+orbs:
+  go: gotest/tools@0.0.9
+executors:
+  golang:
+    docker:
+      - image: circleci/golang:1.13
+    resource_class: 2xlarge
+commands:
+  prepare-git-checkout:
+    steps:
+      - checkout
+      - run: git submodule sync
+      - run: git submodule update --init --recursive
+  install-build-dependencies:
+    steps:
+      - run: sudo apt-get update
+      - run: sudo apt-get install -y jq ocl-icd-opencl-dev
+      - run: ./extern/filecoin-ffi/install-filcrypto
+  download-groth-params-and-verifying-keys:
+    steps:
+      - restore_cache:
+          name: Restore parameters cache
+          keys:
+            - 'v24-2k-lotus-params'
+          paths:
+            - /var/tmp/filecoin-proof-parameters/
+      - run: |
+          DIR=$(pwd)
+          cd $(mktemp -d)
+          go get github.com/filecoin-project/go-paramfetch/paramfetch
+          go build -o go-paramfetch github.com/filecoin-project/go-paramfetch/paramfetch
+          ./go-paramfetch 2048 "${DIR}/parameters.json"
+      - save_cache:
+          name: Save parameters cache
+          key: 'v24-2k-lotus-params'
+          paths:
+            - /var/tmp/filecoin-proof-parameters/
+jobs:
+  test:
+    executor: golang
+    environment:
+      RUST_LOG: info
+    steps:
+      - prepare-git-checkout
+      - install-build-dependencies
+      - download-groth-params-and-verifying-keys
+      - run: go test -v -timeout 10m ./...
+  mod-tidy-check:
+    executor: golang
+    steps:
+      - prepare-git-checkout
+      - go/mod-download
+      - go/mod-tidy-check
+  gofmt-check:
+    executor: golang
+    steps:
+      - prepare-git-checkout
+      - go/mod-download
+      - run: "! go fmt ./... 2>&1 | read"
+  lint-check:
+    executor: golang
+    steps:
+      - prepare-git-checkout
+      - install-build-dependencies
+      - go/mod-download
+      - go/install-golangci-lint:
+          gobin: $HOME/.local/bin
+          version: 1.23.8
+      - run:
+          command: $HOME/.local/bin/golangci-lint run -v --concurrency 2
+workflows:
+  version: 2.1
+  build_and_test:
+    jobs:
+      - mod-tidy-check
+      - lint-check
+      - gofmt-check
+      - test

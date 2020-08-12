@@ -272,7 +272,7 @@ func TestStateTreeConsistency(t *testing.T) {
 	}
 
 	fmt.Println("root is: ", root)
-	if root.String() != "bafy2bzaceadyjnrv3sbjvowfl3jr4pdn5p2bf3exjjie2f3shg4oy5sub7h34" {
+	if root.String() != "bafy2bzaceb2bhqw75pqp44efoxvlnm73lnctq6djair56bfn5x3gw56epcxbi" {
 		t.Fatal("MISMATCH!")
 	}
 }

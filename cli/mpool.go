@@ -4,11 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strconv"
 
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -20,6 +22,8 @@ var mpoolCmd = &cli.Command{
 		mpoolPending,
 		mpoolSub,
 		mpoolStat,
+		mpoolReplaceCmd,
+		mpoolFindCmd,
 	},
 }
 
@@ -80,7 +84,7 @@ var mpoolPending = &cli.Command{
 
 var mpoolSub = &cli.Command{
 	Name:  "sub",
-	Usage: "Subscibe to mpool changes",
+	Usage: "Subscribe to mpool changes",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -221,10 +225,193 @@ var mpoolStat = &cli.Command{
 			return out[i].addr < out[j].addr
 		})
 
+		var total mpStat
+
 		for _, stat := range out {
-			fmt.Printf("%s, past: %d, cur: %d, future: %d\n", stat.addr, stat.past, stat.cur, stat.future)
+			total.past += stat.past
+			total.cur += stat.cur
+			total.future += stat.future
+
+			fmt.Printf("%s: past: %d, cur: %d, future: %d\n", stat.addr, stat.past, stat.cur, stat.future)
 		}
 
+		fmt.Println("-----")
+		fmt.Printf("total: past: %d, cur: %d, future: %d\n", total.past, total.cur, total.future)
+
+		return nil
+	},
+}
+
+var mpoolReplaceCmd = &cli.Command{
+	Name:  "replace",
+	Usage: "replace a message in the mempool",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "gas-feecap",
+			Usage: "gas feecap for new message",
+		},
+		&cli.StringFlag{
+			Name:  "gas-premium",
+			Usage: "gas price for new message",
+		},
+		&cli.Int64Flag{
+			Name:  "gas-limit",
+			Usage: "gas price for new message",
+		},
+	},
+	ArgsUsage: "[from] [nonce]",
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() < 2 {
+			return cli.ShowCommandHelp(cctx, cctx.Command.Name)
+		}
+
+		from, err := address.NewFromString(cctx.Args().Get(0))
+		if err != nil {
+			return err
+		}
+
+		nonce, err := strconv.ParseUint(cctx.Args().Get(1), 10, 64)
+		if err != nil {
+			return err
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		ts, err := api.ChainHead(ctx)
+		if err != nil {
+			return xerrors.Errorf("getting chain head: %w", err)
+		}
+
+		pending, err := api.MpoolPending(ctx, ts.Key())
+		if err != nil {
+			return err
+		}
+
+		var found *types.SignedMessage
+		for _, p := range pending {
+			if p.Message.From == from && p.Message.Nonce == nonce {
+				found = p
+				break
+			}
+		}
+
+		if found == nil {
+			return fmt.Errorf("no pending message found from %s with nonce %d", from, nonce)
+		}
+
+		msg := found.Message
+
+		msg.GasLimit = cctx.Int64("gas-limit")
+		msg.GasPremium, err = types.BigFromString(cctx.String("gas-premium"))
+		if err != nil {
+			return fmt.Errorf("parsing gas-premium: %w", err)
+		}
+		// TODO: estiamte fee cap here
+		msg.GasFeeCap, err = types.BigFromString(cctx.String("gas-feecap"))
+		if err != nil {
+			return fmt.Errorf("parsing gas-feecap: %w", err)
+		}
+
+		smsg, err := api.WalletSignMessage(ctx, msg.From, &msg)
+		if err != nil {
+			return fmt.Errorf("failed to sign message: %w", err)
+		}
+
+		cid, err := api.MpoolPush(ctx, smsg)
+		if err != nil {
+			return fmt.Errorf("failed to push new message to mempool: %w", err)
+		}
+
+		fmt.Println("new message cid: ", cid)
+		return nil
+	},
+}
+
+var mpoolFindCmd = &cli.Command{
+	Name:  "find",
+	Usage: "find a message in the mempool",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "search for messages with given 'from' address",
+		},
+		&cli.StringFlag{
+			Name:  "to",
+			Usage: "search for messages with given 'to' address",
+		},
+		&cli.Int64Flag{
+			Name:  "method",
+			Usage: "search for messages with given method",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		pending, err := api.MpoolPending(ctx, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		var toFilter, fromFilter address.Address
+		if cctx.IsSet("to") {
+			a, err := address.NewFromString(cctx.String("to"))
+			if err != nil {
+				return fmt.Errorf("'to' address was invalid: %w", err)
+			}
+
+			toFilter = a
+		}
+
+		if cctx.IsSet("from") {
+			a, err := address.NewFromString(cctx.String("from"))
+			if err != nil {
+				return fmt.Errorf("'from' address was invalid: %w", err)
+			}
+
+			fromFilter = a
+		}
+
+		var methodFilter *abi.MethodNum
+		if cctx.IsSet("method") {
+			m := abi.MethodNum(cctx.Int64("method"))
+			methodFilter = &m
+		}
+
+		var out []*types.SignedMessage
+		for _, m := range pending {
+			if toFilter != address.Undef && m.Message.To != toFilter {
+				continue
+			}
+
+			if fromFilter != address.Undef && m.Message.From != fromFilter {
+				continue
+			}
+
+			if methodFilter != nil && *methodFilter != m.Message.Method {
+				continue
+			}
+
+			out = append(out, m)
+		}
+
+		b, err := json.MarshalIndent(out, "", "  ")
+		if err != nil {
+			return err
+		}
+
+		fmt.Println(string(b))
 		return nil
 	},
 }

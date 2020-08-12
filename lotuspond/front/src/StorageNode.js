@@ -59,7 +59,7 @@ class StorageNode extends React.Component {
       token: token,
     }))
 
-    const client = new Client(`ws://127.0.0.1:${this.props.node.ApiPort}/rpc/v0?token=${token}`)
+    const client = new Client(`ws://127.0.0.1:${this.props.node.APIPort}/rpc/v0?token=${token}`)
     client.on('open', async () => {
       this.setState(() => ({
         state: stateConnected,
@@ -88,8 +88,7 @@ class StorageNode extends React.Component {
     const peers = await this.state.client.call("Filecoin.NetPeers", [])
     const actor = await this.state.client.call("Filecoin.ActorAddress", [])
 
-    const stActor = await this.props.fullConn.call('Filecoin.StateGetActor', [actor, null])
-    const actorState = await this.props.fullConn.call('Filecoin.StateReadState', [stActor, null])
+    const actorState = await this.props.fullConn.call('Filecoin.StateReadState', [actor, null])
 
     this.setState({version: version, peers: peers.length, actor: actor, actorState: actorState})
     await this.stagedList()
@@ -98,7 +97,7 @@ class StorageNode extends React.Component {
   async stagedList() {
     let stagedList = await this.state.client.call("Filecoin.SectorsList", [])
     let staged = await stagedList
-      .map(sector => this.state.client.call("Filecoin.SectorsStatus", [sector]))
+      .map(sector => this.state.client.call("Filecoin.SectorsStatus", [sector, false]))
       .reduce(async (p, n) => [...await p, await n], Promise.resolve([]))
 
     let statusCounts = staged.reduce((p, n) => p.map((e, i) => e + (i === n.State ? 1 : 0) ), [0, 0, 0, 0, 0])
@@ -127,7 +126,7 @@ class StorageNode extends React.Component {
       runtime = (
         <div>
           <div>v{this.state.version.Version}, <abbr title={this.state.id}>{this.state.id.substr(-8)}</abbr>, {this.state.peers} peers</div>
-          <div>Repo: LOTUS_STORAGE_PATH={this.props.node.Repo}</div>
+          <div>Repo: LOTUS_MINER_PATH={this.props.node.Repo}</div>
           <div>
             {pledgeSector} {sealStaged}
           </div>
@@ -147,7 +146,7 @@ class StorageNode extends React.Component {
     }
 
     return <Window
-      title={"Storage Miner Node " + this.props.node.ID}
+      title={"Miner Node " + this.props.node.ID}
       initialPosition={{x: this.props.node.ID*30, y: this.props.node.ID * 30}}
       onClose={this.stop} >
       <div className="CristalScroll">

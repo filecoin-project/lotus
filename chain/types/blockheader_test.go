@@ -44,6 +44,7 @@ func testBlockHeader(t testing.TB) *BlockHeader {
 		Height:                85919298723,
 		ParentStateRoot:       c,
 		BlockSig:              &crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte("boo! im a signature")},
+		ParentBaseFee:         NewInt(3432432843291),
 	}
 }
 
@@ -107,7 +108,8 @@ func TestInteropBH(t *testing.T) {
 			Type: crypto.SigTypeBLS,
 			Data: []byte{0x3},
 		},
-		BLSAggregate: &crypto.Signature{},
+		BLSAggregate:  &crypto.Signature{},
+		ParentBaseFee: NewInt(1000000000),
 	}
 
 	bhsb, err := bh.SigningBytes()
@@ -116,7 +118,7 @@ func TestInteropBH(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	gfc := "8f5501d04cb15021bf6bd003073d79e2238d4e61f1ad2281430102038200420a0b818205410c818200410781d82a5827000171a0e402202f84fef0d7cc2d7f9f00d22445f7bf7539fdd685fd9f284aa37f3822b57619cc430003e802d82a5827000171a0e402202f84fef0d7cc2d7f9f00d22445f7bf7539fdd685fd9f284aa37f3822b57619ccd82a5827000171a0e402202f84fef0d7cc2d7f9f00d22445f7bf7539fdd685fd9f284aa37f3822b57619ccd82a5827000171a0e402202f84fef0d7cc2d7f9f00d22445f7bf7539fdd685fd9f284aa37f3822b57619cc410001f603"
+	gfc := "905501d04cb15021bf6bd003073d79e2238d4e61f1ad2281430102038200420a0b818205410c818200410781d82a5827000171a0e402202f84fef0d7cc2d7f9f00d22445f7bf7539fdd685fd9f284aa37f3822b57619cc430003e802d82a5827000171a0e402202f84fef0d7cc2d7f9f00d22445f7bf7539fdd685fd9f284aa37f3822b57619ccd82a5827000171a0e402202f84fef0d7cc2d7f9f00d22445f7bf7539fdd685fd9f284aa37f3822b57619ccd82a5827000171a0e402202f84fef0d7cc2d7f9f00d22445f7bf7539fdd685fd9f284aa37f3822b57619cc410001f60345003b9aca00"
 	require.Equal(t, gfc, hex.EncodeToString(bhsb))
 }
 

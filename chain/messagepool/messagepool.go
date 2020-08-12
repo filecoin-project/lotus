@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/ipfs/go-cid"
@@ -23,24 +24,25 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+
+	"github.com/raulk/clock"
 )
 
 var log = logging.Logger("messagepool")
 
 const futureDebug = false
 
-const ReplaceByFeeRatio = 1.25
+const repubMsgLimit = 5
 
-var (
-	rbfNum   = types.NewInt(uint64((ReplaceByFeeRatio - 1) * 256))
-	rbfDenom = types.NewInt(256)
-)
+const RbfDenom = 256
 
 var (
 	ErrMessageTooBig = errors.New("message too big")
@@ -53,7 +55,8 @@ var (
 
 	ErrInvalidToAddr = errors.New("message had invalid to address")
 
-	ErrBroadcastAnyway = errors.New("broadcasting message despite validation fail")
+	ErrBroadcastAnyway  = errors.New("broadcasting message despite validation fail")
+	ErrRBFTooLowPremium = errors.New("replace by fee has too low GasPremium")
 )
 
 const (
@@ -65,8 +68,10 @@ const (
 type MessagePool struct {
 	lk sync.Mutex
 
+	ds dtypes.MetadataDS
+
 	closer  chan struct{}
-	repubTk *time.Ticker
+	repubTk *clock.Ticker
 
 	localAddrs map[address.Address]struct{}
 
@@ -75,11 +80,22 @@ type MessagePool struct {
 	curTsLk sync.Mutex // DO NOT LOCK INSIDE lk
 	curTs   *types.TipSet
 
+	cfgLk sync.Mutex
+	cfg   *types.MpoolConfig
+
+	rbfNum, rbfDenom types.BigInt
+
 	api Provider
 
 	minGasPrice types.BigInt
 
-	maxTxPoolSize int
+	currentSize int
+
+	// pruneTrigger is a channel used to trigger a mempool pruning
+	pruneTrigger chan struct{}
+
+	// pruneCooldown is a channel used to allow a cooldown time between prunes
+	pruneCooldown chan struct{}
 
 	blsSigCache *lru.TwoQueueCache
 
@@ -103,7 +119,7 @@ func newMsgSet() *msgSet {
 	}
 }
 
-func (ms *msgSet) add(m *types.SignedMessage) error {
+func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool) (bool, error) {
 	if len(ms.msgs) == 0 || m.Message.Nonce >= ms.nextNonce {
 		ms.nextNonce = m.Message.Nonce + 1
 	}
@@ -111,21 +127,24 @@ func (ms *msgSet) add(m *types.SignedMessage) error {
 	if has {
 		if m.Cid() != exms.Cid() {
 			// check if RBF passes
-			minPrice := exms.Message.GasPrice
-			minPrice = types.BigAdd(minPrice, types.BigDiv(types.BigMul(minPrice, rbfNum), rbfDenom))
+			minPrice := exms.Message.GasPremium
+			minPrice = types.BigAdd(minPrice, types.BigDiv(types.BigMul(minPrice, mp.rbfNum), mp.rbfDenom))
 			minPrice = types.BigAdd(minPrice, types.NewInt(1))
-			if types.BigCmp(m.Message.GasPrice, minPrice) > 0 {
-				log.Infow("add with RBF", "oldprice", exms.Message.GasPrice,
-					"newprice", m.Message.GasPrice, "addr", m.Message.From, "nonce", m.Message.Nonce)
+			if types.BigCmp(m.Message.GasPremium, minPrice) >= 0 {
+				log.Infow("add with RBF", "oldpremium", exms.Message.GasPremium,
+					"newpremium", m.Message.GasPremium, "addr", m.Message.From, "nonce", m.Message.Nonce)
 			} else {
 				log.Info("add with duplicate nonce")
-				return xerrors.Errorf("message to %s with nonce %d already in mpool", m.Message.To, m.Message.Nonce)
+				return false, xerrors.Errorf("message from %s with nonce %d already in mpool,"+
+					" increase GasPremium to %s from %s to trigger replace by fee: %w",
+					m.Message.From, m.Message.Nonce, minPrice, m.Message.GasPremium,
+					ErrRBFTooLowPremium)
 			}
 		}
 	}
 	ms.msgs[m.Message.Nonce] = m
 
-	return nil
+	return !has, nil
 }
 
 type Provider interface {
@@ -137,6 +156,7 @@ type Provider interface {
 	MessagesForBlock(*types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error)
 	MessagesForTipset(*types.TipSet) ([]types.ChainMsg, error)
 	LoadTipSet(tsk types.TipSetKey) (*types.TipSet, error)
+	ChainComputeBaseFee(ctx context.Context, ts *types.TipSet) (types.BigInt, error)
 }
 
 type mpoolProvider struct {
@@ -145,7 +165,7 @@ type mpoolProvider struct {
 }
 
 func NewProvider(sm *stmgr.StateManager, ps *pubsub.PubSub) Provider {
-	return &mpoolProvider{sm, ps}
+	return &mpoolProvider{sm: sm, ps: ps}
 }
 
 func (mpp *mpoolProvider) SubscribeHeadChanges(cb func(rev, app []*types.TipSet) error) *types.TipSet {
@@ -162,7 +182,8 @@ func (mpp *mpoolProvider) PubSubPublish(k string, v []byte) error {
 }
 
 func (mpp *mpoolProvider) StateGetActor(addr address.Address, ts *types.TipSet) (*types.Actor, error) {
-	return mpp.sm.GetActor(addr, ts)
+	var act types.Actor
+	return &act, mpp.sm.WithParentState(ts, mpp.sm.WithActor(addr, stmgr.GetActor(&act)))
 }
 
 func (mpp *mpoolProvider) StateAccountKey(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
@@ -181,30 +202,53 @@ func (mpp *mpoolProvider) LoadTipSet(tsk types.TipSetKey) (*types.TipSet, error)
 	return mpp.sm.ChainStore().LoadTipSet(tsk)
 }
 
+func (mpp *mpoolProvider) ChainComputeBaseFee(ctx context.Context, ts *types.TipSet) (types.BigInt, error) {
+	baseFee, err := mpp.sm.ChainStore().ComputeBaseFee(ctx, ts)
+	if err != nil {
+		return types.NewInt(0), xerrors.Errorf("computing base fee at %s: %w", ts, err)
+	}
+	return baseFee, nil
+}
+
 func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName) (*MessagePool, error) {
 	cache, _ := lru.New2Q(build.BlsSignatureCacheSize)
 	verifcache, _ := lru.New2Q(build.VerifSigCacheSize)
 
+	cfg, err := loadConfig(ds)
+	if err != nil {
+		if err != nil {
+			return nil, xerrors.Errorf("error loading mpool config: %w", err)
+		}
+	}
+
 	mp := &MessagePool{
+		ds:            ds,
 		closer:        make(chan struct{}),
-		repubTk:       time.NewTicker(time.Duration(build.BlockDelaySecs) * 10 * time.Second),
+		repubTk:       build.Clock.Ticker(time.Duration(build.BlockDelaySecs) * time.Second),
 		localAddrs:    make(map[address.Address]struct{}),
 		pending:       make(map[address.Address]*msgSet),
 		minGasPrice:   types.NewInt(0),
-		maxTxPoolSize: 5000,
+		pruneTrigger:  make(chan struct{}, 1),
+		pruneCooldown: make(chan struct{}, 1),
 		blsSigCache:   cache,
 		sigValCache:   verifcache,
 		changes:       lps.New(50),
 		localMsgs:     namespace.Wrap(ds, datastore.NewKey(localMsgsDs)),
 		api:           api,
 		netName:       netName,
+		cfg:           cfg,
+		rbfNum:        types.NewInt(uint64((cfg.ReplaceByFeeRatio - 1) * RbfDenom)),
+		rbfDenom:      types.NewInt(RbfDenom),
 	}
+
+	// enable initial prunes
+	mp.pruneCooldown <- struct{}{}
 
 	if err := mp.loadLocal(); err != nil {
 		log.Errorf("loading local messages: %+v", err)
 	}
 
-	go mp.repubLocal()
+	go mp.runLoop()
 
 	mp.curTs = api.SubscribeHeadChanges(func(rev, app []*types.TipSet) error {
 		err := mp.HeadChange(rev, app)
@@ -222,7 +266,19 @@ func (mp *MessagePool) Close() error {
 	return nil
 }
 
-func (mp *MessagePool) repubLocal() {
+func (mp *MessagePool) Prune() {
+	// this magic incantation of triggering prune thrice is here to make the Prune method
+	// synchronous:
+	// so, its a single slot buffered channel. The first send fills the channel,
+	// the second send goes through when the pruning starts,
+	// and the third send goes through (and noops) after the pruning finishes
+	// and goes through the loop again
+	mp.pruneTrigger <- struct{}{}
+	mp.pruneTrigger <- struct{}{}
+	mp.pruneTrigger <- struct{}{}
+}
+
+func (mp *MessagePool) runLoop() {
 	for {
 		select {
 		case <-mp.repubTk.C:
@@ -263,6 +319,10 @@ func (mp *MessagePool) repubLocal() {
 				log.Infow("republishing local messages", "n", len(outputMsgs))
 			}
 
+			if len(outputMsgs) > repubMsgLimit {
+				outputMsgs = outputMsgs[:repubMsgLimit]
+			}
+
 			for _, msg := range outputMsgs {
 				msgb, err := msg.Serialize()
 				if err != nil {
@@ -279,6 +339,10 @@ func (mp *MessagePool) repubLocal() {
 
 			if errout != nil {
 				log.Errorf("errors while republishing: %+v", errout)
+			}
+		case <-mp.pruneTrigger:
+			if err := mp.pruneExcessMessages(); err != nil {
+				log.Errorf("failed to prune excess messages from mempool: %s", err)
 			}
 		case <-mp.closer:
 			mp.repubTk.Stop()
@@ -298,7 +362,23 @@ func (mp *MessagePool) addLocal(m *types.SignedMessage, msgb []byte) error {
 	return nil
 }
 
+func (mp *MessagePool) verifyMsgBeforePush(m *types.SignedMessage, epoch abi.ChainEpoch) error {
+	minGas := vm.PricelistByEpoch(epoch).OnChainMessage(m.ChainLength())
+
+	if err := m.VMMessage().ValidForBlockInclusion(minGas.Total()); err != nil {
+		return xerrors.Errorf("message will not be included in a block: %w", err)
+	}
+	return nil
+}
+
 func (mp *MessagePool) Push(m *types.SignedMessage) (cid.Cid, error) {
+	mp.curTsLk.Lock()
+	epoch := mp.curTs.Height()
+	mp.curTsLk.Unlock()
+	if err := mp.verifyMsgBeforePush(m, epoch); err != nil {
+		return cid.Undef, err
+	}
+
 	msgb, err := m.Serialize()
 	if err != nil {
 		return cid.Undef, err
@@ -436,8 +516,21 @@ func (mp *MessagePool) addLocked(m *types.SignedMessage) error {
 		mp.pending[m.Message.From] = mset
 	}
 
-	if err := mset.add(m); err != nil {
+	incr, err := mset.add(m, mp)
+	if err != nil {
 		log.Info(err)
+		return err
+	}
+
+	if incr {
+		mp.currentSize++
+		if mp.currentSize > mp.cfg.SizeLimitHigh {
+			// send signal to prune messages if it hasnt already been sent
+			select {
+			case mp.pruneTrigger <- struct{}{}:
+			default:
+			}
+		}
 	}
 
 	mp.changes.Pub(api.MpoolUpdate{
@@ -547,6 +640,10 @@ func (mp *MessagePool) PushWithNonce(ctx context.Context, addr address.Address, 
 		return nil, err
 	}
 
+	if err := mp.verifyMsgBeforePush(msg, mp.curTs.Height()); err != nil {
+		return nil, err
+	}
+
 	msgb, err := msg.Serialize()
 	if err != nil {
 		return nil, err
@@ -566,6 +663,10 @@ func (mp *MessagePool) Remove(from address.Address, nonce uint64) {
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
+	mp.remove(from, nonce)
+}
+
+func (mp *MessagePool) remove(from address.Address, nonce uint64) {
 	mset, ok := mp.pending[from]
 	if !ok {
 		return
@@ -576,6 +677,8 @@ func (mp *MessagePool) Remove(from address.Address, nonce uint64) {
 			Type:    api.MpoolRemove,
 			Message: m,
 		}, localUpdates)
+
+		mp.currentSize--
 	}
 
 	// NB: This deletes any message with the given nonce. This makes sense
@@ -612,6 +715,14 @@ func (mp *MessagePool) Pending() ([]*types.SignedMessage, *types.TipSet) {
 	}
 
 	return out, mp.curTs
+}
+func (mp *MessagePool) PendingFor(a address.Address) ([]*types.SignedMessage, *types.TipSet) {
+	mp.curTsLk.Lock()
+	defer mp.curTsLk.Unlock()
+
+	mp.lk.Lock()
+	defer mp.lk.Unlock()
+	return mp.pendingFor(a), mp.curTs
 }
 
 func (mp *MessagePool) pendingFor(a address.Address) []*types.SignedMessage {
@@ -864,21 +975,9 @@ func (mp *MessagePool) loadLocal() error {
 
 			log.Errorf("adding local message: %+v", err)
 		}
+
+		mp.localAddrs[sm.Message.From] = struct{}{}
 	}
 
 	return nil
-}
-
-const MinGasPrice = 0
-
-func (mp *MessagePool) EstimateGasPrice(ctx context.Context, nblocksincl uint64, sender address.Address, gaslimit int64, tsk types.TipSetKey) (types.BigInt, error) {
-	// TODO: something smarter obviously
-	switch nblocksincl {
-	case 0:
-		return types.NewInt(MinGasPrice + 2), nil
-	case 1:
-		return types.NewInt(MinGasPrice + 1), nil
-	default:
-		return types.NewInt(MinGasPrice), nil
-	}
 }

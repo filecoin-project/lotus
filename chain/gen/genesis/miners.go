@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math/rand"
 
+	"github.com/filecoin-project/lotus/chain/state"
+
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -19,6 +21,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 
@@ -45,8 +48,30 @@ func (fss *fakedSigSyscalls) VerifySignature(signature crypto.Signature, signer 
 	return nil
 }
 
+func mkFakedSigSyscalls(base vm.SyscallBuilder) vm.SyscallBuilder {
+	return func(ctx context.Context, cstate *state.StateTree, cst cbor.IpldStore) runtime.Syscalls {
+		return &fakedSigSyscalls{
+			base(ctx, cstate, cst),
+		}
+	}
+}
+
 func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid, miners []genesis.Miner) (cid.Cid, error) {
-	vm, err := vm.NewVM(sroot, 0, &fakeRand{}, cs.Blockstore(), &fakedSigSyscalls{cs.VMSys()})
+	vc := func(context.Context, abi.ChainEpoch) (abi.TokenAmount, error) {
+		return big.Zero(), nil
+	}
+
+	vmopt := &vm.VMOpts{
+		StateBase:  sroot,
+		Epoch:      0,
+		Rand:       &fakeRand{},
+		Bstore:     cs.Blockstore(),
+		Syscalls:   mkFakedSigSyscalls(cs.VMSys()),
+		VestedCalc: vc,
+		BaseFee:    types.NewInt(0),
+	}
+
+	vm, err := vm.NewVM(vmopt)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to create NewVM: %w", err)
 	}
@@ -108,16 +133,9 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 
 		// Add market funds
 
-		{
+		if m.MarketBalance.GreaterThan(big.Zero()) {
 			params := mustEnc(&minerInfos[i].maddr)
 			_, err := doExecValue(ctx, vm, builtin.StorageMarketActorAddr, m.Worker, m.MarketBalance, builtin.MethodsMarket.AddBalance, params)
-			if err != nil {
-				return cid.Undef, xerrors.Errorf("failed to create genesis miner: %w", err)
-			}
-		}
-		{
-			params := mustEnc(&m.Worker)
-			_, err := doExecValue(ctx, vm, builtin.StorageMarketActorAddr, m.Worker, big.Zero(), builtin.MethodsMarket.AddBalance, params)
 			if err != nil {
 				return cid.Undef, xerrors.Errorf("failed to create genesis miner: %w", err)
 			}
@@ -145,6 +163,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 			params := &market.PublishStorageDealsParams{}
 			for _, preseal := range m.Sectors {
 				preseal.Deal.VerifiedDeal = true
+				preseal.Deal.EndEpoch = minerInfos[i].presealExp
 				params.Deals = append(params.Deals, market.ClientDealProposal{
 					Proposal:        preseal.Deal,
 					ClientSignature: crypto.Signature{Type: crypto.SigTypeBLS}, // TODO: do we want to sign these? Or do we want to fake signatures for genesis setup?
@@ -188,11 +207,19 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 		err = vm.MutateState(ctx, builtin.StoragePowerActorAddr, func(cst cbor.IpldStore, st *power.State) error {
 			st.TotalQualityAdjPower = qaPow
 			st.TotalRawBytePower = rawPow
+
+			st.ThisEpochQualityAdjPower = qaPow
+			st.ThisEpochRawBytePower = rawPow
 			return nil
 		})
 		if err != nil {
 			return cid.Undef, xerrors.Errorf("mutating state: %w", err)
 		}
+
+		err = vm.MutateState(ctx, builtin.RewardActorAddr, func(sct cbor.IpldStore, st *reward.State) error {
+			st = reward.ConstructState(qaPow)
+			return nil
+		})
 	}
 
 	for i, m := range miners {
@@ -235,8 +262,16 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 					return cid.Undef, xerrors.Errorf("getting current total power: %w", err)
 				}
 
-				pledge := miner.InitialPledgeForPower(sectorWeight, tpow.QualityAdjPower, tpow.PledgeCollateral, epochReward, circSupply(ctx, vm, minerInfos[i].maddr))
+				pledge := miner.InitialPledgeForPower(
+					sectorWeight,
+					epochReward.ThisEpochBaselinePower,
+					tpow.PledgeCollateral,
+					epochReward.ThisEpochRewardSmoothed,
+					tpow.QualityAdjPowerSmoothed,
+					circSupply(ctx, vm, minerInfos[i].maddr),
+				)
 
+				fmt.Println(types.FIL(pledge))
 				_, err = doExecValue(ctx, vm, minerInfos[i].maddr, m.Worker, pledge, builtin.MethodsMiner.PreCommitSector, mustEnc(params))
 				if err != nil {
 					return cid.Undef, xerrors.Errorf("failed to confirm presealed sectors: %w", err)
@@ -270,6 +305,8 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("mutating state: %w", err)
 	}
+
+	// TODO: Should we re-ConstructState for the reward actor using rawPow as currRealizedPower here?
 
 	c, err := vm.Flush(ctx)
 	if err != nil {
@@ -325,18 +362,18 @@ func dealWeight(ctx context.Context, vm *vm.VM, maddr address.Address, dealIDs [
 	return dealWeights, nil
 }
 
-func currentEpochBlockReward(ctx context.Context, vm *vm.VM, maddr address.Address) (abi.TokenAmount, error) {
-	rwret, err := doExecValue(ctx, vm, builtin.RewardActorAddr, maddr, big.Zero(), builtin.MethodsReward.LastPerEpochReward, nil)
+func currentEpochBlockReward(ctx context.Context, vm *vm.VM, maddr address.Address) (*reward.ThisEpochRewardReturn, error) {
+	rwret, err := doExecValue(ctx, vm, builtin.RewardActorAddr, maddr, big.Zero(), builtin.MethodsReward.ThisEpochReward, nil)
 	if err != nil {
-		return abi.TokenAmount{}, err
+		return nil, err
 	}
 
-	epochReward := abi.NewTokenAmount(0)
+	var epochReward reward.ThisEpochRewardReturn
 	if err := epochReward.UnmarshalCBOR(bytes.NewReader(rwret)); err != nil {
-		return abi.TokenAmount{}, err
+		return nil, err
 	}
 
-	return epochReward, nil
+	return &epochReward, nil
 }
 
 func circSupply(ctx context.Context, vmi *vm.VM, maddr address.Address) abi.TokenAmount {

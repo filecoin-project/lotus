@@ -1,10 +1,10 @@
 # Static Ports
 
-Depending on how your network is set up, you may need to set a static port to successfully connect to peers to perform storage deals with your **Lotus Storage Miner**.
+Depending on how your network is set up, you may need to set a static port to successfully connect to peers to perform storage deals with your **Lotus Miner**.
 
 ## Setup
 
-To change the random **swarm port**, you may edit the `config.toml` file located under `$LOTUS_STORAGE_PATH`. The default location of this file is `$HOME/.lotusstorage`.
+To change the random **swarm port**, you may edit the `config.toml` file located under `$LOTUS_MINER_PATH`. The default location of this file is `$HOME/.lotusminer`.
 
 To change the port to `1347`:
 

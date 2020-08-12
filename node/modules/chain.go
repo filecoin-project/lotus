@@ -8,7 +8,6 @@ import (
 	"github.com/ipfs/go-bitswap/network"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-datastore"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/ipld/go-car"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/routing"
@@ -17,15 +16,17 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/specs-actors/actors/runtime"
 
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/blocksync"
+	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -72,7 +73,7 @@ func ChainBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRepo
 		return nil, err
 	}
 
-	return blockstore.NewIdStore(cbs), nil
+	return cbs, nil
 }
 
 func ChainGCBlockstore(bs dtypes.ChainBlockstore, gcl dtypes.ChainGCLocker) dtypes.ChainGCBlockstore {
@@ -83,7 +84,7 @@ func ChainBlockservice(bs dtypes.ChainBlockstore, rem dtypes.ChainExchange) dtyp
 	return blockservice.New(bs, rem)
 }
 
-func ChainStore(lc fx.Lifecycle, bs dtypes.ChainBlockstore, ds dtypes.MetadataDS, syscalls runtime.Syscalls) *store.ChainStore {
+func ChainStore(lc fx.Lifecycle, bs dtypes.ChainBlockstore, ds dtypes.MetadataDS, syscalls vm.SyscallBuilder) *store.ChainStore {
 	chain := store.NewChainStore(bs, ds, syscalls)
 
 	if err := chain.Load(); err != nil {
@@ -166,4 +167,8 @@ func NewSyncer(lc fx.Lifecycle, sm *stmgr.StateManager, bsync *blocksync.BlockSy
 		},
 	})
 	return syncer, nil
+}
+
+func NewSlashFilter(ds dtypes.MetadataDS) *slashfilter.SlashFilter {
+	return slashfilter.New(ds)
 }

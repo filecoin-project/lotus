@@ -22,13 +22,6 @@ var rewardsCmd = &cli.Command{
 var rewardsRedeemCmd = &cli.Command{
 	Name:  "redeem",
 	Usage: "Redeem block rewards",
-	Flags: []cli.Flag{
-		&cli.Int64Flag{
-			Name:  "gas-limit",
-			Usage: "set gas limit",
-			Value: 100000,
-		},
-	},
 	Action: func(cctx *cli.Context) error {
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
@@ -66,16 +59,12 @@ var rewardsRedeemCmd = &cli.Command{
 			return err
 		}
 
-		gasLimit := cctx.Int64("gas-limit")
-
 		smsg, err := api.MpoolPushMessage(ctx, &types.Message{
-			To:       maddr,
-			From:     mi.Owner,
-			Value:    types.NewInt(0),
-			GasPrice: types.NewInt(1),
-			GasLimit: gasLimit,
-			Method:   builtin.MethodsMiner.WithdrawBalance,
-			Params:   params,
+			To:     maddr,
+			From:   mi.Owner,
+			Value:  types.NewInt(0),
+			Method: builtin.MethodsMiner.WithdrawBalance,
+			Params: params,
 		})
 		if err != nil {
 			return err

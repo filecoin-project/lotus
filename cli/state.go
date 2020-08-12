@@ -6,12 +6,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"io"
 	"os"
 	"reflect"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/multiformats/go-multiaddr"
 
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -34,7 +37,6 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/miner"
 )
 
 var stateCmd = &cli.Command{
@@ -49,10 +51,11 @@ var stateCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		statePowerCmd,
 		stateSectorsCmd,
-		stateProvingSetCmd,
+		stateActiveSectorsCmd,
 		statePledgeCollateralCmd,
 		stateListActorsCmd,
 		stateListMinersCmd,
+		stateCircSupplyCmd,
 		stateGetActorCmd,
 		stateLookupIDCmd,
 		stateReplaySetCmd,
@@ -104,6 +107,15 @@ var stateMinerInfo = &cli.Command{
 		fmt.Printf("Worker:\t%s\n", mi.Worker)
 		fmt.Printf("PeerID:\t%s\n", mi.PeerId)
 		fmt.Printf("SectorSize:\t%s (%d)\n", types.SizeStr(types.NewInt(uint64(mi.SectorSize))), mi.SectorSize)
+		fmt.Printf("Multiaddrs: \t")
+		for _, addr := range mi.Multiaddrs {
+			a, err := multiaddr.NewMultiaddrBytes(addr)
+			if err != nil {
+				return xerrors.Errorf("undecodable listen address: %w", err)
+			}
+			fmt.Printf("%s ", a)
+		}
+		fmt.Println()
 
 		return nil
 	},
@@ -130,7 +142,15 @@ func LoadTipSet(ctx context.Context, cctx *cli.Context, api api.FullNode) (*type
 		return nil, nil
 	}
 
+	return ParseTipSetRef(ctx, api, tss)
+}
+
+func ParseTipSetRef(ctx context.Context, api api.FullNode, tss string) (*types.TipSet, error) {
 	if tss[0] == '@' {
+		if tss == "@head" {
+			return api.ChainHead(ctx)
+		}
+
 		var h uint64
 		if _, err := fmt.Sscanf(tss, "@%d", &h); err != nil {
 			return nil, xerrors.Errorf("parsing height tipset ref: %w", err)
@@ -241,9 +261,9 @@ var stateSectorsCmd = &cli.Command{
 	},
 }
 
-var stateProvingSetCmd = &cli.Command{
-	Name:      "proving",
-	Usage:     "Query the proving set of a miner",
+var stateActiveSectorsCmd = &cli.Command{
+	Name:      "active-sectors",
+	Usage:     "Query the active sector set of a miner",
 	ArgsUsage: "[minerAddress]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -268,7 +288,7 @@ var stateProvingSetCmd = &cli.Command{
 			return err
 		}
 
-		sectors, err := api.StateMinerProvingSet(ctx, maddr, ts.Key())
+		sectors, err := api.StateMinerActiveSectors(ctx, maddr, ts.Key())
 		if err != nil {
 			return err
 		}
@@ -337,7 +357,11 @@ var stateReplaySetCmd = &cli.Command{
 					return xerrors.Errorf("finding message in chain: %w", err)
 				}
 
-				ts, err = fapi.ChainGetTipSet(ctx, r.TipSet.Parents())
+				childTs, err := fapi.ChainGetTipSet(ctx, r.TipSet)
+				if err != nil {
+					return xerrors.Errorf("loading tipset: %w", err)
+				}
+				ts, err = fapi.ChainGetTipSet(ctx, childTs.Parents())
 			}
 			if err != nil {
 				return err
@@ -834,12 +858,7 @@ var stateComputeStateCmd = &cli.Command{
 
 		var msgs []*types.Message
 		if cctx.Bool("apply-mpool-messages") {
-			pmsgs, err := api.MpoolPending(ctx, ts.Key())
-			if err != nil {
-				return err
-			}
-
-			pmsgs, err = miner.SelectMessages(ctx, api.StateGetActor, ts, pmsgs)
+			pmsgs, err := api.MpoolSelect(ctx, ts.Key(), 1)
 			if err != nil {
 				return err
 			}
@@ -870,7 +889,7 @@ var stateComputeStateCmd = &cli.Command{
 				return c.Code, nil
 			}
 
-			return computeStateHTMLTempl(ts, stout, getCode)
+			return ComputeStateHTMLTempl(os.Stdout, ts, stout, getCode)
 		}
 
 		fmt.Println("computed state cid: ", stout.Root)
@@ -919,7 +938,7 @@ var compStateTemplate = `
     font-size: 12px;
     border-collapse: collapse;
    }
-   tr { 
+   tr {
    	border-top: 1px solid black;
    	border-bottom: 1px solid black;
    }
@@ -938,7 +957,7 @@ var compStateTemplate = `
    /**
    Checked State
    **/
-   
+
    .ellipsis-toggle input:checked + .ellipsis {
      display: none;
    }
@@ -991,7 +1010,7 @@ var compStateMsg = `
   <div><pre class="params">{{JsonParams ($code) (.Msg.Method) (.Msg.Params) | html}}</pre></div>
  {{end}}
  <div><span class="slow-{{IsSlow .Duration}}-{{IsVerySlow .Duration}}">Took {{.Duration}}</span>, <span class="exit{{IntExit .MsgRct.ExitCode}}">Exit: <b>{{.MsgRct.ExitCode}}</b></span>{{if gt (len .MsgRct.Return) 0}}, Return{{end}}</div>
- 
+
  {{if gt (len .MsgRct.Return) 0}}
   <div><pre class="ret">{{JsonReturn ($code) (.Msg.Method) (.MsgRct.Return) | html}}</pre></div>
  {{end}}
@@ -1077,7 +1096,7 @@ type compStateHTMLIn struct {
 	Comp   *api.ComputeStateOutput
 }
 
-func computeStateHTMLTempl(ts *types.TipSet, o *api.ComputeStateOutput, getCode func(addr address.Address) (cid.Cid, error)) error {
+func ComputeStateHTMLTempl(w io.Writer, ts *types.TipSet, o *api.ComputeStateOutput, getCode func(addr address.Address) (cid.Cid, error)) error {
 	t, err := template.New("compute_state").Funcs(map[string]interface{}{
 		"GetCode":    getCode,
 		"GetMethod":  getMethod,
@@ -1110,7 +1129,7 @@ func computeStateHTMLTempl(ts *types.TipSet, o *api.ComputeStateOutput, getCode 
 		return err
 	}
 
-	return t.ExecuteTemplate(os.Stdout, "compute_state", &compStateHTMLIn{
+	return t.ExecuteTemplate(w, "compute_state", &compStateHTMLIn{
 		TipSet: ts,
 		Comp:   o,
 	})
@@ -1366,13 +1385,11 @@ var stateCallCmd = &cli.Command{
 		}
 
 		ret, err := api.StateCall(ctx, &types.Message{
-			From:     froma,
-			To:       toa,
-			Value:    types.BigInt(value),
-			GasLimit: 10000000000,
-			GasPrice: types.NewInt(0),
-			Method:   abi.MethodNum(method),
-			Params:   params,
+			From:   froma,
+			To:     toa,
+			Value:  types.BigInt(value),
+			Method: abi.MethodNum(method),
+			Params: params,
 		}, ts.Key())
 		if err != nil {
 			return fmt.Errorf("state call failed: %s", err)
@@ -1501,4 +1518,32 @@ func parseParamsForMethod(act cid.Cid, method uint64, args []string) ([]byte, er
 		return nil, fmt.Errorf("failed to marshal param object: %s", err)
 	}
 	return buf.Bytes(), nil
+}
+
+var stateCircSupplyCmd = &cli.Command{
+	Name:  "circulating-supply",
+	Usage: "Get the current circulating supply of filecoin",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		ts, err := LoadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
+
+		circ, err := api.StateCirculatingSupply(ctx, ts.Key())
+		if err != nil {
+			return err
+		}
+
+		fmt.Println(types.FIL(circ))
+
+		return nil
+	},
 }
