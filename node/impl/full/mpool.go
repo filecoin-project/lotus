@@ -115,10 +115,11 @@ func capGasFee(msg *types.Message, maxFee abi.TokenAmount) {
 		return
 	}
 
-	chainFee := types.BigMul(msg.GasFeeCap, types.NewInt(uint64(msg.GasLimit)))
-	minerFee := types.BigMul(msg.GasPremium, types.NewInt(uint64(msg.GasLimit)))
+	gl := types.BigMul(msg.GasPremium, types.NewInt(uint64(msg.GasLimit)))
+	totalFee := types.BigMul(msg.GasFeeCap, gl)
+	minerFee := types.BigMul(msg.GasPremium, gl)
 
-	if big.Add(chainFee, minerFee).LessThanEqual(maxFee) {
+	if totalFee.LessThanEqual(maxFee) {
 		return
 	}
 
@@ -126,9 +127,8 @@ func capGasFee(msg *types.Message, maxFee abi.TokenAmount) {
 	// TODO: there are probably smarter things we can do here to optimize
 	//  message inclusion latency
 
-	totalFee := big.Add(chainFee, minerFee)
-	msg.GasFeeCap = big.Div(big.Mul(chainFee, maxFee), totalFee)
-	msg.GasPremium = big.Div(big.Mul(minerFee, maxFee), totalFee)
+	msg.GasFeeCap = big.Div(maxFee, gl)
+	msg.GasPremium = big.Div(big.Div(big.Mul(minerFee, maxFee), totalFee), gl)
 }
 
 func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, maxFee abi.TokenAmount) (*types.SignedMessage, error) {
