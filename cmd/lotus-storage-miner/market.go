@@ -194,11 +194,7 @@ var setAskCmd = &cli.Command{
 		defer closer()
 
 		pri := types.NewInt(cctx.Uint64("price"))
-<<<<<<< HEAD
-		verifiedPri := types.NewInt(cctx.Uint64("verified-price"))
-=======
 		vpri := types.NewInt(cctx.Uint64("verified-price"))
->>>>>>> e2c6cc6c6deb4620cbf3b05fb7600b8743d15564
 
 		dur, err := time.ParseDuration(cctx.String("duration"))
 		if err != nil {
@@ -241,11 +237,7 @@ var setAskCmd = &cli.Command{
 			return xerrors.Errorf("max piece size (w/bit-padding) %s cannot exceed miner sector size %s", types.SizeStr(types.NewInt(uint64(max))), types.SizeStr(types.NewInt(uint64(smax))))
 		}
 
-<<<<<<< HEAD
-		return api.MarketSetAsk(ctx, pri, verifiedPri, abi.ChainEpoch(qty), abi.PaddedPieceSize(min), abi.PaddedPieceSize(max))
-=======
 		return api.MarketSetAsk(ctx, pri, vpri, abi.ChainEpoch(qty), abi.PaddedPieceSize(min), abi.PaddedPieceSize(max))
->>>>>>> e2c6cc6c6deb4620cbf3b05fb7600b8743d15564
 	},
 }
 
