@@ -3,6 +3,7 @@ package modules
 import (
 	"bytes"
 	"context"
+	"os"
 
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
@@ -127,8 +128,18 @@ func LoadGenesis(genBytes []byte) func(dtypes.ChainBlockstore) Genesis {
 func DoSetGenesis(_ dtypes.AfterGenesisSet) {}
 
 func SetGenesis(cs *store.ChainStore, g Genesis) (dtypes.AfterGenesisSet, error) {
-	_, err := cs.GetGenesis()
+	genFromRepo, err := cs.GetGenesis()
 	if err == nil {
+		if os.Getenv("LOTUS_SKIP_GENESIS_CHECK") != "_yes_" {
+			expectedGenesis, err := g()
+			if err != nil {
+				return dtypes.AfterGenesisSet{}, xerrors.Errorf("getting expected genesis failed: %w", err)
+			}
+
+			if genFromRepo.Cid() != expectedGenesis.Cid() {
+				return dtypes.AfterGenesisSet{}, xerrors.Errorf("genesis in the repo is not the one expected by this version of Lotus!")
+			}
+		}
 		return dtypes.AfterGenesisSet{}, nil // already set, noop
 	}
 	if err != datastore.ErrNotFound {
