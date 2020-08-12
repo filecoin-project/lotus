@@ -231,8 +231,16 @@ func (rt *Runtime) GetActorCodeCID(addr address.Address) (ret cid.Cid, ok bool) 
 	return act.Code, true
 }
 
-func (rt *Runtime) GetRandomness(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
-	res, err := rt.vm.rand.GetRandomness(rt.ctx, personalization, randEpoch, entropy)
+func (rt *Runtime) GetRandomnessFromTickets(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
+	res, err := rt.vm.rand.GetChainRandomness(rt.ctx, personalization, randEpoch, entropy)
+	if err != nil {
+		panic(aerrors.Fatalf("could not get randomness: %s", err))
+	}
+	return res
+}
+
+func (rt *Runtime) GetRandomnessFromBeacon(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
+	res, err := rt.vm.rand.GetBeaconRandomness(rt.ctx, personalization, randEpoch, entropy)
 	if err != nil {
 		panic(aerrors.Fatalf("could not get randomness: %s", err))
 	}

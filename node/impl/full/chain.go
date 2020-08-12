@@ -60,7 +60,7 @@ func (a *ChainAPI) ChainGetRandomness(ctx context.Context, tsk types.TipSetKey, 
 		return nil, xerrors.Errorf("loading tipset key: %w", err)
 	}
 
-	return a.Chain.GetRandomness(ctx, pts.Cids(), personalization, randEpoch, entropy)
+	return a.Chain.GetChainRandomness(ctx, pts.Cids(), personalization, randEpoch, entropy)
 }
 
 func (a *ChainAPI) ChainGetBlock(ctx context.Context, msg cid.Cid) (*types.BlockHeader, error) {
