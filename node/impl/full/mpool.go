@@ -2,6 +2,8 @@ package full
 
 import (
 	"context"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 
 	"github.com/ipfs/go-cid"
 	"go.uber.org/fx"
@@ -13,7 +15,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
 )
 
 type MpoolAPI struct {
@@ -108,7 +109,28 @@ func (a *MpoolAPI) MpoolPush(ctx context.Context, smsg *types.SignedMessage) (ci
 	return a.Mpool.Push(smsg)
 }
 
-func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message) (*types.SignedMessage, error) {
+func capGasFee(msg *types.Message, maxFee abi.TokenAmount) {
+	if maxFee.Equals(big.Zero()) {
+		return
+	}
+
+	gl := types.BigMul(msg.GasPremium, types.NewInt(uint64(msg.GasLimit)))
+	totalFee := types.BigMul(msg.GasFeeCap, gl)
+	minerFee := types.BigMul(msg.GasPremium, gl)
+
+	if totalFee.LessThanEqual(maxFee) {
+		return
+	}
+
+	// scale chain/miner fee down proportionally to fit in our budget
+	// TODO: there are probably smarter things we can do here to optimize
+	//  message inclusion latency
+
+	msg.GasFeeCap = big.Div(maxFee, gl)
+	msg.GasPremium = big.Div(big.Div(big.Mul(minerFee, maxFee), totalFee), gl)
+}
+
+func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec) (*types.SignedMessage, error) {
 	{
 		fromA, err := a.Stmgr.ResolveToKeyAddress(ctx, msg.From, nil)
 		if err != nil {
@@ -147,6 +169,8 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message) (*t
 		}
 		msg.GasFeeCap = big.Add(feeCap, msg.GasPremium)
 	}
+
+	capGasFee(msg, spec.Get().MaxFee)
 
 	sign := func(from address.Address, nonce uint64) (*types.SignedMessage, error) {
 		msg.Nonce = nonce

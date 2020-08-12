@@ -60,7 +60,7 @@ func StartFundManager(lc fx.Lifecycle, api API) *FundMgr {
 
 type fundMgrAPI interface {
 	StateMarketBalance(context.Context, address.Address, types.TipSetKey) (api.MarketBalance, error)
-	MpoolPushMessage(context.Context, *types.Message) (*types.SignedMessage, error)
+	MpoolPushMessage(context.Context, *types.Message, *api.MessageSendSpec) (*types.SignedMessage, error)
 	StateLookupID(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 }
 
@@ -149,7 +149,7 @@ func (fm *FundMgr) EnsureAvailable(ctx context.Context, addr, wallet address.Add
 		Value:  toAdd,
 		Method: builtin.MethodsMarket.AddBalance,
 		Params: params,
-	})
+	}, nil)
 	if err != nil {
 		return cid.Undef, err
 	}

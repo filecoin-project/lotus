@@ -110,7 +110,7 @@ func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, a
 		Value:  types.NewInt(0),
 	}
 
-	_, err = tnd.MpoolPushMessage(ctx, msg)
+	_, err = tnd.MpoolPushMessage(ctx, msg, nil)
 	require.NoError(t, err)
 
 	// start node

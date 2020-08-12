@@ -279,7 +279,7 @@ func (h *handler) send(w http.ResponseWriter, r *http.Request) {
 		Value: types.BigInt(h.sendPerRequest),
 		From:  h.from,
 		To:    to,
-	})
+	}, nil)
 	if err != nil {
 		w.WriteHeader(400)
 		_, _ = w.Write([]byte(err.Error()))
@@ -350,7 +350,7 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 		Value: types.BigInt(h.sendPerRequest),
 		From:  h.from,
 		To:    owner,
-	})
+	}, nil)
 	if err != nil {
 		w.WriteHeader(400)
 		w.Write([]byte("pushfunds: " + err.Error()))
@@ -386,7 +386,7 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 		Params: params,
 	}
 
-	signed, err := h.api.MpoolPushMessage(r.Context(), createStorageMinerMsg)
+	signed, err := h.api.MpoolPushMessage(r.Context(), createStorageMinerMsg, nil)
 	if err != nil {
 		w.WriteHeader(400)
 		w.Write([]byte(err.Error()))

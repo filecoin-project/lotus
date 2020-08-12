@@ -221,7 +221,7 @@ func waitForBlocks(ctx context.Context, t *testing.T, bm *blockMiner, paymentRec
 			To:    builtin.BurntFundsActorAddr,
 			From:  receiverAddr,
 			Value: types.NewInt(0),
-		})
+		}, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -307,7 +307,7 @@ func sendFunds(ctx context.Context, t *testing.T, sender TestNode, addr address.
 		Value: amount,
 	}
 
-	sm, err := sender.MpoolPushMessage(ctx, msg)
+	sm, err := sender.MpoolPushMessage(ctx, msg, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

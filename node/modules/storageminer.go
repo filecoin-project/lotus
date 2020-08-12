@@ -142,43 +142,45 @@ func SectorIDCounter(ds dtypes.MetadataDS) sealing.SectorIDCounter {
 	return &sidsc{sc}
 }
 
-func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api lapi.FullNode, h host.Host, ds dtypes.MetadataDS, sealer sectorstorage.SectorManager, sc sealing.SectorIDCounter, verif ffiwrapper.Verifier, gsd dtypes.GetSealingDelayFunc) (*storage.Miner, error) {
-	maddr, err := minerAddrFromDS(ds)
-	if err != nil {
-		return nil, err
+func StorageMiner(fc config.MinerFeeConfig) func(mctx helpers.MetricsCtx, lc fx.Lifecycle, api lapi.FullNode, h host.Host, ds dtypes.MetadataDS, sealer sectorstorage.SectorManager, sc sealing.SectorIDCounter, verif ffiwrapper.Verifier, gsd dtypes.GetSealingDelayFunc) (*storage.Miner, error) {
+	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, api lapi.FullNode, h host.Host, ds dtypes.MetadataDS, sealer sectorstorage.SectorManager, sc sealing.SectorIDCounter, verif ffiwrapper.Verifier, gsd dtypes.GetSealingDelayFunc) (*storage.Miner, error) {
+		maddr, err := minerAddrFromDS(ds)
+		if err != nil {
+			return nil, err
+		}
+
+		ctx := helpers.LifecycleCtx(mctx, lc)
+
+		mi, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			return nil, err
+		}
+
+		worker, err := api.StateAccountKey(ctx, mi.Worker, types.EmptyTSK)
+		if err != nil {
+			return nil, err
+		}
+
+		fps, err := storage.NewWindowedPoStScheduler(api, fc, sealer, sealer, maddr, worker)
+		if err != nil {
+			return nil, err
+		}
+
+		sm, err := storage.NewMiner(api, maddr, worker, h, ds, sealer, sc, verif, gsd, fc)
+		if err != nil {
+			return nil, err
+		}
+
+		lc.Append(fx.Hook{
+			OnStart: func(context.Context) error {
+				go fps.Run(ctx)
+				return sm.Run(ctx)
+			},
+			OnStop: sm.Stop,
+		})
+
+		return sm, nil
 	}
-
-	ctx := helpers.LifecycleCtx(mctx, lc)
-
-	mi, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
-	if err != nil {
-		return nil, err
-	}
-
-	worker, err := api.StateAccountKey(ctx, mi.Worker, types.EmptyTSK)
-	if err != nil {
-		return nil, err
-	}
-
-	fps, err := storage.NewWindowedPoStScheduler(api, sealer, sealer, maddr, worker)
-	if err != nil {
-		return nil, err
-	}
-
-	sm, err := storage.NewMiner(api, maddr, worker, h, ds, sealer, sc, verif, gsd)
-	if err != nil {
-		return nil, err
-	}
-
-	lc.Append(fx.Hook{
-		OnStart: func(context.Context) error {
-			go fps.Run(ctx)
-			return sm.Run(ctx)
-		},
-		OnStop: sm.Stop,
-	})
-
-	return sm, nil
 }
 
 func HandleRetrieval(host host.Host, lc fx.Lifecycle, m retrievalmarket.RetrievalProvider) {

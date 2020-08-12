@@ -24,6 +24,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	sealing "github.com/filecoin-project/storage-fsm"
 )
@@ -32,6 +33,7 @@ var log = logging.Logger("storageminer")
 
 type Miner struct {
 	api    storageMinerApi
+	feeCfg config.MinerFeeConfig
 	h      host.Host
 	sealer sectorstorage.SectorManager
 	ds     datastore.Batching
@@ -65,7 +67,7 @@ type storageMinerApi interface {
 	StateMinerFaults(context.Context, address.Address, types.TipSetKey) (abi.BitField, error)
 	StateMinerRecoveries(context.Context, address.Address, types.TipSetKey) (abi.BitField, error)
 
-	MpoolPushMessage(context.Context, *types.Message) (*types.SignedMessage, error)
+	MpoolPushMessage(context.Context, *types.Message, *api.MessageSendSpec) (*types.SignedMessage, error)
 
 	ChainHead(context.Context) (*types.TipSet, error)
 	ChainNotify(context.Context) (<-chan []*api.HeadChange, error)
@@ -82,9 +84,10 @@ type storageMinerApi interface {
 	WalletHas(context.Context, address.Address) (bool, error)
 }
 
-func NewMiner(api storageMinerApi, maddr, worker address.Address, h host.Host, ds datastore.Batching, sealer sectorstorage.SectorManager, sc sealing.SectorIDCounter, verif ffiwrapper.Verifier, gsd dtypes.GetSealingDelayFunc) (*Miner, error) {
+func NewMiner(api storageMinerApi, maddr, worker address.Address, h host.Host, ds datastore.Batching, sealer sectorstorage.SectorManager, sc sealing.SectorIDCounter, verif ffiwrapper.Verifier, gsd dtypes.GetSealingDelayFunc, feeCfg config.MinerFeeConfig) (*Miner, error) {
 	m := &Miner{
 		api:    api,
+		feeCfg: feeCfg,
 		h:      h,
 		sealer: sealer,
 		ds:     ds,
@@ -109,10 +112,15 @@ func (m *Miner) Run(ctx context.Context) error {
 		return xerrors.Errorf("getting miner info: %w", err)
 	}
 
+	fc := sealing.FeeConfig{
+		MaxPreCommitGasFee: abi.TokenAmount(m.feeCfg.MaxPreCommitGasFee),
+		MaxCommitGasFee:    abi.TokenAmount(m.feeCfg.MaxCommitGasFee),
+	}
+
 	evts := events.NewEvents(ctx, m.api)
 	adaptedAPI := NewSealingAPIAdapter(m.api)
 	pcp := sealing.NewBasicPreCommitPolicy(adaptedAPI, miner.MaxSectorExpirationExtension-(miner.WPoStProvingPeriod*2), md.PeriodStart%miner.WPoStProvingPeriod)
-	m.sealing = sealing.New(adaptedAPI, NewEventsAdapter(evts), m.maddr, m.ds, m.sealer, m.sc, m.verif, &pcp, sealing.GetSealingDelayFunc(m.getSealDelay))
+	m.sealing = sealing.New(adaptedAPI, fc, NewEventsAdapter(evts), m.maddr, m.ds, m.sealer, m.sc, m.verif, &pcp, sealing.GetSealingDelayFunc(m.getSealDelay))
 
 	go m.sealing.Run(ctx) //nolint:errcheck // logged intside the function
 

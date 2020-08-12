@@ -36,7 +36,7 @@ func (fapi *fakeAPI) StateMarketBalance(context.Context, address.Address, types.
 	return fapi.returnedBalance, fapi.returnedBalanceErr
 }
 
-func (fapi *fakeAPI) MpoolPushMessage(ctx context.Context, msg *types.Message) (*types.SignedMessage, error) {
+func (fapi *fakeAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec) (*types.SignedMessage, error) {
 	fapi.receivedMessage = msg
 	return &types.SignedMessage{
 		Message:   *msg,

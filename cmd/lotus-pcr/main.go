@@ -19,15 +19,16 @@ import (
 
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/tools/stats"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 )
 
 var log = logging.Logger("main")
@@ -204,7 +205,7 @@ type processTipSetApi interface {
 	ChainGetParentReceipts(ctx context.Context, blockCid cid.Cid) ([]*types.MessageReceipt, error)
 	StateMinerInitialPledgeCollateral(ctx context.Context, addr address.Address, precommitInfo miner.SectorPreCommitInfo, tsk types.TipSetKey) (types.BigInt, error)
 	StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error)
-	MpoolPushMessage(ctx context.Context, msg *types.Message) (*types.SignedMessage, error)
+	MpoolPushMessage(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec) (*types.SignedMessage, error)
 	GasEstimateGasPremium(ctx context.Context, nblocksincl uint64, sender address.Address, gaslimit int64, tsk types.TipSetKey) (types.BigInt, error)
 	WalletBalance(ctx context.Context, addr address.Address) (types.BigInt, error)
 }
@@ -326,7 +327,7 @@ func ProcessTipset(ctx context.Context, api processTipSetApi, tipset *types.TipS
 	failures := 0
 	refundSum.SetUint64(0)
 	for _, msg := range messages {
-		if _, err = api.MpoolPushMessage(ctx, msg); err != nil {
+		if _, err = api.MpoolPushMessage(ctx, msg, nil); err != nil {
 			log.Errorw("failed to MpoolPushMessage", "err", err, "msg", msg)
 			failures = failures + 1
 			continue

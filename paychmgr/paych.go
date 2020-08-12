@@ -403,7 +403,7 @@ func (ca *channelAccessor) settle(ctx context.Context, ch address.Address) (cid.
 		Value:  types.NewInt(0),
 		Method: builtin.MethodsPaych.Settle,
 	}
-	smgs, err := ca.api.MpoolPushMessage(ctx, msg)
+	smgs, err := ca.api.MpoolPushMessage(ctx, msg, nil)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -433,7 +433,7 @@ func (ca *channelAccessor) collect(ctx context.Context, ch address.Address) (cid
 		Method: builtin.MethodsPaych.Collect,
 	}
 
-	smsg, err := ca.api.MpoolPushMessage(ctx, msg)
+	smsg, err := ca.api.MpoolPushMessage(ctx, msg, nil)
 	if err != nil {
 		return cid.Undef, err
 	}

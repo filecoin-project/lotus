@@ -44,7 +44,7 @@ type stateManagerAPI interface {
 // paychAPI defines the API methods needed by the payment channel manager
 type paychAPI interface {
 	StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64) (*api.MsgLookup, error)
-	MpoolPushMessage(ctx context.Context, msg *types.Message) (*types.SignedMessage, error)
+	MpoolPushMessage(ctx context.Context, msg *types.Message, maxFee *api.MessageSendSpec) (*types.SignedMessage, error)
 }
 
 // managerAPI defines all methods needed by the manager

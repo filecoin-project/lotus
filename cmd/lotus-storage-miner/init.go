@@ -560,7 +560,7 @@ func configureStorageMiner(ctx context.Context, api lapi.FullNode, addr address.
 		GasPremium: gasPrice,
 	}
 
-	smsg, err := api.MpoolPushMessage(ctx, msg)
+	smsg, err := api.MpoolPushMessage(ctx, msg, nil)
 	if err != nil {
 		return err
 	}
@@ -640,7 +640,7 @@ func createStorageMiner(ctx context.Context, api lapi.FullNode, peerid peer.ID, 
 		GasPremium: gasPrice,
 	}
 
-	signed, err := api.MpoolPushMessage(ctx, createStorageMinerMsg)
+	signed, err := api.MpoolPushMessage(ctx, createStorageMinerMsg, nil)
 	if err != nil {
 		return address.Undef, err
 	}

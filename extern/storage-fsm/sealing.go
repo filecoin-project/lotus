@@ -45,7 +45,7 @@ type SealingAPI interface {
 	StateMinerPreCommitDepositForPower(context.Context, address.Address, miner.SectorPreCommitInfo, TipSetToken) (big.Int, error)
 	StateMinerInitialPledgeCollateral(context.Context, address.Address, miner.SectorPreCommitInfo, TipSetToken) (big.Int, error)
 	StateMarketStorageDeal(context.Context, abi.DealID, TipSetToken) (market.DealProposal, error)
-	SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, gasPrice big.Int, gasLimit int64, params []byte) (cid.Cid, error)
+	SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error)
 	ChainHead(ctx context.Context) (TipSetToken, abi.ChainEpoch, error)
 	ChainGetRandomnessFromBeacon(ctx context.Context, tok TipSetToken, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
 	ChainGetRandomnessFromTickets(ctx context.Context, tok TipSetToken, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
@@ -54,6 +54,7 @@ type SealingAPI interface {
 
 type Sealing struct {
 	api    SealingAPI
+	feeCfg FeeConfig
 	events Events
 
 	maddr address.Address
@@ -72,6 +73,11 @@ type Sealing struct {
 	getSealDelay GetSealingDelayFunc
 }
 
+type FeeConfig struct {
+	MaxPreCommitGasFee  abi.TokenAmount
+	MaxCommitGasFee     abi.TokenAmount
+}
+
 type UnsealedSectorMap struct {
 	infos map[abi.SectorNumber]UnsealedSectorInfo
 	mux   sync.Mutex
@@ -84,9 +90,10 @@ type UnsealedSectorInfo struct {
 	pieceSizes []abi.UnpaddedPieceSize
 }
 
-func New(api SealingAPI, events Events, maddr address.Address, ds datastore.Batching, sealer sectorstorage.SectorManager, sc SectorIDCounter, verif ffiwrapper.Verifier, pcp PreCommitPolicy, gsd GetSealingDelayFunc) *Sealing {
+func New(api SealingAPI, fc FeeConfig, events Events, maddr address.Address, ds datastore.Batching, sealer sectorstorage.SectorManager, sc SectorIDCounter, verif ffiwrapper.Verifier, pcp PreCommitPolicy, gsd GetSealingDelayFunc) *Sealing {
 	s := &Sealing{
 		api:    api,
+		feeCfg: fc,
 		events: events,
 
 		maddr:  maddr,

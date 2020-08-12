@@ -8,13 +8,15 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/urfave/cli/v2"
+	cbg "github.com/whyrusleeping/cbor-gen"
+
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/urfave/cli/v2"
-	cbg "github.com/whyrusleeping/cbor-gen"
 )
 
 var sendCmd = &cli.Command{
@@ -154,7 +156,7 @@ var sendCmd = &cli.Command{
 			}
 			fmt.Println(sm.Cid())
 		} else {
-			sm, err := api.MpoolPushMessage(ctx, msg)
+			sm, err := api.MpoolPushMessage(ctx, msg, nil)
 			if err != nil {
 				return err
 			}

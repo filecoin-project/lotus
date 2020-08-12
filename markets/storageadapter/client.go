@@ -6,8 +6,6 @@ import (
 	"bytes"
 	"context"
 
-	"github.com/filecoin-project/lotus/chain/events/state"
-
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -16,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/events"
+	"github.com/filecoin-project/lotus/chain/events/state"
 	"github.com/filecoin-project/lotus/chain/market"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -127,7 +126,7 @@ func (c *ClientNodeAdapter) AddFunds(ctx context.Context, addr address.Address, 
 		From:   addr,
 		Value:  amount,
 		Method: builtin.MethodsMarket.AddBalance,
-	})
+	}, nil)
 	if err != nil {
 		return cid.Undef, err
 	}

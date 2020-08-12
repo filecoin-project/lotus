@@ -81,7 +81,7 @@ var actorSetAddrsCmd = &cli.Command{
 			GasLimit: gasLimit,
 			Method:   18,
 			Params:   params,
-		})
+		}, nil)
 		if err != nil {
 			return err
 		}
