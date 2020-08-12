@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/messagepool/gasguess"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -68,10 +69,18 @@ func (mp *MessagePool) republishPendingMessages() error {
 	}
 
 	gasLimit := int64(build.BlockGasLimit)
+	minGas := int64(gasguess.MinGas)
 	var msgs []*types.SignedMessage
-	for _, chain := range chains {
+	for i := 0; i < len(chains); {
+		chain := chains[i]
+
 		// we can exceed this if we have picked (some) longer chain already
 		if len(msgs) > repubMsgLimit {
+			break
+		}
+
+		// there is not enough gas for any message
+		if gasLimit <= minGas {
 			break
 		}
 
@@ -81,13 +90,29 @@ func (mp *MessagePool) republishPendingMessages() error {
 			break
 		}
 
-		// we don't exceed the block gasLimit in our republish endeavor
-		if chain.gasLimit > gasLimit {
-			break
+		// has the chain been invalidated?
+		if !chain.valid {
+			i++
+			continue
 		}
 
-		gasLimit -= chain.gasLimit
-		msgs = append(msgs, chain.msgs...)
+		// does it fit in a block?
+		if chain.gasLimit <= gasLimit {
+			gasLimit -= chain.gasLimit
+			msgs = append(msgs, chain.msgs...)
+			i++
+			continue
+		}
+
+		// we can't fit the current chain but there is gas to spare
+		// trim it and push it down
+		chain.Trim(gasLimit, mp, baseFee, ts, false)
+		for j := i; j < len(chains)-1; j++ {
+			if chains[j].Before(chains[j+1]) {
+				break
+			}
+			chains[j], chains[j+1] = chains[j+1], chains[j]
+		}
 	}
 
 	log.Infof("republishing %d messages", len(msgs))
