@@ -913,6 +913,7 @@ func printInternalExecutions(prefix string, trace []types.ExecutionTrace) {
 var compStateTemplate = `
 <html>
  <head>
+  <meta charset="UTF-8">
   <style>
    html, body { font-family: monospace; }
    a:link, a:visited { color: #004; }
