@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 )
@@ -180,16 +180,14 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 
 	{
 
-		pb, err := br.PeekByte()
+		b, err := br.ReadByte()
 		if err != nil {
 			return err
 		}
-		if pb == cbg.CborNull[0] {
-			var nbuf [1]byte
-			if _, err := br.Read(nbuf[:]); err != nil {
+		if b != cbg.CborNull[0] {
+			if err := br.UnreadByte(); err != nil {
 				return err
 			}
-		} else {
 			t.Ticket = new(Ticket)
 			if err := t.Ticket.UnmarshalCBOR(br); err != nil {
 				return xerrors.Errorf("unmarshaling t.Ticket pointer: %w", err)
@@ -201,16 +199,14 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 
 	{
 
-		pb, err := br.PeekByte()
+		b, err := br.ReadByte()
 		if err != nil {
 			return err
 		}
-		if pb == cbg.CborNull[0] {
-			var nbuf [1]byte
-			if _, err := br.Read(nbuf[:]); err != nil {
+		if b != cbg.CborNull[0] {
+			if err := br.UnreadByte(); err != nil {
 				return err
 			}
-		} else {
 			t.ElectionProof = new(ElectionProof)
 			if err := t.ElectionProof.UnmarshalCBOR(br); err != nil {
 				return xerrors.Errorf("unmarshaling t.ElectionProof pointer: %w", err)
@@ -378,16 +374,14 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 
 	{
 
-		pb, err := br.PeekByte()
+		b, err := br.ReadByte()
 		if err != nil {
 			return err
 		}
-		if pb == cbg.CborNull[0] {
-			var nbuf [1]byte
-			if _, err := br.Read(nbuf[:]); err != nil {
+		if b != cbg.CborNull[0] {
+			if err := br.UnreadByte(); err != nil {
 				return err
 			}
-		} else {
 			t.BLSAggregate = new(crypto.Signature)
 			if err := t.BLSAggregate.UnmarshalCBOR(br); err != nil {
 				return xerrors.Errorf("unmarshaling t.BLSAggregate pointer: %w", err)
@@ -413,16 +407,14 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 
 	{
 
-		pb, err := br.PeekByte()
+		b, err := br.ReadByte()
 		if err != nil {
 			return err
 		}
-		if pb == cbg.CborNull[0] {
-			var nbuf [1]byte
-			if _, err := br.Read(nbuf[:]); err != nil {
+		if b != cbg.CborNull[0] {
+			if err := br.UnreadByte(); err != nil {
 				return err
 			}
-		} else {
 			t.BlockSig = new(crypto.Signature)
 			if err := t.BlockSig.UnmarshalCBOR(br); err != nil {
 				return xerrors.Errorf("unmarshaling t.BlockSig pointer: %w", err)
@@ -1337,16 +1329,14 @@ func (t *BlockMsg) UnmarshalCBOR(r io.Reader) error {
 
 	{
 
-		pb, err := br.PeekByte()
+		b, err := br.ReadByte()
 		if err != nil {
 			return err
 		}
-		if pb == cbg.CborNull[0] {
-			var nbuf [1]byte
-			if _, err := br.Read(nbuf[:]); err != nil {
+		if b != cbg.CborNull[0] {
+			if err := br.UnreadByte(); err != nil {
 				return err
 			}
-		} else {
 			t.Header = new(BlockHeader)
 			if err := t.Header.UnmarshalCBOR(br); err != nil {
 				return xerrors.Errorf("unmarshaling t.Header pointer: %w", err)

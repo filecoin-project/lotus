@@ -537,26 +537,23 @@ func createEmptyMinerState(ctx context.Context, t *testing.T, store adt.Store, o
 	emptyMap, err := adt.MakeEmptyMap(store).Root()
 	require.NoError(t, err)
 
-	emptyDeadline, err := store.Put(context.TODO(), &miner.Deadline{
-		Partitions:        emptyArrayCid,
-		ExpirationsEpochs: emptyArrayCid,
-		PostSubmissions:   bitfield.New(),
-		EarlyTerminations: bitfield.New(),
-		LiveSectors:       0,
-	})
+	emptyDeadline, err := store.Put(store.Context(), miner.ConstructDeadline(emptyArrayCid))
 	require.NoError(t, err)
 
+	emptyVestingFunds := miner.ConstructVestingFunds()
+	emptyVestingFundsCid, err := store.Put(store.Context(), emptyVestingFunds)
+
 	emptyDeadlines := miner.ConstructDeadlines(emptyDeadline)
-	emptyDeadlinesCid, err := store.Put(context.Background(), emptyDeadlines)
+	emptyDeadlinesCid, err := store.Put(store.Context(), emptyDeadlines)
 	require.NoError(t, err)
 
 	minerInfo := emptyMap
 
 	emptyBitfield := bitfield.NewFromSet(nil)
-	emptyBitfieldCid, err := store.Put(context.Background(), emptyBitfield)
+	emptyBitfieldCid, err := store.Put(store.Context(), emptyBitfield)
 	require.NoError(t, err)
 
-	state, err := miner.ConstructState(minerInfo, 123, emptyBitfieldCid, emptyArrayCid, emptyMap, emptyDeadlinesCid)
+	state, err := miner.ConstructState(minerInfo, 123, emptyBitfieldCid, emptyArrayCid, emptyMap, emptyDeadlinesCid, emptyVestingFundsCid)
 	require.NoError(t, err)
 	return state
 

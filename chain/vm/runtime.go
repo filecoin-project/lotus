@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	sainit "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	sapower "github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
@@ -123,7 +122,7 @@ func (rt *Runtime) TotalFilCircSupply() abi.TokenAmount {
 func (rt *Runtime) ResolveAddress(addr address.Address) (ret address.Address, ok bool) {
 	r, err := rt.state.LookupID(addr)
 	if err != nil {
-		if xerrors.Is(err, sainit.ErrAddressNotFound) {
+		if xerrors.Is(err, types.ErrActorNotFound) {
 			return address.Undef, false
 		}
 		panic(aerrors.Fatalf("failed to resolve address %s: %s", addr, err))
