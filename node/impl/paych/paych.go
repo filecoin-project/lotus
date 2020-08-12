@@ -36,12 +36,12 @@ func (a *PaychAPI) PaychGet(ctx context.Context, from, to address.Address, amt t
 
 	return &api.ChannelInfo{
 		Channel:      ch,
-		WaitSentinel: api.PaychWaitSentinel(mcid),
+		WaitSentinel: mcid,
 	}, nil
 }
 
-func (a *PaychAPI) PaychGetWaitReady(ctx context.Context, sentinel api.PaychWaitSentinel) (address.Address, error) {
-	return a.PaychMgr.GetPaychWaitReady(ctx, cid.Cid(sentinel))
+func (a *PaychAPI) PaychGetWaitReady(ctx context.Context, sentinel cid.Cid) (address.Address, error) {
+	return a.PaychMgr.GetPaychWaitReady(ctx, sentinel)
 }
 
 func (a *PaychAPI) PaychAllocateLane(ctx context.Context, ch address.Address) (uint64, error) {

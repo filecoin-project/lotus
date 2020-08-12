@@ -14,59 +14,6 @@ import (
 
 var _ = xerrors.Errorf
 
-func (t *PaychWaitSentinel) MarshalCBOR(w io.Writer) error {
-	if t == nil {
-		_, err := w.Write(cbg.CborNull)
-		return err
-	}
-	if _, err := w.Write([]byte{160}); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (t *PaychWaitSentinel) UnmarshalCBOR(r io.Reader) error {
-	*t = PaychWaitSentinel{}
-
-	br := cbg.GetPeeker(r)
-	scratch := make([]byte, 8)
-
-	maj, extra, err := cbg.CborReadHeaderBuf(br, scratch)
-	if err != nil {
-		return err
-	}
-	if maj != cbg.MajMap {
-		return fmt.Errorf("cbor input should be of type map")
-	}
-
-	if extra > cbg.MaxLength {
-		return fmt.Errorf("PaychWaitSentinel: map struct too large (%d)", extra)
-	}
-
-	var name string
-	n := extra
-
-	for i := uint64(0); i < n; i++ {
-
-		{
-			sval, err := cbg.ReadStringBuf(br, scratch)
-			if err != nil {
-				return err
-			}
-
-			name = string(sval)
-		}
-
-		switch name {
-
-		default:
-			return fmt.Errorf("unknown struct field %d: '%s'", i, name)
-		}
-	}
-
-	return nil
-}
 func (t *PaymentInfo) MarshalCBOR(w io.Writer) error {
 	if t == nil {
 		_, err := w.Write(cbg.CborNull)
@@ -94,7 +41,7 @@ func (t *PaymentInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.WaitSentinel (api.PaychWaitSentinel) (struct)
+	// t.WaitSentinel (cid.Cid) (struct)
 	if len("WaitSentinel") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"WaitSentinel\" was too long")
 	}
@@ -106,8 +53,8 @@ func (t *PaymentInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if err := t.WaitSentinel.MarshalCBOR(w); err != nil {
-		return err
+	if err := cbg.WriteCidBuf(scratch, w, t.WaitSentinel); err != nil {
+		return xerrors.Errorf("failed to write cid field t.WaitSentinel: %w", err)
 	}
 
 	// t.Vouchers ([]*paych.SignedVoucher) (slice)
@@ -180,14 +127,17 @@ func (t *PaymentInfo) UnmarshalCBOR(r io.Reader) error {
 				}
 
 			}
-			// t.WaitSentinel (api.PaychWaitSentinel) (struct)
+			// t.WaitSentinel (cid.Cid) (struct)
 		case "WaitSentinel":
 
 			{
 
-				if err := t.WaitSentinel.UnmarshalCBOR(br); err != nil {
-					return xerrors.Errorf("unmarshaling t.WaitSentinel: %w", err)
+				c, err := cbg.ReadCid(br)
+				if err != nil {
+					return xerrors.Errorf("failed to read cid field t.WaitSentinel: %w", err)
 				}
+
+				t.WaitSentinel = c
 
 			}
 			// t.Vouchers ([]*paych.SignedVoucher) (slice)
