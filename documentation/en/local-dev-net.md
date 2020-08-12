@@ -6,6 +6,14 @@ Build the Lotus Binaries in debug mode, This enables the use of 2048 byte sector
 make 2k
 ```
 
+Set the `LOTUS_SKIP_GENESIS_CHECK` environment variable to `_yes_`. This tells your
+Lotus node that it's okay if the genesis being used doesn't match any baked-in
+genesis.
+
+```sh
+export LOTUS_SKIP_GENESIS_CHECK=_yes_
+```
+
 Download the 2048 byte parameters:
 ```sh
 ./lotus fetch-params 2048
