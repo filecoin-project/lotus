@@ -9,7 +9,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 
@@ -211,7 +210,7 @@ func (a *PaychAPI) PaychVoucherSubmit(ctx context.Context, ch address.Address, s
 		Params: enc,
 	}
 
-	smsg, err := a.MpoolPushMessage(ctx, msg, big.Zero())
+	smsg, err := a.MpoolPushMessage(ctx, msg, nil)
 	if err != nil {
 		return cid.Undef, err
 	}

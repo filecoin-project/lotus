@@ -13,7 +13,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -157,7 +156,7 @@ var sendCmd = &cli.Command{
 			}
 			fmt.Println(sm.Cid())
 		} else {
-			sm, err := api.MpoolPushMessage(ctx, msg, big.Zero())
+			sm, err := api.MpoolPushMessage(ctx, msg, nil)
 			if err != nil {
 				return err
 			}

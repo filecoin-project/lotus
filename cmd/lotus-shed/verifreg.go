@@ -7,7 +7,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
@@ -76,7 +75,7 @@ var verifRegAddVerifierCmd = &cli.Command{
 			Params: params,
 		}
 
-		smsg, err := api.MpoolPushMessage(ctx, msg, big.Zero())
+		smsg, err := api.MpoolPushMessage(ctx, msg, nil)
 		if err != nil {
 			return err
 		}
@@ -150,7 +149,7 @@ var verifRegVerifyClientCmd = &cli.Command{
 			Params: params,
 		}
 
-		smsg, err := api.MpoolPushMessage(ctx, msg, big.Zero())
+		smsg, err := api.MpoolPushMessage(ctx, msg, nil)
 		if err != nil {
 			return err
 		}

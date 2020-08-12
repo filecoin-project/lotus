@@ -174,7 +174,7 @@ type FullNode interface {
 	//
 	// When maxFee is set to 0, MpoolPushMessage will guess appropriate fee
 	// based on current chain conditions
-	MpoolPushMessage(ctx context.Context, msg *types.Message, maxFee abi.TokenAmount) (*types.SignedMessage, error)
+	MpoolPushMessage(ctx context.Context, msg *types.Message, spec *MessageSendSpec) (*types.SignedMessage, error)
 
 	// MpoolGetNonce gets next nonce for the specified sender.
 	// Note that this method may not be atomic. Use MpoolPushMessage instead.

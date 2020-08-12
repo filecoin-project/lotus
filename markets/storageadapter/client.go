@@ -23,7 +23,6 @@ import (
 	"github.com/filecoin-project/lotus/markets/utils"
 	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	samarket "github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
@@ -127,7 +126,7 @@ func (c *ClientNodeAdapter) AddFunds(ctx context.Context, addr address.Address, 
 		From:   addr,
 		Value:  amount,
 		Method: builtin.MethodsMarket.AddBalance,
-	}, big.Zero())
+	}, nil)
 	if err != nil {
 		return cid.Undef, err
 	}

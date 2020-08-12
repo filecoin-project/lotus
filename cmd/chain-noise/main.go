@@ -7,7 +7,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 
 	"github.com/filecoin-project/go-address"
@@ -80,7 +79,7 @@ func sendSmallFundsTxs(ctx context.Context, api api.FullNode, from address.Addre
 				Value: types.NewInt(1),
 			}
 
-			smsg, err := api.MpoolPushMessage(ctx, msg, big.Zero())
+			smsg, err := api.MpoolPushMessage(ctx, msg, nil)
 			if err != nil {
 				return err
 			}

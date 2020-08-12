@@ -7,7 +7,6 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -82,7 +81,7 @@ var actorSetAddrsCmd = &cli.Command{
 			GasLimit: gasLimit,
 			Method:   18,
 			Params:   params,
-		}, big.Zero())
+		}, nil)
 		if err != nil {
 			return err
 		}

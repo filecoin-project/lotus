@@ -15,7 +15,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
 )
 
 type MpoolAPI struct {
@@ -131,7 +130,7 @@ func capGasFee(msg *types.Message, maxFee abi.TokenAmount) {
 	msg.GasPremium = big.Div(big.Div(big.Mul(minerFee, maxFee), totalFee), gl)
 }
 
-func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, maxFee abi.TokenAmount) (*types.SignedMessage, error) {
+func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec) (*types.SignedMessage, error) {
 	{
 		fromA, err := a.Stmgr.ResolveToKeyAddress(ctx, msg.From, nil)
 		if err != nil {
@@ -171,7 +170,7 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, max
 		msg.GasFeeCap = big.Add(feeCap, msg.GasPremium)
 	}
 
-	capGasFee(msg, maxFee)
+	capGasFee(msg, spec.Get().MaxFee)
 
 	sign := func(from address.Address, nonce uint64) (*types.SignedMessage, error) {
 		msg.Nonce = nonce

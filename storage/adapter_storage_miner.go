@@ -3,6 +3,7 @@ package storage
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/lotus/api"
 
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -246,7 +247,7 @@ func (s SealingAPIAdapter) SendMsg(ctx context.Context, from, to address.Address
 		Params: params,
 	}
 
-	smsg, err := s.delegate.MpoolPushMessage(ctx, &msg, maxFee)
+	smsg, err := s.delegate.MpoolPushMessage(ctx, &msg, &api.MessageSendSpec{MaxFee: maxFee})
 	if err != nil {
 		return cid.Undef, err
 	}

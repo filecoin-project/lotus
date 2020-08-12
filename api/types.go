@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -75,4 +76,20 @@ func NewApiMinerInfo(info *miner.MinerInfo) MinerInfo {
 	}
 
 	return mi
+}
+
+type MessageSendSpec struct {
+	MaxFee abi.TokenAmount
+}
+
+var DefaultMessageSendSpec = MessageSendSpec{
+	MaxFee: big.Zero(),
+}
+
+func (ms *MessageSendSpec) Get() MessageSendSpec {
+	if ms == nil {
+		return DefaultMessageSendSpec
+	}
+
+	return *ms
 }

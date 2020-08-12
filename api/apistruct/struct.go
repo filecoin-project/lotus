@@ -104,11 +104,11 @@ type FullNodeStruct struct {
 
 		MpoolSelect func(context.Context, types.TipSetKey, float64) ([]*types.SignedMessage, error) `perm:"read"`
 
-		MpoolPending     func(context.Context, types.TipSetKey) ([]*types.SignedMessage, error)               `perm:"read"`
-		MpoolPush        func(context.Context, *types.SignedMessage) (cid.Cid, error)                         `perm:"write"`
-		MpoolPushMessage func(context.Context, *types.Message, abi.TokenAmount) (*types.SignedMessage, error) `perm:"sign"`
-		MpoolGetNonce    func(context.Context, address.Address) (uint64, error)                               `perm:"read"`
-		MpoolSub         func(context.Context) (<-chan api.MpoolUpdate, error)                                `perm:"read"`
+		MpoolPending     func(context.Context, types.TipSetKey) ([]*types.SignedMessage, error)                    `perm:"read"`
+		MpoolPush        func(context.Context, *types.SignedMessage) (cid.Cid, error)                              `perm:"write"`
+		MpoolPushMessage func(context.Context, *types.Message, *api.MessageSendSpec) (*types.SignedMessage, error) `perm:"sign"`
+		MpoolGetNonce    func(context.Context, address.Address) (uint64, error)                                    `perm:"read"`
+		MpoolSub         func(context.Context) (<-chan api.MpoolUpdate, error)                                     `perm:"read"`
 
 		MinerGetBaseInfo func(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*api.MiningBaseInfo, error) `perm:"read"`
 		MinerCreateBlock func(context.Context, *api.BlockTemplate) (*types.BlockMsg, error)                                   `perm:"write"`
@@ -472,8 +472,8 @@ func (c *FullNodeStruct) MpoolPush(ctx context.Context, smsg *types.SignedMessag
 	return c.Internal.MpoolPush(ctx, smsg)
 }
 
-func (c *FullNodeStruct) MpoolPushMessage(ctx context.Context, msg *types.Message, maxFee abi.TokenAmount) (*types.SignedMessage, error) {
-	return c.Internal.MpoolPushMessage(ctx, msg, maxFee)
+func (c *FullNodeStruct) MpoolPushMessage(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec) (*types.SignedMessage, error) {
+	return c.Internal.MpoolPushMessage(ctx, msg, spec)
 }
 
 func (c *FullNodeStruct) MpoolSub(ctx context.Context) (<-chan api.MpoolUpdate, error) {
