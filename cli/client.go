@@ -174,7 +174,7 @@ var clientDropCmd = &cli.Command{
 var clientCommPCmd = &cli.Command{
 	Name:      "commP",
 	Usage:     "Calculate the piece-cid (commP) of a CAR file",
-	ArgsUsage: "[inputFile minerAddress]",
+	ArgsUsage: "[inputFile]",
 	Flags: []cli.Flag{
 		&CidBaseFlag,
 	},
@@ -186,16 +186,11 @@ var clientCommPCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		if cctx.Args().Len() != 2 {
-			return fmt.Errorf("usage: commP <inputPath> <minerAddr>")
+		if cctx.Args().Len() != 1 {
+			return fmt.Errorf("usage: commP <inputPath>")
 		}
 
-		miner, err := address.NewFromString(cctx.Args().Get(1))
-		if err != nil {
-			return err
-		}
-
-		ret, err := api.ClientCalcCommP(ctx, cctx.Args().Get(0), miner)
+		ret, err := api.ClientCalcCommP(ctx, cctx.Args().Get(0))
 		if err != nil {
 			return err
 		}

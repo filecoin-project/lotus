@@ -565,13 +565,19 @@ func (a *API) ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Addre
 	return signedAsk, nil
 }
 
-func (a *API) ClientCalcCommP(ctx context.Context, inpath string, miner address.Address) (*api.CommPRet, error) {
-	mi, err := a.StateMinerInfo(ctx, miner, types.EmptyTSK)
-	if err != nil {
-		return nil, xerrors.Errorf("failed checking miners sector size: %w", err)
-	}
+func (a *API) ClientCalcCommP(ctx context.Context, inpath string) (*api.CommPRet, error) {
 
-	rt, err := ffiwrapper.SealProofTypeFromSectorSize(mi.SectorSize)
+	// Hard-code the sector size to 32GiB, because:
+	// - pieceio.GeneratePieceCommitment requires a RegisteredSealProof
+	// - commP itself is sector-size independent, with rather low probability of that changing
+	//   ( note how the final rust call is identical for every RegSP type )
+	//   https://github.com/filecoin-project/rust-filecoin-proofs-api/blob/v5.0.0/src/seal.rs#L1040-L1050
+	//
+	// IF/WHEN this changes in the future we will have to be able to calculate
+	// "old style" commP, and thus will need to introduce a version switch or similar
+	arbitrarySectorSize := abi.SectorSize(32 << 30)
+
+	rt, err := ffiwrapper.SealProofTypeFromSectorSize(arbitrarySectorSize)
 	if err != nil {
 		return nil, xerrors.Errorf("bad sector size: %w", err)
 	}
