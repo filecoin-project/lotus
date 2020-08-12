@@ -23,6 +23,7 @@ import (
 
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 
@@ -279,7 +280,7 @@ func (h *handler) send(w http.ResponseWriter, r *http.Request) {
 		Value: types.BigInt(h.sendPerRequest),
 		From:  h.from,
 		To:    to,
-	})
+	}, big.Zero())
 	if err != nil {
 		w.WriteHeader(400)
 		_, _ = w.Write([]byte(err.Error()))
@@ -350,7 +351,7 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 		Value: types.BigInt(h.sendPerRequest),
 		From:  h.from,
 		To:    owner,
-	})
+	}, big.Zero())
 	if err != nil {
 		w.WriteHeader(400)
 		w.Write([]byte("pushfunds: " + err.Error()))
@@ -386,7 +387,7 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 		Params: params,
 	}
 
-	signed, err := h.api.MpoolPushMessage(r.Context(), createStorageMinerMsg)
+	signed, err := h.api.MpoolPushMessage(r.Context(), createStorageMinerMsg, big.Zero())
 	if err != nil {
 		w.WriteHeader(400)
 		w.Write([]byte(err.Error()))

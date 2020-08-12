@@ -3,6 +3,7 @@ package paychmgr
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"sync"
 
 	"github.com/filecoin-project/go-address"
@@ -156,7 +157,7 @@ func (pchapi *mockPaychAPI) close() {
 	}
 }
 
-func (pchapi *mockPaychAPI) MpoolPushMessage(ctx context.Context, msg *types.Message) (*types.SignedMessage, error) {
+func (pchapi *mockPaychAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, maxFee abi.TokenAmount) (*types.SignedMessage, error) {
 	pchapi.lk.Lock()
 	defer pchapi.lk.Unlock()
 
