@@ -148,7 +148,7 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message) (*t
 		msg.GasFeeCap = feeCap
 	}
 
-	return a.Mpool.PushWithNonce(ctx, msg.From, func(from address.Address, nonce uint64) (*types.SignedMessage, error) {
+	sign := func(from address.Address, nonce uint64) (*types.SignedMessage, error) {
 		msg.Nonce = nonce
 		if msg.From.Protocol() == address.ID {
 			log.Warnf("Push from ID address (%s), adjusting to %s", msg.From, from)
@@ -165,7 +165,17 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message) (*t
 		}
 
 		return a.WalletSignMessage(ctx, from, msg)
-	})
+	}
+
+	var m *types.SignedMessage
+	var err error
+again:
+	m, err = a.Mpool.PushWithNonce(ctx, msg.From, sign)
+	if err == messagepool.ErrTryAgain {
+		log.Debugf("temporary failure while pushing message: %s; retrying", err)
+		goto again
+	}
+	return m, err
 }
 
 func (a *MpoolAPI) MpoolGetNonce(ctx context.Context, addr address.Address) (uint64, error) {
