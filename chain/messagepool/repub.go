@@ -16,10 +16,10 @@ const repubMsgLimit = 30
 func (mp *MessagePool) republishPendingMessages() error {
 	mp.curTsLk.Lock()
 	ts := mp.curTs
-	mp.curTsLk.Unlock()
 
 	baseFee, err := mp.api.ChainComputeBaseFee(context.TODO(), ts)
 	if err != nil {
+		mp.curTsLk.Unlock()
 		return xerrors.Errorf("computing basefee: %w", err)
 	}
 
@@ -41,6 +41,7 @@ func (mp *MessagePool) republishPendingMessages() error {
 		pending[actor] = pend
 	}
 	mp.lk.Unlock()
+	mp.curTsLk.Unlock()
 
 	if len(pending) == 0 {
 		return nil
