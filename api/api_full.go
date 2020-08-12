@@ -247,8 +247,8 @@ type FullNode interface {
 	ClientRetrieve(ctx context.Context, order RetrievalOrder, ref *FileRef) (<-chan marketevents.RetrievalEvent, error)
 	// ClientQueryAsk returns a signed StorageAsk from the specified miner.
 	ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.SignedStorageAsk, error)
-	// ClientCalcCommP calculates the CommP for a specified file, based on the sector size of the provided miner.
-	ClientCalcCommP(ctx context.Context, inpath string, miner address.Address) (*CommPRet, error)
+	// ClientCalcCommP calculates the CommP for a specified file
+	ClientCalcCommP(ctx context.Context, inpath string) (*CommPRet, error)
 	// ClientGenCar generates a CAR file for the specified file.
 	ClientGenCar(ctx context.Context, ref FileRef, outpath string) error
 	// ClientDealSize calculates real deal data size
