@@ -47,7 +47,8 @@ type SealingAPI interface {
 	StateMarketStorageDeal(context.Context, abi.DealID, TipSetToken) (market.DealProposal, error)
 	SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, gasPrice big.Int, gasLimit int64, params []byte) (cid.Cid, error)
 	ChainHead(ctx context.Context) (TipSetToken, abi.ChainEpoch, error)
-	ChainGetRandomness(ctx context.Context, tok TipSetToken, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
+	ChainGetRandomnessFromBeacon(ctx context.Context, tok TipSetToken, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
+	ChainGetRandomnessFromTickets(ctx context.Context, tok TipSetToken, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 }
 

@@ -40,8 +40,11 @@ type FullNode interface {
 	// ChainHead returns the current head of the chain.
 	ChainHead(context.Context) (*types.TipSet, error)
 
-	// ChainGetRandomness is used to sample the chain for randomness.
-	ChainGetRandomness(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
+	// ChainGetRandomnessFromTickets is used to sample the chain for randomness.
+	ChainGetRandomnessFromTickets(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
+
+	// ChainGetRandomnessFromBeacon is used to sample the beacon for randomness.
+	ChainGetRandomnessFromBeacon(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
 
 	// ChainGetBlock returns the block specified by the given CID.
 	ChainGetBlock(context.Context, cid.Cid) (*types.BlockHeader, error)
@@ -291,11 +294,11 @@ type FullNode interface {
 	// StateMinerPartitions loads miner partitions for the specified miner/deadline
 	StateMinerPartitions(context.Context, address.Address, uint64, types.TipSetKey) ([]*miner.Partition, error)
 	// StateMinerFaults returns a bitfield indicating the faulty sectors of the given miner
-	StateMinerFaults(context.Context, address.Address, types.TipSetKey) (*abi.BitField, error)
+	StateMinerFaults(context.Context, address.Address, types.TipSetKey) (abi.BitField, error)
 	// StateAllMinerFaults returns all non-expired Faults that occur within lookback epochs of the given tipset
 	StateAllMinerFaults(ctx context.Context, lookback abi.ChainEpoch, ts types.TipSetKey) ([]*Fault, error)
 	// StateMinerRecoveries returns a bitfield indicating the recovering sectors of the given miner
-	StateMinerRecoveries(context.Context, address.Address, types.TipSetKey) (*abi.BitField, error)
+	StateMinerRecoveries(context.Context, address.Address, types.TipSetKey) (abi.BitField, error)
 	// StateMinerInitialPledgeCollateral returns the precommit deposit for the specified miner's sector
 	StateMinerPreCommitDepositForPower(context.Context, address.Address, miner.SectorPreCommitInfo, types.TipSetKey) (types.BigInt, error)
 	// StateMinerInitialPledgeCollateral returns the initial pledge collateral for the specified miner's sector

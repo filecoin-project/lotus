@@ -62,14 +62,15 @@ type storageMinerApi interface {
 	StateGetActor(ctx context.Context, actor address.Address, ts types.TipSetKey) (*types.Actor, error)
 	StateGetReceipt(context.Context, cid.Cid, types.TipSetKey) (*types.MessageReceipt, error)
 	StateMarketStorageDeal(context.Context, abi.DealID, types.TipSetKey) (*api.MarketDeal, error)
-	StateMinerFaults(context.Context, address.Address, types.TipSetKey) (*abi.BitField, error)
-	StateMinerRecoveries(context.Context, address.Address, types.TipSetKey) (*abi.BitField, error)
+	StateMinerFaults(context.Context, address.Address, types.TipSetKey) (abi.BitField, error)
+	StateMinerRecoveries(context.Context, address.Address, types.TipSetKey) (abi.BitField, error)
 
 	MpoolPushMessage(context.Context, *types.Message) (*types.SignedMessage, error)
 
 	ChainHead(context.Context) (*types.TipSet, error)
 	ChainNotify(context.Context) (<-chan []*api.HeadChange, error)
-	ChainGetRandomness(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
+	ChainGetRandomnessFromTickets(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
+	ChainGetRandomnessFromBeacon(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
 	ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error)
 	ChainGetBlockMessages(context.Context, cid.Cid) (*api.BlockMessages, error)
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)

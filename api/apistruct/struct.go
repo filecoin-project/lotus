@@ -66,25 +66,26 @@ type FullNodeStruct struct {
 	CommonStruct
 
 	Internal struct {
-		ChainNotify            func(context.Context) (<-chan []*api.HeadChange, error)                                                            `perm:"read"`
-		ChainHead              func(context.Context) (*types.TipSet, error)                                                                       `perm:"read"`
-		ChainGetRandomness     func(context.Context, types.TipSetKey, crypto.DomainSeparationTag, abi.ChainEpoch, []byte) (abi.Randomness, error) `perm:"read"`
-		ChainGetBlock          func(context.Context, cid.Cid) (*types.BlockHeader, error)                                                         `perm:"read"`
-		ChainGetTipSet         func(context.Context, types.TipSetKey) (*types.TipSet, error)                                                      `perm:"read"`
-		ChainGetBlockMessages  func(context.Context, cid.Cid) (*api.BlockMessages, error)                                                         `perm:"read"`
-		ChainGetParentReceipts func(context.Context, cid.Cid) ([]*types.MessageReceipt, error)                                                    `perm:"read"`
-		ChainGetParentMessages func(context.Context, cid.Cid) ([]api.Message, error)                                                              `perm:"read"`
-		ChainGetTipSetByHeight func(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error)                                      `perm:"read"`
-		ChainReadObj           func(context.Context, cid.Cid) ([]byte, error)                                                                     `perm:"read"`
-		ChainHasObj            func(context.Context, cid.Cid) (bool, error)                                                                       `perm:"read"`
-		ChainStatObj           func(context.Context, cid.Cid, cid.Cid) (api.ObjStat, error)                                                       `perm:"read"`
-		ChainSetHead           func(context.Context, types.TipSetKey) error                                                                       `perm:"admin"`
-		ChainGetGenesis        func(context.Context) (*types.TipSet, error)                                                                       `perm:"read"`
-		ChainTipSetWeight      func(context.Context, types.TipSetKey) (types.BigInt, error)                                                       `perm:"read"`
-		ChainGetNode           func(ctx context.Context, p string) (*api.IpldObject, error)                                                       `perm:"read"`
-		ChainGetMessage        func(context.Context, cid.Cid) (*types.Message, error)                                                             `perm:"read"`
-		ChainGetPath           func(context.Context, types.TipSetKey, types.TipSetKey) ([]*api.HeadChange, error)                                 `perm:"read"`
-		ChainExport            func(context.Context, types.TipSetKey) (<-chan []byte, error)                                                      `perm:"read"`
+		ChainNotify                   func(context.Context) (<-chan []*api.HeadChange, error)                                                            `perm:"read"`
+		ChainHead                     func(context.Context) (*types.TipSet, error)                                                                       `perm:"read"`
+		ChainGetRandomnessFromTickets func(context.Context, types.TipSetKey, crypto.DomainSeparationTag, abi.ChainEpoch, []byte) (abi.Randomness, error) `perm:"read"`
+		ChainGetRandomnessFromBeacon  func(context.Context, types.TipSetKey, crypto.DomainSeparationTag, abi.ChainEpoch, []byte) (abi.Randomness, error) `perm:"read"`
+		ChainGetBlock                 func(context.Context, cid.Cid) (*types.BlockHeader, error)                                                         `perm:"read"`
+		ChainGetTipSet                func(context.Context, types.TipSetKey) (*types.TipSet, error)                                                      `perm:"read"`
+		ChainGetBlockMessages         func(context.Context, cid.Cid) (*api.BlockMessages, error)                                                         `perm:"read"`
+		ChainGetParentReceipts        func(context.Context, cid.Cid) ([]*types.MessageReceipt, error)                                                    `perm:"read"`
+		ChainGetParentMessages        func(context.Context, cid.Cid) ([]api.Message, error)                                                              `perm:"read"`
+		ChainGetTipSetByHeight        func(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error)                                      `perm:"read"`
+		ChainReadObj                  func(context.Context, cid.Cid) ([]byte, error)                                                                     `perm:"read"`
+		ChainHasObj                   func(context.Context, cid.Cid) (bool, error)                                                                       `perm:"read"`
+		ChainStatObj                  func(context.Context, cid.Cid, cid.Cid) (api.ObjStat, error)                                                       `perm:"read"`
+		ChainSetHead                  func(context.Context, types.TipSetKey) error                                                                       `perm:"admin"`
+		ChainGetGenesis               func(context.Context) (*types.TipSet, error)                                                                       `perm:"read"`
+		ChainTipSetWeight             func(context.Context, types.TipSetKey) (types.BigInt, error)                                                       `perm:"read"`
+		ChainGetNode                  func(ctx context.Context, p string) (*api.IpldObject, error)                                                       `perm:"read"`
+		ChainGetMessage               func(context.Context, cid.Cid) (*types.Message, error)                                                             `perm:"read"`
+		ChainGetPath                  func(context.Context, types.TipSetKey, types.TipSetKey) ([]*api.HeadChange, error)                                 `perm:"read"`
+		ChainExport                   func(context.Context, types.TipSetKey) (<-chan []byte, error)                                                      `perm:"read"`
 
 		BeaconGetEntry func(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) `perm:"read"`
 
@@ -148,9 +149,9 @@ type FullNodeStruct struct {
 		StateMinerInfo                     func(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)                                      `perm:"read"`
 		StateMinerDeadlines                func(context.Context, address.Address, types.TipSetKey) ([]*miner.Deadline, error)                                  `perm:"read"`
 		StateMinerPartitions               func(context.Context, address.Address, uint64, types.TipSetKey) ([]*miner.Partition, error)                         `perm:"read"`
-		StateMinerFaults                   func(context.Context, address.Address, types.TipSetKey) (*abi.BitField, error)                                      `perm:"read"`
+		StateMinerFaults                   func(context.Context, address.Address, types.TipSetKey) (abi.BitField, error)                                       `perm:"read"`
 		StateAllMinerFaults                func(context.Context, abi.ChainEpoch, types.TipSetKey) ([]*api.Fault, error)                                        `perm:"read"`
-		StateMinerRecoveries               func(context.Context, address.Address, types.TipSetKey) (*abi.BitField, error)                                      `perm:"read"`
+		StateMinerRecoveries               func(context.Context, address.Address, types.TipSetKey) (abi.BitField, error)                                       `perm:"read"`
 		StateMinerPreCommitDepositForPower func(context.Context, address.Address, miner.SectorPreCommitInfo, types.TipSetKey) (types.BigInt, error)            `perm:"read"`
 		StateMinerInitialPledgeCollateral  func(context.Context, address.Address, miner.SectorPreCommitInfo, types.TipSetKey) (types.BigInt, error)            `perm:"read"`
 		StateMinerAvailableBalance         func(context.Context, address.Address, types.TipSetKey) (types.BigInt, error)                                       `perm:"read"`
@@ -491,8 +492,12 @@ func (c *FullNodeStruct) ChainHead(ctx context.Context) (*types.TipSet, error) {
 	return c.Internal.ChainHead(ctx)
 }
 
-func (c *FullNodeStruct) ChainGetRandomness(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
-	return c.Internal.ChainGetRandomness(ctx, tsk, personalization, randEpoch, entropy)
+func (c *FullNodeStruct) ChainGetRandomnessFromTickets(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	return c.Internal.ChainGetRandomnessFromTickets(ctx, tsk, personalization, randEpoch, entropy)
+}
+
+func (c *FullNodeStruct) ChainGetRandomnessFromBeacon(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	return c.Internal.ChainGetRandomnessFromBeacon(ctx, tsk, personalization, randEpoch, entropy)
 }
 
 func (c *FullNodeStruct) ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error) {
@@ -671,7 +676,7 @@ func (c *FullNodeStruct) StateMinerPartitions(ctx context.Context, m address.Add
 	return c.Internal.StateMinerPartitions(ctx, m, dlIdx, tsk)
 }
 
-func (c *FullNodeStruct) StateMinerFaults(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*abi.BitField, error) {
+func (c *FullNodeStruct) StateMinerFaults(ctx context.Context, actor address.Address, tsk types.TipSetKey) (abi.BitField, error) {
 	return c.Internal.StateMinerFaults(ctx, actor, tsk)
 }
 
@@ -679,7 +684,7 @@ func (c *FullNodeStruct) StateAllMinerFaults(ctx context.Context, cutoff abi.Cha
 	return c.Internal.StateAllMinerFaults(ctx, cutoff, endTsk)
 }
 
-func (c *FullNodeStruct) StateMinerRecoveries(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*abi.BitField, error) {
+func (c *FullNodeStruct) StateMinerRecoveries(ctx context.Context, actor address.Address, tsk types.TipSetKey) (abi.BitField, error) {
 	return c.Internal.StateMinerRecoveries(ctx, actor, tsk)
 }
 

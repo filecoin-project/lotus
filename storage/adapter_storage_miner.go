@@ -266,13 +266,22 @@ func (s SealingAPIAdapter) ChainHead(ctx context.Context) (sealing.TipSetToken, 
 	return head.Key().Bytes(), head.Height(), nil
 }
 
-func (s SealingAPIAdapter) ChainGetRandomness(ctx context.Context, tok sealing.TipSetToken, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+func (s SealingAPIAdapter) ChainGetRandomnessFromBeacon(ctx context.Context, tok sealing.TipSetToken, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
 	tsk, err := types.TipSetKeyFromBytes(tok)
 	if err != nil {
 		return nil, err
 	}
 
-	return s.delegate.ChainGetRandomness(ctx, tsk, personalization, randEpoch, entropy)
+	return s.delegate.ChainGetRandomnessFromBeacon(ctx, tsk, personalization, randEpoch, entropy)
+}
+
+func (s SealingAPIAdapter) ChainGetRandomnessFromTickets(ctx context.Context, tok sealing.TipSetToken, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	tsk, err := types.TipSetKeyFromBytes(tok)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.delegate.ChainGetRandomnessFromTickets(ctx, tsk, personalization, randEpoch, entropy)
 }
 
 func (s SealingAPIAdapter) ChainReadObj(ctx context.Context, ocid cid.Cid) ([]byte, error) {

@@ -3,7 +3,6 @@ package full
 import (
 	"context"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
-	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 
 	"github.com/filecoin-project/lotus/lib/sigs"
 
@@ -44,7 +43,7 @@ func (a *WalletAPI) WalletBalance(ctx context.Context, addr address.Address) (ty
 		return nil
 	}))
 
-	if xerrors.Is(err, init_.ErrAddressNotFound) {
+	if xerrors.Is(err, types.ErrActorNotFound) {
 		return big.Zero(), nil
 	} else {
 		return bal, err

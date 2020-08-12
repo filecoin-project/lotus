@@ -994,8 +994,42 @@ func DrawRandomness(rbase []byte, pers crypto.DomainSeparationTag, round abi.Cha
 	return h.Sum(nil), nil
 }
 
-func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	_, span := trace.StartSpan(ctx, "store.GetRandomness")
+func (cs *ChainStore) GetBeaconRandomness(ctx context.Context, blks []cid.Cid, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	_, span := trace.StartSpan(ctx, "store.GetBeaconRandomness")
+	defer span.End()
+	span.AddAttributes(trace.Int64Attribute("round", int64(round)))
+
+	ts, err := cs.LoadTipSet(types.NewTipSetKey(blks...))
+	if err != nil {
+		return nil, err
+	}
+
+	if round > ts.Height() {
+		return nil, xerrors.Errorf("cannot draw randomness from the future")
+	}
+
+	searchHeight := round
+	if searchHeight < 0 {
+		searchHeight = 0
+	}
+
+	randTs, err := cs.GetTipsetByHeight(ctx, searchHeight, ts, true)
+	if err != nil {
+		return nil, err
+	}
+
+	be, err := cs.GetLatestBeaconEntry(randTs)
+	if err != nil {
+		return nil, err
+	}
+
+	// if at (or just past -- for null epochs) appropriate epoch
+	// or at genesis (works for negative epochs)
+	return DrawRandomness(be.Data, pers, round, entropy)
+}
+
+func (cs *ChainStore) GetChainRandomness(ctx context.Context, blks []cid.Cid, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	_, span := trace.StartSpan(ctx, "store.GetChainRandomness")
 	defer span.End()
 	span.AddAttributes(trace.Int64Attribute("round", int64(round)))
 
@@ -1236,8 +1270,12 @@ func NewChainRand(cs *ChainStore, blks []cid.Cid, bheight abi.ChainEpoch) vm.Ran
 	}
 }
 
-func (cr *chainRand) GetRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	return cr.cs.GetRandomness(ctx, cr.blks, pers, round, entropy)
+func (cr *chainRand) GetChainRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	return cr.cs.GetChainRandomness(ctx, cr.blks, pers, round, entropy)
+}
+
+func (cr *chainRand) GetBeaconRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	return cr.cs.GetBeaconRandomness(ctx, cr.blks, pers, round, entropy)
 }
 
 func (cs *ChainStore) GetTipSetFromKey(tsk types.TipSetKey) (*types.TipSet, error) {

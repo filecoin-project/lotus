@@ -62,15 +62,15 @@ func (s *WindowPoStScheduler) doPost(ctx context.Context, deadline *miner.Deadli
 	}()
 }
 
-func (s *WindowPoStScheduler) checkSectors(ctx context.Context, check *abi.BitField) (*abi.BitField, error) {
+func (s *WindowPoStScheduler) checkSectors(ctx context.Context, check abi.BitField) (abi.BitField, error) {
 	spt, err := s.proofType.RegisteredSealProof()
 	if err != nil {
-		return nil, xerrors.Errorf("getting seal proof type: %w", err)
+		return bitfield.BitField{}, xerrors.Errorf("getting seal proof type: %w", err)
 	}
 
 	mid, err := address.IDFromAddress(s.actor)
 	if err != nil {
-		return nil, err
+		return bitfield.BitField{}, err
 	}
 
 	sectors := make(map[abi.SectorID]struct{})
@@ -86,12 +86,12 @@ func (s *WindowPoStScheduler) checkSectors(ctx context.Context, check *abi.BitFi
 		return nil
 	})
 	if err != nil {
-		return nil, xerrors.Errorf("iterating over bitfield: %w", err)
+		return bitfield.BitField{}, xerrors.Errorf("iterating over bitfield: %w", err)
 	}
 
 	bad, err := s.faultTracker.CheckProvable(ctx, spt, tocheck)
 	if err != nil {
-		return nil, xerrors.Errorf("checking provable sectors: %w", err)
+		return bitfield.BitField{}, xerrors.Errorf("checking provable sectors: %w", err)
 	}
 	for _, id := range bad {
 		delete(sectors, id)
@@ -101,10 +101,10 @@ func (s *WindowPoStScheduler) checkSectors(ctx context.Context, check *abi.BitFi
 
 	sbf := bitfield.New()
 	for s := range sectors {
-		(&sbf).Set(uint64(s.Number))
+		sbf.Set(uint64(s.Number))
 	}
 
-	return &sbf, nil
+	return sbf, nil
 }
 
 func (s *WindowPoStScheduler) checkNextRecoveries(ctx context.Context, dlIdx uint64, partitions []*miner.Partition) error {
@@ -310,7 +310,14 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 	if err := s.actor.MarshalCBOR(buf); err != nil {
 		return nil, xerrors.Errorf("failed to marshal address to cbor: %w", err)
 	}
-	rand, err := s.api.ChainGetRandomness(ctx, ts.Key(), crypto.DomainSeparationTag_WindowedPoStChallengeSeed, di.Challenge, buf.Bytes())
+
+	rand, err := s.api.ChainGetRandomnessFromBeacon(ctx, ts.Key(), crypto.DomainSeparationTag_WindowedPoStChallengeSeed, di.Challenge, buf.Bytes())
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get chain randomness for windowPost (ts=%d; deadline=%d): %w", ts.Height(), di, err)
+	}
+
+	commEpoch := di.Open
+	commRand, err := s.api.ChainGetRandomnessFromTickets(ctx, ts.Key(), crypto.DomainSeparationTag_PoStChainCommit, commEpoch, nil)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get chain randomness for windowPost (ts=%d; deadline=%d): %w", ts.Height(), di, err)
 	}
@@ -321,9 +328,11 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 	}
 
 	params := &miner.SubmitWindowedPoStParams{
-		Deadline:   di.Index,
-		Partitions: make([]miner.PoStPartition, 0, len(partitions)),
-		Proofs:     nil,
+		Deadline:         di.Index,
+		Partitions:       make([]miner.PoStPartition, 0, len(partitions)),
+		Proofs:           nil,
+		ChainCommitEpoch: commEpoch,
+		ChainCommitRand:  commRand,
 	}
 
 	var sinfos []abi.SectorInfo
@@ -420,8 +429,8 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 	return params, nil
 }
 
-func (s *WindowPoStScheduler) sectorInfo(ctx context.Context, deadlineSectors *abi.BitField, ts *types.TipSet) ([]abi.SectorInfo, error) {
-	sset, err := s.api.StateMinerSectors(ctx, s.actor, deadlineSectors, false, ts.Key())
+func (s *WindowPoStScheduler) sectorInfo(ctx context.Context, deadlineSectors abi.BitField, ts *types.TipSet) ([]abi.SectorInfo, error) {
+	sset, err := s.api.StateMinerSectors(ctx, s.actor, &deadlineSectors, false, ts.Key())
 	if err != nil {
 		return nil, err
 	}
