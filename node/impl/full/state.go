@@ -1071,7 +1071,7 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 
 	duration := pci.Expiration - ts.Height() // NB: not exactly accurate, but should always lead us to *over* estimate, not under
 
-	circSupply, err := a.StateManager.CirculatingSupply(ctx, ts)
+	circSupply, err := a.StateCirculatingSupply(ctx, ts.Key())
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("getting circulating supply: %w", err)
 	}
@@ -1175,7 +1175,7 @@ func (a *StateAPI) StateDealProviderCollateralBounds(ctx context.Context, size a
 		return api.DealCollateralBounds{}, xerrors.Errorf("getting power and reward actor states: %w")
 	}
 
-	circ, err := a.StateManager.CirculatingSupply(ctx, ts)
+	circ, err := a.StateCirculatingSupply(ctx, ts.Key())
 	if err != nil {
 		return api.DealCollateralBounds{}, xerrors.Errorf("getting total circulating supply: %w")
 	}
@@ -1193,5 +1193,13 @@ func (a *StateAPI) StateCirculatingSupply(ctx context.Context, tsk types.TipSetK
 		return abi.TokenAmount{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	return stmgr.GetCirculatingSupply(ctx, a.StateManager, ts)
+	st, _, err := a.StateManager.TipSetState(ctx, ts)
+	if err != nil {
+		return big.Zero(), err
+	}
+
+	cst := cbor.NewCborStore(a.Chain.Blockstore())
+	sTree, err := state.LoadStateTree(cst, st)
+
+	return a.StateManager.GetCirculatingSupply(ctx, ts.Height(), sTree)
 }

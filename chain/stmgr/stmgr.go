@@ -3,6 +3,7 @@ package stmgr
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"sync"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
@@ -42,7 +43,7 @@ type StateManager struct {
 	stlk          sync.Mutex
 	genesisMsigLk sync.Mutex
 	newVM         func(*vm.VMOpts) (*vm.VM, error)
-	genesisMsigs  []multisig.State
+	genInfo       *genesisInfo
 }
 
 func NewStateManager(cs *store.ChainStore) *StateManager {
@@ -146,13 +147,13 @@ type ExecCallback func(cid.Cid, *types.Message, *vm.ApplyRet) error
 func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEpoch, pstate cid.Cid, bms []store.BlockMessages, epoch abi.ChainEpoch, r vm.Rand, cb ExecCallback, baseFee abi.TokenAmount) (cid.Cid, cid.Cid, error) {
 
 	vmopt := &vm.VMOpts{
-		StateBase:  pstate,
-		Epoch:      epoch,
-		Rand:       r,
-		Bstore:     sm.cs.Blockstore(),
-		Syscalls:   sm.cs.VMSys(),
-		VestedCalc: sm.GetVestedFunds,
-		BaseFee:    baseFee,
+		StateBase:      pstate,
+		Epoch:          epoch,
+		Rand:           r,
+		Bstore:         sm.cs.Blockstore(),
+		Syscalls:       sm.cs.VMSys(),
+		CircSupplyCalc: sm.GetCirculatingSupply,
+		BaseFee:        baseFee,
 	}
 
 	vmi, err := sm.newVM(vmopt)
@@ -773,12 +774,24 @@ func (sm *StateManager) SetVMConstructor(nvm func(*vm.VMOpts) (*vm.VM, error)) {
 	sm.newVM = nvm
 }
 
-type GenesisMsigEntry struct {
-	totalFunds abi.TokenAmount
-	unitVest   abi.TokenAmount
+type genesisInfo struct {
+	genesisMsigs []multisig.State
+	// info about the Accounts in the genesis state
+	genesisActors      []genesisActor
+	genesisPledge      abi.TokenAmount
+	genesisMarketFunds abi.TokenAmount
 }
 
-func (sm *StateManager) setupGenesisMsigs(ctx context.Context) error {
+type genesisActor struct {
+	addr    address.Address
+	initBal abi.TokenAmount
+}
+
+// sets up information about the non-multisig actors in the genesis state
+func (sm *StateManager) setupGenesisActors(ctx context.Context) error {
+
+	gi := genesisInfo{}
+
 	gb, err := sm.cs.GetGenesis()
 	if err != nil {
 		return xerrors.Errorf("getting genesis block: %w", err)
@@ -792,6 +805,22 @@ func (sm *StateManager) setupGenesisMsigs(ctx context.Context) error {
 	st, _, err := sm.TipSetState(ctx, gts)
 	if err != nil {
 		return xerrors.Errorf("getting genesis tipset state: %w", err)
+	}
+
+	cst := cbor.NewCborStore(sm.cs.Blockstore())
+	sTree, err := state.LoadStateTree(cst, st)
+	if err != nil {
+		return xerrors.Errorf("loading state tree: %w", err)
+	}
+
+	gi.genesisMarketFunds, err = getFilMarketLocked(ctx, sTree)
+	if err != nil {
+		return xerrors.Errorf("setting up genesis market funds: %w", err)
+	}
+
+	gi.genesisPledge, err = getFilPowerLocked(ctx, sTree)
+	if err != nil {
+		return xerrors.Errorf("setting up genesis pledge: %w", err)
 	}
 
 	r, err := adt.AsMap(sm.cs.Store(ctx), st)
@@ -820,40 +849,178 @@ func (sm *StateManager) setupGenesisMsigs(ctx context.Context) error {
 				totalsByEpoch[s.UnlockDuration] = s.InitialBalance
 			}
 
+		} else if act.Code == builtin.AccountActorCodeID {
+			// should only ever be "faucet" accounts in testnets
+			kaddr, err := address.NewFromBytes([]byte(k))
+			if err != nil {
+				return xerrors.Errorf("decoding address: %w", err)
+			}
+
+			kid, err := sTree.LookupID(kaddr)
+			if err != nil {
+				return xerrors.Errorf("resolving address: %w", err)
+			}
+
+			gi.genesisActors = append(gi.genesisActors, genesisActor{
+				addr:    kid,
+				initBal: act.Balance,
+			})
 		}
 		return nil
 	})
 
 	if err != nil {
-		return xerrors.Errorf("error setting up composite genesis multisigs: %w", err)
+		return xerrors.Errorf("error setting up genesis infos: %w", err)
 	}
 
-	sm.genesisMsigs = make([]multisig.State, 0, len(totalsByEpoch))
+	gi.genesisMsigs = make([]multisig.State, 0, len(totalsByEpoch))
 	for k, v := range totalsByEpoch {
 		ns := multisig.State{
 			InitialBalance: v,
 			UnlockDuration: k,
 			PendingTxns:    cid.Undef,
 		}
-		sm.genesisMsigs = append(sm.genesisMsigs, ns)
+		gi.genesisMsigs = append(gi.genesisMsigs, ns)
 	}
+
+	sm.genInfo = &gi
 
 	return nil
 }
 
-func (sm *StateManager) GetVestedFunds(ctx context.Context, height abi.ChainEpoch) (abi.TokenAmount, error) {
-	sm.genesisMsigLk.Lock()
-	defer sm.genesisMsigLk.Unlock()
-	if sm.genesisMsigs == nil {
-		err := sm.setupGenesisMsigs(ctx)
-		if err != nil {
-			return big.Zero(), xerrors.Errorf("failed to setup genesis msig entries: %w", err)
-		}
-	}
+// GetVestedFunds returns all funds that have "left" actors that are in the genesis state:
+// - For Multisigs, it counts the actual amounts that have vested at the given epoch
+// - For Accounts, it counts max(currentBalance - genesisBalance, 0).
+func (sm *StateManager) GetFilVested(ctx context.Context, height abi.ChainEpoch, st *state.StateTree) (abi.TokenAmount, error) {
 	vf := big.Zero()
-	for _, v := range sm.genesisMsigs {
+	for _, v := range sm.genInfo.genesisMsigs {
 		au := big.Sub(v.InitialBalance, v.AmountLocked(height))
 		vf = big.Add(vf, au)
 	}
+
+	// these should only ever be "faucet" accounts in testnets
+	for _, v := range sm.genInfo.genesisActors {
+		act, err := st.GetActor(v.addr)
+		if err != nil {
+			return big.Zero(), xerrors.Errorf("failed to get actor: %w", err)
+		}
+
+		diff := big.Sub(v.initBal, act.Balance)
+		if diff.GreaterThan(big.Zero()) {
+			vf = big.Add(vf, diff)
+		}
+	}
+
+	vf = big.Add(vf, sm.genInfo.genesisPledge)
+	vf = big.Add(vf, sm.genInfo.genesisMarketFunds)
+
 	return vf, nil
+}
+
+func GetFilMined(ctx context.Context, st *state.StateTree) (abi.TokenAmount, error) {
+	ractor, err := st.GetActor(builtin.RewardActorAddr)
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("failed to load reward actor state: %w", err)
+	}
+
+	var rst reward.State
+	if err := st.Store.Get(ctx, ractor.Head, &rst); err != nil {
+		return big.Zero(), xerrors.Errorf("failed to load reward state: %w", err)
+	}
+
+	return rst.TotalMined, nil
+}
+
+func getFilMarketLocked(ctx context.Context, st *state.StateTree) (abi.TokenAmount, error) {
+	mactor, err := st.GetActor(builtin.StorageMarketActorAddr)
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("failed to load market actor: %w", err)
+	}
+
+	var mst market.State
+	if err := st.Store.Get(ctx, mactor.Head, &mst); err != nil {
+		return big.Zero(), xerrors.Errorf("failed to load market state: %w", err)
+	}
+
+	fml := types.BigAdd(mst.TotalClientLockedCollateral, mst.TotalProviderLockedCollateral)
+	fml = types.BigAdd(fml, mst.TotalClientStorageFee)
+	return fml, nil
+}
+
+func getFilPowerLocked(ctx context.Context, st *state.StateTree) (abi.TokenAmount, error) {
+	pactor, err := st.GetActor(builtin.StoragePowerActorAddr)
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("failed to load power actor: %w", err)
+	}
+
+	var pst power.State
+	if err := st.Store.Get(ctx, pactor.Head, &pst); err != nil {
+		return big.Zero(), xerrors.Errorf("failed to load power state: %w", err)
+	}
+	return pst.TotalPledgeCollateral, nil
+}
+
+func (sm *StateManager) GetFilLocked(ctx context.Context, st *state.StateTree) (abi.TokenAmount, error) {
+
+	filMarketLocked, err := getFilMarketLocked(ctx, st)
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("failed to get filMarketLocked: %w", err)
+	}
+
+	filPowerLocked, err := getFilPowerLocked(ctx, st)
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("failed to get filPowerLocked: %w", err)
+	}
+
+	return types.BigAdd(filMarketLocked, filPowerLocked), nil
+}
+
+func GetFilBurnt(ctx context.Context, st *state.StateTree) (abi.TokenAmount, error) {
+	burnt, err := st.GetActor(builtin.BurntFundsActorAddr)
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("failed to load burnt actor: %w", err)
+	}
+
+	return burnt.Balance, nil
+}
+
+func (sm *StateManager) GetCirculatingSupply(ctx context.Context, height abi.ChainEpoch, st *state.StateTree) (abi.TokenAmount, error) {
+	sm.genesisMsigLk.Lock()
+	defer sm.genesisMsigLk.Unlock()
+	if sm.genInfo == nil {
+		err := sm.setupGenesisActors(ctx)
+		if err != nil {
+			return big.Zero(), xerrors.Errorf("failed to setup genesis information: %w", err)
+		}
+	}
+
+	filVested, err := sm.GetFilVested(ctx, height, st)
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("failed to calculate filVested: %w", err)
+	}
+
+	filMined, err := GetFilMined(ctx, st)
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("failed to calculate filMined: %w", err)
+	}
+
+	filBurnt, err := GetFilBurnt(ctx, st)
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("failed to calculate filBurnt: %w", err)
+	}
+
+	filLocked, err := sm.GetFilLocked(ctx, st)
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("failed to calculate filLocked: %w", err)
+	}
+
+	ret := types.BigAdd(filVested, filMined)
+	ret = types.BigSub(ret, filBurnt)
+	ret = types.BigSub(ret, filLocked)
+
+	if ret.LessThan(big.Zero()) {
+		ret = big.Zero()
+	}
+
+	return ret, nil
 }

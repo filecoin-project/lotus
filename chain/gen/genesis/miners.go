@@ -57,18 +57,18 @@ func mkFakedSigSyscalls(base vm.SyscallBuilder) vm.SyscallBuilder {
 }
 
 func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid, miners []genesis.Miner) (cid.Cid, error) {
-	vc := func(context.Context, abi.ChainEpoch) (abi.TokenAmount, error) {
+	csc := func(context.Context, abi.ChainEpoch, *state.StateTree) (abi.TokenAmount, error) {
 		return big.Zero(), nil
 	}
 
 	vmopt := &vm.VMOpts{
-		StateBase:  sroot,
-		Epoch:      0,
-		Rand:       &fakeRand{},
-		Bstore:     cs.Blockstore(),
-		Syscalls:   mkFakedSigSyscalls(cs.VMSys()),
-		VestedCalc: vc,
-		BaseFee:    types.NewInt(0),
+		StateBase:      sroot,
+		Epoch:          0,
+		Rand:           &fakeRand{},
+		Bstore:         cs.Blockstore(),
+		Syscalls:       mkFakedSigSyscalls(cs.VMSys()),
+		CircSupplyCalc: csc,
+		BaseFee:        types.NewInt(0),
 	}
 
 	vm, err := vm.NewVM(vmopt)

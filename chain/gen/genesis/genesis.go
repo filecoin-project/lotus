@@ -323,13 +323,13 @@ func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, stateroot ci
 	var sum abi.PaddedPieceSize
 
 	vmopt := vm.VMOpts{
-		StateBase:  stateroot,
-		Epoch:      0,
-		Rand:       &fakeRand{},
-		Bstore:     cs.Blockstore(),
-		Syscalls:   mkFakedSigSyscalls(cs.VMSys()),
-		VestedCalc: nil,
-		BaseFee:    types.NewInt(0),
+		StateBase:      stateroot,
+		Epoch:          0,
+		Rand:           &fakeRand{},
+		Bstore:         cs.Blockstore(),
+		Syscalls:       mkFakedSigSyscalls(cs.VMSys()),
+		CircSupplyCalc: nil,
+		BaseFee:        types.NewInt(0),
 	}
 	vm, err := vm.NewVM(&vmopt)
 	if err != nil {
