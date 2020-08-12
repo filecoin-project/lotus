@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 )
 
 type MpoolAPI struct {
@@ -33,8 +34,7 @@ func (a *MpoolAPI) MpoolGetConfig(context.Context) (*types.MpoolConfig, error) {
 }
 
 func (a *MpoolAPI) MpoolSetConfig(ctx context.Context, cfg *types.MpoolConfig) error {
-	a.Mpool.SetConfig(cfg)
-	return nil
+	return a.Mpool.SetConfig(cfg)
 }
 
 func (a *MpoolAPI) MpoolSelect(ctx context.Context, tsk types.TipSetKey, ticketQuality float64) ([]*types.SignedMessage, error) {
@@ -145,7 +145,7 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message) (*t
 		if err != nil {
 			return nil, xerrors.Errorf("estimating fee cap: %w", err)
 		}
-		msg.GasFeeCap = feeCap
+		msg.GasFeeCap = big.Add(feeCap, msg.GasPremium)
 	}
 
 	return a.Mpool.PushWithNonce(ctx, msg.From, func(from address.Address, nonce uint64) (*types.SignedMessage, error) {
