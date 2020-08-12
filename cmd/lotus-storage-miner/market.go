@@ -161,11 +161,6 @@ var setAskCmd = &cli.Command{
 			Usage:    "Set the price of the ask for verified deals (specified as FIL / GiB / Epoch) to `PRICE`",
 			Required: true,
 		},
-		&cli.Uint64Flag{
-			Name:     "verified-price",
-			Usage:    "Set the price of the ask (specified as FIL / GiB / Epoch) to `VERIFIED_PRICE`",
-			Required: true,
-		},
 		&cli.StringFlag{
 			Name:        "duration",
 			Usage:       "Set duration of ask (a quantity of time after which the ask expires) `DURATION`",
