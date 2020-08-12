@@ -38,6 +38,9 @@ var log = logging.Logger("messagepool")
 
 const futureDebug = false
 
+var rbfNumBig = types.NewInt(uint64((ReplaceByFeeRatioDefault - 1) * RbfDenom))
+var rbfDenomBig = types.NewInt(RbfDenom)
+
 const RbfDenom = 256
 
 var RepublishInterval = pubsub.TimeCacheDuration + time.Duration(5*build.BlockDelaySecs+build.PropagationDelaySecs)*time.Second
@@ -80,8 +83,6 @@ type MessagePool struct {
 
 	cfgLk sync.Mutex
 	cfg   *types.MpoolConfig
-
-	rbfNum, rbfDenom types.BigInt
 
 	api Provider
 
@@ -126,7 +127,7 @@ func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool) (bool, error) {
 		if m.Cid() != exms.Cid() {
 			// check if RBF passes
 			minPrice := exms.Message.GasPremium
-			minPrice = types.BigAdd(minPrice, types.BigDiv(types.BigMul(minPrice, mp.rbfNum), mp.rbfDenom))
+			minPrice = types.BigAdd(minPrice, types.BigDiv(types.BigMul(minPrice, rbfNumBig), rbfDenomBig))
 			minPrice = types.BigAdd(minPrice, types.NewInt(1))
 			if types.BigCmp(m.Message.GasPremium, minPrice) >= 0 {
 				log.Infow("add with RBF", "oldpremium", exms.Message.GasPremium,
@@ -172,8 +173,6 @@ func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName) (*Messa
 		api:           api,
 		netName:       netName,
 		cfg:           cfg,
-		rbfNum:        types.NewInt(uint64((cfg.ReplaceByFeeRatio - 1) * RbfDenom)),
-		rbfDenom:      types.NewInt(RbfDenom),
 	}
 
 	// enable initial prunes

@@ -170,6 +170,10 @@ func (m *Message) ValidForBlockInclusion(minGas int64) error {
 		return xerrors.New("'GasPremium' field cannot be negative")
 	}
 
+	if m.GasPremium.GreaterThan(m.GasFeeCap) {
+		return xerrors.New("'GasFeeCap' less than 'GasPremium'")
+	}
+
 	if m.GasLimit > build.BlockGasLimit {
 		return xerrors.New("'GasLimit' field cannot be greater than a block's gas limit")
 	}
