@@ -919,20 +919,20 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand) {
 		t.Fatal(err)
 	}
 
-	// 2. optimal selection
-	minersRand := rng.Float64()
-	winerProba := noWinnersProb()
-	i := 0
-	for ; i < MaxBlocks && minersRand > 0; i++ {
-		minersRand -= winerProba[i]
-	}
-	nMiners := i
-	if nMiners == 0 {
-		nMiners = 1
-	}
-
 	logging.SetLogLevel("messagepool", "error")
-	for i := 0; i < 1; i++ {
+	for i := 0; i < 50; i++ {
+		// 2. optimal selection
+		minersRand := rng.Float64()
+		winerProba := noWinnersProb()
+		i := 0
+		for ; i < MaxBlocks && minersRand > 0; i++ {
+			minersRand -= winerProba[i]
+		}
+		nMiners := i
+		if nMiners == 0 {
+			nMiners = 1
+		}
+
 		optMsgs := make(map[cid.Cid]*types.SignedMessage)
 		for j := 0; j < nMiners; j++ {
 			tq := rng.Float64()
@@ -946,7 +946,7 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand) {
 		}
 
 		t.Logf("nMiners: %d", nMiners)
-		t.Logf("greedy capacity %d, optimal capacity %d (x%.1f)", len(greedyMsgs),
+		t.Logf("greedy capacity %d, optimal capacity %d (x %.1f )", len(greedyMsgs),
 			len(optMsgs), float64(len(optMsgs))/float64(len(greedyMsgs)))
 		if len(greedyMsgs) > len(optMsgs) {
 			t.Fatal("greedy capacity higher than optimal capacity; wtf")
@@ -965,18 +965,15 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand) {
 		nMinersBig := big.NewInt(int64(nMiners))
 		greedyAvgReward, _ := new(big.Rat).SetFrac(greedyReward, nMinersBig).Float64()
 		optimalAvgReward, _ := new(big.Rat).SetFrac(optReward, nMinersBig).Float64()
-		t.Logf("greedy reward: %.0f, optimal reward: %.0f (x%.1f)", greedyAvgReward,
+		t.Logf("greedy reward: %.0f, optimal reward: %.0f (x %.1f )", greedyAvgReward,
 			optimalAvgReward, optimalAvgReward/greedyAvgReward)
 
-		if greedyReward.Cmp(optReward) > 0 {
-			t.Fatal("greedy reward raw higher than optimal reward; booh")
-		}
 	}
 	logging.SetLogLevel("messagepool", "info")
 }
 
 func TestCompetitiveMessageSelection(t *testing.T) {
-	seeds := []int64{1947, 1976, 2020, 2100, 10000}
+	seeds := []int64{1947, 1976, 2020, 2100, 10000, 143324, 432432, 131, 32, 45}
 	for _, seed := range seeds {
 		t.Log("running competitve message selection with seed", seed)
 		testCompetitiveMessageSelection(t, rand.New(rand.NewSource(seed)))

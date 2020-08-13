@@ -22,16 +22,17 @@ var bigBlockGasLimit = big.NewInt(build.BlockGasLimit)
 const MaxBlocks = 15
 
 type msgChain struct {
-	msgs      []*types.SignedMessage
-	gasReward *big.Int
-	gasLimit  int64
-	gasPerf   float64
-	effPerf   float64
-	bp        float64
-	valid     bool
-	merged    bool
-	next      *msgChain
-	prev      *msgChain
+	msgs         []*types.SignedMessage
+	gasReward    *big.Int
+	gasLimit     int64
+	gasPerf      float64
+	effPerf      float64
+	bp           float64
+	parentOffset float64
+	valid        bool
+	merged       bool
+	next         *msgChain
+	prev         *msgChain
 }
 
 func (mp *MessagePool) SelectMessages(ts *types.TipSet, tq float64) ([]*types.SignedMessage, error) {
@@ -153,7 +154,7 @@ func (mp *MessagePool) selectMessagesOptimal(curTs, ts *types.TipSet, tq float64
 	last := len(chains)
 	for i, chain := range chains {
 		// did we run out of performing chains?
-		if chain.gasPerf < 0 {
+		if chain.effPerf < 0 {
 			break
 		}
 
@@ -176,12 +177,22 @@ func (mp *MessagePool) selectMessagesOptimal(curTs, ts *types.TipSet, tq float64
 			for i := len(chainDeps) - 1; i >= 0; i-- {
 				curChain := chainDeps[i]
 				curChain.merged = true
+				if next := curChain.next; next != nil {
+					next.effPerf += next.parentOffset
+				}
 				result = append(result, curChain.msgs...)
 			}
 
 			chain.merged = true
+			if next := chain.next; next != nil {
+				next.effPerf += next.parentOffset
+			}
 			result = append(result, chain.msgs...)
 			gasLimit -= chainGasLimit
+
+			sort.Slice(chains[i+1:], func(i, j int) bool {
+				return chains[i].BeforeEffective(chains[j])
+			})
 			continue
 		}
 
@@ -852,7 +863,9 @@ func (mc *msgChain) SetEffectivePerf(bp float64) {
 func (mc *msgChain) setEffPerf() {
 	effPerf := mc.gasPerf * mc.bp
 	if mc.prev != nil {
-		effPerf = (effPerf*float64(mc.gasLimit) + mc.prev.effPerf*float64(mc.prev.gasLimit)) / float64(mc.gasLimit+mc.prev.gasLimit)
+		effPerfWithParent := (effPerf*float64(mc.gasLimit) + mc.prev.effPerf*float64(mc.prev.gasLimit)) / float64(mc.gasLimit+mc.prev.gasLimit)
+		mc.parentOffset = effPerf - effPerfWithParent
+		effPerf = effPerfWithParent
 	}
 	mc.effPerf = effPerf
 
@@ -867,7 +880,8 @@ func (mc *msgChain) SetNullEffectivePerf() {
 }
 
 func (mc *msgChain) BeforeEffective(other *msgChain) bool {
-	return mc.effPerf > other.effPerf ||
+	// moved merged chains to the front so we can discard them earlier
+	return (mc.merged && !other.merged) || mc.effPerf > other.effPerf ||
 		(mc.effPerf == other.effPerf && mc.gasPerf > other.gasPerf) ||
 		(mc.effPerf == other.effPerf && mc.gasPerf == other.gasPerf && mc.gasReward.Cmp(other.gasReward) > 0)
 }
