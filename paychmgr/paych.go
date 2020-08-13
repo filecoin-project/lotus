@@ -331,11 +331,14 @@ func (ca *channelAccessor) laneState(ctx context.Context, state *paych.State, ch
 	// very large index.
 	var ls paych.LaneState
 	laneStates := make(map[uint64]*paych.LaneState, lsamt.Length())
-	lsamt.ForEach(&ls, func(i int64) error {
+	err = lsamt.ForEach(&ls, func(i int64) error {
 		current := ls
-		laneStates[ls.ID] = &current
+		laneStates[uint64(i)] = &current
 		return nil
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	// Apply locally stored vouchers
 	vouchers, err := ca.store.VouchersForPaych(ch)
@@ -353,7 +356,6 @@ func (ca *channelAccessor) laneState(ctx context.Context, state *paych.State, ch
 		ls, ok := laneStates[v.Voucher.Lane]
 		if !ok {
 			ls = &paych.LaneState{
-				ID:       v.Voucher.Lane,
 				Redeemed: types.NewInt(0),
 				Nonce:    0,
 			}

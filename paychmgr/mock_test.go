@@ -66,10 +66,11 @@ func (sm *mockStateManager) setPaychState(a address.Address, actor *types.Actor,
 	sm.paychState[a] = mockPchState{actor, state}
 }
 
-func (sm *mockStateManager) storeLaneStates(laneStates []*paych.LaneState) (cid.Cid, error) {
+func (sm *mockStateManager) storeLaneStates(laneStates map[uint64]paych.LaneState) (cid.Cid, error) {
 	arr := adt.MakeEmptyArray(sm.store)
-	for _, ls := range laneStates {
-		if err := arr.Set(ls.ID, ls); err != nil {
+	for i, ls := range laneStates {
+		ls := ls
+		if err := arr.Set(i, &ls); err != nil {
 			return cid.Undef, err
 		}
 	}

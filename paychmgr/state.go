@@ -2,6 +2,7 @@ package paychmgr
 
 import (
 	"context"
+	"errors"
 
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
@@ -77,14 +78,18 @@ func (ca *stateAccessor) nextLaneFromState(ctx context.Context, st *paych.State)
 		return 0, nil
 	}
 
-	maxLane := uint64(0)
-	var ls paych.LaneState
-	laneStates.ForEach(&ls, func(i int64) error {
-		if ls.ID > maxLane {
-			maxLane = ls.ID
+	nextID := int64(0)
+	stopErr := errors.New("stop")
+	if err := laneStates.ForEach(nil, func(i int64) error {
+		if nextID < i {
+			// We've found a hole. Stop here.
+			return stopErr
 		}
+		nextID++
 		return nil
-	})
+	}); err != nil && err != stopErr {
+		return 0, err
+	}
 
-	return maxLane + 1, nil
+	return uint64(nextID), nil
 }
