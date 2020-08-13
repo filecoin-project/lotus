@@ -63,6 +63,11 @@ var infoAllCmd = &cli.Command{
 			return err
 		}
 
+		fmt.Println("\n#: Reachability")
+		if err := lcli.NetReachability.Action(cctx); err != nil {
+			return err
+		}
+
 		// Very Verbose info
 		fmt.Println("\n#: Peers")
 		if err := lcli.NetPeers.Action(cctx); err != nil {

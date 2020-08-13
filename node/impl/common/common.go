@@ -2,7 +2,6 @@ package common
 
 import (
 	"context"
-	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
 	"sort"
 	"strings"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	swarm "github.com/libp2p/go-libp2p-swarm"
+	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
 	ma "github.com/multiformats/go-multiaddr"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"

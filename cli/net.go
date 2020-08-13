@@ -24,7 +24,7 @@ var netCmd = &cli.Command{
 		NetId,
 		netFindPeer,
 		netScores,
-		netReachability,
+		NetReachability,
 	},
 }
 
@@ -204,7 +204,7 @@ var netFindPeer = &cli.Command{
 	},
 }
 
-var netReachability = &cli.Command{
+var NetReachability = &cli.Command{
 	Name:      "reachability",
 	Usage:     "Print information about reachability from the internet",
 	Action: func(cctx *cli.Context) error {
