@@ -258,37 +258,6 @@ func (a *StateAPI) StateMinerPower(ctx context.Context, addr address.Address, ts
 	}, nil
 }
 
-func (a *StateAPI) StatePledgeCollateral(ctx context.Context, tsk types.TipSetKey) (types.BigInt, error) {
-	/*ts, err := a.Chain.GetTipSetFromKey(tsk)
-	if err != nil {
-		return types.EmptyInt, xerrors.Errorf("loading tipset %s: %w", tsk, err)
-	}
-
-	param, err := actors.SerializeParams(&actors.PledgeCollateralParams{Size: types.NewInt(0)})
-	if err != nil {
-		return types.NewInt(0), err
-	}
-
-	ret, aerr := a.StateManager.Call(ctx, &types.Message{
-		From:   actors.StoragePowerAddress,
-		To:     actors.StoragePowerAddress,
-		Method: actors.SPAMethods.PledgeCollateralForSize,
-
-		Params: param,
-	}, ts)
-	if aerr != nil {
-		return types.NewInt(0), xerrors.Errorf("failed to get miner worker addr: %w", err)
-	}
-
-	if ret.MsgRct.ExitCode != 0 {
-		return types.NewInt(0), xerrors.Errorf("failed to get miner worker addr (exit code %d)", ret.MsgRct.ExitCode)
-	}
-
-	return types.BigFromBytes(ret.Return), nil*/
-	log.Error("TODO StatePledgeCollateral")
-	return big.Zero(), nil
-}
-
 func (a *StateAPI) StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (*api.InvocResult, error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
