@@ -824,8 +824,8 @@ func TestOptimalMessageSelection3(t *testing.T) {
 	nMessages := int(build.BlockGasLimit/gasLimit) + 1
 	for i := 0; i < nMessages; i++ {
 		for j := 0; j < nActors; j++ {
-			bias := (nActors-j)*nMessages + (nMessages+2-i)/(3*nActors) + i%3
-			m := makeTestMessage(wallets[j], actors[j], actors[j%nActors], uint64(i), gasLimit, uint64(1+bias))
+			premium := 500000 + 20000*(nActors-j) + (nMessages+2-i)/(3*nActors) + i%3
+			m := makeTestMessage(wallets[j], actors[j], actors[j%nActors], uint64(i), gasLimit, uint64(premium))
 			mustAdd(t, mp, m)
 		}
 	}
@@ -840,24 +840,27 @@ func TestOptimalMessageSelection3(t *testing.T) {
 		t.Fatalf("expected %d messages, but got %d", expectedMsgs, len(msgs))
 	}
 
-	nextNonce := uint64(0)
-	a := actors[len(actors)/2-1]
-	for _, m := range msgs {
-		if m.Message.From != a {
-			who := 0
-			for i, a := range actors {
-				if a == m.Message.From {
-					who = i
-					break
-				}
+	whoIs := func(a address.Address) int {
+		for i, aa := range actors {
+			if a == aa {
+				return i
 			}
-			t.Fatalf("expected message from last actor, but got from %d instead", who)
+		}
+		return -1
+	}
+
+	nonces := make([]uint64, nActors)
+	for _, m := range msgs {
+		who := whoIs(m.Message.From)
+		if who < 3 {
+			t.Fatalf("got message from %dth actor", who)
 		}
 
+		nextNonce := nonces[who]
 		if m.Message.Nonce != nextNonce {
 			t.Fatalf("expected nonce %d but got %d", nextNonce, m.Message.Nonce)
 		}
-		nextNonce++
+		nonces[who]++
 	}
 }
 
