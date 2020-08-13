@@ -2,7 +2,6 @@ package messagepool
 
 import (
 	"context"
-	"math"
 	"math/big"
 	"math/rand"
 	"testing"
@@ -916,13 +915,14 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand) (float64, flo
 	nMessages := 10 * int(build.BlockGasLimit/gasLimit)
 	t.Log("nMessages", nMessages)
 	nonces := make([]uint64, nActors)
+	zipf := rand.NewZipf(rng, 1.001, 1, 40000)
 	for i := 0; i < nMessages; i++ {
 		from := rng.Intn(nActors)
 		to := rng.Intn(nActors)
-		premium := 20000*math.Exp(-3.*rand.Float64()) + 5000
 		nonce := nonces[from]
 		nonces[from]++
-		m := makeTestMessage(wallets[from], actors[from], actors[to], uint64(nonce), gasLimit, uint64(premium))
+		premium := zipf.Uint64() + 10000
+		m := makeTestMessage(wallets[from], actors[from], actors[to], uint64(nonce), gasLimit, premium)
 		mustAdd(t, mp, m)
 	}
 
@@ -936,7 +936,7 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand) (float64, flo
 
 	capacityBoost := 0.0
 	rewardBoost := 0.0
-	const runs = 1
+	const runs = 50
 	for i := 0; i < runs; i++ {
 		// 2. optimal selection
 		minersRand := rng.Float64()
