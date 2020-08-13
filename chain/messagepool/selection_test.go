@@ -755,9 +755,9 @@ func TestOptimalMessageSelection2(t *testing.T) {
 	nMessages := int(5 * build.BlockGasLimit / gasLimit)
 	for i := 0; i < nMessages; i++ {
 		bias := (nMessages - i) / 3
-		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(10000+i%3+bias))
+		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(200000+i%3+bias))
 		mustAdd(t, mp, m)
-		m = makeTestMessage(w2, a2, a1, uint64(i), gasLimit, uint64(1+i%3+bias))
+		m = makeTestMessage(w2, a2, a1, uint64(i), gasLimit, uint64(190000+i%3+bias))
 		mustAdd(t, mp, m)
 	}
 
