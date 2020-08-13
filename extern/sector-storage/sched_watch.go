@@ -87,11 +87,14 @@ func (sh *scheduler) runWorkerWatcher() {
 			}
 
 			log.Warnf("worker %d dropped", wid)
-			select {
-			case sh.workerClosing <- wid:
-			case <-sh.closing:
-				return
-			}
+			// send in a goroutine to avoid a deadlock between workerClosing / watchClosing
+			go func() {
+				select {
+				case sh.workerClosing <- wid:
+				case <-sh.closing:
+					return
+				}
+			}()
 		}
 	}
 }
