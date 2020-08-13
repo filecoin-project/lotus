@@ -2,6 +2,7 @@ package common
 
 import (
 	"context"
+	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
 	"sort"
 	"strings"
 
@@ -28,6 +29,7 @@ type CommonAPI struct {
 	fx.In
 
 	APISecret    *dtypes.APIAlg
+	RawHost      lp2p.RawHost
 	Host         host.Host
 	Router       lp2p.BaseIpfsRouting
 	Sk           *dtypes.ScoreKeeper
@@ -111,6 +113,23 @@ func (a *CommonAPI) NetDisconnect(ctx context.Context, p peer.ID) error {
 
 func (a *CommonAPI) NetFindPeer(ctx context.Context, p peer.ID) (peer.AddrInfo, error) {
 	return a.Router.FindPeer(ctx, p)
+}
+
+func (a *CommonAPI) NetAutoNatStatus(ctx context.Context) (i api.NatInfo, err error) {
+	autonat := a.RawHost.(*basichost.BasicHost).AutoNat
+
+	var maddr ma.Multiaddr
+	if autonat.Status() == network.ReachabilityPublic {
+		maddr, err = autonat.PublicAddr()
+		if err != nil {
+			return api.NatInfo{}, err
+		}
+	}
+
+	return api.NatInfo{
+		Reachability: autonat.Status(),
+		PublicAddr:   maddr,
+	}, nil
 }
 
 func (a *CommonAPI) ID(context.Context) (peer.ID, error) {

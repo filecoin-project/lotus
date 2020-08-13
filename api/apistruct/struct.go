@@ -49,6 +49,7 @@ type CommonStruct struct {
 		NetDisconnect    func(context.Context, peer.ID) error                          `perm:"write"`
 		NetFindPeer      func(context.Context, peer.ID) (peer.AddrInfo, error)         `perm:"read"`
 		NetPubsubScores  func(context.Context) ([]api.PubsubScore, error)              `perm:"read"`
+		NetAutoNatStatus func(context.Context) (api.NatInfo, error)                    `perm:"read"`
 
 		ID      func(context.Context) (peer.ID, error)     `perm:"read"`
 		Version func(context.Context) (api.Version, error) `perm:"read"`
@@ -331,6 +332,7 @@ func (c *CommonStruct) AuthNew(ctx context.Context, perms []auth.Permission) ([]
 func (c *CommonStruct) NetPubsubScores(ctx context.Context) ([]api.PubsubScore, error) {
 	return c.Internal.NetPubsubScores(ctx)
 }
+
 func (c *CommonStruct) NetConnectedness(ctx context.Context, pid peer.ID) (network.Connectedness, error) {
 	return c.Internal.NetConnectedness(ctx, pid)
 }
@@ -353,6 +355,10 @@ func (c *CommonStruct) NetDisconnect(ctx context.Context, p peer.ID) error {
 
 func (c *CommonStruct) NetFindPeer(ctx context.Context, p peer.ID) (peer.AddrInfo, error) {
 	return c.Internal.NetFindPeer(ctx, p)
+}
+
+func (c *CommonStruct) NetAutoNatStatus(ctx context.Context) (api.NatInfo, error) {
+	return c.Internal.NetAutoNatStatus(ctx)
 }
 
 // ID implements API.ID
