@@ -105,8 +105,12 @@ func InfluxNewBatch() (client.BatchPoints, error) {
 }
 
 func NewPoint(name string, value interface{}) models.Point {
+	return NewPointOffset(name, value, 0)
+}
+
+func NewPointOffset(name string, value interface{}, offset time.Duration) models.Point {
 	pt, _ := models.NewPoint(name, models.Tags{},
-		map[string]interface{}{"value": value}, build.Clock.Now().UTC())
+		map[string]interface{}{"value": value}, build.Clock.Now().UTC().Add(offset))
 	return pt
 }
 
@@ -306,7 +310,7 @@ func RecordTipsetMessagesPoints(ctx context.Context, api api.FullNode, pl *Point
 	for _, r := range recp {
 		totalGasUsed += r.GasUsed
 	}
-	p := NewPoint("chain.gas_used_total", totalGasUsed)
+	p := NewPointOffset("chain.gas_used_total", totalGasUsed, -time.Duration(build.BlockDelaySecs)*time.Second)
 	pl.AddPoint(p)
 
 	for i, msg := range msgs {
