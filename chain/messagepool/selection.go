@@ -177,16 +177,16 @@ func (mp *MessagePool) selectMessagesOptimal(curTs, ts *types.TipSet, tq float64
 			for i := len(chainDeps) - 1; i >= 0; i-- {
 				curChain := chainDeps[i]
 				curChain.merged = true
-				// adjust the next chain for the parent, which is being merged
-				if next := curChain.next; next != nil && next.effPerf > 0 {
-					next.effPerf += next.parentOffset
-				}
 				result = append(result, curChain.msgs...)
 			}
 
 			chain.merged = true
+			// adjust the effective pefromance for all subsequent chains
 			if next := chain.next; next != nil && next.effPerf > 0 {
 				next.effPerf += next.parentOffset
+				for next = next.next; next != nil && next.effPerf > 0; next = next.next {
+					next.setEffPerf()
+				}
 			}
 			result = append(result, chain.msgs...)
 			gasLimit -= chainGasLimit
