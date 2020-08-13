@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
@@ -39,6 +40,7 @@ type PaychAPI struct {
 type stateManagerAPI interface {
 	LoadActorState(ctx context.Context, a address.Address, out interface{}, ts *types.TipSet) (*types.Actor, error)
 	Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*api.InvocResult, error)
+	AdtStore(ctx context.Context) adt.Store
 }
 
 // paychAPI defines the API methods needed by the payment channel manager
@@ -55,8 +57,12 @@ type managerAPI interface {
 
 // managerAPIImpl is used to create a composite that implements managerAPI
 type managerAPIImpl struct {
-	stateManagerAPI
+	*stmgr.StateManager
 	paychAPI
+}
+
+func (m *managerAPIImpl) AdtStore(ctx context.Context) adt.Store {
+	return m.ChainStore().Store(ctx)
 }
 
 type Manager struct {
@@ -76,7 +82,7 @@ func NewManager(mctx helpers.MetricsCtx, lc fx.Lifecycle, sm *stmgr.StateManager
 	ctx := helpers.LifecycleCtx(mctx, lc)
 	ctx, shutdown := context.WithCancel(ctx)
 
-	impl := &managerAPIImpl{stateManagerAPI: sm, paychAPI: &api}
+	impl := &managerAPIImpl{StateManager: sm, paychAPI: &api}
 	return &Manager{
 		ctx:      ctx,
 		shutdown: shutdown,

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/lotus/lib/sigs"
@@ -39,6 +40,8 @@ func TestPaychOutbound(t *testing.T) {
 	toAcct := tutils.NewIDAddr(t, 202)
 
 	mock := newMockManagerAPI()
+	arr, err := adt.MakeEmptyArray(mock.store).Root()
+	require.NoError(t, err)
 	mock.setAccountState(fromAcct, account.State{Address: from})
 	mock.setAccountState(toAcct, account.State{Address: to})
 	mock.setPaychState(ch, nil, paych.State{
@@ -47,7 +50,7 @@ func TestPaychOutbound(t *testing.T) {
 		ToSend:          big.NewInt(0),
 		SettlingAt:      abi.ChainEpoch(0),
 		MinSettleHeight: abi.ChainEpoch(0),
-		LaneStates:      []*paych.LaneState{},
+		LaneStates:      arr,
 	})
 
 	mgr, err := newManager(store, mock)
@@ -77,6 +80,8 @@ func TestPaychInbound(t *testing.T) {
 	toAcct := tutils.NewIDAddr(t, 202)
 
 	mock := newMockManagerAPI()
+	arr, err := adt.MakeEmptyArray(mock.store).Root()
+	require.NoError(t, err)
 	mock.setAccountState(fromAcct, account.State{Address: from})
 	mock.setAccountState(toAcct, account.State{Address: to})
 	mock.setPaychState(ch, nil, paych.State{
@@ -85,7 +90,7 @@ func TestPaychInbound(t *testing.T) {
 		ToSend:          big.NewInt(0),
 		SettlingAt:      abi.ChainEpoch(0),
 		MinSettleHeight: abi.ChainEpoch(0),
-		LaneStates:      []*paych.LaneState{},
+		LaneStates:      arr,
 	})
 
 	mgr, err := newManager(store, mock)
@@ -129,7 +134,7 @@ func TestCheckVoucherValid(t *testing.T) {
 		voucherAmount big.Int
 		voucherLane   uint64
 		voucherNonce  uint64
-		laneStates    []*paych.LaneState
+		laneStates    map[uint64]paych.LaneState
 	}{{
 		name:          "passes when voucher amount < balance",
 		key:           fromKeyPrivate,
@@ -159,11 +164,12 @@ func TestCheckVoucherValid(t *testing.T) {
 		voucherAmount: big.NewInt(5),
 		voucherLane:   1,
 		voucherNonce:  2,
-		laneStates: []*paych.LaneState{{
-			ID:       1,
-			Redeemed: big.NewInt(2),
-			Nonce:    3,
-		}},
+		laneStates: map[uint64]paych.LaneState{
+			1: {
+				Redeemed: big.NewInt(2),
+				Nonce:    3,
+			},
+		},
 	}, {
 		name:          "passes when nonce higher",
 		key:           fromKeyPrivate,
@@ -172,11 +178,12 @@ func TestCheckVoucherValid(t *testing.T) {
 		voucherAmount: big.NewInt(5),
 		voucherLane:   1,
 		voucherNonce:  3,
-		laneStates: []*paych.LaneState{{
-			ID:       1,
-			Redeemed: big.NewInt(2),
-			Nonce:    2,
-		}},
+		laneStates: map[uint64]paych.LaneState{
+			1: {
+				Redeemed: big.NewInt(2),
+				Nonce:    2,
+			},
+		},
 	}, {
 		name:          "passes when nonce for different lane",
 		key:           fromKeyPrivate,
@@ -185,11 +192,12 @@ func TestCheckVoucherValid(t *testing.T) {
 		voucherAmount: big.NewInt(5),
 		voucherLane:   2,
 		voucherNonce:  2,
-		laneStates: []*paych.LaneState{{
-			ID:       1,
-			Redeemed: big.NewInt(2),
-			Nonce:    3,
-		}},
+		laneStates: map[uint64]paych.LaneState{
+			1: {
+				Redeemed: big.NewInt(2),
+				Nonce:    3,
+			},
+		},
 	}, {
 		name:          "fails when voucher has higher nonce but lower value than lane state",
 		expectError:   true,
@@ -199,11 +207,12 @@ func TestCheckVoucherValid(t *testing.T) {
 		voucherAmount: big.NewInt(5),
 		voucherLane:   1,
 		voucherNonce:  3,
-		laneStates: []*paych.LaneState{{
-			ID:       1,
-			Redeemed: big.NewInt(6),
-			Nonce:    2,
-		}},
+		laneStates: map[uint64]paych.LaneState{
+			1: {
+				Redeemed: big.NewInt(6),
+				Nonce:    2,
+			},
+		},
 	}, {
 		name:          "fails when voucher + ToSend > balance",
 		expectError:   true,
@@ -226,11 +235,13 @@ func TestCheckVoucherValid(t *testing.T) {
 		voucherAmount: big.NewInt(6),
 		voucherLane:   1,
 		voucherNonce:  2,
-		laneStates: []*paych.LaneState{{
-			ID:       1, // Lane 1 (same as voucher lane 1)
-			Redeemed: big.NewInt(4),
-			Nonce:    1,
-		}},
+		laneStates: map[uint64]paych.LaneState{
+			// Lane 1 (same as voucher lane 1)
+			1: {
+				Redeemed: big.NewInt(4),
+				Nonce:    1,
+			},
+		},
 	}, {
 		// required balance = toSend + total redeemed
 		//                  = 1 + 4 (lane 2) + 6 (voucher lane 1)
@@ -244,11 +255,13 @@ func TestCheckVoucherValid(t *testing.T) {
 		voucherAmount: big.NewInt(6),
 		voucherLane:   1,
 		voucherNonce:  1,
-		laneStates: []*paych.LaneState{{
-			ID:       2, // Lane 2 (different from voucher lane 1)
-			Redeemed: big.NewInt(4),
-			Nonce:    1,
-		}},
+		laneStates: map[uint64]paych.LaneState{
+			// Lane 2 (different from voucher lane 1)
+			2: {
+				Redeemed: big.NewInt(4),
+				Nonce:    1,
+			},
+		},
 	}}
 
 	for _, tcase := range tcases {
@@ -262,13 +275,17 @@ func TestCheckVoucherValid(t *testing.T) {
 				Nonce:   0,
 				Balance: tcase.actorBalance,
 			}
+
+			laneStates, err := mock.storeLaneStates(tcase.laneStates)
+			require.NoError(t, err)
+
 			mock.setPaychState(ch, act, paych.State{
 				From:            fromAcct,
 				To:              toAcct,
 				ToSend:          tcase.toSend,
 				SettlingAt:      abi.ChainEpoch(0),
 				MinSettleHeight: abi.ChainEpoch(0),
-				LaneStates:      tcase.laneStates,
+				LaneStates:      laneStates,
 			})
 
 			mgr, err := newManager(store, mock)
@@ -309,15 +326,16 @@ func TestCheckVoucherValidCountingAllLanes(t *testing.T) {
 
 	actorBalance := big.NewInt(10)
 	toSend := big.NewInt(1)
-	laneStates := []*paych.LaneState{{
-		ID:       1,
-		Nonce:    1,
-		Redeemed: big.NewInt(3),
-	}, {
-		ID:       2,
-		Nonce:    1,
-		Redeemed: big.NewInt(4),
-	}}
+	laneStates := map[uint64]paych.LaneState{
+		1: {
+			Nonce:    1,
+			Redeemed: big.NewInt(3),
+		},
+		2: {
+			Nonce:    1,
+			Redeemed: big.NewInt(4),
+		},
+	}
 
 	act := &types.Actor{
 		Code:    builtin.AccountActorCodeID,
@@ -325,13 +343,16 @@ func TestCheckVoucherValidCountingAllLanes(t *testing.T) {
 		Nonce:   0,
 		Balance: actorBalance,
 	}
+
+	lsCid, err := mock.storeLaneStates(laneStates)
+	require.NoError(t, err)
 	mock.setPaychState(ch, act, paych.State{
 		From:            fromAcct,
 		To:              toAcct,
 		ToSend:          toSend,
 		SettlingAt:      abi.ChainEpoch(0),
 		MinSettleHeight: abi.ChainEpoch(0),
-		LaneStates:      laneStates,
+		LaneStates:      lsCid,
 	})
 
 	mgr, err := newManager(store, mock)
@@ -625,6 +646,8 @@ func testSetupMgrWithChannel(ctx context.Context, t *testing.T) (*Manager, addre
 	toAcct := tutils.NewActorAddr(t, "toAct")
 
 	mock := newMockManagerAPI()
+	arr, err := adt.MakeEmptyArray(mock.store).Root()
+	require.NoError(t, err)
 	mock.setAccountState(fromAcct, account.State{Address: from})
 	mock.setAccountState(toAcct, account.State{Address: to})
 
@@ -640,7 +663,7 @@ func testSetupMgrWithChannel(ctx context.Context, t *testing.T) (*Manager, addre
 		ToSend:          big.NewInt(0),
 		SettlingAt:      abi.ChainEpoch(0),
 		MinSettleHeight: abi.ChainEpoch(0),
-		LaneStates:      []*paych.LaneState{},
+		LaneStates:      arr,
 	})
 
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))

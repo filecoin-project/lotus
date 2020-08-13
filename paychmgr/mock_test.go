@@ -5,6 +5,10 @@ import (
 	"fmt"
 	"sync"
 
+	cbornode "github.com/ipfs/go-ipld-cbor"
+
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -34,6 +38,7 @@ type mockStateManager struct {
 	lk           sync.Mutex
 	accountState map[address.Address]account.State
 	paychState   map[address.Address]mockPchState
+	store        adt.Store
 	response     *api.InvocResult
 }
 
@@ -41,7 +46,12 @@ func newMockStateManager() *mockStateManager {
 	return &mockStateManager{
 		accountState: make(map[address.Address]account.State),
 		paychState:   make(map[address.Address]mockPchState),
+		store:        adt.WrapStore(context.Background(), cbornode.NewMemCborStore()),
 	}
+}
+
+func (sm *mockStateManager) AdtStore(ctx context.Context) adt.Store {
+	return sm.store
 }
 
 func (sm *mockStateManager) setAccountState(a address.Address, state account.State) {
@@ -54,6 +64,17 @@ func (sm *mockStateManager) setPaychState(a address.Address, actor *types.Actor,
 	sm.lk.Lock()
 	defer sm.lk.Unlock()
 	sm.paychState[a] = mockPchState{actor, state}
+}
+
+func (sm *mockStateManager) storeLaneStates(laneStates map[uint64]paych.LaneState) (cid.Cid, error) {
+	arr := adt.MakeEmptyArray(sm.store)
+	for i, ls := range laneStates {
+		ls := ls
+		if err := arr.Set(i, &ls); err != nil {
+			return cid.Undef, err
+		}
+	}
+	return arr.Root()
 }
 
 func (sm *mockStateManager) LoadActorState(ctx context.Context, a address.Address, out interface{}, ts *types.TipSet) (*types.Actor, error) {

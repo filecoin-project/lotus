@@ -2,6 +2,9 @@ package paychmgr
 
 import (
 	"context"
+	"errors"
+
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 
@@ -43,10 +46,15 @@ func (ca *stateAccessor) loadStateChannelInfo(ctx context.Context, ch address.Ad
 	}
 	to := account.Address
 
+	nextLane, err := ca.nextLaneFromState(ctx, st)
+	if err != nil {
+		return nil, err
+	}
+
 	ci := &ChannelInfo{
 		Channel:   &ch,
 		Direction: dir,
-		NextLane:  nextLaneFromState(st),
+		NextLane:  nextLane,
 	}
 
 	if dir == DirOutbound {
@@ -60,16 +68,28 @@ func (ca *stateAccessor) loadStateChannelInfo(ctx context.Context, ch address.Ad
 	return ci, nil
 }
 
-func nextLaneFromState(st *paych.State) uint64 {
-	if len(st.LaneStates) == 0 {
-		return 0
+func (ca *stateAccessor) nextLaneFromState(ctx context.Context, st *paych.State) (uint64, error) {
+	store := ca.sm.AdtStore(ctx)
+	laneStates, err := adt.AsArray(store, st.LaneStates)
+	if err != nil {
+		return 0, err
+	}
+	if laneStates.Length() == 0 {
+		return 0, nil
 	}
 
-	maxLane := st.LaneStates[0].ID
-	for _, state := range st.LaneStates {
-		if state.ID > maxLane {
-			maxLane = state.ID
+	nextID := int64(0)
+	stopErr := errors.New("stop")
+	if err := laneStates.ForEach(nil, func(i int64) error {
+		if nextID < i {
+			// We've found a hole. Stop here.
+			return stopErr
 		}
+		nextID++
+		return nil
+	}); err != nil && err != stopErr {
+		return 0, err
 	}
-	return maxLane + 1
+
+	return uint64(nextID), nil
 }
