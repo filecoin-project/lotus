@@ -861,7 +861,7 @@ func TestOptimalMessageSelection3(t *testing.T) {
 	}
 }
 
-func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand) {
+func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand) (float64, float64) {
 	// in this test we use 100 actors and send 10 blocks of messages.
 	// actors send with an exponentially decreasing premium.
 	// a number of miners select with varying ticket quality and we compare the
@@ -913,13 +913,16 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand) {
 		mustAdd(t, mp, m)
 	}
 
+	logging.SetLogLevel("messagepool", "error")
+
 	// 1. greedy selection
 	greedyMsgs, err := mp.selectMessagesGreedy(ts, ts)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	logging.SetLogLevel("messagepool", "error")
+	capacityBoost := 0.0
+	rewardBoost := 0.0
 	for i := 0; i < 50; i++ {
 		// 2. optimal selection
 		minersRand := rng.Float64()
@@ -945,9 +948,12 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand) {
 			}
 		}
 
+		boost := float64(len(optMsgs)) / float64(len(greedyMsgs))
+		capacityBoost += boost
+
 		t.Logf("nMiners: %d", nMiners)
 		t.Logf("greedy capacity %d, optimal capacity %d (x %.1f )", len(greedyMsgs),
-			len(optMsgs), float64(len(optMsgs))/float64(len(greedyMsgs)))
+			len(optMsgs), boost)
 		if len(greedyMsgs) > len(optMsgs) {
 			t.Fatal("greedy capacity higher than optimal capacity; wtf")
 		}
@@ -965,17 +971,36 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand) {
 		nMinersBig := big.NewInt(int64(nMiners))
 		greedyAvgReward, _ := new(big.Rat).SetFrac(greedyReward, nMinersBig).Float64()
 		optimalAvgReward, _ := new(big.Rat).SetFrac(optReward, nMinersBig).Float64()
+
+		boost = optimalAvgReward / greedyAvgReward
+		rewardBoost += boost
 		t.Logf("greedy reward: %.0f, optimal reward: %.0f (x %.1f )", greedyAvgReward,
-			optimalAvgReward, optimalAvgReward/greedyAvgReward)
+			optimalAvgReward, boost)
 
 	}
+
+	capacityBoost /= 50
+	rewardBoost /= 50
+	t.Logf("Average capacity boost: %f", capacityBoost)
+	t.Logf("Average reward boost: %f", rewardBoost)
+
 	logging.SetLogLevel("messagepool", "info")
+
+	return capacityBoost, rewardBoost
 }
 
 func TestCompetitiveMessageSelection(t *testing.T) {
+	var capacityBoost, rewardBoost float64
 	seeds := []int64{1947, 1976, 2020, 2100, 10000, 143324, 432432, 131, 32, 45}
 	for _, seed := range seeds {
 		t.Log("running competitve message selection with seed", seed)
-		testCompetitiveMessageSelection(t, rand.New(rand.NewSource(seed)))
+		cb, rb := testCompetitiveMessageSelection(t, rand.New(rand.NewSource(seed)))
+		capacityBoost += cb
+		rewardBoost += rb
 	}
+
+	capacityBoost /= float64(len(seeds))
+	rewardBoost /= float64(len(seeds))
+	t.Logf("Average capacity boost across all seeds: %f", capacityBoost)
+	t.Logf("Average reward boost across all seeds: %f", rewardBoost)
 }
