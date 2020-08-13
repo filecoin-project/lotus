@@ -105,7 +105,8 @@ func InfluxNewBatch() (client.BatchPoints, error) {
 }
 
 func NewPoint(name string, value interface{}) models.Point {
-	pt, _ := models.NewPoint(name, models.Tags{}, map[string]interface{}{"value": value}, build.Clock.Now())
+	pt, _ := models.NewPoint(name, models.Tags{},
+		map[string]interface{}{"value": value}, build.Clock.Now().UTC())
 	return pt
 }
 
@@ -301,8 +302,16 @@ func RecordTipsetMessagesPoints(ctx context.Context, api api.FullNode, pl *Point
 
 	msgn := make(map[msgTag][]cid.Cid)
 
+	totalGasUsed := int64(0)
+	for _, r := range recp {
+		totalGasUsed += r.GasUsed
+	}
+	p := NewPoint("chain.gas_used_total", totalGasUsed)
+	pl.AddPoint(p)
+
 	for i, msg := range msgs {
 		// FIXME: use float so this doesn't overflow
+		// FIXME: this doesn't work as time points get overriden
 		p := NewPoint("chain.message_gaspremium", msg.Message.GasPremium.Int64())
 		pl.AddPoint(p)
 		p = NewPoint("chain.message_gasfeecap", msg.Message.GasFeeCap.Int64())
