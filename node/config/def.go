@@ -154,8 +154,8 @@ func DefaultStorageMiner() *StorageMiner {
 		},
 
 		Fees: MinerFeeConfig{
-			MaxPreCommitGasFee:  types.FIL(types.FromFil(1)),
-			MaxCommitGasFee:     types.FIL(types.FromFil(1)),
+			MaxPreCommitGasFee:  types.FIL(types.BigDiv(types.FromFil(1), types.NewInt(20))), // 0.05
+			MaxCommitGasFee:     types.FIL(types.BigDiv(types.FromFil(1), types.NewInt(20))),
 			MaxWindowPoStGasFee: types.FIL(types.FromFil(50)),
 		},
 
