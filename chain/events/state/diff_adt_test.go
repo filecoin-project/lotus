@@ -71,7 +71,6 @@ func TestDiffAdtArray(t *testing.T) {
 	assert.EqualValues(t, []byte{1}, changes.Removed[1].val)
 }
 
-
 func TestDiffAdtMap(t *testing.T) {
 	ctxstoreA := newContextStore()
 	ctxstoreB := newContextStore()
@@ -128,13 +127,12 @@ func TestDiffAdtMap(t *testing.T) {
 }
 
 type TestDiffMap struct {
-	Added []adtMapDiffResult
+	Added    []adtMapDiffResult
 	Modified []TestAdtMapDiffModified
-	Removed []adtMapDiffResult
+	Removed  []adtMapDiffResult
 }
 
 var _ AdtMapDiff = &TestDiffMap{}
-
 
 func (t *TestDiffMap) AsKey(key string) (adt.Keyer, error) {
 	k, err := adt.ParseUIntKey(key)
@@ -218,7 +216,7 @@ type adtMapDiffResult struct {
 
 type TestAdtMapDiffModified struct {
 	From adtMapDiffResult
-	To adtMapDiffResult
+	To   adtMapDiffResult
 }
 
 type adtArrayDiffResult struct {
