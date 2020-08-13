@@ -178,14 +178,14 @@ func (mp *MessagePool) selectMessagesOptimal(curTs, ts *types.TipSet, tq float64
 				curChain := chainDeps[i]
 				curChain.merged = true
 				// adjust the next chain for the parent, which is being merged
-				if next := curChain.next; next != nil {
+				if next := curChain.next; next != nil && next.effPerf > 0 {
 					next.effPerf += next.parentOffset
 				}
 				result = append(result, curChain.msgs...)
 			}
 
 			chain.merged = true
-			if next := chain.next; next != nil {
+			if next := chain.next; next != nil && next.effPerf > 0 {
 				next.effPerf += next.parentOffset
 			}
 			result = append(result, chain.msgs...)
