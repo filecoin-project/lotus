@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
+	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
@@ -135,6 +136,7 @@ func RecordTipsetPoints(ctx context.Context, api api.FullNode, pl *PointList, ti
 	p = NewPoint("chain.basefee", baseFeeFloat)
 	pl.AddPoint(p)
 
+	totalGasLimit := int64(0)
 	for _, blockheader := range tipset.Blocks() {
 		bs, err := blockheader.Serialize()
 		if err != nil {
@@ -146,7 +148,20 @@ func RecordTipsetPoints(ctx context.Context, api api.FullNode, pl *PointList, ti
 
 		p = NewPoint("chain.blockheader_size", len(bs))
 		pl.AddPoint(p)
+
+		msgs, err := api.ChainGetBlockMessages(ctx, blockheader.Cid())
+		if err != nil {
+			return xerrors.Errorf("ChainGetBlockMessages failed: %w", msgs)
+		}
+		for _, m := range msgs.BlsMessages {
+			totalGasLimit += m.GasLimit
+		}
+		for _, m := range msgs.SecpkMessages {
+			totalGasLimit += m.Message.GasLimit
+		}
 	}
+	p = NewPoint("chain.gas_limit_total", totalGasLimit)
+	pl.AddPoint(p)
 
 	return nil
 }
