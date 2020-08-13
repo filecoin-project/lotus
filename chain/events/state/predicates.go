@@ -649,22 +649,20 @@ type AddressPair struct {
 }
 
 type InitActorAddressChanges struct {
-	Added []AddressPair
+	Added    []AddressPair
 	Modified []AddressChange
-	Removed []AddressPair
+	Removed  []AddressPair
 }
 
 type AddressChange struct {
 	From AddressPair
-	To AddressPair
+	To   AddressPair
 }
 
 type DiffInitActorStateFunc func(ctx context.Context, oldState *init_.State, newState *init_.State) (changed bool, user UserData, err error)
 
-
-
 func (i *InitActorAddressChanges) AsKey(key string) (adt.Keyer, error) {
-	addr , err := address.NewFromBytes([]byte(key))
+	addr, err := address.NewFromBytes([]byte(key))
 	if err != nil {
 		return nil, err
 	}
@@ -720,7 +718,7 @@ func (i *InitActorAddressChanges) Modify(key string, from, to *typegen.Deferred)
 			ID: fromIDAddr,
 			PK: pkAddr,
 		},
-		To:   AddressPair{
+		To: AddressPair{
 			ID: toIDAddr,
 			PK: pkAddr,
 		},
@@ -786,4 +784,3 @@ func (sp *StatePredicates) OnAddressMapChange() DiffInitActorStateFunc {
 		return true, addressChanges, nil
 	}
 }
-

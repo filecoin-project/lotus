@@ -205,8 +205,8 @@ var netFindPeer = &cli.Command{
 }
 
 var NetReachability = &cli.Command{
-	Name:      "reachability",
-	Usage:     "Print information about reachability from the internet",
+	Name:  "reachability",
+	Usage: "Print information about reachability from the internet",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetAPI(cctx)
 		if err != nil {
