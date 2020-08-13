@@ -94,6 +94,11 @@ var infoAllCmd = &cli.Command{
 			return err
 		}
 
+		fmt.Println("\n#: Retrieval Deals")
+		if err := retrievalDealsListCmd.Action(cctx); err != nil {
+			return err
+		}
+
 		fmt.Println("\n#: Sector List")
 		if err := sectorsListCmd.Action(cctx); err != nil {
 			return err
