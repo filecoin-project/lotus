@@ -154,7 +154,7 @@ func (mp *MessagePool) selectMessagesOptimal(curTs, ts *types.TipSet, tq float64
 	last := len(chains)
 	for i, chain := range chains {
 		// did we run out of performing chains?
-		if chain.effPerf < 0 {
+		if chain.gasPerf < 0 {
 			break
 		}
 
