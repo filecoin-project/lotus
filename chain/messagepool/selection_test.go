@@ -926,7 +926,8 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand) (float64, flo
 
 	capacityBoost := 0.0
 	rewardBoost := 0.0
-	for i := 0; i < 50; i++ {
+	const runs = 1
+	for i := 0; i < runs; i++ {
 		// 2. optimal selection
 		minersRand := rng.Float64()
 		winerProba := noWinnersProb()
@@ -982,8 +983,8 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand) (float64, flo
 
 	}
 
-	capacityBoost /= 50
-	rewardBoost /= 50
+	capacityBoost /= runs
+	rewardBoost /= runs
 	t.Logf("Average capacity boost: %f", capacityBoost)
 	t.Logf("Average reward boost: %f", rewardBoost)
 
