@@ -22,15 +22,17 @@ var bigBlockGasLimit = big.NewInt(build.BlockGasLimit)
 const MaxBlocks = 15
 
 type msgChain struct {
-	msgs      []*types.SignedMessage
-	gasReward *big.Int
-	gasLimit  int64
-	gasPerf   float64
-	effPerf   float64
-	valid     bool
-	merged    bool
-	next      *msgChain
-	prev      *msgChain
+	msgs         []*types.SignedMessage
+	gasReward    *big.Int
+	gasLimit     int64
+	gasPerf      float64
+	effPerf      float64
+	bp           float64
+	parentOffset float64
+	valid        bool
+	merged       bool
+	next         *msgChain
+	prev         *msgChain
 }
 
 func (mp *MessagePool) SelectMessages(ts *types.TipSet, tq float64) ([]*types.SignedMessage, error) {
@@ -175,12 +177,24 @@ func (mp *MessagePool) selectMessagesOptimal(curTs, ts *types.TipSet, tq float64
 			for i := len(chainDeps) - 1; i >= 0; i-- {
 				curChain := chainDeps[i]
 				curChain.merged = true
+				// adjust the next chain for the parent, which is being merged
+				if next := curChain.next; next != nil && next.effPerf > 0 {
+					next.effPerf += next.parentOffset
+				}
 				result = append(result, curChain.msgs...)
 			}
 
 			chain.merged = true
+			if next := chain.next; next != nil && next.effPerf > 0 {
+				next.effPerf += next.parentOffset
+			}
 			result = append(result, chain.msgs...)
 			gasLimit -= chainGasLimit
+
+			// resort to account for already merged chains and effective performance adjustments
+			sort.Slice(chains[i+1:], func(i, j int) bool {
+				return chains[i].BeforeEffective(chains[j])
+			})
 			continue
 		}
 
@@ -810,18 +824,13 @@ func (mc *msgChain) Trim(gasLimit int64, mp *MessagePool, baseFee types.BigInt, 
 		mc.gasReward = new(big.Int).Sub(mc.gasReward, gasReward)
 		mc.gasLimit -= mc.msgs[i].Message.GasLimit
 		if mc.gasLimit > 0 {
-			bp := 1.0
-			if mc.gasPerf != 0 { // prevent div by 0
-				bp = mc.effPerf / mc.gasPerf
-			}
-
 			mc.gasPerf = mp.getGasPerf(mc.gasReward, mc.gasLimit)
-
-			if mc.effPerf != 0 { // keep effPerf 0 if it is 0
-				mc.effPerf = bp * mc.gasPerf
+			if mc.bp != 0 {
+				mc.setEffPerf()
 			}
 		} else {
 			mc.gasPerf = 0
+			mc.effPerf = 0
 		}
 		i--
 	}
@@ -849,7 +858,19 @@ func (mc *msgChain) Invalidate() {
 }
 
 func (mc *msgChain) SetEffectivePerf(bp float64) {
-	mc.effPerf = mc.gasPerf * bp
+	mc.bp = bp
+	mc.setEffPerf()
+}
+
+func (mc *msgChain) setEffPerf() {
+	effPerf := mc.gasPerf * mc.bp
+	if effPerf > 0 && mc.prev != nil {
+		effPerfWithParent := (effPerf*float64(mc.gasLimit) + mc.prev.effPerf*float64(mc.prev.gasLimit)) / float64(mc.gasLimit+mc.prev.gasLimit)
+		mc.parentOffset = effPerf - effPerfWithParent
+		effPerf = effPerfWithParent
+	}
+	mc.effPerf = effPerf
+
 }
 
 func (mc *msgChain) SetNullEffectivePerf() {
@@ -861,7 +882,8 @@ func (mc *msgChain) SetNullEffectivePerf() {
 }
 
 func (mc *msgChain) BeforeEffective(other *msgChain) bool {
-	return mc.effPerf > other.effPerf ||
+	// move merged chains to the front so we can discard them earlier
+	return (mc.merged && !other.merged) || mc.effPerf > other.effPerf ||
 		(mc.effPerf == other.effPerf && mc.gasPerf > other.gasPerf) ||
 		(mc.effPerf == other.effPerf && mc.gasPerf == other.gasPerf && mc.gasReward.Cmp(other.gasReward) > 0)
 }
