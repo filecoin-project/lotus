@@ -507,6 +507,15 @@ func TestAddVoucherNextLane(t *testing.T) {
 	require.NoError(t, err)
 	require.EqualValues(t, ci.NextLane, 3)
 
+	// Allocate a lane (should be lane 3)
+	lane, err := mgr.AllocateLane(ch)
+	require.NoError(t, err)
+	require.EqualValues(t, lane, 3)
+
+	ci, err = mgr.GetChannelInfo(ch)
+	require.NoError(t, err)
+	require.EqualValues(t, ci.NextLane, 4)
+
 	// Add a voucher in lane 1
 	voucherLane = uint64(1)
 	sv = testCreateVoucher(t, ch, voucherLane, nonce, voucherAmount, fromKeyPrivate)
@@ -515,17 +524,89 @@ func TestAddVoucherNextLane(t *testing.T) {
 
 	ci, err = mgr.GetChannelInfo(ch)
 	require.NoError(t, err)
-	require.EqualValues(t, ci.NextLane, 3)
+	require.EqualValues(t, ci.NextLane, 4)
 
-	// Add a voucher in lane 5
-	voucherLane = uint64(5)
+	// Add a voucher in lane 7
+	voucherLane = uint64(7)
 	sv = testCreateVoucher(t, ch, voucherLane, nonce, voucherAmount, fromKeyPrivate)
 	_, err = mgr.AddVoucher(ctx, ch, sv, nil, minDelta)
 	require.NoError(t, err)
 
 	ci, err = mgr.GetChannelInfo(ch)
 	require.NoError(t, err)
-	require.EqualValues(t, ci.NextLane, 6)
+	require.EqualValues(t, ci.NextLane, 8)
+}
+
+func TestAllocateLane(t *testing.T) {
+	ctx := context.Background()
+
+	// Set up a manager with a single payment channel
+	mgr, ch, _ := testSetupMgrWithChannel(ctx, t)
+
+	// First lane should be 0
+	lane, err := mgr.AllocateLane(ch)
+	require.NoError(t, err)
+	require.EqualValues(t, lane, 0)
+
+	// Next lane should be 1
+	lane, err = mgr.AllocateLane(ch)
+	require.NoError(t, err)
+	require.EqualValues(t, lane, 1)
+}
+
+func TestAllocateLaneWithExistingLaneState(t *testing.T) {
+	ctx := context.Background()
+
+	_, fromKeyPublic := testGenerateKeyPair(t)
+
+	ch := tutils.NewIDAddr(t, 100)
+	from := tutils.NewSECP256K1Addr(t, string(fromKeyPublic))
+	to := tutils.NewSECP256K1Addr(t, "secpTo")
+	fromAcct := tutils.NewActorAddr(t, "fromAct")
+	toAcct := tutils.NewActorAddr(t, "toAct")
+
+	mock := newMockManagerAPI()
+	mock.setAccountState(fromAcct, account.State{Address: from})
+	mock.setAccountState(toAcct, account.State{Address: to})
+
+	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
+
+	actorBalance := big.NewInt(10)
+	toSend := big.NewInt(1)
+	laneStates := map[uint64]paych.LaneState{
+		2: {
+			Nonce:    1,
+			Redeemed: big.NewInt(4),
+		},
+	}
+
+	act := &types.Actor{
+		Code:    builtin.AccountActorCodeID,
+		Head:    cid.Cid{},
+		Nonce:   0,
+		Balance: actorBalance,
+	}
+
+	lsCid, err := mock.storeLaneStates(laneStates)
+	require.NoError(t, err)
+	mock.setPaychState(ch, act, paych.State{
+		From:            fromAcct,
+		To:              toAcct,
+		ToSend:          toSend,
+		SettlingAt:      abi.ChainEpoch(0),
+		MinSettleHeight: abi.ChainEpoch(0),
+		LaneStates:      lsCid,
+	})
+
+	mgr, err := newManager(store, mock)
+	require.NoError(t, err)
+
+	err = mgr.TrackInboundChannel(ctx, ch)
+	require.NoError(t, err)
+
+	lane, err := mgr.AllocateLane(ch)
+	require.NoError(t, err)
+	require.EqualValues(t, 3, lane)
 }
 
 func TestAddVoucherProof(t *testing.T) {
@@ -573,23 +654,6 @@ func TestAddVoucherProof(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, ci.Vouchers, 1)
 	require.Len(t, ci.Vouchers[0].Proof, 1)
-}
-
-func TestAllocateLane(t *testing.T) {
-	ctx := context.Background()
-
-	// Set up a manager with a single payment channel
-	mgr, ch, _ := testSetupMgrWithChannel(ctx, t)
-
-	// First lane should be 0
-	lane, err := mgr.AllocateLane(ch)
-	require.NoError(t, err)
-	require.EqualValues(t, lane, 0)
-
-	// Next lane should be 1
-	lane, err = mgr.AllocateLane(ch)
-	require.NoError(t, err)
-	require.EqualValues(t, lane, 1)
 }
 
 func TestNextNonceForLane(t *testing.T) {
