@@ -114,7 +114,7 @@ func capGasFee(msg *types.Message, maxFee abi.TokenAmount) {
 		return
 	}
 
-	gl := types.BigMul(msg.GasPremium, types.NewInt(uint64(msg.GasLimit)))
+	gl := types.NewInt(uint64(msg.GasLimit))
 	totalFee := types.BigMul(msg.GasFeeCap, gl)
 	minerFee := types.BigMul(msg.GasPremium, gl)
 
