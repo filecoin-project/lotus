@@ -138,6 +138,7 @@ func (a *GasAPI) GasEstimateGasPremium(ctx context.Context, nblocksincl uint64,
 		}
 	}
 
+	// add some noise to normalize behaviour of message selection
 	const precision = 32
 	// mean 1, stddev 0.005 => 95% within +-1%
 	noise := 1 + rand.NormFloat64()*0.005
