@@ -771,16 +771,26 @@ func TestOptimalMessageSelection2(t *testing.T) {
 		t.Fatalf("expected %d messages, but got %d", expectedMsgs, len(msgs))
 	}
 
-	nextNonce := uint64(0)
+	var nFrom1, nFrom2 int
+	var nextNonce1, nextNonce2 uint64
 	for _, m := range msgs {
-		if m.Message.From != a2 {
-			t.Fatal("expected message from a2")
+		if m.Message.From == a1 {
+			if m.Message.Nonce != nextNonce1 {
+				t.Fatalf("expected nonce %d but got %d", nextNonce1, m.Message.Nonce)
+			}
+			nextNonce1++
+			nFrom1++
+		} else {
+			if m.Message.Nonce != nextNonce2 {
+				t.Fatalf("expected nonce %d but got %d", nextNonce2, m.Message.Nonce)
+			}
+			nextNonce2++
+			nFrom2++
 		}
+	}
 
-		if m.Message.Nonce != nextNonce {
-			t.Fatalf("expected nonce %d but got %d", nextNonce, m.Message.Nonce)
-		}
-		nextNonce++
+	if nFrom1 > nFrom2 {
+		t.Fatalf("expected more messages from a2 than a1; nFrom1=%d nFrom2=%d", nFrom1, nFrom2)
 	}
 }
 
