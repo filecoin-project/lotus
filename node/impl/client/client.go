@@ -159,7 +159,7 @@ func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) 
 		Price:         params.EpochPrice,
 		Collateral:    big.Zero(),
 		Rt:            rt,
-		FastRetrieval: params.FastRetrieval,
+		FastRetrieval: !params.NoFastRetrieval,
 		VerifiedDeal:  params.VerifiedDeal,
 		StoreID:       storeID,
 	})

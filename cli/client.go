@@ -421,7 +421,7 @@ var clientDealCmd = &cli.Command{
 			EpochPrice:        types.BigInt(price),
 			MinBlocksDuration: uint64(dur),
 			DealStartEpoch:    abi.ChainEpoch(cctx.Int64("start-epoch")),
-			FastRetrieval:     cctx.Bool("fast-retrieval"),
+			NoFastRetrieval:   !cctx.Bool("fast-retrieval"),
 			VerifiedDeal:      isVerified,
 		})
 		if err != nil {
@@ -610,7 +610,7 @@ func interactiveDeal(cctx *cli.Context) error {
 				EpochPrice:        epochPrice,
 				MinBlocksDuration: uint64(epochs),
 				DealStartEpoch:    abi.ChainEpoch(cctx.Int64("start-epoch")),
-				FastRetrieval:     cctx.Bool("fast-retrieval"),
+				NoFastRetrieval:   !cctx.Bool("fast-retrieval"),
 				VerifiedDeal:      false, // TODO: Allow setting
 			})
 			if err != nil {

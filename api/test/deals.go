@@ -294,7 +294,7 @@ func startDeal(t *testing.T, ctx context.Context, miner TestStorageNode, client 
 		Miner:             maddr,
 		EpochPrice:        types.NewInt(1000000),
 		MinBlocksDuration: uint64(build.MinDealDuration),
-		FastRetrieval:     fastRet,
+		NoFastRetrieval:   !fastRet,
 	})
 	if err != nil {
 		t.Fatalf("%+v", err)

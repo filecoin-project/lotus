@@ -616,7 +616,7 @@ type StartDealParams struct {
 	EpochPrice        types.BigInt
 	MinBlocksDuration uint64
 	DealStartEpoch    abi.ChainEpoch
-	FastRetrieval     bool
+	NoFastRetrieval   bool
 	VerifiedDeal      bool
 }
 
