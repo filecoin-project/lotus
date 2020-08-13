@@ -95,10 +95,9 @@ var actorSetAddrsCmd = &cli.Command{
 	},
 }
 
-
 var actorWithdrawCmd = &cli.Command{
-	Name:  "withdraw",
-	Usage: "withdraw available balance",
+	Name:      "withdraw",
+	Usage:     "withdraw available balance",
 	ArgsUsage: "[amount (FIL)]",
 	Action: func(cctx *cli.Context) error {
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)

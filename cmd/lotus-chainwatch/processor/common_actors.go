@@ -176,7 +176,7 @@ func (p Processor) storeActorAddresses(ctx context.Context, actors map[cid.Cid]A
 	for _, updates := range addressesToUpdate {
 		if _, err := updateTx.Exec(
 			fmt.Sprintf("update id_address_map set id=%s, address=%s where id=%s and address=%s", updates.New.ID, updates.New.PK, updates.Old.ID, updates.Old.PK),
-			); err != nil {
+		); err != nil {
 			return err
 		}
 	}
