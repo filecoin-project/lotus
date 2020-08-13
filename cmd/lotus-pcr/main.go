@@ -273,7 +273,7 @@ func ProcessTipset(ctx context.Context, api processTipSetApi, tipset *types.TipS
 		}
 
 		if percentExtra > 0 {
-			refundValue = types.BigAdd(refundValue, types.BigDiv(refundValue, types.NewInt(100*uint64(percentExtra))))
+			refundValue = types.BigAdd(refundValue, types.BigDiv(types.BigMul(refundValue, types.NewInt(100)), types.NewInt(uint64(percentExtra))))
 		}
 
 		log.Infow("processing message", "from", m.From, "to", m.To, "value", m.Value.String(), "gas_fee_cap", m.GasFeeCap.String(), "gas_premium", m.GasPremium.String(), "gas_used", fmt.Sprintf("%d", recps[i].GasUsed), "refund", refundValue.String())
