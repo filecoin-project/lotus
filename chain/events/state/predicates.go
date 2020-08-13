@@ -3,19 +3,18 @@ package state
 import (
 	"bytes"
 	"context"
-
 	"github.com/filecoin-project/go-address"
-	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
-	typegen "github.com/whyrusleeping/cbor-gen"
-
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
+	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
+	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	typegen "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/lotus/api/apibstore"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -407,6 +406,21 @@ func (sp *StatePredicates) AvailableBalanceChangedForAddresses(getAddrs func() [
 
 type DiffMinerActorStateFunc func(ctx context.Context, oldState *miner.State, newState *miner.State) (changed bool, user UserData, err error)
 
+func (sp *StatePredicates) OnInitActorChange(diffInitActorState DiffInitActorStateFunc) DiffTipSetKeyFunc {
+	return sp.OnActorStateChanged(builtin.InitActorAddr, func(ctx context.Context, oldActorStateHead, newActorStateHead cid.Cid) (changed bool, user UserData, err error) {
+		var oldState init_.State
+		if err := sp.cst.Get(ctx, oldActorStateHead, &oldState); err != nil {
+			return false, nil, err
+		}
+		var newState init_.State
+		if err := sp.cst.Get(ctx, newActorStateHead, &newState); err != nil {
+			return false, nil, err
+		}
+		return diffInitActorState(ctx, &oldState, &newState)
+	})
+
+}
+
 func (sp *StatePredicates) OnMinerActorChange(minerAddr address.Address, diffMinerActorState DiffMinerActorStateFunc) DiffTipSetKeyFunc {
 	return sp.OnActorStateChanged(minerAddr, func(ctx context.Context, oldActorStateHead, newActorStateHead cid.Cid) (changed bool, user UserData, err error) {
 		var oldState miner.State
@@ -628,3 +642,148 @@ func (sp *StatePredicates) OnToSendAmountChanges() DiffPaymentChannelStateFunc {
 		}, nil
 	}
 }
+
+type AddressPair struct {
+	ID address.Address
+	PK address.Address
+}
+
+type InitActorAddressChanges struct {
+	Added []AddressPair
+	Modified []AddressChange
+	Removed []AddressPair
+}
+
+type AddressChange struct {
+	From AddressPair
+	To AddressPair
+}
+
+type DiffInitActorStateFunc func(ctx context.Context, oldState *init_.State, newState *init_.State) (changed bool, user UserData, err error)
+
+
+
+func (i *InitActorAddressChanges) AsKey(key string) (adt.Keyer, error) {
+	addr , err := address.NewFromBytes([]byte(key))
+	if err != nil {
+		return nil, err
+	}
+	return adt.AddrKey(addr), nil
+}
+
+func (i *InitActorAddressChanges) Add(key string, val *typegen.Deferred) error {
+	pkAddr, err := address.NewFromBytes([]byte(key))
+	if err != nil {
+		return err
+	}
+	id := new(typegen.CborInt)
+	if err := id.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
+		return err
+	}
+	idAddr, err := address.NewIDAddress(uint64(*id))
+	if err != nil {
+		return err
+	}
+	i.Added = append(i.Added, AddressPair{
+		ID: idAddr,
+		PK: pkAddr,
+	})
+	return nil
+}
+
+func (i *InitActorAddressChanges) Modify(key string, from, to *typegen.Deferred) error {
+	pkAddr, err := address.NewFromBytes([]byte(key))
+	if err != nil {
+		return err
+	}
+
+	fromID := new(typegen.CborInt)
+	if err := fromID.UnmarshalCBOR(bytes.NewReader(from.Raw)); err != nil {
+		return err
+	}
+	fromIDAddr, err := address.NewIDAddress(uint64(*fromID))
+	if err != nil {
+		return err
+	}
+
+	toID := new(typegen.CborInt)
+	if err := toID.UnmarshalCBOR(bytes.NewReader(to.Raw)); err != nil {
+		return err
+	}
+	toIDAddr, err := address.NewIDAddress(uint64(*toID))
+	if err != nil {
+		return err
+	}
+
+	i.Modified = append(i.Modified, AddressChange{
+		From: AddressPair{
+			ID: fromIDAddr,
+			PK: pkAddr,
+		},
+		To:   AddressPair{
+			ID: toIDAddr,
+			PK: pkAddr,
+		},
+	})
+	return nil
+}
+
+func (i *InitActorAddressChanges) Remove(key string, val *typegen.Deferred) error {
+	pkAddr, err := address.NewFromBytes([]byte(key))
+	if err != nil {
+		return err
+	}
+	id := new(typegen.CborInt)
+	if err := id.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
+		return err
+	}
+	idAddr, err := address.NewIDAddress(uint64(*id))
+	if err != nil {
+		return err
+	}
+	i.Removed = append(i.Removed, AddressPair{
+		ID: idAddr,
+		PK: pkAddr,
+	})
+	return nil
+}
+
+func (sp *StatePredicates) OnAddressMapChange() DiffInitActorStateFunc {
+	return func(ctx context.Context, oldState, newState *init_.State) (changed bool, user UserData, err error) {
+		ctxStore := &contextStore{
+			ctx: ctx,
+			cst: sp.cst,
+		}
+
+		addressChanges := &InitActorAddressChanges{
+			Added:    []AddressPair{},
+			Modified: []AddressChange{},
+			Removed:  []AddressPair{},
+		}
+
+		if oldState.AddressMap.Equals(newState.AddressMap) {
+			return false, nil, nil
+		}
+
+		oldAddrs, err := adt.AsMap(ctxStore, oldState.AddressMap)
+		if err != nil {
+			return false, nil, err
+		}
+
+		newAddrs, err := adt.AsMap(ctxStore, newState.AddressMap)
+		if err != nil {
+			return false, nil, err
+		}
+
+		if err := DiffAdtMap(oldAddrs, newAddrs, addressChanges); err != nil {
+			return false, nil, err
+		}
+
+		if len(addressChanges.Added)+len(addressChanges.Removed)+len(addressChanges.Modified) == 0 {
+			return false, nil, nil
+		}
+
+		return true, addressChanges, nil
+	}
+}
+
