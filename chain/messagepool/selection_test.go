@@ -2,6 +2,7 @@ package messagepool
 
 import (
 	"context"
+	"math"
 	"math/big"
 	"math/rand"
 	"testing"
@@ -873,9 +874,9 @@ func TestOptimalMessageSelection3(t *testing.T) {
 	}
 }
 
-func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand) (float64, float64) {
-	// in this test we use 100 actors and send 10 blocks of messages.
-	// actors send with an exponentially decreasing premium.
+func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand, getPremium func() uint64) (float64, float64) {
+	// in this test we use 300 actors and send 10 blocks of messages.
+	// actors send with an randomly distributed premium dictated by the getPremium function.
 	// a number of miners select with varying ticket quality and we compare the
 	// capacity and rewards of greedy selection -vs- optimal selection
 
@@ -915,13 +916,12 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand) (float64, flo
 	nMessages := 10 * int(build.BlockGasLimit/gasLimit)
 	t.Log("nMessages", nMessages)
 	nonces := make([]uint64, nActors)
-	zipf := rand.NewZipf(rng, 1.001, 1, 40000)
 	for i := 0; i < nMessages; i++ {
 		from := rng.Intn(nActors)
 		to := rng.Intn(nActors)
 		nonce := nonces[from]
 		nonces[from]++
-		premium := zipf.Uint64() + 10000
+		premium := getPremium()
 		m := makeTestMessage(wallets[from], actors[from], actors[to], uint64(nonce), gasLimit, premium)
 		mustAdd(t, mp, m)
 	}
@@ -936,7 +936,7 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand) (float64, flo
 
 	capacityBoost := 0.0
 	rewardBoost := 0.0
-	const runs = 50
+	const runs = 1
 	for i := 0; i < runs; i++ {
 		// 2. optimal selection
 		minersRand := rng.Float64()
@@ -1003,12 +1003,44 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand) (float64, flo
 	return capacityBoost, rewardBoost
 }
 
-func TestCompetitiveMessageSelection(t *testing.T) {
+func makeExpPremiumDistribution(rng *rand.Rand) func() uint64 {
+	return func() uint64 {
+		premium := 20000*math.Exp(-3.*rng.Float64()) + 5000
+		return uint64(premium)
+	}
+}
+
+func makeZipfPremiumDistribution(rng *rand.Rand) func() uint64 {
+	zipf := rand.NewZipf(rng, 1.001, 1, 40000)
+	return func() uint64 {
+		return zipf.Uint64() + 10000
+	}
+}
+
+func TestCompetitiveMessageSelectionExp(t *testing.T) {
 	var capacityBoost, rewardBoost float64
 	seeds := []int64{1947, 1976, 2020, 2100, 10000, 143324, 432432, 131, 32, 45}
 	for _, seed := range seeds {
-		t.Log("running competitve message selection with seed", seed)
-		cb, rb := testCompetitiveMessageSelection(t, rand.New(rand.NewSource(seed)))
+		t.Log("running competitive message selection with Exponential premium distribution and seed", seed)
+		rng := rand.New(rand.NewSource(seed))
+		cb, rb := testCompetitiveMessageSelection(t, rng, makeExpPremiumDistribution(rng))
+		capacityBoost += cb
+		rewardBoost += rb
+	}
+
+	capacityBoost /= float64(len(seeds))
+	rewardBoost /= float64(len(seeds))
+	t.Logf("Average capacity boost across all seeds: %f", capacityBoost)
+	t.Logf("Average reward boost across all seeds: %f", rewardBoost)
+}
+
+func TestCompetitiveMessageSelectionZipf(t *testing.T) {
+	var capacityBoost, rewardBoost float64
+	seeds := []int64{1947, 1976, 2020, 2100, 10000, 143324, 432432, 131, 32, 45}
+	for _, seed := range seeds {
+		t.Log("running competitive message selection with Zipf premium distribution and seed", seed)
+		rng := rand.New(rand.NewSource(seed))
+		cb, rb := testCompetitiveMessageSelection(t, rng, makeZipfPremiumDistribution(rng))
 		capacityBoost += cb
 		rewardBoost += rb
 	}
