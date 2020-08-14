@@ -922,7 +922,7 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand, getPremium fu
 		nonce := nonces[from]
 		nonces[from]++
 		premium := getPremium()
-		m := makeTestMessage(wallets[from], actors[from], actors[to], uint64(nonce), gasLimit, premium)
+		m := makeTestMessage(wallets[from], actors[from], actors[to], nonce, gasLimit, premium)
 		mustAdd(t, mp, m)
 	}
 
