@@ -41,6 +41,14 @@ type Generator struct {
 	wg sync.WaitGroup
 }
 
+// genData is the generation data to stamp into vectors.
+// TODO in the future this should contain the commit of this tool and
+//  the builder api.
+var genData = schema.GenerationData{
+	Source:  "script",
+	Version: "v0",
+}
+
 type MessageVectorGenItem struct {
 	Metadata *schema.Metadata
 	Func     func(*Builder)
@@ -100,7 +108,7 @@ func (g *Generator) MessageVectorGroup(group string, vectors ...*MessageVectorGe
 				w = os.Stdout
 			} else {
 				file := filepath.Join(g.OutputPath, fmt.Sprintf("%s--%s.json", group, item.Metadata.ID))
-				out, err := os.OpenFile(file, os.O_WRONLY|os.O_CREATE, 0644)
+				out, err := os.OpenFile(file, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 				if err != nil {
 					log.Printf("failed to write to file %s: %s", file, err)
 					return
@@ -121,6 +129,9 @@ func (g *Generator) MessageVectorGroup(group string, vectors ...*MessageVectorGe
 
 func (g *Generator) generateOne(w io.Writer, b *MessageVectorGenItem, indent bool) {
 	log.Printf("generating test vector: %s", b.Metadata.ID)
+
+	// stamp with our generation data.
+	b.Metadata.Gen = genData
 
 	vector := MessageVector(b.Metadata)
 
