@@ -27,6 +27,7 @@ var log = logging.Logger("rpcenc")
 var Timeout = 30 * time.Second
 
 type StreamType string
+
 const (
 	Null       StreamType = "null"
 	PushStream StreamType = "push"

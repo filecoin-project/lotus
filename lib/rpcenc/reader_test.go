@@ -48,7 +48,7 @@ func TestReaderProxy(t *testing.T) {
 	testServ := httptest.NewServer(mux)
 	defer testServ.Close()
 
-	re := ReaderParamEncoder("http://"+testServ.Listener.Addr().String()+"/rpc/streams/v0/push")
+	re := ReaderParamEncoder("http://" + testServ.Listener.Addr().String() + "/rpc/streams/v0/push")
 	closer, err := jsonrpc.NewMergeClient("ws://"+testServ.Listener.Addr().String()+"/rpc/v0", "ReaderHandler", []interface{}{&client}, nil, re)
 	require.NoError(t, err)
 
@@ -61,7 +61,7 @@ func TestReaderProxy(t *testing.T) {
 
 func TestNullReaderProxy(t *testing.T) {
 	var client struct {
-		ReadAll func(ctx context.Context, r io.Reader) ([]byte, error)
+		ReadAll     func(ctx context.Context, r io.Reader) ([]byte, error)
 		ReadNullLen func(ctx context.Context, r io.Reader) (int64, error)
 	}
 
@@ -78,7 +78,7 @@ func TestNullReaderProxy(t *testing.T) {
 	testServ := httptest.NewServer(mux)
 	defer testServ.Close()
 
-	re := ReaderParamEncoder("http://"+testServ.Listener.Addr().String()+"/rpc/streams/v0/push")
+	re := ReaderParamEncoder("http://" + testServ.Listener.Addr().String() + "/rpc/streams/v0/push")
 	closer, err := jsonrpc.NewMergeClient("ws://"+testServ.Listener.Addr().String()+"/rpc/v0", "ReaderHandler", []interface{}{&client}, nil, re)
 	require.NoError(t, err)
 
