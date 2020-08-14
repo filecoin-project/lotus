@@ -6,6 +6,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -44,6 +45,13 @@ func (a *Asserter) NonceEq(addr address.Address, expected uint64) {
 	actor, err := a.b.StateTree.GetActor(addr)
 	a.NoError(err, "failed to fetch actor %s from state", addr)
 	a.Equal(expected, actor.Nonce, "expected actor %s nonce: %d, got: %d", addr, expected, actor.Nonce)
+}
+
+// HeadEq verifies that the head of the actor equals the expected one.
+func (a *Asserter) HeadEq(addr address.Address, expected cid.Cid) {
+	actor, err := a.b.StateTree.GetActor(addr)
+	a.NoError(err, "failed to fetch actor %s from state", addr)
+	a.Equal(expected, actor.Head, "expected actor %s head: %v, got: %v", addr, expected, actor.Head)
 }
 
 // ActorExists verifies that the actor exists in the state tree.

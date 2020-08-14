@@ -5,6 +5,7 @@ import (
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/puppet"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -358,5 +359,21 @@ func InitConstructor(params *init_.ConstructorParams) TypedCall {
 func InitExec(params *init_.ExecParams) TypedCall {
 	return func() (abi.MethodNum, []byte) {
 		return builtin.MethodsInit.Exec, MustSerialize(params)
+	}
+}
+
+// ----------------------------------------------------------------------------
+// | PUPPET
+// ----------------------------------------------------------------------------
+
+func PuppetConstructor(params *adt.EmptyValue) TypedCall {
+	return func() (abi.MethodNum, []byte) {
+		return puppet.MethodsPuppet.Constructor, MustSerialize(params)
+	}
+}
+
+func PuppetSend(params *puppet.SendParams) TypedCall {
+	return func() (abi.MethodNum, []byte) {
+		return puppet.MethodsPuppet.Send, MustSerialize(params)
 	}
 }
