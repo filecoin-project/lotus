@@ -5,10 +5,9 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
+	"os"
 
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/ipfs/go-cid"
@@ -31,8 +30,8 @@ const (
 
 func init() {
 	// disable logs, as we need a clean stdout output.
-	log.SetOutput(ioutil.Discard)
-	log.SetFlags(0)
+	log.SetOutput(os.Stderr)
+	log.SetPrefix(">>> ")
 }
 
 // TODO use stage.Surgeon with non-proxying blockstore.
@@ -131,7 +130,6 @@ func (b *Builder) applyMessage(am *ApplicableMessage) {
 		Bytes: MustSerialize(am.Message),
 		Epoch: &am.Epoch,
 	})
-	fmt.Println(am.Result.ExitCode)
 	b.vector.Post.Receipts = append(b.vector.Post.Receipts, &schema.Receipt{
 		ExitCode:    am.Result.ExitCode,
 		ReturnValue: am.Result.Return,

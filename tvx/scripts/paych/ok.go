@@ -15,17 +15,6 @@ import (
 	"github.com/filecoin-project/oni/tvx/schema"
 )
 
-var (
-	balance200B = abi.NewTokenAmount(200_000_000_000)
-	toSend      = abi.NewTokenAmount(10_000)
-)
-
-func main() {
-	happyPathCreate()
-	happyPathUpdate()
-	happyPathCollect()
-}
-
 func happyPathCreate() {
 	metadata := &schema.Metadata{ID: "paych-create-ok", Version: "v1", Desc: "payment channel create"}
 
@@ -34,7 +23,7 @@ func happyPathCreate() {
 
 	// Set up sender and receiver accounts.
 	var sender, receiver AddressHandle
-	v.Actors.AccountN(address.SECP256K1, balance200B, &sender, &receiver)
+	v.Actors.AccountN(address.SECP256K1, initialBal, &sender, &receiver)
 	v.CommitPreconditions()
 
 	// Add the constructor message.
@@ -79,7 +68,7 @@ func happyPathUpdate() {
 	v := MessageVector(metadata)
 	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPrice(1))
 
-	v.Actors.AccountN(address.SECP256K1, balance200B, &sender, &receiver)
+	v.Actors.AccountN(address.SECP256K1, initialBal, &sender, &receiver)
 	paychAddr = AddressHandle{
 		ID:     MustNewIDAddr(MustIDFromAddress(receiver.ID) + 1),
 		Robust: sender.NextActorAddress(0, 0),
@@ -136,7 +125,7 @@ func happyPathCollect() {
 	// Set up sender and receiver accounts.
 	var sender, receiver AddressHandle
 	var paychAddr AddressHandle
-	v.Actors.AccountN(address.SECP256K1, balance200B, &sender, &receiver)
+	v.Actors.AccountN(address.SECP256K1, initialBal, &sender, &receiver)
 	paychAddr = AddressHandle{
 		ID:     MustNewIDAddr(MustIDFromAddress(receiver.ID) + 1),
 		Robust: sender.NextActorAddress(0, 0),
@@ -175,7 +164,7 @@ func happyPathCollect() {
 
 	// receiver_balance = initial_balance + paych_send - settle_paych_msg_gas - collect_paych_msg_gas
 	gasUsed := big.Add(big.NewInt(settleMsg.Result.MessageReceipt.GasUsed), big.NewInt(collectMsg.Result.MessageReceipt.GasUsed))
-	v.Assert.BalanceEq(receiver.Robust, big.Sub(big.Add(toSend, balance200B), gasUsed))
+	v.Assert.BalanceEq(receiver.Robust, big.Sub(big.Add(toSend, initialBal), gasUsed))
 
 	// the paych actor should have been deleted after the collect
 	v.Assert.ActorMissing(paychAddr.Robust)
