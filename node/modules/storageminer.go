@@ -36,13 +36,11 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/funds"
-	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/requestvalidation"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
 	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-multistore"
 	paramfetch "github.com/filecoin-project/go-paramfetch"
-	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/go-storedcounter"
 	sectorstorage "github.com/filecoin-project/sector-storage"
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
@@ -209,15 +207,6 @@ func HandleDeals(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, h sto
 	})
 }
 
-// RegisterProviderValidator is an initialization hook that registers the provider
-// request validator with the data transfer module as the validator for
-// StorageDataTransferVoucher types
-func RegisterProviderValidator(mrv dtypes.ProviderRequestValidator, dtm dtypes.ProviderDataTransfer) {
-	if err := dtm.RegisterVoucherType(&requestvalidation.StorageDataTransferVoucher{}, (*requestvalidation.UnifiedRequestValidator)(mrv)); err != nil {
-		panic(err)
-	}
-}
-
 // NewProviderDAGServiceDataTransfer returns a data transfer manager that just
 // uses the provider's Staging DAG service for transfers
 func NewProviderDAGServiceDataTransfer(lc fx.Lifecycle, h host.Host, gs dtypes.StagingGraphsync, ds dtypes.MetadataDS) (dtypes.ProviderDataTransfer, error) {
@@ -240,11 +229,6 @@ func NewProviderDAGServiceDataTransfer(lc fx.Lifecycle, h host.Host, gs dtypes.S
 		},
 	})
 	return dt, nil
-}
-
-// NewProviderDealStore creates a statestore for the client to store its deals
-func NewProviderDealStore(ds dtypes.MetadataDS) dtypes.ProviderDealStore {
-	return statestore.New(namespace.Wrap(ds, datastore.NewKey("/deals/provider")))
 }
 
 // NewProviderPieceStore creates a statestore for storing metadata about pieces
@@ -335,10 +319,6 @@ func SetupBlockProducer(lc fx.Lifecycle, ds dtypes.MetadataDS, api lapi.FullNode
 	})
 
 	return m, nil
-}
-
-func NewProviderRequestValidator(deals dtypes.ProviderDealStore) dtypes.ProviderRequestValidator {
-	return requestvalidation.NewUnifiedRequestValidator(deals, nil)
 }
 
 func NewStorageAsk(ctx helpers.MetricsCtx, fapi lapi.FullNode, ds dtypes.MetadataDS, minerAddress dtypes.MinerAddress, spn storagemarket.StorageProviderNode) (*storedask.StoredAsk, error) {
