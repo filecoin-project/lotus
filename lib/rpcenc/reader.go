@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"path"
@@ -48,7 +49,10 @@ func ReaderParamEncoder(addr string) jsonrpc.Option {
 		}
 
 		reqID := uuid.New()
-		u, _ := url.Parse(addr)
+		u, err := url.Parse(addr)
+		if err != nil {
+			return reflect.Value{}, xerrors.Errorf("parsing push address: %w", err)
+		}
 		u.Path = path.Join(u.Path, reqID.String())
 
 		go func() {
@@ -63,7 +67,8 @@ func ReaderParamEncoder(addr string) jsonrpc.Option {
 			defer resp.Body.Close()
 
 			if resp.StatusCode != 200 {
-				log.Errorf("sending reader param: non-200 status: ", resp.Status)
+				b, _ := ioutil.ReadAll(resp.Body)
+				log.Errorf("sending reader param (%s): non-200 status: %s, msg: '%s'", u.String(), resp.Status, string(b))
 				return
 			}
 
