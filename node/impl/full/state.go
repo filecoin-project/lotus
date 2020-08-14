@@ -1052,7 +1052,7 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 		powerState.ThisEpochPledgeCollateral,
 		rewardState.ThisEpochRewardSmoothed,
 		powerState.ThisEpochQAPowerSmoothed,
-		circSupply,
+		circSupply.FilCirculating,
 	)
 
 	return types.BigDiv(types.BigMul(initialPledge, initialPledgeNum), initialPledgeDen), nil
@@ -1149,26 +1149,26 @@ func (a *StateAPI) StateDealProviderCollateralBounds(ctx context.Context, size a
 		return api.DealCollateralBounds{}, xerrors.Errorf("getting total circulating supply: %w")
 	}
 
-	min, max := market.DealProviderCollateralBounds(size, verified, powerState.ThisEpochQualityAdjPower, rewardState.ThisEpochBaselinePower, circ)
+	min, max := market.DealProviderCollateralBounds(size, verified, powerState.ThisEpochQualityAdjPower, rewardState.ThisEpochBaselinePower, circ.FilCirculating)
 	return api.DealCollateralBounds{
 		Min: types.BigDiv(types.BigMul(min, dealProviderCollateralNum), dealProviderCollateralDen),
 		Max: max,
 	}, nil
 }
 
-func (a *StateAPI) StateCirculatingSupply(ctx context.Context, tsk types.TipSetKey) (abi.TokenAmount, error) {
+func (a *StateAPI) StateCirculatingSupply(ctx context.Context, tsk types.TipSetKey) (api.CirculatingSupply, error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
-		return abi.TokenAmount{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+		return api.CirculatingSupply{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
 	st, _, err := a.StateManager.TipSetState(ctx, ts)
 	if err != nil {
-		return big.Zero(), err
+		return api.CirculatingSupply{}, err
 	}
 
 	cst := cbor.NewCborStore(a.Chain.Blockstore())
 	sTree, err := state.LoadStateTree(cst, st)
 
-	return a.StateManager.GetCirculatingSupply(ctx, ts.Height(), sTree)
+	return a.StateManager.GetCirculatingSupplyDetailed(ctx, ts.Height(), sTree)
 }

@@ -287,7 +287,8 @@ func (s *Syncer) storeCirculatingSupply(ctx context.Context, tipset *types.TipSe
 
 	if _, err := s.db.Exec(fmt.Sprintf(ceInsert,
 		tipset.ParentState().String(),
-		supply.String(),
+		// TODO: Include all the details maybe?
+		supply.FilCirculating.String(),
 	)); err != nil {
 		return xerrors.Errorf("insert circulating supply for tipset (%s): %w", tipset.Key().String(), err)
 	}

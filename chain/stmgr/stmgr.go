@@ -984,34 +984,34 @@ func GetFilBurnt(ctx context.Context, st *state.StateTree) (abi.TokenAmount, err
 	return burnt.Balance, nil
 }
 
-func (sm *StateManager) GetCirculatingSupply(ctx context.Context, height abi.ChainEpoch, st *state.StateTree) (abi.TokenAmount, error) {
+func (sm *StateManager) GetCirculatingSupplyDetailed(ctx context.Context, height abi.ChainEpoch, st *state.StateTree) (api.CirculatingSupply, error) {
 	sm.genesisMsigLk.Lock()
 	defer sm.genesisMsigLk.Unlock()
 	if sm.genInfo == nil {
 		err := sm.setupGenesisActors(ctx)
 		if err != nil {
-			return big.Zero(), xerrors.Errorf("failed to setup genesis information: %w", err)
+			return api.CirculatingSupply{}, xerrors.Errorf("failed to setup genesis information: %w", err)
 		}
 	}
 
 	filVested, err := sm.GetFilVested(ctx, height, st)
 	if err != nil {
-		return big.Zero(), xerrors.Errorf("failed to calculate filVested: %w", err)
+		return api.CirculatingSupply{}, xerrors.Errorf("failed to calculate filVested: %w", err)
 	}
 
 	filMined, err := GetFilMined(ctx, st)
 	if err != nil {
-		return big.Zero(), xerrors.Errorf("failed to calculate filMined: %w", err)
+		return api.CirculatingSupply{}, xerrors.Errorf("failed to calculate filMined: %w", err)
 	}
 
 	filBurnt, err := GetFilBurnt(ctx, st)
 	if err != nil {
-		return big.Zero(), xerrors.Errorf("failed to calculate filBurnt: %w", err)
+		return api.CirculatingSupply{}, xerrors.Errorf("failed to calculate filBurnt: %w", err)
 	}
 
 	filLocked, err := sm.GetFilLocked(ctx, st)
 	if err != nil {
-		return big.Zero(), xerrors.Errorf("failed to calculate filLocked: %w", err)
+		return api.CirculatingSupply{}, xerrors.Errorf("failed to calculate filLocked: %w", err)
 	}
 
 	ret := types.BigAdd(filVested, filMined)
@@ -1022,5 +1022,20 @@ func (sm *StateManager) GetCirculatingSupply(ctx context.Context, height abi.Cha
 		ret = big.Zero()
 	}
 
-	return ret, nil
+	return api.CirculatingSupply{
+		FilVested:      filVested,
+		FilMined:       filMined,
+		FilBurnt:       filBurnt,
+		FilLocked:      filLocked,
+		FilCirculating: ret,
+	}, nil
+}
+
+func (sm *StateManager) GetCirculatingSupply(ctx context.Context, height abi.ChainEpoch, st *state.StateTree) (abi.TokenAmount, error) {
+	csi, err := sm.GetCirculatingSupplyDetailed(ctx, height, st)
+	if err != nil {
+		return big.Zero(), err
+	}
+
+	return csi.FilCirculating, nil
 }

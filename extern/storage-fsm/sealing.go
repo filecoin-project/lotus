@@ -146,7 +146,7 @@ func (m *Sealing) AddPieceToAnySector(ctx context.Context, size abi.UnpaddedPiec
 	}
 
 	for _, p := range pads {
-		err = m.addPiece(ctx, sid, p.Unpadded(), m.pledgeReader(p.Unpadded()), nil)
+		err = m.addPiece(ctx, sid, p.Unpadded(), NewNullReader(p.Unpadded()), nil)
 		if err != nil {
 			m.unsealedInfoMap.mux.Unlock()
 			return 0, 0, xerrors.Errorf("writing pads: %w", err)
