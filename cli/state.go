@@ -1516,11 +1516,11 @@ var stateCircSupplyCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Println("Circulating supply: ", circ.FilCirculating)
-		fmt.Println("Mined: ", circ.FilMined)
-		fmt.Println("Vested: ", circ.FilVested)
-		fmt.Println("Burnt: ", circ.FilBurnt)
-		fmt.Println("Locked: ", circ.FilLocked)
+		fmt.Println("Circulating supply: ", types.FIL(circ.FilCirculating))
+		fmt.Println("Mined: ", types.FIL(circ.FilMined))
+		fmt.Println("Vested: ", types.FIL(circ.FilVested))
+		fmt.Println("Burnt: ", types.FIL(circ.FilBurnt))
+		fmt.Println("Locked: ", types.FIL(circ.FilLocked))
 
 		return nil
 	},
