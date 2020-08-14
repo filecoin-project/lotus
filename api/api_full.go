@@ -609,14 +609,15 @@ type MethodCall struct {
 }
 
 type StartDealParams struct {
-	Data              *storagemarket.DataRef
-	Wallet            address.Address
-	Miner             address.Address
-	EpochPrice        types.BigInt
-	MinBlocksDuration uint64
-	DealStartEpoch    abi.ChainEpoch
-	FastRetrieval     bool
-	VerifiedDeal      bool
+	Data               *storagemarket.DataRef
+	Wallet             address.Address
+	Miner              address.Address
+	EpochPrice         types.BigInt
+	MinBlocksDuration  uint64
+	ProviderCollateral big.Int
+	DealStartEpoch     abi.ChainEpoch
+	FastRetrieval      bool
+	VerifiedDeal       bool
 }
 
 type IpldObject struct {
