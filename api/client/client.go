@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"time"
 
 	"github.com/filecoin-project/go-jsonrpc"
 
@@ -66,14 +67,15 @@ func NewWorkerRPC(addr string, requestHeader http.Header) (api.WorkerAPI, jsonrp
 
 	u.Path = path.Join(u.Path, "../streams/v0/push")
 
-	readerEncoder := rpcenc.ReaderParamEncoder(u.String())
-
 	var res apistruct.WorkerStruct
 	closer, err := jsonrpc.NewMergeClient(addr, "Filecoin",
 		[]interface{}{
 			&res.Internal,
 		},
-		requestHeader, readerEncoder,
+		requestHeader,
+		rpcenc.ReaderParamEncoder(u.String()),
+		jsonrpc.WithNoReconnect(),
+		jsonrpc.WithWriteTimeout(30 * time.Second),
 	)
 
 	return &res, closer, err
