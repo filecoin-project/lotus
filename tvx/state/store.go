@@ -19,8 +19,10 @@ import (
 	"github.com/ipfs/go-merkledag"
 )
 
-// ProxyingStores implements the ipld store where unknown items are fetched over the node API.
-type ProxyingStores struct {
+// Stores is a collection of the different stores and services that are needed
+// to deal with the data layer of Filecoin, conveniently interlinked with one
+// another.
+type Stores struct {
 	CBORStore    cbor.IpldStore
 	ADTStore     adt.Store
 	Datastore    ds.Batching
@@ -28,6 +30,33 @@ type ProxyingStores struct {
 	BlockService blockservice.BlockService
 	Exchange     exchange.Interface
 	DAGService   format.DAGService
+}
+
+func newStores(ctx context.Context, ds ds.Batching, bs blockstore.Blockstore) *Stores {
+	var (
+		cborstore = cbor.NewCborStore(bs)
+		offl      = offline.Exchange(bs)
+		blkserv   = blockservice.New(bs, offl)
+		dserv     = merkledag.NewDAGService(blkserv)
+	)
+
+	return &Stores{
+		CBORStore:    cborstore,
+		ADTStore:     adt.WrapStore(ctx, cborstore),
+		Datastore:    ds,
+		Blockstore:   bs,
+		Exchange:     offl,
+		BlockService: blkserv,
+		DAGService:   dserv,
+	}
+}
+
+// NewLocalStores creates a Stores object that operates entirely in-memory with
+// no read-through remote fetch fallback.
+func NewLocalStores(ctx context.Context) *Stores {
+	ds := ds.NewMapDatastore()
+	bs := blockstore.NewBlockstore(ds)
+	return newStores(ctx, ds, bs)
 }
 
 type proxyingBlockstore struct {
@@ -60,12 +89,9 @@ func (pb *proxyingBlockstore) Get(cid cid.Cid) (blocks.Block, error) {
 	return block, nil
 }
 
-// NewProxyingStore is a blockstore that proxies get requests for unknown CIDs
+// NewProxyingStore is a Stores that proxies get requests for unknown CIDs
 // to a Filecoin node, via the ChainReadObj RPC.
-//
-// It also contains all possible stores, services and gadget that IPLD
-// requires (quite a handful).
-func NewProxyingStore(ctx context.Context, api api.FullNode) *ProxyingStores {
+func NewProxyingStore(ctx context.Context, api api.FullNode) *Stores {
 	ds := ds.NewMapDatastore()
 
 	bs := &proxyingBlockstore{
@@ -74,20 +100,5 @@ func NewProxyingStore(ctx context.Context, api api.FullNode) *ProxyingStores {
 		Blockstore: blockstore.NewBlockstore(ds),
 	}
 
-	var (
-		cborstore = cbor.NewCborStore(bs)
-		offl      = offline.Exchange(bs)
-		blkserv   = blockservice.New(bs, offl)
-		dserv     = merkledag.NewDAGService(blkserv)
-	)
-
-	return &ProxyingStores{
-		CBORStore:    cborstore,
-		ADTStore:     adt.WrapStore(ctx, cborstore),
-		Datastore:    ds,
-		Blockstore:   bs,
-		Exchange:     offl,
-		BlockService: blkserv,
-		DAGService:   dserv,
-	}
+	return newStores(ctx, ds, bs)
 }

@@ -26,12 +26,12 @@ import (
 type Surgeon struct {
 	ctx    context.Context
 	api    api.FullNode
-	stores *ProxyingStores
+	stores *Stores
 }
 
 // NewSurgeon returns a state surgeon, an object used to fetch and manipulate
 // state.
-func NewSurgeon(ctx context.Context, api api.FullNode, stores *ProxyingStores) *Surgeon {
+func NewSurgeon(ctx context.Context, api api.FullNode, stores *Stores) *Surgeon {
 	return &Surgeon{
 		ctx:    ctx,
 		api:    api,

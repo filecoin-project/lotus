@@ -26,9 +26,7 @@ func suiteMessages(c *cli.Context) error {
 	var err *multierror.Error
 	err = multierror.Append(MessageTest_AccountActorCreation())
 	err = multierror.Append(MessageTest_InitActorSequentialIDAddressCreate())
-	err = multierror.Append(MessageTest_MessageApplicationEdgecases())
 	err = multierror.Append(MessageTest_MultiSigActor())
-	err = multierror.Append(MessageTest_Paych())
 	err = multierror.Append(MessageTest_ValueTransferSimple())
 	err = multierror.Append(MessageTest_ValueTransferAdvance())
 	err = multierror.Append(MessageTest_NestedSends())
