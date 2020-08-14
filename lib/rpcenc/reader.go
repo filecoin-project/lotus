@@ -100,6 +100,7 @@ func ReaderParamDecoder() (http.HandlerFunc, jsonrpc.ServerOption) {
 		u, err := uuid.Parse(strId)
 		if err != nil {
 			http.Error(resp, fmt.Sprintf("parsing reader uuid: %s", err), 400)
+			return
 		}
 
 		readersLk.Lock()
