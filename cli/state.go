@@ -67,6 +67,7 @@ var stateCmd = &cli.Command{
 		stateWaitMsgCmd,
 		stateSearchMsgCmd,
 		stateMinerInfo,
+		stateMarketCmd,
 	},
 }
 
@@ -1520,6 +1521,49 @@ var stateCircSupplyCmd = &cli.Command{
 		fmt.Println("Vested: ", circ.FilVested)
 		fmt.Println("Burnt: ", circ.FilBurnt)
 		fmt.Println("Locked: ", circ.FilLocked)
+
+		return nil
+	},
+}
+
+var stateMarketCmd = &cli.Command{
+	Name:  "market",
+	Usage: "Inspect the storage market actor",
+	Subcommands: []*cli.Command{
+		stateMarketBalanceCmd,
+	},
+}
+
+var stateMarketBalanceCmd = &cli.Command{
+	Name:  "balance",
+	Usage: "Get the market balance (locked and escrowed) for a given account",
+	Action: func(cctx *cli.Context) error {
+		if !cctx.Args().Present() {
+			return ShowHelp(cctx, fmt.Errorf("must specify address to print market balance for"))
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		ts, err := LoadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
+
+		addr, err := address.NewFromString(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		balance, err := api.StateMarketBalance(ctx, addr, ts.Key())
+
+		fmt.Printf("Escrow: %s\n", types.FIL(balance.Escrow))
+		fmt.Printf("Locked: %s\n", types.FIL(balance.Locked))
 
 		return nil
 	},
