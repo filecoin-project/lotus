@@ -2,8 +2,6 @@ package main
 
 import (
 	"bytes"
-	"os"
-	//"fmt"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/vm"
@@ -13,17 +11,14 @@ import (
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
-	"github.com/filecoin-project/specs-actors/actors/runtime"
-	typegen "github.com/whyrusleeping/cbor-gen"
-	//"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	"github.com/filecoin-project/specs-actors/actors/puppet"
+	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
+	typegen "github.com/whyrusleeping/cbor-gen"
 
 	. "github.com/filecoin-project/oni/tvx/builders"
-	"github.com/filecoin-project/oni/tvx/schema"
-	//"github.com/davecgh/go-spew/spew"
 )
 
 var (
@@ -42,63 +37,7 @@ func init() {
 	}
 }
 
-func main() {
-	nestedSends_OkBasic()
-	nestedSends_OkToNewActor()
-	nestedSends_OkToNewActorWithInvoke()
-	nestedSends_OkRecursive()
-	nestedSends_OKNonCBORParamsWithTransfer()
-
-	// TODO: Tests to exercise invalid "syntax" of the inner message.
-	// These would fail message syntax validation if the message were top-level.
-	//
-	// Some of these require handcrafting the proposal params serialization.
-	// - malformed address: zero-length, one-length, too-short pubkeys, invalid UVarints, ...
-	// - negative method num
-	//
-	// Unfortunately the multisig actor can't be used to trigger a negative-value internal transfer because
-	// it checks just before sending.
-	// We need a custom actor for staging whackier messages.
-
-	//
-	// The following tests exercise invalid semantics of the inner message
-	//
-
-	nestedSends_FailNonexistentIDAddress()
-	nestedSends_FailNonexistentActorAddress()
-	nestedSends_FailInvalidMethodNumNewActor()
-	nestedSends_FailInvalidMethodNumForActor()
-
-	// The multisig actor checks before attempting to transfer more than its balance, so we can't exercise that
-	// the VM also checks this. Need a custome actor to exercise this.
-	//t.Run("fail insufficient funds", func(t *testing.T) {
-	//	td := builder.Build(t)
-	//	defer td.Complete()
-	//
-	//	stage := prepareStage(td, acctDefaultBalance, multisigBalance)
-	//	balanceBefore := td.GetBalance(stage.creator)
-	//
-	//	// Attempt to transfer from the multisig more than the balance it has.
-	//	// The proposal to do should succeed, but the inner message fail.
-	//	amtSent := big.Add(multisigBalance, abi.NewTokenAmount(1))
-	//	result := stage.send(stage.creator, amtSent, builtin.MethodSend, nil, nonce)
-	//	assert.Equal(t, exitcode_spec.Ok, result.Receipt.ExitCode)
-	//
-	//	td.AssertBalance(stage.msAddr, multisigBalance)                                       // No change.
-	//	td.AssertBalance(stage.creator, big.Sub(balanceBefore, result.Receipt.GasUsed.Big())) // Pay gas, don't receive funds.
-	//})
-
-	nestedSends_FailMissingParams()
-	nestedSends_FailMismatchParams()
-	nestedSends_FailInnerAbort()
-	nestedSends_FailAbortedExec()
-	nestedSends_FailInsufficientFundsForTransferInInnerSend()
-}
-
-func nestedSends_OkBasic() {
-	metadata := &schema.Metadata{ID: "nested-sends-ok-basic", Version: "v1", Desc: ""}
-
-	v := MessageVector(metadata)
+func nestedSends_OkBasic(v *Builder) {
 	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPrice(1))
 
 	stage := prepareStage(v, acctDefaultBalance, multisigBalance)
@@ -111,14 +50,9 @@ func nestedSends_OkBasic() {
 	//td.AssertActor(stage.creator, big.Sub(big.Add(balanceBefore, amtSent), result.Receipt.GasUsed.Big()), nonce+1)
 	v.Assert.NonceEq(stage.creator, nonce+1)
 	v.Assert.BalanceEq(stage.creator, big.Sub(big.Add(balanceBefore, amtSent), big.NewInt(result.MessageReceipt.GasUsed)))
-
-	v.Finish(os.Stdout)
 }
 
-func nestedSends_OkToNewActor() {
-	metadata := &schema.Metadata{ID: "nested-sends-ok-to-new-actor", Version: "v1", Desc: ""}
-
-	v := MessageVector(metadata)
+func nestedSends_OkToNewActor(v *Builder) {
 	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPrice(1))
 
 	stage := prepareStage(v, acctDefaultBalance, multisigBalance)
@@ -132,14 +66,9 @@ func nestedSends_OkToNewActor() {
 	v.Assert.BalanceEq(stage.msAddr, big.Sub(multisigBalance, amtSent))
 	v.Assert.BalanceEq(stage.creator, big.Sub(balanceBefore, big.NewInt(result.MessageReceipt.GasUsed)))
 	v.Assert.BalanceEq(newAddr, amtSent)
-
-	v.Finish(os.Stdout)
 }
 
-func nestedSends_OkToNewActorWithInvoke() {
-	metadata := &schema.Metadata{ID: "nested-sends-ok-to-new-actor-with-invoke", Version: "v1", Desc: ""}
-
-	v := MessageVector(metadata)
+func nestedSends_OkToNewActorWithInvoke(v *Builder) {
 	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPrice(1))
 
 	stage := prepareStage(v, acctDefaultBalance, multisigBalance)
@@ -159,14 +88,9 @@ func nestedSends_OkToNewActorWithInvoke() {
 	v.Assert.BalanceEq(stage.msAddr, big.Sub(multisigBalance, amtSent))
 	v.Assert.BalanceEq(stage.creator, big.Sub(balanceBefore, big.NewInt(result.MessageReceipt.GasUsed)))
 	v.Assert.BalanceEq(newAddr, amtSent)
-
-	v.Finish(os.Stdout)
 }
 
-func nestedSends_OkRecursive() {
-	metadata := &schema.Metadata{ID: "nested-sends-ok-recursive", Version: "v1", Desc: ""}
-
-	v := MessageVector(metadata)
+func nestedSends_OkRecursive(v *Builder) {
 	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPrice(1))
 
 	another := v.Actors.Account(address.SECP256K1, big.Zero())
@@ -186,14 +110,9 @@ func nestedSends_OkRecursive() {
 	var st multisig.State
 	v.Actors.ActorState(stage.msAddr, &st)
 	v.Assert.Equal([]address.Address{stage.creator, another.ID}, st.Signers)
-
-	v.Finish(os.Stdout)
 }
 
-func nestedSends_OKNonCBORParamsWithTransfer() {
-	metadata := &schema.Metadata{ID: "nested-sends-ok-non-cbor-params-with-transfer", Version: "v1", Desc: ""}
-
-	v := MessageVector(metadata)
+func nestedSends_OKNonCBORParamsWithTransfer(v *Builder) {
 	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPrice(1))
 
 	stage := prepareStage(v, acctDefaultBalance, multisigBalance)
@@ -206,14 +125,9 @@ func nestedSends_OKNonCBORParamsWithTransfer() {
 
 	v.Assert.BalanceEq(stage.msAddr, big.Sub(multisigBalance, amtSent))
 	v.Assert.BalanceEq(newAddr, amtSent)
-
-	v.Finish(os.Stdout)
 }
 
-func nestedSends_FailNonexistentIDAddress() {
-	metadata := &schema.Metadata{ID: "nested-sends-fail-nonexistent-id-address", Version: "v1", Desc: ""}
-
-	v := MessageVector(metadata)
+func nestedSends_FailNonexistentIDAddress(v *Builder) {
 	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPrice(1))
 
 	stage := prepareStage(v, acctDefaultBalance, multisigBalance)
@@ -224,14 +138,9 @@ func nestedSends_FailNonexistentIDAddress() {
 
 	v.Assert.BalanceEq(stage.msAddr, multisigBalance) // No change.
 	v.Assert.ActorMissing(newAddr)
-
-	v.Finish(os.Stdout)
 }
 
-func nestedSends_FailNonexistentActorAddress() {
-	metadata := &schema.Metadata{ID: "nested-sends-fail-nonexistent-actor-address", Version: "v1", Desc: ""}
-
-	v := MessageVector(metadata)
+func nestedSends_FailNonexistentActorAddress(v *Builder) {
 	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPrice(1))
 
 	stage := prepareStage(v, acctDefaultBalance, multisigBalance)
@@ -242,14 +151,9 @@ func nestedSends_FailNonexistentActorAddress() {
 
 	v.Assert.BalanceEq(stage.msAddr, multisigBalance) // No change.
 	v.Assert.ActorMissing(newAddr)
-
-	v.Finish(os.Stdout)
 }
 
-func nestedSends_FailInvalidMethodNumNewActor() {
-	metadata := &schema.Metadata{ID: "nested-sends-fail-invalid-methodnum-new-actor", Version: "v1", Desc: ""}
-
-	v := MessageVector(metadata)
+func nestedSends_FailInvalidMethodNumNewActor(v *Builder) {
 	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPrice(1))
 
 	stage := prepareStage(v, acctDefaultBalance, multisigBalance)
@@ -260,14 +164,9 @@ func nestedSends_FailInvalidMethodNumNewActor() {
 
 	v.Assert.BalanceEq(stage.msAddr, multisigBalance) // No change.
 	v.Assert.ActorMissing(newAddr)
-
-	v.Finish(os.Stdout)
 }
 
-func nestedSends_FailInvalidMethodNumForActor() {
-	metadata := &schema.Metadata{ID: "nested-sends-fail-invalid-methodnum-for-actor", Version: "v1", Desc: ""}
-
-	v := MessageVector(metadata)
+func nestedSends_FailInvalidMethodNumForActor(v *Builder) {
 	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPrice(1))
 
 	stage := prepareStage(v, acctDefaultBalance, multisigBalance)
@@ -278,14 +177,9 @@ func nestedSends_FailInvalidMethodNumForActor() {
 
 	v.Assert.BalanceEq(stage.msAddr, multisigBalance)                                                    // No change.
 	v.Assert.BalanceEq(stage.creator, big.Sub(balanceBefore, big.NewInt(result.MessageReceipt.GasUsed))) // Pay gas, don't receive funds.
-
-	v.Finish(os.Stdout)
 }
 
-func nestedSends_FailMissingParams() {
-	metadata := &schema.Metadata{ID: "nested-sends-fail-missing-params", Version: "v1", Desc: ""}
-
-	v := MessageVector(metadata)
+func nestedSends_FailMissingParams(v *Builder) {
 	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPrice(1))
 
 	stage := prepareStage(v, acctDefaultBalance, multisigBalance)
@@ -298,14 +192,9 @@ func nestedSends_FailMissingParams() {
 	v.Assert.BalanceEq(stage.creator, big.Sub(balanceBefore, big.NewInt(result.MessageReceipt.GasUsed)))
 	v.Assert.BalanceEq(stage.msAddr, multisigBalance) // No change.
 	v.Assert.Equal(1, len(stage.state().Signers))     // No new signers
-
-	v.Finish(os.Stdout)
 }
 
-func nestedSends_FailMismatchParams() {
-	metadata := &schema.Metadata{ID: "nested-sends-fail-mismatched-params", Version: "v1", Desc: ""}
-
-	v := MessageVector(metadata)
+func nestedSends_FailMismatchParams(v *Builder) {
 	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPrice(1))
 
 	stage := prepareStage(v, acctDefaultBalance, multisigBalance)
@@ -324,14 +213,9 @@ func nestedSends_FailMismatchParams() {
 	v.Assert.BalanceEq(stage.creator, big.Sub(balanceBefore, big.NewInt(result.MessageReceipt.GasUsed)))
 	v.Assert.BalanceEq(stage.msAddr, multisigBalance) // No change.
 	v.Assert.Equal(1, len(stage.state().Signers))     // No new signers
-
-	v.Finish(os.Stdout)
 }
 
-func nestedSends_FailInnerAbort() {
-	metadata := &schema.Metadata{ID: "nested-sends-fail-inner-abort", Version: "v1", Desc: ""}
-
-	v := MessageVector(metadata)
+func nestedSends_FailInnerAbort(v *Builder) {
 	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPrice(1))
 
 	stage := prepareStage(v, acctDefaultBalance, multisigBalance)
@@ -348,14 +232,9 @@ func nestedSends_FailInnerAbort() {
 
 	v.Assert.BalanceEq(stage.msAddr, multisigBalance) // No change.
 	v.Assert.HeadEq(builtin.RewardActorAddr, prevHead)
-
-	v.Finish(os.Stdout)
 }
 
-func nestedSends_FailAbortedExec() {
-	metadata := &schema.Metadata{ID: "nested-sends-fail-aborted-exec", Version: "v1", Desc: ""}
-
-	v := MessageVector(metadata)
+func nestedSends_FailAbortedExec(v *Builder) {
 	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPrice(1))
 
 	stage := prepareStage(v, acctDefaultBalance, multisigBalance)
@@ -376,14 +255,9 @@ func nestedSends_FailAbortedExec() {
 
 	v.Assert.BalanceEq(stage.msAddr, multisigBalance) // No change.
 	v.Assert.HeadEq(builtin.InitActorAddr, prevHead)  // Init state unchanged.
-
-	v.Finish(os.Stdout)
 }
 
-func nestedSends_FailInsufficientFundsForTransferInInnerSend() {
-	metadata := &schema.Metadata{ID: "nested-sends-fail-insufficient-funds-for-transfer-in-inner-send", Version: "v1", Desc: ""}
-
-	v := MessageVector(metadata)
+func nestedSends_FailInsufficientFundsForTransferInInnerSend(v *Builder) {
 	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPrice(1))
 
 	// puppet actor has zero funds
@@ -421,8 +295,6 @@ func nestedSends_FailInsufficientFundsForTransferInInnerSend() {
 	// alice should be charged for the gas cost and bob should have not received any funds.
 	v.Assert.BalanceEq(alice.ID, big.Sub(acctDefaultBalance, big.NewInt(msg.Result.GasUsed)))
 	v.Assert.BalanceEq(bob.ID, big.Zero())
-
-	v.Finish(os.Stdout)
 }
 
 type msStage struct {

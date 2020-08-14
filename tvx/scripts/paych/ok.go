@@ -1,8 +1,6 @@
 package main
 
 import (
-	"os"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
@@ -12,13 +10,9 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 
 	. "github.com/filecoin-project/oni/tvx/builders"
-	"github.com/filecoin-project/oni/tvx/schema"
 )
 
-func happyPathCreate() {
-	metadata := &schema.Metadata{ID: "paych-create-ok", Version: "v1", Desc: "payment channel create"}
-
-	v := MessageVector(metadata)
+func happyPathCreate(v *Builder) {
 	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPrice(1))
 
 	// Set up sender and receiver accounts.
@@ -47,12 +41,10 @@ func happyPathCreate() {
 	v.Assert.Equal(sender.ID, state.From)
 	v.Assert.Equal(receiver.ID, state.To)
 	v.Assert.Equal(toSend, actor.Balance)
-
-	v.Finish(os.Stdout)
 }
 
-func happyPathUpdate() {
-	metadata := &schema.Metadata{ID: "paych-update-ok", Version: "v1", Desc: "payment channel update"}
+func happyPathUpdate(v *Builder) {
+	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPrice(1))
 
 	var (
 		timelock = abi.ChainEpoch(0)
@@ -64,9 +56,6 @@ func happyPathUpdate() {
 	// Set up sender and receiver accounts.
 	var sender, receiver AddressHandle
 	var paychAddr AddressHandle
-
-	v := MessageVector(metadata)
-	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPrice(1))
 
 	v.Actors.AccountN(address.SECP256K1, initialBal, &sender, &receiver)
 	paychAddr = AddressHandle{
@@ -112,14 +101,9 @@ func happyPathUpdate() {
 	v.Assert.Equal(amount, ls.Redeemed)
 	v.Assert.Equal(nonce, ls.Nonce)
 	v.Assert.Equal(lane, ls.ID)
-
-	v.Finish(os.Stdout)
 }
 
-func happyPathCollect() {
-	metadata := &schema.Metadata{ID: "paych-collect-ok", Version: "v1", Desc: "payment channel collect"}
-
-	v := MessageVector(metadata)
+func happyPathCollect(v *Builder) {
 	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPrice(1))
 
 	// Set up sender and receiver accounts.
@@ -169,6 +153,4 @@ func happyPathCollect() {
 	// the paych actor should have been deleted after the collect
 	v.Assert.ActorMissing(paychAddr.Robust)
 	v.Assert.ActorMissing(paychAddr.ID)
-
-	v.Finish(os.Stdout)
 }
