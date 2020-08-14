@@ -356,8 +356,8 @@ var clientDealCmd = &cli.Command{
 		}
 
 		var provCol big.Int
-		if pcs := cctx.String("provider-collateral"); pc != "" {
-			pc, err := big.FromString(pc)
+		if pcs := cctx.String("provider-collateral"); pcs != "" {
+			pc, err := big.FromString(pcs)
 			if err != nil {
 				return fmt.Errorf("failed to parse provider-collateral: %w", err)
 			}
