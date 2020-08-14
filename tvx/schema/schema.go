@@ -1,7 +1,7 @@
 package schema
 
 import (
-	"encoding/hex"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 
@@ -47,10 +47,8 @@ type StateTree struct {
 	RootCID cid.Cid `json:"root_cid"`
 }
 
-// HexEncodedBytes is a hex-encoded binary value.
-//
-// TODO may switch to base64 or base85 for efficiency.
-type HexEncodedBytes []byte
+// Base64EncodedBytes is a base64-encoded binary value.
+type Base64EncodedBytes []byte
 
 // Preconditions contain a representation of VM state at the beginning of the test
 type Preconditions struct {
@@ -60,9 +58,9 @@ type Preconditions struct {
 
 // Receipt represents a receipt to match against.
 type Receipt struct {
-	ExitCode    exitcode.ExitCode `json:"exit_code"`
-	ReturnValue HexEncodedBytes   `json:"return"`
-	GasUsed     int64             `json:"gas_used"`
+	ExitCode    exitcode.ExitCode  `json:"exit_code"`
+	ReturnValue Base64EncodedBytes `json:"return"`
+	GasUsed     int64              `json:"gas_used"`
 }
 
 // Postconditions contain a representation of VM state at th end of the test
@@ -71,23 +69,23 @@ type Postconditions struct {
 	Receipts  []*Receipt `json:"receipts"`
 }
 
-// MarshalJSON implements json.Marshal for HexEncodedBytes
-func (heb HexEncodedBytes) MarshalJSON() ([]byte, error) {
-	return json.Marshal(hex.EncodeToString(heb))
+// MarshalJSON implements json.Marshal for Base64EncodedBytes
+func (beb Base64EncodedBytes) MarshalJSON() ([]byte, error) {
+	return json.Marshal(base64.StdEncoding.EncodeToString(beb))
 }
 
-// UnmarshalJSON implements json.Unmarshal for HexEncodedBytes
-func (heb *HexEncodedBytes) UnmarshalJSON(v []byte) error {
+// UnmarshalJSON implements json.Unmarshal for Base64EncodedBytes
+func (beb *Base64EncodedBytes) UnmarshalJSON(v []byte) error {
 	var s string
 	if err := json.Unmarshal(v, &s); err != nil {
 		return err
 	}
 
-	bytes, err := hex.DecodeString(s)
+	bytes, err := base64.StdEncoding.DecodeString(s)
 	if err != nil {
 		return err
 	}
-	*heb = bytes
+	*beb = bytes
 	return nil
 }
 
@@ -100,7 +98,7 @@ type TestVector struct {
 	// CAR binary data to be loaded into the test environment, usually a CAR
 	// containing multiple state trees, addressed by root CID from the relevant
 	// objects.
-	CAR HexEncodedBytes `json:"car_hex"`
+	CAR Base64EncodedBytes `json:"car"`
 
 	Pre           *Preconditions  `json:"preconditions"`
 	ApplyMessages []Message       `json:"apply_messages"`
@@ -108,8 +106,8 @@ type TestVector struct {
 }
 
 type Message struct {
-	Bytes HexEncodedBytes `json:"bytes"`
-	Epoch *abi.ChainEpoch `json:"epoch,omitempty"`
+	Bytes Base64EncodedBytes `json:"bytes"`
+	Epoch *abi.ChainEpoch    `json:"epoch,omitempty"`
 }
 
 // Validate validates this test vector against the JSON schema, and applies
