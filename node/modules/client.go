@@ -21,7 +21,6 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/funds"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/requestvalidation"
 	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
-	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/go-storedcounter"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
@@ -101,18 +100,9 @@ func NewClientGraphsyncDataTransfer(lc fx.Lifecycle, h host.Host, gs dtypes.Grap
 	return dt, nil
 }
 
-// NewClientDealStore creates a statestore for the client to store its deals
-func NewClientDealStore(ds dtypes.ClientDatastore) dtypes.ClientDealStore {
-	return statestore.New(ds)
-}
-
 // NewClientDatastore creates a datastore for the client to store its deals
 func NewClientDatastore(ds dtypes.MetadataDS) dtypes.ClientDatastore {
 	return namespace.Wrap(ds, datastore.NewKey("/deals/client"))
-}
-
-func NewClientRequestValidator(deals dtypes.ClientDealStore) dtypes.ClientRequestValidator {
-	return requestvalidation.NewUnifiedRequestValidator(nil, deals)
 }
 
 type ClientDealFunds funds.DealFunds
