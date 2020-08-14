@@ -323,9 +323,9 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 	}
 
 	params := &miner.SubmitWindowedPoStParams{
-		Deadline:         di.Index,
-		Partitions:       make([]miner.PoStPartition, 0, len(partitions)),
-		Proofs:           nil,
+		Deadline:   di.Index,
+		Partitions: make([]miner.PoStPartition, 0, len(partitions)),
+		Proofs:     nil,
 	}
 
 	var sinfos []abi.SectorInfo

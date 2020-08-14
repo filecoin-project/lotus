@@ -29,6 +29,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
+	"github.com/filecoin-project/lotus/lib/rpcenc"
 	"github.com/filecoin-project/lotus/node/repo"
 	sectorstorage "github.com/filecoin-project/sector-storage"
 	"github.com/filecoin-project/sector-storage/sealtasks"
@@ -104,6 +105,11 @@ var runCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name:  "no-local-storage",
 			Usage: "don't use storageminer repo for sector storage",
+		},
+		&cli.BoolFlag{
+			Name:  "addpiece",
+			Usage: "enable addpiece",
+			Value: true,
 		},
 		&cli.BoolFlag{
 			Name:  "precommit1",
@@ -204,6 +210,9 @@ var runCmd = &cli.Command{
 
 		taskTypes = append(taskTypes, sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTFinalize)
 
+		if cctx.Bool("addpiece") {
+			taskTypes = append(taskTypes, sealtasks.TTAddPiece)
+		}
 		if cctx.Bool("precommit1") {
 			taskTypes = append(taskTypes, sealtasks.TTPreCommit1)
 		}
@@ -337,10 +346,12 @@ var runCmd = &cli.Command{
 
 		log.Info("Setting up control endpoint at " + address)
 
-		rpcServer := jsonrpc.NewServer()
+		readerHandler, readerServerOpt := rpcenc.ReaderParamDecoder()
+		rpcServer := jsonrpc.NewServer(readerServerOpt)
 		rpcServer.Register("Filecoin", apistruct.PermissionedWorkerAPI(workerApi))
 
 		mux.Handle("/rpc/v0", rpcServer)
+		mux.Handle("/rpc/streams/v0/push/{uuid}", readerHandler)
 		mux.PathPrefix("/remote").HandlerFunc((&stores.FetchHandler{Local: localStore}).ServeHTTP)
 		mux.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
 

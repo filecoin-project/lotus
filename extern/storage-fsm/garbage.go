@@ -2,18 +2,11 @@ package sealing
 
 import (
 	"context"
-	"io"
 
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
-
-	nr "github.com/filecoin-project/storage-fsm/lib/nullreader"
 )
-
-func (m *Sealing) pledgeReader(size abi.UnpaddedPieceSize) io.Reader {
-	return io.LimitReader(&nr.Reader{}, int64(size))
-}
 
 func (m *Sealing) pledgeSector(ctx context.Context, sectorID abi.SectorID, existingPieceSizes []abi.UnpaddedPieceSize, sizes ...abi.UnpaddedPieceSize) ([]abi.PieceInfo, error) {
 	if len(sizes) == 0 {
@@ -24,7 +17,7 @@ func (m *Sealing) pledgeSector(ctx context.Context, sectorID abi.SectorID, exist
 
 	out := make([]abi.PieceInfo, len(sizes))
 	for i, size := range sizes {
-		ppi, err := m.sealer.AddPiece(ctx, sectorID, existingPieceSizes, size, m.pledgeReader(size))
+		ppi, err := m.sealer.AddPiece(ctx, sectorID, existingPieceSizes, size, NewNullReader(size))
 		if err != nil {
 			return nil, xerrors.Errorf("add piece: %w", err)
 		}
