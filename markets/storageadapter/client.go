@@ -5,6 +5,7 @@ package storageadapter
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 
 	"golang.org/x/xerrors"
 
@@ -230,7 +231,7 @@ func (c *ClientNodeAdapter) DealProviderCollateralBounds(ctx context.Context, si
 		return abi.TokenAmount{}, abi.TokenAmount{}, err
 	}
 
-	return bounds.Min, bounds.Max, nil
+	return big.Mul(bounds.Min, big.NewInt(2)), bounds.Max, nil
 }
 
 func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealId abi.DealID, cb storagemarket.DealSectorCommittedCallback) error {
