@@ -359,7 +359,7 @@ type FullNode interface {
 	StateDealProviderCollateralBounds(context.Context, abi.PaddedPieceSize, bool, types.TipSetKey) (DealCollateralBounds, error)
 
 	// StateCirculatingSupply returns the circulating supply of Filecoin at the given tipset
-	StateCirculatingSupply(context.Context, types.TipSetKey) (abi.TokenAmount, error)
+	StateCirculatingSupply(context.Context, types.TipSetKey) (CirculatingSupply, error)
 
 	// MethodGroup: Msig
 	// The Msig methods are used to interact with multisig wallets on the
@@ -672,6 +672,14 @@ type ComputeStateOutput struct {
 type DealCollateralBounds struct {
 	Min abi.TokenAmount
 	Max abi.TokenAmount
+}
+
+type CirculatingSupply struct {
+	FilVested      abi.TokenAmount
+	FilMined       abi.TokenAmount
+	FilBurnt       abi.TokenAmount
+	FilLocked      abi.TokenAmount
+	FilCirculating abi.TokenAmount
 }
 
 type MiningBaseInfo struct {
