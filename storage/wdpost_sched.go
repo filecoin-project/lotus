@@ -190,8 +190,11 @@ func (s *WindowPoStScheduler) update(ctx context.Context, new *types.TipSet) err
 
 	s.abortActivePoSt()
 
-	if di.Challenge+StartConfidence >= new.Height() {
-		log.Info("not starting windowPost yet, waiting for startconfidence", di.Challenge, di.Challenge+StartConfidence, new.Height())
+	// TODO: wait for di.Challenge here, will give us ~10min more to compute windowpost
+	//  (Need to get correct deadline above, which is tricky)
+
+	if di.Open+StartConfidence >= new.Height() {
+		log.Info("not starting windowPost yet, waiting for startconfidence", di.Open, di.Open+StartConfidence, new.Height())
 		return nil
 	}
 

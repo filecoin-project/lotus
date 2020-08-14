@@ -317,12 +317,6 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 		return nil, xerrors.Errorf("failed to get chain randomness for windowPost (ts=%d; deadline=%d): %w", ts.Height(), di, err)
 	}
 
-	commEpoch := di.Open
-	commRand, err := s.api.ChainGetRandomnessFromTickets(ctx, ts.Key(), crypto.DomainSeparationTag_PoStChainCommit, commEpoch, nil)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to get chain randomness for windowPost (ts=%d; deadline=%d): %w", ts.Height(), di, err)
-	}
-
 	partitions, err := s.api.StateMinerPartitions(ctx, s.actor, di.Index, ts.Key())
 	if err != nil {
 		return nil, xerrors.Errorf("getting partitions: %w", err)
@@ -332,8 +326,6 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 		Deadline:         di.Index,
 		Partitions:       make([]miner.PoStPartition, 0, len(partitions)),
 		Proofs:           nil,
-		ChainCommitEpoch: commEpoch,
-		ChainCommitRand:  commRand,
 	}
 
 	var sinfos []abi.SectorInfo
@@ -425,6 +417,15 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 	}
 
 	elapsed := time.Since(tsStart)
+
+	commEpoch := di.Open
+	commRand, err := s.api.ChainGetRandomnessFromTickets(ctx, ts.Key(), crypto.DomainSeparationTag_PoStChainCommit, commEpoch, nil)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get chain randomness for windowPost (ts=%d; deadline=%d): %w", ts.Height(), di, err)
+	}
+	params.ChainCommitEpoch = commEpoch
+	params.ChainCommitRand = commRand
+
 	log.Infow("submitting window PoSt", "elapsed", elapsed)
 
 	return params, nil
