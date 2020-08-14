@@ -3,6 +3,7 @@ package full
 import (
 	"context"
 	"math"
+	"math/rand"
 	"sort"
 
 	"github.com/filecoin-project/lotus/build"
@@ -26,7 +27,7 @@ type GasAPI struct {
 	Mpool *messagepool.MessagePool
 }
 
-const MinGasPremium = 10e3
+const MinGasPremium = 100e3
 const MaxSpendOnFeeDenom = 100
 
 func (a *GasAPI) GasEstimateFeeCap(ctx context.Context, msg *types.Message, maxqueueblks int64,
@@ -111,6 +112,7 @@ func (a *GasAPI) GasEstimateGasPremium(ctx context.Context, nblocksincl uint64,
 	at := build.BlockGasTarget * int64(blocks) / 2
 	prev := big.Zero()
 
+	premium := big.Zero()
 	for _, price := range prices {
 		at -= price.limit
 		if at > 0 {
@@ -122,17 +124,27 @@ func (a *GasAPI) GasEstimateGasPremium(ctx context.Context, nblocksincl uint64,
 			return types.BigAdd(price.price, big.NewInt(1)), nil
 		}
 
-		return types.BigAdd(big.Div(types.BigAdd(price.price, prev), types.NewInt(2)), big.NewInt(1)), nil
+		premium = types.BigAdd(big.Div(types.BigAdd(price.price, prev), types.NewInt(2)), big.NewInt(1))
 	}
 
-	switch nblocksincl {
-	case 1:
-		return types.NewInt(2 * MinGasPremium), nil
-	case 2:
-		return types.NewInt(1.5 * MinGasPremium), nil
-	default:
-		return types.NewInt(MinGasPremium), nil
+	if types.BigCmp(premium, big.Zero()) == 0 {
+		switch nblocksincl {
+		case 1:
+			premium = types.NewInt(2 * MinGasPremium)
+		case 2:
+			premium = types.NewInt(1.5 * MinGasPremium)
+		default:
+			premium = types.NewInt(MinGasPremium)
+		}
 	}
+
+	// add some noise to normalize behaviour of message selection
+	const precision = 32
+	// mean 1, stddev 0.005 => 95% within +-1%
+	noise := 1 + rand.NormFloat64()*0.005
+	premium = types.BigMul(premium, types.NewInt(uint64(noise*(1<<precision))))
+	premium = types.BigDiv(premium, types.NewInt(1<<precision))
+	return premium, nil
 }
 
 func (a *GasAPI) GasEstimateGasLimit(ctx context.Context, msgIn *types.Message, _ types.TipSetKey) (int64, error) {

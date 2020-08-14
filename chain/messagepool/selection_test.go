@@ -755,9 +755,9 @@ func TestOptimalMessageSelection2(t *testing.T) {
 	nMessages := int(5 * build.BlockGasLimit / gasLimit)
 	for i := 0; i < nMessages; i++ {
 		bias := (nMessages - i) / 3
-		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(10000+i%3+bias))
+		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(200000+i%3+bias))
 		mustAdd(t, mp, m)
-		m = makeTestMessage(w2, a2, a1, uint64(i), gasLimit, uint64(1+i%3+bias))
+		m = makeTestMessage(w2, a2, a1, uint64(i), gasLimit, uint64(190000+i%3+bias))
 		mustAdd(t, mp, m)
 	}
 
@@ -771,16 +771,26 @@ func TestOptimalMessageSelection2(t *testing.T) {
 		t.Fatalf("expected %d messages, but got %d", expectedMsgs, len(msgs))
 	}
 
-	nextNonce := uint64(0)
+	var nFrom1, nFrom2 int
+	var nextNonce1, nextNonce2 uint64
 	for _, m := range msgs {
-		if m.Message.From != a2 {
-			t.Fatal("expected message from a2")
+		if m.Message.From == a1 {
+			if m.Message.Nonce != nextNonce1 {
+				t.Fatalf("expected nonce %d but got %d", nextNonce1, m.Message.Nonce)
+			}
+			nextNonce1++
+			nFrom1++
+		} else {
+			if m.Message.Nonce != nextNonce2 {
+				t.Fatalf("expected nonce %d but got %d", nextNonce2, m.Message.Nonce)
+			}
+			nextNonce2++
+			nFrom2++
 		}
+	}
 
-		if m.Message.Nonce != nextNonce {
-			t.Fatalf("expected nonce %d but got %d", nextNonce, m.Message.Nonce)
-		}
-		nextNonce++
+	if nFrom1 > nFrom2 {
+		t.Fatalf("expected more messages from a2 than a1; nFrom1=%d nFrom2=%d", nFrom1, nFrom2)
 	}
 }
 
@@ -824,8 +834,8 @@ func TestOptimalMessageSelection3(t *testing.T) {
 	nMessages := int(build.BlockGasLimit/gasLimit) + 1
 	for i := 0; i < nMessages; i++ {
 		for j := 0; j < nActors; j++ {
-			bias := (nActors-j)*nMessages + (nMessages+2-i)/(3*nActors) + i%3
-			m := makeTestMessage(wallets[j], actors[j], actors[j%nActors], uint64(i), gasLimit, uint64(1+bias))
+			premium := 500000 + 20000*(nActors-j) + (nMessages+2-i)/(3*nActors) + i%3
+			m := makeTestMessage(wallets[j], actors[j], actors[j%nActors], uint64(i), gasLimit, uint64(premium))
 			mustAdd(t, mp, m)
 		}
 	}
@@ -840,30 +850,33 @@ func TestOptimalMessageSelection3(t *testing.T) {
 		t.Fatalf("expected %d messages, but got %d", expectedMsgs, len(msgs))
 	}
 
-	nextNonce := uint64(0)
-	a := actors[len(actors)/2-1]
-	for _, m := range msgs {
-		if m.Message.From != a {
-			who := 0
-			for i, a := range actors {
-				if a == m.Message.From {
-					who = i
-					break
-				}
+	whoIs := func(a address.Address) int {
+		for i, aa := range actors {
+			if a == aa {
+				return i
 			}
-			t.Fatalf("expected message from last actor, but got from %d instead", who)
+		}
+		return -1
+	}
+
+	nonces := make([]uint64, nActors)
+	for _, m := range msgs {
+		who := whoIs(m.Message.From)
+		if who < 3 {
+			t.Fatalf("got message from %dth actor", who)
 		}
 
+		nextNonce := nonces[who]
 		if m.Message.Nonce != nextNonce {
 			t.Fatalf("expected nonce %d but got %d", nextNonce, m.Message.Nonce)
 		}
-		nextNonce++
+		nonces[who]++
 	}
 }
 
-func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand) {
-	// in this test we use 100 actors and send 10 blocks of messages.
-	// actors send with an exponentially decreasing premium.
+func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand, getPremium func() uint64) (float64, float64) {
+	// in this test we use 300 actors and send 10 blocks of messages.
+	// actors send with an randomly distributed premium dictated by the getPremium function.
 	// a number of miners select with varying ticket quality and we compare the
 	// capacity and rewards of greedy selection -vs- optimal selection
 
@@ -906,12 +919,14 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand) {
 	for i := 0; i < nMessages; i++ {
 		from := rng.Intn(nActors)
 		to := rng.Intn(nActors)
-		premium := 20000*math.Exp(-3.*rand.Float64()) + 5000
 		nonce := nonces[from]
 		nonces[from]++
-		m := makeTestMessage(wallets[from], actors[from], actors[to], uint64(nonce), gasLimit, uint64(premium))
+		premium := getPremium()
+		m := makeTestMessage(wallets[from], actors[from], actors[to], nonce, gasLimit, premium)
 		mustAdd(t, mp, m)
 	}
+
+	logging.SetLogLevel("messagepool", "error")
 
 	// 1. greedy selection
 	greedyMsgs, err := mp.selectMessagesGreedy(ts, ts)
@@ -919,20 +934,22 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand) {
 		t.Fatal(err)
 	}
 
-	// 2. optimal selection
-	minersRand := rng.Float64()
-	winerProba := noWinnersProb()
-	i := 0
-	for ; i < MaxBlocks && minersRand > 0; i++ {
-		minersRand -= winerProba[i]
-	}
-	nMiners := i
-	if nMiners == 0 {
-		nMiners = 1
-	}
+	capacityBoost := 0.0
+	rewardBoost := 0.0
+	const runs = 1
+	for i := 0; i < runs; i++ {
+		// 2. optimal selection
+		minersRand := rng.Float64()
+		winerProba := noWinnersProb()
+		i := 0
+		for ; i < MaxBlocks && minersRand > 0; i++ {
+			minersRand -= winerProba[i]
+		}
+		nMiners := i
+		if nMiners == 0 {
+			nMiners = 1
+		}
 
-	logging.SetLogLevel("messagepool", "error")
-	for i := 0; i < 1; i++ {
 		optMsgs := make(map[cid.Cid]*types.SignedMessage)
 		for j := 0; j < nMiners; j++ {
 			tq := rng.Float64()
@@ -945,9 +962,12 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand) {
 			}
 		}
 
+		boost := float64(len(optMsgs)) / float64(len(greedyMsgs))
+		capacityBoost += boost
+
 		t.Logf("nMiners: %d", nMiners)
-		t.Logf("greedy capacity %d, optimal capacity %d (x%.1f)", len(greedyMsgs),
-			len(optMsgs), float64(len(optMsgs))/float64(len(greedyMsgs)))
+		t.Logf("greedy capacity %d, optimal capacity %d (x %.1f )", len(greedyMsgs),
+			len(optMsgs), boost)
 		if len(greedyMsgs) > len(optMsgs) {
 			t.Fatal("greedy capacity higher than optimal capacity; wtf")
 		}
@@ -965,20 +985,68 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand) {
 		nMinersBig := big.NewInt(int64(nMiners))
 		greedyAvgReward, _ := new(big.Rat).SetFrac(greedyReward, nMinersBig).Float64()
 		optimalAvgReward, _ := new(big.Rat).SetFrac(optReward, nMinersBig).Float64()
-		t.Logf("greedy reward: %.0f, optimal reward: %.0f (x%.1f)", greedyAvgReward,
-			optimalAvgReward, optimalAvgReward/greedyAvgReward)
 
-		if greedyReward.Cmp(optReward) > 0 {
-			t.Fatal("greedy reward raw higher than optimal reward; booh")
-		}
+		boost = optimalAvgReward / greedyAvgReward
+		rewardBoost += boost
+		t.Logf("greedy reward: %.0f, optimal reward: %.0f (x %.1f )", greedyAvgReward,
+			optimalAvgReward, boost)
+
 	}
+
+	capacityBoost /= runs
+	rewardBoost /= runs
+	t.Logf("Average capacity boost: %f", capacityBoost)
+	t.Logf("Average reward boost: %f", rewardBoost)
+
 	logging.SetLogLevel("messagepool", "info")
+
+	return capacityBoost, rewardBoost
 }
 
-func TestCompetitiveMessageSelection(t *testing.T) {
-	seeds := []int64{1947, 1976, 2020, 2100, 10000}
-	for _, seed := range seeds {
-		t.Log("running competitve message selection with seed", seed)
-		testCompetitiveMessageSelection(t, rand.New(rand.NewSource(seed)))
+func makeExpPremiumDistribution(rng *rand.Rand) func() uint64 {
+	return func() uint64 {
+		premium := 20000*math.Exp(-3.*rng.Float64()) + 5000
+		return uint64(premium)
 	}
+}
+
+func makeZipfPremiumDistribution(rng *rand.Rand) func() uint64 {
+	zipf := rand.NewZipf(rng, 1.001, 1, 40000)
+	return func() uint64 {
+		return zipf.Uint64() + 10000
+	}
+}
+
+func TestCompetitiveMessageSelectionExp(t *testing.T) {
+	var capacityBoost, rewardBoost float64
+	seeds := []int64{1947, 1976, 2020, 2100, 10000, 143324, 432432, 131, 32, 45}
+	for _, seed := range seeds {
+		t.Log("running competitive message selection with Exponential premium distribution and seed", seed)
+		rng := rand.New(rand.NewSource(seed))
+		cb, rb := testCompetitiveMessageSelection(t, rng, makeExpPremiumDistribution(rng))
+		capacityBoost += cb
+		rewardBoost += rb
+	}
+
+	capacityBoost /= float64(len(seeds))
+	rewardBoost /= float64(len(seeds))
+	t.Logf("Average capacity boost across all seeds: %f", capacityBoost)
+	t.Logf("Average reward boost across all seeds: %f", rewardBoost)
+}
+
+func TestCompetitiveMessageSelectionZipf(t *testing.T) {
+	var capacityBoost, rewardBoost float64
+	seeds := []int64{1947, 1976, 2020, 2100, 10000, 143324, 432432, 131, 32, 45}
+	for _, seed := range seeds {
+		t.Log("running competitive message selection with Zipf premium distribution and seed", seed)
+		rng := rand.New(rand.NewSource(seed))
+		cb, rb := testCompetitiveMessageSelection(t, rng, makeZipfPremiumDistribution(rng))
+		capacityBoost += cb
+		rewardBoost += rb
+	}
+
+	capacityBoost /= float64(len(seeds))
+	rewardBoost /= float64(len(seeds))
+	t.Logf("Average capacity boost across all seeds: %f", capacityBoost)
+	t.Logf("Average reward boost across all seeds: %f", rewardBoost)
 }

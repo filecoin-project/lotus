@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -614,11 +615,6 @@ func createStorageMiner(ctx context.Context, api lapi.FullNode, peerid peer.ID, 
 		return address.Undef, err
 	}
 
-	collateral, err := api.StatePledgeCollateral(ctx, types.EmptyTSK)
-	if err != nil {
-		return address.Undef, err
-	}
-
 	spt, err := ffiwrapper.SealProofTypeFromSectorSize(abi.SectorSize(ssize))
 	if err != nil {
 		return address.Undef, err
@@ -637,7 +633,7 @@ func createStorageMiner(ctx context.Context, api lapi.FullNode, peerid peer.ID, 
 	createStorageMinerMsg := &types.Message{
 		To:    builtin.StoragePowerActorAddr,
 		From:  owner,
-		Value: types.BigAdd(collateral, types.BigDiv(collateral, types.NewInt(100))),
+		Value: big.Zero(),
 
 		Method: builtin.MethodsPower.CreateMiner,
 		Params: params,

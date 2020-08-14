@@ -24,6 +24,7 @@ var netCmd = &cli.Command{
 		NetId,
 		netFindPeer,
 		netScores,
+		NetReachability,
 	},
 }
 
@@ -199,6 +200,31 @@ var netFindPeer = &cli.Command{
 		}
 
 		fmt.Println(addrs)
+		return nil
+	},
+}
+
+var NetReachability = &cli.Command{
+	Name:  "reachability",
+	Usage: "Print information about reachability from the internet",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		i, err := api.NetAutoNatStatus(ctx)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("AutoNAT status: ", i.Reachability.String())
+		if i.PublicAddr != nil {
+			fmt.Println("Public address: ", i.PublicAddr.String())
+		}
 		return nil
 	},
 }

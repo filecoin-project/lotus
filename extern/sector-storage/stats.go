@@ -3,8 +3,8 @@ package sectorstorage
 import "github.com/filecoin-project/sector-storage/storiface"
 
 func (m *Manager) WorkerStats() map[uint64]storiface.WorkerStats {
-	m.sched.workersLk.Lock()
-	defer m.sched.workersLk.Unlock()
+	m.sched.workersLk.RLock()
+	defer m.sched.workersLk.RUnlock()
 
 	out := map[uint64]storiface.WorkerStats{}
 
@@ -22,8 +22,8 @@ func (m *Manager) WorkerStats() map[uint64]storiface.WorkerStats {
 }
 
 func (m *Manager) WorkerJobs() map[uint64][]storiface.WorkerJob {
-	m.sched.workersLk.Lock()
-	defer m.sched.workersLk.Unlock()
+	m.sched.workersLk.RLock()
+	defer m.sched.workersLk.RUnlock()
 
 	out := map[uint64][]storiface.WorkerJob{}
 

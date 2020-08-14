@@ -1,20 +1,29 @@
 package messagepool
 
-import "math"
+import (
+	"math"
+	"sync"
+)
+
+var noWinnersProbCache []float64
+var noWinnersProbOnce sync.Once
 
 func noWinnersProb() []float64 {
-	poissPdf := func(x float64) float64 {
-		const Mu = 5
-		lg, _ := math.Lgamma(x + 1)
-		result := math.Exp((math.Log(Mu) * x) - lg - Mu)
-		return result
-	}
+	noWinnersProbOnce.Do(func() {
+		poissPdf := func(x float64) float64 {
+			const Mu = 5
+			lg, _ := math.Lgamma(x + 1)
+			result := math.Exp((math.Log(Mu) * x) - lg - Mu)
+			return result
+		}
 
-	out := make([]float64, 0, MaxBlocks)
-	for i := 0; i < MaxBlocks; i++ {
-		out = append(out, poissPdf(float64(i)))
-	}
-	return out
+		out := make([]float64, 0, MaxBlocks)
+		for i := 0; i < MaxBlocks; i++ {
+			out = append(out, poissPdf(float64(i)))
+		}
+		noWinnersProbCache = out
+	})
+	return noWinnersProbCache
 }
 
 func binomialCoefficient(n, k float64) float64 {

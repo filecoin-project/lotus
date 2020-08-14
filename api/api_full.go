@@ -319,7 +319,6 @@ type FullNode interface {
 	StateSectorExpiration(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*SectorExpiration, error)
 	// StateSectorPartition finds deadline/partition with the specified sector
 	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok types.TipSetKey) (*SectorLocation, error)
-	StatePledgeCollateral(context.Context, types.TipSetKey) (types.BigInt, error)
 	// StateSearchMsg searches for a message in the chain, and returns its receipt and the tipset where it was executed
 	StateSearchMsg(context.Context, cid.Cid) (*MsgLookup, error)
 	// StateWaitMsg looks back in the chain for a message. If not found, it blocks until the
@@ -610,14 +609,15 @@ type MethodCall struct {
 }
 
 type StartDealParams struct {
-	Data              *storagemarket.DataRef
-	Wallet            address.Address
-	Miner             address.Address
-	EpochPrice        types.BigInt
-	MinBlocksDuration uint64
-	DealStartEpoch    abi.ChainEpoch
-	FastRetrieval     bool
-	VerifiedDeal      bool
+	Data               *storagemarket.DataRef
+	Wallet             address.Address
+	Miner              address.Address
+	EpochPrice         types.BigInt
+	MinBlocksDuration  uint64
+	ProviderCollateral big.Int
+	DealStartEpoch     abi.ChainEpoch
+	FastRetrieval      bool
+	VerifiedDeal       bool
 }
 
 type IpldObject struct {
