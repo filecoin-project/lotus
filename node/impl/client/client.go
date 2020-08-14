@@ -36,7 +36,6 @@ import (
 	"github.com/filecoin-project/go-multistore"
 	"github.com/filecoin-project/go-padreader"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
@@ -157,7 +156,7 @@ func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) 
 		StartEpoch:    dealStart,
 		EndEpoch:      calcDealExpiration(params.MinBlocksDuration, md, dealStart),
 		Price:         params.EpochPrice,
-		Collateral:    big.Zero(),
+		Collateral:    params.ProviderCollateral,
 		Rt:            rt,
 		FastRetrieval: params.FastRetrieval,
 		VerifiedDeal:  params.VerifiedDeal,

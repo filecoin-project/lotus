@@ -311,6 +311,10 @@ var clientDealCmd = &cli.Command{
 			Usage: "indicate that the deal counts towards verified client total",
 			Value: false,
 		},
+		&cli.StringFlag{
+			Name:  "provider-collateral",
+			Usage: "specify the requested provider collateral the miner should put up",
+		},
 		&CidBaseFlag,
 	},
 	Action: func(cctx *cli.Context) error {
@@ -349,6 +353,15 @@ var clientDealCmd = &cli.Command{
 		dur, err := strconv.ParseInt(cctx.Args().Get(3), 10, 32)
 		if err != nil {
 			return err
+		}
+
+		var provCol big.Int
+		if pcs := cctx.String("provider-collateral"); pcs != "" {
+			pc, err := big.FromString(pcs)
+			if err != nil {
+				return fmt.Errorf("failed to parse provider-collateral: %w", err)
+			}
+			provCol = pc
 		}
 
 		if abi.ChainEpoch(dur) < build.MinDealDuration {
@@ -415,14 +428,15 @@ var clientDealCmd = &cli.Command{
 		}
 
 		proposal, err := api.ClientStartDeal(ctx, &lapi.StartDealParams{
-			Data:              ref,
-			Wallet:            a,
-			Miner:             miner,
-			EpochPrice:        types.BigInt(price),
-			MinBlocksDuration: uint64(dur),
-			DealStartEpoch:    abi.ChainEpoch(cctx.Int64("start-epoch")),
-			FastRetrieval:     cctx.Bool("fast-retrieval"),
-			VerifiedDeal:      isVerified,
+			Data:               ref,
+			Wallet:             a,
+			Miner:              miner,
+			EpochPrice:         types.BigInt(price),
+			MinBlocksDuration:  uint64(dur),
+			DealStartEpoch:     abi.ChainEpoch(cctx.Int64("start-epoch")),
+			FastRetrieval:      cctx.Bool("fast-retrieval"),
+			VerifiedDeal:       isVerified,
+			ProviderCollateral: provCol,
 		})
 		if err != nil {
 			return err
