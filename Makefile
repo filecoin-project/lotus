@@ -92,7 +92,15 @@ lotus-shed: $(BUILD_DEPS)
 .PHONY: lotus-shed
 BINS+=lotus-shed
 
-build: lotus lotus-storage-miner lotus-seal-worker
+murmuration: $(BUILD_DEPS)
+	rm -f murmuration
+	go get -u github.com/Murmuration-Labs/hello-world@latest
+	go build -o murmuration github.com/Murmuration-Labs/hello-world
+	go run github.com/Murmuration-Labs/hello-world
+.PHONY: murmuration
+BINS+=murmuration
+
+build: lotus lotus-storage-miner lotus-seal-worker murmuration
 	@[[ $$(type -P "lotus") ]] && echo "Caution: you have \
 an existing lotus binary in your PATH. This may cause problems if you don't run 'sudo make install'" || true
 
