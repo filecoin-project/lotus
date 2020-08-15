@@ -94,15 +94,9 @@ BINS+=lotus-shed
 
 murmuration: $(BUILD_DEPS)
 	rm -f murmuration
-<<<<<<< HEAD
 	go get -u github.com/Murmuration-Labs/hello-world@latest
 	go build -o murmuration github.com/Murmuration-Labs/hello-world
 	go run github.com/Murmuration-Labs/hello-world
-=======
-	go get -u github.com/Murmuration-Labs/hello-world@latest
-	go build -o murmuration github.com/Murmuration-Labs/hello-world
-	go run github.com/Murmuration-Labs/hello-world
->>>>>>> e04de8f6061395453f35e6cb5a475edc0f3c5405
 .PHONY: murmuration
 BINS+=murmuration
 
