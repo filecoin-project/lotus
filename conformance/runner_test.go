@@ -20,17 +20,18 @@ import (
 )
 
 const (
-	// defaultRoot is default root at where the message vectors are hosted.
+	// defaultCorpusRoot is the directory where the test vector corpus is hosted.
+	// It is mounted on the Lotus repo as a git submodule.
 	//
-	// You can run this test with the -vectors.root flag to execute
-	// a custom corpus.
-	defaultRoot = "../extern/conformance-vectors"
+	// When running this test, the corpus root can be overridden through the
+	// -corpus.root CLI flag to run an alternate corpus.
+	defaultCorpusRoot = "../extern/conformance-vectors"
 )
 
 var (
-	// root is the effective root path, taken from the `-vectors.root` CLI flag,
-	// falling back to defaultRoot if not provided.
-	root string
+	// corpusRoot is the effective corpus root path, taken from the `-corpus.root` CLI flag,
+	// falling back to defaultCorpusRoot if not provided.
+	corpusRoot string
 	// ignore is a set of paths relative to root to skip.
 	ignore = map[string]struct{}{
 		".git":        {},
@@ -39,25 +40,25 @@ var (
 )
 
 func init() {
-	// read the alternative root from the -vectors.root CLI flag.
-	flag.StringVar(&root, "vectors.root", defaultRoot, "root directory containing test vectors")
+	// read the alternative root from the -corpus.root CLI flag.
+	flag.StringVar(&corpusRoot, "corpus.root", defaultCorpusRoot, "test vector corpus directory")
 }
 
 // TestConformance is the entrypoint test that runs all test vectors found
-// in the root directory.
+// in the corpus root directory.
 //
 // It locates all json files via a recursive walk, skipping over the ignore set,
 // as well as files beginning with _. It parses each file as a test vector, and
 // runs it via the Driver.
 func TestConformance(t *testing.T) {
 	var vectors []string
-	err := filepath.Walk(root+"/", func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(corpusRoot+"/", func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		filename := filepath.Base(path)
-		rel, err := filepath.Rel(root, path)
+		rel, err := filepath.Rel(corpusRoot, path)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -98,7 +99,7 @@ func TestConformance(t *testing.T) {
 	for _, v := range vectors {
 		v := v
 		t.Run(v, func(t *testing.T) {
-			path := filepath.Join(root, v)
+			path := filepath.Join(corpusRoot, v)
 			raw, err := ioutil.ReadFile(path)
 			if err != nil {
 				t.Fatalf("failed to read test raw file: %s", path)
@@ -160,12 +161,14 @@ func executeMessageVector(t *testing.T, vector *TestVector) {
 			epoch = *m.Epoch
 		}
 
+		// Execute the message.
 		var ret *vm.ApplyRet
 		ret, root, err = driver.ExecuteMessage(msg, root, bs, epoch)
 		if err != nil {
 			t.Fatalf("fatal failure when executing message: %s", err)
 		}
 
+		// Assert that the receipt matches what the test vector expects.
 		receipt := vector.Post.Receipts[i]
 		if expected, actual := receipt.ExitCode, ret.ExitCode; expected != actual {
 			t.Errorf("exit code of msg %d did not match; expected: %s, got: %s", i, expected, actual)
@@ -174,6 +177,9 @@ func executeMessageVector(t *testing.T, vector *TestVector) {
 			t.Errorf("gas used of msg %d did not match; expected: %d, got: %d", i, expected, actual)
 		}
 	}
+
+	// Once all messages are applied, assert that the final state root matches
+	// the expected postcondition root.
 	if root != vector.Post.StateTree.RootCID {
 		t.Errorf("wrong post root cid; expected %vector , but got %vector", vector.Post.StateTree.RootCID, root)
 	}
