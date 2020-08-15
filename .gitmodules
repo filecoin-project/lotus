@@ -5,3 +5,7 @@
 [submodule "extern/serialization-vectors"]
 	path = extern/serialization-vectors
 	url = https://github.com/filecoin-project/serialization-vectors
+[submodule "extern/conformance-vectors"]
+	path = extern/conformance-vectors
+	url = https://github.com/filecoin-project/conformance-vectors.git
+	branch = initial
