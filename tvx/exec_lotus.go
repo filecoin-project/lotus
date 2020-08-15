@@ -10,6 +10,7 @@ import (
 	"os"
 
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/ipld/go-car"
 	"github.com/urfave/cli/v2"
@@ -115,10 +116,21 @@ func executeTestVector(tv schema.TestVector) error {
 			}
 
 			fmt.Printf("executing message %v\n", i)
-			_, root, err = driver.ExecuteMessage(msg, root, bs, epoch)
+			var ret *vm.ApplyRet
+			ret, root, err = driver.ExecuteMessage(msg, root, bs, epoch)
 			if err != nil {
 				return err
 			}
+
+			if expected, actual := tv.Post.Receipts[i].ExitCode, ret.ExitCode; expected != actual {
+				return fmt.Errorf("exit code of msg %d did not match; expected: %s, got: %s", i, expected, actual)
+			}
+			if expected, actual := tv.Post.Receipts[i].GasUsed, ret.GasUsed; expected != actual {
+				return fmt.Errorf("gas used of msg %d did not match; expected: %d, got: %d", i, expected, actual)
+			}
+
+			// TODO assert return value
+			fmt.Printf("✅  message %d passed expectations\n", i)
 		}
 
 		if root != tv.Post.StateTree.RootCID {

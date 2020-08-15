@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	initialBal = abi.NewTokenAmount(200_000_000_000)
+	initialBal = abi.NewTokenAmount(1_000_000_000_000)
 	toSend     = abi.NewTokenAmount(10_000)
 )
 

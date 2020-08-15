@@ -3,6 +3,7 @@ package builders
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
@@ -12,6 +13,10 @@ import (
 // AddressHandle encapsulates both the ID and Robust addresses of an actor.
 type AddressHandle struct {
 	ID, Robust address.Address
+}
+
+func (ah AddressHandle) String() string {
+	return fmt.Sprintf("AddressHandle[ID: %s, Robust: %s]", ah.ID, ah.Robust)
 }
 
 // NextActorAddress predicts the address of the next actor created by this address.

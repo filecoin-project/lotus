@@ -14,10 +14,15 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 )
 
-type vmRand struct {
+type vmRand struct{}
+
+var _ vm.Rand = (*vmRand)(nil)
+
+func (r *vmRand) GetChainRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	return []byte("i_am_random_____i_am_random_____"), nil // 32 bytes.
 }
 
-func (*vmRand) GetRandomness(ctx context.Context, dst crypto.DomainSeparationTag, h abi.ChainEpoch, input []byte) ([]byte, error) {
+func (r *vmRand) GetBeaconRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	return []byte("i_am_random_____i_am_random_____"), nil // 32 bytes.
 }
 

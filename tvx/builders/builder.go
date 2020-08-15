@@ -32,6 +32,8 @@ func init() {
 	// disable logs, as we need a clean stdout output.
 	log.SetOutput(os.Stderr)
 	log.SetPrefix(">>> ")
+
+	_ = os.Setenv("LOTUS_DISABLE_VM_BUF", "iknowitsabadidea")
 }
 
 // TODO use stage.Surgeon with non-proxying blockstore.
@@ -40,7 +42,9 @@ type Builder struct {
 	Assert    *Asserter
 	Messages  *Messages
 	Driver    *lotus.Driver
-	Root      cid.Cid
+	PreRoot   cid.Cid
+	PostRoot  cid.Cid
+	CurrRoot  cid.Cid
 	Wallet    *Wallet
 	StateTree *state.StateTree
 	Stores    *ostate.Stores
@@ -63,12 +67,13 @@ func MessageVector(metadata *schema.Metadata) *Builder {
 		stage:     StagePreconditions,
 		Stores:    stores,
 		StateTree: st,
+		PreRoot:   cid.Undef,
 		Driver:    lotus.NewDriver(context.Background()),
 	}
 
 	b.Wallet = newWallet()
 	b.Assert = newAsserter(b, StagePreconditions)
-	b.Actors = &Actors{b: b}
+	b.Actors = newActors(b)
 	b.Messages = &Messages{b: b}
 
 	b.vector.Class = schema.ClassMessage
@@ -92,7 +97,7 @@ func (b *Builder) CommitPreconditions() {
 	b.vector.Pre.Epoch = 0
 	b.vector.Pre.StateTree = &schema.StateTree{RootCID: preroot}
 
-	b.Root = preroot
+	b.CurrRoot, b.PreRoot = preroot, preroot
 	b.stage = StageApplies
 	b.Assert = newAsserter(b, StageApplies)
 }
@@ -109,7 +114,8 @@ func (b *Builder) CommitApplies() {
 		}
 	}
 
-	b.vector.Post.StateTree = &schema.StateTree{RootCID: b.Root}
+	b.PostRoot = b.CurrRoot
+	b.vector.Post.StateTree = &schema.StateTree{RootCID: b.CurrRoot}
 	b.stage = StageChecks
 	b.Assert = newAsserter(b, StageChecks)
 }
@@ -119,11 +125,11 @@ func (b *Builder) CommitApplies() {
 // message and its receipt.
 func (b *Builder) applyMessage(am *ApplicableMessage) {
 	var err error
-	am.Result, b.Root, err = b.Driver.ExecuteMessage(am.Message, b.Root, b.Stores.Blockstore, am.Epoch)
+	am.Result, b.CurrRoot, err = b.Driver.ExecuteMessage(am.Message, b.CurrRoot, b.Stores.Blockstore, am.Epoch)
 	b.Assert.NoError(err)
 
 	// replace the state tree.
-	b.StateTree, err = state.LoadStateTree(b.Stores.CBORStore, b.Root)
+	b.StateTree, err = state.LoadStateTree(b.Stores.CBORStore, b.CurrRoot)
 	b.Assert.NoError(err)
 
 	b.vector.ApplyMessages = append(b.vector.ApplyMessages, schema.Message{

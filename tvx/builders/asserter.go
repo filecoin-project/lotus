@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
@@ -77,8 +78,58 @@ func (a *Asserter) EveryMessageResultSatisfies(predicate ApplyRetPredicate, exce
 		if _, ok := exceptm[m]; ok {
 			continue
 		}
-		a.NoError(predicate(m.Result), "message result predicate failed on message %d", i)
+		err := predicate(m.Result)
+		a.NoError(err, "message result predicate failed on message %d: %s", i, err)
 	}
+}
+
+// EveryMessageSenderSatisfies verifies that the sender actors of the supplied
+// messages match a condition.
+//
+// This function groups ApplicableMessages by sender actor, and calls the
+// predicate for each unique sender, passing in the initial state (when
+// preconditions were committed), the final state (could be nil), and the
+// ApplicableMessages themselves.
+func (a *Asserter) MessageSendersSatisfy(predicate ActorPredicate, ams ...*ApplicableMessage) {
+	bysender := make(map[AddressHandle][]*ApplicableMessage, len(ams))
+	for _, am := range ams {
+		h := a.b.Actors.HandleFor(am.Message.From)
+		bysender[h] = append(bysender[h], am)
+	}
+	// we now have messages organized by unique senders.
+	for sender, amss := range bysender {
+		// get precondition state
+		pretree, err := state.LoadStateTree(a.b.Stores.CBORStore, a.b.PreRoot)
+		a.NoError(err)
+		prestate, err := pretree.GetActor(sender.Robust)
+		a.NoError(err)
+
+		// get postcondition state; if actor has been deleted, we store a nil.
+		poststate, _ := a.b.StateTree.GetActor(sender.Robust)
+
+		// invoke predicate.
+		err = predicate(sender, prestate, poststate, amss)
+		a.NoError(err, "'every sender actor' predicate failed for sender %s: %s", sender, err)
+	}
+}
+
+// EveryMessageSenderSatisfies is sugar for MessageSendersSatisfy(predicate, Messages.All()),
+// but supports an exclusion set to restrict the messages that will actually be asserted.
+func (a *Asserter) EveryMessageSenderSatisfies(predicate ActorPredicate, except ...*ApplicableMessage) {
+	ams := a.b.Messages.All()
+	if len(except) > 0 {
+		filtered := ams[:0]
+		for _, ex := range except {
+			for _, am := range ams {
+				if am == ex {
+					continue
+				}
+				filtered = append(filtered, am)
+			}
+		}
+		ams = filtered
+	}
+	a.MessageSendersSatisfy(predicate, ams...)
 }
 
 func (a *Asserter) FailNow() {

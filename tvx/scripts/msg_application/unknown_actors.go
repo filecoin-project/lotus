@@ -8,7 +8,7 @@ import (
 )
 
 func failUnknownSender(v *Builder) {
-	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPrice(1))
+	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPremium(1), GasFeeCap(200))
 
 	alice := v.Actors.Account(address.SECP256K1, balance1T)
 	v.CommitPreconditions()
@@ -20,7 +20,7 @@ func failUnknownSender(v *Builder) {
 }
 
 func failUnknownReceiver(v *Builder) {
-	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPrice(1))
+	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPremium(1), GasFeeCap(200))
 
 	alice := v.Actors.Account(address.SECP256K1, balance1T)
 	v.CommitPreconditions()

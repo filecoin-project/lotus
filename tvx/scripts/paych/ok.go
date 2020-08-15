@@ -8,12 +8,13 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	. "github.com/filecoin-project/oni/tvx/builders"
 )
 
 func happyPathCreate(v *Builder) {
-	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPrice(1))
+	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPremium(1), GasFeeCap(200))
 
 	// Set up sender and receiver accounts.
 	var sender, receiver AddressHandle
@@ -41,10 +42,12 @@ func happyPathCreate(v *Builder) {
 	v.Assert.Equal(sender.ID, state.From)
 	v.Assert.Equal(receiver.ID, state.To)
 	v.Assert.Equal(toSend, actor.Balance)
+
+	v.Assert.EveryMessageSenderSatisfies(NonceUpdated())
 }
 
 func happyPathUpdate(v *Builder) {
-	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPrice(1))
+	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPremium(1), GasFeeCap(200))
 
 	var (
 		timelock = abi.ChainEpoch(0)
@@ -95,16 +98,24 @@ func happyPathUpdate(v *Builder) {
 	// Verify the paych state.
 	var state paych.State
 	v.Actors.ActorState(ret.RobustAddress, &state)
-	v.Assert.Len(state.LaneStates, 1)
 
-	ls := state.LaneStates[0]
+	arr, err := adt.AsArray(v.Stores.ADTStore, state.LaneStates)
+	v.Assert.NoError(err)
+	v.Assert.EqualValues(1, arr.Length())
+
+	var ls paych.LaneState
+	found, err := arr.Get(lane, &ls)
+	v.Assert.NoError(err)
+	v.Assert.True(found)
+
 	v.Assert.Equal(amount, ls.Redeemed)
 	v.Assert.Equal(nonce, ls.Nonce)
-	v.Assert.Equal(lane, ls.ID)
+
+	v.Assert.EveryMessageSenderSatisfies(NonceUpdated())
 }
 
 func happyPathCollect(v *Builder) {
-	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPrice(1))
+	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPremium(1), GasFeeCap(200))
 
 	// Set up sender and receiver accounts.
 	var sender, receiver AddressHandle
@@ -118,10 +129,10 @@ func happyPathCollect(v *Builder) {
 	v.CommitPreconditions()
 
 	// Construct the payment channel.
-	v.Messages.Sugar().CreatePaychActor(sender.Robust, receiver.Robust, Value(toSend))
+	createMsg := v.Messages.Sugar().CreatePaychActor(sender.Robust, receiver.Robust, Value(toSend))
 
 	// Update the payment channel.
-	v.Messages.Typed(sender.Robust, paychAddr.Robust, PaychUpdateChannelState(&paych.UpdateChannelStateParams{
+	updateMsg := v.Messages.Typed(sender.Robust, paychAddr.Robust, PaychUpdateChannelState(&paych.UpdateChannelStateParams{
 		Sv: paych.SignedVoucher{
 			ChannelAddr:     paychAddr.Robust,
 			TimeLockMin:     0,
@@ -146,9 +157,9 @@ func happyPathCollect(v *Builder) {
 	// all messages succeeded.
 	v.Assert.EveryMessageResultSatisfies(ExitCode(exitcode.Ok))
 
-	// receiver_balance = initial_balance + paych_send - settle_paych_msg_gas - collect_paych_msg_gas
-	gasUsed := big.Add(big.NewInt(settleMsg.Result.MessageReceipt.GasUsed), big.NewInt(collectMsg.Result.MessageReceipt.GasUsed))
-	v.Assert.BalanceEq(receiver.Robust, big.Sub(big.Add(toSend, initialBal), gasUsed))
+	v.Assert.MessageSendersSatisfy(BalanceUpdated(big.Zero()), createMsg, updateMsg)
+	v.Assert.MessageSendersSatisfy(BalanceUpdated(toSend), settleMsg, collectMsg)
+	v.Assert.EveryMessageSenderSatisfies(NonceUpdated())
 
 	// the paych actor should have been deleted after the collect
 	v.Assert.ActorMissing(paychAddr.Robust)

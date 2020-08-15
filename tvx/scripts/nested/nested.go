@@ -4,10 +4,9 @@ import (
 	"bytes"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
-	builtin "github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
@@ -38,7 +37,7 @@ func init() {
 }
 
 func nestedSends_OkBasic(v *Builder) {
-	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPrice(1))
+	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPremium(1), GasFeeCap(200))
 
 	stage := prepareStage(v, acctDefaultBalance, multisigBalance)
 	balanceBefore := v.Actors.Balance(stage.creator)
@@ -47,13 +46,13 @@ func nestedSends_OkBasic(v *Builder) {
 	amtSent := abi.NewTokenAmount(1)
 	result := stage.sendOk(stage.creator, amtSent, builtin.MethodSend, nil, nonce)
 
-	//td.AssertActor(stage.creator, big.Sub(big.Add(balanceBefore, amtSent), result.Receipt.GasUsed.Big()), nonce+1)
+	//td.AssertActor(stage.creator, big.Sub(big.Add(balanceBefore, amtSent), result.Result.Receipt.GasUsed.Big()), nonce+1)
 	v.Assert.NonceEq(stage.creator, nonce+1)
-	v.Assert.BalanceEq(stage.creator, big.Sub(big.Add(balanceBefore, amtSent), big.NewInt(result.MessageReceipt.GasUsed)))
+	v.Assert.BalanceEq(stage.creator, big.Sub(big.Add(balanceBefore, amtSent), CalculateDeduction(result)))
 }
 
 func nestedSends_OkToNewActor(v *Builder) {
-	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPrice(1))
+	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPremium(1), GasFeeCap(200))
 
 	stage := prepareStage(v, acctDefaultBalance, multisigBalance)
 	balanceBefore := v.Actors.Balance(stage.creator)
@@ -64,12 +63,12 @@ func nestedSends_OkToNewActor(v *Builder) {
 	result := stage.sendOk(newAddr, amtSent, builtin.MethodSend, nil, nonce)
 
 	v.Assert.BalanceEq(stage.msAddr, big.Sub(multisigBalance, amtSent))
-	v.Assert.BalanceEq(stage.creator, big.Sub(balanceBefore, big.NewInt(result.MessageReceipt.GasUsed)))
+	v.Assert.BalanceEq(stage.creator, big.Sub(balanceBefore, CalculateDeduction(result)))
 	v.Assert.BalanceEq(newAddr, amtSent)
 }
 
 func nestedSends_OkToNewActorWithInvoke(v *Builder) {
-	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPrice(1))
+	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPremium(1), GasFeeCap(200))
 
 	stage := prepareStage(v, acctDefaultBalance, multisigBalance)
 	balanceBefore := v.Actors.Balance(stage.creator)
@@ -83,15 +82,15 @@ func nestedSends_OkToNewActorWithInvoke(v *Builder) {
 	// https://github.com/filecoin-project/specs-actors/issues/113
 	//expected := bytes.Buffer{}
 	//require.NoError(t, newAddr.MarshalCBOR(&expected))
-	//assert.Equal(t, expected.Bytes(), result.Receipt.ReturnValue)
+	//assert.Equal(t, expected.Bytes(), result.Result.Receipt.ReturnValue)
 
 	v.Assert.BalanceEq(stage.msAddr, big.Sub(multisigBalance, amtSent))
-	v.Assert.BalanceEq(stage.creator, big.Sub(balanceBefore, big.NewInt(result.MessageReceipt.GasUsed)))
+	v.Assert.BalanceEq(stage.creator, big.Sub(balanceBefore, CalculateDeduction(result)))
 	v.Assert.BalanceEq(newAddr, amtSent)
 }
 
 func nestedSends_OkRecursive(v *Builder) {
-	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPrice(1))
+	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPremium(1), GasFeeCap(200))
 
 	another := v.Actors.Account(address.SECP256K1, big.Zero())
 	stage := prepareStage(v, acctDefaultBalance, multisigBalance)
@@ -105,7 +104,7 @@ func nestedSends_OkRecursive(v *Builder) {
 	result := stage.sendOk(stage.msAddr, big.Zero(), builtin.MethodsMultisig.AddSigner, &params, nonce)
 
 	v.Assert.BalanceEq(stage.msAddr, multisigBalance)
-	v.Assert.Equal(big.Sub(balanceBefore, big.NewInt(result.MessageReceipt.GasUsed)), v.Actors.Balance(stage.creator))
+	v.Assert.Equal(big.Sub(balanceBefore, CalculateDeduction(result)), v.Actors.Balance(stage.creator))
 
 	var st multisig.State
 	v.Actors.ActorState(stage.msAddr, &st)
@@ -113,7 +112,7 @@ func nestedSends_OkRecursive(v *Builder) {
 }
 
 func nestedSends_OKNonCBORParamsWithTransfer(v *Builder) {
-	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPrice(1))
+	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPremium(1), GasFeeCap(200))
 
 	stage := prepareStage(v, acctDefaultBalance, multisigBalance)
 
@@ -128,7 +127,7 @@ func nestedSends_OKNonCBORParamsWithTransfer(v *Builder) {
 }
 
 func nestedSends_FailNonexistentIDAddress(v *Builder) {
-	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPrice(1))
+	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPremium(1), GasFeeCap(200))
 
 	stage := prepareStage(v, acctDefaultBalance, multisigBalance)
 
@@ -141,7 +140,7 @@ func nestedSends_FailNonexistentIDAddress(v *Builder) {
 }
 
 func nestedSends_FailNonexistentActorAddress(v *Builder) {
-	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPrice(1))
+	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPremium(1), GasFeeCap(200))
 
 	stage := prepareStage(v, acctDefaultBalance, multisigBalance)
 
@@ -154,7 +153,7 @@ func nestedSends_FailNonexistentActorAddress(v *Builder) {
 }
 
 func nestedSends_FailInvalidMethodNumNewActor(v *Builder) {
-	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPrice(1))
+	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPremium(1), GasFeeCap(200))
 
 	stage := prepareStage(v, acctDefaultBalance, multisigBalance)
 
@@ -167,7 +166,7 @@ func nestedSends_FailInvalidMethodNumNewActor(v *Builder) {
 }
 
 func nestedSends_FailInvalidMethodNumForActor(v *Builder) {
-	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPrice(1))
+	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPremium(1), GasFeeCap(200))
 
 	stage := prepareStage(v, acctDefaultBalance, multisigBalance)
 	balanceBefore := v.Actors.Balance(stage.creator)
@@ -175,12 +174,12 @@ func nestedSends_FailInvalidMethodNumForActor(v *Builder) {
 	amtSent := abi.NewTokenAmount(1)
 	result := stage.sendOk(stage.creator, amtSent, abi.MethodNum(99), nil, nonce)
 
-	v.Assert.BalanceEq(stage.msAddr, multisigBalance)                                                    // No change.
-	v.Assert.BalanceEq(stage.creator, big.Sub(balanceBefore, big.NewInt(result.MessageReceipt.GasUsed))) // Pay gas, don't receive funds.
+	v.Assert.BalanceEq(stage.msAddr, multisigBalance)                                     // No change.
+	v.Assert.BalanceEq(stage.creator, big.Sub(balanceBefore, CalculateDeduction(result))) // Pay gas, don't receive funds.
 }
 
 func nestedSends_FailMissingParams(v *Builder) {
-	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPrice(1))
+	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPremium(1), GasFeeCap(200))
 
 	stage := prepareStage(v, acctDefaultBalance, multisigBalance)
 	balanceBefore := v.Actors.Balance(stage.creator)
@@ -189,13 +188,13 @@ func nestedSends_FailMissingParams(v *Builder) {
 	amtSent := abi.NewTokenAmount(1)
 	result := stage.sendOk(stage.msAddr, amtSent, builtin.MethodsMultisig.AddSigner, params, nonce)
 
-	v.Assert.BalanceEq(stage.creator, big.Sub(balanceBefore, big.NewInt(result.MessageReceipt.GasUsed)))
+	v.Assert.BalanceEq(stage.creator, big.Sub(balanceBefore, CalculateDeduction(result)))
 	v.Assert.BalanceEq(stage.msAddr, multisigBalance) // No change.
 	v.Assert.Equal(1, len(stage.state().Signers))     // No new signers
 }
 
 func nestedSends_FailMismatchParams(v *Builder) {
-	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPrice(1))
+	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPremium(1), GasFeeCap(200))
 
 	stage := prepareStage(v, acctDefaultBalance, multisigBalance)
 	balanceBefore := v.Actors.Balance(stage.creator)
@@ -210,13 +209,13 @@ func nestedSends_FailMismatchParams(v *Builder) {
 	amtSent := abi.NewTokenAmount(1)
 	result := stage.sendOk(stage.msAddr, amtSent, builtin.MethodsMultisig.AddSigner, &params, nonce)
 
-	v.Assert.BalanceEq(stage.creator, big.Sub(balanceBefore, big.NewInt(result.MessageReceipt.GasUsed)))
+	v.Assert.BalanceEq(stage.creator, big.Sub(balanceBefore, CalculateDeduction(result)))
 	v.Assert.BalanceEq(stage.msAddr, multisigBalance) // No change.
 	v.Assert.Equal(1, len(stage.state().Signers))     // No new signers
 }
 
 func nestedSends_FailInnerAbort(v *Builder) {
-	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPrice(1))
+	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPremium(1), GasFeeCap(200))
 
 	stage := prepareStage(v, acctDefaultBalance, multisigBalance)
 	prevHead := v.Actors.Head(builtin.RewardActorAddr)
@@ -235,7 +234,7 @@ func nestedSends_FailInnerAbort(v *Builder) {
 }
 
 func nestedSends_FailAbortedExec(v *Builder) {
-	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPrice(1))
+	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPremium(1), GasFeeCap(200))
 
 	stage := prepareStage(v, acctDefaultBalance, multisigBalance)
 	prevHead := v.Actors.Head(builtin.InitActorAddr)
@@ -258,7 +257,7 @@ func nestedSends_FailAbortedExec(v *Builder) {
 }
 
 func nestedSends_FailInsufficientFundsForTransferInInnerSend(v *Builder) {
-	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPrice(1))
+	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPremium(1), GasFeeCap(200))
 
 	// puppet actor has zero funds
 	puppetBalance := big.Zero()
@@ -293,7 +292,7 @@ func nestedSends_FailInsufficientFundsForTransferInInnerSend(v *Builder) {
 	v.Assert.Equal(exitcode.SysErrInsufficientFunds, puppetRet.Code)
 
 	// alice should be charged for the gas cost and bob should have not received any funds.
-	v.Assert.BalanceEq(alice.ID, big.Sub(acctDefaultBalance, big.NewInt(msg.Result.GasUsed)))
+	v.Assert.MessageSendersSatisfy(BalanceUpdated(big.Zero()), msg)
 	v.Assert.BalanceEq(bob.ID, big.Zero())
 }
 
@@ -325,7 +324,7 @@ func prepareStage(v *Builder, creatorBalance, msBalance abi.TokenAmount) *msStag
 	}
 }
 
-func (s *msStage) sendOk(to address.Address, value abi.TokenAmount, method abi.MethodNum, params runtime.CBORMarshaler, approverNonce uint64) *vm.ApplyRet {
+func (s *msStage) sendOk(to address.Address, value abi.TokenAmount, method abi.MethodNum, params runtime.CBORMarshaler, approverNonce uint64) *ApplicableMessage {
 	buf := bytes.Buffer{}
 	if params != nil {
 		err := params.MarshalCBOR(&buf)
@@ -345,7 +344,7 @@ func (s *msStage) sendOk(to address.Address, value abi.TokenAmount, method abi.M
 	// all messages succeeded.
 	s.v.Assert.EveryMessageResultSatisfies(ExitCode(exitcode.Ok))
 
-	return msg.Result
+	return msg
 }
 
 func (s *msStage) state() *multisig.State {

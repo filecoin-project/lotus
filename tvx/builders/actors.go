@@ -7,7 +7,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	abi_spec "github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
@@ -21,10 +20,37 @@ import (
 
 // Actors is an object that manages actors in the test vector.
 type Actors struct {
-	accounts []AddressHandle
-	miners   []AddressHandle
+	// registered stores registered actors and their initial balances.
+	registered map[AddressHandle]abi.TokenAmount
 
 	b *Builder
+}
+
+func newActors(b *Builder) *Actors {
+	return &Actors{
+		registered: make(map[AddressHandle]abi.TokenAmount),
+		b:          b,
+	}
+}
+
+// HandleFor gets the canonical handle for a registered address, which can
+// appear at either ID or Robust position.
+func (a *Actors) HandleFor(addr address.Address) AddressHandle {
+	for h := range a.registered {
+		if h.ID == addr || h.Robust == addr {
+			return h
+		}
+	}
+	a.b.Assert.FailNowf("asked for initial balance of unknown actor", "actor: %s", addr)
+	return AddressHandle{} // will never reach here.
+}
+
+// InitialBalance returns the initial balance of an actor that was registered
+// during preconditions. It matches against both the ID and Robust
+// addresses. It records an assertion failure if the actor is unknown.
+func (a *Actors) InitialBalance(addr address.Address) abi.TokenAmount {
+	handle := a.HandleFor(addr)
+	return a.registered[handle]
 }
 
 // AccountN creates many account actors of the specified kind, with the
@@ -52,7 +78,7 @@ func (a *Actors) Account(typ address.Protocol, balance abi.TokenAmount) AddressH
 	actorState := &account.State{Address: addr}
 	handle := a.CreateActor(builtin.AccountActorCodeID, addr, balance, actorState)
 
-	a.accounts = append(a.accounts, handle)
+	a.registered[handle] = balance
 	return handle
 }
 
@@ -63,7 +89,7 @@ type MinerActorCfg struct {
 }
 
 // Miner creates an owner account, a worker account, and a miner actor managed
-// by those accounts.
+// by those initial.
 func (a *Actors) Miner(cfg MinerActorCfg) (minerActor, owner, worker AddressHandle) {
 	owner = a.Account(address.SECP256K1, cfg.OwnerBalance)
 	worker = a.Account(address.BLS, big.Zero())
@@ -98,6 +124,7 @@ func (a *Actors) Miner(cfg MinerActorCfg) (minerActor, owner, worker AddressHand
 		EmptyArrayCid,
 		EmptyMapCid,
 		EmptyDeadlinesCid,
+		EmptyVestingFundsCid,
 	)
 	if err != nil {
 		panic(err)
@@ -142,7 +169,7 @@ func (a *Actors) Miner(cfg MinerActorCfg) (minerActor, owner, worker AddressHand
 		panic(err)
 	}
 
-	a.miners = append(a.miners, handle)
+	a.registered[handle] = big.Zero()
 	return handle, owner, worker
 }
 
@@ -193,7 +220,7 @@ func (a *Actors) Header(addr address.Address) *types.Actor {
 }
 
 // Balance is a shortcut for Header(addr).Balance.
-func (a *Actors) Balance(addr address.Address) abi_spec.TokenAmount {
+func (a *Actors) Balance(addr address.Address) abi.TokenAmount {
 	return a.Header(addr).Balance
 }
 

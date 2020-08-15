@@ -53,9 +53,6 @@ jobs:
           name: "build tvx"
           command: pushd tvx && go build .
       - run:
-          name: "run messages test vector suite (deprecated api)"
-          command: pushd tvx && ./tvx suite-messages | ./tvx exec-lotus
-      - run:
           name: "run messages test vector suite (new api) - msg_application"
           command: pushd tvx/scripts/msg_application && go build . && ./msg_application | ../../tvx exec-lotus
       - run:

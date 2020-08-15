@@ -12,7 +12,7 @@ import (
 )
 
 func failActorExecutionAborted(v *Builder) {
-	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPrice(1))
+	v.Messages.SetDefaults(GasLimit(1_000_000_000), GasPremium(1), GasFeeCap(200))
 
 	// Set up sender and receiver accounts.
 	var sender, receiver AddressHandle
