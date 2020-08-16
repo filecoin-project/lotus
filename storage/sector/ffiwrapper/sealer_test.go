@@ -222,7 +222,7 @@ func post(t *testing.T, sealer *Sealer, seals ...seal) time.Time {
 }
 
 func getGrothParamFileAndVerifyingKeys(s abi.SectorSize) {
-	dat, err := ioutil.ReadFile("../parameters.json")
+	dat, err := ioutil.ReadFile("../../../build/proof-params/parameters.json")
 	if err != nil {
 		panic(err)
 	}
