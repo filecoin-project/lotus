@@ -137,5 +137,7 @@ func (a *Asserter) FailNow() {
 }
 
 func (a *Asserter) Errorf(format string, args ...interface{}) {
-	fmt.Printf("%s: "+format, append([]interface{}{a.stage}, args...))
+	id := a.b.vector.Meta.ID
+	stage := a.stage
+	fmt.Printf("❌  id: %s, stage: %s:"+format, append([]interface{}{id, stage}, args...)...)
 }

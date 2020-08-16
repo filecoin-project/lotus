@@ -15,8 +15,11 @@ const (
 // CalculateDeduction returns the balance that shall be deducted from the
 // sender's account as a result of applying this message.
 func CalculateDeduction(am *ApplicableMessage) big.Int {
-	m := am.Message
+	if am.Result.GasUsed == 0 {
+		return big.Zero()
+	}
 
+	m := am.Message
 	minerReward := GetMinerReward(m.GasLimit, m.GasPremium) // goes to the miner
 	burn := CalculateBurn(m.GasLimit, am.Result.GasUsed)    // vanishes
 	deducted := big.Add(minerReward, burn)                  // sum of gas accrued

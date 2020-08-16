@@ -53,14 +53,17 @@ jobs:
           name: "build tvx"
           command: pushd tvx && go build .
       - run:
-          name: "run messages test vector suite (new api) - msg_application"
+          name: "run messages test vector suite: msg_application"
           command: pushd tvx/scripts/msg_application && go build . && ./msg_application | ../../tvx exec-lotus
       - run:
-          name: "run messages test vector suite (new api) - nested send"
+          name: "run messages test vector suite: nested send"
           command: pushd tvx/scripts/nested && go build . && ./nested | ../../tvx exec-lotus
       - run:
-          name: "run messages test vector suite (new api) - paych"
+          name: "run messages test vector suite: paych"
           command: pushd tvx/scripts/paych && go build . && ./paych | ../../tvx exec-lotus
+      - run:
+          name: "run messages test vector suite: actor_creation"
+          command: pushd tvx/scripts/actor_creation && go build . && ./actor_creation | ../../tvx exec-lotus
   soup-build-linux:
     executor: linux
     steps:
