@@ -25,7 +25,7 @@ const (
 	//
 	// When running this test, the corpus root can be overridden through the
 	// -corpus.root CLI flag to run an alternate corpus.
-	defaultCorpusRoot = "../extern/conformance-vectors"
+	defaultCorpusRoot = "../extern/test-vectors/corpus"
 )
 
 var (
@@ -97,20 +97,20 @@ func TestConformance(t *testing.T) {
 
 	// Run a test for each vector.
 	for _, v := range vectors {
-		v := v
+		path := filepath.Join(corpusRoot, v)
+		raw, err := ioutil.ReadFile(path)
+		if err != nil {
+			t.Fatalf("failed to read test raw file: %s", path)
+		}
+
+		var vector TestVector
+		err = json.Unmarshal(raw, &vector)
+		if err != nil {
+			t.Errorf("failed to parse test vector %s: %s; skipping", path, err)
+			continue
+		}
+
 		t.Run(v, func(t *testing.T) {
-			path := filepath.Join(corpusRoot, v)
-			raw, err := ioutil.ReadFile(path)
-			if err != nil {
-				t.Fatalf("failed to read test raw file: %s", path)
-			}
-
-			var vector TestVector
-			err = json.Unmarshal(raw, &vector)
-			if err != nil {
-				t.Fatalf("failed to parse test raw: %s", err)
-			}
-
 			// dispatch the execution depending on the vector class.
 			switch vector.Class {
 			case "message":
@@ -181,6 +181,7 @@ func executeMessageVector(t *testing.T, vector *TestVector) {
 	// Once all messages are applied, assert that the final state root matches
 	// the expected postcondition root.
 	if root != vector.Post.StateTree.RootCID {
+		// TODO trigger state diff on failure (@willscott)
 		t.Errorf("wrong post root cid; expected %vector , but got %vector", vector.Post.StateTree.RootCID, root)
 	}
 }
