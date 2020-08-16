@@ -31,16 +31,10 @@ func (s *sugarMsg) CreatePaychActor(from, to address.Address, opts ...MsgOpt) *A
 	}), opts...)
 }
 
-func (s *sugarMsg) CreateMultisigActor(from address.Address, signers []address.Address, unlockDuration abi.ChainEpoch, numApprovals uint64, opts ...MsgOpt) *ApplicableMessage {
-	ctorparams := &multisig.ConstructorParams{
-		Signers:               signers,
-		NumApprovalsThreshold: numApprovals,
-		UnlockDuration:        unlockDuration,
-	}
-
+func (s *sugarMsg) CreateMultisigActor(from address.Address, params *multisig.ConstructorParams, opts ...MsgOpt) *ApplicableMessage {
 	return s.m.Typed(from, builtin.InitActorAddr, InitExec(&init_.ExecParams{
 		CodeCID:           builtin.MultisigActorCodeID,
-		ConstructorParams: MustSerialize(ctorparams),
+		ConstructorParams: MustSerialize(params),
 	}), opts...)
 }
 

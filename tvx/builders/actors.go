@@ -18,30 +18,37 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 )
 
+type registeredActor struct {
+	handle  AddressHandle
+	initial abi.TokenAmount
+}
+
 // Actors is an object that manages actors in the test vector.
 type Actors struct {
 	// registered stores registered actors and their initial balances.
-	registered map[AddressHandle]abi.TokenAmount
+	registered []registeredActor
 
 	b *Builder
 }
 
 func newActors(b *Builder) *Actors {
-	return &Actors{
-		registered: make(map[AddressHandle]abi.TokenAmount),
-		b:          b,
-	}
+	return &Actors{b: b}
+}
+
+// Count returns the number of actors registered during preconditions.
+func (a *Actors) Count() int {
+	return len(a.registered)
 }
 
 // HandleFor gets the canonical handle for a registered address, which can
 // appear at either ID or Robust position.
 func (a *Actors) HandleFor(addr address.Address) AddressHandle {
-	for h := range a.registered {
-		if h.ID == addr || h.Robust == addr {
-			return h
+	for _, r := range a.registered {
+		if r.handle.ID == addr || r.handle.Robust == addr {
+			return r.handle
 		}
 	}
-	a.b.Assert.FailNowf("asked for initial balance of unknown actor", "actor: %s", addr)
+	a.b.Assert.FailNowf("asked for handle of unknown actor", "actor: %s", addr)
 	return AddressHandle{} // will never reach here.
 }
 
@@ -49,8 +56,22 @@ func (a *Actors) HandleFor(addr address.Address) AddressHandle {
 // during preconditions. It matches against both the ID and Robust
 // addresses. It records an assertion failure if the actor is unknown.
 func (a *Actors) InitialBalance(addr address.Address) abi.TokenAmount {
-	handle := a.HandleFor(addr)
-	return a.registered[handle]
+	for _, r := range a.registered {
+		if r.handle.ID == addr || r.handle.Robust == addr {
+			return r.initial
+		}
+	}
+	a.b.Assert.FailNowf("asked for initial balance of unknown actor", "actor: %s", addr)
+	return big.Zero() // will never reach here.
+}
+
+// Handles returns the AddressHandles for all registered actors.
+func (a *Actors) Handles() []AddressHandle {
+	ret := make([]AddressHandle, 0, len(a.registered))
+	for _, r := range a.registered {
+		ret = append(ret, r.handle)
+	}
+	return ret
 }
 
 // AccountN creates many account actors of the specified kind, with the
@@ -78,7 +99,7 @@ func (a *Actors) Account(typ address.Protocol, balance abi.TokenAmount) AddressH
 	actorState := &account.State{Address: addr}
 	handle := a.CreateActor(builtin.AccountActorCodeID, addr, balance, actorState)
 
-	a.registered[handle] = balance
+	a.registered = append(a.registered, registeredActor{handle, balance})
 	return handle
 }
 
@@ -169,7 +190,7 @@ func (a *Actors) Miner(cfg MinerActorCfg) (minerActor, owner, worker AddressHand
 		panic(err)
 	}
 
-	a.registered[handle] = big.Zero()
+	a.registered = append(a.registered, registeredActor{handle, big.Zero()})
 	return handle, owner, worker
 }
 

@@ -308,7 +308,11 @@ func prepareStage(v *Builder, creatorBalance, msBalance abi.TokenAmount) *msStag
 	creator := v.Actors.Account(address.SECP256K1, creatorBalance)
 	v.CommitPreconditions()
 
-	msg := v.Messages.Sugar().CreateMultisigActor(creator.ID, []address.Address{creator.ID}, 0, 1, Value(msBalance), Nonce(0))
+	msg := v.Messages.Sugar().CreateMultisigActor(creator.ID, &multisig.ConstructorParams{
+		Signers:               []address.Address{creator.ID},
+		NumApprovalsThreshold: 1,
+		UnlockDuration:        0,
+	}, Value(msBalance), Nonce(0))
 	v.Messages.ApplyOne(msg)
 
 	v.Assert.Equal(msg.Result.ExitCode, exitcode.Ok)
