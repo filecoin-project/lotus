@@ -75,8 +75,16 @@
       "slug": "en+arch",
       "github": "en/architecture.md",
       "value": null,
-      "posts": []
-    },    {
+      "posts": [
+        {
+          "title": "The Message Pool",
+          "slug": "en+mpool",
+          "github": "en/mpool.md",
+          "value": null
+        }
+      ]
+    },
+    {
       "title": "Storage Mining",
       "slug": "en+mining",
       "github": "en/mining.md",
