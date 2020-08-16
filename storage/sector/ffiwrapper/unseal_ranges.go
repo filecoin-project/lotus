@@ -3,7 +3,8 @@ package ffiwrapper
 import (
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-bitfield/rle"
+	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
+
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	"github.com/filecoin-project/lotus/storage/sector/storiface"

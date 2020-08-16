@@ -12,12 +12,12 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
-// TODO: Track things more actively
+// FaultTracker TODO: Track things more actively
 type FaultTracker interface {
 	CheckProvable(ctx context.Context, spt abi.RegisteredSealProof, sectors []abi.SectorID) ([]abi.SectorID, error)
 }
 
-// Returns unprovable sectors
+// CheckProvable returns unprovable sectors
 func (m *Manager) CheckProvable(ctx context.Context, spt abi.RegisteredSealProof, sectors []abi.SectorID) ([]abi.SectorID, error) {
 	var bad []abi.SectorID
 

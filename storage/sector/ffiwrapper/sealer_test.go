@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/ipfs/go-cid"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -16,14 +15,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ipfs/go-cid"
+
 	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"
 
-	ffi "github.com/filecoin-project/filecoin-ffi"
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-storage/storage"
+
+	ffi "github.com/filecoin-project/filecoin-ffi"
 
 	"github.com/filecoin-project/lotus/storage/sector/ffiwrapper/basicfs"
 	"github.com/filecoin-project/lotus/storage/sector/stores"
@@ -443,8 +445,8 @@ func BenchmarkWriteWithAlignment(b *testing.B) {
 		tf, _ := ioutil.TempFile("/tmp/", "scrb-")
 		b.StartTimer()
 
-		ffi.WriteWithAlignment(abi.RegisteredSealProof_StackedDrg2KiBV1, rf, bt, tf, nil)
-		w()
+		ffi.WriteWithAlignment(abi.RegisteredSealProof_StackedDrg2KiBV1, rf, bt, tf, nil) // nolint:errcheck
+		_ = w()
 	}
 }
 

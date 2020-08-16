@@ -100,7 +100,7 @@ func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Requ
 		rd, err = tarutil.TarDirectory(path)
 		w.Header().Set("Content-Type", "application/x-tar")
 	} else {
-		rd, err = os.OpenFile(path, os.O_RDONLY, 0644)
+		rd, err = os.OpenFile(path, os.O_RDONLY, 0644) // nolint
 		w.Header().Set("Content-Type", "application/octet-stream")
 	}
 	if err != nil {

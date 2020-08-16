@@ -3,13 +3,14 @@ package stores
 import (
 	"context"
 	"encoding/json"
-	"github.com/filecoin-project/lotus/storage/sector/fsutil"
-	"github.com/google/uuid"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/filecoin-project/lotus/storage/sector/fsutil"
+
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 

@@ -3,9 +3,10 @@ package sector
 import (
 	"context"
 	"errors"
-	"github.com/filecoin-project/lotus/storage/sector/fsutil"
 	"io"
 	"net/http"
+
+	"github.com/filecoin-project/lotus/storage/sector/fsutil"
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"

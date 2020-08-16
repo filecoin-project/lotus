@@ -28,7 +28,7 @@ func padFFI(buf []byte) []byte {
 		panic(err)
 	}
 
-	if _, err := tf.Seek(io.SeekStart, 0); err != nil {
+	if _, err := tf.Seek(io.SeekStart, 0); err != nil { // nolint:staticcheck
 		panic(err)
 	}
 
