@@ -39,7 +39,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/lotus/storage/sector/ffiwrapper"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"

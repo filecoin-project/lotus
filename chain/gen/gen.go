@@ -38,7 +38,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/lotus/storage/sector/ffiwrapper"
 )
 
 var log = logging.Logger("gen")

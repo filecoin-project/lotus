@@ -19,7 +19,7 @@ import (
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/sector-storage/zerocomm"
+	"github.com/filecoin-project/lotus/storage/sector/zerocomm"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
@@ -28,9 +28,9 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/genesis"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/sector-storage/ffiwrapper/basicfs"
-	"github.com/filecoin-project/sector-storage/stores"
+	"github.com/filecoin-project/lotus/storage/sector/ffiwrapper"
+	"github.com/filecoin-project/lotus/storage/sector/ffiwrapper/basicfs"
+	"github.com/filecoin-project/lotus/storage/sector/stores"
 )
 
 var log = logging.Logger("preseal")

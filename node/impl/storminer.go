@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/filecoin-project/sector-storage/fsutil"
+	"github.com/filecoin-project/lotus/storage/sector/fsutil"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
@@ -19,10 +19,10 @@ import (
 	storagemarket "github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/lotus/storage/sealing"
-	sectorstorage "github.com/filecoin-project/sector-storage"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/sector-storage/stores"
-	"github.com/filecoin-project/sector-storage/storiface"
+	"github.com/filecoin-project/lotus/storage/sector"
+	"github.com/filecoin-project/lotus/storage/sector/ffiwrapper"
+	"github.com/filecoin-project/lotus/storage/sector/stores"
+	"github.com/filecoin-project/lotus/storage/sector/storiface"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	"github.com/filecoin-project/lotus/api"
@@ -47,8 +47,8 @@ type StorageMinerAPI struct {
 	Miner             *storage.Miner
 	BlockMiner        *miner.Miner
 	Full              api.FullNode
-	StorageMgr        *sectorstorage.Manager `optional:"true"`
-	IStorageMgr       sectorstorage.SectorManager
+	StorageMgr        *sector.Manager `optional:"true"`
+	IStorageMgr       sector.SectorManager
 	*stores.Index
 
 	ConsiderOnlineStorageDealsConfigFunc       dtypes.ConsiderOnlineStorageDealsConfigFunc

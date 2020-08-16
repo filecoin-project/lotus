@@ -43,9 +43,9 @@ import (
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-storedcounter"
 	"github.com/filecoin-project/lotus/storage/sealing"
-	sectorstorage "github.com/filecoin-project/sector-storage"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/sector-storage/stores"
+	"github.com/filecoin-project/lotus/storage/sector"
+	"github.com/filecoin-project/lotus/storage/sector/ffiwrapper"
+	"github.com/filecoin-project/lotus/storage/sector/stores"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	lapi "github.com/filecoin-project/lotus/api"
@@ -140,8 +140,8 @@ func SectorIDCounter(ds dtypes.MetadataDS) sealing.SectorIDCounter {
 	return &sidsc{sc}
 }
 
-func StorageMiner(fc config.MinerFeeConfig) func(mctx helpers.MetricsCtx, lc fx.Lifecycle, api lapi.FullNode, h host.Host, ds dtypes.MetadataDS, sealer sectorstorage.SectorManager, sc sealing.SectorIDCounter, verif ffiwrapper.Verifier, gsd dtypes.GetSealingDelayFunc) (*storage.Miner, error) {
-	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, api lapi.FullNode, h host.Host, ds dtypes.MetadataDS, sealer sectorstorage.SectorManager, sc sealing.SectorIDCounter, verif ffiwrapper.Verifier, gsd dtypes.GetSealingDelayFunc) (*storage.Miner, error) {
+func StorageMiner(fc config.MinerFeeConfig) func(mctx helpers.MetricsCtx, lc fx.Lifecycle, api lapi.FullNode, h host.Host, ds dtypes.MetadataDS, sealer sector.SectorManager, sc sealing.SectorIDCounter, verif ffiwrapper.Verifier, gsd dtypes.GetSealingDelayFunc) (*storage.Miner, error) {
+	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, api lapi.FullNode, h host.Host, ds dtypes.MetadataDS, sealer sector.SectorManager, sc sealing.SectorIDCounter, verif ffiwrapper.Verifier, gsd dtypes.GetSealingDelayFunc) (*storage.Miner, error) {
 		maddr, err := minerAddrFromDS(ds)
 		if err != nil {
 			return nil, err
@@ -440,7 +440,7 @@ func StorageProvider(minerAddress dtypes.MinerAddress,
 }
 
 // RetrievalProvider creates a new retrieval provider attached to the provider blockstore
-func RetrievalProvider(h host.Host, miner *storage.Miner, sealer sectorstorage.SectorManager, full lapi.FullNode, ds dtypes.MetadataDS, pieceStore dtypes.ProviderPieceStore, mds dtypes.StagingMultiDstore, dt dtypes.ProviderDataTransfer, onlineOk dtypes.ConsiderOnlineRetrievalDealsConfigFunc, offlineOk dtypes.ConsiderOfflineRetrievalDealsConfigFunc) (retrievalmarket.RetrievalProvider, error) {
+func RetrievalProvider(h host.Host, miner *storage.Miner, sealer sector.SectorManager, full lapi.FullNode, ds dtypes.MetadataDS, pieceStore dtypes.ProviderPieceStore, mds dtypes.StagingMultiDstore, dt dtypes.ProviderDataTransfer, onlineOk dtypes.ConsiderOnlineRetrievalDealsConfigFunc, offlineOk dtypes.ConsiderOfflineRetrievalDealsConfigFunc) (retrievalmarket.RetrievalProvider, error) {
 	adapter := retrievaladapter.NewRetrievalProviderNode(miner, sealer, full)
 
 	maddr, err := minerAddrFromDS(ds)
@@ -476,10 +476,10 @@ func RetrievalProvider(h host.Host, miner *storage.Miner, sealer sectorstorage.S
 	return retrievalimpl.NewProvider(maddr, adapter, netwk, pieceStore, mds, dt, namespace.Wrap(ds, datastore.NewKey("/retrievals/provider")), opt)
 }
 
-func SectorStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, ls stores.LocalStorage, si stores.SectorIndex, cfg *ffiwrapper.Config, sc sectorstorage.SealerConfig, urls sectorstorage.URLs, sa sectorstorage.StorageAuth) (*sectorstorage.Manager, error) {
+func SectorStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, ls stores.LocalStorage, si stores.SectorIndex, cfg *ffiwrapper.Config, sc sector.SealerConfig, urls sector.URLs, sa sector.StorageAuth) (*sector.Manager, error) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
-	sst, err := sectorstorage.New(ctx, ls, si, cfg, sc, urls, sa)
+	sst, err := sector.New(ctx, ls, si, cfg, sc, urls, sa)
 	if err != nil {
 		return nil, err
 	}
@@ -491,7 +491,7 @@ func SectorStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, ls stores.LocalStor
 	return sst, nil
 }
 
-func StorageAuth(ctx helpers.MetricsCtx, ca lapi.Common) (sectorstorage.StorageAuth, error) {
+func StorageAuth(ctx helpers.MetricsCtx, ca lapi.Common) (sector.StorageAuth, error) {
 	token, err := ca.AuthNew(ctx, []auth.Permission{"admin"})
 	if err != nil {
 		return nil, xerrors.Errorf("creating storage auth header: %w", err)
@@ -499,7 +499,7 @@ func StorageAuth(ctx helpers.MetricsCtx, ca lapi.Common) (sectorstorage.StorageA
 
 	headers := http.Header{}
 	headers.Add("Authorization", "Bearer "+string(token))
-	return sectorstorage.StorageAuth(headers), nil
+	return sector.StorageAuth(headers), nil
 }
 
 func NewConsiderOnlineStorageDealsConfigFunc(r repo.LockedRepo) (dtypes.ConsiderOnlineStorageDealsConfigFunc, error) {

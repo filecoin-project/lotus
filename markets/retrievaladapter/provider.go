@@ -4,29 +4,30 @@ import (
 	"context"
 	"io"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	"github.com/filecoin-project/go-fil-markets/shared"
-	sectorstorage "github.com/filecoin-project/sector-storage"
-	"github.com/filecoin-project/sector-storage/storiface"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
-	"github.com/ipfs/go-cid"
-
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/storage"
+	"github.com/filecoin-project/lotus/storage/sector"
+	"github.com/filecoin-project/lotus/storage/sector/storiface"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"github.com/filecoin-project/go-fil-markets/shared"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
+
+	"github.com/ipfs/go-cid"
 )
 
 type retrievalProviderNode struct {
 	miner  *storage.Miner
-	sealer sectorstorage.SectorManager
+	sealer sector.SectorManager
 	full   api.FullNode
 }
 
 // NewRetrievalProviderNode returns a new node adapter for a retrieval provider that talks to the
 // Lotus Node
-func NewRetrievalProviderNode(miner *storage.Miner, sealer sectorstorage.SectorManager, full api.FullNode) retrievalmarket.RetrievalProviderNode {
+func NewRetrievalProviderNode(miner *storage.Miner, sealer sector.SectorManager, full api.FullNode) retrievalmarket.RetrievalProviderNode {
 	return &retrievalProviderNode{miner, sealer, full}
 }
 

@@ -13,7 +13,7 @@ import (
 
 	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/storage/mockstorage"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/lotus/storage/sector/ffiwrapper"
 
 	"github.com/filecoin-project/go-storedcounter"
 	"github.com/ipfs/go-datastore"
@@ -42,14 +42,14 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
-	genesis "github.com/filecoin-project/lotus/genesis"
+	"github.com/filecoin-project/lotus/genesis"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/modules"
 	modtest "github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
-	sectorstorage "github.com/filecoin-project/sector-storage"
-	"github.com/filecoin-project/sector-storage/mock"
+	"github.com/filecoin-project/lotus/storage/sector"
+	"github.com/filecoin-project/lotus/storage/sector/mock"
 )
 
 func init() {
@@ -422,11 +422,11 @@ func mockSbBuilder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test
 		}
 
 		storers[i] = testStorageNode(ctx, t, genms[i].Worker, maddrs[i], pidKeys[i], f, mn, node.Options(
-			node.Override(new(sectorstorage.SectorManager), func() (sectorstorage.SectorManager, error) {
+			node.Override(new(sector.SectorManager), func() (sector.SectorManager, error) {
 				return mock.NewMockSectorMgr(build.DefaultSectorSize(), sectors), nil
 			}),
 			node.Override(new(ffiwrapper.Verifier), mock.MockVerifier),
-			node.Unset(new(*sectorstorage.Manager)),
+			node.Unset(new(*sector.Manager)),
 		))
 	}
 

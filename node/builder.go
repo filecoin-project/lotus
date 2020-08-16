@@ -61,10 +61,10 @@ import (
 	"github.com/filecoin-project/lotus/paychmgr/settler"
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sealing"
+	"github.com/filecoin-project/lotus/storage/sector"
+	"github.com/filecoin-project/lotus/storage/sector/ffiwrapper"
+	"github.com/filecoin-project/lotus/storage/sector/stores"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
-	sectorstorage "github.com/filecoin-project/sector-storage"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/sector-storage/stores"
 )
 
 var log = logging.Logger("builder")
@@ -281,7 +281,7 @@ func Online() Option {
 		// miner
 		ApplyIf(func(s *Settings) bool { return s.nodeType == repo.StorageMiner },
 			Override(new(api.Common), From(new(common.CommonAPI))),
-			Override(new(sectorstorage.StorageAuth), modules.StorageAuth),
+			Override(new(sector.StorageAuth), modules.StorageAuth),
 
 			Override(new(*stores.Index), stores.NewIndex),
 			Override(new(stores.SectorIndex), From(new(*stores.Index))),
@@ -290,11 +290,11 @@ func Online() Option {
 			Override(new(*ffiwrapper.Config), modules.ProofsConfig),
 			Override(new(stores.LocalStorage), From(new(repo.LockedRepo))),
 			Override(new(sealing.SectorIDCounter), modules.SectorIDCounter),
-			Override(new(*sectorstorage.Manager), modules.SectorStorage),
+			Override(new(*sector.Manager), modules.SectorStorage),
 			Override(new(ffiwrapper.Verifier), ffiwrapper.ProofVerifier),
 
-			Override(new(sectorstorage.SectorManager), From(new(*sectorstorage.Manager))),
-			Override(new(storage2.Prover), From(new(sectorstorage.SectorManager))),
+			Override(new(sector.SectorManager), From(new(*sector.Manager))),
+			Override(new(storage2.Prover), From(new(sector.SectorManager))),
 
 			Override(new(*sectorblocks.SectorBlocks), sectorblocks.NewSectorBlocks),
 			Override(new(*storage.Miner), modules.StorageMiner(config.DefaultStorageMiner().Fees)),
@@ -369,10 +369,10 @@ func ConfigCommon(cfg *config.Common) Option {
 		Override(SetApiEndpointKey, func(lr repo.LockedRepo, e dtypes.APIEndpoint) error {
 			return lr.SetAPIEndpoint(e)
 		}),
-		Override(new(sectorstorage.URLs), func(e dtypes.APIEndpoint) (sectorstorage.URLs, error) {
+		Override(new(sector.URLs), func(e dtypes.APIEndpoint) (sector.URLs, error) {
 			ip := cfg.API.RemoteListenAddress
 
-			var urls sectorstorage.URLs
+			var urls sector.URLs
 			urls = append(urls, "http://"+ip+"/remote") // TODO: This makes no assumptions, and probably could...
 			return urls, nil
 		}),
@@ -430,7 +430,7 @@ func ConfigStorageMiner(c interface{}) Option {
 			Override(new(dtypes.DealFilter), modules.BasicDealFilter(dealfilter.CliDealFilter(cfg.Dealmaking.Filter))),
 		),
 
-		Override(new(sectorstorage.SealerConfig), cfg.Storage),
+		Override(new(sector.SealerConfig), cfg.Storage),
 		Override(new(*storage.Miner), modules.StorageMiner(cfg.Fees)),
 	)
 }

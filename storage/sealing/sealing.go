@@ -15,8 +15,8 @@ import (
 	"github.com/filecoin-project/go-address"
 	padreader "github.com/filecoin-project/go-padreader"
 	statemachine "github.com/filecoin-project/go-statemachine"
-	sectorstorage "github.com/filecoin-project/sector-storage"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/lotus/storage/sector"
+	"github.com/filecoin-project/lotus/storage/sector/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
@@ -59,7 +59,7 @@ type Sealing struct {
 
 	maddr address.Address
 
-	sealer  sectorstorage.SectorManager
+	sealer  sector.SectorManager
 	sectors *statemachine.StateGroup
 	sc      SectorIDCounter
 	verif   ffiwrapper.Verifier
@@ -90,7 +90,7 @@ type UnsealedSectorInfo struct {
 	pieceSizes []abi.UnpaddedPieceSize
 }
 
-func New(api SealingAPI, fc FeeConfig, events Events, maddr address.Address, ds datastore.Batching, sealer sectorstorage.SectorManager, sc SectorIDCounter, verif ffiwrapper.Verifier, pcp PreCommitPolicy, gsd GetSealingDelayFunc) *Sealing {
+func New(api SealingAPI, fc FeeConfig, events Events, maddr address.Address, ds datastore.Batching, sealer sector.SectorManager, sc SectorIDCounter, verif ffiwrapper.Verifier, pcp PreCommitPolicy, gsd GetSealingDelayFunc) *Sealing {
 	s := &Sealing{
 		api:    api,
 		feeCfg: fc,
@@ -174,7 +174,7 @@ func (m *Sealing) AddPieceToAnySector(ctx context.Context, size abi.UnpaddedPiec
 // Caller should hold m.unsealedInfoMap.mux
 func (m *Sealing) addPiece(ctx context.Context, sectorID abi.SectorNumber, size abi.UnpaddedPieceSize, r io.Reader, di *DealInfo) error {
 	log.Infof("Adding piece to sector %d", sectorID)
-	ppi, err := m.sealer.AddPiece(sectorstorage.WithPriority(ctx, DealSectorPriority), m.minerSector(sectorID), m.unsealedInfoMap.infos[sectorID].pieceSizes, size, r)
+	ppi, err := m.sealer.AddPiece(sector.WithPriority(ctx, DealSectorPriority), m.minerSector(sectorID), m.unsealedInfoMap.infos[sectorID].pieceSizes, size, r)
 	if err != nil {
 		return xerrors.Errorf("writing piece: %w", err)
 	}

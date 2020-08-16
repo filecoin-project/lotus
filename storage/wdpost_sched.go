@@ -9,7 +9,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	sectorstorage "github.com/filecoin-project/sector-storage"
+	"github.com/filecoin-project/lotus/storage/sector"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-storage/storage"
@@ -26,7 +26,7 @@ type WindowPoStScheduler struct {
 	api              storageMinerApi
 	feeCfg           config.MinerFeeConfig
 	prover           storage.Prover
-	faultTracker     sectorstorage.FaultTracker
+	faultTracker     sector.FaultTracker
 	proofType        abi.RegisteredPoStProof
 	partitionSectors uint64
 
@@ -43,7 +43,7 @@ type WindowPoStScheduler struct {
 	//failLk sync.Mutex
 }
 
-func NewWindowedPoStScheduler(api storageMinerApi, fc config.MinerFeeConfig, sb storage.Prover, ft sectorstorage.FaultTracker, actor address.Address, worker address.Address) (*WindowPoStScheduler, error) {
+func NewWindowedPoStScheduler(api storageMinerApi, fc config.MinerFeeConfig, sb storage.Prover, ft sector.FaultTracker, actor address.Address, worker address.Address) (*WindowPoStScheduler, error) {
 	mi, err := api.StateMinerInfo(context.TODO(), actor, types.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("getting sector size: %w", err)

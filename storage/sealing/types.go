@@ -7,7 +7,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 
-	sectorstorage "github.com/filecoin-project/sector-storage"
+	"github.com/filecoin-project/lotus/storage/sector"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
@@ -137,7 +137,7 @@ func (t *SectorInfo) sealingCtx(ctx context.Context) context.Context {
 	//  we need sealed sooner
 
 	if t.hasDeals() {
-		return sectorstorage.WithPriority(ctx, DealSectorPriority)
+		return sector.WithPriority(ctx, DealSectorPriority)
 	}
 
 	return ctx

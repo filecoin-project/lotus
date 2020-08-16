@@ -5,7 +5,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	commcid "github.com/filecoin-project/go-fil-commcid"
-	"github.com/filecoin-project/sector-storage/mock"
+	"github.com/filecoin-project/lotus/storage/sector/mock"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
@@ -14,8 +14,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/genesis"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/sector-storage/zerocomm"
+	"github.com/filecoin-project/lotus/storage/sector/ffiwrapper"
+	"github.com/filecoin-project/lotus/storage/sector/zerocomm"
 )
 
 func PreSeal(ssize abi.SectorSize, maddr address.Address, sectors int) (*genesis.Miner, *types.KeyInfo, error) {

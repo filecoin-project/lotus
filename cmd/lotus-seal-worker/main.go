@@ -22,7 +22,7 @@ import (
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	paramfetch "github.com/filecoin-project/go-paramfetch"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/lotus/storage/sector/ffiwrapper"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/apistruct"
@@ -31,9 +31,9 @@ import (
 	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/lib/rpcenc"
 	"github.com/filecoin-project/lotus/node/repo"
-	sectorstorage "github.com/filecoin-project/sector-storage"
-	"github.com/filecoin-project/sector-storage/sealtasks"
-	"github.com/filecoin-project/sector-storage/stores"
+	"github.com/filecoin-project/lotus/storage/sector"
+	"github.com/filecoin-project/lotus/storage/sector/sealtasks"
+	"github.com/filecoin-project/lotus/storage/sector/stores"
 )
 
 var log = logging.Logger("main")
@@ -336,7 +336,7 @@ var runCmd = &cli.Command{
 		// Create / expose the worker
 
 		workerApi := &worker{
-			LocalWorker: sectorstorage.NewLocalWorker(sectorstorage.WorkerConfig{
+			LocalWorker: sector.NewLocalWorker(sector.WorkerConfig{
 				SealProof: spt,
 				TaskTypes: taskTypes,
 			}, remote, localStore, nodeApi),
