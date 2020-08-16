@@ -15,6 +15,14 @@ type AddressHandle struct {
 	ID, Robust address.Address
 }
 
+func (ah AddressHandle) IDAddr() address.Address {
+	return ah.ID
+}
+
+func (ah AddressHandle) RobustAddr() address.Address {
+	return ah.Robust
+}
+
 func (ah AddressHandle) String() string {
 	return fmt.Sprintf("AddressHandle[ID: %s, Robust: %s]", ah.ID, ah.Robust)
 }

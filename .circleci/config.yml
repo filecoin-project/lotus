@@ -64,6 +64,9 @@ jobs:
       - run:
           name: "run messages test vector suite: actor_creation"
           command: pushd tvx/scripts/actor_creation && go build . && ./actor_creation | ../../tvx exec-lotus
+      - run:
+          name: "run messages test vector suite: transfer"
+          command: pushd tvx/scripts/transfer && go build . && ./transfer | ../../tvx exec-lotus
   soup-build-linux:
     executor: linux
     steps:
