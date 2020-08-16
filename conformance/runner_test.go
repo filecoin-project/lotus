@@ -24,12 +24,12 @@ const (
 	// It is mounted on the Lotus repo as a git submodule.
 	//
 	// When running this test, the corpus root can be overridden through the
-	// -corpus.root CLI flag to run an alternate corpus.
+	// -conformance.corpus CLI flag to run an alternate corpus.
 	defaultCorpusRoot = "../extern/test-vectors/corpus"
 )
 
 var (
-	// corpusRoot is the effective corpus root path, taken from the `-corpus.root` CLI flag,
+	// corpusRoot is the effective corpus root path, taken from the `-conformance.corpus` CLI flag,
 	// falling back to defaultCorpusRoot if not provided.
 	corpusRoot string
 	// ignore is a set of paths relative to root to skip.
@@ -37,11 +37,15 @@ var (
 		".git":        {},
 		"schema.json": {},
 	}
+	skip bool
 )
 
 func init() {
-	// read the alternative root from the -corpus.root CLI flag.
-	flag.StringVar(&corpusRoot, "corpus.root", defaultCorpusRoot, "test vector corpus directory")
+	// read the alternative root from the -conformance.corpus CLI flag.
+	flag.StringVar(&corpusRoot, "conformance.corpus", defaultCorpusRoot, "test vector corpus directory")
+	if strings.TrimSpace(os.Getenv("SKIP_CONFORMANCE")) == "1" {
+		skip = true
+	}
 }
 
 // TestConformance is the entrypoint test that runs all test vectors found
@@ -51,6 +55,9 @@ func init() {
 // as well as files beginning with _. It parses each file as a test vector, and
 // runs it via the Driver.
 func TestConformance(t *testing.T) {
+	if skip {
+		t.SkipNow()
+	}
 	var vectors []string
 	err := filepath.Walk(corpusRoot+"/", func(path string, info os.FileInfo, err error) error {
 		if err != nil {

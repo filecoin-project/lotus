@@ -146,6 +146,10 @@ jobs:
         description: |
           Upload coverage report to https://codecov.io/. Requires the codecov API token to be
           set as an environment variable for private projects.
+      skip-conformance:
+        type: string
+        default: "0"
+        description: "Skip conformance tests (default: no)."
     executor: << parameters.executor >>
     steps:
       - install-deps
@@ -161,6 +165,7 @@ jobs:
           name: go test
           environment:
             LOTUS_TEST_WINDOW_POST: << parameters.winpost-test >>
+            SKIP_CONFORMANCE: << parameters.skip-conformance >>
           command: |
             mkdir -p /tmp/test-reports/<< parameters.test-suite-name >>
             mkdir -p /tmp/test-artifacts
@@ -190,6 +195,8 @@ jobs:
   test-short:
     <<: *test
   test-window-post:
+    <<: *test
+  test-conformance:
     <<: *test
 
   build-macos:
@@ -326,17 +333,24 @@ workflows:
       - test:
           codecov-upload: true
           test-suite-name: full
+          skip-conformance: "1"
       - test-window-post:
           go-test-flags: "-run=TestWindowedPost"
+          skip-conformance: "1"
           winpost-test: "1"
           test-suite-name: window-post
       - test-short:
           go-test-flags: "--timeout 10m --short"
           test-suite-name: short
+          skip-conformance: "1"
           filters:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+$/
+      - test-conformance:
+          test-suite-name: conformance
+          packages: "./conformance"
+          skip-conformance: "0"
       - build-debug
       - build-all:
           requires:
