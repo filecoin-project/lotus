@@ -225,7 +225,7 @@ func getGrothParamFileAndVerifyingKeys(s abi.SectorSize) {
 		panic(err)
 	}
 
-	err = paramfetch.GetParams(dat, uint64(s))
+	err = paramfetch.GetParams(context.TODO(), dat, uint64(s))
 	if err != nil {
 		panic(xerrors.Errorf("failed to acquire Groth parameters for 2KiB sectors: %w", err))
 	}
