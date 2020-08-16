@@ -195,6 +195,8 @@ func fetchCids(
 }
 
 type BlockValidator struct {
+	self peer.ID
+
 	peers *lru.TwoQueueCache
 
 	killThresh int
@@ -211,9 +213,10 @@ type BlockValidator struct {
 	keycache map[string]address.Address
 }
 
-func NewBlockValidator(chain *store.ChainStore, stmgr *stmgr.StateManager, blacklist func(peer.ID)) *BlockValidator {
+func NewBlockValidator(self peer.ID, chain *store.ChainStore, stmgr *stmgr.StateManager, blacklist func(peer.ID)) *BlockValidator {
 	p, _ := lru.New2Q(4096)
 	return &BlockValidator{
+		self:       self,
 		peers:      p,
 		killThresh: 10,
 		blacklist:  blacklist,
@@ -243,6 +246,10 @@ func (bv *BlockValidator) flagPeer(p peer.ID) {
 }
 
 func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub.Message) pubsub.ValidationResult {
+	if pid == bv.self {
+		return pubsub.ValidationAccept
+	}
+
 	// track validation time
 	begin := build.Clock.Now()
 	defer func() {
@@ -485,14 +492,19 @@ func (brc *blockReceiptCache) add(bcid cid.Cid) int {
 }
 
 type MessageValidator struct {
+	self  peer.ID
 	mpool *messagepool.MessagePool
 }
 
-func NewMessageValidator(mp *messagepool.MessagePool) *MessageValidator {
-	return &MessageValidator{mp}
+func NewMessageValidator(self peer.ID, mp *messagepool.MessagePool) *MessageValidator {
+	return &MessageValidator{self: self, mpool: mp}
 }
 
 func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub.Message) pubsub.ValidationResult {
+	if pid == mv.self {
+		return pubsub.ValidationAccept
+	}
+
 	stats.Record(ctx, metrics.MessageReceived.M(1))
 	m, err := types.DecodeSignedMessage(msg.Message.GetData())
 	if err != nil {
