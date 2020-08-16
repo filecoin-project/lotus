@@ -23,7 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/miner"
-	sealing "github.com/filecoin-project/storage-fsm"
+	"github.com/filecoin-project/lotus/storage/sealing"
 	dag "github.com/ipfs/go-merkledag"
 	dstest "github.com/ipfs/go-merkledag/test"
 	unixfile "github.com/ipfs/go-unixfs/file"

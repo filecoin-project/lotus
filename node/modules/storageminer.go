@@ -42,11 +42,11 @@ import (
 	"github.com/filecoin-project/go-multistore"
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-storedcounter"
+	"github.com/filecoin-project/lotus/storage/sealing"
 	sectorstorage "github.com/filecoin-project/sector-storage"
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/sector-storage/stores"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	sealing "github.com/filecoin-project/storage-fsm"
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"

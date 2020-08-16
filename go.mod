@@ -32,6 +32,7 @@ require (
 	github.com/filecoin-project/go-multistore v0.0.3
 	github.com/filecoin-project/go-padreader v0.0.0-20200210211231-548257017ca6
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200701152213-3e0f0afdc261
+	github.com/filecoin-project/go-statemachine v0.0.0-20200813232949-df9b130df370
 	github.com/filecoin-project/go-statestore v0.1.0
 	github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b
 	github.com/filecoin-project/sector-storage v0.0.0-20200810171746-eac70842d8e0
@@ -130,6 +131,7 @@ require (
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
 	google.golang.org/api v0.25.0 // indirect
+	gotest.tools v2.2.0+incompatible
 	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
 )
 
@@ -138,7 +140,5 @@ replace github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v
 replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 
 replace github.com/filecoin-project/sector-storage => ./extern/sector-storage
-
-replace github.com/filecoin-project/storage-fsm => ./extern/storage-fsm
 
 replace github.com/dgraph-io/badger/v2 => github.com/dgraph-io/badger/v2 v2.0.1-rc1.0.20200716180832-3ab515320794

@@ -26,7 +26,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	sealing "github.com/filecoin-project/storage-fsm"
+	"github.com/filecoin-project/lotus/storage/sealing"
 )
 
 var log = logging.Logger("storageminer")

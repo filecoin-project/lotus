@@ -6,7 +6,7 @@ import (
 
 	gen "github.com/whyrusleeping/cbor-gen"
 
-	sealing "github.com/filecoin-project/storage-fsm"
+	"github.com/filecoin-project/lotus/storage/sealing"
 )
 
 func main() {
