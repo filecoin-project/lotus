@@ -440,6 +440,7 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 				SealProofType: spt,
 			}, sectorstorage.SealerConfig{
 				ParallelFetchLimit: 10,
+				AllowAddPiece:      true,
 				AllowPreCommit1:    true,
 				AllowPreCommit2:    true,
 				AllowCommit:        true,

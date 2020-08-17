@@ -133,6 +133,7 @@ func DefaultStorageMiner() *StorageMiner {
 		Common: defCommon(),
 
 		Storage: sectorstorage.SealerConfig{
+			AllowAddPiece:   true,
 			AllowPreCommit1: true,
 			AllowPreCommit2: true,
 			AllowCommit:     true,
