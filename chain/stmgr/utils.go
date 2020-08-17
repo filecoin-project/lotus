@@ -293,14 +293,8 @@ func StateMinerInfo(ctx context.Context, sm *StateManager, ts *types.TipSet, mad
 }
 
 func GetMinerSlashed(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (bool, error) {
-	var mas miner.State
-	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
-	if err != nil {
-		return false, xerrors.Errorf("(get miner slashed) failed to load miner actor state")
-	}
-
 	var spas power.State
-	_, err = sm.LoadActorState(ctx, builtin.StoragePowerActorAddr, &spas, ts)
+	_, err := sm.LoadActorState(ctx, builtin.StoragePowerActorAddr, &spas, ts)
 	if err != nil {
 		return false, xerrors.Errorf("(get miner slashed) failed to load power actor state")
 	}
