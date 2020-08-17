@@ -92,11 +92,12 @@ func (m mybs) Get(c cid.Cid) (block.Block, error) {
 	return b, nil
 }
 
-var rootkey, _ = address.NewIDAddress(80)
+var rootkey1, _ = address.NewFromString("t16bvkginoioylpyfblbytvornl5o63hngiiorlby")
+var rootkey2, _ = address.NewFromString("t1cn3rvv32w6kk5wseu6x74cmaur473zuvrjkijaa")
 
 var rootkeyMultisig = genesis.MultisigMeta{
-	Signers:         []address.Address{rootkey},
-	Threshold:       1,
+	Signers:         []address.Address{rootkey1, rootkey2},
+	Threshold:       2,
 	VestingDuration: 0,
 	VestingStart:    0,
 }
