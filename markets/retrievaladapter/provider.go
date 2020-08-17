@@ -6,9 +6,9 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/extern/sector-storage"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/lotus/storage"
-	"github.com/filecoin-project/lotus/storage/sector"
-	"github.com/filecoin-project/lotus/storage/sector/storiface"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
@@ -21,13 +21,13 @@ import (
 
 type retrievalProviderNode struct {
 	miner  *storage.Miner
-	sealer sector.SectorManager
+	sealer sectorstorage.SectorManager
 	full   api.FullNode
 }
 
 // NewRetrievalProviderNode returns a new node adapter for a retrieval provider that talks to the
 // Lotus Node
-func NewRetrievalProviderNode(miner *storage.Miner, sealer sector.SectorManager, full api.FullNode) retrievalmarket.RetrievalProviderNode {
+func NewRetrievalProviderNode(miner *storage.Miner, sealer sectorstorage.SectorManager, full api.FullNode) retrievalmarket.RetrievalProviderNode {
 	return &retrievalProviderNode{miner, sealer, full}
 }
 

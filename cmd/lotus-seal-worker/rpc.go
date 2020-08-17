@@ -5,13 +5,13 @@ import (
 
 	"github.com/filecoin-project/specs-storage/storage"
 
-	"github.com/filecoin-project/lotus/storage/sector"
+	"github.com/filecoin-project/lotus/extern/sector-storage"
 
 	"github.com/filecoin-project/lotus/build"
 )
 
 type worker struct {
-	*sector.LocalWorker
+	*sectorstorage.LocalWorker
 }
 
 func (w *worker) Version(context.Context) (build.Version, error) {
