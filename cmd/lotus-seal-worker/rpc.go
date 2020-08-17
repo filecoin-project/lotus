@@ -5,7 +5,7 @@ import (
 
 	"github.com/filecoin-project/specs-storage/storage"
 
-	"github.com/filecoin-project/lotus/extern/sector-storage"
+	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 
 	"github.com/filecoin-project/lotus/build"
 )
