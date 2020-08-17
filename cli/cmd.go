@@ -198,13 +198,13 @@ func GetFullNodeAPI(ctx *cli.Context) (api.FullNode, jsonrpc.ClientCloser, error
 	return client.NewFullNodeRPC(addr, headers)
 }
 
-func GetStorageMinerAPI(ctx *cli.Context) (api.StorageMiner, jsonrpc.ClientCloser, error) {
+func GetStorageMinerAPI(ctx *cli.Context, opts ...jsonrpc.Option) (api.StorageMiner, jsonrpc.ClientCloser, error) {
 	addr, headers, err := GetRawAPI(ctx, repo.StorageMiner)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return client.NewStorageMinerRPC(addr, headers)
+	return client.NewStorageMinerRPC(addr, headers, opts...)
 }
 
 func DaemonContext(cctx *cli.Context) context.Context {
@@ -238,6 +238,7 @@ var CommonCommands = []*cli.Command{
 	logCmd,
 	waitApiCmd,
 	fetchParamCmd,
+	pprofCmd,
 	VersionCmd,
 }
 
@@ -256,6 +257,7 @@ var Commands = []*cli.Command{
 	WithCategory("developer", fetchParamCmd),
 	WithCategory("network", netCmd),
 	WithCategory("network", syncCmd),
+	pprofCmd,
 	VersionCmd,
 }
 

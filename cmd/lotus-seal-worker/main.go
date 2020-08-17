@@ -164,7 +164,9 @@ var runCmd = &cli.Command{
 		var closer func()
 		var err error
 		for {
-			nodeApi, closer, err = lcli.GetStorageMinerAPI(cctx)
+			nodeApi, closer, err = lcli.GetStorageMinerAPI(cctx,
+				jsonrpc.WithNoReconnect(),
+				jsonrpc.WithTimeout(30*time.Second))
 			if err == nil {
 				break
 			}
