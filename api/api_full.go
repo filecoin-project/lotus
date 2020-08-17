@@ -465,6 +465,7 @@ type DealInfo struct {
 	PieceCID cid.Cid
 	Size     uint64
 
+	CreationTime  time.Time
 	PricePerEpoch types.BigInt
 	Duration      uint64
 

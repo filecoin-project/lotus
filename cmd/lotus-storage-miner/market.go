@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"text/tabwriter"
 	"time"
@@ -357,6 +358,10 @@ var dealsListCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
+
+		sort.Slice(deals, func(i, j int) bool {
+			return deals[i].CreationTime.Time().Before(deals[j].CreationTime.Time())
+		})
 
 		w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
 

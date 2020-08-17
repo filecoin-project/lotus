@@ -993,6 +993,10 @@ var clientListDeals = &cli.Command{
 			return err
 		}
 
+		sort.Slice(localDeals, func(i, j int) bool {
+			return localDeals[i].CreationTime.Before(localDeals[j].CreationTime)
+		})
+
 		var deals []deal
 		for _, v := range localDeals {
 			if v.DealID == 0 {
