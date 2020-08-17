@@ -75,8 +75,12 @@ type MessagePool struct {
 
 	addSema chan struct{}
 
-	closer  chan struct{}
-	repubTk *clock.Ticker
+	closer chan struct{}
+
+	repubTk      *clock.Ticker
+	repubTrigger chan struct{}
+
+	republished map[cid.Cid]struct{}
 
 	localAddrs map[address.Address]struct{}
 
@@ -166,6 +170,7 @@ func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName) (*Messa
 		addSema:       make(chan struct{}, 1),
 		closer:        make(chan struct{}),
 		repubTk:       build.Clock.Ticker(RepublishInterval),
+		repubTrigger:  make(chan struct{}, 1),
 		localAddrs:    make(map[address.Address]struct{}),
 		pending:       make(map[address.Address]*msgSet),
 		minGasPrice:   types.NewInt(0),
@@ -221,6 +226,10 @@ func (mp *MessagePool) runLoop() {
 	for {
 		select {
 		case <-mp.repubTk.C:
+			if err := mp.republishPendingMessages(); err != nil {
+				log.Errorf("error while republishing messages: %s", err)
+			}
+		case <-mp.repubTrigger:
 			if err := mp.republishPendingMessages(); err != nil {
 				log.Errorf("error while republishing messages: %s", err)
 			}
@@ -676,6 +685,7 @@ func (mp *MessagePool) HeadChange(revert []*types.TipSet, apply []*types.TipSet)
 	mp.curTsLk.Lock()
 	defer mp.curTsLk.Unlock()
 
+	repubTrigger := false
 	rmsgs := make(map[address.Address]map[uint64]*types.SignedMessage)
 	add := func(m *types.SignedMessage) {
 		s, ok := rmsgs[m.Message.From]
@@ -698,6 +708,17 @@ func (mp *MessagePool) HeadChange(revert []*types.TipSet, apply []*types.TipSet)
 		}
 
 		mp.Remove(from, nonce)
+	}
+
+	maybeRepub := func(cid cid.Cid) {
+		if !repubTrigger {
+			mp.lk.Lock()
+			_, republished := mp.republished[cid]
+			mp.lk.Unlock()
+			if republished {
+				repubTrigger = true
+			}
+		}
 	}
 
 	for _, ts := range revert {
@@ -726,14 +747,23 @@ func (mp *MessagePool) HeadChange(revert []*types.TipSet, apply []*types.TipSet)
 			}
 			for _, msg := range smsgs {
 				rm(msg.Message.From, msg.Message.Nonce)
+				maybeRepub(msg.Cid())
 			}
 
 			for _, msg := range bmsgs {
 				rm(msg.From, msg.Nonce)
+				maybeRepub(msg.Cid())
 			}
 		}
 
 		mp.curTs = ts
+	}
+
+	if repubTrigger {
+		select {
+		case mp.repubTrigger <- struct{}{}:
+		default:
+		}
 	}
 
 	for _, s := range rmsgs {
