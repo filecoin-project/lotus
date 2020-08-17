@@ -26,7 +26,7 @@ import (
 var log = logging.Logger("cli")
 
 const (
-	metadataTraceConetxt = "traceContext"
+	metadataTraceContext = "traceContext"
 )
 
 // custom CLI error
@@ -132,7 +132,7 @@ func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
 
 	p, err := homedir.Expand(ctx.String(repoFlag))
 	if err != nil {
-		return APIInfo{}, xerrors.Errorf("cound not expand home dir (%s): %w", repoFlag, err)
+		return APIInfo{}, xerrors.Errorf("could not expand home dir (%s): %w", repoFlag, err)
 	}
 
 	r, err := repo.NewFS(p)
@@ -208,7 +208,7 @@ func GetStorageMinerAPI(ctx *cli.Context) (api.StorageMiner, jsonrpc.ClientClose
 }
 
 func DaemonContext(cctx *cli.Context) context.Context {
-	if mtCtx, ok := cctx.App.Metadata[metadataTraceConetxt]; ok {
+	if mtCtx, ok := cctx.App.Metadata[metadataTraceContext]; ok {
 		return mtCtx.(context.Context)
 	}
 
