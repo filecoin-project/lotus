@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-blockservice"
@@ -413,7 +414,7 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 		if e != nil {
 			errStr = e.Error()
 		}
-		events <- marketevents.RetrievalEvent{Err: errStr}
+		events <- marketevents.RetrievalEvent{Err: errStr, FundsSpent: big.Zero()}
 	}
 
 	if order.MinerPeer.ID == "" {
