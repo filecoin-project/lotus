@@ -8,8 +8,6 @@ import (
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 
-	"github.com/ipfs/go-cid"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/events/state"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -17,6 +15,8 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	_init "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
+	"github.com/ipfs/go-cid"
+	"github.com/multiformats/go-multihash"
 	typegen "github.com/whyrusleeping/cbor-gen"
 )
 
@@ -243,9 +243,13 @@ func (p *Processor) storeActorHeads(actors map[cid.Cid]ActorTips) error {
 	}
 
 	for code, actTips := range actors {
+		actorName := code.String()
+		if s, err := multihash.Decode(code.Hash()); err != nil {
+			actorName = string(s.Digest)
+		}
 		for _, actorInfo := range actTips {
 			for _, a := range actorInfo {
-				if _, err := stmt.Exec(a.addr.String(), code.String(), a.act.Head.String(), a.act.Nonce, a.act.Balance.String(), a.stateroot.String()); err != nil {
+				if _, err := stmt.Exec(a.addr.String(), actorName, a.act.Head.String(), a.act.Nonce, a.act.Balance.String(), a.stateroot.String()); err != nil {
 					return err
 				}
 			}
@@ -285,9 +289,13 @@ func (p *Processor) storeActorStates(actors map[cid.Cid]ActorTips) error {
 	}
 
 	for code, actTips := range actors {
+		actorName := code.String()
+		if s, err := multihash.Decode(code.Hash()); err != nil {
+			actorName = string(s.Digest)
+		}
 		for _, actorInfo := range actTips {
 			for _, a := range actorInfo {
-				if _, err := stmt.Exec(a.act.Head.String(), code.String(), a.state); err != nil {
+				if _, err := stmt.Exec(a.act.Head.String(), actorName, a.state); err != nil {
 					return err
 				}
 			}

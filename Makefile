@@ -148,7 +148,7 @@ BINS+=lotus-fountain
 
 lotus-chainwatch:
 	rm -f lotus-chainwatch
-	go build -o lotus-chainwatch ./cmd/lotus-chainwatch
+	go build $(GOFLAGS) -o lotus-chainwatch ./cmd/lotus-chainwatch
 .PHONY: lotus-chainwatch
 BINS+=lotus-chainwatch
 
