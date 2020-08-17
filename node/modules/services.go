@@ -82,7 +82,7 @@ func HandleIncomingBlocks(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.P
 	}
 
 	v := sub.NewBlockValidator(
-		chain, stmgr,
+		h.ID(), chain, stmgr,
 		func(p peer.ID) {
 			ps.BlacklistPeer(p)
 			h.ConnManager().TagPeer(p, "badblock", -1000)
@@ -95,7 +95,7 @@ func HandleIncomingBlocks(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.P
 	go sub.HandleIncomingBlocks(ctx, blocksub, s, bserv, h.ConnManager())
 }
 
-func HandleIncomingMessages(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.PubSub, mpool *messagepool.MessagePool, nn dtypes.NetworkName) {
+func HandleIncomingMessages(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.PubSub, mpool *messagepool.MessagePool, h host.Host, nn dtypes.NetworkName) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
 	msgsub, err := ps.Subscribe(build.MessagesTopic(nn))
@@ -103,7 +103,7 @@ func HandleIncomingMessages(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub
 		panic(err)
 	}
 
-	v := sub.NewMessageValidator(mpool)
+	v := sub.NewMessageValidator(h.ID(), mpool)
 
 	if err := ps.RegisterTopicValidator(build.MessagesTopic(nn), v.Validate); err != nil {
 		panic(err)
