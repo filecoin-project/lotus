@@ -264,25 +264,10 @@ func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub
 		bv.flagPeer(pid)
 	}
 
-	// make sure the block can be decoded
-	blk, err := types.DecodeBlockMsg(msg.GetData())
+	blk, what, err := bv.decodeAndCheckBlock(msg)
 	if err != nil {
 		log.Error("got invalid block over pubsub: ", err)
-		recordFailure("invalid")
-		return pubsub.ValidationReject
-	}
-
-	// check the message limit constraints
-	if len(blk.BlsMessages)+len(blk.SecpkMessages) > build.BlockMessageLimit {
-		log.Warnf("received block with too many messages over pubsub")
-		recordFailure("too_many_messages")
-		return pubsub.ValidationReject
-	}
-
-	// make sure we have a signature
-	if blk.Header.BlockSig == nil {
-		log.Warnf("received block without a signature over pubsub")
-		recordFailure("missing_signature")
+		recordFailure(what)
 		return pubsub.ValidationReject
 	}
 
@@ -342,28 +327,13 @@ func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub
 func (bv *BlockValidator) validateLocalBlock(ctx context.Context, msg *pubsub.Message) pubsub.ValidationResult {
 	stats.Record(ctx, metrics.BlockPublished.M(1))
 
-	// do some lightweight validation for local blocks
-	blk, err := types.DecodeBlockMsg(msg.GetData())
+	blk, what, err := bv.decodeAndCheckBlock(msg)
 	if err != nil {
-		log.Warnf("error decoding local block: %s", err)
+		log.Errorf("got invalid local block: %s", err)
+		ctx, _ = tag.New(ctx, tag.Insert(metrics.FailureType, what))
 		stats.Record(ctx, metrics.BlockValidationFailure.M(1))
 		return pubsub.ValidationIgnore
 	}
-
-	if len(blk.BlsMessages)+len(blk.SecpkMessages) > build.BlockMessageLimit {
-		log.Warnf("local block with too many messages: %d", len(blk.BlsMessages)+len(blk.SecpkMessages))
-		stats.Record(ctx, metrics.BlockValidationFailure.M(1))
-		return pubsub.ValidationIgnore
-	}
-
-	// make sure we have a signature
-	if blk.Header.BlockSig == nil {
-		log.Warn("local block without a signature")
-		stats.Record(ctx, metrics.BlockValidationFailure.M(1))
-		return pubsub.ValidationIgnore
-	}
-
-	// Note we don't actually validate that signature as this is a slow process
 
 	if count := bv.recvBlocks.add(blk.Header.Cid()); count > 0 {
 		log.Warnf("local block has been seen %d times; ignoring", count)
@@ -373,6 +343,24 @@ func (bv *BlockValidator) validateLocalBlock(ctx context.Context, msg *pubsub.Me
 	msg.ValidatorData = blk
 	stats.Record(ctx, metrics.BlockValidationSuccess.M(1))
 	return pubsub.ValidationAccept
+}
+
+func (bv *BlockValidator) decodeAndCheckBlock(msg *pubsub.Message) (*types.BlockMsg, string, error) {
+	blk, err := types.DecodeBlockMsg(msg.GetData())
+	if err != nil {
+		return nil, "invalid", xerrors.Errorf("error decoding block: %w", err)
+	}
+
+	if count := len(blk.BlsMessages) + len(blk.SecpkMessages); count > build.BlockMessageLimit {
+		return nil, "too_many_messages", fmt.Errorf("block contains too many messages (%d)", count)
+	}
+
+	// make sure we have a signature
+	if blk.Header.BlockSig == nil {
+		return nil, "missing_signature", fmt.Errorf("block without a signature")
+	}
+
+	return blk, "", nil
 }
 
 func (bv *BlockValidator) isChainNearSynced() bool {
