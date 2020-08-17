@@ -148,7 +148,7 @@ selection in a reasonable amount of time.
 
 The mpool employs a sophisticated algorithm for selecting messages for
 inclusion, given the ticket quality of a miner. The ticket quality
-reflects the probability that a block will execute in the
+reflects the probability of execution order for a block in the
 tipset. Given the ticket quality the algorithm computes the
 probability of each block, and picks dependent chains of messages such
 that the reward is maximized, while also optimizing the capacity of
