@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/messagepool/gasguess"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/ipfs/go-cid"
 )
 
 const repubMsgLimit = 30
@@ -26,6 +27,7 @@ func (mp *MessagePool) republishPendingMessages() error {
 
 	pending := make(map[address.Address]map[uint64]*types.SignedMessage)
 	mp.lk.Lock()
+	mp.republished = nil // clear this to avoid races triggering an early republish
 	for actor := range mp.localAddrs {
 		mset, ok := mp.pending[actor]
 		if !ok {
@@ -115,6 +117,7 @@ func (mp *MessagePool) republishPendingMessages() error {
 		}
 	}
 
+	count := 0
 	log.Infof("republishing %d messages", len(msgs))
 	for _, m := range msgs {
 		mb, err := m.Serialize()
@@ -126,7 +129,20 @@ func (mp *MessagePool) republishPendingMessages() error {
 		if err != nil {
 			return xerrors.Errorf("cannot publish: %w", err)
 		}
+
+		count++
 	}
+
+	// track most recently republished messages
+	republished := make(map[cid.Cid]struct{})
+	for _, m := range msgs[:count] {
+		republished[m.Cid()] = struct{}{}
+	}
+
+	mp.lk.Lock()
+	// update the republished set so that we can trigger early republish from head changes
+	mp.republished = republished
+	mp.lk.Unlock()
 
 	return nil
 }
