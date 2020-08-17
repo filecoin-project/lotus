@@ -155,7 +155,7 @@ func (m *Sealing) checkCommit(ctx context.Context, si SectorInfo, proof []byte, 
 		UnsealedCID:           *si.CommD,
 	})
 	if err != nil {
-		return xerrors.Errorf("verify seal: %w", err)
+		return &ErrInvalidProof{xerrors.Errorf("verify seal: %w", err)}
 	}
 	if !ok {
 		return &ErrInvalidProof{xerrors.New("invalid proof (compute error?)")}
