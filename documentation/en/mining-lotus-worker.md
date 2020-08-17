@@ -7,7 +7,7 @@ The **Lotus Worker** is an extra process that can offload heavy processing tasks
 If you are trying to use `lotus-worker` from China. You should set this **environment variable** on your machine:
 
 ```sh
-IPFS_GATEWAY="https://proof-parameters.s3.cn-south-1.jdcloud-oss.com/ipfs/"
+export IPFS_GATEWAY="https://proof-parameters.s3.cn-south-1.jdcloud-oss.com/ipfs/"
 ```
 
 ## Get Started
