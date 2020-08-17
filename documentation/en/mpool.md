@@ -121,13 +121,19 @@ The meaning of these fields is as follows:
   be included in a block during message selection, regardless of profitability.
   Miners should configure their own worker addresses so that they include their own messages
   when they produce a new block.
+  Default is empty.
 - `SizeLimitHigh` -- this is the maximum number of pending messages before triggering a
   prune in the message pool. Note that messages from priority addresses are never pruned.
+  Defafult is 30000.
 - `SizeLimitLow` -- this is the number of pending messages that should be kept after a prune.
+  Default is 20000.
 - `ReplaceByFeeRatio` -- this is the gas fee ratio for replacing messages in the mpool.
   Whenever a message is replaced, the `GasPremium` must be increased by this ratio.
+  Default is 1.25.
 - `PruneCooldown` -- this is the period of time to wait before triggering a new prune.
+  Default is 1min.
 - `GasLimitOverestimation` -- this is a parameter that controls the gas limit overestimation for new messages.
+  Default is 1.25.
 
 
 ## Message Selection
@@ -142,7 +148,7 @@ selection in a reasonable amount of time.
 
 The mpool employs a sophisticated algorithm for selecting messages for
 inclusion, given the ticket quality of a miner. The ticket quality
-reflects the probability that a block will execute in the
+reflects the probability of execution order for a block in the
 tipset. Given the ticket quality the algorithm computes the
 probability of each block, and picks dependent chains of messages such
 that the reward is maximized, while also optimizing the capacity of
