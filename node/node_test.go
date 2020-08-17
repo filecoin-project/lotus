@@ -13,7 +13,6 @@ import (
 
 	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/storage/mockstorage"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
 
 	"github.com/filecoin-project/go-storedcounter"
 	"github.com/ipfs/go-datastore"
@@ -42,14 +41,15 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
-	genesis "github.com/filecoin-project/lotus/genesis"
+	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/lotus/extern/sector-storage/mock"
+	"github.com/filecoin-project/lotus/genesis"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/modules"
 	modtest "github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
-	sectorstorage "github.com/filecoin-project/sector-storage"
-	"github.com/filecoin-project/sector-storage/mock"
 )
 
 func init() {

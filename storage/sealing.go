@@ -7,7 +7,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
-	sealing "github.com/filecoin-project/storage-fsm"
+	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 )
 
 // TODO: refactor this to be direct somehow

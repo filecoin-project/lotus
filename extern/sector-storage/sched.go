@@ -12,8 +12,8 @@ import (
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
-	"github.com/filecoin-project/sector-storage/sealtasks"
-	"github.com/filecoin-project/sector-storage/storiface"
+	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )
 
 type schedPrioCtxKey int
@@ -323,15 +323,15 @@ func (sh *scheduler) trySched() {
 
 		// Pick best worker (shuffle in case some workers are equally as good)
 		rand.Shuffle(len(acceptableWindows[sqi]), func(i, j int) {
-			acceptableWindows[sqi][i], acceptableWindows[sqi][j] = acceptableWindows[sqi][j], acceptableWindows[sqi][i]
+			acceptableWindows[sqi][i], acceptableWindows[sqi][j] = acceptableWindows[sqi][j], acceptableWindows[sqi][i] // nolint:scopelint
 		})
 		sort.SliceStable(acceptableWindows[sqi], func(i, j int) bool {
-			wii := sh.openWindows[acceptableWindows[sqi][i]].worker
-			wji := sh.openWindows[acceptableWindows[sqi][j]].worker
+			wii := sh.openWindows[acceptableWindows[sqi][i]].worker // nolint:scopelint
+			wji := sh.openWindows[acceptableWindows[sqi][j]].worker // nolint:scopelint
 
 			if wii == wji {
 				// for the same worker prefer older windows
-				return acceptableWindows[sqi][i] < acceptableWindows[sqi][j]
+				return acceptableWindows[sqi][i] < acceptableWindows[sqi][j] // nolint:scopelint
 			}
 
 			wi := sh.workers[wii]

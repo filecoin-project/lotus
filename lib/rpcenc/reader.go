@@ -19,8 +19,8 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-jsonrpc"
+	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	sealing "github.com/filecoin-project/storage-fsm"
 )
 
 var log = logging.Logger("rpcenc")

@@ -4,14 +4,16 @@ package ffiwrapper
 
 import (
 	"context"
+
 	"golang.org/x/xerrors"
 
-	"go.opencensus.io/trace"
-
-	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
-	"github.com/filecoin-project/sector-storage/stores"
+	ffi "github.com/filecoin-project/filecoin-ffi"
+
+	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
+
+	"go.opencensus.io/trace"
 )
 
 func (sb *Sealer) GenerateWinningPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []abi.SectorInfo, randomness abi.PoStRandomness) ([]abi.PoStProof, error) {

@@ -3,10 +3,11 @@ package ffiwrapper
 import (
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-bitfield/rle"
+	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
+
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
-	"github.com/filecoin-project/sector-storage/storiface"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )
 
 // merge gaps between ranges which are close to each other

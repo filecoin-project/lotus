@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-jsonrpc"
-	sealing "github.com/filecoin-project/storage-fsm"
+	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 )
 
 type ReaderHandler struct {

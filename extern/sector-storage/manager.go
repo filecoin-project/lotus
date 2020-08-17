@@ -3,9 +3,10 @@ package sectorstorage
 import (
 	"context"
 	"errors"
-	"github.com/filecoin-project/sector-storage/fsutil"
 	"io"
 	"net/http"
+
+	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
@@ -15,10 +16,10 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-storage/storage"
 
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/sector-storage/sealtasks"
-	"github.com/filecoin-project/sector-storage/stores"
-	"github.com/filecoin-project/sector-storage/storiface"
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
+	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )
 
 var log = logging.Logger("advmgr")
