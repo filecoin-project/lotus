@@ -273,6 +273,9 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 
 	totalFil := big.Mul(big.NewInt(int64(build.FilBase)), big.NewInt(int64(build.FilecoinPrecision)))
 	remainingFil := big.Sub(totalFil, totalFilAllocated)
+	if remainingFil.Sign() < 0 {
+		return nil, nil, xerrors.Errorf("somehow overallocated filecoin (allocated = %s)", types.FIL(totalFilAllocated))
+	}
 
 	template.RemainderAccount.Balance = remainingFil
 
