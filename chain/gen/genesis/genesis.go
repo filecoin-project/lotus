@@ -439,9 +439,17 @@ func MakeGenesisBlock(ctx context.Context, bs bstore.Blockstore, sys vm.SyscallB
 		return nil, xerrors.Errorf("failed to decode filecoin genesis block CID: %w", err)
 	}
 
+	if !expectedCid().Equals(filecoinGenesisCid) {
+		return nil, xerrors.Errorf("expectedCid != filecoinGenesisCid")
+	}
+
 	gblk, err := getGenesisBlock()
 	if err != nil {
 		return nil, xerrors.Errorf("failed to construct filecoin genesis block: %w", err)
+	}
+
+	if !filecoinGenesisCid.Equals(gblk.Cid()) {
+		return nil, xerrors.Errorf("filecoinGenesisCid != gblk.Cid")
 	}
 
 	if err := bs.Put(gblk); err != nil {
