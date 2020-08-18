@@ -222,8 +222,8 @@ var NetReachability = &cli.Command{
 		}
 
 		fmt.Println("AutoNAT status: ", i.Reachability.String())
-		if i.PublicAddr != nil {
-			fmt.Println("Public address: ", i.PublicAddr.String())
+		if i.PublicAddr != "" {
+			fmt.Println("Public address: ", i.PublicAddr)
 		}
 		return nil
 	},
