@@ -304,7 +304,8 @@ func (cg *ChainGen) GenesisCar() ([]byte, error) {
 
 func CarWalkFunc(nd format.Node) (out []*format.Link, err error) {
 	for _, link := range nd.Links() {
-		if link.Cid.Prefix().Codec == cid.FilCommitmentSealed || link.Cid.Prefix().Codec == cid.FilCommitmentUnsealed {
+		pref := link.Cid.Prefix()
+		if pref.Codec == cid.FilCommitmentSealed || pref.Codec == cid.FilCommitmentUnsealed {
 			continue
 		}
 		out = append(out, link)
