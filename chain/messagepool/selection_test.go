@@ -934,9 +934,11 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand, getPremium fu
 		t.Fatal(err)
 	}
 
-	capacityBoost := 0.0
-	rewardBoost := 0.0
-	const runs = 1
+	totalGreedyCapacity := 0.0
+	totalGreedyReward := 0.0
+	totalOptimalCapacity := 0.0
+	totalOptimalReward := 0.0
+	const runs = 50
 	for i := 0; i < runs; i++ {
 		// 2. optimal selection
 		minersRand := rng.Float64()
@@ -945,8 +947,8 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand, getPremium fu
 		for ; i < MaxBlocks && minersRand > 0; i++ {
 			minersRand -= winerProba[i]
 		}
-		nMiners := i
-		if nMiners == 0 {
+		nMiners := i - 1
+		if nMiners < 1 {
 			nMiners = 1
 		}
 
@@ -962,14 +964,15 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand, getPremium fu
 			}
 		}
 
+		totalGreedyCapacity += float64(len(greedyMsgs))
+		totalOptimalCapacity += float64(len(optMsgs))
 		boost := float64(len(optMsgs)) / float64(len(greedyMsgs))
-		capacityBoost += boost
 
 		t.Logf("nMiners: %d", nMiners)
 		t.Logf("greedy capacity %d, optimal capacity %d (x %.1f )", len(greedyMsgs),
 			len(optMsgs), boost)
 		if len(greedyMsgs) > len(optMsgs) {
-			t.Fatal("greedy capacity higher than optimal capacity; wtf")
+			t.Errorf("greedy capacity higher than optimal capacity; wtf")
 		}
 
 		greedyReward := big.NewInt(0)
@@ -984,17 +987,18 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand, getPremium fu
 
 		nMinersBig := big.NewInt(int64(nMiners))
 		greedyAvgReward, _ := new(big.Rat).SetFrac(greedyReward, nMinersBig).Float64()
+		totalGreedyReward += greedyAvgReward
 		optimalAvgReward, _ := new(big.Rat).SetFrac(optReward, nMinersBig).Float64()
+		totalOptimalReward += optimalAvgReward
 
 		boost = optimalAvgReward / greedyAvgReward
-		rewardBoost += boost
 		t.Logf("greedy reward: %.0f, optimal reward: %.0f (x %.1f )", greedyAvgReward,
 			optimalAvgReward, boost)
 
 	}
 
-	capacityBoost /= runs
-	rewardBoost /= runs
+	capacityBoost := totalOptimalCapacity / totalGreedyCapacity
+	rewardBoost := totalOptimalReward / totalGreedyReward
 	t.Logf("Average capacity boost: %f", capacityBoost)
 	t.Logf("Average reward boost: %f", rewardBoost)
 
