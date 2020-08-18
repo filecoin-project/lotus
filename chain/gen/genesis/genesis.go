@@ -258,9 +258,31 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 		Balance: types.NewInt(0),
 		Head:    verifierState,
 	})
-
 	if err != nil {
 		return nil, nil, xerrors.Errorf("setting account from actmap: %w", err)
+	}
+
+	totalFilAllocated := big.Zero()
+	err = state.ForEach(func(addr address.Address, act *types.Actor) error {
+		totalFilAllocated = big.Add(totalFilAllocated, act.Balance)
+		return nil
+	})
+	if err != nil {
+		return nil, nil, xerrors.Errorf("summing account balances in state tree: %w", err)
+	}
+
+	totalFil := big.Mul(big.NewInt(int64(build.FilBase)), big.NewInt(int64(build.FilecoinPrecision)))
+	remainingFil := big.Sub(totalFil, totalFilAllocated)
+
+	template.RemainderAccount.Balance = remainingFil
+
+	remAccKey, err := address.NewIDAddress(90)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if err := createAccount(ctx, bs, cst, state, remAccKey, template.RemainderAccount); err != nil {
+		return nil, nil, err
 	}
 
 	return state, keyIDs, nil

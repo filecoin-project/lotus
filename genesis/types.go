@@ -79,5 +79,6 @@ type Template struct {
 	NetworkName string
 	Timestamp   uint64 `json:",omitempty"`
 
-	VerifregRootKey Actor
+	VerifregRootKey  Actor
+	RemainderAccount Actor
 }
