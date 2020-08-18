@@ -361,17 +361,6 @@ func (m *Sealing) newDealSector() (abi.SectorNumber, error) {
 
 // newSectorCC accepts a slice of pieces with no deal (junk data)
 func (m *Sealing) newSectorCC(sid abi.SectorNumber, pieces []Piece) error {
-	cfg, err := m.getConfig()
-	if err != nil {
-		return xerrors.Errorf("getting config: %w", err)
-	}
-
-	if cfg.MaxSealingSectors > 0 {
-		if m.stats.curSealing() > cfg.MaxSealingSectors {
-			return xerrors.Errorf("too many sectors sealing (curSealing: %d, max: %d)", m.stats.curSealing(), cfg.MaxSealingSectors)
-		}
-	}
-
 	rt, err := ffiwrapper.SealProofTypeFromSectorSize(m.sealer.SectorSize())
 	if err != nil {
 		return xerrors.Errorf("bad sector size: %w", err)

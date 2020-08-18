@@ -31,6 +31,17 @@ func (m *Sealing) pledgeSector(ctx context.Context, sectorID abi.SectorID, exist
 }
 
 func (m *Sealing) PledgeSector() error {
+	cfg, err := m.getConfig()
+	if err != nil {
+		return xerrors.Errorf("getting config: %w", err)
+	}
+
+	if cfg.MaxSealingSectors > 0 {
+		if m.stats.curSealing() > cfg.MaxSealingSectors {
+			return xerrors.Errorf("too many sectors sealing (curSealing: %d, max: %d)", m.stats.curSealing(), cfg.MaxSealingSectors)
+		}
+	}
+
 	go func() {
 		ctx := context.TODO() // we can't use the context from command which invokes
 		// this, as we run everything here async, and it's cancelled when the
