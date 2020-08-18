@@ -294,6 +294,8 @@ func createAccount(ctx context.Context, bs bstore.Blockstore, cst cbor.IpldStore
 			return xerrors.Errorf("failed to create empty map: %v", err)
 		}
 
+		var signers []address.Address
+
 		for _, e := range ainfo.Signers {
 			idAddress, _ := keyIDs[e]
 			st, err := cst.Put(ctx, &account.State{Address: e})
@@ -308,10 +310,11 @@ func createAccount(ctx context.Context, bs bstore.Blockstore, cst cbor.IpldStore
 			if err != nil {
 				return xerrors.Errorf("setting account from actmap: %w", err)
 			}
+			signers = append(signers, idAddress)
 		}
 
 		st, err := cst.Put(ctx, &multisig.State{
-			Signers:               ainfo.Signers,
+			Signers:               signers,
 			NumApprovalsThreshold: uint64(ainfo.Threshold),
 			StartEpoch:            abi.ChainEpoch(ainfo.VestingStart),
 			UnlockDuration:        abi.ChainEpoch(ainfo.VestingDuration),
