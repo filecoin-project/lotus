@@ -26,6 +26,28 @@ func noWinnersProb() []float64 {
 	return noWinnersProbCache
 }
 
+var noWinnersProbAssumingCache []float64
+var noWinnersProbAssumingOnce sync.Once
+
+func noWinnersProbAssumingMoreThanOne() []float64 {
+	noWinnersProbAssumingOnce.Do(func() {
+		cond := math.Log(-1 + math.Exp(5))
+		poissPdf := func(x float64) float64 {
+			const Mu = 5
+			lg, _ := math.Lgamma(x + 1)
+			result := math.Exp((math.Log(Mu) * x) - lg - cond)
+			return result
+		}
+
+		out := make([]float64, 0, MaxBlocks)
+		for i := 0; i < MaxBlocks; i++ {
+			out = append(out, poissPdf(float64(i+1)))
+		}
+		noWinnersProbAssumingCache = out
+	})
+	return noWinnersProbAssumingCache
+}
+
 func binomialCoefficient(n, k float64) float64 {
 	if k > n {
 		return math.NaN()
@@ -40,7 +62,7 @@ func binomialCoefficient(n, k float64) float64 {
 }
 
 func (mp *MessagePool) blockProbabilities(tq float64) []float64 {
-	noWinners := noWinnersProb() // cache this
+	noWinners := noWinnersProbAssumingMoreThanOne()
 
 	p := 1 - tq
 	binoPdf := func(x, trials float64) float64 {
@@ -72,7 +94,7 @@ func (mp *MessagePool) blockProbabilities(tq float64) []float64 {
 	for place := 0; place < MaxBlocks; place++ {
 		var pPlace float64
 		for otherWinners, pCase := range noWinners {
-			pPlace += pCase * binoPdf(float64(place), float64(otherWinners+1))
+			pPlace += pCase * binoPdf(float64(place), float64(otherWinners))
 		}
 		out = append(out, pPlace)
 	}
