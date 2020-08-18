@@ -868,7 +868,7 @@ var clientRetrieveCmd = &cli.Command{
 				}
 
 				if evt.Err != "" {
-					return xerrors.Errorf("retrieval failed: %v", err)
+					return xerrors.Errorf("retrieval failed: %s", evt.Err)
 				}
 			case <-ctx.Done():
 				return xerrors.Errorf("retrieval timed out")
