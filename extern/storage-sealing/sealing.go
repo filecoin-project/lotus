@@ -2,6 +2,7 @@ package sealing
 
 import (
 	"context"
+	"errors"
 	"io"
 	"math"
 	"sync"
@@ -44,9 +45,14 @@ type Config struct {
 	WaitDealsDelay time.Duration
 }
 
+var ErrSectorAllocated = errors.New("sectorNumber is allocated, but PreCommit info wasn't found on chain")
+
 type SealingAPI interface {
 	StateWaitMsg(context.Context, cid.Cid) (MsgLookup, error)
+	StateSearchMsg(context.Context, cid.Cid) (*MsgLookup, error)
 	StateComputeDataCommitment(ctx context.Context, maddr address.Address, sectorType abi.RegisteredSealProof, deals []abi.DealID, tok TipSetToken) (cid.Cid, error)
+
+	// Can return ErrSectorAllocated in case precommit info wasn't found, but the sector number is marked as allocated
 	StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok TipSetToken) (*miner.SectorPreCommitOnChainInfo, error)
 	StateSectorGetInfo(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok TipSetToken) (*miner.SectorOnChainInfo, error)
 	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok TipSetToken) (*SectorLocation, error)
@@ -121,6 +127,10 @@ func New(api SealingAPI, fc FeeConfig, events Events, maddr address.Address, ds 
 
 		toUpgrade: map[abi.SectorNumber]struct{}{},
 		getConfig: gc,
+
+		stats: SectorStats{
+			bySector: map[abi.SectorID]statSectorState{},
+		},
 	}
 
 	s.sectors = statemachine.New(namespace.Wrap(ds, datastore.NewKey(SectorStorePrefix)), s, SectorInfo{})
