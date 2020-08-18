@@ -48,6 +48,7 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
+	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -594,7 +595,7 @@ func NewSetConsiderOfflineRetrievalDealsConfigFunc(r repo.LockedRepo) (dtypes.Se
 }
 
 func NewSetSealConfigFunc(r repo.LockedRepo) (dtypes.SetSealingConfigFunc, error) {
-	return func(cfg sealing.Config) (err error) {
+	return func(cfg sealiface.Config) (err error) {
 		err = mutateCfg(r, func(c *config.StorageMiner) {
 			c.Sealing = config.SealingConfig{
 				MaxWaitDealsSectors: cfg.MaxWaitDealsSectors,
@@ -607,9 +608,9 @@ func NewSetSealConfigFunc(r repo.LockedRepo) (dtypes.SetSealingConfigFunc, error
 }
 
 func NewGetSealConfigFunc(r repo.LockedRepo) (dtypes.GetSealingConfigFunc, error) {
-	return func() (out sealing.Config, err error) {
+	return func() (out sealiface.Config, err error) {
 		err = readCfg(r, func(cfg *config.StorageMiner) {
-			out = sealing.Config{
+			out = sealiface.Config{
 				MaxWaitDealsSectors: cfg.Sealing.MaxWaitDealsSectors,
 				MaxSealingSectors:   cfg.Sealing.MaxSealingSectors,
 				WaitDealsDelay:      time.Duration(cfg.Sealing.WaitDealsDelay),

@@ -35,16 +35,6 @@ type SectorLocation struct {
 	Partition uint64
 }
 
-type Config struct {
-	// 0 = no limit
-	MaxWaitDealsSectors uint64
-
-	// includes failed, 0 = no limit
-	MaxSealingSectors uint64
-
-	WaitDealsDelay time.Duration
-}
-
 var ErrSectorAllocated = errors.New("sectorNumber is allocated, but PreCommit info wasn't found on chain")
 
 type SealingAPI interface {
