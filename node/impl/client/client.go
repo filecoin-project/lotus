@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -24,6 +25,7 @@ import (
 	basicnode "github.com/ipld/go-ipld-prime/node/basic"
 	"github.com/ipld/go-ipld-prime/traversal/selector"
 	"github.com/ipld/go-ipld-prime/traversal/selector/builder"
+	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	mh "github.com/multiformats/go-multihash"
 	"go.uber.org/fx"
@@ -74,6 +76,8 @@ type API struct {
 
 	CombinedBstore    dtypes.ClientBlockstore // TODO: try to remove
 	RetrievalStoreMgr dtypes.ClientRetrievalStoreManager
+	DataTransfer      dtypes.ClientDataTransfer
+	Host              host.Host
 }
 
 func calcDealExpiration(minDuration uint64, md *miner.DeadlineInfo, startEpoch abi.ChainEpoch) abi.ChainEpoch {
@@ -754,4 +758,38 @@ func (a *API) clientImport(ctx context.Context, ref api.FileRef, store *multisto
 	}
 
 	return nd.Cid(), nil
+}
+
+func (a *API) ClientListDataTransfers(ctx context.Context) ([]api.DataTransferChannel, error) {
+	inProgressChannels, err := a.DataTransfer.InProgressChannels(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	apiChannels := make([]api.DataTransferChannel, 0, len(inProgressChannels))
+	for channelID, channelState := range inProgressChannels {
+		channel := api.DataTransferChannel{
+			TransferID:  channelState.TransferID(),
+			Status:      channelState.Status(),
+			BaseCID:     channelState.BaseCID(),
+			IsInitiator: channelID.Initiator == a.Host.ID(),
+			IsSender:    channelState.Sender() == a.Host.ID(),
+			Message:     channelState.Message(),
+		}
+		voucherJSON, err := json.Marshal(channelState.Voucher())
+		if err != nil {
+			return nil, err
+		}
+		channel.VoucherJSON = string(voucherJSON)
+		if channel.IsSender {
+			channel.Transferred = channelState.Sent()
+			channel.OtherPeer = channelState.Recipient()
+		} else {
+			channel.Transferred = channelState.Received()
+			channel.OtherPeer = channelState.Sender()
+		}
+		apiChannels = append(apiChannels, channel)
+	}
+
+	return apiChannels, nil
 }

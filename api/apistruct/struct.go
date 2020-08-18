@@ -142,6 +142,7 @@ type FullNodeStruct struct {
 		ClientCalcCommP          func(ctx context.Context, inpath string) (*api.CommPRet, error)                                                   `perm:"read"`
 		ClientGenCar             func(ctx context.Context, ref api.FileRef, outpath string) error                                                  `perm:"write"`
 		ClientDealSize           func(ctx context.Context, root cid.Cid) (api.DataSize, error)                                                     `perm:"read"`
+		ClientListDataTransfers  func(ctx context.Context) ([]api.DataTransferChannel, error)                                                      `perm:"write"`
 
 		StateNetworkName                   func(context.Context) (dtypes.NetworkName, error)                                                                   `perm:"read"`
 		StateMinerSectors                  func(context.Context, address.Address, *abi.BitField, bool, types.TipSetKey) ([]*api.ChainSectorInfo, error)        `perm:"read"`
@@ -447,6 +448,10 @@ func (c *FullNodeStruct) ClientGenCar(ctx context.Context, ref api.FileRef, outp
 
 func (c *FullNodeStruct) ClientDealSize(ctx context.Context, root cid.Cid) (api.DataSize, error) {
 	return c.Internal.ClientDealSize(ctx, root)
+}
+
+func (c *FullNodeStruct) ClientListDataTransfers(ctx context.Context) ([]api.DataTransferChannel, error) {
+	return c.Internal.ClientListDataTransfers(ctx)
 }
 
 func (c *FullNodeStruct) GasEstimateGasPremium(ctx context.Context, nblocksincl uint64,

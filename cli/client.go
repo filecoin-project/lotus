@@ -12,6 +12,7 @@ import (
 
 	"github.com/docker/go-units"
 	"github.com/fatih/color"
+	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-cidutil/cidenc"
@@ -76,6 +77,7 @@ var clientCmd = &cli.Command{
 		WithCategory("util", clientCommPCmd),
 		WithCategory("util", clientCarGenCmd),
 		WithCategory("util", clientInfoCmd),
+		WithCategory("util", clientListTransfers),
 	},
 }
 
@@ -1202,4 +1204,105 @@ var clientInfoCmd = &cli.Command{
 
 		return nil
 	},
+}
+
+var clientListTransfers = &cli.Command{
+	Name:  "list-transfers",
+	Usage: "Monitor ongoing data transfers for deals",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "color",
+			Usage: "use color in display output",
+			Value: true,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		channels, err := api.ClientListDataTransfers(ctx)
+		if err != nil {
+			return err
+		}
+
+		sort.Slice(channels, func(i, j int) bool {
+			return channels[i].TransferID < channels[j].TransferID
+		})
+
+		var receivingChannels, sendingChannels []lapi.DataTransferChannel
+		for _, channel := range channels {
+			if channel.IsSender {
+				sendingChannels = append(sendingChannels, channel)
+			} else {
+				receivingChannels = append(receivingChannels, channel)
+			}
+		}
+
+		color := cctx.Bool("color")
+
+		fmt.Fprintf(os.Stdout, "Sending Channels\n\n")
+		w := tablewriter.New(tablewriter.Col("ID"),
+			tablewriter.Col("Status"),
+			tablewriter.Col("Other Party"),
+			tablewriter.Col("Root Cid"),
+			tablewriter.Col("Initiated?"),
+			tablewriter.Col("Transferred"),
+			tablewriter.NewLineCol("Voucher"),
+			tablewriter.NewLineCol("Message"))
+		for _, channel := range sendingChannels {
+			w.Write(toChannelOutput(color, channel))
+		}
+		w.Flush(os.Stdout)
+
+		fmt.Fprintf(os.Stdout, "\nReceiving Channels\n\n")
+		for _, channel := range receivingChannels {
+
+			w.Write(toChannelOutput(color, channel))
+		}
+		return w.Flush(os.Stdout)
+	},
+}
+
+func channelStatusString(useColor bool, status datatransfer.Status) string {
+	s := datatransfer.Statuses[status]
+	if !useColor {
+		return s
+	}
+
+	switch status {
+	case datatransfer.Failed, datatransfer.Cancelled:
+		return color.RedString(s)
+	case datatransfer.Completed:
+		return color.GreenString(s)
+	default:
+		return s
+	}
+}
+
+func toChannelOutput(useColor bool, channel api.DataTransferChannel) map[string]interface{} {
+	rootCid := channel.BaseCID.String()
+	rootCid = "..." + rootCid[len(rootCid)-8:]
+
+	otherParty := channel.OtherPeer.String()
+	otherParty = "..." + otherParty[len(otherParty)-8:]
+
+	initiated := "N"
+	if channel.IsInitiator {
+		initiated = "Y"
+	}
+
+	return map[string]interface{}{
+		"ID":          channel.TransferID,
+		"Status":      channelStatusString(useColor, channel.Status),
+		"Other Party": otherParty,
+		"Root Cid":    rootCid,
+		"Initiated?":  initiated,
+		"Transferred": channel.Transferred,
+		"Voucher":     channel.VoucherJSON,
+		"Message":     channel.Message,
+	}
 }
