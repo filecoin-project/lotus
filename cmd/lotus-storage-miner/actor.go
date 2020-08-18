@@ -59,7 +59,14 @@ var actorSetAddrsCmd = &cli.Command{
 				return fmt.Errorf("failed to parse %q as a multiaddr: %w", a, err)
 			}
 
-			addrs = append(addrs, maddr.Bytes())
+			maddrNop2p, strip := ma.SplitFunc(maddr, func(c ma.Component) bool {
+				return c.Protocol().Code == ma.P_P2P
+			})
+
+			if strip != nil {
+				fmt.Println("Stripping peerid ", strip, " from ", maddr)
+			}
+			addrs = append(addrs, maddrNop2p.Bytes())
 		}
 
 		maddr, err := nodeAPI.ActorAddress(ctx)

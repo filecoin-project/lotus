@@ -4,11 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
-	ma "github.com/multiformats/go-multiaddr"
-
-	"github.com/filecoin-project/go-jsonrpc/auth"
 
 	"github.com/filecoin-project/lotus/build"
 )
@@ -70,5 +68,5 @@ func (v Version) String() string {
 
 type NatInfo struct {
 	Reachability network.Reachability
-	PublicAddr   ma.Multiaddr
+	PublicAddr   string
 }
