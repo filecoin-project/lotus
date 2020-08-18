@@ -3,6 +3,7 @@ package genesis
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -287,6 +288,9 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 		return nil, nil, err
 	}
 
+	if err := createAccount(ctx, bs, cst, state, remAccKey, template.RemainderAccount); err != nil {
+		return nil, nil, err
+	}
 	err = state.SetActor(remAccKey, &types.Actor{
 		Code:    builtin.AccountActorCodeID,
 		Balance: remainingFil,
@@ -317,6 +321,7 @@ func createAccount(ctx context.Context, bs bstore.Blockstore, cst cbor.IpldStore
 		if err != nil {
 			return xerrors.Errorf("setting account from actmap: %w", err)
 		}
+		return nil
 	} else if info.Type == genesis.TMultisig {
 		var ainfo genesis.MultisigMeta
 		if err := json.Unmarshal(info.Meta, &ainfo); err != nil {
@@ -346,9 +351,10 @@ func createAccount(ctx context.Context, bs bstore.Blockstore, cst cbor.IpldStore
 		if err != nil {
 			return xerrors.Errorf("setting account from actmap: %w", err)
 		}
+		return nil
 	}
 
-	return nil
+	return fmt.Errorf("failed to create account")
 }
 
 func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, stateroot cid.Cid, template genesis.Template, keyIDs map[address.Address]address.Address) (cid.Cid, error) {
