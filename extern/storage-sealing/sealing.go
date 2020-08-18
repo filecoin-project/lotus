@@ -81,6 +81,8 @@ type Sealing struct {
 	upgradeLk sync.Mutex
 	toUpgrade map[abi.SectorNumber]struct{}
 
+	stats SectorStats
+
 	getConfig GetSealingConfigFunc
 }
 
@@ -268,6 +270,12 @@ func (m *Sealing) newDealSector() (abi.SectorNumber, error) {
 		return 0, xerrors.Errorf("getting config: %w", err)
 	}
 
+	if cfg.MaxSealingSectors > 0 {
+		if m.stats.curSealing() > cfg.MaxSealingSectors {
+			return 0, xerrors.Errorf("too many sectors sealing")
+		}
+	}
+
 	if cfg.MaxWaitDealsSectors > 0 {
 		// run in a loop because we have to drop the map lock here for a bit
 		tries := 0
@@ -353,6 +361,17 @@ func (m *Sealing) newDealSector() (abi.SectorNumber, error) {
 
 // newSectorCC accepts a slice of pieces with no deal (junk data)
 func (m *Sealing) newSectorCC(sid abi.SectorNumber, pieces []Piece) error {
+	cfg, err := m.getConfig()
+	if err != nil {
+		return xerrors.Errorf("getting config: %w", err)
+	}
+
+	if cfg.MaxSealingSectors > 0 {
+		if m.stats.curSealing() > cfg.MaxSealingSectors {
+			return xerrors.Errorf("too many sectors sealing (curSealing: %d, max: %d)", m.stats.curSealing(), cfg.MaxSealingSectors)
+		}
+	}
+
 	rt, err := ffiwrapper.SealProofTypeFromSectorSize(m.sealer.SectorSize())
 	if err != nil {
 		return xerrors.Errorf("bad sector size: %w", err)

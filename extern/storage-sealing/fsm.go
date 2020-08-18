@@ -225,6 +225,8 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 
 	*/
 
+	m.stats.updateSector(m.minerSector(state.SectorNumber), state.State)
+
 	switch state.State {
 	// Happy path
 	case Empty:
