@@ -939,7 +939,7 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand, getPremium fu
 	totalOptimalCapacity := 0.0
 	totalOptimalReward := 0.0
 	totalBestTQReward := 0.0
-	const runs = 50
+	const runs = 1
 	for i := 0; i < runs; i++ {
 		// 2. optimal selection
 		minersRand := rng.Float64()
