@@ -1247,21 +1247,29 @@ var clientListTransfers = &cli.Command{
 		fmt.Fprintf(os.Stdout, "Sending Channels\n\n")
 		w := tablewriter.New(tablewriter.Col("ID"),
 			tablewriter.Col("Status"),
-			tablewriter.Col("Other Party"),
+			tablewriter.Col("Sending To"),
 			tablewriter.Col("Root Cid"),
 			tablewriter.Col("Initiated?"),
 			tablewriter.Col("Transferred"),
-			tablewriter.NewLineCol("Voucher"),
+			tablewriter.Col("Voucher"),
 			tablewriter.NewLineCol("Message"))
 		for _, channel := range sendingChannels {
-			w.Write(toChannelOutput(color, channel))
+			w.Write(toChannelOutput(color, "Sending To", channel))
 		}
 		w.Flush(os.Stdout)
 
 		fmt.Fprintf(os.Stdout, "\nReceiving Channels\n\n")
+		w = tablewriter.New(tablewriter.Col("ID"),
+			tablewriter.Col("Status"),
+			tablewriter.Col("Receiving From"),
+			tablewriter.Col("Root Cid"),
+			tablewriter.Col("Initiated?"),
+			tablewriter.Col("Transferred"),
+			tablewriter.Col("Voucher"),
+			tablewriter.NewLineCol("Message"))
 		for _, channel := range receivingChannels {
 
-			w.Write(toChannelOutput(color, channel))
+			w.Write(toChannelOutput(color, "Receiving From", channel))
 		}
 		return w.Flush(os.Stdout)
 	},
@@ -1283,7 +1291,7 @@ func channelStatusString(useColor bool, status datatransfer.Status) string {
 	}
 }
 
-func toChannelOutput(useColor bool, channel api.DataTransferChannel) map[string]interface{} {
+func toChannelOutput(useColor bool, otherPartyColumn string, channel api.DataTransferChannel) map[string]interface{} {
 	rootCid := channel.BaseCID.String()
 	rootCid = "..." + rootCid[len(rootCid)-8:]
 
@@ -1295,14 +1303,19 @@ func toChannelOutput(useColor bool, channel api.DataTransferChannel) map[string]
 		initiated = "Y"
 	}
 
+	voucher := channel.VoucherJSON
+	if len(voucher) > 40 {
+		voucher = "..." + voucher[len(voucher)-37:]
+	}
+
 	return map[string]interface{}{
-		"ID":          channel.TransferID,
-		"Status":      channelStatusString(useColor, channel.Status),
-		"Other Party": otherParty,
-		"Root Cid":    rootCid,
-		"Initiated?":  initiated,
-		"Transferred": channel.Transferred,
-		"Voucher":     channel.VoucherJSON,
-		"Message":     channel.Message,
+		"ID":             channel.TransferID,
+		"Status":         channelStatusString(useColor, channel.Status),
+		otherPartyColumn: otherParty,
+		"Root Cid":       rootCid,
+		"Initiated?":     initiated,
+		"Transferred":    channel.Transferred,
+		"Voucher":        voucher,
+		"Message":        channel.Message,
 	}
 }
