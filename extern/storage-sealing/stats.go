@@ -7,6 +7,7 @@ import (
 )
 
 type statSectorState int
+
 const (
 	sstSealing statSectorState = iota
 	sstFailed
@@ -18,7 +19,7 @@ type SectorStats struct {
 	lk sync.Mutex
 
 	bySector map[abi.SectorID]statSectorState
-	totals [nsst]uint64
+	totals   [nsst]uint64
 }
 
 func (ss *SectorStats) updateSector(id abi.SectorID, st SectorState) {
@@ -34,7 +35,6 @@ func (ss *SectorStats) updateSector(id abi.SectorID, st SectorState) {
 	ss.bySector[id] = sst
 	ss.totals[sst]++
 }
-
 
 // return the number of sectors currently in the sealing pipeline
 func (ss *SectorStats) curSealing() uint64 {

@@ -13,4 +13,3 @@ type Config struct {
 
 	WaitDealsDelay time.Duration
 }
-

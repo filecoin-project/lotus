@@ -139,11 +139,11 @@ func DefaultFullNode() *FullNode {
 func DefaultStorageMiner() *StorageMiner {
 	cfg := &StorageMiner{
 		Common: defCommon(),
-		
+
 		Sealing: SealingConfig{
 			MaxWaitDealsSectors: 2, // 64G with 32G sectors
 			MaxSealingSectors:   0,
-			WaitDealsDelay: Duration(time.Hour),
+			WaitDealsDelay:      Duration(time.Hour),
 		},
 
 		Storage: sectorstorage.SealerConfig{

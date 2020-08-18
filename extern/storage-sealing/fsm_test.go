@@ -70,12 +70,12 @@ func TestHappyPath(t *testing.T) {
 func TestSeedRevert(t *testing.T) {
 	ma, _ := address.NewIDAddress(55151)
 	m := test{
-		s:     &Sealing{
-		maddr: ma,
-		stats: SectorStats{
-		bySector: map[abi.SectorID]statSectorState{},
-	},
-	},
+		s: &Sealing{
+			maddr: ma,
+			stats: SectorStats{
+				bySector: map[abi.SectorID]statSectorState{},
+			},
+		},
 		t:     t,
 		state: &SectorInfo{State: Packing},
 	}
@@ -117,12 +117,12 @@ func TestSeedRevert(t *testing.T) {
 func TestPlanCommittingHandlesSectorCommitFailed(t *testing.T) {
 	ma, _ := address.NewIDAddress(55151)
 	m := test{
-		s:     &Sealing{
-		maddr: ma,
-		stats: SectorStats{
-		bySector: map[abi.SectorID]statSectorState{},
-	},
-	},
+		s: &Sealing{
+			maddr: ma,
+			stats: SectorStats{
+				bySector: map[abi.SectorID]statSectorState{},
+			},
+		},
 		t:     t,
 		state: &SectorInfo{State: Committing},
 	}

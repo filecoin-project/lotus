@@ -297,7 +297,7 @@ func (m *Sealing) newDealSector() (abi.SectorNumber, error) {
 			var best abi.SectorNumber = math.MaxUint64
 
 			for sn, info := range m.unsealedInfoMap.infos {
-				if info.stored + 1 > mostStored + 1 { // 18446744073709551615 + 1 = 0
+				if info.stored+1 > mostStored+1 { // 18446744073709551615 + 1 = 0
 					best = sn
 				}
 			}

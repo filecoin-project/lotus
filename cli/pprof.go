@@ -13,7 +13,7 @@ import (
 )
 
 var pprofCmd = &cli.Command{
-	Name:  "pprof",
+	Name:   "pprof",
 	Hidden: true,
 	Subcommands: []*cli.Command{
 		PprofGoroutines,
@@ -42,7 +42,7 @@ var PprofGoroutines = &cli.Command{
 			return err
 		}
 
-		 addr = "http://" + addr + "/debug/pprof/goroutine?debug=2"
+		addr = "http://" + addr + "/debug/pprof/goroutine?debug=2"
 
 		r, err := http.Get(addr)
 		if err != nil {
@@ -56,4 +56,3 @@ var PprofGoroutines = &cli.Command{
 		return r.Body.Close()
 	},
 }
-
