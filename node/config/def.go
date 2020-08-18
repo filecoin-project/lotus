@@ -54,6 +54,9 @@ type SealingConfig struct {
 	// includes failed, 0 = no limit
 	MaxSealingSectors uint64
 
+	// includes failed, 0 = no limit
+	MaxSealingSectorsForDeals uint64
+
 	WaitDealsDelay Duration
 }
 
@@ -141,9 +144,10 @@ func DefaultStorageMiner() *StorageMiner {
 		Common: defCommon(),
 
 		Sealing: SealingConfig{
-			MaxWaitDealsSectors: 2, // 64G with 32G sectors
-			MaxSealingSectors:   0,
-			WaitDealsDelay:      Duration(time.Hour),
+			MaxWaitDealsSectors:       2, // 64G with 32G sectors
+			MaxSealingSectors:         0,
+			MaxSealingSectorsForDeals: 0,
+			WaitDealsDelay:            Duration(time.Hour),
 		},
 
 		Storage: sectorstorage.SealerConfig{

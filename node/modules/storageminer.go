@@ -611,9 +611,10 @@ func NewGetSealConfigFunc(r repo.LockedRepo) (dtypes.GetSealingConfigFunc, error
 	return func() (out sealiface.Config, err error) {
 		err = readCfg(r, func(cfg *config.StorageMiner) {
 			out = sealiface.Config{
-				MaxWaitDealsSectors: cfg.Sealing.MaxWaitDealsSectors,
-				MaxSealingSectors:   cfg.Sealing.MaxSealingSectors,
-				WaitDealsDelay:      time.Duration(cfg.Sealing.WaitDealsDelay),
+				MaxWaitDealsSectors:       cfg.Sealing.MaxWaitDealsSectors,
+				MaxSealingSectors:         cfg.Sealing.MaxSealingSectors,
+				MaxSealingSectorsForDeals: cfg.Sealing.MaxSealingSectorsForDeals,
+				WaitDealsDelay:            time.Duration(cfg.Sealing.WaitDealsDelay),
 			}
 		})
 		return

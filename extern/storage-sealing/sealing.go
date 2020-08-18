@@ -270,8 +270,8 @@ func (m *Sealing) newDealSector() (abi.SectorNumber, error) {
 		return 0, xerrors.Errorf("getting config: %w", err)
 	}
 
-	if cfg.MaxSealingSectors > 0 {
-		if m.stats.curSealing() > cfg.MaxSealingSectors {
+	if cfg.MaxSealingSectorsForDeals > 0 {
+		if m.stats.curSealing() > cfg.MaxSealingSectorsForDeals {
 			return 0, xerrors.Errorf("too many sectors sealing")
 		}
 	}
@@ -280,6 +280,9 @@ func (m *Sealing) newDealSector() (abi.SectorNumber, error) {
 		// run in a loop because we have to drop the map lock here for a bit
 		tries := 0
 
+		// we have to run in a loop as we're dropping unsealedInfoMap.lk
+		//  to actually call StartPacking. When we do that, another entry can
+		//  get added to unsealedInfoMap.
 		for uint64(len(m.unsealedInfoMap.infos)) >= cfg.MaxWaitDealsSectors {
 			if tries > 10 {
 				// whatever...
