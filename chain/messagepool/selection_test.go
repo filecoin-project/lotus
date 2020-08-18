@@ -834,7 +834,7 @@ func TestOptimalMessageSelection3(t *testing.T) {
 	nMessages := int(build.BlockGasLimit/gasLimit) + 1
 	for i := 0; i < nMessages; i++ {
 		for j := 0; j < nActors; j++ {
-			premium := 500000 + 20000*(nActors-j) + (nMessages+2-i)/(3*nActors) + i%3
+			premium := 500000 + 10000*(nActors-j) + (nMessages+2-i)/(30*nActors) + i%3
 			m := makeTestMessage(wallets[j], actors[j], actors[j%nActors], uint64(i), gasLimit, uint64(premium))
 			mustAdd(t, mp, m)
 		}
