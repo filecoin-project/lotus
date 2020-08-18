@@ -328,9 +328,24 @@ func (m *Sealing) restartSectors(ctx context.Context) error {
 		log.Errorf("loading sector list: %+v", err)
 	}
 
+	sd, err := m.getSealDelay()
+	if err != nil {
+		return xerrors.Errorf("getting the sealing delay: %w", err)
+	}
+
 	for _, sector := range trackedSectors {
 		if err := m.sectors.Send(uint64(sector.SectorNumber), SectorRestart{}); err != nil {
 			log.Errorf("restarting sector %d: %+v", sector.SectorNumber, err)
+		}
+
+		if sector.State == WaitDeals {
+			if sd > 0 {
+				timer := time.NewTimer(sd)
+				go func() {
+					<-timer.C
+					m.StartPacking(sector.SectorNumber)
+				}()
+			}
 		}
 	}
 
