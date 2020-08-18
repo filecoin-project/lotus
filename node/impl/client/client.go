@@ -137,7 +137,7 @@ func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) 
 		return nil, xerrors.New("data doesn't fit in a sector")
 	}
 
-	providerInfo := utils.NewStorageProviderInfo(params.Miner, mi.Worker, mi.SectorSize, mi.PeerId, mi.Multiaddrs)
+	providerInfo := utils.NewStorageProviderInfo(params.Miner, mi.Worker, mi.SectorSize, *mi.PeerId, mi.Multiaddrs)
 
 	dealStart := params.DealStartEpoch
 	if dealStart <= 0 { // unset, or explicitly 'epoch undefined'
@@ -255,7 +255,7 @@ func (a *API) ClientMinerQueryOffer(ctx context.Context, miner address.Address, 
 	}
 	rp := rm.RetrievalPeer{
 		Address: miner,
-		ID:      mi.PeerId,
+		ID:      *mi.PeerId,
 	}
 	return a.makeRetrievalQuery(ctx, rp, root, piece, rm.QueryParams{}), nil
 }
@@ -443,7 +443,7 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 		}
 
 		order.MinerPeer = retrievalmarket.RetrievalPeer{
-			ID:      mi.PeerId,
+			ID:      *mi.PeerId,
 			Address: order.Miner,
 		}
 	}
