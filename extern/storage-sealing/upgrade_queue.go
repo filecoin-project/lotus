@@ -57,18 +57,18 @@ func (m *Sealing) tryUpgradeSector(ctx context.Context, params *miner.SectorPreC
 		params.ReplaceSectorDeadline = loc.Deadline
 		params.ReplaceSectorPartition = loc.Partition
 
-		ri, err := m.GetSectorInfo(*replace)
+		ri, err := m.api.StateSectorGetInfo(ctx, m.maddr, *replace, nil)
 		if err != nil {
-			log.Errorf("error calling GetSectorInfo for replaced sector: %+v", err)
+			log.Errorf("error calling StateSectorGetInfo for replaced sector: %+v", err)
 			return big.Zero()
 		}
 
-		if params.Expiration < ri.PreCommitInfo.Expiration {
+		if params.Expiration < ri.Expiration {
 			// TODO: Some limit on this
-			params.Expiration = ri.PreCommitInfo.Expiration
+			params.Expiration = ri.Expiration
 		}
 
-		return ri.PreCommitDeposit
+		return ri.InitialPledge
 	}
 
 	return big.Zero()
