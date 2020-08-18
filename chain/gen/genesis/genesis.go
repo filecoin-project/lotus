@@ -434,10 +434,24 @@ func MakeGenesisBlock(ctx context.Context, bs bstore.Blockstore, sys vm.SyscallB
 		VRFProof: []byte("vrf proof0000000vrf proof0000000"),
 	}
 
+	filecoinGenesisCid, err := cid.Decode("bafyreiaqpwbbyjo4a42saasj36kkrpv4tsherf2e7bvezkert2a7dhonoi")
+	if err != nil {
+		return nil, xerrors.Errorf("failed to decode filecoin genesis block CID: %w", err)
+	}
+
+	gblk, err := getGenesisBlock()
+	if err != nil {
+		return nil, xerrors.Errorf("failed to construct filecoin genesis block: %w", err)
+	}
+
+	if err := bs.Put(gblk); err != nil {
+		return nil, xerrors.Errorf("failed writing filecoin genesis block to blockstore: %w", err)
+	}
+
 	b := &types.BlockHeader{
 		Miner:                 builtin.SystemActorAddr,
 		Ticket:                genesisticket,
-		Parents:               []cid.Cid{},
+		Parents:               []cid.Cid{filecoinGenesisCid},
 		Height:                0,
 		ParentWeight:          types.NewInt(0),
 		ParentStateRoot:       stateroot,

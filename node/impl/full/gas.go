@@ -77,7 +77,7 @@ func (a *GasAPI) GasEstimateGasPremium(ctx context.Context, nblocksincl uint64,
 
 	ts := a.Chain.GetHeaviestTipSet()
 	for i := uint64(0); i < nblocksincl*2; i++ {
-		if len(ts.Parents().Cids()) == 0 {
+		if ts.Height() == 0 {
 			break // genesis
 		}
 

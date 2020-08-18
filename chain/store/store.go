@@ -1177,13 +1177,18 @@ func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, w io.Writer)
 			return xerrors.Errorf("unmarshaling block header (cid=%s): %w", blk, err)
 		}
 
-		for _, p := range b.Parents {
-			blocksToWalk = append(blocksToWalk, p)
-		}
-
 		cids, err := recurseLinks(cs.bs, b.Messages, []cid.Cid{b.Messages})
 		if err != nil {
 			return xerrors.Errorf("recursing messages failed: %w", err)
+		}
+
+		if b.Height > 0 {
+			for _, p := range b.Parents {
+				blocksToWalk = append(blocksToWalk, p)
+			}
+		} else {
+			// include the genesis block
+			cids = append(cids, b.Parents...)
 		}
 
 		out := cids

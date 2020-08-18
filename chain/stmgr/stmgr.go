@@ -3,8 +3,9 @@ package stmgr
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"sync"
+
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 
@@ -323,7 +324,7 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, ts *types.TipSet
 
 	var parentEpoch abi.ChainEpoch
 	pstate := blks[0].ParentStateRoot
-	if len(blks[0].Parents) > 0 {
+	if blks[0].Height > 0 {
 		parent, err := sm.cs.GetBlock(blks[0].Parents[0])
 		if err != nil {
 			return cid.Undef, cid.Undef, xerrors.Errorf("getting parent block: %w", err)
