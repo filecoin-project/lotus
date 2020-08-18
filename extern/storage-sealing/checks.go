@@ -26,10 +26,12 @@ type ErrBadCommD struct{ error }
 type ErrExpiredTicket struct{ error }
 type ErrBadTicket struct{ error }
 type ErrPrecommitOnChain struct{ error }
+type ErrSectorNumberAllocated struct{ error }
 
 type ErrBadSeed struct{ error }
 type ErrInvalidProof struct{ error }
 type ErrNoPrecommit struct{ error }
+type ErrCommitWaitFailed struct{ error }
 
 func checkPieces(ctx context.Context, si SectorInfo, api SealingAPI) error {
 	tok, height, err := api.ChainHead(ctx)
@@ -87,6 +89,9 @@ func checkPrecommit(ctx context.Context, maddr address.Address, si SectorInfo, t
 
 	pci, err := api.StateSectorPreCommitInfo(ctx, maddr, si.SectorNumber, tok)
 	if err != nil {
+		if err == ErrSectorAllocated {
+			return &ErrSectorNumberAllocated{err}
+		}
 		return &ErrApi{xerrors.Errorf("getting precommit info: %w", err)}
 	}
 
@@ -106,6 +111,16 @@ func (m *Sealing) checkCommit(ctx context.Context, si SectorInfo, proof []byte, 
 	}
 
 	pci, err := m.api.StateSectorPreCommitInfo(ctx, m.maddr, si.SectorNumber, tok)
+	if err == ErrSectorAllocated {
+		// not much more we can check here, basically try to wait for commit,
+		// and hope that this will work
+
+		if si.CommitMessage != nil {
+			return &ErrCommitWaitFailed{err}
+		}
+
+		return err
+	}
 	if err != nil {
 		return xerrors.Errorf("getting precommit info: %w", err)
 	}

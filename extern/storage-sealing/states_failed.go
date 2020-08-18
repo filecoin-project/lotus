@@ -85,6 +85,10 @@ func (m *Sealing) handlePreCommitFailed(ctx statemachine.Context, sector SectorI
 			return ctx.Send(SectorRetryPreCommit{})
 		case *ErrPrecommitOnChain:
 			// noop
+		case *ErrSectorNumberAllocated:
+			log.Errorf("handlePreCommitFailed: sector number already allocated, not proceeding: %+v", err)
+			// TODO: check if the sector is committed (not sure how we'd end up here)
+			return nil
 		default:
 			return xerrors.Errorf("checkPrecommit sanity check error: %w", err)
 		}
@@ -158,6 +162,8 @@ func (m *Sealing) handleCommitFailed(ctx statemachine.Context, sector SectorInfo
 			return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("no precommit: %w", err)})
 		case *ErrPrecommitOnChain:
 			// noop, this is expected
+		case *ErrSectorNumberAllocated:
+			// noop, already committed?
 		default:
 			return xerrors.Errorf("checkPrecommit sanity check error (%T): %w", err, err)
 		}
@@ -186,6 +192,12 @@ func (m *Sealing) handleCommitFailed(ctx statemachine.Context, sector SectorInfo
 			return ctx.Send(SectorRetryPreCommitWait{})
 		case *ErrNoPrecommit:
 			return ctx.Send(SectorRetryPreCommit{})
+		case *ErrCommitWaitFailed:
+			if err := failedCooldown(ctx, sector); err != nil {
+				return err
+			}
+
+			return ctx.Send(SectorRetryCommitWait{})
 		default:
 			return xerrors.Errorf("checkCommit sanity check error (%T): %w", err, err)
 		}

@@ -149,6 +149,10 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 			return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("bad ticket: %w", err)})
 		case *ErrPrecommitOnChain:
 			return ctx.Send(SectorPreCommitLanded{TipSet: tok}) // we re-did precommit
+		case *ErrSectorNumberAllocated:
+			log.Errorf("handlePreCommitFailed: sector number already allocated, not proceeding: %+v", err)
+			// TODO: check if the sector is committed (not sure how we'd end up here)
+			return nil
 		default:
 			return xerrors.Errorf("checkPrecommit sanity check error: %w", err)
 		}
@@ -275,6 +279,20 @@ func (m *Sealing) handleWaitSeed(ctx statemachine.Context, sector SectorInfo) er
 }
 
 func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) error {
+	if sector.CommitMessage != nil {
+		log.Warnf("sector %d entered committing state with a commit message cid", sector.SectorNumber)
+
+		ml, err := m.api.StateSearchMsg(ctx.Context(), *sector.CommitMessage)
+		if err != nil {
+			log.Warnf("sector %d searching existing commit message %s: %+v", sector.SectorNumber, *sector.CommitMessage, err)
+		}
+
+		if ml != nil {
+			// some weird retry paths can lead here
+			return ctx.Send(SectorRetryCommitWait{})
+		}
+	}
+
 	log.Info("scheduling seal proof computation...")
 
 	log.Infof("KOMIT %d %x(%d); %x(%d); %v; r:%x; d:%x", sector.SectorNumber, sector.TicketValue, sector.TicketEpoch, sector.SeedValue, sector.SeedEpoch, sector.pieceInfos(), sector.CommR, sector.CommD)

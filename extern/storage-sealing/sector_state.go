@@ -36,3 +36,14 @@ const (
 	RemoveFailed SectorState = "RemoveFailed"
 	Removed      SectorState = "Removed"
 )
+
+func toStatState(st SectorState) statSectorState {
+	switch st {
+	case Empty, WaitDeals, Packing, PreCommit1, PreCommit2, PreCommitting, PreCommitWait, WaitSeed, Committing, CommitWait, FinalizeSector:
+		return sstSealing
+	case Proving, Removed, Removing:
+		return sstProving
+	}
+
+	return sstFailed
+}

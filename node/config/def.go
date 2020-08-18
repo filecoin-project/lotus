@@ -31,10 +31,9 @@ type StorageMiner struct {
 	Common
 
 	Dealmaking DealmakingConfig
+	Sealing    SealingConfig
 	Storage    sectorstorage.SealerConfig
 	Fees       MinerFeeConfig
-
-	SealingDelay Duration
 }
 
 type DealmakingConfig struct {
@@ -46,6 +45,19 @@ type DealmakingConfig struct {
 	ExpectedSealDuration          Duration
 
 	Filter string
+}
+
+type SealingConfig struct {
+	// 0 = no limit
+	MaxWaitDealsSectors uint64
+
+	// includes failed, 0 = no limit
+	MaxSealingSectors uint64
+
+	// includes failed, 0 = no limit
+	MaxSealingSectorsForDeals uint64
+
+	WaitDealsDelay Duration
 }
 
 type MinerFeeConfig struct {
@@ -131,6 +143,13 @@ func DefaultStorageMiner() *StorageMiner {
 	cfg := &StorageMiner{
 		Common: defCommon(),
 
+		Sealing: SealingConfig{
+			MaxWaitDealsSectors:       2, // 64G with 32G sectors
+			MaxSealingSectors:         0,
+			MaxSealingSectorsForDeals: 0,
+			WaitDealsDelay:            Duration(time.Hour),
+		},
+
 		Storage: sectorstorage.SealerConfig{
 			AllowAddPiece:   true,
 			AllowPreCommit1: true,
@@ -158,8 +177,6 @@ func DefaultStorageMiner() *StorageMiner {
 			MaxCommitGasFee:     types.FIL(types.BigDiv(types.FromFil(1), types.NewInt(20))),
 			MaxWindowPoStGasFee: types.FIL(types.FromFil(50)),
 		},
-
-		SealingDelay: Duration(time.Hour),
 	}
 	cfg.Common.API.ListenAddress = "/ip4/127.0.0.1/tcp/2345/http"
 	cfg.Common.API.RemoteListenAddress = "127.0.0.1:2345"

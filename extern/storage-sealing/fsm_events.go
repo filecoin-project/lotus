@@ -252,6 +252,10 @@ func (evt SectorRetryInvalidProof) apply(state *SectorInfo) {
 	state.InvalidProofs++
 }
 
+type SectorRetryCommitWait struct{}
+
+func (evt SectorRetryCommitWait) apply(state *SectorInfo) {}
+
 // Faults
 
 type SectorFaulty struct{}
