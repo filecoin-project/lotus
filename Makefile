@@ -148,7 +148,7 @@ BINS+=lotus-fountain
 
 lotus-chainwatch:
 	rm -f lotus-chainwatch
-	go build -o lotus-chainwatch ./cmd/lotus-chainwatch
+	go build $(GOFLAGS) -o lotus-chainwatch ./cmd/lotus-chainwatch
 .PHONY: lotus-chainwatch
 BINS+=lotus-chainwatch
 
@@ -272,6 +272,7 @@ dist-clean:
 
 type-gen:
 	go run ./gen/main.go
+	go generate ./...
 
 method-gen:
 	(cd ./lotuspond/front/src/chain && go run ./methodgen.go)

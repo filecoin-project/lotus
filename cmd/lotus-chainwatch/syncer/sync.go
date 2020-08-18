@@ -46,7 +46,11 @@ create table if not exists chain_economics
 (
 	parent_state_root text not null
 		constraint chain_economics_pk primary key,
-	circulating_fil text not null
+	circulating_fil text not null,
+	vested_fil text not null,
+	mined_fil text not null,
+	burnt_fil text not null,
+	locked_fil text not null
 );
 
 create table if not exists block_cids
@@ -283,12 +287,16 @@ func (s *Syncer) storeCirculatingSupply(ctx context.Context, tipset *types.TipSe
 		return err
 	}
 
-	ceInsert := `insert into chain_economics (parent_state_root, circulating_fil) values ('%s', '%s');`
+	ceInsert := `insert into chain_economics (parent_state_root, circulating_fil, vested_fil, mined_fil, burnt_fil, locked_fil)` +
+		`values ('%s', '%s', '%s', '%s', '%s', '%s');`
 
 	if _, err := s.db.Exec(fmt.Sprintf(ceInsert,
 		tipset.ParentState().String(),
-		// TODO: Include all the details maybe?
 		supply.FilCirculating.String(),
+		supply.FilVested.String(),
+		supply.FilMined.String(),
+		supply.FilBurnt.String(),
+		supply.FilLocked.String(),
 	)); err != nil {
 		return xerrors.Errorf("insert circulating supply for tipset (%s): %w", tipset.Key().String(), err)
 	}

@@ -24,6 +24,6 @@ func FileSize(path string) (SizeInfo, error) {
 	// NOTE: stat.Blocks is in 512B blocks, NOT in stat.Blksize
 	//  See https://www.gnu.org/software/libc/manual/html_node/Attribute-Meanings.html
 	return SizeInfo{
-		int64(stat.Blocks) * 512, // NOTE: int64 cast is needed on osx
+		int64(stat.Blocks) * 512, // nolint NOTE: int64 cast is needed on osx
 	}, nil
 }

@@ -24,6 +24,7 @@ var mpoolCmd = &cli.Command{
 		mpoolStat,
 		mpoolReplaceCmd,
 		mpoolFindCmd,
+		mpoolConfig,
 	},
 }
 
@@ -412,6 +413,51 @@ var mpoolFindCmd = &cli.Command{
 		}
 
 		fmt.Println(string(b))
+		return nil
+	},
+}
+
+var mpoolConfig = &cli.Command{
+	Name:      "config",
+	Usage:     "get or set current mpool configuration",
+	ArgsUsage: "[new-config]",
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() > 1 {
+			return cli.ShowCommandHelp(cctx, cctx.Command.Name)
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		if cctx.Args().Len() == 0 {
+			cfg, err := api.MpoolGetConfig(ctx)
+			if err != nil {
+				return err
+			}
+
+			bytes, err := json.Marshal(cfg)
+			if err != nil {
+				return err
+			}
+
+			fmt.Println(string(bytes))
+		} else {
+			cfg := new(types.MpoolConfig)
+			bytes := []byte(cctx.Args().Get(0))
+
+			err := json.Unmarshal(bytes, cfg)
+			if err != nil {
+				return err
+			}
+
+			return api.MpoolSetConfig(ctx, cfg)
+		}
+
 		return nil
 	},
 }

@@ -6,9 +6,8 @@ import (
 
 	"github.com/ipfs/go-cid"
 
-	sectorstorage "github.com/filecoin-project/sector-storage"
-
 	"github.com/filecoin-project/lotus/chain/types"
+	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 )
 
 // Common is common config between full node and miner
@@ -133,6 +132,7 @@ func DefaultStorageMiner() *StorageMiner {
 		Common: defCommon(),
 
 		Storage: sectorstorage.SealerConfig{
+			AllowAddPiece:   true,
 			AllowPreCommit1: true,
 			AllowPreCommit2: true,
 			AllowCommit:     true,

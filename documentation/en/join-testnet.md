@@ -9,7 +9,7 @@ Anyone can set up a **Lotus Node** and connect to the **Lotus Testnet**. This is
 If you are trying to use `lotus` from China. You should set this **environment variable** on your machine:
 
 ```sh
-IPFS_GATEWAY="https://proof-parameters.s3.cn-south-1.jdcloud-oss.com/ipfs/"
+export IPFS_GATEWAY="https://proof-parameters.s3.cn-south-1.jdcloud-oss.com/ipfs/"
 ```
 
 ## Get started

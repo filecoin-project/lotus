@@ -4,18 +4,19 @@ import (
 	"context"
 	"io"
 
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/types"
+	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
+	"github.com/filecoin-project/lotus/storage"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/shared"
-	sectorstorage "github.com/filecoin-project/sector-storage"
-	"github.com/filecoin-project/sector-storage/storiface"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
-	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/storage"
+	"github.com/ipfs/go-cid"
 )
 
 type retrievalProviderNode struct {

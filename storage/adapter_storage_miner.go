@@ -23,7 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	sealing "github.com/filecoin-project/storage-fsm"
+	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 )
 
 var _ sealing.SealingAPI = new(SealingAPIAdapter)

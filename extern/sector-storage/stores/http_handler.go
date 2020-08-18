@@ -10,7 +10,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/sector-storage/tarutil"
+	"github.com/filecoin-project/lotus/extern/sector-storage/tarutil"
 )
 
 var log = logging.Logger("stores")
@@ -100,7 +100,7 @@ func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Requ
 		rd, err = tarutil.TarDirectory(path)
 		w.Header().Set("Content-Type", "application/x-tar")
 	} else {
-		rd, err = os.OpenFile(path, os.O_RDONLY, 0644)
+		rd, err = os.OpenFile(path, os.O_RDONLY, 0644) // nolint
 		w.Header().Set("Content-Type", "application/octet-stream")
 	}
 	if err != nil {

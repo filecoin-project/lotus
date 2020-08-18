@@ -28,11 +28,11 @@ import (
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/events/state"
 	"github.com/filecoin-project/lotus/chain/types"
+	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/markets/utils"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
-	sealing "github.com/filecoin-project/storage-fsm"
 )
 
 var log = logging.Logger("storageadapter")

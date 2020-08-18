@@ -13,7 +13,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/urfave/cli/v2"
 
-	"github.com/filecoin-project/sector-storage/storiface"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"

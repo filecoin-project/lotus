@@ -1,3 +1,5 @@
+//go:generate go run ./gen
+
 package sealing
 
 import (

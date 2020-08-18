@@ -15,8 +15,8 @@ import (
 	"golang.org/x/xerrors"
 
 	cborutil "github.com/filecoin-project/go-cbor-util"
+	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	sealing "github.com/filecoin-project/storage-fsm"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"

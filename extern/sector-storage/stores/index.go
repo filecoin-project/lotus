@@ -2,7 +2,6 @@ package stores
 
 import (
 	"context"
-	"github.com/filecoin-project/sector-storage/fsutil"
 	"net/url"
 	gopath "path"
 	"sort"
@@ -10,6 +9,8 @@ import (
 	"time"
 
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
@@ -52,8 +53,8 @@ type SectorIndex interface { // part of storage-miner api
 	StorageInfo(context.Context, ID) (StorageInfo, error)
 	StorageReportHealth(context.Context, ID, HealthReport) error
 
-	StorageDeclareSector(ctx context.Context, storageId ID, s abi.SectorID, ft SectorFileType, primary bool) error
-	StorageDropSector(ctx context.Context, storageId ID, s abi.SectorID, ft SectorFileType) error
+	StorageDeclareSector(ctx context.Context, storageID ID, s abi.SectorID, ft SectorFileType, primary bool) error
+	StorageDropSector(ctx context.Context, storageID ID, s abi.SectorID, ft SectorFileType) error
 	StorageFindSector(ctx context.Context, sector abi.SectorID, ft SectorFileType, spt abi.RegisteredSealProof, allowFetch bool) ([]SectorStorageInfo, error)
 
 	StorageBestAlloc(ctx context.Context, allocate SectorFileType, spt abi.RegisteredSealProof, pathType PathType) ([]StorageInfo, error)
@@ -179,7 +180,7 @@ func (i *Index) StorageReportHealth(ctx context.Context, id ID, report HealthRep
 	return nil
 }
 
-func (i *Index) StorageDeclareSector(ctx context.Context, storageId ID, s abi.SectorID, ft SectorFileType, primary bool) error {
+func (i *Index) StorageDeclareSector(ctx context.Context, storageID ID, s abi.SectorID, ft SectorFileType, primary bool) error {
 	i.lk.Lock()
 	defer i.lk.Unlock()
 
@@ -192,18 +193,18 @@ loop:
 		d := Decl{s, fileType}
 
 		for _, sid := range i.sectors[d] {
-			if sid.storage == storageId {
+			if sid.storage == storageID {
 				if !sid.primary && primary {
 					sid.primary = true
 				} else {
-					log.Warnf("sector %v redeclared in %s", s, storageId)
+					log.Warnf("sector %v redeclared in %s", s, storageID)
 				}
 				continue loop
 			}
 		}
 
 		i.sectors[d] = append(i.sectors[d], &declMeta{
-			storage: storageId,
+			storage: storageID,
 			primary: primary,
 		})
 	}
@@ -211,7 +212,7 @@ loop:
 	return nil
 }
 
-func (i *Index) StorageDropSector(ctx context.Context, storageId ID, s abi.SectorID, ft SectorFileType) error {
+func (i *Index) StorageDropSector(ctx context.Context, storageID ID, s abi.SectorID, ft SectorFileType) error {
 	i.lk.Lock()
 	defer i.lk.Unlock()
 
@@ -228,7 +229,7 @@ func (i *Index) StorageDropSector(ctx context.Context, storageId ID, s abi.Secto
 
 		rewritten := make([]*declMeta, 0, len(i.sectors[d])-1)
 		for _, sid := range i.sectors[d] {
-			if sid.storage == storageId {
+			if sid.storage == storageID {
 				continue
 			}
 
@@ -406,8 +407,8 @@ func (i *Index) StorageBestAlloc(ctx context.Context, allocate SectorFileType, s
 	}
 
 	sort.Slice(candidates, func(i, j int) bool {
-		iw := big.Mul(big.NewInt(int64(candidates[i].fsi.Available)), big.NewInt(int64(candidates[i].info.Weight)))
-		jw := big.Mul(big.NewInt(int64(candidates[j].fsi.Available)), big.NewInt(int64(candidates[j].info.Weight)))
+		iw := big.Mul(big.NewInt(candidates[i].fsi.Available), big.NewInt(int64(candidates[i].info.Weight)))
+		jw := big.Mul(big.NewInt(candidates[j].fsi.Available), big.NewInt(int64(candidates[j].info.Weight)))
 
 		return iw.GreaterThan(jw)
 	})

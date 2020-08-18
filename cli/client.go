@@ -854,15 +854,15 @@ var clientRetrieveCmd = &cli.Command{
 
 		for {
 			select {
-			case evt, chOpen := <-updates:
-				fmt.Printf("> Recv: %s, Paid %s, %s (%s)\n",
-					types.SizeStr(types.NewInt(evt.BytesReceived)),
-					types.FIL(evt.FundsSpent),
-					retrievalmarket.ClientEvents[evt.Event],
-					retrievalmarket.DealStatuses[evt.Status],
-				)
-
-				if !chOpen {
+			case evt, ok := <-updates:
+				if ok {
+					fmt.Printf("> Recv: %s, Paid %s, %s (%s)\n",
+						types.SizeStr(types.NewInt(evt.BytesReceived)),
+						types.FIL(evt.FundsSpent),
+						retrievalmarket.ClientEvents[evt.Event],
+						retrievalmarket.DealStatuses[evt.Status],
+					)
+				} else {
 					fmt.Println("Success")
 					return nil
 				}

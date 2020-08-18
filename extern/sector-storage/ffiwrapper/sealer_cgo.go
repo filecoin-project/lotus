@@ -20,10 +20,10 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-storage/storage"
 
-	"github.com/filecoin-project/sector-storage/fr32"
-	"github.com/filecoin-project/sector-storage/stores"
-	"github.com/filecoin-project/sector-storage/storiface"
-	"github.com/filecoin-project/sector-storage/zerocomm"
+	"github.com/filecoin-project/lotus/extern/sector-storage/fr32"
+	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
+	"github.com/filecoin-project/lotus/extern/sector-storage/zerocomm"
 )
 
 var _ Storage = &Sealer{}
@@ -190,7 +190,7 @@ func (sb *Sealer) pieceCid(in []byte) (cid.Cid, error) {
 		return cid.Undef, xerrors.Errorf("generating piece commitment: %w", err)
 	}
 
-	prf.Close()
+	_ = prf.Close()
 
 	return pieceCID, werr()
 }
@@ -225,7 +225,7 @@ func (sb *Sealer) UnsealPiece(ctx context.Context, sector abi.SectorID, offset s
 	default:
 		return xerrors.Errorf("acquire unsealed sector path (existing): %w", err)
 	}
-	defer pf.Close()
+	defer pf.Close() // nolint
 
 	allocated, err := pf.Allocated()
 	if err != nil {
@@ -247,11 +247,11 @@ func (sb *Sealer) UnsealPiece(ctx context.Context, sector abi.SectorID, offset s
 	}
 	defer srcDone()
 
-	sealed, err := os.OpenFile(srcPaths.Sealed, os.O_RDONLY, 0644)
+	sealed, err := os.OpenFile(srcPaths.Sealed, os.O_RDONLY, 0644) // nolint:gosec
 	if err != nil {
 		return xerrors.Errorf("opening sealed file: %w", err)
 	}
-	defer sealed.Close()
+	defer sealed.Close() // nolint
 
 	var at, nextat abi.PaddedPieceSize
 	first := true
@@ -287,7 +287,7 @@ func (sb *Sealer) UnsealPiece(ctx context.Context, sector abi.SectorID, offset s
 		{
 			go func() {
 				defer close(outWait)
-				defer opr.Close()
+				defer opr.Close() // nolint
 
 				padwriter := fr32.NewPadWriter(out)
 				if err != nil {
@@ -377,18 +377,18 @@ func (sb *Sealer) ReadPiece(ctx context.Context, writer io.Writer, sector abi.Se
 
 	ok, err := pf.HasAllocated(offset, size)
 	if err != nil {
-		pf.Close()
+		_ = pf.Close()
 		return false, err
 	}
 
 	if !ok {
-		pf.Close()
+		_ = pf.Close()
 		return false, nil
 	}
 
 	f, err := pf.Reader(offset.Padded(), size.Padded())
 	if err != nil {
-		pf.Close()
+		_ = pf.Close()
 		return false, xerrors.Errorf("getting partial file reader: %w", err)
 	}
 
@@ -398,7 +398,7 @@ func (sb *Sealer) ReadPiece(ctx context.Context, writer io.Writer, sector abi.Se
 	}
 
 	if _, err := io.CopyN(writer, upr, int64(size)); err != nil {
-		pf.Close()
+		_ = pf.Close()
 		return false, xerrors.Errorf("reading unsealed file: %w", err)
 	}
 
@@ -416,7 +416,7 @@ func (sb *Sealer) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticke
 	}
 	defer done()
 
-	e, err := os.OpenFile(paths.Sealed, os.O_RDWR|os.O_CREATE, 0644)
+	e, err := os.OpenFile(paths.Sealed, os.O_RDWR|os.O_CREATE, 0644) // nolint:gosec
 	if err != nil {
 		return nil, xerrors.Errorf("ensuring sealed file exists: %w", err)
 	}
@@ -424,7 +424,7 @@ func (sb *Sealer) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticke
 		return nil, err
 	}
 
-	if err := os.Mkdir(paths.Cache, 0755); err != nil {
+	if err := os.Mkdir(paths.Cache, 0755); err != nil { // nolint
 		if os.IsExist(err) {
 			log.Warnf("existing cache in %s; removing", paths.Cache)
 
@@ -432,7 +432,7 @@ func (sb *Sealer) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticke
 				return nil, xerrors.Errorf("remove existing sector cache from %s (sector %d): %w", paths.Cache, sector, err)
 			}
 
-			if err := os.Mkdir(paths.Cache, 0755); err != nil {
+			if err := os.Mkdir(paths.Cache, 0755); err != nil { // nolint:gosec
 				return nil, xerrors.Errorf("mkdir cache path after cleanup: %w", err)
 			}
 		} else {

@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-blockservice"
@@ -38,8 +39,8 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -409,11 +410,9 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 	defer close(events)
 
 	finish := func(e error) {
-		errStr := ""
 		if e != nil {
-			errStr = e.Error()
+			events <- marketevents.RetrievalEvent{Err: e.Error(), FundsSpent: big.Zero()}
 		}
-		events <- marketevents.RetrievalEvent{Err: errStr}
 	}
 
 	if order.MinerPeer.ID == "" {

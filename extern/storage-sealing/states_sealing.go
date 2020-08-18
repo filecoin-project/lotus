@@ -321,17 +321,17 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 		return nil
 	}
 
-	collateral, err := m.api.StateMinerInitialPledgeCollateral(ctx.Context(), m.maddr, *sector.PreCommitInfo, tok)
-	if err != nil {
-		return xerrors.Errorf("getting initial pledge collateral: %w", err)
-	}
-
 	pci, err := m.api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, sector.SectorNumber, tok)
 	if err != nil {
 		return xerrors.Errorf("getting precommit info: %w", err)
 	}
 	if pci == nil {
 		return ctx.Send(SectorCommitFailed{error: xerrors.Errorf("precommit info not found on chain")})
+	}
+
+	collateral, err := m.api.StateMinerInitialPledgeCollateral(ctx.Context(), m.maddr, pci.Info, tok)
+	if err != nil {
+		return xerrors.Errorf("getting initial pledge collateral: %w", err)
 	}
 
 	collateral = big.Sub(collateral, pci.PreCommitDeposit)

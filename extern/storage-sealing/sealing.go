@@ -15,8 +15,8 @@ import (
 	"github.com/filecoin-project/go-address"
 	padreader "github.com/filecoin-project/go-padreader"
 	statemachine "github.com/filecoin-project/go-statemachine"
-	sectorstorage "github.com/filecoin-project/sector-storage"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
+	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
@@ -74,8 +74,8 @@ type Sealing struct {
 }
 
 type FeeConfig struct {
-	MaxPreCommitGasFee  abi.TokenAmount
-	MaxCommitGasFee     abi.TokenAmount
+	MaxPreCommitGasFee abi.TokenAmount
+	MaxCommitGasFee    abi.TokenAmount
 }
 
 type UnsealedSectorMap struct {

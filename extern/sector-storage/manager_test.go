@@ -5,22 +5,22 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/sector-storage/fsutil"
-	"github.com/filecoin-project/sector-storage/sealtasks"
-	logging "github.com/ipfs/go-log"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/google/uuid"
-	"github.com/stretchr/testify/require"
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
+	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
+	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/sector-storage/stores"
+	"github.com/google/uuid"
+	logging "github.com/ipfs/go-log"
+	"github.com/stretchr/testify/require"
 )
 
 func init() {

@@ -26,7 +26,7 @@ import (
 var log = logging.Logger("cli")
 
 const (
-	metadataTraceConetxt = "traceContext"
+	metadataTraceContext = "traceContext"
 )
 
 // custom CLI error
@@ -132,7 +132,7 @@ func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
 
 	p, err := homedir.Expand(ctx.String(repoFlag))
 	if err != nil {
-		return APIInfo{}, xerrors.Errorf("cound not expand home dir (%s): %w", repoFlag, err)
+		return APIInfo{}, xerrors.Errorf("could not expand home dir (%s): %w", repoFlag, err)
 	}
 
 	r, err := repo.NewFS(p)
@@ -198,17 +198,17 @@ func GetFullNodeAPI(ctx *cli.Context) (api.FullNode, jsonrpc.ClientCloser, error
 	return client.NewFullNodeRPC(addr, headers)
 }
 
-func GetStorageMinerAPI(ctx *cli.Context) (api.StorageMiner, jsonrpc.ClientCloser, error) {
+func GetStorageMinerAPI(ctx *cli.Context, opts ...jsonrpc.Option) (api.StorageMiner, jsonrpc.ClientCloser, error) {
 	addr, headers, err := GetRawAPI(ctx, repo.StorageMiner)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return client.NewStorageMinerRPC(addr, headers)
+	return client.NewStorageMinerRPC(addr, headers, opts...)
 }
 
 func DaemonContext(cctx *cli.Context) context.Context {
-	if mtCtx, ok := cctx.App.Metadata[metadataTraceConetxt]; ok {
+	if mtCtx, ok := cctx.App.Metadata[metadataTraceContext]; ok {
 		return mtCtx.(context.Context)
 	}
 
@@ -238,6 +238,7 @@ var CommonCommands = []*cli.Command{
 	logCmd,
 	waitApiCmd,
 	fetchParamCmd,
+	pprofCmd,
 	VersionCmd,
 }
 
@@ -256,6 +257,7 @@ var Commands = []*cli.Command{
 	WithCategory("developer", fetchParamCmd),
 	WithCategory("network", netCmd),
 	WithCategory("network", syncCmd),
+	pprofCmd,
 	VersionCmd,
 }
 

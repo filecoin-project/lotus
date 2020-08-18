@@ -12,8 +12,8 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/sector-storage/fr32"
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/lotus/extern/sector-storage/fr32"
 )
 
 func padFFI(buf []byte) []byte {
@@ -28,7 +28,7 @@ func padFFI(buf []byte) []byte {
 		panic(err)
 	}
 
-	if _, err := tf.Seek(io.SeekStart, 0); err != nil {
+	if _, err := tf.Seek(io.SeekStart, 0); err != nil { // nolint:staticcheck
 		panic(err)
 	}
 

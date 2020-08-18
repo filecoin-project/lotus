@@ -3,7 +3,7 @@ package storiface
 import (
 	"time"
 
-	"github.com/filecoin-project/sector-storage/sealtasks"
+	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
@@ -28,8 +28,8 @@ type WorkerStats struct {
 
 	MemUsedMin uint64
 	MemUsedMax uint64
-	GpuUsed    bool
-	CpuUse     uint64
+	GpuUsed    bool   // nolint
+	CpuUse     uint64 // nolint
 }
 
 type WorkerJob struct {
