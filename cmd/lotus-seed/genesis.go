@@ -48,10 +48,11 @@ var genesisNewCmd = &cli.Command{
 			return xerrors.New("seed genesis new [genesis.json]")
 		}
 		out := genesis.Template{
-			Accounts:        []genesis.Actor{},
-			Miners:          []genesis.Miner{},
-			VerifregRootKey: gen.DefaultVerifregRootkeyActor,
-			NetworkName:     cctx.String("network-name"),
+			Accounts:         []genesis.Actor{},
+			Miners:           []genesis.Miner{},
+			VerifregRootKey:  gen.DefaultVerifregRootkeyActor,
+			RemainderAccount: gen.DefaultRemainderAccountActor,
+			NetworkName:      cctx.String("network-name"),
 		}
 		if out.NetworkName == "" {
 			out.NetworkName = "localnet-" + uuid.New().String()
