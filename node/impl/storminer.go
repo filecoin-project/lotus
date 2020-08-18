@@ -62,8 +62,8 @@ type StorageMinerAPI struct {
 	SetConsiderOfflineStorageDealsConfigFunc   dtypes.SetConsiderOfflineStorageDealsConfigFunc
 	ConsiderOfflineRetrievalDealsConfigFunc    dtypes.ConsiderOfflineRetrievalDealsConfigFunc
 	SetConsiderOfflineRetrievalDealsConfigFunc dtypes.SetConsiderOfflineRetrievalDealsConfigFunc
-	SetSealingDelayFunc                        dtypes.SetSealingDelayFunc
-	GetSealingDelayFunc                        dtypes.GetSealingDelayFunc
+	SetSealingConfigFunc                       dtypes.SetSealingConfigFunc
+	GetSealingConfigFunc                       dtypes.GetSealingConfigFunc
 	GetExpectedSealDurationFunc                dtypes.GetExpectedSealDurationFunc
 	SetExpectedSealDurationFunc                dtypes.SetExpectedSealDurationFunc
 }
@@ -232,11 +232,22 @@ func (sm *StorageMinerAPI) SectorStartSealing(ctx context.Context, number abi.Se
 }
 
 func (sm *StorageMinerAPI) SectorSetSealDelay(ctx context.Context, delay time.Duration) error {
-	return sm.SetSealingDelayFunc(delay)
+	cfg, err := sm.GetSealingConfigFunc()
+	if err != nil {
+		return xerrors.Errorf("get config: %w", err)
+	}
+
+	cfg.WaitDealsDelay = delay
+
+	return sm.SetSealingConfigFunc(cfg)
 }
 
 func (sm *StorageMinerAPI) SectorGetSealDelay(ctx context.Context) (time.Duration, error) {
-	return sm.GetSealingDelayFunc()
+	cfg, err := sm.GetSealingConfigFunc()
+	if err != nil {
+		return 0, err
+	}
+	return cfg.WaitDealsDelay, nil
 }
 
 func (sm *StorageMinerAPI) SectorSetExpectedSealDuration(ctx context.Context, delay time.Duration) error {

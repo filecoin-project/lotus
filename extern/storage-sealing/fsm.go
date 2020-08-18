@@ -328,7 +328,7 @@ func (m *Sealing) restartSectors(ctx context.Context) error {
 		log.Errorf("loading sector list: %+v", err)
 	}
 
-	sd, err := m.getSealDelay()
+	cfg, err := m.getConfig()
 	if err != nil {
 		return xerrors.Errorf("getting the sealing delay: %w", err)
 	}
@@ -339,8 +339,8 @@ func (m *Sealing) restartSectors(ctx context.Context) error {
 		}
 
 		if sector.State == WaitDeals {
-			if sd > 0 {
-				timer := time.NewTimer(sd)
+			if cfg.WaitDealsDelay > 0 {
+				timer := time.NewTimer(cfg.WaitDealsDelay)
 				go func() {
 					<-timer.C
 					m.StartPacking(sector.SectorNumber)

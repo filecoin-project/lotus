@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
@@ -56,10 +57,10 @@ type ConsiderOfflineRetrievalDealsConfigFunc func() (bool, error)
 type SetConsiderOfflineRetrievalDealsConfigFunc func(bool) error
 
 // SetSealingDelay sets how long a sector waits for more deals before sealing begins.
-type SetSealingDelayFunc func(time.Duration) error
+type SetSealingConfigFunc func(sealing.Config) error
 
 // GetSealingDelay returns how long a sector waits for more deals before sealing begins.
-type GetSealingDelayFunc func() (time.Duration, error)
+type GetSealingConfigFunc func() (sealing.Config, error)
 
 // SetExpectedSealDurationFunc is a function which is used to set how long sealing is expected to take.
 // Deals that would need to start earlier than this duration will be rejected.

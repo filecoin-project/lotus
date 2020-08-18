@@ -141,8 +141,8 @@ func SectorIDCounter(ds dtypes.MetadataDS) sealing.SectorIDCounter {
 	return &sidsc{sc}
 }
 
-func StorageMiner(fc config.MinerFeeConfig) func(mctx helpers.MetricsCtx, lc fx.Lifecycle, api lapi.FullNode, h host.Host, ds dtypes.MetadataDS, sealer sectorstorage.SectorManager, sc sealing.SectorIDCounter, verif ffiwrapper.Verifier, gsd dtypes.GetSealingDelayFunc) (*storage.Miner, error) {
-	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, api lapi.FullNode, h host.Host, ds dtypes.MetadataDS, sealer sectorstorage.SectorManager, sc sealing.SectorIDCounter, verif ffiwrapper.Verifier, gsd dtypes.GetSealingDelayFunc) (*storage.Miner, error) {
+func StorageMiner(fc config.MinerFeeConfig) func(mctx helpers.MetricsCtx, lc fx.Lifecycle, api lapi.FullNode, h host.Host, ds dtypes.MetadataDS, sealer sectorstorage.SectorManager, sc sealing.SectorIDCounter, verif ffiwrapper.Verifier, gsd dtypes.GetSealingConfigFunc) (*storage.Miner, error) {
+	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, api lapi.FullNode, h host.Host, ds dtypes.MetadataDS, sealer sectorstorage.SectorManager, sc sealing.SectorIDCounter, verif ffiwrapper.Verifier, gsd dtypes.GetSealingConfigFunc) (*storage.Miner, error) {
 		maddr, err := minerAddrFromDS(ds)
 		if err != nil {
 			return nil, err
@@ -593,19 +593,27 @@ func NewSetConsiderOfflineRetrievalDealsConfigFunc(r repo.LockedRepo) (dtypes.Se
 	}, nil
 }
 
-func NewSetSealDelayFunc(r repo.LockedRepo) (dtypes.SetSealingDelayFunc, error) {
-	return func(delay time.Duration) (err error) {
-		err = mutateCfg(r, func(cfg *config.StorageMiner) {
-			cfg.SealingDelay = config.Duration(delay)
+func NewSetSealConfigFunc(r repo.LockedRepo) (dtypes.SetSealingConfigFunc, error) {
+	return func(cfg sealing.Config) (err error) {
+		err = mutateCfg(r, func(c *config.StorageMiner) {
+			c.Sealing = config.SealingConfig{
+				MaxWaitDealsSectors: cfg.MaxWaitDealsSectors,
+				MaxSealingSectors:   cfg.MaxSealingSectors,
+				WaitDealsDelay:      config.Duration(cfg.WaitDealsDelay),
+			}
 		})
 		return
 	}, nil
 }
 
-func NewGetSealDelayFunc(r repo.LockedRepo) (dtypes.GetSealingDelayFunc, error) {
-	return func() (out time.Duration, err error) {
+func NewGetSealConfigFunc(r repo.LockedRepo) (dtypes.GetSealingConfigFunc, error) {
+	return func() (out sealing.Config, err error) {
 		err = readCfg(r, func(cfg *config.StorageMiner) {
-			out = time.Duration(cfg.SealingDelay)
+			out = sealing.Config{
+				MaxWaitDealsSectors: cfg.Sealing.MaxWaitDealsSectors,
+				MaxSealingSectors:   cfg.Sealing.MaxSealingSectors,
+				WaitDealsDelay:      time.Duration(cfg.Sealing.WaitDealsDelay),
+			}
 		})
 		return
 	}, nil
