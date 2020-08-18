@@ -1015,11 +1015,11 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand, getPremium fu
 	rewardBoost := totalOptimalReward / totalGreedyReward
 	t.Logf("Average capacity boost: %f", capacityBoost)
 	t.Logf("Average reward boost: %f", rewardBoost)
-	t.Logf("Average best tq reward: %f", totalBestTQReward/runs/1e18)
+	t.Logf("Average best tq reward: %f", totalBestTQReward/runs/1e12)
 
 	logging.SetLogLevel("messagepool", "info")
 
-	return capacityBoost, rewardBoost, totalBestTQReward / runs / 1e18
+	return capacityBoost, rewardBoost, totalBestTQReward / runs / 1e12
 }
 
 func makeExpPremiumDistribution(rng *rand.Rand) func() uint64 {
