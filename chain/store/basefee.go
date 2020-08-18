@@ -17,7 +17,7 @@ func computeNextBaseFee(baseFee types.BigInt, gasLimitUsed int64, noOfBlocks int
 	// nextBaseFee = baseFee + change
 	// nextBaseFee = max(nextBaseFee, build.MinimumBaseFee)
 
-	delta := build.PackingEfficiencyDenom * gasLimitUsed / int64(noOfBlocks*build.PackingEfficiencyNum)
+	delta := build.PackingEfficiencyDenom * gasLimitUsed / (int64(noOfBlocks) * build.PackingEfficiencyNum)
 	delta -= build.BlockGasTarget
 
 	// cap change at 12.5% (BaseFeeMaxChangeDenom) by capping delta
