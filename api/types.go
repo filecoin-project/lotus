@@ -58,12 +58,14 @@ type MinerInfo struct {
 }
 
 func NewApiMinerInfo(info *miner.MinerInfo) MinerInfo {
+	pi, _ := peer.IDFromBytes(info.PeerId)
+
 	mi := MinerInfo{
 		Owner:                      info.Owner,
 		Worker:                     info.Worker,
 		NewWorker:                  address.Undef,
 		WorkerChangeEpoch:          -1,
-		PeerId:                     peer.ID(info.PeerId),
+		PeerId:                     pi,
 		Multiaddrs:                 info.Multiaddrs,
 		SealProofType:              info.SealProofType,
 		SectorSize:                 info.SectorSize,

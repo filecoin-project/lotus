@@ -879,6 +879,7 @@ func (p *Processor) storeMinersActorInfoState(ctx context.Context, miners []mine
 				return err
 			}
 		}
+
 		if _, err := stmt.Exec(
 			m.common.addr.String(),
 			mi.Owner.String(),
