@@ -847,7 +847,7 @@ var clientRetrieveCmd = &cli.Command{
 			Path:  cctx.Args().Get(1),
 			IsCAR: cctx.Bool("car"),
 		}
-		updates, err := fapi.ClientRetrieve(ctx, offer.Order(payer), ref)
+		updates, err := fapi.ClientRetrieveWithEvents(ctx, offer.Order(payer), ref)
 		if err != nil {
 			return xerrors.Errorf("error setting up retrieval: %w", err)
 		}
@@ -868,7 +868,7 @@ var clientRetrieveCmd = &cli.Command{
 				}
 
 				if evt.Err != "" {
-					return xerrors.Errorf("retrieval failed: %v", err)
+					return xerrors.Errorf("retrieval failed: %s", evt.Err)
 				}
 			case <-ctx.Done():
 				return xerrors.Errorf("retrieval timed out")
