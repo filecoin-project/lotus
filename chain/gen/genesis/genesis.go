@@ -263,6 +263,11 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 	}
 
 	totalFilAllocated := big.Zero()
+
+	// flush as ForEach works on the HAMT
+	if _, err := state.Flush(ctx); err != nil {
+		return nil, nil, err
+	}
 	err = state.ForEach(func(addr address.Address, act *types.Actor) error {
 		totalFilAllocated = big.Add(totalFilAllocated, act.Balance)
 		return nil
@@ -277,15 +282,18 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 		return nil, nil, xerrors.Errorf("somehow overallocated filecoin (allocated = %s)", types.FIL(totalFilAllocated))
 	}
 
-	template.RemainderAccount.Balance = remainingFil
-
 	remAccKey, err := address.NewIDAddress(90)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	if err := createAccount(ctx, bs, cst, state, remAccKey, template.RemainderAccount); err != nil {
-		return nil, nil, err
+	err = state.SetActor(remAccKey, &types.Actor{
+		Code:    builtin.AccountActorCodeID,
+		Balance: remainingFil,
+		Head:    emptyobject,
+	})
+	if err != nil {
+		return nil, nil, xerrors.Errorf("set burnt funds account actor: %w", err)
 	}
 
 	return state, keyIDs, nil
