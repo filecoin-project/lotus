@@ -857,15 +857,17 @@ func (sm *StateManager) setupGenesisActors(ctx context.Context) error {
 				return xerrors.Errorf("decoding address: %w", err)
 			}
 
-			kid, err := sTree.LookupID(kaddr)
-			if err != nil {
-				return xerrors.Errorf("resolving address: %w", err)
-			}
+			if kaddr != builtin.BurntFundsActorAddr {
+				kid, err := sTree.LookupID(kaddr)
+				if err != nil {
+					return xerrors.Errorf("resolving address: %w", err)
+				}
 
-			gi.genesisActors = append(gi.genesisActors, genesisActor{
-				addr:    kid,
-				initBal: act.Balance,
-			})
+				gi.genesisActors = append(gi.genesisActors, genesisActor{
+					addr:    kid,
+					initBal: act.Balance,
+				})
+			}
 		}
 		return nil
 	})
