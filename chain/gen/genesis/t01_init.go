@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
 	"github.com/filecoin-project/go-address"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -33,8 +34,30 @@ func SetupInitActor(bs bstore.Blockstore, netname string, initialActors []genesi
 
 	keyToId := map[address.Address]address.Address{}
 
-	for i, a := range initialActors {
+	counter := int64(AccountStart)
+
+	for _, a := range initialActors {
 		if a.Type == genesis.TMultisig {
+			var ainfo genesis.MultisigMeta
+			if err := json.Unmarshal(a.Meta, &ainfo); err != nil {
+				return nil, nil, xerrors.Errorf("unmarshaling account meta: %w", err)
+			}
+			for _, e := range ainfo.Signers {
+				fmt.Printf("init set %s t0%d\n", e, counter)
+
+				value := cbg.CborInt(counter)
+				if err := amap.Put(adt.AddrKey(e), &value); err != nil {
+					return nil, nil, err
+				}
+				counter = counter + 1
+				var err error
+				keyToId[e], err = address.NewIDAddress(uint64(value))
+				if err != nil {
+					return nil, nil, err
+				}
+
+			}
+			// Need to add actors for all multisigs too
 			continue
 		}
 
@@ -47,12 +70,13 @@ func SetupInitActor(bs bstore.Blockstore, netname string, initialActors []genesi
 			return nil, nil, xerrors.Errorf("unmarshaling account meta: %w", err)
 		}
 
-		fmt.Printf("init set %s t0%d\n", ainfo.Owner, AccountStart+int64(i))
+		fmt.Printf("init set %s t0%d\n", ainfo.Owner, counter)
 
-		value := cbg.CborInt(AccountStart + int64(i))
+		value := cbg.CborInt(counter)
 		if err := amap.Put(adt.AddrKey(ainfo.Owner), &value); err != nil {
 			return nil, nil, err
 		}
+		counter = counter + 1
 
 		var err error
 		keyToId[ainfo.Owner], err = address.NewIDAddress(uint64(value))
@@ -69,6 +93,26 @@ func SetupInitActor(bs bstore.Blockstore, netname string, initialActors []genesi
 		value := cbg.CborInt(80)
 		if err := amap.Put(adt.AddrKey(ainfo.Owner), &value); err != nil {
 			return nil, nil, err
+		}
+	} else if rootVerifier.Type == genesis.TMultisig {
+		var ainfo genesis.MultisigMeta
+		if err := json.Unmarshal(rootVerifier.Meta, &ainfo); err != nil {
+			return nil, nil, xerrors.Errorf("unmarshaling account meta: %w", err)
+		}
+		for _, e := range ainfo.Signers {
+			fmt.Printf("init set %s t0%d\n", e, counter)
+
+			value := cbg.CborInt(counter)
+			if err := amap.Put(adt.AddrKey(e), &value); err != nil {
+				return nil, nil, err
+			}
+			counter = counter + 1
+			var err error
+			keyToId[e], err = address.NewIDAddress(uint64(value))
+			if err != nil {
+				return nil, nil, err
+			}
+
 		}
 	}
 

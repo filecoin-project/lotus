@@ -211,7 +211,7 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 			return nil, nil, err
 		}
 
-		if err = createAccount(ctx, bs, cst, state, ida, info); err != nil {
+		if err = createAccount(ctx, bs, cst, state, ida, info, keyIDs); err != nil {
 			return nil, nil, err
 		}
 
@@ -222,7 +222,7 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 		return nil, nil, err
 	}
 
-	if err = createAccount(ctx, bs, cst, state, vregroot, template.VerifregRootKey); err != nil {
+	if err = createAccount(ctx, bs, cst, state, vregroot, template.VerifregRootKey, keyIDs); err != nil {
 		return nil, nil, err
 	}
 
@@ -266,7 +266,7 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 	return state, keyIDs, nil
 }
 
-func createAccount(ctx context.Context, bs bstore.Blockstore, cst cbor.IpldStore, state *state.StateTree, ida address.Address, info genesis.Actor) error {
+func createAccount(ctx context.Context, bs bstore.Blockstore, cst cbor.IpldStore, state *state.StateTree, ida address.Address, info genesis.Actor, keyIDs map[address.Address]address.Address) error {
 	if info.Type == genesis.TAccount {
 		var ainfo genesis.AccountMeta
 		if err := json.Unmarshal(info.Meta, &ainfo); err != nil {
@@ -292,6 +292,22 @@ func createAccount(ctx context.Context, bs bstore.Blockstore, cst cbor.IpldStore
 		pending, err := adt.MakeEmptyMap(adt.WrapStore(ctx, cst)).Root()
 		if err != nil {
 			return xerrors.Errorf("failed to create empty map: %v", err)
+		}
+
+		for _, e := range ainfo.Signers {
+			idAddress, _ := keyIDs[e]
+			st, err := cst.Put(ctx, &account.State{Address: e})
+			if err != nil {
+				return err
+			}
+			err = state.SetActor(idAddress, &types.Actor{
+				Code:    builtin.AccountActorCodeID,
+				Balance: types.NewInt(0),
+				Head:    st,
+			})
+			if err != nil {
+				return xerrors.Errorf("setting account from actmap: %w", err)
+			}
 		}
 
 		st, err := cst.Put(ctx, &multisig.State{
