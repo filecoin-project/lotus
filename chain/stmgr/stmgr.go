@@ -850,6 +850,7 @@ func (sm *StateManager) setupGenesisActors(ctx context.Context) error {
 			}
 
 		} else if act.Code == builtin.AccountActorCodeID {
+			// should exclude burnt funds actor and "remainder account actor"
 			// should only ever be "faucet" accounts in testnets
 			kaddr, err := address.NewFromBytes([]byte(k))
 			if err != nil {
