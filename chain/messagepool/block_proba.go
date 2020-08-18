@@ -94,7 +94,7 @@ func (mp *MessagePool) blockProbabilities(tq float64) []float64 {
 	for place := 0; place < MaxBlocks; place++ {
 		var pPlace float64
 		for otherWinners, pCase := range noWinners {
-			pPlace += pCase * binoPdf(float64(place), float64(otherWinners+1))
+			pPlace += pCase * binoPdf(float64(place), float64(otherWinners))
 		}
 		out = append(out, pPlace)
 	}
