@@ -2,7 +2,7 @@
 
 Payment channels are used to transfer funds between two actors.
 
-In lotus a payment channel is created when a client wants to fetch data from a provider.
+For example in lotus a payment channel is created when a client wants to fetch data from a provider.
 The client sends vouchers for the payment channel, and the provider sends data in response.
 
 The payment channel is created on-chain with an initial amount.
@@ -15,9 +15,11 @@ Collect sends the value of submitted vouchers to the channel recipient (the prov
 Vouchers have a lane, a nonce and a value, where vouchers with a higher nonce supersede vouchers with a lower nonce in the same lane.
 Each deal is created on a different lane. 
 
+Note that payment channels and vouchers can be used for any situation in which two parties need to incrementally transfer value between each other off-chain.
+
 ## Using the CLI
 
-For example a client creates a payment channel to a provider with value 10.
+For example a client creates a payment channel to a provider with value 10 FIL.
 
 ```sh
 $ lotus paych get <client addr> <provider addr> 10
@@ -56,7 +58,9 @@ $ lotus paych get <client addr> <provider addr> 5
 <channel addr> # Same address as above. Channel now has 15
 ```
 
-Once the client has received all their data, they settle the channel.
+Once the client has received all their data, they may settle the channel.
+Note that settlement doesn't have to be done immediately.
+For example the client may keep the channel open as long as it wants to continue making deals with the provider.
 
 ```sh
 $ lotus paych settle <channel addr>
