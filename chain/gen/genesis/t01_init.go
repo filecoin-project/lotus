@@ -43,6 +43,11 @@ func SetupInitActor(bs bstore.Blockstore, netname string, initialActors []genesi
 				return nil, nil, xerrors.Errorf("unmarshaling account meta: %w", err)
 			}
 			for _, e := range ainfo.Signers {
+
+				if _, ok := keyToId[e]; ok {
+					continue
+				}
+
 				fmt.Printf("init set %s t0%d\n", e, counter)
 
 				value := cbg.CborInt(counter)

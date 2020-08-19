@@ -298,6 +298,11 @@ func createAccount(ctx context.Context, bs bstore.Blockstore, cst cbor.IpldStore
 
 		for _, e := range ainfo.Signers {
 			idAddress, _ := keyIDs[e]
+			// Check if actor already exists
+			_, err := state.GetActor(e)
+			if err == nil {
+				continue
+			}
 			st, err := cst.Put(ctx, &account.State{Address: e})
 			if err != nil {
 				return err
