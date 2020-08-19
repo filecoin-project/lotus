@@ -155,7 +155,7 @@ func executeMessageVector(t *testing.T, vector *schema.TestVector) {
 	}
 
 	// Create a new Driver.
-	driver := NewDriver(ctx)
+	driver := NewDriver(ctx, vector)
 
 	// Apply every message.
 	for i, m := range vector.ApplyMessages {

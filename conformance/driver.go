@@ -5,6 +5,7 @@ import (
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/puppet"
+	"github.com/filecoin-project/test-vectors/schema"
 
 	"github.com/ipfs/go-cid"
 
@@ -23,11 +24,12 @@ var (
 )
 
 type Driver struct {
-	ctx context.Context
+	ctx    context.Context
+	vector *schema.TestVector
 }
 
-func NewDriver(ctx context.Context) *Driver {
-	return &Driver{ctx: ctx}
+func NewDriver(ctx context.Context, vector *schema.TestVector) *Driver {
+	return &Driver{ctx: ctx, vector: vector}
 }
 
 // ExecuteMessage executes a conformance test vector message in a temporary VM.
@@ -50,7 +52,10 @@ func (d *Driver) ExecuteMessage(msg *types.Message, preroot cid.Cid, bs blocksto
 	// add support for the puppet and chaos actors.
 	invoker := vm.NewInvoker()
 	invoker.Register(puppet.PuppetActorCodeID, puppet.Actor{}, puppet.State{})
-	invoker.Register(chaos.ChaosActorCodeCID, chaos.Actor{}, chaos.State{})
+	if chaosOn, ok := d.vector.Selector.Unpack()["chaos_actor"]; ok && chaosOn == "true" {
+		invoker.Register(chaos.ChaosActorCodeCID, chaos.Actor{}, chaos.State{})
+	}
+
 	lvm.SetInvoker(invoker)
 
 	ret, err := lvm.ApplyMessage(d.ctx, msg)
