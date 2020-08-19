@@ -45,6 +45,7 @@ type stateManagerAPI interface {
 
 // paychAPI defines the API methods needed by the payment channel manager
 type paychAPI interface {
+	StateAccountKey(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 	StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64) (*api.MsgLookup, error)
 	MpoolPushMessage(ctx context.Context, msg *types.Message, maxFee *api.MessageSendSpec) (*types.SignedMessage, error)
 	WalletHas(ctx context.Context, addr address.Address) (bool, error)
@@ -256,7 +257,11 @@ func (pm *Manager) trackInboundChannel(ctx context.Context, ch address.Address) 
 
 	// Check that channel To address is in wallet
 	to := stateCi.Control // Inbound channel so To addr is Control (this node)
-	has, err := pm.pchapi.WalletHas(ctx, to)
+	toKey, err := pm.pchapi.StateAccountKey(ctx, to, types.EmptyTSK)
+	if err != nil {
+		return nil, err
+	}
+	has, err := pm.pchapi.WalletHas(ctx, toKey)
 	if err != nil {
 		return nil, err
 	}

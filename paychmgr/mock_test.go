@@ -202,6 +202,10 @@ func (pchapi *mockPaychAPI) pushedMessageCount() int {
 	return len(pchapi.messages)
 }
 
+func (pchapi *mockPaychAPI) StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
+	return addr, nil
+}
+
 func (pchapi *mockPaychAPI) WalletHas(ctx context.Context, addr address.Address) (bool, error) {
 	pchapi.lk.Lock()
 	defer pchapi.lk.Unlock()
