@@ -3,6 +3,7 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -1209,7 +1210,7 @@ var clientInfoCmd = &cli.Command{
 
 var clientListTransfers = &cli.Command{
 	Name:  "list-transfers",
-	Usage: "Monitor ongoing data transfers for deals",
+	Usage: "List ongoing data transfers for deals",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:  "color",
@@ -1219,6 +1220,10 @@ var clientListTransfers = &cli.Command{
 		&cli.BoolFlag{
 			Name:  "completed",
 			Usage: "show completed data transfers",
+		},
+		&cli.BoolFlag{
+			Name:  "watch",
+			Usage: "watch deal updates in real-time, rather than a one time list",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -1234,87 +1239,95 @@ var clientListTransfers = &cli.Command{
 			return err
 		}
 
-		channelUpdates, err := api.ClientDataTransferUpdates(ctx)
-		if err != nil {
-			return err
-		}
+		completed := cctx.Bool("completed")
+		color := cctx.Bool("color")
+		watch := cctx.Bool("watch")
 
-		for {
-			tm.Clear() // Clear current screen
-
-			tm.MoveCursor(1, 1)
-
-			sort.Slice(channels, func(i, j int) bool {
-				return channels[i].TransferID < channels[j].TransferID
-			})
-
-			completed := cctx.Bool("completed")
-			var receivingChannels, sendingChannels []lapi.DataTransferChannel
-			for _, channel := range channels {
-				if !completed && channel.Status == datatransfer.Completed {
-					continue
-				}
-				if channel.IsSender {
-					sendingChannels = append(sendingChannels, channel)
-				} else {
-					receivingChannels = append(receivingChannels, channel)
-				}
+		if watch {
+			channelUpdates, err := api.ClientDataTransferUpdates(ctx)
+			if err != nil {
+				return err
 			}
 
-			color := cctx.Bool("color")
+			for {
+				tm.Clear() // Clear current screen
 
-			tm.Printf("Sending Channels\n\n")
-			w := tablewriter.New(tablewriter.Col("ID"),
-				tablewriter.Col("Status"),
-				tablewriter.Col("Sending To"),
-				tablewriter.Col("Root Cid"),
-				tablewriter.Col("Initiated?"),
-				tablewriter.Col("Transferred"),
-				tablewriter.Col("Voucher"),
-				tablewriter.NewLineCol("Message"))
-			for _, channel := range sendingChannels {
-				w.Write(toChannelOutput(color, "Sending To", channel))
-			}
-			w.Flush(tm.Screen)
+				tm.MoveCursor(1, 1)
 
-			fmt.Fprintf(os.Stdout, "\nReceiving Channels\n\n")
-			w = tablewriter.New(tablewriter.Col("ID"),
-				tablewriter.Col("Status"),
-				tablewriter.Col("Receiving From"),
-				tablewriter.Col("Root Cid"),
-				tablewriter.Col("Initiated?"),
-				tablewriter.Col("Transferred"),
-				tablewriter.Col("Voucher"),
-				tablewriter.NewLineCol("Message"))
-			for _, channel := range receivingChannels {
+				outputChannels(tm.Screen, channels, completed, color)
 
-				w.Write(toChannelOutput(color, "Receiving From", channel))
-			}
-			w.Flush(tm.Screen)
+				tm.Flush()
 
-			tm.Flush()
-
-			select {
-			case <-ctx.Done():
-				return nil
-			case channelUpdate := <-channelUpdates:
-				var found bool
-				for i, existing := range channels {
-					if existing.TransferID == channelUpdate.TransferID &&
-						existing.OtherPeer == channelUpdate.OtherPeer &&
-						existing.IsSender == channelUpdate.IsSender &&
-						existing.IsInitiator == channelUpdate.IsInitiator {
-						channels[i] = channelUpdate
-						found = true
-						break
+				select {
+				case <-ctx.Done():
+					return nil
+				case channelUpdate := <-channelUpdates:
+					var found bool
+					for i, existing := range channels {
+						if existing.TransferID == channelUpdate.TransferID &&
+							existing.OtherPeer == channelUpdate.OtherPeer &&
+							existing.IsSender == channelUpdate.IsSender &&
+							existing.IsInitiator == channelUpdate.IsInitiator {
+							channels[i] = channelUpdate
+							found = true
+							break
+						}
+					}
+					if !found {
+						channels = append(channels, channelUpdate)
 					}
 				}
-				if !found {
-					channels = append(channels, channelUpdate)
-				}
 			}
 		}
+		outputChannels(os.Stdout, channels, completed, color)
+		return nil
 	},
+}
+
+func outputChannels(out io.Writer, channels []api.DataTransferChannel, completed bool, color bool) {
+	sort.Slice(channels, func(i, j int) bool {
+		return channels[i].TransferID < channels[j].TransferID
+	})
+
+	var receivingChannels, sendingChannels []lapi.DataTransferChannel
+	for _, channel := range channels {
+		if !completed && channel.Status == datatransfer.Completed {
+			continue
+		}
+		if channel.IsSender {
+			sendingChannels = append(sendingChannels, channel)
+		} else {
+			receivingChannels = append(receivingChannels, channel)
+		}
+	}
+
+	fmt.Fprintf(out, "Sending Channels\n\n")
+	w := tablewriter.New(tablewriter.Col("ID"),
+		tablewriter.Col("Status"),
+		tablewriter.Col("Sending To"),
+		tablewriter.Col("Root Cid"),
+		tablewriter.Col("Initiated?"),
+		tablewriter.Col("Transferred"),
+		tablewriter.Col("Voucher"),
+		tablewriter.NewLineCol("Message"))
+	for _, channel := range sendingChannels {
+		w.Write(toChannelOutput(color, "Sending To", channel))
+	}
+	w.Flush(out)
+
+	fmt.Fprintf(out, "\nReceiving Channels\n\n")
+	w = tablewriter.New(tablewriter.Col("ID"),
+		tablewriter.Col("Status"),
+		tablewriter.Col("Receiving From"),
+		tablewriter.Col("Root Cid"),
+		tablewriter.Col("Initiated?"),
+		tablewriter.Col("Transferred"),
+		tablewriter.Col("Voucher"),
+		tablewriter.NewLineCol("Message"))
+	for _, channel := range receivingChannels {
+		w.Write(toChannelOutput(color, "Receiving From", channel))
+	}
+	w.Flush(out)
 }
 
 func channelStatusString(useColor bool, status datatransfer.Status) string {
