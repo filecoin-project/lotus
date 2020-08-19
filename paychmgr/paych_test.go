@@ -222,15 +222,8 @@ func TestCheckVoucherValid(t *testing.T) {
 			mgr, err := newManager(store, mock)
 			require.NoError(t, err)
 
-			// Create the channel in the manager's store
-			ci := &ChannelInfo{
-				Channel:   &ch,
-				Control:   toAcct,
-				Target:    fromAcct,
-				Direction: DirInbound,
-			}
-			err = mgr.store.putChannelInfo(ci)
-			require.NoError(t, err)
+			// Add channel To address to wallet
+			mock.addWalletAddress(to)
 
 			// Create a signed voucher
 			sv := createTestVoucher(t, ch, tcase.voucherLane, tcase.voucherNonce, tcase.voucherAmount, tcase.key)
@@ -298,15 +291,8 @@ func TestCheckVoucherValidCountingAllLanes(t *testing.T) {
 	mgr, err := newManager(store, mock)
 	require.NoError(t, err)
 
-	// Create the channel in the manager's store
-	ci := &ChannelInfo{
-		Channel:   &ch,
-		Control:   toAcct,
-		Target:    fromAcct,
-		Direction: DirInbound,
-	}
-	err = mgr.store.putChannelInfo(ci)
-	require.NoError(t, err)
+	// Add channel To address to wallet
+	mock.addWalletAddress(to)
 
 	//
 	// Should not be possible to add a voucher with a value such that
