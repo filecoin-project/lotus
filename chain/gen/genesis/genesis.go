@@ -288,7 +288,7 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 		return nil, nil, err
 	}
 
-	if err := createAccount(ctx, bs, cst, state, remAccKey, template.RemainderAccount); err != nil {
+	if err := createAccount(ctx, bs, cst, state, remAccKey, template.RemainderAccount, keyIDs); err != nil {
 		return nil, nil, err
 	}
 	err = state.SetActor(remAccKey, &types.Actor{
