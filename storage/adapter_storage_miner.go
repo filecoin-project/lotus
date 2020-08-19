@@ -23,7 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	sealing "github.com/filecoin-project/storage-fsm"
+	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 )
 
 var _ sealing.SealingAPI = new(SealingAPIAdapter)
@@ -98,6 +98,27 @@ func (s SealingAPIAdapter) StateWaitMsg(ctx context.Context, mcid cid.Cid) (seal
 	}
 
 	return sealing.MsgLookup{
+		Receipt: sealing.MessageReceipt{
+			ExitCode: wmsg.Receipt.ExitCode,
+			Return:   wmsg.Receipt.Return,
+			GasUsed:  wmsg.Receipt.GasUsed,
+		},
+		TipSetTok: wmsg.TipSet.Bytes(),
+		Height:    wmsg.Height,
+	}, nil
+}
+
+func (s SealingAPIAdapter) StateSearchMsg(ctx context.Context, c cid.Cid) (*sealing.MsgLookup, error) {
+	wmsg, err := s.delegate.StateSearchMsg(ctx, c)
+	if err != nil {
+		return nil, err
+	}
+
+	if wmsg == nil {
+		return nil, nil
+	}
+
+	return &sealing.MsgLookup{
 		Receipt: sealing.MessageReceipt{
 			ExitCode: wmsg.Receipt.ExitCode,
 			Return:   wmsg.Receipt.Return,
@@ -186,7 +207,7 @@ func (s SealingAPIAdapter) StateSectorPreCommitInfo(ctx context.Context, maddr a
 			return nil, xerrors.Errorf("checking if sector is allocated: %w", err)
 		}
 		if set {
-			return nil, xerrors.Errorf("sectorNumber is allocated")
+			return nil, sealing.ErrSectorAllocated
 		}
 
 		return nil, nil

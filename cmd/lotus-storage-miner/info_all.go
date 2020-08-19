@@ -148,6 +148,11 @@ var infoAllCmd = &cli.Command{
 			}
 		}
 
+		fmt.Println("\n#: Goroutines")
+		if err := lcli.PprofGoroutines.Action(cctx); err != nil {
+			return err
+		}
+
 		return nil
 	},
 }

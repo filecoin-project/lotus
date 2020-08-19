@@ -16,8 +16,8 @@ import (
 	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/sector-storage/storiface"
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )
 
 var log = logging.Logger("sbmock")
@@ -76,8 +76,8 @@ func (mgr *SectorMgr) NewSector(ctx context.Context, sector abi.SectorID) error 
 	return nil
 }
 
-func (mgr *SectorMgr) AddPiece(ctx context.Context, sectorId abi.SectorID, existingPieces []abi.UnpaddedPieceSize, size abi.UnpaddedPieceSize, r io.Reader) (abi.PieceInfo, error) {
-	log.Warn("Add piece: ", sectorId, size, mgr.proofType)
+func (mgr *SectorMgr) AddPiece(ctx context.Context, sectorID abi.SectorID, existingPieces []abi.UnpaddedPieceSize, size abi.UnpaddedPieceSize, r io.Reader) (abi.PieceInfo, error) {
+	log.Warn("Add piece: ", sectorID, size, mgr.proofType)
 
 	var b bytes.Buffer
 	tr := io.TeeReader(r, &b)
@@ -92,12 +92,12 @@ func (mgr *SectorMgr) AddPiece(ctx context.Context, sectorId abi.SectorID, exist
 	mgr.lk.Lock()
 	mgr.pieces[c] = b.Bytes()
 
-	ss, ok := mgr.sectors[sectorId]
+	ss, ok := mgr.sectors[sectorID]
 	if !ok {
 		ss = &sectorState{
 			state: statePacking,
 		}
-		mgr.sectors[sectorId] = ss
+		mgr.sectors[sectorID] = ss
 	}
 	mgr.lk.Unlock()
 
@@ -260,7 +260,7 @@ func opFinishWait(ctx context.Context) {
 func AddOpFinish(ctx context.Context) (context.Context, func()) {
 	done := make(chan struct{})
 
-	return context.WithValue(ctx, "opfinish", done), func() {
+	return context.WithValue(ctx, "opfinish", done), func() { // nolint
 		close(done)
 	}
 }
@@ -338,7 +338,7 @@ func (mgr *SectorMgr) StageFakeData(mid abi.ActorID) (abi.SectorID, []abi.PieceI
 	}
 
 	buf := make([]byte, usize)
-	rand.Read(buf)
+	_, _ = rand.Read(buf) // nolint:gosec
 
 	id := abi.SectorID{
 		Miner:  mid,

@@ -13,7 +13,6 @@ import (
 
 	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/storage/mockstorage"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
 
 	"github.com/filecoin-project/go-storedcounter"
 	"github.com/ipfs/go-datastore"
@@ -42,14 +41,15 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
-	genesis "github.com/filecoin-project/lotus/genesis"
+	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/lotus/extern/sector-storage/mock"
+	"github.com/filecoin-project/lotus/genesis"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/modules"
 	modtest "github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
-	sectorstorage "github.com/filecoin-project/sector-storage"
-	"github.com/filecoin-project/sector-storage/mock"
 )
 
 func init() {
@@ -212,10 +212,11 @@ func builder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test.TestN
 		genms = append(genms, *genm)
 	}
 	templ := &genesis.Template{
-		Accounts:        genaccs,
-		Miners:          genms,
-		Timestamp:       uint64(time.Now().Unix() - 10000), // some time sufficiently far in the past
-		VerifregRootKey: gen.DefaultVerifregRootkeyActor,
+		Accounts:         genaccs,
+		Miners:           genms,
+		Timestamp:        uint64(time.Now().Unix() - 10000), // some time sufficiently far in the past
+		VerifregRootKey:  gen.DefaultVerifregRootkeyActor,
+		RemainderAccount: gen.DefaultRemainderAccountActor,
 	}
 
 	// END PRESEAL SECTION
@@ -351,7 +352,7 @@ func mockSbBuilder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test
 
 		genaccs = append(genaccs, genesis.Actor{
 			Type:    genesis.TAccount,
-			Balance: big.Mul(big.NewInt(400_000_000_000), types.NewInt(build.FilecoinPrecision)),
+			Balance: big.Mul(big.NewInt(400_000_000), types.NewInt(build.FilecoinPrecision)),
 			Meta:    (&genesis.AccountMeta{Owner: wk.Address}).ActorMeta(),
 		})
 
@@ -362,10 +363,11 @@ func mockSbBuilder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test
 		genms = append(genms, *genm)
 	}
 	templ := &genesis.Template{
-		Accounts:        genaccs,
-		Miners:          genms,
-		Timestamp:       uint64(time.Now().Unix()) - (build.BlockDelaySecs * 20000),
-		VerifregRootKey: gen.DefaultVerifregRootkeyActor,
+		Accounts:         genaccs,
+		Miners:           genms,
+		Timestamp:        uint64(time.Now().Unix()) - (build.BlockDelaySecs * 20000),
+		VerifregRootKey:  gen.DefaultVerifregRootkeyActor,
+		RemainderAccount: gen.DefaultRemainderAccountActor,
 	}
 
 	// END PRESEAL SECTION

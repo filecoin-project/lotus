@@ -59,7 +59,7 @@ var (
 	ErrBroadcastAnyway  = errors.New("broadcasting message despite validation fail")
 	ErrRBFTooLowPremium = errors.New("replace by fee has too low GasPremium")
 
-	ErrTryAgain = errors.New("state inconsistency while signing message; please try again")
+	ErrTryAgain = errors.New("state inconsistency while pushing message; please try again")
 )
 
 const (
@@ -75,8 +75,12 @@ type MessagePool struct {
 
 	addSema chan struct{}
 
-	closer  chan struct{}
-	repubTk *clock.Ticker
+	closer chan struct{}
+
+	repubTk      *clock.Ticker
+	repubTrigger chan struct{}
+
+	republished map[cid.Cid]struct{}
 
 	localAddrs map[address.Address]struct{}
 
@@ -166,6 +170,7 @@ func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName) (*Messa
 		addSema:       make(chan struct{}, 1),
 		closer:        make(chan struct{}),
 		repubTk:       build.Clock.Ticker(RepublishInterval),
+		repubTrigger:  make(chan struct{}, 1),
 		localAddrs:    make(map[address.Address]struct{}),
 		pending:       make(map[address.Address]*msgSet),
 		minGasPrice:   types.NewInt(0),
@@ -224,6 +229,10 @@ func (mp *MessagePool) runLoop() {
 			if err := mp.republishPendingMessages(); err != nil {
 				log.Errorf("error while republishing messages: %s", err)
 			}
+		case <-mp.repubTrigger:
+			if err := mp.republishPendingMessages(); err != nil {
+				log.Errorf("error while republishing messages: %s", err)
+			}
 		case <-mp.pruneTrigger:
 			if err := mp.pruneExcessMessages(); err != nil {
 				log.Errorf("failed to prune excess messages from mempool: %s", err)
@@ -255,6 +264,11 @@ func (mp *MessagePool) verifyMsgBeforePush(m *types.SignedMessage, epoch abi.Cha
 }
 
 func (mp *MessagePool) Push(m *types.SignedMessage) (cid.Cid, error) {
+	err := mp.checkMessage(m)
+	if err != nil {
+		return cid.Undef, err
+	}
+
 	// serialize push access to reduce lock contention
 	mp.addSema <- struct{}{}
 	defer func() {
@@ -262,7 +276,8 @@ func (mp *MessagePool) Push(m *types.SignedMessage) (cid.Cid, error) {
 	}()
 
 	mp.curTsLk.Lock()
-	epoch := mp.curTs.Height()
+	curTs := mp.curTs
+	epoch := curTs.Height()
 	mp.curTsLk.Unlock()
 	if err := mp.verifyMsgBeforePush(m, epoch); err != nil {
 		return cid.Undef, err
@@ -273,9 +288,17 @@ func (mp *MessagePool) Push(m *types.SignedMessage) (cid.Cid, error) {
 		return cid.Undef, err
 	}
 
-	if err := mp.Add(m); err != nil {
+	mp.curTsLk.Lock()
+	if mp.curTs != curTs {
+		mp.curTsLk.Unlock()
+		return cid.Undef, ErrTryAgain
+	}
+
+	if err := mp.addTs(m, mp.curTs); err != nil {
+		mp.curTsLk.Unlock()
 		return cid.Undef, err
 	}
+	mp.curTsLk.Unlock()
 
 	mp.lk.Lock()
 	if err := mp.addLocal(m, msgb); err != nil {
@@ -287,7 +310,7 @@ func (mp *MessagePool) Push(m *types.SignedMessage) (cid.Cid, error) {
 	return m.Cid(), mp.api.PubSubPublish(build.MessagesTopic(mp.netName), msgb)
 }
 
-func (mp *MessagePool) Add(m *types.SignedMessage) error {
+func (mp *MessagePool) checkMessage(m *types.SignedMessage) error {
 	// big messages are bad, anti DOS
 	if m.Size() > 32*1024 {
 		return xerrors.Errorf("mpool message too large (%dB): %w", m.Size(), ErrMessageTooBig)
@@ -303,6 +326,15 @@ func (mp *MessagePool) Add(m *types.SignedMessage) error {
 
 	if err := mp.VerifyMsgSig(m); err != nil {
 		log.Warnf("mpooladd signature verification failed: %s", err)
+		return err
+	}
+
+	return nil
+}
+
+func (mp *MessagePool) Add(m *types.SignedMessage) error {
+	err := mp.checkMessage(m)
+	if err != nil {
 		return err
 	}
 
@@ -676,6 +708,7 @@ func (mp *MessagePool) HeadChange(revert []*types.TipSet, apply []*types.TipSet)
 	mp.curTsLk.Lock()
 	defer mp.curTsLk.Unlock()
 
+	repubTrigger := false
 	rmsgs := make(map[address.Address]map[uint64]*types.SignedMessage)
 	add := func(m *types.SignedMessage) {
 		s, ok := rmsgs[m.Message.From]
@@ -698,6 +731,17 @@ func (mp *MessagePool) HeadChange(revert []*types.TipSet, apply []*types.TipSet)
 		}
 
 		mp.Remove(from, nonce)
+	}
+
+	maybeRepub := func(cid cid.Cid) {
+		if !repubTrigger {
+			mp.lk.Lock()
+			_, republished := mp.republished[cid]
+			mp.lk.Unlock()
+			if republished {
+				repubTrigger = true
+			}
+		}
 	}
 
 	for _, ts := range revert {
@@ -726,14 +770,23 @@ func (mp *MessagePool) HeadChange(revert []*types.TipSet, apply []*types.TipSet)
 			}
 			for _, msg := range smsgs {
 				rm(msg.Message.From, msg.Message.Nonce)
+				maybeRepub(msg.Cid())
 			}
 
 			for _, msg := range bmsgs {
 				rm(msg.From, msg.Nonce)
+				maybeRepub(msg.Cid())
 			}
 		}
 
 		mp.curTs = ts
+	}
+
+	if repubTrigger {
+		select {
+		case mp.repubTrigger <- struct{}{}:
+		default:
+		}
 	}
 
 	for _, s := range rmsgs {

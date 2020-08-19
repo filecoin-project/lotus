@@ -30,11 +30,10 @@ func (p *Processor) subMpool(ctx context.Context) {
 
 	loop:
 		for {
-			time.Sleep(10 * time.Millisecond)
 			select {
 			case update := <-sub:
 				updates = append(updates, update)
-			default:
+			case <-time.After(10 * time.Millisecond):
 				break loop
 			}
 		}

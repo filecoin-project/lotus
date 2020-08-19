@@ -3,6 +3,7 @@ package genesis
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -258,9 +259,45 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 		Balance: types.NewInt(0),
 		Head:    verifierState,
 	})
-
 	if err != nil {
 		return nil, nil, xerrors.Errorf("setting account from actmap: %w", err)
+	}
+
+	totalFilAllocated := big.Zero()
+
+	// flush as ForEach works on the HAMT
+	if _, err := state.Flush(ctx); err != nil {
+		return nil, nil, err
+	}
+	err = state.ForEach(func(addr address.Address, act *types.Actor) error {
+		totalFilAllocated = big.Add(totalFilAllocated, act.Balance)
+		return nil
+	})
+	if err != nil {
+		return nil, nil, xerrors.Errorf("summing account balances in state tree: %w", err)
+	}
+
+	totalFil := big.Mul(big.NewInt(int64(build.FilBase)), big.NewInt(int64(build.FilecoinPrecision)))
+	remainingFil := big.Sub(totalFil, totalFilAllocated)
+	if remainingFil.Sign() < 0 {
+		return nil, nil, xerrors.Errorf("somehow overallocated filecoin (allocated = %s)", types.FIL(totalFilAllocated))
+	}
+
+	remAccKey, err := address.NewIDAddress(90)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if err := createAccount(ctx, bs, cst, state, remAccKey, template.RemainderAccount); err != nil {
+		return nil, nil, err
+	}
+	err = state.SetActor(remAccKey, &types.Actor{
+		Code:    builtin.AccountActorCodeID,
+		Balance: remainingFil,
+		Head:    emptyobject,
+	})
+	if err != nil {
+		return nil, nil, xerrors.Errorf("set burnt funds account actor: %w", err)
 	}
 
 	return state, keyIDs, nil
@@ -284,6 +321,7 @@ func createAccount(ctx context.Context, bs bstore.Blockstore, cst cbor.IpldStore
 		if err != nil {
 			return xerrors.Errorf("setting account from actmap: %w", err)
 		}
+		return nil
 	} else if info.Type == genesis.TMultisig {
 		var ainfo genesis.MultisigMeta
 		if err := json.Unmarshal(info.Meta, &ainfo); err != nil {
@@ -313,9 +351,10 @@ func createAccount(ctx context.Context, bs bstore.Blockstore, cst cbor.IpldStore
 		if err != nil {
 			return xerrors.Errorf("setting account from actmap: %w", err)
 		}
+		return nil
 	}
 
-	return nil
+	return fmt.Errorf("failed to create account")
 }
 
 func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, stateroot cid.Cid, template genesis.Template, keyIDs map[address.Address]address.Address) (cid.Cid, error) {
@@ -434,10 +473,32 @@ func MakeGenesisBlock(ctx context.Context, bs bstore.Blockstore, sys vm.SyscallB
 		VRFProof: []byte("vrf proof0000000vrf proof0000000"),
 	}
 
+	filecoinGenesisCid, err := cid.Decode("bafyreiaqpwbbyjo4a42saasj36kkrpv4tsherf2e7bvezkert2a7dhonoi")
+	if err != nil {
+		return nil, xerrors.Errorf("failed to decode filecoin genesis block CID: %w", err)
+	}
+
+	if !expectedCid().Equals(filecoinGenesisCid) {
+		return nil, xerrors.Errorf("expectedCid != filecoinGenesisCid")
+	}
+
+	gblk, err := getGenesisBlock()
+	if err != nil {
+		return nil, xerrors.Errorf("failed to construct filecoin genesis block: %w", err)
+	}
+
+	if !filecoinGenesisCid.Equals(gblk.Cid()) {
+		return nil, xerrors.Errorf("filecoinGenesisCid != gblk.Cid")
+	}
+
+	if err := bs.Put(gblk); err != nil {
+		return nil, xerrors.Errorf("failed writing filecoin genesis block to blockstore: %w", err)
+	}
+
 	b := &types.BlockHeader{
 		Miner:                 builtin.SystemActorAddr,
 		Ticket:                genesisticket,
-		Parents:               []cid.Cid{},
+		Parents:               []cid.Cid{filecoinGenesisCid},
 		Height:                0,
 		ParentWeight:          types.NewInt(0),
 		ParentStateRoot:       stateroot,

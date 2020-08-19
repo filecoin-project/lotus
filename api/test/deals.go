@@ -22,8 +22,8 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/miner"
-	sealing "github.com/filecoin-project/storage-fsm"
 	dag "github.com/ipfs/go-merkledag"
 	dstest "github.com/ipfs/go-merkledag/test"
 	unixfile "github.com/ipfs/go-unixfs/file"
@@ -398,7 +398,7 @@ func testRetrieval(t *testing.T, ctx context.Context, err error, client *impl.Fu
 		Path:  filepath.Join(rpath, "ret"),
 		IsCAR: carExport,
 	}
-	updates, err := client.ClientRetrieve(ctx, offers[0].Order(caddr), ref)
+	updates, err := client.ClientRetrieveWithEvents(ctx, offers[0].Order(caddr), ref)
 	for update := range updates {
 		if update.Err != "" {
 			t.Fatalf("%v", err)
