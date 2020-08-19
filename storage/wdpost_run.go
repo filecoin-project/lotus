@@ -173,11 +173,13 @@ func (s *WindowPoStScheduler) checkNextRecoveries(ctx context.Context, dlIdx uin
 
 	msg := &types.Message{
 		To:     s.actor,
+		From:   s.worker,
 		Method: builtin.MethodsMiner.DeclareFaultsRecovered,
 		Params: enc,
 		Value:  types.NewInt(0),
 	}
-	s.setSender(ctx, msg)
+	spec := &api.MessageSendSpec{MaxFee: abi.TokenAmount(s.feeCfg.MaxWindowPoStGasFee)}
+	s.setSender(ctx, msg, spec)
 
 	sm, err := s.api.MpoolPushMessage(ctx, msg, &api.MessageSendSpec{MaxFee: abi.TokenAmount(s.feeCfg.MaxWindowPoStGasFee)})
 	if err != nil {
@@ -255,13 +257,15 @@ func (s *WindowPoStScheduler) checkNextFaults(ctx context.Context, dlIdx uint64,
 
 	msg := &types.Message{
 		To:     s.actor,
+		From:   s.worker,
 		Method: builtin.MethodsMiner.DeclareFaults,
 		Params: enc,
 		Value:  types.NewInt(0), // TODO: Is there a fee?
 	}
-	s.setSender(ctx, msg)
+	spec := &api.MessageSendSpec{MaxFee: abi.TokenAmount(s.feeCfg.MaxWindowPoStGasFee)}
+	s.setSender(ctx, msg, spec)
 
-	sm, err := s.api.MpoolPushMessage(ctx, msg, &api.MessageSendSpec{MaxFee: abi.TokenAmount(s.feeCfg.MaxWindowPoStGasFee)})
+	sm, err := s.api.MpoolPushMessage(ctx, msg, spec)
 	if err != nil {
 		return xerrors.Errorf("pushing message to mpool: %w", err)
 	}
@@ -461,14 +465,16 @@ func (s *WindowPoStScheduler) submitPost(ctx context.Context, proof *miner.Submi
 
 	msg := &types.Message{
 		To:     s.actor,
+		From:   s.worker,
 		Method: builtin.MethodsMiner.SubmitWindowedPoSt,
 		Params: enc,
 		Value:  types.NewInt(1000), // currently hard-coded late fee in actor, returned if not late
 	}
-	s.setSender(ctx, msg)
+	spec := &api.MessageSendSpec{MaxFee: abi.TokenAmount(s.feeCfg.MaxWindowPoStGasFee)}
+	s.setSender(ctx, msg, spec)
 
 	// TODO: consider maybe caring about the output
-	sm, err := s.api.MpoolPushMessage(ctx, msg, &api.MessageSendSpec{MaxFee: abi.TokenAmount(s.feeCfg.MaxWindowPoStGasFee)})
+	sm, err := s.api.MpoolPushMessage(ctx, msg, spec)
 	if err != nil {
 		return xerrors.Errorf("pushing message to mpool: %w", err)
 	}
@@ -492,7 +498,7 @@ func (s *WindowPoStScheduler) submitPost(ctx context.Context, proof *miner.Submi
 	return nil
 }
 
-func (s *WindowPoStScheduler) setSender(ctx context.Context, msg *types.Message) {
+func (s *WindowPoStScheduler) setSender(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec) {
 	mi, err := s.api.StateMinerInfo(ctx, s.actor, types.EmptyTSK)
 	if err != nil {
 		log.Errorw("error getting miner info", "error", err)
@@ -501,6 +507,14 @@ func (s *WindowPoStScheduler) setSender(ctx context.Context, msg *types.Message)
 		msg.From = s.worker
 		return
 	}
+
+	gm, err := s.api.GasEstimateMessageGas(ctx, msg, spec, types.EmptyTSK)
+	if err != nil {
+		log.Errorw("estimating gas", "error", err)
+		msg.From = s.worker
+		return
+	}
+	*msg = *gm
 
 	minFunds := big.Add(msg.RequiredFunds(), msg.Value)
 
