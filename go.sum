@@ -223,6 +223,7 @@ github.com/filecoin-project/go-address v0.0.3 h1:eVfbdjEbpbzIrbiSa+PiGUY+oDK9HnU
 github.com/filecoin-project/go-address v0.0.3/go.mod h1:jr8JxKsYx+lQlQZmF5i2U0Z+cGQ59wMIps/8YW/lDj8=
 github.com/filecoin-project/go-amt-ipld/v2 v2.0.1-0.20200131012142-05d80eeccc5e/go.mod h1:boRtQhzmxNocrMxOXo1NYn4oUc1NGvR8tEa79wApNXg=
 github.com/filecoin-project/go-amt-ipld/v2 v2.0.1-0.20200424220931-6263827e49f2/go.mod h1:boRtQhzmxNocrMxOXo1NYn4oUc1NGvR8tEa79wApNXg=
+github.com/filecoin-project/go-amt-ipld/v2 v2.1.0 h1:t6qDiuGYYngDqaLc2ZUvdtAg4UNxPeOYaXhBWSNsVaM=
 github.com/filecoin-project/go-amt-ipld/v2 v2.1.0/go.mod h1:nfFPoGyX0CU9SkXX8EoCcSuHN1XcbN0c6KBh7yvP5fs=
 github.com/filecoin-project/go-amt-ipld/v2 v2.1.1-0.20200731171407-e559a0579161 h1:K6t4Hrs+rwUxBz2xg88Bdqeh4k5/rycQFdPseZhRyfE=
 github.com/filecoin-project/go-amt-ipld/v2 v2.1.1-0.20200731171407-e559a0579161/go.mod h1:vgmwKBkx+ca5OIeEvstiQgzAZnb7R6QaqE1oEDSqa6g=
@@ -265,6 +266,8 @@ github.com/filecoin-project/go-statestore v0.1.0/go.mod h1:LFc9hD+fRxPqiHiaqUEZO
 github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b h1:fkRZSPrYpk42PV3/lIXiL0LHetxde7vyYYvSsttQtfg=
 github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b/go.mod h1:Q0GQOBtKf1oE10eSXSlhN45kDBdGvEcVOqMiffqX+N8=
 github.com/filecoin-project/lotus v0.4.3-0.20200815233716-a0c0d9c98aae/go.mod h1:fqqwJa43SJzGnFA6fzsbiubRoo7UxRkpA7JwNs7LZLo=
+github.com/filecoin-project/lotus v0.4.3-0.20200819133134-a21234cd54d5/go.mod h1:YYUqCqyv4odVgKSFQAnIdAl0v1cIfbEYnF9E118dMGQ=
+github.com/filecoin-project/lotus v0.4.3-0.20200819134055-b13681df3205/go.mod h1:rooripL/X8ixwUngDPzphAv/RKZXWBprbyxxDW0EJi0=
 github.com/filecoin-project/sector-storage v0.0.0-20200712023225-1d67dcfa3c15/go.mod h1:salgVdX7qeXFo/xaiEQE29J4pPkjn71T0kt0n+VDBzo=
 github.com/filecoin-project/sector-storage v0.0.0-20200730050024-3ee28c3b6d9a/go.mod h1:oOawOl9Yk+qeytLzzIryjI8iRbqo+qzS6EEeElP4PWA=
 github.com/filecoin-project/sector-storage v0.0.0-20200810171746-eac70842d8e0 h1:E1fZ27fhKK05bhZItfTwqr1i05vXnEZJznQFEYwEEUU=
@@ -337,6 +340,7 @@ github.com/gogo/status v1.1.0 h1:+eIkrewn5q6b30y+g/BJINVVdi2xH7je5MPJ3ZPK3JA=
 github.com/gogo/status v1.1.0/go.mod h1:BFv9nrluPLmrS0EmGVvLaPNmRosr9KapBYd5/hpY1WM=
 github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b/go.mod h1:SBH7ygxi8pfUlaOkMMuAQtPIUF8ecWP5IEl/CR7VP2Q=
 github.com/golang/groupcache v0.0.0-20160516000752-02826c3e7903/go.mod h1:cIg4eruTrX1D+g88fzRXU5OdNfaM+9IcxsU14FzY7Hc=
+github.com/golang/groupcache v0.0.0-20190702054246-869f871628b6 h1:ZgQEtGgCBiWRM39fZuwSd1LwSqqSW0hOdXCYYDX0R3I=
 github.com/golang/groupcache v0.0.0-20190702054246-869f871628b6/go.mod h1:cIg4eruTrX1D+g88fzRXU5OdNfaM+9IcxsU14FzY7Hc=
 github.com/golang/groupcache v0.0.0-20191227052852-215e87163ea7/go.mod h1:cIg4eruTrX1D+g88fzRXU5OdNfaM+9IcxsU14FzY7Hc=
 github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e h1:1r7pUrabqp18hOBcwBwiTsbnFeTZHV9eER/QT5JVZxY=
@@ -1426,6 +1430,9 @@ github.com/whyrusleeping/timecache v0.0.0-20160911033111-cfcb2f1abfee h1:lYbXeSv
 github.com/whyrusleeping/timecache v0.0.0-20160911033111-cfcb2f1abfee/go.mod h1:m2aV4LZI4Aez7dP5PMyVKEHhUyEJ/RjmPEDOpDvudHg=
 github.com/whyrusleeping/yamux v1.1.5/go.mod h1:E8LnQQ8HKx5KD29HZFUwM1PxCOdPRzGwur1mcYhXcD8=
 github.com/x-cray/logrus-prefixed-formatter v0.5.2/go.mod h1:2duySbKsL6M18s5GU7VPsoEPHyzalCE06qoARUCeBBE=
+github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f/go.mod h1:N2zxlSyiKSe5eX1tZViRH5QA0qijqEDrYZiPEAiq3wU=
+github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415/go.mod h1:GwrjFmJcFw6At/Gs6z4yjiIwzuJ1/+UwLxMQDVQXShQ=
+github.com/xeipuuv/gojsonschema v1.2.0/go.mod h1:anYRn/JVcOK2ZgGU+IjEV4nwlhoK5sQluxsYJ78Id3Y=
 github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2/go.mod h1:UETIi67q53MR2AWcXfiuqkDkRtnGDLqkBTpCHuJHxtU=
 github.com/xlab/c-for-go v0.0.0-20200718154222-87b0065af829 h1:wb7xrDzfkLgPHsSEBm+VSx6aDdi64VtV0xvP0E6j8bk=
 github.com/xlab/c-for-go v0.0.0-20200718154222-87b0065af829/go.mod h1:h/1PEBwj7Ym/8kOuMWvO2ujZ6Lt+TMbySEXNhjjR87I=

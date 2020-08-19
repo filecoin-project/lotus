@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/lib/blockstore"
+	"github.com/filecoin-project/test-vectors/schema"
 
 	"github.com/ipld/go-car"
 )
@@ -110,7 +111,7 @@ func TestConformance(t *testing.T) {
 			t.Fatalf("failed to read test raw file: %s", path)
 		}
 
-		var vector TestVector
+		var vector schema.TestVector
 		err = json.Unmarshal(raw, &vector)
 		if err != nil {
 			t.Errorf("failed to parse test vector %s: %s; skipping", path, err)
@@ -130,7 +131,7 @@ func TestConformance(t *testing.T) {
 }
 
 // executeMessageVector executes a message-class test vector.
-func executeMessageVector(t *testing.T, vector *TestVector) {
+func executeMessageVector(t *testing.T, vector *schema.TestVector) {
 	var (
 		ctx   = context.Background()
 		epoch = vector.Pre.Epoch

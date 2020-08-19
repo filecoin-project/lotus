@@ -39,7 +39,7 @@ require (
 	github.com/filecoin-project/specs-actors v0.9.3
 	github.com/filecoin-project/specs-storage v0.1.1-0.20200730063404-f7db367e9401
 	github.com/filecoin-project/storage-fsm v0.0.0-20200805013058-9d9ea4e6331f
-	github.com/filecoin-project/test-vectors v0.0.0-20200819133914-e20cc29cc926
+	github.com/filecoin-project/test-vectors v0.0.0-20200819163125-d0df1541d7ea
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/go-kit/kit v0.10.0
 	github.com/google/uuid v1.1.1
