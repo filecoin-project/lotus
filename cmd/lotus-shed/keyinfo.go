@@ -330,7 +330,7 @@ var keyinfoNewCmd = &cli.Command{
 		filename = strings.ReplaceAll(filename, "<addr>", keyAddr)
 		filename = strings.ReplaceAll(filename, "<type>", keyType)
 
-		file, err := os.Create(filename)
+		file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 		if err != nil {
 			return err
 		}
