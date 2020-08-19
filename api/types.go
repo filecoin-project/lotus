@@ -108,7 +108,7 @@ type DataTransferChannel struct {
 	BaseCID     cid.Cid
 	IsInitiator bool
 	IsSender    bool
-	VoucherJSON string
+	Voucher     string
 	Message     string
 	OtherPeer   peer.ID
 	Transferred uint64

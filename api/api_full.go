@@ -258,6 +258,8 @@ type FullNode interface {
 	ClientDealSize(ctx context.Context, root cid.Cid) (DataSize, error)
 	// ClientListTransfers returns the status of all ongoing transfers of data
 	ClientListDataTransfers(ctx context.Context) ([]DataTransferChannel, error)
+	ClientDataTransferUpdates(ctx context.Context) (<-chan DataTransferChannel, error)
+
 	// ClientUnimport removes references to the specified file from filestore
 	//ClientUnimport(path string)
 
