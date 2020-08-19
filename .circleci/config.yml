@@ -146,10 +146,6 @@ jobs:
         description: |
           Upload coverage report to https://codecov.io/. Requires the codecov API token to be
           set as an environment variable for private projects.
-      skip-conformance:
-        type: string
-        default: "0"
-        description: "Skip conformance tests (default: no)."
     executor: << parameters.executor >>
     steps:
       - install-deps
@@ -165,7 +161,7 @@ jobs:
           name: go test
           environment:
             LOTUS_TEST_WINDOW_POST: << parameters.winpost-test >>
-            SKIP_CONFORMANCE: << parameters.skip-conformance >>
+            SKIP_CONFORMANCE: "1"
           command: |
             mkdir -p /tmp/test-reports/<< parameters.test-suite-name >>
             mkdir -p /tmp/test-artifacts
@@ -198,6 +194,24 @@ jobs:
     <<: *test
   test-conformance:
     <<: *test
+    steps:
+      - install-deps
+      - prepare
+      - run:
+          command: make deps lotus
+          no_output_timeout: 30m
+      - download-params
+      - run:
+          name: go test
+          environment:
+            SKIP_CONFORMANCE: "0"
+          command: |
+            mkdir -p /tmp/test-artifacts
+            go test -v -coverpkg ./chain/vm/,github.com/filecoin-project/specs-actors/... -coverprofile=/tmp/conformance.out ./conformance/
+            go tool cover -html=/tmp/conformance.out -o /tmp/test-artifacts/conformance-coverage.html
+          no_output_timeout: 30m
+      - store_artifacts:
+          path: /tmp/test-artifacts/conformance-coverage.html
 
   build-macos:
     description: build darwin lotus binary
@@ -333,16 +347,13 @@ workflows:
       - test:
           codecov-upload: true
           test-suite-name: full
-          skip-conformance: "1"
       - test-window-post:
           go-test-flags: "-run=TestWindowedPost"
-          skip-conformance: "1"
           winpost-test: "1"
           test-suite-name: window-post
       - test-short:
           go-test-flags: "--timeout 10m --short"
           test-suite-name: short
-          skip-conformance: "1"
           filters:
             tags:
               only:
@@ -350,7 +361,6 @@ workflows:
       - test-conformance:
           test-suite-name: conformance
           packages: "./conformance"
-          skip-conformance: "0"
       - build-debug
       - build-all:
           requires:
