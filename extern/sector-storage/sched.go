@@ -223,10 +223,6 @@ func (sh *scheduler) runSched() {
 			sh.dropWorker(wid)
 			
 		case req := <-sh.schedule:
-
-
-
-		case req := <-sh.schedule:
 			//sh.schedQueue.Push(req)
 			//sh.trySched()
 			
@@ -234,10 +230,12 @@ func (sh *scheduler) runSched() {
 			if sh.testSync != nil {
 				sh.testSync <- struct{}{}
 			}
+			
 		case req := <-sh.windowRequests:
 			// sh.openWindows = append(sh.openWindows, req)
 			// sh.trySched()
 			sh.trySchedOneWindow(req)
+			
 		case ireq := <-sh.info:
 			ireq(sh.diag())
 
