@@ -342,6 +342,8 @@ func (bv *BlockValidator) validateLocalBlock(ctx context.Context, msg *pubsub.Me
 
 	if size := msg.Size(); size > 1<<20-1<<15 {
 		log.Errorf("ignoring oversize block (%dB)", size)
+		ctx, _ = tag.New(ctx, tag.Insert(metrics.FailureType, "oversize_block"))
+		stats.Record(ctx, metrics.BlockValidationFailure.M(1))
 		return pubsub.ValidationIgnore
 	}
 
