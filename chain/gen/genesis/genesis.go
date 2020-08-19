@@ -336,6 +336,7 @@ func createAccount(ctx context.Context, bs bstore.Blockstore, cst cbor.IpldStore
 
 		for _, e := range ainfo.Signers {
 			idAddress, _ := keyIDs[e]
+			signers = append(signers, idAddress)
 			// Check if actor already exists
 			_, err := state.GetActor(e)
 			if err == nil {
@@ -353,7 +354,6 @@ func createAccount(ctx context.Context, bs bstore.Blockstore, cst cbor.IpldStore
 			if err != nil {
 				return xerrors.Errorf("setting account from actmap: %w", err)
 			}
-			signers = append(signers, idAddress)
 		}
 
 		st, err := cst.Put(ctx, &multisig.State{

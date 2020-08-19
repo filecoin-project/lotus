@@ -73,6 +73,9 @@ func SetupInitActor(bs bstore.Blockstore, netname string, initialActors []genesi
 		if err := json.Unmarshal(a.Meta, &ainfo); err != nil {
 			return nil, nil, xerrors.Errorf("unmarshaling account meta: %w", err)
 		}
+		if _, ok := keyToId[ainfo.Owner]; ok {
+			continue
+		}
 
 		fmt.Printf("init set %s t0%d\n", ainfo.Owner, counter)
 
