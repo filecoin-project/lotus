@@ -231,7 +231,6 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 	if err != nil {
 		return nil, nil, err
 	}
-	_ = vregroot
 
 	if err = createMultisigAccount(ctx, bs, cst, state, vregroot, template.VerifregRootKey, keyIDs); err != nil {
 		return nil, nil, xerrors.Errorf("failed to set up verified registry signer: %w", err)
@@ -275,8 +274,6 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 
 	totalFilAllocated := big.Zero()
 
-	fmt.Println("finished basic setup, time for remainder")
-
 	// flush as ForEach works on the HAMT
 	if _, err := state.Flush(ctx); err != nil {
 		return nil, nil, err
@@ -312,7 +309,6 @@ func createAccountActor(ctx context.Context, cst cbor.IpldStore, state *state.St
 	if err := json.Unmarshal(info.Meta, &ainfo); err != nil {
 		return xerrors.Errorf("unmarshaling account meta: %w", err)
 	}
-	fmt.Println("Creating account: ", ainfo.Owner, keyIDs[ainfo.Owner])
 	st, err := cst.Put(ctx, &account.State{Address: ainfo.Owner})
 	if err != nil {
 		return err
@@ -349,21 +345,19 @@ func createMultisigAccount(ctx context.Context, bs bstore.Blockstore, cst cbor.I
 
 	var signers []address.Address
 
-	fmt.Println("setting up multisig signers")
 	for _, e := range ainfo.Signers {
-		fmt.Println("Signer: ", e)
 		idAddress, ok := keyIDs[e]
-		fmt.Println("keyIDs map: ", idAddress, ok)
+		if !ok {
+			return fmt.Errorf("no registered key ID for signer: %s", e)
+		}
 
 		// Check if actor already exists
 		_, err := state.GetActor(e)
 		if err == nil {
-			fmt.Println("continue signer: ", idAddress)
 			signers = append(signers, idAddress)
 			continue
 		}
 
-		fmt.Println("Creating account actor for: ", e, idAddress)
 		st, err := cst.Put(ctx, &account.State{Address: e})
 		if err != nil {
 			return err
@@ -420,15 +414,6 @@ func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, stateroot ci
 	}
 
 	for mi, m := range template.Miners {
-
-		/*
-			// Add the miner to the market actor's balance table
-			_, err = doExec(ctx, vm, builtin.StorageMarketActorAddr, m.Owner, builtin.MethodsMarket.AddBalance, mustEnc(&m.ID))
-			if err != nil {
-				return cid.Undef, xerrors.Errorf("failed to add balance to miner: %w", err)
-			}
-		*/
-
 		for si, s := range m.Sectors {
 			if s.Deal.Provider != m.ID {
 				return cid.Undef, xerrors.Errorf("Sector %d in miner %d in template had mismatch in provider and miner ID: %s != %s", si, mi, s.Deal.Provider, m.ID)

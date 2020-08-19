@@ -66,7 +66,7 @@ func SetupInitActor(bs bstore.Blockstore, netname string, initialActors []genesi
 		}
 
 		if a.Type != genesis.TAccount {
-			return 0, nil, nil, xerrors.Errorf("unsupported account type: %s", a.Type) // TODO: Support msig (skip here)
+			return 0, nil, nil, xerrors.Errorf("unsupported account type: %s", a.Type)
 		}
 
 		var ainfo genesis.AccountMeta
