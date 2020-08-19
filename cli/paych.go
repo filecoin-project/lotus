@@ -5,9 +5,8 @@ import (
 	"encoding/base64"
 	"fmt"
 
-	"github.com/filecoin-project/lotus/build"
-
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/urfave/cli/v2"
 
@@ -71,7 +70,7 @@ var paychGetCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Println(chAddr)
+		fmt.Fprintln(cctx.App.Writer, chAddr)
 		return nil
 	},
 }
@@ -94,7 +93,7 @@ var paychListCmd = &cli.Command{
 		}
 
 		for _, v := range chs {
-			fmt.Println(v.String())
+			fmt.Fprintln(cctx.App.Writer, v.String())
 		}
 		return nil
 	},
@@ -135,7 +134,7 @@ var paychSettleCmd = &cli.Command{
 			return fmt.Errorf("settle message execution failed (exit code %d)", mwait.Receipt.ExitCode)
 		}
 
-		fmt.Printf("Settled channel %s\n", ch)
+		fmt.Fprintf(cctx.App.Writer, "Settled channel %s\n", ch)
 		return nil
 	},
 }
@@ -175,7 +174,7 @@ var paychCloseCmd = &cli.Command{
 			return fmt.Errorf("collect message execution failed (exit code %d)", mwait.Receipt.ExitCode)
 		}
 
-		fmt.Printf("Collected funds for channel %s\n", ch)
+		fmt.Fprintf(cctx.App.Writer, "Collected funds for channel %s\n", ch)
 		return nil
 	},
 }
@@ -239,7 +238,7 @@ var paychVoucherCreateCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Println(enc)
+		fmt.Fprintln(cctx.App.Writer, enc)
 		return nil
 	},
 }
@@ -275,7 +274,7 @@ var paychVoucherCheckCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Println("voucher is valid")
+		fmt.Fprintln(cctx.App.Writer, "voucher is valid")
 		return nil
 	},
 }
@@ -356,9 +355,9 @@ var paychVoucherListCmd = &cli.Command{
 					return err
 				}
 
-				fmt.Printf("Lane %d, Nonce %d: %s; %s\n", v.Lane, v.Nonce, v.Amount.String(), enc)
+				fmt.Fprintf(cctx.App.Writer, "Lane %d, Nonce %d: %s; %s\n", v.Lane, v.Nonce, v.Amount.String(), enc)
 			} else {
-				fmt.Printf("Lane %d, Nonce %d: %s\n", v.Lane, v.Nonce, v.Amount.String())
+				fmt.Fprintf(cctx.App.Writer, "Lane %d, Nonce %d: %s\n", v.Lane, v.Nonce, v.Amount.String())
 			}
 		}
 
@@ -415,8 +414,8 @@ var paychVoucherBestSpendableCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Println(enc)
-		fmt.Printf("Amount: %s\n", best.Amount)
+		fmt.Fprintln(cctx.App.Writer, enc)
+		fmt.Fprintf(cctx.App.Writer, "Amount: %s\n", best.Amount)
 		return nil
 	},
 }
@@ -462,7 +461,7 @@ var paychVoucherSubmitCmd = &cli.Command{
 			return fmt.Errorf("message execution failed (exit code %d)", mwait.Receipt.ExitCode)
 		}
 
-		fmt.Println("channel updated successfully")
+		fmt.Fprintln(cctx.App.Writer, "channel updated successfully")
 
 		return nil
 	},

@@ -24,7 +24,7 @@ var log = logging.Logger("apitest")
 
 func (ts *testSuite) testMining(t *testing.T) {
 	ctx := context.Background()
-	apis, sn := ts.makeNodes(t, 1, oneMiner)
+	apis, sn := ts.makeNodes(t, 1, OneMiner)
 	api := apis[0]
 
 	newHeads, err := api.ChainNotify(ctx)
@@ -55,7 +55,7 @@ func (ts *testSuite) testMiningReal(t *testing.T) {
 	}()
 
 	ctx := context.Background()
-	apis, sn := ts.makeNodes(t, 1, oneMiner)
+	apis, sn := ts.makeNodes(t, 1, OneMiner)
 	api := apis[0]
 
 	newHeads, err := api.ChainNotify(ctx)
