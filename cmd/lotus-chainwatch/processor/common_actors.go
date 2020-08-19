@@ -16,7 +16,6 @@ import (
 	_init "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
-	"github.com/multiformats/go-multihash"
 	typegen "github.com/whyrusleeping/cbor-gen"
 )
 
@@ -232,20 +231,20 @@ func (p *Processor) storeActorHeads(actors map[cid.Cid]ActorTips) error {
 		return err
 	}
 	if _, err := tx.Exec(`
-		create temp table a (like actors excluding constraints) on commit drop;
+		create temp table a_tmp (like actors excluding constraints) on commit drop;
 	`); err != nil {
 		return xerrors.Errorf("prep temp: %w", err)
 	}
 
-	stmt, err := tx.Prepare(`copy a (id, code, head, nonce, balance, stateroot) from stdin `)
+	stmt, err := tx.Prepare(`copy a_tmp (id, code, head, nonce, balance, stateroot) from stdin `)
 	if err != nil {
 		return err
 	}
 
 	for code, actTips := range actors {
 		actorName := code.String()
-		if s, err := multihash.Decode(code.Hash()); err != nil {
-			actorName = string(s.Digest)
+		if builtin.IsBuiltinActor(code) {
+			actorName = builtin.ActorNameByCode(code)
 		}
 		for _, actorInfo := range actTips {
 			for _, a := range actorInfo {
@@ -260,7 +259,7 @@ func (p *Processor) storeActorHeads(actors map[cid.Cid]ActorTips) error {
 		return err
 	}
 
-	if _, err := tx.Exec(`insert into actors select * from a on conflict do nothing `); err != nil {
+	if _, err := tx.Exec(`insert into actors select * from a_tmp on conflict do nothing `); err != nil {
 		return xerrors.Errorf("actor put: %w", err)
 	}
 
@@ -278,20 +277,20 @@ func (p *Processor) storeActorStates(actors map[cid.Cid]ActorTips) error {
 		return err
 	}
 	if _, err := tx.Exec(`
-		create temp table a (like actor_states excluding constraints) on commit drop;
+		create temp table as_tmp (like actor_states excluding constraints) on commit drop;
 	`); err != nil {
 		return xerrors.Errorf("prep temp: %w", err)
 	}
 
-	stmt, err := tx.Prepare(`copy a (head, code, state) from stdin `)
+	stmt, err := tx.Prepare(`copy as_tmp (head, code, state) from stdin `)
 	if err != nil {
 		return err
 	}
 
 	for code, actTips := range actors {
 		actorName := code.String()
-		if s, err := multihash.Decode(code.Hash()); err != nil {
-			actorName = string(s.Digest)
+		if builtin.IsBuiltinActor(code) {
+			actorName = builtin.ActorNameByCode(code)
 		}
 		for _, actorInfo := range actTips {
 			for _, a := range actorInfo {
@@ -306,7 +305,7 @@ func (p *Processor) storeActorStates(actors map[cid.Cid]ActorTips) error {
 		return err
 	}
 
-	if _, err := tx.Exec(`insert into actor_states select * from a on conflict do nothing `); err != nil {
+	if _, err := tx.Exec(`insert into actor_states select * from as_tmp on conflict do nothing `); err != nil {
 		return xerrors.Errorf("actor put: %w", err)
 	}
 

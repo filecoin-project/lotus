@@ -107,6 +107,17 @@ var DefaultVerifregRootkeyActor = genesis.Actor{
 	Meta:    rootkeyMultisig.ActorMeta(),
 }
 
+var remAccTestKey, _ = address.NewFromString("t1ceb34gnsc6qk5dt6n7xg6ycwzasjhbxm3iylkiy")
+var remAccMeta = genesis.AccountMeta{
+	Owner: remAccTestKey,
+}
+
+var DefaultRemainderAccountActor = genesis.Actor{
+	Type:    genesis.TAccount,
+	Balance: big.NewInt(0),
+	Meta:    remAccMeta.ActorMeta(),
+}
+
 func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
 	saminer.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
 		abi.RegisteredSealProof_StackedDrg2KiBV1: {},
@@ -210,9 +221,10 @@ func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
 			*genm1,
 			*genm2,
 		},
-		VerifregRootKey: DefaultVerifregRootkeyActor,
-		NetworkName:     "",
-		Timestamp:       uint64(build.Clock.Now().Add(-500 * time.Duration(build.BlockDelaySecs) * time.Second).Unix()),
+		VerifregRootKey:  DefaultVerifregRootkeyActor,
+		RemainderAccount: DefaultRemainderAccountActor,
+		NetworkName:      "",
+		Timestamp:        uint64(build.Clock.Now().Add(-500 * time.Duration(build.BlockDelaySecs) * time.Second).Unix()),
 	}
 
 	genb, err := genesis2.MakeGenesisBlock(context.TODO(), bs, sys, tpl)
@@ -304,7 +316,8 @@ func (cg *ChainGen) GenesisCar() ([]byte, error) {
 
 func CarWalkFunc(nd format.Node) (out []*format.Link, err error) {
 	for _, link := range nd.Links() {
-		if link.Cid.Prefix().Codec == cid.FilCommitmentSealed || link.Cid.Prefix().Codec == cid.FilCommitmentUnsealed {
+		pref := link.Cid.Prefix()
+		if pref.Codec == cid.FilCommitmentSealed || pref.Codec == cid.FilCommitmentUnsealed {
 			continue
 		}
 		out = append(out, link)

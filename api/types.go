@@ -50,7 +50,7 @@ type MinerInfo struct {
 	Worker                     address.Address // Must be an ID-address.
 	NewWorker                  address.Address // Must be an ID-address.
 	WorkerChangeEpoch          abi.ChainEpoch
-	PeerId                     peer.ID
+	PeerId                     *peer.ID
 	Multiaddrs                 []abi.Multiaddrs
 	SealProofType              abi.RegisteredSealProof
 	SectorSize                 abi.SectorSize
@@ -58,12 +58,17 @@ type MinerInfo struct {
 }
 
 func NewApiMinerInfo(info *miner.MinerInfo) MinerInfo {
+	var pid *peer.ID
+	if peerID, err := peer.IDFromBytes(info.PeerId); err == nil {
+		pid = &peerID
+	}
+
 	mi := MinerInfo{
 		Owner:                      info.Owner,
 		Worker:                     info.Worker,
 		NewWorker:                  address.Undef,
 		WorkerChangeEpoch:          -1,
-		PeerId:                     peer.ID(info.PeerId),
+		PeerId:                     pid,
 		Multiaddrs:                 info.Multiaddrs,
 		SealProofType:              info.SealProofType,
 		SectorSize:                 info.SectorSize,

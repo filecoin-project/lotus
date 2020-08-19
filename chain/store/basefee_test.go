@@ -18,10 +18,10 @@ func TestBaseFee(t *testing.T) {
 	}{
 		{100e6, 0, 1, 87.5e6},
 		{100e6, 0, 5, 87.5e6},
-		{100e6, build.BlockGasTarget, 1, 100e6},
-		{100e6, build.BlockGasTarget * 2, 2, 100e6},
+		{100e6, build.BlockGasTarget, 1, 103.125e6},
+		{100e6, build.BlockGasTarget * 2, 2, 103.125e6},
 		{100e6, build.BlockGasLimit * 2, 2, 112.5e6},
-		{100e6, build.BlockGasLimit * 1.5, 2, 106.25e6},
+		{100e6, build.BlockGasLimit * 1.5, 2, 110937500},
 	}
 
 	for _, test := range tests {

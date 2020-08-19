@@ -108,6 +108,7 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorRetryPreCommitWait{}, PreCommitWait),
 		on(SectorChainPreCommitFailed{}, PreCommitFailed),
 		on(SectorRetryPreCommit{}, PreCommitting),
+		on(SectorRetryCommitWait{}, CommitWait),
 	),
 	FinalizeFailed: planOne(
 		on(SectorRetryFinalize{}, FinalizeSector),
@@ -225,6 +226,8 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 
 	*/
 
+	m.stats.updateSector(m.minerSector(state.SectorNumber), state.State)
+
 	switch state.State {
 	// Happy path
 	case Empty:
@@ -315,6 +318,8 @@ func planCommitting(events []statemachine.Event, state *SectorInfo) error {
 			state.State = SealPreCommit1Failed
 		case SectorCommitFailed:
 			state.State = CommitFailed
+		case SectorRetryCommitWait:
+			state.State = CommitWait
 		default:
 			return xerrors.Errorf("planCommitting got event of unknown type %T, events: %+v", event.User, events)
 		}
@@ -328,9 +333,24 @@ func (m *Sealing) restartSectors(ctx context.Context) error {
 		log.Errorf("loading sector list: %+v", err)
 	}
 
+	cfg, err := m.getConfig()
+	if err != nil {
+		return xerrors.Errorf("getting the sealing delay: %w", err)
+	}
+
 	for _, sector := range trackedSectors {
 		if err := m.sectors.Send(uint64(sector.SectorNumber), SectorRestart{}); err != nil {
 			log.Errorf("restarting sector %d: %+v", sector.SectorNumber, err)
+		}
+
+		if sector.State == WaitDeals {
+			if cfg.WaitDealsDelay > 0 {
+				timer := time.NewTimer(cfg.WaitDealsDelay)
+				go func() {
+					<-timer.C
+					m.StartPacking(sector.SectorNumber)
+				}()
+			}
 		}
 	}
 

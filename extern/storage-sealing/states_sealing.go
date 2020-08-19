@@ -123,6 +123,14 @@ func (m *Sealing) handlePreCommit2(ctx statemachine.Context, sector SectorInfo) 
 	})
 }
 
+// TODO: We should probably invoke this method in most (if not all) state transition failures after handlePreCommitting
+func (m *Sealing) remarkForUpgrade(sid abi.SectorNumber) {
+	err := m.MarkForUpgrade(sid)
+	if err != nil {
+		log.Errorf("error re-marking sector %d as for upgrade: %+v", sid, err)
+	}
+}
+
 func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInfo) error {
 	tok, height, err := m.api.ChainHead(ctx.Context())
 	if err != nil {
@@ -149,6 +157,10 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 			return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("bad ticket: %w", err)})
 		case *ErrPrecommitOnChain:
 			return ctx.Send(SectorPreCommitLanded{TipSet: tok}) // we re-did precommit
+		case *ErrSectorNumberAllocated:
+			log.Errorf("handlePreCommitFailed: sector number already allocated, not proceeding: %+v", err)
+			// TODO: check if the sector is committed (not sure how we'd end up here)
+			return nil
 		default:
 			return xerrors.Errorf("checkPrecommit sanity check error: %w", err)
 		}
@@ -193,6 +205,9 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 	log.Infof("submitting precommit for sector %d (deposit: %s): ", sector.SectorNumber, deposit)
 	mcid, err := m.api.SendMsg(ctx.Context(), waddr, m.maddr, builtin.MethodsMiner.PreCommitSector, deposit, m.feeCfg.MaxPreCommitGasFee, enc.Bytes())
 	if err != nil {
+		if params.ReplaceCapacity {
+			m.remarkForUpgrade(params.ReplaceSectorNumber)
+		}
 		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("pushing message to mpool: %w", err)})
 	}
 
@@ -204,7 +219,7 @@ func (m *Sealing) handlePreCommitWait(ctx statemachine.Context, sector SectorInf
 		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("precommit message was nil")})
 	}
 
-	// would be ideal to just use the events.Called handler, but it wouldnt be able to handle individual message timeouts
+	// would be ideal to just use the events.Called handler, but it wouldn't be able to handle individual message timeouts
 	log.Info("Sector precommitted: ", sector.SectorNumber)
 	mw, err := m.api.StateWaitMsg(ctx.Context(), *sector.PreCommitMessage)
 	if err != nil {
@@ -275,6 +290,20 @@ func (m *Sealing) handleWaitSeed(ctx statemachine.Context, sector SectorInfo) er
 }
 
 func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) error {
+	if sector.CommitMessage != nil {
+		log.Warnf("sector %d entered committing state with a commit message cid", sector.SectorNumber)
+
+		ml, err := m.api.StateSearchMsg(ctx.Context(), *sector.CommitMessage)
+		if err != nil {
+			log.Warnf("sector %d searching existing commit message %s: %+v", sector.SectorNumber, *sector.CommitMessage, err)
+		}
+
+		if ml != nil {
+			// some weird retry paths can lead here
+			return ctx.Send(SectorRetryCommitWait{})
+		}
+	}
+
 	log.Info("scheduling seal proof computation...")
 
 	log.Infof("KOMIT %d %x(%d); %x(%d); %v; r:%x; d:%x", sector.SectorNumber, sector.TicketValue, sector.TicketEpoch, sector.SeedValue, sector.SeedEpoch, sector.pieceInfos(), sector.CommR, sector.CommD)

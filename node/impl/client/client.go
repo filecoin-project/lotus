@@ -137,7 +137,7 @@ func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) 
 		return nil, xerrors.New("data doesn't fit in a sector")
 	}
 
-	providerInfo := utils.NewStorageProviderInfo(params.Miner, mi.Worker, mi.SectorSize, mi.PeerId, mi.Multiaddrs)
+	providerInfo := utils.NewStorageProviderInfo(params.Miner, mi.Worker, mi.SectorSize, *mi.PeerId, mi.Multiaddrs)
 
 	dealStart := params.DealStartEpoch
 	if dealStart <= 0 { // unset, or explicitly 'epoch undefined'
@@ -255,7 +255,7 @@ func (a *API) ClientMinerQueryOffer(ctx context.Context, miner address.Address, 
 	}
 	rp := rm.RetrievalPeer{
 		Address: miner,
-		ID:      mi.PeerId,
+		ID:      *mi.PeerId,
 	}
 	return a.makeRetrievalQuery(ctx, rp, root, piece, rm.QueryParams{}), nil
 }
@@ -400,7 +400,27 @@ func (a *API) ClientListImports(ctx context.Context) ([]api.Import, error) {
 	return out, nil
 }
 
-func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref *api.FileRef) (<-chan marketevents.RetrievalEvent, error) {
+func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref *api.FileRef) error {
+	events := make(chan marketevents.RetrievalEvent)
+	go a.clientRetrieve(ctx, order, ref, events)
+
+	for {
+		select {
+		case evt, ok := <-events:
+			if !ok { // done successfully
+				return nil
+			}
+
+			if evt.Err != "" {
+				return xerrors.Errorf("retrieval failed: %s", evt.Err)
+			}
+		case <-ctx.Done():
+			return xerrors.Errorf("retrieval timed out")
+		}
+	}
+}
+
+func (a *API) ClientRetrieveWithEvents(ctx context.Context, order api.RetrievalOrder, ref *api.FileRef) (<-chan marketevents.RetrievalEvent, error) {
 	events := make(chan marketevents.RetrievalEvent)
 	go a.clientRetrieve(ctx, order, ref, events)
 	return events, nil
@@ -423,7 +443,7 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 		}
 
 		order.MinerPeer = retrievalmarket.RetrievalPeer{
-			ID:      mi.PeerId,
+			ID:      *mi.PeerId,
 			Address: order.Miner,
 		}
 	}

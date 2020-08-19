@@ -550,7 +550,7 @@ func interactiveDeal(cctx *cli.Context) error {
 				continue
 			}
 
-			a, err := api.ClientQueryAsk(ctx, mi.PeerId, maddr)
+			a, err := api.ClientQueryAsk(ctx, *mi.PeerId, maddr)
 			if err != nil {
 				printErr(xerrors.Errorf("failed to query ask: %w", err))
 				state = "miner"
@@ -847,7 +847,7 @@ var clientRetrieveCmd = &cli.Command{
 			Path:  cctx.Args().Get(1),
 			IsCAR: cctx.Bool("car"),
 		}
-		updates, err := fapi.ClientRetrieve(ctx, offer.Order(payer), ref)
+		updates, err := fapi.ClientRetrieveWithEvents(ctx, offer.Order(payer), ref)
 		if err != nil {
 			return xerrors.Errorf("error setting up retrieval: %w", err)
 		}
@@ -868,7 +868,7 @@ var clientRetrieveCmd = &cli.Command{
 				}
 
 				if evt.Err != "" {
-					return xerrors.Errorf("retrieval failed: %v", err)
+					return xerrors.Errorf("retrieval failed: %s", evt.Err)
 				}
 			case <-ctx.Done():
 				return xerrors.Errorf("retrieval timed out")
@@ -926,11 +926,11 @@ var clientQueryAskCmd = &cli.Command{
 				return xerrors.Errorf("failed to get peerID for miner: %w", err)
 			}
 
-			if peer.ID(mi.PeerId) == peer.ID("SETME") {
+			if peer.ID(*mi.PeerId) == peer.ID("SETME") {
 				return fmt.Errorf("the miner hasn't initialized yet")
 			}
 
-			pid = peer.ID(mi.PeerId)
+			pid = peer.ID(*mi.PeerId)
 		}
 
 		ask, err := api.ClientQueryAsk(ctx, pid, maddr)

@@ -3,6 +3,8 @@ package sealing
 import (
 	"testing"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/require"
 
@@ -25,8 +27,14 @@ type test struct {
 }
 
 func TestHappyPath(t *testing.T) {
+	ma, _ := address.NewIDAddress(55151)
 	m := test{
-		s:     &Sealing{},
+		s: &Sealing{
+			maddr: ma,
+			stats: SectorStats{
+				bySector: map[abi.SectorID]statSectorState{},
+			},
+		},
 		t:     t,
 		state: &SectorInfo{State: Packing},
 	}
@@ -60,8 +68,14 @@ func TestHappyPath(t *testing.T) {
 }
 
 func TestSeedRevert(t *testing.T) {
+	ma, _ := address.NewIDAddress(55151)
 	m := test{
-		s:     &Sealing{},
+		s: &Sealing{
+			maddr: ma,
+			stats: SectorStats{
+				bySector: map[abi.SectorID]statSectorState{},
+			},
+		},
 		t:     t,
 		state: &SectorInfo{State: Packing},
 	}
@@ -101,8 +115,14 @@ func TestSeedRevert(t *testing.T) {
 }
 
 func TestPlanCommittingHandlesSectorCommitFailed(t *testing.T) {
+	ma, _ := address.NewIDAddress(55151)
 	m := test{
-		s:     &Sealing{},
+		s: &Sealing{
+			maddr: ma,
+			stats: SectorStats{
+				bySector: map[abi.SectorID]statSectorState{},
+			},
+		},
 		t:     t,
 		state: &SectorInfo{State: Committing},
 	}
