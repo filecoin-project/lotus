@@ -3,7 +3,6 @@ package processor
 import (
 	"bytes"
 	"context"
-	"github.com/filecoin-project/specs-actors/actors/util/smoothing"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -12,6 +11,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
+	"github.com/filecoin-project/specs-actors/actors/util/smoothing"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -75,7 +75,7 @@ create table if not exists reward_smoothing_estimates
 func (p *Processor) HandleRewardChanges(ctx context.Context, rewardTips ActorTips, nullRounds []types.TipSetKey) error {
 	rewardChanges, err := p.processRewardActors(ctx, rewardTips, nullRounds)
 	if err != nil {
-		log.Fatalw("Failed to process reward actors", "error", err)
+		return xerrors.Errorf("Failed to process reward actors: %w", err)
 	}
 
 	if err := p.persistRewardActors(ctx, rewardChanges); err != nil {
