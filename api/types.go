@@ -2,10 +2,13 @@ package api
 
 import (
 	"encoding/json"
+
 	"github.com/filecoin-project/go-address"
+	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/ipfs/go-cid"
 
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -97,4 +100,16 @@ func (ms *MessageSendSpec) Get() MessageSendSpec {
 	}
 
 	return *ms
+}
+
+type DataTransferChannel struct {
+	TransferID  datatransfer.TransferID
+	Status      datatransfer.Status
+	BaseCID     cid.Cid
+	IsInitiator bool
+	IsSender    bool
+	Voucher     string
+	Message     string
+	OtherPeer   peer.ID
+	Transferred uint64
 }

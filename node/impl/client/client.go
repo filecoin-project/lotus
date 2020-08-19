@@ -2,10 +2,12 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 
+	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"golang.org/x/xerrors"
 
@@ -24,6 +26,7 @@ import (
 	basicnode "github.com/ipld/go-ipld-prime/node/basic"
 	"github.com/ipld/go-ipld-prime/traversal/selector"
 	"github.com/ipld/go-ipld-prime/traversal/selector/builder"
+	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	mh "github.com/multiformats/go-multihash"
 	"go.uber.org/fx"
@@ -74,6 +77,8 @@ type API struct {
 
 	CombinedBstore    dtypes.ClientBlockstore // TODO: try to remove
 	RetrievalStoreMgr dtypes.ClientRetrievalStoreManager
+	DataTransfer      dtypes.ClientDataTransfer
+	Host              host.Host
 }
 
 func calcDealExpiration(minDuration uint64, md *miner.DeadlineInfo, startEpoch abi.ChainEpoch) abi.ChainEpoch {
@@ -466,11 +471,15 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 	unsubscribe := a.Retrieval.SubscribeToEvents(func(event rm.ClientEvent, state rm.ClientDealState) {
 		if state.PayloadCID.Equals(order.Root) {
 
-			events <- marketevents.RetrievalEvent{
+			select {
+			case <-ctx.Done():
+				return
+			case events <- marketevents.RetrievalEvent{
 				Event:         event,
 				Status:        state.Status,
 				BytesReceived: state.TotalReceived,
 				FundsSpent:    state.FundsSpent,
+			}:
 			}
 
 			switch state.Status {
@@ -754,4 +763,68 @@ func (a *API) clientImport(ctx context.Context, ref api.FileRef, store *multisto
 	}
 
 	return nd.Cid(), nil
+}
+
+func (a *API) ClientListDataTransfers(ctx context.Context) ([]api.DataTransferChannel, error) {
+	inProgressChannels, err := a.DataTransfer.InProgressChannels(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	apiChannels := make([]api.DataTransferChannel, 0, len(inProgressChannels))
+	for _, channelState := range inProgressChannels {
+		apiChannels = append(apiChannels, toAPIChannel(a.Host.ID(), channelState))
+	}
+
+	return apiChannels, nil
+}
+
+func (a *API) ClientDataTransferUpdates(ctx context.Context) (<-chan api.DataTransferChannel, error) {
+	channels := make(chan api.DataTransferChannel)
+
+	unsub := a.DataTransfer.SubscribeToEvents(func(evt datatransfer.Event, channelState datatransfer.ChannelState) {
+		channel := toAPIChannel(a.Host.ID(), channelState)
+		select {
+		case <-ctx.Done():
+		case channels <- channel:
+		}
+	})
+
+	go func() {
+		defer unsub()
+		<-ctx.Done()
+	}()
+
+	return channels, nil
+}
+
+func toAPIChannel(hostID peer.ID, channelState datatransfer.ChannelState) api.DataTransferChannel {
+	channel := api.DataTransferChannel{
+		TransferID: channelState.TransferID(),
+		Status:     channelState.Status(),
+		BaseCID:    channelState.BaseCID(),
+		IsSender:   channelState.Sender() == hostID,
+		Message:    channelState.Message(),
+	}
+	stringer, ok := channelState.Voucher().(fmt.Stringer)
+	if ok {
+		channel.Voucher = stringer.String()
+	} else {
+		voucherJSON, err := json.Marshal(channelState.Voucher())
+		if err != nil {
+			channel.Voucher = fmt.Errorf("Voucher Serialization: %w", err).Error()
+		} else {
+			channel.Voucher = string(voucherJSON)
+		}
+	}
+	if channel.IsSender {
+		channel.IsInitiator = !channelState.IsPull()
+		channel.Transferred = channelState.Sent()
+		channel.OtherPeer = channelState.Recipient()
+	} else {
+		channel.IsInitiator = channelState.IsPull()
+		channel.Transferred = channelState.Received()
+		channel.OtherPeer = channelState.Sender()
+	}
+	return channel
 }
