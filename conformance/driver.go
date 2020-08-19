@@ -5,12 +5,15 @@ import (
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/puppet"
+
 	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/lib/blockstore"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/test-vectors/chaos"
 )
 
 var (
@@ -44,9 +47,10 @@ func (d *Driver) ExecuteMessage(msg *types.Message, preroot cid.Cid, bs blocksto
 		return nil, cid.Undef, err
 	}
 
-	// add support for the puppet actor.
+	// add support for the puppet and chaos actors.
 	invoker := vm.NewInvoker()
 	invoker.Register(puppet.PuppetActorCodeID, puppet.Actor{}, puppet.State{})
+	invoker.Register(chaos.ChaosActorCodeCID, chaos.Actor{}, chaos.State{})
 	lvm.SetInvoker(invoker)
 
 	ret, err := lvm.ApplyMessage(d.ctx, msg)
