@@ -88,6 +88,10 @@ func (p *Processor) setupSchemas() error {
 		return err
 	}
 
+	if err := p.setupPower(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -163,6 +167,14 @@ func (p *Processor) Start(ctx context.Context) {
 						return xerrors.Errorf("Failed to handle reward changes: %w", err)
 					}
 					log.Info("Processed Reward Changes")
+					return nil
+				})
+
+				grp.Go(func() error {
+					if err := p.HandlePowerChanges(ctx, actorChanges[builtin.StoragePowerActorCodeID]); err != nil {
+						return xerrors.Errorf("Failed to handle power actor changes: %w", err)
+					}
+					log.Info("Processes Power Changes")
 					return nil
 				})
 
