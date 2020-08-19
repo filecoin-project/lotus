@@ -221,18 +221,23 @@ func (sh *scheduler) runSched() {
 
 		case wid := <-sh.workerClosing:
 			sh.dropWorker(wid)
+			
+		case req := <-sh.schedule:
+
+
 
 		case req := <-sh.schedule:
-			sh.schedQueue.Push(req)
-			sh.trySched()
-
+			//sh.schedQueue.Push(req)
+			//sh.trySched()
+			
+			sh.trySchedOneTask(req)
 			if sh.testSync != nil {
 				sh.testSync <- struct{}{}
 			}
 		case req := <-sh.windowRequests:
-			sh.openWindows = append(sh.openWindows, req)
-			sh.trySched()
-
+			// sh.openWindows = append(sh.openWindows, req)
+			// sh.trySched()
+			sh.trySchedOneWindow(req)
 		case ireq := <-sh.info:
 			ireq(sh.diag())
 
@@ -262,6 +267,212 @@ func (sh *scheduler) diag() SchedDiagInfo {
 
 	return out
 }
+
+/*
+        These two functions 'trySchedOneTask()' and 'trySchedOneWindow()' are based on previous 'trySched()', most of its codes are untouched.
+	
+	The basic idea of tuning scheduler is to seperate two schedule timing: when a task arrives, or when a window becomes available
+	In previous scheduler, both events will trigger a traverse in sh.schedQueue * sh.openWindows, while we might have thousands of tasks and hundreds of workers,
+	  the traverse might take a lot of time.
+	  
+	Now we seperate two events so that when a new task arrives, we only need to search for an available window, and vice versa.
+	(if no window/task can be scheduled, just push the task/window into sh.schedQueue/sh.openWindows)
+	
+	The new scheduler can handle 2000 tasks in 5 seconds, while with previous scheduler it probably will take 10min or more.
+*/
+
+func (sh *scheduler) trySchedOneTask(task *workerRequest) {
+	windows := make([]schedWindow, len(sh.openWindows))
+	acceptableWindows := make([]int, 0)
+	needRes := ResourceTable[task.taskType][sh.spt]
+
+	for wnd, windowRequest := range sh.openWindows {
+
+		sh.workersLk.RLock()
+		worker := sh.workers[windowRequest.worker]
+		wr := worker.info.Resources
+		sh.workersLk.RUnlock()
+
+		// TODO: allow bigger windows
+		if !windows[wnd].allocated.canHandleRequest(needRes, windowRequest.worker, wr) {
+			continue
+		}
+
+		rpcCtx, cancel := context.WithTimeout(task.ctx, SelectorTimeout)
+		ok, err := task.sel.Ok(rpcCtx, task.taskType, sh.spt, worker)
+		cancel()
+		if err != nil {
+			log.Errorf("trySched(1) req.sel.Ok error: %+v", err)
+			continue
+		}
+
+		//task.sel.updateExistingSelector(rpcCtx, manager.ReturnIndex(), task.sector.Number, true)
+
+		if !ok {
+			continue
+		}
+
+		acceptableWindows = append(acceptableWindows, wnd)
+	}
+
+	if len(acceptableWindows) == 0 {
+		// cannot find an window for this task, so append it to the task queue for future sched
+		sh.schedQueue.Push(task)
+		log.Infof("pushing sector %d {task %s} due to no window selected, now queue length is [%d]",task.sector.Number, task.taskType, sh.schedQueue.Len())
+		return
+	}
+
+	selectedWindow := -1
+
+	for _, wnd := range acceptableWindows {
+		wid := sh.openWindows[wnd].worker
+
+		sh.workersLk.RLock()
+		wr := sh.workers[wid].info.Resources
+		sh.workersLk.RUnlock()
+
+		//log.Debugf("SCHED try assign sqi:%d sector %d to window %d", sqi, task.sector.Number, wnd)
+		log.Debugf("SCHED try assign sector %d to window %d", task.sector.Number, wnd)
+
+		// TODO: allow bigger windows
+		if !windows[wnd].allocated.canHandleRequest(needRes, wid, wr) {
+			continue
+		}
+
+		//log.Debugf("SCHED ASSIGNED sqi:%d sector %d to window %d", sqi, task.sector.Number, wnd)
+		log.Debugf("SCHED ASSIGNED sector %d to window %d, worker %s", task.sector.Number, wnd, wid)
+
+		windows[wnd].allocated.add(wr, needRes)
+
+		selectedWindow = wnd
+		break
+	}
+
+	if selectedWindow < 0 {
+		// all windows full
+		// cannot find an window for this task, so append it to the task queue for future sched
+		sh.schedQueue.Push(task)
+		log.Infof("pushing sector %d {task %s} due to no window can handle it, now queue length is [%d]",task.sector.Number, task.taskType, sh.schedQueue.Len())
+		return
+	}
+
+	windows[selectedWindow].todo = append(windows[selectedWindow].todo, task)
+
+	// this can also be optimized apparently but leave it for now
+	scheduledWindows := map[int]struct{}{}
+	for wnd, window := range windows {
+		if len(window.todo) == 0 {
+			// Nothing scheduled here, keep the window open
+			continue
+		}
+
+		scheduledWindows[wnd] = struct{}{}
+
+		window := window // copy
+		select {
+		case sh.openWindows[wnd].done <- &window:
+		default:
+			log.Error("expected sh.openWindows[wnd].done to be buffered")
+		}
+	}
+
+	// Rewrite sh.openWindows array, removing scheduled windows
+	newOpenWindows := make([]*schedWindowRequest, 0, len(sh.openWindows)-len(scheduledWindows))
+	for wnd, window := range sh.openWindows {
+		if _, scheduled := scheduledWindows[wnd]; scheduled {
+			// keep unscheduled windows open
+			continue
+		}
+
+		newOpenWindows = append(newOpenWindows, window)
+	}
+
+	sh.openWindows = newOpenWindows
+}
+
+func (sh *scheduler) trySchedOneWindow(windowRequest *schedWindowRequest) {
+	windows := schedWindow{}
+	acceptableWindows := make([]int, sh.schedQueue.Len())
+
+	for sqi := 0; sqi < sh.schedQueue.Len(); sqi++ {
+		task := (*sh.schedQueue)[sqi]
+		needRes := ResourceTable[task.taskType][sh.spt]
+
+		task.indexHeap = sqi
+
+		sh.workersLk.RLock()
+		worker := sh.workers[windowRequest.worker]
+		sh.workersLk.RUnlock()
+
+		// TODO: allow bigger windows
+		if !windows.allocated.canHandleRequest(needRes, windowRequest.worker, worker.info.Resources) {
+			continue
+		}
+
+		rpcCtx, cancel := context.WithTimeout(task.ctx, SelectorTimeout)
+		ok, err := task.sel.Ok(rpcCtx, task.taskType, sh.spt, worker)
+		cancel()
+		if err != nil {
+			log.Errorf("trySched(1) req.sel.Ok error: %+v", err)
+			continue
+		}
+
+		if !ok {
+			continue
+		}
+
+		acceptableWindows[sqi] = 1
+	}
+
+	scheduled := 0
+
+	for sqi := 0; sqi < sh.schedQueue.Len(); sqi++ {
+		task := (*sh.schedQueue)[sqi]
+		needRes := ResourceTable[task.taskType][sh.spt]
+
+		if acceptableWindows[task.indexHeap] != 1 {
+			continue
+		}
+
+		wid := windowRequest.worker
+
+		sh.workersLk.RLock()
+		wr := sh.workers[wid].info.Resources
+		sh.workersLk.RUnlock()
+
+		//log.Debugf("SCHED try assign sqi:%d sector %d to window %d", sqi, task.sector.Number, wnd)
+		log.Debugf("SCHED try assign sqi:%d sector %d to new worker {%d} window", sqi, task.sector.Number, wid)
+		if !windows.allocated.canHandleRequest(needRes, wid, wr) {
+			continue
+		}
+
+		//log.Debugf("SCHED ASSIGNED sqi:%d sector %d to window %d", sqi, task.sector.Number, wnd)
+		log.Debugf("SCHED ASSIGNED sqi:%d sector %d to new worker {%d} window", sqi, task.sector.Number, wid)
+
+		windows.allocated.add(wr, needRes)
+
+		windows.todo = append(windows.todo, task)
+
+		sh.schedQueue.Remove(sqi)
+		sqi--
+		scheduled++
+	}
+
+	if scheduled == 0 {
+		// push this window to openWindows for future scheduling
+		sh.openWindows = append(sh.openWindows, windowRequest)
+		log.Infof("no task is assigned on new worker {%s} window", windowRequest.worker)
+		return
+	}
+
+	window := windows// copy
+	select {
+	case windowRequest.done <- &window:
+	default:
+		log.Error("expected sh.openWindows[wnd].done to be buffered")
+	}
+}
+
 
 func (sh *scheduler) trySched() {
 	/*
