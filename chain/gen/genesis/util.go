@@ -28,7 +28,7 @@ func doExec(ctx context.Context, vm *vm.VM, to, from address.Address, method abi
 func doExecValue(ctx context.Context, vm *vm.VM, to, from address.Address, value types.BigInt, method abi.MethodNum, params []byte) ([]byte, error) {
 	act, err := vm.StateTree().GetActor(from)
 	if err != nil {
-		return nil, xerrors.Errorf("doExec failed to get from actor: %w", err)
+		return nil, xerrors.Errorf("doExec failed to get from actor (%s): %w", from, err)
 	}
 
 	ret, err := vm.ApplyImplicitMessage(ctx, &types.Message{

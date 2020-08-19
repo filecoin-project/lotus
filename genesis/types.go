@@ -26,6 +26,7 @@ type PreSeal struct {
 }
 
 type Miner struct {
+	ID     address.Address
 	Owner  address.Address
 	Worker address.Address
 	PeerId peer.ID //nolint:golint

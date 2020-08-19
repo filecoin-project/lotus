@@ -137,7 +137,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 			params := mustEnc(&minerInfos[i].maddr)
 			_, err := doExecValue(ctx, vm, builtin.StorageMarketActorAddr, m.Worker, m.MarketBalance, builtin.MethodsMarket.AddBalance, params)
 			if err != nil {
-				return cid.Undef, xerrors.Errorf("failed to create genesis miner: %w", err)
+				return cid.Undef, xerrors.Errorf("failed to create genesis miner (add balance): %w", err)
 			}
 		}
 
@@ -149,7 +149,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 
 				ret, err := doExecValue(ctx, vm, builtin.StorageMarketActorAddr, m.Worker, big.Zero(), builtin.MethodsMarket.PublishStorageDeals, mustEnc(params))
 				if err != nil {
-					return xerrors.Errorf("failed to create genesis miner: %w", err)
+					return xerrors.Errorf("failed to create genesis miner (publish deals): %w", err)
 				}
 				var ids market.PublishStorageDealsReturn
 				if err := ids.UnmarshalCBOR(bytes.NewReader(ret)); err != nil {

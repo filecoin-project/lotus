@@ -2,6 +2,8 @@ package full
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 
@@ -121,6 +123,12 @@ func (a *MsigAPI) MsigPropose(ctx context.Context, msig address.Address, to addr
 		Method: builtin.MethodsMultisig.Propose,
 		Params: enc,
 	}
+
+	b, err := json.Marshal(msg)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("prpopose message: ", string(b))
 
 	smsg, err := a.MpoolAPI.MpoolPushMessage(ctx, msg, nil)
 	if err != nil {
