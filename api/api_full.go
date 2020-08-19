@@ -132,7 +132,7 @@ type FullNode interface {
 	GasEstimateGasPremium(_ context.Context, nblocksincl uint64,
 		sender address.Address, gaslimit int64, tsk types.TipSetKey) (types.BigInt, error)
 
-	// GasEstimateMessageGas estimates gas values unset message gas fields
+	// GasEstimateMessageGas estimates gas values for unset message gas fields
 	GasEstimateMessageGas(context.Context, *types.Message, *MessageSendSpec, types.TipSetKey) (*types.Message, error)
 
 	// MethodGroup: Sync

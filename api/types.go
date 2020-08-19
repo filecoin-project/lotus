@@ -49,9 +49,9 @@ type PubsubScore struct {
 }
 
 type MinerInfo struct {
-	Owner                      address.Address // Must be an ID-address.
-	Worker                     address.Address // Must be an ID-address.
-	NewWorker                  address.Address // Must be an ID-address.
+	Owner                      address.Address   // Must be an ID-address.
+	Worker                     address.Address   // Must be an ID-address.
+	NewWorker                  address.Address   // Must be an ID-address.
 	ControlAddresses           []address.Address // Must be an ID-addresses.
 	WorkerChangeEpoch          abi.ChainEpoch
 	PeerId                     *peer.ID

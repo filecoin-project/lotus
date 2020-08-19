@@ -250,8 +250,8 @@ var actorWithdrawCmd = &cli.Command{
 }
 
 var actorControl = &cli.Command{
-	Name:      "control",
-	Usage:     "Manage control addresses",
+	Name:  "control",
+	Usage: "Manage control addresses",
 	Subcommands: []*cli.Command{
 		actorControlList,
 		actorControlSet,
@@ -259,14 +259,14 @@ var actorControl = &cli.Command{
 }
 
 var actorControlList = &cli.Command{
-	Name:      "list",
-	Usage:     "Get currently set control addresses",
+	Name:  "list",
+	Usage: "Get currently set control addresses",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name: "verbose",
 		},
 		&cli.BoolFlag{
-			Name: "color",
+			Name:  "color",
 			Value: true,
 		},
 	},
@@ -347,10 +347,10 @@ var actorControlList = &cli.Command{
 			}
 
 			tw.Write(map[string]interface{}{
-				"name": name,
-				"ID": a,
-				"key": kstr,
-				"use": strings.Join(uses, " "),
+				"name":    name,
+				"ID":      a,
+				"key":     kstr,
+				"use":     strings.Join(uses, " "),
 				"balance": bstr,
 			})
 		}
@@ -371,7 +371,7 @@ var actorControlSet = &cli.Command{
 	ArgsUsage: "[...address]",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
-			Name: "really-do-it",
+			Name:  "really-do-it",
 			Usage: "Actually send transaction performing the action",
 			Value: false,
 		},
@@ -461,11 +461,11 @@ var actorControlSet = &cli.Command{
 		}
 
 		smsg, err := api.MpoolPushMessage(ctx, &types.Message{
-			From: mi.Owner,
-			To: maddr,
+			From:   mi.Owner,
+			To:     maddr,
 			Method: builtin.MethodsMiner.ChangeWorkerAddress,
 
-			Value: big.Zero(),
+			Value:  big.Zero(),
 			Params: sp,
 		}, nil)
 		if err != nil {

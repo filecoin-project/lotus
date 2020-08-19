@@ -460,11 +460,11 @@ func (c *FullNodeStruct) ClientDataTransferUpdates(ctx context.Context) (<-chan 
 	return c.Internal.ClientDataTransferUpdates(ctx)
 }
 
-func (c *FullNodeStruct) GasEstimateGasPremium(ctx context.Context, nblocksincl uint64,	sender address.Address, gaslimit int64, tsk types.TipSetKey) (types.BigInt, error) {
+func (c *FullNodeStruct) GasEstimateGasPremium(ctx context.Context, nblocksincl uint64, sender address.Address, gaslimit int64, tsk types.TipSetKey) (types.BigInt, error) {
 	return c.Internal.GasEstimateGasPremium(ctx, nblocksincl, sender, gaslimit, tsk)
 }
 
-func (c *FullNodeStruct) GasEstimateFeeCap(ctx context.Context, msg *types.Message,	maxqueueblks int64, tsk types.TipSetKey) (types.BigInt, error) {
+func (c *FullNodeStruct) GasEstimateFeeCap(ctx context.Context, msg *types.Message, maxqueueblks int64, tsk types.TipSetKey) (types.BigInt, error) {
 	return c.Internal.GasEstimateFeeCap(ctx, msg, maxqueueblks, tsk)
 }
 
