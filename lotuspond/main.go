@@ -45,9 +45,9 @@ var onCmd = &cli.Command{
 				"LOTUS_PATH=" + node.Repo,
 			}
 		} else {
-			cmd = exec.Command("./lotus-storage-miner")
+			cmd = exec.Command("./lotus-miner")
 			cmd.Env = []string{
-				"LOTUS_STORAGE_PATH=" + node.Repo,
+				"LOTUS_MINER_PATH=" + node.Repo,
 				"LOTUS_PATH=" + node.FullNode,
 			}
 		}
@@ -83,7 +83,7 @@ var shCmd = &cli.Command{
 			}
 		} else {
 			shcmd.Env = []string{
-				"LOTUS_STORAGE_PATH=" + node.Repo,
+				"LOTUS_MINER_PATH=" + node.Repo,
 				"LOTUS_PATH=" + node.FullNode,
 			}
 		}

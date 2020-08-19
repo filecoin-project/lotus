@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -49,20 +50,25 @@ type MinerInfo struct {
 	Worker                     address.Address // Must be an ID-address.
 	NewWorker                  address.Address // Must be an ID-address.
 	WorkerChangeEpoch          abi.ChainEpoch
-	PeerId                     peer.ID
+	PeerId                     *peer.ID
 	Multiaddrs                 []abi.Multiaddrs
 	SealProofType              abi.RegisteredSealProof
 	SectorSize                 abi.SectorSize
 	WindowPoStPartitionSectors uint64
 }
 
-func NewApiMinerInfo(info miner.MinerInfo) MinerInfo {
+func NewApiMinerInfo(info *miner.MinerInfo) MinerInfo {
+	var pid *peer.ID
+	if peerID, err := peer.IDFromBytes(info.PeerId); err == nil {
+		pid = &peerID
+	}
+
 	mi := MinerInfo{
 		Owner:                      info.Owner,
 		Worker:                     info.Worker,
 		NewWorker:                  address.Undef,
 		WorkerChangeEpoch:          -1,
-		PeerId:                     peer.ID(info.PeerId),
+		PeerId:                     pid,
 		Multiaddrs:                 info.Multiaddrs,
 		SealProofType:              info.SealProofType,
 		SectorSize:                 info.SectorSize,
@@ -75,4 +81,20 @@ func NewApiMinerInfo(info miner.MinerInfo) MinerInfo {
 	}
 
 	return mi
+}
+
+type MessageSendSpec struct {
+	MaxFee abi.TokenAmount
+}
+
+var DefaultMessageSendSpec = MessageSendSpec{
+	MaxFee: big.Zero(),
+}
+
+func (ms *MessageSendSpec) Get() MessageSendSpec {
+	if ms == nil {
+		return DefaultMessageSendSpec
+	}
+
+	return *ms
 }

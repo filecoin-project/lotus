@@ -18,12 +18,14 @@ type FullNodeAPI struct {
 	full.ChainAPI
 	client.API
 	full.MpoolAPI
+	full.GasAPI
 	market.MarketAPI
 	paych.PaychAPI
 	full.StateAPI
 	full.MsigAPI
 	full.WalletAPI
 	full.SyncAPI
+	full.BeaconAPI
 }
 
 var _ api.FullNode = &FullNodeAPI{}

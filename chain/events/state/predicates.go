@@ -4,15 +4,17 @@ import (
 	"bytes"
 	"context"
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
+	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	typegen "github.com/whyrusleeping/cbor-gen"
-
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/market"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/api/apibstore"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -82,6 +84,50 @@ func (sp *StatePredicates) OnStorageMarketActorChanged(diffStorageMarketState Di
 		}
 		return diffStorageMarketState(ctx, &oldState, &newState)
 	})
+}
+
+type BalanceTables struct {
+	EscrowTable *adt.BalanceTable
+	LockedTable *adt.BalanceTable
+}
+
+// DiffBalanceTablesFunc compares two balance tables
+type DiffBalanceTablesFunc func(ctx context.Context, oldBalanceTable, newBalanceTable BalanceTables) (changed bool, user UserData, err error)
+
+// OnBalanceChanged runs when the escrow table for available balances changes
+func (sp *StatePredicates) OnBalanceChanged(diffBalances DiffBalanceTablesFunc) DiffStorageMarketStateFunc {
+	return func(ctx context.Context, oldState *market.State, newState *market.State) (changed bool, user UserData, err error) {
+		if oldState.EscrowTable.Equals(newState.EscrowTable) && oldState.LockedTable.Equals(newState.LockedTable) {
+			return false, nil, nil
+		}
+
+		ctxStore := &contextStore{
+			ctx: ctx,
+			cst: sp.cst,
+		}
+
+		oldEscrowRoot, err := adt.AsBalanceTable(ctxStore, oldState.EscrowTable)
+		if err != nil {
+			return false, nil, err
+		}
+
+		oldLockedRoot, err := adt.AsBalanceTable(ctxStore, oldState.LockedTable)
+		if err != nil {
+			return false, nil, err
+		}
+
+		newEscrowRoot, err := adt.AsBalanceTable(ctxStore, newState.EscrowTable)
+		if err != nil {
+			return false, nil, err
+		}
+
+		newLockedRoot, err := adt.AsBalanceTable(ctxStore, newState.LockedTable)
+		if err != nil {
+			return false, nil, err
+		}
+
+		return diffBalances(ctx, BalanceTables{oldEscrowRoot, oldLockedRoot}, BalanceTables{newEscrowRoot, newLockedRoot})
+	}
 }
 
 type DiffAdtArraysFunc func(ctx context.Context, oldDealStateRoot, newDealStateRoot *adt.Array) (changed bool, user UserData, err error)
@@ -279,17 +325,22 @@ func (sp *StatePredicates) DealStateChangedForIDs(dealIds []abi.DealID) DiffAdtA
 			var oldDealPtr, newDealPtr *market.DealState
 			var oldDeal, newDeal market.DealState
 
-			_, err := oldDealStateArray.Get(uint64(dealID), &oldDeal)
+			// If the deal has been removed, we just set it to nil
+			found, err := oldDealStateArray.Get(uint64(dealID), &oldDeal)
 			if err != nil {
 				return false, nil, err
 			}
-			oldDealPtr = &oldDeal
+			if found {
+				oldDealPtr = &oldDeal
+			}
 
-			_, err = newDealStateArray.Get(uint64(dealID), &newDeal)
+			found, err = newDealStateArray.Get(uint64(dealID), &newDeal)
 			if err != nil {
 				return false, nil, err
 			}
-			newDealPtr = &newDeal
+			if found {
+				newDealPtr = &newDeal
+			}
 
 			if oldDeal != newDeal {
 				changedDeals[dealID] = DealStateChange{dealID, oldDealPtr, newDealPtr}
@@ -302,7 +353,73 @@ func (sp *StatePredicates) DealStateChangedForIDs(dealIds []abi.DealID) DiffAdtA
 	}
 }
 
+// ChangedBalances is a set of changes to deal state
+type ChangedBalances map[address.Address]BalanceChange
+
+// BalanceChange is a change in balance from -> to
+type BalanceChange struct {
+	From abi.TokenAmount
+	To   abi.TokenAmount
+}
+
+// AvailableBalanceChangedForAddresses detects changes in the escrow table for the given addresses
+func (sp *StatePredicates) AvailableBalanceChangedForAddresses(getAddrs func() []address.Address) DiffBalanceTablesFunc {
+	return func(ctx context.Context, oldBalances, newBalances BalanceTables) (changed bool, user UserData, err error) {
+		changedBalances := make(ChangedBalances)
+		addrs := getAddrs()
+		for _, addr := range addrs {
+			// If the deal has been removed, we just set it to nil
+			oldEscrowBalance, err := oldBalances.EscrowTable.Get(addr)
+			if err != nil {
+				return false, nil, err
+			}
+
+			oldLockedBalance, err := oldBalances.LockedTable.Get(addr)
+			if err != nil {
+				return false, nil, err
+			}
+
+			oldBalance := big.Sub(oldEscrowBalance, oldLockedBalance)
+
+			newEscrowBalance, err := newBalances.EscrowTable.Get(addr)
+			if err != nil {
+				return false, nil, err
+			}
+
+			newLockedBalance, err := newBalances.LockedTable.Get(addr)
+			if err != nil {
+				return false, nil, err
+			}
+
+			newBalance := big.Sub(newEscrowBalance, newLockedBalance)
+
+			if !oldBalance.Equals(newBalance) {
+				changedBalances[addr] = BalanceChange{oldBalance, newBalance}
+			}
+		}
+		if len(changedBalances) > 0 {
+			return true, changedBalances, nil
+		}
+		return false, nil, nil
+	}
+}
+
 type DiffMinerActorStateFunc func(ctx context.Context, oldState *miner.State, newState *miner.State) (changed bool, user UserData, err error)
+
+func (sp *StatePredicates) OnInitActorChange(diffInitActorState DiffInitActorStateFunc) DiffTipSetKeyFunc {
+	return sp.OnActorStateChanged(builtin.InitActorAddr, func(ctx context.Context, oldActorStateHead, newActorStateHead cid.Cid) (changed bool, user UserData, err error) {
+		var oldState init_.State
+		if err := sp.cst.Get(ctx, oldActorStateHead, &oldState); err != nil {
+			return false, nil, err
+		}
+		var newState init_.State
+		if err := sp.cst.Get(ctx, newActorStateHead, &newState); err != nil {
+			return false, nil, err
+		}
+		return diffInitActorState(ctx, &oldState, &newState)
+	})
+
+}
 
 func (sp *StatePredicates) OnMinerActorChange(minerAddr address.Address, diffMinerActorState DiffMinerActorStateFunc) DiffTipSetKeyFunc {
 	return sp.OnActorStateChanged(minerAddr, func(ctx context.Context, oldActorStateHead, newActorStateHead cid.Cid) (changed bool, user UserData, err error) {
@@ -354,7 +471,7 @@ func (m *MinerSectorChanges) Modify(key uint64, from, to *typegen.Deferred) erro
 		return err
 	}
 
-	if siFrom.Info.Expiration != siTo.Info.Expiration {
+	if siFrom.Expiration != siTo.Expiration {
 		m.Extended = append(m.Extended, SectorExtensions{
 			From: *siFrom,
 			To:   *siTo,
@@ -486,5 +603,184 @@ func (sp *StatePredicates) OnMinerPreCommitChange() DiffMinerActorStateFunc {
 		}
 
 		return true, precommitChanges, nil
+	}
+}
+
+// DiffPaymentChannelStateFunc is function that compares two states for the payment channel
+type DiffPaymentChannelStateFunc func(ctx context.Context, oldState *paych.State, newState *paych.State) (changed bool, user UserData, err error)
+
+// OnPaymentChannelActorChanged calls diffPaymentChannelState when the state changes for the the payment channel actor
+func (sp *StatePredicates) OnPaymentChannelActorChanged(paychAddr address.Address, diffPaymentChannelState DiffPaymentChannelStateFunc) DiffTipSetKeyFunc {
+	return sp.OnActorStateChanged(paychAddr, func(ctx context.Context, oldActorStateHead, newActorStateHead cid.Cid) (changed bool, user UserData, err error) {
+		var oldState paych.State
+		if err := sp.cst.Get(ctx, oldActorStateHead, &oldState); err != nil {
+			return false, nil, err
+		}
+		var newState paych.State
+		if err := sp.cst.Get(ctx, newActorStateHead, &newState); err != nil {
+			return false, nil, err
+		}
+		return diffPaymentChannelState(ctx, &oldState, &newState)
+	})
+}
+
+// PayChToSendChange is a difference in the amount to send on a payment channel when the money is collected
+type PayChToSendChange struct {
+	OldToSend abi.TokenAmount
+	NewToSend abi.TokenAmount
+}
+
+// OnToSendAmountChanges monitors changes on the total amount to send from one party to the other on a payment channel
+func (sp *StatePredicates) OnToSendAmountChanges() DiffPaymentChannelStateFunc {
+	return func(ctx context.Context, oldState *paych.State, newState *paych.State) (changed bool, user UserData, err error) {
+		if oldState.ToSend.Equals(newState.ToSend) {
+			return false, nil, nil
+		}
+		return true, &PayChToSendChange{
+			OldToSend: oldState.ToSend,
+			NewToSend: newState.ToSend,
+		}, nil
+	}
+}
+
+type AddressPair struct {
+	ID address.Address
+	PK address.Address
+}
+
+type InitActorAddressChanges struct {
+	Added    []AddressPair
+	Modified []AddressChange
+	Removed  []AddressPair
+}
+
+type AddressChange struct {
+	From AddressPair
+	To   AddressPair
+}
+
+type DiffInitActorStateFunc func(ctx context.Context, oldState *init_.State, newState *init_.State) (changed bool, user UserData, err error)
+
+func (i *InitActorAddressChanges) AsKey(key string) (adt.Keyer, error) {
+	addr, err := address.NewFromBytes([]byte(key))
+	if err != nil {
+		return nil, err
+	}
+	return adt.AddrKey(addr), nil
+}
+
+func (i *InitActorAddressChanges) Add(key string, val *typegen.Deferred) error {
+	pkAddr, err := address.NewFromBytes([]byte(key))
+	if err != nil {
+		return err
+	}
+	id := new(typegen.CborInt)
+	if err := id.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
+		return err
+	}
+	idAddr, err := address.NewIDAddress(uint64(*id))
+	if err != nil {
+		return err
+	}
+	i.Added = append(i.Added, AddressPair{
+		ID: idAddr,
+		PK: pkAddr,
+	})
+	return nil
+}
+
+func (i *InitActorAddressChanges) Modify(key string, from, to *typegen.Deferred) error {
+	pkAddr, err := address.NewFromBytes([]byte(key))
+	if err != nil {
+		return err
+	}
+
+	fromID := new(typegen.CborInt)
+	if err := fromID.UnmarshalCBOR(bytes.NewReader(from.Raw)); err != nil {
+		return err
+	}
+	fromIDAddr, err := address.NewIDAddress(uint64(*fromID))
+	if err != nil {
+		return err
+	}
+
+	toID := new(typegen.CborInt)
+	if err := toID.UnmarshalCBOR(bytes.NewReader(to.Raw)); err != nil {
+		return err
+	}
+	toIDAddr, err := address.NewIDAddress(uint64(*toID))
+	if err != nil {
+		return err
+	}
+
+	i.Modified = append(i.Modified, AddressChange{
+		From: AddressPair{
+			ID: fromIDAddr,
+			PK: pkAddr,
+		},
+		To: AddressPair{
+			ID: toIDAddr,
+			PK: pkAddr,
+		},
+	})
+	return nil
+}
+
+func (i *InitActorAddressChanges) Remove(key string, val *typegen.Deferred) error {
+	pkAddr, err := address.NewFromBytes([]byte(key))
+	if err != nil {
+		return err
+	}
+	id := new(typegen.CborInt)
+	if err := id.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
+		return err
+	}
+	idAddr, err := address.NewIDAddress(uint64(*id))
+	if err != nil {
+		return err
+	}
+	i.Removed = append(i.Removed, AddressPair{
+		ID: idAddr,
+		PK: pkAddr,
+	})
+	return nil
+}
+
+func (sp *StatePredicates) OnAddressMapChange() DiffInitActorStateFunc {
+	return func(ctx context.Context, oldState, newState *init_.State) (changed bool, user UserData, err error) {
+		ctxStore := &contextStore{
+			ctx: ctx,
+			cst: sp.cst,
+		}
+
+		addressChanges := &InitActorAddressChanges{
+			Added:    []AddressPair{},
+			Modified: []AddressChange{},
+			Removed:  []AddressPair{},
+		}
+
+		if oldState.AddressMap.Equals(newState.AddressMap) {
+			return false, nil, nil
+		}
+
+		oldAddrs, err := adt.AsMap(ctxStore, oldState.AddressMap)
+		if err != nil {
+			return false, nil, err
+		}
+
+		newAddrs, err := adt.AsMap(ctxStore, newState.AddressMap)
+		if err != nil {
+			return false, nil, err
+		}
+
+		if err := DiffAdtMap(oldAddrs, newAddrs, addressChanges); err != nil {
+			return false, nil, err
+		}
+
+		if len(addressChanges.Added)+len(addressChanges.Removed)+len(addressChanges.Modified) == 0 {
+			return false, nil, nil
+		}
+
+		return true, addressChanges, nil
 	}
 }

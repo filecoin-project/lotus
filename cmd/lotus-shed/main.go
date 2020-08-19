@@ -21,12 +21,14 @@ func main() {
 		keyinfoCmd,
 		noncefix,
 		bigIntParseCmd,
-		staterootStatsCmd,
+		staterootCmd,
 		importCarCmd,
 		commpToCidCmd,
 		fetchParamCmd,
 		proofsCmd,
 		verifRegCmd,
+		miscCmd,
+		mpoolCmd,
 	}
 
 	app := &cli.App{

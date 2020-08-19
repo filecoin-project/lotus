@@ -2,12 +2,14 @@ package genesis
 
 import (
 	"context"
+
 	"github.com/filecoin-project/specs-actors/actors/builtin/system"
 
-	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
+
+	"github.com/filecoin-project/lotus/chain/types"
+	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 )
 
 func SetupSystemActor(bs bstore.Blockstore) (*types.Actor, error) {

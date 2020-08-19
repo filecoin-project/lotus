@@ -8,8 +8,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
 // /////
@@ -30,7 +28,7 @@ const ForkLengthThreshold = Finality
 var BlocksPerEpoch = uint64(builtin.ExpectedLeadersPerEpoch)
 
 // Epochs
-const Finality = miner.ChainFinalityish
+const Finality = miner.ChainFinality
 const MessageConfidence = uint64(5)
 
 // constants for Weight calculation
@@ -61,8 +59,8 @@ const WinningPoStSectorSetLookback = abi.ChainEpoch(10)
 // /////
 // Devnet settings
 
-const TotalFilecoin = uint64(2_000_000_000)
-const MiningRewardTotal = uint64(1_400_000_000)
+const FilBase = uint64(2_000_000_000)
+const FilAllocStorageMining = uint64(1_100_000_000)
 
 const FilecoinPrecision = uint64(1_000_000_000_000_000_000)
 
@@ -71,7 +69,7 @@ var InitialRewardBalance *big.Int
 // TODO: Move other important consts here
 
 func init() {
-	InitialRewardBalance = big.NewInt(int64(MiningRewardTotal))
+	InitialRewardBalance = big.NewInt(int64(FilAllocStorageMining))
 	InitialRewardBalance = InitialRewardBalance.Mul(InitialRewardBalance, big.NewInt(int64(FilecoinPrecision)))
 }
 
@@ -90,14 +88,16 @@ const VerifSigCacheSize = 32000
 // Limits
 
 // TODO: If this is gonna stay, it should move to specs-actors
-const BlockMessageLimit = 512
-const BlockGasLimit = 100_000_000_000
+const BlockMessageLimit = 10000
 
-var DrandConfig = dtypes.DrandConfig{
-	Servers: []string{
-		"https://pl-eu.testnet.drand.sh",
-		"https://pl-us.testnet.drand.sh",
-		"https://pl-sin.testnet.drand.sh",
-	},
-	ChainInfoJSON: `{"public_key":"922a2e93828ff83345bae533f5172669a26c02dc76d6bf59c80892e12ab1455c229211886f35bb56af6d5bea981024df","period":25,"genesis_time":1590445175,"hash":"138a324aa6540f93d0dad002aa89454b1bec2b6e948682cde6bd4db40f4b7c9b"}`,
-}
+const BlockGasLimit = 10_000_000_000
+const BlockGasTarget = BlockGasLimit / 2
+const BaseFeeMaxChangeDenom = 8 // 12.5%
+const InitialBaseFee = 100e6
+const MinimumBaseFee = 100
+const PackingEfficiencyNum = 4
+const PackingEfficiencyDenom = 5
+
+// Actor consts
+// TODO: Pull from actors when its made not private
+var MinDealDuration = abi.ChainEpoch(180 * builtin.EpochsInDay)

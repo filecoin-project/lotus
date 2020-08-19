@@ -7,7 +7,6 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"time"
 
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
@@ -18,11 +17,11 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/specs-actors/actors/runtime"
-
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/gen"
 	genesis2 "github.com/filecoin-project/lotus/chain/gen/genesis"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/genesis"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -30,8 +29,8 @@ import (
 
 var glog = logging.Logger("genesis")
 
-func MakeGenesisMem(out io.Writer, template genesis.Template) func(bs dtypes.ChainBlockstore, syscalls runtime.Syscalls) modules.Genesis {
-	return func(bs dtypes.ChainBlockstore, syscalls runtime.Syscalls) modules.Genesis {
+func MakeGenesisMem(out io.Writer, template genesis.Template) func(bs dtypes.ChainBlockstore, syscalls vm.SyscallBuilder) modules.Genesis {
+	return func(bs dtypes.ChainBlockstore, syscalls vm.SyscallBuilder) modules.Genesis {
 		return func() (*types.BlockHeader, error) {
 			glog.Warn("Generating new random genesis block, note that this SHOULD NOT happen unless you are setting up new network")
 			b, err := genesis2.MakeGenesisBlock(context.TODO(), bs, syscalls, template)
@@ -51,8 +50,8 @@ func MakeGenesisMem(out io.Writer, template genesis.Template) func(bs dtypes.Cha
 	}
 }
 
-func MakeGenesis(outFile, genesisTemplate string) func(bs dtypes.ChainBlockstore, syscalls runtime.Syscalls) modules.Genesis {
-	return func(bs dtypes.ChainBlockstore, syscalls runtime.Syscalls) modules.Genesis {
+func MakeGenesis(outFile, genesisTemplate string) func(bs dtypes.ChainBlockstore, syscalls vm.SyscallBuilder) modules.Genesis {
+	return func(bs dtypes.ChainBlockstore, syscalls vm.SyscallBuilder) modules.Genesis {
 		return func() (*types.BlockHeader, error) {
 			glog.Warn("Generating new random genesis block, note that this SHOULD NOT happen unless you are setting up new network")
 			genesisTemplate, err := homedir.Expand(genesisTemplate)
@@ -71,7 +70,7 @@ func MakeGenesis(outFile, genesisTemplate string) func(bs dtypes.ChainBlockstore
 			}
 
 			if template.Timestamp == 0 {
-				template.Timestamp = uint64(time.Now().Unix())
+				template.Timestamp = uint64(build.Clock.Now().Unix())
 			}
 
 			b, err := genesis2.MakeGenesisBlock(context.TODO(), bs, syscalls, template)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"math"
 	"sync"
 	"time"
 
@@ -19,6 +20,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
+	cw_util "github.com/filecoin-project/lotus/cmd/lotus-chainwatch/util"
 	"github.com/filecoin-project/lotus/lib/parmap"
 )
 
@@ -27,12 +29,16 @@ var log = logging.Logger("processor")
 type Processor struct {
 	db *sql.DB
 
-	node api.FullNode
+	node     api.FullNode
+	ctxStore *cw_util.APIIpldStore
 
 	genesisTs *types.TipSet
 
 	// number of blocks processed at a time
 	batch int
+
+	// process communication channels
+	sectorDealEvents chan *SectorDealEvent
 }
 
 type ActorTips map[types.TipSetKey][]actorInfo
@@ -50,20 +56,23 @@ type actorInfo struct {
 	state string
 }
 
-func NewProcessor(db *sql.DB, node api.FullNode, batch int) *Processor {
+func NewProcessor(ctx context.Context, db *sql.DB, node api.FullNode, batch int) *Processor {
+	ctxStore := cw_util.NewAPIIpldStore(ctx, node)
 	return &Processor{
-		db:    db,
-		node:  node,
-		batch: batch,
+		db:       db,
+		ctxStore: ctxStore,
+		node:     node,
+		batch:    batch,
 	}
 }
 
 func (p *Processor) setupSchemas() error {
-	if err := p.setupMarket(); err != nil {
+	// maintain order, subsequent calls create tables with foreign keys.
+	if err := p.setupMiners(); err != nil {
 		return err
 	}
 
-	if err := p.setupMiners(); err != nil {
+	if err := p.setupMarket(); err != nil {
 		return err
 	}
 
@@ -102,27 +111,34 @@ func (p *Processor) Start(ctx context.Context) {
 		for {
 			select {
 			case <-ctx.Done():
-				log.Debugw("Stopping Processor...")
+				log.Info("Stopping Processor...")
 				return
 			default:
+				loopStart := time.Now()
 				toProcess, err := p.unprocessedBlocks(ctx, p.batch)
 				if err != nil {
 					log.Fatalw("Failed to get unprocessed blocks", "error", err)
 				}
 
 				if len(toProcess) == 0 {
-					log.Debugw("No unprocessed blocks. Wait then try again...")
-					time.Sleep(time.Second * 10)
+					log.Info("No unprocessed blocks. Wait then try again...")
+					time.Sleep(time.Second * 30)
 					continue
 				}
 
 				// TODO special case genesis state handling here to avoid all the special cases that will be needed for it else where
 				// before doing "normal" processing.
 
-				actorChanges, err := p.collectActorChanges(ctx, toProcess)
+				actorChanges, nullRounds, err := p.collectActorChanges(ctx, toProcess)
 				if err != nil {
 					log.Fatalw("Failed to collect actor changes", "error", err)
 				}
+				log.Infow("Collected Actor Changes",
+					"MarketChanges", len(actorChanges[builtin.StorageMarketActorCodeID]),
+					"MinerChanges", len(actorChanges[builtin.StorageMinerActorCodeID]),
+					"RewardChanges", len(actorChanges[builtin.RewardActorCodeID]),
+					"AccountChanges", len(actorChanges[builtin.AccountActorCodeID]),
+					"nullRounds", len(nullRounds))
 
 				grp, ctx := errgroup.WithContext(ctx)
 
@@ -130,6 +146,7 @@ func (p *Processor) Start(ctx context.Context) {
 					if err := p.HandleMarketChanges(ctx, actorChanges[builtin.StorageMarketActorCodeID]); err != nil {
 						return xerrors.Errorf("Failed to handle market changes: %w", err)
 					}
+					log.Info("Processed Market Changes")
 					return nil
 				})
 
@@ -137,13 +154,15 @@ func (p *Processor) Start(ctx context.Context) {
 					if err := p.HandleMinerChanges(ctx, actorChanges[builtin.StorageMinerActorCodeID]); err != nil {
 						return xerrors.Errorf("Failed to handle miner changes: %w", err)
 					}
+					log.Info("Processed Miner Changes")
 					return nil
 				})
 
 				grp.Go(func() error {
-					if err := p.HandleRewardChanges(ctx, actorChanges[builtin.RewardActorCodeID]); err != nil {
+					if err := p.HandleRewardChanges(ctx, actorChanges[builtin.RewardActorCodeID], nullRounds); err != nil {
 						return xerrors.Errorf("Failed to handle reward changes: %w", err)
 					}
+					log.Info("Processed Reward Changes")
 					return nil
 				})
 
@@ -151,6 +170,7 @@ func (p *Processor) Start(ctx context.Context) {
 					if err := p.HandleMessageChanges(ctx, toProcess); err != nil {
 						return xerrors.Errorf("Failed to handle message changes: %w", err)
 					}
+					log.Info("Processed Message Changes")
 					return nil
 				})
 
@@ -158,6 +178,7 @@ func (p *Processor) Start(ctx context.Context) {
 					if err := p.HandleCommonActorsChanges(ctx, actorChanges); err != nil {
 						return xerrors.Errorf("Failed to handle common actor changes: %w", err)
 					}
+					log.Info("Processed CommonActor Changes")
 					return nil
 				})
 
@@ -173,6 +194,7 @@ func (p *Processor) Start(ctx context.Context) {
 				if err := p.refreshViews(); err != nil {
 					log.Errorw("Failed to refresh views", "error", err)
 				}
+				log.Infow("Processed Batch", "duration", time.Since(loopStart).String())
 			}
 		}
 	}()
@@ -184,14 +206,10 @@ func (p *Processor) refreshViews() error {
 		return err
 	}
 
-	if _, err := p.db.Exec(`refresh materialized view miner_sectors_view`); err != nil {
-		return err
-	}
-
 	return nil
 }
 
-func (p *Processor) collectActorChanges(ctx context.Context, toProcess map[cid.Cid]*types.BlockHeader) (map[cid.Cid]ActorTips, error) {
+func (p *Processor) collectActorChanges(ctx context.Context, toProcess map[cid.Cid]*types.BlockHeader) (map[cid.Cid]ActorTips, []types.TipSetKey, error) {
 	start := time.Now()
 	defer func() {
 		log.Debugw("Collected Actor Changes", "duration", time.Since(start).String())
@@ -204,6 +222,9 @@ func (p *Processor) collectActorChanges(ctx context.Context, toProcess map[cid.C
 	var changes map[string]types.Actor
 	actorsSeen := map[cid.Cid]struct{}{}
 
+	var nullRounds []types.TipSetKey
+	var nullBlkMu sync.Mutex
+
 	// collect all actor state that has changes between block headers
 	paDone := 0
 	parmap.Par(50, parmap.MapArr(toProcess), func(bh *types.BlockHeader) {
@@ -215,6 +236,12 @@ func (p *Processor) collectActorChanges(ctx context.Context, toProcess map[cid.C
 		pts, err := p.node.ChainGetTipSet(ctx, types.NewTipSetKey(bh.Parents...))
 		if err != nil {
 			panic(err)
+		}
+
+		if pts.ParentState().Equals(bh.ParentStateRoot) {
+			nullBlkMu.Lock()
+			nullRounds = append(nullRounds, pts.Key())
+			nullBlkMu.Unlock()
 		}
 
 		// collect all actors that had state changes between the blockheader parent-state and its grandparent-state.
@@ -230,14 +257,23 @@ func (p *Processor) collectActorChanges(ctx context.Context, toProcess map[cid.C
 			act := act
 			a := a
 
+			// ignore actors that were deleted.
+			has, err := p.node.ChainHasObj(ctx, act.Head)
+			if err != nil {
+				log.Fatal(err)
+			}
+			if !has {
+				continue
+			}
+
 			addr, err := address.NewFromString(a)
 			if err != nil {
-				panic(err)
+				log.Fatal(err.Error())
 			}
 
 			ast, err := p.node.StateReadState(ctx, addr, pts.Key())
 			if err != nil {
-				panic(err)
+				log.Fatal(err.Error())
 			}
 
 			// TODO look here for an empty state, maybe thats a sign the actor was deleted?
@@ -267,7 +303,7 @@ func (p *Processor) collectActorChanges(ctx context.Context, toProcess map[cid.C
 			outMu.Unlock()
 		}
 	})
-	return out, nil
+	return out, nullRounds, nil
 }
 
 func (p *Processor) unprocessedBlocks(ctx context.Context, batch int) (map[cid.Cid]*types.BlockHeader, error) {
@@ -291,6 +327,8 @@ where rnk <= $1
 	}
 	out := map[cid.Cid]*types.BlockHeader{}
 
+	minBlock := abi.ChainEpoch(math.MaxInt64)
+	maxBlock := abi.ChainEpoch(0)
 	// TODO consider parallel execution here for getting the blocks from the api as is done in fetchMessages()
 	for rows.Next() {
 		if rows.Err() != nil {
@@ -298,26 +336,38 @@ where rnk <= $1
 		}
 		var c string
 		if err := rows.Scan(&c); err != nil {
-			return nil, xerrors.Errorf("Failed to scan unprocessed blocks: %w", err)
+			log.Errorf("Failed to scan unprocessed blocks: %s", err.Error())
+			continue
 		}
 		ci, err := cid.Parse(c)
 		if err != nil {
-			return nil, xerrors.Errorf("Failed to parse unprocessed blocks: %w", err)
+			log.Errorf("Failed to parse unprocessed blocks: %s", err.Error())
+			continue
 		}
 		bh, err := p.node.ChainGetBlock(ctx, ci)
 		if err != nil {
 			// this is a pretty serious issue.
-			return nil, xerrors.Errorf("Failed to get block header %s: %w", ci.String(), err)
+			log.Errorf("Failed to get block header %s: %s", ci.String(), err.Error())
+			continue
 		}
 		out[ci] = bh
+		if bh.Height < minBlock {
+			minBlock = bh.Height
+		}
+		if bh.Height > maxBlock {
+			maxBlock = bh.Height
+		}
 	}
+	log.Infow("Gathered Blocks to Process", "start", minBlock, "end", maxBlock)
 	return out, rows.Close()
 }
 
 func (p *Processor) markBlocksProcessed(ctx context.Context, processed map[cid.Cid]*types.BlockHeader) error {
 	start := time.Now()
+	processedHeight := abi.ChainEpoch(0)
 	defer func() {
 		log.Debugw("Marked blocks as Processed", "duration", time.Since(start).String())
+		log.Infow("Processed Blocks", "height", processedHeight)
 	}()
 	tx, err := p.db.Begin()
 	if err != nil {
@@ -330,7 +380,10 @@ func (p *Processor) markBlocksProcessed(ctx context.Context, processed map[cid.C
 		return err
 	}
 
-	for c := range processed {
+	for c, bh := range processed {
+		if bh.Height > processedHeight {
+			processedHeight = bh.Height
+		}
 		if _, err := stmt.Exec(processedAt, c.String()); err != nil {
 			return err
 		}

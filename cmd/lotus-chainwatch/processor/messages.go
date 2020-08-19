@@ -28,10 +28,12 @@ create table if not exists messages
 			primary key,
 	"from" text not null,
 	"to" text not null,
+	size_bytes bigint not null,
 	nonce bigint not null,
 	value text not null,
-	gasprice bigint not null,
-	gaslimit bigint not null,
+	gas_fee_cap text not null,
+	gas_premium text not null,
+	gas_limit bigint not null,
 	method bigint,
 	params bytea
 );
@@ -74,7 +76,7 @@ create table if not exists receipts
 	state text not null,
 	idx int not null,
 	exit int not null,
-	gas_used int not null,
+	gas_used bigint not null,
 	return bytea,
 	constraint receipts_pk
 		primary key (msg, state)
@@ -219,19 +221,26 @@ create temp table msgs (like messages excluding constraints) on commit drop;
 		return xerrors.Errorf("prep temp: %w", err)
 	}
 
-	stmt, err := tx.Prepare(`copy msgs (cid, "from", "to", nonce, "value", gasprice, gaslimit, method, params) from stdin `)
+	stmt, err := tx.Prepare(`copy msgs (cid, "from", "to", size_bytes, nonce, "value", gas_premium, gas_fee_cap, gas_limit, method, params) from stdin `)
 	if err != nil {
 		return err
 	}
 
 	for c, m := range msgs {
+		var msgBytes int
+		if b, err := m.Serialize(); err == nil {
+			msgBytes = len(b)
+		}
+
 		if _, err := stmt.Exec(
 			c.String(),
 			m.From.String(),
 			m.To.String(),
+			msgBytes,
 			m.Nonce,
 			m.Value.String(),
-			m.GasPrice.String(),
+			m.GasPremium.String(),
+			m.GasFeeCap.String(),
 			m.GasLimit,
 			m.Method,
 			m.Params,

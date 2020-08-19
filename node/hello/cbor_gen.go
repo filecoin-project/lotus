@@ -67,6 +67,8 @@ func (t *HelloMessage) MarshalCBOR(w io.Writer) error {
 }
 
 func (t *HelloMessage) UnmarshalCBOR(r io.Reader) error {
+	*t = HelloMessage{}
+
 	br := cbg.GetPeeker(r)
 	scratch := make([]byte, 8)
 
@@ -197,6 +199,8 @@ func (t *LatencyMessage) MarshalCBOR(w io.Writer) error {
 }
 
 func (t *LatencyMessage) UnmarshalCBOR(r io.Reader) error {
+	*t = LatencyMessage{}
+
 	br := cbg.GetPeeker(r)
 	scratch := make([]byte, 8)
 

@@ -8,10 +8,12 @@ import (
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
+
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 type rewardActorInfo struct {
@@ -51,34 +53,15 @@ create table if not exists chain_power
 			primary key,
 	baseline_power text not null
 );
-
-create materialized view if not exists top_miners_by_base_reward as
-	with total_rewards_by_miner as (
-		select
-			b.miner,
-			sum(bbr.base_block_reward) as total_reward
-		from blocks b
-		inner join base_block_rewards bbr on b.parentstateroot = bbr.state_root
-		group by 1
-	) select
-		rank() over (order by total_reward desc),
-		miner,
-		total_reward
-	from total_rewards_by_miner
-	group by 2, 3;
-
-create index if not exists top_miners_by_base_reward_miner_index
-	on top_miners_by_base_reward (miner);
 `); err != nil {
 		return err
 	}
 
 	return tx.Commit()
-
 }
 
-func (p *Processor) HandleRewardChanges(ctx context.Context, rewardTips ActorTips) error {
-	rewardChanges, err := p.processRewardActors(ctx, rewardTips)
+func (p *Processor) HandleRewardChanges(ctx context.Context, rewardTips ActorTips, nullRounds []types.TipSetKey) error {
+	rewardChanges, err := p.processRewardActors(ctx, rewardTips, nullRounds)
 	if err != nil {
 		log.Fatalw("Failed to process reward actors", "error", err)
 	}
@@ -90,7 +73,7 @@ func (p *Processor) HandleRewardChanges(ctx context.Context, rewardTips ActorTip
 	return nil
 }
 
-func (p *Processor) processRewardActors(ctx context.Context, rewardTips ActorTips) ([]rewardActorInfo, error) {
+func (p *Processor) processRewardActors(ctx context.Context, rewardTips ActorTips, nullRounds []types.TipSetKey) ([]rewardActorInfo, error) {
 	start := time.Now()
 	defer func() {
 		log.Debugw("Processed Reward Actors", "duration", time.Since(start).String())
@@ -118,11 +101,42 @@ func (p *Processor) processRewardActors(ctx context.Context, rewardTips ActorTip
 				return nil, xerrors.Errorf("unmarshal state (@ %s): %w", rw.common.stateroot.String(), err)
 			}
 
-			rw.baseBlockReward = rewardActorState.LastPerEpochReward
-			rw.baselinePower = rewardActorState.BaselinePower
+			rw.baseBlockReward = rewardActorState.ThisEpochReward
+			rw.baselinePower = rewardActorState.ThisEpochBaselinePower
 			out = append(out, rw)
 		}
 	}
+	for _, tsKey := range nullRounds {
+		var rw rewardActorInfo
+		tipset, err := p.node.ChainGetTipSet(ctx, tsKey)
+		if err != nil {
+			return nil, err
+		}
+		rw.common.tsKey = tipset.Key()
+		rw.common.height = tipset.Height()
+		rw.common.stateroot = tipset.ParentState()
+		rw.common.parentTsKey = tipset.Parents()
+		// get reward actor states at each tipset once for all updates
+		rewardActor, err := p.node.StateGetActor(ctx, builtin.RewardActorAddr, tsKey)
+		if err != nil {
+			return nil, err
+		}
+
+		rewardStateRaw, err := p.node.ChainReadObj(ctx, rewardActor.Head)
+		if err != nil {
+			return nil, err
+		}
+
+		var rewardActorState reward.State
+		if err := rewardActorState.UnmarshalCBOR(bytes.NewReader(rewardStateRaw)); err != nil {
+			return nil, err
+		}
+
+		rw.baseBlockReward = rewardActorState.ThisEpochReward
+		rw.baselinePower = rewardActorState.ThisEpochBaselinePower
+		out = append(out, rw)
+	}
+
 	return out, nil
 }
 

@@ -16,4 +16,4 @@ MemoryMax=10G
 LimitNOFILE=8192:10240
 
 [Install]
-WantedBy=multiuser.target
+WantedBy=multi-user.target

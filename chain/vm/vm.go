@@ -7,11 +7,13 @@ import (
 	"reflect"
 	"time"
 
+	bstore "github.com/filecoin-project/lotus/lib/blockstore"
+
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 
 	block "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
 	mh "github.com/multiformats/go-multihash"
@@ -20,21 +22,21 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
-	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
-	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/lib/bufbstore"
 )
 
 var log = logging.Logger("vm")
+var actorLog = logging.Logger("actors")
 var gasOnActorExec = newGasCharge("OnActorExec", 0, 0)
 
 // ResolveToKeyAddr returns the public key type of address (`BLS`/`SECP256K1`) of an account actor identified by `addr`.
@@ -69,12 +71,12 @@ type gasChargingBlocks struct {
 }
 
 func (bs *gasChargingBlocks) Get(c cid.Cid) (block.Block, error) {
-	bs.chargeGas(newGasCharge("OnIpldGetStart", 0, 0))
+	bs.chargeGas(bs.pricelist.OnIpldGet())
 	blk, err := bs.under.Get(c)
 	if err != nil {
 		return nil, aerrors.Escalate(err, "failed to get block from blockstore")
 	}
-	bs.chargeGas(bs.pricelist.OnIpldGet(len(blk.RawData())))
+	bs.chargeGas(newGasCharge("OnIpldGetEnd", 0, 0).WithExtra(len(blk.RawData())))
 	bs.chargeGas(gasOnActorExec)
 
 	return blk, nil
@@ -114,7 +116,7 @@ func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, origin addres
 		Atlas:  vm.cst.Atlas,
 	}
 	rt.sys = pricedSyscalls{
-		under:     vm.Syscalls,
+		under:     vm.Syscalls(ctx, vm.cstate, rt.cst),
 		chargeGas: rt.chargeGasFunc(1),
 		pl:        rt.pricelist,
 	}
@@ -130,46 +132,72 @@ func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, origin addres
 	return rt
 }
 
-type VM struct {
-	cstate      *state.StateTree
-	base        cid.Cid
-	cst         *cbor.BasicIpldStore
-	buf         *bufbstore.BufferedBS
-	blockHeight abi.ChainEpoch
-	inv         *Invoker
-	rand        Rand
-
-	Syscalls runtime.Syscalls
+type UnsafeVM struct {
+	VM *VM
 }
 
-func NewVM(base cid.Cid, height abi.ChainEpoch, r Rand, cbs blockstore.Blockstore, syscalls runtime.Syscalls) (*VM, error) {
-	buf := bufbstore.NewBufferedBstore(cbs)
+func (vm *UnsafeVM) MakeRuntime(ctx context.Context, msg *types.Message, origin address.Address, originNonce uint64, usedGas int64, nac uint64) *Runtime {
+	return vm.VM.makeRuntime(ctx, msg, origin, originNonce, usedGas, nac)
+}
+
+type CircSupplyCalculator func(context.Context, abi.ChainEpoch, *state.StateTree) (abi.TokenAmount, error)
+
+type VM struct {
+	cstate         *state.StateTree
+	base           cid.Cid
+	cst            *cbor.BasicIpldStore
+	buf            *bufbstore.BufferedBS
+	blockHeight    abi.ChainEpoch
+	inv            *Invoker
+	rand           Rand
+	circSupplyCalc CircSupplyCalculator
+	baseFee        abi.TokenAmount
+
+	Syscalls SyscallBuilder
+}
+
+type VMOpts struct {
+	StateBase      cid.Cid
+	Epoch          abi.ChainEpoch
+	Rand           Rand
+	Bstore         bstore.Blockstore
+	Syscalls       SyscallBuilder
+	CircSupplyCalc CircSupplyCalculator
+	BaseFee        abi.TokenAmount
+}
+
+func NewVM(opts *VMOpts) (*VM, error) {
+	buf := bufbstore.NewBufferedBstore(opts.Bstore)
 	cst := cbor.NewCborStore(buf)
-	state, err := state.LoadStateTree(cst, base)
+	state, err := state.LoadStateTree(cst, opts.StateBase)
 	if err != nil {
 		return nil, err
 	}
 
 	return &VM{
-		cstate:      state,
-		base:        base,
-		cst:         cst,
-		buf:         buf,
-		blockHeight: height,
-		inv:         NewInvoker(),
-		rand:        r, // TODO: Probably should be a syscall
-		Syscalls:    syscalls,
+		cstate:         state,
+		base:           opts.StateBase,
+		cst:            cst,
+		buf:            buf,
+		blockHeight:    opts.Epoch,
+		inv:            NewInvoker(),
+		rand:           opts.Rand, // TODO: Probably should be a syscall
+		circSupplyCalc: opts.CircSupplyCalc,
+		Syscalls:       opts.Syscalls,
+		baseFee:        opts.BaseFee,
 	}, nil
 }
 
 type Rand interface {
-	GetRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
+	GetChainRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
+	GetBeaconRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
 }
 
 type ApplyRet struct {
 	types.MessageReceipt
 	ActorErr       aerrors.ActorError
 	Penalty        types.BigInt
+	MinerTip       types.BigInt
 	ExecutionTrace types.ExecutionTrace
 	Duration       time.Duration
 }
@@ -201,7 +229,6 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 			parent.lastGasCharge = rt.lastGasCharge
 		}()
 	}
-
 	if gasCharge != nil {
 		if err := rt.chargeGasSafe(*gasCharge); err != nil {
 			// this should never happen
@@ -210,13 +237,10 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 	}
 
 	ret, err := func() ([]byte, aerrors.ActorError) {
-		if aerr := rt.chargeGasSafe(rt.Pricelist().OnMethodInvocation(msg.Value, msg.Method)); aerr != nil {
-			return nil, aerrors.Wrap(aerr, "not enough gas for method invocation")
-		}
-
+		_ = rt.chargeGasSafe(newGasCharge("OnGetActor", 0, 0))
 		toActor, err := st.GetActor(msg.To)
 		if err != nil {
-			if xerrors.Is(err, init_.ErrAddressNotFound) {
+			if xerrors.Is(err, types.ErrActorNotFound) {
 				a, err := TryCreateAccountActor(rt, msg.To)
 				if err != nil {
 					return nil, aerrors.Wrapf(err, "could not create account")
@@ -226,6 +250,11 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 				return nil, aerrors.Escalate(err, "getting actor")
 			}
 		}
+
+		if aerr := rt.chargeGasSafe(rt.Pricelist().OnMethodInvocation(msg.Value, msg.Method)); aerr != nil {
+			return nil, aerrors.Wrap(aerr, "not enough gas for method invocation")
+		}
+		defer rt.chargeGasSafe(newGasCharge("OnMethodInvocationDone", 0, 0))
 
 		if types.BigCmp(msg.Value, types.NewInt(0)) != 0 {
 			if err := vm.transfer(msg.From, msg.To, msg.Value); err != nil {
@@ -237,7 +266,6 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 			var ret []byte
 			_ = rt.chargeGasSafe(gasOnActorExec)
 			ret, err := vm.Invoke(toActor, rt, msg.Method, msg.Params)
-			_ = rt.chargeGasSafe(newGasCharge("OnActorExecDone", 0, 0))
 			return ret, err
 		}
 		return nil, nil
@@ -265,8 +293,12 @@ func checkMessage(msg *types.Message) error {
 		return xerrors.Errorf("message has negative gas limit")
 	}
 
-	if msg.GasPrice == types.EmptyInt {
-		return xerrors.Errorf("message gas no gas price set")
+	if msg.GasFeeCap == types.EmptyInt {
+		return xerrors.Errorf("message fee cap not set")
+	}
+
+	if msg.GasPremium == types.EmptyInt {
+		return xerrors.Errorf("message gas premium not set")
 	}
 
 	if msg.Value == types.EmptyInt {
@@ -277,7 +309,7 @@ func checkMessage(msg *types.Message) error {
 }
 
 func (vm *VM) ApplyImplicitMessage(ctx context.Context, msg *types.Message) (*ApplyRet, error) {
-	start := time.Now()
+	start := build.Clock.Now()
 	ret, actorErr, rt := vm.send(ctx, msg, nil, nil, start)
 	rt.finilizeGasTracing()
 	return &ApplyRet{
@@ -289,12 +321,13 @@ func (vm *VM) ApplyImplicitMessage(ctx context.Context, msg *types.Message) (*Ap
 		ActorErr:       actorErr,
 		ExecutionTrace: rt.executionTrace,
 		Penalty:        types.NewInt(0),
+		MinerTip:       types.NewInt(0),
 		Duration:       time.Since(start),
 	}, actorErr
 }
 
 func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet, error) {
-	start := time.Now()
+	start := build.Clock.Now()
 	ctx, span := trace.StartSpan(ctx, "vm.ApplyMessage")
 	defer span.End()
 	msg := cmsg.VMMessage()
@@ -321,14 +354,15 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 				ExitCode: exitcode.SysErrOutOfGas,
 				GasUsed:  0,
 			},
-			Penalty:  types.BigMul(msg.GasPrice, types.NewInt(uint64(msgGasCost))),
+			Penalty:  types.BigMul(vm.baseFee, abi.NewTokenAmount(msgGasCost)),
 			Duration: time.Since(start),
+			MinerTip: big.Zero(),
 		}, nil
 	}
 
 	st := vm.cstate
 
-	minerPenaltyAmount := types.BigMul(msg.GasPrice, types.NewInt(uint64(msgGasCost)))
+	minerPenaltyAmount := types.BigMul(vm.baseFee, abi.NewTokenAmount(msg.GasLimit))
 	fromActor, err := st.GetActor(msg.From)
 	// this should never happen, but is currently still exercised by some tests
 	if err != nil {
@@ -338,8 +372,10 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 					ExitCode: exitcode.SysErrSenderInvalid,
 					GasUsed:  0,
 				},
+				ActorErr: aerrors.Newf(exitcode.SysErrSenderInvalid, "actor not found: %s", msg.From),
 				Penalty:  minerPenaltyAmount,
 				Duration: time.Since(start),
+				MinerTip: big.Zero(),
 			}, nil
 		}
 		return nil, xerrors.Errorf("failed to look up from actor: %w", err)
@@ -352,33 +388,39 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 				ExitCode: exitcode.SysErrSenderInvalid,
 				GasUsed:  0,
 			},
+			ActorErr: aerrors.Newf(exitcode.SysErrSenderInvalid, "send from not account actor: %s", fromActor.Code),
 			Penalty:  minerPenaltyAmount,
 			Duration: time.Since(start),
+			MinerTip: big.Zero(),
 		}, nil
 	}
 
-	// TODO: We should remove this, we might punish miners for no fault of their own
 	if msg.Nonce != fromActor.Nonce {
 		return &ApplyRet{
 			MessageReceipt: types.MessageReceipt{
 				ExitCode: exitcode.SysErrSenderStateInvalid,
 				GasUsed:  0,
 			},
+			ActorErr: aerrors.Newf(exitcode.SysErrSenderStateInvalid,
+				"actor nonce invalid: msg:%d != state:%d", msg.Nonce, fromActor.Nonce),
 			Penalty:  minerPenaltyAmount,
 			Duration: time.Since(start),
+			MinerTip: big.Zero(),
 		}, nil
 	}
 
-	gascost := types.BigMul(types.NewInt(uint64(msg.GasLimit)), msg.GasPrice)
-	totalCost := types.BigAdd(gascost, msg.Value)
-	if fromActor.Balance.LessThan(totalCost) {
+	gascost := types.BigMul(types.NewInt(uint64(msg.GasLimit)), msg.GasFeeCap)
+	if fromActor.Balance.LessThan(gascost) {
 		return &ApplyRet{
 			MessageReceipt: types.MessageReceipt{
 				ExitCode: exitcode.SysErrSenderStateInvalid,
 				GasUsed:  0,
 			},
+			ActorErr: aerrors.Newf(exitcode.SysErrSenderStateInvalid,
+				"actor balance less than needed: %s < %s", types.FIL(fromActor.Balance), types.FIL(gascost)),
 			Penalty:  minerPenaltyAmount,
 			Duration: time.Since(start),
+			MinerTip: big.Zero(),
 		}, nil
 	}
 
@@ -431,26 +473,37 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 			return nil, xerrors.Errorf("revert state failed: %w", err)
 		}
 	}
+
+	rt.finilizeGasTracing()
+
 	gasUsed = rt.gasUsed
 	if gasUsed < 0 {
 		gasUsed = 0
 	}
-	// refund unused gas
-	refund := types.BigMul(types.NewInt(uint64(msg.GasLimit-gasUsed)), msg.GasPrice)
-	if err := vm.transferFromGasHolder(msg.From, gasHolder, refund); err != nil {
-		return nil, xerrors.Errorf("failed to refund gas")
+	gasOutputs := ComputeGasOutputs(gasUsed, msg.GasLimit, vm.baseFee, msg.GasFeeCap, msg.GasPremium)
+
+	if err := vm.transferFromGasHolder(builtin.BurntFundsActorAddr, gasHolder,
+		gasOutputs.BaseFeeBurn); err != nil {
+		return nil, xerrors.Errorf("failed to burn base fee: %w", err)
 	}
 
-	gasReward := types.BigMul(msg.GasPrice, types.NewInt(uint64(gasUsed)))
-	if err := vm.transferFromGasHolder(builtin.RewardActorAddr, gasHolder, gasReward); err != nil {
+	if err := vm.transferFromGasHolder(builtin.RewardActorAddr, gasHolder, gasOutputs.MinerTip); err != nil {
 		return nil, xerrors.Errorf("failed to give miner gas reward: %w", err)
+	}
+
+	if err := vm.transferFromGasHolder(builtin.BurntFundsActorAddr, gasHolder,
+		gasOutputs.OverEstimationBurn); err != nil {
+		return nil, xerrors.Errorf("failed to burn overestimation fee: %w", err)
+	}
+
+	// refund unused gas
+	if err := vm.transferFromGasHolder(msg.From, gasHolder, gasOutputs.Refund); err != nil {
+		return nil, xerrors.Errorf("failed to refund gas: %w", err)
 	}
 
 	if types.BigCmp(types.NewInt(0), gasHolder.Balance) != 0 {
 		return nil, xerrors.Errorf("gas handling math is wrong")
 	}
-
-	rt.finilizeGasTracing()
 
 	return &ApplyRet{
 		MessageReceipt: types.MessageReceipt{
@@ -460,7 +513,8 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 		},
 		ActorErr:       actorErr,
 		ExecutionTrace: rt.executionTrace,
-		Penalty:        types.NewInt(0),
+		Penalty:        gasOutputs.MinerPenalty,
+		MinerTip:       gasOutputs.MinerTip,
 		Duration:       time.Since(start),
 	}, nil
 }
@@ -524,12 +578,19 @@ func (vm *VM) MutateState(ctx context.Context, addr address.Address, fn interfac
 	return nil
 }
 
-func linksForObj(blk block.Block) ([]cid.Cid, error) {
+func linksForObj(blk block.Block, cb func(cid.Cid)) error {
 	switch blk.Cid().Prefix().Codec {
 	case cid.DagCBOR:
-		return cbg.ScanForLinks(bytes.NewReader(blk.RawData()))
+		err := cbg.ScanForLinks(bytes.NewReader(blk.RawData()), cb)
+		if err != nil {
+			return xerrors.Errorf("cbg.ScanForLinks: %w", err)
+		}
+		return nil
+	case cid.Raw:
+		// We implicitly have all children of raw blocks.
+		return nil
 	default:
-		return nil, xerrors.Errorf("vm flush copy method only supports dag cbor")
+		return xerrors.Errorf("vm flush copy method only supports dag cbor")
 	}
 }
 
@@ -547,7 +608,7 @@ func Copy(from, to blockstore.Blockstore, root cid.Cid) error {
 	}
 
 	if err := copyRec(from, to, root, batchCp); err != nil {
-		return err
+		return xerrors.Errorf("copyRec: %w", err)
 	}
 
 	if len(batch) > 0 {
@@ -570,31 +631,50 @@ func copyRec(from, to blockstore.Blockstore, root cid.Cid, cp func(block.Block) 
 		return xerrors.Errorf("get %s failed: %w", root, err)
 	}
 
-	links, err := linksForObj(blk)
-	if err != nil {
-		return err
-	}
-
-	for _, link := range links {
-		if link.Prefix().MhType == mh.IDENTITY || link.Prefix().MhType == uint64(commcid.FC_SEALED_V1) || link.Prefix().MhType == uint64(commcid.FC_UNSEALED_V1) {
-			continue
+	var lerr error
+	err = linksForObj(blk, func(link cid.Cid) {
+		if lerr != nil {
+			// Theres no erorr return on linksForObj callback :(
+			return
 		}
 
-		has, err := to.Has(link)
-		if err != nil {
-			return err
+		prefix := link.Prefix()
+		if prefix.Codec == cid.FilCommitmentSealed || prefix.Codec == cid.FilCommitmentUnsealed {
+			return
 		}
-		if has {
-			continue
+
+		// We always have blocks inlined into CIDs, but we may not have their children.
+		if prefix.MhType == mh.IDENTITY {
+			// Unless the inlined block has no children.
+			if prefix.Codec == cid.Raw {
+				return
+			}
+		} else {
+			// If we have an object, we already have its children, skip the object.
+			has, err := to.Has(link)
+			if err != nil {
+				lerr = xerrors.Errorf("has: %w", err)
+				return
+			}
+			if has {
+				return
+			}
 		}
 
 		if err := copyRec(from, to, link, cp); err != nil {
-			return err
+			lerr = err
+			return
 		}
+	})
+	if err != nil {
+		return xerrors.Errorf("linksForObj (%x): %w", blk.RawData(), err)
+	}
+	if lerr != nil {
+		return lerr
 	}
 
 	if err := cp(blk); err != nil {
-		return err
+		return xerrors.Errorf("copy: %w", err)
 	}
 	return nil
 }
@@ -632,6 +712,10 @@ func (vm *VM) Invoke(act *types.Actor, rt *Runtime, method abi.MethodNum, params
 
 func (vm *VM) SetInvoker(i *Invoker) {
 	vm.inv = i
+}
+
+func (vm *VM) GetCircSupply(ctx context.Context) (abi.TokenAmount, error) {
+	return vm.circSupplyCalc(ctx, vm.blockHeight, vm.cstate)
 }
 
 func (vm *VM) incrementNonce(addr address.Address) error {
@@ -675,7 +759,7 @@ func (vm *VM) transfer(from, to address.Address, amt types.BigInt) aerrors.Actor
 	}
 
 	if err := deductFunds(f, amt); err != nil {
-		return aerrors.Newf(exitcode.SysErrInsufficientFunds, "transfer failed when deducting funds: %s", err)
+		return aerrors.Newf(exitcode.SysErrInsufficientFunds, "transfer failed when deducting funds (%s): %s", types.FIL(amt), err)
 	}
 	depositFunds(t, amt)
 
@@ -707,6 +791,10 @@ func (vm *VM) transferToGasHolder(addr address.Address, gasHolder *types.Actor, 
 func (vm *VM) transferFromGasHolder(addr address.Address, gasHolder *types.Actor, amt types.BigInt) error {
 	if amt.LessThan(types.NewInt(0)) {
 		return xerrors.Errorf("attempted to transfer negative value from gas holder")
+	}
+
+	if amt.Equals(big.NewInt(0)) {
+		return nil
 	}
 
 	return vm.cstate.MutateActor(addr, func(a *types.Actor) error {

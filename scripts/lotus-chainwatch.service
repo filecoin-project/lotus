@@ -9,7 +9,7 @@ Environment=GOLOG_LOG_FMT="json"
 Environment=LOTUS_DB=""
 Environment=LOTUS_PATH="%h/.lotus"
 EnvironmentFile=-/etc/lotus/chainwatch.env
-ExecStart=/usr/local/bin/chainwatch run
+ExecStart=/usr/local/bin/lotus-chainwatch run
 
 [Install]
 WantedBy=multi-user.target

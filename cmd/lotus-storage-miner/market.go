@@ -2,10 +2,10 @@ package main
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"text/tabwriter"
 	"time"
 
@@ -153,7 +153,12 @@ var setAskCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.Uint64Flag{
 			Name:     "price",
-			Usage:    "Set the price of the ask (specified as FIL / GiB / Epoch) to `PRICE`",
+			Usage:    "Set the price of the ask for unverified deals (specified as FIL / GiB / Epoch) to `PRICE`",
+			Required: true,
+		},
+		&cli.Uint64Flag{
+			Name:     "verified-price",
+			Usage:    "Set the price of the ask for verified deals (specified as FIL / GiB / Epoch) to `PRICE`",
 			Required: true,
 		},
 		&cli.StringFlag{
@@ -184,6 +189,7 @@ var setAskCmd = &cli.Command{
 		defer closer()
 
 		pri := types.NewInt(cctx.Uint64("price"))
+		vpri := types.NewInt(cctx.Uint64("verified-price"))
 
 		dur, err := time.ParseDuration(cctx.String("duration"))
 		if err != nil {
@@ -226,7 +232,7 @@ var setAskCmd = &cli.Command{
 			return xerrors.Errorf("max piece size (w/bit-padding) %s cannot exceed miner sector size %s", types.SizeStr(types.NewInt(uint64(max))), types.SizeStr(types.NewInt(uint64(smax))))
 		}
 
-		return api.MarketSetAsk(ctx, pri, abi.ChainEpoch(qty), abi.PaddedPieceSize(min), abi.PaddedPieceSize(max))
+		return api.MarketSetAsk(ctx, pri, vpri, abi.ChainEpoch(qty), abi.PaddedPieceSize(min), abi.PaddedPieceSize(max))
 	},
 }
 
@@ -260,7 +266,7 @@ var getAskCmd = &cli.Command{
 		}
 
 		w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
-		fmt.Fprintf(w, "Price per GiB / Epoch\tMin. Piece Size (w/bit-padding)\tMax. Piece Size (w/bit-padding)\tExpiry (Epoch)\tExpiry (Appx. Rem. Time)\tSeq. No.\n")
+		fmt.Fprintf(w, "Price per GiB/Epoch\tVerified\tMin. Piece Size (padded)\tMax. Piece Size (padded)\tExpiry (Epoch)\tExpiry (Appx. Rem. Time)\tSeq. No.\n")
 		if ask == nil {
 			fmt.Fprintf(w, "<miner does not have an ask>\n")
 
@@ -278,7 +284,7 @@ var getAskCmd = &cli.Command{
 			rem = (time.Second * time.Duration(int64(dlt)*int64(build.BlockDelaySecs))).String()
 		}
 
-		fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%s\t%d\n", ask.Price, types.SizeStr(types.NewInt(uint64(ask.MinPieceSize))), types.SizeStr(types.NewInt(uint64(ask.MaxPieceSize))), ask.Expiry, rem, ask.SeqNo)
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%d\t%s\t%d\n", ask.Price, ask.VerifiedPrice, types.SizeStr(types.NewInt(uint64(ask.MinPieceSize))), types.SizeStr(types.NewInt(uint64(ask.MaxPieceSize))), ask.Expiry, rem, ask.SeqNo)
 
 		return w.Flush()
 	},
@@ -296,6 +302,7 @@ var storageDealsCmd = &cli.Command{
 		setBlocklistCmd,
 		getBlocklistCmd,
 		resetBlocklistCmd,
+		setSealDurationCmd,
 	},
 }
 
@@ -331,6 +338,12 @@ var dealsImportDataCmd = &cli.Command{
 var dealsListCmd = &cli.Command{
 	Name:  "list",
 	Usage: "List all deals for this miner",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:    "verbose",
+			Aliases: []string{"v"},
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
@@ -345,19 +358,39 @@ var dealsListCmd = &cli.Command{
 			return err
 		}
 
-		data, err := json.MarshalIndent(deals, "", "  ")
-		if err != nil {
-			return err
+		w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
+
+		verbose := cctx.Bool("verbose")
+
+		if verbose {
+			_, _ = fmt.Fprintf(w, "ProposalCid\tDealId\tState\tClient\tSize\tPrice\tDuration\tMessage\n")
+		} else {
+			_, _ = fmt.Fprintf(w, "ProposalCid\tDealId\tState\tClient\tSize\tPrice\tDuration\n")
 		}
 
-		fmt.Println(string(data))
-		return nil
+		for _, deal := range deals {
+			propcid := deal.ProposalCid.String()
+			if !verbose {
+				propcid = "..." + propcid[len(propcid)-8:]
+			}
+
+			fil := types.FIL(types.BigMul(deal.Proposal.StoragePricePerEpoch, types.NewInt(uint64(deal.Proposal.Duration()))))
+
+			_, _ = fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\t%s\t%s", propcid, deal.DealID, storagemarket.DealStates[deal.State], deal.Proposal.Client, units.BytesSize(float64(deal.Proposal.PieceSize)), fil, deal.Proposal.Duration())
+			if verbose {
+				_, _ = fmt.Fprintf(w, "\t%s", deal.Message)
+			}
+
+			_, _ = fmt.Fprintln(w)
+		}
+
+		return w.Flush()
 	},
 }
 
 var getBlocklistCmd = &cli.Command{
 	Name:  "get-blocklist",
-	Usage: "List the contents of the storage miner's piece CID blocklist",
+	Usage: "List the contents of the miner's piece CID blocklist",
 	Flags: []cli.Flag{
 		&CidBaseFlag,
 	},
@@ -388,7 +421,7 @@ var getBlocklistCmd = &cli.Command{
 
 var setBlocklistCmd = &cli.Command{
 	Name:      "set-blocklist",
-	Usage:     "Set the storage miner's list of blocklisted piece CIDs",
+	Usage:     "Set the miner's list of blocklisted piece CIDs",
 	ArgsUsage: "[<path-of-file-containing-newline-delimited-piece-CIDs> (optional, will read from stdin if omitted)]",
 	Flags:     []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
@@ -435,7 +468,7 @@ var setBlocklistCmd = &cli.Command{
 
 var resetBlocklistCmd = &cli.Command{
 	Name:  "reset-blocklist",
-	Usage: "Remove all entries from the storage miner's piece CID blocklist",
+	Usage: "Remove all entries from the miner's piece CID blocklist",
 	Flags: []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := lcli.GetStorageMinerAPI(cctx)
@@ -445,5 +478,31 @@ var resetBlocklistCmd = &cli.Command{
 		defer closer()
 
 		return api.DealsSetPieceCidBlocklist(lcli.DaemonContext(cctx), []cid.Cid{})
+	},
+}
+
+var setSealDurationCmd = &cli.Command{
+	Name:      "set-seal-duration",
+	Usage:     "Set the expected time, in minutes, that you expect sealing sectors to take. Deals that start before this duration will be rejected.",
+	ArgsUsage: "<minutes>",
+	Action: func(cctx *cli.Context) error {
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+		if cctx.Args().Len() != 1 {
+			return xerrors.Errorf("must pass duration in minutes")
+		}
+
+		hs, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
+		if err != nil {
+			return xerrors.Errorf("could not parse duration: %w", err)
+		}
+
+		delay := hs * uint64(time.Minute)
+
+		return nodeApi.SectorSetExpectedSealDuration(ctx, time.Duration(delay))
 	},
 }

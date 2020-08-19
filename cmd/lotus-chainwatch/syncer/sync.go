@@ -4,6 +4,7 @@ import (
 	"container/list"
 	"context"
 	"database/sql"
+	"fmt"
 	"sync"
 	"time"
 
@@ -40,6 +41,18 @@ func (s *Syncer) setupSchemas() error {
 	}
 
 	if _, err := tx.Exec(`
+/* tracks circulating fil available on the network at each tipset */
+create table if not exists chain_economics
+(
+	parent_state_root text not null
+		constraint chain_economics_pk primary key,
+	circulating_fil text not null,
+	vested_fil text not null,
+	mined_fil text not null,
+	burnt_fil text not null,
+	locked_fil text not null
+);
+
 create table if not exists block_cids
 (
 	cid text not null
@@ -110,7 +123,9 @@ create table if not exists blocks
 	miner text not null,
 	timestamp bigint not null,
 	ticket bytea not null,
-	eprof bytea,
+	election_proof bytea,
+	win_count bigint,
+	parent_base_fee text not null,
 	forksig bigint not null
 );
 
@@ -171,6 +186,10 @@ func (s *Syncer) Start(ctx context.Context) {
 						log.Errorw("failed to gather unsynced blocks", "error", err)
 					}
 
+					if err := s.storeCirculatingSupply(ctx, change.Val); err != nil {
+						log.Errorw("failed to store circulating supply", "error", err)
+					}
+
 					if len(unsynced) == 0 {
 						continue
 					}
@@ -220,7 +239,7 @@ func (s *Syncer) unsyncedBlocks(ctx context.Context, head *types.TipSet, since t
 			log.Debugw("To visit", "toVisit", toVisit.Len(), "toSync", len(toSync), "current_height", bh.Height)
 		}
 
-		if len(bh.Parents) == 0 {
+		if bh.Height == 0 {
 			continue
 		}
 
@@ -260,6 +279,29 @@ func (s *Syncer) syncedBlocks(timestamp time.Time) (map[cid.Cid]struct{}, error)
 		out[ci] = struct{}{}
 	}
 	return out, nil
+}
+
+func (s *Syncer) storeCirculatingSupply(ctx context.Context, tipset *types.TipSet) error {
+	supply, err := s.node.StateCirculatingSupply(ctx, tipset.Key())
+	if err != nil {
+		return err
+	}
+
+	ceInsert := `insert into chain_economics (parent_state_root, circulating_fil, vested_fil, mined_fil, burnt_fil, locked_fil)` +
+		`values ('%s', '%s', '%s', '%s', '%s', '%s');`
+
+	if _, err := s.db.Exec(fmt.Sprintf(ceInsert,
+		tipset.ParentState().String(),
+		supply.FilCirculating.String(),
+		supply.FilVested.String(),
+		supply.FilMined.String(),
+		supply.FilBurnt.String(),
+		supply.FilLocked.String(),
+	)); err != nil {
+		return xerrors.Errorf("insert circulating supply for tipset (%s): %w", tipset.Key().String(), err)
+	}
+
+	return nil
 }
 
 func (s *Syncer) storeHeaders(bhs map[cid.Cid]*types.BlockHeader, sync bool, timestamp time.Time) error {
@@ -401,15 +443,16 @@ create temp table b (like blocks excluding constraints) on commit drop;
 		}
 	}
 
-	stmt2, err := tx.Prepare(`copy b (cid, parentWeight, parentStateRoot, height, miner, "timestamp", ticket, eprof, forksig) from stdin`)
+	stmt2, err := tx.Prepare(`copy b (cid, parentWeight, parentStateRoot, height, miner, "timestamp", ticket, election_proof, win_count, parent_base_fee, forksig) from stdin`)
 	if err != nil {
 		return err
 	}
 
 	for _, bh := range bhs {
-		var eprof interface{}
+		var eproof, winCount interface{}
 		if bh.ElectionProof != nil {
-			eprof = bh.ElectionProof.VRFProof
+			eproof = bh.ElectionProof.VRFProof
+			winCount = bh.ElectionProof.WinCount
 		}
 
 		if bh.Ticket == nil {
@@ -428,7 +471,9 @@ create temp table b (like blocks excluding constraints) on commit drop;
 			bh.Miner.String(),
 			bh.Timestamp,
 			bh.Ticket.VRFProof,
-			eprof,
+			eproof,
+			winCount,
+			bh.ParentBaseFee.String(),
 			bh.ForkSignaling); err != nil {
 			log.Error(err)
 		}

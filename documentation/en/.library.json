@@ -75,17 +75,25 @@
       "slug": "en+arch",
       "github": "en/architecture.md",
       "value": null,
-      "posts": []
-    },    {
+      "posts": [
+        {
+          "title": "The Message Pool",
+          "slug": "en+mpool",
+          "github": "en/mpool.md",
+          "value": null
+        }
+      ]
+    },
+    {
       "title": "Storage Mining",
       "slug": "en+mining",
       "github": "en/mining.md",
       "value": null,
       "posts": [
         {
-          "title": "Lotus Seal Worker",
-          "slug": "en+lotus-seal-worker",
-          "github": "en/mining-lotus-seal-worker.md",
+          "title": "Lotus Worker",
+          "slug": "en+lotus-worker",
+          "github": "en/mining-lotus-worker.md",
           "value": null
         },
         {

@@ -6,7 +6,7 @@ to install a Lotus node and sync to the top of the chain.
 ## Set up an ask
 
 ```
-lotus-storage-miner set-price <price>
+lotus-miner set-price <price>
 ```
 
 This command will set up your miner to accept deal proposals that meet the input price.

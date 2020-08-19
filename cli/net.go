@@ -18,16 +18,17 @@ var netCmd = &cli.Command{
 	Name:  "net",
 	Usage: "Manage P2P Network",
 	Subcommands: []*cli.Command{
-		netPeers,
+		NetPeers,
 		netConnect,
-		netListen,
-		netId,
+		NetListen,
+		NetId,
 		netFindPeer,
 		netScores,
+		NetReachability,
 	},
 }
 
-var netPeers = &cli.Command{
+var NetPeers = &cli.Command{
 	Name:  "peers",
 	Usage: "Print peers",
 	Action: func(cctx *cli.Context) error {
@@ -93,7 +94,7 @@ var netScores = &cli.Command{
 	},
 }
 
-var netListen = &cli.Command{
+var NetListen = &cli.Command{
 	Name:  "listen",
 	Usage: "List listen addresses",
 	Action: func(cctx *cli.Context) error {
@@ -147,7 +148,7 @@ var netConnect = &cli.Command{
 	},
 }
 
-var netId = &cli.Command{
+var NetId = &cli.Command{
 	Name:  "id",
 	Usage: "Get node identity",
 	Action: func(cctx *cli.Context) error {
@@ -199,6 +200,31 @@ var netFindPeer = &cli.Command{
 		}
 
 		fmt.Println(addrs)
+		return nil
+	},
+}
+
+var NetReachability = &cli.Command{
+	Name:  "reachability",
+	Usage: "Print information about reachability from the internet",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		i, err := api.NetAutoNatStatus(ctx)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("AutoNAT status: ", i.Reachability.String())
+		if i.PublicAddr != "" {
+			fmt.Println("Public address: ", i.PublicAddr)
+		}
 		return nil
 	},
 }

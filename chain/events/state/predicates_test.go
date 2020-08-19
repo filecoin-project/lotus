@@ -4,18 +4,15 @@ import (
 	"context"
 	"testing"
 
+	"github.com/filecoin-project/go-bitfield"
+
 	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-cid"
-	ds "github.com/ipfs/go-datastore"
-	ds_sync "github.com/ipfs/go-datastore/sync"
-	"github.com/ipfs/go-hamt-ipld"
-	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
@@ -25,6 +22,7 @@ import (
 	tutils "github.com/filecoin-project/specs-actors/support/testing"
 
 	"github.com/filecoin-project/lotus/chain/types"
+	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 )
 
 var dummyCid cid.Cid
@@ -68,8 +66,8 @@ func (m mockAPI) setActor(tsk types.TipSetKey, act *types.Actor) {
 
 func TestMarketPredicates(t *testing.T) {
 	ctx := context.Background()
-	bs := bstore.NewBlockstore(ds_sync.MutexWrap(ds.NewMapDatastore()))
-	store := cbornode.NewCborStore(bs)
+	bs := bstore.NewTemporarySync()
+	store := adt.WrapStore(ctx, cbornode.NewCborStore(bs))
 
 	oldDeal1 := &market.DealState{
 		SectorStartEpoch: 1,
@@ -115,18 +113,23 @@ func TestMarketPredicates(t *testing.T) {
 		abi.DealID(2): oldProp2,
 	}
 
-	oldStateC := createMarketState(ctx, t, store, oldDeals, oldProps)
+	oldBalances := map[address.Address]balance{
+		tutils.NewIDAddr(t, 1): balance{abi.NewTokenAmount(1000), abi.NewTokenAmount(1000)},
+		tutils.NewIDAddr(t, 2): balance{abi.NewTokenAmount(2000), abi.NewTokenAmount(500)},
+		tutils.NewIDAddr(t, 3): balance{abi.NewTokenAmount(3000), abi.NewTokenAmount(2000)},
+		tutils.NewIDAddr(t, 5): balance{abi.NewTokenAmount(3000), abi.NewTokenAmount(1000)},
+	}
+
+	oldStateC := createMarketState(ctx, t, store, oldDeals, oldProps, oldBalances)
 
 	newDeal1 := &market.DealState{
 		SectorStartEpoch: 1,
 		LastUpdatedEpoch: 3,
 		SlashEpoch:       0,
 	}
-	newDeal2 := &market.DealState{
-		SectorStartEpoch: 4,
-		LastUpdatedEpoch: 6,
-		SlashEpoch:       6,
-	}
+
+	// deal 2 removed
+
 	// added
 	newDeal3 := &market.DealState{
 		SectorStartEpoch: 1,
@@ -135,7 +138,7 @@ func TestMarketPredicates(t *testing.T) {
 	}
 	newDeals := map[abi.DealID]*market.DealState{
 		abi.DealID(1): newDeal1,
-		abi.DealID(2): newDeal2,
+		// deal 2 was removed
 		abi.DealID(3): newDeal3,
 	}
 
@@ -158,7 +161,14 @@ func TestMarketPredicates(t *testing.T) {
 		abi.DealID(3): newProp3, // new
 		// NB: DealProposals cannot be modified, so don't test that case.
 	}
-	newStateC := createMarketState(ctx, t, store, newDeals, newProps)
+	newBalances := map[address.Address]balance{
+		tutils.NewIDAddr(t, 1): balance{abi.NewTokenAmount(3000), abi.NewTokenAmount(0)},
+		tutils.NewIDAddr(t, 2): balance{abi.NewTokenAmount(2000), abi.NewTokenAmount(500)},
+		tutils.NewIDAddr(t, 4): balance{abi.NewTokenAmount(5000), abi.NewTokenAmount(0)},
+		tutils.NewIDAddr(t, 5): balance{abi.NewTokenAmount(1000), abi.NewTokenAmount(3000)},
+	}
+
+	newStateC := createMarketState(ctx, t, store, newDeals, newProps, newBalances)
 
 	minerAddr, err := address.NewFromString("t00")
 	require.NoError(t, err)
@@ -197,9 +207,16 @@ func TestMarketPredicates(t *testing.T) {
 			t.Fatal("Unexpected change to LastUpdatedEpoch")
 		}
 		deal2 := changedDealIDs[abi.DealID(2)]
-		if deal2.From.SlashEpoch != 0 || deal2.To.SlashEpoch != 6 {
-			t.Fatal("Unexpected change to SlashEpoch")
+		if deal2.From.LastUpdatedEpoch != 5 || deal2.To != nil {
+			t.Fatal("Expected To to be nil")
 		}
+
+		// Diff with non-existent deal.
+		noDeal := []abi.DealID{4}
+		diffNoDealFn := preds.OnStorageMarketActorChanged(preds.OnDealStateChanged(preds.DealStateChangedForIDs(noDeal)))
+		changed, _, err = diffNoDealFn(ctx, oldState.Key(), newState.Key())
+		require.NoError(t, err)
+		require.False(t, changed)
 
 		// Test that OnActorStateChanged does not call the callback if the state has not changed
 		mockAddr, err := address.NewFromString("t01")
@@ -241,16 +258,14 @@ func TestMarketPredicates(t *testing.T) {
 		require.Equal(t, abi.DealID(3), changedDeals.Added[0].ID)
 		require.Equal(t, *newDeal3, changedDeals.Added[0].Deal)
 
-		require.Len(t, changedDeals.Removed, 0)
+		require.Len(t, changedDeals.Removed, 1)
 
-		require.Len(t, changedDeals.Modified, 2)
+		require.Len(t, changedDeals.Modified, 1)
 		require.Equal(t, abi.DealID(1), changedDeals.Modified[0].ID)
 		require.Equal(t, newDeal1, changedDeals.Modified[0].To)
 		require.Equal(t, oldDeal1, changedDeals.Modified[0].From)
 
-		require.Equal(t, abi.DealID(2), changedDeals.Modified[1].ID)
-		require.Equal(t, oldDeal2, changedDeals.Modified[1].From)
-		require.Equal(t, newDeal2, changedDeals.Modified[1].To)
+		require.Equal(t, abi.DealID(2), changedDeals.Removed[0].ID)
 	})
 
 	t.Run("deal proposal array predicate", func(t *testing.T) {
@@ -276,12 +291,69 @@ func TestMarketPredicates(t *testing.T) {
 		require.Equal(t, abi.DealID(2), changedProps.Removed[0].ID)
 		require.Equal(t, *oldProp2, changedProps.Removed[0].Proposal)
 	})
+
+	t.Run("balances predicate", func(t *testing.T) {
+		preds := NewStatePredicates(api)
+
+		getAddresses := func() []address.Address {
+			return []address.Address{tutils.NewIDAddr(t, 1), tutils.NewIDAddr(t, 2), tutils.NewIDAddr(t, 3), tutils.NewIDAddr(t, 4)}
+		}
+		diffBalancesFn := preds.OnStorageMarketActorChanged(preds.OnBalanceChanged(preds.AvailableBalanceChangedForAddresses(getAddresses)))
+
+		// Diff a state against itself: expect no change
+		changed, _, err := diffBalancesFn(ctx, oldState.Key(), oldState.Key())
+		require.NoError(t, err)
+		require.False(t, changed)
+
+		// Diff old state against new state
+		changed, valIDs, err := diffBalancesFn(ctx, oldState.Key(), newState.Key())
+		require.NoError(t, err)
+		require.True(t, changed)
+
+		changedBalances, ok := valIDs.(ChangedBalances)
+		require.True(t, ok)
+		require.Len(t, changedBalances, 3)
+		require.Contains(t, changedBalances, tutils.NewIDAddr(t, 1))
+		require.Contains(t, changedBalances, tutils.NewIDAddr(t, 3))
+		require.Contains(t, changedBalances, tutils.NewIDAddr(t, 4))
+
+		balance1 := changedBalances[tutils.NewIDAddr(t, 1)]
+		if !balance1.From.Equals(abi.NewTokenAmount(1000)) || !balance1.To.Equals(abi.NewTokenAmount(3000)) {
+			t.Fatal("Unexpected change to balance")
+		}
+		balance3 := changedBalances[tutils.NewIDAddr(t, 3)]
+		if !balance3.From.Equals(abi.NewTokenAmount(3000)) || !balance3.To.Equals(abi.NewTokenAmount(0)) {
+			t.Fatal("Unexpected change to balance")
+		}
+		balance4 := changedBalances[tutils.NewIDAddr(t, 4)]
+		if !balance4.From.Equals(abi.NewTokenAmount(0)) || !balance4.To.Equals(abi.NewTokenAmount(5000)) {
+			t.Fatal("Unexpected change to balance")
+		}
+
+		// Diff with non-existent address.
+		getNoAddress := func() []address.Address { return []address.Address{tutils.NewIDAddr(t, 6)} }
+		diffNoAddressFn := preds.OnStorageMarketActorChanged(preds.OnBalanceChanged(preds.AvailableBalanceChangedForAddresses(getNoAddress)))
+		changed, _, err = diffNoAddressFn(ctx, oldState.Key(), newState.Key())
+		require.NoError(t, err)
+		require.False(t, changed)
+
+		// Test that OnBalanceChanged does not call the callback if the state has not changed
+		diffDealBalancesFn := preds.OnBalanceChanged(func(context.Context, BalanceTables, BalanceTables) (bool, UserData, error) {
+			t.Fatal("No state change so this should not be called")
+			return false, nil, nil
+		})
+		marketState := createEmptyMarketState(t, store)
+		changed, _, err = diffDealBalancesFn(ctx, marketState, marketState)
+		require.NoError(t, err)
+		require.False(t, changed)
+	})
+
 }
 
 func TestMinerSectorChange(t *testing.T) {
 	ctx := context.Background()
-	bs := bstore.NewBlockstore(ds_sync.MutexWrap(ds.NewMapDatastore()))
-	store := cbornode.NewCborStore(bs)
+	bs := bstore.NewTemporarySync()
+	store := adt.WrapStore(ctx, cbornode.NewCborStore(bs))
 
 	nextID := uint64(0)
 	nextIDAddrF := func() address.Address {
@@ -290,18 +362,18 @@ func TestMinerSectorChange(t *testing.T) {
 	}
 
 	owner, worker := nextIDAddrF(), nextIDAddrF()
-	si0 := newSectorOnChainInfo(0, tutils.MakeCID("0"), big.NewInt(0), abi.ChainEpoch(0), abi.ChainEpoch(10))
-	si1 := newSectorOnChainInfo(1, tutils.MakeCID("1"), big.NewInt(1), abi.ChainEpoch(1), abi.ChainEpoch(11))
-	si2 := newSectorOnChainInfo(2, tutils.MakeCID("2"), big.NewInt(2), abi.ChainEpoch(2), abi.ChainEpoch(11))
+	si0 := newSectorOnChainInfo(0, tutils.MakeCID("0", &miner.SealedCIDPrefix), big.NewInt(0), abi.ChainEpoch(0), abi.ChainEpoch(10))
+	si1 := newSectorOnChainInfo(1, tutils.MakeCID("1", &miner.SealedCIDPrefix), big.NewInt(1), abi.ChainEpoch(1), abi.ChainEpoch(11))
+	si2 := newSectorOnChainInfo(2, tutils.MakeCID("2", &miner.SealedCIDPrefix), big.NewInt(2), abi.ChainEpoch(2), abi.ChainEpoch(11))
 	oldMinerC := createMinerState(ctx, t, store, owner, worker, []miner.SectorOnChainInfo{si0, si1, si2})
 
-	si3 := newSectorOnChainInfo(3, tutils.MakeCID("3"), big.NewInt(3), abi.ChainEpoch(3), abi.ChainEpoch(12))
+	si3 := newSectorOnChainInfo(3, tutils.MakeCID("3", &miner.SealedCIDPrefix), big.NewInt(3), abi.ChainEpoch(3), abi.ChainEpoch(12))
 	// 0 delete
 	// 1 extend
 	// 2 same
 	// 3 added
 	si1Ext := si1
-	si1Ext.Info.Expiration++
+	si1Ext.Expiration++
 	newMinerC := createMinerState(ctx, t, store, owner, worker, []miner.SectorOnChainInfo{si1Ext, si2, si3})
 
 	minerAddr := nextIDAddrF()
@@ -373,50 +445,82 @@ func mockTipset(minerAddr address.Address, timestamp uint64) (*types.TipSet, err
 	}})
 }
 
-func createMarketState(ctx context.Context, t *testing.T, store *cbornode.BasicIpldStore, deals map[abi.DealID]*market.DealState, props map[abi.DealID]*market.DealProposal) cid.Cid {
+type balance struct {
+	available abi.TokenAmount
+	locked    abi.TokenAmount
+}
+
+func createMarketState(ctx context.Context, t *testing.T, store adt.Store, deals map[abi.DealID]*market.DealState, props map[abi.DealID]*market.DealProposal, balances map[address.Address]balance) cid.Cid {
 	dealRootCid := createDealAMT(ctx, t, store, deals)
 	propRootCid := createProposalAMT(ctx, t, store, props)
-
+	balancesCids := createBalanceTable(ctx, t, store, balances)
 	state := createEmptyMarketState(t, store)
 	state.States = dealRootCid
 	state.Proposals = propRootCid
+	state.EscrowTable = balancesCids[0]
+	state.LockedTable = balancesCids[1]
 
 	stateC, err := store.Put(ctx, state)
 	require.NoError(t, err)
 	return stateC
 }
 
-func createEmptyMarketState(t *testing.T, store *cbornode.BasicIpldStore) *market.State {
-	emptyArrayCid, err := amt.NewAMT(store).Flush(context.TODO())
+func createEmptyMarketState(t *testing.T, store adt.Store) *market.State {
+	emptyArrayCid, err := adt.MakeEmptyArray(store).Root()
 	require.NoError(t, err)
-	emptyMap, err := store.Put(context.TODO(), hamt.NewNode(store, hamt.UseTreeBitWidth(5)))
+	emptyMap, err := adt.MakeEmptyMap(store).Root()
 	require.NoError(t, err)
 	return market.ConstructState(emptyArrayCid, emptyMap, emptyMap)
 }
 
-func createDealAMT(ctx context.Context, t *testing.T, store *cbornode.BasicIpldStore, deals map[abi.DealID]*market.DealState) cid.Cid {
-	root := amt.NewAMT(store)
+func createDealAMT(ctx context.Context, t *testing.T, store adt.Store, deals map[abi.DealID]*market.DealState) cid.Cid {
+	root := adt.MakeEmptyArray(store)
 	for dealID, dealState := range deals {
-		err := root.Set(ctx, uint64(dealID), dealState)
+		err := root.Set(uint64(dealID), dealState)
 		require.NoError(t, err)
 	}
-	rootCid, err := root.Flush(ctx)
+	rootCid, err := root.Root()
 	require.NoError(t, err)
 	return rootCid
 }
 
-func createProposalAMT(ctx context.Context, t *testing.T, store *cbornode.BasicIpldStore, props map[abi.DealID]*market.DealProposal) cid.Cid {
-	root := amt.NewAMT(store)
+func createProposalAMT(ctx context.Context, t *testing.T, store adt.Store, props map[abi.DealID]*market.DealProposal) cid.Cid {
+	root := adt.MakeEmptyArray(store)
 	for dealID, prop := range props {
-		err := root.Set(ctx, uint64(dealID), prop)
+		err := root.Set(uint64(dealID), prop)
 		require.NoError(t, err)
 	}
-	rootCid, err := root.Flush(ctx)
+	rootCid, err := root.Root()
 	require.NoError(t, err)
 	return rootCid
 }
 
-func createMinerState(ctx context.Context, t *testing.T, store *cbornode.BasicIpldStore, owner, worker address.Address, sectors []miner.SectorOnChainInfo) cid.Cid {
+func createBalanceTable(ctx context.Context, t *testing.T, store adt.Store, balances map[address.Address]balance) [2]cid.Cid {
+	escrowMapRoot := adt.MakeEmptyMap(store)
+	escrowMapRootCid, err := escrowMapRoot.Root()
+	require.NoError(t, err)
+	escrowRoot, err := adt.AsBalanceTable(store, escrowMapRootCid)
+	require.NoError(t, err)
+	lockedMapRoot := adt.MakeEmptyMap(store)
+	lockedMapRootCid, err := lockedMapRoot.Root()
+	require.NoError(t, err)
+	lockedRoot, err := adt.AsBalanceTable(store, lockedMapRootCid)
+
+	for addr, balance := range balances {
+		err := escrowRoot.Add(addr, big.Add(balance.available, balance.locked))
+		require.NoError(t, err)
+		err = lockedRoot.Add(addr, balance.locked)
+		require.NoError(t, err)
+
+	}
+	escrowRootCid, err := escrowRoot.Root()
+	require.NoError(t, err)
+	lockedRootCid, err := lockedRoot.Root()
+	require.NoError(t, err)
+	return [2]cid.Cid{escrowRootCid, lockedRootCid}
+}
+
+func createMinerState(ctx context.Context, t *testing.T, store adt.Store, owner, worker address.Address, sectors []miner.SectorOnChainInfo) cid.Cid {
 	rootCid := createSectorsAMT(ctx, t, store, sectors)
 
 	state := createEmptyMinerState(ctx, t, store, owner, worker)
@@ -427,30 +531,42 @@ func createMinerState(ctx context.Context, t *testing.T, store *cbornode.BasicIp
 	return stateC
 }
 
-func createEmptyMinerState(ctx context.Context, t *testing.T, store *cbornode.BasicIpldStore, owner, worker address.Address) *miner.State {
-	emptyArrayCid, err := amt.NewAMT(store).Flush(context.TODO())
+func createEmptyMinerState(ctx context.Context, t *testing.T, store adt.Store, owner, worker address.Address) *miner.State {
+	emptyArrayCid, err := adt.MakeEmptyArray(store).Root()
 	require.NoError(t, err)
-	emptyMap, err := store.Put(context.TODO(), hamt.NewNode(store, hamt.UseTreeBitWidth(5)))
-	require.NoError(t, err)
-
-	emptyDeadlines := miner.ConstructDeadlines()
-	emptyDeadlinesCid, err := store.Put(context.Background(), emptyDeadlines)
+	emptyMap, err := adt.MakeEmptyMap(store).Root()
 	require.NoError(t, err)
 
-	state, err := miner.ConstructState(emptyArrayCid, emptyMap, emptyDeadlinesCid, owner, worker, abi.PeerID{'1'}, nil, abi.RegisteredSealProof_StackedDrg64GiBV1, 0)
+	emptyDeadline, err := store.Put(store.Context(), miner.ConstructDeadline(emptyArrayCid))
+	require.NoError(t, err)
+
+	emptyVestingFunds := miner.ConstructVestingFunds()
+	emptyVestingFundsCid, err := store.Put(store.Context(), emptyVestingFunds)
+
+	emptyDeadlines := miner.ConstructDeadlines(emptyDeadline)
+	emptyDeadlinesCid, err := store.Put(store.Context(), emptyDeadlines)
+	require.NoError(t, err)
+
+	minerInfo := emptyMap
+
+	emptyBitfield := bitfield.NewFromSet(nil)
+	emptyBitfieldCid, err := store.Put(store.Context(), emptyBitfield)
+	require.NoError(t, err)
+
+	state, err := miner.ConstructState(minerInfo, 123, emptyBitfieldCid, emptyArrayCid, emptyMap, emptyDeadlinesCid, emptyVestingFundsCid)
 	require.NoError(t, err)
 	return state
 
 }
 
-func createSectorsAMT(ctx context.Context, t *testing.T, store *cbornode.BasicIpldStore, sectors []miner.SectorOnChainInfo) cid.Cid {
-	root := amt.NewAMT(store)
+func createSectorsAMT(ctx context.Context, t *testing.T, store adt.Store, sectors []miner.SectorOnChainInfo) cid.Cid {
+	root := adt.MakeEmptyArray(store)
 	for _, sector := range sectors {
 		sector := sector
-		err := root.Set(ctx, uint64(sector.Info.SectorNumber), &sector)
+		err := root.Set(uint64(sector.SectorNumber), &sector)
 		require.NoError(t, err)
 	}
-	rootCid, err := root.Flush(ctx)
+	rootCid, err := root.Root()
 	require.NoError(t, err)
 	return rootCid
 }
@@ -459,10 +575,18 @@ func createSectorsAMT(ctx context.Context, t *testing.T, store *cbornode.BasicIp
 func newSectorOnChainInfo(sectorNo abi.SectorNumber, sealed cid.Cid, weight big.Int, activation, expiration abi.ChainEpoch) miner.SectorOnChainInfo {
 	info := newSectorPreCommitInfo(sectorNo, sealed, expiration)
 	return miner.SectorOnChainInfo{
-		Info:               *info,
-		ActivationEpoch:    activation,
-		DealWeight:         weight,
-		VerifiedDealWeight: weight,
+		SectorNumber: info.SectorNumber,
+		SealProof:    info.SealProof,
+		SealedCID:    info.SealedCID,
+		DealIDs:      info.DealIDs,
+		Expiration:   info.Expiration,
+
+		Activation:            activation,
+		DealWeight:            weight,
+		VerifiedDealWeight:    weight,
+		InitialPledge:         big.Zero(),
+		ExpectedDayReward:     big.Zero(),
+		ExpectedStoragePledge: big.Zero(),
 	}
 }
 
