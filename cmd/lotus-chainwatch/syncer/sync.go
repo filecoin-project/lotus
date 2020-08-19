@@ -239,7 +239,7 @@ func (s *Syncer) unsyncedBlocks(ctx context.Context, head *types.TipSet, since t
 			log.Debugw("To visit", "toVisit", toVisit.Len(), "toSync", len(toSync), "current_height", bh.Height)
 		}
 
-		if len(bh.Parents) == 0 {
+		if bh.Height == 0 {
 			continue
 		}
 

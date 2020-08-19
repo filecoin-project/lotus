@@ -2,7 +2,9 @@ package sealing
 
 import (
 	"context"
+	"errors"
 	"io"
+	"math"
 	"sync"
 	"time"
 
@@ -33,9 +35,14 @@ type SectorLocation struct {
 	Partition uint64
 }
 
+var ErrSectorAllocated = errors.New("sectorNumber is allocated, but PreCommit info wasn't found on chain")
+
 type SealingAPI interface {
 	StateWaitMsg(context.Context, cid.Cid) (MsgLookup, error)
+	StateSearchMsg(context.Context, cid.Cid) (*MsgLookup, error)
 	StateComputeDataCommitment(ctx context.Context, maddr address.Address, sectorType abi.RegisteredSealProof, deals []abi.DealID, tok TipSetToken) (cid.Cid, error)
+
+	// Can return ErrSectorAllocated in case precommit info wasn't found, but the sector number is marked as allocated
 	StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok TipSetToken) (*miner.SectorPreCommitOnChainInfo, error)
 	StateSectorGetInfo(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok TipSetToken) (*miner.SectorOnChainInfo, error)
 	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok TipSetToken) (*SectorLocation, error)
@@ -70,7 +77,9 @@ type Sealing struct {
 	upgradeLk sync.Mutex
 	toUpgrade map[abi.SectorNumber]struct{}
 
-	getSealDelay GetSealingDelayFunc
+	stats SectorStats
+
+	getConfig GetSealingConfigFunc
 }
 
 type FeeConfig struct {
@@ -80,7 +89,7 @@ type FeeConfig struct {
 
 type UnsealedSectorMap struct {
 	infos map[abi.SectorNumber]UnsealedSectorInfo
-	mux   sync.Mutex
+	lk    sync.Mutex
 }
 
 type UnsealedSectorInfo struct {
@@ -90,7 +99,7 @@ type UnsealedSectorInfo struct {
 	pieceSizes []abi.UnpaddedPieceSize
 }
 
-func New(api SealingAPI, fc FeeConfig, events Events, maddr address.Address, ds datastore.Batching, sealer sectorstorage.SectorManager, sc SectorIDCounter, verif ffiwrapper.Verifier, pcp PreCommitPolicy, gsd GetSealingDelayFunc) *Sealing {
+func New(api SealingAPI, fc FeeConfig, events Events, maddr address.Address, ds datastore.Batching, sealer sectorstorage.SectorManager, sc SectorIDCounter, verif ffiwrapper.Verifier, pcp PreCommitPolicy, gc GetSealingConfigFunc) *Sealing {
 	s := &Sealing{
 		api:    api,
 		feeCfg: fc,
@@ -103,11 +112,15 @@ func New(api SealingAPI, fc FeeConfig, events Events, maddr address.Address, ds 
 		pcp:    pcp,
 		unsealedInfoMap: UnsealedSectorMap{
 			infos: make(map[abi.SectorNumber]UnsealedSectorInfo),
-			mux:   sync.Mutex{},
+			lk:    sync.Mutex{},
 		},
 
-		toUpgrade:    map[abi.SectorNumber]struct{}{},
-		getSealDelay: gsd,
+		toUpgrade: map[abi.SectorNumber]struct{}{},
+		getConfig: gc,
+
+		stats: SectorStats{
+			bySector: map[abi.SectorID]statSectorState{},
+		},
 	}
 
 	s.sectors = statemachine.New(namespace.Wrap(ds, datastore.NewKey(SectorStorePrefix)), s, SectorInfo{})
@@ -137,18 +150,18 @@ func (m *Sealing) AddPieceToAnySector(ctx context.Context, size abi.UnpaddedPiec
 		return 0, 0, xerrors.Errorf("piece cannot fit into a sector")
 	}
 
-	m.unsealedInfoMap.mux.Lock()
+	m.unsealedInfoMap.lk.Lock()
 
 	sid, pads, err := m.getSectorAndPadding(size)
 	if err != nil {
-		m.unsealedInfoMap.mux.Unlock()
+		m.unsealedInfoMap.lk.Unlock()
 		return 0, 0, xerrors.Errorf("getting available sector: %w", err)
 	}
 
 	for _, p := range pads {
 		err = m.addPiece(ctx, sid, p.Unpadded(), NewNullReader(p.Unpadded()), nil)
 		if err != nil {
-			m.unsealedInfoMap.mux.Unlock()
+			m.unsealedInfoMap.lk.Unlock()
 			return 0, 0, xerrors.Errorf("writing pads: %w", err)
 		}
 	}
@@ -157,12 +170,15 @@ func (m *Sealing) AddPieceToAnySector(ctx context.Context, size abi.UnpaddedPiec
 	err = m.addPiece(ctx, sid, size, r, &d)
 
 	if err != nil {
-		m.unsealedInfoMap.mux.Unlock()
+		m.unsealedInfoMap.lk.Unlock()
 		return 0, 0, xerrors.Errorf("adding piece to sector: %w", err)
 	}
 
-	m.unsealedInfoMap.mux.Unlock()
-	if m.unsealedInfoMap.infos[sid].numDeals == getDealPerSectorLimit(m.sealer.SectorSize()) {
+	startPacking := m.unsealedInfoMap.infos[sid].numDeals >= getDealPerSectorLimit(m.sealer.SectorSize())
+
+	m.unsealedInfoMap.lk.Unlock()
+
+	if startPacking {
 		if err := m.StartPacking(sid); err != nil {
 			return 0, 0, xerrors.Errorf("start packing: %w", err)
 		}
@@ -171,7 +187,7 @@ func (m *Sealing) AddPieceToAnySector(ctx context.Context, size abi.UnpaddedPiec
 	return sid, offset, nil
 }
 
-// Caller should hold m.unsealedInfoMap.mux
+// Caller should hold m.unsealedInfoMap.lk
 func (m *Sealing) addPiece(ctx context.Context, sectorID abi.SectorNumber, size abi.UnpaddedPieceSize, r io.Reader, di *DealInfo) error {
 	log.Infof("Adding piece to sector %d", sectorID)
 	ppi, err := m.sealer.AddPiece(sectorstorage.WithPriority(ctx, DealSectorPriority), m.minerSector(sectorID), m.unsealedInfoMap.infos[sectorID].pieceSizes, size, r)
@@ -206,7 +222,7 @@ func (m *Sealing) Remove(ctx context.Context, sid abi.SectorNumber) error {
 	return m.sectors.Send(uint64(sid), SectorRemove{})
 }
 
-// Caller should NOT hold m.unsealedInfoMap.mux
+// Caller should NOT hold m.unsealedInfoMap.lk
 func (m *Sealing) StartPacking(sectorID abi.SectorNumber) error {
 	log.Infof("Starting packing sector %d", sectorID)
 	err := m.sectors.Send(uint64(sectorID), SectorStartPacking{})
@@ -214,14 +230,14 @@ func (m *Sealing) StartPacking(sectorID abi.SectorNumber) error {
 		return err
 	}
 
-	m.unsealedInfoMap.mux.Lock()
+	m.unsealedInfoMap.lk.Lock()
 	delete(m.unsealedInfoMap.infos, sectorID)
-	m.unsealedInfoMap.mux.Unlock()
+	m.unsealedInfoMap.lk.Unlock()
 
 	return nil
 }
 
-// Caller should hold m.unsealedInfoMap.mux
+// Caller should hold m.unsealedInfoMap.lk
 func (m *Sealing) getSectorAndPadding(size abi.UnpaddedPieceSize) (abi.SectorNumber, []abi.PaddedPieceSize, error) {
 	ss := abi.PaddedPieceSize(m.sealer.SectorSize())
 	for k, v := range m.unsealedInfoMap.infos {
@@ -231,7 +247,7 @@ func (m *Sealing) getSectorAndPadding(size abi.UnpaddedPieceSize) (abi.SectorNum
 		}
 	}
 
-	ns, err := m.newSector()
+	ns, err := m.newDealSector()
 	if err != nil {
 		return 0, nil, err
 	}
@@ -245,8 +261,66 @@ func (m *Sealing) getSectorAndPadding(size abi.UnpaddedPieceSize) (abi.SectorNum
 	return ns, nil, nil
 }
 
-// newSector creates a new sector for deal storage
-func (m *Sealing) newSector() (abi.SectorNumber, error) {
+// newDealSector creates a new sector for deal storage
+func (m *Sealing) newDealSector() (abi.SectorNumber, error) {
+	// First make sure we don't have too many 'open' sectors
+
+	cfg, err := m.getConfig()
+	if err != nil {
+		return 0, xerrors.Errorf("getting config: %w", err)
+	}
+
+	if cfg.MaxSealingSectorsForDeals > 0 {
+		if m.stats.curSealing() > cfg.MaxSealingSectorsForDeals {
+			return 0, xerrors.Errorf("too many sectors sealing")
+		}
+	}
+
+	if cfg.MaxWaitDealsSectors > 0 {
+		// run in a loop because we have to drop the map lock here for a bit
+		tries := 0
+
+		// we have to run in a loop as we're dropping unsealedInfoMap.lk
+		//  to actually call StartPacking. When we do that, another entry can
+		//  get added to unsealedInfoMap.
+		for uint64(len(m.unsealedInfoMap.infos)) >= cfg.MaxWaitDealsSectors {
+			if tries > 10 {
+				// whatever...
+				break
+			}
+
+			if tries > 0 {
+				m.unsealedInfoMap.lk.Unlock()
+				time.Sleep(time.Second)
+				m.unsealedInfoMap.lk.Lock()
+			}
+
+			tries++
+			var mostStored abi.PaddedPieceSize = math.MaxUint64
+			var best abi.SectorNumber = math.MaxUint64
+
+			for sn, info := range m.unsealedInfoMap.infos {
+				if info.stored+1 > mostStored+1 { // 18446744073709551615 + 1 = 0
+					best = sn
+				}
+			}
+
+			if best == math.MaxUint64 {
+				// probably not possible, but who knows
+				break
+			}
+
+			m.unsealedInfoMap.lk.Unlock()
+			if err := m.StartPacking(best); err != nil {
+				log.Error("newDealSector StartPacking error: %+v", err)
+				continue // let's pretend this is fine
+			}
+			m.unsealedInfoMap.lk.Lock()
+		}
+	}
+
+	// Now actually create a new sector
+
 	sid, err := m.sc.Next()
 	if err != nil {
 		return 0, xerrors.Errorf("getting sector number: %w", err)
@@ -272,13 +346,13 @@ func (m *Sealing) newSector() (abi.SectorNumber, error) {
 		return 0, xerrors.Errorf("starting the sector fsm: %w", err)
 	}
 
-	sd, err := m.getSealDelay()
+	cf, err := m.getConfig()
 	if err != nil {
 		return 0, xerrors.Errorf("getting the sealing delay: %w", err)
 	}
 
-	if sd > 0 {
-		timer := time.NewTimer(sd)
+	if cf.WaitDealsDelay > 0 {
+		timer := time.NewTimer(cf.WaitDealsDelay)
 		go func() {
 			<-timer.C
 			m.StartPacking(sid)

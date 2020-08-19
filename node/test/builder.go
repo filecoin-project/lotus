@@ -196,10 +196,11 @@ func Builder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test.TestN
 		genms = append(genms, *genm)
 	}
 	templ := &genesis.Template{
-		Accounts:        genaccs,
-		Miners:          genms,
-		Timestamp:       uint64(time.Now().Unix() - 10000), // some time sufficiently far in the past
-		VerifregRootKey: gen.DefaultVerifregRootkeyActor,
+		Accounts:         genaccs,
+		Miners:           genms,
+		Timestamp:        uint64(time.Now().Unix() - 10000), // some time sufficiently far in the past
+		VerifregRootKey:  gen.DefaultVerifregRootkeyActor,
+		RemainderAccount: gen.DefaultRemainderAccountActor,
 	}
 
 	// END PRESEAL SECTION
@@ -330,7 +331,7 @@ func MockSbBuilder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test
 
 		genaccs = append(genaccs, genesis.Actor{
 			Type:    genesis.TAccount,
-			Balance: big.Mul(big.NewInt(400000000000), types.NewInt(build.FilecoinPrecision)),
+			Balance: big.Mul(big.NewInt(400000000), types.NewInt(build.FilecoinPrecision)),
 			Meta:    (&genesis.AccountMeta{Owner: wk.Address}).ActorMeta(),
 		})
 
@@ -340,10 +341,11 @@ func MockSbBuilder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test
 		genms = append(genms, *genm)
 	}
 	templ := &genesis.Template{
-		Accounts:        genaccs,
-		Miners:          genms,
-		Timestamp:       uint64(time.Now().Unix()) - (build.BlockDelaySecs * 20000),
-		VerifregRootKey: gen.DefaultVerifregRootkeyActor,
+		Accounts:         genaccs,
+		Miners:           genms,
+		Timestamp:        uint64(time.Now().Unix()) - (build.BlockDelaySecs * 20000),
+		VerifregRootKey:  gen.DefaultVerifregRootkeyActor,
+		RemainderAccount: gen.DefaultRemainderAccountActor,
 	}
 
 	// END PRESEAL SECTION

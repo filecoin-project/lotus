@@ -9,7 +9,7 @@ import (
 )
 
 var configCmd = &cli.Command{
-	Name: "config",
+	Name:  "config",
 	Usage: "Output default configuration",
 	Action: func(cctx *cli.Context) error {
 		comm, err := config.ConfigComment(config.DefaultStorageMiner())

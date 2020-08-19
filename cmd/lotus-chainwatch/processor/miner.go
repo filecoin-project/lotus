@@ -879,11 +879,15 @@ func (p *Processor) storeMinersActorInfoState(ctx context.Context, miners []mine
 				return err
 			}
 		}
+		var pid string
+		if mi.PeerId != nil {
+			pid = mi.PeerId.String()
+		}
 		if _, err := stmt.Exec(
 			m.common.addr.String(),
 			mi.Owner.String(),
 			mi.Worker.String(),
-			mi.PeerId.String(),
+			pid,
 			mi.SectorSize.ShortString(),
 		); err != nil {
 			log.Errorw("failed to store miner state", "state", m.state, "info", m.state.Info, "error", err)

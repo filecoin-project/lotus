@@ -3,6 +3,7 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -10,8 +11,10 @@ import (
 	"text/tabwriter"
 	"time"
 
+	tm "github.com/buger/goterm"
 	"github.com/docker/go-units"
 	"github.com/fatih/color"
+	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-cidutil/cidenc"
@@ -76,6 +79,7 @@ var clientCmd = &cli.Command{
 		WithCategory("util", clientCommPCmd),
 		WithCategory("util", clientCarGenCmd),
 		WithCategory("util", clientInfoCmd),
+		WithCategory("util", clientListTransfers),
 	},
 }
 
@@ -550,7 +554,7 @@ func interactiveDeal(cctx *cli.Context) error {
 				continue
 			}
 
-			a, err := api.ClientQueryAsk(ctx, mi.PeerId, maddr)
+			a, err := api.ClientQueryAsk(ctx, *mi.PeerId, maddr)
 			if err != nil {
 				printErr(xerrors.Errorf("failed to query ask: %w", err))
 				state = "miner"
@@ -847,7 +851,7 @@ var clientRetrieveCmd = &cli.Command{
 			Path:  cctx.Args().Get(1),
 			IsCAR: cctx.Bool("car"),
 		}
-		updates, err := fapi.ClientRetrieve(ctx, offer.Order(payer), ref)
+		updates, err := fapi.ClientRetrieveWithEvents(ctx, offer.Order(payer), ref)
 		if err != nil {
 			return xerrors.Errorf("error setting up retrieval: %w", err)
 		}
@@ -868,7 +872,7 @@ var clientRetrieveCmd = &cli.Command{
 				}
 
 				if evt.Err != "" {
-					return xerrors.Errorf("retrieval failed: %v", err)
+					return xerrors.Errorf("retrieval failed: %s", evt.Err)
 				}
 			case <-ctx.Done():
 				return xerrors.Errorf("retrieval timed out")
@@ -926,11 +930,11 @@ var clientQueryAskCmd = &cli.Command{
 				return xerrors.Errorf("failed to get peerID for miner: %w", err)
 			}
 
-			if peer.ID(mi.PeerId) == peer.ID("SETME") {
+			if peer.ID(*mi.PeerId) == peer.ID("SETME") {
 				return fmt.Errorf("the miner hasn't initialized yet")
 			}
 
-			pid = peer.ID(mi.PeerId)
+			pid = peer.ID(*mi.PeerId)
 		}
 
 		ask, err := api.ClientQueryAsk(ctx, pid, maddr)
@@ -1202,4 +1206,171 @@ var clientInfoCmd = &cli.Command{
 
 		return nil
 	},
+}
+
+var clientListTransfers = &cli.Command{
+	Name:  "list-transfers",
+	Usage: "List ongoing data transfers for deals",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "color",
+			Usage: "use color in display output",
+			Value: true,
+		},
+		&cli.BoolFlag{
+			Name:  "completed",
+			Usage: "show completed data transfers",
+		},
+		&cli.BoolFlag{
+			Name:  "watch",
+			Usage: "watch deal updates in real-time, rather than a one time list",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		channels, err := api.ClientListDataTransfers(ctx)
+		if err != nil {
+			return err
+		}
+
+		completed := cctx.Bool("completed")
+		color := cctx.Bool("color")
+		watch := cctx.Bool("watch")
+
+		if watch {
+			channelUpdates, err := api.ClientDataTransferUpdates(ctx)
+			if err != nil {
+				return err
+			}
+
+			for {
+				tm.Clear() // Clear current screen
+
+				tm.MoveCursor(1, 1)
+
+				outputChannels(tm.Screen, channels, completed, color)
+
+				tm.Flush()
+
+				select {
+				case <-ctx.Done():
+					return nil
+				case channelUpdate := <-channelUpdates:
+					var found bool
+					for i, existing := range channels {
+						if existing.TransferID == channelUpdate.TransferID &&
+							existing.OtherPeer == channelUpdate.OtherPeer &&
+							existing.IsSender == channelUpdate.IsSender &&
+							existing.IsInitiator == channelUpdate.IsInitiator {
+							channels[i] = channelUpdate
+							found = true
+							break
+						}
+					}
+					if !found {
+						channels = append(channels, channelUpdate)
+					}
+				}
+			}
+		}
+		outputChannels(os.Stdout, channels, completed, color)
+		return nil
+	},
+}
+
+func outputChannels(out io.Writer, channels []api.DataTransferChannel, completed bool, color bool) {
+	sort.Slice(channels, func(i, j int) bool {
+		return channels[i].TransferID < channels[j].TransferID
+	})
+
+	var receivingChannels, sendingChannels []lapi.DataTransferChannel
+	for _, channel := range channels {
+		if !completed && channel.Status == datatransfer.Completed {
+			continue
+		}
+		if channel.IsSender {
+			sendingChannels = append(sendingChannels, channel)
+		} else {
+			receivingChannels = append(receivingChannels, channel)
+		}
+	}
+
+	fmt.Fprintf(out, "Sending Channels\n\n")
+	w := tablewriter.New(tablewriter.Col("ID"),
+		tablewriter.Col("Status"),
+		tablewriter.Col("Sending To"),
+		tablewriter.Col("Root Cid"),
+		tablewriter.Col("Initiated?"),
+		tablewriter.Col("Transferred"),
+		tablewriter.Col("Voucher"),
+		tablewriter.NewLineCol("Message"))
+	for _, channel := range sendingChannels {
+		w.Write(toChannelOutput(color, "Sending To", channel))
+	}
+	w.Flush(out)
+
+	fmt.Fprintf(out, "\nReceiving Channels\n\n")
+	w = tablewriter.New(tablewriter.Col("ID"),
+		tablewriter.Col("Status"),
+		tablewriter.Col("Receiving From"),
+		tablewriter.Col("Root Cid"),
+		tablewriter.Col("Initiated?"),
+		tablewriter.Col("Transferred"),
+		tablewriter.Col("Voucher"),
+		tablewriter.NewLineCol("Message"))
+	for _, channel := range receivingChannels {
+		w.Write(toChannelOutput(color, "Receiving From", channel))
+	}
+	w.Flush(out)
+}
+
+func channelStatusString(useColor bool, status datatransfer.Status) string {
+	s := datatransfer.Statuses[status]
+	if !useColor {
+		return s
+	}
+
+	switch status {
+	case datatransfer.Failed, datatransfer.Cancelled:
+		return color.RedString(s)
+	case datatransfer.Completed:
+		return color.GreenString(s)
+	default:
+		return s
+	}
+}
+
+func toChannelOutput(useColor bool, otherPartyColumn string, channel api.DataTransferChannel) map[string]interface{} {
+	rootCid := channel.BaseCID.String()
+	rootCid = "..." + rootCid[len(rootCid)-8:]
+
+	otherParty := channel.OtherPeer.String()
+	otherParty = "..." + otherParty[len(otherParty)-8:]
+
+	initiated := "N"
+	if channel.IsInitiator {
+		initiated = "Y"
+	}
+
+	voucher := channel.Voucher
+	if len(voucher) > 40 {
+		voucher = "..." + voucher[len(voucher)-37:]
+	}
+
+	return map[string]interface{}{
+		"ID":             channel.TransferID,
+		"Status":         channelStatusString(useColor, channel.Status),
+		otherPartyColumn: otherParty,
+		"Root Cid":       rootCid,
+		"Initiated?":     initiated,
+		"Transferred":    channel.Transferred,
+		"Voucher":        voucher,
+		"Message":        channel.Message,
+	}
 }

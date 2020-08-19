@@ -92,10 +92,8 @@ func (m mybs) Get(c cid.Cid) (block.Block, error) {
 	return b, nil
 }
 
-var rootkey, _ = address.NewIDAddress(80)
-
 var rootkeyMultisig = genesis.MultisigMeta{
-	Signers:         []address.Address{rootkey},
+	Signers:         []address.Address{remAccTestKey},
 	Threshold:       1,
 	VestingDuration: 0,
 	VestingStart:    0,
@@ -105,6 +103,18 @@ var DefaultVerifregRootkeyActor = genesis.Actor{
 	Type:    genesis.TMultisig,
 	Balance: big.NewInt(0),
 	Meta:    rootkeyMultisig.ActorMeta(),
+}
+
+var remAccTestKey, _ = address.NewFromString("t1ceb34gnsc6qk5dt6n7xg6ycwzasjhbxm3iylkiy")
+var remAccMeta = genesis.MultisigMeta{
+	Signers:   []address.Address{remAccTestKey},
+	Threshold: 1,
+}
+
+var DefaultRemainderAccountActor = genesis.Actor{
+	Type:    genesis.TMultisig,
+	Balance: big.NewInt(0),
+	Meta:    remAccMeta.ActorMeta(),
 }
 
 func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
@@ -210,9 +220,10 @@ func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
 			*genm1,
 			*genm2,
 		},
-		VerifregRootKey: DefaultVerifregRootkeyActor,
-		NetworkName:     "",
-		Timestamp:       uint64(build.Clock.Now().Add(-500 * time.Duration(build.BlockDelaySecs) * time.Second).Unix()),
+		VerifregRootKey:  DefaultVerifregRootkeyActor,
+		RemainderAccount: DefaultRemainderAccountActor,
+		NetworkName:      "",
+		Timestamp:        uint64(build.Clock.Now().Add(-500 * time.Duration(build.BlockDelaySecs) * time.Second).Unix()),
 	}
 
 	genb, err := genesis2.MakeGenesisBlock(context.TODO(), bs, sys, tpl)
@@ -304,7 +315,8 @@ func (cg *ChainGen) GenesisCar() ([]byte, error) {
 
 func CarWalkFunc(nd format.Node) (out []*format.Link, err error) {
 	for _, link := range nd.Links() {
-		if link.Cid.Prefix().Codec == cid.FilCommitmentSealed || link.Cid.Prefix().Codec == cid.FilCommitmentUnsealed {
+		pref := link.Cid.Prefix()
+		if pref.Codec == cid.FilCommitmentSealed || pref.Codec == cid.FilCommitmentUnsealed {
 			continue
 		}
 		out = append(out, link)

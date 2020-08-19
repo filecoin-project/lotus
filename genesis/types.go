@@ -26,6 +26,7 @@ type PreSeal struct {
 }
 
 type Miner struct {
+	ID     address.Address
 	Owner  address.Address
 	Worker address.Address
 	PeerId peer.ID //nolint:golint
@@ -79,5 +80,6 @@ type Template struct {
 	NetworkName string
 	Timestamp   uint64 `json:",omitempty"`
 
-	VerifregRootKey Actor
+	VerifregRootKey  Actor
+	RemainderAccount Actor
 }

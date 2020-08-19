@@ -3,8 +3,6 @@ package sealing
 import (
 	"bytes"
 	"context"
-	"time"
-
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -14,6 +12,7 @@ import (
 	"github.com/filecoin-project/specs-storage/storage"
 
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
+	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
 )
 
 // Piece is a tuple of piece and deal info
@@ -188,7 +187,7 @@ type MessageReceipt struct {
 	GasUsed  int64
 }
 
-type GetSealingDelayFunc func() (time.Duration, error)
+type GetSealingConfigFunc func() (sealiface.Config, error)
 
 func (mr *MessageReceipt) Equals(o *MessageReceipt) bool {
 	return mr.ExitCode == o.ExitCode && bytes.Equal(mr.Return, o.Return) && mr.GasUsed == o.GasUsed
