@@ -135,7 +135,7 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 
 	// Create init actor
 
-	initact, keyIDs, err := SetupInitActor(bs, template.NetworkName, template.Accounts, template.VerifregRootKey)
+	idStart, initact, keyIDs, err := SetupInitActor(bs, template.NetworkName, template.Accounts, template.VerifregRootKey)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("setup init actor: %w", err)
 	}
@@ -202,18 +202,27 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 	}
 
 	// Create accounts
-	for id, info := range template.Accounts {
-		if info.Type != genesis.TAccount && info.Type != genesis.TMultisig {
+	for _, info := range template.Accounts {
+
+		switch info.Type {
+		case genesis.TAccount:
+			if err := createAccountActor(ctx, cst, state, info, keyIDs); err != nil {
+				return nil, nil, xerrors.Errorf("failed to create account actor: %w", err)
+			}
+
+		case genesis.TMultisig:
+
+			ida, err := address.NewIDAddress(uint64(idStart))
+			if err != nil {
+				return nil, nil, err
+			}
+			idStart++
+
+			if err := createMultisigAccount(ctx, bs, cst, state, ida, info, keyIDs); err != nil {
+				return nil, nil, err
+			}
+		default:
 			return nil, nil, xerrors.New("unsupported account type")
-		}
-
-		ida, err := address.NewIDAddress(uint64(AccountStart + id))
-		if err != nil {
-			return nil, nil, err
-		}
-
-		if err = createAccount(ctx, bs, cst, state, ida, info); err != nil {
-			return nil, nil, err
 		}
 
 	}
@@ -223,8 +232,8 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 		return nil, nil, err
 	}
 
-	if err = createAccount(ctx, bs, cst, state, vregroot, template.VerifregRootKey); err != nil {
-		return nil, nil, err
+	if err = createMultisigAccount(ctx, bs, cst, state, vregroot, template.VerifregRootKey, keyIDs); err != nil {
+		return nil, nil, xerrors.Errorf("failed to set up verified registry signer: %w", err)
 	}
 
 	// Setup the first verifier as ID-address 81
@@ -288,73 +297,102 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 		return nil, nil, err
 	}
 
-	if err := createAccount(ctx, bs, cst, state, remAccKey, template.RemainderAccount); err != nil {
-		return nil, nil, err
-	}
-	err = state.SetActor(remAccKey, &types.Actor{
-		Code:    builtin.AccountActorCodeID,
-		Balance: remainingFil,
-		Head:    emptyobject,
-	})
-	if err != nil {
-		return nil, nil, xerrors.Errorf("set burnt funds account actor: %w", err)
+	if err := createMultisigAccount(ctx, bs, cst, state, remAccKey, template.RemainderAccount, keyIDs); err != nil {
+		return nil, nil, xerrors.Errorf("failed to set up remainder account: %w", err)
 	}
 
 	return state, keyIDs, nil
 }
 
-func createAccount(ctx context.Context, bs bstore.Blockstore, cst cbor.IpldStore, state *state.StateTree, ida address.Address, info genesis.Actor) error {
-	if info.Type == genesis.TAccount {
-		var ainfo genesis.AccountMeta
-		if err := json.Unmarshal(info.Meta, &ainfo); err != nil {
-			return xerrors.Errorf("unmarshaling account meta: %w", err)
-		}
-		st, err := cst.Put(ctx, &account.State{Address: ainfo.Owner})
-		if err != nil {
-			return err
-		}
-		err = state.SetActor(ida, &types.Actor{
-			Code:    builtin.AccountActorCodeID,
-			Balance: info.Balance,
-			Head:    st,
-		})
-		if err != nil {
-			return xerrors.Errorf("setting account from actmap: %w", err)
-		}
-		return nil
-	} else if info.Type == genesis.TMultisig {
-		var ainfo genesis.MultisigMeta
-		if err := json.Unmarshal(info.Meta, &ainfo); err != nil {
-			return xerrors.Errorf("unmarshaling account meta: %w", err)
-		}
-		pending, err := adt.MakeEmptyMap(adt.WrapStore(ctx, cst)).Root()
-		if err != nil {
-			return xerrors.Errorf("failed to create empty map: %v", err)
-		}
-
-		st, err := cst.Put(ctx, &multisig.State{
-			Signers:               ainfo.Signers,
-			NumApprovalsThreshold: uint64(ainfo.Threshold),
-			StartEpoch:            abi.ChainEpoch(ainfo.VestingStart),
-			UnlockDuration:        abi.ChainEpoch(ainfo.VestingDuration),
-			PendingTxns:           pending,
-			InitialBalance:        info.Balance,
-		})
-		if err != nil {
-			return err
-		}
-		err = state.SetActor(ida, &types.Actor{
-			Code:    builtin.MultisigActorCodeID,
-			Balance: info.Balance,
-			Head:    st,
-		})
-		if err != nil {
-			return xerrors.Errorf("setting account from actmap: %w", err)
-		}
-		return nil
+func createAccountActor(ctx context.Context, cst cbor.IpldStore, state *state.StateTree, info genesis.Actor, keyIDs map[address.Address]address.Address) error {
+	var ainfo genesis.AccountMeta
+	if err := json.Unmarshal(info.Meta, &ainfo); err != nil {
+		return xerrors.Errorf("unmarshaling account meta: %w", err)
+	}
+	st, err := cst.Put(ctx, &account.State{Address: ainfo.Owner})
+	if err != nil {
+		return err
 	}
 
-	return fmt.Errorf("failed to create account")
+	ida, ok := keyIDs[ainfo.Owner]
+	if !ok {
+		return fmt.Errorf("no registered ID for account actor: %s", ainfo.Owner)
+	}
+
+	err = state.SetActor(ida, &types.Actor{
+		Code:    builtin.AccountActorCodeID,
+		Balance: info.Balance,
+		Head:    st,
+	})
+	if err != nil {
+		return xerrors.Errorf("setting account from actmap: %w", err)
+	}
+	return nil
+}
+
+func createMultisigAccount(ctx context.Context, bs bstore.Blockstore, cst cbor.IpldStore, state *state.StateTree, ida address.Address, info genesis.Actor, keyIDs map[address.Address]address.Address) error {
+	if info.Type != genesis.TMultisig {
+		return fmt.Errorf("can only call createMultisigAccount with multisig Actor info")
+	}
+	var ainfo genesis.MultisigMeta
+	if err := json.Unmarshal(info.Meta, &ainfo); err != nil {
+		return xerrors.Errorf("unmarshaling account meta: %w", err)
+	}
+	pending, err := adt.MakeEmptyMap(adt.WrapStore(ctx, cst)).Root()
+	if err != nil {
+		return xerrors.Errorf("failed to create empty map: %v", err)
+	}
+
+	var signers []address.Address
+
+	for _, e := range ainfo.Signers {
+		idAddress, ok := keyIDs[e]
+		if !ok {
+			return fmt.Errorf("no registered key ID for signer: %s", e)
+		}
+
+		// Check if actor already exists
+		_, err := state.GetActor(e)
+		if err == nil {
+			signers = append(signers, idAddress)
+			continue
+		}
+
+		st, err := cst.Put(ctx, &account.State{Address: e})
+		if err != nil {
+			return err
+		}
+		err = state.SetActor(idAddress, &types.Actor{
+			Code:    builtin.AccountActorCodeID,
+			Balance: types.NewInt(0),
+			Head:    st,
+		})
+		if err != nil {
+			return xerrors.Errorf("setting account from actmap: %w", err)
+		}
+		signers = append(signers, idAddress)
+	}
+
+	st, err := cst.Put(ctx, &multisig.State{
+		Signers:               signers,
+		NumApprovalsThreshold: uint64(ainfo.Threshold),
+		StartEpoch:            abi.ChainEpoch(ainfo.VestingStart),
+		UnlockDuration:        abi.ChainEpoch(ainfo.VestingDuration),
+		PendingTxns:           pending,
+		InitialBalance:        info.Balance,
+	})
+	if err != nil {
+		return err
+	}
+	err = state.SetActor(ida, &types.Actor{
+		Code:    builtin.MultisigActorCodeID,
+		Balance: info.Balance,
+		Head:    st,
+	})
+	if err != nil {
+		return xerrors.Errorf("setting account from actmap: %w", err)
+	}
+	return nil
 }
 
 func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, stateroot cid.Cid, template genesis.Template, keyIDs map[address.Address]address.Address) (cid.Cid, error) {
@@ -375,11 +413,12 @@ func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, stateroot ci
 		return cid.Undef, xerrors.Errorf("failed to create NewVM: %w", err)
 	}
 
-	for _, m := range template.Miners {
+	for mi, m := range template.Miners {
+		for si, s := range m.Sectors {
+			if s.Deal.Provider != m.ID {
+				return cid.Undef, xerrors.Errorf("Sector %d in miner %d in template had mismatch in provider and miner ID: %s != %s", si, mi, s.Deal.Provider, m.ID)
+			}
 
-		// Add the miner to the market actor's balance table
-		_, err = doExec(ctx, vm, builtin.StorageMarketActorAddr, m.Owner, builtin.MethodsMarket.AddBalance, mustEnc(adt.Empty))
-		for _, s := range m.Sectors {
 			amt := s.Deal.PieceSize
 			verifNeeds[keyIDs[s.Deal.Client]] += amt
 			sum += amt

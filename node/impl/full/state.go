@@ -1092,6 +1092,12 @@ func (a *StateAPI) StateVerifiedClientStatus(ctx context.Context, addr address.A
 		return nil, err
 	}
 
+	aid, err := a.StateLookupID(ctx, addr, tsk)
+	if err != nil {
+		log.Warnf("lookup failure %v", err)
+		return nil, err
+	}
+
 	store := a.StateManager.ChainStore().Store(ctx)
 
 	var st verifreg.State
@@ -1105,7 +1111,7 @@ func (a *StateAPI) StateVerifiedClientStatus(ctx context.Context, addr address.A
 	}
 
 	var dcap verifreg.DataCap
-	if found, err := vh.Get(adt.AddrKey(addr), &dcap); err != nil {
+	if found, err := vh.Get(adt.AddrKey(aid), &dcap); err != nil {
 		return nil, err
 	} else if !found {
 		return nil, nil

@@ -114,6 +114,7 @@ func PreSeal(maddr address.Address, spt abi.RegisteredSealProof, offset abi.Sect
 	}
 
 	miner := &genesis.Miner{
+		ID:            maddr,
 		Owner:         minerAddr.Address,
 		Worker:        minerAddr.Address,
 		MarketBalance: big.Zero(),
