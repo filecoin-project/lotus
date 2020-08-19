@@ -130,12 +130,12 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 						TimeInMeshQuantum: time.Second,
 						TimeInMeshCap:     1,
 
-						// deliveries decay after 1 hour, cap at 100 blocks
-						FirstMessageDeliveriesWeight: 5, // max value is 500
+						// deliveries decay after 1 hour, cap at 25 beacons
+						FirstMessageDeliveriesWeight: 5, // max value is 125
 						FirstMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(time.Hour),
-						FirstMessageDeliveriesCap:    100, // 100 blocks in an hour
+						FirstMessageDeliveriesCap:    25, // the maximum expected in an hour is ~26, including the decay
 
-						// Mesh Delivery Failure is currently turned off for blocks
+						// Mesh Delivery Failure is currently turned off for beacons
 						// This is on purpose as
 						// - the traffic is very low for meaningful distribution of incoming edges.
 						// - the reaction time needs to be very slow -- in the order of 10 min at least
@@ -144,19 +144,6 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 						// - the network is too small, so large asymmetries can be expected between mesh
 						//   edges.
 						// We should revisit this once the network grows.
-						//
-						// // tracks deliveries in the last minute
-						// // penalty activates at 1 minute and expects ~0.4 blocks
-						// MeshMessageDeliveriesWeight:     -576, // max penalty is -100
-						// MeshMessageDeliveriesDecay:      pubsub.ScoreParameterDecay(time.Minute),
-						// MeshMessageDeliveriesCap:        10,      // 10 blocks in a minute
-						// MeshMessageDeliveriesThreshold:  0.41666, // 10/12/2 blocks/min
-						// MeshMessageDeliveriesWindow:     10 * time.Millisecond,
-						// MeshMessageDeliveriesActivation: time.Minute,
-						//
-						// // decays after 15 min
-						// MeshFailurePenaltyWeight: -576,
-						// MeshFailurePenaltyDecay:  pubsub.ScoreParameterDecay(15 * time.Minute),
 
 						// invalid messages decay after 1 hour
 						InvalidMessageDeliveriesWeight: -1000,
