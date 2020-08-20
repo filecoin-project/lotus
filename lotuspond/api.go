@@ -17,7 +17,7 @@ import (
 type NodeState int
 
 const (
-	NodeUnknown = iota
+	NodeUnknown = iota //nolint:deadcode
 	NodeRunning
 	NodeStopped
 )

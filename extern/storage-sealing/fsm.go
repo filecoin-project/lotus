@@ -348,7 +348,9 @@ func (m *Sealing) restartSectors(ctx context.Context) error {
 				timer := time.NewTimer(cfg.WaitDealsDelay)
 				go func() {
 					<-timer.C
-					m.StartPacking(sector.SectorNumber)
+					if err := m.StartPacking(sector.SectorNumber); err != nil {
+						log.Errorf("starting sector %d: %+v", sector.SectorNumber, err)
+					}
 				}()
 			}
 		}

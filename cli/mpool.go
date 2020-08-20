@@ -313,7 +313,7 @@ var mpoolReplaceCmd = &cli.Command{
 		if err != nil {
 			return fmt.Errorf("parsing gas-premium: %w", err)
 		}
-		// TODO: estiamte fee cap here
+		// TODO: estimate fee cap here
 		msg.GasFeeCap, err = types.BigFromString(cctx.String("gas-feecap"))
 		if err != nil {
 			return fmt.Errorf("parsing gas-feecap: %w", err)

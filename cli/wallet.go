@@ -385,10 +385,9 @@ var walletVerify = &cli.Command{
 		if api.WalletVerify(ctx, addr, msg, &sig) {
 			fmt.Println("valid")
 			return nil
-		} else {
-			fmt.Println("invalid")
-			return NewCliError("CLI Verify called with invalid signature")
 		}
+		fmt.Println("invalid")
+		return NewCliError("CLI Verify called with invalid signature")
 	},
 }
 

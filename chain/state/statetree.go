@@ -246,7 +246,7 @@ func (st *StateTree) DeleteActor(addr address.Address) error {
 }
 
 func (st *StateTree) Flush(ctx context.Context) (cid.Cid, error) {
-	ctx, span := trace.StartSpan(ctx, "stateTree.Flush")
+	ctx, span := trace.StartSpan(ctx, "stateTree.Flush") //nolint:staticcheck
 	defer span.End()
 	if len(st.snaps.layers) != 1 {
 		return cid.Undef, xerrors.Errorf("tried to flush state tree with snapshots on the stack")
@@ -268,7 +268,7 @@ func (st *StateTree) Flush(ctx context.Context) (cid.Cid, error) {
 }
 
 func (st *StateTree) Snapshot(ctx context.Context) error {
-	ctx, span := trace.StartSpan(ctx, "stateTree.SnapShot")
+	ctx, span := trace.StartSpan(ctx, "stateTree.SnapShot") //nolint:staticcheck
 	defer span.End()
 
 	st.snaps.addLayer()

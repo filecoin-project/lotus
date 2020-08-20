@@ -47,7 +47,7 @@ var supportedSectors struct {
 }
 
 func init() {
-	for supportedSector, _ := range miner.SupportedProofTypes {
+	for supportedSector := range miner.SupportedProofTypes {
 		sectorSize, err := supportedSector.SectorSize()
 		if err != nil {
 			panic(err)
@@ -207,24 +207,24 @@ type handler struct {
 func (h *handler) minerhtml(w http.ResponseWriter, r *http.Request) {
 	f, err := rice.MustFindBox("site").Open("_miner.html")
 	if err != nil {
-		w.WriteHeader(500)
-		_, _ = w.Write([]byte(err.Error()))
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	tmpl, err := ioutil.ReadAll(f)
 	if err != nil {
-		w.WriteHeader(500)
-		_, _ = w.Write([]byte(err.Error()))
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	var executedTmpl bytes.Buffer
 
 	t, err := template.New("miner.html").Parse(string(tmpl))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 	if err := t.Execute(&executedTmpl, supportedSectors); err != nil {
-		w.WriteHeader(500)
-		_, _ = w.Write([]byte(err.Error()))
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -238,8 +238,7 @@ func (h *handler) minerhtml(w http.ResponseWriter, r *http.Request) {
 func (h *handler) send(w http.ResponseWriter, r *http.Request) {
 	to, err := address.NewFromString(r.FormValue("address"))
 	if err != nil {
-		w.WriteHeader(400)
-		_, _ = w.Write([]byte(err.Error()))
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -282,8 +281,7 @@ func (h *handler) send(w http.ResponseWriter, r *http.Request) {
 		To:    to,
 	}, nil)
 	if err != nil {
-		w.WriteHeader(400)
-		_, _ = w.Write([]byte(err.Error()))
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -293,15 +291,15 @@ func (h *handler) send(w http.ResponseWriter, r *http.Request) {
 func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 	owner, err := address.NewFromString(r.FormValue("address"))
 	if err != nil {
-		w.WriteHeader(400)
-		_, _ = w.Write([]byte(err.Error()))
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	if owner.Protocol() != address.BLS {
-		w.WriteHeader(400)
-		_, _ = w.Write([]byte("Miner address must use BLS. A BLS address starts with the prefix 't3'."))
-		_, _ = w.Write([]byte("Please create a BLS address by running \"lotus wallet new bls\" while connected to a Lotus node."))
+		http.Error(w,
+			"Miner address must use BLS. A BLS address starts with the prefix 't3'."+
+				"Please create a BLS address by running \"lotus wallet new bls\" while connected to a Lotus node.",
+			http.StatusBadRequest)
 		return
 	}
 
@@ -346,16 +344,14 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 		To:    owner,
 	}, nil)
 	if err != nil {
-		w.WriteHeader(400)
-		w.Write([]byte("pushfunds: " + err.Error()))
+		http.Error(w, "pushfunds: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 	log.Infof("%s: push funds %s", owner, smsg.Cid())
 
 	spt, err := ffiwrapper.SealProofTypeFromSectorSize(abi.SectorSize(ssize))
 	if err != nil {
-		w.WriteHeader(400)
-		w.Write([]byte("sealprooftype: " + err.Error()))
+		http.Error(w, "sealprooftype: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -366,8 +362,7 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 		Peer:          abi.PeerID(h.defaultMinerPeer),
 	})
 	if err != nil {
-		w.WriteHeader(400)
-		w.Write([]byte(err.Error()))
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -382,66 +377,58 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 
 	signed, err := h.api.MpoolPushMessage(r.Context(), createStorageMinerMsg, nil)
 	if err != nil {
-		w.WriteHeader(400)
-		w.Write([]byte(err.Error()))
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	log.Infof("%s: create miner msg: %s", owner, signed.Cid())
 
-	http.Redirect(w, r, fmt.Sprintf("/wait.html?f=%s&m=%s&o=%s", signed.Cid(), smsg.Cid(), owner), 303)
+	http.Redirect(w, r, fmt.Sprintf("/wait.html?f=%s&m=%s&o=%s", signed.Cid(), smsg.Cid(), owner), http.StatusSeeOther)
 }
 
 func (h *handler) msgwait(w http.ResponseWriter, r *http.Request) {
 	c, err := cid.Parse(r.FormValue("cid"))
 	if err != nil {
-		w.WriteHeader(400)
-		w.Write([]byte(err.Error()))
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	mw, err := h.api.StateWaitMsg(r.Context(), c, build.MessageConfidence)
 	if err != nil {
-		w.WriteHeader(400)
-		w.Write([]byte(err.Error()))
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	if mw.Receipt.ExitCode != 0 {
-		w.WriteHeader(400)
-		w.Write([]byte(xerrors.Errorf("create miner failed: exit code %d", mw.Receipt.ExitCode).Error()))
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	w.WriteHeader(200)
+	w.WriteHeader(http.StatusOK)
 }
 
 func (h *handler) msgwaitaddr(w http.ResponseWriter, r *http.Request) {
 	c, err := cid.Parse(r.FormValue("cid"))
 	if err != nil {
-		w.WriteHeader(400)
-		w.Write([]byte(err.Error()))
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	mw, err := h.api.StateWaitMsg(r.Context(), c, build.MessageConfidence)
 	if err != nil {
-		w.WriteHeader(400)
-		w.Write([]byte(err.Error()))
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	if mw.Receipt.ExitCode != 0 {
-		w.WriteHeader(400)
-		w.Write([]byte(xerrors.Errorf("create miner failed: exit code %d", mw.Receipt.ExitCode).Error()))
+		http.Error(w, xerrors.Errorf("create miner failed: exit code %d", mw.Receipt.ExitCode).Error(), http.StatusBadRequest)
 		return
 	}
-	w.WriteHeader(200)
+	w.WriteHeader(http.StatusOK)
 
 	var ma power.CreateMinerReturn
 	if err := ma.UnmarshalCBOR(bytes.NewReader(mw.Receipt.Return)); err != nil {
 		log.Errorf("%w", err)
-		w.WriteHeader(400)
-		w.Write([]byte(err.Error()))
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 

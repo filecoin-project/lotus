@@ -90,8 +90,7 @@ func (a *SyncAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) erro
 		return xerrors.Errorf("serializing block for pubsub publishing failed: %w", err)
 	}
 
-	// TODO: anything else to do here?
-	return a.PubSub.Publish(build.BlocksTopic(a.NetName), b)
+	return a.PubSub.Publish(build.BlocksTopic(a.NetName), b) //nolint:staticcheck
 }
 
 func (a *SyncAPI) SyncIncomingBlocks(ctx context.Context) (<-chan *types.BlockHeader, error) {

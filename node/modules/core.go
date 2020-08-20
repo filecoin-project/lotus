@@ -36,8 +36,8 @@ func RecordValidator(ps peerstore.Peerstore) record.Validator {
 	}
 }
 
-const JWTSecretName = "auth-jwt-private" //nolint:gosec
-const KTJwtHmacSecret = "jwt-hmac-secret"
+const JWTSecretName = "auth-jwt-private"  //nolint:gosec
+const KTJwtHmacSecret = "jwt-hmac-secret" //nolint:gosec
 
 type JwtPayload struct {
 	Allow []auth.Permission

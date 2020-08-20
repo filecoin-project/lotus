@@ -67,6 +67,7 @@ import (
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
+//nolint:deadcode,varcheck
 var log = logging.Logger("builder")
 
 // special is a type used to give keys to modules which

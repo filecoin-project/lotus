@@ -24,9 +24,14 @@ import (
 	"github.com/filecoin-project/lotus/node/impl"
 )
 
-func TestPledgeSector(t *testing.T, b APIBuilder, blocktime time.Duration, nSectors int) {
-	os.Setenv("BELLMAN_NO_GPU", "1")
+func init() {
+	err := os.Setenv("BELLMAN_NO_GPU", "1")
+	if err != nil {
+		panic(fmt.Sprintf("failed to set BELLMAN_NO_GPU env variable: %s", err))
+	}
+}
 
+func TestPledgeSector(t *testing.T, b APIBuilder, blocktime time.Duration, nSectors int) {
 	ctx := context.Background()
 	n, sn := b(t, 1, OneMiner)
 	client := n[0].FullNode.(*impl.FullNodeAPI)
@@ -110,8 +115,6 @@ func pledgeSectors(t *testing.T, ctx context.Context, miner TestStorageNode, n, 
 }
 
 func TestWindowPost(t *testing.T, b APIBuilder, blocktime time.Duration, nSectors int) {
-	os.Setenv("BELLMAN_NO_GPU", "1")
-
 	ctx := context.Background()
 	n, sn := b(t, 1, OneMiner)
 	client := n[0].FullNode.(*impl.FullNodeAPI)

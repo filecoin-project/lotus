@@ -53,7 +53,10 @@ var runCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Bool("enable-gpu-proving") {
-			os.Setenv("BELLMAN_NO_GPU", "true")
+			err := os.Setenv("BELLMAN_NO_GPU", "true")
+			if err != nil {
+				return err
+			}
 		}
 
 		nodeApi, ncloser, err := lcli.GetFullNodeAPI(cctx)

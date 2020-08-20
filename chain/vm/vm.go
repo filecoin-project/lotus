@@ -254,6 +254,9 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 		if aerr := rt.chargeGasSafe(rt.Pricelist().OnMethodInvocation(msg.Value, msg.Method)); aerr != nil {
 			return nil, aerrors.Wrap(aerr, "not enough gas for method invocation")
 		}
+
+		// not charging any gas, just logging
+		//nolint:errcheck
 		defer rt.chargeGasSafe(newGasCharge("OnMethodInvocationDone", 0, 0))
 
 		if types.BigCmp(msg.Value, types.NewInt(0)) != 0 {

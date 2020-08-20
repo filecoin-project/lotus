@@ -69,7 +69,7 @@ func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemark
 	})
 
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("serializing PublishStorageDeals params failed: ", err)
+		return cid.Undef, xerrors.Errorf("serializing PublishStorageDeals params failed: %w", err)
 	}
 
 	// TODO: We may want this to happen after fetching data
@@ -267,7 +267,7 @@ func (n *ProviderNodeAdapter) OnDealSectorCommitted(ctx context.Context, provide
 			return false, nil
 		}
 
-		sd, err := n.StateMarketStorageDeal(ctx, abi.DealID(dealID), ts.Key())
+		sd, err := n.StateMarketStorageDeal(ctx, dealID, ts.Key())
 		if err != nil {
 			return false, xerrors.Errorf("failed to look up deal on chain: %w", err)
 		}
@@ -305,7 +305,7 @@ func (n *ProviderNodeAdapter) OnDealSectorCommitted(ctx context.Context, provide
 			}
 
 			for _, did := range params.DealIDs {
-				if did == abi.DealID(dealID) {
+				if did == dealID {
 					sectorNumber = params.SectorNumber
 					sectorFound = true
 					return true, false, nil

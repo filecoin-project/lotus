@@ -251,15 +251,12 @@ func RecordTipsetStatePoints(ctx context.Context, api api.FullNode, pl *PointLis
 		return err
 	}
 
-	err = mp.ForEach(nil, func(key string) error {
+	var claim power.Claim
+	err = mp.ForEach(&claim, func(key string) error {
 		addr, err := address.NewFromBytes([]byte(key))
 		if err != nil {
 			return err
 		}
-
-		var claim power.Claim
-		keyerAddr := adt.AddrKey(addr)
-		mp.Get(keyerAddr, &claim)
 
 		if claim.QualityAdjPower.Int64() == 0 {
 			return nil
@@ -311,7 +308,7 @@ func RecordTipsetMessagesPoints(ctx context.Context, api api.FullNode, pl *Point
 
 	for i, msg := range msgs {
 		// FIXME: use float so this doesn't overflow
-		// FIXME: this doesn't work as time points get overriden
+		// FIXME: this doesn't work as time points get overridden
 		p := NewPoint("chain.message_gaspremium", msg.Message.GasPremium.Int64())
 		pl.AddPoint(p)
 		p = NewPoint("chain.message_gasfeecap", msg.Message.GasFeeCap.Int64())

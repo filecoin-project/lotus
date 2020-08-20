@@ -36,7 +36,7 @@ type waitFunc func(ctx context.Context, baseTime uint64) (func(bool, error), abi
 
 func randTimeOffset(width time.Duration) time.Duration {
 	buf := make([]byte, 8)
-	rand.Reader.Read(buf)
+	rand.Reader.Read(buf) //nolint:errcheck
 	val := time.Duration(binary.BigEndian.Uint64(buf) % uint64(width))
 
 	return val - (width / 2)
@@ -508,12 +508,3 @@ func (c *cachedActorLookup) StateGetActor(ctx context.Context, a address.Address
 }
 
 type ActorLookup func(context.Context, address.Address, types.TipSetKey) (*types.Actor, error)
-
-func countFrom(msgs []*types.SignedMessage, from address.Address) (out int) {
-	for _, msg := range msgs {
-		if msg.Message.From == from {
-			out++
-		}
-	}
-	return out
-}

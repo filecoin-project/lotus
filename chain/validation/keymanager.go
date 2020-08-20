@@ -2,8 +2,9 @@ package validation
 
 import (
 	"fmt"
-	"github.com/minio/blake2b-simd"
 	"math/rand"
+
+	"github.com/minio/blake2b-simd"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-crypto"

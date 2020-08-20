@@ -172,7 +172,7 @@ func (client *BlockSync) processResponse(
 			resLength, req.Length)
 	}
 	if resLength < int(req.Length) && res.Status != Partial {
-		return nil, xerrors.Errorf("got less than requested without a proper status: %s", res.Status)
+		return nil, xerrors.Errorf("got less than requested without a proper status: %d", res.Status)
 	}
 
 	validRes := &validatedResponse{}
@@ -205,7 +205,7 @@ func (client *BlockSync) processResponse(
 		validRes.messages = make([]*CompactedMessages, resLength)
 		for i := 0; i < resLength; i++ {
 			if res.Chain[i].Messages == nil {
-				return nil, xerrors.Errorf("no messages included for tipset at height (head - %d): %w", i)
+				return nil, xerrors.Errorf("no messages included for tipset at height (head - %d)", i)
 			}
 			validRes.messages[i] = res.Chain[i].Messages
 		}

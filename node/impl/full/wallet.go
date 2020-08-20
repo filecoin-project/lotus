@@ -2,19 +2,18 @@ package full
 
 import (
 	"context"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
-
-	"github.com/filecoin-project/lotus/lib/sigs"
 
 	"github.com/filecoin-project/go-address"
+	"go.uber.org/fx"
+	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
-
-	"go.uber.org/fx"
-	"golang.org/x/xerrors"
+	"github.com/filecoin-project/lotus/lib/sigs"
 )
 
 type WalletAPI struct {
@@ -45,9 +44,8 @@ func (a *WalletAPI) WalletBalance(ctx context.Context, addr address.Address) (ty
 
 	if xerrors.Is(err, types.ErrActorNotFound) {
 		return big.Zero(), nil
-	} else {
-		return bal, err
 	}
+	return bal, err
 }
 
 func (a *WalletAPI) WalletSign(ctx context.Context, k address.Address, msg []byte) (*crypto.Signature, error) {
