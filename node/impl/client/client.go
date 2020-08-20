@@ -196,6 +196,7 @@ func (a *API) ClientListDeals(ctx context.Context) ([]api.DealInfo, error) {
 			PricePerEpoch: v.Proposal.StoragePricePerEpoch,
 			Duration:      uint64(v.Proposal.Duration()),
 			DealID:        v.DealID,
+			CreationTime:  v.CreationTime.Time(),
 		}
 	}
 
@@ -218,6 +219,7 @@ func (a *API) ClientGetDealInfo(ctx context.Context, d cid.Cid) (*api.DealInfo, 
 		PricePerEpoch: v.Proposal.StoragePricePerEpoch,
 		Duration:      uint64(v.Proposal.Duration()),
 		DealID:        v.DealID,
+		CreationTime:  v.CreationTime.Time(),
 	}, nil
 }
 

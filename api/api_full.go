@@ -478,6 +478,8 @@ type DealInfo struct {
 	Duration      uint64
 
 	DealID abi.DealID
+
+	CreationTime time.Time
 }
 
 type MsgLookup struct {
