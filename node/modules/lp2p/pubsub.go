@@ -374,5 +374,11 @@ func (trw *tracerWrapper) Trace(evt *pubsub_pb.TraceEvent) {
 		if trw.tr != nil {
 			trw.tr.Trace(evt)
 		}
+	case pubsub_pb.TraceEvent_RECV_RPC:
+		stats.Record(context.TODO(), metrics.PubsubRecvRPC.M(1))
+	case pubsub_pb.TraceEvent_SEND_RPC:
+		stats.Record(context.TODO(), metrics.PubsubSendRPC.M(1))
+	case pubsub_pb.TraceEvent_DROP_RPC:
+		stats.Record(context.TODO(), metrics.PubsubDropRPC.M(1))
 	}
 }
