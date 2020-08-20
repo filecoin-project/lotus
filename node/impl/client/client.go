@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -773,7 +772,7 @@ func (a *API) ClientListDataTransfers(ctx context.Context) ([]api.DataTransferCh
 
 	apiChannels := make([]api.DataTransferChannel, 0, len(inProgressChannels))
 	for _, channelState := range inProgressChannels {
-		apiChannels = append(apiChannels, toAPIChannel(a.Host.ID(), channelState))
+		apiChannels = append(apiChannels, api.NewDataTransferChannel(a.Host.ID(), channelState))
 	}
 
 	return apiChannels, nil
@@ -783,7 +782,7 @@ func (a *API) ClientDataTransferUpdates(ctx context.Context) (<-chan api.DataTra
 	channels := make(chan api.DataTransferChannel)
 
 	unsub := a.DataTransfer.SubscribeToEvents(func(evt datatransfer.Event, channelState datatransfer.ChannelState) {
-		channel := toAPIChannel(a.Host.ID(), channelState)
+		channel := api.NewDataTransferChannel(a.Host.ID(), channelState)
 		select {
 		case <-ctx.Done():
 		case channels <- channel:
@@ -796,35 +795,4 @@ func (a *API) ClientDataTransferUpdates(ctx context.Context) (<-chan api.DataTra
 	}()
 
 	return channels, nil
-}
-
-func toAPIChannel(hostID peer.ID, channelState datatransfer.ChannelState) api.DataTransferChannel {
-	channel := api.DataTransferChannel{
-		TransferID: channelState.TransferID(),
-		Status:     channelState.Status(),
-		BaseCID:    channelState.BaseCID(),
-		IsSender:   channelState.Sender() == hostID,
-		Message:    channelState.Message(),
-	}
-	stringer, ok := channelState.Voucher().(fmt.Stringer)
-	if ok {
-		channel.Voucher = stringer.String()
-	} else {
-		voucherJSON, err := json.Marshal(channelState.Voucher())
-		if err != nil {
-			channel.Voucher = fmt.Errorf("Voucher Serialization: %w", err).Error()
-		} else {
-			channel.Voucher = string(voucherJSON)
-		}
-	}
-	if channel.IsSender {
-		channel.IsInitiator = !channelState.IsPull()
-		channel.Transferred = channelState.Sent()
-		channel.OtherPeer = channelState.Recipient()
-	} else {
-		channel.IsInitiator = channelState.IsPull()
-		channel.Transferred = channelState.Received()
-		channel.OtherPeer = channelState.Sender()
-	}
-	return channel
 }

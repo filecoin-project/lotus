@@ -1254,7 +1254,7 @@ var clientListTransfers = &cli.Command{
 
 				tm.MoveCursor(1, 1)
 
-				outputChannels(tm.Screen, channels, completed, color)
+				OutputDataTransferChannels(tm.Screen, channels, completed, color)
 
 				tm.Flush()
 
@@ -1279,12 +1279,13 @@ var clientListTransfers = &cli.Command{
 				}
 			}
 		}
-		outputChannels(os.Stdout, channels, completed, color)
+		OutputDataTransferChannels(os.Stdout, channels, completed, color)
 		return nil
 	},
 }
 
-func outputChannels(out io.Writer, channels []api.DataTransferChannel, completed bool, color bool) {
+// OutputDataTransferChannels generates table output for a list of channels
+func OutputDataTransferChannels(out io.Writer, channels []lapi.DataTransferChannel, completed bool, color bool) {
 	sort.Slice(channels, func(i, j int) bool {
 		return channels[i].TransferID < channels[j].TransferID
 	})
@@ -1346,7 +1347,7 @@ func channelStatusString(useColor bool, status datatransfer.Status) string {
 	}
 }
 
-func toChannelOutput(useColor bool, otherPartyColumn string, channel api.DataTransferChannel) map[string]interface{} {
+func toChannelOutput(useColor bool, otherPartyColumn string, channel lapi.DataTransferChannel) map[string]interface{} {
 	rootCid := channel.BaseCID.String()
 	rootCid = "..." + rootCid[len(rootCid)-8:]
 
