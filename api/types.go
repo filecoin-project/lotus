@@ -49,9 +49,10 @@ type PubsubScore struct {
 }
 
 type MinerInfo struct {
-	Owner                      address.Address // Must be an ID-address.
-	Worker                     address.Address // Must be an ID-address.
-	NewWorker                  address.Address // Must be an ID-address.
+	Owner                      address.Address   // Must be an ID-address.
+	Worker                     address.Address   // Must be an ID-address.
+	NewWorker                  address.Address   // Must be an ID-address.
+	ControlAddresses           []address.Address // Must be an ID-addresses.
 	WorkerChangeEpoch          abi.ChainEpoch
 	PeerId                     *peer.ID
 	Multiaddrs                 []abi.Multiaddrs
@@ -67,10 +68,13 @@ func NewApiMinerInfo(info *miner.MinerInfo) MinerInfo {
 	}
 
 	mi := MinerInfo{
-		Owner:                      info.Owner,
-		Worker:                     info.Worker,
-		NewWorker:                  address.Undef,
-		WorkerChangeEpoch:          -1,
+		Owner:            info.Owner,
+		Worker:           info.Worker,
+		ControlAddresses: info.ControlAddresses,
+
+		NewWorker:         address.Undef,
+		WorkerChangeEpoch: -1,
+
 		PeerId:                     pid,
 		Multiaddrs:                 info.Multiaddrs,
 		SealProofType:              info.SealProofType,

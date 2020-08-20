@@ -105,6 +105,9 @@ var stateMinerInfo = &cli.Command{
 
 		fmt.Printf("Owner:\t%s\n", mi.Owner)
 		fmt.Printf("Worker:\t%s\n", mi.Worker)
+		for i, controlAddress := range mi.ControlAddresses {
+			fmt.Printf("Control %d: \t%s\n", i, controlAddress)
+		}
 		fmt.Printf("PeerID:\t%s\n", mi.PeerId)
 		fmt.Printf("SectorSize:\t%s (%d)\n", types.SizeStr(types.NewInt(uint64(mi.SectorSize))), mi.SectorSize)
 		fmt.Printf("Multiaddrs: \t")

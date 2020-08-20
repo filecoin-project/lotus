@@ -109,8 +109,8 @@ The addresses passed to `set-addrs` parameter in the commands below should be cu
 
 Once the config file has been updated, set the on-chain record of the miner's listen addresses:
 
- ```
- lotus-miner actor set-addrs <multiaddr_1> <multiaddr_2> ... <multiaddr_n>
+```
+lotus-miner actor set-addrs <multiaddr_1> <multiaddr_2> ... <multiaddr_n>
 ```
 
 This updates the `MinerInfo` object in the miner's actor, which will be looked up
@@ -119,5 +119,50 @@ when a client attempts to make a deal. Any number of addresses can be provided.
 Example:
 
 ```
- lotus-miner actor set-addrs /ip4/123.123.73.123/tcp/12345 /ip4/223.223.83.223/tcp/23456
+lotus-miner actor set-addrs /ip4/123.123.73.123/tcp/12345 /ip4/223.223.83.223/tcp/23456
+```
+
+# Separate address for windowPoSt messages
+
+WindowPoSt is the mechanism through which storage is verified in Filecoin. It requires miners to submit proofs for all sectors every 24h, which require sending messages to the chain.
+
+Because many other mining related actions require sending messages to the chain, and not all of those are "high value", it may be desirable to use a separate account to send PoSt messages from. This allows for setting lower GasFeeCaps on the lower value messages without creating head-of-line blocking problems for the PoSt messages in congested chain conditions
+
+To set this up, first create a new account, and send it some funds for gas fees:
+```sh
+lotus wallet new bls
+t3defg...
+
+lotus send t3defg... 100
+```
+
+Next add the control address
+```sh
+lotus-miner actor control set t3defg...
+Add t3defg...
+Pass --really-do-it to actually execute this action
+```
+
+Now actually set the addresses
+```sh
+lotus-miner actor control set --really-do-it t3defg...
+Add t3defg...
+Message CID: bafy2..
+```
+
+Wait for the message to land on chain
+```sh
+lotus state wait-msg bafy2..
+...
+Exit Code: 0
+...
+```
+
+Check miner control address list to make sure the address was correctly setup
+```sh
+lotus-miner actor control list
+name       ID      key           use    balance
+owner      t01111  t3abcd...  other  300 FIL
+worker     t01111  t3abcd...  other  300 FIL
+control-0  t02222  t3defg...  post   100 FIL
 ```
