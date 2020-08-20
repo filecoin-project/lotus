@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"sort"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -175,4 +176,34 @@ func (a *GasAPI) GasEstimateGasLimit(ctx context.Context, msgIn *types.Message, 
 	}
 
 	return res.MsgRct.GasUsed, nil
+}
+
+func (a *GasAPI) GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, _ types.TipSetKey) (*types.Message, error) {
+	if msg.GasLimit == 0 {
+		gasLimit, err := a.GasEstimateGasLimit(ctx, msg, types.TipSetKey{})
+		if err != nil {
+			return nil, xerrors.Errorf("estimating gas used: %w", err)
+		}
+		msg.GasLimit = int64(float64(gasLimit) * a.Mpool.GetConfig().GasLimitOverestimation)
+	}
+
+	if msg.GasPremium == types.EmptyInt || types.BigCmp(msg.GasPremium, types.NewInt(0)) == 0 {
+		gasPremium, err := a.GasEstimateGasPremium(ctx, 2, msg.From, msg.GasLimit, types.TipSetKey{})
+		if err != nil {
+			return nil, xerrors.Errorf("estimating gas price: %w", err)
+		}
+		msg.GasPremium = gasPremium
+	}
+
+	if msg.GasFeeCap == types.EmptyInt || types.BigCmp(msg.GasFeeCap, types.NewInt(0)) == 0 {
+		feeCap, err := a.GasEstimateFeeCap(ctx, msg, 10, types.EmptyTSK)
+		if err != nil {
+			return nil, xerrors.Errorf("estimating fee cap: %w", err)
+		}
+		msg.GasFeeCap = big.Add(feeCap, msg.GasPremium)
+	}
+
+	capGasFee(msg, spec.Get().MaxFee)
+
+	return msg, nil
 }

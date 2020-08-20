@@ -143,6 +143,7 @@ func infoCmdAct(cctx *cli.Context) error {
 
 	fmt.Printf("Miner Balance: %s\n", color.YellowString("%s", types.FIL(mact.Balance)))
 	fmt.Printf("\tPreCommit:   %s\n", types.FIL(mas.PreCommitDeposits))
+	fmt.Printf("\tPledge:      %s\n", types.FIL(mas.InitialPledgeRequirement))
 	fmt.Printf("\tLocked:      %s\n", types.FIL(mas.LockedFunds))
 	color.Green("\tAvailable:   %s", types.FIL(types.BigSub(mact.Balance, types.BigAdd(mas.LockedFunds, mas.PreCommitDeposits))))
 	wb, err := api.WalletBalance(ctx, mi.Worker)

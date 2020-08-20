@@ -19,6 +19,7 @@ func main() {
 		base16Cmd,
 		bitFieldCmd,
 		keyinfoCmd,
+		jwtCmd,
 		noncefix,
 		bigIntParseCmd,
 		staterootCmd,

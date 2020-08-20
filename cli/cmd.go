@@ -67,6 +67,19 @@ func (a APIInfo) AuthHeader() http.Header {
 	return nil
 }
 
+// The flag passed on the command line with the listen address of the API
+// server (only used by the tests)
+func flagForAPI(t repo.RepoType) string {
+	switch t {
+	case repo.FullNode:
+		return "api"
+	case repo.StorageMiner:
+		return "miner-api"
+	default:
+		panic(fmt.Sprintf("Unknown repo type: %v", t))
+	}
+}
+
 func flagForRepo(t repo.RepoType) string {
 	switch t {
 	case repo.FullNode:
@@ -102,6 +115,20 @@ func envForRepoDeprecation(t repo.RepoType) string {
 }
 
 func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
+	// Check if there was a flag passed with the listen address of the API
+	// server (only used by the tests)
+	apiFlag := flagForAPI(t)
+	if ctx.IsSet(apiFlag) {
+		strma := ctx.String(apiFlag)
+		strma = strings.TrimSpace(strma)
+
+		apima, err := multiaddr.NewMultiaddr(strma)
+		if err != nil {
+			return APIInfo{}, err
+		}
+		return APIInfo{Addr: apima}, nil
+	}
+
 	envKey := envForRepo(t)
 	env, ok := os.LookupEnv(envKey)
 	if !ok {
