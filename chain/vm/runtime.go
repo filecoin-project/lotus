@@ -114,6 +114,10 @@ func (rt *Runtime) shimCall(f func() interface{}) (rval []byte, aerr aerrors.Act
 		if r := recover(); r != nil {
 			if ar, ok := r.(aerrors.ActorError); ok {
 				log.Warnf("VM.Call failure: %+v", ar)
+				if isSystemExitCodeOrNegative(ar.RetCode()) {
+					aerr = aerrors.New(exitcode.SysErrorIllegalActor, "actor aborted with a system or negative exitcode")
+					return
+				}
 				aerr = ar
 				return
 			}
@@ -575,4 +579,12 @@ func (rt *Runtime) Log(level vmr.LogLevel, msg string, args ...interface{}) {
 	case vmr.ERROR:
 		actorLog.Errorf(msg, args...)
 	}
+}
+
+func isSystemExitCodeOrNegative(code exitcode.ExitCode) bool {
+	if code >= 0 && code < exitcode.FirstActorErrorCode || code < 0 {
+		return true
+	}
+
+	return false
 }
