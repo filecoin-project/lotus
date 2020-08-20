@@ -25,7 +25,7 @@ type ChainMsg interface {
 }
 
 type Message struct {
-	Version int64
+	Version uint64
 
 	To   address.Address
 	From address.Address
