@@ -112,8 +112,8 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 				// IPColocationFactorWhitelist: map[string]struct{}{},
 
 				// P7: behavioural penalties, decay after 1hr
+				BehaviourPenaltyThreshold: 6,
 				BehaviourPenaltyWeight:    -10,
-				BehaviourPenaltyThreshold: 3,
 				BehaviourPenaltyDecay:     pubsub.ScoreParameterDecay(time.Hour),
 
 				DecayInterval: pubsub.DefaultDecayInterval,
