@@ -174,7 +174,7 @@ func libp2p() Option {
 		Override(AddrsFactoryKey, lp2p.AddrsFactory(nil, nil)),
 		Override(SmuxTransportKey, lp2p.SmuxTransport(true)),
 		Override(RelayKey, lp2p.NoRelay()),
-		Override(SecurityKey, lp2p.Security(true, true)),
+		Override(SecurityKey, lp2p.Security(true, false)),
 
 		Override(BaseRoutingKey, lp2p.BaseRouting),
 		Override(new(routing.Routing), lp2p.Routing),
