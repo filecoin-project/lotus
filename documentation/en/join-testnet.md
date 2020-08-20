@@ -9,7 +9,7 @@ Anyone can set up a **Lotus Node** and connect to the **Lotus Testnet**. This is
 If you are trying to use `lotus` from China. You should set this **environment variable** on your machine:
 
 ```sh
-IPFS_GATEWAY="https://proof-parameters.s3.cn-south-1.jdcloud-oss.com/ipfs/"
+export IPFS_GATEWAY="https://proof-parameters.s3.cn-south-1.jdcloud-oss.com/ipfs/"
 ```
 
 ## Get started
@@ -78,6 +78,15 @@ To send FIL to another wallet from your default account, use this command:
 ```
 lotus send <target> <amount>
 ```
+
+## Configure your node's connectivity
+
+To effectively accept incoming storage & retrieval deals, your Lotus node needs to be accessible to other nodes on the network. To improve your connectivity, be sure to: 
+
+- [Set the multiaddresses for you miner to listen on](https://docs.filecoin.io/mine/connectivity/#setting-multiaddresses)
+- [Maintain a healthy peer count](https://docs.filecoin.io/mine/connectivity/#checking-peer-count)
+- [Enable port forwarding](https://docs.filecoin.io/mine/connectivity/#port-forwarding)
+- [Configure your public IP address and port](https://docs.filecoin.io/mine/connectivity/#setting-a-public-ip-address)
 
 ## Monitor the dashboard
 

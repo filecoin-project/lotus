@@ -19,14 +19,17 @@ func main() {
 		base16Cmd,
 		bitFieldCmd,
 		keyinfoCmd,
+		jwtCmd,
 		noncefix,
 		bigIntParseCmd,
-		staterootStatsCmd,
+		staterootCmd,
 		importCarCmd,
 		commpToCidCmd,
 		fetchParamCmd,
 		proofsCmd,
 		verifRegCmd,
+		miscCmd,
+		mpoolCmd,
 	}
 
 	app := &cli.App{

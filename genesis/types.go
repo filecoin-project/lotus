@@ -26,6 +26,7 @@ type PreSeal struct {
 }
 
 type Miner struct {
+	ID     address.Address
 	Owner  address.Address
 	Worker address.Address
 	PeerId peer.ID //nolint:golint
@@ -51,7 +52,18 @@ func (am *AccountMeta) ActorMeta() json.RawMessage {
 }
 
 type MultisigMeta struct {
-	// TODO
+	Signers         []address.Address
+	Threshold       int
+	VestingDuration int
+	VestingStart    int
+}
+
+func (mm *MultisigMeta) ActorMeta() json.RawMessage {
+	out, err := json.Marshal(mm)
+	if err != nil {
+		panic(err)
+	}
+	return out
 }
 
 type Actor struct {
@@ -67,4 +79,7 @@ type Template struct {
 
 	NetworkName string
 	Timestamp   uint64 `json:",omitempty"`
+
+	VerifregRootKey  Actor
+	RemainderAccount Actor
 }

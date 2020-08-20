@@ -17,18 +17,27 @@ A brief description of the problem you encountered while proving (sealing) a sec
 
 Including what commands you ran, and a description of your setup, is very helpful.
 
-**Sectors list**
-
-The output of `./lotus-storage-miner sectors list`.
-
 **Sectors status**
 
-The output of `./lotus-storage-miner sectors status --log <sectorId>` for the failed sector(s).
+The output of `lotus-miner sectors status --log <sectorId>` for the failed sector(s).
 
-**Lotus storage miner logs**
+**Lotus miner logs**
 
-Please go through the logs of your storage miner, and include screenshots of any error-like messages you find.
+Please go through the logs of your miner, and include screenshots of any error-like messages you find.
+
+Alternatively please upload full log files and share a link here
+
+**Lotus miner diagnostic info**
+
+Please collect the following diagnostic information, and share a link here
+
+* lotus-miner diagnostic info `lotus-miner info all > allinfo`
+
+** Code modifications **
+
+If you have modified parts of lotus, please describe which areas were modified,
+and the scope of those modifications
 
 **Version**
 
-The output of `./lotus --version`.
+The output of `lotus --version`.

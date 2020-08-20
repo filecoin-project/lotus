@@ -21,16 +21,17 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/lib/blockstore"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
+
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger2"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/urfave/cli/v2"
+	"golang.org/x/xerrors"
 )
 
 type TipSetExec struct {
@@ -99,6 +100,16 @@ var importBenchCmd = &cli.Command{
 		}
 
 		head, err := cs.Import(cfi)
+		if err != nil {
+			return err
+		}
+
+		gb, err := cs.GetTipsetByHeight(context.TODO(), 0, head, true)
+		if err != nil {
+			return err
+		}
+
+		err = cs.SetGenesis(gb.Blocks()[0])
 		if err != nil {
 			return err
 		}
@@ -405,22 +416,36 @@ func getExtras(ex interface{}) (*string, *float64) {
 func tallyGasCharges(charges map[string]*stats, et types.ExecutionTrace) {
 	for i, gc := range et.GasCharges {
 		name := gc.Name
-		if name == "OnIpldGetStart" {
+		if name == "OnIpldGetEnd" {
 			continue
 		}
 		tt := float64(gc.TimeTaken.Nanoseconds())
-		if name == "OnIpldGet" {
-			prev := et.GasCharges[i-1]
-			if prev.Name != "OnIpldGetStart" {
-				log.Warn("OnIpldGet without OnIpldGetStart")
-			}
-			tt += float64(prev.TimeTaken.Nanoseconds())
+		if name == "OnVerifyPost" && tt > 2e9 {
+			log.Warnf("Skipping abnormally long OnVerifyPost: %fs", tt/1e9)
+			// discard initial very long OnVerifyPost
+			continue
 		}
 		eType, eSize := getExtras(gc.Extra)
+
+		if name == "OnIpldGet" {
+			next := &types.GasTrace{}
+			if i+1 < len(et.GasCharges) {
+				next = et.GasCharges[i+1]
+			}
+			if next.Name != "OnIpldGetEnd" {
+				log.Warn("OnIpldGet without OnIpldGetEnd")
+			} else {
+				_, size := getExtras(next.Extra)
+				eSize = size
+			}
+		}
 		if eType != nil {
 			name += "-" + *eType
 		}
-		compGas := gc.VirtualComputeGas
+		compGas := gc.ComputeGas
+		if compGas == 0 {
+			compGas = gc.VirtualComputeGas
+		}
 		if compGas == 0 {
 			compGas = 1
 		}
@@ -463,6 +488,7 @@ var importAnalyzeCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
+		defer fi.Close() //nolint:errcheck
 
 		const nWorkers = 16
 		jsonIn := make(chan []byte, 2*nWorkers)
@@ -604,7 +630,7 @@ var importAnalyzeCmd = &cli.Command{
 			timeInActors := actorExec.timeTaken.Mean() * actorExec.timeTaken.n
 			fmt.Printf("Avarage time per epoch in actors: %s (%.1f%%)\n", time.Duration(timeInActors)/time.Duration(totalTipsets), timeInActors/float64(totalTime)*100)
 		}
-		if actorExecDone, ok := charges["OnActorExecDone"]; ok {
+		if actorExecDone, ok := charges["OnMethodInvocationDone"]; ok {
 			timeInActors := actorExecDone.timeTaken.Mean() * actorExecDone.timeTaken.n
 			fmt.Printf("Avarage time per epoch in OnActorExecDone %s (%.1f%%)\n", time.Duration(timeInActors)/time.Duration(totalTipsets), timeInActors/float64(totalTime)*100)
 		}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -64,10 +65,12 @@ var keyinfoImportCmd = &cli.Command{
 			input = os.Stdin
 		} else {
 			var err error
-			input, err = os.Open(cctx.Args().First())
+			inputFile, err := os.Open(cctx.Args().First())
 			if err != nil {
 				return err
 			}
+			defer inputFile.Close()
+			input = bufio.NewReader(inputFile)
 		}
 
 		encoded, err := ioutil.ReadAll(input)
@@ -174,10 +177,12 @@ var keyinfoInfoCmd = &cli.Command{
 			input = os.Stdin
 		} else {
 			var err error
-			input, err = os.Open(cctx.Args().First())
+			inputFile, err := os.Open(cctx.Args().First())
 			if err != nil {
 				return err
 			}
+			defer inputFile.Close()
+			input = bufio.NewReader(inputFile)
 		}
 
 		encoded, err := ioutil.ReadAll(input)
@@ -325,7 +330,7 @@ var keyinfoNewCmd = &cli.Command{
 		filename = strings.ReplaceAll(filename, "<addr>", keyAddr)
 		filename = strings.ReplaceAll(filename, "<type>", keyType)
 
-		file, err := os.Create(filename)
+		file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 		if err != nil {
 			return err
 		}

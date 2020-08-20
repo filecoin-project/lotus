@@ -20,6 +20,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
+	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
 	"github.com/filecoin-project/lotus/genesis"
 )
@@ -69,6 +70,7 @@ func (api *api) Spawn() (nodeInfo, error) {
 			Balance: types.FromFil(5000000),
 			Meta:    (&genesis.AccountMeta{Owner: genm.Owner}).ActorMeta(),
 		})
+		template.VerifregRootKey = gen.DefaultVerifregRootkeyActor
 
 		tb, err := json.Marshal(&template)
 		if err != nil {
@@ -176,10 +178,10 @@ func (api *api) SpawnStorage(fullNodeRepo string) (nodeInfo, error) {
 	}
 
 	id := atomic.AddInt32(&api.cmds, 1)
-	cmd := exec.Command("./lotus-storage-miner", initArgs...)
+	cmd := exec.Command("./lotus-miner", initArgs...)
 	cmd.Stderr = io.MultiWriter(os.Stderr, errlogfile)
 	cmd.Stdout = io.MultiWriter(os.Stdout, logfile)
-	cmd.Env = append(os.Environ(), "LOTUS_STORAGE_PATH="+dir, "LOTUS_PATH="+fullNodeRepo)
+	cmd.Env = append(os.Environ(), "LOTUS_MINER_PATH="+dir, "LOTUS_PATH="+fullNodeRepo)
 	if err := cmd.Run(); err != nil {
 		return nodeInfo{}, err
 	}
@@ -188,10 +190,10 @@ func (api *api) SpawnStorage(fullNodeRepo string) (nodeInfo, error) {
 
 	mux := newWsMux()
 
-	cmd = exec.Command("./lotus-storage-miner", "run", "--api", fmt.Sprintf("%d", 2500+id), "--nosync")
+	cmd = exec.Command("./lotus-miner", "run", "--api", fmt.Sprintf("%d", 2500+id), "--nosync")
 	cmd.Stderr = io.MultiWriter(os.Stderr, errlogfile, mux.errpw)
 	cmd.Stdout = io.MultiWriter(os.Stdout, logfile, mux.outpw)
-	cmd.Env = append(os.Environ(), "LOTUS_STORAGE_PATH="+dir, "LOTUS_PATH="+fullNodeRepo)
+	cmd.Env = append(os.Environ(), "LOTUS_MINER_PATH="+dir, "LOTUS_PATH="+fullNodeRepo)
 	if err := cmd.Start(); err != nil {
 		return nodeInfo{}, err
 	}
@@ -248,7 +250,7 @@ func (api *api) RestartNode(id int32) (nodeInfo, error) {
 
 	var cmd *exec.Cmd
 	if nd.meta.Storage {
-		cmd = exec.Command("./lotus-storage-miner", "run", "--api", fmt.Sprintf("%d", 2500+id), "--nosync")
+		cmd = exec.Command("./lotus-miner", "run", "--api", fmt.Sprintf("%d", 2500+id), "--nosync")
 	} else {
 		cmd = exec.Command("./lotus", "daemon", "--api", fmt.Sprintf("%d", 2500+id))
 	}

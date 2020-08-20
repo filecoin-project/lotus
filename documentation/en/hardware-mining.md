@@ -1,6 +1,6 @@
 # Protocol Labs Standard Testing Configuration
 
-> This documentation page describes the standard testing configuration the Protocol Labs team has used to test **Lotus Storage Miner**s on Lotus. There is no guarantee this testing configuration will be suitable for Filecoin storage mining at MainNet launch. If you need to buy new hardware to join the Filecoin Testnet, we recommend to buy no more hardware than you require for testing. To learn more please read this [Protocol Labs Standard Testing Configuration post](https://filecoin.io/blog/filecoin-testnet-mining/).
+> This documentation page describes the standard testing configuration the Protocol Labs team has used to test **Lotus Miner**s on Lotus. There is no guarantee this testing configuration will be suitable for Filecoin storage mining at MainNet launch. If you need to buy new hardware to join the Filecoin Testnet, we recommend to buy no more hardware than you require for testing. To learn more please read this [Protocol Labs Standard Testing Configuration post](https://filecoin.io/blog/filecoin-testnet-mining/).
 
 **Sector sizes** and **minimum pledged storage** required to mine blocks are two very important Filecoin Testnet parameters that impact hardware decisions. We will continue to refine all parameters during Testnet.
 

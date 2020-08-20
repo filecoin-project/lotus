@@ -3,9 +3,8 @@ package gen
 import (
 	"context"
 
-	bls "github.com/filecoin-project/filecoin-ffi"
-	amt "github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	cid "github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -17,6 +16,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/filecoin-project/lotus/lib/sigs/bls"
 )
 
 func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wallet, bt *api.BlockTemplate) (*types.FullBlock, error) {
@@ -78,17 +78,17 @@ func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wal
 		}
 	}
 
-	bs := cbor.NewCborStore(sm.ChainStore().Blockstore())
-	blsmsgroot, err := amt.FromArray(ctx, bs, toIfArr(blsMsgCids))
+	store := sm.ChainStore().Store(ctx)
+	blsmsgroot, err := toArray(store, blsMsgCids)
 	if err != nil {
 		return nil, xerrors.Errorf("building bls amt: %w", err)
 	}
-	secpkmsgroot, err := amt.FromArray(ctx, bs, toIfArr(secpkMsgCids))
+	secpkmsgroot, err := toArray(store, secpkMsgCids)
 	if err != nil {
 		return nil, xerrors.Errorf("building secpk amt: %w", err)
 	}
 
-	mmcid, err := bs.Put(ctx, &types.MsgMeta{
+	mmcid, err := store.Put(store.Context(), &types.MsgMeta{
 		BlsMessages:   blsmsgroot,
 		SecpkMessages: secpkmsgroot,
 	})
@@ -108,6 +108,12 @@ func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wal
 		return nil, err
 	}
 	next.ParentWeight = pweight
+
+	baseFee, err := sm.ChainStore().ComputeBaseFee(ctx, pts)
+	if err != nil {
+		return nil, xerrors.Errorf("computing base fee: %w", err)
+	}
+	next.ParentBaseFee = baseFee
 
 	cst := cbor.NewCborStore(sm.ChainStore().Blockstore())
 	tree, err := state.LoadStateTree(cst, st)
@@ -142,36 +148,45 @@ func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wal
 }
 
 func aggregateSignatures(sigs []crypto.Signature) (*crypto.Signature, error) {
-	var blsSigs []bls.Signature
-	for _, s := range sigs {
-		var bsig bls.Signature
-		copy(bsig[:], s.Data)
-		blsSigs = append(blsSigs, bsig)
+	sigsS := make([][]byte, len(sigs))
+	for i := 0; i < len(sigs); i++ {
+		sigsS[i] = sigs[i].Data
 	}
 
-	aggSig := bls.Aggregate(blsSigs)
-	if aggSig == nil {
+	aggregator := new(bls.AggregateSignature).AggregateCompressed(sigsS)
+	if aggregator == nil {
 		if len(sigs) > 0 {
 			return nil, xerrors.Errorf("bls.Aggregate returned nil with %d signatures", len(sigs))
 		}
 
+		// Note: for blst this condition should not happen - nil should not
+		// be returned
 		return &crypto.Signature{
 			Type: crypto.SigTypeBLS,
-			Data: new(bls.Signature)[:],
+			Data: new(bls.Signature).Compress(),
 		}, nil
 	}
-
+	aggSigAff := aggregator.ToAffine()
+	if aggSigAff == nil {
+		return &crypto.Signature{
+			Type: crypto.SigTypeBLS,
+			Data: new(bls.Signature).Compress(),
+		}, nil
+	}
+	aggSig := aggSigAff.Compress()
 	return &crypto.Signature{
 		Type: crypto.SigTypeBLS,
-		Data: aggSig[:],
+		Data: aggSig,
 	}, nil
 }
 
-func toIfArr(cids []cid.Cid) []cbg.CBORMarshaler {
-	out := make([]cbg.CBORMarshaler, 0, len(cids))
-	for _, c := range cids {
+func toArray(store adt.Store, cids []cid.Cid) (cid.Cid, error) {
+	arr := adt.MakeEmptyArray(store)
+	for i, c := range cids {
 		oc := cbg.CborCid(c)
-		out = append(out, &oc)
+		if err := arr.Set(uint64(i), &oc); err != nil {
+			return cid.Undef, err
+		}
 	}
-	return out
+	return arr.Root()
 }

@@ -23,12 +23,13 @@ func Address(i uint64) address.Address {
 
 func MkMessage(from, to address.Address, nonce uint64, w *wallet.Wallet) *types.SignedMessage {
 	msg := &types.Message{
-		To:       to,
-		From:     from,
-		Value:    types.NewInt(1),
-		Nonce:    nonce,
-		GasLimit: 1,
-		GasPrice: types.NewInt(0),
+		To:         to,
+		From:       from,
+		Value:      types.NewInt(1),
+		Nonce:      nonce,
+		GasLimit:   1000000,
+		GasFeeCap:  types.NewInt(100),
+		GasPremium: types.NewInt(1),
 	}
 
 	sig, err := w.Sign(context.TODO(), from, msg.Cid().Bytes())

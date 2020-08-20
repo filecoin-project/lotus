@@ -8,7 +8,7 @@ import (
 	"os"
 
 	"github.com/docker/go-units"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
@@ -155,6 +155,9 @@ var aggregateManifestsCmd = &cli.Command{
 			}
 
 			inputs = append(inputs, val)
+			if err := fi.Close(); err != nil {
+				return err
+			}
 		}
 
 		output := make(map[string]genesis.Miner)

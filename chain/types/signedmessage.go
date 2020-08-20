@@ -3,10 +3,10 @@ package types
 import (
 	"bytes"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	"github.com/multiformats/go-multihash"
 )
 
 func (sm *SignedMessage) ToStorageBlock() (block.Block, error) {
@@ -19,8 +19,7 @@ func (sm *SignedMessage) ToStorageBlock() (block.Block, error) {
 		return nil, err
 	}
 
-	pref := cid.NewPrefixV1(cid.DagCBOR, multihash.BLAKE2B_MIN+31)
-	c, err := pref.Sum(data)
+	c, err := abi.CidBuilder.Sum(data)
 	if err != nil {
 		return nil, err
 	}

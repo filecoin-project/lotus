@@ -21,8 +21,9 @@ import (
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 
@@ -36,8 +37,6 @@ import (
 )
 
 var log = logging.Logger("main")
-
-var sendPerRequest, _ = types.ParseFIL("50")
 
 var supportedSectors struct {
 	SectorSizes []struct {
@@ -114,8 +113,18 @@ var runCmd = &cli.Command{
 		&cli.StringFlag{
 			Name: "from",
 		},
+		&cli.StringFlag{
+			Name:    "amount",
+			EnvVars: []string{"LOTUS_FOUNTAIN_AMOUNT"},
+			Value:   "50",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
+		sendPerRequest, err := types.ParseFIL(cctx.String("amount"))
+		if err != nil {
+			return err
+		}
+
 		nodeApi, closer, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -141,20 +150,21 @@ var runCmd = &cli.Command{
 		}
 
 		h := &handler{
-			ctx:  ctx,
-			api:  nodeApi,
-			from: from,
+			ctx:            ctx,
+			api:            nodeApi,
+			from:           from,
+			sendPerRequest: sendPerRequest,
 			limiter: NewLimiter(LimiterConfig{
-				TotalRate:   time.Second,
-				TotalBurst:  256,
-				IPRate:      time.Minute,
+				TotalRate:   500 * time.Millisecond,
+				TotalBurst:  build.BlockMessageLimit,
+				IPRate:      10 * time.Minute,
 				IPBurst:     5,
 				WalletRate:  15 * time.Minute,
 				WalletBurst: 2,
 			}),
 			minerLimiter: NewLimiter(LimiterConfig{
-				TotalRate:   time.Second,
-				TotalBurst:  256,
+				TotalRate:   500 * time.Millisecond,
+				TotalBurst:  build.BlockMessageLimit,
 				IPRate:      10 * time.Minute,
 				IPBurst:     2,
 				WalletRate:  1 * time.Hour,
@@ -185,7 +195,8 @@ type handler struct {
 	ctx context.Context
 	api api.FullNode
 
-	from address.Address
+	from           address.Address
+	sendPerRequest types.FIL
 
 	limiter      *Limiter
 	minerLimiter *Limiter
@@ -266,13 +277,10 @@ func (h *handler) send(w http.ResponseWriter, r *http.Request) {
 	}
 
 	smsg, err := h.api.MpoolPushMessage(h.ctx, &types.Message{
-		Value: types.BigInt(sendPerRequest),
+		Value: types.BigInt(h.sendPerRequest),
 		From:  h.from,
 		To:    to,
-
-		GasPrice: types.NewInt(0),
-		GasLimit: 10000,
-	})
+	}, nil)
 	if err != nil {
 		w.WriteHeader(400)
 		_, _ = w.Write([]byte(err.Error()))
@@ -332,21 +340,11 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	collateral, err := h.api.StatePledgeCollateral(r.Context(), types.EmptyTSK)
-	if err != nil {
-		w.WriteHeader(400)
-		w.Write([]byte(err.Error()))
-		return
-	}
-
 	smsg, err := h.api.MpoolPushMessage(h.ctx, &types.Message{
-		Value: types.BigInt(sendPerRequest),
+		Value: types.BigInt(h.sendPerRequest),
 		From:  h.from,
 		To:    owner,
-
-		GasPrice: types.NewInt(0),
-		GasLimit: 10000,
-	})
+	}, nil)
 	if err != nil {
 		w.WriteHeader(400)
 		w.Write([]byte("pushfunds: " + err.Error()))
@@ -376,16 +374,13 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 	createStorageMinerMsg := &types.Message{
 		To:    builtin.StoragePowerActorAddr,
 		From:  h.from,
-		Value: types.BigAdd(collateral, types.BigDiv(collateral, types.NewInt(100))),
+		Value: big.Zero(),
 
 		Method: builtin.MethodsPower.CreateMiner,
 		Params: params,
-
-		GasLimit: 10000000,
-		GasPrice: types.NewInt(0),
 	}
 
-	signed, err := h.api.MpoolPushMessage(r.Context(), createStorageMinerMsg)
+	signed, err := h.api.MpoolPushMessage(r.Context(), createStorageMinerMsg, nil)
 	if err != nil {
 		w.WriteHeader(400)
 		w.Write([]byte(err.Error()))
@@ -414,7 +409,7 @@ func (h *handler) msgwait(w http.ResponseWriter, r *http.Request) {
 
 	if mw.Receipt.ExitCode != 0 {
 		w.WriteHeader(400)
-		w.Write([]byte(xerrors.Errorf("create storage miner failed: exit code %d", mw.Receipt.ExitCode).Error()))
+		w.Write([]byte(xerrors.Errorf("create miner failed: exit code %d", mw.Receipt.ExitCode).Error()))
 		return
 	}
 	w.WriteHeader(200)
@@ -437,7 +432,7 @@ func (h *handler) msgwaitaddr(w http.ResponseWriter, r *http.Request) {
 
 	if mw.Receipt.ExitCode != 0 {
 		w.WriteHeader(400)
-		w.Write([]byte(xerrors.Errorf("create storage miner failed: exit code %d", mw.Receipt.ExitCode).Error()))
+		w.Write([]byte(xerrors.Errorf("create miner failed: exit code %d", mw.Receipt.ExitCode).Error()))
 		return
 	}
 	w.WriteHeader(200)

@@ -195,7 +195,7 @@ func SyncWait(ctx context.Context, napi api.FullNode) error {
 		case <-ctx.Done():
 			fmt.Println("\nExit by user")
 			return nil
-		case <-time.After(1 * time.Second):
+		case <-build.Clock.After(1 * time.Second):
 		}
 	}
 }

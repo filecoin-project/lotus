@@ -5,64 +5,133 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/filecoin-project/go-address"
+
 	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	"github.com/ipfs/go-hamt-ipld"
-	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/genesis"
+	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 )
 
-func SetupInitActor(bs bstore.Blockstore, netname string, initialActors []genesis.Actor) (*types.Actor, error) {
+func SetupInitActor(bs bstore.Blockstore, netname string, initialActors []genesis.Actor, rootVerifier genesis.Actor) (int64, *types.Actor, map[address.Address]address.Address, error) {
 	if len(initialActors) > MaxAccounts {
-		return nil, xerrors.New("too many initial actors")
+		return 0, nil, nil, xerrors.New("too many initial actors")
 	}
 
 	var ias init_.State
 	ias.NextID = MinerStart
 	ias.NetworkName = netname
 
-	cst := cbor.NewCborStore(bs)
-	amap := hamt.NewNode(cst, hamt.UseTreeBitWidth(5)) // TODO: use spec adt map
+	store := adt.WrapStore(context.TODO(), cbor.NewCborStore(bs))
+	amap := adt.MakeEmptyMap(store)
 
-	for i, a := range initialActors {
+	keyToId := map[address.Address]address.Address{}
+	counter := int64(AccountStart)
+
+	for _, a := range initialActors {
+		if a.Type == genesis.TMultisig {
+			var ainfo genesis.MultisigMeta
+			if err := json.Unmarshal(a.Meta, &ainfo); err != nil {
+				return 0, nil, nil, xerrors.Errorf("unmarshaling account meta: %w", err)
+			}
+			for _, e := range ainfo.Signers {
+
+				if _, ok := keyToId[e]; ok {
+					continue
+				}
+
+				fmt.Printf("init set %s t0%d\n", e, counter)
+
+				value := cbg.CborInt(counter)
+				if err := amap.Put(adt.AddrKey(e), &value); err != nil {
+					return 0, nil, nil, err
+				}
+				counter = counter + 1
+				var err error
+				keyToId[e], err = address.NewIDAddress(uint64(value))
+				if err != nil {
+					return 0, nil, nil, err
+				}
+
+			}
+			// Need to add actors for all multisigs too
+			continue
+		}
+
 		if a.Type != genesis.TAccount {
-			return nil, xerrors.Errorf("unsupported account type: %s", a.Type) // TODO: Support msig (skip here)
+			return 0, nil, nil, xerrors.Errorf("unsupported account type: %s", a.Type)
 		}
 
 		var ainfo genesis.AccountMeta
 		if err := json.Unmarshal(a.Meta, &ainfo); err != nil {
-			return nil, xerrors.Errorf("unmarshaling account meta: %w", err)
+			return 0, nil, nil, xerrors.Errorf("unmarshaling account meta: %w", err)
 		}
 
-		fmt.Printf("init set %s t0%d\n", ainfo.Owner, AccountStart+uint64(i))
+		fmt.Printf("init set %s t0%d\n", ainfo.Owner, counter)
 
-		if err := amap.Set(context.TODO(), string(ainfo.Owner.Bytes()), AccountStart+uint64(i)); err != nil {
-			return nil, err
+		value := cbg.CborInt(counter)
+		if err := amap.Put(adt.AddrKey(ainfo.Owner), &value); err != nil {
+			return 0, nil, nil, err
+		}
+		counter = counter + 1
+
+		var err error
+		keyToId[ainfo.Owner], err = address.NewIDAddress(uint64(value))
+		if err != nil {
+			return 0, nil, nil, err
 		}
 	}
 
-	if err := amap.Set(context.TODO(), string(RootVerifierAddr.Bytes()), 80); err != nil {
-		return nil, err
+	if rootVerifier.Type == genesis.TAccount {
+		var ainfo genesis.AccountMeta
+		if err := json.Unmarshal(rootVerifier.Meta, &ainfo); err != nil {
+			return 0, nil, nil, xerrors.Errorf("unmarshaling account meta: %w", err)
+		}
+		value := cbg.CborInt(80)
+		if err := amap.Put(adt.AddrKey(ainfo.Owner), &value); err != nil {
+			return 0, nil, nil, err
+		}
+	} else if rootVerifier.Type == genesis.TMultisig {
+		var ainfo genesis.MultisigMeta
+		if err := json.Unmarshal(rootVerifier.Meta, &ainfo); err != nil {
+			return 0, nil, nil, xerrors.Errorf("unmarshaling account meta: %w", err)
+		}
+		for _, e := range ainfo.Signers {
+			if _, ok := keyToId[e]; ok {
+				continue
+			}
+			fmt.Printf("init set %s t0%d\n", e, counter)
+
+			value := cbg.CborInt(counter)
+			if err := amap.Put(adt.AddrKey(e), &value); err != nil {
+				return 0, nil, nil, err
+			}
+			counter = counter + 1
+			var err error
+			keyToId[e], err = address.NewIDAddress(uint64(value))
+			if err != nil {
+				return 0, nil, nil, err
+			}
+
+		}
 	}
 
-	if err := amap.Flush(context.TODO()); err != nil {
-		return nil, err
-	}
-	amapcid, err := cst.Put(context.TODO(), amap)
+	amapaddr, err := amap.Root()
 	if err != nil {
-		return nil, err
+		return 0, nil, nil, err
 	}
+	ias.AddressMap = amapaddr
 
-	ias.AddressMap = amapcid
-
-	statecid, err := cst.Put(context.TODO(), &ias)
+	statecid, err := store.Put(store.Context(), &ias)
 	if err != nil {
-		return nil, err
+		return 0, nil, nil, err
 	}
 
 	act := &types.Actor{
@@ -70,5 +139,5 @@ func SetupInitActor(bs bstore.Blockstore, netname string, initialActors []genesi
 		Head: statecid,
 	}
 
-	return act, nil
+	return counter, act, keyToId, nil
 }

@@ -63,6 +63,7 @@ func serveRPC(a api.FullNode, stop node.StopFunc, addr multiaddr.Multiaddr, shut
 	srv := &http.Server{Handler: http.DefaultServeMux}
 
 	sigCh := make(chan os.Signal, 2)
+	shutdownDone := make(chan struct{})
 	go func() {
 		select {
 		case <-sigCh:
@@ -77,10 +78,17 @@ func serveRPC(a api.FullNode, stop node.StopFunc, addr multiaddr.Multiaddr, shut
 			log.Errorf("graceful shutting down failed: %s", err)
 		}
 		log.Warn("Graceful shutdown successful")
+		_ = log.Sync() //nolint:errcheck
+		close(shutdownDone)
 	}()
 	signal.Notify(sigCh, syscall.SIGTERM, syscall.SIGINT)
 
-	return srv.Serve(manet.NetListener(lst))
+	err = srv.Serve(manet.NetListener(lst))
+	if err == http.ErrServerClosed {
+		<-shutdownDone
+		return nil
+	}
+	return err
 }
 
 func handleImport(a *impl.FullNodeAPI) func(w http.ResponseWriter, r *http.Request) {

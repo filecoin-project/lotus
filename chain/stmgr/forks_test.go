@@ -21,7 +21,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/gen"
-	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	. "github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -29,8 +28,6 @@ import (
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
 
-	"github.com/ipfs/go-cid"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -122,42 +119,38 @@ func TestForkHeightTriggers(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	stmgr.ForksAtHeight[testForkHeight] = func(ctx context.Context, sm *StateManager, pstate cid.Cid) (cid.Cid, error) {
+	stmgr.ForksAtHeight[testForkHeight] = func(ctx context.Context, sm *StateManager, st types.StateTree) error {
 		cst := cbor.NewCborStore(sm.ChainStore().Blockstore())
-		st, err := state.LoadStateTree(cst, pstate)
-		if err != nil {
-			return cid.Undef, err
-		}
 
 		act, err := st.GetActor(taddr)
 		if err != nil {
-			return cid.Undef, err
+			return err
 		}
 
 		var tas testActorState
 		if err := cst.Get(ctx, act.Head, &tas); err != nil {
-			return cid.Undef, xerrors.Errorf("in fork handler, failed to run get: %w", err)
+			return xerrors.Errorf("in fork handler, failed to run get: %w", err)
 		}
 
 		tas.HasUpgraded = 55
 
 		ns, err := cst.Put(ctx, &tas)
 		if err != nil {
-			return cid.Undef, err
+			return err
 		}
 
 		act.Head = ns
 
 		if err := st.SetActor(taddr, act); err != nil {
-			return cid.Undef, err
+			return err
 		}
 
-		return st.Flush(ctx)
+		return nil
 	}
 
 	inv.Register(builtin.PaymentChannelActorCodeID, &testActor{}, &testActorState{})
-	sm.SetVMConstructor(func(c cid.Cid, h abi.ChainEpoch, r vm.Rand, b blockstore.Blockstore, s runtime.Syscalls) (*vm.VM, error) {
-		nvm, err := vm.NewVM(c, h, r, b, s)
+	sm.SetVMConstructor(func(vmopt *vm.VMOpts) (*vm.VM, error) {
+		nvm, err := vm.NewVM(vmopt)
 		if err != nil {
 			return nil, err
 		}
@@ -179,8 +172,7 @@ func TestForkHeightTriggers(t *testing.T) {
 		To:       builtin.InitActorAddr,
 		Method:   builtin.MethodsInit.Exec,
 		Params:   enc,
-		GasLimit: 10000,
-		GasPrice: types.NewInt(0),
+		GasLimit: types.TestGasLimit,
 	}
 	sig, err := cg.Wallet().Sign(ctx, cg.Banker(), m.Cid().Bytes())
 	if err != nil {
@@ -206,8 +198,7 @@ func TestForkHeightTriggers(t *testing.T) {
 			Method:   2,
 			Params:   nil,
 			Nonce:    nonce,
-			GasLimit: 10000,
-			GasPrice: types.NewInt(0),
+			GasLimit: types.TestGasLimit,
 		}
 		nonce++
 

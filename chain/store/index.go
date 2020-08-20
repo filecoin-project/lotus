@@ -2,12 +2,27 @@ package store
 
 import (
 	"context"
+	"os"
+	"strconv"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	lru "github.com/hashicorp/golang-lru"
 	"golang.org/x/xerrors"
 )
+
+var DefaultChainIndexCacheSize = 32 << 10
+
+func init() {
+	if s := os.Getenv("LOTUS_CHAIN_INDEX_CACHE"); s != "" {
+		lcic, err := strconv.Atoi(s)
+		if err != nil {
+			log.Errorf("failed to parse 'LOTUS_CHAIN_INDEX_CACHE' env var: %s", err)
+		}
+		DefaultChainIndexCacheSize = lcic
+	}
+
+}
 
 type ChainIndex struct {
 	skipCache *lru.ARCCache
@@ -19,7 +34,7 @@ type ChainIndex struct {
 type loadTipSetFunc func(types.TipSetKey) (*types.TipSet, error)
 
 func NewChainIndex(lts loadTipSetFunc) *ChainIndex {
-	sc, _ := lru.NewARC(8192)
+	sc, _ := lru.NewARC(DefaultChainIndexCacheSize)
 	return &ChainIndex{
 		skipCache:  sc,
 		loadTipSet: lts,

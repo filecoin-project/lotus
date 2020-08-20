@@ -2,6 +2,7 @@ package full
 
 import (
 	"context"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 
 	"github.com/filecoin-project/lotus/lib/sigs"
 
@@ -36,7 +37,17 @@ func (a *WalletAPI) WalletList(ctx context.Context) ([]address.Address, error) {
 }
 
 func (a *WalletAPI) WalletBalance(ctx context.Context, addr address.Address) (types.BigInt, error) {
-	return a.StateManager.GetBalance(addr, nil)
+	var bal types.BigInt
+	err := a.StateManager.WithParentStateTsk(types.EmptyTSK, a.StateManager.WithActor(addr, func(act *types.Actor) error {
+		bal = act.Balance
+		return nil
+	}))
+
+	if xerrors.Is(err, types.ErrActorNotFound) {
+		return big.Zero(), nil
+	} else {
+		return bal, err
+	}
 }
 
 func (a *WalletAPI) WalletSign(ctx context.Context, k address.Address, msg []byte) (*crypto.Signature, error) {

@@ -21,6 +21,7 @@ import (
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -131,7 +132,7 @@ func (db *DrandBeacon) Entry(ctx context.Context, round uint64) <-chan beacon.Re
 	}
 
 	go func() {
-		start := time.Now()
+		start := build.Clock.Now()
 		log.Infow("start fetching randomness", "round", round)
 		resp, err := db.client.Get(ctx, round)
 
@@ -142,7 +143,7 @@ func (db *DrandBeacon) Entry(ctx context.Context, round uint64) <-chan beacon.Re
 			br.Entry.Round = resp.Round()
 			br.Entry.Data = resp.Signature()
 		}
-		log.Infow("done fetching randomness", "round", round, "took", time.Since(start))
+		log.Infow("done fetching randomness", "round", round, "took", build.Clock.Since(start))
 		out <- br
 		close(out)
 	}()
@@ -168,6 +169,10 @@ func (db *DrandBeacon) getCachedValue(round uint64) *types.BeaconEntry {
 func (db *DrandBeacon) VerifyEntry(curr types.BeaconEntry, prev types.BeaconEntry) error {
 	if prev.Round == 0 {
 		// TODO handle genesis better
+		return nil
+	}
+	if be := db.getCachedValue(curr.Round); be != nil {
+		// return no error if the value is in the cache already
 		return nil
 	}
 	b := &dchain.Beacon{

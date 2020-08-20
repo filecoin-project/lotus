@@ -12,14 +12,22 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 )
 
-func NewStorageProviderInfo(address address.Address, miner address.Address, sectorSize abi.SectorSize, peer peer.ID, addrs []multiaddr.Multiaddr) storagemarket.StorageProviderInfo {
+func NewStorageProviderInfo(address address.Address, miner address.Address, sectorSize abi.SectorSize, peer peer.ID, addrs []abi.Multiaddrs) storagemarket.StorageProviderInfo {
+	multiaddrs := make([]multiaddr.Multiaddr, 0, len(addrs))
+	for _, a := range addrs {
+		maddr, err := multiaddr.NewMultiaddrBytes(a)
+		if err != nil {
+			return storagemarket.StorageProviderInfo{}
+		}
+		multiaddrs = append(multiaddrs, maddr)
+	}
 
 	return storagemarket.StorageProviderInfo{
 		Address:    address,
 		Worker:     miner,
 		SectorSize: uint64(sectorSize),
 		PeerID:     peer,
-		Addrs:      addrs,
+		Addrs:      multiaddrs,
 	}
 }
 

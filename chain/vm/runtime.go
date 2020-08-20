@@ -12,15 +12,12 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	sainit "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	sapower "github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	vmr "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
-	hamt "github.com/ipfs/go-hamt-ipld"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/trace"
@@ -61,44 +58,18 @@ type Runtime struct {
 }
 
 func (rt *Runtime) TotalFilCircSupply() abi.TokenAmount {
-	total := types.FromFil(build.TotalFilecoin)
-
-	rew, err := rt.state.GetActor(builtin.RewardActorAddr)
+	cs, err := rt.vm.GetCircSupply(rt.ctx)
 	if err != nil {
-		rt.Abortf(exitcode.ErrIllegalState, "failed to get reward actor for computing total supply: %s", err)
+		rt.Abortf(exitcode.ErrIllegalState, "failed to get total circ supply: %s", err)
 	}
 
-	burnt, err := rt.state.GetActor(builtin.BurntFundsActorAddr)
-	if err != nil {
-		rt.Abortf(exitcode.ErrIllegalState, "failed to get reward actor for computing total supply: %s", err)
-	}
-
-	market, err := rt.state.GetActor(builtin.StorageMarketActorAddr)
-	if err != nil {
-		rt.Abortf(exitcode.ErrIllegalState, "failed to get reward actor for computing total supply: %s", err)
-	}
-
-	power, err := rt.state.GetActor(builtin.StoragePowerActorAddr)
-	if err != nil {
-		rt.Abortf(exitcode.ErrIllegalState, "failed to get reward actor for computing total supply: %s", err)
-	}
-
-	total = types.BigSub(total, rew.Balance)
-	total = types.BigSub(total, burnt.Balance)
-	total = types.BigSub(total, market.Balance)
-
-	var st sapower.State
-	if err := rt.cst.Get(rt.ctx, power.Head, &st); err != nil {
-		rt.Abortf(exitcode.ErrIllegalState, "failed to get storage power state: %s", err)
-	}
-
-	return types.BigSub(total, st.TotalPledgeCollateral)
+	return cs
 }
 
 func (rt *Runtime) ResolveAddress(addr address.Address) (ret address.Address, ok bool) {
 	r, err := rt.state.LookupID(addr)
 	if err != nil {
-		if xerrors.Is(err, sainit.ErrAddressNotFound) {
+		if xerrors.Is(err, types.ErrActorNotFound) {
 			return address.Undef, false
 		}
 		panic(aerrors.Fatalf("failed to resolve address %s: %s", addr, err))
@@ -146,6 +117,8 @@ func (rt *Runtime) shimCall(f func() interface{}) (rval []byte, aerr aerrors.Act
 				aerr = ar
 				return
 			}
+			//log.Desugar().WithOptions(zap.AddStacktrace(zapcore.ErrorLevel)).
+			//Sugar().Errorf("spec actors failure: %s", r)
 			log.Errorf("spec actors failure: %s", r)
 			aerr = aerrors.Newf(1, "spec actors failure: %s", r)
 		}
@@ -205,8 +178,16 @@ func (rt *Runtime) GetActorCodeCID(addr address.Address) (ret cid.Cid, ok bool) 
 	return act.Code, true
 }
 
-func (rt *Runtime) GetRandomness(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
-	res, err := rt.vm.rand.GetRandomness(rt.ctx, personalization, randEpoch, entropy)
+func (rt *Runtime) GetRandomnessFromTickets(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
+	res, err := rt.vm.rand.GetChainRandomness(rt.ctx, personalization, randEpoch, entropy)
+	if err != nil {
+		panic(aerrors.Fatalf("could not get randomness: %s", err))
+	}
+	return res
+}
+
+func (rt *Runtime) GetRandomnessFromBeacon(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
+	res, err := rt.vm.rand.GetBeaconRandomness(rt.ctx, personalization, randEpoch, entropy)
 	if err != nil {
 		panic(aerrors.Fatalf("could not get randomness: %s", err))
 	}
@@ -267,7 +248,11 @@ func (rt *Runtime) CreateActor(codeID cid.Cid, address address.Address) {
 	_ = rt.chargeGasSafe(gasOnActorExec)
 }
 
-func (rt *Runtime) DeleteActor(addr address.Address) {
+// DeleteActor deletes the executing actor from the state tree, transferring
+// any balance to beneficiary.
+// Aborts if the beneficiary does not exist.
+// May only be called by the actor itself.
+func (rt *Runtime) DeleteActor(beneficiary address.Address) {
 	rt.chargeGas(rt.Pricelist().OnDeleteActor())
 	act, err := rt.state.GetActor(rt.Message().Receiver())
 	if err != nil {
@@ -277,11 +262,13 @@ func (rt *Runtime) DeleteActor(addr address.Address) {
 		panic(aerrors.Fatalf("failed to get actor: %s", err))
 	}
 	if !act.Balance.IsZero() {
-		if err := rt.vm.transfer(rt.Message().Receiver(), builtin.BurntFundsActorAddr, act.Balance); err != nil {
-			panic(aerrors.Fatalf("failed to transfer balance to burnt funds actor: %s", err))
+		// Transfer the executing actor's balance to the beneficiary
+		if err := rt.vm.transfer(rt.Message().Receiver(), beneficiary, act.Balance); err != nil {
+			panic(aerrors.Fatalf("failed to transfer balance to beneficiary actor: %s", err))
 		}
 	}
 
+	// Delete the executing actor
 	if err := rt.state.DeleteActor(rt.Message().Receiver()); err != nil {
 		panic(aerrors.Fatalf("failed to delete actor: %s", err))
 	}
@@ -366,15 +353,14 @@ func (rt *Runtime) Send(to address.Address, method abi.MethodNum, m vmr.CBORMars
 			panic(err)
 		}
 		log.Warnf("vmctx send failed: to: %s, method: %d: ret: %d, err: %s", to, method, ret, err)
-		return nil, err.RetCode()
+		return &dumbWrapperType{nil}, err.RetCode()
 	}
 	_ = rt.chargeGasSafe(gasOnActorExec)
 	return &dumbWrapperType{ret}, 0
 }
 
 func (rt *Runtime) internalSend(from, to address.Address, method abi.MethodNum, value types.BigInt, params []byte) ([]byte, aerrors.ActorError) {
-
-	start := time.Now()
+	start := build.Clock.Now()
 	ctx, span := trace.StartSpan(rt.ctx, "vmc.Send")
 	defer span.End()
 	if span.IsRecordingEvents() {
@@ -436,7 +422,7 @@ func (ssh *shimStateHandle) Readonly(obj vmr.CBORUnmarshaler) {
 	ssh.rt.Get(act.Head, obj)
 }
 
-func (ssh *shimStateHandle) Transaction(obj vmr.CBORer, f func() interface{}) interface{} {
+func (ssh *shimStateHandle) Transaction(obj vmr.CBORer, f func()) {
 	if obj == nil {
 		ssh.rt.Abortf(exitcode.SysErrorIllegalActor, "Must not pass nil to Transaction()")
 	}
@@ -449,15 +435,13 @@ func (ssh *shimStateHandle) Transaction(obj vmr.CBORer, f func() interface{}) in
 	ssh.rt.Get(baseState, obj)
 
 	ssh.rt.allowInternal = false
-	out := f()
+	f()
 	ssh.rt.allowInternal = true
 
 	c := ssh.rt.Put(obj)
 
 	// TODO: handle error below
 	ssh.rt.stateCommit(baseState, c)
-
-	return out
 }
 
 func (rt *Runtime) GetBalance(a address.Address) (types.BigInt, aerrors.ActorError) {
@@ -465,7 +449,7 @@ func (rt *Runtime) GetBalance(a address.Address) (types.BigInt, aerrors.ActorErr
 	switch err {
 	default:
 		return types.EmptyInt, aerrors.Escalate(err, "failed to look up actor balance")
-	case hamt.ErrNotFound:
+	case types.ErrActorNotFound:
 		return types.NewInt(0), nil
 	case nil:
 		return act.Balance, nil
@@ -528,7 +512,7 @@ func (rt *Runtime) chargeGasInternal(gas GasCharge, skip int) aerrors.ActorError
 	var callers [10]uintptr
 	cout := gruntime.Callers(2+skip, callers[:])
 
-	now := time.Now()
+	now := build.Clock.Now()
 	if rt.lastGasCharge != nil {
 		rt.lastGasCharge.TimeTaken = now.Sub(rt.lastGasChargeTime)
 	}
@@ -551,7 +535,8 @@ func (rt *Runtime) chargeGasInternal(gas GasCharge, skip int) aerrors.ActorError
 	rt.lastGasChargeTime = now
 	rt.lastGasCharge = &gasTrace
 
-	if rt.gasUsed+toUse > rt.gasAvailable {
+	// overflow safe
+	if rt.gasUsed > rt.gasAvailable-toUse {
 		rt.gasUsed = rt.gasAvailable
 		return aerrors.Newf(exitcode.SysErrOutOfGas, "not enough gas: used=%d, available=%d",
 			rt.gasUsed, rt.gasAvailable)
@@ -577,4 +562,17 @@ func (rt *Runtime) abortIfAlreadyValidated() {
 		rt.Abortf(exitcode.SysErrorIllegalActor, "Method must validate caller identity exactly once")
 	}
 	rt.callerValidated = true
+}
+
+func (rt *Runtime) Log(level vmr.LogLevel, msg string, args ...interface{}) {
+	switch level {
+	case vmr.DEBUG:
+		actorLog.Debugf(msg, args...)
+	case vmr.INFO:
+		actorLog.Infof(msg, args...)
+	case vmr.WARN:
+		actorLog.Warnf(msg, args...)
+	case vmr.ERROR:
+		actorLog.Errorf(msg, args...)
+	}
 }
