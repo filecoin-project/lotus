@@ -1591,14 +1591,16 @@ func (syncer *Syncer) getLatestBeaconEntry(_ context.Context, ts *types.TipSet) 
 			return nil, xerrors.Errorf("made it back to genesis block without finding beacon entry")
 		}
 
-		next, err := syncer.store.LoadTipSet(cur.Parents())
-		if err != nil {
-			return nil, xerrors.Errorf("failed to load parents when searching back for latest beacon entry: %w", err)
+		if i != 19 {
+			next, err := syncer.store.LoadTipSet(cur.Parents())
+			if err != nil {
+				return nil, xerrors.Errorf("failed to load parents when searching back for latest beacon entry: %w", err)
+			}
+			cur = next
 		}
-		cur = next
 	}
 
-	return nil, xerrors.Errorf("found NO beacon entries in the 20 blocks prior to given tipset")
+	return nil, xerrors.Errorf("found NO beacon entries in the 20 latest tipsets")
 }
 
 func (syncer *Syncer) IsEpochBeyondCurrMax(epoch abi.ChainEpoch) bool {
