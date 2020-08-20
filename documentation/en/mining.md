@@ -1,8 +1,8 @@
 # Storage Mining
 
-Here are instructions to learn how to perform storage mining. For hardware specifications please read [this](https://docs.lotu.sh/en+hardware-mining).
+Here are instructions to learn how to perform storage mining. For hardware specifications please read [this](https://lotu.sh/en+hardware-mining).
 
-It is useful to [join the Testnet](https://docs.lotu.sh/en+join-testnet) prior to attempting storage mining for the first time.
+It is useful to [join the Testnet](https://lotu.sh/en+join-testnet) prior to attempting storage mining for the first time.
 
 ## Note: Using the Lotus Miner from China
 
@@ -28,7 +28,7 @@ lotus wallet new bls
 
 With your wallet address:
 
-- Visit the [faucet](https://faucet.testnet.filecoin.io)
+- Visit the [faucet](http://spacerace.faucet.glif.io/)
 - Click "Create Miner"
 - DO NOT REFRESH THE PAGE. THIS OPERATION CAN TAKE SOME TIME.
 
