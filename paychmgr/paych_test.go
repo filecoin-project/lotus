@@ -1,8 +1,11 @@
 package paychmgr
 
 import (
+	"bytes"
 	"context"
 	"testing"
+
+	"github.com/filecoin-project/lotus/api"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
@@ -382,7 +385,7 @@ func TestAddVoucherDelta(t *testing.T) {
 	ctx := context.Background()
 
 	// Set up a manager with a single payment channel
-	mgr, ch, fromKeyPrivate := testSetupMgrWithChannel(ctx, t)
+	mgr, _, ch, fromKeyPrivate := testSetupMgrWithChannel(ctx, t)
 
 	voucherLane := uint64(1)
 
@@ -424,7 +427,7 @@ func TestAddVoucherNextLane(t *testing.T) {
 	ctx := context.Background()
 
 	// Set up a manager with a single payment channel
-	mgr, ch, fromKeyPrivate := testSetupMgrWithChannel(ctx, t)
+	mgr, _, ch, fromKeyPrivate := testSetupMgrWithChannel(ctx, t)
 
 	minDelta := big.NewInt(0)
 	voucherAmount := big.NewInt(2)
@@ -474,7 +477,7 @@ func TestAllocateLane(t *testing.T) {
 	ctx := context.Background()
 
 	// Set up a manager with a single payment channel
-	mgr, ch, _ := testSetupMgrWithChannel(ctx, t)
+	mgr, _, ch, _ := testSetupMgrWithChannel(ctx, t)
 
 	// First lane should be 0
 	lane, err := mgr.AllocateLane(ch)
@@ -550,7 +553,7 @@ func TestAddVoucherProof(t *testing.T) {
 	ctx := context.Background()
 
 	// Set up a manager with a single payment channel
-	mgr, ch, fromKeyPrivate := testSetupMgrWithChannel(ctx, t)
+	mgr, _, ch, fromKeyPrivate := testSetupMgrWithChannel(ctx, t)
 
 	nonce := uint64(1)
 	voucherAmount := big.NewInt(1)
@@ -656,11 +659,254 @@ func TestAddVoucherInboundWalletKey(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestBestSpendable(t *testing.T) {
+	ctx := context.Background()
+
+	// Set up a manager with a single payment channel
+	mgr, mock, ch, fromKeyPrivate := testSetupMgrWithChannel(ctx, t)
+
+	// Add vouchers to lane 1 with amounts: [1, 2, 3]
+	voucherLane := uint64(1)
+	minDelta := big.NewInt(0)
+	nonce := uint64(1)
+	voucherAmount := big.NewInt(1)
+	svL1V1 := createTestVoucher(t, ch, voucherLane, nonce, voucherAmount, fromKeyPrivate)
+	_, err := mgr.AddVoucherInbound(ctx, ch, svL1V1, nil, minDelta)
+	require.NoError(t, err)
+
+	nonce++
+	voucherAmount = big.NewInt(2)
+	svL1V2 := createTestVoucher(t, ch, voucherLane, nonce, voucherAmount, fromKeyPrivate)
+	_, err = mgr.AddVoucherInbound(ctx, ch, svL1V2, nil, minDelta)
+	require.NoError(t, err)
+
+	nonce++
+	voucherAmount = big.NewInt(3)
+	svL1V3 := createTestVoucher(t, ch, voucherLane, nonce, voucherAmount, fromKeyPrivate)
+	_, err = mgr.AddVoucherInbound(ctx, ch, svL1V3, nil, minDelta)
+	require.NoError(t, err)
+
+	// Add voucher to lane 2 with amounts: [2]
+	voucherLane = uint64(2)
+	nonce = uint64(1)
+	voucherAmount = big.NewInt(2)
+	svL2V1 := createTestVoucher(t, ch, voucherLane, nonce, voucherAmount, fromKeyPrivate)
+	_, err = mgr.AddVoucherInbound(ctx, ch, svL2V1, nil, minDelta)
+	require.NoError(t, err)
+
+	// Return success exit code from calls to check if voucher is spendable
+	bsapi := newMockBestSpendableAPI(mgr)
+	mock.setCallResponse(&api.InvocResult{
+		MsgRct: &types.MessageReceipt{
+			ExitCode: 0,
+		},
+	})
+
+	// Verify best spendable vouchers on each lane
+	vouchers, err := BestSpendableByLane(ctx, bsapi, ch)
+	require.NoError(t, err)
+	require.Len(t, vouchers, 2)
+
+	vchr, ok := vouchers[1]
+	require.True(t, ok)
+	require.EqualValues(t, 3, vchr.Amount.Int64())
+
+	vchr, ok = vouchers[2]
+	require.True(t, ok)
+	require.EqualValues(t, 2, vchr.Amount.Int64())
+
+	// Submit voucher from lane 2
+	_, err = mgr.SubmitVoucher(ctx, ch, svL2V1, nil, nil)
+	require.NoError(t, err)
+
+	// Best spendable voucher should no longer include lane 2
+	// (because voucher has not been submitted)
+	vouchers, err = BestSpendableByLane(ctx, bsapi, ch)
+	require.NoError(t, err)
+	require.Len(t, vouchers, 1)
+
+	// Submit first voucher from lane 1
+	_, err = mgr.SubmitVoucher(ctx, ch, svL1V1, nil, nil)
+	require.NoError(t, err)
+
+	// Best spendable voucher for lane 1 should still be highest value voucher
+	vouchers, err = BestSpendableByLane(ctx, bsapi, ch)
+	require.NoError(t, err)
+	require.Len(t, vouchers, 1)
+
+	vchr, ok = vouchers[1]
+	require.True(t, ok)
+	require.EqualValues(t, 3, vchr.Amount.Int64())
+}
+
+func TestCheckSpendable(t *testing.T) {
+	ctx := context.Background()
+
+	// Set up a manager with a single payment channel
+	mgr, mock, ch, fromKeyPrivate := testSetupMgrWithChannel(ctx, t)
+
+	// Create voucher with Extra
+	voucherLane := uint64(1)
+	nonce := uint64(1)
+	voucherAmount := big.NewInt(1)
+	voucher := createTestVoucherWithExtra(t, ch, voucherLane, nonce, voucherAmount, fromKeyPrivate)
+
+	// Add voucher with proof
+	minDelta := big.NewInt(0)
+	proof := []byte("proof")
+	_, err := mgr.AddVoucherInbound(ctx, ch, voucher, proof, minDelta)
+	require.NoError(t, err)
+
+	// Return success exit code from VM call, which indicates that voucher is
+	// spendable
+	successResponse := &api.InvocResult{
+		MsgRct: &types.MessageReceipt{
+			ExitCode: 0,
+		},
+	}
+	mock.setCallResponse(successResponse)
+
+	// Check that spendable is true
+	secret := []byte("secret")
+	otherProof := []byte("other proof")
+	spendable, err := mgr.CheckVoucherSpendable(ctx, ch, voucher, secret, otherProof)
+	require.NoError(t, err)
+	require.True(t, spendable)
+
+	// Check that the secret and proof were passed through correctly
+	lastCall := mock.getLastCall()
+	var p paych.UpdateChannelStateParams
+	err = p.UnmarshalCBOR(bytes.NewReader(lastCall.Params))
+	require.NoError(t, err)
+	require.Equal(t, otherProof, p.Proof)
+	require.Equal(t, secret, p.Secret)
+
+	// Check that if no proof is supplied, the proof supplied to add voucher
+	// above is used
+	secret2 := []byte("secret2")
+	spendable, err = mgr.CheckVoucherSpendable(ctx, ch, voucher, secret2, nil)
+	require.NoError(t, err)
+	require.True(t, spendable)
+
+	lastCall = mock.getLastCall()
+	var p2 paych.UpdateChannelStateParams
+	err = p2.UnmarshalCBOR(bytes.NewReader(lastCall.Params))
+	require.NoError(t, err)
+	require.Equal(t, proof, p2.Proof)
+	require.Equal(t, secret2, p2.Secret)
+
+	// Check that if VM call returns non-success exit code, spendable is false
+	mock.setCallResponse(&api.InvocResult{
+		MsgRct: &types.MessageReceipt{
+			ExitCode: 1,
+		},
+	})
+	spendable, err = mgr.CheckVoucherSpendable(ctx, ch, voucher, secret, nil)
+	require.NoError(t, err)
+	require.False(t, spendable)
+
+	// Return success exit code (indicating voucher is spendable)
+	mock.setCallResponse(successResponse)
+	spendable, err = mgr.CheckVoucherSpendable(ctx, ch, voucher, secret, nil)
+	require.NoError(t, err)
+	require.True(t, spendable)
+
+	// Check that voucher is no longer spendable once it has been submitted
+	_, err = mgr.SubmitVoucher(ctx, ch, voucher, nil, nil)
+	require.NoError(t, err)
+
+	spendable, err = mgr.CheckVoucherSpendable(ctx, ch, voucher, secret, nil)
+	require.NoError(t, err)
+	require.False(t, spendable)
+}
+
+func TestSubmitVoucher(t *testing.T) {
+	ctx := context.Background()
+
+	// Set up a manager with a single payment channel
+	mgr, mock, ch, fromKeyPrivate := testSetupMgrWithChannel(ctx, t)
+
+	// Create voucher with Extra
+	voucherLane := uint64(1)
+	nonce := uint64(1)
+	voucherAmount := big.NewInt(1)
+	voucher := createTestVoucherWithExtra(t, ch, voucherLane, nonce, voucherAmount, fromKeyPrivate)
+
+	// Add voucher with proof
+	minDelta := big.NewInt(0)
+	addVoucherProof := []byte("proof")
+	_, err := mgr.AddVoucherInbound(ctx, ch, voucher, addVoucherProof, minDelta)
+	require.NoError(t, err)
+
+	// Submit voucher
+	secret := []byte("secret")
+	submitProof := []byte("submit proof")
+	submitCid, err := mgr.SubmitVoucher(ctx, ch, voucher, secret, submitProof)
+	require.NoError(t, err)
+
+	// Check that the secret and proof were passed through correctly
+	msg := mock.pushedMessages(submitCid)
+	var p paych.UpdateChannelStateParams
+	err = p.UnmarshalCBOR(bytes.NewReader(msg.Message.Params))
+	require.NoError(t, err)
+	require.Equal(t, submitProof, p.Proof)
+	require.Equal(t, secret, p.Secret)
+
+	// Check that if no proof is supplied to submit voucher, the proof supplied
+	// to add voucher is used
+	nonce++
+	voucherAmount = big.NewInt(2)
+	addVoucherProof2 := []byte("proof2")
+	secret2 := []byte("secret2")
+	voucher = createTestVoucherWithExtra(t, ch, voucherLane, nonce, voucherAmount, fromKeyPrivate)
+	_, err = mgr.AddVoucherInbound(ctx, ch, voucher, addVoucherProof2, minDelta)
+	require.NoError(t, err)
+
+	submitCid, err = mgr.SubmitVoucher(ctx, ch, voucher, secret2, nil)
+	require.NoError(t, err)
+
+	msg = mock.pushedMessages(submitCid)
+	var p2 paych.UpdateChannelStateParams
+	err = p2.UnmarshalCBOR(bytes.NewReader(msg.Message.Params))
+	require.NoError(t, err)
+	require.Equal(t, addVoucherProof2, p2.Proof)
+	require.Equal(t, secret2, p2.Secret)
+
+	// Submit a voucher without first adding it
+	nonce++
+	voucherAmount = big.NewInt(3)
+	secret3 := []byte("secret2")
+	proof3 := []byte("proof3")
+	voucher = createTestVoucherWithExtra(t, ch, voucherLane, nonce, voucherAmount, fromKeyPrivate)
+	submitCid, err = mgr.SubmitVoucher(ctx, ch, voucher, secret3, proof3)
+	require.NoError(t, err)
+
+	msg = mock.pushedMessages(submitCid)
+	var p3 paych.UpdateChannelStateParams
+	err = p3.UnmarshalCBOR(bytes.NewReader(msg.Message.Params))
+	require.NoError(t, err)
+	require.Equal(t, proof3, p3.Proof)
+	require.Equal(t, secret3, p3.Secret)
+
+	// Verify that vouchers are marked as submitted
+	vis, err := mgr.ListVouchers(ctx, ch)
+	require.NoError(t, err)
+	require.Len(t, vis, 3)
+
+	for _, vi := range vis {
+		require.True(t, vi.Submitted)
+	}
+
+	// Attempting to submit the same voucher again should fail
+	_, err = mgr.SubmitVoucher(ctx, ch, voucher, secret2, nil)
+	require.Error(t, err)
+}
+
 func TestNextNonceForLane(t *testing.T) {
 	ctx := context.Background()
 
 	// Set up a manager with a single payment channel
-	mgr, ch, key := testSetupMgrWithChannel(ctx, t)
+	mgr, _, ch, key := testSetupMgrWithChannel(ctx, t)
 
 	// Expect next nonce for non-existent lane to be 1
 	next, err := mgr.NextNonceForLane(ctx, ch, 1)
@@ -700,7 +946,7 @@ func TestNextNonceForLane(t *testing.T) {
 	require.EqualValues(t, next, 8)
 }
 
-func testSetupMgrWithChannel(ctx context.Context, t *testing.T) (*Manager, address.Address, []byte) {
+func testSetupMgrWithChannel(ctx context.Context, t *testing.T) (*Manager, *mockManagerAPI, address.Address, []byte) {
 	fromKeyPrivate, fromKeyPublic := testGenerateKeyPair(t)
 
 	ch := tutils.NewIDAddr(t, 100)
@@ -745,7 +991,7 @@ func testSetupMgrWithChannel(ctx context.Context, t *testing.T) (*Manager, addre
 	err = mgr.store.putChannelInfo(ci)
 	require.NoError(t, err)
 
-	return mgr, ch, fromKeyPrivate
+	return mgr, mock, ch, fromKeyPrivate
 }
 
 func testGenerateKeyPair(t *testing.T) ([]byte, []byte) {
@@ -770,4 +1016,50 @@ func createTestVoucher(t *testing.T, ch address.Address, voucherLane uint64, non
 	require.NoError(t, err)
 	sv.Signature = sig
 	return sv
+}
+
+func createTestVoucherWithExtra(t *testing.T, ch address.Address, voucherLane uint64, nonce uint64, voucherAmount big.Int, key []byte) *paych.SignedVoucher {
+	sv := &paych.SignedVoucher{
+		ChannelAddr: ch,
+		Lane:        voucherLane,
+		Nonce:       nonce,
+		Amount:      voucherAmount,
+		Extra: &paych.ModVerifyParams{
+			Actor: tutils.NewActorAddr(t, "act"),
+		},
+	}
+
+	signingBytes, err := sv.SigningBytes()
+	require.NoError(t, err)
+	sig, err := sigs.Sign(crypto.SigTypeSecp256k1, key, signingBytes)
+	require.NoError(t, err)
+	sv.Signature = sig
+
+	return sv
+}
+
+type mockBestSpendableAPI struct {
+	mgr *Manager
+}
+
+func (m *mockBestSpendableAPI) PaychVoucherList(ctx context.Context, ch address.Address) ([]*paych.SignedVoucher, error) {
+	vi, err := m.mgr.ListVouchers(ctx, ch)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]*paych.SignedVoucher, len(vi))
+	for k, v := range vi {
+		out[k] = v.Voucher
+	}
+
+	return out, nil
+}
+
+func (m *mockBestSpendableAPI) PaychVoucherCheckSpendable(ctx context.Context, ch address.Address, voucher *paych.SignedVoucher, secret []byte, proof []byte) (bool, error) {
+	return m.mgr.CheckVoucherSpendable(ctx, ch, voucher, secret, proof)
+}
+
+func newMockBestSpendableAPI(mgr *Manager) BestSpendableAPI {
+	return &mockBestSpendableAPI{mgr: mgr}
 }
