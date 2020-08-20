@@ -394,7 +394,7 @@ func (r *refunder) ProcessTipset(ctx context.Context, tipset *types.TipSet) (*Mi
 		}
 
 		if r.percentExtra > 0 {
-			refundValue = types.BigAdd(refundValue, types.BigDiv(types.BigMul(refundValue, types.NewInt(100)), types.NewInt(uint64(r.percentExtra))))
+			refundValue = types.BigAdd(refundValue, types.BigMul(types.BigDiv(refundValue, types.NewInt(100)), types.NewInt(uint64(r.percentExtra))))
 		}
 
 		log.Debugw("processing message", "method", messageMethod, "cid", msg.Cid, "from", m.From, "to", m.To, "value", m.Value, "gas_fee_cap", m.GasFeeCap, "gas_premium", m.GasPremium, "gas_used", recps[i].GasUsed, "refund", refundValue)
