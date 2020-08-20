@@ -280,6 +280,9 @@ func (p *Processor) storeRewardSmoothingEstimates(rewards []rewardActorInfo) err
 	}
 
 	for _, rewardState := range rewards {
+		if rewardState.epochSmoothingEstimate == nil {
+			continue
+		}
 		if _, err := stmt.Exec(
 			rewardState.common.stateroot.String(),
 			rewardState.epochSmoothingEstimate.PositionEstimate.String(),
