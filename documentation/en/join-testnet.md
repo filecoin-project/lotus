@@ -1,4 +1,11 @@
-# Join Testnet
+---
+title: Joining a network
+sidebarDepth: 0
+description: Learn how to join one of the various Filecoin testnets.
+permalink: /how-to/join-a-network
+---
+
+# Join a Network
 
 ## Introduction
 
