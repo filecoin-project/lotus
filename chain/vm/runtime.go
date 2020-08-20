@@ -341,7 +341,7 @@ func (rt *Runtime) Send(to address.Address, method abi.MethodNum, m vmr.CBORMars
 	if m != nil {
 		buf := new(bytes.Buffer)
 		if err := m.MarshalCBOR(buf); err != nil {
-			rt.Abortf(exitcode.SysErrInvalidParameters, "failed to marshal input parameters: %s", err)
+			rt.Abortf(exitcode.ErrSerialization, "failed to marshal input parameters: %s", err)
 		}
 		params = buf.Bytes()
 	}
