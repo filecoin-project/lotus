@@ -44,6 +44,9 @@ func (m *Sealing) MarkForUpgrade(id abi.SectorNumber) error {
 }
 
 func (m *Sealing) tryUpgradeSector(ctx context.Context, params *miner.SectorPreCommitInfo) big.Int {
+	if len(params.DealIDs) == 0 {
+		return big.Zero()
+	}
 	replace := m.maybeUpgradableSector()
 	if replace != nil {
 		loc, err := m.api.StateSectorPartition(ctx, m.maddr, *replace, nil)
