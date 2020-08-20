@@ -79,6 +79,8 @@ type StorageMiner interface {
 	MarketGetAsk(ctx context.Context) (*storagemarket.SignedStorageAsk, error)
 	MarketSetRetrievalAsk(ctx context.Context, rask *retrievalmarket.Ask) error
 	MarketGetRetrievalAsk(ctx context.Context) (*retrievalmarket.Ask, error)
+	MarketListDataTransfers(ctx context.Context) ([]DataTransferChannel, error)
+	MarketDataTransferUpdates(ctx context.Context) (<-chan DataTransferChannel, error)
 
 	DealsImportData(ctx context.Context, dealPropCid cid.Cid, file string) error
 	DealsList(ctx context.Context) ([]storagemarket.StorageDeal, error)
