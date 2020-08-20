@@ -51,4 +51,4 @@ env env RUSTFLAGS="-C target-cpu=native -g" FFI_BUILD_FROM_SOURCE=1 make clean d
 sudo make install
 ```
 
-After installing Lotus, you can run the `lotus` command directly from your CLI to see usage documentation. Next, you can join the [Lotus TestNet](https://docs.lotu.sh/en+join-testnet).
+After installing Lotus, you can run the `lotus` command directly from your CLI to see usage documentation. Next, you can join the [Lotus TestNet](https://lotu.sh/en+join-testnet).
