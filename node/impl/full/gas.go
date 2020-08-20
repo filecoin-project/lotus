@@ -14,6 +14,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 
 	"go.uber.org/fx"
@@ -174,5 +175,23 @@ func (a *GasAPI) GasEstimateGasLimit(ctx context.Context, msgIn *types.Message, 
 		return -1, xerrors.Errorf("message execution failed: exit %s, reason: %s", res.MsgRct.ExitCode, res.Error)
 	}
 
-	return res.MsgRct.GasUsed, nil
+	// Special case for PaymentChannel collect, which is deleting actor
+	var act types.Actor
+	err = a.Stmgr.WithParentState(ts, a.Stmgr.WithActor(msg.From, stmgr.GetActor(&act)))
+	if err != nil {
+		_ = err
+		// somewhat ignore it as it can happen and we just want to detect
+		// an existing PaymentChannel actor
+		return res.MsgRct.GasUsed, nil
+	}
+
+	if !act.Code.Equals(builtin.PaymentChannelActorCodeID) {
+		return res.MsgRct.GasUsed, nil
+	}
+	if msgIn.Method != builtin.MethodsPaych.Collect {
+		return res.MsgRct.GasUsed, nil
+	}
+
+	// return GasUsed without the refund for DestoryActor
+	return res.MsgRct.GasUsed + 76e3, nil
 }
