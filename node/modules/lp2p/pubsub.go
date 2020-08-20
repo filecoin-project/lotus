@@ -31,6 +31,7 @@ func init() {
 	pubsub.GossipSubDhi = 12
 	pubsub.GossipSubDlazy = 12
 	pubsub.GossipSubDirectConnectInitialDelay = 30 * time.Second
+	pubsub.GossipSubIWantFollowupTime = 5 * time.Second
 }
 func ScoreKeeper() *dtypes.ScoreKeeper {
 	return new(dtypes.ScoreKeeper)
@@ -110,8 +111,9 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 				// IPColocationFactorWhitelist: map[string]struct{}{},
 
 				// P7: behavioural penalties, decay after 1hr
-				BehaviourPenaltyWeight: -10,
-				BehaviourPenaltyDecay:  pubsub.ScoreParameterDecay(time.Hour),
+				BehaviourPenaltyWeight:    -10,
+				BehaviourPenaltyThreshold: 3,
+				BehaviourPenaltyDecay:     pubsub.ScoreParameterDecay(time.Hour),
 
 				DecayInterval: pubsub.DefaultDecayInterval,
 				DecayToZero:   pubsub.DefaultDecayToZero,
