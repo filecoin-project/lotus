@@ -463,8 +463,10 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 
 	retrievalResult := make(chan error, 1)
 
+	var dealId retrievalmarket.DealID
+
 	unsubscribe := a.Retrieval.SubscribeToEvents(func(event rm.ClientEvent, state rm.ClientDealState) {
-		if state.PayloadCID.Equals(order.Root) {
+		if state.PayloadCID.Equals(order.Root) && state.ID == dealId {
 
 			events <- marketevents.RetrievalEvent{
 				Event:         event,
@@ -504,7 +506,7 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 		_ = a.RetrievalStoreMgr.ReleaseStore(store)
 	}()
 
-	_, err = a.Retrieval.Retrieve(
+	dealId, err = a.Retrieval.Retrieve(
 		ctx,
 		order.Root,
 		params,
@@ -521,16 +523,16 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 
 	select {
 	case <-ctx.Done():
+		unsubscribe()
 		finish(xerrors.New("Retrieval Timed Out"))
 		return
 	case err := <-retrievalResult:
+		unsubscribe()
 		if err != nil {
 			finish(xerrors.Errorf("Retrieve: %w", err))
 			return
 		}
 	}
-
-	unsubscribe()
 
 	// If ref is nil, it only fetches the data into the configured blockstore.
 	if ref == nil {
