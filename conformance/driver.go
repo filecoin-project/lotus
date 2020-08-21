@@ -11,10 +11,11 @@ import (
 
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
 
+	"github.com/filecoin-project/test-vectors/chaos"
+
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/lib/blockstore"
-	"github.com/filecoin-project/test-vectors/chaos"
 )
 
 var (
@@ -49,10 +50,14 @@ func (d *Driver) ExecuteMessage(msg *types.Message, preroot cid.Cid, bs blocksto
 		return nil, cid.Undef, err
 	}
 
-	// add support for the puppet and chaos actors.
 	invoker := vm.NewInvoker()
-	invoker.Register(puppet.PuppetActorCodeID, puppet.Actor{}, puppet.State{})
-	if chaosOn, ok := d.vector.Selector.Unpack()["chaos_actor"]; ok && chaosOn == "true" {
+
+	// add support for the puppet and chaos actors.
+	selector := d.vector.Selector.Unpack()
+	if puppetOn, ok := selector["puppet_actor"]; ok && puppetOn == "true" {
+		invoker.Register(puppet.PuppetActorCodeID, puppet.Actor{}, puppet.State{})
+	}
+	if chaosOn, ok := selector["chaos_actor"]; ok && chaosOn == "true" {
 		invoker.Register(chaos.ChaosActorCodeCID, chaos.Actor{}, chaos.State{})
 	}
 
