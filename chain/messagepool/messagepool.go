@@ -12,6 +12,7 @@ import (
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/hashicorp/go-multierror"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -744,18 +745,24 @@ func (mp *MessagePool) HeadChange(revert []*types.TipSet, apply []*types.TipSet)
 		}
 	}
 
+	var merr error
+
 	for _, ts := range revert {
 		pts, err := mp.api.LoadTipSet(ts.Parents())
 		if err != nil {
-			return err
-		}
-
-		msgs, err := mp.MessagesForBlocks(ts.Blocks())
-		if err != nil {
-			return err
+			log.Errorf("error loading reverted tipset parent: %s", err)
+			merr = multierror.Append(merr, err)
+			continue
 		}
 
 		mp.curTs = pts
+
+		msgs, err := mp.MessagesForBlocks(ts.Blocks())
+		if err != nil {
+			log.Errorf("error retrieving messages for reverted block: %s", err)
+			merr = multierror.Append(merr, err)
+			continue
+		}
 
 		for _, msg := range msgs {
 			add(msg)
@@ -763,11 +770,17 @@ func (mp *MessagePool) HeadChange(revert []*types.TipSet, apply []*types.TipSet)
 	}
 
 	for _, ts := range apply {
+		mp.curTs = ts
+
 		for _, b := range ts.Blocks() {
 			bmsgs, smsgs, err := mp.api.MessagesForBlock(b)
 			if err != nil {
-				return xerrors.Errorf("failed to get messages for apply block %s(height %d) (msgroot = %s): %w", b.Cid(), b.Height, b.Messages, err)
+				xerr := xerrors.Errorf("failed to get messages for apply block %s(height %d) (msgroot = %s): %w", b.Cid(), b.Height, b.Messages, err)
+				log.Errorf("error retrieving messages for block: %s", xerr)
+				merr = multierror.Append(merr, xerr)
+				continue
 			}
+
 			for _, msg := range smsgs {
 				rm(msg.Message.From, msg.Message.Nonce)
 				maybeRepub(msg.Cid())
@@ -778,8 +791,6 @@ func (mp *MessagePool) HeadChange(revert []*types.TipSet, apply []*types.TipSet)
 				maybeRepub(msg.Cid())
 			}
 		}
-
-		mp.curTs = ts
 	}
 
 	if repubTrigger {
@@ -862,7 +873,7 @@ func (mp *MessagePool) HeadChange(revert []*types.TipSet, apply []*types.TipSet)
 		}
 	}
 
-	return nil
+	return merr
 }
 
 type statBucket struct {
