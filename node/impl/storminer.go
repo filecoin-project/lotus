@@ -153,7 +153,8 @@ func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid abi.SectorNumb
 			Value: info.SeedValue,
 			Epoch: info.SeedEpoch,
 		},
-		Retries: info.InvalidProofs,
+		Retries:   info.InvalidProofs,
+		ToUpgrade: sm.Miner.IsMarkedForUpgrade(sid),
 
 		LastErr: info.LastErr,
 		Log:     log,

@@ -192,7 +192,7 @@ var sectorsListCmd = &cli.Command{
 			_, inSSet := commitedIDs[s]
 			_, inASet := activeIDs[s]
 
-			fmt.Fprintf(w, "%d: %s\tsSet: %s\tactive: %s\ttktH: %d\tseedH: %d\tdeals: %v\n",
+			fmt.Fprintf(w, "%d: %s\tsSet: %s\tactive: %s\ttktH: %d\tseedH: %d\tdeals: %v\t toUpgrade:%t\n",
 				s,
 				st.State,
 				yesno(inSSet),
@@ -200,6 +200,7 @@ var sectorsListCmd = &cli.Command{
 				st.Ticket.Epoch,
 				st.Seed.Epoch,
 				st.Deals,
+				st.ToUpgrade,
 			)
 		}
 
