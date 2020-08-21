@@ -20,7 +20,7 @@ import (
 	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 )
 
-func SetupInitActor(bs bstore.Blockstore, netname string, initialActors []genesis.Actor, rootVerifier genesis.Actor) (int64, *types.Actor, map[address.Address]address.Address, error) {
+func SetupInitActor(bs bstore.Blockstore, netname string, initialActors []genesis.Actor, rootVerifier genesis.Actor, remainder genesis.Actor) (int64, *types.Actor, map[address.Address]address.Address, error) {
 	if len(initialActors) > MaxAccounts {
 		return 0, nil, nil, xerrors.New("too many initial actors")
 	}
@@ -101,6 +101,40 @@ func SetupInitActor(bs bstore.Blockstore, netname string, initialActors []genesi
 	} else if rootVerifier.Type == genesis.TMultisig {
 		var ainfo genesis.MultisigMeta
 		if err := json.Unmarshal(rootVerifier.Meta, &ainfo); err != nil {
+			return 0, nil, nil, xerrors.Errorf("unmarshaling account meta: %w", err)
+		}
+		for _, e := range ainfo.Signers {
+			if _, ok := keyToId[e]; ok {
+				continue
+			}
+			fmt.Printf("init set %s t0%d\n", e, counter)
+
+			value := cbg.CborInt(counter)
+			if err := amap.Put(adt.AddrKey(e), &value); err != nil {
+				return 0, nil, nil, err
+			}
+			counter = counter + 1
+			var err error
+			keyToId[e], err = address.NewIDAddress(uint64(value))
+			if err != nil {
+				return 0, nil, nil, err
+			}
+
+		}
+	}
+
+	if remainder.Type == genesis.TAccount {
+		var ainfo genesis.AccountMeta
+		if err := json.Unmarshal(remainder.Meta, &ainfo); err != nil {
+			return 0, nil, nil, xerrors.Errorf("unmarshaling account meta: %w", err)
+		}
+		value := cbg.CborInt(90)
+		if err := amap.Put(adt.AddrKey(ainfo.Owner), &value); err != nil {
+			return 0, nil, nil, err
+		}
+	} else if remainder.Type == genesis.TMultisig {
+		var ainfo genesis.MultisigMeta
+		if err := json.Unmarshal(remainder.Meta, &ainfo); err != nil {
 			return 0, nil, nil, xerrors.Errorf("unmarshaling account meta: %w", err)
 		}
 		for _, e := range ainfo.Signers {
