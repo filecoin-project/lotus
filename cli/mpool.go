@@ -20,6 +20,7 @@ var mpoolCmd = &cli.Command{
 	Usage: "Manage message pool",
 	Subcommands: []*cli.Command{
 		mpoolPending,
+		mpoolClear,
 		mpoolSub,
 		mpoolStat,
 		mpoolReplaceCmd,
@@ -80,6 +81,22 @@ var mpoolPending = &cli.Command{
 		}
 
 		return nil
+	},
+}
+
+var mpoolClear = &cli.Command{
+	Name:  "clear",
+	Usage: "Clear all pending messages from the mpool (USE WITH CARE)",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		return api.MpoolClear(ctx)
 	},
 }
 
