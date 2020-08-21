@@ -185,7 +185,7 @@ type FullNode interface {
 	MpoolSub(context.Context) (<-chan MpoolUpdate, error)
 
 	// MpoolClear clears all pending messages from the mpool
-	MpoolClear(context.Context) error
+	MpoolClear(context.Context, bool) error
 
 	// MpoolGetConfig returns (a copy of) the current mpool config
 	MpoolGetConfig(context.Context) (*types.MpoolConfig, error)

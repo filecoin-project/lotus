@@ -87,6 +87,12 @@ var mpoolPending = &cli.Command{
 var mpoolClear = &cli.Command{
 	Name:  "clear",
 	Usage: "Clear all pending messages from the mpool (USE WITH CARE)",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "local",
+			Usage: "clear local messages only",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -94,9 +100,10 @@ var mpoolClear = &cli.Command{
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		local := cctx.Bool("local")
 
-		return api.MpoolClear(ctx)
+		ctx := ReqContext(cctx)
+		return api.MpoolClear(ctx, local)
 	},
 }
 

@@ -974,7 +974,7 @@ func (mp *MessagePool) loadLocal() error {
 	return nil
 }
 
-func (mp *MessagePool) Clear() {
+func (mp *MessagePool) Clear(localonly bool) {
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
@@ -991,9 +991,14 @@ func (mp *MessagePool) Clear() {
 				log.Warnf("error deleting local message: %s", err)
 			}
 		}
+
+		delete(mp.pending, a)
 	}
 
 	// clear the maps
-	mp.pending = make(map[address.Address]*msgSet)
 	mp.republished = nil
+	if !localonly {
+		mp.pending = make(map[address.Address]*msgSet)
+	}
+
 }
