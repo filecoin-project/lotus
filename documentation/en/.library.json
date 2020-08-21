@@ -67,6 +67,12 @@
           "slug": "en+setup-troubleshooting",
           "github": "en/setup-troubleshooting.md",
           "value": null
+        },
+        {
+          "title": "Environment Variables",
+          "slug": "en+env-vars",
+          "github": "en/environment-vars.md",
+          "value": null
         }
       ]
     },

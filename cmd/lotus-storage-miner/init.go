@@ -7,11 +7,12 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
+
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 
 	"github.com/docker/go-units"
 	"github.com/google/uuid"
@@ -106,6 +107,10 @@ var initCmd = &cli.Command{
 			Name:  "gas-premium",
 			Usage: "set gas premium for initialization messages in AttoFIL",
 			Value: "0",
+		},
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "select which address to send actor creation message from",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -631,9 +636,18 @@ func createStorageMiner(ctx context.Context, api lapi.FullNode, peerid peer.ID, 
 		return address.Undef, err
 	}
 
+	sender := owner
+	if fromstr := cctx.String("from"); fromstr != "" {
+		faddr, err := address.NewFromString(fromstr)
+		if err != nil {
+			return address.Undef, fmt.Errorf("could not parse from address: %w", err)
+		}
+		sender = faddr
+	}
+
 	createStorageMinerMsg := &types.Message{
 		To:    builtin.StoragePowerActorAddr,
-		From:  owner,
+		From:  sender,
 		Value: big.Zero(),
 
 		Method: builtin.MethodsPower.CreateMiner,

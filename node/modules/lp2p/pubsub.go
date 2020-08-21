@@ -31,6 +31,8 @@ func init() {
 	pubsub.GossipSubDhi = 12
 	pubsub.GossipSubDlazy = 12
 	pubsub.GossipSubDirectConnectInitialDelay = 30 * time.Second
+	pubsub.GossipSubIWantFollowupTime = 5 * time.Second
+	pubsub.GossipSubHistoryLength = 10
 }
 func ScoreKeeper() *dtypes.ScoreKeeper {
 	return new(dtypes.ScoreKeeper)
@@ -110,8 +112,9 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 				// IPColocationFactorWhitelist: map[string]struct{}{},
 
 				// P7: behavioural penalties, decay after 1hr
-				BehaviourPenaltyWeight: -10,
-				BehaviourPenaltyDecay:  pubsub.ScoreParameterDecay(time.Hour),
+				BehaviourPenaltyThreshold: 6,
+				BehaviourPenaltyWeight:    -10,
+				BehaviourPenaltyDecay:     pubsub.ScoreParameterDecay(time.Hour),
 
 				DecayInterval: pubsub.DefaultDecayInterval,
 				DecayToZero:   pubsub.DefaultDecayToZero,
@@ -371,5 +374,11 @@ func (trw *tracerWrapper) Trace(evt *pubsub_pb.TraceEvent) {
 		if trw.tr != nil {
 			trw.tr.Trace(evt)
 		}
+	case pubsub_pb.TraceEvent_RECV_RPC:
+		stats.Record(context.TODO(), metrics.PubsubRecvRPC.M(1))
+	case pubsub_pb.TraceEvent_SEND_RPC:
+		stats.Record(context.TODO(), metrics.PubsubSendRPC.M(1))
+	case pubsub_pb.TraceEvent_DROP_RPC:
+		stats.Record(context.TODO(), metrics.PubsubDropRPC.M(1))
 	}
 }

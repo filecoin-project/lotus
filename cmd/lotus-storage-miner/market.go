@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"text/tabwriter"
 	"time"
@@ -359,12 +360,16 @@ var dealsListCmd = &cli.Command{
 			return err
 		}
 
+		sort.Slice(deals, func(i, j int) bool {
+			return deals[i].CreationTime.Time().Before(deals[j].CreationTime.Time())
+		})
+
 		w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
 
 		verbose := cctx.Bool("verbose")
 
 		if verbose {
-			_, _ = fmt.Fprintf(w, "ProposalCid\tDealId\tState\tClient\tSize\tPrice\tDuration\tMessage\n")
+			_, _ = fmt.Fprintf(w, "Creation\tProposalCid\tDealId\tState\tClient\tSize\tPrice\tDuration\tMessage\n")
 		} else {
 			_, _ = fmt.Fprintf(w, "ProposalCid\tDealId\tState\tClient\tSize\tPrice\tDuration\n")
 		}
@@ -376,6 +381,10 @@ var dealsListCmd = &cli.Command{
 			}
 
 			fil := types.FIL(types.BigMul(deal.Proposal.StoragePricePerEpoch, types.NewInt(uint64(deal.Proposal.Duration()))))
+
+			if verbose {
+				_, _ = fmt.Fprintf(w, "%s\t", deal.CreationTime.Time().Format(time.Stamp))
+			}
 
 			_, _ = fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\t%s\t%s", propcid, deal.DealID, storagemarket.DealStates[deal.State], deal.Proposal.Client, units.BytesSize(float64(deal.Proposal.PieceSize)), fil, deal.Proposal.Duration())
 			if verbose {

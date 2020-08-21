@@ -30,7 +30,7 @@ to a Lotus Node over the JSON-RPC API.
 
 ### How do I set up a Lotus Node?
 
-Follow the instructions found [here](https://docs.lotu.sh/en+getting-started).
+Follow the instructions found [here](https://lotu.sh/en+getting-started).
 
 ### Where can I get the latest version of Lotus?
 
@@ -52,7 +52,7 @@ Stop the Lotus daemon, and delete all related files, including sealed and chain 
 running `rm ~/.lotus ~/.lotusminer`.
 
 Then, install Lotus afresh by following the instructions 
-found [here](https://docs.lotu.sh/en+getting-started).
+found [here](https://lotu.sh/en+getting-started).
 
 ### Can I configure where the node's config and data goes?
 

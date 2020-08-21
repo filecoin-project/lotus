@@ -4,7 +4,7 @@
 
 Here are the operations you can perform after you have stored and sealed a **Data CID** with the **Lotus Miner** in the network.
 
-If you would like to learn how to store a **Data CID** on a miner, read the instructions [here](https://docs.lotu.sh/en+storing-data).
+If you would like to learn how to store a **Data CID** on a miner, read the instructions [here](https://lotu.sh/en+storing-data).
 
 ## Find by Data CID
 
