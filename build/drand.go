@@ -2,7 +2,7 @@ package build
 
 import "github.com/filecoin-project/lotus/node/modules/dtypes"
 
-var DrandNetwork = DrandMainnet
+var DrandNetwork = DrandTestnet
 
 func DrandConfig() dtypes.DrandConfig {
 	return DrandConfigs[DrandNetwork]
