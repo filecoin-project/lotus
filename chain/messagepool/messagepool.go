@@ -973,3 +973,11 @@ func (mp *MessagePool) loadLocal() error {
 
 	return nil
 }
+
+func (mp *MessagePool) Clear() {
+	mp.lk.Lock()
+	defer mp.lk.Unlock()
+
+	mp.pending = make(map[address.Address]*msgSet)
+	mp.republished = nil
+}
