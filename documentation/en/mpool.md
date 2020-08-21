@@ -20,6 +20,7 @@ The full node API defines the following methods for interacting with the mpool:
     MpoolSub(context.Context) (<-chan MpoolUpdate, error)
     MpoolGetConfig(context.Context) (*types.MpoolConfig, error)
     MpoolSetConfig(context.Context, *types.MpoolConfig) error
+    MpoolClear(context.Context, local bool) error
 ```
 
 ### MpoolPending
@@ -61,6 +62,13 @@ Returns (a copy of) the current mpool configuration.
 
 Sets the mpool configuration to (a copy of) the supplied configuration object.
 
+### MpoolClear
+
+Clears pending messages from the mpool; if `local` is `true` then local messages are also cleared and removed from the datastore.
+
+This should be used with extreme care and only in the case of errors during head changes that
+would leave the mpool in an inconsistent state.
+
 
 ## Command Line Interfae
 
@@ -75,6 +83,7 @@ lotus mpool stat [--local]
 lotus mpool replace [--gas-feecap <feecap>] [--gas-premium <premium>] [--gas-limit <limit>] [from] [nonce]
 lotus mpool find [--from <address>] [--to <address>] [--method <int>]
 lotus mpool config [<configuration>]
+lotus mpool clear [--local]
 ```
 
 ### lotus mpool pending
@@ -97,6 +106,12 @@ Searches for messages in the mpool.
 
 ### lotus mpool config
 Gets or sets the current mpool configuration.
+
+### lotus mpool clear
+Unconditionally clears pending messages from the mpool.
+If the `--local` flag is passed, then local messages are also cleared; otherwise local messages are retained.
+
+*Warning*: this command should only be used in the case of head change errors leaving the mpool in an  state.
 
 ## Configuration
 
