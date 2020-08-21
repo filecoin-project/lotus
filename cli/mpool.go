@@ -92,6 +92,10 @@ var mpoolClear = &cli.Command{
 			Name:  "local",
 			Usage: "clear local messages only",
 		},
+		&cli.BoolFlag{
+			Name:  "really-do-it",
+			Usage: "must be specified for the action to take effect",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -99,6 +103,11 @@ var mpoolClear = &cli.Command{
 			return err
 		}
 		defer closer()
+
+		really := cctx.Bool("really-do-it")
+		if !really {
+			return fmt.Errorf("--really-do-it must be specified for this action to have an effect; you have been warned.")
+		}
 
 		local := cctx.Bool("local")
 
