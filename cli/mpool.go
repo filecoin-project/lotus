@@ -90,7 +90,7 @@ var mpoolClear = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:  "local",
-			Usage: "clear local messages only",
+			Usage: "also clear local messages",
 		},
 		&cli.BoolFlag{
 			Name:  "really-do-it",

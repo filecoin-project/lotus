@@ -974,31 +974,39 @@ func (mp *MessagePool) loadLocal() error {
 	return nil
 }
 
-func (mp *MessagePool) Clear(localonly bool) {
+func (mp *MessagePool) Clear(local bool) {
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
-	// remove local messages from the datastore
-	for a := range mp.localAddrs {
-		mset, ok := mp.pending[a]
-		if !ok {
-			continue
-		}
+	// remove everything if local is true, including removing local messages from
+	// the datastore
+	if local {
+		for a := range mp.localAddrs {
+			mset, ok := mp.pending[a]
+			if !ok {
+				continue
+			}
 
-		for _, m := range mset.msgs {
-			err := mp.localMsgs.Delete(datastore.NewKey(string(m.Cid().Bytes())))
-			if err != nil {
-				log.Warnf("error deleting local message: %s", err)
+			for _, m := range mset.msgs {
+				err := mp.localMsgs.Delete(datastore.NewKey(string(m.Cid().Bytes())))
+				if err != nil {
+					log.Warnf("error deleting local message: %s", err)
+				}
 			}
 		}
 
+		mp.pending = make(map[address.Address]*msgSet)
+		mp.republished = nil
+
+		return
+	}
+
+	// remove everything except the local messages
+	for a := range mp.pending {
+		_, isLocal := mp.localAddrs[a]
+		if isLocal {
+			continue
+		}
 		delete(mp.pending, a)
 	}
-
-	// clear the maps
-	mp.republished = nil
-	if !localonly {
-		mp.pending = make(map[address.Address]*msgSet)
-	}
-
 }

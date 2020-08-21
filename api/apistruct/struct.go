@@ -496,8 +496,8 @@ func (c *FullNodeStruct) MpoolPending(ctx context.Context, tsk types.TipSetKey) 
 	return c.Internal.MpoolPending(ctx, tsk)
 }
 
-func (c *FullNodeStruct) MpoolClear(ctx context.Context, localonly bool) error {
-	return c.Internal.MpoolClear(ctx, localonly)
+func (c *FullNodeStruct) MpoolClear(ctx context.Context, local bool) error {
+	return c.Internal.MpoolClear(ctx, local)
 }
 
 func (c *FullNodeStruct) MpoolPush(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, error) {
