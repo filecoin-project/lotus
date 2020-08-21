@@ -978,6 +978,22 @@ func (mp *MessagePool) Clear() {
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
+	// remove local messages from the datastore
+	for a := range mp.localAddrs {
+		mset, ok := mp.pending[a]
+		if !ok {
+			continue
+		}
+
+		for _, m := range mset.msgs {
+			err := mp.localMsgs.Delete(datastore.NewKey(string(m.Cid().Bytes())))
+			if err != nil {
+				log.Warnf("error deleting local message: %s", err)
+			}
+		}
+	}
+
+	// clear the maps
 	mp.pending = make(map[address.Address]*msgSet)
 	mp.republished = nil
 }
