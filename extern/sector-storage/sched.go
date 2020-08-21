@@ -295,7 +295,12 @@ func (sh *scheduler) trySched() {
 
 		task.indexHeap = sqi
 		for wnd, windowRequest := range sh.openWindows {
-			worker := sh.workers[windowRequest.worker]
+			worker, ok := sh.workers[windowRequest.worker]
+			if !ok {
+				log.Errorf("worker referenced by windowRequest not found (worker: %d)", windowRequest.worker)
+				// TODO: How to move forward here?
+				continue
+			}
 
 			// TODO: allow bigger windows
 			if !windows[wnd].allocated.canHandleRequest(needRes, windowRequest.worker, worker.info.Resources) {
