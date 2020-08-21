@@ -30,6 +30,7 @@ func main() {
 		verifRegCmd,
 		miscCmd,
 		mpoolCmd,
+		genesisVerifyCmd,
 	}
 
 	app := &cli.App{
