@@ -1,6 +1,6 @@
 # Lotus changelog
 
-## 0.5.0 / 2020-08-2020
+## 0.5.0 / 2020-08-20
 
 This version of Lotus will be used for the incentivized testnet Space Race competition,
 and can be considered mainnet-ready code. It includes some protocol
