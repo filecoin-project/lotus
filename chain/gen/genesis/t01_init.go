@@ -37,30 +37,7 @@ func SetupInitActor(bs bstore.Blockstore, netname string, initialActors []genesi
 
 	for _, a := range initialActors {
 		if a.Type == genesis.TMultisig {
-			var ainfo genesis.MultisigMeta
-			if err := json.Unmarshal(a.Meta, &ainfo); err != nil {
-				return 0, nil, nil, xerrors.Errorf("unmarshaling account meta: %w", err)
-			}
-			for _, e := range ainfo.Signers {
-
-				if _, ok := keyToId[e]; ok {
-					continue
-				}
-
-				fmt.Printf("init set %s t0%d\n", e, counter)
-
-				value := cbg.CborInt(counter)
-				if err := amap.Put(adt.AddrKey(e), &value); err != nil {
-					return 0, nil, nil, err
-				}
-				counter = counter + 1
-				var err error
-				keyToId[e], err = address.NewIDAddress(uint64(value))
-				if err != nil {
-					return 0, nil, nil, err
-				}
-
-			}
+			initMultisigActors(a.Meta, keyToId, amap, &counter)
 			// Need to add actors for all multisigs too
 			continue
 		}
@@ -72,6 +49,11 @@ func SetupInitActor(bs bstore.Blockstore, netname string, initialActors []genesi
 		var ainfo genesis.AccountMeta
 		if err := json.Unmarshal(a.Meta, &ainfo); err != nil {
 			return 0, nil, nil, xerrors.Errorf("unmarshaling account meta: %w", err)
+		}
+
+		// It's possible that the key was already added in a multisig
+		if _, ok := keyToId[ainfo.Owner]; ok {
+			continue
 		}
 
 		fmt.Printf("init set %s t0%d\n", ainfo.Owner, counter)
@@ -99,28 +81,7 @@ func SetupInitActor(bs bstore.Blockstore, netname string, initialActors []genesi
 			return 0, nil, nil, err
 		}
 	} else if rootVerifier.Type == genesis.TMultisig {
-		var ainfo genesis.MultisigMeta
-		if err := json.Unmarshal(rootVerifier.Meta, &ainfo); err != nil {
-			return 0, nil, nil, xerrors.Errorf("unmarshaling account meta: %w", err)
-		}
-		for _, e := range ainfo.Signers {
-			if _, ok := keyToId[e]; ok {
-				continue
-			}
-			fmt.Printf("init set %s t0%d\n", e, counter)
-
-			value := cbg.CborInt(counter)
-			if err := amap.Put(adt.AddrKey(e), &value); err != nil {
-				return 0, nil, nil, err
-			}
-			counter = counter + 1
-			var err error
-			keyToId[e], err = address.NewIDAddress(uint64(value))
-			if err != nil {
-				return 0, nil, nil, err
-			}
-
-		}
+		initMultisigActors(rootVerifier.Meta, keyToId, amap, &counter)
 	}
 
 	if remainder.Type == genesis.TAccount {
@@ -133,28 +94,7 @@ func SetupInitActor(bs bstore.Blockstore, netname string, initialActors []genesi
 			return 0, nil, nil, err
 		}
 	} else if remainder.Type == genesis.TMultisig {
-		var ainfo genesis.MultisigMeta
-		if err := json.Unmarshal(remainder.Meta, &ainfo); err != nil {
-			return 0, nil, nil, xerrors.Errorf("unmarshaling account meta: %w", err)
-		}
-		for _, e := range ainfo.Signers {
-			if _, ok := keyToId[e]; ok {
-				continue
-			}
-			fmt.Printf("init set %s t0%d\n", e, counter)
-
-			value := cbg.CborInt(counter)
-			if err := amap.Put(adt.AddrKey(e), &value); err != nil {
-				return 0, nil, nil, err
-			}
-			counter = counter + 1
-			var err error
-			keyToId[e], err = address.NewIDAddress(uint64(value))
-			if err != nil {
-				return 0, nil, nil, err
-			}
-
-		}
+		initMultisigActors(remainder.Meta, keyToId, amap, &counter)
 	}
 
 	amapaddr, err := amap.Root()
@@ -174,4 +114,34 @@ func SetupInitActor(bs bstore.Blockstore, netname string, initialActors []genesi
 	}
 
 	return counter, act, keyToId, nil
+}
+
+func initMultisigActors(meta json.RawMessage, keyToId map[address.Address]address.Address, amap *adt.Map, counter *int64) error {
+	var ainfo genesis.MultisigMeta
+	if err := json.Unmarshal(meta, &ainfo); err != nil {
+		return xerrors.Errorf("unmarshaling account meta: %w", err)
+	}
+	for _, e := range ainfo.Signers {
+
+		if _, ok := keyToId[e]; ok {
+			continue
+		}
+
+		fmt.Printf("init set %s t0%d\n", e, counter)
+
+		value := cbg.CborInt(*counter)
+		if err := amap.Put(adt.AddrKey(e), &value); err != nil {
+			return err
+		}
+		*counter = *counter + 1
+		var err error
+		keyToId[e], err = address.NewIDAddress(uint64(value))
+		if err != nil {
+			return err
+		}
+
+	}
+
+	return nil
+
 }
