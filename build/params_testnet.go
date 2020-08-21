@@ -13,7 +13,7 @@ import (
 )
 
 func init() {
-	power.ConsensusMinerMinPower = big.NewInt(1024 << 30)
+	power.ConsensusMinerMinPower = big.NewInt(10 << 40)
 	miner.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
 		abi.RegisteredSealProof_StackedDrg32GiBV1: {},
 		abi.RegisteredSealProof_StackedDrg64GiBV1: {},
