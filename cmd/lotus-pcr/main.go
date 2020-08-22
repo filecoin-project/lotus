@@ -142,7 +142,7 @@ var runCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		go func() {
-			http.ListenAndServe(":6060", nil)
+			http.ListenAndServe(":6060", nil) //nolint:errcheck
 		}()
 
 		ctx := context.Background()
@@ -445,7 +445,7 @@ func (r *refunder) Refund(ctx context.Context, tipset *types.TipSet, refunds *Mi
 	// Calculate the minimum balance as the total refund we need to issue plus 5% to cover fees
 	minBalance := types.BigAdd(refundSum, types.BigDiv(refundSum, types.NewInt(500)))
 	if balance.LessThan(minBalance) {
-		log.Errorw("not sufficent funds to cover refunds", "balance", balance, "refund_sum", refundSum, "minimum_required", minBalance)
+		log.Errorw("not sufficient funds to cover refunds", "balance", balance, "refund_sum", refundSum, "minimum_required", minBalance)
 		return xerrors.Errorf("wallet does not have enough balance to cover refund")
 	}
 
@@ -467,24 +467,24 @@ func (r *refunder) Refund(ctx context.Context, tipset *types.TipSet, refunds *Mi
 	return nil
 }
 
-type repo struct {
+type Repo struct {
 	last abi.ChainEpoch
 	path string
 }
 
-func NewRepo(path string) (*repo, error) {
+func NewRepo(path string) (*Repo, error) {
 	path, err := homedir.Expand(path)
 	if err != nil {
 		return nil, err
 	}
 
-	return &repo{
+	return &Repo{
 		last: 0,
 		path: path,
 	}, nil
 }
 
-func (r *repo) exists() (bool, error) {
+func (r *Repo) exists() (bool, error) {
 	_, err := os.Stat(r.path)
 	notexist := os.IsNotExist(err)
 	if notexist {
@@ -494,7 +494,7 @@ func (r *repo) exists() (bool, error) {
 
 }
 
-func (r *repo) init() error {
+func (r *Repo) init() error {
 	exist, err := r.exists()
 	if err != nil {
 		return err
@@ -511,7 +511,7 @@ func (r *repo) init() error {
 	return nil
 }
 
-func (r *repo) Open() (err error) {
+func (r *Repo) Open() (err error) {
 	if err = r.init(); err != nil {
 		return
 	}
@@ -542,11 +542,11 @@ func (r *repo) Open() (err error) {
 	return
 }
 
-func (r *repo) Height() abi.ChainEpoch {
+func (r *Repo) Height() abi.ChainEpoch {
 	return r.last
 }
 
-func (r *repo) SetHeight(last abi.ChainEpoch) (err error) {
+func (r *Repo) SetHeight(last abi.ChainEpoch) (err error) {
 	r.last = last
 	var f *os.File
 	f, err = os.OpenFile(filepath.Join(r.path, "height"), os.O_RDWR, 0644)

@@ -3,10 +3,11 @@ package chain_test
 import (
 	"context"
 	"fmt"
-	"github.com/ipfs/go-cid"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/ipfs/go-cid"
 
 	ds "github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
@@ -36,7 +37,10 @@ import (
 
 func init() {
 	build.InsecurePoStValidation = true
-	os.Setenv("TRUST_PARAMS", "1")
+	err := os.Setenv("TRUST_PARAMS", "1")
+	if err != nil {
+		panic(err)
+	}
 	miner.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
 		abi.RegisteredSealProof_StackedDrg2KiBV1: {},
 	}
@@ -210,20 +214,6 @@ func (tu *syncTestUtil) mineOnBlock(blk *store.FullTipSet, to int, miners []int,
 func (tu *syncTestUtil) mineNewBlock(src int, miners []int) {
 	mts := tu.mineOnBlock(tu.g.CurTipset, src, miners, true, false, nil)
 	tu.g.CurTipset = mts
-}
-
-func fblkToBlkMsg(fb *types.FullBlock) *types.BlockMsg {
-	out := &types.BlockMsg{
-		Header: fb.Header,
-	}
-
-	for _, msg := range fb.BlsMessages {
-		out.BlsMessages = append(out.BlsMessages, msg.Cid())
-	}
-	for _, msg := range fb.SecpkMessages {
-		out.SecpkMessages = append(out.SecpkMessages, msg.Cid())
-	}
-	return out
 }
 
 func (tu *syncTestUtil) addSourceNode(gen int) {
@@ -454,7 +444,7 @@ func (wpp badWpp) GenerateCandidates(context.Context, abi.PoStRandomness, uint64
 
 func (wpp badWpp) ComputeProof(context.Context, []abi.SectorInfo, abi.PoStRandomness) ([]abi.PoStProof, error) {
 	return []abi.PoStProof{
-		abi.PoStProof{
+		{
 			PoStProof:  abi.RegisteredPoStProof_StackedDrgWinning2KiBV1,
 			ProofBytes: []byte("evil"),
 		},
@@ -587,7 +577,7 @@ func TestDuplicateNonce(t *testing.T) {
 
 	msgs := make([][]*types.SignedMessage, 2)
 	// Each miner includes a message from the banker with the same nonce, but to different addresses
-	for k, _ := range msgs {
+	for k := range msgs {
 		msgs[k] = []*types.SignedMessage{makeMsg(tu.g.Miners[k])}
 	}
 

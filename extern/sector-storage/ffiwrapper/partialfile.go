@@ -118,7 +118,7 @@ func openPartialFile(maxPieceSize abi.PaddedPieceSize, path string) (*partialFil
 		trailerLen := binary.LittleEndian.Uint32(tlen[:])
 		expectLen := int64(trailerLen) + int64(len(tlen)) + int64(maxPieceSize)
 		if expectLen != st.Size() {
-			return xerrors.Errorf("file '%d' has inconsistent length; has %d bytes; expected %d (%d trailer, %d sector data)", path, st.Size(), expectLen, int64(trailerLen)+int64(len(tlen)), maxPieceSize)
+			return xerrors.Errorf("file '%s' has inconsistent length; has %d bytes; expected %d (%d trailer, %d sector data)", path, st.Size(), expectLen, int64(trailerLen)+int64(len(tlen)), maxPieceSize)
 		}
 		if trailerLen > veryLargeRle {
 			log.Warnf("Partial file '%s' has a VERY large trailer with %d bytes", path, trailerLen)

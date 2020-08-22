@@ -23,6 +23,14 @@ issues:
     - "Potential file inclusion via variable"
     - "should have( a package)? comment"
     - "Error return value of `logging.SetLogLevel` is not checked"
+    - "comment on exported"
+    - "(func|method) \\w+ should be \\w+"
+    - "(type|var|struct field|(method|func) parameter) `\\w+` should be `\\w+`"
+    - "(G306|G301|G307|G108|G302|G204|G104)"
+    - "don't use ALL_CAPS in Go names"
+    - "string .* has .* occurrences, make it a constant"
+    - "a blank import should be only in a main or test package, or have a comment justifying it"
+    - "package comment should be of the form"
 
   exclude-use-default: false
   exclude-rules:
@@ -45,6 +53,19 @@ issues:
     - path: .*_test.go
       linters:
         - gosec
+
+    - path: chain/vectors/gen/.*
+      linters:
+        - gosec
+
+    - path: cmd/lotus-bench/.*
+      linters:
+        - gosec
+
+    - path: api/test/.*
+      text: "context.Context should be the first parameter"
+      linters:
+        - golint
 
 linters-settings:
   goconst:

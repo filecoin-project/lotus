@@ -185,7 +185,7 @@ var runCmd = &cli.Command{
 			return err
 		}
 		if v.APIVersion != build.APIVersion {
-			return xerrors.Errorf("lotus-miner API version doesn't match: local: ", api.Version{APIVersion: build.APIVersion})
+			return xerrors.Errorf("lotus-miner API version doesn't match: local: %s", api.Version{APIVersion: build.APIVersion})
 		}
 		log.Infof("Remote version %s", v)
 
@@ -420,10 +420,11 @@ func watchMinerConn(ctx context.Context, cctx *cli.Context, nodeApi api.StorageM
 			log.Errorf("getting executable for auto-restart: %+v", err)
 		}
 
-		log.Sync()
+		_ = log.Sync()
 
 		// TODO: there are probably cleaner/more graceful ways to restart,
 		//  but this is good enough for now (FSM can recover from the mess this creates)
+		//nolint:gosec
 		if err := syscall.Exec(exe, []string{exe,
 			fmt.Sprintf("--worker-repo=%s", cctx.String("worker-repo")),
 			fmt.Sprintf("--miner-repo=%s", cctx.String("miner-repo")),
@@ -450,7 +451,7 @@ func extractRoutableIP(timeout time.Duration) (string, error) {
 	env, ok := os.LookupEnv(minerMultiAddrKey)
 	if !ok {
 		// TODO remove after deprecation period
-		env, ok = os.LookupEnv(deprecatedMinerMultiAddrKey)
+		_, ok = os.LookupEnv(deprecatedMinerMultiAddrKey)
 		if ok {
 			log.Warnf("Using a deprecated env(%s) value, please use env(%s) instead.", deprecatedMinerMultiAddrKey, minerMultiAddrKey)
 		}
@@ -461,7 +462,7 @@ func extractRoutableIP(timeout time.Duration) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer conn.Close()
+	defer conn.Close() //nolint:errcheck
 
 	localAddr := conn.LocalAddr().(*net.TCPAddr)
 

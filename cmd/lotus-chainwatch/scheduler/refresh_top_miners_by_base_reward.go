@@ -49,11 +49,11 @@ func setupTopMinerByBaseRewardSchema(ctx context.Context, db *sql.DB) error {
 			order by 1 desc
 			limit 1;
 	`); err != nil {
-		return xerrors.Errorf("create top_miner_by_base_reward views", err)
+		return xerrors.Errorf("create top_miner_by_base_reward views: %w", err)
 	}
 
 	if err := tx.Commit(); err != nil {
-		return xerrors.Errorf("commiting top_miner_by_base_reward views", err)
+		return xerrors.Errorf("committing top_miner_by_base_reward views; %w", err)
 	}
 	return nil
 }

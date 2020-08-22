@@ -62,8 +62,8 @@ func (sm *SignedMessage) Serialize() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func (m *SignedMessage) ChainLength() int {
-	ser, err := m.Serialize()
+func (sm *SignedMessage) ChainLength() int {
+	ser, err := sm.Serialize()
 	if err != nil {
 		panic(err)
 	}

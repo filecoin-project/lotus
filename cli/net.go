@@ -180,7 +180,7 @@ var netFindPeer = &cli.Command{
 			return nil
 		}
 
-		pid, err := peer.IDB58Decode(cctx.Args().First())
+		pid, err := peer.Decode(cctx.Args().First())
 		if err != nil {
 			return err
 		}

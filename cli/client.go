@@ -930,11 +930,11 @@ var clientQueryAskCmd = &cli.Command{
 				return xerrors.Errorf("failed to get peerID for miner: %w", err)
 			}
 
-			if peer.ID(*mi.PeerId) == peer.ID("SETME") {
+			if *mi.PeerId == peer.ID("SETME") {
 				return fmt.Errorf("the miner hasn't initialized yet")
 			}
 
-			pid = peer.ID(*mi.PeerId)
+			pid = *mi.PeerId
 		}
 
 		ask, err := api.ClientQueryAsk(ctx, pid, maddr)
@@ -1045,55 +1045,55 @@ var clientListDeals = &cli.Command{
 				fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d\t%s\n", d.LocalDeal.CreationTime.Format(time.Stamp), d.LocalDeal.ProposalCid, d.LocalDeal.DealID, d.LocalDeal.Provider, dealStateString(color, d.LocalDeal.State), onChain, slashed, d.LocalDeal.PieceCID, types.SizeStr(types.NewInt(d.LocalDeal.Size)), price, d.LocalDeal.Duration, d.LocalDeal.Message)
 			}
 			return w.Flush()
-		} else {
-			w := tablewriter.New(tablewriter.Col("DealCid"),
-				tablewriter.Col("DealId"),
-				tablewriter.Col("Provider"),
-				tablewriter.Col("State"),
-				tablewriter.Col("On Chain?"),
-				tablewriter.Col("Slashed?"),
-				tablewriter.Col("PieceCID"),
-				tablewriter.Col("Size"),
-				tablewriter.Col("Price"),
-				tablewriter.Col("Duration"),
-				tablewriter.NewLineCol("Message"))
+		}
 
-			for _, d := range deals {
-				propcid := d.LocalDeal.ProposalCid.String()
-				propcid = "..." + propcid[len(propcid)-8:]
+		w := tablewriter.New(tablewriter.Col("DealCid"),
+			tablewriter.Col("DealId"),
+			tablewriter.Col("Provider"),
+			tablewriter.Col("State"),
+			tablewriter.Col("On Chain?"),
+			tablewriter.Col("Slashed?"),
+			tablewriter.Col("PieceCID"),
+			tablewriter.Col("Size"),
+			tablewriter.Col("Price"),
+			tablewriter.Col("Duration"),
+			tablewriter.NewLineCol("Message"))
 
-				onChain := "N"
-				if d.OnChainDealState.SectorStartEpoch != -1 {
-					onChain = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SectorStartEpoch)
-				}
+		for _, d := range deals {
+			propcid := d.LocalDeal.ProposalCid.String()
+			propcid = "..." + propcid[len(propcid)-8:]
 
-				slashed := "N"
-				if d.OnChainDealState.SlashEpoch != -1 {
-					slashed = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SlashEpoch)
-				}
-
-				piece := d.LocalDeal.PieceCID.String()
-				piece = "..." + piece[len(piece)-8:]
-
-				price := types.FIL(types.BigMul(d.LocalDeal.PricePerEpoch, types.NewInt(d.LocalDeal.Duration)))
-
-				w.Write(map[string]interface{}{
-					"DealCid":   propcid,
-					"DealId":    d.LocalDeal.DealID,
-					"Provider":  d.LocalDeal.Provider,
-					"State":     dealStateString(color, d.LocalDeal.State),
-					"On Chain?": onChain,
-					"Slashed?":  slashed,
-					"PieceCID":  piece,
-					"Size":      types.SizeStr(types.NewInt(d.LocalDeal.Size)),
-					"Price":     price,
-					"Duration":  d.LocalDeal.Duration,
-					"Message":   d.LocalDeal.Message,
-				})
+			onChain := "N"
+			if d.OnChainDealState.SectorStartEpoch != -1 {
+				onChain = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SectorStartEpoch)
 			}
 
-			return w.Flush(os.Stdout)
+			slashed := "N"
+			if d.OnChainDealState.SlashEpoch != -1 {
+				slashed = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SlashEpoch)
+			}
+
+			piece := d.LocalDeal.PieceCID.String()
+			piece = "..." + piece[len(piece)-8:]
+
+			price := types.FIL(types.BigMul(d.LocalDeal.PricePerEpoch, types.NewInt(d.LocalDeal.Duration)))
+
+			w.Write(map[string]interface{}{
+				"DealCid":   propcid,
+				"DealId":    d.LocalDeal.DealID,
+				"Provider":  d.LocalDeal.Provider,
+				"State":     dealStateString(color, d.LocalDeal.State),
+				"On Chain?": onChain,
+				"Slashed?":  slashed,
+				"PieceCID":  piece,
+				"Size":      types.SizeStr(types.NewInt(d.LocalDeal.Size)),
+				"Price":     price,
+				"Duration":  d.LocalDeal.Duration,
+				"Message":   d.LocalDeal.Message,
+			})
 		}
+
+		return w.Flush(os.Stdout)
 	},
 }
 
@@ -1318,7 +1318,7 @@ func OutputDataTransferChannels(out io.Writer, channels []lapi.DataTransferChann
 	for _, channel := range sendingChannels {
 		w.Write(toChannelOutput(color, "Sending To", channel))
 	}
-	w.Flush(out)
+	w.Flush(out) //nolint:errcheck
 
 	fmt.Fprintf(out, "\nReceiving Channels\n\n")
 	w = tablewriter.New(tablewriter.Col("ID"),
@@ -1332,7 +1332,7 @@ func OutputDataTransferChannels(out io.Writer, channels []lapi.DataTransferChann
 	for _, channel := range receivingChannels {
 		w.Write(toChannelOutput(color, "Receiving From", channel))
 	}
-	w.Flush(out)
+	w.Flush(out) //nolint:errcheck
 }
 
 func channelStatusString(useColor bool, status datatransfer.Status) string {

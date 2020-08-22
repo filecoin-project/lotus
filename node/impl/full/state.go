@@ -443,9 +443,8 @@ func (a *StateAPI) StateSearchMsg(ctx context.Context, msg cid.Cid) (*api.MsgLoo
 			TipSet:  ts.Key(),
 			Height:  ts.Height(),
 		}, nil
-	} else {
-		return nil, nil
 	}
+	return nil, nil
 }
 
 func (a *StateAPI) StateGetReceipt(ctx context.Context, msg cid.Cid, tsk types.TipSetKey) (*types.MessageReceipt, error) {
@@ -557,7 +556,7 @@ func (a *StateAPI) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (m
 		} else if !found {
 			s.SectorStartEpoch = -1
 		}
-		out[strconv.FormatInt(int64(i), 10)] = api.MarketDeal{
+		out[strconv.FormatInt(i, 10)] = api.MarketDeal{
 			Proposal: d,
 			State:    s,
 		}
@@ -783,10 +782,6 @@ func (a *StateAPI) StateSectorPartition(ctx context.Context, maddr address.Addre
 	})
 	if err != nil {
 		return nil, err
-	}
-
-	if found == nil {
-
 	}
 
 	return found, nil
@@ -1147,12 +1142,12 @@ func (a *StateAPI) StateDealProviderCollateralBounds(ctx context.Context, size a
 	})
 
 	if err != nil {
-		return api.DealCollateralBounds{}, xerrors.Errorf("getting power and reward actor states: %w")
+		return api.DealCollateralBounds{}, xerrors.Errorf("getting power and reward actor states: %w", err)
 	}
 
 	circ, err := a.StateCirculatingSupply(ctx, ts.Key())
 	if err != nil {
-		return api.DealCollateralBounds{}, xerrors.Errorf("getting total circulating supply: %w")
+		return api.DealCollateralBounds{}, xerrors.Errorf("getting total circulating supply: %w", err)
 	}
 
 	min, max := market.DealProviderCollateralBounds(size, verified, powerState.ThisEpochQualityAdjPower, rewardState.ThisEpochBaselinePower, circ.FilCirculating)
@@ -1175,6 +1170,9 @@ func (a *StateAPI) StateCirculatingSupply(ctx context.Context, tsk types.TipSetK
 
 	cst := cbor.NewCborStore(a.Chain.Blockstore())
 	sTree, err := state.LoadStateTree(cst, st)
+	if err != nil {
+		return api.CirculatingSupply{}, err
+	}
 
 	return a.StateManager.GetCirculatingSupplyDetailed(ctx, ts.Height(), sTree)
 }

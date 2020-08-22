@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sync"
 	"time"
 
 	logging "github.com/ipfs/go-log"
@@ -48,8 +47,6 @@ type fsJournal struct {
 	fi    *os.File
 	fSize int64
 
-	lk sync.Mutex
-
 	journalDir string
 
 	incoming         chan *JournalEntry
@@ -58,7 +55,7 @@ type fsJournal struct {
 	closing chan struct{}
 }
 
-func OpenFSJournal(dir string) (*fsJournal, error) {
+func OpenFSJournal(dir string) (Journal, error) {
 	fsj := &fsJournal{
 		journalDir:       dir,
 		incoming:         make(chan *JournalEntry, 32),
@@ -94,7 +91,7 @@ func (fsj *fsJournal) putEntry(je *JournalEntry) error {
 	fsj.fSize += int64(n)
 
 	if fsj.fSize >= fsj.journalSizeLimit {
-		fsj.rollJournalFile()
+		return fsj.rollJournalFile()
 	}
 
 	return nil
@@ -104,7 +101,10 @@ const RFC3339nocolon = "2006-01-02T150405Z0700"
 
 func (fsj *fsJournal) rollJournalFile() error {
 	if fsj.fi != nil {
-		fsj.fi.Close()
+		err := fsj.fi.Close()
+		if err != nil {
+			return err
+		}
 	}
 
 	nfi, err := os.Create(filepath.Join(fsj.journalDir, fmt.Sprintf("lotus-journal-%s.ndjson", build.Clock.Now().Format(RFC3339nocolon))))
@@ -125,7 +125,9 @@ func (fsj *fsJournal) runLoop() {
 				log.Errorw("failed to write out journal entry", "entry", je, "err", err)
 			}
 		case <-fsj.closing:
-			fsj.fi.Close()
+			if err := fsj.fi.Close(); err != nil {
+				log.Errorw("failed to close journal", "err", err)
+			}
 			return
 		}
 	}
