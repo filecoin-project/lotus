@@ -146,7 +146,7 @@ var runCmd = &cli.Command{
 		}()
 
 		ctx := context.Background()
-		api, closer, err := stats.GetFullNodeAPI(cctx.String("lotus-path"))
+		api, closer, err := stats.GetFullNodeAPI(cctx.Context, cctx.String("lotus-path"))
 		if err != nil {
 			log.Fatal(err)
 		}

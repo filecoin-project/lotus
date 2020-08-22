@@ -453,7 +453,7 @@ func rpcWithBuilder(t *testing.T, b test.APIBuilder, nFull int, storage []test.S
 		addr := testServ.Listener.Addr()
 		listenAddr := "ws://" + addr.String()
 		var err error
-		fulls[i].FullNode, _, err = client.NewFullNodeRPC(listenAddr, nil)
+		fulls[i].FullNode, _, err = client.NewFullNodeRPC(context.Background(), listenAddr, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -472,7 +472,7 @@ func rpcWithBuilder(t *testing.T, b test.APIBuilder, nFull int, storage []test.S
 		addr := testServ.Listener.Addr()
 		listenAddr := "ws://" + addr.String()
 		var err error
-		storers[i].StorageMiner, _, err = client.NewStorageMinerRPC(listenAddr, nil)
+		storers[i].StorageMiner, _, err = client.NewStorageMinerRPC(context.Background(), listenAddr, nil)
 		if err != nil {
 			t.Fatal(err)
 		}

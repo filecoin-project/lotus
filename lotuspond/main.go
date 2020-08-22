@@ -27,7 +27,7 @@ var onCmd = &cli.Command{
 	Name:  "on",
 	Usage: "run a command on a given node",
 	Action: func(cctx *cli.Context) error {
-		client, err := apiClient()
+		client, err := apiClient(cctx.Context)
 		if err != nil {
 			return err
 		}
@@ -65,7 +65,7 @@ var shCmd = &cli.Command{
 	Name:  "sh",
 	Usage: "spawn shell with node shell variables set",
 	Action: func(cctx *cli.Context) error {
-		client, err := apiClient()
+		client, err := apiClient(cctx.Context)
 		if err != nil {
 			return err
 		}
