@@ -10,6 +10,13 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 )
 
+func (m *Sealing) IsMarkedForUpgrade(id abi.SectorNumber) bool {
+	m.upgradeLk.Lock()
+	_, found := m.toUpgrade[id]
+	m.upgradeLk.Unlock()
+	return found
+}
+
 func (m *Sealing) MarkForUpgrade(id abi.SectorNumber) error {
 	m.upgradeLk.Lock()
 	defer m.upgradeLk.Unlock()
