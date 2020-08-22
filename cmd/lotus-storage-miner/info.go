@@ -165,7 +165,7 @@ func infoCmdAct(cctx *cli.Context) error {
 		ndeals++
 		dealBytes += deal.Proposal.PieceSize
 
-		if deal.State == storagemarket.StorageDealActive{
+		if deal.State == storagemarket.StorageDealActive {
 			nactiveDeals++
 			activeDealBytes += deal.Proposal.PieceSize
 
