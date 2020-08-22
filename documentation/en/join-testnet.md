@@ -58,8 +58,8 @@ t1aswwvjsae63tcrniz6x5ykvsuotlgkvlulnqpsi
 ```
 
 - Visit the [faucet](http://spacerace.faucet.glif.io/) to add funds.
-- Paste the address you created.
-- Press the send button.
+- Paste the address you created under REQUEST.
+- Press the Request button.
 
 ## Check wallet address balance
 
