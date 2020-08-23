@@ -146,68 +146,63 @@ func (p *Processor) Start(ctx context.Context) {
 				grp := sync.WaitGroup{}
 
 				grp.Add(1)
-				go func() error {
+				go func() {
 					defer grp.Done()
 					if err := p.HandleMarketChanges(ctx, actorChanges[builtin.StorageMarketActorCodeID]); err != nil {
 						log.Errorf("Failed to handle market changes: %w", err)
-						return nil
+						return
 					}
 					log.Info("Processed Market Changes")
-					return nil
 				}()
 
 				grp.Add(1)
-				go func() error {
+				go func() {
 					defer grp.Done()
 					if err := p.HandleMinerChanges(ctx, actorChanges[builtin.StorageMinerActorCodeID]); err != nil {
 						log.Errorf("Failed to handle miner changes: %w", err)
-						return nil
+						return
 					}
 					log.Info("Processed Miner Changes")
-					return nil
 				}()
 
 				grp.Add(1)
-				go func() error {
+				go func() {
 					defer grp.Done()
 					if err := p.HandleRewardChanges(ctx, actorChanges[builtin.RewardActorCodeID], nullRounds); err != nil {
 						log.Errorf("Failed to handle reward changes: %w", err)
-						return nil
+						return
 					}
 					log.Info("Processed Reward Changes")
-					return nil
 				}()
 
 				grp.Add(1)
-				go func() error {
+				go func() {
 					defer grp.Done()
 					if err := p.HandlePowerChanges(ctx, actorChanges[builtin.StoragePowerActorCodeID]); err != nil {
-						return xerrors.Errorf("Failed to handle power actor changes: %w", err)
+						log.Errorf("Failed to handle power actor changes: %w", err)
+						return
 					}
 					log.Info("Processes Power Changes")
-					return nil
 				}()
 
 				grp.Add(1)
-				go func() error {
+				go func() {
 					defer grp.Done()
 					if err := p.HandleMessageChanges(ctx, toProcess); err != nil {
 						log.Errorf("Failed to handle message changes: %w", err)
-						return nil
+						return
 					}
 					log.Info("Processed Message Changes")
-					return nil
 				}()
 
 				grp.Add(1)
-				go func() error {
+				go func() {
 					defer grp.Done()
 					if err := p.HandleCommonActorsChanges(ctx, actorChanges); err != nil {
 						log.Errorf("Failed to handle common actor changes: %w", err)
-						return nil
+						return
 					}
 					log.Info("Processed CommonActor Changes")
-					return nil
 				}()
 
 				grp.Wait()
