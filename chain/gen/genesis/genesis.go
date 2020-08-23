@@ -119,11 +119,6 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 		return nil, nil, xerrors.Errorf("making new state tree: %w", err)
 	}
 
-	emptyobject, err := cst.Put(context.TODO(), []struct{}{})
-	if err != nil {
-		return nil, nil, xerrors.Errorf("failed putting empty object: %w", err)
-	}
-
 	// Create system actor
 
 	sysact, err := SetupSystemActor(bs)
@@ -192,11 +187,18 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 		return nil, nil, xerrors.Errorf("set market actor: %w", err)
 	}
 
+	burntRoot, err := cst.Put(ctx, &account.State{
+		Address: builtin.BurntFundsActorAddr,
+	})
+	if err != nil {
+		return nil, nil, xerrors.Errorf("failed to setup burnt funds actor state: %w", err)
+	}
+
 	// Setup burnt-funds
 	err = state.SetActor(builtin.BurntFundsActorAddr, &types.Actor{
 		Code:    builtin.AccountActorCodeID,
 		Balance: types.NewInt(0),
-		Head:    emptyobject,
+		Head:    burntRoot,
 	})
 	if err != nil {
 		return nil, nil, xerrors.Errorf("set burnt funds account actor: %w", err)
