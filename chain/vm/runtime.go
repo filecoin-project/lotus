@@ -306,10 +306,6 @@ func (rt *Runtime) Abortf(code exitcode.ExitCode, msg string, args ...interface{
 	panic(aerrors.NewfSkip(2, code, msg, args...))
 }
 
-func (rt *Runtime) AbortStateMsg(msg string) {
-	panic(aerrors.NewfSkip(3, 101, msg))
-}
-
 func (rt *Runtime) ValidateImmediateCallerType(ts ...cid.Cid) {
 	rt.abortIfAlreadyValidated()
 	callerCid, ok := rt.GetActorCodeCID(rt.Message().Caller())
