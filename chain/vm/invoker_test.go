@@ -56,7 +56,7 @@ func (b basicContract) Exports() []interface{} {
 		nil,
 		nil,
 		nil,
-		b.InvokeSomething10,
+		b.InvokeSomething100,
 	}
 }
 
@@ -70,8 +70,8 @@ func (basicContract) BadParam(rt runtime.Runtime, params *basicParams) *adt.Empt
 	return nil
 }
 
-func (basicContract) InvokeSomething10(rt runtime.Runtime, params *basicParams) *adt.EmptyValue {
-	rt.Abortf(exitcode.ExitCode(params.B+10), "params.B")
+func (basicContract) InvokeSomething100(rt runtime.Runtime, params *basicParams) *adt.EmptyValue {
+	rt.Abortf(exitcode.ExitCode(params.B+100), "params.B")
 	return nil
 }
 
@@ -81,12 +81,12 @@ func TestInvokerBasic(t *testing.T) {
 	assert.NoError(t, err)
 
 	{
-		bParam, err := actors.SerializeParams(&basicParams{B: 1})
+		bParam, err := actors.SerializeParams(&basicParams{B: 101})
 		assert.NoError(t, err)
 
 		_, aerr := code[0](&Runtime{}, bParam)
 
-		assert.Equal(t, exitcode.ExitCode(1), aerrors.RetCode(aerr), "return code should be 1")
+		assert.Equal(t, exitcode.ExitCode(101), aerrors.RetCode(aerr), "return code should be 101")
 		if aerrors.IsFatal(aerr) {
 			t.Fatal("err should not be fatal")
 		}
@@ -97,7 +97,7 @@ func TestInvokerBasic(t *testing.T) {
 		assert.NoError(t, err)
 
 		_, aerr := code[10](&Runtime{}, bParam)
-		assert.Equal(t, exitcode.ExitCode(12), aerrors.RetCode(aerr), "return code should be 12")
+		assert.Equal(t, exitcode.ExitCode(102), aerrors.RetCode(aerr), "return code should be 102")
 		if aerrors.IsFatal(aerr) {
 			t.Fatal("err should not be fatal")
 		}
@@ -107,6 +107,7 @@ func TestInvokerBasic(t *testing.T) {
 	if aerrors.IsFatal(aerr) {
 		t.Fatal("err should not be fatal")
 	}
-	assert.Equal(t, exitcode.ExitCode(1), aerrors.RetCode(aerr), "return code should be 1")
+	assert.Equal(t, exitcode.SysErrSerialization, aerrors.RetCode(aerr),
+		"return code should be "+exitcode.ErrSerialization.String())
 
 }
