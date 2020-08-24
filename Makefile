@@ -279,5 +279,8 @@ method-gen:
 
 gen: type-gen method-gen
 
+docsgen:
+	go run ./api/docgen > documentation/en/api-functions.md
+
 print-%:
 	@echo $*=$($*)
