@@ -17,7 +17,7 @@ type stateAccessor struct {
 	sm stateManagerAPI
 }
 
-func (ca *stateAccessor) loadPaychState(ctx context.Context, ch address.Address) (*types.Actor, *paych.State, error) {
+func (ca *stateAccessor) loadPaychActorState(ctx context.Context, ch address.Address) (*types.Actor, *paych.State, error) {
 	var pcast paych.State
 	act, err := ca.sm.LoadActorState(ctx, ch, &pcast, nil)
 	if err != nil {
@@ -28,7 +28,7 @@ func (ca *stateAccessor) loadPaychState(ctx context.Context, ch address.Address)
 }
 
 func (ca *stateAccessor) loadStateChannelInfo(ctx context.Context, ch address.Address, dir uint64) (*ChannelInfo, error) {
-	_, st, err := ca.loadPaychState(ctx, ch)
+	_, st, err := ca.loadPaychActorState(ctx, ch)
 	if err != nil {
 		return nil, err
 	}

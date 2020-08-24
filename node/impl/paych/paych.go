@@ -124,9 +124,7 @@ func (a *PaychAPI) PaychVoucherCheckSpendable(ctx context.Context, ch address.Ad
 }
 
 func (a *PaychAPI) PaychVoucherAdd(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, proof []byte, minDelta types.BigInt) (types.BigInt, error) {
-	_ = a.PaychMgr.TrackInboundChannel(ctx, ch) // TODO: expose those calls
-
-	return a.PaychMgr.AddVoucher(ctx, ch, sv, proof, minDelta)
+	return a.PaychMgr.AddVoucherInbound(ctx, ch, sv, proof, minDelta)
 }
 
 // PaychVoucherCreate creates a new signed voucher on the given payment channel
@@ -164,7 +162,7 @@ func (a *PaychAPI) paychVoucherCreate(ctx context.Context, pch address.Address, 
 
 	sv.Signature = sig
 
-	if _, err := a.PaychMgr.AddVoucher(ctx, pch, sv, nil, types.NewInt(0)); err != nil {
+	if _, err := a.PaychMgr.AddVoucherOutbound(ctx, pch, sv, nil, types.NewInt(0)); err != nil {
 		return nil, xerrors.Errorf("failed to persist voucher: %w", err)
 	}
 
