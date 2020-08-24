@@ -117,7 +117,6 @@ var genesisVerifyCmd = &cli.Command{
 				var st saacc.State
 				if err := cst.Get(ctx, act.Head, &st); err != nil {
 					log.Warn(xerrors.Errorf("account actor %s: %w", addr, err))
-					return nil
 				}
 
 				kaccounts[addr] = addrInfo{
