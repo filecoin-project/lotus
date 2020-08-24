@@ -319,7 +319,7 @@ var chainSetHeadCmd = &cli.Command{
 			ts, err = api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(cctx.Uint64("epoch")), types.EmptyTSK)
 		}
 		if ts == nil {
-			ts, err = parseTipSet(api, ctx, cctx.Args().Slice())
+			ts, err = parseTipSet(ctx, api, cctx.Args().Slice())
 		}
 		if err != nil {
 			return err
@@ -337,7 +337,7 @@ var chainSetHeadCmd = &cli.Command{
 	},
 }
 
-func parseTipSet(api api.FullNode, ctx context.Context, vals []string) (*types.TipSet, error) {
+func parseTipSet(ctx context.Context, api api.FullNode, vals []string) (*types.TipSet, error) {
 	var headers []*types.BlockHeader
 	for _, c := range vals {
 		blkc, err := cid.Decode(c)

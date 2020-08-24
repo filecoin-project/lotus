@@ -120,15 +120,16 @@ type SectorLog struct {
 }
 
 type SectorInfo struct {
-	SectorID abi.SectorNumber
-	State    SectorState
-	CommD    *cid.Cid
-	CommR    *cid.Cid
-	Proof    []byte
-	Deals    []abi.DealID
-	Ticket   SealTicket
-	Seed     SealSeed
-	Retries  uint64
+	SectorID  abi.SectorNumber
+	State     SectorState
+	CommD     *cid.Cid
+	CommR     *cid.Cid
+	Proof     []byte
+	Deals     []abi.DealID
+	Ticket    SealTicket
+	Seed      SealSeed
+	Retries   uint64
+	ToUpgrade bool
 
 	LastErr string
 

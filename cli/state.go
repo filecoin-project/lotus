@@ -353,6 +353,9 @@ var stateReplaySetCmd = &cli.Command{
 				}
 
 				ts, err = types.NewTipSet(headers)
+				if err != nil {
+					return err
+				}
 			} else {
 				var r *api.MsgLookup
 				r, err = fapi.StateWaitMsg(ctx, mcid, build.MessageConfidence)
@@ -365,9 +368,9 @@ var stateReplaySetCmd = &cli.Command{
 					return xerrors.Errorf("loading tipset: %w", err)
 				}
 				ts, err = fapi.ChainGetTipSet(ctx, childTs.Parents())
-			}
-			if err != nil {
-				return err
+				if err != nil {
+					return err
+				}
 			}
 
 		}
@@ -1499,7 +1502,7 @@ func parseParamsForMethod(act cid.Cid, method uint64, args []string) ([]byte, er
 			}
 			p.Elem().Field(i).Set(reflect.ValueOf(val))
 		case reflect.TypeOf(peer.ID("")):
-			pid, err := peer.IDB58Decode(args[i])
+			pid, err := peer.Decode(args[i])
 			if err != nil {
 				return nil, fmt.Errorf("failed to parse peer ID: %s", err)
 			}
@@ -1584,6 +1587,9 @@ var stateMarketBalanceCmd = &cli.Command{
 		}
 
 		balance, err := api.StateMarketBalance(ctx, addr, ts.Key())
+		if err != nil {
+			return err
+		}
 
 		fmt.Printf("Escrow: %s\n", types.FIL(balance.Escrow))
 		fmt.Printf("Locked: %s\n", types.FIL(balance.Locked))

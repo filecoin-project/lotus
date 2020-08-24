@@ -25,7 +25,7 @@ func PrepareScheduler(db *sql.DB) *Scheduler {
 
 func (s *Scheduler) setupSchema(ctx context.Context) error {
 	if err := setupTopMinerByBaseRewardSchema(ctx, s.db); err != nil {
-		return xerrors.Errorf("setup top miners by reward schema", err)
+		return xerrors.Errorf("setup top miners by reward schema: %w", err)
 	}
 	return nil
 }
@@ -35,14 +35,14 @@ func (s *Scheduler) Start(ctx context.Context) {
 	log.Debug("Starting Scheduler")
 
 	if err := s.setupSchema(ctx); err != nil {
-		log.Fatalw("applying scheduling schema", err)
+		log.Fatalw("applying scheduling schema", "error", err)
 	}
 
 	go func() {
 		// run once on start after schema has initialized
 		time.Sleep(5 * time.Second)
 		if err := refreshTopMinerByBaseReward(ctx, s.db); err != nil {
-			log.Errorf(err.Error())
+			log.Errorw("failed to refresh top miner", "error", err)
 		}
 		refreshTopMinerCh := time.NewTicker(30 * time.Second)
 		defer refreshTopMinerCh.Stop()
@@ -50,7 +50,7 @@ func (s *Scheduler) Start(ctx context.Context) {
 			select {
 			case <-refreshTopMinerCh.C:
 				if err := refreshTopMinerByBaseReward(ctx, s.db); err != nil {
-					log.Errorf(err.Error())
+					log.Errorw("failed to refresh top miner", "error", err)
 				}
 			case <-ctx.Done():
 				return

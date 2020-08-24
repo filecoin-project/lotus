@@ -123,8 +123,7 @@ func StorageClient(lc fx.Lifecycle, h host.Host, ibs dtypes.ClientBlockstore, md
 			return c.Start(ctx)
 		},
 		OnStop: func(context.Context) error {
-			c.Stop()
-			return nil
+			return c.Stop()
 		},
 	})
 	return c, nil

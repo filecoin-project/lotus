@@ -288,9 +288,6 @@ jobs:
           command: |
             $HOME/.local/bin/golangci-lint run -v --timeout 2m \
               --concurrency << parameters.concurrency >> << parameters.args >>
-  lint-changes:
-    <<: *lint
-
   lint-all:
     <<: *lint
 
@@ -319,8 +316,7 @@ workflows:
   version: 2.1
   ci:
     jobs:
-      - lint-changes:
-          args: "--new-from-rev origin/next"
+      - lint-all
       - mod-tidy-check
       - gofmt
       - test:

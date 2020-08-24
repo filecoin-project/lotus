@@ -7,8 +7,8 @@ import (
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/hashicorp/golang-lru"
-	peer "github.com/libp2p/go-libp2p-core/peer"
+	lru "github.com/hashicorp/golang-lru"
+	"github.com/libp2p/go-libp2p-core/peer"
 )
 
 type blockReceiptTracker struct {

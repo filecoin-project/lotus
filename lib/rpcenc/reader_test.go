@@ -56,7 +56,7 @@ func TestReaderProxy(t *testing.T) {
 
 	read, err := client.ReadAll(context.TODO(), strings.NewReader("pooooootato"))
 	require.NoError(t, err)
-	require.Equal(t, "pooooootato", string(read), "potatos weren't equal")
+	require.Equal(t, "pooooootato", string(read), "potatoes weren't equal")
 }
 
 func TestNullReaderProxy(t *testing.T) {

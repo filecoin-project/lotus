@@ -124,7 +124,7 @@ sync_complete:
 func GetTips(ctx context.Context, api api.FullNode, lastHeight abi.ChainEpoch, headlag int) (<-chan *types.TipSet, error) {
 	chmain := make(chan *types.TipSet)
 
-	hb := NewHeadBuffer(headlag)
+	hb := newHeadBuffer(headlag)
 
 	notif, err := api.ChainNotify(ctx)
 	if err != nil {
@@ -134,7 +134,8 @@ func GetTips(ctx context.Context, api api.FullNode, lastHeight abi.ChainEpoch, h
 	go func() {
 		defer close(chmain)
 
-		ping := time.Tick(30 * time.Second)
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
 
 		for {
 			select {
@@ -154,14 +155,14 @@ func GetTips(ctx context.Context, api api.FullNode, lastHeight abi.ChainEpoch, h
 							chmain <- tipset
 						}
 					case store.HCApply:
-						if out := hb.Push(change); out != nil {
+						if out := hb.push(change); out != nil {
 							chmain <- out.Val
 						}
 					case store.HCRevert:
-						hb.Pop()
+						hb.pop()
 					}
 				}
-			case <-ping:
+			case <-ticker.C:
 				log.Info("Running health check")
 
 				cctx, cancel := context.WithTimeout(ctx, 5*time.Second)

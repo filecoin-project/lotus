@@ -2,6 +2,7 @@ package state
 
 import (
 	"bytes"
+
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	typegen "github.com/whyrusleeping/cbor-gen"
 )
