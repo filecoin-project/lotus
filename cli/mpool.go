@@ -106,7 +106,7 @@ var mpoolClear = &cli.Command{
 
 		really := cctx.Bool("really-do-it")
 		if !really {
-			return fmt.Errorf("--really-do-it must be specified for this action to have an effect; you have been warned.")
+			return fmt.Errorf("the --really-do-it flag must be specified for this action to have an effect; you have been warned")
 		}
 
 		local := cctx.Bool("local")
