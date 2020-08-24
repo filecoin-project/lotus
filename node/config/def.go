@@ -126,7 +126,7 @@ func defCommon() Common {
 		Pubsub: Pubsub{
 			Bootstrapper: false,
 			DirectPeers:  nil,
-			RemoteTracer: "/ip4/147.75.67.199/tcp/4001/p2p/QmTd6UvR47vUidRNZ1ZKXHrAFhqTJAD27rKL9XYghEKgKX",
+			RemoteTracer: "/dns4/pubsub-tracer.filecoin.io/tcp/4001/p2p/QmTd6UvR47vUidRNZ1ZKXHrAFhqTJAD27rKL9XYghEKgKX",
 		},
 	}
 
