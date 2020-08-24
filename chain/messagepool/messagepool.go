@@ -317,6 +317,10 @@ func (mp *MessagePool) checkMessage(m *types.SignedMessage) error {
 		return xerrors.Errorf("mpool message too large (%dB): %w", m.Size(), ErrMessageTooBig)
 	}
 
+	if err := m.Message.ValidForBlockInclusion(0); err != nil {
+		return xerrors.Errorf("message not valid for block inclusion: %d", err)
+	}
+
 	if m.Message.To == address.Undef {
 		return ErrInvalidToAddr
 	}
