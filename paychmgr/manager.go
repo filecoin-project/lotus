@@ -179,9 +179,12 @@ func (pm *Manager) GetChannelInfo(addr address.Address) (*ChannelInfo, error) {
 	return ca.getChannelInfo(addr)
 }
 
-// CheckVoucherValid checks if the given voucher is valid (is or could become spendable at some point)
+// CheckVoucherValid checks if the given voucher is valid (is or could become spendable at some point).
+// If the channel is not in the store, fetches the channel from state (and checks that
+// the channel To address is owned by the wallet).
 func (pm *Manager) CheckVoucherValid(ctx context.Context, ch address.Address, sv *paych.SignedVoucher) error {
-	ca, err := pm.accessorByAddress(ch)
+	// Get an accessor for the channel, creating it from state if necessary
+	ca, err := pm.inboundChannelAccessor(ctx, ch)
 	if err != nil {
 		return err
 	}
@@ -214,21 +217,29 @@ func (pm *Manager) AddVoucherOutbound(ctx context.Context, ch address.Address, s
 // If the channel is not in the store, fetches the channel from state (and checks that
 // the channel To address is owned by the wallet).
 func (pm *Manager) AddVoucherInbound(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, proof []byte, minDelta types.BigInt) (types.BigInt, error) {
+	// Get an accessor for the channel, creating it from state if necessary
+	ca, err := pm.inboundChannelAccessor(ctx, ch)
+	if err != nil {
+		return types.BigInt{}, err
+	}
+	return ca.addVoucher(ctx, ch, sv, proof, minDelta)
+}
+
+// inboundChannelAccessor gets an accessor for the given channel. The channel
+// must either exist in the store, or be an inbound channel that can be created
+// from state.
+func (pm *Manager) inboundChannelAccessor(ctx context.Context, ch address.Address) (*channelAccessor, error) {
 	// Make sure channel is in store, or can be fetched from state, and that
 	// the channel To address is owned by the wallet
 	ci, err := pm.trackInboundChannel(ctx, ch)
 	if err != nil {
-		return types.BigInt{}, err
+		return nil, err
 	}
 
 	// This is an inbound channel, so To is the Control address (this node)
 	from := ci.Target
 	to := ci.Control
-	ca, err := pm.accessorByFromTo(from, to)
-	if err != nil {
-		return types.BigInt{}, err
-	}
-	return ca.addVoucher(ctx, ch, sv, proof, minDelta)
+	return pm.accessorByFromTo(from, to)
 }
 
 func (pm *Manager) trackInboundChannel(ctx context.Context, ch address.Address) (*ChannelInfo, error) {
