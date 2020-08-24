@@ -219,7 +219,10 @@ func (rt *Runtime) NewActorAddress() address.Address {
 	return addr
 }
 
-func (rt *Runtime) CreateActor(codeID cid.Cid, address address.Address) {
+func (rt *Runtime) CreateActor(codeID cid.Cid, addr address.Address) {
+	if addr == address.Undef {
+		rt.Abortf(exitcode.SysErrorIllegalArgument, "CreateActor with Undef address")
+	}
 	if !builtin.IsBuiltinActor(codeID) {
 		rt.Abortf(exitcode.SysErrorIllegalArgument, "Can only create built-in actors.")
 	}
@@ -228,14 +231,14 @@ func (rt *Runtime) CreateActor(codeID cid.Cid, address address.Address) {
 		rt.Abortf(exitcode.SysErrorIllegalArgument, "Can only have one instance of singleton actors.")
 	}
 
-	_, err := rt.state.GetActor(address)
+	_, err := rt.state.GetActor(addr)
 	if err == nil {
 		rt.Abortf(exitcode.SysErrorIllegalArgument, "Actor address already exists")
 	}
 
 	rt.chargeGas(rt.Pricelist().OnCreateActor())
 
-	err = rt.state.SetActor(address, &types.Actor{
+	err = rt.state.SetActor(addr, &types.Actor{
 		Code:    codeID,
 		Head:    EmptyObjectCid,
 		Nonce:   0,
