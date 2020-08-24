@@ -2,6 +2,7 @@ package genesis
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 
@@ -512,8 +513,10 @@ func MakeGenesisBlock(ctx context.Context, bs bstore.Blockstore, sys vm.SyscallB
 
 	log.Infof("Empty Genesis root: %s", emptyroot)
 
+	tickBuf := make([]byte, 32)
+	_, _ = rand.Read(tickBuf)
 	genesisticket := &types.Ticket{
-		VRFProof: []byte("vrf proof0000000vrf proof0000000"),
+		VRFProof: tickBuf,
 	}
 
 	filecoinGenesisCid, err := cid.Decode("bafyreiaqpwbbyjo4a42saasj36kkrpv4tsherf2e7bvezkert2a7dhonoi")
