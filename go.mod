@@ -93,7 +93,7 @@ require (
 	github.com/libp2p/go-libp2p-noise v0.1.1
 	github.com/libp2p/go-libp2p-peerstore v0.2.6
 	github.com/libp2p/go-libp2p-pubsub v0.3.5-0.20200821075113-efd56962bced
-	github.com/libp2p/go-libp2p-quic-transport v0.7.1
+	github.com/libp2p/go-libp2p-quic-transport v0.8.0
 	github.com/libp2p/go-libp2p-record v0.1.3
 	github.com/libp2p/go-libp2p-routing-helpers v0.2.3
 	github.com/libp2p/go-libp2p-swarm v0.2.8
