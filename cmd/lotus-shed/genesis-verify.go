@@ -62,8 +62,6 @@ var genesisVerifyCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Println("File loaded, now verifying state tree balances...")
-
 		sm := stmgr.NewStateManager(cs)
 
 		total, err := stmgr.CheckTotalFIL(context.TODO(), sm, ts)
@@ -71,6 +69,7 @@ var genesisVerifyCmd = &cli.Command{
 			return err
 		}
 
+		fmt.Println("Genesis: ", ts.Key())
 		expFIL := big.Mul(big.NewInt(int64(build.FilBase)), big.NewInt(int64(build.FilecoinPrecision)))
 		fmt.Printf("Total FIL: %s", types.FIL(total))
 		if !expFIL.Equals(total) {
