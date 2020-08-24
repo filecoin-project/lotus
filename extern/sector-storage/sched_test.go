@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -100,16 +101,18 @@ func (s *schedTestWorker) Paths(ctx context.Context) ([]stores.StoragePath, erro
 	return s.paths, nil
 }
 
+var decentWorkerResources = storiface.WorkerResources{
+	MemPhysical: 128 << 30,
+	MemSwap:     200 << 30,
+	MemReserved: 2 << 30,
+	CPUs:        32,
+	GPUs:        []string{"a GPU"},
+}
+
 func (s *schedTestWorker) Info(ctx context.Context) (storiface.WorkerInfo, error) {
 	return storiface.WorkerInfo{
-		Hostname: s.name,
-		Resources: storiface.WorkerResources{
-			MemPhysical: 128 << 30,
-			MemSwap:     200 << 30,
-			MemReserved: 2 << 30,
-			CPUs:        32,
-			GPUs:        []string{"a GPU"},
-		},
+		Hostname:  s.name,
+		Resources: decentWorkerResources,
 	}, nil
 }
 
@@ -450,4 +453,68 @@ func TestSched(t *testing.T) {
 			taskDone("t2"),
 		}))
 	}
+}
+
+type slowishSelector bool
+
+func (s slowishSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi.RegisteredSealProof, a *workerHandle) (bool, error) {
+	time.Sleep(200 * time.Microsecond)
+	return bool(s), nil
+}
+
+func (s slowishSelector) Cmp(ctx context.Context, task sealtasks.TaskType, a, b *workerHandle) (bool, error) {
+	time.Sleep(100 * time.Microsecond)
+	return true, nil
+}
+
+var _ WorkerSelector = slowishSelector(true)
+
+func BenchmarkTrySched(b *testing.B) {
+	spt := abi.RegisteredSealProof_StackedDrg32GiBV1
+	logging.SetAllLoggers(logging.LevelInfo)
+	defer logging.SetAllLoggers(logging.LevelDebug)
+	ctx := context.Background()
+
+	test := func(windows, queue int) func(b *testing.B) {
+		return func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				b.StopTimer()
+
+				sched := newScheduler(spt)
+				sched.workers[0] = &workerHandle{
+					w: nil,
+					info: storiface.WorkerInfo{
+						Hostname:  "t",
+						Resources: decentWorkerResources,
+					},
+					preparing: &activeResources{},
+					active:    &activeResources{},
+				}
+
+				for i := 0; i < windows; i++ {
+					sched.openWindows = append(sched.openWindows, &schedWindowRequest{
+						worker: 0,
+						done:   make(chan *schedWindow, 1000),
+					})
+				}
+
+				for i := 0; i < queue; i++ {
+					sched.schedQueue.Push(&workerRequest{
+						taskType: sealtasks.TTCommit2,
+						sel:      slowishSelector(true),
+						ctx:      ctx,
+					})
+				}
+
+				b.StartTimer()
+
+				sched.trySched()
+			}
+		}
+	}
+
+	b.Run("1w-1q", test(1, 1))
+	b.Run("500w-1q", test(500, 1))
+	b.Run("1w-500q", test(1, 500))
+	b.Run("200w-400q", test(200, 400))
 }
