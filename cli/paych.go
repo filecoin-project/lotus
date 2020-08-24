@@ -4,6 +4,10 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
+	"io"
+	"sort"
+
+	"github.com/filecoin-project/lotus/paychmgr"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/build"
@@ -322,7 +326,7 @@ var paychVoucherListCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:  "export",
-			Usage: "Print export strings",
+			Usage: "Print voucher as serialized string",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -348,16 +352,11 @@ var paychVoucherListCmd = &cli.Command{
 			return err
 		}
 
-		for _, v := range vouchers {
-			if cctx.Bool("export") {
-				enc, err := EncodedString(v)
-				if err != nil {
-					return err
-				}
-
-				fmt.Fprintf(cctx.App.Writer, "Lane %d, Nonce %d: %s; %s\n", v.Lane, v.Nonce, v.Amount.String(), enc)
-			} else {
-				fmt.Fprintf(cctx.App.Writer, "Lane %d, Nonce %d: %s\n", v.Lane, v.Nonce, v.Amount.String())
+		for _, v := range sortVouchers(vouchers) {
+			export := cctx.Bool("export")
+			err := outputVoucher(cctx.App.Writer, v, export)
+			if err != nil {
+				return err
 			}
 		}
 
@@ -367,8 +366,14 @@ var paychVoucherListCmd = &cli.Command{
 
 var paychVoucherBestSpendableCmd = &cli.Command{
 	Name:      "best-spendable",
-	Usage:     "Print voucher with highest value that is currently spendable",
+	Usage:     "Print vouchers with highest value that is currently spendable for each lane",
 	ArgsUsage: "[channelAddress]",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "export",
+			Usage: "Print voucher as serialized string",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Len() != 1 {
 			return ShowHelp(cctx, fmt.Errorf("must pass payment channel address"))
@@ -387,37 +392,53 @@ var paychVoucherBestSpendableCmd = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
-		vouchers, err := api.PaychVoucherList(ctx, ch)
+		vouchersByLane, err := paychmgr.BestSpendableByLane(ctx, api, ch)
 		if err != nil {
 			return err
 		}
 
-		var best *paych.SignedVoucher
-		for _, v := range vouchers {
-			spendable, err := api.PaychVoucherCheckSpendable(ctx, ch, v, nil, nil)
+		var vouchers []*paych.SignedVoucher
+		for _, vchr := range vouchersByLane {
+			vouchers = append(vouchers, vchr)
+		}
+		for _, best := range sortVouchers(vouchers) {
+			export := cctx.Bool("export")
+			err := outputVoucher(cctx.App.Writer, best, export)
 			if err != nil {
 				return err
 			}
-			if spendable {
-				if best == nil || v.Amount.GreaterThan(best.Amount) {
-					best = v
-				}
-			}
 		}
 
-		if best == nil {
-			return fmt.Errorf("No spendable vouchers for that channel")
-		}
+		return nil
+	},
+}
 
-		enc, err := EncodedString(best)
+func sortVouchers(vouchers []*paych.SignedVoucher) []*paych.SignedVoucher {
+	sort.Slice(vouchers, func(i, j int) bool {
+		if vouchers[i].Lane == vouchers[j].Lane {
+			return vouchers[i].Nonce < vouchers[j].Nonce
+		}
+		return vouchers[i].Lane < vouchers[j].Lane
+	})
+	return vouchers
+}
+
+func outputVoucher(w io.Writer, v *paych.SignedVoucher, export bool) error {
+	var enc string
+	if export {
+		var err error
+		enc, err = EncodedString(v)
 		if err != nil {
 			return err
 		}
+	}
 
-		fmt.Fprintln(cctx.App.Writer, enc)
-		fmt.Fprintf(cctx.App.Writer, "Amount: %s\n", best.Amount)
-		return nil
-	},
+	fmt.Fprintf(w, "Lane %d, Nonce %d: %s", v.Lane, v.Nonce, v.Amount.String())
+	if export {
+		fmt.Fprintf(w, "; %s", enc)
+	}
+	fmt.Fprintln(w)
+	return nil
 }
 
 var paychVoucherSubmitCmd = &cli.Command{
