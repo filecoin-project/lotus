@@ -11,14 +11,22 @@ import (
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
+	cbor "github.com/ipfs/go-ipld-cbor"
+
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/apibstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/lib/blockstore"
+	"github.com/filecoin-project/lotus/lib/bufbstore"
 )
 
 var infoCmd = &cli.Command{
@@ -46,6 +54,11 @@ func infoCmdAct(cctx *cli.Context) error {
 	defer acloser()
 
 	ctx := lcli.ReqContext(cctx)
+
+	head, err := api.ChainHead(ctx)
+	if err != nil {
+		return xerrors.Errorf("getting chain head: %w", err)
+	}
 
 	maddr, err := getActorAddress(ctx, nodeApi, cctx.String("actor"))
 	if err != nil {
@@ -141,11 +154,43 @@ func infoCmdAct(cctx *cli.Context) error {
 
 	fmt.Println()
 
+	deals, err := nodeApi.MarketListIncompleteDeals(ctx)
+	if err != nil {
+		return err
+	}
+
+	var nactiveDeals, nVerifDeals, ndeals uint64
+	var activeDealBytes, activeVerifDealBytes, dealBytes abi.PaddedPieceSize
+	for _, deal := range deals {
+		ndeals++
+		dealBytes += deal.Proposal.PieceSize
+
+		if deal.State == storagemarket.StorageDealActive {
+			nactiveDeals++
+			activeDealBytes += deal.Proposal.PieceSize
+
+			if deal.Proposal.VerifiedDeal {
+				nVerifDeals++
+				activeVerifDealBytes += deal.Proposal.PieceSize
+			}
+		}
+	}
+
+	fmt.Printf("Deals: %d, %s\n", ndeals, types.SizeStr(types.NewInt(uint64(dealBytes))))
+	fmt.Printf("\tActive: %d, %s (Verified: %d, %s)\n", nactiveDeals, types.SizeStr(types.NewInt(uint64(activeDealBytes))), nVerifDeals, types.SizeStr(types.NewInt(uint64(activeVerifDealBytes))))
+	fmt.Println()
+
+	tbs := bufbstore.NewTieredBstore(apibstore.NewAPIBlockstore(api), blockstore.NewTemporary())
+	_, err = mas.UnlockVestedFunds(adt.WrapStore(ctx, cbor.NewCborStore(tbs)), head.Height())
+	if err != nil {
+		return xerrors.Errorf("calculating vested funds: %w", err)
+	}
+
 	fmt.Printf("Miner Balance: %s\n", color.YellowString("%s", types.FIL(mact.Balance)))
 	fmt.Printf("\tPreCommit:   %s\n", types.FIL(mas.PreCommitDeposits))
 	fmt.Printf("\tPledge:      %s\n", types.FIL(mas.InitialPledgeRequirement))
 	fmt.Printf("\tLocked:      %s\n", types.FIL(mas.LockedFunds))
-	color.Green("\tAvailable:   %s", types.FIL(types.BigSub(mact.Balance, types.BigAdd(mas.LockedFunds, mas.PreCommitDeposits))))
+	color.Green("\tAvailable:   %s", types.FIL(mas.GetAvailableBalance(mact.Balance)))
 	wb, err := api.WalletBalance(ctx, mi.Worker)
 	if err != nil {
 		return xerrors.Errorf("getting worker balance: %w", err)
