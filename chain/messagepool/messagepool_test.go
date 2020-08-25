@@ -32,6 +32,8 @@ type testMpoolAPI struct {
 	balance    map[address.Address]types.BigInt
 
 	tipsets []*types.TipSet
+
+	published int
 }
 
 func newTestMpoolAPI() *testMpoolAPI {
@@ -91,6 +93,7 @@ func (tma *testMpoolAPI) PutMessage(m types.ChainMsg) (cid.Cid, error) {
 }
 
 func (tma *testMpoolAPI) PubSubPublish(string, []byte) error {
+	tma.published++
 	return nil
 }
 
