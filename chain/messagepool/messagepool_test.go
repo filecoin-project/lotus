@@ -281,6 +281,11 @@ func TestMessagePoolMessagesInEachBlock(t *testing.T) {
 }
 
 func TestRevertMessages(t *testing.T) {
+	futureDebug = true
+	defer func() {
+		futureDebug = false
+	}()
+
 	tma := newTestMpoolAPI()
 
 	w, err := wallet.NewWallet(wallet.NewMemKeyStore())

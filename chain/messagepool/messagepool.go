@@ -38,7 +38,7 @@ import (
 
 var log = logging.Logger("messagepool")
 
-const futureDebug = false
+var futureDebug = false
 
 var rbfNumBig = types.NewInt(uint64((ReplaceByFeeRatioDefault - 1) * RbfDenom))
 var rbfDenomBig = types.NewInt(RbfDenom)
@@ -651,6 +651,10 @@ func (mp *MessagePool) Pending() ([]*types.SignedMessage, *types.TipSet) {
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
+	return mp.allPending()
+}
+
+func (mp *MessagePool) allPending() ([]*types.SignedMessage, *types.TipSet) {
 	out := make([]*types.SignedMessage, 0)
 	for a := range mp.pending {
 		out = append(out, mp.pendingFor(a)...)
@@ -658,6 +662,7 @@ func (mp *MessagePool) Pending() ([]*types.SignedMessage, *types.TipSet) {
 
 	return out, mp.curTs
 }
+
 func (mp *MessagePool) PendingFor(a address.Address) ([]*types.SignedMessage, *types.TipSet) {
 	mp.curTsLk.Lock()
 	defer mp.curTsLk.Unlock()
@@ -790,7 +795,9 @@ func (mp *MessagePool) HeadChange(revert []*types.TipSet, apply []*types.TipSet)
 	}
 
 	if len(revert) > 0 && futureDebug {
-		msgs, ts := mp.Pending()
+		mp.lk.Lock()
+		msgs, ts := mp.allPending()
+		mp.lk.Unlock()
 
 		buckets := map[address.Address]*statBucket{}
 
