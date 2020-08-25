@@ -320,7 +320,7 @@ func (mp *MessagePool) checkMessage(m *types.SignedMessage) error {
 
 	// Perform syntaxtic validation, minGas=0 as we check if correctly in select messages
 	if err := m.Message.ValidForBlockInclusion(0); err != nil {
-		return xerrors.Errorf("message not valid for block inclusion: %d", err)
+		return xerrors.Errorf("message not valid for block inclusion: %w", err)
 	}
 
 	if m.Message.To == address.Undef {
