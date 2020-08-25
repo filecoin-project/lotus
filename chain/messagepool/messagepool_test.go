@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/lotus/chain/messagepool/gasguess"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/mock"
 	"github.com/filecoin-project/lotus/chain/wallet"
@@ -94,6 +95,11 @@ func (tma *testMpoolAPI) PubSubPublish(string, []byte) error {
 }
 
 func (tma *testMpoolAPI) GetActorAfter(addr address.Address, ts *types.TipSet) (*types.Actor, error) {
+	// regression check for load bug
+	if ts == nil {
+		panic("GetActorAfter called with nil tipset")
+	}
+
 	balance, ok := tma.balance[addr]
 	if !ok {
 		balance = types.NewInt(1000e6)
@@ -388,5 +394,72 @@ func TestPruningSimple(t *testing.T) {
 	msgs, _ := mp.Pending()
 	if len(msgs) != 5 {
 		t.Fatal("expected only 5 messages in pool, got: ", len(msgs))
+	}
+}
+
+func TestLoadLocal(t *testing.T) {
+	tma := newTestMpoolAPI()
+	ds := datastore.NewMapDatastore()
+
+	mp, err := New(tma, ds, "mptest")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// the actors
+	w1, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a1, err := w1.GenerateKey(crypto.SigTypeSecp256k1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	w2, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a2, err := w2.GenerateKey(crypto.SigTypeSecp256k1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin.StorageMarketActorCodeID, M: 2}]
+	msgs := make(map[cid.Cid]struct{})
+	for i := 0; i < 10; i++ {
+		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(i+1))
+		cid, err := mp.Push(m)
+		if err != nil {
+			t.Fatal(err)
+		}
+		msgs[cid] = struct{}{}
+	}
+	mp.Close()
+
+	mp, err = New(tma, ds, "mptest")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pmsgs, _ := mp.Pending()
+	if len(msgs) != len(pmsgs) {
+		t.Fatalf("expected %d messages, but got %d", len(msgs), len(pmsgs))
+	}
+
+	for _, m := range pmsgs {
+		cid := m.Cid()
+		_, ok := msgs[cid]
+		if !ok {
+			t.Fatal("unknown message")
+		}
+
+		delete(msgs, cid)
+	}
+
+	if len(msgs) > 0 {
+		t.Fatalf("not all messages were laoded; missing %d messages", len(msgs))
 	}
 }
