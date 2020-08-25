@@ -236,6 +236,51 @@ func TestMessagePool(t *testing.T) {
 	assertNonce(t, mp, sender, 2)
 }
 
+func TestMessagePoolMessagesInEachBlock(t *testing.T) {
+	tma := newTestMpoolAPI()
+
+	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ds := datastore.NewMapDatastore()
+
+	mp, err := New(tma, ds, "mptest")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a := tma.nextBlock()
+
+	sender, err := w.GenerateKey(crypto.SigTypeBLS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	target := mock.Address(1001)
+
+	var msgs []*types.SignedMessage
+	for i := 0; i < 5; i++ {
+		m := mock.MkMessage(sender, target, uint64(i), w)
+		msgs = append(msgs, m)
+		mustAdd(t, mp, m)
+	}
+
+	tma.setStateNonce(sender, 0)
+
+	tma.setBlockMessages(a, msgs[0], msgs[1])
+	tma.applyBlock(t, a)
+	tsa := mock.TipSet(a)
+
+	all, _ := mp.Pending()
+	fmt.Println("pending: ", all)
+
+	selm, _ := mp.SelectMessages(tsa, 1)
+	if len(selm) == 0 {
+		t.Fatal("should have returned the rest of the messages")
+	}
+}
+
 func TestRevertMessages(t *testing.T) {
 	tma := newTestMpoolAPI()
 
