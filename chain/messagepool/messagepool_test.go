@@ -40,12 +40,14 @@ func newTestMpoolAPI() *testMpoolAPI {
 		balance:    make(map[address.Address]types.BigInt),
 	}
 	genesis := mock.MkBlock(nil, 1, 1)
-	tma.setBlockMessages(genesis)
+	tma.tipsets = append(tma.tipsets, mock.TipSet(genesis))
 	return tma
 }
 
 func (tma *testMpoolAPI) nextBlock() *types.BlockHeader {
-	return mock.MkBlock(tma.tipsets[len(tma.tipsets)-1], 1, 1)
+	newBlk := mock.MkBlock(tma.tipsets[len(tma.tipsets)-1], 1, 1)
+	tma.tipsets = append(tma.tipsets, mock.TipSet(newBlk))
+	return newBlk
 }
 
 func (tma *testMpoolAPI) applyBlock(t *testing.T, b *types.BlockHeader) {
@@ -76,7 +78,6 @@ func (tma *testMpoolAPI) setBalanceRaw(addr address.Address, v types.BigInt) {
 
 func (tma *testMpoolAPI) setBlockMessages(h *types.BlockHeader, msgs ...*types.SignedMessage) {
 	tma.bmsgs[h.Cid()] = msgs
-	tma.tipsets = append(tma.tipsets, mock.TipSet(h))
 }
 
 func (tma *testMpoolAPI) SubscribeHeadChanges(cb func(rev, app []*types.TipSet) error) *types.TipSet {

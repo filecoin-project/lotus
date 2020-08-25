@@ -79,7 +79,7 @@ func TestMessageChains(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	block := mock.MkBlock(nil, 1, 1)
+	block := tma.nextBlock()
 	ts := mock.TipSet(block)
 
 	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin.StorageMarketActorCodeID, M: 2}]
@@ -317,7 +317,7 @@ func TestMessageChainSkipping(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	block := mock.MkBlock(nil, 1, 1)
+	block := tma.nextBlock()
 	ts := mock.TipSet(block)
 
 	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin.StorageMarketActorCodeID, M: 2}]
@@ -387,7 +387,7 @@ func TestBasicMessageSelection(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	block := mock.MkBlock(nil, 1, 1)
+	block := tma.nextBlock()
 	ts := mock.TipSet(block)
 	tma.applyBlock(t, block)
 
@@ -440,12 +440,12 @@ func TestBasicMessageSelection(t *testing.T) {
 	}
 
 	// now we make a block with all the messages and advance the chain
-	block2 := mock.MkBlock(ts, 2, 2)
+	block2 := tma.nextBlock()
 	tma.setBlockMessages(block2, msgs...)
 	tma.applyBlock(t, block2)
 
 	// we should have no pending messages in the mpool
-	pend, ts2 := mp.Pending()
+	pend, _ := mp.Pending()
 	if len(pend) != 0 {
 		t.Fatalf("expected no pending messages, but got %d", len(pend))
 	}
@@ -458,7 +458,7 @@ func TestBasicMessageSelection(t *testing.T) {
 		m = makeTestMessage(w2, a2, a1, uint64(i), gasLimit, uint64(i+1))
 		msgs = append(msgs, m)
 	}
-	block3 := mock.MkBlock(ts2, 3, 3)
+	block3 := tma.nextBlock()
 	tma.setBlockMessages(block3, msgs...)
 	ts3 := mock.TipSet(block3)
 
@@ -531,7 +531,7 @@ func TestMessageSelectionTrimming(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	block := mock.MkBlock(nil, 1, 1)
+	block := tma.nextBlock()
 	ts := mock.TipSet(block)
 	tma.applyBlock(t, block)
 
@@ -594,7 +594,7 @@ func TestPriorityMessageSelection(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	block := mock.MkBlock(nil, 1, 1)
+	block := tma.nextBlock()
 	ts := mock.TipSet(block)
 	tma.applyBlock(t, block)
 
@@ -676,7 +676,7 @@ func TestOptimalMessageSelection1(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	block := mock.MkBlock(nil, 1, 1)
+	block := tma.nextBlock()
 	ts := mock.TipSet(block)
 	tma.applyBlock(t, block)
 
@@ -743,7 +743,7 @@ func TestOptimalMessageSelection2(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	block := mock.MkBlock(nil, 1, 1)
+	block := tma.nextBlock()
 	ts := mock.TipSet(block)
 	tma.applyBlock(t, block)
 
@@ -821,7 +821,7 @@ func TestOptimalMessageSelection3(t *testing.T) {
 		wallets = append(wallets, w)
 	}
 
-	block := mock.MkBlock(nil, 1, 1)
+	block := tma.nextBlock()
 	ts := mock.TipSet(block)
 	tma.applyBlock(t, block)
 
@@ -879,7 +879,6 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand, getPremium fu
 	// actors send with an randomly distributed premium dictated by the getPremium function.
 	// a number of miners select with varying ticket quality and we compare the
 	// capacity and rewards of greedy selection -vs- optimal selection
-
 	mp, tma := makeTestMpool()
 
 	nActors := 300
@@ -902,7 +901,7 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand, getPremium fu
 		wallets = append(wallets, w)
 	}
 
-	block := mock.MkBlock(nil, 1, 1)
+	block := tma.nextBlock()
 	ts := mock.TipSet(block)
 	tma.applyBlock(t, block)
 
