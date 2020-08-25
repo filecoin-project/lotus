@@ -10,7 +10,6 @@ import (
 
 	rice "github.com/GeertJohan/go.rice"
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
@@ -131,10 +130,7 @@ type handler struct {
 	from           address.Address
 	sendPerRequest types.FIL
 
-	limiter      *Limiter
-	minerLimiter *Limiter
-
-	defaultMinerPeer peer.ID
+	limiter *Limiter
 }
 
 func (h *handler) send(w http.ResponseWriter, r *http.Request) {
