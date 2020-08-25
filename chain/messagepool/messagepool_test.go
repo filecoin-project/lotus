@@ -463,3 +463,113 @@ func TestLoadLocal(t *testing.T) {
 		t.Fatalf("not all messages were laoded; missing %d messages", len(msgs))
 	}
 }
+
+func TestClearAll(t *testing.T) {
+	tma := newTestMpoolAPI()
+	ds := datastore.NewMapDatastore()
+
+	mp, err := New(tma, ds, "mptest")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// the actors
+	w1, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a1, err := w1.GenerateKey(crypto.SigTypeSecp256k1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	w2, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a2, err := w2.GenerateKey(crypto.SigTypeSecp256k1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin.StorageMarketActorCodeID, M: 2}]
+	for i := 0; i < 10; i++ {
+		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(i+1))
+		_, err := mp.Push(m)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	for i := 0; i < 10; i++ {
+		m := makeTestMessage(w2, a2, a1, uint64(i), gasLimit, uint64(i+1))
+		mustAdd(t, mp, m)
+	}
+
+	mp.Clear(true)
+
+	pending, _ := mp.Pending()
+	if len(pending) > 0 {
+		t.Fatalf("cleared the mpool, but got %d pending messages", len(pending))
+	}
+}
+
+func TestClearNonLocal(t *testing.T) {
+	tma := newTestMpoolAPI()
+	ds := datastore.NewMapDatastore()
+
+	mp, err := New(tma, ds, "mptest")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// the actors
+	w1, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a1, err := w1.GenerateKey(crypto.SigTypeSecp256k1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	w2, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a2, err := w2.GenerateKey(crypto.SigTypeSecp256k1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin.StorageMarketActorCodeID, M: 2}]
+	for i := 0; i < 10; i++ {
+		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(i+1))
+		_, err := mp.Push(m)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	for i := 0; i < 10; i++ {
+		m := makeTestMessage(w2, a2, a1, uint64(i), gasLimit, uint64(i+1))
+		mustAdd(t, mp, m)
+	}
+
+	mp.Clear(false)
+
+	pending, _ := mp.Pending()
+	if len(pending) != 10 {
+		t.Fatalf("expected 10 pending messages, but got %d instead", len(pending))
+	}
+
+	for _, m := range pending {
+		if m.Message.From != a1 {
+			t.Fatalf("expected message from %s but got one from %s instead", a1, m.Message.From)
+		}
+	}
+}
