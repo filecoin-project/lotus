@@ -440,7 +440,10 @@ func TestLoadLocal(t *testing.T) {
 		}
 		msgs[cid] = struct{}{}
 	}
-	mp.Close()
+	err = mp.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	mp, err = New(tma, ds, "mptest")
 	if err != nil {
@@ -629,7 +632,11 @@ func TestUpdates(t *testing.T) {
 		}
 	}
 
-	mp.Close()
+	err = mp.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	_, ok := <-ch
 	if ok {
 		t.Fatal("expected closed channel, but got an update instead")
