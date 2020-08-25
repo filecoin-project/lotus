@@ -1,5 +1,24 @@
 # Lotus changelog
 
+# 0.5.2 / 2020-08-24
+
+This is a hotfix release.
+
+- Fix message selection to not include messages that are invalid for block
+  inclusion.
+- Improve SelectMessage handling of the case where the message pools tipset
+  differs from our mining base.
+
+# 0.5.1 / 2020-08-24
+
+The Space Race release! 
+This release contains the genesis car file and bootstrap peers for the space
+race network. 
+
+Additionally, we included two small fixes to genesis creation:
+- Randomize ticket value in genesis generation
+- Correctly set t099 (burnt funds actor) to have valid account actor state
+
 # 0.5.0 / 2020-08-20
 
 This version of Lotus will be used for the incentivized testnet Space Race competition,
