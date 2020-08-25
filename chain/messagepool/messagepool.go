@@ -982,6 +982,7 @@ func (mp *MessagePool) Updates(ctx context.Context) (<-chan api.MpoolUpdate, err
 
 	go func() {
 		defer mp.changes.Unsub(sub, localUpdates)
+		defer close(out)
 
 		for {
 			select {
@@ -990,8 +991,12 @@ func (mp *MessagePool) Updates(ctx context.Context) (<-chan api.MpoolUpdate, err
 				case out <- u.(api.MpoolUpdate):
 				case <-ctx.Done():
 					return
+				case <-mp.closer:
+					return
 				}
 			case <-ctx.Done():
+				return
+			case <-mp.closer:
 				return
 			}
 		}
