@@ -27,6 +27,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/lib/sigs"
@@ -873,6 +874,73 @@ func (mp *MessagePool) HeadChange(revert []*types.TipSet, apply []*types.TipSet)
 					"revert_tipset", revert[0].Key(),
 					"new_head", ts.Key(),
 				)
+			}
+		}
+	}
+
+	return merr
+}
+
+func (mp *MessagePool) runHeadChange(from *types.TipSet, to *types.TipSet, rmsgs map[address.Address]map[uint64]*types.SignedMessage) error {
+	add := func(m *types.SignedMessage) {
+		s, ok := rmsgs[m.Message.From]
+		if !ok {
+			s = make(map[uint64]*types.SignedMessage)
+			rmsgs[m.Message.From] = s
+		}
+		s[m.Message.Nonce] = m
+	}
+	rm := func(from address.Address, nonce uint64) {
+		s, ok := rmsgs[from]
+		if !ok {
+			return
+		}
+
+		if _, ok := s[nonce]; ok {
+			delete(s, nonce)
+			return
+		}
+
+	}
+
+	revert, apply, err := store.ReorgOps(mp.api.LoadTipSet, from, to)
+	if err != nil {
+		return xerrors.Errorf("failed to compute reorg ops for mpool pending messages: %w", err)
+	}
+
+	var merr error
+
+	for _, ts := range revert {
+		msgs, err := mp.MessagesForBlocks(ts.Blocks())
+		if err != nil {
+			log.Errorf("error retrieving messages for reverted block: %s", err)
+			merr = multierror.Append(merr, err)
+			continue
+		}
+
+		for _, msg := range msgs {
+			add(msg)
+		}
+	}
+
+	for _, ts := range apply {
+		mp.curTs = ts
+
+		for _, b := range ts.Blocks() {
+			bmsgs, smsgs, err := mp.api.MessagesForBlock(b)
+			if err != nil {
+				xerr := xerrors.Errorf("failed to get messages for apply block %s(height %d) (msgroot = %s): %w", b.Cid(), b.Height, b.Messages, err)
+				log.Errorf("error retrieving messages for block: %s", xerr)
+				merr = multierror.Append(merr, xerr)
+				continue
+			}
+
+			for _, msg := range smsgs {
+				rm(msg.Message.From, msg.Message.Nonce)
+			}
+
+			for _, msg := range bmsgs {
+				rm(msg.From, msg.Nonce)
 			}
 		}
 	}
