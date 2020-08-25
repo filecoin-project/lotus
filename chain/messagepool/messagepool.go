@@ -908,8 +908,6 @@ func (mp *MessagePool) runHeadChange(from *types.TipSet, to *types.TipSet, rmsgs
 	}
 
 	for _, ts := range apply {
-		mp.curTs = ts
-
 		for _, b := range ts.Blocks() {
 			bmsgs, smsgs, err := mp.api.MessagesForBlock(b)
 			if err != nil {
