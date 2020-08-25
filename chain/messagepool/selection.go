@@ -606,7 +606,8 @@ func (mp *MessagePool) createMessageChains(actor address.Address, mset map[uint6
 	//   the balance
 	a, err := mp.api.StateGetActor(actor, ts)
 	if err != nil {
-		panic(err) // TODO
+		log.Errorf("failed to load actor state, not building chain for %s: %w", actor, err)
+		return nil
 	}
 
 	curNonce := a.Nonce
