@@ -505,42 +505,16 @@ func (mp *MessagePool) getNonceLocked(addr address.Address, curTs *types.TipSet)
 }
 
 func (mp *MessagePool) getStateNonce(addr address.Address, curTs *types.TipSet) (uint64, error) {
-	// TODO: this method probably should be cached
-
-	act, err := mp.api.StateGetActor(addr, curTs)
+	act, err := mp.api.GetActorAfter(addr, curTs)
 	if err != nil {
 		return 0, err
 	}
 
-	baseNonce := act.Nonce
-
-	// TODO: the correct thing to do here is probably to set curTs to chain.head
-	// but since we have an accurate view of the world until a head change occurs,
-	// this should be fine
-	if curTs == nil {
-		return baseNonce, nil
-	}
-
-	msgs, err := mp.api.MessagesForTipset(curTs)
-	if err != nil {
-		return 0, xerrors.Errorf("failed to check messages for tipset: %w", err)
-	}
-
-	for _, m := range msgs {
-		msg := m.VMMessage()
-		if msg.From == addr {
-			if msg.Nonce != baseNonce {
-				return 0, xerrors.Errorf("tipset %s has bad nonce ordering (%d != %d)", curTs.Cids(), msg.Nonce, baseNonce)
-			}
-			baseNonce++
-		}
-	}
-
-	return baseNonce, nil
+	return act.Nonce, nil
 }
 
 func (mp *MessagePool) getStateBalance(addr address.Address, ts *types.TipSet) (types.BigInt, error) {
-	act, err := mp.api.StateGetActor(addr, ts)
+	act, err := mp.api.GetActorAfter(addr, ts)
 	if err != nil {
 		return types.EmptyInt, err
 	}
@@ -832,7 +806,8 @@ func (mp *MessagePool) HeadChange(revert []*types.TipSet, apply []*types.TipSet)
 		}
 
 		for a, bkt := range buckets {
-			act, err := mp.api.StateGetActor(a, ts)
+			// TODO that might not be correct with GatActorAfter but it is only debug code
+			act, err := mp.api.GetActorAfter(a, ts)
 			if err != nil {
 				log.Debugf("%s, err: %s\n", a, err)
 				continue

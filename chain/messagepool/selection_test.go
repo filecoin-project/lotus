@@ -464,7 +464,7 @@ func TestBasicMessageSelection(t *testing.T) {
 
 	// now create another set of messages and add them to the mpool
 	for i := 20; i < 30; i++ {
-		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(2*i+1))
+		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(2*i+200))
 		mustAdd(t, mp, m)
 		m = makeTestMessage(w2, a2, a1, uint64(i), gasLimit, uint64(i+1))
 		mustAdd(t, mp, m)
@@ -480,12 +480,12 @@ func TestBasicMessageSelection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(msgs) != 40 {
-		t.Fatalf("expected 40 messages, got %d", len(msgs))
+	if len(msgs) != 20 {
+		t.Fatalf("expected 20 messages, got %d", len(msgs))
 	}
 
-	nextNonce = 10
-	for i := 0; i < 20; i++ {
+	nextNonce = 20
+	for i := 0; i < 10; i++ {
 		if msgs[i].Message.From != a1 {
 			t.Fatalf("expected message from actor a1")
 		}
@@ -495,8 +495,8 @@ func TestBasicMessageSelection(t *testing.T) {
 		nextNonce++
 	}
 
-	nextNonce = 10
-	for i := 20; i < 40; i++ {
+	nextNonce = 20
+	for i := 10; i < 20; i++ {
 		if msgs[i].Message.From != a2 {
 			t.Fatalf("expected message from actor a2")
 		}
