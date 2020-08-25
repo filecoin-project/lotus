@@ -272,8 +272,7 @@ func TestMessagePoolMessagesInEachBlock(t *testing.T) {
 	tma.applyBlock(t, a)
 	tsa := mock.TipSet(a)
 
-	all, _ := mp.Pending()
-	fmt.Println("pending: ", all)
+	_, _ = mp.Pending()
 
 	selm, _ := mp.SelectMessages(tsa, 1)
 	if len(selm) == 0 {
