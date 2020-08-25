@@ -190,12 +190,7 @@ func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName) (*Messa
 	// enable initial prunes
 	mp.pruneCooldown <- struct{}{}
 
-	if err := mp.loadLocal(); err != nil {
-		log.Errorf("loading local messages: %+v", err)
-	}
-
-	go mp.runLoop()
-
+	// load the current tipset and subscribe to head changes _before_ loading local messages
 	mp.curTs = api.SubscribeHeadChanges(func(rev, app []*types.TipSet) error {
 		err := mp.HeadChange(rev, app)
 		if err != nil {
@@ -203,6 +198,12 @@ func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName) (*Messa
 		}
 		return err
 	})
+
+	if err := mp.loadLocal(); err != nil {
+		log.Errorf("loading local messages: %+v", err)
+	}
+
+	go mp.runLoop()
 
 	return mp, nil
 }
