@@ -649,6 +649,73 @@ func TestPriorityMessageSelection(t *testing.T) {
 	}
 }
 
+func TestPriorityMessageSelection2(t *testing.T) {
+	mp, tma := makeTestMpool()
+
+	// the actors
+	w1, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a1, err := w1.GenerateKey(crypto.SigTypeSecp256k1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	w2, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a2, err := w2.GenerateKey(crypto.SigTypeSecp256k1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	block := tma.nextBlock()
+	ts := mock.TipSet(block)
+	tma.applyBlock(t, block)
+
+	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin.StorageMarketActorCodeID, M: 2}]
+
+	tma.setBalance(a1, 1) // in FIL
+	tma.setBalance(a2, 1) // in FIL
+
+	mp.cfg.PriorityAddrs = []address.Address{a1}
+
+	nMessages := int(2 * build.BlockGasLimit / gasLimit)
+	for i := 0; i < nMessages; i++ {
+		bias := (nMessages - i) / 3
+		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(1+i%3+bias))
+		mustAdd(t, mp, m)
+		m = makeTestMessage(w2, a2, a1, uint64(i), gasLimit, uint64(1+i%3+bias))
+		mustAdd(t, mp, m)
+	}
+
+	msgs, err := mp.SelectMessages(ts, 1.0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expectedMsgs := int(build.BlockGasLimit / gasLimit)
+	if len(msgs) != expectedMsgs {
+		t.Fatalf("expected %d messages but got %d", expectedMsgs, len(msgs))
+	}
+
+	// all messages must be from a1
+	nextNonce := uint64(0)
+	for _, m := range msgs {
+		if m.Message.From != a1 {
+			t.Fatal("expected messages from a1 before messages from a2")
+		}
+		if m.Message.Nonce != nextNonce {
+			t.Fatalf("expected nonce %d but got %d", nextNonce, m.Message.Nonce)
+		}
+		nextNonce++
+	}
+}
+
 func TestOptimalMessageSelection1(t *testing.T) {
 	// this test uses just a single actor sending messages with a low tq
 	// the chain depenent merging algorithm should pick messages from the actor
