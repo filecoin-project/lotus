@@ -138,6 +138,8 @@ func RecordTipsetPoints(ctx context.Context, api api.FullNode, pl *PointList, ti
 	pl.AddPoint(p)
 
 	totalGasLimit := int64(0)
+	totalUniqGasLimit := int64(0)
+	seen := make(map[cid.Cid]struct{})
 	for _, blockheader := range tipset.Blocks() {
 		bs, err := blockheader.Serialize()
 		if err != nil {
@@ -155,13 +157,25 @@ func RecordTipsetPoints(ctx context.Context, api api.FullNode, pl *PointList, ti
 			return xerrors.Errorf("ChainGetBlockMessages failed: %w", msgs)
 		}
 		for _, m := range msgs.BlsMessages {
+			c := m.Cid()
 			totalGasLimit += m.GasLimit
+			if _, ok := seen[c]; !ok {
+				totalUniqGasLimit += m.GasLimit
+				seen[c] = struct{}{}
+			}
 		}
 		for _, m := range msgs.SecpkMessages {
+			c := m.Cid()
 			totalGasLimit += m.Message.GasLimit
+			if _, ok := seen[c]; !ok {
+				totalUniqGasLimit += m.Message.GasLimit
+				seen[c] = struct{}{}
+			}
 		}
 	}
 	p = NewPoint("chain.gas_limit_total", totalGasLimit)
+	pl.AddPoint(p)
+	p = NewPoint("chain.gas_limit_uniq_total", totalUniqGasLimit)
 	pl.AddPoint(p)
 
 	return nil
