@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/rand"
 	"io"
 	"io/ioutil"
@@ -129,9 +130,9 @@ type client struct {
 	Nodes func() []nodeInfo
 }
 
-func apiClient() (*client, error) {
+func apiClient(ctx context.Context) (*client, error) {
 	c := &client{}
-	if _, err := jsonrpc.NewClient("ws://"+listenAddr+"/rpc/v0", "Pond", c, nil); err != nil {
+	if _, err := jsonrpc.NewClient(ctx, "ws://"+listenAddr+"/rpc/v0", "Pond", c, nil); err != nil {
 		return nil, err
 	}
 	return c, nil
