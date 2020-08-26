@@ -607,6 +607,11 @@ func (mp *MessagePool) PushWithNonce(ctx context.Context, addr address.Address, 
 		return nil, err
 	}
 
+	msgb, err := msg.Serialize()
+	if err != nil {
+		return nil, err
+	}
+
 	// reacquire the locks and check state for consistency
 	mp.curTsLk.Lock()
 	defer mp.curTsLk.Unlock()
@@ -627,16 +632,11 @@ func (mp *MessagePool) PushWithNonce(ctx context.Context, addr address.Address, 
 		return nil, ErrTryAgain
 	}
 
-	if err := mp.verifyMsgBeforeAdd(msg, mp.curTs.Height()); err != nil {
+	if err := mp.verifyMsgBeforeAdd(msg, curTs.Height()); err != nil {
 		return nil, err
 	}
 
 	if err := mp.checkBalance(msg, curTs); err != nil {
-		return nil, err
-	}
-
-	msgb, err := msg.Serialize()
-	if err != nil {
 		return nil, err
 	}
 
