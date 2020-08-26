@@ -3,12 +3,12 @@ package mock
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"math/rand"
 	"sync"
 
-	"github.com/filecoin-project/go-bitfield"
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-storage/storage"
@@ -291,32 +291,29 @@ func (mgr *SectorMgr) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorI
 	return generateFakePoSt(si, abi.RegisteredSealProof.RegisteredWindowPoStProof, randomness), skipped, nil
 }
 
-func generateFakePoSt(sectorInfo []abi.SectorInfo, rpt func(abi.RegisteredSealProof) (abi.RegisteredPoStProof, error), randomness abi.PoStRandomness) []abi.PoStProof {
-	sectors := bitfield.New()
+func generateFakePoStProof(sectorInfo []abi.SectorInfo, randomness abi.PoStRandomness) []byte {
+	hasher := sha256.New()
+	_, _ = hasher.Write(randomness)
 	for _, info := range sectorInfo {
-		sectors.Set(uint64(info.SectorNumber))
+		err := info.MarshalCBOR(hasher)
+		if err != nil {
+			panic(err)
+		}
 	}
+	return hasher.Sum(nil)
 
+}
+
+func generateFakePoSt(sectorInfo []abi.SectorInfo, rpt func(abi.RegisteredSealProof) (abi.RegisteredPoStProof, error), randomness abi.PoStRandomness) []abi.PoStProof {
 	wp, err := rpt(sectorInfo[0].SealProof)
 	if err != nil {
-		panic(err)
-	}
-
-	var proofBuf bytes.Buffer
-
-	_, err = proofBuf.Write(randomness)
-	if err != nil {
-		panic(err)
-	}
-
-	if err := sectors.MarshalCBOR(&proofBuf); err != nil {
 		panic(err)
 	}
 
 	return []abi.PoStProof{
 		{
 			PoStProof:  wp,
-			ProofBytes: proofBuf.Bytes(),
+			ProofBytes: generateFakePoStProof(sectorInfo, randomness),
 		},
 	}
 }
@@ -412,36 +409,10 @@ func (m mockVerif) VerifyWindowPoSt(ctx context.Context, info abi.WindowPoStVeri
 
 	proof := info.Proofs[0]
 
-	if !bytes.Equal(proof.ProofBytes[:len(info.Randomness)], info.Randomness) {
-		return false, xerrors.Errorf("bad randomness")
+	expected := generateFakePoStProof(info.ChallengedSectors, info.Randomness)
+	if !bytes.Equal(proof.ProofBytes, expected) {
+		return false, xerrors.Errorf("bad proof")
 	}
-
-	sectors := bitfield.New()
-	if err := sectors.UnmarshalCBOR(bytes.NewReader(proof.ProofBytes[len(info.Randomness):])); err != nil {
-		return false, xerrors.Errorf("unmarshaling sectors bitfield from \"proof\": %w", err)
-	}
-
-	challenged := bitfield.New()
-	for _, sector := range info.ChallengedSectors {
-		challenged.Set(uint64(sector.SectorNumber))
-	}
-
-	{
-		b1, err := sectors.MarshalJSON()
-		if err != nil {
-			return false, err
-		}
-
-		b2, err := challenged.MarshalJSON()
-		if err != nil {
-			return false, err
-		}
-
-		if !bytes.Equal(b1, b2) {
-			return false, xerrors.Errorf("proven and challenged sector sets didn't match: %s != %s", string(b1), string(b2))
-		}
-	}
-
 	return true, nil
 }
 
