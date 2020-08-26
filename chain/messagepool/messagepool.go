@@ -48,12 +48,16 @@ const RbfDenom = 256
 
 var RepublishInterval = pubsub.TimeCacheDuration + time.Duration(5*build.BlockDelaySecs+build.PropagationDelaySecs)*time.Second
 
+var minimumBaseFee = types.NewInt(build.MinimumBaseFee)
+
 var (
 	ErrMessageTooBig = errors.New("message too big")
 
 	ErrMessageValueTooHigh = errors.New("cannot send more filecoin than will ever exist")
 
 	ErrNonceTooLow = errors.New("message nonce too low")
+
+	ErrGasFeeCapTooLow = errors.New("gas fee cap too low")
 
 	ErrNotEnoughFunds = errors.New("not enough funds to execute transaction")
 
@@ -347,6 +351,10 @@ func (mp *MessagePool) checkMessage(m *types.SignedMessage) error {
 
 	if !m.Message.Value.LessThan(types.TotalFilecoinInt) {
 		return ErrMessageValueTooHigh
+	}
+
+	if m.Message.GasFeeCap.LessThan(minimumBaseFee) {
+		return ErrGasFeeCapTooLow
 	}
 
 	if err := mp.VerifyMsgSig(m); err != nil {
