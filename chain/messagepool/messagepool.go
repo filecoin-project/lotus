@@ -174,6 +174,18 @@ func (ms *msgSet) rm(nonce uint64) {
 	}
 }
 
+func (ms *msgSet) getRequiredFunds(nonce uint64) types.BigInt {
+	m, has := ms.msgs[nonce]
+	if has {
+		requiredFunds := new(stdbig.Int).Set(ms.requiredFunds)
+		requiredFunds.Sub(requiredFunds, m.Message.RequiredFunds().Int)
+		requiredFunds.Sub(requiredFunds, m.Message.Value.Int)
+		return types.BigInt{Int: requiredFunds}
+	}
+
+	return types.BigInt{Int: new(stdbig.Int).Set(ms.requiredFunds)}
+}
+
 func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName) (*MessagePool, error) {
 	cache, _ := lru.New2Q(build.BlsSignatureCacheSize)
 	verifcache, _ := lru.New2Q(build.VerifSigCacheSize)
@@ -427,7 +439,7 @@ func (mp *MessagePool) checkBalance(m *types.SignedMessage, curTs *types.TipSet)
 
 	mset, ok := mp.pending[m.Message.From]
 	if ok {
-		requiredFunds = types.BigAdd(requiredFunds, types.BigInt{Int: mset.requiredFunds})
+		requiredFunds = types.BigAdd(requiredFunds, mset.getRequiredFunds(m.Message.Nonce))
 	}
 
 	if balance.LessThan(requiredFunds) {
