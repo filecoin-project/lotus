@@ -417,19 +417,23 @@ func (mp *MessagePool) checkBalance(m *types.SignedMessage, curTs *types.TipSet)
 		return xerrors.Errorf("failed to check sender balance: %s: %w", err, ErrValidationFailure)
 	}
 
-	requiredFunds := types.BigAdd(m.Message.RequiredFunds(), m.Message.Value)
+	requiredFunds := m.Message.RequiredFunds()
 	if balance.LessThan(requiredFunds) {
 		return xerrors.Errorf("not enough funds (required: %s, balance: %s): %w", types.FIL(requiredFunds), types.FIL(balance), ErrNotEnoughFunds)
 	}
 
+	// add Value for soft failure check
+	requiredFunds = types.BigAdd(requiredFunds, m.Message.Value)
+
 	mset, ok := mp.pending[m.Message.From]
 	if ok {
 		requiredFunds = types.BigAdd(requiredFunds, types.BigInt{Int: mset.requiredFunds})
-		if balance.LessThan(requiredFunds) {
-			// Note: we fail here for ErrValidationFailure to signal a soft failure because we might
-			// be out of sync.
-			return xerrors.Errorf("not enough funds including pending messages (required: %s, balance: %s): %w", types.FIL(requiredFunds), types.FIL(balance), ErrValidationFailure)
-		}
+	}
+
+	if balance.LessThan(requiredFunds) {
+		// Note: we fail here for ErrValidationFailure to signal a soft failure because we might
+		// be out of sync.
+		return xerrors.Errorf("not enough funds including pending messages (required: %s, balance: %s): %w", types.FIL(requiredFunds), types.FIL(balance), ErrValidationFailure)
 	}
 
 	return nil
