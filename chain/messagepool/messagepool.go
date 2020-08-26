@@ -58,7 +58,7 @@ var (
 
 	ErrInvalidToAddr = errors.New("message had invalid to address")
 
-	ErrBroadcastAnyway  = errors.New("broadcasting message despite validation fail")
+	ErrBroadcastAnyway  = errors.New("validation failure")
 	ErrRBFTooLowPremium = errors.New("replace by fee has too low GasPremium")
 
 	ErrTryAgain = errors.New("state inconsistency while pushing message; please try again")
@@ -393,6 +393,19 @@ func (mp *MessagePool) VerifyMsgSig(m *types.SignedMessage) error {
 	return nil
 }
 
+func (mp *MessagePool) checkBalance(m *types.SignedMessage, curTs *types.TipSet) error {
+	balance, err := mp.getStateBalance(m.Message.From, curTs)
+	if err != nil {
+		return xerrors.Errorf("failed to check sender balance: %s: %w", err, ErrBroadcastAnyway)
+	}
+
+	if balance.LessThan(m.Message.RequiredFunds()) {
+		return xerrors.Errorf("not enough funds (required: %s, balance: %s): %w", types.FIL(m.Message.RequiredFunds()), types.FIL(balance), ErrNotEnoughFunds)
+	}
+
+	return nil
+}
+
 func (mp *MessagePool) addTs(m *types.SignedMessage, curTs *types.TipSet) error {
 	snonce, err := mp.getStateNonce(m.Message.From, curTs)
 	if err != nil {
@@ -403,17 +416,12 @@ func (mp *MessagePool) addTs(m *types.SignedMessage, curTs *types.TipSet) error 
 		return xerrors.Errorf("minimum expected nonce is %d: %w", snonce, ErrNonceTooLow)
 	}
 
-	balance, err := mp.getStateBalance(m.Message.From, curTs)
-	if err != nil {
-		return xerrors.Errorf("failed to check sender balance: %s: %w", err, ErrBroadcastAnyway)
-	}
-
-	if balance.LessThan(m.Message.RequiredFunds()) {
-		return xerrors.Errorf("not enough funds (required: %s, balance: %s): %w", types.FIL(m.Message.RequiredFunds()), types.FIL(balance), ErrNotEnoughFunds)
-	}
-
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
+
+	if err := mp.checkBalance(m, curTs); err != nil {
+		return err
+	}
 
 	return mp.addLocked(m)
 }
@@ -581,6 +589,10 @@ func (mp *MessagePool) PushWithNonce(ctx context.Context, addr address.Address, 
 
 	if nonce2 != nonce {
 		return nil, ErrTryAgain
+	}
+
+	if err := mp.checkBalance(msg, curTs); err != nil {
+		return nil, err
 	}
 
 	if err := mp.verifyMsgBeforePush(msg, mp.curTs.Height()); err != nil {
