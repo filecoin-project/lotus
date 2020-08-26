@@ -287,7 +287,7 @@ func (mp *MessagePool) addLocal(m *types.SignedMessage, msgb []byte) error {
 	return nil
 }
 
-func (mp *MessagePool) verifyMsgBeforePush(m *types.SignedMessage, epoch abi.ChainEpoch) error {
+func (mp *MessagePool) verifyMsgBeforeAdd(m *types.SignedMessage, epoch abi.ChainEpoch) error {
 	minGas := vm.PricelistByEpoch(epoch).OnChainMessage(m.ChainLength())
 
 	if err := m.VMMessage().ValidForBlockInclusion(minGas.Total()); err != nil {
@@ -308,25 +308,12 @@ func (mp *MessagePool) Push(m *types.SignedMessage) (cid.Cid, error) {
 		<-mp.addSema
 	}()
 
-	mp.curTsLk.Lock()
-	curTs := mp.curTs
-	epoch := curTs.Height()
-	mp.curTsLk.Unlock()
-	if err := mp.verifyMsgBeforePush(m, epoch); err != nil {
-		return cid.Undef, err
-	}
-
 	msgb, err := m.Serialize()
 	if err != nil {
 		return cid.Undef, err
 	}
 
 	mp.curTsLk.Lock()
-	if mp.curTs != curTs {
-		mp.curTsLk.Unlock()
-		return cid.Undef, ErrTryAgain
-	}
-
 	if err := mp.addTs(m, mp.curTs); err != nil {
 		mp.curTsLk.Unlock()
 		return cid.Undef, err
@@ -349,7 +336,7 @@ func (mp *MessagePool) checkMessage(m *types.SignedMessage) error {
 		return xerrors.Errorf("mpool message too large (%dB): %w", m.Size(), ErrMessageTooBig)
 	}
 
-	// Perform syntaxtic validation, minGas=0 as we check if correctly in select messages
+	// Perform syntactic validation, minGas=0 as we check the actual mingas before we add it
 	if err := m.Message.ValidForBlockInclusion(0); err != nil {
 		return xerrors.Errorf("message not valid for block inclusion: %w", err)
 	}
@@ -463,6 +450,10 @@ func (mp *MessagePool) addTs(m *types.SignedMessage, curTs *types.TipSet) error 
 
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
+
+	if err := mp.verifyMsgBeforeAdd(m, curTs.Height()); err != nil {
+		return err
+	}
 
 	if err := mp.checkBalance(m, curTs); err != nil {
 		return err
@@ -636,11 +627,11 @@ func (mp *MessagePool) PushWithNonce(ctx context.Context, addr address.Address, 
 		return nil, ErrTryAgain
 	}
 
-	if err := mp.checkBalance(msg, curTs); err != nil {
+	if err := mp.verifyMsgBeforeAdd(msg, mp.curTs.Height()); err != nil {
 		return nil, err
 	}
 
-	if err := mp.verifyMsgBeforePush(msg, mp.curTs.Height()); err != nil {
+	if err := mp.checkBalance(msg, curTs); err != nil {
 		return nil, err
 	}
 
