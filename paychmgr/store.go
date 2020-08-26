@@ -487,3 +487,23 @@ func unmarshallChannelInfo(stored *ChannelInfo, value []byte) (*ChannelInfo, err
 
 	return stored, nil
 }
+
+type OldVoucherInfo struct {
+	Voucher *paych.SignedVoucher
+	Proof   []byte
+}
+
+type OldChannelInfo struct {
+	ChannelID     string
+	Channel       *address.Address
+	Control       address.Address
+	Target        address.Address
+	Direction     uint64
+	Vouchers      []*OldVoucherInfo
+	NextLane      uint64
+	Amount        types.BigInt
+	PendingAmount types.BigInt
+	CreateMsg     *cid.Cid
+	AddFundsMsg   *cid.Cid
+	Settling      bool
+}

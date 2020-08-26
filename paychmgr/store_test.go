@@ -1,7 +1,13 @@
 package paychmgr
 
 import (
+	"bytes"
 	"testing"
+
+	cborrpc "github.com/filecoin-project/go-cbor-util"
+
+	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 
 	"github.com/filecoin-project/go-address"
 
@@ -86,4 +92,38 @@ func addrsStrings(addrs []address.Address) []string {
 		str[i] = a.String()
 	}
 	return str
+}
+
+func TestOldVoucherNewVoucher(t *testing.T) {
+	ch := tutils.NewIDAddr(t, 100)
+	proof := []byte("proof")
+	voucherInfo := &OldVoucherInfo{
+		Voucher: &paych.SignedVoucher{
+			ChannelAddr: ch,
+			Lane:        1,
+			Nonce:       1,
+			Amount:      types.NewInt(10),
+		},
+		Proof: proof,
+	}
+
+	oldCI := &OldChannelInfo{
+		Channel: &ch,
+		Control: tutils.NewIDAddr(t, 101),
+		Target:  tutils.NewIDAddr(t, 102),
+
+		Direction: DirInbound,
+		Vouchers:  []*OldVoucherInfo{voucherInfo},
+	}
+	oldBytes, err := cborrpc.Dump(oldCI)
+	require.NoError(t, err)
+
+	var newCI ChannelInfo
+	err = newCI.UnmarshalCBOR(bytes.NewReader(oldBytes))
+	require.NoError(t, err)
+
+	require.Len(t, newCI.Vouchers, 1)
+	require.EqualValues(t, proof, newCI.Vouchers[0].Proof)
+	require.EqualValues(t, 1, newCI.Vouchers[0].Voucher.Lane)
+	require.EqualValues(t, false, newCI.Vouchers[0].Submitted)
 }

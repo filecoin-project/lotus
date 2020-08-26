@@ -36,6 +36,8 @@ func main() {
 		paychmgr.VoucherInfo{},
 		paychmgr.ChannelInfo{},
 		paychmgr.MsgInfo{},
+		paychmgr.OldVoucherInfo{},
+		paychmgr.OldChannelInfo{},
 	)
 	if err != nil {
 		fmt.Println(err)
