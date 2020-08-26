@@ -53,11 +53,10 @@ func (d *Driver) ExecuteMessage(msg *types.Message, preroot cid.Cid, bs blocksto
 	invoker := vm.NewInvoker()
 
 	// add support for the puppet and chaos actors.
-	selector := d.vector.Selector.Unpack()
-	if puppetOn, ok := selector["puppet_actor"]; ok && puppetOn == "true" {
+	if puppetOn, ok := d.vector.Selector["puppet_actor"]; ok && puppetOn == "true" {
 		invoker.Register(puppet.PuppetActorCodeID, puppet.Actor{}, puppet.State{})
 	}
-	if chaosOn, ok := selector["chaos_actor"]; ok && chaosOn == "true" {
+	if chaosOn, ok := d.vector.Selector["chaos_actor"]; ok && chaosOn == "true" {
 		invoker.Register(chaos.ChaosActorCodeCID, chaos.Actor{}, chaos.State{})
 	}
 
