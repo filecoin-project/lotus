@@ -333,7 +333,7 @@ func (mp *MessagePool) checkMessage(m *types.SignedMessage) error {
 	}
 
 	if err := mp.VerifyMsgSig(m); err != nil {
-		log.Warnf("mpooladd signature verification failed: %s", err)
+		log.Warnf("signature verification failed: %s", err)
 		return err
 	}
 
@@ -554,6 +554,11 @@ func (mp *MessagePool) PushWithNonce(ctx context.Context, addr address.Address, 
 	mp.curTsLk.Unlock()
 
 	msg, err := cb(fromKey, nonce)
+	if err != nil {
+		return nil, err
+	}
+
+	err = mp.checkMessage(msg)
 	if err != nil {
 		return nil, err
 	}
