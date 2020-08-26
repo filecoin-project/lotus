@@ -59,8 +59,8 @@ var (
 
 	ErrInvalidToAddr = errors.New("message had invalid to address")
 
-	ErrBroadcastAnyway  = errors.New("validation failure")
-	ErrRBFTooLowPremium = errors.New("replace by fee has too low GasPremium")
+	ErrValidationFailure = errors.New("validation failure")
+	ErrRBFTooLowPremium  = errors.New("replace by fee has too low GasPremium")
 
 	ErrTryAgain = errors.New("state inconsistency while pushing message; please try again")
 )
@@ -414,7 +414,7 @@ func (mp *MessagePool) VerifyMsgSig(m *types.SignedMessage) error {
 func (mp *MessagePool) checkBalance(m *types.SignedMessage, curTs *types.TipSet) error {
 	balance, err := mp.getStateBalance(m.Message.From, curTs)
 	if err != nil {
-		return xerrors.Errorf("failed to check sender balance: %s: %w", err, ErrBroadcastAnyway)
+		return xerrors.Errorf("failed to check sender balance: %s: %w", err, ErrValidationFailure)
 	}
 
 	requiredFunds := types.BigAdd(m.Message.RequiredFunds(), m.Message.Value)
@@ -426,9 +426,9 @@ func (mp *MessagePool) checkBalance(m *types.SignedMessage, curTs *types.TipSet)
 	if ok {
 		requiredFunds = types.BigAdd(requiredFunds, types.BigInt{Int: mset.requiredFunds})
 		if balance.LessThan(requiredFunds) {
-			// Note: we fail here for ErrBroadcastAnyway to signal a soft failure because we might
+			// Note: we fail here for ErrValidationFailure to signal a soft failure because we might
 			// be out of sync.
-			return xerrors.Errorf("not enough funds (required: %s, balance: %s): %w", types.FIL(requiredFunds), types.FIL(balance), ErrBroadcastAnyway)
+			return xerrors.Errorf("not enough funds including pending messages (required: %s, balance: %s): %w", types.FIL(requiredFunds), types.FIL(balance), ErrValidationFailure)
 		}
 	}
 
@@ -438,7 +438,7 @@ func (mp *MessagePool) checkBalance(m *types.SignedMessage, curTs *types.TipSet)
 func (mp *MessagePool) addTs(m *types.SignedMessage, curTs *types.TipSet) error {
 	snonce, err := mp.getStateNonce(m.Message.From, curTs)
 	if err != nil {
-		return xerrors.Errorf("failed to look up actor state nonce: %s: %w", err, ErrBroadcastAnyway)
+		return xerrors.Errorf("failed to look up actor state nonce: %s: %w", err, ErrValidationFailure)
 	}
 
 	if snonce > m.Message.Nonce {
