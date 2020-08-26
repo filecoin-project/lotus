@@ -113,7 +113,7 @@ jobs:
   test: &test
     description: |
       Run tests with gotestsum.
-    parameters:
+    parameters: &test-params
       executor:
         type: executor
         default: golang
@@ -193,9 +193,12 @@ jobs:
   test-window-post:
     <<: *test
   test-conformance:
-    <<: *test
+    description: |
+      Run tests using a corpus of interoperable test vectors for Filecoin 
+      implementations to test their correctness and compliance with the Filecoin
+      specifications.
     parameters:
-      <<: *test.parameters
+      <<: *test-params
       vectors-branch:
         type: string
         default: ""
@@ -203,6 +206,7 @@ jobs:
           Branch on github.com/filecoin-project/test-vectors to checkout and
           test with. If empty (the default) the commit defined by the git
           submodule is used.
+    executor: << parameters.executor >>
     steps:
       - install-deps
       - prepare
