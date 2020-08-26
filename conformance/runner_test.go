@@ -18,8 +18,8 @@ import (
 	"github.com/filecoin-project/statediff"
 	"github.com/filecoin-project/test-vectors/schema"
 
+	"github.com/fatih/color"
 	"github.com/ipld/go-car"
-	"github.com/logrusorgru/aurora"
 )
 
 const (
@@ -200,22 +200,31 @@ func executeMessageVector(t *testing.T, vector *schema.TestVector) {
 	// Once all messages are applied, assert that the final state root matches
 	// the expected postcondition root.
 	if root != vector.Post.StateTree.RootCID {
+		color.NoColor = false // enable colouring.
+
 		t.Errorf("wrong post root cid; expected %v, but got %v", vector.Post.StateTree.RootCID, root)
 
-		a := aurora.Bold(aurora.BrightRed("(A) expected final state"))
-		b := aurora.Bold(aurora.BrightYellow("(B) actual final state"))
-		c := aurora.Bold(aurora.BrightBlue("(C) initial state"))
+		var (
+			a  = color.New(color.FgMagenta, color.Bold).Sprint("(A) expected final state")
+			b  = color.New(color.FgYellow, color.Bold).Sprint("(B) actual final state")
+			c  = color.New(color.FgCyan, color.Bold).Sprint("(C) initial state")
+			d1 = color.New(color.FgGreen, color.Bold).Sprint("[Δ1]")
+			d2 = color.New(color.FgGreen, color.Bold).Sprint("[Δ2]")
+			d3 = color.New(color.FgGreen, color.Bold).Sprint("[Δ3]")
+		)
+
+		bold := color.New(color.Bold).SprintfFunc()
 
 		// run state diffs.
-		t.Log(aurora.Sprintf(aurora.Bold("=== dumping 3-way diffs between %s, %s, %s ===\n"), a, b, c))
+		t.Log(bold("=== dumping 3-way diffs between %s, %s, %s ===", a, b, c))
 
-		t.Log(aurora.Sprintf(aurora.Bold("--- %s left: %s; right: %s ---\n"), aurora.Bold(aurora.Green("[Δ1]")), a, b))
+		t.Log(bold("--- %s left: %s; right: %s ---", d1, a, b))
 		t.Log(statediff.Diff(context.Background(), bs, vector.Post.StateTree.RootCID, root))
 
-		t.Log(aurora.Sprintf(aurora.Bold("--- %s left: %s; right: %s ---\n"), aurora.Bold(aurora.Green("[Δ1]")), c, b))
+		t.Log(bold("--- %s left: %s; right: %s ---", d2, c, b))
 		t.Log(statediff.Diff(context.Background(), bs, vector.Pre.StateTree.RootCID, root))
 
-		t.Log(aurora.Sprintf(aurora.Bold("--- %s left: %s; right: %s ---\n"), aurora.Bold(aurora.Green("[Δ1]")), c, a))
+		t.Log(bold("--- %s left: %s; right: %s ---", d3, c, a))
 		t.Log(statediff.Diff(context.Background(), bs, vector.Pre.StateTree.RootCID, vector.Post.StateTree.RootCID))
 	}
 }
