@@ -166,6 +166,7 @@ func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool) (bool, error) {
 	}
 
 	if !has && len(ms.msgs) > MaxActorPendingMessages {
+		log.Errorf("too many pending messages from actor %s", m.Message.From)
 		return false, ErrTooManyPendingMessages
 	}
 
