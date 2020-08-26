@@ -655,7 +655,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) (er
 	validationStart := build.Clock.Now()
 	defer func() {
 		stats.Record(ctx, metrics.BlockValidationDurationMilliseconds.M(metrics.SinceInMilliseconds(validationStart)))
-		log.Infow("block validation", "took", time.Since(validationStart), "height", b.Header.Height)
+		log.Infow("block validation", "took", time.Since(validationStart), "height", b.Header.Height, "age", time.Since(time.Unix(int64(b.Header.Timestamp), 0)))
 	}()
 
 	ctx, span := trace.StartSpan(ctx, "validateBlock")
