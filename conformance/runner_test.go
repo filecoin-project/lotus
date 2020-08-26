@@ -119,6 +119,13 @@ func TestConformance(t *testing.T) {
 		}
 
 		t.Run(v, func(t *testing.T) {
+			for _, h := range vector.Hints {
+				if h == schema.HintIncorrect {
+					t.Logf("skipping vector marked as incorrect: %s", vector.Meta.ID)
+					t.SkipNow()
+				}
+			}
+
 			// dispatch the execution depending on the vector class.
 			switch vector.Class {
 			case "message":
