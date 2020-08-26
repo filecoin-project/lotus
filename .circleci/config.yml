@@ -225,6 +225,9 @@ jobs:
                   cd extern/test-vectors
                   git fetch
                   git checkout origin/<< parameters.vectors-branch >>
+            - run:
+                name: go get vectors branch
+                command: go get github.com/filecoin-project/test-vectors@<< parameters.vectors-branch >>
       - run:
           name: go test
           environment:
