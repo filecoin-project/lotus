@@ -5,7 +5,6 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
-	"flag"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -15,12 +14,24 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/lib/blockstore"
+
+	"github.com/filecoin-project/statediff"
 	"github.com/filecoin-project/test-vectors/schema"
 
 	"github.com/ipld/go-car"
+	"github.com/logrusorgru/aurora"
 )
 
 const (
+	// EnvSkipConformance, if 1, skips the conformance test suite.
+	EnvSkipConformance = "SKIP_CONFORMANCE"
+
+	// EnvCorpusRootDir is the name of the environment variable where the path
+	// to an alternative corpus location can be provided.
+	//
+	// The default is defaultCorpusRoot.
+	EnvCorpusRootDir = "CORPUS_DIR"
+
 	// defaultCorpusRoot is the directory where the test vector corpus is hosted.
 	// It is mounted on the Lotus repo as a git submodule.
 	//
@@ -29,24 +40,10 @@ const (
 	defaultCorpusRoot = "../extern/test-vectors/corpus"
 )
 
-var (
-	// corpusRoot is the effective corpus root path, taken from the `-conformance.corpus` CLI flag,
-	// falling back to defaultCorpusRoot if not provided.
-	corpusRoot string
-	// ignore is a set of paths relative to root to skip.
-	ignore = map[string]struct{}{
-		".git":        {},
-		"schema.json": {},
-	}
-	skip bool
-)
-
-func init() {
-	// read the alternative root from the -conformance.corpus CLI flag.
-	flag.StringVar(&corpusRoot, "conformance.corpus", defaultCorpusRoot, "test vector corpus directory")
-	if strings.TrimSpace(os.Getenv("SKIP_CONFORMANCE")) == "1" {
-		skip = true
-	}
+// ignore is a set of paths relative to root to skip.
+var ignore = map[string]struct{}{
+	".git":        {},
+	"schema.json": {},
 }
 
 // TestConformance is the entrypoint test that runs all test vectors found
@@ -56,9 +53,16 @@ func init() {
 // as well as files beginning with _. It parses each file as a test vector, and
 // runs it via the Driver.
 func TestConformance(t *testing.T) {
-	if skip {
+	if skip := strings.TrimSpace(os.Getenv(EnvSkipConformance)); skip == "1" {
 		t.SkipNow()
 	}
+	// corpusRoot is the effective corpus root path, taken from the `-conformance.corpus` CLI flag,
+	// falling back to defaultCorpusRoot if not provided.
+	corpusRoot := defaultCorpusRoot
+	if dir := strings.TrimSpace(os.Getenv(EnvCorpusRootDir)); dir != "" {
+		corpusRoot = dir
+	}
+
 	var vectors []string
 	err := filepath.Walk(corpusRoot+"/", func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -165,7 +169,7 @@ func executeMessageVector(t *testing.T, vector *schema.TestVector) {
 	driver := NewDriver(ctx, vector)
 
 	// Apply every message.
-	for i, m := range vector.ApplyMessages {
+	for i, m := range vector.ApplyMessages[:len(vector.ApplyMessages)-1] {
 		msg, err := types.DecodeMessage(m.Bytes)
 		if err != nil {
 			t.Fatalf("failed to deserialize message: %s", err)
@@ -196,7 +200,22 @@ func executeMessageVector(t *testing.T, vector *schema.TestVector) {
 	// Once all messages are applied, assert that the final state root matches
 	// the expected postcondition root.
 	if root != vector.Post.StateTree.RootCID {
-		// TODO trigger state diff on failure (@willscott)
-		t.Errorf("wrong post root cid; expected %vector , but got %vector", vector.Post.StateTree.RootCID, root)
+		t.Errorf("wrong post root cid; expected %v, but got %v", vector.Post.StateTree.RootCID, root)
+
+		a := aurora.Bold(aurora.BrightRed("(A) expected final state"))
+		b := aurora.Bold(aurora.BrightYellow("(B) actual final state"))
+		c := aurora.Bold(aurora.BrightBlue("(C) initial state"))
+
+		// run state diffs.
+		t.Log(aurora.Sprintf(aurora.Bold("=== dumping 3-way diffs between %s, %s, %s ===\n"), a, b, c))
+
+		t.Log(aurora.Sprintf(aurora.Bold("--- %s left: %s; right: %s ---\n"), aurora.Bold(aurora.Green("[Δ1]")), a, b))
+		t.Log(statediff.Diff(context.Background(), bs, vector.Post.StateTree.RootCID, root))
+
+		t.Log(aurora.Sprintf(aurora.Bold("--- %s left: %s; right: %s ---\n"), aurora.Bold(aurora.Green("[Δ1]")), c, b))
+		t.Log(statediff.Diff(context.Background(), bs, vector.Pre.StateTree.RootCID, root))
+
+		t.Log(aurora.Sprintf(aurora.Bold("--- %s left: %s; right: %s ---\n"), aurora.Bold(aurora.Green("[Δ1]")), c, a))
+		t.Log(statediff.Diff(context.Background(), bs, vector.Pre.StateTree.RootCID, vector.Post.StateTree.RootCID))
 	}
 }

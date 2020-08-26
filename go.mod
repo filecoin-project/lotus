@@ -39,6 +39,7 @@ require (
 	github.com/filecoin-project/sector-storage v0.0.0-20200810171746-eac70842d8e0
 	github.com/filecoin-project/specs-actors v0.9.3
 	github.com/filecoin-project/specs-storage v0.1.1-0.20200730063404-f7db367e9401
+	github.com/filecoin-project/statediff v0.0.1
 	github.com/filecoin-project/storage-fsm v0.0.0-20200805013058-9d9ea4e6331f
 	github.com/filecoin-project/test-vectors v0.0.0-20200819171811-30e047041d46
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
@@ -101,6 +102,7 @@ require (
 	github.com/libp2p/go-libp2p-tls v0.1.3
 	github.com/libp2p/go-libp2p-yamux v0.2.8
 	github.com/libp2p/go-maddr-filter v0.1.0
+	github.com/logrusorgru/aurora v2.0.3+incompatible
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-base32 v0.0.3
