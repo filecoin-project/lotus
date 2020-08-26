@@ -508,10 +508,12 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 
 	var dealID retrievalmarket.DealID
 	subscribeEvents := make(chan retrievalSubscribeEvent, 1)
+	subscribeCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	unsubscribe := a.Retrieval.SubscribeToEvents(func(event rm.ClientEvent, state rm.ClientDealState) {
 		if state.PayloadCID.Equals(order.Root) && state.ID == dealID {
 			select {
-			case <-ctx.Done():
+			case <-subscribeCtx.Done():
 			case subscribeEvents <- retrievalSubscribeEvent{event, state}:
 			}
 		}
