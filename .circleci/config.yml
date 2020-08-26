@@ -194,6 +194,15 @@ jobs:
     <<: *test
   test-conformance:
     <<: *test
+    parameters:
+      <<: *test.parameters
+      vectors-branch:
+        type: string
+        default: ""
+        description: |
+          Branch on github.com/filecoin-project/test-vectors to checkout and
+          test with. If empty (the default) the commit defined by the git
+          submodule is used.
     steps:
       - install-deps
       - prepare
@@ -201,6 +210,16 @@ jobs:
           command: make deps lotus
           no_output_timeout: 30m
       - download-params
+      - when:
+          condition:
+            not:
+              equal: [ "", << parameters.vectors-branch >> ]
+          steps:
+            - run:
+              command: |
+                cd extern/test-vectors
+                git fetch
+                git checkout origin/<< parameters.vectors-branch >>
       - run:
           name: go test
           environment:
@@ -361,6 +380,10 @@ workflows:
       - test-conformance:
           test-suite-name: conformance
           packages: "./conformance"
+      - test-conformance-bleeding-edge:
+          test-suite-name: conformance
+          packages: "./conformance"
+          vectors-branch: master
       - build-debug
       - build-all:
           requires:
