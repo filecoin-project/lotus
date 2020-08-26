@@ -155,12 +155,12 @@ func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool) (bool, error) {
 		}
 
 		ms.requiredFunds.Sub(ms.requiredFunds, exms.Message.RequiredFunds().Int)
-		ms.requiredFunds.Sub(ms.requiredFunds, exms.Message.Value.Int)
+		//ms.requiredFunds.Sub(ms.requiredFunds, exms.Message.Value.Int)
 	}
 
 	ms.msgs[m.Message.Nonce] = m
 	ms.requiredFunds.Add(ms.requiredFunds, m.Message.RequiredFunds().Int)
-	ms.requiredFunds.Add(ms.requiredFunds, m.Message.Value.Int)
+	//ms.requiredFunds.Add(ms.requiredFunds, m.Message.Value.Int)
 
 	return !has, nil
 }
@@ -169,7 +169,7 @@ func (ms *msgSet) rm(nonce uint64) {
 	m, has := ms.msgs[nonce]
 	if has {
 		ms.requiredFunds.Sub(ms.requiredFunds, m.Message.RequiredFunds().Int)
-		ms.requiredFunds.Sub(ms.requiredFunds, m.Message.Value.Int)
+		//ms.requiredFunds.Sub(ms.requiredFunds, m.Message.Value.Int)
 		delete(ms.msgs, nonce)
 	}
 }
@@ -180,7 +180,7 @@ func (ms *msgSet) getRequiredFunds(nonce uint64) types.BigInt {
 	m, has := ms.msgs[nonce]
 	if has {
 		requiredFunds.Sub(requiredFunds, m.Message.RequiredFunds().Int)
-		requiredFunds.Sub(requiredFunds, m.Message.Value.Int)
+		//requiredFunds.Sub(requiredFunds, m.Message.Value.Int)
 	}
 
 	return types.BigInt{Int: requiredFunds}
@@ -422,7 +422,7 @@ func (mp *MessagePool) checkBalance(m *types.SignedMessage, curTs *types.TipSet)
 	}
 
 	// add Value for soft failure check
-	requiredFunds = types.BigAdd(requiredFunds, m.Message.Value)
+	//requiredFunds = types.BigAdd(requiredFunds, m.Message.Value)
 
 	mset, ok := mp.pending[m.Message.From]
 	if ok {
