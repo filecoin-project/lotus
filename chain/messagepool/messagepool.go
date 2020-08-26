@@ -48,7 +48,7 @@ const RbfDenom = 256
 
 var RepublishInterval = pubsub.TimeCacheDuration + time.Duration(5*build.BlockDelaySecs+build.PropagationDelaySecs)*time.Second
 
-var minimumBaseFee = types.NewInt(build.MinimumBaseFee)
+var minimumBaseFee = types.NewInt(uint64(build.MinimumBaseFee))
 
 var (
 	ErrMessageTooBig = errors.New("message too big")
