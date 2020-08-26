@@ -54,7 +54,12 @@ func main() {
 		if err != nil {
 			return err
 		}
-		defer fi.Close()
+		defer func() {
+			err2 := fi.Close()
+			if err == nil {
+				err = err2
+			}
+		}()
 
 		b, err := json.Marshal(ki)
 		if err != nil {

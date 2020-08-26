@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 
+	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"golang.org/x/xerrors"
 
@@ -24,6 +25,7 @@ import (
 	basicnode "github.com/ipld/go-ipld-prime/node/basic"
 	"github.com/ipld/go-ipld-prime/traversal/selector"
 	"github.com/ipld/go-ipld-prime/traversal/selector/builder"
+	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	mh "github.com/multiformats/go-multihash"
 	"go.uber.org/fx"
@@ -74,6 +76,8 @@ type API struct {
 
 	CombinedBstore    dtypes.ClientBlockstore // TODO: try to remove
 	RetrievalStoreMgr dtypes.ClientRetrievalStoreManager
+	DataTransfer      dtypes.ClientDataTransfer
+	Host              host.Host
 }
 
 func calcDealExpiration(minDuration uint64, md *miner.DeadlineInfo, startEpoch abi.ChainEpoch) abi.ChainEpoch {
@@ -105,7 +109,7 @@ func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) 
 				continue
 			}
 			if c.Equals(params.Data.Root) {
-				storeID = &importID
+				storeID = &importID //nolint
 				break
 			}
 		}
@@ -192,6 +196,7 @@ func (a *API) ClientListDeals(ctx context.Context) ([]api.DealInfo, error) {
 			PricePerEpoch: v.Proposal.StoragePricePerEpoch,
 			Duration:      uint64(v.Proposal.Duration()),
 			DealID:        v.DealID,
+			CreationTime:  v.CreationTime.Time(),
 		}
 	}
 
@@ -214,6 +219,7 @@ func (a *API) ClientGetDealInfo(ctx context.Context, d cid.Cid) (*api.DealInfo, 
 		PricePerEpoch: v.Proposal.StoragePricePerEpoch,
 		Duration:      uint64(v.Proposal.Duration()),
 		DealID:        v.DealID,
+		CreationTime:  v.CreationTime.Time(),
 	}, nil
 }
 
@@ -463,14 +469,20 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 
 	retrievalResult := make(chan error, 1)
 
-	unsubscribe := a.Retrieval.SubscribeToEvents(func(event rm.ClientEvent, state rm.ClientDealState) {
-		if state.PayloadCID.Equals(order.Root) {
+	var dealId retrievalmarket.DealID
 
-			events <- marketevents.RetrievalEvent{
+	unsubscribe := a.Retrieval.SubscribeToEvents(func(event rm.ClientEvent, state rm.ClientDealState) {
+		if state.PayloadCID.Equals(order.Root) && state.ID == dealId {
+
+			select {
+			case <-ctx.Done():
+				return
+			case events <- marketevents.RetrievalEvent{
 				Event:         event,
 				Status:        state.Status,
 				BytesReceived: state.TotalReceived,
 				FundsSpent:    state.FundsSpent,
+			}:
 			}
 
 			switch state.Status {
@@ -504,7 +516,7 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 		_ = a.RetrievalStoreMgr.ReleaseStore(store)
 	}()
 
-	_, err = a.Retrieval.Retrieve(
+	dealId, err = a.Retrieval.Retrieve(
 		ctx,
 		order.Root,
 		params,
@@ -521,16 +533,16 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 
 	select {
 	case <-ctx.Done():
+		unsubscribe()
 		finish(xerrors.New("Retrieval Timed Out"))
 		return
 	case err := <-retrievalResult:
+		unsubscribe()
 		if err != nil {
 			finish(xerrors.Errorf("Retrieve: %w", err))
 			return
 		}
 	}
-
-	unsubscribe()
 
 	// If ref is nil, it only fetches the data into the configured blockstore.
 	if ref == nil {
@@ -604,7 +616,7 @@ func (a *API) ClientCalcCommP(ctx context.Context, inpath string) (*api.CommPRet
 	if err != nil {
 		return nil, err
 	}
-	defer rdr.Close()
+	defer rdr.Close() //nolint:errcheck
 
 	stat, err := rdr.Stat()
 	if err != nil {
@@ -690,7 +702,7 @@ func (a *API) clientImport(ctx context.Context, ref api.FileRef, store *multisto
 	if err != nil {
 		return cid.Undef, err
 	}
-	defer f.Close()
+	defer f.Close() //nolint:errcheck
 
 	stat, err := f.Stat()
 	if err != nil {
@@ -754,4 +766,37 @@ func (a *API) clientImport(ctx context.Context, ref api.FileRef, store *multisto
 	}
 
 	return nd.Cid(), nil
+}
+
+func (a *API) ClientListDataTransfers(ctx context.Context) ([]api.DataTransferChannel, error) {
+	inProgressChannels, err := a.DataTransfer.InProgressChannels(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	apiChannels := make([]api.DataTransferChannel, 0, len(inProgressChannels))
+	for _, channelState := range inProgressChannels {
+		apiChannels = append(apiChannels, api.NewDataTransferChannel(a.Host.ID(), channelState))
+	}
+
+	return apiChannels, nil
+}
+
+func (a *API) ClientDataTransferUpdates(ctx context.Context) (<-chan api.DataTransferChannel, error) {
+	channels := make(chan api.DataTransferChannel)
+
+	unsub := a.DataTransfer.SubscribeToEvents(func(evt datatransfer.Event, channelState datatransfer.ChannelState) {
+		channel := api.NewDataTransferChannel(a.Host.ID(), channelState)
+		select {
+		case <-ctx.Done():
+		case channels <- channel:
+		}
+	})
+
+	go func() {
+		defer unsub()
+		<-ctx.Done()
+	}()
+
+	return channels, nil
 }

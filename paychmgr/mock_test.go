@@ -111,6 +111,7 @@ type mockPaychAPI struct {
 	messages         map[cid.Cid]*types.SignedMessage
 	waitingCalls     map[cid.Cid]*waitingCall
 	waitingResponses map[cid.Cid]*waitingResponse
+	wallet           map[address.Address]struct{}
 }
 
 func newMockPaychAPI() *mockPaychAPI {
@@ -118,6 +119,7 @@ func newMockPaychAPI() *mockPaychAPI {
 		messages:         make(map[cid.Cid]*types.SignedMessage),
 		waitingCalls:     make(map[cid.Cid]*waitingCall),
 		waitingResponses: make(map[cid.Cid]*waitingResponse),
+		wallet:           make(map[address.Address]struct{}),
 	}
 }
 
@@ -198,4 +200,23 @@ func (pchapi *mockPaychAPI) pushedMessageCount() int {
 	defer pchapi.lk.Unlock()
 
 	return len(pchapi.messages)
+}
+
+func (pchapi *mockPaychAPI) StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
+	return addr, nil
+}
+
+func (pchapi *mockPaychAPI) WalletHas(ctx context.Context, addr address.Address) (bool, error) {
+	pchapi.lk.Lock()
+	defer pchapi.lk.Unlock()
+
+	_, ok := pchapi.wallet[addr]
+	return ok, nil
+}
+
+func (pchapi *mockPaychAPI) addWalletAddress(addr address.Address) {
+	pchapi.lk.Lock()
+	defer pchapi.lk.Unlock()
+
+	pchapi.wallet[addr] = struct{}{}
 }

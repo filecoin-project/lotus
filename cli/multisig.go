@@ -12,6 +12,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/go-address"
@@ -231,10 +232,10 @@ var msigInspectCmd = &cli.Command{
 			})
 
 			w := tabwriter.NewWriter(os.Stdout, 8, 4, 0, ' ', 0)
-			fmt.Fprintf(w, "ID\tState\tTo\tValue\tMethod\tParams\n")
+			fmt.Fprintf(w, "ID\tState\tApprovals\tTo\tValue\tMethod\tParams\n")
 			for _, txid := range txids {
 				tx := pending[txid]
-				fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%d\t%x\n", txid, state(tx), tx.To, types.FIL(tx.Value), tx.Method, tx.Params)
+				fmt.Fprintf(w, "%d\t%s\t%d\t%s\t%s\t%d\t%x\n", txid, state(tx), len(tx.Approved), tx.To, types.FIL(tx.Value), tx.Method, tx.Params)
 			}
 			if err := w.Flush(); err != nil {
 				return xerrors.Errorf("flushing output: %+v", err)
@@ -353,6 +354,15 @@ var msigProposeCmd = &cli.Command{
 				return err
 			}
 			from = defaddr
+		}
+
+		act, err := api.StateGetActor(ctx, msig, types.EmptyTSK)
+		if err != nil {
+			return fmt.Errorf("failed to look up multisig %s: %w", msig, err)
+		}
+
+		if act.Code != builtin.MultisigActorCodeID {
+			return fmt.Errorf("actor %s is not a multisig actor", msig)
 		}
 
 		msgCid, err := api.MsigPropose(ctx, msig, dest, types.BigInt(value), from, method, params)

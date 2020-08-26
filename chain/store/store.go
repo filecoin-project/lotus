@@ -483,6 +483,10 @@ func (cs *ChainStore) NearestCommonAncestor(a, b *types.TipSet) (*types.TipSet, 
 }
 
 func (cs *ChainStore) ReorgOps(a, b *types.TipSet) ([]*types.TipSet, []*types.TipSet, error) {
+	return ReorgOps(cs.LoadTipSet, a, b)
+}
+
+func ReorgOps(lts func(types.TipSetKey) (*types.TipSet, error), a, b *types.TipSet) ([]*types.TipSet, []*types.TipSet, error) {
 	left := a
 	right := b
 
@@ -490,7 +494,7 @@ func (cs *ChainStore) ReorgOps(a, b *types.TipSet) ([]*types.TipSet, []*types.Ti
 	for !left.Equals(right) {
 		if left.Height() > right.Height() {
 			leftChain = append(leftChain, left)
-			par, err := cs.LoadTipSet(left.Parents())
+			par, err := lts(left.Parents())
 			if err != nil {
 				return nil, nil, err
 			}
@@ -498,7 +502,7 @@ func (cs *ChainStore) ReorgOps(a, b *types.TipSet) ([]*types.TipSet, []*types.Ti
 			left = par
 		} else {
 			rightChain = append(rightChain, right)
-			par, err := cs.LoadTipSet(right.Parents())
+			par, err := lts(right.Parents())
 			if err != nil {
 				log.Infof("failed to fetch right.Parents: %s", err)
 				return nil, nil, err
@@ -509,6 +513,7 @@ func (cs *ChainStore) ReorgOps(a, b *types.TipSet) ([]*types.TipSet, []*types.Ti
 	}
 
 	return leftChain, rightChain, nil
+
 }
 
 // GetHeaviestTipSet returns the current heaviest tipset known (i.e. our head).
@@ -925,7 +930,7 @@ func (cs *ChainStore) LoadMessagesFromCids(cids []cid.Cid) ([]*types.Message, er
 	for i, c := range cids {
 		m, err := cs.GetMessage(c)
 		if err != nil {
-			return nil, xerrors.Errorf("failed to get message: (%s):%d: %w", err, c, i)
+			return nil, xerrors.Errorf("failed to get message: (%s):%d: %w", c, i, err)
 		}
 
 		msgs = append(msgs, m)
@@ -939,7 +944,7 @@ func (cs *ChainStore) LoadSignedMessagesFromCids(cids []cid.Cid) ([]*types.Signe
 	for i, c := range cids {
 		m, err := cs.GetSignedMessage(c)
 		if err != nil {
-			return nil, xerrors.Errorf("failed to get message: (%s):%d: %w", err, c, i)
+			return nil, xerrors.Errorf("failed to get message: (%s):%d: %w", c, i, err)
 		}
 
 		msgs = append(msgs, m)

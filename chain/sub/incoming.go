@@ -292,10 +292,9 @@ func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub
 			log.Warnf("received block from unknown miner or miner that doesn't meet min power over pubsub; rejecting message")
 			recordFailure("unknown_miner")
 			return pubsub.ValidationReject
-		} else {
-			log.Warnf("cannot validate block message; unknown miner or miner that doesn't meet min power in unsynced chain")
-			return pubsub.ValidationIgnore
 		}
+		log.Warnf("cannot validate block message; unknown miner or miner that doesn't meet min power in unsynced chain")
+		return pubsub.ValidationIgnore
 	}
 
 	err = sigs.CheckBlockSignature(ctx, blk.Header, key)
@@ -546,7 +545,11 @@ func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubs
 		)
 		stats.Record(ctx, metrics.MessageValidationFailure.M(1))
 		switch {
-		case xerrors.Is(err, messagepool.ErrBroadcastAnyway) || xerrors.Is(err, messagepool.ErrRBFTooLowPremium):
+		case xerrors.Is(err, messagepool.ErrBroadcastAnyway):
+			fallthrough
+		case xerrors.Is(err, messagepool.ErrRBFTooLowPremium):
+			fallthrough
+		case xerrors.Is(err, messagepool.ErrNonceTooLow):
 			return pubsub.ValidationIgnore
 		default:
 			return pubsub.ValidationReject

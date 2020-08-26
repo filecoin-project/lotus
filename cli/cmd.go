@@ -12,7 +12,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
 	"github.com/multiformats/go-multiaddr"
-	manet "github.com/multiformats/go-multiaddr-net"
+	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
@@ -67,6 +67,19 @@ func (a APIInfo) AuthHeader() http.Header {
 	return nil
 }
 
+// The flag passed on the command line with the listen address of the API
+// server (only used by the tests)
+func flagForAPI(t repo.RepoType) string {
+	switch t {
+	case repo.FullNode:
+		return "api"
+	case repo.StorageMiner:
+		return "miner-api"
+	default:
+		panic(fmt.Sprintf("Unknown repo type: %v", t))
+	}
+}
+
 func flagForRepo(t repo.RepoType) string {
 	switch t {
 	case repo.FullNode:
@@ -102,6 +115,20 @@ func envForRepoDeprecation(t repo.RepoType) string {
 }
 
 func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
+	// Check if there was a flag passed with the listen address of the API
+	// server (only used by the tests)
+	apiFlag := flagForAPI(t)
+	if ctx.IsSet(apiFlag) {
+		strma := ctx.String(apiFlag)
+		strma = strings.TrimSpace(strma)
+
+		apima, err := multiaddr.NewMultiaddr(strma)
+		if err != nil {
+			return APIInfo{}, err
+		}
+		return APIInfo{Addr: apima}, nil
+	}
+
 	envKey := envForRepo(t)
 	env, ok := os.LookupEnv(envKey)
 	if !ok {
@@ -186,7 +213,7 @@ func GetAPI(ctx *cli.Context) (api.Common, jsonrpc.ClientCloser, error) {
 		return nil, nil, err
 	}
 
-	return client.NewCommonRPC(addr, headers)
+	return client.NewCommonRPC(ctx.Context, addr, headers)
 }
 
 func GetFullNodeAPI(ctx *cli.Context) (api.FullNode, jsonrpc.ClientCloser, error) {
@@ -195,7 +222,7 @@ func GetFullNodeAPI(ctx *cli.Context) (api.FullNode, jsonrpc.ClientCloser, error
 		return nil, nil, err
 	}
 
-	return client.NewFullNodeRPC(addr, headers)
+	return client.NewFullNodeRPC(ctx.Context, addr, headers)
 }
 
 func GetStorageMinerAPI(ctx *cli.Context, opts ...jsonrpc.Option) (api.StorageMiner, jsonrpc.ClientCloser, error) {
@@ -204,7 +231,7 @@ func GetStorageMinerAPI(ctx *cli.Context, opts ...jsonrpc.Option) (api.StorageMi
 		return nil, nil, err
 	}
 
-	return client.NewStorageMinerRPC(addr, headers, opts...)
+	return client.NewStorageMinerRPC(ctx.Context, addr, headers, opts...)
 }
 
 func DaemonContext(cctx *cli.Context) context.Context {

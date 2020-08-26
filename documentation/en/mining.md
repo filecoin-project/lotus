@@ -1,8 +1,8 @@
 # Storage Mining
 
-Here are instructions to learn how to perform storage mining. For hardware specifications please read [this](https://docs.lotu.sh/en+hardware-mining).
+Here are instructions to learn how to perform storage mining. For hardware specifications please read [this](https://lotu.sh/en+hardware-mining).
 
-It is useful to [join the Testnet](https://docs.lotu.sh/en+join-testnet) prior to attempting storage mining for the first time.
+It is useful to [join the Testnet](https://lotu.sh/en+join-testnet) prior to attempting storage mining for the first time.
 
 ## Note: Using the Lotus Miner from China
 
@@ -28,29 +28,10 @@ lotus wallet new bls
 
 With your wallet address:
 
-- Visit the [faucet](https://faucet.testnet.filecoin.io)
-- Click "Create Miner"
-- DO NOT REFRESH THE PAGE. THIS OPERATION CAN TAKE SOME TIME.
-
-The task will be complete when you see:
-
-```sh
-New miners address is: <YOUR_NEW_MINING_ADDRESS>
-```
-
-## Initialize the miner
-
-In a CLI window, use the following command to start your miner:
-
-```sh
-lotus-miner init --actor=ACTOR_VALUE_RECEIVED --owner=OWNER_VALUE_RECEIVED
-```
-
-Example
-
-```sh
-lotus-miner init --actor=t01424 --owner=t3spmep2xxsl33o4gxk7yjxcobyohzgj3vejzerug25iinbznpzob6a6kexcbeix73th6vjtzfq7boakfdtd6a
-```
+- Visit the [faucet](http://spacerace.faucet.glif.io/)
+- Paste the address you created under REQUEST.
+- Press the Request button.
+- Run `/lotus-miner init --owner=<blsAddress> --worker=<blsAddress>`
 
 You will have to wait some time for this operation to complete.
 
@@ -109,8 +90,8 @@ The addresses passed to `set-addrs` parameter in the commands below should be cu
 
 Once the config file has been updated, set the on-chain record of the miner's listen addresses:
 
- ```
- lotus-miner actor set-addrs <multiaddr_1> <multiaddr_2> ... <multiaddr_n>
+```
+lotus-miner actor set-addrs <multiaddr_1> <multiaddr_2> ... <multiaddr_n>
 ```
 
 This updates the `MinerInfo` object in the miner's actor, which will be looked up
@@ -119,5 +100,50 @@ when a client attempts to make a deal. Any number of addresses can be provided.
 Example:
 
 ```
- lotus-miner actor set-addrs /ip4/123.123.73.123/tcp/12345 /ip4/223.223.83.223/tcp/23456
+lotus-miner actor set-addrs /ip4/123.123.73.123/tcp/12345 /ip4/223.223.83.223/tcp/23456
+```
+
+# Separate address for windowPoSt messages
+
+WindowPoSt is the mechanism through which storage is verified in Filecoin. It requires miners to submit proofs for all sectors every 24h, which require sending messages to the chain.
+
+Because many other mining related actions require sending messages to the chain, and not all of those are "high value", it may be desirable to use a separate account to send PoSt messages from. This allows for setting lower GasFeeCaps on the lower value messages without creating head-of-line blocking problems for the PoSt messages in congested chain conditions
+
+To set this up, first create a new account, and send it some funds for gas fees:
+```sh
+lotus wallet new bls
+t3defg...
+
+lotus send t3defg... 100
+```
+
+Next add the control address
+```sh
+lotus-miner actor control set t3defg...
+Add t3defg...
+Pass --really-do-it to actually execute this action
+```
+
+Now actually set the addresses
+```sh
+lotus-miner actor control set --really-do-it t3defg...
+Add t3defg...
+Message CID: bafy2..
+```
+
+Wait for the message to land on chain
+```sh
+lotus state wait-msg bafy2..
+...
+Exit Code: 0
+...
+```
+
+Check miner control address list to make sure the address was correctly setup
+```sh
+lotus-miner actor control list
+name       ID      key           use    balance
+owner      t01111  t3abcd...  other  300 FIL
+worker     t01111  t3abcd...  other  300 FIL
+control-0  t02222  t3defg...  post   100 FIL
 ```

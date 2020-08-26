@@ -67,6 +67,12 @@
           "slug": "en+setup-troubleshooting",
           "github": "en/setup-troubleshooting.md",
           "value": null
+        },
+        {
+          "title": "Environment Variables",
+          "slug": "en+env-vars",
+          "github": "en/environment-vars.md",
+          "value": null
         }
       ]
     },
@@ -144,6 +150,13 @@
       "posts": []
     },
     {
+      "title": "Payment Channels",
+      "slug": "en+payment-channels",
+      "github": "en/payment-channels.md",
+      "value": null,
+      "posts": []
+    },
+    {
       "title": "Command Line Interface",
       "slug": "en+cli",
       "github": "en/cli.md",
@@ -160,6 +173,12 @@
           "title": "Remote API Support",
           "slug": "en+api-scripting-support",
           "github": "en/api-scripting-support.md",
+          "value": null
+        },
+        {
+          "title": "API Methods",
+          "slug": "en+api-methods",
+          "github": "en/api-methods.md",
           "value": null
         },
         {

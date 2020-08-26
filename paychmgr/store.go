@@ -84,15 +84,20 @@ type ChannelInfo struct {
 
 // TrackChannel stores a channel, returning an error if the channel was already
 // being tracked
-func (ps *Store) TrackChannel(ci *ChannelInfo) error {
+func (ps *Store) TrackChannel(ci *ChannelInfo) (*ChannelInfo, error) {
 	_, err := ps.ByAddress(*ci.Channel)
 	switch err {
 	default:
-		return err
+		return nil, err
 	case nil:
-		return fmt.Errorf("already tracking channel: %s", ci.Channel)
+		return nil, fmt.Errorf("already tracking channel: %s", ci.Channel)
 	case ErrChannelNotTracked:
-		return ps.putChannelInfo(ci)
+		err = ps.putChannelInfo(ci)
+		if err != nil {
+			return nil, err
+		}
+
+		return ps.ByAddress(*ci.Channel)
 	}
 }
 

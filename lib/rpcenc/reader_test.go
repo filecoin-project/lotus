@@ -49,14 +49,14 @@ func TestReaderProxy(t *testing.T) {
 	defer testServ.Close()
 
 	re := ReaderParamEncoder("http://" + testServ.Listener.Addr().String() + "/rpc/streams/v0/push")
-	closer, err := jsonrpc.NewMergeClient("ws://"+testServ.Listener.Addr().String()+"/rpc/v0", "ReaderHandler", []interface{}{&client}, nil, re)
+	closer, err := jsonrpc.NewMergeClient(context.Background(), "ws://"+testServ.Listener.Addr().String()+"/rpc/v0", "ReaderHandler", []interface{}{&client}, nil, re)
 	require.NoError(t, err)
 
 	defer closer()
 
 	read, err := client.ReadAll(context.TODO(), strings.NewReader("pooooootato"))
 	require.NoError(t, err)
-	require.Equal(t, "pooooootato", string(read), "potatos weren't equal")
+	require.Equal(t, "pooooootato", string(read), "potatoes weren't equal")
 }
 
 func TestNullReaderProxy(t *testing.T) {
@@ -79,7 +79,7 @@ func TestNullReaderProxy(t *testing.T) {
 	defer testServ.Close()
 
 	re := ReaderParamEncoder("http://" + testServ.Listener.Addr().String() + "/rpc/streams/v0/push")
-	closer, err := jsonrpc.NewMergeClient("ws://"+testServ.Listener.Addr().String()+"/rpc/v0", "ReaderHandler", []interface{}{&client}, nil, re)
+	closer, err := jsonrpc.NewMergeClient(context.Background(), "ws://"+testServ.Listener.Addr().String()+"/rpc/v0", "ReaderHandler", []interface{}{&client}, nil, re)
 	require.NoError(t, err)
 
 	defer closer()

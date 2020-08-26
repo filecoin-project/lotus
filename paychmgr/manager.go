@@ -45,8 +45,10 @@ type stateManagerAPI interface {
 
 // paychAPI defines the API methods needed by the payment channel manager
 type paychAPI interface {
+	StateAccountKey(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 	StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64) (*api.MsgLookup, error)
 	MpoolPushMessage(ctx context.Context, msg *types.Message, maxFee *api.MessageSendSpec) (*types.SignedMessage, error)
+	WalletHas(ctx context.Context, addr address.Address) (bool, error)
 }
 
 // managerAPI defines all methods needed by the manager
@@ -127,26 +129,6 @@ func (pm *Manager) Stop() error {
 	return nil
 }
 
-func (pm *Manager) TrackOutboundChannel(ctx context.Context, ch address.Address) error {
-	return pm.trackChannel(ctx, ch, DirOutbound)
-}
-
-func (pm *Manager) TrackInboundChannel(ctx context.Context, ch address.Address) error {
-	return pm.trackChannel(ctx, ch, DirInbound)
-}
-
-func (pm *Manager) trackChannel(ctx context.Context, ch address.Address, dir uint64) error {
-	pm.lk.Lock()
-	defer pm.lk.Unlock()
-
-	ci, err := pm.sa.loadStateChannelInfo(ctx, ch, dir)
-	if err != nil {
-		return err
-	}
-
-	return pm.store.TrackChannel(ci)
-}
-
 func (pm *Manager) GetPaych(ctx context.Context, from, to address.Address, amt types.BigInt) (address.Address, cid.Cid, error) {
 	chanAccessor, err := pm.accessorByFromTo(from, to)
 	if err != nil {
@@ -197,9 +179,12 @@ func (pm *Manager) GetChannelInfo(addr address.Address) (*ChannelInfo, error) {
 	return ca.getChannelInfo(addr)
 }
 
-// CheckVoucherValid checks if the given voucher is valid (is or could become spendable at some point)
+// CheckVoucherValid checks if the given voucher is valid (is or could become spendable at some point).
+// If the channel is not in the store, fetches the channel from state (and checks that
+// the channel To address is owned by the wallet).
 func (pm *Manager) CheckVoucherValid(ctx context.Context, ch address.Address, sv *paych.SignedVoucher) error {
-	ca, err := pm.accessorByAddress(ch)
+	// Get an accessor for the channel, creating it from state if necessary
+	ca, err := pm.inboundChannelAccessor(ctx, ch)
 	if err != nil {
 		return err
 	}
@@ -218,12 +203,86 @@ func (pm *Manager) CheckVoucherSpendable(ctx context.Context, ch address.Address
 	return ca.checkVoucherSpendable(ctx, ch, sv, secret, proof)
 }
 
-func (pm *Manager) AddVoucher(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, proof []byte, minDelta types.BigInt) (types.BigInt, error) {
+// AddVoucherOutbound adds a voucher for an outbound channel.
+// Returns an error if the channel is not already in the store.
+func (pm *Manager) AddVoucherOutbound(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, proof []byte, minDelta types.BigInt) (types.BigInt, error) {
 	ca, err := pm.accessorByAddress(ch)
 	if err != nil {
 		return types.NewInt(0), err
 	}
 	return ca.addVoucher(ctx, ch, sv, proof, minDelta)
+}
+
+// AddVoucherInbound adds a voucher for an inbound channel.
+// If the channel is not in the store, fetches the channel from state (and checks that
+// the channel To address is owned by the wallet).
+func (pm *Manager) AddVoucherInbound(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, proof []byte, minDelta types.BigInt) (types.BigInt, error) {
+	// Get an accessor for the channel, creating it from state if necessary
+	ca, err := pm.inboundChannelAccessor(ctx, ch)
+	if err != nil {
+		return types.BigInt{}, err
+	}
+	return ca.addVoucher(ctx, ch, sv, proof, minDelta)
+}
+
+// inboundChannelAccessor gets an accessor for the given channel. The channel
+// must either exist in the store, or be an inbound channel that can be created
+// from state.
+func (pm *Manager) inboundChannelAccessor(ctx context.Context, ch address.Address) (*channelAccessor, error) {
+	// Make sure channel is in store, or can be fetched from state, and that
+	// the channel To address is owned by the wallet
+	ci, err := pm.trackInboundChannel(ctx, ch)
+	if err != nil {
+		return nil, err
+	}
+
+	// This is an inbound channel, so To is the Control address (this node)
+	from := ci.Target
+	to := ci.Control
+	return pm.accessorByFromTo(from, to)
+}
+
+func (pm *Manager) trackInboundChannel(ctx context.Context, ch address.Address) (*ChannelInfo, error) {
+	// Need to take an exclusive lock here so that channel operations can't run
+	// in parallel (see channelLock)
+	pm.lk.Lock()
+	defer pm.lk.Unlock()
+
+	// Check if channel is in store
+	ci, err := pm.store.ByAddress(ch)
+	if err == nil {
+		// Channel is in store, so it's already being tracked
+		return ci, nil
+	}
+
+	// If there's an error (besides channel not in store) return err
+	if err != ErrChannelNotTracked {
+		return nil, err
+	}
+
+	// Channel is not in store, so get channel from state
+	stateCi, err := pm.sa.loadStateChannelInfo(ctx, ch, DirInbound)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check that channel To address is in wallet
+	to := stateCi.Control // Inbound channel so To addr is Control (this node)
+	toKey, err := pm.pchapi.StateAccountKey(ctx, to, types.EmptyTSK)
+	if err != nil {
+		return nil, err
+	}
+	has, err := pm.pchapi.WalletHas(ctx, toKey)
+	if err != nil {
+		return nil, err
+	}
+	if !has {
+		msg := "cannot add voucher for channel %s: wallet does not have key for address %s"
+		return nil, xerrors.Errorf(msg, ch, to)
+	}
+
+	// Save channel to store
+	return pm.store.TrackChannel(stateCi)
 }
 
 func (pm *Manager) AllocateLane(ch address.Address) (uint64, error) {

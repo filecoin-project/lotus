@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"sort"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 
 	"go.uber.org/fx"
@@ -174,5 +176,53 @@ func (a *GasAPI) GasEstimateGasLimit(ctx context.Context, msgIn *types.Message, 
 		return -1, xerrors.Errorf("message execution failed: exit %s, reason: %s", res.MsgRct.ExitCode, res.Error)
 	}
 
-	return res.MsgRct.GasUsed, nil
+	// Special case for PaymentChannel collect, which is deleting actor
+	var act types.Actor
+	err = a.Stmgr.WithParentState(ts, a.Stmgr.WithActor(msg.To, stmgr.GetActor(&act)))
+	if err != nil {
+		_ = err
+		// somewhat ignore it as it can happen and we just want to detect
+		// an existing PaymentChannel actor
+		return res.MsgRct.GasUsed, nil
+	}
+
+	if !act.Code.Equals(builtin.PaymentChannelActorCodeID) {
+		return res.MsgRct.GasUsed, nil
+	}
+	if msgIn.Method != builtin.MethodsPaych.Collect {
+		return res.MsgRct.GasUsed, nil
+	}
+
+	// return GasUsed without the refund for DestoryActor
+	return res.MsgRct.GasUsed + 76e3, nil
+}
+
+func (a *GasAPI) GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, _ types.TipSetKey) (*types.Message, error) {
+	if msg.GasLimit == 0 {
+		gasLimit, err := a.GasEstimateGasLimit(ctx, msg, types.TipSetKey{})
+		if err != nil {
+			return nil, xerrors.Errorf("estimating gas used: %w", err)
+		}
+		msg.GasLimit = int64(float64(gasLimit) * a.Mpool.GetConfig().GasLimitOverestimation)
+	}
+
+	if msg.GasPremium == types.EmptyInt || types.BigCmp(msg.GasPremium, types.NewInt(0)) == 0 {
+		gasPremium, err := a.GasEstimateGasPremium(ctx, 2, msg.From, msg.GasLimit, types.TipSetKey{})
+		if err != nil {
+			return nil, xerrors.Errorf("estimating gas price: %w", err)
+		}
+		msg.GasPremium = gasPremium
+	}
+
+	if msg.GasFeeCap == types.EmptyInt || types.BigCmp(msg.GasFeeCap, types.NewInt(0)) == 0 {
+		feeCap, err := a.GasEstimateFeeCap(ctx, msg, 10, types.EmptyTSK)
+		if err != nil {
+			return nil, xerrors.Errorf("estimating fee cap: %w", err)
+		}
+		msg.GasFeeCap = big.Add(feeCap, msg.GasPremium)
+	}
+
+	capGasFee(msg, spec.Get().MaxFee)
+
+	return msg, nil
 }

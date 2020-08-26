@@ -39,7 +39,7 @@ func RunApp(app *cli.App) {
 		}
 		var phe *PrintHelpErr
 		if xerrors.As(err, &phe) {
-			cli.ShowCommandHelp(phe.Ctx, phe.Ctx.Command.Name)
+			_ = cli.ShowCommandHelp(phe.Ctx, phe.Ctx.Command.Name)
 		}
 		os.Exit(1)
 	}

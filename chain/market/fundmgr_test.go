@@ -147,6 +147,7 @@ func TestAddFunds(t *testing.T) {
 	}
 
 	for testCase, data := range testCases {
+		//nolint:scopelint
 		t.Run(testCase, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 			defer cancel()

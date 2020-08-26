@@ -56,7 +56,7 @@ func main() {
 		height = h
 	}
 
-	api, closer, err := stats.GetFullNodeAPI(repo)
+	api, closer, err := stats.GetFullNodeAPI(ctx, repo)
 	if err != nil {
 		log.Fatal(err)
 	}

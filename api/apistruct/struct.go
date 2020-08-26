@@ -90,9 +90,10 @@ type FullNodeStruct struct {
 
 		BeaconGetEntry func(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) `perm:"read"`
 
-		GasEstimateGasPremium func(context.Context, uint64, address.Address, int64, types.TipSetKey) (types.BigInt, error) `perm:"read"`
-		GasEstimateGasLimit   func(context.Context, *types.Message, types.TipSetKey) (int64, error)                        `perm:"read"`
-		GasEstimateFeeCap     func(context.Context, *types.Message, int64, types.TipSetKey) (types.BigInt, error)          `perm:"read"`
+		GasEstimateGasPremium func(context.Context, uint64, address.Address, int64, types.TipSetKey) (types.BigInt, error)         `perm:"read"`
+		GasEstimateGasLimit   func(context.Context, *types.Message, types.TipSetKey) (int64, error)                                `perm:"read"`
+		GasEstimateFeeCap     func(context.Context, *types.Message, int64, types.TipSetKey) (types.BigInt, error)                  `perm:"read"`
+		GasEstimateMessageGas func(context.Context, *types.Message, *api.MessageSendSpec, types.TipSetKey) (*types.Message, error) `perm:"read"`
 
 		SyncState          func(context.Context) (*api.SyncState, error)                `perm:"read"`
 		SyncSubmitBlock    func(ctx context.Context, blk *types.BlockMsg) error         `perm:"write"`
@@ -105,7 +106,9 @@ type FullNodeStruct struct {
 
 		MpoolSelect func(context.Context, types.TipSetKey, float64) ([]*types.SignedMessage, error) `perm:"read"`
 
-		MpoolPending     func(context.Context, types.TipSetKey) ([]*types.SignedMessage, error)                    `perm:"read"`
+		MpoolPending func(context.Context, types.TipSetKey) ([]*types.SignedMessage, error) `perm:"read"`
+		MpoolClear   func(context.Context, bool) error                                      `perm:"write"`
+
 		MpoolPush        func(context.Context, *types.SignedMessage) (cid.Cid, error)                              `perm:"write"`
 		MpoolPushMessage func(context.Context, *types.Message, *api.MessageSendSpec) (*types.SignedMessage, error) `perm:"sign"`
 		MpoolGetNonce    func(context.Context, address.Address) (uint64, error)                                    `perm:"read"`
@@ -127,21 +130,23 @@ type FullNodeStruct struct {
 		WalletImport         func(context.Context, *types.KeyInfo) (address.Address, error)                       `perm:"admin"`
 		WalletDelete         func(context.Context, address.Address) error                                         `perm:"write"`
 
-		ClientImport             func(ctx context.Context, ref api.FileRef) (*api.ImportRes, error)                                                `perm:"admin"`
-		ClientListImports        func(ctx context.Context) ([]api.Import, error)                                                                   `perm:"write"`
-		ClientRemoveImport       func(ctx context.Context, importID multistore.StoreID) error                                                      `perm:"admin"`
-		ClientHasLocal           func(ctx context.Context, root cid.Cid) (bool, error)                                                             `perm:"write"`
-		ClientFindData           func(ctx context.Context, root cid.Cid, piece *cid.Cid) ([]api.QueryOffer, error)                                 `perm:"read"`
-		ClientMinerQueryOffer    func(ctx context.Context, miner address.Address, root cid.Cid, piece *cid.Cid) (api.QueryOffer, error)            `perm:"read"`
-		ClientStartDeal          func(ctx context.Context, params *api.StartDealParams) (*cid.Cid, error)                                          `perm:"admin"`
-		ClientGetDealInfo        func(context.Context, cid.Cid) (*api.DealInfo, error)                                                             `perm:"read"`
-		ClientListDeals          func(ctx context.Context) ([]api.DealInfo, error)                                                                 `perm:"write"`
-		ClientRetrieve           func(ctx context.Context, order api.RetrievalOrder, ref *api.FileRef) error                                       `perm:"admin"`
-		ClientRetrieveWithEvents func(ctx context.Context, order api.RetrievalOrder, ref *api.FileRef) (<-chan marketevents.RetrievalEvent, error) `perm:"admin"`
-		ClientQueryAsk           func(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.SignedStorageAsk, error)              `perm:"read"`
-		ClientCalcCommP          func(ctx context.Context, inpath string) (*api.CommPRet, error)                                                   `perm:"read"`
-		ClientGenCar             func(ctx context.Context, ref api.FileRef, outpath string) error                                                  `perm:"write"`
-		ClientDealSize           func(ctx context.Context, root cid.Cid) (api.DataSize, error)                                                     `perm:"read"`
+		ClientImport              func(ctx context.Context, ref api.FileRef) (*api.ImportRes, error)                                                `perm:"admin"`
+		ClientListImports         func(ctx context.Context) ([]api.Import, error)                                                                   `perm:"write"`
+		ClientRemoveImport        func(ctx context.Context, importID multistore.StoreID) error                                                      `perm:"admin"`
+		ClientHasLocal            func(ctx context.Context, root cid.Cid) (bool, error)                                                             `perm:"write"`
+		ClientFindData            func(ctx context.Context, root cid.Cid, piece *cid.Cid) ([]api.QueryOffer, error)                                 `perm:"read"`
+		ClientMinerQueryOffer     func(ctx context.Context, miner address.Address, root cid.Cid, piece *cid.Cid) (api.QueryOffer, error)            `perm:"read"`
+		ClientStartDeal           func(ctx context.Context, params *api.StartDealParams) (*cid.Cid, error)                                          `perm:"admin"`
+		ClientGetDealInfo         func(context.Context, cid.Cid) (*api.DealInfo, error)                                                             `perm:"read"`
+		ClientListDeals           func(ctx context.Context) ([]api.DealInfo, error)                                                                 `perm:"write"`
+		ClientRetrieve            func(ctx context.Context, order api.RetrievalOrder, ref *api.FileRef) error                                       `perm:"admin"`
+		ClientRetrieveWithEvents  func(ctx context.Context, order api.RetrievalOrder, ref *api.FileRef) (<-chan marketevents.RetrievalEvent, error) `perm:"admin"`
+		ClientQueryAsk            func(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.SignedStorageAsk, error)              `perm:"read"`
+		ClientCalcCommP           func(ctx context.Context, inpath string) (*api.CommPRet, error)                                                   `perm:"read"`
+		ClientGenCar              func(ctx context.Context, ref api.FileRef, outpath string) error                                                  `perm:"write"`
+		ClientDealSize            func(ctx context.Context, root cid.Cid) (api.DataSize, error)                                                     `perm:"read"`
+		ClientListDataTransfers   func(ctx context.Context) ([]api.DataTransferChannel, error)                                                      `perm:"write"`
+		ClientDataTransferUpdates func(ctx context.Context) (<-chan api.DataTransferChannel, error)                                                 `perm:"write"`
 
 		StateNetworkName                   func(context.Context) (dtypes.NetworkName, error)                                                                   `perm:"read"`
 		StateMinerSectors                  func(context.Context, address.Address, *abi.BitField, bool, types.TipSetKey) ([]*api.ChainSectorInfo, error)        `perm:"read"`
@@ -235,6 +240,8 @@ type StorageMinerStruct struct {
 		MarketGetAsk              func(ctx context.Context) (*storagemarket.SignedStorageAsk, error)                                                                                                           `perm:"read"`
 		MarketSetRetrievalAsk     func(ctx context.Context, rask *retrievalmarket.Ask) error                                                                                                                   `perm:"admin"`
 		MarketGetRetrievalAsk     func(ctx context.Context) (*retrievalmarket.Ask, error)                                                                                                                      `perm:"read"`
+		MarketListDataTransfers   func(ctx context.Context) ([]api.DataTransferChannel, error)                                                                                                                 `perm:"write"`
+		MarketDataTransferUpdates func(ctx context.Context) (<-chan api.DataTransferChannel, error)                                                                                                            `perm:"write"`
 
 		PledgeSector func(context.Context) error `perm:"write"`
 
@@ -449,17 +456,27 @@ func (c *FullNodeStruct) ClientDealSize(ctx context.Context, root cid.Cid) (api.
 	return c.Internal.ClientDealSize(ctx, root)
 }
 
-func (c *FullNodeStruct) GasEstimateGasPremium(ctx context.Context, nblocksincl uint64,
-	sender address.Address, gaslimit int64, tsk types.TipSetKey) (types.BigInt, error) {
+func (c *FullNodeStruct) ClientListDataTransfers(ctx context.Context) ([]api.DataTransferChannel, error) {
+	return c.Internal.ClientListDataTransfers(ctx)
+}
+
+func (c *FullNodeStruct) ClientDataTransferUpdates(ctx context.Context) (<-chan api.DataTransferChannel, error) {
+	return c.Internal.ClientDataTransferUpdates(ctx)
+}
+
+func (c *FullNodeStruct) GasEstimateGasPremium(ctx context.Context, nblocksincl uint64, sender address.Address, gaslimit int64, tsk types.TipSetKey) (types.BigInt, error) {
 	return c.Internal.GasEstimateGasPremium(ctx, nblocksincl, sender, gaslimit, tsk)
 }
-func (c *FullNodeStruct) GasEstimateFeeCap(ctx context.Context, msg *types.Message,
-	maxqueueblks int64, tsk types.TipSetKey) (types.BigInt, error) {
+
+func (c *FullNodeStruct) GasEstimateFeeCap(ctx context.Context, msg *types.Message, maxqueueblks int64, tsk types.TipSetKey) (types.BigInt, error) {
 	return c.Internal.GasEstimateFeeCap(ctx, msg, maxqueueblks, tsk)
 }
 
-func (c *FullNodeStruct) GasEstimateGasLimit(ctx context.Context, msg *types.Message,
-	tsk types.TipSetKey) (int64, error) {
+func (c *FullNodeStruct) GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, tsk types.TipSetKey) (*types.Message, error) {
+	return c.Internal.GasEstimateMessageGas(ctx, msg, spec, tsk)
+}
+
+func (c *FullNodeStruct) GasEstimateGasLimit(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (int64, error) {
 	return c.Internal.GasEstimateGasLimit(ctx, msg, tsk)
 }
 
@@ -477,6 +494,10 @@ func (c *FullNodeStruct) MpoolSelect(ctx context.Context, tsk types.TipSetKey, t
 
 func (c *FullNodeStruct) MpoolPending(ctx context.Context, tsk types.TipSetKey) ([]*types.SignedMessage, error) {
 	return c.Internal.MpoolPending(ctx, tsk)
+}
+
+func (c *FullNodeStruct) MpoolClear(ctx context.Context, local bool) error {
+	return c.Internal.MpoolClear(ctx, local)
 }
 
 func (c *FullNodeStruct) MpoolPush(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, error) {
@@ -1065,6 +1086,14 @@ func (c *StorageMinerStruct) MarketSetRetrievalAsk(ctx context.Context, rask *re
 
 func (c *StorageMinerStruct) MarketGetRetrievalAsk(ctx context.Context) (*retrievalmarket.Ask, error) {
 	return c.Internal.MarketGetRetrievalAsk(ctx)
+}
+
+func (c *StorageMinerStruct) MarketListDataTransfers(ctx context.Context) ([]api.DataTransferChannel, error) {
+	return c.Internal.MarketListDataTransfers(ctx)
+}
+
+func (c *StorageMinerStruct) MarketDataTransferUpdates(ctx context.Context) (<-chan api.DataTransferChannel, error) {
+	return c.Internal.MarketDataTransferUpdates(ctx)
 }
 
 func (c *StorageMinerStruct) DealsImportData(ctx context.Context, dealPropCid cid.Cid, file string) error {

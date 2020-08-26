@@ -31,6 +31,8 @@ func init() {
 	pubsub.GossipSubDhi = 12
 	pubsub.GossipSubDlazy = 12
 	pubsub.GossipSubDirectConnectInitialDelay = 30 * time.Second
+	pubsub.GossipSubIWantFollowupTime = 5 * time.Second
+	pubsub.GossipSubHistoryLength = 10
 }
 func ScoreKeeper() *dtypes.ScoreKeeper {
 	return new(dtypes.ScoreKeeper)
@@ -110,8 +112,9 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 				// IPColocationFactorWhitelist: map[string]struct{}{},
 
 				// P7: behavioural penalties, decay after 1hr
-				BehaviourPenaltyWeight: -10,
-				BehaviourPenaltyDecay:  pubsub.ScoreParameterDecay(time.Hour),
+				BehaviourPenaltyThreshold: 6,
+				BehaviourPenaltyWeight:    -10,
+				BehaviourPenaltyDecay:     pubsub.ScoreParameterDecay(time.Hour),
 
 				DecayInterval: pubsub.DefaultDecayInterval,
 				DecayToZero:   pubsub.DefaultDecayToZero,
@@ -130,12 +133,12 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 						TimeInMeshQuantum: time.Second,
 						TimeInMeshCap:     1,
 
-						// deliveries decay after 1 hour, cap at 100 blocks
-						FirstMessageDeliveriesWeight: 5, // max value is 500
+						// deliveries decay after 1 hour, cap at 25 beacons
+						FirstMessageDeliveriesWeight: 5, // max value is 125
 						FirstMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(time.Hour),
-						FirstMessageDeliveriesCap:    100, // 100 blocks in an hour
+						FirstMessageDeliveriesCap:    25, // the maximum expected in an hour is ~26, including the decay
 
-						// Mesh Delivery Failure is currently turned off for blocks
+						// Mesh Delivery Failure is currently turned off for beacons
 						// This is on purpose as
 						// - the traffic is very low for meaningful distribution of incoming edges.
 						// - the reaction time needs to be very slow -- in the order of 10 min at least
@@ -144,19 +147,6 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 						// - the network is too small, so large asymmetries can be expected between mesh
 						//   edges.
 						// We should revisit this once the network grows.
-						//
-						// // tracks deliveries in the last minute
-						// // penalty activates at 1 minute and expects ~0.4 blocks
-						// MeshMessageDeliveriesWeight:     -576, // max penalty is -100
-						// MeshMessageDeliveriesDecay:      pubsub.ScoreParameterDecay(time.Minute),
-						// MeshMessageDeliveriesCap:        10,      // 10 blocks in a minute
-						// MeshMessageDeliveriesThreshold:  0.41666, // 10/12/2 blocks/min
-						// MeshMessageDeliveriesWindow:     10 * time.Millisecond,
-						// MeshMessageDeliveriesActivation: time.Minute,
-						//
-						// // decays after 15 min
-						// MeshFailurePenaltyWeight: -576,
-						// MeshFailurePenaltyDecay:  pubsub.ScoreParameterDecay(15 * time.Minute),
 
 						// invalid messages decay after 1 hour
 						InvalidMessageDeliveriesWeight: -1000,
@@ -384,5 +374,11 @@ func (trw *tracerWrapper) Trace(evt *pubsub_pb.TraceEvent) {
 		if trw.tr != nil {
 			trw.tr.Trace(evt)
 		}
+	case pubsub_pb.TraceEvent_RECV_RPC:
+		stats.Record(context.TODO(), metrics.PubsubRecvRPC.M(1))
+	case pubsub_pb.TraceEvent_SEND_RPC:
+		stats.Record(context.TODO(), metrics.PubsubSendRPC.M(1))
+	case pubsub_pb.TraceEvent_DROP_RPC:
+		stats.Record(context.TODO(), metrics.PubsubDropRPC.M(1))
 	}
 }

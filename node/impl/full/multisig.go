@@ -28,7 +28,7 @@ type MsigAPI struct {
 	MpoolAPI  MpoolAPI
 }
 
-// TODO: remove gp (gasPrice) from arguemnts
+// TODO: remove gp (gasPrice) from arguments
 func (a *MsigAPI) MsigCreate(ctx context.Context, req uint64, addrs []address.Address, duration abi.ChainEpoch, val types.BigInt, src address.Address, gp types.BigInt) (cid.Cid, error) {
 
 	lenAddrs := uint64(len(addrs))

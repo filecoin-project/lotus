@@ -2,14 +2,15 @@ package full
 
 import (
 	"context"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -105,6 +106,11 @@ func (a *MpoolAPI) MpoolPending(ctx context.Context, tsk types.TipSetKey) ([]*ty
 	}
 }
 
+func (a *MpoolAPI) MpoolClear(ctx context.Context, local bool) error {
+	a.Mpool.Clear(local)
+	return nil
+}
+
 func (a *MpoolAPI) MpoolPush(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, error) {
 	return a.Mpool.Push(smsg)
 }
@@ -146,31 +152,11 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spe
 	if msg.Nonce != 0 {
 		return nil, xerrors.Errorf("MpoolPushMessage expects message nonce to be 0, was %d", msg.Nonce)
 	}
-	if msg.GasLimit == 0 {
-		gasLimit, err := a.GasEstimateGasLimit(ctx, msg, types.TipSetKey{})
-		if err != nil {
-			return nil, xerrors.Errorf("estimating gas used: %w", err)
-		}
-		msg.GasLimit = int64(float64(gasLimit) * a.Mpool.GetConfig().GasLimitOverestimation)
-	}
 
-	if msg.GasPremium == types.EmptyInt || types.BigCmp(msg.GasPremium, types.NewInt(0)) == 0 {
-		gasPremium, err := a.GasEstimateGasPremium(ctx, 2, msg.From, msg.GasLimit, types.TipSetKey{})
-		if err != nil {
-			return nil, xerrors.Errorf("estimating gas price: %w", err)
-		}
-		msg.GasPremium = gasPremium
+	msg, err := a.GasAPI.GasEstimateMessageGas(ctx, msg, spec, types.EmptyTSK)
+	if err != nil {
+		return nil, xerrors.Errorf("GasEstimateMessageGas error: %w", err)
 	}
-
-	if msg.GasFeeCap == types.EmptyInt || types.BigCmp(msg.GasFeeCap, types.NewInt(0)) == 0 {
-		feeCap, err := a.GasEstimateFeeCap(ctx, msg, 10, types.EmptyTSK)
-		if err != nil {
-			return nil, xerrors.Errorf("estimating fee cap: %w", err)
-		}
-		msg.GasFeeCap = big.Add(feeCap, msg.GasPremium)
-	}
-
-	capGasFee(msg, spec.Get().MaxFee)
 
 	sign := func(from address.Address, nonce uint64) (*types.SignedMessage, error) {
 		msg.Nonce = nonce
@@ -192,7 +178,6 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spe
 	}
 
 	var m *types.SignedMessage
-	var err error
 again:
 	m, err = a.Mpool.PushWithNonce(ctx, msg.From, sign)
 	if err == messagepool.ErrTryAgain {

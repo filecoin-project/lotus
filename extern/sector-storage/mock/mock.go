@@ -438,7 +438,7 @@ func (m mockVerif) VerifyWindowPoSt(ctx context.Context, info abi.WindowPoStVeri
 		}
 
 		if !bytes.Equal(b1, b2) {
-			return false, xerrors.Errorf("proven and challenged sector sets didn't match: %s != !s", string(b1), string(b2))
+			return false, xerrors.Errorf("proven and challenged sector sets didn't match: %s != %s", string(b1), string(b2))
 		}
 	}
 

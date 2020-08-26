@@ -60,7 +60,8 @@ var logSetLevel = &cli.Command{
    Environment Variables:
    GOLOG_LOG_LEVEL - Default log level for all log systems
    GOLOG_LOG_FMT   - Change output log format (json, nocolor)
-   GOLOG_FILE      - Write logs to file in addition to stderr
+   GOLOG_FILE      - Write logs to file
+   GOLOG_OUTPUT    - Specify whether to output to file, stderr, stdout or a combination, i.e. file+stderr
 `,
 	Flags: []cli.Flag{
 		&cli.StringSliceFlag{

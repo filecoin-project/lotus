@@ -25,6 +25,7 @@ func PreSeal(ssize abi.SectorSize, maddr address.Address, sectors int) (*genesis
 	}
 
 	genm := &genesis.Miner{
+		ID:            maddr,
 		Owner:         k.Address,
 		Worker:        k.Address,
 		MarketBalance: big.NewInt(0),

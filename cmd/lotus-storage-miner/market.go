@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"text/tabwriter"
 	"time"
 
+	tm "github.com/buger/goterm"
 	"github.com/docker/go-units"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-cidutil/cidenc"
@@ -358,12 +360,16 @@ var dealsListCmd = &cli.Command{
 			return err
 		}
 
+		sort.Slice(deals, func(i, j int) bool {
+			return deals[i].CreationTime.Time().Before(deals[j].CreationTime.Time())
+		})
+
 		w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
 
 		verbose := cctx.Bool("verbose")
 
 		if verbose {
-			_, _ = fmt.Fprintf(w, "ProposalCid\tDealId\tState\tClient\tSize\tPrice\tDuration\tMessage\n")
+			_, _ = fmt.Fprintf(w, "Creation\tProposalCid\tDealId\tState\tClient\tSize\tPrice\tDuration\tMessage\n")
 		} else {
 			_, _ = fmt.Fprintf(w, "ProposalCid\tDealId\tState\tClient\tSize\tPrice\tDuration\n")
 		}
@@ -375,6 +381,10 @@ var dealsListCmd = &cli.Command{
 			}
 
 			fil := types.FIL(types.BigMul(deal.Proposal.StoragePricePerEpoch, types.NewInt(uint64(deal.Proposal.Duration()))))
+
+			if verbose {
+				_, _ = fmt.Fprintf(w, "%s\t", deal.CreationTime.Time().Format(time.Stamp))
+			}
 
 			_, _ = fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\t%s\t%s", propcid, deal.DealID, storagemarket.DealStates[deal.State], deal.Proposal.Client, units.BytesSize(float64(deal.Proposal.PieceSize)), fil, deal.Proposal.Duration())
 			if verbose {
@@ -504,5 +514,89 @@ var setSealDurationCmd = &cli.Command{
 		delay := hs * uint64(time.Minute)
 
 		return nodeApi.SectorSetExpectedSealDuration(ctx, time.Duration(delay))
+	},
+}
+
+var dataTransfersCmd = &cli.Command{
+	Name:  "data-transfers",
+	Usage: "Manage data transfers",
+	Subcommands: []*cli.Command{
+		transfersListCmd,
+	},
+}
+
+var transfersListCmd = &cli.Command{
+	Name:  "list",
+	Usage: "List ongoing data transfers for this miner",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "color",
+			Usage: "use color in display output",
+			Value: true,
+		},
+		&cli.BoolFlag{
+			Name:  "completed",
+			Usage: "show completed data transfers",
+		},
+		&cli.BoolFlag{
+			Name:  "watch",
+			Usage: "watch deal updates in real-time, rather than a one time list",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		channels, err := api.MarketListDataTransfers(ctx)
+		if err != nil {
+			return err
+		}
+
+		completed := cctx.Bool("completed")
+		color := cctx.Bool("color")
+		watch := cctx.Bool("watch")
+
+		if watch {
+			channelUpdates, err := api.MarketDataTransferUpdates(ctx)
+			if err != nil {
+				return err
+			}
+
+			for {
+				tm.Clear() // Clear current screen
+
+				tm.MoveCursor(1, 1)
+
+				lcli.OutputDataTransferChannels(tm.Screen, channels, completed, color)
+
+				tm.Flush()
+
+				select {
+				case <-ctx.Done():
+					return nil
+				case channelUpdate := <-channelUpdates:
+					var found bool
+					for i, existing := range channels {
+						if existing.TransferID == channelUpdate.TransferID &&
+							existing.OtherPeer == channelUpdate.OtherPeer &&
+							existing.IsSender == channelUpdate.IsSender &&
+							existing.IsInitiator == channelUpdate.IsInitiator {
+							channels[i] = channelUpdate
+							found = true
+							break
+						}
+					}
+					if !found {
+						channels = append(channels, channelUpdate)
+					}
+				}
+			}
+		}
+		lcli.OutputDataTransferChannels(os.Stdout, channels, completed, color)
+		return nil
 	},
 }

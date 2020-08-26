@@ -114,6 +114,9 @@ var preSealCmd = &cli.Command{
 				return err
 			}
 			kb, err := hex.DecodeString(string(kh))
+			if err != nil {
+				return err
+			}
 			if err := json.Unmarshal(kb, k); err != nil {
 				return err
 			}

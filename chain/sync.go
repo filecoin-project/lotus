@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -51,6 +52,19 @@ import (
 // Blocks that are more than MaxHeightDrift epochs above
 //the theoretical max height based on systime are quickly rejected
 const MaxHeightDrift = 5
+
+var defaultMessageFetchWindowSize = 200
+
+func init() {
+	if s := os.Getenv("LOTUS_BSYNC_MSG_WINDOW"); s != "" {
+		val, err := strconv.Atoi(s)
+		if err != nil {
+			log.Errorf("failed to parse LOTUS_BSYNC_MSG_WINDOW: %s", err)
+			return
+		}
+		defaultMessageFetchWindowSize = val
+	}
+}
 
 var log = logging.Logger("chain")
 
@@ -1399,7 +1413,7 @@ func (syncer *Syncer) iterFullTipsets(ctx context.Context, headers []*types.TipS
 
 	span.AddAttributes(trace.Int64Attribute("num_headers", int64(len(headers))))
 
-	windowSize := 200
+	windowSize := defaultMessageFetchWindowSize
 	for i := len(headers) - 1; i >= 0; {
 		fts, err := syncer.store.TryFillTipSet(headers[i])
 		if err != nil {

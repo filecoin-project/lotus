@@ -3,9 +3,11 @@ package messagepool
 import (
 	"context"
 	"fmt"
+	"sort"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/lotus/chain/messagepool/gasguess"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/mock"
 	"github.com/filecoin-project/lotus/chain/wallet"
@@ -30,14 +32,25 @@ type testMpoolAPI struct {
 	balance    map[address.Address]types.BigInt
 
 	tipsets []*types.TipSet
+
+	published int
 }
 
 func newTestMpoolAPI() *testMpoolAPI {
-	return &testMpoolAPI{
+	tma := &testMpoolAPI{
 		bmsgs:      make(map[cid.Cid][]*types.SignedMessage),
 		statenonce: make(map[address.Address]uint64),
 		balance:    make(map[address.Address]types.BigInt),
 	}
+	genesis := mock.MkBlock(nil, 1, 1)
+	tma.tipsets = append(tma.tipsets, mock.TipSet(genesis))
+	return tma
+}
+
+func (tma *testMpoolAPI) nextBlock() *types.BlockHeader {
+	newBlk := mock.MkBlock(tma.tipsets[len(tma.tipsets)-1], 1, 1)
+	tma.tipsets = append(tma.tipsets, mock.TipSet(newBlk))
+	return newBlk
 }
 
 func (tma *testMpoolAPI) applyBlock(t *testing.T, b *types.BlockHeader) {
@@ -68,12 +81,11 @@ func (tma *testMpoolAPI) setBalanceRaw(addr address.Address, v types.BigInt) {
 
 func (tma *testMpoolAPI) setBlockMessages(h *types.BlockHeader, msgs ...*types.SignedMessage) {
 	tma.bmsgs[h.Cid()] = msgs
-	tma.tipsets = append(tma.tipsets, mock.TipSet(h))
 }
 
 func (tma *testMpoolAPI) SubscribeHeadChanges(cb func(rev, app []*types.TipSet) error) *types.TipSet {
 	tma.cb = cb
-	return nil
+	return tma.tipsets[0]
 }
 
 func (tma *testMpoolAPI) PutMessage(m types.ChainMsg) (cid.Cid, error) {
@@ -81,18 +93,47 @@ func (tma *testMpoolAPI) PutMessage(m types.ChainMsg) (cid.Cid, error) {
 }
 
 func (tma *testMpoolAPI) PubSubPublish(string, []byte) error {
+	tma.published++
 	return nil
 }
 
-func (tma *testMpoolAPI) StateGetActor(addr address.Address, ts *types.TipSet) (*types.Actor, error) {
+func (tma *testMpoolAPI) GetActorAfter(addr address.Address, ts *types.TipSet) (*types.Actor, error) {
+	// regression check for load bug
+	if ts == nil {
+		panic("GetActorAfter called with nil tipset")
+	}
+
 	balance, ok := tma.balance[addr]
 	if !ok {
 		balance = types.NewInt(1000e6)
 		tma.balance[addr] = balance
 	}
+
+	msgs := make([]*types.SignedMessage, 0)
+	for _, b := range ts.Blocks() {
+		for _, m := range tma.bmsgs[b.Cid()] {
+			if m.Message.From == addr {
+				msgs = append(msgs, m)
+			}
+		}
+	}
+
+	sort.Slice(msgs, func(i, j int) bool {
+		return msgs[i].Message.Nonce < msgs[j].Message.Nonce
+	})
+
+	nonce := tma.statenonce[addr]
+
+	for _, m := range msgs {
+		if m.Message.Nonce != nonce {
+			break
+		}
+		nonce++
+	}
+
 	return &types.Actor{
 		Code:    builtin.StorageMarketActorCodeID,
-		Nonce:   tma.statenonce[addr],
+		Nonce:   nonce,
 		Balance: balance,
 	}, nil
 }
@@ -178,7 +219,7 @@ func TestMessagePool(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a := mock.MkBlock(nil, 1, 1)
+	a := tma.nextBlock()
 
 	sender, err := w.GenerateKey(crypto.SigTypeBLS)
 	if err != nil {
@@ -204,7 +245,7 @@ func TestMessagePool(t *testing.T) {
 	assertNonce(t, mp, sender, 2)
 }
 
-func TestRevertMessages(t *testing.T) {
+func TestMessagePoolMessagesInEachBlock(t *testing.T) {
 	tma := newTestMpoolAPI()
 
 	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
@@ -219,8 +260,57 @@ func TestRevertMessages(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a := mock.MkBlock(nil, 1, 1)
-	b := mock.MkBlock(mock.TipSet(a), 1, 1)
+	a := tma.nextBlock()
+
+	sender, err := w.GenerateKey(crypto.SigTypeBLS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	target := mock.Address(1001)
+
+	var msgs []*types.SignedMessage
+	for i := 0; i < 5; i++ {
+		m := mock.MkMessage(sender, target, uint64(i), w)
+		msgs = append(msgs, m)
+		mustAdd(t, mp, m)
+	}
+
+	tma.setStateNonce(sender, 0)
+
+	tma.setBlockMessages(a, msgs[0], msgs[1])
+	tma.applyBlock(t, a)
+	tsa := mock.TipSet(a)
+
+	_, _ = mp.Pending()
+
+	selm, _ := mp.SelectMessages(tsa, 1)
+	if len(selm) == 0 {
+		t.Fatal("should have returned the rest of the messages")
+	}
+}
+
+func TestRevertMessages(t *testing.T) {
+	futureDebug = true
+	defer func() {
+		futureDebug = false
+	}()
+
+	tma := newTestMpoolAPI()
+
+	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ds := datastore.NewMapDatastore()
+
+	mp, err := New(tma, ds, "mptest")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a := tma.nextBlock()
+	b := tma.nextBlock()
 
 	sender, err := w.GenerateKey(crypto.SigTypeBLS)
 	if err != nil {
@@ -254,6 +344,7 @@ func TestRevertMessages(t *testing.T) {
 	assertNonce(t, mp, sender, 4)
 
 	p, _ := mp.Pending()
+	fmt.Printf("%+v\n", p)
 	if len(p) != 3 {
 		t.Fatal("expected three messages in mempool")
 	}
@@ -275,7 +366,7 @@ func TestPruningSimple(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a := mock.MkBlock(nil, 1, 1)
+	a := tma.nextBlock()
 	tma.applyBlock(t, a)
 
 	sender, err := w.GenerateKey(crypto.SigTypeBLS)
@@ -306,5 +397,248 @@ func TestPruningSimple(t *testing.T) {
 	msgs, _ := mp.Pending()
 	if len(msgs) != 5 {
 		t.Fatal("expected only 5 messages in pool, got: ", len(msgs))
+	}
+}
+
+func TestLoadLocal(t *testing.T) {
+	tma := newTestMpoolAPI()
+	ds := datastore.NewMapDatastore()
+
+	mp, err := New(tma, ds, "mptest")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// the actors
+	w1, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a1, err := w1.GenerateKey(crypto.SigTypeSecp256k1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	w2, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a2, err := w2.GenerateKey(crypto.SigTypeSecp256k1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin.StorageMarketActorCodeID, M: 2}]
+	msgs := make(map[cid.Cid]struct{})
+	for i := 0; i < 10; i++ {
+		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(i+1))
+		cid, err := mp.Push(m)
+		if err != nil {
+			t.Fatal(err)
+		}
+		msgs[cid] = struct{}{}
+	}
+	err = mp.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	mp, err = New(tma, ds, "mptest")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pmsgs, _ := mp.Pending()
+	if len(msgs) != len(pmsgs) {
+		t.Fatalf("expected %d messages, but got %d", len(msgs), len(pmsgs))
+	}
+
+	for _, m := range pmsgs {
+		cid := m.Cid()
+		_, ok := msgs[cid]
+		if !ok {
+			t.Fatal("unknown message")
+		}
+
+		delete(msgs, cid)
+	}
+
+	if len(msgs) > 0 {
+		t.Fatalf("not all messages were laoded; missing %d messages", len(msgs))
+	}
+}
+
+func TestClearAll(t *testing.T) {
+	tma := newTestMpoolAPI()
+	ds := datastore.NewMapDatastore()
+
+	mp, err := New(tma, ds, "mptest")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// the actors
+	w1, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a1, err := w1.GenerateKey(crypto.SigTypeSecp256k1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	w2, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a2, err := w2.GenerateKey(crypto.SigTypeSecp256k1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin.StorageMarketActorCodeID, M: 2}]
+	for i := 0; i < 10; i++ {
+		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(i+1))
+		_, err := mp.Push(m)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	for i := 0; i < 10; i++ {
+		m := makeTestMessage(w2, a2, a1, uint64(i), gasLimit, uint64(i+1))
+		mustAdd(t, mp, m)
+	}
+
+	mp.Clear(true)
+
+	pending, _ := mp.Pending()
+	if len(pending) > 0 {
+		t.Fatalf("cleared the mpool, but got %d pending messages", len(pending))
+	}
+}
+
+func TestClearNonLocal(t *testing.T) {
+	tma := newTestMpoolAPI()
+	ds := datastore.NewMapDatastore()
+
+	mp, err := New(tma, ds, "mptest")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// the actors
+	w1, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a1, err := w1.GenerateKey(crypto.SigTypeSecp256k1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	w2, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a2, err := w2.GenerateKey(crypto.SigTypeSecp256k1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin.StorageMarketActorCodeID, M: 2}]
+	for i := 0; i < 10; i++ {
+		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(i+1))
+		_, err := mp.Push(m)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	for i := 0; i < 10; i++ {
+		m := makeTestMessage(w2, a2, a1, uint64(i), gasLimit, uint64(i+1))
+		mustAdd(t, mp, m)
+	}
+
+	mp.Clear(false)
+
+	pending, _ := mp.Pending()
+	if len(pending) != 10 {
+		t.Fatalf("expected 10 pending messages, but got %d instead", len(pending))
+	}
+
+	for _, m := range pending {
+		if m.Message.From != a1 {
+			t.Fatalf("expected message from %s but got one from %s instead", a1, m.Message.From)
+		}
+	}
+}
+
+func TestUpdates(t *testing.T) {
+	tma := newTestMpoolAPI()
+	ds := datastore.NewMapDatastore()
+
+	mp, err := New(tma, ds, "mptest")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// the actors
+	w1, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a1, err := w1.GenerateKey(crypto.SigTypeSecp256k1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	w2, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a2, err := w2.GenerateKey(crypto.SigTypeSecp256k1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithCancel(context.TODO())
+	defer cancel()
+
+	ch, err := mp.Updates(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin.StorageMarketActorCodeID, M: 2}]
+	for i := 0; i < 10; i++ {
+		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(i+1))
+		_, err := mp.Push(m)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		_, ok := <-ch
+		if !ok {
+			t.Fatal("expected update, but got a closed channel instead")
+		}
+	}
+
+	err = mp.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, ok := <-ch
+	if ok {
+		t.Fatal("expected closed channel, but got an update instead")
 	}
 }

@@ -41,9 +41,10 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
-var log = logging.Logger("gen")
-
 const msgsPerBlock = 20
+
+//nolint:deadcode,varcheck
+var log = logging.Logger("gen")
 
 var ValidWpostForTesting = []abi.PoStProof{{
 	ProofBytes: []byte("valid proof"),
@@ -92,10 +93,8 @@ func (m mybs) Get(c cid.Cid) (block.Block, error) {
 	return b, nil
 }
 
-var rootkey, _ = address.NewIDAddress(80)
-
 var rootkeyMultisig = genesis.MultisigMeta{
-	Signers:         []address.Address{rootkey},
+	Signers:         []address.Address{remAccTestKey},
 	Threshold:       1,
 	VestingDuration: 0,
 	VestingStart:    0,
@@ -108,12 +107,13 @@ var DefaultVerifregRootkeyActor = genesis.Actor{
 }
 
 var remAccTestKey, _ = address.NewFromString("t1ceb34gnsc6qk5dt6n7xg6ycwzasjhbxm3iylkiy")
-var remAccMeta = genesis.AccountMeta{
-	Owner: remAccTestKey,
+var remAccMeta = genesis.MultisigMeta{
+	Signers:   []address.Address{remAccTestKey},
+	Threshold: 1,
 }
 
 var DefaultRemainderAccountActor = genesis.Actor{
-	Type:    genesis.TAccount,
+	Type:    genesis.TMultisig,
 	Balance: big.NewInt(0),
 	Meta:    remAccMeta.ActorMeta(),
 }
@@ -606,7 +606,7 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, round abi.ChainEpoch,
 
 	buf := new(bytes.Buffer)
 	if err := miner.MarshalCBOR(buf); err != nil {
-		return nil, xerrors.Errorf("failed to cbor marshal address: %w")
+		return nil, xerrors.Errorf("failed to cbor marshal address: %w", err)
 	}
 
 	electionRand, err := store.DrawRandomness(brand.Data, crypto.DomainSeparationTag_ElectionProofProduction, round, buf.Bytes())

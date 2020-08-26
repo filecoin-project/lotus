@@ -24,4 +24,4 @@ In order to retrieve a file, it must be sealed. Miners can check sealing progres
 lotus-miner sectors list
 ```
 
-When sealing is complete, `pSet: NO` will become `pSet: YES`. From now on the **Data CID** is [retrievable](https://docs.lotu.sh/en+retrieving-data) from the **Lotus Miner**.
+When sealing is complete, `pSet: NO` will become `pSet: YES`. From now on the **Data CID** is [retrievable](https://lotu.sh/en+retrieving-data) from the **Lotus Miner**.

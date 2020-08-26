@@ -266,7 +266,7 @@ func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider 
 			return false, nil
 		}
 
-		sd, err := stmgr.GetStorageDeal(ctx, c.StateManager, abi.DealID(dealId), ts)
+		sd, err := stmgr.GetStorageDeal(ctx, c.StateManager, dealId, ts)
 		if err != nil {
 			return false, xerrors.Errorf("failed to look up deal on chain: %w", err)
 		}
@@ -303,7 +303,7 @@ func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider 
 			}
 
 			for _, did := range params.DealIDs {
-				if did == abi.DealID(dealId) {
+				if did == dealId {
 					sectorNumber = params.SectorNumber
 					sectorFound = true
 					return true, false, nil
@@ -464,7 +464,7 @@ func (c *ClientNodeAdapter) ValidateAskSignature(ctx context.Context, ask *stora
 
 	mi, err := c.StateMinerInfo(ctx, ask.Ask.Miner, tsk)
 	if err != nil {
-		return false, xerrors.Errorf("failed to get worker for miner in ask", err)
+		return false, xerrors.Errorf("failed to get worker for miner in ask: %w", err)
 	}
 
 	sigb, err := cborutil.Dump(ask.Ask)

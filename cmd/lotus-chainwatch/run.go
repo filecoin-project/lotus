@@ -24,12 +24,12 @@ var runCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.IntFlag{
 			Name:  "max-batch",
-			Value: 1000,
+			Value: 50,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
 		go func() {
-			http.ListenAndServe(":6060", nil)
+			http.ListenAndServe(":6060", nil) //nolint:errcheck
 		}()
 		ll := cctx.String("log-level")
 		if err := logging.SetLogLevel("*", ll); err != nil {

@@ -355,7 +355,9 @@ func (m *Sealing) newDealSector() (abi.SectorNumber, error) {
 		timer := time.NewTimer(cf.WaitDealsDelay)
 		go func() {
 			<-timer.C
-			m.StartPacking(sid)
+			if err := m.StartPacking(sid); err != nil {
+				log.Errorf("starting sector %d: %+v", sid, err)
+			}
 		}()
 	}
 
@@ -396,7 +398,6 @@ func (m *Sealing) Address() address.Address {
 func getDealPerSectorLimit(size abi.SectorSize) uint64 {
 	if size < 64<<30 {
 		return 256
-	} else {
-		return 512
 	}
+	return 512
 }

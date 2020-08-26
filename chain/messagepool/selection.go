@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	abig "github.com/filecoin-project/specs-actors/actors/abi/big"
-	"github.com/ipfs/go-cid"
 )
 
 var bigBlockGasLimit = big.NewInt(build.BlockGasLimit)
@@ -528,7 +527,6 @@ func (mp *MessagePool) getPendingMessages(curTs, ts *types.TipSet) (map[address.
 	start := time.Now()
 
 	result := make(map[address.Address]map[uint64]*types.SignedMessage)
-	haveCids := make(map[cid.Cid]struct{})
 	defer func() {
 		if dt := time.Since(start); dt > time.Millisecond {
 			log.Infow("get pending messages done", "took", dt)
@@ -554,10 +552,6 @@ func (mp *MessagePool) getPendingMessages(curTs, ts *types.TipSet) (map[address.
 			}
 			result[a] = msetCopy
 
-			// mark the messages as seen
-			for _, m := range mset.msgs {
-				haveCids[m.Cid()] = struct{}{}
-			}
 		}
 	}
 
@@ -566,72 +560,11 @@ func (mp *MessagePool) getPendingMessages(curTs, ts *types.TipSet) (map[address.
 		return result, nil
 	}
 
-	// nope, we need to sync the tipsets
-	for {
-		if curTs.Height() == ts.Height() {
-			if curTs.Equals(ts) {
-				return result, nil
-			}
-
-			// different blocks in tipsets -- we mark them as seen so that they are not included in
-			// in the message set we return, but *neither me (vyzo) nor why understand why*
-			// this code is also probably completely untested in production, so I am adding a big fat
-			// warning to revisit this case and sanity check this decision.
-			log.Warnf("mpool tipset has same height as target tipset but it's not equal; beware of dragons!")
-
-			have, err := mp.MessagesForBlocks(ts.Blocks())
-			if err != nil {
-				return nil, xerrors.Errorf("error retrieving messages for tipset: %w", err)
-			}
-
-			for _, m := range have {
-				haveCids[m.Cid()] = struct{}{}
-			}
-		}
-
-		msgs, err := mp.MessagesForBlocks(ts.Blocks())
-		if err != nil {
-			return nil, xerrors.Errorf("error retrieving messages for tipset: %w", err)
-		}
-
-		for _, m := range msgs {
-			if _, have := haveCids[m.Cid()]; have {
-				continue
-			}
-
-			haveCids[m.Cid()] = struct{}{}
-			mset, ok := result[m.Message.From]
-			if !ok {
-				mset = make(map[uint64]*types.SignedMessage)
-				result[m.Message.From] = mset
-			}
-
-			other, dupNonce := mset[m.Message.Nonce]
-			if dupNonce {
-				// duplicate nonce, selfishly keep the message with the highest GasPrice
-				// if the gas prices are the same, keep the one with the highest GasLimit
-				switch m.Message.GasPremium.Int.Cmp(other.Message.GasPremium.Int) {
-				case 0:
-					if m.Message.GasLimit > other.Message.GasLimit {
-						mset[m.Message.Nonce] = m
-					}
-				case 1:
-					mset[m.Message.Nonce] = m
-				}
-			} else {
-				mset[m.Message.Nonce] = m
-			}
-		}
-
-		if curTs.Height() >= ts.Height() {
-			return result, nil
-		}
-
-		ts, err = mp.api.LoadTipSet(ts.Parents())
-		if err != nil {
-			return nil, xerrors.Errorf("error loading parent tipset: %w", err)
-		}
+	if err := mp.runHeadChange(curTs, ts, result); err != nil {
+		return nil, xerrors.Errorf("failed to process difference between mpool head and given head: %w", err)
 	}
+
+	return result, nil
 }
 
 func (mp *MessagePool) getGasReward(msg *types.SignedMessage, baseFee types.BigInt, ts *types.TipSet) *big.Int {
@@ -671,7 +604,12 @@ func (mp *MessagePool) createMessageChains(actor address.Address, mset map[uint6
 	//   cannot exceed the block limit; drop all messages that exceed the limit
 	// - the total gasReward cannot exceed the actor's balance; drop all messages that exceed
 	//   the balance
-	a, _ := mp.api.StateGetActor(actor, ts)
+	a, err := mp.api.GetActorAfter(actor, ts)
+	if err != nil {
+		log.Errorf("failed to load actor state, not building chain for %s: %w", actor, err)
+		return nil
+	}
+
 	curNonce := a.Nonce
 	balance := a.Balance.Int
 	gasLimit := int64(0)

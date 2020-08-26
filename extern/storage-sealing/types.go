@@ -3,6 +3,7 @@ package sealing
 import (
 	"bytes"
 	"context"
+
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
