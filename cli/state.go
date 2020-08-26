@@ -47,6 +47,7 @@ var stateCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		statePowerCmd,
 		stateSectorsCmd,
+    statePreCommittedSectorsCmd,
 		stateActiveSectorsCmd,
 		stateListActorsCmd,
 		stateListMinersCmd,
@@ -261,7 +262,7 @@ var stateSectorsCmd = &cli.Command{
 }
 
 var statePreCommittedSectorsCmd = &cli.Command{
-	Name:      "precommittedsectors",
+	Name:      "precommitted-sectors",
 	Usage:     "Query the precommitted sector set of a miner",
 	ArgsUsage: "[minerAddress]",
 	Action: func(cctx *cli.Context) error {
