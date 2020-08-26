@@ -241,3 +241,6 @@ Additional to the Filecoin FFI Git submodules, we are also bundling `proof param
 * [@yusefnapora](https://github.com/yusefnapora) (engineer and technical writer)
 * [@vyzo](https://github.com/vyzo) (engineer)
 * [@schomatis](https://github.com/schomatis) (advisor)
+* [@willscott](https://github.com/willscott) (engineer)
+* [@alanshaw](https://github.com/alanshaw) (engineer)
+
