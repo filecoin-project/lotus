@@ -3,19 +3,18 @@ package conformance
 import (
 	"context"
 
+	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/lotus/lib/blockstore"
+
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/puppet"
+
+	"github.com/filecoin-project/test-vectors/chaos"
 	"github.com/filecoin-project/test-vectors/schema"
 
 	"github.com/ipfs/go-cid"
-
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
-
-	"github.com/filecoin-project/test-vectors/chaos"
-
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/vm"
-	"github.com/filecoin-project/lotus/lib/blockstore"
 )
 
 var (
