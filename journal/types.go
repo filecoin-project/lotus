@@ -1,7 +1,6 @@
 package journal
 
 import (
-	"sync"
 	"time"
 
 	logging "github.com/ipfs/go-log"
@@ -49,16 +48,6 @@ func (et EventType) Enabled() bool {
 	return et.safe && et.enabled
 }
 
-// EventTypeFactory is a component that constructs tracked EventType tokens,
-// for usage with a Journal.
-type EventTypeFactory interface {
-	// RegisterEventType introduces a new event type to a journal, and
-	// returns an EventType token that components can later use to check whether
-	// journalling for that type is enabled/suppressed, and to tag journal
-	// entries appropriately.
-	RegisterEventType(system, event string) EventType
-}
-
 // Journal represents an audit trail of system actions.
 //
 // Every entry is tagged with a timestamp, a system name, and an event name.
@@ -68,11 +57,14 @@ type EventTypeFactory interface {
 // For cleanliness and type safety, we recommend to use typed events. See the
 // *Evt struct types in this package for more info.
 type Journal interface {
-	EventTypeFactory
+	EventTypeRegistry
 
-	// RecordEvent records this event to the journal. See godocs on the Journal type
-	// for more info.
-	RecordEvent(evtType EventType, data interface{})
+	// RecordEvent records this event to the journal, if and only if the
+	// EventType is enabled. If so, it calls the supplier function to obtain
+	// the payload to record.
+	//
+	// Implementations MUST recover from panics raised by the supplier function.
+	RecordEvent(evtType EventType, supplier func() interface{})
 
 	// Close closes this journal for further writing.
 	Close() error
@@ -86,71 +78,4 @@ type Event struct {
 
 	Timestamp time.Time
 	Data      interface{}
-}
-
-// MaybeRecordEvent is a convenience function that evaluates if the EventType is
-// enabled, and if so, it calls the supplier to create the event and
-// subsequently journal.RecordEvent on the provided journal to record it.
-//
-// It also recovers from panics raised when calling the supplier function.
-//
-// This is safe to call with a nil Journal, either because the value is nil,
-// or because a journal obtained through NilJournal() is in use.
-func MaybeRecordEvent(journal Journal, evtType EventType, supplier func() interface{}) {
-	defer func() {
-		if r := recover(); r != nil {
-			log.Warnf("recovered from panic while recording journal event; type=%s, err=%v", evtType, r)
-		}
-	}()
-
-	if journal == nil || journal == nilj {
-		return
-	}
-	if !evtType.Enabled() {
-		return
-	}
-	journal.RecordEvent(evtType, supplier())
-}
-
-// eventTypeFactory is an embeddable mixin that takes care of tracking disabled
-// event types, and returning initialized/safe EventTypes when requested.
-type eventTypeFactory struct {
-	sync.Mutex
-
-	m map[string]EventType
-}
-
-var _ EventTypeFactory = (*eventTypeFactory)(nil)
-
-func NewEventTypeFactory(disabled DisabledEvents) EventTypeFactory {
-	ret := &eventTypeFactory{
-		m: make(map[string]EventType, len(disabled)+32), // + extra capacity.
-	}
-
-	for _, et := range disabled {
-		et.enabled, et.safe = false, true
-		ret.m[et.System+":"+et.Event] = et
-	}
-
-	return ret
-}
-
-func (d *eventTypeFactory) RegisterEventType(system, event string) EventType {
-	d.Lock()
-	defer d.Unlock()
-
-	key := system + ":" + event
-	if et, ok := d.m[key]; ok {
-		return et
-	}
-
-	et := EventType{
-		System:  system,
-		Event:   event,
-		enabled: true,
-		safe:    true,
-	}
-
-	d.m[key] = et
-	return et
 }

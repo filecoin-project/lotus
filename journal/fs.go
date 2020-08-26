@@ -16,7 +16,7 @@ import (
 
 // fsJournal is a basic journal backed by files on a filesystem.
 type fsJournal struct {
-	EventTypeFactory
+	EventTypeRegistry
 
 	dir       string
 	sizeLimit int64
@@ -40,12 +40,12 @@ func OpenFSJournal(lr repo.LockedRepo, disabled DisabledEvents) (Journal, error)
 	}
 
 	f := &fsJournal{
-		EventTypeFactory: NewEventTypeFactory(disabled),
-		dir:              dir,
-		sizeLimit:        1 << 30,
-		incoming:         make(chan *Event, 32),
-		closing:          make(chan struct{}),
-		closed:           make(chan struct{}),
+		EventTypeRegistry: NewEventTypeRegistry(disabled),
+		dir:               dir,
+		sizeLimit:         1 << 30,
+		incoming:          make(chan *Event, 32),
+		closing:           make(chan struct{}),
+		closed:            make(chan struct{}),
 	}
 
 	if err := f.rollJournalFile(); err != nil {
@@ -57,11 +57,21 @@ func OpenFSJournal(lr repo.LockedRepo, disabled DisabledEvents) (Journal, error)
 	return f, nil
 }
 
-func (f *fsJournal) RecordEvent(evtType EventType, obj interface{}) {
+func (f *fsJournal) RecordEvent(evtType EventType, supplier func() interface{}) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Warnf("recovered from panic while recording journal event; type=%s, err=%v", evtType, r)
+		}
+	}()
+
+	if !evtType.Enabled() {
+		return
+	}
+
 	je := &Event{
 		EventType: evtType,
 		Timestamp: build.Clock.Now(),
-		Data:      obj,
+		Data:      supplier(),
 	}
 	select {
 	case f.incoming <- je:

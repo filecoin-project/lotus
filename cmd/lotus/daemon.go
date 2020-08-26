@@ -12,9 +12,6 @@ import (
 	"runtime/pprof"
 	"strings"
 
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/journal"
-
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/mitchellh/go-homedir"
 	"github.com/multiformats/go-multiaddr"
@@ -24,6 +21,8 @@ import (
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/lotus/chain/types"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -338,7 +337,7 @@ func ImportChain(r repo.Repo, fname string) error {
 
 	bs := blockstore.NewBlockstore(ds)
 
-	cst := store.NewChainStore(bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier), journal.NilJournal())
+	cst := store.NewChainStore(bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier))
 
 	log.Info("importing chain from file...")
 	ts, err := cst.Import(fi)

@@ -45,7 +45,6 @@ type Miner struct {
 	getSealDelay dtypes.GetSealingDelayFunc
 	sealing      *sealing.Sealing
 
-	jrnl           journal.Journal
 	sealingEvtType journal.EventType
 }
 
@@ -94,7 +93,7 @@ type storageMinerApi interface {
 	WalletHas(context.Context, address.Address) (bool, error)
 }
 
-func NewMiner(api storageMinerApi, maddr, worker address.Address, h host.Host, ds datastore.Batching, sealer sectorstorage.SectorManager, sc sealing.SectorIDCounter, verif ffiwrapper.Verifier, gsd dtypes.GetSealingDelayFunc, jrnl journal.Journal) (*Miner, error) {
+func NewMiner(api storageMinerApi, maddr, worker address.Address, h host.Host, ds datastore.Batching, sealer sectorstorage.SectorManager, sc sealing.SectorIDCounter, verif ffiwrapper.Verifier, gsd dtypes.GetSealingDelayFunc) (*Miner, error) {
 	m := &Miner{
 		api:    api,
 		h:      h,
@@ -107,8 +106,7 @@ func NewMiner(api storageMinerApi, maddr, worker address.Address, h host.Host, d
 		worker:       worker,
 		getSealDelay: gsd,
 
-		jrnl:           jrnl,
-		sealingEvtType: jrnl.RegisterEventType("storage", "sealing_states"),
+		sealingEvtType: journal.J.RegisterEventType("storage", "sealing_states"),
 	}
 
 	return m, nil
@@ -135,7 +133,7 @@ func (m *Miner) Run(ctx context.Context) error {
 }
 
 func (m *Miner) handleSealingNotifications(before, after sealing.SectorInfo) {
-	journal.MaybeRecordEvent(m.jrnl, m.sealingEvtType, func() interface{} {
+	journal.J.RecordEvent(m.sealingEvtType, func() interface{} {
 		return SealingStateEvt{
 			SectorNumber: before.SectorNumber,
 			SectorType:   before.SectorType,

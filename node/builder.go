@@ -152,14 +152,18 @@ type Settings struct {
 
 func defaults() []Option {
 	return []Option{
+		// global system journal.
+		Override(new(journal.DisabledEvents), journal.DefaultDisabledEvents),
+		Override(new(journal.Journal), modules.OpenFilesystemJournal),
+		Override(InitJournalKey, func(j journal.Journal) {
+			journal.J = j // eagerly sets the global journal through fx.Invoke.
+		}),
+
 		Override(new(helpers.MetricsCtx), context.Background),
 		Override(new(record.Validator), modules.RecordValidator),
 		Override(new(dtypes.Bootstrapper), dtypes.Bootstrapper(false)),
 		Override(new(dtypes.ShutdownChan), make(chan struct{})),
-		Override(new(journal.Journal), modules.OpenFilesystemJournal),
-		Override(new(journal.DisabledEvents), journal.DefaultDisabledEvents),
 
-		Override(InitJournalKey, func(j journal.Journal) { /* forces the creation of the journal at startup */ }),
 		// Filecoin modules
 
 	}

@@ -26,7 +26,7 @@ import (
 var errNoPartitions = errors.New("no partitions")
 
 func (s *WindowPoStScheduler) failPost(err error, deadline *miner.DeadlineInfo) {
-	journal.MaybeRecordEvent(s.jrnl, s.wdPoStEvtType, func() interface{} {
+	journal.J.RecordEvent(s.wdPoStEvtType, func() interface{} {
 		return s.enrichWithTipset(WindowPoStEvt{
 			State:    "failed",
 			Deadline: s.activeDeadline,
@@ -48,7 +48,7 @@ func (s *WindowPoStScheduler) doPost(ctx context.Context, deadline *miner.Deadli
 	s.abort = abort
 	s.activeDeadline = deadline
 
-	journal.MaybeRecordEvent(s.jrnl, s.wdPoStEvtType, func() interface{} {
+	journal.J.RecordEvent(s.wdPoStEvtType, func() interface{} {
 		return s.enrichWithTipset(WindowPoStEvt{
 			State:    "started",
 			Deadline: s.activeDeadline,
@@ -64,7 +64,7 @@ func (s *WindowPoStScheduler) doPost(ctx context.Context, deadline *miner.Deadli
 		// recordEvent records a successful proofs_processed event in the
 		// journal, even if it was a noop (no partitions).
 		recordEvent := func(partitions []miner.PoStPartition, mcid cid.Cid) {
-			journal.MaybeRecordEvent(s.jrnl, s.wdPoStEvtType, func() interface{} {
+			journal.J.RecordEvent(s.wdPoStEvtType, func() interface{} {
 				return s.enrichWithTipset(WindowPoStEvt{
 					State:    "proofs_processed",
 					Deadline: s.activeDeadline,
@@ -95,7 +95,7 @@ func (s *WindowPoStScheduler) doPost(ctx context.Context, deadline *miner.Deadli
 			return
 		}
 
-		journal.MaybeRecordEvent(s.jrnl, s.wdPoStEvtType, func() interface{} {
+		journal.J.RecordEvent(s.wdPoStEvtType, func() interface{} {
 			return s.enrichWithTipset(WindowPoStEvt{
 				State:    "succeeded",
 				Deadline: s.activeDeadline,
@@ -159,7 +159,7 @@ func (s *WindowPoStScheduler) checkNextRecoveries(ctx context.Context, dlIdx uin
 		Recoveries: []miner.RecoveryDeclaration{},
 	}
 
-	defer journal.MaybeRecordEvent(s.jrnl, s.wdPoStEvtType, func() interface{} {
+	defer journal.J.RecordEvent(s.wdPoStEvtType, func() interface{} {
 		var mcid cid.Cid
 		if sm != nil {
 			mcid = sm.Cid()
@@ -265,7 +265,7 @@ func (s *WindowPoStScheduler) checkNextFaults(ctx context.Context, dlIdx uint64,
 		Faults: []miner.FaultDeclaration{},
 	}
 
-	defer journal.MaybeRecordEvent(s.jrnl, s.wdPoStEvtType, func() interface{} {
+	defer journal.J.RecordEvent(s.wdPoStEvtType, func() interface{} {
 		var mcid cid.Cid
 		if sm != nil {
 			mcid = sm.Cid()

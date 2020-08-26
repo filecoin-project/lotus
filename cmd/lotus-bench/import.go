@@ -87,7 +87,7 @@ var importBenchCmd = &cli.Command{
 		}
 		bs = cbs
 		ds := datastore.NewMapDatastore()
-		cs := store.NewChainStore(bs, ds, vm.Syscalls(ffiwrapper.ProofVerifier), journal.NilJournal())
+		cs := store.NewChainStore(bs, ds, vm.Syscalls(ffiwrapper.ProofVerifier))
 		stm := stmgr.NewStateManager(cs)
 
 		prof, err := os.Create("import-bench.prof")

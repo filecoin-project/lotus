@@ -11,6 +11,6 @@ func NilJournal() Journal {
 
 func (n *nilJournal) RegisterEventType(_, _ string) EventType { return EventType{} }
 
-func (n *nilJournal) RecordEvent(_ EventType, _ interface{}) {}
+func (n *nilJournal) RecordEvent(_ EventType, _ func() interface{}) {}
 
 func (n *nilJournal) Close() error { return nil }

@@ -44,11 +44,11 @@ import (
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/go-storedcounter"
-	"github.com/filecoin-project/lotus/journal"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+
 	sectorstorage "github.com/filecoin-project/sector-storage"
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/sector-storage/stores"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 	sealing "github.com/filecoin-project/storage-fsm"
 
 	lapi "github.com/filecoin-project/lotus/api"
@@ -155,7 +155,6 @@ type StorageMinerParams struct {
 	SectorIDCounter   sealing.SectorIDCounter
 	Verifier          ffiwrapper.Verifier
 	GetSealingDelayFn dtypes.GetSealingDelayFunc
-	Journal           journal.Journal
 }
 
 func StorageMiner(params StorageMinerParams) (*storage.Miner, error) {
@@ -169,7 +168,6 @@ func StorageMiner(params StorageMinerParams) (*storage.Miner, error) {
 		sc     = params.SectorIDCounter
 		verif  = params.Verifier
 		gsd    = params.GetSealingDelayFn
-		jrnl   = params.Journal
 	)
 	maddr, err := minerAddrFromDS(ds)
 	if err != nil {
@@ -188,12 +186,12 @@ func StorageMiner(params StorageMinerParams) (*storage.Miner, error) {
 		return nil, err
 	}
 
-	fps, err := storage.NewWindowedPoStScheduler(api, sealer, sealer, maddr, worker, jrnl)
+	fps, err := storage.NewWindowedPoStScheduler(api, sealer, sealer, maddr, worker)
 	if err != nil {
 		return nil, err
 	}
 
-	sm, err := storage.NewMiner(api, maddr, worker, h, ds, sealer, sc, verif, gsd, jrnl)
+	sm, err := storage.NewMiner(api, maddr, worker, h, ds, sealer, sc, verif, gsd)
 	if err != nil {
 		return nil, err
 	}
@@ -340,13 +338,13 @@ func StagingGraphsync(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.Stagi
 	return gs
 }
 
-func SetupBlockProducer(lc fx.Lifecycle, ds dtypes.MetadataDS, api lapi.FullNode, epp gen.WinningPoStProver, sf *slashfilter.SlashFilter, jrnl journal.Journal) (*miner.Miner, error) {
+func SetupBlockProducer(lc fx.Lifecycle, ds dtypes.MetadataDS, api lapi.FullNode, epp gen.WinningPoStProver, sf *slashfilter.SlashFilter) (*miner.Miner, error) {
 	minerAddr, err := minerAddrFromDS(ds)
 	if err != nil {
 		return nil, err
 	}
 
-	m := miner.NewMiner(api, epp, minerAddr, sf, jrnl)
+	m := miner.NewMiner(api, epp, minerAddr, sf)
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {

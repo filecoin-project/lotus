@@ -234,7 +234,7 @@ func (mpp *mpoolProvider) ChainComputeBaseFee(ctx context.Context, ts *types.Tip
 	return baseFee, nil
 }
 
-func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName, jrnl journal.Journal) (*MessagePool, error) {
+func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName) (*MessagePool, error) {
 	cache, _ := lru.New2Q(build.BlsSignatureCacheSize)
 	verifcache, _ := lru.New2Q(build.VerifSigCacheSize)
 
@@ -263,11 +263,10 @@ func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName, jrnl jo
 		cfg:           cfg,
 		rbfNum:        types.NewInt(uint64((cfg.ReplaceByFeeRatio - 1) * RbfDenom)),
 		rbfDenom:      types.NewInt(RbfDenom),
-		jrnl:          jrnl,
 		evtTypes: [...]journal.EventType{
-			evtTypeMpoolAdd:    jrnl.RegisterEventType("mpool", "add"),
-			evtTypeMpoolRemove: jrnl.RegisterEventType("mpool", "remove"),
-			evtTypeMpoolRepub:  jrnl.RegisterEventType("mpool", "repub"),
+			evtTypeMpoolAdd:    journal.J.RegisterEventType("mpool", "add"),
+			evtTypeMpoolRemove: journal.J.RegisterEventType("mpool", "remove"),
+			evtTypeMpoolRepub:  journal.J.RegisterEventType("mpool", "repub"),
 		},
 	}
 
@@ -372,7 +371,7 @@ func (mp *MessagePool) runLoop() {
 			}
 
 			if len(outputMsgs) > 0 {
-				journal.MaybeRecordEvent(mp.jrnl, mp.evtTypes[evtTypeMpoolRepub], func() interface{} {
+				journal.J.RecordEvent(mp.evtTypes[evtTypeMpoolRepub], func() interface{} {
 					msgs := make([]MessagePoolEvt_Message, 0, len(outputMsgs))
 					for _, m := range outputMsgs {
 						msgs = append(msgs, MessagePoolEvt_Message{Message: m.Message, CID: m.Cid()})
@@ -584,7 +583,7 @@ func (mp *MessagePool) addLocked(m *types.SignedMessage) error {
 		Message: m,
 	}, localUpdates)
 
-	journal.MaybeRecordEvent(mp.jrnl, mp.evtTypes[evtTypeMpoolAdd], func() interface{} {
+	journal.J.RecordEvent(mp.evtTypes[evtTypeMpoolAdd], func() interface{} {
 		return MessagePoolEvt{
 			Action:   "add",
 			Messages: []MessagePoolEvt_Message{{Message: m.Message, CID: m.Cid()}},
@@ -732,7 +731,7 @@ func (mp *MessagePool) remove(from address.Address, nonce uint64) {
 			Message: m,
 		}, localUpdates)
 
-		journal.MaybeRecordEvent(mp.jrnl, mp.evtTypes[evtTypeMpoolRemove], func() interface{} {
+		journal.J.RecordEvent(mp.evtTypes[evtTypeMpoolRemove], func() interface{} {
 			return MessagePoolEvt{
 				Action:   "remove",
 				Messages: []MessagePoolEvt_Message{{Message: m.Message, CID: m.Cid()}}}

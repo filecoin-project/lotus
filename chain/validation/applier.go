@@ -69,7 +69,7 @@ func (a *Applier) ApplySignedMessage(epoch abi.ChainEpoch, msg *vtypes.SignedMes
 }
 
 func (a *Applier) ApplyTipSetMessages(epoch abi.ChainEpoch, blocks []vtypes.BlockMessagesInfo, rnd vstate.RandomnessSource) (vtypes.ApplyTipSetResult, error) {
-	cs := store.NewChainStore(a.stateWrapper.bs, a.stateWrapper.ds, a.syscalls, journal.NilJournal())
+	cs := store.NewChainStore(a.stateWrapper.bs, a.stateWrapper.ds, a.syscalls)
 	sm := stmgr.NewStateManager(cs)
 
 	var bms []stmgr.BlockMessages

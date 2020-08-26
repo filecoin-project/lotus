@@ -66,14 +66,13 @@ type WindowPoStScheduler struct {
 	activeDeadline *miner.DeadlineInfo
 	abort          context.CancelFunc
 
-	jrnl          journal.Journal
 	wdPoStEvtType journal.EventType
 
 	// failed abi.ChainEpoch // eps
 	// failLk sync.Mutex
 }
 
-func NewWindowedPoStScheduler(api storageMinerApi, sb storage.Prover, ft sectorstorage.FaultTracker, actor address.Address, worker address.Address, jrnl journal.Journal) (*WindowPoStScheduler, error) {
+func NewWindowedPoStScheduler(api storageMinerApi, sb storage.Prover, ft sectorstorage.FaultTracker, actor address.Address, worker address.Address) (*WindowPoStScheduler, error) {
 	mi, err := api.StateMinerInfo(context.TODO(), actor, types.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("getting sector size: %w", err)
@@ -93,8 +92,7 @@ func NewWindowedPoStScheduler(api storageMinerApi, sb storage.Prover, ft sectors
 
 		actor:         actor,
 		worker:        worker,
-		jrnl:          jrnl,
-		wdPoStEvtType: jrnl.RegisterEventType("storage", "wdpost"),
+		wdPoStEvtType: journal.J.RegisterEventType("storage", "wdpost"),
 	}, nil
 }
 
@@ -248,7 +246,7 @@ func (s *WindowPoStScheduler) abortActivePoSt() {
 	if s.abort != nil {
 		s.abort()
 
-		journal.MaybeRecordEvent(s.jrnl, s.wdPoStEvtType, func() interface{} {
+		journal.J.RecordEvent(s.wdPoStEvtType, func() interface{} {
 			return s.enrichWithTipset(WindowPoStEvt{
 				State:    "abort",
 				Deadline: s.activeDeadline,

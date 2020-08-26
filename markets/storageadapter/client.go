@@ -43,8 +43,6 @@ type ClientNodeAdapter struct {
 	fm *market.FundMgr
 	ev *events.Events
 
-	jrnl journal.Journal
-
 	// index 0 is unused, as it corresponds to evtTypeDealAccepted, a provider-only event.
 	evtTypes [4]journal.EventType
 }
@@ -54,7 +52,7 @@ type clientApi struct {
 	full.StateAPI
 }
 
-func NewClientNodeAdapter(state full.StateAPI, chain full.ChainAPI, mpool full.MpoolAPI, sm *stmgr.StateManager, cs *store.ChainStore, fm *market.FundMgr, jrnl journal.Journal) storagemarket.StorageClientNode {
+func NewClientNodeAdapter(state full.StateAPI, chain full.ChainAPI, mpool full.MpoolAPI, sm *stmgr.StateManager, cs *store.ChainStore, fm *market.FundMgr) storagemarket.StorageClientNode {
 	return &ClientNodeAdapter{
 		StateAPI: state,
 		ChainAPI: chain,
@@ -65,11 +63,10 @@ func NewClientNodeAdapter(state full.StateAPI, chain full.ChainAPI, mpool full.M
 		fm: fm,
 		ev: events.NewEvents(context.TODO(), &clientApi{chain, state}),
 
-		jrnl: jrnl,
 		evtTypes: [...]journal.EventType{
-			evtTypeDealSectorCommitted: jrnl.RegisterEventType("markets:storage:client", "deal_sector_committed"),
-			evtTypeDealExpired:         jrnl.RegisterEventType("markets:storage:client", "deal_expired"),
-			evtTypeDealSlashed:         jrnl.RegisterEventType("markets:storage:client", "deal_slashed"),
+			evtTypeDealSectorCommitted: journal.J.RegisterEventType("markets:storage:client", "deal_sector_committed"),
+			evtTypeDealExpired:         journal.J.RegisterEventType("markets:storage:client", "deal_expired"),
+			evtTypeDealSlashed:         journal.J.RegisterEventType("markets:storage:client", "deal_slashed"),
 		},
 	}
 }
@@ -236,7 +233,7 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 	}
 
 	dealID := res.IDs[dealIdx]
-	journal.MaybeRecordEvent(c.jrnl, c.evtTypes[evtTypeDealAccepted], func() interface{} {
+	journal.J.RecordEvent(c.evtTypes[evtTypeDealAccepted], func() interface{} {
 		deal := deal // copy and strip fields we don't want to log to the journal
 		deal.ClientSignature = crypto.Signature{}
 		return ClientDealAcceptedEvt{ID: dealID, Deal: deal, Height: c.cs.GetHeaviestTipSet().Height()}
@@ -294,7 +291,7 @@ func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider 
 
 		log.Infof("Storage deal %d activated at epoch %d", dealId, sd.State.SectorStartEpoch)
 
-		journal.MaybeRecordEvent(c.jrnl, c.evtTypes[evtTypeDealSectorCommitted], func() interface{} {
+		journal.J.RecordEvent(c.evtTypes[evtTypeDealSectorCommitted], func() interface{} {
 			return ClientDealSectorCommittedEvt{ID: dealId, State: sd.State, Height: curH}
 		})
 
