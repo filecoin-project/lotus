@@ -142,6 +142,7 @@
   * [StateMinerRecoveries](#StateMinerRecoveries)
   * [StateMinerSectorCount](#StateMinerSectorCount)
   * [StateMinerSectors](#StateMinerSectors)
+  * [StateMinerPreCommittedSectors](#StateMinerPreCommittedSectors)
   * [StateNetworkName](#StateNetworkName)
   * [StateReadState](#StateReadState)
   * [StateReplay](#StateReplay)

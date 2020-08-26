@@ -173,6 +173,16 @@ func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, 
 	return LoadSectorsFromSet(ctx, sm.ChainStore().Blockstore(), mas.Sectors, filter, filterOut)
 }
 
+func GetMinerPreCommittedSectorsSet(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address, filter *abi.BitField, filterOut bool) ([]*api.ChainSectorInfo, error) {
+	var mas miner.State
+	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
+	if err != nil {
+		return nil, xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
+	}
+
+	return LoadSectorsFromSet(ctx, sm.ChainStore().Blockstore(), mas.PreCommittedSectors, filter, filterOut)
+}
+
 func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *StateManager, st cid.Cid, maddr address.Address, rand abi.PoStRandomness) ([]abi.SectorInfo, error) {
 	var partsProving []abi.BitField
 	var mas *miner.State

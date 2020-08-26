@@ -68,6 +68,14 @@ func (a *StateAPI) StateMinerSectors(ctx context.Context, addr address.Address, 
 	return stmgr.GetMinerSectorSet(ctx, a.StateManager, ts, addr, filter, filterOut)
 }
 
+func (a *StateAPI) StateMinerPreCommittedSectors(ctx context.Context, addr address.Address, filter *abi.BitField, filterOut bool, tsk types.TipSetKey) ([]*api.ChainSectorInfo, error) {
+	ts, err := a.Chain.GetTipSetFromKey(tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+	return stmgr.GetMinerPreCommittedSectorsSet(ctx, a.StateManager, ts, addr, filter, filterOut)
+}
+
 func (a *StateAPI) StateMinerActiveSectors(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]*api.ChainSectorInfo, error) {
 	var out []*api.ChainSectorInfo
 

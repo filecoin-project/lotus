@@ -260,6 +260,46 @@ var stateSectorsCmd = &cli.Command{
 	},
 }
 
+var statePreCommittedSectorsCmd = &cli.Command{
+	Name:      "precommittedsectors",
+	Usage:     "Query the precommitted sector set of a miner",
+	ArgsUsage: "[minerAddress]",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must specify miner to list sectors for")
+		}
+
+		maddr, err := address.NewFromString(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		ts, err := LoadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
+
+		sectors, err := api.StateMinerPreCommittedSectors(ctx, maddr, nil, true, ts.Key())
+		if err != nil {
+			return err
+		}
+
+		for _, s := range sectors {
+			fmt.Printf("%d: %x\n", s.Info.SectorNumber, s.Info.SealedCID)
+		}
+
+		return nil
+	},
+}
+
 var stateActiveSectorsCmd = &cli.Command{
 	Name:      "active-sectors",
 	Usage:     "Query the active sector set of a miner",
