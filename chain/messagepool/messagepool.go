@@ -50,6 +50,8 @@ var RepublishInterval = pubsub.TimeCacheDuration + time.Duration(5*build.BlockDe
 
 var minimumBaseFee = types.NewInt(uint64(build.MinimumBaseFee))
 
+var MaxActorPendingMessages = 1000
+
 var (
 	ErrMessageTooBig = errors.New("message too big")
 
@@ -160,6 +162,11 @@ func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool) (bool, error) {
 
 		ms.requiredFunds.Sub(ms.requiredFunds, exms.Message.RequiredFunds().Int)
 		//ms.requiredFunds.Sub(ms.requiredFunds, exms.Message.Value.Int)
+	}
+
+	if !has && len(ms.msgs) > MaxActorPendingMessages {
+		return false, xerrors.Errorf("too many pending messages for actor in the mpool: %w",
+			ErrSoftValidationFailure)
 	}
 
 	ms.msgs[m.Message.Nonce] = m
