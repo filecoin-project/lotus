@@ -386,7 +386,8 @@ workflows:
           test-suite-name: conformance
           packages: "./conformance"
       - test-conformance:
-          test-suite-name: conformance bleeding edge
+          name: test-conformance-bleeding-edge
+          test-suite-name: conformance-bleeding-edge
           packages: "./conformance"
           vectors-branch: master
       - build-debug
