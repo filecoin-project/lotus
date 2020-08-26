@@ -220,10 +220,11 @@ jobs:
               equal: [ "", << parameters.vectors-branch >> ]
           steps:
             - run:
-              command: |
-                cd extern/test-vectors
-                git fetch
-                git checkout origin/<< parameters.vectors-branch >>
+                name: checkout vectors branch
+                command: |
+                  cd extern/test-vectors
+                  git fetch
+                  git checkout origin/<< parameters.vectors-branch >>
       - run:
           name: go test
           environment:
