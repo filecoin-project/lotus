@@ -175,15 +175,15 @@ func (ms *msgSet) rm(nonce uint64) {
 }
 
 func (ms *msgSet) getRequiredFunds(nonce uint64) types.BigInt {
+	requiredFunds := new(stdbig.Int).Set(ms.requiredFunds)
+
 	m, has := ms.msgs[nonce]
 	if has {
-		requiredFunds := new(stdbig.Int).Set(ms.requiredFunds)
 		requiredFunds.Sub(requiredFunds, m.Message.RequiredFunds().Int)
 		requiredFunds.Sub(requiredFunds, m.Message.Value.Int)
-		return types.BigInt{Int: requiredFunds}
 	}
 
-	return types.BigInt{Int: new(stdbig.Int).Set(ms.requiredFunds)}
+	return types.BigInt{Int: requiredFunds}
 }
 
 func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName) (*MessagePool, error) {
