@@ -549,6 +549,8 @@ func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubs
 			fallthrough
 		case xerrors.Is(err, messagepool.ErrRBFTooLowPremium):
 			fallthrough
+		case xerrors.Is(err, messagepool.ErrTooManyPendingMessages):
+			fallthrough
 		case xerrors.Is(err, messagepool.ErrNonceTooLow):
 			return pubsub.ValidationIgnore
 		default:

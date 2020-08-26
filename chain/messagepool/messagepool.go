@@ -65,8 +65,9 @@ var (
 
 	ErrInvalidToAddr = errors.New("message had invalid to address")
 
-	ErrSoftValidationFailure = errors.New("validation failure")
-	ErrRBFTooLowPremium      = errors.New("replace by fee has too low GasPremium")
+	ErrSoftValidationFailure  = errors.New("validation failure")
+	ErrRBFTooLowPremium       = errors.New("replace by fee has too low GasPremium")
+	ErrTooManyPendingMessages = errors.New("too many pending messages for actor")
 
 	ErrTryAgain = errors.New("state inconsistency while pushing message; please try again")
 )
@@ -165,8 +166,7 @@ func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool) (bool, error) {
 	}
 
 	if !has && len(ms.msgs) > MaxActorPendingMessages {
-		return false, xerrors.Errorf("too many pending messages for actor in the mpool: %w",
-			ErrSoftValidationFailure)
+		return false, ErrTooManyPendingMessages
 	}
 
 	ms.msgs[m.Message.Nonce] = m
