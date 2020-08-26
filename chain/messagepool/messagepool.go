@@ -417,8 +417,19 @@ func (mp *MessagePool) checkBalance(m *types.SignedMessage, curTs *types.TipSet)
 		return xerrors.Errorf("failed to check sender balance: %s: %w", err, ErrBroadcastAnyway)
 	}
 
-	if balance.LessThan(m.Message.RequiredFunds()) {
-		return xerrors.Errorf("not enough funds (required: %s, balance: %s): %w", types.FIL(m.Message.RequiredFunds()), types.FIL(balance), ErrNotEnoughFunds)
+	requiredFunds := types.BigAdd(m.Message.RequiredFunds(), m.Message.Value)
+	if balance.LessThan(requiredFunds) {
+		return xerrors.Errorf("not enough funds (required: %s, balance: %s): %w", types.FIL(requiredFunds), types.FIL(balance), ErrNotEnoughFunds)
+	}
+
+	mset, ok := mp.pending[m.Message.From]
+	if ok {
+		requiredFunds = types.BigAdd(requiredFunds, types.BigInt{Int: mset.requiredFunds})
+		if balance.LessThan(requiredFunds) {
+			// Note: we fail here for ErrBroadcastAnyway to signal a soft failure because we might
+			// be out of sync.
+			return xerrors.Errorf("not enough funds (required: %s, balance: %s): %w", types.FIL(requiredFunds), types.FIL(balance), ErrBroadcastAnyway)
+		}
 	}
 
 	return nil
