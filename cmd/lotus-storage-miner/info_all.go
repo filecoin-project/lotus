@@ -63,6 +63,11 @@ var infoAllCmd = &cli.Command{
 			return err
 		}
 
+		fmt.Println("\n#: Reachability")
+		if err := lcli.NetReachability.Action(cctx); err != nil {
+			return err
+		}
+
 		// Very Verbose info
 		fmt.Println("\n#: Peers")
 		if err := lcli.NetPeers.Action(cctx); err != nil {
@@ -86,6 +91,11 @@ var infoAllCmd = &cli.Command{
 
 		fmt.Println("\n#: Storage Deals")
 		if err := dealsListCmd.Action(cctx); err != nil {
+			return err
+		}
+
+		fmt.Println("\n#: Retrieval Deals")
+		if err := retrievalDealsListCmd.Action(cctx); err != nil {
 			return err
 		}
 
@@ -116,7 +126,9 @@ var infoAllCmd = &cli.Command{
 
 			fs := &flag.FlagSet{}
 			for _, f := range sectorsStatusCmd.Flags {
-				f.Apply(fs)
+				if err := f.Apply(fs); err != nil {
+					return err
+				}
 			}
 			if err := fs.Parse([]string{"--log", "--on-chain-info", fmt.Sprint(s)}); err != nil {
 				return err
@@ -136,6 +148,11 @@ var infoAllCmd = &cli.Command{
 			if err := storageFindCmd.Action(cli.NewContext(cctx.App, fs, cctx)); err != nil {
 				return err
 			}
+		}
+
+		fmt.Println("\n#: Goroutines")
+		if err := lcli.PprofGoroutines.Action(cctx); err != nil {
+			return err
 		}
 
 		return nil

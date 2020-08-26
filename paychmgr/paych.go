@@ -5,6 +5,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
+
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
@@ -24,9 +26,8 @@ type channelAccessor struct {
 	// waitCtx is used by processes that wait for things to be confirmed
 	// on chain
 	waitCtx       context.Context
-	sm            StateManagerApi
 	sa            *stateAccessor
-	api           paychApi
+	api           managerAPI
 	store         *Store
 	lk            *channelLock
 	fundsReqQueue []*fundsReq
@@ -35,12 +36,12 @@ type channelAccessor struct {
 
 func newChannelAccessor(pm *Manager) *channelAccessor {
 	return &channelAccessor{
-		lk:      &channelLock{globalLock: &pm.lk},
-		sm:      pm.sm,
-		sa:      &stateAccessor{sm: pm.sm},
-		api:     pm.pchapi,
-		store:   pm.store,
-		waitCtx: pm.ctx,
+		lk:           &channelLock{globalLock: &pm.lk},
+		sa:           pm.sa,
+		api:          pm.pchapi,
+		store:        pm.store,
+		msgListeners: newMsgListeners(),
+		waitCtx:      pm.ctx,
 	}
 }
 
@@ -63,19 +64,21 @@ func (ca *channelAccessor) checkVoucherValidUnlocked(ctx context.Context, ch add
 		return nil, xerrors.Errorf("voucher ChannelAddr doesn't match channel address, got %s, expected %s", sv.ChannelAddr, ch)
 	}
 
-	act, pchState, err := ca.sa.loadPaychState(ctx, ch)
+	// Load payment channel actor state
+	act, pchState, err := ca.sa.loadPaychActorState(ctx, ch)
 	if err != nil {
 		return nil, err
 	}
 
+	// Load channel "From" account actor state
 	var actState account.State
-	_, err = ca.sm.LoadActorState(ctx, pchState.From, &actState, nil)
+	_, err = ca.api.LoadActorState(ctx, pchState.From, &actState, nil)
 	if err != nil {
 		return nil, err
 	}
 	from := actState.Address
 
-	// verify signature
+	// verify voucher signature
 	vb, err := sv.SigningBytes()
 	if err != nil {
 		return nil, err
@@ -89,7 +92,7 @@ func (ca *channelAccessor) checkVoucherValidUnlocked(ctx context.Context, ch add
 	}
 
 	// Check the voucher against the highest known voucher nonce / value
-	laneStates, err := ca.laneState(pchState, ch)
+	laneStates, err := ca.laneState(ctx, pchState, ch)
 	if err != nil {
 		return nil, err
 	}
@@ -180,7 +183,7 @@ func (ca *channelAccessor) checkVoucherSpendable(ctx context.Context, ch address
 		return false, err
 	}
 
-	ret, err := ca.sm.Call(ctx, &types.Message{
+	ret, err := ca.api.Call(ctx, &types.Message{
 		From:   recipient,
 		To:     ch,
 		Method: builtin.MethodsPaych.UpdateChannelState,
@@ -199,7 +202,7 @@ func (ca *channelAccessor) checkVoucherSpendable(ctx context.Context, ch address
 
 func (ca *channelAccessor) getPaychRecipient(ctx context.Context, ch address.Address) (address.Address, error) {
 	var state paych.State
-	if _, err := ca.sm.LoadActorState(ctx, ch, &state, nil); err != nil {
+	if _, err := ca.api.LoadActorState(ctx, ch, &state, nil); err != nil {
 		return address.Address{}, err
 	}
 
@@ -314,14 +317,29 @@ func (ca *channelAccessor) nextNonceForLane(ctx context.Context, ch address.Addr
 
 // laneState gets the LaneStates from chain, then applies all vouchers in
 // the data store over the chain state
-func (ca *channelAccessor) laneState(state *paych.State, ch address.Address) (map[uint64]*paych.LaneState, error) {
+func (ca *channelAccessor) laneState(ctx context.Context, state *paych.State, ch address.Address) (map[uint64]*paych.LaneState, error) {
 	// TODO: we probably want to call UpdateChannelState with all vouchers to be fully correct
 	//  (but technically dont't need to)
-	laneStates := make(map[uint64]*paych.LaneState, len(state.LaneStates))
 
 	// Get the lane state from the chain
-	for _, laneState := range state.LaneStates {
-		laneStates[laneState.ID] = laneState
+	store := ca.api.AdtStore(ctx)
+	lsamt, err := adt.AsArray(store, state.LaneStates)
+	if err != nil {
+		return nil, err
+	}
+
+	// Note: we use a map instead of an array to store laneStates because the
+	// client sets the lane ID (the index) and potentially they could use a
+	// very large index.
+	var ls paych.LaneState
+	laneStates := make(map[uint64]*paych.LaneState, lsamt.Length())
+	err = lsamt.ForEach(&ls, func(i int64) error {
+		current := ls
+		laneStates[uint64(i)] = &current
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	// Apply locally stored vouchers
@@ -340,7 +358,6 @@ func (ca *channelAccessor) laneState(state *paych.State, ch address.Address) (ma
 		ls, ok := laneStates[v.Voucher.Lane]
 		if !ok {
 			ls = &paych.LaneState{
-				ID:       v.Voucher.Lane,
 				Redeemed: types.NewInt(0),
 				Nonce:    0,
 			}
@@ -404,7 +421,7 @@ func (ca *channelAccessor) settle(ctx context.Context, ch address.Address) (cid.
 		Value:  types.NewInt(0),
 		Method: builtin.MethodsPaych.Settle,
 	}
-	smgs, err := ca.api.MpoolPushMessage(ctx, msg)
+	smgs, err := ca.api.MpoolPushMessage(ctx, msg, nil)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -434,7 +451,7 @@ func (ca *channelAccessor) collect(ctx context.Context, ch address.Address) (cid
 		Method: builtin.MethodsPaych.Collect,
 	}
 
-	smsg, err := ca.api.MpoolPushMessage(ctx, msg)
+	smsg, err := ca.api.MpoolPushMessage(ctx, msg, nil)
 	if err != nil {
 		return cid.Undef, err
 	}

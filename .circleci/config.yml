@@ -252,6 +252,27 @@ jobs:
       - run:
           command: "! go fmt ./... 2>&1 | read"
 
+  cbor-gen-check:
+    executor: golang
+    steps:
+      - install-deps
+      - prepare
+      - run: make deps
+      - run: go install golang.org/x/tools/cmd/goimports
+      - run: go install github.com/hannahhoward/cbor-gen-for
+      - run: go generate ./...
+      - run: git --no-pager diff
+      - run: git --no-pager diff --quiet
+
+  docs-check:
+    executor: golang
+    steps:
+      - install-deps
+      - prepare
+      - run: make docsgen
+      - run: git --no-pager diff
+      - run: git --no-pager diff --quiet
+
   lint: &lint
     description: |
       Run golangci-lint.
@@ -288,9 +309,6 @@ jobs:
           command: |
             $HOME/.local/bin/golangci-lint run -v --timeout 2m \
               --concurrency << parameters.concurrency >> << parameters.args >>
-  lint-changes:
-    <<: *lint
-
   lint-all:
     <<: *lint
 
@@ -319,10 +337,11 @@ workflows:
   version: 2.1
   ci:
     jobs:
-      - lint-changes:
-          args: "--new-from-rev origin/next"
+      - lint-all
       - mod-tidy-check
       - gofmt
+      - cbor-gen-check
+      - docs-check
       - test:
           codecov-upload: true
           test-suite-name: full

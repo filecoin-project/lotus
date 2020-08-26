@@ -12,8 +12,8 @@ import (
 	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
-	"github.com/filecoin-project/sector-storage/fsutil"
-	"github.com/filecoin-project/sector-storage/storiface"
+	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )
 
 const veryLargeRle = 1 << 20
@@ -58,7 +58,7 @@ func writeTrailer(maxPieceSize int64, w *os.File, r rlepluslazy.RunIterator) err
 }
 
 func createPartialFile(maxPieceSize abi.PaddedPieceSize, path string) (*partialFile, error) {
-	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0644)
+	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0644) // nolint
 	if err != nil {
 		return nil, xerrors.Errorf("openning partial file '%s': %w", path, err)
 	}
@@ -82,7 +82,7 @@ func createPartialFile(maxPieceSize abi.PaddedPieceSize, path string) (*partialF
 		return nil
 	}()
 	if err != nil {
-		f.Close()
+		_ = f.Close()
 		return nil, err
 	}
 	if err := f.Close(); err != nil {
@@ -93,7 +93,7 @@ func createPartialFile(maxPieceSize abi.PaddedPieceSize, path string) (*partialF
 }
 
 func openPartialFile(maxPieceSize abi.PaddedPieceSize, path string) (*partialFile, error) {
-	f, err := os.OpenFile(path, os.O_RDWR, 0644)
+	f, err := os.OpenFile(path, os.O_RDWR, 0644) // nolint
 	if err != nil {
 		return nil, xerrors.Errorf("openning partial file '%s': %w", path, err)
 	}
@@ -118,7 +118,7 @@ func openPartialFile(maxPieceSize abi.PaddedPieceSize, path string) (*partialFil
 		trailerLen := binary.LittleEndian.Uint32(tlen[:])
 		expectLen := int64(trailerLen) + int64(len(tlen)) + int64(maxPieceSize)
 		if expectLen != st.Size() {
-			return xerrors.Errorf("file '%d' has inconsistent length; has %d bytes; expected %d (%d trailer, %d sector data)", path, st.Size(), expectLen, int64(trailerLen)+int64(len(tlen)), maxPieceSize)
+			return xerrors.Errorf("file '%s' has inconsistent length; has %d bytes; expected %d (%d trailer, %d sector data)", path, st.Size(), expectLen, int64(trailerLen)+int64(len(tlen)), maxPieceSize)
 		}
 		if trailerLen > veryLargeRle {
 			log.Warnf("Partial file '%s' has a VERY large trailer with %d bytes", path, trailerLen)
@@ -161,7 +161,7 @@ func openPartialFile(maxPieceSize abi.PaddedPieceSize, path string) (*partialFil
 		return nil
 	}()
 	if err != nil {
-		f.Close()
+		_ = f.Close()
 		return nil, err
 	}
 

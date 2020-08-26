@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"text/tabwriter"
 	"time"
 
+	tm "github.com/buger/goterm"
 	"github.com/docker/go-units"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-cidutil/cidenc"
@@ -266,7 +268,7 @@ var getAskCmd = &cli.Command{
 		}
 
 		w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
-		fmt.Fprintf(w, "Price per GiB/Epoch\tMin. Piece Size (padded)\tMax. Piece Size (padded)\tExpiry (Epoch)\tExpiry (Appx. Rem. Time)\tSeq. No.\n")
+		fmt.Fprintf(w, "Price per GiB/Epoch\tVerified\tMin. Piece Size (padded)\tMax. Piece Size (padded)\tExpiry (Epoch)\tExpiry (Appx. Rem. Time)\tSeq. No.\n")
 		if ask == nil {
 			fmt.Fprintf(w, "<miner does not have an ask>\n")
 
@@ -284,7 +286,7 @@ var getAskCmd = &cli.Command{
 			rem = (time.Second * time.Duration(int64(dlt)*int64(build.BlockDelaySecs))).String()
 		}
 
-		fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%s\t%d\n", ask.Price, types.SizeStr(types.NewInt(uint64(ask.MinPieceSize))), types.SizeStr(types.NewInt(uint64(ask.MaxPieceSize))), ask.Expiry, rem, ask.SeqNo)
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%d\t%s\t%d\n", ask.Price, ask.VerifiedPrice, types.SizeStr(types.NewInt(uint64(ask.MinPieceSize))), types.SizeStr(types.NewInt(uint64(ask.MaxPieceSize))), ask.Expiry, rem, ask.SeqNo)
 
 		return w.Flush()
 	},
@@ -338,6 +340,12 @@ var dealsImportDataCmd = &cli.Command{
 var dealsListCmd = &cli.Command{
 	Name:  "list",
 	Usage: "List all deals for this miner",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:    "verbose",
+			Aliases: []string{"v"},
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
@@ -352,17 +360,38 @@ var dealsListCmd = &cli.Command{
 			return err
 		}
 
+		sort.Slice(deals, func(i, j int) bool {
+			return deals[i].CreationTime.Time().Before(deals[j].CreationTime.Time())
+		})
+
 		w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
 
-		_, _ = fmt.Fprintf(w, "ProposalCid\tDealId\tState\tClient\tSize\tPrice\tDuration\n")
+		verbose := cctx.Bool("verbose")
+
+		if verbose {
+			_, _ = fmt.Fprintf(w, "Creation\tProposalCid\tDealId\tState\tClient\tSize\tPrice\tDuration\tMessage\n")
+		} else {
+			_, _ = fmt.Fprintf(w, "ProposalCid\tDealId\tState\tClient\tSize\tPrice\tDuration\n")
+		}
 
 		for _, deal := range deals {
 			propcid := deal.ProposalCid.String()
-			propcid = "..." + propcid[len(propcid)-8:]
+			if !verbose {
+				propcid = "..." + propcid[len(propcid)-8:]
+			}
 
 			fil := types.FIL(types.BigMul(deal.Proposal.StoragePricePerEpoch, types.NewInt(uint64(deal.Proposal.Duration()))))
 
-			_, _ = fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\t%s\t%s\n", propcid, deal.DealID, storagemarket.DealStates[deal.State], deal.Proposal.Client, units.BytesSize(float64(deal.Proposal.PieceSize)), fil, deal.Proposal.Duration())
+			if verbose {
+				_, _ = fmt.Fprintf(w, "%s\t", deal.CreationTime.Time().Format(time.Stamp))
+			}
+
+			_, _ = fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\t%s\t%s", propcid, deal.DealID, storagemarket.DealStates[deal.State], deal.Proposal.Client, units.BytesSize(float64(deal.Proposal.PieceSize)), fil, deal.Proposal.Duration())
+			if verbose {
+				_, _ = fmt.Fprintf(w, "\t%s", deal.Message)
+			}
+
+			_, _ = fmt.Fprintln(w)
 		}
 
 		return w.Flush()
@@ -485,5 +514,89 @@ var setSealDurationCmd = &cli.Command{
 		delay := hs * uint64(time.Minute)
 
 		return nodeApi.SectorSetExpectedSealDuration(ctx, time.Duration(delay))
+	},
+}
+
+var dataTransfersCmd = &cli.Command{
+	Name:  "data-transfers",
+	Usage: "Manage data transfers",
+	Subcommands: []*cli.Command{
+		transfersListCmd,
+	},
+}
+
+var transfersListCmd = &cli.Command{
+	Name:  "list",
+	Usage: "List ongoing data transfers for this miner",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "color",
+			Usage: "use color in display output",
+			Value: true,
+		},
+		&cli.BoolFlag{
+			Name:  "completed",
+			Usage: "show completed data transfers",
+		},
+		&cli.BoolFlag{
+			Name:  "watch",
+			Usage: "watch deal updates in real-time, rather than a one time list",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		channels, err := api.MarketListDataTransfers(ctx)
+		if err != nil {
+			return err
+		}
+
+		completed := cctx.Bool("completed")
+		color := cctx.Bool("color")
+		watch := cctx.Bool("watch")
+
+		if watch {
+			channelUpdates, err := api.MarketDataTransferUpdates(ctx)
+			if err != nil {
+				return err
+			}
+
+			for {
+				tm.Clear() // Clear current screen
+
+				tm.MoveCursor(1, 1)
+
+				lcli.OutputDataTransferChannels(tm.Screen, channels, completed, color)
+
+				tm.Flush()
+
+				select {
+				case <-ctx.Done():
+					return nil
+				case channelUpdate := <-channelUpdates:
+					var found bool
+					for i, existing := range channels {
+						if existing.TransferID == channelUpdate.TransferID &&
+							existing.OtherPeer == channelUpdate.OtherPeer &&
+							existing.IsSender == channelUpdate.IsSender &&
+							existing.IsInitiator == channelUpdate.IsInitiator {
+							channels[i] = channelUpdate
+							found = true
+							break
+						}
+					}
+					if !found {
+						channels = append(channels, channelUpdate)
+					}
+				}
+			}
+		}
+		lcli.OutputDataTransferChannels(os.Stdout, channels, completed, color)
+		return nil
 	},
 }

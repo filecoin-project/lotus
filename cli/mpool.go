@@ -20,10 +20,12 @@ var mpoolCmd = &cli.Command{
 	Usage: "Manage message pool",
 	Subcommands: []*cli.Command{
 		mpoolPending,
+		mpoolClear,
 		mpoolSub,
 		mpoolStat,
 		mpoolReplaceCmd,
 		mpoolFindCmd,
+		mpoolConfig,
 	},
 }
 
@@ -79,6 +81,39 @@ var mpoolPending = &cli.Command{
 		}
 
 		return nil
+	},
+}
+
+var mpoolClear = &cli.Command{
+	Name:  "clear",
+	Usage: "Clear all pending messages from the mpool (USE WITH CARE)",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "local",
+			Usage: "also clear local messages",
+		},
+		&cli.BoolFlag{
+			Name:  "really-do-it",
+			Usage: "must be specified for the action to take effect",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		really := cctx.Bool("really-do-it")
+		if !really {
+			//nolint:golint
+			return fmt.Errorf("--really-do-it must be specified for this action to have an effect; you have been warned")
+		}
+
+		local := cctx.Bool("local")
+
+		ctx := ReqContext(cctx)
+		return api.MpoolClear(ctx, local)
 	},
 }
 
@@ -312,7 +347,7 @@ var mpoolReplaceCmd = &cli.Command{
 		if err != nil {
 			return fmt.Errorf("parsing gas-premium: %w", err)
 		}
-		// TODO: estiamte fee cap here
+		// TODO: estimate fee cap here
 		msg.GasFeeCap, err = types.BigFromString(cctx.String("gas-feecap"))
 		if err != nil {
 			return fmt.Errorf("parsing gas-feecap: %w", err)
@@ -412,6 +447,51 @@ var mpoolFindCmd = &cli.Command{
 		}
 
 		fmt.Println(string(b))
+		return nil
+	},
+}
+
+var mpoolConfig = &cli.Command{
+	Name:      "config",
+	Usage:     "get or set current mpool configuration",
+	ArgsUsage: "[new-config]",
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() > 1 {
+			return cli.ShowCommandHelp(cctx, cctx.Command.Name)
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		if cctx.Args().Len() == 0 {
+			cfg, err := api.MpoolGetConfig(ctx)
+			if err != nil {
+				return err
+			}
+
+			bytes, err := json.Marshal(cfg)
+			if err != nil {
+				return err
+			}
+
+			fmt.Println(string(bytes))
+		} else {
+			cfg := new(types.MpoolConfig)
+			bytes := []byte(cctx.Args().Get(0))
+
+			err := json.Unmarshal(bytes, cfg)
+			if err != nil {
+				return err
+			}
+
+			return api.MpoolSetConfig(ctx, cfg)
+		}
+
 		return nil
 	},
 }

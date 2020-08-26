@@ -34,9 +34,10 @@ func RecordValidator(ps peerstore.Peerstore) record.Validator {
 	}
 }
 
-const JWTSecretName = "auth-jwt-private" //nolint:gosec
+const JWTSecretName = "auth-jwt-private"  //nolint:gosec
+const KTJwtHmacSecret = "jwt-hmac-secret" //nolint:gosec
 
-type jwtPayload struct {
+type JwtPayload struct {
 	Allow []auth.Permission
 }
 
@@ -52,7 +53,7 @@ func APISecret(keystore types.KeyStore, lr repo.LockedRepo) (*dtypes.APIAlg, err
 		}
 
 		key = types.KeyInfo{
-			Type:       "jwt-hmac-secret",
+			Type:       KTJwtHmacSecret,
 			PrivateKey: sk,
 		}
 
@@ -61,7 +62,7 @@ func APISecret(keystore types.KeyStore, lr repo.LockedRepo) (*dtypes.APIAlg, err
 		}
 
 		// TODO: make this configurable
-		p := jwtPayload{
+		p := JwtPayload{
 			Allow: apistruct.AllPermissions,
 		}
 

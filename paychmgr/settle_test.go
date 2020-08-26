@@ -22,11 +22,10 @@ func TestPaychSettle(t *testing.T) {
 	from := tutils.NewIDAddr(t, 101)
 	to := tutils.NewIDAddr(t, 102)
 
-	sm := newMockStateManager()
-	pchapi := newMockPaychAPI()
-	defer pchapi.close()
+	mock := newMockManagerAPI()
+	defer mock.close()
 
-	mgr, err := newManager(sm, store, pchapi)
+	mgr, err := newManager(store, mock)
 	require.NoError(t, err)
 
 	amt := big.NewInt(10)
@@ -35,7 +34,7 @@ func TestPaychSettle(t *testing.T) {
 
 	// Send channel create response
 	response := testChannelResponse(t, expch)
-	pchapi.receiveMsgResponse(mcid, response)
+	mock.receiveMsgResponse(mcid, response)
 
 	// Get the channel address
 	ch, err := mgr.GetPaychWaitReady(ctx, mcid)
@@ -56,7 +55,7 @@ func TestPaychSettle(t *testing.T) {
 
 	// Send new channel create response
 	response2 := testChannelResponse(t, expch2)
-	pchapi.receiveMsgResponse(mcid2, response2)
+	mock.receiveMsgResponse(mcid2, response2)
 
 	// Make sure the new channel is different from the old channel
 	ch2, err := mgr.GetPaychWaitReady(ctx, mcid2)

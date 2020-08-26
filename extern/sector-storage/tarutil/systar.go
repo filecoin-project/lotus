@@ -2,11 +2,12 @@ package tarutil
 
 import (
 	"archive/tar"
-	"golang.org/x/xerrors"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+
+	"golang.org/x/xerrors"
 
 	logging "github.com/ipfs/go-log/v2"
 )
@@ -14,7 +15,7 @@ import (
 var log = logging.Logger("tarutil") // nolint
 
 func ExtractTar(body io.Reader, dir string) error {
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0755); err != nil { // nolint
 		return xerrors.Errorf("mkdir: %w", err)
 	}
 
@@ -35,6 +36,8 @@ func ExtractTar(body io.Reader, dir string) error {
 			return xerrors.Errorf("creating file %s: %w", filepath.Join(dir, header.Name), err)
 		}
 
+		// This data is coming from a trusted source, no need to check the size.
+		//nolint:gosec
 		if _, err := io.Copy(f, tr); err != nil {
 			return err
 		}

@@ -36,20 +36,19 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/funds"
-	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/requestvalidation"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
 	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-multistore"
 	paramfetch "github.com/filecoin-project/go-paramfetch"
-	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/go-storedcounter"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
-	sectorstorage "github.com/filecoin-project/sector-storage"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/sector-storage/stores"
-	sealing "github.com/filecoin-project/storage-fsm"
+	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
+	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
+	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -146,65 +145,68 @@ func SectorIDCounter(ds dtypes.MetadataDS) sealing.SectorIDCounter {
 type StorageMinerParams struct {
 	fx.In
 
-	Lifecycle         fx.Lifecycle
-	MetricsCtx        helpers.MetricsCtx
-	API               lapi.FullNode
-	Host              host.Host
-	MetadataDS        dtypes.MetadataDS
-	Sealer            sectorstorage.SectorManager
-	SectorIDCounter   sealing.SectorIDCounter
-	Verifier          ffiwrapper.Verifier
-	GetSealingDelayFn dtypes.GetSealingDelayFunc
+	Lifecycle          fx.Lifecycle
+	MetricsCtx         helpers.MetricsCtx
+	API                lapi.FullNode
+	Host               host.Host
+	MetadataDS         dtypes.MetadataDS
+	Sealer             sectorstorage.SectorManager
+	SectorIDCounter    sealing.SectorIDCounter
+	Verifier           ffiwrapper.Verifier
+	GetSealingConfigFn dtypes.GetSealingConfigFunc
 }
 
-func StorageMiner(params StorageMinerParams) (*storage.Miner, error) {
-	var (
-		ds     = params.MetadataDS
-		mctx   = params.MetricsCtx
-		lc     = params.Lifecycle
-		api    = params.API
-		sealer = params.Sealer
-		h      = params.Host
-		sc     = params.SectorIDCounter
-		verif  = params.Verifier
-		gsd    = params.GetSealingDelayFn
-	)
-	maddr, err := minerAddrFromDS(ds)
-	if err != nil {
-		return nil, err
+func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*storage.Miner, error) {
+	return func(params StorageMinerParams) (*storage.Miner, error) {
+		var (
+			ds     = params.MetadataDS
+			mctx   = params.MetricsCtx
+			lc     = params.Lifecycle
+			api    = params.API
+			sealer = params.Sealer
+			h      = params.Host
+			sc     = params.SectorIDCounter
+			verif  = params.Verifier
+			gsd    = params.GetSealingConfigFn
+		)
+
+		maddr, err := minerAddrFromDS(ds)
+		if err != nil {
+			return nil, err
+		}
+
+		ctx := helpers.LifecycleCtx(mctx, lc)
+
+		mi, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			return nil, err
+		}
+
+		worker, err := api.StateAccountKey(ctx, mi.Worker, types.EmptyTSK)
+		if err != nil {
+			return nil, err
+		}
+
+		fps, err := storage.NewWindowedPoStScheduler(api, fc, sealer, sealer, maddr, worker)
+		if err != nil {
+			return nil, err
+		}
+
+		sm, err := storage.NewMiner(api, maddr, worker, h, ds, sealer, sc, verif, gsd, fc)
+		if err != nil {
+			return nil, err
+		}
+
+		lc.Append(fx.Hook{
+			OnStart: func(context.Context) error {
+				go fps.Run(ctx)
+				return sm.Run(ctx)
+			},
+			OnStop: sm.Stop,
+		})
+
+		return sm, nil
 	}
-
-	ctx := helpers.LifecycleCtx(mctx, lc)
-
-	mi, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
-	if err != nil {
-		return nil, err
-	}
-
-	worker, err := api.StateAccountKey(ctx, mi.Worker, types.EmptyTSK)
-	if err != nil {
-		return nil, err
-	}
-
-	fps, err := storage.NewWindowedPoStScheduler(api, sealer, sealer, maddr, worker)
-	if err != nil {
-		return nil, err
-	}
-
-	sm, err := storage.NewMiner(api, maddr, worker, h, ds, sealer, sc, verif, gsd)
-	if err != nil {
-		return nil, err
-	}
-
-	lc.Append(fx.Hook{
-		OnStart: func(context.Context) error {
-			go fps.Run(ctx)
-			return sm.Run(ctx)
-		},
-		OnStop: sm.Stop,
-	})
-
-	return sm, nil
 }
 
 func HandleRetrieval(host host.Host, lc fx.Lifecycle, m retrievalmarket.RetrievalProvider) {
@@ -233,15 +235,6 @@ func HandleDeals(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, h sto
 	})
 }
 
-// RegisterProviderValidator is an initialization hook that registers the provider
-// request validator with the data transfer module as the validator for
-// StorageDataTransferVoucher types
-func RegisterProviderValidator(mrv dtypes.ProviderRequestValidator, dtm dtypes.ProviderDataTransfer) {
-	if err := dtm.RegisterVoucherType(&requestvalidation.StorageDataTransferVoucher{}, (*requestvalidation.UnifiedRequestValidator)(mrv)); err != nil {
-		panic(err)
-	}
-}
-
 // NewProviderDAGServiceDataTransfer returns a data transfer manager that just
 // uses the provider's Staging DAG service for transfers
 func NewProviderDAGServiceDataTransfer(lc fx.Lifecycle, h host.Host, gs dtypes.StagingGraphsync, ds dtypes.MetadataDS) (dtypes.ProviderDataTransfer, error) {
@@ -264,11 +257,6 @@ func NewProviderDAGServiceDataTransfer(lc fx.Lifecycle, h host.Host, gs dtypes.S
 		},
 	})
 	return dt, nil
-}
-
-// NewProviderDealStore creates a statestore for the client to store its deals
-func NewProviderDealStore(ds dtypes.MetadataDS) dtypes.ProviderDealStore {
-	return statestore.New(namespace.Wrap(ds, datastore.NewKey("/deals/provider")))
 }
 
 // NewProviderPieceStore creates a statestore for storing metadata about pieces
@@ -359,10 +347,6 @@ func SetupBlockProducer(lc fx.Lifecycle, ds dtypes.MetadataDS, api lapi.FullNode
 	})
 
 	return m, nil
-}
-
-func NewProviderRequestValidator(deals dtypes.ProviderDealStore) dtypes.ProviderRequestValidator {
-	return requestvalidation.NewUnifiedRequestValidator(deals, nil)
 }
 
 func NewStorageAsk(ctx helpers.MetricsCtx, fapi lapi.FullNode, ds dtypes.MetadataDS, minerAddress dtypes.MinerAddress, spn storagemarket.StorageProviderNode) (*storedask.StoredAsk, error) {
@@ -636,19 +620,28 @@ func NewSetConsiderOfflineRetrievalDealsConfigFunc(r repo.LockedRepo) (dtypes.Se
 	}, nil
 }
 
-func NewSetSealDelayFunc(r repo.LockedRepo) (dtypes.SetSealingDelayFunc, error) {
-	return func(delay time.Duration) (err error) {
-		err = mutateCfg(r, func(cfg *config.StorageMiner) {
-			cfg.SealingDelay = config.Duration(delay)
+func NewSetSealConfigFunc(r repo.LockedRepo) (dtypes.SetSealingConfigFunc, error) {
+	return func(cfg sealiface.Config) (err error) {
+		err = mutateCfg(r, func(c *config.StorageMiner) {
+			c.Sealing = config.SealingConfig{
+				MaxWaitDealsSectors: cfg.MaxWaitDealsSectors,
+				MaxSealingSectors:   cfg.MaxSealingSectors,
+				WaitDealsDelay:      config.Duration(cfg.WaitDealsDelay),
+			}
 		})
 		return
 	}, nil
 }
 
-func NewGetSealDelayFunc(r repo.LockedRepo) (dtypes.GetSealingDelayFunc, error) {
-	return func() (out time.Duration, err error) {
+func NewGetSealConfigFunc(r repo.LockedRepo) (dtypes.GetSealingConfigFunc, error) {
+	return func() (out sealiface.Config, err error) {
 		err = readCfg(r, func(cfg *config.StorageMiner) {
-			out = time.Duration(cfg.SealingDelay)
+			out = sealiface.Config{
+				MaxWaitDealsSectors:       cfg.Sealing.MaxWaitDealsSectors,
+				MaxSealingSectors:         cfg.Sealing.MaxSealingSectors,
+				MaxSealingSectorsForDeals: cfg.Sealing.MaxSealingSectorsForDeals,
+				WaitDealsDelay:            time.Duration(cfg.Sealing.WaitDealsDelay),
+			}
 		})
 		return
 	}, nil

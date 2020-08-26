@@ -12,10 +12,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/sector-storage/mock"
+	"github.com/filecoin-project/lotus/extern/sector-storage/mock"
+	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	miner2 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	sealing "github.com/filecoin-project/storage-fsm"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -24,11 +24,16 @@ import (
 	"github.com/filecoin-project/lotus/node/impl"
 )
 
-func TestPledgeSector(t *testing.T, b APIBuilder, blocktime time.Duration, nSectors int) {
-	os.Setenv("BELLMAN_NO_GPU", "1")
+func init() {
+	err := os.Setenv("BELLMAN_NO_GPU", "1")
+	if err != nil {
+		panic(fmt.Sprintf("failed to set BELLMAN_NO_GPU env variable: %s", err))
+	}
+}
 
+func TestPledgeSector(t *testing.T, b APIBuilder, blocktime time.Duration, nSectors int) {
 	ctx := context.Background()
-	n, sn := b(t, 1, oneMiner)
+	n, sn := b(t, 1, OneMiner)
 	client := n[0].FullNode.(*impl.FullNodeAPI)
 	miner := sn[0]
 
@@ -110,10 +115,8 @@ func pledgeSectors(t *testing.T, ctx context.Context, miner TestStorageNode, n, 
 }
 
 func TestWindowPost(t *testing.T, b APIBuilder, blocktime time.Duration, nSectors int) {
-	os.Setenv("BELLMAN_NO_GPU", "1")
-
 	ctx := context.Background()
-	n, sn := b(t, 1, oneMiner)
+	n, sn := b(t, 1, OneMiner)
 	client := n[0].FullNode.(*impl.FullNodeAPI)
 	miner := sn[0]
 

@@ -114,10 +114,10 @@ func TestMarketPredicates(t *testing.T) {
 	}
 
 	oldBalances := map[address.Address]balance{
-		tutils.NewIDAddr(t, 1): balance{abi.NewTokenAmount(1000), abi.NewTokenAmount(1000)},
-		tutils.NewIDAddr(t, 2): balance{abi.NewTokenAmount(2000), abi.NewTokenAmount(500)},
-		tutils.NewIDAddr(t, 3): balance{abi.NewTokenAmount(3000), abi.NewTokenAmount(2000)},
-		tutils.NewIDAddr(t, 5): balance{abi.NewTokenAmount(3000), abi.NewTokenAmount(1000)},
+		tutils.NewIDAddr(t, 1): {abi.NewTokenAmount(1000), abi.NewTokenAmount(1000)},
+		tutils.NewIDAddr(t, 2): {abi.NewTokenAmount(2000), abi.NewTokenAmount(500)},
+		tutils.NewIDAddr(t, 3): {abi.NewTokenAmount(3000), abi.NewTokenAmount(2000)},
+		tutils.NewIDAddr(t, 5): {abi.NewTokenAmount(3000), abi.NewTokenAmount(1000)},
 	}
 
 	oldStateC := createMarketState(ctx, t, store, oldDeals, oldProps, oldBalances)
@@ -162,10 +162,10 @@ func TestMarketPredicates(t *testing.T) {
 		// NB: DealProposals cannot be modified, so don't test that case.
 	}
 	newBalances := map[address.Address]balance{
-		tutils.NewIDAddr(t, 1): balance{abi.NewTokenAmount(3000), abi.NewTokenAmount(0)},
-		tutils.NewIDAddr(t, 2): balance{abi.NewTokenAmount(2000), abi.NewTokenAmount(500)},
-		tutils.NewIDAddr(t, 4): balance{abi.NewTokenAmount(5000), abi.NewTokenAmount(0)},
-		tutils.NewIDAddr(t, 5): balance{abi.NewTokenAmount(1000), abi.NewTokenAmount(3000)},
+		tutils.NewIDAddr(t, 1): {abi.NewTokenAmount(3000), abi.NewTokenAmount(0)},
+		tutils.NewIDAddr(t, 2): {abi.NewTokenAmount(2000), abi.NewTokenAmount(500)},
+		tutils.NewIDAddr(t, 4): {abi.NewTokenAmount(5000), abi.NewTokenAmount(0)},
+		tutils.NewIDAddr(t, 5): {abi.NewTokenAmount(1000), abi.NewTokenAmount(3000)},
 	}
 
 	newStateC := createMarketState(ctx, t, store, newDeals, newProps, newBalances)
@@ -505,6 +505,7 @@ func createBalanceTable(ctx context.Context, t *testing.T, store adt.Store, bala
 	lockedMapRootCid, err := lockedMapRoot.Root()
 	require.NoError(t, err)
 	lockedRoot, err := adt.AsBalanceTable(store, lockedMapRootCid)
+	require.NoError(t, err)
 
 	for addr, balance := range balances {
 		err := escrowRoot.Add(addr, big.Add(balance.available, balance.locked))
@@ -537,26 +538,24 @@ func createEmptyMinerState(ctx context.Context, t *testing.T, store adt.Store, o
 	emptyMap, err := adt.MakeEmptyMap(store).Root()
 	require.NoError(t, err)
 
-	emptyDeadline, err := store.Put(context.TODO(), &miner.Deadline{
-		Partitions:        emptyArrayCid,
-		ExpirationsEpochs: emptyArrayCid,
-		PostSubmissions:   abi.NewBitField(),
-		EarlyTerminations: abi.NewBitField(),
-		LiveSectors:       0,
-	})
+	emptyDeadline, err := store.Put(store.Context(), miner.ConstructDeadline(emptyArrayCid))
+	require.NoError(t, err)
+
+	emptyVestingFunds := miner.ConstructVestingFunds()
+	emptyVestingFundsCid, err := store.Put(store.Context(), emptyVestingFunds)
 	require.NoError(t, err)
 
 	emptyDeadlines := miner.ConstructDeadlines(emptyDeadline)
-	emptyDeadlinesCid, err := store.Put(context.Background(), emptyDeadlines)
+	emptyDeadlinesCid, err := store.Put(store.Context(), emptyDeadlines)
 	require.NoError(t, err)
 
 	minerInfo := emptyMap
 
 	emptyBitfield := bitfield.NewFromSet(nil)
-	emptyBitfieldCid, err := store.Put(context.Background(), emptyBitfield)
+	emptyBitfieldCid, err := store.Put(store.Context(), emptyBitfield)
 	require.NoError(t, err)
 
-	state, err := miner.ConstructState(minerInfo, 123, emptyBitfieldCid, emptyArrayCid, emptyMap, emptyDeadlinesCid)
+	state, err := miner.ConstructState(minerInfo, 123, emptyBitfieldCid, emptyArrayCid, emptyMap, emptyDeadlinesCid, emptyVestingFundsCid)
 	require.NoError(t, err)
 	return state
 

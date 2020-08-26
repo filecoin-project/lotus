@@ -7,7 +7,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
-	sealing "github.com/filecoin-project/storage-fsm"
+	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 )
 
 // TODO: refactor this to be direct somehow
@@ -46,4 +46,8 @@ func (m *Miner) RemoveSector(ctx context.Context, id abi.SectorNumber) error {
 
 func (m *Miner) MarkForUpgrade(id abi.SectorNumber) error {
 	return m.sealing.MarkForUpgrade(id)
+}
+
+func (m *Miner) IsMarkedForUpgrade(id abi.SectorNumber) bool {
+	return m.sealing.IsMarkedForUpgrade(id)
 }

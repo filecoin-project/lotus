@@ -170,7 +170,10 @@ func (st *StateTree) LookupID(addr address.Address) (address.Address, error) {
 		return address.Undef, xerrors.Errorf("loading init actor state: %w", err)
 	}
 
-	a, err := ias.ResolveAddress(&AdtStore{st.Store}, addr)
+	a, found, err := ias.ResolveAddress(&AdtStore{st.Store}, addr)
+	if err == nil && !found {
+		err = types.ErrActorNotFound
+	}
 	if err != nil {
 		return address.Undef, xerrors.Errorf("resolve address %s: %w", addr, err)
 	}
@@ -189,7 +192,7 @@ func (st *StateTree) GetActor(addr address.Address) (*types.Actor, error) {
 	// Transform `addr` to its ID format.
 	iaddr, err := st.LookupID(addr)
 	if err != nil {
-		if xerrors.Is(err, init_.ErrAddressNotFound) {
+		if xerrors.Is(err, types.ErrActorNotFound) {
 			return nil, xerrors.Errorf("resolution lookup failed (%s): %w", addr, err)
 		}
 		return nil, xerrors.Errorf("address resolution: %w", err)
@@ -224,7 +227,7 @@ func (st *StateTree) DeleteActor(addr address.Address) error {
 
 	iaddr, err := st.LookupID(addr)
 	if err != nil {
-		if xerrors.Is(err, init_.ErrAddressNotFound) {
+		if xerrors.Is(err, types.ErrActorNotFound) {
 			return xerrors.Errorf("resolution lookup failed (%s): %w", addr, err)
 		}
 		return xerrors.Errorf("address resolution: %w", err)
@@ -243,7 +246,7 @@ func (st *StateTree) DeleteActor(addr address.Address) error {
 }
 
 func (st *StateTree) Flush(ctx context.Context) (cid.Cid, error) {
-	ctx, span := trace.StartSpan(ctx, "stateTree.Flush")
+	ctx, span := trace.StartSpan(ctx, "stateTree.Flush") //nolint:staticcheck
 	defer span.End()
 	if len(st.snaps.layers) != 1 {
 		return cid.Undef, xerrors.Errorf("tried to flush state tree with snapshots on the stack")
@@ -265,7 +268,7 @@ func (st *StateTree) Flush(ctx context.Context) (cid.Cid, error) {
 }
 
 func (st *StateTree) Snapshot(ctx context.Context) error {
-	ctx, span := trace.StartSpan(ctx, "stateTree.SnapShot")
+	ctx, span := trace.StartSpan(ctx, "stateTree.SnapShot") //nolint:staticcheck
 	defer span.End()
 
 	st.snaps.addLayer()
@@ -332,4 +335,16 @@ func (st *StateTree) MutateActor(addr address.Address, f func(*types.Actor) erro
 	}
 
 	return st.SetActor(addr, act)
+}
+
+func (st *StateTree) ForEach(f func(address.Address, *types.Actor) error) error {
+	var act types.Actor
+	return st.root.ForEach(&act, func(k string) error {
+		addr, err := address.NewFromBytes([]byte(k))
+		if err != nil {
+			return xerrors.Errorf("invalid address (%x) found in state tree key: %w", []byte(k), err)
+		}
+
+		return f(addr, &act)
+	})
 }

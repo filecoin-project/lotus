@@ -88,6 +88,8 @@ create table if not exists sector_info
     verified_deal_weight text not null,
     
     initial_pledge text not null,
+	expected_day_reward text not null,
+	expected_storage_pledge text not null,
     
     constraint sector_info_pk
 		primary key (miner_id, sector_id, sealed_cid)
@@ -166,11 +168,11 @@ type SectorDealEvent struct {
 }
 
 type PartitionStatus struct {
-	Terminated *abi.BitField
-	Expired    *abi.BitField
-	Faulted    *abi.BitField
-	InRecovery *abi.BitField
-	Recovered  *abi.BitField
+	Terminated abi.BitField
+	Expired    abi.BitField
+	Faulted    abi.BitField
+	InRecovery abi.BitField
+	Recovered  abi.BitField
 }
 
 type minerActorInfo struct {
@@ -307,6 +309,7 @@ func (p *Processor) storeMinerPreCommitInfo(ctx context.Context, miners []minerA
 	}
 
 	stmt, err := tx.Prepare(`copy spi (miner_id, sector_id, sealed_cid, state_root, seal_rand_epoch, expiration_epoch, precommit_deposit, precommit_epoch, deal_weight, verified_deal_weight, is_replace_capacity, replace_sector_deadline, replace_sector_partition, replace_sector_number) from STDIN`)
+
 	if err != nil {
 		return xerrors.Errorf("Failed to prepare miner precommit info statement: %w", err)
 	}
@@ -319,7 +322,7 @@ func (p *Processor) storeMinerPreCommitInfo(ctx context.Context, miners []minerA
 
 		changes, err := p.getMinerPreCommitChanges(ctx, m)
 		if err != nil {
-			if strings.Contains(err.Error(), "address not found") {
+			if strings.Contains(err.Error(), types.ErrActorNotFound.Error()) {
 				continue
 			} else {
 				return err
@@ -431,7 +434,7 @@ func (p *Processor) storeMinerSectorInfo(ctx context.Context, miners []minerActo
 		return xerrors.Errorf("Failed to create temp table for sector_: %w", err)
 	}
 
-	stmt, err := tx.Prepare(`copy si (miner_id, sector_id, sealed_cid, state_root, activation_epoch, expiration_epoch, deal_weight, verified_deal_weight, initial_pledge) from STDIN`)
+	stmt, err := tx.Prepare(`copy si (miner_id, sector_id, sealed_cid, state_root, activation_epoch, expiration_epoch, deal_weight, verified_deal_weight, initial_pledge, expected_day_reward, expected_storage_pledge) from STDIN`)
 	if err != nil {
 		return xerrors.Errorf("Failed to prepare miner sector info statement: %w", err)
 	}
@@ -439,7 +442,7 @@ func (p *Processor) storeMinerSectorInfo(ctx context.Context, miners []minerActo
 	for _, m := range miners {
 		changes, err := p.getMinerSectorChanges(ctx, m)
 		if err != nil {
-			if strings.Contains(err.Error(), "address not found") {
+			if strings.Contains(err.Error(), types.ErrActorNotFound.Error()) {
 				continue
 			} else {
 				return err
@@ -463,6 +466,8 @@ func (p *Processor) storeMinerSectorInfo(ctx context.Context, miners []minerActo
 				added.DealWeight.String(),
 				added.VerifiedDealWeight.String(),
 				added.InitialPledge.String(),
+				added.ExpectedDayReward.String(),
+				added.ExpectedStoragePledge.String(),
 			); err != nil {
 				return err
 			}
@@ -518,7 +523,7 @@ func (p *Processor) getMinerPartitionsDifferences(ctx context.Context, miners []
 		m := m
 		grp.Go(func() error {
 			if err := p.diffMinerPartitions(ctx, m, events); err != nil {
-				if strings.Contains(err.Error(), "address not found") {
+				if strings.Contains(err.Error(), types.ErrActorNotFound.Error()) {
 					return nil
 				}
 				return err
@@ -794,11 +799,11 @@ func (p *Processor) diffPartition(prevPart, curPart miner.Partition) (*Partition
 		return nil, err
 	}
 
-	expired := abi.NewBitField()
+	expired := bitfield.New()
 	var bf abi.BitField
 	if err := terminatedEarlyArr.ForEach(&bf, func(i int64) error {
 		// expired = all removals - termination
-		expirations, err := bitfield.SubtractBitField(allRemovedSectors, &bf)
+		expirations, err := bitfield.SubtractBitField(allRemovedSectors, bf)
 		if err != nil {
 			return err
 		}
@@ -873,17 +878,21 @@ func (p *Processor) storeMinersActorInfoState(ctx context.Context, miners []mine
 	for _, m := range miners {
 		mi, err := p.node.StateMinerInfo(ctx, m.common.addr, m.common.tsKey)
 		if err != nil {
-			if strings.Contains(err.Error(), "address not found") {
+			if strings.Contains(err.Error(), types.ErrActorNotFound.Error()) {
 				continue
 			} else {
 				return err
 			}
 		}
+		var pid string
+		if mi.PeerId != nil {
+			pid = mi.PeerId.String()
+		}
 		if _, err := stmt.Exec(
 			m.common.addr.String(),
 			mi.Owner.String(),
 			mi.Worker.String(),
-			mi.PeerId.String(),
+			pid,
 			mi.SectorSize.ShortString(),
 		); err != nil {
 			log.Errorw("failed to store miner state", "state", m.state, "info", m.state.Info, "error", err)

@@ -79,7 +79,7 @@ func sendSmallFundsTxs(ctx context.Context, api api.FullNode, from address.Addre
 				Value: types.NewInt(1),
 			}
 
-			smsg, err := api.MpoolPushMessage(ctx, msg)
+			smsg, err := api.MpoolPushMessage(ctx, msg, nil)
 			if err != nil {
 				return err
 			}
@@ -88,6 +88,4 @@ func sendSmallFundsTxs(ctx context.Context, api api.FullNode, from address.Addre
 			return nil
 		}
 	}
-
-	return nil
 }

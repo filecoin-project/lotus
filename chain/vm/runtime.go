@@ -8,14 +8,10 @@ import (
 	gruntime "runtime"
 	"time"
 
-	samarket "github.com/filecoin-project/specs-actors/actors/builtin/market"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	sainit "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	sapower "github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	vmr "github.com/filecoin-project/specs-actors/actors/runtime"
@@ -62,68 +58,18 @@ type Runtime struct {
 }
 
 func (rt *Runtime) TotalFilCircSupply() abi.TokenAmount {
-
-	filVested, err := rt.vm.GetVestedFunds(rt.ctx)
+	cs, err := rt.vm.GetCircSupply(rt.ctx)
 	if err != nil {
-		rt.Abortf(exitcode.ErrIllegalState, "failed to get vested funds for computing total supply: %s", err)
+		rt.Abortf(exitcode.ErrIllegalState, "failed to get total circ supply: %s", err)
 	}
 
-	rew, err := rt.state.GetActor(builtin.RewardActorAddr)
-	if err != nil {
-		rt.Abortf(exitcode.ErrIllegalState, "failed to get reward actor for computing total supply: %s", err)
-	}
-
-	filMined := types.BigSub(types.FromFil(build.FilAllocStorageMining), rew.Balance)
-	if filMined.LessThan(big.Zero()) {
-		filMined = big.Zero()
-	}
-
-	burnt, err := rt.state.GetActor(builtin.BurntFundsActorAddr)
-	if err != nil {
-		rt.Abortf(exitcode.ErrIllegalState, "failed to get reward actor for computing total supply: %s", err)
-	}
-
-	filBurned := burnt.Balance
-
-	market, err := rt.state.GetActor(builtin.StorageMarketActorAddr)
-	if err != nil {
-		rt.Abortf(exitcode.ErrIllegalState, "failed to get reward actor for computing total supply: %s", err)
-	}
-
-	var mst samarket.State
-	if err := rt.cst.Get(rt.ctx, market.Head, &mst); err != nil {
-		rt.Abortf(exitcode.ErrIllegalState, "failed to get market state: %s", err)
-	}
-
-	filMarketLocked := types.BigAdd(mst.TotalClientLockedCollateral, mst.TotalProviderLockedCollateral)
-	filMarketLocked = types.BigAdd(filMarketLocked, mst.TotalClientStorageFee)
-
-	power, err := rt.state.GetActor(builtin.StoragePowerActorAddr)
-	if err != nil {
-		rt.Abortf(exitcode.ErrIllegalState, "failed to get reward actor for computing total supply: %s", err)
-	}
-
-	var pst sapower.State
-	if err := rt.cst.Get(rt.ctx, power.Head, &pst); err != nil {
-		rt.Abortf(exitcode.ErrIllegalState, "failed to get storage power state: %s", err)
-	}
-
-	filLocked := types.BigAdd(filMarketLocked, pst.TotalPledgeCollateral)
-
-	ret := types.BigAdd(filVested, filMined)
-	ret = types.BigSub(ret, filBurned)
-	ret = types.BigSub(ret, filLocked)
-
-	if ret.LessThan(big.Zero()) {
-		ret = big.Zero()
-	}
-	return ret
+	return cs
 }
 
 func (rt *Runtime) ResolveAddress(addr address.Address) (ret address.Address, ok bool) {
 	r, err := rt.state.LookupID(addr)
 	if err != nil {
-		if xerrors.Is(err, sainit.ErrAddressNotFound) {
+		if xerrors.Is(err, types.ErrActorNotFound) {
 			return address.Undef, false
 		}
 		panic(aerrors.Fatalf("failed to resolve address %s: %s", addr, err))
@@ -232,8 +178,16 @@ func (rt *Runtime) GetActorCodeCID(addr address.Address) (ret cid.Cid, ok bool) 
 	return act.Code, true
 }
 
-func (rt *Runtime) GetRandomness(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
-	res, err := rt.vm.rand.GetRandomness(rt.ctx, personalization, randEpoch, entropy)
+func (rt *Runtime) GetRandomnessFromTickets(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
+	res, err := rt.vm.rand.GetChainRandomness(rt.ctx, personalization, randEpoch, entropy)
+	if err != nil {
+		panic(aerrors.Fatalf("could not get randomness: %s", err))
+	}
+	return res
+}
+
+func (rt *Runtime) GetRandomnessFromBeacon(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
+	res, err := rt.vm.rand.GetBeaconRandomness(rt.ctx, personalization, randEpoch, entropy)
 	if err != nil {
 		panic(aerrors.Fatalf("could not get randomness: %s", err))
 	}
@@ -456,8 +410,10 @@ type shimStateHandle struct {
 
 func (ssh *shimStateHandle) Create(obj vmr.CBORMarshaler) {
 	c := ssh.rt.Put(obj)
-	// TODO: handle error below
-	ssh.rt.stateCommit(EmptyObjectCid, c)
+	err := ssh.rt.stateCommit(EmptyObjectCid, c)
+	if err != nil {
+		panic(fmt.Errorf("failed to commit state after creating object: %w", err))
+	}
 }
 
 func (ssh *shimStateHandle) Readonly(obj vmr.CBORUnmarshaler) {
@@ -486,8 +442,10 @@ func (ssh *shimStateHandle) Transaction(obj vmr.CBORer, f func()) {
 
 	c := ssh.rt.Put(obj)
 
-	// TODO: handle error below
-	ssh.rt.stateCommit(baseState, c)
+	err = ssh.rt.stateCommit(baseState, c)
+	if err != nil {
+		panic(fmt.Errorf("failed to commit state after transaction: %w", err))
+	}
 }
 
 func (rt *Runtime) GetBalance(a address.Address) (types.BigInt, aerrors.ActorError) {

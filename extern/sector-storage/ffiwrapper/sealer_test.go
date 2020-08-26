@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/ipfs/go-cid"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -16,17 +15,20 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ipfs/go-cid"
+
 	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"
 
-	ffi "github.com/filecoin-project/filecoin-ffi"
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-storage/storage"
 
-	"github.com/filecoin-project/sector-storage/ffiwrapper/basicfs"
-	"github.com/filecoin-project/sector-storage/stores"
+	ffi "github.com/filecoin-project/filecoin-ffi"
+
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper/basicfs"
+	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 )
 
 func init() {
@@ -220,12 +222,12 @@ func post(t *testing.T, sealer *Sealer, seals ...seal) time.Time {
 }
 
 func getGrothParamFileAndVerifyingKeys(s abi.SectorSize) {
-	dat, err := ioutil.ReadFile("../parameters.json")
+	dat, err := ioutil.ReadFile("../../../build/proof-params/parameters.json")
 	if err != nil {
 		panic(err)
 	}
 
-	err = paramfetch.GetParams(dat, uint64(s))
+	err = paramfetch.GetParams(context.TODO(), dat, uint64(s))
 	if err != nil {
 		panic(xerrors.Errorf("failed to acquire Groth parameters for 2KiB sectors: %w", err))
 	}
@@ -443,8 +445,8 @@ func BenchmarkWriteWithAlignment(b *testing.B) {
 		tf, _ := ioutil.TempFile("/tmp/", "scrb-")
 		b.StartTimer()
 
-		ffi.WriteWithAlignment(abi.RegisteredSealProof_StackedDrg2KiBV1, rf, bt, tf, nil)
-		w()
+		ffi.WriteWithAlignment(abi.RegisteredSealProof_StackedDrg2KiBV1, rf, bt, tf, nil) // nolint:errcheck
+		_ = w()
 	}
 }
 

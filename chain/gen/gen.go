@@ -34,16 +34,17 @@ import (
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/genesis"
 	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
 )
 
-var log = logging.Logger("gen")
-
 const msgsPerBlock = 20
+
+//nolint:deadcode,varcheck
+var log = logging.Logger("gen")
 
 var ValidWpostForTesting = []abi.PoStProof{{
 	ProofBytes: []byte("valid proof"),
@@ -92,10 +93,8 @@ func (m mybs) Get(c cid.Cid) (block.Block, error) {
 	return b, nil
 }
 
-var rootkey, _ = address.NewIDAddress(80)
-
 var rootkeyMultisig = genesis.MultisigMeta{
-	Signers:         []address.Address{rootkey},
+	Signers:         []address.Address{remAccTestKey},
 	Threshold:       1,
 	VestingDuration: 0,
 	VestingStart:    0,
@@ -105,6 +104,18 @@ var DefaultVerifregRootkeyActor = genesis.Actor{
 	Type:    genesis.TMultisig,
 	Balance: big.NewInt(0),
 	Meta:    rootkeyMultisig.ActorMeta(),
+}
+
+var remAccTestKey, _ = address.NewFromString("t1ceb34gnsc6qk5dt6n7xg6ycwzasjhbxm3iylkiy")
+var remAccMeta = genesis.MultisigMeta{
+	Signers:   []address.Address{remAccTestKey},
+	Threshold: 1,
+}
+
+var DefaultRemainderAccountActor = genesis.Actor{
+	Type:    genesis.TMultisig,
+	Balance: big.NewInt(0),
+	Meta:    remAccMeta.ActorMeta(),
 }
 
 func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
@@ -210,9 +221,10 @@ func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
 			*genm1,
 			*genm2,
 		},
-		VerifregRootKey: DefaultVerifregRootkeyActor,
-		NetworkName:     "",
-		Timestamp:       uint64(build.Clock.Now().Add(-500 * time.Duration(build.BlockDelaySecs) * time.Second).Unix()),
+		VerifregRootKey:  DefaultVerifregRootkeyActor,
+		RemainderAccount: DefaultRemainderAccountActor,
+		NetworkName:      "",
+		Timestamp:        uint64(build.Clock.Now().Add(-500 * time.Duration(build.BlockDelaySecs) * time.Second).Unix()),
 	}
 
 	genb, err := genesis2.MakeGenesisBlock(context.TODO(), bs, sys, tpl)
@@ -272,6 +284,10 @@ func NewGenerator() (*ChainGen, error) {
 	return NewGeneratorWithSectors(1)
 }
 
+func (cg *ChainGen) StateManager() *stmgr.StateManager {
+	return cg.sm
+}
+
 func (cg *ChainGen) SetStateManager(sm *stmgr.StateManager) {
 	cg.sm = sm
 }
@@ -300,7 +316,8 @@ func (cg *ChainGen) GenesisCar() ([]byte, error) {
 
 func CarWalkFunc(nd format.Node) (out []*format.Link, err error) {
 	for _, link := range nd.Links() {
-		if link.Cid.Prefix().Codec == cid.FilCommitmentSealed || link.Cid.Prefix().Codec == cid.FilCommitmentUnsealed {
+		pref := link.Cid.Prefix()
+		if pref.Codec == cid.FilCommitmentSealed || pref.Codec == cid.FilCommitmentUnsealed {
 			continue
 		}
 		out = append(out, link)
@@ -383,15 +400,32 @@ func (cg *ChainGen) SetWinningPoStProver(m address.Address, wpp WinningPoStProve
 }
 
 func (cg *ChainGen) NextTipSetFromMiners(base *types.TipSet, miners []address.Address) (*MinedTipSet, error) {
-	var blks []*types.FullBlock
-
-	msgs, err := cg.GetMessages(cg)
+	ms, err := cg.GetMessages(cg)
 	if err != nil {
 		return nil, xerrors.Errorf("get random messages: %w", err)
 	}
 
+	msgs := make([][]*types.SignedMessage, len(miners))
+	for i := range msgs {
+		msgs[i] = ms
+	}
+
+	fts, err := cg.NextTipSetFromMinersWithMessages(base, miners, msgs)
+	if err != nil {
+		return nil, err
+	}
+
+	return &MinedTipSet{
+		TipSet:   fts,
+		Messages: ms,
+	}, nil
+}
+
+func (cg *ChainGen) NextTipSetFromMinersWithMessages(base *types.TipSet, miners []address.Address, msgs [][]*types.SignedMessage) (*store.FullTipSet, error) {
+	var blks []*types.FullBlock
+
 	for round := base.Height() + 1; len(blks) == 0; round++ {
-		for _, m := range miners {
+		for mi, m := range miners {
 			bvals, et, ticket, err := cg.nextBlockProof(context.TODO(), base, m, round)
 			if err != nil {
 				return nil, xerrors.Errorf("next block proof: %w", err)
@@ -404,7 +438,7 @@ func (cg *ChainGen) NextTipSetFromMiners(base *types.TipSet, miners []address.Ad
 					return nil, err
 				}
 
-				fblk, err := cg.makeBlock(base, m, ticket, et, bvals, round, wpost, msgs)
+				fblk, err := cg.makeBlock(base, m, ticket, et, bvals, round, wpost, msgs[mi])
 				if err != nil {
 					return nil, xerrors.Errorf("making a block for next tipset failed: %w", err)
 				}
@@ -418,12 +452,7 @@ func (cg *ChainGen) NextTipSetFromMiners(base *types.TipSet, miners []address.Ad
 		}
 	}
 
-	fts := store.NewFullTipSet(blks)
-
-	return &MinedTipSet{
-		TipSet:   fts,
-		Messages: msgs,
-	}, nil
+	return store.NewFullTipSet(blks), nil
 }
 
 func (cg *ChainGen) makeBlock(parents *types.TipSet, m address.Address, vrfticket *types.Ticket,
@@ -516,7 +545,8 @@ func (cg *ChainGen) YieldRepo() (repo.Repo, error) {
 }
 
 type MiningCheckAPI interface {
-	ChainGetRandomness(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
+	ChainGetRandomnessFromBeacon(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
+	ChainGetRandomnessFromTickets(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
 
 	MinerGetBaseInfo(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*api.MiningBaseInfo, error)
 
@@ -530,13 +560,22 @@ type mca struct {
 	bcn beacon.RandomBeacon
 }
 
-func (mca mca) ChainGetRandomness(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+func (mca mca) ChainGetRandomnessFromTickets(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
 	pts, err := mca.sm.ChainStore().LoadTipSet(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset key: %w", err)
 	}
 
-	return mca.sm.ChainStore().GetRandomness(ctx, pts.Cids(), personalization, randEpoch, entropy)
+	return mca.sm.ChainStore().GetChainRandomness(ctx, pts.Cids(), personalization, randEpoch, entropy)
+}
+
+func (mca mca) ChainGetRandomnessFromBeacon(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	pts, err := mca.sm.ChainStore().LoadTipSet(tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset key: %w", err)
+	}
+
+	return mca.sm.ChainStore().GetBeaconRandomness(ctx, pts.Cids(), personalization, randEpoch, entropy)
 }
 
 func (mca mca) MinerGetBaseInfo(ctx context.Context, maddr address.Address, epoch abi.ChainEpoch, tsk types.TipSetKey) (*api.MiningBaseInfo, error) {
@@ -567,7 +606,7 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, round abi.ChainEpoch,
 
 	buf := new(bytes.Buffer)
 	if err := miner.MarshalCBOR(buf); err != nil {
-		return nil, xerrors.Errorf("failed to cbor marshal address: %w")
+		return nil, xerrors.Errorf("failed to cbor marshal address: %w", err)
 	}
 
 	electionRand, err := store.DrawRandomness(brand.Data, crypto.DomainSeparationTag_ElectionProofProduction, round, buf.Bytes())

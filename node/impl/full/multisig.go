@@ -28,7 +28,7 @@ type MsigAPI struct {
 	MpoolAPI  MpoolAPI
 }
 
-// TODO: remove gp (gasPrice) from arguemnts
+// TODO: remove gp (gasPrice) from arguments
 func (a *MsigAPI) MsigCreate(ctx context.Context, req uint64, addrs []address.Address, duration abi.ChainEpoch, val types.BigInt, src address.Address, gp types.BigInt) (cid.Cid, error) {
 
 	lenAddrs := uint64(len(addrs))
@@ -78,7 +78,7 @@ func (a *MsigAPI) MsigCreate(ctx context.Context, req uint64, addrs []address.Ad
 	}
 
 	// send the message out to the network
-	smsg, err := a.MpoolAPI.MpoolPushMessage(ctx, &msg)
+	smsg, err := a.MpoolAPI.MpoolPushMessage(ctx, &msg, nil)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -122,7 +122,7 @@ func (a *MsigAPI) MsigPropose(ctx context.Context, msig address.Address, to addr
 		Params: enc,
 	}
 
-	smsg, err := a.MpoolAPI.MpoolPushMessage(ctx, msg)
+	smsg, err := a.MpoolAPI.MpoolPushMessage(ctx, msg, nil)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to push message: %w", err)
 	}
@@ -236,7 +236,7 @@ func (a *MsigAPI) msigApproveOrCancel(ctx context.Context, operation api.MsigPro
 		Params: enc,
 	}
 
-	smsg, err := a.MpoolAPI.MpoolPushMessage(ctx, msg)
+	smsg, err := a.MpoolAPI.MpoolPushMessage(ctx, msg, nil)
 	if err != nil {
 		return cid.Undef, err
 	}

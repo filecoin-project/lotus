@@ -6,8 +6,7 @@ import (
 	"bytes"
 	"context"
 
-	"github.com/filecoin-project/lotus/chain/events/state"
-	"github.com/filecoin-project/lotus/journal"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 
 	"golang.org/x/xerrors"
 
@@ -17,10 +16,12 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/events"
+	"github.com/filecoin-project/lotus/chain/events/state"
 	"github.com/filecoin-project/lotus/chain/market"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/markets/utils"
 	"github.com/filecoin-project/lotus/node/impl/full"
@@ -137,7 +138,7 @@ func (c *ClientNodeAdapter) AddFunds(ctx context.Context, addr address.Address, 
 		From:   addr,
 		Value:  amount,
 		Method: builtin.MethodsMarket.AddBalance,
-	})
+	}, nil)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -219,7 +220,7 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 	}
 
 	// TODO: timeout
-	_, ret, err := c.sm.WaitForMessage(ctx, *deal.PublishMessage, build.MessageConfidence)
+	_, ret, _, err := c.sm.WaitForMessage(ctx, *deal.PublishMessage, build.MessageConfidence)
 	if err != nil {
 		return 0, xerrors.Errorf("waiting for deal publish message: %w", err)
 	}
@@ -242,13 +243,15 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 	return dealID, nil
 }
 
+const clientOverestimation = 2
+
 func (c *ClientNodeAdapter) DealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, isVerified bool) (abi.TokenAmount, abi.TokenAmount, error) {
 	bounds, err := c.StateDealProviderCollateralBounds(ctx, size, isVerified, types.EmptyTSK)
 	if err != nil {
 		return abi.TokenAmount{}, abi.TokenAmount{}, err
 	}
 
-	return bounds.Min, bounds.Max, nil
+	return big.Mul(bounds.Min, big.NewInt(clientOverestimation)), bounds.Max, nil
 }
 
 func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealId abi.DealID, cb storagemarket.DealSectorCommittedCallback) error {
@@ -280,7 +283,7 @@ func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider 
 			return false, nil
 		}
 
-		sd, err := stmgr.GetStorageDeal(ctx, c.StateManager, abi.DealID(dealId), ts)
+		sd, err := stmgr.GetStorageDeal(ctx, c.StateManager, dealId, ts)
 		if err != nil {
 			return false, xerrors.Errorf("failed to look up deal on chain: %w", err)
 		}
@@ -321,7 +324,7 @@ func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider 
 			}
 
 			for _, did := range params.DealIDs {
-				if did == abi.DealID(dealId) {
+				if did == dealId {
 					sectorNumber = params.SectorNumber
 					sectorFound = true
 					return true, false, nil
@@ -349,7 +352,7 @@ func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider 
 		}
 	}
 
-	if err := c.ev.Called(checkFunc, called, revert, int(build.MessageConfidence+1), build.SealRandomnessLookbackLimit, matchEvent); err != nil {
+	if err := c.ev.Called(checkFunc, called, revert, int(build.MessageConfidence+1), events.NoTimeout, matchEvent); err != nil {
 		return xerrors.Errorf("failed to set up called handler: %w", err)
 	}
 
@@ -482,7 +485,7 @@ func (c *ClientNodeAdapter) ValidateAskSignature(ctx context.Context, ask *stora
 
 	mi, err := c.StateMinerInfo(ctx, ask.Ask.Miner, tsk)
 	if err != nil {
-		return false, xerrors.Errorf("failed to get worker for miner in ask", err)
+		return false, xerrors.Errorf("failed to get worker for miner in ask: %w", err)
 	}
 
 	sigb, err := cborutil.Dump(ask.Ask)
@@ -532,7 +535,7 @@ func (c *ClientNodeAdapter) GetMinerInfo(ctx context.Context, addr address.Addre
 		return nil, err
 	}
 
-	out := utils.NewStorageProviderInfo(addr, mi.Worker, mi.SectorSize, mi.PeerId, mi.Multiaddrs)
+	out := utils.NewStorageProviderInfo(addr, mi.Worker, mi.SectorSize, *mi.PeerId, mi.Multiaddrs)
 	return &out, nil
 }
 

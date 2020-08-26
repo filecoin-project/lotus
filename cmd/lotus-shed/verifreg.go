@@ -3,19 +3,19 @@ package main
 import (
 	"fmt"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/build"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/chain/types"
-	lcli "github.com/filecoin-project/lotus/cli"
-
-	"github.com/filecoin-project/lotus/api/apibstore"
-	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
+
+	"github.com/filecoin-project/lotus/api/apibstore"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/types"
+	lcli "github.com/filecoin-project/lotus/cli"
 	cbor "github.com/ipfs/go-ipld-cbor"
 )
 
@@ -75,7 +75,7 @@ var verifRegAddVerifierCmd = &cli.Command{
 			Params: params,
 		}
 
-		smsg, err := api.MpoolPushMessage(ctx, msg)
+		smsg, err := api.MpoolPushMessage(ctx, msg, nil)
 		if err != nil {
 			return err
 		}
@@ -149,7 +149,7 @@ var verifRegVerifyClientCmd = &cli.Command{
 			Params: params,
 		}
 
-		smsg, err := api.MpoolPushMessage(ctx, msg)
+		smsg, err := api.MpoolPushMessage(ctx, msg, nil)
 		if err != nil {
 			return err
 		}

@@ -44,8 +44,8 @@ func mt(in, out []byte, padLen int, op func(unpadded, padded []byte)) {
 	wg.Wait()
 }
 
-// Assumes len(in)%127==0 and len(out)%128==0
 func Pad(in, out []byte) {
+	// Assumes len(in)%127==0 and len(out)%128==0
 	if len(out) > int(MTTresh) {
 		mt(in, out, len(out), pad)
 		return
@@ -94,8 +94,8 @@ func pad(in, out []byte) {
 	}
 }
 
-// Assumes len(in)%128==0 and len(out)%127==0
 func Unpad(in []byte, out []byte) {
+	// Assumes len(in)%128==0 and len(out)%127==0
 	if len(in) > int(MTTresh) {
 		mt(out, in, len(in), unpad)
 		return

@@ -54,13 +54,22 @@ func (a *ChainAPI) ChainHead(context.Context) (*types.TipSet, error) {
 	return a.Chain.GetHeaviestTipSet(), nil
 }
 
-func (a *ChainAPI) ChainGetRandomness(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+func (a *ChainAPI) ChainGetRandomnessFromTickets(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
 	pts, err := a.Chain.LoadTipSet(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset key: %w", err)
 	}
 
-	return a.Chain.GetRandomness(ctx, pts.Cids(), personalization, randEpoch, entropy)
+	return a.Chain.GetChainRandomness(ctx, pts.Cids(), personalization, randEpoch, entropy)
+}
+
+func (a *ChainAPI) ChainGetRandomnessFromBeacon(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	pts, err := a.Chain.LoadTipSet(tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset key: %w", err)
+	}
+
+	return a.Chain.GetBeaconRandomness(ctx, pts.Cids(), personalization, randEpoch, entropy)
 }
 
 func (a *ChainAPI) ChainGetBlock(ctx context.Context, msg cid.Cid) (*types.BlockHeader, error) {

@@ -23,13 +23,13 @@ func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate 
 	defer span.End()
 
 	vmopt := &vm.VMOpts{
-		StateBase:  bstate,
-		Epoch:      bheight,
-		Rand:       r,
-		Bstore:     sm.cs.Blockstore(),
-		Syscalls:   sm.cs.VMSys(),
-		VestedCalc: sm.GetVestedFunds,
-		BaseFee:    types.NewInt(0),
+		StateBase:      bstate,
+		Epoch:          bheight,
+		Rand:           r,
+		Bstore:         sm.cs.Blockstore(),
+		Syscalls:       sm.cs.VMSys(),
+		CircSupplyCalc: sm.GetCirculatingSupply,
+		BaseFee:        types.NewInt(0),
 	}
 
 	vmi, err := vm.NewVM(vmopt)
@@ -124,13 +124,13 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 	}
 
 	vmopt := &vm.VMOpts{
-		StateBase:  state,
-		Epoch:      ts.Height() + 1,
-		Rand:       r,
-		Bstore:     sm.cs.Blockstore(),
-		Syscalls:   sm.cs.VMSys(),
-		VestedCalc: sm.GetVestedFunds,
-		BaseFee:    ts.Blocks()[0].ParentBaseFee,
+		StateBase:      state,
+		Epoch:          ts.Height() + 1,
+		Rand:           r,
+		Bstore:         sm.cs.Blockstore(),
+		Syscalls:       sm.cs.VMSys(),
+		CircSupplyCalc: sm.GetCirculatingSupply,
+		BaseFee:        ts.Blocks()[0].ParentBaseFee,
 	}
 	vmi, err := vm.NewVM(vmopt)
 	if err != nil {
@@ -196,7 +196,7 @@ func (sm *StateManager) Replay(ctx context.Context, ts *types.TipSet, mcid cid.C
 	var outm *types.Message
 	var outr *vm.ApplyRet
 
-	_, _, err := sm.computeTipSetState(ctx, ts.Blocks(), func(c cid.Cid, m *types.Message, ret *vm.ApplyRet) error {
+	_, _, err := sm.computeTipSetState(ctx, ts, func(c cid.Cid, m *types.Message, ret *vm.ApplyRet) error {
 		if c == mcid {
 			outm = m
 			outr = ret

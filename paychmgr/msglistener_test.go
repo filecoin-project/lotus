@@ -17,12 +17,12 @@ func testCids() []cid.Cid {
 }
 
 func TestMsgListener(t *testing.T) {
-	var ml msgListeners
+	ml := newMsgListeners()
 
 	done := false
 	experr := xerrors.Errorf("some err")
 	cids := testCids()
-	ml.onMsg(cids[0], func(err error) {
+	ml.onMsgComplete(cids[0], func(err error) {
 		require.Equal(t, experr, err)
 		done = true
 	})
@@ -35,11 +35,11 @@ func TestMsgListener(t *testing.T) {
 }
 
 func TestMsgListenerNilErr(t *testing.T) {
-	var ml msgListeners
+	ml := newMsgListeners()
 
 	done := false
 	cids := testCids()
-	ml.onMsg(cids[0], func(err error) {
+	ml.onMsgComplete(cids[0], func(err error) {
 		require.Nil(t, err)
 		done = true
 	})
@@ -52,20 +52,20 @@ func TestMsgListenerNilErr(t *testing.T) {
 }
 
 func TestMsgListenerUnsub(t *testing.T) {
-	var ml msgListeners
+	ml := newMsgListeners()
 
 	done := false
 	experr := xerrors.Errorf("some err")
 	cids := testCids()
-	id1 := ml.onMsg(cids[0], func(err error) {
+	unsub := ml.onMsgComplete(cids[0], func(err error) {
 		t.Fatal("should not call unsubscribed listener")
 	})
-	ml.onMsg(cids[0], func(err error) {
+	ml.onMsgComplete(cids[0], func(err error) {
 		require.Equal(t, experr, err)
 		done = true
 	})
 
-	ml.unsubscribe(id1)
+	unsub()
 	ml.fireMsgComplete(cids[0], experr)
 
 	if !done {
@@ -74,17 +74,17 @@ func TestMsgListenerUnsub(t *testing.T) {
 }
 
 func TestMsgListenerMulti(t *testing.T) {
-	var ml msgListeners
+	ml := newMsgListeners()
 
 	count := 0
 	cids := testCids()
-	ml.onMsg(cids[0], func(err error) {
+	ml.onMsgComplete(cids[0], func(err error) {
 		count++
 	})
-	ml.onMsg(cids[0], func(err error) {
+	ml.onMsgComplete(cids[0], func(err error) {
 		count++
 	})
-	ml.onMsg(cids[1], func(err error) {
+	ml.onMsgComplete(cids[1], func(err error) {
 		count++
 	})
 

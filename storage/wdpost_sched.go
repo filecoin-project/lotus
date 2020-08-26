@@ -4,12 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/ipfs/go-cid"
-	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	sectorstorage "github.com/filecoin-project/sector-storage"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-storage/storage"
@@ -18,7 +15,12 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/journal"
+	"github.com/filecoin-project/lotus/node/config"
+
+	"github.com/ipfs/go-cid"
+	"go.opencensus.io/trace"
 )
 
 const StartConfidence = 4 // TODO: config
@@ -52,6 +54,7 @@ type WindowPoStEvt_Faults struct {
 
 type WindowPoStScheduler struct {
 	api              storageMinerApi
+	feeCfg           config.MinerFeeConfig
 	prover           storage.Prover
 	faultTracker     sectorstorage.FaultTracker
 	proofType        abi.RegisteredPoStProof
@@ -72,7 +75,7 @@ type WindowPoStScheduler struct {
 	// failLk sync.Mutex
 }
 
-func NewWindowedPoStScheduler(api storageMinerApi, sb storage.Prover, ft sectorstorage.FaultTracker, actor address.Address, worker address.Address) (*WindowPoStScheduler, error) {
+func NewWindowedPoStScheduler(api storageMinerApi, fc config.MinerFeeConfig, sb storage.Prover, ft sectorstorage.FaultTracker, actor address.Address, worker address.Address) (*WindowPoStScheduler, error) {
 	mi, err := api.StateMinerInfo(context.TODO(), actor, types.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("getting sector size: %w", err)
@@ -85,6 +88,7 @@ func NewWindowedPoStScheduler(api storageMinerApi, sb storage.Prover, ft sectors
 
 	return &WindowPoStScheduler{
 		api:              api,
+		feeCfg:           fc,
 		prover:           sb,
 		faultTracker:     ft,
 		proofType:        rt,
@@ -116,7 +120,7 @@ func (s *WindowPoStScheduler) Run(ctx context.Context) {
 		if notifs == nil {
 			notifs, err = s.api.ChainNotify(ctx)
 			if err != nil {
-				log.Errorf("ChainNotify error: %+v")
+				log.Errorf("ChainNotify error: %+v", err)
 
 				build.Clock.Sleep(10 * time.Second)
 				continue
@@ -220,8 +224,11 @@ func (s *WindowPoStScheduler) update(ctx context.Context, new *types.TipSet) err
 
 	s.abortActivePoSt()
 
-	if di.Challenge+StartConfidence >= new.Height() {
-		log.Info("not starting windowPost yet, waiting for startconfidence", di.Challenge, di.Challenge+StartConfidence, new.Height())
+	// TODO: wait for di.Challenge here, will give us ~10min more to compute windowpost
+	//  (Need to get correct deadline above, which is tricky)
+
+	if di.Open+StartConfidence >= new.Height() {
+		log.Info("not starting windowPost yet, waiting for startconfidence", di.Open, di.Open+StartConfidence, new.Height())
 		return nil
 	}
 

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"io"
 	"os"
+	"strconv"
 	"sync"
 
 	"github.com/filecoin-project/specs-actors/actors/crypto"
@@ -46,6 +47,18 @@ var log = logging.Logger("chainstore")
 
 var chainHeadKey = dstore.NewKey("head")
 var blockValidationCacheKeyPrefix = dstore.NewKey("blockValidation")
+
+var DefaultTipSetCacheSize = 8192
+
+func init() {
+	if s := os.Getenv("LOTUS_CHAIN_TIPSET_CACHE"); s != "" {
+		tscs, err := strconv.Atoi(s)
+		if err != nil {
+			log.Errorf("failed to parse 'LOTUS_CHAIN_TIPSET_CACHE' env var: %s", err)
+		}
+		DefaultTipSetCacheSize = tscs
+	}
+}
 
 // ReorgNotifee represents a callback that gets called upon reorgs.
 type ReorgNotifee func(rev, app []*types.TipSet) error
@@ -101,7 +114,7 @@ type ChainStore struct {
 
 func NewChainStore(bs bstore.Blockstore, ds dstore.Batching, vmcalls vm.SyscallBuilder) *ChainStore {
 	c, _ := lru.NewARC(2048)
-	tsc, _ := lru.NewARC(4096)
+	tsc, _ := lru.NewARC(DefaultTipSetCacheSize)
 	cs := &ChainStore{
 		bs:       bs,
 		ds:       ds,
@@ -493,6 +506,10 @@ func (cs *ChainStore) NearestCommonAncestor(a, b *types.TipSet) (*types.TipSet, 
 }
 
 func (cs *ChainStore) ReorgOps(a, b *types.TipSet) ([]*types.TipSet, []*types.TipSet, error) {
+	return ReorgOps(cs.LoadTipSet, a, b)
+}
+
+func ReorgOps(lts func(types.TipSetKey) (*types.TipSet, error), a, b *types.TipSet) ([]*types.TipSet, []*types.TipSet, error) {
 	left := a
 	right := b
 
@@ -500,7 +517,7 @@ func (cs *ChainStore) ReorgOps(a, b *types.TipSet) ([]*types.TipSet, []*types.Ti
 	for !left.Equals(right) {
 		if left.Height() > right.Height() {
 			leftChain = append(leftChain, left)
-			par, err := cs.LoadTipSet(left.Parents())
+			par, err := lts(left.Parents())
 			if err != nil {
 				return nil, nil, err
 			}
@@ -508,7 +525,7 @@ func (cs *ChainStore) ReorgOps(a, b *types.TipSet) ([]*types.TipSet, []*types.Ti
 			left = par
 		} else {
 			rightChain = append(rightChain, right)
-			par, err := cs.LoadTipSet(right.Parents())
+			par, err := lts(right.Parents())
 			if err != nil {
 				log.Infof("failed to fetch right.Parents: %s", err)
 				return nil, nil, err
@@ -519,6 +536,7 @@ func (cs *ChainStore) ReorgOps(a, b *types.TipSet) ([]*types.TipSet, []*types.Ti
 	}
 
 	return leftChain, rightChain, nil
+
 }
 
 // GetHeaviestTipSet returns the current heaviest tipset known (i.e. our head).
@@ -730,9 +748,15 @@ func (cs *ChainStore) readAMTCids(root cid.Cid) ([]cid.Cid, error) {
 	return cids, nil
 }
 
-func (cs *ChainStore) MessagesForTipset(ts *types.TipSet) ([]types.ChainMsg, error) {
+type BlockMessages struct {
+	Miner         address.Address
+	BlsMessages   []types.ChainMsg
+	SecpkMessages []types.ChainMsg
+	WinCount      int64
+}
+
+func (cs *ChainStore) BlockMsgsForTipset(ts *types.TipSet) ([]BlockMessages, error) {
 	applied := make(map[address.Address]uint64)
-	balances := make(map[address.Address]types.BigInt)
 
 	cst := cbor.NewCborStore(cs.bs)
 	st, err := state.LoadStateTree(cst, ts.Blocks()[0].ParentStateRoot)
@@ -748,43 +772,80 @@ func (cs *ChainStore) MessagesForTipset(ts *types.TipSet) ([]types.ChainMsg, err
 			}
 
 			applied[a] = act.Nonce
-			balances[a] = act.Balance
 		}
 		return nil
 	}
 
-	var out []types.ChainMsg
+	selectMsg := func(m *types.Message) (bool, error) {
+		if err := preloadAddr(m.From); err != nil {
+			return false, err
+		}
+
+		if applied[m.From] != m.Nonce {
+			return false, nil
+		}
+		applied[m.From]++
+
+		return true, nil
+	}
+
+	var out []BlockMessages
 	for _, b := range ts.Blocks() {
+
 		bms, sms, err := cs.MessagesForBlock(b)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to get messages for block: %w", err)
 		}
 
-		cmsgs := make([]types.ChainMsg, 0, len(bms)+len(sms))
-		for _, m := range bms {
-			cmsgs = append(cmsgs, m)
+		bm := BlockMessages{
+			Miner:         b.Miner,
+			BlsMessages:   make([]types.ChainMsg, 0, len(bms)),
+			SecpkMessages: make([]types.ChainMsg, 0, len(sms)),
+			WinCount:      b.ElectionProof.WinCount,
 		}
-		for _, sm := range sms {
-			cmsgs = append(cmsgs, sm)
+
+		for _, bmsg := range bms {
+			b, err := selectMsg(bmsg.VMMessage())
+			if err != nil {
+				return nil, xerrors.Errorf("failed to decide whether to select message for block: %w", err)
+			}
+
+			if b {
+				bm.BlsMessages = append(bm.BlsMessages, bmsg)
+			}
 		}
 
-		for _, cm := range cmsgs {
-			m := cm.VMMessage()
-			if err := preloadAddr(m.From); err != nil {
-				return nil, err
+		for _, smsg := range sms {
+			b, err := selectMsg(smsg.VMMessage())
+			if err != nil {
+				return nil, xerrors.Errorf("failed to decide whether to select message for block: %w", err)
 			}
 
-			if applied[m.From] != m.Nonce {
-				continue
+			if b {
+				bm.SecpkMessages = append(bm.SecpkMessages, smsg)
 			}
-			applied[m.From]++
+		}
 
-			if balances[m.From].LessThan(m.RequiredFunds()) {
-				continue
-			}
-			balances[m.From] = types.BigSub(balances[m.From], m.RequiredFunds())
+		out = append(out, bm)
+	}
 
-			out = append(out, cm)
+	return out, nil
+}
+
+func (cs *ChainStore) MessagesForTipset(ts *types.TipSet) ([]types.ChainMsg, error) {
+	bmsgs, err := cs.BlockMsgsForTipset(ts)
+	if err != nil {
+		return nil, err
+	}
+
+	var out []types.ChainMsg
+	for _, bm := range bmsgs {
+		for _, blsm := range bm.BlsMessages {
+			out = append(out, blsm)
+		}
+
+		for _, secm := range bm.SecpkMessages {
+			out = append(out, secm)
 		}
 	}
 
@@ -892,7 +953,7 @@ func (cs *ChainStore) LoadMessagesFromCids(cids []cid.Cid) ([]*types.Message, er
 	for i, c := range cids {
 		m, err := cs.GetMessage(c)
 		if err != nil {
-			return nil, xerrors.Errorf("failed to get message: (%s):%d: %w", err, c, i)
+			return nil, xerrors.Errorf("failed to get message: (%s):%d: %w", c, i, err)
 		}
 
 		msgs = append(msgs, m)
@@ -906,7 +967,7 @@ func (cs *ChainStore) LoadSignedMessagesFromCids(cids []cid.Cid) ([]*types.Signe
 	for i, c := range cids {
 		m, err := cs.GetSignedMessage(c)
 		if err != nil {
-			return nil, xerrors.Errorf("failed to get message: (%s):%d: %w", err, c, i)
+			return nil, xerrors.Errorf("failed to get message: (%s):%d: %w", c, i, err)
 		}
 
 		msgs = append(msgs, m)
@@ -974,8 +1035,42 @@ func DrawRandomness(rbase []byte, pers crypto.DomainSeparationTag, round abi.Cha
 	return h.Sum(nil), nil
 }
 
-func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	_, span := trace.StartSpan(ctx, "store.GetRandomness")
+func (cs *ChainStore) GetBeaconRandomness(ctx context.Context, blks []cid.Cid, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	_, span := trace.StartSpan(ctx, "store.GetBeaconRandomness")
+	defer span.End()
+	span.AddAttributes(trace.Int64Attribute("round", int64(round)))
+
+	ts, err := cs.LoadTipSet(types.NewTipSetKey(blks...))
+	if err != nil {
+		return nil, err
+	}
+
+	if round > ts.Height() {
+		return nil, xerrors.Errorf("cannot draw randomness from the future")
+	}
+
+	searchHeight := round
+	if searchHeight < 0 {
+		searchHeight = 0
+	}
+
+	randTs, err := cs.GetTipsetByHeight(ctx, searchHeight, ts, true)
+	if err != nil {
+		return nil, err
+	}
+
+	be, err := cs.GetLatestBeaconEntry(randTs)
+	if err != nil {
+		return nil, err
+	}
+
+	// if at (or just past -- for null epochs) appropriate epoch
+	// or at genesis (works for negative epochs)
+	return DrawRandomness(be.Data, pers, round, entropy)
+}
+
+func (cs *ChainStore) GetChainRandomness(ctx context.Context, blks []cid.Cid, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	_, span := trace.StartSpan(ctx, "store.GetChainRandomness")
 	defer span.End()
 	span.AddAttributes(trace.Int64Attribute("round", int64(round)))
 
@@ -1110,13 +1205,18 @@ func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, w io.Writer)
 			return xerrors.Errorf("unmarshaling block header (cid=%s): %w", blk, err)
 		}
 
-		for _, p := range b.Parents {
-			blocksToWalk = append(blocksToWalk, p)
-		}
-
 		cids, err := recurseLinks(cs.bs, b.Messages, []cid.Cid{b.Messages})
 		if err != nil {
 			return xerrors.Errorf("recursing messages failed: %w", err)
+		}
+
+		if b.Height > 0 {
+			for _, p := range b.Parents {
+				blocksToWalk = append(blocksToWalk, p)
+			}
+		} else {
+			// include the genesis block
+			cids = append(cids, b.Parents...)
 		}
 
 		out := cids
@@ -1216,8 +1316,12 @@ func NewChainRand(cs *ChainStore, blks []cid.Cid, bheight abi.ChainEpoch) vm.Ran
 	}
 }
 
-func (cr *chainRand) GetRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	return cr.cs.GetRandomness(ctx, cr.blks, pers, round, entropy)
+func (cr *chainRand) GetChainRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	return cr.cs.GetChainRandomness(ctx, cr.blks, pers, round, entropy)
+}
+
+func (cr *chainRand) GetBeaconRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	return cr.cs.GetBeaconRandomness(ctx, cr.blks, pers, round, entropy)
 }
 
 func (cs *ChainStore) GetTipSetFromKey(tsk types.TipSetKey) (*types.TipSet, error) {

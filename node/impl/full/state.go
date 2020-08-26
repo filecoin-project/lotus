@@ -15,7 +15,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -74,7 +74,7 @@ func (a *StateAPI) StateMinerActiveSectors(ctx context.Context, maddr address.Ad
 	err := a.StateManager.WithParentStateTsk(tsk,
 		a.StateManager.WithActor(maddr,
 			a.StateManager.WithActorState(ctx, func(store adt.Store, mas *miner.State) error {
-				var allActive []*abi.BitField
+				var allActive []abi.BitField
 
 				err := a.StateManager.WithDeadlines(
 					a.StateManager.WithEachDeadline(
@@ -96,7 +96,7 @@ func (a *StateAPI) StateMinerActiveSectors(ctx context.Context, maddr address.Ad
 					return xerrors.Errorf("merging active sector bitfields: %w", err)
 				}
 
-				out, err = stmgr.LoadSectorsFromSet(ctx, a.Chain.Blockstore(), mas.Sectors, active, false)
+				out, err = stmgr.LoadSectorsFromSet(ctx, a.Chain.Blockstore(), mas.Sectors, &active, false)
 				return err
 			})))
 	if err != nil {
@@ -160,8 +160,8 @@ func (a *StateAPI) StateMinerProvingDeadline(ctx context.Context, addr address.A
 	return mas.DeadlineInfo(ts.Height()).NextNotElapsed(), nil
 }
 
-func (a *StateAPI) StateMinerFaults(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.BitField, error) {
-	out := abi.NewBitField()
+func (a *StateAPI) StateMinerFaults(ctx context.Context, addr address.Address, tsk types.TipSetKey) (abi.BitField, error) {
+	out := bitfield.New()
 
 	err := a.StateManager.WithParentStateTsk(tsk,
 		a.StateManager.WithActor(addr,
@@ -173,7 +173,7 @@ func (a *StateAPI) StateMinerFaults(ctx context.Context, addr address.Address, t
 							return err
 						}))))))
 	if err != nil {
-		return nil, err
+		return bitfield.BitField{}, err
 	}
 
 	return out, err
@@ -203,7 +203,7 @@ func (a *StateAPI) StateAllMinerFaults(ctx context.Context, lookback abi.ChainEp
 			return nil, xerrors.Errorf("failed to load miner actor state %s: %w", m, err)
 		}
 
-		err = mas.ForEachFaultEpoch(a.Chain.Store(ctx), func(faultStart abi.ChainEpoch, faults *abi.BitField) error {
+		err = mas.ForEachFaultEpoch(a.Chain.Store(ctx), func(faultStart abi.ChainEpoch, faults abi.BitField) error {
 			if faultStart >= cutoff {
 				allFaults = append(allFaults, &api.Fault{
 					Miner: m,
@@ -222,8 +222,8 @@ func (a *StateAPI) StateAllMinerFaults(ctx context.Context, lookback abi.ChainEp
 	return allFaults, nil*/
 }
 
-func (a *StateAPI) StateMinerRecoveries(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.BitField, error) {
-	out := abi.NewBitField()
+func (a *StateAPI) StateMinerRecoveries(ctx context.Context, addr address.Address, tsk types.TipSetKey) (abi.BitField, error) {
+	out := bitfield.New()
 
 	err := a.StateManager.WithParentStateTsk(tsk,
 		a.StateManager.WithActor(addr,
@@ -235,7 +235,7 @@ func (a *StateAPI) StateMinerRecoveries(ctx context.Context, addr address.Addres
 							return err
 						}))))))
 	if err != nil {
-		return nil, err
+		return bitfield.BitField{}, err
 	}
 
 	return out, err
@@ -256,37 +256,6 @@ func (a *StateAPI) StateMinerPower(ctx context.Context, addr address.Address, ts
 		MinerPower: m,
 		TotalPower: net,
 	}, nil
-}
-
-func (a *StateAPI) StatePledgeCollateral(ctx context.Context, tsk types.TipSetKey) (types.BigInt, error) {
-	/*ts, err := a.Chain.GetTipSetFromKey(tsk)
-	if err != nil {
-		return types.EmptyInt, xerrors.Errorf("loading tipset %s: %w", tsk, err)
-	}
-
-	param, err := actors.SerializeParams(&actors.PledgeCollateralParams{Size: types.NewInt(0)})
-	if err != nil {
-		return types.NewInt(0), err
-	}
-
-	ret, aerr := a.StateManager.Call(ctx, &types.Message{
-		From:   actors.StoragePowerAddress,
-		To:     actors.StoragePowerAddress,
-		Method: actors.SPAMethods.PledgeCollateralForSize,
-
-		Params: param,
-	}, ts)
-	if aerr != nil {
-		return types.NewInt(0), xerrors.Errorf("failed to get miner worker addr: %w", err)
-	}
-
-	if ret.MsgRct.ExitCode != 0 {
-		return types.NewInt(0), xerrors.Errorf("failed to get miner worker addr (exit code %d)", ret.MsgRct.ExitCode)
-	}
-
-	return types.BigFromBytes(ret.Return), nil*/
-	log.Error("TODO StatePledgeCollateral")
-	return big.Zero(), nil
 }
 
 func (a *StateAPI) StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (*api.InvocResult, error) {
@@ -426,7 +395,7 @@ func (a *StateAPI) MinerCreateBlock(ctx context.Context, bt *api.BlockTemplate) 
 }
 
 func (a *StateAPI) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64) (*api.MsgLookup, error) {
-	ts, recpt, err := a.StateManager.WaitForMessage(ctx, msg, confidence)
+	ts, recpt, found, err := a.StateManager.WaitForMessage(ctx, msg, confidence)
 	if err != nil {
 		return nil, err
 	}
@@ -453,6 +422,7 @@ func (a *StateAPI) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uin
 	}
 
 	return &api.MsgLookup{
+		Message:   found,
 		Receipt:   *recpt,
 		ReturnDec: returndec,
 		TipSet:    ts.Key(),
@@ -461,20 +431,20 @@ func (a *StateAPI) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uin
 }
 
 func (a *StateAPI) StateSearchMsg(ctx context.Context, msg cid.Cid) (*api.MsgLookup, error) {
-	ts, recpt, err := a.StateManager.SearchForMessage(ctx, msg)
+	ts, recpt, found, err := a.StateManager.SearchForMessage(ctx, msg)
 	if err != nil {
 		return nil, err
 	}
 
 	if ts != nil {
 		return &api.MsgLookup{
+			Message: found,
 			Receipt: *recpt,
 			TipSet:  ts.Key(),
 			Height:  ts.Height(),
 		}, nil
-	} else {
-		return nil, nil
 	}
+	return nil, nil
 }
 
 func (a *StateAPI) StateGetReceipt(ctx context.Context, msg cid.Cid, tsk types.TipSetKey) (*types.MessageReceipt, error) {
@@ -586,7 +556,7 @@ func (a *StateAPI) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (m
 		} else if !found {
 			s.SectorStartEpoch = -1
 		}
-		out[strconv.FormatInt(int64(i), 10)] = api.MarketDeal{
+		out[strconv.FormatInt(i, 10)] = api.MarketDeal{
 			Proposal: d,
 			State:    s,
 		}
@@ -666,7 +636,7 @@ func (a *StateAPI) StateMinerSectorCount(ctx context.Context, addr address.Addre
 	err := a.StateManager.WithParentStateTsk(tsk,
 		a.StateManager.WithActor(addr,
 			a.StateManager.WithActorState(ctx, func(store adt.Store, mas *miner.State) error {
-				var allActive []*abi.BitField
+				var allActive []abi.BitField
 
 				err := a.StateManager.WithDeadlines(
 					a.StateManager.WithEachDeadline(
@@ -812,10 +782,6 @@ func (a *StateAPI) StateSectorPartition(ctx context.Context, maddr address.Addre
 	})
 	if err != nil {
 		return nil, err
-	}
-
-	if found == nil {
-
 	}
 
 	return found, nil
@@ -1069,7 +1035,7 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 
 	duration := pci.Expiration - ts.Height() // NB: not exactly accurate, but should always lead us to *over* estimate, not under
 
-	circSupply, err := a.StateManager.CirculatingSupply(ctx, ts)
+	circSupply, err := a.StateCirculatingSupply(ctx, ts.Key())
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("getting circulating supply: %w", err)
 	}
@@ -1081,7 +1047,7 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 		powerState.ThisEpochPledgeCollateral,
 		rewardState.ThisEpochRewardSmoothed,
 		powerState.ThisEpochQAPowerSmoothed,
-		circSupply,
+		circSupply.FilCirculating,
 	)
 
 	return types.BigDiv(types.BigMul(initialPledge, initialPledgeNum), initialPledgeDen), nil
@@ -1121,6 +1087,12 @@ func (a *StateAPI) StateVerifiedClientStatus(ctx context.Context, addr address.A
 		return nil, err
 	}
 
+	aid, err := a.StateLookupID(ctx, addr, tsk)
+	if err != nil {
+		log.Warnf("lookup failure %v", err)
+		return nil, err
+	}
+
 	store := a.StateManager.ChainStore().Store(ctx)
 
 	var st verifreg.State
@@ -1134,7 +1106,7 @@ func (a *StateAPI) StateVerifiedClientStatus(ctx context.Context, addr address.A
 	}
 
 	var dcap verifreg.DataCap
-	if found, err := vh.Get(adt.AddrKey(addr), &dcap); err != nil {
+	if found, err := vh.Get(adt.AddrKey(aid), &dcap); err != nil {
 		return nil, err
 	} else if !found {
 		return nil, nil
@@ -1170,26 +1142,37 @@ func (a *StateAPI) StateDealProviderCollateralBounds(ctx context.Context, size a
 	})
 
 	if err != nil {
-		return api.DealCollateralBounds{}, xerrors.Errorf("getting power and reward actor states: %w")
+		return api.DealCollateralBounds{}, xerrors.Errorf("getting power and reward actor states: %w", err)
 	}
 
-	circ, err := a.StateManager.CirculatingSupply(ctx, ts)
+	circ, err := a.StateCirculatingSupply(ctx, ts.Key())
 	if err != nil {
-		return api.DealCollateralBounds{}, xerrors.Errorf("getting total circulating supply: %w")
+		return api.DealCollateralBounds{}, xerrors.Errorf("getting total circulating supply: %w", err)
 	}
 
-	min, max := market.DealProviderCollateralBounds(size, verified, powerState.ThisEpochQualityAdjPower, rewardState.ThisEpochBaselinePower, circ)
+	min, max := market.DealProviderCollateralBounds(size, verified, powerState.ThisEpochQualityAdjPower, rewardState.ThisEpochBaselinePower, circ.FilCirculating)
 	return api.DealCollateralBounds{
 		Min: types.BigDiv(types.BigMul(min, dealProviderCollateralNum), dealProviderCollateralDen),
 		Max: max,
 	}, nil
 }
 
-func (a *StateAPI) StateCirculatingSupply(ctx context.Context, tsk types.TipSetKey) (abi.TokenAmount, error) {
+func (a *StateAPI) StateCirculatingSupply(ctx context.Context, tsk types.TipSetKey) (api.CirculatingSupply, error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
-		return abi.TokenAmount{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+		return api.CirculatingSupply{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	return stmgr.GetCirculatingSupply(ctx, a.StateManager, ts)
+	st, _, err := a.StateManager.TipSetState(ctx, ts)
+	if err != nil {
+		return api.CirculatingSupply{}, err
+	}
+
+	cst := cbor.NewCborStore(a.Chain.Blockstore())
+	sTree, err := state.LoadStateTree(cst, st)
+	if err != nil {
+		return api.CirculatingSupply{}, err
+	}
+
+	return a.StateManager.GetCirculatingSupplyDetailed(ctx, ts.Height(), sTree)
 }

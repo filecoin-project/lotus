@@ -81,7 +81,7 @@ func TestInteropBH(t *testing.T) {
 	}
 
 	posts := []abi.PoStProof{
-		{abi.RegisteredPoStProof_StackedDrgWinning2KiBV1, []byte{0x07}},
+		{PoStProof: abi.RegisteredPoStProof_StackedDrgWinning2KiBV1, ProofBytes: []byte{0x07}},
 	}
 
 	bh := &BlockHeader{

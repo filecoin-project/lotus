@@ -89,11 +89,14 @@ const VerifSigCacheSize = 32000
 
 // TODO: If this is gonna stay, it should move to specs-actors
 const BlockMessageLimit = 10000
+
 const BlockGasLimit = 10_000_000_000
 const BlockGasTarget = BlockGasLimit / 2
 const BaseFeeMaxChangeDenom = 8 // 12.5%
 const InitialBaseFee = 100e6
 const MinimumBaseFee = 100
+const PackingEfficiencyNum = 4
+const PackingEfficiencyDenom = 5
 
 // Actor consts
 // TODO: Pull from actors when its made not private

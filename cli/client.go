@@ -3,6 +3,7 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -10,8 +11,11 @@ import (
 	"text/tabwriter"
 	"time"
 
+	tm "github.com/buger/goterm"
 	"github.com/docker/go-units"
 	"github.com/fatih/color"
+	datatransfer "github.com/filecoin-project/go-data-transfer"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-cidutil/cidenc"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -75,6 +79,7 @@ var clientCmd = &cli.Command{
 		WithCategory("util", clientCommPCmd),
 		WithCategory("util", clientCarGenCmd),
 		WithCategory("util", clientInfoCmd),
+		WithCategory("util", clientListTransfers),
 	},
 }
 
@@ -173,7 +178,7 @@ var clientDropCmd = &cli.Command{
 var clientCommPCmd = &cli.Command{
 	Name:      "commP",
 	Usage:     "Calculate the piece-cid (commP) of a CAR file",
-	ArgsUsage: "[inputFile minerAddress]",
+	ArgsUsage: "[inputFile]",
 	Flags: []cli.Flag{
 		&CidBaseFlag,
 	},
@@ -185,16 +190,11 @@ var clientCommPCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		if cctx.Args().Len() != 2 {
-			return fmt.Errorf("usage: commP <inputPath> <minerAddr>")
+		if cctx.Args().Len() != 1 {
+			return fmt.Errorf("usage: commP <inputPath>")
 		}
 
-		miner, err := address.NewFromString(cctx.Args().Get(1))
-		if err != nil {
-			return err
-		}
-
-		ret, err := api.ClientCalcCommP(ctx, cctx.Args().Get(0), miner)
+		ret, err := api.ClientCalcCommP(ctx, cctx.Args().Get(0))
 		if err != nil {
 			return err
 		}
@@ -315,6 +315,10 @@ var clientDealCmd = &cli.Command{
 			Usage: "indicate that the deal counts towards verified client total",
 			Value: false,
 		},
+		&cli.StringFlag{
+			Name:  "provider-collateral",
+			Usage: "specify the requested provider collateral the miner should put up",
+		},
 		&CidBaseFlag,
 	},
 	Action: func(cctx *cli.Context) error {
@@ -353,6 +357,15 @@ var clientDealCmd = &cli.Command{
 		dur, err := strconv.ParseInt(cctx.Args().Get(3), 10, 32)
 		if err != nil {
 			return err
+		}
+
+		var provCol big.Int
+		if pcs := cctx.String("provider-collateral"); pcs != "" {
+			pc, err := big.FromString(pcs)
+			if err != nil {
+				return fmt.Errorf("failed to parse provider-collateral: %w", err)
+			}
+			provCol = pc
 		}
 
 		if abi.ChainEpoch(dur) < build.MinDealDuration {
@@ -419,14 +432,15 @@ var clientDealCmd = &cli.Command{
 		}
 
 		proposal, err := api.ClientStartDeal(ctx, &lapi.StartDealParams{
-			Data:              ref,
-			Wallet:            a,
-			Miner:             miner,
-			EpochPrice:        types.BigInt(price),
-			MinBlocksDuration: uint64(dur),
-			DealStartEpoch:    abi.ChainEpoch(cctx.Int64("start-epoch")),
-			FastRetrieval:     cctx.Bool("fast-retrieval"),
-			VerifiedDeal:      isVerified,
+			Data:               ref,
+			Wallet:             a,
+			Miner:              miner,
+			EpochPrice:         types.BigInt(price),
+			MinBlocksDuration:  uint64(dur),
+			DealStartEpoch:     abi.ChainEpoch(cctx.Int64("start-epoch")),
+			FastRetrieval:      cctx.Bool("fast-retrieval"),
+			VerifiedDeal:       isVerified,
+			ProviderCollateral: provCol,
 		})
 		if err != nil {
 			return err
@@ -540,7 +554,7 @@ func interactiveDeal(cctx *cli.Context) error {
 				continue
 			}
 
-			a, err := api.ClientQueryAsk(ctx, mi.PeerId, maddr)
+			a, err := api.ClientQueryAsk(ctx, *mi.PeerId, maddr)
 			if err != nil {
 				printErr(xerrors.Errorf("failed to query ask: %w", err))
 				state = "miner"
@@ -837,12 +851,33 @@ var clientRetrieveCmd = &cli.Command{
 			Path:  cctx.Args().Get(1),
 			IsCAR: cctx.Bool("car"),
 		}
-		if err := fapi.ClientRetrieve(ctx, offer.Order(payer), ref); err != nil {
-			return xerrors.Errorf("Retrieval Failed: %w", err)
+		updates, err := fapi.ClientRetrieveWithEvents(ctx, offer.Order(payer), ref)
+		if err != nil {
+			return xerrors.Errorf("error setting up retrieval: %w", err)
 		}
 
-		fmt.Println("Success")
-		return nil
+		for {
+			select {
+			case evt, ok := <-updates:
+				if ok {
+					fmt.Printf("> Recv: %s, Paid %s, %s (%s)\n",
+						types.SizeStr(types.NewInt(evt.BytesReceived)),
+						types.FIL(evt.FundsSpent),
+						retrievalmarket.ClientEvents[evt.Event],
+						retrievalmarket.DealStatuses[evt.Status],
+					)
+				} else {
+					fmt.Println("Success")
+					return nil
+				}
+
+				if evt.Err != "" {
+					return xerrors.Errorf("retrieval failed: %s", evt.Err)
+				}
+			case <-ctx.Done():
+				return xerrors.Errorf("retrieval timed out")
+			}
+		}
 	},
 }
 
@@ -895,11 +930,11 @@ var clientQueryAskCmd = &cli.Command{
 				return xerrors.Errorf("failed to get peerID for miner: %w", err)
 			}
 
-			if peer.ID(mi.PeerId) == peer.ID("SETME") {
+			if *mi.PeerId == peer.ID("SETME") {
 				return fmt.Errorf("the miner hasn't initialized yet")
 			}
 
-			pid = peer.ID(mi.PeerId)
+			pid = *mi.PeerId
 		}
 
 		ask, err := api.ClientQueryAsk(ctx, pid, maddr)
@@ -909,6 +944,7 @@ var clientQueryAskCmd = &cli.Command{
 
 		fmt.Printf("Ask: %s\n", maddr)
 		fmt.Printf("Price per GiB: %s\n", types.FIL(ask.Ask.Price))
+		fmt.Printf("Verified Price per GiB: %s\n", types.FIL(ask.Ask.VerifiedPrice))
 		fmt.Printf("Max Piece size: %s\n", types.SizeStr(types.NewInt(uint64(ask.Ask.MaxPieceSize))))
 
 		size := cctx.Int64("size")
@@ -961,6 +997,10 @@ var clientListDeals = &cli.Command{
 			return err
 		}
 
+		sort.Slice(localDeals, func(i, j int) bool {
+			return localDeals[i].CreationTime.Before(localDeals[j].CreationTime)
+		})
+
 		var deals []deal
 		for _, v := range localDeals {
 			if v.DealID == 0 {
@@ -989,7 +1029,7 @@ var clientListDeals = &cli.Command{
 
 		if cctx.Bool("verbose") {
 			w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
-			fmt.Fprintf(w, "DealCid\tDealId\tProvider\tState\tOn Chain?\tSlashed?\tPieceCID\tSize\tPrice\tDuration\tMessage\n")
+			fmt.Fprintf(w, "Created\tDealCid\tDealId\tProvider\tState\tOn Chain?\tSlashed?\tPieceCID\tSize\tPrice\tDuration\tMessage\n")
 			for _, d := range deals {
 				onChain := "N"
 				if d.OnChainDealState.SectorStartEpoch != -1 {
@@ -1002,58 +1042,56 @@ var clientListDeals = &cli.Command{
 				}
 
 				price := types.FIL(types.BigMul(d.LocalDeal.PricePerEpoch, types.NewInt(d.LocalDeal.Duration)))
-				fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d\t%s\n", d.LocalDeal.ProposalCid, d.LocalDeal.DealID, d.LocalDeal.Provider, dealStateString(color, d.LocalDeal.State), onChain, slashed, d.LocalDeal.PieceCID, types.SizeStr(types.NewInt(d.LocalDeal.Size)), price, d.LocalDeal.Duration, d.LocalDeal.Message)
+				fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d\t%s\n", d.LocalDeal.CreationTime.Format(time.Stamp), d.LocalDeal.ProposalCid, d.LocalDeal.DealID, d.LocalDeal.Provider, dealStateString(color, d.LocalDeal.State), onChain, slashed, d.LocalDeal.PieceCID, types.SizeStr(types.NewInt(d.LocalDeal.Size)), price, d.LocalDeal.Duration, d.LocalDeal.Message)
 			}
 			return w.Flush()
-		} else {
-			w := tablewriter.New(tablewriter.Col("DealCid"),
-				tablewriter.Col("DealId"),
-				tablewriter.Col("Provider"),
-				tablewriter.Col("State"),
-				tablewriter.Col("On Chain?"),
-				tablewriter.Col("Slashed?"),
-				tablewriter.Col("PieceCID"),
-				tablewriter.Col("Size"),
-				tablewriter.Col("Price"),
-				tablewriter.Col("Duration"),
-				tablewriter.NewLineCol("Message"))
+		}
 
-			for _, d := range deals {
-				propcid := d.LocalDeal.ProposalCid.String()
-				propcid = "..." + propcid[len(propcid)-8:]
+		w := tablewriter.New(tablewriter.Col("DealCid"),
+			tablewriter.Col("DealId"),
+			tablewriter.Col("Provider"),
+			tablewriter.Col("State"),
+			tablewriter.Col("On Chain?"),
+			tablewriter.Col("Slashed?"),
+			tablewriter.Col("PieceCID"),
+			tablewriter.Col("Size"),
+			tablewriter.Col("Price"),
+			tablewriter.Col("Duration"),
+			tablewriter.NewLineCol("Message"))
 
-				onChain := "N"
-				if d.OnChainDealState.SectorStartEpoch != -1 {
-					onChain = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SectorStartEpoch)
-				}
+		for _, d := range deals {
+			propcid := ellipsis(d.LocalDeal.ProposalCid.String(), 8)
 
-				slashed := "N"
-				if d.OnChainDealState.SlashEpoch != -1 {
-					slashed = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SlashEpoch)
-				}
-
-				piece := d.LocalDeal.PieceCID.String()
-				piece = "..." + piece[len(piece)-8:]
-
-				price := types.FIL(types.BigMul(d.LocalDeal.PricePerEpoch, types.NewInt(d.LocalDeal.Duration)))
-
-				w.Write(map[string]interface{}{
-					"DealCid":   propcid,
-					"DealId":    d.LocalDeal.DealID,
-					"Provider":  d.LocalDeal.Provider,
-					"State":     dealStateString(color, d.LocalDeal.State),
-					"On Chain?": onChain,
-					"Slashed?":  slashed,
-					"PieceCID":  piece,
-					"Size":      types.SizeStr(types.NewInt(d.LocalDeal.Size)),
-					"Price":     price,
-					"Duration":  d.LocalDeal.Duration,
-					"Message":   d.LocalDeal.Message,
-				})
+			onChain := "N"
+			if d.OnChainDealState.SectorStartEpoch != -1 {
+				onChain = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SectorStartEpoch)
 			}
 
-			return w.Flush(os.Stdout)
+			slashed := "N"
+			if d.OnChainDealState.SlashEpoch != -1 {
+				slashed = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SlashEpoch)
+			}
+
+			piece := ellipsis(d.LocalDeal.PieceCID.String(), 8)
+
+			price := types.FIL(types.BigMul(d.LocalDeal.PricePerEpoch, types.NewInt(d.LocalDeal.Duration)))
+
+			w.Write(map[string]interface{}{
+				"DealCid":   propcid,
+				"DealId":    d.LocalDeal.DealID,
+				"Provider":  d.LocalDeal.Provider,
+				"State":     dealStateString(color, d.LocalDeal.State),
+				"On Chain?": onChain,
+				"Slashed?":  slashed,
+				"PieceCID":  piece,
+				"Size":      types.SizeStr(types.NewInt(d.LocalDeal.Size)),
+				"Price":     price,
+				"Duration":  d.LocalDeal.Duration,
+				"Message":   d.LocalDeal.Message,
+			})
 		}
+
+		return w.Flush(os.Stdout)
 	},
 }
 
@@ -1170,4 +1208,176 @@ var clientInfoCmd = &cli.Command{
 
 		return nil
 	},
+}
+
+var clientListTransfers = &cli.Command{
+	Name:  "list-transfers",
+	Usage: "List ongoing data transfers for deals",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "color",
+			Usage: "use color in display output",
+			Value: true,
+		},
+		&cli.BoolFlag{
+			Name:  "completed",
+			Usage: "show completed data transfers",
+		},
+		&cli.BoolFlag{
+			Name:  "watch",
+			Usage: "watch deal updates in real-time, rather than a one time list",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		channels, err := api.ClientListDataTransfers(ctx)
+		if err != nil {
+			return err
+		}
+
+		completed := cctx.Bool("completed")
+		color := cctx.Bool("color")
+		watch := cctx.Bool("watch")
+
+		if watch {
+			channelUpdates, err := api.ClientDataTransferUpdates(ctx)
+			if err != nil {
+				return err
+			}
+
+			for {
+				tm.Clear() // Clear current screen
+
+				tm.MoveCursor(1, 1)
+
+				OutputDataTransferChannels(tm.Screen, channels, completed, color)
+
+				tm.Flush()
+
+				select {
+				case <-ctx.Done():
+					return nil
+				case channelUpdate := <-channelUpdates:
+					var found bool
+					for i, existing := range channels {
+						if existing.TransferID == channelUpdate.TransferID &&
+							existing.OtherPeer == channelUpdate.OtherPeer &&
+							existing.IsSender == channelUpdate.IsSender &&
+							existing.IsInitiator == channelUpdate.IsInitiator {
+							channels[i] = channelUpdate
+							found = true
+							break
+						}
+					}
+					if !found {
+						channels = append(channels, channelUpdate)
+					}
+				}
+			}
+		}
+		OutputDataTransferChannels(os.Stdout, channels, completed, color)
+		return nil
+	},
+}
+
+// OutputDataTransferChannels generates table output for a list of channels
+func OutputDataTransferChannels(out io.Writer, channels []lapi.DataTransferChannel, completed bool, color bool) {
+	sort.Slice(channels, func(i, j int) bool {
+		return channels[i].TransferID < channels[j].TransferID
+	})
+
+	var receivingChannels, sendingChannels []lapi.DataTransferChannel
+	for _, channel := range channels {
+		if !completed && channel.Status == datatransfer.Completed {
+			continue
+		}
+		if channel.IsSender {
+			sendingChannels = append(sendingChannels, channel)
+		} else {
+			receivingChannels = append(receivingChannels, channel)
+		}
+	}
+
+	fmt.Fprintf(out, "Sending Channels\n\n")
+	w := tablewriter.New(tablewriter.Col("ID"),
+		tablewriter.Col("Status"),
+		tablewriter.Col("Sending To"),
+		tablewriter.Col("Root Cid"),
+		tablewriter.Col("Initiated?"),
+		tablewriter.Col("Transferred"),
+		tablewriter.Col("Voucher"),
+		tablewriter.NewLineCol("Message"))
+	for _, channel := range sendingChannels {
+		w.Write(toChannelOutput(color, "Sending To", channel))
+	}
+	w.Flush(out) //nolint:errcheck
+
+	fmt.Fprintf(out, "\nReceiving Channels\n\n")
+	w = tablewriter.New(tablewriter.Col("ID"),
+		tablewriter.Col("Status"),
+		tablewriter.Col("Receiving From"),
+		tablewriter.Col("Root Cid"),
+		tablewriter.Col("Initiated?"),
+		tablewriter.Col("Transferred"),
+		tablewriter.Col("Voucher"),
+		tablewriter.NewLineCol("Message"))
+	for _, channel := range receivingChannels {
+		w.Write(toChannelOutput(color, "Receiving From", channel))
+	}
+	w.Flush(out) //nolint:errcheck
+}
+
+func channelStatusString(useColor bool, status datatransfer.Status) string {
+	s := datatransfer.Statuses[status]
+	if !useColor {
+		return s
+	}
+
+	switch status {
+	case datatransfer.Failed, datatransfer.Cancelled:
+		return color.RedString(s)
+	case datatransfer.Completed:
+		return color.GreenString(s)
+	default:
+		return s
+	}
+}
+
+func toChannelOutput(useColor bool, otherPartyColumn string, channel lapi.DataTransferChannel) map[string]interface{} {
+	rootCid := ellipsis(channel.BaseCID.String(), 8)
+	otherParty := ellipsis(channel.OtherPeer.String(), 8)
+
+	initiated := "N"
+	if channel.IsInitiator {
+		initiated = "Y"
+	}
+
+	voucher := channel.Voucher
+	if len(voucher) > 40 {
+		voucher = ellipsis(voucher, 37)
+	}
+
+	return map[string]interface{}{
+		"ID":             channel.TransferID,
+		"Status":         channelStatusString(useColor, channel.Status),
+		otherPartyColumn: otherParty,
+		"Root Cid":       rootCid,
+		"Initiated?":     initiated,
+		"Transferred":    channel.Transferred,
+		"Voucher":        voucher,
+		"Message":        channel.Message,
+	}
+}
+
+func ellipsis(s string, length int) string {
+	if length > 0 && len(s) > length {
+		return "..." + s[len(s)-length:]
+	}
+	return s
 }

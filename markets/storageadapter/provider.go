@@ -28,12 +28,12 @@ import (
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/events/state"
 	"github.com/filecoin-project/lotus/chain/types"
+	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/markets/utils"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
-	sealing "github.com/filecoin-project/storage-fsm"
 )
 
 var log = logging.Logger("storageadapter")
@@ -79,7 +79,7 @@ func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemark
 	})
 
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("serializing PublishStorageDeals params failed: ", err)
+		return cid.Undef, xerrors.Errorf("serializing PublishStorageDeals params failed: %w", err)
 	}
 
 	// TODO: We may want this to happen after fetching data
@@ -89,7 +89,7 @@ func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemark
 		Value:  types.NewInt(0),
 		Method: builtin.MethodsMarket.PublishStorageDeals,
 		Params: params,
-	})
+	}, nil)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -194,7 +194,7 @@ func (n *ProviderNodeAdapter) AddFunds(ctx context.Context, addr address.Address
 		From:   addr,
 		Value:  amount,
 		Method: builtin.MethodsMarket.AddBalance,
-	})
+	}, nil)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -284,7 +284,7 @@ func (n *ProviderNodeAdapter) OnDealSectorCommitted(ctx context.Context, provide
 			return false, nil
 		}
 
-		sd, err := n.StateMarketStorageDeal(ctx, abi.DealID(dealID), ts.Key())
+		sd, err := n.StateMarketStorageDeal(ctx, dealID, ts.Key())
 		if err != nil {
 			return false, xerrors.Errorf("failed to look up deal on chain: %w", err)
 		}
@@ -326,7 +326,7 @@ func (n *ProviderNodeAdapter) OnDealSectorCommitted(ctx context.Context, provide
 			}
 
 			for _, did := range params.DealIDs {
-				if did == abi.DealID(dealID) {
+				if did == dealID {
 					sectorNumber = params.SectorNumber
 					sectorFound = true
 					return true, false, nil
@@ -355,7 +355,7 @@ func (n *ProviderNodeAdapter) OnDealSectorCommitted(ctx context.Context, provide
 
 	}
 
-	if err := n.ev.Called(checkFunc, called, revert, int(build.MessageConfidence+1), build.SealRandomnessLookbackLimit, matchEvent); err != nil {
+	if err := n.ev.Called(checkFunc, called, revert, int(build.MessageConfidence+1), events.NoTimeout, matchEvent); err != nil {
 		return xerrors.Errorf("failed to set up called handler: %w", err)
 	}
 
@@ -400,6 +400,11 @@ func (n *ProviderNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID
 
 	// Called immediately to check if the deal has already expired or been slashed
 	checkFunc := func(ts *types.TipSet) (done bool, more bool, err error) {
+		if ts == nil {
+			// keep listening for events
+			return false, true, nil
+		}
+
 		height := ts.Height()
 
 		// Check if the deal has already expired

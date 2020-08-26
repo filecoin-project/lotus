@@ -12,6 +12,8 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+
 	"github.com/docker/go-units"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-datastore"
@@ -24,6 +26,11 @@ import (
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	paramfetch "github.com/filecoin-project/go-paramfetch"
+
+	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
+
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
@@ -31,24 +38,20 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	crypto2 "github.com/filecoin-project/specs-actors/actors/crypto"
 
-	"github.com/filecoin-project/lotus/journal"
-	sectorstorage "github.com/filecoin-project/sector-storage"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/sector-storage/stores"
-
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/genesis"
+	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage"
-	sealing "github.com/filecoin-project/storage-fsm"
 )
 
 var initCmd = &cli.Command{
@@ -107,6 +110,10 @@ var initCmd = &cli.Command{
 			Name:  "gas-premium",
 			Usage: "set gas premium for initialization messages in AttoFIL",
 			Value: "0",
+		},
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "select which address to send actor creation message from",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -439,7 +446,14 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 
 			smgr, err := sectorstorage.New(ctx, lr, stores.NewIndex(), &ffiwrapper.Config{
 				SealProofType: spt,
-			}, sectorstorage.SealerConfig{10, true, true, true, true}, nil, sa)
+			}, sectorstorage.SealerConfig{
+				ParallelFetchLimit: 10,
+				AllowAddPiece:      true,
+				AllowPreCommit1:    true,
+				AllowPreCommit2:    true,
+				AllowCommit:        true,
+				AllowUnseal:        true,
+			}, nil, sa)
 			if err != nil {
 				return err
 			}
@@ -568,7 +582,7 @@ func configureStorageMiner(ctx context.Context, api lapi.FullNode, addr address.
 		GasPremium: gasPrice,
 	}
 
-	smsg, err := api.MpoolPushMessage(ctx, msg)
+	smsg, err := api.MpoolPushMessage(ctx, msg, nil)
 	if err != nil {
 		return err
 	}
@@ -616,11 +630,6 @@ func createStorageMiner(ctx context.Context, api lapi.FullNode, peerid peer.ID, 
 		return address.Undef, err
 	}
 
-	collateral, err := api.StatePledgeCollateral(ctx, types.EmptyTSK)
-	if err != nil {
-		return address.Undef, err
-	}
-
 	spt, err := ffiwrapper.SealProofTypeFromSectorSize(abi.SectorSize(ssize))
 	if err != nil {
 		return address.Undef, err
@@ -636,10 +645,19 @@ func createStorageMiner(ctx context.Context, api lapi.FullNode, peerid peer.ID, 
 		return address.Undef, err
 	}
 
+	sender := owner
+	if fromstr := cctx.String("from"); fromstr != "" {
+		faddr, err := address.NewFromString(fromstr)
+		if err != nil {
+			return address.Undef, fmt.Errorf("could not parse from address: %w", err)
+		}
+		sender = faddr
+	}
+
 	createStorageMinerMsg := &types.Message{
 		To:    builtin.StoragePowerActorAddr,
-		From:  owner,
-		Value: types.BigAdd(collateral, types.BigDiv(collateral, types.NewInt(100))),
+		From:  sender,
+		Value: big.Zero(),
 
 		Method: builtin.MethodsPower.CreateMiner,
 		Params: params,
@@ -648,7 +666,7 @@ func createStorageMiner(ctx context.Context, api lapi.FullNode, peerid peer.ID, 
 		GasPremium: gasPrice,
 	}
 
-	signed, err := api.MpoolPushMessage(ctx, createStorageMinerMsg)
+	signed, err := api.MpoolPushMessage(ctx, createStorageMinerMsg, nil)
 	if err != nil {
 		return address.Undef, err
 	}

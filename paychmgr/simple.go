@@ -8,8 +8,6 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
-	"github.com/filecoin-project/lotus/api"
-
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -24,11 +22,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 )
-
-type paychApi interface {
-	StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64) (*api.MsgLookup, error)
-	MpoolPushMessage(ctx context.Context, msg *types.Message) (*types.SignedMessage, error)
-}
 
 // paychFundsRes is the response to a create channel or add funds request
 type paychFundsRes struct {
@@ -377,7 +370,7 @@ func (ca *channelAccessor) createPaych(ctx context.Context, from, to address.Add
 		Params: enc,
 	}
 
-	smsg, err := ca.api.MpoolPushMessage(ctx, msg)
+	smsg, err := ca.api.MpoolPushMessage(ctx, msg, nil)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("initializing paych actor: %w", err)
 	}
@@ -456,7 +449,7 @@ func (ca *channelAccessor) addFunds(ctx context.Context, channelInfo *ChannelInf
 		Method: 0,
 	}
 
-	smsg, err := ca.api.MpoolPushMessage(ctx, msg)
+	smsg, err := ca.api.MpoolPushMessage(ctx, msg, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -640,7 +633,7 @@ type onMsgRes struct {
 func (ca *channelAccessor) msgPromise(ctx context.Context, mcid cid.Cid) chan onMsgRes {
 	promise := make(chan onMsgRes)
 	triggerUnsub := make(chan struct{})
-	sub := ca.msgListeners.onMsg(mcid, func(err error) {
+	unsub := ca.msgListeners.onMsgComplete(mcid, func(err error) {
 		close(triggerUnsub)
 
 		// Use a go-routine so as not to block the event handler loop
@@ -671,7 +664,7 @@ func (ca *channelAccessor) msgPromise(ctx context.Context, mcid cid.Cid) chan on
 		case <-triggerUnsub:
 		}
 
-		ca.msgListeners.unsubscribe(sub)
+		unsub()
 	}()
 
 	return promise

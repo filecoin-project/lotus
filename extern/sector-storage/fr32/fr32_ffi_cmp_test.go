@@ -2,18 +2,19 @@ package fr32_test
 
 import (
 	"bytes"
-	"github.com/filecoin-project/sector-storage/fr32"
 	"io"
 	"io/ioutil"
 	"os"
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/lotus/extern/sector-storage/fr32"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
+
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
+	"github.com/stretchr/testify/require"
 )
 
 func TestWriteTwoPcs(t *testing.T) {
@@ -39,7 +40,7 @@ func TestWriteTwoPcs(t *testing.T) {
 		}
 	}
 
-	if _, err := tf.Seek(io.SeekStart, 0); err != nil {
+	if _, err := tf.Seek(io.SeekStart, 0); err != nil { // nolint:staticcheck
 		panic(err)
 	}
 

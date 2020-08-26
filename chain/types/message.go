@@ -25,7 +25,7 @@ type ChainMsg interface {
 }
 
 type Message struct {
-	Version int64
+	Version uint64
 
 	To   address.Address
 	From address.Address
@@ -118,6 +118,17 @@ func (m *Message) Equals(o *Message) bool {
 	return m.Cid() == o.Cid()
 }
 
+func (m *Message) EqualCall(o *Message) bool {
+	m1 := *m
+	m2 := *o
+
+	m1.GasLimit, m2.GasLimit = 0, 0
+	m1.GasFeeCap, m2.GasFeeCap = big.Zero(), big.Zero()
+	m1.GasPremium, m2.GasPremium = big.Zero(), big.Zero()
+
+	return (&m1).Equals(&m2)
+}
+
 func (m *Message) ValidForBlockInclusion(minGas int64) error {
 	if m.Version != 0 {
 		return xerrors.New("'Version' unsupported")
@@ -131,6 +142,10 @@ func (m *Message) ValidForBlockInclusion(minGas int64) error {
 		return xerrors.New("'From' address cannot be empty")
 	}
 
+	if m.Value.Int == nil {
+		return xerrors.New("'Value' cannot be nil")
+	}
+
 	if m.Value.LessThan(big.Zero()) {
 		return xerrors.New("'Value' field cannot be negative")
 	}
@@ -139,12 +154,24 @@ func (m *Message) ValidForBlockInclusion(minGas int64) error {
 		return xerrors.New("'Value' field cannot be greater than total filecoin supply")
 	}
 
+	if m.GasFeeCap.Int == nil {
+		return xerrors.New("'GasFeeCap' cannot be nil")
+	}
+
 	if m.GasFeeCap.LessThan(big.Zero()) {
 		return xerrors.New("'GasFeeCap' field cannot be negative")
 	}
 
+	if m.GasPremium.Int == nil {
+		return xerrors.New("'GasPremium' cannot be nil")
+	}
+
 	if m.GasPremium.LessThan(big.Zero()) {
 		return xerrors.New("'GasPremium' field cannot be negative")
+	}
+
+	if m.GasPremium.GreaterThan(m.GasFeeCap) {
+		return xerrors.New("'GasFeeCap' less than 'GasPremium'")
 	}
 
 	if m.GasLimit > build.BlockGasLimit {

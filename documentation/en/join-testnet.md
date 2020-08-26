@@ -9,7 +9,7 @@ Anyone can set up a **Lotus Node** and connect to the **Lotus Testnet**. This is
 If you are trying to use `lotus` from China. You should set this **environment variable** on your machine:
 
 ```sh
-IPFS_GATEWAY="https://proof-parameters.s3.cn-south-1.jdcloud-oss.com/ipfs/"
+export IPFS_GATEWAY="https://proof-parameters.s3.cn-south-1.jdcloud-oss.com/ipfs/"
 ```
 
 ## Get started
@@ -26,9 +26,9 @@ In another terminal window, check your connection with peers:
 lotus net peers | wc -l
 ```
 
-In order to connect to the network, you need to be connected to at least 1 peer. If you’re seeing 0 peers, read our [troubleshooting notes](https://docs.lotu.sh/en+setup-troubleshooting).
+In order to connect to the network, you need to be connected to at least 1 peer. If you’re seeing 0 peers, read our [troubleshooting notes](https://lotu.sh/en+setup-troubleshooting).
 
-Make sure that you have a reasonable "open files limit" set on your machine, such as 10000. If you're seeing a lower value, such as 256 (default on macOS), read our [troubleshooting notes](https://docs.lotu.sh/en+setup-troubleshooting) on how to update it prior to starting the Lotus daemon.
+Make sure that you have a reasonable "open files limit" set on your machine, such as 10000. If you're seeing a lower value, such as 256 (default on macOS), read our [troubleshooting notes](https://lotu.sh/en+setup-troubleshooting) on how to update it prior to starting the Lotus daemon.
 
 ## Chain sync
 
@@ -57,9 +57,9 @@ Here is an example of the response:
 t1aswwvjsae63tcrniz6x5ykvsuotlgkvlulnqpsi
 ```
 
-- Visit the [faucet](https://faucet.testnet.filecoin.io) to add funds.
-- Paste the address you created.
-- Press the send button.
+- Visit the [faucet](http://spacerace.faucet.glif.io/) to add funds.
+- Paste the address you created under REQUEST.
+- Press the Request button.
 
 ## Check wallet address balance
 

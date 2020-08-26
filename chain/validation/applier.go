@@ -72,9 +72,9 @@ func (a *Applier) ApplyTipSetMessages(epoch abi.ChainEpoch, blocks []vtypes.Bloc
 	cs := store.NewChainStore(a.stateWrapper.bs, a.stateWrapper.ds, a.syscalls)
 	sm := stmgr.NewStateManager(cs)
 
-	var bms []stmgr.BlockMessages
+	var bms []store.BlockMessages
 	for _, b := range blocks {
-		bm := stmgr.BlockMessages{
+		bm := store.BlockMessages{
 			Miner:    b.Miner,
 			WinCount: 1,
 		}
@@ -121,17 +121,26 @@ func (a *Applier) ApplyTipSetMessages(epoch abi.ChainEpoch, blocks []vtypes.Bloc
 }
 
 type randWrapper struct {
-	rnd vstate.RandomnessSource
+	rand vstate.RandomnessSource
 }
 
-func (w *randWrapper) GetRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	return w.rnd.Randomness(ctx, pers, round, entropy)
+// TODO: these should really be two different randomness sources
+func (w *randWrapper) GetChainRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	return w.rand.Randomness(ctx, pers, round, entropy)
+}
+
+func (w *randWrapper) GetBeaconRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	return w.rand.Randomness(ctx, pers, round, entropy)
 }
 
 type vmRand struct {
 }
 
-func (*vmRand) GetRandomness(ctx context.Context, dst crypto.DomainSeparationTag, h abi.ChainEpoch, input []byte) ([]byte, error) {
+func (*vmRand) GetChainRandomness(ctx context.Context, dst crypto.DomainSeparationTag, h abi.ChainEpoch, input []byte) ([]byte, error) {
+	panic("implement me")
+}
+
+func (*vmRand) GetBeaconRandomness(ctx context.Context, dst crypto.DomainSeparationTag, h abi.ChainEpoch, input []byte) ([]byte, error) {
 	panic("implement me")
 }
 
@@ -140,13 +149,13 @@ func (a *Applier) applyMessage(epoch abi.ChainEpoch, lm types.ChainMsg) (vtypes.
 	base := a.stateWrapper.Root()
 
 	vmopt := &vm.VMOpts{
-		StateBase:  base,
-		Epoch:      epoch,
-		Rand:       &vmRand{},
-		Bstore:     a.stateWrapper.bs,
-		Syscalls:   a.syscalls,
-		VestedCalc: nil,
-		BaseFee:    abi.NewTokenAmount(100),
+		StateBase:      base,
+		Epoch:          epoch,
+		Rand:           &vmRand{},
+		Bstore:         a.stateWrapper.bs,
+		Syscalls:       a.syscalls,
+		CircSupplyCalc: nil,
+		BaseFee:        abi.NewTokenAmount(100),
 	}
 
 	lotusVM, err := vm.NewVM(vmopt)

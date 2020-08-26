@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+
 	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 
 	"github.com/filecoin-project/go-address"
@@ -42,7 +44,7 @@ type StateManager struct {
 	stlk          sync.Mutex
 	genesisMsigLk sync.Mutex
 	newVM         func(*vm.VMOpts) (*vm.VM, error)
-	genesisMsigs  []multisig.State
+	genInfo       *genesisInfo
 }
 
 func NewStateManager(cs *store.ChainStore) *StateManager {
@@ -111,7 +113,7 @@ func (sm *StateManager) TipSetState(ctx context.Context, ts *types.TipSet) (st c
 		return ts.Blocks()[0].ParentStateRoot, ts.Blocks()[0].ParentMessageReceipts, nil
 	}
 
-	st, rec, err = sm.computeTipSetState(ctx, ts.Blocks(), nil)
+	st, rec, err = sm.computeTipSetState(ctx, ts, nil)
 	if err != nil {
 		return cid.Undef, cid.Undef, err
 	}
@@ -121,7 +123,7 @@ func (sm *StateManager) TipSetState(ctx context.Context, ts *types.TipSet) (st c
 
 func (sm *StateManager) ExecutionTrace(ctx context.Context, ts *types.TipSet) (cid.Cid, []*api.InvocResult, error) {
 	var trace []*api.InvocResult
-	st, _, err := sm.computeTipSetState(ctx, ts.Blocks(), func(mcid cid.Cid, msg *types.Message, ret *vm.ApplyRet) error {
+	st, _, err := sm.computeTipSetState(ctx, ts, func(mcid cid.Cid, msg *types.Message, ret *vm.ApplyRet) error {
 		ir := &api.InvocResult{
 			Msg:            msg,
 			MsgRct:         &ret.MessageReceipt,
@@ -141,25 +143,18 @@ func (sm *StateManager) ExecutionTrace(ctx context.Context, ts *types.TipSet) (c
 	return st, trace, nil
 }
 
-type BlockMessages struct {
-	Miner         address.Address
-	BlsMessages   []types.ChainMsg
-	SecpkMessages []types.ChainMsg
-	WinCount      int64
-}
-
 type ExecCallback func(cid.Cid, *types.Message, *vm.ApplyRet) error
 
-func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEpoch, pstate cid.Cid, bms []BlockMessages, epoch abi.ChainEpoch, r vm.Rand, cb ExecCallback, baseFee abi.TokenAmount) (cid.Cid, cid.Cid, error) {
+func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEpoch, pstate cid.Cid, bms []store.BlockMessages, epoch abi.ChainEpoch, r vm.Rand, cb ExecCallback, baseFee abi.TokenAmount) (cid.Cid, cid.Cid, error) {
 
 	vmopt := &vm.VMOpts{
-		StateBase:  pstate,
-		Epoch:      epoch,
-		Rand:       r,
-		Bstore:     sm.cs.Blockstore(),
-		Syscalls:   sm.cs.VMSys(),
-		VestedCalc: sm.GetVestedFunds,
-		BaseFee:    baseFee,
+		StateBase:      pstate,
+		Epoch:          epoch,
+		Rand:           r,
+		Bstore:         sm.cs.Blockstore(),
+		Syscalls:       sm.cs.VMSys(),
+		CircSupplyCalc: sm.GetCirculatingSupply,
+		BaseFee:        baseFee,
 	}
 
 	vmi, err := sm.newVM(vmopt)
@@ -311,9 +306,11 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 	return st, rectroot, nil
 }
 
-func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.BlockHeader, cb ExecCallback) (cid.Cid, cid.Cid, error) {
+func (sm *StateManager) computeTipSetState(ctx context.Context, ts *types.TipSet, cb ExecCallback) (cid.Cid, cid.Cid, error) {
 	ctx, span := trace.StartSpan(ctx, "computeTipSetState")
 	defer span.End()
+
+	blks := ts.Blocks()
 
 	for i := 0; i < len(blks); i++ {
 		for j := i + 1; j < len(blks); j++ {
@@ -327,7 +324,7 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 
 	var parentEpoch abi.ChainEpoch
 	pstate := blks[0].ParentStateRoot
-	if len(blks[0].Parents) > 0 {
+	if blks[0].Height > 0 {
 		parent, err := sm.cs.GetBlock(blks[0].Parents[0])
 		if err != nil {
 			return cid.Undef, cid.Undef, xerrors.Errorf("getting parent block: %w", err)
@@ -343,30 +340,11 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 
 	r := store.NewChainRand(sm.cs, cids, blks[0].Height)
 
-	var blkmsgs []BlockMessages
-	for _, b := range blks {
-		bms, sms, err := sm.cs.MessagesForBlock(b)
-		if err != nil {
-			return cid.Undef, cid.Undef, xerrors.Errorf("failed to get messages for block: %w", err)
-		}
-
-		bm := BlockMessages{
-			Miner:         b.Miner,
-			BlsMessages:   make([]types.ChainMsg, 0, len(bms)),
-			SecpkMessages: make([]types.ChainMsg, 0, len(sms)),
-			WinCount:      b.ElectionProof.WinCount,
-		}
-
-		for _, m := range bms {
-			bm.BlsMessages = append(bm.BlsMessages, m)
-		}
-
-		for _, m := range sms {
-			bm.SecpkMessages = append(bm.SecpkMessages, m)
-		}
-
-		blkmsgs = append(blkmsgs, bm)
+	blkmsgs, err := sm.cs.BlockMsgsForTipset(ts)
+	if err != nil {
+		return cid.Undef, cid.Undef, xerrors.Errorf("getting block messages for tipset: %w", err)
 	}
+
 	baseFee := blks[0].ParentBaseFee
 
 	return sm.ApplyBlocks(ctx, parentEpoch, pstate, blkmsgs, blks[0].Height, r, cb, baseFee)
@@ -441,7 +419,7 @@ func (sm *StateManager) GetReceipt(ctx context.Context, msg cid.Cid, ts *types.T
 		return nil, fmt.Errorf("failed to load message: %w", err)
 	}
 
-	r, err := sm.tipsetExecutedMessage(ts, msg, m.VMMessage())
+	r, _, err := sm.tipsetExecutedMessage(ts, msg, m.VMMessage())
 	if err != nil {
 		return nil, err
 	}
@@ -450,7 +428,7 @@ func (sm *StateManager) GetReceipt(ctx context.Context, msg cid.Cid, ts *types.T
 		return r, nil
 	}
 
-	_, r, err = sm.searchBackForMsg(ctx, ts, m)
+	_, r, _, err = sm.searchBackForMsg(ctx, ts, m)
 	if err != nil {
 		return nil, fmt.Errorf("failed to look back through chain for message: %w", err)
 	}
@@ -461,44 +439,45 @@ func (sm *StateManager) GetReceipt(ctx context.Context, msg cid.Cid, ts *types.T
 // WaitForMessage blocks until a message appears on chain. It looks backwards in the chain to see if this has already
 // happened. It guarantees that the message has been on chain for at least confidence epochs without being reverted
 // before returning.
-func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid, confidence uint64) (*types.TipSet, *types.MessageReceipt, error) {
+func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid, confidence uint64) (*types.TipSet, *types.MessageReceipt, cid.Cid, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	msg, err := sm.cs.GetCMessage(mcid)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to load message: %w", err)
+		return nil, nil, cid.Undef, fmt.Errorf("failed to load message: %w", err)
 	}
 
 	tsub := sm.cs.SubHeadChanges(ctx)
 
 	head, ok := <-tsub
 	if !ok {
-		return nil, nil, fmt.Errorf("SubHeadChanges stream was invalid")
+		return nil, nil, cid.Undef, fmt.Errorf("SubHeadChanges stream was invalid")
 	}
 
 	if len(head) != 1 {
-		return nil, nil, fmt.Errorf("SubHeadChanges first entry should have been one item")
+		return nil, nil, cid.Undef, fmt.Errorf("SubHeadChanges first entry should have been one item")
 	}
 
 	if head[0].Type != store.HCCurrent {
-		return nil, nil, fmt.Errorf("expected current head on SHC stream (got %s)", head[0].Type)
+		return nil, nil, cid.Undef, fmt.Errorf("expected current head on SHC stream (got %s)", head[0].Type)
 	}
 
-	r, err := sm.tipsetExecutedMessage(head[0].Val, mcid, msg.VMMessage())
+	r, foundMsg, err := sm.tipsetExecutedMessage(head[0].Val, mcid, msg.VMMessage())
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, cid.Undef, err
 	}
 
 	if r != nil {
-		return head[0].Val, r, nil
+		return head[0].Val, r, foundMsg, nil
 	}
 
 	var backTs *types.TipSet
 	var backRcp *types.MessageReceipt
+	var backFm cid.Cid
 	backSearchWait := make(chan struct{})
 	go func() {
-		fts, r, err := sm.searchBackForMsg(ctx, head[0].Val, msg)
+		fts, r, foundMsg, err := sm.searchBackForMsg(ctx, head[0].Val, msg)
 		if err != nil {
 			log.Warnf("failed to look back through chain for message: %w", err)
 			return
@@ -506,11 +485,13 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid, confid
 
 		backTs = fts
 		backRcp = r
+		backFm = foundMsg
 		close(backSearchWait)
 	}()
 
 	var candidateTs *types.TipSet
 	var candidateRcp *types.MessageReceipt
+	var candidateFm cid.Cid
 	heightOfHead := head[0].Val.Height()
 	reverts := map[types.TipSetKey]bool{}
 
@@ -518,7 +499,7 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid, confid
 		select {
 		case notif, ok := <-tsub:
 			if !ok {
-				return nil, nil, ctx.Err()
+				return nil, nil, cid.Undef, ctx.Err()
 			}
 			for _, val := range notif {
 				switch val.Type {
@@ -526,24 +507,26 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid, confid
 					if val.Val.Equals(candidateTs) {
 						candidateTs = nil
 						candidateRcp = nil
+						candidateFm = cid.Undef
 					}
 					if backSearchWait != nil {
 						reverts[val.Val.Key()] = true
 					}
 				case store.HCApply:
 					if candidateTs != nil && val.Val.Height() >= candidateTs.Height()+abi.ChainEpoch(confidence) {
-						return candidateTs, candidateRcp, nil
+						return candidateTs, candidateRcp, candidateFm, nil
 					}
-					r, err := sm.tipsetExecutedMessage(val.Val, mcid, msg.VMMessage())
+					r, foundMsg, err := sm.tipsetExecutedMessage(val.Val, mcid, msg.VMMessage())
 					if err != nil {
-						return nil, nil, err
+						return nil, nil, cid.Undef, err
 					}
 					if r != nil {
 						if confidence == 0 {
-							return val.Val, r, err
+							return val.Val, r, foundMsg, err
 						}
 						candidateTs = val.Val
 						candidateRcp = r
+						candidateFm = foundMsg
 					}
 					heightOfHead = val.Val.Height()
 				}
@@ -553,111 +536,112 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid, confid
 			if backTs != nil && !reverts[backTs.Key()] {
 				// if head is at or past confidence interval, return immediately
 				if heightOfHead >= backTs.Height()+abi.ChainEpoch(confidence) {
-					return backTs, backRcp, nil
+					return backTs, backRcp, backFm, nil
 				}
 
 				// wait for confidence interval
 				candidateTs = backTs
 				candidateRcp = backRcp
+				candidateFm = backFm
 			}
 			reverts = nil
 			backSearchWait = nil
 		case <-ctx.Done():
-			return nil, nil, ctx.Err()
+			return nil, nil, cid.Undef, ctx.Err()
 		}
 	}
 }
 
-func (sm *StateManager) SearchForMessage(ctx context.Context, mcid cid.Cid) (*types.TipSet, *types.MessageReceipt, error) {
+func (sm *StateManager) SearchForMessage(ctx context.Context, mcid cid.Cid) (*types.TipSet, *types.MessageReceipt, cid.Cid, error) {
 	msg, err := sm.cs.GetCMessage(mcid)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to load message: %w", err)
+		return nil, nil, cid.Undef, fmt.Errorf("failed to load message: %w", err)
 	}
 
 	head := sm.cs.GetHeaviestTipSet()
 
-	r, err := sm.tipsetExecutedMessage(head, mcid, msg.VMMessage())
+	r, foundMsg, err := sm.tipsetExecutedMessage(head, mcid, msg.VMMessage())
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, cid.Undef, err
 	}
 
 	if r != nil {
-		return head, r, nil
+		return head, r, foundMsg, nil
 	}
 
-	fts, r, err := sm.searchBackForMsg(ctx, head, msg)
+	fts, r, foundMsg, err := sm.searchBackForMsg(ctx, head, msg)
 
 	if err != nil {
 		log.Warnf("failed to look back through chain for message %s", mcid)
-		return nil, nil, err
+		return nil, nil, cid.Undef, err
 	}
 
 	if fts == nil {
-		return nil, nil, nil
+		return nil, nil, cid.Undef, nil
 	}
 
-	return fts, r, nil
+	return fts, r, foundMsg, nil
 }
 
-func (sm *StateManager) searchBackForMsg(ctx context.Context, from *types.TipSet, m types.ChainMsg) (*types.TipSet, *types.MessageReceipt, error) {
+func (sm *StateManager) searchBackForMsg(ctx context.Context, from *types.TipSet, m types.ChainMsg) (*types.TipSet, *types.MessageReceipt, cid.Cid, error) {
 
 	cur := from
 	for {
 		if cur.Height() == 0 {
 			// it ain't here!
-			return nil, nil, nil
+			return nil, nil, cid.Undef, nil
 		}
 
 		select {
 		case <-ctx.Done():
-			return nil, nil, nil
+			return nil, nil, cid.Undef, nil
 		default:
 		}
 
 		var act types.Actor
 		err := sm.WithParentState(cur, sm.WithActor(m.VMMessage().From, GetActor(&act)))
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, cid.Undef, err
 		}
 
 		// we either have no messages from the sender, or the latest message we found has a lower nonce than the one being searched for,
 		// either way, no reason to lookback, it ain't there
 		if act.Nonce == 0 || act.Nonce < m.VMMessage().Nonce {
-			return nil, nil, nil
+			return nil, nil, cid.Undef, nil
 		}
 
 		ts, err := sm.cs.LoadTipSet(cur.Parents())
 		if err != nil {
-			return nil, nil, fmt.Errorf("failed to load tipset during msg wait searchback: %w", err)
+			return nil, nil, cid.Undef, fmt.Errorf("failed to load tipset during msg wait searchback: %w", err)
 		}
 
-		r, err := sm.tipsetExecutedMessage(ts, m.Cid(), m.VMMessage())
+		r, foundMsg, err := sm.tipsetExecutedMessage(ts, m.Cid(), m.VMMessage())
 		if err != nil {
-			return nil, nil, fmt.Errorf("checking for message execution during lookback: %w", err)
+			return nil, nil, cid.Undef, fmt.Errorf("checking for message execution during lookback: %w", err)
 		}
 
 		if r != nil {
-			return ts, r, nil
+			return ts, r, foundMsg, nil
 		}
 
 		cur = ts
 	}
 }
 
-func (sm *StateManager) tipsetExecutedMessage(ts *types.TipSet, msg cid.Cid, vmm *types.Message) (*types.MessageReceipt, error) {
+func (sm *StateManager) tipsetExecutedMessage(ts *types.TipSet, msg cid.Cid, vmm *types.Message) (*types.MessageReceipt, cid.Cid, error) {
 	// The genesis block did not execute any messages
 	if ts.Height() == 0 {
-		return nil, nil
+		return nil, cid.Undef, nil
 	}
 
 	pts, err := sm.cs.LoadTipSet(ts.Parents())
 	if err != nil {
-		return nil, err
+		return nil, cid.Undef, err
 	}
 
 	cm, err := sm.cs.MessagesForTipset(pts)
 	if err != nil {
-		return nil, err
+		return nil, cid.Undef, err
 	}
 
 	for ii := range cm {
@@ -667,21 +651,30 @@ func (sm *StateManager) tipsetExecutedMessage(ts *types.TipSet, msg cid.Cid, vmm
 
 		if m.VMMessage().From == vmm.From { // cheaper to just check origin first
 			if m.VMMessage().Nonce == vmm.Nonce {
-				if m.Cid() == msg {
-					return sm.cs.GetParentReceipt(ts.Blocks()[0], i)
+				if m.VMMessage().EqualCall(vmm) {
+					if m.Cid() != msg {
+						log.Warnw("found message with equal nonce and call params but different CID",
+							"wanted", msg, "found", m.Cid(), "nonce", vmm.Nonce, "from", vmm.From)
+					}
+
+					pr, err := sm.cs.GetParentReceipt(ts.Blocks()[0], i)
+					if err != nil {
+						return nil, cid.Undef, err
+					}
+					return pr, m.Cid(), nil
 				}
 
 				// this should be that message
-				return nil, xerrors.Errorf("found message with equal nonce as the one we are looking for (F:%s n %d, TS: %s n%d)",
+				return nil, cid.Undef, xerrors.Errorf("found message with equal nonce as the one we are looking for (F:%s n %d, TS: %s n%d)",
 					msg, vmm.Nonce, m.Cid(), m.VMMessage().Nonce)
 			}
 			if m.VMMessage().Nonce < vmm.Nonce {
-				return nil, nil // don't bother looking further
+				return nil, cid.Undef, nil // don't bother looking further
 			}
 		}
 	}
 
-	return nil, nil
+	return nil, cid.Undef, nil
 }
 
 func (sm *StateManager) ListAllActors(ctx context.Context, ts *types.TipSet) ([]address.Address, error) {
@@ -782,12 +775,24 @@ func (sm *StateManager) SetVMConstructor(nvm func(*vm.VMOpts) (*vm.VM, error)) {
 	sm.newVM = nvm
 }
 
-type GenesisMsigEntry struct {
-	totalFunds abi.TokenAmount
-	unitVest   abi.TokenAmount
+type genesisInfo struct {
+	genesisMsigs []multisig.State
+	// info about the Accounts in the genesis state
+	genesisActors      []genesisActor
+	genesisPledge      abi.TokenAmount
+	genesisMarketFunds abi.TokenAmount
 }
 
-func (sm *StateManager) setupGenesisMsigs(ctx context.Context) error {
+type genesisActor struct {
+	addr    address.Address
+	initBal abi.TokenAmount
+}
+
+// sets up information about the actors in the genesis state
+func (sm *StateManager) setupGenesisActors(ctx context.Context) error {
+
+	gi := genesisInfo{}
+
 	gb, err := sm.cs.GetGenesis()
 	if err != nil {
 		return xerrors.Errorf("getting genesis block: %w", err)
@@ -801,6 +806,22 @@ func (sm *StateManager) setupGenesisMsigs(ctx context.Context) error {
 	st, _, err := sm.TipSetState(ctx, gts)
 	if err != nil {
 		return xerrors.Errorf("getting genesis tipset state: %w", err)
+	}
+
+	cst := cbor.NewCborStore(sm.cs.Blockstore())
+	sTree, err := state.LoadStateTree(cst, st)
+	if err != nil {
+		return xerrors.Errorf("loading state tree: %w", err)
+	}
+
+	gi.genesisMarketFunds, err = getFilMarketLocked(ctx, sTree)
+	if err != nil {
+		return xerrors.Errorf("setting up genesis market funds: %w", err)
+	}
+
+	gi.genesisPledge, err = getFilPowerLocked(ctx, sTree)
+	if err != nil {
+		return xerrors.Errorf("setting up genesis pledge: %w", err)
 	}
 
 	r, err := adt.AsMap(sm.cs.Store(ctx), st)
@@ -829,40 +850,273 @@ func (sm *StateManager) setupGenesisMsigs(ctx context.Context) error {
 				totalsByEpoch[s.UnlockDuration] = s.InitialBalance
 			}
 
+		} else if act.Code == builtin.AccountActorCodeID {
+			// should exclude burnt funds actor and "remainder account actor"
+			// should only ever be "faucet" accounts in testnets
+			kaddr, err := address.NewFromBytes([]byte(k))
+			if err != nil {
+				return xerrors.Errorf("decoding address: %w", err)
+			}
+
+			if kaddr != builtin.BurntFundsActorAddr {
+				kid, err := sTree.LookupID(kaddr)
+				if err != nil {
+					return xerrors.Errorf("resolving address: %w", err)
+				}
+
+				gi.genesisActors = append(gi.genesisActors, genesisActor{
+					addr:    kid,
+					initBal: act.Balance,
+				})
+			}
 		}
 		return nil
 	})
 
 	if err != nil {
-		return xerrors.Errorf("error setting up composite genesis multisigs: %w", err)
+		return xerrors.Errorf("error setting up genesis infos: %w", err)
 	}
 
-	sm.genesisMsigs = make([]multisig.State, 0, len(totalsByEpoch))
+	gi.genesisMsigs = make([]multisig.State, 0, len(totalsByEpoch))
 	for k, v := range totalsByEpoch {
 		ns := multisig.State{
 			InitialBalance: v,
 			UnlockDuration: k,
 			PendingTxns:    cid.Undef,
 		}
-		sm.genesisMsigs = append(sm.genesisMsigs, ns)
+		gi.genesisMsigs = append(gi.genesisMsigs, ns)
 	}
+
+	sm.genInfo = &gi
 
 	return nil
 }
 
-func (sm *StateManager) GetVestedFunds(ctx context.Context, height abi.ChainEpoch) (abi.TokenAmount, error) {
-	sm.genesisMsigLk.Lock()
-	defer sm.genesisMsigLk.Unlock()
-	if sm.genesisMsigs == nil {
-		err := sm.setupGenesisMsigs(ctx)
-		if err != nil {
-			return big.Zero(), xerrors.Errorf("failed to setup genesis msig entries: %w", err)
-		}
+// sets up information about the actors in the genesis state
+// For testnet we use a hardcoded set of multisig states, instead of what's actually in the genesis multisigs
+// We also do not consider ANY account actors (including the faucet)
+func (sm *StateManager) setupGenesisActorsTestnet(ctx context.Context) error {
+
+	gi := genesisInfo{}
+
+	gb, err := sm.cs.GetGenesis()
+	if err != nil {
+		return xerrors.Errorf("getting genesis block: %w", err)
 	}
+
+	gts, err := types.NewTipSet([]*types.BlockHeader{gb})
+	if err != nil {
+		return xerrors.Errorf("getting genesis tipset: %w", err)
+	}
+
+	st, _, err := sm.TipSetState(ctx, gts)
+	if err != nil {
+		return xerrors.Errorf("getting genesis tipset state: %w", err)
+	}
+
+	cst := cbor.NewCborStore(sm.cs.Blockstore())
+	sTree, err := state.LoadStateTree(cst, st)
+	if err != nil {
+		return xerrors.Errorf("loading state tree: %w", err)
+	}
+
+	gi.genesisMarketFunds, err = getFilMarketLocked(ctx, sTree)
+	if err != nil {
+		return xerrors.Errorf("setting up genesis market funds: %w", err)
+	}
+
+	gi.genesisPledge, err = getFilPowerLocked(ctx, sTree)
+	if err != nil {
+		return xerrors.Errorf("setting up genesis pledge: %w", err)
+	}
+
+	totalsByEpoch := make(map[abi.ChainEpoch]abi.TokenAmount)
+
+	// 6 months
+	sixMonths := abi.ChainEpoch(183 * builtin.EpochsInDay)
+	totalsByEpoch[sixMonths] = big.NewInt(49_929_341)
+	totalsByEpoch[sixMonths] = big.Add(totalsByEpoch[sixMonths], big.NewInt(32_787_700))
+
+	// 1 year
+	oneYear := abi.ChainEpoch(365 * builtin.EpochsInDay)
+	totalsByEpoch[oneYear] = big.NewInt(22_421_712)
+
+	// 2 years
+	twoYears := abi.ChainEpoch(2 * 365 * builtin.EpochsInDay)
+	totalsByEpoch[twoYears] = big.NewInt(7_223_364)
+
+	// 3 years
+	threeYears := abi.ChainEpoch(3 * 365 * builtin.EpochsInDay)
+	totalsByEpoch[threeYears] = big.NewInt(87_637_883)
+
+	// 6 years
+	sixYears := abi.ChainEpoch(6 * 365 * builtin.EpochsInDay)
+	totalsByEpoch[sixYears] = big.NewInt(100_000_000)
+	totalsByEpoch[sixYears] = big.Add(totalsByEpoch[sixYears], big.NewInt(300_000_000))
+
+	gi.genesisMsigs = make([]multisig.State, 0, len(totalsByEpoch))
+	for k, v := range totalsByEpoch {
+		ns := multisig.State{
+			InitialBalance: v,
+			UnlockDuration: k,
+			PendingTxns:    cid.Undef,
+		}
+		gi.genesisMsigs = append(gi.genesisMsigs, ns)
+	}
+
+	sm.genInfo = &gi
+
+	return nil
+}
+
+// GetVestedFunds returns all funds that have "left" actors that are in the genesis state:
+// - For Multisigs, it counts the actual amounts that have vested at the given epoch
+// - For Accounts, it counts max(currentBalance - genesisBalance, 0).
+func (sm *StateManager) GetFilVested(ctx context.Context, height abi.ChainEpoch, st *state.StateTree) (abi.TokenAmount, error) {
 	vf := big.Zero()
-	for _, v := range sm.genesisMsigs {
+	for _, v := range sm.genInfo.genesisMsigs {
 		au := big.Sub(v.InitialBalance, v.AmountLocked(height))
 		vf = big.Add(vf, au)
 	}
+
+	// there should not be any such accounts in testnet (and also none in mainnet?)
+	for _, v := range sm.genInfo.genesisActors {
+		act, err := st.GetActor(v.addr)
+		if err != nil {
+			return big.Zero(), xerrors.Errorf("failed to get actor: %w", err)
+		}
+
+		diff := big.Sub(v.initBal, act.Balance)
+		if diff.GreaterThan(big.Zero()) {
+			vf = big.Add(vf, diff)
+		}
+	}
+
+	vf = big.Add(vf, sm.genInfo.genesisPledge)
+	vf = big.Add(vf, sm.genInfo.genesisMarketFunds)
+
 	return vf, nil
+}
+
+func GetFilMined(ctx context.Context, st *state.StateTree) (abi.TokenAmount, error) {
+	ractor, err := st.GetActor(builtin.RewardActorAddr)
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("failed to load reward actor state: %w", err)
+	}
+
+	var rst reward.State
+	if err := st.Store.Get(ctx, ractor.Head, &rst); err != nil {
+		return big.Zero(), xerrors.Errorf("failed to load reward state: %w", err)
+	}
+
+	return rst.TotalMined, nil
+}
+
+func getFilMarketLocked(ctx context.Context, st *state.StateTree) (abi.TokenAmount, error) {
+	mactor, err := st.GetActor(builtin.StorageMarketActorAddr)
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("failed to load market actor: %w", err)
+	}
+
+	var mst market.State
+	if err := st.Store.Get(ctx, mactor.Head, &mst); err != nil {
+		return big.Zero(), xerrors.Errorf("failed to load market state: %w", err)
+	}
+
+	fml := types.BigAdd(mst.TotalClientLockedCollateral, mst.TotalProviderLockedCollateral)
+	fml = types.BigAdd(fml, mst.TotalClientStorageFee)
+	return fml, nil
+}
+
+func getFilPowerLocked(ctx context.Context, st *state.StateTree) (abi.TokenAmount, error) {
+	pactor, err := st.GetActor(builtin.StoragePowerActorAddr)
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("failed to load power actor: %w", err)
+	}
+
+	var pst power.State
+	if err := st.Store.Get(ctx, pactor.Head, &pst); err != nil {
+		return big.Zero(), xerrors.Errorf("failed to load power state: %w", err)
+	}
+	return pst.TotalPledgeCollateral, nil
+}
+
+func (sm *StateManager) GetFilLocked(ctx context.Context, st *state.StateTree) (abi.TokenAmount, error) {
+
+	filMarketLocked, err := getFilMarketLocked(ctx, st)
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("failed to get filMarketLocked: %w", err)
+	}
+
+	filPowerLocked, err := getFilPowerLocked(ctx, st)
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("failed to get filPowerLocked: %w", err)
+	}
+
+	return types.BigAdd(filMarketLocked, filPowerLocked), nil
+}
+
+func GetFilBurnt(ctx context.Context, st *state.StateTree) (abi.TokenAmount, error) {
+	burnt, err := st.GetActor(builtin.BurntFundsActorAddr)
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("failed to load burnt actor: %w", err)
+	}
+
+	return burnt.Balance, nil
+}
+
+func (sm *StateManager) GetCirculatingSupplyDetailed(ctx context.Context, height abi.ChainEpoch, st *state.StateTree) (api.CirculatingSupply, error) {
+	sm.genesisMsigLk.Lock()
+	defer sm.genesisMsigLk.Unlock()
+	if sm.genInfo == nil {
+		err := sm.setupGenesisActorsTestnet(ctx)
+		if err != nil {
+			return api.CirculatingSupply{}, xerrors.Errorf("failed to setup genesis information: %w", err)
+		}
+	}
+
+	filVested, err := sm.GetFilVested(ctx, height, st)
+	if err != nil {
+		return api.CirculatingSupply{}, xerrors.Errorf("failed to calculate filVested: %w", err)
+	}
+
+	filMined, err := GetFilMined(ctx, st)
+	if err != nil {
+		return api.CirculatingSupply{}, xerrors.Errorf("failed to calculate filMined: %w", err)
+	}
+
+	filBurnt, err := GetFilBurnt(ctx, st)
+	if err != nil {
+		return api.CirculatingSupply{}, xerrors.Errorf("failed to calculate filBurnt: %w", err)
+	}
+
+	filLocked, err := sm.GetFilLocked(ctx, st)
+	if err != nil {
+		return api.CirculatingSupply{}, xerrors.Errorf("failed to calculate filLocked: %w", err)
+	}
+
+	ret := types.BigAdd(filVested, filMined)
+	ret = types.BigSub(ret, filBurnt)
+	ret = types.BigSub(ret, filLocked)
+
+	if ret.LessThan(big.Zero()) {
+		ret = big.Zero()
+	}
+
+	return api.CirculatingSupply{
+		FilVested:      filVested,
+		FilMined:       filMined,
+		FilBurnt:       filBurnt,
+		FilLocked:      filLocked,
+		FilCirculating: ret,
+	}, nil
+}
+
+func (sm *StateManager) GetCirculatingSupply(ctx context.Context, height abi.ChainEpoch, st *state.StateTree) (abi.TokenAmount, error) {
+	csi, err := sm.GetCirculatingSupplyDetailed(ctx, height, st)
+	if err != nil {
+		return big.Zero(), err
+	}
+
+	return csi.FilCirculating, nil
 }

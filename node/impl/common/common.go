@@ -12,6 +12,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	swarm "github.com/libp2p/go-libp2p-swarm"
+	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
 	ma "github.com/multiformats/go-multiaddr"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
@@ -28,6 +29,7 @@ type CommonAPI struct {
 	fx.In
 
 	APISecret    *dtypes.APIAlg
+	RawHost      lp2p.RawHost
 	Host         host.Host
 	Router       lp2p.BaseIpfsRouting
 	Sk           *dtypes.ScoreKeeper
@@ -111,6 +113,24 @@ func (a *CommonAPI) NetDisconnect(ctx context.Context, p peer.ID) error {
 
 func (a *CommonAPI) NetFindPeer(ctx context.Context, p peer.ID) (peer.AddrInfo, error) {
 	return a.Router.FindPeer(ctx, p)
+}
+
+func (a *CommonAPI) NetAutoNatStatus(ctx context.Context) (i api.NatInfo, err error) {
+	autonat := a.RawHost.(*basichost.BasicHost).AutoNat
+
+	var maddr string
+	if autonat.Status() == network.ReachabilityPublic {
+		pa, err := autonat.PublicAddr()
+		if err != nil {
+			return api.NatInfo{}, err
+		}
+		maddr = pa.String()
+	}
+
+	return api.NatInfo{
+		Reachability: autonat.Status(),
+		PublicAddr:   maddr,
+	}, nil
 }
 
 func (a *CommonAPI) ID(context.Context) (peer.ID, error) {

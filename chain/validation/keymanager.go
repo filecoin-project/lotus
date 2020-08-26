@@ -2,8 +2,9 @@ package validation
 
 import (
 	"fmt"
-	"github.com/minio/blake2b-simd"
 	"math/rand"
+
+	"github.com/minio/blake2b-simd"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-crypto"
@@ -69,7 +70,7 @@ func (k *KeyManager) Sign(addr address.Address, data []byte) (acrypto.Signature,
 }
 
 func (k *KeyManager) newSecp256k1Key() *wallet.Key {
-	randSrc := rand.New(rand.NewSource(k.secpSeed))
+	randSrc := rand.New(rand.NewSource(k.secpSeed)) // nolint
 	prv, err := crypto.GenerateKeyFromSeed(randSrc)
 	if err != nil {
 		panic(err)

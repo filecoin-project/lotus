@@ -3,6 +3,8 @@ package paychmgr
 import (
 	"context"
 
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
+
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 
 	"github.com/filecoin-project/go-address"
@@ -12,10 +14,10 @@ import (
 )
 
 type stateAccessor struct {
-	sm StateManagerApi
+	sm stateManagerAPI
 }
 
-func (ca *stateAccessor) loadPaychState(ctx context.Context, ch address.Address) (*types.Actor, *paych.State, error) {
+func (ca *stateAccessor) loadPaychActorState(ctx context.Context, ch address.Address) (*types.Actor, *paych.State, error) {
 	var pcast paych.State
 	act, err := ca.sm.LoadActorState(ctx, ch, &pcast, nil)
 	if err != nil {
@@ -26,7 +28,7 @@ func (ca *stateAccessor) loadPaychState(ctx context.Context, ch address.Address)
 }
 
 func (ca *stateAccessor) loadStateChannelInfo(ctx context.Context, ch address.Address, dir uint64) (*ChannelInfo, error) {
-	_, st, err := ca.loadPaychState(ctx, ch)
+	_, st, err := ca.loadPaychActorState(ctx, ch)
 	if err != nil {
 		return nil, err
 	}
@@ -43,10 +45,15 @@ func (ca *stateAccessor) loadStateChannelInfo(ctx context.Context, ch address.Ad
 	}
 	to := account.Address
 
+	nextLane, err := ca.nextLaneFromState(ctx, st)
+	if err != nil {
+		return nil, err
+	}
+
 	ci := &ChannelInfo{
 		Channel:   &ch,
 		Direction: dir,
-		NextLane:  nextLaneFromState(st),
+		NextLane:  nextLane,
 	}
 
 	if dir == DirOutbound {
@@ -60,16 +67,25 @@ func (ca *stateAccessor) loadStateChannelInfo(ctx context.Context, ch address.Ad
 	return ci, nil
 }
 
-func nextLaneFromState(st *paych.State) uint64 {
-	if len(st.LaneStates) == 0 {
-		return 0
+func (ca *stateAccessor) nextLaneFromState(ctx context.Context, st *paych.State) (uint64, error) {
+	store := ca.sm.AdtStore(ctx)
+	laneStates, err := adt.AsArray(store, st.LaneStates)
+	if err != nil {
+		return 0, err
+	}
+	if laneStates.Length() == 0 {
+		return 0, nil
 	}
 
-	maxLane := st.LaneStates[0].ID
-	for _, state := range st.LaneStates {
-		if state.ID > maxLane {
-			maxLane = state.ID
+	maxID := int64(0)
+	if err := laneStates.ForEach(nil, func(i int64) error {
+		if i > maxID {
+			maxID = i
 		}
+		return nil
+	}); err != nil {
+		return 0, err
 	}
-	return maxLane + 1
+
+	return uint64(maxID + 1), nil
 }

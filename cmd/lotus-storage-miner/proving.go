@@ -183,13 +183,13 @@ var provingInfoCmd = &cli.Command{
 
 				fc, err := partition.Faults.Count()
 				if err != nil {
-					return xerrors.Errorf("count partition sectors: %w", err)
+					return xerrors.Errorf("count partition faults: %w", err)
 				}
 				faults += fc
 
-				rc, err := partition.Faults.Count()
+				rc, err := partition.Recoveries.Count()
 				if err != nil {
-					return xerrors.Errorf("count partition sectors: %w", err)
+					return xerrors.Errorf("count partition recoveries: %w", err)
 				}
 				recovering += rc
 			}

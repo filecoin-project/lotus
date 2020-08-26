@@ -13,9 +13,8 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	"github.com/filecoin-project/specs-actors/actors/builtin/cron"
@@ -175,7 +174,7 @@ func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, 
 }
 
 func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *StateManager, st cid.Cid, maddr address.Address, rand abi.PoStRandomness) ([]abi.SectorInfo, error) {
-	var partsProving []*abi.BitField
+	var partsProving []abi.BitField
 	var mas *miner.State
 	var info *miner.MinerInfo
 
@@ -294,14 +293,8 @@ func StateMinerInfo(ctx context.Context, sm *StateManager, ts *types.TipSet, mad
 }
 
 func GetMinerSlashed(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (bool, error) {
-	var mas miner.State
-	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
-	if err != nil {
-		return false, xerrors.Errorf("(get miner slashed) failed to load miner actor state")
-	}
-
 	var spas power.State
-	_, err = sm.LoadActorState(ctx, builtin.StoragePowerActorAddr, &spas, ts)
+	_, err := sm.LoadActorState(ctx, builtin.StoragePowerActorAddr, &spas, ts)
 	if err != nil {
 		return false, xerrors.Errorf("(get miner slashed) failed to load power actor state")
 	}
@@ -441,13 +434,13 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 
 	r := store.NewChainRand(sm.cs, ts.Cids(), height)
 	vmopt := &vm.VMOpts{
-		StateBase:  base,
-		Epoch:      height,
-		Rand:       r,
-		Bstore:     sm.cs.Blockstore(),
-		Syscalls:   sm.cs.VMSys(),
-		VestedCalc: sm.GetVestedFunds,
-		BaseFee:    ts.Blocks()[0].ParentBaseFee,
+		StateBase:      base,
+		Epoch:          height,
+		Rand:           r,
+		Bstore:         sm.cs.Blockstore(),
+		Syscalls:       sm.cs.VMSys(),
+		CircSupplyCalc: sm.GetCirculatingSupply,
+		BaseFee:        ts.Blocks()[0].ParentBaseFee,
 	}
 	vmi, err := vm.NewVM(vmopt)
 	if err != nil {
@@ -593,40 +586,6 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, bcn beacon.RandomBe
 	}, nil
 }
 
-func (sm *StateManager) CirculatingSupply(ctx context.Context, ts *types.TipSet) (abi.TokenAmount, error) {
-	if ts == nil {
-		ts = sm.cs.GetHeaviestTipSet()
-	}
-
-	st, _, err := sm.TipSetState(ctx, ts)
-	if err != nil {
-		return big.Zero(), err
-	}
-
-	r := store.NewChainRand(sm.cs, ts.Cids(), ts.Height())
-	vmopt := &vm.VMOpts{
-		StateBase:  st,
-		Epoch:      ts.Height(),
-		Rand:       r,
-		Bstore:     sm.cs.Blockstore(),
-		Syscalls:   sm.cs.VMSys(),
-		VestedCalc: sm.GetVestedFunds,
-		BaseFee:    ts.Blocks()[0].ParentBaseFee,
-	}
-	vmi, err := vm.NewVM(vmopt)
-	if err != nil {
-		return big.Zero(), err
-	}
-
-	unsafeVM := &vm.UnsafeVM{VM: vmi}
-	rt := unsafeVM.MakeRuntime(ctx, &types.Message{
-		GasLimit: 100e6,
-		From:     builtin.SystemActorAddr,
-	}, builtin.SystemActorAddr, 0, 0, 0)
-
-	return rt.TotalFilCircSupply(), nil
-}
-
 type methodMeta struct {
 	Name string
 
@@ -694,29 +653,20 @@ func MinerHasMinPower(ctx context.Context, sm *StateManager, addr address.Addres
 	return ps.MinerNominalPowerMeetsConsensusMinimum(sm.ChainStore().Store(ctx), addr)
 }
 
-func GetCirculatingSupply(ctx context.Context, sm *StateManager, ts *types.TipSet) (abi.TokenAmount, error) {
-	if ts == nil {
-		ts = sm.cs.GetHeaviestTipSet()
-	}
-
-	r := store.NewChainRand(sm.cs, ts.Cids(), ts.Height())
-	vmopt := &vm.VMOpts{
-		StateBase:  ts.ParentState(),
-		Epoch:      ts.Height(),
-		Rand:       r,
-		Bstore:     sm.cs.Blockstore(),
-		Syscalls:   sm.cs.VMSys(),
-		VestedCalc: sm.GetVestedFunds,
-		BaseFee:    ts.Blocks()[0].ParentBaseFee,
-	}
-	vmi, err := vm.NewVM(vmopt)
+func CheckTotalFIL(ctx context.Context, sm *StateManager, ts *types.TipSet) (abi.TokenAmount, error) {
+	str, err := state.LoadStateTree(sm.ChainStore().Store(ctx), ts.ParentState())
 	if err != nil {
-		return abi.NewTokenAmount(0), err
+		return abi.TokenAmount{}, err
 	}
 
-	uvm := &vm.UnsafeVM{vmi}
+	sum := types.NewInt(0)
+	err = str.ForEach(func(a address.Address, act *types.Actor) error {
+		sum = types.BigAdd(sum, act.Balance)
+		return nil
+	})
+	if err != nil {
+		return abi.TokenAmount{}, err
+	}
 
-	rt := uvm.MakeRuntime(ctx, &types.Message{From: builtin.InitActorAddr, GasLimit: 10000000}, builtin.InitActorAddr, 0, 0, 0)
-
-	return rt.TotalFilCircSupply(), nil
+	return sum, nil
 }

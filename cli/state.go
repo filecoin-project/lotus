@@ -52,7 +52,6 @@ var stateCmd = &cli.Command{
 		statePowerCmd,
 		stateSectorsCmd,
 		stateActiveSectorsCmd,
-		statePledgeCollateralCmd,
 		stateListActorsCmd,
 		stateListMinersCmd,
 		stateCircSupplyCmd,
@@ -68,6 +67,7 @@ var stateCmd = &cli.Command{
 		stateWaitMsgCmd,
 		stateSearchMsgCmd,
 		stateMinerInfo,
+		stateMarketCmd,
 	},
 }
 
@@ -105,6 +105,9 @@ var stateMinerInfo = &cli.Command{
 
 		fmt.Printf("Owner:\t%s\n", mi.Owner)
 		fmt.Printf("Worker:\t%s\n", mi.Worker)
+		for i, controlAddress := range mi.ControlAddresses {
+			fmt.Printf("Control %d: \t%s\n", i, controlAddress)
+		}
 		fmt.Printf("PeerID:\t%s\n", mi.PeerId)
 		fmt.Printf("SectorSize:\t%s (%d)\n", types.SizeStr(types.NewInt(uint64(mi.SectorSize))), mi.SectorSize)
 		fmt.Printf("Multiaddrs: \t")
@@ -350,6 +353,9 @@ var stateReplaySetCmd = &cli.Command{
 				}
 
 				ts, err = types.NewTipSet(headers)
+				if err != nil {
+					return err
+				}
 			} else {
 				var r *api.MsgLookup
 				r, err = fapi.StateWaitMsg(ctx, mcid, build.MessageConfidence)
@@ -362,9 +368,9 @@ var stateReplaySetCmd = &cli.Command{
 					return xerrors.Errorf("loading tipset: %w", err)
 				}
 				ts, err = fapi.ChainGetTipSet(ctx, childTs.Parents())
-			}
-			if err != nil {
-				return err
+				if err != nil {
+					return err
+				}
 			}
 
 		}
@@ -382,33 +388,6 @@ var stateReplaySetCmd = &cli.Command{
 			fmt.Printf("Error message: %q\n", res.Error)
 		}
 
-		return nil
-	},
-}
-
-var statePledgeCollateralCmd = &cli.Command{
-	Name:  "pledge-collateral",
-	Usage: "Get minimum miner pledge collateral",
-	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer closer()
-
-		ctx := ReqContext(cctx)
-
-		ts, err := LoadTipSet(ctx, cctx, api)
-		if err != nil {
-			return err
-		}
-
-		coll, err := api.StatePledgeCollateral(ctx, ts.Key())
-		if err != nil {
-			return err
-		}
-
-		fmt.Println(types.FIL(coll))
 		return nil
 	},
 }
@@ -589,10 +568,30 @@ var stateGetActorCmd = &cli.Command{
 			return err
 		}
 
+		var strtype string
+		switch a.Code {
+		case builtin.AccountActorCodeID:
+			strtype = "account"
+		case builtin.MultisigActorCodeID:
+			strtype = "multisig"
+		case builtin.CronActorCodeID:
+			strtype = "cron"
+		case builtin.InitActorCodeID:
+			strtype = "init"
+		case builtin.StorageMinerActorCodeID:
+			strtype = "miner"
+		case builtin.StorageMarketActorCodeID:
+			strtype = "market"
+		case builtin.StoragePowerActorCodeID:
+			strtype = "power"
+		default:
+			strtype = "unknown"
+		}
+
 		fmt.Printf("Address:\t%s\n", addr)
 		fmt.Printf("Balance:\t%s\n", types.FIL(a.Balance))
 		fmt.Printf("Nonce:\t\t%d\n", a.Nonce)
-		fmt.Printf("Code:\t\t%s\n", a.Code)
+		fmt.Printf("Code:\t\t%s (%s)\n", a.Code, strtype)
 		fmt.Printf("Head:\t\t%s\n", a.Head)
 
 		return nil
@@ -858,7 +857,7 @@ var stateComputeStateCmd = &cli.Command{
 
 		var msgs []*types.Message
 		if cctx.Bool("apply-mpool-messages") {
-			pmsgs, err := api.MpoolSelect(ctx, ts.Key())
+			pmsgs, err := api.MpoolSelect(ctx, ts.Key(), 1)
 			if err != nil {
 				return err
 			}
@@ -913,6 +912,7 @@ func printInternalExecutions(prefix string, trace []types.ExecutionTrace) {
 var compStateTemplate = `
 <html>
  <head>
+  <meta charset="UTF-8">
   <style>
    html, body { font-family: monospace; }
    a:link, a:visited { color: #004; }
@@ -1502,7 +1502,7 @@ func parseParamsForMethod(act cid.Cid, method uint64, args []string) ([]byte, er
 			}
 			p.Elem().Field(i).Set(reflect.ValueOf(val))
 		case reflect.TypeOf(peer.ID("")):
-			pid, err := peer.IDB58Decode(args[i])
+			pid, err := peer.Decode(args[i])
 			if err != nil {
 				return nil, fmt.Errorf("failed to parse peer ID: %s", err)
 			}
@@ -1542,7 +1542,57 @@ var stateCircSupplyCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Println(types.FIL(circ))
+		fmt.Println("Circulating supply: ", types.FIL(circ.FilCirculating))
+		fmt.Println("Mined: ", types.FIL(circ.FilMined))
+		fmt.Println("Vested: ", types.FIL(circ.FilVested))
+		fmt.Println("Burnt: ", types.FIL(circ.FilBurnt))
+		fmt.Println("Locked: ", types.FIL(circ.FilLocked))
+
+		return nil
+	},
+}
+
+var stateMarketCmd = &cli.Command{
+	Name:  "market",
+	Usage: "Inspect the storage market actor",
+	Subcommands: []*cli.Command{
+		stateMarketBalanceCmd,
+	},
+}
+
+var stateMarketBalanceCmd = &cli.Command{
+	Name:  "balance",
+	Usage: "Get the market balance (locked and escrowed) for a given account",
+	Action: func(cctx *cli.Context) error {
+		if !cctx.Args().Present() {
+			return ShowHelp(cctx, fmt.Errorf("must specify address to print market balance for"))
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		ts, err := LoadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
+
+		addr, err := address.NewFromString(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		balance, err := api.StateMarketBalance(ctx, addr, ts.Key())
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Escrow: %s\n", types.FIL(balance.Escrow))
+		fmt.Printf("Locked: %s\n", types.FIL(balance.Locked))
 
 		return nil
 	},

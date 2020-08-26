@@ -38,15 +38,15 @@ func TestStore(t *testing.T) {
 	}
 
 	// Track the channel
-	err = store.TrackChannel(ci)
+	_, err = store.TrackChannel(ci)
 	require.NoError(t, err)
 
 	// Tracking same channel again should error
-	err = store.TrackChannel(ci)
+	_, err = store.TrackChannel(ci)
 	require.Error(t, err)
 
 	// Track another channel
-	err = store.TrackChannel(ci2)
+	_, err = store.TrackChannel(ci2)
 	require.NoError(t, err)
 
 	// List channels should include all channels

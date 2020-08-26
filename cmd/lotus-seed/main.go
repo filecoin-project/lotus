@@ -8,7 +8,7 @@ import (
 	"os"
 
 	"github.com/docker/go-units"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
@@ -114,6 +114,9 @@ var preSealCmd = &cli.Command{
 				return err
 			}
 			kb, err := hex.DecodeString(string(kh))
+			if err != nil {
+				return err
+			}
 			if err := json.Unmarshal(kb, k); err != nil {
 				return err
 			}

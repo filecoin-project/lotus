@@ -14,7 +14,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -57,18 +57,18 @@ func mkFakedSigSyscalls(base vm.SyscallBuilder) vm.SyscallBuilder {
 }
 
 func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid, miners []genesis.Miner) (cid.Cid, error) {
-	vc := func(context.Context, abi.ChainEpoch) (abi.TokenAmount, error) {
+	csc := func(context.Context, abi.ChainEpoch, *state.StateTree) (abi.TokenAmount, error) {
 		return big.Zero(), nil
 	}
 
 	vmopt := &vm.VMOpts{
-		StateBase:  sroot,
-		Epoch:      0,
-		Rand:       &fakeRand{},
-		Bstore:     cs.Blockstore(),
-		Syscalls:   mkFakedSigSyscalls(cs.VMSys()),
-		VestedCalc: vc,
-		BaseFee:    types.NewInt(0),
+		StateBase:      sroot,
+		Epoch:          0,
+		Rand:           &fakeRand{},
+		Bstore:         cs.Blockstore(),
+		Syscalls:       mkFakedSigSyscalls(cs.VMSys()),
+		CircSupplyCalc: csc,
+		BaseFee:        types.NewInt(0),
 	}
 
 	vm, err := vm.NewVM(vmopt)
@@ -129,6 +129,9 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 
 				return nil
 			})
+			if err != nil {
+				return cid.Undef, xerrors.Errorf("mutating state: %w", err)
+			}
 		}
 
 		// Add market funds
@@ -137,7 +140,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 			params := mustEnc(&minerInfos[i].maddr)
 			_, err := doExecValue(ctx, vm, builtin.StorageMarketActorAddr, m.Worker, m.MarketBalance, builtin.MethodsMarket.AddBalance, params)
 			if err != nil {
-				return cid.Undef, xerrors.Errorf("failed to create genesis miner: %w", err)
+				return cid.Undef, xerrors.Errorf("failed to create genesis miner (add balance): %w", err)
 			}
 		}
 
@@ -149,7 +152,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 
 				ret, err := doExecValue(ctx, vm, builtin.StorageMarketActorAddr, m.Worker, big.Zero(), builtin.MethodsMarket.PublishStorageDeals, mustEnc(params))
 				if err != nil {
-					return xerrors.Errorf("failed to create genesis miner: %w", err)
+					return xerrors.Errorf("failed to create genesis miner (publish deals): %w", err)
 				}
 				var ids market.PublishStorageDealsReturn
 				if err := ids.UnmarshalCBOR(bytes.NewReader(ret)); err != nil {
@@ -217,9 +220,12 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 		}
 
 		err = vm.MutateState(ctx, builtin.RewardActorAddr, func(sct cbor.IpldStore, st *reward.State) error {
-			st = reward.ConstructState(qaPow)
+			*st = *reward.ConstructState(qaPow)
 			return nil
 		})
+		if err != nil {
+			return cid.Undef, xerrors.Errorf("mutating state: %w", err)
+		}
 	}
 
 	for i, m := range miners {
@@ -244,7 +250,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 
 				// we've added fake power for this sector above, remove it now
 				err = vm.MutateState(ctx, builtin.StoragePowerActorAddr, func(cst cbor.IpldStore, st *power.State) error {
-					st.TotalQualityAdjPower = types.BigSub(st.TotalQualityAdjPower, sectorWeight)
+					st.TotalQualityAdjPower = types.BigSub(st.TotalQualityAdjPower, sectorWeight) //nolint:scopelint
 					st.TotalRawBytePower = types.BigSub(st.TotalRawBytePower, types.NewInt(uint64(m.SectorSize)))
 					return nil
 				})
@@ -262,6 +268,8 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 					return cid.Undef, xerrors.Errorf("getting current total power: %w", err)
 				}
 
+				pcd := miner.PreCommitDepositForPower(epochReward.ThisEpochRewardSmoothed, tpow.QualityAdjPowerSmoothed, sectorWeight)
+
 				pledge := miner.InitialPledgeForPower(
 					sectorWeight,
 					epochReward.ThisEpochBaselinePower,
@@ -270,6 +278,8 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 					tpow.QualityAdjPowerSmoothed,
 					circSupply(ctx, vm, minerInfos[i].maddr),
 				)
+
+				pledge = big.Add(pcd, pledge)
 
 				fmt.Println(types.FIL(pledge))
 				_, err = doExecValue(ctx, vm, minerInfos[i].maddr, m.Worker, pledge, builtin.MethodsMiner.PreCommitSector, mustEnc(params))
@@ -318,9 +328,15 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 // TODO: copied from actors test harness, deduplicate or remove from here
 type fakeRand struct{}
 
-func (fr *fakeRand) GetRandomness(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (fr *fakeRand) GetChainRandomness(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	out := make([]byte, 32)
-	_, _ = rand.New(rand.NewSource(int64(randEpoch))).Read(out)
+	_, _ = rand.New(rand.NewSource(int64(randEpoch * 1000))).Read(out) //nolint
+	return out, nil
+}
+
+func (fr *fakeRand) GetBeaconRandomness(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	out := make([]byte, 32)
+	_, _ = rand.New(rand.NewSource(int64(randEpoch))).Read(out) //nolint
 	return out, nil
 }
 

@@ -13,8 +13,9 @@ import (
 
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/sector-storage/fsutil"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+
+	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 )
 
 type StoragePath struct {
@@ -27,7 +28,7 @@ type StoragePath struct {
 	CanStore bool
 }
 
-// [path]/sectorstore.json
+// LocalStorageMeta [path]/sectorstore.json
 type LocalStorageMeta struct {
 	ID     ID
 	Weight uint64 // 0 = readonly
@@ -36,7 +37,7 @@ type LocalStorageMeta struct {
 	CanStore bool
 }
 
-// .lotusstorage/storage.json
+// StorageConfig .lotusstorage/storage.json
 type StorageConfig struct {
 	StoragePaths []LocalPath
 }
@@ -182,7 +183,7 @@ func (st *Local) OpenPath(ctx context.Context, p string) error {
 		ents, err := ioutil.ReadDir(filepath.Join(p, t.String()))
 		if err != nil {
 			if os.IsNotExist(err) {
-				if err := os.MkdirAll(filepath.Join(p, t.String()), 0755); err != nil {
+				if err := os.MkdirAll(filepath.Join(p, t.String()), 0755); err != nil { // nolint
 					return xerrors.Errorf("openPath mkdir '%s': %w", filepath.Join(p, t.String()), err)
 				}
 

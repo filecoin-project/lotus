@@ -20,6 +20,12 @@ var mpoolCmd = &cli.Command{
 
 var minerSelectMsgsCmd = &cli.Command{
 	Name: "miner-select-msgs",
+	Flags: []cli.Flag{
+		&cli.Float64Flag{
+			Name:  "ticket-quality",
+			Value: 1,
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
@@ -34,7 +40,7 @@ var minerSelectMsgsCmd = &cli.Command{
 			return err
 		}
 
-		msgs, err := api.MpoolSelect(ctx, head.Key())
+		msgs, err := api.MpoolSelect(ctx, head.Key(), cctx.Float64("ticket-quality"))
 		if err != nil {
 			return err
 		}

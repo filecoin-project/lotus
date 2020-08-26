@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
+	abi "github.com/filecoin-project/specs-actors/actors/abi"
+	paych "github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 )
@@ -41,26 +41,20 @@ func (t *PaymentInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.ChannelMessage (cid.Cid) (struct)
-	if len("ChannelMessage") > cbg.MaxLength {
-		return xerrors.Errorf("Value in field \"ChannelMessage\" was too long")
+	// t.WaitSentinel (cid.Cid) (struct)
+	if len("WaitSentinel") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"WaitSentinel\" was too long")
 	}
 
-	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len("ChannelMessage"))); err != nil {
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len("WaitSentinel"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("ChannelMessage")); err != nil {
+	if _, err := io.WriteString(w, string("WaitSentinel")); err != nil {
 		return err
 	}
 
-	if t.ChannelMessage == nil {
-		if _, err := w.Write(cbg.CborNull); err != nil {
-			return err
-		}
-	} else {
-		if err := cbg.WriteCidBuf(scratch, w, *t.ChannelMessage); err != nil {
-			return xerrors.Errorf("failed to write cid field t.ChannelMessage: %w", err)
-		}
+	if err := cbg.WriteCidBuf(scratch, w, t.WaitSentinel); err != nil {
+		return xerrors.Errorf("failed to write cid field t.WaitSentinel: %w", err)
 	}
 
 	// t.Vouchers ([]*paych.SignedVoucher) (slice)
@@ -133,29 +127,17 @@ func (t *PaymentInfo) UnmarshalCBOR(r io.Reader) error {
 				}
 
 			}
-			// t.ChannelMessage (cid.Cid) (struct)
-		case "ChannelMessage":
+			// t.WaitSentinel (cid.Cid) (struct)
+		case "WaitSentinel":
 
 			{
 
-				pb, err := br.PeekByte()
+				c, err := cbg.ReadCid(br)
 				if err != nil {
-					return err
+					return xerrors.Errorf("failed to read cid field t.WaitSentinel: %w", err)
 				}
-				if pb == cbg.CborNull[0] {
-					var nbuf [1]byte
-					if _, err := br.Read(nbuf[:]); err != nil {
-						return err
-					}
-				} else {
 
-					c, err := cbg.ReadCid(br)
-					if err != nil {
-						return xerrors.Errorf("failed to read cid field t.ChannelMessage: %w", err)
-					}
-
-					t.ChannelMessage = &c
-				}
+				t.WaitSentinel = c
 
 			}
 			// t.Vouchers ([]*paych.SignedVoucher) (slice)

@@ -8,9 +8,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/filecoin-project/sector-storage/fsutil"
+	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p-core/host"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -18,12 +19,14 @@ import (
 	retrievalmarket "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	storagemarket "github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-jsonrpc/auth"
-	sectorstorage "github.com/filecoin-project/sector-storage"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/sector-storage/stores"
-	"github.com/filecoin-project/sector-storage/storiface"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	sealing "github.com/filecoin-project/storage-fsm"
+
+	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
+	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
+	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/apistruct"
@@ -50,6 +53,8 @@ type StorageMinerAPI struct {
 	StorageMgr        *sectorstorage.Manager `optional:"true"`
 	IStorageMgr       sectorstorage.SectorManager
 	*stores.Index
+	DataTransfer dtypes.ProviderDataTransfer
+	Host         host.Host
 
 	ConsiderOnlineStorageDealsConfigFunc       dtypes.ConsiderOnlineStorageDealsConfigFunc
 	SetConsiderOnlineStorageDealsConfigFunc    dtypes.SetConsiderOnlineStorageDealsConfigFunc
@@ -61,8 +66,8 @@ type StorageMinerAPI struct {
 	SetConsiderOfflineStorageDealsConfigFunc   dtypes.SetConsiderOfflineStorageDealsConfigFunc
 	ConsiderOfflineRetrievalDealsConfigFunc    dtypes.ConsiderOfflineRetrievalDealsConfigFunc
 	SetConsiderOfflineRetrievalDealsConfigFunc dtypes.SetConsiderOfflineRetrievalDealsConfigFunc
-	SetSealingDelayFunc                        dtypes.SetSealingDelayFunc
-	GetSealingDelayFunc                        dtypes.GetSealingDelayFunc
+	SetSealingConfigFunc                       dtypes.SetSealingConfigFunc
+	GetSealingConfigFunc                       dtypes.GetSealingConfigFunc
 	GetExpectedSealDurationFunc                dtypes.GetExpectedSealDurationFunc
 	SetExpectedSealDurationFunc                dtypes.SetExpectedSealDurationFunc
 }
@@ -148,7 +153,8 @@ func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid abi.SectorNumb
 			Value: info.SeedValue,
 			Epoch: info.SeedEpoch,
 		},
-		Retries: info.InvalidProofs,
+		Retries:   info.InvalidProofs,
+		ToUpgrade: sm.Miner.IsMarkedForUpgrade(sid),
 
 		LastErr: info.LastErr,
 		Log:     log,
@@ -231,11 +237,22 @@ func (sm *StorageMinerAPI) SectorStartSealing(ctx context.Context, number abi.Se
 }
 
 func (sm *StorageMinerAPI) SectorSetSealDelay(ctx context.Context, delay time.Duration) error {
-	return sm.SetSealingDelayFunc(delay)
+	cfg, err := sm.GetSealingConfigFunc()
+	if err != nil {
+		return xerrors.Errorf("get config: %w", err)
+	}
+
+	cfg.WaitDealsDelay = delay
+
+	return sm.SetSealingConfigFunc(cfg)
 }
 
 func (sm *StorageMinerAPI) SectorGetSealDelay(ctx context.Context) (time.Duration, error) {
-	return sm.GetSealingDelayFunc()
+	cfg, err := sm.GetSealingConfigFunc()
+	if err != nil {
+		return 0, err
+	}
+	return cfg.WaitDealsDelay, nil
 }
 
 func (sm *StorageMinerAPI) SectorSetExpectedSealDuration(ctx context.Context, delay time.Duration) error {
@@ -340,6 +357,39 @@ func (sm *StorageMinerAPI) MarketSetRetrievalAsk(ctx context.Context, rask *retr
 
 func (sm *StorageMinerAPI) MarketGetRetrievalAsk(ctx context.Context) (*retrievalmarket.Ask, error) {
 	return sm.RetrievalProvider.GetAsk(), nil
+}
+
+func (sm *StorageMinerAPI) MarketListDataTransfers(ctx context.Context) ([]api.DataTransferChannel, error) {
+	inProgressChannels, err := sm.DataTransfer.InProgressChannels(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	apiChannels := make([]api.DataTransferChannel, 0, len(inProgressChannels))
+	for _, channelState := range inProgressChannels {
+		apiChannels = append(apiChannels, api.NewDataTransferChannel(sm.Host.ID(), channelState))
+	}
+
+	return apiChannels, nil
+}
+
+func (sm *StorageMinerAPI) MarketDataTransferUpdates(ctx context.Context) (<-chan api.DataTransferChannel, error) {
+	channels := make(chan api.DataTransferChannel)
+
+	unsub := sm.DataTransfer.SubscribeToEvents(func(evt datatransfer.Event, channelState datatransfer.ChannelState) {
+		channel := api.NewDataTransferChannel(sm.Host.ID(), channelState)
+		select {
+		case <-ctx.Done():
+		case channels <- channel:
+		}
+	})
+
+	go func() {
+		defer unsub()
+		<-ctx.Done()
+	}()
+
+	return channels, nil
 }
 
 func (sm *StorageMinerAPI) DealsList(ctx context.Context) ([]storagemarket.StorageDeal, error) {
