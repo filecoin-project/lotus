@@ -169,7 +169,7 @@ func executeMessageVector(t *testing.T, vector *schema.TestVector) {
 	driver := NewDriver(ctx, vector)
 
 	// Apply every message.
-	for i, m := range vector.ApplyMessages[:len(vector.ApplyMessages)-1] {
+	for i, m := range vector.ApplyMessages {
 		msg, err := types.DecodeMessage(m.Bytes)
 		if err != nil {
 			t.Fatalf("failed to deserialize message: %s", err)
