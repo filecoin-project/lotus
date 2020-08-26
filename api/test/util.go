@@ -41,13 +41,16 @@ func MineUntilBlock(ctx context.Context, t *testing.T, sn TestStorageNode, cb fu
 		var success bool
 		var err error
 		wait := make(chan struct{})
-		sn.MineOne(ctx, miner.MineReq{
+		mineErr := sn.MineOne(ctx, miner.MineReq{
 			Done: func(win bool, e error) {
 				success = win
 				err = e
 				wait <- struct{}{}
 			},
 		})
+		if mineErr != nil {
+			t.Fatal(mineErr)
+		}
 		<-wait
 		if err != nil {
 			t.Fatal(err)
