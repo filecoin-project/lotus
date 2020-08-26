@@ -228,15 +228,25 @@ jobs:
             - run:
                 name: go get vectors branch
                 command: go get github.com/filecoin-project/test-vectors@<< parameters.vectors-branch >>
+      - go/install-gotestsum:
+          gobin: $HOME/.local/bin
+          version: 0.5.2
       - run:
           name: go test
           environment:
             SKIP_CONFORMANCE: "0"
           command: |
+            mkdir -p /tmp/test-reports
             mkdir -p /tmp/test-artifacts
-            go test -v -coverpkg ./chain/vm/,github.com/filecoin-project/specs-actors/... -coverprofile=/tmp/conformance.out ./conformance/
+            gotestsum \
+              --format pkgname-and-test-fails \
+              --junitfile /tmp/test-reports/junit.xml \
+              -- \
+              -v -coverpkg ./chain/vm/,github.com/filecoin-project/specs-actors/... -coverprofile=/tmp/conformance.out ./conformance/
             go tool cover -html=/tmp/conformance.out -o /tmp/test-artifacts/conformance-coverage.html
           no_output_timeout: 30m
+      - store_test_results:
+          path: /tmp/test-reports
       - store_artifacts:
           path: /tmp/test-artifacts/conformance-coverage.html
 
