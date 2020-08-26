@@ -113,7 +113,7 @@ jobs:
   test: &test
     description: |
       Run tests with gotestsum.
-    parameters:
+    parameters: &test-params
       executor:
         type: executor
         default: golang
@@ -193,7 +193,20 @@ jobs:
   test-window-post:
     <<: *test
   test-conformance:
-    <<: *test
+    description: |
+      Run tests using a corpus of interoperable test vectors for Filecoin 
+      implementations to test their correctness and compliance with the Filecoin
+      specifications.
+    parameters:
+      <<: *test-params
+      vectors-branch:
+        type: string
+        default: ""
+        description: |
+          Branch on github.com/filecoin-project/test-vectors to checkout and
+          test with. If empty (the default) the commit defined by the git
+          submodule is used.
+    executor: << parameters.executor >>
     steps:
       - install-deps
       - prepare
@@ -201,6 +214,20 @@ jobs:
           command: make deps lotus
           no_output_timeout: 30m
       - download-params
+      - when:
+          condition:
+            not:
+              equal: [ "", << parameters.vectors-branch >> ]
+          steps:
+            - run:
+                name: checkout vectors branch
+                command: |
+                  cd extern/test-vectors
+                  git fetch
+                  git checkout origin/<< parameters.vectors-branch >>
+            - run:
+                name: go get vectors branch
+                command: go get github.com/filecoin-project/test-vectors@<< parameters.vectors-branch >>
       - run:
           name: go test
           environment:
@@ -380,6 +407,11 @@ workflows:
       - test-conformance:
           test-suite-name: conformance
           packages: "./conformance"
+      - test-conformance:
+          name: test-conformance-bleeding-edge
+          test-suite-name: conformance-bleeding-edge
+          packages: "./conformance"
+          vectors-branch: master
       - build-debug
       - build-all:
           requires:
