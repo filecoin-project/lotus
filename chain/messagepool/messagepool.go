@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	stdbig "math/big"
 	"sort"
 	"sync"
 	"time"
@@ -118,13 +119,15 @@ type MessagePool struct {
 }
 
 type msgSet struct {
-	msgs      map[uint64]*types.SignedMessage
-	nextNonce uint64
+	msgs          map[uint64]*types.SignedMessage
+	nextNonce     uint64
+	requiredFunds *stdbig.Int
 }
 
 func newMsgSet() *msgSet {
 	return &msgSet{
-		msgs: make(map[uint64]*types.SignedMessage),
+		msgs:          make(map[uint64]*types.SignedMessage),
+		requiredFunds: stdbig.NewInt(0),
 	}
 }
 
@@ -150,10 +153,25 @@ func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool) (bool, error) {
 					ErrRBFTooLowPremium)
 			}
 		}
+
+		ms.requiredFunds.Sub(ms.requiredFunds, exms.Message.RequiredFunds().Int)
+		ms.requiredFunds.Sub(ms.requiredFunds, exms.Message.Value.Int)
 	}
+
 	ms.msgs[m.Message.Nonce] = m
+	ms.requiredFunds.Add(ms.requiredFunds, m.Message.RequiredFunds().Int)
+	ms.requiredFunds.Add(ms.requiredFunds, m.Message.Value.Int)
 
 	return !has, nil
+}
+
+func (ms *msgSet) rm(nonce uint64) {
+	m, has := ms.msgs[nonce]
+	if has {
+		ms.requiredFunds.Sub(ms.requiredFunds, m.Message.RequiredFunds().Int)
+		ms.requiredFunds.Sub(ms.requiredFunds, m.Message.Value.Int)
+		delete(ms.msgs, nonce)
+	}
 }
 
 func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName) (*MessagePool, error) {
@@ -638,7 +656,7 @@ func (mp *MessagePool) remove(from address.Address, nonce uint64) {
 
 	// NB: This deletes any message with the given nonce. This makes sense
 	// as two messages with the same sender cannot have the same nonce
-	delete(mset.msgs, nonce)
+	mset.rm(nonce)
 
 	if len(mset.msgs) == 0 {
 		delete(mp.pending, from)
