@@ -545,7 +545,7 @@ func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubs
 		)
 		stats.Record(ctx, metrics.MessageValidationFailure.M(1))
 		switch {
-		case xerrors.Is(err, messagepool.ErrValidationFailure):
+		case xerrors.Is(err, messagepool.ErrSoftValidationFailure):
 			fallthrough
 		case xerrors.Is(err, messagepool.ErrRBFTooLowPremium):
 			fallthrough
