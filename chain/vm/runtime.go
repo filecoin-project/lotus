@@ -34,7 +34,6 @@ type Runtime struct {
 
 	vm        *VM
 	state     *state.StateTree
-	msg       *types.Message
 	vmsg      vmr.Message
 	height    abi.ChainEpoch
 	cst       cbor.IpldStore
