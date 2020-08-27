@@ -152,7 +152,6 @@ func (p *Processor) Start(ctx context.Context) {
 						log.Errorf("Failed to handle market changes: %w", err)
 						return
 					}
-					log.Info("Processed Market Changes")
 				}()
 
 				grp.Add(1)
@@ -162,7 +161,6 @@ func (p *Processor) Start(ctx context.Context) {
 						log.Errorf("Failed to handle miner changes: %w", err)
 						return
 					}
-					log.Info("Processed Miner Changes")
 				}()
 
 				grp.Add(1)
@@ -172,7 +170,6 @@ func (p *Processor) Start(ctx context.Context) {
 						log.Errorf("Failed to handle reward changes: %w", err)
 						return
 					}
-					log.Info("Processed Reward Changes")
 				}()
 
 				grp.Add(1)
@@ -182,7 +179,6 @@ func (p *Processor) Start(ctx context.Context) {
 						log.Errorf("Failed to handle power actor changes: %w", err)
 						return
 					}
-					log.Info("Processes Power Changes")
 				}()
 
 				grp.Add(1)
@@ -192,7 +188,6 @@ func (p *Processor) Start(ctx context.Context) {
 						log.Errorf("Failed to handle message changes: %w", err)
 						return
 					}
-					log.Info("Processed Message Changes")
 				}()
 
 				grp.Add(1)
@@ -202,7 +197,6 @@ func (p *Processor) Start(ctx context.Context) {
 						log.Errorf("Failed to handle common actor changes: %w", err)
 						return
 					}
-					log.Info("Processed CommonActor Changes")
 				}()
 
 				grp.Wait()
@@ -214,7 +208,7 @@ func (p *Processor) Start(ctx context.Context) {
 				if err := p.refreshViews(); err != nil {
 					log.Errorw("Failed to refresh views", "error", err)
 				}
-				log.Infow("Processed Batch", "duration", time.Since(loopStart).String())
+				log.Infow("Processed Batch Complete", "duration", time.Since(loopStart).String())
 			}
 		}
 	}()
