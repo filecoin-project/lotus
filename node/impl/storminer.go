@@ -154,9 +154,9 @@ func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid abi.SectorNumb
 			Epoch: info.SeedEpoch,
 		},
 		PreCommitMsg: info.PreCommitMessage,
-		CommitMsg: info.CommitMessage,
-		Retries:   info.InvalidProofs,
-		ToUpgrade: sm.Miner.IsMarkedForUpgrade(sid),
+		CommitMsg:    info.CommitMessage,
+		Retries:      info.InvalidProofs,
+		ToUpgrade:    sm.Miner.IsMarkedForUpgrade(sid),
 
 		LastErr: info.LastErr,
 		Log:     log,
