@@ -16,7 +16,7 @@ func init() {
 }
 
 func (t *test) planSingle(evt interface{}) {
-	_, err := t.s.plan([]statemachine.Event{{User: evt}}, t.state)
+	_, _, err := t.s.plan([]statemachine.Event{{User: evt}}, t.state)
 	require.NoError(t.t, err)
 }
 
@@ -98,12 +98,12 @@ func TestSeedRevert(t *testing.T) {
 	m.planSingle(SectorSeedReady{})
 	require.Equal(m.t, m.state.State, Committing)
 
-	_, err := m.s.plan([]statemachine.Event{{User: SectorSeedReady{SeedValue: nil, SeedEpoch: 5}}, {User: SectorCommitted{}}}, m.state)
+	_, _, err := m.s.plan([]statemachine.Event{{User: SectorSeedReady{SeedValue: nil, SeedEpoch: 5}}, {User: SectorCommitted{}}}, m.state)
 	require.NoError(t, err)
 	require.Equal(m.t, m.state.State, Committing)
 
 	// not changing the seed this time
-	_, err = m.s.plan([]statemachine.Event{{User: SectorSeedReady{SeedValue: nil, SeedEpoch: 5}}, {User: SectorCommitted{}}}, m.state)
+	_, _, err = m.s.plan([]statemachine.Event{{User: SectorSeedReady{SeedValue: nil, SeedEpoch: 5}}, {User: SectorCommitted{}}}, m.state)
 	require.NoError(t, err)
 	require.Equal(m.t, m.state.State, CommitWait)
 
@@ -129,7 +129,8 @@ func TestPlanCommittingHandlesSectorCommitFailed(t *testing.T) {
 
 	events := []statemachine.Event{{User: SectorCommitFailed{}}}
 
-	require.NoError(t, planCommitting(events, m.state))
+	_, err := planCommitting(events, m.state)
+	require.NoError(t, err)
 
 	require.Equal(t, CommitFailed, m.state.State)
 }
