@@ -85,7 +85,7 @@ type workerHandle struct {
 
 	lk sync.Mutex
 
-	wndLk sync.Mutex
+	wndLk         sync.Mutex
 	activeWindows []*schedWindow
 
 	// stats / tracking

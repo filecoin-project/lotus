@@ -126,7 +126,7 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorRetryFinalize{}, FinalizeSector),
 	),
 	PackingFailed: planOne(), // TODO: Deprecated, remove
-	DealsExpired: planOne(
+	DealsExpired:  planOne(
 	// SectorRemove (global)
 	),
 	RecoverDealIDs: planOne(

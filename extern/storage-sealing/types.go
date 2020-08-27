@@ -55,11 +55,12 @@ type Log struct {
 }
 
 type ReturnState string
+
 const (
-	RetPreCommit1 = ReturnState(PreCommit1)
-	RetPreCommitting = ReturnState(PreCommitting)
+	RetPreCommit1      = ReturnState(PreCommit1)
+	RetPreCommitting   = ReturnState(PreCommitting)
 	RetPreCommitFailed = ReturnState(PreCommitFailed)
-	RetCommitFailed = ReturnState(CommitFailed)
+	RetCommitFailed    = ReturnState(CommitFailed)
 )
 
 type SectorInfo struct {
