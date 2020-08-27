@@ -21,6 +21,7 @@ type schedPrioCtxKey int
 var SchedPriorityKey schedPrioCtxKey
 var DefaultSchedPriority = 0
 var SelectorTimeout = 5 * time.Second
+var InitWait = 3 * time.Second
 
 var (
 	SchedWindows = 2
@@ -221,6 +222,9 @@ func (sh *scheduler) runSched() {
 
 	go sh.runWorkerWatcher()
 
+	iw := time.After(InitWait)
+	var initialised bool
+
 	for {
 		select {
 		case w := <-sh.newWorkers:
@@ -231,18 +235,27 @@ func (sh *scheduler) runSched() {
 
 		case req := <-sh.schedule:
 			sh.schedQueue.Push(req)
-			sh.trySched()
+			if initialised {
+				sh.trySched()
+			}
 
 			if sh.testSync != nil {
 				sh.testSync <- struct{}{}
 			}
 		case req := <-sh.windowRequests:
 			sh.openWindows = append(sh.openWindows, req)
-			sh.trySched()
+			if initialised {
+				sh.trySched()
+			}
 
 		case ireq := <-sh.info:
 			ireq(sh.diag())
 
+		case <-iw:
+			initialised = true
+			iw = nil
+
+			sh.trySched()
 		case <-sh.closing:
 			sh.schedClose()
 			return
