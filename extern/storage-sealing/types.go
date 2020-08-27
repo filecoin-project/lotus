@@ -54,6 +54,14 @@ type Log struct {
 	Kind string
 }
 
+type ReturnState string
+const (
+	RetPreCommit1 = ReturnState(PreCommit1)
+	RetPreCommitting = ReturnState(PreCommitting)
+	RetPreCommitFailed = ReturnState(PreCommitFailed)
+	RetCommitFailed = ReturnState(CommitFailed)
+)
+
 type SectorInfo struct {
 	State        SectorState
 	SectorNumber abi.SectorNumber
@@ -90,6 +98,9 @@ type SectorInfo struct {
 
 	// Faults
 	FaultReportMsg *cid.Cid
+
+	// Recovery
+	Return ReturnState
 
 	// Debug
 	LastErr string

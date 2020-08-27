@@ -271,6 +271,24 @@ type SectorRetryCommitWait struct{}
 
 func (evt SectorRetryCommitWait) apply(state *SectorInfo) {}
 
+type SectorInvalidDealIDs struct{
+	Return ReturnState
+}
+
+func (evt SectorInvalidDealIDs) apply(state *SectorInfo) {
+	state.Return = evt.Return
+}
+
+type SectorUpdateDealIDs struct{
+	Updates map[int]abi.DealID
+}
+
+func (evt SectorUpdateDealIDs) apply(state *SectorInfo) {
+	for i, id := range evt.Updates {
+		state.Pieces[i].DealInfo.DealID = id
+	}
+}
+
 // Faults
 
 type SectorFaulty struct{}

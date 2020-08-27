@@ -50,6 +50,7 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorPreCommit1{}, PreCommit2),
 		on(SectorSealPreCommit1Failed{}, SealPreCommit1Failed),
 		on(SectorPackingFailed{}, PackingFailed),
+		on(SectorInvalidDealIDs{}, RecoverDealIDs),
 	),
 	PreCommit2: planOne(
 		on(SectorPreCommit2{}, PreCommitting),
@@ -62,6 +63,7 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorChainPreCommitFailed{}, PreCommitFailed),
 		on(SectorPreCommitLanded{}, WaitSeed),
 		on(SectorDealsExpired{}, DealsExpired),
+		on(SectorInvalidDealIDs{}, RecoverDealIDs),
 	),
 	PreCommitWait: planOne(
 		on(SectorChainPreCommitFailed{}, PreCommitFailed),
@@ -103,6 +105,7 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorSealPreCommit1Failed{}, SealPreCommit1Failed),
 		on(SectorPreCommitLanded{}, WaitSeed),
 		on(SectorDealsExpired{}, DealsExpired),
+		on(SectorInvalidDealIDs{}, RecoverDealIDs),
 	),
 	ComputeProofFailed: planOne(
 		on(SectorRetryComputeProof{}, Committing),
@@ -118,12 +121,16 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorRetryPreCommit{}, PreCommitting),
 		on(SectorRetryCommitWait{}, CommitWait),
 		on(SectorDealsExpired{}, DealsExpired),
+		on(SectorInvalidDealIDs{}, RecoverDealIDs),
 	),
 	FinalizeFailed: planOne(
 		on(SectorRetryFinalize{}, FinalizeSector),
 	),
 	DealsExpired: planOne(
 	// SectorRemove (global)
+	),
+	RecoverDealIDs: planOne(
+		onReturning(SectorUpdateDealIDs{}),
 	),
 
 	// Post-seal
@@ -389,13 +396,30 @@ func final(events []statemachine.Event, state *SectorInfo) (uint64, error) {
 	return 0, xerrors.Errorf("didn't expect any events in state %s, got %+v", state.State, events)
 }
 
-func on(mut mutator, next SectorState) func() (mutator, SectorState) {
-	return func() (mutator, SectorState) {
-		return mut, next
+func on(mut mutator, next SectorState) func() (mutator, func(*SectorInfo) error) {
+	return func() (mutator, func(*SectorInfo) error) {
+		return mut, func(state *SectorInfo) error {
+			state.State = next
+			return nil
+		}
 	}
 }
 
-func planOne(ts ...func() (mut mutator, next SectorState)) func(events []statemachine.Event, state *SectorInfo) (uint64, error) {
+func onReturning(mut mutator) func() (mutator, func(*SectorInfo) error) {
+	return func() (mutator, func(*SectorInfo) error) {
+		return mut, func(state *SectorInfo) error {
+			if state.Return == "" {
+				return xerrors.Errorf("return state not set")
+			}
+
+			state.State = SectorState(state.Return)
+			state.Return = ""
+			return nil
+		}
+	}
+}
+
+func planOne(ts ...func() (mut mutator, next func(*SectorInfo) error)) func(events []statemachine.Event, state *SectorInfo) (uint64, error) {
 	return func(events []statemachine.Event, state *SectorInfo) (uint64, error) {
 		if gm, ok := events[0].User.(globalMutator); ok {
 			gm.applyGlobal(state)
@@ -414,8 +438,7 @@ func planOne(ts ...func() (mut mutator, next SectorState)) func(events []statema
 			}
 
 			events[0].User.(mutator).apply(state)
-			state.State = next
-			return 1, nil
+			return 1, next(state)
 		}
 
 		_, ok := events[0].User.(Ignorable)

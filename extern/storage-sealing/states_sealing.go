@@ -86,7 +86,8 @@ func (m *Sealing) handlePreCommit1(ctx statemachine.Context, sector SectorInfo) 
 			log.Errorf("handlePreCommit1: api error, not proceeding: %+v", err)
 			return nil
 		case *ErrInvalidDeals:
-			return ctx.Send(SectorPackingFailed{xerrors.Errorf("invalid dealIDs in sector: %w", err)})
+			log.Warnf("invalid deals in sector %d: %v", sector.SectorNumber, err)
+			return ctx.Send(SectorInvalidDealIDs{ Return: RetPreCommit1 })
 		case *ErrExpiredDeals: // Probably not much we can do here, maybe re-pack the sector?
 			return ctx.Send(SectorPackingFailed{xerrors.Errorf("expired dealIDs in sector: %w", err)})
 		default:
@@ -157,9 +158,8 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 		case *ErrBadTicket:
 			return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("bad ticket: %w", err)})
 		case *ErrInvalidDeals:
-			// TODO: Deals got reorged, figure out what to do about this
-			//  (this will probably require tracking the deal submit message CID, and re-checking what's on chain)
-			return xerrors.Errorf("invalid deals in sector %d: %w", sector.SectorNumber, err)
+			log.Warnf("invalid deals in sector %d: %v", sector.SectorNumber, err)
+			return ctx.Send(SectorInvalidDealIDs{ Return: RetPreCommitting })
 		case *ErrExpiredDeals:
 			return ctx.Send(SectorDealsExpired{xerrors.Errorf("sector deals expired: %w", err)})
 		case *ErrPrecommitOnChain:
