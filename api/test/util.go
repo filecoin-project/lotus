@@ -3,6 +3,7 @@ package test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
@@ -36,15 +37,17 @@ func SendFunds(ctx context.Context, t *testing.T, sender TestNode, addr address.
 	}
 }
 
-func MineUntilBlock(ctx context.Context, t *testing.T, sn TestStorageNode, cb func()) {
+func MineUntilBlock(ctx context.Context, t *testing.T, fn TestNode, sn TestStorageNode, cb func(abi.ChainEpoch)) {
 	for i := 0; i < 1000; i++ {
 		var success bool
 		var err error
+		var epoch abi.ChainEpoch
 		wait := make(chan struct{})
 		mineErr := sn.MineOne(ctx, miner.MineReq{
-			Done: func(win bool, e error) {
+			Done: func(win bool, ep abi.ChainEpoch, e error) {
 				success = win
 				err = e
+				epoch = ep
 				wait <- struct{}{}
 			},
 		})
@@ -56,8 +59,24 @@ func MineUntilBlock(ctx context.Context, t *testing.T, sn TestStorageNode, cb fu
 			t.Fatal(err)
 		}
 		if success {
+			// Wait until it shows up on the given full nodes ChainHead
+			nloops := 50
+			for i := 0; i < nloops; i++ {
+				ts, err := fn.ChainHead(ctx)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if ts.Height() == epoch {
+					break
+				}
+				if i == nloops-1 {
+					t.Fatal("block never managed to sync to node")
+				}
+				time.Sleep(time.Millisecond * 10)
+			}
+
 			if cb != nil {
-				cb()
+				cb(epoch)
 			}
 			return
 		}
