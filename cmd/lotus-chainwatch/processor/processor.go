@@ -35,9 +35,6 @@ type Processor struct {
 
 	// number of blocks processed at a time
 	batch int
-
-	// process communication channels
-	sectorDealEvents chan *SectorDealEvent
 }
 
 type ActorTips map[types.TipSetKey][]actorInfo
