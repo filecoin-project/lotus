@@ -235,7 +235,7 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 				PublishThreshold:            -1000,
 				GraylistThreshold:           -2500,
 				AcceptPXThreshold:           1000,
-				OpportunisticGraftThreshold: 5,
+				OpportunisticGraftThreshold: 3.5,
 			},
 		),
 		pubsub.WithPeerScoreInspect(in.Sk.Update, 10*time.Second),
@@ -251,6 +251,7 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 		pubsub.GossipSubDout = 0
 		pubsub.GossipSubDlazy = 1024
 		pubsub.GossipSubGossipFactor = 0.5
+		pubsub.GossipSubPruneBackoff = 5 * time.Minute
 		// turn on PX
 		options = append(options, pubsub.WithPeerExchange(true))
 	}
