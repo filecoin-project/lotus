@@ -53,7 +53,7 @@ func TestPledgeSector(t *testing.T, b APIBuilder, blocktime time.Duration, nSect
 		defer close(done)
 		for mine {
 			build.Clock.Sleep(blocktime)
-			if err := sn[0].MineOne(ctx, bminer.MineReq{Done: func(bool, error) {
+			if err := sn[0].MineOne(ctx, bminer.MineReq{Done: func(bool, abi.ChainEpoch, error) {
 
 			}}); err != nil {
 				t.Error(err)
