@@ -274,7 +274,10 @@ type SectorFaultedFinal struct{}
 
 type SectorRemove struct{}
 
-func (evt SectorRemove) apply(state *SectorInfo) {}
+func (evt SectorRemove) applyGlobal(state *SectorInfo) bool {
+	state.State = Removing
+	return true
+}
 
 type SectorRemoved struct{}
 
