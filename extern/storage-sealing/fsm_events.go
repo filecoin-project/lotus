@@ -192,12 +192,18 @@ func (evt SectorCommitFailed) FormatError(xerrors.Printer) (next error) { return
 func (evt SectorCommitFailed) apply(*SectorInfo)                        {}
 
 type SectorCommitted struct {
-	Message cid.Cid
-	Proof   []byte
+	Proof []byte
 }
 
 func (evt SectorCommitted) apply(state *SectorInfo) {
 	state.Proof = evt.Proof
+}
+
+type SectorCommitSubmitted struct {
+	Message cid.Cid
+}
+
+func (evt SectorCommitSubmitted) apply(state *SectorInfo) {
 	state.CommitMessage = &evt.Message
 }
 

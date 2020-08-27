@@ -71,6 +71,10 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorChainPreCommitFailed{}, PreCommitFailed),
 	),
 	Committing: planCommitting,
+	SubmitCommit: planOne(
+		on(SectorCommitSubmitted{}, CommitWait),
+		on(SectorCommitFailed{}, CommitFailed),
+	),
 	CommitWait: planOne(
 		on(SectorProving{}, FinalizeSector),
 		on(SectorCommitFailed{}, CommitFailed),
@@ -182,47 +186,50 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 
 	/*
 
-			*   Empty <- incoming deals
-			|   |
-			|   v
-		    *<- WaitDeals <- incoming deals
-			|   |
-			|   v
-			*<- Packing <- incoming committed capacity
-			|   |
-			|   v
-			*<- PreCommit1 <--> SealPreCommit1Failed
-			|   |       ^          ^^
-			|   |       *----------++----\
-			|   v       v          ||    |
-			*<- PreCommit2 --------++--> SealPreCommit2Failed
-			|   |                  ||
-			|   v          /-------/|
-			*   PreCommitting <-----+---> PreCommitFailed
-			|   |                   |     ^
-			|   v                   |     |
-			*<- WaitSeed -----------+-----/
-			|   |||  ^              |
-			|   |||  \--------*-----/
-			|   |||           |
-			|   vvv      v----+----> ComputeProofFailed
-			*<- Committing    |
-			|   |        ^--> CommitFailed
-			|   v             ^
-			*<- CommitWait ---/
-			|   |
-			|   v
-			|   FinalizeSector <--> FinalizeFailed
-			|   |
-			|   v
-			*<- Proving
-			|
-			v
-			FailedUnrecoverable
+				*   Empty <- incoming deals
+				|   |
+				|   v
+			    *<- WaitDeals <- incoming deals
+				|   |
+				|   v
+				*<- Packing <- incoming committed capacity
+				|   |
+				|   v
+				*<- PreCommit1 <--> SealPreCommit1Failed
+				|   |       ^          ^^
+				|   |       *----------++----\
+				|   v       v          ||    |
+				*<- PreCommit2 --------++--> SealPreCommit2Failed
+				|   |                  ||
+				|   v          /-------/|
+				*   PreCommitting <-----+---> PreCommitFailed
+				|   |                   |     ^
+				|   v                   |     |
+				*<- WaitSeed -----------+-----/
+				|   |||  ^              |
+				|   |||  \--------*-----/
+				|   |||           |
+				|   vvv      v----+----> ComputeProofFailed
+				*<- Committing    |
+				|   |        ^--> CommitFailed
+				|   v             ^
+		        |   SubmitCommit  |
+		        |   |             |
+		        |   v             |
+				*<- CommitWait ---/
+				|   |
+				|   v
+				|   FinalizeSector <--> FinalizeFailed
+				|   |
+				|   v
+				*<- Proving
+				|
+				v
+				FailedUnrecoverable
 
-			UndefinedSectorState <- ¯\_(ツ)_/¯
-				|                     ^
-				*---------------------/
+				UndefinedSectorState <- ¯\_(ツ)_/¯
+					|                     ^
+					*---------------------/
 
 	*/
 
@@ -248,6 +255,8 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		return m.handleWaitSeed, processed, nil
 	case Committing:
 		return m.handleCommitting, processed, nil
+	case SubmitCommit:
+		return m.handleSubmitCommit, processed, nil
 	case CommitWait:
 		return m.handleCommitWait, processed, nil
 	case FinalizeSector:
@@ -294,24 +303,25 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 }
 
 func planCommitting(events []statemachine.Event, state *SectorInfo) (uint64, error) {
-	for _, event := range events {
+	for i, event := range events {
 		switch e := event.User.(type) {
 		case globalMutator:
 			if e.applyGlobal(state) {
-				return 1, nil
+				return uint64(i + 1), nil
 			}
 		case SectorCommitted: // the normal case
 			e.apply(state)
-			state.State = CommitWait
+			state.State = SubmitCommit
 		case SectorSeedReady: // seed changed :/
 			if e.SeedEpoch == state.SeedEpoch && bytes.Equal(e.SeedValue, state.SeedValue) {
 				log.Warnf("planCommitting: got SectorSeedReady, but the seed didn't change")
 				continue // or it didn't!
 			}
+
 			log.Warnf("planCommitting: commit Seed changed")
 			e.apply(state)
 			state.State = Committing
-			return 1, nil
+			return uint64(i + 1), nil
 		case SectorComputeProofFailed:
 			state.State = ComputeProofFailed
 		case SectorSealPreCommit1Failed:
@@ -321,10 +331,10 @@ func planCommitting(events []statemachine.Event, state *SectorInfo) (uint64, err
 		case SectorRetryCommitWait:
 			state.State = CommitWait
 		default:
-			return 0, xerrors.Errorf("planCommitting got event of unknown type %T, events: %+v", event.User, events)
+			return uint64(i), xerrors.Errorf("planCommitting got event of unknown type %T, events: %+v", event.User, events)
 		}
 	}
-	return 1, nil
+	return uint64(len(events)), nil
 }
 
 func (m *Sealing) restartSectors(ctx context.Context) error {

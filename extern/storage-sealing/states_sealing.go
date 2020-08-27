@@ -326,21 +326,25 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 		return ctx.Send(SectorComputeProofFailed{xerrors.Errorf("computing seal proof failed(2): %w", err)})
 	}
 
+	return ctx.Send(SectorCommitted{
+		Proof: proof,
+	})
+}
+
+func (m *Sealing) handleSubmitCommit(ctx statemachine.Context, sector SectorInfo) error {
 	tok, _, err := m.api.ChainHead(ctx.Context())
 	if err != nil {
 		log.Errorf("handleCommitting: api error, not proceeding: %+v", err)
 		return nil
 	}
 
-	if err := m.checkCommit(ctx.Context(), sector, proof, tok); err != nil {
+	if err := m.checkCommit(ctx.Context(), sector, sector.Proof, tok); err != nil {
 		return ctx.Send(SectorCommitFailed{xerrors.Errorf("commit check error: %w", err)})
 	}
 
-	// TODO: Consider splitting states and persist proof for faster recovery
-
 	params := &miner.ProveCommitSectorParams{
 		SectorNumber: sector.SectorNumber,
-		Proof:        proof,
+		Proof:        sector.Proof,
 	}
 
 	enc := new(bytes.Buffer)
@@ -372,14 +376,13 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 		collateral = big.Zero()
 	}
 
-	// TODO: check seed / ticket are up to date
+	// TODO: check seed / ticket / deals are up to date
 	mcid, err := m.api.SendMsg(ctx.Context(), waddr, m.maddr, builtin.MethodsMiner.ProveCommitSector, collateral, m.feeCfg.MaxCommitGasFee, enc.Bytes())
 	if err != nil {
 		return ctx.Send(SectorCommitFailed{xerrors.Errorf("pushing message to mpool: %w", err)})
 	}
 
-	return ctx.Send(SectorCommitted{
-		Proof:   proof,
+	return ctx.Send(SectorCommitSubmitted{
 		Message: mcid,
 	})
 }
