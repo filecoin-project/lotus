@@ -128,6 +128,8 @@ type SectorInfo struct {
 	Deals     []abi.DealID
 	Ticket    SealTicket
 	Seed      SealSeed
+	PreCommitMsg *cid.Cid
+	CommitMsg *cid.Cid
 	Retries   uint64
 	ToUpgrade bool
 
