@@ -66,6 +66,7 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	PreCommitWait: planOne(
 		on(SectorChainPreCommitFailed{}, PreCommitFailed),
 		on(SectorPreCommitLanded{}, WaitSeed),
+		on(SectorRetryPreCommit{}, PreCommitting),
 	),
 	WaitSeed: planOne(
 		on(SectorSeedReady{}, Committing),
@@ -79,6 +80,7 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	CommitWait: planOne(
 		on(SectorProving{}, FinalizeSector),
 		on(SectorCommitFailed{}, CommitFailed),
+		on(SectorRetrySubmitCommit{}, SubmitCommit),
 	),
 
 	FinalizeSector: planOne(

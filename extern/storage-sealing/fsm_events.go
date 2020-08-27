@@ -191,6 +191,10 @@ type SectorCommitFailed struct{ error }
 func (evt SectorCommitFailed) FormatError(xerrors.Printer) (next error) { return evt.error }
 func (evt SectorCommitFailed) apply(*SectorInfo)                        {}
 
+type SectorRetrySubmitCommit struct{}
+
+func (evt SectorRetrySubmitCommit) apply(*SectorInfo) {}
+
 type SectorDealsExpired struct{ error }
 
 func (evt SectorDealsExpired) FormatError(xerrors.Printer) (next error) { return evt.error }

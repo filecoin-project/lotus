@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/filecoin-project/specs-storage/storage"
 )
 
@@ -232,11 +233,18 @@ func (m *Sealing) handlePreCommitWait(ctx statemachine.Context, sector SectorInf
 		return ctx.Send(SectorChainPreCommitFailed{err})
 	}
 
-	if mw.Receipt.ExitCode != 0 {
+	switch mw.Receipt.ExitCode {
+	case exitcode.Ok:
+		// this is what we expect
+	case exitcode.SysErrOutOfGas:
+		// gas estimator guessed a wrong number
+		return ctx.Send(SectorRetryPreCommit{})
+	default:
 		log.Error("sector precommit failed: ", mw.Receipt.ExitCode)
 		err := xerrors.Errorf("sector precommit failed: %d", mw.Receipt.ExitCode)
 		return ctx.Send(SectorChainPreCommitFailed{err})
 	}
+
 	log.Info("precommit message landed on chain: ", sector.SectorNumber)
 
 	return ctx.Send(SectorPreCommitLanded{TipSet: mw.TipSetTok})
@@ -404,7 +412,13 @@ func (m *Sealing) handleCommitWait(ctx statemachine.Context, sector SectorInfo) 
 		return ctx.Send(SectorCommitFailed{xerrors.Errorf("failed to wait for porep inclusion: %w", err)})
 	}
 
-	if mw.Receipt.ExitCode != 0 {
+	switch mw.Receipt.ExitCode {
+	case exitcode.Ok:
+		// this is what we expect
+	case exitcode.SysErrOutOfGas:
+		// gas estimator guessed a wrong number
+		return ctx.Send(SectorRetrySubmitCommit{})
+	default:
 		return ctx.Send(SectorCommitFailed{xerrors.Errorf("submitting sector proof failed (exit=%d, msg=%s) (t:%x; s:%x(%d); p:%x)", mw.Receipt.ExitCode, sector.CommitMessage, sector.TicketValue, sector.SeedValue, sector.SeedEpoch, sector.Proof)})
 	}
 
