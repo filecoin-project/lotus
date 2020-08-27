@@ -85,6 +85,9 @@ type workerHandle struct {
 
 	lk sync.Mutex
 
+	wndLk sync.Mutex
+	activeWindows []*schedWindow
+
 	// stats / tracking
 	wt *workTracker
 
@@ -122,6 +125,8 @@ type workerRequest struct {
 
 	prepare WorkerAction
 	work    WorkerAction
+
+	start time.Time
 
 	index int // The index of the item in the heap.
 
@@ -170,6 +175,8 @@ func (sh *scheduler) Schedule(ctx context.Context, sector abi.SectorID, taskType
 
 		prepare: prepare,
 		work:    work,
+
+		start: time.Now(),
 
 		ret: ret,
 		ctx: ctx,
@@ -475,8 +482,6 @@ func (sh *scheduler) runWorker(wid WorkerID) {
 		taskDone := make(chan struct{}, 1)
 		windowsRequested := 0
 
-		var activeWindows []*schedWindow
-
 		ctx, cancel := context.WithCancel(context.TODO())
 		defer cancel()
 
@@ -510,7 +515,9 @@ func (sh *scheduler) runWorker(wid WorkerID) {
 
 			select {
 			case w := <-scheduledWindows:
-				activeWindows = append(activeWindows, w)
+				worker.wndLk.Lock()
+				worker.activeWindows = append(worker.activeWindows, w)
+				worker.wndLk.Unlock()
 			case <-taskDone:
 				log.Debugw("task done", "workerid", wid)
 			case <-sh.closing:
@@ -521,12 +528,14 @@ func (sh *scheduler) runWorker(wid WorkerID) {
 				return
 			}
 
+			worker.wndLk.Lock()
+
 		assignLoop:
 			// process windows in order
-			for len(activeWindows) > 0 {
+			for len(worker.activeWindows) > 0 {
 				// process tasks within a window in order
-				for len(activeWindows[0].todo) > 0 {
-					todo := activeWindows[0].todo[0]
+				for len(worker.activeWindows[0].todo) > 0 {
+					todo := worker.activeWindows[0].todo[0]
 					needRes := ResourceTable[todo.taskType][sh.spt]
 
 					sh.workersLk.RLock()
@@ -548,15 +557,17 @@ func (sh *scheduler) runWorker(wid WorkerID) {
 						go todo.respond(xerrors.Errorf("assignWorker error: %w", err))
 					}
 
-					activeWindows[0].todo = activeWindows[0].todo[1:]
+					worker.activeWindows[0].todo = worker.activeWindows[0].todo[1:]
 				}
 
-				copy(activeWindows, activeWindows[1:])
-				activeWindows[len(activeWindows)-1] = nil
-				activeWindows = activeWindows[:len(activeWindows)-1]
+				copy(worker.activeWindows, worker.activeWindows[1:])
+				worker.activeWindows[len(worker.activeWindows)-1] = nil
+				worker.activeWindows = worker.activeWindows[:len(worker.activeWindows)-1]
 
 				windowsRequested--
 			}
+
+			worker.wndLk.Unlock()
 		}
 	}()
 }
