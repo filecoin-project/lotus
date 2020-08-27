@@ -138,7 +138,7 @@ func newMsgSet() *msgSet {
 	}
 }
 
-func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool) (bool, error) {
+func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool, limit bool) (bool, error) {
 	if len(ms.msgs) == 0 || m.Message.Nonce >= ms.nextNonce {
 		ms.nextNonce = m.Message.Nonce + 1
 	}
@@ -165,7 +165,7 @@ func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool) (bool, error) {
 		//ms.requiredFunds.Sub(ms.requiredFunds, exms.Message.Value.Int)
 	}
 
-	if !has && len(ms.msgs) > MaxActorPendingMessages {
+	if !has && limit && len(ms.msgs) > MaxActorPendingMessages {
 		log.Errorf("too many pending messages from actor %s", m.Message.From)
 		return false, ErrTooManyPendingMessages
 	}
@@ -475,17 +475,17 @@ func (mp *MessagePool) addTs(m *types.SignedMessage, curTs *types.TipSet) error 
 		return err
 	}
 
-	return mp.addLocked(m)
+	return mp.addLocked(m, true)
 }
 
 func (mp *MessagePool) addSkipChecks(m *types.SignedMessage) error {
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
-	return mp.addLocked(m)
+	return mp.addLocked(m, false)
 }
 
-func (mp *MessagePool) addLocked(m *types.SignedMessage) error {
+func (mp *MessagePool) addLocked(m *types.SignedMessage, limit bool) error {
 	log.Debugf("mpooladd: %s %d", m.Message.From, m.Message.Nonce)
 	if m.Signature.Type == crypto.SigTypeBLS {
 		mp.blsSigCache.Add(m.Cid(), m.Signature)
@@ -507,7 +507,7 @@ func (mp *MessagePool) addLocked(m *types.SignedMessage) error {
 		mp.pending[m.Message.From] = mset
 	}
 
-	incr, err := mset.add(m, mp)
+	incr, err := mset.add(m, mp, limit)
 	if err != nil {
 		log.Info(err)
 		return err
@@ -656,7 +656,7 @@ func (mp *MessagePool) PushWithNonce(ctx context.Context, addr address.Address, 
 		return nil, err
 	}
 
-	if err := mp.addLocked(msg); err != nil {
+	if err := mp.addLocked(msg, true); err != nil {
 		return nil, xerrors.Errorf("add locked failed: %w", err)
 	}
 	if err := mp.addLocal(msg, msgb); err != nil {
