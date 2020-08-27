@@ -184,7 +184,7 @@ func (s *Syncer) Start(ctx context.Context) {
 					}
 
 					if err := s.storeCirculatingSupply(ctx, change.Val); err != nil {
-						// TODO do something with me
+						log.Errorw("failed to store circulating supply", "error", err)
 					}
 
 					if len(unsynced) == 0 {
