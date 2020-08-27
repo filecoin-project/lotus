@@ -49,13 +49,12 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	PreCommit1: planOne(
 		on(SectorPreCommit1{}, PreCommit2),
 		on(SectorSealPreCommit1Failed{}, SealPreCommit1Failed),
-		on(SectorPackingFailed{}, PackingFailed),
+		on(SectorDealsExpired{}, DealsExpired),
 		on(SectorInvalidDealIDs{}, RecoverDealIDs),
 	),
 	PreCommit2: planOne(
 		on(SectorPreCommit2{}, PreCommitting),
 		on(SectorSealPreCommit2Failed{}, SealPreCommit2Failed),
-		on(SectorPackingFailed{}, PackingFailed),
 	),
 	PreCommitting: planOne(
 		on(SectorSealPreCommit1Failed{}, SealPreCommit1Failed),
@@ -126,6 +125,7 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	FinalizeFailed: planOne(
 		on(SectorRetryFinalize{}, FinalizeSector),
 	),
+	PackingFailed: planOne(), // TODO: Deprecated, remove
 	DealsExpired: planOne(
 	// SectorRemove (global)
 	),
@@ -290,6 +290,9 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		return m.handleCommitFailed, processed, nil
 	case FinalizeFailed:
 		return m.handleFinalizeFailed, processed, nil
+	case PackingFailed: // DEPRECATED: remove this for the next reset
+		state.State = DealsExpired
+		fallthrough
 	case DealsExpired:
 		return m.handleDealsExpired, processed, nil
 

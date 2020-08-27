@@ -58,6 +58,9 @@ func TestHappyPath(t *testing.T) {
 	require.Equal(m.t, m.state.State, Committing)
 
 	m.planSingle(SectorCommitted{})
+	require.Equal(m.t, m.state.State, SubmitCommit)
+
+	m.planSingle(SectorCommitSubmitted{})
 	require.Equal(m.t, m.state.State, CommitWait)
 
 	m.planSingle(SectorProving{})
@@ -105,6 +108,9 @@ func TestSeedRevert(t *testing.T) {
 	// not changing the seed this time
 	_, _, err = m.s.plan([]statemachine.Event{{User: SectorSeedReady{SeedValue: nil, SeedEpoch: 5}}, {User: SectorCommitted{}}}, m.state)
 	require.NoError(t, err)
+	require.Equal(m.t, m.state.State, SubmitCommit)
+
+	m.planSingle(SectorCommitSubmitted{})
 	require.Equal(m.t, m.state.State, CommitWait)
 
 	m.planSingle(SectorProving{})

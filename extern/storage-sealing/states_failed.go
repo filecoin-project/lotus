@@ -258,7 +258,7 @@ func (m *Sealing) handleDealsExpired(ctx statemachine.Context, sector SectorInfo
 
 	if sector.PreCommitInfo == nil {
 		// TODO: Create a separate state which will remove those pieces, and go back to PC1
-		return xerrors.Errorf("non-precommitted sector with expired deals, can't recover from this yet")
+		log.Errorf("non-precommitted sector with expired deals, can't recover from this yet")
 	}
 
 	// Not much to do here, we can't go back in time to commit this sector

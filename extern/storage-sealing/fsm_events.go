@@ -101,10 +101,6 @@ func (evt SectorPacked) apply(state *SectorInfo) {
 	}
 }
 
-type SectorPackingFailed struct{ error }
-
-func (evt SectorPackingFailed) apply(*SectorInfo) {}
-
 type SectorPreCommit1 struct {
 	PreCommit1Out storage.PreCommit1Out
 	TicketValue   abi.SealRandomness

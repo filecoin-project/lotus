@@ -26,7 +26,7 @@ const (
 	PreCommitFailed      SectorState = "PreCommitFailed"
 	ComputeProofFailed   SectorState = "ComputeProofFailed"
 	CommitFailed         SectorState = "CommitFailed"
-	PackingFailed        SectorState = "PackingFailed"
+	PackingFailed        SectorState = "PackingFailed" // TODO: deprecated, remove
 	FinalizeFailed       SectorState = "FinalizeFailed"
 	DealsExpired         SectorState = "DealsExpired"
 	RecoverDealIDs       SectorState = "RecoverDealIDs"
