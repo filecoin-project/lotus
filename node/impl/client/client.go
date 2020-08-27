@@ -223,6 +223,21 @@ func (a *API) ClientGetDealInfo(ctx context.Context, d cid.Cid) (*api.DealInfo, 
 	}, nil
 }
 
+func (a *API) ClientGetDealUpdates(ctx context.Context) (<-chan api.DealInfo, error) {
+	updates := make(chan api.DealInfo)
+
+	unsub := a.SMDealClient.SubscribeToEvents(func(_ storagemarket.ClientEvent, deal storagemarket.ClientDeal) {
+		updates <- newDealInfo(deal)
+	})
+
+	go func() {
+		defer unsub()
+		<-ctx.Done()
+	}()
+
+	return updates, nil
+}
+
 func (a *API) ClientHasLocal(ctx context.Context, root cid.Cid) (bool, error) {
 	// TODO: check if we have the ENTIRE dag
 
@@ -815,4 +830,20 @@ func (a *API) ClientDataTransferUpdates(ctx context.Context) (<-chan api.DataTra
 	}()
 
 	return channels, nil
+}
+
+func newDealInfo(v storagemarket.ClientDeal) api.DealInfo {
+	return api.DealInfo{
+		ProposalCid:   v.ProposalCid,
+		DataRef:       v.DataRef,
+		State:         v.State,
+		Message:       v.Message,
+		Provider:      v.Proposal.Provider,
+		PieceCID:      v.Proposal.PieceCID,
+		Size:          uint64(v.Proposal.PieceSize.Unpadded()),
+		PricePerEpoch: v.Proposal.StoragePricePerEpoch,
+		Duration:      uint64(v.Proposal.Duration()),
+		DealID:        v.DealID,
+		CreationTime:  v.CreationTime.Time(),
+	}
 }
