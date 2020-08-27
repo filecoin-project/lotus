@@ -143,6 +143,9 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorRemoved{}, Removed),
 		on(SectorRemoveFailed{}, RemoveFailed),
 	),
+	RemoveFailed: planOne(
+	// SectorRemove (global)
+	),
 	Faulty: planOne(
 		on(SectorFaultReported{}, FaultReported),
 	),
@@ -303,6 +306,9 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		return m.handleRemoving, processed, nil
 	case Removed:
 		return nil, processed, nil
+
+	case RemoveFailed:
+		return m.handleRemoveFailed, processed, nil
 
 		// Faults
 	case Faulty:
