@@ -3,6 +3,7 @@ package sub
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -39,6 +40,9 @@ import (
 )
 
 var log = logging.Logger("sub")
+
+var ErrSoftFailure = errors.New("soft validation failure")
+var ErrInsufficientPower = errors.New("incoming block's miner does not have minimum power")
 
 func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *chain.Syncer, bserv bserv.BlockService, cmgr connmgr.ConnManager) {
 	for {
@@ -288,11 +292,12 @@ func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub
 	// if we are synced and the miner is unknown, then the block is rejcected.
 	key, err := bv.checkPowerAndGetWorkerKey(ctx, blk.Header)
 	if err != nil {
-		if bv.isChainNearSynced() {
+		if err != ErrSoftFailure && bv.isChainNearSynced() {
 			log.Warnf("received block from unknown miner or miner that doesn't meet min power over pubsub; rejecting message")
 			recordFailure("unknown_miner")
 			return pubsub.ValidationReject
 		}
+
 		log.Warnf("cannot validate block message; unknown miner or miner that doesn't meet min power in unsynced chain")
 		return pubsub.ValidationIgnore
 	}
@@ -473,19 +478,19 @@ func (bv *BlockValidator) checkPowerAndGetWorkerKey(ctx context.Context, bh *typ
 	baseTs := bv.chain.GetHeaviestTipSet()
 	lbts, err := stmgr.GetLookbackTipSetForRound(ctx, bv.stmgr, baseTs, bh.Height)
 	if err != nil {
-		log.Warnf("failed to load lookback tipset for incoming block")
-		return address.Undef, err
+		log.Warnf("failed to load lookback tipset for incoming block: %s", err)
+		return address.Undef, ErrSoftFailure
 	}
 
 	hmp, err := stmgr.MinerHasMinPower(ctx, bv.stmgr, bh.Miner, lbts)
 	if err != nil {
-		log.Warnf("failed to determine if incoming block's miner has minimum power")
-		return address.Undef, err
+		log.Warnf("failed to determine if incoming block's miner has minimum power: %s", err)
+		return address.Undef, ErrSoftFailure
 	}
 
 	if !hmp {
 		log.Warnf("incoming block's miner does not have minimum power")
-		return address.Undef, xerrors.New("incoming block's miner does not have minimum power")
+		return address.Undef, ErrInsufficientPower
 	}
 
 	return key, nil
