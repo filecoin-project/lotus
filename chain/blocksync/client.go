@@ -308,6 +308,12 @@ func (client *BlockSync) GetChainMessages(
 	length uint64,
 ) ([]*CompactedMessages, error) {
 	ctx, span := trace.StartSpan(ctx, "GetChainMessages")
+	if span.IsRecordingEvents() {
+		span.AddAttributes(
+			trace.StringAttribute("tipset", fmt.Sprint(head.Cids())),
+			trace.Int64Attribute("count", int64(length)),
+		)
+	}
 	defer span.End()
 
 	req := &Request{

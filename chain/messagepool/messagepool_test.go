@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/lotus/chain/messagepool/gasguess"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/mock"
 	"github.com/filecoin-project/lotus/chain/wallet"
@@ -31,6 +32,8 @@ type testMpoolAPI struct {
 	balance    map[address.Address]types.BigInt
 
 	tipsets []*types.TipSet
+
+	published int
 }
 
 func newTestMpoolAPI() *testMpoolAPI {
@@ -90,10 +93,16 @@ func (tma *testMpoolAPI) PutMessage(m types.ChainMsg) (cid.Cid, error) {
 }
 
 func (tma *testMpoolAPI) PubSubPublish(string, []byte) error {
+	tma.published++
 	return nil
 }
 
 func (tma *testMpoolAPI) GetActorAfter(addr address.Address, ts *types.TipSet) (*types.Actor, error) {
+	// regression check for load bug
+	if ts == nil {
+		panic("GetActorAfter called with nil tipset")
+	}
+
 	balance, ok := tma.balance[addr]
 	if !ok {
 		balance = types.NewInt(1000e6)
@@ -281,6 +290,11 @@ func TestMessagePoolMessagesInEachBlock(t *testing.T) {
 }
 
 func TestRevertMessages(t *testing.T) {
+	futureDebug = true
+	defer func() {
+		futureDebug = false
+	}()
+
 	tma := newTestMpoolAPI()
 
 	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
@@ -383,5 +397,248 @@ func TestPruningSimple(t *testing.T) {
 	msgs, _ := mp.Pending()
 	if len(msgs) != 5 {
 		t.Fatal("expected only 5 messages in pool, got: ", len(msgs))
+	}
+}
+
+func TestLoadLocal(t *testing.T) {
+	tma := newTestMpoolAPI()
+	ds := datastore.NewMapDatastore()
+
+	mp, err := New(tma, ds, "mptest")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// the actors
+	w1, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a1, err := w1.GenerateKey(crypto.SigTypeSecp256k1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	w2, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a2, err := w2.GenerateKey(crypto.SigTypeSecp256k1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin.StorageMarketActorCodeID, M: 2}]
+	msgs := make(map[cid.Cid]struct{})
+	for i := 0; i < 10; i++ {
+		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(i+1))
+		cid, err := mp.Push(m)
+		if err != nil {
+			t.Fatal(err)
+		}
+		msgs[cid] = struct{}{}
+	}
+	err = mp.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	mp, err = New(tma, ds, "mptest")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pmsgs, _ := mp.Pending()
+	if len(msgs) != len(pmsgs) {
+		t.Fatalf("expected %d messages, but got %d", len(msgs), len(pmsgs))
+	}
+
+	for _, m := range pmsgs {
+		cid := m.Cid()
+		_, ok := msgs[cid]
+		if !ok {
+			t.Fatal("unknown message")
+		}
+
+		delete(msgs, cid)
+	}
+
+	if len(msgs) > 0 {
+		t.Fatalf("not all messages were laoded; missing %d messages", len(msgs))
+	}
+}
+
+func TestClearAll(t *testing.T) {
+	tma := newTestMpoolAPI()
+	ds := datastore.NewMapDatastore()
+
+	mp, err := New(tma, ds, "mptest")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// the actors
+	w1, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a1, err := w1.GenerateKey(crypto.SigTypeSecp256k1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	w2, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a2, err := w2.GenerateKey(crypto.SigTypeSecp256k1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin.StorageMarketActorCodeID, M: 2}]
+	for i := 0; i < 10; i++ {
+		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(i+1))
+		_, err := mp.Push(m)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	for i := 0; i < 10; i++ {
+		m := makeTestMessage(w2, a2, a1, uint64(i), gasLimit, uint64(i+1))
+		mustAdd(t, mp, m)
+	}
+
+	mp.Clear(true)
+
+	pending, _ := mp.Pending()
+	if len(pending) > 0 {
+		t.Fatalf("cleared the mpool, but got %d pending messages", len(pending))
+	}
+}
+
+func TestClearNonLocal(t *testing.T) {
+	tma := newTestMpoolAPI()
+	ds := datastore.NewMapDatastore()
+
+	mp, err := New(tma, ds, "mptest")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// the actors
+	w1, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a1, err := w1.GenerateKey(crypto.SigTypeSecp256k1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	w2, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a2, err := w2.GenerateKey(crypto.SigTypeSecp256k1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin.StorageMarketActorCodeID, M: 2}]
+	for i := 0; i < 10; i++ {
+		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(i+1))
+		_, err := mp.Push(m)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	for i := 0; i < 10; i++ {
+		m := makeTestMessage(w2, a2, a1, uint64(i), gasLimit, uint64(i+1))
+		mustAdd(t, mp, m)
+	}
+
+	mp.Clear(false)
+
+	pending, _ := mp.Pending()
+	if len(pending) != 10 {
+		t.Fatalf("expected 10 pending messages, but got %d instead", len(pending))
+	}
+
+	for _, m := range pending {
+		if m.Message.From != a1 {
+			t.Fatalf("expected message from %s but got one from %s instead", a1, m.Message.From)
+		}
+	}
+}
+
+func TestUpdates(t *testing.T) {
+	tma := newTestMpoolAPI()
+	ds := datastore.NewMapDatastore()
+
+	mp, err := New(tma, ds, "mptest")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// the actors
+	w1, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a1, err := w1.GenerateKey(crypto.SigTypeSecp256k1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	w2, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a2, err := w2.GenerateKey(crypto.SigTypeSecp256k1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithCancel(context.TODO())
+	defer cancel()
+
+	ch, err := mp.Updates(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin.StorageMarketActorCodeID, M: 2}]
+	for i := 0; i < 10; i++ {
+		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(i+1))
+		_, err := mp.Push(m)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		_, ok := <-ch
+		if !ok {
+			t.Fatal("expected update, but got a closed channel instead")
+		}
+	}
+
+	err = mp.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, ok := <-ch
+	if ok {
+		t.Fatal("expected closed channel, but got an update instead")
 	}
 }

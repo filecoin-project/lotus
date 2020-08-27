@@ -366,7 +366,7 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 
 		skipCount += sc
 
-		ssi, err := s.sectorInfo(ctx, good, ts)
+		ssi, err := s.sectorsForProof(ctx, good, partition.Sectors, ts)
 		if err != nil {
 			return nil, xerrors.Errorf("getting sorted sector info: %w", err)
 		}
@@ -398,8 +398,6 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 		"skipped", skipCount)
 
 	tsStart := build.Clock.Now()
-
-	log.Infow("generating windowPost", "sectors", len(sinfos))
 
 	mid, err := address.IDFromAddress(s.actor)
 	if err != nil {
@@ -436,22 +434,44 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 	return params, nil
 }
 
-func (s *WindowPoStScheduler) sectorInfo(ctx context.Context, deadlineSectors abi.BitField, ts *types.TipSet) ([]abi.SectorInfo, error) {
-	sset, err := s.api.StateMinerSectors(ctx, s.actor, &deadlineSectors, false, ts.Key())
+func (s *WindowPoStScheduler) sectorsForProof(ctx context.Context, goodSectors, allSectors abi.BitField, ts *types.TipSet) ([]abi.SectorInfo, error) {
+	sset, err := s.api.StateMinerSectors(ctx, s.actor, &goodSectors, false, ts.Key())
 	if err != nil {
 		return nil, err
 	}
 
-	sbsi := make([]abi.SectorInfo, len(sset))
-	for k, sector := range sset {
-		sbsi[k] = abi.SectorInfo{
+	if len(sset) == 0 {
+		return nil, nil
+	}
+
+	substitute := abi.SectorInfo{
+		SectorNumber: sset[0].ID,
+		SealedCID:    sset[0].Info.SealedCID,
+		SealProof:    sset[0].Info.SealProof,
+	}
+
+	sectorByID := make(map[uint64]abi.SectorInfo, len(sset))
+	for _, sector := range sset {
+		sectorByID[uint64(sector.ID)] = abi.SectorInfo{
 			SectorNumber: sector.ID,
 			SealedCID:    sector.Info.SealedCID,
 			SealProof:    sector.Info.SealProof,
 		}
 	}
 
-	return sbsi, nil
+	proofSectors := make([]abi.SectorInfo, 0, len(sset))
+	if err := allSectors.ForEach(func(sectorNo uint64) error {
+		if info, found := sectorByID[sectorNo]; found {
+			proofSectors = append(proofSectors, info)
+		} else {
+			proofSectors = append(proofSectors, substitute)
+		}
+		return nil
+	}); err != nil {
+		return nil, xerrors.Errorf("iterating partition sector bitmap: %w", err)
+	}
+
+	return proofSectors, nil
 }
 
 func (s *WindowPoStScheduler) submitPost(ctx context.Context, proof *miner.SubmitWindowedPoStParams) error {

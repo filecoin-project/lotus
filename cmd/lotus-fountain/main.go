@@ -1,76 +1,26 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"html/template"
-	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
-	"sort"
-	"strconv"
 	"time"
 
 	rice "github.com/GeertJohan/go.rice"
-	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
-
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 )
 
 var log = logging.Logger("main")
-
-var supportedSectors struct {
-	SectorSizes []struct {
-		Name    string
-		Value   uint64
-		Default bool
-	}
-}
-
-func init() {
-	for supportedSector := range miner.SupportedProofTypes {
-		sectorSize, err := supportedSector.SectorSize()
-		if err != nil {
-			panic(err)
-		}
-
-		supportedSectors.SectorSizes = append(supportedSectors.SectorSizes, struct {
-			Name    string
-			Value   uint64
-			Default bool
-		}{
-			Name:    sectorSize.ShortString(),
-			Value:   uint64(sectorSize),
-			Default: false,
-		})
-
-	}
-
-	sort.Slice(supportedSectors.SectorSizes[:], func(i, j int) bool {
-		return supportedSectors.SectorSizes[i].Value < supportedSectors.SectorSizes[j].Value
-	})
-
-	supportedSectors.SectorSizes[0].Default = true
-}
 
 func main() {
 	logging.SetLogLevel("*", "INFO")
@@ -144,11 +94,6 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("parsing source address (provide correct --from flag!): %w", err)
 		}
 
-		defaultMinerPeer, err := peer.Decode("12D3KooWJpBNhwgvoZ15EB1JwRTRpxgM9D2fwq6eEktrJJG74aP6")
-		if err != nil {
-			return err
-		}
-
 		h := &handler{
 			ctx:            ctx,
 			api:            nodeApi,
@@ -162,23 +107,10 @@ var runCmd = &cli.Command{
 				WalletRate:  15 * time.Minute,
 				WalletBurst: 2,
 			}),
-			minerLimiter: NewLimiter(LimiterConfig{
-				TotalRate:   500 * time.Millisecond,
-				TotalBurst:  build.BlockMessageLimit,
-				IPRate:      10 * time.Minute,
-				IPBurst:     2,
-				WalletRate:  1 * time.Hour,
-				WalletBurst: 2,
-			}),
-			defaultMinerPeer: defaultMinerPeer,
 		}
 
 		http.Handle("/", http.FileServer(rice.MustFindBox("site").HTTPBox()))
-		http.HandleFunc("/miner.html", h.minerhtml)
 		http.HandleFunc("/send", h.send)
-		http.HandleFunc("/mkminer", h.mkminer)
-		http.HandleFunc("/msgwait", h.msgwait)
-		http.HandleFunc("/msgwaitaddr", h.msgwaitaddr)
 
 		fmt.Printf("Open http://%s\n", cctx.String("front"))
 
@@ -198,41 +130,7 @@ type handler struct {
 	from           address.Address
 	sendPerRequest types.FIL
 
-	limiter      *Limiter
-	minerLimiter *Limiter
-
-	defaultMinerPeer peer.ID
-}
-
-func (h *handler) minerhtml(w http.ResponseWriter, r *http.Request) {
-	f, err := rice.MustFindBox("site").Open("_miner.html")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	tmpl, err := ioutil.ReadAll(f)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	var executedTmpl bytes.Buffer
-
-	t, err := template.New("miner.html").Parse(string(tmpl))
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-	if err := t.Execute(&executedTmpl, supportedSectors); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	if _, err := io.Copy(w, &executedTmpl); err != nil {
-		log.Errorf("failed to write template to string %s", err)
-	}
-
-	return
+	limiter *Limiter
 }
 
 func (h *handler) send(w http.ResponseWriter, r *http.Request) {
@@ -286,151 +184,4 @@ func (h *handler) send(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, _ = w.Write([]byte(smsg.Cid().String()))
-}
-
-func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
-	owner, err := address.NewFromString(r.FormValue("address"))
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	if owner.Protocol() != address.BLS {
-		http.Error(w,
-			"Miner address must use BLS. A BLS address starts with the prefix 't3'."+
-				"Please create a BLS address by running \"lotus wallet new bls\" while connected to a Lotus node.",
-			http.StatusBadRequest)
-		return
-	}
-
-	ssize, err := strconv.ParseInt(r.FormValue("sectorSize"), 10, 64)
-	if err != nil {
-		return
-	}
-
-	log.Infof("%s: create actor start", owner)
-
-	// Limit based on wallet address
-	limiter := h.minerLimiter.GetWalletLimiter(owner.String())
-	if !limiter.Allow() {
-		http.Error(w, http.StatusText(http.StatusTooManyRequests)+": wallet limit", http.StatusTooManyRequests)
-		return
-	}
-
-	// Limit based on IP
-	reqIP := r.Header.Get("X-Real-IP")
-	if reqIP == "" {
-		h, _, err := net.SplitHostPort(r.RemoteAddr)
-		if err != nil {
-			log.Errorf("could not get ip from: %s, err: %s", r.RemoteAddr, err)
-		}
-		reqIP = h
-	}
-	limiter = h.minerLimiter.GetIPLimiter(reqIP)
-	if !limiter.Allow() {
-		http.Error(w, http.StatusText(http.StatusTooManyRequests)+": IP limit", http.StatusTooManyRequests)
-		return
-	}
-
-	// General limiter owner allow throttling all messages that can make it into the mpool
-	if !h.minerLimiter.Allow() {
-		http.Error(w, http.StatusText(http.StatusTooManyRequests)+": global limit", http.StatusTooManyRequests)
-		return
-	}
-
-	smsg, err := h.api.MpoolPushMessage(h.ctx, &types.Message{
-		Value: types.BigInt(h.sendPerRequest),
-		From:  h.from,
-		To:    owner,
-	}, nil)
-	if err != nil {
-		http.Error(w, "pushfunds: "+err.Error(), http.StatusBadRequest)
-		return
-	}
-	log.Infof("%s: push funds %s", owner, smsg.Cid())
-
-	spt, err := ffiwrapper.SealProofTypeFromSectorSize(abi.SectorSize(ssize))
-	if err != nil {
-		http.Error(w, "sealprooftype: "+err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	params, err := actors.SerializeParams(&power.CreateMinerParams{
-		Owner:         owner,
-		Worker:        owner,
-		SealProofType: spt,
-		Peer:          abi.PeerID(h.defaultMinerPeer),
-	})
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	createStorageMinerMsg := &types.Message{
-		To:    builtin.StoragePowerActorAddr,
-		From:  h.from,
-		Value: big.Zero(),
-
-		Method: builtin.MethodsPower.CreateMiner,
-		Params: params,
-	}
-
-	signed, err := h.api.MpoolPushMessage(r.Context(), createStorageMinerMsg, nil)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	log.Infof("%s: create miner msg: %s", owner, signed.Cid())
-
-	http.Redirect(w, r, fmt.Sprintf("/wait.html?f=%s&m=%s&o=%s", signed.Cid(), smsg.Cid(), owner), http.StatusSeeOther)
-}
-
-func (h *handler) msgwait(w http.ResponseWriter, r *http.Request) {
-	c, err := cid.Parse(r.FormValue("cid"))
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	mw, err := h.api.StateWaitMsg(r.Context(), c, build.MessageConfidence)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	if mw.Receipt.ExitCode != 0 {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	w.WriteHeader(http.StatusOK)
-}
-
-func (h *handler) msgwaitaddr(w http.ResponseWriter, r *http.Request) {
-	c, err := cid.Parse(r.FormValue("cid"))
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	mw, err := h.api.StateWaitMsg(r.Context(), c, build.MessageConfidence)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	if mw.Receipt.ExitCode != 0 {
-		http.Error(w, xerrors.Errorf("create miner failed: exit code %d", mw.Receipt.ExitCode).Error(), http.StatusBadRequest)
-		return
-	}
-	w.WriteHeader(http.StatusOK)
-
-	var ma power.CreateMinerReturn
-	if err := ma.UnmarshalCBOR(bytes.NewReader(mw.Receipt.Return)); err != nil {
-		log.Errorf("%w", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	fmt.Fprintf(w, "{\"addr\": \"%s\"}", ma.IDAddress)
 }

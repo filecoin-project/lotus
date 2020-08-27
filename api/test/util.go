@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/miner"
 )
 
 func SendFunds(ctx context.Context, t *testing.T, sender TestNode, addr address.Address, amount abi.TokenAmount) {
@@ -33,4 +34,34 @@ func SendFunds(ctx context.Context, t *testing.T, sender TestNode, addr address.
 	if res.Receipt.ExitCode != 0 {
 		t.Fatal("did not successfully send money")
 	}
+}
+
+func MineUntilBlock(ctx context.Context, t *testing.T, sn TestStorageNode, cb func()) {
+	for i := 0; i < 1000; i++ {
+		var success bool
+		var err error
+		wait := make(chan struct{})
+		mineErr := sn.MineOne(ctx, miner.MineReq{
+			Done: func(win bool, e error) {
+				success = win
+				err = e
+				wait <- struct{}{}
+			},
+		})
+		if mineErr != nil {
+			t.Fatal(mineErr)
+		}
+		<-wait
+		if err != nil {
+			t.Fatal(err)
+		}
+		if success {
+			if cb != nil {
+				cb()
+			}
+			return
+		}
+		t.Log("did not mine block, trying again", i)
+	}
+	t.Fatal("failed to mine 1000 times in a row...")
 }

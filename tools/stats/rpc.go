@@ -7,7 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	manet "github.com/multiformats/go-multiaddr-net"
+	manet "github.com/multiformats/go-multiaddr/net"
 
 	"golang.org/x/xerrors"
 
@@ -215,11 +215,11 @@ func loadTipsets(ctx context.Context, api api.FullNode, curr *types.TipSet, lowe
 	return tipsets, nil
 }
 
-func GetFullNodeAPI(repo string) (api.FullNode, jsonrpc.ClientCloser, error) {
+func GetFullNodeAPI(ctx context.Context, repo string) (api.FullNode, jsonrpc.ClientCloser, error) {
 	addr, headers, err := getAPI(repo)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return client.NewFullNodeRPC(addr, headers)
+	return client.NewFullNodeRPC(ctx, addr, headers)
 }

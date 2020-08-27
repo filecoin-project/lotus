@@ -48,6 +48,11 @@ block heights that are very far from the current chain height, you may want to
 increase this.
 
 
+### `LOTUS_BSYNC_MSG_WINDOW`
+
+Set the initial maximum window size for message fetching blocksync requests. If
+you have a slower internet connection and are having trouble syncing, you might
+try lowering this down to 10-20 for a 'poor' internet connection.
 
 ## Lotus Miner
 

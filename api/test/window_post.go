@@ -216,6 +216,10 @@ func TestWindowPost(t *testing.T, b APIBuilder, blocktime time.Duration, nSector
 		sn, err := parts[0].Sectors.First()
 		require.NoError(t, err)
 
+		all, err := parts[0].Sectors.All(2)
+		require.NoError(t, err)
+		fmt.Println("the sectors", all)
+
 		s = abi.SectorID{
 			Miner:  abi.ActorID(mid),
 			Number: abi.SectorNumber(sn),

@@ -39,7 +39,7 @@ func (ts *testSuite) testMining(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, abi.ChainEpoch(2), h1.Height())
 
-	err = sn[0].MineOne(ctx, MineNext)
+	MineUntilBlock(ctx, t, sn[0], nil)
 	require.NoError(t, err)
 
 	<-newHeads
@@ -70,7 +70,7 @@ func (ts *testSuite) testMiningReal(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, abi.ChainEpoch(2), h1.Height())
 
-	err = sn[0].MineOne(ctx, MineNext)
+	MineUntilBlock(ctx, t, sn[0], nil)
 	require.NoError(t, err)
 
 	<-newHeads
@@ -79,7 +79,7 @@ func (ts *testSuite) testMiningReal(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, abi.ChainEpoch(3), h2.Height())
 
-	err = sn[0].MineOne(ctx, MineNext)
+	MineUntilBlock(ctx, t, sn[0], nil)
 	require.NoError(t, err)
 
 	<-newHeads

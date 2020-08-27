@@ -270,13 +270,13 @@ func Builder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test.TestN
 		var wait sync.Mutex
 		wait.Lock()
 
-		_ = storers[0].MineOne(ctx, miner2.MineReq{Done: func(bool, error) {
+		test.MineUntilBlock(ctx, t, storers[0], func() {
 			wait.Unlock()
-		}})
+		})
 		wait.Lock()
-		_ = storers[0].MineOne(ctx, miner2.MineReq{Done: func(bool, error) {
+		test.MineUntilBlock(ctx, t, storers[0], func() {
 			wait.Unlock()
-		}})
+		})
 		wait.Lock()
 	}
 
@@ -419,13 +419,13 @@ func MockSbBuilder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test
 		var wait sync.Mutex
 		wait.Lock()
 
-		_ = storers[0].MineOne(ctx, miner2.MineReq{Done: func(bool, error) {
+		test.MineUntilBlock(ctx, t, storers[0], func() {
 			wait.Unlock()
-		}})
+		})
 		wait.Lock()
-		_ = storers[0].MineOne(ctx, miner2.MineReq{Done: func(bool, error) {
+		test.MineUntilBlock(ctx, t, storers[0], func() {
 			wait.Unlock()
-		}})
+		})
 		wait.Lock()
 	}
 
@@ -453,7 +453,7 @@ func rpcWithBuilder(t *testing.T, b test.APIBuilder, nFull int, storage []test.S
 		addr := testServ.Listener.Addr()
 		listenAddr := "ws://" + addr.String()
 		var err error
-		fulls[i].FullNode, _, err = client.NewFullNodeRPC(listenAddr, nil)
+		fulls[i].FullNode, _, err = client.NewFullNodeRPC(context.Background(), listenAddr, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -472,7 +472,7 @@ func rpcWithBuilder(t *testing.T, b test.APIBuilder, nFull int, storage []test.S
 		addr := testServ.Listener.Addr()
 		listenAddr := "ws://" + addr.String()
 		var err error
-		storers[i].StorageMiner, _, err = client.NewStorageMinerRPC(listenAddr, nil)
+		storers[i].StorageMiner, _, err = client.NewStorageMinerRPC(context.Background(), listenAddr, nil)
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -113,7 +113,7 @@ jobs:
   test: &test
     description: |
       Run tests with gotestsum.
-    parameters:
+    parameters: &test-params
       executor:
         type: executor
         default: golang
@@ -161,6 +161,7 @@ jobs:
           name: go test
           environment:
             LOTUS_TEST_WINDOW_POST: << parameters.winpost-test >>
+            SKIP_CONFORMANCE: "1"
           command: |
             mkdir -p /tmp/test-reports/<< parameters.test-suite-name >>
             mkdir -p /tmp/test-artifacts
@@ -191,6 +192,63 @@ jobs:
     <<: *test
   test-window-post:
     <<: *test
+  test-conformance:
+    description: |
+      Run tests using a corpus of interoperable test vectors for Filecoin 
+      implementations to test their correctness and compliance with the Filecoin
+      specifications.
+    parameters:
+      <<: *test-params
+      vectors-branch:
+        type: string
+        default: ""
+        description: |
+          Branch on github.com/filecoin-project/test-vectors to checkout and
+          test with. If empty (the default) the commit defined by the git
+          submodule is used.
+    executor: << parameters.executor >>
+    steps:
+      - install-deps
+      - prepare
+      - run:
+          command: make deps lotus
+          no_output_timeout: 30m
+      - download-params
+      - when:
+          condition:
+            not:
+              equal: [ "", << parameters.vectors-branch >> ]
+          steps:
+            - run:
+                name: checkout vectors branch
+                command: |
+                  cd extern/test-vectors
+                  git fetch
+                  git checkout origin/<< parameters.vectors-branch >>
+            - run:
+                name: go get vectors branch
+                command: go get github.com/filecoin-project/test-vectors@<< parameters.vectors-branch >>
+      - go/install-gotestsum:
+          gobin: $HOME/.local/bin
+          version: 0.5.2
+      - run:
+          name: go test
+          environment:
+            SKIP_CONFORMANCE: "0"
+          command: |
+            mkdir -p /tmp/test-reports
+            mkdir -p /tmp/test-artifacts
+            gotestsum \
+              --format pkgname-and-test-fails \
+              --junitfile /tmp/test-reports/junit.xml \
+              -- \
+              -v -coverpkg ./chain/vm/,github.com/filecoin-project/specs-actors/... -coverprofile=/tmp/conformance.out ./conformance/
+            go tool cover -html=/tmp/conformance.out -o /tmp/test-artifacts/conformance-coverage.html
+          no_output_timeout: 30m
+      - store_test_results:
+          path: /tmp/test-reports
+      - store_artifacts:
+          path: /tmp/test-artifacts/conformance-coverage.html
 
   build-macos:
     description: build darwin lotus binary
@@ -356,6 +414,14 @@ workflows:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+$/
+      - test-conformance:
+          test-suite-name: conformance
+          packages: "./conformance"
+      - test-conformance:
+          name: test-conformance-bleeding-edge
+          test-suite-name: conformance-bleeding-edge
+          packages: "./conformance"
+          vectors-branch: master
       - build-debug
       - build-all:
           requires:
