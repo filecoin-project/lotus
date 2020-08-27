@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"io/ioutil"
 	"os"
@@ -194,6 +195,9 @@ func executeMessageVector(t *testing.T, vector *schema.TestVector) {
 		}
 		if expected, actual := receipt.GasUsed, ret.GasUsed; expected != actual {
 			t.Errorf("gas used of msg %d did not match; expected: %d, got: %d", i, expected, actual)
+		}
+		if expected, actual := []byte(receipt.ReturnValue), ret.Return; !bytes.Equal(expected, actual) {
+			t.Errorf("return value of msg %d did not match; expected: %s, got: %s", i, base64.StdEncoding.EncodeToString(expected), base64.StdEncoding.EncodeToString(actual))
 		}
 	}
 
