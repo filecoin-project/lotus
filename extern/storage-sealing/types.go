@@ -30,6 +30,7 @@ type Piece struct {
 
 // DealInfo is a tuple of deal identity and its schedule
 type DealInfo struct {
+	PublishCid   *cid.Cid
 	DealID       abi.DealID
 	DealSchedule DealSchedule
 	KeepUnsealed bool

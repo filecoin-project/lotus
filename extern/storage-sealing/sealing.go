@@ -141,7 +141,7 @@ func (m *Sealing) Stop(ctx context.Context) error {
 	return m.sectors.Stop(ctx)
 }
 func (m *Sealing) AddPieceToAnySector(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, d DealInfo) (abi.SectorNumber, abi.PaddedPieceSize, error) {
-	log.Infof("Adding piece for deal %d", d.DealID)
+	log.Infof("Adding piece for deal %d (publish msg: %s)", d.DealID, d.PublishCid)
 	if (padreader.PaddedSize(uint64(size))) != size {
 		return 0, 0, xerrors.Errorf("cannot allocate unpadded piece")
 	}
