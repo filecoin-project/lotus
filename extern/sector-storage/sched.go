@@ -226,6 +226,8 @@ func (sh *scheduler) runSched() {
 	var initialised bool
 
 	for {
+		var doSched bool
+
 		select {
 		case w := <-sh.newWorkers:
 			sh.newWorker(w)
@@ -235,31 +237,48 @@ func (sh *scheduler) runSched() {
 
 		case req := <-sh.schedule:
 			sh.schedQueue.Push(req)
-			if initialised {
-				sh.trySched()
-			}
+			doSched = true
 
 			if sh.testSync != nil {
 				sh.testSync <- struct{}{}
 			}
 		case req := <-sh.windowRequests:
 			sh.openWindows = append(sh.openWindows, req)
-			if initialised {
-				sh.trySched()
-			}
-
+			doSched = true
 		case ireq := <-sh.info:
 			ireq(sh.diag())
 
 		case <-iw:
 			initialised = true
 			iw = nil
-
-			sh.trySched()
+			doSched = true
 		case <-sh.closing:
 			sh.schedClose()
 			return
 		}
+
+		if doSched && initialised {
+			// First gather any pending tasks, so we go through the scheduling loop
+			// once for every added task
+		loop:
+			for {
+				select {
+				case req := <-sh.schedule:
+					sh.schedQueue.Push(req)
+					if sh.testSync != nil {
+						sh.testSync <- struct{}{}
+					}
+				case req := <-sh.windowRequests:
+					sh.openWindows = append(sh.openWindows, req)
+				default:
+					break loop
+				}
+			}
+
+			sh.trySched()
+		}
+
+
 	}
 }
 
