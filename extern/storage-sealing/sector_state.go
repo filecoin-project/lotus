@@ -28,6 +28,7 @@ const (
 	CommitFailed         SectorState = "CommitFailed"
 	PackingFailed        SectorState = "PackingFailed"
 	FinalizeFailed       SectorState = "FinalizeFailed"
+	DealsExpired         SectorState = "DealsExpired"
 
 	Faulty        SectorState = "Faulty"        // sector is corrupted or gone for some reason
 	FaultReported SectorState = "FaultReported" // sector has been declared as a fault on chain

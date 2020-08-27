@@ -61,6 +61,7 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorPreCommitted{}, PreCommitWait),
 		on(SectorChainPreCommitFailed{}, PreCommitFailed),
 		on(SectorPreCommitLanded{}, WaitSeed),
+		on(SectorDealsExpired{}, DealsExpired),
 	),
 	PreCommitWait: planOne(
 		on(SectorChainPreCommitFailed{}, PreCommitFailed),
@@ -99,6 +100,7 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorRetryWaitSeed{}, WaitSeed),
 		on(SectorSealPreCommit1Failed{}, SealPreCommit1Failed),
 		on(SectorPreCommitLanded{}, WaitSeed),
+		on(SectorDealsExpired{}, DealsExpired),
 	),
 	ComputeProofFailed: planOne(
 		on(SectorRetryComputeProof{}, Committing),
@@ -113,9 +115,13 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorChainPreCommitFailed{}, PreCommitFailed),
 		on(SectorRetryPreCommit{}, PreCommitting),
 		on(SectorRetryCommitWait{}, CommitWait),
+		on(SectorDealsExpired{}, DealsExpired),
 	),
 	FinalizeFailed: planOne(
 		on(SectorRetryFinalize{}, FinalizeSector),
+	),
+	DealsExpired: planOne(
+	// SectorRemove (global)
 	),
 
 	// Post-seal
@@ -275,6 +281,8 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		return m.handleCommitFailed, processed, nil
 	case FinalizeFailed:
 		return m.handleFinalizeFailed, processed, nil
+	case DealsExpired:
+		return m.handleDealsExpired, processed, nil
 
 	// Post-seal
 	case Proving:

@@ -157,7 +157,7 @@ func MinerSectorInfo(ctx context.Context, sm *StateManager, maddr address.Addres
 		return nil, err
 	}
 	if !ok {
-		return nil, xerrors.New("sector not found")
+		return nil, nil
 	}
 
 	return sectorInfo, nil

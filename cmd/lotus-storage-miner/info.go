@@ -266,6 +266,7 @@ var stateList = []stateMeta{
 	{col: color.FgRed, state: sealing.FaultReported},
 	{col: color.FgRed, state: sealing.FaultedFinal},
 	{col: color.FgRed, state: sealing.RemoveFailed},
+	{col: color.FgRed, state: sealing.DealsExpired},
 }
 
 func init() {

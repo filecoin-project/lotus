@@ -177,6 +177,9 @@ func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid abi.SectorNumb
 
 	onChainInfo, err := sm.Full.StateSectorGetInfo(ctx, sm.Miner.Address(), sid, types.EmptyTSK)
 	if err != nil {
+		return sInfo, err
+	}
+	if onChainInfo == nil {
 		return sInfo, nil
 	}
 	sInfo.SealProof = onChainInfo.SealProof

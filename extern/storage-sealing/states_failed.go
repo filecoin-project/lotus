@@ -81,6 +81,12 @@ func (m *Sealing) handlePreCommitFailed(ctx statemachine.Context, sector SectorI
 			return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("ticket expired error: %w", err)})
 		case *ErrBadTicket:
 			return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("bad expired: %w", err)})
+		case *ErrInvalidDeals:
+			// TODO: Deals got reorged, figure out what to do about this
+			//  (this will probably require tracking the deal submit message CID, and re-checking what's on chain)
+			return xerrors.Errorf("invalid deals in sector %d: %w", sector.SectorNumber, err)
+		case *ErrExpiredDeals:
+			return ctx.Send(SectorDealsExpired{xerrors.Errorf("sector deals expired: %w", err)})
 		case *ErrNoPrecommit:
 			return ctx.Send(SectorRetryPreCommit{})
 		case *ErrPrecommitOnChain:
@@ -88,6 +94,7 @@ func (m *Sealing) handlePreCommitFailed(ctx statemachine.Context, sector SectorI
 		case *ErrSectorNumberAllocated:
 			log.Errorf("handlePreCommitFailed: sector number already allocated, not proceeding: %+v", err)
 			// TODO: check if the sector is committed (not sure how we'd end up here)
+			// TODO: check on-chain state, adjust local sector number counter to not give out allocated numbers
 			return nil
 		default:
 			return xerrors.Errorf("checkPrecommit sanity check error: %w", err)
@@ -157,7 +164,13 @@ func (m *Sealing) handleCommitFailed(ctx statemachine.Context, sector SectorInfo
 		case *ErrExpiredTicket:
 			return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("ticket expired error: %w", err)})
 		case *ErrBadTicket:
-			return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("bad expired: %w", err)})
+			return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("bad ticket: %w", err)})
+		case *ErrInvalidDeals:
+			// TODO: Deals got reorged, figure out what to do about this
+			//  (this will probably require tracking the deal submit message CID, and re-checking what's on chain)
+			return xerrors.Errorf("invalid deals in sector %d: %w", sector.SectorNumber, err)
+		case *ErrExpiredDeals:
+			return ctx.Send(SectorDealsExpired{xerrors.Errorf("sector deals expired: %w", err)})
 		case nil:
 			return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("no precommit: %w", err)})
 		case *ErrPrecommitOnChain:
@@ -192,6 +205,12 @@ func (m *Sealing) handleCommitFailed(ctx statemachine.Context, sector SectorInfo
 			return ctx.Send(SectorRetryPreCommitWait{})
 		case *ErrNoPrecommit:
 			return ctx.Send(SectorRetryPreCommit{})
+		case *ErrInvalidDeals:
+			// TODO: Deals got reorged, figure out what to do about this
+			//  (this will probably require tracking the deal submit message CID, and re-checking what's on chain)
+			return xerrors.Errorf("invalid deals in sector %d: %w", sector.SectorNumber, err)
+		case *ErrExpiredDeals:
+			return ctx.Send(SectorDealsExpired{xerrors.Errorf("sector deals expired: %w", err)})
 		case *ErrCommitWaitFailed:
 			if err := failedCooldown(ctx, sector); err != nil {
 				return err
@@ -220,4 +239,25 @@ func (m *Sealing) handleFinalizeFailed(ctx statemachine.Context, sector SectorIn
 	}
 
 	return ctx.Send(SectorRetryFinalize{})
+}
+
+func (m *Sealing) handleDealsExpired(ctx statemachine.Context, sector SectorInfo) error {
+	// First make vary sure the sector isn't committed
+	si, err := m.api.StateSectorGetInfo(ctx.Context(), m.maddr, sector.SectorNumber, nil)
+	if err != nil {
+		return xerrors.Errorf("getting sector info: %w", err)
+	}
+	if si != nil {
+		// TODO: this should never happen, but in case it does, try to go back to
+		//  the proving state after running some checks
+		return xerrors.Errorf("sector is committed on-chain, but we're in DealsExpired")
+	}
+
+	if sector.PreCommitInfo == nil {
+		// TODO: Create a separate state which will remove those pieces, and go back to PC1
+		return xerrors.Errorf("non-precommitted sector with expired deals, can't recover from this yet")
+	}
+
+	// Not much to do here, we can't go back in time to commit this sector
+	return ctx.Send(SectorRemove{})
 }
