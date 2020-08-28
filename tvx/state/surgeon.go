@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
+	"github.com/filecoin-project/lotus/chain/state"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipld-format"
@@ -39,15 +40,24 @@ func NewSurgeon(ctx context.Context, api api.FullNode, stores *Stores) *Surgeon 
 	}
 }
 
+func (sg *Surgeon) GetStateTreeRootFromTipset(tsk types.TipSetKey) (cid.Cid, error) {
+	ts, err := sg.api.ChainGetTipSet(sg.ctx, tsk)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	return ts.ParentState(), nil
+}
+
 // GetMaskedStateTree trims the state tree at the supplied tipset to contain
 // only the state of the actors in the retain set. It also "dives" into some
 // singleton system actors, like the init actor, to trim the state so as to
 // compute a minimal state tree. In the future, thid method will dive into
 // other system actors like the power actor and the market actor.
-func (sg *Surgeon) GetMaskedStateTree(tsk types.TipSetKey, retain []address.Address) (cid.Cid, error) {
+func (sg *Surgeon) GetMaskedStateTree(previousRoot cid.Cid, retain []address.Address) (cid.Cid, error) {
 	stateMap := adt.MakeEmptyMap(sg.stores.ADTStore)
 
-	initState, err := sg.loadInitActor(tsk)
+	initState, err := sg.loadInitActor(previousRoot)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -67,7 +77,7 @@ func (sg *Surgeon) GetMaskedStateTree(tsk types.TipSetKey, retain []address.Addr
 		return cid.Undef, err
 	}
 
-	err = sg.pluckActorStates(tsk, resolved, stateMap)
+	err = sg.pluckActorStates(previousRoot, resolved, stateMap)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -89,12 +99,17 @@ func (sg *Surgeon) GetAccessedActors(ctx context.Context, a api.FullNode, mid ci
 		return nil, err
 	}
 
+	msgObj, err := a.ChainGetMessage(ctx, mid)
+	if err != nil {
+		return nil, err
+	}
+
 	ts, err := a.ChainGetTipSet(ctx, msgInfo.TipSet)
 	if err != nil {
 		return nil, err
 	}
 
-	trace, err := a.StateReplay(ctx, ts.Parents(), mid)
+	trace, err := a.StateCall(ctx, msgObj, ts.Parents())
 	if err != nil {
 		return nil, fmt.Errorf("could not replay msg: %w", err)
 	}
@@ -136,11 +151,17 @@ func (sg *Surgeon) WriteCAR(w io.Writer, roots ...cid.Cid) error {
 
 // pluckActorStates plucks the state from the supplied actors at the given
 // tipset, and places it into the supplied state map.
-func (sg *Surgeon) pluckActorStates(tsk types.TipSetKey, pluck []address.Address, stateMap *adt.Map) error {
+func (sg *Surgeon) pluckActorStates(stateRoot cid.Cid, pluck []address.Address, stateMap *adt.Map) error {
+	st, err := state.LoadStateTree(sg.stores.CBORStore, stateRoot)
+	if err != nil {
+		return err
+	}
+
 	for _, a := range pluck {
-		actor, err := sg.api.StateGetActor(sg.ctx, a, tsk)
+		actor, err := st.GetActor(a)
 		if err != nil {
-			return err
+			continue
+			//return fmt.Errorf("get actor %s failed: %w", a, err)
 		}
 
 		err = stateMap.Put(adt.AddrKey(a), actor)
@@ -208,17 +229,14 @@ func (sg *Surgeon) retainInitEntries(oldState *init_.State, retain []address.Add
 
 	newAddrs := adt.MakeEmptyMap(sg.stores.ADTStore)
 	for _, r := range retain {
-		if r.Protocol() == address.ID {
-			// skip over ID addresses; they don't need a mapping in the init actor.
-			continue
-		}
-
 		var d cbg.Deferred
 		if _, err := oldAddrs.Get(adt.AddrKey(r), &d); err != nil {
 			return nil, err
 		}
-		if err := newAddrs.Put(adt.AddrKey(r), &d); err != nil {
-			return nil, err
+		if d.Raw != nil {
+			if err := newAddrs.Put(adt.AddrKey(r), &d); err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -261,10 +279,16 @@ func (sg *Surgeon) resolveAddresses(orig []address.Address, ist *init_.State) (r
 }
 
 // loadInitActor loads the init actor state from a given tipset.
-func (sg *Surgeon) loadInitActor(tsk types.TipSetKey) (initState *init_.State, err error) {
-	log.Printf("loading the init actor for tipset: %s", tsk)
+func (sg *Surgeon) loadInitActor(stateRoot cid.Cid) (initState *init_.State, err error) {
+	log.Printf("loading the init actor for root: %s", stateRoot)
 
-	actor, err := sg.api.StateGetActor(sg.ctx, builtin.InitActorAddr, tsk)
+	st, err := state.LoadStateTree(sg.stores.CBORStore, stateRoot)
+	if err != nil {
+		return initState, err
+	}
+
+	//sg.api.StateGetActor(sg.ctx, builtin.InitActorAddr, tsk)
+	actor, err := st.GetActor(builtin.InitActorAddr)
 	if err != nil {
 		return initState, err
 	}

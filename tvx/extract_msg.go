@@ -6,12 +6,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
+	"github.com/filecoin-project/lotus/chain/types"
 
 	"github.com/filecoin-project/oni/tvx/lotus"
 	"github.com/filecoin-project/oni/tvx/schema"
@@ -97,6 +97,7 @@ func runExtractMsg(c *cli.Context) error {
 	}
 
 	retain = append(retain, builtin.RewardActorAddr)
+	retain = append(retain, builtin.BurntFundsActorAddr)
 
 	fmt.Println("accessed actors:")
 	for _, k := range retain {
@@ -116,10 +117,7 @@ func runExtractMsg(c *cli.Context) error {
 		return err
 	}
 
-	// Warn if the block contains more messages from this sender, preceding the
-	// extracted message.
-	//
-	// TODO https://github.com/filecoin-project/oni/issues/195
+	neededPrecursorMsgs := make([]*types.Message, 0)
 	for _, b := range includedTs.Blocks() {
 		messages, err := api.ChainGetBlockMessages(ctx, b.Cid())
 		if err != nil {
@@ -130,7 +128,15 @@ func runExtractMsg(c *cli.Context) error {
 				break
 			}
 			if other.From == msg.From && other.Nonce < msg.Nonce {
-				log.Printf("WARN: tipset includes preceding message with lower nonce from same sender; this extraction won't work")
+				included := false
+				for _, o := range neededPrecursorMsgs {
+					if o.Cid() == other.Cid() {
+						included = true
+					}
+				}
+				if !included {
+					neededPrecursorMsgs = append(neededPrecursorMsgs, other)
+				}
 			}
 		}
 		for _, m := range messages.SecpkMessages {
@@ -138,18 +144,35 @@ func runExtractMsg(c *cli.Context) error {
 				break
 			}
 			if m.Message.From == msg.From && m.Message.Nonce < msg.Nonce {
-				log.Printf("WARN: tipset includes preceding message with lower nonce from same sender; this extraction won't work")
+				included := false
+				for _, o := range neededPrecursorMsgs {
+					if o.Cid() == m.Message.Cid() {
+						included = true
+					}
+				}
+				if !included {
+					neededPrecursorMsgs = append(neededPrecursorMsgs, &m.Message)
+				}	
 			}
 		}
 	}
 
 	fmt.Println("getting the _before_ filtered state tree")
-	preroot, err := g.GetMaskedStateTree(includedTs.Parents(), retain)
+	tree, err := g.GetStateTreeRootFromTipset(includedTs.Parents())
+
+	driver := lotus.NewDriver(ctx)
+
+	for _, pm := range neededPrecursorMsgs {
+		_, tree, err = driver.ExecuteMessage(pm, tree, pst.Blockstore, execTs.Height())
+		if err != nil {
+			return fmt.Errorf("Failed to execute preceding message: %w", err)
+		}
+	}
+
+	preroot, err := g.GetMaskedStateTree(tree, retain)
 	if err != nil {
 		return err
 	}
-
-	driver := lotus.NewDriver(ctx)
 
 	_, postroot, err := driver.ExecuteMessage(msg, preroot, pst.Blockstore, execTs.Height())
 	if err != nil {
