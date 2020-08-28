@@ -278,7 +278,6 @@ func (sh *scheduler) runSched() {
 			sh.trySched()
 		}
 
-
 	}
 }
 

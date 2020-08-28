@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 
-
 	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"

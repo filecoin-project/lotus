@@ -298,6 +298,8 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		fallthrough
 	case DealsExpired:
 		return m.handleDealsExpired, processed, nil
+	case RecoverDealIDs:
+		return m.handleRecoverDealIDs, processed, nil
 
 	// Post-seal
 	case Proving:
