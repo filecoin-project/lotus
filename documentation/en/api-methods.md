@@ -2437,7 +2437,9 @@ Inputs:
       "Type": 2,
       "Data": "Ynl0ZSBhcnJheQ=="
     }
-  }
+  },
+  "Ynl0ZSBhcnJheQ==",
+  "Ynl0ZSBhcnJheQ=="
 ]
 ```
 
