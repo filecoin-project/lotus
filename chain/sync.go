@@ -1485,12 +1485,13 @@ mainLoop:
 				return xerrors.Errorf("message processing failed: %w", err)
 			}
 		}
-		i -= batchSize
 
-		if i >= 0 {
+		if i >= windowSize {
 			windowSize += 10
 			log.Infof("successfully fetched %d messages; increasing window size to %d", len(bstout), windowSize)
 		}
+
+		i -= batchSize
 	}
 
 	// remember our window size
