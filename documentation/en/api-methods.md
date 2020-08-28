@@ -36,6 +36,7 @@
   * [ClientFindData](#ClientFindData)
   * [ClientGenCar](#ClientGenCar)
   * [ClientGetDealInfo](#ClientGetDealInfo)
+  * [ClientGetDealUpdates](#ClientGetDealUpdates)
   * [ClientHasLocal](#ClientHasLocal)
   * [ClientImport](#ClientImport)
   * [ClientListDataTransfers](#ClientListDataTransfers)
@@ -886,6 +887,42 @@ Inputs:
   }
 ]
 ```
+
+Response:
+```json
+{
+  "ProposalCid": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "State": 42,
+  "Message": "string value",
+  "Provider": "t01234",
+  "DataRef": {
+    "TransferType": "string value",
+    "Root": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "PieceCid": null,
+    "PieceSize": 1024
+  },
+  "PieceCID": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "Size": 42,
+  "PricePerEpoch": "0",
+  "Duration": 42,
+  "DealID": 5432,
+  "CreationTime": "0001-01-01T00:00:00Z"
+}
+```
+
+### ClientGetDealUpdates
+ClientGetDealUpdates returns the status of updated deals
+
+
+Perms: read
+
+Inputs: `null`
 
 Response:
 ```json

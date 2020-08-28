@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -978,6 +979,10 @@ var clientListDeals = &cli.Command{
 			Usage: "use color in display output",
 			Value: true,
 		},
+		&cli.BoolFlag{
+			Name:  "watch",
+			Usage: "watch deal updates in real-time, rather than a one time list",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -987,81 +992,97 @@ var clientListDeals = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		head, err := api.ChainHead(ctx)
-		if err != nil {
-			return err
-		}
+		verbose := cctx.Bool("verbose")
+		color := cctx.Bool("color")
+		watch := cctx.Bool("watch")
 
 		localDeals, err := api.ClientListDeals(ctx)
 		if err != nil {
 			return err
 		}
 
-		sort.Slice(localDeals, func(i, j int) bool {
-			return localDeals[i].CreationTime.Before(localDeals[j].CreationTime)
-		})
+		if watch {
+			updates, err := api.ClientGetDealUpdates(ctx)
+			if err != nil {
+				return err
+			}
 
-		var deals []deal
-		for _, v := range localDeals {
-			if v.DealID == 0 {
-				deals = append(deals, deal{
-					LocalDeal: v,
-					OnChainDealState: market.DealState{
-						SectorStartEpoch: -1,
-						LastUpdatedEpoch: -1,
-						SlashEpoch:       -1,
-					},
-				})
-			} else {
-				onChain, err := api.StateMarketStorageDeal(ctx, v.DealID, head.Key())
+			for {
+				tm.Clear()
+				tm.MoveCursor(1, 1)
+
+				err = outputStorageDeals(ctx, tm.Screen, api, localDeals, verbose, color)
 				if err != nil {
-					deals = append(deals, deal{LocalDeal: v})
-				} else {
-					deals = append(deals, deal{
-						LocalDeal:        v,
-						OnChainDealState: onChain.State,
-					})
+					return err
+				}
+
+				tm.Flush()
+
+				select {
+				case <-ctx.Done():
+					return nil
+				case updated := <-updates:
+					var found bool
+					for i, existing := range localDeals {
+						if existing.ProposalCid.Equals(updated.ProposalCid) {
+							localDeals[i] = updated
+							found = true
+							break
+						}
+					}
+					if !found {
+						localDeals = append(localDeals, updated)
+					}
 				}
 			}
 		}
 
-		color := cctx.Bool("color")
+		return outputStorageDeals(ctx, os.Stdout, api, localDeals, cctx.Bool("verbose"), cctx.Bool("color"))
+	},
+}
 
-		if cctx.Bool("verbose") {
-			w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
-			fmt.Fprintf(w, "Created\tDealCid\tDealId\tProvider\tState\tOn Chain?\tSlashed?\tPieceCID\tSize\tPrice\tDuration\tMessage\n")
-			for _, d := range deals {
-				onChain := "N"
-				if d.OnChainDealState.SectorStartEpoch != -1 {
-					onChain = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SectorStartEpoch)
-				}
-
-				slashed := "N"
-				if d.OnChainDealState.SlashEpoch != -1 {
-					slashed = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SlashEpoch)
-				}
-
-				price := types.FIL(types.BigMul(d.LocalDeal.PricePerEpoch, types.NewInt(d.LocalDeal.Duration)))
-				fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d\t%s\n", d.LocalDeal.CreationTime.Format(time.Stamp), d.LocalDeal.ProposalCid, d.LocalDeal.DealID, d.LocalDeal.Provider, dealStateString(color, d.LocalDeal.State), onChain, slashed, d.LocalDeal.PieceCID, types.SizeStr(types.NewInt(d.LocalDeal.Size)), price, d.LocalDeal.Duration, d.LocalDeal.Message)
-			}
-			return w.Flush()
+func dealFromDealInfo(ctx context.Context, full api.FullNode, head *types.TipSet, v api.DealInfo) deal {
+	if v.DealID == 0 {
+		return deal{
+			LocalDeal: v,
+			OnChainDealState: market.DealState{
+				SectorStartEpoch: -1,
+				LastUpdatedEpoch: -1,
+				SlashEpoch:       -1,
+			},
 		}
+	}
 
-		w := tablewriter.New(tablewriter.Col("DealCid"),
-			tablewriter.Col("DealId"),
-			tablewriter.Col("Provider"),
-			tablewriter.Col("State"),
-			tablewriter.Col("On Chain?"),
-			tablewriter.Col("Slashed?"),
-			tablewriter.Col("PieceCID"),
-			tablewriter.Col("Size"),
-			tablewriter.Col("Price"),
-			tablewriter.Col("Duration"),
-			tablewriter.NewLineCol("Message"))
+	onChain, err := full.StateMarketStorageDeal(ctx, v.DealID, head.Key())
+	if err != nil {
+		return deal{LocalDeal: v}
+	}
 
+	return deal{
+		LocalDeal:        v,
+		OnChainDealState: onChain.State,
+	}
+}
+
+func outputStorageDeals(ctx context.Context, out io.Writer, full api.FullNode, localDeals []api.DealInfo, verbose bool, color bool) error {
+	sort.Slice(localDeals, func(i, j int) bool {
+		return localDeals[i].CreationTime.Before(localDeals[j].CreationTime)
+	})
+
+	head, err := full.ChainHead(ctx)
+	if err != nil {
+		return err
+	}
+
+	var deals []deal
+	for _, localDeal := range localDeals {
+		deals = append(deals, dealFromDealInfo(ctx, full, head, localDeal))
+	}
+
+	if verbose {
+		w := tabwriter.NewWriter(out, 2, 4, 2, ' ', 0)
+		fmt.Fprintf(w, "Created\tDealCid\tDealId\tProvider\tState\tOn Chain?\tSlashed?\tPieceCID\tSize\tPrice\tDuration\tMessage\n")
 		for _, d := range deals {
-			propcid := ellipsis(d.LocalDeal.ProposalCid.String(), 8)
-
 			onChain := "N"
 			if d.OnChainDealState.SectorStartEpoch != -1 {
 				onChain = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SectorStartEpoch)
@@ -1072,27 +1093,57 @@ var clientListDeals = &cli.Command{
 				slashed = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SlashEpoch)
 			}
 
-			piece := ellipsis(d.LocalDeal.PieceCID.String(), 8)
-
 			price := types.FIL(types.BigMul(d.LocalDeal.PricePerEpoch, types.NewInt(d.LocalDeal.Duration)))
+			fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d\t%s\n", d.LocalDeal.CreationTime.Format(time.Stamp), d.LocalDeal.ProposalCid, d.LocalDeal.DealID, d.LocalDeal.Provider, dealStateString(color, d.LocalDeal.State), onChain, slashed, d.LocalDeal.PieceCID, types.SizeStr(types.NewInt(d.LocalDeal.Size)), price, d.LocalDeal.Duration, d.LocalDeal.Message)
+		}
+		return w.Flush()
+	}
 
-			w.Write(map[string]interface{}{
-				"DealCid":   propcid,
-				"DealId":    d.LocalDeal.DealID,
-				"Provider":  d.LocalDeal.Provider,
-				"State":     dealStateString(color, d.LocalDeal.State),
-				"On Chain?": onChain,
-				"Slashed?":  slashed,
-				"PieceCID":  piece,
-				"Size":      types.SizeStr(types.NewInt(d.LocalDeal.Size)),
-				"Price":     price,
-				"Duration":  d.LocalDeal.Duration,
-				"Message":   d.LocalDeal.Message,
-			})
+	w := tablewriter.New(tablewriter.Col("DealCid"),
+		tablewriter.Col("DealId"),
+		tablewriter.Col("Provider"),
+		tablewriter.Col("State"),
+		tablewriter.Col("On Chain?"),
+		tablewriter.Col("Slashed?"),
+		tablewriter.Col("PieceCID"),
+		tablewriter.Col("Size"),
+		tablewriter.Col("Price"),
+		tablewriter.Col("Duration"),
+		tablewriter.NewLineCol("Message"))
+
+	for _, d := range deals {
+		propcid := ellipsis(d.LocalDeal.ProposalCid.String(), 8)
+
+		onChain := "N"
+		if d.OnChainDealState.SectorStartEpoch != -1 {
+			onChain = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SectorStartEpoch)
 		}
 
-		return w.Flush(os.Stdout)
-	},
+		slashed := "N"
+		if d.OnChainDealState.SlashEpoch != -1 {
+			slashed = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SlashEpoch)
+		}
+
+		piece := ellipsis(d.LocalDeal.PieceCID.String(), 8)
+
+		price := types.FIL(types.BigMul(d.LocalDeal.PricePerEpoch, types.NewInt(d.LocalDeal.Duration)))
+
+		w.Write(map[string]interface{}{
+			"DealCid":   propcid,
+			"DealId":    d.LocalDeal.DealID,
+			"Provider":  d.LocalDeal.Provider,
+			"State":     dealStateString(color, d.LocalDeal.State),
+			"On Chain?": onChain,
+			"Slashed?":  slashed,
+			"PieceCID":  piece,
+			"Size":      types.SizeStr(types.NewInt(d.LocalDeal.Size)),
+			"Price":     price,
+			"Duration":  d.LocalDeal.Duration,
+			"Message":   d.LocalDeal.Message,
+		})
+	}
+
+	return w.Flush(out)
 }
 
 func dealStateString(c bool, state storagemarket.StorageDealStatus) string {
