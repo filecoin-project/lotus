@@ -522,3 +522,68 @@ func BenchmarkTrySched(b *testing.B) {
 	b.Run("1w-500q", test(1, 500))
 	b.Run("200w-400q", test(200, 400))
 }
+
+func TestWindowCompact(t *testing.T) {
+	sh := scheduler{
+		spt: abi.RegisteredSealProof_StackedDrg32GiBV1,
+	}
+
+	test := func(start [][]sealtasks.TaskType, expect [][]sealtasks.TaskType) func(t *testing.T) {
+		return func(t *testing.T) {
+			wh := &workerHandle{
+				info: storiface.WorkerInfo{
+					Resources: decentWorkerResources,
+				},
+			}
+
+			for _, windowTasks := range start {
+				window := &schedWindow{}
+
+				for _, task := range windowTasks {
+					window.todo = append(window.todo, &workerRequest{taskType: task})
+					window.allocated.add(wh.info.Resources, ResourceTable[task][sh.spt])
+				}
+
+				wh.activeWindows = append(wh.activeWindows, window)
+			}
+
+			n := sh.workerCompactWindows(wh, 0)
+			require.Equal(t, len(start)-len(expect), n)
+
+			for wi, tasks := range expect {
+				var expectRes activeResources
+
+				for ti, task := range tasks {
+					require.Equal(t, task, wh.activeWindows[wi].todo[ti].taskType, "%d, %d", wi, ti)
+					expectRes.add(wh.info.Resources, ResourceTable[task][sh.spt])
+				}
+
+				require.Equal(t, expectRes.cpuUse, wh.activeWindows[wi].allocated.cpuUse, "%d", wi)
+				require.Equal(t, expectRes.gpuUsed, wh.activeWindows[wi].allocated.gpuUsed, "%d", wi)
+				require.Equal(t, expectRes.memUsedMin, wh.activeWindows[wi].allocated.memUsedMin, "%d", wi)
+				require.Equal(t, expectRes.memUsedMax, wh.activeWindows[wi].allocated.memUsedMax, "%d", wi)
+			}
+
+		}
+	}
+
+	t.Run("2-pc1-windows", test(
+		[][]sealtasks.TaskType{{sealtasks.TTPreCommit1}, {sealtasks.TTPreCommit1}},
+		[][]sealtasks.TaskType{{sealtasks.TTPreCommit1, sealtasks.TTPreCommit1}}),
+	)
+
+	t.Run("1-window", test(
+		[][]sealtasks.TaskType{{sealtasks.TTPreCommit1, sealtasks.TTPreCommit1}},
+		[][]sealtasks.TaskType{{sealtasks.TTPreCommit1, sealtasks.TTPreCommit1}}),
+	)
+
+	t.Run("2-pc2-windows", test(
+		[][]sealtasks.TaskType{{sealtasks.TTPreCommit2}, {sealtasks.TTPreCommit2}},
+		[][]sealtasks.TaskType{{sealtasks.TTPreCommit2}, {sealtasks.TTPreCommit2}}),
+	)
+
+	t.Run("2pc1-pc1ap", test(
+		[][]sealtasks.TaskType{{sealtasks.TTPreCommit1, sealtasks.TTPreCommit1}, {sealtasks.TTPreCommit1, sealtasks.TTAddPiece}},
+		[][]sealtasks.TaskType{{sealtasks.TTPreCommit1, sealtasks.TTPreCommit1, sealtasks.TTAddPiece}, {sealtasks.TTPreCommit1}}),
+	)
+}

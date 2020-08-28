@@ -156,7 +156,7 @@ var sealingJobsCmd = &cli.Command{
 		// oldest first
 		sort.Slice(lines, func(i, j int) bool {
 			if lines[i].RunWait != lines[j].RunWait {
-				return !lines[i].RunWait // already running tasks first
+				return lines[i].RunWait < lines[j].RunWait
 			}
 			return lines[i].Start.Before(lines[j].Start)
 		})
@@ -176,9 +176,9 @@ var sealingJobsCmd = &cli.Command{
 		_, _ = fmt.Fprintf(tw, "ID\tSector\tWorker\tHostname\tTask\tState\tTime\n")
 
 		for _, l := range lines {
-			state := "assigned"
-			if !l.RunWait {
-				state = "running"
+			state := "running"
+			if l.RunWait != 0 {
+				state = fmt.Sprintf("assigned(%d)", l.RunWait-1)
 			}
 			_, _ = fmt.Fprintf(tw, "%d\t%d\t%d\t%s\t%s\t%s\t%s\n", l.ID, l.Sector.Number, l.wid, workerHostnames[l.wid], l.Task.Short(), state, time.Now().Sub(l.Start).Truncate(time.Millisecond*100))
 		}

@@ -153,7 +153,7 @@ func newScheduler(spt abi.RegisteredSealProof) *scheduler {
 		workerClosing: make(chan WorkerID),
 
 		schedule:       make(chan *workerRequest),
-		windowRequests: make(chan *schedWindowRequest),
+		windowRequests: make(chan *schedWindowRequest, 20),
 
 		schedQueue: &requestQueue{},
 
@@ -561,6 +561,8 @@ func (sh *scheduler) runWorker(wid WorkerID) {
 
 			worker.wndLk.Lock()
 
+			windowsRequested -= sh.workerCompactWindows(worker, wid)
+
 		assignLoop:
 			// process windows in order
 			for len(worker.activeWindows) > 0 {
@@ -588,6 +590,7 @@ func (sh *scheduler) runWorker(wid WorkerID) {
 						go todo.respond(xerrors.Errorf("assignWorker error: %w", err))
 					}
 
+					// Note: we're not freeing window.allocated resources here very much on purpose
 					worker.activeWindows[0].todo = worker.activeWindows[0].todo[1:]
 				}
 
@@ -601,6 +604,58 @@ func (sh *scheduler) runWorker(wid WorkerID) {
 			worker.wndLk.Unlock()
 		}
 	}()
+}
+
+func (sh *scheduler) workerCompactWindows(worker *workerHandle, wid WorkerID) int {
+	// move tasks from older windows to newer windows if older windows
+	// still can fit them
+	if len(worker.activeWindows) > 1 {
+		for wi, window := range worker.activeWindows[1:] {
+			lower := worker.activeWindows[wi]
+			var moved []int
+
+			for ti, todo := range window.todo {
+				needRes := ResourceTable[todo.taskType][sh.spt]
+				if !lower.allocated.canHandleRequest(needRes, wid, worker.info.Resources) {
+					continue
+				}
+
+				moved = append(moved, ti)
+				lower.todo = append(lower.todo, todo)
+				lower.allocated.add(worker.info.Resources, needRes)
+				window.allocated.free(worker.info.Resources, needRes)
+			}
+
+			if len(moved) > 0 {
+				newTodo := make([]*workerRequest, 0, len(window.todo)-len(moved))
+				for i, t := range window.todo {
+					if moved[0] == i {
+						moved = moved[1:]
+						continue
+					}
+
+					newTodo = append(newTodo, t)
+				}
+				window.todo = newTodo
+			}
+		}
+	}
+
+	var compacted int
+	var newWindows []*schedWindow
+
+	for _, window := range worker.activeWindows {
+		if len(window.todo) == 0 {
+			compacted++
+			continue
+		}
+
+		newWindows = append(newWindows, window)
+	}
+
+	worker.activeWindows = newWindows
+
+	return compacted
 }
 
 func (sh *scheduler) assignWorker(taskDone chan struct{}, wid WorkerID, w *workerHandle, req *workerRequest) error {

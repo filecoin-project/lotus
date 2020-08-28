@@ -33,13 +33,13 @@ func (m *Manager) WorkerJobs() map[uint64][]storiface.WorkerJob {
 		out[uint64(id)] = handle.wt.Running()
 
 		handle.wndLk.Lock()
-		for _, window := range handle.activeWindows {
+		for wi, window := range handle.activeWindows {
 			for _, request := range window.todo {
 				out[uint64(id)] = append(out[uint64(id)], storiface.WorkerJob{
 					ID:      0,
 					Sector:  request.sector,
 					Task:    request.taskType,
-					RunWait: true,
+					RunWait: wi + 1,
 					Start:   request.start,
 				})
 			}

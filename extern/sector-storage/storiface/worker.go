@@ -37,6 +37,6 @@ type WorkerJob struct {
 	Sector abi.SectorID
 	Task   sealtasks.TaskType
 
-	RunWait bool
+	RunWait int // 0 - running, 1+ - assigned
 	Start   time.Time
 }
