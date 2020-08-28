@@ -45,6 +45,7 @@ type GenesisMsg struct {
 type ClientAddressesMsg struct {
 	PeerNetAddr peer.AddrInfo
 	WalletAddr  address.Address
+	GroupSeq    int64
 }
 
 type MinerAddressesMsg struct {

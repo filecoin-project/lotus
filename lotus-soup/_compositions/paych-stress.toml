@@ -22,12 +22,16 @@
   clients = "2"
   miners = "2"
   genesis_timestamp_offset = "0"
-  balance = "30"    ## be careful, this is in FIL.
+  balance = "100"    ## be careful, this is in FIL.
   sectors = "10"
   random_beacon_type = "mock"
   mining_mode = "natural"
+  # number of lanes to send vouchers on
   lane_count = "8"
-  increments = "30" ## in FIL
+  # number of vouchers on each lane
+  vouchers_per_lane = "3"
+  # amount to increase voucher by each time (per lane)
+  increments = "3" ##  in FIL
 
 [[groups]]
   id = "bootstrapper"
