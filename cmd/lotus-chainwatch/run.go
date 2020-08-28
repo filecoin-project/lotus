@@ -90,7 +90,7 @@ var runCmd = &cli.Command{
 		}
 		db.SetMaxOpenConns(1350)
 
-		sync := syncer.NewSyncer(db, api)
+		sync := syncer.NewSyncer(db, api, 1400)
 		sync.Start(ctx)
 
 		proc := processor.NewProcessor(ctx, db, api, maxBatch)
