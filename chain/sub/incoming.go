@@ -576,51 +576,31 @@ func (mv *MessageValidator) validateLocalMessage(ctx context.Context, msg *pubsu
 	m, err := types.DecodeSignedMessage(msg.Message.GetData())
 	if err != nil {
 		log.Warnf("failed to decode local message: %s", err)
-		ctx, _ = tag.New(
-			ctx,
-			tag.Upsert(metrics.FailureType, "decode"),
-		)
-		stats.Record(ctx, metrics.MessageValidationFailure.M(1))
+		recordFailure(ctx, metrics.MessageValidationFailure, "decode")
 		return pubsub.ValidationIgnore
 	}
 
 	if m.Size() > 32*1024 {
 		log.Warnf("local message is too large! (%dB)", m.Size())
-		ctx, _ = tag.New(
-			ctx,
-			tag.Upsert(metrics.FailureType, "oversize"),
-		)
-		stats.Record(ctx, metrics.MessageValidationFailure.M(1))
+		recordFailure(ctx, metrics.MessageValidationFailure, "oversize")
 		return pubsub.ValidationIgnore
 	}
 
 	if m.Message.To == address.Undef {
 		log.Warn("local message has invalid destination address")
-		ctx, _ = tag.New(
-			ctx,
-			tag.Upsert(metrics.FailureType, "undef-addr"),
-		)
-		stats.Record(ctx, metrics.MessageValidationFailure.M(1))
+		recordFailure(ctx, metrics.MessageValidationFailure, "undef-addr")
 		return pubsub.ValidationIgnore
 	}
 
 	if !m.Message.Value.LessThan(types.TotalFilecoinInt) {
 		log.Warnf("local messages has too high value: %s", m.Message.Value)
-		ctx, _ = tag.New(
-			ctx,
-			tag.Upsert(metrics.FailureType, "value-too-high"),
-		)
-		stats.Record(ctx, metrics.MessageValidationFailure.M(1))
+		recordFailure(ctx, metrics.MessageValidationFailure, "value-too-high")
 		return pubsub.ValidationIgnore
 	}
 
 	if err := mv.mpool.VerifyMsgSig(m); err != nil {
 		log.Warnf("signature verification failed for local message: %s", err)
-		ctx, _ = tag.New(
-			ctx,
-			tag.Upsert(metrics.FailureType, "verify-sig"),
-		)
-		stats.Record(ctx, metrics.MessageValidationFailure.M(1))
+		recordFailure(ctx, metrics.MessageValidationFailure, "verify-sig")
 		return pubsub.ValidationIgnore
 	}
 
@@ -642,4 +622,12 @@ func HandleIncomingMessages(ctx context.Context, mpool *messagepool.MessagePool,
 
 		// Do nothing... everything happens in validate
 	}
+}
+
+func recordFailure(ctx context.Context, metric *stats.Int64Measure, failureType string) {
+	ctx, _ = tag.New(
+		ctx,
+		tag.Upsert(metrics.FailureType, failureType),
+	)
+	stats.Record(ctx, metric.M(1))
 }
