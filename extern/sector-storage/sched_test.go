@@ -22,6 +22,10 @@ import (
 	"github.com/filecoin-project/specs-storage/storage"
 )
 
+func init() {
+	InitWait = 10 * time.Millisecond
+}
+
 func TestWithPriority(t *testing.T) {
 	ctx := context.Background()
 
