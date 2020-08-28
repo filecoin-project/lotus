@@ -306,8 +306,10 @@ func (s *Syncer) storeCirculatingSupply(ctx context.Context, tipset *types.TipSe
 		return err
 	}
 
-	ceInsert := `insert into chain_economics (parent_state_root, circulating_fil, vested_fil, mined_fil, burnt_fil, locked_fil)` +
-		`values ('%s', '%s', '%s', '%s', '%s', '%s');`
+	ceInsert := `insert into chain_economics (parent_state_root, circulating_fil, vested_fil, mined_fil, burnt_fil, locked_fil) ` +
+		`values ('%s', '%s', '%s', '%s', '%s', '%s') on conflict on constraint chain_economics_pk do ` +
+		`update set (circulating_fil, vested_fil, mined_fil, burnt_fil, locked_fil) = ('%[2]s', '%[3]s', '%[4]s', '%[5]s', '%[6]s') ` +
+		`where chain_economics.parent_state_root = '%[1]s';`
 
 	if _, err := s.db.Exec(fmt.Sprintf(ceInsert,
 		tipset.ParentState().String(),
