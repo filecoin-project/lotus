@@ -262,7 +262,7 @@ func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub
 
 	stats.Record(ctx, metrics.BlockReceived.M(1))
 
-	recordFailure := func(what string) {
+	recordFailureFlagPeer := func(what string) {
 		recordFailure(ctx, metrics.BlockValidationFailure, what)
 		bv.flagPeer(pid)
 	}
@@ -270,7 +270,7 @@ func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub
 	blk, what, err := bv.decodeAndCheckBlock(msg)
 	if err != nil {
 		log.Error("got invalid block over pubsub: ", err)
-		recordFailure(what)
+		recordFailureFlagPeer(what)
 		return pubsub.ValidationReject
 	}
 
@@ -278,7 +278,7 @@ func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub
 	err = bv.validateMsgMeta(ctx, blk)
 	if err != nil {
 		log.Warnf("error validating message metadata: %s", err)
-		recordFailure("invalid_block_meta")
+		recordFailureFlagPeer("invalid_block_meta")
 		return pubsub.ValidationReject
 	}
 
@@ -293,7 +293,7 @@ func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub
 	if err != nil {
 		if err != ErrSoftFailure && bv.isChainNearSynced() {
 			log.Warnf("received block from unknown miner or miner that doesn't meet min power over pubsub; rejecting message")
-			recordFailure("unknown_miner")
+			recordFailureFlagPeer("unknown_miner")
 			return pubsub.ValidationReject
 		}
 
@@ -304,13 +304,13 @@ func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub
 	err = sigs.CheckBlockSignature(ctx, blk.Header, key)
 	if err != nil {
 		log.Errorf("block signature verification failed: %s", err)
-		recordFailure("signature_verification_failed")
+		recordFailureFlagPeer("signature_verification_failed")
 		return pubsub.ValidationReject
 	}
 
 	if blk.Header.ElectionProof.WinCount < 1 {
 		log.Errorf("block is not claiming to be winning")
-		recordFailure("not_winning")
+		recordFailureFlagPeer("not_winning")
 		return pubsub.ValidationReject
 	}
 
