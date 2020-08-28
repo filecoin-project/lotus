@@ -546,7 +546,8 @@ func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubs
 		log.Debugf("failed to add message from network to message pool (From: %s, To: %s, Nonce: %d, Value: %s): %s", m.Message.From, m.Message.To, m.Message.Nonce, types.FIL(m.Message.Value), err)
 		ctx, _ = tag.New(
 			ctx,
-			tag.Insert(metrics.FailureType, "add"),
+			tag.Upsert(metrics.FailureType, "add"),
+			tag.Upsert(metrics.Local, "false"),
 		)
 		stats.Record(ctx, metrics.MessageValidationFailure.M(1))
 		switch {
@@ -565,36 +566,60 @@ func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubs
 }
 
 func (mv *MessageValidator) validateLocalMessage(ctx context.Context, msg *pubsub.Message) pubsub.ValidationResult {
+	ctx, _ = tag.New(
+		ctx,
+		tag.Upsert(metrics.Local, "true"),
+	)
 	// do some lightweight validation
 	stats.Record(ctx, metrics.MessagePublished.M(1))
 
 	m, err := types.DecodeSignedMessage(msg.Message.GetData())
 	if err != nil {
 		log.Warnf("failed to decode local message: %s", err)
+		ctx, _ = tag.New(
+			ctx,
+			tag.Upsert(metrics.FailureType, "decode"),
+		)
 		stats.Record(ctx, metrics.MessageValidationFailure.M(1))
 		return pubsub.ValidationIgnore
 	}
 
 	if m.Size() > 32*1024 {
 		log.Warnf("local message is too large! (%dB)", m.Size())
+		ctx, _ = tag.New(
+			ctx,
+			tag.Upsert(metrics.FailureType, "oversize"),
+		)
 		stats.Record(ctx, metrics.MessageValidationFailure.M(1))
 		return pubsub.ValidationIgnore
 	}
 
 	if m.Message.To == address.Undef {
 		log.Warn("local message has invalid destination address")
+		ctx, _ = tag.New(
+			ctx,
+			tag.Upsert(metrics.FailureType, "undef-addr"),
+		)
 		stats.Record(ctx, metrics.MessageValidationFailure.M(1))
 		return pubsub.ValidationIgnore
 	}
 
 	if !m.Message.Value.LessThan(types.TotalFilecoinInt) {
 		log.Warnf("local messages has too high value: %s", m.Message.Value)
+		ctx, _ = tag.New(
+			ctx,
+			tag.Upsert(metrics.FailureType, "value-too-high"),
+		)
 		stats.Record(ctx, metrics.MessageValidationFailure.M(1))
 		return pubsub.ValidationIgnore
 	}
 
 	if err := mv.mpool.VerifyMsgSig(m); err != nil {
 		log.Warnf("signature verification failed for local message: %s", err)
+		ctx, _ = tag.New(
+			ctx,
+			tag.Upsert(metrics.FailureType, "verify-sig"),
+		)
 		stats.Record(ctx, metrics.MessageValidationFailure.M(1))
 		return pubsub.ValidationIgnore
 	}

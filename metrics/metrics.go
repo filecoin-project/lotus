@@ -19,6 +19,7 @@ var (
 	Commit, _       = tag.NewKey("commit")
 	PeerID, _       = tag.NewKey("peer_id")
 	FailureType, _  = tag.NewKey("failure_type")
+	Local, _        = tag.NewKey("local")
 	MessageFrom, _  = tag.NewKey("message_from")
 	MessageTo, _    = tag.NewKey("message_to")
 	MessageNonce, _ = tag.NewKey("message_nonce")
@@ -30,7 +31,7 @@ var (
 	LotusInfo                           = stats.Int64("info", "Arbitrary counter to tag lotus info to", stats.UnitDimensionless)
 	ChainNodeHeight                     = stats.Int64("chain/node_height", "Current Height of the node", stats.UnitDimensionless)
 	ChainNodeWorkerHeight               = stats.Int64("chain/node_worker_height", "Current Height of workers on the node", stats.UnitDimensionless)
-	MessagePublished                    = stats.Int64("message/pubished", "Counter for total locally published messages", stats.UnitDimensionless)
+	MessagePublished                    = stats.Int64("message/published", "Counter for total locally published messages", stats.UnitDimensionless)
 	MessageReceived                     = stats.Int64("message/received", "Counter for total received messages", stats.UnitDimensionless)
 	MessageValidationFailure            = stats.Int64("message/failure", "Counter for message validation failures", stats.UnitDimensionless)
 	MessageValidationSuccess            = stats.Int64("message/success", "Counter for message validation successes", stats.UnitDimensionless)
@@ -89,7 +90,7 @@ var (
 	MessageValidationFailureView = &view.View{
 		Measure:     MessageValidationFailure,
 		Aggregation: view.Count(),
-		TagKeys:     []tag.Key{FailureType},
+		TagKeys:     []tag.Key{FailureType, Local},
 	}
 	MessageValidationSuccessView = &view.View{
 		Measure:     MessageValidationSuccess,
