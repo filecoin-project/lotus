@@ -549,9 +549,11 @@ func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubs
 		)
 		recordFailure(ctx, metrics.MessageValidationFailure, "add")
 		switch {
-		case xerrors.Is(err, messagepool.ErrBroadcastAnyway):
+		case xerrors.Is(err, messagepool.ErrSoftValidationFailure):
 			fallthrough
 		case xerrors.Is(err, messagepool.ErrRBFTooLowPremium):
+			fallthrough
+		case xerrors.Is(err, messagepool.ErrTooManyPendingMessages):
 			fallthrough
 		case xerrors.Is(err, messagepool.ErrNonceTooLow):
 			return pubsub.ValidationIgnore

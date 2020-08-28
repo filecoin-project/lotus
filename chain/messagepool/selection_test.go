@@ -23,6 +23,11 @@ import (
 	logging "github.com/ipfs/go-log"
 )
 
+func init() {
+	// bump this for the selection tests
+	MaxActorPendingMessages = 1000000
+}
+
 func makeTestMessage(w *wallet.Wallet, from, to address.Address, nonce uint64, gasLimit int64, gasPrice uint64) *types.SignedMessage {
 	msg := &types.Message{
 		From:       from,
