@@ -1442,6 +1442,7 @@ mainLoop:
 			nreq := batchSize - len(bstout)
 			bstips, err := syncer.Bsync.GetChainMessages(ctx, next, uint64(nreq))
 			if err != nil {
+				// TODO check errors for temporary nature
 				if windowSize > 1 {
 					windowSize /= 2
 					log.Infof("error fetching messages: %s; reducing window size to %d and trying again", err, windowSize)
@@ -1482,6 +1483,11 @@ mainLoop:
 			}
 		}
 		i -= batchSize
+
+		if i >= 0 {
+			windowSize += 10
+			log.Infof("successfully fetched %d messages; increasing window size to %d", len(bstout), windowSize)
+		}
 	}
 
 	return nil
