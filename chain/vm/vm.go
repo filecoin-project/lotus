@@ -220,6 +220,7 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 	rt := vm.makeRuntime(ctx, msg, origin, on, gasUsed, nac)
 	rt.lastGasChargeTime = start
 	if parent != nil {
+		rt.allowInternal = parent.allowInternal
 		rt.lastGasChargeTime = parent.lastGasChargeTime
 		rt.lastGasCharge = parent.lastGasCharge
 		defer func() {
