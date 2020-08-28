@@ -263,8 +263,7 @@ func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub
 	stats.Record(ctx, metrics.BlockReceived.M(1))
 
 	recordFailure := func(what string) {
-		ctx, _ = tag.New(ctx, tag.Insert(metrics.FailureType, what))
-		stats.Record(ctx, metrics.BlockValidationFailure.M(1))
+		recordFailure(ctx, metrics.BlockValidationFailure, what)
 		bv.flagPeer(pid)
 	}
 
