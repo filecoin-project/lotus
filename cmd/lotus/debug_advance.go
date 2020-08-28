@@ -60,7 +60,9 @@ func init() {
 				}
 
 			}
-			// TODO: beacon
+
+			mbi, err := api.MinerGetBaseInfo(ctx, addr, head.Height()+1, head.Key())
+
 			ep := &types.ElectionProof{}
 			ep.WinCount = ep.ComputeWinCount(types.NewInt(1), types.NewInt(1))
 			for ep.WinCount == 0 {
@@ -75,7 +77,7 @@ func init() {
 			uts := head.MinTimestamp() + uint64(build.BlockDelaySecs)
 			nheight := head.Height() + 1
 			blk, err := api.MinerCreateBlock(ctx, &lapi.BlockTemplate{
-				addr, head.Key(), ticket, ep, nil, msgs, nheight, uts, gen.ValidWpostForTesting,
+				addr, head.Key(), ticket, ep, mbi.BeaconEntries, msgs, nheight, uts, gen.ValidWpostForTesting,
 			})
 			if err != nil {
 				return xerrors.Errorf("creating block: %w", err)
