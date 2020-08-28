@@ -1414,6 +1414,7 @@ func (syncer *Syncer) iterFullTipsets(ctx context.Context, headers []*types.TipS
 	span.AddAttributes(trace.Int64Attribute("num_headers", int64(len(headers))))
 
 	windowSize := defaultMessageFetchWindowSize
+mainLoop:
 	for i := len(headers) - 1; i >= 0; {
 		fts, err := syncer.store.TryFillTipSet(headers[i])
 		if err != nil {
@@ -1441,6 +1442,11 @@ func (syncer *Syncer) iterFullTipsets(ctx context.Context, headers []*types.TipS
 			nreq := batchSize - len(bstout)
 			bstips, err := syncer.Bsync.GetChainMessages(ctx, next, uint64(nreq))
 			if err != nil {
+				if windowSize > 1 {
+					windowSize /= 2
+					log.Infof("error fetching messages: %s; reducing window size to %d and trying again", err, windowSize)
+					continue mainLoop
+				}
 				return xerrors.Errorf("message processing failed: %w", err)
 			}
 
