@@ -123,6 +123,8 @@ type Syncer struct {
 	receiptTracker *blockReceiptTracker
 
 	verifier ffiwrapper.Verifier
+
+	windowSize int
 }
 
 // NewSyncer creates a new Syncer object.
@@ -148,6 +150,7 @@ func NewSyncer(sm *stmgr.StateManager, bsync *blocksync.BlockSync, connmgr connm
 		receiptTracker: newBlockReceiptTracker(),
 		connmgr:        connmgr,
 		verifier:       verifier,
+		windowSize:     defaultMessageFetchWindowSize,
 
 		incoming: pubsub.New(50),
 	}
@@ -1413,7 +1416,7 @@ func (syncer *Syncer) iterFullTipsets(ctx context.Context, headers []*types.TipS
 
 	span.AddAttributes(trace.Int64Attribute("num_headers", int64(len(headers))))
 
-	windowSize := defaultMessageFetchWindowSize
+	windowSize := syncer.windowSize
 mainLoop:
 	for i := len(headers) - 1; i >= 0; {
 		fts, err := syncer.store.TryFillTipSet(headers[i])
@@ -1489,6 +1492,9 @@ mainLoop:
 			log.Infof("successfully fetched %d messages; increasing window size to %d", len(bstout), windowSize)
 		}
 	}
+
+	// remember our window size
+	syncer.windowSize = windowSize
 
 	return nil
 }
