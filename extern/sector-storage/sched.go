@@ -566,20 +566,30 @@ func (sh *scheduler) runWorker(wid WorkerID) {
 		assignLoop:
 			// process windows in order
 			for len(worker.activeWindows) > 0 {
-				// process tasks within a window in order
-				for len(worker.activeWindows[0].todo) > 0 {
-					todo := worker.activeWindows[0].todo[0]
-					needRes := ResourceTable[todo.taskType][sh.spt]
+				firstWindow := worker.activeWindows[0]
 
+				// process tasks within a window, preferring tasks at lower indexes
+				for len(firstWindow.todo) > 0 {
 					sh.workersLk.RLock()
+
+					tidx := -1
+
 					worker.lk.Lock()
-					ok := worker.preparing.canHandleRequest(needRes, wid, worker.info.Resources)
+					for t, todo := range firstWindow.todo {
+						needRes := ResourceTable[todo.taskType][sh.spt]
+						if worker.preparing.canHandleRequest(needRes, wid, worker.info.Resources) {
+							tidx = t
+							break
+						}
+					}
 					worker.lk.Unlock()
 
-					if !ok {
+					if tidx == -1 {
 						sh.workersLk.RUnlock()
 						break assignLoop
 					}
+
+					todo := firstWindow.todo[tidx]
 
 					log.Debugf("assign worker sector %d", todo.sector.Number)
 					err := sh.assignWorker(taskDone, wid, worker, todo)
@@ -591,7 +601,9 @@ func (sh *scheduler) runWorker(wid WorkerID) {
 					}
 
 					// Note: we're not freeing window.allocated resources here very much on purpose
-					worker.activeWindows[0].todo = worker.activeWindows[0].todo[1:]
+					copy(firstWindow.todo[tidx:], firstWindow.todo[tidx+1:])
+					firstWindow.todo[len(firstWindow.todo)-1] = nil
+					firstWindow.todo = firstWindow.todo[:len(firstWindow.todo)-1]
 				}
 
 				copy(worker.activeWindows, worker.activeWindows[1:])
