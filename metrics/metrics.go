@@ -84,7 +84,7 @@ var (
 		Aggregation: defaultMillisecondsDistribution,
 	}
 	MessagePublishedView = &view.View{
-		Measure: MessagePublished,
+		Measure:     MessagePublished,
 		Aggregation: view.Count(),
 	}
 	MessageReceivedView = &view.View{
@@ -105,31 +105,31 @@ var (
 		Aggregation: view.LastValue(),
 	}
 	PubsubPublishMessageView = &view.View{
-		Measure: PubsubPublishMessage,
+		Measure:     PubsubPublishMessage,
 		Aggregation: view.Count(),
 	}
 	PubsubDeliverMessageView = &view.View{
-		Measure: PubsubDeliverMessage,
+		Measure:     PubsubDeliverMessage,
 		Aggregation: view.Count(),
 	}
 	PubsubRejectMessageView = &view.View{
-		Measure: PubsubRejectMessage,
+		Measure:     PubsubRejectMessage,
 		Aggregation: view.Count(),
 	}
 	PubsubDuplicateMessageView = &view.View{
-		Measure: PubsubDuplicateMessage,
+		Measure:     PubsubDuplicateMessage,
 		Aggregation: view.Count(),
 	}
 	PubsubRecvRPCView = &view.View{
-		Measure: PubsubRecvRPC,
+		Measure:     PubsubRecvRPC,
 		Aggregation: view.Count(),
 	}
 	PubsubSendRPCView = &view.View{
-		Measure: PubsubSendRPC,
+		Measure:     PubsubSendRPC,
 		Aggregation: view.Count(),
 	}
 	PubsubDropRPCView = &view.View{
-		Measure: PubsubDropRPC,
+		Measure:     PubsubDropRPC,
 		Aggregation: view.Count(),
 	}
 )
