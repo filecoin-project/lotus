@@ -83,6 +83,10 @@ var (
 		Measure:     BlockValidationDurationMilliseconds,
 		Aggregation: defaultMillisecondsDistribution,
 	}
+	MessagePublishedView = &view.View{
+		Measure: MessagePublished,
+		Aggregation: view.Count(),
+	}
 	MessageReceivedView = &view.View{
 		Measure:     MessageReceived,
 		Aggregation: view.Count(),
@@ -100,6 +104,34 @@ var (
 		Measure:     PeerCount,
 		Aggregation: view.LastValue(),
 	}
+	PubsubPublishMessageView = &view.View{
+		Measure: PubsubPublishMessage,
+		Aggregation: view.Count(),
+	}
+	PubsubDeliverMessageView = &view.View{
+		Measure: PubsubDeliverMessage,
+		Aggregation: view.Count(),
+	}
+	PubsubRejectMessageView = &view.View{
+		Measure: PubsubRejectMessage,
+		Aggregation: view.Count(),
+	}
+	PubsubDuplicateMessageView = &view.View{
+		Measure: PubsubDuplicateMessage,
+		Aggregation: view.Count(),
+	}
+	PubsubRecvRPCView = &view.View{
+		Measure: PubsubRecvRPC,
+		Aggregation: view.Count(),
+	}
+	PubsubSendRPCView = &view.View{
+		Measure: PubsubSendRPC,
+		Aggregation: view.Count(),
+	}
+	PubsubDropRPCView = &view.View{
+		Measure: PubsubDropRPC,
+		Aggregation: view.Count(),
+	}
 )
 
 // DefaultViews is an array of OpenCensus views for metric gathering purposes
@@ -111,10 +143,18 @@ var DefaultViews = append([]*view.View{
 	BlockValidationFailureView,
 	BlockValidationSuccessView,
 	BlockValidationDurationView,
+	MessagePublishedView,
 	MessageReceivedView,
 	MessageValidationFailureView,
 	MessageValidationSuccessView,
 	PeerCountView,
+	PubsubPublishMessageView,
+	PubsubDeliverMessageView,
+	PubsubRejectMessageView,
+	PubsubDuplicateMessageView,
+	PubsubRecvRPCView,
+	PubsubSendRPCView,
+	PubsubDropRPCView,
 },
 	rpcmetrics.DefaultViews...)
 
