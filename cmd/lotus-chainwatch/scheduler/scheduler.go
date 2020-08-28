@@ -40,7 +40,7 @@ func (s *Scheduler) Start(ctx context.Context) {
 
 	go func() {
 		// run once on start after schema has initialized
-		time.Sleep(5 * time.Second)
+		time.Sleep(1 * time.Minute)
 		if err := refreshTopMinerByBaseReward(ctx, s.db); err != nil {
 			log.Errorw("failed to refresh top miner", "error", err)
 		}

@@ -97,7 +97,6 @@ func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, origin addres
 		ctx:         ctx,
 		vm:          vm,
 		state:       vm.cstate,
-		msg:         msg,
 		origin:      origin,
 		originNonce: originNonce,
 		height:      vm.blockHeight,

@@ -7,6 +7,7 @@ import (
 
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/util/smoothing"
@@ -15,7 +16,19 @@ import (
 type powerActorInfo struct {
 	common actorInfo
 
-	epochSmoothingEstimate *smoothing.FilterEstimate
+	totalRawBytes                      big.Int
+	totalRawBytesCommitted             big.Int
+	totalQualityAdjustedBytes          big.Int
+	totalQualityAdjustedBytesCommitted big.Int
+	totalPledgeCollateral              big.Int
+
+	newRawBytes             big.Int
+	newQualityAdjustedBytes big.Int
+	newPledgeCollateral     big.Int
+	newQAPowerSmoothed      *smoothing.FilterEstimate
+
+	minerCount                  int64
+	minerCountAboveMinimumPower int64
 }
 
 func (p *Processor) setupPower() error {
@@ -25,13 +38,27 @@ func (p *Processor) setupPower() error {
 	}
 
 	if _, err := tx.Exec(`
-create table if not exists power_smoothing_estimates
+create table if not exists chain_power
 (
-    state_root text not null
-        constraint power_smoothing_estimates_pk
-        	primary key,
-	position_estimate text not null,
-	velocity_estimate text not null
+	state_root text not null
+		constraint power_smoothing_estimates_pk
+			primary key,
+
+	new_raw_bytes_power text not null,
+	new_qa_bytes_power text not null,
+	new_pledge_collateral text not null,
+
+	total_raw_bytes_power text not null,
+	total_raw_bytes_committed text not null,
+	total_qa_bytes_power text not null,
+	total_qa_bytes_committed text not null,
+	total_pledge_collateral text not null,
+
+	qa_smoothed_position_estimate text not null,
+	qa_smoothed_velocity_estimate text not null,
+
+	miner_count int not null,
+	minimum_consensus_miner_count int not null
 );
 `); err != nil {
 		return err
@@ -60,8 +87,8 @@ func (p *Processor) processPowerActors(ctx context.Context, powerTips ActorTips)
 	}()
 
 	var out []powerActorInfo
-	for tipset, powers := range powerTips {
-		for _, act := range powers {
+	for tipset, powerStates := range powerTips {
+		for _, act := range powerStates {
 			var pw powerActorInfo
 			pw.common = act
 
@@ -80,7 +107,19 @@ func (p *Processor) processPowerActors(ctx context.Context, powerTips ActorTips)
 				return nil, xerrors.Errorf("unmarshal state (@ %s): %w", pw.common.stateroot.String(), err)
 			}
 
-			pw.epochSmoothingEstimate = powerActorState.ThisEpochQAPowerSmoothed
+			pw.totalRawBytes = powerActorState.TotalRawBytePower
+			pw.totalRawBytesCommitted = powerActorState.TotalBytesCommitted
+			pw.totalQualityAdjustedBytes = powerActorState.TotalQualityAdjPower
+			pw.totalQualityAdjustedBytesCommitted = powerActorState.TotalQABytesCommitted
+			pw.totalPledgeCollateral = powerActorState.TotalPledgeCollateral
+
+			pw.newRawBytes = powerActorState.ThisEpochRawBytePower
+			pw.newQualityAdjustedBytes = powerActorState.ThisEpochQualityAdjPower
+			pw.newPledgeCollateral = powerActorState.ThisEpochPledgeCollateral
+			pw.newQAPowerSmoothed = powerActorState.ThisEpochQAPowerSmoothed
+
+			pw.minerCount = powerActorState.MinerCount
+			pw.minerCountAboveMinimumPower = powerActorState.MinerAboveMinPowerCount
 			out = append(out, pw)
 		}
 	}
@@ -88,46 +127,59 @@ func (p *Processor) processPowerActors(ctx context.Context, powerTips ActorTips)
 	return out, nil
 }
 
-func (p *Processor) persistPowerActors(ctx context.Context, powers []powerActorInfo) error {
+func (p *Processor) persistPowerActors(ctx context.Context, powerStates []powerActorInfo) error {
 	// NB: use errgroup when there is more than a single store operation
-	return p.storePowerSmoothingEstimates(powers)
+	return p.storePowerSmoothingEstimates(powerStates)
 }
 
-func (p *Processor) storePowerSmoothingEstimates(powers []powerActorInfo) error {
+func (p *Processor) storePowerSmoothingEstimates(powerStates []powerActorInfo) error {
 	tx, err := p.db.Begin()
 	if err != nil {
-		return xerrors.Errorf("begin power_smoothing_estimates tx: %w", err)
+		return xerrors.Errorf("begin chain_power tx: %w", err)
 	}
 
-	if _, err := tx.Exec(`create temp table rse (like power_smoothing_estimates) on commit drop`); err != nil {
-		return xerrors.Errorf("prep power_smoothing_estimates: %w", err)
+	if _, err := tx.Exec(`create temp table cp (like chain_power) on commit drop`); err != nil {
+		return xerrors.Errorf("prep chain_power: %w", err)
 	}
 
-	stmt, err := tx.Prepare(`copy rse (state_root, position_estimate, velocity_estimate) from stdin;`)
+	stmt, err := tx.Prepare(`copy cp (state_root, new_raw_bytes_power, new_qa_bytes_power, new_pledge_collateral, total_raw_bytes_power, total_raw_bytes_committed, total_qa_bytes_power, total_qa_bytes_committed, total_pledge_collateral, qa_smoothed_position_estimate, qa_smoothed_velocity_estimate, miner_count, minimum_consensus_miner_count) from stdin;`)
 	if err != nil {
-		return xerrors.Errorf("prepare tmp power_smoothing_estimates: %w", err)
+		return xerrors.Errorf("prepare tmp chain_power: %w", err)
 	}
 
-	for _, powerState := range powers {
+	for _, ps := range powerStates {
 		if _, err := stmt.Exec(
-			powerState.common.stateroot.String(),
-			powerState.epochSmoothingEstimate.PositionEstimate.String(),
-			powerState.epochSmoothingEstimate.VelocityEstimate.String(),
+			ps.common.stateroot.String(),
+			ps.newRawBytes.String(),
+			ps.newQualityAdjustedBytes.String(),
+			ps.newPledgeCollateral.String(),
+
+			ps.totalRawBytes.String(),
+			ps.totalRawBytesCommitted.String(),
+			ps.totalQualityAdjustedBytes.String(),
+			ps.totalQualityAdjustedBytesCommitted.String(),
+			ps.totalPledgeCollateral.String(),
+
+			ps.newQAPowerSmoothed.PositionEstimate.String(),
+			ps.newQAPowerSmoothed.VelocityEstimate.String(),
+
+			ps.minerCount,
+			ps.minerCountAboveMinimumPower,
 		); err != nil {
 			return xerrors.Errorf("failed to store smoothing estimate: %w", err)
 		}
 	}
 
 	if err := stmt.Close(); err != nil {
-		return xerrors.Errorf("close prepared power_smoothing_estimates: %w", err)
+		return xerrors.Errorf("close prepared chain_power: %w", err)
 	}
 
-	if _, err := tx.Exec(`insert into power_smoothing_estimates select * from rse on conflict do nothing`); err != nil {
-		return xerrors.Errorf("insert power_smoothing_estimates from tmp: %w", err)
+	if _, err := tx.Exec(`insert into chain_power select * from cp on conflict do nothing`); err != nil {
+		return xerrors.Errorf("insert chain_power from tmp: %w", err)
 	}
 
 	if err := tx.Commit(); err != nil {
-		return xerrors.Errorf("commit power_smoothing_estimates tx: %w", err)
+		return xerrors.Errorf("commit chain_power tx: %w", err)
 	}
 
 	return nil
