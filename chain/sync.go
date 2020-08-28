@@ -1487,8 +1487,14 @@ mainLoop:
 		}
 
 		if i >= windowSize {
-			windowSize += 10
-			log.Infof("successfully fetched %d messages; increasing window size to %d", len(bstout), windowSize)
+			newWindowSize := windowSize + 10
+			if newWindowSize > int(blocksync.MaxRequestLength) {
+				newWindowSize = int(blocksync.MaxRequestLength)
+			}
+			if newWindowSize > windowSize {
+				windowSize = newWindowSize
+				log.Infof("successfully fetched %d messages; increasing window size to %d", len(bstout), windowSize)
+			}
 		}
 
 		i -= batchSize
