@@ -19,6 +19,7 @@ var (
 	Commit, _       = tag.NewKey("commit")
 	PeerID, _       = tag.NewKey("peer_id")
 	FailureType, _  = tag.NewKey("failure_type")
+	Local, _        = tag.NewKey("local")
 	MessageFrom, _  = tag.NewKey("message_from")
 	MessageTo, _    = tag.NewKey("message_to")
 	MessageNonce, _ = tag.NewKey("message_nonce")
@@ -30,7 +31,7 @@ var (
 	LotusInfo                           = stats.Int64("info", "Arbitrary counter to tag lotus info to", stats.UnitDimensionless)
 	ChainNodeHeight                     = stats.Int64("chain/node_height", "Current Height of the node", stats.UnitDimensionless)
 	ChainNodeWorkerHeight               = stats.Int64("chain/node_worker_height", "Current Height of workers on the node", stats.UnitDimensionless)
-	MessagePublished                    = stats.Int64("message/pubished", "Counter for total locally published messages", stats.UnitDimensionless)
+	MessagePublished                    = stats.Int64("message/published", "Counter for total locally published messages", stats.UnitDimensionless)
 	MessageReceived                     = stats.Int64("message/received", "Counter for total received messages", stats.UnitDimensionless)
 	MessageValidationFailure            = stats.Int64("message/failure", "Counter for message validation failures", stats.UnitDimensionless)
 	MessageValidationSuccess            = stats.Int64("message/success", "Counter for message validation successes", stats.UnitDimensionless)
@@ -82,6 +83,10 @@ var (
 		Measure:     BlockValidationDurationMilliseconds,
 		Aggregation: defaultMillisecondsDistribution,
 	}
+	MessagePublishedView = &view.View{
+		Measure:     MessagePublished,
+		Aggregation: view.Count(),
+	}
 	MessageReceivedView = &view.View{
 		Measure:     MessageReceived,
 		Aggregation: view.Count(),
@@ -89,7 +94,7 @@ var (
 	MessageValidationFailureView = &view.View{
 		Measure:     MessageValidationFailure,
 		Aggregation: view.Count(),
-		TagKeys:     []tag.Key{FailureType},
+		TagKeys:     []tag.Key{FailureType, Local},
 	}
 	MessageValidationSuccessView = &view.View{
 		Measure:     MessageValidationSuccess,
@@ -98,6 +103,34 @@ var (
 	PeerCountView = &view.View{
 		Measure:     PeerCount,
 		Aggregation: view.LastValue(),
+	}
+	PubsubPublishMessageView = &view.View{
+		Measure:     PubsubPublishMessage,
+		Aggregation: view.Count(),
+	}
+	PubsubDeliverMessageView = &view.View{
+		Measure:     PubsubDeliverMessage,
+		Aggregation: view.Count(),
+	}
+	PubsubRejectMessageView = &view.View{
+		Measure:     PubsubRejectMessage,
+		Aggregation: view.Count(),
+	}
+	PubsubDuplicateMessageView = &view.View{
+		Measure:     PubsubDuplicateMessage,
+		Aggregation: view.Count(),
+	}
+	PubsubRecvRPCView = &view.View{
+		Measure:     PubsubRecvRPC,
+		Aggregation: view.Count(),
+	}
+	PubsubSendRPCView = &view.View{
+		Measure:     PubsubSendRPC,
+		Aggregation: view.Count(),
+	}
+	PubsubDropRPCView = &view.View{
+		Measure:     PubsubDropRPC,
+		Aggregation: view.Count(),
 	}
 )
 
@@ -110,10 +143,18 @@ var DefaultViews = append([]*view.View{
 	BlockValidationFailureView,
 	BlockValidationSuccessView,
 	BlockValidationDurationView,
+	MessagePublishedView,
 	MessageReceivedView,
 	MessageValidationFailureView,
 	MessageValidationSuccessView,
 	PeerCountView,
+	PubsubPublishMessageView,
+	PubsubDeliverMessageView,
+	PubsubRejectMessageView,
+	PubsubDuplicateMessageView,
+	PubsubRecvRPCView,
+	PubsubSendRPCView,
+	PubsubDropRPCView,
 },
 	rpcmetrics.DefaultViews...)
 
