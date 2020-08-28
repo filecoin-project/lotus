@@ -40,6 +40,7 @@ type mockStateManager struct {
 	paychState   map[address.Address]mockPchState
 	store        adt.Store
 	response     *api.InvocResult
+	lastCall     *types.Message
 }
 
 func newMockStateManager() *mockStateManager {
@@ -93,7 +94,26 @@ func (sm *mockStateManager) LoadActorState(ctx context.Context, a address.Addres
 	panic(fmt.Sprintf("unexpected state type %v", out))
 }
 
+func (sm *mockStateManager) setCallResponse(response *api.InvocResult) {
+	sm.lk.Lock()
+	defer sm.lk.Unlock()
+
+	sm.response = response
+}
+
+func (sm *mockStateManager) getLastCall() *types.Message {
+	sm.lk.Lock()
+	defer sm.lk.Unlock()
+
+	return sm.lastCall
+}
+
 func (sm *mockStateManager) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*api.InvocResult, error) {
+	sm.lk.Lock()
+	defer sm.lk.Unlock()
+
+	sm.lastCall = msg
+
 	return sm.response, nil
 }
 

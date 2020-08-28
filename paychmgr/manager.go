@@ -285,6 +285,14 @@ func (pm *Manager) trackInboundChannel(ctx context.Context, ch address.Address) 
 	return pm.store.TrackChannel(stateCi)
 }
 
+func (pm *Manager) SubmitVoucher(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (cid.Cid, error) {
+	ca, err := pm.accessorByAddress(ch)
+	if err != nil {
+		return cid.Undef, err
+	}
+	return ca.submitVoucher(ctx, ch, sv, secret, proof)
+}
+
 func (pm *Manager) AllocateLane(ch address.Address) (uint64, error) {
 	ca, err := pm.accessorByAddress(ch)
 	if err != nil {

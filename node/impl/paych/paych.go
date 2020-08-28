@@ -2,18 +2,15 @@ package paych
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/ipfs/go-cid"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	full "github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/paychmgr"
@@ -183,35 +180,6 @@ func (a *PaychAPI) PaychVoucherList(ctx context.Context, pch address.Address) ([
 	return out, nil
 }
 
-func (a *PaychAPI) PaychVoucherSubmit(ctx context.Context, ch address.Address, sv *paych.SignedVoucher) (cid.Cid, error) {
-	ci, err := a.PaychMgr.GetChannelInfo(ch)
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	if sv.Extra != nil || len(sv.SecretPreimage) > 0 {
-		return cid.Undef, fmt.Errorf("cant handle more advanced payment channel stuff yet")
-	}
-
-	enc, err := actors.SerializeParams(&paych.UpdateChannelStateParams{
-		Sv: *sv,
-	})
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	msg := &types.Message{
-		From:   ci.Control,
-		To:     ch,
-		Value:  types.NewInt(0),
-		Method: builtin.MethodsPaych.UpdateChannelState,
-		Params: enc,
-	}
-
-	smsg, err := a.MpoolPushMessage(ctx, msg, nil)
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	return smsg.Cid(), nil
+func (a *PaychAPI) PaychVoucherSubmit(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (cid.Cid, error) {
+	return a.PaychMgr.SubmitVoucher(ctx, ch, sv, secret, proof)
 }

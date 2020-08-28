@@ -152,24 +152,32 @@ func (ca *channelAccessor) checkVoucherSpendable(ctx context.Context, ch address
 		return false, err
 	}
 
+	ci, err := ca.store.ByAddress(ch)
+	if err != nil {
+		return false, err
+	}
+
+	// Check if voucher has already been submitted
+	submitted, err := ci.wasVoucherSubmitted(sv)
+	if err != nil {
+		return false, err
+	}
+	if submitted {
+		return false, nil
+	}
+
+	// If proof is needed and wasn't supplied as a parameter, get it from the
+	// datastore
 	if sv.Extra != nil && proof == nil {
-		known, err := ca.store.VouchersForPaych(ch)
+		vi, err := ci.infoForVoucher(sv)
 		if err != nil {
 			return false, err
 		}
 
-		for _, v := range known {
-			eq, err := cborutil.Equals(v.Voucher, sv)
-			if err != nil {
-				return false, err
-			}
-			if v.Proof != nil && eq {
-				log.Info("CheckVoucherSpendable: using stored proof")
-				proof = v.Proof
-				break
-			}
-		}
-		if proof == nil {
+		if vi.Proof != nil {
+			log.Info("CheckVoucherSpendable: using stored proof")
+			proof = vi.Proof
+		} else {
 			log.Warn("CheckVoucherSpendable: nil proof for voucher with validation")
 		}
 	}
@@ -274,6 +282,87 @@ func (ca *channelAccessor) addVoucher(ctx context.Context, ch address.Address, s
 	}
 
 	return delta, ca.store.putChannelInfo(ci)
+}
+
+func (ca *channelAccessor) submitVoucher(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (cid.Cid, error) {
+	ca.lk.Lock()
+	defer ca.lk.Unlock()
+
+	ci, err := ca.store.ByAddress(ch)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	// If voucher needs proof, and none was supplied, check datastore for proof
+	if sv.Extra != nil && proof == nil {
+		vi, err := ci.infoForVoucher(sv)
+		if err != nil {
+			return cid.Undef, err
+		}
+
+		if vi.Proof != nil {
+			log.Info("SubmitVoucher: using stored proof")
+			proof = vi.Proof
+		} else {
+			log.Warn("SubmitVoucher: nil proof for voucher with validation")
+		}
+	}
+
+	has, err := ci.hasVoucher(sv)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	// If the channel has the voucher
+	if has {
+		// Check that the voucher hasn't already been submitted
+		submitted, err := ci.wasVoucherSubmitted(sv)
+		if err != nil {
+			return cid.Undef, err
+		}
+		if submitted {
+			return cid.Undef, xerrors.Errorf("cannot submit voucher that has already been submitted")
+		}
+	}
+
+	enc, err := actors.SerializeParams(&paych.UpdateChannelStateParams{
+		Sv:     *sv,
+		Secret: secret,
+		Proof:  proof,
+	})
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	msg := &types.Message{
+		From:   ci.Control,
+		To:     ch,
+		Value:  types.NewInt(0),
+		Method: builtin.MethodsPaych.UpdateChannelState,
+		Params: enc,
+	}
+
+	smsg, err := ca.api.MpoolPushMessage(ctx, msg, nil)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	// If the channel didn't already have the voucher
+	if !has {
+		// Add the voucher to the channel
+		ci.Vouchers = append(ci.Vouchers, &VoucherInfo{
+			Voucher: sv,
+			Proof:   proof,
+		})
+	}
+
+	// Mark the voucher and any lower-nonce vouchers as having been submitted
+	err = ca.store.MarkVoucherSubmitted(ci, sv)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	return smsg.Cid(), nil
 }
 
 func (ca *channelAccessor) allocateLane(ch address.Address) (uint64, error) {
