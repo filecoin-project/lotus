@@ -359,7 +359,7 @@ func (sh *scheduler) trySched() {
 				}
 
 				// TODO: allow bigger windows
-				if !windows[wnd].allocated.canHandleRequest(needRes, windowRequest.worker, worker.info.Resources) {
+				if !windows[wnd].allocated.canHandleRequest(needRes, windowRequest.worker, "schedAcceptable", worker.info.Resources) {
 					continue
 				}
 
@@ -430,11 +430,11 @@ func (sh *scheduler) trySched() {
 			log.Debugf("SCHED try assign sqi:%d sector %d to window %d", sqi, task.sector.Number, wnd)
 
 			// TODO: allow bigger windows
-			if !windows[wnd].allocated.canHandleRequest(needRes, wid, wr) {
+			if !windows[wnd].allocated.canHandleRequest(needRes, wid, "schedAssign", wr) {
 				continue
 			}
 
-			log.Debugf("SCHED ASSIGNED sqi:%d sector %d to window %d", sqi, task.sector.Number, wnd)
+			log.Debugf("SCHED ASSIGNED sqi:%d sector %d task %s to window %d", sqi, task.sector.Number, task.taskType, wnd)
 
 			windows[wnd].allocated.add(wr, needRes)
 
@@ -577,7 +577,7 @@ func (sh *scheduler) runWorker(wid WorkerID) {
 					worker.lk.Lock()
 					for t, todo := range firstWindow.todo {
 						needRes := ResourceTable[todo.taskType][sh.spt]
-						if worker.preparing.canHandleRequest(needRes, wid, worker.info.Resources) {
+						if worker.preparing.canHandleRequest(needRes, wid, "startPreparing", worker.info.Resources) {
 							tidx = t
 							break
 						}
@@ -628,7 +628,7 @@ func (sh *scheduler) workerCompactWindows(worker *workerHandle, wid WorkerID) in
 
 			for ti, todo := range window.todo {
 				needRes := ResourceTable[todo.taskType][sh.spt]
-				if !lower.allocated.canHandleRequest(needRes, wid, worker.info.Resources) {
+				if !lower.allocated.canHandleRequest(needRes, wid, "compactWindows", worker.info.Resources) {
 					continue
 				}
 

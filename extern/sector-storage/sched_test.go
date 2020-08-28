@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"runtime"
+	"sort"
 	"sync"
 	"testing"
 	"time"
@@ -305,7 +306,8 @@ func TestSched(t *testing.T) {
 				done: map[string]chan struct{}{},
 			}
 
-			for _, task := range tasks {
+			for i, task := range tasks {
+				log.Info("TASK", i)
 				task(t, sched, index, &rm)
 			}
 
@@ -419,6 +421,45 @@ func TestSched(t *testing.T) {
 		)
 	}
 
+	diag := func() task {
+		return func(t *testing.T, s *scheduler, index *stores.Index, meta *runMeta) {
+			time.Sleep(20 * time.Millisecond)
+			for _, request := range s.diag().Requests {
+				log.Infof("!!! sDIAG: sid(%d) task(%s)", request.Sector.Number, request.TaskType)
+			}
+
+			wj := (&Manager{sched: s}).WorkerJobs()
+
+			type line struct {
+				storiface.WorkerJob
+				wid uint64
+			}
+
+			lines := make([]line, 0)
+
+			for wid, jobs := range wj {
+				for _, job := range jobs {
+					lines = append(lines, line{
+						WorkerJob: job,
+						wid:       wid,
+					})
+				}
+			}
+
+			// oldest first
+			sort.Slice(lines, func(i, j int) bool {
+				if lines[i].RunWait != lines[j].RunWait {
+					return lines[i].RunWait < lines[j].RunWait
+				}
+				return lines[i].Start.Before(lines[j].Start)
+			})
+
+			for _, l := range lines {
+				log.Infof("!!! wDIAG: rw(%d) sid(%d) t(%s)", l.RunWait, l.Sector.Number, l.Task)
+			}
+		}
+	}
+
 	// run this one a bunch of times, it had a very annoying tendency to fail randomly
 	for i := 0; i < 40; i++ {
 		t.Run("pc1-pc2-prio", testFunc([]workerSpec{
@@ -427,6 +468,8 @@ func TestSched(t *testing.T) {
 			// fill queues
 			twoPC1("w0", 0, taskStarted),
 			twoPC1("w1", 2, taskNotScheduled),
+			sched("w2", "fred", 4, sealtasks.TTPreCommit1),
+			taskNotScheduled("w2"),
 
 			// windowed
 
@@ -439,10 +482,18 @@ func TestSched(t *testing.T) {
 			sched("t3", "fred", 10, sealtasks.TTPreCommit2),
 			taskNotScheduled("t3"),
 
+			diag(),
+
 			twoPC1Act("w0", taskDone),
 			twoPC1Act("w1", taskStarted),
+			taskNotScheduled("w2"),
 
 			twoPC1Act("w1", taskDone),
+			taskStarted("w2"),
+
+			taskDone("w2"),
+
+			diag(),
 
 			taskStarted("t3"),
 			taskNotScheduled("t1"),
