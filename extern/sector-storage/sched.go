@@ -641,7 +641,7 @@ func (sh *scheduler) workerCompactWindows(worker *workerHandle, wid WorkerID) in
 			if len(moved) > 0 {
 				newTodo := make([]*workerRequest, 0, len(window.todo)-len(moved))
 				for i, t := range window.todo {
-					if moved[0] == i {
+					if len(moved) > 0 && moved[0] == i {
 						moved = moved[1:]
 						continue
 					}
