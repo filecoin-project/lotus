@@ -1,5 +1,41 @@
 # Lotus changelog
 
+# 0.5.5
+
+This patch release introduces a large number of improvements to the sealing process.
+It also updates go-fil-markets to 
+[version 0.5.8](https://github.com/filecoin-project/go-fil-markets/releases/tag/v0.5.8),
+and go-libp2p-pubsub to [v0.3.5](https://github.com/libp2p/go-libp2p-pubsub/releases/tag/v0.3.5).
+
+#### Downstream upgrades
+
+- Upgrades markets to v0.5.8 (https://github.com/filecoin-project/lotus/pull/3384)
+- Upgrades go-libp2p-pubsub to v0.3.5 (https://github.com/filecoin-project/lotus/pull/3305)
+
+#### Sector sealing
+
+- The following improvements were introduced in https://github.com/filecoin-project/lotus/pull/3350.
+
+    - Allow `lotus-miner sectors remove` to remove a sector in any state.
+    - Create a separate state in the storage FSM dedicated to submitting the Commit message.
+    - Recovery for when the Deal IDs of deals in a sector get changed in a reorg.
+    - Auto-retry sending Precommit and Commit messages if they run out of gas
+    - Auto-retry sector remove tasks when they fail
+    - Compact worker windows, and allow their tasks to be executed in any order
+
+- Don't simply skip PoSt for bad sectors (https://github.com/filecoin-project/lotus/pull/3323)
+
+#### Message Pool 
+
+- Spam Protection: Track required funds for pending messages (https://github.com/filecoin-project/lotus/pull/3313)
+
+#### Chainwatch
+
+- Add more power and reward metrics (https://github.com/filecoin-project/lotus/pull/3367)
+- Fix raciness in sector deal table (https://github.com/filecoin-project/lotus/pull/3275)
+- Parallelize miner processing (https://github.com/filecoin-project/lotus/pull/3380)
+- Accept Lotus API and token (https://github.com/filecoin-project/lotus/pull/3337)
+
 # 0.5.4
 
 A patch release, containing a few nice bugfixes and improvements:
