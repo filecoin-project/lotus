@@ -37,6 +37,10 @@ func ValidateBlockValues(b RandomBeacon, h *types.BlockHeader, prevEntry types.B
 		return nil
 	}
 
+	if len(h.BeaconEntries) == 0 {
+		return xerrors.Errorf("expected to have beacon entries in this block, but didn't find any")
+	}
+
 	last := h.BeaconEntries[len(h.BeaconEntries)-1]
 	if last.Round != maxRound {
 		return xerrors.Errorf("expected final beacon entry in block to be at round %d, got %d", maxRound, last.Round)
