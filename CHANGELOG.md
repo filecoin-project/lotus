@@ -1,5 +1,9 @@
 # Lotus changelog
 
+# 0.5.6 / 2020-08-29
+
+Hotfix release that fixes a panic in the sealing scheduler (https://github.com/filecoin-project/lotus/pull/3389).
+
 # 0.5.5
 
 This patch release introduces a large number of improvements to the sealing process.
