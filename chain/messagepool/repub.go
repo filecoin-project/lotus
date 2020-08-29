@@ -108,7 +108,7 @@ func (mp *MessagePool) republishPendingMessages() error {
 
 		// we can't fit the current chain but there is gas to spare
 		// trim it and push it down
-		chain.Trim(gasLimit, mp, baseFee, ts, false)
+		chain.Trim(gasLimit, mp, baseFee, ts)
 		for j := i; j < len(chains)-1; j++ {
 			if chains[j].Before(chains[j+1]) {
 				break
