@@ -345,6 +345,16 @@ func ImportChain(r repo.Repo, fname string) error {
 		return xerrors.Errorf("importing chain failed: %w", err)
 	}
 
+	gb, err := cst.GetTipsetByHeight(context.TODO(), 0, ts, true)
+	if err != nil {
+		return err
+	}
+
+	err = cst.SetGenesis(gb.Blocks()[0])
+	if err != nil {
+		return err
+	}
+
 	stm := stmgr.NewStateManager(cst)
 
 	log.Infof("validating imported chain...")
