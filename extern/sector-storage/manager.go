@@ -6,8 +6,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
-
+	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
@@ -17,6 +16,7 @@ import (
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
@@ -463,25 +463,19 @@ func (m *Manager) Remove(ctx context.Context, sector abi.SectorID) error {
 		return xerrors.Errorf("acquiring sector lock: %w", err)
 	}
 
-	unsealed := stores.FTUnsealed
-	{
-		unsealedStores, err := m.index.StorageFindSector(ctx, sector, stores.FTUnsealed, 0, false)
-		if err != nil {
-			return xerrors.Errorf("finding unsealed sector: %w", err)
-		}
+	var err error
 
-		if len(unsealedStores) == 0 { // can be already removed
-			unsealed = stores.FTNone
-		}
+	if rerr := m.storage.Remove(ctx, sector, stores.FTSealed, true); rerr != nil {
+		err = multierror.Append(err, xerrors.Errorf("removing sector (sealed): %w", rerr))
+	}
+	if rerr := m.storage.Remove(ctx, sector, stores.FTCache, true); rerr != nil {
+		err = multierror.Append(err, xerrors.Errorf("removing sector (cache): %w", rerr))
+	}
+	if rerr := m.storage.Remove(ctx, sector, stores.FTUnsealed, true); rerr != nil {
+		err = multierror.Append(err, xerrors.Errorf("removing sector (unsealed): %w", rerr))
 	}
 
-	selector := newExistingSelector(m.index, sector, stores.FTCache|stores.FTSealed, false)
-
-	return m.sched.Schedule(ctx, sector, sealtasks.TTFinalize, selector,
-		schedFetch(sector, stores.FTCache|stores.FTSealed|unsealed, stores.PathStorage, stores.AcquireMove),
-		func(ctx context.Context, w Worker) error {
-			return w.Remove(ctx, sector)
-		})
+	return err
 }
 
 func (m *Manager) StorageLocal(ctx context.Context) (map[stores.ID]string, error) {

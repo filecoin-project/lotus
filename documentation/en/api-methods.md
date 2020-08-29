@@ -3642,7 +3642,7 @@ Response:
 ```
 
 ### StateSectorGetInfo
-StateSectorGetInfo returns the on-chain info for the specified miner's sector
+StateSectorGetInfo returns the on-chain info for the specified miner's sector. Returns null in case the sector info isn't found
 NOTE: returned info.Expiration may not be accurate in some cases, use StateSectorExpiration to get accurate
 expiration epoch
 
