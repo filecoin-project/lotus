@@ -226,8 +226,8 @@ func NewProviderDAGServiceDataTransfer(lc fx.Lifecycle, h host.Host, gs dtypes.S
 		OnStart: func(ctx context.Context) error {
 			return dt.Start(ctx)
 		},
-		OnStop: func(context.Context) error {
-			return dt.Stop()
+		OnStop: func(ctx context.Context) error {
+			return dt.Stop(ctx)
 		},
 	})
 	return dt, nil
