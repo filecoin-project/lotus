@@ -67,6 +67,12 @@
           "slug": "en+setup-troubleshooting",
           "github": "en/setup-troubleshooting.md",
           "value": null
+        },
+        {
+          "title": "Environment Variables",
+          "slug": "en+env-vars",
+          "github": "en/environment-vars.md",
+          "value": null
         }
       ]
     },
@@ -75,17 +81,25 @@
       "slug": "en+arch",
       "github": "en/architecture.md",
       "value": null,
-      "posts": []
-    },    {
+      "posts": [
+        {
+          "title": "The Message Pool",
+          "slug": "en+mpool",
+          "github": "en/mpool.md",
+          "value": null
+        }
+      ]
+    },
+    {
       "title": "Storage Mining",
       "slug": "en+mining",
       "github": "en/mining.md",
       "value": null,
       "posts": [
         {
-          "title": "Lotus Seal Worker",
-          "slug": "en+lotus-seal-worker",
-          "github": "en/mining-lotus-seal-worker.md",
+          "title": "Lotus Worker",
+          "slug": "en+lotus-worker",
+          "github": "en/mining-lotus-worker.md",
           "value": null
         },
         {
@@ -136,6 +150,13 @@
       "posts": []
     },
     {
+      "title": "Payment Channels",
+      "slug": "en+payment-channels",
+      "github": "en/payment-channels.md",
+      "value": null,
+      "posts": []
+    },
+    {
       "title": "Command Line Interface",
       "slug": "en+cli",
       "github": "en/cli.md",
@@ -152,6 +173,12 @@
           "title": "Remote API Support",
           "slug": "en+api-scripting-support",
           "github": "en/api-scripting-support.md",
+          "value": null
+        },
+        {
+          "title": "API Methods",
+          "slug": "en+api-methods",
+          "github": "en/api-methods.md",
           "value": null
         },
         {

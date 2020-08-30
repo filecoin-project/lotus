@@ -4,6 +4,7 @@ import (
 	"container/list"
 	"context"
 	"database/sql"
+	"fmt"
 	"sync"
 	"time"
 
@@ -22,14 +23,17 @@ var log = logging.Logger("syncer")
 type Syncer struct {
 	db *sql.DB
 
+	lookbackLimit uint64
+
 	headerLk sync.Mutex
 	node     api.FullNode
 }
 
-func NewSyncer(db *sql.DB, node api.FullNode) *Syncer {
+func NewSyncer(db *sql.DB, node api.FullNode, lookbackLimit uint64) *Syncer {
 	return &Syncer{
-		db:   db,
-		node: node,
+		db:            db,
+		node:          node,
+		lookbackLimit: lookbackLimit,
 	}
 }
 
@@ -40,6 +44,18 @@ func (s *Syncer) setupSchemas() error {
 	}
 
 	if _, err := tx.Exec(`
+/* tracks circulating fil available on the network at each tipset */
+create table if not exists chain_economics
+(
+	parent_state_root text not null
+		constraint chain_economics_pk primary key,
+	circulating_fil text not null,
+	vested_fil text not null,
+	mined_fil text not null,
+	burnt_fil text not null,
+	locked_fil text not null
+);
+
 create table if not exists block_cids
 (
 	cid text not null
@@ -110,7 +126,9 @@ create table if not exists blocks
 	miner text not null,
 	timestamp bigint not null,
 	ticket bytea not null,
-	eprof bytea,
+	election_proof bytea,
+	win_count bigint,
+	parent_base_fee text not null,
 	forksig bigint not null
 );
 
@@ -133,25 +151,13 @@ create index if not exists state_heights_parentstateroot_index
 }
 
 func (s *Syncer) Start(ctx context.Context) {
+	if err := logging.SetLogLevel("syncer", "info"); err != nil {
+		log.Fatal(err)
+	}
 	log.Debug("Starting Syncer")
 
 	if err := s.setupSchemas(); err != nil {
 		log.Fatal(err)
-	}
-
-	// doing the initial sync here lets us avoid the HCCurrent case in the switch
-	head, err := s.node.ChainHead(ctx)
-	if err != nil {
-		log.Fatalw("Failed to get chain head form lotus", "error", err)
-	}
-
-	unsynced, err := s.unsyncedBlocks(ctx, head, time.Unix(0, 0))
-	if err != nil {
-		log.Fatalw("failed to gather unsynced blocks", "error", err)
-	}
-
-	if err := s.storeHeaders(unsynced, true, time.Now()); err != nil {
-		log.Fatalw("failed to store unsynced blocks", "error", err)
 	}
 
 	// continue to keep the block headers table up to date.
@@ -160,28 +166,38 @@ func (s *Syncer) Start(ctx context.Context) {
 		log.Fatal(err)
 	}
 
-	lastSynced := time.Now()
+	// we need to ensure that on a restart we don't reprocess the whole flarping chain
+	blkCID, height, err := s.mostRecentlySyncedBlockHeight()
+	if err != nil {
+		log.Fatalw("failed to find most recently synced block", "error", err)
+	}
+	log.Infow("Found starting point for syncing", "blockCID", blkCID.String(), "height", height)
+	sinceEpoch := uint64(height)
 	go func() {
 		for notif := range notifs {
 			for _, change := range notif {
 				switch change.Type {
 				case store.HCApply:
-					unsynced, err := s.unsyncedBlocks(ctx, change.Val, lastSynced)
+					unsynced, err := s.unsyncedBlocks(ctx, change.Val, sinceEpoch)
 					if err != nil {
 						log.Errorw("failed to gather unsynced blocks", "error", err)
+					}
+
+					if err := s.storeCirculatingSupply(ctx, change.Val); err != nil {
+						log.Errorw("failed to store circulating supply", "error", err)
 					}
 
 					if len(unsynced) == 0 {
 						continue
 					}
 
-					if err := s.storeHeaders(unsynced, true, lastSynced); err != nil {
+					if err := s.storeHeaders(unsynced, true, time.Now()); err != nil {
 						// so this is pretty bad, need some kind of retry..
 						// for now just log an error and the blocks will be attempted again on next notifi
 						log.Errorw("failed to store unsynced blocks", "error", err)
 					}
 
-					lastSynced = time.Now()
+					sinceEpoch = uint64(change.Val.Height())
 				case store.HCRevert:
 					log.Debug("revert todo")
 				}
@@ -190,12 +206,8 @@ func (s *Syncer) Start(ctx context.Context) {
 	}()
 }
 
-func (s *Syncer) unsyncedBlocks(ctx context.Context, head *types.TipSet, since time.Time) (map[cid.Cid]*types.BlockHeader, error) {
-	// get a list of blocks we have already synced in the past 3 mins. This ensures we aren't returning the entire
-	// table every time.
-	lookback := since.Add(-(time.Minute * 3))
-	log.Debugw("Gathering unsynced blocks", "since", lookback.String())
-	hasList, err := s.syncedBlocks(lookback)
+func (s *Syncer) unsyncedBlocks(ctx context.Context, head *types.TipSet, since uint64) (map[cid.Cid]*types.BlockHeader, error) {
+	hasList, err := s.syncedBlocks(since, s.lookbackLimit)
 	if err != nil {
 		return nil, err
 	}
@@ -220,7 +232,7 @@ func (s *Syncer) unsyncedBlocks(ctx context.Context, head *types.TipSet, since t
 			log.Debugw("To visit", "toVisit", toVisit.Len(), "toSync", len(toSync), "current_height", bh.Height)
 		}
 
-		if len(bh.Parents) == 0 {
+		if bh.Height == 0 {
 			continue
 		}
 
@@ -238,9 +250,8 @@ func (s *Syncer) unsyncedBlocks(ctx context.Context, head *types.TipSet, since t
 	return toSync, nil
 }
 
-func (s *Syncer) syncedBlocks(timestamp time.Time) (map[cid.Cid]struct{}, error) {
-	// timestamp is used to return a configurable amount of rows based on when they were last added.
-	rws, err := s.db.Query(`select cid FROM blocks_synced where synced_at > $1`, timestamp.Unix())
+func (s *Syncer) syncedBlocks(since, limit uint64) (map[cid.Cid]struct{}, error) {
+	rws, err := s.db.Query(`select bs.cid FROM blocks_synced bs left join blocks b on b.cid = bs.cid where b.height <= $1 and bs.processed_at is not null limit $2`, since, limit)
 	if err != nil {
 		return nil, xerrors.Errorf("Failed to query blocks_synced: %w", err)
 	}
@@ -260,6 +271,58 @@ func (s *Syncer) syncedBlocks(timestamp time.Time) (map[cid.Cid]struct{}, error)
 		out[ci] = struct{}{}
 	}
 	return out, nil
+}
+
+func (s *Syncer) mostRecentlySyncedBlockHeight() (cid.Cid, int64, error) {
+	rw := s.db.QueryRow(`
+select blocks_synced.cid, b.height
+from blocks_synced
+left join blocks b on blocks_synced.cid = b.cid
+where processed_at is not null
+order by height desc
+limit 1
+`)
+
+	var c string
+	var h int64
+	if err := rw.Scan(&c, &h); err != nil {
+		if err == sql.ErrNoRows {
+			return cid.Undef, 0, nil
+		}
+		return cid.Undef, -1, err
+	}
+
+	ci, err := cid.Parse(c)
+	if err != nil {
+		return cid.Undef, -1, err
+	}
+
+	return ci, h, nil
+}
+
+func (s *Syncer) storeCirculatingSupply(ctx context.Context, tipset *types.TipSet) error {
+	supply, err := s.node.StateCirculatingSupply(ctx, tipset.Key())
+	if err != nil {
+		return err
+	}
+
+	ceInsert := `insert into chain_economics (parent_state_root, circulating_fil, vested_fil, mined_fil, burnt_fil, locked_fil) ` +
+		`values ('%s', '%s', '%s', '%s', '%s', '%s') on conflict on constraint chain_economics_pk do ` +
+		`update set (circulating_fil, vested_fil, mined_fil, burnt_fil, locked_fil) = ('%[2]s', '%[3]s', '%[4]s', '%[5]s', '%[6]s') ` +
+		`where chain_economics.parent_state_root = '%[1]s';`
+
+	if _, err := s.db.Exec(fmt.Sprintf(ceInsert,
+		tipset.ParentState().String(),
+		supply.FilCirculating.String(),
+		supply.FilVested.String(),
+		supply.FilMined.String(),
+		supply.FilBurnt.String(),
+		supply.FilLocked.String(),
+	)); err != nil {
+		return xerrors.Errorf("insert circulating supply for tipset (%s): %w", tipset.Key().String(), err)
+	}
+
+	return nil
 }
 
 func (s *Syncer) storeHeaders(bhs map[cid.Cid]*types.BlockHeader, sync bool, timestamp time.Time) error {
@@ -401,15 +464,16 @@ create temp table b (like blocks excluding constraints) on commit drop;
 		}
 	}
 
-	stmt2, err := tx.Prepare(`copy b (cid, parentWeight, parentStateRoot, height, miner, "timestamp", ticket, eprof, forksig) from stdin`)
+	stmt2, err := tx.Prepare(`copy b (cid, parentWeight, parentStateRoot, height, miner, "timestamp", ticket, election_proof, win_count, parent_base_fee, forksig) from stdin`)
 	if err != nil {
 		return err
 	}
 
 	for _, bh := range bhs {
-		var eprof interface{}
+		var eproof, winCount interface{}
 		if bh.ElectionProof != nil {
-			eprof = bh.ElectionProof.VRFProof
+			eproof = bh.ElectionProof.VRFProof
+			winCount = bh.ElectionProof.WinCount
 		}
 
 		if bh.Ticket == nil {
@@ -428,7 +492,9 @@ create temp table b (like blocks excluding constraints) on commit drop;
 			bh.Miner.String(),
 			bh.Timestamp,
 			bh.Ticket.VRFProof,
-			eprof,
+			eproof,
+			winCount,
+			bh.ParentBaseFee.String(),
 			bh.ForkSignaling); err != nil {
 			log.Error(err)
 		}

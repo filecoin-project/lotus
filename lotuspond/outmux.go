@@ -73,7 +73,7 @@ func (m *outmux) run() {
 		case msg := <-stdout:
 			for k, out := range m.outs {
 				if err := out.WriteMessage(websocket.BinaryMessage, msg); err != nil {
-					out.Close()
+					_ = out.Close()
 					fmt.Printf("outmux write failed: %s\n", err)
 					delete(m.outs, k)
 				}

@@ -4,10 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
-
-	"github.com/filecoin-project/go-jsonrpc/auth"
 
 	"github.com/filecoin-project/lotus/build"
 )
@@ -28,6 +27,7 @@ type Common interface {
 	NetDisconnect(context.Context, peer.ID) error
 	NetFindPeer(context.Context, peer.ID) (peer.AddrInfo, error)
 	NetPubsubScores(context.Context) ([]PubsubScore, error)
+	NetAutoNatStatus(context.Context) (NatInfo, error)
 
 	// MethodGroup: Common
 
@@ -64,4 +64,9 @@ type Version struct {
 
 func (v Version) String() string {
 	return fmt.Sprintf("%s+api%s", v.Version, v.APIVersion.String())
+}
+
+type NatInfo struct {
+	Reachability network.Reachability
+	PublicAddr   string
 }

@@ -11,7 +11,7 @@ type headBuffer struct {
 	size   int
 }
 
-func NewHeadBuffer(size int) *headBuffer {
+func newHeadBuffer(size int) *headBuffer {
 	buffer := list.New()
 	buffer.Init()
 
@@ -21,7 +21,7 @@ func NewHeadBuffer(size int) *headBuffer {
 	}
 }
 
-func (h *headBuffer) Push(hc *api.HeadChange) (rethc *api.HeadChange) {
+func (h *headBuffer) push(hc *api.HeadChange) (rethc *api.HeadChange) {
 	if h.buffer.Len() == h.size {
 		var ok bool
 
@@ -39,7 +39,7 @@ func (h *headBuffer) Push(hc *api.HeadChange) (rethc *api.HeadChange) {
 	return
 }
 
-func (h *headBuffer) Pop() {
+func (h *headBuffer) pop() {
 	el := h.buffer.Back()
 	if el != nil {
 		h.buffer.Remove(el)

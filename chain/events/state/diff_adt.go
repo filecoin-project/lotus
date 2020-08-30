@@ -1,6 +1,8 @@
 package state
 
 import (
+	"bytes"
+
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	typegen "github.com/whyrusleeping/cbor-gen"
 )
@@ -39,8 +41,11 @@ func DiffAdtArray(preArr, curArr *adt.Array, out AdtArrayDiff) error {
 			return nil
 		}
 
-		if err := out.Modify(uint64(i), prevVal, curVal); err != nil {
-			return err
+		// no modification
+		if !bytes.Equal(prevVal.Raw, curVal.Raw) {
+			if err := out.Modify(uint64(i), prevVal, curVal); err != nil {
+				return err
+			}
 		}
 
 		return curArr.Delete(uint64(i))
@@ -90,8 +95,11 @@ func DiffAdtMap(preMap, curMap *adt.Map, out AdtMapDiff) error {
 			return nil
 		}
 
-		if err := out.Modify(key, prevVal, curVal); err != nil {
-			return err
+		// no modification
+		if !bytes.Equal(prevVal.Raw, curVal.Raw) {
+			if err := out.Modify(key, prevVal, curVal); err != nil {
+				return err
+			}
 		}
 
 		return curMap.Delete(k)

@@ -1,26 +1,22 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 
-	"github.com/filecoin-project/lotus/build"
+	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/urfave/cli/v2"
-
-	"github.com/filecoin-project/lotus/chain/types"
-	lcli "github.com/filecoin-project/lotus/cli"
-
-	"github.com/filecoin-project/lotus/api/apibstore"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
-	"github.com/ipfs/go-hamt-ipld"
-	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
-	cbg "github.com/whyrusleeping/cbor-gen"
+	"github.com/filecoin-project/lotus/api/apibstore"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/types"
+	lcli "github.com/filecoin-project/lotus/cli"
+	cbor "github.com/ipfs/go-ipld-cbor"
 )
 
 var verifRegCmd = &cli.Command{
@@ -73,15 +69,13 @@ var verifRegAddVerifierCmd = &cli.Command{
 		ctx := lcli.ReqContext(cctx)
 
 		msg := &types.Message{
-			To:       builtin.VerifiedRegistryActorAddr,
-			From:     fromk,
-			Method:   builtin.MethodsVerifiedRegistry.AddVerifier,
-			GasPrice: types.NewInt(1),
-			GasLimit: 300000,
-			Params:   params,
+			To:     builtin.VerifiedRegistryActorAddr,
+			From:   fromk,
+			Method: builtin.MethodsVerifiedRegistry.AddVerifier,
+			Params: params,
 		}
 
-		smsg, err := api.MpoolPushMessage(ctx, msg)
+		smsg, err := api.MpoolPushMessage(ctx, msg, nil)
 		if err != nil {
 			return err
 		}
@@ -149,15 +143,13 @@ var verifRegVerifyClientCmd = &cli.Command{
 		ctx := lcli.ReqContext(cctx)
 
 		msg := &types.Message{
-			To:       builtin.VerifiedRegistryActorAddr,
-			From:     fromk,
-			Method:   builtin.MethodsVerifiedRegistry.AddVerifiedClient,
-			GasPrice: types.NewInt(1),
-			GasLimit: 300000,
-			Params:   params,
+			To:     builtin.VerifiedRegistryActorAddr,
+			From:   fromk,
+			Method: builtin.MethodsVerifiedRegistry.AddVerifiedClient,
+			Params: params,
 		}
 
-		smsg, err := api.MpoolPushMessage(ctx, msg)
+		smsg, err := api.MpoolPushMessage(ctx, msg, nil)
 		if err != nil {
 			return err
 		}
@@ -194,27 +186,22 @@ var verifRegListVerifiersCmd = &cli.Command{
 		}
 
 		apibs := apibstore.NewAPIBlockstore(api)
-		cst := cbor.NewCborStore(apibs)
+		store := adt.WrapStore(ctx, cbor.NewCborStore(apibs))
 
 		var st verifreg.State
-		if err := cst.Get(ctx, act.Head, &st); err != nil {
+		if err := store.Get(ctx, act.Head, &st); err != nil {
 			return err
 		}
 
-		vh, err := hamt.LoadNode(ctx, cst, st.Verifiers, hamt.UseTreeBitWidth(5))
+		vh, err := adt.AsMap(store, st.Verifiers)
 		if err != nil {
 			return err
 		}
 
-		if err := vh.ForEach(ctx, func(k string, val interface{}) error {
+		var dcap verifreg.DataCap
+		if err := vh.ForEach(&dcap, func(k string) error {
 			addr, err := address.NewFromBytes([]byte(k))
 			if err != nil {
-				return err
-			}
-
-			var dcap verifreg.DataCap
-
-			if err := dcap.UnmarshalCBOR(bytes.NewReader(val.(*cbg.Deferred).Raw)); err != nil {
 				return err
 			}
 
@@ -246,27 +233,22 @@ var verifRegListClientsCmd = &cli.Command{
 		}
 
 		apibs := apibstore.NewAPIBlockstore(api)
-		cst := cbor.NewCborStore(apibs)
+		store := adt.WrapStore(ctx, cbor.NewCborStore(apibs))
 
 		var st verifreg.State
-		if err := cst.Get(ctx, act.Head, &st); err != nil {
+		if err := store.Get(ctx, act.Head, &st); err != nil {
 			return err
 		}
 
-		vh, err := hamt.LoadNode(ctx, cst, st.VerifiedClients, hamt.UseTreeBitWidth(5))
+		vh, err := adt.AsMap(store, st.VerifiedClients)
 		if err != nil {
 			return err
 		}
 
-		if err := vh.ForEach(ctx, func(k string, val interface{}) error {
+		var dcap verifreg.DataCap
+		if err := vh.ForEach(&dcap, func(k string) error {
 			addr, err := address.NewFromBytes([]byte(k))
 			if err != nil {
-				return err
-			}
-
-			var dcap verifreg.DataCap
-
-			if err := dcap.UnmarshalCBOR(bytes.NewReader(val.(*cbg.Deferred).Raw)); err != nil {
 				return err
 			}
 
@@ -301,30 +283,15 @@ var verifRegCheckClientCmd = &cli.Command{
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
-		act, err := api.StateGetActor(ctx, builtin.VerifiedRegistryActorAddr, types.EmptyTSK)
+		dcap, err := api.StateVerifiedClientStatus(ctx, caddr, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
-
-		apibs := apibstore.NewAPIBlockstore(api)
-		cst := cbor.NewCborStore(apibs)
-
-		var st verifreg.State
-		if err := cst.Get(ctx, act.Head, &st); err != nil {
-			return err
+		if dcap == nil {
+			return xerrors.Errorf("client %s is not a verified client", err)
 		}
 
-		vh, err := hamt.LoadNode(ctx, cst, st.VerifiedClients, hamt.UseTreeBitWidth(5))
-		if err != nil {
-			return err
-		}
-
-		var dcap verifreg.DataCap
-		if err := vh.Find(ctx, string(caddr.Bytes()), &dcap); err != nil {
-			return xerrors.Errorf("failed to lookup address: %w", err)
-		}
-
-		fmt.Println(dcap)
+		fmt.Println(*dcap)
 
 		return nil
 	},
@@ -356,21 +323,23 @@ var verifRegCheckVerifierCmd = &cli.Command{
 		}
 
 		apibs := apibstore.NewAPIBlockstore(api)
-		cst := cbor.NewCborStore(apibs)
+		store := adt.WrapStore(ctx, cbor.NewCborStore(apibs))
 
 		var st verifreg.State
-		if err := cst.Get(ctx, act.Head, &st); err != nil {
+		if err := store.Get(ctx, act.Head, &st); err != nil {
 			return err
 		}
 
-		vh, err := hamt.LoadNode(ctx, cst, st.Verifiers, hamt.UseTreeBitWidth(5))
+		vh, err := adt.AsMap(store, st.Verifiers)
 		if err != nil {
 			return err
 		}
 
 		var dcap verifreg.DataCap
-		if err := vh.Find(ctx, string(vaddr.Bytes()), &dcap); err != nil {
+		if found, err := vh.Get(adt.AddrKey(vaddr), &dcap); err != nil {
 			return err
+		} else if !found {
+			return fmt.Errorf("not found")
 		}
 
 		fmt.Println(dcap)

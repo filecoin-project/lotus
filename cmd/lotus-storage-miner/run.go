@@ -10,7 +10,7 @@ import (
 
 	mux "github.com/gorilla/mux"
 	"github.com/multiformats/go-multiaddr"
-	manet "github.com/multiformats/go-multiaddr-net"
+	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
@@ -30,7 +30,7 @@ import (
 
 var runCmd = &cli.Command{
 	Name:  "run",
-	Usage: "Start a lotus storage miner process",
+	Usage: "Start a lotus miner process",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "api",
@@ -53,7 +53,10 @@ var runCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Bool("enable-gpu-proving") {
-			os.Setenv("BELLMAN_NO_GPU", "true")
+			err := os.Setenv("BELLMAN_NO_GPU", "true")
+			if err != nil {
+				return err
+			}
 		}
 
 		nodeApi, ncloser, err := lcli.GetFullNodeAPI(cctx)
@@ -86,8 +89,8 @@ var runCmd = &cli.Command{
 			}
 		}
 
-		storageRepoPath := cctx.String(FlagStorageRepo)
-		r, err := repo.NewFS(storageRepoPath)
+		minerRepoPath := cctx.String(FlagMinerRepo)
+		r, err := repo.NewFS(minerRepoPath)
 		if err != nil {
 			return err
 		}
@@ -97,7 +100,7 @@ var runCmd = &cli.Command{
 			return err
 		}
 		if !ok {
-			return xerrors.Errorf("repo at '%s' is not initialized, run 'lotus-storage-miner init' to set it up", storageRepoPath)
+			return xerrors.Errorf("repo at '%s' is not initialized, run 'lotus-miner init' to set it up", minerRepoPath)
 		}
 
 		shutdownChan := make(chan struct{})

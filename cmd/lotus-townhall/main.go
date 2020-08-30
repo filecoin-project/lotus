@@ -10,14 +10,13 @@ import (
 
 	rice "github.com/GeertJohan/go.rice"
 	"github.com/gorilla/websocket"
-	"github.com/ipfs/go-datastore"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/ipld/go-car"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/lib/blockstore"
 )
 
 var topic = "/fil/headnotifs/"
@@ -29,7 +28,7 @@ func init() {
 		return
 	}
 
-	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
+	bs := blockstore.NewTemporary()
 
 	c, err := car.LoadCar(bs, bytes.NewReader(genBytes))
 	if err != nil {
@@ -107,10 +106,11 @@ func handler(ps *pubsub.PubSub) func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		sub, err := ps.Subscribe(topic)
+		sub, err := ps.Subscribe(topic) //nolint
 		if err != nil {
 			return
 		}
+		defer sub.Cancel() //nolint:errcheck
 
 		fmt.Println("new conn")
 

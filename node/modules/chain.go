@@ -3,12 +3,12 @@ package modules
 import (
 	"bytes"
 	"context"
+	"os"
 
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-datastore"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/ipld/go-car"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/routing"
@@ -16,16 +16,18 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/specs-actors/actors/runtime"
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/blocksync"
+	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -72,7 +74,7 @@ func ChainBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRepo
 		return nil, err
 	}
 
-	return blockstore.NewIdStore(cbs), nil
+	return cbs, nil
 }
 
 func ChainGCBlockstore(bs dtypes.ChainBlockstore, gcl dtypes.ChainGCLocker) dtypes.ChainGCBlockstore {
@@ -83,7 +85,7 @@ func ChainBlockservice(bs dtypes.ChainBlockstore, rem dtypes.ChainExchange) dtyp
 	return blockservice.New(bs, rem)
 }
 
-func ChainStore(lc fx.Lifecycle, bs dtypes.ChainBlockstore, ds dtypes.MetadataDS, syscalls runtime.Syscalls) *store.ChainStore {
+func ChainStore(lc fx.Lifecycle, bs dtypes.ChainBlockstore, ds dtypes.MetadataDS, syscalls vm.SyscallBuilder) *store.ChainStore {
 	chain := store.NewChainStore(bs, ds, syscalls)
 
 	if err := chain.Load(); err != nil {
@@ -126,8 +128,18 @@ func LoadGenesis(genBytes []byte) func(dtypes.ChainBlockstore) Genesis {
 func DoSetGenesis(_ dtypes.AfterGenesisSet) {}
 
 func SetGenesis(cs *store.ChainStore, g Genesis) (dtypes.AfterGenesisSet, error) {
-	_, err := cs.GetGenesis()
+	genFromRepo, err := cs.GetGenesis()
 	if err == nil {
+		if os.Getenv("LOTUS_SKIP_GENESIS_CHECK") != "_yes_" {
+			expectedGenesis, err := g()
+			if err != nil {
+				return dtypes.AfterGenesisSet{}, xerrors.Errorf("getting expected genesis failed: %w", err)
+			}
+
+			if genFromRepo.Cid() != expectedGenesis.Cid() {
+				return dtypes.AfterGenesisSet{}, xerrors.Errorf("genesis in the repo is not the one expected by this version of Lotus!")
+			}
+		}
 		return dtypes.AfterGenesisSet{}, nil // already set, noop
 	}
 	if err != datastore.ErrNotFound {
@@ -166,4 +178,8 @@ func NewSyncer(lc fx.Lifecycle, sm *stmgr.StateManager, bsync *blocksync.BlockSy
 		},
 	})
 	return syncer, nil
+}
+
+func NewSlashFilter(ds dtypes.MetadataDS) *slashfilter.SlashFilter {
+	return slashfilter.New(ds)
 }

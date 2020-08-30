@@ -2,6 +2,7 @@ package validation
 
 import (
 	"context"
+
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -9,7 +10,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/puppet"
-	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/ipfs/go-cid"
 
 	vtypes "github.com/filecoin-project/chain-validation/chain/types"
@@ -24,12 +24,12 @@ import (
 // Applier applies messages to state trees and storage.
 type Applier struct {
 	stateWrapper *StateWrapper
-	syscalls     runtime.Syscalls
+	syscalls     vm.SyscallBuilder
 }
 
 var _ vstate.Applier = &Applier{}
 
-func NewApplier(sw *StateWrapper, syscalls runtime.Syscalls) *Applier {
+func NewApplier(sw *StateWrapper, syscalls vm.SyscallBuilder) *Applier {
 	return &Applier{sw, syscalls}
 }
 
@@ -37,6 +37,7 @@ func (a *Applier) ApplyMessage(epoch abi.ChainEpoch, message *vtypes.Message) (v
 	lm := toLotusMsg(message)
 	receipt, penalty, reward, err := a.applyMessage(epoch, lm)
 	return vtypes.ApplyMessageResult{
+		Msg:     *message,
 		Receipt: receipt,
 		Penalty: penalty,
 		Reward:  reward,
@@ -57,6 +58,7 @@ func (a *Applier) ApplySignedMessage(epoch abi.ChainEpoch, msg *vtypes.SignedMes
 	// TODO: Validate the sig first
 	receipt, penalty, reward, err := a.applyMessage(epoch, lm)
 	return vtypes.ApplyMessageResult{
+		Msg:     msg.Message,
 		Receipt: receipt,
 		Penalty: penalty,
 		Reward:  reward,
@@ -69,11 +71,11 @@ func (a *Applier) ApplyTipSetMessages(epoch abi.ChainEpoch, blocks []vtypes.Bloc
 	cs := store.NewChainStore(a.stateWrapper.bs, a.stateWrapper.ds, a.syscalls)
 	sm := stmgr.NewStateManager(cs)
 
-	var bms []stmgr.BlockMessages
+	var bms []store.BlockMessages
 	for _, b := range blocks {
-		bm := stmgr.BlockMessages{
-			Miner:       b.Miner,
-			TicketCount: 1,
+		bm := store.BlockMessages{
+			Miner:    b.Miner,
+			WinCount: 1,
 		}
 
 		for _, m := range b.BLSMessages {
@@ -88,7 +90,8 @@ func (a *Applier) ApplyTipSetMessages(epoch abi.ChainEpoch, blocks []vtypes.Bloc
 	}
 
 	var receipts []vtypes.MessageReceipt
-	sroot, _, err := sm.ApplyBlocks(context.TODO(), a.stateWrapper.Root(), bms, epoch, &randWrapper{rnd}, func(c cid.Cid, msg *types.Message, ret *vm.ApplyRet) error {
+	// TODO: base fee
+	sroot, _, err := sm.ApplyBlocks(context.TODO(), epoch-1, a.stateWrapper.Root(), bms, epoch, &randWrapper{rnd}, func(c cid.Cid, msg *types.Message, ret *vm.ApplyRet) error {
 		if msg.From == builtin.SystemActorAddr {
 			return nil // ignore reward and cron calls
 		}
@@ -103,7 +106,7 @@ func (a *Applier) ApplyTipSetMessages(epoch abi.ChainEpoch, blocks []vtypes.Bloc
 			GasUsed: vtypes.GasUnits(ret.GasUsed),
 		})
 		return nil
-	})
+	}, abi.NewTokenAmount(100))
 	if err != nil {
 		return vtypes.ApplyTipSetResult{}, err
 	}
@@ -117,17 +120,26 @@ func (a *Applier) ApplyTipSetMessages(epoch abi.ChainEpoch, blocks []vtypes.Bloc
 }
 
 type randWrapper struct {
-	rnd vstate.RandomnessSource
+	rand vstate.RandomnessSource
 }
 
-func (w *randWrapper) GetRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	return w.rnd.Randomness(ctx, pers, round, entropy)
+// TODO: these should really be two different randomness sources
+func (w *randWrapper) GetChainRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	return w.rand.Randomness(ctx, pers, round, entropy)
+}
+
+func (w *randWrapper) GetBeaconRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	return w.rand.Randomness(ctx, pers, round, entropy)
 }
 
 type vmRand struct {
 }
 
-func (*vmRand) GetRandomness(ctx context.Context, dst crypto.DomainSeparationTag, h abi.ChainEpoch, input []byte) ([]byte, error) {
+func (*vmRand) GetChainRandomness(ctx context.Context, dst crypto.DomainSeparationTag, h abi.ChainEpoch, input []byte) ([]byte, error) {
+	panic("implement me")
+}
+
+func (*vmRand) GetBeaconRandomness(ctx context.Context, dst crypto.DomainSeparationTag, h abi.ChainEpoch, input []byte) ([]byte, error) {
 	panic("implement me")
 }
 
@@ -135,7 +147,17 @@ func (a *Applier) applyMessage(epoch abi.ChainEpoch, lm types.ChainMsg) (vtypes.
 	ctx := context.TODO()
 	base := a.stateWrapper.Root()
 
-	lotusVM, err := vm.NewVM(base, epoch, &vmRand{}, a.stateWrapper.bs, a.syscalls)
+	vmopt := &vm.VMOpts{
+		StateBase:      base,
+		Epoch:          epoch,
+		Rand:           &vmRand{},
+		Bstore:         a.stateWrapper.bs,
+		Syscalls:       a.syscalls,
+		CircSupplyCalc: nil,
+		BaseFee:        abi.NewTokenAmount(100),
+	}
+
+	lotusVM, err := vm.NewVM(vmopt)
 	// need to modify the VM invoker to add the puppet actor
 	chainValInvoker := vm.NewInvoker()
 	chainValInvoker.Register(puppet.PuppetActorCodeID, puppet.Actor{}, puppet.State{})
@@ -176,9 +198,10 @@ func toLotusMsg(msg *vtypes.Message) *types.Message {
 		Nonce:  msg.CallSeqNum,
 		Method: msg.Method,
 
-		Value:    types.BigInt{Int: msg.Value.Int},
-		GasPrice: types.BigInt{Int: msg.GasPrice.Int},
-		GasLimit: msg.GasLimit,
+		Value:      msg.Value,
+		GasLimit:   msg.GasLimit,
+		GasFeeCap:  msg.GasFeeCap,
+		GasPremium: msg.GasPremium,
 
 		Params: msg.Params,
 	}

@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
+	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
@@ -18,9 +19,10 @@ import (
 type SyncAPI struct {
 	fx.In
 
-	Syncer  *chain.Syncer
-	PubSub  *pubsub.PubSub
-	NetName dtypes.NetworkName
+	SlashFilter *slashfilter.SlashFilter
+	Syncer      *chain.Syncer
+	PubSub      *pubsub.PubSub
+	NetName     dtypes.NetworkName
 }
 
 func (a *SyncAPI) SyncState(ctx context.Context) (*api.SyncState, error) {
@@ -44,6 +46,16 @@ func (a *SyncAPI) SyncState(ctx context.Context) (*api.SyncState, error) {
 }
 
 func (a *SyncAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) error {
+	parent, err := a.Syncer.ChainStore().GetBlock(blk.Header.Parents[0])
+	if err != nil {
+		return xerrors.Errorf("loading parent block: %w", err)
+	}
+
+	if err := a.SlashFilter.MinedBlock(blk.Header, parent.Height); err != nil {
+		log.Errorf("<!!> SLASH FILTER ERROR: %s", err)
+		return xerrors.Errorf("<!!> SLASH FILTER ERROR: %w", err)
+	}
+
 	// TODO: should we have some sort of fast path to adding a local block?
 	bmsgs, err := a.Syncer.ChainStore().LoadMessagesFromCids(blk.BlsMessages)
 	if err != nil {
@@ -78,8 +90,7 @@ func (a *SyncAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) erro
 		return xerrors.Errorf("serializing block for pubsub publishing failed: %w", err)
 	}
 
-	// TODO: anything else to do here?
-	return a.PubSub.Publish(build.BlocksTopic(a.NetName), b)
+	return a.PubSub.Publish(build.BlocksTopic(a.NetName), b) //nolint:staticcheck
 }
 
 func (a *SyncAPI) SyncIncomingBlocks(ctx context.Context) (<-chan *types.BlockHeader, error) {

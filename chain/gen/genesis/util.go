@@ -21,14 +21,10 @@ func mustEnc(i cbg.CBORMarshaler) []byte {
 	return enc
 }
 
-func doExec(ctx context.Context, vm *vm.VM, to, from address.Address, method abi.MethodNum, params []byte) ([]byte, error) {
-	return doExecValue(ctx, vm, to, from, types.NewInt(0), method, params)
-}
-
 func doExecValue(ctx context.Context, vm *vm.VM, to, from address.Address, value types.BigInt, method abi.MethodNum, params []byte) ([]byte, error) {
 	act, err := vm.StateTree().GetActor(from)
 	if err != nil {
-		return nil, xerrors.Errorf("doExec failed to get from actor: %w", err)
+		return nil, xerrors.Errorf("doExec failed to get from actor (%s): %w", from, err)
 	}
 
 	ret, err := vm.ApplyImplicitMessage(ctx, &types.Message{
@@ -37,7 +33,6 @@ func doExecValue(ctx context.Context, vm *vm.VM, to, from address.Address, value
 		Method:   method,
 		Params:   params,
 		GasLimit: 1_000_000_000_000_000,
-		GasPrice: types.NewInt(0),
 		Value:    value,
 		Nonce:    act.Nonce,
 	})

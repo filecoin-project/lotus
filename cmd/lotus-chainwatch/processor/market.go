@@ -61,6 +61,20 @@ create table if not exists market_deal_states
     
 );
 
+create table if not exists minerid_dealid_sectorid 
+(
+    deal_id bigint not null
+        constraint sectors_sector_ids_id_fk
+            references market_deal_proposals(deal_id),
+
+    sector_id bigint not null,
+    miner_id text not null,
+    foreign key (sector_id, miner_id) references sector_precommit_info(sector_id, miner_id),
+
+    constraint miner_sector_deal_ids_pk
+        primary key (miner_id, sector_id, deal_id)
+);
+
 `); err != nil {
 		return err
 	}

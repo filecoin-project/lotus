@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -64,10 +65,12 @@ var keyinfoImportCmd = &cli.Command{
 			input = os.Stdin
 		} else {
 			var err error
-			input, err = os.Open(cctx.Args().First())
+			inputFile, err := os.Open(cctx.Args().First())
 			if err != nil {
 				return err
 			}
+			defer inputFile.Close() //nolint:errcheck
+			input = bufio.NewReader(inputFile)
 		}
 
 		encoded, err := ioutil.ReadAll(input)
@@ -95,7 +98,7 @@ var keyinfoImportCmd = &cli.Command{
 			return err
 		}
 
-		defer lkrepo.Close()
+		defer lkrepo.Close() //nolint:errcheck
 
 		keystore, err := lkrepo.KeyStore()
 		if err != nil {
@@ -147,7 +150,7 @@ var keyinfoInfoCmd = &cli.Command{
 
    The 'format' flag takes a golang text/template template as its value.
 
-   The following fields can be retrived through this command
+   The following fields can be retrieved through this command
      Type
      Address
      PublicKey
@@ -156,7 +159,7 @@ var keyinfoInfoCmd = &cli.Command{
 
    Examples
 
-   Retreive the address of a lotus wallet
+   Retrieve the address of a lotus wallet
    lotus-shed keyinfo info --format '{{ .Address }}' wallet.keyinfo
    `,
 	Flags: []cli.Flag{
@@ -174,10 +177,12 @@ var keyinfoInfoCmd = &cli.Command{
 			input = os.Stdin
 		} else {
 			var err error
-			input, err = os.Open(cctx.Args().First())
+			inputFile, err := os.Open(cctx.Args().First())
 			if err != nil {
 				return err
 			}
+			defer inputFile.Close() //nolint:errcheck
+			input = bufio.NewReader(inputFile)
 		}
 
 		encoded, err := ioutil.ReadAll(input)
@@ -325,7 +330,7 @@ var keyinfoNewCmd = &cli.Command{
 		filename = strings.ReplaceAll(filename, "<addr>", keyAddr)
 		filename = strings.ReplaceAll(filename, "<type>", keyType)
 
-		file, err := os.Create(filename)
+		file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 		if err != nil {
 			return err
 		}

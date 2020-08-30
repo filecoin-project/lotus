@@ -3,16 +3,23 @@ package paychmgr
 import (
 	"context"
 
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
+
+	"github.com/filecoin-project/specs-actors/actors/builtin/account"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
-	xerrors "golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-func (pm *Manager) loadPaychState(ctx context.Context, ch address.Address) (*types.Actor, *paych.State, error) {
+type stateAccessor struct {
+	sm stateManagerAPI
+}
+
+func (ca *stateAccessor) loadPaychActorState(ctx context.Context, ch address.Address) (*types.Actor, *paych.State, error) {
 	var pcast paych.State
-	act, err := pm.sm.LoadActorState(ctx, ch, &pcast, nil)
+	act, err := ca.sm.LoadActorState(ctx, ch, &pcast, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -20,61 +27,65 @@ func (pm *Manager) loadPaychState(ctx context.Context, ch address.Address) (*typ
 	return act, &pcast, nil
 }
 
-func findLane(states []*paych.LaneState, lane uint64) *paych.LaneState {
-	var ls *paych.LaneState
-	for _, laneState := range states {
-		if uint64(laneState.ID) == lane {
-			ls = laneState
-			break
-		}
+func (ca *stateAccessor) loadStateChannelInfo(ctx context.Context, ch address.Address, dir uint64) (*ChannelInfo, error) {
+	_, st, err := ca.loadPaychActorState(ctx, ch)
+	if err != nil {
+		return nil, err
 	}
-	return ls
+
+	var account account.State
+	_, err = ca.sm.LoadActorState(ctx, st.From, &account, nil)
+	if err != nil {
+		return nil, err
+	}
+	from := account.Address
+	_, err = ca.sm.LoadActorState(ctx, st.To, &account, nil)
+	if err != nil {
+		return nil, err
+	}
+	to := account.Address
+
+	nextLane, err := ca.nextLaneFromState(ctx, st)
+	if err != nil {
+		return nil, err
+	}
+
+	ci := &ChannelInfo{
+		Channel:   &ch,
+		Direction: dir,
+		NextLane:  nextLane,
+	}
+
+	if dir == DirOutbound {
+		ci.Control = from
+		ci.Target = to
+	} else {
+		ci.Control = to
+		ci.Target = from
+	}
+
+	return ci, nil
 }
 
-func (pm *Manager) laneState(ctx context.Context, ch address.Address, lane uint64) (paych.LaneState, error) {
-	_, state, err := pm.loadPaychState(ctx, ch)
+func (ca *stateAccessor) nextLaneFromState(ctx context.Context, st *paych.State) (uint64, error) {
+	store := ca.sm.AdtStore(ctx)
+	laneStates, err := adt.AsArray(store, st.LaneStates)
 	if err != nil {
-		return paych.LaneState{}, err
+		return 0, err
+	}
+	if laneStates.Length() == 0 {
+		return 0, nil
 	}
 
-	// TODO: we probably want to call UpdateChannelState with all vouchers to be fully correct
-	//  (but technically dont't need to)
-	// TODO: make sure this is correct
-
-	ls := findLane(state.LaneStates, lane)
-	if ls == nil {
-		ls = &paych.LaneState{
-			ID:       lane,
-			Redeemed: types.NewInt(0),
-			Nonce:    0,
+	maxID := int64(0)
+	if err := laneStates.ForEach(nil, func(i int64) error {
+		if i > maxID {
+			maxID = i
 		}
+		return nil
+	}); err != nil {
+		return 0, err
 	}
 
-	vouchers, err := pm.store.VouchersForPaych(ch)
-	if err != nil {
-		if err == ErrChannelNotTracked {
-			return *ls, nil
-		}
-		return paych.LaneState{}, err
-	}
-
-	for _, v := range vouchers {
-		for range v.Voucher.Merges {
-			return paych.LaneState{}, xerrors.Errorf("paych merges not handled yet")
-		}
-
-		if v.Voucher.Lane != lane {
-			continue
-		}
-
-		if v.Voucher.Nonce < ls.Nonce {
-			log.Warnf("Found outdated voucher: ch=%s, lane=%d, v.nonce=%d lane.nonce=%d", ch, lane, v.Voucher.Nonce, ls.Nonce)
-			continue
-		}
-
-		ls.Nonce = v.Voucher.Nonce
-		ls.Redeemed = v.Voucher.Amount
-	}
-
-	return *ls, nil
+	return uint64(maxID + 1), nil
 }

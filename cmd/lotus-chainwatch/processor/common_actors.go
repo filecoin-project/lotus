@@ -8,16 +8,15 @@ import (
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 
-	"github.com/ipfs/go-cid"
-	typegen "github.com/whyrusleeping/cbor-gen"
-
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/lotus/chain/events/state"
+	"github.com/filecoin-project/lotus/chain/types"
+	cw_util "github.com/filecoin-project/lotus/cmd/lotus-chainwatch/util"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	_init "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
-
-	"github.com/filecoin-project/lotus/chain/types"
-	cw_util "github.com/filecoin-project/lotus/cmd/lotus-chainwatch/util"
+	"github.com/ipfs/go-cid"
+	typegen "github.com/whyrusleeping/cbor-gen"
 )
 
 func (p *Processor) setupCommonActors() error {
@@ -125,6 +124,11 @@ func (p *Processor) HandleCommonActorsChanges(ctx context.Context, actors map[ci
 	return grp.Wait()
 }
 
+type UpdateAddresses struct {
+	Old state.AddressPair
+	New state.AddressPair
+}
+
 func (p Processor) storeActorAddresses(ctx context.Context, actors map[cid.Cid]ActorTips) error {
 	start := time.Now()
 	defer func() {
@@ -207,8 +211,10 @@ create temp table iam (like id_address_map excluding constraints) on commit drop
 		return err
 	}
 
-	if _, err := tx.Exec(`insert into id_address_map select * from iam on conflict do nothing `); err != nil {
-		return xerrors.Errorf("actor put: %w", err)
+	// HACK until chain watch can handle reorgs we need to update this table when ID -> PubKey mappings change
+	if _, err := tx.Exec(`insert into id_address_map select * from iam on conflict (id) do update set address = EXCLUDED.address`); err != nil {
+		log.Warnw("Failed to update id_address_map table, this is a known issue")
+		return nil
 	}
 
 	return tx.Commit()
@@ -225,20 +231,24 @@ func (p *Processor) storeActorHeads(actors map[cid.Cid]ActorTips) error {
 		return err
 	}
 	if _, err := tx.Exec(`
-		create temp table a (like actors excluding constraints) on commit drop;
+		create temp table a_tmp (like actors excluding constraints) on commit drop;
 	`); err != nil {
 		return xerrors.Errorf("prep temp: %w", err)
 	}
 
-	stmt, err := tx.Prepare(`copy a (id, code, head, nonce, balance, stateroot) from stdin `)
+	stmt, err := tx.Prepare(`copy a_tmp (id, code, head, nonce, balance, stateroot) from stdin `)
 	if err != nil {
 		return err
 	}
 
 	for code, actTips := range actors {
+		actorName := code.String()
+		if builtin.IsBuiltinActor(code) {
+			actorName = builtin.ActorNameByCode(code)
+		}
 		for _, actorInfo := range actTips {
 			for _, a := range actorInfo {
-				if _, err := stmt.Exec(a.addr.String(), code.String(), a.act.Head.String(), a.act.Nonce, a.act.Balance.String(), a.stateroot.String()); err != nil {
+				if _, err := stmt.Exec(a.addr.String(), actorName, a.act.Head.String(), a.act.Nonce, a.act.Balance.String(), a.stateroot.String()); err != nil {
 					return err
 				}
 			}
@@ -249,7 +259,7 @@ func (p *Processor) storeActorHeads(actors map[cid.Cid]ActorTips) error {
 		return err
 	}
 
-	if _, err := tx.Exec(`insert into actors select * from a on conflict do nothing `); err != nil {
+	if _, err := tx.Exec(`insert into actors select * from a_tmp on conflict do nothing `); err != nil {
 		return xerrors.Errorf("actor put: %w", err)
 	}
 
@@ -267,20 +277,24 @@ func (p *Processor) storeActorStates(actors map[cid.Cid]ActorTips) error {
 		return err
 	}
 	if _, err := tx.Exec(`
-		create temp table a (like actor_states excluding constraints) on commit drop;
+		create temp table as_tmp (like actor_states excluding constraints) on commit drop;
 	`); err != nil {
 		return xerrors.Errorf("prep temp: %w", err)
 	}
 
-	stmt, err := tx.Prepare(`copy a (head, code, state) from stdin `)
+	stmt, err := tx.Prepare(`copy as_tmp (head, code, state) from stdin `)
 	if err != nil {
 		return err
 	}
 
 	for code, actTips := range actors {
+		actorName := code.String()
+		if builtin.IsBuiltinActor(code) {
+			actorName = builtin.ActorNameByCode(code)
+		}
 		for _, actorInfo := range actTips {
 			for _, a := range actorInfo {
-				if _, err := stmt.Exec(a.act.Head.String(), code.String(), a.state); err != nil {
+				if _, err := stmt.Exec(a.act.Head.String(), actorName, a.state); err != nil {
 					return err
 				}
 			}
@@ -291,7 +305,7 @@ func (p *Processor) storeActorStates(actors map[cid.Cid]ActorTips) error {
 		return err
 	}
 
-	if _, err := tx.Exec(`insert into actor_states select * from a on conflict do nothing `); err != nil {
+	if _, err := tx.Exec(`insert into actor_states select * from as_tmp on conflict do nothing `); err != nil {
 		return xerrors.Errorf("actor put: %w", err)
 	}
 

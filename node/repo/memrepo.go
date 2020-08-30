@@ -14,9 +14,11 @@ import (
 	"github.com/multiformats/go-multiaddr"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
+
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/node/config"
-	"github.com/filecoin-project/sector-storage/stores"
 )
 
 type MemRepo struct {
@@ -77,8 +79,16 @@ func (lmem *lockedMemRepo) SetStorage(c func(*stores.StorageConfig)) error {
 	return nil
 }
 
-func (lmem *lockedMemRepo) Stat(path string) (stores.FsStat, error) {
-	return stores.Stat(path)
+func (lmem *lockedMemRepo) Stat(path string) (fsutil.FsStat, error) {
+	return fsutil.Statfs(path)
+}
+
+func (lmem *lockedMemRepo) DiskUsage(path string) (int64, error) {
+	si, err := fsutil.FileSize(path)
+	if err != nil {
+		return 0, err
+	}
+	return si.OnDisk, nil
 }
 
 func (lmem *lockedMemRepo) Path() string {
@@ -231,6 +241,15 @@ func (lmem *lockedMemRepo) Datastore(ns string) (datastore.Batching, error) {
 	}
 
 	return namespace.Wrap(lmem.mem.datastore, datastore.NewKey(ns)), nil
+}
+
+func (lmem *lockedMemRepo) ListDatastores(ns string) ([]int64, error) {
+	return nil, nil
+}
+
+func (lmem *lockedMemRepo) DeleteDatastore(ns string) error {
+	/** poof **/
+	return nil
 }
 
 func (lmem *lockedMemRepo) Config() (interface{}, error) {

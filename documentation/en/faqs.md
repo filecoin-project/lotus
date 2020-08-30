@@ -22,15 +22,15 @@ along the way. It can also facilitate the creation of new storage deals. If you 
 interested in providing your own storage to the network, and do not want to produce blocks
 yourself, then the Lotus Node is all you need!
 
-The Lotus Storage Miner does everything you need for the registration of storage, and the
-production of new blocks. The Lotus Storage Miner communicates with the network
-by talking to a Lotus Node over the JSON-RPC API.
+The Lotus Miner does everything you need for the registration of storage, and the
+production of new blocks. The Lotus Miner communicates with the network by talking 
+to a Lotus Node over the JSON-RPC API.
 
 ## Setting up a Lotus Node
 
 ### How do I set up a Lotus Node?
 
-Follow the instructions found [here](https://docs.lotu.sh/en+getting-started).
+Follow the instructions found [here](https://lotu.sh/en+getting-started).
 
 ### Where can I get the latest version of Lotus?
 
@@ -49,10 +49,15 @@ To update Lotus, follow the instructions [here](https://lotu.sh/en+updating-lotu
 ### How do I prepare a fresh installation of Lotus?
 
 Stop the Lotus daemon, and delete all related files, including sealed and chain data by 
-running `rm ~/.lotus ~/.lotusstorage`.
+running `rm ~/.lotus ~/.lotusminer`.
 
 Then, install Lotus afresh by following the instructions 
-found [here](https://docs.lotu.sh/en+getting-started).
+found [here](https://lotu.sh/en+getting-started).
+
+### Can I configure where the node's config and data goes?
+
+Yes! The `LOTUS_PATH` variable sets the path for where the Lotus node's data is written.
+The `LOTUS_MINER_PATH` variable does the same for miner-specific information.
 
 ## Interacting with a Lotus Node
 
@@ -126,13 +131,8 @@ Community-contributed Docker and Docker Compose examples are available
 ### How can I run two miners on the same machine?
 
 You can do so by changing the storage path variable for the second miner, e.g.,
-`LOTUS_STORAGE_PATH=~/.lotusstorage2`. You will also need to make sure that no ports collide.
+`LOTUS_MINER_PATH=~/.lotusminer2`. You will also need to make sure that no ports collide.
 
 ### How do I setup my own local devnet?     
 
 Follow the instructions found [here](https://lotu.sh/en+setup-local-dev-net).
-
-### Are there any other implementations of Filecoin?
-
-Yes! Check out the [go-filecoin](https://github.com/filecoin-project/go-filecoin#filecoin-go-filecoin)
-implementation, which is fully interoperable with Lotus!

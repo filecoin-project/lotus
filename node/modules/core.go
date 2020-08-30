@@ -36,9 +36,10 @@ func RecordValidator(ps peerstore.Peerstore) record.Validator {
 	}
 }
 
-const JWTSecretName = "auth-jwt-private" //nolint:gosec
+const JWTSecretName = "auth-jwt-private"  //nolint:gosec
+const KTJwtHmacSecret = "jwt-hmac-secret" //nolint:gosec
 
-type jwtPayload struct {
+type JwtPayload struct {
 	Allow []auth.Permission
 }
 
@@ -54,7 +55,7 @@ func APISecret(keystore types.KeyStore, lr repo.LockedRepo) (*dtypes.APIAlg, err
 		}
 
 		key = types.KeyInfo{
-			Type:       "jwt-hmac-secret",
+			Type:       KTJwtHmacSecret,
 			PrivateKey: sk,
 		}
 
@@ -63,7 +64,7 @@ func APISecret(keystore types.KeyStore, lr repo.LockedRepo) (*dtypes.APIAlg, err
 		}
 
 		// TODO: make this configurable
-		p := jwtPayload{
+		p := JwtPayload{
 			Allow: apistruct.AllPermissions,
 		}
 
@@ -92,8 +93,14 @@ func BuiltinBootstrap() (dtypes.BootstrapPeers, error) {
 	return build.BuiltinBootstrap()
 }
 
-func DrandBootstrap() (dtypes.DrandBootstrap, error) {
-	return build.DrandBootstrap()
+func DrandBootstrap(d dtypes.DrandConfig) (dtypes.DrandBootstrap, error) {
+	// TODO: retry resolving, don't fail if at least one resolve succeeds
+	addrs, err := addrutil.ParseAddresses(context.TODO(), d.Relays)
+	if err != nil {
+		log.Errorf("reoslving drand relays addresses: %+v", err)
+		return nil, nil
+	}
+	return addrs, nil
 }
 
 func SetupJournal(lr repo.LockedRepo) error {

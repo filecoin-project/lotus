@@ -36,7 +36,7 @@
     "Send",
     "Constructor",
     "AwardBlockReward",
-    "LastPerEpochReward",
+    "ThisEpochReward",
     "UpdateNetworkKPI"
   ],
   "fil/1/storagemarket": [
@@ -45,7 +45,8 @@
     "AddBalance",
     "WithdrawBalance",
     "PublishStorageDeals",
-    "VerifyDealsOnSectorProveCommit",
+    "VerifyDealsForActivation",
+    "ActivateDeals",
     "OnMinerSectorsTerminate",
     "ComputeDataCommitment",
     "CronTick"
@@ -68,23 +69,22 @@
     "AddLockedFund",
     "ReportConsensusFault",
     "WithdrawBalance",
-    "ConfirmSectorProofsValid"
+    "ConfirmSectorProofsValid",
+    "ChangeMultiaddrs",
+    "CompactPartitions",
+    "CompactSectorNumbers"
   ],
   "fil/1/storagepower": [
     "Send",
     "Constructor",
     "CreateMiner",
-    "DeleteMiner",
-    "OnSectorProveCommit",
-    "OnSectorTerminate",
-    "OnFaultBegin",
-    "OnFaultEnd",
-    "OnSectorModifyWeightDesc",
+    "UpdateClaimedPower",
     "EnrollCronEvent",
     "OnEpochTickEnd",
     "UpdatePledgeTotal",
     "OnConsensusFault",
-    "SubmitPoRepForBulkVerify"
+    "SubmitPoRepForBulkVerify",
+    "CurrentTotalPower"
   ],
   "fil/1/verifiedregistry": [
     "Send",

@@ -13,14 +13,15 @@ func TestSignedMessageJsonRoundtrip(t *testing.T) {
 	from, _ := address.NewIDAddress(603911192)
 	smsg := &types.SignedMessage{
 		Message: types.Message{
-			To:       to,
-			From:     from,
-			Params:   []byte("some bytes, idk"),
-			Method:   1235126,
-			Value:    types.NewInt(123123),
-			GasPrice: types.NewInt(1234),
-			GasLimit: 9992969384,
-			Nonce:    123123,
+			To:         to,
+			From:       from,
+			Params:     []byte("some bytes, idk"),
+			Method:     1235126,
+			Value:      types.NewInt(123123),
+			GasFeeCap:  types.NewInt(1234),
+			GasPremium: types.NewInt(132414234),
+			GasLimit:   100_000_000,
+			Nonce:      123123,
 		},
 	}
 

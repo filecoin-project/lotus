@@ -7,7 +7,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/types"
-	sealing "github.com/filecoin-project/storage-fsm"
+	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 )
 
 var _ sealing.Events = new(EventsAdapter)

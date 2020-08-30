@@ -5,9 +5,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/hashicorp/golang-lru"
-	peer "github.com/libp2p/go-libp2p-core/peer"
+	lru "github.com/hashicorp/golang-lru"
+	"github.com/libp2p/go-libp2p-core/peer"
 )
 
 type blockReceiptTracker struct {
@@ -37,14 +38,14 @@ func (brt *blockReceiptTracker) Add(p peer.ID, ts *types.TipSet) {
 	if !ok {
 		pset := &peerSet{
 			peers: map[peer.ID]time.Time{
-				p: time.Now(),
+				p: build.Clock.Now(),
 			},
 		}
 		brt.cache.Add(ts.Key(), pset)
 		return
 	}
 
-	val.(*peerSet).peers[p] = time.Now()
+	val.(*peerSet).peers[p] = build.Clock.Now()
 }
 
 func (brt *blockReceiptTracker) GetPeers(ts *types.TipSet) []peer.ID {

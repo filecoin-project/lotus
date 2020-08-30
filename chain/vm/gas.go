@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	GasStorageMulti = 1
+	GasStorageMulti = 1000
 	GasComputeMulti = 1
 )
 
@@ -65,7 +65,7 @@ type Pricelist interface {
 	OnMethodInvocation(value abi.TokenAmount, methodNum abi.MethodNum) GasCharge
 
 	// OnIpldGet returns the gas used for storing an object
-	OnIpldGet(dataSize int) GasCharge
+	OnIpldGet() GasCharge
 	// OnIpldPut returns the gas used for storing an object
 	OnIpldPut(dataSize int) GasCharge
 
@@ -84,30 +84,48 @@ type Pricelist interface {
 
 var prices = map[abi.ChainEpoch]Pricelist{
 	abi.ChainEpoch(0): &pricelistV0{
-		onChainMessageBase:        0,
-		onChainMessagePerByte:     2,
-		onChainReturnValuePerByte: 8,
-		sendBase:                  5,
-		sendTransferFunds:         5,
-		sendInvokeMethod:          10,
-		ipldGetBase:               10,
-		ipldGetPerByte:            1,
-		ipldPutBase:               20,
-		ipldPutPerByte:            2,
-		createActorBase:           40, // IPLD put + 20
-		createActorExtra:          500,
-		deleteActor:               -500, // -createActorExtra
-		// Dragons: this cost is not persistable, create a LinearCost{a,b} struct that has a `.Cost(x) -> ax + b`
-		verifySignature: map[crypto.SigType]func(int64) int64{
-			crypto.SigTypeBLS:       func(x int64) int64 { return 3*x + 2 },
-			crypto.SigTypeSecp256k1: func(x int64) int64 { return 3*x + 2 },
+		onChainMessageComputeBase:    38863,
+		onChainMessageStorageBase:    36,
+		onChainMessageStoragePerByte: 1,
+
+		onChainReturnValuePerByte: 1,
+
+		sendBase:                29233,
+		sendTransferFunds:       27500,
+		sendTransferOnlyPremium: 159672,
+		sendInvokeMethod:        -5377,
+
+		ipldGetBase:    75242,
+		ipldPutBase:    84070,
+		ipldPutPerByte: 1,
+
+		createActorCompute: 1108454,
+		createActorStorage: 36 + 40,
+		deleteActor:        -(36 + 40), // -createActorStorage
+
+		verifySignature: map[crypto.SigType]int64{
+			crypto.SigTypeBLS:       16598605,
+			crypto.SigTypeSecp256k1: 1637292,
 		},
-		hashingBase:                  5,
-		hashingPerByte:               2,
-		computeUnsealedSectorCidBase: 100,
-		verifySealBase:               2000,
-		verifyPostBase:               700,
-		verifyConsensusFault:         10,
+
+		hashingBase:                  31355,
+		computeUnsealedSectorCidBase: 98647,
+		verifySealBase:               2000, // TODO gas , it VerifySeal syscall is not used
+		verifyPostLookup: map[abi.RegisteredPoStProof]scalingCost{
+			abi.RegisteredPoStProof_StackedDrgWindow512MiBV1: {
+				flat:  123861062,
+				scale: 9226981,
+			},
+			abi.RegisteredPoStProof_StackedDrgWindow32GiBV1: {
+				flat:  748593537,
+				scale: 85639,
+			},
+			abi.RegisteredPoStProof_StackedDrgWindow64GiBV1: {
+				flat:  748593537,
+				scale: 85639,
+			},
+		},
+		verifyConsensusFault: 495422,
 	},
 }
 
@@ -198,14 +216,14 @@ func (ps pricedSyscalls) VerifyConsensusFault(h1 []byte, h2 []byte, extra []byte
 }
 
 func (ps pricedSyscalls) BatchVerifySeals(inp map[address.Address][]abi.SealVerifyInfo) (map[address.Address][]bool, error) {
-	var gasChargeSum GasCharge
-	gasChargeSum.Name = "BatchVerifySeals"
 	count := int64(0)
 	for _, svis := range inp {
 		count += int64(len(svis))
 	}
-	gasChargeSum = gasChargeSum.WithExtra(count).WithVirtual(129778623*count+716683250, 0)
-	ps.chargeGas(gasChargeSum) // TODO: this is only called by the cron actor. Should we even charge gas?
+
+	gasChargeSum := newGasCharge("BatchVerifySeals", 0, 0)
+	gasChargeSum = gasChargeSum.WithExtra(count).WithVirtual(15075005*count+899741502, 0)
+	ps.chargeGas(gasChargeSum) // real gas charged by actors
 	defer ps.chargeGas(gasOnActorExec)
 
 	return ps.under.BatchVerifySeals(inp)

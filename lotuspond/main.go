@@ -27,7 +27,7 @@ var onCmd = &cli.Command{
 	Name:  "on",
 	Usage: "run a command on a given node",
 	Action: func(cctx *cli.Context) error {
-		client, err := apiClient()
+		client, err := apiClient(cctx.Context)
 		if err != nil {
 			return err
 		}
@@ -45,9 +45,9 @@ var onCmd = &cli.Command{
 				"LOTUS_PATH=" + node.Repo,
 			}
 		} else {
-			cmd = exec.Command("./lotus-storage-miner")
+			cmd = exec.Command("./lotus-miner")
 			cmd.Env = []string{
-				"LOTUS_STORAGE_PATH=" + node.Repo,
+				"LOTUS_MINER_PATH=" + node.Repo,
 				"LOTUS_PATH=" + node.FullNode,
 			}
 		}
@@ -65,7 +65,7 @@ var shCmd = &cli.Command{
 	Name:  "sh",
 	Usage: "spawn shell with node shell variables set",
 	Action: func(cctx *cli.Context) error {
-		client, err := apiClient()
+		client, err := apiClient(cctx.Context)
 		if err != nil {
 			return err
 		}
@@ -83,7 +83,7 @@ var shCmd = &cli.Command{
 			}
 		} else {
 			shcmd.Env = []string{
-				"LOTUS_STORAGE_PATH=" + node.Repo,
+				"LOTUS_MINER_PATH=" + node.Repo,
 				"LOTUS_PATH=" + node.FullNode,
 			}
 		}

@@ -11,7 +11,7 @@ class StorageNodeInit extends React.Component {
 
   render() {
     return <Window
-      title={"Storage miner initializing"}
+      title={"Miner initializing"}
       initialPosition={'center'}>
       <div className="CristalScroll">
         <div className="StorageNodeInit">

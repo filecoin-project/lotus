@@ -18,6 +18,7 @@ func LoadVector(t *testing.T, f string, out interface{}) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer fi.Close() //nolint:errcheck
 
 	if err := json.NewDecoder(fi).Decode(out); err != nil {
 		t.Fatal(err)

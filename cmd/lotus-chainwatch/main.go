@@ -1,7 +1,6 @@
 package main
 
 import (
-	_ "net/http/pprof"
 	"os"
 
 	"github.com/filecoin-project/lotus/build"
@@ -15,7 +14,7 @@ func main() {
 	if err := logging.SetLogLevel("*", "info"); err != nil {
 		log.Fatal(err)
 	}
-	log.Info("Starting chainwatch")
+	log.Info("Starting chainwatch", " v", build.UserVersion())
 
 	app := &cli.App{
 		Name:    "lotus-chainwatch",
@@ -26,6 +25,11 @@ func main() {
 				Name:    "repo",
 				EnvVars: []string{"LOTUS_PATH"},
 				Value:   "~/.lotus", // TODO: Consider XDG_DATA_HOME
+			},
+			&cli.StringFlag{
+				Name:    "api",
+				EnvVars: []string{"FULLNODE_API_INFO"},
+				Value:   "",
 			},
 			&cli.StringFlag{
 				Name:    "db",

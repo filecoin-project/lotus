@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
+	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
@@ -66,7 +67,7 @@ func NewInfluxWriteQueue(ctx context.Context, influx client.Client) *InfluxWrite
 				for i := 0; i < maxRetries; i++ {
 					if err := influx.Write(batch); err != nil {
 						log.Warnw("Failed to write batch", "error", err)
-						time.Sleep(time.Second * 15)
+						build.Clock.Sleep(15 * time.Second)
 						continue
 					}
 
@@ -104,7 +105,8 @@ func InfluxNewBatch() (client.BatchPoints, error) {
 }
 
 func NewPoint(name string, value interface{}) models.Point {
-	pt, _ := models.NewPoint(name, models.Tags{}, map[string]interface{}{"value": value}, time.Now())
+	pt, _ := models.NewPoint(name, models.Tags{},
+		map[string]interface{}{"value": value}, build.Clock.Now().UTC())
 	return pt
 }
 
@@ -129,18 +131,52 @@ func RecordTipsetPoints(ctx context.Context, api api.FullNode, pl *PointList, ti
 	p = NewPoint("chain.blocktime", tsTime.Unix())
 	pl.AddPoint(p)
 
+	baseFeeBig := tipset.Blocks()[0].ParentBaseFee.Copy()
+	baseFeeRat := new(big.Rat).SetFrac(baseFeeBig.Int, new(big.Int).SetUint64(build.FilecoinPrecision))
+	baseFeeFloat, _ := baseFeeRat.Float64()
+	p = NewPoint("chain.basefee", baseFeeFloat)
+	pl.AddPoint(p)
+
+	totalGasLimit := int64(0)
+	totalUniqGasLimit := int64(0)
+	seen := make(map[cid.Cid]struct{})
 	for _, blockheader := range tipset.Blocks() {
 		bs, err := blockheader.Serialize()
 		if err != nil {
 			return err
 		}
-		p := NewPoint("chain.election", 1)
+		p := NewPoint("chain.election", blockheader.ElectionProof.WinCount)
 		p.AddTag("miner", blockheader.Miner.String())
 		pl.AddPoint(p)
 
 		p = NewPoint("chain.blockheader_size", len(bs))
 		pl.AddPoint(p)
+
+		msgs, err := api.ChainGetBlockMessages(ctx, blockheader.Cid())
+		if err != nil {
+			return xerrors.Errorf("ChainGetBlockMessages failed: %w", msgs)
+		}
+		for _, m := range msgs.BlsMessages {
+			c := m.Cid()
+			totalGasLimit += m.GasLimit
+			if _, ok := seen[c]; !ok {
+				totalUniqGasLimit += m.GasLimit
+				seen[c] = struct{}{}
+			}
+		}
+		for _, m := range msgs.SecpkMessages {
+			c := m.Cid()
+			totalGasLimit += m.Message.GasLimit
+			if _, ok := seen[c]; !ok {
+				totalUniqGasLimit += m.Message.GasLimit
+				seen[c] = struct{}{}
+			}
+		}
 	}
+	p = NewPoint("chain.gas_limit_total", totalGasLimit)
+	pl.AddPoint(p)
+	p = NewPoint("chain.gas_limit_uniq_total", totalUniqGasLimit)
+	pl.AddPoint(p)
 
 	return nil
 }
@@ -229,15 +265,12 @@ func RecordTipsetStatePoints(ctx context.Context, api api.FullNode, pl *PointLis
 		return err
 	}
 
-	err = mp.ForEach(nil, func(key string) error {
+	var claim power.Claim
+	err = mp.ForEach(&claim, func(key string) error {
 		addr, err := address.NewFromBytes([]byte(key))
 		if err != nil {
 			return err
 		}
-
-		var claim power.Claim
-		keyerAddr := adt.AddrKey(addr)
-		mp.Get(keyerAddr, &claim)
 
 		if claim.QualityAdjPower.Int64() == 0 {
 			return nil
@@ -280,8 +313,19 @@ func RecordTipsetMessagesPoints(ctx context.Context, api api.FullNode, pl *Point
 
 	msgn := make(map[msgTag][]cid.Cid)
 
+	totalGasUsed := int64(0)
+	for _, r := range recp {
+		totalGasUsed += r.GasUsed
+	}
+	p := NewPoint("chain.gas_used_total", totalGasUsed)
+	pl.AddPoint(p)
+
 	for i, msg := range msgs {
-		p := NewPoint("chain.message_gasprice", msg.Message.GasPrice.Int64())
+		// FIXME: use float so this doesn't overflow
+		// FIXME: this doesn't work as time points get overridden
+		p := NewPoint("chain.message_gaspremium", msg.Message.GasPremium.Int64())
+		pl.AddPoint(p)
+		p = NewPoint("chain.message_gasfeecap", msg.Message.GasFeeCap.Int64())
 		pl.AddPoint(p)
 
 		bs, err := msg.Message.Serialize()

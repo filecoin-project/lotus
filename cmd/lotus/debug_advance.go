@@ -3,13 +3,15 @@
 package main
 
 import (
+	"encoding/binary"
+	"time"
+
 	"github.com/filecoin-project/go-address"
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"golang.org/x/xerrors"
 
@@ -31,18 +33,9 @@ func init() {
 			if err != nil {
 				return err
 			}
-			pending, err := api.MpoolPending(ctx, head.Key())
+			msgs, err := api.MpoolSelect(ctx, head.Key(), 1)
 			if err != nil {
 				return err
-			}
-
-			msgs, err := miner.SelectMessages(ctx, api.StateGetActor, head, pending)
-			if err != nil {
-				return err
-			}
-			if len(msgs) > build.BlockMessageLimit {
-				log.Error("SelectMessages returned too many messages: ", len(msgs))
-				msgs = msgs[:build.BlockMessageLimit]
 			}
 
 			addr, _ := address.NewIDAddress(1000)
@@ -53,7 +46,7 @@ func init() {
 					return xerrors.Errorf("StateMinerWorker: %w", err)
 				}
 
-				rand, err := api.ChainGetRandomness(ctx, head.Key(), crypto.DomainSeparationTag_TicketProduction, head.Height(), addr.Bytes())
+				rand, err := api.ChainGetRandomnessFromTickets(ctx, head.Key(), crypto.DomainSeparationTag_TicketProduction, head.Height(), addr.Bytes())
 				if err != nil {
 					return xerrors.Errorf("failed to get randomness: %w", err)
 				}
@@ -67,12 +60,24 @@ func init() {
 				}
 
 			}
-			// TODO: beacon
+
+			mbi, err := api.MinerGetBaseInfo(ctx, addr, head.Height()+1, head.Key())
+
+			ep := &types.ElectionProof{}
+			ep.WinCount = ep.ComputeWinCount(types.NewInt(1), types.NewInt(1))
+			for ep.WinCount == 0 {
+				fakeVrf := make([]byte, 8)
+				unixNow := uint64(time.Now().UnixNano())
+				binary.LittleEndian.PutUint64(fakeVrf, unixNow)
+
+				ep.VRFProof = fakeVrf
+				ep.WinCount = ep.ComputeWinCount(types.NewInt(1), types.NewInt(1))
+			}
 
 			uts := head.MinTimestamp() + uint64(build.BlockDelaySecs)
 			nheight := head.Height() + 1
 			blk, err := api.MinerCreateBlock(ctx, &lapi.BlockTemplate{
-				addr, head.Key(), ticket, &types.ElectionProof{}, nil, msgs, nheight, uts, gen.ValidWpostForTesting,
+				addr, head.Key(), ticket, ep, mbi.BeaconEntries, msgs, nheight, uts, gen.ValidWpostForTesting,
 			})
 			if err != nil {
 				return xerrors.Errorf("creating block: %w", err)

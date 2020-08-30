@@ -1,13 +1,14 @@
 package types
 
 import (
+	"errors"
+
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 )
 
-var ErrActorNotFound = init_.ErrAddressNotFound
+var ErrActorNotFound = errors.New("actor not found")
 
 type Actor struct {
 	// Identifies the type of actor (string coded as a CID), see `chain/actors/actors.go`.

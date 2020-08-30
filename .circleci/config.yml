@@ -5,7 +5,7 @@ orbs:
 executors:
   golang:
     docker:
-      - image: circleci/golang:1.14.2
+      - image: circleci/golang:1.14.6
     resource_class: 2xlarge
   ubuntu:
     docker:
@@ -93,10 +93,10 @@ jobs:
       - store_artifacts:
           path: lotus
       - store_artifacts:
-          path: lotus-storage-miner
+          path: lotus-miner
       - store_artifacts:
-          path: lotus-seal-worker
-      - run: mkdir linux && mv lotus lotus-storage-miner lotus-seal-worker linux/
+          path: lotus-worker
+      - run: mkdir linux && mv lotus lotus-miner lotus-worker linux/
       - persist_to_workspace:
           root: "."
           paths:
@@ -113,7 +113,7 @@ jobs:
   test: &test
     description: |
       Run tests with gotestsum.
-    parameters:
+    parameters: &test-params
       executor:
         type: executor
         default: golang
@@ -134,7 +134,7 @@ jobs:
         description: Test suite name to report to CircleCI.
       gotestsum-format:
         type: string
-        default: short
+        default: pkgname-and-test-fails
         description: gotestsum format. https://github.com/gotestyourself/gotestsum#format
       coverage:
         type: string
@@ -156,21 +156,28 @@ jobs:
       - download-params
       - go/install-gotestsum:
           gobin: $HOME/.local/bin
+          version: 0.5.2
       - run:
           name: go test
           environment:
-            GOTESTSUM_JUNITFILE: /tmp/test-reports/<< parameters.test-suite-name >>/junit.xml
-            GOTESTSUM_FORMAT: << parameters.gotestsum-format >>
             LOTUS_TEST_WINDOW_POST: << parameters.winpost-test >>
+            SKIP_CONFORMANCE: "1"
           command: |
             mkdir -p /tmp/test-reports/<< parameters.test-suite-name >>
-            gotestsum -- \
+            mkdir -p /tmp/test-artifacts
+            gotestsum \
+              --format << parameters.gotestsum-format >> \
+              --junitfile /tmp/test-reports/<< parameters.test-suite-name >>/junit.xml \
+              --jsonfile /tmp/test-artifacts/<< parameters.test-suite-name >>.json \
+              -- \
               << parameters.coverage >> \
               << parameters.go-test-flags >> \
               << parameters.packages >>
           no_output_timeout: 30m
       - store_test_results:
           path: /tmp/test-reports
+      - store_artifacts:
+          path: /tmp/test-artifacts/<< parameters.test-suite-name >>.json
       - when:
           condition: << parameters.codecov-upload >>
           steps:
@@ -185,6 +192,63 @@ jobs:
     <<: *test
   test-window-post:
     <<: *test
+  test-conformance:
+    description: |
+      Run tests using a corpus of interoperable test vectors for Filecoin 
+      implementations to test their correctness and compliance with the Filecoin
+      specifications.
+    parameters:
+      <<: *test-params
+      vectors-branch:
+        type: string
+        default: ""
+        description: |
+          Branch on github.com/filecoin-project/test-vectors to checkout and
+          test with. If empty (the default) the commit defined by the git
+          submodule is used.
+    executor: << parameters.executor >>
+    steps:
+      - install-deps
+      - prepare
+      - run:
+          command: make deps lotus
+          no_output_timeout: 30m
+      - download-params
+      - when:
+          condition:
+            not:
+              equal: [ "", << parameters.vectors-branch >> ]
+          steps:
+            - run:
+                name: checkout vectors branch
+                command: |
+                  cd extern/test-vectors
+                  git fetch
+                  git checkout origin/<< parameters.vectors-branch >>
+            - run:
+                name: go get vectors branch
+                command: go get github.com/filecoin-project/test-vectors@<< parameters.vectors-branch >>
+      - go/install-gotestsum:
+          gobin: $HOME/.local/bin
+          version: 0.5.2
+      - run:
+          name: go test
+          environment:
+            SKIP_CONFORMANCE: "0"
+          command: |
+            mkdir -p /tmp/test-reports
+            mkdir -p /tmp/test-artifacts
+            gotestsum \
+              --format pkgname-and-test-fails \
+              --junitfile /tmp/test-reports/junit.xml \
+              -- \
+              -v -coverpkg ./chain/vm/,github.com/filecoin-project/specs-actors/... -coverprofile=/tmp/conformance.out ./conformance/
+            go tool cover -html=/tmp/conformance.out -o /tmp/test-artifacts/conformance-coverage.html
+          no_output_timeout: 30m
+      - store_test_results:
+          path: /tmp/test-reports
+      - store_artifacts:
+          path: /tmp/test-artifacts/conformance-coverage.html
 
   build-macos:
     description: build darwin lotus binary
@@ -223,10 +287,10 @@ jobs:
       - store_artifacts:
           path: lotus
       - store_artifacts:
-          path: lotus-storage-miner
+          path: lotus-miner
       - store_artifacts:
-          path: lotus-seal-worker
-      - run: mkdir darwin && mv lotus lotus-storage-miner lotus-seal-worker darwin/
+          path: lotus-worker
+      - run: mkdir darwin && mv lotus lotus-miner lotus-worker darwin/
       - persist_to_workspace:
           root: "."
           paths:
@@ -245,6 +309,27 @@ jobs:
       - prepare
       - run:
           command: "! go fmt ./... 2>&1 | read"
+
+  cbor-gen-check:
+    executor: golang
+    steps:
+      - install-deps
+      - prepare
+      - run: make deps
+      - run: go install golang.org/x/tools/cmd/goimports
+      - run: go install github.com/hannahhoward/cbor-gen-for
+      - run: go generate ./...
+      - run: git --no-pager diff
+      - run: git --no-pager diff --quiet
+
+  docs-check:
+    executor: golang
+    steps:
+      - install-deps
+      - prepare
+      - run: make docsgen
+      - run: git --no-pager diff
+      - run: git --no-pager diff --quiet
 
   lint: &lint
     description: |
@@ -282,9 +367,6 @@ jobs:
           command: |
             $HOME/.local/bin/golangci-lint run -v --timeout 2m \
               --concurrency << parameters.concurrency >> << parameters.args >>
-  lint-changes:
-    <<: *lint
-
   lint-all:
     <<: *lint
 
@@ -313,21 +395,33 @@ workflows:
   version: 2.1
   ci:
     jobs:
-      - lint-changes:
-          args: "--new-from-rev origin/master"
+      - lint-all
       - mod-tidy-check
       - gofmt
+      - cbor-gen-check
+      - docs-check
       - test:
           codecov-upload: true
+          test-suite-name: full
       - test-window-post:
           go-test-flags: "-run=TestWindowedPost"
           winpost-test: "1"
+          test-suite-name: window-post
       - test-short:
           go-test-flags: "--timeout 10m --short"
+          test-suite-name: short
           filters:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+$/
+      - test-conformance:
+          test-suite-name: conformance
+          packages: "./conformance"
+      - test-conformance:
+          name: test-conformance-bleeding-edge
+          test-suite-name: conformance-bleeding-edge
+          packages: "./conformance"
+          vectors-branch: master
       - build-debug
       - build-all:
           requires:
