@@ -73,7 +73,7 @@ BINS+=lotus
 
 lotus-miner: $(BUILD_DEPS)
 	rm -f lotus-miner
-	go build $(GOFLAGS) -o lotus-miner ./cmd/lotus-storage-miner
+	go build $(GOFLAGS) -o lotus-miner ./cmd/lotus-miner
 	go run github.com/GeertJohan/go.rice/rice append --exec lotus-miner -i ./build
 .PHONY: lotus-miner
 BINS+=lotus-miner

@@ -22,7 +22,7 @@ This bug occurs when the miner can't acquire the `bellman.lock`. To fix it you n
 
 ```sh
 lotus-miner info
-# WARN  main  lotus-storage-miner/main.go:73  failed to get api endpoint: (/Users/myrmidon/.lotusminer) %!w(*errors.errorString=&{API not running (no endpoint)}):
+# WARN  main  lotus-miner/main.go:73  failed to get api endpoint: (/Users/myrmidon/.lotusminer) %!w(*errors.errorString=&{API not running (no endpoint)}):
 ```
 
 If you see this, that means your **Lotus Miner** isn't ready yet. You need to finish [syncing the chain](https://lotu.sh/en+join-testnet).
