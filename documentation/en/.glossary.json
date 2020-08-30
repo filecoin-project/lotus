@@ -95,7 +95,7 @@
     "title": "Miner (Block Producer)",
     "value": "The Block Producer Miner's logic. It currently shares an interface and process with the Lotus Node. A Block Producer chooses which messages to include in a block and is rewarded according to each message’s gas price and consumption, forming a market."
   },
-  "lotus-storage-miner": {
+  "lotus-miner": {
     "title": "Miner (lotus-miner)",
     "value": "The Miner's logic. It has its own dedicated process. Contributes to the network through Sector commitments and Proofs of Spacetime to prove that it is storing the sectors it has commited to."
   },
