@@ -204,9 +204,7 @@ func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName) (*Messa
 
 	cfg, err := loadConfig(ds)
 	if err != nil {
-		if err != nil {
-			return nil, xerrors.Errorf("error loading mpool config: %w", err)
-		}
+		return nil, xerrors.Errorf("error loading mpool config: %w", err)
 	}
 
 	mp := &MessagePool{
