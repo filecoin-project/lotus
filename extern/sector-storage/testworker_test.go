@@ -85,7 +85,7 @@ func (t *testWorker) Remove(ctx context.Context, sector abi.SectorID) error {
 	panic("implement me")
 }
 
-func (t *testWorker) MoveStorage(ctx context.Context, sector abi.SectorID) error {
+func (t *testWorker) MoveStorage(ctx context.Context, sector abi.SectorID, types stores.SectorFileType) error {
 	panic("implement me")
 }
 

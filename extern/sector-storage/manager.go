@@ -31,7 +31,7 @@ type URLs []string
 type Worker interface {
 	ffiwrapper.StorageSealer
 
-	MoveStorage(ctx context.Context, sector abi.SectorID) error
+	MoveStorage(ctx context.Context, sector abi.SectorID, types stores.SectorFileType) error
 
 	Fetch(ctx context.Context, s abi.SectorID, ft stores.SectorFileType, ptype stores.PathType, am stores.AcquireMode) error
 	UnsealPiece(context.Context, abi.SectorID, storiface.UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) error
@@ -441,7 +441,7 @@ func (m *Manager) FinalizeSector(ctx context.Context, sector abi.SectorID, keepU
 	err = m.sched.Schedule(ctx, sector, sealtasks.TTFetch, fetchSel,
 		schedFetch(sector, stores.FTCache|stores.FTSealed|moveUnsealed, stores.PathStorage, stores.AcquireMove),
 		func(ctx context.Context, w Worker) error {
-			return w.MoveStorage(ctx, sector)
+			return w.MoveStorage(ctx, sector, stores.FTCache|stores.FTSealed|moveUnsealed)
 		})
 	if err != nil {
 		return xerrors.Errorf("moving sector to storage: %w", err)
