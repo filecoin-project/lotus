@@ -61,7 +61,7 @@ func (s *existingSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt 
 }
 
 func (s *existingSelector) Cmp(ctx context.Context, task sealtasks.TaskType, a, b *workerHandle) (bool, error) {
-	return a.active.utilization(a.info.Resources) < b.active.utilization(b.info.Resources), nil
+	return a.utilization() < b.utilization(), nil
 }
 
 var _ WorkerSelector = &existingSelector{}
