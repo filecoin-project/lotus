@@ -82,7 +82,7 @@ func (s *schedTestWorker) AddPiece(ctx context.Context, sector abi.SectorID, pie
 	panic("implement me")
 }
 
-func (s *schedTestWorker) MoveStorage(ctx context.Context, sector abi.SectorID) error {
+func (s *schedTestWorker) MoveStorage(ctx context.Context, sector abi.SectorID, types stores.SectorFileType) error {
 	panic("implement me")
 }
 
