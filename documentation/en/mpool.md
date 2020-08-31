@@ -133,7 +133,7 @@ type MpoolConfig struct {
 
 The meaning of these fields is as follows:
 - `PriorityAddrs` -- these are the addresses of actors whose pending messages should always
-  be included in a block during message selection, regardless of profitability.
+  be included in a block during message selection, as long as they are profitable.
   Miners should configure their own worker addresses so that they include their own messages
   when they produce a new block.
   Default is empty.
