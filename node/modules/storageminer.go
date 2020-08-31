@@ -275,13 +275,14 @@ func StagingDAG(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.StagingBloc
 
 	bitswapNetwork := network.NewFromIpfsHost(h, rt)
 	bitswapOptions := []bitswap.Option{bitswap.ProvideEnabled(false)}
-	exch := bitswap.New(helpers.LifecycleCtx(mctx, lc), bitswapNetwork, ibs, bitswapOptions...)
+	exch := bitswap.New(mctx, bitswapNetwork, ibs, bitswapOptions...)
 
 	bsvc := blockservice.New(ibs, exch)
 	dag := merkledag.NewDAGService(bsvc)
 
 	lc.Append(fx.Hook{
 		OnStop: func(_ context.Context) error {
+			// blockservice closes the exchange
 			return bsvc.Close()
 		},
 	})
