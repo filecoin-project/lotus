@@ -120,7 +120,7 @@ func (a *GasAPI) GasEstimateGasPremium(ctx context.Context, nblocksincl uint64,
 	}
 
 	premium := prev1
-	if types.BigCmp(prev2, big.Zero()) != 0 {
+	if prev2.Sign() != 0 {
 		premium = big.Div(types.BigAdd(prev1, prev2), types.NewInt(2))
 	}
 
