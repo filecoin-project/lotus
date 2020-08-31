@@ -318,6 +318,7 @@ type WorkerStruct struct {
 		ReleaseUnsealed func(ctx context.Context, sector abi.SectorID, safeToFree []storage.Range) error                                                                                                           `perm:"admin"`
 		Remove          func(ctx context.Context, sector abi.SectorID) error                                                                                                                                       `perm:"admin"`
 		MoveStorage     func(ctx context.Context, sector abi.SectorID) error                                                                                                                                       `perm:"admin"`
+		StorageAddLocal func(ctx context.Context, path string) error                                                                                                                                               `perm:"admin"`
 
 		UnsealPiece func(context.Context, abi.SectorID, storiface.UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) error `perm:"admin"`
 		ReadPiece   func(context.Context, io.Writer, abi.SectorID, storiface.UnpaddedByteIndex, abi.UnpaddedPieceSize) (bool, error)           `perm:"admin"`
@@ -1221,6 +1222,10 @@ func (w *WorkerStruct) Remove(ctx context.Context, sector abi.SectorID) error {
 
 func (w *WorkerStruct) MoveStorage(ctx context.Context, sector abi.SectorID) error {
 	return w.Internal.MoveStorage(ctx, sector)
+}
+
+func (w *WorkerStruct) StorageAddLocal(ctx context.Context, path string) error {
+	return w.Internal.StorageAddLocal(ctx, path)
 }
 
 func (w *WorkerStruct) UnsealPiece(ctx context.Context, id abi.SectorID, index storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, c cid.Cid) error {
