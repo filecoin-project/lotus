@@ -6,7 +6,7 @@ Filecoin protocol, validating the blocks and state transitions.
 The specification for the Filecoin protocol can be found [here](https://filecoin-project.github.io/specs/).
 
 For information on how to setup and operate a Lotus node,
-please follow the instructions [here](https://lotu.sh/en+getting-started).
+please follow the instructions [here](en+getting-started).
 
 # Components
 

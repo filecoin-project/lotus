@@ -2,11 +2,11 @@
 
 ## Error: Routing: not found
 
-```sh
+```
 WARN  main  lotus/main.go:72  routing: not found
 ```
 
-- This miner is offline.
+This error means that the miner is offline.
 
 ## Error: Failed to start deal
 
@@ -14,14 +14,17 @@ WARN  main  lotus/main.go:72  routing: not found
 WARN  main  lotus/main.go:72  failed to start deal: computing commP failed: generating CommP: Piece must be at least 127 bytes
 ```
 
-- There is a minimum file size of 127 bytes.
+This error means that there is a minimum file size of 127 bytes.
 
 ## Error: 0kb file response during retrieval
 
-In order to retrieve a file, it must be sealed. Miners can check sealing progress with this command:
+This means that the file to be retrieved may have not yet been sealed and is thus, not retrievable yet.
+
+Miners can check sealing progress with this command:
 
 ```sh
 lotus-miner sectors list
 ```
 
-When sealing is complete, `pSet: NO` will become `pSet: YES`. From now on the **Data CID** is [retrievable](https://lotu.sh/en+retrieving-data) from the **Lotus Miner**.
+When sealing is complete, `pSet: NO` will become `pSet: YES`.
+

@@ -1,5 +1,12 @@
 # Setup Troubleshooting
 
+
+## Error: initializing node error: cbor input had wrong number of fields
+
+This happens when you are starting Lotus which has been compiled for one network, but it encounters data in the Lotus data folder which is for a different network, or for an older incompatible version.
+
+The solution is to clear the data folder (see below).
+
 ## Config: Clearing data
 
 Here is a command that will delete your chain data, stored wallets, stored data and any miners you have set up:
@@ -8,7 +15,7 @@ Here is a command that will delete your chain data, stored wallets, stored data 
 rm -rf ~/.lotus ~/.lotusminer
 ```
 
-This command usually resolves any issues with running `lotus` but it is not always required for updates. We will share information about when resetting your chain data and miners is required for an update in the future.
+Note you do not always need to clear your data for [updating](en+update).
 
 ## Error: Failed to connect bootstrap peer
 
@@ -33,6 +40,8 @@ ERROR hello hello/hello.go:81 other peer has different genesis!
 
 ## Config: Open files limit
 
+Lotus will attempt to set up the file descriptor (FD) limit automatically. If that does not work, you can still configure your system to allow higher than the default values.
+
 On most systems you can check the open files limit with:
 
 ```sh
@@ -44,3 +53,5 @@ You can also modify this number by using the `ulimit` command. It gives you the 
 ```sh
 ulimit -n 10000
 ```
+
+Note that this is not persisted and that systemd manages its own FD limits for services. Please use your favourite search engine to find instructions on how to persist and configure FD limits for your system.

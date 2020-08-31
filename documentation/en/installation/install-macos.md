@@ -59,4 +59,4 @@ make clean && make all
 sudo make install
 ```
 
-After installing Lotus, you can run the `lotus` command directly from your CLI to see usage documentation. Next, you can join the [Lotus Testnet](https://lotu.sh/en+join-testnet).
+After intalling Lotus you will be ready to [setup and run the daemon](en+setup.md).

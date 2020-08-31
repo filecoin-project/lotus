@@ -2,23 +2,13 @@
 
 The **Lotus Worker** is an extra process that can offload heavy processing tasks from your **Lotus Miner**. The sealing process automatically runs in the **Lotus Miner** process, but you can use the Worker on another machine communicating over a fast network to free up resources on the machine running the mining process.
 
-## Note: Using the Lotus Worker from China
+## Installation
 
-If you are trying to use `lotus-worker` from China. You should set this **environment variable** on your machine:
-
-```sh
-export IPFS_GATEWAY="https://proof-parameters.s3.cn-south-1.jdcloud-oss.com/ipfs/"
-```
-
-## Get Started
-
-Make sure that the `lotus-worker` is compiled and installed by running:
-
-```sh
-make lotus-worker
-```
+The `lotus-worker` application is installed along with the others when running `sudo make install` as shown in the [Installation section](en+install-linux). For simplicity, we recommend following the same procedure in the machines that will run the Lotus Workers (even if the Lotus miner and the Lotus daemon are not used there).
 
 ## Setting up the Miner
+
+### Allow external connections to the miner API
 
 First, you will need to ensure your `lotus-miner`'s API is accessible over the network.
 
@@ -32,30 +22,49 @@ ListenAddress = "/ip4/127.0.0.1/tcp/2345/http"
 RemoteListenAddress = "127.0.0.1:2345"
 ```
 
-To make your node accessible over the local area network, you will need to determine your machines IP on the LAN, and change the `127.0.0.1` in the file to that address.
+To make your node accessible over the local area network, you will need to determine your machine's IP on the LAN (`ip a`), and change the `127.0.0.1` in the file to that address.
 
-A more permissive and less secure option is to change it to `0.0.0.0`. This will allow anyone who can connect to your computer on that port to access the [API](https://lotu.sh/en+api). They will still need an auth token.
+A more permissive and less secure option is to change it to `0.0.0.0`. This will allow anyone who can connect to your computer on that port to access the miner's API, though they will still need an auth token.
 
 `RemoteListenAddress` must be set to an address which other nodes on your network will be able to reach.
 
-Next, you will need to [create an authentication token](https://lotu.sh/en+api-scripting-support#generate-a-jwt-46). All Lotus APIs require authentication tokens to ensure your processes are as secure against attackers attempting to make unauthenticated requests to them.
+### Create an authentication token
 
-### Connect the Lotus Worker
+Write down the output of:
 
-On the machine that will run `lotus-worker`, set the `MINER_API_INFO` environment variable to `TOKEN:MINER_NODE_MULTIADDR`. Where `TOKEN` is the token we created above, and `NIMER_NODE_MULTIADDR` is the `multiaddr` of the **Lotus Miner** API that was set in `config.toml`.
+```sh
+lotus-miner auth api-info --perm admin
+```
 
-Once this is set, run:
+The Lotus Workers will need this token to connect to the miner.
+
+## Connecting the Lotus Workers
+
+On each machine that will run the `lotus-worker` application you will need to define the following *environment variable*:
+
+```sh
+export MINER_API_INFO:<TOKEN>:/ip4/<miner_api_address>/tcp/2345`
+```
+
+If you are trying to use `lotus-worker` from China. You should additionally set:
+
+```sh
+export IPFS_GATEWAY="https://proof-parameters.s3.cn-south-1.jdcloud-oss.com/ipfs/"
+```
+
+
+Once that is done, you can run the Worker with:
 
 ```sh
 lotus-worker run
 ```
 
-If you are running multiple workers on the same host, you will need to specify the `--listen` flag and ensure each worker is on a different port.
+> If you are running multiple workers on the same host, you will need to specify the `--listen` flag and ensure each worker is on a different port.
 
-To check that the **Lotus Worker** is connected to your **Lotus Miner**, run `lotus-miner sealing workers` and check that the remote worker count has increased.
+On your Lotus miner, check that the workers are correctly connected:
 
 ```sh
-why@computer ~/lotus> lotus-miner sealing workers
+lotus-miner sealing workers
 Worker 0, host computer
         CPU:  [                                                                ] 0 core(s) in use
         RAM:  [||||||||||||||||||                                              ] 28% 18.1 GiB/62.7 GiB
@@ -69,9 +78,10 @@ Worker 1, host othercomputer
         GPU: GeForce RTX 2080, not used
 ```
 
-### Running locally for manually managing process priority
+## Running locally for manually managing process priority
 
 You can also run the **Lotus Worker** on the same machine as your **Lotus Miner**, so you can manually manage the process priority.
+
 To do so you have to first __disable all seal task types__ in the miner config. This is important to prevent conflicts between the two processes.
 
 You can then run the miner on your local-loopback interface; 

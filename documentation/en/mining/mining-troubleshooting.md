@@ -25,7 +25,7 @@ lotus-miner info
 # WARN  main  lotus-storage-miner/main.go:73  failed to get api endpoint: (/Users/myrmidon/.lotusminer) %!w(*errors.errorString=&{API not running (no endpoint)}):
 ```
 
-If you see this, that means your **Lotus Miner** isn't ready yet. You need to finish [syncing the chain](https://lotu.sh/en+join-testnet).
+If you see this, that means your **Lotus Miner** isn't ready yet. You need to finish [syncing the chain](en+setup#waiting-to-sync-370).
 
 ## Error: Your computer may not be fast enough
 
@@ -57,10 +57,3 @@ make bench
 
 This process uses a fair amount of GPU, and generally takes ~4 minutes to complete. If you do not see any activity in nvtop from lotus during the entire process, it is likely something is misconfigured with your GPU.
 
-## Checking Sync Progress
-
-You can use this command to check how far behind you are on syncing:
-
-```sh
-date -d @$(./lotus chain getblock $(./lotus chain head) | jq .Timestamp)
-```
