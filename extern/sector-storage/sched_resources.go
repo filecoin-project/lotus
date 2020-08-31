@@ -108,3 +108,17 @@ func (a *activeResources) utilization(wr storiface.WorkerResources) float64 {
 
 	return max
 }
+
+func (wh *workerHandle) utilization() float64 {
+	wh.lk.Lock()
+	u := wh.active.utilization(wh.info.Resources)
+	u += wh.preparing.utilization(wh.info.Resources)
+	wh.lk.Unlock()
+	wh.wndLk.Lock()
+	for _, window := range wh.activeWindows {
+		u += window.allocated.utilization(wh.info.Resources)
+	}
+	wh.wndLk.Unlock()
+
+	return u
+}

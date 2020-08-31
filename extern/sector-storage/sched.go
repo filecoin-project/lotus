@@ -437,6 +437,10 @@ func (sh *scheduler) trySched() {
 			log.Debugf("SCHED ASSIGNED sqi:%d sector %d task %s to window %d", sqi, task.sector.Number, task.taskType, wnd)
 
 			windows[wnd].allocated.add(wr, needRes)
+			// TODO: We probably want to re-sort acceptableWindows here based on new
+			//  workerHandle.utilization + windows[wnd].allocated.utilization (workerHandle.utilization is used in all
+			//  task selectors, but not in the same way, so need to figure out how to do that in a non-O(n^2 way), and
+			//  without additional network roundtrips (O(n^2) could be avoided by turning acceptableWindows.[] into heaps))
 
 			selectedWindow = wnd
 			break
