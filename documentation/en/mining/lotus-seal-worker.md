@@ -82,7 +82,15 @@ Worker 1, host othercomputer
 
 You can also run the **Lotus Worker** on the same machine as your **Lotus Miner**, so you can manually manage the process priority.
 
-To do so you have to first __disable all seal task types__ in the miner config. This is important to prevent conflicts between the two processes.
+To do so you have to first __disable all seal task types__ in the miner config. This is important to prevent conflicts between the two processes:
+
+```toml
+[Storage]
+  AllowPreCommit1 = false
+  AllowPreCommit2 = false
+  AllowCommit = false
+  AllowUnseal = false
+```
 
 You can then run the miner on your local-loopback interface; 
 
