@@ -376,12 +376,33 @@ func (m *Sealing) restartSectors(ctx context.Context) error {
 		return xerrors.Errorf("getting the sealing delay: %w", err)
 	}
 
+	m.unsealedInfoMap.lk.Lock()
+	defer m.unsealedInfoMap.lk.Unlock()
 	for _, sector := range trackedSectors {
 		if err := m.sectors.Send(uint64(sector.SectorNumber), SectorRestart{}); err != nil {
 			log.Errorf("restarting sector %d: %+v", sector.SectorNumber, err)
 		}
 
 		if sector.State == WaitDeals {
+
+			// put the sector in the unsealedInfoMap
+			if _, ok := m.unsealedInfoMap.infos[sector.SectorNumber]; ok {
+				// something's funky here, but probably safe to move on
+				log.Warnf("sector %v was already in the unsealedInfoMap when restarting", sector.SectorNumber)
+			} else {
+				ui := UnsealedSectorInfo{}
+				for _, p := range sector.Pieces {
+					if p.DealInfo != nil {
+						ui.numDeals++
+					}
+					ui.stored += p.Piece.Size
+					ui.pieceSizes = append(ui.pieceSizes, p.Piece.Size.Unpadded())
+				}
+
+				m.unsealedInfoMap.infos[sector.SectorNumber] = ui
+			}
+
+			// start a fresh timer for the sector
 			if cfg.WaitDealsDelay > 0 {
 				timer := time.NewTimer(cfg.WaitDealsDelay)
 				go func() {
