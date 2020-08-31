@@ -24,6 +24,7 @@ func main() {
 		bigIntParseCmd,
 		staterootCmd,
 		importCarCmd,
+		importObjectCmd,
 		commpToCidCmd,
 		fetchParamCmd,
 		proofsCmd,
