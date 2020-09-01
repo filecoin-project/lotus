@@ -177,6 +177,8 @@ func (s *Syncer) Start(ctx context.Context) {
 		for notif := range notifs {
 			for _, change := range notif {
 				switch change.Type {
+				case store.HCCurrent:
+					fallthrough
 				case store.HCApply:
 					unsynced, err := s.unsyncedBlocks(ctx, change.Val, sinceEpoch)
 					if err != nil {
