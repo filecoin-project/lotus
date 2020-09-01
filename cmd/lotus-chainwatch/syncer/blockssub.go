@@ -11,16 +11,17 @@ import (
 func (s *Syncer) subBlocks(ctx context.Context) {
 	sub, err := s.node.SyncIncomingBlocks(ctx)
 	if err != nil {
-		log.Error(err)
+		log.Errorf("opening incoming block channel: %+v", err)
 		return
 	}
 
+	log.Infow("Capturing incoming blocks")
 	for bh := range sub {
 		err := s.storeHeaders(map[cid.Cid]*types.BlockHeader{
 			bh.Cid(): bh,
 		}, false, time.Now())
 		if err != nil {
-			log.Errorf("%+v", err)
+			log.Errorf("storing incoming block header: %+v", err)
 		}
 	}
 }

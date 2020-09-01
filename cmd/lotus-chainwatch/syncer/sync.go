@@ -160,11 +160,8 @@ func (s *Syncer) Start(ctx context.Context) {
 		log.Fatal(err)
 	}
 
-	// continue to keep the block headers table up to date.
-	notifs, err := s.node.ChainNotify(ctx)
-	if err != nil {
-		log.Fatal(err)
-	}
+	// capture all reported blocks
+	go s.subBlocks(ctx)
 
 	// we need to ensure that on a restart we don't reprocess the whole flarping chain
 	var sinceEpoch uint64
@@ -177,6 +174,13 @@ func (s *Syncer) Start(ctx context.Context) {
 			sinceEpoch = uint64(height)
 		}
 	}
+
+	// continue to keep the block headers table up to date.
+	notifs, err := s.node.ChainNotify(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	go func() {
 		for notif := range notifs {
 			for _, change := range notif {
