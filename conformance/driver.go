@@ -74,7 +74,7 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, preroot
 			WinCount: b.WinCount,
 		}
 		for _, m := range b.Messages {
-			msg, err := types.DecodeMessage(m.Bytes)
+			msg, err := types.DecodeMessage(m)
 			if err != nil {
 				return nil, err
 			}
