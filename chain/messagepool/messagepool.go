@@ -194,6 +194,11 @@ func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool, strict bool) (boo
 		return false, ErrTooManyPendingMessages
 	}
 
+	if strict && nonceGap {
+		log.Warnf("adding nonce-gapped message from %s (nonce: %d, nextNonce: %d)",
+			m.Message.From, m.Message.Nonce, nextNonce)
+	}
+
 	ms.nextNonce = nextNonce
 	ms.msgs[m.Message.Nonce] = m
 	ms.requiredFunds.Add(ms.requiredFunds, m.Message.RequiredFunds().Int)
