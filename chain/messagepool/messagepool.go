@@ -53,7 +53,7 @@ var minimumBaseFee = types.NewInt(uint64(build.MinimumBaseFee))
 
 var MaxActorPendingMessages = 1000
 
-var MaxNonceGap = uint64(runtime.NumCPU())
+var MaxNonceGap = uint64(16)
 
 var (
 	ErrMessageTooBig = errors.New("message too big")
@@ -81,6 +81,13 @@ const (
 
 	localUpdates = "update"
 )
+
+func init() {
+	numcpus := uint64(runtime.NumCPU())
+	if numcpus < MaxNonceGap {
+		MaxNonceGap = numcpus
+	}
+}
 
 type MessagePool struct {
 	lk sync.Mutex
