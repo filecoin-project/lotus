@@ -183,7 +183,7 @@ func executeMessageVector(t *testing.T, vector *schema.TestVector) {
 
 		// Execute the message.
 		var ret *vm.ApplyRet
-		ret, root, err = driver.ExecuteMessage(msg, root, bs, epoch)
+		ret, root, err = driver.ExecuteMessage(bs, root, epoch, msg)
 		if err != nil {
 			t.Fatalf("fatal failure when executing message: %s", err)
 		}
