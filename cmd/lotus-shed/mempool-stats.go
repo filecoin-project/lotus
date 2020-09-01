@@ -28,7 +28,7 @@ var (
 )
 
 var (
-	LeTag, _ = tag.NewKey("le")
+	LeTag, _ = tag.NewKey("quantile")
 )
 
 var (
