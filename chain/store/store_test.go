@@ -96,7 +96,7 @@ func TestChainExportImport(t *testing.T) {
 	}
 
 	buf := new(bytes.Buffer)
-	if err := cg.ChainStore().Export(context.TODO(), last, buf); err != nil {
+	if err := cg.ChainStore().Export(context.TODO(), last, 0, buf); err != nil {
 		t.Fatal(err)
 	}
 

@@ -109,7 +109,10 @@ type FullNode interface {
 	ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*HeadChange, error)
 
 	// ChainExport returns a stream of bytes with CAR dump of chain data.
-	ChainExport(context.Context, types.TipSetKey) (<-chan []byte, error)
+	// The exported chain data includes the header chain from the given tipset
+	// back to genesis, the entire genesis state, and the most recent 'nroots'
+	// state trees.
+	ChainExport(ctx context.Context, nroots abi.ChainEpoch, tsk types.TipSetKey) (<-chan []byte, error)
 
 	// MethodGroup: Beacon
 	// The Beacon method group contains methods for interacting with the random beacon (DRAND)

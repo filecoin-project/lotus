@@ -859,6 +859,10 @@ var chainExportCmd = &cli.Command{
 		&cli.StringFlag{
 			Name: "tipset",
 		},
+		&cli.Int64Flag{
+			Name:  "recent-stateroots",
+			Usage: "specify the number of recent state roots to include in the export",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -871,6 +875,8 @@ var chainExportCmd = &cli.Command{
 		if !cctx.Args().Present() {
 			return fmt.Errorf("must specify filename to export chain to")
 		}
+
+		rsrs := cctx.Int64("recent-stateroots")
 
 		fi, err := os.Create(cctx.Args().First())
 		if err != nil {
@@ -888,7 +894,7 @@ var chainExportCmd = &cli.Command{
 			return err
 		}
 
-		stream, err := api.ChainExport(ctx, ts.Key())
+		stream, err := api.ChainExport(ctx, abi.ChainEpoch(rsrs), ts.Key())
 		if err != nil {
 			return err
 		}

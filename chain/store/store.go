@@ -1114,7 +1114,7 @@ func (cs *ChainStore) GetTipsetByHeight(ctx context.Context, h abi.ChainEpoch, t
 	return cs.LoadTipSet(lbts.Parents())
 }
 
-func recurseLinks(bs bstore.Blockstore, root cid.Cid, in []cid.Cid) ([]cid.Cid, error) {
+func recurseLinks(bs bstore.Blockstore, seen *cid.Set, root cid.Cid, in []cid.Cid) ([]cid.Cid, error) {
 	if root.Prefix().Codec != cid.DagCBOR {
 		return in, nil
 	}
@@ -1131,9 +1131,14 @@ func recurseLinks(bs bstore.Blockstore, root cid.Cid, in []cid.Cid) ([]cid.Cid, 
 			return
 		}
 
+		// traversed this already...
+		if !seen.Visit(c) {
+			return
+		}
+
 		in = append(in, c)
 		var err error
-		in, err = recurseLinks(bs, c, in)
+		in, err = recurseLinks(bs, seen, c, in)
 		if err != nil {
 			rerr = err
 		}
@@ -1145,7 +1150,7 @@ func recurseLinks(bs bstore.Blockstore, root cid.Cid, in []cid.Cid) ([]cid.Cid, 
 	return in, rerr
 }
 
-func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, w io.Writer) error {
+func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRoots abi.ChainEpoch, w io.Writer) error {
 	if ts == nil {
 		ts = cs.GetHeaviestTipSet()
 	}
@@ -1182,7 +1187,7 @@ func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, w io.Writer)
 			return xerrors.Errorf("unmarshaling block header (cid=%s): %w", blk, err)
 		}
 
-		cids, err := recurseLinks(cs.bs, b.Messages, []cid.Cid{b.Messages})
+		cids, err := recurseLinks(cs.bs, seen, b.Messages, []cid.Cid{b.Messages})
 		if err != nil {
 			return xerrors.Errorf("recursing messages failed: %w", err)
 		}
@@ -1198,8 +1203,8 @@ func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, w io.Writer)
 
 		out := cids
 
-		if b.Height == 0 {
-			cids, err := recurseLinks(cs.bs, b.ParentStateRoot, []cid.Cid{b.ParentStateRoot})
+		if b.Height == 0 || b.Height > ts.Height()-inclRecentRoots {
+			cids, err := recurseLinks(cs.bs, seen, b.ParentStateRoot, []cid.Cid{b.ParentStateRoot})
 			if err != nil {
 				return xerrors.Errorf("recursing genesis state failed: %w", err)
 			}
