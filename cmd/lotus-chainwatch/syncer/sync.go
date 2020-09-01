@@ -167,12 +167,16 @@ func (s *Syncer) Start(ctx context.Context) {
 	}
 
 	// we need to ensure that on a restart we don't reprocess the whole flarping chain
+	var sinceEpoch uint64
 	blkCID, height, err := s.mostRecentlySyncedBlockHeight()
 	if err != nil {
 		log.Fatalw("failed to find most recently synced block", "error", err)
+	} else {
+		if height > 0 {
+			log.Infow("Found starting point for syncing", "blockCID", blkCID.String(), "height", height)
+			sinceEpoch = uint64(height)
+		}
 	}
-	log.Infow("Found starting point for syncing", "blockCID", blkCID.String(), "height", height)
-	sinceEpoch := uint64(height)
 	go func() {
 		for notif := range notifs {
 			for _, change := range notif {

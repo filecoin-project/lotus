@@ -369,7 +369,9 @@ where rnk <= $1
 			maxBlock = bh.Height
 		}
 	}
-	log.Infow("Gathered Blocks to Process", "start", minBlock, "end", maxBlock)
+	if minBlock <= maxBlock {
+		log.Infow("Gathered Blocks to Process", "start", minBlock, "end", maxBlock)
+	}
 	return out, rows.Close()
 }
 
