@@ -160,23 +160,37 @@ func (s *Syncer) Start(ctx context.Context) {
 		log.Fatal(err)
 	}
 
+	// capture all reported blocks
+	go s.subBlocks(ctx)
+
+	// we need to ensure that on a restart we don't reprocess the whole flarping chain
+	var sinceEpoch uint64
+	blkCID, height, err := s.mostRecentlySyncedBlockHeight()
+	if err != nil {
+		log.Fatalw("failed to find most recently synced block", "error", err)
+	} else {
+		if height > 0 {
+			log.Infow("Found starting point for syncing", "blockCID", blkCID.String(), "height", height)
+			sinceEpoch = uint64(height)
+		}
+	}
+
 	// continue to keep the block headers table up to date.
 	notifs, err := s.node.ChainNotify(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// we need to ensure that on a restart we don't reprocess the whole flarping chain
-	blkCID, height, err := s.mostRecentlySyncedBlockHeight()
-	if err != nil {
-		log.Fatalw("failed to find most recently synced block", "error", err)
-	}
-	log.Infow("Found starting point for syncing", "blockCID", blkCID.String(), "height", height)
-	sinceEpoch := uint64(height)
 	go func() {
 		for notif := range notifs {
 			for _, change := range notif {
 				switch change.Type {
+				case store.HCCurrent:
+					// This case is important for capturing the initial state of a node
+					// which might be on a dead network with no new blocks being produced.
+					// It also allows a fresh Chainwatch instance to start walking the
+					// chain without waiting for a new block to come along.
+					fallthrough
 				case store.HCApply:
 					unsynced, err := s.unsyncedBlocks(ctx, change.Val, sinceEpoch)
 					if err != nil {
