@@ -432,7 +432,7 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 		return cid.Undef, nil, err
 	}
 
-	r := store.NewChainRand(sm.cs, ts.Cids(), height)
+	r := store.NewChainRand(sm.cs, ts.Cids())
 	vmopt := &vm.VMOpts{
 		StateBase:      base,
 		Epoch:          height,
