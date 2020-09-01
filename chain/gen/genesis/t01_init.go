@@ -127,7 +127,7 @@ func initMultisigActors(meta json.RawMessage, keyToId map[address.Address]addres
 			continue
 		}
 
-		fmt.Printf("init set %s t0%d\n", e, counter)
+		fmt.Printf("init set %s t0%d\n", e, *counter)
 
 		value := cbg.CborInt(*counter)
 		if err := amap.Put(adt.AddrKey(e), &value); err != nil {
