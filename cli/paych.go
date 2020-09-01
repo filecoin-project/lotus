@@ -217,9 +217,9 @@ var paychVoucherCreateCmd = &cli.Command{
 			return err
 		}
 
-		amt, err := types.BigFromString(cctx.Args().Get(1))
+		amt, err := types.ParseFIL(cctx.Args().Get(1))
 		if err != nil {
-			return err
+			return ShowHelp(cctx, fmt.Errorf("parsing amount failed: %s", err))
 		}
 
 		lane := cctx.Int("lane")
@@ -232,12 +232,16 @@ var paychVoucherCreateCmd = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
-		sv, err := api.PaychVoucherCreate(ctx, ch, amt, uint64(lane))
+		v, err := api.PaychVoucherCreate(ctx, ch, types.BigInt(amt), uint64(lane))
 		if err != nil {
 			return err
 		}
 
-		enc, err := EncodedString(sv)
+		if v.Voucher == nil {
+			return fmt.Errorf("Could not create voucher: insufficient funds in channel, shortfall: %d", v.Shortfall)
+		}
+
+		enc, err := EncodedString(v.Voucher)
 		if err != nil {
 			return err
 		}

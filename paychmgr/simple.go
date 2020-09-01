@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/filecoin-project/lotus/api"
+
 	"golang.org/x/sync/errgroup"
 
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
@@ -191,17 +193,17 @@ func (ca *channelAccessor) getPaych(ctx context.Context, from, to address.Addres
 	}
 }
 
-// Queue up an add funds operations
+// Queue up an add funds operation
 func (ca *channelAccessor) enqueue(task *fundsReq) {
 	ca.lk.Lock()
 	defer ca.lk.Unlock()
 
 	ca.fundsReqQueue = append(ca.fundsReqQueue, task)
-	go ca.processQueue()
+	go ca.processQueue() // nolint: errcheck
 }
 
 // Run the operations in the queue
-func (ca *channelAccessor) processQueue() {
+func (ca *channelAccessor) processQueue() (*api.ChannelAvailableFunds, error) {
 	ca.lk.Lock()
 	defer ca.lk.Unlock()
 
@@ -210,7 +212,7 @@ func (ca *channelAccessor) processQueue() {
 
 	// If there's nothing in the queue, bail out
 	if len(ca.fundsReqQueue) == 0 {
-		return
+		return ca.currentAvailableFunds(types.NewInt(0))
 	}
 
 	// Merge all pending requests into one.
@@ -221,7 +223,7 @@ func (ca *channelAccessor) processQueue() {
 	if amt.IsZero() {
 		// Note: The amount can be zero if requests are cancelled as we're
 		// building the mergedFundsReq
-		return
+		return ca.currentAvailableFunds(amt)
 	}
 
 	res := ca.processTask(merged.ctx, merged.from(), merged.to(), amt)
@@ -231,7 +233,7 @@ func (ca *channelAccessor) processQueue() {
 	if res == nil {
 		// Stop processing the fundsReqQueue and wait. When the event occurs it will
 		// call processQueue() again
-		return
+		return ca.currentAvailableFunds(amt)
 	}
 
 	// Finished processing so clear the queue
@@ -239,6 +241,8 @@ func (ca *channelAccessor) processQueue() {
 
 	// Call the task callback with its results
 	merged.onComplete(res)
+
+	return ca.currentAvailableFunds(types.NewInt(0))
 }
 
 // filterQueue filters cancelled requests out of the queue
@@ -291,8 +295,63 @@ func (ca *channelAccessor) msgWaitComplete(mcid cid.Cid, err error) {
 	// The queue may have been waiting for msg completion to proceed, so
 	// process the next queue item
 	if len(ca.fundsReqQueue) > 0 {
-		go ca.processQueue()
+		go ca.processQueue() // nolint: errcheck
 	}
+}
+
+func (ca *channelAccessor) currentAvailableFunds(queuedAmt types.BigInt) (*api.ChannelAvailableFunds, error) {
+	channelInfo, err := ca.store.OutboundActiveByFromTo(ca.from, ca.to)
+	if err != nil && err != ErrChannelNotTracked {
+		return nil, err
+	}
+
+	if channelInfo == nil {
+		// Channel does not exist
+		return &api.ChannelAvailableFunds{
+			Channel:             nil,
+			ConfirmedAmt:        types.NewInt(0),
+			PendingAmt:          types.NewInt(0),
+			PendingWaitSentinel: nil,
+			QueuedAmt:           queuedAmt,
+			VoucherReedeemedAmt: types.NewInt(0),
+		}, nil
+	}
+
+	// The channel may have a pending create or add funds message
+	waitSentinel := channelInfo.CreateMsg
+	if waitSentinel == nil {
+		waitSentinel = channelInfo.AddFundsMsg
+	}
+
+	// Get the total amount redeemed by vouchers.
+	// This includes vouchers that have been submitted, and vouchers that are
+	// in the datastore but haven't yet been submitted.
+	totalRedeemed := types.NewInt(0)
+	if channelInfo.Channel != nil {
+		ch := *channelInfo.Channel
+		_, pchState, err := ca.sa.loadPaychActorState(ca.chctx, ch)
+		if err != nil {
+			return nil, err
+		}
+
+		laneStates, err := ca.laneState(ca.chctx, pchState, ch)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, ls := range laneStates {
+			totalRedeemed = types.BigAdd(totalRedeemed, ls.Redeemed)
+		}
+	}
+
+	return &api.ChannelAvailableFunds{
+		Channel:             channelInfo.Channel,
+		ConfirmedAmt:        channelInfo.Amount,
+		PendingAmt:          channelInfo.PendingAmount,
+		PendingWaitSentinel: waitSentinel,
+		QueuedAmt:           queuedAmt,
+		VoucherReedeemedAmt: totalRedeemed,
+	}, nil
 }
 
 // processTask checks the state of the channel and takes appropriate action
@@ -397,7 +456,7 @@ func (ca *channelAccessor) waitForPaychCreateMsg(channelID string, mcid cid.Cid)
 }
 
 func (ca *channelAccessor) waitPaychCreateMsg(channelID string, mcid cid.Cid) error {
-	mwait, err := ca.api.StateWaitMsg(ca.waitCtx, mcid, build.MessageConfidence)
+	mwait, err := ca.api.StateWaitMsg(ca.chctx, mcid, build.MessageConfidence)
 	if err != nil {
 		log.Errorf("wait msg: %w", err)
 		return err
@@ -480,7 +539,7 @@ func (ca *channelAccessor) waitForAddFundsMsg(channelID string, mcid cid.Cid) {
 }
 
 func (ca *channelAccessor) waitAddFundsMsg(channelID string, mcid cid.Cid) error {
-	mwait, err := ca.api.StateWaitMsg(ca.waitCtx, mcid, build.MessageConfidence)
+	mwait, err := ca.api.StateWaitMsg(ca.chctx, mcid, build.MessageConfidence)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -668,4 +727,8 @@ func (ca *channelAccessor) msgPromise(ctx context.Context, mcid cid.Cid) chan on
 	}()
 
 	return promise
+}
+
+func (ca *channelAccessor) availableFunds() (*api.ChannelAvailableFunds, error) {
+	return ca.processQueue()
 }

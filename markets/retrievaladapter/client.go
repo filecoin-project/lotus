@@ -3,11 +3,14 @@ package retrievaladapter
 import (
 	"context"
 
+	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multiaddr"
 
@@ -56,7 +59,10 @@ func (rcn *retrievalClientNode) CreatePaymentVoucher(ctx context.Context, paymen
 	if err != nil {
 		return nil, err
 	}
-	return voucher, nil
+	if voucher.Voucher == nil {
+		return nil, xerrors.Errorf("Could not create voucher - shortfall: %d", voucher.Shortfall)
+	}
+	return voucher.Voucher, nil
 }
 
 func (rcn *retrievalClientNode) GetChainHead(ctx context.Context) (shared.TipSetToken, abi.ChainEpoch, error) {

@@ -203,6 +203,7 @@ type FullNodeStruct struct {
 
 		PaychGet                   func(ctx context.Context, from, to address.Address, amt types.BigInt) (*api.ChannelInfo, error)           `perm:"sign"`
 		PaychGetWaitReady          func(context.Context, cid.Cid) (address.Address, error)                                                   `perm:"sign"`
+		PaychAvailableFunds        func(address.Address, address.Address) (*api.ChannelAvailableFunds, error)                                `perm:"sign"`
 		PaychList                  func(context.Context) ([]address.Address, error)                                                          `perm:"read"`
 		PaychStatus                func(context.Context, address.Address) (*api.PaychStatus, error)                                          `perm:"read"`
 		PaychSettle                func(context.Context, address.Address) (cid.Cid, error)                                                   `perm:"sign"`
@@ -213,7 +214,7 @@ type FullNodeStruct struct {
 		PaychVoucherCheckValid     func(context.Context, address.Address, *paych.SignedVoucher) error                                        `perm:"read"`
 		PaychVoucherCheckSpendable func(context.Context, address.Address, *paych.SignedVoucher, []byte, []byte) (bool, error)                `perm:"read"`
 		PaychVoucherAdd            func(context.Context, address.Address, *paych.SignedVoucher, []byte, types.BigInt) (types.BigInt, error)  `perm:"write"`
-		PaychVoucherCreate         func(context.Context, address.Address, big.Int, uint64) (*paych.SignedVoucher, error)                     `perm:"sign"`
+		PaychVoucherCreate         func(context.Context, address.Address, big.Int, uint64) (*api.VoucherCreateResult, error)                 `perm:"sign"`
 		PaychVoucherList           func(context.Context, address.Address) ([]*paych.SignedVoucher, error)                                    `perm:"write"`
 		PaychVoucherSubmit         func(context.Context, address.Address, *paych.SignedVoucher, []byte, []byte) (cid.Cid, error)             `perm:"sign"`
 	}
@@ -882,6 +883,10 @@ func (c *FullNodeStruct) PaychGetWaitReady(ctx context.Context, sentinel cid.Cid
 	return c.Internal.PaychGetWaitReady(ctx, sentinel)
 }
 
+func (c *FullNodeStruct) PaychAvailableFunds(from address.Address, to address.Address) (*api.ChannelAvailableFunds, error) {
+	return c.Internal.PaychAvailableFunds(from, to)
+}
+
 func (c *FullNodeStruct) PaychList(ctx context.Context) ([]address.Address, error) {
 	return c.Internal.PaychList(ctx)
 }
@@ -902,7 +907,7 @@ func (c *FullNodeStruct) PaychVoucherAdd(ctx context.Context, addr address.Addre
 	return c.Internal.PaychVoucherAdd(ctx, addr, sv, proof, minDelta)
 }
 
-func (c *FullNodeStruct) PaychVoucherCreate(ctx context.Context, pch address.Address, amt types.BigInt, lane uint64) (*paych.SignedVoucher, error) {
+func (c *FullNodeStruct) PaychVoucherCreate(ctx context.Context, pch address.Address, amt types.BigInt, lane uint64) (*api.VoucherCreateResult, error) {
 	return c.Internal.PaychVoucherCreate(ctx, pch, amt, lane)
 }
 
