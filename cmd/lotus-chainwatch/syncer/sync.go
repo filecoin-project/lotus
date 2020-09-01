@@ -186,6 +186,10 @@ func (s *Syncer) Start(ctx context.Context) {
 			for _, change := range notif {
 				switch change.Type {
 				case store.HCCurrent:
+					// This case is important for capturing the initial state of a node
+					// which might be on a dead network with no new blocks being produced.
+					// It also allows a fresh Chainwatch instance to start walking the
+					// chain without waiting for a new block to come along.
 					fallthrough
 				case store.HCApply:
 					unsynced, err := s.unsyncedBlocks(ctx, change.Val, sinceEpoch)
