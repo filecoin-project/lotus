@@ -20,9 +20,11 @@ import (
 )
 
 var (
-	MpoolAge         = stats.Float64("mpoolage", "Age of messages in the mempool", stats.UnitSeconds)
-	MpoolSize        = stats.Int64("mpoolsize", "Number of messages in mempool", stats.UnitDimensionless)
-	MpoolInboundRate = stats.Int64("inbound", "Counter for inbound messages", stats.UnitDimensionless)
+	MpoolAge           = stats.Float64("mpoolage", "Age of messages in the mempool", stats.UnitSeconds)
+	MpoolSize          = stats.Int64("mpoolsize", "Number of messages in mempool", stats.UnitDimensionless)
+	MpoolInboundRate   = stats.Int64("inbound", "Counter for inbound messages", stats.UnitDimensionless)
+	BlockInclusionRate = stats.Int64("inclusion", "Counter for message included in blocks", stats.UnitDimensionless)
+	MsgWaitTime        = stats.Float64("msg-wait-time", "Wait time of messages to make it into a block", stats.UnitSeconds)
 )
 
 var (
@@ -46,6 +48,16 @@ var (
 		Measure:     MpoolInboundRate,
 		Aggregation: view.Count(),
 	}
+	InclusionRate = &view.View{
+		Name:        "msg-inclusion",
+		Measure:     BlockInclusionRate,
+		Aggregation: view.Count(),
+	}
+	MsgWait = &view.View{
+		Name:        "msg-wait",
+		Measure:     MsgWaitTime,
+		Aggregation: view.Distribution(10, 30, 60, 120, 240, 600, 1800, 3600),
+	}
 )
 
 type msgInfo struct {
@@ -58,7 +70,7 @@ var mpoolStatsCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		logging.SetLogLevel("rpc", "ERROR")
 
-		if err := view.Register(AgeView); err != nil {
+		if err := view.Register(AgeView, SizeView, InboundRate, InclusionRate, MsgWait); err != nil {
 			return err
 		}
 
@@ -108,6 +120,8 @@ var mpoolStatsCmd = &cli.Command{
 						continue
 					}
 					fmt.Printf("%s was in the mempool for %s (feecap=%s, prem=%s)\n", u.Message.Cid(), time.Since(mi.seen), u.Message.Message.GasFeeCap, u.Message.Message.GasPremium)
+					stats.Record(ctx, BlockInclusionRate.M(1))
+					stats.Record(ctx, MsgWaitTime.M(time.Since(mi.seen).Seconds()))
 					delete(tracker, u.Message.Cid())
 				default:
 					return fmt.Errorf("unrecognized mpool update state: %d", u.Type)
