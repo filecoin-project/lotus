@@ -352,6 +352,12 @@ func TestRevertMessages(t *testing.T) {
 }
 
 func TestPruningSimple(t *testing.T) {
+	oldMaxNonceGap := MaxNonceGap
+	MaxNonceGap = 1000
+	defer func() {
+		MaxNonceGap = oldMaxNonceGap
+	}()
+
 	tma := newTestMpoolAPI()
 
 	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
