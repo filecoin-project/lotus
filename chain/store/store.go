@@ -1114,7 +1114,7 @@ func (cs *ChainStore) GetTipsetByHeight(ctx context.Context, h abi.ChainEpoch, t
 	return cs.LoadTipSet(lbts.Parents())
 }
 
-func recurseLinks(bs bstore.Blockstore, seen *cid.Set, root cid.Cid, in []cid.Cid) ([]cid.Cid, error) {
+func recurseLinks(bs bstore.Blockstore, walked *cid.Set, root cid.Cid, in []cid.Cid) ([]cid.Cid, error) {
 	if root.Prefix().Codec != cid.DagCBOR {
 		return in, nil
 	}
@@ -1132,13 +1132,13 @@ func recurseLinks(bs bstore.Blockstore, seen *cid.Set, root cid.Cid, in []cid.Ci
 		}
 
 		// traversed this already...
-		if !seen.Visit(c) {
+		if !walked.Visit(c) {
 			return
 		}
 
 		in = append(in, c)
 		var err error
-		in, err = recurseLinks(bs, seen, c, in)
+		in, err = recurseLinks(bs, walked, c, in)
 		if err != nil {
 			rerr = err
 		}
@@ -1156,6 +1156,7 @@ func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRo
 	}
 
 	seen := cid.NewSet()
+	walked := cid.NewSet()
 
 	h := &car.CarHeader{
 		Roots:   ts.Cids(),
@@ -1187,7 +1188,7 @@ func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRo
 			return xerrors.Errorf("unmarshaling block header (cid=%s): %w", blk, err)
 		}
 
-		cids, err := recurseLinks(cs.bs, seen, b.Messages, []cid.Cid{b.Messages})
+		cids, err := recurseLinks(cs.bs, walked, b.Messages, []cid.Cid{b.Messages})
 		if err != nil {
 			return xerrors.Errorf("recursing messages failed: %w", err)
 		}
@@ -1204,7 +1205,7 @@ func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRo
 		out := cids
 
 		if b.Height == 0 || b.Height > ts.Height()-inclRecentRoots {
-			cids, err := recurseLinks(cs.bs, seen, b.ParentStateRoot, []cid.Cid{b.ParentStateRoot})
+			cids, err := recurseLinks(cs.bs, walked, b.ParentStateRoot, []cid.Cid{b.ParentStateRoot})
 			if err != nil {
 				return xerrors.Errorf("recursing genesis state failed: %w", err)
 			}
