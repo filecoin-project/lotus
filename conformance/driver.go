@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/lotus/lib/blockstore"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/puppet"
 
 	"github.com/filecoin-project/test-vectors/chaos"
 	"github.com/filecoin-project/test-vectors/schema"
@@ -137,10 +136,7 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, preroot cid.Cid, epoch
 
 	invoker := vm.NewInvoker()
 
-	// add support for the puppet and chaos actors.
-	if puppetOn, ok := d.selector["puppet_actor"]; ok && puppetOn == "true" {
-		invoker.Register(puppet.PuppetActorCodeID, puppet.Actor{}, puppet.State{})
-	}
+	// register the chaos actor if required by the vector.
 	if chaosOn, ok := d.selector["chaos_actor"]; ok && chaosOn == "true" {
 		invoker.Register(chaos.ChaosActorCodeCID, chaos.Actor{}, chaos.State{})
 	}
