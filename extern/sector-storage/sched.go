@@ -563,6 +563,7 @@ func (sh *scheduler) runWorker(wid WorkerID) {
 				return
 			}
 
+			sh.workersLk.RLock()
 			worker.wndLk.Lock()
 
 			windowsRequested -= sh.workerCompactWindows(worker, wid)
@@ -574,8 +575,6 @@ func (sh *scheduler) runWorker(wid WorkerID) {
 
 				// process tasks within a window, preferring tasks at lower indexes
 				for len(firstWindow.todo) > 0 {
-					sh.workersLk.RLock()
-
 					tidx := -1
 
 					worker.lk.Lock()
@@ -589,7 +588,6 @@ func (sh *scheduler) runWorker(wid WorkerID) {
 					worker.lk.Unlock()
 
 					if tidx == -1 {
-						sh.workersLk.RUnlock()
 						break assignLoop
 					}
 
@@ -597,7 +595,6 @@ func (sh *scheduler) runWorker(wid WorkerID) {
 
 					log.Debugf("assign worker sector %d", todo.sector.Number)
 					err := sh.assignWorker(taskDone, wid, worker, todo)
-					sh.workersLk.RUnlock()
 
 					if err != nil {
 						log.Error("assignWorker error: %+v", err)
@@ -618,6 +615,7 @@ func (sh *scheduler) runWorker(wid WorkerID) {
 			}
 
 			worker.wndLk.Unlock()
+			sh.workersLk.RUnlock()
 		}
 	}()
 }
