@@ -28,12 +28,11 @@ import (
 var errNoPartitions = errors.New("no partitions")
 
 func (s *WindowPoStScheduler) failPost(err error, deadline *miner.DeadlineInfo) {
-	journal.J.RecordEvent(s.wdPoStEvtType, func() interface{} {
-		return s.enrichWithTipset(WindowPoStEvt{
-			State:    "failed",
-			Deadline: s.activeDeadline,
-			Error:    err,
-		})
+	journal.J.RecordEvent(s.evtTypes[evtTypeWdPoStScheduler], func() interface{} {
+		return WdPoStSchedulerEvt{
+			evtCommon: s.getEvtCommon(err),
+			State:     SchedulerStateFaulted,
+		}
 	})
 
 	log.Errorf("TODO")
@@ -50,11 +49,11 @@ func (s *WindowPoStScheduler) doPost(ctx context.Context, deadline *miner.Deadli
 	s.abort = abort
 	s.activeDeadline = deadline
 
-	journal.J.RecordEvent(s.wdPoStEvtType, func() interface{} {
-		return s.enrichWithTipset(WindowPoStEvt{
-			State:    "started",
-			Deadline: s.activeDeadline,
-		})
+	journal.J.RecordEvent(s.evtTypes[evtTypeWdPoStScheduler], func() interface{} {
+		return WdPoStSchedulerEvt{
+			evtCommon: s.getEvtCommon(nil),
+			State:     SchedulerStateStarted,
+		}
 	})
 
 	go func() {
@@ -63,25 +62,22 @@ func (s *WindowPoStScheduler) doPost(ctx context.Context, deadline *miner.Deadli
 		ctx, span := trace.StartSpan(ctx, "WindowPoStScheduler.doPost")
 		defer span.End()
 
-		// recordEvent records a successful proofs_processed event in the
+		// recordProofsEvent records a successful proofs_processed event in the
 		// journal, even if it was a noop (no partitions).
-		recordEvent := func(partitions []miner.PoStPartition, mcid cid.Cid) {
-			journal.J.RecordEvent(s.wdPoStEvtType, func() interface{} {
-				return s.enrichWithTipset(WindowPoStEvt{
-					State:    "proofs_processed",
-					Deadline: s.activeDeadline,
-					Proofs: &WindowPoStEvt_Proofs{
-						Partitions: partitions,
-						MessageCID: mcid,
-					},
-				})
+		recordProofsEvent := func(partitions []miner.PoStPartition, mcid cid.Cid) {
+			journal.J.RecordEvent(s.evtTypes[evtTypeWdPoStProofs], func() interface{} {
+				return &WdPoStProofsProcessedEvt{
+					evtCommon:  s.getEvtCommon(nil),
+					Partitions: partitions,
+					MessageCID: mcid,
+				}
 			})
 		}
 
 		proof, err := s.runPost(ctx, *deadline, ts)
 		switch err {
 		case errNoPartitions:
-			recordEvent(nil, cid.Undef)
+			recordProofsEvent(nil, cid.Undef)
 			return
 		case nil:
 			sm, err := s.submitPost(ctx, proof)
@@ -90,18 +86,18 @@ func (s *WindowPoStScheduler) doPost(ctx context.Context, deadline *miner.Deadli
 				s.failPost(err, deadline)
 				return
 			}
-			recordEvent(proof.Partitions, sm.Cid())
+			recordProofsEvent(proof.Partitions, sm.Cid())
 		default:
 			log.Errorf("runPost failed: %+v", err)
 			s.failPost(err, deadline)
 			return
 		}
 
-		journal.J.RecordEvent(s.wdPoStEvtType, func() interface{} {
-			return s.enrichWithTipset(WindowPoStEvt{
-				State:    "succeeded",
-				Deadline: s.activeDeadline,
-			})
+		journal.J.RecordEvent(s.evtTypes[evtTypeWdPoStScheduler], func() interface{} {
+			return WdPoStSchedulerEvt{
+				evtCommon: s.getEvtCommon(nil),
+				State:     SchedulerStateSucceeded,
+			}
 		})
 	}()
 }
@@ -364,15 +360,14 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 			log.Errorf("checking sector recoveries: %v", err)
 		}
 
-		journal.J.RecordEvent(s.wdPoStEvtType, func() interface{} {
-			return s.enrichWithTipset(WindowPoStEvt{
-				State:    "recoveries_processed",
-				Deadline: s.activeDeadline,
-				Recoveries: &WindowPoStEvt_Recoveries{
-					Declarations: recoveries,
-					MessageCID:   optionalCid(sigmsg),
-				},
-			})
+		journal.J.RecordEvent(s.evtTypes[evtTypeWdPoStRecoveries], func() interface{} {
+			j := WdPoStRecoveriesProcessedEvt{
+				evtCommon:    s.getEvtCommon(err),
+				Declarations: recoveries,
+				MessageCID:   optionalCid(sigmsg),
+			}
+			j.Error = err
+			return j
 		})
 
 		if faults, sigmsg, err = s.checkNextFaults(context.TODO(), declDeadline, partitions); err != nil {
@@ -380,15 +375,12 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 			log.Errorf("checking sector faults: %v", err)
 		}
 
-		journal.J.RecordEvent(s.wdPoStEvtType, func() interface{} {
-			return s.enrichWithTipset(WindowPoStEvt{
-				State:    "faults_processed",
-				Deadline: s.activeDeadline,
-				Faults: &WindowPoStEvt_Faults{
-					Declarations: faults,
-					MessageCID:   optionalCid(sigmsg),
-				},
-			})
+		journal.J.RecordEvent(s.evtTypes[evtTypeWdPoStFaults], func() interface{} {
+			return WdPoStFaultsProcessedEvt{
+				evtCommon:    s.getEvtCommon(err),
+				Declarations: faults,
+				MessageCID:   optionalCid(sigmsg),
+			}
 		})
 	}()
 

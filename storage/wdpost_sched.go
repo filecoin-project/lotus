@@ -19,38 +19,10 @@ import (
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/node/config"
 
-	"github.com/ipfs/go-cid"
 	"go.opencensus.io/trace"
 )
 
 const StartConfidence = 4 // TODO: config
-
-type WindowPoStEvt struct {
-	State    string
-	Deadline *miner.DeadlineInfo
-	Height   abi.ChainEpoch
-	TipSet   []cid.Cid
-	Error    error `json:",omitempty"`
-
-	Proofs     *WindowPoStEvt_Proofs     `json:",omitempty"`
-	Recoveries *WindowPoStEvt_Recoveries `json:",omitempty"`
-	Faults     *WindowPoStEvt_Faults     `json:",omitempty"`
-}
-
-type WindowPoStEvt_Proofs struct {
-	Partitions []miner.PoStPartition
-	MessageCID cid.Cid `json:",omitempty"`
-}
-
-type WindowPoStEvt_Recoveries struct {
-	Declarations []miner.RecoveryDeclaration
-	MessageCID   cid.Cid `json:",omitempty"`
-}
-
-type WindowPoStEvt_Faults struct {
-	Declarations []miner.FaultDeclaration
-	MessageCID   cid.Cid `json:",omitempty"`
-}
 
 type WindowPoStScheduler struct {
 	api              storageMinerApi
@@ -69,7 +41,7 @@ type WindowPoStScheduler struct {
 	activeDeadline *miner.DeadlineInfo
 	abort          context.CancelFunc
 
-	wdPoStEvtType journal.EventType
+	evtTypes [4]journal.EventType
 
 	// failed abi.ChainEpoch // eps
 	// failLk sync.Mutex
@@ -94,9 +66,14 @@ func NewWindowedPoStScheduler(api storageMinerApi, fc config.MinerFeeConfig, sb 
 		proofType:        rt,
 		partitionSectors: mi.WindowPoStPartitionSectors,
 
-		actor:         actor,
-		worker:        worker,
-		wdPoStEvtType: journal.J.RegisterEventType("storage", "wdpost"),
+		actor:  actor,
+		worker: worker,
+		evtTypes: [...]journal.EventType{
+			evtTypeWdPoStScheduler:  journal.J.RegisterEventType("wdpost", "scheduler"),
+			evtTypeWdPoStProofs:     journal.J.RegisterEventType("wdpost", "proofs_processed"),
+			evtTypeWdPoStRecoveries: journal.J.RegisterEventType("wdpost", "recoveries_processed"),
+			evtTypeWdPoStFaults:     journal.J.RegisterEventType("wdpost", "faults_processed"),
+		},
 	}, nil
 }
 
@@ -253,11 +230,11 @@ func (s *WindowPoStScheduler) abortActivePoSt() {
 	if s.abort != nil {
 		s.abort()
 
-		journal.J.RecordEvent(s.wdPoStEvtType, func() interface{} {
-			return s.enrichWithTipset(WindowPoStEvt{
-				State:    "abort",
-				Deadline: s.activeDeadline,
-			})
+		journal.J.RecordEvent(s.evtTypes[evtTypeWdPoStScheduler], func() interface{} {
+			return WdPoStSchedulerEvt{
+				evtCommon: s.getEvtCommon(nil),
+				State:     SchedulerStateAborted,
+			}
 		})
 
 		log.Warnf("Aborting Window PoSt (Deadline: %+v)", s.activeDeadline)
@@ -267,12 +244,14 @@ func (s *WindowPoStScheduler) abortActivePoSt() {
 	s.abort = nil
 }
 
-// enrichWithTipset enriches a WindowPoStEvt with tipset information,
-// if available.
-func (s *WindowPoStScheduler) enrichWithTipset(evt WindowPoStEvt) WindowPoStEvt {
+// getEvtCommon populates and returns common attributes from state, for a
+// WdPoSt journal event.
+func (s *WindowPoStScheduler) getEvtCommon(err error) evtCommon {
+	c := evtCommon{Error: err}
 	if s.cur != nil {
-		evt.Height = s.cur.Height()
-		evt.TipSet = s.cur.Cids()
+		c.Deadline = s.activeDeadline
+		c.Height = s.cur.Height()
+		c.TipSet = s.cur.Cids()
 	}
-	return evt
+	return c
 }
