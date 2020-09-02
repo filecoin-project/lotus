@@ -211,6 +211,7 @@ func executeTipsetVector(t *testing.T, vector *schema.TestVector) {
 	// Apply every tipset.
 	var receiptsIdx int
 	for i, ts := range vector.ApplyTipsets {
+		ts := ts // capture
 		ret, err := driver.ExecuteTipset(bs, tmpds, root, prevEpoch, &ts)
 		if err != nil {
 			t.Fatalf("failed to apply tipset %d message: %s", i, err)
