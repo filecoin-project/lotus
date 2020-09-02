@@ -103,7 +103,7 @@ var DaemonCmd = &cli.Command{
 			Usage: "on first run, load chain from given file",
 		},
 		&cli.StringFlag{
-			Name:  "checkpoint",
+			Name:  "snapshot",
 			Usage: "import chain state from a given chain export file",
 		},
 		&cli.BoolFlag{
@@ -195,15 +195,15 @@ var DaemonCmd = &cli.Command{
 		}
 
 		chainfile := cctx.String("import-chain")
-		snapshot := cctx.String("checkpoint")
+		snapshot := cctx.String("snapshot")
 		if chainfile != "" || snapshot != "" {
 			if chainfile != "" && snapshot != "" {
 				return fmt.Errorf("cannot specify both 'snapshot' and 'import-chain'")
 			}
-			var ischeckpoint bool
+			var issnapshot bool
 			if chainfile == "" {
 				chainfile = snapshot
-				ischeckpoint = true
+				issnapshot = true
 			}
 
 			chainfile, err := homedir.Expand(chainfile)
@@ -211,7 +211,7 @@ var DaemonCmd = &cli.Command{
 				return err
 			}
 
-			if err := ImportChain(r, chainfile, ischeckpoint); err != nil {
+			if err := ImportChain(r, chainfile, issnapshot); err != nil {
 				return err
 			}
 			if cctx.Bool("halt-after-import") {

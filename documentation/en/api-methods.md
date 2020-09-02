@@ -268,6 +268,9 @@ blockchain, but that do not require any form of state computation.
 
 ### ChainExport
 ChainExport returns a stream of bytes with CAR dump of chain data.
+The exported chain data includes the header chain from the given tipset
+back to genesis, the entire genesis state, and the most recent 'nroots'
+state trees.
 
 
 Perms: read
@@ -275,6 +278,7 @@ Perms: read
 Inputs:
 ```json
 [
+  10101,
   [
     {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
