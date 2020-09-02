@@ -36,6 +36,7 @@
   * [ClientFindData](#ClientFindData)
   * [ClientGenCar](#ClientGenCar)
   * [ClientGetDealInfo](#ClientGetDealInfo)
+  * [ClientGetDealUpdates](#ClientGetDealUpdates)
   * [ClientHasLocal](#ClientHasLocal)
   * [ClientImport](#ClientImport)
   * [ClientListDataTransfers](#ClientListDataTransfers)
@@ -197,7 +198,7 @@ Response:
 ```json
 {
   "Version": "string value",
-  "APIVersion": 3072,
+  "APIVersion": 3584,
   "BlockDelay": 42
 }
 ```
@@ -267,6 +268,9 @@ blockchain, but that do not require any form of state computation.
 
 ### ChainExport
 ChainExport returns a stream of bytes with CAR dump of chain data.
+The exported chain data includes the header chain from the given tipset
+back to genesis, the entire genesis state, and the most recent 'nroots'
+state trees.
 
 
 Perms: read
@@ -274,6 +278,7 @@ Perms: read
 Inputs:
 ```json
 [
+  10101,
   [
     {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
@@ -886,6 +891,42 @@ Inputs:
   }
 ]
 ```
+
+Response:
+```json
+{
+  "ProposalCid": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "State": 42,
+  "Message": "string value",
+  "Provider": "t01234",
+  "DataRef": {
+    "TransferType": "string value",
+    "Root": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "PieceCid": null,
+    "PieceSize": 1024
+  },
+  "PieceCID": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "Size": 42,
+  "PricePerEpoch": "0",
+  "Duration": 42,
+  "DealID": 5432,
+  "CreationTime": "0001-01-01T00:00:00Z"
+}
+```
+
+### ClientGetDealUpdates
+ClientGetDealUpdates returns the status of updated deals
+
+
+Perms: read
+
+Inputs: `null`
 
 Response:
 ```json
@@ -2437,7 +2478,9 @@ Inputs:
       "Type": 2,
       "Data": "Ynl0ZSBhcnJheQ=="
     }
-  }
+  },
+  "Ynl0ZSBhcnJheQ==",
+  "Ynl0ZSBhcnJheQ=="
 ]
 ```
 
@@ -3603,7 +3646,7 @@ Response:
 ```
 
 ### StateSectorGetInfo
-StateSectorGetInfo returns the on-chain info for the specified miner's sector
+StateSectorGetInfo returns the on-chain info for the specified miner's sector. Returns null in case the sector info isn't found
 NOTE: returned info.Expiration may not be accurate in some cases, use StateSectorExpiration to get accurate
 expiration epoch
 

@@ -41,7 +41,7 @@ func (cs *ChainStore) Weight(ctx context.Context, ts *types.TipSet) (types.BigIn
 
 		var st power.State
 		if err := cst.Get(ctx, act.Head, &st); err != nil {
-			return types.NewInt(0), xerrors.Errorf("get power actor head: %w", err)
+			return types.NewInt(0), xerrors.Errorf("get power actor head (%s, height=%d): %w", act.Head, ts.Height(), err)
 		}
 		tpow = st.TotalQualityAdjPower // TODO: REVIEW: Is this correct?
 	}

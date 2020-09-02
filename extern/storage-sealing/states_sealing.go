@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/filecoin-project/specs-storage/storage"
 )
 
@@ -79,15 +80,16 @@ func (m *Sealing) getTicket(ctx statemachine.Context, sector SectorInfo) (abi.Se
 }
 
 func (m *Sealing) handlePreCommit1(ctx statemachine.Context, sector SectorInfo) error {
-	if err := checkPieces(ctx.Context(), sector, m.api); err != nil { // Sanity check state
+	if err := checkPieces(ctx.Context(), m.maddr, sector, m.api); err != nil { // Sanity check state
 		switch err.(type) {
 		case *ErrApi:
 			log.Errorf("handlePreCommit1: api error, not proceeding: %+v", err)
 			return nil
 		case *ErrInvalidDeals:
-			return ctx.Send(SectorPackingFailed{xerrors.Errorf("invalid dealIDs in sector: %w", err)})
+			log.Warnf("invalid deals in sector %d: %v", sector.SectorNumber, err)
+			return ctx.Send(SectorInvalidDealIDs{Return: RetPreCommit1})
 		case *ErrExpiredDeals: // Probably not much we can do here, maybe re-pack the sector?
-			return ctx.Send(SectorPackingFailed{xerrors.Errorf("expired dealIDs in sector: %w", err)})
+			return ctx.Send(SectorDealsExpired{xerrors.Errorf("expired dealIDs in sector: %w", err)})
 		default:
 			return xerrors.Errorf("checkPieces sanity check error: %w", err)
 		}
@@ -155,6 +157,11 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 			return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("ticket expired: %w", err)})
 		case *ErrBadTicket:
 			return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("bad ticket: %w", err)})
+		case *ErrInvalidDeals:
+			log.Warnf("invalid deals in sector %d: %v", sector.SectorNumber, err)
+			return ctx.Send(SectorInvalidDealIDs{Return: RetPreCommitting})
+		case *ErrExpiredDeals:
+			return ctx.Send(SectorDealsExpired{xerrors.Errorf("sector deals expired: %w", err)})
 		case *ErrPrecommitOnChain:
 			return ctx.Send(SectorPreCommitLanded{TipSet: tok}) // we re-did precommit
 		case *ErrSectorNumberAllocated:
@@ -226,11 +233,18 @@ func (m *Sealing) handlePreCommitWait(ctx statemachine.Context, sector SectorInf
 		return ctx.Send(SectorChainPreCommitFailed{err})
 	}
 
-	if mw.Receipt.ExitCode != 0 {
+	switch mw.Receipt.ExitCode {
+	case exitcode.Ok:
+		// this is what we expect
+	case exitcode.SysErrOutOfGas:
+		// gas estimator guessed a wrong number
+		return ctx.Send(SectorRetryPreCommit{})
+	default:
 		log.Error("sector precommit failed: ", mw.Receipt.ExitCode)
 		err := xerrors.Errorf("sector precommit failed: %d", mw.Receipt.ExitCode)
 		return ctx.Send(SectorChainPreCommitFailed{err})
 	}
+
 	log.Info("precommit message landed on chain: ", sector.SectorNumber)
 
 	return ctx.Send(SectorPreCommitLanded{TipSet: mw.TipSetTok})
@@ -326,21 +340,25 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 		return ctx.Send(SectorComputeProofFailed{xerrors.Errorf("computing seal proof failed(2): %w", err)})
 	}
 
+	return ctx.Send(SectorCommitted{
+		Proof: proof,
+	})
+}
+
+func (m *Sealing) handleSubmitCommit(ctx statemachine.Context, sector SectorInfo) error {
 	tok, _, err := m.api.ChainHead(ctx.Context())
 	if err != nil {
 		log.Errorf("handleCommitting: api error, not proceeding: %+v", err)
 		return nil
 	}
 
-	if err := m.checkCommit(ctx.Context(), sector, proof, tok); err != nil {
+	if err := m.checkCommit(ctx.Context(), sector, sector.Proof, tok); err != nil {
 		return ctx.Send(SectorCommitFailed{xerrors.Errorf("commit check error: %w", err)})
 	}
 
-	// TODO: Consider splitting states and persist proof for faster recovery
-
 	params := &miner.ProveCommitSectorParams{
 		SectorNumber: sector.SectorNumber,
-		Proof:        proof,
+		Proof:        sector.Proof,
 	}
 
 	enc := new(bytes.Buffer)
@@ -372,14 +390,13 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 		collateral = big.Zero()
 	}
 
-	// TODO: check seed / ticket are up to date
+	// TODO: check seed / ticket / deals are up to date
 	mcid, err := m.api.SendMsg(ctx.Context(), waddr, m.maddr, builtin.MethodsMiner.ProveCommitSector, collateral, m.feeCfg.MaxCommitGasFee, enc.Bytes())
 	if err != nil {
 		return ctx.Send(SectorCommitFailed{xerrors.Errorf("pushing message to mpool: %w", err)})
 	}
 
-	return ctx.Send(SectorCommitted{
-		Proof:   proof,
+	return ctx.Send(SectorCommitSubmitted{
 		Message: mcid,
 	})
 }
@@ -395,13 +412,22 @@ func (m *Sealing) handleCommitWait(ctx statemachine.Context, sector SectorInfo) 
 		return ctx.Send(SectorCommitFailed{xerrors.Errorf("failed to wait for porep inclusion: %w", err)})
 	}
 
-	if mw.Receipt.ExitCode != 0 {
+	switch mw.Receipt.ExitCode {
+	case exitcode.Ok:
+		// this is what we expect
+	case exitcode.SysErrOutOfGas:
+		// gas estimator guessed a wrong number
+		return ctx.Send(SectorRetrySubmitCommit{})
+	default:
 		return ctx.Send(SectorCommitFailed{xerrors.Errorf("submitting sector proof failed (exit=%d, msg=%s) (t:%x; s:%x(%d); p:%x)", mw.Receipt.ExitCode, sector.CommitMessage, sector.TicketValue, sector.SeedValue, sector.SeedEpoch, sector.Proof)})
 	}
 
-	_, err = m.api.StateSectorGetInfo(ctx.Context(), m.maddr, sector.SectorNumber, mw.TipSetTok)
+	si, err := m.api.StateSectorGetInfo(ctx.Context(), m.maddr, sector.SectorNumber, mw.TipSetTok)
 	if err != nil {
-		return ctx.Send(SectorCommitFailed{xerrors.Errorf("proof validation failed, sector not found in sector set after cron: %w", err)})
+		return ctx.Send(SectorCommitFailed{xerrors.Errorf("proof validation failed, calling StateSectorGetInfo: %w", err)})
+	}
+	if si == nil {
+		return ctx.Send(SectorCommitFailed{xerrors.Errorf("proof validation failed, sector not found in sector set after cron")})
 	}
 
 	return ctx.Send(SectorProving{})

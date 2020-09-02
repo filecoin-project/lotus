@@ -53,7 +53,7 @@ func TestPledgeSector(t *testing.T, b APIBuilder, blocktime time.Duration, nSect
 		defer close(done)
 		for mine {
 			build.Clock.Sleep(blocktime)
-			if err := sn[0].MineOne(ctx, bminer.MineReq{Done: func(bool, error) {
+			if err := sn[0].MineOne(ctx, bminer.MineReq{Done: func(bool, abi.ChainEpoch, error) {
 
 			}}); err != nil {
 				t.Error(err)
@@ -215,6 +215,10 @@ func TestWindowPost(t *testing.T, b APIBuilder, blocktime time.Duration, nSector
 		// Drop the sector
 		sn, err := parts[0].Sectors.First()
 		require.NoError(t, err)
+
+		all, err := parts[0].Sectors.All(2)
+		require.NoError(t, err)
+		fmt.Println("the sectors", all)
 
 		s = abi.SectorID{
 			Miner:  abi.ActorID(mid),

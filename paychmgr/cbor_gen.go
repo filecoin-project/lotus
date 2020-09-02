@@ -19,7 +19,7 @@ func (t *VoucherInfo) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{162}); err != nil {
+	if _, err := w.Write([]byte{163}); err != nil {
 		return err
 	}
 
@@ -62,6 +62,22 @@ func (t *VoucherInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	if _, err := w.Write(t.Proof[:]); err != nil {
+		return err
+	}
+
+	// t.Submitted (bool) (bool)
+	if len("Submitted") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"Submitted\" was too long")
+	}
+
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len("Submitted"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("Submitted")); err != nil {
+		return err
+	}
+
+	if err := cbg.WriteBool(w, t.Submitted); err != nil {
 		return err
 	}
 	return nil
@@ -141,6 +157,24 @@ func (t *VoucherInfo) UnmarshalCBOR(r io.Reader) error {
 
 			if _, err := io.ReadFull(br, t.Proof[:]); err != nil {
 				return err
+			}
+			// t.Submitted (bool) (bool)
+		case "Submitted":
+
+			maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
+			if err != nil {
+				return err
+			}
+			if maj != cbg.MajOther {
+				return fmt.Errorf("booleans must be major type 7")
+			}
+			switch extra {
+			case 20:
+				t.Submitted = false
+			case 21:
+				t.Submitted = true
+			default:
+				return fmt.Errorf("booleans are either major type 7, value 20 or 21 (got %d)", extra)
 			}
 
 		default:

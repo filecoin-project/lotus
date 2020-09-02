@@ -107,12 +107,14 @@ func TestPaymentChannelVouchers(t *testing.T) {
 	ctx := context.Background()
 	nodes, addrs := startTwoNodesOneMiner(ctx, t, blocktime)
 	paymentCreator := nodes[0]
+	paymentReceiver := nodes[1]
 	creatorAddr := addrs[0]
 	receiverAddr := addrs[1]
 
 	// Create mock CLI
 	mockCLI := newMockCLI(t)
 	creatorCLI := mockCLI.client(paymentCreator.ListenAddr)
+	receiverCLI := mockCLI.client(paymentReceiver.ListenAddr)
 
 	// creator: paych get <creator> <receiver> <amount>
 	channelAmt := "100000"
@@ -127,42 +129,122 @@ func TestPaymentChannelVouchers(t *testing.T) {
 	// creator: paych voucher create <channel> <amount>
 	// Note: implied --lane=0
 	voucherAmt1 := 100
-	vamt1 := strconv.Itoa(voucherAmt1)
-	cmd = []string{chAddr.String(), vamt1}
+	cmd = []string{chAddr.String(), strconv.Itoa(voucherAmt1)}
 	voucher1 := creatorCLI.runCmd(paychVoucherCreateCmd, cmd)
 	vouchers = append(vouchers, voucherSpec{serialized: voucher1, lane: 0, amt: voucherAmt1})
 
 	// creator: paych voucher create <channel> <amount> --lane=5
 	lane5 := "--lane=5"
 	voucherAmt2 := 50
-	vamt2 := strconv.Itoa(voucherAmt2)
-	cmd = []string{lane5, chAddr.String(), vamt2}
+	cmd = []string{lane5, chAddr.String(), strconv.Itoa(voucherAmt2)}
 	voucher2 := creatorCLI.runCmd(paychVoucherCreateCmd, cmd)
 	vouchers = append(vouchers, voucherSpec{serialized: voucher2, lane: 5, amt: voucherAmt2})
 
 	// creator: paych voucher create <channel> <amount> --lane=5
 	voucherAmt3 := 70
-	vamt3 := strconv.Itoa(voucherAmt3)
-	cmd = []string{lane5, chAddr.String(), vamt3}
+	cmd = []string{lane5, chAddr.String(), strconv.Itoa(voucherAmt3)}
 	voucher3 := creatorCLI.runCmd(paychVoucherCreateCmd, cmd)
 	vouchers = append(vouchers, voucherSpec{serialized: voucher3, lane: 5, amt: voucherAmt3})
+
+	// creator: paych voucher create <channel> <amount> --lane=5
+	voucherAmt4 := 80
+	cmd = []string{lane5, chAddr.String(), strconv.Itoa(voucherAmt4)}
+	voucher4 := creatorCLI.runCmd(paychVoucherCreateCmd, cmd)
+	vouchers = append(vouchers, voucherSpec{serialized: voucher4, lane: 5, amt: voucherAmt4})
 
 	// creator: paych voucher list <channel> --export
 	cmd = []string{"--export", chAddr.String()}
 	list := creatorCLI.runCmd(paychVoucherListCmd, cmd)
 
-	// Check that voucher list output is correct
+	// Check that voucher list output is correct on creator
 	checkVoucherOutput(t, list, vouchers)
 
 	// creator: paych voucher best-spendable <channel>
 	cmd = []string{"--export", chAddr.String()}
 	bestSpendable := creatorCLI.runCmd(paychVoucherBestSpendableCmd, cmd)
 
-	// Check that best spendable output is correct
+	// Check that best spendable output is correct on creator
 	bestVouchers := []voucherSpec{
 		{serialized: voucher1, lane: 0, amt: voucherAmt1},
-		{serialized: voucher3, lane: 5, amt: voucherAmt3},
+		{serialized: voucher4, lane: 5, amt: voucherAmt4},
 	}
+	checkVoucherOutput(t, bestSpendable, bestVouchers)
+
+	// receiver: paych voucher add <voucher>
+	cmd = []string{chAddr.String(), voucher1}
+	receiverCLI.runCmd(paychVoucherAddCmd, cmd)
+
+	// receiver: paych voucher add <voucher>
+	cmd = []string{chAddr.String(), voucher2}
+	receiverCLI.runCmd(paychVoucherAddCmd, cmd)
+
+	// receiver: paych voucher add <voucher>
+	cmd = []string{chAddr.String(), voucher3}
+	receiverCLI.runCmd(paychVoucherAddCmd, cmd)
+
+	// receiver: paych voucher add <voucher>
+	cmd = []string{chAddr.String(), voucher4}
+	receiverCLI.runCmd(paychVoucherAddCmd, cmd)
+
+	// receiver: paych voucher list <channel> --export
+	cmd = []string{"--export", chAddr.String()}
+	list = receiverCLI.runCmd(paychVoucherListCmd, cmd)
+
+	// Check that voucher list output is correct on receiver
+	checkVoucherOutput(t, list, vouchers)
+
+	// receiver: paych voucher best-spendable <channel>
+	cmd = []string{"--export", chAddr.String()}
+	bestSpendable = receiverCLI.runCmd(paychVoucherBestSpendableCmd, cmd)
+
+	// Check that best spendable output is correct on receiver
+	bestVouchers = []voucherSpec{
+		{serialized: voucher1, lane: 0, amt: voucherAmt1},
+		{serialized: voucher4, lane: 5, amt: voucherAmt4},
+	}
+	checkVoucherOutput(t, bestSpendable, bestVouchers)
+
+	// receiver: paych voucher submit <channel> <voucher>
+	cmd = []string{chAddr.String(), voucher1}
+	receiverCLI.runCmd(paychVoucherSubmitCmd, cmd)
+
+	// receiver: paych voucher best-spendable <channel>
+	cmd = []string{"--export", chAddr.String()}
+	bestSpendable = receiverCLI.runCmd(paychVoucherBestSpendableCmd, cmd)
+
+	// Check that best spendable output no longer includes submitted voucher
+	bestVouchers = []voucherSpec{
+		{serialized: voucher4, lane: 5, amt: voucherAmt4},
+	}
+	checkVoucherOutput(t, bestSpendable, bestVouchers)
+
+	// There are three vouchers in lane 5: 50, 70, 80
+	// Submit the voucher for 50. Best spendable should still be 80.
+	// receiver: paych voucher submit <channel> <voucher>
+	cmd = []string{chAddr.String(), voucher2}
+	receiverCLI.runCmd(paychVoucherSubmitCmd, cmd)
+
+	// receiver: paych voucher best-spendable <channel>
+	cmd = []string{"--export", chAddr.String()}
+	bestSpendable = receiverCLI.runCmd(paychVoucherBestSpendableCmd, cmd)
+
+	// Check that best spendable output still includes the voucher for 80
+	bestVouchers = []voucherSpec{
+		{serialized: voucher4, lane: 5, amt: voucherAmt4},
+	}
+	checkVoucherOutput(t, bestSpendable, bestVouchers)
+
+	// Submit the voucher for 80
+	// receiver: paych voucher submit <channel> <voucher>
+	cmd = []string{chAddr.String(), voucher4}
+	receiverCLI.runCmd(paychVoucherSubmitCmd, cmd)
+
+	// receiver: paych voucher best-spendable <channel>
+	cmd = []string{"--export", chAddr.String()}
+	bestSpendable = receiverCLI.runCmd(paychVoucherBestSpendableCmd, cmd)
+
+	// Check that best spendable output no longer includes submitted voucher
+	bestVouchers = []voucherSpec{}
 	checkVoucherOutput(t, bestSpendable, bestVouchers)
 }
 
@@ -171,14 +253,20 @@ func checkVoucherOutput(t *testing.T, list string, vouchers []voucherSpec) {
 	listVouchers := make(map[string]string)
 	for _, line := range lines {
 		parts := strings.Split(line, ";")
-		serialized := strings.TrimSpace(parts[1])
-		listVouchers[serialized] = strings.TrimSpace(parts[0])
+		if len(parts) == 2 {
+			serialized := strings.TrimSpace(parts[1])
+			listVouchers[serialized] = strings.TrimSpace(parts[0])
+		}
 	}
 	for _, vchr := range vouchers {
 		res, ok := listVouchers[vchr.serialized]
 		require.True(t, ok)
 		require.Regexp(t, fmt.Sprintf("Lane %d", vchr.lane), res)
 		require.Regexp(t, fmt.Sprintf("%d", vchr.amt), res)
+		delete(listVouchers, vchr.serialized)
+	}
+	for _, vchr := range listVouchers {
+		require.Fail(t, "Extra voucher "+vchr)
 	}
 }
 

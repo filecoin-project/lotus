@@ -102,6 +102,7 @@ func (st *SectorBlocks) AddPiece(ctx context.Context, size abi.UnpaddedPieceSize
 		return 0, 0, err
 	}
 
+	// TODO: DealID has very low finality here
 	err = st.writeRef(d.DealID, sn, offset, size)
 	if err != nil {
 		return 0, 0, xerrors.Errorf("writeRef: %w", err)

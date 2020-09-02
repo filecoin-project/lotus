@@ -157,7 +157,7 @@ func MinerSectorInfo(ctx context.Context, sm *StateManager, maddr address.Addres
 		return nil, err
 	}
 	if !ok {
-		return nil, xerrors.New("sector not found")
+		return nil, nil
 	}
 
 	return sectorInfo, nil
@@ -432,7 +432,7 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 		return cid.Undef, nil, err
 	}
 
-	r := store.NewChainRand(sm.cs, ts.Cids(), height)
+	r := store.NewChainRand(sm.cs, ts.Cids())
 	vmopt := &vm.VMOpts{
 		StateBase:      base,
 		Epoch:          height,

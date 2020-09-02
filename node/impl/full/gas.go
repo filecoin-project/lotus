@@ -59,6 +59,10 @@ func (a *GasAPI) GasEstimateFeeCap(ctx context.Context, msg *types.Message, maxq
 		out = types.BigDiv(maxAccepted, gasLimitBig)
 	}
 
+	if msg.GasPremium != types.EmptyInt {
+		out = types.BigAdd(out, msg.GasPremium)
+	}
+
 	return out, nil
 }
 
@@ -109,27 +113,22 @@ func (a *GasAPI) GasEstimateGasPremium(ctx context.Context, nblocksincl uint64,
 		return prices[i].price.GreaterThan(prices[j].price)
 	})
 
-	// todo: account for how full blocks are
-
 	at := build.BlockGasTarget * int64(blocks) / 2
-	prev := big.Zero()
-
-	premium := big.Zero()
+	prev1, prev2 := big.Zero(), big.Zero()
 	for _, price := range prices {
+		prev1, prev2 = price.price, prev1
 		at -= price.limit
 		if at > 0 {
-			prev = price.price
 			continue
 		}
-
-		if prev.Equals(big.Zero()) {
-			return types.BigAdd(price.price, big.NewInt(1)), nil
-		}
-
-		premium = types.BigAdd(big.Div(types.BigAdd(price.price, prev), types.NewInt(2)), big.NewInt(1))
 	}
 
-	if types.BigCmp(premium, big.Zero()) == 0 {
+	premium := prev1
+	if prev2.Sign() != 0 {
+		premium = big.Div(types.BigAdd(prev1, prev2), types.NewInt(2))
+	}
+
+	if types.BigCmp(premium, types.NewInt(MinGasPremium)) < 0 {
 		switch nblocksincl {
 		case 1:
 			premium = types.NewInt(2 * MinGasPremium)
@@ -144,7 +143,7 @@ func (a *GasAPI) GasEstimateGasPremium(ctx context.Context, nblocksincl uint64,
 	const precision = 32
 	// mean 1, stddev 0.005 => 95% within +-1%
 	noise := 1 + rand.NormFloat64()*0.005
-	premium = types.BigMul(premium, types.NewInt(uint64(noise*(1<<precision))))
+	premium = types.BigMul(premium, types.NewInt(uint64(noise*(1<<precision))+1))
 	premium = types.BigDiv(premium, types.NewInt(1<<precision))
 	return premium, nil
 }
@@ -219,7 +218,7 @@ func (a *GasAPI) GasEstimateMessageGas(ctx context.Context, msg *types.Message, 
 		if err != nil {
 			return nil, xerrors.Errorf("estimating fee cap: %w", err)
 		}
-		msg.GasFeeCap = big.Add(feeCap, msg.GasPremium)
+		msg.GasFeeCap = feeCap
 	}
 
 	capGasFee(msg, spec.Get().MaxFee)

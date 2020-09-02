@@ -133,6 +133,18 @@ var runCmd = &cli.Command{
 			Usage:   "do not send any messages",
 			Value:   false,
 		},
+		&cli.BoolFlag{
+			Name:    "pre-commit",
+			EnvVars: []string{"LOTUS_PCR_PRE_COMMIT"},
+			Usage:   "process PreCommitSector messages",
+			Value:   true,
+		},
+		&cli.BoolFlag{
+			Name:    "prove-commit",
+			EnvVars: []string{"LOTUS_PCR_PROVE_COMMIT"},
+			Usage:   "process ProveCommitSector messages",
+			Value:   true,
+		},
 		&cli.IntFlag{
 			Name:    "head-delay",
 			EnvVars: []string{"LOTUS_PCR_HEAD_DELAY"},
@@ -180,12 +192,16 @@ var runCmd = &cli.Command{
 		percentExtra := cctx.Int("percent-extra")
 		maxMessageQueue := cctx.Int("max-message-queue")
 		dryRun := cctx.Bool("dry-run")
+		preCommitEnabled := cctx.Bool("pre-commit")
+		proveCommitEnabled := cctx.Bool("prove-commit")
 
 		rf := &refunder{
-			api:          api,
-			wallet:       from,
-			percentExtra: percentExtra,
-			dryRun:       dryRun,
+			api:                api,
+			wallet:             from,
+			percentExtra:       percentExtra,
+			dryRun:             dryRun,
+			preCommitEnabled:   preCommitEnabled,
+			proveCommitEnabled: proveCommitEnabled,
 		}
 
 		for tipset := range tipsetsCh {
@@ -281,10 +297,12 @@ type refunderNodeApi interface {
 }
 
 type refunder struct {
-	api          refunderNodeApi
-	wallet       address.Address
-	percentExtra int
-	dryRun       bool
+	api                refunderNodeApi
+	wallet             address.Address
+	percentExtra       int
+	dryRun             bool
+	preCommitEnabled   bool
+	proveCommitEnabled bool
 }
 
 func (r *refunder) ProcessTipset(ctx context.Context, tipset *types.TipSet) (*MinersRefund, error) {
@@ -331,7 +349,12 @@ func (r *refunder) ProcessTipset(ctx context.Context, tipset *types.TipSet) (*Mi
 
 		switch m.Method {
 		case builtin.MethodsMiner.ProveCommitSector:
+			if !r.proveCommitEnabled {
+				continue
+			}
+
 			messageMethod = "ProveCommitSector"
+
 			if recps[i].ExitCode != exitcode.Ok {
 				log.Debugw("skipping non-ok exitcode message", "method", messageMethod, "cid", msg.Cid, "miner", m.To, "exitcode", recps[i].ExitCode)
 				continue
@@ -369,6 +392,10 @@ func (r *refunder) ProcessTipset(ctx context.Context, tipset *types.TipSet) (*Mi
 
 			refundValue = collateral
 		case builtin.MethodsMiner.PreCommitSector:
+			if !r.preCommitEnabled {
+				continue
+			}
+
 			messageMethod = "PreCommitSector"
 
 			if recps[i].ExitCode != exitcode.Ok {

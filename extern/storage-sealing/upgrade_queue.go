@@ -72,6 +72,10 @@ func (m *Sealing) tryUpgradeSector(ctx context.Context, params *miner.SectorPreC
 			log.Errorf("error calling StateSectorGetInfo for replaced sector: %+v", err)
 			return big.Zero()
 		}
+		if ri == nil {
+			log.Errorf("couldn't find sector info for sector to replace: %+v", replace)
+			return big.Zero()
+		}
 
 		if params.Expiration < ri.Expiration {
 			// TODO: Some limit on this

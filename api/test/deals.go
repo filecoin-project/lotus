@@ -24,6 +24,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/miner"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	dag "github.com/ipfs/go-merkledag"
 	dstest "github.com/ipfs/go-merkledag/test"
 	unixfile "github.com/ipfs/go-unixfs/file"
@@ -35,7 +36,7 @@ import (
 
 var MineNext = miner.MineReq{
 	InjectNulls: 0,
-	Done:        func(bool, error) {},
+	Done:        func(bool, abi.ChainEpoch, error) {},
 }
 
 func init() {

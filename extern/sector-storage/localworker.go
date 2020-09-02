@@ -208,8 +208,8 @@ func (l *LocalWorker) Remove(ctx context.Context, sector abi.SectorID) error {
 	return err
 }
 
-func (l *LocalWorker) MoveStorage(ctx context.Context, sector abi.SectorID) error {
-	if err := l.storage.MoveStorage(ctx, sector, l.scfg.SealProofType, stores.FTSealed|stores.FTCache); err != nil {
+func (l *LocalWorker) MoveStorage(ctx context.Context, sector abi.SectorID, types stores.SectorFileType) error {
+	if err := l.storage.MoveStorage(ctx, sector, l.scfg.SealProofType, types); err != nil {
 		return xerrors.Errorf("moving sealed data to storage: %w", err)
 	}
 

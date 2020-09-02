@@ -101,10 +101,6 @@ func (evt SectorPacked) apply(state *SectorInfo) {
 	}
 }
 
-type SectorPackingFailed struct{ error }
-
-func (evt SectorPackingFailed) apply(*SectorInfo) {}
-
 type SectorPreCommit1 struct {
 	PreCommit1Out storage.PreCommit1Out
 	TicketValue   abi.SealRandomness
@@ -191,13 +187,28 @@ type SectorCommitFailed struct{ error }
 func (evt SectorCommitFailed) FormatError(xerrors.Printer) (next error) { return evt.error }
 func (evt SectorCommitFailed) apply(*SectorInfo)                        {}
 
+type SectorRetrySubmitCommit struct{}
+
+func (evt SectorRetrySubmitCommit) apply(*SectorInfo) {}
+
+type SectorDealsExpired struct{ error }
+
+func (evt SectorDealsExpired) FormatError(xerrors.Printer) (next error) { return evt.error }
+func (evt SectorDealsExpired) apply(*SectorInfo)                        {}
+
 type SectorCommitted struct {
-	Message cid.Cid
-	Proof   []byte
+	Proof []byte
 }
 
 func (evt SectorCommitted) apply(state *SectorInfo) {
 	state.Proof = evt.Proof
+}
+
+type SectorCommitSubmitted struct {
+	Message cid.Cid
+}
+
+func (evt SectorCommitSubmitted) apply(state *SectorInfo) {
 	state.CommitMessage = &evt.Message
 }
 
@@ -256,6 +267,24 @@ type SectorRetryCommitWait struct{}
 
 func (evt SectorRetryCommitWait) apply(state *SectorInfo) {}
 
+type SectorInvalidDealIDs struct {
+	Return ReturnState
+}
+
+func (evt SectorInvalidDealIDs) apply(state *SectorInfo) {
+	state.Return = evt.Return
+}
+
+type SectorUpdateDealIDs struct {
+	Updates map[int]abi.DealID
+}
+
+func (evt SectorUpdateDealIDs) apply(state *SectorInfo) {
+	for i, id := range evt.Updates {
+		state.Pieces[i].DealInfo.DealID = id
+	}
+}
+
 // Faults
 
 type SectorFaulty struct{}
@@ -274,7 +303,10 @@ type SectorFaultedFinal struct{}
 
 type SectorRemove struct{}
 
-func (evt SectorRemove) apply(state *SectorInfo) {}
+func (evt SectorRemove) applyGlobal(state *SectorInfo) bool {
+	state.State = Removing
+	return true
+}
 
 type SectorRemoved struct{}
 

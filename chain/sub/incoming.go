@@ -3,6 +3,7 @@ package sub
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -39,6 +40,9 @@ import (
 )
 
 var log = logging.Logger("sub")
+
+var ErrSoftFailure = errors.New("soft validation failure")
+var ErrInsufficientPower = errors.New("incoming block's miner does not have minimum power")
 
 func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *chain.Syncer, bserv bserv.BlockService, cmgr connmgr.ConnManager) {
 	for {
@@ -258,16 +262,15 @@ func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub
 
 	stats.Record(ctx, metrics.BlockReceived.M(1))
 
-	recordFailure := func(what string) {
-		ctx, _ = tag.New(ctx, tag.Insert(metrics.FailureType, what))
-		stats.Record(ctx, metrics.BlockValidationFailure.M(1))
+	recordFailureFlagPeer := func(what string) {
+		recordFailure(ctx, metrics.BlockValidationFailure, what)
 		bv.flagPeer(pid)
 	}
 
 	blk, what, err := bv.decodeAndCheckBlock(msg)
 	if err != nil {
 		log.Error("got invalid block over pubsub: ", err)
-		recordFailure(what)
+		recordFailureFlagPeer(what)
 		return pubsub.ValidationReject
 	}
 
@@ -275,7 +278,7 @@ func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub
 	err = bv.validateMsgMeta(ctx, blk)
 	if err != nil {
 		log.Warnf("error validating message metadata: %s", err)
-		recordFailure("invalid_block_meta")
+		recordFailureFlagPeer("invalid_block_meta")
 		return pubsub.ValidationReject
 	}
 
@@ -288,11 +291,12 @@ func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub
 	// if we are synced and the miner is unknown, then the block is rejcected.
 	key, err := bv.checkPowerAndGetWorkerKey(ctx, blk.Header)
 	if err != nil {
-		if bv.isChainNearSynced() {
+		if err != ErrSoftFailure && bv.isChainNearSynced() {
 			log.Warnf("received block from unknown miner or miner that doesn't meet min power over pubsub; rejecting message")
-			recordFailure("unknown_miner")
+			recordFailureFlagPeer("unknown_miner")
 			return pubsub.ValidationReject
 		}
+
 		log.Warnf("cannot validate block message; unknown miner or miner that doesn't meet min power in unsynced chain")
 		return pubsub.ValidationIgnore
 	}
@@ -300,13 +304,13 @@ func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub
 	err = sigs.CheckBlockSignature(ctx, blk.Header, key)
 	if err != nil {
 		log.Errorf("block signature verification failed: %s", err)
-		recordFailure("signature_verification_failed")
+		recordFailureFlagPeer("signature_verification_failed")
 		return pubsub.ValidationReject
 	}
 
 	if blk.Header.ElectionProof.WinCount < 1 {
 		log.Errorf("block is not claiming to be winning")
-		recordFailure("not_winning")
+		recordFailureFlagPeer("not_winning")
 		return pubsub.ValidationReject
 	}
 
@@ -473,19 +477,19 @@ func (bv *BlockValidator) checkPowerAndGetWorkerKey(ctx context.Context, bh *typ
 	baseTs := bv.chain.GetHeaviestTipSet()
 	lbts, err := stmgr.GetLookbackTipSetForRound(ctx, bv.stmgr, baseTs, bh.Height)
 	if err != nil {
-		log.Warnf("failed to load lookback tipset for incoming block")
-		return address.Undef, err
+		log.Warnf("failed to load lookback tipset for incoming block: %s", err)
+		return address.Undef, ErrSoftFailure
 	}
 
 	hmp, err := stmgr.MinerHasMinPower(ctx, bv.stmgr, bh.Miner, lbts)
 	if err != nil {
-		log.Warnf("failed to determine if incoming block's miner has minimum power")
-		return address.Undef, err
+		log.Warnf("failed to determine if incoming block's miner has minimum power: %s", err)
+		return address.Undef, ErrSoftFailure
 	}
 
 	if !hmp {
 		log.Warnf("incoming block's miner does not have minimum power")
-		return address.Undef, xerrors.New("incoming block's miner does not have minimum power")
+		return address.Undef, ErrInsufficientPower
 	}
 
 	return key, nil
@@ -541,13 +545,15 @@ func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubs
 		log.Debugf("failed to add message from network to message pool (From: %s, To: %s, Nonce: %d, Value: %s): %s", m.Message.From, m.Message.To, m.Message.Nonce, types.FIL(m.Message.Value), err)
 		ctx, _ = tag.New(
 			ctx,
-			tag.Insert(metrics.FailureType, "add"),
+			tag.Upsert(metrics.Local, "false"),
 		)
-		stats.Record(ctx, metrics.MessageValidationFailure.M(1))
+		recordFailure(ctx, metrics.MessageValidationFailure, "add")
 		switch {
-		case xerrors.Is(err, messagepool.ErrBroadcastAnyway):
+		case xerrors.Is(err, messagepool.ErrSoftValidationFailure):
 			fallthrough
 		case xerrors.Is(err, messagepool.ErrRBFTooLowPremium):
+			fallthrough
+		case xerrors.Is(err, messagepool.ErrTooManyPendingMessages):
 			fallthrough
 		case xerrors.Is(err, messagepool.ErrNonceTooLow):
 			return pubsub.ValidationIgnore
@@ -560,37 +566,41 @@ func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubs
 }
 
 func (mv *MessageValidator) validateLocalMessage(ctx context.Context, msg *pubsub.Message) pubsub.ValidationResult {
+	ctx, _ = tag.New(
+		ctx,
+		tag.Upsert(metrics.Local, "true"),
+	)
 	// do some lightweight validation
 	stats.Record(ctx, metrics.MessagePublished.M(1))
 
 	m, err := types.DecodeSignedMessage(msg.Message.GetData())
 	if err != nil {
 		log.Warnf("failed to decode local message: %s", err)
-		stats.Record(ctx, metrics.MessageValidationFailure.M(1))
+		recordFailure(ctx, metrics.MessageValidationFailure, "decode")
 		return pubsub.ValidationIgnore
 	}
 
 	if m.Size() > 32*1024 {
 		log.Warnf("local message is too large! (%dB)", m.Size())
-		stats.Record(ctx, metrics.MessageValidationFailure.M(1))
+		recordFailure(ctx, metrics.MessageValidationFailure, "oversize")
 		return pubsub.ValidationIgnore
 	}
 
 	if m.Message.To == address.Undef {
 		log.Warn("local message has invalid destination address")
-		stats.Record(ctx, metrics.MessageValidationFailure.M(1))
+		recordFailure(ctx, metrics.MessageValidationFailure, "undef-addr")
 		return pubsub.ValidationIgnore
 	}
 
 	if !m.Message.Value.LessThan(types.TotalFilecoinInt) {
 		log.Warnf("local messages has too high value: %s", m.Message.Value)
-		stats.Record(ctx, metrics.MessageValidationFailure.M(1))
+		recordFailure(ctx, metrics.MessageValidationFailure, "value-too-high")
 		return pubsub.ValidationIgnore
 	}
 
 	if err := mv.mpool.VerifyMsgSig(m); err != nil {
 		log.Warnf("signature verification failed for local message: %s", err)
-		stats.Record(ctx, metrics.MessageValidationFailure.M(1))
+		recordFailure(ctx, metrics.MessageValidationFailure, "verify-sig")
 		return pubsub.ValidationIgnore
 	}
 
@@ -612,4 +622,12 @@ func HandleIncomingMessages(ctx context.Context, mpool *messagepool.MessagePool,
 
 		// Do nothing... everything happens in validate
 	}
+}
+
+func recordFailure(ctx context.Context, metric *stats.Int64Measure, failureType string) {
+	ctx, _ = tag.New(
+		ctx,
+		tag.Upsert(metrics.FailureType, failureType),
+	)
+	stats.Record(ctx, metric.M(1))
 }
