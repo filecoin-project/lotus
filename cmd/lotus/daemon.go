@@ -100,10 +100,10 @@ var DaemonCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:  "import-chain",
-			Usage: "on first run, load chain from given file",
+			Usage: "on first run, load chain from given file and validate",
 		},
 		&cli.StringFlag{
-			Name:  "snapshot",
+			Name:  "import-snapshot",
 			Usage: "import chain state from a given chain export file",
 		},
 		&cli.BoolFlag{
@@ -195,10 +195,10 @@ var DaemonCmd = &cli.Command{
 		}
 
 		chainfile := cctx.String("import-chain")
-		snapshot := cctx.String("snapshot")
+		snapshot := cctx.String("import-snapshot")
 		if chainfile != "" || snapshot != "" {
 			if chainfile != "" && snapshot != "" {
-				return fmt.Errorf("cannot specify both 'snapshot' and 'import-chain'")
+				return fmt.Errorf("cannot specify both 'import-snapshot' and 'import-chain'")
 			}
 			var issnapshot bool
 			if chainfile == "" {

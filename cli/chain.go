@@ -876,7 +876,10 @@ var chainExportCmd = &cli.Command{
 			return fmt.Errorf("must specify filename to export chain to")
 		}
 
-		rsrs := cctx.Int64("recent-stateroots")
+		rsrs := abi.ChainEpoch(cctx.Int64("recent-stateroots"))
+		if cctx.IsSet("recent-stateroots") && rsrs < build.Finality {
+			return fmt.Errorf("\"recent-stateroots\" has to be greater than %d", build.Finality)
+		}
 
 		fi, err := os.Create(cctx.Args().First())
 		if err != nil {
@@ -894,7 +897,7 @@ var chainExportCmd = &cli.Command{
 			return err
 		}
 
-		stream, err := api.ChainExport(ctx, abi.ChainEpoch(rsrs), ts.Key())
+		stream, err := api.ChainExport(ctx, rsrs, ts.Key())
 		if err != nil {
 			return err
 		}
