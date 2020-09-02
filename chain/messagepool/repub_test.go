@@ -12,7 +12,7 @@ import (
 )
 
 func TestRepubMessages(t *testing.T) {
-	oldRepublishBatchDelay = RepublishBatchDelay
+	oldRepublishBatchDelay := RepublishBatchDelay
 	RepublishBatchDelay = time.Microsecond
 	defer func() {
 		RepublishBatchDelay = oldRepublishBatchDelay
