@@ -372,6 +372,10 @@ func (sb *Sealer) ReadPiece(ctx context.Context, writer io.Writer, sector abi.Se
 
 	pf, err := openPartialFile(maxPieceSize, path.Unsealed)
 	if err != nil {
+		if xerrors.Is(err, os.ErrNotExist) {
+			return false, nil
+		}
+
 		return false, xerrors.Errorf("opening partial file: %w", err)
 	}
 
