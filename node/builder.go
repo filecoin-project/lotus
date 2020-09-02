@@ -91,11 +91,16 @@ var (
 
 type invoke int
 
+// Invokes are called in the order they are defined.
 //nolint:golint
 const (
+	// InitJournal at position 0 initializes the journal global var as soon as
+	// the system starts, so that it's available for all other components.
+	InitJournalKey = invoke(iota)
+
 	// libp2p
 
-	PstoreAddSelfKeysKey = invoke(iota)
+	PstoreAddSelfKeysKey
 	StartListeningKey
 	BootstrapKey
 
@@ -123,7 +128,6 @@ const (
 	HeadMetricsKey
 	SettlePaymentChannelsKey
 	RunPeerTaggerKey
-	InitJournalKey
 
 	SetApiEndpointKey
 
