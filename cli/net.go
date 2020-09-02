@@ -9,7 +9,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/libp2p/go-libp2p-core/peer"
-	protocol "github.com/libp2p/go-libp2p-protocol"
+	protocol "github.com/libp2p/go-libp2p-core/protocol"
 
 	"github.com/dustin/go-humanize"
 	"github.com/urfave/cli/v2"

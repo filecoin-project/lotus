@@ -85,6 +85,9 @@
 * [Net](#Net)
   * [NetAddrsListen](#NetAddrsListen)
   * [NetAutoNatStatus](#NetAutoNatStatus)
+  * [NetBandwidthStats](#NetBandwidthStats)
+  * [NetBandwidthStatsByPeer](#NetBandwidthStatsByPeer)
+  * [NetBandwidthStatsByProtocol](#NetBandwidthStatsByProtocol)
   * [NetConnect](#NetConnect)
   * [NetConnectedness](#NetConnectedness)
   * [NetDisconnect](#NetDisconnect)
@@ -2056,6 +2059,61 @@ Response:
 {
   "Reachability": 1,
   "PublicAddr": "string value"
+}
+```
+
+### NetBandwidthStats
+
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "TotalIn": 9,
+  "TotalOut": 9,
+  "RateIn": 12.3,
+  "RateOut": 12.3
+}
+```
+
+### NetBandwidthStatsByPeer
+
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "12D3KooWSXmXLJmBR1M7i9RW9GQPNUhZSzXKzxDHWtAgNuJAbyEJ": {
+    "TotalIn": 174000,
+    "TotalOut": 12500,
+    "RateIn": 100,
+    "RateOut": 50
+  }
+}
+```
+
+### NetBandwidthStatsByProtocol
+
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "/fil/hello/1.0.0": {
+    "TotalIn": 174000,
+    "TotalOut": 12500,
+    "RateIn": 100,
+    "RateOut": 50
+  }
 }
 ```
 
