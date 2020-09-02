@@ -221,42 +221,51 @@ func collectChainSegment(
 func gatherMessages(cs *store.ChainStore, ts *types.TipSet) ([]*types.Message, [][]uint64, []*types.SignedMessage, [][]uint64, error) {
 	blsmsgmap := make(map[cid.Cid]uint64)
 	secpkmsgmap := make(map[cid.Cid]uint64)
-	var secpkmsgs []*types.SignedMessage
-	var blsmsgs []*types.Message
 	var secpkincl, blsincl [][]uint64
 
+	var blscids, secpkcids []cid.Cid
 	for _, block := range ts.Blocks() {
-		bmsgs, smsgs, err := cs.MessagesForBlock(block)
+		bc, sc, err := cs.ReadMsgMetaCids(block.Messages)
 		if err != nil {
 			return nil, nil, nil, nil, err
 		}
 
 		// FIXME: DRY. Use `chain.Message` interface.
-		bmi := make([]uint64, 0, len(bmsgs))
-		for _, m := range bmsgs {
-			i, ok := blsmsgmap[m.Cid()]
+		bmi := make([]uint64, 0, len(bc))
+		for _, m := range bc {
+			i, ok := blsmsgmap[m]
 			if !ok {
-				i = uint64(len(blsmsgs))
-				blsmsgs = append(blsmsgs, m)
-				blsmsgmap[m.Cid()] = i
+				i = uint64(len(blscids))
+				blscids = append(blscids, m)
+				blsmsgmap[m] = i
 			}
 
 			bmi = append(bmi, i)
 		}
 		blsincl = append(blsincl, bmi)
 
-		smi := make([]uint64, 0, len(smsgs))
-		for _, m := range smsgs {
-			i, ok := secpkmsgmap[m.Cid()]
+		smi := make([]uint64, 0, len(sc))
+		for _, m := range sc {
+			i, ok := secpkmsgmap[m]
 			if !ok {
-				i = uint64(len(secpkmsgs))
-				secpkmsgs = append(secpkmsgs, m)
-				secpkmsgmap[m.Cid()] = i
+				i = uint64(len(secpkcids))
+				secpkcids = append(secpkcids, m)
+				secpkmsgmap[m] = i
 			}
 
 			smi = append(smi, i)
 		}
 		secpkincl = append(secpkincl, smi)
+	}
+
+	blsmsgs, err := cs.LoadMessagesFromCids(blscids)
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+
+	secpkmsgs, err := cs.LoadSignedMessagesFromCids(secpkcids)
+	if err != nil {
+		return nil, nil, nil, nil, err
 	}
 
 	return blsmsgs, blsincl, secpkmsgs, secpkincl, nil
