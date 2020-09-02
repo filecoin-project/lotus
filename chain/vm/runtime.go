@@ -258,6 +258,13 @@ func (rt *Runtime) DeleteActor(beneficiary address.Address) {
 		panic(aerrors.Fatalf("failed to get actor: %s", err))
 	}
 	if !act.Balance.IsZero() {
+		// Ensure the beneficiary exists
+		if _, err := rt.state.GetActor(beneficiary); err != nil {
+			if xerrors.Is(err, types.ErrActorNotFound) {
+				rt.Abortf(exitcode.SysErrorIllegalActor, "failed to load beneficiary actor: %s", err)
+			}
+			panic(aerrors.Fatalf("failed to get beneficiary actor: %s", err))
+		}
 		// Transfer the executing actor's balance to the beneficiary
 		if err := rt.vm.transfer(rt.Receiver(), beneficiary, act.Balance); err != nil {
 			panic(aerrors.Fatalf("failed to transfer balance to beneficiary actor: %s", err))
