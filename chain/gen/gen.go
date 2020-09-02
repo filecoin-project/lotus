@@ -358,9 +358,7 @@ func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m add
 		return nil, nil, nil, xerrors.Errorf("failed to cbor marshal address: %w", err)
 	}
 
-	if len(entries) == 0 {
-		buf.Write(pts.MinTicket().VRFProof)
-	}
+	buf.Write(pts.MinTicket().VRFProof)
 
 	ticketRand, err := store.DrawRandomness(rbase.Data, crypto.DomainSeparationTag_TicketProduction, round-build.TicketRandomnessLookback, buf.Bytes())
 	if err != nil {
