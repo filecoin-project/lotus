@@ -153,7 +153,10 @@ func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid abi.SectorNumb
 			Value: info.SeedValue,
 			Epoch: info.SeedEpoch,
 		},
-		Retries: info.InvalidProofs,
+		PreCommitMsg: info.PreCommitMessage,
+		CommitMsg:    info.CommitMessage,
+		Retries:      info.InvalidProofs,
+		ToUpgrade:    sm.Miner.IsMarkedForUpgrade(sid),
 
 		LastErr: info.LastErr,
 		Log:     log,
@@ -174,6 +177,9 @@ func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid abi.SectorNumb
 
 	onChainInfo, err := sm.Full.StateSectorGetInfo(ctx, sm.Miner.Address(), sid, types.EmptyTSK)
 	if err != nil {
+		return sInfo, err
+	}
+	if onChainInfo == nil {
 		return sInfo, nil
 	}
 	sInfo.SealProof = onChainInfo.SealProof

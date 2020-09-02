@@ -33,7 +33,7 @@ func connectRemoteWorker(ctx context.Context, fa api.Common, url string) (*remot
 	headers := http.Header{}
 	headers.Add("Authorization", "Bearer "+string(token))
 
-	wapi, closer, err := client.NewWorkerRPC(url, headers)
+	wapi, closer, err := client.NewWorkerRPC(context.TODO(), url, headers)
 	if err != nil {
 		return nil, xerrors.Errorf("creating jsonrpc client: %w", err)
 	}

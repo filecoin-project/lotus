@@ -41,9 +41,10 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
-var log = logging.Logger("gen")
-
 const msgsPerBlock = 20
+
+//nolint:deadcode,varcheck
+var log = logging.Logger("gen")
 
 var ValidWpostForTesting = []abi.PoStProof{{
 	ProofBytes: []byte("valid proof"),
@@ -605,7 +606,7 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, round abi.ChainEpoch,
 
 	buf := new(bytes.Buffer)
 	if err := miner.MarshalCBOR(buf); err != nil {
-		return nil, xerrors.Errorf("failed to cbor marshal address: %w")
+		return nil, xerrors.Errorf("failed to cbor marshal address: %w", err)
 	}
 
 	electionRand, err := store.DrawRandomness(brand.Data, crypto.DomainSeparationTag_ElectionProofProduction, round, buf.Bytes())

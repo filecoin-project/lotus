@@ -28,12 +28,12 @@ func NewTemporary() blockstore.Blockstore {
 	return NewBlockstore(ds.NewMapDatastore())
 }
 
-// NewTemporary returns a thread-safe temporary blockstore.
+// NewTemporarySync returns a thread-safe temporary blockstore.
 func NewTemporarySync() blockstore.Blockstore {
 	return NewBlockstore(dssync.MutexWrap(ds.NewMapDatastore()))
 }
 
-// Wraps the underlying blockstore in an "identity" blockstore.
+// WrapIDStore wraps the underlying blockstore in an "identity" blockstore.
 func WrapIDStore(bstore blockstore.Blockstore) blockstore.Blockstore {
 	return blockstore.NewIdStore(bstore)
 }

@@ -10,7 +10,7 @@ import (
 
 	mux "github.com/gorilla/mux"
 	"github.com/multiformats/go-multiaddr"
-	manet "github.com/multiformats/go-multiaddr-net"
+	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
@@ -53,7 +53,10 @@ var runCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Bool("enable-gpu-proving") {
-			os.Setenv("BELLMAN_NO_GPU", "true")
+			err := os.Setenv("BELLMAN_NO_GPU", "true")
+			if err != nil {
+				return err
+			}
 		}
 
 		nodeApi, ncloser, err := lcli.GetFullNodeAPI(cctx)

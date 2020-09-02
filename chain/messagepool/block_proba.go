@@ -56,7 +56,7 @@ func binomialCoefficient(n, k float64) float64 {
 	for d := 1.0; d <= k; d++ {
 		r *= n
 		r /= d
-		n -= 1
+		n--
 	}
 	return r
 }

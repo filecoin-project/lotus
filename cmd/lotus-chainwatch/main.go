@@ -27,6 +27,11 @@ func main() {
 				Value:   "~/.lotus", // TODO: Consider XDG_DATA_HOME
 			},
 			&cli.StringFlag{
+				Name:    "api",
+				EnvVars: []string{"FULLNODE_API_INFO"},
+				Value:   "",
+			},
+			&cli.StringFlag{
 				Name:    "db",
 				EnvVars: []string{"LOTUS_DB"},
 				Value:   "",

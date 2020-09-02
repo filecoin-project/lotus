@@ -32,11 +32,11 @@ import (
 var log = logging.Logger("miner")
 
 // returns a callback reporting whether we mined a blocks in this round
-type waitFunc func(ctx context.Context, baseTime uint64) (func(bool, error), abi.ChainEpoch, error)
+type waitFunc func(ctx context.Context, baseTime uint64) (func(bool, abi.ChainEpoch, error), abi.ChainEpoch, error)
 
 func randTimeOffset(width time.Duration) time.Duration {
 	buf := make([]byte, 8)
-	rand.Reader.Read(buf)
+	rand.Reader.Read(buf) //nolint:errcheck
 	val := time.Duration(binary.BigEndian.Uint64(buf) % uint64(width))
 
 	return val - (width / 2)
@@ -52,7 +52,7 @@ func NewMiner(api api.FullNode, epp gen.WinningPoStProver, addr address.Address,
 		api:     api,
 		epp:     epp,
 		address: addr,
-		waitFunc: func(ctx context.Context, baseTime uint64) (func(bool, error), abi.ChainEpoch, error) {
+		waitFunc: func(ctx context.Context, baseTime uint64) (func(bool, abi.ChainEpoch, error), abi.ChainEpoch, error) {
 			// Wait around for half the block time in case other parents come in
 			deadline := baseTime + build.PropagationDelaySecs
 			baseT := time.Unix(int64(deadline), 0)
@@ -61,7 +61,7 @@ func NewMiner(api api.FullNode, epp gen.WinningPoStProver, addr address.Address,
 
 			build.Clock.Sleep(build.Clock.Until(baseT))
 
-			return func(bool, error) {}, 0, nil
+			return func(bool, abi.ChainEpoch, error) {}, 0, nil
 		},
 
 		sf:                sf,
@@ -150,7 +150,7 @@ func (m *Miner) mine(ctx context.Context) {
 		}
 
 		var base *MiningBase
-		var onDone func(bool, error)
+		var onDone func(bool, abi.ChainEpoch, error)
 		var injectNulls abi.ChainEpoch
 
 		for {
@@ -166,7 +166,7 @@ func (m *Miner) mine(ctx context.Context) {
 				break
 			}
 			if base != nil {
-				onDone(false, nil)
+				onDone(false, 0, nil)
 			}
 
 			// TODO: need to change the orchestration here. the problem is that
@@ -205,12 +205,16 @@ func (m *Miner) mine(ctx context.Context) {
 		if err != nil {
 			log.Errorf("mining block failed: %+v", err)
 			m.niceSleep(time.Second)
-			onDone(false, err)
+			onDone(false, 0, err)
 			continue
 		}
 		lastBase = *base
 
-		onDone(b != nil, nil)
+		var h abi.ChainEpoch
+		if b != nil {
+			h = b.Header.Height
+		}
+		onDone(b != nil, h, nil)
 
 		if b != nil {
 			journal.Add("blockMined", map[string]interface{}{
@@ -508,12 +512,3 @@ func (c *cachedActorLookup) StateGetActor(ctx context.Context, a address.Address
 }
 
 type ActorLookup func(context.Context, address.Address, types.TipSetKey) (*types.Actor, error)
-
-func countFrom(msgs []*types.SignedMessage, from address.Address) (out int) {
-	for _, msg := range msgs {
-		if msg.Message.From == from {
-			out++
-		}
-	}
-	return out
-}

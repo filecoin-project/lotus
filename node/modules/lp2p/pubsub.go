@@ -126,7 +126,7 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 				Topics: map[string]*pubsub.TopicScoreParams{
 					drandTopic: {
 						// expected 2 beaconsn/min
-						TopicWeight: 0.5, // 5x block topic
+						TopicWeight: 0.5, // 5x block topic; max cap is 62.5
 
 						// 1 tick per second, maxes at 1 after 1 hour
 						TimeInMeshWeight:  0.00027, // ~1/3600
@@ -154,7 +154,7 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 					},
 					build.BlocksTopic(in.Nn): {
 						// expected 10 blocks/min
-						TopicWeight: 0.1, // max is 50, max mesh penalty is -10, single invalid message is -100
+						TopicWeight: 0.1, // max cap is 50, max mesh penalty is -10, single invalid message is -100
 
 						// 1 tick per second, maxes at 1 after 1 hour
 						TimeInMeshWeight:  0.00027, // ~1/3600
@@ -195,18 +195,17 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 					},
 					build.MessagesTopic(in.Nn): {
 						// expected > 1 tx/second
-						TopicWeight: 0.05, // max is 25, max mesh penalty is -5, single invalid message is -100
+						TopicWeight: 0.1, // max cap is 5, single invalid message is -100
 
 						// 1 tick per second, maxes at 1 hour
 						TimeInMeshWeight:  0.0002778, // ~1/3600
 						TimeInMeshQuantum: time.Second,
 						TimeInMeshCap:     1,
 
-						// deliveries decay after 10min, cap at 1000 tx
-						FirstMessageDeliveriesWeight: 0.5, // max value is 500
+						// deliveries decay after 10min, cap at 100 tx
+						FirstMessageDeliveriesWeight: 0.5, // max value is 50
 						FirstMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(10 * time.Minute),
-						//FirstMessageDeliveriesCap:    1000,
-						FirstMessageDeliveriesCap: 1, // we can't yet properly validate them so only confer a tiny boost from delivery
+						FirstMessageDeliveriesCap:    100, // 100 messages in 10 minutes
 
 						// Mesh Delivery Failure is currently turned off for messages
 						// This is on purpose as the network is still too small, which results in
@@ -225,7 +224,7 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 						// MeshFailurePenaltyDecay:  pubsub.ScoreParameterDecay(5 * time.Minute),
 
 						// invalid messages decay after 1 hour
-						InvalidMessageDeliveriesWeight: -2000,
+						InvalidMessageDeliveriesWeight: -1000,
 						InvalidMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(time.Hour),
 					},
 				},
@@ -235,7 +234,7 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 				PublishThreshold:            -1000,
 				GraylistThreshold:           -2500,
 				AcceptPXThreshold:           1000,
-				OpportunisticGraftThreshold: 5,
+				OpportunisticGraftThreshold: 3.5,
 			},
 		),
 		pubsub.WithPeerScoreInspect(in.Sk.Update, 10*time.Second),
@@ -251,6 +250,7 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 		pubsub.GossipSubDout = 0
 		pubsub.GossipSubDlazy = 1024
 		pubsub.GossipSubGossipFactor = 0.5
+		pubsub.GossipSubPruneBackoff = 5 * time.Minute
 		// turn on PX
 		options = append(options, pubsub.WithPeerExchange(true))
 	}

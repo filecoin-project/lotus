@@ -29,28 +29,9 @@ lotus wallet new bls
 With your wallet address:
 
 - Visit the [faucet](http://spacerace.faucet.glif.io/)
-- Click "Create Miner"
-- DO NOT REFRESH THE PAGE. THIS OPERATION CAN TAKE SOME TIME.
-
-The task will be complete when you see:
-
-```sh
-New miners address is: <YOUR_NEW_MINING_ADDRESS>
-```
-
-## Initialize the miner
-
-In a CLI window, use the following command to start your miner:
-
-```sh
-lotus-miner init --actor=ACTOR_VALUE_RECEIVED --owner=OWNER_VALUE_RECEIVED
-```
-
-Example
-
-```sh
-lotus-miner init --actor=t01424 --owner=t3spmep2xxsl33o4gxk7yjxcobyohzgj3vejzerug25iinbznpzob6a6kexcbeix73th6vjtzfq7boakfdtd6a
-```
+- Paste the address you created under REQUEST.
+- Press the Request button.
+- Run `/lotus-miner init --owner=<blsAddress> --worker=<blsAddress>`
 
 You will have to wait some time for this operation to complete.
 

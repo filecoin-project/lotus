@@ -343,12 +343,12 @@ func (sm *SyncManager) scheduleProcessResult(res *syncResult) {
 				sm.syncQueue.buckets = append(sm.syncQueue.buckets, relbucket)
 			}
 			return
-		} else {
-			// TODO: this is the case where we try to sync a chain, and
-			// fail, and we have more blocks on top of that chain that
-			// have come in since.  The question is, should we try to
-			// sync these? or just drop them?
 		}
+		// TODO: this is the case where we try to sync a chain, and
+		// fail, and we have more blocks on top of that chain that
+		// have come in since.  The question is, should we try to
+		// sync these? or just drop them?
+		log.Error("failed to sync chain but have new unconnected blocks from chain")
 	}
 
 	if sm.nextSyncTarget == nil && !sm.syncQueue.Empty() {

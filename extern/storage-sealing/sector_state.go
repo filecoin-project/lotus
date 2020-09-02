@@ -10,12 +10,13 @@ const (
 	WaitDeals      SectorState = "WaitDeals"     // waiting for more pieces (deals) to be added to the sector
 	Packing        SectorState = "Packing"       // sector not in sealStore, and not on chain
 	PreCommit1     SectorState = "PreCommit1"    // do PreCommit1
-	PreCommit2     SectorState = "PreCommit2"    // do PreCommit1
+	PreCommit2     SectorState = "PreCommit2"    // do PreCommit2
 	PreCommitting  SectorState = "PreCommitting" // on chain pre-commit
 	PreCommitWait  SectorState = "PreCommitWait" // waiting for precommit to land on chain
 	WaitSeed       SectorState = "WaitSeed"      // waiting for seed
-	Committing     SectorState = "Committing"
-	CommitWait     SectorState = "CommitWait" // waiting for message to land on chain
+	Committing     SectorState = "Committing"    // compute PoRep
+	SubmitCommit   SectorState = "SubmitCommit"  // send commit message to the chain
+	CommitWait     SectorState = "CommitWait"    // wait for the commit message to land on chain
 	FinalizeSector SectorState = "FinalizeSector"
 	Proving        SectorState = "Proving"
 	// error modes
@@ -25,8 +26,10 @@ const (
 	PreCommitFailed      SectorState = "PreCommitFailed"
 	ComputeProofFailed   SectorState = "ComputeProofFailed"
 	CommitFailed         SectorState = "CommitFailed"
-	PackingFailed        SectorState = "PackingFailed"
+	PackingFailed        SectorState = "PackingFailed" // TODO: deprecated, remove
 	FinalizeFailed       SectorState = "FinalizeFailed"
+	DealsExpired         SectorState = "DealsExpired"
+	RecoverDealIDs       SectorState = "RecoverDealIDs"
 
 	Faulty        SectorState = "Faulty"        // sector is corrupted or gone for some reason
 	FaultReported SectorState = "FaultReported" // sector has been declared as a fault on chain

@@ -214,30 +214,12 @@ func countGasCosts(et *types.ExecutionTrace) (int64, int64) {
 	}
 
 	for _, sub := range et.Subcalls {
-		c, v := countGasCosts(&sub)
+		c, v := countGasCosts(&sub) //nolint
 		cgas += c
 		vgas += v
 	}
 
 	return cgas, vgas
-}
-
-func compStats(vals []float64) (float64, float64) {
-	var sum float64
-
-	for _, v := range vals {
-		sum += v
-	}
-
-	av := sum / float64(len(vals))
-
-	var varsum float64
-	for _, v := range vals {
-		delta := av - v
-		varsum += delta * delta
-	}
-
-	return av, math.Sqrt(varsum / float64(len(vals)))
 }
 
 type stats struct {
@@ -264,20 +246,20 @@ func (cov1 *covar) VarianceX() float64 {
 	return cov1.m2x / (cov1.n - 1)
 }
 
-func (v1 *covar) StddevX() float64 {
-	return math.Sqrt(v1.VarianceX())
+func (cov1 *covar) StddevX() float64 {
+	return math.Sqrt(cov1.VarianceX())
 }
 
 func (cov1 *covar) VarianceY() float64 {
 	return cov1.m2y / (cov1.n - 1)
 }
 
-func (v1 *covar) StddevY() float64 {
-	return math.Sqrt(v1.VarianceY())
+func (cov1 *covar) StddevY() float64 {
+	return math.Sqrt(cov1.VarianceY())
 }
 
 func (cov1 *covar) AddPoint(x, y float64) {
-	cov1.n += 1
+	cov1.n++
 
 	dx := x - cov1.meanX
 	cov1.meanX += dx / cov1.n
@@ -344,7 +326,7 @@ type meanVar struct {
 
 func (v1 *meanVar) AddPoint(value float64) {
 	// based on https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Welford's_online_algorithm
-	v1.n += 1
+	v1.n++
 	delta := value - v1.mean
 	v1.mean += delta / v1.n
 	delta2 := value - v1.mean
@@ -481,7 +463,7 @@ var importAnalyzeCmd = &cli.Command{
 		}
 
 		go func() {
-			http.ListenAndServe("localhost:6060", nil)
+			http.ListenAndServe("localhost:6060", nil) //nolint:errcheck
 		}()
 
 		fi, err := os.Open(cctx.Args().First())

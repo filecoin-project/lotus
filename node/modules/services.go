@@ -76,7 +76,7 @@ func RunBlockSync(h host.Host, svc *blocksync.BlockSyncService) {
 func HandleIncomingBlocks(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.PubSub, s *chain.Syncer, bserv dtypes.ChainBlockService, chain *store.ChainStore, stmgr *stmgr.StateManager, h host.Host, nn dtypes.NetworkName) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
-	blocksub, err := ps.Subscribe(build.BlocksTopic(nn))
+	blocksub, err := ps.Subscribe(build.BlocksTopic(nn)) //nolint
 	if err != nil {
 		panic(err)
 	}
@@ -98,7 +98,7 @@ func HandleIncomingBlocks(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.P
 func HandleIncomingMessages(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.PubSub, mpool *messagepool.MessagePool, h host.Host, nn dtypes.NetworkName) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
-	msgsub, err := ps.Subscribe(build.MessagesTopic(nn))
+	msgsub, err := ps.Subscribe(build.MessagesTopic(nn)) //nolint:staticcheck
 	if err != nil {
 		panic(err)
 	}

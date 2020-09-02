@@ -86,7 +86,7 @@ type FullNodeStruct struct {
 		ChainGetNode                  func(ctx context.Context, p string) (*api.IpldObject, error)                                                       `perm:"read"`
 		ChainGetMessage               func(context.Context, cid.Cid) (*types.Message, error)                                                             `perm:"read"`
 		ChainGetPath                  func(context.Context, types.TipSetKey, types.TipSetKey) ([]*api.HeadChange, error)                                 `perm:"read"`
-		ChainExport                   func(context.Context, types.TipSetKey) (<-chan []byte, error)                                                      `perm:"read"`
+		ChainExport                   func(context.Context, abi.ChainEpoch, types.TipSetKey) (<-chan []byte, error)                                      `perm:"read"`
 
 		BeaconGetEntry func(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) `perm:"read"`
 
@@ -106,7 +106,9 @@ type FullNodeStruct struct {
 
 		MpoolSelect func(context.Context, types.TipSetKey, float64) ([]*types.SignedMessage, error) `perm:"read"`
 
-		MpoolPending     func(context.Context, types.TipSetKey) ([]*types.SignedMessage, error)                    `perm:"read"`
+		MpoolPending func(context.Context, types.TipSetKey) ([]*types.SignedMessage, error) `perm:"read"`
+		MpoolClear   func(context.Context, bool) error                                      `perm:"write"`
+
 		MpoolPush        func(context.Context, *types.SignedMessage) (cid.Cid, error)                              `perm:"write"`
 		MpoolPushMessage func(context.Context, *types.Message, *api.MessageSendSpec) (*types.SignedMessage, error) `perm:"sign"`
 		MpoolGetNonce    func(context.Context, address.Address) (uint64, error)                                    `perm:"read"`
@@ -137,6 +139,7 @@ type FullNodeStruct struct {
 		ClientStartDeal           func(ctx context.Context, params *api.StartDealParams) (*cid.Cid, error)                                          `perm:"admin"`
 		ClientGetDealInfo         func(context.Context, cid.Cid) (*api.DealInfo, error)                                                             `perm:"read"`
 		ClientListDeals           func(ctx context.Context) ([]api.DealInfo, error)                                                                 `perm:"write"`
+		ClientGetDealUpdates      func(ctx context.Context) (<-chan api.DealInfo, error)                                                            `perm:"read"`
 		ClientRetrieve            func(ctx context.Context, order api.RetrievalOrder, ref *api.FileRef) error                                       `perm:"admin"`
 		ClientRetrieveWithEvents  func(ctx context.Context, order api.RetrievalOrder, ref *api.FileRef) (<-chan marketevents.RetrievalEvent, error) `perm:"admin"`
 		ClientQueryAsk            func(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.SignedStorageAsk, error)              `perm:"read"`
@@ -212,7 +215,7 @@ type FullNodeStruct struct {
 		PaychVoucherAdd            func(context.Context, address.Address, *paych.SignedVoucher, []byte, types.BigInt) (types.BigInt, error)  `perm:"write"`
 		PaychVoucherCreate         func(context.Context, address.Address, big.Int, uint64) (*paych.SignedVoucher, error)                     `perm:"sign"`
 		PaychVoucherList           func(context.Context, address.Address) ([]*paych.SignedVoucher, error)                                    `perm:"write"`
-		PaychVoucherSubmit         func(context.Context, address.Address, *paych.SignedVoucher) (cid.Cid, error)                             `perm:"sign"`
+		PaychVoucherSubmit         func(context.Context, address.Address, *paych.SignedVoucher, []byte, []byte) (cid.Cid, error)             `perm:"sign"`
 	}
 }
 
@@ -314,7 +317,8 @@ type WorkerStruct struct {
 		FinalizeSector  func(context.Context, abi.SectorID, []storage.Range) error                                                                                                                                 `perm:"admin"`
 		ReleaseUnsealed func(ctx context.Context, sector abi.SectorID, safeToFree []storage.Range) error                                                                                                           `perm:"admin"`
 		Remove          func(ctx context.Context, sector abi.SectorID) error                                                                                                                                       `perm:"admin"`
-		MoveStorage     func(ctx context.Context, sector abi.SectorID) error                                                                                                                                       `perm:"admin"`
+		MoveStorage     func(ctx context.Context, sector abi.SectorID, types stores.SectorFileType) error                                                                                                          `perm:"admin"`
+		StorageAddLocal func(ctx context.Context, path string) error                                                                                                                                               `perm:"admin"`
 
 		UnsealPiece func(context.Context, abi.SectorID, storiface.UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) error `perm:"admin"`
 		ReadPiece   func(context.Context, io.Writer, abi.SectorID, storiface.UnpaddedByteIndex, abi.UnpaddedPieceSize) (bool, error)           `perm:"admin"`
@@ -431,6 +435,10 @@ func (c *FullNodeStruct) ClientListDeals(ctx context.Context) ([]api.DealInfo, e
 	return c.Internal.ClientListDeals(ctx)
 }
 
+func (c *FullNodeStruct) ClientGetDealUpdates(ctx context.Context) (<-chan api.DealInfo, error) {
+	return c.Internal.ClientGetDealUpdates(ctx)
+}
+
 func (c *FullNodeStruct) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref *api.FileRef) error {
 	return c.Internal.ClientRetrieve(ctx, order, ref)
 }
@@ -492,6 +500,10 @@ func (c *FullNodeStruct) MpoolSelect(ctx context.Context, tsk types.TipSetKey, t
 
 func (c *FullNodeStruct) MpoolPending(ctx context.Context, tsk types.TipSetKey) ([]*types.SignedMessage, error) {
 	return c.Internal.MpoolPending(ctx, tsk)
+}
+
+func (c *FullNodeStruct) MpoolClear(ctx context.Context, local bool) error {
+	return c.Internal.MpoolClear(ctx, local)
 }
 
 func (c *FullNodeStruct) MpoolPush(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, error) {
@@ -642,8 +654,8 @@ func (c *FullNodeStruct) ChainGetPath(ctx context.Context, from types.TipSetKey,
 	return c.Internal.ChainGetPath(ctx, from, to)
 }
 
-func (c *FullNodeStruct) ChainExport(ctx context.Context, tsk types.TipSetKey) (<-chan []byte, error) {
-	return c.Internal.ChainExport(ctx, tsk)
+func (c *FullNodeStruct) ChainExport(ctx context.Context, nroots abi.ChainEpoch, tsk types.TipSetKey) (<-chan []byte, error) {
+	return c.Internal.ChainExport(ctx, nroots, tsk)
 }
 
 func (c *FullNodeStruct) BeaconGetEntry(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) {
@@ -914,8 +926,8 @@ func (c *FullNodeStruct) PaychNewPayment(ctx context.Context, from, to address.A
 	return c.Internal.PaychNewPayment(ctx, from, to, vouchers)
 }
 
-func (c *FullNodeStruct) PaychVoucherSubmit(ctx context.Context, ch address.Address, sv *paych.SignedVoucher) (cid.Cid, error) {
-	return c.Internal.PaychVoucherSubmit(ctx, ch, sv)
+func (c *FullNodeStruct) PaychVoucherSubmit(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (cid.Cid, error) {
+	return c.Internal.PaychVoucherSubmit(ctx, ch, sv, secret, proof)
 }
 
 // StorageMinerStruct
@@ -1208,8 +1220,12 @@ func (w *WorkerStruct) Remove(ctx context.Context, sector abi.SectorID) error {
 	return w.Internal.Remove(ctx, sector)
 }
 
-func (w *WorkerStruct) MoveStorage(ctx context.Context, sector abi.SectorID) error {
-	return w.Internal.MoveStorage(ctx, sector)
+func (w *WorkerStruct) MoveStorage(ctx context.Context, sector abi.SectorID, types stores.SectorFileType) error {
+	return w.Internal.MoveStorage(ctx, sector, types)
+}
+
+func (w *WorkerStruct) StorageAddLocal(ctx context.Context, path string) error {
+	return w.Internal.StorageAddLocal(ctx, path)
 }
 
 func (w *WorkerStruct) UnsealPiece(ctx context.Context, id abi.SectorID, index storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, c cid.Cid) error {

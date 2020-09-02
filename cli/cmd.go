@@ -12,7 +12,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
 	"github.com/multiformats/go-multiaddr"
-	manet "github.com/multiformats/go-multiaddr-net"
+	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
@@ -75,6 +75,8 @@ func flagForAPI(t repo.RepoType) string {
 		return "api"
 	case repo.StorageMiner:
 		return "miner-api"
+	case repo.Worker:
+		return "worker-api"
 	default:
 		panic(fmt.Sprintf("Unknown repo type: %v", t))
 	}
@@ -86,6 +88,8 @@ func flagForRepo(t repo.RepoType) string {
 		return "repo"
 	case repo.StorageMiner:
 		return "miner-repo"
+	case repo.Worker:
+		return "worker-repo"
 	default:
 		panic(fmt.Sprintf("Unknown repo type: %v", t))
 	}
@@ -97,6 +101,8 @@ func envForRepo(t repo.RepoType) string {
 		return "FULLNODE_API_INFO"
 	case repo.StorageMiner:
 		return "MINER_API_INFO"
+	case repo.Worker:
+		return "WORKER_API_INFO"
 	default:
 		panic(fmt.Sprintf("Unknown repo type: %v", t))
 	}
@@ -109,6 +115,8 @@ func envForRepoDeprecation(t repo.RepoType) string {
 		return "FULLNODE_API_INFO"
 	case repo.StorageMiner:
 		return "STORAGE_API_INFO"
+	case repo.Worker:
+		return "WORKER_API_INFO"
 	default:
 		panic(fmt.Sprintf("Unknown repo type: %v", t))
 	}
@@ -213,7 +221,7 @@ func GetAPI(ctx *cli.Context) (api.Common, jsonrpc.ClientCloser, error) {
 		return nil, nil, err
 	}
 
-	return client.NewCommonRPC(addr, headers)
+	return client.NewCommonRPC(ctx.Context, addr, headers)
 }
 
 func GetFullNodeAPI(ctx *cli.Context) (api.FullNode, jsonrpc.ClientCloser, error) {
@@ -222,7 +230,7 @@ func GetFullNodeAPI(ctx *cli.Context) (api.FullNode, jsonrpc.ClientCloser, error
 		return nil, nil, err
 	}
 
-	return client.NewFullNodeRPC(addr, headers)
+	return client.NewFullNodeRPC(ctx.Context, addr, headers)
 }
 
 func GetStorageMinerAPI(ctx *cli.Context, opts ...jsonrpc.Option) (api.StorageMiner, jsonrpc.ClientCloser, error) {
@@ -231,7 +239,16 @@ func GetStorageMinerAPI(ctx *cli.Context, opts ...jsonrpc.Option) (api.StorageMi
 		return nil, nil, err
 	}
 
-	return client.NewStorageMinerRPC(addr, headers, opts...)
+	return client.NewStorageMinerRPC(ctx.Context, addr, headers, opts...)
+}
+
+func GetWorkerAPI(ctx *cli.Context) (api.WorkerAPI, jsonrpc.ClientCloser, error) {
+	addr, headers, err := GetRawAPI(ctx, repo.Worker)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return client.NewWorkerRPC(ctx.Context, addr, headers)
 }
 
 func DaemonContext(cctx *cli.Context) context.Context {

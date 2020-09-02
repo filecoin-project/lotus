@@ -38,7 +38,9 @@ func ChainExchange(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, rt 
 	// (so bitswap uses /chain/ipfs/bitswap/1.0.0 internally for chain sync stuff)
 	bitswapNetwork := network.NewFromIpfsHost(host, rt, network.Prefix("/chain"))
 	bitswapOptions := []bitswap.Option{bitswap.ProvideEnabled(false)}
-	exch := bitswap.New(helpers.LifecycleCtx(mctx, lc), bitswapNetwork, bs, bitswapOptions...)
+
+	// Use just exch.Close(), closing the context is not needed
+	exch := bitswap.New(mctx, bitswapNetwork, bs, bitswapOptions...)
 	lc.Append(fx.Hook{
 		OnStop: func(ctx context.Context) error {
 			return exch.Close()

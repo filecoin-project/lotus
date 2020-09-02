@@ -24,9 +24,14 @@ import (
 	"github.com/filecoin-project/lotus/node/impl"
 )
 
-func TestPledgeSector(t *testing.T, b APIBuilder, blocktime time.Duration, nSectors int) {
-	os.Setenv("BELLMAN_NO_GPU", "1")
+func init() {
+	err := os.Setenv("BELLMAN_NO_GPU", "1")
+	if err != nil {
+		panic(fmt.Sprintf("failed to set BELLMAN_NO_GPU env variable: %s", err))
+	}
+}
 
+func TestPledgeSector(t *testing.T, b APIBuilder, blocktime time.Duration, nSectors int) {
 	ctx := context.Background()
 	n, sn := b(t, 1, OneMiner)
 	client := n[0].FullNode.(*impl.FullNodeAPI)
@@ -48,7 +53,7 @@ func TestPledgeSector(t *testing.T, b APIBuilder, blocktime time.Duration, nSect
 		defer close(done)
 		for mine {
 			build.Clock.Sleep(blocktime)
-			if err := sn[0].MineOne(ctx, bminer.MineReq{Done: func(bool, error) {
+			if err := sn[0].MineOne(ctx, bminer.MineReq{Done: func(bool, abi.ChainEpoch, error) {
 
 			}}); err != nil {
 				t.Error(err)
@@ -110,8 +115,6 @@ func pledgeSectors(t *testing.T, ctx context.Context, miner TestStorageNode, n, 
 }
 
 func TestWindowPost(t *testing.T, b APIBuilder, blocktime time.Duration, nSectors int) {
-	os.Setenv("BELLMAN_NO_GPU", "1")
-
 	ctx := context.Background()
 	n, sn := b(t, 1, OneMiner)
 	client := n[0].FullNode.(*impl.FullNodeAPI)
@@ -212,6 +215,10 @@ func TestWindowPost(t *testing.T, b APIBuilder, blocktime time.Duration, nSector
 		// Drop the sector
 		sn, err := parts[0].Sectors.First()
 		require.NoError(t, err)
+
+		all, err := parts[0].Sectors.All(2)
+		require.NoError(t, err)
+		fmt.Println("the sectors", all)
 
 		s = abi.SectorID{
 			Miner:  abi.ActorID(mid),

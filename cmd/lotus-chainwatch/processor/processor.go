@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -36,9 +35,6 @@ type Processor struct {
 
 	// number of blocks processed at a time
 	batch int
-
-	// process communication channels
-	sectorDealEvents chan *SectorDealEvent
 }
 
 type ActorTips map[types.TipSetKey][]actorInfo
@@ -144,60 +140,63 @@ func (p *Processor) Start(ctx context.Context) {
 					"AccountChanges", len(actorChanges[builtin.AccountActorCodeID]),
 					"nullRounds", len(nullRounds))
 
-				grp, ctx := errgroup.WithContext(ctx)
+				grp := sync.WaitGroup{}
 
-				grp.Go(func() error {
+				grp.Add(1)
+				go func() {
+					defer grp.Done()
 					if err := p.HandleMarketChanges(ctx, actorChanges[builtin.StorageMarketActorCodeID]); err != nil {
-						return xerrors.Errorf("Failed to handle market changes: %w", err)
+						log.Errorf("Failed to handle market changes: %w", err)
+						return
 					}
-					log.Info("Processed Market Changes")
-					return nil
-				})
+				}()
 
-				grp.Go(func() error {
+				grp.Add(1)
+				go func() {
+					defer grp.Done()
 					if err := p.HandleMinerChanges(ctx, actorChanges[builtin.StorageMinerActorCodeID]); err != nil {
-						return xerrors.Errorf("Failed to handle miner changes: %w", err)
+						log.Errorf("Failed to handle miner changes: %w", err)
+						return
 					}
-					log.Info("Processed Miner Changes")
-					return nil
-				})
+				}()
 
-				grp.Go(func() error {
+				grp.Add(1)
+				go func() {
+					defer grp.Done()
 					if err := p.HandleRewardChanges(ctx, actorChanges[builtin.RewardActorCodeID], nullRounds); err != nil {
-						return xerrors.Errorf("Failed to handle reward changes: %w", err)
+						log.Errorf("Failed to handle reward changes: %w", err)
+						return
 					}
-					log.Info("Processed Reward Changes")
-					return nil
-				})
+				}()
 
-				grp.Go(func() error {
+				grp.Add(1)
+				go func() {
+					defer grp.Done()
 					if err := p.HandlePowerChanges(ctx, actorChanges[builtin.StoragePowerActorCodeID]); err != nil {
-						return xerrors.Errorf("Failed to handle power actor changes: %w", err)
+						log.Errorf("Failed to handle power actor changes: %w", err)
+						return
 					}
-					log.Info("Processes Power Changes")
-					return nil
-				})
+				}()
 
-				grp.Go(func() error {
+				grp.Add(1)
+				go func() {
+					defer grp.Done()
 					if err := p.HandleMessageChanges(ctx, toProcess); err != nil {
-						return xerrors.Errorf("Failed to handle message changes: %w", err)
+						log.Errorf("Failed to handle message changes: %w", err)
+						return
 					}
-					log.Info("Processed Message Changes")
-					return nil
-				})
+				}()
 
-				grp.Go(func() error {
+				grp.Add(1)
+				go func() {
+					defer grp.Done()
 					if err := p.HandleCommonActorsChanges(ctx, actorChanges); err != nil {
-						return xerrors.Errorf("Failed to handle common actor changes: %w", err)
+						log.Errorf("Failed to handle common actor changes: %w", err)
+						return
 					}
-					log.Info("Processed CommonActor Changes")
-					return nil
-				})
+				}()
 
-				if err := grp.Wait(); err != nil {
-					log.Errorw("Failed to handle actor changes...retrying", "error", err)
-					continue
-				}
+				grp.Wait()
 
 				if err := p.markBlocksProcessed(ctx, toProcess); err != nil {
 					log.Fatalw("Failed to mark blocks as processed", "error", err)
@@ -206,7 +205,7 @@ func (p *Processor) Start(ctx context.Context) {
 				if err := p.refreshViews(); err != nil {
 					log.Errorw("Failed to refresh views", "error", err)
 				}
-				log.Infow("Processed Batch", "duration", time.Since(loopStart).String())
+				log.Infow("Processed Batch Complete", "duration", time.Since(loopStart).String())
 			}
 		}
 	}()
@@ -370,7 +369,9 @@ where rnk <= $1
 			maxBlock = bh.Height
 		}
 	}
-	log.Infow("Gathered Blocks to Process", "start", minBlock, "end", maxBlock)
+	if minBlock <= maxBlock {
+		log.Infow("Gathered Blocks to Process", "start", minBlock, "end", maxBlock)
+	}
 	return out, rows.Close()
 }
 

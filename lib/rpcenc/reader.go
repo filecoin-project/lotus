@@ -64,7 +64,7 @@ func ReaderParamEncoder(addr string) jsonrpc.Option {
 				return
 			}
 
-			defer resp.Body.Close()
+			defer resp.Body.Close() //nolint:errcheck
 
 			if resp.StatusCode != 200 {
 				b, _ := ioutil.ReadAll(resp.Body)

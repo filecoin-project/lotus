@@ -126,7 +126,9 @@ var infoAllCmd = &cli.Command{
 
 			fs := &flag.FlagSet{}
 			for _, f := range sectorsStatusCmd.Flags {
-				f.Apply(fs)
+				if err := f.Apply(fs); err != nil {
+					return err
+				}
 			}
 			if err := fs.Parse([]string{"--log", "--on-chain-info", fmt.Sprint(s)}); err != nil {
 				return err

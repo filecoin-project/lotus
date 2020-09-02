@@ -93,8 +93,8 @@ func NewClientGraphsyncDataTransfer(lc fx.Lifecycle, h host.Host, gs dtypes.Grap
 		OnStart: func(ctx context.Context) error {
 			return dt.Start(ctx)
 		},
-		OnStop: func(context.Context) error {
-			return dt.Stop()
+		OnStop: func(ctx context.Context) error {
+			return dt.Stop(ctx)
 		},
 	})
 	return dt, nil
@@ -123,8 +123,7 @@ func StorageClient(lc fx.Lifecycle, h host.Host, ibs dtypes.ClientBlockstore, md
 			return c.Start(ctx)
 		},
 		OnStop: func(context.Context) error {
-			c.Stop()
-			return nil
+			return c.Stop()
 		},
 	})
 	return c, nil

@@ -338,7 +338,7 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, ts *types.TipSet
 		cids[i] = v.Cid()
 	}
 
-	r := store.NewChainRand(sm.cs, cids, blks[0].Height)
+	r := store.NewChainRand(sm.cs, cids)
 
 	blkmsgs, err := sm.cs.BlockMsgsForTipset(ts)
 	if err != nil {

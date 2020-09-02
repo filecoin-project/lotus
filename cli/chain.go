@@ -319,7 +319,7 @@ var chainSetHeadCmd = &cli.Command{
 			ts, err = api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(cctx.Uint64("epoch")), types.EmptyTSK)
 		}
 		if ts == nil {
-			ts, err = parseTipSet(api, ctx, cctx.Args().Slice())
+			ts, err = parseTipSet(ctx, api, cctx.Args().Slice())
 		}
 		if err != nil {
 			return err
@@ -337,7 +337,7 @@ var chainSetHeadCmd = &cli.Command{
 	},
 }
 
-func parseTipSet(api api.FullNode, ctx context.Context, vals []string) (*types.TipSet, error) {
+func parseTipSet(ctx context.Context, api api.FullNode, vals []string) (*types.TipSet, error) {
 	var headers []*types.BlockHeader
 	for _, c := range vals {
 		blkc, err := cid.Decode(c)
@@ -859,6 +859,10 @@ var chainExportCmd = &cli.Command{
 		&cli.StringFlag{
 			Name: "tipset",
 		},
+		&cli.Int64Flag{
+			Name:  "recent-stateroots",
+			Usage: "specify the number of recent state roots to include in the export",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -870,6 +874,11 @@ var chainExportCmd = &cli.Command{
 
 		if !cctx.Args().Present() {
 			return fmt.Errorf("must specify filename to export chain to")
+		}
+
+		rsrs := abi.ChainEpoch(cctx.Int64("recent-stateroots"))
+		if cctx.IsSet("recent-stateroots") && rsrs < build.Finality {
+			return fmt.Errorf("\"recent-stateroots\" has to be greater than %d", build.Finality)
 		}
 
 		fi, err := os.Create(cctx.Args().First())
@@ -888,7 +897,7 @@ var chainExportCmd = &cli.Command{
 			return err
 		}
 
-		stream, err := api.ChainExport(ctx, ts.Key())
+		stream, err := api.ChainExport(ctx, rsrs, ts.Key())
 		if err != nil {
 			return err
 		}

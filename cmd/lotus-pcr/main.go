@@ -133,6 +133,18 @@ var runCmd = &cli.Command{
 			Usage:   "do not send any messages",
 			Value:   false,
 		},
+		&cli.BoolFlag{
+			Name:    "pre-commit",
+			EnvVars: []string{"LOTUS_PCR_PRE_COMMIT"},
+			Usage:   "process PreCommitSector messages",
+			Value:   true,
+		},
+		&cli.BoolFlag{
+			Name:    "prove-commit",
+			EnvVars: []string{"LOTUS_PCR_PROVE_COMMIT"},
+			Usage:   "process ProveCommitSector messages",
+			Value:   true,
+		},
 		&cli.IntFlag{
 			Name:    "head-delay",
 			EnvVars: []string{"LOTUS_PCR_HEAD_DELAY"},
@@ -142,11 +154,11 @@ var runCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		go func() {
-			http.ListenAndServe(":6060", nil)
+			http.ListenAndServe(":6060", nil) //nolint:errcheck
 		}()
 
 		ctx := context.Background()
-		api, closer, err := stats.GetFullNodeAPI(cctx.String("lotus-path"))
+		api, closer, err := stats.GetFullNodeAPI(cctx.Context, cctx.String("lotus-path"))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -180,12 +192,16 @@ var runCmd = &cli.Command{
 		percentExtra := cctx.Int("percent-extra")
 		maxMessageQueue := cctx.Int("max-message-queue")
 		dryRun := cctx.Bool("dry-run")
+		preCommitEnabled := cctx.Bool("pre-commit")
+		proveCommitEnabled := cctx.Bool("prove-commit")
 
 		rf := &refunder{
-			api:          api,
-			wallet:       from,
-			percentExtra: percentExtra,
-			dryRun:       dryRun,
+			api:                api,
+			wallet:             from,
+			percentExtra:       percentExtra,
+			dryRun:             dryRun,
+			preCommitEnabled:   preCommitEnabled,
+			proveCommitEnabled: proveCommitEnabled,
 		}
 
 		for tipset := range tipsetsCh {
@@ -281,10 +297,12 @@ type refunderNodeApi interface {
 }
 
 type refunder struct {
-	api          refunderNodeApi
-	wallet       address.Address
-	percentExtra int
-	dryRun       bool
+	api                refunderNodeApi
+	wallet             address.Address
+	percentExtra       int
+	dryRun             bool
+	preCommitEnabled   bool
+	proveCommitEnabled bool
 }
 
 func (r *refunder) ProcessTipset(ctx context.Context, tipset *types.TipSet) (*MinersRefund, error) {
@@ -331,7 +349,12 @@ func (r *refunder) ProcessTipset(ctx context.Context, tipset *types.TipSet) (*Mi
 
 		switch m.Method {
 		case builtin.MethodsMiner.ProveCommitSector:
+			if !r.proveCommitEnabled {
+				continue
+			}
+
 			messageMethod = "ProveCommitSector"
+
 			if recps[i].ExitCode != exitcode.Ok {
 				log.Debugw("skipping non-ok exitcode message", "method", messageMethod, "cid", msg.Cid, "miner", m.To, "exitcode", recps[i].ExitCode)
 				continue
@@ -369,6 +392,10 @@ func (r *refunder) ProcessTipset(ctx context.Context, tipset *types.TipSet) (*Mi
 
 			refundValue = collateral
 		case builtin.MethodsMiner.PreCommitSector:
+			if !r.preCommitEnabled {
+				continue
+			}
+
 			messageMethod = "PreCommitSector"
 
 			if recps[i].ExitCode != exitcode.Ok {
@@ -445,7 +472,7 @@ func (r *refunder) Refund(ctx context.Context, tipset *types.TipSet, refunds *Mi
 	// Calculate the minimum balance as the total refund we need to issue plus 5% to cover fees
 	minBalance := types.BigAdd(refundSum, types.BigDiv(refundSum, types.NewInt(500)))
 	if balance.LessThan(minBalance) {
-		log.Errorw("not sufficent funds to cover refunds", "balance", balance, "refund_sum", refundSum, "minimum_required", minBalance)
+		log.Errorw("not sufficient funds to cover refunds", "balance", balance, "refund_sum", refundSum, "minimum_required", minBalance)
 		return xerrors.Errorf("wallet does not have enough balance to cover refund")
 	}
 
@@ -467,24 +494,24 @@ func (r *refunder) Refund(ctx context.Context, tipset *types.TipSet, refunds *Mi
 	return nil
 }
 
-type repo struct {
+type Repo struct {
 	last abi.ChainEpoch
 	path string
 }
 
-func NewRepo(path string) (*repo, error) {
+func NewRepo(path string) (*Repo, error) {
 	path, err := homedir.Expand(path)
 	if err != nil {
 		return nil, err
 	}
 
-	return &repo{
+	return &Repo{
 		last: 0,
 		path: path,
 	}, nil
 }
 
-func (r *repo) exists() (bool, error) {
+func (r *Repo) exists() (bool, error) {
 	_, err := os.Stat(r.path)
 	notexist := os.IsNotExist(err)
 	if notexist {
@@ -494,7 +521,7 @@ func (r *repo) exists() (bool, error) {
 
 }
 
-func (r *repo) init() error {
+func (r *Repo) init() error {
 	exist, err := r.exists()
 	if err != nil {
 		return err
@@ -511,7 +538,7 @@ func (r *repo) init() error {
 	return nil
 }
 
-func (r *repo) Open() (err error) {
+func (r *Repo) Open() (err error) {
 	if err = r.init(); err != nil {
 		return
 	}
@@ -542,11 +569,11 @@ func (r *repo) Open() (err error) {
 	return
 }
 
-func (r *repo) Height() abi.ChainEpoch {
+func (r *Repo) Height() abi.ChainEpoch {
 	return r.last
 }
 
-func (r *repo) SetHeight(last abi.ChainEpoch) (err error) {
+func (r *Repo) SetHeight(last abi.ChainEpoch) (err error) {
 	r.last = last
 	var f *os.File
 	f, err = os.OpenFile(filepath.Join(r.path, "height"), os.O_RDWR, 0644)

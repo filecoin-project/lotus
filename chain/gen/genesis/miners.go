@@ -129,6 +129,9 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 
 				return nil
 			})
+			if err != nil {
+				return cid.Undef, xerrors.Errorf("mutating state: %w", err)
+			}
 		}
 
 		// Add market funds
@@ -217,9 +220,12 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 		}
 
 		err = vm.MutateState(ctx, builtin.RewardActorAddr, func(sct cbor.IpldStore, st *reward.State) error {
-			st = reward.ConstructState(qaPow)
+			*st = *reward.ConstructState(qaPow)
 			return nil
 		})
+		if err != nil {
+			return cid.Undef, xerrors.Errorf("mutating state: %w", err)
+		}
 	}
 
 	for i, m := range miners {
@@ -244,7 +250,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 
 				// we've added fake power for this sector above, remove it now
 				err = vm.MutateState(ctx, builtin.StoragePowerActorAddr, func(cst cbor.IpldStore, st *power.State) error {
-					st.TotalQualityAdjPower = types.BigSub(st.TotalQualityAdjPower, sectorWeight)
+					st.TotalQualityAdjPower = types.BigSub(st.TotalQualityAdjPower, sectorWeight) //nolint:scopelint
 					st.TotalRawBytePower = types.BigSub(st.TotalRawBytePower, types.NewInt(uint64(m.SectorSize)))
 					return nil
 				})
@@ -324,13 +330,13 @@ type fakeRand struct{}
 
 func (fr *fakeRand) GetChainRandomness(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	out := make([]byte, 32)
-	_, _ = rand.New(rand.NewSource(int64(randEpoch * 1000))).Read(out)
+	_, _ = rand.New(rand.NewSource(int64(randEpoch * 1000))).Read(out) //nolint
 	return out, nil
 }
 
 func (fr *fakeRand) GetBeaconRandomness(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	out := make([]byte, 32)
-	_, _ = rand.New(rand.NewSource(int64(randEpoch))).Read(out)
+	_, _ = rand.New(rand.NewSource(int64(randEpoch))).Read(out) //nolint
 	return out, nil
 }
 

@@ -26,11 +26,14 @@
   color: 00A4E2
   description: "Area: Chain/VM"
 - name: area/chain/sync
-  color: 00A4E2
+  color: 00A4E4
   description: "Area: Chain/Sync"
 - name: area/chain/misc
-  color: 00A4E2
+  color: 00A4E6
   description: "Area: Chain/Misc"
+- name: area/markets
+  color: 00A4E8
+  description: "Area: Markets"  
 - name: area/sealing/fsm
   color: 0bb1ed
   description: "Area: Sealing/FSM"
@@ -149,6 +152,9 @@
 - name: impact/test-flakiness
   color: DDE1E4
   description: "Impact: Test Flakiness"
+- name: impact/consensus
+  color: b20014
+  description: "Impact: Consensus"
 
 ###
 ### Topics

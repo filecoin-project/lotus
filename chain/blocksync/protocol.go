@@ -1,9 +1,10 @@
 package blocksync
 
 import (
+	"time"
+
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/store"
-	"time"
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"

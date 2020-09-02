@@ -49,6 +49,7 @@ var chainHeadKey = dstore.NewKey("head")
 var blockValidationCacheKeyPrefix = dstore.NewKey("blockValidation")
 
 var DefaultTipSetCacheSize = 8192
+var DefaultMsgMetaCacheSize = 2048
 
 func init() {
 	if s := os.Getenv("LOTUS_CHAIN_TIPSET_CACHE"); s != "" {
@@ -57,6 +58,14 @@ func init() {
 			log.Errorf("failed to parse 'LOTUS_CHAIN_TIPSET_CACHE' env var: %s", err)
 		}
 		DefaultTipSetCacheSize = tscs
+	}
+
+	if s := os.Getenv("LOTUS_CHAIN_MSGMETA_CACHE"); s != "" {
+		mmcs, err := strconv.Atoi(s)
+		if err != nil {
+			log.Errorf("failed to parse 'LOTUS_CHAIN_MSGMETA_CACHE' env var: %s", err)
+		}
+		DefaultMsgMetaCacheSize = mmcs
 	}
 }
 
@@ -97,7 +106,7 @@ type ChainStore struct {
 }
 
 func NewChainStore(bs bstore.Blockstore, ds dstore.Batching, vmcalls vm.SyscallBuilder) *ChainStore {
-	c, _ := lru.NewARC(2048)
+	c, _ := lru.NewARC(DefaultMsgMetaCacheSize)
 	tsc, _ := lru.NewARC(DefaultTipSetCacheSize)
 	cs := &ChainStore{
 		bs:       bs,
@@ -483,6 +492,10 @@ func (cs *ChainStore) NearestCommonAncestor(a, b *types.TipSet) (*types.TipSet, 
 }
 
 func (cs *ChainStore) ReorgOps(a, b *types.TipSet) ([]*types.TipSet, []*types.TipSet, error) {
+	return ReorgOps(cs.LoadTipSet, a, b)
+}
+
+func ReorgOps(lts func(types.TipSetKey) (*types.TipSet, error), a, b *types.TipSet) ([]*types.TipSet, []*types.TipSet, error) {
 	left := a
 	right := b
 
@@ -490,7 +503,7 @@ func (cs *ChainStore) ReorgOps(a, b *types.TipSet) ([]*types.TipSet, []*types.Ti
 	for !left.Equals(right) {
 		if left.Height() > right.Height() {
 			leftChain = append(leftChain, left)
-			par, err := cs.LoadTipSet(left.Parents())
+			par, err := lts(left.Parents())
 			if err != nil {
 				return nil, nil, err
 			}
@@ -498,7 +511,7 @@ func (cs *ChainStore) ReorgOps(a, b *types.TipSet) ([]*types.TipSet, []*types.Ti
 			left = par
 		} else {
 			rightChain = append(rightChain, right)
-			par, err := cs.LoadTipSet(right.Parents())
+			par, err := lts(right.Parents())
 			if err != nil {
 				log.Infof("failed to fetch right.Parents: %s", err)
 				return nil, nil, err
@@ -509,6 +522,7 @@ func (cs *ChainStore) ReorgOps(a, b *types.TipSet) ([]*types.TipSet, []*types.Ti
 	}
 
 	return leftChain, rightChain, nil
+
 }
 
 // GetHeaviestTipSet returns the current heaviest tipset known (i.e. our head).
@@ -829,7 +843,7 @@ type mmCids struct {
 	secpk []cid.Cid
 }
 
-func (cs *ChainStore) readMsgMetaCids(mmc cid.Cid) ([]cid.Cid, []cid.Cid, error) {
+func (cs *ChainStore) ReadMsgMetaCids(mmc cid.Cid) ([]cid.Cid, []cid.Cid, error) {
 	o, ok := cs.mmCache.Get(mmc)
 	if ok {
 		mmcids := o.(*mmCids)
@@ -885,7 +899,7 @@ func (cs *ChainStore) GetPath(ctx context.Context, from types.TipSetKey, to type
 }
 
 func (cs *ChainStore) MessagesForBlock(b *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error) {
-	blscids, secpkcids, err := cs.readMsgMetaCids(b.Messages)
+	blscids, secpkcids, err := cs.ReadMsgMetaCids(b.Messages)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -925,7 +939,7 @@ func (cs *ChainStore) LoadMessagesFromCids(cids []cid.Cid) ([]*types.Message, er
 	for i, c := range cids {
 		m, err := cs.GetMessage(c)
 		if err != nil {
-			return nil, xerrors.Errorf("failed to get message: (%s):%d: %w", err, c, i)
+			return nil, xerrors.Errorf("failed to get message: (%s):%d: %w", c, i, err)
 		}
 
 		msgs = append(msgs, m)
@@ -939,7 +953,7 @@ func (cs *ChainStore) LoadSignedMessagesFromCids(cids []cid.Cid) ([]*types.Signe
 	for i, c := range cids {
 		m, err := cs.GetSignedMessage(c)
 		if err != nil {
-			return nil, xerrors.Errorf("failed to get message: (%s):%d: %w", err, c, i)
+			return nil, xerrors.Errorf("failed to get message: (%s):%d: %w", c, i, err)
 		}
 
 		msgs = append(msgs, m)
@@ -1109,7 +1123,7 @@ func (cs *ChainStore) GetTipsetByHeight(ctx context.Context, h abi.ChainEpoch, t
 	return cs.LoadTipSet(lbts.Parents())
 }
 
-func recurseLinks(bs bstore.Blockstore, root cid.Cid, in []cid.Cid) ([]cid.Cid, error) {
+func recurseLinks(bs bstore.Blockstore, walked *cid.Set, root cid.Cid, in []cid.Cid) ([]cid.Cid, error) {
 	if root.Prefix().Codec != cid.DagCBOR {
 		return in, nil
 	}
@@ -1126,9 +1140,14 @@ func recurseLinks(bs bstore.Blockstore, root cid.Cid, in []cid.Cid) ([]cid.Cid, 
 			return
 		}
 
+		// traversed this already...
+		if !walked.Visit(c) {
+			return
+		}
+
 		in = append(in, c)
 		var err error
-		in, err = recurseLinks(bs, c, in)
+		in, err = recurseLinks(bs, walked, c, in)
 		if err != nil {
 			rerr = err
 		}
@@ -1140,12 +1159,13 @@ func recurseLinks(bs bstore.Blockstore, root cid.Cid, in []cid.Cid) ([]cid.Cid, 
 	return in, rerr
 }
 
-func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, w io.Writer) error {
+func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRoots abi.ChainEpoch, w io.Writer) error {
 	if ts == nil {
 		ts = cs.GetHeaviestTipSet()
 	}
 
 	seen := cid.NewSet()
+	walked := cid.NewSet()
 
 	h := &car.CarHeader{
 		Roots:   ts.Cids(),
@@ -1177,7 +1197,7 @@ func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, w io.Writer)
 			return xerrors.Errorf("unmarshaling block header (cid=%s): %w", blk, err)
 		}
 
-		cids, err := recurseLinks(cs.bs, b.Messages, []cid.Cid{b.Messages})
+		cids, err := recurseLinks(cs.bs, walked, b.Messages, []cid.Cid{b.Messages})
 		if err != nil {
 			return xerrors.Errorf("recursing messages failed: %w", err)
 		}
@@ -1193,8 +1213,8 @@ func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, w io.Writer)
 
 		out := cids
 
-		if b.Height == 0 {
-			cids, err := recurseLinks(cs.bs, b.ParentStateRoot, []cid.Cid{b.ParentStateRoot})
+		if b.Height == 0 || b.Height > ts.Height()-inclRecentRoots {
+			cids, err := recurseLinks(cs.bs, walked, b.ParentStateRoot, []cid.Cid{b.ParentStateRoot})
 			if err != nil {
 				return xerrors.Errorf("recursing genesis state failed: %w", err)
 			}
@@ -1279,14 +1299,12 @@ func (cs *ChainStore) GetLatestBeaconEntry(ts *types.TipSet) (*types.BeaconEntry
 type chainRand struct {
 	cs   *ChainStore
 	blks []cid.Cid
-	bh   abi.ChainEpoch
 }
 
-func NewChainRand(cs *ChainStore, blks []cid.Cid, bheight abi.ChainEpoch) vm.Rand {
+func NewChainRand(cs *ChainStore, blks []cid.Cid) vm.Rand {
 	return &chainRand{
 		cs:   cs,
 		blks: blks,
-		bh:   bheight,
 	}
 }
 

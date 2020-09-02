@@ -34,7 +34,6 @@ type Runtime struct {
 
 	vm        *VM
 	state     *state.StateTree
-	msg       *types.Message
 	vmsg      vmr.Message
 	height    abi.ChainEpoch
 	cst       cbor.IpldStore
@@ -410,8 +409,10 @@ type shimStateHandle struct {
 
 func (ssh *shimStateHandle) Create(obj vmr.CBORMarshaler) {
 	c := ssh.rt.Put(obj)
-	// TODO: handle error below
-	ssh.rt.stateCommit(EmptyObjectCid, c)
+	err := ssh.rt.stateCommit(EmptyObjectCid, c)
+	if err != nil {
+		panic(fmt.Errorf("failed to commit state after creating object: %w", err))
+	}
 }
 
 func (ssh *shimStateHandle) Readonly(obj vmr.CBORUnmarshaler) {
@@ -440,8 +441,10 @@ func (ssh *shimStateHandle) Transaction(obj vmr.CBORer, f func()) {
 
 	c := ssh.rt.Put(obj)
 
-	// TODO: handle error below
-	ssh.rt.stateCommit(baseState, c)
+	err = ssh.rt.stateCommit(baseState, c)
+	if err != nil {
+		panic(fmt.Errorf("failed to commit state after transaction: %w", err))
+	}
 }
 
 func (rt *Runtime) GetBalance(a address.Address) (types.BigInt, aerrors.ActorError) {

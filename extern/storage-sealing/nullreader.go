@@ -3,8 +3,8 @@ package sealing
 import (
 	"io"
 
+	nr "github.com/filecoin-project/lotus/extern/storage-sealing/lib/nullreader"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	nr "github.com/filecoin-project/storage-fsm/lib/nullreader"
 )
 
 type NullReader struct {

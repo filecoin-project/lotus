@@ -176,6 +176,12 @@
           "value": null
         },
         {
+          "title": "API Methods",
+          "slug": "en+api-methods",
+          "github": "en/api-methods.md",
+          "value": null
+        },
+        {
           "title": "API Troubleshooting",
           "slug": "en+api-troubleshooting",
           "github": "en/api-troubleshooting.md",

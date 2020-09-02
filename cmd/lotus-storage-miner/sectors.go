@@ -2,12 +2,13 @@ package main
 
 import (
 	"fmt"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"os"
 	"sort"
 	"strconv"
 	"text/tabwriter"
 	"time"
+
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -96,6 +97,8 @@ var sectorsStatusCmd = &cli.Command{
 		fmt.Printf("TicketH:\t%d\n", status.Ticket.Epoch)
 		fmt.Printf("Seed:\t\t%x\n", status.Seed.Value)
 		fmt.Printf("SeedH:\t\t%d\n", status.Seed.Epoch)
+		fmt.Printf("Precommit:\t%s\n", status.PreCommitMsg)
+		fmt.Printf("Commit:\t\t%s\n", status.CommitMsg)
 		fmt.Printf("Proof:\t\t%x\n", status.Proof)
 		fmt.Printf("Deals:\t\t%v\n", status.Deals)
 		fmt.Printf("Retries:\t%d\n", status.Retries)
@@ -192,7 +195,7 @@ var sectorsListCmd = &cli.Command{
 			_, inSSet := commitedIDs[s]
 			_, inASet := activeIDs[s]
 
-			fmt.Fprintf(w, "%d: %s\tsSet: %s\tactive: %s\ttktH: %d\tseedH: %d\tdeals: %v\n",
+			fmt.Fprintf(w, "%d: %s\tsSet: %s\tactive: %s\ttktH: %d\tseedH: %d\tdeals: %v\t toUpgrade:%t\n",
 				s,
 				st.State,
 				yesno(inSSet),
@@ -200,6 +203,7 @@ var sectorsListCmd = &cli.Command{
 				st.Ticket.Epoch,
 				st.Seed.Epoch,
 				st.Deals,
+				st.ToUpgrade,
 			)
 		}
 

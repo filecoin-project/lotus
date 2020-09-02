@@ -16,7 +16,7 @@ type Provider interface {
 	SubscribeHeadChanges(func(rev, app []*types.TipSet) error) *types.TipSet
 	PutMessage(m types.ChainMsg) (cid.Cid, error)
 	PubSubPublish(string, []byte) error
-	StateGetActor(address.Address, *types.TipSet) (*types.Actor, error)
+	GetActorAfter(address.Address, *types.TipSet) (*types.Actor, error)
 	StateAccountKey(context.Context, address.Address, *types.TipSet) (address.Address, error)
 	MessagesForBlock(*types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error)
 	MessagesForTipset(*types.TipSet) ([]types.ChainMsg, error)
@@ -43,12 +43,17 @@ func (mpp *mpoolProvider) PutMessage(m types.ChainMsg) (cid.Cid, error) {
 }
 
 func (mpp *mpoolProvider) PubSubPublish(k string, v []byte) error {
-	return mpp.ps.Publish(k, v)
+	return mpp.ps.Publish(k, v) //nolint
 }
 
-func (mpp *mpoolProvider) StateGetActor(addr address.Address, ts *types.TipSet) (*types.Actor, error) {
+func (mpp *mpoolProvider) GetActorAfter(addr address.Address, ts *types.TipSet) (*types.Actor, error) {
 	var act types.Actor
-	return &act, mpp.sm.WithParentState(ts, mpp.sm.WithActor(addr, stmgr.GetActor(&act)))
+	stcid, _, err := mpp.sm.TipSetState(context.TODO(), ts)
+	if err != nil {
+		return nil, xerrors.Errorf("computing tipset state for GetActor: %w", err)
+	}
+
+	return &act, mpp.sm.WithStateTree(stcid, mpp.sm.WithActor(addr, stmgr.GetActor(&act)))
 }
 
 func (mpp *mpoolProvider) StateAccountKey(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {

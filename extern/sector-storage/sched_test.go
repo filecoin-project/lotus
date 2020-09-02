@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"io"
 	"runtime"
+	"sort"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -20,6 +22,10 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/specs-storage/storage"
 )
+
+func init() {
+	InitWait = 10 * time.Millisecond
+}
 
 func TestWithPriority(t *testing.T) {
 	ctx := context.Background()
@@ -76,7 +82,7 @@ func (s *schedTestWorker) AddPiece(ctx context.Context, sector abi.SectorID, pie
 	panic("implement me")
 }
 
-func (s *schedTestWorker) MoveStorage(ctx context.Context, sector abi.SectorID) error {
+func (s *schedTestWorker) MoveStorage(ctx context.Context, sector abi.SectorID, types stores.SectorFileType) error {
 	panic("implement me")
 }
 
@@ -100,16 +106,18 @@ func (s *schedTestWorker) Paths(ctx context.Context) ([]stores.StoragePath, erro
 	return s.paths, nil
 }
 
+var decentWorkerResources = storiface.WorkerResources{
+	MemPhysical: 128 << 30,
+	MemSwap:     200 << 30,
+	MemReserved: 2 << 30,
+	CPUs:        32,
+	GPUs:        []string{"a GPU"},
+}
+
 func (s *schedTestWorker) Info(ctx context.Context) (storiface.WorkerInfo, error) {
 	return storiface.WorkerInfo{
-		Hostname: s.name,
-		Resources: storiface.WorkerResources{
-			MemPhysical: 128 << 30,
-			MemSwap:     200 << 30,
-			MemReserved: 2 << 30,
-			CPUs:        32,
-			GPUs:        []string{"a GPU"},
-		},
+		Hostname:  s.name,
+		Resources: decentWorkerResources,
 	}, nil
 }
 
@@ -298,7 +306,8 @@ func TestSched(t *testing.T) {
 				done: map[string]chan struct{}{},
 			}
 
-			for _, task := range tasks {
+			for i, task := range tasks {
+				log.Info("TASK", i)
 				task(t, sched, index, &rm)
 			}
 
@@ -412,6 +421,45 @@ func TestSched(t *testing.T) {
 		)
 	}
 
+	diag := func() task {
+		return func(t *testing.T, s *scheduler, index *stores.Index, meta *runMeta) {
+			time.Sleep(20 * time.Millisecond)
+			for _, request := range s.diag().Requests {
+				log.Infof("!!! sDIAG: sid(%d) task(%s)", request.Sector.Number, request.TaskType)
+			}
+
+			wj := (&Manager{sched: s}).WorkerJobs()
+
+			type line struct {
+				storiface.WorkerJob
+				wid uint64
+			}
+
+			lines := make([]line, 0)
+
+			for wid, jobs := range wj {
+				for _, job := range jobs {
+					lines = append(lines, line{
+						WorkerJob: job,
+						wid:       wid,
+					})
+				}
+			}
+
+			// oldest first
+			sort.Slice(lines, func(i, j int) bool {
+				if lines[i].RunWait != lines[j].RunWait {
+					return lines[i].RunWait < lines[j].RunWait
+				}
+				return lines[i].Start.Before(lines[j].Start)
+			})
+
+			for _, l := range lines {
+				log.Infof("!!! wDIAG: rw(%d) sid(%d) t(%s)", l.RunWait, l.Sector.Number, l.Task)
+			}
+		}
+	}
+
 	// run this one a bunch of times, it had a very annoying tendency to fail randomly
 	for i := 0; i < 40; i++ {
 		t.Run("pc1-pc2-prio", testFunc([]workerSpec{
@@ -420,6 +468,8 @@ func TestSched(t *testing.T) {
 			// fill queues
 			twoPC1("w0", 0, taskStarted),
 			twoPC1("w1", 2, taskNotScheduled),
+			sched("w2", "fred", 4, sealtasks.TTPreCommit1),
+			taskNotScheduled("w2"),
 
 			// windowed
 
@@ -432,10 +482,18 @@ func TestSched(t *testing.T) {
 			sched("t3", "fred", 10, sealtasks.TTPreCommit2),
 			taskNotScheduled("t3"),
 
+			diag(),
+
 			twoPC1Act("w0", taskDone),
 			twoPC1Act("w1", taskStarted),
+			taskNotScheduled("w2"),
 
 			twoPC1Act("w1", taskDone),
+			taskStarted("w2"),
+
+			taskDone("w2"),
+
+			diag(),
 
 			taskStarted("t3"),
 			taskNotScheduled("t1"),
@@ -450,4 +508,138 @@ func TestSched(t *testing.T) {
 			taskDone("t2"),
 		}))
 	}
+}
+
+type slowishSelector bool
+
+func (s slowishSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi.RegisteredSealProof, a *workerHandle) (bool, error) {
+	time.Sleep(200 * time.Microsecond)
+	return bool(s), nil
+}
+
+func (s slowishSelector) Cmp(ctx context.Context, task sealtasks.TaskType, a, b *workerHandle) (bool, error) {
+	time.Sleep(100 * time.Microsecond)
+	return true, nil
+}
+
+var _ WorkerSelector = slowishSelector(true)
+
+func BenchmarkTrySched(b *testing.B) {
+	spt := abi.RegisteredSealProof_StackedDrg32GiBV1
+	logging.SetAllLoggers(logging.LevelInfo)
+	defer logging.SetAllLoggers(logging.LevelDebug)
+	ctx := context.Background()
+
+	test := func(windows, queue int) func(b *testing.B) {
+		return func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				b.StopTimer()
+
+				sched := newScheduler(spt)
+				sched.workers[0] = &workerHandle{
+					w: nil,
+					info: storiface.WorkerInfo{
+						Hostname:  "t",
+						Resources: decentWorkerResources,
+					},
+					preparing: &activeResources{},
+					active:    &activeResources{},
+				}
+
+				for i := 0; i < windows; i++ {
+					sched.openWindows = append(sched.openWindows, &schedWindowRequest{
+						worker: 0,
+						done:   make(chan *schedWindow, 1000),
+					})
+				}
+
+				for i := 0; i < queue; i++ {
+					sched.schedQueue.Push(&workerRequest{
+						taskType: sealtasks.TTCommit2,
+						sel:      slowishSelector(true),
+						ctx:      ctx,
+					})
+				}
+
+				b.StartTimer()
+
+				sched.trySched()
+			}
+		}
+	}
+
+	b.Run("1w-1q", test(1, 1))
+	b.Run("500w-1q", test(500, 1))
+	b.Run("1w-500q", test(1, 500))
+	b.Run("200w-400q", test(200, 400))
+}
+
+func TestWindowCompact(t *testing.T) {
+	sh := scheduler{
+		spt: abi.RegisteredSealProof_StackedDrg32GiBV1,
+	}
+
+	test := func(start [][]sealtasks.TaskType, expect [][]sealtasks.TaskType) func(t *testing.T) {
+		return func(t *testing.T) {
+			wh := &workerHandle{
+				info: storiface.WorkerInfo{
+					Resources: decentWorkerResources,
+				},
+			}
+
+			for _, windowTasks := range start {
+				window := &schedWindow{}
+
+				for _, task := range windowTasks {
+					window.todo = append(window.todo, &workerRequest{taskType: task})
+					window.allocated.add(wh.info.Resources, ResourceTable[task][sh.spt])
+				}
+
+				wh.activeWindows = append(wh.activeWindows, window)
+			}
+
+			n := sh.workerCompactWindows(wh, 0)
+			require.Equal(t, len(start)-len(expect), n)
+
+			for wi, tasks := range expect {
+				var expectRes activeResources
+
+				for ti, task := range tasks {
+					require.Equal(t, task, wh.activeWindows[wi].todo[ti].taskType, "%d, %d", wi, ti)
+					expectRes.add(wh.info.Resources, ResourceTable[task][sh.spt])
+				}
+
+				require.Equal(t, expectRes.cpuUse, wh.activeWindows[wi].allocated.cpuUse, "%d", wi)
+				require.Equal(t, expectRes.gpuUsed, wh.activeWindows[wi].allocated.gpuUsed, "%d", wi)
+				require.Equal(t, expectRes.memUsedMin, wh.activeWindows[wi].allocated.memUsedMin, "%d", wi)
+				require.Equal(t, expectRes.memUsedMax, wh.activeWindows[wi].allocated.memUsedMax, "%d", wi)
+			}
+
+		}
+	}
+
+	t.Run("2-pc1-windows", test(
+		[][]sealtasks.TaskType{{sealtasks.TTPreCommit1}, {sealtasks.TTPreCommit1}},
+		[][]sealtasks.TaskType{{sealtasks.TTPreCommit1, sealtasks.TTPreCommit1}}),
+	)
+
+	t.Run("1-window", test(
+		[][]sealtasks.TaskType{{sealtasks.TTPreCommit1, sealtasks.TTPreCommit1}},
+		[][]sealtasks.TaskType{{sealtasks.TTPreCommit1, sealtasks.TTPreCommit1}}),
+	)
+
+	t.Run("2-pc2-windows", test(
+		[][]sealtasks.TaskType{{sealtasks.TTPreCommit2}, {sealtasks.TTPreCommit2}},
+		[][]sealtasks.TaskType{{sealtasks.TTPreCommit2}, {sealtasks.TTPreCommit2}}),
+	)
+
+	t.Run("2pc1-pc1ap", test(
+		[][]sealtasks.TaskType{{sealtasks.TTPreCommit1, sealtasks.TTPreCommit1}, {sealtasks.TTPreCommit1, sealtasks.TTAddPiece}},
+		[][]sealtasks.TaskType{{sealtasks.TTPreCommit1, sealtasks.TTPreCommit1, sealtasks.TTAddPiece}, {sealtasks.TTPreCommit1}}),
+	)
+
+	t.Run("2pc1-pc1appc2", test(
+		[][]sealtasks.TaskType{{sealtasks.TTPreCommit1, sealtasks.TTPreCommit1}, {sealtasks.TTPreCommit1, sealtasks.TTAddPiece, sealtasks.TTPreCommit2}},
+		[][]sealtasks.TaskType{{sealtasks.TTPreCommit1, sealtasks.TTPreCommit1, sealtasks.TTAddPiece}, {sealtasks.TTPreCommit1, sealtasks.TTPreCommit2}}),
+	)
 }

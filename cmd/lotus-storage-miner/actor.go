@@ -137,7 +137,7 @@ var actorSetPeeridCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		pid, err := peer.IDFromString(cctx.Args().Get(0))
+		pid, err := peer.Decode(cctx.Args().Get(0))
 		if err != nil {
 			return fmt.Errorf("failed to parse input as a peerId: %w", err)
 		}

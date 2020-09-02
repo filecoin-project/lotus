@@ -24,6 +24,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/miner"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	dag "github.com/ipfs/go-merkledag"
 	dstest "github.com/ipfs/go-merkledag/test"
 	unixfile "github.com/ipfs/go-unixfs/file"
@@ -35,7 +36,7 @@ import (
 
 var MineNext = miner.MineReq{
 	InjectNulls: 0,
-	Done:        func(bool, error) {},
+	Done:        func(bool, abi.ChainEpoch, error) {},
 }
 
 func init() {
@@ -141,7 +142,7 @@ func makeDeal(t *testing.T, ctx context.Context, rseed int, client *impl.FullNod
 	info, err := client.ClientGetDealInfo(ctx, *deal)
 	require.NoError(t, err)
 
-	testRetrieval(t, ctx, err, client, fcid, &info.PieceCID, carExport, data)
+	testRetrieval(t, ctx, client, fcid, &info.PieceCID, carExport, data)
 }
 
 func TestFastRetrievalDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration) {
@@ -193,7 +194,7 @@ func TestFastRetrievalDealFlow(t *testing.T, b APIBuilder, blocktime time.Durati
 	info, err := client.ClientGetDealInfo(ctx, *deal)
 	require.NoError(t, err)
 
-	testRetrieval(t, ctx, err, client, fcid, &info.PieceCID, false, data)
+	testRetrieval(t, ctx, client, fcid, &info.PieceCID, false, data)
 	atomic.AddInt64(&mine, -1)
 	fmt.Println("shutting down mining")
 	<-done
@@ -267,7 +268,7 @@ func TestSenondDealRetrieval(t *testing.T, b APIBuilder, blocktime time.Duration
 		rf, _ := miner.SectorsRefs(ctx)
 		fmt.Printf("refs: %+v\n", rf)
 
-		testRetrieval(t, ctx, err, client, fcid2, &info.PieceCID, false, data2)
+		testRetrieval(t, ctx, client, fcid2, &info.PieceCID, false, data2)
 	}
 
 	atomic.AddInt64(&mine, -1)
@@ -373,7 +374,7 @@ func startSealingWaiting(t *testing.T, ctx context.Context, miner TestStorageNod
 	}
 }
 
-func testRetrieval(t *testing.T, ctx context.Context, err error, client *impl.FullNodeAPI, fcid cid.Cid, piece *cid.Cid, carExport bool, data []byte) {
+func testRetrieval(t *testing.T, ctx context.Context, client *impl.FullNodeAPI, fcid cid.Cid, piece *cid.Cid, carExport bool, data []byte) {
 	offers, err := client.ClientFindData(ctx, fcid, piece)
 	if err != nil {
 		t.Fatal(err)
