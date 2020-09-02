@@ -245,7 +245,7 @@ func gatherMessages(cs *store.ChainStore, ts *types.TipSet) ([]*types.Message, [
 		blsincl = append(blsincl, bmi)
 
 		smi := make([]uint64, 0, len(sc))
-		for _, m := range secpkcids {
+		for _, m := range sc {
 			i, ok := secpkmsgmap[m]
 			if !ok {
 				i = uint64(len(secpkcids))
