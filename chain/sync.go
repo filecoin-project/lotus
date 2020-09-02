@@ -1630,13 +1630,11 @@ func (syncer *Syncer) getLatestBeaconEntry(_ context.Context, ts *types.TipSet) 
 			return nil, xerrors.Errorf("made it back to genesis block without finding beacon entry")
 		}
 
-		if i != 19 {
-			next, err := syncer.store.LoadTipSet(cur.Parents())
-			if err != nil {
-				return nil, xerrors.Errorf("failed to load parents when searching back for latest beacon entry: %w", err)
-			}
-			cur = next
+		next, err := syncer.store.LoadTipSet(cur.Parents())
+		if err != nil {
+			return nil, xerrors.Errorf("failed to load parents when searching back for latest beacon entry: %w", err)
 		}
+		cur = next
 	}
 
 	return nil, xerrors.Errorf("found NO beacon entries in the 20 latest tipsets")

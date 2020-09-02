@@ -1278,13 +1278,12 @@ func (cs *ChainStore) GetLatestBeaconEntry(ts *types.TipSet) (*types.BeaconEntry
 			return nil, xerrors.Errorf("made it back to genesis block without finding beacon entry")
 		}
 
-		if i != 19 {
-			next, err := cs.LoadTipSet(cur.Parents())
-			if err != nil {
-				return nil, xerrors.Errorf("failed to load parents when searching back for latest beacon entry: %w", err)
-			}
-			cur = next
+		next, err := cs.LoadTipSet(cur.Parents())
+		if err != nil {
+			return nil, xerrors.Errorf("failed to load parents when searching back for latest beacon entry: %w", err)
 		}
+		cur = next
+
 	}
 
 	if os.Getenv("LOTUS_IGNORE_DRAND") == "_yes_" {
