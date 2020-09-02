@@ -237,12 +237,22 @@ func (c *ClientNodeAdapter) DealProviderCollateralBounds(ctx context.Context, si
 	return big.Mul(bounds.Min, big.NewInt(clientOverestimation)), bounds.Max, nil
 }
 
-func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealId abi.DealID, cb storagemarket.DealSectorCommittedCallback) error {
+func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealId abi.DealID, publishCid cid.Cid, cb storagemarket.DealSectorCommittedCallback) error {
 	checkFunc := func(ts *types.TipSet) (done bool, more bool, err error) {
 		sd, err := stmgr.GetStorageDeal(ctx, c.StateManager, dealId, ts)
 
 		if err != nil {
-			// TODO: This may be fine for some errors
+			msgTs, _, _, err := c.StateManager.SearchForMessage(ctx, publishCid)
+			if err != nil {
+				return false, false, xerrors.Errorf("client: failed to search for publish message on chain: %w", err)
+			}
+			if msgTs == nil {
+				// the publish message probably got reorged out, just proceed
+				// TODO: Eventually give up
+				return false, true, nil
+			}
+
+			// TODO: This may be fine for some other errors
 			return false, false, xerrors.Errorf("client: failed to look up deal on chain: %w", err)
 		}
 
