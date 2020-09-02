@@ -6,8 +6,10 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
+	metrics "github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
+	protocol "github.com/libp2p/go-libp2p-protocol"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
@@ -42,14 +44,17 @@ type CommonStruct struct {
 		AuthVerify func(ctx context.Context, token string) ([]auth.Permission, error) `perm:"read"`
 		AuthNew    func(ctx context.Context, perms []auth.Permission) ([]byte, error) `perm:"admin"`
 
-		NetConnectedness func(context.Context, peer.ID) (network.Connectedness, error) `perm:"read"`
-		NetPeers         func(context.Context) ([]peer.AddrInfo, error)                `perm:"read"`
-		NetConnect       func(context.Context, peer.AddrInfo) error                    `perm:"write"`
-		NetAddrsListen   func(context.Context) (peer.AddrInfo, error)                  `perm:"read"`
-		NetDisconnect    func(context.Context, peer.ID) error                          `perm:"write"`
-		NetFindPeer      func(context.Context, peer.ID) (peer.AddrInfo, error)         `perm:"read"`
-		NetPubsubScores  func(context.Context) ([]api.PubsubScore, error)              `perm:"read"`
-		NetAutoNatStatus func(context.Context) (api.NatInfo, error)                    `perm:"read"`
+		NetConnectedness            func(context.Context, peer.ID) (network.Connectedness, error)    `perm:"read"`
+		NetPeers                    func(context.Context) ([]peer.AddrInfo, error)                   `perm:"read"`
+		NetConnect                  func(context.Context, peer.AddrInfo) error                       `perm:"write"`
+		NetAddrsListen              func(context.Context) (peer.AddrInfo, error)                     `perm:"read"`
+		NetDisconnect               func(context.Context, peer.ID) error                             `perm:"write"`
+		NetFindPeer                 func(context.Context, peer.ID) (peer.AddrInfo, error)            `perm:"read"`
+		NetPubsubScores             func(context.Context) ([]api.PubsubScore, error)                 `perm:"read"`
+		NetAutoNatStatus            func(context.Context) (api.NatInfo, error)                       `perm:"read"`
+		NetBandwidthStats           func(ctx context.Context) (metrics.Stats, error)                 `perm:"read"`
+		NetBandwidthStatsByPeer     func(ctx context.Context) (map[string]metrics.Stats, error)      `perm:"read"`
+		NetBandwidthStatsByProtocol func(ctx context.Context) (map[protocol.ID]metrics.Stats, error) `perm:"read"`
 
 		ID      func(context.Context) (peer.ID, error)     `perm:"read"`
 		Version func(context.Context) (api.Version, error) `perm:"read"`
@@ -369,6 +374,18 @@ func (c *CommonStruct) NetFindPeer(ctx context.Context, p peer.ID) (peer.AddrInf
 
 func (c *CommonStruct) NetAutoNatStatus(ctx context.Context) (api.NatInfo, error) {
 	return c.Internal.NetAutoNatStatus(ctx)
+}
+
+func (c *CommonStruct) NetBandwidthStats(ctx context.Context) (metrics.Stats, error) {
+	return c.Internal.NetBandwidthStats(ctx)
+}
+
+func (c *CommonStruct) NetBandwidthStatsByPeer(ctx context.Context) (map[string]metrics.Stats, error) {
+	return c.Internal.NetBandwidthStatsByPeer(ctx)
+}
+
+func (c *CommonStruct) NetBandwidthStatsByProtocol(ctx context.Context) (map[protocol.ID]metrics.Stats, error) {
+	return c.Internal.NetBandwidthStatsByProtocol(ctx)
 }
 
 // ID implements API.ID

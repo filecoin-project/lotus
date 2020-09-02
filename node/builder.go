@@ -86,6 +86,7 @@ var (
 	NatPortMapKey        = special{8}  // Libp2p option
 	ConnectionManagerKey = special{9}  // Libp2p option
 	AutoNATSvcKey        = special{10} // Libp2p option
+	BandwidthReporterKey = special{11} // Libp2p option
 )
 
 type invoke int
@@ -181,6 +182,7 @@ func libp2p() Option {
 		Override(new(routing.Routing), lp2p.Routing),
 
 		Override(NatPortMapKey, lp2p.NatPortMap),
+		Override(BandwidthReporterKey, lp2p.BandwidthCounter),
 
 		Override(ConnectionManagerKey, lp2p.ConnectionManager(50, 200, 20*time.Second, nil)),
 		Override(AutoNATSvcKey, lp2p.AutoNATService),

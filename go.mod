@@ -18,6 +18,7 @@ require (
 	github.com/docker/go-units v0.4.0
 	github.com/drand/drand v1.0.3-0.20200714175734-29705eaf09d4
 	github.com/drand/kyber v1.1.1
+	github.com/dustin/go-humanize v1.0.0
 	github.com/elastic/go-sysinfo v1.3.0
 	github.com/fatih/color v1.8.0
 	github.com/filecoin-project/chain-validation v0.0.6-0.20200813000554-40c22fe26eef
@@ -87,9 +88,11 @@ require (
 	github.com/libp2p/go-libp2p-core v0.6.1
 	github.com/libp2p/go-libp2p-discovery v0.5.0
 	github.com/libp2p/go-libp2p-kad-dht v0.8.3
+	github.com/libp2p/go-libp2p-metrics v0.0.1
 	github.com/libp2p/go-libp2p-mplex v0.2.4
 	github.com/libp2p/go-libp2p-noise v0.1.1
 	github.com/libp2p/go-libp2p-peerstore v0.2.6
+	github.com/libp2p/go-libp2p-protocol v0.1.0
 	github.com/libp2p/go-libp2p-pubsub v0.3.6-0.20200901174250-06a12f17b7de
 	github.com/libp2p/go-libp2p-quic-transport v0.8.0
 	github.com/libp2p/go-libp2p-record v0.1.3
