@@ -59,6 +59,10 @@ func (a *GasAPI) GasEstimateFeeCap(ctx context.Context, msg *types.Message, maxq
 		out = types.BigDiv(maxAccepted, gasLimitBig)
 	}
 
+	if msg.GasPremium != types.EmptyInt {
+		out = types.BigAdd(out, msg.GasPremium)
+	}
+
 	return out, nil
 }
 
@@ -214,7 +218,7 @@ func (a *GasAPI) GasEstimateMessageGas(ctx context.Context, msg *types.Message, 
 		if err != nil {
 			return nil, xerrors.Errorf("estimating fee cap: %w", err)
 		}
-		msg.GasFeeCap = big.Add(feeCap, msg.GasPremium)
+		msg.GasFeeCap = feeCap
 	}
 
 	capGasFee(msg, spec.Get().MaxFee)
