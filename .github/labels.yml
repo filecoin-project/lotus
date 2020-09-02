@@ -152,6 +152,9 @@
 - name: impact/test-flakiness
   color: DDE1E4
   description: "Impact: Test Flakiness"
+- name: impact/consensus
+  color: b20014
+  description: "Impact: Consensus"
 
 ###
 ### Topics
