@@ -136,7 +136,7 @@ func init() {
 		},
 	})
 	addExample(map[string]metrics.Stats{
-		"12D3KooWSXmXLJmBR1M7i9RW9GQPNUhZSzXKzxDHWtAgNuJAbyEJ": metrics.Stats{
+		"12D3KooWSXmXLJmBR1M7i9RW9GQPNUhZSzXKzxDHWtAgNuJAbyEJ": {
 			RateIn:   100,
 			RateOut:  50,
 			TotalIn:  174000,
@@ -144,7 +144,7 @@ func init() {
 		},
 	})
 	addExample(map[protocol.ID]metrics.Stats{
-		"/fil/hello/1.0.0": metrics.Stats{
+		"/fil/hello/1.0.0": {
 			RateIn:   100,
 			RateOut:  50,
 			TotalIn:  174000,
