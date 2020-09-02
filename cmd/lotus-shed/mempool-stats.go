@@ -106,7 +106,10 @@ var mpoolStatsCmd = &cli.Command{
 		tick := time.Tick(time.Second)
 		for {
 			select {
-			case u := <-updates:
+			case u, ok := <-updates:
+				if !ok {
+					return fmt.Errorf("connection with lotus node broke")
+				}
 				switch u.Type {
 				case lapi.MpoolAdd:
 					tracker[u.Message.Cid()] = &msgInfo{
