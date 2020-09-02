@@ -93,6 +93,11 @@ var preSealCmd = &cli.Command{
 			Name:  "fake-sectors",
 			Value: false,
 		},
+		&cli.StringFlag{
+			Name:  "pre-aux",
+			Value: "",
+			Usage: "path to previously generated p_aux file",
+		},
 	},
 	Action: func(c *cli.Context) error {
 		sdir := c.String("sector-dir")
@@ -133,12 +138,24 @@ var preSealCmd = &cli.Command{
 			return err
 		}
 
-		gm, key, err := seed.PreSeal(maddr, rp, abi.SectorNumber(c.Uint64("sector-offset")), c.Int("num-sectors"), sbroot, []byte(c.String("ticket-preimage")), k, c.Bool("fake-sectors"))
-		if err != nil {
-			return err
+		if c.IsSet("pre-aux") {
+			gm, key, err := seed.PreSealFauxRep2(maddr, rp, abi.SectorNumber(c.Uint64("sector-offset")), c.Int("num-sectors"), sbroot, k, c.String("pre-aux"))
+			if err != nil {
+				return err
+			}
+
+			return seed.WriteGenesisMiner(maddr, sbroot, gm, key)
+		} else {
+			gm, key, err := seed.PreSeal(maddr, rp, abi.SectorNumber(c.Uint64("sector-offset")), c.Int("num-sectors"), sbroot, []byte(c.String("ticket-preimage")), k, c.Bool("fake-sectors"))
+			if err != nil {
+				return err
+			}
+
+			return seed.WriteGenesisMiner(maddr, sbroot, gm, key)
 		}
 
-		return seed.WriteGenesisMiner(maddr, sbroot, gm, key)
+		return nil
+
 	},
 }
 

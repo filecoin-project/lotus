@@ -35,6 +35,43 @@ import (
 
 var log = logging.Logger("preseal")
 
+func PreSealFauxRep2(maddr address.Address, spt abi.RegisteredSealProof, offset abi.SectorNumber, sectors int, sbroot string, key *types.KeyInfo, preaux string) (*genesis.Miner, *types.KeyInfo, error) {
+	mid, err := address.IDFromAddress(maddr)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if err := os.MkdirAll(sbroot, 0775); err != nil { //nolint:gosec
+		return nil, nil, err
+	}
+
+	next := offset
+
+	sbfs := &basicfs.Provider{
+		Root: sbroot,
+	}
+
+	ssize, err := spt.SectorSize()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var sealedSectors []*genesis.PreSeal
+	for i := 0; i < sectors; i++ {
+		sid := abi.SectorID{Miner: abi.ActorID(mid), Number: next}
+		next++
+
+		preseal, err := presealSectorFauxRep2(sbfs, sid, spt, ssize, preaux)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		sealedSectors = append(sealedSectors, preseal)
+	}
+
+	return createMiner(maddr, key, ssize, sealedSectors)
+}
+
 func PreSeal(maddr address.Address, spt abi.RegisteredSealProof, offset abi.SectorNumber, sectors int, sbroot string, preimage []byte, key *types.KeyInfo, fakeSectors bool) (*genesis.Miner, *types.KeyInfo, error) {
 	mid, err := address.IDFromAddress(maddr)
 	if err != nil {
@@ -86,6 +123,11 @@ func PreSeal(maddr address.Address, spt abi.RegisteredSealProof, offset abi.Sect
 		sealedSectors = append(sealedSectors, preseal)
 	}
 
+	return createMiner(maddr, key, ssize, sealedSectors)
+}
+
+func createMiner(maddr address.Address, key *types.KeyInfo, ssize abi.SectorSize, sealedSectors []*genesis.PreSeal) (*genesis.Miner, *types.KeyInfo, error) {
+	var err error
 	var minerAddr *wallet.Key
 	if key != nil {
 		minerAddr, err = wallet.NewKey(*key)
@@ -181,6 +223,30 @@ func presealSector(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, sid abi.Sector
 	return &genesis.PreSeal{
 		CommR:     cids.Sealed,
 		CommD:     cids.Unsealed,
+		SectorID:  sid.Number,
+		ProofType: spt,
+	}, nil
+}
+
+func presealSectorFauxRep2(sbfs *basicfs.Provider, sid abi.SectorID, spt abi.RegisteredSealProof, ssize abi.SectorSize, preaux string) (*genesis.PreSeal, error) {
+	paths, done, err := sbfs.AcquireSector(context.TODO(), sid, 0, stores.FTSealed|stores.FTCache, stores.PathSealing)
+	if err != nil {
+		return nil, xerrors.Errorf("acquire unsealed sector: %w", err)
+	}
+	defer done()
+
+	if err := os.Mkdir(paths.Cache, 0755); err != nil {
+		return nil, xerrors.Errorf("mkdir cache: %w", err)
+	}
+
+	commr, err := ffi.FauxRep2(spt, paths.Cache, preaux)
+	if err != nil {
+		return nil, xerrors.Errorf("fauxrep: %w", err)
+	}
+
+	return &genesis.PreSeal{
+		CommR:     commr,
+		CommD:     zerocomm.ZeroPieceCommitment(abi.PaddedPieceSize(ssize).Unpadded()),
 		SectorID:  sid.Number,
 		ProofType: spt,
 	}, nil
