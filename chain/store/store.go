@@ -1283,7 +1283,6 @@ func (cs *ChainStore) GetLatestBeaconEntry(ts *types.TipSet) (*types.BeaconEntry
 			return nil, xerrors.Errorf("failed to load parents when searching back for latest beacon entry: %w", err)
 		}
 		cur = next
-
 	}
 
 	if os.Getenv("LOTUS_IGNORE_DRAND") == "_yes_" {
