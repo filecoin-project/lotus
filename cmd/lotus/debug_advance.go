@@ -62,6 +62,9 @@ func init() {
 			}
 
 			mbi, err := api.MinerGetBaseInfo(ctx, addr, head.Height()+1, head.Key())
+			if err != nil {
+				return xerrors.Errorf("getting base info: %w", err)
+			}
 
 			ep := &types.ElectionProof{}
 			ep.WinCount = ep.ComputeWinCount(types.NewInt(1), types.NewInt(1))
