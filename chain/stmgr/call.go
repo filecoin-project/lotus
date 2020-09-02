@@ -95,7 +95,7 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 
 	state := ts.ParentState()
 
-	r := store.NewChainRand(sm.cs, ts.Cids(), ts.Height())
+	r := store.NewChainRand(sm.cs, ts.Cids())
 
 	return sm.CallRaw(ctx, msg, state, r, ts.Height())
 }
@@ -113,7 +113,7 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 		return nil, xerrors.Errorf("computing tipset state: %w", err)
 	}
 
-	r := store.NewChainRand(sm.cs, ts.Cids(), ts.Height())
+	r := store.NewChainRand(sm.cs, ts.Cids())
 
 	if span.IsRecordingEvents() {
 		span.AddAttributes(

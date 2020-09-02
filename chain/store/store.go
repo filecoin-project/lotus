@@ -1282,14 +1282,12 @@ func (cs *ChainStore) GetLatestBeaconEntry(ts *types.TipSet) (*types.BeaconEntry
 type chainRand struct {
 	cs   *ChainStore
 	blks []cid.Cid
-	bh   abi.ChainEpoch
 }
 
-func NewChainRand(cs *ChainStore, blks []cid.Cid, bheight abi.ChainEpoch) vm.Rand {
+func NewChainRand(cs *ChainStore, blks []cid.Cid) vm.Rand {
 	return &chainRand{
 		cs:   cs,
 		blks: blks,
-		bh:   bheight,
 	}
 }
 
