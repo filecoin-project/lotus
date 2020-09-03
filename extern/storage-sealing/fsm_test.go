@@ -73,7 +73,7 @@ func TestHappyPath(t *testing.T) {
 	m.planSingle(SectorFinalized{})
 	require.Equal(m.t, m.state.State, Proving)
 
-	expected := []SectorState{Packing, PreCommit1, PreCommit2, PreCommitting, PreCommitWait, WaitSeed, Committing, CommitWait, FinalizeSector, Proving}
+	expected := []SectorState{Packing, PreCommit1, PreCommit2, PreCommitting, PreCommitWait, WaitSeed, Committing, SubmitCommit, CommitWait, FinalizeSector, Proving}
 	for i, n := range notif {
 		if n.before.State != expected[i] {
 			t.Fatalf("expected before state: %s, got: %s", expected[i], n.before.State)
