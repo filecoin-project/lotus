@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -248,6 +249,50 @@ func TestPaymentChannelVouchers(t *testing.T) {
 	checkVoucherOutput(t, bestSpendable, bestVouchers)
 }
 
+// TestPaymentChannelVoucherCreateShortfall verifies that if a voucher amount
+// is greater than what's left in the channel, voucher create fails
+func TestPaymentChannelVoucherCreateShortfall(t *testing.T) {
+	_ = os.Setenv("BELLMAN_NO_GPU", "1")
+
+	blocktime := 5 * time.Millisecond
+	ctx := context.Background()
+	nodes, addrs := startTwoNodesOneMiner(ctx, t, blocktime)
+	paymentCreator := nodes[0]
+	creatorAddr := addrs[0]
+	receiverAddr := addrs[1]
+
+	// Create mock CLI
+	mockCLI := newMockCLI(t)
+	creatorCLI := mockCLI.client(paymentCreator.ListenAddr)
+
+	// creator: paych get <creator> <receiver> <amount>
+	channelAmt := 100
+	cmd := []string{creatorAddr.String(), receiverAddr.String(), fmt.Sprintf("%d", channelAmt)}
+	chstr := creatorCLI.runCmd(paychGetCmd, cmd)
+
+	chAddr, err := address.NewFromString(chstr)
+	require.NoError(t, err)
+
+	// creator: paych voucher create <channel> <amount> --lane=1
+	voucherAmt1 := 60
+	lane1 := "--lane=1"
+	cmd = []string{lane1, chAddr.String(), strconv.Itoa(voucherAmt1)}
+	voucher1 := creatorCLI.runCmd(paychVoucherCreateCmd, cmd)
+	fmt.Println(voucher1)
+
+	// creator: paych voucher create <channel> <amount> --lane=2
+	lane2 := "--lane=2"
+	voucherAmt2 := 70
+	cmd = []string{lane2, chAddr.String(), strconv.Itoa(voucherAmt2)}
+	_, err = creatorCLI.runCmdRaw(paychVoucherCreateCmd, cmd)
+
+	// Should fail because channel doesn't have required amount
+	require.Error(t, err)
+
+	shortfall := voucherAmt1 + voucherAmt2 - channelAmt
+	require.Regexp(t, regexp.MustCompile(fmt.Sprintf("shortfall: %d", shortfall)), err.Error())
+}
+
 func checkVoucherOutput(t *testing.T, list string, vouchers []voucherSpec) {
 	lines := strings.Split(list, "\n")
 	listVouchers := make(map[string]string)
@@ -350,6 +395,13 @@ type mockCLIClient struct {
 }
 
 func (c *mockCLIClient) runCmd(cmd *cli.Command, input []string) string {
+	out, err := c.runCmdRaw(cmd, input)
+	require.NoError(c.t, err)
+
+	return out
+}
+
+func (c *mockCLIClient) runCmdRaw(cmd *cli.Command, input []string) (string, error) {
 	// prepend --api=<node api listener address>
 	apiFlag := "--api=" + c.addr.String()
 	input = append([]string{apiFlag}, input...)
@@ -359,12 +411,11 @@ func (c *mockCLIClient) runCmd(cmd *cli.Command, input []string) string {
 	require.NoError(c.t, err)
 
 	err = cmd.Action(cli.NewContext(c.cctx.App, fs, c.cctx))
-	require.NoError(c.t, err)
 
 	// Get the output
 	str := strings.TrimSpace(c.out.String())
 	c.out.Reset()
-	return str
+	return str, err
 }
 
 func (c *mockCLIClient) flagSet(cmd *cli.Command) *flag.FlagSet {

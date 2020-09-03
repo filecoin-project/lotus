@@ -421,6 +421,7 @@ type FullNode interface {
 
 	PaychGet(ctx context.Context, from, to address.Address, amt types.BigInt) (*ChannelInfo, error)
 	PaychGetWaitReady(context.Context, cid.Cid) (address.Address, error)
+	PaychAvailableFunds(from, to address.Address) (*ChannelAvailableFunds, error)
 	PaychList(context.Context) ([]address.Address, error)
 	PaychStatus(context.Context, address.Address) (*PaychStatus, error)
 	PaychSettle(context.Context, address.Address) (cid.Cid, error)
@@ -429,7 +430,7 @@ type FullNode interface {
 	PaychNewPayment(ctx context.Context, from, to address.Address, vouchers []VoucherSpec) (*PaymentInfo, error)
 	PaychVoucherCheckValid(context.Context, address.Address, *paych.SignedVoucher) error
 	PaychVoucherCheckSpendable(context.Context, address.Address, *paych.SignedVoucher, []byte, []byte) (bool, error)
-	PaychVoucherCreate(context.Context, address.Address, types.BigInt, uint64) (*paych.SignedVoucher, error)
+	PaychVoucherCreate(context.Context, address.Address, types.BigInt, uint64) (*VoucherCreateResult, error)
 	PaychVoucherAdd(context.Context, address.Address, *paych.SignedVoucher, []byte, types.BigInt) (types.BigInt, error)
 	PaychVoucherList(context.Context, address.Address) ([]*paych.SignedVoucher, error)
 	PaychVoucherSubmit(context.Context, address.Address, *paych.SignedVoucher, []byte, []byte) (cid.Cid, error)
@@ -538,6 +539,23 @@ type ChannelInfo struct {
 	WaitSentinel cid.Cid
 }
 
+type ChannelAvailableFunds struct {
+	Channel *address.Address
+	// ConfirmedAmt is the amount of funds that have been confirmed on-chain
+	// for the channel
+	ConfirmedAmt types.BigInt
+	// PendingAmt is the amount of funds that are pending confirmation on-chain
+	PendingAmt types.BigInt
+	// PendingWaitSentinel can be used with PaychGetWaitReady to wait for
+	// confirmation of pending funds
+	PendingWaitSentinel *cid.Cid
+	// QueuedAmt is the amount that is queued up behind a pending request
+	QueuedAmt types.BigInt
+	// VoucherRedeemedAmt is the amount that is redeemed by vouchers on-chain
+	// and in the local datastore
+	VoucherReedeemedAmt types.BigInt
+}
+
 type PaymentInfo struct {
 	Channel      address.Address
 	WaitSentinel cid.Cid
@@ -551,6 +569,16 @@ type VoucherSpec struct {
 	MinSettle   abi.ChainEpoch
 
 	Extra *paych.ModVerifyParams
+}
+
+// VoucherCreateResult is the response to calling PaychVoucherCreate
+type VoucherCreateResult struct {
+	// Voucher that was created, or nil if there was an error or if there
+	// were insufficient funds in the channel
+	Voucher *paych.SignedVoucher
+	// Shortfall is the additional amount that would be needed in the channel
+	// in order to be able to create the voucher
+	Shortfall types.BigInt
 }
 
 type MinerPower struct {

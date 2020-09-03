@@ -4,6 +4,8 @@ import (
 	"context"
 	"sync"
 
+	"github.com/filecoin-project/specs-actors/actors/crypto"
+
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 
 	"github.com/ipfs/go-datastore"
@@ -49,6 +51,7 @@ type paychAPI interface {
 	StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64) (*api.MsgLookup, error)
 	MpoolPushMessage(ctx context.Context, msg *types.Message, maxFee *api.MessageSendSpec) (*types.SignedMessage, error)
 	WalletHas(ctx context.Context, addr address.Address) (bool, error)
+	WalletSign(ctx context.Context, k address.Address, msg []byte) (*crypto.Signature, error)
 }
 
 // managerAPI defines all methods needed by the manager
@@ -135,7 +138,16 @@ func (pm *Manager) GetPaych(ctx context.Context, from, to address.Address, amt t
 		return address.Undef, cid.Undef, err
 	}
 
-	return chanAccessor.getPaych(ctx, from, to, amt)
+	return chanAccessor.getPaych(ctx, amt)
+}
+
+func (pm *Manager) AvailableFunds(from address.Address, to address.Address) (*api.ChannelAvailableFunds, error) {
+	chanAccessor, err := pm.accessorByFromTo(from, to)
+	if err != nil {
+		return nil, err
+	}
+
+	return chanAccessor.availableFunds()
 }
 
 // GetPaychWaitReady waits until the create channel / add funds message with the
@@ -177,6 +189,15 @@ func (pm *Manager) GetChannelInfo(addr address.Address) (*ChannelInfo, error) {
 		return nil, err
 	}
 	return ca.getChannelInfo(addr)
+}
+
+func (pm *Manager) CreateVoucher(ctx context.Context, ch address.Address, voucher paych.SignedVoucher) (*api.VoucherCreateResult, error) {
+	ca, err := pm.accessorByAddress(ch)
+	if err != nil {
+		return nil, err
+	}
+
+	return ca.createVoucher(ctx, ch, voucher)
 }
 
 // CheckVoucherValid checks if the given voucher is valid (is or could become spendable at some point).
@@ -307,14 +328,6 @@ func (pm *Manager) ListVouchers(ctx context.Context, ch address.Address) ([]*Vou
 		return nil, err
 	}
 	return ca.listVouchers(ctx, ch)
-}
-
-func (pm *Manager) NextNonceForLane(ctx context.Context, ch address.Address, lane uint64) (uint64, error) {
-	ca, err := pm.accessorByAddress(ch)
-	if err != nil {
-		return 0, err
-	}
-	return ca.nextNonceForLane(ctx, ch, lane)
 }
 
 func (pm *Manager) Settle(ctx context.Context, addr address.Address) (cid.Cid, error) {

@@ -60,7 +60,7 @@ func (pm *Manager) accessorCacheKey(from address.Address, to address.Address) st
 // access a channel use the same lock (the lock on the accessor)
 func (pm *Manager) addAccessorToCache(from address.Address, to address.Address) *channelAccessor {
 	key := pm.accessorCacheKey(from, to)
-	ca := newChannelAccessor(pm)
+	ca := newChannelAccessor(pm, from, to)
 	// TODO: Use LRU
 	pm.channels[key] = ca
 	return ca
