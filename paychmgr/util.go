@@ -9,7 +9,7 @@ import (
 
 type BestSpendableAPI interface {
 	PaychVoucherList(context.Context, address.Address) ([]*paych.SignedVoucher, error)
-	PaychVoucherCheckSpendable(context.Context, address.Address, *paych.SignedVoucher, []byte, []byte) (bool, error)
+	PaychVoucherCheckSpendable(context.Context, address.Address, *paych.SignedVoucher, []byte) (bool, error)
 }
 
 func BestSpendableByLane(ctx context.Context, api BestSpendableAPI, ch address.Address) (map[uint64]*paych.SignedVoucher, error) {
@@ -20,7 +20,7 @@ func BestSpendableByLane(ctx context.Context, api BestSpendableAPI, ch address.A
 
 	bestByLane := make(map[uint64]*paych.SignedVoucher)
 	for _, voucher := range vouchers {
-		spendable, err := api.PaychVoucherCheckSpendable(ctx, ch, voucher, nil, nil)
+		spendable, err := api.PaychVoucherCheckSpendable(ctx, ch, voucher, nil)
 		if err != nil {
 			return nil, err
 		}

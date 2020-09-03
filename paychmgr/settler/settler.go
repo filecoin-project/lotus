@@ -38,9 +38,9 @@ type API struct {
 type settlerAPI interface {
 	PaychList(context.Context) ([]address.Address, error)
 	PaychStatus(context.Context, address.Address) (*api.PaychStatus, error)
-	PaychVoucherCheckSpendable(context.Context, address.Address, *paych.SignedVoucher, []byte, []byte) (bool, error)
+	PaychVoucherCheckSpendable(context.Context, address.Address, *paych.SignedVoucher, []byte) (bool, error)
 	PaychVoucherList(context.Context, address.Address) ([]*paych.SignedVoucher, error)
-	PaychVoucherSubmit(context.Context, address.Address, *paych.SignedVoucher, []byte, []byte) (cid.Cid, error)
+	PaychVoucherSubmit(context.Context, address.Address, *paych.SignedVoucher, []byte) (cid.Cid, error)
 	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64) (*api.MsgLookup, error)
 }
 
@@ -81,7 +81,7 @@ func (pcs *paymentChannelSettler) messageHandler(msg *types.Message, rec *types.
 	var wg sync.WaitGroup
 	wg.Add(len(bestByLane))
 	for _, voucher := range bestByLane {
-		submitMessageCID, err := pcs.api.PaychVoucherSubmit(pcs.ctx, msg.To, voucher, nil, nil)
+		submitMessageCID, err := pcs.api.PaychVoucherSubmit(pcs.ctx, msg.To, voucher, nil)
 		if err != nil {
 			return true, err
 		}

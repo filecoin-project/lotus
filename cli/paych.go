@@ -559,7 +559,7 @@ var paychVoucherSubmitCmd = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
-		mcid, err := api.PaychVoucherSubmit(ctx, ch, sv, nil, nil)
+		mcid, err := api.PaychVoucherSubmit(ctx, ch, sv, nil)
 		if err != nil {
 			return err
 		}

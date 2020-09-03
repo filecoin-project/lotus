@@ -215,13 +215,13 @@ func (pm *Manager) CheckVoucherValid(ctx context.Context, ch address.Address, sv
 }
 
 // CheckVoucherSpendable checks if the given voucher is currently spendable
-func (pm *Manager) CheckVoucherSpendable(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (bool, error) {
+func (pm *Manager) CheckVoucherSpendable(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte) (bool, error) {
 	ca, err := pm.accessorByAddress(ch)
 	if err != nil {
 		return false, err
 	}
 
-	return ca.checkVoucherSpendable(ctx, ch, sv, secret, proof)
+	return ca.checkVoucherSpendable(ctx, ch, sv, secret)
 }
 
 // AddVoucherOutbound adds a voucher for an outbound channel.
@@ -306,12 +306,12 @@ func (pm *Manager) trackInboundChannel(ctx context.Context, ch address.Address) 
 	return pm.store.TrackChannel(stateCi)
 }
 
-func (pm *Manager) SubmitVoucher(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (cid.Cid, error) {
+func (pm *Manager) SubmitVoucher(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte) (cid.Cid, error) {
 	ca, err := pm.accessorByAddress(ch)
 	if err != nil {
 		return cid.Undef, err
 	}
-	return ca.submitVoucher(ctx, ch, sv, secret, proof)
+	return ca.submitVoucher(ctx, ch, sv, secret)
 }
 
 func (pm *Manager) AllocateLane(ch address.Address) (uint64, error) {

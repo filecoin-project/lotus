@@ -433,7 +433,7 @@ type FullNode interface {
 	PaychVoucherCreate(context.Context, address.Address, types.BigInt, uint64) (*VoucherCreateResult, error)
 	PaychVoucherAdd(context.Context, address.Address, *paych.SignedVoucher, []byte, types.BigInt) (types.BigInt, error)
 	PaychVoucherList(context.Context, address.Address) ([]*paych.SignedVoucher, error)
-	PaychVoucherSubmit(context.Context, address.Address, *paych.SignedVoucher, []byte, []byte) (cid.Cid, error)
+	PaychVoucherSubmit(context.Context, address.Address, *paych.SignedVoucher, []byte) (cid.Cid, error)
 }
 
 type FileRef struct {

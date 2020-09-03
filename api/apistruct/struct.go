@@ -218,11 +218,11 @@ type FullNodeStruct struct {
 		PaychNewPayment            func(ctx context.Context, from, to address.Address, vouchers []api.VoucherSpec) (*api.PaymentInfo, error) `perm:"sign"`
 		PaychVoucherCheck          func(context.Context, *paych.SignedVoucher) error                                                         `perm:"read"`
 		PaychVoucherCheckValid     func(context.Context, address.Address, *paych.SignedVoucher) error                                        `perm:"read"`
-		PaychVoucherCheckSpendable func(context.Context, address.Address, *paych.SignedVoucher, []byte, []byte) (bool, error)                `perm:"read"`
+		PaychVoucherCheckSpendable func(context.Context, address.Address, *paych.SignedVoucher, []byte) (bool, error)                        `perm:"read"`
 		PaychVoucherAdd            func(context.Context, address.Address, *paych.SignedVoucher, []byte, types.BigInt) (types.BigInt, error)  `perm:"write"`
 		PaychVoucherCreate         func(context.Context, address.Address, big.Int, uint64) (*api.VoucherCreateResult, error)                 `perm:"sign"`
 		PaychVoucherList           func(context.Context, address.Address) ([]*paych.SignedVoucher, error)                                    `perm:"write"`
-		PaychVoucherSubmit         func(context.Context, address.Address, *paych.SignedVoucher, []byte, []byte) (cid.Cid, error)             `perm:"sign"`
+		PaychVoucherSubmit         func(context.Context, address.Address, *paych.SignedVoucher, []byte) (cid.Cid, error)                     `perm:"sign"`
 	}
 }
 
@@ -921,8 +921,8 @@ func (c *FullNodeStruct) PaychVoucherCheckValid(ctx context.Context, addr addres
 	return c.Internal.PaychVoucherCheckValid(ctx, addr, sv)
 }
 
-func (c *FullNodeStruct) PaychVoucherCheckSpendable(ctx context.Context, addr address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (bool, error) {
-	return c.Internal.PaychVoucherCheckSpendable(ctx, addr, sv, secret, proof)
+func (c *FullNodeStruct) PaychVoucherCheckSpendable(ctx context.Context, addr address.Address, sv *paych.SignedVoucher, secret []byte) (bool, error) {
+	return c.Internal.PaychVoucherCheckSpendable(ctx, addr, sv, secret)
 }
 
 func (c *FullNodeStruct) PaychVoucherAdd(ctx context.Context, addr address.Address, sv *paych.SignedVoucher, proof []byte, minDelta types.BigInt) (types.BigInt, error) {
@@ -953,8 +953,8 @@ func (c *FullNodeStruct) PaychNewPayment(ctx context.Context, from, to address.A
 	return c.Internal.PaychNewPayment(ctx, from, to, vouchers)
 }
 
-func (c *FullNodeStruct) PaychVoucherSubmit(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (cid.Cid, error) {
-	return c.Internal.PaychVoucherSubmit(ctx, ch, sv, secret, proof)
+func (c *FullNodeStruct) PaychVoucherSubmit(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte) (cid.Cid, error) {
+	return c.Internal.PaychVoucherSubmit(ctx, ch, sv, secret)
 }
 
 // StorageMinerStruct

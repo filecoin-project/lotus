@@ -235,7 +235,7 @@ func (ca *channelAccessor) checkVoucherValidUnlocked(ctx context.Context, ch add
 	return laneStates, nil
 }
 
-func (ca *channelAccessor) checkVoucherSpendable(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (bool, error) {
+func (ca *channelAccessor) checkVoucherSpendable(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte) (bool, error) {
 	ca.lk.Lock()
 	defer ca.lk.Unlock()
 
@@ -258,26 +258,9 @@ func (ca *channelAccessor) checkVoucherSpendable(ctx context.Context, ch address
 		return false, nil
 	}
 
-	// If proof is needed and wasn't supplied as a parameter, get it from the
-	// datastore
-	if sv.Extra != nil && proof == nil {
-		vi, err := ci.infoForVoucher(sv)
-		if err != nil {
-			return false, err
-		}
-
-		if vi.Proof != nil {
-			log.Info("CheckVoucherSpendable: using stored proof")
-			proof = vi.Proof
-		} else {
-			log.Warn("CheckVoucherSpendable: nil proof for voucher with validation")
-		}
-	}
-
 	enc, err := actors.SerializeParams(&paych.UpdateChannelStateParams{
 		Sv:     *sv,
 		Secret: secret,
-		Proof:  proof,
 	})
 	if err != nil {
 		return false, err
@@ -380,28 +363,13 @@ func (ca *channelAccessor) addVoucherUnlocked(ctx context.Context, ch address.Ad
 	return delta, ca.store.putChannelInfo(ci)
 }
 
-func (ca *channelAccessor) submitVoucher(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (cid.Cid, error) {
+func (ca *channelAccessor) submitVoucher(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte) (cid.Cid, error) {
 	ca.lk.Lock()
 	defer ca.lk.Unlock()
 
 	ci, err := ca.store.ByAddress(ch)
 	if err != nil {
 		return cid.Undef, err
-	}
-
-	// If voucher needs proof, and none was supplied, check datastore for proof
-	if sv.Extra != nil && proof == nil {
-		vi, err := ci.infoForVoucher(sv)
-		if err != nil {
-			return cid.Undef, err
-		}
-
-		if vi.Proof != nil {
-			log.Info("SubmitVoucher: using stored proof")
-			proof = vi.Proof
-		} else {
-			log.Warn("SubmitVoucher: nil proof for voucher with validation")
-		}
 	}
 
 	has, err := ci.hasVoucher(sv)
@@ -424,7 +392,6 @@ func (ca *channelAccessor) submitVoucher(ctx context.Context, ch address.Address
 	enc, err := actors.SerializeParams(&paych.UpdateChannelStateParams{
 		Sv:     *sv,
 		Secret: secret,
-		Proof:  proof,
 	})
 	if err != nil {
 		return cid.Undef, err
@@ -448,7 +415,6 @@ func (ca *channelAccessor) submitVoucher(ctx context.Context, ch address.Address
 		// Add the voucher to the channel
 		ci.Vouchers = append(ci.Vouchers, &VoucherInfo{
 			Voucher: sv,
-			Proof:   proof,
 		})
 	}
 

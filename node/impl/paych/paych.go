@@ -122,8 +122,8 @@ func (a *PaychAPI) PaychVoucherCheckValid(ctx context.Context, ch address.Addres
 	return a.PaychMgr.CheckVoucherValid(ctx, ch, sv)
 }
 
-func (a *PaychAPI) PaychVoucherCheckSpendable(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (bool, error) {
-	return a.PaychMgr.CheckVoucherSpendable(ctx, ch, sv, secret, proof)
+func (a *PaychAPI) PaychVoucherCheckSpendable(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte) (bool, error) {
+	return a.PaychMgr.CheckVoucherSpendable(ctx, ch, sv, secret)
 }
 
 func (a *PaychAPI) PaychVoucherAdd(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, proof []byte, minDelta types.BigInt) (types.BigInt, error) {
@@ -155,6 +155,6 @@ func (a *PaychAPI) PaychVoucherList(ctx context.Context, pch address.Address) ([
 	return out, nil
 }
 
-func (a *PaychAPI) PaychVoucherSubmit(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (cid.Cid, error) {
-	return a.PaychMgr.SubmitVoucher(ctx, ch, sv, secret, proof)
+func (a *PaychAPI) PaychVoucherSubmit(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte) (cid.Cid, error) {
+	return a.PaychMgr.SubmitVoucher(ctx, ch, sv, secret)
 }
