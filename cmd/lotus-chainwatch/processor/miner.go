@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -746,7 +747,7 @@ func (p *Processor) diffMinerPartitions(ctx context.Context, m minerActorInfo, e
 			return err
 		}
 
-		recovered, err := partitionDiff.Recovered.All(miner.SectorsMax)
+		recovered, err := partitionDiff.Recovered.All(math.MaxInt64)
 		if err != nil {
 			return err
 		}
@@ -756,7 +757,7 @@ func (p *Processor) diffMinerPartitions(ctx context.Context, m minerActorInfo, e
 			SectorIDs: recovered,
 			Event:     SectorRecovered,
 		}
-		inRecovery, err := partitionDiff.InRecovery.All(miner.SectorsMax)
+		inRecovery, err := partitionDiff.InRecovery.All(math.MaxInt64)
 		if err != nil {
 			return err
 		}
@@ -766,7 +767,7 @@ func (p *Processor) diffMinerPartitions(ctx context.Context, m minerActorInfo, e
 			SectorIDs: inRecovery,
 			Event:     SectorRecovering,
 		}
-		faulted, err := partitionDiff.Faulted.All(miner.SectorsMax)
+		faulted, err := partitionDiff.Faulted.All(math.MaxInt64)
 		if err != nil {
 			return err
 		}
@@ -776,7 +777,7 @@ func (p *Processor) diffMinerPartitions(ctx context.Context, m minerActorInfo, e
 			SectorIDs: faulted,
 			Event:     SectorFaulted,
 		}
-		terminated, err := partitionDiff.Terminated.All(miner.SectorsMax)
+		terminated, err := partitionDiff.Terminated.All(math.MaxInt64)
 		if err != nil {
 			return err
 		}
@@ -786,7 +787,7 @@ func (p *Processor) diffMinerPartitions(ctx context.Context, m minerActorInfo, e
 			SectorIDs: terminated,
 			Event:     SectorTerminated,
 		}
-		expired, err := partitionDiff.Expired.All(miner.SectorsMax)
+		expired, err := partitionDiff.Expired.All(math.MaxInt64)
 		if err != nil {
 			return err
 		}
