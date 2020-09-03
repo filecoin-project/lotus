@@ -656,7 +656,13 @@ func MinerEligibleForElection(ctx context.Context, sm *StateManager, addr addres
 		return false, xerrors.Errorf("loading reward actor state: %w", err)
 	}
 
-	ret, err := miner.MinerEligibleForElection(sm.cs.Store(ctx), &ms, rs.ThisEpochReward, ts.Height())
+	var ps power.State
+	_, err = sm.LoadActorState(ctx, builtin.StoragePowerActorAddr, &ps, ts)
+	if err != nil {
+		return false, xerrors.Errorf("loading power actor state: %w", err)
+	}
+
+	ret, err := miner.MinerEligibleForElection(sm.cs.Store(ctx), addr, &ms, &ps, rs.ThisEpochReward, ts.Height())
 	if err != nil {
 		return false, xerrors.Errorf("determining election eligibility: %w", err)
 	}
