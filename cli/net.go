@@ -6,9 +6,12 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"text/tabwriter"
 
 	"github.com/libp2p/go-libp2p-core/peer"
+	protocol "github.com/libp2p/go-libp2p-core/protocol"
 
+	"github.com/dustin/go-humanize"
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/lotus/lib/addrutil"
@@ -25,6 +28,7 @@ var netCmd = &cli.Command{
 		netFindPeer,
 		netScores,
 		NetReachability,
+		NetBandwidthCmd,
 	},
 }
 
@@ -226,5 +230,90 @@ var NetReachability = &cli.Command{
 			fmt.Println("Public address: ", i.PublicAddr)
 		}
 		return nil
+	},
+}
+
+var NetBandwidthCmd = &cli.Command{
+	Name:  "bandwidth",
+	Usage: "Print bandwidth usage information",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "by-peer",
+			Usage: "list bandwidth usage by peer",
+		},
+		&cli.BoolFlag{
+			Name:  "by-protocol",
+			Usage: "list bandwidth usage by protocol",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		bypeer := cctx.Bool("by-peer")
+		byproto := cctx.Bool("by-protocol")
+
+		tw := tabwriter.NewWriter(os.Stdout, 4, 4, 2, ' ', 0)
+
+		fmt.Fprintf(tw, "Segment\tTotalIn\tTotalOut\tRateIn\tRateOut\n")
+
+		if bypeer {
+			bw, err := api.NetBandwidthStatsByPeer(ctx)
+			if err != nil {
+				return err
+			}
+
+			var peers []string
+			for p := range bw {
+				peers = append(peers, p)
+			}
+
+			sort.Slice(peers, func(i, j int) bool {
+				return peers[i] < peers[j]
+			})
+
+			for _, p := range peers {
+				s := bw[p]
+				fmt.Fprintf(tw, "%s\t%s\t%s\t%s/s\t%s/s\n", p, humanize.Bytes(uint64(s.TotalIn)), humanize.Bytes(uint64(s.TotalOut)), humanize.Bytes(uint64(s.RateIn)), humanize.Bytes(uint64(s.RateOut)))
+			}
+		} else if byproto {
+			bw, err := api.NetBandwidthStatsByProtocol(ctx)
+			if err != nil {
+				return err
+			}
+
+			var protos []protocol.ID
+			for p := range bw {
+				protos = append(protos, p)
+			}
+
+			sort.Slice(protos, func(i, j int) bool {
+				return protos[i] < protos[j]
+			})
+
+			for _, p := range protos {
+				s := bw[p]
+				if p == "" {
+					p = "<unknown>"
+				}
+				fmt.Fprintf(tw, "%s\t%s\t%s\t%s/s\t%s/s\n", p, humanize.Bytes(uint64(s.TotalIn)), humanize.Bytes(uint64(s.TotalOut)), humanize.Bytes(uint64(s.RateIn)), humanize.Bytes(uint64(s.RateOut)))
+			}
+		} else {
+
+			s, err := api.NetBandwidthStats(ctx)
+			if err != nil {
+				return err
+			}
+
+			fmt.Fprintf(tw, "Total\t%s\t%s\t%s/s\t%s/s\n", humanize.Bytes(uint64(s.TotalIn)), humanize.Bytes(uint64(s.TotalOut)), humanize.Bytes(uint64(s.RateIn)), humanize.Bytes(uint64(s.RateOut)))
+		}
+
+		return tw.Flush()
+
 	},
 }

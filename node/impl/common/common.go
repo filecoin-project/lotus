@@ -9,8 +9,10 @@ import (
 
 	"github.com/gbrlsnchs/jwt/v3"
 	"github.com/libp2p/go-libp2p-core/host"
+	metrics "github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
+	protocol "github.com/libp2p/go-libp2p-core/protocol"
 	swarm "github.com/libp2p/go-libp2p-swarm"
 	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
 	ma "github.com/multiformats/go-multiaddr"
@@ -32,6 +34,7 @@ type CommonAPI struct {
 	RawHost      lp2p.RawHost
 	Host         host.Host
 	Router       lp2p.BaseIpfsRouting
+	Reporter     metrics.Reporter
 	Sk           *dtypes.ScoreKeeper
 	ShutdownChan dtypes.ShutdownChan
 }
@@ -131,6 +134,22 @@ func (a *CommonAPI) NetAutoNatStatus(ctx context.Context) (i api.NatInfo, err er
 		Reachability: autonat.Status(),
 		PublicAddr:   maddr,
 	}, nil
+}
+
+func (a *CommonAPI) NetBandwidthStats(ctx context.Context) (metrics.Stats, error) {
+	return a.Reporter.GetBandwidthTotals(), nil
+}
+
+func (a *CommonAPI) NetBandwidthStatsByPeer(ctx context.Context) (map[string]metrics.Stats, error) {
+	out := make(map[string]metrics.Stats)
+	for p, s := range a.Reporter.GetBandwidthByPeer() {
+		out[p.String()] = s
+	}
+	return out, nil
+}
+
+func (a *CommonAPI) NetBandwidthStatsByProtocol(ctx context.Context) (map[protocol.ID]metrics.Stats, error) {
+	return a.Reporter.GetBandwidthByProtocol(), nil
 }
 
 func (a *CommonAPI) ID(context.Context) (peer.ID, error) {
