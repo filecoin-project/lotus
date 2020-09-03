@@ -585,7 +585,7 @@ func (mp *MessagePool) getPendingMessages(curTs, ts *types.TipSet) (map[address.
 	return result, nil
 }
 
-func (_ *MessagePool) getGasReward(msg *types.SignedMessage, baseFee types.BigInt) *big.Int {
+func (*MessagePool) getGasReward(msg *types.SignedMessage, baseFee types.BigInt) *big.Int {
 	maxPremium := types.BigSub(msg.Message.GasFeeCap, baseFee)
 
 	if types.BigCmp(maxPremium, msg.Message.GasPremium) > 0 {
@@ -596,7 +596,7 @@ func (_ *MessagePool) getGasReward(msg *types.SignedMessage, baseFee types.BigIn
 	return gasReward.Int
 }
 
-func (_ *MessagePool) getGasPerf(gasReward *big.Int, gasLimit int64) float64 {
+func (*MessagePool) getGasPerf(gasReward *big.Int, gasLimit int64) float64 {
 	// gasPerf = gasReward * build.BlockGasLimit / gasLimit
 	a := new(big.Rat).SetInt(new(big.Int).Mul(gasReward, bigBlockGasLimit))
 	b := big.NewRat(1, gasLimit)
