@@ -277,6 +277,9 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 		options = append(options, pubsub.WithDirectPeers(directPeerInfo))
 	}
 
+	// validation queue RED
+	options = append(options, pubsub.WithPeerGater(pubsub.DefaultPeerGaterParams()))
+
 	// tracer
 	if in.Cfg.RemoteTracer != "" {
 		a, err := ma.NewMultiaddr(in.Cfg.RemoteTracer)
