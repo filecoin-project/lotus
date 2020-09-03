@@ -644,15 +644,8 @@ func GetReturnType(ctx context.Context, sm *StateManager, to address.Address, me
 }
 
 func MinerEligibleForElection(ctx context.Context, sm *StateManager, addr address.Address, ts *types.TipSet) (bool, error) {
-
-	var act types.Actor
-	err := sm.WithParentState(ts, sm.WithActor(addr, GetActor(&act)))
-	if err != nil {
-		return false, xerrors.Errorf("loading miner balance: %w", err)
-	}
-
 	var ms miner.State
-	_, err = sm.LoadActorState(ctx, addr, &ms, ts)
+	_, err := sm.LoadActorState(ctx, addr, &ms, ts)
 	if err != nil {
 		return false, xerrors.Errorf("loading miner actor state: %w", err)
 	}
@@ -663,7 +656,7 @@ func MinerEligibleForElection(ctx context.Context, sm *StateManager, addr addres
 		return false, xerrors.Errorf("loading reward actor state: %w", err)
 	}
 
-	ret, err := miner.MinerEligibleForElection(sm.cs.Store(ctx), &ms, rs.ThisEpochReward, act.Balance, ts.Height())
+	ret, err := miner.MinerEligibleForElection(sm.cs.Store(ctx), &ms, rs.ThisEpochReward, ts.Height())
 	if err != nil {
 		return false, xerrors.Errorf("determining election eligibility: %w", err)
 	}
