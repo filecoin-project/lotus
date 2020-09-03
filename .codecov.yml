@@ -1,3 +1,5 @@
 comment: off
 ignore:
   - "cbor_gen.go"
+github_checks:
+  annotations: false
