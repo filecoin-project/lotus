@@ -182,6 +182,9 @@ func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool, strict bool) (boo
 					m.Message.From, m.Message.Nonce, minPrice, m.Message.GasPremium,
 					ErrRBFTooLowPremium)
 			}
+		} else {
+			return false, xerrors.Errorf("message from %s with nonce %d already in mpool: %w",
+				m.Message.From, m.Message.Nonce, ErrSoftValidationFailure)
 		}
 
 		ms.requiredFunds.Sub(ms.requiredFunds, exms.Message.RequiredFunds().Int)
