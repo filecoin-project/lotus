@@ -35,6 +35,13 @@ var netCmd = &cli.Command{
 var NetPeers = &cli.Command{
 	Name:  "peers",
 	Usage: "Print peers",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:    "agent",
+			Aliases: []string{"a"},
+			Usage:   "Print agent name",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetAPI(cctx)
 		if err != nil {
@@ -52,7 +59,17 @@ var NetPeers = &cli.Command{
 		})
 
 		for _, peer := range peers {
-			fmt.Printf("%s, %s\n", peer.ID, peer.Addrs)
+			var agent string
+			if cctx.Bool("agent") {
+				agent, err = api.NetAgentVersion(ctx, peer.ID)
+				if err != nil {
+					log.Warnf("getting agent version: %s", err)
+				} else {
+					agent = ", " + agent
+				}
+			}
+
+			fmt.Printf("%s, %s%s\n", peer.ID, peer.Addrs, agent)
 		}
 
 		return nil
