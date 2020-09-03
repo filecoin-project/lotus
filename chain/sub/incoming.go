@@ -481,7 +481,7 @@ func (bv *BlockValidator) checkPowerAndGetWorkerKey(ctx context.Context, bh *typ
 		return address.Undef, ErrSoftFailure
 	}
 
-	hmp, err := stmgr.MinerHasMinPower(ctx, bv.stmgr, bh.Miner, lbts)
+	hmp, err := stmgr.MinerEligibleForElection(ctx, bv.stmgr, bh.Miner, lbts)
 	if err != nil {
 		log.Warnf("failed to determine if incoming block's miner has minimum power: %s", err)
 		return address.Undef, ErrSoftFailure

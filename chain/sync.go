@@ -774,7 +774,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) (er
 			return xerrors.Errorf("block is not claiming to be a winner")
 		}
 
-		hp, err := stmgr.MinerHasMinPower(ctx, syncer.sm, h.Miner, lbts)
+		hp, err := stmgr.MinerEligibleForElection(ctx, syncer.sm, h.Miner, lbts)
 		if err != nil {
 			return xerrors.Errorf("determining if miner has min power failed: %w", err)
 		}
