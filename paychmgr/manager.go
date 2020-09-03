@@ -138,7 +138,7 @@ func (pm *Manager) GetPaych(ctx context.Context, from, to address.Address, amt t
 		return address.Undef, cid.Undef, err
 	}
 
-	return chanAccessor.getPaych(ctx, from, to, amt)
+	return chanAccessor.getPaych(ctx, amt)
 }
 
 func (pm *Manager) AvailableFunds(from address.Address, to address.Address) (*api.ChannelAvailableFunds, error) {
