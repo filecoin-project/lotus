@@ -334,10 +334,10 @@ func (p *Processor) unprocessedBlocks(ctx context.Context, batch int) (map[cid.C
 	}()
 	rows, err := p.db.Query(`
 with toProcess as (
-    select blocks.cid, blocks.height, rank() over (order by height) as rnk
-    from blocks
-        left join blocks_synced bs on blocks.cid = bs.cid
-    where bs.processed_at is null and blocks.height > 0
+    select b.cid, b.height, rank() over (order by height) as rnk
+    from blocks_synced bs
+        left join blocks b on bs.cid = b.cid
+    where bs.processed_at is null and b.height > 0
 )
 select cid
 from toProcess
