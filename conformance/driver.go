@@ -2,7 +2,8 @@ package conformance
 
 import (
 	"context"
-	"fmt"
+
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -80,11 +81,14 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, preroot
 			}
 			switch msg.From.Protocol() {
 			case address.SECP256K1:
-				sb.SecpkMessages = append(sb.SecpkMessages, msg)
+				sb.SecpkMessages = append(sb.SecpkMessages, toChainMsg(msg))
 			case address.BLS:
-				sb.BlsMessages = append(sb.BlsMessages, msg)
+				sb.BlsMessages = append(sb.BlsMessages, toChainMsg(msg))
 			default:
-				return nil, fmt.Errorf("from account is not secpk nor bls: %s", msg.From)
+				// sneak in messages originating from other addresses as both kinds.
+				// these should fail, as they are actually invalid senders.
+				sb.SecpkMessages = append(sb.SecpkMessages, msg)
+				sb.BlsMessages = append(sb.BlsMessages, msg)
 			}
 		}
 		blocks = append(blocks, sb)
@@ -143,11 +147,30 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, preroot cid.Cid, epoch
 
 	lvm.SetInvoker(invoker)
 
-	ret, err := lvm.ApplyMessage(d.ctx, msg)
+	ret, err := lvm.ApplyMessage(d.ctx, toChainMsg(msg))
 	if err != nil {
 		return nil, cid.Undef, err
 	}
 
 	root, err := lvm.Flush(d.ctx)
 	return ret, root, err
+}
+
+// toChainMsg injects a synthetic 0-filled signature of the right length to
+// messages that originate from secp256k senders, leaving all
+// others untouched.
+// TODO: generate a signature in the DSL so that it's encoded in
+//  the test vector.
+func toChainMsg(msg *types.Message) (ret types.ChainMsg) {
+	ret = msg
+	if msg.From.Protocol() == address.SECP256K1 {
+		ret = &types.SignedMessage{
+			Message: *msg,
+			Signature: crypto.Signature{
+				Type: crypto.SigTypeSecp256k1,
+				Data: make([]byte, 65),
+			},
+		}
+	}
+	return ret
 }
