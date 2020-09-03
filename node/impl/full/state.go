@@ -1044,7 +1044,6 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 	initialPledge := miner.InitialPledgeForPower(
 		sectorWeight,
 		rewardState.ThisEpochBaselinePower,
-		powerState.ThisEpochPledgeCollateral,
 		rewardState.ThisEpochRewardSmoothed,
 		powerState.ThisEpochQAPowerSmoothed,
 		circSupply.FilCirculating,

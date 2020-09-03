@@ -273,7 +273,6 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 				pledge := miner.InitialPledgeForPower(
 					sectorWeight,
 					epochReward.ThisEpochBaselinePower,
-					tpow.PledgeCollateral,
 					epochReward.ThisEpochRewardSmoothed,
 					tpow.QualityAdjPowerSmoothed,
 					circSupply(ctx, vm, minerInfos[i].maddr),
