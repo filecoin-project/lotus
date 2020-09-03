@@ -1,5 +1,13 @@
 # Lotus changelog
 
+# 0.5.10 / 2020-09-03
+
+This patch includes a crucial fix to the message pool selection logic, strongly disfavouring messages that might cause a miner penalty.
+
+## Changes
+
+- Fix calculation of GasReward in messagepool (https://github.com/filecoin-project/lotus/pull/3528)
+
 # 0.5.9 / 2020-09-03
 
 This patch includes a hotfix to the `GasEstimateFeeCap` method, capping the estimated fee to a reasonable level by default.
