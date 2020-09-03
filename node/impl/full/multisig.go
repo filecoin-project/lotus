@@ -28,8 +28,7 @@ type MsigAPI struct {
 	MpoolAPI  MpoolAPI
 }
 
-// TODO: remove gp (gasPrice) from arguments
-func (a *MsigAPI) MsigCreate(ctx context.Context, req uint64, addrs []address.Address, duration abi.ChainEpoch, val types.BigInt, src address.Address, gp types.BigInt) (cid.Cid, error) {
+func (a *MsigAPI) MsigCreate(ctx context.Context, req uint64, addrs []address.Address, duration abi.ChainEpoch, vestingStart abi.ChainEpoch, val types.BigInt, src address.Address) (cid.Cid, error) {
 
 	lenAddrs := uint64(len(addrs))
 
@@ -50,6 +49,7 @@ func (a *MsigAPI) MsigCreate(ctx context.Context, req uint64, addrs []address.Ad
 		Signers:               addrs,
 		NumApprovalsThreshold: req,
 		UnlockDuration:        duration,
+		StartEpoch:            vestingStart,
 	}
 
 	enc, actErr := actors.SerializeParams(msigParams)

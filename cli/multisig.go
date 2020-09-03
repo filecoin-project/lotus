@@ -63,6 +63,11 @@ var msigCreateCmd = &cli.Command{
 			Value: "0",
 		},
 		&cli.StringFlag{
+			Name:  "vesting-start",
+			Usage: "epoch at which vesting begins",
+			Value: "0",
+		},
+		&cli.StringFlag{
 			Name:  "from",
 			Usage: "account to send the create message from",
 		},
@@ -120,10 +125,9 @@ var msigCreateCmd = &cli.Command{
 		}
 
 		d := abi.ChainEpoch(cctx.Uint64("duration"))
+		vs := abi.ChainEpoch(cctx.Uint64("vesting-start"))
 
-		gp := types.NewInt(1)
-
-		msgCid, err := api.MsigCreate(ctx, required, addrs, d, intVal, sendAddr, gp)
+		msgCid, err := api.MsigCreate(ctx, required, addrs, d, vs, intVal, sendAddr)
 		if err != nil {
 			return err
 		}
