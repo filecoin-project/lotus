@@ -301,12 +301,10 @@ func (ca *channelAccessor) msgWaitComplete(mcid cid.Cid, err error) {
 
 func (ca *channelAccessor) currentAvailableFunds(queuedAmt types.BigInt) (*api.ChannelAvailableFunds, error) {
 	channelInfo, err := ca.store.OutboundActiveByFromTo(ca.from, ca.to)
-	if err != nil && err != ErrChannelNotTracked {
-		return nil, err
-	}
-
-	if channelInfo == nil {
-		// Channel does not exist
+	if err == ErrChannelNotTracked {
+		// If the channel does not exist we still want to return an empty
+		// ChannelAvailableFunds, so that clients can check for the existence
+		// of a channel between from / to without getting an error.
 		return &api.ChannelAvailableFunds{
 			Channel:             nil,
 			ConfirmedAmt:        types.NewInt(0),
@@ -315,6 +313,9 @@ func (ca *channelAccessor) currentAvailableFunds(queuedAmt types.BigInt) (*api.C
 			QueuedAmt:           queuedAmt,
 			VoucherReedeemedAmt: types.NewInt(0),
 		}, nil
+	}
+	if err != nil {
+		return nil, err
 	}
 
 	// The channel may have a pending create or add funds message
