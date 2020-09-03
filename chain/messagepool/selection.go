@@ -585,16 +585,18 @@ func (mp *MessagePool) getPendingMessages(curTs, ts *types.TipSet) (map[address.
 	return result, nil
 }
 
-func (mp *MessagePool) getGasReward(msg *types.SignedMessage, baseFee types.BigInt, ts *types.TipSet) *big.Int {
+func (*MessagePool) getGasReward(msg *types.SignedMessage, baseFee types.BigInt) *big.Int {
 	maxPremium := types.BigSub(msg.Message.GasFeeCap, baseFee)
-	if types.BigCmp(maxPremium, msg.Message.GasPremium) < 0 {
+
+	if types.BigCmp(maxPremium, msg.Message.GasPremium) > 0 {
 		maxPremium = msg.Message.GasPremium
 	}
+
 	gasReward := abig.Mul(maxPremium, types.NewInt(uint64(msg.Message.GasLimit)))
 	return gasReward.Int
 }
 
-func (mp *MessagePool) getGasPerf(gasReward *big.Int, gasLimit int64) float64 {
+func (*MessagePool) getGasPerf(gasReward *big.Int, gasLimit int64) float64 {
 	// gasPerf = gasReward * build.BlockGasLimit / gasLimit
 	a := new(big.Rat).SetInt(new(big.Int).Mul(gasReward, bigBlockGasLimit))
 	b := big.NewRat(1, gasLimit)
@@ -672,7 +674,7 @@ func (mp *MessagePool) createMessageChains(actor address.Address, mset map[uint6
 			balance = new(big.Int).Sub(balance, value)
 		}
 
-		gasReward := mp.getGasReward(m, baseFee, ts)
+		gasReward := mp.getGasReward(m, baseFee)
 		rewards = append(rewards, gasReward)
 	}
 
@@ -776,7 +778,7 @@ func (mc *msgChain) Before(other *msgChain) bool {
 func (mc *msgChain) Trim(gasLimit int64, mp *MessagePool, baseFee types.BigInt, ts *types.TipSet) {
 	i := len(mc.msgs) - 1
 	for i >= 0 && (mc.gasLimit > gasLimit || mc.gasPerf < 0) {
-		gasReward := mp.getGasReward(mc.msgs[i], baseFee, ts)
+		gasReward := mp.getGasReward(mc.msgs[i], baseFee)
 		mc.gasReward = new(big.Int).Sub(mc.gasReward, gasReward)
 		mc.gasLimit -= mc.msgs[i].Message.GasLimit
 		if mc.gasLimit > 0 {
