@@ -246,7 +246,8 @@ func (p *Processor) collectActorChanges(ctx context.Context, toProcess map[cid.C
 
 		pts, err := p.node.ChainGetTipSet(ctx, types.NewTipSetKey(bh.Parents...))
 		if err != nil {
-			panic(err)
+			log.Error(err)
+			return
 		}
 
 		if pts.ParentState().Equals(bh.ParentStateRoot) {
@@ -260,7 +261,9 @@ func (p *Processor) collectActorChanges(ctx context.Context, toProcess map[cid.C
 		// a separate strategy for deleted actors
 		changes, err = p.node.StateChangedActors(ctx, pts.ParentState(), bh.ParentStateRoot)
 		if err != nil {
-			panic(err)
+			log.Error(err)
+			log.Debugw("StateChangedActors", "grandparent_state", pts.ParentState(), "parent_state", bh.ParentStateRoot)
+			return
 		}
 
 		// record the state of all actors that have changed
@@ -271,7 +274,9 @@ func (p *Processor) collectActorChanges(ctx context.Context, toProcess map[cid.C
 			// ignore actors that were deleted.
 			has, err := p.node.ChainHasObj(ctx, act.Head)
 			if err != nil {
-				log.Fatal(err)
+				log.Error(err)
+				log.Debugw("ChanHasObj", "actor_head", act.Head)
+				return
 			}
 			if !has {
 				continue
@@ -279,19 +284,24 @@ func (p *Processor) collectActorChanges(ctx context.Context, toProcess map[cid.C
 
 			addr, err := address.NewFromString(a)
 			if err != nil {
-				log.Fatal(err.Error())
+				log.Error(err)
+				log.Debugw("NewFromString", "address_string", a)
+				return
 			}
 
 			ast, err := p.node.StateReadState(ctx, addr, pts.Key())
 			if err != nil {
-				log.Fatal(err.Error())
+				log.Error(err)
+				log.Debugw("StateReadState", "address_string", a, "parent_tipset_key", pts.Key())
+				return
 			}
 
 			// TODO look here for an empty state, maybe thats a sign the actor was deleted?
 
 			state, err := json.Marshal(ast.State)
 			if err != nil {
-				panic(err)
+				log.Error(err)
+				return
 			}
 
 			outMu.Lock()
