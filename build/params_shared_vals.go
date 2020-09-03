@@ -54,7 +54,7 @@ const MaxSealLookback = SealRandomnessLookbackLimit + 2000 // TODO: Get from spe
 // Epochs
 const TicketRandomnessLookback = abi.ChainEpoch(1)
 
-const WinningPoStSectorSetLookback = abi.ChainEpoch(10)
+const WinningPoStSectorSetLookback = Finality
 
 // /////
 // Devnet settings
