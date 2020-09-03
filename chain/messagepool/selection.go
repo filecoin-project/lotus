@@ -587,9 +587,11 @@ func (mp *MessagePool) getPendingMessages(curTs, ts *types.TipSet) (map[address.
 
 func (mp *MessagePool) getGasReward(msg *types.SignedMessage, baseFee types.BigInt, ts *types.TipSet) *big.Int {
 	maxPremium := types.BigSub(msg.Message.GasFeeCap, baseFee)
-	if types.BigCmp(maxPremium, msg.Message.GasPremium) < 0 {
+
+	if types.BigCmp(maxPremium, msg.Message.GasPremium) > 0 {
 		maxPremium = msg.Message.GasPremium
 	}
+
 	gasReward := abig.Mul(maxPremium, types.NewInt(uint64(msg.Message.GasLimit)))
 	return gasReward.Int
 }
