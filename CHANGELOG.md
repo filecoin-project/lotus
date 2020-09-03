@@ -1,5 +1,17 @@
 # Lotus changelog
 
+# 0.5.9 / 2020-09-03
+
+This patch includes a hotfix to the `GasEstimateFeeCap` method, capping the estimated fee to a reasonable level by default.
+
+## Changes 
+
+- Added target height to sync wait (https://github.com/filecoin-project/lotus/pull/3502)
+- Disable codecov annotations (https://github.com/filecoin-project/lotus/pull/3514)
+- Cap fees to reasonable level by default (https://github.com/filecoin-project/lotus/pull/3516)
+- Add APIs and command to inspect bandwidth usage (https://github.com/filecoin-project/lotus/pull/3497)
+- Track expected nonce in mpool, ignore messages with large nonce gaps (https://github.com/filecoin-project/lotus/pull/3450)
+
 # 0.5.8 / 2020-09-02
 
 This patch includes some bugfixes to the sector sealing process, and updates go-fil-markets. It also improves the performance of blocksync, adds a method to export chain state trees, and improves chainwatch.
