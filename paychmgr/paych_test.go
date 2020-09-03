@@ -781,7 +781,7 @@ func TestBestSpendable(t *testing.T) {
 	require.EqualValues(t, 2, vchr.Amount.Int64())
 
 	// Submit voucher from lane 2
-	_, err = s.mgr.SubmitVoucher(ctx, s.ch, svL2V1, nil, nil)
+	_, err = s.mgr.SubmitVoucher(ctx, s.ch, svL2V1, nil)
 	require.NoError(t, err)
 
 	// Best spendable voucher should no longer include lane 2
@@ -791,7 +791,7 @@ func TestBestSpendable(t *testing.T) {
 	require.Len(t, vouchers, 1)
 
 	// Submit first voucher from lane 1
-	_, err = s.mgr.SubmitVoucher(ctx, s.ch, svL1V1, nil, nil)
+	_, err = s.mgr.SubmitVoucher(ctx, s.ch, svL1V1, nil)
 	require.NoError(t, err)
 
 	// Best spendable voucher for lane 1 should still be highest value voucher
@@ -833,8 +833,7 @@ func TestCheckSpendable(t *testing.T) {
 
 	// Check that spendable is true
 	secret := []byte("secret")
-	otherProof := []byte("other proof")
-	spendable, err := s.mgr.CheckVoucherSpendable(ctx, s.ch, voucher, secret, otherProof)
+	spendable, err := s.mgr.CheckVoucherSpendable(ctx, s.ch, voucher, secret)
 	require.NoError(t, err)
 	require.True(t, spendable)
 
@@ -843,13 +842,12 @@ func TestCheckSpendable(t *testing.T) {
 	var p paych.UpdateChannelStateParams
 	err = p.UnmarshalCBOR(bytes.NewReader(lastCall.Params))
 	require.NoError(t, err)
-	require.Equal(t, otherProof, p.Proof)
 	require.Equal(t, secret, p.Secret)
 
 	// Check that if no proof is supplied, the proof supplied to add voucher
 	// above is used
 	secret2 := []byte("secret2")
-	spendable, err = s.mgr.CheckVoucherSpendable(ctx, s.ch, voucher, secret2, nil)
+	spendable, err = s.mgr.CheckVoucherSpendable(ctx, s.ch, voucher, secret2)
 	require.NoError(t, err)
 	require.True(t, spendable)
 
@@ -857,7 +855,6 @@ func TestCheckSpendable(t *testing.T) {
 	var p2 paych.UpdateChannelStateParams
 	err = p2.UnmarshalCBOR(bytes.NewReader(lastCall.Params))
 	require.NoError(t, err)
-	require.Equal(t, proof, p2.Proof)
 	require.Equal(t, secret2, p2.Secret)
 
 	// Check that if VM call returns non-success exit code, spendable is false
@@ -866,21 +863,21 @@ func TestCheckSpendable(t *testing.T) {
 			ExitCode: 1,
 		},
 	})
-	spendable, err = s.mgr.CheckVoucherSpendable(ctx, s.ch, voucher, secret, nil)
+	spendable, err = s.mgr.CheckVoucherSpendable(ctx, s.ch, voucher, secret)
 	require.NoError(t, err)
 	require.False(t, spendable)
 
 	// Return success exit code (indicating voucher is spendable)
 	s.mock.setCallResponse(successResponse)
-	spendable, err = s.mgr.CheckVoucherSpendable(ctx, s.ch, voucher, secret, nil)
+	spendable, err = s.mgr.CheckVoucherSpendable(ctx, s.ch, voucher, secret)
 	require.NoError(t, err)
 	require.True(t, spendable)
 
 	// Check that voucher is no longer spendable once it has been submitted
-	_, err = s.mgr.SubmitVoucher(ctx, s.ch, voucher, nil, nil)
+	_, err = s.mgr.SubmitVoucher(ctx, s.ch, voucher, nil)
 	require.NoError(t, err)
 
-	spendable, err = s.mgr.CheckVoucherSpendable(ctx, s.ch, voucher, secret, nil)
+	spendable, err = s.mgr.CheckVoucherSpendable(ctx, s.ch, voucher, secret)
 	require.NoError(t, err)
 	require.False(t, spendable)
 }
@@ -905,8 +902,7 @@ func TestSubmitVoucher(t *testing.T) {
 
 	// Submit voucher
 	secret := []byte("secret")
-	submitProof := []byte("submit proof")
-	submitCid, err := s.mgr.SubmitVoucher(ctx, s.ch, voucher, secret, submitProof)
+	submitCid, err := s.mgr.SubmitVoucher(ctx, s.ch, voucher, secret)
 	require.NoError(t, err)
 
 	// Check that the secret and proof were passed through correctly
@@ -914,7 +910,6 @@ func TestSubmitVoucher(t *testing.T) {
 	var p paych.UpdateChannelStateParams
 	err = p.UnmarshalCBOR(bytes.NewReader(msg.Message.Params))
 	require.NoError(t, err)
-	require.Equal(t, submitProof, p.Proof)
 	require.Equal(t, secret, p.Secret)
 
 	// Check that if no proof is supplied to submit voucher, the proof supplied
@@ -927,30 +922,27 @@ func TestSubmitVoucher(t *testing.T) {
 	_, err = s.mgr.AddVoucherInbound(ctx, s.ch, voucher, addVoucherProof2, minDelta)
 	require.NoError(t, err)
 
-	submitCid, err = s.mgr.SubmitVoucher(ctx, s.ch, voucher, secret2, nil)
+	submitCid, err = s.mgr.SubmitVoucher(ctx, s.ch, voucher, secret2)
 	require.NoError(t, err)
 
 	msg = s.mock.pushedMessages(submitCid)
 	var p2 paych.UpdateChannelStateParams
 	err = p2.UnmarshalCBOR(bytes.NewReader(msg.Message.Params))
 	require.NoError(t, err)
-	require.Equal(t, addVoucherProof2, p2.Proof)
 	require.Equal(t, secret2, p2.Secret)
 
 	// Submit a voucher without first adding it
 	nonce++
 	voucherAmount = big.NewInt(3)
 	secret3 := []byte("secret2")
-	proof3 := []byte("proof3")
 	voucher = createTestVoucherWithExtra(t, s.ch, voucherLane, nonce, voucherAmount, s.fromKeyPrivate)
-	submitCid, err = s.mgr.SubmitVoucher(ctx, s.ch, voucher, secret3, proof3)
+	submitCid, err = s.mgr.SubmitVoucher(ctx, s.ch, voucher, secret3)
 	require.NoError(t, err)
 
 	msg = s.mock.pushedMessages(submitCid)
 	var p3 paych.UpdateChannelStateParams
 	err = p3.UnmarshalCBOR(bytes.NewReader(msg.Message.Params))
 	require.NoError(t, err)
-	require.Equal(t, proof3, p3.Proof)
 	require.Equal(t, secret3, p3.Secret)
 
 	// Verify that vouchers are marked as submitted
@@ -963,7 +955,7 @@ func TestSubmitVoucher(t *testing.T) {
 	}
 
 	// Attempting to submit the same voucher again should fail
-	_, err = s.mgr.SubmitVoucher(ctx, s.ch, voucher, secret2, nil)
+	_, err = s.mgr.SubmitVoucher(ctx, s.ch, voucher, secret2)
 	require.Error(t, err)
 }
 
@@ -1097,8 +1089,8 @@ func (m *mockBestSpendableAPI) PaychVoucherList(ctx context.Context, ch address.
 	return out, nil
 }
 
-func (m *mockBestSpendableAPI) PaychVoucherCheckSpendable(ctx context.Context, ch address.Address, voucher *paych.SignedVoucher, secret []byte, proof []byte) (bool, error) {
-	return m.mgr.CheckVoucherSpendable(ctx, ch, voucher, secret, proof)
+func (m *mockBestSpendableAPI) PaychVoucherCheckSpendable(ctx context.Context, ch address.Address, voucher *paych.SignedVoucher, secret []byte) (bool, error) {
+	return m.mgr.CheckVoucherSpendable(ctx, ch, voucher, secret)
 }
 
 func newMockBestSpendableAPI(mgr *Manager) BestSpendableAPI {

@@ -26,7 +26,7 @@ type rewardActorInfo struct {
 
 	newBaselinePower     big.Int
 	newBaseReward        big.Int
-	newSmoothingEstimate *smoothing.FilterEstimate
+	newSmoothingEstimate smoothing.FilterEstimate
 
 	totalMinedReward big.Int
 }

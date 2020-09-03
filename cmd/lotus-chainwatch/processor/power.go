@@ -25,7 +25,7 @@ type powerActorInfo struct {
 	newRawBytes             big.Int
 	newQualityAdjustedBytes big.Int
 	newPledgeCollateral     big.Int
-	newQAPowerSmoothed      *smoothing.FilterEstimate
+	newQAPowerSmoothed      smoothing.FilterEstimate
 
 	minerCount                  int64
 	minerCountAboveMinimumPower int64

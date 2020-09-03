@@ -555,7 +555,7 @@ func createEmptyMinerState(ctx context.Context, t *testing.T, store adt.Store, o
 	emptyBitfieldCid, err := store.Put(store.Context(), emptyBitfield)
 	require.NoError(t, err)
 
-	state, err := miner.ConstructState(minerInfo, 123, emptyBitfieldCid, emptyArrayCid, emptyMap, emptyDeadlinesCid, emptyVestingFundsCid)
+	state, err := miner.ConstructState(minerInfo, 0, 123, emptyBitfieldCid, emptyArrayCid, emptyMap, emptyDeadlinesCid, emptyVestingFundsCid)
 	require.NoError(t, err)
 	return state
 
