@@ -9,8 +9,8 @@ import (
 const SealRandomnessLookback = miner.ChainFinality
 
 // Epochs
-func SealRandomnessLookbackLimit(spt abi.RegisteredSealProof) abi.ChainEpoch {
-	return miner.MaxSealDuration[spt]
+func SealRandomnessLookbackLimit() abi.ChainEpoch {
+	return miner.MaxPreCommitRandomnessLookback
 }
 
 // Epochs

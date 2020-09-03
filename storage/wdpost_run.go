@@ -421,12 +421,10 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 
 	elapsed := time.Since(tsStart)
 
-	commEpoch := di.Open
-	commRand, err := s.api.ChainGetRandomnessFromTickets(ctx, ts.Key(), crypto.DomainSeparationTag_PoStChainCommit, commEpoch, nil)
+	commRand, err := s.api.ChainGetRandomnessFromTickets(ctx, ts.Key(), crypto.DomainSeparationTag_PoStChainCommit, di.Challenge, nil)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get chain randomness for windowPost (ts=%d; deadline=%d): %w", ts.Height(), di, err)
 	}
-	params.ChainCommitEpoch = commEpoch
 	params.ChainCommitRand = commRand
 
 	log.Infow("submitting window PoSt", "elapsed", elapsed)

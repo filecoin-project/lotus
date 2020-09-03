@@ -178,9 +178,9 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 		return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("handlePreCommitting: failed to compute pre-commit expiry: %w", err)})
 	}
 
-	// Sectors must last _at least_ MinSectorExpiration + MaxSealDuration.
+	// Sectors must last _at least_ MinSectorExpiration + MaxProveCommitDuration.
 	// TODO: The "+10" allows the pre-commit to take 10 blocks to be accepted.
-	if minExpiration := height + miner.MaxSealDuration[sector.SectorType] + miner.MinSectorExpiration + 10; expiration < minExpiration {
+	if minExpiration := height + miner.MaxProveCommitDuration[sector.SectorType] + miner.MinSectorExpiration + 10; expiration < minExpiration {
 		expiration = minExpiration
 	}
 	// TODO: enforce a reasonable _maximum_ sector lifetime?
