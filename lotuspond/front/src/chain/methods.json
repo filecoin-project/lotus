@@ -82,7 +82,6 @@
     "EnrollCronEvent",
     "OnEpochTickEnd",
     "UpdatePledgeTotal",
-    "OnConsensusFault",
     "SubmitPoRepForBulkVerify",
     "CurrentTotalPower"
   ],

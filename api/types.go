@@ -60,6 +60,7 @@ type MinerInfo struct {
 	SealProofType              abi.RegisteredSealProof
 	SectorSize                 abi.SectorSize
 	WindowPoStPartitionSectors uint64
+	ConsensusFaultElapsed      abi.ChainEpoch
 }
 
 func NewApiMinerInfo(info *miner.MinerInfo) MinerInfo {
@@ -81,6 +82,7 @@ func NewApiMinerInfo(info *miner.MinerInfo) MinerInfo {
 		SealProofType:              info.SealProofType,
 		SectorSize:                 info.SectorSize,
 		WindowPoStPartitionSectors: info.WindowPoStPartitionSectors,
+		ConsensusFaultElapsed:      info.ConsensusFaultElapsed,
 	}
 
 	if info.PendingWorkerKey != nil {
