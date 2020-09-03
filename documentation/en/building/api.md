@@ -19,7 +19,7 @@ Lotus uses its own Go library implementation of [JSON-RPC](https://github.com/fi
 
 ## cURL example
 
-To demonstrate making an API request, we will take the method `ChainHead` from [api/api.go](https://github.com/filecoin-project/lotus/blob/master/api/api_full.go).
+To demonstrate making an API request, we will take the method `ChainHead` from [api/api_full.go](https://github.com/filecoin-project/lotus/blob/master/api/api_full.go).
 
 ```go
 ChainHead(context.Context) (*types.TipSet, error)
