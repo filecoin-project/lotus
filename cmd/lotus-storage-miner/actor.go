@@ -24,6 +24,7 @@ import (
 	"github.com/filecoin-project/lotus/storage"
 )
 
+// TODO: Add command to send ConfirmUpdateWorkerKey message
 var actorCmd = &cli.Command{
 	Name:  "actor",
 	Usage: "manipulate the miner actor",
