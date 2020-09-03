@@ -902,6 +902,14 @@ github.com/libp2p/go-libp2p-pubsub v0.3.2-0.20200527132641-c0712c6e92cf/go.mod h
 github.com/libp2p/go-libp2p-pubsub v0.3.5-0.20200820194335-bfc96c2cd081/go.mod h1:DTMSVmZZfXodB/pvdTGrY2eHPZ9W2ev7hzTH83OKHrI=
 github.com/libp2p/go-libp2p-pubsub v0.3.6-0.20200901174250-06a12f17b7de h1:Dl0B0x6u+OSKXAa1DeB6xHFsUOBAhjrXJ10zykVSN6Q=
 github.com/libp2p/go-libp2p-pubsub v0.3.6-0.20200901174250-06a12f17b7de/go.mod h1:DTMSVmZZfXodB/pvdTGrY2eHPZ9W2ev7hzTH83OKHrI=
+github.com/libp2p/go-libp2p-pubsub v0.3.6-0.20200903122708-d895a89eb223 h1:tgwVd77HnrN8ze5pHVQ1eNHaetwe9V78FwYU9SCDk64=
+github.com/libp2p/go-libp2p-pubsub v0.3.6-0.20200903122708-d895a89eb223/go.mod h1:DTMSVmZZfXodB/pvdTGrY2eHPZ9W2ev7hzTH83OKHrI=
+github.com/libp2p/go-libp2p-pubsub v0.3.6-0.20200905112914-5fc61a58fc03 h1:gabZ3OnkgRE3kzbwDKOJOaQgI3oseD9dSnOMZLuNoys=
+github.com/libp2p/go-libp2p-pubsub v0.3.6-0.20200905112914-5fc61a58fc03/go.mod h1:DTMSVmZZfXodB/pvdTGrY2eHPZ9W2ev7hzTH83OKHrI=
+github.com/libp2p/go-libp2p-pubsub v0.3.6-0.20200905203513-0f42a472006f h1:jfItamsfw3cihUHCAlCo0u4U4aljJ33dxHklFOmoapg=
+github.com/libp2p/go-libp2p-pubsub v0.3.6-0.20200905203513-0f42a472006f/go.mod h1:DTMSVmZZfXodB/pvdTGrY2eHPZ9W2ev7hzTH83OKHrI=
+github.com/libp2p/go-libp2p-pubsub v0.3.6-0.20200907103802-a3445b756fdb h1:0jm9ZSDkteX9XRjZqZwG5X0wuR+e0zAJ6ZEnqo2vcb0=
+github.com/libp2p/go-libp2p-pubsub v0.3.6-0.20200907103802-a3445b756fdb/go.mod h1:DTMSVmZZfXodB/pvdTGrY2eHPZ9W2ev7hzTH83OKHrI=
 github.com/libp2p/go-libp2p-quic-transport v0.1.1/go.mod h1:wqG/jzhF3Pu2NrhJEvE+IE0NTHNXslOPn9JQzyCAxzU=
 github.com/libp2p/go-libp2p-quic-transport v0.5.0/go.mod h1:IEcuC5MLxvZ5KuHKjRu+dr3LjCT1Be3rcD/4d8JrX8M=
 github.com/libp2p/go-libp2p-quic-transport v0.7.1/go.mod h1:TD31to4E5exogR/GWHClXCfkktigjAl5rXSt7HoxNvY=
