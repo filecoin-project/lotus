@@ -190,8 +190,9 @@ func (db *DrandBeacon) VerifyEntry(curr types.BeaconEntry, prev types.BeaconEntr
 func (db *DrandBeacon) MaxBeaconRoundForEpoch(filEpoch abi.ChainEpoch, prevEntry types.BeaconEntry) uint64 {
 	// TODO: sometimes the genesis time for filecoin is zero and this goes negative
 	latestTs := ((uint64(filEpoch) * db.filRoundTime) + db.filGenTime) - db.filRoundTime
-	dround := (latestTs - db.drandGenTime) / uint64(db.interval.Seconds())
-	return dround
+	dround := (latestTs-db.drandGenTime)/uint64(db.interval.Seconds()) + 1
+	_, nextTs := dchain.NextRound(latestTs)
+	return nextTs - db.interval.Seconds()
 }
 
 var _ beacon.RandomBeacon = (*DrandBeacon)(nil)
