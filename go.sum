@@ -220,21 +220,31 @@ github.com/fatih/color v1.8.0 h1:5bzFgL+oy7JITMTxUPJ00n7VxmYd/PdMp5mHFX40/RY=
 github.com/fatih/color v1.8.0/go.mod h1:3l45GVGkyrnYNl9HoIjnp2NnNWvh6hLAqD8yTfGjnw8=
 github.com/fd/go-nat v1.0.0/go.mod h1:BTBu/CKvMmOMUPkKVef1pngt2WFH/lg7E6yQnulfp6E=
 <<<<<<< HEAD
+<<<<<<< HEAD
 github.com/filecoin-project/chain-validation v0.0.6-0.20200615191232-6be1a8c6ed09/go.mod h1:HEJn6kOXMNhCNBYNTO/lrEI7wSgqCOR6hN5ecfYUnC8=
 =======
+=======
+github.com/filecoin-project/chain-validation v0.0.5 h1:gZ2lQ9s2nzj88YGKFxcV6BZw7HHplDOKePWXb3SKF94=
+>>>>>>> Update chain-val
 github.com/filecoin-project/chain-validation v0.0.5/go.mod h1:mA+SFXqoILIwtnSZd89sMvGTrTZDgOBn7Nb9mLEjrEQ=
 >>>>>>> update specs actors
 github.com/filecoin-project/chain-validation v0.0.6-0.20200813000554-40c22fe26eef h1:MtQRSnJLsQOOlmsd/Ua5KWXimpxcaa715h6FUh/eJPY=
 github.com/filecoin-project/chain-validation v0.0.6-0.20200813000554-40c22fe26eef/go.mod h1:SMj5VK1pYgqC8FXVEtOBRTc+9AIrYu+C+K3tAXi2Rk8=
+github.com/filecoin-project/chain-validation v0.0.6-0.20200903055344-fedfaea3bae2 h1:rIC70900bVRz+9SKfaOicFBcX6xbBXJJNGOq+1zsF/0=
+github.com/filecoin-project/chain-validation v0.0.6-0.20200903055344-fedfaea3bae2/go.mod h1:OMOvY85H0YDGwvVcsFS6nBhK9mfyu8ym8BH7J4Oa8Bk=
 github.com/filecoin-project/go-address v0.0.0-20200107215422-da8eea2842b5/go.mod h1:SAOwJoakQ8EPjwNIsiakIQKsoKdkcbx8U3IapgCg9R0=
 github.com/filecoin-project/go-address v0.0.2-0.20200218010043-eb9bb40ed5be/go.mod h1:SAOwJoakQ8EPjwNIsiakIQKsoKdkcbx8U3IapgCg9R0=
 github.com/filecoin-project/go-address v0.0.2-0.20200504173055-8b6f2fb2b3ef/go.mod h1:SrA+pWVoUivqKOfC+ckVYbx41hWz++HxJcrlmHNnebU=
 github.com/filecoin-project/go-address v0.0.3 h1:eVfbdjEbpbzIrbiSa+PiGUY+oDK9HnUn+M1R/ggoHf8=
 github.com/filecoin-project/go-address v0.0.3/go.mod h1:jr8JxKsYx+lQlQZmF5i2U0Z+cGQ59wMIps/8YW/lDj8=
 <<<<<<< HEAD
+<<<<<<< HEAD
 github.com/filecoin-project/go-amt-ipld v0.0.0-20191205011053-79efc22d6cdc h1:cODZD2YzpTUtrOSxbEnWFcQHidNRZiRdvLxySjGvG/M=
 =======
 >>>>>>> update specs actors
+=======
+github.com/filecoin-project/go-amt-ipld v0.0.0-20191205011053-79efc22d6cdc h1:cODZD2YzpTUtrOSxbEnWFcQHidNRZiRdvLxySjGvG/M=
+>>>>>>> Update chain-val
 github.com/filecoin-project/go-amt-ipld v0.0.0-20191205011053-79efc22d6cdc/go.mod h1:KsFPWjF+UUYl6n9A+qbg4bjFgAOneicFZtDH/LQEX2U=
 github.com/filecoin-project/go-amt-ipld/v2 v2.0.1-0.20200131012142-05d80eeccc5e/go.mod h1:boRtQhzmxNocrMxOXo1NYn4oUc1NGvR8tEa79wApNXg=
 github.com/filecoin-project/go-amt-ipld/v2 v2.0.1-0.20200424220931-6263827e49f2/go.mod h1:boRtQhzmxNocrMxOXo1NYn4oUc1NGvR8tEa79wApNXg=
@@ -267,6 +277,7 @@ github.com/filecoin-project/go-fil-markets v0.5.8 h1:uwl0QNUVmmSlUQfxshpj21Dmhh6
 github.com/filecoin-project/go-fil-markets v0.5.8/go.mod h1:6ZX1vbZbnukbVQ8tCB/MmEizuW/bmRX7SpGAltU3KVg=
 github.com/filecoin-project/go-fil-markets v0.5.9 h1:iIO17UfIjUCiB37TRwgiBwAyfJJwHb8e8uAfu7F37gc=
 github.com/filecoin-project/go-fil-markets v0.5.9/go.mod h1:/cb1IoaiHhwFEWyIAPm9yN6Z+MiPujFZBT8BGH7LwB8=
+github.com/filecoin-project/go-hamt-ipld v0.1.3 h1:CfHEyx0cYO3NP91yExqD3xxqbb/Ale+vHQZOyqQGfxk=
 github.com/filecoin-project/go-hamt-ipld v0.1.3/go.mod h1:REjlnb1+pe+fM8Q1OMt2fPZXn0KxWqJ4S7ZeS+2IksQ=
 <<<<<<< HEAD
 github.com/filecoin-project/go-jsonrpc v0.1.1-0.20200602181149-522144ab4e24/go.mod h1:j6zV//WXIIY5kky873Q3iIKt/ViOE8rcijovmpxrXzM=
