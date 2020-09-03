@@ -61,10 +61,10 @@ func TestPaymentChannels(t *testing.T) {
 	creatorCLI := mockCLI.client(paymentCreator.ListenAddr)
 	receiverCLI := mockCLI.client(paymentReceiver.ListenAddr)
 
-	// creator: paych get <creator> <receiver> <amount>
+	// creator: paych add-funds <creator> <receiver> <amount>
 	channelAmt := "100000"
 	cmd := []string{creatorAddr.String(), receiverAddr.String(), channelAmt}
-	chstr := creatorCLI.runCmd(paychGetCmd, cmd)
+	chstr := creatorCLI.runCmd(paychAddFundsCmd, cmd)
 
 	chAddr, err := address.NewFromString(chstr)
 	require.NoError(t, err)
@@ -116,10 +116,10 @@ func TestPaymentChannelVouchers(t *testing.T) {
 	creatorCLI := mockCLI.client(paymentCreator.ListenAddr)
 	receiverCLI := mockCLI.client(paymentReceiver.ListenAddr)
 
-	// creator: paych get <creator> <receiver> <amount>
+	// creator: paych add-funds <creator> <receiver> <amount>
 	channelAmt := "100000"
 	cmd := []string{creatorAddr.String(), receiverAddr.String(), channelAmt}
-	chstr := creatorCLI.runCmd(paychGetCmd, cmd)
+	chstr := creatorCLI.runCmd(paychAddFundsCmd, cmd)
 
 	chAddr, err := address.NewFromString(chstr)
 	require.NoError(t, err)
