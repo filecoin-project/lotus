@@ -75,6 +75,13 @@ func (mp *MessagePool) republishPendingMessages() error {
 
 	gasLimit := int64(build.BlockGasLimit)
 	minGas := int64(gasguess.MinGas)
+
+	allowNegative := false
+	if skyHighBaseFeeThreshold.LessThan(baseFee) {
+		allowNegative = true
+		gasLimit = int64(float64(gasLimit) * skyHighBaseFeeGasLimitRatio)
+	}
+
 	var msgs []*types.SignedMessage
 	for i := 0; i < len(chains); {
 		chain := chains[i]
@@ -91,7 +98,7 @@ func (mp *MessagePool) republishPendingMessages() error {
 
 		// we don't republish negative performing chains, as they won't be included in
 		// a block anyway
-		if chain.gasPerf < 0 {
+		if !allowNegative && chain.gasPerf < 0 {
 			break
 		}
 
@@ -111,7 +118,7 @@ func (mp *MessagePool) republishPendingMessages() error {
 
 		// we can't fit the current chain but there is gas to spare
 		// trim it and push it down
-		chain.Trim(gasLimit, mp, baseFee)
+		chain.Trim(gasLimit, mp, baseFee, allowNegative)
 		for j := i; j < len(chains)-1; j++ {
 			if chains[j].Before(chains[j+1]) {
 				break
