@@ -67,12 +67,6 @@ func (mp *MessagePool) republishPendingMessages() error {
 		return chains[i].Before(chains[j])
 	})
 
-	// we don't republish negative performing chains; this is an error that will be screamed
-	// at the user
-	if chains[0].gasPerf < 0 {
-		return xerrors.Errorf("skipping republish: all message chains have negative gas performance; best gas performance: %f", chains[0].gasPerf)
-	}
-
 	gasLimit := int64(build.BlockGasLimit)
 	minGas := int64(gasguess.MinGas)
 	var msgs []*types.SignedMessage
@@ -86,12 +80,6 @@ func (mp *MessagePool) republishPendingMessages() error {
 
 		// there is not enough gas for any message
 		if gasLimit <= minGas {
-			break
-		}
-
-		// we don't republish negative performing chains, as they won't be included in
-		// a block anyway
-		if chain.gasPerf < 0 {
 			break
 		}
 
