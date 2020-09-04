@@ -130,6 +130,9 @@ func (*Invoker) transform(instance Invokee) (nativeCode, error) {
 	}
 	code := make(nativeCode, len(exports))
 	for id, m := range exports {
+		if m == nil {
+			continue
+		}
 		meth := reflect.ValueOf(m)
 		code[id] = reflect.MakeFunc(reflect.TypeOf((invokeFunc)(nil)),
 			func(in []reflect.Value) []reflect.Value {
