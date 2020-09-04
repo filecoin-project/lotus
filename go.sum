@@ -222,8 +222,8 @@ github.com/fatih/color v1.8.0/go.mod h1:3l45GVGkyrnYNl9HoIjnp2NnNWvh6hLAqD8yTfGj
 github.com/fd/go-nat v1.0.0/go.mod h1:BTBu/CKvMmOMUPkKVef1pngt2WFH/lg7E6yQnulfp6E=
 github.com/filecoin-project/chain-validation v0.0.6-0.20200615191232-6be1a8c6ed09/go.mod h1:HEJn6kOXMNhCNBYNTO/lrEI7wSgqCOR6hN5ecfYUnC8=
 github.com/filecoin-project/chain-validation v0.0.6-0.20200813000554-40c22fe26eef/go.mod h1:SMj5VK1pYgqC8FXVEtOBRTc+9AIrYu+C+K3tAXi2Rk8=
-github.com/filecoin-project/chain-validation v0.0.6-0.20200903055344-fedfaea3bae2 h1:rIC70900bVRz+9SKfaOicFBcX6xbBXJJNGOq+1zsF/0=
-github.com/filecoin-project/chain-validation v0.0.6-0.20200903055344-fedfaea3bae2/go.mod h1:OMOvY85H0YDGwvVcsFS6nBhK9mfyu8ym8BH7J4Oa8Bk=
+github.com/filecoin-project/chain-validation v0.0.6-0.20200904043805-ca34b452d36e h1:6kNdViNFNVhE+8cRG/3HP2BnGlM7BBCycf6GiA08nyc=
+github.com/filecoin-project/chain-validation v0.0.6-0.20200904043805-ca34b452d36e/go.mod h1:+LaVUhJ3H0qjs+DoO/aHyy+kyRREp1wIvirvTWyHMQQ=
 github.com/filecoin-project/go-address v0.0.2-0.20200218010043-eb9bb40ed5be/go.mod h1:SAOwJoakQ8EPjwNIsiakIQKsoKdkcbx8U3IapgCg9R0=
 github.com/filecoin-project/go-address v0.0.2-0.20200504173055-8b6f2fb2b3ef/go.mod h1:SrA+pWVoUivqKOfC+ckVYbx41hWz++HxJcrlmHNnebU=
 github.com/filecoin-project/go-address v0.0.3 h1:eVfbdjEbpbzIrbiSa+PiGUY+oDK9HnUn+M1R/ggoHf8=
