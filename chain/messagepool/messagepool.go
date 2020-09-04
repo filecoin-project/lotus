@@ -89,11 +89,11 @@ const (
 // MessagePoolEvt is the journal entry for message pool events.
 type MessagePoolEvt struct {
 	Action   string
-	Messages []MessagePoolEvt_Message
+	Messages []MessagePoolEvtMessage
 	Error    error `json:",omitempty"`
 }
 
-type MessagePoolEvt_Message struct {
+type MessagePoolEvtMessage struct {
 	types.Message
 
 	CID cid.Cid
@@ -145,7 +145,6 @@ type MessagePool struct {
 
 	sigValCache *lru.TwoQueueCache
 
-	jrnl     journal.Journal
 	evtTypes [3]journal.EventType
 }
 
@@ -561,7 +560,7 @@ func (mp *MessagePool) addLocked(m *types.SignedMessage, limit bool) error {
 	journal.J.RecordEvent(mp.evtTypes[evtTypeMpoolAdd], func() interface{} {
 		return MessagePoolEvt{
 			Action:   "add",
-			Messages: []MessagePoolEvt_Message{{Message: m.Message, CID: m.Cid()}},
+			Messages: []MessagePoolEvtMessage{{Message: m.Message, CID: m.Cid()}},
 		}
 	})
 
@@ -725,7 +724,7 @@ func (mp *MessagePool) remove(from address.Address, nonce uint64) {
 		journal.J.RecordEvent(mp.evtTypes[evtTypeMpoolRemove], func() interface{} {
 			return MessagePoolEvt{
 				Action:   "remove",
-				Messages: []MessagePoolEvt_Message{{Message: m.Message, CID: m.Cid()}}}
+				Messages: []MessagePoolEvtMessage{{Message: m.Message, CID: m.Cid()}}}
 		})
 
 		mp.currentSize--

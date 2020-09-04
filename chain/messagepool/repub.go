@@ -136,9 +136,9 @@ func (mp *MessagePool) republishPendingMessages() error {
 
 	if len(msgs) > 0 {
 		journal.J.RecordEvent(mp.evtTypes[evtTypeMpoolRepub], func() interface{} {
-			msgs := make([]MessagePoolEvt_Message, 0, len(msgs))
+			msgs := make([]MessagePoolEvtMessage, 0, len(msgs))
 			for _, m := range msgs {
-				msgs = append(msgs, MessagePoolEvt_Message{Message: m.Message, CID: m.Cid()})
+				msgs = append(msgs, MessagePoolEvtMessage{Message: m.Message, CID: m.Cid()})
 			}
 			return MessagePoolEvt{
 				Action:   "repub",

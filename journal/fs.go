@@ -22,7 +22,6 @@ type fsJournal struct {
 	dir       string
 	sizeLimit int64
 
-	lk    sync.Mutex
 	fi    *os.File
 	fSize int64
 
