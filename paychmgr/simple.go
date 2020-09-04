@@ -187,11 +187,11 @@ func (ca *channelAccessor) enqueue(task *fundsReq) {
 	defer ca.lk.Unlock()
 
 	ca.fundsReqQueue = append(ca.fundsReqQueue, task)
-	go ca.processQueue() // nolint: errcheck
+	go ca.processQueue("") // nolint: errcheck
 }
 
 // Run the operations in the queue
-func (ca *channelAccessor) processQueue() (*api.ChannelAvailableFunds, error) {
+func (ca *channelAccessor) processQueue(channelID string) (*api.ChannelAvailableFunds, error) {
 	ca.lk.Lock()
 	defer ca.lk.Unlock()
 
@@ -200,7 +200,7 @@ func (ca *channelAccessor) processQueue() (*api.ChannelAvailableFunds, error) {
 
 	// If there's nothing in the queue, bail out
 	if len(ca.fundsReqQueue) == 0 {
-		return ca.currentAvailableFunds(types.NewInt(0))
+		return ca.currentAvailableFunds(channelID, types.NewInt(0))
 	}
 
 	// Merge all pending requests into one.
@@ -211,7 +211,7 @@ func (ca *channelAccessor) processQueue() (*api.ChannelAvailableFunds, error) {
 	if amt.IsZero() {
 		// Note: The amount can be zero if requests are cancelled as we're
 		// building the mergedFundsReq
-		return ca.currentAvailableFunds(amt)
+		return ca.currentAvailableFunds(channelID, amt)
 	}
 
 	res := ca.processTask(merged.ctx, amt)
@@ -221,7 +221,7 @@ func (ca *channelAccessor) processQueue() (*api.ChannelAvailableFunds, error) {
 	if res == nil {
 		// Stop processing the fundsReqQueue and wait. When the event occurs it will
 		// call processQueue() again
-		return ca.currentAvailableFunds(amt)
+		return ca.currentAvailableFunds(channelID, amt)
 	}
 
 	// Finished processing so clear the queue
@@ -230,7 +230,7 @@ func (ca *channelAccessor) processQueue() (*api.ChannelAvailableFunds, error) {
 	// Call the task callback with its results
 	merged.onComplete(res)
 
-	return ca.currentAvailableFunds(types.NewInt(0))
+	return ca.currentAvailableFunds(channelID, types.NewInt(0))
 }
 
 // filterQueue filters cancelled requests out of the queue
@@ -283,25 +283,16 @@ func (ca *channelAccessor) msgWaitComplete(mcid cid.Cid, err error) {
 	// The queue may have been waiting for msg completion to proceed, so
 	// process the next queue item
 	if len(ca.fundsReqQueue) > 0 {
-		go ca.processQueue() // nolint: errcheck
+		go ca.processQueue("") // nolint: errcheck
 	}
 }
 
-func (ca *channelAccessor) currentAvailableFunds(queuedAmt types.BigInt) (*api.ChannelAvailableFunds, error) {
-	channelInfo, err := ca.store.OutboundActiveByFromTo(ca.from, ca.to)
-	if err == ErrChannelNotTracked {
-		// If the channel does not exist we still want to return an empty
-		// ChannelAvailableFunds, so that clients can check for the existence
-		// of a channel between from / to without getting an error.
-		return &api.ChannelAvailableFunds{
-			Channel:             nil,
-			ConfirmedAmt:        types.NewInt(0),
-			PendingAmt:          types.NewInt(0),
-			PendingWaitSentinel: nil,
-			QueuedAmt:           queuedAmt,
-			VoucherReedeemedAmt: types.NewInt(0),
-		}, nil
+func (ca *channelAccessor) currentAvailableFunds(channelID string, queuedAmt types.BigInt) (*api.ChannelAvailableFunds, error) {
+	if len(channelID) == 0 {
+		return nil, nil
 	}
+
+	channelInfo, err := ca.store.ByChannelID(channelID)
 	if err != nil {
 		return nil, err
 	}
@@ -335,6 +326,8 @@ func (ca *channelAccessor) currentAvailableFunds(queuedAmt types.BigInt) (*api.C
 
 	return &api.ChannelAvailableFunds{
 		Channel:             channelInfo.Channel,
+		From:                channelInfo.from(),
+		To:                  channelInfo.to(),
 		ConfirmedAmt:        channelInfo.Amount,
 		PendingAmt:          channelInfo.PendingAmount,
 		PendingWaitSentinel: waitSentinel,
@@ -713,6 +706,6 @@ func (ca *channelAccessor) msgPromise(ctx context.Context, mcid cid.Cid) chan on
 	return promise
 }
 
-func (ca *channelAccessor) availableFunds() (*api.ChannelAvailableFunds, error) {
-	return ca.processQueue()
+func (ca *channelAccessor) availableFunds(channelID string) (*api.ChannelAvailableFunds, error) {
+	return ca.processQueue(channelID)
 }

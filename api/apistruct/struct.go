@@ -207,22 +207,23 @@ type FullNodeStruct struct {
 
 		MarketEnsureAvailable func(context.Context, address.Address, address.Address, types.BigInt) (cid.Cid, error) `perm:"sign"`
 
-		PaychGet                   func(ctx context.Context, from, to address.Address, amt types.BigInt) (*api.ChannelInfo, error)           `perm:"sign"`
-		PaychGetWaitReady          func(context.Context, cid.Cid) (address.Address, error)                                                   `perm:"sign"`
-		PaychAvailableFunds        func(address.Address, address.Address) (*api.ChannelAvailableFunds, error)                                `perm:"sign"`
-		PaychList                  func(context.Context) ([]address.Address, error)                                                          `perm:"read"`
-		PaychStatus                func(context.Context, address.Address) (*api.PaychStatus, error)                                          `perm:"read"`
-		PaychSettle                func(context.Context, address.Address) (cid.Cid, error)                                                   `perm:"sign"`
-		PaychCollect               func(context.Context, address.Address) (cid.Cid, error)                                                   `perm:"sign"`
-		PaychAllocateLane          func(context.Context, address.Address) (uint64, error)                                                    `perm:"sign"`
-		PaychNewPayment            func(ctx context.Context, from, to address.Address, vouchers []api.VoucherSpec) (*api.PaymentInfo, error) `perm:"sign"`
-		PaychVoucherCheck          func(context.Context, *paych.SignedVoucher) error                                                         `perm:"read"`
-		PaychVoucherCheckValid     func(context.Context, address.Address, *paych.SignedVoucher) error                                        `perm:"read"`
-		PaychVoucherCheckSpendable func(context.Context, address.Address, *paych.SignedVoucher, []byte, []byte) (bool, error)                `perm:"read"`
-		PaychVoucherAdd            func(context.Context, address.Address, *paych.SignedVoucher, []byte, types.BigInt) (types.BigInt, error)  `perm:"write"`
-		PaychVoucherCreate         func(context.Context, address.Address, big.Int, uint64) (*api.VoucherCreateResult, error)                 `perm:"sign"`
-		PaychVoucherList           func(context.Context, address.Address) ([]*paych.SignedVoucher, error)                                    `perm:"write"`
-		PaychVoucherSubmit         func(context.Context, address.Address, *paych.SignedVoucher, []byte, []byte) (cid.Cid, error)             `perm:"sign"`
+		PaychGet                    func(ctx context.Context, from, to address.Address, amt types.BigInt) (*api.ChannelInfo, error)           `perm:"sign"`
+		PaychGetWaitReady           func(context.Context, cid.Cid) (address.Address, error)                                                   `perm:"sign"`
+		PaychAvailableFunds         func(address.Address) (*api.ChannelAvailableFunds, error)                                                 `perm:"sign"`
+		PaychAvailableFundsByFromTo func(address.Address, address.Address) (*api.ChannelAvailableFunds, error)                                `perm:"sign"`
+		PaychList                   func(context.Context) ([]address.Address, error)                                                          `perm:"read"`
+		PaychStatus                 func(context.Context, address.Address) (*api.PaychStatus, error)                                          `perm:"read"`
+		PaychSettle                 func(context.Context, address.Address) (cid.Cid, error)                                                   `perm:"sign"`
+		PaychCollect                func(context.Context, address.Address) (cid.Cid, error)                                                   `perm:"sign"`
+		PaychAllocateLane           func(context.Context, address.Address) (uint64, error)                                                    `perm:"sign"`
+		PaychNewPayment             func(ctx context.Context, from, to address.Address, vouchers []api.VoucherSpec) (*api.PaymentInfo, error) `perm:"sign"`
+		PaychVoucherCheck           func(context.Context, *paych.SignedVoucher) error                                                         `perm:"read"`
+		PaychVoucherCheckValid      func(context.Context, address.Address, *paych.SignedVoucher) error                                        `perm:"read"`
+		PaychVoucherCheckSpendable  func(context.Context, address.Address, *paych.SignedVoucher, []byte, []byte) (bool, error)                `perm:"read"`
+		PaychVoucherAdd             func(context.Context, address.Address, *paych.SignedVoucher, []byte, types.BigInt) (types.BigInt, error)  `perm:"write"`
+		PaychVoucherCreate          func(context.Context, address.Address, big.Int, uint64) (*api.VoucherCreateResult, error)                 `perm:"sign"`
+		PaychVoucherList            func(context.Context, address.Address) ([]*paych.SignedVoucher, error)                                    `perm:"write"`
+		PaychVoucherSubmit          func(context.Context, address.Address, *paych.SignedVoucher, []byte, []byte) (cid.Cid, error)             `perm:"sign"`
 	}
 }
 
@@ -905,8 +906,12 @@ func (c *FullNodeStruct) PaychGetWaitReady(ctx context.Context, sentinel cid.Cid
 	return c.Internal.PaychGetWaitReady(ctx, sentinel)
 }
 
-func (c *FullNodeStruct) PaychAvailableFunds(from address.Address, to address.Address) (*api.ChannelAvailableFunds, error) {
-	return c.Internal.PaychAvailableFunds(from, to)
+func (c *FullNodeStruct) PaychAvailableFunds(ch address.Address) (*api.ChannelAvailableFunds, error) {
+	return c.Internal.PaychAvailableFunds(ch)
+}
+
+func (c *FullNodeStruct) PaychAvailableFundsByFromTo(from, to address.Address) (*api.ChannelAvailableFunds, error) {
+	return c.Internal.PaychAvailableFundsByFromTo(from, to)
 }
 
 func (c *FullNodeStruct) PaychList(ctx context.Context) ([]address.Address, error) {

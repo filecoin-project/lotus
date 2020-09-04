@@ -39,8 +39,12 @@ func (a *PaychAPI) PaychGet(ctx context.Context, from, to address.Address, amt t
 	}, nil
 }
 
-func (a *PaychAPI) PaychAvailableFunds(from, to address.Address) (*api.ChannelAvailableFunds, error) {
-	return a.PaychMgr.AvailableFunds(from, to)
+func (a *PaychAPI) PaychAvailableFunds(ch address.Address) (*api.ChannelAvailableFunds, error) {
+	return a.PaychMgr.AvailableFunds(ch)
+}
+
+func (a *PaychAPI) PaychAvailableFundsByFromTo(from, to address.Address) (*api.ChannelAvailableFunds, error) {
+	return a.PaychMgr.AvailableFundsByFromTo(from, to)
 }
 
 func (a *PaychAPI) PaychGetWaitReady(ctx context.Context, sentinel cid.Cid) (address.Address, error) {

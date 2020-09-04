@@ -86,6 +86,20 @@ type ChannelInfo struct {
 	Settling bool
 }
 
+func (ci *ChannelInfo) from() address.Address {
+	if ci.Direction == DirOutbound {
+		return ci.Control
+	}
+	return ci.Target
+}
+
+func (ci *ChannelInfo) to() address.Address {
+	if ci.Direction == DirOutbound {
+		return ci.Target
+	}
+	return ci.Control
+}
+
 // infoForVoucher gets the VoucherInfo for the given voucher.
 // returns nil if the channel doesn't have the voucher.
 func (ci *ChannelInfo) infoForVoucher(sv *paych.SignedVoucher) (*VoucherInfo, error) {
