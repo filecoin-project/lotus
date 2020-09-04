@@ -5,6 +5,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"os"
 	"regexp"
 	"strconv"
@@ -42,6 +43,9 @@ func init() {
 		abi.RegisteredSealProof_StackedDrg2KiBV1: {},
 	}
 	verifreg.MinVerifiedDealSize = big.NewInt(256)
+
+	power.InitialQAPowerEstimatePosition = big.Zero()
+	power.InitialQAPowerEstimateVelocity = big.Zero()
 }
 
 // TestPaymentChannels does a basic test to exercise the payment channel CLI
