@@ -1167,7 +1167,11 @@ func sumGas(changes []*types.GasTrace) types.GasTrace {
 }
 
 func jsonParams(code cid.Cid, method abi.MethodNum, params []byte) (string, error) {
-	re := reflect.New(stmgr.MethodsMap[code][method].Params.Elem())
+	methodMeta, found := stmgr.MethodsMap[code][method]
+	if !found {
+		return "", fmt.Errorf("method %d not found on actor %s", method, code)
+	}
+	re := reflect.New(methodMeta.Params.Elem())
 	p := re.Interface().(cbg.CBORUnmarshaler)
 	if err := p.UnmarshalCBOR(bytes.NewReader(params)); err != nil {
 		return "", err
@@ -1178,7 +1182,11 @@ func jsonParams(code cid.Cid, method abi.MethodNum, params []byte) (string, erro
 }
 
 func jsonReturn(code cid.Cid, method abi.MethodNum, ret []byte) (string, error) {
-	re := reflect.New(stmgr.MethodsMap[code][method].Ret.Elem())
+	methodMeta, found := stmgr.MethodsMap[code][method]
+	if !found {
+		return "", fmt.Errorf("method %d not found on actor %s", method, code)
+	}
+	re := reflect.New(methodMeta.Ret.Elem())
 	p := re.Interface().(cbg.CBORUnmarshaler)
 	if err := p.UnmarshalCBOR(bytes.NewReader(ret)); err != nil {
 		return "", err
