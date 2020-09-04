@@ -84,6 +84,7 @@
   * [MsigSwapPropose](#MsigSwapPropose)
 * [Net](#Net)
   * [NetAddrsListen](#NetAddrsListen)
+  * [NetAgentVersion](#NetAgentVersion)
   * [NetAutoNatStatus](#NetAutoNatStatus)
   * [NetBandwidthStats](#NetBandwidthStats)
   * [NetBandwidthStatsByPeer](#NetBandwidthStatsByPeer)
@@ -96,6 +97,7 @@
   * [NetPubsubScores](#NetPubsubScores)
 * [Paych](#Paych)
   * [PaychAllocateLane](#PaychAllocateLane)
+  * [PaychAvailableFunds](#PaychAvailableFunds)
   * [PaychCollect](#PaychCollect)
   * [PaychGet](#PaychGet)
   * [PaychGetWaitReady](#PaychGetWaitReady)
@@ -2047,6 +2049,20 @@ Response:
 }
 ```
 
+### NetAgentVersion
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+]
+```
+
+Response: `"string value"`
+
 ### NetAutoNatStatus
 
 
@@ -2217,6 +2233,30 @@ Inputs:
 ```
 
 Response: `42`
+
+### PaychAvailableFunds
+There are not yet any comments for this method.
+
+Perms: sign
+
+Inputs:
+```json
+[
+  "t01234"
+]
+```
+
+Response:
+```json
+{
+  "Channel": "\u003cempty\u003e",
+  "ConfirmedAmt": "0",
+  "PendingAmt": "0",
+  "PendingWaitSentinel": null,
+  "QueuedAmt": "0",
+  "VoucherReedeemedAmt": "0"
+}
+```
 
 ### PaychCollect
 There are not yet any comments for this method.
@@ -2473,24 +2513,27 @@ Inputs:
 Response:
 ```json
 {
-  "ChannelAddr": "t01234",
-  "TimeLockMin": 10101,
-  "TimeLockMax": 10101,
-  "SecretPreimage": "Ynl0ZSBhcnJheQ==",
-  "Extra": {
-    "Actor": "t01234",
-    "Method": 1,
-    "Data": "Ynl0ZSBhcnJheQ=="
+  "Voucher": {
+    "ChannelAddr": "t01234",
+    "TimeLockMin": 10101,
+    "TimeLockMax": 10101,
+    "SecretPreimage": "Ynl0ZSBhcnJheQ==",
+    "Extra": {
+      "Actor": "t01234",
+      "Method": 1,
+      "Data": "Ynl0ZSBhcnJheQ=="
+    },
+    "Lane": 42,
+    "Nonce": 42,
+    "Amount": "0",
+    "MinSettleHeight": 10101,
+    "Merges": null,
+    "Signature": {
+      "Type": 2,
+      "Data": "Ynl0ZSBhcnJheQ=="
+    }
   },
-  "Lane": 42,
-  "Nonce": 42,
-  "Amount": "0",
-  "MinSettleHeight": 10101,
-  "Merges": null,
-  "Signature": {
-    "Type": 2,
-    "Data": "Ynl0ZSBhcnJheQ=="
-  }
+  "Shortfall": "0"
 }
 ```
 

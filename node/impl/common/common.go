@@ -136,6 +136,19 @@ func (a *CommonAPI) NetAutoNatStatus(ctx context.Context) (i api.NatInfo, err er
 	}, nil
 }
 
+func (a *CommonAPI) NetAgentVersion(ctx context.Context, p peer.ID) (string, error) {
+	ag, err := a.Host.Peerstore().Get(p, "AgentVersion")
+	if err != nil {
+		return "", err
+	}
+
+	if ag == nil {
+		return "unknown", nil
+	}
+
+	return ag.(string), nil
+}
+
 func (a *CommonAPI) NetBandwidthStats(ctx context.Context) (metrics.Stats, error) {
 	return a.Reporter.GetBandwidthTotals(), nil
 }
