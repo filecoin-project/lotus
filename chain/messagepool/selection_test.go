@@ -728,6 +728,116 @@ func TestPriorityMessageSelection2(t *testing.T) {
 	}
 }
 
+func TestSkyHighBaseFeeMessageSelection(t *testing.T) {
+	mp, tma := makeTestMpool()
+
+	w1, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a1, err := w1.GenerateKey(crypto.SigTypeSecp256k1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	w2, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a2, err := w2.GenerateKey(crypto.SigTypeSecp256k1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	block := tma.nextBlock()
+	ts := mock.TipSet(block)
+	tma.applyBlock(t, block)
+
+	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin.StorageMarketActorCodeID, M: 2}]
+
+	tma.setBalance(a1, 1) // in FIL
+	tma.setBalance(a2, 1) // in FIL
+
+	// we create 1 block worth of messages; the selection algorithms should only fill the block
+	// up to the sky high ratio
+	tma.baseFee = types.BigAdd(skyHighBaseFeeThreshold, types.NewInt(1_000_000))
+	skyHighGasLimit := int64(float64(build.BlockGasLimit) * skyHighBaseFeeGasLimitRatio)
+
+	nMessages := int((build.BlockGasLimit / gasLimit) + 1)
+	for i := 0; i < nMessages; i++ {
+		bias := (nMessages - i) / 3
+		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(1+i%3+bias))
+		mustAdd(t, mp, m)
+	}
+
+	// test greedy selection
+	msgs, err := mp.SelectMessages(ts, 1.0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	mGasLimit := int64(0)
+	for _, m := range msgs {
+		mGasLimit += m.Message.GasLimit
+	}
+
+	if mGasLimit > skyHighGasLimit {
+		t.Fatalf("expected block gas limit to be less than sky high gas limit; got %d, limit is %d",
+			mGasLimit, skyHighGasLimit)
+	}
+
+	// test optimal selection
+	msgs, err = mp.SelectMessages(ts, 0.1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	mGasLimit = 0
+	for _, m := range msgs {
+		mGasLimit += m.Message.GasLimit
+	}
+
+	if mGasLimit > skyHighGasLimit {
+		t.Fatalf("expected block gas limit to be less than sky high gas limit; got %d, limit is %d",
+			mGasLimit, skyHighGasLimit)
+	}
+
+	// test priority selection
+	mp.cfg.PriorityAddrs = []address.Address{a1}
+
+	msgs, err = mp.SelectMessages(ts, 1.0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	mGasLimit = int64(0)
+	for _, m := range msgs {
+		mGasLimit += m.Message.GasLimit
+	}
+
+	if mGasLimit > skyHighGasLimit {
+		t.Fatalf("expected block gas limit to be less than sky high gas limit; got %d, limit is %d",
+			mGasLimit, skyHighGasLimit)
+	}
+
+	msgs, err = mp.SelectMessages(ts, 0.1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	mGasLimit = 0
+	for _, m := range msgs {
+		mGasLimit += m.Message.GasLimit
+	}
+
+	if mGasLimit > skyHighGasLimit {
+		t.Fatalf("expected block gas limit to be less than sky high gas limit; got %d, limit is %d",
+			mGasLimit, skyHighGasLimit)
+	}
+}
+
 func TestOptimalMessageSelection1(t *testing.T) {
 	// this test uses just a single actor sending messages with a low tq
 	// the chain depenent merging algorithm should pick messages from the actor

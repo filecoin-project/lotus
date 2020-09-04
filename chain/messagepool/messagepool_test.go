@@ -34,6 +34,8 @@ type testMpoolAPI struct {
 	tipsets []*types.TipSet
 
 	published int
+
+	baseFee types.BigInt
 }
 
 func newTestMpoolAPI() *testMpoolAPI {
@@ -41,6 +43,7 @@ func newTestMpoolAPI() *testMpoolAPI {
 		bmsgs:      make(map[cid.Cid][]*types.SignedMessage),
 		statenonce: make(map[address.Address]uint64),
 		balance:    make(map[address.Address]types.BigInt),
+		baseFee:    types.NewInt(100),
 	}
 	genesis := mock.MkBlock(nil, 1, 1)
 	tma.tipsets = append(tma.tipsets, mock.TipSet(genesis))
@@ -182,7 +185,7 @@ func (tma *testMpoolAPI) LoadTipSet(tsk types.TipSetKey) (*types.TipSet, error) 
 }
 
 func (tma *testMpoolAPI) ChainComputeBaseFee(ctx context.Context, ts *types.TipSet) (types.BigInt, error) {
-	return types.NewInt(100), nil
+	return tma.baseFee, nil
 }
 
 func assertNonce(t *testing.T, mp *MessagePool, addr address.Address, val uint64) {
