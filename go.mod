@@ -145,4 +145,4 @@ replace github.com/dgraph-io/badger/v2 => github.com/dgraph-io/badger/v2 v2.0.1-
 
 replace github.com/filecoin-project/test-vectors => ./extern/test-vectors
 
-replace github.com/filecoin-project/specs-actors => github.com/filecoin-project/specs-actors v0.9.1-0.20200903020352-42ad3e9fbfa9
+replace github.com/filecoin-project/specs-actors => github.com/filecoin-project/specs-actors v0.9.1-0.20200904012052-4acd0efe4a20
