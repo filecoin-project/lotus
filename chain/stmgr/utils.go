@@ -624,12 +624,13 @@ func init() {
 		exports := m[1].(abi.Invokee).Exports()
 		for i := 0; i < nf; i++ {
 			export := reflect.TypeOf(exports[i+1])
-
-			MethodsMap[c] = append(MethodsMap[c], methodMeta{
-				Name:   rt.Field(i).Name,
-				Params: export.In(1),
-				Ret:    export.Out(0),
-			})
+			if export != nil {
+				MethodsMap[c] = append(MethodsMap[c], methodMeta{
+					Name:   rt.Field(i).Name,
+					Params: export.In(1),
+					Ret:    export.Out(0),
+				})
+			}
 		}
 	}
 }

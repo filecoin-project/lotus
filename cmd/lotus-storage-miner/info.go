@@ -17,7 +17,6 @@ import (
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/api"
@@ -136,7 +135,12 @@ func infoCmdAct(cctx *cli.Context) error {
 			faultyPercentage)
 	}
 
-	if pow.MinerPower.RawBytePower.LessThan(power.ConsensusMinerMinPower) {
+	minPow, err := abi.ConsensusMinerMinPower(mi.SealProofType)
+	if err != nil {
+		return err
+	}
+
+	if pow.MinerPower.RawBytePower.LessThan(minPow) {
 		fmt.Print("Below minimum power threshold, no blocks will be won")
 	} else {
 		expWinChance := float64(types.BigMul(qpercI, types.NewInt(build.BlocksPerEpoch)).Int64()) / 1000000

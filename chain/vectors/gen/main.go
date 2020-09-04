@@ -16,7 +16,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 
@@ -26,7 +25,6 @@ import (
 
 func init() {
 	verifreg.MinVerifiedDealSize = big.NewInt(2048)
-	power.ConsensusMinerMinPower = big.NewInt(2048)
 }
 
 func MakeHeaderVectors() []vectors.HeaderVector {

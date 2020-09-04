@@ -295,6 +295,16 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 				if err != nil {
 					return cid.Undef, xerrors.Errorf("failed to confirm presealed sectors: %w", err)
 				}
+
+				updatePowParams := &power.UpdateClaimedPowerParams{
+					RawByteDelta:         abi.NewStoragePower(int64(m.SectorSize)),
+					QualityAdjustedDelta: sectorWeight,
+				}
+
+				_, err = doExecValue(ctx, vm, builtin.StoragePowerActorAddr, minerInfos[i].maddr, big.Zero(), builtin.MethodsPower.UpdateClaimedPower, mustEnc(updatePowParams))
+				if err != nil {
+					return cid.Undef, xerrors.Errorf("failed to confirm presealed sectors: %w", err)
+				}
 			}
 		}
 	}

@@ -11,7 +11,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	saminer "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	logging "github.com/ipfs/go-log/v2"
 
@@ -21,7 +20,6 @@ import (
 func init() {
 	_ = logging.SetLogLevel("*", "INFO")
 
-	power.ConsensusMinerMinPower = big.NewInt(2048)
 	saminer.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
 		abi.RegisteredSealProof_StackedDrg2KiBV1: {},
 	}
