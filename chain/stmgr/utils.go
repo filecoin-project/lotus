@@ -432,16 +432,16 @@ func LoadSectorsFromSet(ctx context.Context, bs blockstore.Blockstore, ssc cid.C
 	return sset, nil
 }
 func LoadPreCommittedSectorsFromSet(ctx context.Context, bs blockstore.Blockstore, ssc cid.Cid, filter *abi.BitField, filterOut bool) ([]*api.ChainPrecommittedSectorInfo, error) {
-	a, err := adt.AsArray(store.ActorStore(ctx, bs), ssc)
+	a, err := adt.AsMap(store.ActorStore(ctx, bs), ssc)
 	if err != nil {
 		return nil, err
 	}
 
 	var sset []*api.ChainPrecommittedSectorInfo
-	var v cbg.Deferred
-	if err := a.ForEach(&v, func(i int64) error {
+	var v miner.SectorPreCommitOnChainInfo
+	if err := a.ForEach(&v, func(i string) error {
 		if filter != nil {
-			set, err := filter.IsSet(uint64(i))
+			set, err := filter.IsSet(uint64(v.Info.SectorNumber))
 			if err != nil {
 				return xerrors.Errorf("filter check error: %w", err)
 			}
@@ -450,13 +450,9 @@ func LoadPreCommittedSectorsFromSet(ctx context.Context, bs blockstore.Blockstor
 			}
 		}
 
-		var oci miner.SectorPreCommitOnChainInfo
-		if err := cbor.DecodeInto(v.Raw, &oci); err != nil {
-			return err
-		}
 		sset = append(sset, &api.ChainPrecommittedSectorInfo{
-			Info: oci,
-			ID:   abi.SectorNumber(i),
+			Info: v,
+			ID:   v.Info.SectorNumber,
 		})
 		return nil
 	}); err != nil {
