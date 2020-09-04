@@ -2455,7 +2455,6 @@ Inputs:
       "Data": "Ynl0ZSBhcnJheQ=="
     }
   },
-  "Ynl0ZSBhcnJheQ==",
   "Ynl0ZSBhcnJheQ=="
 ]
 ```
@@ -2513,7 +2512,6 @@ Inputs:
 Response:
 ```json
 {
-<<<<<<< HEAD
   "Voucher": {
     "ChannelAddr": "t01234",
     "TimeLockMin": 10101,
@@ -2522,7 +2520,7 @@ Response:
     "Extra": {
       "Actor": "t01234",
       "Method": 1,
-      "Data": "Ynl0ZSBhcnJheQ=="
+      "Params": "Ynl0ZSBhcnJheQ=="
     },
     "Lane": 42,
     "Nonce": 42,
@@ -2533,16 +2531,6 @@ Response:
       "Type": 2,
       "Data": "Ynl0ZSBhcnJheQ=="
     }
-=======
-  "ChannelAddr": "t01234",
-  "TimeLockMin": 10101,
-  "TimeLockMax": 10101,
-  "SecretPreimage": "Ynl0ZSBhcnJheQ==",
-  "Extra": {
-    "Actor": "t01234",
-    "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
->>>>>>> Add StartEpoch to multisig create params
   },
   "Shortfall": "0"
 }
@@ -2591,7 +2579,6 @@ Inputs:
       "Data": "Ynl0ZSBhcnJheQ=="
     }
   },
-  "Ynl0ZSBhcnJheQ==",
   "Ynl0ZSBhcnJheQ=="
 ]
 ```
@@ -3410,10 +3397,12 @@ Response:
 ```json
 {
   "MinerPower": {
+    "SealProofType": 3,
     "RawBytePower": "0",
     "QualityAdjPower": "0"
   },
   "TotalPower": {
+    "SealProofType": 3,
     "RawBytePower": "0",
     "QualityAdjPower": "0"
   }
