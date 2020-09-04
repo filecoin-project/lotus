@@ -1,6 +1,7 @@
 package full
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -503,7 +504,11 @@ func (a *ChainAPI) ChainExport(ctx context.Context, nroots abi.ChainEpoch, tsk t
 	out := make(chan []byte)
 	go func() {
 		defer w.Close() //nolint:errcheck // it is a pipe
-		if err := a.Chain.Export(ctx, ts, nroots, w); err != nil {
+
+		bw := bufio.NewWriterSize(w, 1<<20)
+		defer bw.Flush() //nolint:errcheck // it is a write to a pipe
+
+		if err := a.Chain.Export(ctx, ts, nroots, bw); err != nil {
 			log.Errorf("chain export call failed: %s", err)
 			return
 		}
@@ -512,7 +517,7 @@ func (a *ChainAPI) ChainExport(ctx context.Context, nroots abi.ChainEpoch, tsk t
 	go func() {
 		defer close(out)
 		for {
-			buf := make([]byte, 4096)
+			buf := make([]byte, 1<<20)
 			n, err := r.Read(buf)
 			if err != nil && err != io.EOF {
 				log.Errorf("chain export pipe read failed: %s", err)
@@ -522,6 +527,7 @@ func (a *ChainAPI) ChainExport(ctx context.Context, nroots abi.ChainEpoch, tsk t
 			case out <- buf[:n]:
 			case <-ctx.Done():
 				log.Warnf("export writer failed: %s", ctx.Err())
+				return
 			}
 			if err == io.EOF {
 				return

@@ -3,6 +3,7 @@ package messagepool
 import (
 	"context"
 	"sort"
+	"time"
 
 	"golang.org/x/xerrors"
 
@@ -15,6 +16,8 @@ import (
 )
 
 const repubMsgLimit = 30
+
+var RepublishBatchDelay = 200 * time.Millisecond
 
 func (mp *MessagePool) republishPendingMessages() error {
 	mp.curTsLk.Lock()
@@ -132,6 +135,12 @@ func (mp *MessagePool) republishPendingMessages() error {
 		}
 
 		count++
+
+		if count < len(msgs) {
+			// this delay is here to encourage the pubsub subsystem to process the messages serially
+			// and avoid creating nonce gaps because of concurrent validation.
+			time.Sleep(RepublishBatchDelay)
+		}
 	}
 
 	if len(msgs) > 0 {

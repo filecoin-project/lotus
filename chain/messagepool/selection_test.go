@@ -2,6 +2,7 @@ package messagepool
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"math/big"
 	"math/rand"
@@ -369,6 +370,12 @@ func TestMessageChainSkipping(t *testing.T) {
 }
 
 func TestBasicMessageSelection(t *testing.T) {
+	oldMaxNonceGap := MaxNonceGap
+	MaxNonceGap = 1000
+	defer func() {
+		MaxNonceGap = oldMaxNonceGap
+	}()
+
 	mp, tma := makeTestMpool()
 
 	// the actors
@@ -1055,17 +1062,17 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand, getPremium fu
 
 		greedyReward := big.NewInt(0)
 		for _, m := range greedyMsgs {
-			greedyReward.Add(greedyReward, mp.getGasReward(m, baseFee, ts))
+			greedyReward.Add(greedyReward, mp.getGasReward(m, baseFee))
 		}
 
 		optReward := big.NewInt(0)
 		for _, m := range optMsgs {
-			optReward.Add(optReward, mp.getGasReward(m, baseFee, ts))
+			optReward.Add(optReward, mp.getGasReward(m, baseFee))
 		}
 
 		bestTqReward := big.NewInt(0)
 		for _, m := range bestMsgs {
-			bestTqReward.Add(bestTqReward, mp.getGasReward(m, baseFee, ts))
+			bestTqReward.Add(bestTqReward, mp.getGasReward(m, baseFee))
 		}
 
 		totalBestTQReward += float64(bestTqReward.Uint64())
@@ -1145,4 +1152,36 @@ func TestCompetitiveMessageSelectionZipf(t *testing.T) {
 	t.Logf("Average capacity boost across all seeds: %f", capacityBoost)
 	t.Logf("Average reward boost across all seeds: %f", rewardBoost)
 	t.Logf("Average reward of best ticket across all seeds: %f", tqReward)
+}
+
+func TestGasReward(t *testing.T) {
+	tests := []struct {
+		Premium   uint64
+		FeeCap    uint64
+		BaseFee   uint64
+		GasReward int64
+	}{
+		{Premium: 100, FeeCap: 200, BaseFee: 100, GasReward: 100},
+		{Premium: 100, FeeCap: 200, BaseFee: 210, GasReward: -10},
+		{Premium: 200, FeeCap: 250, BaseFee: 210, GasReward: 40},
+		{Premium: 200, FeeCap: 250, BaseFee: 2000, GasReward: -1750},
+	}
+
+	mp := new(MessagePool)
+	for _, test := range tests {
+		test := test
+		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
+			msg := &types.SignedMessage{
+				Message: types.Message{
+					GasLimit:   10,
+					GasFeeCap:  types.NewInt(test.FeeCap),
+					GasPremium: types.NewInt(test.Premium),
+				},
+			}
+			rew := mp.getGasReward(msg, types.NewInt(test.BaseFee))
+			if rew.Cmp(big.NewInt(test.GasReward*10)) != 0 {
+				t.Errorf("bad reward: expected %d, got %s", test.GasReward*10, rew)
+			}
+		})
+	}
 }

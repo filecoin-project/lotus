@@ -98,7 +98,7 @@ keepLoop:
 	// and remove all messages that are still in pruneMsgs after processing the chains
 	log.Infof("Pruning %d messages", len(pruneMsgs))
 	for _, m := range pruneMsgs {
-		mp.remove(m.Message.From, m.Message.Nonce)
+		mp.remove(m.Message.From, m.Message.Nonce, false)
 	}
 
 	return nil

@@ -49,6 +49,7 @@ var chainHeadKey = dstore.NewKey("head")
 var blockValidationCacheKeyPrefix = dstore.NewKey("blockValidation")
 
 var DefaultTipSetCacheSize = 8192
+var DefaultMsgMetaCacheSize = 2048
 
 func init() {
 	if s := os.Getenv("LOTUS_CHAIN_TIPSET_CACHE"); s != "" {
@@ -57,6 +58,14 @@ func init() {
 			log.Errorf("failed to parse 'LOTUS_CHAIN_TIPSET_CACHE' env var: %s", err)
 		}
 		DefaultTipSetCacheSize = tscs
+	}
+
+	if s := os.Getenv("LOTUS_CHAIN_MSGMETA_CACHE"); s != "" {
+		mmcs, err := strconv.Atoi(s)
+		if err != nil {
+			log.Errorf("failed to parse 'LOTUS_CHAIN_MSGMETA_CACHE' env var: %s", err)
+		}
+		DefaultMsgMetaCacheSize = mmcs
 	}
 }
 
@@ -113,7 +122,7 @@ type ChainStore struct {
 }
 
 func NewChainStore(bs bstore.Blockstore, ds dstore.Batching, vmcalls vm.SyscallBuilder) *ChainStore {
-	c, _ := lru.NewARC(2048)
+	c, _ := lru.NewARC(DefaultMsgMetaCacheSize)
 	tsc, _ := lru.NewARC(DefaultTipSetCacheSize)
 	cs := &ChainStore{
 		bs:       bs,
@@ -857,7 +866,7 @@ type mmCids struct {
 	secpk []cid.Cid
 }
 
-func (cs *ChainStore) readMsgMetaCids(mmc cid.Cid) ([]cid.Cid, []cid.Cid, error) {
+func (cs *ChainStore) ReadMsgMetaCids(mmc cid.Cid) ([]cid.Cid, []cid.Cid, error) {
 	o, ok := cs.mmCache.Get(mmc)
 	if ok {
 		mmcids := o.(*mmCids)
@@ -913,7 +922,7 @@ func (cs *ChainStore) GetPath(ctx context.Context, from types.TipSetKey, to type
 }
 
 func (cs *ChainStore) MessagesForBlock(b *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error) {
-	blscids, secpkcids, err := cs.readMsgMetaCids(b.Messages)
+	blscids, secpkcids, err := cs.ReadMsgMetaCids(b.Messages)
 	if err != nil {
 		return nil, nil, err
 	}

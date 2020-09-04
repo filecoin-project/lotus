@@ -2,7 +2,7 @@ module github.com/filecoin-project/lotus
 
 go 1.14
 
-replace github.com/supranational/blst => github.com/filecoin-project/blst v0.1.2-adx
+replace github.com/supranational/blst => github.com/supranational/blst v0.1.2-alpha.1
 
 require (
 	contrib.go.opencensus.io/exporter/jaeger v0.1.0
@@ -18,6 +18,7 @@ require (
 	github.com/docker/go-units v0.4.0
 	github.com/drand/drand v1.0.3-0.20200714175734-29705eaf09d4
 	github.com/drand/kyber v1.1.1
+	github.com/dustin/go-humanize v1.0.0
 	github.com/elastic/go-sysinfo v1.3.0
 	github.com/fatih/color v1.8.0
 	github.com/filecoin-project/chain-validation v0.0.6-0.20200813000554-40c22fe26eef
@@ -28,7 +29,7 @@ require (
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
 	github.com/filecoin-project/go-data-transfer v0.6.3
 	github.com/filecoin-project/go-fil-commcid v0.0.0-20200716160307-8f644712406f
-	github.com/filecoin-project/go-fil-markets v0.5.8
+	github.com/filecoin-project/go-fil-markets v0.5.9
 	github.com/filecoin-project/go-jsonrpc v0.1.2-0.20200822201400-474f4fdccc52
 	github.com/filecoin-project/go-multistore v0.0.3
 	github.com/filecoin-project/go-padreader v0.0.0-20200210211231-548257017ca6
@@ -39,7 +40,7 @@ require (
 	github.com/filecoin-project/specs-actors v0.9.3
 	github.com/filecoin-project/specs-storage v0.1.1-0.20200730063404-f7db367e9401
 	github.com/filecoin-project/statediff v0.0.1
-	github.com/filecoin-project/test-vectors v0.0.0-20200902131127-9806d09b005d
+	github.com/filecoin-project/test-vectors v0.0.0-20200903223506-84da0a5ea125
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/go-kit/kit v0.10.0
 	github.com/google/uuid v1.1.1

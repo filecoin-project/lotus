@@ -14,8 +14,10 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-filestore"
+	metrics "github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
+	protocol "github.com/libp2p/go-libp2p-core/protocol"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/multiformats/go-multiaddr"
 
@@ -131,6 +133,22 @@ func init() {
 			FirstMessageDeliveries:   122,
 			MeshMessageDeliveries:    1234,
 			InvalidMessageDeliveries: 3,
+		},
+	})
+	addExample(map[string]metrics.Stats{
+		"12D3KooWSXmXLJmBR1M7i9RW9GQPNUhZSzXKzxDHWtAgNuJAbyEJ": {
+			RateIn:   100,
+			RateOut:  50,
+			TotalIn:  174000,
+			TotalOut: 12500,
+		},
+	})
+	addExample(map[protocol.ID]metrics.Stats{
+		"/fil/hello/1.0.0": {
+			RateIn:   100,
+			RateOut:  50,
+			TotalIn:  174000,
+			TotalOut: 12500,
 		},
 	})
 

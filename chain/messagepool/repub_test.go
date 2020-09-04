@@ -12,6 +12,12 @@ import (
 )
 
 func TestRepubMessages(t *testing.T) {
+	oldRepublishBatchDelay := RepublishBatchDelay
+	RepublishBatchDelay = time.Microsecond
+	defer func() {
+		RepublishBatchDelay = oldRepublishBatchDelay
+	}()
+
 	tma := newTestMpoolAPI()
 	ds := datastore.NewMapDatastore()
 

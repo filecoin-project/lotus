@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strings"
 
 	"github.com/filecoin-project/lotus/paychmgr"
 
@@ -21,7 +22,7 @@ var paychCmd = &cli.Command{
 	Name:  "paych",
 	Usage: "Manage payment channels",
 	Subcommands: []*cli.Command{
-		paychGetCmd,
+		paychAddFundsCmd,
 		paychListCmd,
 		paychVoucherCmd,
 		paychSettleCmd,
@@ -29,9 +30,9 @@ var paychCmd = &cli.Command{
 	},
 }
 
-var paychGetCmd = &cli.Command{
-	Name:      "get",
-	Usage:     "Create a new payment channel or get existing one and add amount to it",
+var paychAddFundsCmd = &cli.Command{
+	Name:      "add-funds",
+	Usage:     "Add funds to the payment channel between fromAddress and toAddress. Creates the payment channel if it doesn't already exist.",
 	ArgsUsage: "[fromAddress toAddress amount]",
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Len() != 3 {
@@ -77,6 +78,92 @@ var paychGetCmd = &cli.Command{
 		fmt.Fprintln(cctx.App.Writer, chAddr)
 		return nil
 	},
+}
+
+var paychStatusCmd = &cli.Command{
+	Name:      "status",
+	Usage:     "Show the status of an outbound payment channel between fromAddress and toAddress",
+	ArgsUsage: "[fromAddress toAddress]",
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() != 2 {
+			return ShowHelp(cctx, fmt.Errorf("must pass two arguments: <from> <to>"))
+		}
+
+		from, err := address.NewFromString(cctx.Args().Get(0))
+		if err != nil {
+			return ShowHelp(cctx, fmt.Errorf("failed to parse from address: %s", err))
+		}
+
+		to, err := address.NewFromString(cctx.Args().Get(1))
+		if err != nil {
+			return ShowHelp(cctx, fmt.Errorf("failed to parse to address: %s", err))
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		avail, err := api.PaychAvailableFunds(from, to)
+		if err != nil {
+			return err
+		}
+
+		if avail.Channel == nil {
+			if avail.PendingWaitSentinel != nil {
+				fmt.Fprint(cctx.App.Writer, "Creating channel\n")
+				fmt.Fprintf(cctx.App.Writer, "  From:          %s\n", from)
+				fmt.Fprintf(cctx.App.Writer, "  To:            %s\n", to)
+				fmt.Fprintf(cctx.App.Writer, "  Pending Amt:   %d\n", avail.PendingAmt)
+				fmt.Fprintf(cctx.App.Writer, "  Wait Sentinel: %s\n", avail.PendingWaitSentinel)
+				return nil
+			}
+			fmt.Fprint(cctx.App.Writer, "Channel does not exist\n")
+			fmt.Fprintf(cctx.App.Writer, "  From: %s\n", from)
+			fmt.Fprintf(cctx.App.Writer, "  To:   %s\n", to)
+			return nil
+		}
+
+		if avail.PendingWaitSentinel != nil {
+			fmt.Fprint(cctx.App.Writer, "Adding Funds to channel\n")
+		} else {
+			fmt.Fprint(cctx.App.Writer, "Channel exists\n")
+		}
+
+		nameValues := [][]string{
+			{"Channel", avail.Channel.String()},
+			{"From", from.String()},
+			{"To", to.String()},
+			{"Confirmed Amt", fmt.Sprintf("%d", avail.ConfirmedAmt)},
+			{"Pending Amt", fmt.Sprintf("%d", avail.PendingAmt)},
+			{"Queued Amt", fmt.Sprintf("%d", avail.QueuedAmt)},
+			{"Voucher Redeemed Amt", fmt.Sprintf("%d", avail.VoucherReedeemedAmt)},
+		}
+		if avail.PendingWaitSentinel != nil {
+			nameValues = append(nameValues, []string{
+				"Add Funds Wait Sentinel",
+				avail.PendingWaitSentinel.String(),
+			})
+		}
+		fmt.Fprint(cctx.App.Writer, formatNameValues(nameValues))
+		return nil
+	},
+}
+
+func formatNameValues(nameValues [][]string) string {
+	maxLen := 0
+	for _, nv := range nameValues {
+		if len(nv[0]) > maxLen {
+			maxLen = len(nv[0])
+		}
+	}
+	out := make([]string, len(nameValues))
+	for i, nv := range nameValues {
+		namePad := strings.Repeat(" ", maxLen-len(nv[0]))
+		out[i] = "  " + nv[0] + ": " + namePad + nv[1]
+	}
+	return strings.Join(out, "\n") + "\n"
 }
 
 var paychListCmd = &cli.Command{
@@ -217,9 +304,9 @@ var paychVoucherCreateCmd = &cli.Command{
 			return err
 		}
 
-		amt, err := types.BigFromString(cctx.Args().Get(1))
+		amt, err := types.ParseFIL(cctx.Args().Get(1))
 		if err != nil {
-			return err
+			return ShowHelp(cctx, fmt.Errorf("parsing amount failed: %s", err))
 		}
 
 		lane := cctx.Int("lane")
@@ -232,12 +319,16 @@ var paychVoucherCreateCmd = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
-		sv, err := api.PaychVoucherCreate(ctx, ch, amt, uint64(lane))
+		v, err := api.PaychVoucherCreate(ctx, ch, types.BigInt(amt), uint64(lane))
 		if err != nil {
 			return err
 		}
 
-		enc, err := EncodedString(sv)
+		if v.Voucher == nil {
+			return fmt.Errorf("Could not create voucher: insufficient funds in channel, shortfall: %d", v.Shortfall)
+		}
+
+		enc, err := EncodedString(v.Voucher)
 		if err != nil {
 			return err
 		}
