@@ -138,7 +138,7 @@ func (*Invoker) transform(instance Invokee) (nativeCode, error) {
 
 				inBytes := in[1].Interface().([]byte)
 				if err := DecodeParams(inBytes, param.Interface()); err != nil {
-					aerr := aerrors.Absorb(err, exitcode.SysErrSerialization, "failed to decode parameters")
+					aerr := aerrors.Absorb(err, exitcode.ErrSerialization, "failed to decode parameters")
 					return []reflect.Value{
 						reflect.ValueOf([]byte{}),
 						// Below is a hack, fixed in Go 1.13
