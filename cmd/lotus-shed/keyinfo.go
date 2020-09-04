@@ -130,7 +130,7 @@ var keyinfoImportCmd = &cli.Command{
 				return err
 			}
 
-			addr, err := w.Import(&keyInfo)
+			addr, err := w.WalletImport(cctx.Context, &keyInfo)
 			if err != nil {
 				return err
 			}

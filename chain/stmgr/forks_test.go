@@ -174,7 +174,7 @@ func TestForkHeightTriggers(t *testing.T) {
 		Params:   enc,
 		GasLimit: types.TestGasLimit,
 	}
-	sig, err := cg.Wallet().Sign(ctx, cg.Banker(), m.Cid().Bytes())
+	sig, err := cg.Wallet().WalletSign(ctx, cg.Banker(), m.Cid().Bytes())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -202,7 +202,7 @@ func TestForkHeightTriggers(t *testing.T) {
 		}
 		nonce++
 
-		sig, err := cg.Wallet().Sign(ctx, cg.Banker(), m.Cid().Bytes())
+		sig, err := cg.Wallet().WalletSign(ctx, cg.Banker(), m.Cid().Bytes())
 		if err != nil {
 			return nil, err
 		}

@@ -21,7 +21,7 @@ func Address(i uint64) address.Address {
 	return a
 }
 
-func MkMessage(from, to address.Address, nonce uint64, w *wallet.Wallet) *types.SignedMessage {
+func MkMessage(from, to address.Address, nonce uint64, w *wallet.LocalWallet) *types.SignedMessage {
 	msg := &types.Message{
 		To:         to,
 		From:       from,
@@ -32,7 +32,7 @@ func MkMessage(from, to address.Address, nonce uint64, w *wallet.Wallet) *types.
 		GasPremium: types.NewInt(1),
 	}
 
-	sig, err := w.Sign(context.TODO(), from, msg.Cid().Bytes())
+	sig, err := w.WalletSign(context.TODO(), from, msg.Cid().Bytes())
 	if err != nil {
 		panic(err)
 	}

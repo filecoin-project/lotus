@@ -68,7 +68,7 @@ type ChainGen struct {
 
 	GetMessages func(*ChainGen) ([]*types.SignedMessage, error)
 
-	w *wallet.Wallet
+	w *wallet.LocalWallet
 
 	eppProvs    map[address.Address]WinningPoStProver
 	Miners      []address.Address
@@ -151,14 +151,14 @@ func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
 		return nil, xerrors.Errorf("creating memrepo wallet failed: %w", err)
 	}
 
-	banker, err := w.GenerateKey(crypto.SigTypeSecp256k1)
+	banker, err := w.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to generate banker key: %w", err)
 	}
 
 	receievers := make([]address.Address, msgsPerBlock)
 	for r := range receievers {
-		receievers[r], err = w.GenerateKey(crypto.SigTypeBLS)
+		receievers[r], err = w.WalletNew(context.Background(), crypto.SigTypeBLS)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to generate receiver key: %w", err)
 		}
@@ -188,11 +188,11 @@ func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
 		return nil, err
 	}
 
-	mk1, err := w.Import(k1)
+	mk1, err := w.WalletImport(context.Background(), k1)
 	if err != nil {
 		return nil, err
 	}
-	mk2, err := w.Import(k2)
+	mk2, err := w.WalletImport(context.Background(), k2)
 	if err != nil {
 		return nil, err
 	}
@@ -372,7 +372,7 @@ func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m add
 		return nil, nil, nil, xerrors.Errorf("get miner worker: %w", err)
 	}
 
-	vrfout, err := ComputeVRF(ctx, cg.w.Sign, worker, ticketRand)
+	vrfout, err := ComputeVRF(ctx, cg.w.WalletSign, worker, ticketRand)
 	if err != nil {
 		return nil, nil, nil, xerrors.Errorf("compute VRF: %w", err)
 	}
@@ -501,7 +501,7 @@ func (cg *ChainGen) Banker() address.Address {
 	return cg.banker
 }
 
-func (cg *ChainGen) Wallet() *wallet.Wallet {
+func (cg *ChainGen) Wallet() *wallet.LocalWallet {
 	return cg.w
 }
 
@@ -523,7 +523,7 @@ func getRandomMessages(cg *ChainGen) ([]*types.SignedMessage, error) {
 			GasPremium: types.NewInt(0),
 		}
 
-		sig, err := cg.w.Sign(context.TODO(), cg.banker, msg.Cid().Bytes())
+		sig, err := cg.w.WalletSign(context.TODO(), cg.banker, msg.Cid().Bytes())
 		if err != nil {
 			return nil, err
 		}
@@ -554,7 +554,7 @@ type MiningCheckAPI interface {
 }
 
 type mca struct {
-	w   *wallet.Wallet
+	w   *wallet.LocalWallet
 	sm  *stmgr.StateManager
 	pv  ffiwrapper.Verifier
 	bcn beacon.RandomBeacon
@@ -583,7 +583,7 @@ func (mca mca) MinerGetBaseInfo(ctx context.Context, maddr address.Address, epoc
 }
 
 func (mca mca) WalletSign(ctx context.Context, a address.Address, v []byte) (*crypto.Signature, error) {
-	return mca.w.Sign(ctx, a, v)
+	return mca.w.WalletSign(ctx, a, v)
 }
 
 type WinningPoStProver interface {

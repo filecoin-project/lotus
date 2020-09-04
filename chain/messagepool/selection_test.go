@@ -29,7 +29,7 @@ func init() {
 	MaxActorPendingMessages = 1000000
 }
 
-func makeTestMessage(w *wallet.Wallet, from, to address.Address, nonce uint64, gasLimit int64, gasPrice uint64) *types.SignedMessage {
+func makeTestMessage(w *wallet.LocalWallet, from, to address.Address, nonce uint64, gasLimit int64, gasPrice uint64) *types.SignedMessage {
 	msg := &types.Message{
 		From:       from,
 		To:         to,
@@ -40,7 +40,7 @@ func makeTestMessage(w *wallet.Wallet, from, to address.Address, nonce uint64, g
 		GasFeeCap:  types.NewInt(100 + gasPrice),
 		GasPremium: types.NewInt(gasPrice),
 	}
-	sig, err := w.Sign(context.TODO(), from, msg.Cid().Bytes())
+	sig, err := w.WalletSign(context.TODO(), from, msg.Cid().Bytes())
 	if err != nil {
 		panic(err)
 	}
@@ -70,7 +70,7 @@ func TestMessageChains(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a1, err := w1.GenerateKey(crypto.SigTypeSecp256k1)
+	a1, err := w1.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +80,7 @@ func TestMessageChains(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a2, err := w2.GenerateKey(crypto.SigTypeSecp256k1)
+	a2, err := w2.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -308,7 +308,7 @@ func TestMessageChainSkipping(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a1, err := w1.GenerateKey(crypto.SigTypeSecp256k1)
+	a1, err := w1.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -318,7 +318,7 @@ func TestMessageChainSkipping(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a2, err := w2.GenerateKey(crypto.SigTypeSecp256k1)
+	a2, err := w2.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -384,7 +384,7 @@ func TestBasicMessageSelection(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a1, err := w1.GenerateKey(crypto.SigTypeSecp256k1)
+	a1, err := w1.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -394,7 +394,7 @@ func TestBasicMessageSelection(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a2, err := w2.GenerateKey(crypto.SigTypeSecp256k1)
+	a2, err := w2.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -528,7 +528,7 @@ func TestMessageSelectionTrimming(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a1, err := w1.GenerateKey(crypto.SigTypeSecp256k1)
+	a1, err := w1.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -538,7 +538,7 @@ func TestMessageSelectionTrimming(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a2, err := w2.GenerateKey(crypto.SigTypeSecp256k1)
+	a2, err := w2.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -591,7 +591,7 @@ func TestPriorityMessageSelection(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a1, err := w1.GenerateKey(crypto.SigTypeSecp256k1)
+	a1, err := w1.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -601,7 +601,7 @@ func TestPriorityMessageSelection(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a2, err := w2.GenerateKey(crypto.SigTypeSecp256k1)
+	a2, err := w2.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -670,7 +670,7 @@ func TestPriorityMessageSelection2(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a1, err := w1.GenerateKey(crypto.SigTypeSecp256k1)
+	a1, err := w1.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -680,7 +680,7 @@ func TestPriorityMessageSelection2(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a2, err := w2.GenerateKey(crypto.SigTypeSecp256k1)
+	a2, err := w2.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -740,7 +740,7 @@ func TestOptimalMessageSelection1(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a1, err := w1.GenerateKey(crypto.SigTypeSecp256k1)
+	a1, err := w1.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -750,7 +750,7 @@ func TestOptimalMessageSelection1(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a2, err := w2.GenerateKey(crypto.SigTypeSecp256k1)
+	a2, err := w2.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -807,7 +807,7 @@ func TestOptimalMessageSelection2(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a1, err := w1.GenerateKey(crypto.SigTypeSecp256k1)
+	a1, err := w1.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -817,7 +817,7 @@ func TestOptimalMessageSelection2(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a2, err := w2.GenerateKey(crypto.SigTypeSecp256k1)
+	a2, err := w2.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -883,7 +883,7 @@ func TestOptimalMessageSelection3(t *testing.T) {
 	nActors := 10
 	// the actors
 	var actors []address.Address
-	var wallets []*wallet.Wallet
+	var wallets []*wallet.LocalWallet
 
 	for i := 0; i < nActors; i++ {
 		w, err := wallet.NewWallet(wallet.NewMemKeyStore())
@@ -891,7 +891,7 @@ func TestOptimalMessageSelection3(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		a, err := w.GenerateKey(crypto.SigTypeSecp256k1)
+		a, err := w.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -963,7 +963,7 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand, getPremium fu
 	nActors := 300
 	// the actors
 	var actors []address.Address
-	var wallets []*wallet.Wallet
+	var wallets []*wallet.LocalWallet
 
 	for i := 0; i < nActors; i++ {
 		w, err := wallet.NewWallet(wallet.NewMemKeyStore())
@@ -971,7 +971,7 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand, getPremium fu
 			t.Fatal(err)
 		}
 
-		a, err := w.GenerateKey(crypto.SigTypeSecp256k1)
+		a, err := w.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
 		if err != nil {
 			t.Fatal(err)
 		}

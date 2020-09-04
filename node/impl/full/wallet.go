@@ -20,19 +20,8 @@ type WalletAPI struct {
 	fx.In
 
 	StateManager *stmgr.StateManager
-	Wallet       *wallet.Wallet
-}
-
-func (a *WalletAPI) WalletNew(ctx context.Context, typ crypto.SigType) (address.Address, error) {
-	return a.Wallet.GenerateKey(typ)
-}
-
-func (a *WalletAPI) WalletHas(ctx context.Context, addr address.Address) (bool, error) {
-	return a.Wallet.HasKey(addr)
-}
-
-func (a *WalletAPI) WalletList(ctx context.Context) ([]address.Address, error) {
-	return a.Wallet.ListAddrs()
+	Default      wallet.Default
+	wallet.Wallet
 }
 
 func (a *WalletAPI) WalletBalance(ctx context.Context, addr address.Address) (types.BigInt, error) {
@@ -53,21 +42,15 @@ func (a *WalletAPI) WalletSign(ctx context.Context, k address.Address, msg []byt
 	if err != nil {
 		return nil, xerrors.Errorf("failed to resolve ID address: %w", keyAddr)
 	}
-	return a.Wallet.Sign(ctx, keyAddr, msg)
+	return a.WalletSign(ctx, keyAddr, msg)
 }
 
 func (a *WalletAPI) WalletSignMessage(ctx context.Context, k address.Address, msg *types.Message) (*types.SignedMessage, error) {
-	mcid := msg.Cid()
-
-	sig, err := a.WalletSign(ctx, k, mcid.Bytes())
+	keyAddr, err := a.StateManager.ResolveToKeyAddress(ctx, k, nil)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to sign message: %w", err)
+		return nil, xerrors.Errorf("failed to resolve ID address: %w", keyAddr)
 	}
-
-	return &types.SignedMessage{
-		Message:   *msg,
-		Signature: *sig,
-	}, nil
+	return a.Wallet.WalletSignMessage(ctx, keyAddr, msg)
 }
 
 func (a *WalletAPI) WalletVerify(ctx context.Context, k address.Address, msg []byte, sig *crypto.Signature) bool {
@@ -75,21 +58,9 @@ func (a *WalletAPI) WalletVerify(ctx context.Context, k address.Address, msg []b
 }
 
 func (a *WalletAPI) WalletDefaultAddress(ctx context.Context) (address.Address, error) {
-	return a.Wallet.GetDefault()
+	return a.Default.GetDefault()
 }
 
 func (a *WalletAPI) WalletSetDefault(ctx context.Context, addr address.Address) error {
-	return a.Wallet.SetDefault(addr)
-}
-
-func (a *WalletAPI) WalletExport(ctx context.Context, addr address.Address) (*types.KeyInfo, error) {
-	return a.Wallet.Export(addr)
-}
-
-func (a *WalletAPI) WalletImport(ctx context.Context, ki *types.KeyInfo) (address.Address, error) {
-	return a.Wallet.Import(ki)
-}
-
-func (a *WalletAPI) WalletDelete(ctx context.Context, addr address.Address) error {
-	return a.Wallet.DeleteKey(addr)
+	return a.Default.SetDefault(addr)
 }

@@ -440,7 +440,7 @@ func (c *ClientNodeAdapter) SignProposal(ctx context.Context, signer address.Add
 		return nil, err
 	}
 
-	sig, err := c.Wallet.Sign(ctx, signer, buf)
+	sig, err := c.Wallet.WalletSign(ctx, signer, buf)
 	if err != nil {
 		return nil, err
 	}
@@ -524,7 +524,7 @@ func (c *ClientNodeAdapter) SignBytes(ctx context.Context, signer address.Addres
 		return nil, err
 	}
 
-	localSignature, err := c.Wallet.Sign(ctx, signer, b)
+	localSignature, err := c.Wallet.WalletSign(ctx, signer, b)
 	if err != nil {
 		return nil, err
 	}

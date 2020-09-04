@@ -29,15 +29,15 @@ const (
 	KTSecp256k1  = "secp256k1"
 )
 
-type Wallet struct {
+type LocalWallet struct {
 	keys     map[address.Address]*Key
 	keystore types.KeyStore
 
 	lk sync.Mutex
 }
 
-func NewWallet(keystore types.KeyStore) (*Wallet, error) {
-	w := &Wallet{
+func NewWallet(keystore types.KeyStore) (*LocalWallet, error) {
+	w := &LocalWallet{
 		keys:     make(map[address.Address]*Key),
 		keystore: keystore,
 	}
@@ -45,18 +45,18 @@ func NewWallet(keystore types.KeyStore) (*Wallet, error) {
 	return w, nil
 }
 
-func KeyWallet(keys ...*Key) *Wallet {
+func KeyWallet(keys ...*Key) *LocalWallet {
 	m := make(map[address.Address]*Key)
 	for _, key := range keys {
 		m[key.Address] = key
 	}
 
-	return &Wallet{
+	return &LocalWallet{
 		keys: m,
 	}
 }
 
-func (w *Wallet) Sign(ctx context.Context, addr address.Address, msg []byte) (*crypto.Signature, error) {
+func (w *LocalWallet) WalletSign(ctx context.Context, addr address.Address, msg []byte) (*crypto.Signature, error) {
 	ki, err := w.findKey(addr)
 	if err != nil {
 		return nil, err
@@ -68,7 +68,21 @@ func (w *Wallet) Sign(ctx context.Context, addr address.Address, msg []byte) (*c
 	return sigs.Sign(ActSigType(ki.Type), ki.PrivateKey, msg)
 }
 
-func (w *Wallet) findKey(addr address.Address) (*Key, error) {
+func (w *LocalWallet) WalletSignMessage(ctx context.Context, k address.Address, msg *types.Message) (*types.SignedMessage, error) {
+	mcid := msg.Cid()
+
+	sig, err := w.WalletSign(ctx, k, mcid.Bytes())
+	if err != nil {
+		return nil, xerrors.Errorf("failed to sign message: %w", err)
+	}
+
+	return &types.SignedMessage{
+		Message:   *msg,
+		Signature: *sig,
+	}, nil
+}
+
+func (w *LocalWallet) findKey(addr address.Address) (*Key, error) {
 	w.lk.Lock()
 	defer w.lk.Unlock()
 
@@ -96,7 +110,7 @@ func (w *Wallet) findKey(addr address.Address) (*Key, error) {
 	return k, nil
 }
 
-func (w *Wallet) Export(addr address.Address) (*types.KeyInfo, error) {
+func (w *LocalWallet) WalletExport(ctx context.Context, addr address.Address) (*types.KeyInfo, error) {
 	k, err := w.findKey(addr)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to find key to export: %w", err)
@@ -105,7 +119,7 @@ func (w *Wallet) Export(addr address.Address) (*types.KeyInfo, error) {
 	return &k.KeyInfo, nil
 }
 
-func (w *Wallet) Import(ki *types.KeyInfo) (address.Address, error) {
+func (w *LocalWallet) WalletImport(ctx context.Context, ki *types.KeyInfo) (address.Address, error) {
 	w.lk.Lock()
 	defer w.lk.Unlock()
 
@@ -121,7 +135,7 @@ func (w *Wallet) Import(ki *types.KeyInfo) (address.Address, error) {
 	return k.Address, nil
 }
 
-func (w *Wallet) ListAddrs() ([]address.Address, error) {
+func (w *LocalWallet) WalletList(ctx context.Context) ([]address.Address, error) {
 	all, err := w.keystore.List()
 	if err != nil {
 		return nil, xerrors.Errorf("listing keystore: %w", err)
@@ -144,7 +158,7 @@ func (w *Wallet) ListAddrs() ([]address.Address, error) {
 	return out, nil
 }
 
-func (w *Wallet) GetDefault() (address.Address, error) {
+func (w *LocalWallet) GetDefault() (address.Address, error) {
 	w.lk.Lock()
 	defer w.lk.Unlock()
 
@@ -161,7 +175,7 @@ func (w *Wallet) GetDefault() (address.Address, error) {
 	return k.Address, nil
 }
 
-func (w *Wallet) SetDefault(a address.Address) error {
+func (w *LocalWallet) SetDefault(a address.Address) error {
 	w.lk.Lock()
 	defer w.lk.Unlock()
 
@@ -183,19 +197,7 @@ func (w *Wallet) SetDefault(a address.Address) error {
 	return nil
 }
 
-func GenerateKey(typ crypto.SigType) (*Key, error) {
-	pk, err := sigs.Generate(typ)
-	if err != nil {
-		return nil, err
-	}
-	ki := types.KeyInfo{
-		Type:       kstoreSigType(typ),
-		PrivateKey: pk,
-	}
-	return NewKey(ki)
-}
-
-func (w *Wallet) GenerateKey(typ crypto.SigType) (address.Address, error) {
+func (w *LocalWallet) WalletNew(ctx context.Context, typ crypto.SigType) (address.Address, error) {
 	w.lk.Lock()
 	defer w.lk.Unlock()
 
@@ -223,7 +225,7 @@ func (w *Wallet) GenerateKey(typ crypto.SigType) (address.Address, error) {
 	return k.Address, nil
 }
 
-func (w *Wallet) HasKey(addr address.Address) (bool, error) {
+func (w *LocalWallet) WalletHas(ctx context.Context, addr address.Address) (bool, error) {
 	k, err := w.findKey(addr)
 	if err != nil {
 		return false, err
@@ -231,7 +233,7 @@ func (w *Wallet) HasKey(addr address.Address) (bool, error) {
 	return k != nil, nil
 }
 
-func (w *Wallet) DeleteKey(addr address.Address) error {
+func (w *LocalWallet) WalletDelete(ctx context.Context, addr address.Address) error {
 	k, err := w.findKey(addr)
 	if err != nil {
 		return xerrors.Errorf("failed to delete key %s : %w", addr, err)
@@ -248,60 +250,4 @@ func (w *Wallet) DeleteKey(addr address.Address) error {
 	return nil
 }
 
-type Key struct {
-	types.KeyInfo
-
-	PublicKey []byte
-	Address   address.Address
-}
-
-func NewKey(keyinfo types.KeyInfo) (*Key, error) {
-	k := &Key{
-		KeyInfo: keyinfo,
-	}
-
-	var err error
-	k.PublicKey, err = sigs.ToPublic(ActSigType(k.Type), k.PrivateKey)
-	if err != nil {
-		return nil, err
-	}
-
-	switch k.Type {
-	case KTSecp256k1:
-		k.Address, err = address.NewSecp256k1Address(k.PublicKey)
-		if err != nil {
-			return nil, xerrors.Errorf("converting Secp256k1 to address: %w", err)
-		}
-	case KTBLS:
-		k.Address, err = address.NewBLSAddress(k.PublicKey)
-		if err != nil {
-			return nil, xerrors.Errorf("converting BLS to address: %w", err)
-		}
-	default:
-		return nil, xerrors.Errorf("unknown key type")
-	}
-	return k, nil
-
-}
-
-func kstoreSigType(typ crypto.SigType) string {
-	switch typ {
-	case crypto.SigTypeBLS:
-		return KTBLS
-	case crypto.SigTypeSecp256k1:
-		return KTSecp256k1
-	default:
-		return ""
-	}
-}
-
-func ActSigType(typ string) crypto.SigType {
-	switch typ {
-	case KTBLS:
-		return crypto.SigTypeBLS
-	case KTSecp256k1:
-		return crypto.SigTypeSecp256k1
-	default:
-		return 0
-	}
-}
+var _ Wallet = &LocalWallet{}
