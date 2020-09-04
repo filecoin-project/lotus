@@ -123,6 +123,12 @@ func (mp *MessagePool) selectMessagesOptimal(curTs, ts *types.TipSet, tq float64
 	partitions := make([][]*msgChain, MaxBlocks)
 	for i := 0; i < MaxBlocks && nextChain < len(chains); i++ {
 		gasLimit := int64(build.BlockGasLimit)
+
+		// if base fee is sky high and we allow negatives, then the blocks will be smaller
+		if allowNegative {
+			gasLimit = int64(float64(gasLimit) * skyHighBaseFeeGasLimitRatio)
+		}
+
 		for nextChain < len(chains) {
 			chain := chains[nextChain]
 			nextChain++
