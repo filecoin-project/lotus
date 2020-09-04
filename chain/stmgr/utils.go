@@ -173,14 +173,14 @@ func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, 
 	return LoadSectorsFromSet(ctx, sm.ChainStore().Blockstore(), mas.Sectors, filter, filterOut)
 }
 
-func GetMinerPreCommittedSectorsSet(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address, filter *abi.BitField, filterOut bool) ([]*api.ChainSectorInfo, error) {
+func GetMinerPreCommittedSectorsSet(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address, filter *abi.BitField, filterOut bool) ([]*api.ChainPrecommittedSectorInfo, error) {
 	var mas miner.State
 	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
 	}
 
-	return LoadSectorsFromSet(ctx, sm.ChainStore().Blockstore(), mas.PreCommittedSectors, filter, filterOut)
+	return LoadPreCommittedSectorsFromSet(ctx, sm.ChainStore().Blockstore(), mas.PreCommittedSectors, filter, filterOut)
 }
 
 func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *StateManager, st cid.Cid, maddr address.Address, rand abi.PoStRandomness) ([]abi.SectorInfo, error) {
@@ -421,6 +421,40 @@ func LoadSectorsFromSet(ctx context.Context, bs blockstore.Blockstore, ssc cid.C
 			return err
 		}
 		sset = append(sset, &api.ChainSectorInfo{
+			Info: oci,
+			ID:   abi.SectorNumber(i),
+		})
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return sset, nil
+}
+func LoadPreCommittedSectorsFromSet(ctx context.Context, bs blockstore.Blockstore, ssc cid.Cid, filter *abi.BitField, filterOut bool) ([]*api.ChainPrecommittedSectorInfo, error) {
+	a, err := adt.AsArray(store.ActorStore(ctx, bs), ssc)
+	if err != nil {
+		return nil, err
+	}
+
+	var sset []*api.ChainPrecommittedSectorInfo
+	var v cbg.Deferred
+	if err := a.ForEach(&v, func(i int64) error {
+		if filter != nil {
+			set, err := filter.IsSet(uint64(i))
+			if err != nil {
+				return xerrors.Errorf("filter check error: %w", err)
+			}
+			if set == filterOut {
+				return nil
+			}
+		}
+
+		var oci miner.SectorPreCommitOnChainInfo
+		if err := cbor.DecodeInto(v.Raw, &oci); err != nil {
+			return err
+		}
+		sset = append(sset, &api.ChainPrecommittedSectorInfo{
 			Info: oci,
 			ID:   abi.SectorNumber(i),
 		})
