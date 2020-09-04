@@ -334,7 +334,7 @@ loop:
 func waitDealPublished(t *testing.T, ctx context.Context, miner TestStorageNode, deal *cid.Cid) {
 	subCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	updates, err := miner.MarketGetDealUpdates(subCtx, *deal)
+	updates, err := miner.MarketGetDealUpdates(subCtx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -343,18 +343,20 @@ func waitDealPublished(t *testing.T, ctx context.Context, miner TestStorageNode,
 		case <-ctx.Done():
 			t.Fatal("context timeout")
 		case di := <-updates:
-			switch di.State {
-			case storagemarket.StorageDealProposalRejected:
-				t.Fatal("deal rejected")
-			case storagemarket.StorageDealFailing:
-				t.Fatal("deal failed")
-			case storagemarket.StorageDealError:
-				t.Fatal("deal errored", di.Message)
-			case storagemarket.StorageDealFinalizing, storagemarket.StorageDealSealing, storagemarket.StorageDealActive:
-				fmt.Println("COMPLETE", di)
-				return
+			if deal.Equals(di.ProposalCid) {
+				switch di.State {
+				case storagemarket.StorageDealProposalRejected:
+					t.Fatal("deal rejected")
+				case storagemarket.StorageDealFailing:
+					t.Fatal("deal failed")
+				case storagemarket.StorageDealError:
+					t.Fatal("deal errored", di.Message)
+				case storagemarket.StorageDealFinalizing, storagemarket.StorageDealSealing, storagemarket.StorageDealActive:
+					fmt.Println("COMPLETE", di)
+					return
+				}
+				fmt.Println("Deal state: ", storagemarket.DealStates[di.State])
 			}
-			fmt.Println("Deal state: ", storagemarket.DealStates[di.State])
 		}
 	}
 }
