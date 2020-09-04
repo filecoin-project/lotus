@@ -39,17 +39,8 @@ require (
 	github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b
 	github.com/filecoin-project/specs-actors v0.9.3
 	github.com/filecoin-project/specs-storage v0.1.1-0.20200730063404-f7db367e9401
-<<<<<<< HEAD
-<<<<<<< HEAD
 	github.com/filecoin-project/statediff v0.0.1
 	github.com/filecoin-project/test-vectors v0.0.0-20200903223506-84da0a5ea125
-=======
-	github.com/filecoin-project/storage-fsm v0.0.0-20200805013058-9d9ea4e6331f // indirect
->>>>>>> update specs actors
-=======
-	github.com/filecoin-project/statediff v0.0.1
-	github.com/filecoin-project/test-vectors v0.0.0-20200819133914-e20cc29cc926
->>>>>>> Fixups, make tests pass
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/go-kit/kit v0.10.0
 	github.com/google/uuid v1.1.1
