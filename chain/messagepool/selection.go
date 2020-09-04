@@ -19,9 +19,8 @@ import (
 var (
 	bigBlockGasLimit = big.NewInt(build.BlockGasLimit)
 
-	// TODO adjust these magic numbers with some math
-	skyHighBaseFeeThreshold     = abig.NewInt(10_000_000)
-	skyHighBaseFeeGasLimitRatio = 0.1
+	skyHighBaseFeeThreshold     = abig.NewInt(111902962585)
+	skyHighBaseFeeGasLimitRatio = 0.4
 )
 
 const MaxBlocks = 15
