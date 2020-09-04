@@ -281,7 +281,7 @@ func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
 }
 
 func NewGenerator() (*ChainGen, error) {
-	return NewGeneratorWithSectors(1)
+	return NewGeneratorWithSectors(2)
 }
 
 func (cg *ChainGen) StateManager() *stmgr.StateManager {

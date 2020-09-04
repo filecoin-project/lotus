@@ -258,7 +258,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 					return cid.Undef, xerrors.Errorf("removing fake power: %w", err)
 				}
 
-				epochReward, err := currentEpochBlockReward(ctx, vm, minerInfos[i].maddr)
+				epochReward, err := currentEpochBlockReward(ctx, vm)
 				if err != nil {
 					return cid.Undef, xerrors.Errorf("getting current epoch reward: %w", err)
 				}
@@ -387,8 +387,8 @@ func dealWeight(ctx context.Context, vm *vm.VM, maddr address.Address, dealIDs [
 	return dealWeights, nil
 }
 
-func currentEpochBlockReward(ctx context.Context, vm *vm.VM, maddr address.Address) (*reward.ThisEpochRewardReturn, error) {
-	rwret, err := doExecValue(ctx, vm, builtin.RewardActorAddr, maddr, big.Zero(), builtin.MethodsReward.ThisEpochReward, nil)
+func currentEpochBlockReward(ctx context.Context, vm *vm.VM) (*reward.ThisEpochRewardReturn, error) {
+	rwret, err := doExecValue(ctx, vm, builtin.RewardActorAddr, builtin.RewardActorAddr, big.Zero(), builtin.MethodsReward.ThisEpochReward, nil)
 	if err != nil {
 		return nil, err
 	}
