@@ -270,6 +270,9 @@ type FullNode interface {
 	// ClientListTransfers returns the status of all ongoing transfers of data
 	ClientListDataTransfers(ctx context.Context) ([]DataTransferChannel, error)
 	ClientDataTransferUpdates(ctx context.Context) (<-chan DataTransferChannel, error)
+	// ClientRetrieveTryRestartInsufficientFunds attempts to restart stalled retrievals on a given payment channel
+	// which are stuck due to insufficient funds
+	ClientRetrieveTryRestartInsufficientFunds(ctx context.Context, paymentChannel address.Address) error
 
 	// ClientUnimport removes references to the specified file from filestore
 	//ClientUnimport(path string)
