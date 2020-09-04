@@ -564,25 +564,7 @@ var stateGetActorCmd = &cli.Command{
 			return err
 		}
 
-		var strtype string
-		switch a.Code {
-		case builtin.AccountActorCodeID:
-			strtype = "account"
-		case builtin.MultisigActorCodeID:
-			strtype = "multisig"
-		case builtin.CronActorCodeID:
-			strtype = "cron"
-		case builtin.InitActorCodeID:
-			strtype = "init"
-		case builtin.StorageMinerActorCodeID:
-			strtype = "miner"
-		case builtin.StorageMarketActorCodeID:
-			strtype = "market"
-		case builtin.StoragePowerActorCodeID:
-			strtype = "power"
-		default:
-			strtype = "unknown"
-		}
+		strtype := builtin.ActorNameByCode(a.Code)
 
 		fmt.Printf("Address:\t%s\n", addr)
 		fmt.Printf("Balance:\t%s\n", types.FIL(a.Balance))
