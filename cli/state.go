@@ -26,11 +26,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/market"
-	miner2 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
-	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	"github.com/filecoin-project/specs-actors/actors/builtin/exported"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 
 	"github.com/filecoin-project/lotus/api"
@@ -568,25 +564,7 @@ var stateGetActorCmd = &cli.Command{
 			return err
 		}
 
-		var strtype string
-		switch a.Code {
-		case builtin.AccountActorCodeID:
-			strtype = "account"
-		case builtin.MultisigActorCodeID:
-			strtype = "multisig"
-		case builtin.CronActorCodeID:
-			strtype = "cron"
-		case builtin.InitActorCodeID:
-			strtype = "init"
-		case builtin.StorageMinerActorCodeID:
-			strtype = "miner"
-		case builtin.StorageMarketActorCodeID:
-			strtype = "market"
-		case builtin.StoragePowerActorCodeID:
-			strtype = "power"
-		default:
-			strtype = "unknown"
-		}
+		strtype := builtin.ActorNameByCode(a.Code)
 
 		fmt.Printf("Address:\t%s\n", addr)
 		fmt.Printf("Balance:\t%s\n", types.FIL(a.Balance))
@@ -1460,21 +1438,21 @@ func parseParamsForMethod(act cid.Cid, method uint64, args []string) ([]byte, er
 		return nil, nil
 	}
 
-	var f interface{}
-	switch act {
-	case builtin.StorageMarketActorCodeID:
-		f = market.Actor{}.Exports()[method]
-	case builtin.StorageMinerActorCodeID:
-		f = miner2.Actor{}.Exports()[method]
-	case builtin.StoragePowerActorCodeID:
-		f = power.Actor{}.Exports()[method]
-	case builtin.MultisigActorCodeID:
-		f = multisig.Actor{}.Exports()[method]
-	case builtin.PaymentChannelActorCodeID:
-		f = paych.Actor{}.Exports()[method]
-	default:
-		return nil, fmt.Errorf("the lazy devs didnt add support for that actor to this call yet")
+	var target abi.Invokee
+	for _, actor := range exported.BuiltinActors() {
+		if actor.Code() == act {
+			target = actor
+		}
 	}
+	if target == nil {
+		return nil, fmt.Errorf("unknown actor %s", act)
+	}
+	methods := target.Exports()
+	if uint64(len(methods)) <= method || methods[method] == nil {
+		return nil, fmt.Errorf("unknown method %d for actor %s", method, act)
+	}
+
+	f := methods[method]
 
 	rf := reflect.TypeOf(f)
 	if rf.NumIn() != 3 {
