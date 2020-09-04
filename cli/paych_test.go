@@ -125,7 +125,7 @@ func TestPaymentChannelStatus(t *testing.T) {
 	channelAmt := uint64(100)
 	create := make(chan string)
 	go func() {
-		// creator: paych get <creator> <receiver> <amount>
+		// creator: paych add-funds <creator> <receiver> <amount>
 		cmd = []string{creatorAddr.String(), receiverAddr.String(), fmt.Sprintf("%d", channelAmt)}
 		create <- creatorCLI.runCmd(paychAddFundsCmd, cmd)
 	}()
@@ -344,7 +344,7 @@ func TestPaymentChannelVoucherCreateShortfall(t *testing.T) {
 	mockCLI := newMockCLI(t)
 	creatorCLI := mockCLI.client(paymentCreator.ListenAddr)
 
-	// creator: paych get <creator> <receiver> <amount>
+	// creator: paych add-funds <creator> <receiver> <amount>
 	channelAmt := 100
 	cmd := []string{creatorAddr.String(), receiverAddr.String(), fmt.Sprintf("%d", channelAmt)}
 	chstr := creatorCLI.runCmd(paychAddFundsCmd, cmd)
