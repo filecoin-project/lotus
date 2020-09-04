@@ -127,7 +127,7 @@ func TestPaymentChannelStatus(t *testing.T) {
 	go func() {
 		// creator: paych get <creator> <receiver> <amount>
 		cmd = []string{creatorAddr.String(), receiverAddr.String(), fmt.Sprintf("%d", channelAmt)}
-		create <- creatorCLI.runCmd(paychGetCmd, cmd)
+		create <- creatorCLI.runCmd(paychAddFundsCmd, cmd)
 	}()
 
 	// Wait for the output to stop being "Channel does not exist"
@@ -347,7 +347,7 @@ func TestPaymentChannelVoucherCreateShortfall(t *testing.T) {
 	// creator: paych get <creator> <receiver> <amount>
 	channelAmt := 100
 	cmd := []string{creatorAddr.String(), receiverAddr.String(), fmt.Sprintf("%d", channelAmt)}
-	chstr := creatorCLI.runCmd(paychGetCmd, cmd)
+	chstr := creatorCLI.runCmd(paychAddFundsCmd, cmd)
 
 	chAddr, err := address.NewFromString(chstr)
 	require.NoError(t, err)

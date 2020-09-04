@@ -217,16 +217,11 @@ func capGasFee(msg *types.Message, maxFee abi.TokenAmount) {
 
 	gl := types.NewInt(uint64(msg.GasLimit))
 	totalFee := types.BigMul(msg.GasFeeCap, gl)
-	minerFee := types.BigMul(msg.GasPremium, gl)
 
 	if totalFee.LessThanEqual(maxFee) {
 		return
 	}
 
-	// scale chain/miner fee down proportionally to fit in our budget
-	// TODO: there are probably smarter things we can do here to optimize
-	//  message inclusion latency
-
 	msg.GasFeeCap = big.Div(maxFee, gl)
-	msg.GasPremium = big.Div(big.Div(big.Mul(minerFee, maxFee), totalFee), gl)
+	msg.GasPremium = big.Min(msg.GasFeeCap, msg.GasPremium) // cap premium at FeeCap
 }
