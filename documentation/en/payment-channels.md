@@ -22,7 +22,7 @@ Note that payment channels and vouchers can be used for any situation in which t
 For example a client creates a payment channel to a provider with value 10 FIL.
 
 ```sh
-$ lotus paych get <client addr> <provider addr> 10
+$ lotus paych add-funds <client addr> <provider addr> 10
 <channel addr>
 ```
 
@@ -51,10 +51,10 @@ $ lotus paych voucher create <channel addr> 4
 The client sends the voucher to the provider and the provider adds the voucher and sends back more data.
 etc.
 
-The client can add value to the channel after it has been created by calling `paych get` with the same client and provider addresses.
+The client can add value to the channel after it has been created by calling `paych add-funds` with the same client and provider addresses.
 
 ```sh
-$ lotus paych get <client addr> <provider addr> 5
+$ lotus paych add-funds <client addr> <provider addr> 5
 <channel addr> # Same address as above. Channel now has 15
 ```
 

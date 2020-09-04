@@ -22,7 +22,7 @@ var paychCmd = &cli.Command{
 	Name:  "paych",
 	Usage: "Manage payment channels",
 	Subcommands: []*cli.Command{
-		paychGetCmd,
+		paychAddFundsCmd,
 		paychListCmd,
 		paychVoucherCmd,
 		paychSettleCmd,
@@ -30,9 +30,9 @@ var paychCmd = &cli.Command{
 	},
 }
 
-var paychGetCmd = &cli.Command{
-	Name:      "get",
-	Usage:     "Create a new payment channel or get existing one and add amount to it",
+var paychAddFundsCmd = &cli.Command{
+	Name:      "add-funds",
+	Usage:     "Add funds to the payment channel between fromAddress and toAddress. Creates the payment channel if it doesn't already exist.",
 	ArgsUsage: "[fromAddress toAddress amount]",
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Len() != 3 {
