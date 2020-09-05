@@ -370,12 +370,8 @@ func (mp *MessagePool) verifyMsgBeforeAdd(m *types.SignedMessage, curTs *types.T
 	// queues.
 	// Note that we don't do that for local messages, so that they can be accepted and republished
 	// automatically
-	if !local {
-		baseFee, err := mp.api.ChainComputeBaseFee(context.TODO(), curTs)
-		if err != nil {
-			return xerrors.Errorf("error computing base fee: %w", err)
-		}
-
+	if !local && len(curTs.Blocks()) > 0 {
+		baseFee := curTs.Blocks()[0].ParentBaseFee
 		baseFeeLowerBound := types.BigDiv(baseFee, baseFeeLowerBoundFactor)
 		if m.Message.GasFeeCap.LessThan(baseFeeLowerBound) {
 			return xerrors.Errorf("GasFeeCap doesn't meet base fee lower bound for inclusion in the next 20 blocks (GasFeeCap: %s, baseFeeLowerBound: %s): %w",
