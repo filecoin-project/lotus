@@ -351,6 +351,11 @@ func (c *ClientNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID a
 
 	// Called immediately to check if the deal has already expired or been slashed
 	checkFunc := func(ts *types.TipSet) (done bool, more bool, err error) {
+		if ts == nil {
+			// keep listening for events
+			return false, true, nil
+		}
+
 		// Check if the deal has already expired
 		if sd.Proposal.EndEpoch <= ts.Height() {
 			onDealExpired(nil)
