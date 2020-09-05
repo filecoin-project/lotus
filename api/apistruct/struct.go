@@ -336,6 +336,19 @@ type WorkerStruct struct {
 	}
 }
 
+type WalletStruct struct {
+	Internal struct {
+		WalletNew            func(context.Context, crypto.SigType) (address.Address, error)                       `perm:"write"`
+		WalletHas            func(context.Context, address.Address) (bool, error)                                 `perm:"write"`
+		WalletList           func(context.Context) ([]address.Address, error)                                     `perm:"write"`
+		WalletSign           func(context.Context, address.Address, []byte) (*crypto.Signature, error)            `perm:"sign"`
+		WalletSignMessage    func(context.Context, address.Address, *types.Message) (*types.SignedMessage, error) `perm:"sign"`
+		WalletExport         func(context.Context, address.Address) (*types.KeyInfo, error)                       `perm:"admin"`
+		WalletImport         func(context.Context, *types.KeyInfo) (address.Address, error)                       `perm:"admin"`
+		WalletDelete         func(context.Context, address.Address) error                                         `perm:"write"`
+	}
+}
+
 // CommonStruct
 
 func (c *CommonStruct) AuthVerify(ctx context.Context, token string) ([]auth.Permission, error) {
@@ -1271,7 +1284,40 @@ func (w *WorkerStruct) Closing(ctx context.Context) (<-chan struct{}, error) {
 	return w.Internal.Closing(ctx)
 }
 
+func (c *WalletStruct) WalletNew(ctx context.Context, typ crypto.SigType) (address.Address, error) {
+	return c.Internal.WalletNew(ctx, typ)
+}
+
+func (c *WalletStruct) WalletHas(ctx context.Context, addr address.Address) (bool, error) {
+	return c.Internal.WalletHas(ctx, addr)
+}
+
+func (c *WalletStruct) WalletList(ctx context.Context) ([]address.Address, error) {
+	return c.Internal.WalletList(ctx)
+}
+
+func (c *WalletStruct) WalletSign(ctx context.Context, k address.Address, msg []byte) (*crypto.Signature, error) {
+	return c.Internal.WalletSign(ctx, k, msg)
+}
+
+func (c *WalletStruct) WalletSignMessage(ctx context.Context, k address.Address, msg *types.Message) (*types.SignedMessage, error) {
+	return c.Internal.WalletSignMessage(ctx, k, msg)
+}
+
+func (c *WalletStruct) WalletExport(ctx context.Context, a address.Address) (*types.KeyInfo, error) {
+	return c.Internal.WalletExport(ctx, a)
+}
+
+func (c *WalletStruct) WalletImport(ctx context.Context, ki *types.KeyInfo) (address.Address, error) {
+	return c.Internal.WalletImport(ctx, ki)
+}
+
+func (c *WalletStruct) WalletDelete(ctx context.Context, addr address.Address) error {
+	return c.Internal.WalletDelete(ctx, addr)
+}
+
 var _ api.Common = &CommonStruct{}
 var _ api.FullNode = &FullNodeStruct{}
 var _ api.StorageMiner = &StorageMinerStruct{}
 var _ api.WorkerAPI = &WorkerStruct{}
+var _ api.WalletAPI = &WalletStruct{}

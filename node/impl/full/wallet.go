@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
@@ -21,7 +22,7 @@ type WalletAPI struct {
 
 	StateManager *stmgr.StateManager
 	Default      wallet.Default
-	wallet.Wallet
+	api.WalletAPI
 }
 
 func (a *WalletAPI) WalletBalance(ctx context.Context, addr address.Address) (types.BigInt, error) {
@@ -50,7 +51,7 @@ func (a *WalletAPI) WalletSignMessage(ctx context.Context, k address.Address, ms
 	if err != nil {
 		return nil, xerrors.Errorf("failed to resolve ID address: %w", keyAddr)
 	}
-	return a.Wallet.WalletSignMessage(ctx, keyAddr, msg)
+	return a.WalletAPI.WalletSignMessage(ctx, keyAddr, msg)
 }
 
 func (a *WalletAPI) WalletVerify(ctx context.Context, k address.Address, msg []byte, sig *crypto.Signature) bool {

@@ -12,6 +12,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 
+	"github.com/filecoin-project/lotus/api"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"  // enable bls signatures
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp" // enable secp signatures
 
@@ -34,6 +35,11 @@ type LocalWallet struct {
 	keystore types.KeyStore
 
 	lk sync.Mutex
+}
+
+type Default interface {
+	GetDefault() (address.Address, error)
+	SetDefault(a address.Address) error
 }
 
 func NewWallet(keystore types.KeyStore) (*LocalWallet, error) {
@@ -250,4 +256,4 @@ func (w *LocalWallet) WalletDelete(ctx context.Context, addr address.Address) er
 	return nil
 }
 
-var _ Wallet = &LocalWallet{}
+var _ api.WalletAPI = &LocalWallet{}
