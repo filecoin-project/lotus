@@ -604,7 +604,7 @@ func (mp *MessagePool) addLocked(m *types.SignedMessage, strict bool) error {
 
 	incr, err := mset.add(m, mp, strict)
 	if err != nil {
-		log.Info(err)
+		log.Debug(err)
 		return err
 	}
 
