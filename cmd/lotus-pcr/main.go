@@ -225,7 +225,12 @@ var runCmd = &cli.Command{
 				continue
 			}
 
-			if err := rf.Refund(ctx, tipset, refunds, rounds); err != nil {
+			refundTipset, err := api.ChainHead(ctx)
+			if err != nil {
+				return err
+			}
+
+			if err := rf.Refund(ctx, refundTipset, refunds, rounds); err != nil {
 				return err
 			}
 
