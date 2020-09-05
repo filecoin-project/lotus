@@ -11,7 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/hashicorp/go-multierror"
 	lru "github.com/hashicorp/golang-lru"
@@ -49,6 +48,7 @@ const RbfDenom = 256
 var RepublishInterval = pubsub.TimeCacheDuration + time.Duration(5*build.BlockDelaySecs+build.PropagationDelaySecs)*time.Second
 
 var minimumBaseFee = types.NewInt(uint64(build.MinimumBaseFee))
+var baseFeeLowerBoundFactor = types.NewInt(10)
 
 var MaxActorPendingMessages = 1000
 
@@ -355,12 +355,30 @@ func (mp *MessagePool) addLocal(m *types.SignedMessage, msgb []byte) error {
 	return nil
 }
 
-func (mp *MessagePool) verifyMsgBeforeAdd(m *types.SignedMessage, epoch abi.ChainEpoch) error {
+func (mp *MessagePool) verifyMsgBeforeAdd(m *types.SignedMessage, curTs *types.TipSet) error {
+	epoch := curTs.Height()
 	minGas := vm.PricelistByEpoch(epoch).OnChainMessage(m.ChainLength())
 
 	if err := m.VMMessage().ValidForBlockInclusion(minGas.Total()); err != nil {
 		return xerrors.Errorf("message will not be included in a block: %w", err)
 	}
+
+	// this checks if the GasFeeCap is suffisciently high for inclusion in the next 20 blocks
+	// if the GasFeeCap is too low, we soft reject the message (Ignore in pubsub) and rely
+	// on republish to push it through later, if the baseFee has fallen.
+	// this is a defensive check that stops minimum baseFee spam attacks from overloading validation
+	// queues.
+	baseFee, err := mp.api.ChainComputeBaseFee(context.TODO(), curTs)
+	if err != nil {
+		return xerrors.Errorf("error computing base fee: %w", err)
+	}
+
+	baseFeeLowerBound := types.BigDiv(baseFee, baseFeeLowerBoundFactor)
+	if m.Message.GasFeeCap.LessThan(baseFeeLowerBound) {
+		return xerrors.Errorf("GasFeeCap doesn't meet base fee lower bound for inclusion in the next 20 blocks (GasFeeCap: %s, baseFeeLowerBound: %s): %w",
+			m.Message.GasFeeCap, baseFeeLowerBound, ErrSoftValidationFailure)
+	}
+
 	return nil
 }
 
@@ -523,7 +541,7 @@ func (mp *MessagePool) addTs(m *types.SignedMessage, curTs *types.TipSet) error 
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
-	if err := mp.verifyMsgBeforeAdd(m, curTs.Height()); err != nil {
+	if err := mp.verifyMsgBeforeAdd(m, curTs); err != nil {
 		return err
 	}
 
@@ -557,7 +575,7 @@ func (mp *MessagePool) addLoaded(m *types.SignedMessage) error {
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
-	if err := mp.verifyMsgBeforeAdd(m, curTs.Height()); err != nil {
+	if err := mp.verifyMsgBeforeAdd(m, curTs); err != nil {
 		return err
 	}
 
@@ -743,7 +761,7 @@ func (mp *MessagePool) PushWithNonce(ctx context.Context, addr address.Address, 
 		return nil, ErrTryAgain
 	}
 
-	if err := mp.verifyMsgBeforeAdd(msg, curTs.Height()); err != nil {
+	if err := mp.verifyMsgBeforeAdd(msg, curTs); err != nil {
 		return nil, err
 	}
 
