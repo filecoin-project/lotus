@@ -2,6 +2,7 @@ package full
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
@@ -113,6 +114,7 @@ func (a *MpoolAPI) MpoolPush(ctx context.Context, smsg *types.SignedMessage) (ci
 }
 
 func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec) (*types.SignedMessage, error) {
+	inMsg := *msg
 	{
 		fromA, err := a.Stmgr.ResolveToKeyAddress(ctx, msg.From, nil)
 		if err != nil {
@@ -132,6 +134,13 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spe
 	msg, err := a.GasAPI.GasEstimateMessageGas(ctx, msg, spec, types.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("GasEstimateMessageGas error: %w", err)
+	}
+
+	if msg.GasPremium.GreaterThan(msg.GasFeeCap) {
+		inJson, _ := json.Marshal(inMsg)
+		outJson, _ := json.Marshal(msg)
+		return nil, xerrors.Errorf("After estimation, GasPremium is greater than GasFeeCap, inmsg: %s, outmsg: %s",
+			inJson, outJson)
 	}
 
 	sign := func(from address.Address, nonce uint64) (*types.SignedMessage, error) {
