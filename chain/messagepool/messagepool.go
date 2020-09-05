@@ -355,7 +355,7 @@ func (mp *MessagePool) addLocal(m *types.SignedMessage, msgb []byte) error {
 	return nil
 }
 
-func (mp *MessagePool) verifyMsgBeforeAdd(m *types.SignedMessage, curTs *types.TipSet) error {
+func (mp *MessagePool) verifyMsgBeforeAdd(m *types.SignedMessage, curTs *types.TipSet, local bool) error {
 	epoch := curTs.Height()
 	minGas := vm.PricelistByEpoch(epoch).OnChainMessage(m.ChainLength())
 
@@ -368,15 +368,19 @@ func (mp *MessagePool) verifyMsgBeforeAdd(m *types.SignedMessage, curTs *types.T
 	// on republish to push it through later, if the baseFee has fallen.
 	// this is a defensive check that stops minimum baseFee spam attacks from overloading validation
 	// queues.
-	baseFee, err := mp.api.ChainComputeBaseFee(context.TODO(), curTs)
-	if err != nil {
-		return xerrors.Errorf("error computing base fee: %w", err)
-	}
+	// Note that we don't do that for local messages, so that they can be accepted and republished
+	// automatically
+	if !local {
+		baseFee, err := mp.api.ChainComputeBaseFee(context.TODO(), curTs)
+		if err != nil {
+			return xerrors.Errorf("error computing base fee: %w", err)
+		}
 
-	baseFeeLowerBound := types.BigDiv(baseFee, baseFeeLowerBoundFactor)
-	if m.Message.GasFeeCap.LessThan(baseFeeLowerBound) {
-		return xerrors.Errorf("GasFeeCap doesn't meet base fee lower bound for inclusion in the next 20 blocks (GasFeeCap: %s, baseFeeLowerBound: %s): %w",
-			m.Message.GasFeeCap, baseFeeLowerBound, ErrSoftValidationFailure)
+		baseFeeLowerBound := types.BigDiv(baseFee, baseFeeLowerBoundFactor)
+		if m.Message.GasFeeCap.LessThan(baseFeeLowerBound) {
+			return xerrors.Errorf("GasFeeCap doesn't meet base fee lower bound for inclusion in the next 20 blocks (GasFeeCap: %s, baseFeeLowerBound: %s): %w",
+				m.Message.GasFeeCap, baseFeeLowerBound, ErrSoftValidationFailure)
+		}
 	}
 
 	return nil
@@ -400,7 +404,7 @@ func (mp *MessagePool) Push(m *types.SignedMessage) (cid.Cid, error) {
 	}
 
 	mp.curTsLk.Lock()
-	if err := mp.addTs(m, mp.curTs); err != nil {
+	if err := mp.addTs(m, mp.curTs, true); err != nil {
 		mp.curTsLk.Unlock()
 		return cid.Undef, err
 	}
@@ -461,7 +465,7 @@ func (mp *MessagePool) Add(m *types.SignedMessage) error {
 
 	mp.curTsLk.Lock()
 	defer mp.curTsLk.Unlock()
-	return mp.addTs(m, mp.curTs)
+	return mp.addTs(m, mp.curTs, false)
 }
 
 func sigCacheKey(m *types.SignedMessage) (string, error) {
@@ -528,7 +532,7 @@ func (mp *MessagePool) checkBalance(m *types.SignedMessage, curTs *types.TipSet)
 	return nil
 }
 
-func (mp *MessagePool) addTs(m *types.SignedMessage, curTs *types.TipSet) error {
+func (mp *MessagePool) addTs(m *types.SignedMessage, curTs *types.TipSet, local bool) error {
 	snonce, err := mp.getStateNonce(m.Message.From, curTs)
 	if err != nil {
 		return xerrors.Errorf("failed to look up actor state nonce: %s: %w", err, ErrSoftValidationFailure)
@@ -541,7 +545,7 @@ func (mp *MessagePool) addTs(m *types.SignedMessage, curTs *types.TipSet) error 
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
-	if err := mp.verifyMsgBeforeAdd(m, curTs); err != nil {
+	if err := mp.verifyMsgBeforeAdd(m, curTs, local); err != nil {
 		return err
 	}
 
@@ -575,7 +579,7 @@ func (mp *MessagePool) addLoaded(m *types.SignedMessage) error {
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
-	if err := mp.verifyMsgBeforeAdd(m, curTs); err != nil {
+	if err := mp.verifyMsgBeforeAdd(m, curTs, true); err != nil {
 		return err
 	}
 
@@ -761,7 +765,7 @@ func (mp *MessagePool) PushWithNonce(ctx context.Context, addr address.Address, 
 		return nil, ErrTryAgain
 	}
 
-	if err := mp.verifyMsgBeforeAdd(msg, curTs); err != nil {
+	if err := mp.verifyMsgBeforeAdd(msg, curTs, true); err != nil {
 		return nil, err
 	}
 
