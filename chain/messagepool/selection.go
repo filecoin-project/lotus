@@ -102,7 +102,7 @@ func (mp *MessagePool) selectMessagesOptimal(curTs, ts *types.TipSet, tq float64
 
 	if len(chains) != 0 && chains[0].gasPerf < 0 {
 		log.Warnw("all messages in mpool have non-positive gas performance", "bestGasPerf", chains[0].gasPerf)
-		return nil, nil
+		return result, nil
 	}
 
 	// 3. Parition chains into blocks (without trimming)
@@ -351,7 +351,7 @@ func (mp *MessagePool) selectMessagesGreedy(curTs, ts *types.TipSet) ([]*types.S
 
 	if len(chains) != 0 && chains[0].gasPerf < 0 {
 		log.Warnw("all messages in mpool have non-positive gas performance", "bestGasPerf", chains[0].gasPerf)
-		return nil, nil
+		return result, nil
 	}
 
 	// 3. Merge the head chains to produce the list of messages selected for inclusion, subject to
