@@ -421,7 +421,8 @@ type FullNode interface {
 
 	PaychGet(ctx context.Context, from, to address.Address, amt types.BigInt) (*ChannelInfo, error)
 	PaychGetWaitReady(context.Context, cid.Cid) (address.Address, error)
-	PaychAvailableFunds(from, to address.Address) (*ChannelAvailableFunds, error)
+	PaychAvailableFunds(ch address.Address) (*ChannelAvailableFunds, error)
+	PaychAvailableFundsByFromTo(from, to address.Address) (*ChannelAvailableFunds, error)
 	PaychList(context.Context) ([]address.Address, error)
 	PaychStatus(context.Context, address.Address) (*PaychStatus, error)
 	PaychSettle(context.Context, address.Address) (cid.Cid, error)
@@ -540,7 +541,12 @@ type ChannelInfo struct {
 }
 
 type ChannelAvailableFunds struct {
+	// Channel is the address of the channel
 	Channel *address.Address
+	// From is the from address of the channel (channel creator)
+	From address.Address
+	// To is the to address of the channel
+	To address.Address
 	// ConfirmedAmt is the amount of funds that have been confirmed on-chain
 	// for the channel
 	ConfirmedAmt types.BigInt

@@ -98,6 +98,7 @@
 * [Paych](#Paych)
   * [PaychAllocateLane](#PaychAllocateLane)
   * [PaychAvailableFunds](#PaychAvailableFunds)
+  * [PaychAvailableFundsByFromTo](#PaychAvailableFundsByFromTo)
   * [PaychCollect](#PaychCollect)
   * [PaychGet](#PaychGet)
   * [PaychGetWaitReady](#PaychGetWaitReady)
@@ -2239,6 +2240,27 @@ There are not yet any comments for this method.
 
 Perms: sign
 
+Inputs: `null`
+
+Response:
+```json
+{
+  "Channel": "\u003cempty\u003e",
+  "From": "t01234",
+  "To": "t01234",
+  "ConfirmedAmt": "0",
+  "PendingAmt": "0",
+  "PendingWaitSentinel": null,
+  "QueuedAmt": "0",
+  "VoucherReedeemedAmt": "0"
+}
+```
+
+### PaychAvailableFundsByFromTo
+There are not yet any comments for this method.
+
+Perms: sign
+
 Inputs:
 ```json
 [
@@ -2250,6 +2272,8 @@ Response:
 ```json
 {
   "Channel": "\u003cempty\u003e",
+  "From": "t01234",
+  "To": "t01234",
   "ConfirmedAmt": "0",
   "PendingAmt": "0",
   "PendingWaitSentinel": null,
