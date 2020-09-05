@@ -217,7 +217,7 @@ tailLoop:
 	for gasLimit >= minGas && last < len(chains) {
 		// trim if necessary
 		if chains[last].gasLimit > gasLimit {
-			chains[last].Trim(gasLimit, mp, baseFee, ts)
+			chains[last].Trim(gasLimit, mp, baseFee, false)
 		}
 
 		// push down if it hasn't been invalidated
@@ -284,7 +284,7 @@ tailLoop:
 			}
 
 			// dependencies fit, just trim it
-			chain.Trim(gasLimit-depGasLimit, mp, baseFee, ts)
+			chain.Trim(gasLimit-depGasLimit, mp, baseFee, false)
 			last += i
 			continue tailLoop
 		}
@@ -389,7 +389,7 @@ func (mp *MessagePool) selectMessagesGreedy(curTs, ts *types.TipSet) ([]*types.S
 tailLoop:
 	for gasLimit >= minGas && last < len(chains) {
 		// trim
-		chains[last].Trim(gasLimit, mp, baseFee, ts)
+		chains[last].Trim(gasLimit, mp, baseFee, false)
 
 		// push down if it hasn't been invalidated
 		if chains[last].valid {
@@ -497,7 +497,7 @@ func (mp *MessagePool) selectPriorityMessages(pending map[address.Address]map[ui
 tailLoop:
 	for gasLimit >= minGas && last < len(chains) {
 		// trim, discarding negative performing messages
-		chains[last].Trim(gasLimit, mp, baseFee, ts)
+		chains[last].Trim(gasLimit, mp, baseFee, false)
 
 		// push down if it hasn't been invalidated
 		if chains[last].valid {
@@ -775,9 +775,9 @@ func (mc *msgChain) Before(other *msgChain) bool {
 		(mc.gasPerf == other.gasPerf && mc.gasReward.Cmp(other.gasReward) > 0)
 }
 
-func (mc *msgChain) Trim(gasLimit int64, mp *MessagePool, baseFee types.BigInt, ts *types.TipSet) {
+func (mc *msgChain) Trim(gasLimit int64, mp *MessagePool, baseFee types.BigInt, allowNegative bool) {
 	i := len(mc.msgs) - 1
-	for i >= 0 && (mc.gasLimit > gasLimit || mc.gasPerf < 0) {
+	for i >= 0 && (mc.gasLimit > gasLimit || (!allowNegative && mc.gasPerf < 0)) {
 		gasReward := mp.getGasReward(mc.msgs[i], baseFee)
 		mc.gasReward = new(big.Int).Sub(mc.gasReward, gasReward)
 		mc.gasLimit -= mc.msgs[i].Message.GasLimit
