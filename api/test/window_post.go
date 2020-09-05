@@ -159,7 +159,7 @@ func TestWindowPost(t *testing.T, b APIBuilder, blocktime time.Duration, nSector
 		head, err := client.ChainHead(ctx)
 		require.NoError(t, err)
 
-		if head.Height() > di.PeriodStart+(miner2.WPoStProvingPeriod)+2 {
+		if head.Height() > (di.PeriodStart + (2 * miner2.WPoStProvingPeriod) + 2) {
 			break
 		}
 
@@ -296,7 +296,7 @@ func TestWindowPost(t *testing.T, b APIBuilder, blocktime time.Duration, nSector
 		head, err := client.ChainHead(ctx)
 		require.NoError(t, err)
 
-		waitUntil := head.Height() + 10
+		waitUntil := head.Height() + miner2.WPoStProvingPeriod + 2
 
 		for {
 			head, err := client.ChainHead(ctx)

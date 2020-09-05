@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"math/rand"
 
 	"github.com/filecoin-project/lotus/chain/state"
@@ -306,6 +307,10 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 					return cid.Undef, xerrors.Errorf("failed to confirm presealed sectors: %w", err)
 				}
 			}
+
+			if activatePresealedSectors(ctx, vm, minerInfos[i].maddr) != nil {
+				return cid.Undef, xerrors.Errorf("activating presealed sectors: %w", err)
+			}
 		}
 	}
 
@@ -409,4 +414,60 @@ func circSupply(ctx context.Context, vmi *vm.VM, maddr address.Address) abi.Toke
 	}, maddr, 0, 0, 0)
 
 	return rt.TotalFilCircSupply()
+}
+
+func activatePresealedSectors(ctx context.Context, vm *vm.VM, maddr address.Address) error {
+
+	return vm.MutateState(ctx, maddr, func(cst cbor.IpldStore, st *miner.State) error {
+
+		ds, err := st.LoadDeadlines(adt.WrapStore(ctx, cst))
+		if err != nil {
+			return err
+		}
+
+		err = ds.ForEach(adt.WrapStore(ctx, cst), func(dlIdx uint64, dl *miner.Deadline) error {
+			parts, err := dl.PartitionsArray(adt.WrapStore(ctx, cst))
+			if err != nil {
+				return err
+			}
+
+			var partition miner.Partition
+			err = parts.ForEach(&partition, func(i int64) error {
+				_ = partition.ActivateUnproven()
+				err2 := parts.Set(uint64(i), &partition)
+				if err2 != nil {
+					return err2
+				}
+
+				return nil
+			})
+
+			if err != nil {
+				return err
+			}
+
+			dl.Partitions, err = parts.Root()
+			if err != nil {
+				return err
+			}
+
+			err = ds.UpdateDeadline(adt.WrapStore(ctx, cst), dlIdx, dl)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		})
+
+		if err != nil {
+			return err
+		}
+
+		err = st.SaveDeadlines(adt.WrapStore(ctx, cst), ds)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
 }
