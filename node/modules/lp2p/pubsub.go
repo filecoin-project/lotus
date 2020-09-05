@@ -33,6 +33,7 @@ func init() {
 	pubsub.GossipSubDirectConnectInitialDelay = 30 * time.Second
 	pubsub.GossipSubIWantFollowupTime = 5 * time.Second
 	pubsub.GossipSubHistoryLength = 10
+	pubsub.GossipSubGossipFactor = 0.1
 }
 func ScoreKeeper() *dtypes.ScoreKeeper {
 	return new(dtypes.ScoreKeeper)
@@ -248,8 +249,8 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 		pubsub.GossipSubDlo = 0
 		pubsub.GossipSubDhi = 0
 		pubsub.GossipSubDout = 0
-		pubsub.GossipSubDlazy = 1024
-		pubsub.GossipSubGossipFactor = 0.5
+		pubsub.GossipSubDlazy = 64
+		pubsub.GossipSubGossipFactor = 0.25
 		pubsub.GossipSubPruneBackoff = 5 * time.Minute
 		// turn on PX
 		options = append(options, pubsub.WithPeerExchange(true))
