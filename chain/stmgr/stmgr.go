@@ -615,7 +615,7 @@ func (sm *StateManager) searchBackForMsg(ctx context.Context, from *types.TipSet
 			return nil, nil, cid.Undef, fmt.Errorf("failed to load tipset during msg wait searchback: %w", err)
 		}
 
-		r, foundMsg, err := sm.tipsetExecutedMessage(ts, m.Cid(), m.VMMessage())
+		r, foundMsg, err := sm.tipsetExecutedMessage(cur, m.Cid(), m.VMMessage())
 		if err != nil {
 			return nil, nil, cid.Undef, fmt.Errorf("checking for message execution during lookback: %w", err)
 		}
