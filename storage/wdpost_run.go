@@ -349,6 +349,11 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 			return nil, xerrors.Errorf("adding recoveries to set of sectors to prove: %w", err)
 		}
 
+		toProve, err = bitfield.MergeBitFields(toProve, partition.Unproven)
+		if err != nil {
+			return nil, xerrors.Errorf("adding unproven sectors to set of sectors to prove: %w", err)
+		}
+
 		good, err := s.checkSectors(ctx, toProve)
 		if err != nil {
 			return nil, xerrors.Errorf("checking sectors to skip: %w", err)
