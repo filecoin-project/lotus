@@ -278,7 +278,12 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 	}
 
 	// validation queue RED
-	options = append(options, pubsub.WithPeerGater(pubsub.DefaultPeerGaterParams()))
+	options = append(options, pubsub.WithPeerGater(
+		pubsub.DefaultPeerGaterParams().WithTopicDeliveryWeights(map[string]float64{
+			drandTopic:                 5,
+			build.BlocksTopic(in.Nn):   10,
+			build.MessagesTopic(in.Nn): 1,
+		})))
 
 	// tracer
 	if in.Cfg.RemoteTracer != "" {
