@@ -45,7 +45,7 @@ var rbfDenomBig = types.NewInt(RbfDenom)
 
 const RbfDenom = 256
 
-var RepublishInterval = pubsub.TimeCacheDuration + time.Duration(5*build.BlockDelaySecs+build.PropagationDelaySecs)*time.Second
+var RepublishInterval = time.Duration(10*build.BlockDelaySecs+build.PropagationDelaySecs) * time.Second
 
 var minimumBaseFee = types.NewInt(uint64(build.MinimumBaseFee))
 var baseFeeLowerBoundFactor = types.NewInt(10)
@@ -80,6 +80,14 @@ const (
 
 	localUpdates = "update"
 )
+
+func init() {
+	// if the republish interval is too short compared to the pubsub timecache, adjust it
+	minInterval := pubsub.TimeCacheDuration + time.Duration(build.PropagationDelaySecs)
+	if RepublishInterval < minInterval {
+		RepublishInterval = minInterval
+	}
+}
 
 type MessagePool struct {
 	lk sync.Mutex
