@@ -7,6 +7,7 @@ import (
 	"runtime"
 
 	"github.com/elastic/go-sysinfo"
+	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
@@ -33,6 +34,7 @@ type LocalWorker struct {
 	storage    stores.Store
 	localStore *stores.Local
 	sindex     stores.SectorIndex
+	ret        storiface.WorkerReturn
 
 	acceptTasks map[sealtasks.TaskType]struct{}
 }
@@ -95,6 +97,25 @@ func (l *LocalWorker) sb() (ffiwrapper.Storage, error) {
 	return ffiwrapper.New(&localWorkerPathProvider{w: l}, l.scfg)
 }
 
+func (l *LocalWorker) asyncCall(sector abi.SectorID, work func(ci storiface.CallID)) (storiface.CallID, error) {
+	ci := storiface.CallID{
+		Sector: sector,
+		ID:     uuid.New(),
+	}
+
+	go work(ci)
+
+	return ci, nil
+}
+
+func errstr(err error) string {
+	if err != nil {
+		return err.Error()
+	}
+
+	return ""
+}
+
 func (l *LocalWorker) NewSector(ctx context.Context, sector abi.SectorID) error {
 	sb, err := l.sb()
 	if err != nil {
@@ -104,92 +125,140 @@ func (l *LocalWorker) NewSector(ctx context.Context, sector abi.SectorID) error 
 	return sb.NewSector(ctx, sector)
 }
 
-func (l *LocalWorker) AddPiece(ctx context.Context, sector abi.SectorID, epcs []abi.UnpaddedPieceSize, sz abi.UnpaddedPieceSize, r io.Reader) (abi.PieceInfo, error) {
+func (l *LocalWorker) AddPiece(ctx context.Context, sector abi.SectorID, epcs []abi.UnpaddedPieceSize, sz abi.UnpaddedPieceSize, r io.Reader) (storiface.CallID, error) {
 	sb, err := l.sb()
 	if err != nil {
-		return abi.PieceInfo{}, err
+		return storiface.UndefCall, err
 	}
 
-	return sb.AddPiece(ctx, sector, epcs, sz, r)
+	return l.asyncCall(sector, func(ci storiface.CallID) {
+		pi, err := sb.AddPiece(ctx, sector, epcs, sz, r)
+
+		if err := l.ret.ReturnAddPiece(ctx, ci, pi, errstr(err)); err != nil {
+			log.Errorf("ReturnAddPiece: %+v", err)
+		}
+	})
 }
 
-func (l *LocalWorker) Fetch(ctx context.Context, sector abi.SectorID, fileType stores.SectorFileType, ptype stores.PathType, am stores.AcquireMode) error {
-	_, done, err := (&localWorkerPathProvider{w: l, op: am}).AcquireSector(ctx, sector, fileType, stores.FTNone, ptype)
-	if err != nil {
-		return err
-	}
-	done()
-	return nil
-}
-
-func (l *LocalWorker) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, pieces []abi.PieceInfo) (out storage2.PreCommit1Out, err error) {
-	{
-		// cleanup previous failed attempts if they exist
-		if err := l.storage.Remove(ctx, sector, stores.FTSealed, true); err != nil {
-			return nil, xerrors.Errorf("cleaning up sealed data: %w", err)
+func (l *LocalWorker) Fetch(ctx context.Context, sector abi.SectorID, fileType stores.SectorFileType, ptype stores.PathType, am stores.AcquireMode) (storiface.CallID, error) {
+	return l.asyncCall(sector, func(ci storiface.CallID) {
+		_, done, err := (&localWorkerPathProvider{w: l, op: am}).AcquireSector(ctx, sector, fileType, stores.FTNone, ptype)
+		if err == nil {
+			done()
 		}
 
-		if err := l.storage.Remove(ctx, sector, stores.FTCache, true); err != nil {
-			return nil, xerrors.Errorf("cleaning up cache data: %w", err)
+		if err := l.ret.ReturnFetch(ctx, ci, errstr(err)); err != nil {
+			log.Errorf("ReturnFetch: %+v", err)
 		}
-	}
-
-	sb, err := l.sb()
-	if err != nil {
-		return nil, err
-	}
-
-	return sb.SealPreCommit1(ctx, sector, ticket, pieces)
+	})
 }
 
-func (l *LocalWorker) SealPreCommit2(ctx context.Context, sector abi.SectorID, phase1Out storage2.PreCommit1Out) (cids storage2.SectorCids, err error) {
-	sb, err := l.sb()
-	if err != nil {
-		return storage2.SectorCids{}, err
-	}
+func (l *LocalWorker) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, pieces []abi.PieceInfo) (storiface.CallID, error) {
+	return l.asyncCall(sector, func(ci storiface.CallID) {
+		var err error
+		var p1o storage2.PreCommit1Out
+		defer func() {
+			if err := l.ret.ReturnSealPreCommit1(ctx, ci, p1o, errstr(err)); err != nil {
+				log.Errorf("ReturnSealPreCommit1: %+v", err)
+			}
+		}()
 
-	return sb.SealPreCommit2(ctx, sector, phase1Out)
-}
+		{
+			// cleanup previous failed attempts if they exist
+			if err = l.storage.Remove(ctx, sector, stores.FTSealed, true); err != nil {
+				err = xerrors.Errorf("cleaning up sealed data: %w", err)
+				return
+			}
 
-func (l *LocalWorker) SealCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storage2.SectorCids) (output storage2.Commit1Out, err error) {
-	sb, err := l.sb()
-	if err != nil {
-		return nil, err
-	}
-
-	return sb.SealCommit1(ctx, sector, ticket, seed, pieces, cids)
-}
-
-func (l *LocalWorker) SealCommit2(ctx context.Context, sector abi.SectorID, phase1Out storage2.Commit1Out) (proof storage2.Proof, err error) {
-	sb, err := l.sb()
-	if err != nil {
-		return nil, err
-	}
-
-	return sb.SealCommit2(ctx, sector, phase1Out)
-}
-
-func (l *LocalWorker) FinalizeSector(ctx context.Context, sector abi.SectorID, keepUnsealed []storage2.Range) error {
-	sb, err := l.sb()
-	if err != nil {
-		return err
-	}
-
-	if err := sb.FinalizeSector(ctx, sector, keepUnsealed); err != nil {
-		return xerrors.Errorf("finalizing sector: %w", err)
-	}
-
-	if len(keepUnsealed) == 0 {
-		if err := l.storage.Remove(ctx, sector, stores.FTUnsealed, true); err != nil {
-			return xerrors.Errorf("removing unsealed data: %w", err)
+			if err = l.storage.Remove(ctx, sector, stores.FTCache, true); err != nil {
+				err = xerrors.Errorf("cleaning up cache data: %w", err)
+				return
+			}
 		}
-	}
 
-	return nil
+		var sb ffiwrapper.Storage
+		sb, err = l.sb()
+		if err != nil {
+			return
+		}
+
+		p1o, err = sb.SealPreCommit1(ctx, sector, ticket, pieces)
+	})
 }
 
-func (l *LocalWorker) ReleaseUnsealed(ctx context.Context, sector abi.SectorID, safeToFree []storage2.Range) error {
-	return xerrors.Errorf("implement me")
+func (l *LocalWorker) SealPreCommit2(ctx context.Context, sector abi.SectorID, phase1Out storage2.PreCommit1Out) (storiface.CallID, error) {
+	sb, err := l.sb()
+	if err != nil {
+		return storiface.UndefCall, err
+	}
+
+	return l.asyncCall(sector, func(ci storiface.CallID) {
+		cs, err := sb.SealPreCommit2(ctx, sector, phase1Out)
+
+		if err := l.ret.ReturnSealPreCommit2(ctx, ci, cs, errstr(err)); err != nil {
+			log.Errorf("ReturnSealPreCommit2: %+v", err)
+		}
+	})
+}
+
+func (l *LocalWorker) SealCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storage2.SectorCids) (storiface.CallID, error) {
+	sb, err := l.sb()
+	if err != nil {
+		return storiface.UndefCall, err
+	}
+
+	return l.asyncCall(sector, func(ci storiface.CallID) {
+		c1o, err := sb.SealCommit1(ctx, sector, ticket, seed, pieces, cids)
+
+		if err := l.ret.ReturnSealCommit1(ctx, ci, c1o, errstr(err)); err != nil {
+			log.Errorf("ReturnSealCommit1: %+v", err)
+		}
+	})
+}
+
+func (l *LocalWorker) SealCommit2(ctx context.Context, sector abi.SectorID, phase1Out storage2.Commit1Out) (storiface.CallID, error) {
+	sb, err := l.sb()
+	if err != nil {
+		return storiface.UndefCall, err
+	}
+
+	return l.asyncCall(sector, func(ci storiface.CallID) {
+		proof, err := sb.SealCommit2(ctx, sector, phase1Out)
+
+		if err := l.ret.ReturnSealCommit2(ctx, ci, proof, errstr(err)); err != nil {
+			log.Errorf("ReturnSealCommit2: %+v", err)
+		}
+	})
+}
+
+func (l *LocalWorker) FinalizeSector(ctx context.Context, sector abi.SectorID, keepUnsealed []storage2.Range) (storiface.CallID, error) {
+	sb, err := l.sb()
+	if err != nil {
+		return storiface.UndefCall, err
+	}
+
+	return l.asyncCall(sector, func(ci storiface.CallID) {
+		if err := sb.FinalizeSector(ctx, sector, keepUnsealed); err != nil {
+			if err := l.ret.ReturnFinalizeSector(ctx, ci, errstr(xerrors.Errorf("finalizing sector: %w", err))); err != nil {
+				log.Errorf("ReturnFinalizeSector: %+v", err)
+			}
+		}
+
+		if len(keepUnsealed) == 0 {
+			err = xerrors.Errorf("removing unsealed data: %w", err)
+			if err := l.ret.ReturnFinalizeSector(ctx, ci, errstr(err)); err != nil {
+				log.Errorf("ReturnFinalizeSector: %+v", err)
+			}
+		}
+
+		if err := l.ret.ReturnFinalizeSector(ctx, ci, errstr(err)); err != nil {
+			log.Errorf("ReturnFinalizeSector: %+v", err)
+		}
+	})
+}
+
+func (l *LocalWorker) ReleaseUnsealed(ctx context.Context, sector abi.SectorID, safeToFree []storage2.Range) (storiface.CallID, error) {
+	return storiface.UndefCall, xerrors.Errorf("implement me")
 }
 
 func (l *LocalWorker) Remove(ctx context.Context, sector abi.SectorID) error {
@@ -208,42 +277,60 @@ func (l *LocalWorker) Remove(ctx context.Context, sector abi.SectorID) error {
 	return err
 }
 
-func (l *LocalWorker) MoveStorage(ctx context.Context, sector abi.SectorID, types stores.SectorFileType) error {
-	if err := l.storage.MoveStorage(ctx, sector, l.scfg.SealProofType, types); err != nil {
-		return xerrors.Errorf("moving sealed data to storage: %w", err)
-	}
+func (l *LocalWorker) MoveStorage(ctx context.Context, sector abi.SectorID, types stores.SectorFileType) (storiface.CallID, error) {
+	return l.asyncCall(sector, func(ci storiface.CallID) {
+		err := l.storage.MoveStorage(ctx, sector, l.scfg.SealProofType, types)
 
-	return nil
+		if err := l.ret.ReturnMoveStorage(ctx, ci, errstr(err)); err != nil {
+			log.Errorf("ReturnMoveStorage: %+v", err)
+		}
+	})
 }
 
-func (l *LocalWorker) UnsealPiece(ctx context.Context, sector abi.SectorID, index storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, cid cid.Cid) error {
+func (l *LocalWorker) UnsealPiece(ctx context.Context, sector abi.SectorID, index storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, cid cid.Cid) (storiface.CallID, error) {
 	sb, err := l.sb()
 	if err != nil {
-		return err
+		return storiface.UndefCall, err
 	}
 
-	if err := sb.UnsealPiece(ctx, sector, index, size, randomness, cid); err != nil {
-		return xerrors.Errorf("unsealing sector: %w", err)
-	}
+	return l.asyncCall(sector, func(ci storiface.CallID) {
+		var err error
+		defer func() {
+			if err := l.ret.ReturnUnsealPiece(ctx, ci, errstr(err)); err != nil {
+				log.Errorf("ReturnUnsealPiece: %+v", err)
+			}
+		}()
 
-	if err := l.storage.RemoveCopies(ctx, sector, stores.FTSealed); err != nil {
-		return xerrors.Errorf("removing source data: %w", err)
-	}
+		if err = sb.UnsealPiece(ctx, sector, index, size, randomness, cid); err != nil {
+			err = xerrors.Errorf("unsealing sector: %w", err)
+			return
+		}
 
-	if err := l.storage.RemoveCopies(ctx, sector, stores.FTCache); err != nil {
-		return xerrors.Errorf("removing source data: %w", err)
-	}
+		if err = l.storage.RemoveCopies(ctx, sector, stores.FTSealed); err != nil {
+			err = xerrors.Errorf("removing source data: %w", err)
+			return
+		}
 
-	return nil
+		if err = l.storage.RemoveCopies(ctx, sector, stores.FTCache); err != nil {
+			err = xerrors.Errorf("removing source data: %w", err)
+			return
+		}
+	})
 }
 
-func (l *LocalWorker) ReadPiece(ctx context.Context, writer io.Writer, sector abi.SectorID, index storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (bool, error) {
+func (l *LocalWorker) ReadPiece(ctx context.Context, writer io.Writer, sector abi.SectorID, index storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (storiface.CallID, error) {
 	sb, err := l.sb()
 	if err != nil {
-		return false, err
+		return storiface.UndefCall, err
 	}
 
-	return sb.ReadPiece(ctx, writer, sector, index, size)
+	return l.asyncCall(sector, func(ci storiface.CallID) {
+		ok, err := sb.ReadPiece(ctx, writer, sector, index, size)
+
+		if err := l.ret.ReturnReadPiece(ctx, ci, ok, errstr(err)); err != nil {
+			log.Errorf("ReturnReadPiece: %+v", err)
+		}
+	})
 }
 
 func (l *LocalWorker) TaskTypes(context.Context) (map[sealtasks.TaskType]struct{}, error) {

@@ -270,6 +270,18 @@ type StorageMinerStruct struct {
 		WorkerStats   func(context.Context) (map[uint64]storiface.WorkerStats, error) `perm:"admin"`
 		WorkerJobs    func(context.Context) (map[uint64][]storiface.WorkerJob, error) `perm:"admin"`
 
+		ReturnAddPiece        func(ctx context.Context, callID storiface.CallID, pi abi.PieceInfo, err string) error          `perm:"admin"`
+		ReturnSealPreCommit1  func(ctx context.Context, callID storiface.CallID, p1o storage.PreCommit1Out, err string) error `perm:"admin"`
+		ReturnSealPreCommit2  func(ctx context.Context, callID storiface.CallID, sealed storage.SectorCids, err string) error `perm:"admin"`
+		ReturnSealCommit1     func(ctx context.Context, callID storiface.CallID, out storage.Commit1Out, err string) error    `perm:"admin"`
+		ReturnSealCommit2     func(ctx context.Context, callID storiface.CallID, proof storage.Proof, err string) error       `perm:"admin"`
+		ReturnFinalizeSector  func(ctx context.Context, callID storiface.CallID, err string) error                            `perm:"admin"`
+		ReturnReleaseUnsealed func(ctx context.Context, callID storiface.CallID, err string) error                            `perm:"admin"`
+		ReturnMoveStorage     func(ctx context.Context, callID storiface.CallID, err string) error                            `perm:"admin"`
+		ReturnUnsealPiece     func(ctx context.Context, callID storiface.CallID, err string) error                            `perm:"admin"`
+		ReturnReadPiece       func(ctx context.Context, callID storiface.CallID, ok bool, err string) error                   `perm:"admin"`
+		ReturnFetch           func(ctx context.Context, callID storiface.CallID, err string) error                            `perm:"admin"`
+
 		SealingSchedDiag func(context.Context) (interface{}, error) `perm:"admin"`
 
 		StorageList          func(context.Context) (map[stores.ID][]stores.Decl, error)                                                                                    `perm:"admin"`
@@ -317,21 +329,21 @@ type WorkerStruct struct {
 		Paths     func(context.Context) ([]stores.StoragePath, error)            `perm:"admin"`
 		Info      func(context.Context) (storiface.WorkerInfo, error)            `perm:"admin"`
 
-		AddPiece        func(ctx context.Context, sector abi.SectorID, pieceSizes []abi.UnpaddedPieceSize, newPieceSize abi.UnpaddedPieceSize, pieceData storage.Data) (abi.PieceInfo, error)                      `perm:"admin"`
-		SealPreCommit1  func(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, pieces []abi.PieceInfo) (storage.PreCommit1Out, error)                                                           `perm:"admin"`
-		SealPreCommit2  func(context.Context, abi.SectorID, storage.PreCommit1Out) (cids storage.SectorCids, err error)                                                                                            `perm:"admin"`
-		SealCommit1     func(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storage.SectorCids) (storage.Commit1Out, error) `perm:"admin"`
-		SealCommit2     func(context.Context, abi.SectorID, storage.Commit1Out) (storage.Proof, error)                                                                                                             `perm:"admin"`
-		FinalizeSector  func(context.Context, abi.SectorID, []storage.Range) error                                                                                                                                 `perm:"admin"`
-		ReleaseUnsealed func(ctx context.Context, sector abi.SectorID, safeToFree []storage.Range) error                                                                                                           `perm:"admin"`
-		Remove          func(ctx context.Context, sector abi.SectorID) error                                                                                                                                       `perm:"admin"`
-		MoveStorage     func(ctx context.Context, sector abi.SectorID, types stores.SectorFileType) error                                                                                                          `perm:"admin"`
-		StorageAddLocal func(ctx context.Context, path string) error                                                                                                                                               `perm:"admin"`
+		AddPiece              func(ctx context.Context, sector abi.SectorID, pieceSizes []abi.UnpaddedPieceSize, newPieceSize abi.UnpaddedPieceSize, pieceData storage.Data) (storiface.CallID, error)                 `perm:"admin"`
+		SealPreCommit1        func(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, pieces []abi.PieceInfo) (storiface.CallID, error)                                                              `perm:"admin"`
+		SealPreCommit2        func(ctx context.Context, sector abi.SectorID, pc1o storage.PreCommit1Out) (storiface.CallID, error)                                                                                     `perm:"admin"`
+		SealCommit1           func(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storage.SectorCids) (storiface.CallID, error) `perm:"admin"`
+		SealCommit2           func(ctx context.Context, sector abi.SectorID, c1o storage.Commit1Out) (storiface.CallID, error)                                                                                         `perm:"admin"`
+		FinalizeSector        func(ctx context.Context, sector abi.SectorID, keepUnsealed []storage.Range) (storiface.CallID, error)                                                                                   `perm:"admin"`
+		ReleaseUnsealed       func(ctx context.Context, sector abi.SectorID, safeToFree []storage.Range) (storiface.CallID, error)                                                                                     `perm:"admin"`
+		MoveStorage           func(ctx context.Context, sector abi.SectorID, types stores.SectorFileType) (storiface.CallID, error)                                                                                    `perm:"admin"`
+		UnsealPiece           func(context.Context, abi.SectorID, storiface.UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) (storiface.CallID, error)                                           `perm:"admin"`
+		ReadPiece             func(context.Context, io.Writer, abi.SectorID, storiface.UnpaddedByteIndex, abi.UnpaddedPieceSize) (storiface.CallID, error)                                                             `perm:"admin"`
+		Fetch func(context.Context, abi.SectorID, stores.SectorFileType, stores.PathType, stores.AcquireMode) (storiface.CallID, error)                                                                                `perm:"admin"`
 
-		UnsealPiece func(context.Context, abi.SectorID, storiface.UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) error `perm:"admin"`
-		ReadPiece   func(context.Context, io.Writer, abi.SectorID, storiface.UnpaddedByteIndex, abi.UnpaddedPieceSize) (bool, error)           `perm:"admin"`
+		Remove          func(ctx context.Context, sector abi.SectorID) error `perm:"admin"`
+		StorageAddLocal func(ctx context.Context, path string) error         `perm:"admin"`
 
-		Fetch func(context.Context, abi.SectorID, stores.SectorFileType, stores.PathType, stores.AcquireMode) error `perm:"admin"`
 
 		Closing func(context.Context) (<-chan struct{}, error) `perm:"admin"`
 	}
@@ -1038,6 +1050,50 @@ func (c *StorageMinerStruct) WorkerJobs(ctx context.Context) (map[uint64][]stori
 	return c.Internal.WorkerJobs(ctx)
 }
 
+func (c *StorageMinerStruct) ReturnAddPiece(ctx context.Context, callID storiface.CallID, pi abi.PieceInfo, err string) error {
+	return c.Internal.ReturnAddPiece(ctx, callID, pi, err)
+}
+
+func (c *StorageMinerStruct) ReturnSealPreCommit1(ctx context.Context, callID storiface.CallID, p1o storage.PreCommit1Out, err string) error {
+	return c.Internal.ReturnSealPreCommit1(ctx, callID, p1o, err)
+}
+
+func (c *StorageMinerStruct) ReturnSealPreCommit2(ctx context.Context, callID storiface.CallID, sealed storage.SectorCids, err string) error {
+	return c.Internal.ReturnSealPreCommit2(ctx, callID, sealed, err)
+}
+
+func (c *StorageMinerStruct) ReturnSealCommit1(ctx context.Context, callID storiface.CallID, out storage.Commit1Out, err string) error {
+	return c.Internal.ReturnSealCommit1(ctx, callID, out, err)
+}
+
+func (c *StorageMinerStruct) ReturnSealCommit2(ctx context.Context, callID storiface.CallID, proof storage.Proof, err string) error {
+	return c.Internal.ReturnSealCommit2(ctx, callID, proof, err)
+}
+
+func (c *StorageMinerStruct) ReturnFinalizeSector(ctx context.Context, callID storiface.CallID, err string) error {
+	return c.Internal.ReturnFinalizeSector(ctx, callID, err)
+}
+
+func (c *StorageMinerStruct) ReturnReleaseUnsealed(ctx context.Context, callID storiface.CallID, err string) error {
+	return c.Internal.ReturnReleaseUnsealed(ctx, callID, err)
+}
+
+func (c *StorageMinerStruct) ReturnMoveStorage(ctx context.Context, callID storiface.CallID, err string) error {
+	return c.Internal.ReturnMoveStorage(ctx, callID, err)
+}
+
+func (c *StorageMinerStruct) ReturnUnsealPiece(ctx context.Context, callID storiface.CallID, err string) error {
+	return c.Internal.ReturnUnsealPiece(ctx, callID, err)
+}
+
+func (c *StorageMinerStruct) ReturnReadPiece(ctx context.Context, callID storiface.CallID, ok bool, err string) error {
+	return c.Internal.ReturnReadPiece(ctx, callID, ok, err)
+}
+
+func (c *StorageMinerStruct) ReturnFetch(ctx context.Context, callID storiface.CallID, err string) error {
+	return c.Internal.ReturnFetch(ctx, callID, err)
+}
+
 func (c *StorageMinerStruct) SealingSchedDiag(ctx context.Context) (interface{}, error) {
 	return c.Internal.SealingSchedDiag(ctx)
 }
@@ -1220,56 +1276,56 @@ func (w *WorkerStruct) Info(ctx context.Context) (storiface.WorkerInfo, error) {
 	return w.Internal.Info(ctx)
 }
 
-func (w *WorkerStruct) AddPiece(ctx context.Context, sector abi.SectorID, pieceSizes []abi.UnpaddedPieceSize, newPieceSize abi.UnpaddedPieceSize, pieceData storage.Data) (abi.PieceInfo, error) {
+func (w *WorkerStruct) AddPiece(ctx context.Context, sector abi.SectorID, pieceSizes []abi.UnpaddedPieceSize, newPieceSize abi.UnpaddedPieceSize, pieceData storage.Data) (storiface.CallID, error) {
 	return w.Internal.AddPiece(ctx, sector, pieceSizes, newPieceSize, pieceData)
 }
 
-func (w *WorkerStruct) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, pieces []abi.PieceInfo) (storage.PreCommit1Out, error) {
+func (w *WorkerStruct) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, pieces []abi.PieceInfo) (storiface.CallID, error) {
 	return w.Internal.SealPreCommit1(ctx, sector, ticket, pieces)
 }
 
-func (w *WorkerStruct) SealPreCommit2(ctx context.Context, sector abi.SectorID, p1o storage.PreCommit1Out) (storage.SectorCids, error) {
-	return w.Internal.SealPreCommit2(ctx, sector, p1o)
+func (w *WorkerStruct) SealPreCommit2(ctx context.Context, sector abi.SectorID, pc1o storage.PreCommit1Out) (storiface.CallID, error) {
+	return w.Internal.SealPreCommit2(ctx, sector, pc1o)
 }
 
-func (w *WorkerStruct) SealCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storage.SectorCids) (storage.Commit1Out, error) {
+func (w *WorkerStruct) SealCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storage.SectorCids) (storiface.CallID, error) {
 	return w.Internal.SealCommit1(ctx, sector, ticket, seed, pieces, cids)
 }
 
-func (w *WorkerStruct) SealCommit2(ctx context.Context, sector abi.SectorID, c1o storage.Commit1Out) (storage.Proof, error) {
+func (w *WorkerStruct) SealCommit2(ctx context.Context, sector abi.SectorID, c1o storage.Commit1Out) (storiface.CallID, error) {
 	return w.Internal.SealCommit2(ctx, sector, c1o)
 }
 
-func (w *WorkerStruct) FinalizeSector(ctx context.Context, sector abi.SectorID, keepUnsealed []storage.Range) error {
+func (w *WorkerStruct) FinalizeSector(ctx context.Context, sector abi.SectorID, keepUnsealed []storage.Range) (storiface.CallID, error) {
 	return w.Internal.FinalizeSector(ctx, sector, keepUnsealed)
 }
 
-func (w *WorkerStruct) ReleaseUnsealed(ctx context.Context, sector abi.SectorID, safeToFree []storage.Range) error {
+func (w *WorkerStruct) ReleaseUnsealed(ctx context.Context, sector abi.SectorID, safeToFree []storage.Range) (storiface.CallID, error) {
 	return w.Internal.ReleaseUnsealed(ctx, sector, safeToFree)
+}
+
+func (w *WorkerStruct) MoveStorage(ctx context.Context, sector abi.SectorID, types stores.SectorFileType) (storiface.CallID, error) {
+	return w.Internal.MoveStorage(ctx, sector, types)
+}
+
+func (w *WorkerStruct) UnsealPiece(ctx context.Context, sector abi.SectorID, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, c cid.Cid) (storiface.CallID, error) {
+	return w.Internal.UnsealPiece(ctx, sector, offset, size, ticket, c)
+}
+
+func (w *WorkerStruct) ReadPiece(ctx context.Context, sink io.Writer, sector abi.SectorID, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (storiface.CallID, error) {
+	return w.Internal.ReadPiece(ctx, sink, sector, offset, size)
+}
+
+func (w *WorkerStruct) Fetch(ctx context.Context, id abi.SectorID, fileType stores.SectorFileType, ptype stores.PathType, am stores.AcquireMode) (storiface.CallID, error) {
+	return w.Internal.Fetch(ctx, id, fileType, ptype, am)
 }
 
 func (w *WorkerStruct) Remove(ctx context.Context, sector abi.SectorID) error {
 	return w.Internal.Remove(ctx, sector)
 }
 
-func (w *WorkerStruct) MoveStorage(ctx context.Context, sector abi.SectorID, types stores.SectorFileType) error {
-	return w.Internal.MoveStorage(ctx, sector, types)
-}
-
 func (w *WorkerStruct) StorageAddLocal(ctx context.Context, path string) error {
 	return w.Internal.StorageAddLocal(ctx, path)
-}
-
-func (w *WorkerStruct) UnsealPiece(ctx context.Context, id abi.SectorID, index storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, c cid.Cid) error {
-	return w.Internal.UnsealPiece(ctx, id, index, size, randomness, c)
-}
-
-func (w *WorkerStruct) ReadPiece(ctx context.Context, writer io.Writer, id abi.SectorID, index storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (bool, error) {
-	return w.Internal.ReadPiece(ctx, writer, id, index, size)
-}
-
-func (w *WorkerStruct) Fetch(ctx context.Context, id abi.SectorID, fileType stores.SectorFileType, ptype stores.PathType, am stores.AcquireMode) error {
-	return w.Internal.Fetch(ctx, id, fileType, ptype, am)
 }
 
 func (w *WorkerStruct) Closing(ctx context.Context) (<-chan struct{}, error) {

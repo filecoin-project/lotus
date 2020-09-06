@@ -64,6 +64,7 @@ type StorageMiner interface {
 	WorkerConnect(context.Context, string) error
 	WorkerStats(context.Context) (map[uint64]storiface.WorkerStats, error)
 	WorkerJobs(context.Context) (map[uint64][]storiface.WorkerJob, error)
+	storiface.WorkerReturn
 
 	// SealingSchedDiag dumps internal sealing scheduler state
 	SealingSchedDiag(context.Context) (interface{}, error)

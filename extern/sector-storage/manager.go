@@ -29,13 +29,7 @@ var ErrNoWorkers = errors.New("no suitable workers found")
 type URLs []string
 
 type Worker interface {
-	ffiwrapper.StorageSealer
-
-	MoveStorage(ctx context.Context, sector abi.SectorID, types stores.SectorFileType) error
-
-	Fetch(ctx context.Context, s abi.SectorID, ft stores.SectorFileType, ptype stores.PathType, am stores.AcquireMode) error
-	UnsealPiece(context.Context, abi.SectorID, storiface.UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) error
-	ReadPiece(context.Context, io.Writer, abi.SectorID, storiface.UnpaddedByteIndex, abi.UnpaddedPieceSize) (bool, error)
+	storiface.WorkerCalls
 
 	TaskTypes(context.Context) (map[sealtasks.TaskType]struct{}, error)
 
