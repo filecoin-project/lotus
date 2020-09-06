@@ -40,6 +40,7 @@ var multisigCmd = &cli.Command{
 		msigSwapProposeCmd,
 		msigSwapApproveCmd,
 		msigSwapCancelCmd,
+		msigVestedCmd,
 	},
 }
 
@@ -732,6 +733,68 @@ var msigSwapCancelCmd = &cli.Command{
 		if wait.Receipt.ExitCode != 0 {
 			return fmt.Errorf("swap approval returned exit %d", wait.Receipt.ExitCode)
 		}
+
+		return nil
+	},
+}
+
+var msigVestedCmd = &cli.Command{
+	Name:      "vested",
+	Usage:     "Gets the amount vested in an msig between two epochs",
+	ArgsUsage: "[multisigAddress]",
+	Flags: []cli.Flag{
+		&cli.Int64Flag{
+			Name:  "start-epoch",
+			Usage: "start epoch to measure vesting from",
+			Value: 0,
+		},
+		&cli.Int64Flag{
+			Name:  "end-epoch",
+			Usage: "end epoch to stop measure vesting at",
+			Value: -1,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() != 1 {
+			return ShowHelp(cctx, fmt.Errorf("must pass multisig address"))
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		msig, err := address.NewFromString(cctx.Args().Get(0))
+		if err != nil {
+			return err
+		}
+
+		start, err := api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(cctx.Int64("start-epoch")), types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		var end *types.TipSet
+		if cctx.Int64("end-epoch") < 0 {
+			end, err = LoadTipSet(ctx, cctx, api)
+			if err != nil {
+				return err
+			}
+		} else {
+			end, err = api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(cctx.Int64("end-epoch")), types.EmptyTSK)
+			if err != nil {
+				return err
+			}
+		}
+
+		ret, err := api.MsigGetVested(ctx, msig, start.Key(), end.Key())
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Vested: %s between %d and %d\n", types.FIL(ret), start.Height(), end.Height())
 
 		return nil
 	},

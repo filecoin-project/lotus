@@ -886,6 +886,48 @@ func (a *StateAPI) MsigGetAvailableBalance(ctx context.Context, addr address.Add
 	return types.BigSub(act.Balance, minBalance), nil
 }
 
+func (a *StateAPI) MsigGetVested(ctx context.Context, addr address.Address, start types.TipSetKey, end types.TipSetKey) (types.BigInt, error) {
+	startTs, err := a.Chain.GetTipSetFromKey(start)
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("loading start tipset %s: %w", start, err)
+	}
+
+	endTs, err := a.Chain.GetTipSetFromKey(end)
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("loading end tipset %s: %w", end, err)
+	}
+
+	if startTs.Height() > endTs.Height() {
+		return types.EmptyInt, xerrors.Errorf("start tipset %d is after end tipset %d", startTs.Height(), endTs.Height())
+	} else if startTs.Height() == endTs.Height() {
+		return big.Zero(), nil
+	}
+
+	var mst samsig.State
+	act, err := a.StateManager.LoadActorState(ctx, addr, &mst, endTs)
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("failed to load multisig actor state at end epoch: %w", err)
+	}
+
+	if act.Code != builtin.MultisigActorCodeID {
+		return types.EmptyInt, fmt.Errorf("given actor was not a multisig")
+	}
+
+	if mst.UnlockDuration == 0 ||
+		mst.InitialBalance.IsZero() ||
+		mst.StartEpoch+mst.UnlockDuration <= startTs.Height() ||
+		mst.StartEpoch >= endTs.Height() {
+		return big.Zero(), nil
+	}
+
+	startLk := mst.InitialBalance
+	if startTs.Height() > mst.StartEpoch {
+		startLk = mst.AmountLocked(startTs.Height() - mst.StartEpoch)
+	}
+
+	return big.Sub(startLk, mst.AmountLocked(endTs.Height()-mst.StartEpoch)), nil
+}
+
 var initialPledgeNum = types.NewInt(110)
 var initialPledgeDen = types.NewInt(100)
 
