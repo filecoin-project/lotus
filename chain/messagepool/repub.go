@@ -16,7 +16,7 @@ import (
 
 const repubMsgLimit = 30
 
-var RepublishBatchDelay = 200 * time.Millisecond
+var RepublishBatchDelay = 100 * time.Millisecond
 
 func (mp *MessagePool) republishPendingMessages() error {
 	mp.curTsLk.Lock()
@@ -27,6 +27,7 @@ func (mp *MessagePool) republishPendingMessages() error {
 		mp.curTsLk.Unlock()
 		return xerrors.Errorf("computing basefee: %w", err)
 	}
+	baseFeeLowerBound := types.BigDiv(baseFee, baseFeeLowerBoundFactor)
 
 	pending := make(map[address.Address]map[uint64]*types.SignedMessage)
 	mp.lk.Lock()
@@ -70,6 +71,7 @@ func (mp *MessagePool) republishPendingMessages() error {
 	gasLimit := int64(build.BlockGasLimit)
 	minGas := int64(gasguess.MinGas)
 	var msgs []*types.SignedMessage
+loop:
 	for i := 0; i < len(chains); {
 		chain := chains[i]
 
@@ -91,8 +93,18 @@ func (mp *MessagePool) republishPendingMessages() error {
 
 		// does it fit in a block?
 		if chain.gasLimit <= gasLimit {
-			gasLimit -= chain.gasLimit
-			msgs = append(msgs, chain.msgs...)
+			// check the baseFee lower bound -- only republish messages that can be included in the chain
+			// within the next 20 blocks.
+			for _, m := range chain.msgs {
+				if m.Message.GasFeeCap.LessThan(baseFeeLowerBound) {
+					chain.Invalidate()
+					continue loop
+				}
+				gasLimit -= m.Message.GasLimit
+				msgs = append(msgs, m)
+			}
+
+			// we processed the whole chain, advance
 			i++
 			continue
 		}
