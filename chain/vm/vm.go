@@ -131,6 +131,9 @@ func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, origin addres
 		rt.Abortf(exitcode.SysErrInvalidReceiver, "resolve msg.From address failed")
 	}
 	vmm.From = resF
+	resT, _ := rt.ResolveAddress(msg.To)
+	// may be set to undef if recipient doesn't exist yet
+	vmm.To = resT
 	rt.Message = vmm
 
 	return rt
@@ -257,11 +260,18 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 		toActor, err := st.GetActor(msg.To)
 		if err != nil {
 			if xerrors.Is(err, types.ErrActorNotFound) {
-				a, err := TryCreateAccountActor(rt, msg.To)
+				a, aid, err := TryCreateAccountActor(rt, msg.To)
 				if err != nil {
 					return nil, aerrors.Wrapf(err, "could not create account")
 				}
 				toActor = a
+				nmsg := types.Message{
+					To:    aid,
+					From:  rt.vmsg.Caller(),
+					Value: rt.vmsg.ValueReceived(),
+				}
+
+				rt.vmsg = &nmsg
 			} else {
 				return nil, aerrors.Escalate(err, "getting actor")
 			}
