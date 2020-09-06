@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -28,7 +29,6 @@ import (
 	ffi "github.com/filecoin-project/filecoin-ffi"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper/basicfs"
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 )
 
 func init() {
@@ -123,7 +123,7 @@ func (s *seal) unseal(t *testing.T, sb *Sealer, sp *basicfs.Provider, si abi.Sec
 		t.Fatal("read wrong bytes")
 	}
 
-	p, sd, err := sp.AcquireSector(context.TODO(), si, stores.FTUnsealed, stores.FTNone, stores.PathStorage)
+	p, sd, err := sp.AcquireSector(context.TODO(), si, storiface.FTUnsealed, storiface.FTNone, storiface.PathStorage)
 	if err != nil {
 		t.Fatal(err)
 	}

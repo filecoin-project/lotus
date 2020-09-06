@@ -3,12 +3,12 @@ package sectorstorage
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"os"
 	"path/filepath"
 
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
@@ -32,7 +32,7 @@ func (m *Manager) CheckProvable(ctx context.Context, spt abi.RegisteredSealProof
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 
-			locked, err := m.index.StorageTryLock(ctx, sector, stores.FTSealed|stores.FTCache, stores.FTNone)
+			locked, err := m.index.StorageTryLock(ctx, sector, storiface.FTSealed|storiface.FTCache, storiface.FTNone)
 			if err != nil {
 				return xerrors.Errorf("acquiring sector lock: %w", err)
 			}
@@ -43,7 +43,7 @@ func (m *Manager) CheckProvable(ctx context.Context, spt abi.RegisteredSealProof
 				return nil
 			}
 
-			lp, _, err := m.localStore.AcquireSector(ctx, sector, spt, stores.FTSealed|stores.FTCache, stores.FTNone, stores.PathStorage, stores.AcquireMove)
+			lp, _, err := m.localStore.AcquireSector(ctx, sector, spt, storiface.FTSealed|storiface.FTCache, storiface.FTNone, storiface.PathStorage, storiface.AcquireMove)
 			if err != nil {
 				log.Warnw("CheckProvable Sector FAULT: acquire sector in checkProvable", "sector", sector, "error", err)
 				bad = append(bad, sector)

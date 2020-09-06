@@ -1,4 +1,4 @@
-package stores
+package storiface
 
 import (
 	"fmt"
@@ -15,6 +15,8 @@ const (
 
 	FileTypes = iota
 )
+
+var PathTypes = []SectorFileType{FTUnsealed, FTSealed, FTCache}
 
 const (
 	FTNone SectorFileType = 0

@@ -2,6 +2,7 @@ package sectorstorage
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 
 	"golang.org/x/xerrors"
 
@@ -13,11 +14,11 @@ import (
 
 type allocSelector struct {
 	index stores.SectorIndex
-	alloc stores.SectorFileType
-	ptype stores.PathType
+	alloc storiface.SectorFileType
+	ptype storiface.PathType
 }
 
-func newAllocSelector(index stores.SectorIndex, alloc stores.SectorFileType, ptype stores.PathType) *allocSelector {
+func newAllocSelector(index stores.SectorIndex, alloc storiface.SectorFileType, ptype storiface.PathType) *allocSelector {
 	return &allocSelector{
 		index: index,
 		alloc: alloc,

@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -294,17 +295,17 @@ var storageFindCmd = &cli.Command{
 			Number: abi.SectorNumber(snum),
 		}
 
-		u, err := nodeApi.StorageFindSector(ctx, sid, stores.FTUnsealed, 0, false)
+		u, err := nodeApi.StorageFindSector(ctx, sid, storiface.FTUnsealed, 0, false)
 		if err != nil {
 			return xerrors.Errorf("finding unsealed: %w", err)
 		}
 
-		s, err := nodeApi.StorageFindSector(ctx, sid, stores.FTSealed, 0, false)
+		s, err := nodeApi.StorageFindSector(ctx, sid, storiface.FTSealed, 0, false)
 		if err != nil {
 			return xerrors.Errorf("finding sealed: %w", err)
 		}
 
-		c, err := nodeApi.StorageFindSector(ctx, sid, stores.FTCache, 0, false)
+		c, err := nodeApi.StorageFindSector(ctx, sid, storiface.FTCache, 0, false)
 		if err != nil {
 			return xerrors.Errorf("finding cache: %w", err)
 		}

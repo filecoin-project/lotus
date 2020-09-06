@@ -2,6 +2,7 @@ package stores
 
 import (
 	"encoding/json"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"io"
 	"net/http"
 	"os"
@@ -55,7 +56,7 @@ func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Requ
 	log.Infof("SERVE GET %s", r.URL)
 	vars := mux.Vars(r)
 
-	id, err := ParseSectorID(vars["id"])
+	id, err := storiface.ParseSectorID(vars["id"])
 	if err != nil {
 		log.Error("%+v", err)
 		w.WriteHeader(500)
@@ -72,7 +73,7 @@ func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Requ
 	// The caller has a lock on this sector already, no need to get one here
 
 	// passing 0 spt because we don't allocate anything
-	paths, _, err := handler.Local.AcquireSector(r.Context(), id, 0, ft, FTNone, PathStorage, AcquireMove)
+	paths, _, err := handler.Local.AcquireSector(r.Context(), id, 0, ft, storiface.FTNone, storiface.PathStorage, storiface.AcquireMove)
 	if err != nil {
 		log.Error("%+v", err)
 		w.WriteHeader(500)
@@ -81,7 +82,7 @@ func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Requ
 
 	// TODO: reserve local storage here
 
-	path := PathByType(paths, ft)
+	path := storiface.PathByType(paths, ft)
 	if path == "" {
 		log.Error("acquired path was empty")
 		w.WriteHeader(500)
@@ -120,7 +121,7 @@ func (handler *FetchHandler) remoteDeleteSector(w http.ResponseWriter, r *http.R
 	log.Infof("SERVE DELETE %s", r.URL)
 	vars := mux.Vars(r)
 
-	id, err := ParseSectorID(vars["id"])
+	id, err := storiface.ParseSectorID(vars["id"])
 	if err != nil {
 		log.Error("%+v", err)
 		w.WriteHeader(500)
@@ -141,14 +142,14 @@ func (handler *FetchHandler) remoteDeleteSector(w http.ResponseWriter, r *http.R
 	}
 }
 
-func ftFromString(t string) (SectorFileType, error) {
+func ftFromString(t string) (storiface.SectorFileType, error) {
 	switch t {
-	case FTUnsealed.String():
-		return FTUnsealed, nil
-	case FTSealed.String():
-		return FTSealed, nil
-	case FTCache.String():
-		return FTCache, nil
+	case storiface.FTUnsealed.String():
+		return storiface.FTUnsealed, nil
+	case storiface.FTSealed.String():
+		return storiface.FTSealed, nil
+	case storiface.FTCache.String():
+		return storiface.FTCache, nil
 	default:
 		return 0, xerrors.Errorf("unknown sector file type: '%s'", t)
 	}

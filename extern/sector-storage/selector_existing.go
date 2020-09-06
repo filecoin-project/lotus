@@ -2,6 +2,7 @@ package sectorstorage
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 
 	"golang.org/x/xerrors"
 
@@ -14,11 +15,11 @@ import (
 type existingSelector struct {
 	index      stores.SectorIndex
 	sector     abi.SectorID
-	alloc      stores.SectorFileType
+	alloc      storiface.SectorFileType
 	allowFetch bool
 }
 
-func newExistingSelector(index stores.SectorIndex, sector abi.SectorID, alloc stores.SectorFileType, allowFetch bool) *existingSelector {
+func newExistingSelector(index stores.SectorIndex, sector abi.SectorID, alloc storiface.SectorFileType, allowFetch bool) *existingSelector {
 	return &existingSelector{
 		index:      index,
 		sector:     sector,

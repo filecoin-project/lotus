@@ -85,11 +85,11 @@ func (t *testWorker) Remove(ctx context.Context, sector abi.SectorID) error {
 	panic("implement me")
 }
 
-func (t *testWorker) MoveStorage(ctx context.Context, sector abi.SectorID, types stores.SectorFileType) error {
+func (t *testWorker) MoveStorage(ctx context.Context, sector abi.SectorID, types storiface.SectorFileType) error {
 	panic("implement me")
 }
 
-func (t *testWorker) Fetch(ctx context.Context, id abi.SectorID, fileType stores.SectorFileType, ptype stores.PathType, am stores.AcquireMode) error {
+func (t *testWorker) Fetch(ctx context.Context, id abi.SectorID, fileType storiface.SectorFileType, ptype storiface.PathType, am storiface.AcquireMode) error {
 	return nil
 }
 

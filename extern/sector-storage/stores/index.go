@@ -2,6 +2,7 @@ package stores
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"net/url"
 	gopath "path"
 	"sort"
@@ -53,20 +54,20 @@ type SectorIndex interface { // part of storage-miner api
 	StorageInfo(context.Context, ID) (StorageInfo, error)
 	StorageReportHealth(context.Context, ID, HealthReport) error
 
-	StorageDeclareSector(ctx context.Context, storageID ID, s abi.SectorID, ft SectorFileType, primary bool) error
-	StorageDropSector(ctx context.Context, storageID ID, s abi.SectorID, ft SectorFileType) error
-	StorageFindSector(ctx context.Context, sector abi.SectorID, ft SectorFileType, spt abi.RegisteredSealProof, allowFetch bool) ([]SectorStorageInfo, error)
+	StorageDeclareSector(ctx context.Context, storageID ID, s abi.SectorID, ft storiface.SectorFileType, primary bool) error
+	StorageDropSector(ctx context.Context, storageID ID, s abi.SectorID, ft storiface.SectorFileType) error
+	StorageFindSector(ctx context.Context, sector abi.SectorID, ft storiface.SectorFileType, spt abi.RegisteredSealProof, allowFetch bool) ([]SectorStorageInfo, error)
 
-	StorageBestAlloc(ctx context.Context, allocate SectorFileType, spt abi.RegisteredSealProof, pathType PathType) ([]StorageInfo, error)
+	StorageBestAlloc(ctx context.Context, allocate storiface.SectorFileType, spt abi.RegisteredSealProof, pathType storiface.PathType) ([]StorageInfo, error)
 
 	// atomically acquire locks on all sector file types. close ctx to unlock
-	StorageLock(ctx context.Context, sector abi.SectorID, read SectorFileType, write SectorFileType) error
-	StorageTryLock(ctx context.Context, sector abi.SectorID, read SectorFileType, write SectorFileType) (bool, error)
+	StorageLock(ctx context.Context, sector abi.SectorID, read storiface.SectorFileType, write storiface.SectorFileType) error
+	StorageTryLock(ctx context.Context, sector abi.SectorID, read storiface.SectorFileType, write storiface.SectorFileType) (bool, error)
 }
 
 type Decl struct {
 	abi.SectorID
-	SectorFileType
+	storiface.SectorFileType
 }
 
 type declMeta struct {
@@ -104,10 +105,10 @@ func (i *Index) StorageList(ctx context.Context) (map[ID][]Decl, error) {
 	i.lk.RLock()
 	defer i.lk.RUnlock()
 
-	byID := map[ID]map[abi.SectorID]SectorFileType{}
+	byID := map[ID]map[abi.SectorID]storiface.SectorFileType{}
 
 	for id := range i.stores {
-		byID[id] = map[abi.SectorID]SectorFileType{}
+		byID[id] = map[abi.SectorID]storiface.SectorFileType{}
 	}
 	for decl, ids := range i.sectors {
 		for _, id := range ids {
@@ -180,12 +181,12 @@ func (i *Index) StorageReportHealth(ctx context.Context, id ID, report HealthRep
 	return nil
 }
 
-func (i *Index) StorageDeclareSector(ctx context.Context, storageID ID, s abi.SectorID, ft SectorFileType, primary bool) error {
+func (i *Index) StorageDeclareSector(ctx context.Context, storageID ID, s abi.SectorID, ft storiface.SectorFileType, primary bool) error {
 	i.lk.Lock()
 	defer i.lk.Unlock()
 
 loop:
-	for _, fileType := range PathTypes {
+	for _, fileType := range storiface.PathTypes {
 		if fileType&ft == 0 {
 			continue
 		}
@@ -212,11 +213,11 @@ loop:
 	return nil
 }
 
-func (i *Index) StorageDropSector(ctx context.Context, storageID ID, s abi.SectorID, ft SectorFileType) error {
+func (i *Index) StorageDropSector(ctx context.Context, storageID ID, s abi.SectorID, ft storiface.SectorFileType) error {
 	i.lk.Lock()
 	defer i.lk.Unlock()
 
-	for _, fileType := range PathTypes {
+	for _, fileType := range storiface.PathTypes {
 		if fileType&ft == 0 {
 			continue
 		}
@@ -246,14 +247,14 @@ func (i *Index) StorageDropSector(ctx context.Context, storageID ID, s abi.Secto
 	return nil
 }
 
-func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft SectorFileType, spt abi.RegisteredSealProof, allowFetch bool) ([]SectorStorageInfo, error) {
+func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft storiface.SectorFileType, spt abi.RegisteredSealProof, allowFetch bool) ([]SectorStorageInfo, error) {
 	i.lk.RLock()
 	defer i.lk.RUnlock()
 
 	storageIDs := map[ID]uint64{}
 	isprimary := map[ID]bool{}
 
-	for _, pathType := range PathTypes {
+	for _, pathType := range storiface.PathTypes {
 		if ft&pathType == 0 {
 			continue
 		}
@@ -280,7 +281,7 @@ func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft Sector
 				return nil, xerrors.Errorf("failed to parse url: %w", err)
 			}
 
-			rl.Path = gopath.Join(rl.Path, ft.String(), SectorName(s))
+			rl.Path = gopath.Join(rl.Path, ft.String(), storiface.SectorName(s))
 			urls[k] = rl.String()
 		}
 
@@ -333,7 +334,7 @@ func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft Sector
 					return nil, xerrors.Errorf("failed to parse url: %w", err)
 				}
 
-				rl.Path = gopath.Join(rl.Path, ft.String(), SectorName(s))
+				rl.Path = gopath.Join(rl.Path, ft.String(), storiface.SectorName(s))
 				urls[k] = rl.String()
 			}
 
@@ -365,7 +366,7 @@ func (i *Index) StorageInfo(ctx context.Context, id ID) (StorageInfo, error) {
 	return *si.info, nil
 }
 
-func (i *Index) StorageBestAlloc(ctx context.Context, allocate SectorFileType, spt abi.RegisteredSealProof, pathType PathType) ([]StorageInfo, error) {
+func (i *Index) StorageBestAlloc(ctx context.Context, allocate storiface.SectorFileType, spt abi.RegisteredSealProof, pathType storiface.PathType) ([]StorageInfo, error) {
 	i.lk.RLock()
 	defer i.lk.RUnlock()
 
@@ -377,10 +378,10 @@ func (i *Index) StorageBestAlloc(ctx context.Context, allocate SectorFileType, s
 	}
 
 	for _, p := range i.stores {
-		if (pathType == PathSealing) && !p.info.CanSeal {
+		if (pathType == storiface.PathSealing) && !p.info.CanSeal {
 			continue
 		}
-		if (pathType == PathStorage) && !p.info.CanStore {
+		if (pathType == storiface.PathStorage) && !p.info.CanStore {
 			continue
 		}
 
@@ -421,7 +422,7 @@ func (i *Index) StorageBestAlloc(ctx context.Context, allocate SectorFileType, s
 	return out, nil
 }
 
-func (i *Index) FindSector(id abi.SectorID, typ SectorFileType) ([]ID, error) {
+func (i *Index) FindSector(id abi.SectorID, typ storiface.SectorFileType) ([]ID, error) {
 	i.lk.RLock()
 	defer i.lk.RUnlock()
 

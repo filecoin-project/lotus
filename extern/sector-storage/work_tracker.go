@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )
 
@@ -108,7 +107,7 @@ func (t *trackedWorker) AddPiece(ctx context.Context, sector abi.SectorID, piece
 	return t.Worker.AddPiece(ctx, sector, pieceSizes, newPieceSize, pieceData)
 }
 
-func (t *trackedWorker) Fetch(ctx context.Context, s abi.SectorID, ft stores.SectorFileType, ptype stores.PathType, am stores.AcquireMode) error {
+func (t *trackedWorker) Fetch(ctx context.Context, s abi.SectorID, ft storiface.SectorFileType, ptype storiface.PathType, am storiface.AcquireMode) error {
 	defer t.tracker.track(s, sealtasks.TTFetch)()
 
 	return t.Worker.Fetch(ctx, s, ft, ptype, am)

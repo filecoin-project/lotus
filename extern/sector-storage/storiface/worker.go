@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 )
 
 type WorkerInfo struct {
@@ -64,10 +63,10 @@ type WorkerCalls interface {
 	SealCommit2(ctx context.Context, sector abi.SectorID, c1o storage.Commit1Out) (CallID, error)
 	FinalizeSector(ctx context.Context, sector abi.SectorID, keepUnsealed []storage.Range) (CallID, error)
 	ReleaseUnsealed(ctx context.Context, sector abi.SectorID, safeToFree []storage.Range) (CallID, error)
-	MoveStorage(ctx context.Context, sector abi.SectorID, types stores.SectorFileType) (CallID, error)
+	MoveStorage(ctx context.Context, sector abi.SectorID, types SectorFileType) (CallID, error)
 	UnsealPiece(context.Context, abi.SectorID, UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) (CallID, error)
 	ReadPiece(context.Context, io.Writer, abi.SectorID, UnpaddedByteIndex, abi.UnpaddedPieceSize) (CallID, error)
-	Fetch(context.Context, abi.SectorID, stores.SectorFileType, stores.PathType, stores.AcquireMode) (CallID, error)
+	Fetch(context.Context, abi.SectorID, SectorFileType, PathType, AcquireMode) (CallID, error)
 }
 
 type WorkerReturn interface {

@@ -82,11 +82,11 @@ func (s *schedTestWorker) AddPiece(ctx context.Context, sector abi.SectorID, pie
 	panic("implement me")
 }
 
-func (s *schedTestWorker) MoveStorage(ctx context.Context, sector abi.SectorID, types stores.SectorFileType) error {
+func (s *schedTestWorker) MoveStorage(ctx context.Context, sector abi.SectorID, types storiface.SectorFileType) error {
 	panic("implement me")
 }
 
-func (s *schedTestWorker) Fetch(ctx context.Context, id abi.SectorID, ft stores.SectorFileType, ptype stores.PathType, am stores.AcquireMode) error {
+func (s *schedTestWorker) Fetch(ctx context.Context, id abi.SectorID, ft storiface.SectorFileType, ptype storiface.PathType, am storiface.AcquireMode) error {
 	panic("implement me")
 }
 
@@ -215,7 +215,7 @@ func TestSched(t *testing.T) {
 			done := make(chan struct{})
 			rm.done[taskName] = done
 
-			sel := newAllocSelector(index, stores.FTCache, stores.PathSealing)
+			sel := newAllocSelector(index, storiface.FTCache, storiface.PathSealing)
 
 			rm.wg.Add(1)
 			go func() {
