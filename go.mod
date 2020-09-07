@@ -21,7 +21,6 @@ require (
 	github.com/dustin/go-humanize v1.0.0
 	github.com/elastic/go-sysinfo v1.3.0
 	github.com/fatih/color v1.8.0
-	github.com/filecoin-project/chain-validation v0.0.6-0.20200813000554-40c22fe26eef
 	github.com/filecoin-project/filecoin-ffi v0.30.4-0.20200716204036-cddc56607e1d
 	github.com/filecoin-project/go-address v0.0.3
 	github.com/filecoin-project/go-bitfield v0.2.0
