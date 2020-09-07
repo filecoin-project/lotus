@@ -18,7 +18,7 @@ import (
 )
 
 var ForksAtHeight = map[abi.ChainEpoch]func(context.Context, *StateManager, types.StateTree) error{
-	42000: UpgradeFaucetBurnRecovery,
+	build.UpgradeBreezeHeight: UpgradeFaucetBurnRecovery,
 }
 
 func (sm *StateManager) handleStateForks(ctx context.Context, st types.StateTree, height abi.ChainEpoch) (err error) {
