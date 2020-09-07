@@ -18,6 +18,10 @@ import (
 
 var bigBlockGasLimit = big.NewInt(build.BlockGasLimit)
 
+// this is *temporary* mutilation until we have implemented uncapped miner penalties -- it will go
+// away in the next fork.
+var allowNegativeChains = true
+
 const MaxBlocks = 15
 
 type msgChain struct {
