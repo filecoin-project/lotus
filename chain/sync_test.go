@@ -46,6 +46,8 @@ func init() {
 	}
 	power.ConsensusMinerMinPower = big.NewInt(2048)
 	verifreg.MinVerifiedDealSize = big.NewInt(256)
+
+	modules.PubsubSubscribeImmediately = true
 }
 
 const source = 0

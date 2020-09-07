@@ -31,6 +31,9 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 )
 
+// for tests
+var PubsubSubscribeImmediately = false
+
 func RunHello(mctx helpers.MetricsCtx, lc fx.Lifecycle, h host.Host, svc *hello.Service) error {
 	h.SetStreamHandler(hello.ProtocolID, svc.HandleStream)
 
@@ -126,8 +129,7 @@ func HandleIncomingBlocks(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.P
 		panic(err)
 	}
 
-	// wait until we are synced within 10 blocks
-	waitForSync(stmgr, 10, func() {
+	subscribe := func() {
 		log.Infof("subscribing to pubsub topic %s", build.BlocksTopic(nn))
 
 		blocksub, err := ps.Subscribe(build.BlocksTopic(nn)) //nolint
@@ -136,7 +138,16 @@ func HandleIncomingBlocks(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.P
 		}
 
 		go sub.HandleIncomingBlocks(ctx, blocksub, s, bserv, h.ConnManager())
-	})
+	}
+
+	// for tests
+	if PubsubSubscribeImmediately {
+		subscribe()
+		return
+	}
+
+	// wait until we are synced within 10 blocks
+	waitForSync(stmgr, 10, subscribe)
 }
 
 func HandleIncomingMessages(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.PubSub, stmgr *stmgr.StateManager, mpool *messagepool.MessagePool, h host.Host, nn dtypes.NetworkName) {
@@ -148,8 +159,7 @@ func HandleIncomingMessages(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub
 		panic(err)
 	}
 
-	// wait until we are synced within 1 block
-	waitForSync(stmgr, 1, func() {
+	subscribe := func() {
 		log.Infof("subscribing to pubsub topic %s", build.MessagesTopic(nn))
 
 		msgsub, err := ps.Subscribe(build.MessagesTopic(nn)) //nolint
@@ -158,7 +168,16 @@ func HandleIncomingMessages(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub
 		}
 
 		go sub.HandleIncomingMessages(ctx, mpool, msgsub)
-	})
+	}
+
+	// for tests
+	if PubsubSubscribeImmediately {
+		subscribe()
+		return
+	}
+
+	// wait until we are synced within 1 block
+	waitForSync(stmgr, 1, subscribe)
 }
 
 func NewLocalDiscovery(ds dtypes.MetadataDS) *discovery.Local {

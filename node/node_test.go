@@ -16,6 +16,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/lotus/api/test"
+	"github.com/filecoin-project/lotus/node/modules"
 )
 
 func init() {
@@ -26,6 +27,8 @@ func init() {
 		abi.RegisteredSealProof_StackedDrg2KiBV1: {},
 	}
 	verifreg.MinVerifiedDealSize = big.NewInt(256)
+
+	modules.PubsubSubscribeImmediately = true
 }
 
 func TestAPI(t *testing.T) {
