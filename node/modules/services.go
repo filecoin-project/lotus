@@ -89,12 +89,7 @@ func waitForSync(stmgr *stmgr.StateManager, blocks int, subscribe func()) {
 	}
 
 	// we are not synced, subscribe to head changes and wait for sync
-	subscribed := false
 	stmgr.ChainStore().SubscribeHeadChanges(func(rev, app []*types.TipSet) error {
-		if subscribed {
-			return nil
-		}
-
 		if len(app) == 0 {
 			return nil
 		}
@@ -110,7 +105,7 @@ func waitForSync(stmgr *stmgr.StateManager, blocks int, subscribe func()) {
 		now := uint64(build.Clock.Now().UnixNano())
 		if latest > now-nearsync {
 			subscribe()
-			subscribed = true
+			return store.ErrNotifieeDone
 		}
 
 		return nil
