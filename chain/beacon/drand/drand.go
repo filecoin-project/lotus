@@ -3,6 +3,7 @@ package drand
 import (
 	"bytes"
 	"context"
+	"math"
 	"sync"
 	"time"
 
@@ -190,8 +191,18 @@ func (db *DrandBeacon) VerifyEntry(curr types.BeaconEntry, prev types.BeaconEntr
 func (db *DrandBeacon) MaxBeaconRoundForEpoch(filEpoch abi.ChainEpoch, prevEntry types.BeaconEntry) uint64 {
 	// TODO: sometimes the genesis time for filecoin is zero and this goes negative
 	latestTs := ((uint64(filEpoch) * db.filRoundTime) + db.filGenTime) - db.filRoundTime
-	_, nextTs := dchain.NextRound(latestTs)
-	return nextTs - db.interval.Seconds()
+	return timestampToRound(int64(latestTs), db.interval, int64(db.drandGenTime))
+}
+
+func timestampToRound(now int64, period time.Duration, genesis int64) uint64 {
+	if now < genesis {
+		return 1
+	}
+	fromGenesis := now - genesis
+	// we take the time from genesis divided by the periods in seconds, that
+	// gives us the number of periods since genesis. We add +1 since we want the
+	// next round. We also add +1 because round 1 starts at genesis time.
+	return uint64(math.Floor(float64(fromGenesis)/period.Seconds())) + 1
 }
 
 var _ beacon.RandomBeacon = (*DrandBeacon)(nil)
