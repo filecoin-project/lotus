@@ -116,7 +116,7 @@ func (*Invoker) transform(instance Invokee) (nativeCode, error) {
 			return nil, newErr("first arguemnt should be vmr.Runtime")
 		}
 		if t.In(1).Kind() != reflect.Ptr {
-			return nil, newErr("second argument should be Runtime")
+			return nil, newErr("second argument should be of kind reflect.Ptr")
 		}
 
 		if t.NumOut() != 1 {
