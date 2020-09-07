@@ -1040,7 +1040,7 @@ func (cs *ChainStore) GetBeaconRandomness(ctx context.Context, blks []cid.Cid, p
 		searchHeight = 0
 	}
 
-	randTs, err := cs.GetTipsetByHeight(ctx, searchHeight, ts, true)
+	randTs, err := cs.GetTipsetByHeight(ctx, searchHeight, ts, false)
 	if err != nil {
 		return nil, err
 	}
