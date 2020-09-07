@@ -56,7 +56,11 @@ func (mp *MessagePool) republishPendingMessages() error {
 
 	var chains []*msgChain
 	for actor, mset := range pending {
-		next := mp.createMessageChains(actor, mset, baseFee, ts)
+		// We use the baseFee lower bound for createChange so that we optimistically include
+		// chains that might become profitable in the next 20 blocks.
+		// We still check the lowerBound condition for individual messages so that we don't send
+		// messages that will be rejected by the mpool spam protector, so this is safe to do.
+		next := mp.createMessageChains(actor, mset, baseFeeLowerBound, ts)
 		chains = append(chains, next...)
 	}
 
