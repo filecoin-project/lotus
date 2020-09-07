@@ -29,7 +29,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/beacon"
-	"github.com/filecoin-project/lotus/chain/blocksync"
+	"github.com/filecoin-project/lotus/chain/exchange"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/market"
@@ -243,7 +243,7 @@ func Online() Option {
 
 			// Filecoin services
 			Override(new(*chain.Syncer), modules.NewSyncer),
-			Override(new(*blocksync.BlockSync), blocksync.NewClient),
+			Override(new(exchange.Client), exchange.NewClient),
 			Override(new(*messagepool.MessagePool), modules.MessagePool),
 
 			Override(new(modules.Genesis), modules.ErrorGenesis),
@@ -252,7 +252,7 @@ func Online() Option {
 
 			Override(new(dtypes.NetworkName), modules.NetworkName),
 			Override(new(*hello.Service), hello.NewHelloService),
-			Override(new(*blocksync.BlockSyncService), blocksync.NewBlockSyncService),
+			Override(new(exchange.Server), exchange.NewServer),
 			Override(new(*peermgr.PeerMgr), peermgr.NewPeerMgr),
 
 			Override(new(dtypes.Graphsync), modules.Graphsync),

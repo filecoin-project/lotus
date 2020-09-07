@@ -1,4 +1,4 @@
-package blocksync
+package exchange
 
 import (
 	"time"
@@ -25,14 +25,16 @@ const BlockSyncProtocolID = "/fil/sync/blk/0.0.1"
 //   qualifier to avoid "const initializer [...] is not a constant" error.)
 var MaxRequestLength = uint64(build.ForkLengthThreshold)
 
-// Extracted constants from the code.
-// FIXME: Should be reviewed and confirmed.
-const SUCCESS_PEER_TAG_VALUE = 25
-const WRITE_REQ_DEADLINE = 5 * time.Second
-const READ_RES_DEADLINE = WRITE_REQ_DEADLINE
-const READ_RES_MIN_SPEED = 50 << 10
-const SHUFFLE_PEERS_PREFIX = 5
-const WRITE_RES_DEADLINE = 60 * time.Second
+const (
+	// Extracted constants from the code.
+	// FIXME: Should be reviewed and confirmed.
+	SuccessPeerTagValue = 25
+	WriteReqDeadline    = 5 * time.Second
+	ReadResDeadline     = WriteReqDeadline
+	ReadResMinSpeed     = 50 << 10
+	ShufflePeersPrefix  = 5
+	WriteResDeadline    = 60 * time.Second
+)
 
 // FIXME: Rename. Make private.
 type Request struct {

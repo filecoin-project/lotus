@@ -17,7 +17,7 @@ import (
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/beacon/drand"
-	"github.com/filecoin-project/lotus/chain/blocksync"
+	"github.com/filecoin-project/lotus/chain/exchange"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -69,8 +69,8 @@ func RunPeerMgr(mctx helpers.MetricsCtx, lc fx.Lifecycle, pmgr *peermgr.PeerMgr)
 	go pmgr.Run(helpers.LifecycleCtx(mctx, lc))
 }
 
-func RunBlockSync(h host.Host, svc *blocksync.BlockSyncService) {
-	h.SetStreamHandler(blocksync.BlockSyncProtocolID, svc.HandleStream)
+func RunBlockSync(h host.Host, svc exchange.Server) {
+	h.SetStreamHandler(exchange.BlockSyncProtocolID, svc.HandleStream)
 }
 
 func HandleIncomingBlocks(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.PubSub, s *chain.Syncer, bserv dtypes.ChainBlockService, chain *store.ChainStore, stmgr *stmgr.StateManager, h host.Host, nn dtypes.NetworkName) {

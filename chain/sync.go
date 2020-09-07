@@ -36,7 +36,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/beacon"
-	"github.com/filecoin-project/lotus/chain/blocksync"
+	"github.com/filecoin-project/lotus/chain/exchange"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -50,7 +50,7 @@ import (
 )
 
 // Blocks that are more than MaxHeightDrift epochs above
-//the theoretical max height based on systime are quickly rejected
+// the theoretical max height based on systime are quickly rejected
 const MaxHeightDrift = 5
 
 var defaultMessageFetchWindowSize = 200
@@ -87,7 +87,7 @@ var LocalIncoming = "incoming"
 // The Syncer does not run workers itself. It's mainly concerned with
 // ensuring a consistent state of chain consensus. The reactive and network-
 // interfacing processes are part of other components, such as the SyncManager
-// (which owns the sync scheduler and sync workers), BlockSync, the HELLO
+// (which owns the sync scheduler and sync workers), client, the HELLO
 // protocol, and the gossipsub block propagation layer.
 //
 // {hint/concept} The fork-choice rule as it currently stands is: "pick the
@@ -110,7 +110,7 @@ type Syncer struct {
 	bad *BadBlockCache
 
 	// handle to the block sync service
-	Bsync *blocksync.BlockSync
+	Exchange exchange.Client
 
 	self peer.ID
 
@@ -128,7 +128,7 @@ type Syncer struct {
 }
 
 // NewSyncer creates a new Syncer object.
-func NewSyncer(sm *stmgr.StateManager, bsync *blocksync.BlockSync, connmgr connmgr.ConnManager, self peer.ID, beacon beacon.RandomBeacon, verifier ffiwrapper.Verifier) (*Syncer, error) {
+func NewSyncer(sm *stmgr.StateManager, exchange exchange.Client, connmgr connmgr.ConnManager, self peer.ID, beacon beacon.RandomBeacon, verifier ffiwrapper.Verifier) (*Syncer, error) {
 	gen, err := sm.ChainStore().GetGenesis()
 	if err != nil {
 		return nil, xerrors.Errorf("getting genesis block: %w", err)
@@ -143,7 +143,7 @@ func NewSyncer(sm *stmgr.StateManager, bsync *blocksync.BlockSync, connmgr connm
 		beacon:         beacon,
 		bad:            NewBadBlockCache(),
 		Genesis:        gent,
-		Bsync:          bsync,
+		Exchange:       exchange,
 		store:          sm.ChainStore(),
 		sm:             sm,
 		self:           self,
@@ -220,7 +220,7 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) bool {
 		return false
 	}
 
-	syncer.Bsync.AddPeer(from)
+	syncer.Exchange.AddPeer(from)
 
 	bestPweight := syncer.store.GetHeaviestTipSet().ParentWeight()
 	targetWeight := fts.TipSet().ParentWeight()
@@ -451,7 +451,7 @@ func computeMsgMeta(bs cbor.IpldStore, bmsgCids, smsgCids []cid.Cid) (cid.Cid, e
 }
 
 // FetchTipSet tries to load the provided tipset from the store, and falls back
-// to the network (BlockSync) by querying the supplied peer if not found
+// to the network (client) by querying the supplied peer if not found
 // locally.
 //
 // {hint/usage} This is used from the HELLO protocol, to fetch the greeting
@@ -462,7 +462,7 @@ func (syncer *Syncer) FetchTipSet(ctx context.Context, p peer.ID, tsk types.TipS
 	}
 
 	// fall back to the network.
-	return syncer.Bsync.GetFullTipSet(ctx, p, tsk)
+	return syncer.Exchange.GetFullTipSet(ctx, p, tsk)
 }
 
 // tryLoadFullTipSet queries the tipset in the ChainStore, and returns a full
@@ -1164,7 +1164,7 @@ func extractSyncState(ctx context.Context) *SyncerState {
 //     total equality of the BeaconEntries in each block.
 //  3. Traverse the chain backwards, for each tipset:
 //  	3a. Load it from the chainstore; if found, it move on to its parent.
-//      3b. Query our peers via BlockSync in batches, requesting up to a
+//      3b. Query our peers via client in batches, requesting up to a
 //      maximum of 500 tipsets every time.
 //
 // Once we've concluded, if we find a mismatching tipset at the height where the
@@ -1265,7 +1265,7 @@ loop:
 		if gap := int(blockSet[len(blockSet)-1].Height() - untilHeight); gap < window {
 			window = gap
 		}
-		blks, err := syncer.Bsync.GetBlocks(ctx, at, window)
+		blks, err := syncer.Exchange.GetBlocks(ctx, at, window)
 		if err != nil {
 			// Most likely our peers aren't fully synced yet, but forwarded
 			// new block message (ideally we'd find better peers)
@@ -1283,7 +1283,7 @@ loop:
 		// have. Since we fetch from the head backwards our reassembled chain
 		// is sorted in reverse here: we have a child -> parent order, our last
 		// tipset then should be child of the first tipset retrieved.
-		// FIXME: The reassembly logic should be part of the `BlockSync`
+		// FIXME: The reassembly logic should be part of the `client`
 		//  service, the consumer should not be concerned with the
 		//  `MaxRequestLength` limitation, it should just be able to request
 		//  an segment of arbitrary length. The same burden is put on
@@ -1357,7 +1357,7 @@ var ErrForkTooLong = fmt.Errorf("fork longer than threshold")
 // denylist. Else, we find the common ancestor, and add the missing chain
 // fragment until the fork point to the returned []TipSet.
 func (syncer *Syncer) syncFork(ctx context.Context, incoming *types.TipSet, known *types.TipSet) ([]*types.TipSet, error) {
-	tips, err := syncer.Bsync.GetBlocks(ctx, incoming.Parents(), int(build.ForkLengthThreshold))
+	tips, err := syncer.Exchange.GetBlocks(ctx, incoming.Parents(), int(build.ForkLengthThreshold))
 	if err != nil {
 		return nil, err
 	}
@@ -1438,12 +1438,12 @@ mainLoop:
 
 		nextI := (i + 1) - batchSize // want to fetch batchSize values, 'i' points to last one we want to fetch, so its 'inclusive' of our request, thus we need to add one to our request start index
 
-		var bstout []*blocksync.CompactedMessages
+		var bstout []*exchange.CompactedMessages
 		for len(bstout) < batchSize {
 			next := headers[nextI]
 
 			nreq := batchSize - len(bstout)
-			bstips, err := syncer.Bsync.GetChainMessages(ctx, next, uint64(nreq))
+			bstips, err := syncer.Exchange.GetChainMessages(ctx, next, uint64(nreq))
 			if err != nil {
 				// TODO check errors for temporary nature
 				if windowSize > 1 {
@@ -1488,8 +1488,8 @@ mainLoop:
 
 		if i >= windowSize {
 			newWindowSize := windowSize + 10
-			if newWindowSize > int(blocksync.MaxRequestLength) {
-				newWindowSize = int(blocksync.MaxRequestLength)
+			if newWindowSize > int(exchange.MaxRequestLength) {
+				newWindowSize = int(exchange.MaxRequestLength)
 			}
 			if newWindowSize > windowSize {
 				windowSize = newWindowSize
@@ -1506,7 +1506,7 @@ mainLoop:
 	return nil
 }
 
-func persistMessages(bs bstore.Blockstore, bst *blocksync.CompactedMessages) error {
+func persistMessages(bs bstore.Blockstore, bst *exchange.CompactedMessages) error {
 	for _, m := range bst.Bls {
 		//log.Infof("putting BLS message: %s", m.Cid())
 		if _, err := store.PutMessage(bs, m); err != nil {

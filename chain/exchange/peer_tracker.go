@@ -1,4 +1,4 @@
-package blocksync
+package exchange
 
 // FIXME: This needs to be reviewed.
 

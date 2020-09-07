@@ -7,7 +7,7 @@ import (
 	gen "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/blocksync"
+	"github.com/filecoin-project/lotus/chain/exchange"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/hello"
 	"github.com/filecoin-project/lotus/paychmgr"
@@ -64,10 +64,10 @@ func main() {
 	}
 
 	err = gen.WriteTupleEncodersToFile("./chain/blocksync/cbor_gen.go", "blocksync",
-		blocksync.Request{},
-		blocksync.Response{},
-		blocksync.CompactedMessages{},
-		blocksync.BSTipSet{},
+		exchange.Request{},
+		exchange.Response{},
+		exchange.CompactedMessages{},
+		exchange.BSTipSet{},
 	)
 	if err != nil {
 		fmt.Println(err)
