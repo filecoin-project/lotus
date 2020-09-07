@@ -224,6 +224,9 @@ var chainBalanceStateCmd = &cli.Command{
 			infos = append(infos, ai)
 			return nil
 		})
+		if err != nil {
+			return xerrors.Errorf("failed to loop over actors: %w", err)
+		}
 
 		if minerInfo {
 			fmt.Printf("Address,Balance,Type,Sectors,Worker,Owner,InitialPledge,Locked,PreCommits\n")

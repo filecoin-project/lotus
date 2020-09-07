@@ -101,7 +101,7 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, tree types
 		lbtree = state
 		return nil
 	}); err != nil {
-		return xerrors.Errorf("loading state tree failed: %w")
+		return xerrors.Errorf("loading state tree failed: %w", err)
 	}
 
 	ReserveAddress, err := address.NewFromString("t090")
