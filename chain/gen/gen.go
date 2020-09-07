@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	"io/ioutil"
 	"sync/atomic"
 	"time"
+
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"

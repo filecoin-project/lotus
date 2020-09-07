@@ -15,6 +15,8 @@ import (
 	"testing"
 	"time"
 
+	saproof "github.com/filecoin-project/specs-actors/actors/runtime/proof"
+
 	"github.com/ipfs/go-cid"
 
 	logging "github.com/ipfs/go-log"
@@ -91,7 +93,7 @@ func (s *seal) commit(t *testing.T, sb *Sealer, done func()) {
 		t.Fatalf("%+v", err)
 	}
 
-	ok, err := ProofVerifier.VerifySeal(proof.SealVerifyInfo{
+	ok, err := ProofVerifier.VerifySeal(saproof.SealVerifyInfo{
 		SectorID:              s.id,
 		SealedCID:             s.cids.Sealed,
 		SealProof:             sealProofType,

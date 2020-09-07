@@ -2,8 +2,9 @@ package ffiwrapper
 
 import (
 	"context"
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	"io"
+
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
 	"github.com/ipfs/go-cid"
 
