@@ -187,7 +187,7 @@ func (syncer *Syncer) runMetricsTricker(tickerCtx context.Context) {
 			sinceGenesis := build.Clock.Now().Sub(genesisTime)
 			expectedHeight := int64(sinceGenesis.Seconds()) / int64(build.BlockDelaySecs)
 
-			stats.Record(tickerCtx, metrics.ChainNodeHeightExpected.M(int64(expectedHeight)))
+			stats.Record(tickerCtx, metrics.ChainNodeHeightExpected.M(expectedHeight))
 		case <-tickerCtx.Done():
 			return
 		}
