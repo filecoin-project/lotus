@@ -62,7 +62,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 	}
 
 	nwv := func(context.Context, abi.ChainEpoch) runtime.NetworkVersion {
-		return runtime.NetworkVersion0
+		return runtime.NetworkVersion1
 	}
 
 	vmopt := &vm.VMOpts{

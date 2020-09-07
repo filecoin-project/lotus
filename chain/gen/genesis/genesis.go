@@ -407,7 +407,7 @@ func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, stateroot ci
 	var sum abi.PaddedPieceSize
 
 	nwv := func(context.Context, abi.ChainEpoch) runtime.NetworkVersion {
-		return runtime.NetworkVersion0
+		return runtime.NetworkVersion1
 	}
 
 	vmopt := vm.VMOpts{

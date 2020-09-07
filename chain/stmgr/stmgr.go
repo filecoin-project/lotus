@@ -1125,7 +1125,11 @@ func (sm *StateManager) GetCirculatingSupply(ctx context.Context, height abi.Cha
 }
 
 func (sm *StateManager) GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) runtime.NetworkVersion {
-	if build.UpgradeBreezeHeight == 0 || height <= build.UpgradeBreezeHeight {
+	if build.UpgradeBreezeHeight == 0 {
+		return runtime.NetworkVersion1
+	}
+
+	if height <= build.UpgradeBreezeHeight {
 		return runtime.NetworkVersion0
 	}
 
