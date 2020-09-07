@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
@@ -109,6 +110,9 @@ func newTestMgr(ctx context.Context, t *testing.T) (*Manager, *stores.Local, *st
 		sched: newScheduler(cfg.SealProofType),
 
 		Prover: prover,
+
+		results: map[storiface.CallID]result{},
+		waitRes: map[storiface.CallID]chan struct{}{},
 	}
 
 	go m.sched.runSched()
@@ -129,7 +133,7 @@ func TestSimple(t *testing.T) {
 	err := m.AddWorker(ctx, newTestWorker(WorkerConfig{
 		SealProof: abi.RegisteredSealProof_StackedDrg2KiBV1,
 		TaskTypes: localTasks,
-	}, lstor))
+	}, lstor, m))
 	require.NoError(t, err)
 
 	sid := abi.SectorID{Miner: 1000, Number: 1}

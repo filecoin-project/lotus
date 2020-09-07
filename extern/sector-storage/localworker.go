@@ -39,7 +39,7 @@ type LocalWorker struct {
 	acceptTasks map[sealtasks.TaskType]struct{}
 }
 
-func NewLocalWorker(wcfg WorkerConfig, store stores.Store, local *stores.Local, sindex stores.SectorIndex) *LocalWorker {
+func NewLocalWorker(wcfg WorkerConfig, store stores.Store, local *stores.Local, sindex stores.SectorIndex, ret storiface.WorkerReturn) *LocalWorker {
 	acceptTasks := map[sealtasks.TaskType]struct{}{}
 	for _, taskType := range wcfg.TaskTypes {
 		acceptTasks[taskType] = struct{}{}
@@ -52,6 +52,7 @@ func NewLocalWorker(wcfg WorkerConfig, store stores.Store, local *stores.Local, 
 		storage:    store,
 		localStore: local,
 		sindex:     sindex,
+		ret:        ret,
 
 		acceptTasks: acceptTasks,
 	}

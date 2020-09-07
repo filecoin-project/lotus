@@ -344,7 +344,7 @@ var runCmd = &cli.Command{
 			LocalWorker: sectorstorage.NewLocalWorker(sectorstorage.WorkerConfig{
 				SealProof: spt,
 				TaskTypes: taskTypes,
-			}, remote, localStore, nodeApi),
+			}, remote, localStore, nodeApi, nodeApi),
 			localStore: localStore,
 			ls:         lr,
 		}

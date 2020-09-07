@@ -119,6 +119,9 @@ func New(ctx context.Context, ls stores.LocalStorage, si stores.SectorIndex, cfg
 		sched: newScheduler(cfg.SealProofType),
 
 		Prover: prover,
+
+		results: map[storiface.CallID]result{},
+		waitRes: map[storiface.CallID]chan struct{}{},
 	}
 
 	go m.sched.runSched()
@@ -145,7 +148,7 @@ func New(ctx context.Context, ls stores.LocalStorage, si stores.SectorIndex, cfg
 	err = m.AddWorker(ctx, NewLocalWorker(WorkerConfig{
 		SealProof: cfg.SealProofType,
 		TaskTypes: localTasks,
-	}, stor, lstor, si))
+	}, stor, lstor, si, m))
 	if err != nil {
 		return nil, xerrors.Errorf("adding local worker: %w", err)
 	}
@@ -528,7 +531,7 @@ func (m *Manager) waitResult(ctx context.Context) func(callID storiface.CallID, 
 	}
 }
 
-func (m *Manager) returnResult(callID storiface.CallID, r interface{}, err string) error {
+func (m *Manager) returnResult(callID storiface.CallID, r interface{}, serr string) error {
 	m.resLk.Lock()
 	defer m.resLk.Unlock()
 
@@ -537,9 +540,14 @@ func (m *Manager) returnResult(callID storiface.CallID, r interface{}, err strin
 		return xerrors.Errorf("result for call %v already reported")
 	}
 
+	var err error
+	if serr != "" {
+		err = errors.New(serr)
+	}
+
 	m.results[callID] = result{
 		r:   r,
-		err: errors.New(err),
+		err: err,
 	}
 
 	close(m.waitRes[callID])
