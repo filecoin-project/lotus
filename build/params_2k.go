@@ -10,6 +10,9 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 )
 
+const UpgradeBreezeHeight = 0
+const BreezeGasTampingDuration = 0
+
 func init() {
 	power.ConsensusMinerMinPower = big.NewInt(2048)
 	miner.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{

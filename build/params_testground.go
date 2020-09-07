@@ -69,4 +69,7 @@ var (
 
 	PackingEfficiencyNum   int64 = 4
 	PackingEfficiencyDenom int64 = 5
+
+	UpgradeBreezeHeight      abi.ChainEpoch = 0
+	BreezeGasTampingDuration abi.ChainEpoch = 0
 )
