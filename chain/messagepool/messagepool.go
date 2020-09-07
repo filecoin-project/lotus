@@ -363,6 +363,16 @@ func (mp *MessagePool) addLocal(m *types.SignedMessage, msgb []byte) error {
 	return nil
 }
 
+// verifyMsgBeforeAdd verifies that the message meets the minimum criteria for block inclusio
+// and whether the message has enough funds to be included in the next 20 blocks.
+// If the message is not valid for block inclusion, it returns an error.
+// For local messages, if the message can be included in the next 20 blocks, it returns true to
+// signal that it should be immediately published. If the message cannot be included in the next 20
+// blocks, it returns false so that the message doesn't immediately get published (and ignored by our
+// peers); instead it will be published through the republish loop, once the base fee has fallen
+// sufficiently.
+// For non local messages, if the message cannot be included in the next 20 blocks it returns
+// a (soft) validation error.
 func (mp *MessagePool) verifyMsgBeforeAdd(m *types.SignedMessage, curTs *types.TipSet, local bool) (bool, error) {
 	epoch := curTs.Height()
 	minGas := vm.PricelistByEpoch(epoch).OnChainMessage(m.ChainLength())
