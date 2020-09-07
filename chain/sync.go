@@ -87,7 +87,7 @@ var LocalIncoming = "incoming"
 // The Syncer does not run workers itself. It's mainly concerned with
 // ensuring a consistent state of chain consensus. The reactive and network-
 // interfacing processes are part of other components, such as the SyncManager
-// (which owns the sync scheduler and sync workers), client, the HELLO
+// (which owns the sync scheduler and sync workers), ChainExchange, the HELLO
 // protocol, and the gossipsub block propagation layer.
 //
 // {hint/concept} The fork-choice rule as it currently stands is: "pick the

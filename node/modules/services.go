@@ -69,8 +69,9 @@ func RunPeerMgr(mctx helpers.MetricsCtx, lc fx.Lifecycle, pmgr *peermgr.PeerMgr)
 	go pmgr.Run(helpers.LifecycleCtx(mctx, lc))
 }
 
-func RunBlockSync(h host.Host, svc exchange.Server) {
-	h.SetStreamHandler(exchange.BlockSyncProtocolID, svc.HandleStream)
+func RunChainExchange(h host.Host, svc exchange.Server) {
+	h.SetStreamHandler(exchange.BlockSyncProtocolID, svc.HandleStream)     // old
+	h.SetStreamHandler(exchange.ChainExchangeProtocolID, svc.HandleStream) // new
 }
 
 func HandleIncomingBlocks(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.PubSub, s *chain.Syncer, bserv dtypes.ChainBlockService, chain *store.ChainStore, stmgr *stmgr.StateManager, h host.Host, nn dtypes.NetworkName) {

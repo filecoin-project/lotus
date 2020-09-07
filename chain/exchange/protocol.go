@@ -13,9 +13,17 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-var log = logging.Logger("blocksync")
+var log = logging.Logger("chainxchg")
 
-const BlockSyncProtocolID = "/fil/sync/blk/0.0.1"
+const (
+	// BlockSyncProtocolID is the protocol ID of the former blocksync protocol.
+	// Deprecated.
+	BlockSyncProtocolID = "/fil/sync/blk/0.0.1"
+
+	// ChainExchangeProtocolID is the protocol ID of the chain exchange
+	// protocol.
+	ChainExchangeProtocolID = "/fil/chain/xchg/0.0.1"
+)
 
 // FIXME: Bumped from original 800 to this to accommodate `syncFork()`
 //  use of `GetBlocks()`. It seems the expectation of that API is to
@@ -119,7 +127,7 @@ func (res *Response) statusToError() error {
 	case NotFound:
 		return xerrors.Errorf("not found")
 	case GoAway:
-		return xerrors.Errorf("not handling 'go away' blocksync responses yet")
+		return xerrors.Errorf("not handling 'go away' chainxchg responses yet")
 	case InternalError:
 		return xerrors.Errorf("block sync peer errored: %s", res.ErrorMessage)
 	case BadRequest:

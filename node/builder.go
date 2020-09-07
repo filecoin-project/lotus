@@ -103,7 +103,7 @@ const (
 	SetGenesisKey
 
 	RunHelloKey
-	RunBlockSyncKey
+	RunChainExchangeKey
 	RunChainGraphsync
 	RunPeerMgrKey
 
@@ -259,7 +259,7 @@ func Online() Option {
 			Override(new(*dtypes.MpoolLocker), new(dtypes.MpoolLocker)),
 
 			Override(RunHelloKey, modules.RunHello),
-			Override(RunBlockSyncKey, modules.RunBlockSync),
+			Override(RunChainExchangeKey, modules.RunChainExchange),
 			Override(RunPeerMgrKey, modules.RunPeerMgr),
 			Override(HandleIncomingBlocksKey, modules.HandleIncomingBlocks),
 

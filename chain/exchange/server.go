@@ -36,7 +36,7 @@ func NewServer(cs *store.ChainStore) Server {
 
 // HandleStream implements Server.HandleStream. Refer to the godocs there.
 func (s *server) HandleStream(stream inet.Stream) {
-	ctx, span := trace.StartSpan(context.Background(), "blocksync.HandleStream")
+	ctx, span := trace.StartSpan(context.Background(), "chainxchg.HandleStream")
 	defer span.End()
 
 	defer stream.Close() //nolint:errcheck
@@ -82,7 +82,7 @@ func (s *server) processRequest(ctx context.Context, req *Request) (*Response, e
 // `Response` indicating why we can't process it. We do not return any
 // internal errors here, we just signal protocol ones.
 func validateRequest(ctx context.Context, req *Request) (*validatedRequest, *Response) {
-	_, span := trace.StartSpan(ctx, "blocksync.ValidateRequest")
+	_, span := trace.StartSpan(ctx, "chainxchg.ValidateRequest")
 	defer span.End()
 
 	validReq := validatedRequest{}
@@ -129,7 +129,7 @@ func validateRequest(ctx context.Context, req *Request) (*validatedRequest, *Res
 }
 
 func (s *server) serviceRequest(ctx context.Context, req *validatedRequest) (*Response, error) {
-	_, span := trace.StartSpan(ctx, "blocksync.ServiceRequest")
+	_, span := trace.StartSpan(ctx, "chainxchg.ServiceRequest")
 	defer span.End()
 
 	chain, err := collectChainSegment(s.cs, req)

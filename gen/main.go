@@ -63,7 +63,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = gen.WriteTupleEncodersToFile("./chain/blocksync/cbor_gen.go", "blocksync",
+	err = gen.WriteTupleEncodersToFile("./chain/exchange/cbor_gen.go", "exchange",
 		exchange.Request{},
 		exchange.Response{},
 		exchange.CompactedMessages{},
