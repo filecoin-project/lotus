@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 	"go.uber.org/fx"
 )
 

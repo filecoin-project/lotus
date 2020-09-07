@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"io"
 
-	abi "github.com/filecoin-project/specs-actors/actors/abi"
-	crypto "github.com/filecoin-project/specs-actors/actors/crypto"
-	exitcode "github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
+	abi "github.com/filecoin-project/go-state-types/abi"
+	crypto "github.com/filecoin-project/go-state-types/crypto"
+	exitcode "github.com/filecoin-project/go-state-types/exitcode"
+	proof "github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	cid "github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
@@ -58,7 +59,7 @@ func (t *BlockHeader) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
-	// t.WinPoStProof ([]abi.PoStProof) (slice)
+	// t.WinPoStProof ([]proof.PoStProof) (slice)
 	if len(t.WinPoStProof) > cbg.MaxLength {
 		return xerrors.Errorf("Slice value in field t.WinPoStProof was too long")
 	}
@@ -243,7 +244,7 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 		t.BeaconEntries[i] = v
 	}
 
-	// t.WinPoStProof ([]abi.PoStProof) (slice)
+	// t.WinPoStProof ([]proof.PoStProof) (slice)
 
 	maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
 	if err != nil {
@@ -259,12 +260,12 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 	}
 
 	if extra > 0 {
-		t.WinPoStProof = make([]abi.PoStProof, extra)
+		t.WinPoStProof = make([]proof.PoStProof, extra)
 	}
 
 	for i := 0; i < int(extra); i++ {
 
-		var v abi.PoStProof
+		var v proof.PoStProof
 		if err := v.UnmarshalCBOR(br); err != nil {
 			return err
 		}

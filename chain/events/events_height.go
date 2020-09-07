@@ -4,10 +4,9 @@ import (
 	"context"
 	"sync"
 
-	"golang.org/x/xerrors"
-
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 	"go.opencensus.io/trace"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/types"
 )

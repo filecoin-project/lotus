@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	commcid "github.com/filecoin-project/go-fil-commcid"
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 )

@@ -3,10 +3,10 @@ package store
 import (
 	"context"
 
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 )
@@ -40,6 +40,10 @@ func computeNextBaseFee(baseFee types.BigInt, gasLimitUsed int64, noOfBlocks int
 }
 
 func (cs *ChainStore) ComputeBaseFee(ctx context.Context, ts *types.TipSet) (abi.TokenAmount, error) {
+	if ts.Height() > build.UpgradeBreezeHeight && ts.Height() < build.UpgradeBreezeHeight+build.BreezeGasTampingDuration {
+		return abi.NewTokenAmount(100), nil
+	}
+
 	zero := abi.NewTokenAmount(0)
 
 	// totalLimit is sum of GasLimits of unique messages in a tipset

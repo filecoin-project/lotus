@@ -15,9 +15,9 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
@@ -60,7 +60,7 @@ func (a *StateAPI) StateNetworkName(ctx context.Context) (dtypes.NetworkName, er
 	return stmgr.GetNetworkName(ctx, a.StateManager, a.Chain.GetHeaviestTipSet().ParentState())
 }
 
-func (a *StateAPI) StateMinerSectors(ctx context.Context, addr address.Address, filter *abi.BitField, filterOut bool, tsk types.TipSetKey) ([]*api.ChainSectorInfo, error) {
+func (a *StateAPI) StateMinerSectors(ctx context.Context, addr address.Address, filter *bitfield.BitField, filterOut bool, tsk types.TipSetKey) ([]*api.ChainSectorInfo, error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -74,7 +74,7 @@ func (a *StateAPI) StateMinerActiveSectors(ctx context.Context, maddr address.Ad
 	err := a.StateManager.WithParentStateTsk(tsk,
 		a.StateManager.WithActor(maddr,
 			a.StateManager.WithActorState(ctx, func(store adt.Store, mas *miner.State) error {
-				var allActive []abi.BitField
+				var allActive []bitfield.BitField
 
 				err := a.StateManager.WithDeadlines(
 					a.StateManager.WithEachDeadline(
@@ -160,7 +160,7 @@ func (a *StateAPI) StateMinerProvingDeadline(ctx context.Context, addr address.A
 	return mas.DeadlineInfo(ts.Height()).NextNotElapsed(), nil
 }
 
-func (a *StateAPI) StateMinerFaults(ctx context.Context, addr address.Address, tsk types.TipSetKey) (abi.BitField, error) {
+func (a *StateAPI) StateMinerFaults(ctx context.Context, addr address.Address, tsk types.TipSetKey) (bitfield.BitField, error) {
 	out := bitfield.New()
 
 	err := a.StateManager.WithParentStateTsk(tsk,
@@ -222,7 +222,7 @@ func (a *StateAPI) StateAllMinerFaults(ctx context.Context, lookback abi.ChainEp
 	return allFaults, nil*/
 }
 
-func (a *StateAPI) StateMinerRecoveries(ctx context.Context, addr address.Address, tsk types.TipSetKey) (abi.BitField, error) {
+func (a *StateAPI) StateMinerRecoveries(ctx context.Context, addr address.Address, tsk types.TipSetKey) (bitfield.BitField, error) {
 	out := bitfield.New()
 
 	err := a.StateManager.WithParentStateTsk(tsk,
@@ -636,7 +636,7 @@ func (a *StateAPI) StateMinerSectorCount(ctx context.Context, addr address.Addre
 	err := a.StateManager.WithParentStateTsk(tsk,
 		a.StateManager.WithActor(addr,
 			a.StateManager.WithActorState(ctx, func(store adt.Store, mas *miner.State) error {
-				var allActive []abi.BitField
+				var allActive []bitfield.BitField
 
 				err := a.StateManager.WithDeadlines(
 					a.StateManager.WithEachDeadline(
@@ -1150,7 +1150,13 @@ func (a *StateAPI) StateDealProviderCollateralBounds(ctx context.Context, size a
 		return api.DealCollateralBounds{}, xerrors.Errorf("getting total circulating supply: %w", err)
 	}
 
-	min, max := market.DealProviderCollateralBounds(size, verified, powerState.ThisEpochQualityAdjPower, rewardState.ThisEpochBaselinePower, circ.FilCirculating)
+	min, max := market.DealProviderCollateralBounds(size,
+		verified,
+		powerState.TotalRawBytePower,
+		powerState.ThisEpochQualityAdjPower,
+		rewardState.ThisEpochBaselinePower,
+		circ.FilCirculating,
+		a.StateManager.GetNtwkVersion(ctx, ts.Height()))
 	return api.DealCollateralBounds{
 		Min: types.BigDiv(types.BigMul(min, dealProviderCollateralNum), dealProviderCollateralDen),
 		Max: max,

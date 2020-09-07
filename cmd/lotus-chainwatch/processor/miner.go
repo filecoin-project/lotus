@@ -13,8 +13,8 @@ import (
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
@@ -168,11 +168,11 @@ type SectorDealEvent struct {
 }
 
 type PartitionStatus struct {
-	Terminated abi.BitField
-	Expired    abi.BitField
-	Faulted    abi.BitField
-	InRecovery abi.BitField
-	Recovered  abi.BitField
+	Terminated bitfield.BitField
+	Expired    bitfield.BitField
+	Faulted    bitfield.BitField
+	InRecovery bitfield.BitField
+	Recovered  bitfield.BitField
 }
 
 type minerActorInfo struct {
@@ -819,7 +819,7 @@ func (p *Processor) diffPartition(prevPart, curPart miner.Partition) (*Partition
 	}
 
 	expired := bitfield.New()
-	var bf abi.BitField
+	var bf bitfield.BitField
 	if err := terminatedEarlyArr.ForEach(&bf, func(i int64) error {
 		// expired = all removals - termination
 		expirations, err := bitfield.SubtractBitField(allRemovedSectors, bf)

@@ -12,8 +12,8 @@ import (
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 )
 
 var HeartbeatInterval = 10 * time.Second
