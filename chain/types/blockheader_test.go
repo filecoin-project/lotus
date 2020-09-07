@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/crypto"
 )
 
 func testBlockHeader(t testing.TB) *BlockHeader {
@@ -80,7 +80,7 @@ func TestInteropBH(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	posts := []abi.PoStProof{
+	posts := []proof.PoStProof{
 		{PoStProof: abi.RegisteredPoStProof_StackedDrgWinning2KiBV1, ProofBytes: []byte{0x07}},
 	}
 

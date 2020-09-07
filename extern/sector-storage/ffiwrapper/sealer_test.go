@@ -22,7 +22,7 @@ import (
 	"golang.org/x/xerrors"
 
 	paramfetch "github.com/filecoin-project/go-paramfetch"
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-storage/storage"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
@@ -91,7 +91,7 @@ func (s *seal) commit(t *testing.T, sb *Sealer, done func()) {
 		t.Fatalf("%+v", err)
 	}
 
-	ok, err := ProofVerifier.VerifySeal(abi.SealVerifyInfo{
+	ok, err := ProofVerifier.VerifySeal(proof.SealVerifyInfo{
 		SectorID:              s.id,
 		SealedCID:             s.cids.Sealed,
 		SealProof:             sealProofType,
