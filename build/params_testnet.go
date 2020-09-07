@@ -12,7 +12,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 )
 
-const UpgradeBreezeHeight = 42000
+const UpgradeBreezeHeight = 41280
 const BreezeGasTampingDuration = 120
 
 func init() {
