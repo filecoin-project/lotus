@@ -79,14 +79,8 @@ func (rcn *retrievalClientNode) WaitForPaymentChannelReady(ctx context.Context, 
 }
 
 func (rcn *retrievalClientNode) CheckAvailableFunds(ctx context.Context, paymentChannel address.Address) (retrievalmarket.ChannelAvailableFunds, error) {
-	// this doesn't actually work potentially -- the looked up from/to may pull up data for a different payment channel if for some reason the
-	// given address is settling
-	ci, err := rcn.payAPI.PaychMgr.GetChannelInfo(paymentChannel)
-	if err != nil {
-		return retrievalmarket.ChannelAvailableFunds{}, err
-	}
-	// assuming this is outbound... again, this is not a final implementation, pending PaychAvailableFundsByAddress
-	channelAvailableFunds, err := rcn.payAPI.PaychAvailableFunds(ci.Control, ci.Target)
+
+	channelAvailableFunds, err := rcn.payAPI.PaychAvailableFunds(paymentChannel)
 	if err != nil {
 		return retrievalmarket.ChannelAvailableFunds{}, err
 	}
