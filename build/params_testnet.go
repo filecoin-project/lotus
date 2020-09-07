@@ -12,8 +12,9 @@ import (
 
 func init() {
 	miner.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
-		abi.RegisteredSealProof_StackedDrg32GiBV1: {},
-		abi.RegisteredSealProof_StackedDrg64GiBV1: {},
+		abi.RegisteredSealProof_StackedDrg512MiBV1: {},
+		abi.RegisteredSealProof_StackedDrg32GiBV1:  {},
+		abi.RegisteredSealProof_StackedDrg64GiBV1:  {},
 	}
 }
 
