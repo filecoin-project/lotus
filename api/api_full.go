@@ -2,8 +2,9 @@ package api
 
 import (
 	"context"
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	"time"
+
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"

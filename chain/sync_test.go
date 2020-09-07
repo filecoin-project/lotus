@@ -3,10 +3,11 @@ package chain_test
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
 	"github.com/ipfs/go-cid"
 

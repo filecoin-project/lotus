@@ -3,6 +3,7 @@ package sealing
 import (
 	"bytes"
 	"context"
+
 	saproof "github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
 	"golang.org/x/xerrors"

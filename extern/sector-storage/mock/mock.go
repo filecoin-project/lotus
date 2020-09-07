@@ -5,10 +5,11 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	"io"
 	"math/rand"
 	"sync"
+
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/go-state-types/abi"

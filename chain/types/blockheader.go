@@ -2,8 +2,9 @@ package types
 
 import (
 	"bytes"
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	"math/big"
+
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
 	"github.com/minio/blake2b-simd"
 

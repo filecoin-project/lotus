@@ -5,12 +5,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	"os"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
 	"github.com/Gurpartap/async"
 	"github.com/hashicorp/go-multierror"

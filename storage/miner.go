@@ -3,9 +3,10 @@ package storage
 import (
 	"context"
 	"errors"
+	"time"
+
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
-	"time"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"

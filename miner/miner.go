@@ -6,9 +6,10 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	"sync"
 	"time"
+
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 

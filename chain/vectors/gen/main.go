@@ -6,6 +6,8 @@ import (
 	"math/rand"
 	"os"
 
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+
 	"github.com/filecoin-project/go-address"
 	"golang.org/x/xerrors"
 

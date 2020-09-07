@@ -7,6 +7,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
+
 	cid "github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 

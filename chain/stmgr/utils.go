@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	saruntime "github.com/filecoin-project/specs-actors/actors/runtime"
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	"os"
 	"reflect"
 	"runtime"
 	"strings"
+
+	saruntime "github.com/filecoin-project/specs-actors/actors/runtime"
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
 	cid "github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
