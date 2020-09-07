@@ -7,7 +7,7 @@ import (
 
 	"github.com/filecoin-project/lotus/lib/sigs"
 
-	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/go-state-types/crypto"
 
 	cbornode "github.com/ipfs/go-ipld-cbor"
 

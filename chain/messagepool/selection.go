@@ -9,11 +9,11 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	tbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/messagepool/gasguess"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
-	abig "github.com/filecoin-project/specs-actors/actors/abi/big"
 )
 
 var bigBlockGasLimit = big.NewInt(build.BlockGasLimit)
@@ -592,7 +592,7 @@ func (*MessagePool) getGasReward(msg *types.SignedMessage, baseFee types.BigInt)
 		maxPremium = msg.Message.GasPremium
 	}
 
-	gasReward := abig.Mul(maxPremium, types.NewInt(uint64(msg.Message.GasLimit)))
+	gasReward := tbig.Mul(maxPremium, types.NewInt(uint64(msg.Message.GasLimit)))
 	return gasReward.Int
 }
 
