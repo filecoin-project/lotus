@@ -79,8 +79,8 @@ func RunBlockSync(h host.Host, svc *blocksync.BlockSyncService) {
 	h.SetStreamHandler(blocksync.BlockSyncProtocolID, svc.HandleStream)
 }
 
-func waitForSync(stmgr *stmgr.StateManager, blocks int, subscribe func()) {
-	nearsync := uint64(blocks) * uint64(build.BlockDelaySecs) * uint64(time.Second) //nolint
+func waitForSync(stmgr *stmgr.StateManager, epochs int, subscribe func()) {
+	nearsync := uint64(epochs) * uint64(build.BlockDelaySecs) * uint64(time.Second) //nolint
 
 	// early check, are we synced at start up?
 	ts := stmgr.ChainStore().GetHeaviestTipSet()
