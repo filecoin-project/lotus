@@ -36,7 +36,7 @@ func (m *Manager) WorkerJobs() map[uint64][]storiface.WorkerJob {
 		for wi, window := range handle.activeWindows {
 			for _, request := range window.todo {
 				out[uint64(id)] = append(out[uint64(id)], storiface.WorkerJob{
-					ID:      0,
+					ID:      storiface.UndefCall,
 					Sector:  request.sector,
 					Task:    request.taskType,
 					RunWait: wi + 1,

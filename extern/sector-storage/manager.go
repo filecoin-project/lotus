@@ -52,6 +52,7 @@ type SectorManager interface {
 
 	ffiwrapper.StorageSealer
 	storage.Prover
+	storiface.WorkerReturn
 	FaultTracker
 }
 
@@ -70,13 +71,13 @@ type Manager struct {
 
 	storage.Prover
 
-	resLk sync.Mutex
+	resLk   sync.Mutex
 	results map[storiface.CallID]result
 	waitRes map[storiface.CallID]chan struct{}
 }
 
 type result struct {
-	r interface{}
+	r   interface{}
 	err error
 }
 
@@ -179,7 +180,8 @@ func (m *Manager) AddWorker(ctx context.Context, w Worker) error {
 	m.sched.newWorkers <- &workerHandle{
 		w: w,
 		wt: &workTracker{
-			running: map[uint64]storiface.WorkerJob{},
+			done:    map[storiface.CallID]struct{}{},
+			running: map[storiface.CallID]storiface.WorkerJob{},
 		},
 		info:      info,
 		preparing: &activeResources{},

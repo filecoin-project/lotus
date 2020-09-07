@@ -166,7 +166,8 @@ func addTestWorker(t *testing.T, sched *scheduler, index *stores.Index, name str
 	sched.newWorkers <- &workerHandle{
 		w: w,
 		wt: &workTracker{
-			running: map[uint64]storiface.WorkerJob{},
+			done:    map[storiface.CallID]struct{}{},
+			running: map[storiface.CallID]storiface.WorkerJob{},
 		},
 		info:      info,
 		preparing: &activeResources{},

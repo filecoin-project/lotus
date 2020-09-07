@@ -53,6 +53,7 @@ type StorageMinerAPI struct {
 	StorageMgr        *sectorstorage.Manager `optional:"true"`
 	IStorageMgr       sectorstorage.SectorManager
 	*stores.Index
+	storiface.WorkerReturn
 	DataTransfer dtypes.ProviderDataTransfer
 	Host         host.Host
 

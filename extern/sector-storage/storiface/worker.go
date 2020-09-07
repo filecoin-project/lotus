@@ -40,7 +40,7 @@ type WorkerStats struct {
 }
 
 type WorkerJob struct {
-	ID     uint64
+	ID     CallID
 	Sector abi.SectorID
 	Task   sealtasks.TaskType
 
