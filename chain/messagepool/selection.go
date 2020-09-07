@@ -22,7 +22,7 @@ var bigBlockGasLimit = big.NewInt(build.BlockGasLimit)
 // this is *temporary* mutilation until we have implemented uncapped miner penalties -- it will go
 // away in the next fork.
 func allowNegativeChains(epoch abi.ChainEpoch) bool {
-	return epoch < build.BreezeGasTampingDuration+5
+	return epoch < build.UpgradeBreezeHeight+5
 }
 
 const MaxBlocks = 15
