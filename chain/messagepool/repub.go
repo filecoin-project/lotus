@@ -100,7 +100,7 @@ loop:
 			// check the baseFee lower bound -- only republish messages that can be included in the chain
 			// within the next 20 blocks.
 			for _, m := range chain.msgs {
-				if !allowNegativeChains && m.Message.GasFeeCap.LessThan(baseFeeLowerBound) {
+				if !allowNegativeChains(ts.Height()) && m.Message.GasFeeCap.LessThan(baseFeeLowerBound) {
 					chain.Invalidate()
 					continue loop
 				}

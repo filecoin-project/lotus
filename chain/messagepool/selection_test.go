@@ -729,10 +729,7 @@ func TestPriorityMessageSelection2(t *testing.T) {
 }
 
 func TestPriorityMessageSelection3(t *testing.T) {
-	allowNegativeChains = false
-	defer func() {
-		allowNegativeChains = true
-	}()
+	t.Skip("reenable after removing allow negative")
 
 	mp, tma := makeTestMpool()
 
