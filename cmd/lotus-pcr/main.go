@@ -44,21 +44,13 @@ func main() {
 	app := &cli.App{
 		Name:  "lotus-pcr",
 		Usage: "Refunds precommit initial pledge for all miners",
-		Description: `Lotus PCR will attempt to reimbursement the initial pledge collateral of the PreCommitSector
-   miner actor method for all miners on the network.
+		Description: `Lotus PCR will attempt to reimbursement miners for a variety of messages.
 
-   The refund is sent directly to the miner actor, and not to the worker.
+   The refunds is sent back to the sender, and not to the miner actor itself.
 
-   The value refunded to the miner actor is not the value in the message itself, but calculated
-   using StateMinerInitialPledgeCollateral of the PreCommitSector message params. This is to reduce
-   abuse by over send in the PreCommitSector message and receiving more funds than was actually
-   consumed by pledging the sector.
-
-   No gas charges are refunded as part of this process, but a small 3% (by default) additional
-   funds are provided.
-
-   A single message will be produced per miner totaling their refund for all PreCommitSector messages
-   in a tipset.
+   The value refunded is not the value in the message itself, but calculated using state information
+   from the chain to reduce abuse. See the 'run' command for more information about various messages
+   and how they are refunded.
 `,
 		Version: build.UserVersion(),
 		Flags: []cli.Flag{
@@ -104,6 +96,19 @@ var versionCmd = &cli.Command{
 var runCmd = &cli.Command{
 	Name:  "run",
 	Usage: "Start message reimpursement",
+	Description: `Lotus PCR will refund various messages in different ways.
+
+	All gas fees are refunded
+
+	PreCommitSector
+	Refunds are calculated based on the messages parameters using StateMinerInitialPledgeCollateral.
+
+	ProveCommitSector
+	Refunds are calculated by taking the difference between the sectors PreCommitDeposit and the StateMinerInitialPledgeCollateral for the PreCommitSector message.
+
+	SubmitWindowedPoSt
+	Just the gas fees
+`,
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:    "from",
@@ -118,7 +123,7 @@ var runCmd = &cli.Command{
 		&cli.IntFlag{
 			Name:    "percent-extra",
 			EnvVars: []string{"LOTUS_PCR_PERCENT_EXTRA"},
-			Usage:   "extra funds to send above the refund",
+			Usage:   "extra funds to send above the refund, not applied to gas fees",
 			Value:   3,
 		},
 		&cli.IntFlag{
@@ -140,6 +145,12 @@ var runCmd = &cli.Command{
 			Value:   false,
 		},
 		&cli.BoolFlag{
+			Name:    "refund-gas-fees",
+			EnvVars: []string{"LOTUS_PCR_REFUND_GAS_FEES"},
+			Usage:   "process PreCommitSector messages",
+			Value:   true,
+		},
+		&cli.BoolFlag{
 			Name:    "pre-commit",
 			EnvVars: []string{"LOTUS_PCR_PRE_COMMIT"},
 			Usage:   "process PreCommitSector messages",
@@ -149,6 +160,12 @@ var runCmd = &cli.Command{
 			Name:    "prove-commit",
 			EnvVars: []string{"LOTUS_PCR_PROVE_COMMIT"},
 			Usage:   "process ProveCommitSector messages",
+			Value:   true,
+		},
+		&cli.BoolFlag{
+			Name:    "windowed-post",
+			EnvVars: []string{"LOTUS_PCR_WINDOWED_POST"},
+			Usage:   "process SubmitWindowedPoSt messages",
 			Value:   true,
 		},
 		&cli.IntFlag{
@@ -200,15 +217,19 @@ var runCmd = &cli.Command{
 		dryRun := cctx.Bool("dry-run")
 		preCommitEnabled := cctx.Bool("pre-commit")
 		proveCommitEnabled := cctx.Bool("prove-commit")
+		windowedPoStEnabled := cctx.Bool("windowed-post")
 		aggregateTipsets := cctx.Int("aggregate-tipsets")
+		refundGasFees := cctx.Bool("refund-gas-fees")
 
 		rf := &refunder{
-			api:                api,
-			wallet:             from,
-			percentExtra:       percentExtra,
-			dryRun:             dryRun,
-			preCommitEnabled:   preCommitEnabled,
-			proveCommitEnabled: proveCommitEnabled,
+			api:                 api,
+			wallet:              from,
+			percentExtra:        percentExtra,
+			dryRun:              dryRun,
+			preCommitEnabled:    preCommitEnabled,
+			proveCommitEnabled:  proveCommitEnabled,
+			windowedPoStEnabled: windowedPoStEnabled,
+			refundGasFees:       refundGasFees,
 		}
 
 		var refunds *MinersRefund = NewMinersRefund()
@@ -322,12 +343,14 @@ type refunderNodeApi interface {
 }
 
 type refunder struct {
-	api                refunderNodeApi
-	wallet             address.Address
-	percentExtra       int
-	dryRun             bool
-	preCommitEnabled   bool
-	proveCommitEnabled bool
+	api                 refunderNodeApi
+	wallet              address.Address
+	percentExtra        int
+	dryRun              bool
+	preCommitEnabled    bool
+	proveCommitEnabled  bool
+	windowedPoStEnabled bool
+	refundGasFees       bool
 }
 
 func (r *refunder) ProcessTipset(ctx context.Context, tipset *types.TipSet, refunds *MinersRefund) (*MinersRefund, error) {
@@ -372,6 +395,20 @@ func (r *refunder) ProcessTipset(ctx context.Context, tipset *types.TipSet, refu
 		var messageMethod string
 
 		switch m.Method {
+		case builtin.MethodsMiner.SubmitWindowedPoSt:
+			if !r.windowedPoStEnabled {
+				continue
+			}
+
+			messageMethod = "SubmitWindowedPoSt"
+
+			if recps[i].ExitCode != exitcode.Ok {
+				log.Debugw("skipping non-ok exitcode message", "method", messageMethod, "cid", msg.Cid, "miner", m.To, "exitcode", recps[i].ExitCode)
+				continue
+			}
+
+			// Not needed but for safety set to zero
+			refundValue = types.NewInt(0)
 		case builtin.MethodsMiner.ProveCommitSector:
 			if !r.proveCommitEnabled {
 				continue
@@ -448,7 +485,13 @@ func (r *refunder) ProcessTipset(ctx context.Context, tipset *types.TipSet, refu
 			refundValue = types.BigAdd(refundValue, types.BigMul(types.BigDiv(refundValue, types.NewInt(100)), types.NewInt(uint64(r.percentExtra))))
 		}
 
-		log.Debugw("processing message", "method", messageMethod, "cid", msg.Cid, "from", m.From, "to", m.To, "value", m.Value, "gas_fee_cap", m.GasFeeCap, "gas_premium", m.GasPremium, "gas_used", recps[i].GasUsed, "refund", refundValue)
+		gasFees := types.NewInt(0)
+		if r.refundGasFees {
+			gasFees = types.BigMul(types.NewInt(uint64(recps[i].GasUsed)), tipset.Blocks()[0].ParentBaseFee)
+			refundValue = types.BigAdd(refundValue, gasFees)
+		}
+
+		log.Debugw("processing message", "method", messageMethod, "cid", msg.Cid, "from", m.From, "to", m.To, "value", m.Value, "gas_fee_cap", m.GasFeeCap, "gas_premium", m.GasPremium, "gas_used", recps[i].GasUsed, "gas_fees", gasFees, "refund", refundValue)
 
 		refunds.Track(m.From, refundValue)
 		tipsetRefunds.Track(m.From, refundValue)
