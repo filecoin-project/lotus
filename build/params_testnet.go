@@ -12,6 +12,9 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 )
 
+const UpgradeBreezeHeight = 42000
+const BreezeGasTampingDuration = 120
+
 func init() {
 	power.ConsensusMinerMinPower = big.NewInt(10 << 40)
 	miner.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
