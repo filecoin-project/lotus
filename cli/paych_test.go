@@ -29,7 +29,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/node/modules"
 
 	"github.com/filecoin-project/lotus/api/test"
 	"github.com/filecoin-project/lotus/chain/wallet"
@@ -45,8 +44,6 @@ func init() {
 		abi.RegisteredSealProof_StackedDrg2KiBV1: {},
 	}
 	verifreg.MinVerifiedDealSize = big.NewInt(256)
-
-	modules.PubsubSubscribeImmediately = true
 }
 
 // TestPaymentChannels does a basic test to exercise the payment channel CLI
