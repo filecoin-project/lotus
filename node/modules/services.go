@@ -77,7 +77,7 @@ func RunBlockSync(h host.Host, svc *blocksync.BlockSyncService) {
 }
 
 func waitForSync(stmgr *stmgr.StateManager, blocks int, subscribe func()) {
-	nearsync := uint64(blocks) * uint64(build.BlockDelaySecs) * uint64(time.Second)
+	nearsync := uint64(blocks) * uint64(build.BlockDelaySecs) * uint64(time.Second) //nolint
 
 	// early check, are we synced at start up?
 	ts := stmgr.ChainStore().GetHeaviestTipSet()
