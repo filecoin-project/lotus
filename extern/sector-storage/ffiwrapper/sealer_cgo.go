@@ -546,7 +546,7 @@ func (sb *Sealer) FinalizeSector(ctx context.Context, sector abi.SectorID, keepU
 		defer done()
 
 		pf, err := openPartialFile(maxPieceSize, paths.Unsealed)
-		if xerrors.Is(err, os.ErrNotExist) {
+		if err != nil {
 			return xerrors.Errorf("opening partial file: %w", err)
 		}
 
