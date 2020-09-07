@@ -30,6 +30,7 @@ var (
 var (
 	LotusInfo                           = stats.Int64("info", "Arbitrary counter to tag lotus info to", stats.UnitDimensionless)
 	ChainNodeHeight                     = stats.Int64("chain/node_height", "Current Height of the node", stats.UnitDimensionless)
+	ChainNodeHeightExpected             = stats.Int64("chain/node_height_expected", "Expected Height of the node", stats.UnitDimensionless)
 	ChainNodeWorkerHeight               = stats.Int64("chain/node_worker_height", "Current Height of workers on the node", stats.UnitDimensionless)
 	MessagePublished                    = stats.Int64("message/published", "Counter for total locally published messages", stats.UnitDimensionless)
 	MessageReceived                     = stats.Int64("message/received", "Counter for total received messages", stats.UnitDimensionless)
@@ -60,6 +61,10 @@ var (
 	}
 	ChainNodeHeightView = &view.View{
 		Measure:     ChainNodeHeight,
+		Aggregation: view.LastValue(),
+	}
+	ChainNodeHeightExpectedView = &view.View{
+		Measure:     ChainNodeHeightExpected,
 		Aggregation: view.LastValue(),
 	}
 	ChainNodeWorkerHeightView = &view.View{
@@ -138,6 +143,7 @@ var (
 var DefaultViews = append([]*view.View{
 	InfoView,
 	ChainNodeHeightView,
+	ChainNodeHeightExpectedView,
 	ChainNodeWorkerHeightView,
 	BlockReceivedView,
 	BlockValidationFailureView,
