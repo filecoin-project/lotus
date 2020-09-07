@@ -446,6 +446,7 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 		Bstore:         sm.cs.Blockstore(),
 		Syscalls:       sm.cs.VMSys(),
 		CircSupplyCalc: sm.GetCirculatingSupply,
+		NtwkVersion:    sm.GetNtwkVersion,
 		BaseFee:        ts.Blocks()[0].ParentBaseFee,
 	}
 	vmi, err := vm.NewVM(vmopt)

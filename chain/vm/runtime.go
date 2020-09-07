@@ -56,6 +56,10 @@ type Runtime struct {
 	lastGasCharge     *types.GasTrace
 }
 
+func (rt *Runtime) NetworkVersion() vmr.NetworkVersion {
+	return rt.vm.GetNtwkVersion(rt.ctx, rt.CurrEpoch())
+}
+
 func (rt *Runtime) TotalFilCircSupply() abi.TokenAmount {
 	cs, err := rt.vm.GetCircSupply(rt.ctx)
 	if err != nil {

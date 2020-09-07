@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/filecoin-project/specs-actors/actors/runtime"
+
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
@@ -154,6 +156,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 		Bstore:         sm.cs.Blockstore(),
 		Syscalls:       sm.cs.VMSys(),
 		CircSupplyCalc: sm.GetCirculatingSupply,
+		NtwkVersion:    sm.GetNtwkVersion,
 		BaseFee:        baseFee,
 	}
 
@@ -1119,4 +1122,12 @@ func (sm *StateManager) GetCirculatingSupply(ctx context.Context, height abi.Cha
 	}
 
 	return csi.FilCirculating, nil
+}
+
+func (sm *StateManager) GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) runtime.NetworkVersion {
+	if build.UpgradeBreezeHeight == 0 || height <= build.UpgradeBreezeHeight {
+		return runtime.NetworkVersion0
+	}
+
+	return runtime.NetworkVersion1
 }

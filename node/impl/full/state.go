@@ -1150,7 +1150,13 @@ func (a *StateAPI) StateDealProviderCollateralBounds(ctx context.Context, size a
 		return api.DealCollateralBounds{}, xerrors.Errorf("getting total circulating supply: %w", err)
 	}
 
-	min, max := market.DealProviderCollateralBounds(size, verified, powerState.ThisEpochQualityAdjPower, rewardState.ThisEpochBaselinePower, circ.FilCirculating)
+	min, max := market.DealProviderCollateralBounds(size,
+		verified,
+		powerState.TotalRawBytePower,
+		powerState.ThisEpochQualityAdjPower,
+		rewardState.ThisEpochBaselinePower,
+		circ.FilCirculating,
+		a.StateManager.GetNtwkVersion(ctx, ts.Height()))
 	return api.DealCollateralBounds{
 		Min: types.BigDiv(types.BigMul(min, dealProviderCollateralNum), dealProviderCollateralDen),
 		Max: max,

@@ -7,6 +7,8 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/filecoin-project/specs-actors/actors/runtime"
+
 	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 
 	"github.com/filecoin-project/go-state-types/big"
@@ -140,6 +142,7 @@ func (vm *UnsafeVM) MakeRuntime(ctx context.Context, msg *types.Message, origin 
 }
 
 type CircSupplyCalculator func(context.Context, abi.ChainEpoch, *state.StateTree) (abi.TokenAmount, error)
+type NtwkVersionGetter func(context.Context, abi.ChainEpoch) runtime.NetworkVersion
 
 type VM struct {
 	cstate         *state.StateTree
@@ -150,6 +153,7 @@ type VM struct {
 	inv            *Invoker
 	rand           Rand
 	circSupplyCalc CircSupplyCalculator
+	ntwkVersion    NtwkVersionGetter
 	baseFee        abi.TokenAmount
 
 	Syscalls SyscallBuilder
@@ -162,6 +166,7 @@ type VMOpts struct {
 	Bstore         bstore.Blockstore
 	Syscalls       SyscallBuilder
 	CircSupplyCalc CircSupplyCalculator
+	NtwkVersion    NtwkVersionGetter
 	BaseFee        abi.TokenAmount
 }
 
@@ -182,6 +187,7 @@ func NewVM(opts *VMOpts) (*VM, error) {
 		inv:            NewInvoker(),
 		rand:           opts.Rand, // TODO: Probably should be a syscall
 		circSupplyCalc: opts.CircSupplyCalc,
+		ntwkVersion:    opts.NtwkVersion,
 		Syscalls:       opts.Syscalls,
 		baseFee:        opts.BaseFee,
 	}, nil
@@ -714,6 +720,10 @@ func (vm *VM) Invoke(act *types.Actor, rt *Runtime, method abi.MethodNum, params
 
 func (vm *VM) SetInvoker(i *Invoker) {
 	vm.inv = i
+}
+
+func (vm *VM) GetNtwkVersion(ctx context.Context, ce abi.ChainEpoch) runtime.NetworkVersion {
+	return vm.ntwkVersion(ctx, ce)
 }
 
 func (vm *VM) GetCircSupply(ctx context.Context) (abi.TokenAmount, error) {
