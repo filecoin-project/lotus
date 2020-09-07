@@ -4,6 +4,8 @@ import (
 	"context"
 	"sync"
 
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"go.opencensus.io/trace"
 
@@ -152,8 +154,12 @@ func (e *heightEvents) ChainAt(hnd HeightHandler, rev RevertHandler, confidence 
 
 	e.lk.Lock() // Tricky locking, check your locks if you modify this function!
 
-	bestH := e.tsc.best().Height()
+	best, err := e.tsc.best()
+	if err != nil {
+		return xerrors.Errorf("error getting best tipset: %w", err)
+	}
 
+	bestH := best.Height()
 	if bestH >= h+abi.ChainEpoch(confidence) {
 		ts, err := e.tsc.getNonNull(h)
 		if err != nil {
@@ -172,7 +178,11 @@ func (e *heightEvents) ChainAt(hnd HeightHandler, rev RevertHandler, confidence 
 		}
 
 		e.lk.Lock()
-		bestH = e.tsc.best().Height()
+		best, err = e.tsc.best()
+		if err != nil {
+			return xerrors.Errorf("error getting best tipset: %w", err)
+		}
+		bestH = best.Height()
 	}
 
 	defer e.lk.Unlock()

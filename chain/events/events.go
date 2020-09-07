@@ -35,6 +35,7 @@ type eventAPI interface {
 	ChainNotify(context.Context) (<-chan []*api.HeadChange, error)
 	ChainGetBlockMessages(context.Context, cid.Cid) (*api.BlockMessages, error)
 	ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error)
+	ChainHead(context.Context) (*types.TipSet, error)
 	StateGetReceipt(context.Context, cid.Cid, types.TipSetKey) (*types.MessageReceipt, error)
 	ChainGetTipSet(context.Context, types.TipSetKey) (*types.TipSet, error)
 
@@ -57,7 +58,7 @@ type Events struct {
 func NewEvents(ctx context.Context, api eventAPI) *Events {
 	gcConfidence := 2 * build.ForkLengthThreshold
 
-	tsc := newTSCache(gcConfidence, api.ChainGetTipSetByHeight)
+	tsc := newTSCache(gcConfidence, api)
 
 	e := &Events{
 		api: api,
