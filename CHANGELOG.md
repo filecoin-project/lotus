@@ -1,5 +1,72 @@
 # Lotus changelog
 
+# 0.6.0 / 2020-09-07
+
+This consensus-breaking release of Lotus is designed to test a network upgrade on the space race testnet. The changes that break consensus are:
+
+- Tweaking of some cryptoecon parameters in specs-actors 0.9.7 (https://github.com/filecoin-project/specs-actors/releases/tag/v0.9.7)
+- Rebalancing FIL distribution to make testnet FIL scarce, which prevents base fee spikes and sets better expectations for mainnet
+
+This release also introduces many improvements to Lotus! Among them are a new version of go-fil-markets that supports non-blocking retrieval, various spam reduction measures in the messagepool and p2p logic, and UX improvements to payment channels, dealmaking, and state inspection.
+
+## Changes
+
+#### Core Lotus and dependencies
+
+- Implement faucet funds reallocation logic (https://github.com/filecoin-project/lotus/pull/3632)
+- Network upgrade: Upgrade to correct fork threshold (https://github.com/filecoin-project/lotus/pull/3628)
+- Update to specs 0.9.7 and markets 0.6.0 (https://github.com/filecoin-project/lotus/pull/3627)
+- Network upgrade: Perform base fee tamping (https://github.com/filecoin-project/lotus/pull/3623)
+- Chain events: if cache best() is nil, return chain head (https://github.com/filecoin-project/lotus/pull/3611)
+- Update to specs actors v0.9.6 (https://github.com/filecoin-project/lotus/pull/3603)
+
+#### Messagepool
+
+- Temporarily allow negative chains (https://github.com/filecoin-project/lotus/pull/3625)
+- Improve publish/republish logic (https://github.com/filecoin-project/lotus/pull/3592)
+- Fix selection bug; priority messages were not included if other chains were negative (https://github.com/filecoin-project/lotus/pull/3580)
+- Add defensive check for minimum GasFeeCap for inclusion within the next 20 blocks (https://github.com/filecoin-project/lotus/pull/3579)
+- Add additional info about gas premium (https://github.com/filecoin-project/lotus/pull/3578)
+- Fix GasPremium capping logic  (https://github.com/filecoin-project/lotus/pull/3552)
+
+#### Payment channels 
+
+- Get available funds by address or by from/to (https://github.com/filecoin-project/lotus/pull/3547)
+- Create `lotus paych status` command (https://github.com/filecoin-project/lotus/pull/3523)
+- Rename CLI command from "paych get" to "paych add-funds" (https://github.com/filecoin-project/lotus/pull/3520)
+
+#### Peer-to-peer
+
+- Only subscribe to pubsub topics once we are synced (https://github.com/filecoin-project/lotus/pull/3602)
+- Reduce mpool add failure log spam (https://github.com/filecoin-project/lotus/pull/3562)
+- Republish messages even if the chains have negative performance(https://github.com/filecoin-project/lotus/pull/3557)
+- Adjust gossipsub gossip factor (https://github.com/filecoin-project/lotus/pull/3556)
+- Integrate pubsub Random Early Drop (https://github.com/filecoin-project/lotus/pull/3518)
+
+#### Miscellaneous
+
+- Fix panic in OnDealExpiredSlashed (https://github.com/filecoin-project/lotus/pull/3553)
+- Robustify state manager against holes in actor method numbers (https://github.com/filecoin-project/lotus/pull/3538)
+
+#### UX
+
+- VM: Fix an error message (https://github.com/filecoin-project/lotus/pull/3608)
+- Documentation: Batch replacement,update lotus-storage-miner to lotus-miner (https://github.com/filecoin-project/lotus/pull/3571)
+- CLI: Robust actor lookup (https://github.com/filecoin-project/lotus/pull/3535)
+- Add agent flag to net peers (https://github.com/filecoin-project/lotus/pull/3534)
+- Add watch option to storage-deals list (https://github.com/filecoin-project/lotus/pull/3527)
+
+#### Testing & tooling
+
+- Decommission chain-validation (https://github.com/filecoin-project/lotus/pull/3606)
+- Metrics: add expected height metric (https://github.com/filecoin-project/lotus/pull/3586)
+- PCR: Use current tipset during refund (https://github.com/filecoin-project/lotus/pull/3570)
+- Lotus-shed: Add math command (https://github.com/filecoin-project/lotus/pull/3568)
+- PCR: Add tipset aggergation (https://github.com/filecoin-project/lotus/pull/3565)- Fix broken paych tests (https://github.com/filecoin-project/lotus/pull/3551)
+- Make chain export ~1000x times faster (https://github.com/filecoin-project/lotus/pull/3533)
+- Chainwatch: Stop SyncIncomingBlocks from leaking into chainwatch processing; No panics during processing (https://github.com/filecoin-project/lotus/pull/3526)
+- Conformance: various changes (https://github.com/filecoin-project/lotus/pull/3521)
+
 # 0.5.10 / 2020-09-03
 
 This patch includes a crucial fix to the message pool selection logic, strongly disfavouring messages that might cause a miner penalty.
