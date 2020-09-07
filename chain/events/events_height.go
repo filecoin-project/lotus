@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 	"go.opencensus.io/trace"
 
 	"github.com/filecoin-project/lotus/chain/types"

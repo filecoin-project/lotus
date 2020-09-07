@@ -3,7 +3,7 @@ package beacon
 import (
 	"context"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
 

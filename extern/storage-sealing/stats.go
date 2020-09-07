@@ -3,7 +3,7 @@ package sealing
 import (
 	"sync"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 )
 
 type statSectorState int

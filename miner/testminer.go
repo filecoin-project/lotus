@@ -7,10 +7,10 @@ import (
 	ds "github.com/ipfs/go-datastore"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
 type MineReq struct {

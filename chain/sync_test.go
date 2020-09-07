@@ -3,6 +3,7 @@ package chain_test
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	"os"
 	"testing"
 	"time"
@@ -16,8 +17,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
@@ -442,8 +443,8 @@ func (wpp badWpp) GenerateCandidates(context.Context, abi.PoStRandomness, uint64
 	return []uint64{1}, nil
 }
 
-func (wpp badWpp) ComputeProof(context.Context, []abi.SectorInfo, abi.PoStRandomness) ([]abi.PoStProof, error) {
-	return []abi.PoStProof{
+func (wpp badWpp) ComputeProof(context.Context, []proof.SectorInfo, abi.PoStRandomness) ([]proof.PoStProof, error) {
+	return []proof.PoStProof{
 		{
 			PoStProof:  abi.RegisteredPoStProof_StackedDrgWinning2KiBV1,
 			ProofBytes: []byte("evil"),

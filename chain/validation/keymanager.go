@@ -8,7 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-crypto"
-	acrypto "github.com/filecoin-project/specs-actors/actors/crypto"
+	tcrypto "github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
@@ -43,21 +43,21 @@ func (k *KeyManager) NewBLSAccountAddress() address.Address {
 	return blsKey.Address
 }
 
-func (k *KeyManager) Sign(addr address.Address, data []byte) (acrypto.Signature, error) {
+func (k *KeyManager) Sign(addr address.Address, data []byte) (tcrypto.Signature, error) {
 	ki, ok := k.keys[addr]
 	if !ok {
-		return acrypto.Signature{}, fmt.Errorf("unknown address %v", addr)
+		return tcrypto.Signature{}, fmt.Errorf("unknown address %v", addr)
 	}
-	var sigType acrypto.SigType
+	var sigType tcrypto.SigType
 	if ki.Type == wallet.KTSecp256k1 {
-		sigType = acrypto.SigTypeBLS
+		sigType = tcrypto.SigTypeBLS
 		hashed := blake2b.Sum256(data)
 		sig, err := crypto.Sign(ki.PrivateKey, hashed[:])
 		if err != nil {
-			return acrypto.Signature{}, err
+			return tcrypto.Signature{}, err
 		}
 
-		return acrypto.Signature{
+		return tcrypto.Signature{
 			Type: sigType,
 			Data: sig,
 		}, nil
