@@ -238,8 +238,8 @@ func Online() Option {
 
 			Override(new(dtypes.ChainGCLocker), blockstore.NewGCLocker),
 			Override(new(dtypes.ChainGCBlockstore), modules.ChainGCBlockstore),
-			Override(new(dtypes.ChainExchange), modules.ChainExchange),
-			Override(new(dtypes.ChainBlockService), modules.ChainBlockservice),
+			Override(new(dtypes.ChainBitswap), modules.ChainBitswap),
+			Override(new(dtypes.ChainBlockService), modules.ChainBlockService),
 
 			// Filecoin services
 			Override(new(*chain.Syncer), modules.NewSyncer),
