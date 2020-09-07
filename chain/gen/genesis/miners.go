@@ -61,6 +61,10 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 		return big.Zero(), nil
 	}
 
+	nwv := func(context.Context, abi.ChainEpoch) runtime.NetworkVersion {
+		return runtime.NetworkVersion1
+	}
+
 	vmopt := &vm.VMOpts{
 		StateBase:      sroot,
 		Epoch:          0,
@@ -68,6 +72,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 		Bstore:         cs.Blockstore(),
 		Syscalls:       mkFakedSigSyscalls(cs.VMSys()),
 		CircSupplyCalc: csc,
+		NtwkVersion:    nwv,
 		BaseFee:        types.NewInt(0),
 	}
 
