@@ -729,6 +729,11 @@ func TestPriorityMessageSelection2(t *testing.T) {
 }
 
 func TestPriorityMessageSelection3(t *testing.T) {
+	allowNegativeChains = false
+	defer func() {
+		allowNegativeChains = true
+	}()
+
 	mp, tma := makeTestMpool()
 
 	// the actors
