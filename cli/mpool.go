@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
+	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -293,6 +294,10 @@ var mpoolReplaceCmd = &cli.Command{
 			Name:  "gas-limit",
 			Usage: "gas price for new message",
 		},
+		&cli.BoolFlag{
+			Name:  "auto",
+			Usage: "automatically reprice the specified message",
+		},
 	},
 	ArgsUsage: "[from] [nonce]",
 	Action: func(cctx *cli.Context) error {
@@ -342,15 +347,27 @@ var mpoolReplaceCmd = &cli.Command{
 
 		msg := found.Message
 
-		msg.GasLimit = cctx.Int64("gas-limit")
-		msg.GasPremium, err = types.BigFromString(cctx.String("gas-premium"))
-		if err != nil {
-			return fmt.Errorf("parsing gas-premium: %w", err)
-		}
-		// TODO: estimate fee cap here
-		msg.GasFeeCap, err = types.BigFromString(cctx.String("gas-feecap"))
-		if err != nil {
-			return fmt.Errorf("parsing gas-feecap: %w", err)
+		if cctx.Bool("auto") {
+			// msg.GasLimit = 0 // TODO: need to fix the way we estimate gas limits to account for the messages already being in the mempool
+			msg.GasFeeCap = abi.NewTokenAmount(0)
+			msg.GasPremium = abi.NewTokenAmount(0)
+			retm, err := api.GasEstimateMessageGas(ctx, &msg, &lapi.MessageSendSpec{}, types.EmptyTSK)
+			if err != nil {
+				return fmt.Errorf("failed to estimate gas values: %w", err)
+			}
+			msg.GasFeeCap = retm.GasFeeCap
+			msg.GasPremium = retm.GasPremium
+		} else {
+			msg.GasLimit = cctx.Int64("gas-limit")
+			msg.GasPremium, err = types.BigFromString(cctx.String("gas-premium"))
+			if err != nil {
+				return fmt.Errorf("parsing gas-premium: %w", err)
+			}
+			// TODO: estimate fee cap here
+			msg.GasFeeCap, err = types.BigFromString(cctx.String("gas-feecap"))
+			if err != nil {
+				return fmt.Errorf("parsing gas-feecap: %w", err)
+			}
 		}
 
 		smsg, err := api.WalletSignMessage(ctx, msg.From, &msg)
