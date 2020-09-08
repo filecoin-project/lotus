@@ -272,7 +272,7 @@ func (m *Manager) ReadPiece(ctx context.Context, sink io.Writer, sector abi.Sect
 		return xerrors.Errorf("reading piece from sealed sector: %w", err)
 	}
 
-	if readOk {
+	if !readOk {
 		return xerrors.Errorf("failed to read unsealed piece")
 	}
 
