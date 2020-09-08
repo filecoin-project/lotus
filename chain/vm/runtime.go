@@ -123,7 +123,23 @@ func (rt *Runtime) shimCall(f func() interface{}) (rval []byte, aerr aerrors.Act
 		}
 	}()
 
-	ret := f()
+	ret := func() interface{} {
+		defer func() {
+			if r := recover(); r != nil {
+				if ar, ok := r.(aerrors.ActorError); ok {
+					xc := ar.RetCode()
+					// The system error codes are reserved for use by the runtime.
+					// No actor may use one explicitly.
+					// Also, negative codes are not allowed.
+					if xc < exitcode.FirstActorErrorCode {
+						rt.Abortf(exitcode.SysErrorIllegalActor, "Actor used system exit code: %s", xc)
+					}
+				}
+				panic(r)
+			}
+		}()
+		return f()
+	}()
 
 	if !rt.callerValidated {
 		rt.Abortf(exitcode.SysErrorIllegalActor, "Caller MUST be validated during method execution")
