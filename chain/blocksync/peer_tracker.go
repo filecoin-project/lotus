@@ -72,16 +72,7 @@ func (bpt *bsPeerTracker) prefSortedPeers() []peer.ID {
 		var costI, costJ float64
 
 		getPeerInitLat := func(p peer.ID) float64 {
-			var res float64
-			if bpt.pmgr != nil {
-				if lat, ok := bpt.pmgr.GetPeerLatency(p); ok {
-					res = float64(lat)
-				}
-			}
-			if res == 0 {
-				res = float64(bpt.avgGlobalTime)
-			}
-			return res * newPeerMul
+			return float64(bpt.avgGlobalTime) * newPeerMul
 		}
 
 		if pi.successes+pi.failures > 0 {
