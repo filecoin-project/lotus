@@ -62,17 +62,17 @@ func (b basicContract) Exports() []interface{} {
 }
 
 func (basicContract) InvokeSomething0(rt runtime.Runtime, params *basicParams) *abi.EmptyValue {
-	abortf(exitcode.ExitCode(params.B), "params.B")
+	vmabortf(exitcode.ExitCode(params.B), "params.B")
 	return nil
 }
 
 func (basicContract) BadParam(rt runtime.Runtime, params *basicParams) *abi.EmptyValue {
-	abortf(255, "bad params")
+	vmabortf(255, "bad params")
 	return nil
 }
 
 func (basicContract) InvokeSomething10(rt runtime.Runtime, params *basicParams) *abi.EmptyValue {
-	abortf(exitcode.ExitCode(params.B+10), "params.B")
+	vmabortf(exitcode.ExitCode(params.B+10), "params.B")
 	return nil
 }
 
