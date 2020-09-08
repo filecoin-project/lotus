@@ -33,7 +33,6 @@ import (
 	miner2 "github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/modules"
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	testing2 "github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage/mockstorage"
@@ -370,8 +369,6 @@ func MockSbBuilder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test
 			node.Test(),
 
 			node.Override(new(ffiwrapper.Verifier), mock.MockVerifier),
-
-			node.Override(new(dtypes.Bootstrapper), dtypes.Bootstrapper(true)),
 
 			genesis,
 		)

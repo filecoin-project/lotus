@@ -1,8 +1,6 @@
 package modules
 
 import (
-	"time"
-
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	eventbus "github.com/libp2p/go-eventbus"
@@ -24,7 +22,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/sub"
-	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/peermgr"
 	"github.com/filecoin-project/lotus/node/hello"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -76,44 +73,13 @@ func RunBlockSync(h host.Host, svc *blocksync.BlockSyncService) {
 	h.SetStreamHandler(blocksync.BlockSyncProtocolID, svc.HandleStream)
 }
 
-func waitForSync(stmgr *stmgr.StateManager, epochs int, subscribe func()) {
-	nearsync := uint64(epochs) * uint64(build.BlockDelaySecs) * uint64(time.Second) //nolint
-
-	// early check, are we synced at start up?
-	ts := stmgr.ChainStore().GetHeaviestTipSet()
-	timestamp := ts.MinTimestamp()
-	now := uint64(build.Clock.Now().UnixNano())
-	if timestamp > now-nearsync {
-		subscribe()
-		return
-	}
-
-	// we are not synced, subscribe to head changes and wait for sync
-	stmgr.ChainStore().SubscribeHeadChanges(func(rev, app []*types.TipSet) error {
-		if len(app) == 0 {
-			return nil
-		}
-
-		latest := app[0].MinTimestamp()
-		for _, ts := range app[1:] {
-			timestamp := ts.MinTimestamp()
-			if timestamp > latest {
-				latest = timestamp
-			}
-		}
-
-		now := uint64(build.Clock.Now().UnixNano())
-		if latest > now-nearsync {
-			subscribe()
-			return store.ErrNotifieeDone
-		}
-
-		return nil
-	})
-}
-
-func HandleIncomingBlocks(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.PubSub, s *chain.Syncer, bserv dtypes.ChainBlockService, chain *store.ChainStore, stmgr *stmgr.StateManager, h host.Host, nn dtypes.NetworkName, bootstrapper dtypes.Bootstrapper) {
+func HandleIncomingBlocks(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.PubSub, s *chain.Syncer, bserv dtypes.ChainBlockService, chain *store.ChainStore, stmgr *stmgr.StateManager, h host.Host, nn dtypes.NetworkName) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
+
+	blocksub, err := ps.Subscribe(build.BlocksTopic(nn)) //nolint
+	if err != nil {
+		panic(err)
+	}
 
 	v := sub.NewBlockValidator(
 		h.ID(), chain, stmgr,
@@ -126,28 +92,16 @@ func HandleIncomingBlocks(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.P
 		panic(err)
 	}
 
-	subscribe := func() {
-		log.Infof("subscribing to pubsub topic %s", build.BlocksTopic(nn))
-
-		blocksub, err := ps.Subscribe(build.BlocksTopic(nn)) //nolint
-		if err != nil {
-			panic(err)
-		}
-
-		go sub.HandleIncomingBlocks(ctx, blocksub, s, bserv, h.ConnManager())
-	}
-
-	if bootstrapper {
-		subscribe()
-		return
-	}
-
-	// wait until we are synced within 10 blocks
-	waitForSync(stmgr, 10, subscribe)
+	go sub.HandleIncomingBlocks(ctx, blocksub, s, bserv, h.ConnManager())
 }
 
-func HandleIncomingMessages(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.PubSub, stmgr *stmgr.StateManager, mpool *messagepool.MessagePool, h host.Host, nn dtypes.NetworkName, bootstrapper dtypes.Bootstrapper) {
+func HandleIncomingMessages(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.PubSub, mpool *messagepool.MessagePool, h host.Host, nn dtypes.NetworkName) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
+
+	msgsub, err := ps.Subscribe(build.MessagesTopic(nn)) //nolint:staticcheck
+	if err != nil {
+		panic(err)
+	}
 
 	v := sub.NewMessageValidator(h.ID(), mpool)
 
@@ -155,24 +109,7 @@ func HandleIncomingMessages(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub
 		panic(err)
 	}
 
-	subscribe := func() {
-		log.Infof("subscribing to pubsub topic %s", build.MessagesTopic(nn))
-
-		msgsub, err := ps.Subscribe(build.MessagesTopic(nn)) //nolint
-		if err != nil {
-			panic(err)
-		}
-
-		go sub.HandleIncomingMessages(ctx, mpool, msgsub)
-	}
-
-	if bootstrapper {
-		subscribe()
-		return
-	}
-
-	// wait until we are synced within 1 block
-	waitForSync(stmgr, 1, subscribe)
+	go sub.HandleIncomingMessages(ctx, mpool, msgsub)
 }
 
 func NewLocalDiscovery(ds dtypes.MetadataDS) *discovery.Local {
