@@ -125,7 +125,7 @@ func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, origin addres
 	vmm := *msg
 	resF, ok := rt.ResolveAddress(msg.From)
 	if !ok {
-		rt.Abortf(exitcode.SysErrInvalidReceiver, "resolve msg.From address failed")
+		abortf(exitcode.SysErrInvalidReceiver, "resolve msg.From address failed")
 	}
 	vmm.From = resF
 	rt.Message = vmm

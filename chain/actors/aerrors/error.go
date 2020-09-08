@@ -23,10 +23,17 @@ type internalActorError interface {
 	Unwrap() error
 }
 
+type guard struct{}
+
 type ActorError interface {
 	error
 	IsFatal() bool
 	RetCode() exitcode.ExitCode
+	// guard is a sentinel to prevent code outside if the aerrors package
+	// from implementing the ActorError interface. It ensures actors
+	// use Runtime.Abortf and do not panic with an ActorError directly
+	// and illegally using a system error code.
+	guard() guard
 }
 
 type actorError struct {
@@ -64,6 +71,10 @@ func (e *actorError) FormatError(p xerrors.Printer) (next error) {
 
 func (e *actorError) Unwrap() error {
 	return e.err
+}
+
+func (e *actorError) guard() guard {
+	return guard{}
 }
 
 var _ internalActorError = (*actorError)(nil)
