@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"sync"
-	"time"
 
 	"golang.org/x/xerrors"
 
@@ -369,8 +368,8 @@ func (bv *BlockValidator) decodeAndCheckBlock(msg *pubsub.Message) (*types.Block
 func (bv *BlockValidator) isChainNearSynced() bool {
 	ts := bv.chain.GetHeaviestTipSet()
 	timestamp := ts.MinTimestamp()
-	now := build.Clock.Now().UnixNano()
-	cutoff := uint64(now) - uint64(6*time.Hour)
+	now := build.Clock.Now().Unix()
+	cutoff := uint64(now) - uint64(6*3600) // 6 hours
 	return timestamp > cutoff
 }
 
