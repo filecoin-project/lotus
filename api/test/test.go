@@ -65,6 +65,8 @@ func TestApis(t *testing.T, b APIBuilder) {
 var OneMiner = []StorageMiner{{Full: 0, Preseal: PresealGenesis}}
 
 func (ts *testSuite) testVersion(t *testing.T) {
+	build.RunningNodeType = build.NodeFull
+
 	ctx := context.Background()
 	apis, _ := ts.makeNodes(t, 1, OneMiner)
 	api := apis[0]
