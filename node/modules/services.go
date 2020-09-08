@@ -31,6 +31,8 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 )
 
+var pubsubSubscribeImmediately = true
+
 func RunHello(mctx helpers.MetricsCtx, lc fx.Lifecycle, h host.Host, svc *hello.Service) error {
 	h.SetStreamHandler(hello.ProtocolID, svc.HandleStream)
 
@@ -137,7 +139,7 @@ func HandleIncomingBlocks(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.P
 		go sub.HandleIncomingBlocks(ctx, blocksub, s, bserv, h.ConnManager())
 	}
 
-	if bootstrapper {
+	if pubsubSubscribeImmediately || bool(bootstrapper) {
 		subscribe()
 		return
 	}
@@ -166,7 +168,7 @@ func HandleIncomingMessages(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub
 		go sub.HandleIncomingMessages(ctx, mpool, msgsub)
 	}
 
-	if bootstrapper {
+	if pubsubSubscribeImmediately || bool(bootstrapper) {
 		subscribe()
 		return
 	}
