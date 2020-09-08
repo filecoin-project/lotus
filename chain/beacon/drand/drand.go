@@ -200,8 +200,8 @@ func timestampToRound(now int64, period time.Duration, genesis int64) uint64 {
 	}
 	fromGenesis := now - genesis
 	// we take the time from genesis divided by the periods in seconds, that
-	// gives us the number of periods since genesis. We add +1 since we want the
-	// next round. We also add +1 because round 1 starts at genesis time.
+	// gives us the number of periods since genesis.  We also add +1 because
+	// round 1 starts at genesis time.
 	return uint64(math.Floor(float64(fromGenesis)/period.Seconds())) + 1
 }
 
