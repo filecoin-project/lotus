@@ -11,6 +11,7 @@ import (
 	inet "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"go.opencensus.io/trace"
+	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
 	cborutil "github.com/filecoin-project/go-cbor-util"
@@ -36,12 +37,13 @@ type BlockSync struct {
 }
 
 func NewClient(
+	lc fx.Lifecycle,
 	host host.Host,
 	pmgr peermgr.MaybePeerMgr,
 ) *BlockSync {
 	return &BlockSync{
 		host:        host,
-		peerTracker: newPeerTracker(pmgr.Mgr),
+		peerTracker: newPeerTracker(lc, host, pmgr.Mgr),
 	}
 }
 
@@ -360,6 +362,7 @@ func (client *BlockSync) sendRequestToPeer(
 
 	supported, err := client.host.Peerstore().SupportsProtocols(peer, BlockSyncProtocolID)
 	if err != nil {
+		client.RemovePeer(peer)
 		return nil, xerrors.Errorf("failed to get protocols for peer: %w", err)
 	}
 	if len(supported) == 0 || supported[0] != BlockSyncProtocolID {

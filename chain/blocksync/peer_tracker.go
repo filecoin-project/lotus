@@ -3,11 +3,14 @@ package blocksync
 // FIXME: This needs to be reviewed.
 
 import (
+	"context"
 	"sort"
 	"sync"
 	"time"
 
+	host "github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"go.uber.org/fx"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/lib/peermgr"
@@ -29,11 +32,33 @@ type bsPeerTracker struct {
 	pmgr *peermgr.PeerMgr
 }
 
-func newPeerTracker(pmgr *peermgr.PeerMgr) *bsPeerTracker {
-	return &bsPeerTracker{
+func newPeerTracker(lc fx.Lifecycle, h host.Host, pmgr *peermgr.PeerMgr) *bsPeerTracker {
+	bsPt := &bsPeerTracker{
 		peers: make(map[peer.ID]*peerStats),
 		pmgr:  pmgr,
 	}
+
+	sub, err := h.EventBus().Subscribe(new(peermgr.NewFilPeer))
+	if err != nil {
+		panic(err)
+	}
+	go func() {
+		var newPeer interface{}
+		ok := true
+		for ok {
+			newPeer, ok = <-sub.Out()
+			log.Warnf("new peer from hello in tracker: %s", newPeer.(peermgr.NewFilPeer).Id)
+			bsPt.addPeer(newPeer.(peermgr.NewFilPeer).Id)
+		}
+	}()
+
+	lc.Append(fx.Hook{
+		OnStop: func(ctx context.Context) error {
+			return sub.Close()
+		},
+	})
+
+	return bsPt
 }
 
 func (bpt *bsPeerTracker) addPeer(p peer.ID) {
