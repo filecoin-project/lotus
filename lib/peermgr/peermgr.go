@@ -104,7 +104,7 @@ func NewPeerMgr(lc fx.Lifecycle, h host.Host, dht *dht.IpfsDHT, bootstrap dtypes
 }
 
 func (pmgr *PeerMgr) AddFilecoinPeer(p peer.ID) {
-	pmgr.filPeerEmitter.Emit(NewFilPeer{Id: p})
+	_ = pmgr.filPeerEmitter.Emit(NewFilPeer{Id: p}) //nolint:errcheck
 	pmgr.peersLk.Lock()
 	defer pmgr.peersLk.Unlock()
 	pmgr.peers[p] = time.Duration(0)
