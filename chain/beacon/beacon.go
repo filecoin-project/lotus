@@ -18,6 +18,23 @@ type Response struct {
 	Err   error
 }
 
+type Schedule []BeaconPoint
+
+func (bs Schedule) BeaconForEpoch(e abi.ChainEpoch) RandomBeacon {
+	for i := len(bs) - 1; i >= 0; i-- {
+		bp := bs[i]
+		if e > bp.Start {
+			return bp.Beacon
+		}
+	}
+	return bs[0].Beacon
+}
+
+type BeaconPoint struct {
+	Start  abi.ChainEpoch
+	Beacon RandomBeacon
+}
+
 // RandomBeacon represents a system that provides randomness to Lotus.
 // Other components interrogate the RandomBeacon to acquire randomness that's
 // valid for a specific chain epoch. Also to verify beacon entries that have
@@ -28,7 +45,11 @@ type RandomBeacon interface {
 	MaxBeaconRoundForEpoch(abi.ChainEpoch, types.BeaconEntry) uint64
 }
 
-func ValidateBlockValues(b RandomBeacon, h *types.BlockHeader, prevEntry types.BeaconEntry) error {
+func ValidateBlockValues(bSchedule Schedule, h *types.BlockHeader, parentEpoch abi.ChainEpoch,
+	prevEntry types.BeaconEntry) error {
+
+	// TODO: fork logic
+	b := bSchedule.BeaconForEpoch(h.Height)
 	maxRound := b.MaxBeaconRoundForEpoch(h.Height, prevEntry)
 	if maxRound == prevEntry.Round {
 		if len(h.BeaconEntries) != 0 {
@@ -56,10 +77,13 @@ func ValidateBlockValues(b RandomBeacon, h *types.BlockHeader, prevEntry types.B
 	return nil
 }
 
-func BeaconEntriesForBlock(ctx context.Context, beacon RandomBeacon, round abi.ChainEpoch, prev types.BeaconEntry) ([]types.BeaconEntry, error) {
+func BeaconEntriesForBlock(ctx context.Context, bSchedule Schedule, epoch abi.ChainEpoch, parentEpoch abi.ChainEpoch, prev types.BeaconEntry) ([]types.BeaconEntry, error) {
+	// TODO: fork logic
+	beacon := bSchedule.BeaconForEpoch(epoch)
+
 	start := build.Clock.Now()
 
-	maxRound := beacon.MaxBeaconRoundForEpoch(round, prev)
+	maxRound := beacon.MaxBeaconRoundForEpoch(epoch, prev)
 	if maxRound == prev.Round {
 		return nil, nil
 	}
@@ -82,7 +106,7 @@ func BeaconEntriesForBlock(ctx context.Context, beacon RandomBeacon, round abi.C
 			out = append(out, resp.Entry)
 			cur = resp.Entry.Round - 1
 		case <-ctx.Done():
-			return nil, xerrors.Errorf("context timed out waiting on beacon entry to come back for round %d: %w", round, ctx.Err())
+			return nil, xerrors.Errorf("context timed out waiting on beacon entry to come back for epoch %d: %w", epoch, ctx.Err())
 		}
 	}
 
