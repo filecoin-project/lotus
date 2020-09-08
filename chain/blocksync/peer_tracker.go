@@ -42,12 +42,9 @@ func newPeerTracker(lc fx.Lifecycle, h host.Host, pmgr *peermgr.PeerMgr) *bsPeer
 	if err != nil {
 		panic(err)
 	}
+
 	go func() {
-		var newPeer interface{}
-		ok := true
-		for ok {
-			newPeer, ok = <-sub.Out()
-			log.Warnf("new peer from hello in tracker: %s", newPeer.(peermgr.NewFilPeer).Id)
+		for newPeer := range sub.Out() {
 			bsPt.addPeer(newPeer.(peermgr.NewFilPeer).Id)
 		}
 	}()
