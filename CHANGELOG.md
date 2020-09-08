@@ -1,5 +1,14 @@
 # Lotus changelog
 
+# 0.6.1 / 2020-09-08
+
+This optional release introduces a minor improvement to the sync process, ensuring nodes don't fall behind and then resync.
+
+## Changes
+
+- Update `test-vectors` (https://github.com/filecoin-project/lotus/pull/3645)
+- Revert "only subscribe to pubsub topics once we are synced" (https://github.com/filecoin-project/lotus/pull/3643)
+
 # 0.6.0 / 2020-09-07
 
 This consensus-breaking release of Lotus is designed to test a network upgrade on the space race testnet. The changes that break consensus are:
