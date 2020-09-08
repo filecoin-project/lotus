@@ -1439,6 +1439,7 @@ func (syncer *Syncer) syncMessagesAndCheckState(ctx context.Context, headers []*
 
 // fills out each of the given tipsets with messages and calls the callback with it
 func (syncer *Syncer) iterFullTipsets(ctx context.Context, headers []*types.TipSet, cb func(context.Context, *store.FullTipSet) error) error {
+	ss := extractSyncState(ctx)
 	ctx, span := trace.StartSpan(ctx, "iterFullTipsets")
 	defer span.End()
 
@@ -1466,6 +1467,7 @@ mainLoop:
 
 		nextI := (i + 1) - batchSize // want to fetch batchSize values, 'i' points to last one we want to fetch, so its 'inclusive' of our request, thus we need to add one to our request start index
 
+		ss.SetStage(api.StageFetchingMessages)
 		var bstout []*blocksync.CompactedMessages
 		for len(bstout) < batchSize {
 			next := headers[nextI]
@@ -1485,6 +1487,7 @@ mainLoop:
 			bstout = append(bstout, bstips...)
 			nextI += len(bstips)
 		}
+		ss.SetStage(api.StageMessages)
 
 		for bsi := 0; bsi < len(bstout); bsi++ {
 			// temp storage so we don't persist data we dont want to
