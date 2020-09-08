@@ -104,10 +104,6 @@ type MessagePoolEvtMessage struct {
 	CID cid.Cid
 }
 
-// this is *temporary* mutilation until we have implemented uncapped miner penalties -- it will go
-// away in the next fork.
-var strictBaseFeeValidation = false
-
 func init() {
 	// if the republish interval is too short compared to the pubsub timecache, adjust it
 	minInterval := pubsub.TimeCacheDuration + time.Duration(build.PropagationDelaySecs)
@@ -444,7 +440,7 @@ func (mp *MessagePool) verifyMsgBeforeAdd(m *types.SignedMessage, curTs *types.T
 	// Note that for local messages, we always add them so that they can be accepted and republished
 	// automatically.
 	publish := local
-	if strictBaseFeeValidation && len(curTs.Blocks()) > 0 {
+	if len(curTs.Blocks()) > 0 {
 		baseFee := curTs.Blocks()[0].ParentBaseFee
 		baseFeeLowerBound := getBaseFeeLowerBound(baseFee)
 		if m.Message.GasFeeCap.LessThan(baseFeeLowerBound) {
