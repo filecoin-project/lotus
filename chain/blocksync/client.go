@@ -385,7 +385,7 @@ func (client *BlockSync) sendRequestToPeer(
 	_ = stream.SetWriteDeadline(time.Now().Add(WRITE_REQ_DEADLINE))
 	if err := cborutil.WriteCborRPC(stream, req); err != nil {
 		_ = stream.SetWriteDeadline(time.Time{})
-		client.peerTracker.logFailure(peer, build.Clock.Since(connectionStart))
+		client.peerTracker.logFailure(peer, build.Clock.Since(connectionStart), req.Length)
 		// FIXME: Should we also remove peer here?
 		return nil, err
 	}
@@ -398,7 +398,7 @@ func (client *BlockSync) sendRequestToPeer(
 		bufio.NewReader(incrt.New(stream, READ_RES_MIN_SPEED, READ_RES_DEADLINE)),
 		&res)
 	if err != nil {
-		client.peerTracker.logFailure(peer, build.Clock.Since(connectionStart))
+		client.peerTracker.logFailure(peer, build.Clock.Since(connectionStart), req.Length)
 		return nil, xerrors.Errorf("failed to read blocksync response: %w", err)
 	}
 
@@ -412,7 +412,7 @@ func (client *BlockSync) sendRequestToPeer(
 		)
 	}
 
-	client.peerTracker.logSuccess(peer, build.Clock.Since(connectionStart))
+	client.peerTracker.logSuccess(peer, build.Clock.Since(connectionStart), uint64(len(res.Chain)))
 	// FIXME: We should really log a success only after we validate the response.
 	//  It might be a bit hard to do.
 	return &res, nil

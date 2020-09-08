@@ -98,8 +98,8 @@ func (bpt *bsPeerTracker) prefSortedPeers() []peer.ID {
 const (
 	// xInvAlpha = (N+1)/2
 
-	localInvAlpha  = 5  // 86% of the value is the last 9
-	globalInvAlpha = 20 // 86% of the value is the last 39
+	localInvAlpha  = 10 // 86% of the value is the last 19
+	globalInvAlpha = 25 // 86% of the value is the last 49
 )
 
 func (bpt *bsPeerTracker) logGlobalSuccess(dur time.Duration) {
@@ -124,7 +124,7 @@ func logTime(pi *peerStats, dur time.Duration) {
 
 }
 
-func (bpt *bsPeerTracker) logSuccess(p peer.ID, dur time.Duration) {
+func (bpt *bsPeerTracker) logSuccess(p peer.ID, dur time.Duration, reqSize uint64) {
 	bpt.lk.Lock()
 	defer bpt.lk.Unlock()
 
@@ -136,10 +136,10 @@ func (bpt *bsPeerTracker) logSuccess(p peer.ID, dur time.Duration) {
 	}
 
 	pi.successes++
-	logTime(pi, dur)
+	logTime(pi, dur/time.Duration(reqSize))
 }
 
-func (bpt *bsPeerTracker) logFailure(p peer.ID, dur time.Duration) {
+func (bpt *bsPeerTracker) logFailure(p peer.ID, dur time.Duration, reqSize uint64) {
 	bpt.lk.Lock()
 	defer bpt.lk.Unlock()
 
@@ -151,7 +151,7 @@ func (bpt *bsPeerTracker) logFailure(p peer.ID, dur time.Duration) {
 	}
 
 	pi.failures++
-	logTime(pi, dur)
+	logTime(pi, dur/time.Duration(reqSize))
 }
 
 func (bpt *bsPeerTracker) removePeer(p peer.ID) {
