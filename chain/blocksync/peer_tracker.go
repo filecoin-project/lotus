@@ -158,6 +158,9 @@ func (bpt *bsPeerTracker) logSuccess(p peer.ID, dur time.Duration, reqSize uint6
 	}
 
 	pi.successes++
+	if reqSize == 0 {
+		reqSize = 1
+	}
 	logTime(pi, dur/time.Duration(reqSize))
 }
 
@@ -173,6 +176,9 @@ func (bpt *bsPeerTracker) logFailure(p peer.ID, dur time.Duration, reqSize uint6
 	}
 
 	pi.failures++
+	if reqSize == 0 {
+		reqSize = 1
+	}
 	logTime(pi, dur/time.Duration(reqSize))
 }
 
