@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/filecoin-project/specs-actors/actors/runtime"
+
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
@@ -18,8 +20,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
@@ -154,6 +156,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 		Bstore:         sm.cs.Blockstore(),
 		Syscalls:       sm.cs.VMSys(),
 		CircSupplyCalc: sm.GetCirculatingSupply,
+		NtwkVersion:    sm.GetNtwkVersion,
 		BaseFee:        baseFee,
 	}
 
@@ -1119,4 +1122,16 @@ func (sm *StateManager) GetCirculatingSupply(ctx context.Context, height abi.Cha
 	}
 
 	return csi.FilCirculating, nil
+}
+
+func (sm *StateManager) GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) runtime.NetworkVersion {
+	if build.UpgradeBreezeHeight == 0 {
+		return runtime.NetworkVersion1
+	}
+
+	if height <= build.UpgradeBreezeHeight {
+		return runtime.NetworkVersion0
+	}
+
+	return runtime.NetworkVersion1
 }

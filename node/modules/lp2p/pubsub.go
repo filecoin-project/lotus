@@ -277,6 +277,30 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 		options = append(options, pubsub.WithDirectPeers(directPeerInfo))
 	}
 
+	// validation queue RED
+	pgTopicWeights := map[string]float64{
+		drandTopic:                 5,
+		build.BlocksTopic(in.Nn):   10,
+		build.MessagesTopic(in.Nn): 1,
+	}
+	var pgParams *pubsub.PeerGaterParams
+
+	if isBootstrapNode {
+		pgParams = pubsub.NewPeerGaterParams(
+			0.33,
+			pubsub.ScoreParameterDecay(2*time.Minute),
+			pubsub.ScoreParameterDecay(10*time.Minute),
+		).WithTopicDeliveryWeights(pgTopicWeights)
+	} else {
+		pgParams = pubsub.NewPeerGaterParams(
+			0.33,
+			pubsub.ScoreParameterDecay(2*time.Minute),
+			pubsub.ScoreParameterDecay(time.Hour),
+		).WithTopicDeliveryWeights(pgTopicWeights)
+	}
+
+	options = append(options, pubsub.WithPeerGater(pgParams))
+
 	// tracer
 	if in.Cfg.RemoteTracer != "" {
 		a, err := ma.NewMultiaddr(in.Cfg.RemoteTracer)

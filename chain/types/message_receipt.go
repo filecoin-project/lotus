@@ -3,7 +3,7 @@ package types
 import (
 	"bytes"
 
-	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
+	"github.com/filecoin-project/go-state-types/exitcode"
 )
 
 type MessageReceipt struct {

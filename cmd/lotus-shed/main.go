@@ -23,6 +23,7 @@ func main() {
 		noncefix,
 		bigIntParseCmd,
 		staterootCmd,
+		auditsCmd,
 		importCarCmd,
 		commpToCidCmd,
 		fetchParamCmd,

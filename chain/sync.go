@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
+
 	"github.com/Gurpartap/async"
 	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-cid"
@@ -25,11 +27,11 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	blst "github.com/supranational/blst/bindings/go"
 
@@ -125,6 +127,8 @@ type Syncer struct {
 	verifier ffiwrapper.Verifier
 
 	windowSize int
+
+	tickerCtxCancel context.CancelFunc
 }
 
 // NewSyncer creates a new Syncer object.
@@ -166,11 +170,35 @@ func NewSyncer(sm *stmgr.StateManager, exchange exchange.Client, connmgr connmgr
 }
 
 func (syncer *Syncer) Start() {
+	tickerCtx, tickerCtxCancel := context.WithCancel(context.Background())
 	syncer.syncmgr.Start()
+
+	syncer.tickerCtxCancel = tickerCtxCancel
+
+	go syncer.runMetricsTricker(tickerCtx)
+}
+
+func (syncer *Syncer) runMetricsTricker(tickerCtx context.Context) {
+	genesisTime := time.Unix(int64(syncer.Genesis.MinTimestamp()), 0)
+	ticker := build.Clock.Ticker(time.Duration(build.BlockDelaySecs) * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			sinceGenesis := build.Clock.Now().Sub(genesisTime)
+			expectedHeight := int64(sinceGenesis.Seconds()) / int64(build.BlockDelaySecs)
+
+			stats.Record(tickerCtx, metrics.ChainNodeHeightExpected.M(expectedHeight))
+		case <-tickerCtx.Done():
+			return
+		}
+	}
 }
 
 func (syncer *Syncer) Stop() {
 	syncer.syncmgr.Stop()
+	syncer.tickerCtxCancel()
 }
 
 // InformNewHead informs the syncer about a new potential tipset
@@ -953,7 +981,7 @@ func (syncer *Syncer) VerifyWinningPoStProof(ctx context.Context, h *types.Block
 		return xerrors.Errorf("getting winning post sector set: %w", err)
 	}
 
-	ok, err := ffiwrapper.ProofVerifier.VerifyWinningPoSt(ctx, abi.WinningPoStVerifyInfo{
+	ok, err := ffiwrapper.ProofVerifier.VerifyWinningPoSt(ctx, proof.WinningPoStVerifyInfo{
 		Randomness:        rand,
 		Proofs:            h.WinPoStProof,
 		ChallengedSectors: sectors,

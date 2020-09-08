@@ -3,7 +3,7 @@ package fr32
 import (
 	"math/bits"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 )
 
 func subPieces(in abi.UnpaddedPieceSize) []abi.UnpaddedPieceSize {

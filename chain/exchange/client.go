@@ -12,6 +12,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"go.opencensus.io/trace"
+	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
 	cborutil "github.com/filecoin-project/go-cbor-util"
@@ -39,10 +40,10 @@ var _ Client = (*client)(nil)
 
 // NewClient creates a new libp2p-based exchange.Client that uses the libp2p
 // ChainExhange protocol as the fetching mechanism.
-func NewClient(host host.Host, pmgr peermgr.MaybePeerMgr) Client {
+func NewClient(lc fx.Lifecycle, host host.Host, pmgr peermgr.MaybePeerMgr) Client {
 	return &client{
 		host:        host,
-		peerTracker: newPeerTracker(pmgr.Mgr),
+		peerTracker: newPeerTracker(lc, host, pmgr.Mgr),
 	}
 }
 
@@ -336,6 +337,7 @@ func (c *client) sendRequestToPeer(ctx context.Context, peer peer.ID, req *Reque
 
 	supported, err := c.host.Peerstore().SupportsProtocols(peer, BlockSyncProtocolID, ChainExchangeProtocolID)
 	if err != nil {
+		c.RemovePeer(peer)
 		return nil, xerrors.Errorf("failed to get protocols for peer: %w", err)
 	}
 	if len(supported) == 0 || (supported[0] != BlockSyncProtocolID && supported[0] != ChainExchangeProtocolID) {
@@ -359,7 +361,7 @@ func (c *client) sendRequestToPeer(ctx context.Context, peer peer.ID, req *Reque
 	_ = stream.SetWriteDeadline(time.Now().Add(WriteReqDeadline))
 	if err := cborutil.WriteCborRPC(stream, req); err != nil {
 		_ = stream.SetWriteDeadline(time.Time{})
-		c.peerTracker.logFailure(peer, build.Clock.Since(connectionStart))
+		c.peerTracker.logFailure(peer, build.Clock.Since(connectionStart), req.Length)
 		// FIXME: Should we also remove peer here?
 		return nil, err
 	}
@@ -372,7 +374,7 @@ func (c *client) sendRequestToPeer(ctx context.Context, peer peer.ID, req *Reque
 		bufio.NewReader(incrt.New(stream, ReadResMinSpeed, ReadResDeadline)),
 		&res)
 	if err != nil {
-		c.peerTracker.logFailure(peer, build.Clock.Since(connectionStart))
+		c.peerTracker.logFailure(peer, build.Clock.Since(connectionStart), req.Length)
 		return nil, xerrors.Errorf("failed to read chainxchg response: %w", err)
 	}
 
@@ -386,7 +388,7 @@ func (c *client) sendRequestToPeer(ctx context.Context, peer peer.ID, req *Reque
 		)
 	}
 
-	c.peerTracker.logSuccess(peer, build.Clock.Since(connectionStart))
+	c.peerTracker.logSuccess(peer, build.Clock.Since(connectionStart), uint64(len(res.Chain)))
 	// FIXME: We should really log a success only after we validate the response.
 	//  It might be a bit hard to do.
 	return &res, nil
