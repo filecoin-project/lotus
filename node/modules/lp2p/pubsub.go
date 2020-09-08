@@ -33,8 +33,9 @@ func init() {
 	pubsub.GossipSubDirectConnectInitialDelay = 30 * time.Second
 	pubsub.GossipSubIWantFollowupTime = 5 * time.Second
 	pubsub.GossipSubHistoryLength = 10
-	pubsub.GossipSubGossipFactor = 0.1
+	pubsub.GossipSubGossipFactor = 0.25
 }
+
 func ScoreKeeper() *dtypes.ScoreKeeper {
 	return new(dtypes.ScoreKeeper)
 }
