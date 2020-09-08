@@ -34,7 +34,6 @@ import (
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/filecoin-project/lotus/node/modules"
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -234,7 +233,6 @@ func (tu *syncTestUtil) addSourceNode(gen int) {
 		node.Repo(sourceRepo),
 		node.MockHost(tu.mn),
 		node.Test(),
-		node.Override(new(dtypes.Bootstrapper), dtypes.Bootstrapper(true)),
 
 		node.Override(new(modules.Genesis), modules.LoadGenesis(genesis)),
 	)
@@ -267,7 +265,6 @@ func (tu *syncTestUtil) addClientNode() int {
 		node.Repo(repo.NewMemory(nil)),
 		node.MockHost(tu.mn),
 		node.Test(),
-		node.Override(new(dtypes.Bootstrapper), dtypes.Bootstrapper(true)),
 
 		node.Override(new(modules.Genesis), modules.LoadGenesis(tu.genesis)),
 	)
