@@ -14,6 +14,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 
@@ -177,7 +179,7 @@ func executeMessageVector(t *testing.T, vector *schema.TestVector) {
 
 		// Execute the message.
 		var ret *vm.ApplyRet
-		ret, root, err = driver.ExecuteMessage(bs, root, epoch, msg)
+		ret, root, err = driver.ExecuteMessage(bs, root, abi.ChainEpoch(epoch), msg)
 		if err != nil {
 			t.Fatalf("fatal failure when executing message: %s", err)
 		}
@@ -212,7 +214,7 @@ func executeTipsetVector(t *testing.T, vector *schema.TestVector) {
 	var receiptsIdx int
 	for i, ts := range vector.ApplyTipsets {
 		ts := ts // capture
-		ret, err := driver.ExecuteTipset(bs, tmpds, root, prevEpoch, &ts)
+		ret, err := driver.ExecuteTipset(bs, tmpds, root, abi.ChainEpoch(prevEpoch), &ts)
 		if err != nil {
 			t.Fatalf("failed to apply tipset %d message: %s", i, err)
 		}
@@ -244,7 +246,7 @@ func executeTipsetVector(t *testing.T, vector *schema.TestVector) {
 func assertMsgResult(t *testing.T, expected *schema.Receipt, actual *vm.ApplyRet, label string) {
 	t.Helper()
 
-	if expected, actual := expected.ExitCode, actual.ExitCode; expected != actual {
+	if expected, actual := exitcode.ExitCode(expected.ExitCode), actual.ExitCode; expected != actual {
 		t.Errorf("exit code of msg %s did not match; expected: %s, got: %s", label, expected, actual)
 	}
 	if expected, actual := expected.GasUsed, actual.GasUsed; expected != actual {
