@@ -29,7 +29,7 @@ type ActorError interface {
 	error
 	IsFatal() bool
 	RetCode() exitcode.ExitCode
-	// _internal is a sentinel to prevent code outside if the aerrors package
+	// _internal is a sentinel to prevent code outside of the aerrors package
 	// from implementing the ActorError interface. It ensures actors use
 	// Runtime.Abortf and do not panic with an ActorError directly and
 	// illegally using a system error code.
