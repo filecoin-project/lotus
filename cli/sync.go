@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/filecoin-project/lotus/chain/types"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	cid "github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
@@ -22,6 +24,7 @@ var syncCmd = &cli.Command{
 		syncMarkBadCmd,
 		syncUnmarkBadCmd,
 		syncCheckBadCmd,
+		syncCheckpointCmd,
 	},
 }
 
@@ -175,6 +178,48 @@ var syncCheckBadCmd = &cli.Command{
 		}
 
 		fmt.Println(reason)
+		return nil
+	},
+}
+
+var syncCheckpointCmd = &cli.Command{
+	Name:      "checkpoint",
+	Usage:     "mark a certain tipset as checkpointed; the node will never fork away from this tipset",
+	ArgsUsage: "[tipsetKey]",
+	Flags: []cli.Flag{
+		&cli.Uint64Flag{
+			Name:  "epoch",
+			Usage: "checkpoint the tipset at the given epoch",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		napi, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		var ts *types.TipSet
+
+		if cctx.IsSet("epoch") {
+			ts, err = napi.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(cctx.Uint64("epoch")), types.EmptyTSK)
+		}
+		if ts == nil {
+			ts, err = parseTipSet(ctx, napi, cctx.Args().Slice())
+		}
+		if err != nil {
+			return err
+		}
+
+		if ts == nil {
+			return fmt.Errorf("must pass cids for tipset to set as head, or specify epoch flag")
+		}
+
+		if err := napi.SyncCheckpoint(ctx, ts.Key()); err != nil {
+			return err
+		}
+
 		return nil
 	},
 }
