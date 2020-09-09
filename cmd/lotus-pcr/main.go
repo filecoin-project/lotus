@@ -25,6 +25,8 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	//"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	//"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
@@ -157,6 +159,12 @@ var runCmd = &cli.Command{
 			Usage:   "the number of tipsets to delay message processing to smooth chain reorgs",
 			Value:   int(build.MessageConfidence),
 		},
+		&cli.IntFlag{
+			Name:    "miner-total-funds-threashold",
+			EnvVars: []string{"LOTUS_PCR_MINER_TOTAL_FUNDS_THREASHOLD"},
+			Usage:   "total filecoin across all accounts that should be met, if the miner balancer drops below zero",
+			Value:   0,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		go func() {
@@ -201,14 +209,16 @@ var runCmd = &cli.Command{
 		preCommitEnabled := cctx.Bool("pre-commit")
 		proveCommitEnabled := cctx.Bool("prove-commit")
 		aggregateTipsets := cctx.Int("aggregate-tipsets")
+		minerTotalFundsThreashold := uint64(cctx.Int("miner-total-funds-threashold"))
 
 		rf := &refunder{
-			api:                api,
-			wallet:             from,
-			percentExtra:       percentExtra,
-			dryRun:             dryRun,
-			preCommitEnabled:   preCommitEnabled,
-			proveCommitEnabled: proveCommitEnabled,
+			api:                       api,
+			wallet:                    from,
+			percentExtra:              percentExtra,
+			dryRun:                    dryRun,
+			preCommitEnabled:          preCommitEnabled,
+			proveCommitEnabled:        proveCommitEnabled,
+			minerTotalFundsThreashold: types.FromFil(minerTotalFundsThreashold),
 		}
 
 		var refunds *MinersRefund = NewMinersRefund()
@@ -230,7 +240,18 @@ var runCmd = &cli.Command{
 				return err
 			}
 
-			if err := rf.Refund(ctx, refundTipset, refunds, rounds); err != nil {
+			{
+				negativeBalancerRefund, err := rf.EnsureMinerMinimums(ctx, refundTipset, NewMinersRefund())
+				if err != nil {
+					return err
+				}
+
+				if err := rf.Refund(ctx, "refund negative balancer miner", refundTipset, negativeBalancerRefund, rounds); err != nil {
+					return err
+				}
+			}
+
+			if err := rf.Refund(ctx, "refund stats", refundTipset, refunds, rounds); err != nil {
 				return err
 			}
 
@@ -289,7 +310,6 @@ func (m *MinersRefund) Track(addr address.Address, value types.BigInt) {
 
 	m.count = m.count + 1
 	m.totalRefunds = types.BigAdd(m.totalRefunds, value)
-
 	m.refunds[addr] = types.BigAdd(m.refunds[addr], value)
 }
 
@@ -318,8 +338,12 @@ type refunderNodeApi interface {
 	ChainGetParentMessages(ctx context.Context, blockCid cid.Cid) ([]api.Message, error)
 	ChainGetParentReceipts(ctx context.Context, blockCid cid.Cid) ([]*types.MessageReceipt, error)
 	ChainGetTipSetByHeight(ctx context.Context, epoch abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)
+	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 	StateMinerInitialPledgeCollateral(ctx context.Context, addr address.Address, precommitInfo miner.SectorPreCommitInfo, tsk types.TipSetKey) (types.BigInt, error)
+	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)
 	StateSectorPreCommitInfo(ctx context.Context, addr address.Address, sector abi.SectorNumber, tsk types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error)
+	StateMinerAvailableBalance(context.Context, address.Address, types.TipSetKey) (types.BigInt, error)
+	StateListMiners(context.Context, types.TipSetKey) ([]address.Address, error)
 	StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error)
 	MpoolPushMessage(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec) (*types.SignedMessage, error)
 	GasEstimateGasPremium(ctx context.Context, nblocksincl uint64, sender address.Address, gaslimit int64, tsk types.TipSetKey) (types.BigInt, error)
@@ -327,12 +351,81 @@ type refunderNodeApi interface {
 }
 
 type refunder struct {
-	api                refunderNodeApi
-	wallet             address.Address
-	percentExtra       int
-	dryRun             bool
-	preCommitEnabled   bool
-	proveCommitEnabled bool
+	api                       refunderNodeApi
+	wallet                    address.Address
+	percentExtra              int
+	dryRun                    bool
+	preCommitEnabled          bool
+	proveCommitEnabled        bool
+	minerTotalFundsThreashold big.Int
+}
+
+func (r *refunder) EnsureMinerMinimums(ctx context.Context, tipset *types.TipSet, refunds *MinersRefund) (*MinersRefund, error) {
+	miners, err := r.api.StateListMiners(ctx, tipset.Key())
+	if err != nil {
+		return nil, err
+	}
+
+	for _, maddr := range miners {
+		mact, err := r.api.StateGetActor(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			log.Errorw("failed", "err", err, "height", tipset.Height(), "key", tipset.Key(), "miner", maddr)
+			continue
+		}
+
+		if !mact.Balance.GreaterThan(big.Zero()) {
+			continue
+		}
+
+		minerAvailableBalance, err := r.api.StateMinerAvailableBalance(ctx, maddr, tipset.Key())
+		if err != nil {
+			log.Errorw("failed", "err", err, "height", tipset.Height(), "key", tipset.Key(), "miner", maddr)
+			continue
+		}
+
+		if minerAvailableBalance.GreaterThanEqual(big.Zero()) {
+			log.Debugw("skipping over miner with positive balance ", "height", tipset.Height(), "key", tipset.Key(), "miner", maddr)
+			continue
+		}
+
+		// Look up and find all addresses associated with the miner
+		minerInfo, err := r.api.StateMinerInfo(ctx, maddr, tipset.Key())
+
+		allAddresses := []address.Address{minerInfo.Worker}
+		allAddresses = append(allAddresses, minerInfo.ControlAddresses...)
+
+		// Sum the balancer of all the addresses
+		addrSum := big.Zero()
+		addrCheck := make(map[address.Address]struct{}, len(allAddresses))
+		for _, addr := range allAddresses {
+			if _, found := addrCheck[addr]; !found {
+				balance, err := r.api.WalletBalance(ctx, addr)
+				if err != nil {
+					log.Errorw("failed", "err", err, "height", tipset.Height(), "key", tipset.Key(), "miner", maddr)
+					continue
+				}
+
+				addrSum = big.Add(addrSum, balance)
+				addrCheck[addr] = struct{}{}
+			}
+		}
+
+		totalAvailableBalance := big.Add(addrSum, minerAvailableBalance)
+
+		// If the miner has available balance they should use it
+		if totalAvailableBalance.GreaterThanEqual(r.minerTotalFundsThreashold) {
+			log.Debugw("skipping over miner with enough funds cross all accounts", "height", tipset.Height(), "key", tipset.Key(), "miner", maddr, "miner_available_balance", minerAvailableBalance, "wallet_total_balances", addrSum)
+			continue
+		}
+
+		// Calculate the required FIL to bring the miner up to the minimum across all of their accounts
+		refundValue := big.Add(totalAvailableBalance.Abs(), r.minerTotalFundsThreashold)
+		refunds.Track(maddr, refundValue)
+
+		log.Debugw("processing negative balance miner", "miner", maddr, "refund", refundValue)
+	}
+
+	return refunds, nil
 }
 
 func (r *refunder) ProcessTipset(ctx context.Context, tipset *types.TipSet, refunds *MinersRefund) (*MinersRefund, error) {
@@ -464,7 +557,7 @@ func (r *refunder) ProcessTipset(ctx context.Context, tipset *types.TipSet, refu
 	return refunds, nil
 }
 
-func (r *refunder) Refund(ctx context.Context, tipset *types.TipSet, refunds *MinersRefund, rounds int) error {
+func (r *refunder) Refund(ctx context.Context, name string, tipset *types.TipSet, refunds *MinersRefund, rounds int) error {
 	if refunds.Count() == 0 {
 		log.Debugw("no messages to refund in tipset", "height", tipset.Height(), "key", tipset.Key())
 		return nil
@@ -522,7 +615,7 @@ func (r *refunder) Refund(ctx context.Context, tipset *types.TipSet, refunds *Mi
 		refundSum = types.BigAdd(refundSum, msg.Value)
 	}
 
-	log.Infow("refund stats", "tipsets_processed", rounds, "height", tipset.Height(), "key", tipset.Key(), "messages_sent", len(messages)-failures, "refund_sum", refundSum, "messages_failures", failures, "messages_processed", refunds.Count())
+	log.Infow(name, "tipsets_processed", rounds, "height", tipset.Height(), "key", tipset.Key(), "messages_sent", len(messages)-failures, "refund_sum", refundSum, "messages_failures", failures, "messages_processed", refunds.Count())
 	return nil
 }
 
