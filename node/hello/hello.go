@@ -104,6 +104,10 @@ func (hs *Service) HandleStream(s inet.Stream) {
 		build.Clock.Sleep(time.Millisecond * 300)
 	}
 
+	if hs.pmgr != nil {
+		hs.pmgr.AddFilecoinPeer(s.Conn().RemotePeer())
+	}
+
 	ts, err := hs.syncer.FetchTipSet(context.Background(), s.Conn().RemotePeer(), types.NewTipSetKey(hmsg.HeaviestTipSet...))
 	if err != nil {
 		log.Errorf("failed to fetch tipset from peer during hello: %+v", err)
@@ -116,9 +120,6 @@ func (hs *Service) HandleStream(s inet.Stream) {
 		// don't bother informing about genesis
 		log.Infof("Got new tipset through Hello: %s from %s", ts.Cids(), s.Conn().RemotePeer())
 		hs.syncer.InformNewHead(s.Conn().RemotePeer(), ts)
-	}
-	if hs.pmgr != nil {
-		hs.pmgr.AddFilecoinPeer(s.Conn().RemotePeer())
 	}
 
 }

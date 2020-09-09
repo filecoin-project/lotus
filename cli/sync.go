@@ -11,7 +11,6 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain"
 )
 
 var syncCmd = &cli.Command{
@@ -61,7 +60,7 @@ var syncStatusCmd = &cli.Command{
 			fmt.Printf("\tBase:\t%s\n", base)
 			fmt.Printf("\tTarget:\t%s (%d)\n", target, theight)
 			fmt.Printf("\tHeight diff:\t%d\n", heightDiff)
-			fmt.Printf("\tStage: %s\n", chain.SyncStageString(ss.Stage))
+			fmt.Printf("\tStage: %s\n", ss.Stage)
 			fmt.Printf("\tHeight: %d\n", ss.Height)
 			if ss.End.IsZero() {
 				if !ss.Start.IsZero() {
@@ -186,7 +185,7 @@ func SyncWait(ctx context.Context, napi api.FullNode) error {
 			theight = ss.Target.Height()
 		}
 
-		fmt.Printf("\r\x1b[2KWorker %d: Target Height: %d\tTarget: %s\tState: %s\tHeight: %d", working, theight, target, chain.SyncStageString(ss.Stage), ss.Height)
+		fmt.Printf("\r\x1b[2KWorker %d: Target Height: %d\tTarget: %s\tState: %s\tHeight: %d", working, theight, target, ss.Stage, ss.Height)
 
 		if time.Now().Unix()-int64(head.MinTimestamp()) < int64(build.BlockDelaySecs) {
 			fmt.Println("\nDone!")

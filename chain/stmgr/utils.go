@@ -456,7 +456,7 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 
 	for i := ts.Height(); i < height; i++ {
 		// handle state forks
-		err = sm.handleStateForks(ctx, vmi.StateTree(), i)
+		err = sm.handleStateForks(ctx, vmi.StateTree(), i, ts)
 		if err != nil {
 			return cid.Undef, nil, xerrors.Errorf("error handling state forks: %w", err)
 		}

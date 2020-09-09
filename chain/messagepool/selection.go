@@ -3,6 +3,7 @@ package messagepool
 import (
 	"context"
 	"math/big"
+	"math/rand"
 	"sort"
 	"time"
 
@@ -302,6 +303,69 @@ tailLoop:
 	}
 	if dt := time.Since(startTail); dt > time.Millisecond {
 		log.Infow("pack tail chains done", "took", dt)
+	}
+
+	// if we have gasLimit to spare, pick some random (non-negative) chains to fill the block
+	// we pick randomly so that we minimize the probability of duplication among all miners
+	startRandom := time.Now()
+	if gasLimit >= minGas {
+		shuffleChains(chains)
+
+		for _, chain := range chains {
+			// have we filled the block
+			if gasLimit < minGas {
+				break
+			}
+
+			// has it been merged or invalidated?
+			if chain.merged || !chain.valid {
+				continue
+			}
+
+			// is it negative?
+			if !allowNegativeChains(curTs.Height()) && chain.gasPerf < 0 {
+				continue
+			}
+
+			// compute the dependencies that must be merged and the gas limit including deps
+			chainGasLimit := chain.gasLimit
+			depGasLimit := int64(0)
+			var chainDeps []*msgChain
+			for curChain := chain.prev; curChain != nil && !curChain.merged; curChain = curChain.prev {
+				chainDeps = append(chainDeps, curChain)
+				chainGasLimit += curChain.gasLimit
+				depGasLimit += curChain.gasLimit
+			}
+
+			// do the deps fit? if the deps won't fit, invalidate the chain
+			if depGasLimit > gasLimit {
+				chain.Invalidate()
+				continue
+			}
+
+			// do they fit as is? if it doesn't, trim to make it fit if possible
+			if chainGasLimit > gasLimit {
+				chain.Trim(gasLimit-depGasLimit, mp, baseFee, allowNegativeChains(curTs.Height()))
+
+				if !chain.valid {
+					continue
+				}
+			}
+
+			// include it together with all dependencies
+			for i := len(chainDeps) - 1; i >= 0; i-- {
+				curChain := chainDeps[i]
+				curChain.merged = true
+				result = append(result, curChain.msgs...)
+			}
+
+			chain.merged = true
+			result = append(result, chain.msgs...)
+			gasLimit -= chainGasLimit
+		}
+	}
+	if dt := time.Since(startRandom); dt > time.Millisecond {
+		log.Infow("pack random tail chains done", "took", dt)
 	}
 
 	return result, nil
@@ -851,4 +915,11 @@ func (mc *msgChain) BeforeEffective(other *msgChain) bool {
 	return (mc.merged && !other.merged) || mc.effPerf > other.effPerf ||
 		(mc.effPerf == other.effPerf && mc.gasPerf > other.gasPerf) ||
 		(mc.effPerf == other.effPerf && mc.gasPerf == other.gasPerf && mc.gasReward.Cmp(other.gasReward) > 0)
+}
+
+func shuffleChains(lst []*msgChain) {
+	for i := range lst {
+		j := rand.Intn(i + 1)
+		lst[i], lst[j] = lst[j], lst[i]
+	}
 }

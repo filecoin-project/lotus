@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
@@ -709,7 +710,27 @@ const (
 	StageMessages
 	StageSyncComplete
 	StageSyncErrored
+	StageFetchingMessages
 )
+
+func (v SyncStateStage) String() string {
+	switch v {
+	case StageHeaders:
+		return "header sync"
+	case StagePersistHeaders:
+		return "persisting headers"
+	case StageMessages:
+		return "message sync"
+	case StageSyncComplete:
+		return "complete"
+	case StageSyncErrored:
+		return "error"
+	case StageFetchingMessages:
+		return "fetching messages"
+	default:
+		return fmt.Sprintf("<unknown: %d>", v)
+	}
+}
 
 type MpoolChange int
 
