@@ -62,6 +62,9 @@ const (
 	// MethodMutateState is the identifier for the method that attempts to mutate
 	// a state value in the actor.
 	MethodMutateState
+	// MethodAbort is the identifier for the method that panics optionally with
+	// a passed exit code.
+	MethodAbort
 )
 
 // Exports defines the methods this actor exposes publicly.
@@ -74,6 +77,7 @@ func (a Actor) Exports() []interface{} {
 		MethodDeleteActor:         a.DeleteActor,
 		MethodSend:                a.Send,
 		MethodMutateState:         a.MutateState,
+		MethodAbort:               a.Abort,
 	}
 }
 
@@ -227,6 +231,24 @@ func (a Actor) MutateState(rt runtime.Runtime, args *MutateStateArgs) *adt.Empty
 		st.Value = args.Value
 	default:
 		panic("unknown mutation type")
+	}
+	return nil
+}
+
+// AbortArgs are the arguments to the abort method, specifying the exit code to
+// (optionally) abort with and the message.
+type AbortArgs struct {
+	Code    exitcode.ExitCode
+	NoCode  bool
+	Message string
+}
+
+// Abort simply causes a panic or abort with the passed exit code.
+func (a Actor) Abort(rt runtime.Runtime, args *AbortArgs) *adt.EmptyValue {
+	if args.NoCode { // no code, just plain old panic
+		panic(args.Message)
+	} else {
+		rt.Abortf(args.Code, args.Message)
 	}
 	return nil
 }
