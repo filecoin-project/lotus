@@ -9,12 +9,12 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/conformance/chaos"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/lib/blockstore"
 
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/test-vectors/chaos"
 	"github.com/filecoin-project/test-vectors/schema"
 
 	"github.com/filecoin-project/go-address"
@@ -96,13 +96,16 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, preroot
 	var (
 		messages []*types.Message
 		results  []*vm.ApplyRet
+
+		epoch   = abi.ChainEpoch(tipset.Epoch)
+		basefee = abi.NewTokenAmount(tipset.BaseFee.Int64())
 	)
 
-	postcid, receiptsroot, err := sm.ApplyBlocks(context.Background(), parentEpoch, preroot, blocks, tipset.Epoch, vmRand, func(_ cid.Cid, msg *types.Message, ret *vm.ApplyRet) error {
+	postcid, receiptsroot, err := sm.ApplyBlocks(context.Background(), parentEpoch, preroot, blocks, epoch, vmRand, func(_ cid.Cid, msg *types.Message, ret *vm.ApplyRet) error {
 		messages = append(messages, msg)
 		results = append(results, ret)
 		return nil
-	}, tipset.BaseFee, nil)
+	}, basefee, nil)
 
 	if err != nil {
 		return nil, err
