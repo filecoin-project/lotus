@@ -5,8 +5,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/go-state-types/dline"
-
 	"golang.org/x/xerrors"
 
 	"github.com/stretchr/testify/require"
@@ -23,6 +21,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/dline"
 	tutils "github.com/filecoin-project/specs-actors/support/testing"
 )
 
