@@ -26,6 +26,7 @@ type RandomBeacon interface {
 	Entry(context.Context, uint64) <-chan Response
 	VerifyEntry(types.BeaconEntry, types.BeaconEntry) error
 	MaxBeaconRoundForEpoch(abi.ChainEpoch, types.BeaconEntry) uint64
+	MinDrandEntryEpoch(filEpoch abi.ChainEpoch) abi.ChainEpoch
 }
 
 func ValidateBlockValues(b RandomBeacon, h *types.BlockHeader, prevEntry types.BeaconEntry) error {

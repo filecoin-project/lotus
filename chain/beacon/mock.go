@@ -61,4 +61,8 @@ func (mb *mockBeacon) MaxBeaconRoundForEpoch(epoch abi.ChainEpoch, prevEntry typ
 	return uint64(epoch)
 }
 
+func (mb *mockBeacon) MinDrandEntryEpoch(filEpoch abi.ChainEpoch) abi.ChainEpoch {
+	return filEpoch
+}
+
 var _ RandomBeacon = (*mockBeacon)(nil)

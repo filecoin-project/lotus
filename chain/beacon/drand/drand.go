@@ -3,6 +3,7 @@ package drand
 import (
 	"bytes"
 	"context"
+	"math"
 	"sync"
 	"time"
 
@@ -190,8 +191,29 @@ func (db *DrandBeacon) VerifyEntry(curr types.BeaconEntry, prev types.BeaconEntr
 func (db *DrandBeacon) MaxBeaconRoundForEpoch(filEpoch abi.ChainEpoch, prevEntry types.BeaconEntry) uint64 {
 	// TODO: sometimes the genesis time for filecoin is zero and this goes negative
 	latestTs := ((uint64(filEpoch) * db.filRoundTime) + db.filGenTime) - db.filRoundTime
-	dround := (latestTs - db.drandGenTime) / uint64(db.interval.Seconds())
+	dround := (latestTs-db.drandGenTime)/uint64(db.interval.Seconds()) + 1
 	return dround
+}
+
+// MinDrandEntryEpoch returns the minimum filecoin epoch where the drand entry
+// that is associated with `filEpoch` could have been inserted in the chain.
+// Given filecoin and drand can have different frequency, a drand entry can be
+// associated to one or multiple subsequent filecoin epochs. When searching the
+// chain for the drand entry corresponding to filEpoch, we want to start
+// searching from the minimum filecoin epoch where this drand entry should /
+// could have been inserted and move onwards (for example if it falls on a null
+// blok). This function returns the first such filecoin epoch.
+// Note that if filecoin and drand frequency are the same, filEpoch and the
+// returned epoch are the same.
+func (db *DrandBeacon) MinDrandEntryEpoch(filEpoch abi.ChainEpoch) abi.ChainEpoch {
+	drandRound := db.MaxBeaconRoundForEpoch(filEpoch, types.BeaconEntry{})
+	drandTs := db.drandGenTime + (drandRound-1)*uint64(db.interval.Seconds())
+	// compute the minimum filecoin epoch associated with that timestamp
+	// We do the ceiling such that if we find on a decimal epoch number, we take
+	// the epoch number after this one - we don't include a drand entry at round
+	// 9.4, but at round 10 because we can't know it at the time of round 9
+	minEpoch := math.Ceil(float64((drandTs - db.filGenTime)) / float64(db.filRoundTime))
+	return abi.ChainEpoch(minEpoch)
 }
 
 var _ beacon.RandomBeacon = (*DrandBeacon)(nil)
