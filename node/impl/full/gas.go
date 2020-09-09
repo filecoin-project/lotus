@@ -2,16 +2,15 @@ package full
 
 import (
 	"context"
-	"math"
-	"math/rand"
-	"sort"
-
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"math"
+	"math/rand"
+	"sort"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -50,16 +49,40 @@ func (a *GasAPI) GasEstimateFeeCap(ctx context.Context, msg *types.Message, maxq
 	return out, nil
 }
 
+type gasMeta struct {
+	price big.Int
+	limit int64
+}
+
+func medianGasPremium(prices []gasMeta, blocks int) abi.TokenAmount {
+	sort.Slice(prices, func(i, j int) bool {
+		// sort desc by price
+		return prices[i].price.GreaterThan(prices[j].price)
+	})
+
+	at := build.BlockGasTarget * int64(blocks) / 2
+	prev1, prev2 := big.Zero(), big.Zero()
+	for _, price := range prices {
+		prev1, prev2 = price.price, prev1
+		at -= price.limit
+		if at < 0 {
+			break
+		}
+	}
+
+	premium := prev1
+	if prev2.Sign() != 0 {
+		premium = big.Div(types.BigAdd(prev1, prev2), types.NewInt(2))
+	}
+
+	return premium
+}
+
 func (a *GasAPI) GasEstimateGasPremium(ctx context.Context, nblocksincl uint64,
 	sender address.Address, gaslimit int64, _ types.TipSetKey) (types.BigInt, error) {
 
 	if nblocksincl == 0 {
 		nblocksincl = 1
-	}
-
-	type gasMeta struct {
-		price big.Int
-		limit int64
 	}
 
 	var prices []gasMeta
@@ -92,25 +115,7 @@ func (a *GasAPI) GasEstimateGasPremium(ctx context.Context, nblocksincl uint64,
 		ts = pts
 	}
 
-	sort.Slice(prices, func(i, j int) bool {
-		// sort desc by price
-		return prices[i].price.GreaterThan(prices[j].price)
-	})
-
-	at := build.BlockGasTarget * int64(blocks) / 2
-	prev1, prev2 := big.Zero(), big.Zero()
-	for _, price := range prices {
-		prev1, prev2 = price.price, prev1
-		at -= price.limit
-		if at < 0 {
-			break
-		}
-	}
-
-	premium := prev1
-	if prev2.Sign() != 0 {
-		premium = big.Div(types.BigAdd(prev1, prev2), types.NewInt(2))
-	}
+	premium := medianGasPremium(prices, blocks)
 
 	if types.BigCmp(premium, types.NewInt(MinGasPremium)) < 0 {
 		switch nblocksincl {
