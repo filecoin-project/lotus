@@ -694,7 +694,7 @@ func (p *Processor) getMinerSectorChanges(ctx context.Context, m minerActorInfo)
 }
 
 func (p *Processor) diffMinerPartitions(ctx context.Context, m minerActorInfo, events chan<- *MinerSectorsEvent) error {
-	prevMiner, err := p.getMinerStateAt(ctx, m.common.addr, m.common.tsKey)
+	prevMiner, err := p.getMinerStateAt(ctx, m.common.addr, m.common.parentTsKey)
 	if err != nil {
 		return err
 	}
