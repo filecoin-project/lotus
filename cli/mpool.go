@@ -11,8 +11,10 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 
 	lapi "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -356,7 +358,9 @@ var mpoolReplaceCmd = &cli.Command{
 				return fmt.Errorf("failed to estimate gas values: %w", err)
 			}
 			msg.GasFeeCap = retm.GasFeeCap
-			msg.GasPremium = retm.GasPremium
+
+			minRBF := messagepool.ComputeMinRBF(msg.GasPremium)
+			msg.GasPremium = big.Max(retm.GasPremium, minRBF)
 		} else {
 			msg.GasLimit = cctx.Int64("gas-limit")
 			msg.GasPremium, err = types.BigFromString(cctx.String("gas-premium"))
