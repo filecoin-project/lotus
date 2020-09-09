@@ -105,7 +105,9 @@ type FullNodeStruct struct {
 		SyncState          func(context.Context) (*api.SyncState, error)                `perm:"read"`
 		SyncSubmitBlock    func(ctx context.Context, blk *types.BlockMsg) error         `perm:"write"`
 		SyncIncomingBlocks func(ctx context.Context) (<-chan *types.BlockHeader, error) `perm:"read"`
+		SyncCheckpoint     func(ctx context.Context, key types.TipSetKey) error         `perm:"admin"`
 		SyncMarkBad        func(ctx context.Context, bcid cid.Cid) error                `perm:"admin"`
+		SyncUnmarkBad      func(ctx context.Context, bcid cid.Cid) error                `perm:"admin"`
 		SyncCheckBad       func(ctx context.Context, bcid cid.Cid) (string, error)      `perm:"read"`
 
 		MpoolGetConfig func(context.Context) (*types.MpoolConfig, error) `perm:"read"`
@@ -704,8 +706,16 @@ func (c *FullNodeStruct) SyncIncomingBlocks(ctx context.Context) (<-chan *types.
 	return c.Internal.SyncIncomingBlocks(ctx)
 }
 
+func (c *FullNodeStruct) SyncCheckpoint(ctx context.Context, tsk types.TipSetKey) error {
+	return c.Internal.SyncCheckpoint(ctx, tsk)
+}
+
 func (c *FullNodeStruct) SyncMarkBad(ctx context.Context, bcid cid.Cid) error {
 	return c.Internal.SyncMarkBad(ctx, bcid)
+}
+
+func (c *FullNodeStruct) SyncUnmarkBad(ctx context.Context, bcid cid.Cid) error {
+	return c.Internal.SyncUnmarkBad(ctx, bcid)
 }
 
 func (c *FullNodeStruct) SyncCheckBad(ctx context.Context, bcid cid.Cid) (string, error) {
