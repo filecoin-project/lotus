@@ -98,7 +98,7 @@ func (a *SyncAPI) SyncIncomingBlocks(ctx context.Context) (<-chan *types.BlockHe
 }
 
 func (a *SyncAPI) SyncCheckpoint(ctx context.Context, tsk types.TipSetKey) error {
-	log.Warnf("Marking tipset %s as bad", tsk)
+	log.Warnf("Marking tipset %s as checkpoint", tsk)
 	return a.Syncer.SetCheckpoint(tsk)
 }
 
