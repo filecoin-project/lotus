@@ -201,16 +201,24 @@ func RecordTipsetPoints(ctx context.Context, api api.FullNode, pl *PointList, ti
 	return nil
 }
 
-type apiIpldStore struct {
+type ApiIpldStore struct {
 	ctx context.Context
-	api api.FullNode
+	api apiIpldStoreApi
 }
 
-func (ht *apiIpldStore) Context() context.Context {
+type apiIpldStoreApi interface {
+	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
+}
+
+func NewApiIpldStore(ctx context.Context, api apiIpldStoreApi) *ApiIpldStore {
+	return &ApiIpldStore{ctx, api}
+}
+
+func (ht *ApiIpldStore) Context() context.Context {
 	return ht.ctx
 }
 
-func (ht *apiIpldStore) Get(ctx context.Context, c cid.Cid, out interface{}) error {
+func (ht *ApiIpldStore) Get(ctx context.Context, c cid.Cid, out interface{}) error {
 	raw, err := ht.api.ChainReadObj(ctx, c)
 	if err != nil {
 		return err
@@ -227,8 +235,8 @@ func (ht *apiIpldStore) Get(ctx context.Context, c cid.Cid, out interface{}) err
 	return fmt.Errorf("Object does not implement CBORUnmarshaler")
 }
 
-func (ht *apiIpldStore) Put(ctx context.Context, v interface{}) (cid.Cid, error) {
-	return cid.Undef, fmt.Errorf("Put is not implemented on apiIpldStore")
+func (ht *ApiIpldStore) Put(ctx context.Context, v interface{}) (cid.Cid, error) {
+	return cid.Undef, fmt.Errorf("Put is not implemented on ApiIpldStore")
 }
 
 func RecordTipsetStatePoints(ctx context.Context, api api.FullNode, pl *PointList, tipset *types.TipSet) error {
@@ -279,7 +287,7 @@ func RecordTipsetStatePoints(ctx context.Context, api api.FullNode, pl *PointLis
 		return fmt.Errorf("failed to unmarshal power actor state: %w", err)
 	}
 
-	s := &apiIpldStore{ctx, api}
+	s := NewApiIpldStore(ctx, api)
 	mp, err := adt.AsMap(s, powerActorState.Claims)
 	if err != nil {
 		return err
