@@ -199,9 +199,11 @@ func (mp *MessagePool) selectMessagesOptimal(curTs, ts *types.TipSet, tq float64
 			gasLimit -= chainGasLimit
 
 			// resort to account for already merged chains and effective performance adjustments
-			sort.Slice(chains[i+1:], func(i, j int) bool {
+			// the sort *must* be stable or we end up getting negative gasPerfs pushed up.
+			sort.SliceStable(chains[i+1:], func(i, j int) bool {
 				return chains[i].BeforeEffective(chains[j])
 			})
+
 			continue
 		}
 
@@ -912,7 +914,9 @@ func (mc *msgChain) SetNullEffectivePerf() {
 
 func (mc *msgChain) BeforeEffective(other *msgChain) bool {
 	// move merged chains to the front so we can discard them earlier
-	return (mc.merged && !other.merged) || mc.effPerf > other.effPerf ||
+	return (mc.merged && !other.merged) ||
+		(mc.gasPerf >= 0 && other.gasPerf < 0) ||
+		mc.effPerf > other.effPerf ||
 		(mc.effPerf == other.effPerf && mc.gasPerf > other.gasPerf) ||
 		(mc.effPerf == other.effPerf && mc.gasPerf == other.gasPerf && mc.gasReward.Cmp(other.gasReward) > 0)
 }
