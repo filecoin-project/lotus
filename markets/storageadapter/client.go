@@ -161,7 +161,7 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 
 	pubmsg, err := c.cs.GetMessage(*deal.PublishMessage)
 	if err != nil {
-		return 0, xerrors.Errorf("getting deal pubsish message: %w", err)
+		return 0, xerrors.Errorf("getting deal publish message: %w", err)
 	}
 
 	mi, err := stmgr.StateMinerInfo(ctx, c.sm, c.cs.GetHeaviestTipSet(), deal.Proposal.Provider)

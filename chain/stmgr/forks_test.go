@@ -119,7 +119,7 @@ func TestForkHeightTriggers(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	stmgr.ForksAtHeight[testForkHeight] = func(ctx context.Context, sm *StateManager, st types.StateTree) error {
+	stmgr.ForksAtHeight[testForkHeight] = func(ctx context.Context, sm *StateManager, st types.StateTree, ts *types.TipSet) error {
 		cst := cbor.NewCborStore(sm.ChainStore().Blockstore())
 
 		act, err := st.GetActor(taddr)
