@@ -225,9 +225,6 @@ jobs:
                   cd extern/test-vectors
                   git fetch
                   git checkout origin/<< parameters.vectors-branch >>
-            - run:
-                name: go get vectors branch
-                command: go get github.com/filecoin-project/test-vectors@<< parameters.vectors-branch >>
       - go/install-gotestsum:
           gobin: $HOME/.local/bin
           version: 0.5.2
