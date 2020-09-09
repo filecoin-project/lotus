@@ -93,9 +93,9 @@ func BuiltinBootstrap() (dtypes.BootstrapPeers, error) {
 	return build.BuiltinBootstrap()
 }
 
-func DrandBootstrap(d dtypes.DrandConfig) (dtypes.DrandBootstrap, error) {
+func DrandBootstrap(d dtypes.DrandSchedule) (dtypes.DrandBootstrap, error) {
 	// TODO: retry resolving, don't fail if at least one resolve succeeds
-	addrs, err := addrutil.ParseAddresses(context.TODO(), d.Relays)
+	addrs, err := addrutil.ParseAddresses(context.TODO(), d[0].Config.Relays)
 	if err != nil {
 		log.Errorf("reoslving drand relays addresses: %+v", err)
 		return nil, nil

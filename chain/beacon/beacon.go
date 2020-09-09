@@ -42,15 +42,30 @@ type BeaconPoint struct {
 type RandomBeacon interface {
 	Entry(context.Context, uint64) <-chan Response
 	VerifyEntry(types.BeaconEntry, types.BeaconEntry) error
-	MaxBeaconRoundForEpoch(abi.ChainEpoch, types.BeaconEntry) uint64
+	MaxBeaconRoundForEpoch(abi.ChainEpoch) uint64
 }
 
 func ValidateBlockValues(bSchedule Schedule, h *types.BlockHeader, parentEpoch abi.ChainEpoch,
 	prevEntry types.BeaconEntry) error {
+	{
+		parentBeacon := bSchedule.BeaconForEpoch(parentEpoch)
+		currBeacon := bSchedule.BeaconForEpoch(h.Height)
+		if parentBeacon != currBeacon {
+			if len(h.BeaconEntries) != 2 {
+				return xerrors.Errorf("expected two beacon entries at beacon fork, got %d", len(h.BeaconEntries))
+			}
+			err := currBeacon.VerifyEntry(h.BeaconEntries[1], h.BeaconEntries[0])
+			if err != nil {
+				return xerrors.Errorf("beacon at fork point invalid: (%v, %v): %w",
+					h.BeaconEntries[1], h.BeaconEntries[0], err)
+			}
+			return nil
+		}
+	}
 
 	// TODO: fork logic
 	b := bSchedule.BeaconForEpoch(h.Height)
-	maxRound := b.MaxBeaconRoundForEpoch(h.Height, prevEntry)
+	maxRound := b.MaxBeaconRoundForEpoch(h.Height)
 	if maxRound == prevEntry.Round {
 		if len(h.BeaconEntries) != 0 {
 			return xerrors.Errorf("expected not to have any beacon entries in this block, got %d", len(h.BeaconEntries))
@@ -78,12 +93,34 @@ func ValidateBlockValues(bSchedule Schedule, h *types.BlockHeader, parentEpoch a
 }
 
 func BeaconEntriesForBlock(ctx context.Context, bSchedule Schedule, epoch abi.ChainEpoch, parentEpoch abi.ChainEpoch, prev types.BeaconEntry) ([]types.BeaconEntry, error) {
-	// TODO: fork logic
+	{
+		parentBeacon := bSchedule.BeaconForEpoch(parentEpoch)
+		currBeacon := bSchedule.BeaconForEpoch(epoch)
+		if parentBeacon != currBeacon {
+			// Fork logic
+			round := currBeacon.MaxBeaconRoundForEpoch(epoch)
+			out := make([]types.BeaconEntry, 2)
+			rch := currBeacon.Entry(ctx, round-1)
+			res := <-rch
+			if res.Err != nil {
+				return nil, xerrors.Errorf("getting entry %d returned error: %w", round-1, res.Err)
+			}
+			out[0] = res.Entry
+			rch = currBeacon.Entry(ctx, round)
+			res = <-rch
+			if res.Err != nil {
+				return nil, xerrors.Errorf("getting entry %d returned error: %w", round, res.Err)
+			}
+			out[1] = res.Entry
+			return out, nil
+		}
+	}
+
 	beacon := bSchedule.BeaconForEpoch(epoch)
 
 	start := build.Clock.Now()
 
-	maxRound := beacon.MaxBeaconRoundForEpoch(epoch, prev)
+	maxRound := beacon.MaxBeaconRoundForEpoch(epoch)
 	if maxRound == prev.Round {
 		return nil, nil
 	}

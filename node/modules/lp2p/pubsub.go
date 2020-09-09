@@ -49,7 +49,7 @@ type GossipIn struct {
 	Db   dtypes.DrandBootstrap
 	Cfg  *config.Pubsub
 	Sk   *dtypes.ScoreKeeper
-	Dr   dtypes.DrandConfig
+	Dr   dtypes.DrandSchedule
 }
 
 func getDrandTopic(chainInfoJSON string) (string, error) {
@@ -74,7 +74,7 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 	}
 
 	isBootstrapNode := in.Cfg.Bootstrapper
-	drandTopic, err := getDrandTopic(in.Dr.ChainInfoJSON)
+	drandTopic, err := getDrandTopic(in.Dr[0].Config.ChainInfoJSON)
 	if err != nil {
 		return nil, err
 	}
