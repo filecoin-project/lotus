@@ -597,6 +597,7 @@ func (s *WindowPoStScheduler) batchPartitions(partitions []*miner.Partition) ([]
 		}
 		batches = append(batches, partitions[i:end])
 	}
+
 	return batches, nil
 }
 
