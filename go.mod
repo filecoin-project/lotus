@@ -10,6 +10,7 @@ require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/GeertJohan/go.rice v1.0.0
 	github.com/Gurpartap/async v0.0.0-20180927173644-4f7f499dd9ee
+	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
 	github.com/buger/goterm v0.0.0-20200322175922-2f3e71b85129
 	github.com/coreos/go-systemd/v22 v22.0.0
@@ -39,10 +40,10 @@ require (
 	github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b
 	github.com/filecoin-project/specs-actors v0.9.7
 	github.com/filecoin-project/specs-storage v0.1.1-0.20200907031224-ed2e5cd13796
-	github.com/filecoin-project/statediff v0.0.1
-	github.com/filecoin-project/test-vectors/schema v0.0.0-00010101000000-000000000000
+	github.com/filecoin-project/test-vectors/schema v0.0.1
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/go-kit/kit v0.10.0
+	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/mux v1.7.4
 	github.com/gorilla/websocket v1.4.2
@@ -118,6 +119,7 @@ require (
 	github.com/whyrusleeping/pubsub v0.0.0-20131020042734-02de8aa2db3d
 	github.com/xorcare/golden v0.6.1-0.20191112154924-b87f686d7542
 	go.opencensus.io v0.22.4
+	go.uber.org/dig v1.10.0 // indirect
 	go.uber.org/fx v1.9.0
 	go.uber.org/multierr v1.5.0
 	go.uber.org/zap v1.15.0
@@ -126,6 +128,7 @@ require (
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
 	gotest.tools v2.2.0+incompatible
+	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
 )
 
 replace github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v1.18.0
@@ -133,3 +136,5 @@ replace github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v
 replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 
 replace github.com/dgraph-io/badger/v2 => github.com/dgraph-io/badger/v2 v2.0.1-rc1.0.20200716180832-3ab515320794
+
+replace github.com/filecoin-project/test-vectors => ./extern/test-vectors

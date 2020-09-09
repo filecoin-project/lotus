@@ -232,6 +232,14 @@ jobs:
           gobin: $HOME/.local/bin
           version: 0.5.2
       - run:
+          name: install statediff globally
+          command: |
+            mkdir -p /tmp/statediff
+            git clone https://github.com/filecoin-project/statediff.git /tmp/statediff
+            cd /tmp/statediff
+            go generate ./...
+            go install ./cmd/statediff
+      - run:
           name: go test
           environment:
             SKIP_CONFORMANCE: "0"
