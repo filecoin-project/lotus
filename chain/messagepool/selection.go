@@ -344,7 +344,7 @@ tailLoop:
 			}
 
 			// do they fit as is? if it doesn't, trim to make it fit if possible
-			if chainGasLimit >= gasLimit {
+			if chainGasLimit > gasLimit {
 				chain.Trim(gasLimit-depGasLimit, mp, baseFee, allowNegativeChains(curTs.Height()))
 
 				if !chain.valid {
