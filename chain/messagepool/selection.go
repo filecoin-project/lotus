@@ -309,8 +309,10 @@ tailLoop:
 
 	// if we have gasLimit to spare, pick some random (non-negative) chains to fill the block
 	// we pick randomly so that we minimize the probability of duplication among all miners
-	startRandom := time.Now()
 	if gasLimit >= minGas {
+		randomCount := 0
+
+		startRandom := time.Now()
 		shuffleChains(chains)
 
 		for _, chain := range chains {
@@ -359,15 +361,23 @@ tailLoop:
 				curChain := chainDeps[i]
 				curChain.merged = true
 				result = append(result, curChain.msgs...)
+				randomCount += len(curChain.msgs)
 			}
 
 			chain.merged = true
 			result = append(result, chain.msgs...)
+			randomCount += len(chain.msgs)
 			gasLimit -= chainGasLimit
 		}
-	}
-	if dt := time.Since(startRandom); dt > time.Millisecond {
-		log.Infow("pack random tail chains done", "took", dt)
+
+		if dt := time.Since(startRandom); dt > time.Millisecond {
+			log.Infow("pack random tail chains done", "took", dt)
+		}
+
+		if randomCount > 0 {
+			log.Warnf("optimal selection failed to pack a block; picked %d messages with random selection",
+				randomCount)
+		}
 	}
 
 	return result, nil
