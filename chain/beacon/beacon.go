@@ -23,7 +23,7 @@ type Schedule []BeaconPoint
 func (bs Schedule) BeaconForEpoch(e abi.ChainEpoch) RandomBeacon {
 	for i := len(bs) - 1; i >= 0; i-- {
 		bp := bs[i]
-		if e > bp.Start {
+		if e >= bp.Start {
 			return bp.Beacon
 		}
 	}
