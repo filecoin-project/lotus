@@ -1402,6 +1402,12 @@ var ErrForkCheckpoint = fmt.Errorf("fork would require us to diverge from checkp
 // we add the entire subchain to the denylist. Else, we find the common ancestor, and add the missing chain
 // fragment until the fork point to the returned []TipSet.
 func (syncer *Syncer) syncFork(ctx context.Context, incoming *types.TipSet, known *types.TipSet) ([]*types.TipSet, error) {
+
+	chkpt := syncer.GetCheckpoint()
+	if known.Key() == chkpt {
+		return nil, ErrForkCheckpoint
+	}
+
 	// TODO: Does this mean we always ask for ForkLengthThreshold blocks from the network, even if we just need, like, 2?
 	// Would it not be better to ask in smaller chunks, given that an ~ForkLengthThreshold is very rare?
 	tips, err := syncer.Exchange.GetBlocks(ctx, incoming.Parents(), int(build.ForkLengthThreshold))
@@ -1423,28 +1429,17 @@ func (syncer *Syncer) syncFork(ctx context.Context, incoming *types.TipSet, know
 		}
 
 		if nts.Equals(tips[cur]) {
-			// We've identified the ancestor
-			// Still need to make sure this wouldn't cause us to fork away from the checkpointed tipset
-
-			chkpt := syncer.GetCheckpoint()
-
-			if chkpt != types.EmptyTSK {
-				chkTs, err := syncer.ChainStore().LoadTipSet(chkpt)
-				if err != nil {
-					return nil, xerrors.Errorf("failed to retrieve checkpoint tipset: %w", err)
-				}
-
-				if chkTs.Height() > nts.Height() {
-					return nil, ErrForkCheckpoint
-				}
-			}
-
 			return tips[:cur+1], nil
 		}
 
 		if nts.Height() < tips[cur].Height() {
 			cur++
 		} else {
+			// We will be forking away from nts, check that it isn't checkpointed
+			if nts.Key() == chkpt {
+				return nil, ErrForkCheckpoint
+			}
+
 			nts, err = syncer.store.LoadTipSet(nts.Parents())
 			if err != nil {
 				return nil, xerrors.Errorf("loading next local tipset: %w", err)
