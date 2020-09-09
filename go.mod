@@ -17,8 +17,8 @@ require (
 	github.com/detailyang/go-fallocate v0.0.0-20180908115635-432fa640bd2e
 	github.com/dgraph-io/badger/v2 v2.0.3
 	github.com/docker/go-units v0.4.0
-	github.com/drand/drand v1.0.3-0.20200714175734-29705eaf09d4
-	github.com/drand/kyber v1.1.1
+	github.com/drand/drand v1.1.2-0.20200905144319-79c957281b32
+	github.com/drand/kyber v1.1.2
 	github.com/dustin/go-humanize v1.0.0
 	github.com/elastic/go-sysinfo v1.3.0
 	github.com/fatih/color v1.8.0
