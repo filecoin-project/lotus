@@ -29,6 +29,7 @@ var mpoolCmd = &cli.Command{
 		mpoolReplaceCmd,
 		mpoolFindCmd,
 		mpoolConfig,
+		mpoolGasPerfCmd,
 	},
 }
 
@@ -511,6 +512,68 @@ var mpoolConfig = &cli.Command{
 			}
 
 			return api.MpoolSetConfig(ctx, cfg)
+		}
+
+		return nil
+	},
+}
+
+var mpoolGasPerfCmd = &cli.Command{
+	Name:  "gas-perf",
+	Usage: "Check gas performance of messages in mempool",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "all",
+			Usage: "print gas performance for all mempool messages (default only prints for local)",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		msgs, err := api.MpoolPending(ctx, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		var filter map[address.Address]struct{}
+		if !cctx.Bool("all") {
+			filter = map[address.Address]struct{}{}
+
+			addrss, err := api.WalletList(ctx)
+			if err != nil {
+				return xerrors.Errorf("getting local addresses: %w", err)
+			}
+
+			for _, a := range addrss {
+				filter[a] = struct{}{}
+			}
+
+			var filtered []*types.SignedMessage
+			for _, msg := range msgs {
+				if _, has := filter[msg.Message.From]; !has {
+					continue
+				}
+				filtered = append(filtered, msg)
+			}
+			msgs = filtered
+		}
+
+		ts, err := api.ChainHead(ctx)
+		if err != nil {
+			return xerrors.Errorf("failed to get chain head: %w", err)
+		}
+
+		baseFee := ts.Blocks()[0].ParentBaseFee
+		for _, m := range msgs {
+			feeCapSlack := types.BigSub(m.Message.GasFeeCap, baseFee)
+
+			fmt.Printf("%s\t%d\t%s\n", m.Message.From, m.Message.Nonce, feeCapSlack)
 		}
 
 		return nil
