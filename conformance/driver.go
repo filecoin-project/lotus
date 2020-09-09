@@ -102,7 +102,7 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, preroot
 		messages = append(messages, msg)
 		results = append(results, ret)
 		return nil
-	}, tipset.BaseFee)
+	}, tipset.BaseFee, nil)
 
 	if err != nil {
 		return nil, err

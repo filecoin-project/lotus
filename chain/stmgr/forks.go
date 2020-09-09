@@ -17,14 +17,14 @@ import (
 	"golang.org/x/xerrors"
 )
 
-var ForksAtHeight = map[abi.ChainEpoch]func(context.Context, *StateManager, types.StateTree) error{
+var ForksAtHeight = map[abi.ChainEpoch]func(context.Context, *StateManager, types.StateTree, *types.TipSet) error{
 	build.UpgradeBreezeHeight: UpgradeFaucetBurnRecovery,
 }
 
-func (sm *StateManager) handleStateForks(ctx context.Context, st types.StateTree, height abi.ChainEpoch) (err error) {
+func (sm *StateManager) handleStateForks(ctx context.Context, st types.StateTree, height abi.ChainEpoch, ts *types.TipSet) (err error) {
 	f, ok := ForksAtHeight[height]
 	if ok {
-		err := f(ctx, sm, st)
+		err := f(ctx, sm, st, ts)
 		if err != nil {
 			return err
 		}
@@ -66,7 +66,7 @@ func doTransfer(tree types.StateTree, from, to address.Address, amt abi.TokenAmo
 	return nil
 }
 
-func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, tree types.StateTree) error {
+func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, tree types.StateTree, ts *types.TipSet) error {
 	// Some initial parameters
 	FundsForMiners := types.FromFil(1_000_000)
 	LookbackEpoch := abi.ChainEpoch(32000)
@@ -91,7 +91,7 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, tree types
 	}
 
 	// Grab lookback state for account checks
-	lbts, err := sm.ChainStore().GetTipsetByHeight(ctx, LookbackEpoch, nil, false)
+	lbts, err := sm.ChainStore().GetTipsetByHeight(ctx, LookbackEpoch, ts, false)
 	if err != nil {
 		return xerrors.Errorf("failed to get tipset at lookback height: %w", err)
 	}
