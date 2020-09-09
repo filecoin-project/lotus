@@ -12,6 +12,10 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 )
 
+var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
+	0: DrandIncentinet,
+}
+
 const UpgradeBreezeHeight = 41280
 const BreezeGasTampingDuration = 120
 

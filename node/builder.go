@@ -226,7 +226,7 @@ func Online() Option {
 
 			Override(new(dtypes.BootstrapPeers), modules.BuiltinBootstrap),
 			Override(new(dtypes.DrandBootstrap), modules.DrandBootstrap),
-			Override(new(dtypes.DrandConfig), modules.BuiltinDrandConfig),
+			Override(new(dtypes.DrandSchedule), modules.BuiltinDrandConfig),
 
 			Override(HandleIncomingMessagesKey, modules.HandleIncomingMessages),
 
@@ -272,7 +272,7 @@ func Online() Option {
 			Override(new(modules.ClientDealFunds), modules.NewClientDealFunds),
 			Override(new(storagemarket.StorageClient), modules.StorageClient),
 			Override(new(storagemarket.StorageClientNode), storageadapter.NewClientNodeAdapter),
-			Override(new(beacon.RandomBeacon), modules.RandomBeacon),
+			Override(new(beacon.Schedule), modules.RandomSchedule),
 
 			Override(new(*paychmgr.Store), paychmgr.NewStore),
 			Override(new(*paychmgr.Manager), paychmgr.NewManager),
@@ -535,6 +535,6 @@ func Test() Option {
 	return Options(
 		Unset(RunPeerMgrKey),
 		Unset(new(*peermgr.PeerMgr)),
-		Override(new(beacon.RandomBeacon), testing.RandomBeacon),
+		Override(new(beacon.Schedule), testing.RandomBeacon),
 	)
 }
