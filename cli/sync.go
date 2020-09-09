@@ -20,6 +20,7 @@ var syncCmd = &cli.Command{
 		syncStatusCmd,
 		syncWaitCmd,
 		syncMarkBadCmd,
+		syncUnmarkBadCmd,
 		syncCheckBadCmd,
 	},
 }
@@ -114,6 +115,31 @@ var syncMarkBadCmd = &cli.Command{
 		}
 
 		return napi.SyncMarkBad(ctx, bcid)
+	},
+}
+
+var syncUnmarkBadCmd = &cli.Command{
+	Name:      "unmark-bad",
+	Usage:     "Unmark the given block as bad, makes it possible to sync to a chain containing it",
+	ArgsUsage: "[blockCid]",
+	Action: func(cctx *cli.Context) error {
+		napi, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must specify block cid to unmark")
+		}
+
+		bcid, err := cid.Decode(cctx.Args().First())
+		if err != nil {
+			return fmt.Errorf("failed to decode input as a cid: %s", err)
+		}
+
+		return napi.SyncUnmarkBad(ctx, bcid)
 	},
 }
 
