@@ -20,8 +20,8 @@ import (
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-ipfs-exchange-offline"
-	"github.com/ipfs/go-ipld-format"
+	offline "github.com/ipfs/go-ipfs-exchange-offline"
+	format "github.com/ipfs/go-ipld-format"
 	"github.com/ipfs/go-merkledag"
 
 	"github.com/filecoin-project/lotus/chain/types"

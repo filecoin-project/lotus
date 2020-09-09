@@ -8,7 +8,8 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
-	"github.com/whyrusleeping/cbor-gen"
+
+	typegen "github.com/whyrusleeping/cbor-gen"
 )
 
 //go:generate go run ./gen
