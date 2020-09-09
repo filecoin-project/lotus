@@ -108,6 +108,12 @@ func (a *SyncAPI) SyncMarkBad(ctx context.Context, bcid cid.Cid) error {
 	return nil
 }
 
+func (a *SyncAPI) SyncUnmarkBad(ctx context.Context, bcid cid.Cid) error {
+	log.Warnf("Unmarking block %s as bad", bcid)
+	a.Syncer.UnmarkBad(bcid)
+	return nil
+}
+
 func (a *SyncAPI) SyncCheckBad(ctx context.Context, bcid cid.Cid) (string, error) {
 	reason, ok := a.Syncer.CheckBadBlockCache(bcid)
 	if !ok {

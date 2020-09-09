@@ -1680,6 +1680,11 @@ func (syncer *Syncer) MarkBad(blk cid.Cid) {
 	syncer.bad.Add(blk, NewBadBlockReason([]cid.Cid{blk}, "manually marked bad"))
 }
 
+// UnmarkBad manually adds a block to the "bad blocks" cache.
+func (syncer *Syncer) UnmarkBad(blk cid.Cid) {
+	syncer.bad.Remove(blk)
+}
+
 func (syncer *Syncer) CheckBadBlockCache(blk cid.Cid) (string, bool) {
 	bbr, ok := syncer.bad.Has(blk)
 	return bbr.String(), ok

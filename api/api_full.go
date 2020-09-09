@@ -164,6 +164,9 @@ type FullNode interface {
 	// Use with extreme caution.
 	SyncMarkBad(ctx context.Context, bcid cid.Cid) error
 
+	// SyncUnmarkBad unmarks a blocks as bad, making it possible to be validated and synced again.
+	SyncUnmarkBad(ctx context.Context, bcid cid.Cid) error
+
 	// SyncCheckBad checks if a block was marked as bad, and if it was, returns
 	// the reason.
 	SyncCheckBad(ctx context.Context, bcid cid.Cid) (string, error)
