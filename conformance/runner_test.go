@@ -194,8 +194,10 @@ func executeMessageVector(t *testing.T, vector *schema.TestVector) {
 
 	// Once all messages are applied, assert that the final state root matches
 	// the expected postcondition root.
-	if root != vector.Post.StateTree.RootCID {
+	if expected, actual := vector.Post.StateTree.RootCID, root; expected != actual {
+		t.Logf("actual state root CID doesn't match expected one; expected: %s, actual: %s", expected, actual)
 		dumpThreeWayStateDiff(t, vector, bs, root)
+		t.FailNow()
 	}
 }
 
@@ -239,8 +241,10 @@ func executeTipsetVector(t *testing.T, vector *schema.TestVector) {
 
 	// Once all messages are applied, assert that the final state root matches
 	// the expected postcondition root.
-	if root != vector.Post.StateTree.RootCID {
+	if expected, actual := vector.Post.StateTree.RootCID, root; expected != actual {
+		t.Logf("actual state root CID doesn't match expected one; expected: %s, actual: %s", expected, actual)
 		dumpThreeWayStateDiff(t, vector, bs, root)
+		t.FailNow()
 	}
 }
 
@@ -290,9 +294,16 @@ func dumpThreeWayStateDiff(t *testing.T, vector *schema.TestVector, bs blockstor
 		d1 = color.New(color.FgGreen, color.Bold).Sprint("[Δ1]")
 		d2 = color.New(color.FgGreen, color.Bold).Sprint("[Δ2]")
 		d3 = color.New(color.FgGreen, color.Bold).Sprint("[Δ3]")
-
-		cmd *exec.Cmd
 	)
+
+	printDiff := func(left, right cid.Cid) {
+		cmd := exec.Command("statediff", "car", "--file", tmpCar, left.String(), right.String())
+		b, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("statediff failed: %s", err)
+		}
+		t.Log(string(b))
+	}
 
 	bold := color.New(color.Bold).SprintfFunc()
 
@@ -300,16 +311,13 @@ func dumpThreeWayStateDiff(t *testing.T, vector *schema.TestVector, bs blockstor
 	t.Log(bold("=== dumping 3-way diffs between %s, %s, %s ===", a, b, c))
 
 	t.Log(bold("--- %s left: %s; right: %s ---", d1, a, b))
-	cmd = exec.Command("statediff", tmpCar, vector.Post.StateTree.RootCID.String(), actual.String())
-	t.Log(cmd.CombinedOutput())
+	printDiff(vector.Post.StateTree.RootCID, actual)
 
 	t.Log(bold("--- %s left: %s; right: %s ---", d2, c, b))
-	cmd = exec.Command("statediff", tmpCar, vector.Pre.StateTree.RootCID.String(), actual.String())
-	t.Log(cmd.CombinedOutput())
+	printDiff(vector.Pre.StateTree.RootCID, actual)
 
 	t.Log(bold("--- %s left: %s; right: %s ---", d3, c, a))
-	cmd = exec.Command("statediff", tmpCar, vector.Pre.StateTree.RootCID.String(), vector.Post.StateTree.RootCID.String())
-	t.Log(cmd.CombinedOutput())
+	printDiff(vector.Pre.StateTree.RootCID, vector.Post.StateTree.RootCID)
 }
 
 // writeStateToTempCAR writes the provided roots to a temporary CAR that'll be
