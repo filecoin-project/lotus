@@ -1,5 +1,44 @@
 # Lotus changelog
 
+# 0.6.2 / 2020-09-09
+
+This release introduces some critical fixes to message selection and gas estimation logic. It also adds the ability for nodes to mark a certain tipset as checkpointed, as well as various minor improvements and bugfixes.
+
+## Changes
+
+#### Messagepool 
+
+- Warn when optimal selection fails to pack a block and we fall back to random selection (https://github.com/filecoin-project/lotus/pull/3708)
+- Add basic command for printing gas performance of messages in the mpool (https://github.com/filecoin-project/lotus/pull/3701)
+- Adjust optimal selection to always try to fill blocks (https://github.com/filecoin-project/lotus/pull/3685)
+- Fix very minor bug in repub baseFeeLowerBound (https://github.com/filecoin-project/lotus/pull/3663)
+- Add an auto flag to mpool replace (https://github.com/filecoin-project/lotus/pull/3676)
+- Fix mpool optimal selection packing failure (https://github.com/filecoin-project/lotus/pull/3698)
+
+#### Core Lotus
+
+- Don't use latency as initital estimate for blocksync (https://github.com/filecoin-project/lotus/pull/3648)
+- Add niceSleep 1 second when drand errors (https://github.com/filecoin-project/lotus/pull/3664)
+- Fix isChainNearSync check in block validator (https://github.com/filecoin-project/lotus/pull/3650)
+- Add peer to peer manager before fetching the tipset (https://github.com/filecoin-project/lotus/pull/3667)
+- Add StageFetchingMessages to sync status (https://github.com/filecoin-project/lotus/pull/3668)
+- Pass tipset through upgrade logic (https://github.com/filecoin-project/lotus/pull/3673)
+- Allow nodes to mark tipsets as checkpointed (https://github.com/filecoin-project/lotus/pull/3680)
+- Remove hard-coded late-fee in window PoSt (https://github.com/filecoin-project/lotus/pull/3702)
+- Gas: Fix median calc (https://github.com/filecoin-project/lotus/pull/3686)
+
+#### Storage
+
+- Storage manager: bail out with an error if unsealed cid is undefined (https://github.com/filecoin-project/lotus/pull/3655)
+- Storage: return true from Sealer.ReadPiece() on success (https://github.com/filecoin-project/lotus/pull/3657)
+
+#### Maintenance
+
+- Resolve lotus, test-vectors, statediff dependency cycle (https://github.com/filecoin-project/lotus/pull/3688)
+- Paych: add docs on how to use paych status (https://github.com/filecoin-project/lotus/pull/3690)
+- Initial CODEOWNERS (https://github.com/filecoin-project/lotus/pull/3691)
+
+
 # 0.6.1 / 2020-09-08
 
 This optional release introduces a minor improvement to the sync process, ensuring nodes don't fall behind and then resync.
