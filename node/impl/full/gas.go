@@ -102,8 +102,8 @@ func (a *GasAPI) GasEstimateGasPremium(ctx context.Context, nblocksincl uint64,
 	for _, price := range prices {
 		prev1, prev2 = price.price, prev1
 		at -= price.limit
-		if at > 0 {
-			continue
+		if at < 0 {
+			break
 		}
 	}
 
