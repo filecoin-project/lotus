@@ -189,6 +189,7 @@ func (m *Miner) mine(ctx context.Context) {
 			_, err = m.api.BeaconGetEntry(ctx, prebase.TipSet.Height()+prebase.NullRounds+1)
 			if err != nil {
 				log.Errorf("failed getting beacon entry: %s", err)
+				m.niceSleep(time.Second)
 				continue
 			}
 
