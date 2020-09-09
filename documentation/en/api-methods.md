@@ -156,10 +156,12 @@
   * [StateWaitMsg](#StateWaitMsg)
 * [Sync](#Sync)
   * [SyncCheckBad](#SyncCheckBad)
+  * [SyncCheckpoint](#SyncCheckpoint)
   * [SyncIncomingBlocks](#SyncIncomingBlocks)
   * [SyncMarkBad](#SyncMarkBad)
   * [SyncState](#SyncState)
   * [SyncSubmitBlock](#SyncSubmitBlock)
+  * [SyncUnmarkBad](#SyncUnmarkBad)
 * [Wallet](#Wallet)
   * [WalletBalance](#WalletBalance)
   * [WalletDefaultAddress](#WalletDefaultAddress)
@@ -3995,6 +3997,28 @@ Inputs:
 
 Response: `"string value"`
 
+### SyncCheckpoint
+SyncCheckpoint marks a blocks as checkpointed, meaning that it won't ever fork away from it.
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `{}`
+
 ### SyncIncomingBlocks
 SyncIncomingBlocks returns a channel streaming incoming, potentially not
 yet synced block headers.
@@ -4124,6 +4148,23 @@ Inputs:
     },
     "BlsMessages": null,
     "SecpkMessages": null
+  }
+]
+```
+
+Response: `{}`
+
+### SyncUnmarkBad
+SyncUnmarkBad unmarks a blocks as bad, making it possible to be validated and synced again.
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   }
 ]
 ```
