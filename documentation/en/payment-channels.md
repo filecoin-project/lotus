@@ -84,3 +84,28 @@ Once the settlement period is over, either the client or provider can call colle
 ```sh
 $ lotus paych collect <channel addr>
 ```
+
+Check the status of a channel that is still being created using `lotus paych status-by-from-to`.
+
+```sh
+$ lotus paych status-by-from-to <from addr> <to addr>
+Creating channel
+  From:          t3sb6xzvs6rhlziatagevxpp3dwapdolurtkpn4kyh3kgoo4tn5o7lutjqlsnvpceztlhxu3lzzfe34rvpsjgq
+  To:            t1zip4sblhyrn4oxygzsm6nafbsynp2avmk3xafea
+  Pending Amt:   10000
+  Wait Sentinel: bafy2bzacedk2jidsyxcynusted35t5ipkhu2kpiodtwyjr3pimrhke6f5pqbm
+```
+
+Check the status of a channel that has been created using `lotus paych status`.
+
+```sh
+$ lotus paych status <channel addr>
+Channel exists
+  Channel:              t2nydpzhmeqkmid5smtqnowlr2mr5az6rexpmyv6i
+  From:                 t3sb6xzvs6rhlziatagevxpp3dwapdolurtkpn4kyh3kgoo4tn5o7lutjqlsnvpceztlhxu3lzzfe34rvpsjgq
+  To:                   t1zip4sblhyrn4oxygzsm6nafbsynp2avmk3xafea
+  Confirmed Amt:        10000
+  Pending Amt:          6000
+  Queued Amt:           3000
+  Voucher Redeemed Amt: 2000
+```
