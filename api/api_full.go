@@ -157,6 +157,9 @@ type FullNode interface {
 	// yet synced block headers.
 	SyncIncomingBlocks(ctx context.Context) (<-chan *types.BlockHeader, error)
 
+	// SyncCheckpoint marks a blocks as checkpointed, meaning that it won't ever fork away from it.
+	SyncCheckpoint(ctx context.Context, tsk types.TipSetKey) error
+
 	// SyncMarkBad marks a blocks as bad, meaning that it won't ever by synced.
 	// Use with extreme caution.
 	SyncMarkBad(ctx context.Context, bcid cid.Cid) error
