@@ -406,10 +406,12 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di miner.DeadlineInfo
 		return nil, err
 	}
 
-	postOut, postSkipped, err := s.prover.GenerateWindowPoSt(ctx, abi.ActorID(mid), sinfos, abi.PoStRandomness(rand))
+	postOut, postSkipped, faulty, err := s.prover.GenerateWindowPoSt(ctx, abi.ActorID(mid), sinfos, abi.PoStRandomness(rand))
 	if err != nil {
 		return nil, xerrors.Errorf("running post failed: %w", err)
 	}
+
+	_ = faulty // TODO(magik)
 
 	if len(postOut) == 0 {
 		return nil, xerrors.Errorf("received proofs back from generate window post")

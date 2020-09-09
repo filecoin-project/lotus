@@ -32,16 +32,25 @@ func (sb *Sealer) GenerateWinningPoSt(ctx context.Context, minerID abi.ActorID, 
 	return ffi.GenerateWinningPoSt(minerID, privsectors, randomness)
 }
 
-func (sb *Sealer) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []proof.SectorInfo, randomness abi.PoStRandomness) ([]proof.PoStProof, []abi.SectorID, error) {
+func (sb *Sealer) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []proof.SectorInfo, randomness abi.PoStRandomness) ([]proof.PoStProof, []abi.SectorID, []abi.SectorID, error) {
 	randomness[31] &= 0x3f
 	privsectors, skipped, done, err := sb.pubSectorToPriv(ctx, minerID, sectorInfo, nil, abi.RegisteredSealProof.RegisteredWindowPoStProof)
 	if err != nil {
-		return nil, nil, xerrors.Errorf("gathering sector info: %w", err)
+		return nil, nil, nil, xerrors.Errorf("gathering sector info: %w", err)
 	}
 	defer done()
 
-	proof, err := ffi.GenerateWindowPoSt(minerID, privsectors, randomness)
-	return proof, skipped, err
+	proof, faulty, err := ffi.GenerateWindowPoSt(minerID, privsectors, randomness)
+
+	var faultyIDs []abi.SectorID
+	for _, f := range faulty {
+		faultyIDs = append(faultyIDs, abi.SectorID{
+			Miner:  minerID,
+			Number: f,
+		})
+	}
+
+	return proof, skipped, faultyIDs, err
 }
 
 func (sb *Sealer) pubSectorToPriv(ctx context.Context, mid abi.ActorID, sectorInfo []proof.SectorInfo, faults []abi.SectorNumber, rpt func(abi.RegisteredSealProof) (abi.RegisteredPoStProof, error)) (ffi.SortedPrivateSectorInfo, []abi.SectorID, func(), error) {
