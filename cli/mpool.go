@@ -3,6 +3,7 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	stdbig "math/big"
 	"sort"
 	"strconv"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 
 	lapi "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -570,10 +572,31 @@ var mpoolGasPerfCmd = &cli.Command{
 		}
 
 		baseFee := ts.Blocks()[0].ParentBaseFee
-		for _, m := range msgs {
-			feeCapSlack := types.BigSub(m.Message.GasFeeCap, baseFee)
 
-			fmt.Printf("%s\t%d\t%s\n", m.Message.From, m.Message.Nonce, feeCapSlack)
+		bigBlockGasLimit := big.NewInt(build.BlockGasLimit)
+
+		getGasReward := func(msg *types.SignedMessage) big.Int {
+			maxPremium := types.BigSub(msg.Message.GasFeeCap, baseFee)
+			if types.BigCmp(maxPremium, msg.Message.GasPremium) < 0 {
+				maxPremium = msg.Message.GasPremium
+			}
+			return types.BigMul(maxPremium, types.NewInt(uint64(msg.Message.GasLimit)))
+		}
+
+		getGasPerf := func(gasReward big.Int, gasLimit int64) float64 {
+			// gasPerf = gasReward * build.BlockGasLimit / gasLimit
+			a := new(stdbig.Rat).SetInt(new(stdbig.Int).Mul(gasReward.Int, bigBlockGasLimit.Int))
+			b := stdbig.NewRat(1, gasLimit)
+			c := new(stdbig.Rat).Mul(a, b)
+			r, _ := c.Float64()
+			return r
+		}
+
+		for _, m := range msgs {
+			gasReward := getGasReward(m)
+			gasPerf := getGasPerf(gasReward, m.Message.GasLimit)
+
+			fmt.Printf("%s\t%d\t%s\t%f\n", m.Message.From, m.Message.Nonce, gasReward, gasPerf)
 		}
 
 		return nil
