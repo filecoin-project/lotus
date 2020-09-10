@@ -13,9 +13,10 @@ import (
 const UpgradeBreezeHeight = -1
 const BreezeGasTampingDuration = 0
 
+const UpgradeSmokeHeight = -1
+
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
-	0: DrandIncentinet,
-	3: DrandMainnet,
+	0: DrandMainnet,
 }
 
 func init() {
