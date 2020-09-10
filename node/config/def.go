@@ -147,7 +147,7 @@ func DefaultStorageMiner() *StorageMiner {
 			MaxWaitDealsSectors:       2, // 64G with 32G sectors
 			MaxSealingSectors:         0,
 			MaxSealingSectorsForDeals: 0,
-			WaitDealsDelay:            Duration(time.Hour),
+			WaitDealsDelay:            Duration(time.Hour * 6),
 		},
 
 		Storage: sectorstorage.SealerConfig{
@@ -169,7 +169,7 @@ func DefaultStorageMiner() *StorageMiner {
 			ConsiderOfflineRetrievalDeals: true,
 			PieceCidBlocklist:             []cid.Cid{},
 			// TODO: It'd be nice to set this based on sector size
-			ExpectedSealDuration: Duration(time.Hour * 12),
+			ExpectedSealDuration: Duration(time.Hour * 24),
 		},
 
 		Fees: MinerFeeConfig{
