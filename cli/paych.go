@@ -28,6 +28,7 @@ var paychCmd = &cli.Command{
 		paychListCmd,
 		paychVoucherCmd,
 		paychSettleCmd,
+		paychStatusCmd,
 		paychCloseCmd,
 	},
 }
