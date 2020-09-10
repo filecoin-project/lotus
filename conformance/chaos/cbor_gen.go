@@ -615,14 +615,14 @@ func (t *MutateStateArgs) UnmarshalCBOR(r io.Reader) error {
 	return nil
 }
 
-var lengthBufAbortArgs = []byte{131}
+var lengthBufAbortWithArgs = []byte{131}
 
-func (t *AbortArgs) MarshalCBOR(w io.Writer) error {
+func (t *AbortWithArgs) MarshalCBOR(w io.Writer) error {
 	if t == nil {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write(lengthBufAbortArgs); err != nil {
+	if _, err := w.Write(lengthBufAbortWithArgs); err != nil {
 		return err
 	}
 
@@ -639,11 +639,6 @@ func (t *AbortArgs) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
-	// t.NoCode (bool) (bool)
-	if err := cbg.WriteBool(w, t.NoCode); err != nil {
-		return err
-	}
-
 	// t.Message (string) (string)
 	if len(t.Message) > cbg.MaxLength {
 		return xerrors.Errorf("Value in field t.Message was too long")
@@ -655,11 +650,16 @@ func (t *AbortArgs) MarshalCBOR(w io.Writer) error {
 	if _, err := io.WriteString(w, string(t.Message)); err != nil {
 		return err
 	}
+
+	// t.Uncontrolled (bool) (bool)
+	if err := cbg.WriteBool(w, t.Uncontrolled); err != nil {
+		return err
+	}
 	return nil
 }
 
-func (t *AbortArgs) UnmarshalCBOR(r io.Reader) error {
-	*t = AbortArgs{}
+func (t *AbortWithArgs) UnmarshalCBOR(r io.Reader) error {
+	*t = AbortWithArgs{}
 
 	br := cbg.GetPeeker(r)
 	scratch := make([]byte, 8)
@@ -701,7 +701,17 @@ func (t *AbortArgs) UnmarshalCBOR(r io.Reader) error {
 
 		t.Code = exitcode.ExitCode(extraI)
 	}
-	// t.NoCode (bool) (bool)
+	// t.Message (string) (string)
+
+	{
+		sval, err := cbg.ReadStringBuf(br, scratch)
+		if err != nil {
+			return err
+		}
+
+		t.Message = string(sval)
+	}
+	// t.Uncontrolled (bool) (bool)
 
 	maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
 	if err != nil {
@@ -712,21 +722,11 @@ func (t *AbortArgs) UnmarshalCBOR(r io.Reader) error {
 	}
 	switch extra {
 	case 20:
-		t.NoCode = false
+		t.Uncontrolled = false
 	case 21:
-		t.NoCode = true
+		t.Uncontrolled = true
 	default:
 		return fmt.Errorf("booleans are either major type 7, value 20 or 21 (got %d)", extra)
-	}
-	// t.Message (string) (string)
-
-	{
-		sval, err := cbg.ReadStringBuf(br, scratch)
-		if err != nil {
-			return err
-		}
-
-		t.Message = string(sval)
 	}
 	return nil
 }

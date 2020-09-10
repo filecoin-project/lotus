@@ -14,7 +14,7 @@ func main() {
 		chaos.SendArgs{},
 		chaos.SendReturn{},
 		chaos.MutateStateArgs{},
-		chaos.AbortArgs{},
+		chaos.AbortWithArgs{},
 	); err != nil {
 		panic(err)
 	}

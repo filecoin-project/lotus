@@ -77,7 +77,7 @@ func (a Actor) Exports() []interface{} {
 		MethodDeleteActor:         a.DeleteActor,
 		MethodSend:                a.Send,
 		MethodMutateState:         a.MutateState,
-		MethodAbort:               a.Abort,
+		MethodAbort:               a.AbortWith,
 	}
 }
 
@@ -235,17 +235,17 @@ func (a Actor) MutateState(rt runtime.Runtime, args *MutateStateArgs) *adt.Empty
 	return nil
 }
 
-// AbortArgs are the arguments to the abort method, specifying the exit code to
-// (optionally) abort with and the message.
-type AbortArgs struct {
-	Code    exitcode.ExitCode
-	NoCode  bool
-	Message string
+// AbortWithArgs are the arguments to the Actor.AbortWith method, specifying the
+// exit code to (optionally) abort with and the message.
+type AbortWithArgs struct {
+	Code         exitcode.ExitCode
+	Message      string
+	Uncontrolled bool
 }
 
-// Abort simply causes a panic or abort with the passed exit code.
-func (a Actor) Abort(rt runtime.Runtime, args *AbortArgs) *adt.EmptyValue {
-	if args.NoCode { // no code, just plain old panic
+// AbortWith simply causes a panic with the passed exit code.
+func (a Actor) AbortWith(rt runtime.Runtime, args *AbortWithArgs) *adt.EmptyValue {
+	if args.Uncontrolled { // uncontrolled abort: directly panic
 		panic(args.Message)
 	} else {
 		rt.Abortf(args.Code, args.Message)
