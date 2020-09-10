@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math/rand"
 
+	"github.com/filecoin-project/lotus/build"
+
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/chain/state"
@@ -64,7 +66,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 	}
 
 	nwv := func(context.Context, abi.ChainEpoch) network.Version {
-		return network.Version1
+		return build.NewestNetworkVersion
 	}
 
 	vmopt := &vm.VMOpts{
