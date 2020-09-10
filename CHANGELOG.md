@@ -1,5 +1,60 @@
 # Lotus changelog
 
+# 0.7.0 / 2020-09-10
+
+This consensus-breaking release of Lotus is designed to test a network upgrade on the space race testnet. The changes that break consensus are:
+
+- Upgrading the Drand network used from the test Drand network to the League of Entropy main drand network. This is the same Drand network that will be used in the Filecoin mainnet.
+- Upgrading to specs-actors v0.9.8, which adds a new method to the Multisig actor.
+
+## Changes
+
+#### Core Lotus
+
+- Fix IsAncestorOf (https://github.com/filecoin-project/lotus/pull/3717)
+- Update to specs-actors v0.9.8 (https://github.com/filecoin-project/lotus/pull/3725)
+- Increase chain throughput by 20% (https://github.com/filecoin-project/lotus/pull/3732)
+- Updare to go-libp2p-pubsub `master` (https://github.com/filecoin-project/lotus/pull/3735)
+- Drand upgrade (https://github.com/filecoin-project/lotus/pull/3670)
+- Multisig API additions (https://github.com/filecoin-project/lotus/pull/3590)
+
+#### Storage Miner 
+
+- Increase the number of times precommit2 is attempted before moving back to precommit1 (https://github.com/filecoin-project/lotus/pull/3720)
+
+#### Message pool
+
+- Relax mpool add strictness checks for local pushes (https://github.com/filecoin-project/lotus/pull/3724)
+
+
+#### Maintenance
+
+- Fix devnets (https://github.com/filecoin-project/lotus/pull/3712)
+- Fix(chainwatch): compare prev miner with cur miner (https://github.com/filecoin-project/lotus/pull/3715)
+- CI: fix statediff build; make optional (https://github.com/filecoin-project/lotus/pull/3729)
+- Feat: Chaos abort (https://github.com/filecoin-project/lotus/pull/3733)
+
+## Contributors
+
+The following contributors had commits go into this release.
+We are grateful for every contribution!
+
+| Contributor        | Commits | Lines ±       |
+|--------------------|---------|---------------|
+| arajasek           | 28      | +1144/-239    |
+| Kubuxu             | 19      | +452/-261     |
+| whyrusleeping      | 13      | +456/-87      |
+| vyzo               | 11      | +318/-20      |
+| raulk              | 10      | +1289/-350    |
+| magik6k            | 6       | +188/-55      |
+| dirkmc             | 3       | +31/-8        |
+| alanshaw           | 3       | +176/-37      |
+| Stebalien          | 2       | +9/-12        |
+| lanzafame          | 1       | +1/-1         |
+| frrist             | 1       | +1/-1         |
+| mishmosh           | 1       | +1/-1         |
+| nonsense           | 1       | +1/-0         |
+
 # 0.6.2 / 2020-09-09
 
 This release introduces some critical fixes to message selection and gas estimation logic. It also adds the ability for nodes to mark a certain tipset as checkpointed, as well as various minor improvements and bugfixes.
@@ -37,7 +92,6 @@ This release introduces some critical fixes to message selection and gas estimat
 - Resolve lotus, test-vectors, statediff dependency cycle (https://github.com/filecoin-project/lotus/pull/3688)
 - Paych: add docs on how to use paych status (https://github.com/filecoin-project/lotus/pull/3690)
 - Initial CODEOWNERS (https://github.com/filecoin-project/lotus/pull/3691)
-
 
 # 0.6.1 / 2020-09-08
 
