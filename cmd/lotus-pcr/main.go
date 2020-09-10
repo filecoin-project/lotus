@@ -1,10 +1,13 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"context"
+	"encoding/csv"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -20,13 +23,14 @@ import (
 
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -39,6 +43,7 @@ func main() {
 	local := []*cli.Command{
 		runCmd,
 		recoverMinersCmd,
+		findMinersCmd,
 		versionCmd,
 	}
 
@@ -102,6 +107,92 @@ var versionCmd = &cli.Command{
 	},
 }
 
+var findMinersCmd = &cli.Command{
+	Name:  "find-miners",
+	Usage: "find miners with a desired minimum balance",
+	Description: `Find miners returns a list of miners and their balances that are below a
+   threhold value. By default only the miner actor available balance is considered but other
+   account balances can be included by enabling them through the flags.
+
+   Examples
+   Find all miners with an available balance below 100 FIL
+
+     lotus-pcr find-miners --threshold 100
+
+   Find all miners with a balance below zero, which includes the owner and worker balances
+
+     lotus-pcr find-miners --threshold 0 --owner --worker
+`,
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:    "no-sync",
+			EnvVars: []string{"LOTUS_PCR_NO_SYNC"},
+			Usage:   "do not wait for chain sync to complete",
+		},
+		&cli.IntFlag{
+			Name:    "threshold",
+			EnvVars: []string{"LOTUS_PCR_THRESHOLD"},
+			Usage:   "balance below this limit will be printed",
+			Value:   0,
+		},
+		&cli.BoolFlag{
+			Name:  "owner",
+			Usage: "include owner balance",
+			Value: false,
+		},
+		&cli.BoolFlag{
+			Name:  "worker",
+			Usage: "include worker balance",
+			Value: false,
+		},
+		&cli.BoolFlag{
+			Name:  "control",
+			Usage: "include control balance",
+			Value: false,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		ctx := context.Background()
+		api, closer, err := stats.GetFullNodeAPI(cctx.Context, cctx.String("lotus-path"))
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer closer()
+
+		if !cctx.Bool("no-sync") {
+			if err := stats.WaitForSyncComplete(ctx, api); err != nil {
+				log.Fatal(err)
+			}
+		}
+
+		owner := cctx.Bool("owner")
+		worker := cctx.Bool("worker")
+		control := cctx.Bool("control")
+		threshold := uint64(cctx.Int("threshold"))
+
+		rf := &refunder{
+			api:       api,
+			threshold: types.FromFil(threshold),
+		}
+
+		refundTipset, err := api.ChainHead(ctx)
+		if err != nil {
+			return err
+		}
+
+		balanceRefund, err := rf.FindMiners(ctx, refundTipset, NewMinersRefund(), owner, worker, control)
+		if err != nil {
+			return err
+		}
+
+		for _, maddr := range balanceRefund.Miners() {
+			fmt.Printf("%s\t%s\n", maddr, types.FIL(balanceRefund.GetRefund(maddr)))
+		}
+
+		return nil
+	},
+}
+
 var recoverMinersCmd = &cli.Command{
 	Name:  "recover-miners",
 	Usage: "Ensure all miners with a negative available balance have a FIL surplus across accounts",
@@ -123,10 +214,14 @@ var recoverMinersCmd = &cli.Command{
 			Value:   false,
 		},
 		&cli.IntFlag{
-			Name:    "miner-total-funds-threashold",
-			EnvVars: []string{"LOTUS_PCR_MINER_TOTAL_FUNDS_THREASHOLD"},
-			Usage:   "total filecoin across all accounts that should be met, if the miner balancer drops below zero",
+			Name:    "threshold",
+			EnvVars: []string{"LOTUS_PCR_THRESHOLD"},
+			Usage:   "total filecoin across all accounts that should be met, if the miner balance drops below zero",
 			Value:   0,
+		},
+		&cli.StringFlag{
+			Name:  "output",
+			Usage: "dump data as a csv format to this file",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -149,13 +244,13 @@ var recoverMinersCmd = &cli.Command{
 		}
 
 		dryRun := cctx.Bool("dry-run")
-		minerTotalFundsThreashold := uint64(cctx.Int("miner-total-funds-threashold"))
+		threshold := uint64(cctx.Int("threshold"))
 
 		rf := &refunder{
-			api:                       api,
-			wallet:                    from,
-			dryRun:                    dryRun,
-			minerTotalFundsThreashold: types.FromFil(minerTotalFundsThreashold),
+			api:       api,
+			wallet:    from,
+			dryRun:    dryRun,
+			threshold: types.FromFil(threshold),
 		}
 
 		refundTipset, err := api.ChainHead(ctx)
@@ -163,12 +258,12 @@ var recoverMinersCmd = &cli.Command{
 			return err
 		}
 
-		negativeBalancerRefund, err := rf.EnsureMinerMinimums(ctx, refundTipset, NewMinersRefund())
+		balanceRefund, err := rf.EnsureMinerMinimums(ctx, refundTipset, NewMinersRefund(), cctx.String("output"))
 		if err != nil {
 			return err
 		}
 
-		if err := rf.Refund(ctx, "refund negative balancer miner", refundTipset, negativeBalancerRefund, 0); err != nil {
+		if err := rf.Refund(ctx, "refund to recover miner", refundTipset, balanceRefund, 0); err != nil {
 			return err
 		}
 
@@ -397,6 +492,8 @@ type refunderNodeApi interface {
 	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)
 	StateSectorPreCommitInfo(ctx context.Context, addr address.Address, sector abi.SectorNumber, tsk types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error)
 	StateMinerAvailableBalance(context.Context, address.Address, types.TipSetKey) (types.BigInt, error)
+	StateMinerSectors(ctx context.Context, addr address.Address, filter *bitfield.BitField, filterOut bool, tsk types.TipSetKey) ([]*api.ChainSectorInfo, error)
+	StateMinerFaults(ctx context.Context, addr address.Address, tsk types.TipSetKey) (bitfield.BitField, error)
 	StateListMiners(context.Context, types.TipSetKey) ([]address.Address, error)
 	StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error)
 	MpoolPushMessage(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec) (*types.SignedMessage, error)
@@ -405,16 +502,16 @@ type refunderNodeApi interface {
 }
 
 type refunder struct {
-	api                       refunderNodeApi
-	wallet                    address.Address
-	percentExtra              int
-	dryRun                    bool
-	preCommitEnabled          bool
-	proveCommitEnabled        bool
-	minerTotalFundsThreashold big.Int
+	api                refunderNodeApi
+	wallet             address.Address
+	percentExtra       int
+	dryRun             bool
+	preCommitEnabled   bool
+	proveCommitEnabled bool
+	threshold          big.Int
 }
 
-func (r *refunder) EnsureMinerMinimums(ctx context.Context, tipset *types.TipSet, refunds *MinersRefund) (*MinersRefund, error) {
+func (r *refunder) FindMiners(ctx context.Context, tipset *types.TipSet, refunds *MinersRefund, owner, worker, control bool) (*MinersRefund, error) {
 	miners, err := r.api.StateListMiners(ctx, tipset.Key())
 	if err != nil {
 		return nil, err
@@ -437,8 +534,91 @@ func (r *refunder) EnsureMinerMinimums(ctx context.Context, tipset *types.TipSet
 			continue
 		}
 
-		if minerAvailableBalance.GreaterThanEqual(big.Zero()) {
-			log.Debugw("skipping over miner with positive balance", "height", tipset.Height(), "key", tipset.Key(), "miner", maddr)
+		// Look up and find all addresses associated with the miner
+		minerInfo, err := r.api.StateMinerInfo(ctx, maddr, tipset.Key())
+
+		allAddresses := []address.Address{}
+
+		if worker {
+			allAddresses = append(allAddresses, minerInfo.Worker)
+		}
+
+		if owner {
+			allAddresses = append(allAddresses, minerInfo.Owner)
+		}
+
+		if control {
+			allAddresses = append(allAddresses, minerInfo.ControlAddresses...)
+		}
+
+		// Sum the balancer of all the addresses
+		addrSum := big.Zero()
+		addrCheck := make(map[address.Address]struct{}, len(allAddresses))
+		for _, addr := range allAddresses {
+			if _, found := addrCheck[addr]; !found {
+				balance, err := r.api.WalletBalance(ctx, addr)
+				if err != nil {
+					log.Errorw("failed", "err", err, "height", tipset.Height(), "key", tipset.Key(), "miner", maddr)
+					continue
+				}
+
+				addrSum = big.Add(addrSum, balance)
+				addrCheck[addr] = struct{}{}
+			}
+		}
+
+		totalAvailableBalance := big.Add(addrSum, minerAvailableBalance)
+
+		if totalAvailableBalance.GreaterThanEqual(r.threshold) {
+			continue
+		}
+
+		refunds.Track(maddr, totalAvailableBalance)
+
+		log.Debugw("processing miner", "miner", maddr, "sectors", "available_balance", totalAvailableBalance)
+	}
+
+	return refunds, nil
+}
+
+func (r *refunder) EnsureMinerMinimums(ctx context.Context, tipset *types.TipSet, refunds *MinersRefund, output string) (*MinersRefund, error) {
+	miners, err := r.api.StateListMiners(ctx, tipset.Key())
+	if err != nil {
+		return nil, err
+	}
+
+	w := ioutil.Discard
+	if len(output) != 0 {
+		f, err := os.Create(output)
+		if err != nil {
+			return nil, err
+		}
+
+		defer f.Close()
+
+		w = bufio.NewWriter(f)
+	}
+
+	csvOut := csv.NewWriter(w)
+	defer csvOut.Flush()
+	if err := csvOut.Write([]string{"MinerID", "Sectors", "CombinedBalance", "ProposedSend"}); err != nil {
+		return nil, err
+	}
+
+	for _, maddr := range miners {
+		mact, err := r.api.StateGetActor(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			log.Errorw("failed", "err", err, "height", tipset.Height(), "key", tipset.Key(), "miner", maddr)
+			continue
+		}
+
+		if !mact.Balance.GreaterThan(big.Zero()) {
+			continue
+		}
+
+		minerAvailableBalance, err := r.api.StateMinerAvailableBalance(ctx, maddr, tipset.Key())
+		if err != nil {
+			log.Errorw("failed", "err", err, "height", tipset.Height(), "key", tipset.Key(), "miner", maddr)
 			continue
 		}
 
@@ -464,19 +644,37 @@ func (r *refunder) EnsureMinerMinimums(ctx context.Context, tipset *types.TipSet
 			}
 		}
 
-		totalAvailableBalance := big.Add(addrSum, minerAvailableBalance)
-
-		// If the miner has available balance they should use it
-		if totalAvailableBalance.GreaterThanEqual(r.minerTotalFundsThreashold) {
-			log.Debugw("skipping over miner with enough funds cross all accounts", "height", tipset.Height(), "key", tipset.Key(), "miner", maddr, "miner_available_balance", minerAvailableBalance, "wallet_total_balances", addrSum)
+		sectorInfo, err := r.api.StateMinerSectors(ctx, maddr, nil, false, tipset.Key())
+		if err != nil {
+			log.Errorw("failed to look up miner sectors", "err", err, "height", tipset.Height(), "key", tipset.Key(), "miner", maddr)
 			continue
 		}
 
-		// Calculate the required FIL to bring the miner up to the minimum across all of their accounts
-		refundValue := big.Add(totalAvailableBalance.Abs(), r.minerTotalFundsThreashold)
-		refunds.Track(maddr, refundValue)
+		if len(sectorInfo) == 0 {
+			log.Debugw("skipping miner with zero sectors", "height", tipset.Height(), "key", tipset.Key(), "miner", maddr)
+			continue
+		}
 
-		log.Debugw("processing negative balance miner", "miner", maddr, "refund", refundValue)
+		totalAvailableBalance := big.Add(addrSum, minerAvailableBalance)
+
+		numSectorInfo := float64(len(sectorInfo))
+		filAmount := uint64(math.Ceil(math.Max(math.Log(numSectorInfo)*math.Sqrt(numSectorInfo)/4, 20)))
+		attoFilAmount := big.Mul(big.NewIntUnsigned(filAmount), big.NewIntUnsigned(build.FilecoinPrecision))
+
+		if totalAvailableBalance.GreaterThanEqual(attoFilAmount) {
+			log.Debugw("skipping over miner with total available balance larger than refund", "height", tipset.Height(), "key", tipset.Key(), "miner", maddr, "available_balance", totalAvailableBalance, "possible_refund", attoFilAmount)
+			continue
+		}
+
+		refundValue := big.Sub(attoFilAmount, totalAvailableBalance)
+
+		refunds.Track(maddr, refundValue)
+		record := []string{maddr.String(), fmt.Sprintf("%d", len(sectorInfo)), totalAvailableBalance.String(), refundValue.String()}
+		if err := csvOut.Write(record); err != nil {
+			return nil, err
+		}
+
+		log.Debugw("processing miner", "miner", maddr, "sectors", len(sectorInfo), "available_balance", totalAvailableBalance, "refund", refundValue)
 	}
 
 	return refunds, nil
