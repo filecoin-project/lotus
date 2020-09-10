@@ -15,7 +15,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -73,15 +72,15 @@ func (ta *testActor) Exports() []interface{} {
 	}
 }
 
-func (ta *testActor) Constructor(rt runtime.Runtime, params *adt.EmptyValue) *adt.EmptyValue {
+func (ta *testActor) Constructor(rt runtime.Runtime, params *abi.EmptyValue) *abi.EmptyValue {
 	rt.ValidateImmediateCallerAcceptAny()
 	rt.State().Create(&testActorState{11})
 	fmt.Println("NEW ACTOR ADDRESS IS: ", rt.Message().Receiver())
 
-	return adt.Empty
+	return abi.Empty
 }
 
-func (ta *testActor) TestMethod(rt runtime.Runtime, params *adt.EmptyValue) *adt.EmptyValue {
+func (ta *testActor) TestMethod(rt runtime.Runtime, params *abi.EmptyValue) *abi.EmptyValue {
 	rt.ValidateImmediateCallerAcceptAny()
 	var st testActorState
 	rt.State().Readonly(&st)
@@ -96,7 +95,7 @@ func (ta *testActor) TestMethod(rt runtime.Runtime, params *adt.EmptyValue) *adt
 		}
 	}
 
-	return adt.Empty
+	return abi.Empty
 }
 
 func TestForkHeightTriggers(t *testing.T) {

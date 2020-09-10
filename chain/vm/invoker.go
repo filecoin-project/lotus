@@ -15,6 +15,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/cron"
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
@@ -27,9 +28,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/system"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	vmr "github.com/filecoin-project/specs-actors/actors/runtime"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
-
-	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 )
 
 type Invoker struct {
@@ -47,7 +45,7 @@ func NewInvoker() *Invoker {
 	}
 
 	// add builtInCode using: register(cid, singleton)
-	inv.Register(builtin.SystemActorCodeID, system.Actor{}, adt.EmptyValue{})
+	inv.Register(builtin.SystemActorCodeID, system.Actor{}, abi.EmptyValue{})
 	inv.Register(builtin.InitActorCodeID, init_.Actor{}, init_.State{})
 	inv.Register(builtin.RewardActorCodeID, reward.Actor{}, reward.State{})
 	inv.Register(builtin.CronActorCodeID, cron.Actor{}, cron.State{})

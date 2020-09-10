@@ -36,3 +36,11 @@ func MessagesTopic(netName dtypes.NetworkName) string { return "/fil/msgs/" + st
 func DhtProtocolName(netName dtypes.NetworkName) protocol.ID {
 	return protocol.ID("/fil/kad/" + string(netName))
 }
+
+func UseNewestNetwork() bool {
+	// TODO: Put these in a container we can iterate over
+	if UpgradeBreezeHeight <= 0 && UpgradeSmokeHeight <= 0 {
+		return true
+	}
+	return false
+}
