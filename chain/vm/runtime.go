@@ -16,7 +16,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	vmr "github.com/filecoin-project/specs-actors/actors/runtime"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -136,7 +135,7 @@ func (rt *Runtime) shimCall(f func() interface{}) (rval []byte, aerr aerrors.Act
 	switch ret := ret.(type) {
 	case []byte:
 		return ret, nil
-	case *adt.EmptyValue:
+	case *abi.EmptyValue:
 		return nil, nil
 	case cbg.CBORMarshaler:
 		buf := new(bytes.Buffer)
