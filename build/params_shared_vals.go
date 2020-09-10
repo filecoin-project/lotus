@@ -5,6 +5,8 @@ package build
 import (
 	"math/big"
 
+	"github.com/filecoin-project/go-state-types/network"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
@@ -20,6 +22,7 @@ const UnixfsLinksPerLevel = 1024
 // Consensus / Network
 
 const AllowableClockDriftSecs = uint64(1)
+const NewestNetworkVersion = network.Version2
 
 // Epochs
 const ForkLengthThreshold = Finality
