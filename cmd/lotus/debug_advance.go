@@ -46,6 +46,7 @@ func init() {
 					return xerrors.Errorf("StateMinerWorker: %w", err)
 				}
 
+				// XXX: This can't be right
 				rand, err := api.ChainGetRandomnessFromTickets(ctx, head.Key(), crypto.DomainSeparationTag_TicketProduction, head.Height(), addr.Bytes())
 				if err != nil {
 					return xerrors.Errorf("failed to get randomness: %w", err)

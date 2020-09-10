@@ -502,7 +502,7 @@ func GetLookbackTipSetForRound(ctx context.Context, sm *StateManager, ts *types.
 	return lbts, nil
 }
 
-func MinerGetBaseInfo(ctx context.Context, sm *StateManager, bcn beacon.RandomBeacon, tsk types.TipSetKey, round abi.ChainEpoch, maddr address.Address, pv ffiwrapper.Verifier) (*api.MiningBaseInfo, error) {
+func MinerGetBaseInfo(ctx context.Context, sm *StateManager, bcs beacon.Schedule, tsk types.TipSetKey, round abi.ChainEpoch, maddr address.Address, pv ffiwrapper.Verifier) (*api.MiningBaseInfo, error) {
 	ts, err := sm.ChainStore().LoadTipSet(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load tipset for mining base: %w", err)
@@ -517,7 +517,7 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, bcn beacon.RandomBe
 		prev = &types.BeaconEntry{}
 	}
 
-	entries, err := beacon.BeaconEntriesForBlock(ctx, bcn, round, *prev)
+	entries, err := beacon.BeaconEntriesForBlock(ctx, bcs, round, ts.Height(), *prev)
 	if err != nil {
 		return nil, err
 	}
@@ -624,8 +624,8 @@ func init() {
 		// Explicitly add send, it's special.
 		methods[builtin.MethodSend] = MethodMeta{
 			Name:   "Send",
-			Params: reflect.TypeOf(new(adt.EmptyValue)),
-			Ret:    reflect.TypeOf(new(adt.EmptyValue)),
+			Params: reflect.TypeOf(new(abi.EmptyValue)),
+			Ret:    reflect.TypeOf(new(abi.EmptyValue)),
 		}
 
 		// Learn method names from the builtin.Methods* structs.

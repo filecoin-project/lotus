@@ -13,12 +13,13 @@ import (
 type BeaconAPI struct {
 	fx.In
 
-	Beacon beacon.RandomBeacon
+	Beacon beacon.Schedule
 }
 
 func (a *BeaconAPI) BeaconGetEntry(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) {
-	rr := a.Beacon.MaxBeaconRoundForEpoch(epoch, types.BeaconEntry{})
-	e := a.Beacon.Entry(ctx, rr)
+	b := a.Beacon.BeaconForEpoch(epoch)
+	rr := b.MaxBeaconRoundForEpoch(epoch)
+	e := b.Entry(ctx, rr)
 
 	select {
 	case be, ok := <-e:

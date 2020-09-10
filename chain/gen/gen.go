@@ -59,7 +59,7 @@ type ChainGen struct {
 
 	cs *store.ChainStore
 
-	beacon beacon.RandomBeacon
+	beacon beacon.Schedule
 
 	sm *stmgr.StateManager
 
@@ -252,7 +252,7 @@ func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
 
 	miners := []address.Address{maddr1, maddr2}
 
-	beac := beacon.NewMockBeacon(time.Second)
+	beac := beacon.Schedule{{Start: 0, Beacon: beacon.NewMockBeacon(time.Second)}}
 	//beac, err := drand.NewDrandBeacon(tpl.Timestamp, build.BlockDelaySecs)
 	//if err != nil {
 	//return nil, xerrors.Errorf("creating drand beacon: %w", err)
@@ -338,7 +338,7 @@ func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m add
 
 	prev := mbi.PrevBeaconEntry
 
-	entries, err := beacon.BeaconEntriesForBlock(ctx, cg.beacon, round, prev)
+	entries, err := beacon.BeaconEntriesForBlock(ctx, cg.beacon, round, pts.Height(), prev)
 	if err != nil {
 		return nil, nil, nil, xerrors.Errorf("get beacon entries for block: %w", err)
 	}
@@ -358,7 +358,7 @@ func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m add
 		return nil, nil, nil, xerrors.Errorf("failed to cbor marshal address: %w", err)
 	}
 
-	if len(entries) == 0 {
+	if round > build.UpgradeSmokeHeight {
 		buf.Write(pts.MinTicket().VRFProof)
 	}
 
@@ -559,7 +559,7 @@ type mca struct {
 	w   *wallet.Wallet
 	sm  *stmgr.StateManager
 	pv  ffiwrapper.Verifier
-	bcn beacon.RandomBeacon
+	bcn beacon.Schedule
 }
 
 func (mca mca) ChainGetRandomnessFromTickets(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {

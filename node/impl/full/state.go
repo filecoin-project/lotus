@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/filecoin-project/go-state-types/dline"
+
 	cid "github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -53,7 +55,7 @@ type StateAPI struct {
 	ProofVerifier ffiwrapper.Verifier
 	StateManager  *stmgr.StateManager
 	Chain         *store.ChainStore
-	Beacon        beacon.RandomBeacon
+	Beacon        beacon.Schedule
 }
 
 func (a *StateAPI) StateNetworkName(ctx context.Context) (dtypes.NetworkName, error) {
@@ -145,7 +147,7 @@ func (a *StateAPI) StateMinerPartitions(ctx context.Context, m address.Address, 
 						}))))))
 }
 
-func (a *StateAPI) StateMinerProvingDeadline(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*miner.DeadlineInfo, error) {
+func (a *StateAPI) StateMinerProvingDeadline(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*dline.Info, error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)

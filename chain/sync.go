@@ -103,7 +103,7 @@ type Syncer struct {
 	store *store.ChainStore
 
 	// handle to the random beacon for verification
-	beacon beacon.RandomBeacon
+	beacon beacon.Schedule
 
 	// the state manager handles making state queries
 	sm *stmgr.StateManager
@@ -141,7 +141,7 @@ type Syncer struct {
 }
 
 // NewSyncer creates a new Syncer object.
-func NewSyncer(ds dtypes.MetadataDS, sm *stmgr.StateManager, exchange exchange.Client, connmgr connmgr.ConnManager, self peer.ID, beacon beacon.RandomBeacon, verifier ffiwrapper.Verifier) (*Syncer, error) {
+func NewSyncer(ds dtypes.MetadataDS, sm *stmgr.StateManager, exchange exchange.Client, connmgr connmgr.ConnManager, self peer.ID, beacon beacon.Schedule, verifier ffiwrapper.Verifier) (*Syncer, error) {
 	gen, err := sm.ChainStore().GetGenesis()
 	if err != nil {
 		return nil, xerrors.Errorf("getting genesis block: %w", err)
@@ -879,7 +879,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) (er
 			return nil
 		}
 
-		if err := beacon.ValidateBlockValues(syncer.beacon, h, *prevBeacon); err != nil {
+		if err := beacon.ValidateBlockValues(syncer.beacon, h, baseTs.Height(), *prevBeacon); err != nil {
 			return xerrors.Errorf("failed to validate blocks random beacon values: %w", err)
 		}
 		return nil
@@ -891,10 +891,12 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) (er
 			return xerrors.Errorf("failed to marshal miner address to cbor: %w", err)
 		}
 
-		beaconBase := *prevBeacon
-		if len(h.BeaconEntries) == 0 {
+		if h.Height > build.UpgradeSmokeHeight {
 			buf.Write(baseTs.MinTicket().VRFProof)
-		} else {
+		}
+
+		beaconBase := *prevBeacon
+		if len(h.BeaconEntries) != 0 {
 			beaconBase = h.BeaconEntries[len(h.BeaconEntries)-1]
 		}
 

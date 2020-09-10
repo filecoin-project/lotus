@@ -4,11 +4,12 @@ import (
 	"context"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/dline"
+
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
@@ -37,7 +38,7 @@ type WindowPoStScheduler struct {
 	cur *types.TipSet
 
 	// if a post is in progress, this indicates for which ElectionPeriodStart
-	activeDeadline *miner.DeadlineInfo
+	activeDeadline *dline.Info
 	abort          context.CancelFunc
 
 	//failed abi.ChainEpoch // eps
@@ -68,7 +69,7 @@ func NewWindowedPoStScheduler(api storageMinerApi, fc config.MinerFeeConfig, sb 
 	}, nil
 }
 
-func deadlineEquals(a, b *miner.DeadlineInfo) bool {
+func deadlineEquals(a, b *dline.Info) bool {
 	if a == nil || b == nil {
 		return b == a
 	}
