@@ -62,9 +62,9 @@ const (
 	// MethodMutateState is the identifier for the method that attempts to mutate
 	// a state value in the actor.
 	MethodMutateState
-	// MethodAbort is the identifier for the method that panics optionally with
+	// MethodAbortWith is the identifier for the method that panics optionally with
 	// a passed exit code.
-	MethodAbort
+	MethodAbortWith
 )
 
 // Exports defines the methods this actor exposes publicly.
@@ -77,7 +77,7 @@ func (a Actor) Exports() []interface{} {
 		MethodDeleteActor:         a.DeleteActor,
 		MethodSend:                a.Send,
 		MethodMutateState:         a.MutateState,
-		MethodAbort:               a.AbortWith,
+		MethodAbortWith:           a.AbortWith,
 	}
 }
 
