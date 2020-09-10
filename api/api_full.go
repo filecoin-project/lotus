@@ -75,6 +75,9 @@ type FullNode interface {
 	// blockstore and returns raw bytes.
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 
+	// ChainDeleteObj deletes node referenced by the given CID
+	ChainDeleteObj(context.Context, cid.Cid) error
+
 	// ChainHasObj checks if a given CID exists in the chain blockstore.
 	ChainHasObj(context.Context, cid.Cid) (bool, error)
 

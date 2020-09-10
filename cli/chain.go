@@ -193,6 +193,33 @@ var chainReadObjCmd = &cli.Command{
 	},
 }
 
+var chainDeleteObjCmd = &cli.Command{
+	Name:      "delete-obj",
+	Usage:     "Delete an object",
+	ArgsUsage: "[objectCid]",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		c, err := cid.Decode(cctx.Args().First())
+		if err != nil {
+			return fmt.Errorf("failed to parse cid input: %s", err)
+		}
+
+		err = api.ChainDeleteObj(ctx, c)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Obj %s deleted\n", c.String())
+		return nil
+	},
+}
+
 var chainStatObjCmd = &cli.Command{
 	Name:      "stat-obj",
 	Usage:     "Collect size and ipld link counts for objs",
