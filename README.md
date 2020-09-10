@@ -106,7 +106,7 @@ make
 7. Run a composition for the baseline deals end-to-end test case
 
 ```
-testground run composition -f ./lotus-soup/_compositions/baseline.toml
+testground run composition -f ./lotus-soup/_compositions/baseline-docker-5-1.toml
 ```
 
 ## Batch-running randomised test cases
