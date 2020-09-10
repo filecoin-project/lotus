@@ -891,7 +891,9 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) (er
 			return xerrors.Errorf("failed to marshal miner address to cbor: %w", err)
 		}
 
-		buf.Write(baseTs.MinTicket().VRFProof)
+		if h.Height > build.UpgradeSmokeHeight {
+			buf.Write(baseTs.MinTicket().VRFProof)
+		}
 
 		beaconBase := *prevBeacon
 		if len(h.BeaconEntries) != 0 {
