@@ -559,6 +559,19 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *ty
 		posts[i].ChainCommitRand = commRand
 	}
 
+	// Compute randomness after generating proofs so as to reduce the impact
+	// of chain reorgs (which change randomness)
+	commEpoch := di.Open
+	commRand, err := s.api.ChainGetRandomnessFromTickets(ctx, ts.Key(), crypto.DomainSeparationTag_PoStChainCommit, commEpoch, nil)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get chain randomness for windowPost (ts=%d; deadline=%d): %w", ts.Height(), di, err)
+	}
+
+	for i := range posts {
+		posts[i].ChainCommitEpoch = commEpoch
+		posts[i].ChainCommitRand = commRand
+	}
+
 	return posts, nil
 }
 
