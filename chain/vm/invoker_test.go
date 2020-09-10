@@ -108,6 +108,5 @@ func TestInvokerBasic(t *testing.T) {
 	if aerrors.IsFatal(aerr) {
 		t.Fatal("err should not be fatal")
 	}
-	assert.Equal(t, exitcode.ExitCode(1), aerrors.RetCode(aerr), "return code should be 1")
-
+	assert.Equal(t, exitcode.ErrSerialization, aerrors.RetCode(aerr), "return code should be %s", exitcode.ErrSerialization)
 }
