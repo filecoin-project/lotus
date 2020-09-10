@@ -243,7 +243,7 @@ type AbortWithArgs struct {
 }
 
 // AbortWith simply causes a panic with the passed exit code.
-func (a Actor) AbortWith(rt runtime.Runtime, args *AbortWithArgs) *adt.EmptyValue {
+func (a Actor) AbortWith(rt runtime.Runtime, args *AbortWithArgs) *abi.EmptyValue {
 	if args.Uncontrolled { // uncontrolled abort: directly panic
 		panic(args.Message)
 	} else {
