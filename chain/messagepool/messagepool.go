@@ -590,7 +590,7 @@ func (mp *MessagePool) addTs(m *types.SignedMessage, curTs *types.TipSet, local 
 		return false, err
 	}
 
-	return publish, mp.addLocked(m, true)
+	return publish, mp.addLocked(m, !local)
 }
 
 func (mp *MessagePool) addLoaded(m *types.SignedMessage) error {
@@ -812,7 +812,7 @@ func (mp *MessagePool) PushWithNonce(ctx context.Context, addr address.Address, 
 		return nil, err
 	}
 
-	if err := mp.addLocked(msg, true); err != nil {
+	if err := mp.addLocked(msg, false); err != nil {
 		return nil, xerrors.Errorf("add locked failed: %w", err)
 	}
 	if err := mp.addLocal(msg, msgb); err != nil {
