@@ -624,8 +624,8 @@ func init() {
 		// Explicitly add send, it's special.
 		methods[builtin.MethodSend] = MethodMeta{
 			Name:   "Send",
-			Params: reflect.TypeOf(new(adt.EmptyValue)),
-			Ret:    reflect.TypeOf(new(adt.EmptyValue)),
+			Params: reflect.TypeOf(new(abi.EmptyValue)),
+			Ret:    reflect.TypeOf(new(abi.EmptyValue)),
 		}
 
 		// Learn method names from the builtin.Methods* structs.

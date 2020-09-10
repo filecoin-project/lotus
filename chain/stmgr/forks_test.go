@@ -73,7 +73,7 @@ func (ta *testActor) Exports() []interface{} {
 	}
 }
 
-func (ta *testActor) Constructor(rt runtime.Runtime, params *adt.EmptyValue) *adt.EmptyValue {
+func (ta *testActor) Constructor(rt runtime.Runtime, params *abi.EmptyValue) *abi.EmptyValue {
 	rt.ValidateImmediateCallerAcceptAny()
 	rt.State().Create(&testActorState{11})
 	fmt.Println("NEW ACTOR ADDRESS IS: ", rt.Message().Receiver())
@@ -81,7 +81,7 @@ func (ta *testActor) Constructor(rt runtime.Runtime, params *adt.EmptyValue) *ad
 	return adt.Empty
 }
 
-func (ta *testActor) TestMethod(rt runtime.Runtime, params *adt.EmptyValue) *adt.EmptyValue {
+func (ta *testActor) TestMethod(rt runtime.Runtime, params *abi.EmptyValue) *abi.EmptyValue {
 	rt.ValidateImmediateCallerAcceptAny()
 	var st testActorState
 	rt.State().Readonly(&st)
