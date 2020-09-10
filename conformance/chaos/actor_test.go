@@ -15,7 +15,7 @@ func TestSingleton(t *testing.T) {
 	builder := mock.NewBuilder(context.Background(), receiver)
 
 	rt := builder.Build(t)
-	a := Actor{}
+	var a Actor
 
 	msg := "constructor should not be called; the Chaos actor is a singleton actor"
 	rt.ExpectAssertionFailure(msg, func() {
@@ -30,7 +30,7 @@ func TestDeleteActor(t *testing.T) {
 	builder := mock.NewBuilder(context.Background(), receiver)
 
 	rt := builder.Build(t)
-	a := Actor{}
+	var a Actor
 
 	rt.ExpectValidateCallerAny()
 	rt.ExpectDeleteActor(beneficiary)
@@ -43,7 +43,7 @@ func TestMutateStateInTransaction(t *testing.T) {
 	builder := mock.NewBuilder(context.Background(), receiver)
 
 	rt := builder.Build(t)
-	a := Actor{}
+	var a Actor
 
 	rt.ExpectValidateCallerAny()
 	rt.Create(&State{})
@@ -69,7 +69,7 @@ func TestMutateStateAfterTransaction(t *testing.T) {
 	builder := mock.NewBuilder(context.Background(), receiver)
 
 	rt := builder.Build(t)
-	a := Actor{}
+	var a Actor
 
 	rt.ExpectValidateCallerAny()
 	rt.Create(&State{})
@@ -96,7 +96,7 @@ func TestMutateStateReadonly(t *testing.T) {
 	builder := mock.NewBuilder(context.Background(), receiver)
 
 	rt := builder.Build(t)
-	a := Actor{}
+	var a Actor
 
 	rt.ExpectValidateCallerAny()
 	rt.Create(&State{})
@@ -122,7 +122,7 @@ func TestAbortWith(t *testing.T) {
 	builder := mock.NewBuilder(context.Background(), receiver)
 
 	rt := builder.Build(t)
-	a := Actor{}
+	var a Actor
 
 	msg := "__test forbidden"
 	rt.ExpectAbortContainsMessage(exitcode.ErrForbidden, msg, func() {
@@ -140,7 +140,7 @@ func TestAbortWithUncontrolled(t *testing.T) {
 	builder := mock.NewBuilder(context.Background(), receiver)
 
 	rt := builder.Build(t)
-	a := Actor{}
+	var a Actor
 
 	msg := "__test uncontrolled panic"
 	rt.ExpectAssertionFailure(msg, func() {
