@@ -5,7 +5,7 @@ import (
 
 	"github.com/libp2p/go-libp2p-core/protocol"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/node/modules/dtypes"

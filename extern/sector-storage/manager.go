@@ -13,7 +13,7 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
@@ -227,15 +227,7 @@ func (m *Manager) ReadPiece(ctx context.Context, sink io.Writer, sector abi.Sect
 		return xerrors.Errorf("read piece: checking for already existing unsealed sector: %w", err)
 	}
 
-	var selector WorkerSelector
-	if len(best) == 0 { // new
-		selector = newAllocSelector(m.index, storiface.FTUnsealed, storiface.PathSealing)
-	} else { // append to existing
-		selector = newExistingSelector(m.index, sector, storiface.FTUnsealed, false)
-	}
-
 	var readOk bool
-
 	readPiece := func(ctx context.Context, w Worker) error {
 		r, err := m.waitResult(ctx)(w.ReadPiece(ctx, sink, sector, offset, size))
 		if err != nil {
@@ -245,7 +237,10 @@ func (m *Manager) ReadPiece(ctx context.Context, sink io.Writer, sector abi.Sect
 		return nil
 	}
 
-	if len(best) > 0 {
+	var selector WorkerSelector
+	if len(best) == 0 { // new
+		selector = newAllocSelector(m.index, storiface.FTUnsealed, storiface.PathSealing)
+	} else {
 		// There is unsealed sector, see if we can read from it
 
 		selector = newExistingSelector(m.index, sector, storiface.FTUnsealed, false)
@@ -273,6 +268,9 @@ func (m *Manager) ReadPiece(ctx context.Context, sink io.Writer, sector abi.Sect
 		return nil
 	}
 
+	if unsealed == cid.Undef {
+		return xerrors.Errorf("cannot unseal piece (sector: %d, offset: %d size: %d) - unsealed cid is undefined", sector, offset, size)
+	}
 	err = m.sched.Schedule(ctx, sector, sealtasks.TTUnseal, selector, unsealFetch, func(ctx context.Context, w Worker) error {
 		_, err := m.waitResult(ctx)(w.UnsealPiece(ctx, sector, offset, size, ticket, unsealed))
 		return err
@@ -288,7 +286,7 @@ func (m *Manager) ReadPiece(ctx context.Context, sink io.Writer, sector abi.Sect
 		return xerrors.Errorf("reading piece from sealed sector: %w", err)
 	}
 
-	if readOk {
+	if !readOk {
 		return xerrors.Errorf("failed to read unsealed piece")
 	}
 

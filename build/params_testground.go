@@ -10,7 +10,7 @@ package build
 import (
 	"math/big"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 )
@@ -69,4 +69,7 @@ var (
 
 	PackingEfficiencyNum   int64 = 4
 	PackingEfficiencyDenom int64 = 5
+
+	UpgradeBreezeHeight      abi.ChainEpoch = 0
+	BreezeGasTampingDuration abi.ChainEpoch = 0
 )

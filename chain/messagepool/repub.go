@@ -16,7 +16,7 @@ import (
 
 const repubMsgLimit = 30
 
-var RepublishBatchDelay = 200 * time.Millisecond
+var RepublishBatchDelay = 100 * time.Millisecond
 
 func (mp *MessagePool) republishPendingMessages() error {
 	mp.curTsLk.Lock()
@@ -26,6 +26,11 @@ func (mp *MessagePool) republishPendingMessages() error {
 	if err != nil {
 		mp.curTsLk.Unlock()
 		return xerrors.Errorf("computing basefee: %w", err)
+	}
+
+	baseFeeLowerBound := types.BigDiv(baseFee, baseFeeLowerBoundFactor)
+	if baseFeeLowerBoundFactor.LessThan(minimumBaseFee) {
+		baseFeeLowerBound = minimumBaseFee
 	}
 
 	pending := make(map[address.Address]map[uint64]*types.SignedMessage)
@@ -55,7 +60,11 @@ func (mp *MessagePool) republishPendingMessages() error {
 
 	var chains []*msgChain
 	for actor, mset := range pending {
-		next := mp.createMessageChains(actor, mset, baseFee, ts)
+		// We use the baseFee lower bound for createChange so that we optimistically include
+		// chains that might become profitable in the next 20 blocks.
+		// We still check the lowerBound condition for individual messages so that we don't send
+		// messages that will be rejected by the mpool spam protector, so this is safe to do.
+		next := mp.createMessageChains(actor, mset, baseFeeLowerBound, ts)
 		chains = append(chains, next...)
 	}
 
@@ -70,6 +79,7 @@ func (mp *MessagePool) republishPendingMessages() error {
 	gasLimit := int64(build.BlockGasLimit)
 	minGas := int64(gasguess.MinGas)
 	var msgs []*types.SignedMessage
+loop:
 	for i := 0; i < len(chains); {
 		chain := chains[i]
 
@@ -91,8 +101,18 @@ func (mp *MessagePool) republishPendingMessages() error {
 
 		// does it fit in a block?
 		if chain.gasLimit <= gasLimit {
-			gasLimit -= chain.gasLimit
-			msgs = append(msgs, chain.msgs...)
+			// check the baseFee lower bound -- only republish messages that can be included in the chain
+			// within the next 20 blocks.
+			for _, m := range chain.msgs {
+				if !allowNegativeChains(ts.Height()) && m.Message.GasFeeCap.LessThan(baseFeeLowerBound) {
+					chain.Invalidate()
+					continue loop
+				}
+				gasLimit -= m.Message.GasLimit
+				msgs = append(msgs, m)
+			}
+
+			// we processed the whole chain, advance
 			i++
 			continue
 		}

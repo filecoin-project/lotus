@@ -3,6 +3,7 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	stdbig "math/big"
 	"sort"
 	"strconv"
 
@@ -10,8 +11,12 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 
+	lapi "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -26,6 +31,7 @@ var mpoolCmd = &cli.Command{
 		mpoolReplaceCmd,
 		mpoolFindCmd,
 		mpoolConfig,
+		mpoolGasPerfCmd,
 	},
 }
 
@@ -293,6 +299,10 @@ var mpoolReplaceCmd = &cli.Command{
 			Name:  "gas-limit",
 			Usage: "gas price for new message",
 		},
+		&cli.BoolFlag{
+			Name:  "auto",
+			Usage: "automatically reprice the specified message",
+		},
 	},
 	ArgsUsage: "[from] [nonce]",
 	Action: func(cctx *cli.Context) error {
@@ -342,15 +352,29 @@ var mpoolReplaceCmd = &cli.Command{
 
 		msg := found.Message
 
-		msg.GasLimit = cctx.Int64("gas-limit")
-		msg.GasPremium, err = types.BigFromString(cctx.String("gas-premium"))
-		if err != nil {
-			return fmt.Errorf("parsing gas-premium: %w", err)
-		}
-		// TODO: estimate fee cap here
-		msg.GasFeeCap, err = types.BigFromString(cctx.String("gas-feecap"))
-		if err != nil {
-			return fmt.Errorf("parsing gas-feecap: %w", err)
+		if cctx.Bool("auto") {
+			// msg.GasLimit = 0 // TODO: need to fix the way we estimate gas limits to account for the messages already being in the mempool
+			msg.GasFeeCap = abi.NewTokenAmount(0)
+			msg.GasPremium = abi.NewTokenAmount(0)
+			retm, err := api.GasEstimateMessageGas(ctx, &msg, &lapi.MessageSendSpec{}, types.EmptyTSK)
+			if err != nil {
+				return fmt.Errorf("failed to estimate gas values: %w", err)
+			}
+			msg.GasFeeCap = retm.GasFeeCap
+
+			minRBF := messagepool.ComputeMinRBF(msg.GasPremium)
+			msg.GasPremium = big.Max(retm.GasPremium, minRBF)
+		} else {
+			msg.GasLimit = cctx.Int64("gas-limit")
+			msg.GasPremium, err = types.BigFromString(cctx.String("gas-premium"))
+			if err != nil {
+				return fmt.Errorf("parsing gas-premium: %w", err)
+			}
+			// TODO: estimate fee cap here
+			msg.GasFeeCap, err = types.BigFromString(cctx.String("gas-feecap"))
+			if err != nil {
+				return fmt.Errorf("parsing gas-feecap: %w", err)
+			}
 		}
 
 		smsg, err := api.WalletSignMessage(ctx, msg.From, &msg)
@@ -490,6 +514,89 @@ var mpoolConfig = &cli.Command{
 			}
 
 			return api.MpoolSetConfig(ctx, cfg)
+		}
+
+		return nil
+	},
+}
+
+var mpoolGasPerfCmd = &cli.Command{
+	Name:  "gas-perf",
+	Usage: "Check gas performance of messages in mempool",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "all",
+			Usage: "print gas performance for all mempool messages (default only prints for local)",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		msgs, err := api.MpoolPending(ctx, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		var filter map[address.Address]struct{}
+		if !cctx.Bool("all") {
+			filter = map[address.Address]struct{}{}
+
+			addrss, err := api.WalletList(ctx)
+			if err != nil {
+				return xerrors.Errorf("getting local addresses: %w", err)
+			}
+
+			for _, a := range addrss {
+				filter[a] = struct{}{}
+			}
+
+			var filtered []*types.SignedMessage
+			for _, msg := range msgs {
+				if _, has := filter[msg.Message.From]; !has {
+					continue
+				}
+				filtered = append(filtered, msg)
+			}
+			msgs = filtered
+		}
+
+		ts, err := api.ChainHead(ctx)
+		if err != nil {
+			return xerrors.Errorf("failed to get chain head: %w", err)
+		}
+
+		baseFee := ts.Blocks()[0].ParentBaseFee
+
+		bigBlockGasLimit := big.NewInt(build.BlockGasLimit)
+
+		getGasReward := func(msg *types.SignedMessage) big.Int {
+			maxPremium := types.BigSub(msg.Message.GasFeeCap, baseFee)
+			if types.BigCmp(maxPremium, msg.Message.GasPremium) < 0 {
+				maxPremium = msg.Message.GasPremium
+			}
+			return types.BigMul(maxPremium, types.NewInt(uint64(msg.Message.GasLimit)))
+		}
+
+		getGasPerf := func(gasReward big.Int, gasLimit int64) float64 {
+			// gasPerf = gasReward * build.BlockGasLimit / gasLimit
+			a := new(stdbig.Rat).SetInt(new(stdbig.Int).Mul(gasReward.Int, bigBlockGasLimit.Int))
+			b := stdbig.NewRat(1, gasLimit)
+			c := new(stdbig.Rat).Mul(a, b)
+			r, _ := c.Float64()
+			return r
+		}
+
+		for _, m := range msgs {
+			gasReward := getGasReward(m)
+			gasPerf := getGasPerf(gasReward, m.Message.GasLimit)
+
+			fmt.Printf("%s\t%d\t%s\t%f\n", m.Message.From, m.Message.Nonce, gasReward, gasPerf)
 		}
 
 		return nil

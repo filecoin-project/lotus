@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/lotus/chain/types"
+
+	"github.com/filecoin-project/go-state-types/abi"
 	cid "github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain"
 )
 
 var syncCmd = &cli.Command{
@@ -21,7 +22,9 @@ var syncCmd = &cli.Command{
 		syncStatusCmd,
 		syncWaitCmd,
 		syncMarkBadCmd,
+		syncUnmarkBadCmd,
 		syncCheckBadCmd,
+		syncCheckpointCmd,
 	},
 }
 
@@ -61,7 +64,7 @@ var syncStatusCmd = &cli.Command{
 			fmt.Printf("\tBase:\t%s\n", base)
 			fmt.Printf("\tTarget:\t%s (%d)\n", target, theight)
 			fmt.Printf("\tHeight diff:\t%d\n", heightDiff)
-			fmt.Printf("\tStage: %s\n", chain.SyncStageString(ss.Stage))
+			fmt.Printf("\tStage: %s\n", ss.Stage)
 			fmt.Printf("\tHeight: %d\n", ss.Height)
 			if ss.End.IsZero() {
 				if !ss.Start.IsZero() {
@@ -118,6 +121,31 @@ var syncMarkBadCmd = &cli.Command{
 	},
 }
 
+var syncUnmarkBadCmd = &cli.Command{
+	Name:      "unmark-bad",
+	Usage:     "Unmark the given block as bad, makes it possible to sync to a chain containing it",
+	ArgsUsage: "[blockCid]",
+	Action: func(cctx *cli.Context) error {
+		napi, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must specify block cid to unmark")
+		}
+
+		bcid, err := cid.Decode(cctx.Args().First())
+		if err != nil {
+			return fmt.Errorf("failed to decode input as a cid: %s", err)
+		}
+
+		return napi.SyncUnmarkBad(ctx, bcid)
+	},
+}
+
 var syncCheckBadCmd = &cli.Command{
 	Name:      "check-bad",
 	Usage:     "check if the given block was marked bad, and for what reason",
@@ -154,6 +182,48 @@ var syncCheckBadCmd = &cli.Command{
 	},
 }
 
+var syncCheckpointCmd = &cli.Command{
+	Name:      "checkpoint",
+	Usage:     "mark a certain tipset as checkpointed; the node will never fork away from this tipset",
+	ArgsUsage: "[tipsetKey]",
+	Flags: []cli.Flag{
+		&cli.Uint64Flag{
+			Name:  "epoch",
+			Usage: "checkpoint the tipset at the given epoch",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		napi, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		var ts *types.TipSet
+
+		if cctx.IsSet("epoch") {
+			ts, err = napi.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(cctx.Uint64("epoch")), types.EmptyTSK)
+		}
+		if ts == nil {
+			ts, err = parseTipSet(ctx, napi, cctx.Args().Slice())
+		}
+		if err != nil {
+			return err
+		}
+
+		if ts == nil {
+			return fmt.Errorf("must pass cids for tipset to set as head, or specify epoch flag")
+		}
+
+		if err := napi.SyncCheckpoint(ctx, ts.Key()); err != nil {
+			return err
+		}
+
+		return nil
+	},
+}
+
 func SyncWait(ctx context.Context, napi api.FullNode) error {
 	for {
 		state, err := napi.SyncState(ctx)
@@ -186,7 +256,7 @@ func SyncWait(ctx context.Context, napi api.FullNode) error {
 			theight = ss.Target.Height()
 		}
 
-		fmt.Printf("\r\x1b[2KWorker %d: Target Height: %d\tTarget: %s\tState: %s\tHeight: %d", working, theight, target, chain.SyncStageString(ss.Stage), ss.Height)
+		fmt.Printf("\r\x1b[2KWorker %d: Target Height: %d\tTarget: %s\tState: %s\tHeight: %d", working, theight, target, ss.Stage, ss.Height)
 
 		if time.Now().Unix()-int64(head.MinTimestamp()) < int64(build.BlockDelaySecs) {
 			fmt.Println("\nDone!")

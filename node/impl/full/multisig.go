@@ -3,13 +3,13 @@ package full
 import (
 	"context"
 
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	samsig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
@@ -130,6 +130,33 @@ func (a *MsigAPI) MsigPropose(ctx context.Context, msig address.Address, to addr
 	return smsg.Cid(), nil
 }
 
+func (a *MsigAPI) MsigAddPropose(ctx context.Context, msig address.Address, src address.Address, newAdd address.Address, inc bool) (cid.Cid, error) {
+	enc, actErr := serializeAddParams(newAdd, inc)
+	if actErr != nil {
+		return cid.Undef, actErr
+	}
+
+	return a.MsigPropose(ctx, msig, msig, big.Zero(), src, uint64(builtin.MethodsMultisig.AddSigner), enc)
+}
+
+func (a *MsigAPI) MsigAddApprove(ctx context.Context, msig address.Address, src address.Address, txID uint64, proposer address.Address, newAdd address.Address, inc bool) (cid.Cid, error) {
+	enc, actErr := serializeAddParams(newAdd, inc)
+	if actErr != nil {
+		return cid.Undef, actErr
+	}
+
+	return a.MsigApprove(ctx, msig, txID, proposer, msig, big.Zero(), src, uint64(builtin.MethodsMultisig.AddSigner), enc)
+}
+
+func (a *MsigAPI) MsigAddCancel(ctx context.Context, msig address.Address, src address.Address, txID uint64, newAdd address.Address, inc bool) (cid.Cid, error) {
+	enc, actErr := serializeAddParams(newAdd, inc)
+	if actErr != nil {
+		return cid.Undef, actErr
+	}
+
+	return a.MsigCancel(ctx, msig, txID, msig, big.Zero(), src, uint64(builtin.MethodsMultisig.AddSigner), enc)
+}
+
 func (a *MsigAPI) MsigSwapPropose(ctx context.Context, msig address.Address, src address.Address, oldAdd address.Address, newAdd address.Address) (cid.Cid, error) {
 	enc, actErr := serializeSwapParams(oldAdd, newAdd)
 	if actErr != nil {
@@ -242,6 +269,18 @@ func (a *MsigAPI) msigApproveOrCancel(ctx context.Context, operation api.MsigPro
 	}
 
 	return smsg.Cid(), nil
+}
+
+func serializeAddParams(new address.Address, inc bool) ([]byte, error) {
+	enc, actErr := actors.SerializeParams(&samsig.AddSignerParams{
+		Signer:   new,
+		Increase: inc,
+	})
+	if actErr != nil {
+		return nil, actErr
+	}
+
+	return enc, nil
 }
 
 func serializeSwapParams(old address.Address, new address.Address) ([]byte, error) {

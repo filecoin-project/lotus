@@ -7,9 +7,11 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/filecoin-project/specs-actors/actors/runtime"
+
 	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 
 	block "github.com/ipfs/go-block-format"
@@ -22,10 +24,10 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
-	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
@@ -40,23 +42,23 @@ var actorLog = logging.Logger("actors")
 var gasOnActorExec = newGasCharge("OnActorExec", 0, 0)
 
 // ResolveToKeyAddr returns the public key type of address (`BLS`/`SECP256K1`) of an account actor identified by `addr`.
-func ResolveToKeyAddr(state types.StateTree, cst cbor.IpldStore, addr address.Address) (address.Address, aerrors.ActorError) {
+func ResolveToKeyAddr(state types.StateTree, cst cbor.IpldStore, addr address.Address) (address.Address, error) {
 	if addr.Protocol() == address.BLS || addr.Protocol() == address.SECP256K1 {
 		return addr, nil
 	}
 
 	act, err := state.GetActor(addr)
 	if err != nil {
-		return address.Undef, aerrors.Newf(exitcode.SysErrInvalidParameters, "failed to find actor: %s", addr)
+		return address.Undef, xerrors.Errorf("failed to find actor: %s", addr)
 	}
 
 	if act.Code != builtin.AccountActorCodeID {
-		return address.Undef, aerrors.Newf(exitcode.SysErrInvalidParameters, "address %s was not for an account actor", addr)
+		return address.Undef, xerrors.Errorf("address %s was not for an account actor", addr)
 	}
 
 	var aast account.State
 	if err := cst.Get(context.TODO(), act.Head, &aast); err != nil {
-		return address.Undef, aerrors.Absorb(err, exitcode.SysErrInvalidParameters, fmt.Sprintf("failed to get account actor state for %s", addr))
+		return address.Undef, xerrors.Errorf("failed to get account actor state for %s: %w", addr, err)
 	}
 
 	return aast.Address, nil
@@ -140,6 +142,7 @@ func (vm *UnsafeVM) MakeRuntime(ctx context.Context, msg *types.Message, origin 
 }
 
 type CircSupplyCalculator func(context.Context, abi.ChainEpoch, *state.StateTree) (abi.TokenAmount, error)
+type NtwkVersionGetter func(context.Context, abi.ChainEpoch) runtime.NetworkVersion
 
 type VM struct {
 	cstate         *state.StateTree
@@ -150,6 +153,7 @@ type VM struct {
 	inv            *Invoker
 	rand           Rand
 	circSupplyCalc CircSupplyCalculator
+	ntwkVersion    NtwkVersionGetter
 	baseFee        abi.TokenAmount
 
 	Syscalls SyscallBuilder
@@ -162,6 +166,7 @@ type VMOpts struct {
 	Bstore         bstore.Blockstore
 	Syscalls       SyscallBuilder
 	CircSupplyCalc CircSupplyCalculator
+	NtwkVersion    NtwkVersionGetter
 	BaseFee        abi.TokenAmount
 }
 
@@ -182,6 +187,7 @@ func NewVM(opts *VMOpts) (*VM, error) {
 		inv:            NewInvoker(),
 		rand:           opts.Rand, // TODO: Probably should be a syscall
 		circSupplyCalc: opts.CircSupplyCalc,
+		ntwkVersion:    opts.NtwkVersion,
 		Syscalls:       opts.Syscalls,
 		baseFee:        opts.BaseFee,
 	}, nil
@@ -714,6 +720,10 @@ func (vm *VM) Invoke(act *types.Actor, rt *Runtime, method abi.MethodNum, params
 
 func (vm *VM) SetInvoker(i *Invoker) {
 	vm.inv = i
+}
+
+func (vm *VM) GetNtwkVersion(ctx context.Context, ce abi.ChainEpoch) runtime.NetworkVersion {
+	return vm.ntwkVersion(ctx, ce)
 }
 
 func (vm *VM) GetCircSupply(ctx context.Context) (abi.TokenAmount, error) {

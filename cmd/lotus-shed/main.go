@@ -23,6 +23,7 @@ func main() {
 		noncefix,
 		bigIntParseCmd,
 		staterootCmd,
+		auditsCmd,
 		importCarCmd,
 		commpToCidCmd,
 		fetchParamCmd,
@@ -32,6 +33,7 @@ func main() {
 		mpoolCmd,
 		genesisVerifyCmd,
 		mathCmd,
+		mpoolStatsCmd,
 	}
 
 	app := &cli.App{

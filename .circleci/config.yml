@@ -225,12 +225,17 @@ jobs:
                   cd extern/test-vectors
                   git fetch
                   git checkout origin/<< parameters.vectors-branch >>
-            - run:
-                name: go get vectors branch
-                command: go get github.com/filecoin-project/test-vectors@<< parameters.vectors-branch >>
       - go/install-gotestsum:
           gobin: $HOME/.local/bin
           version: 0.5.2
+      - run:
+          name: install statediff globally
+          command: |
+            ## statediff is optional; we succeed even if compilation fails.
+            mkdir -p /tmp/statediff
+            git clone https://github.com/filecoin-project/statediff.git /tmp/statediff
+            cd /tmp/statediff
+            go install ./cmd/statediff || exit 0
       - run:
           name: go test
           environment:

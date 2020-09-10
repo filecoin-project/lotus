@@ -3,12 +3,14 @@ package conformance
 import (
 	"context"
 
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/vm"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -36,12 +38,12 @@ func (fss *testSyscalls) VerifySignature(_ crypto.Signature, _ address.Address, 
 }
 
 // TODO VerifySeal this will always succeed; but we want to be able to test failures too.
-func (fss *testSyscalls) VerifySeal(_ abi.SealVerifyInfo) error {
+func (fss *testSyscalls) VerifySeal(_ proof.SealVerifyInfo) error {
 	return nil
 }
 
 // TODO VerifyPoSt this will always succeed; but we want to be able to test failures too.
-func (fss *testSyscalls) VerifyPoSt(_ abi.WindowPoStVerifyInfo) error {
+func (fss *testSyscalls) VerifyPoSt(_ proof.WindowPoStVerifyInfo) error {
 	return nil
 }
 
