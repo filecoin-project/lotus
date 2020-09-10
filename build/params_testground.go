@@ -73,7 +73,7 @@ var (
 	UpgradeBreezeHeight      abi.ChainEpoch = -1
 	BreezeGasTampingDuration abi.ChainEpoch = 0
 
-	UpgradeSmokeHeight = -1
+	UpgradeSmokeHeight abi.ChainEpoch = -1
 
 	DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 		0: DrandMainnet,
