@@ -170,9 +170,14 @@ func (a *CommonAPI) ID(context.Context) (peer.ID, error) {
 }
 
 func (a *CommonAPI) Version(context.Context) (api.Version, error) {
+	v, err := build.VersionForType(build.RunningNodeType)
+	if err != nil {
+		return api.Version{}, err
+	}
+
 	return api.Version{
 		Version:    build.UserVersion(),
-		APIVersion: build.APIVersion,
+		APIVersion: v,
 
 		BlockDelay: build.BlockDelaySecs,
 	}, nil

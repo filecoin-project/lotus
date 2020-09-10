@@ -179,8 +179,8 @@ var initCmd = &cli.Command{
 			return err
 		}
 
-		if !v.APIVersion.EqMajorMinor(build.APIVersion) {
-			return xerrors.Errorf("Remote API version didn't match (local %s, remote %s)", build.APIVersion, v.APIVersion)
+		if !v.APIVersion.EqMajorMinor(build.FullAPIVersion) {
+			return xerrors.Errorf("Remote API version didn't match (expected %s, remote %s)", build.FullAPIVersion, v.APIVersion)
 		}
 
 		log.Info("Initializing repo")
