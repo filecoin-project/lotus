@@ -1,0 +1,22 @@
+[metadata]
+  name = "stress"
+
+[global]
+  plan = "graphsync"
+  case = "stress"
+  total_instances = 2
+  builder = "docker:go"
+  runner = "local:docker"
+
+[global.run.test_params]
+size      = "104857600"
+latencies = '["50ms", "100ms", "150ms", "200ms"]'
+bandwidth = '["16M", "8M", "4M", "1M"]'
+
+[[groups]]
+  id = "providers"
+  instances = { count = 1 }
+
+[[groups]]
+  id = "requestors"
+  instances = { count = 1 }
