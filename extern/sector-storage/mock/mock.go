@@ -66,8 +66,8 @@ const (
 )
 
 type sectorState struct {
-	pieces []cid.Cid
-	failed bool
+	pieces    []cid.Cid
+	failed    bool
 	corrupted bool
 
 	state int

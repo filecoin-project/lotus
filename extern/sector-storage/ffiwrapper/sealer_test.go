@@ -174,9 +174,9 @@ func post(t *testing.T, sealer *Sealer, skipped []abi.SectorID, seals ...seal) {
 	sis := make([]saproof.SectorInfo, len(seals))
 	for i, s := range seals {
 		sis[i] = saproof.SectorInfo{
-			SealProof: sealProofType,
-			SectorNumber:    s.id.Number,
-			SealedCID:       s.cids.Sealed,
+			SealProof:    sealProofType,
+			SectorNumber: s.id.Number,
+			SealedCID:    s.cids.Sealed,
 		}
 	}
 
@@ -192,10 +192,10 @@ func post(t *testing.T, sealer *Sealer, skipped []abi.SectorID, seals ...seal) {
 	}
 
 	ok, err := ProofVerifier.VerifyWindowPoSt(context.TODO(), saproof.WindowPoStVerifyInfo{
-		Randomness:      randomness,
-		Proofs:          proofs,
+		Randomness:        randomness,
+		Proofs:            proofs,
 		ChallengedSectors: sis,
-		Prover:          seals[0].id.Miner,
+		Prover:            seals[0].id.Miner,
 	})
 	if err != nil {
 		t.Fatalf("%+v", err)
