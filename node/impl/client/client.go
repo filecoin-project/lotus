@@ -849,7 +849,3 @@ func newDealInfo(v storagemarket.ClientDeal) api.DealInfo {
 		CreationTime:  v.CreationTime.Time(),
 	}
 }
-
-func (a *API) ClientRetrieveTryRestartInsufficientFunds(ctx context.Context, paymentChannel address.Address) error {
-	return a.Retrieval.TryRestartInsufficientFunds(paymentChannel)
-}
