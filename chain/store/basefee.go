@@ -11,7 +11,7 @@ import (
 	"golang.org/x/xerrors"
 )
 
-func computeNextBaseFee(baseFee types.BigInt, gasLimitUsed int64, noOfBlocks int, epoch abi.ChainEpoch) types.BigInt {
+func ComputeNextBaseFee(baseFee types.BigInt, gasLimitUsed int64, noOfBlocks int, epoch abi.ChainEpoch) types.BigInt {
 	// deta := gasLimitUsed/noOfBlocks - build.BlockGasTarget
 	// change := baseFee * deta / BlockGasTarget
 	// nextBaseFee = baseFee + change
@@ -79,5 +79,5 @@ func (cs *ChainStore) ComputeBaseFee(ctx context.Context, ts *types.TipSet) (abi
 	}
 	parentBaseFee := ts.Blocks()[0].ParentBaseFee
 
-	return computeNextBaseFee(parentBaseFee, totalLimit, len(ts.Blocks()), ts.Height()), nil
+	return ComputeNextBaseFee(parentBaseFee, totalLimit, len(ts.Blocks()), ts.Height()), nil
 }
