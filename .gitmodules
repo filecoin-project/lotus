@@ -8,3 +8,6 @@
 [submodule "extern/test-vectors"]
 	path = extern/test-vectors
 	url = https://github.com/filecoin-project/test-vectors.git
+[submodule "extern/fil-blst"]
+	path = extern/fil-blst
+	url = https://github.com/filecoin-project/fil-blst.git
