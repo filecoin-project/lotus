@@ -8,6 +8,8 @@ import (
 	gruntime "runtime"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/network"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -55,7 +57,7 @@ type Runtime struct {
 	lastGasCharge     *types.GasTrace
 }
 
-func (rt *Runtime) NetworkVersion() vmr.NetworkVersion {
+func (rt *Runtime) NetworkVersion() network.Version {
 	return rt.vm.GetNtwkVersion(rt.ctx, rt.CurrEpoch())
 }
 
