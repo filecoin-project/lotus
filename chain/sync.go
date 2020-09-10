@@ -9,7 +9,10 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
+
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 
 	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
@@ -129,10 +132,16 @@ type Syncer struct {
 	windowSize int
 
 	tickerCtxCancel context.CancelFunc
+
+	checkptLk sync.Mutex
+
+	checkpt types.TipSetKey
+
+	ds dtypes.MetadataDS
 }
 
 // NewSyncer creates a new Syncer object.
-func NewSyncer(sm *stmgr.StateManager, exchange exchange.Client, connmgr connmgr.ConnManager, self peer.ID, beacon beacon.RandomBeacon, verifier ffiwrapper.Verifier) (*Syncer, error) {
+func NewSyncer(ds dtypes.MetadataDS, sm *stmgr.StateManager, exchange exchange.Client, connmgr connmgr.ConnManager, self peer.ID, beacon beacon.RandomBeacon, verifier ffiwrapper.Verifier) (*Syncer, error) {
 	gen, err := sm.ChainStore().GetGenesis()
 	if err != nil {
 		return nil, xerrors.Errorf("getting genesis block: %w", err)
@@ -143,7 +152,14 @@ func NewSyncer(sm *stmgr.StateManager, exchange exchange.Client, connmgr connmgr
 		return nil, err
 	}
 
+	cp, err := loadCheckpoint(ds)
+	if err != nil {
+		return nil, xerrors.Errorf("error loading mpool config: %w", err)
+	}
+
 	s := &Syncer{
+		ds:             ds,
+		checkpt:        cp,
 		beacon:         beacon,
 		bad:            NewBadBlockCache(),
 		Genesis:        gent,
@@ -1361,7 +1377,7 @@ loop:
 	log.Warnf("(fork detected) synced header chain (%s - %d) does not link to our best block (%s - %d)", incoming.Cids(), incoming.Height(), known.Cids(), known.Height())
 	fork, err := syncer.syncFork(ctx, base, known)
 	if err != nil {
-		if xerrors.Is(err, ErrForkTooLong) {
+		if xerrors.Is(err, ErrForkTooLong) || xerrors.Is(err, ErrForkCheckpoint) {
 			// TODO: we're marking this block bad in the same way that we mark invalid blocks bad. Maybe distinguish?
 			log.Warn("adding forked chain to our bad tipset cache")
 			for _, b := range incoming.Blocks() {
@@ -1377,14 +1393,23 @@ loop:
 }
 
 var ErrForkTooLong = fmt.Errorf("fork longer than threshold")
+var ErrForkCheckpoint = fmt.Errorf("fork would require us to diverge from checkpointed block")
 
 // syncFork tries to obtain the chain fragment that links a fork into a common
 // ancestor in our view of the chain.
 //
-// If the fork is too long (build.ForkLengthThreshold), we add the entire subchain to the
-// denylist. Else, we find the common ancestor, and add the missing chain
+// If the fork is too long (build.ForkLengthThreshold), or would cause us to diverge from the checkpoint (ErrForkCheckpoint),
+// we add the entire subchain to the denylist. Else, we find the common ancestor, and add the missing chain
 // fragment until the fork point to the returned []TipSet.
 func (syncer *Syncer) syncFork(ctx context.Context, incoming *types.TipSet, known *types.TipSet) ([]*types.TipSet, error) {
+
+	chkpt := syncer.GetCheckpoint()
+	if known.Key() == chkpt {
+		return nil, ErrForkCheckpoint
+	}
+
+	// TODO: Does this mean we always ask for ForkLengthThreshold blocks from the network, even if we just need, like, 2?
+	// Would it not be better to ask in smaller chunks, given that an ~ForkLengthThreshold is very rare?
 	tips, err := syncer.Exchange.GetBlocks(ctx, incoming.Parents(), int(build.ForkLengthThreshold))
 	if err != nil {
 		return nil, err
@@ -1410,12 +1435,18 @@ func (syncer *Syncer) syncFork(ctx context.Context, incoming *types.TipSet, know
 		if nts.Height() < tips[cur].Height() {
 			cur++
 		} else {
+			// We will be forking away from nts, check that it isn't checkpointed
+			if nts.Key() == chkpt {
+				return nil, ErrForkCheckpoint
+			}
+
 			nts, err = syncer.store.LoadTipSet(nts.Parents())
 			if err != nil {
 				return nil, xerrors.Errorf("loading next local tipset: %w", err)
 			}
 		}
 	}
+
 	return nil, ErrForkTooLong
 }
 
@@ -1642,6 +1673,11 @@ func (syncer *Syncer) State() []SyncerState {
 // MarkBad manually adds a block to the "bad blocks" cache.
 func (syncer *Syncer) MarkBad(blk cid.Cid) {
 	syncer.bad.Add(blk, NewBadBlockReason([]cid.Cid{blk}, "manually marked bad"))
+}
+
+// UnmarkBad manually adds a block to the "bad blocks" cache.
+func (syncer *Syncer) UnmarkBad(blk cid.Cid) {
+	syncer.bad.Remove(blk)
 }
 
 func (syncer *Syncer) CheckBadBlockCache(blk cid.Cid) (string, bool) {

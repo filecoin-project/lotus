@@ -16,6 +16,8 @@ import (
 var AdvanceBlockCmd *cli.Command
 
 func main() {
+	build.RunningNodeType = build.NodeFull
+
 	lotuslog.SetupLogLevels()
 
 	local := []*cli.Command{

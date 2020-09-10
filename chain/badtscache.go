@@ -56,6 +56,10 @@ func (bts *BadBlockCache) Add(c cid.Cid, bbr BadBlockReason) {
 	bts.badBlocks.Add(c, bbr)
 }
 
+func (bts *BadBlockCache) Remove(c cid.Cid) {
+	bts.badBlocks.Remove(c)
+}
+
 func (bts *BadBlockCache) Has(c cid.Cid) (BadBlockReason, bool) {
 	rval, ok := bts.badBlocks.Get(c)
 	if !ok {

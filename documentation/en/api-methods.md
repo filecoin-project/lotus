@@ -75,10 +75,14 @@
   * [MpoolSetConfig](#MpoolSetConfig)
   * [MpoolSub](#MpoolSub)
 * [Msig](#Msig)
+  * [MsigAddApprove](#MsigAddApprove)
+  * [MsigAddCancel](#MsigAddCancel)
+  * [MsigAddPropose](#MsigAddPropose)
   * [MsigApprove](#MsigApprove)
   * [MsigCancel](#MsigCancel)
   * [MsigCreate](#MsigCreate)
   * [MsigGetAvailableBalance](#MsigGetAvailableBalance)
+  * [MsigGetVested](#MsigGetVested)
   * [MsigPropose](#MsigPropose)
   * [MsigSwapApprove](#MsigSwapApprove)
   * [MsigSwapCancel](#MsigSwapCancel)
@@ -156,10 +160,12 @@
   * [StateWaitMsg](#StateWaitMsg)
 * [Sync](#Sync)
   * [SyncCheckBad](#SyncCheckBad)
+  * [SyncCheckpoint](#SyncCheckpoint)
   * [SyncIncomingBlocks](#SyncIncomingBlocks)
   * [SyncMarkBad](#SyncMarkBad)
   * [SyncState](#SyncState)
   * [SyncSubmitBlock](#SyncSubmitBlock)
+  * [SyncUnmarkBad](#SyncUnmarkBad)
 * [Wallet](#Wallet)
   * [WalletBalance](#WalletBalance)
   * [WalletDefaultAddress](#WalletDefaultAddress)
@@ -1837,6 +1843,84 @@ The Msig methods are used to interact with multisig wallets on the
 filecoin network
 
 
+### MsigAddApprove
+MsigAddApprove approves a previously proposed AddSigner message
+It takes the following params: <multisig address>, <sender address of the approve msg>, <proposed message ID>,
+<proposer address>, <new signer>, <whether the number of required signers should be increased>
+
+
+Perms: sign
+
+Inputs:
+```json
+[
+  "t01234",
+  "t01234",
+  42,
+  "t01234",
+  "t01234",
+  true
+]
+```
+
+Response:
+```json
+{
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+}
+```
+
+### MsigAddCancel
+MsigAddCancel cancels a previously proposed AddSigner message
+It takes the following params: <multisig address>, <sender address of the cancel msg>, <proposed message ID>,
+<new signer>, <whether the number of required signers should be increased>
+
+
+Perms: sign
+
+Inputs:
+```json
+[
+  "t01234",
+  "t01234",
+  42,
+  "t01234",
+  true
+]
+```
+
+Response:
+```json
+{
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+}
+```
+
+### MsigAddPropose
+MsigAddPropose proposes adding a signer in the multisig
+It takes the following params: <multisig address>, <sender address of the propose msg>,
+<new signer>, <whether the number of required signers should be increased>
+
+
+Perms: sign
+
+Inputs:
+```json
+[
+  "t01234",
+  "t01234",
+  "t01234",
+  true
+]
+```
+
+Response:
+```json
+{
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+}
+```
+
 ### MsigApprove
 MsigApprove approves a previously-proposed multisig message
 It takes the following params: <multisig address>, <proposed message ID>, <proposer address>, <recipient address>, <value to transfer>,
@@ -1944,6 +2028,38 @@ Inputs:
 
 Response: `"0"`
 
+### MsigGetVested
+MsigGetVested returns the amount of FIL that vested in a multisig in a certain period.
+It takes the following params: <multisig address>, <start epoch>, <end epoch>
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "t01234",
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ],
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `"0"`
+
 ### MsigPropose
 MsigPropose proposes a multisig message
 It takes the following params: <multisig address>, <recipient address>, <value to transfer>,
@@ -1974,7 +2090,7 @@ Response:
 ### MsigSwapApprove
 MsigSwapApprove approves a previously proposed SwapSigner
 It takes the following params: <multisig address>, <sender address of the approve msg>, <proposed message ID>,
-<proposer address>, <old signer> <new signer>
+<proposer address>, <old signer>, <new signer>
 
 
 Perms: sign
@@ -2001,7 +2117,7 @@ Response:
 ### MsigSwapCancel
 MsigSwapCancel cancels a previously proposed SwapSigner message
 It takes the following params: <multisig address>, <sender address of the cancel msg>, <proposed message ID>,
-<old signer> <new signer>
+<old signer>, <new signer>
 
 
 Perms: sign
@@ -2027,7 +2143,7 @@ Response:
 ### MsigSwapPropose
 MsigSwapPropose proposes swapping 2 signers in the multisig
 It takes the following params: <multisig address>, <sender address of the propose msg>,
-<old signer> <new signer>
+<old signer>, <new signer>
 
 
 Perms: sign
@@ -3995,6 +4111,28 @@ Inputs:
 
 Response: `"string value"`
 
+### SyncCheckpoint
+SyncCheckpoint marks a blocks as checkpointed, meaning that it won't ever fork away from it.
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `{}`
+
 ### SyncIncomingBlocks
 SyncIncomingBlocks returns a channel streaming incoming, potentially not
 yet synced block headers.
@@ -4124,6 +4262,23 @@ Inputs:
     },
     "BlsMessages": null,
     "SecpkMessages": null
+  }
+]
+```
+
+Response: `{}`
+
+### SyncUnmarkBad
+SyncUnmarkBad unmarks a blocks as bad, making it possible to be validated and synced again.
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   }
 ]
 ```

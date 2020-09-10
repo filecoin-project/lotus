@@ -471,7 +471,7 @@ func (cs *ChainStore) IsAncestorOf(a, b *types.TipSet) (bool, error) {
 
 	cur := b
 	for !a.Equals(cur) && cur.Height() > a.Height() {
-		next, err := cs.LoadTipSet(b.Parents())
+		next, err := cs.LoadTipSet(cur.Parents())
 		if err != nil {
 			return false, err
 		}
