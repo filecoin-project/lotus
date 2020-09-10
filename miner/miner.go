@@ -447,9 +447,12 @@ func (m *Miner) computeTicket(ctx context.Context, brand *types.BeaconEntry, bas
 		return nil, xerrors.Errorf("failed to marshal address to cbor: %w", err)
 	}
 
-	buf.Write(base.TipSet.MinTicket().VRFProof)
+	round := base.TipSet.Height() + base.NullRounds + 1
+	if round > build.UpgradeSmokeHeight {
+		buf.Write(base.TipSet.MinTicket().VRFProof)
+	}
 
-	input, err := store.DrawRandomness(brand.Data, crypto.DomainSeparationTag_TicketProduction, base.TipSet.Height()+base.NullRounds+1-build.TicketRandomnessLookback, buf.Bytes())
+	input, err := store.DrawRandomness(brand.Data, crypto.DomainSeparationTag_TicketProduction, round-build.TicketRandomnessLookback, buf.Bytes())
 	if err != nil {
 		return nil, err
 	}
