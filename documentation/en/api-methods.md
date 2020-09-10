@@ -46,7 +46,6 @@
   * [ClientQueryAsk](#ClientQueryAsk)
   * [ClientRemoveImport](#ClientRemoveImport)
   * [ClientRetrieve](#ClientRetrieve)
-  * [ClientRetrieveTryRestartInsufficientFunds](#ClientRetrieveTryRestartInsufficientFunds)
   * [ClientRetrieveWithEvents](#ClientRetrieveWithEvents)
   * [ClientStartDeal](#ClientStartDeal)
 * [Gas](#Gas)
@@ -1161,22 +1160,6 @@ Inputs:
     "Path": "string value",
     "IsCAR": true
   }
-]
-```
-
-Response: `{}`
-
-### ClientRetrieveTryRestartInsufficientFunds
-ClientRetrieveTryRestartInsufficientFunds attempts to restart stalled retrievals on a given payment channel
-which are stuck due to insufficient funds
-
-
-Perms: write
-
-Inputs:
-```json
-[
-  "t01234"
 ]
 ```
 
