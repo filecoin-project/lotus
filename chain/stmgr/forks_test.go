@@ -15,7 +15,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -78,7 +77,7 @@ func (ta *testActor) Constructor(rt runtime.Runtime, params *abi.EmptyValue) *ab
 	rt.State().Create(&testActorState{11})
 	fmt.Println("NEW ACTOR ADDRESS IS: ", rt.Message().Receiver())
 
-	return adt.Empty
+	return abi.Empty
 }
 
 func (ta *testActor) TestMethod(rt runtime.Runtime, params *abi.EmptyValue) *abi.EmptyValue {
@@ -96,7 +95,7 @@ func (ta *testActor) TestMethod(rt runtime.Runtime, params *abi.EmptyValue) *abi
 		}
 	}
 
-	return adt.Empty
+	return abi.Empty
 }
 
 func TestForkHeightTriggers(t *testing.T) {
