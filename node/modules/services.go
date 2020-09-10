@@ -2,6 +2,8 @@ package modules
 
 import (
 	"context"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/ipfs/go-datastore"
@@ -35,6 +37,19 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/repo"
 )
+
+var pubsubMsgsSyncEpochs = 10
+
+func init() {
+	if s := os.Getenv("LOTUS_MSGS_SYNC_EPOCHS"); s != "" {
+		val, err := strconv.Atoi(s)
+		if err != nil {
+			log.Errorf("failed to parse LOTUS_MSGS_SYNC_EPOCHS: %s", err)
+			return
+		}
+		pubsubMsgsSyncEpochs = val
+	}
+}
 
 func RunHello(mctx helpers.MetricsCtx, lc fx.Lifecycle, h host.Host, svc *hello.Service) error {
 	h.SetStreamHandler(hello.ProtocolID, svc.HandleStream)
@@ -169,8 +184,8 @@ func HandleIncomingMessages(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub
 		return
 	}
 
-	// wait until we are synced within 10 epochs
-	waitForSync(stmgr, 10, subscribe)
+	// wait until we are synced within 10 epochs -- env var can override
+	waitForSync(stmgr, pubsubMsgsSyncEpochs, subscribe)
 }
 
 func NewLocalDiscovery(lc fx.Lifecycle, ds dtypes.MetadataDS) (*discoveryimpl.Local, error) {
