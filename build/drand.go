@@ -1,14 +1,25 @@
 package build
 
-import "github.com/filecoin-project/lotus/node/modules/dtypes"
+import (
+	"sort"
 
-var DrandNetwork = DrandIncentinet
-
-func DrandConfig() dtypes.DrandConfig {
-	return DrandConfigs[DrandNetwork]
-}
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
+)
 
 type DrandEnum int
+
+func DrandConfigSchedule() dtypes.DrandSchedule {
+	out := dtypes.DrandSchedule{}
+	for start, config := range DrandSchedule {
+		out = append(out, dtypes.DrandPoint{Start: start, Config: DrandConfigs[config]})
+	}
+
+	sort.Slice(out, func(i, j int) bool {
+		return out[i].Start < out[j].Start
+	})
+
+	return out
+}
 
 const (
 	DrandMainnet DrandEnum = iota + 1

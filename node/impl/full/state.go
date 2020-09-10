@@ -53,7 +53,7 @@ type StateAPI struct {
 	ProofVerifier ffiwrapper.Verifier
 	StateManager  *stmgr.StateManager
 	Chain         *store.ChainStore
-	Beacon        beacon.RandomBeacon
+	Beacon        beacon.Schedule
 }
 
 func (a *StateAPI) StateNetworkName(ctx context.Context) (dtypes.NetworkName, error) {
