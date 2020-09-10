@@ -2,11 +2,12 @@ package chaos
 
 import (
 	"context"
+	"testing"
+
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/filecoin-project/specs-actors/support/mock"
 	atesting "github.com/filecoin-project/specs-actors/support/testing"
-	"testing"
 )
 
 func TestSingleton(t *testing.T) {
