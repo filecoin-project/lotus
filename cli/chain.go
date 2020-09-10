@@ -40,6 +40,7 @@ var chainCmd = &cli.Command{
 		chainHeadCmd,
 		chainGetBlock,
 		chainReadObjCmd,
+		chainDeleteObjCmd,
 		chainStatObjCmd,
 		chainGetMsgCmd,
 		chainSetHeadCmd,
