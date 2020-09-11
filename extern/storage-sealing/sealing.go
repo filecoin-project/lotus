@@ -28,6 +28,8 @@ import (
 
 const SectorStorePrefix = "/sectors"
 
+var ErrAddPieceTooManySectors = xerrors.New("too many sectors sealing")
+
 var log = logging.Logger("sectors")
 
 type SectorLocation struct {
@@ -280,7 +282,7 @@ func (m *Sealing) newDealSector() (abi.SectorNumber, error) {
 
 	if cfg.MaxSealingSectorsForDeals > 0 {
 		if m.stats.curSealing() > cfg.MaxSealingSectorsForDeals {
-			return 0, xerrors.Errorf("too many sectors sealing")
+			return 0, ErrAddPieceTooManySectors
 		}
 	}
 
