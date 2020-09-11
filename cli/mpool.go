@@ -303,6 +303,10 @@ var mpoolReplaceCmd = &cli.Command{
 			Name:  "auto",
 			Usage: "automatically reprice the specified message",
 		},
+		&cli.StringFlag{
+			Name:  "max-fee",
+			Usage: "Spend up to X FIL for this message (applicable for auto mode)",
+		},
 	},
 	ArgsUsage: "[from] [nonce]",
 	Action: func(cctx *cli.Context) error {
@@ -353,17 +357,30 @@ var mpoolReplaceCmd = &cli.Command{
 		msg := found.Message
 
 		if cctx.Bool("auto") {
+			minRBF := messagepool.ComputeMinRBF(msg.GasPremium)
+
+			var mss *lapi.MessageSendSpec
+			if cctx.IsSet("max-fee") {
+				maxFee, err := types.BigFromString(cctx.String("max-fee"))
+				if err != nil {
+					return fmt.Errorf("parsing max-spend: %w", err)
+				}
+				mss = &lapi.MessageSendSpec{
+					MaxFee: maxFee,
+				}
+			}
+
 			// msg.GasLimit = 0 // TODO: need to fix the way we estimate gas limits to account for the messages already being in the mempool
 			msg.GasFeeCap = abi.NewTokenAmount(0)
 			msg.GasPremium = abi.NewTokenAmount(0)
-			retm, err := api.GasEstimateMessageGas(ctx, &msg, &lapi.MessageSendSpec{}, types.EmptyTSK)
+			retm, err := api.GasEstimateMessageGas(ctx, &msg, mss, types.EmptyTSK)
 			if err != nil {
 				return fmt.Errorf("failed to estimate gas values: %w", err)
 			}
-			msg.GasFeeCap = retm.GasFeeCap
 
-			minRBF := messagepool.ComputeMinRBF(msg.GasPremium)
 			msg.GasPremium = big.Max(retm.GasPremium, minRBF)
+			msg.GasFeeCap = big.Max(retm.GasFeeCap, msg.GasPremium)
+			messagepool.CapGasFee(&msg, mss.Get().MaxFee)
 		} else {
 			msg.GasLimit = cctx.Int64("gas-limit")
 			msg.GasPremium, err = types.BigFromString(cctx.String("gas-premium"))
