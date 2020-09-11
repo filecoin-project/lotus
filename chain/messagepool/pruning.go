@@ -50,16 +50,18 @@ func (mp *MessagePool) pruneMessages(ctx context.Context, ts *types.TipSet) erro
 
 	pending, _ := mp.getPendingMessages(ts, ts)
 
-	// priority actors -- not pruned
-	priority := make(map[address.Address]struct{})
+	// protected actors -- not pruned
+	protected := make(map[address.Address]struct{})
+
+	// we never prune priority addresses
 	for _, actor := range mp.cfg.PriorityAddrs {
-		priority[actor] = struct{}{}
+		protected[actor] = struct{}{}
 	}
 
 	// we also never prune locally published messages
 	mp.lk.Lock()
 	for actor := range mp.localAddrs {
-		priority[actor] = struct{}{}
+		protected[actor] = struct{}{}
 	}
 	mp.lk.Unlock()
 
@@ -69,14 +71,14 @@ func (mp *MessagePool) pruneMessages(ctx context.Context, ts *types.TipSet) erro
 
 	var chains []*msgChain
 	for actor, mset := range pending {
-		// we never prune priority actors
-		_, keep := priority[actor]
+		// we never prune protected actors
+		_, keep := protected[actor]
 		if keep {
 			keepCount += len(mset)
 			continue
 		}
 
-		// not a priority actor, track the messages and create chains
+		// not a protected actor, track the messages and create chains
 		for _, m := range mset {
 			pruneMsgs[m.Message.Cid()] = m
 		}
