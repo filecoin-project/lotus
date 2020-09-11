@@ -40,7 +40,7 @@ var exportChainCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Args().Present() {
-			return lcli.ShowHelp(cctx, fmt.Errorf("must specifiy file name to write export to"))
+			return lcli.ShowHelp(cctx, fmt.Errorf("must specify file name to write export to"))
 		}
 
 		ctx := context.TODO()
@@ -69,7 +69,7 @@ var exportChainCmd = &cli.Command{
 			return xerrors.Errorf("opening the output file: %w", err)
 		}
 
-		defer fi.Close()
+		defer fi.Close() //nolint:errcheck
 
 		ds, err := lr.Datastore("/chain")
 		if err != nil {

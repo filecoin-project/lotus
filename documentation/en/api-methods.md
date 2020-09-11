@@ -284,6 +284,7 @@ ChainExport returns a stream of bytes with CAR dump of chain data.
 The exported chain data includes the header chain from the given tipset
 back to genesis, the entire genesis state, and the most recent 'nroots'
 state trees.
+If oldmsgskip is set, messages from before the requested roots are also not included.
 
 
 Perms: read
@@ -292,6 +293,7 @@ Inputs:
 ```json
 [
   10101,
+  true,
   [
     {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
