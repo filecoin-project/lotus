@@ -103,6 +103,7 @@ var paychStatusByFromToCmd = &cli.Command{
 		if cctx.Args().Len() != 2 {
 			return ShowHelp(cctx, fmt.Errorf("must pass two arguments: <from address> <to address>"))
 		}
+		ctx := ReqContext(cctx)
 
 		from, err := address.NewFromString(cctx.Args().Get(0))
 		if err != nil {
@@ -120,7 +121,7 @@ var paychStatusByFromToCmd = &cli.Command{
 		}
 		defer closer()
 
-		avail, err := api.PaychAvailableFundsByFromTo(from, to)
+		avail, err := api.PaychAvailableFundsByFromTo(ctx, from, to)
 		if err != nil {
 			return err
 		}
@@ -138,6 +139,7 @@ var paychStatusCmd = &cli.Command{
 		if cctx.Args().Len() != 1 {
 			return ShowHelp(cctx, fmt.Errorf("must pass an argument: <channel address>"))
 		}
+		ctx := ReqContext(cctx)
 
 		ch, err := address.NewFromString(cctx.Args().Get(0))
 		if err != nil {
@@ -150,7 +152,7 @@ var paychStatusCmd = &cli.Command{
 		}
 		defer closer()
 
-		avail, err := api.PaychAvailableFunds(ch)
+		avail, err := api.PaychAvailableFunds(ctx, ch)
 		if err != nil {
 			return err
 		}
