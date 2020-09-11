@@ -508,7 +508,7 @@ func (a *ChainAPI) ChainExport(ctx context.Context, nroots abi.ChainEpoch, tsk t
 		bw := bufio.NewWriterSize(w, 1<<20)
 		defer bw.Flush() //nolint:errcheck // it is a write to a pipe
 
-		if err := a.Chain.Export(ctx, ts, nroots, bw); err != nil {
+		if err := a.Chain.Export(ctx, ts, nroots, false, bw); err != nil {
 			log.Errorf("chain export call failed: %s", err)
 			return
 		}
