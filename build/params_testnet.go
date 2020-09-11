@@ -13,21 +13,28 @@ import (
 )
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
-	0:                  DrandIncentinet,
-	UpgradeSmokeHeight: DrandMainnet,
+	0: DrandMainnet,
 }
 
-const UpgradeBreezeHeight = 41280
+const UpgradeBreezeHeight = -1
 const BreezeGasTampingDuration = 120
 
-const UpgradeSmokeHeight = 51000
+const UpgradeSmokeHeight = -1
 
 func init() {
-	power.ConsensusMinerMinPower = big.NewInt(10 << 40)
+	// Minimum block production power is set to 4 TiB
+	// Rationale is to discourage small-scale miners from trying to take over the network
+	// One needs to invest in ~2.3x the compute to break consensus, making it not worth it
+	//
+	// DOWNSIDE: the fake-seals need to be kept alive/protected, otherwise network will seize
+	//
+	power.ConsensusMinerMinPower = big.NewInt(4 << 40)
 	miner.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
-		abi.RegisteredSealProof_StackedDrg32GiBV1: {},
-		abi.RegisteredSealProof_StackedDrg64GiBV1: {},
+		abi.RegisteredSealProof_StackedDrg512MiBV1: {},
+		abi.RegisteredSealProof_StackedDrg32GiBV1:  {},
+		abi.RegisteredSealProof_StackedDrg64GiBV1:  {},
 	}
+	miner.PreCommitChallengeDelay = abi.ChainEpoch(10)
 }
 
 const BlockDelaySecs = uint64(builtin.EpochDurationSeconds)
