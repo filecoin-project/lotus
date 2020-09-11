@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/exitcode"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/filecoin-project/specs-actors/support/mock"
 	atesting "github.com/filecoin-project/specs-actors/support/testing"
 )
@@ -19,7 +19,7 @@ func TestSingleton(t *testing.T) {
 
 	msg := "constructor should not be called; the Chaos actor is a singleton actor"
 	rt.ExpectAssertionFailure(msg, func() {
-		rt.Call(a.Constructor, adt.Empty)
+		rt.Call(a.Constructor, abi.Empty)
 	})
 	rt.Verify()
 }
