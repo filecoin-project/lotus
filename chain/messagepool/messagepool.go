@@ -52,6 +52,7 @@ var RepublishInterval = time.Duration(10*build.BlockDelaySecs+build.PropagationD
 
 var minimumBaseFee = types.NewInt(uint64(build.MinimumBaseFee))
 var baseFeeLowerBoundFactor = types.NewInt(10)
+var baseFeeLowerBoundFactorConservative = types.NewInt(100)
 
 var MaxActorPendingMessages = 1000
 
@@ -442,7 +443,7 @@ func (mp *MessagePool) verifyMsgBeforeAdd(m *types.SignedMessage, curTs *types.T
 	publish := local
 	if len(curTs.Blocks()) > 0 {
 		baseFee := curTs.Blocks()[0].ParentBaseFee
-		baseFeeLowerBound := getBaseFeeLowerBound(baseFee)
+		baseFeeLowerBound := getBaseFeeLowerBound(baseFee, baseFeeLowerBoundFactorConservative)
 		if m.Message.GasFeeCap.LessThan(baseFeeLowerBound) {
 			if local {
 				log.Warnf("local message will not be immediately published because GasFeeCap doesn't meet the lower bound for inclusion in the next 20 blocks (GasFeeCap: %s, baseFeeLowerBound: %s)",
@@ -1340,7 +1341,7 @@ func (mp *MessagePool) Clear(local bool) {
 	}
 }
 
-func getBaseFeeLowerBound(baseFee types.BigInt) types.BigInt {
+func getBaseFeeLowerBound(baseFee, factor types.BigInt) types.BigInt {
 	baseFeeLowerBound := types.BigDiv(baseFee, baseFeeLowerBoundFactor)
 	if baseFeeLowerBound.LessThan(minimumBaseFee) {
 		baseFeeLowerBound = minimumBaseFee
