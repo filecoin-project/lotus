@@ -5,54 +5,52 @@
 package build
 
 import (
-	"math"
-	"os"
-
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 )
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
-	0:                  DrandIncentinet,
-	UpgradeSmokeHeight: DrandMainnet,
+	0: DrandMainnet,
 }
 
-const UpgradeBreezeHeight = 41280
-const BreezeGasTampingDuration = 120
+const UpgradeBreezeHeight = -1
+const BreezeGasTampingDuration = 0
 
-const UpgradeSmokeHeight = 51000
+const UpgradeSmokeHeight = -1
 
-const UpgradeIgnitionHeight = 94000
-const UpgradeRefuelHeight = 130800
+const UpgradeIgnitionHeight = -2
+const UpgradeRefuelHeight = -3
 
-var UpgradeActorsV2Height = abi.ChainEpoch(138720)
+const UpgradeTapeHeight = -4
 
-const UpgradeTapeHeight = 140760
+const UpgradeLiftoffHeight = -5
+const UpgradeActorsV2Height = 120 // critical: the network can bootstrap from v1 only
 
-// This signals our tentative epoch for mainnet launch. Can make it later, but not earlier.
-// Miners, clients, developers, custodians all need time to prepare.
-// We still have upgrades and state changes to do, but can happen after signaling timing here.
-const UpgradeLiftoffHeight = 148888
-
-const UpgradeKumquatHeight = 170000
+const UpgradeKumquatHeight = -6
 
 func init() {
-	policy.SetConsensusMinerMinPower(abi.NewStoragePower(10 << 40))
+	// Minimum block production power is set to 4 TiB
+	// Rationale is to discourage small-scale miners from trying to take over the network
+	// One needs to invest in ~2.3x the compute to break consensus, making it not worth it
+	//
+	// DOWNSIDE: the fake-seals need to be kept alive/protected, otherwise network will seize
+	//
+	policy.SetConsensusMinerMinPower(abi.NewStoragePower(4 << 40))
+
 	policy.SetSupportedProofTypes(
+		abi.RegisteredSealProof_StackedDrg512MiBV1,
 		abi.RegisteredSealProof_StackedDrg32GiBV1,
 		abi.RegisteredSealProof_StackedDrg64GiBV1,
 	)
 
-	if os.Getenv("LOTUS_USE_TEST_ADDRESSES") != "1" {
-		SetAddressNetwork(address.Mainnet)
-	}
+	// Lower the most time-consuming parts of PoRep
+	miner.PreCommitChallengeDelay = abi.ChainEpoch(10)
 
-	if os.Getenv("LOTUS_DISABLE_V2_ACTOR_MIGRATION") == "1" {
-		UpgradeActorsV2Height = math.MaxInt64
-	}
+	// TODO - make this a variable
+	//miner.WPoStChallengeLookback = abi.ChainEpoch(2)
 
 	Devnet = false
 }
