@@ -136,7 +136,8 @@ create unique index if not exists block_cid_uindex
 	on blocks (cid,height);
 
 create materialized view if not exists state_heights
-    as select distinct height, parentstateroot from blocks;
+    as select b.parentstateroot, min(b.height) height
+	from blocks b group by b.parentstateroot;
 
 create index if not exists state_heights_height_index
 	on state_heights (height);
