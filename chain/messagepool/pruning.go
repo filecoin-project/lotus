@@ -46,6 +46,7 @@ func (mp *MessagePool) pruneMessages(ctx context.Context, ts *types.TipSet) erro
 	if err != nil {
 		return xerrors.Errorf("computing basefee: %w", err)
 	}
+	baseFeeLowerBound := getBaseFeeLowerBound(baseFee)
 
 	pending, _ := mp.getPendingMessages(ts, ts)
 
@@ -72,7 +73,7 @@ func (mp *MessagePool) pruneMessages(ctx context.Context, ts *types.TipSet) erro
 		for _, m := range mset {
 			pruneMsgs[m.Message.Cid()] = m
 		}
-		actorChains := mp.createMessageChains(actor, mset, baseFee, ts)
+		actorChains := mp.createMessageChains(actor, mset, baseFeeLowerBound, ts)
 		chains = append(chains, actorChains...)
 	}
 
