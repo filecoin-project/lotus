@@ -9,9 +9,10 @@
   runner = "local:docker"
 
 [global.run.test_params]
-size      = "104857600"
-latencies = '["50ms", "100ms", "150ms", "200ms"]'
-bandwidth = '["16M", "8M", "4M", "1M"]'
+size      = "100MB"
+latencies = '["50ms", "100ms", "200ms"]'
+bandwidth = '["32MiB", "16MiB", "8MiB", "4MiB", "1MiB"]'
+concurrency = "1"
 
 [[groups]]
   id = "providers"

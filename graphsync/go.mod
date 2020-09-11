@@ -3,7 +3,6 @@ module github.com/libp2p/test-plans/ping
 go 1.14
 
 require (
-	github.com/ipfs/go-block-format v0.0.2
 	github.com/ipfs/go-blockservice v0.1.3
 	github.com/ipfs/go-cid v0.0.6
 	github.com/ipfs/go-datastore v0.4.4
@@ -22,4 +21,5 @@ require (
 	github.com/libp2p/go-libp2p-secio v0.2.2
 	github.com/libp2p/go-libp2p-tls v0.1.3
 	github.com/testground/sdk-go v0.2.3
+	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
 )
