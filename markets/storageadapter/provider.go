@@ -37,6 +37,7 @@ import (
 )
 
 var addPieceRetryWait = 5 * time.Minute
+var addPieceRetryTimeout = 6 * time.Hour
 var log = logging.Logger("storageadapter")
 
 type ProviderNodeAdapter struct {
@@ -104,7 +105,11 @@ func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagema
 	}
 
 	p, offset, err := n.secb.AddPiece(ctx, pieceSize, pieceData, sdInfo)
-	if xerrors.Is(err, sealing.ErrTooManySectorsSealing) {
+	curTime := time.Now()
+	for time.Since(curTime) < addPieceRetryTimeout {
+		if !xerrors.Is(err, sealing.ErrTooManySectorsSealing) {
+			break
+		}
 		select {
 		case <-time.After(addPieceRetryWait):
 			p, offset, err = n.secb.AddPiece(ctx, pieceSize, pieceData, sdInfo)
