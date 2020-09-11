@@ -258,7 +258,7 @@ func runProvider(ctx context.Context, runenv *runtime.RunEnv, initCtx *run.InitC
 			// file with random data
 			file := files.NewReaderFile(io.LimitReader(rand.Reader, int64(size)))
 
-			const unixfsChunkSize uint64 = 1 << 10
+			const unixfsChunkSize uint64 = 1 << 20
 			const unixfsLinksPerLevel = 1024
 
 			params := ihelper.DagBuilderParams{
