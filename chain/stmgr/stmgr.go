@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/filecoin-project/specs-actors/actors/runtime"
+	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 
@@ -1124,14 +1124,18 @@ func (sm *StateManager) GetCirculatingSupply(ctx context.Context, height abi.Cha
 	return csi.FilCirculating, nil
 }
 
-func (sm *StateManager) GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) runtime.NetworkVersion {
-	if build.UpgradeBreezeHeight == 0 {
-		return runtime.NetworkVersion1
+func (sm *StateManager) GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version {
+	if build.UseNewestNetwork() {
+		return build.NewestNetworkVersion
 	}
 
 	if height <= build.UpgradeBreezeHeight {
-		return runtime.NetworkVersion0
+		return network.Version0
 	}
 
-	return runtime.NetworkVersion1
+	if height <= build.UpgradeSmokeHeight {
+		return network.Version1
+	}
+
+	return build.NewestNetworkVersion
 }

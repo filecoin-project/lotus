@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/dline"
+
 	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
 	"github.com/ipfs/go-cid"
@@ -318,7 +320,7 @@ type FullNode interface {
 	StateMinerActiveSectors(context.Context, address.Address, types.TipSetKey) ([]*ChainSectorInfo, error)
 	// StateMinerProvingDeadline calculates the deadline at some epoch for a proving period
 	// and returns the deadline-related calculations.
-	StateMinerProvingDeadline(context.Context, address.Address, types.TipSetKey) (*miner.DeadlineInfo, error)
+	StateMinerProvingDeadline(context.Context, address.Address, types.TipSetKey) (*dline.Info, error)
 	// StateMinerPower returns the power of the indicated miner
 	StateMinerPower(context.Context, address.Address, types.TipSetKey) (*MinerPower, error)
 	// StateMinerInfo returns info about the indicated miner

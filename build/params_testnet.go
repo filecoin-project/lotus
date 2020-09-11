@@ -12,8 +12,15 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 )
 
+var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
+	0:                  DrandIncentinet,
+	UpgradeSmokeHeight: DrandMainnet,
+}
+
 const UpgradeBreezeHeight = 41280
 const BreezeGasTampingDuration = 120
+
+const UpgradeSmokeHeight = 51000
 
 func init() {
 	power.ConsensusMinerMinPower = big.NewInt(10 << 40)

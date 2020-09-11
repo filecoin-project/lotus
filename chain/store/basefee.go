@@ -11,14 +11,20 @@ import (
 	"golang.org/x/xerrors"
 )
 
-func computeNextBaseFee(baseFee types.BigInt, gasLimitUsed int64, noOfBlocks int) types.BigInt {
-	// deta := 1/PackingEfficiency * gasLimitUsed/noOfBlocks - build.BlockGasTarget
-	// change := baseFee * deta / BlockGasTarget / BaseFeeMaxChangeDenom
+func ComputeNextBaseFee(baseFee types.BigInt, gasLimitUsed int64, noOfBlocks int, epoch abi.ChainEpoch) types.BigInt {
+	// deta := gasLimitUsed/noOfBlocks - build.BlockGasTarget
+	// change := baseFee * deta / BlockGasTarget
 	// nextBaseFee = baseFee + change
 	// nextBaseFee = max(nextBaseFee, build.MinimumBaseFee)
 
-	delta := build.PackingEfficiencyDenom * gasLimitUsed / (int64(noOfBlocks) * build.PackingEfficiencyNum)
-	delta -= build.BlockGasTarget
+	var delta int64
+	if epoch > build.UpgradeSmokeHeight {
+		delta = gasLimitUsed / int64(noOfBlocks)
+		delta -= build.BlockGasTarget
+	} else {
+		delta = build.PackingEfficiencyDenom * gasLimitUsed / (int64(noOfBlocks) * build.PackingEfficiencyNum)
+		delta -= build.BlockGasTarget
+	}
 
 	// cap change at 12.5% (BaseFeeMaxChangeDenom) by capping delta
 	if delta > build.BlockGasTarget {
@@ -73,5 +79,5 @@ func (cs *ChainStore) ComputeBaseFee(ctx context.Context, ts *types.TipSet) (abi
 	}
 	parentBaseFee := ts.Blocks()[0].ParentBaseFee
 
-	return computeNextBaseFee(parentBaseFee, totalLimit, len(ts.Blocks())), nil
+	return ComputeNextBaseFee(parentBaseFee, totalLimit, len(ts.Blocks()), ts.Height()), nil
 }

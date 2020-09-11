@@ -5,6 +5,8 @@ import (
 	"errors"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/dline"
+
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
@@ -60,7 +62,7 @@ type storageMinerApi interface {
 	StateSectorGetInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*miner.SectorOnChainInfo, error)
 	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok types.TipSetKey) (*api.SectorLocation, error)
 	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)
-	StateMinerProvingDeadline(context.Context, address.Address, types.TipSetKey) (*miner.DeadlineInfo, error)
+	StateMinerProvingDeadline(context.Context, address.Address, types.TipSetKey) (*dline.Info, error)
 	StateMinerPreCommitDepositForPower(context.Context, address.Address, miner.SectorPreCommitInfo, types.TipSetKey) (types.BigInt, error)
 	StateMinerInitialPledgeCollateral(context.Context, address.Address, miner.SectorPreCommitInfo, types.TipSetKey) (types.BigInt, error)
 	StateSearchMsg(context.Context, cid.Cid) (*api.MsgLookup, error)

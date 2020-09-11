@@ -13,6 +13,12 @@ import (
 const UpgradeBreezeHeight = -1
 const BreezeGasTampingDuration = 0
 
+const UpgradeSmokeHeight = -1
+
+var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
+	0: DrandMainnet,
+}
+
 func init() {
 	power.ConsensusMinerMinPower = big.NewInt(2048)
 	miner.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
@@ -23,7 +29,7 @@ func init() {
 	BuildType |= Build2k
 }
 
-const BlockDelaySecs = uint64(4)
+const BlockDelaySecs = uint64(30)
 
 const PropagationDelaySecs = uint64(1)
 

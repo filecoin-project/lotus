@@ -3633,7 +3633,12 @@ Response:
   "Open": 10101,
   "Close": 10101,
   "Challenge": 10101,
-  "FaultCutoff": 10101
+  "FaultCutoff": 10101,
+  "WPoStPeriodDeadlines": 42,
+  "WPoStProvingPeriod": 10101,
+  "WPoStChallengeWindow": 10101,
+  "WPoStChallengeLookback": 10101,
+  "FaultDeclarationCutoff": 10101
 }
 ```
 
