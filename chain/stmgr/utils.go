@@ -56,30 +56,6 @@ func GetNetworkName(ctx context.Context, sm *StateManager, st cid.Cid) (dtypes.N
 	return dtypes.NetworkName(state.NetworkName), nil
 }
 
-func (sm *StateManager) LoadActorState(ctx context.Context, addr address.Address, out interface{}, ts *types.TipSet) (*types.Actor, error) {
-	var a *types.Actor
-	if err := sm.WithParentState(ts, sm.WithActor(addr, func(act *types.Actor) error {
-		a = act
-		return sm.WithActorState(ctx, out)(act)
-	})); err != nil {
-		return nil, err
-	}
-
-	return a, nil
-}
-
-func (sm *StateManager) LoadActorStateRaw(ctx context.Context, addr address.Address, out interface{}, st cid.Cid) (*types.Actor, error) {
-	var a *types.Actor
-	if err := sm.WithStateTree(st, sm.WithActor(addr, func(act *types.Actor) error {
-		a = act
-		return sm.WithActorState(ctx, out)(act)
-	})); err != nil {
-		return nil, err
-	}
-
-	return a, nil
-}
-
 func GetMinerWorkerRaw(ctx context.Context, sm *StateManager, st cid.Cid, maddr address.Address) (address.Address, error) {
 	var mas miner.State
 	_, err := sm.LoadActorStateRaw(ctx, maddr, &mas, st)

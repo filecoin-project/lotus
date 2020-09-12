@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
@@ -312,15 +313,11 @@ type FullNode interface {
 	StateMinerActiveSectors(context.Context, address.Address, types.TipSetKey) ([]*ChainSectorInfo, error)
 	// StateMinerProvingDeadline calculates the deadline at some epoch for a proving period
 	// and returns the deadline-related calculations.
-	StateMinerProvingDeadline(context.Context, address.Address, types.TipSetKey) (*miner.DeadlineInfo, error)
+	StateMinerProvingDeadline(context.Context, address.Address, types.TipSetKey) (*dline.Info, error)
 	// StateMinerPower returns the power of the indicated miner
 	StateMinerPower(context.Context, address.Address, types.TipSetKey) (*MinerPower, error)
 	// StateMinerInfo returns info about the indicated miner
 	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (MinerInfo, error)
-	// StateMinerDeadlines returns all the proving deadlines for the given miner
-	StateMinerDeadlines(context.Context, address.Address, types.TipSetKey) ([]*miner.Deadline, error)
-	// StateMinerPartitions loads miner partitions for the specified miner/deadline
-	StateMinerPartitions(context.Context, address.Address, uint64, types.TipSetKey) ([]*miner.Partition, error)
 	// StateMinerFaults returns a bitfield indicating the faulty sectors of the given miner
 	StateMinerFaults(context.Context, address.Address, types.TipSetKey) (bitfield.BitField, error)
 	// StateAllMinerFaults returns all non-expired Faults that occur within lookback epochs of the given tipset

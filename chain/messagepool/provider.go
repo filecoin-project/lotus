@@ -52,8 +52,8 @@ func (mpp *mpoolProvider) GetActorAfter(addr address.Address, ts *types.TipSet) 
 	if err != nil {
 		return nil, xerrors.Errorf("computing tipset state for GetActor: %w", err)
 	}
-
-	return &act, mpp.sm.WithStateTree(stcid, mpp.sm.WithActor(addr, stmgr.GetActor(&act)))
+	version := mpp.sm.GetNtwkVersion(context.TODO(), ts.Height())
+	return &act, mpp.sm.WithStateTree(stcid, version, mpp.sm.WithActor(addr, stmgr.GetActor(&act)))
 }
 
 func (mpp *mpoolProvider) StateAccountKey(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {

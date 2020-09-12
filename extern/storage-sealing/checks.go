@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 
-	saproof "github.com/filecoin-project/specs-actors/actors/runtime/proof"
+	v0proof "github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
 	"golang.org/x/xerrors"
 
@@ -170,7 +170,7 @@ func (m *Sealing) checkCommit(ctx context.Context, si SectorInfo, proof []byte, 
 		log.Warn("on-chain sealed CID doesn't match!")
 	}
 
-	ok, err := m.verif.VerifySeal(saproof.SealVerifyInfo{
+	ok, err := m.verif.VerifySeal(v0proof.SealVerifyInfo{
 		SectorID:              m.minerSector(si.SectorNumber),
 		SealedCID:             pci.Info.SealedCID,
 		SealProof:             spt,

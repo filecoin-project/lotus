@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -170,7 +171,9 @@ var chainBalanceStateCmd = &cli.Command{
 
 		sm := stmgr.NewStateManager(cs)
 
-		tree, err := state.LoadStateTree(cst, sroot)
+		// NETUPGRADE: FIXME.
+		// Options: (a) encode the version in the chain or (b) pass a flag.
+		tree, err := state.LoadStateTree(cst, sroot, network.Version0)
 		if err != nil {
 			return err
 		}

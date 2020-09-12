@@ -7,14 +7,14 @@ import (
 
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
-
 	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -23,7 +23,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
@@ -201,6 +200,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 
 	for i := parentEpoch; i < epoch; i++ {
 		// handle state forks
+		// XXX: The state tre
 		err = sm.handleStateForks(ctx, vmi.StateTree(), i, ts)
 		if err != nil {
 			return cid.Undef, cid.Undef, xerrors.Errorf("error handling state forks: %w", err)
@@ -711,10 +711,13 @@ func (sm *StateManager) ListAllActors(ctx context.Context, ts *types.TipSet) ([]
 }
 
 func (sm *StateManager) MarketBalance(ctx context.Context, addr address.Address, ts *types.TipSet) (api.MarketBalance, error) {
-	var state market.State
-	_, err := sm.LoadActorState(ctx, builtin.StorageMarketActorAddr, &state, ts)
+	st, err := sm.ParentState(ts)
 	if err != nil {
 		return api.MarketBalance{}, err
+	}
+	act, err := st.GetActor(builtin.StorageMarketActorAddr)
+	if err != nil {
+		return nil, err
 	}
 
 	addr, err = sm.LookupID(ctx, addr, ts)
@@ -1016,19 +1019,17 @@ func GetFilMined(ctx context.Context, st *state.StateTree) (abi.TokenAmount, err
 }
 
 func getFilMarketLocked(ctx context.Context, st *state.StateTree) (abi.TokenAmount, error) {
-	mactor, err := st.GetActor(builtin.StorageMarketActorAddr)
+	act, err := st.GetActor(builtin.StorageMarketActorAddr)
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("failed to load market actor: %w", err)
 	}
 
-	var mst market.State
-	if err := st.Store.Get(ctx, mactor.Head, &mst); err != nil {
+	mst, err := market.Load(adt.WrapStore(ctx, st.Store), act)
+	if err != nil {
 		return big.Zero(), xerrors.Errorf("failed to load market state: %w", err)
 	}
 
-	fml := types.BigAdd(mst.TotalClientLockedCollateral, mst.TotalProviderLockedCollateral)
-	fml = types.BigAdd(fml, mst.TotalClientStorageFee)
-	return fml, nil
+	return mst.TotalLocked()
 }
 
 func getFilPowerLocked(ctx context.Context, st *state.StateTree) (abi.TokenAmount, error) {
@@ -1037,11 +1038,12 @@ func getFilPowerLocked(ctx context.Context, st *state.StateTree) (abi.TokenAmoun
 		return big.Zero(), xerrors.Errorf("failed to load power actor: %w", err)
 	}
 
-	var pst power.State
-	if err := st.Store.Get(ctx, pactor.Head, &pst); err != nil {
+	pst, err := power.Load(adt.WrapStore(ctx, st.Store), act)
+	if err != nil {
 		return big.Zero(), xerrors.Errorf("failed to load power state: %w", err)
 	}
-	return pst.TotalPledgeCollateral, nil
+
+	return pst.TotalLocked(), nil
 }
 
 func (sm *StateManager) GetFilLocked(ctx context.Context, st *state.StateTree) (abi.TokenAmount, error) {

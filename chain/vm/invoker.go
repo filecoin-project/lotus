@@ -47,6 +47,7 @@ func NewInvoker() *Invoker {
 	}
 
 	// add builtInCode using: register(cid, singleton)
+	// NETUPGRADE: register code IDs for v2, etc.
 	inv.Register(builtin.SystemActorCodeID, system.Actor{}, adt.EmptyValue{})
 	inv.Register(builtin.InitActorCodeID, init_.Actor{}, init_.State{})
 	inv.Register(builtin.RewardActorCodeID, reward.Actor{}, reward.State{})

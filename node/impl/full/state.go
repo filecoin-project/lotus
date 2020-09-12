@@ -20,7 +20,6 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	samsig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
@@ -33,6 +32,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
@@ -112,6 +112,8 @@ func (a *StateAPI) StateMinerInfo(ctx context.Context, actor address.Address, ts
 		return api.MinerInfo{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
+	a.StateManager.LoadActorStateRaw(ctx context.Context, addr address.Address, out interface{}, st cid.Cid)
+
 	mi, err := stmgr.StateMinerInfo(ctx, a.StateManager, ts, actor)
 	if err != nil {
 		return api.MinerInfo{}, err
@@ -119,17 +121,28 @@ func (a *StateAPI) StateMinerInfo(ctx context.Context, actor address.Address, ts
 	return api.NewApiMinerInfo(mi), nil
 }
 
-func (a *StateAPI) StateMinerDeadlines(ctx context.Context, m address.Address, tsk types.TipSetKey) ([]*miner.Deadline, error) {
+func (a *StateAPI) StateMinerDeadlines(ctx context.Context, m address.Address, tsk types.TipSetKey) ([]miner.Deadline, error) {
 	var out []*miner.Deadline
-	return out, a.StateManager.WithParentStateTsk(tsk,
-		a.StateManager.WithActor(m,
-			a.StateManager.WithActorState(ctx,
-				a.StateManager.WithDeadlines(
-					a.StateManager.WithEachDeadline(
-						func(store adt.Store, idx uint64, deadline *miner.Deadline) error {
-							out = append(out, deadline)
-							return nil
-						})))))
+	state, err := a.StateManager.LoadParentStateTsk(tsk)
+	if err != nil {
+		return nil, err
+	}
+	act, err := state.GetActor(addr)
+	if err != nil {
+		return nil, err
+	}
+	mas, err := miner.Load(a.Chain.Store(ctx), act)
+	if err != nil {
+		return nil, err
+	}
+	var deadlines []miner.Deadline
+	if err := mas.ForEachDeadline(func(_ uint64, dl miner.Deadline) error {
+		deadlines = append(deadlines, dl)
+		return nil
+	}); err != nil {
+		return err
+	}
+	return deadlines, nil
 }
 
 func (a *StateAPI) StateMinerPartitions(ctx context.Context, m address.Address, dlIdx uint64, tsk types.TipSetKey) ([]*miner.Partition, error) {
@@ -302,7 +315,7 @@ func (a *StateAPI) stateForTs(ctx context.Context, ts *types.TipSet) (*state.Sta
 
 	buf := bufbstore.NewBufferedBstore(a.Chain.Blockstore())
 	cst := cbor.NewCborStore(buf)
-	return state.LoadStateTree(cst, st)
+	return state.LoadStateTree(cst, st, a.StateManager.GetNtwkVersion(ctx, ts.Height()))
 }
 
 func (a *StateAPI) StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) {
@@ -1169,16 +1182,9 @@ func (a *StateAPI) StateCirculatingSupply(ctx context.Context, tsk types.TipSetK
 		return api.CirculatingSupply{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	st, _, err := a.StateManager.TipSetState(ctx, ts)
+	sTree, err := a.stateForTs(ctx, ts)
 	if err != nil {
 		return api.CirculatingSupply{}, err
 	}
-
-	cst := cbor.NewCborStore(a.Chain.Blockstore())
-	sTree, err := state.LoadStateTree(cst, st)
-	if err != nil {
-		return api.CirculatingSupply{}, err
-	}
-
 	return a.StateManager.GetCirculatingSupplyDetailed(ctx, ts.Height(), sTree)
 }

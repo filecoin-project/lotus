@@ -11,7 +11,6 @@ import (
 	"golang.org/x/xerrors"
 
 	address "github.com/filecoin-project/go-address"
-	miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	lru "github.com/hashicorp/golang-lru"
 	blocks "github.com/ipfs/go-block-format"
@@ -28,6 +27,7 @@ import (
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -432,9 +432,10 @@ func (bv *BlockValidator) checkPowerAndGetWorkerKey(ctx context.Context, bh *typ
 		if err != nil {
 			return address.Undef, err
 		}
+
 		buf := bufbstore.NewBufferedBstore(bv.chain.Blockstore())
 		cst := cbor.NewCborStore(buf)
-		state, err := state.LoadStateTree(cst, st)
+		state, err := state.LoadStateTree(cst, st, bv.stmgr.GetNtwkVersion(ctx, ts.Height()))
 		if err != nil {
 			return address.Undef, err
 		}
@@ -443,19 +444,12 @@ func (bv *BlockValidator) checkPowerAndGetWorkerKey(ctx context.Context, bh *typ
 			return address.Undef, err
 		}
 
-		blk, err := bv.chain.Blockstore().Get(act.Head)
-		if err != nil {
-			return address.Undef, err
-		}
-		aso := blk.RawData()
-
-		var mst miner.State
-		err = mst.UnmarshalCBOR(bytes.NewReader(aso))
+		mst, err := miner.Load(bv.chain.Store(ctx), act)
 		if err != nil {
 			return address.Undef, err
 		}
 
-		info, err := mst.GetInfo(adt.WrapStore(ctx, cst))
+		info, err := mst.Info()
 		if err != nil {
 			return address.Undef, err
 		}

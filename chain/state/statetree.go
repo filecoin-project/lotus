@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/init"
+	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
@@ -22,7 +24,7 @@ var log = logging.Logger("statetree")
 
 // StateTree stores actors state by their ID.
 type StateTree struct {
-	root  *adt.Map
+	root  adt.Map
 	Store cbor.IpldStore
 
 	snaps *stateSnaps
@@ -115,17 +117,18 @@ func (ss *stateSnaps) deleteActor(addr address.Address) {
 	ss.layers[len(ss.layers)-1].actors[addr] = streeOp{Delete: true}
 }
 
-func NewStateTree(cst cbor.IpldStore) (*StateTree, error) {
+func NewStateTree(cst cbor.IpldStore, version network.Version) (*StateTree, error) {
 
 	return &StateTree{
-		root:  adt.MakeEmptyMap(adt.WrapStore(context.TODO(), cst)),
+		root:  adt.NewMap(adt.WrapStore(context.TODO(), cst), version),
 		Store: cst,
 		snaps: newStateSnaps(),
 	}, nil
 }
 
-func LoadStateTree(cst cbor.IpldStore, c cid.Cid) (*StateTree, error) {
-	nd, err := adt.AsMap(adt.WrapStore(context.TODO(), cst), c)
+func LoadStateTree(cst cbor.IpldStore, c cid.Cid, version network.Version) (*StateTree, error) {
+	// NETUPGRADE: switch map adt type on version upgrade.
+	nd, err := adt.AsMap(adt.WrapStore(context.TODO(), cst), c, version)
 	if err != nil {
 		log.Errorf("loading hamt node %s failed: %s", c, err)
 		return nil, err
@@ -165,12 +168,12 @@ func (st *StateTree) LookupID(addr address.Address) (address.Address, error) {
 		return address.Undef, xerrors.Errorf("getting init actor: %w", err)
 	}
 
-	var ias init_.State
-	if err := st.Store.Get(context.TODO(), act.Head, &ias); err != nil {
+	ias, err := init.Load(&AdtStore{st.Store}, &act)
+	if err != nil {
 		return address.Undef, xerrors.Errorf("loading init actor state: %w", err)
 	}
 
-	a, found, err := ias.ResolveAddress(&AdtStore{st.Store}, addr)
+	a, found, err := ias.ResolveAddress(addr)
 	if err == nil && !found {
 		err = types.ErrActorNotFound
 	}
@@ -283,18 +286,18 @@ func (st *StateTree) ClearSnapshot() {
 func (st *StateTree) RegisterNewAddress(addr address.Address) (address.Address, error) {
 	var out address.Address
 	err := st.MutateActor(builtin.InitActorAddr, func(initact *types.Actor) error {
-		var ias init_.State
-		if err := st.Store.Get(context.TODO(), initact.Head, &ias); err != nil {
+		ias, err := init.Load(&AdtStore{st.Store}, initact)
+		if err != nil {
 			return err
 		}
 
-		oaddr, err := ias.MapAddressToNewID(&AdtStore{st.Store}, addr)
+		oaddr, err := ias.MapAddressToNewID(addr)
 		if err != nil {
 			return err
 		}
 		out = oaddr
 
-		ncid, err := st.Store.Put(context.TODO(), &ias)
+		ncid, err := st.Store.Put(context.TODO(), ias)
 		if err != nil {
 			return err
 		}

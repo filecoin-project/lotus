@@ -16,13 +16,13 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/apibstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
@@ -179,14 +179,11 @@ func (s SealingAPIAdapter) StateSectorPreCommitInfo(ctx context.Context, maddr a
 		return nil, xerrors.Errorf("handleSealFailed(%d): temp error: %+v", sectorNumber, err)
 	}
 
-	st, err := s.delegate.ChainReadObj(ctx, act.Head)
-	if err != nil {
-		return nil, xerrors.Errorf("handleSealFailed(%d): temp error: %+v", sectorNumber, err)
-	}
+	stor := store.ActorStore(ctx, apibstore.NewAPIBlockstore(s.delegate))
 
-	var state miner.State
-	if err := state.UnmarshalCBOR(bytes.NewReader(st)); err != nil {
-		return nil, xerrors.Errorf("handleSealFailed(%d): temp error: unmarshaling miner state: %+v", sectorNumber, err)
+	state, err := miner.Load(stor, act)
+	if err != nil {
+		return nil, xerrors.Errorf("handleSealFailed(%d): temp error: loading miner state: %+v", sectorNumber, err)
 	}
 	stor := store.ActorStore(ctx, apibstore.NewAPIBlockstore(s.delegate))
 	precommits, err := adt.AsMap(stor, state.PreCommittedSectors)
