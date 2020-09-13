@@ -3,16 +3,22 @@
 package main
 
 import (
+	"context"
 	"encoding/binary"
 	"time"
+
+	"github.com/filecoin-project/go-bitfield"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/crypto"
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"golang.org/x/xerrors"
 
 	"github.com/urfave/cli/v2"
@@ -21,6 +27,12 @@ import (
 func init() {
 	AdvanceBlockCmd = &cli.Command{
 		Name: "advance-block",
+		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:  "submit-posts",
+				Usage: "includes a fake PoSt submission in every block created",
+			},
+		},
 		Action: func(cctx *cli.Context) error {
 			api, closer, err := lcli.GetFullNodeAPI(cctx)
 			if err != nil {
@@ -60,6 +72,14 @@ func init() {
 					VRFProof: t,
 				}
 
+				if cctx.Bool("submit-posts") {
+					wpmsg, err := makePoStMessage(ctx, api, addr, mi.Worker, head.Key())
+					if err == nil {
+						msgs = append(msgs, wpmsg)
+					} else {
+						log.Errorf("Failed to make post msg: %w", err)
+					}
+				}
 			}
 
 			mbi, err := api.MinerGetBaseInfo(ctx, addr, head.Height()+1, head.Key())
@@ -90,4 +110,53 @@ func init() {
 			return api.SyncSubmitBlock(ctx, blk)
 		},
 	}
+}
+
+func makePoStMessage(ctx context.Context, api lapi.FullNode, maddr address.Address, waddr address.Address, tsk types.TipSetKey) (*types.SignedMessage, error) {
+	di, err := api.StateMinerProvingDeadline(ctx, maddr, tsk)
+	if err != nil {
+		return nil, err
+	}
+
+	partitions, err := api.StateMinerPartitions(ctx, maddr, di.Index, tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("getting partitions: %w", err)
+	}
+
+	params := &miner.SubmitWindowedPoStParams{
+		Deadline:   di.Index,
+		Partitions: make([]miner.PoStPartition, 0, len(partitions)),
+		Proofs:     nil,
+	}
+	for partIdx, _ := range partitions {
+		params.Partitions = append(params.Partitions, miner.PoStPartition{
+			Index:   uint64(partIdx),
+			Skipped: bitfield.New(),
+		})
+	}
+
+	params.Proofs = gen.ValidWpostForTesting
+
+	commEpoch := di.Open
+	commRand, err := api.ChainGetRandomnessFromTickets(ctx, tsk, crypto.DomainSeparationTag_PoStChainCommit, commEpoch, nil)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get chain randomness for windowPost: %w", err)
+	}
+	params.ChainCommitEpoch = commEpoch
+	params.ChainCommitRand = commRand
+
+	enc, aerr := actors.SerializeParams(params)
+	if aerr != nil {
+		return nil, xerrors.Errorf("could not serialize submit post parameters: %w", aerr)
+	}
+
+	msg := &types.Message{
+		To:     maddr,
+		From:   waddr,
+		Method: builtin.MethodsMiner.SubmitWindowedPoSt,
+		Params: enc,
+		Value:  types.NewInt(0),
+	}
+
+	return api.WalletSignMessage(ctx, waddr, msg)
 }
