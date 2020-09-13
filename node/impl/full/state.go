@@ -1226,3 +1226,43 @@ func (a *StateAPI) StateCirculatingSupply(ctx context.Context, tsk types.TipSetK
 
 	return a.StateManager.GetCirculatingSupplyDetailed(ctx, ts.Height(), sTree)
 }
+
+func (a *StateAPI) StateMsgGasCost(ctx context.Context, inputMsg cid.Cid, tsk types.TipSetKey) (*api.MsgGasCost, error) {
+	var msg cid.Cid
+	var ts *types.TipSet
+	var err error
+	if tsk != types.EmptyTSK {
+		msg = inputMsg
+		ts, err = a.Chain.LoadTipSet(tsk)
+		if err != nil {
+			return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+		}
+	} else {
+		msg, err := a.StateSearchMsg(ctx, inputMsg)
+		if err != nil {
+			return nil, xerrors.Errorf("searching for msg %s: %w", inputMsg, err)
+		}
+
+		ts, err = a.Chain.GetTipSetFromKey(msg.TipSet)
+		if err != nil {
+			return nil, xerrors.Errorf("loading tipset %s: %w", msg.TipSet, err)
+		}
+	}
+
+	m, r, err := a.StateManager.Replay(ctx, ts, msg)
+	if err != nil {
+		return nil, err
+	}
+
+	gasSpent := big.Sub(big.NewInt(m.GasLimit), r.GasCosts.Refund)
+	return &api.MsgGasCost{
+		Message:            msg,
+		GasUsed:            big.NewInt(r.GasUsed),
+		BaseFeeBurn:        r.GasCosts.BaseFeeBurn,
+		OverEstimationBurn: r.GasCosts.OverEstimationBurn,
+		MinerPenalty:       r.GasCosts.MinerPenalty,
+		MinerTip:           r.GasCosts.MinerTip,
+		Refund:             r.GasCosts.Refund,
+		TotalCost:          big.Mul(gasSpent, m.GasFeeCap),
+	}, nil
+}

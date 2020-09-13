@@ -148,6 +148,7 @@
   * [StateMinerRecoveries](#StateMinerRecoveries)
   * [StateMinerSectorCount](#StateMinerSectorCount)
   * [StateMinerSectors](#StateMinerSectors)
+  * [StateMsgGasCost](#StateMsgGasCost)
   * [StateNetworkName](#StateNetworkName)
   * [StateReadState](#StateReadState)
   * [StateReplay](#StateReplay)
@@ -3730,6 +3731,40 @@ Inputs:
 ```
 
 Response: `null`
+
+### StateMsgGasCost
+StateMsgGasCost searches for a message in the chain, and returns details of the messages gas costs, including the penalty and miner tip
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
+]
+```
+
+Response:
+```json
+{
+  "Message": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "Receipt": {
+    "ExitCode": 0,
+    "Return": "Ynl0ZSBhcnJheQ==",
+    "GasUsed": 9
+  },
+  "BaseFeeBurn": "0",
+  "OverEstimationBurn": "0",
+  "MinerPenalty": "0",
+  "MinerTip": "0",
+  "Refund": "0"
+}
+```
 
 ### StateNetworkName
 StateNetworkName returns the name of the network the node is synced to
