@@ -2,23 +2,29 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"time"
+
+	"github.com/filecoin-project/go-state-types/dline"
+
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-multistore"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
@@ -112,7 +118,8 @@ type FullNode interface {
 	// The exported chain data includes the header chain from the given tipset
 	// back to genesis, the entire genesis state, and the most recent 'nroots'
 	// state trees.
-	ChainExport(ctx context.Context, nroots abi.ChainEpoch, tsk types.TipSetKey) (<-chan []byte, error)
+	// If oldmsgskip is set, messages from before the requested roots are also not included.
+	ChainExport(ctx context.Context, nroots abi.ChainEpoch, oldmsgskip bool, tsk types.TipSetKey) (<-chan []byte, error)
 
 	// MethodGroup: Beacon
 	// The Beacon method group contains methods for interacting with the random beacon (DRAND)
@@ -153,9 +160,15 @@ type FullNode interface {
 	// yet synced block headers.
 	SyncIncomingBlocks(ctx context.Context) (<-chan *types.BlockHeader, error)
 
+	// SyncCheckpoint marks a blocks as checkpointed, meaning that it won't ever fork away from it.
+	SyncCheckpoint(ctx context.Context, tsk types.TipSetKey) error
+
 	// SyncMarkBad marks a blocks as bad, meaning that it won't ever by synced.
 	// Use with extreme caution.
 	SyncMarkBad(ctx context.Context, bcid cid.Cid) error
+
+	// SyncUnmarkBad unmarks a blocks as bad, making it possible to be validated and synced again.
+	SyncUnmarkBad(ctx context.Context, bcid cid.Cid) error
 
 	// SyncCheckBad checks if a block was marked as bad, and if it was, returns
 	// the reason.
@@ -270,6 +283,9 @@ type FullNode interface {
 	// ClientListTransfers returns the status of all ongoing transfers of data
 	ClientListDataTransfers(ctx context.Context) ([]DataTransferChannel, error)
 	ClientDataTransferUpdates(ctx context.Context) (<-chan DataTransferChannel, error)
+	// ClientRetrieveTryRestartInsufficientFunds attempts to restart stalled retrievals on a given payment channel
+	// which are stuck due to insufficient funds
+	ClientRetrieveTryRestartInsufficientFunds(ctx context.Context, paymentChannel address.Address) error
 
 	// ClientUnimport removes references to the specified file from filestore
 	//ClientUnimport(path string)
@@ -300,12 +316,12 @@ type FullNode interface {
 	// StateMinerSectors returns info about the given miner's sectors. If the filter bitfield is nil, all sectors are included.
 	// If the filterOut boolean is set to true, any sectors in the filter are excluded.
 	// If false, only those sectors in the filter are included.
-	StateMinerSectors(context.Context, address.Address, *abi.BitField, bool, types.TipSetKey) ([]*ChainSectorInfo, error)
+	StateMinerSectors(context.Context, address.Address, *bitfield.BitField, bool, types.TipSetKey) ([]*ChainSectorInfo, error)
 	// StateMinerActiveSectors returns info about sectors that a given miner is actively proving.
 	StateMinerActiveSectors(context.Context, address.Address, types.TipSetKey) ([]*ChainSectorInfo, error)
 	// StateMinerProvingDeadline calculates the deadline at some epoch for a proving period
 	// and returns the deadline-related calculations.
-	StateMinerProvingDeadline(context.Context, address.Address, types.TipSetKey) (*miner.DeadlineInfo, error)
+	StateMinerProvingDeadline(context.Context, address.Address, types.TipSetKey) (*dline.Info, error)
 	// StateMinerPower returns the power of the indicated miner
 	StateMinerPower(context.Context, address.Address, types.TipSetKey) (*MinerPower, error)
 	// StateMinerInfo returns info about the indicated miner
@@ -315,11 +331,11 @@ type FullNode interface {
 	// StateMinerPartitions loads miner partitions for the specified miner/deadline
 	StateMinerPartitions(context.Context, address.Address, uint64, types.TipSetKey) ([]*miner.Partition, error)
 	// StateMinerFaults returns a bitfield indicating the faulty sectors of the given miner
-	StateMinerFaults(context.Context, address.Address, types.TipSetKey) (abi.BitField, error)
+	StateMinerFaults(context.Context, address.Address, types.TipSetKey) (bitfield.BitField, error)
 	// StateAllMinerFaults returns all non-expired Faults that occur within lookback epochs of the given tipset
 	StateAllMinerFaults(ctx context.Context, lookback abi.ChainEpoch, ts types.TipSetKey) ([]*Fault, error)
 	// StateMinerRecoveries returns a bitfield indicating the recovering sectors of the given miner
-	StateMinerRecoveries(context.Context, address.Address, types.TipSetKey) (abi.BitField, error)
+	StateMinerRecoveries(context.Context, address.Address, types.TipSetKey) (bitfield.BitField, error)
 	// StateMinerInitialPledgeCollateral returns the precommit deposit for the specified miner's sector
 	StateMinerPreCommitDepositForPower(context.Context, address.Address, miner.SectorPreCommitInfo, types.TipSetKey) (types.BigInt, error)
 	// StateMinerInitialPledgeCollateral returns the initial pledge collateral for the specified miner's sector
@@ -384,6 +400,9 @@ type FullNode interface {
 
 	// MsigGetAvailableBalance returns the portion of a multisig's balance that can be withdrawn or spent
 	MsigGetAvailableBalance(context.Context, address.Address, types.TipSetKey) (types.BigInt, error)
+	// MsigGetVested returns the amount of FIL that vested in a multisig in a certain period.
+	// It takes the following params: <multisig address>, <start epoch>, <end epoch>
+	MsigGetVested(context.Context, address.Address, types.TipSetKey, types.TipSetKey) (types.BigInt, error)
 	// MsigCreate creates a multisig wallet
 	// It takes the following params: <required number of senders>, <approving addresses>, <unlock duration>
 	//<initial balance>, <sender address of the create msg>, <gas price>
@@ -400,17 +419,29 @@ type FullNode interface {
 	// It takes the following params: <multisig address>, <proposed message ID>, <recipient address>, <value to transfer>,
 	// <sender address of the cancel msg>, <method to call in the proposed message>, <params to include in the proposed message>
 	MsigCancel(context.Context, address.Address, uint64, address.Address, types.BigInt, address.Address, uint64, []byte) (cid.Cid, error)
+	// MsigAddPropose proposes adding a signer in the multisig
+	// It takes the following params: <multisig address>, <sender address of the propose msg>,
+	// <new signer>, <whether the number of required signers should be increased>
+	MsigAddPropose(context.Context, address.Address, address.Address, address.Address, bool) (cid.Cid, error)
+	// MsigAddApprove approves a previously proposed AddSigner message
+	// It takes the following params: <multisig address>, <sender address of the approve msg>, <proposed message ID>,
+	// <proposer address>, <new signer>, <whether the number of required signers should be increased>
+	MsigAddApprove(context.Context, address.Address, address.Address, uint64, address.Address, address.Address, bool) (cid.Cid, error)
+	// MsigAddCancel cancels a previously proposed AddSigner message
+	// It takes the following params: <multisig address>, <sender address of the cancel msg>, <proposed message ID>,
+	// <new signer>, <whether the number of required signers should be increased>
+	MsigAddCancel(context.Context, address.Address, address.Address, uint64, address.Address, bool) (cid.Cid, error)
 	// MsigSwapPropose proposes swapping 2 signers in the multisig
 	// It takes the following params: <multisig address>, <sender address of the propose msg>,
-	// <old signer> <new signer>
+	// <old signer>, <new signer>
 	MsigSwapPropose(context.Context, address.Address, address.Address, address.Address, address.Address) (cid.Cid, error)
 	// MsigSwapApprove approves a previously proposed SwapSigner
 	// It takes the following params: <multisig address>, <sender address of the approve msg>, <proposed message ID>,
-	// <proposer address>, <old signer> <new signer>
+	// <proposer address>, <old signer>, <new signer>
 	MsigSwapApprove(context.Context, address.Address, address.Address, uint64, address.Address, address.Address, address.Address) (cid.Cid, error)
 	// MsigSwapCancel cancels a previously proposed SwapSigner message
 	// It takes the following params: <multisig address>, <sender address of the cancel msg>, <proposed message ID>,
-	// <old signer> <new signer>
+	// <old signer>, <new signer>
 	MsigSwapCancel(context.Context, address.Address, address.Address, uint64, address.Address, address.Address) (cid.Cid, error)
 
 	MarketEnsureAvailable(context.Context, address.Address, address.Address, types.BigInt) (cid.Cid, error)
@@ -421,7 +452,8 @@ type FullNode interface {
 
 	PaychGet(ctx context.Context, from, to address.Address, amt types.BigInt) (*ChannelInfo, error)
 	PaychGetWaitReady(context.Context, cid.Cid) (address.Address, error)
-	PaychAvailableFunds(from, to address.Address) (*ChannelAvailableFunds, error)
+	PaychAvailableFunds(ch address.Address) (*ChannelAvailableFunds, error)
+	PaychAvailableFundsByFromTo(from, to address.Address) (*ChannelAvailableFunds, error)
 	PaychList(context.Context) ([]address.Address, error)
 	PaychStatus(context.Context, address.Address) (*PaychStatus, error)
 	PaychSettle(context.Context, address.Address) (cid.Cid, error)
@@ -540,7 +572,12 @@ type ChannelInfo struct {
 }
 
 type ChannelAvailableFunds struct {
+	// Channel is the address of the channel
 	Channel *address.Address
+	// From is the from address of the channel (channel creator)
+	From address.Address
+	// To is the to address of the channel
+	To address.Address
 	// ConfirmedAmt is the amount of funds that have been confirmed on-chain
 	// for the channel
 	ConfirmedAmt types.BigInt
@@ -697,7 +734,27 @@ const (
 	StageMessages
 	StageSyncComplete
 	StageSyncErrored
+	StageFetchingMessages
 )
+
+func (v SyncStateStage) String() string {
+	switch v {
+	case StageHeaders:
+		return "header sync"
+	case StagePersistHeaders:
+		return "persisting headers"
+	case StageMessages:
+		return "message sync"
+	case StageSyncComplete:
+		return "complete"
+	case StageSyncErrored:
+		return "error"
+	case StageFetchingMessages:
+		return "fetching messages"
+	default:
+		return fmt.Sprintf("<unknown: %d>", v)
+	}
+}
 
 type MpoolChange int
 
@@ -732,7 +789,7 @@ type CirculatingSupply struct {
 type MiningBaseInfo struct {
 	MinerPower      types.BigInt
 	NetworkPower    types.BigInt
-	Sectors         []abi.SectorInfo
+	Sectors         []proof.SectorInfo
 	WorkerKey       address.Address
 	SectorSize      abi.SectorSize
 	PrevBeaconEntry types.BeaconEntry
@@ -749,7 +806,7 @@ type BlockTemplate struct {
 	Messages         []*types.SignedMessage
 	Epoch            abi.ChainEpoch
 	Timestamp        uint64
-	WinningPoStProof []abi.PoStProof
+	WinningPoStProof []proof.PoStProof
 }
 
 type DataSize struct {

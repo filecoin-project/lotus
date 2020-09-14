@@ -369,9 +369,8 @@ func (bv *BlockValidator) decodeAndCheckBlock(msg *pubsub.Message) (*types.Block
 func (bv *BlockValidator) isChainNearSynced() bool {
 	ts := bv.chain.GetHeaviestTipSet()
 	timestamp := ts.MinTimestamp()
-	now := build.Clock.Now().UnixNano()
-	cutoff := uint64(now) - uint64(6*time.Hour)
-	return timestamp > cutoff
+	timestampTime := time.Unix(int64(timestamp), 0)
+	return build.Clock.Since(timestampTime) < 6*time.Hour
 }
 
 func (bv *BlockValidator) validateMsgMeta(ctx context.Context, msg *types.BlockMsg) error {

@@ -9,11 +9,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
+
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/crypto"
 	lru "github.com/hashicorp/golang-lru"
 
 	"github.com/filecoin-project/lotus/api"
@@ -197,6 +199,7 @@ func (m *Miner) mine(ctx context.Context) {
 			_, err = m.api.BeaconGetEntry(ctx, prebase.TipSet.Height()+prebase.NullRounds+1)
 			if err != nil {
 				log.Errorf("failed getting beacon entry: %s", err)
+				m.niceSleep(time.Second)
 				continue
 			}
 
@@ -371,7 +374,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*types.BlockMsg,
 		rbase = bvals[len(bvals)-1]
 	}
 
-	ticket, err := m.computeTicket(ctx, &rbase, base, len(bvals) > 0)
+	ticket, err := m.computeTicket(ctx, &rbase, base)
 	if err != nil {
 		return nil, xerrors.Errorf("scratching ticket failed: %w", err)
 	}
@@ -441,7 +444,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*types.BlockMsg,
 	return b, nil
 }
 
-func (m *Miner) computeTicket(ctx context.Context, brand *types.BeaconEntry, base *MiningBase, haveNewEntries bool) (*types.Ticket, error) {
+func (m *Miner) computeTicket(ctx context.Context, brand *types.BeaconEntry, base *MiningBase) (*types.Ticket, error) {
 	mi, err := m.api.StateMinerInfo(ctx, m.address, types.EmptyTSK)
 	if err != nil {
 		return nil, err
@@ -456,11 +459,12 @@ func (m *Miner) computeTicket(ctx context.Context, brand *types.BeaconEntry, bas
 		return nil, xerrors.Errorf("failed to marshal address to cbor: %w", err)
 	}
 
-	if !haveNewEntries {
+	round := base.TipSet.Height() + base.NullRounds + 1
+	if round > build.UpgradeSmokeHeight {
 		buf.Write(base.TipSet.MinTicket().VRFProof)
 	}
 
-	input, err := store.DrawRandomness(brand.Data, crypto.DomainSeparationTag_TicketProduction, base.TipSet.Height()+base.NullRounds+1-build.TicketRandomnessLookback, buf.Bytes())
+	input, err := store.DrawRandomness(brand.Data, crypto.DomainSeparationTag_TicketProduction, round-build.TicketRandomnessLookback, buf.Bytes())
 	if err != nil {
 		return nil, err
 	}
@@ -476,7 +480,7 @@ func (m *Miner) computeTicket(ctx context.Context, brand *types.BeaconEntry, bas
 }
 
 func (m *Miner) createBlock(base *MiningBase, addr address.Address, ticket *types.Ticket,
-	eproof *types.ElectionProof, bvals []types.BeaconEntry, wpostProof []abi.PoStProof, msgs []*types.SignedMessage) (*types.BlockMsg, error) {
+	eproof *types.ElectionProof, bvals []types.BeaconEntry, wpostProof []proof.PoStProof, msgs []*types.SignedMessage) (*types.BlockMsg, error) {
 	uts := base.TipSet.MinTimestamp() + build.BlockDelaySecs*(uint64(base.NullRounds)+1)
 
 	nheight := base.TipSet.Height() + base.NullRounds + 1

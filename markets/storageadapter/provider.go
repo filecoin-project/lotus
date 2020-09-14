@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
@@ -14,13 +15,13 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
-	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -36,6 +37,8 @@ import (
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
+var addPieceRetryWait = 5 * time.Minute
+var addPieceRetryTimeout = 6 * time.Hour
 var log = logging.Logger("storageadapter")
 
 type ProviderNodeAdapter struct {
@@ -101,7 +104,7 @@ func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagema
 		return nil, xerrors.Errorf("deal.PublishCid can't be nil")
 	}
 
-	p, offset, err := n.secb.AddPiece(ctx, pieceSize, pieceData, sealing.DealInfo{
+	sdInfo := sealing.DealInfo{
 		DealID:     deal.DealID,
 		PublishCid: deal.PublishCid,
 		DealSchedule: sealing.DealSchedule{
@@ -109,7 +112,23 @@ func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagema
 			EndEpoch:   deal.ClientDealProposal.Proposal.EndEpoch,
 		},
 		KeepUnsealed: deal.FastRetrieval,
-	})
+	}
+
+	p, offset, err := n.secb.AddPiece(ctx, pieceSize, pieceData, sdInfo)
+	curTime := time.Now()
+	for time.Since(curTime) < addPieceRetryTimeout {
+		if !xerrors.Is(err, sealing.ErrTooManySectorsSealing) {
+			log.Errorf("failed to addPiece for deal %d, err: %w", deal.DealID, err)
+			break
+		}
+		select {
+		case <-time.After(addPieceRetryWait):
+			p, offset, err = n.secb.AddPiece(ctx, pieceSize, pieceData, sdInfo)
+		case <-ctx.Done():
+			return nil, xerrors.New("context expired while waiting to retry AddPiece")
+		}
+	}
+
 	if err != nil {
 		return nil, xerrors.Errorf("AddPiece failed: %s", err)
 	}
@@ -376,12 +395,12 @@ func (n *ProviderNodeAdapter) GetChainHead(ctx context.Context) (shared.TipSetTo
 	return head.Key().Bytes(), head.Height(), nil
 }
 
-func (n *ProviderNodeAdapter) WaitForMessage(ctx context.Context, mcid cid.Cid, cb func(code exitcode.ExitCode, bytes []byte, err error) error) error {
+func (n *ProviderNodeAdapter) WaitForMessage(ctx context.Context, mcid cid.Cid, cb func(code exitcode.ExitCode, bytes []byte, finalCid cid.Cid, err error) error) error {
 	receipt, err := n.StateWaitMsg(ctx, mcid, 2*build.MessageConfidence)
 	if err != nil {
-		return cb(0, nil, err)
+		return cb(0, nil, cid.Undef, err)
 	}
-	return cb(receipt.Receipt.ExitCode, receipt.Receipt.Return, nil)
+	return cb(receipt.Receipt.ExitCode, receipt.Receipt.Return, receipt.Message, nil)
 }
 
 func (n *ProviderNodeAdapter) GetDataCap(ctx context.Context, addr address.Address, encodedTs shared.TipSetToken) (*verifreg.DataCap, error) {

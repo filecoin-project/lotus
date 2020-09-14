@@ -12,7 +12,7 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -173,7 +173,12 @@ func decodeTypedParams(ctx context.Context, fapi api.FullNode, to address.Addres
 		return nil, err
 	}
 
-	p := reflect.New(stmgr.MethodsMap[act.Code][method].Params.Elem()).Interface().(cbg.CBORMarshaler)
+	methodMeta, found := stmgr.MethodsMap[act.Code][method]
+	if !found {
+		return nil, fmt.Errorf("method %d not found on actor %s", method, act.Code)
+	}
+
+	p := reflect.New(methodMeta.Params.Elem()).Interface().(cbg.CBORMarshaler)
 
 	if err := json.Unmarshal([]byte(paramstr), p); err != nil {
 		return nil, fmt.Errorf("unmarshaling input into params type: %w", err)

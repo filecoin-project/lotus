@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 
 	cborrpc "github.com/filecoin-project/go-cbor-util"
@@ -22,7 +22,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/go-state-types/big"
 	tutils "github.com/filecoin-project/specs-actors/support/testing"
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
@@ -921,7 +921,7 @@ func TestPaychAvailableFunds(t *testing.T) {
 	require.NoError(t, err)
 
 	// No channel created yet so available funds should be all zeroes
-	av, err := mgr.AvailableFunds(from, to)
+	av, err := mgr.AvailableFundsByFromTo(from, to)
 	require.NoError(t, err)
 	require.Nil(t, av.Channel)
 	require.Nil(t, av.PendingWaitSentinel)
@@ -936,7 +936,7 @@ func TestPaychAvailableFunds(t *testing.T) {
 	require.NoError(t, err)
 
 	// Available funds should reflect create channel message sent
-	av, err = mgr.AvailableFunds(from, to)
+	av, err = mgr.AvailableFundsByFromTo(from, to)
 	require.NoError(t, err)
 	require.Nil(t, av.Channel)
 	require.EqualValues(t, 0, av.ConfirmedAmt.Int64())
@@ -964,7 +964,7 @@ func TestPaychAvailableFunds(t *testing.T) {
 	waitForQueueSize(t, mgr, from, to, 1)
 
 	// Available funds should now include queued funds
-	av, err = mgr.AvailableFunds(from, to)
+	av, err = mgr.AvailableFundsByFromTo(from, to)
 	require.NoError(t, err)
 	require.Nil(t, av.Channel)
 	require.NotNil(t, av.PendingWaitSentinel)
@@ -1009,7 +1009,7 @@ func TestPaychAvailableFunds(t *testing.T) {
 
 	// Available funds should now include the channel and also a wait sentinel
 	// for the add funds message
-	av, err = mgr.AvailableFunds(from, to)
+	av, err = mgr.AvailableFunds(ch)
 	require.NoError(t, err)
 	require.NotNil(t, av.Channel)
 	require.NotNil(t, av.PendingWaitSentinel)
@@ -1031,7 +1031,7 @@ func TestPaychAvailableFunds(t *testing.T) {
 	require.NoError(t, err)
 
 	// Available funds should no longer have a wait sentinel
-	av, err = mgr.AvailableFunds(from, to)
+	av, err = mgr.AvailableFunds(ch)
 	require.NoError(t, err)
 	require.NotNil(t, av.Channel)
 	require.Nil(t, av.PendingWaitSentinel)
@@ -1052,7 +1052,7 @@ func TestPaychAvailableFunds(t *testing.T) {
 	_, err = mgr.AddVoucherOutbound(ctx, ch, voucher, nil, types.NewInt(0))
 	require.NoError(t, err)
 
-	av, err = mgr.AvailableFunds(from, to)
+	av, err = mgr.AvailableFunds(ch)
 	require.NoError(t, err)
 	require.NotNil(t, av.Channel)
 	require.Nil(t, av.PendingWaitSentinel)

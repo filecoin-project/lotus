@@ -5,7 +5,7 @@ import (
 	"math"
 	"sync"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -307,7 +307,10 @@ func (e *hcEvents) onHeadChanged(check CheckFunc, hnd EventHandler, rev RevertHa
 	defer e.lk.Unlock()
 
 	// Check if the event has already occurred
-	ts := e.tsc.best()
+	ts, err := e.tsc.best()
+	if err != nil {
+		return 0, xerrors.Errorf("error getting best tipset: %w", err)
+	}
 	done, more, err := check(ts)
 	if err != nil {
 		return 0, xerrors.Errorf("called check error (h: %d): %w", ts.Height(), err)

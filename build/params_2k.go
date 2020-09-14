@@ -3,12 +3,21 @@
 package build
 
 import (
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 )
+
+const UpgradeBreezeHeight = -1
+const BreezeGasTampingDuration = 0
+
+const UpgradeSmokeHeight = -1
+
+var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
+	0: DrandMainnet,
+}
 
 func init() {
 	power.ConsensusMinerMinPower = big.NewInt(2048)
@@ -20,7 +29,7 @@ func init() {
 	BuildType |= Build2k
 }
 
-const BlockDelaySecs = uint64(4)
+const BlockDelaySecs = uint64(30)
 
 const PropagationDelaySecs = uint64(1)
 

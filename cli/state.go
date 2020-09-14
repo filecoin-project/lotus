@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/specs-actors/actors/runtime"
+
 	"github.com/multiformats/go-multiaddr"
 
 	"github.com/ipfs/go-cid"
@@ -24,10 +26,11 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/exported"
-	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -120,7 +123,7 @@ var stateMinerInfo = &cli.Command{
 	},
 }
 
-func parseTipSetString(ts string) ([]cid.Cid, error) {
+func ParseTipSetString(ts string) ([]cid.Cid, error) {
 	strs := strings.Split(ts, ",")
 
 	var cids []cid.Cid
@@ -158,7 +161,7 @@ func ParseTipSetRef(ctx context.Context, api api.FullNode, tss string) (*types.T
 		return api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(h), types.EmptyTSK)
 	}
 
-	cids, err := parseTipSetString(tss)
+	cids, err := ParseTipSetString(tss)
 	if err != nil {
 		return nil, err
 	}
@@ -1167,7 +1170,11 @@ func sumGas(changes []*types.GasTrace) types.GasTrace {
 }
 
 func jsonParams(code cid.Cid, method abi.MethodNum, params []byte) (string, error) {
-	re := reflect.New(stmgr.MethodsMap[code][method].Params.Elem())
+	methodMeta, found := stmgr.MethodsMap[code][method]
+	if !found {
+		return "", fmt.Errorf("method %d not found on actor %s", method, code)
+	}
+	re := reflect.New(methodMeta.Params.Elem())
 	p := re.Interface().(cbg.CBORUnmarshaler)
 	if err := p.UnmarshalCBOR(bytes.NewReader(params)); err != nil {
 		return "", err
@@ -1178,7 +1185,11 @@ func jsonParams(code cid.Cid, method abi.MethodNum, params []byte) (string, erro
 }
 
 func jsonReturn(code cid.Cid, method abi.MethodNum, ret []byte) (string, error) {
-	re := reflect.New(stmgr.MethodsMap[code][method].Ret.Elem())
+	methodMeta, found := stmgr.MethodsMap[code][method]
+	if !found {
+		return "", fmt.Errorf("method %d not found on actor %s", method, code)
+	}
+	re := reflect.New(methodMeta.Ret.Elem())
 	p := re.Interface().(cbg.CBORUnmarshaler)
 	if err := p.UnmarshalCBOR(bytes.NewReader(ret)); err != nil {
 		return "", err
@@ -1374,7 +1385,7 @@ var stateCallCmd = &cli.Command{
 		}
 
 		if ret.MsgRct.ExitCode != 0 {
-			return fmt.Errorf("invocation failed (exit: %d): %s", ret.MsgRct.ExitCode, ret.Error)
+			return fmt.Errorf("invocation failed (exit: %d, gasUsed: %d): %s", ret.MsgRct.ExitCode, ret.MsgRct.GasUsed, ret.Error)
 		}
 
 		s, err := formatOutput(cctx.String("ret"), ret.MsgRct.Return)
@@ -1382,6 +1393,7 @@ var stateCallCmd = &cli.Command{
 			return fmt.Errorf("failed to format output: %s", err)
 		}
 
+		fmt.Printf("gas used: %d\n", ret.MsgRct.GasUsed)
 		fmt.Printf("return: %s\n", s)
 
 		return nil
@@ -1438,7 +1450,7 @@ func parseParamsForMethod(act cid.Cid, method uint64, args []string) ([]byte, er
 		return nil, nil
 	}
 
-	var target abi.Invokee
+	var target runtime.Invokee
 	for _, actor := range exported.BuiltinActors() {
 		if actor.Code() == act {
 			target = actor
@@ -1455,11 +1467,11 @@ func parseParamsForMethod(act cid.Cid, method uint64, args []string) ([]byte, er
 	f := methods[method]
 
 	rf := reflect.TypeOf(f)
-	if rf.NumIn() != 3 {
+	if rf.NumIn() != 2 {
 		return nil, fmt.Errorf("expected referenced method to have three arguments")
 	}
 
-	paramObj := rf.In(2).Elem()
+	paramObj := rf.In(1).Elem()
 	if paramObj.NumField() != len(args) {
 		return nil, fmt.Errorf("not enough arguments given to call that method (expecting %d)", paramObj.NumField())
 	}
@@ -1475,6 +1487,18 @@ func parseParamsForMethod(act cid.Cid, method uint64, args []string) ([]byte, er
 			p.Elem().Field(i).Set(reflect.ValueOf(a))
 		case reflect.TypeOf(uint64(0)):
 			val, err := strconv.ParseUint(args[i], 10, 64)
+			if err != nil {
+				return nil, err
+			}
+			p.Elem().Field(i).Set(reflect.ValueOf(val))
+		case reflect.TypeOf(abi.ChainEpoch(0)):
+			val, err := strconv.ParseInt(args[i], 10, 64)
+			if err != nil {
+				return nil, err
+			}
+			p.Elem().Field(i).Set(reflect.ValueOf(abi.ChainEpoch(val)))
+		case reflect.TypeOf(big.Int{}):
+			val, err := big.FromString(args[i])
 			if err != nil {
 				return nil, err
 			}

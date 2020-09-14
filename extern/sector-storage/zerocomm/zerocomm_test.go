@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	commcid "github.com/filecoin-project/go-fil-commcid"
-	abi "github.com/filecoin-project/specs-actors/actors/abi"
+	abi "github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"

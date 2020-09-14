@@ -13,14 +13,14 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/sigs"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
-	xerrors "golang.org/x/xerrors"
+	"golang.org/x/xerrors"
 )
 
 // insufficientFundsErr indicates that there are not enough funds in the
@@ -79,6 +79,13 @@ func (ca *channelAccessor) getChannelInfo(addr address.Address) (*ChannelInfo, e
 	defer ca.lk.Unlock()
 
 	return ca.store.ByAddress(addr)
+}
+
+func (ca *channelAccessor) outboundActiveByFromTo(from, to address.Address) (*ChannelInfo, error) {
+	ca.lk.Lock()
+	defer ca.lk.Unlock()
+
+	return ca.store.OutboundActiveByFromTo(from, to)
 }
 
 // createVoucher creates a voucher with the given specification, setting its

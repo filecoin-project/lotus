@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 
@@ -141,13 +141,48 @@ func (pm *Manager) GetPaych(ctx context.Context, from, to address.Address, amt t
 	return chanAccessor.getPaych(ctx, amt)
 }
 
-func (pm *Manager) AvailableFunds(from address.Address, to address.Address) (*api.ChannelAvailableFunds, error) {
-	chanAccessor, err := pm.accessorByFromTo(from, to)
+func (pm *Manager) AvailableFunds(ch address.Address) (*api.ChannelAvailableFunds, error) {
+	ca, err := pm.accessorByAddress(ch)
 	if err != nil {
 		return nil, err
 	}
 
-	return chanAccessor.availableFunds()
+	ci, err := ca.getChannelInfo(ch)
+	if err != nil {
+		return nil, err
+	}
+
+	return ca.availableFunds(ci.ChannelID)
+}
+
+func (pm *Manager) AvailableFundsByFromTo(from address.Address, to address.Address) (*api.ChannelAvailableFunds, error) {
+	ca, err := pm.accessorByFromTo(from, to)
+	if err != nil {
+		return nil, err
+	}
+
+	ci, err := ca.outboundActiveByFromTo(from, to)
+	if err == ErrChannelNotTracked {
+		// If there is no active channel between from / to we still want to
+		// return an empty ChannelAvailableFunds, so that clients can check
+		// for the existence of a channel between from / to without getting
+		// an error.
+		return &api.ChannelAvailableFunds{
+			Channel:             nil,
+			From:                from,
+			To:                  to,
+			ConfirmedAmt:        types.NewInt(0),
+			PendingAmt:          types.NewInt(0),
+			PendingWaitSentinel: nil,
+			QueuedAmt:           types.NewInt(0),
+			VoucherReedeemedAmt: types.NewInt(0),
+		}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return ca.availableFunds(ci.ChannelID)
 }
 
 // GetPaychWaitReady waits until the create channel / add funds message with the

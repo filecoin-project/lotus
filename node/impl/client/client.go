@@ -6,8 +6,10 @@ import (
 	"io"
 	"os"
 
+	"github.com/filecoin-project/go-state-types/dline"
+
 	datatransfer "github.com/filecoin-project/go-data-transfer"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/go-state-types/big"
 	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-blockservice"
@@ -38,7 +40,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-multistore"
 	"github.com/filecoin-project/go-padreader"
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
@@ -80,7 +82,7 @@ type API struct {
 	Host              host.Host
 }
 
-func calcDealExpiration(minDuration uint64, md *miner.DeadlineInfo, startEpoch abi.ChainEpoch) abi.ChainEpoch {
+func calcDealExpiration(minDuration uint64, md *dline.Info, startEpoch abi.ChainEpoch) abi.ChainEpoch {
 	// Make sure we give some time for the miner to seal
 	minExp := startEpoch + abi.ChainEpoch(minDuration)
 
@@ -846,4 +848,8 @@ func newDealInfo(v storagemarket.ClientDeal) api.DealInfo {
 		DealID:        v.DealID,
 		CreationTime:  v.CreationTime.Time(),
 	}
+}
+
+func (a *API) ClientRetrieveTryRestartInsufficientFunds(ctx context.Context, paymentChannel address.Address) error {
+	return a.Retrieval.TryRestartInsufficientFunds(paymentChannel)
 }

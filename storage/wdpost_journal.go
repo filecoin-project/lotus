@@ -1,7 +1,8 @@
 package storage
 
 import (
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/ipfs/go-cid"
@@ -36,7 +37,7 @@ const (
 
 // evtCommon is a common set of attributes for Windowed PoSt journal events.
 type evtCommon struct {
-	Deadline *miner.DeadlineInfo
+	Deadline *dline.Info
 	Height   abi.ChainEpoch
 	TipSet   []cid.Cid
 	Error    error `json:",omitempty"`

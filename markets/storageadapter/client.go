@@ -6,7 +6,7 @@ import (
 	"bytes"
 	"context"
 
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/go-state-types/big"
 
 	"golang.org/x/xerrors"
 
@@ -14,6 +14,9 @@ import (
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/events/state"
@@ -25,12 +28,9 @@ import (
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/markets/utils"
 	"github.com/filecoin-project/lotus/node/impl/full"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	samarket "github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
-	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/ipfs/go-cid"
 )
 
@@ -171,7 +171,7 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 
 	pubmsg, err := c.cs.GetMessage(*deal.PublishMessage)
 	if err != nil {
-		return 0, xerrors.Errorf("getting deal pubsish message: %w", err)
+		return 0, xerrors.Errorf("getting deal publish message: %w", err)
 	}
 
 	mi, err := stmgr.StateMinerInfo(ctx, c.sm, c.cs.GetHeaviestTipSet(), deal.Proposal.Provider)
@@ -372,6 +372,11 @@ func (c *ClientNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID a
 
 	// Called immediately to check if the deal has already expired or been slashed
 	checkFunc := func(ts *types.TipSet) (done bool, more bool, err error) {
+		if ts == nil {
+			// keep listening for events
+			return false, true, nil
+		}
+
 		// Check if the deal has already expired
 		if sd.Proposal.EndEpoch <= ts.Height() {
 			onDealExpired(nil)
@@ -517,12 +522,12 @@ func (c *ClientNodeAdapter) GetChainHead(ctx context.Context) (shared.TipSetToke
 	return head.Key().Bytes(), head.Height(), nil
 }
 
-func (c *ClientNodeAdapter) WaitForMessage(ctx context.Context, mcid cid.Cid, cb func(code exitcode.ExitCode, bytes []byte, err error) error) error {
+func (c *ClientNodeAdapter) WaitForMessage(ctx context.Context, mcid cid.Cid, cb func(code exitcode.ExitCode, bytes []byte, finalCid cid.Cid, err error) error) error {
 	receipt, err := c.StateWaitMsg(ctx, mcid, build.MessageConfidence)
 	if err != nil {
-		return cb(0, nil, err)
+		return cb(0, nil, cid.Undef, err)
 	}
-	return cb(receipt.Receipt.ExitCode, receipt.Receipt.Return, nil)
+	return cb(receipt.Receipt.ExitCode, receipt.Receipt.Return, receipt.Message, nil)
 }
 
 func (c *ClientNodeAdapter) GetMinerInfo(ctx context.Context, addr address.Address, encodedTs shared.TipSetToken) (*storagemarket.StorageProviderInfo, error) {

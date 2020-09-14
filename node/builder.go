@@ -29,7 +29,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/beacon"
-	"github.com/filecoin-project/lotus/chain/blocksync"
+	"github.com/filecoin-project/lotus/chain/exchange"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/market"
@@ -109,7 +109,7 @@ const (
 	SetGenesisKey
 
 	RunHelloKey
-	RunBlockSyncKey
+	RunChainExchangeKey
 	RunChainGraphsync
 	RunPeerMgrKey
 
@@ -237,7 +237,7 @@ func Online() Option {
 
 			Override(new(dtypes.BootstrapPeers), modules.BuiltinBootstrap),
 			Override(new(dtypes.DrandBootstrap), modules.DrandBootstrap),
-			Override(new(dtypes.DrandConfig), modules.BuiltinDrandConfig),
+			Override(new(dtypes.DrandSchedule), modules.BuiltinDrandConfig),
 
 			Override(HandleIncomingMessagesKey, modules.HandleIncomingMessages),
 
@@ -249,12 +249,12 @@ func Online() Option {
 
 			Override(new(dtypes.ChainGCLocker), blockstore.NewGCLocker),
 			Override(new(dtypes.ChainGCBlockstore), modules.ChainGCBlockstore),
-			Override(new(dtypes.ChainExchange), modules.ChainExchange),
-			Override(new(dtypes.ChainBlockService), modules.ChainBlockservice),
+			Override(new(dtypes.ChainBitswap), modules.ChainBitswap),
+			Override(new(dtypes.ChainBlockService), modules.ChainBlockService),
 
 			// Filecoin services
 			Override(new(*chain.Syncer), modules.NewSyncer),
-			Override(new(*blocksync.BlockSync), blocksync.NewClient),
+			Override(new(exchange.Client), exchange.NewClient),
 			Override(new(*messagepool.MessagePool), modules.MessagePool),
 
 			Override(new(modules.Genesis), modules.ErrorGenesis),
@@ -263,14 +263,14 @@ func Online() Option {
 
 			Override(new(dtypes.NetworkName), modules.NetworkName),
 			Override(new(*hello.Service), hello.NewHelloService),
-			Override(new(*blocksync.BlockSyncService), blocksync.NewBlockSyncService),
+			Override(new(exchange.Server), exchange.NewServer),
 			Override(new(*peermgr.PeerMgr), peermgr.NewPeerMgr),
 
 			Override(new(dtypes.Graphsync), modules.Graphsync),
 			Override(new(*dtypes.MpoolLocker), new(dtypes.MpoolLocker)),
 
 			Override(RunHelloKey, modules.RunHello),
-			Override(RunBlockSyncKey, modules.RunBlockSync),
+			Override(RunChainExchangeKey, modules.RunChainExchange),
 			Override(RunPeerMgrKey, modules.RunPeerMgr),
 			Override(HandleIncomingBlocksKey, modules.HandleIncomingBlocks),
 
@@ -283,7 +283,7 @@ func Online() Option {
 			Override(new(modules.ClientDealFunds), modules.NewClientDealFunds),
 			Override(new(storagemarket.StorageClient), modules.StorageClient),
 			Override(new(storagemarket.StorageClientNode), storageadapter.NewClientNodeAdapter),
-			Override(new(beacon.RandomBeacon), modules.RandomBeacon),
+			Override(new(beacon.Schedule), modules.RandomSchedule),
 
 			Override(new(*paychmgr.Store), paychmgr.NewStore),
 			Override(new(*paychmgr.Manager), paychmgr.NewManager),
@@ -546,6 +546,6 @@ func Test() Option {
 	return Options(
 		Unset(RunPeerMgrKey),
 		Unset(new(*peermgr.PeerMgr)),
-		Override(new(beacon.RandomBeacon), testing.RandomBeacon),
+		Override(new(beacon.Schedule), testing.RandomBeacon),
 	)
 }

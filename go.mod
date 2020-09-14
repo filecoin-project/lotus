@@ -2,26 +2,24 @@ module github.com/filecoin-project/lotus
 
 go 1.14
 
-replace github.com/supranational/blst => github.com/supranational/blst v0.1.2-alpha.1
-
 require (
 	contrib.go.opencensus.io/exporter/jaeger v0.1.0
 	contrib.go.opencensus.io/exporter/prometheus v0.1.0
 	github.com/BurntSushi/toml v0.3.1
 	github.com/GeertJohan/go.rice v1.0.0
 	github.com/Gurpartap/async v0.0.0-20180927173644-4f7f499dd9ee
+	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
 	github.com/buger/goterm v0.0.0-20200322175922-2f3e71b85129
 	github.com/coreos/go-systemd/v22 v22.0.0
 	github.com/detailyang/go-fallocate v0.0.0-20180908115635-432fa640bd2e
-	github.com/dgraph-io/badger/v2 v2.0.3
+	github.com/dgraph-io/badger/v2 v2.2007.2
 	github.com/docker/go-units v0.4.0
-	github.com/drand/drand v1.0.3-0.20200714175734-29705eaf09d4
-	github.com/drand/kyber v1.1.1
+	github.com/drand/drand v1.1.2-0.20200905144319-79c957281b32
+	github.com/drand/kyber v1.1.2
 	github.com/dustin/go-humanize v1.0.0
 	github.com/elastic/go-sysinfo v1.3.0
 	github.com/fatih/color v1.8.0
-	github.com/filecoin-project/chain-validation v0.0.6-0.20200813000554-40c22fe26eef
 	github.com/filecoin-project/filecoin-ffi v0.30.4-0.20200716204036-cddc56607e1d
 	github.com/filecoin-project/go-address v0.0.3
 	github.com/filecoin-project/go-bitfield v0.2.0
@@ -29,20 +27,21 @@ require (
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
 	github.com/filecoin-project/go-data-transfer v0.6.3
 	github.com/filecoin-project/go-fil-commcid v0.0.0-20200716160307-8f644712406f
-	github.com/filecoin-project/go-fil-markets v0.5.9
+	github.com/filecoin-project/go-fil-markets v0.6.1-0.20200911011457-2959ccca6a3c
 	github.com/filecoin-project/go-jsonrpc v0.1.2-0.20200822201400-474f4fdccc52
 	github.com/filecoin-project/go-multistore v0.0.3
-	github.com/filecoin-project/go-padreader v0.0.0-20200210211231-548257017ca6
+	github.com/filecoin-project/go-padreader v0.0.0-20200903213702-ed5fae088b20
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200701152213-3e0f0afdc261
+	github.com/filecoin-project/go-state-types v0.0.0-20200909080127-001afaca718c
 	github.com/filecoin-project/go-statemachine v0.0.0-20200813232949-df9b130df370
 	github.com/filecoin-project/go-statestore v0.1.0
 	github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b
-	github.com/filecoin-project/specs-actors v0.9.3
-	github.com/filecoin-project/specs-storage v0.1.1-0.20200730063404-f7db367e9401
-	github.com/filecoin-project/statediff v0.0.1
-	github.com/filecoin-project/test-vectors v0.0.0-20200903223506-84da0a5ea125
+	github.com/filecoin-project/specs-actors v0.9.8
+	github.com/filecoin-project/specs-storage v0.1.1-0.20200907031224-ed2e5cd13796
+	github.com/filecoin-project/test-vectors/schema v0.0.1
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/go-kit/kit v0.10.0
+	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/mux v1.7.4
 	github.com/gorilla/websocket v1.4.2
@@ -91,7 +90,7 @@ require (
 	github.com/libp2p/go-libp2p-mplex v0.2.4
 	github.com/libp2p/go-libp2p-noise v0.1.1
 	github.com/libp2p/go-libp2p-peerstore v0.2.6
-	github.com/libp2p/go-libp2p-pubsub v0.3.6-0.20200901174250-06a12f17b7de
+	github.com/libp2p/go-libp2p-pubsub v0.3.6-0.20200910093904-f7f33e10cc18
 	github.com/libp2p/go-libp2p-quic-transport v0.8.0
 	github.com/libp2p/go-libp2p-record v0.1.3
 	github.com/libp2p/go-libp2p-routing-helpers v0.2.3
@@ -118,6 +117,7 @@ require (
 	github.com/whyrusleeping/pubsub v0.0.0-20131020042734-02de8aa2db3d
 	github.com/xorcare/golden v0.6.1-0.20191112154924-b87f686d7542
 	go.opencensus.io v0.22.4
+	go.uber.org/dig v1.10.0 // indirect
 	go.uber.org/fx v1.9.0
 	go.uber.org/multierr v1.5.0
 	go.uber.org/zap v1.15.0
@@ -126,12 +126,15 @@ require (
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
 	gotest.tools v2.2.0+incompatible
+	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
 )
 
 replace github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v1.18.0
 
 replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 
-replace github.com/dgraph-io/badger/v2 => github.com/dgraph-io/badger/v2 v2.0.1-rc1.0.20200716180832-3ab515320794
-
 replace github.com/filecoin-project/test-vectors => ./extern/test-vectors
+
+replace github.com/supranational/blst => ./extern/fil-blst/blst
+
+replace github.com/filecoin-project/fil-blst => ./extern/fil-blst

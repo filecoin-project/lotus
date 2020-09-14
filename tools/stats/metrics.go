@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"math/big"
 	"strings"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
@@ -131,12 +133,6 @@ func RecordTipsetPoints(ctx context.Context, api api.FullNode, pl *PointList, ti
 	p = NewPoint("chain.blocktime", tsTime.Unix())
 	pl.AddPoint(p)
 
-	baseFeeBig := tipset.Blocks()[0].ParentBaseFee.Copy()
-	baseFeeRat := new(big.Rat).SetFrac(baseFeeBig.Int, new(big.Int).SetUint64(build.FilecoinPrecision))
-	baseFeeFloat, _ := baseFeeRat.Float64()
-	p = NewPoint("chain.basefee", baseFeeFloat)
-	pl.AddPoint(p)
-
 	totalGasLimit := int64(0)
 	totalUniqGasLimit := int64(0)
 	seen := make(map[cid.Cid]struct{})
@@ -177,6 +173,30 @@ func RecordTipsetPoints(ctx context.Context, api api.FullNode, pl *PointList, ti
 	pl.AddPoint(p)
 	p = NewPoint("chain.gas_limit_uniq_total", totalUniqGasLimit)
 	pl.AddPoint(p)
+
+	{
+		baseFeeIn := tipset.Blocks()[0].ParentBaseFee
+		newBaseFee := store.ComputeNextBaseFee(baseFeeIn, totalUniqGasLimit, len(tipset.Blocks()), tipset.Height())
+
+		baseFeeRat := new(big.Rat).SetFrac(newBaseFee.Int, new(big.Int).SetUint64(build.FilecoinPrecision))
+		baseFeeFloat, _ := baseFeeRat.Float64()
+		p = NewPoint("chain.basefee", baseFeeFloat)
+		pl.AddPoint(p)
+
+		baseFeeChange := new(big.Rat).SetFrac(newBaseFee.Int, baseFeeIn.Int)
+		baseFeeChangeF, _ := baseFeeChange.Float64()
+		p = NewPoint("chain.basefee_change_log", math.Log(baseFeeChangeF)/math.Log(1.125))
+		pl.AddPoint(p)
+	}
+	{
+		blks := len(cids)
+		p = NewPoint("chain.gas_fill_ratio", float64(totalGasLimit)/float64(blks*build.BlockGasTarget))
+		pl.AddPoint(p)
+		p = NewPoint("chain.gas_capacity_ratio", float64(totalUniqGasLimit)/float64(blks*build.BlockGasTarget))
+		pl.AddPoint(p)
+		p = NewPoint("chain.gas_waste_ratio", float64(totalGasLimit-totalUniqGasLimit)/float64(blks*build.BlockGasTarget))
+		pl.AddPoint(p)
+	}
 
 	return nil
 }

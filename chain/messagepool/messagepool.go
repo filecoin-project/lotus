@@ -11,8 +11,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/hashicorp/go-multierror"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/ipfs/go-cid"
@@ -47,9 +48,10 @@ var rbfDenomBig = types.NewInt(RbfDenom)
 
 const RbfDenom = 256
 
-var RepublishInterval = pubsub.TimeCacheDuration + time.Duration(5*build.BlockDelaySecs+build.PropagationDelaySecs)*time.Second
+var RepublishInterval = time.Duration(10*build.BlockDelaySecs+build.PropagationDelaySecs) * time.Second
 
 var minimumBaseFee = types.NewInt(uint64(build.MinimumBaseFee))
+var baseFeeLowerBoundFactor = types.NewInt(10)
 
 var MaxActorPendingMessages = 1000
 
@@ -100,6 +102,18 @@ type MessagePoolEvtMessage struct {
 	types.Message
 
 	CID cid.Cid
+}
+
+// this is *temporary* mutilation until we have implemented uncapped miner penalties -- it will go
+// away in the next fork.
+var strictBaseFeeValidation = false
+
+func init() {
+	// if the republish interval is too short compared to the pubsub timecache, adjust it
+	minInterval := pubsub.TimeCacheDuration + time.Duration(build.PropagationDelaySecs)
+	if RepublishInterval < minInterval {
+		RepublishInterval = minInterval
+	}
 }
 
 type MessagePool struct {
@@ -165,6 +179,27 @@ func newMsgSet(nonce uint64) *msgSet {
 	}
 }
 
+func ComputeMinRBF(curPrem abi.TokenAmount) abi.TokenAmount {
+	minPrice := types.BigAdd(curPrem, types.BigDiv(types.BigMul(curPrem, rbfNumBig), rbfDenomBig))
+	return types.BigAdd(minPrice, types.NewInt(1))
+}
+
+func CapGasFee(msg *types.Message, maxFee abi.TokenAmount) {
+	if maxFee.Equals(big.Zero()) {
+		maxFee = types.NewInt(build.FilecoinPrecision / 10)
+	}
+
+	gl := types.NewInt(uint64(msg.GasLimit))
+	totalFee := types.BigMul(msg.GasFeeCap, gl)
+
+	if totalFee.LessThanEqual(maxFee) {
+		return
+	}
+
+	msg.GasFeeCap = big.Div(maxFee, gl)
+	msg.GasPremium = big.Min(msg.GasFeeCap, msg.GasPremium) // cap premium at FeeCap
+}
+
 func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool, strict bool) (bool, error) {
 	nextNonce := ms.nextNonce
 	nonceGap := false
@@ -192,9 +227,7 @@ func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool, strict bool) (boo
 
 		if m.Cid() != exms.Cid() {
 			// check if RBF passes
-			minPrice := exms.Message.GasPremium
-			minPrice = types.BigAdd(minPrice, types.BigDiv(types.BigMul(minPrice, rbfNumBig), rbfDenomBig))
-			minPrice = types.BigAdd(minPrice, types.NewInt(1))
+			minPrice := ComputeMinRBF(exms.Message.GasPremium)
 			if types.BigCmp(m.Message.GasPremium, minPrice) >= 0 {
 				log.Infow("add with RBF", "oldpremium", exms.Message.GasPremium,
 					"newpremium", m.Message.GasPremium, "addr", m.Message.From, "nonce", m.Message.Nonce)
@@ -385,13 +418,48 @@ func (mp *MessagePool) addLocal(m *types.SignedMessage, msgb []byte) error {
 	return nil
 }
 
-func (mp *MessagePool) verifyMsgBeforeAdd(m *types.SignedMessage, epoch abi.ChainEpoch) error {
+// verifyMsgBeforeAdd verifies that the message meets the minimum criteria for block inclusio
+// and whether the message has enough funds to be included in the next 20 blocks.
+// If the message is not valid for block inclusion, it returns an error.
+// For local messages, if the message can be included in the next 20 blocks, it returns true to
+// signal that it should be immediately published. If the message cannot be included in the next 20
+// blocks, it returns false so that the message doesn't immediately get published (and ignored by our
+// peers); instead it will be published through the republish loop, once the base fee has fallen
+// sufficiently.
+// For non local messages, if the message cannot be included in the next 20 blocks it returns
+// a (soft) validation error.
+func (mp *MessagePool) verifyMsgBeforeAdd(m *types.SignedMessage, curTs *types.TipSet, local bool) (bool, error) {
+	epoch := curTs.Height()
 	minGas := vm.PricelistByEpoch(epoch).OnChainMessage(m.ChainLength())
 
 	if err := m.VMMessage().ValidForBlockInclusion(minGas.Total()); err != nil {
-		return xerrors.Errorf("message will not be included in a block: %w", err)
+		return false, xerrors.Errorf("message will not be included in a block: %w", err)
 	}
-	return nil
+
+	// this checks if the GasFeeCap is suffisciently high for inclusion in the next 20 blocks
+	// if the GasFeeCap is too low, we soft reject the message (Ignore in pubsub) and rely
+	// on republish to push it through later, if the baseFee has fallen.
+	// this is a defensive check that stops minimum baseFee spam attacks from overloading validation
+	// queues.
+	// Note that for local messages, we always add them so that they can be accepted and republished
+	// automatically.
+	publish := local
+	if strictBaseFeeValidation && len(curTs.Blocks()) > 0 {
+		baseFee := curTs.Blocks()[0].ParentBaseFee
+		baseFeeLowerBound := getBaseFeeLowerBound(baseFee)
+		if m.Message.GasFeeCap.LessThan(baseFeeLowerBound) {
+			if local {
+				log.Warnf("local message will not be immediately published because GasFeeCap doesn't meet the lower bound for inclusion in the next 20 blocks (GasFeeCap: %s, baseFeeLowerBound: %s)",
+					m.Message.GasFeeCap, baseFeeLowerBound)
+				publish = false
+			} else {
+				return false, xerrors.Errorf("GasFeeCap doesn't meet base fee lower bound for inclusion in the next 20 blocks (GasFeeCap: %s, baseFeeLowerBound: %s): %w",
+					m.Message.GasFeeCap, baseFeeLowerBound, ErrSoftValidationFailure)
+			}
+		}
+	}
+
+	return publish, nil
 }
 
 func (mp *MessagePool) Push(m *types.SignedMessage) (cid.Cid, error) {
@@ -412,7 +480,8 @@ func (mp *MessagePool) Push(m *types.SignedMessage) (cid.Cid, error) {
 	}
 
 	mp.curTsLk.Lock()
-	if err := mp.addTs(m, mp.curTs); err != nil {
+	publish, err := mp.addTs(m, mp.curTs, true)
+	if err != nil {
 		mp.curTsLk.Unlock()
 		return cid.Undef, err
 	}
@@ -425,7 +494,11 @@ func (mp *MessagePool) Push(m *types.SignedMessage) (cid.Cid, error) {
 	}
 	mp.lk.Unlock()
 
-	return m.Cid(), mp.api.PubSubPublish(build.MessagesTopic(mp.netName), msgb)
+	if publish {
+		err = mp.api.PubSubPublish(build.MessagesTopic(mp.netName), msgb)
+	}
+
+	return m.Cid(), err
 }
 
 func (mp *MessagePool) checkMessage(m *types.SignedMessage) error {
@@ -473,7 +546,9 @@ func (mp *MessagePool) Add(m *types.SignedMessage) error {
 
 	mp.curTsLk.Lock()
 	defer mp.curTsLk.Unlock()
-	return mp.addTs(m, mp.curTs)
+
+	_, err = mp.addTs(m, mp.curTs, false)
+	return err
 }
 
 func sigCacheKey(m *types.SignedMessage) (string, error) {
@@ -540,28 +615,29 @@ func (mp *MessagePool) checkBalance(m *types.SignedMessage, curTs *types.TipSet)
 	return nil
 }
 
-func (mp *MessagePool) addTs(m *types.SignedMessage, curTs *types.TipSet) error {
+func (mp *MessagePool) addTs(m *types.SignedMessage, curTs *types.TipSet, local bool) (bool, error) {
 	snonce, err := mp.getStateNonce(m.Message.From, curTs)
 	if err != nil {
-		return xerrors.Errorf("failed to look up actor state nonce: %s: %w", err, ErrSoftValidationFailure)
+		return false, xerrors.Errorf("failed to look up actor state nonce: %s: %w", err, ErrSoftValidationFailure)
 	}
 
 	if snonce > m.Message.Nonce {
-		return xerrors.Errorf("minimum expected nonce is %d: %w", snonce, ErrNonceTooLow)
+		return false, xerrors.Errorf("minimum expected nonce is %d: %w", snonce, ErrNonceTooLow)
 	}
 
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
-	if err := mp.verifyMsgBeforeAdd(m, curTs.Height()); err != nil {
-		return err
+	publish, err := mp.verifyMsgBeforeAdd(m, curTs, local)
+	if err != nil {
+		return false, err
 	}
 
 	if err := mp.checkBalance(m, curTs); err != nil {
-		return err
+		return false, err
 	}
 
-	return mp.addLocked(m, true)
+	return publish, mp.addLocked(m, !local)
 }
 
 func (mp *MessagePool) addLoaded(m *types.SignedMessage) error {
@@ -587,7 +663,8 @@ func (mp *MessagePool) addLoaded(m *types.SignedMessage) error {
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
-	if err := mp.verifyMsgBeforeAdd(m, curTs.Height()); err != nil {
+	_, err = mp.verifyMsgBeforeAdd(m, curTs, true)
+	if err != nil {
 		return err
 	}
 
@@ -634,7 +711,7 @@ func (mp *MessagePool) addLocked(m *types.SignedMessage, strict bool) error {
 
 	incr, err := mset.add(m, mp, strict)
 	if err != nil {
-		log.Info(err)
+		log.Debug(err)
 		return err
 	}
 
@@ -781,7 +858,8 @@ func (mp *MessagePool) PushWithNonce(ctx context.Context, addr address.Address, 
 		return nil, ErrTryAgain
 	}
 
-	if err := mp.verifyMsgBeforeAdd(msg, curTs.Height()); err != nil {
+	publish, err := mp.verifyMsgBeforeAdd(msg, curTs, true)
+	if err != nil {
 		return nil, err
 	}
 
@@ -789,14 +867,18 @@ func (mp *MessagePool) PushWithNonce(ctx context.Context, addr address.Address, 
 		return nil, err
 	}
 
-	if err := mp.addLocked(msg, true); err != nil {
+	if err := mp.addLocked(msg, false); err != nil {
 		return nil, xerrors.Errorf("add locked failed: %w", err)
 	}
 	if err := mp.addLocal(msg, msgb); err != nil {
 		log.Errorf("addLocal failed: %+v", err)
 	}
 
-	return msg, mp.api.PubSubPublish(build.MessagesTopic(mp.netName), msgb)
+	if publish {
+		err = mp.api.PubSubPublish(build.MessagesTopic(mp.netName), msgb)
+	}
+
+	return msg, err
 }
 
 func (mp *MessagePool) Remove(from address.Address, nonce uint64, applied bool) {
@@ -1260,4 +1342,13 @@ func (mp *MessagePool) Clear(local bool) {
 		}
 		delete(mp.pending, a)
 	}
+}
+
+func getBaseFeeLowerBound(baseFee types.BigInt) types.BigInt {
+	baseFeeLowerBound := types.BigDiv(baseFee, baseFeeLowerBoundFactor)
+	if baseFeeLowerBound.LessThan(minimumBaseFee) {
+		baseFeeLowerBound = minimumBaseFee
+	}
+
+	return baseFeeLowerBound
 }

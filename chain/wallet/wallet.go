@@ -6,7 +6,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/go-state-types/crypto"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 

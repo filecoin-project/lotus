@@ -49,7 +49,7 @@ var logSetLevel = &cli.Command{
 
    The system flag can be specified multiple times.
 
-   eg) log set-level --system chain --system blocksync debug
+   eg) log set-level --system chain --system chainxchg debug
 
    Available Levels:
    debug

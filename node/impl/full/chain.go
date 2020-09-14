@@ -26,8 +26,8 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/api"
@@ -495,7 +495,7 @@ func (a *ChainAPI) ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Mess
 	return cm.VMMessage(), nil
 }
 
-func (a *ChainAPI) ChainExport(ctx context.Context, nroots abi.ChainEpoch, tsk types.TipSetKey) (<-chan []byte, error) {
+func (a *ChainAPI) ChainExport(ctx context.Context, nroots abi.ChainEpoch, skipoldmsgs bool, tsk types.TipSetKey) (<-chan []byte, error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -508,7 +508,7 @@ func (a *ChainAPI) ChainExport(ctx context.Context, nroots abi.ChainEpoch, tsk t
 		bw := bufio.NewWriterSize(w, 1<<20)
 		defer bw.Flush() //nolint:errcheck // it is a write to a pipe
 
-		if err := a.Chain.Export(ctx, ts, nroots, bw); err != nil {
+		if err := a.Chain.Export(ctx, ts, nroots, skipoldmsgs, bw); err != nil {
 			log.Errorf("chain export call failed: %s", err)
 			return
 		}
