@@ -317,7 +317,7 @@ func (a *StateAPI) stateForTs(ctx context.Context, ts *types.TipSet) (*state.Sta
 
 	buf := bufbstore.NewBufferedBstore(a.Chain.Blockstore())
 	cst := cbor.NewCborStore(buf)
-	return state.LoadStateTree(cst, st, a.StateManager.GetNtwkVersion(ctx, ts.Height()))
+	return state.LoadStateTree(cst, st)
 }
 
 func (a *StateAPI) StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) {

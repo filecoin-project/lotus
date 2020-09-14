@@ -170,8 +170,7 @@ type VMOpts struct {
 func NewVM(ctx context.Context, opts *VMOpts) (*VM, error) {
 	buf := bufbstore.NewBufferedBstore(opts.Bstore)
 	cst := cbor.NewCborStore(buf)
-	nwv := opts.NtwkVersion(ctx, opts.Epoch) // TODO: why do we need a context for this?
-	state, err := state.LoadStateTree(cst, opts.StateBase, nwv)
+	state, err := state.LoadStateTree(cst, opts.StateBase)
 	if err != nil {
 		return nil, err
 	}

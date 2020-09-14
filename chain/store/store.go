@@ -5,8 +5,6 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/json"
-	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/lotus/build"
 	"io"
 	"os"
 	"strconv"
@@ -766,29 +764,12 @@ type BlockMessages struct {
 	WinCount      int64
 }
 
-// TODO: temp hack until #3682 is merged
-func hackgetNtwkVersionhack(ctx context.Context, height abi.ChainEpoch) network.Version {
-	// TODO: move hard fork epoch checks to a schedule defined in build/
-
-	if build.UpgradeBreezeHeight == 0 {
-		return network.Version1
-	}
-
-	if height <= build.UpgradeBreezeHeight {
-		return network.Version0
-	}
-
-	return network.Version1
-}
-
 func (cs *ChainStore) BlockMsgsForTipset(ts *types.TipSet) ([]BlockMessages, error) {
 	applied := make(map[address.Address]uint64)
 
 	cst := cbor.NewCborStore(cs.bs)
 
-	nv := hackgetNtwkVersionhack(context.TODO(), ts.Height()) // TODO: part of the temp hack from above
-
-	st, err := state.LoadStateTree(cst, ts.Blocks()[0].ParentStateRoot, nv)
+	st, err := state.LoadStateTree(cst, ts.Blocks()[0].ParentStateRoot)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load state tree")
 	}

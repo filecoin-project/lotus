@@ -26,6 +26,8 @@ func main() {
 		types.BlockMsg{},
 		types.ExpTipSet{},
 		types.BeaconEntry{},
+		types.StateRoot{},
+		types.StateInfo{},
 	)
 	if err != nil {
 		fmt.Println(err)

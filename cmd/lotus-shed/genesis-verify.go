@@ -79,7 +79,7 @@ var genesisVerifyCmd = &cli.Command{
 
 		cst := cbor.NewCborStore(bs)
 
-		stree, err := state.LoadStateTree(cst, ts.ParentState(), sm.GetNtwkVersion())
+		stree, err := state.LoadStateTree(cst, ts.ParentState())
 		if err != nil {
 			return err
 		}

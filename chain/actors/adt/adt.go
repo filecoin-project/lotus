@@ -21,16 +21,16 @@ type Map interface {
 	ForEach(v cbor.Unmarshaler, fn func(key string) error) error
 }
 
-func AsMap(store Store, root cid.Cid, version network.Version) (Map, error) {
-	switch builtin.VersionForNetwork(version) {
+func AsMap(store Store, root cid.Cid, version builtin.Version) (Map, error) {
+	switch version {
 	case builtin.Version0:
 		return v0adt.AsMap(store, root)
 	}
 	return nil, xerrors.Errorf("unknown network version: %d", version)
 }
 
-func NewMap(store Store, version network.Version) (Map, error) {
-	switch builtin.VersionForNetwork(version) {
+func NewMap(store Store, version builtin.Version) (Map, error) {
+	switch version {
 	case builtin.Version0:
 		return v0adt.MakeEmptyMap(store), nil
 	}

@@ -21,23 +21,22 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
-	power2 "github.com/filecoin-project/lotus/chain/actors/builtin/power"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	"github.com/filecoin-project/specs-actors/actors/builtin/cron"
-	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -48,8 +47,11 @@ import (
 )
 
 func GetNetworkName(ctx context.Context, sm *StateManager, st cid.Cid) (dtypes.NetworkName, error) {
-	var state init_.State
-	err := sm.WithStateTree(st, sm.WithActor(builtin.InitActorAddr, sm.WithActorState(ctx, &state)))
+	act, err := sm.LoadActorRaw(ctx, init_.Address, st)
+	if err != nil {
+		return "", err
+	}
+	ias, err := init_.Load(sm.cs.Store(ctx), act)
 	if err != nil {
 		return "", err
 	}
@@ -58,21 +60,18 @@ func GetNetworkName(ctx context.Context, sm *StateManager, st cid.Cid) (dtypes.N
 }
 
 func GetMinerWorkerRaw(ctx context.Context, sm *StateManager, st cid.Cid, maddr address.Address) (address.Address, error) {
-	var mas miner.State
-	_, err := sm.LoadActorStateRaw(ctx, maddr, &mas, st)
+	act, err := sm.LoadActorRaw(ctx, sm, maddr, st)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
 	}
-
-	cst := cbor.NewCborStore(sm.cs.Blockstore())
-	state, err := state.LoadStateTree(cst, st)
+	mas, err := miner.Load(sm.cs.Store(ctx), act)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("load state tree: %w", err)
 	}
 
-	info, err := mas.GetInfo(sm.cs.Store(ctx))
+	info, err := mas.Info()
 	if err != nil {
-		return address.Address{}, err
+		return address.Undef, xerrors.Errorf("failed to load actor info: %w", err)
 	}
 
 	return vm.ResolveToKeyAddr(state, cst, info.Worker)
@@ -83,36 +82,35 @@ func GetPower(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr add
 }
 
 func GetPowerRaw(ctx context.Context, sm *StateManager, st cid.Cid, maddr address.Address) (power.Claim, power.Claim, error) {
-	var ps power.State
-	_, err := sm.LoadActorStateRaw(ctx, builtin.StoragePowerActorAddr, &ps, st)
+	act, err := sm.LoadActorRaw(ctx, builtin.StoragePowerActorAddr, st)
 	if err != nil {
 		return power.Claim{}, power.Claim{}, xerrors.Errorf("(get sset) failed to load power actor state: %w", err)
 	}
 
+	mas, err := power.Load(sm.cs.Store(ctx), act)
+	if err != nil {
+		return power.Claim{}, power.Claim{}, err
+	}
+
+	tpow, err := mas.TotalPower()
+	if err != nil {
+		return power.Claim{}, power.Claim{}, err
+	}
+
 	var mpow power.Claim
 	if maddr != address.Undef {
-		cm, err := adt.AsMap(sm.cs.Store(ctx), ps.Claims)
+		mpow, err = mas.MinerPower(maddr)
 		if err != nil {
 			return power.Claim{}, power.Claim{}, err
 		}
-
-		var claim power.Claim
-		if _, err := cm.Get(abi.AddrKey(maddr), &claim); err != nil {
-			return power.Claim{}, power.Claim{}, err
-		}
-
-		mpow = claim
 	}
 
-	return mpow, power.Claim{
-		RawBytePower:    ps.TotalRawBytePower,
-		QualityAdjPower: ps.TotalQualityAdjPower,
-	}, nil
+	return mpow, tpow, nil
 }
 
 func PreCommitInfo(ctx context.Context, sm *StateManager, maddr address.Address, sid abi.SectorNumber, ts *types.TipSet) (miner.SectorPreCommitOnChainInfo, error) {
 	var mas miner.State
-	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
+	act, err := sm.LoadActor(ctx, maddr, ts)
 	if err != nil {
 		return miner.SectorPreCommitOnChainInfo{}, xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
 	}
@@ -676,16 +674,16 @@ func MinerHasMinPower(ctx context.Context, sm *StateManager, addr address.Addres
 		return false, xerrors.Errorf("loading power actor state: %w", err)
 	}
 
-	ps, err := power2.Load(sm.cs.Store(ctx), pact)
+	ps, err := power.Load(sm.cs.Store(ctx), pact)
 	if err != nil {
 		return false, err
 	}
 
-	return ps.MinerNominalPowerMeetsConsensusMinimum(sm.ChainStore().Store(ctx), addr)
+	return ps.MinerNominalPowerMeetsConsensusMinimum(addr)
 }
 
 func CheckTotalFIL(ctx context.Context, sm *StateManager, ts *types.TipSet) (abi.TokenAmount, error) {
-	str, err := state.LoadStateTree(sm.ChainStore().Store(ctx), ts.ParentState(), sm.GetNtwkVersion(ctx, ts.Height()))
+	str, err := state.LoadStateTree(sm.ChainStore().Store(ctx), ts.ParentState())
 	if err != nil {
 		return abi.TokenAmount{}, err
 	}

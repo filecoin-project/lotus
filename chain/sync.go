@@ -1045,10 +1045,9 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 	if err != nil {
 		return err
 	}
-	nwVersion := syncer.sm.GetNtwkVersion(ctx, baseTs.Height())
 
 	cst := cbor.NewCborStore(syncer.store.Blockstore())
-	st, err := state.LoadStateTree(cst, stateroot, nwVersion)
+	st, err := state.LoadStateTree(cst, stateroot)
 	if err != nil {
 		return xerrors.Errorf("failed to load base state tree: %w", err)
 	}

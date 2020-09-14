@@ -383,7 +383,7 @@ func (sm *StateManager) ResolveToKeyAddress(ctx context.Context, addr address.Ad
 	}
 
 	cst := cbor.NewCborStore(sm.cs.Blockstore())
-	tree, err := state.LoadStateTree(cst, st, sm.GetNtwkVersion(ctx, ts.Height()))
+	tree, err := state.LoadStateTree(cst, st)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("failed to load state tree")
 	}
@@ -406,7 +406,7 @@ func (sm *StateManager) GetBlsPublicKey(ctx context.Context, addr address.Addres
 
 func (sm *StateManager) LookupID(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
 	cst := cbor.NewCborStore(sm.cs.Blockstore())
-	state, err := state.LoadStateTree(cst, sm.parentState(ts), sm.GetNtwkVersion(ctx, ts.Height()))
+	state, err := state.LoadStateTree(cst, sm.parentState(ts))
 	if err != nil {
 		return address.Undef, xerrors.Errorf("load state tree: %w", err)
 	}
@@ -817,7 +817,7 @@ func (sm *StateManager) setupGenesisActors(ctx context.Context) error {
 	}
 
 	cst := cbor.NewCborStore(sm.cs.Blockstore())
-	sTree, err := state.LoadStateTree(cst, st, sm.GetNtwkVersion(ctx, gts.Height()))
+	sTree, err := state.LoadStateTree(cst, st)
 	if err != nil {
 		return xerrors.Errorf("loading state tree: %w", err)
 	}
@@ -923,7 +923,7 @@ func (sm *StateManager) setupGenesisActorsTestnet(ctx context.Context) error {
 	}
 
 	cst := cbor.NewCborStore(sm.cs.Blockstore())
-	sTree, err := state.LoadStateTree(cst, st, sm.GetNtwkVersion(ctx, gts.Height()))
+	sTree, err := state.LoadStateTree(cst, st)
 	if err != nil {
 		return xerrors.Errorf("loading state tree: %w", err)
 	}

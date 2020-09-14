@@ -435,7 +435,7 @@ func (bv *BlockValidator) checkPowerAndGetWorkerKey(ctx context.Context, bh *typ
 
 		buf := bufbstore.NewBufferedBstore(bv.chain.Blockstore())
 		cst := cbor.NewCborStore(buf)
-		state, err := state.LoadStateTree(cst, st, bv.stmgr.GetNtwkVersion(ctx, ts.Height()))
+		state, err := state.LoadStateTree(cst, st)
 		if err != nil {
 			return address.Undef, err
 		}

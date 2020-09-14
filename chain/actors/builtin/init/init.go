@@ -9,7 +9,10 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
+
+var Address = v0builtin.InitActorAddr
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	switch act.Code {
@@ -29,4 +32,5 @@ type State interface {
 
 	ResolveAddress(address address.Address) (address.Address, bool, error)
 	MapAddressToNewID(address address.Address) (address.Address, error)
+	NetworkName() (dtypes.NetworkName, error)
 }

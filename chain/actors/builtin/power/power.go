@@ -29,5 +29,15 @@ type State interface {
 	cbor.Marshaler
 
 	TotalLocked() (abi.TokenAmount, error)
-	MinerNominalPowerMeetsConsensusMinimum(adt.Store, address.Address) (bool, error)
+	TotalPower() (Claim, error)
+	MinerPower(address.Address) (Claim, error)
+	MinerNominalPowerMeetsConsensusMinimum(address.Address) (bool, error)
+}
+
+type Claim struct {
+	// Sum of raw byte power for a miner's sectors.
+	RawBytePower abi.StoragePower
+
+	// Sum of quality adjusted power for a miner's sectors.
+	QualityAdjPower abi.StoragePower
 }

@@ -171,9 +171,8 @@ var chainBalanceStateCmd = &cli.Command{
 
 		sm := stmgr.NewStateManager(cs)
 
-		// NETUPGRADE: FIXME.
 		// Options: (a) encode the version in the chain or (b) pass a flag.
-		tree, err := state.LoadStateTree(cst, sroot, network.Version0)
+		tree, err := state.LoadStateTree(cst, sroot)
 		if err != nil {
 			return err
 		}
