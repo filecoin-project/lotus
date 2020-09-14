@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	cid "github.com/ipfs/go-cid/_rsrch/cidiface"
 	"sync"
 	"time"
 
@@ -136,7 +137,7 @@ create unique index if not exists block_cid_uindex
 	on blocks (cid,height);
 
 create materialized view if not exists state_heights
-    as select b.parentstateroot, min(b.height) height
+    as select min(b.height) height, b.parentstateroot
 	from blocks b group by b.parentstateroot;
 
 create index if not exists state_heights_height_index
