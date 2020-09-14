@@ -50,6 +50,7 @@ import (
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
 	"github.com/filecoin-project/lotus/journal"
+	"github.com/filecoin-project/lotus/markets"
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -216,7 +217,7 @@ func HandleRetrieval(host host.Host, lc fx.Lifecycle, m retrievalmarket.Retrieva
 			m.SubscribeToEvents(marketevents.RetrievalProviderLogger)
 
 			evtType := journal.J.RegisterEventType("markets/retrieval/provider", "state_change")
-			m.SubscribeToEvents(marketevents.RetrievalProviderJournaler(evtType))
+			m.SubscribeToEvents(markets.RetrievalProviderJournaler(evtType))
 
 			return m.Start()
 		},
@@ -234,7 +235,7 @@ func HandleDeals(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, h sto
 			h.SubscribeToEvents(marketevents.StorageProviderLogger)
 
 			evtType := journal.J.RegisterEventType("markets/storage/provider", "state_change")
-			h.SubscribeToEvents(marketevents.StorageProviderJournaler(evtType))
+			h.SubscribeToEvents(markets.StorageProviderJournaler(evtType))
 
 			return h.Start(ctx)
 		},

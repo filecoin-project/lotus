@@ -28,6 +28,7 @@ import (
 
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/lib/blockstore"
+	"github.com/filecoin-project/lotus/markets"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/lotus/markets/retrievaladapter"
 	"github.com/filecoin-project/lotus/node/impl/full"
@@ -122,7 +123,7 @@ func StorageClient(lc fx.Lifecycle, h host.Host, ibs dtypes.ClientBlockstore, md
 			c.SubscribeToEvents(marketevents.StorageClientLogger)
 
 			evtType := journal.J.RegisterEventType("markets/storage/client", "state_change")
-			c.SubscribeToEvents(marketevents.StorageClientJournaler(evtType))
+			c.SubscribeToEvents(markets.StorageClientJournaler(evtType))
 
 			return c.Start(ctx)
 		},
@@ -147,7 +148,7 @@ func RetrievalClient(lc fx.Lifecycle, h host.Host, mds dtypes.ClientMultiDstore,
 			client.SubscribeToEvents(marketevents.RetrievalClientLogger)
 
 			evtType := journal.J.RegisterEventType("markets/retrieval/client", "state_change")
-			client.SubscribeToEvents(marketevents.RetrievalClientJournaler(evtType))
+			client.SubscribeToEvents(markets.RetrievalClientJournaler(evtType))
 
 			return nil
 		},
