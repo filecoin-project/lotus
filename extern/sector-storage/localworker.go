@@ -108,29 +108,34 @@ type returnType string
 
 // in: func(WorkerReturn, context.Context, CallID, err string)
 // in: func(WorkerReturn, context.Context, CallID, ret T, err string)
-func rfunc(in interface{}) func(context.Context, storiface.WorkerReturn, interface{}, error) error {
+func rfunc(in interface{}) func(context.Context, storiface.CallID, storiface.WorkerReturn, interface{}, error) error {
 	rf := reflect.ValueOf(in)
 	ft := rf.Type()
-	withRet := ft.NumIn() == 4
+	withRet := ft.NumIn() == 5
 
-	return func(ctx context.Context, wr storiface.WorkerReturn, i interface{}, err error) error {
+	return func(ctx context.Context, ci storiface.CallID, wr storiface.WorkerReturn, i interface{}, err error) error {
 		rctx := reflect.ValueOf(ctx)
 		rwr := reflect.ValueOf(wr)
 		rerr := reflect.ValueOf(errstr(err))
+		rci := reflect.ValueOf(ci)
 
 		var ro []reflect.Value
 
 		if withRet {
-			ro = rf.Call([]reflect.Value{rwr, rctx, reflect.ValueOf(i), rerr})
+			ro = rf.Call([]reflect.Value{rwr, rctx, rci, reflect.ValueOf(i), rerr})
 		} else {
-			ro = rf.Call([]reflect.Value{rwr, rctx, rerr})
+			ro = rf.Call([]reflect.Value{rwr, rctx, rci, rerr})
 		}
 
-		return ro[0].Interface().(error)
+		if !ro[0].IsNil() {
+			return ro[0].Interface().(error)
+		}
+
+		return nil
 	}
 }
 
-var returnFunc = map[returnType]func(context.Context, storiface.WorkerReturn, interface{}, error) error{
+var returnFunc = map[returnType]func(context.Context, storiface.CallID, storiface.WorkerReturn, interface{}, error) error{
 	"AddPiece":        rfunc(storiface.WorkerReturn.ReturnAddPiece),
 	"SealPreCommit1":  rfunc(storiface.WorkerReturn.ReturnSealPreCommit1),
 	"SealPreCommit2":  rfunc(storiface.WorkerReturn.ReturnSealPreCommit2),
@@ -156,7 +161,7 @@ func (l *LocalWorker) asyncCall(ctx context.Context, sector abi.SectorID, rt ret
 
 	go func() {
 		res, err := work(ci)
-		if err := returnFunc[rt](ctx, l.ret, res, err); err != nil {
+		if err := returnFunc[rt](ctx, ci, l.ret, res, err); err != nil {
 			log.Errorf("return error: %s: %+v", rt, err)
 		}
 	}()

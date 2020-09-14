@@ -17,7 +17,6 @@ func (t *Call) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	panic("cbg")
 	if _, err := w.Write([]byte{162}); err != nil {
 		return err
 	}
@@ -40,7 +39,7 @@ func (t *Call) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.Result (typegen.Deferred) (struct)
+	// t.Result ([]uint8) (slice)
 	if len("Result") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"Result\" was too long")
 	}
@@ -52,6 +51,17 @@ func (t *Call) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
+	if len(t.Result) > cbg.ByteArrayMaxLen {
+		return xerrors.Errorf("Byte array in field t.Result was too long")
+	}
+
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajByteString, uint64(len(t.Result))); err != nil {
+		return err
+	}
+
+	if _, err := w.Write(t.Result[:]); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -103,11 +113,27 @@ func (t *Call) UnmarshalCBOR(r io.Reader) error {
 				t.State = CallState(extra)
 
 			}
-			// t.Result (typegen.Deferred) (struct)
+			// t.Result ([]uint8) (slice)
 		case "Result":
 
-			{
+			maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
+			if err != nil {
+				return err
+			}
 
+			if extra > cbg.ByteArrayMaxLen {
+				return fmt.Errorf("t.Result: byte array too large (%d)", extra)
+			}
+			if maj != cbg.MajByteString {
+				return fmt.Errorf("expected byte array")
+			}
+
+			if extra > 0 {
+				t.Result = make([]uint8, extra)
+			}
+
+			if _, err := io.ReadFull(br, t.Result[:]); err != nil {
+				return err
 			}
 
 		default:

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -31,6 +30,7 @@ import (
 	ffi "github.com/filecoin-project/filecoin-ffi"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper/basicfs"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )
 
 func init() {
@@ -206,7 +206,7 @@ func post(t *testing.T, sealer *Sealer, skipped []abi.SectorID, seals ...seal) {
 }
 
 func corrupt(t *testing.T, sealer *Sealer, id abi.SectorID) {
-	paths, done, err := sealer.sectors.AcquireSector(context.Background(), id, stores.FTSealed, 0, stores.PathStorage)
+	paths, done, err := sealer.sectors.AcquireSector(context.Background(), id, storiface.FTSealed, 0, storiface.PathStorage)
 	require.NoError(t, err)
 	defer done()
 
