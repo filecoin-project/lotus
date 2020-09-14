@@ -61,10 +61,6 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 		return big.Zero(), nil
 	}
 
-	nwv := func(context.Context, abi.ChainEpoch) network.Version {
-		return network.Version1
-	}
-
 	vmopt := &vm.VMOpts{
 		StateBase:      sroot,
 		Epoch:          0,
@@ -72,11 +68,11 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 		Bstore:         cs.Blockstore(),
 		Syscalls:       mkFakedSigSyscalls(cs.VMSys()),
 		CircSupplyCalc: csc,
-		NtwkVersion:    nwv,
+		NtwkVersion:    genesisNetworkVersion,
 		BaseFee:        types.NewInt(0),
 	}
 
-	vm, err := vm.NewVM(vmopt)
+	vm, err := vm.NewVM(ctx, vmopt)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to create NewVM: %w", err)
 	}

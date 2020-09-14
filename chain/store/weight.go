@@ -29,7 +29,7 @@ func (cs *ChainStore) Weight(ctx context.Context, ts *types.TipSet) (types.BigIn
 	tpow := big2.Zero()
 	{
 		cst := cbor.NewCborStore(cs.Blockstore())
-		state, err := state.LoadStateTree(cst, ts.ParentState())
+		state, err := state.LoadStateTree(cst, ts.ParentState(), hackgetNtwkVersionhack(nil, ts.Height())) // TODO: hackgetNtwkVersionhack: HELP
 		if err != nil {
 			return types.NewInt(0), xerrors.Errorf("load state tree: %w", err)
 		}

@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
+	power2 "github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
@@ -670,17 +671,21 @@ func GetReturnType(ctx context.Context, sm *StateManager, to address.Address, me
 }
 
 func MinerHasMinPower(ctx context.Context, sm *StateManager, addr address.Address, ts *types.TipSet) (bool, error) {
-	var ps power.State
-	_, err := sm.LoadActorState(ctx, builtin.StoragePowerActorAddr, &ps, ts)
+	pact, err := sm.LoadActor(ctx, builtin.StoragePowerActorAddr, ts)
 	if err != nil {
 		return false, xerrors.Errorf("loading power actor state: %w", err)
+	}
+
+	ps, err := power2.Load(sm.cs.Store(ctx), pact)
+	if err != nil {
+		return false, err
 	}
 
 	return ps.MinerNominalPowerMeetsConsensusMinimum(sm.ChainStore().Store(ctx), addr)
 }
 
 func CheckTotalFIL(ctx context.Context, sm *StateManager, ts *types.TipSet) (abi.TokenAmount, error) {
-	str, err := state.LoadStateTree(sm.ChainStore().Store(ctx), ts.ParentState())
+	str, err := state.LoadStateTree(sm.ChainStore().Store(ctx), ts.ParentState(), sm.GetNtwkVersion(ctx, ts.Height()))
 	if err != nil {
 		return abi.TokenAmount{}, err
 	}

@@ -7,11 +7,10 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	v0power "github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"golang.org/x/xerrors"
@@ -96,11 +95,8 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, tree types
 		return xerrors.Errorf("failed to get tipset at lookback height: %w", err)
 	}
 
-	var lbtree *state.StateTree
-	if err = sm.WithStateTree(lbts.ParentState(), func(state *state.StateTree) error {
-		lbtree = state
-		return nil
-	}); err != nil {
+	lbtree, err := sm.ParentState(lbts)
+	if err != nil {
 		return xerrors.Errorf("loading state tree failed: %w", err)
 	}
 
@@ -139,8 +135,8 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, tree types
 				})
 			}
 		case builtin.StorageMinerActorCodeID:
-			var st miner.State
-			if err := sm.WithActorState(ctx, &st)(act); err != nil {
+			var st v0miner.State
+			if err := sm.ChainStore().Store(ctx).Get(ctx, act.Head, &st); err != nil {
 				return xerrors.Errorf("failed to load miner state: %w", err)
 			}
 
@@ -176,7 +172,7 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, tree types
 	}
 
 	// pull up power table to give miners back some funds proportional to their power
-	var ps power.State
+	var ps v0power.State
 	powAct, err := tree.GetActor(builtin.StoragePowerActorAddr)
 	if err != nil {
 		return xerrors.Errorf("failed to load power actor: %w", err)
@@ -215,12 +211,12 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, tree types
 				})
 			}
 		case builtin.StorageMinerActorCodeID:
-			var st miner.State
-			if err := sm.WithActorState(ctx, &st)(act); err != nil {
+			var st v0miner.State
+			if err := sm.ChainStore().Store(ctx).Get(ctx, act.Head, &st); err != nil {
 				return xerrors.Errorf("failed to load miner state: %w", err)
 			}
 
-			var minfo miner.MinerInfo
+			var minfo v0miner.MinerInfo
 			if err := cst.Get(ctx, st.Info, &minfo); err != nil {
 				return xerrors.Errorf("failed to get miner info: %w", err)
 			}
@@ -244,8 +240,8 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, tree types
 			// Now make sure to give each miner who had power at the lookback some FIL
 			lbact, err := lbtree.GetActor(addr)
 			if err == nil {
-				var lbst miner.State
-				if err := sm.WithActorState(ctx, &lbst)(lbact); err != nil {
+				var lbst v0miner.State
+				if err := sm.ChainStore().Store(ctx).Get(ctx, lbact.Head, &lbst); err != nil {
 					return xerrors.Errorf("failed to load miner state: %w", err)
 				}
 

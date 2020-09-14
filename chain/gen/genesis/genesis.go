@@ -17,7 +17,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
@@ -115,7 +114,7 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 		return nil, nil, xerrors.Errorf("putting empty object: %w", err)
 	}
 
-	state, err := state.NewStateTree(cst)
+	state, err := state.NewStateTree(cst, GenesisNetworkVersion)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("making new state tree: %w", err)
 	}
@@ -405,10 +404,6 @@ func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, stateroot ci
 	verifNeeds := make(map[address.Address]abi.PaddedPieceSize)
 	var sum abi.PaddedPieceSize
 
-	nwv := func(context.Context, abi.ChainEpoch) network.Version {
-		return network.Version1
-	}
-
 	vmopt := vm.VMOpts{
 		StateBase:      stateroot,
 		Epoch:          0,
@@ -416,10 +411,10 @@ func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, stateroot ci
 		Bstore:         cs.Blockstore(),
 		Syscalls:       mkFakedSigSyscalls(cs.VMSys()),
 		CircSupplyCalc: nil,
-		NtwkVersion:    nwv,
+		NtwkVersion:    genesisNetworkVersion,
 		BaseFee:        types.NewInt(0),
 	}
-	vm, err := vm.NewVM(&vmopt)
+	vm, err := vm.NewVM(ctx, &vmopt)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to create NewVM: %w", err)
 	}

@@ -41,7 +41,7 @@ type StateManager struct {
 	compWait      map[string]chan struct{}
 	stlk          sync.Mutex
 	genesisMsigLk sync.Mutex
-	newVM         func(*vm.VMOpts) (*vm.VM, error)
+	newVM         func(context.Context, *vm.VMOpts) (*vm.VM, error)
 	genInfo       *genesisInfo
 }
 
@@ -156,7 +156,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 		BaseFee:        baseFee,
 	}
 
-	vmi, err := sm.newVM(vmopt)
+	vmi, err := sm.newVM(ctx, vmopt)
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("instantiating VM failed: %w", err)
 	}
@@ -383,7 +383,7 @@ func (sm *StateManager) ResolveToKeyAddress(ctx context.Context, addr address.Ad
 	}
 
 	cst := cbor.NewCborStore(sm.cs.Blockstore())
-	tree, err := state.LoadStateTree(cst, st)
+	tree, err := state.LoadStateTree(cst, st, sm.GetNtwkVersion(ctx, ts.Height()))
 	if err != nil {
 		return address.Undef, xerrors.Errorf("failed to load state tree")
 	}
@@ -406,7 +406,7 @@ func (sm *StateManager) GetBlsPublicKey(ctx context.Context, addr address.Addres
 
 func (sm *StateManager) LookupID(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
 	cst := cbor.NewCborStore(sm.cs.Blockstore())
-	state, err := state.LoadStateTree(cst, sm.parentState(ts))
+	state, err := state.LoadStateTree(cst, sm.parentState(ts), sm.GetNtwkVersion(ctx, ts.Height()))
 	if err != nil {
 		return address.Undef, xerrors.Errorf("load state tree: %w", err)
 	}
@@ -598,10 +598,9 @@ func (sm *StateManager) searchBackForMsg(ctx context.Context, from *types.TipSet
 		default:
 		}
 
-		var act types.Actor
-		err := sm.WithParentState(cur, sm.WithActor(m.VMMessage().From, GetActor(&act)))
+		act, err := sm.LoadActor(ctx, m.VMMessage().From, cur)
 		if err != nil {
-			return nil, nil, cid.Undef, err
+			return nil, nil, cid.Cid{}, err
 		}
 
 		// we either have no messages from the sender, or the latest message we found has a lower nonce than the one being searched for,
@@ -712,9 +711,15 @@ func (sm *StateManager) MarketBalance(ctx context.Context, addr address.Address,
 	if err != nil {
 		return api.MarketBalance{}, err
 	}
+
 	act, err := st.GetActor(builtin.StorageMarketActorAddr)
 	if err != nil {
-		return nil, err
+		return api.MarketBalance{}, err
+	}
+
+	mstate, err := market.Load(sm.cs.Store(ctx), act)
+	if err != nil {
+		return api.MarketBalance{}, err
 	}
 
 	addr, err = sm.LookupID(ctx, addr, ts)
@@ -724,7 +729,7 @@ func (sm *StateManager) MarketBalance(ctx context.Context, addr address.Address,
 
 	var out api.MarketBalance
 
-	et, err := adt.AsBalanceTable(sm.cs.Store(ctx), state.EscrowTable)
+	et, err := mstate.EscrowTable()
 	if err != nil {
 		return api.MarketBalance{}, err
 	}
@@ -733,7 +738,7 @@ func (sm *StateManager) MarketBalance(ctx context.Context, addr address.Address,
 		return api.MarketBalance{}, xerrors.Errorf("getting escrow balance: %w", err)
 	}
 
-	lt, err := adt.AsBalanceTable(sm.cs.Store(ctx), state.LockedTable)
+	lt, err := mstate.LockedTable()
 	if err != nil {
 		return api.MarketBalance{}, err
 	}
@@ -774,7 +779,7 @@ func (sm *StateManager) ValidateChain(ctx context.Context, ts *types.TipSet) err
 	return nil
 }
 
-func (sm *StateManager) SetVMConstructor(nvm func(*vm.VMOpts) (*vm.VM, error)) {
+func (sm *StateManager) SetVMConstructor(nvm func(context.Context, *vm.VMOpts) (*vm.VM, error)) {
 	sm.newVM = nvm
 }
 
@@ -812,7 +817,7 @@ func (sm *StateManager) setupGenesisActors(ctx context.Context) error {
 	}
 
 	cst := cbor.NewCborStore(sm.cs.Blockstore())
-	sTree, err := state.LoadStateTree(cst, st)
+	sTree, err := state.LoadStateTree(cst, st, sm.GetNtwkVersion(ctx, gts.Height()))
 	if err != nil {
 		return xerrors.Errorf("loading state tree: %w", err)
 	}
@@ -918,7 +923,7 @@ func (sm *StateManager) setupGenesisActorsTestnet(ctx context.Context) error {
 	}
 
 	cst := cbor.NewCborStore(sm.cs.Blockstore())
-	sTree, err := state.LoadStateTree(cst, st)
+	sTree, err := state.LoadStateTree(cst, st, sm.GetNtwkVersion(ctx, gts.Height()))
 	if err != nil {
 		return xerrors.Errorf("loading state tree: %w", err)
 	}
@@ -1035,12 +1040,12 @@ func getFilPowerLocked(ctx context.Context, st *state.StateTree) (abi.TokenAmoun
 		return big.Zero(), xerrors.Errorf("failed to load power actor: %w", err)
 	}
 
-	pst, err := power.Load(adt.WrapStore(ctx, st.Store), act)
+	pst, err := power.Load(adt.WrapStore(ctx, st.Store), pactor)
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("failed to load power state: %w", err)
 	}
 
-	return pst.TotalLocked(), nil
+	return pst.TotalLocked()
 }
 
 func (sm *StateManager) GetFilLocked(ctx context.Context, st *state.StateTree) (abi.TokenAmount, error) {
@@ -1124,6 +1129,8 @@ func (sm *StateManager) GetCirculatingSupply(ctx context.Context, height abi.Cha
 }
 
 func (sm *StateManager) GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version {
+	// TODO: move hard fork epoch checks to a schedule defined in build/
+
 	if build.UpgradeBreezeHeight == 0 {
 		return network.Version1
 	}

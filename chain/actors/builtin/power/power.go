@@ -1,6 +1,7 @@
 package power
 
 import (
+	"github.com/filecoin-project/go-address"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -28,4 +29,5 @@ type State interface {
 	cbor.Marshaler
 
 	TotalLocked() (abi.TokenAmount, error)
+	MinerNominalPowerMeetsConsensusMinimum(adt.Store, address.Address) (bool, error)
 }

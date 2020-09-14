@@ -2,6 +2,7 @@ package genesis
 
 import (
 	"context"
+	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -45,4 +46,9 @@ func doExecValue(ctx context.Context, vm *vm.VM, to, from address.Address, value
 	}
 
 	return ret.Return, nil
+}
+
+var GenesisNetworkVersion = network.Version1
+func genesisNetworkVersion(context.Context, abi.ChainEpoch) network.Version {
+	return GenesisNetworkVersion // TODO: Get from build/
 }

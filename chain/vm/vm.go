@@ -163,7 +163,7 @@ type VMOpts struct {
 	Bstore         bstore.Blockstore
 	Syscalls       SyscallBuilder
 	CircSupplyCalc CircSupplyCalculator
-	NtwkVersion    NtwkVersionGetter
+	NtwkVersion    NtwkVersionGetter // TODO: stebalien: In what cases do we actually need this? It seems like even when creating new networks we want to use the 'global'/build-default version getter
 	BaseFee        abi.TokenAmount
 }
 
