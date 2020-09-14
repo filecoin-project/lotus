@@ -68,6 +68,13 @@ func (sm *mockStateManager) setAccountState(a address.Address, state account.Sta
 func (sm *mockStateManager) setPaychState(a address.Address, actor *types.Actor, state paych.State) {
 	sm.lk.Lock()
 	defer sm.lk.Unlock()
+
+	laneStates, err := adt.MakeEmptyArray(sm.store).Root()
+	if err != nil {
+		panic(err)
+	}
+	state.LaneStates = laneStates
+
 	sm.paychState[a] = mockPchState{actor, state}
 }
 

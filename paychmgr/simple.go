@@ -309,12 +309,7 @@ func (ca *channelAccessor) currentAvailableFunds(channelID string, queuedAmt typ
 	totalRedeemed := types.NewInt(0)
 	if channelInfo.Channel != nil {
 		ch := *channelInfo.Channel
-		_, pchState, err := ca.sa.loadPaychActorState(ca.chctx, ch)
-		if err != nil {
-			return nil, err
-		}
-
-		laneStates, err := ca.laneState(ca.chctx, pchState, ch)
+		laneStates, err := ca.laneState(ch)
 		if err != nil {
 			return nil, err
 		}

@@ -67,7 +67,7 @@ func TestPaymentChannels(t *testing.T, b APIBuilder, blocktime time.Duration) {
 		t.Fatal(err)
 	}
 
-	channelAmt := int64(100000)
+	channelAmt := int64(7000)
 	channelInfo, err := paymentCreator.PaychGet(ctx, createrAddr, receiverAddr, abi.NewTokenAmount(channelAmt))
 	if err != nil {
 		t.Fatal(err)
@@ -167,6 +167,51 @@ func TestPaymentChannels(t *testing.T, b APIBuilder, blocktime time.Duration) {
 	case <-finished:
 	case <-time.After(time.Second):
 		t.Fatal("Timed out waiting for receiver to submit vouchers")
+	}
+
+	// Create a new voucher now that some vouchers have already been submitted
+	vouchRes, err := paymentCreator.PaychVoucherCreate(ctx, channel, abi.NewTokenAmount(1000), 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if vouchRes.Voucher == nil {
+		t.Fatal(fmt.Errorf("Not enough funds to create voucher: missing %d", vouchRes.Shortfall))
+	}
+	vdelta, err := paymentReceiver.PaychVoucherAdd(ctx, channel, vouchRes.Voucher, nil, abi.NewTokenAmount(1000))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !vdelta.Equals(abi.NewTokenAmount(1000)) {
+		t.Fatal("voucher didn't have the right amount")
+	}
+
+	// Create a new voucher whose value would exceed the channel balance
+	excessAmt := abi.NewTokenAmount(1000)
+	vouchRes, err = paymentCreator.PaychVoucherCreate(ctx, channel, excessAmt, 4)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if vouchRes.Voucher != nil {
+		t.Fatal("Expected not to be able to create voucher whose value would exceed channel balance")
+	}
+	if !vouchRes.Shortfall.Equals(excessAmt) {
+		t.Fatal(fmt.Errorf("Expected voucher shortfall of %d, got %d", excessAmt, vouchRes.Shortfall))
+	}
+
+	// Add a voucher whose value would exceed the channel balance
+	vouch := &paych.SignedVoucher{ChannelAddr: channel, Amount: excessAmt, Lane: 4, Nonce: 1}
+	vb, err := vouch.SigningBytes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	sig, err := paymentCreator.WalletSign(ctx, createrAddr, vb)
+	if err != nil {
+		t.Fatal(err)
+	}
+	vouch.Signature = sig
+	_, err = paymentReceiver.PaychVoucherAdd(ctx, channel, vouch, nil, abi.NewTokenAmount(1000))
+	if err == nil {
+		t.Fatal(fmt.Errorf("Expected shortfall error of %d", excessAmt))
 	}
 
 	// wait for the settlement period to pass before collecting
