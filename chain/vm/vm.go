@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/filecoin-project/specs-actors/actors/runtime"
+	"github.com/filecoin-project/go-state-types/network"
 
 	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 
@@ -142,7 +142,7 @@ func (vm *UnsafeVM) MakeRuntime(ctx context.Context, msg *types.Message, origin 
 }
 
 type CircSupplyCalculator func(context.Context, abi.ChainEpoch, *state.StateTree) (abi.TokenAmount, error)
-type NtwkVersionGetter func(context.Context, abi.ChainEpoch) runtime.NetworkVersion
+type NtwkVersionGetter func(context.Context, abi.ChainEpoch) network.Version
 
 type VM struct {
 	cstate         *state.StateTree
@@ -722,7 +722,7 @@ func (vm *VM) SetInvoker(i *Invoker) {
 	vm.inv = i
 }
 
-func (vm *VM) GetNtwkVersion(ctx context.Context, ce abi.ChainEpoch) runtime.NetworkVersion {
+func (vm *VM) GetNtwkVersion(ctx context.Context, ce abi.ChainEpoch) network.Version {
 	return vm.ntwkVersion(ctx, ce)
 }
 

@@ -204,30 +204,14 @@ func (a *GasAPI) GasEstimateMessageGas(ctx context.Context, msg *types.Message, 
 	}
 
 	if msg.GasFeeCap == types.EmptyInt || types.BigCmp(msg.GasFeeCap, types.NewInt(0)) == 0 {
-		feeCap, err := a.GasEstimateFeeCap(ctx, msg, 10, types.EmptyTSK)
+		feeCap, err := a.GasEstimateFeeCap(ctx, msg, 20, types.EmptyTSK)
 		if err != nil {
 			return nil, xerrors.Errorf("estimating fee cap: %w", err)
 		}
 		msg.GasFeeCap = feeCap
 	}
 
-	capGasFee(msg, spec.Get().MaxFee)
+	messagepool.CapGasFee(msg, spec.Get().MaxFee)
 
 	return msg, nil
-}
-
-func capGasFee(msg *types.Message, maxFee abi.TokenAmount) {
-	if maxFee.Equals(big.Zero()) {
-		maxFee = types.NewInt(build.FilecoinPrecision / 10)
-	}
-
-	gl := types.NewInt(uint64(msg.GasLimit))
-	totalFee := types.BigMul(msg.GasFeeCap, gl)
-
-	if totalFee.LessThanEqual(maxFee) {
-		return
-	}
-
-	msg.GasFeeCap = big.Div(maxFee, gl)
-	msg.GasPremium = big.Min(msg.GasFeeCap, msg.GasPremium) // cap premium at FeeCap
 }

@@ -27,7 +27,7 @@ func TestBaseFee(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
-			output := computeNextBaseFee(types.NewInt(test.basefee), test.limitUsed, test.noOfBlocks)
+			output := ComputeNextBaseFee(types.NewInt(test.basefee), test.limitUsed, test.noOfBlocks, 0)
 			assert.Equal(t, fmt.Sprintf("%d", test.output), output.String())
 		})
 	}
