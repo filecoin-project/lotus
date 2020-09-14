@@ -7,13 +7,6 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/filecoin-project/specs-actors/actors/runtime"
-
-	bstore "github.com/filecoin-project/lotus/lib/blockstore"
-
-	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-
 	block "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -25,8 +18,11 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 
 	"github.com/filecoin-project/lotus/build"
@@ -34,6 +30,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/blockstore"
+	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/lib/bufbstore"
 )
 
@@ -116,7 +113,7 @@ func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, origin addres
 		Blocks: &gasChargingBlocks{rt.chargeGasFunc(2), rt.pricelist, vm.cst.Blocks},
 		Atlas:  vm.cst.Atlas,
 	}
-	rt.sys = pricedSyscalls{
+	rt.Syscalls = pricedSyscalls{
 		under:     vm.Syscalls(ctx, vm.cstate, rt.cst),
 		chargeGas: rt.chargeGasFunc(1),
 		pl:        rt.pricelist,
@@ -128,7 +125,7 @@ func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, origin addres
 		rt.Abortf(exitcode.SysErrInvalidReceiver, "resolve msg.From address failed")
 	}
 	vmm.From = resF
-	rt.vmsg = &vmm
+	rt.Message = &vmm
 
 	return rt
 }
@@ -142,7 +139,7 @@ func (vm *UnsafeVM) MakeRuntime(ctx context.Context, msg *types.Message, origin 
 }
 
 type CircSupplyCalculator func(context.Context, abi.ChainEpoch, *state.StateTree) (abi.TokenAmount, error)
-type NtwkVersionGetter func(context.Context, abi.ChainEpoch) runtime.NetworkVersion
+type NtwkVersionGetter func(context.Context, abi.ChainEpoch) network.Version
 
 type VM struct {
 	cstate         *state.StateTree
@@ -170,10 +167,11 @@ type VMOpts struct {
 	BaseFee        abi.TokenAmount
 }
 
-func NewVM(opts *VMOpts) (*VM, error) {
+func NewVM(ctx context.Context, opts *VMOpts) (*VM, error) {
 	buf := bufbstore.NewBufferedBstore(opts.Bstore)
 	cst := cbor.NewCborStore(buf)
-	state, err := state.LoadStateTree(cst, opts.StateBase)
+	nwv := opts.NtwkVersion(ctx, opts.Epoch) // TODO: why do we need a context for this?
+	state, err := state.LoadStateTree(cst, opts.StateBase, nwv)
 	if err != nil {
 		return nil, err
 	}
@@ -700,9 +698,9 @@ func (vm *VM) Invoke(act *types.Actor, rt *Runtime, method abi.MethodNum, params
 	defer span.End()
 	if span.IsRecordingEvents() {
 		span.AddAttributes(
-			trace.StringAttribute("to", rt.Message().Receiver().String()),
+			trace.StringAttribute("to", rt.Receiver().String()),
 			trace.Int64Attribute("method", int64(method)),
-			trace.StringAttribute("value", rt.Message().ValueReceived().String()),
+			trace.StringAttribute("value", rt.ValueReceived().String()),
 		)
 	}
 
@@ -722,7 +720,7 @@ func (vm *VM) SetInvoker(i *Invoker) {
 	vm.inv = i
 }
 
-func (vm *VM) GetNtwkVersion(ctx context.Context, ce abi.ChainEpoch) runtime.NetworkVersion {
+func (vm *VM) GetNtwkVersion(ctx context.Context, ce abi.ChainEpoch) network.Version {
 	return vm.ntwkVersion(ctx, ce)
 }
 

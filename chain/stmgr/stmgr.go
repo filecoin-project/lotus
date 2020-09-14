@@ -5,11 +5,22 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/filecoin-project/specs-actors/actors/runtime"
-
-	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
+	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	logging "github.com/ipfs/go-log/v2"
+	cbg "github.com/whyrusleeping/cbor-gen"
+	"go.opencensus.io/trace"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
+	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -19,20 +30,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
-
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
-
-	"golang.org/x/xerrors"
-
-	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
-	logging "github.com/ipfs/go-log/v2"
-	cbg "github.com/whyrusleeping/cbor-gen"
-	"go.opencensus.io/trace"
 )
 
 var log = logging.Logger("statemgr")
@@ -1126,14 +1123,14 @@ func (sm *StateManager) GetCirculatingSupply(ctx context.Context, height abi.Cha
 	return csi.FilCirculating, nil
 }
 
-func (sm *StateManager) GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) runtime.NetworkVersion {
+func (sm *StateManager) GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version {
 	if build.UpgradeBreezeHeight == 0 {
-		return runtime.NetworkVersion1
+		return network.Version1
 	}
 
 	if height <= build.UpgradeBreezeHeight {
-		return runtime.NetworkVersion0
+		return network.Version0
 	}
 
-	return runtime.NetworkVersion1
+	return network.Version1
 }

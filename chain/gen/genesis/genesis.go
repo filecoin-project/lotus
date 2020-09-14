@@ -6,8 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/filecoin-project/specs-actors/actors/runtime"
-
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -19,6 +17,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
@@ -406,8 +405,8 @@ func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, stateroot ci
 	verifNeeds := make(map[address.Address]abi.PaddedPieceSize)
 	var sum abi.PaddedPieceSize
 
-	nwv := func(context.Context, abi.ChainEpoch) runtime.NetworkVersion {
-		return runtime.NetworkVersion1
+	nwv := func(context.Context, abi.ChainEpoch) network.Version {
+		return network.Version1
 	}
 
 	vmopt := vm.VMOpts{
