@@ -242,6 +242,9 @@ func Online() Option {
 			Override(new(dtypes.ChainBlockService), modules.ChainBlockService),
 
 			// Filecoin services
+			// We don't want the SyncManagerCtor to be used as an fx constructor, but rather as a value.
+			// It will be called implicitly by the Syncer constructor.
+			Override(new(chain.SyncManagerCtor), func() chain.SyncManagerCtor { return chain.NewSyncManager }),
 			Override(new(*chain.Syncer), modules.NewSyncer),
 			Override(new(exchange.Client), exchange.NewClient),
 			Override(new(*messagepool.MessagePool), modules.MessagePool),

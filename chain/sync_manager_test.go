@@ -17,7 +17,7 @@ type syncOp struct {
 	done func()
 }
 
-func runSyncMgrTest(t *testing.T, tname string, thresh int, tf func(*testing.T, *SyncManager, chan *syncOp)) {
+func runSyncMgrTest(t *testing.T, tname string, thresh int, tf func(*testing.T, *syncManager, chan *syncOp)) {
 	syncTargets := make(chan *syncOp)
 	sm := NewSyncManager(func(ctx context.Context, ts *types.TipSet) error {
 		ch := make(chan struct{})
@@ -27,7 +27,7 @@ func runSyncMgrTest(t *testing.T, tname string, thresh int, tf func(*testing.T, 
 		}
 		<-ch
 		return nil
-	})
+	}).(*syncManager)
 	sm.bspThresh = thresh
 
 	sm.Start()
@@ -77,12 +77,12 @@ func TestSyncManager(t *testing.T) {
 	c3 := mock.TipSet(mock.MkBlock(b, 3, 5))
 	d := mock.TipSet(mock.MkBlock(c1, 4, 5))
 
-	runSyncMgrTest(t, "testBootstrap", 1, func(t *testing.T, sm *SyncManager, stc chan *syncOp) {
+	runSyncMgrTest(t, "testBootstrap", 1, func(t *testing.T, sm *syncManager, stc chan *syncOp) {
 		sm.SetPeerHead(ctx, "peer1", c1)
 		assertGetSyncOp(t, stc, c1)
 	})
 
-	runSyncMgrTest(t, "testBootstrap", 2, func(t *testing.T, sm *SyncManager, stc chan *syncOp) {
+	runSyncMgrTest(t, "testBootstrap", 2, func(t *testing.T, sm *syncManager, stc chan *syncOp) {
 		sm.SetPeerHead(ctx, "peer1", c1)
 		assertNoOp(t, stc)
 
@@ -90,7 +90,7 @@ func TestSyncManager(t *testing.T) {
 		assertGetSyncOp(t, stc, c1)
 	})
 
-	runSyncMgrTest(t, "testSyncAfterBootstrap", 1, func(t *testing.T, sm *SyncManager, stc chan *syncOp) {
+	runSyncMgrTest(t, "testSyncAfterBootstrap", 1, func(t *testing.T, sm *syncManager, stc chan *syncOp) {
 		sm.SetPeerHead(ctx, "peer1", b)
 		assertGetSyncOp(t, stc, b)
 
@@ -101,7 +101,7 @@ func TestSyncManager(t *testing.T) {
 		assertGetSyncOp(t, stc, c2)
 	})
 
-	runSyncMgrTest(t, "testCoalescing", 1, func(t *testing.T, sm *SyncManager, stc chan *syncOp) {
+	runSyncMgrTest(t, "testCoalescing", 1, func(t *testing.T, sm *syncManager, stc chan *syncOp) {
 		sm.SetPeerHead(ctx, "peer1", a)
 		assertGetSyncOp(t, stc, a)
 
@@ -122,7 +122,7 @@ func TestSyncManager(t *testing.T) {
 		assertGetSyncOp(t, stc, d)
 	})
 
-	runSyncMgrTest(t, "testSyncIncomingTipset", 1, func(t *testing.T, sm *SyncManager, stc chan *syncOp) {
+	runSyncMgrTest(t, "testSyncIncomingTipset", 1, func(t *testing.T, sm *syncManager, stc chan *syncOp) {
 		sm.SetPeerHead(ctx, "peer1", a)
 		assertGetSyncOp(t, stc, a)
 
