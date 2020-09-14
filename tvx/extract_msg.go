@@ -14,7 +14,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 
 	"github.com/filecoin-project/oni/tvx/lotus"
-	"github.com/filecoin-project/oni/tvx/schema"
+	"github.com/filecoin-project/test-vectors/schema"
 	"github.com/filecoin-project/oni/tvx/state"
 )
 
@@ -204,18 +204,18 @@ func runExtractMsg(c *cli.Context) error {
 	// Write out the test vector.
 	vector := schema.TestVector{
 		Class:    schema.ClassMessage,
-		Selector: "",
+		Selector: schema.Selector(map[string]string{}),
 		Meta: &schema.Metadata{
 			ID:      "TK",
 			Version: "TK",
-			Gen: schema.GenerationData{
+			Gen: []schema.GenerationData{schema.GenerationData{
 				Source:  "TK",
 				Version: version.String(),
-			},
+			}},
 		},
 		CAR: out.Bytes(),
 		Pre: &schema.Preconditions{
-			Epoch: execTs.Height(),
+			Epoch: int64(execTs.Height()),
 			StateTree: &schema.StateTree{
 				RootCID: preroot,
 			},
