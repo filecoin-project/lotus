@@ -32,6 +32,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 
@@ -82,6 +83,26 @@ const (
 
 	localUpdates = "update"
 )
+
+// Journal event types.
+const (
+	evtTypeMpoolAdd = iota
+	evtTypeMpoolRemove
+	evtTypeMpoolRepub
+)
+
+// MessagePoolEvt is the journal entry for message pool events.
+type MessagePoolEvt struct {
+	Action   string
+	Messages []MessagePoolEvtMessage
+	Error    error `json:",omitempty"`
+}
+
+type MessagePoolEvtMessage struct {
+	types.Message
+
+	CID cid.Cid
+}
 
 // this is *temporary* mutilation until we have implemented uncapped miner penalties -- it will go
 // away in the next fork.
@@ -140,6 +161,8 @@ type MessagePool struct {
 	netName dtypes.NetworkName
 
 	sigValCache *lru.TwoQueueCache
+
+	evtTypes [3]journal.EventType
 }
 
 type msgSet struct {
@@ -316,6 +339,11 @@ func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName) (*Messa
 		api:           api,
 		netName:       netName,
 		cfg:           cfg,
+		evtTypes: [...]journal.EventType{
+			evtTypeMpoolAdd:    journal.J.RegisterEventType("mpool", "add"),
+			evtTypeMpoolRemove: journal.J.RegisterEventType("mpool", "remove"),
+			evtTypeMpoolRepub:  journal.J.RegisterEventType("mpool", "repub"),
+		},
 	}
 
 	// enable initial prunes
@@ -367,10 +395,12 @@ func (mp *MessagePool) runLoop() {
 			if err := mp.republishPendingMessages(); err != nil {
 				log.Errorf("error while republishing messages: %s", err)
 			}
+
 		case <-mp.pruneTrigger:
 			if err := mp.pruneExcessMessages(); err != nil {
 				log.Errorf("failed to prune excess messages from mempool: %s", err)
 			}
+
 		case <-mp.closer:
 			mp.repubTk.Stop()
 			return
@@ -700,6 +730,14 @@ func (mp *MessagePool) addLocked(m *types.SignedMessage, strict bool) error {
 		Type:    api.MpoolAdd,
 		Message: m,
 	}, localUpdates)
+
+	journal.J.RecordEvent(mp.evtTypes[evtTypeMpoolAdd], func() interface{} {
+		return MessagePoolEvt{
+			Action:   "add",
+			Messages: []MessagePoolEvtMessage{{Message: m.Message, CID: m.Cid()}},
+		}
+	})
+
 	return nil
 }
 
@@ -861,6 +899,12 @@ func (mp *MessagePool) remove(from address.Address, nonce uint64, applied bool) 
 			Type:    api.MpoolRemove,
 			Message: m,
 		}, localUpdates)
+
+		journal.J.RecordEvent(mp.evtTypes[evtTypeMpoolRemove], func() interface{} {
+			return MessagePoolEvt{
+				Action:   "remove",
+				Messages: []MessagePoolEvtMessage{{Message: m.Message, CID: m.Cid()}}}
+		})
 
 		mp.currentSize--
 	}

@@ -74,8 +74,8 @@ func (ta *testActor) Exports() []interface{} {
 
 func (ta *testActor) Constructor(rt runtime.Runtime, params *abi.EmptyValue) *abi.EmptyValue {
 	rt.ValidateImmediateCallerAcceptAny()
-	rt.State().Create(&testActorState{11})
-	fmt.Println("NEW ACTOR ADDRESS IS: ", rt.Message().Receiver())
+	rt.StateCreate(&testActorState{11})
+	fmt.Println("NEW ACTOR ADDRESS IS: ", rt.Receiver())
 
 	return abi.Empty
 }
@@ -83,7 +83,7 @@ func (ta *testActor) Constructor(rt runtime.Runtime, params *abi.EmptyValue) *ab
 func (ta *testActor) TestMethod(rt runtime.Runtime, params *abi.EmptyValue) *abi.EmptyValue {
 	rt.ValidateImmediateCallerAcceptAny()
 	var st testActorState
-	rt.State().Readonly(&st)
+	rt.StateReadonly(&st)
 
 	if rt.CurrEpoch() > testForkHeight {
 		if st.HasUpgraded != 55 {

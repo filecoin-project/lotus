@@ -8,23 +8,20 @@ import (
 	gruntime "runtime"
 	"time"
 
-	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
-	cbg "github.com/whyrusleeping/cbor-gen"
-	"go.opencensus.io/trace"
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	statecbor "github.com/filecoin-project/go-state-types/cbor"
+	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
 	rtt "github.com/filecoin-project/go-state-types/rt"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/runtime"
-	vmr "github.com/filecoin-project/specs-actors/actors/runtime"
+	rt0 "github.com/filecoin-project/specs-actors/actors/runtime"
+	"github.com/ipfs/go-cid"
+	ipldcbor "github.com/ipfs/go-ipld-cbor"
+	"go.opencensus.io/trace"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
@@ -33,19 +30,19 @@ import (
 )
 
 type Runtime struct {
+	types.Message
+	rt0.Syscalls
+
 	ctx context.Context
 
 	vm        *VM
 	state     *state.StateTree
 	height    abi.ChainEpoch
-	cst       cbor.IpldStore
+	cst       ipldcbor.IpldStore
 	pricelist Pricelist
-	vmr.Message
 
 	gasAvailable int64
 	gasUsed      int64
-
-	runtime.Syscalls
 
 	// address that started invoke chain
 	origin      address.Address
@@ -87,11 +84,11 @@ type notFoundErr interface {
 	IsNotFound() bool
 }
 
-func (rt *Runtime) StoreGet(c cid.Cid, o statecbor.Unmarshaler) bool {
+func (rt *Runtime) StoreGet(c cid.Cid, o cbor.Unmarshaler) bool {
 	if err := rt.cst.Get(context.TODO(), c, o); err != nil {
 		var nfe notFoundErr
 		if xerrors.As(err, &nfe) && nfe.IsNotFound() {
-			if xerrors.As(err, new(cbor.SerializationError)) {
+			if xerrors.As(err, new(ipldcbor.SerializationError)) {
 				panic(aerrors.Newf(exitcode.ErrSerialization, "failed to unmarshal cbor object %s", err))
 			}
 			return false
@@ -102,10 +99,10 @@ func (rt *Runtime) StoreGet(c cid.Cid, o statecbor.Unmarshaler) bool {
 	return true
 }
 
-func (rt *Runtime) StorePut(x statecbor.Marshaler) cid.Cid {
+func (rt *Runtime) StorePut(x cbor.Marshaler) cid.Cid {
 	c, err := rt.cst.Put(context.TODO(), x)
 	if err != nil {
-		if xerrors.As(err, new(cbor.SerializationError)) {
+		if xerrors.As(err, new(ipldcbor.SerializationError)) {
 			panic(aerrors.Newf(exitcode.ErrSerialization, "failed to marshal cbor object %s", err))
 		}
 		panic(aerrors.Fatalf("failed to put cbor object: %s", err))
@@ -113,7 +110,7 @@ func (rt *Runtime) StorePut(x statecbor.Marshaler) cid.Cid {
 	return c
 }
 
-var _ vmr.Runtime = (*Runtime)(nil)
+var _ rt0.Runtime = (*Runtime)(nil)
 
 func (rt *Runtime) shimCall(f func() interface{}) (rval []byte, aerr aerrors.ActorError) {
 	defer func() {
@@ -141,7 +138,7 @@ func (rt *Runtime) shimCall(f func() interface{}) (rval []byte, aerr aerrors.Act
 		return ret, nil
 	case *abi.EmptyValue:
 		return nil, nil
-	case cbg.CBORMarshaler:
+	case cbor.Marshaler:
 		buf := new(bytes.Buffer)
 		if err := ret.MarshalCBOR(buf); err != nil {
 			return nil, aerrors.Absorb(err, 2, "failed to marshal response to cbor")
@@ -194,10 +191,6 @@ func (rt *Runtime) GetRandomnessFromBeacon(personalization crypto.DomainSeparati
 		panic(aerrors.Fatalf("could not get randomness: %s", err))
 	}
 	return res
-}
-
-func (rt *Runtime) Store() vmr.Store {
-	return rt
 }
 
 func (rt *Runtime) NewActorAddress() address.Address {
@@ -324,7 +317,7 @@ func (rt *Runtime) CurrEpoch() abi.ChainEpoch {
 	return rt.height
 }
 
-func (rt *Runtime) Send(to address.Address, method abi.MethodNum, m statecbor.Marshaler, value abi.TokenAmount, out statecbor.Er) exitcode.ExitCode {
+func (rt *Runtime) Send(to address.Address, method abi.MethodNum, m cbor.Marshaler, value abi.TokenAmount, out cbor.Er) exitcode.ExitCode {
 	if !rt.allowInternal {
 		rt.Abortf(exitcode.SysErrorIllegalActor, "runtime.Send() is currently disallowed")
 	}
@@ -348,10 +341,8 @@ func (rt *Runtime) Send(to address.Address, method abi.MethodNum, m statecbor.Ma
 	_ = rt.chargeGasSafe(gasOnActorExec)
 
 	if err := out.UnmarshalCBOR(bytes.NewReader(ret)); err != nil {
-		// REVIEW: always fatal?
-		panic(err)
+		rt.Abortf(exitcode.ErrSerialization, "failed to unmarshal return value: %s", err)
 	}
-
 	return 0
 }
 
@@ -396,7 +387,7 @@ func (rt *Runtime) internalSend(from, to address.Address, method abi.MethodNum, 
 	return ret, errSend
 }
 
-func (rt *Runtime) StateCreate(obj statecbor.Marshaler) {
+func (rt *Runtime) StateCreate(obj cbor.Marshaler) {
 	c := rt.StorePut(obj)
 	err := rt.stateCommit(EmptyObjectCid, c)
 	if err != nil {
@@ -404,7 +395,7 @@ func (rt *Runtime) StateCreate(obj statecbor.Marshaler) {
 	}
 }
 
-func (rt *Runtime) StateReadonly(obj statecbor.Unmarshaler) {
+func (rt *Runtime) StateReadonly(obj cbor.Unmarshaler) {
 	act, err := rt.state.GetActor(rt.Receiver())
 	if err != nil {
 		rt.Abortf(exitcode.SysErrorIllegalArgument, "failed to get actor for Readonly state: %s", err)
@@ -412,7 +403,7 @@ func (rt *Runtime) StateReadonly(obj statecbor.Unmarshaler) {
 	rt.StoreGet(act.Head, obj)
 }
 
-func (rt *Runtime) StateTransaction(obj statecbor.Er, f func()) {
+func (rt *Runtime) StateTransaction(obj cbor.Er, f func()) {
 	if obj == nil {
 		rt.Abortf(exitcode.SysErrorIllegalActor, "Must not pass nil to Transaction()")
 	}

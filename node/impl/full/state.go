@@ -522,7 +522,7 @@ func (a *StateAPI) StateMarketParticipants(ctx context.Context, tsk types.TipSet
 			return err
 		}
 
-		if found, err := locked.Get(adt.AddrKey(a), &lk); err != nil {
+		if found, err := locked.Get(abi.AddrKey(a), &lk); err != nil {
 			return err
 		} else if !found {
 			return fmt.Errorf("locked funds not found")
@@ -617,7 +617,7 @@ func (a *StateAPI) StateChangedActors(ctx context.Context, old cid.Cid, new cid.
 			return xerrors.Errorf("address in state tree was not valid: %w", err)
 		}
 
-		found, err := oh.Get(adt.AddrKey(addr), &ocval)
+		found, err := oh.Get(abi.AddrKey(addr), &ocval)
 		if err != nil {
 			return err
 		}
@@ -1163,7 +1163,7 @@ func (a *StateAPI) StateVerifiedClientStatus(ctx context.Context, addr address.A
 	}
 
 	var dcap verifreg.DataCap
-	if found, err := vh.Get(adt.AddrKey(aid), &dcap); err != nil {
+	if found, err := vh.Get(abi.AddrKey(aid), &dcap); err != nil {
 		return nil, err
 	} else if !found {
 		return nil, nil

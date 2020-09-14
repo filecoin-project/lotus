@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"errors"
+	"os"
 	"time"
 
 	logging "github.com/ipfs/go-log"
@@ -44,6 +45,7 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
+	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/lib/peermgr"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
@@ -66,6 +68,10 @@ import (
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
+
+// EnvJournalDisabledEvents is the environment variable through which disabled
+// journal events can be customized.
+const EnvJournalDisabledEvents = "LOTUS_JOURNAL_DISABLED_EVENTS"
 
 //nolint:deadcode,varcheck
 var log = logging.Logger("builder")
@@ -91,11 +97,16 @@ var (
 
 type invoke int
 
+// Invokes are called in the order they are defined.
 //nolint:golint
 const (
+	// InitJournal at position 0 initializes the journal global var as soon as
+	// the system starts, so that it's available for all other components.
+	InitJournalKey = invoke(iota)
+
 	// libp2p
 
-	PstoreAddSelfKeysKey = invoke(iota)
+	PstoreAddSelfKeysKey
 	StartListeningKey
 	BootstrapKey
 
@@ -123,7 +134,6 @@ const (
 	HeadMetricsKey
 	SettlePaymentChannelsKey
 	RunPeerTaggerKey
-	JournalKey
 
 	SetApiEndpointKey
 
@@ -151,11 +161,25 @@ type Settings struct {
 
 func defaults() []Option {
 	return []Option{
+		// global system journal.
+		Override(new(journal.DisabledEvents), func() journal.DisabledEvents {
+			if env, ok := os.LookupEnv(EnvJournalDisabledEvents); ok {
+				if ret, err := journal.ParseDisabledEvents(env); err == nil {
+					return ret
+				}
+			}
+			// fallback if env variable is not set, or if it failed to parse.
+			return journal.DefaultDisabledEvents
+		}),
+		Override(new(journal.Journal), modules.OpenFilesystemJournal),
+		Override(InitJournalKey, func(j journal.Journal) {
+			journal.J = j // eagerly sets the global journal through fx.Invoke.
+		}),
+
 		Override(new(helpers.MetricsCtx), context.Background),
 		Override(new(record.Validator), modules.RecordValidator),
 		Override(new(dtypes.Bootstrapper), dtypes.Bootstrapper(false)),
 		Override(new(dtypes.ShutdownChan), make(chan struct{})),
-		Override(JournalKey, modules.SetupJournal),
 
 		// Filecoin modules
 

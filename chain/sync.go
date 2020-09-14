@@ -648,7 +648,7 @@ func (syncer *Syncer) minerIsValid(ctx context.Context, maddr address.Address, b
 	}
 
 	var claim power.Claim
-	exist, err := cm.Get(adt.AddrKey(maddr), &claim)
+	exist, err := cm.Get(abi.AddrKey(maddr), &claim)
 	if err != nil {
 		return err
 	}

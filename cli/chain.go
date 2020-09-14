@@ -659,7 +659,7 @@ func handleHamtEpoch(ctx context.Context, api api.FullNode, r cid.Cid) error {
 	}
 
 	return mp.ForEach(nil, func(key string) error {
-		ik, err := adt.ParseIntKey(key)
+		ik, err := abi.ParseIntKey(key)
 		if err != nil {
 			return err
 		}

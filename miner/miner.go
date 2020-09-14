@@ -33,6 +33,11 @@ import (
 
 var log = logging.Logger("miner")
 
+// Journal event types.
+const (
+	evtTypeBlockMined = iota
+)
+
 // returns a callback reporting whether we mined a blocks in this round
 type waitFunc func(ctx context.Context, baseTime uint64) (func(bool, abi.ChainEpoch, error), abi.ChainEpoch, error)
 
@@ -68,6 +73,9 @@ func NewMiner(api api.FullNode, epp gen.WinningPoStProver, addr address.Address,
 
 		sf:                sf,
 		minedBlockHeights: arc,
+		evtTypes: [...]journal.EventType{
+			evtTypeBlockMined: journal.J.RegisterEventType("miner", "block_mined"),
+		},
 	}
 }
 
@@ -87,6 +95,8 @@ type Miner struct {
 
 	sf                *slashfilter.SlashFilter
 	minedBlockHeights *lru.ARCCache
+
+	evtTypes [1]journal.EventType
 }
 
 func (m *Miner) Address() address.Address {
@@ -220,12 +230,14 @@ func (m *Miner) mine(ctx context.Context) {
 		onDone(b != nil, h, nil)
 
 		if b != nil {
-			journal.Add("blockMined", map[string]interface{}{
-				"parents":   base.TipSet.Cids(),
-				"nulls":     base.NullRounds,
-				"epoch":     b.Header.Height,
-				"timestamp": b.Header.Timestamp,
-				"cid":       b.Header.Cid(),
+			journal.J.RecordEvent(m.evtTypes[evtTypeBlockMined], func() interface{} {
+				return map[string]interface{}{
+					"parents":   base.TipSet.Cids(),
+					"nulls":     base.NullRounds,
+					"epoch":     b.Header.Height,
+					"timestamp": b.Header.Timestamp,
+					"cid":       b.Header.Cid(),
+				}
 			})
 
 			btime := time.Unix(int64(b.Header.Timestamp), 0)
