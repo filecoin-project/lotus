@@ -1344,12 +1344,12 @@ var stateMsgCostCmd = &cli.Command{
 		}
 
 		if mgc != nil {
-			fmt.Printf("\nMessage CID: %d", mgc.Message)
+			fmt.Printf("Message CID: %s", mgc.Message)
 			fmt.Printf("\nGas Used: %d", mgc.GasUsed)
 			fmt.Printf("\nBase Fee Burn: %d", mgc.BaseFeeBurn)
 			fmt.Printf("\nOverestimation Burn: %d", mgc.OverEstimationBurn)
 			fmt.Printf("\nMiner Tip: %d", mgc.MinerTip)
-			fmt.Printf("\nRefundd: %d", mgc.Refund)
+			fmt.Printf("\nRefund: %d", mgc.Refund)
 			fmt.Printf("\nTotal Cost: %d", mgc.TotalCost)
 			fmt.Printf("\nMiner Penalty: %d", mgc.MinerPenalty)
 		} else {

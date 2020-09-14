@@ -1238,15 +1238,25 @@ func (a *StateAPI) StateMsgGasCost(ctx context.Context, inputMsg cid.Cid, tsk ty
 			return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 		}
 	} else {
-		msg, err := a.StateSearchMsg(ctx, inputMsg)
+		mlkp, err := a.StateSearchMsg(ctx, inputMsg)
 		if err != nil {
 			return nil, xerrors.Errorf("searching for msg %s: %w", inputMsg, err)
 		}
-
-		ts, err = a.Chain.GetTipSetFromKey(msg.TipSet)
-		if err != nil {
-			return nil, xerrors.Errorf("loading tipset %s: %w", msg.TipSet, err)
+		if mlkp == nil {
+			return nil, xerrors.Errorf("didn't find msg %s", inputMsg)
 		}
+
+		executionTs, err := a.Chain.GetTipSetFromKey(mlkp.TipSet)
+		if err != nil {
+			return nil, xerrors.Errorf("loading tipset %s: %w", mlkp.TipSet, err)
+		}
+
+		ts, err = a.Chain.LoadTipSet(executionTs.Parents())
+		if err != nil {
+			return nil, xerrors.Errorf("loading parent tipset %s: %w", mlkp.TipSet, err)
+		}
+
+		msg = mlkp.Message
 	}
 
 	m, r, err := a.StateManager.Replay(ctx, ts, msg)
@@ -1254,7 +1264,6 @@ func (a *StateAPI) StateMsgGasCost(ctx context.Context, inputMsg cid.Cid, tsk ty
 		return nil, err
 	}
 
-	gasSpent := big.Sub(big.NewInt(m.GasLimit), r.GasCosts.Refund)
 	return &api.MsgGasCost{
 		Message:            msg,
 		GasUsed:            big.NewInt(r.GasUsed),
@@ -1263,6 +1272,6 @@ func (a *StateAPI) StateMsgGasCost(ctx context.Context, inputMsg cid.Cid, tsk ty
 		MinerPenalty:       r.GasCosts.MinerPenalty,
 		MinerTip:           r.GasCosts.MinerTip,
 		Refund:             r.GasCosts.Refund,
-		TotalCost:          big.Mul(gasSpent, m.GasFeeCap),
+		TotalCost:          big.Sub(m.RequiredFunds(), r.GasCosts.Refund),
 	}, nil
 }

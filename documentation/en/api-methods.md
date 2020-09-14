@@ -3743,7 +3743,15 @@ Inputs:
 [
   {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  }
+  },
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
 ]
 ```
 
@@ -3753,16 +3761,13 @@ Response:
   "Message": {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
-  "Receipt": {
-    "ExitCode": 0,
-    "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
-  },
+  "GasUsed": "0",
   "BaseFeeBurn": "0",
   "OverEstimationBurn": "0",
   "MinerPenalty": "0",
   "MinerTip": "0",
-  "Refund": "0"
+  "Refund": "0",
+  "TotalCost": "0"
 }
 ```
 
