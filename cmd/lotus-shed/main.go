@@ -34,6 +34,7 @@ func main() {
 		genesisVerifyCmd,
 		mathCmd,
 		mpoolStatsCmd,
+		exportChainCmd,
 	}
 
 	app := &cli.App{

@@ -27,11 +27,7 @@ func (mp *MessagePool) republishPendingMessages() error {
 		mp.curTsLk.Unlock()
 		return xerrors.Errorf("computing basefee: %w", err)
 	}
-
-	baseFeeLowerBound := types.BigDiv(baseFee, baseFeeLowerBoundFactor)
-	if baseFeeLowerBoundFactor.LessThan(minimumBaseFee) {
-		baseFeeLowerBound = minimumBaseFee
-	}
+	baseFeeLowerBound := getBaseFeeLowerBound(baseFee)
 
 	pending := make(map[address.Address]map[uint64]*types.SignedMessage)
 	mp.lk.Lock()

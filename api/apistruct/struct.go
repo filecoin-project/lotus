@@ -95,7 +95,7 @@ type FullNodeStruct struct {
 		ChainGetNode                  func(ctx context.Context, p string) (*api.IpldObject, error)                                                       `perm:"read"`
 		ChainGetMessage               func(context.Context, cid.Cid) (*types.Message, error)                                                             `perm:"read"`
 		ChainGetPath                  func(context.Context, types.TipSetKey, types.TipSetKey) ([]*api.HeadChange, error)                                 `perm:"read"`
-		ChainExport                   func(context.Context, abi.ChainEpoch, types.TipSetKey) (<-chan []byte, error)                                      `perm:"read"`
+		ChainExport                   func(context.Context, abi.ChainEpoch, bool, types.TipSetKey) (<-chan []byte, error)                                `perm:"read"`
 
 		BeaconGetEntry func(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) `perm:"read"`
 
@@ -692,8 +692,8 @@ func (c *FullNodeStruct) ChainGetPath(ctx context.Context, from types.TipSetKey,
 	return c.Internal.ChainGetPath(ctx, from, to)
 }
 
-func (c *FullNodeStruct) ChainExport(ctx context.Context, nroots abi.ChainEpoch, tsk types.TipSetKey) (<-chan []byte, error) {
-	return c.Internal.ChainExport(ctx, nroots, tsk)
+func (c *FullNodeStruct) ChainExport(ctx context.Context, nroots abi.ChainEpoch, iom bool, tsk types.TipSetKey) (<-chan []byte, error) {
+	return c.Internal.ChainExport(ctx, nroots, iom, tsk)
 }
 
 func (c *FullNodeStruct) BeaconGetEntry(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) {
