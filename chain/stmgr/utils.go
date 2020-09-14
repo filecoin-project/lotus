@@ -120,7 +120,7 @@ func GetPowerRaw(ctx context.Context, sm *StateManager, st cid.Cid, maddr addres
 		}
 
 		var claim power.Claim
-		if _, err := cm.Get(adt.AddrKey(maddr), &claim); err != nil {
+		if _, err := cm.Get(abi.AddrKey(maddr), &claim); err != nil {
 			return power.Claim{}, power.Claim{}, err
 		}
 
@@ -312,7 +312,7 @@ func GetMinerSlashed(ctx context.Context, sm *StateManager, ts *types.TipSet, ma
 		return false, err
 	}
 
-	ok, err := claims.Get(power.AddrKey(maddr), nil)
+	ok, err := claims.Get(abi.AddrKey(maddr), nil)
 	if err != nil {
 		return false, err
 	}

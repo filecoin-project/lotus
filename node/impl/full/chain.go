@@ -300,7 +300,7 @@ func resolveOnce(bs blockstore.Blockstore) func(ctx context.Context, ds ipld.Nod
 				return nil, nil, xerrors.Errorf("parsing int64: %w", err)
 			}
 
-			ik := adt.IntKey(i)
+			ik := abi.IntKey(i)
 
 			names[0] = "@H:" + ik.Key()
 		}
@@ -311,7 +311,7 @@ func resolveOnce(bs blockstore.Blockstore) func(ctx context.Context, ds ipld.Nod
 				return nil, nil, xerrors.Errorf("parsing uint64: %w", err)
 			}
 
-			ik := adt.UIntKey(i)
+			ik := abi.UIntKey(i)
 
 			names[0] = "@H:" + ik.Key()
 		}

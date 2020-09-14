@@ -221,7 +221,7 @@ func (p *Processor) processMiners(ctx context.Context, minerTips map[types.TipSe
 			var claim power.Claim
 			// get miner claim from power actors claim map and store if found, else the miner had no claim at
 			// this tipset
-			found, err := minersClaims.Get(adt.AddrKey(act.addr), &claim)
+			found, err := minersClaims.Get(abi.AddrKey(act.addr), &claim)
 			if err != nil {
 				return nil, err
 			}
