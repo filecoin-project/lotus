@@ -26,6 +26,7 @@ import (
 	"github.com/ipfs/go-datastore/namespace"
 	"github.com/libp2p/go-libp2p-core/host"
 
+	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/lib/blockstore"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/lotus/markets/retrievaladapter"
@@ -119,6 +120,10 @@ func StorageClient(lc fx.Lifecycle, h host.Host, ibs dtypes.ClientBlockstore, md
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			c.SubscribeToEvents(marketevents.StorageClientLogger)
+
+			evtType := journal.J.RegisterEventType("markets/storage/client", "state_change")
+			c.SubscribeToEvents(marketevents.StorageClientJournaler(evtType))
+
 			return c.Start(ctx)
 		},
 		OnStop: func(context.Context) error {
@@ -140,6 +145,10 @@ func RetrievalClient(lc fx.Lifecycle, h host.Host, mds dtypes.ClientMultiDstore,
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			client.SubscribeToEvents(marketevents.RetrievalClientLogger)
+
+			evtType := journal.J.RegisterEventType("markets/retrieval/client", "state_change")
+			client.SubscribeToEvents(marketevents.RetrievalClientJournaler(evtType))
+
 			return nil
 		},
 	})

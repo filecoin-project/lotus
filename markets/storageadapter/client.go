@@ -24,7 +24,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/markets/utils"
 	"github.com/filecoin-project/lotus/node/impl/full"
@@ -43,9 +42,6 @@ type ClientNodeAdapter struct {
 	cs *store.ChainStore
 	fm *market.FundMgr
 	ev *events.Events
-
-	// index 0 is unused, as it corresponds to evtTypeDealAccepted, a provider-only event.
-	evtTypes [4]journal.EventType
 }
 
 type clientApi struct {
@@ -63,12 +59,6 @@ func NewClientNodeAdapter(state full.StateAPI, chain full.ChainAPI, mpool full.M
 		cs: cs,
 		fm: fm,
 		ev: events.NewEvents(context.TODO(), &clientApi{chain, state}),
-
-		evtTypes: [...]journal.EventType{
-			evtTypeDealSectorCommitted: journal.J.RegisterEventType("markets:storage:client", "deal_sector_committed"),
-			evtTypeDealExpired:         journal.J.RegisterEventType("markets:storage:client", "deal_expired"),
-			evtTypeDealSlashed:         journal.J.RegisterEventType("markets:storage:client", "deal_slashed"),
-		},
 	}
 }
 
@@ -233,14 +223,7 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 		return 0, err
 	}
 
-	dealID := res.IDs[dealIdx]
-	journal.J.RecordEvent(c.evtTypes[evtTypeDealAccepted], func() interface{} {
-		deal := deal // copy and strip fields we don't want to log to the journal
-		deal.ClientSignature = crypto.Signature{}
-		return ClientDealAcceptedEvt{ID: dealID, Deal: deal, Height: c.cs.GetHeaviestTipSet().Height()}
-	})
-
-	return dealID, nil
+	return res.IDs[dealIdx], nil
 }
 
 const clientOverestimation = 2
@@ -293,10 +276,6 @@ func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider 
 		}
 
 		log.Infof("Storage deal %d activated at epoch %d", dealId, sd.State.SectorStartEpoch)
-
-		journal.J.RecordEvent(c.evtTypes[evtTypeDealSectorCommitted], func() interface{} {
-			return ClientDealSectorCommittedEvt{ID: dealId, State: sd.State, Height: curH}
-		})
 
 		cb(nil)
 
