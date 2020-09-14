@@ -42,6 +42,6 @@ func TestRuntimePutErrors(t *testing.T) {
 		cst: cbor.NewCborStore(nil),
 	}
 
-	rt.Put(&NotAVeryGoodMarshaler{})
+	rt.StorePut(&NotAVeryGoodMarshaler{})
 	t.Error("expected panic")
 }
