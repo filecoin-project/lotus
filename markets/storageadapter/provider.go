@@ -108,6 +108,7 @@ func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagema
 	curTime := time.Now()
 	for time.Since(curTime) < addPieceRetryTimeout {
 		if !xerrors.Is(err, sealing.ErrTooManySectorsSealing) {
+			log.Errorf("failed to addPiece for deal %d, err: %w", deal.DealID, err)
 			break
 		}
 		select {
