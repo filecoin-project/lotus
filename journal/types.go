@@ -1,6 +1,8 @@
 package journal
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
 	logging "github.com/ipfs/go-log"
@@ -19,6 +21,25 @@ var (
 
 // DisabledEvents is the set of event types whose journaling is suppressed.
 type DisabledEvents []EventType
+
+// ParseDisabledEvents parses a string of the form: "system1:event1,system2:event2[,...]"
+// into a DisabledEvents object, returning an error if the string failed to parse.
+//
+// It sanitizes strings via strings.TrimSpace.
+func ParseDisabledEvents(s string) (DisabledEvents, error) {
+	s = strings.TrimSpace(s) // sanitize
+	evts := strings.Split(s, ",")
+	ret := make(DisabledEvents, 0, len(evts))
+	for _, evt := range evts {
+		evt = strings.TrimSpace(evt) // sanitize
+		s := strings.Split(evt, ":")
+		if len(s) != 2 {
+			return nil, fmt.Errorf("invalid event type: %s", s)
+		}
+		ret = append(ret, EventType{System: s[0], Event: s[1]})
+	}
+	return ret, nil
+}
 
 // EventType represents the signature of an event.
 type EventType struct {
