@@ -430,14 +430,14 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *ty
 				return nil, xerrors.Errorf("adding recoveries to set of sectors to prove: %w", err)
 			}
 
-			toProve, err = bitfield.SubtractBitField(toProve, postSkipped)
-			if err != nil {
-				return nil, xerrors.Errorf("toProve - postSkipped: %w", err)
-			}
-
 			good, err := s.checkSectors(ctx, toProve)
 			if err != nil {
 				return nil, xerrors.Errorf("checking sectors to skip: %w", err)
+			}
+
+			good, err = bitfield.SubtractBitField(good, postSkipped)
+			if err != nil {
+				return nil, xerrors.Errorf("toProve - postSkipped: %w", err)
 			}
 
 			skipped, err := bitfield.SubtractBitField(toProve, good)
