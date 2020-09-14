@@ -189,6 +189,12 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		state.Log = append(state.Log, l)
 	}
 
+	if m.notifee != nil {
+		defer func(before SectorInfo) {
+			m.notifee(before, *state)
+		}(*state) // take safe-ish copy of the before state (except for nested pointers)
+	}
+
 	p := fsmPlanners[state.State]
 	if p == nil {
 		return nil, 0, xerrors.Errorf("planner for state %s not found", state.State)
