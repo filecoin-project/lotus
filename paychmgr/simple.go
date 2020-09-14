@@ -312,7 +312,7 @@ func (ca *channelAccessor) currentAvailableFunds(channelID string, queuedAmt typ
 			return nil, err
 		}
 
-		laneStates, err := ca.laneState(ca.chctx, pchState, ch)
+		laneStates, err := ca.laneState(pchState, ch)
 		if err != nil {
 			return nil, err
 		}

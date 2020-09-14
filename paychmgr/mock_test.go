@@ -9,7 +9,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/crypto"
-
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -57,6 +56,7 @@ func (sm *mockStateManager) setAccountAddress(a address.Address, lookup address.
 func (sm *mockStateManager) setPaychState(a address.Address, actor *types.Actor, state paych.State) {
 	sm.lk.Lock()
 	defer sm.lk.Unlock()
+
 	sm.paychState[a] = mockPchState{actor, state}
 }
 
