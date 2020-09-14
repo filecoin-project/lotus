@@ -94,10 +94,11 @@ func PrepareBootstrapper(t *TestEnvironment) (*Bootstrapper, error) {
 	}
 
 	genesisTemplate := genesis.Template{
-		Accounts:        genesisActors,
-		Miners:          genesisMiners,
-		Timestamp:       uint64(time.Now().Unix()) - uint64(t.IntParam("genesis_timestamp_offset")),
-		VerifregRootKey: gen.DefaultVerifregRootkeyActor,
+		Accounts:         genesisActors,
+		Miners:           genesisMiners,
+		Timestamp:        uint64(time.Now().Unix()) - uint64(t.IntParam("genesis_timestamp_offset")),
+		VerifregRootKey:  gen.DefaultVerifregRootkeyActor,
+		RemainderAccount: gen.DefaultRemainderAccountActor,
 	}
 
 	// dump the genesis block

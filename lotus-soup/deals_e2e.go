@@ -151,11 +151,11 @@ func initPaymentChannel(t *testkit.TestEnvironment, ctx context.Context, cl *tes
 		return fmt.Errorf("expected an Undef channel address, got: %s", addr)
 	}
 
-	t.RecordMessage("payment channel created; msg_cid=%s", channel.ChannelMessage)
+	t.RecordMessage("payment channel created; msg_cid=%s", channel.WaitSentinel)
 	t.RecordMessage("waiting for payment channel message to appear on chain")
 
 	// wait for the channel creation message to appear on chain.
-	_, err = cl.FullApi.StateWaitMsg(ctx, channel.ChannelMessage, 2)
+	_, err = cl.FullApi.StateWaitMsg(ctx, channel.WaitSentinel, 2)
 	if err != nil {
 		return fmt.Errorf("failed while waiting for payment channel creation msg to appear on chain: %w", err)
 	}

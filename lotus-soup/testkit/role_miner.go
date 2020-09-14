@@ -23,12 +23,12 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
+	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/filecoin-project/sector-storage/stores"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	saminer "github.com/filecoin-project/specs-actors/actors/builtin/miner"
@@ -338,16 +338,14 @@ func PrepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 	}
 
 	changeMinerID := &types.Message{
-		To:       minerAddr,
-		From:     genMiner.Worker,
-		Method:   builtin.MethodsMiner.ChangePeerID,
-		Params:   minerIDEncoded,
-		Value:    types.NewInt(0),
-		GasPrice: types.NewInt(0),
-		GasLimit: 1000000,
+		To:     minerAddr,
+		From:   genMiner.Worker,
+		Method: builtin.MethodsMiner.ChangePeerID,
+		Params: minerIDEncoded,
+		Value:  types.NewInt(0),
 	}
 
-	_, err = n.FullApi.MpoolPushMessage(ctx, changeMinerID)
+	_, err = n.FullApi.MpoolPushMessage(ctx, changeMinerID, nil)
 	if err != nil {
 		n.StopFn(context.TODO())
 		return nil, err

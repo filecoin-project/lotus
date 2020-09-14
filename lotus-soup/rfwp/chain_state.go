@@ -21,10 +21,10 @@ import (
 
 	"github.com/filecoin-project/oni/lotus-soup/testkit"
 
+	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
-	sealing "github.com/filecoin-project/storage-fsm"
 
 	tstats "github.com/filecoin-project/lotus/tools/stats"
 )
