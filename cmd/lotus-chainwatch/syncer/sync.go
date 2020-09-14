@@ -5,7 +5,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	cid "github.com/ipfs/go-cid/_rsrch/cidiface"
 	"sync"
 	"time"
 
