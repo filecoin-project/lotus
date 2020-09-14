@@ -1342,7 +1342,7 @@ func (mp *MessagePool) Clear(local bool) {
 }
 
 func getBaseFeeLowerBound(baseFee, factor types.BigInt) types.BigInt {
-	baseFeeLowerBound := types.BigDiv(baseFee, baseFeeLowerBoundFactor)
+	baseFeeLowerBound := types.BigDiv(baseFee, factor)
 	if baseFeeLowerBound.LessThan(minimumBaseFee) {
 		baseFeeLowerBound = minimumBaseFee
 	}
