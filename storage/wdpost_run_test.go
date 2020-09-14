@@ -23,7 +23,6 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/go-state-types/dline"
 	tutils "github.com/filecoin-project/specs-actors/support/testing"
 )
 
@@ -159,7 +158,10 @@ func TestWDPostDoPost(t *testing.T) {
 
 	di := &dline.Info{}
 	ts := mockTipSet(t)
-	scheduler.doPost(ctx, di, ts)
+
+	scheduler.startGeneratePoST(ctx, ts, di, func(posts []miner.SubmitWindowedPoStParams, err error) {
+		scheduler.startSubmitPoST(ctx, ts, di, posts, func(err error) {})
+	})
 
 	// Read the window PoST messages
 	for i := 0; i < expectedMsgCount; i++ {

@@ -23,8 +23,6 @@ import (
 	"go.opencensus.io/trace"
 )
 
-const StartConfidence = 4 // TODO: config
-
 type WindowPoStScheduler struct {
 	api              storageMinerApi
 	feeCfg           config.MinerFeeConfig
@@ -32,15 +30,12 @@ type WindowPoStScheduler struct {
 	faultTracker     sectorstorage.FaultTracker
 	proofType        abi.RegisteredPoStProof
 	partitionSectors uint64
+	state            *stateMachine
 
 	actor  address.Address
 	worker address.Address
 
-	cur *types.TipSet
-
-	// if a post is in progress, this indicates for which ElectionPeriodStart
-	activeDeadline *dline.Info
-	abort          context.CancelFunc
+	currentHighest *types.TipSet
 
 	evtTypes [4]journal.EventType
 
@@ -86,8 +81,16 @@ func deadlineEquals(a, b *dline.Info) bool {
 	return a.PeriodStart == b.PeriodStart && a.Index == b.Index && a.Challenge == b.Challenge
 }
 
+type stateMachineAPIImpl struct {
+	storageMinerApi
+	*WindowPoStScheduler
+}
+
 func (s *WindowPoStScheduler) Run(ctx context.Context) {
-	defer s.abortActivePoSt()
+	// Initialize state machine
+	smImpl := &stateMachineAPIImpl{storageMinerApi: s.api, WindowPoStScheduler: s}
+	s.state = newStateMachine(smImpl, s.actor, nil)
+	defer s.state.Shutdown()
 
 	var notifs <-chan []*api.HeadChange
 	var err error
@@ -126,7 +129,7 @@ func (s *WindowPoStScheduler) Run(ctx context.Context) {
 					continue
 				}
 
-				if err := s.update(ctx, chg.Val); err != nil {
+				if err := s.update(ctx, nil, chg.Val); err != nil {
 					log.Errorf("%+v", err)
 				}
 
@@ -136,7 +139,7 @@ func (s *WindowPoStScheduler) Run(ctx context.Context) {
 
 			ctx, span := trace.StartSpan(ctx, "WindowPoStScheduler.headChange")
 
-			var lowest, highest *types.TipSet = s.cur, nil
+			var lowest, highest *types.TipSet = nil, nil
 
 			for _, change := range changes {
 				if change.Val == nil {
@@ -150,11 +153,8 @@ func (s *WindowPoStScheduler) Run(ctx context.Context) {
 				}
 			}
 
-			if err := s.revert(ctx, lowest); err != nil {
-				log.Error("handling head reverts in window post sched: %+v", err)
-			}
-			if err := s.update(ctx, highest); err != nil {
-				log.Error("handling head updates in window post sched: %+v", err)
+			if err := s.update(ctx, lowest, highest); err != nil {
+				log.Errorf("handling head updates in window post sched: %+v", err)
 			}
 
 			span.End()
@@ -164,95 +164,62 @@ func (s *WindowPoStScheduler) Run(ctx context.Context) {
 	}
 }
 
-func (s *WindowPoStScheduler) revert(ctx context.Context, newLowest *types.TipSet) error {
-	if s.cur == newLowest {
-		return nil
-	}
-	s.cur = newLowest
-
-	newDeadline, err := s.api.StateMinerProvingDeadline(ctx, s.actor, newLowest.Key())
-	if err != nil {
-		return err
+func (s *WindowPoStScheduler) update(ctx context.Context, newLowest, newHighest *types.TipSet) error {
+	if newHighest == nil {
+		return xerrors.Errorf("no new tipset in window post WindowPoStScheduler.update")
 	}
 
-	if !deadlineEquals(s.activeDeadline, newDeadline) {
-		s.abortActivePoSt()
+	// Check if the chain reverted to a previous proving deadline period as
+	// part of a reorg
+	reorged := false
+	if newLowest != nil {
+		// Get the current deadline period
+		currentDeadline, err := s.api.StateMinerProvingDeadline(ctx, s.actor, s.currentHighest.Key())
+		if err != nil {
+			return err
+		}
+
+		// Get the lowest deadline period reached as part of the reorg
+		lowestDeadline, err := s.api.StateMinerProvingDeadline(ctx, s.actor, newLowest.Key())
+		if err != nil {
+			return err
+		}
+
+		// If the reorg deadline is lower than the current deadline, we need to
+		// resubmit PoST
+		reorged = !deadlineEquals(currentDeadline, lowestDeadline)
 	}
 
-	return nil
+	s.currentHighest = newHighest
+
+	return s.state.HeadChange(ctx, newHighest, reorged)
 }
 
-func (s *WindowPoStScheduler) update(ctx context.Context, new *types.TipSet) error {
-	if new == nil {
-		return xerrors.Errorf("no new tipset in window post sched update")
-	}
-
-	di, err := s.api.StateMinerProvingDeadline(ctx, s.actor, new.Key())
-	if err != nil {
-		return err
-	}
-
-	if deadlineEquals(s.activeDeadline, di) {
-		return nil // already working on this deadline
-	}
-
-	if !di.PeriodStarted() {
-		return nil // not proving anything yet
-	}
-
-	s.abortActivePoSt()
-
-	// TODO: wait for di.Challenge here, will give us ~10min more to compute windowpost
-	//  (Need to get correct deadline above, which is tricky)
-
-	if di.Open+StartConfidence >= new.Height() {
-		log.Info("not starting window post yet, waiting for startconfidence", di.Open, di.Open+StartConfidence, new.Height())
-		return nil
-	}
-
-	/*s.failLk.Lock()
-	if s.failed > 0 {
-		s.failed = 0
-		s.activeEPS = 0
-	}
-	s.failLk.Unlock()*/
-	log.Infof("at %d, do window post for P %d, dd %d", new.Height(), di.PeriodStart, di.Index)
-
-	s.doPost(ctx, di, new)
-
-	return nil
-}
-
-func (s *WindowPoStScheduler) abortActivePoSt() {
-	if s.activeDeadline == nil {
-		return // noop
-	}
-
-	if s.abort != nil {
-		s.abort()
-
-		journal.J.RecordEvent(s.evtTypes[evtTypeWdPoStScheduler], func() interface{} {
-			return WdPoStSchedulerEvt{
-				evtCommon: s.getEvtCommon(nil),
-				State:     SchedulerStateAborted,
-			}
-		})
-
-		log.Warnf("Aborting window post (Deadline: %+v)", s.activeDeadline)
-	}
-
-	s.activeDeadline = nil
-	s.abort = nil
+// onAbort is called when generating proofs or submitting proofs is aborted
+func (s *WindowPoStScheduler) onAbort(ts *types.TipSet, deadline *dline.Info, state PoSTStatus) {
+	journal.J.RecordEvent(s.evtTypes[evtTypeWdPoStScheduler], func() interface{} {
+		c := evtCommon{}
+		if ts != nil {
+			c.Deadline = deadline
+			c.Height = ts.Height()
+			c.TipSet = ts.Cids()
+		}
+		return WdPoStSchedulerEvt{
+			evtCommon: c,
+			State:     SchedulerStateAborted,
+		}
+	})
 }
 
 // getEvtCommon populates and returns common attributes from state, for a
 // WdPoSt journal event.
 func (s *WindowPoStScheduler) getEvtCommon(err error) evtCommon {
 	c := evtCommon{Error: err}
-	if s.cur != nil {
-		c.Deadline = s.activeDeadline
-		c.Height = s.cur.Height()
-		c.TipSet = s.cur.Cids()
+	currentTS, currentDeadline := s.state.CurrentTSDL()
+	if currentTS != nil {
+		c.Deadline = currentDeadline
+		c.Height = s.state.currentTS.Height()
+		c.TipSet = s.state.currentTS.Cids()
 	}
 	return c
 }
