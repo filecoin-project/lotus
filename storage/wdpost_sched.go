@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-state-types/dline"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"golang.org/x/xerrors"
 
@@ -181,22 +182,28 @@ func (s *WindowPoStScheduler) update(ctx context.Context, new *types.TipSet) err
 	if err != nil {
 		return err
 	}
+	if di.Index == miner.WPoStPeriodDeadlines-1 {
+		di = miner.NewDeadlineInfo(di.NextPeriodStart(), 0, di.CurrentEpoch)
+	} else {
+		di = miner.NewDeadlineInfo(di.PeriodStart, di.Index+1, di.Open)
+	}
 
 	if deadlineEquals(s.activeDeadline, di) {
 		return nil // already working on this deadline
 	}
 
-	if !di.PeriodStarted() {
-		return nil // not proving anything yet
-	}
+	// when next deadline in next period, it will be failed here
+	// if !di.PeriodStarted() {
+	// 	return nil // not proving anything yet
+	// }
 
 	s.abortActivePoSt()
 
 	// TODO: wait for di.Challenge here, will give us ~10min more to compute windowpost
 	//  (Need to get correct deadline above, which is tricky)
 
-	if di.Open+StartConfidence >= new.Height() {
-		log.Info("not starting windowPost yet, waiting for startconfidence", di.Open, di.Open+StartConfidence, new.Height())
+	if di.Challenge+StartConfidence >= new.Height() {
+		log.Info("not starting windowPost yet, waiting for startconfidence", di.Challenge, di.Challenge+StartConfidence, new.Height())
 		return nil
 	}
 

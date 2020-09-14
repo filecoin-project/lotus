@@ -445,8 +445,27 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *ty
 
 	params.Proofs = postOut
 
+	// waitting head for committing
+	var head *types.TipSet
+	ticker := time.NewTicker(time.Duration(5) * time.Second)
+wait:
+	for {
+		select {
+		case <-ticker.C:
+			head, err = s.api.ChainHead(ctx)
+			if err != nil {
+				return nil, xerrors.Errorf("failed to get chain randomness for windowPost (ts=%d; deadline=%d): %w", ts.Height(), di, err)
+			}
+			if head.Height() > di.Open+StartConfidence {
+				break wait
+			}
+		case <-ctx.Done():
+			return nil, nil
+		}
+	}
+
 	commEpoch := di.Open
-	commRand, err := s.api.ChainGetRandomnessFromTickets(ctx, ts.Key(), crypto.DomainSeparationTag_PoStChainCommit, commEpoch, nil)
+	commRand, err := s.api.ChainGetRandomnessFromTickets(ctx, head.Key(), crypto.DomainSeparationTag_PoStChainCommit, commEpoch, nil)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get chain randomness for windowPost (ts=%d; deadline=%d): %w", ts.Height(), di, err)
 	}
