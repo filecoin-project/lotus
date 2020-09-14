@@ -401,6 +401,7 @@ workflows:
   ci:
     jobs:
       - lint-all
+          concurrency: 16   # expend all docker 2xlarge CPUs.
       - mod-tidy-check
       - gofmt
       - cbor-gen-check
