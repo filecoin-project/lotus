@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/hashicorp/go-multierror"
 	lru "github.com/hashicorp/golang-lru"
@@ -158,6 +159,22 @@ func newMsgSet(nonce uint64) *msgSet {
 func ComputeMinRBF(curPrem abi.TokenAmount) abi.TokenAmount {
 	minPrice := types.BigAdd(curPrem, types.BigDiv(types.BigMul(curPrem, rbfNumBig), rbfDenomBig))
 	return types.BigAdd(minPrice, types.NewInt(1))
+}
+
+func CapGasFee(msg *types.Message, maxFee abi.TokenAmount) {
+	if maxFee.Equals(big.Zero()) {
+		maxFee = types.NewInt(build.FilecoinPrecision / 10)
+	}
+
+	gl := types.NewInt(uint64(msg.GasLimit))
+	totalFee := types.BigMul(msg.GasFeeCap, gl)
+
+	if totalFee.LessThanEqual(maxFee) {
+		return
+	}
+
+	msg.GasFeeCap = big.Div(maxFee, gl)
+	msg.GasPremium = big.Min(msg.GasFeeCap, msg.GasPremium) // cap premium at FeeCap
 }
 
 func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool, strict bool) (bool, error) {
@@ -399,7 +416,7 @@ func (mp *MessagePool) verifyMsgBeforeAdd(m *types.SignedMessage, curTs *types.T
 	publish := local
 	if strictBaseFeeValidation && len(curTs.Blocks()) > 0 {
 		baseFee := curTs.Blocks()[0].ParentBaseFee
-		baseFeeLowerBound := types.BigDiv(baseFee, baseFeeLowerBoundFactor)
+		baseFeeLowerBound := getBaseFeeLowerBound(baseFee)
 		if m.Message.GasFeeCap.LessThan(baseFeeLowerBound) {
 			if local {
 				log.Warnf("local message will not be immediately published because GasFeeCap doesn't meet the lower bound for inclusion in the next 20 blocks (GasFeeCap: %s, baseFeeLowerBound: %s)",
@@ -590,7 +607,7 @@ func (mp *MessagePool) addTs(m *types.SignedMessage, curTs *types.TipSet, local 
 		return false, err
 	}
 
-	return publish, mp.addLocked(m, true)
+	return publish, mp.addLocked(m, !local)
 }
 
 func (mp *MessagePool) addLoaded(m *types.SignedMessage) error {
@@ -812,7 +829,7 @@ func (mp *MessagePool) PushWithNonce(ctx context.Context, addr address.Address, 
 		return nil, err
 	}
 
-	if err := mp.addLocked(msg, true); err != nil {
+	if err := mp.addLocked(msg, false); err != nil {
 		return nil, xerrors.Errorf("add locked failed: %w", err)
 	}
 	if err := mp.addLocal(msg, msgb); err != nil {
@@ -1281,4 +1298,13 @@ func (mp *MessagePool) Clear(local bool) {
 		}
 		delete(mp.pending, a)
 	}
+}
+
+func getBaseFeeLowerBound(baseFee types.BigInt) types.BigInt {
+	baseFeeLowerBound := types.BigDiv(baseFee, baseFeeLowerBoundFactor)
+	if baseFeeLowerBound.LessThan(minimumBaseFee) {
+		baseFeeLowerBound = minimumBaseFee
+	}
+
+	return baseFeeLowerBound
 }

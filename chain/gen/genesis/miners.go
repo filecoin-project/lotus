@@ -6,6 +6,10 @@ import (
 	"fmt"
 	"math/rand"
 
+	"github.com/filecoin-project/lotus/build"
+
+	"github.com/filecoin-project/go-state-types/network"
+
 	"github.com/filecoin-project/lotus/chain/state"
 
 	"github.com/ipfs/go-cid"

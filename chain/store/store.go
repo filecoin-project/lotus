@@ -473,7 +473,7 @@ func (cs *ChainStore) IsAncestorOf(a, b *types.TipSet) (bool, error) {
 
 	cur := b
 	for !a.Equals(cur) && cur.Height() > a.Height() {
-		next, err := cs.LoadTipSet(b.Parents())
+		next, err := cs.LoadTipSet(cur.Parents())
 		if err != nil {
 			return false, err
 		}
@@ -1179,7 +1179,7 @@ func recurseLinks(bs bstore.Blockstore, walked *cid.Set, root cid.Cid, in []cid.
 	return in, rerr
 }
 
-func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRoots abi.ChainEpoch, w io.Writer) error {
+func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRoots abi.ChainEpoch, skipOldMsgs bool, w io.Writer) error {
 	if ts == nil {
 		ts = cs.GetHeaviestTipSet()
 	}
@@ -1217,9 +1217,13 @@ func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRo
 			return xerrors.Errorf("unmarshaling block header (cid=%s): %w", blk, err)
 		}
 
-		cids, err := recurseLinks(cs.bs, walked, b.Messages, []cid.Cid{b.Messages})
-		if err != nil {
-			return xerrors.Errorf("recursing messages failed: %w", err)
+		var cids []cid.Cid
+		if !skipOldMsgs || b.Height > ts.Height()-inclRecentRoots {
+			mcids, err := recurseLinks(cs.bs, walked, b.Messages, []cid.Cid{b.Messages})
+			if err != nil {
+				return xerrors.Errorf("recursing messages failed: %w", err)
+			}
+			cids = mcids
 		}
 
 		if b.Height > 0 {

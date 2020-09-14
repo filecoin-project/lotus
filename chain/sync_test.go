@@ -333,6 +333,36 @@ func (tu *syncTestUtil) compareSourceState(with int) {
 	}
 }
 
+func (tu *syncTestUtil) assertBad(node int, ts *types.TipSet) {
+	for _, blk := range ts.Cids() {
+		rsn, err := tu.nds[node].SyncCheckBad(context.TODO(), blk)
+		require.NoError(tu.t, err)
+		require.True(tu.t, len(rsn) != 0)
+	}
+}
+
+func (tu *syncTestUtil) getHead(node int) *types.TipSet {
+	ts, err := tu.nds[node].ChainHead(context.TODO())
+	require.NoError(tu.t, err)
+	return ts
+}
+
+func (tu *syncTestUtil) checkpointTs(node int, tsk types.TipSetKey) {
+	require.NoError(tu.t, tu.nds[node].SyncCheckpoint(context.TODO(), tsk))
+}
+
+func (tu *syncTestUtil) waitUntilNodeHasTs(node int, tsk types.TipSetKey) {
+	for {
+		_, err := tu.nds[node].ChainGetTipSet(context.TODO(), tsk)
+		if err != nil {
+			break
+		}
+	}
+
+	// Time to allow for syncing and validation
+	time.Sleep(2 * time.Second)
+}
+
 func (tu *syncTestUtil) waitUntilSync(from, to int) {
 	target, err := tu.nds[from].ChainHead(tu.ctx)
 	if err != nil {
@@ -677,4 +707,88 @@ func TestSyncInputs(t *testing.T) {
 	if err == nil {
 		t.Fatal("should error on block with nil election proof")
 	}
+}
+
+func TestSyncCheckpointHead(t *testing.T) {
+	H := 10
+	tu := prepSyncTest(t, H)
+
+	p1 := tu.addClientNode()
+	p2 := tu.addClientNode()
+
+	fmt.Println("GENESIS: ", tu.g.Genesis().Cid())
+	tu.loadChainToNode(p1)
+	tu.loadChainToNode(p2)
+
+	base := tu.g.CurTipset
+	fmt.Println("Mining base: ", base.TipSet().Cids(), base.TipSet().Height())
+
+	// The two nodes fork at this point into 'a' and 'b'
+	a1 := tu.mineOnBlock(base, p1, []int{0}, true, false, nil)
+	a := tu.mineOnBlock(a1, p1, []int{0}, true, false, nil)
+	a = tu.mineOnBlock(a, p1, []int{0}, true, false, nil)
+
+	tu.waitUntilSyncTarget(p1, a.TipSet())
+	tu.checkpointTs(p1, a.TipSet().Key())
+
+	require.NoError(t, tu.g.ResyncBankerNonce(a1.TipSet()))
+	// chain B will now be heaviest
+	b := tu.mineOnBlock(base, p2, []int{1}, true, false, nil)
+	b = tu.mineOnBlock(b, p2, []int{1}, true, false, nil)
+	b = tu.mineOnBlock(b, p2, []int{1}, true, false, nil)
+	b = tu.mineOnBlock(b, p2, []int{1}, true, false, nil)
+
+	fmt.Println("A: ", a.Cids(), a.TipSet().Height())
+	fmt.Println("B: ", b.Cids(), b.TipSet().Height())
+
+	// Now for the fun part!! p1 should mark p2's head as BAD.
+
+	require.NoError(t, tu.mn.LinkAll())
+	tu.connect(p1, p2)
+	tu.waitUntilNodeHasTs(p1, b.TipSet().Key())
+	p1Head := tu.getHead(p1)
+	require.Equal(tu.t, p1Head, a.TipSet())
+	tu.assertBad(p1, b.TipSet())
+}
+
+func TestSyncCheckpointEarlierThanHead(t *testing.T) {
+	H := 10
+	tu := prepSyncTest(t, H)
+
+	p1 := tu.addClientNode()
+	p2 := tu.addClientNode()
+
+	fmt.Println("GENESIS: ", tu.g.Genesis().Cid())
+	tu.loadChainToNode(p1)
+	tu.loadChainToNode(p2)
+
+	base := tu.g.CurTipset
+	fmt.Println("Mining base: ", base.TipSet().Cids(), base.TipSet().Height())
+
+	// The two nodes fork at this point into 'a' and 'b'
+	a1 := tu.mineOnBlock(base, p1, []int{0}, true, false, nil)
+	a := tu.mineOnBlock(a1, p1, []int{0}, true, false, nil)
+	a = tu.mineOnBlock(a, p1, []int{0}, true, false, nil)
+
+	tu.waitUntilSyncTarget(p1, a.TipSet())
+	tu.checkpointTs(p1, a1.TipSet().Key())
+
+	require.NoError(t, tu.g.ResyncBankerNonce(a1.TipSet()))
+	// chain B will now be heaviest
+	b := tu.mineOnBlock(base, p2, []int{1}, true, false, nil)
+	b = tu.mineOnBlock(b, p2, []int{1}, true, false, nil)
+	b = tu.mineOnBlock(b, p2, []int{1}, true, false, nil)
+	b = tu.mineOnBlock(b, p2, []int{1}, true, false, nil)
+
+	fmt.Println("A: ", a.Cids(), a.TipSet().Height())
+	fmt.Println("B: ", b.Cids(), b.TipSet().Height())
+
+	// Now for the fun part!! p1 should mark p2's head as BAD.
+
+	require.NoError(t, tu.mn.LinkAll())
+	tu.connect(p1, p2)
+	tu.waitUntilNodeHasTs(p1, b.TipSet().Key())
+	p1Head := tu.getHead(p1)
+	require.Equal(tu.t, p1Head, a.TipSet())
+	tu.assertBad(p1, b.TipSet())
 }

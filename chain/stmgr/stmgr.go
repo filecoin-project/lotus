@@ -1131,13 +1131,17 @@ func (sm *StateManager) GetCirculatingSupply(ctx context.Context, height abi.Cha
 func (sm *StateManager) GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version {
 	// TODO: move hard fork epoch checks to a schedule defined in build/
 
-	if build.UpgradeBreezeHeight == 0 {
-		return network.Version1
+	if build.UseNewestNetwork() {
+		return build.NewestNetworkVersion
 	}
 
 	if height <= build.UpgradeBreezeHeight {
 		return network.Version0
 	}
 
-	return network.Version1
+	if height <= build.UpgradeSmokeHeight {
+		return network.Version1
+	}
+
+	return build.NewestNetworkVersion
 }

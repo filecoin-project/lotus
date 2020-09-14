@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/filecoin-project/go-state-types/dline"
+
 	cid "github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -53,7 +55,7 @@ type StateAPI struct {
 	ProofVerifier ffiwrapper.Verifier
 	StateManager  *stmgr.StateManager
 	Chain         *store.ChainStore
-	Beacon        beacon.RandomBeacon
+	Beacon        beacon.Schedule
 }
 
 func (a *StateAPI) StateNetworkName(ctx context.Context) (dtypes.NetworkName, error) {
@@ -158,7 +160,7 @@ func (a *StateAPI) StateMinerPartitions(ctx context.Context, m address.Address, 
 						}))))))
 }
 
-func (a *StateAPI) StateMinerProvingDeadline(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*miner.DeadlineInfo, error) {
+func (a *StateAPI) StateMinerProvingDeadline(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*dline.Info, error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -897,6 +899,48 @@ func (a *StateAPI) MsigGetAvailableBalance(ctx context.Context, addr address.Add
 	minBalance := types.BigDiv(st.InitialBalance, types.NewInt(uint64(st.UnlockDuration)))
 	minBalance = types.BigMul(minBalance, types.NewInt(uint64(offset)))
 	return types.BigSub(act.Balance, minBalance), nil
+}
+
+func (a *StateAPI) MsigGetVested(ctx context.Context, addr address.Address, start types.TipSetKey, end types.TipSetKey) (types.BigInt, error) {
+	startTs, err := a.Chain.GetTipSetFromKey(start)
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("loading start tipset %s: %w", start, err)
+	}
+
+	endTs, err := a.Chain.GetTipSetFromKey(end)
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("loading end tipset %s: %w", end, err)
+	}
+
+	if startTs.Height() > endTs.Height() {
+		return types.EmptyInt, xerrors.Errorf("start tipset %d is after end tipset %d", startTs.Height(), endTs.Height())
+	} else if startTs.Height() == endTs.Height() {
+		return big.Zero(), nil
+	}
+
+	var mst samsig.State
+	act, err := a.StateManager.LoadActorState(ctx, addr, &mst, endTs)
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("failed to load multisig actor state at end epoch: %w", err)
+	}
+
+	if act.Code != builtin.MultisigActorCodeID {
+		return types.EmptyInt, fmt.Errorf("given actor was not a multisig")
+	}
+
+	if mst.UnlockDuration == 0 ||
+		mst.InitialBalance.IsZero() ||
+		mst.StartEpoch+mst.UnlockDuration <= startTs.Height() ||
+		mst.StartEpoch >= endTs.Height() {
+		return big.Zero(), nil
+	}
+
+	startLk := mst.InitialBalance
+	if startTs.Height() > mst.StartEpoch {
+		startLk = mst.AmountLocked(startTs.Height() - mst.StartEpoch)
+	}
+
+	return big.Sub(startLk, mst.AmountLocked(endTs.Height()-mst.StartEpoch)), nil
 }
 
 var initialPledgeNum = types.NewInt(110)

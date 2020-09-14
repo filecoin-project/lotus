@@ -117,7 +117,8 @@ type FullNode interface {
 	// The exported chain data includes the header chain from the given tipset
 	// back to genesis, the entire genesis state, and the most recent 'nroots'
 	// state trees.
-	ChainExport(ctx context.Context, nroots abi.ChainEpoch, tsk types.TipSetKey) (<-chan []byte, error)
+	// If oldmsgskip is set, messages from before the requested roots are also not included.
+	ChainExport(ctx context.Context, nroots abi.ChainEpoch, oldmsgskip bool, tsk types.TipSetKey) (<-chan []byte, error)
 
 	// MethodGroup: Beacon
 	// The Beacon method group contains methods for interacting with the random beacon (DRAND)
@@ -158,9 +159,15 @@ type FullNode interface {
 	// yet synced block headers.
 	SyncIncomingBlocks(ctx context.Context) (<-chan *types.BlockHeader, error)
 
+	// SyncCheckpoint marks a blocks as checkpointed, meaning that it won't ever fork away from it.
+	SyncCheckpoint(ctx context.Context, tsk types.TipSetKey) error
+
 	// SyncMarkBad marks a blocks as bad, meaning that it won't ever by synced.
 	// Use with extreme caution.
 	SyncMarkBad(ctx context.Context, bcid cid.Cid) error
+
+	// SyncUnmarkBad unmarks a blocks as bad, making it possible to be validated and synced again.
+	SyncUnmarkBad(ctx context.Context, bcid cid.Cid) error
 
 	// SyncCheckBad checks if a block was marked as bad, and if it was, returns
 	// the reason.
@@ -388,6 +395,9 @@ type FullNode interface {
 
 	// MsigGetAvailableBalance returns the portion of a multisig's balance that can be withdrawn or spent
 	MsigGetAvailableBalance(context.Context, address.Address, types.TipSetKey) (types.BigInt, error)
+	// MsigGetVested returns the amount of FIL that vested in a multisig in a certain period.
+	// It takes the following params: <multisig address>, <start epoch>, <end epoch>
+	MsigGetVested(context.Context, address.Address, types.TipSetKey, types.TipSetKey) (types.BigInt, error)
 	// MsigCreate creates a multisig wallet
 	// It takes the following params: <required number of senders>, <approving addresses>, <unlock duration>
 	//<initial balance>, <sender address of the create msg>, <gas price>
@@ -404,17 +414,29 @@ type FullNode interface {
 	// It takes the following params: <multisig address>, <proposed message ID>, <recipient address>, <value to transfer>,
 	// <sender address of the cancel msg>, <method to call in the proposed message>, <params to include in the proposed message>
 	MsigCancel(context.Context, address.Address, uint64, address.Address, types.BigInt, address.Address, uint64, []byte) (cid.Cid, error)
+	// MsigAddPropose proposes adding a signer in the multisig
+	// It takes the following params: <multisig address>, <sender address of the propose msg>,
+	// <new signer>, <whether the number of required signers should be increased>
+	MsigAddPropose(context.Context, address.Address, address.Address, address.Address, bool) (cid.Cid, error)
+	// MsigAddApprove approves a previously proposed AddSigner message
+	// It takes the following params: <multisig address>, <sender address of the approve msg>, <proposed message ID>,
+	// <proposer address>, <new signer>, <whether the number of required signers should be increased>
+	MsigAddApprove(context.Context, address.Address, address.Address, uint64, address.Address, address.Address, bool) (cid.Cid, error)
+	// MsigAddCancel cancels a previously proposed AddSigner message
+	// It takes the following params: <multisig address>, <sender address of the cancel msg>, <proposed message ID>,
+	// <new signer>, <whether the number of required signers should be increased>
+	MsigAddCancel(context.Context, address.Address, address.Address, uint64, address.Address, bool) (cid.Cid, error)
 	// MsigSwapPropose proposes swapping 2 signers in the multisig
 	// It takes the following params: <multisig address>, <sender address of the propose msg>,
-	// <old signer> <new signer>
+	// <old signer>, <new signer>
 	MsigSwapPropose(context.Context, address.Address, address.Address, address.Address, address.Address) (cid.Cid, error)
 	// MsigSwapApprove approves a previously proposed SwapSigner
 	// It takes the following params: <multisig address>, <sender address of the approve msg>, <proposed message ID>,
-	// <proposer address>, <old signer> <new signer>
+	// <proposer address>, <old signer>, <new signer>
 	MsigSwapApprove(context.Context, address.Address, address.Address, uint64, address.Address, address.Address, address.Address) (cid.Cid, error)
 	// MsigSwapCancel cancels a previously proposed SwapSigner message
 	// It takes the following params: <multisig address>, <sender address of the cancel msg>, <proposed message ID>,
-	// <old signer> <new signer>
+	// <old signer>, <new signer>
 	MsigSwapCancel(context.Context, address.Address, address.Address, uint64, address.Address, address.Address) (cid.Cid, error)
 
 	MarketEnsureAvailable(context.Context, address.Address, address.Address, types.BigInt) (cid.Cid, error)

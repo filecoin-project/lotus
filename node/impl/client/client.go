@@ -6,6 +6,8 @@ import (
 	"io"
 	"os"
 
+	"github.com/filecoin-project/go-state-types/dline"
+
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-state-types/big"
 	"golang.org/x/xerrors"
@@ -80,7 +82,7 @@ type API struct {
 	Host              host.Host
 }
 
-func calcDealExpiration(minDuration uint64, md *miner.DeadlineInfo, startEpoch abi.ChainEpoch) abi.ChainEpoch {
+func calcDealExpiration(minDuration uint64, md *dline.Info, startEpoch abi.ChainEpoch) abi.ChainEpoch {
 	// Make sure we give some time for the miner to seal
 	minExp := startEpoch + abi.ChainEpoch(minDuration)
 

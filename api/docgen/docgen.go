@@ -105,7 +105,7 @@ func init() {
 	addExample(network.Connected)
 	addExample(dtypes.NetworkName("lotus"))
 	addExample(api.SyncStateStage(1))
-	addExample(build.APIVersion)
+	addExample(build.FullAPIVersion)
 	addExample(api.PCHInbound)
 	addExample(time.Minute)
 	addExample(datatransfer.TransferID(3))

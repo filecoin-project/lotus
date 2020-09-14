@@ -231,11 +231,11 @@ jobs:
       - run:
           name: install statediff globally
           command: |
+            ## statediff is optional; we succeed even if compilation fails.
             mkdir -p /tmp/statediff
             git clone https://github.com/filecoin-project/statediff.git /tmp/statediff
             cd /tmp/statediff
-            go generate ./...
-            go install ./cmd/statediff
+            go install ./cmd/statediff || exit 0
       - run:
           name: go test
           environment:
@@ -400,7 +400,8 @@ workflows:
   version: 2.1
   ci:
     jobs:
-      - lint-all
+      - lint-all:
+          concurrency: "16"   # expend all docker 2xlarge CPUs.
       - mod-tidy-check
       - gofmt
       - cbor-gen-check

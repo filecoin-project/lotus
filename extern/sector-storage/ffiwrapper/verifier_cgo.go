@@ -40,8 +40,21 @@ func (sb *Sealer) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, s
 	}
 	defer done()
 
-	proof, err := ffi.GenerateWindowPoSt(minerID, privsectors, randomness)
-	return proof, skipped, err
+	if len(skipped) > 0 {
+		return nil, skipped, xerrors.Errorf("pubSectorToPriv skipped some sectors")
+	}
+
+	proof, faulty, err := ffi.GenerateWindowPoSt(minerID, privsectors, randomness)
+
+	var faultyIDs []abi.SectorID
+	for _, f := range faulty {
+		faultyIDs = append(faultyIDs, abi.SectorID{
+			Miner:  minerID,
+			Number: f,
+		})
+	}
+
+	return proof, faultyIDs, err
 }
 
 func (sb *Sealer) pubSectorToPriv(ctx context.Context, mid abi.ActorID, sectorInfo []proof.SectorInfo, faults []abi.SectorNumber, rpt func(abi.RegisteredSealProof) (abi.RegisteredPoStProof, error)) (ffi.SortedPrivateSectorInfo, []abi.SectorID, func(), error) {
