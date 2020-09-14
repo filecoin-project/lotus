@@ -32,7 +32,7 @@ func AsMap(store Store, root cid.Cid, version network.Version) (Map, error) {
 func NewMap(store Store, version network.Version) (Map, error) {
 	switch builtin.VersionForNetwork(version) {
 	case builtin.Version0:
-		return v0adt.MakeEmptyMap(store)
+		return v0adt.MakeEmptyMap(store), nil
 	}
 	return nil, xerrors.Errorf("unknown network version: %d", version)
 }
@@ -45,7 +45,7 @@ type Array interface {
 	Delete(idx uint64) error
 	Length() uint64
 
-	ForEach(v cbor.Unmarshaler, fn func(idx int) error) error
+	ForEach(v cbor.Unmarshaler, fn func(idx int64) error) error
 }
 
 func AsArray(store Store, root cid.Cid, version network.Version) (Array, error) {

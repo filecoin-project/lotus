@@ -1,6 +1,7 @@
 package miner
 
 import (
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -51,6 +52,9 @@ func (s *v0State) NumDeadlines() (uint64, error) {
 
 func (s *v0State) Info() (MinerInfo, error) {
 	info, err := s.State.GetInfo(s.store)
+	if err != nil {
+		return MinerInfo{}, err
+	}
 
 	var pid *peer.ID
 	if peerID, err := peer.IDFromBytes(info.PeerId); err == nil {
@@ -77,7 +81,7 @@ func (s *v0State) Info() (MinerInfo, error) {
 		mi.WorkerChangeEpoch = info.PendingWorkerKey.EffectiveAt
 	}
 
-	return mi
+	return mi, nil
 }
 
 func (d *v0Deadline) LoadPartition(idx uint64) (Partition, error) {

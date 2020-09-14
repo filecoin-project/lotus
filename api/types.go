@@ -4,13 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/ipfs/go-cid"
-
-	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -111,4 +108,4 @@ func NewDataTransferChannel(hostID peer.ID, channelState datatransfer.ChannelSta
 	return channel
 }
 
-type 
+// type TODO (stebalien): this was here, why was this here?

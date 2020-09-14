@@ -4,12 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/init"
-	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-
-	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
@@ -17,6 +11,12 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
+	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+
+	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -118,9 +118,13 @@ func (ss *stateSnaps) deleteActor(addr address.Address) {
 }
 
 func NewStateTree(cst cbor.IpldStore, version network.Version) (*StateTree, error) {
+	root, err := adt.NewMap(adt.WrapStore(context.TODO(), cst), version)
+	if err != nil {
+		return nil, err
+	}
 
 	return &StateTree{
-		root:  adt.NewMap(adt.WrapStore(context.TODO(), cst), version),
+		root:  root,
 		Store: cst,
 		snaps: newStateSnaps(),
 	}, nil
@@ -168,7 +172,7 @@ func (st *StateTree) LookupID(addr address.Address) (address.Address, error) {
 		return address.Undef, xerrors.Errorf("getting init actor: %w", err)
 	}
 
-	ias, err := init.Load(&AdtStore{st.Store}, &act)
+	ias, err := init_.Load(&AdtStore{st.Store}, act)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("loading init actor state: %w", err)
 	}
@@ -212,7 +216,7 @@ func (st *StateTree) GetActor(addr address.Address) (*types.Actor, error) {
 	}
 
 	var act types.Actor
-	if found, err := st.root.Get(adt.AddrKey(addr), &act); err != nil {
+	if found, err := st.root.Get(abi.AddrKey(addr), &act); err != nil {
 		return nil, xerrors.Errorf("hamt find failed: %w", err)
 	} else if !found {
 		return nil, types.ErrActorNotFound
@@ -257,11 +261,11 @@ func (st *StateTree) Flush(ctx context.Context) (cid.Cid, error) {
 
 	for addr, sto := range st.snaps.layers[0].actors {
 		if sto.Delete {
-			if err := st.root.Delete(adt.AddrKey(addr)); err != nil {
+			if err := st.root.Delete(abi.AddrKey(addr)); err != nil {
 				return cid.Undef, err
 			}
 		} else {
-			if err := st.root.Put(adt.AddrKey(addr), &sto.Act); err != nil {
+			if err := st.root.Put(abi.AddrKey(addr), &sto.Act); err != nil {
 				return cid.Undef, err
 			}
 		}
@@ -286,7 +290,7 @@ func (st *StateTree) ClearSnapshot() {
 func (st *StateTree) RegisterNewAddress(addr address.Address) (address.Address, error) {
 	var out address.Address
 	err := st.MutateActor(builtin.InitActorAddr, func(initact *types.Actor) error {
-		ias, err := init.Load(&AdtStore{st.Store}, initact)
+		ias, err := init_.Load(&AdtStore{st.Store}, initact)
 		if err != nil {
 			return err
 		}

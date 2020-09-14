@@ -1,6 +1,8 @@
 package market
 
 import (
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 )
@@ -20,6 +22,6 @@ func (s *v0State) EscrowTable() (BalanceTable, error) {
 	return adt.AsBalanceTable(s.store, s.State.EscrowTable)
 }
 
-func (s *v0State) Lockedtable() (BalanceTable, error) {
+func (s *v0State) LockedTable() (BalanceTable, error) {
 	return adt.AsBalanceTable(s.store, s.State.LockedTable)
 }

@@ -1,10 +1,10 @@
 package init
 
 import (
-	"github.com/filecoin-project/go-bitfield"
-	"github.com/filecoin-project/go-state-types/cbor"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/cbor"
 	v0builtin "github.com/filecoin-project/specs-actors/actors/builtin"
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
@@ -27,6 +27,6 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 type State interface {
 	cbor.Marshaler
 
-	ResolveAddress(address addr.Address) (address.Address, bool, error)
-	MapAddressToNewID(address addr.Address) (address.Address, error)
+	ResolveAddress(address address.Address) (address.Address, bool, error)
+	MapAddressToNewID(address address.Address) (address.Address, error)
 }

@@ -3,13 +3,13 @@ package init
 import (
 	"github.com/filecoin-project/go-address"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin/init"
+	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 )
 
 type v0State struct {
-	init.State
+	init_.State
 	store adt.Store
 }
 
