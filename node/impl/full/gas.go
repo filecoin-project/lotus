@@ -204,7 +204,7 @@ func (a *GasAPI) GasEstimateMessageGas(ctx context.Context, msg *types.Message, 
 	}
 
 	if msg.GasFeeCap == types.EmptyInt || types.BigCmp(msg.GasFeeCap, types.NewInt(0)) == 0 {
-		feeCap, err := a.GasEstimateFeeCap(ctx, msg, 10, types.EmptyTSK)
+		feeCap, err := a.GasEstimateFeeCap(ctx, msg, 20, types.EmptyTSK)
 		if err != nil {
 			return nil, xerrors.Errorf("estimating fee cap: %w", err)
 		}
