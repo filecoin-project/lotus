@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
@@ -35,6 +36,8 @@ import (
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
+var addPieceRetryWait = 5 * time.Minute
+var addPieceRetryTimeout = 6 * time.Hour
 var log = logging.Logger("storageadapter")
 
 type ProviderNodeAdapter struct {
@@ -91,7 +94,7 @@ func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagema
 		return nil, xerrors.Errorf("deal.PublishCid can't be nil")
 	}
 
-	p, offset, err := n.secb.AddPiece(ctx, pieceSize, pieceData, sealing.DealInfo{
+	sdInfo := sealing.DealInfo{
 		DealID:     deal.DealID,
 		PublishCid: deal.PublishCid,
 		DealSchedule: sealing.DealSchedule{
@@ -99,7 +102,23 @@ func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagema
 			EndEpoch:   deal.ClientDealProposal.Proposal.EndEpoch,
 		},
 		KeepUnsealed: deal.FastRetrieval,
-	})
+	}
+
+	p, offset, err := n.secb.AddPiece(ctx, pieceSize, pieceData, sdInfo)
+	curTime := time.Now()
+	for time.Since(curTime) < addPieceRetryTimeout {
+		if !xerrors.Is(err, sealing.ErrTooManySectorsSealing) {
+			log.Errorf("failed to addPiece for deal %d, err: %w", deal.DealID, err)
+			break
+		}
+		select {
+		case <-time.After(addPieceRetryWait):
+			p, offset, err = n.secb.AddPiece(ctx, pieceSize, pieceData, sdInfo)
+		case <-ctx.Done():
+			return nil, xerrors.New("context expired while waiting to retry AddPiece")
+		}
+	}
+
 	if err != nil {
 		return nil, xerrors.Errorf("AddPiece failed: %s", err)
 	}
