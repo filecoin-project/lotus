@@ -46,7 +46,7 @@ func TestMutateStateInTransaction(t *testing.T) {
 	var a Actor
 
 	rt.ExpectValidateCallerAny()
-	rt.Create(&State{})
+	rt.StateCreate(&State{})
 
 	val := "__mutstat test"
 	rt.Call(a.MutateState, &MutateStateArgs{
@@ -72,7 +72,7 @@ func TestMutateStateAfterTransaction(t *testing.T) {
 	var a Actor
 
 	rt.ExpectValidateCallerAny()
-	rt.Create(&State{})
+	rt.StateCreate(&State{})
 
 	val := "__mutstat test"
 	rt.Call(a.MutateState, &MutateStateArgs{
@@ -99,7 +99,7 @@ func TestMutateStateReadonly(t *testing.T) {
 	var a Actor
 
 	rt.ExpectValidateCallerAny()
-	rt.Create(&State{})
+	rt.StateCreate(&State{})
 
 	val := "__mutstat test"
 	rt.Call(a.MutateState, &MutateStateArgs{
