@@ -400,7 +400,7 @@ workflows:
   version: 2.1
   ci:
     jobs:
-      - lint-all
+      - lint-all:
           concurrency: 16   # expend all docker 2xlarge CPUs.
       - mod-tidy-check
       - gofmt
