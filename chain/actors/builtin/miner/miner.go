@@ -35,6 +35,7 @@ type State interface {
 	LoadDeadline(idx uint64) (Deadline, error)
 	ForEachDeadline(cb func(idx uint64, dl Deadline) error) error
 	NumDeadlines() (uint64, error)
+	Info() (MinerInfo, error)
 }
 
 type Deadline interface {
