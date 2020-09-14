@@ -441,18 +441,27 @@ func (mp *MessagePool) verifyMsgBeforeAdd(m *types.SignedMessage, curTs *types.T
 	// Note that for local messages, we always add them so that they can be accepted and republished
 	// automatically.
 	publish := local
+
+	var baseFee big.Int
 	if len(curTs.Blocks()) > 0 {
-		baseFee := curTs.Blocks()[0].ParentBaseFee
-		baseFeeLowerBound := getBaseFeeLowerBound(baseFee, baseFeeLowerBoundFactorConservative)
-		if m.Message.GasFeeCap.LessThan(baseFeeLowerBound) {
-			if local {
-				log.Warnf("local message will not be immediately published because GasFeeCap doesn't meet the lower bound for inclusion in the next 20 blocks (GasFeeCap: %s, baseFeeLowerBound: %s)",
-					m.Message.GasFeeCap, baseFeeLowerBound)
-				publish = false
-			} else {
-				return false, xerrors.Errorf("GasFeeCap doesn't meet base fee lower bound for inclusion in the next 20 blocks (GasFeeCap: %s, baseFeeLowerBound: %s): %w",
-					m.Message.GasFeeCap, baseFeeLowerBound, ErrSoftValidationFailure)
-			}
+		baseFee = curTs.Blocks()[0].ParentBaseFee
+	} else {
+		var err error
+		baseFee, err = mp.api.ChainComputeBaseFee(context.TODO(), curTs)
+		if err != nil {
+			return false, xerrors.Errorf("computing basefee: %w", err)
+		}
+	}
+
+	baseFeeLowerBound := getBaseFeeLowerBound(baseFee, baseFeeLowerBoundFactorConservative)
+	if m.Message.GasFeeCap.LessThan(baseFeeLowerBound) {
+		if local {
+			log.Warnf("local message will not be immediately published because GasFeeCap doesn't meet the lower bound for inclusion in the next 20 blocks (GasFeeCap: %s, baseFeeLowerBound: %s)",
+				m.Message.GasFeeCap, baseFeeLowerBound)
+			publish = false
+		} else {
+			return false, xerrors.Errorf("GasFeeCap doesn't meet base fee lower bound for inclusion in the next 20 blocks (GasFeeCap: %s, baseFeeLowerBound: %s): %w",
+				m.Message.GasFeeCap, baseFeeLowerBound, ErrSoftValidationFailure)
 		}
 	}
 
