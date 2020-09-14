@@ -3,6 +3,7 @@ package sectorstorage
 import (
 	"context"
 	"errors"
+	"github.com/filecoin-project/go-statestore"
 	"io"
 	"net/http"
 	"sync"
@@ -94,7 +95,9 @@ type SealerConfig struct {
 
 type StorageAuth http.Header
 
-func New(ctx context.Context, ls stores.LocalStorage, si stores.SectorIndex, cfg *ffiwrapper.Config, sc SealerConfig, urls URLs, sa StorageAuth) (*Manager, error) {
+type WorkerStateStore *statestore.StateStore
+
+func New(ctx context.Context, ls stores.LocalStorage, si stores.SectorIndex, cfg *ffiwrapper.Config, sc SealerConfig, urls URLs, sa StorageAuth, wss WorkerStateStore) (*Manager, error) {
 	lstor, err := stores.NewLocal(ctx, ls, si, urls)
 	if err != nil {
 		return nil, err
@@ -148,7 +151,7 @@ func New(ctx context.Context, ls stores.LocalStorage, si stores.SectorIndex, cfg
 	err = m.AddWorker(ctx, NewLocalWorker(WorkerConfig{
 		SealProof: cfg.SealProofType,
 		TaskTypes: localTasks,
-	}, stor, lstor, si, m))
+	}, stor, lstor, si, m, wss))
 	if err != nil {
 		return nil, xerrors.Errorf("adding local worker: %w", err)
 	}

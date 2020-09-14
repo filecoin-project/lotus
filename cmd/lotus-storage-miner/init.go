@@ -12,11 +12,10 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/filecoin-project/go-state-types/big"
-
 	"github.com/docker/go-units"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/namespace"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/mitchellh/go-homedir"
@@ -27,7 +26,9 @@ import (
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	crypto2 "github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-statestore"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
@@ -441,6 +442,8 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 				return err
 			}
 
+			wsts := statestore.New(namespace.Wrap(mds, modules.WorkerCallsPrefix))
+
 			smgr, err := sectorstorage.New(ctx, lr, stores.NewIndex(), &ffiwrapper.Config{
 				SealProofType: spt,
 			}, sectorstorage.SealerConfig{
@@ -450,7 +453,7 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 				AllowPreCommit2:    true,
 				AllowCommit:        true,
 				AllowUnseal:        true,
-			}, nil, sa)
+			}, nil, sa, wsts)
 			if err != nil {
 				return err
 			}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/filecoin-project/go-statestore"
 	"net/http"
 	"time"
 
@@ -479,10 +480,14 @@ func RetrievalProvider(h host.Host, miner *storage.Miner, sealer sectorstorage.S
 	return retrievalimpl.NewProvider(maddr, adapter, netwk, pieceStore, mds, dt, namespace.Wrap(ds, datastore.NewKey("/retrievals/provider")), opt)
 }
 
-func SectorStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, ls stores.LocalStorage, si stores.SectorIndex, cfg *ffiwrapper.Config, sc sectorstorage.SealerConfig, urls sectorstorage.URLs, sa sectorstorage.StorageAuth) (*sectorstorage.Manager, error) {
+var WorkerCallsPrefix = datastore.NewKey("/worker/calls")
+
+func SectorStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, ls stores.LocalStorage, si stores.SectorIndex, cfg *ffiwrapper.Config, sc sectorstorage.SealerConfig, urls sectorstorage.URLs, sa sectorstorage.StorageAuth, ds dtypes.MetadataDS) (*sectorstorage.Manager, error) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
-	sst, err := sectorstorage.New(ctx, ls, si, cfg, sc, urls, sa)
+	wsts := statestore.New(namespace.Wrap(ds, WorkerCallsPrefix))
+
+	sst, err := sectorstorage.New(ctx, ls, si, cfg, sc, urls, sa, wsts)
 	if err != nil {
 		return nil, err
 	}

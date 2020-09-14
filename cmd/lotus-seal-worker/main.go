@@ -15,6 +15,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/namespace"
 	logging "github.com/ipfs/go-log/v2"
 	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/urfave/cli/v2"
@@ -23,6 +25,7 @@ import (
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	paramfetch "github.com/filecoin-project/go-paramfetch"
+	"github.com/filecoin-project/go-statestore"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/apistruct"
@@ -34,6 +37,7 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/lib/rpcenc"
+	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -342,11 +346,13 @@ var runCmd = &cli.Command{
 
 		// Create / expose the worker
 
+		wsts := statestore.New(namespace.Wrap(datastore.NewMapDatastore(), modules.WorkerCallsPrefix)) // TODO: USE A REAL DATASTORE
+
 		workerApi := &worker{
 			LocalWorker: sectorstorage.NewLocalWorker(sectorstorage.WorkerConfig{
 				SealProof: spt,
 				TaskTypes: taskTypes,
-			}, remote, localStore, nodeApi, nodeApi),
+			}, remote, localStore, nodeApi, nodeApi, wsts),
 			localStore: localStore,
 			ls:         lr,
 		}

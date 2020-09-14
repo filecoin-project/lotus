@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"os"
 
 	gen "github.com/whyrusleeping/cbor-gen"
@@ -74,4 +75,11 @@ func main() {
 		os.Exit(1)
 	}
 
+	err = gen.WriteMapEncodersToFile("./extern/sector-storage/cbor_gen.go", "sectorstorage",
+		sectorstorage.Call{},
+	)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 }
