@@ -54,11 +54,11 @@ var runCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:  "listen",
 			Usage: "host address and port the api server will listen on",
-			Value: "0.0.0.0:1777",
+			Value: "0.0.0.0:2346",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		log.Info("Starting lotus wallet")
+		log.Info("Starting lotus gateway")
 
 		ctx := lcli.ReqContext(cctx)
 		ctx, cancel := context.WithCancel(ctx)
