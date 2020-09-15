@@ -22,7 +22,6 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
-	samsig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
@@ -31,6 +30,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/state"
@@ -790,28 +790,19 @@ func (a *StateAPI) MsigGetAvailableBalance(ctx context.Context, addr address.Add
 		return types.EmptyInt, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	var st samsig.State
-	act, err := a.StateManager.LoadActorState(ctx, addr, &st, ts)
+	act, err := a.StateManager.LoadActor(ctx, addr, ts)
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("failed to load multisig actor: %w", err)
+	}
+	msas, err := multisig.Load(a.Chain.Store(ctx), act)
 	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("failed to load multisig actor state: %w", err)
 	}
-
-	if act.Code != builtin.MultisigActorCodeID {
-		return types.EmptyInt, fmt.Errorf("given actor was not a multisig")
+	locked, err := msas.LockedBalance(ts.Height())
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("failed to compute locked multisig balance: %w", err)
 	}
-
-	if st.UnlockDuration == 0 {
-		return act.Balance, nil
-	}
-
-	offset := ts.Height() - st.StartEpoch
-	if offset > st.UnlockDuration {
-		return act.Balance, nil
-	}
-
-	minBalance := types.BigDiv(st.InitialBalance, types.NewInt(uint64(st.UnlockDuration)))
-	minBalance = types.BigMul(minBalance, types.NewInt(uint64(offset)))
-	return types.BigSub(act.Balance, minBalance), nil
+	return types.BigSub(act.Balance, locked), nil
 }
 
 func (a *StateAPI) MsigGetVested(ctx context.Context, addr address.Address, start types.TipSetKey, end types.TipSetKey) (types.BigInt, error) {
@@ -831,29 +822,27 @@ func (a *StateAPI) MsigGetVested(ctx context.Context, addr address.Address, star
 		return big.Zero(), nil
 	}
 
-	var mst samsig.State
-	act, err := a.StateManager.LoadActorState(ctx, addr, &mst, endTs)
+	act, err := a.StateManager.LoadActor(ctx, addr, endTs)
 	if err != nil {
-		return types.EmptyInt, xerrors.Errorf("failed to load multisig actor state at end epoch: %w", err)
+		return types.EmptyInt, xerrors.Errorf("failed to load multisig actor at end epoch: %w", err)
 	}
 
-	if act.Code != builtin.MultisigActorCodeID {
-		return types.EmptyInt, fmt.Errorf("given actor was not a multisig")
+	msas, err := multisig.Load(a.Chain.Store(ctx), act)
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("failed to load multisig actor state: %w", err)
 	}
 
-	if mst.UnlockDuration == 0 ||
-		mst.InitialBalance.IsZero() ||
-		mst.StartEpoch+mst.UnlockDuration <= startTs.Height() ||
-		mst.StartEpoch >= endTs.Height() {
-		return big.Zero(), nil
+	startLk, err := msas.LockedBalance(startTs.Height())
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("failed to compute locked balance at start height: %w", err)
 	}
 
-	startLk := mst.InitialBalance
-	if startTs.Height() > mst.StartEpoch {
-		startLk = mst.AmountLocked(startTs.Height() - mst.StartEpoch)
+	endLk, err := msas.LockedBalance(endTs.Height())
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("failed to compute locked balance at end height: %w", err)
 	}
 
-	return big.Sub(startLk, mst.AmountLocked(endTs.Height()-mst.StartEpoch)), nil
+	return types.BigSub(startLk, endLk), nil
 }
 
 var initialPledgeNum = types.NewInt(110)
