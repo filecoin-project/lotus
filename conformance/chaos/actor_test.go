@@ -53,7 +53,7 @@ func TestCallerValidationIs(t *testing.T) {
 	// FIXME: https://github.com/filecoin-project/specs-actors/pull/1155
 	rt.ExpectAbort(exitcode.ErrForbidden, func() {
 		rt.Call(a.CallerValidation, &CallerValidationArgs{
-			Branch: CallerValidationBranchIs,
+			Branch: CallerValidationBranchIsAddress,
 			Addrs:  caddrs,
 		})
 	})
@@ -61,7 +61,7 @@ func TestCallerValidationIs(t *testing.T) {
 
 	rt.ExpectValidateCallerAddr(caller)
 	rt.Call(a.CallerValidation, &CallerValidationArgs{
-		Branch: CallerValidationBranchIs,
+		Branch: CallerValidationBranchIsAddress,
 		Addrs:  []address.Address{caller},
 	})
 	rt.Verify()
@@ -80,7 +80,7 @@ func TestCallerValidationType(t *testing.T) {
 	// FIXME: https://github.com/filecoin-project/specs-actors/pull/1155
 	rt.ExpectAbort(exitcode.ErrForbidden, func() {
 		rt.Call(a.CallerValidation, &CallerValidationArgs{
-			Branch: CallerValidationBranchType,
+			Branch: CallerValidationBranchIsType,
 			Types:  []cid.Cid{builtin.CronActorCodeID},
 		})
 	})
@@ -88,7 +88,7 @@ func TestCallerValidationType(t *testing.T) {
 
 	rt.ExpectValidateCallerType(builtin.AccountActorCodeID)
 	rt.Call(a.CallerValidation, &CallerValidationArgs{
-		Branch: CallerValidationBranchType,
+		Branch: CallerValidationBranchIsType,
 		Types:  []cid.Cid{builtin.AccountActorCodeID},
 	})
 	rt.Verify()

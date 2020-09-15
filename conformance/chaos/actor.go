@@ -33,10 +33,10 @@ const (
 	CallerValidationBranchNone CallerValidationBranch = iota
 	// CallerValidationBranchTwice causes Runtime.ValidateImmediateCallerAcceptAny to be called twice.
 	CallerValidationBranchTwice
-	// CallerValidationBranchIs causes caller validation against CallerValidationArgs.Addrs.
-	CallerValidationBranchIs
-	// CallerValidationBranchType causes caller validation against CallerValidationArgs.Types.
-	CallerValidationBranchType
+	// CallerValidationBranchIsAddress causes caller validation against CallerValidationArgs.Addrs.
+	CallerValidationBranchIsAddress
+	// CallerValidationBranchIsType causes caller validation against CallerValidationArgs.Types.
+	CallerValidationBranchIsType
 )
 
 // MutateStateBranch is an enum used to select the type of state mutation to attempt.
@@ -136,17 +136,17 @@ type CallerValidationArgs struct {
 //
 //  CallerValidationBranchNone performs no validation.
 //  CallerValidationBranchTwice validates twice.
-//  CallerValidationBranchIs validates caller against CallerValidationArgs.Addrs.
-//  CallerValidationBranchType validates caller against CallerValidationArgs.Types.
+//  CallerValidationBranchIsAddress validates caller against CallerValidationArgs.Addrs.
+//  CallerValidationBranchIsType validates caller against CallerValidationArgs.Types.
 func (a Actor) CallerValidation(rt runtime.Runtime, args *CallerValidationArgs) *abi.EmptyValue {
 	switch args.Branch {
 	case CallerValidationBranchNone:
 	case CallerValidationBranchTwice:
 		rt.ValidateImmediateCallerAcceptAny()
 		rt.ValidateImmediateCallerAcceptAny()
-	case CallerValidationBranchIs:
+	case CallerValidationBranchIsAddress:
 		rt.ValidateImmediateCallerIs(args.Addrs...)
-	case CallerValidationBranchType:
+	case CallerValidationBranchIsType:
 		rt.ValidateImmediateCallerType(args.Types...)
 	default:
 		panic("invalid branch passed to CallerValidation")
