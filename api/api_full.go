@@ -344,9 +344,9 @@ type FullNode interface {
 	// expiration epoch
 	StateSectorGetInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*miner.SectorOnChainInfo, error)
 	// StateSectorExpiration returns epoch at which given sector will expire
-	StateSectorExpiration(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*SectorExpiration, error)
+	StateSectorExpiration(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*miner.SectorExpiration, error)
 	// StateSectorPartition finds deadline/partition with the specified sector
-	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok types.TipSetKey) (*SectorLocation, error)
+	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok types.TipSetKey) (*miner.SectorLocation, error)
 	// StateSearchMsg searches for a message in the chain, and returns its receipt and the tipset where it was executed
 	StateSearchMsg(context.Context, cid.Cid) (*MsgLookup, error)
 	// StateWaitMsg looks back in the chain for a message. If not found, it blocks until the

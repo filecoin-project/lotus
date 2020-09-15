@@ -10,7 +10,6 @@ import (
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	v0adt "github.com/filecoin-project/specs-actors/actors/util/adt"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
@@ -70,7 +69,7 @@ func (s *v0State) GetSectorExpiration(num abi.SectorNumber) (out *SectorExpirati
 	// 2. If it's faulty, it will expire early within the first 14 entries
 	// of the expiration queue.
 	stopErr := errors.New("stop")
-	err := dls.ForEach(s.store, func(dlIdx uint64, dl *miner.Deadline) error {
+	err = dls.ForEach(s.store, func(dlIdx uint64, dl *miner.Deadline) error {
 		partitions, err := dl.PartitionsArray(s.store)
 		if err != nil {
 			return err
@@ -102,12 +101,13 @@ func (s *v0State) GetSectorExpiration(num abi.SectorNumber) (out *SectorExpirati
 					out.Early = abi.ChainEpoch(epoch)
 					return nil
 				}
-				if onTime, err := exp.OnTime.IsSet(uint64(num)); err != nil {
+				if onTime, err := exp.OnTimeSectors.IsSet(uint64(num)); err != nil {
 					return err
 				} else if onTime {
-					out.OnTime = epoch
+					out.OnTime = abi.ChainEpoch(epoch)
 					return stopErr
 				}
+				return nil
 			})
 		})
 	})

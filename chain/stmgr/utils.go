@@ -103,8 +103,10 @@ func GetPowerRaw(ctx context.Context, sm *StateManager, st cid.Cid, maddr addres
 
 	var mpow power.Claim
 	if maddr != address.Undef {
-		mpow, err = mas.MinerPower(maddr)
-		if err != nil {
+		var found bool
+		mpow, found, err = mas.MinerPower(maddr)
+		if err != nil || !found {
+			// TODO: return an error when not found?
 			return power.Claim{}, power.Claim{}, err
 		}
 	}
