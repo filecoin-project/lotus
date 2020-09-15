@@ -254,14 +254,12 @@ func (a Actor) AbortWith(rt runtime.Runtime, args *AbortWithArgs) *abi.EmptyValu
 
 // InspectRuntimeReturn is the return value for the Actor.InspectRuntime method.
 type InspectRuntimeReturn struct {
-	NetworkVersion     int64
-	Caller             address.Address
-	Receiver           address.Address
-	ValueReceived      abi.TokenAmount
-	CurrEpoch          abi.ChainEpoch
-	CurrentBalance     abi.TokenAmount
-	State              State
-	TotalFilCircSupply abi.TokenAmount
+	Caller         address.Address
+	Receiver       address.Address
+	ValueReceived  abi.TokenAmount
+	CurrEpoch      abi.ChainEpoch
+	CurrentBalance abi.TokenAmount
+	State          State
 }
 
 // InspectRuntime returns a copy of the serializable values available in the Runtime.
@@ -270,12 +268,11 @@ func (a Actor) InspectRuntime(rt runtime.Runtime, _ *abi.EmptyValue) *InspectRun
 	var st State
 	rt.StateReadonly(&st)
 	return &InspectRuntimeReturn{
-		NetworkVersion:     int64(rt.NetworkVersion()),
-		Caller:             rt.Caller(),
-		Receiver:           rt.Receiver(),
-		ValueReceived:      rt.ValueReceived(),
-		CurrentBalance:     rt.CurrentBalance(),
-		State:              st,
-		TotalFilCircSupply: rt.TotalFilCircSupply(),
+		Caller:         rt.Caller(),
+		Receiver:       rt.Receiver(),
+		ValueReceived:  rt.ValueReceived(),
+		CurrEpoch:      rt.CurrEpoch(),
+		CurrentBalance: rt.CurrentBalance(),
+		State:          st,
 	}
 }
