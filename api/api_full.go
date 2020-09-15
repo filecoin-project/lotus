@@ -469,8 +469,12 @@ type FileRef struct {
 }
 
 type MinerSectors struct {
-	Sectors uint64
-	Active  uint64
+	// Live sectors that should be proven.
+	Live uint64
+	// Sectors actively contributing to power.
+	Active uint64
+	// Sectors with failed proofs.
+	Faulty uint64
 }
 
 type ImportRes struct {

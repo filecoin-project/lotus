@@ -635,57 +635,50 @@ func (a *StateAPI) StateChangedActors(ctx context.Context, old cid.Cid, new cid.
 }
 
 func (a *StateAPI) StateMinerSectorCount(ctx context.Context, addr address.Address, tsk types.TipSetKey) (api.MinerSectors, error) {
-	var out api.MinerSectors
-
-	err := a.StateManager.WithParentStateTsk(tsk,
-		a.StateManager.WithActor(addr,
-			a.StateManager.WithActorState(ctx, func(store adt.Store, mas *miner.State) error {
-				var allActive []bitfield.BitField
-
-				err := a.StateManager.WithDeadlines(
-					a.StateManager.WithEachDeadline(
-						a.StateManager.WithEachPartition(func(store adt.Store, partIdx uint64, partition *miner.Partition) error {
-							active, err := partition.ActiveSectors()
-							if err != nil {
-								return xerrors.Errorf("partition.ActiveSectors: %w", err)
-							}
-
-							allActive = append(allActive, active)
-							return nil
-						})))(store, mas)
-				if err != nil {
-					return xerrors.Errorf("with deadlines: %w", err)
-				}
-
-				active, err := bitfield.MultiMerge(allActive...)
-				if err != nil {
-					return xerrors.Errorf("merging active sector bitfields: %w", err)
-				}
-
-				out.Active, err = active.Count()
-				if err != nil {
-					return xerrors.Errorf("counting active sectors: %w", err)
-				}
-
-				sarr, err := adt.AsArray(store, mas.Sectors)
-				if err != nil {
-					return err
-				}
-
-				out.Sectors = sarr.Length()
-				return nil
-			})))
+	act, err := a.StateManager.LoadActorTsk(ctx, addr, tsk)
 	if err != nil {
 		return api.MinerSectors{}, err
 	}
-
-	return out, nil
+	mas, err := miner.Load(a.Chain.Store(ctx), act)
+	if err != nil {
+		return api.MinerSectors{}, err
+	}
+	var activeCount, liveCount, faultyCount uint64
+	if err := mas.ForEachDeadline(func(_ uint64, dl miner.Deadline) error {
+		return dl.ForEachPartition(func(_ uint64, part miner.Partition) error {
+			if active, err := part.ActiveSectors(); err != nil {
+				return err
+			} else if count, err := active.Count(); err != nil {
+				return err
+			} else {
+				activeCount += count
+			}
+			if live, err := part.LiveSectors(); err != nil {
+				return err
+			} else if count, err := live.Count(); err != nil {
+				return err
+			} else {
+				liveCount += count
+			}
+			if faulty, err := part.FaultySectors(); err != nil {
+				return err
+			} else if count, err := faulty.Count(); err != nil {
+				return err
+			} else {
+				faultyCount += count
+			}
+			return nil
+		})
+	}); err != nil {
+		return api.MinerSectors{}, err
+	}
+	return api.MinerSectors{Live: liveCount, Active: activeCount, Faulty: faultyCount}, nil
 }
 
-func (a *StateAPI) StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error) {
+func (a *StateAPI) StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorPreCommitOnChainInfo, error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
-		return miner.SectorPreCommitOnChainInfo{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 	return stmgr.PreCommitInfo(ctx, a.StateManager, maddr, n, ts)
 }
@@ -698,7 +691,7 @@ func (a *StateAPI) StateSectorGetInfo(ctx context.Context, maddr address.Address
 	return stmgr.MinerSectorInfo(ctx, a.StateManager, maddr, n, ts)
 }
 
-func (a *StateAPI) StateSectorExpiration(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*api.SectorExpiration, error) {
+func (a *StateAPI) StateSectorExpiration(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorExpiration, error) {
 	act, err := a.StateManager.LoadActorTsk(ctx, maddr, tsk)
 	if err != nil {
 		return nil, err
@@ -710,7 +703,7 @@ func (a *StateAPI) StateSectorExpiration(ctx context.Context, maddr address.Addr
 	return mas.GetSectorExpiration(sectorNumber)
 }
 
-func (a *StateAPI) StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*api.SectorLocation, error) {
+func (a *StateAPI) StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorLocation, error) {
 	act, err := a.StateManager.LoadActorTsk(ctx, maddr, tsk)
 	if err != nil {
 		return nil, err

@@ -112,26 +112,19 @@ func infoCmdAct(cctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	faults, err := api.StateMinerFaults(ctx, maddr, types.EmptyTSK)
-	if err != nil {
-		return err
-	}
 
-	nfaults, err := faults.Count()
-	if err != nil {
-		return xerrors.Errorf("counting faults: %w", err)
-	}
-
-	fmt.Printf("\tCommitted: %s\n", types.SizeStr(types.BigMul(types.NewInt(secCounts.Sectors), types.NewInt(uint64(mi.SectorSize)))))
+	proving := secCounts.Active + secCounts.Faulty
+	nfaults := secCounts.Faulty
+	fmt.Printf("\tCommitted: %s\n", types.SizeStr(types.BigMul(types.NewInt(secCounts.Live), types.NewInt(uint64(mi.SectorSize)))))
 	if nfaults == 0 {
-		fmt.Printf("\tProving: %s\n", types.SizeStr(types.BigMul(types.NewInt(secCounts.Active), types.NewInt(uint64(mi.SectorSize)))))
+		fmt.Printf("\tProving: %s\n", types.SizeStr(types.BigMul(types.NewInt(proving), types.NewInt(uint64(mi.SectorSize)))))
 	} else {
 		var faultyPercentage float64
-		if secCounts.Sectors != 0 {
-			faultyPercentage = float64(10000*nfaults/secCounts.Sectors) / 100.
+		if secCounts.Live != 0 {
+			faultyPercentage = float64(10000*nfaults/secCounts.Live) / 100.
 		}
 		fmt.Printf("\tProving: %s (%s Faulty, %.2f%%)\n",
-			types.SizeStr(types.BigMul(types.NewInt(secCounts.Sectors), types.NewInt(uint64(mi.SectorSize)))),
+			types.SizeStr(types.BigMul(types.NewInt(proving), types.NewInt(uint64(mi.SectorSize)))),
 			types.SizeStr(types.BigMul(types.NewInt(nfaults), types.NewInt(uint64(mi.SectorSize)))),
 			faultyPercentage)
 	}
