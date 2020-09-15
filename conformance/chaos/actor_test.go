@@ -2,16 +2,15 @@ package chaos
 
 import (
 	"context"
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/ipfs/go-cid"
 	"testing"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/support/mock"
 	atesting "github.com/filecoin-project/specs-actors/support/testing"
+	"github.com/ipfs/go-cid"
 )
 
 func TestSingleton(t *testing.T) {
