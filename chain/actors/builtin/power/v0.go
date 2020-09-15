@@ -3,6 +3,7 @@ package power
 import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 )
@@ -41,4 +42,8 @@ func (s *v0State) MinerPower(addr address.Address) (Claim, bool, error) {
 
 func (s *v0State) MinerNominalPowerMeetsConsensusMinimum(a address.Address) (bool, error) {
 	return s.State.MinerNominalPowerMeetsConsensusMinimum(s.store, a)
+}
+
+func (s *v0State) TotalPowerSmoothed() (builtin.FilterEstimate, error) {
+	return *s.State.ThisEpochQAPowerSmoothed, nil
 }

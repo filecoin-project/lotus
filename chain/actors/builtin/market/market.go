@@ -12,6 +12,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
+var Address = v0builtin.StorageMarketActorAddr
+
 func Load(store adt.Store, act *types.Actor) (st State, err error) {
 	switch act.Code {
 	case v0builtin.StorageMarketActorCodeID:
@@ -30,6 +32,9 @@ type State interface {
 	EscrowTable() (BalanceTable, error)
 	LockedTable() (BalanceTable, error)
 	TotalLocked() (abi.TokenAmount, error)
+	VerifyDealsForActivation(
+		minerAddr address.Address, deals []abi.DealID, currEpoch, sectorExpiry abi.ChainEpoch,
+	) (weight, verifiedWeight abi.DealWeight, err error)
 }
 
 type BalanceTable interface {

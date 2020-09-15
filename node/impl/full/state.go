@@ -21,16 +21,17 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/market"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
-	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
+	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
+	"github.com/filecoin-project/specs-actors/actors/util/smoothing"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/state"
@@ -41,6 +42,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/lib/bufbstore"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 )
 
 var errBreakForeach = errors.New("break")
@@ -854,74 +856,57 @@ func (a *StateAPI) StateMinerPreCommitDepositForPower(ctx context.Context, maddr
 		return types.EmptyInt, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	var minerState miner.State
-	var powerState power.State
-	var rewardState reward.State
-
-	err = a.StateManager.WithParentStateTsk(tsk, func(state *state.StateTree) error {
-		if err := a.StateManager.WithActor(maddr, a.StateManager.WithActorState(ctx, &minerState))(state); err != nil {
-			return xerrors.Errorf("getting miner state: %w", err)
-		}
-
-		if err := a.StateManager.WithActor(builtin.StoragePowerActorAddr, a.StateManager.WithActorState(ctx, &powerState))(state); err != nil {
-			return xerrors.Errorf("getting power state: %w", err)
-		}
-
-		if err := a.StateManager.WithActor(builtin.RewardActorAddr, a.StateManager.WithActorState(ctx, &rewardState))(state); err != nil {
-			return xerrors.Errorf("getting reward state: %w", err)
-		}
-
-		return nil
-	})
+	state, err := a.StateManager.ParentState(ts)
 	if err != nil {
-		return types.EmptyInt, err
+		return types.EmptyInt, xerrors.Errorf("loading state %s: %w", tsk, err)
 	}
 
-	dealWeights := market.VerifyDealsForActivationReturn{
-		DealWeight:         big.Zero(),
-		VerifiedDealWeight: big.Zero(),
-	}
-
-	if len(pci.DealIDs) != 0 {
-		var err error
-		params, err := actors.SerializeParams(&market.VerifyDealsForActivationParams{
-			DealIDs:      pci.DealIDs,
-			SectorExpiry: pci.Expiration,
-		})
-		if err != nil {
-			return types.EmptyInt, err
-		}
-
-		ret, err := a.StateManager.Call(ctx, &types.Message{
-			From:   maddr,
-			To:     builtin.StorageMarketActorAddr,
-			Method: builtin.MethodsMarket.VerifyDealsForActivation,
-			Params: params,
-		}, ts)
-		if err != nil {
-			return types.EmptyInt, err
-		}
-
-		if err := dealWeights.UnmarshalCBOR(bytes.NewReader(ret.MsgRct.Return)); err != nil {
-			return types.BigInt{}, err
-		}
-	}
-
-	mi, err := a.StateMinerInfo(ctx, maddr, tsk)
+	ssize, err := pci.SealProof.SectorSize()
 	if err != nil {
-		return types.EmptyInt, err
+		return types.EmptyInt, xerrors.Errorf("failed to get resolve size: %w", err)
 	}
 
-	ssize := mi.SectorSize
+	store := a.Chain.Store(ctx)
 
-	duration := pci.Expiration - ts.Height() // NB: not exactly accurate, but should always lead us to *over* estimate, not under
+	var sectorWeight abi.StoragePower
+	if act, err := state.GetActor(market.Address); err != nil {
+		return types.EmptyInt, xerrors.Errorf("loading miner actor %s: %w", maddr, err)
+	} else s, err := market.Load(store, act); err != nil {
+		return types.EmptyInt, xerrors.Errorf("loading market actor state %s: %w", maddr, err)
+	} else if w, vw, err := s.VerifyDealsForActivation(maddr, pci.DealIDs, ts.Height(), pci.Expiration); err != nil {
+			return types.EmptyInt, xerrors.Errorf("verifying deals for activation: %w", err)
+	} else {
+		// NB: not exactly accurate, but should always lead us to *over* estimate, not under
+		duration := pci.Expiration - ts.Height()
 
-	sectorWeight := miner.QAPowerForWeight(ssize, duration, dealWeights.DealWeight, dealWeights.VerifiedDealWeight)
-	deposit := miner.PreCommitDepositForPower(
-		rewardState.ThisEpochRewardSmoothed,
-		powerState.ThisEpochQAPowerSmoothed,
-		sectorWeight,
-	)
+		// TODO: handle changes to this function across actor upgrades.
+		sectorWeight = v0miner.QAPowerForWeight(ssize, duration, w, vw)
+	}
+
+	var powerSmoothed smoothing.FilterEstimate
+	if act, err := state.GetActor(power.Address); err != nil {
+		return types.EmptyInt, xerrors.Errorf("loading miner actor: %w", err)
+	} else s, err := power.Load(store, act); err != nil {
+		return types.EmptyInt, xerrors.Errorf("loading power actor state: %w", err)
+	} else p, err := s.TotalPowerSmoothed(); err != nil {
+		return types.EmptyInt, xerrors.Errorf("failed to determine total power: %w", err)
+	} else {
+		powerSmoothed = p
+	}
+
+	var rewardSmoothed smoothing.FilterEstimate
+	if act, err := state.GetActor(reward.Address); err != nil {
+		return types.EmptyInt, xerrors.Errorf("loading miner actor: %w", err)
+	} else s, err := reward.Load(store, act); err != nil {
+		return types.EmptyInt, xerrors.Errorf("loading reward actor state: %w", err)
+	} else r, err := s.RewardSmoothed(); err != nil {
+		return types.EmptyInt, xerrors.Errorf("failed to determine total reward: %w", err)
+	} else {
+		rewardSmoothed = r
+	}
+
+	// TODO: abstract over network upgrades.
+	deposit := v0miner.PreCommitDepositForPower(rewardSmoothed, powerSmoothed, sectorWeight)
 
 	return types.BigDiv(types.BigMul(deposit, initialPledgeNum), initialPledgeDen), nil
 }

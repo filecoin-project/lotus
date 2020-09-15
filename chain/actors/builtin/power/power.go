@@ -9,6 +9,7 @@ import (
 	v0builtin "github.com/filecoin-project/specs-actors/actors/builtin"
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -32,6 +33,8 @@ type State interface {
 
 	TotalLocked() (abi.TokenAmount, error)
 	TotalPower() (Claim, error)
+	TotalPowerSmoothed() (builtin.FilterEstimate, error)
+
 	MinerPower(address.Address) (Claim, bool, error)
 	MinerNominalPowerMeetsConsensusMinimum(address.Address) (bool, error)
 }

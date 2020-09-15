@@ -7,6 +7,7 @@ import (
 	v0builtin "github.com/filecoin-project/specs-actors/actors/builtin"
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -27,4 +28,6 @@ func Load(store adt.Store, act *types.Actor) (st State, err error) {
 
 type State interface {
 	cbor.Marshaler
+
+	RewardSmoothed() (builtin.FilterEstimate, error)
 }
