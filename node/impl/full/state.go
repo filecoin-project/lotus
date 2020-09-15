@@ -883,9 +883,8 @@ func (a *StateAPI) MsigGetAvailableBalance(ctx context.Context, addr address.Add
 		return act.Balance, nil
 	}
 
-	minBalance := types.BigDiv(st.InitialBalance, types.NewInt(uint64(st.UnlockDuration)))
-	minBalance = types.BigMul(minBalance, types.NewInt(uint64(offset)))
-	return types.BigSub(act.Balance, minBalance), nil
+	al := st.AmountLocked(offset)
+	return types.BigSub(act.Balance, al), nil
 }
 
 func (a *StateAPI) MsigGetVested(ctx context.Context, addr address.Address, start types.TipSetKey, end types.TipSetKey) (types.BigInt, error) {
