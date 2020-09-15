@@ -3,11 +3,12 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"os"
+	"text/tabwriter"
+
 	"github.com/fatih/color"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
-	"os"
-	"text/tabwriter"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
