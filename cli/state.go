@@ -66,6 +66,7 @@ var stateCmd = &cli.Command{
 		stateGetDealSetCmd,
 		stateWaitMsgCmd,
 		stateSearchMsgCmd,
+		stateMsgCostCmd,
 		stateMinerInfo,
 		stateMarketCmd,
 	},
@@ -1305,6 +1306,60 @@ var stateSearchMsgCmd = &cli.Command{
 			fmt.Printf("\nExit Code: %d", mw.Receipt.ExitCode)
 			fmt.Printf("\nGas Used: %d", mw.Receipt.GasUsed)
 			fmt.Printf("\nReturn: %x", mw.Receipt.Return)
+		} else {
+			fmt.Print("message was not found on chain")
+		}
+		return nil
+	},
+}
+
+var stateMsgCostCmd = &cli.Command{
+	Name:      "msg-cost",
+	Usage:     "Get the detailed gas costs of a message",
+	ArgsUsage: "[messageCid]",
+	Action: func(cctx *cli.Context) error {
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must specify message cid to get gas costs for")
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		msg, err := cid.Decode(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		tsk := types.EmptyTSK
+
+		ts, err := LoadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
+
+		if ts != nil {
+			tsk = ts.Key()
+		}
+
+		mgc, err := api.StateMsgGasCost(ctx, msg, tsk)
+		if err != nil {
+			return err
+		}
+
+		if mgc != nil {
+			fmt.Printf("Message CID: %s", mgc.Message)
+			fmt.Printf("\nGas Used: %d", mgc.GasUsed)
+			fmt.Printf("\nBase Fee Burn: %d", mgc.BaseFeeBurn)
+			fmt.Printf("\nOverestimation Burn: %d", mgc.OverEstimationBurn)
+			fmt.Printf("\nMiner Tip: %d", mgc.MinerTip)
+			fmt.Printf("\nRefund: %d", mgc.Refund)
+			fmt.Printf("\nTotal Cost: %d", mgc.TotalCost)
+			fmt.Printf("\nMiner Penalty: %d", mgc.MinerPenalty)
 		} else {
 			fmt.Print("message was not found on chain")
 		}

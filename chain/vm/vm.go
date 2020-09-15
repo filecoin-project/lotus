@@ -201,10 +201,9 @@ type Rand interface {
 type ApplyRet struct {
 	types.MessageReceipt
 	ActorErr       aerrors.ActorError
-	Penalty        types.BigInt
-	MinerTip       types.BigInt
 	ExecutionTrace types.ExecutionTrace
 	Duration       time.Duration
+	GasCosts       GasOutputs
 }
 
 func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
@@ -328,8 +327,7 @@ func (vm *VM) ApplyImplicitMessage(ctx context.Context, msg *types.Message) (*Ap
 		},
 		ActorErr:       actorErr,
 		ExecutionTrace: rt.executionTrace,
-		Penalty:        types.NewInt(0),
-		MinerTip:       types.NewInt(0),
+		GasCosts:       GasOutputs{},
 		Duration:       time.Since(start),
 	}, actorErr
 }
@@ -362,9 +360,10 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 				ExitCode: exitcode.SysErrOutOfGas,
 				GasUsed:  0,
 			},
-			Penalty:  types.BigMul(vm.baseFee, abi.NewTokenAmount(msgGasCost)),
+			GasCosts: GasOutputs{
+				MinerPenalty: types.BigMul(vm.baseFee, abi.NewTokenAmount(msgGasCost)),
+			},
 			Duration: time.Since(start),
-			MinerTip: big.Zero(),
 		}, nil
 	}
 
@@ -381,9 +380,10 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 					GasUsed:  0,
 				},
 				ActorErr: aerrors.Newf(exitcode.SysErrSenderInvalid, "actor not found: %s", msg.From),
-				Penalty:  minerPenaltyAmount,
+				GasCosts: GasOutputs{
+					MinerPenalty: minerPenaltyAmount,
+				},
 				Duration: time.Since(start),
-				MinerTip: big.Zero(),
 			}, nil
 		}
 		return nil, xerrors.Errorf("failed to look up from actor: %w", err)
@@ -397,9 +397,10 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 				GasUsed:  0,
 			},
 			ActorErr: aerrors.Newf(exitcode.SysErrSenderInvalid, "send from not account actor: %s", fromActor.Code),
-			Penalty:  minerPenaltyAmount,
+			GasCosts: GasOutputs{
+				MinerPenalty: minerPenaltyAmount,
+			},
 			Duration: time.Since(start),
-			MinerTip: big.Zero(),
 		}, nil
 	}
 
@@ -411,9 +412,11 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 			},
 			ActorErr: aerrors.Newf(exitcode.SysErrSenderStateInvalid,
 				"actor nonce invalid: msg:%d != state:%d", msg.Nonce, fromActor.Nonce),
-			Penalty:  minerPenaltyAmount,
+
+			GasCosts: GasOutputs{
+				MinerPenalty: minerPenaltyAmount,
+			},
 			Duration: time.Since(start),
-			MinerTip: big.Zero(),
 		}, nil
 	}
 
@@ -426,9 +429,10 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 			},
 			ActorErr: aerrors.Newf(exitcode.SysErrSenderStateInvalid,
 				"actor balance less than needed: %s < %s", types.FIL(fromActor.Balance), types.FIL(gascost)),
-			Penalty:  minerPenaltyAmount,
+			GasCosts: GasOutputs{
+				MinerPenalty: minerPenaltyAmount,
+			},
 			Duration: time.Since(start),
-			MinerTip: big.Zero(),
 		}, nil
 	}
 
@@ -521,8 +525,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 		},
 		ActorErr:       actorErr,
 		ExecutionTrace: rt.executionTrace,
-		Penalty:        gasOutputs.MinerPenalty,
-		MinerTip:       gasOutputs.MinerTip,
+		GasCosts:       gasOutputs,
 		Duration:       time.Since(start),
 	}, nil
 }
