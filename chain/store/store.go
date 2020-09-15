@@ -72,6 +72,20 @@ func init() {
 // ReorgNotifee represents a callback that gets called upon reorgs.
 type ReorgNotifee func(rev, app []*types.TipSet) error
 
+// Journal event types.
+const (
+	evtTypeHeadChange = iota
+)
+
+type HeadChangeEvt struct {
+	From        types.TipSetKey
+	FromHeight  abi.ChainEpoch
+	To          types.TipSetKey
+	ToHeight    abi.ChainEpoch
+	RevertCount int
+	ApplyCount  int
+}
+
 // ChainStore is the main point of access to chain data.
 //
 // Raw chain data is stored in the Blockstore, with relevant markers (genesis,
@@ -103,6 +117,8 @@ type ChainStore struct {
 	tsCache *lru.ARCCache
 
 	vmcalls vm.SyscallBuilder
+
+	evtTypes [1]journal.EventType
 }
 
 func NewChainStore(bs bstore.Blockstore, ds dstore.Batching, vmcalls vm.SyscallBuilder) *ChainStore {
@@ -116,6 +132,10 @@ func NewChainStore(bs bstore.Blockstore, ds dstore.Batching, vmcalls vm.SyscallB
 		mmCache:  c,
 		tsCache:  tsc,
 		vmcalls:  vmcalls,
+	}
+
+	cs.evtTypes = [1]journal.EventType{
+		evtTypeHeadChange: journal.J.RegisterEventType("sync", "head_change"),
 	}
 
 	ci := NewChainIndex(cs.LoadTipSet)
@@ -344,12 +364,15 @@ func (cs *ChainStore) reorgWorker(ctx context.Context, initialNotifees []ReorgNo
 					continue
 				}
 
-				journal.Add("sync", map[string]interface{}{
-					"op":    "headChange",
-					"from":  r.old.Key(),
-					"to":    r.new.Key(),
-					"rev":   len(revert),
-					"apply": len(apply),
+				journal.J.RecordEvent(cs.evtTypes[evtTypeHeadChange], func() interface{} {
+					return HeadChangeEvt{
+						From:        r.old.Key(),
+						FromHeight:  r.old.Height(),
+						To:          r.new.Key(),
+						ToHeight:    r.new.Height(),
+						RevertCount: len(revert),
+						ApplyCount:  len(apply),
+					}
 				})
 
 				// reverse the apply array

@@ -219,8 +219,8 @@ type FullNodeStruct struct {
 
 		PaychGet                    func(ctx context.Context, from, to address.Address, amt types.BigInt) (*api.ChannelInfo, error)           `perm:"sign"`
 		PaychGetWaitReady           func(context.Context, cid.Cid) (address.Address, error)                                                   `perm:"sign"`
-		PaychAvailableFunds         func(address.Address) (*api.ChannelAvailableFunds, error)                                                 `perm:"sign"`
-		PaychAvailableFundsByFromTo func(address.Address, address.Address) (*api.ChannelAvailableFunds, error)                                `perm:"sign"`
+		PaychAvailableFunds         func(context.Context, address.Address) (*api.ChannelAvailableFunds, error)                                `perm:"sign"`
+		PaychAvailableFundsByFromTo func(context.Context, address.Address, address.Address) (*api.ChannelAvailableFunds, error)               `perm:"sign"`
 		PaychList                   func(context.Context) ([]address.Address, error)                                                          `perm:"read"`
 		PaychStatus                 func(context.Context, address.Address) (*api.PaychStatus, error)                                          `perm:"read"`
 		PaychSettle                 func(context.Context, address.Address) (cid.Cid, error)                                                   `perm:"sign"`
@@ -955,12 +955,12 @@ func (c *FullNodeStruct) PaychGetWaitReady(ctx context.Context, sentinel cid.Cid
 	return c.Internal.PaychGetWaitReady(ctx, sentinel)
 }
 
-func (c *FullNodeStruct) PaychAvailableFunds(ch address.Address) (*api.ChannelAvailableFunds, error) {
-	return c.Internal.PaychAvailableFunds(ch)
+func (c *FullNodeStruct) PaychAvailableFunds(ctx context.Context, ch address.Address) (*api.ChannelAvailableFunds, error) {
+	return c.Internal.PaychAvailableFunds(ctx, ch)
 }
 
-func (c *FullNodeStruct) PaychAvailableFundsByFromTo(from, to address.Address) (*api.ChannelAvailableFunds, error) {
-	return c.Internal.PaychAvailableFundsByFromTo(from, to)
+func (c *FullNodeStruct) PaychAvailableFundsByFromTo(ctx context.Context, from, to address.Address) (*api.ChannelAvailableFunds, error) {
+	return c.Internal.PaychAvailableFundsByFromTo(ctx, from, to)
 }
 
 func (c *FullNodeStruct) PaychList(ctx context.Context) ([]address.Address, error) {

@@ -100,18 +100,14 @@ type SendReturn struct {
 // passed parameters.
 func (a Actor) Send(rt runtime.Runtime, args *SendArgs) *SendReturn {
 	rt.ValidateImmediateCallerAcceptAny()
-	ret, code := rt.Send(
+	var out runtime.CBORBytes
+	code := rt.Send(
 		args.To,
 		args.Method,
 		runtime.CBORBytes(args.Params),
 		args.Value,
+		&out,
 	)
-	var out runtime.CBORBytes
-	if ret != nil {
-		if err := ret.Into(&out); err != nil {
-			rt.Abortf(exitcode.ErrIllegalState, "failed to unmarshal send return: %v", err)
-		}
-	}
 	return &SendReturn{
 		Return: out,
 		Code:   code,
@@ -217,14 +213,14 @@ func (a Actor) MutateState(rt runtime.Runtime, args *MutateStateArgs) *abi.Empty
 	var st State
 	switch args.Branch {
 	case MutateInTransaction:
-		rt.State().Transaction(&st, func() {
+		rt.StateTransaction(&st, func() {
 			st.Value = args.Value
 		})
 	case MutateReadonly:
-		rt.State().Readonly(&st)
+		rt.StateReadonly(&st)
 		st.Value = args.Value
 	case MutateAfterTransaction:
-		rt.State().Transaction(&st, func() {
+		rt.StateTransaction(&st, func() {
 			st.Value = args.Value + "-in"
 		})
 		st.Value = args.Value

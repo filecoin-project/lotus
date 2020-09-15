@@ -116,7 +116,7 @@ func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, origin addres
 		Blocks: &gasChargingBlocks{rt.chargeGasFunc(2), rt.pricelist, vm.cst.Blocks},
 		Atlas:  vm.cst.Atlas,
 	}
-	rt.sys = pricedSyscalls{
+	rt.Syscalls = pricedSyscalls{
 		under:     vm.Syscalls(ctx, vm.cstate, rt.cst),
 		chargeGas: rt.chargeGasFunc(1),
 		pl:        rt.pricelist,
@@ -128,7 +128,7 @@ func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, origin addres
 		rt.Abortf(exitcode.SysErrInvalidReceiver, "resolve msg.From address failed")
 	}
 	vmm.From = resF
-	rt.vmsg = &vmm
+	rt.Message = vmm
 
 	return rt
 }
@@ -700,9 +700,9 @@ func (vm *VM) Invoke(act *types.Actor, rt *Runtime, method abi.MethodNum, params
 	defer span.End()
 	if span.IsRecordingEvents() {
 		span.AddAttributes(
-			trace.StringAttribute("to", rt.Message().Receiver().String()),
+			trace.StringAttribute("to", rt.Receiver().String()),
 			trace.Int64Attribute("method", int64(method)),
-			trace.StringAttribute("value", rt.Message().ValueReceived().String()),
+			trace.StringAttribute("value", rt.ValueReceived().String()),
 		)
 	}
 

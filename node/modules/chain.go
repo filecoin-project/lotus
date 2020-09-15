@@ -163,8 +163,31 @@ func NetworkName(mctx helpers.MetricsCtx, lc fx.Lifecycle, cs *store.ChainStore,
 	return netName, err
 }
 
-func NewSyncer(lc fx.Lifecycle, ds dtypes.MetadataDS, sm *stmgr.StateManager, exchange exchange.Client, h host.Host, beacon beacon.Schedule, verifier ffiwrapper.Verifier) (*chain.Syncer, error) {
-	syncer, err := chain.NewSyncer(ds, sm, exchange, h.ConnManager(), h.ID(), beacon, verifier)
+type SyncerParams struct {
+	fx.In
+
+	Lifecycle    fx.Lifecycle
+	MetadataDS   dtypes.MetadataDS
+	StateManager *stmgr.StateManager
+	ChainXchg    exchange.Client
+	SyncMgrCtor  chain.SyncManagerCtor
+	Host         host.Host
+	Beacon       beacon.Schedule
+	Verifier     ffiwrapper.Verifier
+}
+
+func NewSyncer(params SyncerParams) (*chain.Syncer, error) {
+	var (
+		lc     = params.Lifecycle
+		ds     = params.MetadataDS
+		sm     = params.StateManager
+		ex     = params.ChainXchg
+		smCtor = params.SyncMgrCtor
+		h      = params.Host
+		b      = params.Beacon
+		v      = params.Verifier
+	)
+	syncer, err := chain.NewSyncer(ds, sm, ex, smCtor, h.ConnManager(), h.ID(), b, v)
 	if err != nil {
 		return nil, err
 	}

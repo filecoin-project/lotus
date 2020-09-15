@@ -3,6 +3,7 @@ package state
 import (
 	"bytes"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	typegen "github.com/whyrusleeping/cbor-gen"
 )
@@ -69,7 +70,7 @@ func DiffAdtArray(preArr, curArr *adt.Array, out AdtArrayDiff) error {
 // Modify should be called when a value is modified in the map
 // Remove should be called when a value is removed from the map
 type AdtMapDiff interface {
-	AsKey(key string) (adt.Keyer, error)
+	AsKey(key string) (abi.Keyer, error)
 	Add(key string, val *typegen.Deferred) error
 	Modify(key string, from, to *typegen.Deferred) error
 	Remove(key string, val *typegen.Deferred) error

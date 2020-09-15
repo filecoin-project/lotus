@@ -27,12 +27,16 @@ type test struct {
 }
 
 func TestHappyPath(t *testing.T) {
+	var notif []struct{ before, after SectorInfo }
 	ma, _ := address.NewIDAddress(55151)
 	m := test{
 		s: &Sealing{
 			maddr: ma,
 			stats: SectorStats{
 				bySector: map[abi.SectorID]statSectorState{},
+			},
+			notifee: func(before, after SectorInfo) {
+				notif = append(notif, struct{ before, after SectorInfo }{before, after})
 			},
 		},
 		t:     t,
@@ -68,6 +72,16 @@ func TestHappyPath(t *testing.T) {
 
 	m.planSingle(SectorFinalized{})
 	require.Equal(m.t, m.state.State, Proving)
+
+	expected := []SectorState{Packing, PreCommit1, PreCommit2, PreCommitting, PreCommitWait, WaitSeed, Committing, SubmitCommit, CommitWait, FinalizeSector, Proving}
+	for i, n := range notif {
+		if n.before.State != expected[i] {
+			t.Fatalf("expected before state: %s, got: %s", expected[i], n.before.State)
+		}
+		if n.after.State != expected[i+1] {
+			t.Fatalf("expected after state: %s, got: %s", expected[i+1], n.after.State)
+		}
+	}
 }
 
 func TestSeedRevert(t *testing.T) {

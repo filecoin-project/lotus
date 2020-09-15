@@ -58,7 +58,14 @@ import (
 // the theoretical max height based on systime are quickly rejected
 const MaxHeightDrift = 5
 
-var defaultMessageFetchWindowSize = 200
+var (
+	// LocalIncoming is the _local_ pubsub (unrelated to libp2p pubsub) topic
+	// where the Syncer publishes candidate chain heads to be synced.
+	LocalIncoming = "incoming"
+
+	log                           = logging.Logger("chain")
+	defaultMessageFetchWindowSize = 200
+)
 
 func init() {
 	if s := os.Getenv("LOTUS_BSYNC_MSG_WINDOW"); s != "" {
@@ -70,10 +77,6 @@ func init() {
 		defaultMessageFetchWindowSize = val
 	}
 }
-
-var log = logging.Logger("chain")
-
-var LocalIncoming = "incoming"
 
 // Syncer is in charge of running the chain synchronization logic. As such, it
 // is tasked with these functions, amongst others:
@@ -119,7 +122,7 @@ type Syncer struct {
 
 	self peer.ID
 
-	syncmgr *SyncManager
+	syncmgr SyncManager
 
 	connmgr connmgr.ConnManager
 
@@ -140,8 +143,10 @@ type Syncer struct {
 	ds dtypes.MetadataDS
 }
 
+type SyncManagerCtor func(syncFn SyncFunc) SyncManager
+
 // NewSyncer creates a new Syncer object.
-func NewSyncer(ds dtypes.MetadataDS, sm *stmgr.StateManager, exchange exchange.Client, connmgr connmgr.ConnManager, self peer.ID, beacon beacon.Schedule, verifier ffiwrapper.Verifier) (*Syncer, error) {
+func NewSyncer(ds dtypes.MetadataDS, sm *stmgr.StateManager, exchange exchange.Client, syncMgrCtor SyncManagerCtor, connmgr connmgr.ConnManager, self peer.ID, beacon beacon.Schedule, verifier ffiwrapper.Verifier) (*Syncer, error) {
 	gen, err := sm.ChainStore().GetGenesis()
 	if err != nil {
 		return nil, xerrors.Errorf("getting genesis block: %w", err)
@@ -181,7 +186,7 @@ func NewSyncer(ds dtypes.MetadataDS, sm *stmgr.StateManager, exchange exchange.C
 		log.Warn("*********************************************************************************************")
 	}
 
-	s.syncmgr = NewSyncManager(s.Sync)
+	s.syncmgr = syncMgrCtor(s.Sync)
 	return s, nil
 }
 
@@ -648,7 +653,7 @@ func (syncer *Syncer) minerIsValid(ctx context.Context, maddr address.Address, b
 	}
 
 	var claim power.Claim
-	exist, err := cm.Get(adt.AddrKey(maddr), &claim)
+	exist, err := cm.Get(abi.AddrKey(maddr), &claim)
 	if err != nil {
 		return err
 	}
@@ -1665,11 +1670,7 @@ func VerifyElectionPoStVRF(ctx context.Context, worker address.Address, rand []b
 }
 
 func (syncer *Syncer) State() []SyncerState {
-	var out []SyncerState
-	for _, ss := range syncer.syncmgr.syncStates {
-		out = append(out, ss.Snapshot())
-	}
-	return out
+	return syncer.syncmgr.State()
 }
 
 // MarkBad manually adds a block to the "bad blocks" cache.

@@ -7,6 +7,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
@@ -336,7 +337,7 @@ var verifRegCheckVerifierCmd = &cli.Command{
 		}
 
 		var dcap verifreg.DataCap
-		if found, err := vh.Get(adt.AddrKey(vaddr), &dcap); err != nil {
+		if found, err := vh.Get(abi.AddrKey(vaddr), &dcap); err != nil {
 			return err
 		} else if !found {
 			return fmt.Errorf("not found")

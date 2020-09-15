@@ -64,7 +64,7 @@ func (inv *Invoker) Invoke(codeCid cid.Cid, rt runtime.Runtime, method abi.Metho
 
 	code, ok := inv.builtInCode[codeCid]
 	if !ok {
-		log.Errorf("no code for actor %s (Addr: %s)", codeCid, rt.Message().Receiver())
+		log.Errorf("no code for actor %s (Addr: %s)", codeCid, rt.Receiver())
 		return nil, aerrors.Newf(exitcode.SysErrorIllegalActor, "no code for actor %s(%d)(%s)", codeCid, method, hex.EncodeToString(params))
 	}
 	if method >= abi.MethodNum(len(code)) || code[method] == nil {

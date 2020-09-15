@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
+	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/node/config"
 
 	"go.opencensus.io/trace"
@@ -41,8 +42,10 @@ type WindowPoStScheduler struct {
 	activeDeadline *dline.Info
 	abort          context.CancelFunc
 
-	//failed abi.ChainEpoch // eps
-	//failLk sync.Mutex
+	evtTypes [4]journal.EventType
+
+	// failed abi.ChainEpoch // eps
+	// failLk sync.Mutex
 }
 
 func NewWindowedPoStScheduler(api storageMinerApi, fc config.MinerFeeConfig, sb storage.Prover, ft sectorstorage.FaultTracker, actor address.Address, worker address.Address) (*WindowPoStScheduler, error) {
@@ -66,6 +69,12 @@ func NewWindowedPoStScheduler(api storageMinerApi, fc config.MinerFeeConfig, sb 
 
 		actor:  actor,
 		worker: worker,
+		evtTypes: [...]journal.EventType{
+			evtTypeWdPoStScheduler:  journal.J.RegisterEventType("wdpost", "scheduler"),
+			evtTypeWdPoStProofs:     journal.J.RegisterEventType("wdpost", "proofs_processed"),
+			evtTypeWdPoStRecoveries: journal.J.RegisterEventType("wdpost", "recoveries_processed"),
+			evtTypeWdPoStFaults:     journal.J.RegisterEventType("wdpost", "faults_processed"),
+		},
 	}, nil
 }
 
@@ -111,12 +120,13 @@ func (s *WindowPoStScheduler) Run(ctx context.Context) {
 					log.Errorf("expected first notif to have len = 1")
 					continue
 				}
-				if changes[0].Type != store.HCCurrent {
+				chg := changes[0]
+				if chg.Type != store.HCCurrent {
 					log.Errorf("expected first notif to tell current ts")
 					continue
 				}
 
-				if err := s.update(ctx, changes[0].Val); err != nil {
+				if err := s.update(ctx, chg.Val); err != nil {
 					log.Errorf("%+v", err)
 				}
 
@@ -220,10 +230,29 @@ func (s *WindowPoStScheduler) abortActivePoSt() {
 
 	if s.abort != nil {
 		s.abort()
-	}
 
-	log.Warnf("Aborting Window PoSt (Deadline: %+v)", s.activeDeadline)
+		journal.J.RecordEvent(s.evtTypes[evtTypeWdPoStScheduler], func() interface{} {
+			return WdPoStSchedulerEvt{
+				evtCommon: s.getEvtCommon(nil),
+				State:     SchedulerStateAborted,
+			}
+		})
+
+		log.Warnf("Aborting Window PoSt (Deadline: %+v)", s.activeDeadline)
+	}
 
 	s.activeDeadline = nil
 	s.abort = nil
+}
+
+// getEvtCommon populates and returns common attributes from state, for a
+// WdPoSt journal event.
+func (s *WindowPoStScheduler) getEvtCommon(err error) evtCommon {
+	c := evtCommon{Error: err}
+	if s.cur != nil {
+		c.Deadline = s.activeDeadline
+		c.Height = s.cur.Height()
+		c.TipSet = s.cur.Cids()
+	}
+	return c
 }

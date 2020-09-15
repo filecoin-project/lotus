@@ -54,6 +54,7 @@ var stateCmd = &cli.Command{
 		stateListActorsCmd,
 		stateListMinersCmd,
 		stateCircSupplyCmd,
+		stateSectorCmd,
 		stateGetActorCmd,
 		stateLookupIDCmd,
 		stateReplaySetCmd,
@@ -118,6 +119,13 @@ var stateMinerInfo = &cli.Command{
 			fmt.Printf("%s ", a)
 		}
 		fmt.Println()
+
+		cd, err := api.StateMinerProvingDeadline(ctx, addr, ts.Key())
+		if err != nil {
+			return xerrors.Errorf("getting miner info: %w", err)
+		}
+
+		fmt.Printf("Proving Period Start:\t%s\n", EpochTime(cd.CurrentEpoch, cd.PeriodStart))
 
 		return nil
 	},
@@ -1549,6 +1557,77 @@ var stateCircSupplyCmd = &cli.Command{
 		fmt.Println("Vested: ", types.FIL(circ.FilVested))
 		fmt.Println("Burnt: ", types.FIL(circ.FilBurnt))
 		fmt.Println("Locked: ", types.FIL(circ.FilLocked))
+
+		return nil
+	},
+}
+
+var stateSectorCmd = &cli.Command{
+	Name:      "sector",
+	Usage:     "Get miner sector info",
+	ArgsUsage: "[miner address] [sector number]",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		if cctx.Args().Len() != 2 {
+			return xerrors.Errorf("expected 2 params")
+		}
+
+		ts, err := LoadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
+
+		if ts == nil {
+			ts, err = api.ChainHead(ctx)
+			if err != nil {
+				return err
+			}
+		}
+
+		maddr, err := address.NewFromString(cctx.Args().Get(0))
+		if err != nil {
+			return err
+		}
+
+		sid, err := strconv.ParseInt(cctx.Args().Get(1), 10, 64)
+		if err != nil {
+			return err
+		}
+
+		si, err := api.StateSectorGetInfo(ctx, maddr, abi.SectorNumber(sid), ts.Key())
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("SectorNumber: ", si.SectorNumber)
+		fmt.Println("SealProof: ", si.SealProof)
+		fmt.Println("SealedCID: ", si.SealedCID)
+		fmt.Println("DealIDs: ", si.DealIDs)
+		fmt.Println()
+		fmt.Println("Activation: ", EpochTime(ts.Height(), si.Activation))
+		fmt.Println("Expiration: ", EpochTime(ts.Height(), si.Expiration))
+		fmt.Println()
+		fmt.Println("DealWeight: ", si.DealWeight)
+		fmt.Println("VerifiedDealWeight: ", si.VerifiedDealWeight)
+		fmt.Println("InitialPledge: ", types.FIL(si.InitialPledge))
+		fmt.Println("ExpectedDayReward: ", types.FIL(si.ExpectedDayReward))
+		fmt.Println("ExpectedStoragePledge: ", types.FIL(si.ExpectedStoragePledge))
+		fmt.Println()
+
+		sp, err := api.StateSectorPartition(ctx, maddr, abi.SectorNumber(sid), ts.Key())
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("Deadline: ", sp.Deadline)
+		fmt.Println("Partition: ", sp.Partition)
 
 		return nil
 	},

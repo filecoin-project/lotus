@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"errors"
+	"os"
 	"time"
 
 	logging "github.com/ipfs/go-log"
@@ -45,6 +46,7 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
+	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/lib/peermgr"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
@@ -67,6 +69,10 @@ import (
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
+
+// EnvJournalDisabledEvents is the environment variable through which disabled
+// journal events can be customized.
+const EnvJournalDisabledEvents = "LOTUS_JOURNAL_DISABLED_EVENTS"
 
 //nolint:deadcode,varcheck
 var log = logging.Logger("builder")
@@ -92,11 +98,16 @@ var (
 
 type invoke int
 
+// Invokes are called in the order they are defined.
 //nolint:golint
 const (
+	// InitJournal at position 0 initializes the journal global var as soon as
+	// the system starts, so that it's available for all other components.
+	InitJournalKey = invoke(iota)
+
 	// libp2p
 
-	PstoreAddSelfKeysKey = invoke(iota)
+	PstoreAddSelfKeysKey
 	StartListeningKey
 	BootstrapKey
 
@@ -124,7 +135,6 @@ const (
 	HeadMetricsKey
 	SettlePaymentChannelsKey
 	RunPeerTaggerKey
-	JournalKey
 
 	SetApiEndpointKey
 
@@ -152,11 +162,25 @@ type Settings struct {
 
 func defaults() []Option {
 	return []Option{
+		// global system journal.
+		Override(new(journal.DisabledEvents), func() journal.DisabledEvents {
+			if env, ok := os.LookupEnv(EnvJournalDisabledEvents); ok {
+				if ret, err := journal.ParseDisabledEvents(env); err == nil {
+					return ret
+				}
+			}
+			// fallback if env variable is not set, or if it failed to parse.
+			return journal.DefaultDisabledEvents
+		}),
+		Override(new(journal.Journal), modules.OpenFilesystemJournal),
+		Override(InitJournalKey, func(j journal.Journal) {
+			journal.J = j // eagerly sets the global journal through fx.Invoke.
+		}),
+
 		Override(new(helpers.MetricsCtx), context.Background),
 		Override(new(record.Validator), modules.RecordValidator),
 		Override(new(dtypes.Bootstrapper), dtypes.Bootstrapper(false)),
 		Override(new(dtypes.ShutdownChan), make(chan struct{})),
-		Override(JournalKey, modules.SetupJournal),
 
 		// Filecoin modules
 
@@ -243,6 +267,9 @@ func Online() Option {
 			Override(new(dtypes.ChainBlockService), modules.ChainBlockService),
 
 			// Filecoin services
+			// We don't want the SyncManagerCtor to be used as an fx constructor, but rather as a value.
+			// It will be called implicitly by the Syncer constructor.
+			Override(new(chain.SyncManagerCtor), func() chain.SyncManagerCtor { return chain.NewSyncManager }),
 			Override(new(*chain.Syncer), modules.NewSyncer),
 			Override(new(exchange.Client), exchange.NewClient),
 			Override(new(*messagepool.MessagePool), modules.MessagePool),
@@ -477,12 +504,18 @@ func Repo(r repo.Repo) Option {
 }
 
 func FullAPI(out *api.FullNode) Option {
-	return func(s *Settings) error {
-		resAPI := &impl.FullNodeAPI{}
-		s.invokes[ExtractApiKey] = fx.Extract(resAPI)
-		*out = resAPI
-		return nil
-	}
+	return Options(
+		func(s *Settings) error {
+			s.nodeType = repo.FullNode
+			return nil
+		},
+		func(s *Settings) error {
+			resAPI := &impl.FullNodeAPI{}
+			s.invokes[ExtractApiKey] = fx.Extract(resAPI)
+			*out = resAPI
+			return nil
+		},
+	)
 }
 
 type StopFunc func(context.Context) error
@@ -490,9 +523,8 @@ type StopFunc func(context.Context) error
 // New builds and starts new Filecoin node
 func New(ctx context.Context, opts ...Option) (StopFunc, error) {
 	settings := Settings{
-		modules:  map[interface{}]fx.Option{},
-		invokes:  make([]fx.Option, _nInvokes),
-		nodeType: repo.FullNode,
+		modules: map[interface{}]fx.Option{},
+		invokes: make([]fx.Option, _nInvokes),
 	}
 
 	// apply module options in the right order
