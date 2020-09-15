@@ -2375,7 +2375,12 @@ There are not yet any comments for this method.
 
 Perms: sign
 
-Inputs: `null`
+Inputs:
+```json
+[
+  "t01234"
+]
+```
 
 Response:
 ```json
@@ -2399,6 +2404,7 @@ Perms: sign
 Inputs:
 ```json
 [
+  "t01234",
   "t01234"
 ]
 ```
