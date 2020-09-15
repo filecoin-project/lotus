@@ -5,7 +5,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
-	"text/tabwriter"
+	"text/template"
 	"time"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
@@ -133,9 +133,26 @@ var sectorsStatusCmd = &cli.Command{
 	},
 }
 
+type SectorsListEntry struct {
+	Id        abi.SectorNumber
+	State     api.SectorState
+	SSet      string
+	Active    string
+	TktH      abi.ChainEpoch
+	SeedH     abi.ChainEpoch
+	Deals     []abi.DealID
+	ToUpgrade bool
+}
+
 var sectorsListCmd = &cli.Command{
 	Name:  "list",
 	Usage: "List sectors",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "format",
+			Usage: "use go text template, Field: Id State SSet Active TktH SeedH Deals ToUpgrade",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
@@ -183,19 +200,29 @@ var sectorsListCmd = &cli.Command{
 			return list[i] < list[j]
 		})
 
-		w := tabwriter.NewWriter(os.Stdout, 8, 4, 1, ' ', 0)
+		tmpl := template.New("sectors")
+		if cctx.IsSet("format") {
+			tmpl, err = tmpl.Parse(cctx.String("format"))
+		} else {
+			tmpl, err = tmpl.Parse("{{.Id| printf \"%6d\"}}: {{.State | printf \"%-10s\" }}\t" +
+				"sSet: {{.SSet | printf \"%-3s\" }} active: {{.Active | printf \"%-3s\" }} " +
+				"tktH: {{.TktH | printf \"%-8d\" }} seedH: {{.SeedH | printf \"%-8d\"}} deals: " +
+				"{{.Deals | printf \"%v\"}}\t toUpgrade:{{.ToUpgrade}}\n")
+		}
+		if err != nil {
+			return err
+		}
 
 		for _, s := range list {
 			st, err := nodeApi.SectorsStatus(ctx, s, false)
 			if err != nil {
-				fmt.Fprintf(w, "%d:\tError: %s\n", s, err)
+				fmt.Fprintf(os.Stdout, "%d:\tError: %s\n", s, err)
 				continue
 			}
 
 			_, inSSet := commitedIDs[s]
 			_, inASet := activeIDs[s]
-
-			fmt.Fprintf(w, "%d: %s\tsSet: %s\tactive: %s\ttktH: %d\tseedH: %d\tdeals: %v\t toUpgrade:%t\n",
+			sle := SectorsListEntry{
 				s,
 				st.State,
 				yesno(inSSet),
@@ -204,10 +231,15 @@ var sectorsListCmd = &cli.Command{
 				st.Seed.Epoch,
 				st.Deals,
 				st.ToUpgrade,
-			)
+			}
+			err = tmpl.Execute(os.Stdout, sle)
+			if err != nil {
+				fmt.Fprintf(os.Stdout, "%d:\tError: %s\n", s, err)
+				continue
+			}
 		}
 
-		return w.Flush()
+		return nil
 	},
 }
 
