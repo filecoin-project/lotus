@@ -67,28 +67,6 @@ func TestCallerValidationIs(t *testing.T) {
 	rt.Verify()
 }
 
-func TestCallerValidationIsReceiver(t *testing.T) {
-	caller := atesting.NewIDAddr(t, 100)
-	receiver := atesting.NewIDAddr(t, 101)
-	builder := mock.NewBuilder(context.Background(), receiver)
-
-	rt := builder.Build(t)
-	var a Actor
-
-	rt.SetCaller(caller, builtin.AccountActorCodeID)
-	rt.ExpectValidateCallerAddr(receiver)
-	// FIXME: https://github.com/filecoin-project/specs-actors/pull/1155
-	rt.ExpectAbort(exitcode.ErrForbidden, func() {
-		rt.Call(a.CallerValidation, &CallerValidationArgs{Branch: CallerValidationBranchIsReceiver})
-	})
-	rt.Verify()
-
-	rt.SetCaller(receiver, builtin.AccountActorCodeID)
-	rt.ExpectValidateCallerAddr(receiver)
-	rt.Call(a.CallerValidation, &CallerValidationArgs{Branch: CallerValidationBranchIsReceiver})
-	rt.Verify()
-}
-
 func TestCallerValidationType(t *testing.T) {
 	caller := atesting.NewIDAddr(t, 100)
 	receiver := atesting.NewIDAddr(t, 101)

@@ -35,8 +35,6 @@ const (
 	CallerValidationBranchTwice
 	// CallerValidationBranchIs causes caller validation against CallerValidationArgs.Addrs.
 	CallerValidationBranchIs
-	// CallerValidationBranchIsReceiver causes validation that the caller was also the receiver.
-	CallerValidationBranchIsReceiver
 	// CallerValidationBranchType causes caller validation against CallerValidationArgs.Types.
 	CallerValidationBranchType
 )
@@ -148,8 +146,6 @@ func (a Actor) CallerValidation(rt runtime.Runtime, args *CallerValidationArgs) 
 		rt.ValidateImmediateCallerAcceptAny()
 	case CallerValidationBranchIs:
 		rt.ValidateImmediateCallerIs(args.Addrs...)
-	case CallerValidationBranchIsReceiver:
-		rt.ValidateImmediateCallerIs(rt.Message().Receiver())
 	case CallerValidationBranchType:
 		rt.ValidateImmediateCallerType(args.Types...)
 	default:
