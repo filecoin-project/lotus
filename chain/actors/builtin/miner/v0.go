@@ -5,7 +5,11 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	v0adt "github.com/filecoin-project/specs-actors/actors/util/adt"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
+	cbg "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 )
@@ -41,6 +45,41 @@ func (s *v0State) GetPrecommittedSector(num abi.SectorNumber) (*SectorPreCommitO
 	}
 
 	return info, nil
+}
+
+func (s *v0State) LoadSectorsFromSet(filter *bitfield.BitField, filterOut bool) ([]*ChainSectorInfo, error) {
+	a, err := v0adt.AsArray(s.store, s.State.Sectors)
+	if err != nil {
+		return nil, err
+	}
+
+	var sset []*ChainSectorInfo
+	var v cbg.Deferred
+	if err := a.ForEach(&v, func(i int64) error {
+		if filter != nil {
+			set, err := filter.IsSet(uint64(i))
+			if err != nil {
+				return xerrors.Errorf("filter check error: %w", err)
+			}
+			if set == filterOut {
+				return nil
+			}
+		}
+
+		var oci miner.SectorOnChainInfo
+		if err := cbor.DecodeInto(v.Raw, &oci); err != nil {
+			return err
+		}
+		sset = append(sset, &ChainSectorInfo{
+			Info: oci,
+			ID:   abi.SectorNumber(i),
+		})
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return sset, nil
 }
 
 func (s *v0State) LoadDeadline(idx uint64) (Deadline, error) {

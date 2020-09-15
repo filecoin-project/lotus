@@ -161,19 +161,19 @@ type FullNodeStruct struct {
 		ClientDataTransferUpdates                 func(ctx context.Context) (<-chan api.DataTransferChannel, error)                                                 `perm:"write"`
 		ClientRetrieveTryRestartInsufficientFunds func(ctx context.Context, paymentChannel address.Address) error                                                   `perm:"write"`
 
-		StateNetworkName                   func(context.Context) (dtypes.NetworkName, error)                                                                   `perm:"read"`
-		StateMinerSectors                  func(context.Context, address.Address, *bitfield.BitField, bool, types.TipSetKey) ([]*api.ChainSectorInfo, error)   `perm:"read"`
-		StateMinerActiveSectors            func(context.Context, address.Address, types.TipSetKey) ([]*api.ChainSectorInfo, error)                             `perm:"read"`
-		StateMinerProvingDeadline          func(context.Context, address.Address, types.TipSetKey) (*dline.Info, error)                                        `perm:"read"`
-		StateMinerPower                    func(context.Context, address.Address, types.TipSetKey) (*api.MinerPower, error)                                    `perm:"read"`
-		StateMinerInfo                     func(context.Context, address.Address, types.TipSetKey) (miner2.MinerInfo, error)                                   `perm:"read"`
-		StateMinerFaults                   func(context.Context, address.Address, types.TipSetKey) (bitfield.BitField, error)                                  `perm:"read"`
-		StateAllMinerFaults                func(context.Context, abi.ChainEpoch, types.TipSetKey) ([]*api.Fault, error)                                        `perm:"read"`
-		StateMinerRecoveries               func(context.Context, address.Address, types.TipSetKey) (bitfield.BitField, error)                                  `perm:"read"`
-		StateMinerPreCommitDepositForPower func(context.Context, address.Address, miner.SectorPreCommitInfo, types.TipSetKey) (types.BigInt, error)            `perm:"read"`
-		StateMinerInitialPledgeCollateral  func(context.Context, address.Address, miner.SectorPreCommitInfo, types.TipSetKey) (types.BigInt, error)            `perm:"read"`
-		StateMinerAvailableBalance         func(context.Context, address.Address, types.TipSetKey) (types.BigInt, error)                                       `perm:"read"`
-		StateSectorPreCommitInfo           func(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error) `perm:"read"`
+		StateNetworkName                   func(context.Context) (dtypes.NetworkName, error)                                                                    `perm:"read"`
+		StateMinerSectors                  func(context.Context, address.Address, *bitfield.BitField, bool, types.TipSetKey) ([]*miner2.ChainSectorInfo, error) `perm:"read"`
+		StateMinerActiveSectors            func(context.Context, address.Address, types.TipSetKey) ([]*miner2.ChainSectorInfo, error)                           `perm:"read"`
+		StateMinerProvingDeadline          func(context.Context, address.Address, types.TipSetKey) (*dline.Info, error)                                         `perm:"read"`
+		StateMinerPower                    func(context.Context, address.Address, types.TipSetKey) (*api.MinerPower, error)                                     `perm:"read"`
+		StateMinerInfo                     func(context.Context, address.Address, types.TipSetKey) (miner2.MinerInfo, error)                                    `perm:"read"`
+		StateMinerFaults                   func(context.Context, address.Address, types.TipSetKey) (bitfield.BitField, error)                                   `perm:"read"`
+		StateAllMinerFaults                func(context.Context, abi.ChainEpoch, types.TipSetKey) ([]*api.Fault, error)                                         `perm:"read"`
+		StateMinerRecoveries               func(context.Context, address.Address, types.TipSetKey) (bitfield.BitField, error)                                   `perm:"read"`
+		StateMinerPreCommitDepositForPower func(context.Context, address.Address, miner.SectorPreCommitInfo, types.TipSetKey) (types.BigInt, error)             `perm:"read"`
+		StateMinerInitialPledgeCollateral  func(context.Context, address.Address, miner.SectorPreCommitInfo, types.TipSetKey) (types.BigInt, error)             `perm:"read"`
+		StateMinerAvailableBalance         func(context.Context, address.Address, types.TipSetKey) (types.BigInt, error)                                        `perm:"read"`
+		StateSectorPreCommitInfo           func(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error)  `perm:"read"`
 		StateSectorGetInfo                 func(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*miner.SectorOnChainInfo, error)         `perm:"read"`
 		StateSectorExpiration              func(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*api.SectorExpiration, error)            `perm:"read"`
 		StateSectorPartition               func(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*api.SectorLocation, error)              `perm:"read"`
@@ -730,11 +730,11 @@ func (c *FullNodeStruct) StateNetworkName(ctx context.Context) (dtypes.NetworkNa
 	return c.Internal.StateNetworkName(ctx)
 }
 
-func (c *FullNodeStruct) StateMinerSectors(ctx context.Context, addr address.Address, filter *bitfield.BitField, filterOut bool, tsk types.TipSetKey) ([]*api.ChainSectorInfo, error) {
+func (c *FullNodeStruct) StateMinerSectors(ctx context.Context, addr address.Address, filter *bitfield.BitField, filterOut bool, tsk types.TipSetKey) ([]*miner2.ChainSectorInfo, error) {
 	return c.Internal.StateMinerSectors(ctx, addr, filter, filterOut, tsk)
 }
 
-func (c *FullNodeStruct) StateMinerActiveSectors(ctx context.Context, addr address.Address, tsk types.TipSetKey) ([]*api.ChainSectorInfo, error) {
+func (c *FullNodeStruct) StateMinerActiveSectors(ctx context.Context, addr address.Address, tsk types.TipSetKey) ([]*miner2.ChainSectorInfo, error) {
 	return c.Internal.StateMinerActiveSectors(ctx, addr, tsk)
 }
 

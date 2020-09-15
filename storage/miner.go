@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"errors"
+	miner2 "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"time"
 
 	"github.com/filecoin-project/go-state-types/dline"
@@ -67,7 +68,7 @@ type SealingStateEvt struct {
 type storageMinerApi interface {
 	// Call a read only method on actors (no interaction with the chain required)
 	StateCall(context.Context, *types.Message, types.TipSetKey) (*api.InvocResult, error)
-	StateMinerSectors(context.Context, address.Address, *bitfield.BitField, bool, types.TipSetKey) ([]*api.ChainSectorInfo, error)
+	StateMinerSectors(context.Context, address.Address, *bitfield.BitField, bool, types.TipSetKey) ([]*miner2.ChainSectorInfo, error)
 	StateSectorPreCommitInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error)
 	StateSectorGetInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*miner.SectorOnChainInfo, error)
 	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok types.TipSetKey) (*api.SectorLocation, error)

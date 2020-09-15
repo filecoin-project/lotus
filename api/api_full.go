@@ -315,9 +315,9 @@ type FullNode interface {
 	// StateMinerSectors returns info about the given miner's sectors. If the filter bitfield is nil, all sectors are included.
 	// If the filterOut boolean is set to true, any sectors in the filter are excluded.
 	// If false, only those sectors in the filter are included.
-	StateMinerSectors(context.Context, address.Address, *bitfield.BitField, bool, types.TipSetKey) ([]*ChainSectorInfo, error)
+	StateMinerSectors(context.Context, address.Address, *bitfield.BitField, bool, types.TipSetKey) ([]*miner2.ChainSectorInfo, error)
 	// StateMinerActiveSectors returns info about sectors that a given miner is actively proving.
-	StateMinerActiveSectors(context.Context, address.Address, types.TipSetKey) ([]*ChainSectorInfo, error)
+	StateMinerActiveSectors(context.Context, address.Address, types.TipSetKey) ([]*miner2.ChainSectorInfo, error)
 	// StateMinerProvingDeadline calculates the deadline at some epoch for a proving period
 	// and returns the deadline-related calculations.
 	StateMinerProvingDeadline(context.Context, address.Address, types.TipSetKey) (*dline.Info, error)
@@ -536,11 +536,6 @@ type BlockMessages struct {
 type Message struct {
 	Cid     cid.Cid
 	Message *types.Message
-}
-
-type ChainSectorInfo struct {
-	Info miner.SectorOnChainInfo
-	ID   abi.SectorNumber
 }
 
 type ActorState struct {

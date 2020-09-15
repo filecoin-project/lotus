@@ -30,11 +30,11 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
@@ -62,7 +62,7 @@ func (a *StateAPI) StateNetworkName(ctx context.Context) (dtypes.NetworkName, er
 	return stmgr.GetNetworkName(ctx, a.StateManager, a.Chain.GetHeaviestTipSet().ParentState())
 }
 
-func (a *StateAPI) StateMinerSectors(ctx context.Context, addr address.Address, filter *bitfield.BitField, filterOut bool, tsk types.TipSetKey) ([]*api.ChainSectorInfo, error) {
+func (a *StateAPI) StateMinerSectors(ctx context.Context, addr address.Address, filter *bitfield.BitField, filterOut bool, tsk types.TipSetKey) ([]*miner.ChainSectorInfo, error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -70,8 +70,8 @@ func (a *StateAPI) StateMinerSectors(ctx context.Context, addr address.Address, 
 	return stmgr.GetMinerSectorSet(ctx, a.StateManager, ts, addr, filter, filterOut)
 }
 
-func (a *StateAPI) StateMinerActiveSectors(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]*api.ChainSectorInfo, error) {
-	var out []*api.ChainSectorInfo
+func (a *StateAPI) StateMinerActiveSectors(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]*miner.ChainSectorInfo, error) { // TODO: only used in cli
+	var out []*miner.ChainSectorInfo
 
 	err := a.StateManager.WithParentStateTsk(tsk,
 		a.StateManager.WithActor(maddr,

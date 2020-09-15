@@ -35,6 +35,7 @@ type State interface {
 
 	GetSector(abi.SectorNumber) (*SectorOnChainInfo, error)
 	GetPrecommittedSector(abi.SectorNumber) (*SectorPreCommitOnChainInfo, error)
+	LoadSectorsFromSet(filter *bitfield.BitField, filterOut bool) ([]*ChainSectorInfo, error)
 
 	LoadDeadline(idx uint64) (Deadline, error)
 	ForEachDeadline(cb func(idx uint64, dl Deadline) error) error
@@ -70,4 +71,9 @@ type MinerInfo struct {
 	SealProofType              abi.RegisteredSealProof
 	SectorSize                 abi.SectorSize
 	WindowPoStPartitionSectors uint64
+}
+
+type ChainSectorInfo struct {
+	Info SectorOnChainInfo
+	ID   abi.SectorNumber
 }
