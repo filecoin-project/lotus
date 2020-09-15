@@ -1,6 +1,7 @@
 package miner
 
 import (
+	"bytes"
 	"errors"
 
 	"github.com/filecoin-project/go-address"
@@ -151,7 +152,7 @@ func (s *v0State) LoadSectorsFromSet(filter *bitfield.BitField, filterOut bool) 
 		}
 
 		var oci miner.SectorOnChainInfo
-		if err := cbor.DecodeInto(v.Raw, &oci); err != nil {
+		if err := oci.UnmarshalCBOR(bytes.NewReader(v.Raw)); err != nil {
 			return err
 		}
 		sset = append(sset, &ChainSectorInfo{
