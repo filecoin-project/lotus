@@ -473,19 +473,6 @@ type MinerSectors struct {
 	Active  uint64
 }
 
-type SectorExpiration struct {
-	OnTime abi.ChainEpoch
-
-	// non-zero if sector is faulty, epoch at which it will be permanently
-	// removed if it doesn't recover
-	Early abi.ChainEpoch
-}
-
-type SectorLocation struct {
-	Deadline  uint64
-	Partition uint64
-}
-
 type ImportRes struct {
 	Root     cid.Cid
 	ImportID multistore.StoreID

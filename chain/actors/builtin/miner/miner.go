@@ -35,6 +35,8 @@ type State interface {
 	cbor.Marshaler
 
 	GetSector(abi.SectorNumber) (*SectorOnChainInfo, error)
+	FindSector(abi.SectorNumber) (*SectorLocation, error)
+	GetSectorExpiration(abi.SectorNumber) (*SectorExpiration, error)
 	GetPrecommittedSector(abi.SectorNumber) (*SectorPreCommitOnChainInfo, error)
 	LoadSectorsFromSet(filter *bitfield.BitField, filterOut bool) ([]*ChainSectorInfo, error)
 
@@ -79,4 +81,17 @@ type MinerInfo struct {
 type ChainSectorInfo struct {
 	Info SectorOnChainInfo
 	ID   abi.SectorNumber
+}
+
+type SectorExpiration struct {
+	OnTime abi.ChainEpoch
+
+	// non-zero if sector is faulty, epoch at which it will be permanently
+	// removed if it doesn't recover
+	Early abi.ChainEpoch
+}
+
+type SectorLocation struct {
+	Deadline  uint64
+	Partition uint64
 }

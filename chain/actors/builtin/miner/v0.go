@@ -1,6 +1,8 @@
 package miner
 
 import (
+	"errors"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -37,6 +39,87 @@ func (s *v0State) GetSector(num abi.SectorNumber) (*SectorOnChainInfo, error) {
 	}
 
 	return info, nil
+}
+
+func (s *v0State) FindSector(num abi.SectorNumber) (*SectorLocation, error) {
+	dlIdx, partIdx, err := s.State.FindSector(s.store, num)
+	if err != nil {
+		return nil, err
+	}
+	return &SectorLocation{
+		Deadline:  dlIdx,
+		Partition: partIdx,
+	}, nil
+}
+
+// GetSectorExpiration returns the effective expiration of the given sector.
+//
+// If the sector isn't found or has already been terminated, this method returns
+// nil and no error. If the sector does not expire early, the Early expiration
+// field is 0.
+func (s *v0State) GetSectorExpiration(num abi.SectorNumber) (out *SectorExpiration, err error) {
+	dls, err := s.State.LoadDeadlines(s.store)
+	if err != nil {
+		return nil, err
+	}
+	// NOTE: this can be optimized significantly.
+	// 1. If the sector is non-faulty, it will either expire on-time (can be
+	// learned from the sector info), or in the next quantized expiration
+	// epoch (i.e., the first element in the partition's expiration queue.
+	// 2. If it's faulty, it will expire early within the first 14 entries
+	// of the expiration queue.
+	stopErr := errors.New("stop")
+	err := dls.ForEach(s.store, func(dlIdx uint64, dl *miner.Deadline) error {
+		partitions, err := dl.PartitionsArray(s.store)
+		if err != nil {
+			return err
+		}
+		quant := s.State.QuantSpecForDeadline(dlIdx)
+		var part miner.Partition
+		return partitions.ForEach(&part, func(partIdx int64) error {
+			if found, err := part.Sectors.IsSet(uint64(num)); err != nil {
+				return err
+			} else if !found {
+				return nil
+			}
+			if found, err := part.Terminated.IsSet(uint64(num)); err != nil {
+				return err
+			} else if found {
+				// already terminated
+				return stopErr
+			}
+
+			q, err := miner.LoadExpirationQueue(s.store, part.EarlyTerminated, quant)
+			if err != nil {
+				return err
+			}
+			var exp miner.ExpirationSet
+			return q.ForEach(&exp, func(epoch int64) error {
+				if early, err := exp.EarlySectors.IsSet(uint64(num)); err != nil {
+					return err
+				} else if early {
+					out.Early = abi.ChainEpoch(epoch)
+					return nil
+				}
+				if onTime, err := exp.OnTime.IsSet(uint64(num)); err != nil {
+					return err
+				} else if onTime {
+					out.OnTime = epoch
+					return stopErr
+				}
+			})
+		})
+	})
+	if err == stopErr {
+		err = nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if out.Early == 0 && out.OnTime == 0 {
+		return nil, nil
+	}
+	return out, nil
 }
 
 func (s *v0State) GetPrecommittedSector(num abi.SectorNumber) (*SectorPreCommitOnChainInfo, error) {
