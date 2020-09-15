@@ -12,6 +12,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
+var Address = v0builtin.StoragePowerActorAddr
+
 func Load(store adt.Store, act *types.Actor) (st State, err error) {
 	switch act.Code {
 	case v0builtin.StoragePowerActorCodeID:
