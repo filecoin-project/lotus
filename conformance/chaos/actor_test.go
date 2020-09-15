@@ -2,6 +2,9 @@ package chaos
 
 import (
 	"context"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/ipfs/go-cid"
 	"testing"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -20,6 +23,108 @@ func TestSingleton(t *testing.T) {
 	msg := "constructor should not be called; the Chaos actor is a singleton actor"
 	rt.ExpectAssertionFailure(msg, func() {
 		rt.Call(a.Constructor, abi.Empty)
+	})
+	rt.Verify()
+}
+
+func TestCallerValidationNone(t *testing.T) {
+	receiver := atesting.NewIDAddr(t, 100)
+	builder := mock.NewBuilder(context.Background(), receiver)
+
+	rt := builder.Build(t)
+	var a Actor
+
+	rt.Call(a.CallerValidation, &CallerValidationArgs{Branch: CallerValidationBranchNone})
+	rt.Verify()
+}
+
+func TestCallerValidationIs(t *testing.T) {
+	caller := atesting.NewIDAddr(t, 100)
+	receiver := atesting.NewIDAddr(t, 101)
+	builder := mock.NewBuilder(context.Background(), receiver)
+
+	rt := builder.Build(t)
+	rt.SetCaller(caller, builtin.AccountActorCodeID)
+	var a Actor
+
+	caddrs := []address.Address{atesting.NewIDAddr(t, 101)}
+
+	rt.ExpectValidateCallerAddr(caddrs...)
+	// FIXME: https://github.com/filecoin-project/specs-actors/pull/1155
+	rt.ExpectAbort(exitcode.ErrForbidden, func() {
+		rt.Call(a.CallerValidation, &CallerValidationArgs{
+			Branch: CallerValidationBranchIs,
+			Addrs:  caddrs,
+		})
+	})
+	rt.Verify()
+
+	rt.ExpectValidateCallerAddr(caller)
+	rt.Call(a.CallerValidation, &CallerValidationArgs{
+		Branch: CallerValidationBranchIs,
+		Addrs:  []address.Address{caller},
+	})
+	rt.Verify()
+}
+
+func TestCallerValidationIsReceiver(t *testing.T) {
+	caller := atesting.NewIDAddr(t, 100)
+	receiver := atesting.NewIDAddr(t, 101)
+	builder := mock.NewBuilder(context.Background(), receiver)
+
+	rt := builder.Build(t)
+	var a Actor
+
+	rt.SetCaller(caller, builtin.AccountActorCodeID)
+	rt.ExpectValidateCallerAddr(receiver)
+	// FIXME: https://github.com/filecoin-project/specs-actors/pull/1155
+	rt.ExpectAbort(exitcode.ErrForbidden, func() {
+		rt.Call(a.CallerValidation, &CallerValidationArgs{Branch: CallerValidationBranchIsReceiver})
+	})
+	rt.Verify()
+
+	rt.SetCaller(receiver, builtin.AccountActorCodeID)
+	rt.ExpectValidateCallerAddr(receiver)
+	rt.Call(a.CallerValidation, &CallerValidationArgs{Branch: CallerValidationBranchIsReceiver})
+	rt.Verify()
+}
+
+func TestCallerValidationType(t *testing.T) {
+	caller := atesting.NewIDAddr(t, 100)
+	receiver := atesting.NewIDAddr(t, 101)
+	builder := mock.NewBuilder(context.Background(), receiver)
+
+	rt := builder.Build(t)
+	rt.SetCaller(caller, builtin.AccountActorCodeID)
+	var a Actor
+
+	rt.ExpectValidateCallerType(builtin.CronActorCodeID)
+	// FIXME: https://github.com/filecoin-project/specs-actors/pull/1155
+	rt.ExpectAbort(exitcode.ErrForbidden, func() {
+		rt.Call(a.CallerValidation, &CallerValidationArgs{
+			Branch: CallerValidationBranchType,
+			Types:  []cid.Cid{builtin.CronActorCodeID},
+		})
+	})
+	rt.Verify()
+
+	rt.ExpectValidateCallerType(builtin.AccountActorCodeID)
+	rt.Call(a.CallerValidation, &CallerValidationArgs{
+		Branch: CallerValidationBranchType,
+		Types:  []cid.Cid{builtin.AccountActorCodeID},
+	})
+	rt.Verify()
+}
+
+func TestCallerValidationInvalidBranch(t *testing.T) {
+	receiver := atesting.NewIDAddr(t, 100)
+	builder := mock.NewBuilder(context.Background(), receiver)
+
+	rt := builder.Build(t)
+	var a Actor
+
+	rt.ExpectAssertionFailure("invalid branch passed to CallerValidation", func() {
+		rt.Call(a.CallerValidation, &CallerValidationArgs{Branch: -1})
 	})
 	rt.Verify()
 }
@@ -114,6 +219,20 @@ func TestMutateStateReadonly(t *testing.T) {
 		t.Fatal("state was not expected to be updated")
 	}
 
+	rt.Verify()
+}
+
+func TestMutateStateInvalidBranch(t *testing.T) {
+	receiver := atesting.NewIDAddr(t, 100)
+	builder := mock.NewBuilder(context.Background(), receiver)
+
+	rt := builder.Build(t)
+	var a Actor
+
+	rt.ExpectValidateCallerAny()
+	rt.ExpectAssertionFailure("unknown mutation type", func() {
+		rt.Call(a.MutateState, &MutateStateArgs{Branch: -1})
+	})
 	rt.Verify()
 }
 
