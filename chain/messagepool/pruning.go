@@ -46,7 +46,7 @@ func (mp *MessagePool) pruneMessages(ctx context.Context, ts *types.TipSet) erro
 	if err != nil {
 		return xerrors.Errorf("computing basefee: %w", err)
 	}
-	baseFeeLowerBound := getBaseFeeLowerBound(baseFee)
+	baseFeeLowerBound := getBaseFeeLowerBound(baseFee, baseFeeLowerBoundFactor)
 
 	pending, _ := mp.getPendingMessages(ts, ts)
 
