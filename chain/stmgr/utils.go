@@ -56,17 +56,21 @@ func GetNetworkName(ctx context.Context, sm *StateManager, st cid.Cid) (dtypes.N
 		return "", err
 	}
 
-	return dtypes.NetworkName(state.NetworkName), nil
+	return ias.NetworkName()
 }
 
 func GetMinerWorkerRaw(ctx context.Context, sm *StateManager, st cid.Cid, maddr address.Address) (address.Address, error) {
-	act, err := sm.LoadActorRaw(ctx, sm, maddr, st)
+	state, err := sm.StateTree(st)
 	if err != nil {
-		return address.Undef, xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
+		return address.Undef, xerrors.Errorf("(get sset) failed to load state tree: %w", err)
+	}
+	act, err := state.GetActor(maddr)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("(get sset) failed to load miner actor: %w", err)
 	}
 	mas, err := miner.Load(sm.cs.Store(ctx), act)
 	if err != nil {
-		return address.Undef, xerrors.Errorf("load state tree: %w", err)
+		return address.Undef, xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
 	}
 
 	info, err := mas.Info()
@@ -74,7 +78,7 @@ func GetMinerWorkerRaw(ctx context.Context, sm *StateManager, st cid.Cid, maddr 
 		return address.Undef, xerrors.Errorf("failed to load actor info: %w", err)
 	}
 
-	return vm.ResolveToKeyAddr(state, cst, info.Worker)
+	return vm.ResolveToKeyAddr(state, sm.cs.Store(ctx), info.Worker)
 }
 
 func GetPower(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (power.Claim, power.Claim, error) {
@@ -108,40 +112,32 @@ func GetPowerRaw(ctx context.Context, sm *StateManager, st cid.Cid, maddr addres
 	return mpow, tpow, nil
 }
 
-func PreCommitInfo(ctx context.Context, sm *StateManager, maddr address.Address, sid abi.SectorNumber, ts *types.TipSet) (miner.SectorPreCommitOnChainInfo, error) {
-	var mas miner.State
+func PreCommitInfo(ctx context.Context, sm *StateManager, maddr address.Address, sid abi.SectorNumber, ts *types.TipSet) (*miner.SectorPreCommitOnChainInfo, error) {
 	act, err := sm.LoadActor(ctx, maddr, ts)
 	if err != nil {
-		return miner.SectorPreCommitOnChainInfo{}, xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
+		return nil, xerrors.Errorf("(get sset) failed to load miner actor: %w", err)
 	}
 
-	i, ok, err := mas.GetPrecommittedSector(sm.cs.Store(ctx), sid)
-	if err != nil {
-		return miner.SectorPreCommitOnChainInfo{}, err
-	}
-	if !ok {
-		return miner.SectorPreCommitOnChainInfo{}, xerrors.New("precommit not found")
-	}
-
-	return *i, nil
-}
-
-func MinerSectorInfo(ctx context.Context, sm *StateManager, maddr address.Address, sid abi.SectorNumber, ts *types.TipSet) (*miner.SectorOnChainInfo, error) {
-	var mas miner.State
-	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
+	mas, err := miner.Load(sm.cs.Store(ctx), act)
 	if err != nil {
 		return nil, xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
 	}
 
-	sectorInfo, ok, err := mas.GetSector(sm.cs.Store(ctx), sid)
+	return mas.GetPrecommittedSector(sid)
+}
+
+func MinerSectorInfo(ctx context.Context, sm *StateManager, maddr address.Address, sid abi.SectorNumber, ts *types.TipSet) (*miner.SectorOnChainInfo, error) {
+	act, err := sm.LoadActor(ctx, maddr, ts)
 	if err != nil {
-		return nil, err
-	}
-	if !ok {
-		return nil, nil
+		return nil, xerrors.Errorf("(get sset) failed to load miner actor: %w", err)
 	}
 
-	return sectorInfo, nil
+	mas, err := miner.Load(sm.cs.Store(ctx), act)
+	if err != nil {
+		return nil, xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
+	}
+
+	return mas.GetSector(sid)
 }
 
 func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address, filter *bitfield.BitField, filterOut bool) ([]*api.ChainSectorInfo, error) {

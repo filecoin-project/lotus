@@ -3,6 +3,7 @@ package miner
 import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/libp2p/go-libp2p-core/peer"
 
@@ -22,6 +23,24 @@ type v0Deadline struct {
 type v0Partition struct {
 	miner.Partition
 	store adt.Store
+}
+
+func (s *v0State) GetSector(num abi.SectorNumber) (*SectorOnChainInfo, error) {
+	info, ok, err := s.State.GetSector(s.store, num)
+	if !ok || err != nil {
+		return nil, err
+	}
+
+	return info, nil
+}
+
+func (s *v0State) GetPrecommittedSector(num abi.SectorNumber) (*SectorPreCommitOnChainInfo, error) {
+	info, ok, err := s.State.GetPrecommittedSector(s.store, num)
+	if !ok || err != nil {
+		return nil, err
+	}
+
+	return info, nil
 }
 
 func (s *v0State) LoadDeadline(idx uint64) (Deadline, error) {

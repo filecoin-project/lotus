@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/cbor"
 	v0builtin "github.com/filecoin-project/specs-actors/actors/builtin"
+	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -32,6 +33,9 @@ func Load(store adt.Store, act *types.Actor) (st State, err error) {
 type State interface {
 	cbor.Marshaler
 
+	GetSector(abi.SectorNumber) (*SectorOnChainInfo, error)
+	GetPrecommittedSector(abi.SectorNumber) (*SectorPreCommitOnChainInfo, error)
+
 	LoadDeadline(idx uint64) (Deadline, error)
 	ForEachDeadline(cb func(idx uint64, dl Deadline) error) error
 	NumDeadlines() (uint64, error)
@@ -50,6 +54,10 @@ type Partition interface {
 	LiveSectors() (bitfield.BitField, error)
 	ActiveSectors() (bitfield.BitField, error)
 }
+
+type SectorOnChainInfo = v0miner.SectorOnChainInfo
+type SectorPreCommitInfo = v0miner.SectorPreCommitInfo
+type SectorPreCommitOnChainInfo = v0miner.SectorPreCommitOnChainInfo
 
 type MinerInfo struct {
 	Owner                      address.Address   // Must be an ID-address.
