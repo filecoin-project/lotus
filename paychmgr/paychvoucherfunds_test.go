@@ -4,13 +4,14 @@ import (
 	"context"
 	"testing"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
+	paychmock "github.com/filecoin-project/lotus/chain/actors/builtin/paych/mock"
+
 	"github.com/filecoin-project/lotus/chain/types"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/account"
-	paych "github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	tutils "github.com/filecoin-project/specs-actors/support/testing"
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
@@ -36,8 +37,8 @@ func TestPaychAddVoucherAfterAddFunds(t *testing.T) {
 	defer mock.close()
 
 	// Add the from signing key to the wallet
-	mock.setAccountState(fromAcct, account.State{Address: from})
-	mock.setAccountState(toAcct, account.State{Address: to})
+	mock.setAccountAddress(fromAcct, from)
+	mock.setAccountAddress(toAcct, to)
 	mock.addSigningKey(fromKeyPrivate)
 
 	mgr, err := newManager(store, mock)
@@ -59,12 +60,7 @@ func TestPaychAddVoucherAfterAddFunds(t *testing.T) {
 		Nonce:   0,
 		Balance: createAmt,
 	}
-	mock.setPaychState(ch, act, paych.State{
-		From:            fromAcct,
-		To:              toAcct,
-		SettlingAt:      abi.ChainEpoch(0),
-		MinSettleHeight: abi.ChainEpoch(0),
-	})
+	mock.setPaychState(ch, act, paychmock.NewMockPayChState(fromAcct, toAcct, abi.ChainEpoch(0), make(map[uint64]paych.LaneState)))
 
 	// Wait for create response to be processed by manager
 	_, err = mgr.GetPaychWaitReady(ctx, createMsgCid)

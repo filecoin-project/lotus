@@ -816,8 +816,6 @@ func testSetupMgrWithChannel(t *testing.T) *testScaffold {
 	mock := newMockManagerAPI()
 	mock.setAccountAddress(fromAcct, from)
 	mock.setAccountAddress(toAcct, to)
-	//mock.setAccountState(fromAcct, account.State{Address: from})
-	//mock.setAccountState(toAcct, account.State{Address: to})
 
 	// Create channel in state
 	balance := big.NewInt(20)

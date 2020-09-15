@@ -539,9 +539,6 @@ func (ca *channelAccessor) laneState(state paych.State, ch address.Address) (map
 		return nil, err
 	}
 
-	// Note: we use a map instead of an array to store laneStates because the
-	// client sets the lane ID (the index) and potentially they could use a
-	// very large index.
 	for _, v := range vouchers {
 		for range v.Voucher.Merges {
 			return nil, xerrors.Errorf("paych merges not handled yet")
