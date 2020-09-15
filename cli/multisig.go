@@ -1065,6 +1065,106 @@ var msigLockProposeCmd = &cli.Command{
 	},
 }
 
+var msigLockApproveCmd = &cli.Command{
+	Name:      "lock-approve",
+	Usage:     "Approve a message to lock up some balance",
+	ArgsUsage: "[multisigAddress proposerAddress txId startEpoch unlockDuration amount]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "account to send the approve message from",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() != 6 {
+			return ShowHelp(cctx, fmt.Errorf("must pass multisig address, proposer address, tx id, start epoch, unlock duration, and amount"))
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		msig, err := address.NewFromString(cctx.Args().Get(0))
+		if err != nil {
+			return err
+		}
+
+		prop, err := address.NewFromString(cctx.Args().Get(1))
+		if err != nil {
+			return err
+		}
+
+		txid, err := strconv.ParseUint(cctx.Args().Get(2), 10, 64)
+		if err != nil {
+			return err
+		}
+
+		start, err := strconv.ParseUint(cctx.Args().Get(3), 10, 64)
+		if err != nil {
+			return err
+		}
+
+		duration, err := strconv.ParseUint(cctx.Args().Get(4), 10, 64)
+		if err != nil {
+			return err
+		}
+
+		amount, err := types.ParseFIL(cctx.Args().Get(5))
+		if err != nil {
+			return err
+		}
+
+		var from address.Address
+		if cctx.IsSet("from") {
+			f, err := address.NewFromString(cctx.String("from"))
+			if err != nil {
+				return err
+			}
+			from = f
+		} else {
+			defaddr, err := api.WalletDefaultAddress(ctx)
+			if err != nil {
+				return err
+			}
+			from = defaddr
+		}
+
+		params, actErr := actors.SerializeParams(&samsig.LockBalanceParams{
+			StartEpoch:     abi.ChainEpoch(start),
+			UnlockDuration: abi.ChainEpoch(duration),
+			Amount:         abi.NewTokenAmount(amount.Int64()),
+		})
+
+		if actErr != nil {
+			return actErr
+		}
+
+		// It takes the following params: <multisig address>, <proposed message ID>, <proposer address>, <recipient address>, <value to transfer>,
+		// <sender address of the approve msg>, <method to call in the proposed message>, <params to include in the proposed message>
+
+		msgCid, err := api.MsigApprove(ctx, msig, txid, prop, msig, big.Zero(), from, uint64(builtin.MethodsMultisig.LockBalance), params)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("sent lock approval in message: ", msgCid)
+
+		wait, err := api.StateWaitMsg(ctx, msgCid, build.MessageConfidence)
+		if err != nil {
+			return err
+		}
+
+		if wait.Receipt.ExitCode != 0 {
+			return fmt.Errorf("lock approval returned exit %d", wait.Receipt.ExitCode)
+		}
+
+		return nil
+	},
+}
+
 var msigVestedCmd = &cli.Command{
 	Name:      "vested",
 	Usage:     "Gets the amount vested in an msig between two epochs",
