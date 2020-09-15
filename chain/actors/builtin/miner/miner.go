@@ -1,6 +1,7 @@
 package miner
 
 import (
+	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"golang.org/x/xerrors"
 
@@ -41,6 +42,8 @@ type State interface {
 	ForEachDeadline(cb func(idx uint64, dl Deadline) error) error
 	NumDeadlines() (uint64, error)
 	Info() (MinerInfo, error)
+
+	DeadlineInfo(epoch abi.ChainEpoch) *dline.Info
 }
 
 type Deadline interface {

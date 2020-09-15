@@ -23,19 +23,20 @@ func (s *v0State) TotalPower() (Claim, error) {
 	}, nil
 }
 
-func (s *v0State) MinerPower(addr address.Address) (Claim, error) {
+func (s *v0State) MinerPower(addr address.Address) (Claim, bool, error) {
 	claims, err := adt.AsMap(s.store, s.Claims)
 	if err != nil {
-		return Claim{}, err
+		return Claim{}, false, err
 	}
 	var claim power.Claim
-	if _, err := claims.Get(abi.AddrKey(addr), &claim); err != nil {
-		return Claim{}, err
+	ok, err := claims.Get(abi.AddrKey(addr), &claim)
+	if err != nil {
+		return Claim{}, false, err
 	}
 	return Claim{
 		RawBytePower:    claim.RawBytePower,
 		QualityAdjPower: claim.QualityAdjPower,
-	}, nil
+	}, ok, nil
 }
 
 func (s *v0State) MinerNominalPowerMeetsConsensusMinimum(a address.Address) (bool, error) {

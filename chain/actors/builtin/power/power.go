@@ -30,7 +30,7 @@ type State interface {
 
 	TotalLocked() (abi.TokenAmount, error)
 	TotalPower() (Claim, error)
-	MinerPower(address.Address) (Claim, error)
+	MinerPower(address.Address) (Claim, bool, error)
 	MinerNominalPowerMeetsConsensusMinimum(address.Address) (bool, error)
 }
 

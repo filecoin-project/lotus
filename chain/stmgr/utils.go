@@ -26,7 +26,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	"github.com/filecoin-project/specs-actors/actors/builtin/cron"
-	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
@@ -36,6 +35,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/state"
@@ -257,17 +257,11 @@ func GetMinerSlashed(ctx context.Context, sm *StateManager, ts *types.TipSet, ma
 		return false, xerrors.Errorf("failed to load power actor state: %w", err)
 	}
 
-	store := sm.cs.Store(ctx)
-
-	claims, err := adt.AsMap(store, spas.Claims)
+	_, ok, err := spas.MinerPower(maddr)
 	if err != nil {
-		return false, err
+		return false, xerrors.Errorf("getting miner power: %w", err)
 	}
 
-	ok, err := claims.Get(abi.AddrKey(maddr), nil)
-	if err != nil {
-		return false, err
-	}
 	if !ok {
 		return true, nil
 	}

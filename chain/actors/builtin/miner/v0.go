@@ -4,6 +4,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	v0adt "github.com/filecoin-project/specs-actors/actors/util/adt"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -140,6 +141,10 @@ func (s *v0State) Info() (MinerInfo, error) {
 	}
 
 	return mi, nil
+}
+
+func (s *v0State) DeadlineInfo(epoch abi.ChainEpoch) *dline.Info {
+	return s.State.DeadlineInfo(epoch)
 }
 
 func (d *v0Deadline) LoadPartition(idx uint64) (Partition, error) {

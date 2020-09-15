@@ -71,127 +71,121 @@ func (a *StateAPI) StateMinerSectors(ctx context.Context, addr address.Address, 
 }
 
 func (a *StateAPI) StateMinerActiveSectors(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]*miner.ChainSectorInfo, error) { // TODO: only used in cli
-	var out []*miner.ChainSectorInfo
-
-	err := a.StateManager.WithParentStateTsk(tsk,
-		a.StateManager.WithActor(maddr,
-			a.StateManager.WithActorState(ctx, func(store adt.Store, mas *miner.State) error {
-				var allActive []bitfield.BitField
-
-				err := a.StateManager.WithDeadlines(
-					a.StateManager.WithEachDeadline(
-						a.StateManager.WithEachPartition(func(store adt.Store, partIdx uint64, partition *miner.Partition) error {
-							active, err := partition.ActiveSectors()
-							if err != nil {
-								return xerrors.Errorf("partition.ActiveSectors: %w", err)
-							}
-
-							allActive = append(allActive, active)
-							return nil
-						})))(store, mas)
-				if err != nil {
-					return xerrors.Errorf("with deadlines: %w", err)
-				}
-
-				active, err := bitfield.MultiMerge(allActive...)
-				if err != nil {
-					return xerrors.Errorf("merging active sector bitfields: %w", err)
-				}
-
-				out, err = stmgr.LoadSectorsFromSet(ctx, a.Chain.Blockstore(), mas.Sectors, &active, false)
-				return err
-			})))
+	act, err := a.StateManager.LoadActorTsk(ctx, maddr, tsk)
 	if err != nil {
-		return nil, xerrors.Errorf("getting active sectors from partitions: %w", err)
+		return nil, xerrors.Errorf("failed to load miner actor: %w", err)
 	}
 
-	return out, nil
+	mas, err := miner.Load(a.StateManager.ChainStore().Store(ctx), act)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load miner actor state: %w", err)
+	}
+
+	activeSectors, err := miner.AllPartSectors(mas, miner.Partition.ActiveSectors)
+	if err != nil {
+		return nil, xerrors.Errorf("merge partition active sets: %w", err)
+	}
+
+	return mas.LoadSectorsFromSet(&activeSectors, false)
 }
 
-func (a *StateAPI) StateMinerInfo(ctx context.Context, actor address.Address, tsk types.TipSetKey) (api.MinerInfo, error) {
-	ts, err := a.Chain.GetTipSetFromKey(tsk)
+func (a *StateAPI) StateMinerInfo(ctx context.Context, actor address.Address, tsk types.TipSetKey) (miner.MinerInfo, error) {
+	act, err := a.StateManager.LoadActorTsk(ctx, actor, tsk)
 	if err != nil {
-		return api.MinerInfo{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+		return miner.MinerInfo{}, xerrors.Errorf("failed to load miner actor: %w", err)
 	}
 
-	a.StateManager.LoadActorStateRaw(ctx context.Context, addr address.Address, out interface{}, st cid.Cid)
-
-	mi, err := stmgr.StateMinerInfo(ctx, a.StateManager, ts, actor)
+	mas, err := miner.Load(a.StateManager.ChainStore().Store(ctx), act)
 	if err != nil {
-		return api.MinerInfo{}, err
+		return miner.MinerInfo{}, xerrors.Errorf("failed to load miner actor state: %w", err)
 	}
-	return api.NewApiMinerInfo(mi), nil
+
+	return mas.Info()
 }
 
 func (a *StateAPI) StateMinerDeadlines(ctx context.Context, m address.Address, tsk types.TipSetKey) ([]miner.Deadline, error) {
-	var out []*miner.Deadline
-	state, err := a.StateManager.LoadParentStateTsk(tsk)
+	act, err := a.StateManager.LoadActorTsk(ctx, m, tsk)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to load miner actor: %w", err)
 	}
-	act, err := state.GetActor(addr)
+
+	mas, err := miner.Load(a.StateManager.ChainStore().Store(ctx), act)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to load miner actor state: %w", err)
 	}
-	mas, err := miner.Load(a.Chain.Store(ctx), act)
+
+	deadlines, err := mas.NumDeadlines()
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("getting deadline count: %w", err)
 	}
-	var deadlines []miner.Deadline
-	if err := mas.ForEachDeadline(func(_ uint64, dl miner.Deadline) error {
-		deadlines = append(deadlines, dl)
+
+	out := make([]miner.Deadline, deadlines)
+	if err := mas.ForEachDeadline(func(i uint64, dl miner.Deadline) error {
+		out[i] = dl
 		return nil
 	}); err != nil {
-		return err
+		return nil, err
 	}
-	return deadlines, nil
+	return out, nil
 }
 
 func (a *StateAPI) StateMinerPartitions(ctx context.Context, m address.Address, dlIdx uint64, tsk types.TipSetKey) ([]*miner.Partition, error) {
+	act, err := a.StateManager.LoadActorTsk(ctx, m, tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load miner actor: %w", err)
+	}
+
+	mas, err := miner.Load(a.StateManager.ChainStore().Store(ctx), act)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load miner actor state: %w", err)
+	}
+
+	dl, err := mas.LoadDeadline(dlIdx)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load the deadline: %w", err)
+	}
+
 	var out []*miner.Partition
-	return out, a.StateManager.WithParentStateTsk(tsk,
-		a.StateManager.WithActor(m,
-			a.StateManager.WithActorState(ctx,
-				a.StateManager.WithDeadlines(
-					a.StateManager.WithDeadline(dlIdx,
-						a.StateManager.WithEachPartition(func(store adt.Store, partIdx uint64, partition *miner.Partition) error {
-							out = append(out, partition)
-							return nil
-						}))))))
+	err = dl.ForEachPartition(func(_ uint64, part miner.Partition) error {
+		p := part
+		out = append(out, &p)
+		return nil
+	})
+
+	return out, err
 }
 
 func (a *StateAPI) StateMinerProvingDeadline(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*dline.Info, error) {
-	ts, err := a.Chain.GetTipSetFromKey(tsk)
+	ts, err := a.StateManager.ChainStore().GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	var mas miner.State
-	_, err = a.StateManager.LoadActorState(ctx, addr, &mas, ts)
+	act, err := a.StateManager.LoadActor(ctx, addr, ts)
 	if err != nil {
-		return nil, xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
+		return nil, xerrors.Errorf("failed to load miner actor: %w", err)
+	}
+
+	mas, err := miner.Load(a.StateManager.ChainStore().Store(ctx), act)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load miner actor state: %w", err)
 	}
 
 	return mas.DeadlineInfo(ts.Height()).NextNotElapsed(), nil
 }
 
 func (a *StateAPI) StateMinerFaults(ctx context.Context, addr address.Address, tsk types.TipSetKey) (bitfield.BitField, error) {
-	out := bitfield.New()
-
-	err := a.StateManager.WithParentStateTsk(tsk,
-		a.StateManager.WithActor(addr,
-			a.StateManager.WithActorState(ctx,
-				a.StateManager.WithDeadlines(
-					a.StateManager.WithEachDeadline(
-						a.StateManager.WithEachPartition(func(store adt.Store, idx uint64, partition *miner.Partition) (err error) {
-							out, err = bitfield.MergeBitFields(out, partition.Faults)
-							return err
-						}))))))
+	act, err := a.StateManager.LoadActorTsk(ctx, addr, tsk)
 	if err != nil {
-		return bitfield.BitField{}, err
+		return bitfield.BitField{}, xerrors.Errorf("failed to load miner actor: %w", err)
 	}
 
-	return out, err
+	mas, err := miner.Load(a.StateManager.ChainStore().Store(ctx), act)
+	if err != nil {
+		return bitfield.BitField{}, xerrors.Errorf("failed to load miner actor state: %w", err)
+	}
+
+	return miner.AllPartSectors(mas, miner.Partition.FaultySectors)
 }
 
 func (a *StateAPI) StateAllMinerFaults(ctx context.Context, lookback abi.ChainEpoch, endTsk types.TipSetKey) ([]*api.Fault, error) {
@@ -238,22 +232,17 @@ func (a *StateAPI) StateAllMinerFaults(ctx context.Context, lookback abi.ChainEp
 }
 
 func (a *StateAPI) StateMinerRecoveries(ctx context.Context, addr address.Address, tsk types.TipSetKey) (bitfield.BitField, error) {
-	out := bitfield.New()
-
-	err := a.StateManager.WithParentStateTsk(tsk,
-		a.StateManager.WithActor(addr,
-			a.StateManager.WithActorState(ctx,
-				a.StateManager.WithDeadlines(
-					a.StateManager.WithEachDeadline(
-						a.StateManager.WithEachPartition(func(store adt.Store, idx uint64, partition *miner.Partition) (err error) {
-							out, err = bitfield.MergeBitFields(out, partition.Recoveries)
-							return err
-						}))))))
+	act, err := a.StateManager.LoadActorTsk(ctx, addr, tsk)
 	if err != nil {
-		return bitfield.BitField{}, err
+		return bitfield.BitField{}, xerrors.Errorf("failed to load miner actor: %w", err)
 	}
 
-	return out, err
+	mas, err := miner.Load(a.StateManager.ChainStore().Store(ctx), act)
+	if err != nil {
+		return bitfield.BitField{}, xerrors.Errorf("failed to load miner actor state: %w", err)
+	}
+
+	return miner.AllPartSectors(mas, miner.Partition.RecoveringSectors)
 }
 
 func (a *StateAPI) StateMinerPower(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*api.MinerPower, error) {
