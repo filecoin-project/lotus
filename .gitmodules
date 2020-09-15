@@ -11,3 +11,6 @@
 [submodule "extern/fil-blst"]
 	path = extern/fil-blst
 	url = https://github.com/filecoin-project/fil-blst.git
+[submodule "extern/oni"]
+	path = extern/oni
+	url = https://github.com/filecoin-project/oni

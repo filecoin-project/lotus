@@ -254,6 +254,25 @@ jobs:
           path: /tmp/test-reports
       - store_artifacts:
           path: /tmp/test-artifacts/conformance-coverage.html
+  test-lotus-soup:
+    description: |
+      Compile `lotus-soup` Testground test plan using the current version of Lotus.
+    parameters:
+      <<: *test-params
+    executor: << parameters.executor >>
+    steps:
+      - install-deps
+      - prepare
+      - run: cd extern/oni && git submodule sync
+      - run: cd extern/oni && git submodule update --init
+      - run: cd extern/oni/extra/filecoin-ffi && make
+      - run:
+          name: "update lotus-soup dependency to lotus"
+          command: pushd extern/oni/lotus-soup && echo 'replace github.com/filecoin-project/lotus => ../../../' >> go.mod
+      - run:
+          name: "build lotus-soup testplan"
+          command: pushd extern/oni/lotus-soup && go build -tags=testground .
+
 
   build-macos:
     description: build darwin lotus binary
