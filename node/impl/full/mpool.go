@@ -2,14 +2,12 @@ package full
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
-
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/messagepool"
@@ -115,28 +113,8 @@ func (a *MpoolAPI) MpoolPush(ctx context.Context, smsg *types.SignedMessage) (ci
 	return a.Mpool.Push(smsg)
 }
 
-func capGasFee(msg *types.Message, maxFee abi.TokenAmount) {
-	if maxFee.Equals(big.Zero()) {
-		return
-	}
-
-	gl := types.NewInt(uint64(msg.GasLimit))
-	totalFee := types.BigMul(msg.GasFeeCap, gl)
-	minerFee := types.BigMul(msg.GasPremium, gl)
-
-	if totalFee.LessThanEqual(maxFee) {
-		return
-	}
-
-	// scale chain/miner fee down proportionally to fit in our budget
-	// TODO: there are probably smarter things we can do here to optimize
-	//  message inclusion latency
-
-	msg.GasFeeCap = big.Div(maxFee, gl)
-	msg.GasPremium = big.Div(big.Div(big.Mul(minerFee, maxFee), totalFee), gl)
-}
-
 func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec) (*types.SignedMessage, error) {
+	inMsg := *msg
 	{
 		fromA, err := a.Stmgr.ResolveToKeyAddress(ctx, msg.From, nil)
 		if err != nil {
@@ -156,6 +134,13 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spe
 	msg, err := a.GasAPI.GasEstimateMessageGas(ctx, msg, spec, types.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("GasEstimateMessageGas error: %w", err)
+	}
+
+	if msg.GasPremium.GreaterThan(msg.GasFeeCap) {
+		inJson, _ := json.Marshal(inMsg)
+		outJson, _ := json.Marshal(msg)
+		return nil, xerrors.Errorf("After estimation, GasPremium is greater than GasFeeCap, inmsg: %s, outmsg: %s",
+			inJson, outJson)
 	}
 
 	sign := func(from address.Address, nonce uint64) (*types.SignedMessage, error) {

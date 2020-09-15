@@ -20,7 +20,7 @@ var logList = &cli.Command{
 	Name:  "list",
 	Usage: "List log systems",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := GetAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -49,7 +49,7 @@ var logSetLevel = &cli.Command{
 
    The system flag can be specified multiple times.
 
-   eg) log set-level --system chain --system blocksync debug
+   eg) log set-level --system chain --system chainxchg debug
 
    Available Levels:
    debug
@@ -71,7 +71,7 @@ var logSetLevel = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := GetAPI(cctx)
 		if err != nil {
 			return err
 		}

@@ -5,3 +5,6 @@
 [submodule "extern/serialization-vectors"]
 	path = extern/serialization-vectors
 	url = https://github.com/filecoin-project/serialization-vectors
+[submodule "extern/test-vectors"]
+	path = extern/test-vectors
+	url = https://github.com/filecoin-project/test-vectors.git

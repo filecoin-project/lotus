@@ -8,7 +8,7 @@ The services expect their binaries to be present in `/usr/local/bin/`. You can u
 $ sudo make install
 ```
 
-for `lotus` and `lotus-storage-miner` and 
+for `lotus` and `lotus-miner` and 
 
 ```sh
 $ sudo make install-chainwatch

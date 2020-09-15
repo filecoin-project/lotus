@@ -7,15 +7,15 @@ import (
 	ds "github.com/ipfs/go-datastore"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
 type MineReq struct {
 	InjectNulls abi.ChainEpoch
-	Done        func(bool, error)
+	Done        func(bool, abi.ChainEpoch, error)
 }
 
 func NewTestMiner(nextCh <-chan MineReq, addr address.Address) func(api.FullNode, gen.WinningPoStProver) *Miner {
@@ -41,8 +41,8 @@ func NewTestMiner(nextCh <-chan MineReq, addr address.Address) func(api.FullNode
 	}
 }
 
-func chanWaiter(next <-chan MineReq) func(ctx context.Context, _ uint64) (func(bool, error), abi.ChainEpoch, error) {
-	return func(ctx context.Context, _ uint64) (func(bool, error), abi.ChainEpoch, error) {
+func chanWaiter(next <-chan MineReq) func(ctx context.Context, _ uint64) (func(bool, abi.ChainEpoch, error), abi.ChainEpoch, error) {
+	return func(ctx context.Context, _ uint64) (func(bool, abi.ChainEpoch, error), abi.ChainEpoch, error) {
 		select {
 		case <-ctx.Done():
 			return nil, 0, ctx.Err()

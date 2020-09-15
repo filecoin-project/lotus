@@ -47,8 +47,6 @@ func (p *Processor) subMpool(ctx context.Context) {
 			msgs[v.Message.Message.Cid()] = &v.Message.Message
 		}
 
-		log.Debugf("Processing %d mpool updates", len(msgs))
-
 		err := p.storeMessages(msgs)
 		if err != nil {
 			log.Error(err)

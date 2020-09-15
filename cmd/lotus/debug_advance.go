@@ -7,12 +7,12 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/crypto"
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"golang.org/x/xerrors"
 
 	"github.com/urfave/cli/v2"
@@ -46,6 +46,7 @@ func init() {
 					return xerrors.Errorf("StateMinerWorker: %w", err)
 				}
 
+				// XXX: This can't be right
 				rand, err := api.ChainGetRandomnessFromTickets(ctx, head.Key(), crypto.DomainSeparationTag_TicketProduction, head.Height(), addr.Bytes())
 				if err != nil {
 					return xerrors.Errorf("failed to get randomness: %w", err)
@@ -60,7 +61,12 @@ func init() {
 				}
 
 			}
-			// TODO: beacon
+
+			mbi, err := api.MinerGetBaseInfo(ctx, addr, head.Height()+1, head.Key())
+			if err != nil {
+				return xerrors.Errorf("getting base info: %w", err)
+			}
+
 			ep := &types.ElectionProof{}
 			ep.WinCount = ep.ComputeWinCount(types.NewInt(1), types.NewInt(1))
 			for ep.WinCount == 0 {
@@ -75,7 +81,7 @@ func init() {
 			uts := head.MinTimestamp() + uint64(build.BlockDelaySecs)
 			nheight := head.Height() + 1
 			blk, err := api.MinerCreateBlock(ctx, &lapi.BlockTemplate{
-				addr, head.Key(), ticket, ep, nil, msgs, nheight, uts, gen.ValidWpostForTesting,
+				addr, head.Key(), ticket, ep, mbi.BeaconEntries, msgs, nheight, uts, gen.ValidWpostForTesting,
 			})
 			if err != nil {
 				return xerrors.Errorf("creating block: %w", err)

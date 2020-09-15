@@ -3,7 +3,6 @@ package scheduler
 import (
 	"context"
 	"database/sql"
-	"time"
 
 	"golang.org/x/xerrors"
 )
@@ -24,9 +23,9 @@ func setupTopMinerByBaseRewardSchema(ctx context.Context, db *sql.DB) error {
 			with total_rewards_by_miner as (
 				select
 					b.miner,
-					sum(bbr.base_block_reward * b.win_count) as total_reward
+					sum(cr.new_reward * b.win_count) as total_reward
 				from blocks b
-				inner join base_block_rewards bbr on b.parentstateroot = bbr.state_root
+				inner join chain_reward cr on b.parentstateroot = cr.state_root
 				group by 1
 			) select
 				rank() over (order by total_reward desc),
@@ -43,17 +42,17 @@ func setupTopMinerByBaseRewardSchema(ctx context.Context, db *sql.DB) error {
 				b."timestamp"as current_timestamp,
 				max(b.height) as current_height
 			from blocks b
-			join base_block_rewards bbr on b.parentstateroot = bbr.state_root
-			where bbr.base_block_reward is not null
+			join chain_reward cr on b.parentstateroot = cr.state_root
+			where cr.new_reward is not null
 			group by 1
 			order by 1 desc
 			limit 1;
 	`); err != nil {
-		return xerrors.Errorf("create top_miner_by_base_reward views: %w", err)
+		return xerrors.Errorf("create top_miners_by_base_reward views: %w", err)
 	}
 
 	if err := tx.Commit(); err != nil {
-		return xerrors.Errorf("committing top_miner_by_base_reward views; %w", err)
+		return xerrors.Errorf("committing top_miners_by_base_reward views; %w", err)
 	}
 	return nil
 }
@@ -64,11 +63,6 @@ func refreshTopMinerByBaseReward(ctx context.Context, db *sql.DB) error {
 		return nil
 	default:
 	}
-
-	t := time.Now()
-	defer func() {
-		log.Debugw("refresh top_miners_by_base_reward", "duration", time.Since(t).String())
-	}()
 
 	_, err := db.Exec("refresh materialized view top_miners_by_base_reward;")
 	if err != nil {

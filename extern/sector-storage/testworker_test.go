@@ -6,7 +6,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/mock"
@@ -85,7 +85,7 @@ func (t *testWorker) Remove(ctx context.Context, sector abi.SectorID) error {
 	panic("implement me")
 }
 
-func (t *testWorker) MoveStorage(ctx context.Context, sector abi.SectorID) error {
+func (t *testWorker) MoveStorage(ctx context.Context, sector abi.SectorID, types stores.SectorFileType) error {
 	panic("implement me")
 }
 

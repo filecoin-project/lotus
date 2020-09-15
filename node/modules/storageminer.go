@@ -41,8 +41,8 @@ import (
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-multistore"
 	paramfetch "github.com/filecoin-project/go-paramfetch"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-storedcounter"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
@@ -226,8 +226,8 @@ func NewProviderDAGServiceDataTransfer(lc fx.Lifecycle, h host.Host, gs dtypes.S
 		OnStart: func(ctx context.Context) error {
 			return dt.Start(ctx)
 		},
-		OnStop: func(context.Context) error {
-			return dt.Stop()
+		OnStop: func(ctx context.Context) error {
+			return dt.Stop(ctx)
 		},
 	})
 	return dt, nil
@@ -275,13 +275,14 @@ func StagingDAG(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.StagingBloc
 
 	bitswapNetwork := network.NewFromIpfsHost(h, rt)
 	bitswapOptions := []bitswap.Option{bitswap.ProvideEnabled(false)}
-	exch := bitswap.New(helpers.LifecycleCtx(mctx, lc), bitswapNetwork, ibs, bitswapOptions...)
+	exch := bitswap.New(mctx, bitswapNetwork, ibs, bitswapOptions...)
 
 	bsvc := blockservice.New(ibs, exch)
 	dag := merkledag.NewDAGService(bsvc)
 
 	lc.Append(fx.Hook{
 		OnStop: func(_ context.Context) error {
+			// blockservice closes the exchange
 			return bsvc.Close()
 		},
 	})

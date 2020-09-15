@@ -15,8 +15,8 @@ import (
 	"golang.org/x/xerrors"
 
 	cborutil "github.com/filecoin-project/go-cbor-util"
+	"github.com/filecoin-project/go-state-types/abi"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -102,6 +102,7 @@ func (st *SectorBlocks) AddPiece(ctx context.Context, size abi.UnpaddedPieceSize
 		return 0, 0, err
 	}
 
+	// TODO: DealID has very low finality here
 	err = st.writeRef(d.DealID, sn, offset, size)
 	if err != nil {
 		return 0, 0, xerrors.Errorf("writeRef: %w", err)

@@ -6,12 +6,15 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/lotus/build"
+
+	"github.com/filecoin-project/go-state-types/big"
 	saminer "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
@@ -27,10 +30,10 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/types"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/api/test"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	builder "github.com/filecoin-project/lotus/node/test"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v2"
 )
@@ -52,7 +55,7 @@ func TestPaymentChannels(t *testing.T) {
 	ctx := context.Background()
 	nodes, addrs := startTwoNodesOneMiner(ctx, t, blocktime)
 	paymentCreator := nodes[0]
-	paymentReceiver := nodes[0]
+	paymentReceiver := nodes[1]
 	creatorAddr := addrs[0]
 	receiverAddr := addrs[1]
 
@@ -61,10 +64,10 @@ func TestPaymentChannels(t *testing.T) {
 	creatorCLI := mockCLI.client(paymentCreator.ListenAddr)
 	receiverCLI := mockCLI.client(paymentReceiver.ListenAddr)
 
-	// creator: paych get <creator> <receiver> <amount>
+	// creator: paych add-funds <creator> <receiver> <amount>
 	channelAmt := "100000"
 	cmd := []string{creatorAddr.String(), receiverAddr.String(), channelAmt}
-	chstr := creatorCLI.runCmd(paychGetCmd, cmd)
+	chstr := creatorCLI.runCmd(paychAddFundsCmd, cmd)
 
 	chAddr, err := address.NewFromString(chstr)
 	require.NoError(t, err)
@@ -98,9 +101,8 @@ type voucherSpec struct {
 	lane       int
 }
 
-// TestPaymentChannelVouchers does a basic test to exercise some payment
-// channel voucher commands
-func TestPaymentChannelVouchers(t *testing.T) {
+// TestPaymentChannelStatus tests the payment channel status CLI command
+func TestPaymentChannelStatus(t *testing.T) {
 	_ = os.Setenv("BELLMAN_NO_GPU", "1")
 
 	blocktime := 5 * time.Millisecond
@@ -114,10 +116,90 @@ func TestPaymentChannelVouchers(t *testing.T) {
 	mockCLI := newMockCLI(t)
 	creatorCLI := mockCLI.client(paymentCreator.ListenAddr)
 
-	// creator: paych get <creator> <receiver> <amount>
+	cmd := []string{creatorAddr.String(), receiverAddr.String()}
+	out := creatorCLI.runCmd(paychStatusByFromToCmd, cmd)
+	fmt.Println(out)
+	noChannelState := "Channel does not exist"
+	require.Regexp(t, regexp.MustCompile(noChannelState), out)
+
+	channelAmt := uint64(100)
+	create := make(chan string)
+	go func() {
+		// creator: paych add-funds <creator> <receiver> <amount>
+		cmd = []string{creatorAddr.String(), receiverAddr.String(), fmt.Sprintf("%d", channelAmt)}
+		create <- creatorCLI.runCmd(paychAddFundsCmd, cmd)
+	}()
+
+	// Wait for the output to stop being "Channel does not exist"
+	for regexp.MustCompile(noChannelState).MatchString(out) {
+		cmd = []string{creatorAddr.String(), receiverAddr.String()}
+		out = creatorCLI.runCmd(paychStatusByFromToCmd, cmd)
+	}
+	fmt.Println(out)
+
+	// The next state should be creating channel or channel created, depending
+	// on timing
+	stateCreating := regexp.MustCompile("Creating channel").MatchString(out)
+	stateCreated := regexp.MustCompile("Channel exists").MatchString(out)
+	require.True(t, stateCreating || stateCreated)
+
+	channelAmtAtto := types.BigMul(types.NewInt(channelAmt), types.NewInt(build.FilecoinPrecision))
+	channelAmtStr := fmt.Sprintf("%d", channelAmtAtto)
+	if stateCreating {
+		// If we're in the creating state (most likely) the amount should be pending
+		require.Regexp(t, regexp.MustCompile("Pending.*"+channelAmtStr), out)
+	}
+
+	// Wait for create channel to complete
+	chstr := <-create
+
+	cmd = []string{chstr}
+	out = creatorCLI.runCmd(paychStatusCmd, cmd)
+	fmt.Println(out)
+	// Output should have the channel address
+	require.Regexp(t, regexp.MustCompile("Channel.*"+chstr), out)
+	// Output should have confirmed amount
+	require.Regexp(t, regexp.MustCompile("Confirmed.*"+channelAmtStr), out)
+
+	chAddr, err := address.NewFromString(chstr)
+	require.NoError(t, err)
+
+	// creator: paych voucher create <channel> <amount>
+	voucherAmt := uint64(10)
+	cmd = []string{chAddr.String(), fmt.Sprintf("%d", voucherAmt)}
+	creatorCLI.runCmd(paychVoucherCreateCmd, cmd)
+
+	cmd = []string{chstr}
+	out = creatorCLI.runCmd(paychStatusCmd, cmd)
+	fmt.Println(out)
+	voucherAmtAtto := types.BigMul(types.NewInt(voucherAmt), types.NewInt(build.FilecoinPrecision))
+	voucherAmtStr := fmt.Sprintf("%d", voucherAmtAtto)
+	// Output should include voucher amount
+	require.Regexp(t, regexp.MustCompile("Voucher.*"+voucherAmtStr), out)
+}
+
+// TestPaymentChannelVouchers does a basic test to exercise some payment
+// channel voucher commands
+func TestPaymentChannelVouchers(t *testing.T) {
+	_ = os.Setenv("BELLMAN_NO_GPU", "1")
+
+	blocktime := 5 * time.Millisecond
+	ctx := context.Background()
+	nodes, addrs := startTwoNodesOneMiner(ctx, t, blocktime)
+	paymentCreator := nodes[0]
+	paymentReceiver := nodes[1]
+	creatorAddr := addrs[0]
+	receiverAddr := addrs[1]
+
+	// Create mock CLI
+	mockCLI := newMockCLI(t)
+	creatorCLI := mockCLI.client(paymentCreator.ListenAddr)
+	receiverCLI := mockCLI.client(paymentReceiver.ListenAddr)
+
+	// creator: paych add-funds <creator> <receiver> <amount>
 	channelAmt := "100000"
 	cmd := []string{creatorAddr.String(), receiverAddr.String(), channelAmt}
-	chstr := creatorCLI.runCmd(paychGetCmd, cmd)
+	chstr := creatorCLI.runCmd(paychAddFundsCmd, cmd)
 
 	chAddr, err := address.NewFromString(chstr)
 	require.NoError(t, err)
@@ -127,43 +209,167 @@ func TestPaymentChannelVouchers(t *testing.T) {
 	// creator: paych voucher create <channel> <amount>
 	// Note: implied --lane=0
 	voucherAmt1 := 100
-	vamt1 := strconv.Itoa(voucherAmt1)
-	cmd = []string{chAddr.String(), vamt1}
+	cmd = []string{chAddr.String(), strconv.Itoa(voucherAmt1)}
 	voucher1 := creatorCLI.runCmd(paychVoucherCreateCmd, cmd)
 	vouchers = append(vouchers, voucherSpec{serialized: voucher1, lane: 0, amt: voucherAmt1})
 
 	// creator: paych voucher create <channel> <amount> --lane=5
 	lane5 := "--lane=5"
 	voucherAmt2 := 50
-	vamt2 := strconv.Itoa(voucherAmt2)
-	cmd = []string{lane5, chAddr.String(), vamt2}
+	cmd = []string{lane5, chAddr.String(), strconv.Itoa(voucherAmt2)}
 	voucher2 := creatorCLI.runCmd(paychVoucherCreateCmd, cmd)
 	vouchers = append(vouchers, voucherSpec{serialized: voucher2, lane: 5, amt: voucherAmt2})
 
 	// creator: paych voucher create <channel> <amount> --lane=5
 	voucherAmt3 := 70
-	vamt3 := strconv.Itoa(voucherAmt3)
-	cmd = []string{lane5, chAddr.String(), vamt3}
+	cmd = []string{lane5, chAddr.String(), strconv.Itoa(voucherAmt3)}
 	voucher3 := creatorCLI.runCmd(paychVoucherCreateCmd, cmd)
 	vouchers = append(vouchers, voucherSpec{serialized: voucher3, lane: 5, amt: voucherAmt3})
+
+	// creator: paych voucher create <channel> <amount> --lane=5
+	voucherAmt4 := 80
+	cmd = []string{lane5, chAddr.String(), strconv.Itoa(voucherAmt4)}
+	voucher4 := creatorCLI.runCmd(paychVoucherCreateCmd, cmd)
+	vouchers = append(vouchers, voucherSpec{serialized: voucher4, lane: 5, amt: voucherAmt4})
 
 	// creator: paych voucher list <channel> --export
 	cmd = []string{"--export", chAddr.String()}
 	list := creatorCLI.runCmd(paychVoucherListCmd, cmd)
 
-	// Check that voucher list output is correct
+	// Check that voucher list output is correct on creator
 	checkVoucherOutput(t, list, vouchers)
 
 	// creator: paych voucher best-spendable <channel>
 	cmd = []string{"--export", chAddr.String()}
 	bestSpendable := creatorCLI.runCmd(paychVoucherBestSpendableCmd, cmd)
 
-	// Check that best spendable output is correct
+	// Check that best spendable output is correct on creator
 	bestVouchers := []voucherSpec{
 		{serialized: voucher1, lane: 0, amt: voucherAmt1},
-		{serialized: voucher3, lane: 5, amt: voucherAmt3},
+		{serialized: voucher4, lane: 5, amt: voucherAmt4},
 	}
 	checkVoucherOutput(t, bestSpendable, bestVouchers)
+
+	// receiver: paych voucher add <voucher>
+	cmd = []string{chAddr.String(), voucher1}
+	receiverCLI.runCmd(paychVoucherAddCmd, cmd)
+
+	// receiver: paych voucher add <voucher>
+	cmd = []string{chAddr.String(), voucher2}
+	receiverCLI.runCmd(paychVoucherAddCmd, cmd)
+
+	// receiver: paych voucher add <voucher>
+	cmd = []string{chAddr.String(), voucher3}
+	receiverCLI.runCmd(paychVoucherAddCmd, cmd)
+
+	// receiver: paych voucher add <voucher>
+	cmd = []string{chAddr.String(), voucher4}
+	receiverCLI.runCmd(paychVoucherAddCmd, cmd)
+
+	// receiver: paych voucher list <channel> --export
+	cmd = []string{"--export", chAddr.String()}
+	list = receiverCLI.runCmd(paychVoucherListCmd, cmd)
+
+	// Check that voucher list output is correct on receiver
+	checkVoucherOutput(t, list, vouchers)
+
+	// receiver: paych voucher best-spendable <channel>
+	cmd = []string{"--export", chAddr.String()}
+	bestSpendable = receiverCLI.runCmd(paychVoucherBestSpendableCmd, cmd)
+
+	// Check that best spendable output is correct on receiver
+	bestVouchers = []voucherSpec{
+		{serialized: voucher1, lane: 0, amt: voucherAmt1},
+		{serialized: voucher4, lane: 5, amt: voucherAmt4},
+	}
+	checkVoucherOutput(t, bestSpendable, bestVouchers)
+
+	// receiver: paych voucher submit <channel> <voucher>
+	cmd = []string{chAddr.String(), voucher1}
+	receiverCLI.runCmd(paychVoucherSubmitCmd, cmd)
+
+	// receiver: paych voucher best-spendable <channel>
+	cmd = []string{"--export", chAddr.String()}
+	bestSpendable = receiverCLI.runCmd(paychVoucherBestSpendableCmd, cmd)
+
+	// Check that best spendable output no longer includes submitted voucher
+	bestVouchers = []voucherSpec{
+		{serialized: voucher4, lane: 5, amt: voucherAmt4},
+	}
+	checkVoucherOutput(t, bestSpendable, bestVouchers)
+
+	// There are three vouchers in lane 5: 50, 70, 80
+	// Submit the voucher for 50. Best spendable should still be 80.
+	// receiver: paych voucher submit <channel> <voucher>
+	cmd = []string{chAddr.String(), voucher2}
+	receiverCLI.runCmd(paychVoucherSubmitCmd, cmd)
+
+	// receiver: paych voucher best-spendable <channel>
+	cmd = []string{"--export", chAddr.String()}
+	bestSpendable = receiverCLI.runCmd(paychVoucherBestSpendableCmd, cmd)
+
+	// Check that best spendable output still includes the voucher for 80
+	bestVouchers = []voucherSpec{
+		{serialized: voucher4, lane: 5, amt: voucherAmt4},
+	}
+	checkVoucherOutput(t, bestSpendable, bestVouchers)
+
+	// Submit the voucher for 80
+	// receiver: paych voucher submit <channel> <voucher>
+	cmd = []string{chAddr.String(), voucher4}
+	receiverCLI.runCmd(paychVoucherSubmitCmd, cmd)
+
+	// receiver: paych voucher best-spendable <channel>
+	cmd = []string{"--export", chAddr.String()}
+	bestSpendable = receiverCLI.runCmd(paychVoucherBestSpendableCmd, cmd)
+
+	// Check that best spendable output no longer includes submitted voucher
+	bestVouchers = []voucherSpec{}
+	checkVoucherOutput(t, bestSpendable, bestVouchers)
+}
+
+// TestPaymentChannelVoucherCreateShortfall verifies that if a voucher amount
+// is greater than what's left in the channel, voucher create fails
+func TestPaymentChannelVoucherCreateShortfall(t *testing.T) {
+	_ = os.Setenv("BELLMAN_NO_GPU", "1")
+
+	blocktime := 5 * time.Millisecond
+	ctx := context.Background()
+	nodes, addrs := startTwoNodesOneMiner(ctx, t, blocktime)
+	paymentCreator := nodes[0]
+	creatorAddr := addrs[0]
+	receiverAddr := addrs[1]
+
+	// Create mock CLI
+	mockCLI := newMockCLI(t)
+	creatorCLI := mockCLI.client(paymentCreator.ListenAddr)
+
+	// creator: paych add-funds <creator> <receiver> <amount>
+	channelAmt := 100
+	cmd := []string{creatorAddr.String(), receiverAddr.String(), fmt.Sprintf("%d", channelAmt)}
+	chstr := creatorCLI.runCmd(paychAddFundsCmd, cmd)
+
+	chAddr, err := address.NewFromString(chstr)
+	require.NoError(t, err)
+
+	// creator: paych voucher create <channel> <amount> --lane=1
+	voucherAmt1 := 60
+	lane1 := "--lane=1"
+	cmd = []string{lane1, chAddr.String(), strconv.Itoa(voucherAmt1)}
+	voucher1 := creatorCLI.runCmd(paychVoucherCreateCmd, cmd)
+	fmt.Println(voucher1)
+
+	// creator: paych voucher create <channel> <amount> --lane=2
+	lane2 := "--lane=2"
+	voucherAmt2 := 70
+	cmd = []string{lane2, chAddr.String(), strconv.Itoa(voucherAmt2)}
+	_, err = creatorCLI.runCmdRaw(paychVoucherCreateCmd, cmd)
+
+	// Should fail because channel doesn't have required amount
+	require.Error(t, err)
+
+	shortfall := voucherAmt1 + voucherAmt2 - channelAmt
+	require.Regexp(t, regexp.MustCompile(fmt.Sprintf("shortfall: %d", shortfall)), err.Error())
 }
 
 func checkVoucherOutput(t *testing.T, list string, vouchers []voucherSpec) {
@@ -171,14 +377,20 @@ func checkVoucherOutput(t *testing.T, list string, vouchers []voucherSpec) {
 	listVouchers := make(map[string]string)
 	for _, line := range lines {
 		parts := strings.Split(line, ";")
-		serialized := strings.TrimSpace(parts[1])
-		listVouchers[serialized] = strings.TrimSpace(parts[0])
+		if len(parts) == 2 {
+			serialized := strings.TrimSpace(parts[1])
+			listVouchers[serialized] = strings.TrimSpace(parts[0])
+		}
 	}
 	for _, vchr := range vouchers {
 		res, ok := listVouchers[vchr.serialized]
 		require.True(t, ok)
 		require.Regexp(t, fmt.Sprintf("Lane %d", vchr.lane), res)
 		require.Regexp(t, fmt.Sprintf("%d", vchr.amt), res)
+		delete(listVouchers, vchr.serialized)
+	}
+	for _, vchr := range listVouchers {
+		require.Fail(t, "Extra voucher "+vchr)
 	}
 }
 
@@ -262,6 +474,13 @@ type mockCLIClient struct {
 }
 
 func (c *mockCLIClient) runCmd(cmd *cli.Command, input []string) string {
+	out, err := c.runCmdRaw(cmd, input)
+	require.NoError(c.t, err)
+
+	return out
+}
+
+func (c *mockCLIClient) runCmdRaw(cmd *cli.Command, input []string) (string, error) {
 	// prepend --api=<node api listener address>
 	apiFlag := "--api=" + c.addr.String()
 	input = append([]string{apiFlag}, input...)
@@ -271,12 +490,11 @@ func (c *mockCLIClient) runCmd(cmd *cli.Command, input []string) string {
 	require.NoError(c.t, err)
 
 	err = cmd.Action(cli.NewContext(c.cctx.App, fs, c.cctx))
-	require.NoError(c.t, err)
 
 	// Get the output
 	str := strings.TrimSpace(c.out.String())
 	c.out.Reset()
-	return str
+	return str, err
 }
 
 func (c *mockCLIClient) flagSet(cmd *cli.Command) *flag.FlagSet {

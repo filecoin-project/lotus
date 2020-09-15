@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/miner"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
 type BlockMiner struct {
@@ -41,7 +41,7 @@ func (bm *BlockMiner) MineBlocks() {
 			nulls := atomic.SwapInt64(&bm.nulls, 0)
 			if err := bm.miner.MineOne(bm.ctx, miner.MineReq{
 				InjectNulls: abi.ChainEpoch(nulls),
-				Done:        func(bool, error) {},
+				Done:        func(bool, abi.ChainEpoch, error) {},
 			}); err != nil {
 				bm.t.Error(err)
 			}

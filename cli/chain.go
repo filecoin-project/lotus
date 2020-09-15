@@ -14,8 +14,8 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
@@ -335,25 +335,6 @@ var chainSetHeadCmd = &cli.Command{
 
 		return nil
 	},
-}
-
-func parseTipSet(ctx context.Context, api api.FullNode, vals []string) (*types.TipSet, error) {
-	var headers []*types.BlockHeader
-	for _, c := range vals {
-		blkc, err := cid.Decode(c)
-		if err != nil {
-			return nil, err
-		}
-
-		bh, err := api.ChainGetBlock(ctx, blkc)
-		if err != nil {
-			return nil, err
-		}
-
-		headers = append(headers, bh)
-	}
-
-	return types.NewTipSet(headers)
 }
 
 var chainListCmd = &cli.Command{
@@ -859,6 +840,10 @@ var chainExportCmd = &cli.Command{
 		&cli.StringFlag{
 			Name: "tipset",
 		},
+		&cli.Int64Flag{
+			Name:  "recent-stateroots",
+			Usage: "specify the number of recent state roots to include in the export",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -870,6 +855,11 @@ var chainExportCmd = &cli.Command{
 
 		if !cctx.Args().Present() {
 			return fmt.Errorf("must specify filename to export chain to")
+		}
+
+		rsrs := abi.ChainEpoch(cctx.Int64("recent-stateroots"))
+		if cctx.IsSet("recent-stateroots") && rsrs < build.Finality {
+			return fmt.Errorf("\"recent-stateroots\" has to be greater than %d", build.Finality)
 		}
 
 		fi, err := os.Create(cctx.Args().First())
@@ -888,7 +878,7 @@ var chainExportCmd = &cli.Command{
 			return err
 		}
 
-		stream, err := api.ChainExport(ctx, ts.Key())
+		stream, err := api.ChainExport(ctx, rsrs, ts.Key())
 		if err != nil {
 			return err
 		}

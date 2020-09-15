@@ -6,6 +6,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/specs-actors/actors/builtin/account"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
+
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
+
 	cborrpc "github.com/filecoin-project/go-cbor-util"
 
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
@@ -16,7 +22,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/go-state-types/big"
 	tutils "github.com/filecoin-project/specs-actors/support/testing"
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
@@ -650,8 +656,6 @@ func TestPaychGetMergeAddFunds(t *testing.T) {
 	require.NoError(t, err)
 
 	// Queue up two add funds requests behind create channel
-	//var addFundsQueuedUp sync.WaitGroup
-	//addFundsQueuedUp.Add(2)
 	var addFundsSent sync.WaitGroup
 	addFundsSent.Add(2)
 
@@ -662,7 +666,6 @@ func TestPaychGetMergeAddFunds(t *testing.T) {
 	var addFundsMcid1 cid.Cid
 	var addFundsMcid2 cid.Cid
 	go func() {
-		//go addFundsQueuedUp.Done()
 		defer addFundsSent.Done()
 
 		// Request add funds - should block until create channel has completed
@@ -671,7 +674,6 @@ func TestPaychGetMergeAddFunds(t *testing.T) {
 	}()
 
 	go func() {
-		//go addFundsQueuedUp.Done()
 		defer addFundsSent.Done()
 
 		// Request add funds again - should merge with waiting add funds request
@@ -897,6 +899,168 @@ func TestPaychGetMergeAddFundsCtxCancelAll(t *testing.T) {
 	require.Equal(t, from, createMsg.Message.From)
 	require.Equal(t, builtin.InitActorAddr, createMsg.Message.To)
 	require.Equal(t, createAmt, createMsg.Message.Value)
+}
+
+// TestPaychAvailableFunds tests that PaychAvailableFunds returns the correct
+// channel state
+func TestPaychAvailableFunds(t *testing.T) {
+	ctx := context.Background()
+	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
+
+	fromKeyPrivate, fromKeyPublic := testGenerateKeyPair(t)
+	ch := tutils.NewIDAddr(t, 100)
+	from := tutils.NewSECP256K1Addr(t, string(fromKeyPublic))
+	to := tutils.NewIDAddr(t, 102)
+	fromAcct := tutils.NewActorAddr(t, "fromAct")
+	toAcct := tutils.NewActorAddr(t, "toAct")
+
+	mock := newMockManagerAPI()
+	defer mock.close()
+
+	mgr, err := newManager(store, mock)
+	require.NoError(t, err)
+
+	// No channel created yet so available funds should be all zeroes
+	av, err := mgr.AvailableFundsByFromTo(from, to)
+	require.NoError(t, err)
+	require.Nil(t, av.Channel)
+	require.Nil(t, av.PendingWaitSentinel)
+	require.EqualValues(t, 0, av.ConfirmedAmt.Int64())
+	require.EqualValues(t, 0, av.PendingAmt.Int64())
+	require.EqualValues(t, 0, av.QueuedAmt.Int64())
+	require.EqualValues(t, 0, av.VoucherReedeemedAmt.Int64())
+
+	// Send create message for a channel with value 10
+	createAmt := big.NewInt(10)
+	_, createMsgCid, err := mgr.GetPaych(ctx, from, to, createAmt)
+	require.NoError(t, err)
+
+	// Available funds should reflect create channel message sent
+	av, err = mgr.AvailableFundsByFromTo(from, to)
+	require.NoError(t, err)
+	require.Nil(t, av.Channel)
+	require.EqualValues(t, 0, av.ConfirmedAmt.Int64())
+	require.EqualValues(t, createAmt, av.PendingAmt)
+	require.EqualValues(t, 0, av.QueuedAmt.Int64())
+	require.EqualValues(t, 0, av.VoucherReedeemedAmt.Int64())
+	// Should now have a pending wait sentinel
+	require.NotNil(t, av.PendingWaitSentinel)
+
+	// Queue up an add funds request behind create channel
+	var addFundsSent sync.WaitGroup
+	addFundsSent.Add(1)
+
+	addFundsAmt := big.NewInt(5)
+	var addFundsMcid cid.Cid
+	go func() {
+		defer addFundsSent.Done()
+
+		// Request add funds - should block until create channel has completed
+		_, addFundsMcid, err = mgr.GetPaych(ctx, from, to, addFundsAmt)
+		require.NoError(t, err)
+	}()
+
+	// Wait for add funds request to be queued up
+	waitForQueueSize(t, mgr, from, to, 1)
+
+	// Available funds should now include queued funds
+	av, err = mgr.AvailableFundsByFromTo(from, to)
+	require.NoError(t, err)
+	require.Nil(t, av.Channel)
+	require.NotNil(t, av.PendingWaitSentinel)
+	require.EqualValues(t, 0, av.ConfirmedAmt.Int64())
+	// create amount is still pending
+	require.EqualValues(t, createAmt, av.PendingAmt)
+	// queued amount now includes add funds amount
+	require.EqualValues(t, addFundsAmt, av.QueuedAmt)
+	require.EqualValues(t, 0, av.VoucherReedeemedAmt.Int64())
+
+	// Create channel in state
+	arr, err := adt.MakeEmptyArray(mock.store).Root()
+	require.NoError(t, err)
+	mock.setAccountState(fromAcct, account.State{Address: from})
+	mock.setAccountState(toAcct, account.State{Address: to})
+	act := &types.Actor{
+		Code:    builtin.AccountActorCodeID,
+		Head:    cid.Cid{},
+		Nonce:   0,
+		Balance: createAmt,
+	}
+	mock.setPaychState(ch, act, paych.State{
+		From:            fromAcct,
+		To:              toAcct,
+		ToSend:          big.NewInt(0),
+		SettlingAt:      abi.ChainEpoch(0),
+		MinSettleHeight: abi.ChainEpoch(0),
+		LaneStates:      arr,
+	})
+
+	// Send create channel response
+	response := testChannelResponse(t, ch)
+	mock.receiveMsgResponse(createMsgCid, response)
+
+	// Wait for create channel response
+	chres, err := mgr.GetPaychWaitReady(ctx, *av.PendingWaitSentinel)
+	require.NoError(t, err)
+	require.Equal(t, ch, chres)
+
+	// Wait for add funds request to be sent
+	addFundsSent.Wait()
+
+	// Available funds should now include the channel and also a wait sentinel
+	// for the add funds message
+	av, err = mgr.AvailableFunds(ch)
+	require.NoError(t, err)
+	require.NotNil(t, av.Channel)
+	require.NotNil(t, av.PendingWaitSentinel)
+	// create amount is now confirmed
+	require.EqualValues(t, createAmt, av.ConfirmedAmt)
+	// add funds amount it now pending
+	require.EqualValues(t, addFundsAmt, av.PendingAmt)
+	require.EqualValues(t, 0, av.QueuedAmt.Int64())
+	require.EqualValues(t, 0, av.VoucherReedeemedAmt.Int64())
+
+	// Send success add funds response
+	mock.receiveMsgResponse(addFundsMcid, types.MessageReceipt{
+		ExitCode: 0,
+		Return:   []byte{},
+	})
+
+	// Wait for add funds response
+	_, err = mgr.GetPaychWaitReady(ctx, *av.PendingWaitSentinel)
+	require.NoError(t, err)
+
+	// Available funds should no longer have a wait sentinel
+	av, err = mgr.AvailableFunds(ch)
+	require.NoError(t, err)
+	require.NotNil(t, av.Channel)
+	require.Nil(t, av.PendingWaitSentinel)
+	// confirmed amount now includes create and add funds amounts
+	require.EqualValues(t, types.BigAdd(createAmt, addFundsAmt), av.ConfirmedAmt)
+	require.EqualValues(t, 0, av.PendingAmt.Int64())
+	require.EqualValues(t, 0, av.QueuedAmt.Int64())
+	require.EqualValues(t, 0, av.VoucherReedeemedAmt.Int64())
+
+	// Add some vouchers
+	voucherAmt1 := types.NewInt(3)
+	voucher := createTestVoucher(t, ch, 1, 1, voucherAmt1, fromKeyPrivate)
+	_, err = mgr.AddVoucherOutbound(ctx, ch, voucher, nil, types.NewInt(0))
+	require.NoError(t, err)
+
+	voucherAmt2 := types.NewInt(2)
+	voucher = createTestVoucher(t, ch, 2, 1, voucherAmt2, fromKeyPrivate)
+	_, err = mgr.AddVoucherOutbound(ctx, ch, voucher, nil, types.NewInt(0))
+	require.NoError(t, err)
+
+	av, err = mgr.AvailableFunds(ch)
+	require.NoError(t, err)
+	require.NotNil(t, av.Channel)
+	require.Nil(t, av.PendingWaitSentinel)
+	require.EqualValues(t, types.BigAdd(createAmt, addFundsAmt), av.ConfirmedAmt)
+	require.EqualValues(t, 0, av.PendingAmt.Int64())
+	require.EqualValues(t, 0, av.QueuedAmt.Int64())
+	// voucher redeemed amount now includes vouchers
+	require.EqualValues(t, types.BigAdd(voucherAmt1, voucherAmt2), av.VoucherReedeemedAmt)
 }
 
 // waitForQueueSize waits for the funds request queue to be of the given size

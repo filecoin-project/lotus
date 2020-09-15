@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/lotus/chain/messagepool/gasguess"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/mock"
@@ -14,7 +16,6 @@ import (
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
@@ -34,6 +35,8 @@ type testMpoolAPI struct {
 	tipsets []*types.TipSet
 
 	published int
+
+	baseFee types.BigInt
 }
 
 func newTestMpoolAPI() *testMpoolAPI {
@@ -41,6 +44,7 @@ func newTestMpoolAPI() *testMpoolAPI {
 		bmsgs:      make(map[cid.Cid][]*types.SignedMessage),
 		statenonce: make(map[address.Address]uint64),
 		balance:    make(map[address.Address]types.BigInt),
+		baseFee:    types.NewInt(100),
 	}
 	genesis := mock.MkBlock(nil, 1, 1)
 	tma.tipsets = append(tma.tipsets, mock.TipSet(genesis))
@@ -49,6 +53,13 @@ func newTestMpoolAPI() *testMpoolAPI {
 
 func (tma *testMpoolAPI) nextBlock() *types.BlockHeader {
 	newBlk := mock.MkBlock(tma.tipsets[len(tma.tipsets)-1], 1, 1)
+	tma.tipsets = append(tma.tipsets, mock.TipSet(newBlk))
+	return newBlk
+}
+
+func (tma *testMpoolAPI) nextBlockWithHeight(height uint64) *types.BlockHeader {
+	newBlk := mock.MkBlock(tma.tipsets[len(tma.tipsets)-1], 1, 1)
+	newBlk.Height = abi.ChainEpoch(height)
 	tma.tipsets = append(tma.tipsets, mock.TipSet(newBlk))
 	return newBlk
 }
@@ -182,7 +193,7 @@ func (tma *testMpoolAPI) LoadTipSet(tsk types.TipSetKey) (*types.TipSet, error) 
 }
 
 func (tma *testMpoolAPI) ChainComputeBaseFee(ctx context.Context, ts *types.TipSet) (types.BigInt, error) {
-	return types.NewInt(100), nil
+	return tma.baseFee, nil
 }
 
 func assertNonce(t *testing.T, mp *MessagePool, addr address.Address, val uint64) {
@@ -352,6 +363,12 @@ func TestRevertMessages(t *testing.T) {
 }
 
 func TestPruningSimple(t *testing.T) {
+	oldMaxNonceGap := MaxNonceGap
+	MaxNonceGap = 1000
+	defer func() {
+		MaxNonceGap = oldMaxNonceGap
+	}()
+
 	tma := newTestMpoolAPI()
 
 	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
@@ -373,6 +390,7 @@ func TestPruningSimple(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	tma.setBalance(sender, 1) // in FIL
 	target := mock.Address(1001)
 
 	for i := 0; i < 5; i++ {
@@ -430,6 +448,8 @@ func TestLoadLocal(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	tma.setBalance(a1, 1) // in FIL
+	tma.setBalance(a2, 1) // in FIL
 	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin.StorageMarketActorCodeID, M: 2}]
 	msgs := make(map[cid.Cid]struct{})
 	for i := 0; i < 10; i++ {
@@ -500,6 +520,8 @@ func TestClearAll(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	tma.setBalance(a1, 1) // in FIL
+	tma.setBalance(a2, 1) // in FIL
 	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin.StorageMarketActorCodeID, M: 2}]
 	for i := 0; i < 10; i++ {
 		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(i+1))
@@ -551,6 +573,9 @@ func TestClearNonLocal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	tma.setBalance(a1, 1) // in FIL
+	tma.setBalance(a2, 1) // in FIL
 
 	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin.StorageMarketActorCodeID, M: 2}]
 	for i := 0; i < 10; i++ {
@@ -619,6 +644,10 @@ func TestUpdates(t *testing.T) {
 	}
 
 	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin.StorageMarketActorCodeID, M: 2}]
+
+	tma.setBalance(a1, 1) // in FIL
+	tma.setBalance(a2, 1) // in FIL
+
 	for i := 0; i < 10; i++ {
 		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(i+1))
 		_, err := mp.Push(m)

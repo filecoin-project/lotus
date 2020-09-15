@@ -16,6 +16,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	logging "github.com/ipfs/go-log/v2"
+	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
@@ -44,12 +45,14 @@ const FlagWorkerRepo = "worker-repo"
 const FlagWorkerRepoDeprecation = "workerrepo"
 
 func main() {
-	lotuslog.SetupLogLevels()
+	build.RunningNodeType = build.NodeWorker
 
-	log.Info("Starting lotus worker")
+	lotuslog.SetupLogLevels()
 
 	local := []*cli.Command{
 		runCmd,
+		infoCmd,
+		storageCmd,
 	}
 
 	app := &cli.App{
@@ -153,6 +156,8 @@ var runCmd = &cli.Command{
 		return nil
 	},
 	Action: func(cctx *cli.Context) error {
+		log.Info("Starting lotus worker")
+
 		if !cctx.Bool("enable-gpu-proving") {
 			if err := os.Setenv("BELLMAN_NO_GPU", "true"); err != nil {
 				return xerrors.Errorf("could not set no-gpu env: %+v", err)
@@ -184,8 +189,8 @@ var runCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		if v.APIVersion != build.APIVersion {
-			return xerrors.Errorf("lotus-miner API version doesn't match: local: %s", api.Version{APIVersion: build.APIVersion})
+		if v.APIVersion != build.MinerAPIVersion {
+			return xerrors.Errorf("lotus-miner API version doesn't match: expected: %s", api.Version{APIVersion: build.MinerAPIVersion})
 		}
 		log.Infof("Remote version %s", v)
 
@@ -342,6 +347,8 @@ var runCmd = &cli.Command{
 				SealProof: spt,
 				TaskTypes: taskTypes,
 			}, remote, localStore, nodeApi),
+			localStore: localStore,
+			ls:         lr,
 		}
 
 		mux := mux.NewRouter()
@@ -381,6 +388,32 @@ var runCmd = &cli.Command{
 		nl, err := net.Listen("tcp", address)
 		if err != nil {
 			return err
+		}
+
+		{
+			a, err := net.ResolveTCPAddr("tcp", address)
+			if err != nil {
+				return xerrors.Errorf("parsing address: %w", err)
+			}
+
+			ma, err := manet.FromNetAddr(a)
+			if err != nil {
+				return xerrors.Errorf("creating api multiaddress: %w", err)
+			}
+
+			if err := lr.SetAPIEndpoint(ma); err != nil {
+				return xerrors.Errorf("setting api endpoint: %w", err)
+			}
+
+			ainfo, err := lcli.GetAPIInfo(cctx, repo.StorageMiner)
+			if err != nil {
+				return xerrors.Errorf("could not get miner API info: %w", err)
+			}
+
+			// TODO: ideally this would be a token with some permissions dropped
+			if err := lr.SetAPIToken(ainfo.Token); err != nil {
+				return xerrors.Errorf("setting api token: %w", err)
+			}
 		}
 
 		log.Info("Waiting for tasks")

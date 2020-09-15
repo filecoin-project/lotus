@@ -17,15 +17,15 @@ const (
 )
 
 var order = map[TaskType]int{
-	TTAddPiece:     7,
-	TTPreCommit1:   6,
-	TTPreCommit2:   5,
-	TTCommit2:      4,
-	TTCommit1:      3,
-	TTFetch:        2,
-	TTFinalize:     1,
-	TTUnseal:       0,
-	TTReadUnsealed: 0,
+	TTAddPiece:     6, // least priority
+	TTPreCommit1:   5,
+	TTPreCommit2:   4,
+	TTCommit2:      3,
+	TTCommit1:      2,
+	TTUnseal:       1,
+	TTFetch:        -1,
+	TTReadUnsealed: -1,
+	TTFinalize:     -2, // most priority
 }
 
 var shortNames = map[TaskType]string{
@@ -41,6 +41,12 @@ var shortNames = map[TaskType]string{
 	TTFetch:        "GET",
 	TTUnseal:       "UNS",
 	TTReadUnsealed: "RD ",
+}
+
+func (a TaskType) MuchLess(b TaskType) (bool, bool) {
+	oa, ob := order[a], order[b]
+	oneNegative := oa^ob < 0
+	return oneNegative, oa < ob
 }
 
 func (a TaskType) Less(b TaskType) bool {

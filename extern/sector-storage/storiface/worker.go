@@ -3,8 +3,8 @@ package storiface
 import (
 	"time"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
 type WorkerInfo struct {
@@ -37,5 +37,6 @@ type WorkerJob struct {
 	Sector abi.SectorID
 	Task   sealtasks.TaskType
 
-	Start time.Time
+	RunWait int // 0 - running, 1+ - assigned
+	Start   time.Time
 }

@@ -3,7 +3,7 @@ package aerrors
 import (
 	"fmt"
 
-	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
+	"github.com/filecoin-project/go-state-types/exitcode"
 	"golang.org/x/xerrors"
 )
 

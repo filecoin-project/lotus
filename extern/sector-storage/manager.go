@@ -6,17 +6,17 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
-
+	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
@@ -31,7 +31,7 @@ type URLs []string
 type Worker interface {
 	ffiwrapper.StorageSealer
 
-	MoveStorage(ctx context.Context, sector abi.SectorID) error
+	MoveStorage(ctx context.Context, sector abi.SectorID, types stores.SectorFileType) error
 
 	Fetch(ctx context.Context, s abi.SectorID, ft stores.SectorFileType, ptype stores.PathType, am stores.AcquireMode) error
 	UnsealPiece(context.Context, abi.SectorID, storiface.UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) error
@@ -217,16 +217,11 @@ func (m *Manager) ReadPiece(ctx context.Context, sink io.Writer, sector abi.Sect
 		return xerrors.Errorf("read piece: checking for already existing unsealed sector: %w", err)
 	}
 
+	var readOk bool
 	var selector WorkerSelector
 	if len(best) == 0 { // new
 		selector = newAllocSelector(m.index, stores.FTUnsealed, stores.PathSealing)
 	} else { // append to existing
-		selector = newExistingSelector(m.index, sector, stores.FTUnsealed, false)
-	}
-
-	var readOk bool
-
-	if len(best) > 0 {
 		// There is unsealed sector, see if we can read from it
 
 		selector = newExistingSelector(m.index, sector, stores.FTUnsealed, false)
@@ -257,6 +252,9 @@ func (m *Manager) ReadPiece(ctx context.Context, sink io.Writer, sector abi.Sect
 		return nil
 	}
 
+	if unsealed == cid.Undef {
+		return xerrors.Errorf("cannot unseal piece (sector: %d, offset: %d size: %d) - unsealed cid is undefined", sector, offset, size)
+	}
 	err = m.sched.Schedule(ctx, sector, sealtasks.TTUnseal, selector, unsealFetch, func(ctx context.Context, w Worker) error {
 		return w.UnsealPiece(ctx, sector, offset, size, ticket, unsealed)
 	})
@@ -274,7 +272,7 @@ func (m *Manager) ReadPiece(ctx context.Context, sink io.Writer, sector abi.Sect
 		return xerrors.Errorf("reading piece from sealed sector: %w", err)
 	}
 
-	if readOk {
+	if !readOk {
 		return xerrors.Errorf("failed to read unsealed piece")
 	}
 
@@ -441,7 +439,7 @@ func (m *Manager) FinalizeSector(ctx context.Context, sector abi.SectorID, keepU
 	err = m.sched.Schedule(ctx, sector, sealtasks.TTFetch, fetchSel,
 		schedFetch(sector, stores.FTCache|stores.FTSealed|moveUnsealed, stores.PathStorage, stores.AcquireMove),
 		func(ctx context.Context, w Worker) error {
-			return w.MoveStorage(ctx, sector)
+			return w.MoveStorage(ctx, sector, stores.FTCache|stores.FTSealed|moveUnsealed)
 		})
 	if err != nil {
 		return xerrors.Errorf("moving sector to storage: %w", err)
@@ -463,25 +461,19 @@ func (m *Manager) Remove(ctx context.Context, sector abi.SectorID) error {
 		return xerrors.Errorf("acquiring sector lock: %w", err)
 	}
 
-	unsealed := stores.FTUnsealed
-	{
-		unsealedStores, err := m.index.StorageFindSector(ctx, sector, stores.FTUnsealed, 0, false)
-		if err != nil {
-			return xerrors.Errorf("finding unsealed sector: %w", err)
-		}
+	var err error
 
-		if len(unsealedStores) == 0 { // can be already removed
-			unsealed = stores.FTNone
-		}
+	if rerr := m.storage.Remove(ctx, sector, stores.FTSealed, true); rerr != nil {
+		err = multierror.Append(err, xerrors.Errorf("removing sector (sealed): %w", rerr))
+	}
+	if rerr := m.storage.Remove(ctx, sector, stores.FTCache, true); rerr != nil {
+		err = multierror.Append(err, xerrors.Errorf("removing sector (cache): %w", rerr))
+	}
+	if rerr := m.storage.Remove(ctx, sector, stores.FTUnsealed, true); rerr != nil {
+		err = multierror.Append(err, xerrors.Errorf("removing sector (unsealed): %w", rerr))
 	}
 
-	selector := newExistingSelector(m.index, sector, stores.FTCache|stores.FTSealed, false)
-
-	return m.sched.Schedule(ctx, sector, sealtasks.TTFinalize, selector,
-		schedFetch(sector, stores.FTCache|stores.FTSealed|unsealed, stores.PathStorage, stores.AcquireMove),
-		func(ctx context.Context, w Worker) error {
-			return w.Remove(ctx, sector)
-		})
+	return err
 }
 
 func (m *Manager) StorageLocal(ctx context.Context) (map[stores.ID]string, error) {

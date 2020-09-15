@@ -5,10 +5,13 @@ import (
 	"errors"
 	"fmt"
 
+	"golang.org/x/xerrors"
+
 	"github.com/google/uuid"
 
 	"github.com/filecoin-project/lotus/chain/types"
 
+	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -45,8 +48,9 @@ const (
 )
 
 type VoucherInfo struct {
-	Voucher *paych.SignedVoucher
-	Proof   []byte
+	Voucher   *paych.SignedVoucher
+	Proof     []byte
+	Submitted bool
 }
 
 // ChannelInfo keeps track of information about a channel
@@ -55,12 +59,12 @@ type ChannelInfo struct {
 	ChannelID string
 	// Channel address - may be nil if the channel hasn't been created yet
 	Channel *address.Address
-	// Control is the address of the account that created the channel
+	// Control is the address of the local node
 	Control address.Address
-	// Target is the address of the account on the other end of the channel
+	// Target is the address of the remote node (on the other end of the channel)
 	Target address.Address
-	// Direction indicates if the channel is inbound (this node is the Target)
-	// or outbound (this node is the Control)
+	// Direction indicates if the channel is inbound (Control is the "to" address)
+	// or outbound (Control is the "from" address)
 	Direction uint64
 	// Vouchers is a list of all vouchers sent on the channel
 	Vouchers []*VoucherInfo
@@ -80,6 +84,78 @@ type ChannelInfo struct {
 	AddFundsMsg *cid.Cid
 	// Settling indicates whether the channel has entered into the settling state
 	Settling bool
+}
+
+func (ci *ChannelInfo) from() address.Address {
+	if ci.Direction == DirOutbound {
+		return ci.Control
+	}
+	return ci.Target
+}
+
+func (ci *ChannelInfo) to() address.Address {
+	if ci.Direction == DirOutbound {
+		return ci.Target
+	}
+	return ci.Control
+}
+
+// infoForVoucher gets the VoucherInfo for the given voucher.
+// returns nil if the channel doesn't have the voucher.
+func (ci *ChannelInfo) infoForVoucher(sv *paych.SignedVoucher) (*VoucherInfo, error) {
+	for _, v := range ci.Vouchers {
+		eq, err := cborutil.Equals(sv, v.Voucher)
+		if err != nil {
+			return nil, err
+		}
+		if eq {
+			return v, nil
+		}
+	}
+	return nil, nil
+}
+
+func (ci *ChannelInfo) hasVoucher(sv *paych.SignedVoucher) (bool, error) {
+	vi, err := ci.infoForVoucher(sv)
+	return vi != nil, err
+}
+
+// markVoucherSubmitted marks the voucher, and any vouchers of lower nonce
+// in the same lane, as being submitted.
+// Note: This method doesn't write anything to the store.
+func (ci *ChannelInfo) markVoucherSubmitted(sv *paych.SignedVoucher) error {
+	vi, err := ci.infoForVoucher(sv)
+	if err != nil {
+		return err
+	}
+	if vi == nil {
+		return xerrors.Errorf("cannot submit voucher that has not been added to channel")
+	}
+
+	// Mark the voucher as submitted
+	vi.Submitted = true
+
+	// Mark lower-nonce vouchers in the same lane as submitted (lower-nonce
+	// vouchers are superseded by the submitted voucher)
+	for _, vi := range ci.Vouchers {
+		if vi.Voucher.Lane == sv.Lane && vi.Voucher.Nonce < sv.Nonce {
+			vi.Submitted = true
+		}
+	}
+
+	return nil
+}
+
+// wasVoucherSubmitted returns true if the voucher has been submitted
+func (ci *ChannelInfo) wasVoucherSubmitted(sv *paych.SignedVoucher) (bool, error) {
+	vi, err := ci.infoForVoucher(sv)
+	if err != nil {
+		return false, err
+	}
+	if vi == nil {
+		return false, xerrors.Errorf("cannot submit voucher that has not been added to channel")
+	}
+	return vi.Submitted, nil
 }
 
 // TrackChannel stores a channel, returning an error if the channel was already
@@ -198,6 +274,14 @@ func (ps *Store) VouchersForPaych(ch address.Address) ([]*VoucherInfo, error) {
 	}
 
 	return ci.Vouchers, nil
+}
+
+func (ps *Store) MarkVoucherSubmitted(ci *ChannelInfo, sv *paych.SignedVoucher) error {
+	err := ci.markVoucherSubmitted(sv)
+	if err != nil {
+		return err
+	}
+	return ps.putChannelInfo(ci)
 }
 
 // ByAddress gets the channel that matches the given address

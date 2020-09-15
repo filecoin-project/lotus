@@ -36,6 +36,7 @@
   * [ClientFindData](#ClientFindData)
   * [ClientGenCar](#ClientGenCar)
   * [ClientGetDealInfo](#ClientGetDealInfo)
+  * [ClientGetDealUpdates](#ClientGetDealUpdates)
   * [ClientHasLocal](#ClientHasLocal)
   * [ClientImport](#ClientImport)
   * [ClientListDataTransfers](#ClientListDataTransfers)
@@ -45,6 +46,7 @@
   * [ClientQueryAsk](#ClientQueryAsk)
   * [ClientRemoveImport](#ClientRemoveImport)
   * [ClientRetrieve](#ClientRetrieve)
+  * [ClientRetrieveTryRestartInsufficientFunds](#ClientRetrieveTryRestartInsufficientFunds)
   * [ClientRetrieveWithEvents](#ClientRetrieveWithEvents)
   * [ClientStartDeal](#ClientStartDeal)
 * [Gas](#Gas)
@@ -73,17 +75,25 @@
   * [MpoolSetConfig](#MpoolSetConfig)
   * [MpoolSub](#MpoolSub)
 * [Msig](#Msig)
+  * [MsigAddApprove](#MsigAddApprove)
+  * [MsigAddCancel](#MsigAddCancel)
+  * [MsigAddPropose](#MsigAddPropose)
   * [MsigApprove](#MsigApprove)
   * [MsigCancel](#MsigCancel)
   * [MsigCreate](#MsigCreate)
   * [MsigGetAvailableBalance](#MsigGetAvailableBalance)
+  * [MsigGetVested](#MsigGetVested)
   * [MsigPropose](#MsigPropose)
   * [MsigSwapApprove](#MsigSwapApprove)
   * [MsigSwapCancel](#MsigSwapCancel)
   * [MsigSwapPropose](#MsigSwapPropose)
 * [Net](#Net)
   * [NetAddrsListen](#NetAddrsListen)
+  * [NetAgentVersion](#NetAgentVersion)
   * [NetAutoNatStatus](#NetAutoNatStatus)
+  * [NetBandwidthStats](#NetBandwidthStats)
+  * [NetBandwidthStatsByPeer](#NetBandwidthStatsByPeer)
+  * [NetBandwidthStatsByProtocol](#NetBandwidthStatsByProtocol)
   * [NetConnect](#NetConnect)
   * [NetConnectedness](#NetConnectedness)
   * [NetDisconnect](#NetDisconnect)
@@ -92,6 +102,8 @@
   * [NetPubsubScores](#NetPubsubScores)
 * [Paych](#Paych)
   * [PaychAllocateLane](#PaychAllocateLane)
+  * [PaychAvailableFunds](#PaychAvailableFunds)
+  * [PaychAvailableFundsByFromTo](#PaychAvailableFundsByFromTo)
   * [PaychCollect](#PaychCollect)
   * [PaychGet](#PaychGet)
   * [PaychGetWaitReady](#PaychGetWaitReady)
@@ -148,10 +160,12 @@
   * [StateWaitMsg](#StateWaitMsg)
 * [Sync](#Sync)
   * [SyncCheckBad](#SyncCheckBad)
+  * [SyncCheckpoint](#SyncCheckpoint)
   * [SyncIncomingBlocks](#SyncIncomingBlocks)
   * [SyncMarkBad](#SyncMarkBad)
   * [SyncState](#SyncState)
   * [SyncSubmitBlock](#SyncSubmitBlock)
+  * [SyncUnmarkBad](#SyncUnmarkBad)
 * [Wallet](#Wallet)
   * [WalletBalance](#WalletBalance)
   * [WalletDefaultAddress](#WalletDefaultAddress)
@@ -197,7 +211,7 @@ Response:
 ```json
 {
   "Version": "string value",
-  "APIVersion": 3072,
+  "APIVersion": 3584,
   "BlockDelay": 42
 }
 ```
@@ -267,6 +281,9 @@ blockchain, but that do not require any form of state computation.
 
 ### ChainExport
 ChainExport returns a stream of bytes with CAR dump of chain data.
+The exported chain data includes the header chain from the given tipset
+back to genesis, the entire genesis state, and the most recent 'nroots'
+state trees.
 
 
 Perms: read
@@ -274,6 +291,7 @@ Perms: read
 Inputs:
 ```json
 [
+  10101,
   [
     {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
@@ -915,6 +933,42 @@ Response:
 }
 ```
 
+### ClientGetDealUpdates
+ClientGetDealUpdates returns the status of updated deals
+
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "ProposalCid": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "State": 42,
+  "Message": "string value",
+  "Provider": "t01234",
+  "DataRef": {
+    "TransferType": "string value",
+    "Root": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "PieceCid": null,
+    "PieceSize": 1024
+  },
+  "PieceCID": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "Size": 42,
+  "PricePerEpoch": "0",
+  "Duration": 42,
+  "DealID": 5432,
+  "CreationTime": "0001-01-01T00:00:00Z"
+}
+```
+
 ### ClientHasLocal
 ClientHasLocal indicates whether a certain CID is locally stored.
 
@@ -1107,6 +1161,22 @@ Inputs:
     "Path": "string value",
     "IsCAR": true
   }
+]
+```
+
+Response: `{}`
+
+### ClientRetrieveTryRestartInsufficientFunds
+ClientRetrieveTryRestartInsufficientFunds attempts to restart stalled retrievals on a given payment channel
+which are stuck due to insufficient funds
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  "t01234"
 ]
 ```
 
@@ -1773,6 +1843,84 @@ The Msig methods are used to interact with multisig wallets on the
 filecoin network
 
 
+### MsigAddApprove
+MsigAddApprove approves a previously proposed AddSigner message
+It takes the following params: <multisig address>, <sender address of the approve msg>, <proposed message ID>,
+<proposer address>, <new signer>, <whether the number of required signers should be increased>
+
+
+Perms: sign
+
+Inputs:
+```json
+[
+  "t01234",
+  "t01234",
+  42,
+  "t01234",
+  "t01234",
+  true
+]
+```
+
+Response:
+```json
+{
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+}
+```
+
+### MsigAddCancel
+MsigAddCancel cancels a previously proposed AddSigner message
+It takes the following params: <multisig address>, <sender address of the cancel msg>, <proposed message ID>,
+<new signer>, <whether the number of required signers should be increased>
+
+
+Perms: sign
+
+Inputs:
+```json
+[
+  "t01234",
+  "t01234",
+  42,
+  "t01234",
+  true
+]
+```
+
+Response:
+```json
+{
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+}
+```
+
+### MsigAddPropose
+MsigAddPropose proposes adding a signer in the multisig
+It takes the following params: <multisig address>, <sender address of the propose msg>,
+<new signer>, <whether the number of required signers should be increased>
+
+
+Perms: sign
+
+Inputs:
+```json
+[
+  "t01234",
+  "t01234",
+  "t01234",
+  true
+]
+```
+
+Response:
+```json
+{
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+}
+```
+
 ### MsigApprove
 MsigApprove approves a previously-proposed multisig message
 It takes the following params: <multisig address>, <proposed message ID>, <proposer address>, <recipient address>, <value to transfer>,
@@ -1880,6 +2028,38 @@ Inputs:
 
 Response: `"0"`
 
+### MsigGetVested
+MsigGetVested returns the amount of FIL that vested in a multisig in a certain period.
+It takes the following params: <multisig address>, <start epoch>, <end epoch>
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "t01234",
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ],
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `"0"`
+
 ### MsigPropose
 MsigPropose proposes a multisig message
 It takes the following params: <multisig address>, <recipient address>, <value to transfer>,
@@ -1910,7 +2090,7 @@ Response:
 ### MsigSwapApprove
 MsigSwapApprove approves a previously proposed SwapSigner
 It takes the following params: <multisig address>, <sender address of the approve msg>, <proposed message ID>,
-<proposer address>, <old signer> <new signer>
+<proposer address>, <old signer>, <new signer>
 
 
 Perms: sign
@@ -1937,7 +2117,7 @@ Response:
 ### MsigSwapCancel
 MsigSwapCancel cancels a previously proposed SwapSigner message
 It takes the following params: <multisig address>, <sender address of the cancel msg>, <proposed message ID>,
-<old signer> <new signer>
+<old signer>, <new signer>
 
 
 Perms: sign
@@ -1963,7 +2143,7 @@ Response:
 ### MsigSwapPropose
 MsigSwapPropose proposes swapping 2 signers in the multisig
 It takes the following params: <multisig address>, <sender address of the propose msg>,
-<old signer> <new signer>
+<old signer>, <new signer>
 
 
 Perms: sign
@@ -2003,6 +2183,20 @@ Response:
 }
 ```
 
+### NetAgentVersion
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+]
+```
+
+Response: `"string value"`
+
 ### NetAutoNatStatus
 
 
@@ -2015,6 +2209,61 @@ Response:
 {
   "Reachability": 1,
   "PublicAddr": "string value"
+}
+```
+
+### NetBandwidthStats
+
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "TotalIn": 9,
+  "TotalOut": 9,
+  "RateIn": 12.3,
+  "RateOut": 12.3
+}
+```
+
+### NetBandwidthStatsByPeer
+
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "12D3KooWSXmXLJmBR1M7i9RW9GQPNUhZSzXKzxDHWtAgNuJAbyEJ": {
+    "TotalIn": 174000,
+    "TotalOut": 12500,
+    "RateIn": 100,
+    "RateOut": 50
+  }
+}
+```
+
+### NetBandwidthStatsByProtocol
+
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "/fil/hello/1.0.0": {
+    "TotalIn": 174000,
+    "TotalOut": 12500,
+    "RateIn": 100,
+    "RateOut": 50
+  }
 }
 ```
 
@@ -2118,6 +2367,53 @@ Inputs:
 ```
 
 Response: `42`
+
+### PaychAvailableFunds
+There are not yet any comments for this method.
+
+Perms: sign
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "Channel": "\u003cempty\u003e",
+  "From": "t01234",
+  "To": "t01234",
+  "ConfirmedAmt": "0",
+  "PendingAmt": "0",
+  "PendingWaitSentinel": null,
+  "QueuedAmt": "0",
+  "VoucherReedeemedAmt": "0"
+}
+```
+
+### PaychAvailableFundsByFromTo
+There are not yet any comments for this method.
+
+Perms: sign
+
+Inputs:
+```json
+[
+  "t01234"
+]
+```
+
+Response:
+```json
+{
+  "Channel": "\u003cempty\u003e",
+  "From": "t01234",
+  "To": "t01234",
+  "ConfirmedAmt": "0",
+  "PendingAmt": "0",
+  "PendingWaitSentinel": null,
+  "QueuedAmt": "0",
+  "VoucherReedeemedAmt": "0"
+}
+```
 
 ### PaychCollect
 There are not yet any comments for this method.
@@ -2374,24 +2670,27 @@ Inputs:
 Response:
 ```json
 {
-  "ChannelAddr": "t01234",
-  "TimeLockMin": 10101,
-  "TimeLockMax": 10101,
-  "SecretPreimage": "Ynl0ZSBhcnJheQ==",
-  "Extra": {
-    "Actor": "t01234",
-    "Method": 1,
-    "Data": "Ynl0ZSBhcnJheQ=="
+  "Voucher": {
+    "ChannelAddr": "t01234",
+    "TimeLockMin": 10101,
+    "TimeLockMax": 10101,
+    "SecretPreimage": "Ynl0ZSBhcnJheQ==",
+    "Extra": {
+      "Actor": "t01234",
+      "Method": 1,
+      "Data": "Ynl0ZSBhcnJheQ=="
+    },
+    "Lane": 42,
+    "Nonce": 42,
+    "Amount": "0",
+    "MinSettleHeight": 10101,
+    "Merges": null,
+    "Signature": {
+      "Type": 2,
+      "Data": "Ynl0ZSBhcnJheQ=="
+    }
   },
-  "Lane": 42,
-  "Nonce": 42,
-  "Amount": "0",
-  "MinSettleHeight": 10101,
-  "Merges": null,
-  "Signature": {
-    "Type": 2,
-    "Data": "Ynl0ZSBhcnJheQ=="
-  }
+  "Shortfall": "0"
 }
 ```
 
@@ -2437,7 +2736,9 @@ Inputs:
       "Type": 2,
       "Data": "Ynl0ZSBhcnJheQ=="
     }
-  }
+  },
+  "Ynl0ZSBhcnJheQ==",
+  "Ynl0ZSBhcnJheQ=="
 ]
 ```
 
@@ -3332,7 +3633,12 @@ Response:
   "Open": 10101,
   "Close": 10101,
   "Challenge": 10101,
-  "FaultCutoff": 10101
+  "FaultCutoff": 10101,
+  "WPoStPeriodDeadlines": 42,
+  "WPoStProvingPeriod": 10101,
+  "WPoStChallengeWindow": 10101,
+  "WPoStChallengeLookback": 10101,
+  "FaultDeclarationCutoff": 10101
 }
 ```
 
@@ -3603,7 +3909,7 @@ Response:
 ```
 
 ### StateSectorGetInfo
-StateSectorGetInfo returns the on-chain info for the specified miner's sector
+StateSectorGetInfo returns the on-chain info for the specified miner's sector. Returns null in case the sector info isn't found
 NOTE: returned info.Expiration may not be accurate in some cases, use StateSectorExpiration to get accurate
 expiration epoch
 
@@ -3810,6 +4116,28 @@ Inputs:
 
 Response: `"string value"`
 
+### SyncCheckpoint
+SyncCheckpoint marks a blocks as checkpointed, meaning that it won't ever fork away from it.
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `{}`
+
 ### SyncIncomingBlocks
 SyncIncomingBlocks returns a channel streaming incoming, potentially not
 yet synced block headers.
@@ -3939,6 +4267,23 @@ Inputs:
     },
     "BlsMessages": null,
     "SecpkMessages": null
+  }
+]
+```
+
+Response: `{}`
+
+### SyncUnmarkBad
+SyncUnmarkBad unmarks a blocks as bad, making it possible to be validated and synced again.
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   }
 ]
 ```

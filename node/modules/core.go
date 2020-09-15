@@ -10,6 +10,7 @@ import (
 
 	"github.com/gbrlsnchs/jwt/v3"
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	record "github.com/libp2p/go-libp2p-record"
 	"golang.org/x/xerrors"
@@ -93,8 +94,18 @@ func BuiltinBootstrap() (dtypes.BootstrapPeers, error) {
 	return build.BuiltinBootstrap()
 }
 
-func DrandBootstrap(d dtypes.DrandConfig) (dtypes.DrandBootstrap, error) {
-	return addrutil.ParseAddresses(context.TODO(), d.Relays)
+func DrandBootstrap(ds dtypes.DrandSchedule) (dtypes.DrandBootstrap, error) {
+	// TODO: retry resolving, don't fail if at least one resolve succeeds
+	res := []peer.AddrInfo{}
+	for _, d := range ds {
+		addrs, err := addrutil.ParseAddresses(context.TODO(), d.Config.Relays)
+		if err != nil {
+			log.Errorf("reoslving drand relays addresses: %+v", err)
+			return res, nil
+		}
+		res = append(res, addrs...)
+	}
+	return res, nil
 }
 
 func SetupJournal(lr repo.LockedRepo) error {

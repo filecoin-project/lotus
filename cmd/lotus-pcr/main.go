@@ -20,11 +20,11 @@ import (
 
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
@@ -125,13 +125,31 @@ var runCmd = &cli.Command{
 			Name:    "max-message-queue",
 			EnvVars: []string{"LOTUS_PCR_MAX_MESSAGE_QUEUE"},
 			Usage:   "set the maximum number of messages that can be queue in the mpool",
-			Value:   3000,
+			Value:   300,
+		},
+		&cli.IntFlag{
+			Name:    "aggregate-tipsets",
+			EnvVars: []string{"LOTUS_PCR_AGGREGATE_TIPSETS"},
+			Usage:   "number of tipsets to process before sending messages",
+			Value:   1,
 		},
 		&cli.BoolFlag{
 			Name:    "dry-run",
 			EnvVars: []string{"LOTUS_PCR_DRY_RUN"},
 			Usage:   "do not send any messages",
 			Value:   false,
+		},
+		&cli.BoolFlag{
+			Name:    "pre-commit",
+			EnvVars: []string{"LOTUS_PCR_PRE_COMMIT"},
+			Usage:   "process PreCommitSector messages",
+			Value:   true,
+		},
+		&cli.BoolFlag{
+			Name:    "prove-commit",
+			EnvVars: []string{"LOTUS_PCR_PROVE_COMMIT"},
+			Usage:   "process ProveCommitSector messages",
+			Value:   true,
 		},
 		&cli.IntFlag{
 			Name:    "head-delay",
@@ -180,23 +198,44 @@ var runCmd = &cli.Command{
 		percentExtra := cctx.Int("percent-extra")
 		maxMessageQueue := cctx.Int("max-message-queue")
 		dryRun := cctx.Bool("dry-run")
+		preCommitEnabled := cctx.Bool("pre-commit")
+		proveCommitEnabled := cctx.Bool("prove-commit")
+		aggregateTipsets := cctx.Int("aggregate-tipsets")
 
 		rf := &refunder{
-			api:          api,
-			wallet:       from,
-			percentExtra: percentExtra,
-			dryRun:       dryRun,
+			api:                api,
+			wallet:             from,
+			percentExtra:       percentExtra,
+			dryRun:             dryRun,
+			preCommitEnabled:   preCommitEnabled,
+			proveCommitEnabled: proveCommitEnabled,
 		}
 
+		var refunds *MinersRefund = NewMinersRefund()
+		var rounds int = 0
+
 		for tipset := range tipsetsCh {
-			refunds, err := rf.ProcessTipset(ctx, tipset)
+			refunds, err = rf.ProcessTipset(ctx, tipset, refunds)
 			if err != nil {
 				return err
 			}
 
-			if err := rf.Refund(ctx, tipset, refunds); err != nil {
+			rounds = rounds + 1
+			if rounds < aggregateTipsets {
+				continue
+			}
+
+			refundTipset, err := api.ChainHead(ctx)
+			if err != nil {
 				return err
 			}
+
+			if err := rf.Refund(ctx, refundTipset, refunds, rounds); err != nil {
+				return err
+			}
+
+			rounds = 0
+			refunds = NewMinersRefund()
 
 			if err := r.SetHeight(tipset.Height()); err != nil {
 				return err
@@ -231,13 +270,15 @@ var runCmd = &cli.Command{
 }
 
 type MinersRefund struct {
-	refunds map[address.Address]types.BigInt
-	count   int
+	refunds      map[address.Address]types.BigInt
+	count        int
+	totalRefunds types.BigInt
 }
 
 func NewMinersRefund() *MinersRefund {
 	return &MinersRefund{
-		refunds: make(map[address.Address]types.BigInt),
+		refunds:      make(map[address.Address]types.BigInt),
+		totalRefunds: types.NewInt(0),
 	}
 }
 
@@ -247,12 +288,17 @@ func (m *MinersRefund) Track(addr address.Address, value types.BigInt) {
 	}
 
 	m.count = m.count + 1
+	m.totalRefunds = types.BigAdd(m.totalRefunds, value)
 
 	m.refunds[addr] = types.BigAdd(m.refunds[addr], value)
 }
 
 func (m *MinersRefund) Count() int {
 	return m.count
+}
+
+func (m *MinersRefund) TotalRefunds() types.BigInt {
+	return m.totalRefunds
 }
 
 func (m *MinersRefund) Miners() []address.Address {
@@ -281,13 +327,15 @@ type refunderNodeApi interface {
 }
 
 type refunder struct {
-	api          refunderNodeApi
-	wallet       address.Address
-	percentExtra int
-	dryRun       bool
+	api                refunderNodeApi
+	wallet             address.Address
+	percentExtra       int
+	dryRun             bool
+	preCommitEnabled   bool
+	proveCommitEnabled bool
 }
 
-func (r *refunder) ProcessTipset(ctx context.Context, tipset *types.TipSet) (*MinersRefund, error) {
+func (r *refunder) ProcessTipset(ctx context.Context, tipset *types.TipSet, refunds *MinersRefund) (*MinersRefund, error) {
 	cids := tipset.Cids()
 	if len(cids) == 0 {
 		log.Errorw("no cids in tipset", "height", tipset.Height(), "key", tipset.Key())
@@ -311,9 +359,8 @@ func (r *refunder) ProcessTipset(ctx context.Context, tipset *types.TipSet) (*Mi
 		return nil, nil
 	}
 
-	refunds := NewMinersRefund()
-
 	refundValue := types.NewInt(0)
+	tipsetRefunds := NewMinersRefund()
 	for i, msg := range msgs {
 		m := msg.Message
 
@@ -331,7 +378,12 @@ func (r *refunder) ProcessTipset(ctx context.Context, tipset *types.TipSet) (*Mi
 
 		switch m.Method {
 		case builtin.MethodsMiner.ProveCommitSector:
+			if !r.proveCommitEnabled {
+				continue
+			}
+
 			messageMethod = "ProveCommitSector"
+
 			if recps[i].ExitCode != exitcode.Ok {
 				log.Debugw("skipping non-ok exitcode message", "method", messageMethod, "cid", msg.Cid, "miner", m.To, "exitcode", recps[i].ExitCode)
 				continue
@@ -369,6 +421,10 @@ func (r *refunder) ProcessTipset(ctx context.Context, tipset *types.TipSet) (*Mi
 
 			refundValue = collateral
 		case builtin.MethodsMiner.PreCommitSector:
+			if !r.preCommitEnabled {
+				continue
+			}
+
 			messageMethod = "PreCommitSector"
 
 			if recps[i].ExitCode != exitcode.Ok {
@@ -400,12 +456,15 @@ func (r *refunder) ProcessTipset(ctx context.Context, tipset *types.TipSet) (*Mi
 		log.Debugw("processing message", "method", messageMethod, "cid", msg.Cid, "from", m.From, "to", m.To, "value", m.Value, "gas_fee_cap", m.GasFeeCap, "gas_premium", m.GasPremium, "gas_used", recps[i].GasUsed, "refund", refundValue)
 
 		refunds.Track(m.From, refundValue)
+		tipsetRefunds.Track(m.From, refundValue)
 	}
+
+	log.Infow("tipset stats", "height", tipset.Height(), "key", tipset.Key(), "total_refunds", tipsetRefunds.TotalRefunds(), "messages_processed", tipsetRefunds.Count())
 
 	return refunds, nil
 }
 
-func (r *refunder) Refund(ctx context.Context, tipset *types.TipSet, refunds *MinersRefund) error {
+func (r *refunder) Refund(ctx context.Context, tipset *types.TipSet, refunds *MinersRefund, rounds int) error {
 	if refunds.Count() == 0 {
 		log.Debugw("no messages to refund in tipset", "height", tipset.Height(), "key", tipset.Key())
 		return nil
@@ -463,7 +522,7 @@ func (r *refunder) Refund(ctx context.Context, tipset *types.TipSet, refunds *Mi
 		refundSum = types.BigAdd(refundSum, msg.Value)
 	}
 
-	log.Infow("tipset stats", "height", tipset.Height(), "key", tipset.Key(), "messages_sent", len(messages)-failures, "refund_sum", refundSum, "messages_failures", failures, "messages_processed", refunds.Count())
+	log.Infow("refund stats", "tipsets_processed", rounds, "height", tipset.Height(), "key", tipset.Key(), "messages_sent", len(messages)-failures, "refund_sum", refundSum, "messages_failures", failures, "messages_processed", refunds.Count())
 	return nil
 }
 

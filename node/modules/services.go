@@ -17,7 +17,7 @@ import (
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/beacon/drand"
-	"github.com/filecoin-project/lotus/chain/blocksync"
+	"github.com/filecoin-project/lotus/chain/exchange"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -69,8 +69,9 @@ func RunPeerMgr(mctx helpers.MetricsCtx, lc fx.Lifecycle, pmgr *peermgr.PeerMgr)
 	go pmgr.Run(helpers.LifecycleCtx(mctx, lc))
 }
 
-func RunBlockSync(h host.Host, svc *blocksync.BlockSyncService) {
-	h.SetStreamHandler(blocksync.BlockSyncProtocolID, svc.HandleStream)
+func RunChainExchange(h host.Host, svc exchange.Server) {
+	h.SetStreamHandler(exchange.BlockSyncProtocolID, svc.HandleStream)     // old
+	h.SetStreamHandler(exchange.ChainExchangeProtocolID, svc.HandleStream) // new
 }
 
 func HandleIncomingBlocks(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.PubSub, s *chain.Syncer, bserv dtypes.ChainBlockService, chain *store.ChainStore, stmgr *stmgr.StateManager, h host.Host, nn dtypes.NetworkName) {
@@ -125,19 +126,27 @@ type RandomBeaconParams struct {
 
 	PubSub      *pubsub.PubSub `optional:"true"`
 	Cs          *store.ChainStore
-	DrandConfig dtypes.DrandConfig
+	DrandConfig dtypes.DrandSchedule
 }
 
-func BuiltinDrandConfig() dtypes.DrandConfig {
-	return build.DrandConfig()
+func BuiltinDrandConfig() dtypes.DrandSchedule {
+	return build.DrandConfigSchedule()
 }
 
-func RandomBeacon(p RandomBeaconParams, _ dtypes.AfterGenesisSet) (beacon.RandomBeacon, error) {
+func RandomSchedule(p RandomBeaconParams, _ dtypes.AfterGenesisSet) (beacon.Schedule, error) {
 	gen, err := p.Cs.GetGenesis()
 	if err != nil {
 		return nil, err
 	}
 
-	//return beacon.NewMockBeacon(build.BlockDelaySecs * time.Second)
-	return drand.NewDrandBeacon(gen.Timestamp, build.BlockDelaySecs, p.PubSub, p.DrandConfig)
+	shd := beacon.Schedule{}
+	for _, dc := range p.DrandConfig {
+		bc, err := drand.NewDrandBeacon(gen.Timestamp, build.BlockDelaySecs, p.PubSub, dc.Config)
+		if err != nil {
+			return nil, xerrors.Errorf("creating drand beacon: %w", err)
+		}
+		shd = append(shd, beacon.BeaconPoint{Start: dc.Start, Beacon: bc})
+	}
+
+	return shd, nil
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -19,7 +20,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -345,6 +346,10 @@ var dealsListCmd = &cli.Command{
 			Name:    "verbose",
 			Aliases: []string{"v"},
 		},
+		&cli.BoolFlag{
+			Name:  "watch",
+			Usage: "watch deal updates in real-time, rather than a one time list",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := lcli.GetStorageMinerAPI(cctx)
@@ -360,42 +365,83 @@ var dealsListCmd = &cli.Command{
 			return err
 		}
 
-		sort.Slice(deals, func(i, j int) bool {
-			return deals[i].CreationTime.Time().Before(deals[j].CreationTime.Time())
-		})
-
-		w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
-
 		verbose := cctx.Bool("verbose")
+		watch := cctx.Bool("watch")
+
+		if watch {
+			updates, err := api.MarketGetDealUpdates(ctx)
+			if err != nil {
+				return err
+			}
+
+			for {
+				tm.Clear()
+				tm.MoveCursor(1, 1)
+
+				err = outputStorageDeals(tm.Output, deals, verbose)
+				if err != nil {
+					return err
+				}
+
+				tm.Flush()
+
+				select {
+				case <-ctx.Done():
+					return nil
+				case updated := <-updates:
+					var found bool
+					for i, existing := range deals {
+						if existing.ProposalCid.Equals(updated.ProposalCid) {
+							deals[i] = updated
+							found = true
+							break
+						}
+					}
+					if !found {
+						deals = append(deals, updated)
+					}
+				}
+			}
+		}
+
+		return outputStorageDeals(os.Stdout, deals, verbose)
+	},
+}
+
+func outputStorageDeals(out io.Writer, deals []storagemarket.MinerDeal, verbose bool) error {
+	sort.Slice(deals, func(i, j int) bool {
+		return deals[i].CreationTime.Time().Before(deals[j].CreationTime.Time())
+	})
+
+	w := tabwriter.NewWriter(out, 2, 4, 2, ' ', 0)
+
+	if verbose {
+		_, _ = fmt.Fprintf(w, "Creation\tProposalCid\tDealId\tState\tClient\tSize\tPrice\tDuration\tMessage\n")
+	} else {
+		_, _ = fmt.Fprintf(w, "ProposalCid\tDealId\tState\tClient\tSize\tPrice\tDuration\n")
+	}
+
+	for _, deal := range deals {
+		propcid := deal.ProposalCid.String()
+		if !verbose {
+			propcid = "..." + propcid[len(propcid)-8:]
+		}
+
+		fil := types.FIL(types.BigMul(deal.Proposal.StoragePricePerEpoch, types.NewInt(uint64(deal.Proposal.Duration()))))
 
 		if verbose {
-			_, _ = fmt.Fprintf(w, "Creation\tProposalCid\tDealId\tState\tClient\tSize\tPrice\tDuration\tMessage\n")
-		} else {
-			_, _ = fmt.Fprintf(w, "ProposalCid\tDealId\tState\tClient\tSize\tPrice\tDuration\n")
+			_, _ = fmt.Fprintf(w, "%s\t", deal.CreationTime.Time().Format(time.Stamp))
 		}
 
-		for _, deal := range deals {
-			propcid := deal.ProposalCid.String()
-			if !verbose {
-				propcid = "..." + propcid[len(propcid)-8:]
-			}
-
-			fil := types.FIL(types.BigMul(deal.Proposal.StoragePricePerEpoch, types.NewInt(uint64(deal.Proposal.Duration()))))
-
-			if verbose {
-				_, _ = fmt.Fprintf(w, "%s\t", deal.CreationTime.Time().Format(time.Stamp))
-			}
-
-			_, _ = fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\t%s\t%s", propcid, deal.DealID, storagemarket.DealStates[deal.State], deal.Proposal.Client, units.BytesSize(float64(deal.Proposal.PieceSize)), fil, deal.Proposal.Duration())
-			if verbose {
-				_, _ = fmt.Fprintf(w, "\t%s", deal.Message)
-			}
-
-			_, _ = fmt.Fprintln(w)
+		_, _ = fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\t%s\t%s", propcid, deal.DealID, storagemarket.DealStates[deal.State], deal.Proposal.Client, units.BytesSize(float64(deal.Proposal.PieceSize)), fil, deal.Proposal.Duration())
+		if verbose {
+			_, _ = fmt.Fprintf(w, "\t%s", deal.Message)
 		}
 
-		return w.Flush()
-	},
+		_, _ = fmt.Fprintln(w)
+	}
+
+	return w.Flush()
 }
 
 var getBlocklistCmd = &cli.Command{

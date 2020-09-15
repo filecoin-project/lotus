@@ -13,7 +13,7 @@ import (
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -97,6 +97,8 @@ var sectorsStatusCmd = &cli.Command{
 		fmt.Printf("TicketH:\t%d\n", status.Ticket.Epoch)
 		fmt.Printf("Seed:\t\t%x\n", status.Seed.Value)
 		fmt.Printf("SeedH:\t\t%d\n", status.Seed.Epoch)
+		fmt.Printf("Precommit:\t%s\n", status.PreCommitMsg)
+		fmt.Printf("Commit:\t\t%s\n", status.CommitMsg)
 		fmt.Printf("Proof:\t\t%x\n", status.Proof)
 		fmt.Printf("Deals:\t\t%v\n", status.Deals)
 		fmt.Printf("Retries:\t%d\n", status.Retries)

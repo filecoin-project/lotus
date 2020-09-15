@@ -14,8 +14,10 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-filestore"
+	metrics "github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
+	protocol "github.com/libp2p/go-libp2p-core/protocol"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/multiformats/go-multiaddr"
 
@@ -26,9 +28,9 @@ import (
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-multistore"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
-	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/exitcode"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/apistruct"
@@ -103,7 +105,7 @@ func init() {
 	addExample(network.Connected)
 	addExample(dtypes.NetworkName("lotus"))
 	addExample(api.SyncStateStage(1))
-	addExample(build.APIVersion)
+	addExample(build.FullAPIVersion)
 	addExample(api.PCHInbound)
 	addExample(time.Minute)
 	addExample(datatransfer.TransferID(3))
@@ -131,6 +133,22 @@ func init() {
 			FirstMessageDeliveries:   122,
 			MeshMessageDeliveries:    1234,
 			InvalidMessageDeliveries: 3,
+		},
+	})
+	addExample(map[string]metrics.Stats{
+		"12D3KooWSXmXLJmBR1M7i9RW9GQPNUhZSzXKzxDHWtAgNuJAbyEJ": {
+			RateIn:   100,
+			RateOut:  50,
+			TotalIn:  174000,
+			TotalOut: 12500,
+		},
+	})
+	addExample(map[protocol.ID]metrics.Stats{
+		"/fil/hello/1.0.0": {
+			RateIn:   100,
+			RateOut:  50,
+			TotalIn:  174000,
+			TotalOut: 12500,
 		},
 	})
 

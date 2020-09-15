@@ -3,7 +3,6 @@ package processor
 import (
 	"context"
 	"sync"
-	"time"
 
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
@@ -120,10 +119,6 @@ func (p *Processor) persistMessagesAndReceipts(ctx context.Context, blocks map[c
 }
 
 func (p *Processor) storeReceipts(recs map[mrec]*types.MessageReceipt) error {
-	start := time.Now()
-	defer func() {
-		log.Debugw("Persisted Receipts", "duration", time.Since(start).String())
-	}()
 	tx, err := p.db.Begin()
 	if err != nil {
 		return err
@@ -164,10 +159,6 @@ create temp table recs (like receipts excluding constraints) on commit drop;
 }
 
 func (p *Processor) storeMsgInclusions(incls map[cid.Cid][]cid.Cid) error {
-	start := time.Now()
-	defer func() {
-		log.Debugw("Persisted Message Inclusions", "duration", time.Since(start).String())
-	}()
 	tx, err := p.db.Begin()
 	if err != nil {
 		return err
@@ -206,10 +197,6 @@ create temp table mi (like block_messages excluding constraints) on commit drop;
 }
 
 func (p *Processor) storeMessages(msgs map[cid.Cid]*types.Message) error {
-	start := time.Now()
-	defer func() {
-		log.Debugw("Persisted Messages", "duration", time.Since(start).String())
-	}()
 	tx, err := p.db.Begin()
 	if err != nil {
 		return err
@@ -267,7 +254,9 @@ func (p *Processor) fetchMessages(ctx context.Context, blocks map[cid.Cid]*types
 	parmap.Par(50, parmap.MapArr(blocks), func(header *types.BlockHeader) {
 		msgs, err := p.node.ChainGetBlockMessages(ctx, header.Cid())
 		if err != nil {
-			panic(err)
+			log.Error(err)
+			log.Debugw("ChainGetBlockMessages", "header_cid", header.Cid())
+			return
 		}
 
 		vmm := make([]*types.Message, 0, len(msgs.Cids))
@@ -303,11 +292,15 @@ func (p *Processor) fetchParentReceipts(ctx context.Context, toSync map[cid.Cid]
 	parmap.Par(50, parmap.MapArr(toSync), func(header *types.BlockHeader) {
 		recs, err := p.node.ChainGetParentReceipts(ctx, header.Cid())
 		if err != nil {
-			panic(err)
+			log.Error(err)
+			log.Debugw("ChainGetParentReceipts", "header_cid", header.Cid())
+			return
 		}
 		msgs, err := p.node.ChainGetParentMessages(ctx, header.Cid())
 		if err != nil {
-			panic(err)
+			log.Error(err)
+			log.Debugw("ChainGetParentMessages", "header_cid", header.Cid())
+			return
 		}
 
 		lk.Lock()

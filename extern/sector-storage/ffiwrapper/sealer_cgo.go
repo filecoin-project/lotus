@@ -17,7 +17,7 @@ import (
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
 	commcid "github.com/filecoin-project/go-fil-commcid"
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/fr32"
@@ -371,7 +371,11 @@ func (sb *Sealer) ReadPiece(ctx context.Context, writer io.Writer, sector abi.Se
 	maxPieceSize := abi.PaddedPieceSize(sb.ssize)
 
 	pf, err := openPartialFile(maxPieceSize, path.Unsealed)
-	if xerrors.Is(err, os.ErrNotExist) {
+	if err != nil {
+		if xerrors.Is(err, os.ErrNotExist) {
+			return false, nil
+		}
+
 		return false, xerrors.Errorf("opening partial file: %w", err)
 	}
 
@@ -406,7 +410,7 @@ func (sb *Sealer) ReadPiece(ctx context.Context, writer io.Writer, sector abi.Se
 		return false, xerrors.Errorf("closing partial file: %w", err)
 	}
 
-	return false, nil
+	return true, nil
 }
 
 func (sb *Sealer) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, pieces []abi.PieceInfo) (out storage.PreCommit1Out, err error) {

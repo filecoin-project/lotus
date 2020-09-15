@@ -3,8 +3,14 @@ package stmgr
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"reflect"
+	"runtime"
+	"strings"
+
+	saruntime "github.com/filecoin-project/specs-actors/actors/runtime"
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
 	cid "github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -13,8 +19,9 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	"github.com/filecoin-project/specs-actors/actors/builtin/cron"
@@ -26,7 +33,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/api"
@@ -157,13 +163,13 @@ func MinerSectorInfo(ctx context.Context, sm *StateManager, maddr address.Addres
 		return nil, err
 	}
 	if !ok {
-		return nil, xerrors.New("sector not found")
+		return nil, nil
 	}
 
 	return sectorInfo, nil
 }
 
-func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address, filter *abi.BitField, filterOut bool) ([]*api.ChainSectorInfo, error) {
+func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address, filter *bitfield.BitField, filterOut bool) ([]*api.ChainSectorInfo, error) {
 	var mas miner.State
 	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
 	if err != nil {
@@ -173,8 +179,8 @@ func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, 
 	return LoadSectorsFromSet(ctx, sm.ChainStore().Blockstore(), mas.Sectors, filter, filterOut)
 }
 
-func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *StateManager, st cid.Cid, maddr address.Address, rand abi.PoStRandomness) ([]abi.SectorInfo, error) {
-	var partsProving []abi.BitField
+func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *StateManager, st cid.Cid, maddr address.Address, rand abi.PoStRandomness) ([]proof.SectorInfo, error) {
+	var partsProving []bitfield.BitField
 	var mas *miner.State
 	var info *miner.MinerInfo
 
@@ -261,7 +267,7 @@ func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *S
 		return nil, xerrors.Errorf("failed to load sectors amt: %w", err)
 	}
 
-	out := make([]abi.SectorInfo, len(ids))
+	out := make([]proof.SectorInfo, len(ids))
 	for i, n := range ids {
 		sid := sectors[n]
 
@@ -272,7 +278,7 @@ func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *S
 			return nil, xerrors.Errorf("failed to find sector %d", sid)
 		}
 
-		out[i] = abi.SectorInfo{
+		out[i] = proof.SectorInfo{
 			SealProof:    spt,
 			SectorNumber: sinfo.SectorNumber,
 			SealedCID:    sinfo.SealedCID,
@@ -387,7 +393,7 @@ func ListMinerActors(ctx context.Context, sm *StateManager, ts *types.TipSet) ([
 	return miners, nil
 }
 
-func LoadSectorsFromSet(ctx context.Context, bs blockstore.Blockstore, ssc cid.Cid, filter *abi.BitField, filterOut bool) ([]*api.ChainSectorInfo, error) {
+func LoadSectorsFromSet(ctx context.Context, bs blockstore.Blockstore, ssc cid.Cid, filter *bitfield.BitField, filterOut bool) ([]*api.ChainSectorInfo, error) {
 	a, err := adt.AsArray(store.ActorStore(ctx, bs), ssc)
 	if err != nil {
 		return nil, err
@@ -432,7 +438,7 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 		return cid.Undef, nil, err
 	}
 
-	r := store.NewChainRand(sm.cs, ts.Cids(), height)
+	r := store.NewChainRand(sm.cs, ts.Cids())
 	vmopt := &vm.VMOpts{
 		StateBase:      base,
 		Epoch:          height,
@@ -440,6 +446,7 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 		Bstore:         sm.cs.Blockstore(),
 		Syscalls:       sm.cs.VMSys(),
 		CircSupplyCalc: sm.GetCirculatingSupply,
+		NtwkVersion:    sm.GetNtwkVersion,
 		BaseFee:        ts.Blocks()[0].ParentBaseFee,
 	}
 	vmi, err := vm.NewVM(vmopt)
@@ -449,7 +456,7 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 
 	for i := ts.Height(); i < height; i++ {
 		// handle state forks
-		err = sm.handleStateForks(ctx, vmi.StateTree(), i)
+		err = sm.handleStateForks(ctx, vmi.StateTree(), i, ts)
 		if err != nil {
 			return cid.Undef, nil, xerrors.Errorf("error handling state forks: %w", err)
 		}
@@ -495,7 +502,7 @@ func GetLookbackTipSetForRound(ctx context.Context, sm *StateManager, ts *types.
 	return lbts, nil
 }
 
-func MinerGetBaseInfo(ctx context.Context, sm *StateManager, bcn beacon.RandomBeacon, tsk types.TipSetKey, round abi.ChainEpoch, maddr address.Address, pv ffiwrapper.Verifier) (*api.MiningBaseInfo, error) {
+func MinerGetBaseInfo(ctx context.Context, sm *StateManager, bcs beacon.Schedule, tsk types.TipSetKey, round abi.ChainEpoch, maddr address.Address, pv ffiwrapper.Verifier) (*api.MiningBaseInfo, error) {
 	ts, err := sm.ChainStore().LoadTipSet(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load tipset for mining base: %w", err)
@@ -510,7 +517,7 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, bcn beacon.RandomBe
 		prev = &types.BeaconEntry{}
 	}
 
-	entries, err := beacon.BeaconEntriesForBlock(ctx, bcn, round, *prev)
+	entries, err := beacon.BeaconEntriesForBlock(ctx, bcs, round, ts.Height(), *prev)
 	if err != nil {
 		return nil, err
 	}
@@ -586,14 +593,14 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, bcn beacon.RandomBe
 	}, nil
 }
 
-type methodMeta struct {
+type MethodMeta struct {
 	Name string
 
 	Params reflect.Type
 	Ret    reflect.Type
 }
 
-var MethodsMap = map[cid.Cid][]methodMeta{}
+var MethodsMap = map[cid.Cid]map[abi.MethodNum]MethodMeta{}
 
 func init() {
 	cidToMethods := map[cid.Cid][2]interface{}{
@@ -611,25 +618,65 @@ func init() {
 	}
 
 	for c, m := range cidToMethods {
-		rt := reflect.TypeOf(m[0])
-		nf := rt.NumField()
+		exports := m[1].(saruntime.Invokee).Exports()
+		methods := make(map[abi.MethodNum]MethodMeta, len(exports))
 
-		MethodsMap[c] = append(MethodsMap[c], methodMeta{
+		// Explicitly add send, it's special.
+		methods[builtin.MethodSend] = MethodMeta{
 			Name:   "Send",
-			Params: reflect.TypeOf(new(adt.EmptyValue)),
-			Ret:    reflect.TypeOf(new(adt.EmptyValue)),
-		})
-
-		exports := m[1].(abi.Invokee).Exports()
-		for i := 0; i < nf; i++ {
-			export := reflect.TypeOf(exports[i+1])
-
-			MethodsMap[c] = append(MethodsMap[c], methodMeta{
-				Name:   rt.Field(i).Name,
-				Params: export.In(1),
-				Ret:    export.Out(0),
-			})
+			Params: reflect.TypeOf(new(abi.EmptyValue)),
+			Ret:    reflect.TypeOf(new(abi.EmptyValue)),
 		}
+
+		// Learn method names from the builtin.Methods* structs.
+		rv := reflect.ValueOf(m[0])
+		rt := rv.Type()
+		nf := rt.NumField()
+		methodToName := make([]string, len(exports))
+		for i := 0; i < nf; i++ {
+			name := rt.Field(i).Name
+			number := rv.Field(i).Interface().(abi.MethodNum)
+			methodToName[number] = name
+		}
+
+		// Iterate over exported methods. Some of these _may_ be nil and
+		// must be skipped.
+		for number, export := range exports {
+			if export == nil {
+				continue
+			}
+
+			ev := reflect.ValueOf(export)
+			et := ev.Type()
+
+			// Make sure the method name is correct.
+			// This is just a nice sanity check.
+			fnName := runtime.FuncForPC(ev.Pointer()).Name()
+			fnName = strings.TrimSuffix(fnName[strings.LastIndexByte(fnName, '.')+1:], "-fm")
+			mName := methodToName[number]
+			if mName != fnName {
+				panic(fmt.Sprintf(
+					"actor method name is %s but exported method name is %s",
+					fnName, mName,
+				))
+			}
+
+			switch abi.MethodNum(number) {
+			case builtin.MethodSend:
+				panic("method 0 is reserved for Send")
+			case builtin.MethodConstructor:
+				if fnName != "Constructor" {
+					panic("method 1 is reserved for Constructor")
+				}
+			}
+
+			methods[abi.MethodNum(number)] = MethodMeta{
+				Name:   fnName,
+				Params: et.In(1),
+				Ret:    et.Out(0),
+			}
+		}
+		MethodsMap[c] = methods
 	}
 }
 
@@ -639,7 +686,10 @@ func GetReturnType(ctx context.Context, sm *StateManager, to address.Address, me
 		return nil, xerrors.Errorf("getting actor: %w", err)
 	}
 
-	m := MethodsMap[act.Code][method]
+	m, found := MethodsMap[act.Code][method]
+	if !found {
+		return nil, fmt.Errorf("unknown method %d for actor %s", method, act.Code)
+	}
 	return reflect.New(m.Ret.Elem()).Interface().(cbg.CBORUnmarshaler), nil
 }
 

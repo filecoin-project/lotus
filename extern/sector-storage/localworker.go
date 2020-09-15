@@ -12,7 +12,7 @@ import (
 	"golang.org/x/xerrors"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 	storage2 "github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
@@ -208,8 +208,8 @@ func (l *LocalWorker) Remove(ctx context.Context, sector abi.SectorID) error {
 	return err
 }
 
-func (l *LocalWorker) MoveStorage(ctx context.Context, sector abi.SectorID) error {
-	if err := l.storage.MoveStorage(ctx, sector, l.scfg.SealProofType, stores.FTSealed|stores.FTCache); err != nil {
+func (l *LocalWorker) MoveStorage(ctx context.Context, sector abi.SectorID, types stores.SectorFileType) error {
+	if err := l.storage.MoveStorage(ctx, sector, l.scfg.SealProofType, types); err != nil {
 		return xerrors.Errorf("moving sealed data to storage: %w", err)
 	}
 

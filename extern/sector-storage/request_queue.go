@@ -7,6 +7,11 @@ type requestQueue []*workerRequest
 func (q requestQueue) Len() int { return len(q) }
 
 func (q requestQueue) Less(i, j int) bool {
+	oneMuchLess, muchLess := q[i].taskType.MuchLess(q[j].taskType)
+	if oneMuchLess {
+		return muchLess
+	}
+
 	if q[i].priority != q[j].priority {
 		return q[i].priority > q[j].priority
 	}

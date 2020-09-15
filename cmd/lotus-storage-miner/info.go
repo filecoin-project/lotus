@@ -14,8 +14,8 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/go-state-types/abi"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
@@ -236,8 +236,10 @@ var stateList = []stateMeta{
 	{col: 39, state: "Total"},
 	{col: color.FgGreen, state: sealing.Proving},
 
+	{col: color.FgBlue, state: sealing.Empty},
+	{col: color.FgBlue, state: sealing.WaitDeals},
+
 	{col: color.FgRed, state: sealing.UndefinedSectorState},
-	{col: color.FgYellow, state: sealing.Empty},
 	{col: color.FgYellow, state: sealing.Packing},
 	{col: color.FgYellow, state: sealing.PreCommit1},
 	{col: color.FgYellow, state: sealing.PreCommit2},
@@ -245,8 +247,12 @@ var stateList = []stateMeta{
 	{col: color.FgYellow, state: sealing.PreCommitWait},
 	{col: color.FgYellow, state: sealing.WaitSeed},
 	{col: color.FgYellow, state: sealing.Committing},
+	{col: color.FgYellow, state: sealing.SubmitCommit},
 	{col: color.FgYellow, state: sealing.CommitWait},
 	{col: color.FgYellow, state: sealing.FinalizeSector},
+
+	{col: color.FgCyan, state: sealing.Removing},
+	{col: color.FgCyan, state: sealing.Removed},
 
 	{col: color.FgRed, state: sealing.FailedUnrecoverable},
 	{col: color.FgRed, state: sealing.SealPreCommit1Failed},
@@ -259,6 +265,9 @@ var stateList = []stateMeta{
 	{col: color.FgRed, state: sealing.Faulty},
 	{col: color.FgRed, state: sealing.FaultReported},
 	{col: color.FgRed, state: sealing.FaultedFinal},
+	{col: color.FgRed, state: sealing.RemoveFailed},
+	{col: color.FgRed, state: sealing.DealsExpired},
+	{col: color.FgRed, state: sealing.RecoverDealIDs},
 }
 
 func init() {

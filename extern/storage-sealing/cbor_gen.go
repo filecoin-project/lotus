@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	abi "github.com/filecoin-project/specs-actors/actors/abi"
+	abi "github.com/filecoin-project/go-state-types/abi"
 	miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
@@ -135,11 +135,33 @@ func (t *DealInfo) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{163}); err != nil {
+	if _, err := w.Write([]byte{164}); err != nil {
 		return err
 	}
 
 	scratch := make([]byte, 9)
+
+	// t.PublishCid (cid.Cid) (struct)
+	if len("PublishCid") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"PublishCid\" was too long")
+	}
+
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len("PublishCid"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("PublishCid")); err != nil {
+		return err
+	}
+
+	if t.PublishCid == nil {
+		if _, err := w.Write(cbg.CborNull); err != nil {
+			return err
+		}
+	} else {
+		if err := cbg.WriteCidBuf(scratch, w, *t.PublishCid); err != nil {
+			return xerrors.Errorf("failed to write cid field t.PublishCid: %w", err)
+		}
+	}
 
 	// t.DealID (abi.DealID) (uint64)
 	if len("DealID") > cbg.MaxLength {
@@ -224,7 +246,30 @@ func (t *DealInfo) UnmarshalCBOR(r io.Reader) error {
 		}
 
 		switch name {
-		// t.DealID (abi.DealID) (uint64)
+		// t.PublishCid (cid.Cid) (struct)
+		case "PublishCid":
+
+			{
+
+				b, err := br.ReadByte()
+				if err != nil {
+					return err
+				}
+				if b != cbg.CborNull[0] {
+					if err := br.UnreadByte(); err != nil {
+						return err
+					}
+
+					c, err := cbg.ReadCid(br)
+					if err != nil {
+						return xerrors.Errorf("failed to read cid field t.PublishCid: %w", err)
+					}
+
+					t.PublishCid = &c
+				}
+
+			}
+			// t.DealID (abi.DealID) (uint64)
 		case "DealID":
 
 			{
@@ -430,7 +475,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{182}); err != nil {
+	if _, err := w.Write([]byte{183}); err != nil {
 		return err
 	}
 
@@ -858,6 +903,29 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		if err := cbg.WriteCidBuf(scratch, w, *t.FaultReportMsg); err != nil {
 			return xerrors.Errorf("failed to write cid field t.FaultReportMsg: %w", err)
 		}
+	}
+
+	// t.Return (sealing.ReturnState) (string)
+	if len("Return") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"Return\" was too long")
+	}
+
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len("Return"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("Return")); err != nil {
+		return err
+	}
+
+	if len(t.Return) > cbg.MaxLength {
+		return xerrors.Errorf("Value in field t.Return was too long")
+	}
+
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len(t.Return))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string(t.Return)); err != nil {
+		return err
 	}
 
 	// t.LastErr (string) (string)
@@ -1361,6 +1429,17 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 					t.FaultReportMsg = &c
 				}
 
+			}
+			// t.Return (sealing.ReturnState) (string)
+		case "Return":
+
+			{
+				sval, err := cbg.ReadStringBuf(br, scratch)
+				if err != nil {
+					return err
+				}
+
+				t.Return = ReturnState(sval)
 			}
 			// t.LastErr (string) (string)
 		case "LastErr":
