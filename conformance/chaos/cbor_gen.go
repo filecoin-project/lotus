@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"io"
 
-	address "github.com/filecoin-project/go-address"
-	abi "github.com/filecoin-project/go-state-types/abi"
-	exitcode "github.com/filecoin-project/go-state-types/exitcode"
-	cid "github.com/ipfs/go-cid"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
-	xerrors "golang.org/x/xerrors"
+	"golang.org/x/xerrors"
 )
 
 var _ = xerrors.Errorf
