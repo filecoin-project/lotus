@@ -35,6 +35,7 @@ func main() {
 		mathCmd,
 		mpoolStatsCmd,
 		exportChainCmd,
+		stateTreePruneCmd,
 	}
 
 	app := &cli.App{
