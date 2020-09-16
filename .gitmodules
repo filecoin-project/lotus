@@ -1,3 +1,6 @@
 [submodule "extra/filecoin-ffi"]
 	path = extra/filecoin-ffi
 	url = https://github.com/filecoin-project/filecoin-ffi.git
+[submodule "extra/fil-blst"]
+	path = extra/fil-blst
+	url = https://github.com/filecoin-project/fil-blst.git

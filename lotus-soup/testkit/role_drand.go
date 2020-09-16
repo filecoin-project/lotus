@@ -30,7 +30,7 @@ import (
 )
 
 var (
-	PrepareDrandTimeout = time.Minute
+	PrepareDrandTimeout = 3 * time.Minute
 	secretDKG           = "dkgsecret"
 )
 
@@ -108,11 +108,12 @@ func (dr *DrandInstance) ctrl() *dnet.ControlClient {
 func (dr *DrandInstance) RunDKG(nodes, thr int, timeout string, leader bool, leaderAddr string, beaconOffset int) *key.Group {
 	cl := dr.ctrl()
 	p := dr.t.DurationParam("drand_period")
+	catchupPeriod := dr.t.DurationParam("drand_catchup_period")
 	t, _ := time.ParseDuration(timeout)
 	var grp *drand.GroupPacket
 	var err error
 	if leader {
-		grp, err = cl.InitDKGLeader(nodes, thr, p, t, nil, secretDKG, beaconOffset)
+		grp, err = cl.InitDKGLeader(nodes, thr, p, catchupPeriod, t, nil, secretDKG, beaconOffset)
 	} else {
 		leader := dnet.CreatePeer(leaderAddr, false)
 		grp, err = cl.InitDKG(leader, nil, secretDKG)
@@ -127,16 +128,18 @@ func (dr *DrandInstance) RunDKG(nodes, thr int, timeout string, leader bool, lea
 
 func (dr *DrandInstance) Halt() {
 	dr.t.RecordMessage("drand node #%d halting", dr.t.GroupSeq)
-	dr.daemon.StopBeacon()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	dr.daemon.Stop(ctx)
 }
 
 func (dr *DrandInstance) Resume() {
 	dr.t.RecordMessage("drand node #%d resuming", dr.t.GroupSeq)
-	dr.daemon.StartBeacon(true)
+	dr.Start()
 	// block until we can fetch the round corresponding to the current time
 	startTime := time.Now()
 	round := dr.httpClient.RoundAt(startTime)
-	timeout := 30 * time.Second
+	timeout := 120 * time.Second
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
@@ -149,6 +152,7 @@ func (dr *DrandInstance) Resume() {
 				done <- struct{}{}
 				return
 			}
+			time.Sleep(2 * time.Second)
 		}
 	}()
 
@@ -262,7 +266,7 @@ func PrepareDrandInstance(t *TestEnvironment) (*DrandInstance, error) {
 	// run DKG
 	t.SyncClient.MustSignalAndWait(ctx, "drand-dkg-start", nNodes)
 	if !isLeader {
-		time.Sleep(time.Second)
+		time.Sleep(3 * time.Second)
 	}
 	grp := dr.RunDKG(nNodes, threshold, "10s", isLeader, leaderAddr, beaconOffset)
 	if grp == nil {
@@ -270,9 +274,10 @@ func PrepareDrandInstance(t *TestEnvironment) (*DrandInstance, error) {
 	}
 	t.R().RecordPoint("drand_dkg_complete", time.Now().Sub(startTime).Seconds())
 
-	t.RecordMessage("drand dkg complete, waiting for chain start")
+	t.RecordMessage("drand dkg complete, waiting for chain start: %v", time.Until(time.Unix(grp.GenesisTime, 0).Add(grp.Period)))
+
 	// wait for chain to begin
-	to := time.Until(time.Unix(grp.GenesisTime, 0).Add(3 * time.Second).Add(grp.Period))
+	to := time.Until(time.Unix(grp.GenesisTime, 0).Add(5 * time.Second).Add(grp.Period))
 	time.Sleep(to)
 
 	t.RecordMessage("drand beacon chain started, fetching initial round via http")
@@ -304,7 +309,7 @@ func PrepareDrandInstance(t *TestEnvironment) (*DrandInstance, error) {
 			Client:       dr.httpClient,
 		}
 		t.RecordMessage("starting drand gossip relay")
-		dr.gossipRelay, err = lp2p.NewGossipRelayNode(log.NewLogger(getLogLevel(t)), &relayCfg)
+		dr.gossipRelay, err = lp2p.NewGossipRelayNode(log.NewLogger(nil, getLogLevel(t)), &relayCfg)
 		if err != nil {
 			return nil, fmt.Errorf("failed to construct drand gossip relay: %w", err)
 		}

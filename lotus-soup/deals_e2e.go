@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/testground/sdk-go/sync"
 
 	mbig "math/big"
