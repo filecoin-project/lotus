@@ -12,3 +12,11 @@ RUN mkdir -p ${FFI_DIR} \
     && cd ${FFI_DIR} \
     && git checkout ${FILECOIN_FFI_COMMIT} \
     && make
+
+ARG FIL_BLST_COMMIT=5f93488
+ARG BLST_DIR=/extra/fil-blst
+
+RUN mkdir -p ${BLST_DIR} \
+    && git clone https://github.com/filecoin-project/fil-blst.git ${BLST_DIR} \
+    && cd ${BLST_DIR} \
+    && git checkout ${FIL_BLST_COMMIT}

@@ -1,5 +1,5 @@
 name = "lotus-soup"
-extra_sources = { "exec:go" = ["../extra/filecoin-ffi"] }
+extra_sources = { "exec:go" = ["../extra/filecoin-ffi", "../extra/fil-blst"] }
 
 [defaults]
 builder = "docker:go"
@@ -10,7 +10,7 @@ enabled = true
 
 [builders."docker:go"]
 enabled = true
-build_base_image = "iptestground/oni-buildbase:v6"
+build_base_image = "iptestground/oni-buildbase:v7"
 runtime_image = "iptestground/oni-runtime:v4-debug"
 
 [runners."local:exec"]

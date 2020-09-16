@@ -6,7 +6,7 @@ download-proofs:
 	go run github.com/filecoin-project/go-paramfetch/paramfetch 2048 ./docker-images/proof-parameters.json
 
 build-images:
-	docker build -t "iptestground/oni-buildbase:v6" -f "docker-images/Dockerfile.oni-buildbase" "docker-images"
+	docker build -t "iptestground/oni-buildbase:v7" -f "docker-images/Dockerfile.oni-buildbase" "docker-images"
 	docker build -t "iptestground/oni-runtime:v3" -f "docker-images/Dockerfile.oni-runtime" "docker-images"
 	docker build -t "iptestground/oni-runtime:v4-debug" -f "docker-images/Dockerfile.oni-runtime-debug" "docker-images"
 
