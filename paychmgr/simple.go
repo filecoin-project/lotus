@@ -6,20 +6,17 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/filecoin-project/lotus/api"
-
-	"golang.org/x/sync/errgroup"
-
-	"github.com/filecoin-project/go-state-types/big"
-
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/ipfs/go-cid"
+	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
+	v0paych "github.com/filecoin-project/specs-actors/actors/builtin/paych"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -320,7 +317,7 @@ func (ca *channelAccessor) currentAvailableFunds(channelID string, queuedAmt typ
 		}
 
 		for _, ls := range laneStates {
-			totalRedeemed = types.BigAdd(totalRedeemed, ls.Redeemed)
+			totalRedeemed = types.BigAdd(totalRedeemed, ls.Redeemed())
 		}
 	}
 
@@ -385,7 +382,7 @@ func (ca *channelAccessor) processTask(ctx context.Context, amt types.BigInt) *p
 
 // createPaych sends a message to create the channel and returns the message cid
 func (ca *channelAccessor) createPaych(ctx context.Context, amt types.BigInt) (cid.Cid, error) {
-	params, aerr := actors.SerializeParams(&paych.ConstructorParams{From: ca.from, To: ca.to})
+	params, aerr := actors.SerializeParams(&v0paych.ConstructorParams{From: ca.from, To: ca.to})
 	if aerr != nil {
 		return cid.Undef, aerr
 	}

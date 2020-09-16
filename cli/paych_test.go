@@ -24,7 +24,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/events"
 
 	"github.com/filecoin-project/lotus/api/apibstore"
-	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-address"
@@ -88,7 +89,7 @@ func TestPaymentChannels(t *testing.T) {
 
 	// Wait for the chain to reach the settle height
 	chState := getPaychState(ctx, t, paymentReceiver, chAddr)
-	waitForHeight(ctx, t, paymentReceiver, chState.SettlingAt)
+	waitForHeight(ctx, t, paymentReceiver, chState.SettlingAt())
 
 	// receiver: paych collect <channel>
 	cmd = []string{chAddr.String()}
@@ -540,8 +541,7 @@ func getPaychState(ctx context.Context, t *testing.T, node test.TestNode, chAddr
 	require.NoError(t, err)
 
 	store := cbor.NewCborStore(apibstore.NewAPIBlockstore(node))
-	var chState paych.State
-	err = store.Get(ctx, act.Head, &chState)
+	chState, err := paych.Load(adt.WrapStore(ctx, store), act)
 	require.NoError(t, err)
 
 	return chState

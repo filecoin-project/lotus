@@ -5,22 +5,20 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/lotus/api"
-
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
-
 	"github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	v0paych "github.com/filecoin-project/specs-actors/actors/builtin/paych"
+
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/sigs"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/account"
-	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
-	"golang.org/x/xerrors"
 )
 
 // insufficientFundsErr indicates that there are not enough funds in the
@@ -43,6 +41,19 @@ func (e *ErrInsufficientFunds) Error() string {
 
 func (e *ErrInsufficientFunds) Shortfall() types.BigInt {
 	return e.shortfall
+}
+
+type laneState struct {
+	redeemed big.Int
+	nonce    uint64
+}
+
+func (ls laneState) Redeemed() big.Int {
+	return ls.redeemed
+}
+
+func (ls laneState) Nonce() uint64 {
+	return ls.nonce
 }
 
 // channelAccessor is used to simplify locking when accessing a channel
@@ -92,7 +103,7 @@ func (ca *channelAccessor) outboundActiveByFromTo(from, to address.Address) (*Ch
 // nonce, signing the voucher and storing it in the local datastore.
 // If there are not enough funds in the channel to create the voucher, returns
 // the shortfall in funds.
-func (ca *channelAccessor) createVoucher(ctx context.Context, ch address.Address, voucher paych.SignedVoucher) (*api.VoucherCreateResult, error) {
+func (ca *channelAccessor) createVoucher(ctx context.Context, ch address.Address, voucher v0paych.SignedVoucher) (*api.VoucherCreateResult, error) {
 	ca.lk.Lock()
 	defer ca.lk.Unlock()
 
@@ -151,14 +162,14 @@ func (ca *channelAccessor) nextNonceForLane(ci *ChannelInfo, lane uint64) uint64
 	return maxnonce + 1
 }
 
-func (ca *channelAccessor) checkVoucherValid(ctx context.Context, ch address.Address, sv *paych.SignedVoucher) (map[uint64]*paych.LaneState, error) {
+func (ca *channelAccessor) checkVoucherValid(ctx context.Context, ch address.Address, sv *v0paych.SignedVoucher) (map[uint64]paych.LaneState, error) {
 	ca.lk.Lock()
 	defer ca.lk.Unlock()
 
 	return ca.checkVoucherValidUnlocked(ctx, ch, sv)
 }
 
-func (ca *channelAccessor) checkVoucherValidUnlocked(ctx context.Context, ch address.Address, sv *paych.SignedVoucher) (map[uint64]*paych.LaneState, error) {
+func (ca *channelAccessor) checkVoucherValidUnlocked(ctx context.Context, ch address.Address, sv *v0paych.SignedVoucher) (map[uint64]paych.LaneState, error) {
 	if sv.ChannelAddr != ch {
 		return nil, xerrors.Errorf("voucher ChannelAddr doesn't match channel address, got %s, expected %s", sv.ChannelAddr, ch)
 	}
@@ -170,12 +181,10 @@ func (ca *channelAccessor) checkVoucherValidUnlocked(ctx context.Context, ch add
 	}
 
 	// Load channel "From" account actor state
-	var actState account.State
-	_, err = ca.api.LoadActorState(ctx, pchState.From, &actState, nil)
+	from, err := ca.api.ResolveToKeyAddress(ctx, pchState.From(), nil)
 	if err != nil {
 		return nil, err
 	}
-	from := actState.Address
 
 	// verify voucher signature
 	vb, err := sv.SigningBytes()
@@ -199,12 +208,12 @@ func (ca *channelAccessor) checkVoucherValidUnlocked(ctx context.Context, ch add
 	// If the new voucher nonce value is less than the highest known
 	// nonce for the lane
 	ls, lsExists := laneStates[sv.Lane]
-	if lsExists && sv.Nonce <= ls.Nonce {
+	if lsExists && sv.Nonce <= ls.Nonce() {
 		return nil, fmt.Errorf("nonce too low")
 	}
 
 	// If the voucher amount is less than the highest known voucher amount
-	if lsExists && sv.Amount.LessThanEqual(ls.Redeemed) {
+	if lsExists && sv.Amount.LessThanEqual(ls.Redeemed()) {
 		return nil, fmt.Errorf("voucher amount is lower than amount for voucher with lower nonce")
 	}
 
@@ -230,7 +239,7 @@ func (ca *channelAccessor) checkVoucherValidUnlocked(ctx context.Context, ch add
 
 	// Total required balance = total redeemed + toSend
 	// Must not exceed actor balance
-	newTotal := types.BigAdd(totalRedeemed, pchState.ToSend)
+	newTotal := types.BigAdd(totalRedeemed, pchState.ToSend())
 	if act.Balance.LessThan(newTotal) {
 		return nil, newErrInsufficientFunds(types.BigSub(newTotal, act.Balance))
 	}
@@ -242,7 +251,7 @@ func (ca *channelAccessor) checkVoucherValidUnlocked(ctx context.Context, ch add
 	return laneStates, nil
 }
 
-func (ca *channelAccessor) checkVoucherSpendable(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (bool, error) {
+func (ca *channelAccessor) checkVoucherSpendable(ctx context.Context, ch address.Address, sv *v0paych.SignedVoucher, secret []byte, proof []byte) (bool, error) {
 	ca.lk.Lock()
 	defer ca.lk.Unlock()
 
@@ -281,7 +290,7 @@ func (ca *channelAccessor) checkVoucherSpendable(ctx context.Context, ch address
 		}
 	}
 
-	enc, err := actors.SerializeParams(&paych.UpdateChannelStateParams{
+	enc, err := actors.SerializeParams(&v0paych.UpdateChannelStateParams{
 		Sv:     *sv,
 		Secret: secret,
 		Proof:  proof,
@@ -308,22 +317,22 @@ func (ca *channelAccessor) checkVoucherSpendable(ctx context.Context, ch address
 }
 
 func (ca *channelAccessor) getPaychRecipient(ctx context.Context, ch address.Address) (address.Address, error) {
-	var state paych.State
-	if _, err := ca.api.LoadActorState(ctx, ch, &state, nil); err != nil {
+	_, state, err := ca.api.GetPaychState(ctx, ch, nil)
+	if err != nil {
 		return address.Address{}, err
 	}
 
-	return state.To, nil
+	return state.To(), nil
 }
 
-func (ca *channelAccessor) addVoucher(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, proof []byte, minDelta types.BigInt) (types.BigInt, error) {
+func (ca *channelAccessor) addVoucher(ctx context.Context, ch address.Address, sv *v0paych.SignedVoucher, proof []byte, minDelta types.BigInt) (types.BigInt, error) {
 	ca.lk.Lock()
 	defer ca.lk.Unlock()
 
 	return ca.addVoucherUnlocked(ctx, ch, sv, proof, minDelta)
 }
 
-func (ca *channelAccessor) addVoucherUnlocked(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, proof []byte, minDelta types.BigInt) (types.BigInt, error) {
+func (ca *channelAccessor) addVoucherUnlocked(ctx context.Context, ch address.Address, sv *v0paych.SignedVoucher, proof []byte, minDelta types.BigInt) (types.BigInt, error) {
 	ci, err := ca.store.ByAddress(ch)
 	if err != nil {
 		return types.BigInt{}, err
@@ -367,7 +376,7 @@ func (ca *channelAccessor) addVoucherUnlocked(ctx context.Context, ch address.Ad
 	laneState, exists := laneStates[sv.Lane]
 	redeemed := big.NewInt(0)
 	if exists {
-		redeemed = laneState.Redeemed
+		redeemed = laneState.Redeemed()
 	}
 
 	delta := types.BigSub(sv.Amount, redeemed)
@@ -387,7 +396,7 @@ func (ca *channelAccessor) addVoucherUnlocked(ctx context.Context, ch address.Ad
 	return delta, ca.store.putChannelInfo(ci)
 }
 
-func (ca *channelAccessor) submitVoucher(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (cid.Cid, error) {
+func (ca *channelAccessor) submitVoucher(ctx context.Context, ch address.Address, sv *v0paych.SignedVoucher, secret []byte, proof []byte) (cid.Cid, error) {
 	ca.lk.Lock()
 	defer ca.lk.Unlock()
 
@@ -428,7 +437,7 @@ func (ca *channelAccessor) submitVoucher(ctx context.Context, ch address.Address
 		}
 	}
 
-	enc, err := actors.SerializeParams(&paych.UpdateChannelStateParams{
+	enc, err := actors.SerializeParams(&v0paych.UpdateChannelStateParams{
 		Sv:     *sv,
 		Secret: secret,
 		Proof:  proof,
@@ -487,13 +496,11 @@ func (ca *channelAccessor) listVouchers(ctx context.Context, ch address.Address)
 
 // laneState gets the LaneStates from chain, then applies all vouchers in
 // the data store over the chain state
-func (ca *channelAccessor) laneState(ctx context.Context, state *paych.State, ch address.Address) (map[uint64]*paych.LaneState, error) {
+func (ca *channelAccessor) laneState(ctx context.Context, state paych.State, ch address.Address) (map[uint64]paych.LaneState, error) {
 	// TODO: we probably want to call UpdateChannelState with all vouchers to be fully correct
 	//  (but technically dont't need to)
 
-	// Get the lane state from the chain
-	store := ca.api.AdtStore(ctx)
-	lsamt, err := adt.AsArray(store, state.LaneStates)
+	laneCount, err := state.LaneCount()
 	if err != nil {
 		return nil, err
 	}
@@ -501,11 +508,9 @@ func (ca *channelAccessor) laneState(ctx context.Context, state *paych.State, ch
 	// Note: we use a map instead of an array to store laneStates because the
 	// client sets the lane ID (the index) and potentially they could use a
 	// very large index.
-	var ls paych.LaneState
-	laneStates := make(map[uint64]*paych.LaneState, lsamt.Length())
-	err = lsamt.ForEach(&ls, func(i int64) error {
-		current := ls
-		laneStates[uint64(i)] = &current
+	laneStates := make(map[uint64]paych.LaneState, laneCount)
+	err = state.ForEachLaneState(func(idx uint64, ls paych.LaneState) error {
+		laneStates[idx] = ls
 		return nil
 	})
 	if err != nil {
@@ -526,27 +531,19 @@ func (ca *channelAccessor) laneState(ctx context.Context, state *paych.State, ch
 		// If there's a voucher for a lane that isn't in chain state just
 		// create it
 		ls, ok := laneStates[v.Voucher.Lane]
-		if !ok {
-			ls = &paych.LaneState{
-				Redeemed: types.NewInt(0),
-				Nonce:    0,
-			}
-			laneStates[v.Voucher.Lane] = ls
-		}
 
-		if v.Voucher.Nonce < ls.Nonce {
+		if ok && v.Voucher.Nonce < ls.Nonce() {
 			continue
 		}
 
-		ls.Nonce = v.Voucher.Nonce
-		ls.Redeemed = v.Voucher.Amount
+		laneStates[v.Voucher.Lane] = laneState{v.Voucher.Amount, v.Voucher.Nonce}
 	}
 
 	return laneStates, nil
 }
 
 // Get the total redeemed amount across all lanes, after applying the voucher
-func (ca *channelAccessor) totalRedeemedWithVoucher(laneStates map[uint64]*paych.LaneState, sv *paych.SignedVoucher) (big.Int, error) {
+func (ca *channelAccessor) totalRedeemedWithVoucher(laneStates map[uint64]paych.LaneState, sv *v0paych.SignedVoucher) (big.Int, error) {
 	// TODO: merges
 	if len(sv.Merges) != 0 {
 		return big.Int{}, xerrors.Errorf("dont currently support paych lane merges")
@@ -554,17 +551,17 @@ func (ca *channelAccessor) totalRedeemedWithVoucher(laneStates map[uint64]*paych
 
 	total := big.NewInt(0)
 	for _, ls := range laneStates {
-		total = big.Add(total, ls.Redeemed)
+		total = big.Add(total, ls.Redeemed())
 	}
 
 	lane, ok := laneStates[sv.Lane]
 	if ok {
 		// If the voucher is for an existing lane, and the voucher nonce
 		// is higher than the lane nonce
-		if sv.Nonce > lane.Nonce {
+		if sv.Nonce > lane.Nonce() {
 			// Add the delta between the redeemed amount and the voucher
 			// amount to the total
-			delta := big.Sub(sv.Amount, lane.Redeemed)
+			delta := big.Sub(sv.Amount, lane.Redeemed())
 			total = big.Add(total, delta)
 		}
 	} else {
