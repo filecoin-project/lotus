@@ -991,7 +991,7 @@ func (syncer *Syncer) VerifyWinningPoStProof(ctx context.Context, h *types.Block
 
 	rand, err := store.DrawRandomness(rbase.Data, crypto.DomainSeparationTag_WinningPoStChallengeSeed, h.Height, buf.Bytes())
 	if err != nil {
-		return xerrors.Errorf("failed to get randomness for verifying winningPost proof: %w", err)
+		return xerrors.Errorf("failed to get randomness for verifying winning post proof: %w", err)
 	}
 
 	mid, err := address.IDFromAddress(h.Miner)
