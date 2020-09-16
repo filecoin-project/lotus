@@ -139,6 +139,7 @@ func (m *Miner) niceSleep(d time.Duration) bool {
 	case <-build.Clock.After(d):
 		return true
 	case <-m.stop:
+		log.Infow("recieved interrupt while trying to sleep in mining cycle")
 		return false
 	}
 }
@@ -169,7 +170,9 @@ func (m *Miner) mine(ctx context.Context) {
 			prebase, err := m.GetBestMiningCandidate(ctx)
 			if err != nil {
 				log.Errorf("failed to get best mining candidate: %s", err)
-				m.niceSleep(time.Second * 5)
+				if !m.niceSleep(time.Second * 5) {
+					break
+				}
 				continue
 			}
 
@@ -199,7 +202,9 @@ func (m *Miner) mine(ctx context.Context) {
 			_, err = m.api.BeaconGetEntry(ctx, prebase.TipSet.Height()+prebase.NullRounds+1)
 			if err != nil {
 				log.Errorf("failed getting beacon entry: %s", err)
-				m.niceSleep(time.Second)
+				if !m.niceSleep(time.Second) {
+					break
+				}
 				continue
 			}
 
@@ -208,7 +213,9 @@ func (m *Miner) mine(ctx context.Context) {
 
 		if base.TipSet.Equals(lastBase.TipSet) && lastBase.NullRounds == base.NullRounds {
 			log.Warnf("BestMiningCandidate from the previous round: %s (nulls:%d)", lastBase.TipSet.Cids(), lastBase.NullRounds)
-			m.niceSleep(time.Duration(build.BlockDelaySecs) * time.Second)
+			if !m.niceSleep(time.Duration(build.BlockDelaySecs) * time.Second) {
+				break
+			}
 			continue
 		}
 
@@ -217,7 +224,9 @@ func (m *Miner) mine(ctx context.Context) {
 		b, err := m.mineOne(ctx, base)
 		if err != nil {
 			log.Errorf("mining block failed: %+v", err)
-			m.niceSleep(time.Second)
+			if !m.niceSleep(time.Second) {
+				break
+			}
 			onDone(false, 0, err)
 			continue
 		}
