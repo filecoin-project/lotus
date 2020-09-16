@@ -2,6 +2,7 @@ package state
 
 import (
 	"context"
+	"sync"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/lib/blockstore"
@@ -63,13 +64,18 @@ type proxyingBlockstore struct {
 	ctx context.Context
 	api api.FullNode
 
+	online bool
+	lock sync.RWMutex
 	blockstore.Blockstore
 }
 
 func (pb *proxyingBlockstore) Get(cid cid.Cid) (blocks.Block, error) {
-	if block, err := pb.Blockstore.Get(cid); err == nil {
+	pb.lock.RLock()
+	if block, err := pb.Blockstore.Get(cid); (err == nil || !pb.online) {
+		pb.lock.RUnlock();
 		return block, err
 	}
+	pb.lock.RUnlock();
 
 	// fmt.Printf("fetching cid via rpc: %v\n", cid)
 	item, err := pb.api.ChainReadObj(pb.ctx, cid)
@@ -81,12 +87,18 @@ func (pb *proxyingBlockstore) Get(cid cid.Cid) (blocks.Block, error) {
 		return nil, err
 	}
 
+	pb.lock.Lock();
+	defer pb.lock.Unlock();
 	err = pb.Blockstore.Put(block)
 	if err != nil {
 		return nil, err
 	}
 
 	return block, nil
+}
+
+func (pb *proxyingBlockstore) SetOnline(online bool) {
+	pb.online = online
 }
 
 // NewProxyingStore is a Stores that proxies get requests for unknown CIDs
@@ -97,6 +109,7 @@ func NewProxyingStore(ctx context.Context, api api.FullNode) *Stores {
 	bs := &proxyingBlockstore{
 		ctx:        ctx,
 		api:        api,
+		online: true,
 		Blockstore: blockstore.NewBlockstore(ds),
 	}
 

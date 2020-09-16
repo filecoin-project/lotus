@@ -184,6 +184,16 @@ func runExtractMsg(c *cli.Context) error {
 		return err
 	}
 
+	// don't fetch additional content that wasn't accessed yet during car spidering / generation.
+	type onlineblockstore interface {
+		SetOnline(bool)
+	}
+	if ob, ok := pst.Blockstore.(onlineblockstore); ok {
+		ob.SetOnline(false)
+	}
+
+
+
 	out := new(bytes.Buffer)
 	gw := gzip.NewWriter(out)
 	if err := g.WriteCAR(gw, preroot, postroot); err != nil {
@@ -209,7 +219,7 @@ func runExtractMsg(c *cli.Context) error {
 			ID:      "TK",
 			Version: "TK",
 			Gen: []schema.GenerationData{schema.GenerationData{
-				Source:  "TK",
+				Source:  msg.Cid().String(),
 				Version: version.String(),
 			}},
 		},
