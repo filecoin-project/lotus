@@ -24,6 +24,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/blockstore"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
+	"github.com/ipld/go-car"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
@@ -69,6 +70,10 @@ var importBenchCmd = &cli.Command{
 			Usage: "should we export execution traces",
 			Value: true,
 		},
+		&cli.BoolFlag{
+			Name:  "no-import",
+			Usage: "should we import the chain? if set to true chain has to be previously imported",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		vm.BatchSealVerifyParallelism = cctx.Int("batch-seal-verify-threads")
@@ -111,7 +116,6 @@ var importBenchCmd = &cli.Command{
 
 		var verifier ffiwrapper.Verifier = ffiwrapper.ProofVerifier
 		if cctx.IsSet("syscall-cache") {
-
 			scds, err := badger.NewDatastore(cctx.String("syscall-cache"), &bdgOpt)
 			if err != nil {
 				return xerrors.Errorf("opening syscall-cache datastore: %w", err)
@@ -135,9 +139,21 @@ var importBenchCmd = &cli.Command{
 			return err
 		}
 
-		head, err := cs.Import(cfi)
-		if err != nil {
-			return err
+		var head *types.TipSet
+		if !cctx.Bool("no-import") {
+			head, err = cs.Import(cfi)
+			if err != nil {
+				return err
+			}
+		} else {
+			cr, err := car.NewCarReader(cfi)
+			if err != nil {
+				return err
+			}
+			head, err = cs.LoadTipSet(types.NewTipSetKey(cr.Header.Roots...))
+			if err != nil {
+				return err
+			}
 		}
 
 		gb, err := cs.GetTipsetByHeight(context.TODO(), 0, head, true)
@@ -188,6 +204,7 @@ var importBenchCmd = &cli.Command{
 			cur := tschain[i]
 			log.Infof("computing state (height: %d, ts=%s)", cur.Height(), cur.Cids())
 			if cur.ParentState() != lastState {
+				stripCallers(lastTse.Trace)
 				lastTrace := lastTse.Trace
 				d, err := json.MarshalIndent(lastTrace, "", "  ")
 				if err != nil {
@@ -202,14 +219,14 @@ var importBenchCmd = &cli.Command{
 			if err != nil {
 				return err
 			}
+			lastTse = &TipSetExec{
+				TipSet:   cur.Key(),
+				Trace:    trace,
+				Duration: time.Since(start),
+			}
 			if enc != nil {
-				stripCallers(trace)
+				stripCallers(lastTse.Trace)
 
-				lastTse = &TipSetExec{
-					TipSet:   cur.Key(),
-					Trace:    trace,
-					Duration: time.Since(start),
-				}
 				if err := enc.Encode(lastTse); err != nil {
 					return xerrors.Errorf("failed to write out tipsetexec: %w", err)
 				}
