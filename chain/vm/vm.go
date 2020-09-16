@@ -355,14 +355,14 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 	msgGasCost := msgGas.Total()
 	// this should never happen, but is currently still exercised by some tests
 	if msgGasCost > msg.GasLimit {
+		gasOutputs := ZeroGasOutputs()
+		gasOutputs.MinerPenalty = types.BigMul(vm.baseFee, abi.NewTokenAmount(msgGasCost))
 		return &ApplyRet{
 			MessageReceipt: types.MessageReceipt{
 				ExitCode: exitcode.SysErrOutOfGas,
 				GasUsed:  0,
 			},
-			GasCosts: GasOutputs{
-				MinerPenalty: types.BigMul(vm.baseFee, abi.NewTokenAmount(msgGasCost)),
-			},
+			GasCosts: gasOutputs,
 			Duration: time.Since(start),
 		}, nil
 	}
@@ -374,15 +374,15 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 	// this should never happen, but is currently still exercised by some tests
 	if err != nil {
 		if xerrors.Is(err, types.ErrActorNotFound) {
+			gasOutputs := ZeroGasOutputs()
+			gasOutputs.MinerPenalty = minerPenaltyAmount
 			return &ApplyRet{
 				MessageReceipt: types.MessageReceipt{
 					ExitCode: exitcode.SysErrSenderInvalid,
 					GasUsed:  0,
 				},
 				ActorErr: aerrors.Newf(exitcode.SysErrSenderInvalid, "actor not found: %s", msg.From),
-				GasCosts: GasOutputs{
-					MinerPenalty: minerPenaltyAmount,
-				},
+				GasCosts: gasOutputs,
 				Duration: time.Since(start),
 			}, nil
 		}
@@ -391,20 +391,22 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 
 	// this should never happen, but is currently still exercised by some tests
 	if !fromActor.Code.Equals(builtin.AccountActorCodeID) {
+		gasOutputs := ZeroGasOutputs()
+		gasOutputs.MinerPenalty = minerPenaltyAmount
 		return &ApplyRet{
 			MessageReceipt: types.MessageReceipt{
 				ExitCode: exitcode.SysErrSenderInvalid,
 				GasUsed:  0,
 			},
 			ActorErr: aerrors.Newf(exitcode.SysErrSenderInvalid, "send from not account actor: %s", fromActor.Code),
-			GasCosts: GasOutputs{
-				MinerPenalty: minerPenaltyAmount,
-			},
+			GasCosts: gasOutputs,
 			Duration: time.Since(start),
 		}, nil
 	}
 
 	if msg.Nonce != fromActor.Nonce {
+		gasOutputs := ZeroGasOutputs()
+		gasOutputs.MinerPenalty = minerPenaltyAmount
 		return &ApplyRet{
 			MessageReceipt: types.MessageReceipt{
 				ExitCode: exitcode.SysErrSenderStateInvalid,
@@ -413,15 +415,15 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 			ActorErr: aerrors.Newf(exitcode.SysErrSenderStateInvalid,
 				"actor nonce invalid: msg:%d != state:%d", msg.Nonce, fromActor.Nonce),
 
-			GasCosts: GasOutputs{
-				MinerPenalty: minerPenaltyAmount,
-			},
+			GasCosts: gasOutputs,
 			Duration: time.Since(start),
 		}, nil
 	}
 
 	gascost := types.BigMul(types.NewInt(uint64(msg.GasLimit)), msg.GasFeeCap)
 	if fromActor.Balance.LessThan(gascost) {
+		gasOutputs := ZeroGasOutputs()
+		gasOutputs.MinerPenalty = minerPenaltyAmount
 		return &ApplyRet{
 			MessageReceipt: types.MessageReceipt{
 				ExitCode: exitcode.SysErrSenderStateInvalid,
@@ -429,9 +431,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 			},
 			ActorErr: aerrors.Newf(exitcode.SysErrSenderStateInvalid,
 				"actor balance less than needed: %s < %s", types.FIL(fromActor.Balance), types.FIL(gascost)),
-			GasCosts: GasOutputs{
-				MinerPenalty: minerPenaltyAmount,
-			},
+			GasCosts: gasOutputs,
 			Duration: time.Since(start),
 		}, nil
 	}
