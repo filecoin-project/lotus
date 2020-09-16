@@ -170,17 +170,17 @@ var retrievalSetAskCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:  "unseal-price",
-			Usage: "Set the price to unseal",
+			Usage: "Set the price to unseal (FIL/GiB)",
 		},
 		&cli.StringFlag{
 			Name:        "payment-interval",
 			Usage:       "Set the payment interval (in bytes) for retrieval",
-			DefaultText: "1Mb",
+			DefaultText: "1MiB",
 		},
 		&cli.StringFlag{
 			Name:        "payment-interval-increase",
 			Usage:       "Set the payment interval increase (in bytes) for retrieval",
-			DefaultText: "1Mb",
+			DefaultText: "1MiB",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
