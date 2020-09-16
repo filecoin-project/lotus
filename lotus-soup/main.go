@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/filecoin-project/oni/lotus-soup/paych"
 	"github.com/filecoin-project/oni/lotus-soup/rfwp"
 	"github.com/filecoin-project/oni/lotus-soup/testkit"
 
@@ -13,7 +14,7 @@ var cases = map[string]interface{}{
 	"deals-stress":                  testkit.WrapTestEnvironment(dealsStress),
 	"drand-halting":                 testkit.WrapTestEnvironment(dealsE2E),
 	"drand-outage":                  testkit.WrapTestEnvironment(dealsE2E),
-	//"paych-stress":                  testkit.WrapTestEnvironment(paych.Stress),
+	"paych-stress":                  testkit.WrapTestEnvironment(paych.Stress),
 }
 
 func main() {

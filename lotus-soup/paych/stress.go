@@ -8,10 +8,10 @@ import (
 
 	"github.com/ipfs/go-cid"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/testground/sdk-go/sync"
 
@@ -103,7 +103,7 @@ func runSender(ctx context.Context, t *testkit.TestEnvironment, clients []*testk
 		// number of vouchers to send on each lane
 		vouchersPerLane = t.IntParam("vouchers_per_lane")
 		// increments in which to send payment vouchers
-		increments = big.Mul(big.NewInt(int64(t.IntParam("increments"))), abi.TokenPrecision)
+		increments = big.Mul(big.NewInt(int64(t.IntParam("increments"))), big.NewInt(int64(build.FilecoinPrecision)))
 		// channel amount should be enough to cover all vouchers
 		channelAmt = big.Mul(big.NewInt(int64(laneCount*vouchersPerLane)), increments)
 	)
@@ -179,7 +179,7 @@ func runSender(ctx context.Context, t *testkit.TestEnvironment, clients []*testk
 			if err != nil {
 				return fmt.Errorf("failed to create voucher: %w", err)
 			}
-			t.RecordMessage("payment voucher created; lane=%d, nonce=%d, amount=%d", voucher.Lane, voucher.Nonce, voucher.Amount)
+			t.RecordMessage("payment voucher created; lane=%d, nonce=%d, amount=%d", voucher.Voucher.Lane, voucher.Voucher.Nonce, voucher.Voucher.Amount)
 
 			_, err = t.SyncClient.Publish(ctx, VoucherTopic, voucher)
 			if err != nil {
