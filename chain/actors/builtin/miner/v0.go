@@ -14,21 +14,21 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 )
 
 type v0State struct {
-	miner.State
+	v0miner.State
 	store adt.Store
 }
 
 type v0Deadline struct {
-	miner.Deadline
+	v0miner.Deadline
 	store adt.Store
 }
 
 type v0Partition struct {
-	miner.Partition
+	v0miner.Partition
 	store adt.Store
 }
 
@@ -69,13 +69,13 @@ func (s *v0State) GetSectorExpiration(num abi.SectorNumber) (out *SectorExpirati
 	// 2. If it's faulty, it will expire early within the first 14 entries
 	// of the expiration queue.
 	stopErr := errors.New("stop")
-	err = dls.ForEach(s.store, func(dlIdx uint64, dl *miner.Deadline) error {
+	err = dls.ForEach(s.store, func(dlIdx uint64, dl *v0miner.Deadline) error {
 		partitions, err := dl.PartitionsArray(s.store)
 		if err != nil {
 			return err
 		}
 		quant := s.State.QuantSpecForDeadline(dlIdx)
-		var part miner.Partition
+		var part v0miner.Partition
 		return partitions.ForEach(&part, func(partIdx int64) error {
 			if found, err := part.Sectors.IsSet(uint64(num)); err != nil {
 				return err
@@ -89,11 +89,11 @@ func (s *v0State) GetSectorExpiration(num abi.SectorNumber) (out *SectorExpirati
 				return stopErr
 			}
 
-			q, err := miner.LoadExpirationQueue(s.store, part.EarlyTerminated, quant)
+			q, err := v0miner.LoadExpirationQueue(s.store, part.EarlyTerminated, quant)
 			if err != nil {
 				return err
 			}
-			var exp miner.ExpirationSet
+			var exp v0miner.ExpirationSet
 			return q.ForEach(&exp, func(epoch int64) error {
 				if early, err := exp.EarlySectors.IsSet(uint64(num)); err != nil {
 					return err
@@ -151,7 +151,7 @@ func (s *v0State) LoadSectorsFromSet(filter *bitfield.BitField, filterOut bool) 
 			}
 		}
 
-		var oci miner.SectorOnChainInfo
+		var oci v0miner.SectorOnChainInfo
 		if err := oci.UnmarshalCBOR(bytes.NewReader(v.Raw)); err != nil {
 			return err
 		}
@@ -184,13 +184,13 @@ func (s *v0State) ForEachDeadline(cb func(uint64, Deadline) error) error {
 	if err != nil {
 		return err
 	}
-	return dls.ForEach(s.store, func(i uint64, dl *miner.Deadline) error {
+	return dls.ForEach(s.store, func(i uint64, dl *v0miner.Deadline) error {
 		return cb(i, &v0Deadline{*dl, s.store})
 	})
 }
 
 func (s *v0State) NumDeadlines() (uint64, error) {
-	return miner.WPoStPeriodDeadlines, nil
+	return v0miner.WPoStPeriodDeadlines, nil
 }
 
 func (s *v0State) Info() (MinerInfo, error) {
@@ -230,6 +230,9 @@ func (s *v0State) Info() (MinerInfo, error) {
 func (s *v0State) DeadlineInfo(epoch abi.ChainEpoch) *dline.Info {
 	return s.State.DeadlineInfo(epoch)
 }
+func (s *v0State) WpostProvingPeriod() abi.ChainEpoch {
+	return v0miner.WPoStProvingPeriod
+}
 
 func (d *v0Deadline) LoadPartition(idx uint64) (Partition, error) {
 	p, err := d.Deadline.LoadPartition(d.store, idx)
@@ -244,7 +247,7 @@ func (d *v0Deadline) ForEachPartition(cb func(uint64, Partition) error) error {
 	if err != nil {
 		return err
 	}
-	var part miner.Partition
+	var part v0miner.Partition
 	return ps.ForEach(&part, func(i int64) error {
 		return cb(uint64(i), &v0Partition{part, d.store})
 	})

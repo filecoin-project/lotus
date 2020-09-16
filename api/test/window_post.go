@@ -4,6 +4,13 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/filecoin-project/lotus/api/apibstore"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	lotusminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	cbor "github.com/ipfs/go-ipld-cbor"
+
+	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+
 	"os"
 	"strings"
 	"testing"
@@ -15,7 +22,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/extern/sector-storage/mock"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
-	miner2 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -159,7 +165,7 @@ func TestWindowPost(t *testing.T, b APIBuilder, blocktime time.Duration, nSector
 		head, err := client.ChainHead(ctx)
 		require.NoError(t, err)
 
-		if head.Height() > di.PeriodStart+(miner2.WPoStProvingPeriod)+2 {
+		if head.Height() > di.PeriodStart+(v0miner.WPoStProvingPeriod)+2 {
 			break
 		}
 
@@ -178,6 +184,14 @@ func TestWindowPost(t *testing.T, b APIBuilder, blocktime time.Duration, nSector
 	require.Equal(t, p.MinerPower, p.TotalPower)
 	require.Equal(t, p.MinerPower.RawBytePower, types.NewInt(uint64(ssz)*uint64(nSectors+GenesisPreseals)))
 
+	store := cbor.NewCborStore(apibstore.NewAPIBlockstore(client))
+
+	mact, err := client.StateGetActor(ctx, maddr, types.EmptyTSK)
+	require.NoError(t, err)
+
+	minState, err := lotusminer.Load(adt.WrapStore(ctx, store), mact)
+	require.NoError(t, err)
+
 	fmt.Printf("Drop some sectors\n")
 
 	// Drop 2 sectors from deadline 2 partition 0 (full partition / deadline)
@@ -186,12 +200,14 @@ func TestWindowPost(t *testing.T, b APIBuilder, blocktime time.Duration, nSector
 		require.NoError(t, err)
 		require.Greater(t, len(parts), 0)
 
-		n, err := parts[0].Sectors.Count()
+		secs, err := parts[0].AllSectors()
+		require.NoError(t, err)
+		n, err := secs.Count()
 		require.NoError(t, err)
 		require.Equal(t, uint64(2), n)
 
 		// Drop the partition
-		err = parts[0].Sectors.ForEach(func(sid uint64) error {
+		err = secs.ForEach(func(sid uint64) error {
 			return miner.StorageMiner.(*impl.StorageMinerAPI).IStorageMgr.(*mock.SectorMgr).MarkCorrupted(abi.SectorID{
 				Miner:  abi.ActorID(mid),
 				Number: abi.SectorNumber(sid),
@@ -208,15 +224,17 @@ func TestWindowPost(t *testing.T, b APIBuilder, blocktime time.Duration, nSector
 		require.NoError(t, err)
 		require.Greater(t, len(parts), 0)
 
-		n, err := parts[0].Sectors.Count()
+		secs, err := parts[0].AllSectors()
+		require.NoError(t, err)
+		n, err := secs.Count()
 		require.NoError(t, err)
 		require.Equal(t, uint64(2), n)
 
 		// Drop the sector
-		sn, err := parts[0].Sectors.First()
+		sn, err := secs.First()
 		require.NoError(t, err)
 
-		all, err := parts[0].Sectors.All(2)
+		all, err := secs.All(2)
 		require.NoError(t, err)
 		fmt.Println("the sectors", all)
 
@@ -238,7 +256,7 @@ func TestWindowPost(t *testing.T, b APIBuilder, blocktime time.Duration, nSector
 		head, err := client.ChainHead(ctx)
 		require.NoError(t, err)
 
-		if head.Height() > di.PeriodStart+(miner2.WPoStProvingPeriod)+2 {
+		if head.Height() > di.PeriodStart+(minState.WpostProvingPeriod())+2 {
 			break
 		}
 
@@ -268,7 +286,7 @@ func TestWindowPost(t *testing.T, b APIBuilder, blocktime time.Duration, nSector
 		head, err := client.ChainHead(ctx)
 		require.NoError(t, err)
 
-		if head.Height() > di.PeriodStart+(miner2.WPoStProvingPeriod)+2 {
+		if head.Height() > di.PeriodStart+(minState.WpostProvingPeriod())+2 {
 			break
 		}
 

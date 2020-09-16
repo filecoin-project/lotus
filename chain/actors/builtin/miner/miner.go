@@ -46,6 +46,7 @@ type State interface {
 	Info() (MinerInfo, error)
 
 	DeadlineInfo(epoch abi.ChainEpoch) *dline.Info
+	WpostProvingPeriod() abi.ChainEpoch
 }
 
 type Deadline interface {
