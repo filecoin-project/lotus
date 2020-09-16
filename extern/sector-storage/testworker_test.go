@@ -24,8 +24,8 @@ type testWorker struct {
 
 	mockSeal *mock.SectorMgr
 
-	pc1s int
-	pc1lk sync.Mutex
+	pc1s    int
+	pc1lk   sync.Mutex
 	pc1wait *sync.WaitGroup
 }
 

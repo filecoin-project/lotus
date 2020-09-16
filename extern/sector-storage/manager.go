@@ -72,8 +72,8 @@ type Manager struct {
 
 	storage.Prover
 
-	workLk  sync.Mutex
-	work    *statestore.StateStore
+	workLk sync.Mutex
+	work   *statestore.StateStore
 
 	callToWork map[storiface.CallID]WorkID
 	// used when we get an early return and there's no callToWork mapping

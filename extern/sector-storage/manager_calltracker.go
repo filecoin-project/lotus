@@ -23,6 +23,7 @@ func (w WorkID) String() string {
 var _ fmt.Stringer = &WorkID{}
 
 type WorkStatus string
+
 const (
 	wsStarted WorkStatus = "started" // task started, not scheduled/running on a worker yet
 	wsRunning WorkStatus = "running" // task running on a worker, waiting for worker return
@@ -35,7 +36,7 @@ type WorkState struct {
 	Status WorkStatus
 
 	WorkerCall storiface.CallID // Set when entering wsRunning
-	WorkError string // Status = wsDone, set when failed to start work
+	WorkError  string           // Status = wsDone, set when failed to start work
 }
 
 func newWorkID(method string, params ...interface{}) (WorkID, error) {
@@ -198,7 +199,7 @@ func (m *Manager) waitWork(ctx context.Context, wid WorkID) (interface{}, error)
 				log.Errorf("marking work as done: %+v", err)
 			}
 
-			res := <- cr
+			res := <-cr
 			delete(m.callRes, ws.WorkerCall)
 
 			m.workLk.Unlock()
