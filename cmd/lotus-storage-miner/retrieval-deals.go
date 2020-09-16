@@ -166,11 +166,11 @@ var retrievalSetAskCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "price",
-			Usage: "Set the price of the ask for retrievals (per byte)",
+			Usage: "Set the price of the ask for retrievals (FIL/GiB)",
 		},
 		&cli.StringFlag{
 			Name:  "unseal-price",
-			Usage: "Set the price to unseal (FIL/GiB)",
+			Usage: "Set the price to unseal",
 		},
 		&cli.StringFlag{
 			Name:        "payment-interval",
@@ -202,7 +202,7 @@ var retrievalSetAskCmd = &cli.Command{
 			if err != nil {
 				return err
 			}
-			ask.PricePerByte = abi.TokenAmount(v)
+			ask.PricePerByte = types.BigDiv(types.BigInt(v), types.NewInt(1<<30))
 		}
 
 		if cctx.IsSet("unseal-price") {
