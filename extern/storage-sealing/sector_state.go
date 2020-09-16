@@ -2,6 +2,8 @@ package sealing
 
 type SectorState string
 
+var ExistSectorStateList = make(map[SectorState]struct{})
+
 const (
 	UndefinedSectorState SectorState = ""
 
@@ -39,6 +41,37 @@ const (
 	RemoveFailed SectorState = "RemoveFailed"
 	Removed      SectorState = "Removed"
 )
+func init() {
+	ExistSectorStateList[Empty] = struct{}{}
+	ExistSectorStateList[WaitDeals] = struct{}{}
+	ExistSectorStateList[Packing] = struct{}{}
+	ExistSectorStateList[PreCommit1] = struct{}{}
+	ExistSectorStateList[PreCommit2] = struct{}{}
+	ExistSectorStateList[PreCommitting] = struct{}{}
+	ExistSectorStateList[PreCommitWait] = struct{}{}
+	ExistSectorStateList[WaitSeed] = struct{}{}
+	ExistSectorStateList[Committing] = struct{}{}
+	ExistSectorStateList[SubmitCommit] = struct{}{}
+	ExistSectorStateList[CommitWait] = struct{}{}
+	ExistSectorStateList[FinalizeSector] = struct{}{}
+	ExistSectorStateList[Proving] = struct{}{}
+	ExistSectorStateList[FailedUnrecoverable] = struct{}{}
+	ExistSectorStateList[SealPreCommit1Failed] = struct{}{}
+	ExistSectorStateList[SealPreCommit2Failed] = struct{}{}
+	ExistSectorStateList[PreCommitFailed] = struct{}{}
+	ExistSectorStateList[ComputeProofFailed] = struct{}{}
+	ExistSectorStateList[CommitFailed] = struct{}{}
+	ExistSectorStateList[PackingFailed] = struct{}{}
+	ExistSectorStateList[FinalizeFailed] = struct{}{}
+	ExistSectorStateList[DealsExpired] = struct{}{}
+	ExistSectorStateList[RecoverDealIDs] = struct{}{}
+	ExistSectorStateList[Faulty] = struct{}{}
+	ExistSectorStateList[FaultReported] = struct{}{}
+	ExistSectorStateList[FaultedFinal] = struct{}{}
+	ExistSectorStateList[Removing] = struct{}{}
+	ExistSectorStateList[RemoveFailed] = struct{}{}
+	ExistSectorStateList[Removed] = struct{}{}
+}
 
 func toStatState(st SectorState) statSectorState {
 	switch st {
