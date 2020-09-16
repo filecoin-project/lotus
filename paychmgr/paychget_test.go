@@ -6,29 +6,22 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin/account"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
-
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
-
 	cborrpc "github.com/filecoin-project/go-cbor-util"
-
-	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
-
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-
-	"github.com/filecoin-project/lotus/chain/types"
-
-	"github.com/filecoin-project/go-address"
-
-	"github.com/filecoin-project/go-state-types/big"
-	tutils "github.com/filecoin-project/specs-actors/support/testing"
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	ds_sync "github.com/ipfs/go-datastore/sync"
-
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
+	tutils "github.com/filecoin-project/specs-actors/support/testing"
+
+	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
+	paychmock "github.com/filecoin-project/lotus/chain/actors/builtin/paych/mock"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 func testChannelResponse(t *testing.T, ch address.Address) types.MessageReceipt {
@@ -976,25 +969,15 @@ func TestPaychAvailableFunds(t *testing.T) {
 	require.EqualValues(t, 0, av.VoucherReedeemedAmt.Int64())
 
 	// Create channel in state
-	arr, err := adt.MakeEmptyArray(mock.store).Root()
-	require.NoError(t, err)
-	mock.setAccountState(fromAcct, account.State{Address: from})
-	mock.setAccountState(toAcct, account.State{Address: to})
+	mock.setAccountAddress(fromAcct, from)
+	mock.setAccountAddress(toAcct, to)
 	act := &types.Actor{
 		Code:    builtin.AccountActorCodeID,
 		Head:    cid.Cid{},
 		Nonce:   0,
 		Balance: createAmt,
 	}
-	mock.setPaychState(ch, act, paych.State{
-		From:            fromAcct,
-		To:              toAcct,
-		ToSend:          big.NewInt(0),
-		SettlingAt:      abi.ChainEpoch(0),
-		MinSettleHeight: abi.ChainEpoch(0),
-		LaneStates:      arr,
-	})
-
+	mock.setPaychState(ch, act, paychmock.NewMockPayChState(fromAcct, toAcct, abi.ChainEpoch(0), big.NewInt(0), make(map[uint64]paych.LaneState)))
 	// Send create channel response
 	response := testChannelResponse(t, ch)
 	mock.receiveMsgResponse(createMsgCid, response)

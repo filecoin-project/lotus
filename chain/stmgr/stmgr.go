@@ -25,6 +25,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -1144,4 +1145,22 @@ func (sm *StateManager) GetNtwkVersion(ctx context.Context, height abi.ChainEpoc
 	}
 
 	return build.NewestNetworkVersion
+}
+
+func (sm *StateManager) GetPaychState(ctx context.Context, addr address.Address, ts *types.TipSet) (*types.Actor, paych.State, error) {
+	st, err := sm.ParentState(ts)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	act, err := st.GetActor(addr)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	actState, err := paych.Load(sm.cs.Store(ctx), act)
+	if err != nil {
+		return nil, nil, err
+	}
+	return act, actState, nil
 }

@@ -7,13 +7,12 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
-	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	typegen "github.com/whyrusleeping/cbor-gen"
 
@@ -49,7 +48,7 @@ func NewStatePredicates(api ChainAPI) *StatePredicates {
 // - err
 type DiffTipSetKeyFunc func(ctx context.Context, oldState, newState types.TipSetKey) (changed bool, user UserData, err error)
 
-type DiffActorStateFunc func(ctx context.Context, oldActorStateHead, newActorStateHead cid.Cid) (changed bool, user UserData, err error)
+type DiffActorStateFunc func(ctx context.Context, oldActorState *types.Actor, newActorState *types.Actor) (changed bool, user UserData, err error)
 
 // OnActorStateChanged calls diffStateFunc when the state changes for the given actor
 func (sp *StatePredicates) OnActorStateChanged(addr address.Address, diffStateFunc DiffActorStateFunc) DiffTipSetKeyFunc {
@@ -66,7 +65,7 @@ func (sp *StatePredicates) OnActorStateChanged(addr address.Address, diffStateFu
 		if oldActor.Head.Equals(newActor.Head) {
 			return false, nil, nil
 		}
-		return diffStateFunc(ctx, oldActor.Head, newActor.Head)
+		return diffStateFunc(ctx, oldActor, newActor)
 	}
 }
 
@@ -74,13 +73,13 @@ type DiffStorageMarketStateFunc func(ctx context.Context, oldState *market.State
 
 // OnStorageMarketActorChanged calls diffStorageMarketState when the state changes for the market actor
 func (sp *StatePredicates) OnStorageMarketActorChanged(diffStorageMarketState DiffStorageMarketStateFunc) DiffTipSetKeyFunc {
-	return sp.OnActorStateChanged(builtin.StorageMarketActorAddr, func(ctx context.Context, oldActorStateHead, newActorStateHead cid.Cid) (changed bool, user UserData, err error) {
+	return sp.OnActorStateChanged(builtin.StorageMarketActorAddr, func(ctx context.Context, oldActorState, newActorState *types.Actor) (changed bool, user UserData, err error) {
 		var oldState market.State
-		if err := sp.cst.Get(ctx, oldActorStateHead, &oldState); err != nil {
+		if err := sp.cst.Get(ctx, oldActorState.Head, &oldState); err != nil {
 			return false, nil, err
 		}
 		var newState market.State
-		if err := sp.cst.Get(ctx, newActorStateHead, &newState); err != nil {
+		if err := sp.cst.Get(ctx, newActorState.Head, &newState); err != nil {
 			return false, nil, err
 		}
 		return diffStorageMarketState(ctx, &oldState, &newState)
@@ -408,13 +407,13 @@ func (sp *StatePredicates) AvailableBalanceChangedForAddresses(getAddrs func() [
 type DiffMinerActorStateFunc func(ctx context.Context, oldState *miner.State, newState *miner.State) (changed bool, user UserData, err error)
 
 func (sp *StatePredicates) OnInitActorChange(diffInitActorState DiffInitActorStateFunc) DiffTipSetKeyFunc {
-	return sp.OnActorStateChanged(builtin.InitActorAddr, func(ctx context.Context, oldActorStateHead, newActorStateHead cid.Cid) (changed bool, user UserData, err error) {
+	return sp.OnActorStateChanged(builtin.InitActorAddr, func(ctx context.Context, oldActorState, newActorState *types.Actor) (changed bool, user UserData, err error) {
 		var oldState init_.State
-		if err := sp.cst.Get(ctx, oldActorStateHead, &oldState); err != nil {
+		if err := sp.cst.Get(ctx, oldActorState.Head, &oldState); err != nil {
 			return false, nil, err
 		}
 		var newState init_.State
-		if err := sp.cst.Get(ctx, newActorStateHead, &newState); err != nil {
+		if err := sp.cst.Get(ctx, newActorState.Head, &newState); err != nil {
 			return false, nil, err
 		}
 		return diffInitActorState(ctx, &oldState, &newState)
@@ -423,13 +422,13 @@ func (sp *StatePredicates) OnInitActorChange(diffInitActorState DiffInitActorSta
 }
 
 func (sp *StatePredicates) OnMinerActorChange(minerAddr address.Address, diffMinerActorState DiffMinerActorStateFunc) DiffTipSetKeyFunc {
-	return sp.OnActorStateChanged(minerAddr, func(ctx context.Context, oldActorStateHead, newActorStateHead cid.Cid) (changed bool, user UserData, err error) {
+	return sp.OnActorStateChanged(minerAddr, func(ctx context.Context, oldActorState, newActorState *types.Actor) (changed bool, user UserData, err error) {
 		var oldState miner.State
-		if err := sp.cst.Get(ctx, oldActorStateHead, &oldState); err != nil {
+		if err := sp.cst.Get(ctx, oldActorState.Head, &oldState); err != nil {
 			return false, nil, err
 		}
 		var newState miner.State
-		if err := sp.cst.Get(ctx, newActorStateHead, &newState); err != nil {
+		if err := sp.cst.Get(ctx, newActorState.Head, &newState); err != nil {
 			return false, nil, err
 		}
 		return diffMinerActorState(ctx, &oldState, &newState)
@@ -608,20 +607,20 @@ func (sp *StatePredicates) OnMinerPreCommitChange() DiffMinerActorStateFunc {
 }
 
 // DiffPaymentChannelStateFunc is function that compares two states for the payment channel
-type DiffPaymentChannelStateFunc func(ctx context.Context, oldState *paych.State, newState *paych.State) (changed bool, user UserData, err error)
+type DiffPaymentChannelStateFunc func(ctx context.Context, oldState paych.State, newState paych.State) (changed bool, user UserData, err error)
 
 // OnPaymentChannelActorChanged calls diffPaymentChannelState when the state changes for the the payment channel actor
 func (sp *StatePredicates) OnPaymentChannelActorChanged(paychAddr address.Address, diffPaymentChannelState DiffPaymentChannelStateFunc) DiffTipSetKeyFunc {
-	return sp.OnActorStateChanged(paychAddr, func(ctx context.Context, oldActorStateHead, newActorStateHead cid.Cid) (changed bool, user UserData, err error) {
-		var oldState paych.State
-		if err := sp.cst.Get(ctx, oldActorStateHead, &oldState); err != nil {
+	return sp.OnActorStateChanged(paychAddr, func(ctx context.Context, oldActorState, newActorState *types.Actor) (changed bool, user UserData, err error) {
+		oldState, err := paych.Load(adt.WrapStore(ctx, sp.cst), oldActorState)
+		if err != nil {
 			return false, nil, err
 		}
-		var newState paych.State
-		if err := sp.cst.Get(ctx, newActorStateHead, &newState); err != nil {
+		newState, err := paych.Load(adt.WrapStore(ctx, sp.cst), newActorState)
+		if err != nil {
 			return false, nil, err
 		}
-		return diffPaymentChannelState(ctx, &oldState, &newState)
+		return diffPaymentChannelState(ctx, oldState, newState)
 	})
 }
 
@@ -633,13 +632,13 @@ type PayChToSendChange struct {
 
 // OnToSendAmountChanges monitors changes on the total amount to send from one party to the other on a payment channel
 func (sp *StatePredicates) OnToSendAmountChanges() DiffPaymentChannelStateFunc {
-	return func(ctx context.Context, oldState *paych.State, newState *paych.State) (changed bool, user UserData, err error) {
-		if oldState.ToSend.Equals(newState.ToSend) {
+	return func(ctx context.Context, oldState paych.State, newState paych.State) (changed bool, user UserData, err error) {
+		if oldState.ToSend().Equals(newState.ToSend()) {
 			return false, nil, nil
 		}
 		return true, &PayChToSendChange{
-			OldToSend: oldState.ToSend,
-			NewToSend: newState.ToSend,
+			OldToSend: oldState.ToSend(),
+			NewToSend: newState.ToSend(),
 		}, nil
 	}
 }

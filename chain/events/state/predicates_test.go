@@ -221,7 +221,7 @@ func TestMarketPredicates(t *testing.T) {
 		// Test that OnActorStateChanged does not call the callback if the state has not changed
 		mockAddr, err := address.NewFromString("t01")
 		require.NoError(t, err)
-		actorDiffFn := preds.OnActorStateChanged(mockAddr, func(context.Context, cid.Cid, cid.Cid) (bool, UserData, error) {
+		actorDiffFn := preds.OnActorStateChanged(mockAddr, func(context.Context, *types.Actor, *types.Actor) (bool, UserData, error) {
 			t.Fatal("No state change so this should not be called")
 			return false, nil, nil
 		})
