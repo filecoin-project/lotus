@@ -139,7 +139,7 @@ func (m *Miner) niceSleep(d time.Duration) bool {
 	case <-build.Clock.After(d):
 		return true
 	case <-m.stop:
-		log.Infow("recieved interrupt while trying to sleep in mining cycle")
+		log.Infow("received interrupt while trying to sleep in mining cycle")
 		return false
 	}
 }
