@@ -65,7 +65,7 @@ var (
 	log = logging.Logger("chain")
 
 	concurrentSyncRequests = 16
-	syncRequestBatchSize   = 4
+	syncRequestBatchSize   = 8
 	syncRequestRetries     = 5
 )
 
