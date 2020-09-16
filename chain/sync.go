@@ -1537,6 +1537,7 @@ func (syncer *Syncer) iterFullTipsets(ctx context.Context, headers []*types.TipS
 						batchErr = multierror.Append(batchErr, requestErr)
 						failed = true
 					} else {
+						log.Infof("fetched messages for %d tipsets", len(requestResult))
 						copy(bstout[j*syncRequestBatchSize+offset:], requestResult)
 						offset += len(requestResult)
 					}
