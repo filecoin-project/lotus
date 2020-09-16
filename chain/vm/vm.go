@@ -201,10 +201,9 @@ type Rand interface {
 type ApplyRet struct {
 	types.MessageReceipt
 	ActorErr       aerrors.ActorError
-	Penalty        types.BigInt
-	MinerTip       types.BigInt
 	ExecutionTrace types.ExecutionTrace
 	Duration       time.Duration
+	GasCosts       GasOutputs
 }
 
 func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
@@ -328,8 +327,7 @@ func (vm *VM) ApplyImplicitMessage(ctx context.Context, msg *types.Message) (*Ap
 		},
 		ActorErr:       actorErr,
 		ExecutionTrace: rt.executionTrace,
-		Penalty:        types.NewInt(0),
-		MinerTip:       types.NewInt(0),
+		GasCosts:       GasOutputs{},
 		Duration:       time.Since(start),
 	}, actorErr
 }
@@ -357,14 +355,15 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 	msgGasCost := msgGas.Total()
 	// this should never happen, but is currently still exercised by some tests
 	if msgGasCost > msg.GasLimit {
+		gasOutputs := ZeroGasOutputs()
+		gasOutputs.MinerPenalty = types.BigMul(vm.baseFee, abi.NewTokenAmount(msgGasCost))
 		return &ApplyRet{
 			MessageReceipt: types.MessageReceipt{
 				ExitCode: exitcode.SysErrOutOfGas,
 				GasUsed:  0,
 			},
-			Penalty:  types.BigMul(vm.baseFee, abi.NewTokenAmount(msgGasCost)),
+			GasCosts: gasOutputs,
 			Duration: time.Since(start),
-			MinerTip: big.Zero(),
 		}, nil
 	}
 
@@ -375,15 +374,16 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 	// this should never happen, but is currently still exercised by some tests
 	if err != nil {
 		if xerrors.Is(err, types.ErrActorNotFound) {
+			gasOutputs := ZeroGasOutputs()
+			gasOutputs.MinerPenalty = minerPenaltyAmount
 			return &ApplyRet{
 				MessageReceipt: types.MessageReceipt{
 					ExitCode: exitcode.SysErrSenderInvalid,
 					GasUsed:  0,
 				},
 				ActorErr: aerrors.Newf(exitcode.SysErrSenderInvalid, "actor not found: %s", msg.From),
-				Penalty:  minerPenaltyAmount,
+				GasCosts: gasOutputs,
 				Duration: time.Since(start),
-				MinerTip: big.Zero(),
 			}, nil
 		}
 		return nil, xerrors.Errorf("failed to look up from actor: %w", err)
@@ -391,19 +391,22 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 
 	// this should never happen, but is currently still exercised by some tests
 	if !fromActor.Code.Equals(builtin.AccountActorCodeID) {
+		gasOutputs := ZeroGasOutputs()
+		gasOutputs.MinerPenalty = minerPenaltyAmount
 		return &ApplyRet{
 			MessageReceipt: types.MessageReceipt{
 				ExitCode: exitcode.SysErrSenderInvalid,
 				GasUsed:  0,
 			},
 			ActorErr: aerrors.Newf(exitcode.SysErrSenderInvalid, "send from not account actor: %s", fromActor.Code),
-			Penalty:  minerPenaltyAmount,
+			GasCosts: gasOutputs,
 			Duration: time.Since(start),
-			MinerTip: big.Zero(),
 		}, nil
 	}
 
 	if msg.Nonce != fromActor.Nonce {
+		gasOutputs := ZeroGasOutputs()
+		gasOutputs.MinerPenalty = minerPenaltyAmount
 		return &ApplyRet{
 			MessageReceipt: types.MessageReceipt{
 				ExitCode: exitcode.SysErrSenderStateInvalid,
@@ -411,14 +414,16 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 			},
 			ActorErr: aerrors.Newf(exitcode.SysErrSenderStateInvalid,
 				"actor nonce invalid: msg:%d != state:%d", msg.Nonce, fromActor.Nonce),
-			Penalty:  minerPenaltyAmount,
+
+			GasCosts: gasOutputs,
 			Duration: time.Since(start),
-			MinerTip: big.Zero(),
 		}, nil
 	}
 
 	gascost := types.BigMul(types.NewInt(uint64(msg.GasLimit)), msg.GasFeeCap)
 	if fromActor.Balance.LessThan(gascost) {
+		gasOutputs := ZeroGasOutputs()
+		gasOutputs.MinerPenalty = minerPenaltyAmount
 		return &ApplyRet{
 			MessageReceipt: types.MessageReceipt{
 				ExitCode: exitcode.SysErrSenderStateInvalid,
@@ -426,9 +431,8 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 			},
 			ActorErr: aerrors.Newf(exitcode.SysErrSenderStateInvalid,
 				"actor balance less than needed: %s < %s", types.FIL(fromActor.Balance), types.FIL(gascost)),
-			Penalty:  minerPenaltyAmount,
+			GasCosts: gasOutputs,
 			Duration: time.Since(start),
-			MinerTip: big.Zero(),
 		}, nil
 	}
 
@@ -521,8 +525,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 		},
 		ActorErr:       actorErr,
 		ExecutionTrace: rt.executionTrace,
-		Penalty:        gasOutputs.MinerPenalty,
-		MinerTip:       gasOutputs.MinerTip,
+		GasCosts:       gasOutputs,
 		Duration:       time.Since(start),
 	}, nil
 }
