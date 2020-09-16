@@ -64,7 +64,7 @@ var (
 
 	log = logging.Logger("chain")
 
-	concurrentSyncRequests = 16
+	concurrentSyncRequests = exchange.ShufflePeersPrefix
 	syncRequestBatchSize   = 8
 	syncRequestRetries     = 5
 )
