@@ -11,7 +11,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	v0power "github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 
 	"github.com/filecoin-project/lotus/chain/gen"
@@ -25,7 +25,7 @@ func init() {
 	miner.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
 		abi.RegisteredSealProof_StackedDrg2KiBV1: {},
 	}
-	power.ConsensusMinerMinPower = big.NewInt(2048)
+	v0power.ConsensusMinerMinPower = big.NewInt(2048)
 	verifreg.MinVerifiedDealSize = big.NewInt(256)
 }
 

@@ -34,12 +34,12 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	blst "github.com/supranational/blst/bindings/go"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/exchange"
 	"github.com/filecoin-project/lotus/chain/gen"
@@ -635,26 +635,25 @@ func (syncer *Syncer) ValidateTipSet(ctx context.Context, fts *store.FullTipSet)
 }
 
 func (syncer *Syncer) minerIsValid(ctx context.Context, maddr address.Address, baseTs *types.TipSet) error {
-	var spast power.State
-
-	_, err := syncer.sm.LoadActorState(ctx, builtin.StoragePowerActorAddr, &spast, baseTs)
+	act, err := syncer.sm.LoadActor(ctx, builtin.StoragePowerActorAddr, baseTs)
 	if err != nil {
-		return err
+		return xerrors.Errorf("failed to load power actor: %w", err)
 	}
 
-	cm, err := adt.AsMap(syncer.store.Store(ctx), spast.Claims)
+	powState, err := power.Load(syncer.store.Store(ctx), act)
 	if err != nil {
-		return err
+		return xerrors.Errorf("failed to load power actor state: %w", err)
 	}
 
-	var claim power.Claim
-	exist, err := cm.Get(abi.AddrKey(maddr), &claim)
+	_, exist, err := powState.MinerPower(maddr)
 	if err != nil {
-		return err
+		return xerrors.Errorf("failed to look up miner's claim: %w", err)
 	}
+
 	if !exist {
 		return xerrors.New("miner isn't valid")
 	}
+
 	return nil
 }
 

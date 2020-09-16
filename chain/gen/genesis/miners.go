@@ -19,7 +19,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	v0power "github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 
@@ -99,7 +99,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 		}
 
 		{
-			constructorParams := &power.CreateMinerParams{
+			constructorParams := &v0power.CreateMinerParams{
 				Owner:         m.Worker,
 				Worker:        m.Worker,
 				Peer:          []byte(m.PeerId),
@@ -112,7 +112,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 				return cid.Undef, xerrors.Errorf("failed to create genesis miner: %w", err)
 			}
 
-			var ma power.CreateMinerReturn
+			var ma v0power.CreateMinerReturn
 			if err := ma.UnmarshalCBOR(bytes.NewReader(rval)); err != nil {
 				return cid.Undef, xerrors.Errorf("unmarshaling CreateMinerReturn: %w", err)
 			}
@@ -207,7 +207,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 			}
 		}
 
-		err = vm.MutateState(ctx, builtin.StoragePowerActorAddr, func(cst cbor.IpldStore, st *power.State) error {
+		err = vm.MutateState(ctx, builtin.StoragePowerActorAddr, func(cst cbor.IpldStore, st *v0power.State) error {
 			st.TotalQualityAdjPower = qaPow
 			st.TotalRawBytePower = rawPow
 
@@ -249,7 +249,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 				sectorWeight := miner.QAPowerForWeight(m.SectorSize, minerInfos[i].presealExp, dweight.DealWeight, dweight.VerifiedDealWeight)
 
 				// we've added fake power for this sector above, remove it now
-				err = vm.MutateState(ctx, builtin.StoragePowerActorAddr, func(cst cbor.IpldStore, st *power.State) error {
+				err = vm.MutateState(ctx, builtin.StoragePowerActorAddr, func(cst cbor.IpldStore, st *v0power.State) error {
 					st.TotalQualityAdjPower = types.BigSub(st.TotalQualityAdjPower, sectorWeight) //nolint:scopelint
 					st.TotalRawBytePower = types.BigSub(st.TotalRawBytePower, types.NewInt(uint64(m.SectorSize)))
 					return nil
@@ -301,7 +301,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 	}
 
 	// Sanity-check total network power
-	err = vm.MutateState(ctx, builtin.StoragePowerActorAddr, func(cst cbor.IpldStore, st *power.State) error {
+	err = vm.MutateState(ctx, builtin.StoragePowerActorAddr, func(cst cbor.IpldStore, st *v0power.State) error {
 		if !st.TotalRawBytePower.Equals(rawPow) {
 			return xerrors.Errorf("st.TotalRawBytePower doesn't match previously calculated rawPow")
 		}
@@ -340,12 +340,12 @@ func (fr *fakeRand) GetBeaconRandomness(ctx context.Context, personalization cry
 	return out, nil
 }
 
-func currentTotalPower(ctx context.Context, vm *vm.VM, maddr address.Address) (*power.CurrentTotalPowerReturn, error) {
+func currentTotalPower(ctx context.Context, vm *vm.VM, maddr address.Address) (*v0power.CurrentTotalPowerReturn, error) {
 	pwret, err := doExecValue(ctx, vm, builtin.StoragePowerActorAddr, maddr, big.Zero(), builtin.MethodsPower.CurrentTotalPower, nil)
 	if err != nil {
 		return nil, err
 	}
-	var pwr power.CurrentTotalPowerReturn
+	var pwr v0power.CurrentTotalPowerReturn
 	if err := pwr.UnmarshalCBOR(bytes.NewReader(pwret)); err != nil {
 		return nil, err
 	}

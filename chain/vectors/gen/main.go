@@ -6,7 +6,7 @@ import (
 	"math/rand"
 	"os"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	v0power "github.com/filecoin-project/specs-actors/actors/builtin/power"
 
 	"github.com/filecoin-project/go-address"
 	"golang.org/x/xerrors"
@@ -27,7 +27,7 @@ import (
 
 func init() {
 	verifreg.MinVerifiedDealSize = big.NewInt(2048)
-	power.ConsensusMinerMinPower = big.NewInt(2048)
+	v0power.ConsensusMinerMinPower = big.NewInt(2048)
 }
 
 func MakeHeaderVectors() []vectors.HeaderVector {

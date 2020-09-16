@@ -12,7 +12,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	v0power "github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"golang.org/x/xerrors"
@@ -36,7 +36,7 @@ func init() {
 	miner.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
 		abi.RegisteredSealProof_StackedDrg2KiBV1: {},
 	}
-	power.ConsensusMinerMinPower = big.NewInt(2048)
+	v0power.ConsensusMinerMinPower = big.NewInt(2048)
 	verifreg.MinVerifiedDealSize = big.NewInt(256)
 }
 
@@ -148,8 +148,8 @@ func TestForkHeightTriggers(t *testing.T) {
 	}
 
 	inv.Register(builtin.PaymentChannelActorCodeID, &testActor{}, &testActorState{})
-	sm.SetVMConstructor(func(vmopt *vm.VMOpts) (*vm.VM, error) {
-		nvm, err := vm.NewVM(vmopt)
+	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (*vm.VM, error) {
+		nvm, err := vm.NewVM(ctx, vmopt)
 		if err != nil {
 			return nil, err
 		}

@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
 	cid "github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
@@ -42,7 +41,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
-	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
@@ -326,65 +324,12 @@ func ListMinerActors(ctx context.Context, sm *StateManager, ts *types.TipSet) ([
 		return nil, xerrors.Errorf("failed to load power actor: %w", err)
 	}
 
-	state, err := power.Load(sm.cs.Store(ctx), act)
+	powState, err := power.Load(sm.cs.Store(ctx), act)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load power actor state: %w", err)
 	}
 
-	m, err := adt.AsMap(sm.cs.Store(ctx), state.Claims)
-	if err != nil {
-		return nil, err
-	}
-
-	var miners []address.Address
-	err = m.ForEach(nil, func(k string) error {
-		a, err := address.NewFromBytes([]byte(k))
-		if err != nil {
-			return err
-		}
-		miners = append(miners, a)
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return miners, nil
-}
-
-func LoadSectorsFromSet(ctx context.Context, bs blockstore.Blockstore, ssc cid.Cid, filter *bitfield.BitField, filterOut bool) ([]*miner.ChainSectorInfo, error) {
-	a, err := adt.AsArray(store.ActorStore(ctx, bs), ssc)
-	if err != nil {
-		return nil, err
-	}
-
-	var sset []*miner.ChainSectorInfo
-	var v cbg.Deferred
-	if err := a.ForEach(&v, func(i int64) error {
-		if filter != nil {
-			set, err := filter.IsSet(uint64(i))
-			if err != nil {
-				return xerrors.Errorf("filter check error: %w", err)
-			}
-			if set == filterOut {
-				return nil
-			}
-		}
-
-		var oci miner.SectorOnChainInfo
-		if err := cbor.DecodeInto(v.Raw, &oci); err != nil {
-			return err
-		}
-		sset = append(sset, &miner.ChainSectorInfo{
-			Info: oci,
-			ID:   abi.SectorNumber(i),
-		})
-		return nil
-	}); err != nil {
-		return nil, err
-	}
-
-	return sset, nil
+	return powState.ListAllMiners()
 }
 
 func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, msgs []*types.Message, ts *types.TipSet) (cid.Cid, []*api.InvocResult, error) {
