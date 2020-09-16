@@ -11,17 +11,19 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/uuid"
+	"github.com/ipfs/go-datastore"
+	logging "github.com/ipfs/go-log"
+	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-statestore"
+
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
-
-	"github.com/filecoin-project/go-state-types/abi"
-
-	"github.com/google/uuid"
-	logging "github.com/ipfs/go-log"
-	"github.com/stretchr/testify/require"
 )
 
 func init() {
@@ -111,8 +113,11 @@ func newTestMgr(ctx context.Context, t *testing.T) (*Manager, *stores.Local, *st
 
 		Prover: prover,
 
-		results: map[storiface.CallID]result{},
-		waitRes: map[storiface.CallID]chan struct{}{},
+		work:       statestore.New(datastore.NewMapDatastore()),
+		callToWork: map[storiface.CallID]workID{},
+		callRes:    map[storiface.CallID]chan result{},
+		results:    map[workID]result{},
+		waitRes:    map[workID]chan struct{}{},
 	}
 
 	go m.sched.runSched()

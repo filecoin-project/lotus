@@ -517,13 +517,15 @@ func RetrievalProvider(h host.Host, miner *storage.Miner, sealer sectorstorage.S
 }
 
 var WorkerCallsPrefix = datastore.NewKey("/worker/calls")
+var ManagerWorkPrefix = datastore.NewKey("/stmgr/calls")
 
 func SectorStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, ls stores.LocalStorage, si stores.SectorIndex, cfg *ffiwrapper.Config, sc sectorstorage.SealerConfig, urls sectorstorage.URLs, sa sectorstorage.StorageAuth, ds dtypes.MetadataDS) (*sectorstorage.Manager, error) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
 	wsts := statestore.New(namespace.Wrap(ds, WorkerCallsPrefix))
+	smsts := statestore.New(namespace.Wrap(ds, ManagerWorkPrefix))
 
-	sst, err := sectorstorage.New(ctx, ls, si, cfg, sc, urls, sa, wsts)
+	sst, err := sectorstorage.New(ctx, ls, si, cfg, sc, urls, sa, wsts, smsts)
 	if err != nil {
 		return nil, err
 	}

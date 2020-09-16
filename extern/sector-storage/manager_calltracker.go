@@ -2,11 +2,11 @@ package sectorstorage
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"golang.org/x/xerrors"
-	"io"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )
@@ -16,7 +16,7 @@ type workID struct {
 	Params string // json [...params]
 }
 
-func (w *workID) String() string {
+func (w workID) String() string {
 	return fmt.Sprintf("%s(%s)", w.Method, w.Params)
 }
 
@@ -36,14 +36,15 @@ type WorkState struct {
 	WorkError string // Status = wsDone, set when failed to start work
 }
 
-func (w *WorkState) UnmarshalCBOR(reader io.Reader) error {
-	panic("implement me")
-}
-
 func newWorkID(method string, params ...interface{}) (workID, error) {
 	pb, err := json.Marshal(params)
 	if err != nil {
 		return workID{}, xerrors.Errorf("marshaling work params: %w", err)
+	}
+
+	if len(pb) > 256 {
+		s := sha256.Sum256(pb)
+		pb = s[:]
 	}
 
 	return workID{
@@ -68,7 +69,7 @@ func (m *Manager) getWork(ctx context.Context, method string, params ...interfac
 	}
 
 	if !have {
-		err := m.work.Begin(wid, WorkState{
+		err := m.work.Begin(wid, &WorkState{
 			Status: wsStarted,
 		})
 		if err != nil {
@@ -194,6 +195,16 @@ func (m *Manager) waitWork(ctx context.Context, wid workID) (interface{}, error)
 	}
 }
 
+func (m *Manager) waitSimpleCall(ctx context.Context) func(callID storiface.CallID, err error) (interface{}, error) {
+	return func(callID storiface.CallID, err error) (interface{}, error) {
+		if err != nil {
+			return nil, err
+		}
+
+		return m.waitCall(ctx, callID)
+	}
+}
+
 func (m *Manager) waitCall(ctx context.Context, callID storiface.CallID) (interface{}, error) {
 	m.workLk.Lock()
 	_, ok := m.callToWork[callID]
@@ -204,7 +215,7 @@ func (m *Manager) waitCall(ctx context.Context, callID storiface.CallID) (interf
 
 	ch, ok := m.callRes[callID]
 	if !ok {
-		ch = make(chan result)
+		ch = make(chan result, 1)
 		m.callRes[callID] = ch
 	}
 	m.workLk.Unlock()

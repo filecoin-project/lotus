@@ -444,6 +444,7 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 			}
 
 			wsts := statestore.New(namespace.Wrap(mds, modules.WorkerCallsPrefix))
+			smsts := statestore.New(namespace.Wrap(mds, modules.ManagerWorkPrefix))
 
 			smgr, err := sectorstorage.New(ctx, lr, stores.NewIndex(), &ffiwrapper.Config{
 				SealProofType: spt,
@@ -454,7 +455,7 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 				AllowPreCommit2:    true,
 				AllowCommit:        true,
 				AllowUnseal:        true,
-			}, nil, sa, wsts)
+			}, nil, sa, wsts, smsts)
 			if err != nil {
 				return err
 			}
