@@ -38,7 +38,7 @@ type LocalWorker struct {
 	sindex     stores.SectorIndex
 	ret        storiface.WorkerReturn
 
-	ct          *callTracker
+	ct          *workerCallTracker
 	acceptTasks map[sealtasks.TaskType]struct{}
 }
 
@@ -57,7 +57,7 @@ func NewLocalWorker(wcfg WorkerConfig, store stores.Store, local *stores.Local, 
 		sindex:     sindex,
 		ret:        ret,
 
-		ct: &callTracker{
+		ct: &workerCallTracker{
 			st: cst,
 		},
 		acceptTasks: acceptTasks,

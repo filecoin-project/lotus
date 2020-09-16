@@ -6,7 +6,7 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )
 
-type callTracker struct {
+type workerCallTracker struct {
 	st *statestore.StateStore // by CallID
 }
 
@@ -25,13 +25,13 @@ type Call struct {
 	Result []byte
 }
 
-func (wt *callTracker) onStart(ci storiface.CallID) error {
+func (wt *workerCallTracker) onStart(ci storiface.CallID) error {
 	return wt.st.Begin(ci, &Call{
 		State: CallStarted,
 	})
 }
 
-func (wt *callTracker) onDone(ci storiface.CallID, ret []byte) error {
+func (wt *workerCallTracker) onDone(ci storiface.CallID, ret []byte) error {
 	st := wt.st.Get(ci)
 	return st.Mutate(func(cs *Call) error {
 		cs.State = CallDone
@@ -40,7 +40,7 @@ func (wt *callTracker) onDone(ci storiface.CallID, ret []byte) error {
 	})
 }
 
-func (wt *callTracker) onReturned(ci storiface.CallID) error {
+func (wt *workerCallTracker) onReturned(ci storiface.CallID) error {
 	st := wt.st.Get(ci)
 	return st.End()
 }
