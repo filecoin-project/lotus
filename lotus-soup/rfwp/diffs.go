@@ -7,9 +7,9 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/oni/lotus-soup/testkit"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
 )
 
 type ChainState struct {

@@ -12,7 +12,7 @@ RUN go get github.com/filecoin-project/go-paramfetch/paramfetch
 COPY /proof-parameters.json /
 RUN paramfetch 2048 /proof-parameters.json
 
-ARG LOTUS_COMMIT=d557c40
+ARG LOTUS_COMMIT=e7da56b4
 
 ## for debug purposes
 RUN apt update && apt install -y mesa-opencl-icd ocl-icd-opencl-dev gcc git bzr jq pkg-config curl && git clone https://github.com/filecoin-project/lotus.git && cd lotus/ && git checkout ${LOTUS_COMMIT} && make clean && make all && make install

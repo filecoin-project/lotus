@@ -8,9 +8,9 @@ import (
 	"github.com/filecoin-project/oni/lotus-soup/testkit"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/cli"
 	tstats "github.com/filecoin-project/lotus/tools/stats"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 )
 

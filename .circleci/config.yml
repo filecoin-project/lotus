@@ -41,17 +41,9 @@ workflows:
   version: 2
   main:
     jobs:
-      - tvx-build-test-linux
       - soup-build-linux
 
 jobs:
-  tvx-build-test-linux:
-    executor: linux
-    steps:
-      - setup
-      - run:
-          name: "build tvx"
-          command: pushd tvx && go build .
   soup-build-linux:
     executor: linux
     steps:

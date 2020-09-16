@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/filecoin-project/oni/lotus-soup/paych"
 	"github.com/filecoin-project/oni/lotus-soup/rfwp"
 	"github.com/filecoin-project/oni/lotus-soup/testkit"
 
@@ -13,7 +12,8 @@ var cases = map[string]interface{}{
 	"recovery-failed-windowed-post": testkit.WrapTestEnvironment(rfwp.RecoveryFromFailedWindowedPoStE2E),
 	"deals-stress":                  testkit.WrapTestEnvironment(dealsStress),
 	"drand-halting":                 testkit.WrapTestEnvironment(dealsE2E),
-	"paych-stress":                  testkit.WrapTestEnvironment(paych.Stress),
+	"drand-outage":                  testkit.WrapTestEnvironment(dealsE2E),
+	//"paych-stress":                  testkit.WrapTestEnvironment(paych.Stress),
 }
 
 func main() {

@@ -221,17 +221,21 @@ Additional to the Filecoin FFI Git submodules, we are also bundling `proof param
 * `v3` => locking in Filecoin FFI commit 5342c7c97d1a1df4650629d14f2823d52889edd9.
 * `v4` => locking in Filecoin FFI commit 6a143e06f923f3a4f544c7a652e8b4df420a3d28.
 * `v5` => locking in Filecoin FFI commit cddc56607e1d851ea6d09d49404bd7db70cb3c2e.
+* `v6` => locking in Filecoin FFI commit 40569104603407c999d6c9e4c3f1228cbd4d0e5c.
+
 
 ### oni-runtime
 
 * `v1` => initial image with 2048 parameters.
 * `v2` => adds auxiliary tools: `net-tools netcat traceroute iputils-ping wget vim curl telnet iproute2 dnsutils`.
+* `v3` => bump proof parameters from v27 to v28
 
 ### oni-runtime-debug
 
 * `v1` => initial image
 * `v2` => locking in Lotus commit e21ea53
 * `v3` => locking in Lotus commit d557c40
+* `v4` => bump proof parameters from v27 to v28
 
 
 ## Team

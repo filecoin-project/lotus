@@ -4,7 +4,7 @@ FROM golang:${GO_VERSION}-buster
 
 RUN apt-get update && apt-get install -y ca-certificates llvm clang mesa-opencl-icd ocl-icd-opencl-dev jq gcc git pkg-config bzr
 
-ARG FILECOIN_FFI_COMMIT=cddc56607e1d851ea6d09d49404bd7db70cb3c2e
+ARG FILECOIN_FFI_COMMIT=40569104603407c999d6c9e4c3f1228cbd4d0e5c
 ARG FFI_DIR=/extra/filecoin-ffi
 
 RUN mkdir -p ${FFI_DIR} \

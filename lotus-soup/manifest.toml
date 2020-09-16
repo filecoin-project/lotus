@@ -10,8 +10,8 @@ enabled = true
 
 [builders."docker:go"]
 enabled = true
-build_base_image = "iptestground/oni-buildbase:v5"
-runtime_image = "iptestground/oni-runtime:v3-debug"
+build_base_image = "iptestground/oni-buildbase:v6"
+runtime_image = "iptestground/oni-runtime:v4-debug"
 
 [runners."local:exec"]
 enabled = true
@@ -80,6 +80,37 @@ instances = { min = 1, max = 100, default = 5 }
   # To get lotus nodes to actually use the drand nodes, you must set random_beacon_type="local-drand"
   # for the lotus node groups.
   drand_period = { type = "duration", default="10s" }
+  drand_threshold = { type = "int", default = 2 }
+  drand_gossip_relay = { type = "bool", default = true }
+  drand_log_level = { type = "string", default="info" }
+  suspend_events = { type = "string", default="", desc = "a sequence of halt/resume/wait events separated by '->'" }
+  
+  # Params relevant to pubsub tracing
+  enable_pubsub_tracer = { type = "bool", default = false }  # Mining Mode: synchronized -vs- natural time
+  mining_mode = { type = "enum", default = "synchronized", options = ["synchronized", "natural"] }
+
+
+[[testcases]]
+name = "drand-outage"
+instances = { min = 1, max = 100, default = 5 }
+
+  [testcases.params]
+  clients = { type = "int", default = 0 }
+  miners = { type = "int", default = 3 }
+  balance = { type = "float", default = 1 }
+  sectors = { type = "int", default = 1 }
+  role = { type = "string" }
+  genesis_timestamp_offset = { type = "int", default = 0 }
+
+
+  random_beacon_type = { type = "enum", default = "local-drand", options = ["mock", "local-drand", "external-drand"] }
+
+  # Params relevant to drand nodes. drand nodes should have role="drand", and must all be
+  # in the same composition group. There must be at least threshold drand nodes.
+  # To get lotus nodes to actually use the drand nodes, you must set random_beacon_type="local-drand"
+  # for the lotus node groups.
+  drand_period = { type = "duration", default="30s" }
+  drand_catchup_period = { type = "duration", default="10s" }
   drand_threshold = { type = "int", default = 2 }
   drand_gossip_relay = { type = "bool", default = true }
   drand_log_level = { type = "string", default="info" }
