@@ -447,6 +447,7 @@ workflows:
           test-suite-name: conformance-bleeding-edge
           packages: "./conformance"
           vectors-branch: master
+      - test-lotus-soup
       - build-debug
       - build-all:
           requires:
