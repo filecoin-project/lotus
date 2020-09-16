@@ -258,7 +258,7 @@ func (rt *Runtime) DeleteActor(beneficiary address.Address) {
 		panic(aerrors.Fatalf("failed to get actor: %s", err))
 	}
 	if !act.Balance.IsZero() {
-		if beneficiary == rt.Message().Receiver() {
+		if beneficiary == rt.Receiver() {
 			rt.Abortf(exitcode.SysErrorIllegalArgument, "benefactor cannot be beneficiary")
 		}
 		// Transfer the executing actor's balance to the beneficiary
