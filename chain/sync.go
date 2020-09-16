@@ -1504,13 +1504,13 @@ func (syncer *Syncer) iterFullTipsets(ctx context.Context, headers []*types.TipS
 				defer wg.Done()
 
 				nreq := syncRequestBatchSize
-				if j*syncRequestBatchSize+nreq > batchSize {
-					nreq = batchSize - j*syncRequestBatchSize
+				if j+nreq > batchSize {
+					nreq = batchSize - j
 				}
 
 				failed := false
 				for offset := 0; !failed && offset < nreq; {
-					nextI := (i + 1) - batchSize + j*syncRequestBatchSize + offset
+					nextI := (i + 1) - batchSize + j + offset
 					nextHeader := headers[nextI]
 
 					var requestErr error
@@ -1537,8 +1537,7 @@ func (syncer *Syncer) iterFullTipsets(ctx context.Context, headers []*types.TipS
 						batchErr = multierror.Append(batchErr, requestErr)
 						failed = true
 					} else {
-						log.Infof("fetched messages for %d tipsets", len(requestResult))
-						copy(bstout[j*syncRequestBatchSize+offset:], requestResult)
+						copy(bstout[j+offset:], requestResult)
 						offset += len(requestResult)
 					}
 					mx.Unlock()
