@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"io"
 
-	abi "github.com/filecoin-project/go-state-types/abi"
-	exitcode "github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/exitcode"
 	cbg "github.com/whyrusleeping/cbor-gen"
-	xerrors "golang.org/x/xerrors"
+	"golang.org/x/xerrors"
 )
 
 var _ = xerrors.Errorf
@@ -727,6 +727,148 @@ func (t *AbortWithArgs) UnmarshalCBOR(r io.Reader) error {
 		t.Uncontrolled = true
 	default:
 		return fmt.Errorf("booleans are either major type 7, value 20 or 21 (got %d)", extra)
+	}
+	return nil
+}
+
+var lengthBufInspectRuntimeReturn = []byte{134}
+
+func (t *InspectRuntimeReturn) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+	if _, err := w.Write(lengthBufInspectRuntimeReturn); err != nil {
+		return err
+	}
+
+	scratch := make([]byte, 9)
+
+	// t.Caller (address.Address) (struct)
+	if err := t.Caller.MarshalCBOR(w); err != nil {
+		return err
+	}
+
+	// t.Receiver (address.Address) (struct)
+	if err := t.Receiver.MarshalCBOR(w); err != nil {
+		return err
+	}
+
+	// t.ValueReceived (big.Int) (struct)
+	if err := t.ValueReceived.MarshalCBOR(w); err != nil {
+		return err
+	}
+
+	// t.CurrEpoch (abi.ChainEpoch) (int64)
+	if t.CurrEpoch >= 0 {
+		if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajUnsignedInt, uint64(t.CurrEpoch)); err != nil {
+			return err
+		}
+	} else {
+		if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajNegativeInt, uint64(-t.CurrEpoch-1)); err != nil {
+			return err
+		}
+	}
+
+	// t.CurrentBalance (big.Int) (struct)
+	if err := t.CurrentBalance.MarshalCBOR(w); err != nil {
+		return err
+	}
+
+	// t.State (chaos.State) (struct)
+	if err := t.State.MarshalCBOR(w); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *InspectRuntimeReturn) UnmarshalCBOR(r io.Reader) error {
+	*t = InspectRuntimeReturn{}
+
+	br := cbg.GetPeeker(r)
+	scratch := make([]byte, 8)
+
+	maj, extra, err := cbg.CborReadHeaderBuf(br, scratch)
+	if err != nil {
+		return err
+	}
+	if maj != cbg.MajArray {
+		return fmt.Errorf("cbor input should be of type array")
+	}
+
+	if extra != 6 {
+		return fmt.Errorf("cbor input had wrong number of fields")
+	}
+
+	// t.Caller (address.Address) (struct)
+
+	{
+
+		if err := t.Caller.UnmarshalCBOR(br); err != nil {
+			return xerrors.Errorf("unmarshaling t.Caller: %w", err)
+		}
+
+	}
+	// t.Receiver (address.Address) (struct)
+
+	{
+
+		if err := t.Receiver.UnmarshalCBOR(br); err != nil {
+			return xerrors.Errorf("unmarshaling t.Receiver: %w", err)
+		}
+
+	}
+	// t.ValueReceived (big.Int) (struct)
+
+	{
+
+		if err := t.ValueReceived.UnmarshalCBOR(br); err != nil {
+			return xerrors.Errorf("unmarshaling t.ValueReceived: %w", err)
+		}
+
+	}
+	// t.CurrEpoch (abi.ChainEpoch) (int64)
+	{
+		maj, extra, err := cbg.CborReadHeaderBuf(br, scratch)
+		var extraI int64
+		if err != nil {
+			return err
+		}
+		switch maj {
+		case cbg.MajUnsignedInt:
+			extraI = int64(extra)
+			if extraI < 0 {
+				return fmt.Errorf("int64 positive overflow")
+			}
+		case cbg.MajNegativeInt:
+			extraI = int64(extra)
+			if extraI < 0 {
+				return fmt.Errorf("int64 negative oveflow")
+			}
+			extraI = -1 - extraI
+		default:
+			return fmt.Errorf("wrong type for int64 field: %d", maj)
+		}
+
+		t.CurrEpoch = abi.ChainEpoch(extraI)
+	}
+	// t.CurrentBalance (big.Int) (struct)
+
+	{
+
+		if err := t.CurrentBalance.UnmarshalCBOR(br); err != nil {
+			return xerrors.Errorf("unmarshaling t.CurrentBalance: %w", err)
+		}
+
+	}
+	// t.State (chaos.State) (struct)
+
+	{
+
+		if err := t.State.UnmarshalCBOR(br); err != nil {
+			return xerrors.Errorf("unmarshaling t.State: %w", err)
+		}
+
 	}
 	return nil
 }

@@ -64,6 +64,9 @@ const (
 	// MethodAbortWith is the identifier for the method that panics optionally with
 	// a passed exit code.
 	MethodAbortWith
+	// MethodInspectRuntime is the identifier for the method that returns the
+	// current runtime values.
+	MethodInspectRuntime
 )
 
 // Exports defines the methods this actor exposes publicly.
@@ -77,6 +80,7 @@ func (a Actor) Exports() []interface{} {
 		MethodSend:                a.Send,
 		MethodMutateState:         a.MutateState,
 		MethodAbortWith:           a.AbortWith,
+		MethodInspectRuntime:      a.InspectRuntime,
 	}
 }
 
@@ -246,4 +250,29 @@ func (a Actor) AbortWith(rt runtime.Runtime, args *AbortWithArgs) *abi.EmptyValu
 		rt.Abortf(args.Code, args.Message)
 	}
 	return nil
+}
+
+// InspectRuntimeReturn is the return value for the Actor.InspectRuntime method.
+type InspectRuntimeReturn struct {
+	Caller         address.Address
+	Receiver       address.Address
+	ValueReceived  abi.TokenAmount
+	CurrEpoch      abi.ChainEpoch
+	CurrentBalance abi.TokenAmount
+	State          State
+}
+
+// InspectRuntime returns a copy of the serializable values available in the Runtime.
+func (a Actor) InspectRuntime(rt runtime.Runtime, _ *abi.EmptyValue) *InspectRuntimeReturn {
+	rt.ValidateImmediateCallerAcceptAny()
+	var st State
+	rt.StateReadonly(&st)
+	return &InspectRuntimeReturn{
+		Caller:         rt.Caller(),
+		Receiver:       rt.Receiver(),
+		ValueReceived:  rt.ValueReceived(),
+		CurrEpoch:      rt.CurrEpoch(),
+		CurrentBalance: rt.CurrentBalance(),
+		State:          st,
+	}
 }
