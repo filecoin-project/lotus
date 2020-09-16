@@ -254,7 +254,7 @@ jobs:
           path: /tmp/test-reports
       - store_artifacts:
           path: /tmp/test-artifacts/conformance-coverage.html
-  test-lotus-soup:
+  build-lotus-soup:
     description: |
       Compile `lotus-soup` Testground test plan using the current version of Lotus.
     parameters:
@@ -447,7 +447,7 @@ workflows:
           test-suite-name: conformance-bleeding-edge
           packages: "./conformance"
           vectors-branch: master
-      - test-lotus-soup
+      - build-lotus-soup
       - build-debug
       - build-all:
           requires:
