@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -193,7 +192,7 @@ var chainBalanceStateCmd = &cli.Command{
 			}
 
 			if act.Code == builtin.StorageMinerActorCodeID && minerInfo {
-				pow, _, err := stmgr.GetPowerRaw(ctx, sm, sroot, addr)
+				pow, _, _, err := stmgr.GetPowerRaw(ctx, sm, sroot, addr)
 				if err != nil {
 					return xerrors.Errorf("failed to get power: %w", err)
 				}

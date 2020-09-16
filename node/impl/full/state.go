@@ -253,7 +253,7 @@ func (a *StateAPI) StateMinerPower(ctx context.Context, addr address.Address, ts
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	m, net, err := stmgr.GetPower(ctx, a.StateManager, ts, addr)
+	m, net, hmp, err := stmgr.GetPower(ctx, a.StateManager, ts, addr)
 	if err != nil {
 		return nil, err
 	}
@@ -261,6 +261,7 @@ func (a *StateAPI) StateMinerPower(ctx context.Context, addr address.Address, ts
 	return &api.MinerPower{
 		MinerPower: m,
 		TotalPower: net,
+		HasMinPower: hmp,
 	}, nil
 }
 

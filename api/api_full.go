@@ -600,8 +600,9 @@ type VoucherCreateResult struct {
 }
 
 type MinerPower struct {
-	MinerPower power.Claim
-	TotalPower power.Claim
+	MinerPower  power.Claim
+	TotalPower  power.Claim
+	HasMinPower bool
 }
 
 type QueryOffer struct {

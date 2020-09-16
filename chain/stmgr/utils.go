@@ -79,37 +79,42 @@ func GetMinerWorkerRaw(ctx context.Context, sm *StateManager, st cid.Cid, maddr 
 	return vm.ResolveToKeyAddr(state, sm.cs.Store(ctx), info.Worker)
 }
 
-func GetPower(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (power.Claim, power.Claim, error) {
+func GetPower(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (power.Claim, power.Claim, bool, error) {
 	return GetPowerRaw(ctx, sm, ts.ParentState(), maddr)
 }
 
-func GetPowerRaw(ctx context.Context, sm *StateManager, st cid.Cid, maddr address.Address) (power.Claim, power.Claim, error) {
+func GetPowerRaw(ctx context.Context, sm *StateManager, st cid.Cid, maddr address.Address) (power.Claim, power.Claim, bool, error) {
 	act, err := sm.LoadActorRaw(ctx, builtin.StoragePowerActorAddr, st)
 	if err != nil {
-		return power.Claim{}, power.Claim{}, xerrors.Errorf("(get sset) failed to load power actor state: %w", err)
+		return power.Claim{}, power.Claim{}, false, xerrors.Errorf("(get sset) failed to load power actor state: %w", err)
 	}
 
-	mas, err := power.Load(sm.cs.Store(ctx), act)
+	pas, err := power.Load(sm.cs.Store(ctx), act)
 	if err != nil {
-		return power.Claim{}, power.Claim{}, err
+		return power.Claim{}, power.Claim{}, false, err
 	}
 
-	tpow, err := mas.TotalPower()
+	tpow, err := pas.TotalPower()
 	if err != nil {
-		return power.Claim{}, power.Claim{}, err
+		return power.Claim{}, power.Claim{}, false, err
 	}
 
 	var mpow power.Claim
 	if maddr != address.Undef {
 		var found bool
-		mpow, found, err = mas.MinerPower(maddr)
+		mpow, found, err = pas.MinerPower(maddr)
 		if err != nil || !found {
 			// TODO: return an error when not found?
-			return power.Claim{}, power.Claim{}, err
+			return power.Claim{}, power.Claim{}, false, err
 		}
 	}
 
-	return mpow, tpow, nil
+	minpow, err := pas.MinerNominalPowerMeetsConsensusMinimum(maddr)
+	if err != nil {
+		return power.Claim{}, power.Claim{}, false, err
+	}
+
+	return mpow, tpow, minpow, nil
 }
 
 func PreCommitInfo(ctx context.Context, sm *StateManager, maddr address.Address, sid abi.SectorNumber, ts *types.TipSet) (*miner.SectorPreCommitOnChainInfo, error) {
@@ -470,7 +475,7 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, bcs beacon.Schedule
 		return nil, nil
 	}
 
-	mpow, tpow, err := GetPowerRaw(ctx, sm, lbst, maddr)
+	mpow, tpow, hmp, err := GetPowerRaw(ctx, sm, lbst, maddr)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get power: %w", err)
 	}
@@ -483,11 +488,6 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, bcs beacon.Schedule
 	worker, err := sm.ResolveToKeyAddress(ctx, info.Worker, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("resolving worker address: %w", err)
-	}
-
-	hmp, err := MinerHasMinPower(ctx, sm, maddr, lbts)
-	if err != nil {
-		return nil, xerrors.Errorf("determining if miner has min power failed: %w", err)
 	}
 
 	return &api.MiningBaseInfo{
