@@ -265,10 +265,10 @@ jobs:
       - prepare
       - run: cd extern/oni && git submodule sync
       - run: cd extern/oni && git submodule update --init
-      - run: cd extern/oni/extra/filecoin-ffi && make
+      - run: cd extern/filecoin-ffi && make
       - run:
-          name: "update lotus-soup dependency to lotus"
-          command: pushd extern/oni/lotus-soup && echo 'replace github.com/filecoin-project/lotus => ../../../' >> go.mod
+          name: "replace lotus and filecoin-ffi deps"
+          command: pushd extern/oni/lotus-soup && go mod edit -replace github.com/filecoin-project/lotus=../../../ && go mod edit -replace github.com/filecoin-project/filecoin-ffi=../../filecoin-ffi
       - run:
           name: "build lotus-soup testplan"
           command: pushd extern/oni/lotus-soup && go build -tags=testground .
