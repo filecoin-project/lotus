@@ -54,7 +54,7 @@ func (cv cachingVerifier) withCache(execute func() (bool, error), param cbg.CBOR
 		var save []byte
 		if err != nil {
 			if ok {
-				log.Errorf("sucess with an error: %+v", err)
+				log.Errorf("success with an error: %+v", err)
 			} else {
 				save = append([]byte{'e'}, []byte(err.Error())...)
 			}
