@@ -11,16 +11,16 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )
 
-type workID struct {
+type WorkID struct {
 	Method string
 	Params string // json [...params]
 }
 
-func (w workID) String() string {
+func (w WorkID) String() string {
 	return fmt.Sprintf("%s(%s)", w.Method, w.Params)
 }
 
-var _ fmt.Stringer = &workID{}
+var _ fmt.Stringer = &WorkID{}
 
 type WorkStatus string
 const (
@@ -30,16 +30,18 @@ const (
 )
 
 type WorkState struct {
+	ID WorkID
+
 	Status WorkStatus
 
 	WorkerCall storiface.CallID // Set when entering wsRunning
 	WorkError string // Status = wsDone, set when failed to start work
 }
 
-func newWorkID(method string, params ...interface{}) (workID, error) {
+func newWorkID(method string, params ...interface{}) (WorkID, error) {
 	pb, err := json.Marshal(params)
 	if err != nil {
-		return workID{}, xerrors.Errorf("marshaling work params: %w", err)
+		return WorkID{}, xerrors.Errorf("marshaling work params: %w", err)
 	}
 
 	if len(pb) > 256 {
@@ -47,17 +49,55 @@ func newWorkID(method string, params ...interface{}) (workID, error) {
 		pb = s[:]
 	}
 
-	return workID{
+	return WorkID{
 		Method: method,
 		Params: string(pb),
 	}, nil
 }
 
+func (m *Manager) setupWorkTracker() {
+	m.workLk.Lock()
+	defer m.workLk.Unlock()
+
+	var ids []WorkState
+	if err := m.work.List(&ids); err != nil {
+		log.Error("getting work IDs") // quite bad
+		return
+	}
+
+	for _, st := range ids {
+		wid := st.ID
+		if err := m.work.Get(wid).Get(&st); err != nil {
+			log.Errorf("getting work state for %s", wid)
+			continue
+		}
+
+		switch st.Status {
+		case wsStarted:
+			log.Warnf("dropping non-running work %s", wid)
+
+			if err := m.work.Get(wid).End(); err != nil {
+				log.Errorf("cleannig up work state for %s", wid)
+			}
+		case wsDone:
+			// realistically this shouldn't ever happen as we return results
+			// immediately after getting them
+			log.Warnf("dropping done work, no result, wid %s", wid)
+
+			if err := m.work.Get(wid).End(); err != nil {
+				log.Errorf("cleannig up work state for %s", wid)
+			}
+		case wsRunning:
+			m.callToWork[st.WorkerCall] = wid
+		}
+	}
+}
+
 // returns wait=true when the task is already tracked/running
-func (m *Manager) getWork(ctx context.Context, method string, params ...interface{}) (wid workID, wait bool, err error) {
+func (m *Manager) getWork(ctx context.Context, method string, params ...interface{}) (wid WorkID, wait bool, err error) {
 	wid, err = newWorkID(method, params)
 	if err != nil {
-		return workID{}, false, xerrors.Errorf("creating workID: %w", err)
+		return WorkID{}, false, xerrors.Errorf("creating WorkID: %w", err)
 	}
 
 	m.workLk.Lock()
@@ -65,15 +105,16 @@ func (m *Manager) getWork(ctx context.Context, method string, params ...interfac
 
 	have, err := m.work.Has(wid)
 	if err != nil {
-		return workID{}, false, xerrors.Errorf("failed to check if the task is already tracked: %w", err)
+		return WorkID{}, false, xerrors.Errorf("failed to check if the task is already tracked: %w", err)
 	}
 
 	if !have {
 		err := m.work.Begin(wid, &WorkState{
+			ID:     wid,
 			Status: wsStarted,
 		})
 		if err != nil {
-			return workID{}, false, xerrors.Errorf("failed to track task start: %w", err)
+			return WorkID{}, false, xerrors.Errorf("failed to track task start: %w", err)
 		}
 
 		return wid, false, nil
@@ -84,7 +125,7 @@ func (m *Manager) getWork(ctx context.Context, method string, params ...interfac
 	return wid, true, nil
 }
 
-func (m *Manager) startWork(ctx context.Context, wk workID) func(callID storiface.CallID, err error) error {
+func (m *Manager) startWork(ctx context.Context, wk WorkID) func(callID storiface.CallID, err error) error {
 	return func(callID storiface.CallID, err error) error {
 		m.workLk.Lock()
 		defer m.workLk.Unlock()
@@ -123,7 +164,7 @@ func (m *Manager) startWork(ctx context.Context, wk workID) func(callID storifac
 	}
 }
 
-func (m *Manager) waitWork(ctx context.Context, wid workID) (interface{}, error) {
+func (m *Manager) waitWork(ctx context.Context, wid WorkID) (interface{}, error) {
 	m.workLk.Lock()
 
 	var ws WorkState

@@ -87,6 +87,7 @@ func main() {
 	err = gen.WriteMapEncodersToFile("./extern/sector-storage/cbor_gen.go", "sectorstorage",
 		sectorstorage.Call{},
 		sectorstorage.WorkState{},
+		sectorstorage.WorkID{},
 	)
 	if err != nil {
 		fmt.Println(err)

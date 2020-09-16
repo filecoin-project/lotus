@@ -2,6 +2,7 @@ package sectorstorage
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"os"
 	"reflect"
@@ -161,8 +162,25 @@ func (l *LocalWorker) asyncCall(ctx context.Context, sector abi.SectorID, rt ret
 
 	go func() {
 		res, err := work(ci)
+
+		{
+			rb, err := json.Marshal(res)
+			if err != nil {
+				log.Errorf("tracking call (marshaling results): %+v", err)
+			} else {
+				if err := l.ct.onDone(ci, rb); err != nil {
+					log.Errorf("tracking call (done): %+v", err)
+				}
+			}
+
+		}
+
 		if err := returnFunc[rt](ctx, ci, l.ret, res, err); err != nil {
 			log.Errorf("return error: %s: %+v", rt, err)
+		}
+
+		if err := l.ct.onReturned(ci); err != nil {
+			log.Errorf("tracking call (done): %+v", err)
 		}
 	}()
 

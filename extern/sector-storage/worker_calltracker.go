@@ -21,8 +21,7 @@ const (
 type Call struct {
 	State CallState
 
-	// Params cbg.Deferred // TODO: support once useful
-	Result []byte
+	Result []byte // json bytes
 }
 
 func (wt *workerCallTracker) onStart(ci storiface.CallID) error {

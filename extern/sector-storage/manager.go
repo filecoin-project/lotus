@@ -43,7 +43,7 @@ type Worker interface {
 	// returns channel signalling worker shutdown
 	Closing(context.Context) (<-chan struct{}, error)
 
-	Close() error
+	Close() error // TODO: do we need this?
 }
 
 type SectorManager interface {
@@ -75,12 +75,12 @@ type Manager struct {
 	workLk  sync.Mutex
 	work    *statestore.StateStore
 
-	callToWork map[storiface.CallID]workID
+	callToWork map[storiface.CallID]WorkID
 	// used when we get an early return and there's no callToWork mapping
 	callRes map[storiface.CallID]chan result
 
-	results map[workID]result
-	waitRes map[workID]chan struct{}
+	results map[WorkID]result
+	waitRes map[WorkID]chan struct{}
 }
 
 type result struct {
@@ -131,13 +131,13 @@ func New(ctx context.Context, ls stores.LocalStorage, si stores.SectorIndex, cfg
 		Prover: prover,
 
 		work:       mss,
-		callToWork: map[storiface.CallID]workID{},
+		callToWork: map[storiface.CallID]WorkID{},
 		callRes:    map[storiface.CallID]chan result{},
-		results:    map[workID]result{},
-		waitRes:    map[workID]chan struct{}{},
+		results:    map[WorkID]result{},
+		waitRes:    map[WorkID]chan struct{}{},
 	}
 
-	// TODO: remove all non-running work from the work tracker
+	m.setupWorkTracker()
 
 	go m.sched.runSched()
 

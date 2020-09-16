@@ -3,6 +3,7 @@ package sectorstorage
 import (
 	"context"
 	"io"
+	"sync"
 
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
@@ -22,6 +23,10 @@ type testWorker struct {
 	ret         storiface.WorkerReturn
 
 	mockSeal *mock.SectorMgr
+
+	pc1s int
+	pc1lk sync.Mutex
+	pc1wait *sync.WaitGroup
 }
 
 func newTestWorker(wcfg WorkerConfig, lstor *stores.Local, ret storiface.WorkerReturn) *testWorker {
@@ -55,15 +60,6 @@ func (t *testWorker) asyncCall(sector abi.SectorID, work func(ci storiface.CallI
 	return ci, nil
 }
 
-func (t *testWorker) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, pieces []abi.PieceInfo) (storiface.CallID, error) {
-	return t.asyncCall(sector, func(ci storiface.CallID) {
-		p1o, err := t.mockSeal.SealPreCommit1(ctx, sector, ticket, pieces)
-		if err := t.ret.ReturnSealPreCommit1(ctx, ci, p1o, errstr(err)); err != nil {
-			log.Error(err)
-		}
-	})
-}
-
 func (t *testWorker) NewSector(ctx context.Context, sector abi.SectorID) error {
 	panic("implement me")
 }
@@ -80,6 +76,24 @@ func (t *testWorker) AddPiece(ctx context.Context, sector abi.SectorID, pieceSiz
 	return t.asyncCall(sector, func(ci storiface.CallID) {
 		p, err := t.mockSeal.AddPiece(ctx, sector, pieceSizes, newPieceSize, pieceData)
 		if err := t.ret.ReturnAddPiece(ctx, ci, p, errstr(err)); err != nil {
+			log.Error(err)
+		}
+	})
+}
+
+func (t *testWorker) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, pieces []abi.PieceInfo) (storiface.CallID, error) {
+	return t.asyncCall(sector, func(ci storiface.CallID) {
+		t.pc1s++
+
+		if t.pc1wait != nil {
+			t.pc1wait.Done()
+		}
+
+		t.pc1lk.Lock()
+		defer t.pc1lk.Unlock()
+
+		p1o, err := t.mockSeal.SealPreCommit1(ctx, sector, ticket, pieces)
+		if err := t.ret.ReturnSealPreCommit1(ctx, ci, p1o, errstr(err)); err != nil {
 			log.Error(err)
 		}
 	})

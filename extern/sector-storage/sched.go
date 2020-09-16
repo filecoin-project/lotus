@@ -801,11 +801,11 @@ func (sh *scheduler) workerCleanup(wid WorkerID, w *workerHandle) {
 
 		log.Debugf("dropWorker %d", wid)
 
-		go func() {
+		/*go func() { // TODO: just remove?
 			if err := w.w.Close(); err != nil {
 				log.Warnf("closing worker %d: %+v", err)
 			}
-		}()
+		}()*/
 	}
 }
 

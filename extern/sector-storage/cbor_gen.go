@@ -148,11 +148,27 @@ func (t *WorkState) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{163}); err != nil {
+	if _, err := w.Write([]byte{164}); err != nil {
 		return err
 	}
 
 	scratch := make([]byte, 9)
+
+	// t.ID (sectorstorage.WorkID) (struct)
+	if len("ID") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"ID\" was too long")
+	}
+
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len("ID"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("ID")); err != nil {
+		return err
+	}
+
+	if err := t.ID.MarshalCBOR(w); err != nil {
+		return err
+	}
 
 	// t.Status (sectorstorage.WorkStatus) (string)
 	if len("Status") > cbg.MaxLength {
@@ -251,7 +267,17 @@ func (t *WorkState) UnmarshalCBOR(r io.Reader) error {
 		}
 
 		switch name {
-		// t.Status (sectorstorage.WorkStatus) (string)
+		// t.ID (sectorstorage.WorkID) (struct)
+		case "ID":
+
+			{
+
+				if err := t.ID.UnmarshalCBOR(br); err != nil {
+					return xerrors.Errorf("unmarshaling t.ID: %w", err)
+				}
+
+			}
+			// t.Status (sectorstorage.WorkStatus) (string)
 		case "Status":
 
 			{
@@ -282,6 +308,128 @@ func (t *WorkState) UnmarshalCBOR(r io.Reader) error {
 				}
 
 				t.WorkError = string(sval)
+			}
+
+		default:
+			return fmt.Errorf("unknown struct field %d: '%s'", i, name)
+		}
+	}
+
+	return nil
+}
+func (t *WorkID) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+	if _, err := w.Write([]byte{162}); err != nil {
+		return err
+	}
+
+	scratch := make([]byte, 9)
+
+	// t.Method (string) (string)
+	if len("Method") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"Method\" was too long")
+	}
+
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len("Method"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("Method")); err != nil {
+		return err
+	}
+
+	if len(t.Method) > cbg.MaxLength {
+		return xerrors.Errorf("Value in field t.Method was too long")
+	}
+
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len(t.Method))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string(t.Method)); err != nil {
+		return err
+	}
+
+	// t.Params (string) (string)
+	if len("Params") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"Params\" was too long")
+	}
+
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len("Params"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("Params")); err != nil {
+		return err
+	}
+
+	if len(t.Params) > cbg.MaxLength {
+		return xerrors.Errorf("Value in field t.Params was too long")
+	}
+
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len(t.Params))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string(t.Params)); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *WorkID) UnmarshalCBOR(r io.Reader) error {
+	*t = WorkID{}
+
+	br := cbg.GetPeeker(r)
+	scratch := make([]byte, 8)
+
+	maj, extra, err := cbg.CborReadHeaderBuf(br, scratch)
+	if err != nil {
+		return err
+	}
+	if maj != cbg.MajMap {
+		return fmt.Errorf("cbor input should be of type map")
+	}
+
+	if extra > cbg.MaxLength {
+		return fmt.Errorf("WorkID: map struct too large (%d)", extra)
+	}
+
+	var name string
+	n := extra
+
+	for i := uint64(0); i < n; i++ {
+
+		{
+			sval, err := cbg.ReadStringBuf(br, scratch)
+			if err != nil {
+				return err
+			}
+
+			name = string(sval)
+		}
+
+		switch name {
+		// t.Method (string) (string)
+		case "Method":
+
+			{
+				sval, err := cbg.ReadStringBuf(br, scratch)
+				if err != nil {
+					return err
+				}
+
+				t.Method = string(sval)
+			}
+			// t.Params (string) (string)
+		case "Params":
+
+			{
+				sval, err := cbg.ReadStringBuf(br, scratch)
+				if err != nil {
+					return err
+				}
+
+				t.Params = string(sval)
 			}
 
 		default:
