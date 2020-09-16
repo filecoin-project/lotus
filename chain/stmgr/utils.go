@@ -554,7 +554,7 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, bcs beacon.Schedule
 
 	sectors, err := GetSectorsForWinningPoSt(ctx, pv, sm, lbst, maddr, prand)
 	if err != nil {
-		return nil, xerrors.Errorf("getting wpost proving set: %w", err)
+		return nil, xerrors.Errorf("getting winning post proving set: %w", err)
 	}
 
 	if len(sectors) == 0 {
