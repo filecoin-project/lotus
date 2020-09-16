@@ -60,6 +60,15 @@ var importBenchCmd = &cli.Command{
 			Name:  "repodir",
 			Usage: "set the repo directory for the lotus bench run (defaults to /tmp)",
 		},
+		&cli.StringFlag{
+			Name:  "syscall-cache",
+			Usage: "read and write syscall results from datastore",
+		},
+		&cli.BoolFlag{
+			Name:  "export-traces",
+			Usage: "should we export execution traces",
+			Value: true,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		vm.BatchSealVerifyParallelism = cctx.Int("batch-seal-verify-threads")
@@ -85,7 +94,10 @@ var importBenchCmd = &cli.Command{
 			tdir = tmp
 		}
 
-		bds, err := badger.NewDatastore(tdir, nil)
+		bdgOpt := badger.DefaultOptions
+		bdgOpt.GcInterval = 0
+
+		bds, err := badger.NewDatastore(tdir, &bdgOpt)
 		if err != nil {
 			return err
 		}
@@ -96,7 +108,21 @@ var importBenchCmd = &cli.Command{
 		}
 		bs = cbs
 		ds := datastore.NewMapDatastore()
-		cs := store.NewChainStore(bs, ds, vm.Syscalls(ffiwrapper.ProofVerifier))
+
+		var verifier ffiwrapper.Verifier = ffiwrapper.ProofVerifier
+		if cctx.IsSet("syscall-cache") {
+
+			scds, err := badger.NewDatastore(cctx.String("syscall-cache"), &bdgOpt)
+			if err != nil {
+				return xerrors.Errorf("opening syscall-cache datastore: %w", err)
+			}
+			verifier = &cachingVerifier{
+				ds:      scds,
+				backend: verifier,
+			}
+		}
+
+		cs := store.NewChainStore(bs, ds, vm.Syscalls(verifier))
 		stm := stmgr.NewStateManager(cs)
 
 		prof, err := os.Create("import-bench.prof")
@@ -144,13 +170,16 @@ var importBenchCmd = &cli.Command{
 			ts = next
 		}
 
-		ibj, err := os.Create("import-bench.json")
-		if err != nil {
-			return err
-		}
-		defer ibj.Close() //nolint:errcheck
+		var enc *json.Encoder
+		if cctx.Bool("export-traces") {
+			ibj, err := os.Create("import-bench.json")
+			if err != nil {
+				return err
+			}
+			defer ibj.Close() //nolint:errcheck
 
-		enc := json.NewEncoder(ibj)
+			enc = json.NewEncoder(ibj)
+		}
 
 		var lastTse *TipSetExec
 
@@ -173,17 +202,19 @@ var importBenchCmd = &cli.Command{
 			if err != nil {
 				return err
 			}
-			stripCallers(trace)
+			if enc != nil {
+				stripCallers(trace)
 
-			lastTse = &TipSetExec{
-				TipSet:   cur.Key(),
-				Trace:    trace,
-				Duration: time.Since(start),
+				lastTse = &TipSetExec{
+					TipSet:   cur.Key(),
+					Trace:    trace,
+					Duration: time.Since(start),
+				}
+				if err := enc.Encode(lastTse); err != nil {
+					return xerrors.Errorf("failed to write out tipsetexec: %w", err)
+				}
 			}
 			lastState = st
-			if err := enc.Encode(lastTse); err != nil {
-				return xerrors.Errorf("failed to write out tipsetexec: %w", err)
-			}
 		}
 
 		pprof.StopCPUProfile()
