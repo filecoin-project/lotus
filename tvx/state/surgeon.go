@@ -98,6 +98,9 @@ func (sg *Surgeon) GetAccessedActors(ctx context.Context, a api.FullNode, mid ci
 	if err != nil {
 		return nil, err
 	}
+	if msgInfo == nil {
+		return nil, fmt.Errorf("message info is nil")
+	}
 
 	msgObj, err := a.ChainGetMessage(ctx, mid)
 	if err != nil {
