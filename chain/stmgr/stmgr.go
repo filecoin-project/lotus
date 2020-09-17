@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
+
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
@@ -18,7 +20,7 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
-	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
+	v0reward "github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/api"
@@ -242,15 +244,21 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 			processedMsgs[m.Cid()] = true
 		}
 
-		var err error
-		params, err := actors.SerializeParams(&reward.AwardBlockRewardParams{
-			Miner:     b.Miner,
-			Penalty:   penalty,
-			GasReward: gasReward,
-			WinCount:  b.WinCount,
-		})
-		if err != nil {
-			return cid.Undef, cid.Undef, xerrors.Errorf("failed to serialize award params: %w", err)
+		var params []byte
+
+		nv := sm.GetNtwkVersion(ctx, epoch)
+		if nv < build.ActorUpgradeNetworkVersion {
+			params, err = actors.SerializeParams(&v0reward.AwardBlockRewardParams{
+				Miner:     b.Miner,
+				Penalty:   penalty,
+				GasReward: gasReward,
+				WinCount:  b.WinCount,
+			})
+			if err != nil {
+				return cid.Undef, cid.Undef, xerrors.Errorf("failed to serialize award params: %w", err)
+			}
+		} else {
+			// TODO: ActorUpgrade
 		}
 
 		sysAct, err := vmi.StateTree().GetActor(builtin.SystemActorAddr)
@@ -1018,7 +1026,7 @@ func GetFilMined(ctx context.Context, st *state.StateTree) (abi.TokenAmount, err
 		return big.Zero(), xerrors.Errorf("failed to load reward state: %w", err)
 	}
 
-	return rst.TotalMined, nil
+	return rst.TotalStoragePowerReward(), nil
 }
 
 func getFilMarketLocked(ctx context.Context, st *state.StateTree) (abi.TokenAmount, error) {

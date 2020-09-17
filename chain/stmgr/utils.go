@@ -29,7 +29,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/cron"
 	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
-	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
+	v0reward "github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 
 	"github.com/filecoin-project/lotus/api"
@@ -555,7 +555,7 @@ func init() {
 		builtin.StorageMarketActorCodeID:    {builtin.MethodsMarket, market.Actor{}},
 		builtin.PaymentChannelActorCodeID:   {builtin.MethodsPaych, paych.Actor{}},
 		builtin.MultisigActorCodeID:         {builtin.MethodsMultisig, multisig.Actor{}},
-		builtin.RewardActorCodeID:           {builtin.MethodsReward, reward.Actor{}},
+		builtin.RewardActorCodeID:           {builtin.MethodsReward, v0reward.Actor{}},
 		builtin.VerifiedRegistryActorCodeID: {builtin.MethodsVerifiedRegistry, verifreg.Actor{}},
 	}
 

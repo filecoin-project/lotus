@@ -24,7 +24,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	v0power "github.com/filecoin-project/specs-actors/actors/builtin/power"
-	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
+	v0reward "github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	"github.com/filecoin-project/specs-actors/actors/builtin/system"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	vmr "github.com/filecoin-project/specs-actors/actors/runtime"
@@ -48,7 +48,7 @@ func NewInvoker() *Invoker {
 	// NETUPGRADE: register code IDs for v2, etc.
 	inv.Register(builtin.SystemActorCodeID, system.Actor{}, abi.EmptyValue{})
 	inv.Register(builtin.InitActorCodeID, init_.Actor{}, init_.State{})
-	inv.Register(builtin.RewardActorCodeID, reward.Actor{}, reward.State{})
+	inv.Register(builtin.RewardActorCodeID, v0reward.Actor{}, v0reward.State{})
 	inv.Register(builtin.CronActorCodeID, cron.Actor{}, cron.State{})
 	inv.Register(builtin.StoragePowerActorCodeID, v0power.Actor{}, v0power.State{})
 	inv.Register(builtin.StorageMarketActorCodeID, market.Actor{}, market.State{})

@@ -6,7 +6,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
+	v0reward "github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/lotus/build"
@@ -17,7 +17,7 @@ import (
 func SetupRewardActor(bs bstore.Blockstore, qaPower big.Int) (*types.Actor, error) {
 	cst := cbor.NewCborStore(bs)
 
-	st := reward.ConstructState(qaPower)
+	st := v0reward.ConstructState(qaPower)
 
 	hcid, err := cst.Put(context.TODO(), st)
 	if err != nil {

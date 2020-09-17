@@ -1,6 +1,7 @@
 package reward
 
 import (
+	"github.com/filecoin-project/go-state-types/abi"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/cbor"
@@ -30,4 +31,5 @@ type State interface {
 	cbor.Marshaler
 
 	RewardSmoothed() (builtin.FilterEstimate, error)
+	TotalStoragePowerReward() abi.TokenAmount
 }
