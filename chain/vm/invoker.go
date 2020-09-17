@@ -8,7 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
-	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
+	v0verifreg "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -55,7 +55,7 @@ func NewInvoker() *Invoker {
 	inv.Register(builtin.StorageMinerActorCodeID, v0miner.Actor{}, v0miner.State{})
 	inv.Register(builtin.MultisigActorCodeID, v0msig.Actor{}, v0msig.State{})
 	inv.Register(builtin.PaymentChannelActorCodeID, paych.Actor{}, paych.State{})
-	inv.Register(builtin.VerifiedRegistryActorCodeID, verifreg.Actor{}, verifreg.State{})
+	inv.Register(builtin.VerifiedRegistryActorCodeID, v0verifreg.Actor{}, v0verifreg.State{})
 	inv.Register(builtin.AccountActorCodeID, account.Actor{}, account.State{})
 
 	return inv

@@ -19,14 +19,14 @@ import (
 	"github.com/filecoin-project/lotus/chain/types/mock"
 	"github.com/filecoin-project/lotus/chain/vectors"
 	"github.com/filecoin-project/lotus/chain/wallet"
-	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
+	v0verifreg "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
 )
 
 func init() {
-	verifreg.MinVerifiedDealSize = big.NewInt(2048)
+	v0verifreg.MinVerifiedDealSize = big.NewInt(2048)
 	v0power.ConsensusMinerMinPower = big.NewInt(2048)
 }
 

@@ -30,7 +30,7 @@ import (
 	v0msig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	v0reward "github.com/filecoin-project/specs-actors/actors/builtin/reward"
-	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
+	v0verifreg "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -550,7 +550,7 @@ func init() {
 		builtin.PaymentChannelActorCodeID:   {builtin.MethodsPaych, paych.Actor{}},
 		builtin.MultisigActorCodeID:         {builtin.MethodsMultisig, v0msig.Actor{}},
 		builtin.RewardActorCodeID:           {builtin.MethodsReward, v0reward.Actor{}},
-		builtin.VerifiedRegistryActorCodeID: {builtin.MethodsVerifiedRegistry, verifreg.Actor{}},
+		builtin.VerifiedRegistryActorCodeID: {builtin.MethodsVerifiedRegistry, v0verifreg.Actor{}},
 	}
 
 	for c, m := range cidToMethods {

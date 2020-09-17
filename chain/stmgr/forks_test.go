@@ -13,7 +13,7 @@ import (
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	v0power "github.com/filecoin-project/specs-actors/actors/builtin/power"
-	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
+	v0verifreg "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"golang.org/x/xerrors"
 
@@ -37,7 +37,7 @@ func init() {
 		abi.RegisteredSealProof_StackedDrg2KiBV1: {},
 	}
 	v0power.ConsensusMinerMinPower = big.NewInt(2048)
-	verifreg.MinVerifiedDealSize = big.NewInt(256)
+	v0verifreg.MinVerifiedDealSize = big.NewInt(256)
 }
 
 const testForkHeight = 40

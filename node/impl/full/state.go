@@ -6,9 +6,10 @@ import (
 	"errors"
 	"strconv"
 
-	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 
 	"github.com/filecoin-project/go-state-types/dline"
+	"github.com/filecoin-project/go-state-types/network"
 
 	cid "github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -23,7 +24,6 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/filecoin-project/specs-actors/actors/util/smoothing"
 
@@ -1018,40 +1018,31 @@ func (a *StateAPI) StateMinerAvailableBalance(ctx context.Context, maddr address
 }
 
 // StateVerifiedClientStatus returns the data cap for the given address.
-// Returns nil if there is no entry in the data cap table for the
+// Returns zero if there is no entry in the data cap table for the
 // address.
-func (a *StateAPI) StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*verifreg.DataCap, error) {
+func (a *StateAPI) StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (abi.StoragePower, error) {
 	act, err := a.StateGetActor(ctx, builtin.VerifiedRegistryActorAddr, tsk)
 	if err != nil {
-		return nil, err
+		return big.Zero(), err
 	}
 
 	aid, err := a.StateLookupID(ctx, addr, tsk)
 	if err != nil {
 		log.Warnf("lookup failure %v", err)
-		return nil, err
+		return big.Zero(), err
 	}
 
-	store := a.StateManager.ChainStore().Store(ctx)
-
-	var st verifreg.State
-	if err := store.Get(ctx, act.Head, &st); err != nil {
-		return nil, err
-	}
-
-	vh, err := adt.AsMap(store, st.VerifiedClients)
+	vrs, err := verifreg.Load(a.StateManager.ChainStore().Store(ctx), act)
 	if err != nil {
-		return nil, err
+		return big.Zero(), xerrors.Errorf("failed to load verified registry state: %w", err)
 	}
 
-	var dcap verifreg.DataCap
-	if found, err := vh.Get(abi.AddrKey(aid), &dcap); err != nil {
-		return nil, err
-	} else if !found {
-		return nil, nil
+	_, dcap, err := vrs.VerifiedClientDataCap(aid)
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("looking up verified client: %w", err)
 	}
 
-	return &dcap, nil
+	return dcap, nil
 }
 
 var dealProviderCollateralNum = types.NewInt(110)

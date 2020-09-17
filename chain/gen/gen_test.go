@@ -7,7 +7,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	v0power "github.com/filecoin-project/specs-actors/actors/builtin/power"
-	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
+	v0verifreg "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
@@ -18,7 +18,7 @@ func init() {
 		abi.RegisteredSealProof_StackedDrg2KiBV1: {},
 	}
 	v0power.ConsensusMinerMinPower = big.NewInt(2048)
-	verifreg.MinVerifiedDealSize = big.NewInt(256)
+	v0verifreg.MinVerifiedDealSize = big.NewInt(256)
 }
 
 func testGeneration(t testing.TB, n int, msgs int, sectors int) {
