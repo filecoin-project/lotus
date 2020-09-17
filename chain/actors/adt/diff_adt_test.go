@@ -1,4 +1,4 @@
-package state
+package adt
 
 import (
 	"bytes"
@@ -13,7 +13,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
+	v0adt "github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 )
@@ -22,8 +22,8 @@ func TestDiffAdtArray(t *testing.T) {
 	ctxstoreA := newContextStore()
 	ctxstoreB := newContextStore()
 
-	arrA := adt.MakeEmptyArray(ctxstoreA)
-	arrB := adt.MakeEmptyArray(ctxstoreB)
+	arrA := v0adt.MakeEmptyArray(ctxstoreA)
+	arrB := v0adt.MakeEmptyArray(ctxstoreB)
 
 	require.NoError(t, arrA.Set(0, runtime.CBORBytes([]byte{0}))) // delete
 
@@ -76,8 +76,8 @@ func TestDiffAdtMap(t *testing.T) {
 	ctxstoreA := newContextStore()
 	ctxstoreB := newContextStore()
 
-	mapA := adt.MakeEmptyMap(ctxstoreA)
-	mapB := adt.MakeEmptyMap(ctxstoreB)
+	mapA := v0adt.MakeEmptyMap(ctxstoreA)
+	mapB := v0adt.MakeEmptyMap(ctxstoreB)
 
 	require.NoError(t, mapA.Put(abi.UIntKey(0), runtime.CBORBytes([]byte{0}))) // delete
 
@@ -292,12 +292,9 @@ func (t *TestDiffArray) Remove(key uint64, val *typegen.Deferred) error {
 	return nil
 }
 
-func newContextStore() *contextStore {
+func newContextStore() Store {
 	ctx := context.Background()
 	bs := bstore.NewTemporarySync()
 	store := cbornode.NewCborStore(bs)
-	return &contextStore{
-		ctx: ctx,
-		cst: store,
-	}
+	return WrapStore(ctx, store)
 }
