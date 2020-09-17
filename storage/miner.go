@@ -76,7 +76,7 @@ type storageMinerApi interface {
 	StateSectorGetInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*miner.SectorOnChainInfo, error)
 	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok types.TipSetKey) (*miner.SectorLocation, error)
 	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (miner.MinerInfo, error)
-	StateMinerDeadlines(context.Context, address.Address, types.TipSetKey) ([]miner.Deadline, error)
+	StateMinerDeadlines(context.Context, address.Address, types.TipSetKey) ([]*miner.Deadline, error)
 	StateMinerProvingDeadline(context.Context, address.Address, types.TipSetKey) (*dline.Info, error)
 	StateMinerPreCommitDepositForPower(context.Context, address.Address, miner.SectorPreCommitInfo, types.TipSetKey) (types.BigInt, error)
 	StateMinerInitialPledgeCollateral(context.Context, address.Address, miner.SectorPreCommitInfo, types.TipSetKey) (types.BigInt, error)

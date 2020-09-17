@@ -34,6 +34,9 @@ func Load(store adt.Store, act *types.Actor) (st State, err error) {
 type State interface {
 	cbor.Marshaler
 
+	AvailableBalance(abi.TokenAmount) (abi.TokenAmount, error)
+	VestedFunds(abi.ChainEpoch) (abi.TokenAmount, error)
+
 	GetSector(abi.SectorNumber) (*SectorOnChainInfo, error)
 	FindSector(abi.SectorNumber) (*SectorLocation, error)
 	GetSectorExpiration(abi.SectorNumber) (*SectorExpiration, error)

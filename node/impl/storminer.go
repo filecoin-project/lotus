@@ -328,7 +328,7 @@ func (sm *StorageMinerAPI) listDeals(ctx context.Context) ([]api.MarketDeal, err
 }
 
 func (sm *StorageMinerAPI) MarketListDeals(ctx context.Context) ([]api.MarketDeal, error) {
-	return sm.StorageProvider.listDeals(ctx)
+	return sm.listDeals(ctx)
 }
 
 func (sm *StorageMinerAPI) MarketListRetrievalDeals(ctx context.Context) ([]retrievalmarket.ProviderDealState, error) {

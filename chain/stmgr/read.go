@@ -2,6 +2,7 @@ package stmgr
 
 import (
 	"context"
+
 	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-cid"

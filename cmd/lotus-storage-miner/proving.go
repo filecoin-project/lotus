@@ -74,7 +74,7 @@ var provingFaultsCmd = &cli.Command{
 		_, _ = fmt.Fprintln(tw, "deadline\tpartition\tsectors")
 		err = mas.ForEachDeadline(func(dlIdx uint64, dl miner.Deadline) error {
 			dl.ForEachPartition(func(partIdx uint64, part miner.Partition) error {
-				faults, err := part.Faults()
+				faults, err := part.FaultySectors()
 				if err != nil {
 					return err
 				}
@@ -158,7 +158,7 @@ var provingInfoCmd = &cli.Command{
 					}
 				}
 
-				if bf, err := part.Faults(); err != nil {
+				if bf, err := part.FaultySectors(); err != nil {
 					return err
 				} else if count, err := bf.Count(); err != nil {
 					return err
@@ -166,7 +166,7 @@ var provingInfoCmd = &cli.Command{
 					faults += count
 				}
 
-				if bf, err := part.Recovering(); err != nil {
+				if bf, err := part.RecoveringSectors(); err != nil {
 					return err
 				} else if count, err := bf.Count(); err != nil {
 					return err
@@ -286,14 +286,14 @@ var provingDeadlinesCmd = &cli.Command{
 			faults := uint64(0)
 
 			for _, partition := range partitions {
-				sc, err := partition.Sectors.Count()
+				sc, err := partition.AllSectors.Count()
 				if err != nil {
 					return err
 				}
 
 				sectors += sc
 
-				fc, err := partition.Faults.Count()
+				fc, err := partition.FaultySectors.Count()
 				if err != nil {
 					return err
 				}

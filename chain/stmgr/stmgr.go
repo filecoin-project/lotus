@@ -1029,7 +1029,7 @@ func GetFilMined(ctx context.Context, st *state.StateTree) (abi.TokenAmount, err
 		return big.Zero(), xerrors.Errorf("failed to load reward state: %w", err)
 	}
 
-	return rst.TotalStoragePowerReward(), nil
+	return rst.TotalStoragePowerReward()
 }
 
 func getFilMarketLocked(ctx context.Context, st *state.StateTree) (abi.TokenAmount, error) {

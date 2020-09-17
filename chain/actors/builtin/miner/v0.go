@@ -31,6 +31,14 @@ type v0Partition struct {
 	store adt.Store
 }
 
+func (s *v0State) AvailableBalance(bal abi.TokenAmount) (abi.TokenAmount, error) {
+	return s.GetAvailableBalance(bal), nil
+}
+
+func (s *v0State) VestedFunds(epoch abi.ChainEpoch) (abi.TokenAmount, error) {
+	return s.CheckVestedFunds(s.store, epoch)
+}
+
 func (s *v0State) GetSector(num abi.SectorNumber) (*SectorOnChainInfo, error) {
 	info, ok, err := s.State.GetSector(s.store, num)
 	if !ok || err != nil {

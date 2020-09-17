@@ -33,9 +33,9 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/tablewriter"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 )
 
 var CidBaseFlag = cli.StringFlag{
@@ -417,7 +417,7 @@ var clientDealCmd = &cli.Command{
 			return err
 		}
 
-		isVerified := dcap != nil
+		isVerified := dcap != types.EmptyInt
 
 		// If the user has explicitly set the --verified-deal flag
 		if cctx.IsSet("verified-deal") {
@@ -1044,8 +1044,8 @@ var clientListDeals = &cli.Command{
 func dealFromDealInfo(ctx context.Context, full api.FullNode, head *types.TipSet, v api.DealInfo) deal {
 	if v.DealID == 0 {
 		return deal{
-			LocalDeal: v,
-			OnChainDealState: *market.EmptyDealState()
+			LocalDeal:        v,
+			OnChainDealState: *market.EmptyDealState(),
 		}
 	}
 

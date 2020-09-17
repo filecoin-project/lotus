@@ -8,8 +8,6 @@ import (
 	"io"
 	"time"
 
-	"github.com/filecoin-project/go-state-types/big"
-
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 
 	"github.com/ipfs/go-cid"
@@ -362,12 +360,14 @@ func (n *ProviderNodeAdapter) WaitForMessage(ctx context.Context, mcid cid.Cid, 
 	return cb(receipt.Receipt.ExitCode, receipt.Receipt.Return, receipt.Message, nil)
 }
 
-func (n *ProviderNodeAdapter) GetDataCap(ctx context.Context, addr address.Address, encodedTs shared.TipSetToken) (abi.StoragePower, error) {
+func (n *ProviderNodeAdapter) GetDataCap(ctx context.Context, addr address.Address, encodedTs shared.TipSetToken) (*abi.StoragePower, error) {
 	tsk, err := types.TipSetKeyFromBytes(encodedTs)
 	if err != nil {
-		return big.Zero(), err
+		return nil, err
 	}
-	return n.StateVerifiedClientStatus(ctx, addr, tsk)
+
+	sp, err := n.StateVerifiedClientStatus(ctx, addr, tsk)
+	return &sp, err
 }
 
 func (n *ProviderNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID abi.DealID, onDealExpired storagemarket.DealExpiredCallback, onDealSlashed storagemarket.DealSlashedCallback) error {

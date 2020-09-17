@@ -84,7 +84,7 @@ func (s SealingAPIAdapter) StateMinerWorkerAddress(ctx context.Context, maddr ad
 	return mi.Worker, nil
 }
 
-func (s SealingAPIAdapter) StateMinerDeadlines(ctx context.Context, maddr address.Address, tok sealing.TipSetToken) ([]miner.Deadline, error) {
+func (s SealingAPIAdapter) StateMinerDeadlines(ctx context.Context, maddr address.Address, tok sealing.TipSetToken) ([]*miner.Deadline, error) {
 	tsk, err := types.TipSetKeyFromBytes(tok)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to unmarshal TipSetToken to TipSetKey: %w", err)
@@ -251,7 +251,7 @@ func (s SealingAPIAdapter) StateMarketStorageDeal(ctx context.Context, dealID ab
 func (s SealingAPIAdapter) StateNetworkVersion(ctx context.Context, tok sealing.TipSetToken) (network.Version, error) {
 	tsk, err := types.TipSetKeyFromBytes(tok)
 	if err != nil {
-		return -1, err
+		return network.VersionMax, err
 	}
 
 	return s.delegate.StateNetworkVersion(ctx, tsk)

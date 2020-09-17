@@ -1,7 +1,6 @@
 package sub
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"

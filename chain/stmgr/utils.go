@@ -9,6 +9,10 @@ import (
 	"runtime"
 	"strings"
 
+	v0init "github.com/filecoin-project/specs-actors/actors/builtin/init"
+	v0market "github.com/filecoin-project/specs-actors/actors/builtin/market"
+	v0power "github.com/filecoin-project/specs-actors/actors/builtin/power"
+
 	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	saruntime "github.com/filecoin-project/specs-actors/actors/runtime"
@@ -541,12 +545,12 @@ var MethodsMap = map[cid.Cid]map[abi.MethodNum]MethodMeta{}
 func init() {
 	cidToMethods := map[cid.Cid][2]interface{}{
 		// builtin.SystemActorCodeID:        {builtin.MethodsSystem, system.Actor{} }- apparently it doesn't have methods
-		builtin.InitActorCodeID:             {builtin.MethodsInit, init_.Actor{}},
+		builtin.InitActorCodeID:             {builtin.MethodsInit, v0init.Actor{}},
 		builtin.CronActorCodeID:             {builtin.MethodsCron, cron.Actor{}},
 		builtin.AccountActorCodeID:          {builtin.MethodsAccount, account.Actor{}},
-		builtin.StoragePowerActorCodeID:     {builtin.MethodsPower, power.Actor{}},
-		builtin.StorageMinerActorCodeID:     {builtin.MethodsMiner, miner.Actor{}},
-		builtin.StorageMarketActorCodeID:    {builtin.MethodsMarket, market.Actor{}},
+		builtin.StoragePowerActorCodeID:     {builtin.MethodsPower, v0power.Actor{}},
+		builtin.StorageMinerActorCodeID:     {builtin.MethodsMiner, v0miner.Actor{}},
+		builtin.StorageMarketActorCodeID:    {builtin.MethodsMarket, v0market.Actor{}},
 		builtin.PaymentChannelActorCodeID:   {builtin.MethodsPaych, paych.Actor{}},
 		builtin.MultisigActorCodeID:         {builtin.MethodsMultisig, v0msig.Actor{}},
 		builtin.RewardActorCodeID:           {builtin.MethodsReward, v0reward.Actor{}},

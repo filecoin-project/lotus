@@ -325,6 +325,8 @@ type FullNode interface {
 	StateMinerPower(context.Context, address.Address, types.TipSetKey) (*MinerPower, error)
 	// StateMinerInfo returns info about the indicated miner
 	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (miner.MinerInfo, error)
+	// StateMinerDeadlines returns all the proving deadlines for the given miner
+	StateMinerDeadlines(context.Context, address.Address, types.TipSetKey) ([]*miner.Deadline, error)
 	// StateMinerFaults returns a bitfield indicating the faulty sectors of the given miner
 	StateMinerFaults(context.Context, address.Address, types.TipSetKey) (bitfield.BitField, error)
 	// StateAllMinerFaults returns all non-expired Faults that occur within lookback epochs of the given tipset

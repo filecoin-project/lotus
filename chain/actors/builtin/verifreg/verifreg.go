@@ -1,6 +1,7 @@
-package reward
+package verifreg
 
 import (
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"golang.org/x/xerrors"
 
@@ -8,15 +9,14 @@ import (
 	v0builtin "github.com/filecoin-project/specs-actors/actors/builtin"
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-var Address = v0builtin.RewardActorAddr
+var Address = v0builtin.VerifiedRegistryActorAddr
 
-func Load(store adt.Store, act *types.Actor) (st State, err error) {
+func Load(store adt.Store, act *types.Actor) (State, error) {
 	switch act.Code {
-	case v0builtin.RewardActorCodeID:
+	case v0builtin.VerifiedRegistryActorCodeID:
 		out := v0State{store: store}
 		err := store.Get(store.Context(), act.Head, &out)
 		if err != nil {
@@ -30,8 +30,5 @@ func Load(store adt.Store, act *types.Actor) (st State, err error) {
 type State interface {
 	cbor.Marshaler
 
-	RewardSmoothed() (builtin.FilterEstimate, error)
-	EffectiveBaselinePower() (abi.StoragePower, error)
-	ThisEpochBaselinePower() (abi.StoragePower, error)
-	TotalStoragePowerReward() (abi.TokenAmount, error)
+	VerifiedClientDataCap(address.Address) (bool, abi.StoragePower, error)
 }

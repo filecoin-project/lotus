@@ -167,6 +167,7 @@ type FullNodeStruct struct {
 		StateMinerProvingDeadline          func(context.Context, address.Address, types.TipSetKey) (*dline.Info, error)                                        `perm:"read"`
 		StateMinerPower                    func(context.Context, address.Address, types.TipSetKey) (*api.MinerPower, error)                                    `perm:"read"`
 		StateMinerInfo                     func(context.Context, address.Address, types.TipSetKey) (miner.MinerInfo, error)                                    `perm:"read"`
+		StateMinerDeadlines                func(context.Context, address.Address, types.TipSetKey) ([]*miner.Deadline, error)                                  `perm:"read"`
 		StateMinerFaults                   func(context.Context, address.Address, types.TipSetKey) (bitfield.BitField, error)                                  `perm:"read"`
 		StateAllMinerFaults                func(context.Context, abi.ChainEpoch, types.TipSetKey) ([]*api.Fault, error)                                        `perm:"read"`
 		StateMinerRecoveries               func(context.Context, address.Address, types.TipSetKey) (bitfield.BitField, error)                                  `perm:"read"`
@@ -749,6 +750,10 @@ func (c *FullNodeStruct) StateMinerPower(ctx context.Context, a address.Address,
 
 func (c *FullNodeStruct) StateMinerInfo(ctx context.Context, actor address.Address, tsk types.TipSetKey) (miner.MinerInfo, error) {
 	return c.Internal.StateMinerInfo(ctx, actor, tsk)
+}
+
+func (c *FullNodeStruct) StateMinerDeadlines(ctx context.Context, actor address.Address, tsk types.TipSetKey) ([]*miner.Deadline, error) {
+	return c.Internal.StateMinerDeadlines(ctx, actor, tsk)
 }
 
 func (c *FullNodeStruct) StateMinerFaults(ctx context.Context, actor address.Address, tsk types.TipSetKey) (bitfield.BitField, error) {
