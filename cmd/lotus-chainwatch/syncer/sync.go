@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-cid"
@@ -193,25 +194,36 @@ func (s *Syncer) Start(ctx context.Context) {
 					// chain without waiting for a new block to come along.
 					fallthrough
 				case store.HCApply:
+					log.Debugw("Chain Notify", "HCApply", change.Val.Height())
+					grp, ctx := errgroup.WithContext(ctx)
+
+					grp.Go(func() error {
+						if err := s.storeCirculatingSupply(ctx, change.Val); err != nil {
+							log.Errorw("failed to store circulating supply", "error", err)
+						}
+						return nil
+					})
+
 					unsynced, err := s.unsyncedBlocks(ctx, change.Val, sinceEpoch)
 					if err != nil {
 						log.Errorw("failed to gather unsynced blocks", "error", err)
 					}
 
-					if err := s.storeCirculatingSupply(ctx, change.Val); err != nil {
-						log.Errorw("failed to store circulating supply", "error", err)
-					}
-
 					if len(unsynced) == 0 {
+						grp.Wait()
 						continue
 					}
 
-					if err := s.storeHeaders(unsynced, true, time.Now()); err != nil {
-						// so this is pretty bad, need some kind of retry..
-						// for now just log an error and the blocks will be attempted again on next notifi
-						log.Errorw("failed to store unsynced blocks", "error", err)
-					}
+					grp.Go(func() error {
+						if err := s.storeHeaders(unsynced, true, time.Now()); err != nil {
+							// so this is pretty bad, need some kind of retry..
+							// for now just log an error and the blocks will be attempted again on next notifi
+							log.Errorw("failed to store unsynced blocks", "error", err)
+						}
+						return nil
+					})
 
+					grp.Wait()
 					sinceEpoch = uint64(change.Val.Height())
 				case store.HCRevert:
 					log.Debug("revert todo")
@@ -348,6 +360,9 @@ func (s *Syncer) storeHeaders(bhs map[cid.Cid]*types.BlockHeader, sync bool, tim
 	}
 	log.Debugw("Storing Headers", "count", len(bhs))
 
+	start := time.Now()
+	defer log.Debugw("Stored Headers", "duration", time.Since(start).String())
+
 	tx, err := s.db.Begin()
 	if err != nil {
 		return xerrors.Errorf("begin: %w", err)
@@ -479,48 +494,50 @@ create temp table b (like blocks excluding constraints) on commit drop;
 		}
 	}
 
-	stmt2, err := tx.Prepare(`copy b (cid, parentWeight, parentStateRoot, height, miner, "timestamp", ticket, election_proof, win_count, parent_base_fee, forksig) from stdin`)
-	if err != nil {
-		return err
-	}
-
-	for _, bh := range bhs {
-		var eproof, winCount interface{}
-		if bh.ElectionProof != nil {
-			eproof = bh.ElectionProof.VRFProof
-			winCount = bh.ElectionProof.WinCount
+	{
+		stmt2, err := tx.Prepare(`copy b (cid, parentWeight, parentStateRoot, height, miner, "timestamp", ticket, election_proof, win_count, parent_base_fee, forksig) from stdin`)
+		if err != nil {
+			return err
 		}
 
-		if bh.Ticket == nil {
-			log.Warnf("got a block with nil ticket")
+		for _, bh := range bhs {
+			var eproof, winCount interface{}
+			if bh.ElectionProof != nil {
+				eproof = bh.ElectionProof.VRFProof
+				winCount = bh.ElectionProof.WinCount
+			}
 
-			bh.Ticket = &types.Ticket{
-				VRFProof: []byte{},
+			if bh.Ticket == nil {
+				log.Warnf("got a block with nil ticket")
+
+				bh.Ticket = &types.Ticket{
+					VRFProof: []byte{},
+				}
+			}
+
+			if _, err := stmt2.Exec(
+				bh.Cid().String(),
+				bh.ParentWeight.String(),
+				bh.ParentStateRoot.String(),
+				bh.Height,
+				bh.Miner.String(),
+				bh.Timestamp,
+				bh.Ticket.VRFProof,
+				eproof,
+				winCount,
+				bh.ParentBaseFee.String(),
+				bh.ForkSignaling); err != nil {
+				log.Error(err)
 			}
 		}
 
-		if _, err := stmt2.Exec(
-			bh.Cid().String(),
-			bh.ParentWeight.String(),
-			bh.ParentStateRoot.String(),
-			bh.Height,
-			bh.Miner.String(),
-			bh.Timestamp,
-			bh.Ticket.VRFProof,
-			eproof,
-			winCount,
-			bh.ParentBaseFee.String(),
-			bh.ForkSignaling); err != nil {
-			log.Error(err)
+		if err := stmt2.Close(); err != nil {
+			return xerrors.Errorf("s2 close: %w", err)
 		}
-	}
 
-	if err := stmt2.Close(); err != nil {
-		return xerrors.Errorf("s2 close: %w", err)
-	}
-
-	if _, err := tx.Exec(`insert into blocks select * from b on conflict do nothing `); err != nil {
-		return xerrors.Errorf("blk put: %w", err)
+		if _, err := tx.Exec(`insert into blocks select * from b on conflict do nothing `); err != nil {
+			return xerrors.Errorf("blk put: %w", err)
+		}
 	}
 
 	return tx.Commit()
