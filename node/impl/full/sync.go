@@ -9,7 +9,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -21,8 +20,7 @@ type SyncAPI struct {
 
 	SlashFilter *slashfilter.SlashFilter
 	Syncer      *chain.Syncer
-	PubSub      *pubsub.PubSub
-	NetName     dtypes.NetworkName
+	Topic       *dtypes.BlocksTopic
 }
 
 func (a *SyncAPI) SyncState(ctx context.Context) (*api.SyncState, error) {
@@ -89,8 +87,7 @@ func (a *SyncAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) erro
 	if err != nil {
 		return xerrors.Errorf("serializing block for pubsub publishing failed: %w", err)
 	}
-
-	return a.PubSub.Publish(build.BlocksTopic(a.NetName), b) //nolint:staticcheck
+	return (*pubsub.Topic)(a.Topic).Publish(ctx, b)
 }
 
 func (a *SyncAPI) SyncIncomingBlocks(ctx context.Context) (<-chan *types.BlockHeader, error) {

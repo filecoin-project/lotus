@@ -278,6 +278,7 @@ func Online() Option {
 			Override(SetGenesisKey, modules.DoSetGenesis),
 
 			Override(new(dtypes.NetworkName), modules.NetworkName),
+			Override(new(*dtypes.BlocksTopic), modules.BlocksTopic),
 			Override(new(*hello.Service), hello.NewHelloService),
 			Override(new(exchange.Server), exchange.NewServer),
 			Override(new(*peermgr.PeerMgr), peermgr.NewPeerMgr),

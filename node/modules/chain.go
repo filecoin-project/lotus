@@ -18,6 +18,7 @@ import (
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/exchange"
@@ -161,6 +162,14 @@ func NetworkName(mctx helpers.MetricsCtx, lc fx.Lifecycle, cs *store.ChainStore,
 
 	netName, err := stmgr.GetNetworkName(ctx, stmgr.NewStateManager(cs), cs.GetHeaviestTipSet().ParentState())
 	return netName, err
+}
+
+func BlocksTopic(ps *pubsub.PubSub, nn dtypes.NetworkName) (*dtypes.BlocksTopic, error) {
+	topic, err := ps.Join(build.BlocksTopic(nn))
+	if err != nil {
+		return nil, err
+	}
+	return (*dtypes.BlocksTopic)(topic), nil
 }
 
 type SyncerParams struct {

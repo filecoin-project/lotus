@@ -78,10 +78,10 @@ func RunChainExchange(h host.Host, svc exchange.Server) {
 	h.SetStreamHandler(exchange.ChainExchangeProtocolID, svc.HandleStream) // new
 }
 
-func HandleIncomingBlocks(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.PubSub, s *chain.Syncer, bserv dtypes.ChainBlockService, chain *store.ChainStore, stmgr *stmgr.StateManager, h host.Host, nn dtypes.NetworkName) {
+func HandleIncomingBlocks(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.PubSub, s *chain.Syncer, bserv dtypes.ChainBlockService, chain *store.ChainStore, stmgr *stmgr.StateManager, h host.Host, topic *dtypes.BlocksTopic) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
-	blocksub, err := ps.Subscribe(build.BlocksTopic(nn)) //nolint
+	blocksub, err := (*pubsub.Topic)(topic).Subscribe()
 	if err != nil {
 		panic(err)
 	}
@@ -93,7 +93,7 @@ func HandleIncomingBlocks(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.P
 			h.ConnManager().TagPeer(p, "badblock", -1000)
 		})
 
-	if err := ps.RegisterTopicValidator(build.BlocksTopic(nn), v.Validate); err != nil {
+	if err := ps.RegisterTopicValidator((*pubsub.Topic)(topic).String(), v.Validate); err != nil {
 		panic(err)
 	}
 
