@@ -1593,7 +1593,7 @@ func (syncer *Syncer) fetchMessages(ctx context.Context, headers []*types.TipSet
 	}
 	wg.Wait()
 
-	if batchErr != nil {
+	if batchErr == nil {
 		dt := build.Clock.Since(start)
 		log.Infof("fetching messages for %d tipsets at %d done; took %s", batchSize, startOffset, dt)
 	}
