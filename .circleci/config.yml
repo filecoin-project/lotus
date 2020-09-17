@@ -346,15 +346,6 @@ jobs:
       - run: git --no-pager diff
       - run: git --no-pager diff --quiet
 
-  docs-check:
-    executor: golang
-    steps:
-      - install-deps
-      - prepare
-      - run: make docsgen
-      - run: git --no-pager diff
-      - run: git --no-pager diff --quiet
-
   lint: &lint
     description: |
       Run golangci-lint.
@@ -424,7 +415,6 @@ workflows:
       - mod-tidy-check
       - gofmt
       - cbor-gen-check
-      - docs-check
       - test:
           codecov-upload: true
           test-suite-name: full
