@@ -4,6 +4,10 @@ import (
 	"bytes"
 	"context"
 
+	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -12,7 +16,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	v0adt "github.com/filecoin-project/specs-actors/actors/util/adt"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	typegen "github.com/whyrusleeping/cbor-gen"
@@ -387,28 +390,18 @@ func (m *MinerSectorChanges) Remove(key uint64, val *typegen.Deferred) error {
 
 func (sp *StatePredicates) OnMinerSectorChange() DiffMinerActorStateFunc {
 	return func(ctx context.Context, oldState, newState *miner.State) (changed bool, user UserData, err error) {
-		ctxStore := &contextStore{
-			ctx: ctx,
-			cst: sp.cst,
-		}
-
 		sectorChanges := &MinerSectorChanges{
 			Added:    []miner.SectorOnChainInfo{},
 			Extended: []SectorExtensions{},
 			Removed:  []miner.SectorOnChainInfo{},
 		}
 
-		// no sector changes
-		if oldState.Sectors.Equals(newState.Sectors) {
-			return false, nil, nil
-		}
-
-		oldSectors, err := v0adt.AsArray(ctxStore, oldState.Sectors)
+		oldSectors, err := oldState.LoadSectorsFromSet(nil, false)
 		if err != nil {
 			return false, nil, err
 		}
 
-		newSectors, err := v0adt.AsArray(ctxStore, newState.Sectors)
+		newSectors, err := newState.LoadSectorsFromSet(nil, false)
 		if err != nil {
 			return false, nil, err
 		}
@@ -436,7 +429,7 @@ func (m *MinerPreCommitChanges) AsKey(key string) (abi.Keyer, error) {
 	if err != nil {
 		return nil, err
 	}
-	return miner.SectorKey(abi.SectorNumber(sector)), nil
+	return v0miner.SectorKey(abi.SectorNumber(sector)), nil
 }
 
 func (m *MinerPreCommitChanges) Add(key string, val *typegen.Deferred) error {
@@ -465,26 +458,17 @@ func (m *MinerPreCommitChanges) Remove(key string, val *typegen.Deferred) error 
 
 func (sp *StatePredicates) OnMinerPreCommitChange() DiffMinerActorStateFunc {
 	return func(ctx context.Context, oldState, newState *miner.State) (changed bool, user UserData, err error) {
-		ctxStore := &contextStore{
-			ctx: ctx,
-			cst: sp.cst,
-		}
-
 		precommitChanges := &MinerPreCommitChanges{
 			Added:   []miner.SectorPreCommitOnChainInfo{},
 			Removed: []miner.SectorPreCommitOnChainInfo{},
 		}
 
-		if oldState.PreCommittedSectors.Equals(newState.PreCommittedSectors) {
-			return false, nil, nil
-		}
-
-		oldPrecommits, err := v0adt.AsMap(ctxStore, oldState.PreCommittedSectors)
+		oldPrecommits, err := oldState.LoadPreCommittedSectors()
 		if err != nil {
 			return false, nil, err
 		}
 
-		newPrecommits, err := v0adt.AsMap(ctxStore, newState.PreCommittedSectors)
+		newPrecommits, err := newState.LoadPreCommittedSectors()
 		if err != nil {
 			return false, nil, err
 		}

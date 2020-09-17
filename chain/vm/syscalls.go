@@ -7,6 +7,8 @@ import (
 	goruntime "runtime"
 	"sync"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+
 	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
 	"github.com/filecoin-project/go-address"
@@ -21,9 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/sigs"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 )
@@ -197,7 +197,7 @@ func (ss *syscallShim) VerifyBlockSig(blk *types.BlockHeader) error {
 		return err
 	}
 
-	info, err := mas.GetInfo(adt.WrapStore(ss.ctx, ss.cst))
+	info, err := mas.Info()
 	if err != nil {
 		return err
 	}

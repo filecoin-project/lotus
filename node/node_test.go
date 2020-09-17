@@ -10,7 +10,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
-	saminer "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	v0power "github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	logging "github.com/ipfs/go-log/v2"
@@ -22,7 +22,7 @@ func init() {
 	_ = logging.SetLogLevel("*", "INFO")
 
 	v0power.ConsensusMinerMinPower = big.NewInt(2048)
-	saminer.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
+	v0miner.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
 		abi.RegisteredSealProof_StackedDrg2KiBV1: {},
 	}
 	verifreg.MinVerifiedDealSize = big.NewInt(256)
@@ -68,7 +68,7 @@ func TestAPIDealFlowReal(t *testing.T) {
 	logging.SetLogLevel("sub", "ERROR")
 	logging.SetLogLevel("storageminer", "ERROR")
 
-	saminer.PreCommitChallengeDelay = 5
+	v0miner.PreCommitChallengeDelay = 5
 
 	t.Run("basic", func(t *testing.T) {
 		test.TestDealFlow(t, builder.Builder, time.Second, false, false)

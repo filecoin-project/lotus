@@ -1,7 +1,6 @@
 package miner
 
 import (
-	"bytes"
 	"errors"
 
 	"github.com/filecoin-project/go-address"
@@ -132,13 +131,12 @@ func (s *v0State) GetPrecommittedSector(num abi.SectorNumber) (*SectorPreCommitO
 	return info, nil
 }
 
-func (s *v0State) LoadSectorsFromSet(filter *bitfield.BitField, filterOut bool) ([]*ChainSectorInfo, error) {
+func (s *v0State) LoadSectorsFromSet(filter *bitfield.BitField, filterOut bool) (adt.Array, error) {
 	a, err := v0adt.AsArray(s.store, s.State.Sectors)
 	if err != nil {
 		return nil, err
 	}
 
-	var sset []*ChainSectorInfo
 	var v cbg.Deferred
 	if err := a.ForEach(&v, func(i int64) error {
 		if filter != nil {
@@ -147,24 +145,31 @@ func (s *v0State) LoadSectorsFromSet(filter *bitfield.BitField, filterOut bool) 
 				return xerrors.Errorf("filter check error: %w", err)
 			}
 			if set == filterOut {
-				return nil
+				err = a.Delete(uint64(i))
+				if err != nil {
+					return xerrors.Errorf("filtering error: %w", err)
+				}
 			}
 		}
-
-		var oci v0miner.SectorOnChainInfo
-		if err := oci.UnmarshalCBOR(bytes.NewReader(v.Raw)); err != nil {
-			return err
-		}
-		sset = append(sset, &ChainSectorInfo{
-			Info: oci,
-			ID:   abi.SectorNumber(i),
-		})
 		return nil
 	}); err != nil {
 		return nil, err
 	}
 
-	return sset, nil
+	return a, nil
+}
+
+func (s *v0State) LoadPreCommittedSectors() (adt.Map, error) {
+	return v0adt.AsMap(s.store, s.State.PreCommittedSectors)
+}
+
+func (s *v0State) IsAllocated(num abi.SectorNumber) (bool, error) {
+	var allocatedSectors bitfield.BitField
+	if err := s.store.Get(s.store.Context(), s.State.AllocatedSectors, &allocatedSectors); err != nil {
+		return false, err
+	}
+
+	return allocatedSectors.IsSet(uint64(num))
 }
 
 func (s *v0State) LoadDeadline(idx uint64) (Deadline, error) {

@@ -15,7 +15,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 
 	"github.com/filecoin-project/go-state-types/big"
-	saminer "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	v0power "github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 
@@ -41,7 +41,7 @@ import (
 
 func init() {
 	v0power.ConsensusMinerMinPower = big.NewInt(2048)
-	saminer.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
+	v0miner.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
 		abi.RegisteredSealProof_StackedDrg2KiBV1: {},
 	}
 	verifreg.MinVerifiedDealSize = big.NewInt(256)

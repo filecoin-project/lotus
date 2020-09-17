@@ -14,20 +14,18 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/ipfs/go-cid"
 
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/apibstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
-	iminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/journal"
@@ -155,7 +153,7 @@ func (s *WindowPoStScheduler) checkSectors(ctx context.Context, check bitfield.B
 	return sbf, nil
 }
 
-func (s *WindowPoStScheduler) checkNextRecoveries(ctx context.Context, dlIdx uint64, partitions []iminer.Partition) ([]miner.RecoveryDeclaration, *types.SignedMessage, error) {
+func (s *WindowPoStScheduler) checkNextRecoveries(ctx context.Context, dlIdx uint64, partitions []miner.Partition) ([]miner.RecoveryDeclaration, *types.SignedMessage, error) {
 	ctx, span := trace.StartSpan(ctx, "storage.checkNextRecoveries")
 	defer span.End()
 
@@ -167,11 +165,11 @@ func (s *WindowPoStScheduler) checkNextRecoveries(ctx context.Context, dlIdx uin
 	for partIdx, partition := range partitions {
 		faults, err := partition.FaultySectors()
 		if err != nil {
-			return xerrors.Errorf("getting faults: %w", err)
+			return nil, nil, xerrors.Errorf("getting faults: %w", err)
 		}
 		recovering, err := partition.RecoveringSectors()
 		if err != nil {
-			return xerrors.Errorf("getting recovering: %w", err)
+			return nil, nil, xerrors.Errorf("getting recovering: %w", err)
 		}
 		unrecovered, err := bitfield.SubtractBitField(faults, recovering)
 		if err != nil {
@@ -254,7 +252,7 @@ func (s *WindowPoStScheduler) checkNextRecoveries(ctx context.Context, dlIdx uin
 	return recoveries, sm, nil
 }
 
-func (s *WindowPoStScheduler) checkNextFaults(ctx context.Context, dlIdx uint64, partitions []iminer.Partition) ([]miner.FaultDeclaration, *types.SignedMessage, error) {
+func (s *WindowPoStScheduler) checkNextFaults(ctx context.Context, dlIdx uint64, partitions []miner.Partition) ([]miner.FaultDeclaration, *types.SignedMessage, error) {
 	ctx, span := trace.StartSpan(ctx, "storage.checkNextFaults")
 	defer span.End()
 
@@ -348,7 +346,7 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *ty
 		return nil, xerrors.Errorf("resolving actor: %w", err)
 	}
 
-	mas, err := iminer.Load(stor, act)
+	mas, err := miner.Load(stor, act)
 	if err != nil {
 		return nil, xerrors.Errorf("getting miner state: %w", err)
 	}
@@ -365,8 +363,8 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *ty
 			log.Errorf("loading deadline: %v", err)
 			return
 		}
-		var partitions []iminer.Partition
-		err = dl.ForEachPartition(func(_ uint64, part iminer.Partition) error {
+		var partitions []miner.Partition
+		err = dl.ForEachPartition(func(_ uint64, part miner.Partition) error {
 			partitions = append(partitions, part)
 			return nil
 		})
@@ -435,9 +433,9 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *ty
 		return nil, xerrors.Errorf("loading deadline: %w", err)
 	}
 
-	var partitions []iminer.Partitions
-	err = dl.ForEachPartition(func(_ uint64, part iminer.Partition) error {
-		partitions = apppend(partitions, part)
+	var partitions []miner.Partition
+	err = dl.ForEachPartition(func(_ uint64, part miner.Partition) error {
+		partitions = append(partitions, part)
 		return nil
 	})
 	if err != nil {
@@ -465,7 +463,11 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *ty
 				return nil, xerrors.Errorf("getting active sectors: %w", err)
 			}
 
-			toProve, err = bitfield.MergeBitFields(toProve, partition.Recoveries)
+			recs, err := partition.RecoveringSectors()
+			if err != nil {
+				return nil, xerrors.Errorf("getting recovering sectors: %w", err)
+			}
+			toProve, err = bitfield.MergeBitFields(toProve, recs)
 			if err != nil {
 				return nil, xerrors.Errorf("adding recoveries to set of sectors to prove: %w", err)
 			}
@@ -492,7 +494,12 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *ty
 
 			skipCount += sc
 
-			ssi, err := s.sectorsForProof(ctx, good, partition.Sectors, ts)
+			partitionSectors, err := partition.AllSectors()
+			if err != nil {
+				return nil, xerrors.Errorf("getting partition sectors: %w", err)
+			}
+
+			ssi, err := s.sectorsForProof(ctx, good, partitionSectors, ts)
 			if err != nil {
 				return nil, xerrors.Errorf("getting sorted sector info: %w", err)
 			}

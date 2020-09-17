@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 
-	"github.com/filecoin-project/go-bitfield"
+	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -16,7 +16,6 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/apibstore"
@@ -84,7 +83,7 @@ func (s SealingAPIAdapter) StateMinerWorkerAddress(ctx context.Context, maddr ad
 	return mi.Worker, nil
 }
 
-func (s SealingAPIAdapter) StateMinerDeadlines(ctx context.Context, maddr address.Address, tok sealing.TipSetToken) ([]*miner.Deadline, error) {
+func (s SealingAPIAdapter) StateMinerDeadlines(ctx context.Context, maddr address.Address, tok sealing.TipSetToken) ([]miner.Deadline, error) {
 	tsk, err := types.TipSetKeyFromBytes(tok)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to unmarshal TipSetToken to TipSetKey: %w", err)
@@ -185,23 +184,13 @@ func (s SealingAPIAdapter) StateSectorPreCommitInfo(ctx context.Context, maddr a
 	if err != nil {
 		return nil, xerrors.Errorf("handleSealFailed(%d): temp error: loading miner state: %+v", sectorNumber, err)
 	}
-	stor := store.ActorStore(ctx, apibstore.NewAPIBlockstore(s.delegate))
-	precommits, err := adt.AsMap(stor, state.PreCommittedSectors)
-	if err != nil {
-		return nil, err
-	}
 
-	var pci miner.SectorPreCommitOnChainInfo
-	ok, err := precommits.Get(abi.UIntKey(uint64(sectorNumber)), &pci)
+	pci, err := state.GetPrecommittedSector(sectorNumber)
 	if err != nil {
 		return nil, err
 	}
-	if !ok {
-		var allocated bitfield.BitField
-		if err := stor.Get(ctx, state.AllocatedSectors, &allocated); err != nil {
-			return nil, xerrors.Errorf("loading allocated sector bitfield: %w", err)
-		}
-		set, err := allocated.IsSet(uint64(sectorNumber))
+	if pci != nil {
+		set, err := state.IsAllocated(sectorNumber)
 		if err != nil {
 			return nil, xerrors.Errorf("checking if sector is allocated: %w", err)
 		}
@@ -212,7 +201,7 @@ func (s SealingAPIAdapter) StateSectorPreCommitInfo(ctx context.Context, maddr a
 		return nil, nil
 	}
 
-	return &pci, nil
+	return pci, nil
 }
 
 func (s SealingAPIAdapter) StateSectorGetInfo(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok sealing.TipSetToken) (*miner.SectorOnChainInfo, error) {
@@ -256,6 +245,15 @@ func (s SealingAPIAdapter) StateMarketStorageDeal(ctx context.Context, dealID ab
 	}
 
 	return deal.Proposal, nil
+}
+
+func (s SealingAPIAdapter) StateNetworkVersion(ctx context.Context, tok sealing.TipSetToken) (network.Version, error) {
+	tsk, err := types.TipSetKeyFromBytes(tok)
+	if err != nil {
+		return -1, err
+	}
+
+	return s.delegate.StateNetworkVersion(ctx, tsk)
 }
 
 func (s SealingAPIAdapter) SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error) {

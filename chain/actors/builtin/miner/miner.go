@@ -38,7 +38,9 @@ type State interface {
 	FindSector(abi.SectorNumber) (*SectorLocation, error)
 	GetSectorExpiration(abi.SectorNumber) (*SectorExpiration, error)
 	GetPrecommittedSector(abi.SectorNumber) (*SectorPreCommitOnChainInfo, error)
-	LoadSectorsFromSet(filter *bitfield.BitField, filterOut bool) ([]*ChainSectorInfo, error)
+	LoadSectorsFromSet(filter *bitfield.BitField, filterOut bool) (adt.Array, error)
+	LoadPreCommittedSectorsFromSet(filter *bitfield.BitField, filterOut bool) (adt.Map, error)
+	IsAllocated(abi.SectorNumber) (bool, error)
 
 	LoadDeadline(idx uint64) (Deadline, error)
 	ForEachDeadline(cb func(idx uint64, dl Deadline) error) error
@@ -65,6 +67,15 @@ type Partition interface {
 type SectorOnChainInfo = v0miner.SectorOnChainInfo
 type SectorPreCommitInfo = v0miner.SectorPreCommitInfo
 type SectorPreCommitOnChainInfo = v0miner.SectorPreCommitOnChainInfo
+type PoStPartition = v0miner.PoStPartition
+type RecoveryDeclaration = v0miner.RecoveryDeclaration
+type FaultDeclaration = v0miner.FaultDeclaration
+
+// Params
+type DeclareFaultsParams = v0miner.DeclareFaultsParams
+type DeclareFaultsRecoveredParams = v0miner.DeclareFaultsRecoveredParams
+type SubmitWindowedPoStParams = v0miner.SubmitWindowedPoStParams
+type ProveCommitSectorParams = v0miner.ProveCommitSectorParams
 
 type MinerInfo struct {
 	Owner                      address.Address   // Must be an ID-address.

@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"context"
 
+	"github.com/filecoin-project/lotus/build"
+	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+
 	v0proof "github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
 	"golang.org/x/xerrors"
@@ -13,7 +16,6 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/sector-storage/zerocomm"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 )
 
 // TODO: For now we handle this by halting state execution, when we get jsonrpc reconnecting
@@ -93,7 +95,19 @@ func checkPrecommit(ctx context.Context, maddr address.Address, si SectorInfo, t
 		return &ErrBadCommD{xerrors.Errorf("on chain CommD differs from sector: %s != %s", commD, si.CommD)}
 	}
 
-	if height-(si.TicketEpoch+SealRandomnessLookback) > SealRandomnessLookbackLimit(si.SectorType) {
+	nv, err := api.StateNetworkVersion(ctx, tok)
+	if err != nil {
+		return &ErrApi{xerrors.Errorf("calling StateNetworkVersion: %w", err)}
+	}
+
+	var msd abi.ChainEpoch
+	if nv < build.ActorUpgradeNetworkVersion {
+		msd = v0miner.MaxSealDuration[si.SectorType]
+	} else {
+		// TODO: ActorUpgrade
+	}
+
+	if height-(si.TicketEpoch+SealRandomnessLookback) > msd {
 		return &ErrExpiredTicket{xerrors.Errorf("ticket expired: seal height: %d, head: %d", si.TicketEpoch+SealRandomnessLookback, height)}
 	}
 
@@ -139,8 +153,13 @@ func (m *Sealing) checkCommit(ctx context.Context, si SectorInfo, proof []byte, 
 		return &ErrNoPrecommit{xerrors.Errorf("precommit info not found on-chain")}
 	}
 
-	if pci.PreCommitEpoch+miner.PreCommitChallengeDelay != si.SeedEpoch {
-		return &ErrBadSeed{xerrors.Errorf("seed epoch doesn't match on chain info: %d != %d", pci.PreCommitEpoch+miner.PreCommitChallengeDelay, si.SeedEpoch)}
+	pccd, err := m.getPreCommitChallengeDelay(ctx, tok)
+	if err != nil {
+		return xerrors.Errorf("failed to get precommit challenge delay: %w", err)
+	}
+
+	if pci.PreCommitEpoch+pccd != si.SeedEpoch {
+		return &ErrBadSeed{xerrors.Errorf("seed epoch doesn't match on chain info: %d != %d", pci.PreCommitEpoch+pccd, si.SeedEpoch)}
 	}
 
 	buf := new(bytes.Buffer)

@@ -9,7 +9,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 )
 
 // /////
@@ -23,6 +23,7 @@ const UnixfsLinksPerLevel = 1024
 
 const AllowableClockDriftSecs = uint64(1)
 const NewestNetworkVersion = network.Version2
+const ActorUpgradeNetworkVersion = network.Version3
 
 // Epochs
 const ForkLengthThreshold = Finality
@@ -31,7 +32,7 @@ const ForkLengthThreshold = Finality
 var BlocksPerEpoch = uint64(builtin.ExpectedLeadersPerEpoch)
 
 // Epochs
-const Finality = miner.ChainFinality
+const Finality = v0miner.ChainFinality
 const MessageConfidence = uint64(5)
 
 // constants for Weight calculation

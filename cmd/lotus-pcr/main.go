@@ -12,6 +12,11 @@ import (
 	"strconv"
 	"time"
 
+	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+
+	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 
@@ -24,7 +29,6 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
@@ -321,6 +325,7 @@ type refunderNodeApi interface {
 	StateMinerInitialPledgeCollateral(ctx context.Context, addr address.Address, precommitInfo miner.SectorPreCommitInfo, tsk types.TipSetKey) (types.BigInt, error)
 	StateSectorPreCommitInfo(ctx context.Context, addr address.Address, sector abi.SectorNumber, tsk types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error)
 	StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error)
+	StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error)
 	MpoolPushMessage(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec) (*types.SignedMessage, error)
 	GasEstimateGasPremium(ctx context.Context, nblocksincl uint64, sender address.Address, gaslimit int64, tsk types.TipSetKey) (types.BigInt, error)
 	WalletBalance(ctx context.Context, addr address.Address) (types.BigInt, error)
@@ -389,14 +394,28 @@ func (r *refunder) ProcessTipset(ctx context.Context, tipset *types.TipSet, refu
 				continue
 			}
 
-			var proveCommitSector miner.ProveCommitSectorParams
-			if err := proveCommitSector.UnmarshalCBOR(bytes.NewBuffer(m.Params)); err != nil {
-				log.Warnw("failed to decode provecommit params", "err", err, "method", messageMethod, "cid", msg.Cid, "miner", m.To)
+			var sn abi.SectorNumber
+
+			nv, err := r.api.StateNetworkVersion(ctx, tipset.Key())
+			if err != nil {
+				log.Warnw("failed to get network version")
 				continue
 			}
 
+			if nv < build.ActorUpgradeNetworkVersion {
+				var proveCommitSector v0miner.ProveCommitSectorParams
+				if err := proveCommitSector.UnmarshalCBOR(bytes.NewBuffer(m.Params)); err != nil {
+					log.Warnw("failed to decode provecommit params", "err", err, "method", messageMethod, "cid", msg.Cid, "miner", m.To)
+					continue
+				}
+
+				sn = proveCommitSector.SectorNumber
+			} else {
+				// TODO: ActorUpgrade
+			}
+
 			// We use the parent tipset key because precommit information is removed when ProveCommitSector is executed
-			precommitChainInfo, err := r.api.StateSectorPreCommitInfo(ctx, m.To, proveCommitSector.SectorNumber, tipset.Parents())
+			precommitChainInfo, err := r.api.StateSectorPreCommitInfo(ctx, m.To, sn, tipset.Parents())
 			if err != nil {
 				log.Warnw("failed to get precommit info for sector", "err", err, "method", messageMethod, "cid", msg.Cid, "miner", m.To, "sector_number", proveCommitSector.SectorNumber)
 				continue

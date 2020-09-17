@@ -20,7 +20,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/cron"
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	v0power "github.com/filecoin-project/specs-actors/actors/builtin/power"
@@ -52,7 +52,7 @@ func NewInvoker() *Invoker {
 	inv.Register(builtin.CronActorCodeID, cron.Actor{}, cron.State{})
 	inv.Register(builtin.StoragePowerActorCodeID, v0power.Actor{}, v0power.State{})
 	inv.Register(builtin.StorageMarketActorCodeID, market.Actor{}, market.State{})
-	inv.Register(builtin.StorageMinerActorCodeID, miner.Actor{}, miner.State{})
+	inv.Register(builtin.StorageMinerActorCodeID, v0miner.Actor{}, v0miner.State{})
 	inv.Register(builtin.MultisigActorCodeID, multisig.Actor{}, multisig.State{})
 	inv.Register(builtin.PaymentChannelActorCodeID, paych.Actor{}, paych.State{})
 	inv.Register(builtin.VerifiedRegistryActorCodeID, verifreg.Actor{}, verifreg.State{})

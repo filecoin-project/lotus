@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math/rand"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -18,7 +20,7 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	v0power "github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
@@ -123,9 +125,10 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 			}
 			minerInfos[i].maddr = ma.IDAddress
 
-			err = vm.MutateState(ctx, minerInfos[i].maddr, func(cst cbor.IpldStore, st *miner.State) error {
-				maxPeriods := miner.MaxSectorExpirationExtension / miner.WPoStProvingPeriod
-				minerInfos[i].presealExp = (maxPeriods-1)*miner.WPoStProvingPeriod + st.ProvingPeriodStart - 1
+			// TODO: ActorUpgrade
+			err = vm.MutateState(ctx, minerInfos[i].maddr, func(cst cbor.IpldStore, st *v0miner.State) error {
+				maxPeriods := v0miner.MaxSectorExpirationExtension / v0miner.WPoStProvingPeriod
+				minerInfos[i].presealExp = (maxPeriods-1)*v0miner.WPoStProvingPeriod + st.ProvingPeriodStart - 1
 
 				return nil
 			})
@@ -201,7 +204,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 					return cid.Undef, xerrors.Errorf("getting deal weight: %w", err)
 				}
 
-				sectorWeight := miner.QAPowerForWeight(m.SectorSize, minerInfos[i].presealExp, dweight.DealWeight, dweight.VerifiedDealWeight)
+				sectorWeight := v0miner.QAPowerForWeight(m.SectorSize, minerInfos[i].presealExp, dweight.DealWeight, dweight.VerifiedDealWeight)
 
 				qaPow = types.BigAdd(qaPow, sectorWeight)
 			}
@@ -246,7 +249,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 					return cid.Undef, xerrors.Errorf("getting deal weight: %w", err)
 				}
 
-				sectorWeight := miner.QAPowerForWeight(m.SectorSize, minerInfos[i].presealExp, dweight.DealWeight, dweight.VerifiedDealWeight)
+				sectorWeight := v0miner.QAPowerForWeight(m.SectorSize, minerInfos[i].presealExp, dweight.DealWeight, dweight.VerifiedDealWeight)
 
 				// we've added fake power for this sector above, remove it now
 				err = vm.MutateState(ctx, builtin.StoragePowerActorAddr, func(cst cbor.IpldStore, st *v0power.State) error {
@@ -268,9 +271,9 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 					return cid.Undef, xerrors.Errorf("getting current total power: %w", err)
 				}
 
-				pcd := miner.PreCommitDepositForPower(epochReward.ThisEpochRewardSmoothed, tpow.QualityAdjPowerSmoothed, sectorWeight)
+				pcd := v0miner.PreCommitDepositForPower(epochReward.ThisEpochRewardSmoothed, tpow.QualityAdjPowerSmoothed, sectorWeight)
 
-				pledge := miner.InitialPledgeForPower(
+				pledge := v0miner.InitialPledgeForPower(
 					sectorWeight,
 					epochReward.ThisEpochBaselinePower,
 					tpow.PledgeCollateral,

@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+
 	"github.com/filecoin-project/go-bitfield"
 
 	"github.com/stretchr/testify/require"
@@ -20,7 +22,7 @@ import (
 	v0builtin "github.com/filecoin-project/specs-actors/actors/builtin"
 	v0market "github.com/filecoin-project/specs-actors/actors/builtin/market"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	tutils "github.com/filecoin-project/specs-actors/support/testing"
 
@@ -375,12 +377,12 @@ func TestMinerSectorChange(t *testing.T) {
 	}
 
 	owner, worker := nextIDAddrF(), nextIDAddrF()
-	si0 := newSectorOnChainInfo(0, tutils.MakeCID("0", &miner.SealedCIDPrefix), big.NewInt(0), abi.ChainEpoch(0), abi.ChainEpoch(10))
-	si1 := newSectorOnChainInfo(1, tutils.MakeCID("1", &miner.SealedCIDPrefix), big.NewInt(1), abi.ChainEpoch(1), abi.ChainEpoch(11))
-	si2 := newSectorOnChainInfo(2, tutils.MakeCID("2", &miner.SealedCIDPrefix), big.NewInt(2), abi.ChainEpoch(2), abi.ChainEpoch(11))
+	si0 := newSectorOnChainInfo(0, tutils.MakeCID("0", &v0miner.SealedCIDPrefix), big.NewInt(0), abi.ChainEpoch(0), abi.ChainEpoch(10))
+	si1 := newSectorOnChainInfo(1, tutils.MakeCID("1", &v0miner.SealedCIDPrefix), big.NewInt(1), abi.ChainEpoch(1), abi.ChainEpoch(11))
+	si2 := newSectorOnChainInfo(2, tutils.MakeCID("2", &v0miner.SealedCIDPrefix), big.NewInt(2), abi.ChainEpoch(2), abi.ChainEpoch(11))
 	oldMinerC := createMinerState(ctx, t, store, owner, worker, []miner.SectorOnChainInfo{si0, si1, si2})
 
-	si3 := newSectorOnChainInfo(3, tutils.MakeCID("3", &miner.SealedCIDPrefix), big.NewInt(3), abi.ChainEpoch(3), abi.ChainEpoch(12))
+	si3 := newSectorOnChainInfo(3, tutils.MakeCID("3", &v0miner.SealedCIDPrefix), big.NewInt(3), abi.ChainEpoch(3), abi.ChainEpoch(12))
 	// 0 delete
 	// 1 extend
 	// 2 same
@@ -545,20 +547,20 @@ func createMinerState(ctx context.Context, t *testing.T, store adt.Store, owner,
 	return stateC
 }
 
-func createEmptyMinerState(ctx context.Context, t *testing.T, store adt.Store, owner, worker address.Address) *miner.State {
+func createEmptyMinerState(ctx context.Context, t *testing.T, store adt.Store, owner, worker address.Address) *v0miner.State {
 	emptyArrayCid, err := adt.MakeEmptyArray(store).Root()
 	require.NoError(t, err)
 	emptyMap, err := adt.MakeEmptyMap(store).Root()
 	require.NoError(t, err)
 
-	emptyDeadline, err := store.Put(store.Context(), miner.ConstructDeadline(emptyArrayCid))
+	emptyDeadline, err := store.Put(store.Context(), v0miner.ConstructDeadline(emptyArrayCid))
 	require.NoError(t, err)
 
-	emptyVestingFunds := miner.ConstructVestingFunds()
+	emptyVestingFunds := v0miner.ConstructVestingFunds()
 	emptyVestingFundsCid, err := store.Put(store.Context(), emptyVestingFunds)
 	require.NoError(t, err)
 
-	emptyDeadlines := miner.ConstructDeadlines(emptyDeadline)
+	emptyDeadlines := v0miner.ConstructDeadlines(emptyDeadline)
 	emptyDeadlinesCid, err := store.Put(store.Context(), emptyDeadlines)
 	require.NoError(t, err)
 
@@ -568,7 +570,7 @@ func createEmptyMinerState(ctx context.Context, t *testing.T, store adt.Store, o
 	emptyBitfieldCid, err := store.Put(store.Context(), emptyBitfield)
 	require.NoError(t, err)
 
-	state, err := miner.ConstructState(minerInfo, 123, emptyBitfieldCid, emptyArrayCid, emptyMap, emptyDeadlinesCid, emptyVestingFundsCid)
+	state, err := v0miner.ConstructState(minerInfo, 123, emptyBitfieldCid, emptyArrayCid, emptyMap, emptyDeadlinesCid, emptyVestingFundsCid)
 	require.NoError(t, err)
 	return state
 
