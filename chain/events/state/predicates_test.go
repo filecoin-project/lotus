@@ -16,7 +16,10 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
+	v0builtin "github.com/filecoin-project/specs-actors/actors/builtin"
+	v0market "github.com/filecoin-project/specs-actors/actors/builtin/market"
+
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	tutils "github.com/filecoin-project/specs-actors/support/testing"
@@ -69,22 +72,22 @@ func TestMarketPredicates(t *testing.T) {
 	bs := bstore.NewTemporarySync()
 	store := adt.WrapStore(ctx, cbornode.NewCborStore(bs))
 
-	oldDeal1 := &market.DealState{
+	oldDeal1 := &v0market.DealState{
 		SectorStartEpoch: 1,
 		LastUpdatedEpoch: 2,
 		SlashEpoch:       0,
 	}
-	oldDeal2 := &market.DealState{
+	oldDeal2 := &v0market.DealState{
 		SectorStartEpoch: 4,
 		LastUpdatedEpoch: 5,
 		SlashEpoch:       0,
 	}
-	oldDeals := map[abi.DealID]*market.DealState{
+	oldDeals := map[abi.DealID]*v0market.DealState{
 		abi.DealID(1): oldDeal1,
 		abi.DealID(2): oldDeal2,
 	}
 
-	oldProp1 := &market.DealProposal{
+	oldProp1 := &v0market.DealProposal{
 		PieceCID:             dummyCid,
 		PieceSize:            0,
 		VerifiedDeal:         false,
@@ -96,7 +99,7 @@ func TestMarketPredicates(t *testing.T) {
 		ProviderCollateral:   big.Zero(),
 		ClientCollateral:     big.Zero(),
 	}
-	oldProp2 := &market.DealProposal{
+	oldProp2 := &v0market.DealProposal{
 		PieceCID:             dummyCid,
 		PieceSize:            0,
 		VerifiedDeal:         false,
@@ -108,7 +111,7 @@ func TestMarketPredicates(t *testing.T) {
 		ProviderCollateral:   big.Zero(),
 		ClientCollateral:     big.Zero(),
 	}
-	oldProps := map[abi.DealID]*market.DealProposal{
+	oldProps := map[abi.DealID]*v0market.DealProposal{
 		abi.DealID(1): oldProp1,
 		abi.DealID(2): oldProp2,
 	}
@@ -122,7 +125,7 @@ func TestMarketPredicates(t *testing.T) {
 
 	oldStateC := createMarketState(ctx, t, store, oldDeals, oldProps, oldBalances)
 
-	newDeal1 := &market.DealState{
+	newDeal1 := &v0market.DealState{
 		SectorStartEpoch: 1,
 		LastUpdatedEpoch: 3,
 		SlashEpoch:       0,
@@ -131,19 +134,19 @@ func TestMarketPredicates(t *testing.T) {
 	// deal 2 removed
 
 	// added
-	newDeal3 := &market.DealState{
+	newDeal3 := &v0market.DealState{
 		SectorStartEpoch: 1,
 		LastUpdatedEpoch: 2,
 		SlashEpoch:       3,
 	}
-	newDeals := map[abi.DealID]*market.DealState{
+	newDeals := map[abi.DealID]*v0market.DealState{
 		abi.DealID(1): newDeal1,
 		// deal 2 was removed
 		abi.DealID(3): newDeal3,
 	}
 
 	// added
-	newProp3 := &market.DealProposal{
+	newProp3 := &v0market.DealProposal{
 		PieceCID:             dummyCid,
 		PieceSize:            0,
 		VerifiedDeal:         false,
@@ -155,7 +158,7 @@ func TestMarketPredicates(t *testing.T) {
 		ProviderCollateral:   big.Zero(),
 		ClientCollateral:     big.Zero(),
 	}
-	newProps := map[abi.DealID]*market.DealProposal{
+	newProps := map[abi.DealID]*v0market.DealProposal{
 		abi.DealID(1): oldProp1, // 1 was persisted
 		// prop 2 was removed
 		abi.DealID(3): newProp3, // new
@@ -178,8 +181,8 @@ func TestMarketPredicates(t *testing.T) {
 	require.NoError(t, err)
 
 	api := newMockAPI(bs)
-	api.setActor(oldState.Key(), &types.Actor{Head: oldStateC})
-	api.setActor(newState.Key(), &types.Actor{Head: newStateC})
+	api.setActor(oldState.Key(), &types.Actor{Code: v0builtin.StorageMarketActorCodeID, Head: oldStateC})
+	api.setActor(newState.Key(), &types.Actor{Code: v0builtin.StorageMarketActorCodeID, Head: newStateC})
 
 	t.Run("deal ID predicate", func(t *testing.T) {
 		preds := NewStatePredicates(api)
@@ -203,11 +206,11 @@ func TestMarketPredicates(t *testing.T) {
 		require.Contains(t, changedDealIDs, abi.DealID(1))
 		require.Contains(t, changedDealIDs, abi.DealID(2))
 		deal1 := changedDealIDs[abi.DealID(1)]
-		if deal1.From.LastUpdatedEpoch != 2 || deal1.To.LastUpdatedEpoch != 3 {
+		if deal1.From.LastUpdatedEpoch() != 2 || deal1.To.LastUpdatedEpoch() != 3 {
 			t.Fatal("Unexpected change to LastUpdatedEpoch")
 		}
 		deal2 := changedDealIDs[abi.DealID(2)]
-		if deal2.From.LastUpdatedEpoch != 5 || deal2.To != nil {
+		if deal2.From.LastUpdatedEpoch() != 5 || deal2.To != nil {
 			t.Fatal("Expected To to be nil")
 		}
 
@@ -230,11 +233,17 @@ func TestMarketPredicates(t *testing.T) {
 		require.False(t, changed)
 
 		// Test that OnDealStateChanged does not call the callback if the state has not changed
-		diffDealStateFn := preds.OnDealStateChanged(func(context.Context, *adt.Array, *adt.Array) (bool, UserData, error) {
+		diffDealStateFn := preds.OnDealStateChanged(func(context.Context, market.DealStates, market.DealStates) (bool, UserData, error) {
 			t.Fatal("No state change so this should not be called")
 			return false, nil, nil
 		})
-		marketState := createEmptyMarketState(t, store)
+		v0marketState := createEmptyMarketState(t, store)
+		marketCid, err := store.Put(ctx, v0marketState)
+		require.NoError(t, err)
+		marketState, err := market.Load(store, &types.Actor{
+			Code: v0builtin.StorageMarketActorCodeID,
+			Head: marketCid,
+		})
 		changed, _, err = diffDealStateFn(ctx, marketState, marketState)
 		require.NoError(t, err)
 		require.False(t, changed)
@@ -252,18 +261,18 @@ func TestMarketPredicates(t *testing.T) {
 		require.NoError(t, err)
 		require.True(t, changed)
 
-		changedDeals, ok := valArr.(*MarketDealStateChanges)
+		changedDeals, ok := valArr.(*market.DealStateChanges)
 		require.True(t, ok)
 		require.Len(t, changedDeals.Added, 1)
 		require.Equal(t, abi.DealID(3), changedDeals.Added[0].ID)
-		require.Equal(t, *newDeal3, changedDeals.Added[0].Deal)
+		require.True(t, dealEquality(*newDeal3, changedDeals.Added[0].Deal))
 
 		require.Len(t, changedDeals.Removed, 1)
 
 		require.Len(t, changedDeals.Modified, 1)
 		require.Equal(t, abi.DealID(1), changedDeals.Modified[0].ID)
-		require.Equal(t, newDeal1, changedDeals.Modified[0].To)
-		require.Equal(t, oldDeal1, changedDeals.Modified[0].From)
+		require.True(t, dealEquality(*newDeal1, changedDeals.Modified[0].To))
+		require.True(t, dealEquality(*oldDeal1, changedDeals.Modified[0].From))
 
 		require.Equal(t, abi.DealID(2), changedDeals.Removed[0].ID)
 	})
@@ -279,17 +288,15 @@ func TestMarketPredicates(t *testing.T) {
 		require.NoError(t, err)
 		require.True(t, changed)
 
-		changedProps, ok := valArr.(*MarketDealProposalChanges)
+		changedProps, ok := valArr.(*market.DealProposalChanges)
 		require.True(t, ok)
 		require.Len(t, changedProps.Added, 1)
 		require.Equal(t, abi.DealID(3), changedProps.Added[0].ID)
-		require.Equal(t, *newProp3, changedProps.Added[0].Proposal)
 
 		// proposals cannot be modified -- no modified testing
 
 		require.Len(t, changedProps.Removed, 1)
 		require.Equal(t, abi.DealID(2), changedProps.Removed[0].ID)
-		require.Equal(t, *oldProp2, changedProps.Removed[0].Proposal)
 	})
 
 	t.Run("balances predicate", func(t *testing.T) {
@@ -342,7 +349,13 @@ func TestMarketPredicates(t *testing.T) {
 			t.Fatal("No state change so this should not be called")
 			return false, nil, nil
 		})
-		marketState := createEmptyMarketState(t, store)
+		v0marketState := createEmptyMarketState(t, store)
+		marketCid, err := store.Put(ctx, v0marketState)
+		require.NoError(t, err)
+		marketState, err := market.Load(store, &types.Actor{
+			Code: v0builtin.StorageMarketActorCodeID,
+			Head: marketCid,
+		})
 		changed, _, err = diffDealBalancesFn(ctx, marketState, marketState)
 		require.NoError(t, err)
 		require.False(t, changed)
@@ -450,7 +463,7 @@ type balance struct {
 	locked    abi.TokenAmount
 }
 
-func createMarketState(ctx context.Context, t *testing.T, store adt.Store, deals map[abi.DealID]*market.DealState, props map[abi.DealID]*market.DealProposal, balances map[address.Address]balance) cid.Cid {
+func createMarketState(ctx context.Context, t *testing.T, store adt.Store, deals map[abi.DealID]*v0market.DealState, props map[abi.DealID]*v0market.DealProposal, balances map[address.Address]balance) cid.Cid {
 	dealRootCid := createDealAMT(ctx, t, store, deals)
 	propRootCid := createProposalAMT(ctx, t, store, props)
 	balancesCids := createBalanceTable(ctx, t, store, balances)
@@ -465,15 +478,15 @@ func createMarketState(ctx context.Context, t *testing.T, store adt.Store, deals
 	return stateC
 }
 
-func createEmptyMarketState(t *testing.T, store adt.Store) *market.State {
+func createEmptyMarketState(t *testing.T, store adt.Store) *v0market.State {
 	emptyArrayCid, err := adt.MakeEmptyArray(store).Root()
 	require.NoError(t, err)
 	emptyMap, err := adt.MakeEmptyMap(store).Root()
 	require.NoError(t, err)
-	return market.ConstructState(emptyArrayCid, emptyMap, emptyMap)
+	return v0market.ConstructState(emptyArrayCid, emptyMap, emptyMap)
 }
 
-func createDealAMT(ctx context.Context, t *testing.T, store adt.Store, deals map[abi.DealID]*market.DealState) cid.Cid {
+func createDealAMT(ctx context.Context, t *testing.T, store adt.Store, deals map[abi.DealID]*v0market.DealState) cid.Cid {
 	root := adt.MakeEmptyArray(store)
 	for dealID, dealState := range deals {
 		err := root.Set(uint64(dealID), dealState)
@@ -484,7 +497,7 @@ func createDealAMT(ctx context.Context, t *testing.T, store adt.Store, deals map
 	return rootCid
 }
 
-func createProposalAMT(ctx context.Context, t *testing.T, store adt.Store, props map[abi.DealID]*market.DealProposal) cid.Cid {
+func createProposalAMT(ctx context.Context, t *testing.T, store adt.Store, props map[abi.DealID]*v0market.DealProposal) cid.Cid {
 	root := adt.MakeEmptyArray(store)
 	for dealID, prop := range props {
 		err := root.Set(uint64(dealID), prop)
@@ -606,4 +619,10 @@ func newSectorPreCommitInfo(sectorNo abi.SectorNumber, sealed cid.Cid, expiratio
 		DealIDs:       nil,
 		Expiration:    expiration,
 	}
+}
+
+func dealEquality(expected v0market.DealState, actual market.DealState) bool {
+	return expected.LastUpdatedEpoch == actual.LastUpdatedEpoch() &&
+		expected.SectorStartEpoch == actual.SectorStartEpoch() &&
+		expected.SlashEpoch == actual.SlashEpoch()
 }

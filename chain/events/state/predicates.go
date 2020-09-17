@@ -7,12 +7,13 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
+	v0adt "github.com/filecoin-project/specs-actors/actors/util/adt"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	typegen "github.com/whyrusleeping/cbor-gen"
 
@@ -69,26 +70,26 @@ func (sp *StatePredicates) OnActorStateChanged(addr address.Address, diffStateFu
 	}
 }
 
-type DiffStorageMarketStateFunc func(ctx context.Context, oldState *market.State, newState *market.State) (changed bool, user UserData, err error)
+type DiffStorageMarketStateFunc func(ctx context.Context, oldState market.State, newState market.State) (changed bool, user UserData, err error)
 
 // OnStorageMarketActorChanged calls diffStorageMarketState when the state changes for the market actor
 func (sp *StatePredicates) OnStorageMarketActorChanged(diffStorageMarketState DiffStorageMarketStateFunc) DiffTipSetKeyFunc {
 	return sp.OnActorStateChanged(builtin.StorageMarketActorAddr, func(ctx context.Context, oldActorState, newActorState *types.Actor) (changed bool, user UserData, err error) {
-		var oldState market.State
-		if err := sp.cst.Get(ctx, oldActorState.Head, &oldState); err != nil {
+		oldState, err := market.Load(adt.WrapStore(ctx, sp.cst), oldActorState)
+		if err != nil {
 			return false, nil, err
 		}
-		var newState market.State
-		if err := sp.cst.Get(ctx, newActorState.Head, &newState); err != nil {
+		newState, err := market.Load(adt.WrapStore(ctx, sp.cst), newActorState)
+		if err != nil {
 			return false, nil, err
 		}
-		return diffStorageMarketState(ctx, &oldState, &newState)
+		return diffStorageMarketState(ctx, oldState, newState)
 	})
 }
 
 type BalanceTables struct {
-	EscrowTable *adt.BalanceTable
-	LockedTable *adt.BalanceTable
+	EscrowTable market.BalanceTable
+	LockedTable market.BalanceTable
 }
 
 // DiffBalanceTablesFunc compares two balance tables
@@ -96,32 +97,27 @@ type DiffBalanceTablesFunc func(ctx context.Context, oldBalanceTable, newBalance
 
 // OnBalanceChanged runs when the escrow table for available balances changes
 func (sp *StatePredicates) OnBalanceChanged(diffBalances DiffBalanceTablesFunc) DiffStorageMarketStateFunc {
-	return func(ctx context.Context, oldState *market.State, newState *market.State) (changed bool, user UserData, err error) {
-		if oldState.EscrowTable.Equals(newState.EscrowTable) && oldState.LockedTable.Equals(newState.LockedTable) {
+	return func(ctx context.Context, oldState market.State, newState market.State) (changed bool, user UserData, err error) {
+		if !oldState.BalancesChanged(newState) {
 			return false, nil, nil
 		}
 
-		ctxStore := &contextStore{
-			ctx: ctx,
-			cst: sp.cst,
-		}
-
-		oldEscrowRoot, err := adt.AsBalanceTable(ctxStore, oldState.EscrowTable)
+		oldEscrowRoot, err := oldState.EscrowTable()
 		if err != nil {
 			return false, nil, err
 		}
 
-		oldLockedRoot, err := adt.AsBalanceTable(ctxStore, oldState.LockedTable)
+		oldLockedRoot, err := oldState.LockedTable()
 		if err != nil {
 			return false, nil, err
 		}
 
-		newEscrowRoot, err := adt.AsBalanceTable(ctxStore, newState.EscrowTable)
+		newEscrowRoot, err := newState.EscrowTable()
 		if err != nil {
 			return false, nil, err
 		}
 
-		newLockedRoot, err := adt.AsBalanceTable(ctxStore, newState.LockedTable)
+		newLockedRoot, err := newState.LockedTable()
 		if err != nil {
 			return false, nil, err
 		}
@@ -130,25 +126,22 @@ func (sp *StatePredicates) OnBalanceChanged(diffBalances DiffBalanceTablesFunc) 
 	}
 }
 
-type DiffAdtArraysFunc func(ctx context.Context, oldDealStateRoot, newDealStateRoot *adt.Array) (changed bool, user UserData, err error)
+type DiffDealStatesFunc func(ctx context.Context, oldDealStateRoot, newDealStateRoot market.DealStates) (changed bool, user UserData, err error)
+type DiffDealProposalsFunc func(ctx context.Context, oldDealStateRoot, newDealStateRoot market.DealProposals) (changed bool, user UserData, err error)
+type DiffAdtArraysFunc func(ctx context.Context, oldDealStateRoot, newDealStateRoot adt.Array) (changed bool, user UserData, err error)
 
 // OnDealStateChanged calls diffDealStates when the market deal state changes
-func (sp *StatePredicates) OnDealStateChanged(diffDealStates DiffAdtArraysFunc) DiffStorageMarketStateFunc {
-	return func(ctx context.Context, oldState *market.State, newState *market.State) (changed bool, user UserData, err error) {
-		if oldState.States.Equals(newState.States) {
+func (sp *StatePredicates) OnDealStateChanged(diffDealStates DiffDealStatesFunc) DiffStorageMarketStateFunc {
+	return func(ctx context.Context, oldState market.State, newState market.State) (changed bool, user UserData, err error) {
+		if !oldState.StatesChanged(newState) {
 			return false, nil, nil
 		}
 
-		ctxStore := &contextStore{
-			ctx: ctx,
-			cst: sp.cst,
-		}
-
-		oldRoot, err := adt.AsArray(ctxStore, oldState.States)
+		oldRoot, err := oldState.States()
 		if err != nil {
 			return false, nil, err
 		}
-		newRoot, err := adt.AsArray(ctxStore, newState.States)
+		newRoot, err := newState.States()
 		if err != nil {
 			return false, nil, err
 		}
@@ -158,22 +151,17 @@ func (sp *StatePredicates) OnDealStateChanged(diffDealStates DiffAdtArraysFunc) 
 }
 
 // OnDealProposalChanged calls diffDealProps when the market proposal state changes
-func (sp *StatePredicates) OnDealProposalChanged(diffDealProps DiffAdtArraysFunc) DiffStorageMarketStateFunc {
-	return func(ctx context.Context, oldState *market.State, newState *market.State) (changed bool, user UserData, err error) {
-		if oldState.Proposals.Equals(newState.Proposals) {
+func (sp *StatePredicates) OnDealProposalChanged(diffDealProps DiffDealProposalsFunc) DiffStorageMarketStateFunc {
+	return func(ctx context.Context, oldState market.State, newState market.State) (changed bool, user UserData, err error) {
+		if !oldState.ProposalsChanged(newState) {
 			return false, nil, nil
 		}
 
-		ctxStore := &contextStore{
-			ctx: ctx,
-			cst: sp.cst,
-		}
-
-		oldRoot, err := adt.AsArray(ctxStore, oldState.Proposals)
+		oldRoot, err := oldState.Proposals()
 		if err != nil {
 			return false, nil, err
 		}
-		newRoot, err := adt.AsArray(ctxStore, newState.Proposals)
+		newRoot, err := newState.Proposals()
 		if err != nil {
 			return false, nil, err
 		}
@@ -182,51 +170,14 @@ func (sp *StatePredicates) OnDealProposalChanged(diffDealProps DiffAdtArraysFunc
 	}
 }
 
-var _ AdtArrayDiff = &MarketDealProposalChanges{}
-
-type MarketDealProposalChanges struct {
-	Added   []ProposalIDState
-	Removed []ProposalIDState
-}
-
-type ProposalIDState struct {
-	ID       abi.DealID
-	Proposal market.DealProposal
-}
-
-func (m *MarketDealProposalChanges) Add(key uint64, val *typegen.Deferred) error {
-	dp := new(market.DealProposal)
-	err := dp.UnmarshalCBOR(bytes.NewReader(val.Raw))
-	if err != nil {
-		return err
-	}
-	m.Added = append(m.Added, ProposalIDState{abi.DealID(key), *dp})
-	return nil
-}
-
-func (m *MarketDealProposalChanges) Modify(key uint64, from, to *typegen.Deferred) error {
-	// short circuit, DealProposals are static
-	return nil
-}
-
-func (m *MarketDealProposalChanges) Remove(key uint64, val *typegen.Deferred) error {
-	dp := new(market.DealProposal)
-	err := dp.UnmarshalCBOR(bytes.NewReader(val.Raw))
-	if err != nil {
-		return err
-	}
-	m.Removed = append(m.Removed, ProposalIDState{abi.DealID(key), *dp})
-	return nil
-}
-
 // OnDealProposalAmtChanged detects changes in the deal proposal AMT for all deal proposals and returns a MarketProposalsChanges structure containing:
 // - Added Proposals
 // - Modified Proposals
 // - Removed Proposals
-func (sp *StatePredicates) OnDealProposalAmtChanged() DiffAdtArraysFunc {
-	return func(ctx context.Context, oldDealProps, newDealProps *adt.Array) (changed bool, user UserData, err error) {
-		proposalChanges := new(MarketDealProposalChanges)
-		if err := DiffAdtArray(oldDealProps, newDealProps, proposalChanges); err != nil {
+func (sp *StatePredicates) OnDealProposalAmtChanged() DiffDealProposalsFunc {
+	return func(ctx context.Context, oldDealProps, newDealProps market.DealProposals) (changed bool, user UserData, err error) {
+		proposalChanges, err := oldDealProps.Diff(newDealProps)
+		if err != nil {
 			return false, nil, err
 		}
 
@@ -238,64 +189,14 @@ func (sp *StatePredicates) OnDealProposalAmtChanged() DiffAdtArraysFunc {
 	}
 }
 
-var _ AdtArrayDiff = &MarketDealStateChanges{}
-
-type MarketDealStateChanges struct {
-	Added    []DealIDState
-	Modified []DealStateChange
-	Removed  []DealIDState
-}
-
-type DealIDState struct {
-	ID   abi.DealID
-	Deal market.DealState
-}
-
-func (m *MarketDealStateChanges) Add(key uint64, val *typegen.Deferred) error {
-	ds := new(market.DealState)
-	err := ds.UnmarshalCBOR(bytes.NewReader(val.Raw))
-	if err != nil {
-		return err
-	}
-	m.Added = append(m.Added, DealIDState{abi.DealID(key), *ds})
-	return nil
-}
-
-func (m *MarketDealStateChanges) Modify(key uint64, from, to *typegen.Deferred) error {
-	dsFrom := new(market.DealState)
-	if err := dsFrom.UnmarshalCBOR(bytes.NewReader(from.Raw)); err != nil {
-		return err
-	}
-
-	dsTo := new(market.DealState)
-	if err := dsTo.UnmarshalCBOR(bytes.NewReader(to.Raw)); err != nil {
-		return err
-	}
-
-	if *dsFrom != *dsTo {
-		m.Modified = append(m.Modified, DealStateChange{abi.DealID(key), dsFrom, dsTo})
-	}
-	return nil
-}
-
-func (m *MarketDealStateChanges) Remove(key uint64, val *typegen.Deferred) error {
-	ds := new(market.DealState)
-	err := ds.UnmarshalCBOR(bytes.NewReader(val.Raw))
-	if err != nil {
-		return err
-	}
-	m.Removed = append(m.Removed, DealIDState{abi.DealID(key), *ds})
-	return nil
-}
-
 // OnDealStateAmtChanged detects changes in the deal state AMT for all deal states and returns a MarketDealStateChanges structure containing:
 // - Added Deals
 // - Modified Deals
 // - Removed Deals
-func (sp *StatePredicates) OnDealStateAmtChanged() DiffAdtArraysFunc {
-	return func(ctx context.Context, oldDealStates, newDealStates *adt.Array) (changed bool, user UserData, err error) {
-		dealStateChanges := new(MarketDealStateChanges)
-		if err := DiffAdtArray(oldDealStates, newDealStates, dealStateChanges); err != nil {
+func (sp *StatePredicates) OnDealStateAmtChanged() DiffDealStatesFunc {
+	return func(ctx context.Context, oldDealStates, newDealStates market.DealStates) (changed bool, user UserData, err error) {
+		dealStateChanges, err := oldDealStates.Diff(newDealStates)
+		if err != nil {
 			return false, nil, err
 		}
 
@@ -313,37 +214,31 @@ type ChangedDeals map[abi.DealID]DealStateChange
 // DealStateChange is a change in deal state from -> to
 type DealStateChange struct {
 	ID   abi.DealID
-	From *market.DealState
-	To   *market.DealState
+	From market.DealState
+	To   market.DealState
 }
 
 // DealStateChangedForIDs detects changes in the deal state AMT for the given deal IDs
-func (sp *StatePredicates) DealStateChangedForIDs(dealIds []abi.DealID) DiffAdtArraysFunc {
-	return func(ctx context.Context, oldDealStateArray, newDealStateArray *adt.Array) (changed bool, user UserData, err error) {
+func (sp *StatePredicates) DealStateChangedForIDs(dealIds []abi.DealID) DiffDealStatesFunc {
+	return func(ctx context.Context, oldDealStates, newDealStates market.DealStates) (changed bool, user UserData, err error) {
 		changedDeals := make(ChangedDeals)
 		for _, dealID := range dealIds {
-			var oldDealPtr, newDealPtr *market.DealState
-			var oldDeal, newDeal market.DealState
 
 			// If the deal has been removed, we just set it to nil
-			found, err := oldDealStateArray.Get(uint64(dealID), &oldDeal)
+			oldDeal, err := oldDealStates.GetDeal(dealID)
 			if err != nil {
 				return false, nil, err
 			}
-			if found {
-				oldDealPtr = &oldDeal
-			}
 
-			found, err = newDealStateArray.Get(uint64(dealID), &newDeal)
+			newDeal, err := newDealStates.GetDeal(dealID)
 			if err != nil {
 				return false, nil, err
 			}
-			if found {
-				newDealPtr = &newDeal
-			}
 
-			if oldDeal != newDeal {
-				changedDeals[dealID] = DealStateChange{dealID, oldDealPtr, newDealPtr}
+			existenceChanged := (oldDeal == nil) != (newDeal == nil)
+			valueChanged := (oldDeal != nil && newDeal != nil) && !oldDeal.Equals(newDeal)
+			if existenceChanged || valueChanged {
+				changedDeals[dealID] = DealStateChange{dealID, oldDeal, newDeal}
 			}
 		}
 		if len(changedDeals) > 0 {
@@ -441,7 +336,7 @@ type MinerSectorChanges struct {
 	Removed  []miner.SectorOnChainInfo
 }
 
-var _ AdtArrayDiff = &MinerSectorChanges{}
+var _ adt.AdtArrayDiff = &MinerSectorChanges{}
 
 type SectorExtensions struct {
 	From miner.SectorOnChainInfo
@@ -508,17 +403,17 @@ func (sp *StatePredicates) OnMinerSectorChange() DiffMinerActorStateFunc {
 			return false, nil, nil
 		}
 
-		oldSectors, err := adt.AsArray(ctxStore, oldState.Sectors)
+		oldSectors, err := v0adt.AsArray(ctxStore, oldState.Sectors)
 		if err != nil {
 			return false, nil, err
 		}
 
-		newSectors, err := adt.AsArray(ctxStore, newState.Sectors)
+		newSectors, err := v0adt.AsArray(ctxStore, newState.Sectors)
 		if err != nil {
 			return false, nil, err
 		}
 
-		if err := DiffAdtArray(oldSectors, newSectors, sectorChanges); err != nil {
+		if err := adt.DiffAdtArray(oldSectors, newSectors, sectorChanges); err != nil {
 			return false, nil, err
 		}
 
@@ -584,17 +479,17 @@ func (sp *StatePredicates) OnMinerPreCommitChange() DiffMinerActorStateFunc {
 			return false, nil, nil
 		}
 
-		oldPrecommits, err := adt.AsMap(ctxStore, oldState.PreCommittedSectors)
+		oldPrecommits, err := v0adt.AsMap(ctxStore, oldState.PreCommittedSectors)
 		if err != nil {
 			return false, nil, err
 		}
 
-		newPrecommits, err := adt.AsMap(ctxStore, newState.PreCommittedSectors)
+		newPrecommits, err := v0adt.AsMap(ctxStore, newState.PreCommittedSectors)
 		if err != nil {
 			return false, nil, err
 		}
 
-		if err := DiffAdtMap(oldPrecommits, newPrecommits, precommitChanges); err != nil {
+		if err := adt.DiffAdtMap(oldPrecommits, newPrecommits, precommitChanges); err != nil {
 			return false, nil, err
 		}
 
@@ -763,17 +658,17 @@ func (sp *StatePredicates) OnAddressMapChange() DiffInitActorStateFunc {
 			return false, nil, nil
 		}
 
-		oldAddrs, err := adt.AsMap(ctxStore, oldState.AddressMap)
+		oldAddrs, err := v0adt.AsMap(ctxStore, oldState.AddressMap)
 		if err != nil {
 			return false, nil, err
 		}
 
-		newAddrs, err := adt.AsMap(ctxStore, newState.AddressMap)
+		newAddrs, err := v0adt.AsMap(ctxStore, newState.AddressMap)
 		if err != nil {
 			return false, nil, err
 		}
 
-		if err := DiffAdtMap(oldAddrs, newAddrs, addressChanges); err != nil {
+		if err := adt.DiffAdtMap(oldAddrs, newAddrs, addressChanges); err != nil {
 			return false, nil, err
 		}
 
