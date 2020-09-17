@@ -467,7 +467,7 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *ty
 
 				skipCount += sc
 
-				ssi, err := s.sectorsForProof(ctx, good, partition.Sectors, ts)
+				ssi, err := s.sectorsForProof(ctx, good, toProve, ts)
 				if err != nil {
 					return nil, xerrors.Errorf("getting sorted sector info: %w", err)
 				}
