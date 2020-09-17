@@ -9,8 +9,6 @@ import (
 	lotusminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
-	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-
 	"os"
 	"strings"
 	"testing"
@@ -165,7 +163,7 @@ func TestWindowPost(t *testing.T, b APIBuilder, blocktime time.Duration, nSector
 		head, err := client.ChainHead(ctx)
 		require.NoError(t, err)
 
-		if head.Height() > di.PeriodStart+(v0miner.WPoStProvingPeriod)+2 {
+		if head.Height() > di.PeriodStart+(di.WPoStProvingPeriod)+2 {
 			break
 		}
 
