@@ -2,8 +2,6 @@ package market
 
 import (
 	"bytes"
-	"errors"
-	"fmt"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -11,7 +9,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	v0adt "github.com/filecoin-project/specs-actors/actors/util/adt"
-	typegen "github.com/whyrusleeping/cbor-gen"
+	cbg "github.com/whyrusleeping/cbor-gen"
 )
 
 type v0State struct {
@@ -127,60 +125,20 @@ func (s *v0DealStates) Get(dealID abi.DealID) (*DealState, bool, error) {
 }
 
 func (s *v0DealStates) Diff(other DealStates) (*DealStateChanges, error) {
-	v0other, ok := other.(*v0DealStates)
-	if !ok {
-		// TODO handle this if possible on a case by case basis but for now, just fail
-		return nil, errors.New("cannot compare deal states across versions")
-	}
-	results := new(DealStateChanges)
-	if err := adt.DiffAdtArray(s.Array, v0other.Array, &v0MarketStatesDiffer{results}); err != nil {
-		return nil, fmt.Errorf("diffing deal states: %w", err)
-	}
-
-	return results, nil
+	return diffDealStates(s, other)
 }
 
-type v0MarketStatesDiffer struct {
-	Results *DealStateChanges
+func (s *v0DealStates) decode(val *cbg.Deferred) (*DealState, error) {
+	var v0ds market.DealState
+	if err := v0ds.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
+		return nil, err
+	}
+	ds := fromV0DealState(v0ds)
+	return &ds, nil
 }
 
-func (d *v0MarketStatesDiffer) Add(key uint64, val *typegen.Deferred) error {
-	v0ds := new(market.DealState)
-	err := v0ds.UnmarshalCBOR(bytes.NewReader(val.Raw))
-	if err != nil {
-		return err
-	}
-	d.Results.Added = append(d.Results.Added, DealIDState{abi.DealID(key), fromV0DealState(*v0ds)})
-	return nil
-}
-
-func (d *v0MarketStatesDiffer) Modify(key uint64, from, to *typegen.Deferred) error {
-	v0dsFrom := new(market.DealState)
-	if err := v0dsFrom.UnmarshalCBOR(bytes.NewReader(from.Raw)); err != nil {
-		return err
-	}
-
-	v0dsTo := new(market.DealState)
-	if err := v0dsTo.UnmarshalCBOR(bytes.NewReader(to.Raw)); err != nil {
-		return err
-	}
-
-	if *v0dsFrom != *v0dsTo {
-		dsFrom := fromV0DealState(*v0dsFrom)
-		dsTo := fromV0DealState(*v0dsTo)
-		d.Results.Modified = append(d.Results.Modified, DealStateChange{abi.DealID(key), &dsFrom, &dsTo})
-	}
-	return nil
-}
-
-func (d *v0MarketStatesDiffer) Remove(key uint64, val *typegen.Deferred) error {
-	v0ds := new(market.DealState)
-	err := v0ds.UnmarshalCBOR(bytes.NewReader(val.Raw))
-	if err != nil {
-		return err
-	}
-	d.Results.Removed = append(d.Results.Removed, DealIDState{abi.DealID(key), fromV0DealState(*v0ds)})
-	return nil
+func (s *v0DealStates) array() adt.Array {
+	return s.Array
 }
 
 func fromV0DealState(v0 market.DealState) DealState {
@@ -192,17 +150,7 @@ type v0DealProposals struct {
 }
 
 func (s *v0DealProposals) Diff(other DealProposals) (*DealProposalChanges, error) {
-	v0other, ok := other.(*v0DealProposals)
-	if !ok {
-		// TODO handle this if possible on a case by case basis but for now, just fail
-		return nil, errors.New("cannot compare deal proposals across versions")
-	}
-	results := new(DealProposalChanges)
-	if err := adt.DiffAdtArray(s.Array, v0other.Array, &v0MarketProposalsDiffer{results}); err != nil {
-		return nil, fmt.Errorf("diffing deal proposals: %w", err)
-	}
-
-	return results, nil
+	return diffDealProposals(s, other)
 }
 
 func (s *v0DealProposals) Get(dealID abi.DealID) (*DealProposal, bool, error) {
@@ -225,35 +173,19 @@ func (s *v0DealProposals) ForEach(cb func(dealID abi.DealID, dp DealProposal) er
 	})
 }
 
-type v0MarketProposalsDiffer struct {
-	Results *DealProposalChanges
+func (s *v0DealProposals) decode(val *cbg.Deferred) (*DealProposal, error) {
+	var v0dp market.DealProposal
+	if err := v0dp.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
+		return nil, err
+	}
+	dp := fromV0DealProposal(v0dp)
+	return &dp, nil
+}
+
+func (s *v0DealProposals) array() adt.Array {
+	return s.Array
 }
 
 func fromV0DealProposal(v0 market.DealProposal) DealProposal {
 	return (DealProposal)(v0)
-}
-
-func (d *v0MarketProposalsDiffer) Add(key uint64, val *typegen.Deferred) error {
-	v0dp := new(market.DealProposal)
-	err := v0dp.UnmarshalCBOR(bytes.NewReader(val.Raw))
-	if err != nil {
-		return err
-	}
-	d.Results.Added = append(d.Results.Added, ProposalIDState{abi.DealID(key), fromV0DealProposal(*v0dp)})
-	return nil
-}
-
-func (d *v0MarketProposalsDiffer) Modify(key uint64, from, to *typegen.Deferred) error {
-	// short circuit, DealProposals are static
-	return nil
-}
-
-func (d *v0MarketProposalsDiffer) Remove(key uint64, val *typegen.Deferred) error {
-	v0dp := new(market.DealProposal)
-	err := v0dp.UnmarshalCBOR(bytes.NewReader(val.Raw))
-	if err != nil {
-		return err
-	}
-	d.Results.Removed = append(d.Results.Removed, ProposalIDState{abi.DealID(key), fromV0DealProposal(*v0dp)})
-	return nil
 }

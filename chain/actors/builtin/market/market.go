@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-state-types/cbor"
 	v0builtin "github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/ipfs/go-cid"
+	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -51,12 +52,18 @@ type BalanceTable interface {
 type DealStates interface {
 	Get(id abi.DealID) (*DealState, bool, error)
 	Diff(DealStates) (*DealStateChanges, error)
+
+	array() adt.Array
+	decode(*cbg.Deferred) (*DealState, error)
 }
 
 type DealProposals interface {
 	ForEach(cb func(id abi.DealID, dp DealProposal) error) error
 	Get(id abi.DealID) (*DealProposal, bool, error)
 	Diff(DealProposals) (*DealProposalChanges, error)
+
+	array() adt.Array
+	decode(*cbg.Deferred) (*DealProposal, error)
 }
 
 type DealState struct {
