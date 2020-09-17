@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/cbor"
 	v0builtin "github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -43,26 +44,39 @@ type State interface {
 }
 
 type BalanceTable interface {
+	ForEach(cb func(address.Address, abi.TokenAmount) error) error
 	Get(key address.Address) (abi.TokenAmount, error)
 }
 
 type DealStates interface {
-	GetDeal(key abi.DealID) (DealState, error)
+	Get(id abi.DealID) (*DealState, bool, error)
 	Diff(DealStates) (*DealStateChanges, error)
 }
 
 type DealProposals interface {
+	ForEach(cb func(id abi.DealID, dp DealProposal) error) error
+	Get(id abi.DealID) (*DealProposal, bool, error)
 	Diff(DealProposals) (*DealProposalChanges, error)
 }
 
-type DealState interface {
-	SectorStartEpoch() abi.ChainEpoch
-	SlashEpoch() abi.ChainEpoch
-	LastUpdatedEpoch() abi.ChainEpoch
-	Equals(DealState) bool
+type DealState struct {
+	SectorStartEpoch abi.ChainEpoch // -1 if not yet included in proven sector
+	LastUpdatedEpoch abi.ChainEpoch // -1 if deal state never updated
+	SlashEpoch       abi.ChainEpoch // -1 if deal never slashed
 }
 
-type DealProposal interface {
+type DealProposal struct {
+	PieceCID             cid.Cid
+	PieceSize            abi.PaddedPieceSize
+	VerifiedDeal         bool
+	Client               address.Address
+	Provider             address.Address
+	Label                string
+	StartEpoch           abi.ChainEpoch
+	EndEpoch             abi.ChainEpoch
+	StoragePricePerEpoch abi.TokenAmount
+	ProviderCollateral   abi.TokenAmount
+	ClientCollateral     abi.TokenAmount
 }
 
 type DealStateChanges struct {
@@ -79,8 +93,8 @@ type DealIDState struct {
 // DealStateChange is a change in deal state from -> to
 type DealStateChange struct {
 	ID   abi.DealID
-	From DealState
-	To   DealState
+	From *DealState
+	To   *DealState
 }
 
 type DealProposalChanges struct {
@@ -91,4 +105,12 @@ type DealProposalChanges struct {
 type ProposalIDState struct {
 	ID       abi.DealID
 	Proposal DealProposal
+}
+
+func EmptyDealState() *DealState {
+	return &DealState{
+		SectorStartEpoch: -1,
+		SlashEpoch:       -1,
+		LastUpdatedEpoch: -1,
+	}
 }

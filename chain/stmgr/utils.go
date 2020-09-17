@@ -34,7 +34,6 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors/adt"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -318,40 +317,35 @@ func GetStorageDeal(ctx context.Context, sm *StateManager, dealID abi.DealID, ts
 		return nil, xerrors.Errorf("failed to load market actor state: %w", err)
 	}
 
-	store := sm.ChainStore().Store(ctx)
-
-	da, err := adt.AsArray(store, state.Proposals)
+	proposals, err := state.Proposals()
 	if err != nil {
 		return nil, err
 	}
 
-	var dp market.DealProposal
-	if found, err := da.Get(uint64(dealID), &dp); err != nil {
+	proposal, found, err := proposals.Get(dealID)
+
+	if err != nil {
 		return nil, err
 	} else if !found {
 		return nil, xerrors.Errorf("deal %d not found", dealID)
 	}
 
-	sa, err := market.AsDealStateArray(store, state.States)
+	states, err := state.States()
 	if err != nil {
 		return nil, err
 	}
 
-	st, found, err := sa.Get(dealID)
+	st, found, err := states.Get(dealID)
 	if err != nil {
 		return nil, err
 	}
 
 	if !found {
-		st = &market.DealState{
-			SectorStartEpoch: -1,
-			LastUpdatedEpoch: -1,
-			SlashEpoch:       -1,
-		}
+		st = market.EmptyDealState()
 	}
 
 	return &api.MarketDeal{
-		Proposal: dp,
+		Proposal: *proposal,
 		State:    *st,
 	}, nil
 }

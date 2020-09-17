@@ -142,28 +142,6 @@ func (n *ProviderNodeAdapter) VerifySignature(ctx context.Context, sig crypto.Si
 	return err == nil, err
 }
 
-func (n *ProviderNodeAdapter) ListProviderDeals(ctx context.Context, addr address.Address, encodedTs shared.TipSetToken) ([]storagemarket.StorageDeal, error) {
-	tsk, err := types.TipSetKeyFromBytes(encodedTs)
-	if err != nil {
-		return nil, err
-	}
-	allDeals, err := n.StateMarketDeals(ctx, tsk)
-	if err != nil {
-		return nil, err
-	}
-
-	var out []storagemarket.StorageDeal
-
-	for _, deal := range allDeals {
-		sharedDeal := utils.FromOnChainDeal(deal.Proposal, deal.State)
-		if sharedDeal.Provider == addr {
-			out = append(out, sharedDeal)
-		}
-	}
-
-	return out, nil
-}
-
 func (n *ProviderNodeAdapter) GetMinerWorkerAddress(ctx context.Context, miner address.Address, tok shared.TipSetToken) (address.Address, error) {
 	tsk, err := types.TipSetKeyFromBytes(tok)
 	if err != nil {

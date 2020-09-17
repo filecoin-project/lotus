@@ -1175,3 +1175,23 @@ func (sm *StateManager) GetPaychState(ctx context.Context, addr address.Address,
 	}
 	return act, actState, nil
 }
+
+func (sm *StateManager) GetMarketState(ctx context.Context, ts *types.TipSet) (market.State, error) {
+	st, err := sm.ParentState(ts)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO maybe there needs to be code here to differentiate address based on ts height?
+	addr := builtin.StorageMarketActorAddr
+	act, err := st.GetActor(addr)
+	if err != nil {
+		return nil, err
+	}
+
+	actState, err := market.Load(sm.cs.Store(ctx), act)
+	if err != nil {
+		return nil, err
+	}
+	return actState, nil
+}

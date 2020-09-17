@@ -212,14 +212,7 @@ func (sp *StatePredicates) OnDealStateAmtChanged() DiffDealStatesFunc {
 }
 
 // ChangedDeals is a set of changes to deal state
-type ChangedDeals map[abi.DealID]DealStateChange
-
-// DealStateChange is a change in deal state from -> to
-type DealStateChange struct {
-	ID   abi.DealID
-	From market.DealState
-	To   market.DealState
-}
+type ChangedDeals map[abi.DealID]market.DealStateChange
 
 // DealStateChangedForIDs detects changes in the deal state AMT for the given deal IDs
 func (sp *StatePredicates) DealStateChangedForIDs(dealIds []abi.DealID) DiffDealStatesFunc {
@@ -228,20 +221,20 @@ func (sp *StatePredicates) DealStateChangedForIDs(dealIds []abi.DealID) DiffDeal
 		for _, dealID := range dealIds {
 
 			// If the deal has been removed, we just set it to nil
-			oldDeal, err := oldDealStates.GetDeal(dealID)
+			oldDeal, oldFound, err := oldDealStates.Get(dealID)
 			if err != nil {
 				return false, nil, err
 			}
 
-			newDeal, err := newDealStates.GetDeal(dealID)
+			newDeal, newFound, err := newDealStates.Get(dealID)
 			if err != nil {
 				return false, nil, err
 			}
 
-			existenceChanged := (oldDeal == nil) != (newDeal == nil)
-			valueChanged := (oldDeal != nil && newDeal != nil) && !oldDeal.Equals(newDeal)
+			existenceChanged := oldFound != newFound
+			valueChanged := (oldFound && newFound) && *oldDeal != *newDeal
 			if existenceChanged || valueChanged {
-				changedDeals[dealID] = DealStateChange{dealID, oldDeal, newDeal}
+				changedDeals[dealID] = market.DealStateChange{ID: dealID, From: oldDeal, To: newDeal}
 			}
 		}
 		if len(changedDeals) > 0 {

@@ -166,8 +166,14 @@ func (a *GasAPI) GasEstimateGasLimit(ctx context.Context, msgIn *types.Message, 
 	}
 
 	// Special case for PaymentChannel collect, which is deleting actor
-	var act types.Actor
-	err = a.Stmgr.WithParentState(ts, a.Stmgr.WithActor(msg.To, stmgr.GetActor(&act)))
+	st, err := a.Stmgr.ParentState(ts)
+	if err != nil {
+		_ = err
+		// somewhat ignore it as it can happen and we just want to detect
+		// an existing PaymentChannel actor
+		return res.MsgRct.GasUsed, nil
+	}
+	act, err := st.GetActor(msg.To)
 	if err != nil {
 		_ = err
 		// somewhat ignore it as it can happen and we just want to detect

@@ -251,7 +251,7 @@ type StorageMinerStruct struct {
 		MiningBase func(context.Context) (*types.TipSet, error) `perm:"read"`
 
 		MarketImportDealData      func(context.Context, cid.Cid, string) error                                                                                                                                 `perm:"write"`
-		MarketListDeals           func(ctx context.Context) ([]storagemarket.StorageDeal, error)                                                                                                               `perm:"read"`
+		MarketListDeals           func(ctx context.Context) ([]api.MarketDeal, error)                                                                                                                          `perm:"read"`
 		MarketListRetrievalDeals  func(ctx context.Context) ([]retrievalmarket.ProviderDealState, error)                                                                                                       `perm:"read"`
 		MarketGetDealUpdates      func(ctx context.Context) (<-chan storagemarket.MinerDeal, error)                                                                                                            `perm:"read"`
 		MarketListIncompleteDeals func(ctx context.Context) ([]storagemarket.MinerDeal, error)                                                                                                                 `perm:"read"`
@@ -296,7 +296,7 @@ type StorageMinerStruct struct {
 		StorageTryLock       func(ctx context.Context, sector abi.SectorID, read stores.SectorFileType, write stores.SectorFileType) (bool, error)                         `perm:"admin"`
 
 		DealsImportData                       func(ctx context.Context, dealPropCid cid.Cid, file string) error `perm:"write"`
-		DealsList                             func(ctx context.Context) ([]storagemarket.StorageDeal, error)    `perm:"read"`
+		DealsList                             func(ctx context.Context) ([]api.MarketDeal, error)               `perm:"read"`
 		DealsConsiderOnlineStorageDeals       func(context.Context) (bool, error)                               `perm:"read"`
 		DealsSetConsiderOnlineStorageDeals    func(context.Context, bool) error                                 `perm:"admin"`
 		DealsConsiderOnlineRetrievalDeals     func(context.Context) (bool, error)                               `perm:"read"`
@@ -1128,7 +1128,7 @@ func (c *StorageMinerStruct) MarketImportDealData(ctx context.Context, propcid c
 	return c.Internal.MarketImportDealData(ctx, propcid, path)
 }
 
-func (c *StorageMinerStruct) MarketListDeals(ctx context.Context) ([]storagemarket.StorageDeal, error) {
+func (c *StorageMinerStruct) MarketListDeals(ctx context.Context) ([]api.MarketDeal, error) {
 	return c.Internal.MarketListDeals(ctx)
 }
 
@@ -1172,7 +1172,7 @@ func (c *StorageMinerStruct) DealsImportData(ctx context.Context, dealPropCid ci
 	return c.Internal.DealsImportData(ctx, dealPropCid, file)
 }
 
-func (c *StorageMinerStruct) DealsList(ctx context.Context) ([]storagemarket.StorageDeal, error) {
+func (c *StorageMinerStruct) DealsList(ctx context.Context) ([]api.MarketDeal, error) {
 	return c.Internal.DealsList(ctx)
 }
 

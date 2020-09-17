@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
-	"github.com/filecoin-project/go-state-types/network"
 	"strconv"
+
+	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/go-state-types/dline"
 
@@ -28,6 +28,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/util/smoothing"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
@@ -42,7 +43,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/lib/bufbstore"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 )
 
 var errBreakForeach = errors.New("break")
@@ -259,8 +259,8 @@ func (a *StateAPI) StateMinerPower(ctx context.Context, addr address.Address, ts
 	}
 
 	return &api.MinerPower{
-		MinerPower: m,
-		TotalPower: net,
+		MinerPower:  m,
+		TotalPower:  net,
 		HasMinPower: hmp,
 	}, nil
 }
@@ -489,35 +489,29 @@ func (a *StateAPI) StateMarketBalance(ctx context.Context, addr address.Address,
 func (a *StateAPI) StateMarketParticipants(ctx context.Context, tsk types.TipSetKey) (map[string]api.MarketBalance, error) {
 	out := map[string]api.MarketBalance{}
 
-	var state market.State
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
-	if _, err := a.StateManager.LoadActorState(ctx, builtin.StorageMarketActorAddr, &state, ts); err != nil {
-		return nil, err
-	}
-	store := a.StateManager.ChainStore().Store(ctx)
-	escrow, err := adt.AsMap(store, state.EscrowTable)
+
+	state, err := a.StateManager.GetMarketState(ctx, ts)
 	if err != nil {
 		return nil, err
 	}
-	locked, err := adt.AsMap(store, state.LockedTable)
+	escrow, err := state.EscrowTable()
+	if err != nil {
+		return nil, err
+	}
+	locked, err := state.LockedTable()
 	if err != nil {
 		return nil, err
 	}
 
-	var es, lk abi.TokenAmount
-	err = escrow.ForEach(&es, func(k string) error {
-		a, err := address.NewFromBytes([]byte(k))
+	err = escrow.ForEach(func(a address.Address, es abi.TokenAmount) error {
+
+		lk, err := locked.Get(a)
 		if err != nil {
 			return err
-		}
-
-		if found, err := locked.Get(abi.AddrKey(a), &lk); err != nil {
-			return err
-		} else if !found {
-			return fmt.Errorf("locked funds not found")
 		}
 
 		out[a.String()] = api.MarketBalance{
@@ -535,37 +529,36 @@ func (a *StateAPI) StateMarketParticipants(ctx context.Context, tsk types.TipSet
 func (a *StateAPI) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[string]api.MarketDeal, error) {
 	out := map[string]api.MarketDeal{}
 
-	var state market.State
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
-	if _, err := a.StateManager.LoadActorState(ctx, builtin.StorageMarketActorAddr, &state, ts); err != nil {
-		return nil, err
-	}
 
-	store := a.StateManager.ChainStore().Store(ctx)
-	da, err := adt.AsArray(store, state.Proposals)
+	state, err := a.StateManager.GetMarketState(ctx, ts)
 	if err != nil {
 		return nil, err
 	}
 
-	sa, err := adt.AsArray(store, state.States)
+	da, err := state.Proposals()
 	if err != nil {
 		return nil, err
 	}
 
-	var d market.DealProposal
-	if err := da.ForEach(&d, func(i int64) error {
-		var s market.DealState
-		if found, err := sa.Get(uint64(i), &s); err != nil {
+	sa, err := state.States()
+	if err != nil {
+		return nil, err
+	}
+
+	if err := da.ForEach(func(dealID abi.DealID, d market.DealProposal) error {
+		s, found, err := sa.Get(dealID)
+		if err != nil {
 			return xerrors.Errorf("failed to get state for deal in proposals array: %w", err)
 		} else if !found {
-			s.SectorStartEpoch = -1
+			s = market.EmptyDealState()
 		}
-		out[strconv.FormatInt(i, 10)] = api.MarketDeal{
+		out[strconv.FormatInt(int64(dealID), 10)] = api.MarketDeal{
 			Proposal: d,
-			State:    s,
+			State:    *s,
 		}
 		return nil
 	}); err != nil {
@@ -872,10 +865,10 @@ func (a *StateAPI) StateMinerPreCommitDepositForPower(ctx context.Context, maddr
 	var sectorWeight abi.StoragePower
 	if act, err := state.GetActor(market.Address); err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading miner actor %s: %w", maddr, err)
-	} else s, err := market.Load(store, act); err != nil {
+	} else if s, err := market.Load(store, act); err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading market actor state %s: %w", maddr, err)
 	} else if w, vw, err := s.VerifyDealsForActivation(maddr, pci.DealIDs, ts.Height(), pci.Expiration); err != nil {
-			return types.EmptyInt, xerrors.Errorf("verifying deals for activation: %w", err)
+		return types.EmptyInt, xerrors.Errorf("verifying deals for activation: %w", err)
 	} else {
 		// NB: not exactly accurate, but should always lead us to *over* estimate, not under
 		duration := pci.Expiration - ts.Height()
@@ -887,9 +880,9 @@ func (a *StateAPI) StateMinerPreCommitDepositForPower(ctx context.Context, maddr
 	var powerSmoothed smoothing.FilterEstimate
 	if act, err := state.GetActor(power.Address); err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading miner actor: %w", err)
-	} else s, err := power.Load(store, act); err != nil {
+	} else if s, err := power.Load(store, act); err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading power actor state: %w", err)
-	} else p, err := s.TotalPowerSmoothed(); err != nil {
+	} else if p, err := s.TotalPowerSmoothed(); err != nil {
 		return types.EmptyInt, xerrors.Errorf("failed to determine total power: %w", err)
 	} else {
 		powerSmoothed = p
@@ -898,9 +891,9 @@ func (a *StateAPI) StateMinerPreCommitDepositForPower(ctx context.Context, maddr
 	var rewardSmoothed smoothing.FilterEstimate
 	if act, err := state.GetActor(reward.Address); err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading miner actor: %w", err)
-	} else s, err := reward.Load(store, act); err != nil {
+	} else if s, err := reward.Load(store, act); err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading reward actor state: %w", err)
-	} else r, err := s.RewardSmoothed(); err != nil {
+	} else if r, err := s.RewardSmoothed(); err != nil {
 		return types.EmptyInt, xerrors.Errorf("failed to determine total reward: %w", err)
 	} else {
 		rewardSmoothed = r
@@ -934,10 +927,10 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 	var sectorWeight abi.StoragePower
 	if act, err := state.GetActor(market.Address); err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading miner actor %s: %w", maddr, err)
-	} else s, err := market.Load(store, act); err != nil {
+	} else if s, err := market.Load(store, act); err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading market actor state %s: %w", maddr, err)
 	} else if w, vw, err := s.VerifyDealsForActivation(maddr, pci.DealIDs, ts.Height(), pci.Expiration); err != nil {
-			return types.EmptyInt, xerrors.Errorf("verifying deals for activation: %w", err)
+		return types.EmptyInt, xerrors.Errorf("verifying deals for activation: %w", err)
 	} else {
 		// NB: not exactly accurate, but should always lead us to *over* estimate, not under
 		duration := pci.Expiration - ts.Height()
@@ -947,16 +940,16 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 	}
 
 	var (
-		powerSmoothed smoothing.FilterEstimate
+		powerSmoothed      smoothing.FilterEstimate
 		pledgeCollerateral abi.TokenAmount
 	)
 	if act, err := state.GetActor(power.Address); err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading miner actor: %w", err)
-	} else s, err := power.Load(store, act); err != nil {
+	} else if s, err := power.Load(store, act); err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading power actor state: %w", err)
-	} else p, err := s.TotalPowerSmoothed(); err != nil {
+	} else if p, err := s.TotalPowerSmoothed(); err != nil {
 		return types.EmptyInt, xerrors.Errorf("failed to determine total power: %w", err)
-	} else c, err := s.TotalLocked(); err != nil {
+	} else if c, err := s.TotalLocked(); err != nil {
 		return types.EmptyInt, xerrors.Errorf("failed to determine pledge collateral: %w", err)
 	} else {
 		powerSmoothed = p
@@ -965,15 +958,15 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 
 	var (
 		rewardSmoothed smoothing.FilterEstimate
-		baselinePower abi.StoragePower
+		baselinePower  abi.StoragePower
 	)
 	if act, err := state.GetActor(reward.Address); err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading miner actor: %w", err)
-	} else s, err := reward.Load(store, act); err != nil {
+	} else if s, err := reward.Load(store, act); err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading reward actor state: %w", err)
-	} else r, err := s.RewardSmoothed(); err != nil {
+	} else if r, err := s.RewardSmoothed(); err != nil {
 		return types.EmptyInt, xerrors.Errorf("failed to determine total reward: %w", err)
-	} else p, err := s.BaselinePower(); err != nil {
+	} else if p, err := s.BaselinePower(); err != nil {
 		return types.EmptyInt, xerrors.Errorf("failed to determine baseline power: %w", err)
 	} else {
 		rewardSmoothed = r

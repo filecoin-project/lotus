@@ -98,29 +98,6 @@ func (c *ClientNodeAdapter) VerifySignature(ctx context.Context, sig crypto.Sign
 	return err == nil, err
 }
 
-func (c *ClientNodeAdapter) ListClientDeals(ctx context.Context, addr address.Address, encodedTs shared.TipSetToken) ([]storagemarket.StorageDeal, error) {
-	tsk, err := types.TipSetKeyFromBytes(encodedTs)
-	if err != nil {
-		return nil, err
-	}
-
-	allDeals, err := c.StateMarketDeals(ctx, tsk)
-	if err != nil {
-		return nil, err
-	}
-
-	var out []storagemarket.StorageDeal
-
-	for _, deal := range allDeals {
-		storageDeal := utils.FromOnChainDeal(deal.Proposal, deal.State)
-		if storageDeal.Client == addr {
-			out = append(out, storageDeal)
-		}
-	}
-
-	return out, nil
-}
-
 // Adds funds with the StorageMinerActor for a storage participant.  Used by both providers and clients.
 func (c *ClientNodeAdapter) AddFunds(ctx context.Context, addr address.Address, amount abi.TokenAmount) (cid.Cid, error) {
 	// (Provider Node API)
