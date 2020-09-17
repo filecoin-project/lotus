@@ -106,7 +106,11 @@ func handler(ps *pubsub.PubSub) func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		sub, err := ps.Subscribe(topic) //nolint
+		topic, err := ps.Join(topic)
+		if err != nil {
+			return
+		}
+		sub, err := topic.Subscribe()
 		if err != nil {
 			return
 		}
