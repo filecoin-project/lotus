@@ -1599,7 +1599,7 @@ func (syncer *Syncer) fetchMessages(ctx context.Context, headers []*types.TipSet
 
 	log.Infof("fetching messages for %d tipsets at %d done; took %s", batchSize, startOffset, build.Clock.Since(start))
 
-	return batch, batchErr
+	return batch, nil
 }
 
 func persistMessages(bs bstore.Blockstore, bst *exchange.CompactedMessages) error {
