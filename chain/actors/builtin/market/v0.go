@@ -184,11 +184,7 @@ func (d *v0MarketStatesDiffer) Remove(key uint64, val *typegen.Deferred) error {
 }
 
 func fromV0DealState(v0 market.DealState) DealState {
-	return DealState{
-		SectorStartEpoch: v0.SectorStartEpoch,
-		SlashEpoch:       v0.SlashEpoch,
-		LastUpdatedEpoch: v0.LastUpdatedEpoch,
-	}
+	return (DealState)(v0)
 }
 
 type v0DealProposals struct {
@@ -234,19 +230,7 @@ type v0MarketProposalsDiffer struct {
 }
 
 func fromV0DealProposal(v0 market.DealProposal) DealProposal {
-	return DealProposal{
-		PieceCID:             v0.PieceCID,
-		PieceSize:            v0.PieceSize,
-		VerifiedDeal:         v0.VerifiedDeal,
-		Client:               v0.Client,
-		Provider:             v0.Provider,
-		Label:                v0.Label,
-		StartEpoch:           v0.StartEpoch,
-		EndEpoch:             v0.EndEpoch,
-		StoragePricePerEpoch: v0.StoragePricePerEpoch,
-		ProviderCollateral:   v0.ProviderCollateral,
-		ClientCollateral:     v0.ClientCollateral,
-	}
+	return (DealProposal)(v0)
 }
 
 func (d *v0MarketProposalsDiffer) Add(key uint64, val *typegen.Deferred) error {
