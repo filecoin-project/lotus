@@ -22,7 +22,7 @@ func (s *v0State) From() address.Address {
 
 // Recipient of payouts from channel
 func (s *v0State) To() address.Address {
-	return s.State.From
+	return s.State.To
 }
 
 // Height at which the channel can be `Collected`
