@@ -5,6 +5,10 @@ import (
 	"fmt"
 	"sync"
 
+	v0msig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
+
+	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
+
 	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 
 	"github.com/ipfs/go-cid"
@@ -19,7 +23,6 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	v0reward "github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
@@ -793,7 +796,7 @@ func (sm *StateManager) SetVMConstructor(nvm func(context.Context, *vm.VMOpts) (
 }
 
 type genesisInfo struct {
-	genesisMsigs []multisig.State
+	genesisMsigs []v0msig.State
 	// info about the Accounts in the genesis state
 	genesisActors      []genesisActor
 	genesisPledge      abi.TokenAmount
@@ -856,15 +859,15 @@ func (sm *StateManager) setupGenesisActors(ctx context.Context) error {
 				return err
 			}
 
-			if s.StartEpoch != 0 {
+			if s.StartEpoch() != 0 {
 				return xerrors.New("genesis multisig doesn't start vesting at epoch 0!")
 			}
 
-			ot, f := totalsByEpoch[s.UnlockDuration]
+			ot, f := totalsByEpoch[s.UnlockDuration()]
 			if f {
-				totalsByEpoch[s.UnlockDuration] = big.Add(ot, s.InitialBalance)
+				totalsByEpoch[s.UnlockDuration()] = big.Add(ot, s.InitialBalance())
 			} else {
-				totalsByEpoch[s.UnlockDuration] = s.InitialBalance
+				totalsByEpoch[s.UnlockDuration()] = s.InitialBalance()
 			}
 
 		} else if act.Code == builtin.AccountActorCodeID {
@@ -894,9 +897,9 @@ func (sm *StateManager) setupGenesisActors(ctx context.Context) error {
 		return xerrors.Errorf("error setting up genesis infos: %w", err)
 	}
 
-	gi.genesisMsigs = make([]multisig.State, 0, len(totalsByEpoch))
+	gi.genesisMsigs = make([]v0msig.State, 0, len(totalsByEpoch))
 	for k, v := range totalsByEpoch {
-		ns := multisig.State{
+		ns := v0msig.State{
 			InitialBalance: v,
 			UnlockDuration: k,
 			PendingTxns:    cid.Undef,
@@ -971,9 +974,9 @@ func (sm *StateManager) setupGenesisActorsTestnet(ctx context.Context) error {
 	totalsByEpoch[sixYears] = big.NewInt(100_000_000)
 	totalsByEpoch[sixYears] = big.Add(totalsByEpoch[sixYears], big.NewInt(300_000_000))
 
-	gi.genesisMsigs = make([]multisig.State, 0, len(totalsByEpoch))
+	gi.genesisMsigs = make([]v0msig.State, 0, len(totalsByEpoch))
 	for k, v := range totalsByEpoch {
-		ns := multisig.State{
+		ns := v0msig.State{
 			InitialBalance: v,
 			UnlockDuration: k,
 			PendingTxns:    cid.Undef,

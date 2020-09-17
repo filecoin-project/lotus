@@ -28,4 +28,7 @@ type State interface {
 	cbor.Marshaler
 
 	LockedBalance(epoch abi.ChainEpoch) (abi.TokenAmount, error)
+	StartEpoch() abi.ChainEpoch
+	UnlockDuration() abi.ChainEpoch
+	InitialBalance() abi.TokenAmount
 }

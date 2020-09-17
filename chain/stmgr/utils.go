@@ -27,7 +27,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	"github.com/filecoin-project/specs-actors/actors/builtin/cron"
-	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
+	v0msig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	v0reward "github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
@@ -554,7 +554,7 @@ func init() {
 		builtin.StorageMinerActorCodeID:     {builtin.MethodsMiner, miner.Actor{}},
 		builtin.StorageMarketActorCodeID:    {builtin.MethodsMarket, market.Actor{}},
 		builtin.PaymentChannelActorCodeID:   {builtin.MethodsPaych, paych.Actor{}},
-		builtin.MultisigActorCodeID:         {builtin.MethodsMultisig, multisig.Actor{}},
+		builtin.MultisigActorCodeID:         {builtin.MethodsMultisig, v0msig.Actor{}},
 		builtin.RewardActorCodeID:           {builtin.MethodsReward, v0reward.Actor{}},
 		builtin.VerifiedRegistryActorCodeID: {builtin.MethodsVerifiedRegistry, verifreg.Actor{}},
 	}

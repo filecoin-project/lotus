@@ -21,7 +21,7 @@ import (
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
+	v0msig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	v0power "github.com/filecoin-project/specs-actors/actors/builtin/power"
 	v0reward "github.com/filecoin-project/specs-actors/actors/builtin/reward"
@@ -53,7 +53,7 @@ func NewInvoker() *Invoker {
 	inv.Register(builtin.StoragePowerActorCodeID, v0power.Actor{}, v0power.State{})
 	inv.Register(builtin.StorageMarketActorCodeID, market.Actor{}, market.State{})
 	inv.Register(builtin.StorageMinerActorCodeID, v0miner.Actor{}, v0miner.State{})
-	inv.Register(builtin.MultisigActorCodeID, multisig.Actor{}, multisig.State{})
+	inv.Register(builtin.MultisigActorCodeID, v0msig.Actor{}, v0msig.State{})
 	inv.Register(builtin.PaymentChannelActorCodeID, paych.Actor{}, paych.State{})
 	inv.Register(builtin.VerifiedRegistryActorCodeID, verifreg.Actor{}, verifreg.State{})
 	inv.Register(builtin.AccountActorCodeID, account.Actor{}, account.State{})
