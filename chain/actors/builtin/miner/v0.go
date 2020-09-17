@@ -243,9 +243,6 @@ func (s *v0State) Info() (MinerInfo, error) {
 func (s *v0State) DeadlineInfo(epoch abi.ChainEpoch) *dline.Info {
 	return s.State.DeadlineInfo(epoch)
 }
-func (s *v0State) WpostProvingPeriod() abi.ChainEpoch {
-	return v0miner.WPoStProvingPeriod
-}
 
 func (d *v0Deadline) LoadPartition(idx uint64) (Partition, error) {
 	p, err := d.Deadline.LoadPartition(d.store, idx)
