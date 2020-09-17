@@ -25,7 +25,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
-	miner2 "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/types"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
@@ -317,16 +316,16 @@ type FullNode interface {
 	// StateMinerSectors returns info about the given miner's sectors. If the filter bitfield is nil, all sectors are included.
 	// If the filterOut boolean is set to true, any sectors in the filter are excluded.
 	// If false, only those sectors in the filter are included.
-	StateMinerSectors(context.Context, address.Address, *bitfield.BitField, bool, types.TipSetKey) ([]*miner2.ChainSectorInfo, error)
+	StateMinerSectors(context.Context, address.Address, *bitfield.BitField, bool, types.TipSetKey) ([]*miner.ChainSectorInfo, error)
 	// StateMinerActiveSectors returns info about sectors that a given miner is actively proving.
-	StateMinerActiveSectors(context.Context, address.Address, types.TipSetKey) ([]*miner2.ChainSectorInfo, error)
+	StateMinerActiveSectors(context.Context, address.Address, types.TipSetKey) ([]*miner.ChainSectorInfo, error)
 	// StateMinerProvingDeadline calculates the deadline at some epoch for a proving period
 	// and returns the deadline-related calculations.
 	StateMinerProvingDeadline(context.Context, address.Address, types.TipSetKey) (*dline.Info, error)
 	// StateMinerPower returns the power of the indicated miner
 	StateMinerPower(context.Context, address.Address, types.TipSetKey) (*MinerPower, error)
 	// StateMinerInfo returns info about the indicated miner
-	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (miner2.MinerInfo, error)
+	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (miner.MinerInfo, error)
 	// StateMinerFaults returns a bitfield indicating the faulty sectors of the given miner
 	StateMinerFaults(context.Context, address.Address, types.TipSetKey) (bitfield.BitField, error)
 	// StateAllMinerFaults returns all non-expired Faults that occur within lookback epochs of the given tipset
