@@ -134,7 +134,7 @@ type FullNodeStruct struct {
 		WalletBalance        func(context.Context, address.Address) (types.BigInt, error)                         `perm:"read"`
 		WalletSign           func(context.Context, address.Address, []byte) (*crypto.Signature, error)            `perm:"sign"`
 		WalletSignMessage    func(context.Context, address.Address, *types.Message) (*types.SignedMessage, error) `perm:"sign"`
-		WalletVerify         func(context.Context, address.Address, []byte, *crypto.Signature) bool               `perm:"read"`
+		WalletVerify         func(context.Context, address.Address, []byte, *crypto.Signature) (bool, error)      `perm:"read"`
 		WalletDefaultAddress func(context.Context) (address.Address, error)                                       `perm:"write"`
 		WalletSetDefault     func(context.Context, address.Address) error                                         `perm:"admin"`
 		WalletExport         func(context.Context, address.Address) (*types.KeyInfo, error)                       `perm:"admin"`
@@ -604,7 +604,7 @@ func (c *FullNodeStruct) WalletSignMessage(ctx context.Context, k address.Addres
 	return c.Internal.WalletSignMessage(ctx, k, msg)
 }
 
-func (c *FullNodeStruct) WalletVerify(ctx context.Context, k address.Address, msg []byte, sig *crypto.Signature) bool {
+func (c *FullNodeStruct) WalletVerify(ctx context.Context, k address.Address, msg []byte, sig *crypto.Signature) (bool, error) {
 	return c.Internal.WalletVerify(ctx, k, msg, sig)
 }
 

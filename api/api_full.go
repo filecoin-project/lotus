@@ -230,7 +230,7 @@ type FullNode interface {
 	WalletSignMessage(context.Context, address.Address, *types.Message) (*types.SignedMessage, error)
 	// WalletVerify takes an address, a signature, and some bytes, and indicates whether the signature is valid.
 	// The address does not have to be in the wallet.
-	WalletVerify(context.Context, address.Address, []byte, *crypto.Signature) bool
+	WalletVerify(context.Context, address.Address, []byte, *crypto.Signature) (bool, error)
 	// WalletDefaultAddress returns the address marked as default in the wallet.
 	WalletDefaultAddress(context.Context) (address.Address, error)
 	// WalletSetDefault marks the given address as as the default one.

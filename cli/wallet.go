@@ -382,7 +382,11 @@ var walletVerify = &cli.Command{
 			return err
 		}
 
-		if api.WalletVerify(ctx, addr, msg, &sig) {
+		ok, err := api.WalletVerify(ctx, addr, msg, &sig)
+		if err != nil {
+			return err
+		}
+		if ok {
 			fmt.Println("valid")
 			return nil
 		}
