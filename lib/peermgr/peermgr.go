@@ -10,7 +10,10 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"go.opencensus.io/stats"
 	"go.uber.org/fx"
+	"go.uber.org/multierr"
+	"golang.org/x/xerrors"
 
+	"github.com/libp2p/go-libp2p-core/event"
 	host "github.com/libp2p/go-libp2p-core/host"
 	net "github.com/libp2p/go-libp2p-core/network"
 	peer "github.com/libp2p/go-libp2p-core/peer"
@@ -50,12 +53,17 @@ type PeerMgr struct {
 	h   host.Host
 	dht *dht.IpfsDHT
 
-	notifee *net.NotifyBundle
+	notifee        *net.NotifyBundle
+	filPeerEmitter event.Emitter
 
 	done chan struct{}
 }
 
-func NewPeerMgr(lc fx.Lifecycle, h host.Host, dht *dht.IpfsDHT, bootstrap dtypes.BootstrapPeers) *PeerMgr {
+type NewFilPeer struct {
+	Id peer.ID
+}
+
+func NewPeerMgr(lc fx.Lifecycle, h host.Host, dht *dht.IpfsDHT, bootstrap dtypes.BootstrapPeers) (*PeerMgr, error) {
 	pm := &PeerMgr{
 		h:             h,
 		dht:           dht,
@@ -69,10 +77,18 @@ func NewPeerMgr(lc fx.Lifecycle, h host.Host, dht *dht.IpfsDHT, bootstrap dtypes
 
 		done: make(chan struct{}),
 	}
+	emitter, err := h.EventBus().Emitter(new(NewFilPeer))
+	if err != nil {
+		return nil, xerrors.Errorf("creating NewFilPeer emitter: %w", err)
+	}
+	pm.filPeerEmitter = emitter
 
 	lc.Append(fx.Hook{
 		OnStop: func(ctx context.Context) error {
-			return pm.Stop(ctx)
+			return multierr.Combine(
+				pm.filPeerEmitter.Close(),
+				pm.Stop(ctx),
+			)
 		},
 	})
 
@@ -84,10 +100,11 @@ func NewPeerMgr(lc fx.Lifecycle, h host.Host, dht *dht.IpfsDHT, bootstrap dtypes
 
 	h.Network().Notify(pm.notifee)
 
-	return pm
+	return pm, nil
 }
 
 func (pmgr *PeerMgr) AddFilecoinPeer(p peer.ID) {
+	_ = pmgr.filPeerEmitter.Emit(NewFilPeer{Id: p}) //nolint:errcheck
 	pmgr.peersLk.Lock()
 	defer pmgr.peersLk.Unlock()
 	pmgr.peers[p] = time.Duration(0)

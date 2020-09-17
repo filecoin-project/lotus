@@ -6,8 +6,8 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/ipfs/go-cid"
 
@@ -96,7 +96,8 @@ type MessageSendSpec struct {
 }
 
 var DefaultMessageSendSpec = MessageSendSpec{
-	MaxFee: big.Zero(),
+	// MaxFee of 0.1FIL
+	MaxFee: abi.NewTokenAmount(int64(build.FilecoinPrecision) / 10),
 }
 
 func (ms *MessageSendSpec) Get() MessageSendSpec {

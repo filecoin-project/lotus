@@ -1,13 +1,16 @@
-package blocksync
+package exchange
 
 // FIXME: This needs to be reviewed.
 
 import (
+	"context"
 	"sort"
 	"sync"
 	"time"
 
+	host "github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"go.uber.org/fx"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/lib/peermgr"
@@ -29,11 +32,30 @@ type bsPeerTracker struct {
 	pmgr *peermgr.PeerMgr
 }
 
-func newPeerTracker(pmgr *peermgr.PeerMgr) *bsPeerTracker {
-	return &bsPeerTracker{
+func newPeerTracker(lc fx.Lifecycle, h host.Host, pmgr *peermgr.PeerMgr) *bsPeerTracker {
+	bsPt := &bsPeerTracker{
 		peers: make(map[peer.ID]*peerStats),
 		pmgr:  pmgr,
 	}
+
+	sub, err := h.EventBus().Subscribe(new(peermgr.NewFilPeer))
+	if err != nil {
+		panic(err)
+	}
+
+	go func() {
+		for newPeer := range sub.Out() {
+			bsPt.addPeer(newPeer.(peermgr.NewFilPeer).Id)
+		}
+	}()
+
+	lc.Append(fx.Hook{
+		OnStop: func(ctx context.Context) error {
+			return sub.Close()
+		},
+	})
+
+	return bsPt
 }
 
 func (bpt *bsPeerTracker) addPeer(p peer.ID) {
@@ -72,16 +94,7 @@ func (bpt *bsPeerTracker) prefSortedPeers() []peer.ID {
 		var costI, costJ float64
 
 		getPeerInitLat := func(p peer.ID) float64 {
-			var res float64
-			if bpt.pmgr != nil {
-				if lat, ok := bpt.pmgr.GetPeerLatency(p); ok {
-					res = float64(lat)
-				}
-			}
-			if res == 0 {
-				res = float64(bpt.avgGlobalTime)
-			}
-			return res * newPeerMul
+			return float64(bpt.avgGlobalTime) * newPeerMul
 		}
 
 		if pi.successes+pi.failures > 0 {
@@ -107,8 +120,8 @@ func (bpt *bsPeerTracker) prefSortedPeers() []peer.ID {
 const (
 	// xInvAlpha = (N+1)/2
 
-	localInvAlpha  = 5  // 86% of the value is the last 9
-	globalInvAlpha = 20 // 86% of the value is the last 39
+	localInvAlpha  = 10 // 86% of the value is the last 19
+	globalInvAlpha = 25 // 86% of the value is the last 49
 )
 
 func (bpt *bsPeerTracker) logGlobalSuccess(dur time.Duration) {
@@ -133,7 +146,7 @@ func logTime(pi *peerStats, dur time.Duration) {
 
 }
 
-func (bpt *bsPeerTracker) logSuccess(p peer.ID, dur time.Duration) {
+func (bpt *bsPeerTracker) logSuccess(p peer.ID, dur time.Duration, reqSize uint64) {
 	bpt.lk.Lock()
 	defer bpt.lk.Unlock()
 
@@ -145,10 +158,13 @@ func (bpt *bsPeerTracker) logSuccess(p peer.ID, dur time.Duration) {
 	}
 
 	pi.successes++
-	logTime(pi, dur)
+	if reqSize == 0 {
+		reqSize = 1
+	}
+	logTime(pi, dur/time.Duration(reqSize))
 }
 
-func (bpt *bsPeerTracker) logFailure(p peer.ID, dur time.Duration) {
+func (bpt *bsPeerTracker) logFailure(p peer.ID, dur time.Duration, reqSize uint64) {
 	bpt.lk.Lock()
 	defer bpt.lk.Unlock()
 
@@ -160,7 +176,10 @@ func (bpt *bsPeerTracker) logFailure(p peer.ID, dur time.Duration) {
 	}
 
 	pi.failures++
-	logTime(pi, dur)
+	if reqSize == 0 {
+		reqSize = 1
+	}
+	logTime(pi, dur/time.Duration(reqSize))
 }
 
 func (bpt *bsPeerTracker) removePeer(p peer.ID) {

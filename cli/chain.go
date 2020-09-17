@@ -14,8 +14,8 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
@@ -335,25 +335,6 @@ var chainSetHeadCmd = &cli.Command{
 
 		return nil
 	},
-}
-
-func parseTipSet(ctx context.Context, api api.FullNode, vals []string) (*types.TipSet, error) {
-	var headers []*types.BlockHeader
-	for _, c := range vals {
-		blkc, err := cid.Decode(c)
-		if err != nil {
-			return nil, err
-		}
-
-		bh, err := api.ChainGetBlock(ctx, blkc)
-		if err != nil {
-			return nil, err
-		}
-
-		headers = append(headers, bh)
-	}
-
-	return types.NewTipSet(headers)
 }
 
 var chainListCmd = &cli.Command{
@@ -678,7 +659,7 @@ func handleHamtEpoch(ctx context.Context, api api.FullNode, r cid.Cid) error {
 	}
 
 	return mp.ForEach(nil, func(key string) error {
-		ik, err := adt.ParseIntKey(key)
+		ik, err := abi.ParseIntKey(key)
 		if err != nil {
 			return err
 		}
@@ -863,6 +844,9 @@ var chainExportCmd = &cli.Command{
 			Name:  "recent-stateroots",
 			Usage: "specify the number of recent state roots to include in the export",
 		},
+		&cli.BoolFlag{
+			Name: "skip-old-msgs",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -897,7 +881,13 @@ var chainExportCmd = &cli.Command{
 			return err
 		}
 
-		stream, err := api.ChainExport(ctx, rsrs, ts.Key())
+		skipold := cctx.Bool("skip-old-msgs")
+
+		if rsrs == 0 && skipold {
+			return fmt.Errorf("must pass recent stateroots along with skip-old-msgs")
+		}
+
+		stream, err := api.ChainExport(ctx, rsrs, skipold, ts.Key())
 		if err != nil {
 			return err
 		}

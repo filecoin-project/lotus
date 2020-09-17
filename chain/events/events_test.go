@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -44,6 +44,10 @@ type fakeCS struct {
 	tipsets map[types.TipSetKey]*types.TipSet
 
 	sub func(rev, app []*types.TipSet)
+}
+
+func (fcs *fakeCS) ChainHead(ctx context.Context) (*types.TipSet, error) {
+	panic("implement me")
 }
 
 func (fcs *fakeCS) ChainGetTipSet(ctx context.Context, key types.TipSetKey) (*types.TipSet, error) {
@@ -110,7 +114,11 @@ func (fcs *fakeCS) makeTs(t *testing.T, parents []cid.Cid, h abi.ChainEpoch, msg
 
 func (fcs *fakeCS) ChainNotify(context.Context) (<-chan []*api.HeadChange, error) {
 	out := make(chan []*api.HeadChange, 1)
-	out <- []*api.HeadChange{{Type: store.HCCurrent, Val: fcs.tsc.best()}}
+	best, err := fcs.tsc.best()
+	if err != nil {
+		return nil, err
+	}
+	out <- []*api.HeadChange{{Type: store.HCCurrent, Val: best}}
 
 	fcs.sub = func(rev, app []*types.TipSet) {
 		notif := make([]*api.HeadChange, len(rev)+len(app))
@@ -174,7 +182,8 @@ func (fcs *fakeCS) advance(rev, app int, msgs map[int]cid.Cid, nulls ...int) { /
 
 	var revs []*types.TipSet
 	for i := 0; i < rev; i++ {
-		ts := fcs.tsc.best()
+		ts, err := fcs.tsc.best()
+		require.NoError(fcs.t, err)
 
 		if _, ok := nullm[int(ts.Height())]; !ok {
 			revs = append(revs, ts)
@@ -196,7 +205,9 @@ func (fcs *fakeCS) advance(rev, app int, msgs map[int]cid.Cid, nulls ...int) { /
 			continue
 		}
 
-		ts := fcs.makeTs(fcs.t, fcs.tsc.best().Key().Cids(), fcs.h, mc)
+		best, err := fcs.tsc.best()
+		require.NoError(fcs.t, err)
+		ts := fcs.makeTs(fcs.t, best.Key().Cids(), fcs.h, mc)
 		require.NoError(fcs.t, fcs.tsc.add(ts))
 
 		if hasMsgs {

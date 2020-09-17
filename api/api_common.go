@@ -30,6 +30,7 @@ type Common interface {
 	NetFindPeer(context.Context, peer.ID) (peer.AddrInfo, error)
 	NetPubsubScores(context.Context) ([]PubsubScore, error)
 	NetAutoNatStatus(context.Context) (NatInfo, error)
+	NetAgentVersion(ctx context.Context, p peer.ID) (string, error)
 
 	// NetBandwidthStats returns statistics about the nodes total bandwidth
 	// usage and current rate across all peers and protocols.

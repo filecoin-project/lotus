@@ -369,9 +369,8 @@ func (bv *BlockValidator) decodeAndCheckBlock(msg *pubsub.Message) (*types.Block
 func (bv *BlockValidator) isChainNearSynced() bool {
 	ts := bv.chain.GetHeaviestTipSet()
 	timestamp := ts.MinTimestamp()
-	now := build.Clock.Now().UnixNano()
-	cutoff := uint64(now) - uint64(6*time.Hour)
-	return timestamp > cutoff
+	timestampTime := time.Unix(int64(timestamp), 0)
+	return build.Clock.Since(timestampTime) < 6*time.Hour
 }
 
 func (bv *BlockValidator) validateMsgMeta(ctx context.Context, msg *types.BlockMsg) error {
@@ -554,6 +553,8 @@ func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubs
 		case xerrors.Is(err, messagepool.ErrRBFTooLowPremium):
 			fallthrough
 		case xerrors.Is(err, messagepool.ErrTooManyPendingMessages):
+			fallthrough
+		case xerrors.Is(err, messagepool.ErrNonceGap):
 			fallthrough
 		case xerrors.Is(err, messagepool.ErrNonceTooLow):
 			return pubsub.ValidationIgnore

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
+	"github.com/filecoin-project/go-state-types/exitcode"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"golang.org/x/xerrors"
 )

@@ -59,12 +59,12 @@ type ChannelInfo struct {
 	ChannelID string
 	// Channel address - may be nil if the channel hasn't been created yet
 	Channel *address.Address
-	// Control is the address of the account that created the channel
+	// Control is the address of the local node
 	Control address.Address
-	// Target is the address of the account on the other end of the channel
+	// Target is the address of the remote node (on the other end of the channel)
 	Target address.Address
-	// Direction indicates if the channel is inbound (this node is the Target)
-	// or outbound (this node is the Control)
+	// Direction indicates if the channel is inbound (Control is the "to" address)
+	// or outbound (Control is the "from" address)
 	Direction uint64
 	// Vouchers is a list of all vouchers sent on the channel
 	Vouchers []*VoucherInfo
@@ -84,6 +84,20 @@ type ChannelInfo struct {
 	AddFundsMsg *cid.Cid
 	// Settling indicates whether the channel has entered into the settling state
 	Settling bool
+}
+
+func (ci *ChannelInfo) from() address.Address {
+	if ci.Direction == DirOutbound {
+		return ci.Control
+	}
+	return ci.Target
+}
+
+func (ci *ChannelInfo) to() address.Address {
+	if ci.Direction == DirOutbound {
+		return ci.Target
+	}
+	return ci.Control
 }
 
 // infoForVoucher gets the VoucherInfo for the given voucher.

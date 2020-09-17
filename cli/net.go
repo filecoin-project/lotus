@@ -8,12 +8,17 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/libp2p/go-libp2p-core/peer"
-	protocol "github.com/libp2p/go-libp2p-core/protocol"
-
 	"github.com/dustin/go-humanize"
 	"github.com/urfave/cli/v2"
+	"golang.org/x/xerrors"
 
+	"github.com/libp2p/go-libp2p-core/peer"
+	protocol "github.com/libp2p/go-libp2p-core/protocol"
+	"github.com/multiformats/go-multiaddr"
+
+	"github.com/filecoin-project/go-address"
+
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/addrutil"
 )
 
@@ -35,6 +40,13 @@ var netCmd = &cli.Command{
 var NetPeers = &cli.Command{
 	Name:  "peers",
 	Usage: "Print peers",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:    "agent",
+			Aliases: []string{"a"},
+			Usage:   "Print agent name",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetAPI(cctx)
 		if err != nil {
@@ -52,7 +64,17 @@ var NetPeers = &cli.Command{
 		})
 
 		for _, peer := range peers {
-			fmt.Printf("%s, %s\n", peer.ID, peer.Addrs)
+			var agent string
+			if cctx.Bool("agent") {
+				agent, err = api.NetAgentVersion(ctx, peer.ID)
+				if err != nil {
+					log.Warnf("getting agent version: %s", err)
+				} else {
+					agent = ", " + agent
+				}
+			}
+
+			fmt.Printf("%s, %s%s\n", peer.ID, peer.Addrs, agent)
 		}
 
 		return nil
@@ -124,7 +146,7 @@ var NetListen = &cli.Command{
 var netConnect = &cli.Command{
 	Name:      "connect",
 	Usage:     "Connect to a peer",
-	ArgsUsage: "[peerMultiaddr]",
+	ArgsUsage: "[peerMultiaddr|minerActorAddress]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetAPI(cctx)
 		if err != nil {
@@ -135,7 +157,43 @@ var netConnect = &cli.Command{
 
 		pis, err := addrutil.ParseAddresses(ctx, cctx.Args().Slice())
 		if err != nil {
-			return err
+			a, perr := address.NewFromString(cctx.Args().First())
+			if perr != nil {
+				return err
+			}
+
+			na, fc, err := GetFullNodeAPI(cctx)
+			if err != nil {
+				return err
+			}
+			defer fc()
+
+			mi, err := na.StateMinerInfo(ctx, a, types.EmptyTSK)
+			if err != nil {
+				return xerrors.Errorf("getting miner info: %w", err)
+			}
+
+			if mi.PeerId == nil {
+				return xerrors.Errorf("no PeerID for miner")
+			}
+			multiaddrs := make([]multiaddr.Multiaddr, 0, len(mi.Multiaddrs))
+			for i, a := range mi.Multiaddrs {
+				maddr, err := multiaddr.NewMultiaddrBytes(a)
+				if err != nil {
+					log.Warnf("parsing multiaddr %d (%x): %s", i, a, err)
+					continue
+				}
+				multiaddrs = append(multiaddrs, maddr)
+			}
+
+			pi := peer.AddrInfo{
+				ID:    *mi.PeerId,
+				Addrs: multiaddrs,
+			}
+
+			fmt.Printf("%s -> %s\n", a, pi)
+
+			pis = append(pis, pi)
 		}
 
 		for _, pi := range pis {

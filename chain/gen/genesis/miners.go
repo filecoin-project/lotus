@@ -6,6 +6,10 @@ import (
 	"fmt"
 	"math/rand"
 
+	"github.com/filecoin-project/lotus/build"
+
+	"github.com/filecoin-project/go-state-types/network"
+
 	"github.com/filecoin-project/lotus/chain/state"
 
 	"github.com/ipfs/go-cid"
@@ -14,15 +18,15 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 
 	"github.com/filecoin-project/lotus/chain/store"
@@ -61,6 +65,10 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 		return big.Zero(), nil
 	}
 
+	nwv := func(context.Context, abi.ChainEpoch) network.Version {
+		return build.NewestNetworkVersion
+	}
+
 	vmopt := &vm.VMOpts{
 		StateBase:      sroot,
 		Epoch:          0,
@@ -68,6 +76,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 		Bstore:         cs.Blockstore(),
 		Syscalls:       mkFakedSigSyscalls(cs.VMSys()),
 		CircSupplyCalc: csc,
+		NtwkVersion:    nwv,
 		BaseFee:        types.NewInt(0),
 	}
 

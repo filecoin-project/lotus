@@ -3,7 +3,7 @@ package storiface
 import (
 	"errors"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 )
 
 var ErrSectorNotFound = errors.New("sector not found")

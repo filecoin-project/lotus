@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/ipfs/go-cid"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
@@ -29,6 +29,7 @@ func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate 
 		Bstore:         sm.cs.Blockstore(),
 		Syscalls:       sm.cs.VMSys(),
 		CircSupplyCalc: sm.GetCirculatingSupply,
+		NtwkVersion:    sm.GetNtwkVersion,
 		BaseFee:        types.NewInt(0),
 	}
 
@@ -130,6 +131,7 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 		Bstore:         sm.cs.Blockstore(),
 		Syscalls:       sm.cs.VMSys(),
 		CircSupplyCalc: sm.GetCirculatingSupply,
+		NtwkVersion:    sm.GetNtwkVersion,
 		BaseFee:        ts.Blocks()[0].ParentBaseFee,
 	}
 	vmi, err := vm.NewVM(vmopt)

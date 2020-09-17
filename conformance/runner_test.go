@@ -9,19 +9,25 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
 
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
+	offline "github.com/ipfs/go-ipfs-exchange-offline"
+	format "github.com/ipfs/go-ipld-format"
+	"github.com/ipfs/go-merkledag"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/lib/blockstore"
 
-	"github.com/filecoin-project/statediff"
 	"github.com/filecoin-project/test-vectors/schema"
 
 	"github.com/fatih/color"
@@ -177,7 +183,7 @@ func executeMessageVector(t *testing.T, vector *schema.TestVector) {
 
 		// Execute the message.
 		var ret *vm.ApplyRet
-		ret, root, err = driver.ExecuteMessage(bs, root, epoch, msg)
+		ret, root, err = driver.ExecuteMessage(bs, root, abi.ChainEpoch(epoch), msg)
 		if err != nil {
 			t.Fatalf("fatal failure when executing message: %s", err)
 		}
@@ -188,8 +194,10 @@ func executeMessageVector(t *testing.T, vector *schema.TestVector) {
 
 	// Once all messages are applied, assert that the final state root matches
 	// the expected postcondition root.
-	if root != vector.Post.StateTree.RootCID {
+	if expected, actual := vector.Post.StateTree.RootCID, root; expected != actual {
+		t.Logf("actual state root CID doesn't match expected one; expected: %s, actual: %s", expected, actual)
 		dumpThreeWayStateDiff(t, vector, bs, root)
+		t.FailNow()
 	}
 }
 
@@ -212,7 +220,7 @@ func executeTipsetVector(t *testing.T, vector *schema.TestVector) {
 	var receiptsIdx int
 	for i, ts := range vector.ApplyTipsets {
 		ts := ts // capture
-		ret, err := driver.ExecuteTipset(bs, tmpds, root, prevEpoch, &ts)
+		ret, err := driver.ExecuteTipset(bs, tmpds, root, abi.ChainEpoch(prevEpoch), &ts)
 		if err != nil {
 			t.Fatalf("failed to apply tipset %d message: %s", i, err)
 		}
@@ -233,8 +241,10 @@ func executeTipsetVector(t *testing.T, vector *schema.TestVector) {
 
 	// Once all messages are applied, assert that the final state root matches
 	// the expected postcondition root.
-	if root != vector.Post.StateTree.RootCID {
+	if expected, actual := vector.Post.StateTree.RootCID, root; expected != actual {
+		t.Logf("actual state root CID doesn't match expected one; expected: %s, actual: %s", expected, actual)
 		dumpThreeWayStateDiff(t, vector, bs, root)
+		t.FailNow()
 	}
 }
 
@@ -244,7 +254,7 @@ func executeTipsetVector(t *testing.T, vector *schema.TestVector) {
 func assertMsgResult(t *testing.T, expected *schema.Receipt, actual *vm.ApplyRet, label string) {
 	t.Helper()
 
-	if expected, actual := expected.ExitCode, actual.ExitCode; expected != actual {
+	if expected, actual := exitcode.ExitCode(expected.ExitCode), actual.ExitCode; expected != actual {
 		t.Errorf("exit code of msg %s did not match; expected: %s, got: %s", label, expected, actual)
 	}
 	if expected, actual := expected.GasUsed, actual.GasUsed; expected != actual {
@@ -256,6 +266,23 @@ func assertMsgResult(t *testing.T, expected *schema.Receipt, actual *vm.ApplyRet
 }
 
 func dumpThreeWayStateDiff(t *testing.T, vector *schema.TestVector, bs blockstore.Blockstore, actual cid.Cid) {
+	// check if statediff exists; if not, skip.
+	if err := exec.Command("statediff", "--help").Run(); err != nil {
+		t.Log("could not dump 3-way state tree diff upon test failure: statediff command not found")
+		t.Log("install statediff with:")
+		t.Log("$ git clone https://github.com/filecoin-project/statediff.git")
+		t.Log("$ cd statediff")
+		t.Log("$ go generate ./...")
+		t.Log("$ go install ./cmd/statediff")
+		return
+	}
+
+	tmpCar := writeStateToTempCAR(t, bs,
+		vector.Pre.StateTree.RootCID,
+		vector.Post.StateTree.RootCID,
+		actual,
+	)
+
 	color.NoColor = false // enable colouring.
 
 	t.Errorf("wrong post root cid; expected %v, but got %v", vector.Post.StateTree.RootCID, actual)
@@ -269,19 +296,64 @@ func dumpThreeWayStateDiff(t *testing.T, vector *schema.TestVector, bs blockstor
 		d3 = color.New(color.FgGreen, color.Bold).Sprint("[Δ3]")
 	)
 
+	printDiff := func(left, right cid.Cid) {
+		cmd := exec.Command("statediff", "car", "--file", tmpCar, left.String(), right.String())
+		b, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("statediff failed: %s", err)
+		}
+		t.Log(string(b))
+	}
+
 	bold := color.New(color.Bold).SprintfFunc()
 
 	// run state diffs.
 	t.Log(bold("=== dumping 3-way diffs between %s, %s, %s ===", a, b, c))
 
 	t.Log(bold("--- %s left: %s; right: %s ---", d1, a, b))
-	t.Log(statediff.Diff(context.Background(), bs, vector.Post.StateTree.RootCID, actual))
+	printDiff(vector.Post.StateTree.RootCID, actual)
 
 	t.Log(bold("--- %s left: %s; right: %s ---", d2, c, b))
-	t.Log(statediff.Diff(context.Background(), bs, vector.Pre.StateTree.RootCID, actual))
+	printDiff(vector.Pre.StateTree.RootCID, actual)
 
 	t.Log(bold("--- %s left: %s; right: %s ---", d3, c, a))
-	t.Log(statediff.Diff(context.Background(), bs, vector.Pre.StateTree.RootCID, vector.Post.StateTree.RootCID))
+	printDiff(vector.Pre.StateTree.RootCID, vector.Post.StateTree.RootCID)
+}
+
+// writeStateToTempCAR writes the provided roots to a temporary CAR that'll be
+// cleaned up via t.Cleanup(). It returns the full path of the temp file.
+func writeStateToTempCAR(t *testing.T, bs blockstore.Blockstore, roots ...cid.Cid) string {
+	tmp, err := ioutil.TempFile("", "lotus-tests-*.car")
+	if err != nil {
+		t.Fatalf("failed to create temp file to dump CAR for diffing: %s", err)
+	}
+	// register a cleanup function to delete the CAR.
+	t.Cleanup(func() {
+		_ = os.Remove(tmp.Name())
+	})
+
+	carWalkFn := func(nd format.Node) (out []*format.Link, err error) {
+		for _, link := range nd.Links() {
+			if link.Cid.Prefix().Codec == cid.FilCommitmentSealed || link.Cid.Prefix().Codec == cid.FilCommitmentUnsealed {
+				continue
+			}
+			out = append(out, link)
+		}
+		return out, nil
+	}
+
+	var (
+		offl    = offline.Exchange(bs)
+		blkserv = blockservice.New(bs, offl)
+		dserv   = merkledag.NewDAGService(blkserv)
+	)
+
+	err = car.WriteCarWithWalker(context.Background(), dserv, roots, tmp, carWalkFn)
+	if err != nil {
+		t.Fatalf("failed to dump CAR for diffing: %s", err)
+	}
+	_ = tmp.Close()
+	return tmp.Name()
 }
 
 func loadCAR(t *testing.T, vectorCAR schema.Base64EncodedBytes) blockstore.Blockstore {

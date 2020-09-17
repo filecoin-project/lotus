@@ -6,10 +6,10 @@ import (
 	"errors"
 	"io"
 	"io/ioutil"
-	"path/filepath"
 
 	"github.com/gbrlsnchs/jwt/v3"
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	record "github.com/libp2p/go-libp2p-record"
 	"golang.org/x/xerrors"
@@ -19,7 +19,6 @@ import (
 	"github.com/filecoin-project/lotus/api/apistruct"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/lib/addrutil"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -93,16 +92,16 @@ func BuiltinBootstrap() (dtypes.BootstrapPeers, error) {
 	return build.BuiltinBootstrap()
 }
 
-func DrandBootstrap(d dtypes.DrandConfig) (dtypes.DrandBootstrap, error) {
+func DrandBootstrap(ds dtypes.DrandSchedule) (dtypes.DrandBootstrap, error) {
 	// TODO: retry resolving, don't fail if at least one resolve succeeds
-	addrs, err := addrutil.ParseAddresses(context.TODO(), d.Relays)
-	if err != nil {
-		log.Errorf("reoslving drand relays addresses: %+v", err)
-		return nil, nil
+	res := []peer.AddrInfo{}
+	for _, d := range ds {
+		addrs, err := addrutil.ParseAddresses(context.TODO(), d.Config.Relays)
+		if err != nil {
+			log.Errorf("reoslving drand relays addresses: %+v", err)
+			return res, nil
+		}
+		res = append(res, addrs...)
 	}
-	return addrs, nil
-}
-
-func SetupJournal(lr repo.LockedRepo) error {
-	return journal.InitializeSystemJournal(filepath.Join(lr.Path(), "journal"))
+	return res, nil
 }

@@ -7,15 +7,14 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -73,18 +72,18 @@ func (ta *testActor) Exports() []interface{} {
 	}
 }
 
-func (ta *testActor) Constructor(rt runtime.Runtime, params *adt.EmptyValue) *adt.EmptyValue {
+func (ta *testActor) Constructor(rt runtime.Runtime, params *abi.EmptyValue) *abi.EmptyValue {
 	rt.ValidateImmediateCallerAcceptAny()
-	rt.State().Create(&testActorState{11})
-	fmt.Println("NEW ACTOR ADDRESS IS: ", rt.Message().Receiver())
+	rt.StateCreate(&testActorState{11})
+	fmt.Println("NEW ACTOR ADDRESS IS: ", rt.Receiver())
 
-	return adt.Empty
+	return abi.Empty
 }
 
-func (ta *testActor) TestMethod(rt runtime.Runtime, params *adt.EmptyValue) *adt.EmptyValue {
+func (ta *testActor) TestMethod(rt runtime.Runtime, params *abi.EmptyValue) *abi.EmptyValue {
 	rt.ValidateImmediateCallerAcceptAny()
 	var st testActorState
-	rt.State().Readonly(&st)
+	rt.StateReadonly(&st)
 
 	if rt.CurrEpoch() > testForkHeight {
 		if st.HasUpgraded != 55 {
@@ -96,7 +95,7 @@ func (ta *testActor) TestMethod(rt runtime.Runtime, params *adt.EmptyValue) *adt
 		}
 	}
 
-	return adt.Empty
+	return abi.Empty
 }
 
 func TestForkHeightTriggers(t *testing.T) {
@@ -119,7 +118,7 @@ func TestForkHeightTriggers(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	stmgr.ForksAtHeight[testForkHeight] = func(ctx context.Context, sm *StateManager, st types.StateTree) error {
+	stmgr.ForksAtHeight[testForkHeight] = func(ctx context.Context, sm *StateManager, st types.StateTree, ts *types.TipSet) error {
 		cst := cbor.NewCborStore(sm.ChainStore().Blockstore())
 
 		act, err := st.GetActor(taddr)

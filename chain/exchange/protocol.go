@@ -1,4 +1,4 @@
-package blocksync
+package exchange
 
 import (
 	"time"
@@ -13,9 +13,17 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-var log = logging.Logger("blocksync")
+var log = logging.Logger("chainxchg")
 
-const BlockSyncProtocolID = "/fil/sync/blk/0.0.1"
+const (
+	// BlockSyncProtocolID is the protocol ID of the former blocksync protocol.
+	// Deprecated.
+	BlockSyncProtocolID = "/fil/sync/blk/0.0.1"
+
+	// ChainExchangeProtocolID is the protocol ID of the chain exchange
+	// protocol.
+	ChainExchangeProtocolID = "/fil/chain/xchg/0.0.1"
+)
 
 // FIXME: Bumped from original 800 to this to accommodate `syncFork()`
 //  use of `GetBlocks()`. It seems the expectation of that API is to
@@ -25,14 +33,16 @@ const BlockSyncProtocolID = "/fil/sync/blk/0.0.1"
 //   qualifier to avoid "const initializer [...] is not a constant" error.)
 var MaxRequestLength = uint64(build.ForkLengthThreshold)
 
-// Extracted constants from the code.
-// FIXME: Should be reviewed and confirmed.
-const SUCCESS_PEER_TAG_VALUE = 25
-const WRITE_REQ_DEADLINE = 5 * time.Second
-const READ_RES_DEADLINE = WRITE_REQ_DEADLINE
-const READ_RES_MIN_SPEED = 50 << 10
-const SHUFFLE_PEERS_PREFIX = 5
-const WRITE_RES_DEADLINE = 60 * time.Second
+const (
+	// Extracted constants from the code.
+	// FIXME: Should be reviewed and confirmed.
+	SuccessPeerTagValue = 25
+	WriteReqDeadline    = 5 * time.Second
+	ReadResDeadline     = WriteReqDeadline
+	ReadResMinSpeed     = 50 << 10
+	ShufflePeersPrefix  = 5
+	WriteResDeadline    = 60 * time.Second
+)
 
 // FIXME: Rename. Make private.
 type Request struct {
@@ -117,7 +127,7 @@ func (res *Response) statusToError() error {
 	case NotFound:
 		return xerrors.Errorf("not found")
 	case GoAway:
-		return xerrors.Errorf("not handling 'go away' blocksync responses yet")
+		return xerrors.Errorf("not handling 'go away' chainxchg responses yet")
 	case InternalError:
 		return xerrors.Errorf("block sync peer errored: %s", res.ErrorMessage)
 	case BadRequest:

@@ -1,6 +1,7 @@
 package full
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -25,8 +26,8 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/api"
@@ -299,7 +300,7 @@ func resolveOnce(bs blockstore.Blockstore) func(ctx context.Context, ds ipld.Nod
 				return nil, nil, xerrors.Errorf("parsing int64: %w", err)
 			}
 
-			ik := adt.IntKey(i)
+			ik := abi.IntKey(i)
 
 			names[0] = "@H:" + ik.Key()
 		}
@@ -310,7 +311,7 @@ func resolveOnce(bs blockstore.Blockstore) func(ctx context.Context, ds ipld.Nod
 				return nil, nil, xerrors.Errorf("parsing uint64: %w", err)
 			}
 
-			ik := adt.UIntKey(i)
+			ik := abi.UIntKey(i)
 
 			names[0] = "@H:" + ik.Key()
 		}
@@ -494,7 +495,7 @@ func (a *ChainAPI) ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Mess
 	return cm.VMMessage(), nil
 }
 
-func (a *ChainAPI) ChainExport(ctx context.Context, nroots abi.ChainEpoch, tsk types.TipSetKey) (<-chan []byte, error) {
+func (a *ChainAPI) ChainExport(ctx context.Context, nroots abi.ChainEpoch, skipoldmsgs bool, tsk types.TipSetKey) (<-chan []byte, error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -503,7 +504,11 @@ func (a *ChainAPI) ChainExport(ctx context.Context, nroots abi.ChainEpoch, tsk t
 	out := make(chan []byte)
 	go func() {
 		defer w.Close() //nolint:errcheck // it is a pipe
-		if err := a.Chain.Export(ctx, ts, nroots, w); err != nil {
+
+		bw := bufio.NewWriterSize(w, 1<<20)
+		defer bw.Flush() //nolint:errcheck // it is a write to a pipe
+
+		if err := a.Chain.Export(ctx, ts, nroots, skipoldmsgs, bw); err != nil {
 			log.Errorf("chain export call failed: %s", err)
 			return
 		}
@@ -512,7 +517,7 @@ func (a *ChainAPI) ChainExport(ctx context.Context, nroots abi.ChainEpoch, tsk t
 	go func() {
 		defer close(out)
 		for {
-			buf := make([]byte, 4096)
+			buf := make([]byte, 1<<20)
 			n, err := r.Read(buf)
 			if err != nil && err != io.EOF {
 				log.Errorf("chain export pipe read failed: %s", err)
@@ -522,6 +527,7 @@ func (a *ChainAPI) ChainExport(ctx context.Context, nroots abi.ChainEpoch, tsk t
 			case out <- buf[:n]:
 			case <-ctx.Done():
 				log.Warnf("export writer failed: %s", ctx.Err())
+				return
 			}
 			if err == io.EOF {
 				return

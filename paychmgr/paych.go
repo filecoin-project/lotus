@@ -5,27 +5,54 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/filecoin-project/lotus/api"
+
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/sigs"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
-	xerrors "golang.org/x/xerrors"
+	"golang.org/x/xerrors"
 )
+
+// insufficientFundsErr indicates that there are not enough funds in the
+// channel to create a voucher
+type insufficientFundsErr interface {
+	Shortfall() types.BigInt
+}
+
+type ErrInsufficientFunds struct {
+	shortfall types.BigInt
+}
+
+func newErrInsufficientFunds(shortfall types.BigInt) *ErrInsufficientFunds {
+	return &ErrInsufficientFunds{shortfall: shortfall}
+}
+
+func (e *ErrInsufficientFunds) Error() string {
+	return fmt.Sprintf("not enough funds in channel to cover voucher - shortfall: %d", e.shortfall)
+}
+
+func (e *ErrInsufficientFunds) Shortfall() types.BigInt {
+	return e.shortfall
+}
 
 // channelAccessor is used to simplify locking when accessing a channel
 type channelAccessor struct {
-	// waitCtx is used by processes that wait for things to be confirmed
-	// on chain
-	waitCtx       context.Context
+	from address.Address
+	to   address.Address
+
+	// chctx is used by background processes (eg when waiting for things to be
+	// confirmed on chain)
+	chctx         context.Context
 	sa            *stateAccessor
 	api           managerAPI
 	store         *Store
@@ -34,14 +61,16 @@ type channelAccessor struct {
 	msgListeners  msgListeners
 }
 
-func newChannelAccessor(pm *Manager) *channelAccessor {
+func newChannelAccessor(pm *Manager, from address.Address, to address.Address) *channelAccessor {
 	return &channelAccessor{
-		lk:           &channelLock{globalLock: &pm.lk},
+		from:         from,
+		to:           to,
+		chctx:        pm.ctx,
 		sa:           pm.sa,
 		api:          pm.pchapi,
 		store:        pm.store,
+		lk:           &channelLock{globalLock: &pm.lk},
 		msgListeners: newMsgListeners(),
-		waitCtx:      pm.ctx,
 	}
 }
 
@@ -50,6 +79,76 @@ func (ca *channelAccessor) getChannelInfo(addr address.Address) (*ChannelInfo, e
 	defer ca.lk.Unlock()
 
 	return ca.store.ByAddress(addr)
+}
+
+func (ca *channelAccessor) outboundActiveByFromTo(from, to address.Address) (*ChannelInfo, error) {
+	ca.lk.Lock()
+	defer ca.lk.Unlock()
+
+	return ca.store.OutboundActiveByFromTo(from, to)
+}
+
+// createVoucher creates a voucher with the given specification, setting its
+// nonce, signing the voucher and storing it in the local datastore.
+// If there are not enough funds in the channel to create the voucher, returns
+// the shortfall in funds.
+func (ca *channelAccessor) createVoucher(ctx context.Context, ch address.Address, voucher paych.SignedVoucher) (*api.VoucherCreateResult, error) {
+	ca.lk.Lock()
+	defer ca.lk.Unlock()
+
+	// Find the channel for the voucher
+	ci, err := ca.store.ByAddress(ch)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get channel info by address: %w", err)
+	}
+
+	// Set the voucher channel
+	sv := &voucher
+	sv.ChannelAddr = ch
+
+	// Get the next nonce on the given lane
+	sv.Nonce = ca.nextNonceForLane(ci, voucher.Lane)
+
+	// Sign the voucher
+	vb, err := sv.SigningBytes()
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get voucher signing bytes: %w", err)
+	}
+
+	sig, err := ca.api.WalletSign(ctx, ci.Control, vb)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to sign voucher: %w", err)
+	}
+	sv.Signature = sig
+
+	// Store the voucher
+	if _, err := ca.addVoucherUnlocked(ctx, ch, sv, nil, types.NewInt(0)); err != nil {
+		// If there are not enough funds in the channel to cover the voucher,
+		// return a voucher create result with the shortfall
+		var ife insufficientFundsErr
+		if xerrors.As(err, &ife) {
+			return &api.VoucherCreateResult{
+				Shortfall: ife.Shortfall(),
+			}, nil
+		}
+
+		return nil, xerrors.Errorf("failed to persist voucher: %w", err)
+	}
+
+	return &api.VoucherCreateResult{Voucher: sv, Shortfall: types.NewInt(0)}, nil
+}
+
+func (ca *channelAccessor) nextNonceForLane(ci *ChannelInfo, lane uint64) uint64 {
+	var maxnonce uint64
+	for _, v := range ci.Vouchers {
+		if v.Voucher.Lane == lane {
+			if v.Voucher.Nonce > maxnonce {
+				maxnonce = v.Voucher.Nonce
+			}
+		}
+	}
+
+	return maxnonce + 1
 }
 
 func (ca *channelAccessor) checkVoucherValid(ctx context.Context, ch address.Address, sv *paych.SignedVoucher) (map[uint64]*paych.LaneState, error) {
@@ -133,7 +232,7 @@ func (ca *channelAccessor) checkVoucherValidUnlocked(ctx context.Context, ch add
 	// Must not exceed actor balance
 	newTotal := types.BigAdd(totalRedeemed, pchState.ToSend)
 	if act.Balance.LessThan(newTotal) {
-		return nil, fmt.Errorf("not enough funds in channel to cover voucher")
+		return nil, newErrInsufficientFunds(types.BigSub(newTotal, act.Balance))
 	}
 
 	if len(sv.Merges) != 0 {
@@ -221,6 +320,10 @@ func (ca *channelAccessor) addVoucher(ctx context.Context, ch address.Address, s
 	ca.lk.Lock()
 	defer ca.lk.Unlock()
 
+	return ca.addVoucherUnlocked(ctx, ch, sv, proof, minDelta)
+}
+
+func (ca *channelAccessor) addVoucherUnlocked(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, proof []byte, minDelta types.BigInt) (types.BigInt, error) {
 	ci, err := ca.store.ByAddress(ch)
 	if err != nil {
 		return types.BigInt{}, err
@@ -382,28 +485,6 @@ func (ca *channelAccessor) listVouchers(ctx context.Context, ch address.Address)
 	return ca.store.VouchersForPaych(ch)
 }
 
-func (ca *channelAccessor) nextNonceForLane(ctx context.Context, ch address.Address, lane uint64) (uint64, error) {
-	ca.lk.Lock()
-	defer ca.lk.Unlock()
-
-	// TODO: should this take into account lane state?
-	vouchers, err := ca.store.VouchersForPaych(ch)
-	if err != nil {
-		return 0, err
-	}
-
-	var maxnonce uint64
-	for _, v := range vouchers {
-		if v.Voucher.Lane == lane {
-			if v.Voucher.Nonce > maxnonce {
-				maxnonce = v.Voucher.Nonce
-			}
-		}
-	}
-
-	return maxnonce + 1, nil
-}
-
 // laneState gets the LaneStates from chain, then applies all vouchers in
 // the data store over the chain state
 func (ca *channelAccessor) laneState(ctx context.Context, state *paych.State, ch address.Address) (map[uint64]*paych.LaneState, error) {
@@ -479,7 +560,7 @@ func (ca *channelAccessor) totalRedeemedWithVoucher(laneStates map[uint64]*paych
 	lane, ok := laneStates[sv.Lane]
 	if ok {
 		// If the voucher is for an existing lane, and the voucher nonce
-		// and is higher than the lane nonce
+		// is higher than the lane nonce
 		if sv.Nonce > lane.Nonce {
 			// Add the delta between the redeemed amount and the voucher
 			// amount to the total

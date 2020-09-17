@@ -136,6 +136,19 @@ func (a *CommonAPI) NetAutoNatStatus(ctx context.Context) (i api.NatInfo, err er
 	}, nil
 }
 
+func (a *CommonAPI) NetAgentVersion(ctx context.Context, p peer.ID) (string, error) {
+	ag, err := a.Host.Peerstore().Get(p, "AgentVersion")
+	if err != nil {
+		return "", err
+	}
+
+	if ag == nil {
+		return "unknown", nil
+	}
+
+	return ag.(string), nil
+}
+
 func (a *CommonAPI) NetBandwidthStats(ctx context.Context) (metrics.Stats, error) {
 	return a.Reporter.GetBandwidthTotals(), nil
 }
@@ -157,9 +170,14 @@ func (a *CommonAPI) ID(context.Context) (peer.ID, error) {
 }
 
 func (a *CommonAPI) Version(context.Context) (api.Version, error) {
+	v, err := build.VersionForType(build.RunningNodeType)
+	if err != nil {
+		return api.Version{}, err
+	}
+
 	return api.Version{
 		Version:    build.UserVersion(),
-		APIVersion: build.APIVersion,
+		APIVersion: v,
 
 		BlockDelay: build.BlockDelaySecs,
 	}, nil

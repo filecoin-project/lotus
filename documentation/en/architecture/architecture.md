@@ -259,7 +259,7 @@ When we launch a Lotus node with the command `./lotus daemon`
 (see [here](https://github.com/filecoin-project/lotus/blob/master/cmd/lotus/daemon.go) for more),
 the node is created through [dependency injection](https://godoc.org/go.uber.org/fx).
 This relies on reflection, which makes some of the references hard to follow.
-The node sets up all of the subsystems it needs to run, such as the repository, the network connections, thechain sync
+The node sets up all of the subsystems it needs to run, such as the repository, the network connections, the chain sync
 service, etc.
 This setup is orchestrated through calls to the `node.Override` function.
 The structure of each call indicates the type of component it will set up

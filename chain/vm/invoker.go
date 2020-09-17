@@ -6,15 +6,16 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
-	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/cron"
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
@@ -27,9 +28,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/system"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	vmr "github.com/filecoin-project/specs-actors/actors/runtime"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
-
-	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 )
 
 type Invoker struct {
@@ -47,7 +45,7 @@ func NewInvoker() *Invoker {
 	}
 
 	// add builtInCode using: register(cid, singleton)
-	inv.Register(builtin.SystemActorCodeID, system.Actor{}, adt.EmptyValue{})
+	inv.Register(builtin.SystemActorCodeID, system.Actor{}, abi.EmptyValue{})
 	inv.Register(builtin.InitActorCodeID, init_.Actor{}, init_.State{})
 	inv.Register(builtin.RewardActorCodeID, reward.Actor{}, reward.State{})
 	inv.Register(builtin.CronActorCodeID, cron.Actor{}, cron.State{})
@@ -66,7 +64,7 @@ func (inv *Invoker) Invoke(codeCid cid.Cid, rt runtime.Runtime, method abi.Metho
 
 	code, ok := inv.builtInCode[codeCid]
 	if !ok {
-		log.Errorf("no code for actor %s (Addr: %s)", codeCid, rt.Message().Receiver())
+		log.Errorf("no code for actor %s (Addr: %s)", codeCid, rt.Receiver())
 		return nil, aerrors.Newf(exitcode.SysErrorIllegalActor, "no code for actor %s(%d)(%s)", codeCid, method, hex.EncodeToString(params))
 	}
 	if method >= abi.MethodNum(len(code)) || code[method] == nil {
@@ -116,7 +114,7 @@ func (*Invoker) transform(instance Invokee) (nativeCode, error) {
 			return nil, newErr("first arguemnt should be vmr.Runtime")
 		}
 		if t.In(1).Kind() != reflect.Ptr {
-			return nil, newErr("second argument should be Runtime")
+			return nil, newErr("second argument should be of kind reflect.Ptr")
 		}
 
 		if t.NumOut() != 1 {
@@ -130,6 +128,9 @@ func (*Invoker) transform(instance Invokee) (nativeCode, error) {
 	}
 	code := make(nativeCode, len(exports))
 	for id, m := range exports {
+		if m == nil {
+			continue
+		}
 		meth := reflect.ValueOf(m)
 		code[id] = reflect.MakeFunc(reflect.TypeOf((invokeFunc)(nil)),
 			func(in []reflect.Value) []reflect.Value {

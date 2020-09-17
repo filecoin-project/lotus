@@ -25,8 +25,8 @@ import (
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	"github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger2"
@@ -56,6 +56,10 @@ var importBenchCmd = &cli.Command{
 			Usage: "set the parallelism factor for batch seal verification",
 			Value: runtime.NumCPU(),
 		},
+		&cli.StringFlag{
+			Name:  "repodir",
+			Usage: "set the repo directory for the lotus bench run (defaults to /tmp)",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		vm.BatchSealVerifyParallelism = cctx.Int("batch-seal-verify-threads")
@@ -70,9 +74,15 @@ var importBenchCmd = &cli.Command{
 		}
 		defer cfi.Close() //nolint:errcheck // read only file
 
-		tdir, err := ioutil.TempDir("", "lotus-import-bench")
-		if err != nil {
-			return err
+		var tdir string
+		if rdir := cctx.String("repodir"); rdir != "" {
+			tdir = rdir
+		} else {
+			tmp, err := ioutil.TempDir("", "lotus-import-bench")
+			if err != nil {
+				return err
+			}
+			tdir = tmp
 		}
 
 		bds, err := badger.NewDatastore(tdir, nil)

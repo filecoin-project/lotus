@@ -11,6 +11,7 @@ import (
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	typegen "github.com/whyrusleeping/cbor-gen"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
@@ -78,21 +79,21 @@ func TestDiffAdtMap(t *testing.T) {
 	mapA := adt.MakeEmptyMap(ctxstoreA)
 	mapB := adt.MakeEmptyMap(ctxstoreB)
 
-	require.NoError(t, mapA.Put(adt.UIntKey(0), runtime.CBORBytes([]byte{0}))) // delete
+	require.NoError(t, mapA.Put(abi.UIntKey(0), runtime.CBORBytes([]byte{0}))) // delete
 
-	require.NoError(t, mapA.Put(adt.UIntKey(1), runtime.CBORBytes([]byte{0}))) // modify
-	require.NoError(t, mapB.Put(adt.UIntKey(1), runtime.CBORBytes([]byte{1})))
+	require.NoError(t, mapA.Put(abi.UIntKey(1), runtime.CBORBytes([]byte{0}))) // modify
+	require.NoError(t, mapB.Put(abi.UIntKey(1), runtime.CBORBytes([]byte{1})))
 
-	require.NoError(t, mapA.Put(adt.UIntKey(2), runtime.CBORBytes([]byte{1}))) // delete
+	require.NoError(t, mapA.Put(abi.UIntKey(2), runtime.CBORBytes([]byte{1}))) // delete
 
-	require.NoError(t, mapA.Put(adt.UIntKey(3), runtime.CBORBytes([]byte{0}))) // noop
-	require.NoError(t, mapB.Put(adt.UIntKey(3), runtime.CBORBytes([]byte{0})))
+	require.NoError(t, mapA.Put(abi.UIntKey(3), runtime.CBORBytes([]byte{0}))) // noop
+	require.NoError(t, mapB.Put(abi.UIntKey(3), runtime.CBORBytes([]byte{0})))
 
-	require.NoError(t, mapA.Put(adt.UIntKey(4), runtime.CBORBytes([]byte{0}))) // modify
-	require.NoError(t, mapB.Put(adt.UIntKey(4), runtime.CBORBytes([]byte{6})))
+	require.NoError(t, mapA.Put(abi.UIntKey(4), runtime.CBORBytes([]byte{0}))) // modify
+	require.NoError(t, mapB.Put(abi.UIntKey(4), runtime.CBORBytes([]byte{6})))
 
-	require.NoError(t, mapB.Put(adt.UIntKey(5), runtime.CBORBytes{8})) // add
-	require.NoError(t, mapB.Put(adt.UIntKey(6), runtime.CBORBytes{9})) // add
+	require.NoError(t, mapB.Put(abi.UIntKey(5), runtime.CBORBytes{8})) // add
+	require.NoError(t, mapB.Put(abi.UIntKey(6), runtime.CBORBytes{9})) // add
 
 	changes := new(TestDiffMap)
 
@@ -134,12 +135,12 @@ type TestDiffMap struct {
 
 var _ AdtMapDiff = &TestDiffMap{}
 
-func (t *TestDiffMap) AsKey(key string) (adt.Keyer, error) {
-	k, err := adt.ParseUIntKey(key)
+func (t *TestDiffMap) AsKey(key string) (abi.Keyer, error) {
+	k, err := abi.ParseUIntKey(key)
 	if err != nil {
 		return nil, err
 	}
-	return adt.UIntKey(k), nil
+	return abi.UIntKey(k), nil
 }
 
 func (t *TestDiffMap) Add(key string, val *typegen.Deferred) error {
@@ -148,7 +149,7 @@ func (t *TestDiffMap) Add(key string, val *typegen.Deferred) error {
 	if err != nil {
 		return err
 	}
-	k, err := adt.ParseUIntKey(key)
+	k, err := abi.ParseUIntKey(key)
 	if err != nil {
 		return err
 	}
@@ -172,7 +173,7 @@ func (t *TestDiffMap) Modify(key string, from, to *typegen.Deferred) error {
 		return err
 	}
 
-	k, err := adt.ParseUIntKey(key)
+	k, err := abi.ParseUIntKey(key)
 	if err != nil {
 		return err
 	}
@@ -198,7 +199,7 @@ func (t *TestDiffMap) Remove(key string, val *typegen.Deferred) error {
 	if err != nil {
 		return err
 	}
-	k, err := adt.ParseUIntKey(key)
+	k, err := abi.ParseUIntKey(key)
 	if err != nil {
 		return err
 	}

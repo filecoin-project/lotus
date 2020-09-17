@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 
@@ -209,7 +210,7 @@ func (st *StateTree) GetActor(addr address.Address) (*types.Actor, error) {
 	}
 
 	var act types.Actor
-	if found, err := st.root.Get(adt.AddrKey(addr), &act); err != nil {
+	if found, err := st.root.Get(abi.AddrKey(addr), &act); err != nil {
 		return nil, xerrors.Errorf("hamt find failed: %w", err)
 	} else if !found {
 		return nil, types.ErrActorNotFound
@@ -254,11 +255,11 @@ func (st *StateTree) Flush(ctx context.Context) (cid.Cid, error) {
 
 	for addr, sto := range st.snaps.layers[0].actors {
 		if sto.Delete {
-			if err := st.root.Delete(adt.AddrKey(addr)); err != nil {
+			if err := st.root.Delete(abi.AddrKey(addr)); err != nil {
 				return cid.Undef, err
 			}
 		} else {
-			if err := st.root.Put(adt.AddrKey(addr), &sto.Act); err != nil {
+			if err := st.root.Put(abi.AddrKey(addr), &sto.Act); err != nil {
 				return cid.Undef, err
 			}
 		}

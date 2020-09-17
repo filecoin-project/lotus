@@ -45,6 +45,8 @@ const FlagWorkerRepo = "worker-repo"
 const FlagWorkerRepoDeprecation = "workerrepo"
 
 func main() {
+	build.RunningNodeType = build.NodeWorker
+
 	lotuslog.SetupLogLevels()
 
 	local := []*cli.Command{
@@ -187,8 +189,8 @@ var runCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		if v.APIVersion != build.APIVersion {
-			return xerrors.Errorf("lotus-miner API version doesn't match: local: %s", api.Version{APIVersion: build.APIVersion})
+		if v.APIVersion != build.MinerAPIVersion {
+			return xerrors.Errorf("lotus-miner API version doesn't match: expected: %s", api.Version{APIVersion: build.MinerAPIVersion})
 		}
 		log.Infof("Remote version %s", v)
 

@@ -41,14 +41,16 @@ import (
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-multistore"
 	paramfetch "github.com/filecoin-project/go-paramfetch"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-storedcounter"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
+	"github.com/filecoin-project/lotus/journal"
+	"github.com/filecoin-project/lotus/markets"
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -142,8 +144,34 @@ func SectorIDCounter(ds dtypes.MetadataDS) sealing.SectorIDCounter {
 	return &sidsc{sc}
 }
 
-func StorageMiner(fc config.MinerFeeConfig) func(mctx helpers.MetricsCtx, lc fx.Lifecycle, api lapi.FullNode, h host.Host, ds dtypes.MetadataDS, sealer sectorstorage.SectorManager, sc sealing.SectorIDCounter, verif ffiwrapper.Verifier, gsd dtypes.GetSealingConfigFunc) (*storage.Miner, error) {
-	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, api lapi.FullNode, h host.Host, ds dtypes.MetadataDS, sealer sectorstorage.SectorManager, sc sealing.SectorIDCounter, verif ffiwrapper.Verifier, gsd dtypes.GetSealingConfigFunc) (*storage.Miner, error) {
+type StorageMinerParams struct {
+	fx.In
+
+	Lifecycle          fx.Lifecycle
+	MetricsCtx         helpers.MetricsCtx
+	API                lapi.FullNode
+	Host               host.Host
+	MetadataDS         dtypes.MetadataDS
+	Sealer             sectorstorage.SectorManager
+	SectorIDCounter    sealing.SectorIDCounter
+	Verifier           ffiwrapper.Verifier
+	GetSealingConfigFn dtypes.GetSealingConfigFunc
+}
+
+func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*storage.Miner, error) {
+	return func(params StorageMinerParams) (*storage.Miner, error) {
+		var (
+			ds     = params.MetadataDS
+			mctx   = params.MetricsCtx
+			lc     = params.Lifecycle
+			api    = params.API
+			sealer = params.Sealer
+			h      = params.Host
+			sc     = params.SectorIDCounter
+			verif  = params.Verifier
+			gsd    = params.GetSealingConfigFn
+		)
+
 		maddr, err := minerAddrFromDS(ds)
 		if err != nil {
 			return nil, err
@@ -187,6 +215,10 @@ func HandleRetrieval(host host.Host, lc fx.Lifecycle, m retrievalmarket.Retrieva
 	lc.Append(fx.Hook{
 		OnStart: func(context.Context) error {
 			m.SubscribeToEvents(marketevents.RetrievalProviderLogger)
+
+			evtType := journal.J.RegisterEventType("markets/retrieval/provider", "state_change")
+			m.SubscribeToEvents(markets.RetrievalProviderJournaler(evtType))
+
 			return m.Start()
 		},
 		OnStop: func(context.Context) error {
@@ -201,6 +233,10 @@ func HandleDeals(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, h sto
 	lc.Append(fx.Hook{
 		OnStart: func(context.Context) error {
 			h.SubscribeToEvents(marketevents.StorageProviderLogger)
+
+			evtType := journal.J.RegisterEventType("markets/storage/provider", "state_change")
+			h.SubscribeToEvents(markets.StorageProviderJournaler(evtType))
+
 			return h.Start(ctx)
 		},
 		OnStop: func(context.Context) error {

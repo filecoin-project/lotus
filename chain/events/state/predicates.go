@@ -5,8 +5,8 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
@@ -537,8 +537,8 @@ type MinerPreCommitChanges struct {
 	Removed []miner.SectorPreCommitOnChainInfo
 }
 
-func (m *MinerPreCommitChanges) AsKey(key string) (adt.Keyer, error) {
-	sector, err := adt.ParseUIntKey(key)
+func (m *MinerPreCommitChanges) AsKey(key string) (abi.Keyer, error) {
+	sector, err := abi.ParseUIntKey(key)
 	if err != nil {
 		return nil, err
 	}
@@ -662,12 +662,12 @@ type AddressChange struct {
 
 type DiffInitActorStateFunc func(ctx context.Context, oldState *init_.State, newState *init_.State) (changed bool, user UserData, err error)
 
-func (i *InitActorAddressChanges) AsKey(key string) (adt.Keyer, error) {
+func (i *InitActorAddressChanges) AsKey(key string) (abi.Keyer, error) {
 	addr, err := address.NewFromBytes([]byte(key))
 	if err != nil {
 		return nil, err
 	}
-	return adt.AddrKey(addr), nil
+	return abi.AddrKey(addr), nil
 }
 
 func (i *InitActorAddressChanges) Add(key string, val *typegen.Deferred) error {

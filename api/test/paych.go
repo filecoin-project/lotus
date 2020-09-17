@@ -10,8 +10,8 @@ import (
 
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/ipfs/go-cid"
 
@@ -96,18 +96,24 @@ func TestPaymentChannels(t *testing.T, b APIBuilder, blocktime time.Duration) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		if vouch1.Voucher == nil {
+			t.Fatal(fmt.Errorf("Not enough funds to create voucher: missing %d", vouch1.Shortfall))
+		}
 		vouch2, err := paymentCreator.PaychVoucherCreate(ctx, channel, abi.NewTokenAmount(2000), lane)
 		if err != nil {
 			t.Fatal(err)
 		}
-		delta1, err := paymentReceiver.PaychVoucherAdd(ctx, channel, vouch1, nil, abi.NewTokenAmount(1000))
+		if vouch2.Voucher == nil {
+			t.Fatal(fmt.Errorf("Not enough funds to create voucher: missing %d", vouch2.Shortfall))
+		}
+		delta1, err := paymentReceiver.PaychVoucherAdd(ctx, channel, vouch1.Voucher, nil, abi.NewTokenAmount(1000))
 		if err != nil {
 			t.Fatal(err)
 		}
 		if !delta1.Equals(abi.NewTokenAmount(1000)) {
 			t.Fatal("voucher didn't have the right amount")
 		}
-		delta2, err := paymentReceiver.PaychVoucherAdd(ctx, channel, vouch2, nil, abi.NewTokenAmount(1000))
+		delta2, err := paymentReceiver.PaychVoucherAdd(ctx, channel, vouch2.Voucher, nil, abi.NewTokenAmount(1000))
 		if err != nil {
 			t.Fatal(err)
 		}

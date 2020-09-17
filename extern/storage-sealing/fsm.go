@@ -12,8 +12,8 @@ import (
 
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	statemachine "github.com/filecoin-project/go-statemachine"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
 func (m *Sealing) Plan(events []statemachine.Event, user interface{}) (interface{}, uint64, error) {
@@ -187,6 +187,12 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		}
 
 		state.Log = append(state.Log, l)
+	}
+
+	if m.notifee != nil {
+		defer func(before SectorInfo) {
+			m.notifee(before, *state)
+		}(*state) // take safe-ish copy of the before state (except for nested pointers)
 	}
 
 	p := fsmPlanners[state.State]

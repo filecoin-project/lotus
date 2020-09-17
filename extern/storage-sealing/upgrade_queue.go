@@ -5,8 +5,8 @@ import (
 
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 )
 
@@ -66,6 +66,8 @@ func (m *Sealing) tryUpgradeSector(ctx context.Context, params *miner.SectorPreC
 		params.ReplaceSectorNumber = *replace
 		params.ReplaceSectorDeadline = loc.Deadline
 		params.ReplaceSectorPartition = loc.Partition
+
+		log.Infof("replacing sector %d with %d", *replace, params.SectorNumber)
 
 		ri, err := m.api.StateSectorGetInfo(ctx, m.maddr, *replace, nil)
 		if err != nil {

@@ -4,11 +4,12 @@ import (
 	"context"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/dline"
+
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
@@ -16,6 +17,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
+	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/node/config"
 
 	"go.opencensus.io/trace"
@@ -37,11 +39,13 @@ type WindowPoStScheduler struct {
 	cur *types.TipSet
 
 	// if a post is in progress, this indicates for which ElectionPeriodStart
-	activeDeadline *miner.DeadlineInfo
+	activeDeadline *dline.Info
 	abort          context.CancelFunc
 
-	//failed abi.ChainEpoch // eps
-	//failLk sync.Mutex
+	evtTypes [4]journal.EventType
+
+	// failed abi.ChainEpoch // eps
+	// failLk sync.Mutex
 }
 
 func NewWindowedPoStScheduler(api storageMinerApi, fc config.MinerFeeConfig, sb storage.Prover, ft sectorstorage.FaultTracker, actor address.Address, worker address.Address) (*WindowPoStScheduler, error) {
@@ -65,10 +69,16 @@ func NewWindowedPoStScheduler(api storageMinerApi, fc config.MinerFeeConfig, sb 
 
 		actor:  actor,
 		worker: worker,
+		evtTypes: [...]journal.EventType{
+			evtTypeWdPoStScheduler:  journal.J.RegisterEventType("wdpost", "scheduler"),
+			evtTypeWdPoStProofs:     journal.J.RegisterEventType("wdpost", "proofs_processed"),
+			evtTypeWdPoStRecoveries: journal.J.RegisterEventType("wdpost", "recoveries_processed"),
+			evtTypeWdPoStFaults:     journal.J.RegisterEventType("wdpost", "faults_processed"),
+		},
 	}, nil
 }
 
-func deadlineEquals(a, b *miner.DeadlineInfo) bool {
+func deadlineEquals(a, b *dline.Info) bool {
 	if a == nil || b == nil {
 		return b == a
 	}
@@ -100,7 +110,7 @@ func (s *WindowPoStScheduler) Run(ctx context.Context) {
 		select {
 		case changes, ok := <-notifs:
 			if !ok {
-				log.Warn("WindowPoStScheduler notifs channel closed")
+				log.Warn("window post scheduler notifs channel closed")
 				notifs = nil
 				continue
 			}
@@ -110,12 +120,13 @@ func (s *WindowPoStScheduler) Run(ctx context.Context) {
 					log.Errorf("expected first notif to have len = 1")
 					continue
 				}
-				if changes[0].Type != store.HCCurrent {
+				chg := changes[0]
+				if chg.Type != store.HCCurrent {
 					log.Errorf("expected first notif to tell current ts")
 					continue
 				}
 
-				if err := s.update(ctx, changes[0].Val); err != nil {
+				if err := s.update(ctx, chg.Val); err != nil {
 					log.Errorf("%+v", err)
 				}
 
@@ -140,10 +151,10 @@ func (s *WindowPoStScheduler) Run(ctx context.Context) {
 			}
 
 			if err := s.revert(ctx, lowest); err != nil {
-				log.Error("handling head reverts in windowPost sched: %+v", err)
+				log.Error("handling head reverts in window post sched: %+v", err)
 			}
 			if err := s.update(ctx, highest); err != nil {
-				log.Error("handling head updates in windowPost sched: %+v", err)
+				log.Error("handling head updates in window post sched: %+v", err)
 			}
 
 			span.End()
@@ -173,7 +184,7 @@ func (s *WindowPoStScheduler) revert(ctx context.Context, newLowest *types.TipSe
 
 func (s *WindowPoStScheduler) update(ctx context.Context, new *types.TipSet) error {
 	if new == nil {
-		return xerrors.Errorf("no new tipset in WindowPoStScheduler.update")
+		return xerrors.Errorf("no new tipset in window post sched update")
 	}
 
 	di, err := s.api.StateMinerProvingDeadline(ctx, s.actor, new.Key())
@@ -195,7 +206,7 @@ func (s *WindowPoStScheduler) update(ctx context.Context, new *types.TipSet) err
 	//  (Need to get correct deadline above, which is tricky)
 
 	if di.Open+StartConfidence >= new.Height() {
-		log.Info("not starting windowPost yet, waiting for startconfidence", di.Open, di.Open+StartConfidence, new.Height())
+		log.Info("not starting window post yet, waiting for startconfidence", di.Open, di.Open+StartConfidence, new.Height())
 		return nil
 	}
 
@@ -205,7 +216,7 @@ func (s *WindowPoStScheduler) update(ctx context.Context, new *types.TipSet) err
 		s.activeEPS = 0
 	}
 	s.failLk.Unlock()*/
-	log.Infof("at %d, doPost for P %d, dd %d", new.Height(), di.PeriodStart, di.Index)
+	log.Infof("at %d, do window post for P %d, dd %d", new.Height(), di.PeriodStart, di.Index)
 
 	s.doPost(ctx, di, new)
 
@@ -219,10 +230,29 @@ func (s *WindowPoStScheduler) abortActivePoSt() {
 
 	if s.abort != nil {
 		s.abort()
-	}
 
-	log.Warnf("Aborting Window PoSt (Deadline: %+v)", s.activeDeadline)
+		journal.J.RecordEvent(s.evtTypes[evtTypeWdPoStScheduler], func() interface{} {
+			return WdPoStSchedulerEvt{
+				evtCommon: s.getEvtCommon(nil),
+				State:     SchedulerStateAborted,
+			}
+		})
+
+		log.Warnf("Aborting window post (Deadline: %+v)", s.activeDeadline)
+	}
 
 	s.activeDeadline = nil
 	s.abort = nil
+}
+
+// getEvtCommon populates and returns common attributes from state, for a
+// WdPoSt journal event.
+func (s *WindowPoStScheduler) getEvtCommon(err error) evtCommon {
+	c := evtCommon{Error: err}
+	if s.cur != nil {
+		c.Deadline = s.activeDeadline
+		c.Height = s.cur.Height()
+		c.TipSet = s.cur.Cids()
+	}
+	return c
 }

@@ -92,6 +92,12 @@ lotus-shed: $(BUILD_DEPS)
 .PHONY: lotus-shed
 BINS+=lotus-shed
 
+lotus-gateway: $(BUILD_DEPS)
+	rm -f lotus-gateway
+	go build $(GOFLAGS) -o lotus-gateway ./cmd/lotus-gateway
+.PHONY: lotus-gateway
+BINS+=lotus-gateway
+
 build: lotus lotus-miner lotus-worker
 	@[[ $$(type -P "lotus") ]] && echo "Caution: you have \
 an existing lotus binary in your PATH. This may cause problems if you don't run 'sudo make install'" || true

@@ -5,6 +5,10 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/filecoin-project/lotus/lib/sigs"
+
+	"github.com/filecoin-project/go-state-types/crypto"
+
 	cbornode "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
@@ -132,6 +136,7 @@ type mockPaychAPI struct {
 	waitingCalls     map[cid.Cid]*waitingCall
 	waitingResponses map[cid.Cid]*waitingResponse
 	wallet           map[address.Address]struct{}
+	signingKey       []byte
 }
 
 func newMockPaychAPI() *mockPaychAPI {
@@ -239,4 +244,18 @@ func (pchapi *mockPaychAPI) addWalletAddress(addr address.Address) {
 	defer pchapi.lk.Unlock()
 
 	pchapi.wallet[addr] = struct{}{}
+}
+
+func (pchapi *mockPaychAPI) WalletSign(ctx context.Context, k address.Address, msg []byte) (*crypto.Signature, error) {
+	pchapi.lk.Lock()
+	defer pchapi.lk.Unlock()
+
+	return sigs.Sign(crypto.SigTypeSecp256k1, pchapi.signingKey, msg)
+}
+
+func (pchapi *mockPaychAPI) addSigningKey(key []byte) {
+	pchapi.lk.Lock()
+	defer pchapi.lk.Unlock()
+
+	pchapi.signingKey = key
 }

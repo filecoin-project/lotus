@@ -11,11 +11,11 @@ import (
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
 // StorageMiner is a low-level interface to the Filecoin network storage miner node
@@ -73,7 +73,7 @@ type StorageMiner interface {
 	MarketImportDealData(ctx context.Context, propcid cid.Cid, path string) error
 	MarketListDeals(ctx context.Context) ([]storagemarket.StorageDeal, error)
 	MarketListRetrievalDeals(ctx context.Context) ([]retrievalmarket.ProviderDealState, error)
-	MarketGetDealUpdates(ctx context.Context, d cid.Cid) (<-chan storagemarket.MinerDeal, error)
+	MarketGetDealUpdates(ctx context.Context) (<-chan storagemarket.MinerDeal, error)
 	MarketListIncompleteDeals(ctx context.Context) ([]storagemarket.MinerDeal, error)
 	MarketSetAsk(ctx context.Context, price types.BigInt, verifiedPrice types.BigInt, duration abi.ChainEpoch, minPieceSize abi.PaddedPieceSize, maxPieceSize abi.PaddedPieceSize) error
 	MarketGetAsk(ctx context.Context) (*storagemarket.SignedStorageAsk, error)

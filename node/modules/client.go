@@ -26,7 +26,9 @@ import (
 	"github.com/ipfs/go-datastore/namespace"
 	"github.com/libp2p/go-libp2p-core/host"
 
+	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/lib/blockstore"
+	"github.com/filecoin-project/lotus/markets"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/lotus/markets/retrievaladapter"
 	"github.com/filecoin-project/lotus/node/impl/full"
@@ -35,7 +37,6 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/node/repo/importmgr"
 	"github.com/filecoin-project/lotus/node/repo/retrievalstoremgr"
-	"github.com/filecoin-project/lotus/paychmgr"
 )
 
 func ClientMultiDatastore(lc fx.Lifecycle, r repo.LockedRepo) (dtypes.ClientMultiDstore, error) {
@@ -120,6 +121,10 @@ func StorageClient(lc fx.Lifecycle, h host.Host, ibs dtypes.ClientBlockstore, md
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			c.SubscribeToEvents(marketevents.StorageClientLogger)
+
+			evtType := journal.J.RegisterEventType("markets/storage/client", "state_change")
+			c.SubscribeToEvents(markets.StorageClientJournaler(evtType))
+
 			return c.Start(ctx)
 		},
 		OnStop: func(context.Context) error {
@@ -130,8 +135,8 @@ func StorageClient(lc fx.Lifecycle, h host.Host, ibs dtypes.ClientBlockstore, md
 }
 
 // RetrievalClient creates a new retrieval client attached to the client blockstore
-func RetrievalClient(lc fx.Lifecycle, h host.Host, mds dtypes.ClientMultiDstore, dt dtypes.ClientDataTransfer, pmgr *paychmgr.Manager, payAPI payapi.PaychAPI, resolver retrievalmarket.PeerResolver, ds dtypes.MetadataDS, chainAPI full.ChainAPI, stateAPI full.StateAPI) (retrievalmarket.RetrievalClient, error) {
-	adapter := retrievaladapter.NewRetrievalClientNode(pmgr, payAPI, chainAPI, stateAPI)
+func RetrievalClient(lc fx.Lifecycle, h host.Host, mds dtypes.ClientMultiDstore, dt dtypes.ClientDataTransfer, payAPI payapi.PaychAPI, resolver retrievalmarket.PeerResolver, ds dtypes.MetadataDS, chainAPI full.ChainAPI, stateAPI full.StateAPI) (retrievalmarket.RetrievalClient, error) {
+	adapter := retrievaladapter.NewRetrievalClientNode(payAPI, chainAPI, stateAPI)
 	network := rmnet.NewFromLibp2pHost(h)
 	sc := storedcounter.New(ds, datastore.NewKey("/retr"))
 	client, err := retrievalimpl.NewClient(network, mds, dt, adapter, resolver, namespace.Wrap(ds, datastore.NewKey("/retrievals/client")), sc)
@@ -141,6 +146,10 @@ func RetrievalClient(lc fx.Lifecycle, h host.Host, mds dtypes.ClientMultiDstore,
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			client.SubscribeToEvents(marketevents.RetrievalClientLogger)
+
+			evtType := journal.J.RegisterEventType("markets/retrieval/client", "state_change")
+			client.SubscribeToEvents(markets.RetrievalClientJournaler(evtType))
+
 			return nil
 		},
 	})
