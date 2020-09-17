@@ -114,6 +114,7 @@ func init() {
 	addExample(retrievalmarket.ClientEventDealAccepted)
 	addExample(retrievalmarket.DealStatusNew)
 	addExample(network.ReachabilityPublic)
+	addExample(build.NewestNetworkVersion)
 	addExample(&types.ExecutionTrace{
 		Msg:    exampleValue(reflect.TypeOf(&types.Message{}), nil).(*types.Message),
 		MsgRct: exampleValue(reflect.TypeOf(&types.MessageReceipt{}), nil).(*types.MessageReceipt),

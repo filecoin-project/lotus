@@ -149,6 +149,7 @@
   * [StateMinerSectorCount](#StateMinerSectorCount)
   * [StateMinerSectors](#StateMinerSectors)
   * [StateNetworkName](#StateNetworkName)
+  * [StateNetworkVersion](#StateNetworkVersion)
   * [StateReadState](#StateReadState)
   * [StateReplay](#StateReplay)
   * [StateSearchMsg](#StateSearchMsg)
@@ -211,7 +212,7 @@ Response:
 ```json
 {
   "Version": "string value",
-  "APIVersion": 3584,
+  "APIVersion": 3840,
   "BlockDelay": 42
 }
 ```
@@ -3509,7 +3510,7 @@ Inputs:
 Response: `"0"`
 
 ### StateMinerPartitions
-StateMinerPartitions loads miner partitions for the specified miner/deadline
+StateMinerPartitions returns all partitions in the specified deadline
 
 
 Perms: read
@@ -3563,7 +3564,8 @@ Response:
   "TotalPower": {
     "RawBytePower": "0",
     "QualityAdjPower": "0"
-  }
+  },
+  "HasMinPower": true
 }
 ```
 
@@ -3697,8 +3699,9 @@ Inputs:
 Response:
 ```json
 {
-  "Sectors": 42,
-  "Active": 42
+  "Live": 42,
+  "Active": 42,
+  "Faulty": 42
 }
 ```
 
@@ -3740,6 +3743,28 @@ Perms: read
 Inputs: `null`
 
 Response: `"lotus"`
+
+### StateNetworkVersion
+StateNetworkVersion returns the network version at the given tipset
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `2`
 
 ### StateReadState
 StateReadState returns the indicated actor's state.
