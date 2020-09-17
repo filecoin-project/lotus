@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/filecoin-project/go-state-types/network"
 	"strconv"
 
 	"github.com/filecoin-project/go-state-types/dline"
@@ -1119,4 +1120,13 @@ func (a *StateAPI) StateCirculatingSupply(ctx context.Context, tsk types.TipSetK
 		return api.CirculatingSupply{}, err
 	}
 	return a.StateManager.GetCirculatingSupplyDetailed(ctx, ts.Height(), sTree)
+}
+
+func (a *StateAPI) StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error) {
+	ts, err := a.Chain.GetTipSetFromKey(tsk)
+	if err != nil {
+		return -1, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	return a.StateManager.GetNtwkVersion(ctx, ts.Height()), nil
 }

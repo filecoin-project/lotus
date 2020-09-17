@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/network"
+
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 
@@ -388,6 +390,8 @@ type FullNode interface {
 
 	// StateCirculatingSupply returns the circulating supply of Filecoin at the given tipset
 	StateCirculatingSupply(context.Context, types.TipSetKey) (CirculatingSupply, error)
+	// StateNetworkVersion returns the network version at the given tipset
+	StateNetworkVersion(context.Context, types.TipSetKey) (network.Version, error)
 
 	// MethodGroup: Msig
 	// The Msig methods are used to interact with multisig wallets on the
