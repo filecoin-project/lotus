@@ -282,11 +282,6 @@ func (m *Sealing) handleWaitSeed(ctx statemachine.Context, sector SectorInfo) er
 		return ctx.Send(SectorChainPreCommitFailed{error: xerrors.Errorf("precommit info not found on chain")})
 	}
 
-	nv, err := m.api.StateNetworkVersion(ctx.Context(), tok)
-	if err != nil {
-		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("failed to get network version: %w", err)})
-	}
-
 	pccd, err := m.getPreCommitChallengeDelay(ctx.Context(), tok)
 	if err != nil {
 		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("failed to get precommit challenge delay: %w", err)})

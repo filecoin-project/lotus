@@ -39,7 +39,7 @@ type State interface {
 	GetSectorExpiration(abi.SectorNumber) (*SectorExpiration, error)
 	GetPrecommittedSector(abi.SectorNumber) (*SectorPreCommitOnChainInfo, error)
 	LoadSectorsFromSet(filter *bitfield.BitField, filterOut bool) (adt.Array, error)
-	LoadPreCommittedSectorsFromSet(filter *bitfield.BitField, filterOut bool) (adt.Map, error)
+	LoadPreCommittedSectors() (adt.Map, error)
 	IsAllocated(abi.SectorNumber) (bool, error)
 
 	LoadDeadline(idx uint64) (Deadline, error)

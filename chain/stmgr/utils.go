@@ -9,6 +9,8 @@ import (
 	"runtime"
 	"strings"
 
+	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+
 	saruntime "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
@@ -156,7 +158,29 @@ func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, 
 		return nil, xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
 	}
 
-	return mas.LoadSectorsFromSet(filter, filterOut)
+	sectors, err := mas.LoadSectorsFromSet(filter, filterOut)
+	if err != nil {
+		return nil, xerrors.Errorf("(get sset) failed to load sectors: %w", err)
+	}
+
+	var sset []*miner.ChainSectorInfo
+	var v cbg.Deferred
+	if err := sectors.ForEach(&v, func(i int64) error {
+		var oci v0miner.SectorOnChainInfo
+		if err := oci.UnmarshalCBOR(bytes.NewReader(v.Raw)); err != nil {
+			return err
+		}
+		sset = append(sset, &miner.ChainSectorInfo{
+			Info: oci,
+			ID:   abi.SectorNumber(i),
+		})
+
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return sset, nil
 }
 
 func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *StateManager, st cid.Cid, maddr address.Address, rand abi.PoStRandomness) ([]proof.SectorInfo, error) {
@@ -220,12 +244,21 @@ func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *S
 
 	out := make([]proof.SectorInfo, len(ids))
 	for i, n := range ids {
-		s := sectors[n]
+		var sinfo miner.SectorOnChainInfo
+		found, err := sectors.Get(n, &sinfo)
+
+		if err != nil {
+			return nil, xerrors.Errorf("loading sector info: %w", err)
+		}
+
+		if !found {
+			return nil, xerrors.Errorf("didn't find sector info for sector %d", n)
+		}
 
 		out[i] = proof.SectorInfo{
 			SealProof:    spt,
-			SectorNumber: s.ID,
-			SealedCID:    s.Info.SealedCID,
+			SectorNumber: sinfo.SectorNumber,
+			SealedCID:    sinfo.SealedCID,
 		}
 	}
 

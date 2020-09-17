@@ -302,7 +302,7 @@ func (sp *StatePredicates) AvailableBalanceChangedForAddresses(getAddrs func() [
 	}
 }
 
-type DiffMinerActorStateFunc func(ctx context.Context, oldState *miner.State, newState *miner.State) (changed bool, user UserData, err error)
+type DiffMinerActorStateFunc func(ctx context.Context, oldState miner.State, newState miner.State) (changed bool, user UserData, err error)
 
 func (sp *StatePredicates) OnInitActorChange(diffInitActorState DiffInitActorStateFunc) DiffTipSetKeyFunc {
 	return sp.OnActorStateChanged(builtin.InitActorAddr, func(ctx context.Context, oldActorState, newActorState *types.Actor) (changed bool, user UserData, err error) {
@@ -329,7 +329,7 @@ func (sp *StatePredicates) OnMinerActorChange(minerAddr address.Address, diffMin
 		if err := sp.cst.Get(ctx, newActorState.Head, &newState); err != nil {
 			return false, nil, err
 		}
-		return diffMinerActorState(ctx, &oldState, &newState)
+		return diffMinerActorState(ctx, oldState, newState)
 	})
 }
 
@@ -389,7 +389,7 @@ func (m *MinerSectorChanges) Remove(key uint64, val *typegen.Deferred) error {
 }
 
 func (sp *StatePredicates) OnMinerSectorChange() DiffMinerActorStateFunc {
-	return func(ctx context.Context, oldState, newState *miner.State) (changed bool, user UserData, err error) {
+	return func(ctx context.Context, oldState, newState miner.State) (changed bool, user UserData, err error) {
 		sectorChanges := &MinerSectorChanges{
 			Added:    []miner.SectorOnChainInfo{},
 			Extended: []SectorExtensions{},
@@ -457,7 +457,7 @@ func (m *MinerPreCommitChanges) Remove(key string, val *typegen.Deferred) error 
 }
 
 func (sp *StatePredicates) OnMinerPreCommitChange() DiffMinerActorStateFunc {
-	return func(ctx context.Context, oldState, newState *miner.State) (changed bool, user UserData, err error) {
+	return func(ctx context.Context, oldState, newState miner.State) (changed bool, user UserData, err error) {
 		precommitChanges := &MinerPreCommitChanges{
 			Added:   []miner.SectorPreCommitOnChainInfo{},
 			Removed: []miner.SectorPreCommitOnChainInfo{},
