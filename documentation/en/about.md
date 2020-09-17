@@ -2,13 +2,18 @@
 
 Lotus is an implementation of the **Filecoin Distributed Storage Network**.
 
-The **Lotus Node** (and the mining applications) can be built to join any of the [Filecoin networks](https://docs.filecoin.io/how-to/networks/).
+It is written in Go and provides a suite of command-line applications:
 
-For more details about Filecoin, check out the [Filecoin Docs](https://docs.filecoin.io) and [Filecoin Spec](https://filecoin-project.github.io/specs/).
+- Lotus Node (`lotus`): a Filecoin Node: validates network transactions, manages a FIL wallet, can perform storage and retrieval deals.
+- Lotus Miner (`lotus-miner`): a Filecoin miner. See the the respective Lotus Miner section in the Mine documentation.
+- Lotus Worker (`lotus-worker`): a worker that assists miners to perform mining-related tasks. See its respective guide for more information.
 
-## What can I learn here?
+The [Lotus user documentation](https://docs.filecoin.io/get-started/lotus) is part of the [Filecoin documentation site](https://docs.filecoin.io):
 
-* How to [install](en+installation) and [setup](en+setup) the Lotus software
-* How to [store data on the Filecoin network](en+store)
-* How to [setup a high performance FIL miner](en+miner-setup)
-* How to [configure and access Lotus APIs](en+remote-api)
+* To install and get started with Lotus, visit the [Get Started section](https://docs.filecoin.io/get-started/lotus).
+* Information about how to perform deals on the Filecoin network using Lotus can be found  in the [Store section](https://docs.filecoin.io/store/lotus).
+* Miners looking to provide storage to the Network can find the latest guides in the [Mine section](https://docs.filecoin.io/mine/lotus).
+* Developers and integrators that wish to use the Lotus APIs can start in the [Build section](https://docs.filecoin.io/mine/lotus).
+
+For more details about Filecoin, check out the [Filecoin Docs](https://docs.filecoin.io) and [Filecoin Spec](https://spec.filecoin.io/).
+
