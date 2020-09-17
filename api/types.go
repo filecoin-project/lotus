@@ -107,5 +107,3 @@ func NewDataTransferChannel(hostID peer.ID, channelState datatransfer.ChannelSta
 	}
 	return channel
 }
-
-// type TODO (stebalien): this was here, why was this here?
