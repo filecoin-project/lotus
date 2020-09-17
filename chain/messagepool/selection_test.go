@@ -1216,6 +1216,9 @@ func makeZipfPremiumDistribution(rng *rand.Rand) func() uint64 {
 }
 
 func TestCompetitiveMessageSelectionExp(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping in short mode")
+	}
 	var capacityBoost, rewardBoost, tqReward float64
 	seeds := []int64{1947, 1976, 2020, 2100, 10000, 143324, 432432, 131, 32, 45}
 	for _, seed := range seeds {

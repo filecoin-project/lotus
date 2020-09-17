@@ -55,7 +55,7 @@ func TestReturnTypes(t *testing.T) {
 					seen := map[reflect.Type]struct{}{}
 					todo := []reflect.Type{m.Type.Out(0)}
 					for len(todo) > 0 {
-						typ := todo[len(todo) - 1]
+						typ := todo[len(todo)-1]
 						todo = todo[:len(todo)-1]
 
 						if _, ok := seen[typ]; ok {

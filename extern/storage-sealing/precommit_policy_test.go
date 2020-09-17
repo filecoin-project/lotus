@@ -2,6 +2,8 @@ package sealing_test
 
 import (
 	"context"
+	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/lotus/build"
 	"testing"
 
 	"github.com/ipfs/go-cid"
@@ -16,6 +18,10 @@ import (
 
 type fakeChain struct {
 	h abi.ChainEpoch
+}
+
+func (f *fakeChain) StateNetworkVersion(ctx context.Context, tok sealing.TipSetToken) (network.Version, error) {
+	return build.NewestNetworkVersion, nil
 }
 
 func (f *fakeChain) ChainHead(ctx context.Context) (sealing.TipSetToken, abi.ChainEpoch, error) {

@@ -112,7 +112,7 @@ func (a *StateAPI) StateMinerInfo(ctx context.Context, actor address.Address, ts
 	return mas.Info()
 }
 
-func (a *StateAPI) StateMinerDeadlines(ctx context.Context, m address.Address, tsk types.TipSetKey) ([]*miner.Deadline, error) {
+func (a *StateAPI) StateMinerDeadlines(ctx context.Context, m address.Address, tsk types.TipSetKey) ([]api.Deadline, error) {
 	act, err := a.StateManager.LoadActorTsk(ctx, m, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load miner actor: %w", err)
@@ -128,9 +128,16 @@ func (a *StateAPI) StateMinerDeadlines(ctx context.Context, m address.Address, t
 		return nil, xerrors.Errorf("getting deadline count: %w", err)
 	}
 
-	out := make([]*miner.Deadline, deadlines)
+	out := make([]api.Deadline, deadlines)
 	if err := mas.ForEachDeadline(func(i uint64, dl miner.Deadline) error {
-		out[i] = &dl
+		ps, err := dl.PostSubmissions()
+		if err != nil {
+			return err
+		}
+
+		out[i] = api.Deadline{
+			PostSubmissions: ps,
+		}
 		return nil
 	}); err != nil {
 		return nil, err
@@ -138,7 +145,7 @@ func (a *StateAPI) StateMinerDeadlines(ctx context.Context, m address.Address, t
 	return out, nil
 }
 
-func (a *StateAPI) StateMinerPartitions(ctx context.Context, m address.Address, dlIdx uint64, tsk types.TipSetKey) ([]*miner.Partition, error) {
+func (a *StateAPI) StateMinerPartitions(ctx context.Context, m address.Address, dlIdx uint64, tsk types.TipSetKey) ([]api.Partition, error) {
 	act, err := a.StateManager.LoadActorTsk(ctx, m, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load miner actor: %w", err)
@@ -154,10 +161,40 @@ func (a *StateAPI) StateMinerPartitions(ctx context.Context, m address.Address, 
 		return nil, xerrors.Errorf("failed to load the deadline: %w", err)
 	}
 
-	var out []*miner.Partition
+	var out []api.Partition
 	err = dl.ForEachPartition(func(_ uint64, part miner.Partition) error {
-		p := part
-		out = append(out, &p)
+		allSectors, err := part.AllSectors()
+		if err != nil {
+			return xerrors.Errorf("getting AllSectors: %w", err)
+		}
+
+		faultySectors, err := part.FaultySectors()
+		if err != nil {
+			return xerrors.Errorf("getting FaultySectors: %w", err)
+		}
+
+		recoveringSectors, err := part.RecoveringSectors()
+		if err != nil {
+			return xerrors.Errorf("getting RecoveringSectors: %w", err)
+		}
+
+		liveSectors, err := part.LiveSectors()
+		if err != nil {
+			return xerrors.Errorf("getting LiveSectors: %w", err)
+		}
+
+		activeSectors, err := part.ActiveSectors()
+		if err != nil {
+			return xerrors.Errorf("getting ActiveSectors: %w", err)
+		}
+
+		out = append(out, api.Partition{
+			AllSectors:        allSectors,
+			FaultySectors:     faultySectors,
+			RecoveringSectors: recoveringSectors,
+			LiveSectors:       liveSectors,
+			ActiveSectors:     activeSectors,
+		})
 		return nil
 	})
 
@@ -1037,29 +1074,32 @@ func (a *StateAPI) StateMinerAvailableBalance(ctx context.Context, maddr address
 // StateVerifiedClientStatus returns the data cap for the given address.
 // Returns zero if there is no entry in the data cap table for the
 // address.
-func (a *StateAPI) StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (abi.StoragePower, error) {
+func (a *StateAPI) StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error) {
 	act, err := a.StateGetActor(ctx, builtin.VerifiedRegistryActorAddr, tsk)
 	if err != nil {
-		return types.EmptyInt, err
+		return nil, err
 	}
 
 	aid, err := a.StateLookupID(ctx, addr, tsk)
 	if err != nil {
 		log.Warnf("lookup failure %v", err)
-		return types.EmptyInt, err
+		return nil, err
 	}
 
 	vrs, err := verifreg.Load(a.StateManager.ChainStore().Store(ctx), act)
 	if err != nil {
-		return types.EmptyInt, xerrors.Errorf("failed to load verified registry state: %w", err)
+		return nil, xerrors.Errorf("failed to load verified registry state: %w", err)
 	}
 
-	_, dcap, err := vrs.VerifiedClientDataCap(aid)
+	verified, dcap, err := vrs.VerifiedClientDataCap(aid)
 	if err != nil {
-		return types.EmptyInt, xerrors.Errorf("looking up verified client: %w", err)
+		return nil, xerrors.Errorf("looking up verified client: %w", err)
+	}
+	if !verified {
+		return nil, nil
 	}
 
-	return dcap, nil
+	return &dcap, nil
 }
 
 var dealProviderCollateralNum = types.NewInt(110)

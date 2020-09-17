@@ -12,11 +12,10 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	v0adt "github.com/filecoin-project/specs-actors/actors/util/adt"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	typegen "github.com/whyrusleeping/cbor-gen"
 
@@ -299,12 +298,12 @@ type DiffMinerActorStateFunc func(ctx context.Context, oldState miner.State, new
 
 func (sp *StatePredicates) OnInitActorChange(diffInitActorState DiffInitActorStateFunc) DiffTipSetKeyFunc {
 	return sp.OnActorStateChanged(builtin.InitActorAddr, func(ctx context.Context, oldActorState, newActorState *types.Actor) (changed bool, user UserData, err error) {
-		var oldState init_.State
-		if err := sp.cst.Get(ctx, oldActorState.Head, &oldState); err != nil {
+		oldState, err := init_.Load(adt.WrapStore(ctx, sp.cst), oldActorState)
+		if err != nil {
 			return false, nil, err
 		}
-		var newState init_.State
-		if err := sp.cst.Get(ctx, newActorState.Head, &newState); err != nil {
+		newState, err := init_.Load(adt.WrapStore(ctx, sp.cst), newActorState)
+		if err != nil {
 			return false, nil, err
 		}
 		return diffInitActorState(ctx, &oldState, &newState)
@@ -314,12 +313,12 @@ func (sp *StatePredicates) OnInitActorChange(diffInitActorState DiffInitActorSta
 
 func (sp *StatePredicates) OnMinerActorChange(minerAddr address.Address, diffMinerActorState DiffMinerActorStateFunc) DiffTipSetKeyFunc {
 	return sp.OnActorStateChanged(minerAddr, func(ctx context.Context, oldActorState, newActorState *types.Actor) (changed bool, user UserData, err error) {
-		var oldState miner.State
-		if err := sp.cst.Get(ctx, oldActorState.Head, &oldState); err != nil {
+		oldState, err := miner.Load(adt.WrapStore(ctx, sp.cst), oldActorState)
+		if err != nil {
 			return false, nil, err
 		}
-		var newState miner.State
-		if err := sp.cst.Get(ctx, newActorState.Head, &newState); err != nil {
+		newState, err := miner.Load(adt.WrapStore(ctx, sp.cst), newActorState)
+		if err != nil {
 			return false, nil, err
 		}
 		return diffMinerActorState(ctx, oldState, newState)
@@ -620,7 +619,7 @@ func (i *InitActorAddressChanges) Remove(key string, val *typegen.Deferred) erro
 
 func (sp *StatePredicates) OnAddressMapChange() DiffInitActorStateFunc {
 	return func(ctx context.Context, oldState, newState *init_.State) (changed bool, user UserData, err error) {
-		ctxStore := &contextStore{
+		/*ctxStore := &contextStore{
 			ctx: ctx,
 			cst: sp.cst,
 		}
@@ -653,6 +652,9 @@ func (sp *StatePredicates) OnAddressMapChange() DiffInitActorStateFunc {
 			return false, nil, nil
 		}
 
-		return true, addressChanges, nil
+		return true, addressChanges, nil*/
+
+		panic("TODO")
+		return false, nil, nil
 	}
 }

@@ -417,24 +417,24 @@ func (r *refunder) ProcessTipset(ctx context.Context, tipset *types.TipSet, refu
 			// We use the parent tipset key because precommit information is removed when ProveCommitSector is executed
 			precommitChainInfo, err := r.api.StateSectorPreCommitInfo(ctx, m.To, sn, tipset.Parents())
 			if err != nil {
-				log.Warnw("failed to get precommit info for sector", "err", err, "method", messageMethod, "cid", msg.Cid, "miner", m.To, "sector_number", proveCommitSector.SectorNumber)
+				log.Warnw("failed to get precommit info for sector", "err", err, "method", messageMethod, "cid", msg.Cid, "miner", m.To, "sector_number", sn)
 				continue
 			}
 
 			precommitTipset, err := r.api.ChainGetTipSetByHeight(ctx, precommitChainInfo.PreCommitEpoch, tipset.Key())
 			if err != nil {
-				log.Warnf("failed to lookup precommit epoch", "err", err, "method", messageMethod, "cid", msg.Cid, "miner", m.To, "sector_number", proveCommitSector.SectorNumber)
+				log.Warnf("failed to lookup precommit epoch", "err", err, "method", messageMethod, "cid", msg.Cid, "miner", m.To, "sector_number", sn)
 				continue
 			}
 
 			collateral, err := r.api.StateMinerInitialPledgeCollateral(ctx, m.To, precommitChainInfo.Info, precommitTipset.Key())
 			if err != nil {
-				log.Warnw("failed to get initial pledge collateral", "err", err, "method", messageMethod, "cid", msg.Cid, "miner", m.To, "sector_number", proveCommitSector.SectorNumber)
+				log.Warnw("failed to get initial pledge collateral", "err", err, "method", messageMethod, "cid", msg.Cid, "miner", m.To, "sector_number", sn)
 			}
 
 			collateral = big.Sub(collateral, precommitChainInfo.PreCommitDeposit)
 			if collateral.LessThan(big.Zero()) {
-				log.Debugw("skipping zero pledge collateral difference", "method", messageMethod, "cid", msg.Cid, "miner", m.To, "sector_number", proveCommitSector.SectorNumber)
+				log.Debugw("skipping zero pledge collateral difference", "method", messageMethod, "cid", msg.Cid, "miner", m.To, "sector_number", sn)
 				continue
 			}
 

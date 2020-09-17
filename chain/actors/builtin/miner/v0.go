@@ -266,6 +266,10 @@ func (d *v0Deadline) ForEachPartition(cb func(uint64, Partition) error) error {
 	})
 }
 
+func (d *v0Deadline) PostSubmissions() (bitfield.BitField, error) {
+	return d.Deadline.PostSubmissions, nil
+}
+
 func (p *v0Partition) AllSectors() (bitfield.BitField, error) {
 	return p.Partition.Sectors, nil
 }

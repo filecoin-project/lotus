@@ -1024,9 +1024,9 @@ func GetFilMined(ctx context.Context, st *state.StateTree) (abi.TokenAmount, err
 		return big.Zero(), xerrors.Errorf("failed to load reward actor state: %w", err)
 	}
 
-	var rst reward.State
-	if err := st.Store.Get(ctx, ractor.Head, &rst); err != nil {
-		return big.Zero(), xerrors.Errorf("failed to load reward state: %w", err)
+	rst, err := reward.Load(adt.WrapStore(ctx, st.Store), ractor)
+	if err != nil {
+		return big.Zero(), err
 	}
 
 	return rst.TotalStoragePowerReward()

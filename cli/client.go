@@ -417,7 +417,7 @@ var clientDealCmd = &cli.Command{
 			return err
 		}
 
-		isVerified := dcap != types.EmptyInt
+		isVerified := dcap != nil
 
 		// If the user has explicitly set the --verified-deal flag
 		if cctx.IsSet("verified-deal") {

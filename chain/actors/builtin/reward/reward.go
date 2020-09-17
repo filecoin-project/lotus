@@ -28,7 +28,7 @@ func Load(store adt.Store, act *types.Actor) (st State, err error) {
 }
 
 type State interface {
-	cbor.Marshaler
+	cbor.Er
 
 	RewardSmoothed() (builtin.FilterEstimate, error)
 	EffectiveBaselinePower() (abi.StoragePower, error)

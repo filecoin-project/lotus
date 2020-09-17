@@ -200,7 +200,7 @@ func TestWindowPost(t *testing.T, b APIBuilder, blocktime time.Duration, nSector
 		require.NoError(t, err)
 		require.Greater(t, len(parts), 0)
 
-		secs, err := parts[0].AllSectors()
+		secs := parts[0].AllSectors
 		require.NoError(t, err)
 		n, err := secs.Count()
 		require.NoError(t, err)
@@ -224,7 +224,7 @@ func TestWindowPost(t *testing.T, b APIBuilder, blocktime time.Duration, nSector
 		require.NoError(t, err)
 		require.Greater(t, len(parts), 0)
 
-		secs, err := parts[0].AllSectors()
+		secs := parts[0].AllSectors
 		require.NoError(t, err)
 		n, err := secs.Count()
 		require.NoError(t, err)

@@ -247,8 +247,18 @@ func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *S
 
 	out := make([]proof.SectorInfo, len(ids))
 	for i, n := range ids {
+		sb, err := provingSectors.Slice(n, 1)
+		if err != nil {
+			return nil, err
+		}
+
+		sid, err := sb.First()
+		if err != nil {
+			return nil, err
+		}
+
 		var sinfo miner.SectorOnChainInfo
-		found, err := sectors.Get(n, &sinfo)
+		found, err := sectors.Get(sid, &sinfo)
 
 		if err != nil {
 			return nil, xerrors.Errorf("loading sector info: %w", err)

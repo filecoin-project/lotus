@@ -326,7 +326,9 @@ type FullNode interface {
 	// StateMinerInfo returns info about the indicated miner
 	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (miner.MinerInfo, error)
 	// StateMinerDeadlines returns all the proving deadlines for the given miner
-	StateMinerDeadlines(context.Context, address.Address, types.TipSetKey) ([]*miner.Deadline, error)
+	StateMinerDeadlines(context.Context, address.Address, types.TipSetKey) ([]Deadline, error)
+	// StateMinerPartitions returns all partitions in the specified deadline
+	StateMinerPartitions(ctx context.Context, m address.Address, dlIdx uint64, tsk types.TipSetKey) ([]Partition, error)
 	// StateMinerFaults returns a bitfield indicating the faulty sectors of the given miner
 	StateMinerFaults(context.Context, address.Address, types.TipSetKey) (bitfield.BitField, error)
 	// StateAllMinerFaults returns all non-expired Faults that occur within lookback epochs of the given tipset
@@ -383,7 +385,7 @@ type FullNode interface {
 	// StateVerifiedClientStatus returns the data cap for the given address.
 	// Returns nil if there is no entry in the data cap table for the
 	// address.
-	StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (abi.StoragePower, error)
+	StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error)
 	// StateDealProviderCollateralBounds returns the min and max collateral a storage provider
 	// can issue. It takes the deal size and verified status as parameters.
 	StateDealProviderCollateralBounds(context.Context, abi.PaddedPieceSize, bool, types.TipSetKey) (DealCollateralBounds, error)
@@ -815,6 +817,18 @@ const (
 	MsigApprove MsigProposeResponse = iota
 	MsigCancel
 )
+
+type Deadline struct {
+	PostSubmissions bitfield.BitField
+}
+
+type Partition struct {
+	AllSectors        bitfield.BitField
+	FaultySectors     bitfield.BitField
+	RecoveringSectors bitfield.BitField
+	LiveSectors       bitfield.BitField
+	ActiveSectors     bitfield.BitField
+}
 
 type Fault struct {
 	Miner address.Address

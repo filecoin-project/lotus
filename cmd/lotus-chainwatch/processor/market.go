@@ -300,8 +300,8 @@ func (p *Processor) updateMarketActorDealProposals(ctx context.Context, marketTi
 		}
 
 		for _, modified := range changes.Modified {
-			if modified.From.SlashEpoch() != modified.To.SlashEpoch() {
-				if _, err := stmt.Exec(modified.To.SlashEpoch(), modified.ID); err != nil {
+			if modified.From.SlashEpoch != modified.To.SlashEpoch {
+				if _, err := stmt.Exec(modified.To.SlashEpoch, modified.ID); err != nil {
 					return err
 				}
 			}

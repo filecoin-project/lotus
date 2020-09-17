@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"text/tabwriter"
@@ -73,12 +72,12 @@ var provingFaultsCmd = &cli.Command{
 		tw := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
 		_, _ = fmt.Fprintln(tw, "deadline\tpartition\tsectors")
 		err = mas.ForEachDeadline(func(dlIdx uint64, dl miner.Deadline) error {
-			dl.ForEachPartition(func(partIdx uint64, part miner.Partition) error {
+			return dl.ForEachPartition(func(partIdx uint64, part miner.Partition) error {
 				faults, err := part.FaultySectors()
 				if err != nil {
 					return err
 				}
-				faults.ForEach(func(num uint64) error {
+				return faults.ForEach(func(num uint64) error {
 					_, _ = fmt.Fprintf(tw, "%d\t%d\t%d\n", dlIdx, partIdx, num)
 					return nil
 				})
@@ -173,6 +172,8 @@ var provingInfoCmd = &cli.Command{
 				} else {
 					recovering += count
 				}
+
+				return nil
 			})
 		}); err != nil {
 			return xerrors.Errorf("walking miner deadlines and partitions: %w", err)
@@ -248,22 +249,6 @@ var provingDeadlinesCmd = &cli.Command{
 		di, err := api.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return xerrors.Errorf("getting deadlines: %w", err)
-		}
-
-		var mas miner.State
-		{
-			mact, err := api.StateGetActor(ctx, maddr, types.EmptyTSK)
-			if err != nil {
-				return err
-			}
-			miner.Load
-			rmas, err := api.ChainReadObj(ctx, mact.Head)
-			if err != nil {
-				return err
-			}
-			if err := mas.UnmarshalCBOR(bytes.NewReader(rmas)); err != nil {
-				return err
-			}
 		}
 
 		fmt.Printf("Miner: %s\n", color.BlueString("%s", maddr))
