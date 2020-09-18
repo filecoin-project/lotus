@@ -101,6 +101,9 @@ create index if not exists actor_states_code_head_index
 }
 
 func (p *Processor) HandleCommonActorsChanges(ctx context.Context, actors map[cid.Cid]ActorTips) error {
+	start := time.Now()
+	defer log.Debugw("Handle Common Actors Changes", "duration", time.Since(start).String())
+
 	if err := p.storeActorAddresses(ctx, actors); err != nil {
 		return err
 	}

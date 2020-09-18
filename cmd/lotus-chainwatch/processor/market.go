@@ -87,6 +87,9 @@ type marketActorInfo struct {
 }
 
 func (p *Processor) HandleMarketChanges(ctx context.Context, marketTips ActorTips) error {
+	start := time.Now()
+	defer log.Debugw("Handle Market Changes", "duration", time.Since(start).String())
+
 	marketChanges, err := p.processMarket(ctx, marketTips)
 	if err != nil {
 		log.Fatalw("Failed to process market actors", "error", err)
