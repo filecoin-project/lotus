@@ -51,7 +51,6 @@ type BalanceTable interface {
 
 type DealStates interface {
 	Get(id abi.DealID) (*DealState, bool, error)
-	Diff(DealStates) (*DealStateChanges, error)
 
 	array() adt.Array
 	decode(*cbg.Deferred) (*DealState, error)
@@ -60,7 +59,6 @@ type DealStates interface {
 type DealProposals interface {
 	ForEach(cb func(id abi.DealID, dp DealProposal) error) error
 	Get(id abi.DealID) (*DealProposal, bool, error)
-	Diff(DealProposals) (*DealProposalChanges, error)
 
 	array() adt.Array
 	decode(*cbg.Deferred) (*DealProposal, error)

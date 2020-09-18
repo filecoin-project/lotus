@@ -175,7 +175,7 @@ func (sp *StatePredicates) OnDealProposalChanged(diffDealProps DiffDealProposals
 // - Removed Proposals
 func (sp *StatePredicates) OnDealProposalAmtChanged() DiffDealProposalsFunc {
 	return func(ctx context.Context, oldDealProps, newDealProps market.DealProposals) (changed bool, user UserData, err error) {
-		proposalChanges, err := oldDealProps.Diff(newDealProps)
+		proposalChanges, err := market.DiffDealProposals(oldDealProps, newDealProps)
 		if err != nil {
 			return false, nil, err
 		}
@@ -194,7 +194,7 @@ func (sp *StatePredicates) OnDealProposalAmtChanged() DiffDealProposalsFunc {
 // - Removed Deals
 func (sp *StatePredicates) OnDealStateAmtChanged() DiffDealStatesFunc {
 	return func(ctx context.Context, oldDealStates, newDealStates market.DealStates) (changed bool, user UserData, err error) {
-		dealStateChanges, err := oldDealStates.Diff(newDealStates)
+		dealStateChanges, err := market.DiffDealStates(oldDealStates, newDealStates)
 		if err != nil {
 			return false, nil, err
 		}

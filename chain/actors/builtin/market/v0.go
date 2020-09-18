@@ -124,10 +124,6 @@ func (s *v0DealStates) Get(dealID abi.DealID) (*DealState, bool, error) {
 	return &deal, true, nil
 }
 
-func (s *v0DealStates) Diff(other DealStates) (*DealStateChanges, error) {
-	return diffDealStates(s, other)
-}
-
 func (s *v0DealStates) decode(val *cbg.Deferred) (*DealState, error) {
 	var v0ds market.DealState
 	if err := v0ds.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
@@ -147,10 +143,6 @@ func fromV0DealState(v0 market.DealState) DealState {
 
 type v0DealProposals struct {
 	adt.Array
-}
-
-func (s *v0DealProposals) Diff(other DealProposals) (*DealProposalChanges, error) {
-	return diffDealProposals(s, other)
 }
 
 func (s *v0DealProposals) Get(dealID abi.DealID) (*DealProposal, bool, error) {

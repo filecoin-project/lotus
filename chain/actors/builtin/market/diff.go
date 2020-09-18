@@ -8,7 +8,7 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 )
 
-func diffDealProposals(pre, cur DealProposals) (*DealProposalChanges, error) {
+func DiffDealProposals(pre, cur DealProposals) (*DealProposalChanges, error) {
 	results := new(DealProposalChanges)
 	if err := adt.DiffAdtArray(pre.array(), cur.array(), &marketProposalsDiffer{results, pre, cur}); err != nil {
 		return nil, fmt.Errorf("diffing deal states: %w", err)
@@ -44,7 +44,7 @@ func (d *marketProposalsDiffer) Remove(key uint64, val *cbg.Deferred) error {
 	return nil
 }
 
-func diffDealStates(pre, cur DealStates) (*DealStateChanges, error) {
+func DiffDealStates(pre, cur DealStates) (*DealStateChanges, error) {
 	results := new(DealStateChanges)
 	if err := adt.DiffAdtArray(pre.array(), cur.array(), &marketStatesDiffer{results, pre, cur}); err != nil {
 		return nil, fmt.Errorf("diffing deal states: %w", err)
