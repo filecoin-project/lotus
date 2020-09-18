@@ -1,5 +1,29 @@
 # Lotus changelog
 
+# 0.7.1 / 2020-09-17
+
+This optional release of Lotus introduces some critical fixes to the window PoSt process. It also upgrades some core dependencies, and introduces many improvements to the mining process, deal-making cycle, and overall User Experience.
+
+## Changes
+
+#### Some notable improvements: 
+
+- Correctly construct params for `SubmitWindowedPoSt` messages (https://github.com/filecoin-project/lotus/pull/3909)
+- Skip sectors correctly for Window PoSt (https://github.com/filecoin-project/lotus/pull/3839)
+- Split window PoST submission into multiple messages (https://github.com/filecoin-project/lotus/pull/3689)
+- Improve journal coverage (https://github.com/filecoin-project/lotus/pull/2455)
+- Allow retrievals while sealing (https://github.com/filecoin-project/lotus/pull/3778)
+- Don't prune locally published messages (https://github.com/filecoin-project/lotus/pull/3772)
+- Add get-ask, set-ask retrieval commands (https://github.com/filecoin-project/lotus/pull/3886)
+- Consistently name winning and window post in logs (https://github.com/filecoin-project/lotus/pull/3873))
+- Add auto flag to mpool replace (https://github.com/filecoin-project/lotus/pull/3752))
+
+#### Dependencies
+
+- Upgrade markets to `v0.6.1` (https://github.com/filecoin-project/lotus/pull/3906)
+- Upgrade specs-actors to `v0.9.10` (https://github.com/filecoin-project/lotus/pull/3846)
+- Upgrade badger (https://github.com/filecoin-project/lotus/pull/3739)
+
 # 0.7.0 / 2020-09-10
 
 This consensus-breaking release of Lotus is designed to test a network upgrade on the space race testnet. The changes that break consensus are:
