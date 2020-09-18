@@ -114,7 +114,11 @@ var importBenchCmd = &cli.Command{
 			return err
 		}
 
-		bds.CollectGarbage()
+		if cctx.Bool("only-gc") {
+			log.Info("calling CollectGarbage on main ds")
+			bds.CollectGarbage()
+			log.Info("done calling CollectGarbage on main ds")
+		}
 		bs := blockstore.NewBlockstore(bds)
 		cbs, err := blockstore.CachedBlockstore(context.TODO(), bs, blockstore.DefaultCacheOpts())
 		if err != nil {
@@ -129,7 +133,12 @@ var importBenchCmd = &cli.Command{
 			if err != nil {
 				return xerrors.Errorf("opening syscall-cache datastore: %w", err)
 			}
-			scds.CollectGarbage()
+
+			if cctx.Bool("only-gc") {
+				log.Info("calling CollectGarbage on syscall ds")
+				scds.CollectGarbage()
+				log.Info("done calling CollectGarbage on syscall ds")
+			}
 			verifier = &cachingVerifier{
 				ds:      scds,
 				backend: verifier,
