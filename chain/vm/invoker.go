@@ -6,28 +6,28 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/filecoin-project/go-state-types/exitcode"
-	"github.com/filecoin-project/specs-actors/actors/builtin/account"
-	v0verifreg "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
-
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/chain/actors/aerrors"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/cron"
-	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+	v0builtin "github.com/filecoin-project/specs-actors/actors/builtin"
+	v0account "github.com/filecoin-project/specs-actors/actors/builtin/account"
+	v0cron "github.com/filecoin-project/specs-actors/actors/builtin/cron"
+	v0init "github.com/filecoin-project/specs-actors/actors/builtin/init"
+	v0market "github.com/filecoin-project/specs-actors/actors/builtin/market"
 	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	v0msig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
-	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
+	v0paych "github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	v0power "github.com/filecoin-project/specs-actors/actors/builtin/power"
 	v0reward "github.com/filecoin-project/specs-actors/actors/builtin/reward"
-	"github.com/filecoin-project/specs-actors/actors/builtin/system"
-	"github.com/filecoin-project/specs-actors/actors/runtime"
+	v0system "github.com/filecoin-project/specs-actors/actors/builtin/system"
+	v0verifreg "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	vmr "github.com/filecoin-project/specs-actors/actors/runtime"
+
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/exitcode"
+
+	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 )
 
 type Invoker struct {
@@ -35,7 +35,7 @@ type Invoker struct {
 	builtInState map[cid.Cid]reflect.Type
 }
 
-type invokeFunc func(rt runtime.Runtime, params []byte) ([]byte, aerrors.ActorError)
+type invokeFunc func(rt vmr.Runtime, params []byte) ([]byte, aerrors.ActorError)
 type nativeCode []invokeFunc
 
 func NewInvoker() *Invoker {
@@ -46,22 +46,22 @@ func NewInvoker() *Invoker {
 
 	// add builtInCode using: register(cid, singleton)
 	// NETUPGRADE: register code IDs for v2, etc.
-	inv.Register(builtin.SystemActorCodeID, system.Actor{}, abi.EmptyValue{})
-	inv.Register(builtin.InitActorCodeID, init_.Actor{}, init_.State{})
-	inv.Register(builtin.RewardActorCodeID, v0reward.Actor{}, v0reward.State{})
-	inv.Register(builtin.CronActorCodeID, cron.Actor{}, cron.State{})
-	inv.Register(builtin.StoragePowerActorCodeID, v0power.Actor{}, v0power.State{})
-	inv.Register(builtin.StorageMarketActorCodeID, market.Actor{}, market.State{})
-	inv.Register(builtin.StorageMinerActorCodeID, v0miner.Actor{}, v0miner.State{})
-	inv.Register(builtin.MultisigActorCodeID, v0msig.Actor{}, v0msig.State{})
-	inv.Register(builtin.PaymentChannelActorCodeID, paych.Actor{}, paych.State{})
-	inv.Register(builtin.VerifiedRegistryActorCodeID, v0verifreg.Actor{}, v0verifreg.State{})
-	inv.Register(builtin.AccountActorCodeID, account.Actor{}, account.State{})
+	inv.Register(v0builtin.SystemActorCodeID, v0system.Actor{}, abi.EmptyValue{})
+	inv.Register(v0builtin.InitActorCodeID, v0init.Actor{}, v0init.State{})
+	inv.Register(v0builtin.RewardActorCodeID, v0reward.Actor{}, v0reward.State{})
+	inv.Register(v0builtin.CronActorCodeID, v0cron.Actor{}, v0cron.State{})
+	inv.Register(v0builtin.StoragePowerActorCodeID, v0power.Actor{}, v0power.State{})
+	inv.Register(v0builtin.StorageMarketActorCodeID, v0market.Actor{}, v0market.State{})
+	inv.Register(v0builtin.StorageMinerActorCodeID, v0miner.Actor{}, v0miner.State{})
+	inv.Register(v0builtin.MultisigActorCodeID, v0msig.Actor{}, v0msig.State{})
+	inv.Register(v0builtin.PaymentChannelActorCodeID, v0paych.Actor{}, v0paych.State{})
+	inv.Register(v0builtin.VerifiedRegistryActorCodeID, v0verifreg.Actor{}, v0verifreg.State{})
+	inv.Register(v0builtin.AccountActorCodeID, v0account.Actor{}, v0account.State{})
 
 	return inv
 }
 
-func (inv *Invoker) Invoke(codeCid cid.Cid, rt runtime.Runtime, method abi.MethodNum, params []byte) ([]byte, aerrors.ActorError) {
+func (inv *Invoker) Invoke(codeCid cid.Cid, rt vmr.Runtime, method abi.MethodNum, params []byte) ([]byte, aerrors.ActorError) {
 
 	code, ok := inv.builtInCode[codeCid]
 	if !ok {
@@ -177,7 +177,7 @@ func DecodeParams(b []byte, out interface{}) error {
 }
 
 func DumpActorState(code cid.Cid, b []byte) (interface{}, error) {
-	if code == builtin.AccountActorCodeID { // Account code special case
+	if code == v0builtin.AccountActorCodeID { // Account code special case
 		return nil, nil
 	}
 
