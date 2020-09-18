@@ -246,6 +246,7 @@ func TestMarketPredicates(t *testing.T) {
 			Code: v0builtin.StorageMarketActorCodeID,
 			Head: marketCid,
 		})
+		require.NoError(t, err)
 		changed, _, err = diffDealStateFn(ctx, marketState, marketState)
 		require.NoError(t, err)
 		require.False(t, changed)
@@ -358,6 +359,7 @@ func TestMarketPredicates(t *testing.T) {
 			Code: v0builtin.StorageMarketActorCodeID,
 			Head: marketCid,
 		})
+		require.NoError(t, err)
 		changed, _, err = diffDealBalancesFn(ctx, marketState, marketState)
 		require.NoError(t, err)
 		require.False(t, changed)

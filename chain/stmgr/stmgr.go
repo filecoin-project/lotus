@@ -262,6 +262,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 			}
 		} else {
 			// TODO: ActorUpgrade
+			params = nil
 		}
 
 		sysAct, err := vmi.StateTree().GetActor(builtin.SystemActorAddr)

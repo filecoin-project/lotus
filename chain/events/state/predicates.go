@@ -530,6 +530,5 @@ func (sp *StatePredicates) OnAddressMapChange() DiffInitActorStateFunc {
 		return true, addressChanges, nil*/
 
 		panic("TODO")
-		return false, nil, nil
 	}
 }
