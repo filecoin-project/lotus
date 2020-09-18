@@ -9,15 +9,14 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/lotus/chain/actors/adt"
-	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	typegen "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/lotus/api/apibstore"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -74,7 +73,7 @@ type DiffStorageMarketStateFunc func(ctx context.Context, oldState market.State,
 
 // OnStorageMarketActorChanged calls diffStorageMarketState when the state changes for the market actor
 func (sp *StatePredicates) OnStorageMarketActorChanged(diffStorageMarketState DiffStorageMarketStateFunc) DiffTipSetKeyFunc {
-	return sp.OnActorStateChanged(builtin.StorageMarketActorAddr, func(ctx context.Context, oldActorState, newActorState *types.Actor) (changed bool, user UserData, err error) {
+	return sp.OnActorStateChanged(market.Address, func(ctx context.Context, oldActorState, newActorState *types.Actor) (changed bool, user UserData, err error) {
 		oldState, err := market.Load(adt.WrapStore(ctx, sp.cst), oldActorState)
 		if err != nil {
 			return false, nil, err
@@ -295,7 +294,7 @@ func (sp *StatePredicates) AvailableBalanceChangedForAddresses(getAddrs func() [
 type DiffMinerActorStateFunc func(ctx context.Context, oldState miner.State, newState miner.State) (changed bool, user UserData, err error)
 
 func (sp *StatePredicates) OnInitActorChange(diffInitActorState DiffInitActorStateFunc) DiffTipSetKeyFunc {
-	return sp.OnActorStateChanged(builtin.InitActorAddr, func(ctx context.Context, oldActorState, newActorState *types.Actor) (changed bool, user UserData, err error) {
+	return sp.OnActorStateChanged(init_.Address, func(ctx context.Context, oldActorState, newActorState *types.Actor) (changed bool, user UserData, err error) {
 		oldState, err := init_.Load(adt.WrapStore(ctx, sp.cst), oldActorState)
 		if err != nil {
 			return false, nil, err
