@@ -23,10 +23,11 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/account"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/blockstore"
@@ -49,16 +50,12 @@ func ResolveToKeyAddr(state types.StateTree, cst cbor.IpldStore, addr address.Ad
 		return address.Undef, xerrors.Errorf("failed to find actor: %s", addr)
 	}
 
-	if act.Code != builtin.AccountActorCodeID {
-		return address.Undef, xerrors.Errorf("address %s was not for an account actor", addr)
-	}
-
-	var aast account.State
-	if err := cst.Get(context.TODO(), act.Head, &aast); err != nil {
+	aast, err := account.Load(adt.WrapStore(context.TODO(), cst), act)
+	if err != nil {
 		return address.Undef, xerrors.Errorf("failed to get account actor state for %s: %w", addr, err)
 	}
 
-	return aast.Address, nil
+	return aast.PubkeyAddress()
 }
 
 var _ cbor.IpldBlockstore = (*gasChargingBlocks)(nil)
