@@ -261,7 +261,6 @@ var bitFieldIntersectCmd = &cli.Command{
 	},
 }
 
-
 var bitFieldSubCmd = &cli.Command{
 	Name:        "sub",
 	Description: "subtract 2 bitfields and print the resulting bitfield as base64",
@@ -307,7 +306,7 @@ var bitFieldSubCmd = &cli.Command{
 var bitFieldEncodeCmd = &cli.Command{
 	Name:        "encode",
 	Description: "encode a series of decimal numbers into a bitfield",
-	ArgsUsage: "[infile]",
+	ArgsUsage:   "[infile]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "enc",
