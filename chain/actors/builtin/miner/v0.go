@@ -1,6 +1,7 @@
 package miner
 
 import (
+	"bytes"
 	"errors"
 
 	"github.com/filecoin-project/go-address"
@@ -206,6 +207,16 @@ func (s *v0State) NumDeadlines() (uint64, error) {
 	return v0miner.WPoStPeriodDeadlines, nil
 }
 
+func (s *v0State) DeadlinesChanged(other State) bool {
+	v0other, ok := other.(*v0State)
+	if !ok {
+		// treat an upgrade as a change, always
+		return true
+	}
+
+	return s.State.Deadlines.Equals(v0other.Deadlines)
+}
+
 func (s *v0State) Info() (MinerInfo, error) {
 	info, err := s.State.GetInfo(s.store)
 	if err != nil {
@@ -244,6 +255,26 @@ func (s *v0State) DeadlineInfo(epoch abi.ChainEpoch) *dline.Info {
 	return s.State.DeadlineInfo(epoch)
 }
 
+func (s *v0State) sectors() (adt.Array, error) {
+	return v0adt.AsArray(s.store, s.Sectors)
+}
+
+func (s *v0State) decodeSectorOnChainInfo(val *cbg.Deferred) (SectorOnChainInfo, error) {
+	var si v0miner.SectorOnChainInfo
+	err := si.UnmarshalCBOR(bytes.NewReader(val.Raw))
+	return si, err
+}
+
+func (s *v0State) precommits() (adt.Map, error) {
+	return v0adt.AsMap(s.store, s.PreCommittedSectors)
+}
+
+func (s *v0State) decodeSectorPreCommitOnChainInfo(val *cbg.Deferred) (SectorPreCommitOnChainInfo, error) {
+	var sp v0miner.SectorPreCommitOnChainInfo
+	err := sp.UnmarshalCBOR(bytes.NewReader(val.Raw))
+	return sp, err
+}
+
 func (d *v0Deadline) LoadPartition(idx uint64) (Partition, error) {
 	p, err := d.Deadline.LoadPartition(d.store, idx)
 	if err != nil {
@@ -261,6 +292,16 @@ func (d *v0Deadline) ForEachPartition(cb func(uint64, Partition) error) error {
 	return ps.ForEach(&part, func(i int64) error {
 		return cb(uint64(i), &v0Partition{part, d.store})
 	})
+}
+
+func (s *v0Deadline) PartitionsChanged(other Deadline) bool {
+	v0other, ok := other.(*v0Deadline)
+	if !ok {
+		// treat an upgrade as a change, always
+		return true
+	}
+
+	return s.Deadline.Partitions.Equals(v0other.Deadline.Partitions)
 }
 
 func (d *v0Deadline) PostSubmissions() (bitfield.BitField, error) {

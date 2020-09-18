@@ -3,6 +3,7 @@ package miner
 import (
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/libp2p/go-libp2p-core/peer"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -42,21 +43,30 @@ type State interface {
 	GetSectorExpiration(abi.SectorNumber) (*SectorExpiration, error)
 	GetPrecommittedSector(abi.SectorNumber) (*SectorPreCommitOnChainInfo, error)
 	LoadSectorsFromSet(filter *bitfield.BitField, filterOut bool) (adt.Array, error)
-	LoadPreCommittedSectors() (adt.Map, error)
 	IsAllocated(abi.SectorNumber) (bool, error)
 
 	LoadDeadline(idx uint64) (Deadline, error)
 	ForEachDeadline(cb func(idx uint64, dl Deadline) error) error
 	NumDeadlines() (uint64, error)
+	DeadlinesChanged(State) bool
+
 	Info() (MinerInfo, error)
 
 	DeadlineInfo(epoch abi.ChainEpoch) *dline.Info
+
+	// Diff helpers. Used by Diff* functions internally.
+	sectors() (adt.Array, error)
+	decodeSectorOnChainInfo(*cbg.Deferred) (SectorOnChainInfo, error)
+	precommits() (adt.Map, error)
+	decodeSectorPreCommitOnChainInfo(*cbg.Deferred) (SectorPreCommitOnChainInfo, error)
 }
 
 type Deadline interface {
 	LoadPartition(idx uint64) (Partition, error)
 	ForEachPartition(cb func(idx uint64, part Partition) error) error
 	PostSubmissions() (bitfield.BitField, error)
+
+	PartitionsChanged(Deadline) bool
 }
 
 type Partition interface {
@@ -109,4 +119,20 @@ type SectorExpiration struct {
 type SectorLocation struct {
 	Deadline  uint64
 	Partition uint64
+}
+
+type SectorChanges struct {
+	Added    []SectorOnChainInfo
+	Extended []SectorExtensions
+	Removed  []SectorOnChainInfo
+}
+
+type SectorExtensions struct {
+	From SectorOnChainInfo
+	To   SectorOnChainInfo
+}
+
+type PreCommitChanges struct {
+	Added   []SectorPreCommitOnChainInfo
+	Removed []SectorPreCommitOnChainInfo
 }

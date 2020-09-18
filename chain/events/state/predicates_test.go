@@ -409,7 +409,7 @@ func TestMinerSectorChange(t *testing.T) {
 	require.True(t, change)
 	require.NotNil(t, val)
 
-	sectorChanges, ok := val.(*MinerSectorChanges)
+	sectorChanges, ok := val.(*miner.SectorChanges)
 	require.True(t, ok)
 
 	require.Equal(t, len(sectorChanges.Added), 1)
@@ -433,7 +433,7 @@ func TestMinerSectorChange(t *testing.T) {
 	require.True(t, change)
 	require.NotNil(t, val)
 
-	sectorChanges, ok = val.(*MinerSectorChanges)
+	sectorChanges, ok = val.(*miner.SectorChanges)
 	require.True(t, ok)
 
 	require.Equal(t, 1, len(sectorChanges.Added))

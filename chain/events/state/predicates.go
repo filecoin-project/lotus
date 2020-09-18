@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 
-	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 
 	"github.com/filecoin-project/go-address"
@@ -325,83 +323,12 @@ func (sp *StatePredicates) OnMinerActorChange(minerAddr address.Address, diffMin
 	})
 }
 
-type MinerSectorChanges struct {
-	Added    []miner.SectorOnChainInfo
-	Extended []SectorExtensions
-	Removed  []miner.SectorOnChainInfo
-}
-
-var _ adt.AdtArrayDiff = &MinerSectorChanges{}
-
-type SectorExtensions struct {
-	From miner.SectorOnChainInfo
-	To   miner.SectorOnChainInfo
-}
-
-func (m *MinerSectorChanges) Add(key uint64, val *typegen.Deferred) error {
-	si := new(miner.SectorOnChainInfo)
-	err := si.UnmarshalCBOR(bytes.NewReader(val.Raw))
-	if err != nil {
-		return err
-	}
-	m.Added = append(m.Added, *si)
-	return nil
-}
-
-func (m *MinerSectorChanges) Modify(key uint64, from, to *typegen.Deferred) error {
-	siFrom := new(miner.SectorOnChainInfo)
-	err := siFrom.UnmarshalCBOR(bytes.NewReader(from.Raw))
-	if err != nil {
-		return err
-	}
-
-	siTo := new(miner.SectorOnChainInfo)
-	err = siTo.UnmarshalCBOR(bytes.NewReader(to.Raw))
-	if err != nil {
-		return err
-	}
-
-	if siFrom.Expiration != siTo.Expiration {
-		m.Extended = append(m.Extended, SectorExtensions{
-			From: *siFrom,
-			To:   *siTo,
-		})
-	}
-	return nil
-}
-
-func (m *MinerSectorChanges) Remove(key uint64, val *typegen.Deferred) error {
-	si := new(miner.SectorOnChainInfo)
-	err := si.UnmarshalCBOR(bytes.NewReader(val.Raw))
-	if err != nil {
-		return err
-	}
-	m.Removed = append(m.Removed, *si)
-	return nil
-}
-
 func (sp *StatePredicates) OnMinerSectorChange() DiffMinerActorStateFunc {
 	return func(ctx context.Context, oldState, newState miner.State) (changed bool, user UserData, err error) {
-		sectorChanges := &MinerSectorChanges{
-			Added:    []miner.SectorOnChainInfo{},
-			Extended: []SectorExtensions{},
-			Removed:  []miner.SectorOnChainInfo{},
-		}
-
-		oldSectors, err := oldState.LoadSectorsFromSet(nil, false)
+		sectorChanges, err := miner.DiffSectors(oldState, newState)
 		if err != nil {
 			return false, nil, err
 		}
-
-		newSectors, err := newState.LoadSectorsFromSet(nil, false)
-		if err != nil {
-			return false, nil, err
-		}
-
-		if err := adt.DiffAdtArray(oldSectors, newSectors, sectorChanges); err != nil {
-			return false, nil, err
-		}
-
 		// nothing changed
 		if len(sectorChanges.Added)+len(sectorChanges.Extended)+len(sectorChanges.Removed) == 0 {
 			return false, nil, nil
@@ -411,61 +338,10 @@ func (sp *StatePredicates) OnMinerSectorChange() DiffMinerActorStateFunc {
 	}
 }
 
-type MinerPreCommitChanges struct {
-	Added   []miner.SectorPreCommitOnChainInfo
-	Removed []miner.SectorPreCommitOnChainInfo
-}
-
-func (m *MinerPreCommitChanges) AsKey(key string) (abi.Keyer, error) {
-	sector, err := abi.ParseUIntKey(key)
-	if err != nil {
-		return nil, err
-	}
-	return v0miner.SectorKey(abi.SectorNumber(sector)), nil
-}
-
-func (m *MinerPreCommitChanges) Add(key string, val *typegen.Deferred) error {
-	sp := new(miner.SectorPreCommitOnChainInfo)
-	err := sp.UnmarshalCBOR(bytes.NewReader(val.Raw))
-	if err != nil {
-		return err
-	}
-	m.Added = append(m.Added, *sp)
-	return nil
-}
-
-func (m *MinerPreCommitChanges) Modify(key string, from, to *typegen.Deferred) error {
-	return nil
-}
-
-func (m *MinerPreCommitChanges) Remove(key string, val *typegen.Deferred) error {
-	sp := new(miner.SectorPreCommitOnChainInfo)
-	err := sp.UnmarshalCBOR(bytes.NewReader(val.Raw))
-	if err != nil {
-		return err
-	}
-	m.Removed = append(m.Removed, *sp)
-	return nil
-}
-
 func (sp *StatePredicates) OnMinerPreCommitChange() DiffMinerActorStateFunc {
 	return func(ctx context.Context, oldState, newState miner.State) (changed bool, user UserData, err error) {
-		precommitChanges := &MinerPreCommitChanges{
-			Added:   []miner.SectorPreCommitOnChainInfo{},
-			Removed: []miner.SectorPreCommitOnChainInfo{},
-		}
-
-		oldPrecommits, err := oldState.LoadPreCommittedSectors()
+		precommitChanges, err := miner.DiffPreCommits(oldState, newState)
 		if err != nil {
-			return false, nil, err
-		}
-
-		newPrecommits, err := newState.LoadPreCommittedSectors()
-		if err != nil {
-			return false, nil, err
-		}
-
-		if err := adt.DiffAdtMap(oldPrecommits, newPrecommits, precommitChanges); err != nil {
 			return false, nil, err
 		}
 
