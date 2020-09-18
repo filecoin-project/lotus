@@ -40,6 +40,22 @@ func (s *v0State) VestedFunds(epoch abi.ChainEpoch) (abi.TokenAmount, error) {
 	return s.CheckVestedFunds(s.store, epoch)
 }
 
+func (s *v0State) LockedFunds() (LockedFunds, error) {
+	return LockedFunds{
+		VestingFunds:             s.State.LockedFunds,
+		InitialPledgeRequirement: s.State.InitialPledgeRequirement,
+		PreCommitDeposits:        s.State.PreCommitDeposits,
+	}, nil
+}
+
+func (s *v0State) InitialPledge() (abi.TokenAmount, error) {
+	return s.State.InitialPledgeRequirement, nil
+}
+
+func (s *v0State) PreCommitDeposits() (abi.TokenAmount, error) {
+	return s.State.PreCommitDeposits, nil
+}
+
 func (s *v0State) GetSector(num abi.SectorNumber) (*SectorOnChainInfo, error) {
 	info, ok, err := s.State.GetSector(s.store, num)
 	if !ok || err != nil {

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"sort"
@@ -16,12 +15,12 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/apibstore"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/blockstore"
@@ -54,11 +53,6 @@ func infoCmdAct(cctx *cli.Context) error {
 
 	ctx := lcli.ReqContext(cctx)
 
-	head, err := api.ChainHead(ctx)
-	if err != nil {
-		return xerrors.Errorf("getting chain head: %w", err)
-	}
-
 	maddr, err := getActorAddress(ctx, nodeApi, cctx.String("actor"))
 	if err != nil {
 		return err
@@ -68,15 +62,11 @@ func infoCmdAct(cctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	var mas miner.State
-	{
-		rmas, err := api.ChainReadObj(ctx, mact.Head)
-		if err != nil {
-			return err
-		}
-		if err := mas.UnmarshalCBOR(bytes.NewReader(rmas)); err != nil {
-			return err
-		}
+
+	tbs := bufbstore.NewTieredBstore(apibstore.NewAPIBlockstore(api), blockstore.NewTemporary())
+	mas, err := miner.Load(adt.WrapStore(ctx, cbor.NewCborStore(tbs)), mact)
+	if err != nil {
+		return err
 	}
 
 	fmt.Printf("Miner: %s\n", color.BlueString("%s", maddr))
@@ -172,17 +162,21 @@ func infoCmdAct(cctx *cli.Context) error {
 	fmt.Printf("\tActive: %d, %s (Verified: %d, %s)\n", nactiveDeals, types.SizeStr(types.NewInt(uint64(activeDealBytes))), nVerifDeals, types.SizeStr(types.NewInt(uint64(activeVerifDealBytes))))
 	fmt.Println()
 
-	tbs := bufbstore.NewTieredBstore(apibstore.NewAPIBlockstore(api), blockstore.NewTemporary())
-	_, err = mas.UnlockVestedFunds(adt.WrapStore(ctx, cbor.NewCborStore(tbs)), head.Height())
+	// NOTE: there's no need to unlock anything here. Funds only
+	// vest on deadline boundaries, and they're unlocked by cron.
+	lockedFunds, err := mas.LockedFunds()
 	if err != nil {
-		return xerrors.Errorf("calculating vested funds: %w", err)
+		return xerrors.Errorf("getting locked funds: %w", err)
 	}
-
+	availBalance, err := mas.AvailableBalance(mact.Balance)
+	if err != nil {
+		return xerrors.Errorf("getting available balance: %w", err)
+	}
 	fmt.Printf("Miner Balance: %s\n", color.YellowString("%s", types.FIL(mact.Balance)))
-	fmt.Printf("\tPreCommit:   %s\n", types.FIL(mas.PreCommitDeposits))
-	fmt.Printf("\tPledge:      %s\n", types.FIL(mas.InitialPledgeRequirement))
-	fmt.Printf("\tLocked:      %s\n", types.FIL(mas.LockedFunds))
-	color.Green("\tAvailable:   %s", types.FIL(mas.GetAvailableBalance(mact.Balance)))
+	fmt.Printf("\tPreCommit:   %s\n", types.FIL(lockedFunds.PreCommitDeposits))
+	fmt.Printf("\tPledge:      %s\n", types.FIL(lockedFunds.InitialPledgeRequirement))
+	fmt.Printf("\tVesting:     %s\n", types.FIL(lockedFunds.VestingFunds))
+	color.Green("\tAvailable:   %s", types.FIL(availBalance))
 	wb, err := api.WalletBalance(ctx, mi.Worker)
 	if err != nil {
 		return xerrors.Errorf("getting worker balance: %w", err)

@@ -35,8 +35,12 @@ func Load(store adt.Store, act *types.Actor) (st State, err error) {
 type State interface {
 	cbor.Marshaler
 
+	// Total available balance to spend.
 	AvailableBalance(abi.TokenAmount) (abi.TokenAmount, error)
+	// Funds that will vest by the given epoch.
 	VestedFunds(abi.ChainEpoch) (abi.TokenAmount, error)
+	// Funds locked for various reasons.
+	LockedFunds() (LockedFunds, error)
 
 	GetSector(abi.SectorNumber) (*SectorOnChainInfo, error)
 	FindSector(abi.SectorNumber) (*SectorLocation, error)
@@ -137,4 +141,10 @@ type SectorExtensions struct {
 type PreCommitChanges struct {
 	Added   []SectorPreCommitOnChainInfo
 	Removed []SectorPreCommitOnChainInfo
+}
+
+type LockedFunds struct {
+	VestingFunds             abi.TokenAmount
+	InitialPledgeRequirement abi.TokenAmount
+	PreCommitDeposits        abi.TokenAmount
 }
