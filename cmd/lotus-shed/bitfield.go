@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 
@@ -29,6 +30,8 @@ var bitFieldCmd = &cli.Command{
 		bitFieldStatCmd,
 		bitFieldDecodeCmd,
 		bitFieldIntersectCmd,
+		bitFieldEncodeCmd,
+		bitFieldSubCmd,
 	},
 }
 
@@ -243,6 +246,93 @@ var bitFieldIntersectCmd = &cli.Command{
 		}
 
 		s, err := o.RunIterator()
+		if err != nil {
+			return err
+		}
+
+		bytes, err := rlepluslazy.EncodeRuns(s, []byte{})
+		if err != nil {
+			return err
+		}
+
+		fmt.Println(base64.StdEncoding.EncodeToString(bytes))
+
+		return nil
+	},
+}
+
+
+var bitFieldSubCmd = &cli.Command{
+	Name:        "sub",
+	Description: "subtract 2 bitfields and print the resulting bitfield as base64",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "enc",
+			Value: "base64",
+			Usage: "specify input encoding to parse",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		b, err := decode(cctx, 1)
+		if err != nil {
+			return err
+		}
+
+		a, err := decode(cctx, 0)
+		if err != nil {
+			return err
+		}
+
+		o, err := bitfield.SubtractBitField(a, b)
+		if err != nil {
+			return xerrors.Errorf("intersect: %w", err)
+		}
+
+		s, err := o.RunIterator()
+		if err != nil {
+			return err
+		}
+
+		bytes, err := rlepluslazy.EncodeRuns(s, []byte{})
+		if err != nil {
+			return err
+		}
+
+		fmt.Println(base64.StdEncoding.EncodeToString(bytes))
+
+		return nil
+	},
+}
+
+var bitFieldEncodeCmd = &cli.Command{
+	Name:        "encode",
+	Description: "encode a series of decimal numbers into a bitfield",
+	ArgsUsage: "[infile]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "enc",
+			Value: "base64",
+			Usage: "specify input encoding to parse",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		f, err := os.Open(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+
+		out := bitfield.New()
+		for {
+			var i uint64
+			_, err := fmt.Fscan(f, &i)
+			if err == io.EOF {
+				break
+			}
+			out.Set(i)
+		}
+
+		s, err := out.RunIterator()
 		if err != nil {
 			return err
 		}
