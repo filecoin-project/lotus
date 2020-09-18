@@ -74,6 +74,9 @@ var importBenchCmd = &cli.Command{
 			Name:  "no-import",
 			Usage: "should we import the chain? if set to true chain has to be previously imported",
 		},
+		&cli.BoolFlag{
+			Name: "only-gc",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		vm.BatchSealVerifyParallelism = cctx.Int("batch-seal-verify-threads")
@@ -103,11 +106,15 @@ var importBenchCmd = &cli.Command{
 		bdgOpt.GcInterval = 0
 		bdgOpt.Options.SyncWrites = false
 		bdgOpt.Options.Truncate = true
+		bdgOpt.Options.DetectConflicts = false
+		bdgOpt.Options.MaxTableSize = 64 << 20
 
 		bds, err := badger.NewDatastore(tdir, &bdgOpt)
 		if err != nil {
 			return err
 		}
+
+		bds.CollectGarbage()
 		bs := blockstore.NewBlockstore(bds)
 		cbs, err := blockstore.CachedBlockstore(context.TODO(), bs, blockstore.DefaultCacheOpts())
 		if err != nil {
@@ -122,10 +129,14 @@ var importBenchCmd = &cli.Command{
 			if err != nil {
 				return xerrors.Errorf("opening syscall-cache datastore: %w", err)
 			}
+			scds.CollectGarbage()
 			verifier = &cachingVerifier{
 				ds:      scds,
 				backend: verifier,
 			}
+		}
+		if cctx.Bool("only-gc") {
+			return nil
 		}
 
 		cs := store.NewChainStore(bs, ds, vm.Syscalls(verifier))
