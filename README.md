@@ -18,7 +18,7 @@ Lotus is an implementation of the Filecoin Distributed Storage Network. For more
 
 ## Building & Documentation
 
-For instructions on how to build lotus from source, please visit [https://lotu.sh](https://lotu.sh) or read the source [here](https://github.com/filecoin-project/lotus/tree/master/documentation).
+For instructions on how to build lotus from source, please visit [Lotus build and setup instruction](https://docs.filecoin.io/get-started/lotus/installation/#minimal-requirements) or read the source [here](https://github.com/filecoin-project/lotus/tree/master/documentation).
 
 ## Reporting a Vulnerability
 
