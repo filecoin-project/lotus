@@ -412,7 +412,7 @@ func (r *refunder) ProcessTipset(ctx context.Context, tipset *types.TipSet, refu
 				sn = proveCommitSector.SectorNumber
 			} else {
 				// TODO: ActorUpgrade
-				sn = -1
+				sn = 0
 			}
 
 			// We use the parent tipset key because precommit information is removed when ProveCommitSector is executed
