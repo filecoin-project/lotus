@@ -89,7 +89,7 @@ func (p *Processor) unprocessedBlocks(ctx context.Context, batch int) (map[cid.C
 
 	bcs, err := p.toProcessBlocks(batch)
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
 
 	out, minBlock, maxBlock := p.fetchBlocks(ctx, bcs)

@@ -78,7 +78,7 @@ func (p *Processor) storePreCommitDealInfo(ctx context.Context, dealEvents <-cha
 	grp, _ := errgroup.WithContext(ctx)
 	for sde := range dealEvents {
 		sde := sde
-		grp.Go(func() error{
+		grp.Go(func() error {
 			for _, did := range sde.DealIDs {
 				if _, err := stmt.Exec(
 					uint64(did),
