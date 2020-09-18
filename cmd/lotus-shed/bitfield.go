@@ -319,7 +319,7 @@ var bitFieldEncodeCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		defer f.Close()
+		defer f.Close() // nolint
 
 		out := bitfield.New()
 		for {
