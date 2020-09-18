@@ -120,7 +120,9 @@ type FullNodeStruct struct {
 		MpoolPending func(context.Context, types.TipSetKey) ([]*types.SignedMessage, error) `perm:"read"`
 		MpoolClear   func(context.Context, bool) error                                      `perm:"write"`
 
-		MpoolPush        func(context.Context, *types.SignedMessage) (cid.Cid, error)                              `perm:"write"`
+		MpoolPush          func(context.Context, *types.SignedMessage) (cid.Cid, error) `perm:"write"`
+		MpoolPushUntrusted func(context.Context, *types.SignedMessage) (cid.Cid, error) `perm:"write"`
+
 		MpoolPushMessage func(context.Context, *types.Message, *api.MessageSendSpec) (*types.SignedMessage, error) `perm:"sign"`
 		MpoolGetNonce    func(context.Context, address.Address) (uint64, error)                                    `perm:"read"`
 		MpoolSub         func(context.Context) (<-chan api.MpoolUpdate, error)                                     `perm:"read"`
@@ -547,6 +549,10 @@ func (c *FullNodeStruct) MpoolClear(ctx context.Context, local bool) error {
 
 func (c *FullNodeStruct) MpoolPush(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, error) {
 	return c.Internal.MpoolPush(ctx, smsg)
+}
+
+func (c *FullNodeStruct) MpoolPushUntrusted(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, error) {
+	return c.Internal.MpoolPushUntrusted(ctx, smsg)
 }
 
 func (c *FullNodeStruct) MpoolPushMessage(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec) (*types.SignedMessage, error) {
