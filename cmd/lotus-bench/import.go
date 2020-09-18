@@ -91,6 +91,10 @@ var importBenchCmd = &cli.Command{
 		}
 		defer cfi.Close() //nolint:errcheck // read only file
 
+		go func() {
+			http.ListenAndServe("localhost:6060", nil) //nolint:errcheck
+		}()
+
 		var tdir string
 		if rdir := cctx.String("repodir"); rdir != "" {
 			tdir = rdir
