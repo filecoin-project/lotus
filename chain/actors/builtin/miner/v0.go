@@ -224,11 +224,6 @@ func (s *state0) NumDeadlines() (uint64, error) {
 	return miner0.WPoStPeriodDeadlines, nil
 }
 
-// Max sectors per PoSt
-func (s *state0) MaxAddressedSectors() (uint64, error) {
-	return miner0.AddressedSectorsMax, nil
-}
-
 func (s *state0) DeadlinesChanged(other State) bool {
 	other0, ok := other.(*state0)
 	if !ok {

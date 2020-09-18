@@ -58,8 +58,6 @@ type State interface {
 
 	DeadlineInfo(epoch abi.ChainEpoch) *dline.Info
 
-	MaxAddressedSectors() (uint64, error)
-
 	// Diff helpers. Used by Diff* functions internally.
 	sectors() (adt.Array, error)
 	decodeSectorOnChainInfo(*cbg.Deferred) (SectorOnChainInfo, error)
