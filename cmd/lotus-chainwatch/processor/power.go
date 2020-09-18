@@ -88,30 +88,24 @@ func (p *Processor) processPowerActors(ctx context.Context, powerTips ActorTips)
 				return nil, xerrors.Errorf("get power state (@ %s): %w", pw.common.stateroot.String(), err)
 			}
 
-			if totalPower, err := powerActorState.TotalPower(); err != nil {
+			totalPower, err := powerActorState.TotalPower()
+			if err != nil {
 				return nil, xerrors.Errorf("failed to compute total power: %w", err)
-			} else {
-				pw.totalRawBytes = totalPower.RawBytePower
-				pw.totalQualityAdjustedBytes = totalPower.QualityAdjPower
 			}
 
-			if totalCommitted, err := powerActorState.TotalCommitted(); err != nil {
+			totalCommitted, err := powerActorState.TotalCommitted()
+			if err != nil {
 				return nil, xerrors.Errorf("failed to compute total committed: %w", err)
-			} else {
-				pw.totalRawBytesCommitted = totalCommitted.RawBytePower
-				pw.totalQualityAdjustedBytesCommitted = totalCommitted.QualityAdjPower
 			}
 
-			if totalLocked, err := powerActorState.TotalLocked(); err != nil {
+			totalLocked, err := powerActorState.TotalLocked()
+			if err != nil {
 				return nil, xerrors.Errorf("failed to compute total locked: %w", err)
-			} else {
-				pw.totalPledgeCollateral = totalLocked
 			}
 
-			if powerSmoothed, err := powerActorState.TotalPowerSmoothed(); err != nil {
+			powerSmoothed, err := powerActorState.TotalPowerSmoothed()
+			if err != nil {
 				return nil, xerrors.Errorf("failed to determine smoothed power: %w", err)
-			} else {
-				pw.qaPowerSmoothed = powerSmoothed
 			}
 
 			// NOTE: this doesn't set new* fields. Previously, we
@@ -120,12 +114,19 @@ func (p *Processor) processPowerActors(ctx context.Context, powerTips ActorTips)
 			// state and don't represent "new" power, as was
 			// assumed.
 
-			if participating, total, err := powerActorState.MinerCounts(); err != nil {
+			participatingMiners, totalMiners, err := powerActorState.MinerCounts()
+			if err != nil {
 				return nil, xerrors.Errorf("failed to count miners: %w", err)
-			} else {
-				pw.minerCountAboveMinimumPower = int64(participating)
-				pw.minerCount = int64(total)
 			}
+
+			pw.totalRawBytes = totalPower.RawBytePower
+			pw.totalQualityAdjustedBytes = totalPower.QualityAdjPower
+			pw.totalRawBytesCommitted = totalCommitted.RawBytePower
+			pw.totalQualityAdjustedBytesCommitted = totalCommitted.QualityAdjPower
+			pw.totalPledgeCollateral = totalLocked
+			pw.qaPowerSmoothed = powerSmoothed
+			pw.minerCountAboveMinimumPower = int64(participatingMiners)
+			pw.minerCount = int64(totalMiners)
 		}
 	}
 
