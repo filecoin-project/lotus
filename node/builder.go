@@ -266,6 +266,9 @@ func Online() Option {
 			Override(new(dtypes.ChainBlockService), modules.ChainBlockService),
 
 			// Filecoin services
+			// We don't want the SyncManagerCtor to be used as an fx constructor, but rather as a value.
+			// It will be called implicitly by the Syncer constructor.
+			Override(new(chain.SyncManagerCtor), func() chain.SyncManagerCtor { return chain.NewSyncManager }),
 			Override(new(*chain.Syncer), modules.NewSyncer),
 			Override(new(exchange.Client), exchange.NewClient),
 			Override(new(*messagepool.MessagePool), modules.MessagePool),
@@ -379,7 +382,7 @@ func StorageMiner(out *api.StorageMiner) Option {
 
 		func(s *Settings) error {
 			resAPI := &impl.StorageMinerAPI{}
-			s.invokes[ExtractApiKey] = fx.Extract(resAPI)
+			s.invokes[ExtractApiKey] = fx.Populate(resAPI)
 			*out = resAPI
 			return nil
 		},
@@ -499,12 +502,18 @@ func Repo(r repo.Repo) Option {
 }
 
 func FullAPI(out *api.FullNode) Option {
-	return func(s *Settings) error {
-		resAPI := &impl.FullNodeAPI{}
-		s.invokes[ExtractApiKey] = fx.Extract(resAPI)
-		*out = resAPI
-		return nil
-	}
+	return Options(
+		func(s *Settings) error {
+			s.nodeType = repo.FullNode
+			return nil
+		},
+		func(s *Settings) error {
+			resAPI := &impl.FullNodeAPI{}
+			s.invokes[ExtractApiKey] = fx.Populate(resAPI)
+			*out = resAPI
+			return nil
+		},
+	)
 }
 
 type StopFunc func(context.Context) error
@@ -512,9 +521,8 @@ type StopFunc func(context.Context) error
 // New builds and starts new Filecoin node
 func New(ctx context.Context, opts ...Option) (StopFunc, error) {
 	settings := Settings{
-		modules:  map[interface{}]fx.Option{},
-		invokes:  make([]fx.Option, _nInvokes),
-		nodeType: repo.FullNode,
+		modules: map[interface{}]fx.Option{},
+		invokes: make([]fx.Option, _nInvokes),
 	}
 
 	// apply module options in the right order

@@ -186,7 +186,7 @@ func RecordTipsetPoints(ctx context.Context, api api.FullNode, pl *PointList, ti
 		pl.AddPoint(p)
 	}
 	{
-		blks := len(cids)
+		blks := int64(len(cids))
 		p = NewPoint("chain.gas_fill_ratio", float64(totalGasLimit)/float64(blks*build.BlockGasTarget))
 		pl.AddPoint(p)
 		p = NewPoint("chain.gas_capacity_ratio", float64(totalUniqGasLimit)/float64(blks*build.BlockGasTarget))

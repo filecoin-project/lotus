@@ -183,6 +183,7 @@ type FullNodeStruct struct {
 		StateReplay                        func(context.Context, types.TipSetKey, cid.Cid) (*api.InvocResult, error)                                           `perm:"read"`
 		StateGetActor                      func(context.Context, address.Address, types.TipSetKey) (*types.Actor, error)                                       `perm:"read"`
 		StateReadState                     func(context.Context, address.Address, types.TipSetKey) (*api.ActorState, error)                                    `perm:"read"`
+		StateMsgGasCost                    func(context.Context, cid.Cid, types.TipSetKey) (*api.MsgGasCost, error)                                            `perm:"read"`
 		StateWaitMsg                       func(ctx context.Context, cid cid.Cid, confidence uint64) (*api.MsgLookup, error)                                   `perm:"read"`
 		StateSearchMsg                     func(context.Context, cid.Cid) (*api.MsgLookup, error)                                                              `perm:"read"`
 		StateListMiners                    func(context.Context, types.TipSetKey) ([]address.Address, error)                                                   `perm:"read"`
@@ -220,8 +221,8 @@ type FullNodeStruct struct {
 
 		PaychGet                    func(ctx context.Context, from, to address.Address, amt types.BigInt) (*api.ChannelInfo, error)           `perm:"sign"`
 		PaychGetWaitReady           func(context.Context, cid.Cid) (address.Address, error)                                                   `perm:"sign"`
-		PaychAvailableFunds         func(address.Address) (*api.ChannelAvailableFunds, error)                                                 `perm:"sign"`
-		PaychAvailableFundsByFromTo func(address.Address, address.Address) (*api.ChannelAvailableFunds, error)                                `perm:"sign"`
+		PaychAvailableFunds         func(context.Context, address.Address) (*api.ChannelAvailableFunds, error)                                `perm:"sign"`
+		PaychAvailableFundsByFromTo func(context.Context, address.Address, address.Address) (*api.ChannelAvailableFunds, error)               `perm:"sign"`
 		PaychList                   func(context.Context) ([]address.Address, error)                                                          `perm:"read"`
 		PaychStatus                 func(context.Context, address.Address) (*api.PaychStatus, error)                                          `perm:"read"`
 		PaychSettle                 func(context.Context, address.Address) (cid.Cid, error)                                                   `perm:"sign"`
@@ -817,6 +818,10 @@ func (c *FullNodeStruct) StateReadState(ctx context.Context, addr address.Addres
 	return c.Internal.StateReadState(ctx, addr, tsk)
 }
 
+func (c *FullNodeStruct) StateMsgGasCost(ctx context.Context, msgc cid.Cid, tsk types.TipSetKey) (*api.MsgGasCost, error) {
+	return c.Internal.StateMsgGasCost(ctx, msgc, tsk)
+}
+
 func (c *FullNodeStruct) StateWaitMsg(ctx context.Context, msgc cid.Cid, confidence uint64) (*api.MsgLookup, error) {
 	return c.Internal.StateWaitMsg(ctx, msgc, confidence)
 }
@@ -949,12 +954,12 @@ func (c *FullNodeStruct) PaychGetWaitReady(ctx context.Context, sentinel cid.Cid
 	return c.Internal.PaychGetWaitReady(ctx, sentinel)
 }
 
-func (c *FullNodeStruct) PaychAvailableFunds(ch address.Address) (*api.ChannelAvailableFunds, error) {
-	return c.Internal.PaychAvailableFunds(ch)
+func (c *FullNodeStruct) PaychAvailableFunds(ctx context.Context, ch address.Address) (*api.ChannelAvailableFunds, error) {
+	return c.Internal.PaychAvailableFunds(ctx, ch)
 }
 
-func (c *FullNodeStruct) PaychAvailableFundsByFromTo(from, to address.Address) (*api.ChannelAvailableFunds, error) {
-	return c.Internal.PaychAvailableFundsByFromTo(from, to)
+func (c *FullNodeStruct) PaychAvailableFundsByFromTo(ctx context.Context, from, to address.Address) (*api.ChannelAvailableFunds, error) {
+	return c.Internal.PaychAvailableFundsByFromTo(ctx, from, to)
 }
 
 func (c *FullNodeStruct) PaychList(ctx context.Context) ([]address.Address, error) {

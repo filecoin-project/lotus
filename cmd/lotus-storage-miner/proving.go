@@ -4,16 +4,12 @@ import (
 	"fmt"
 	"os"
 	"text/tabwriter"
-	"time"
 
 	"github.com/fatih/color"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-state-types/abi"
-
 	"github.com/filecoin-project/lotus/api/apibstore"
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -187,33 +183,20 @@ var provingInfoCmd = &cli.Command{
 		fmt.Printf("Current Epoch:           %d\n", cd.CurrentEpoch)
 
 		fmt.Printf("Proving Period Boundary: %d\n", cd.PeriodStart%cd.WPoStProvingPeriod)
-		fmt.Printf("Proving Period Start:    %s\n", epochTime(cd.CurrentEpoch, cd.PeriodStart))
-		fmt.Printf("Next Period Start:       %s\n\n", epochTime(cd.CurrentEpoch, cd.PeriodStart+cd.WPoStProvingPeriod))
+		fmt.Printf("Proving Period Start:    %s\n", lcli.EpochTime(cd.CurrentEpoch, cd.PeriodStart))
+		fmt.Printf("Next Period Start:       %s\n\n", lcli.EpochTime(cd.CurrentEpoch, cd.PeriodStart+cd.WPoStProvingPeriod))
 
 		fmt.Printf("Faults:      %d (%.2f%%)\n", faults, faultPerc)
 		fmt.Printf("Recovering:  %d\n", recovering)
 
 		fmt.Printf("Deadline Index:       %d\n", cd.Index)
 		fmt.Printf("Deadline Sectors:     %d\n", curDeadlineSectors)
-		fmt.Printf("Deadline Open:        %s\n", epochTime(cd.CurrentEpoch, cd.Open))
-		fmt.Printf("Deadline Close:       %s\n", epochTime(cd.CurrentEpoch, cd.Close))
-		fmt.Printf("Deadline Challenge:   %s\n", epochTime(cd.CurrentEpoch, cd.Challenge))
-		fmt.Printf("Deadline FaultCutoff: %s\n", epochTime(cd.CurrentEpoch, cd.FaultCutoff))
+		fmt.Printf("Deadline Open:        %s\n", lcli.EpochTime(cd.CurrentEpoch, cd.Open))
+		fmt.Printf("Deadline Close:       %s\n", lcli.EpochTime(cd.CurrentEpoch, cd.Close))
+		fmt.Printf("Deadline Challenge:   %s\n", lcli.EpochTime(cd.CurrentEpoch, cd.Challenge))
+		fmt.Printf("Deadline FaultCutoff: %s\n", lcli.EpochTime(cd.CurrentEpoch, cd.FaultCutoff))
 		return nil
 	},
-}
-
-func epochTime(curr, e abi.ChainEpoch) string {
-	switch {
-	case curr > e:
-		return fmt.Sprintf("%d (%s ago)", e, time.Second*time.Duration(int64(build.BlockDelaySecs)*int64(curr-e)))
-	case curr == e:
-		return fmt.Sprintf("%d (now)", e)
-	case curr < e:
-		return fmt.Sprintf("%d (in %s)", e, time.Second*time.Duration(int64(build.BlockDelaySecs)*int64(e-curr)))
-	}
-
-	panic("math broke")
 }
 
 var provingDeadlinesCmd = &cli.Command{

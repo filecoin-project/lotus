@@ -662,6 +662,49 @@ func TestDuplicateNonce(t *testing.T) {
 	require.Equal(t, includedMsg, mft[0].VMMessage().Cid(), "messages for tipset didn't contain expected message")
 }
 
+// This test asserts that a block that includes a message with bad nonce can't be synced. A nonce is "bad" if it can't
+// be applied on the parent state.
+func TestBadNonce(t *testing.T) {
+	H := 10
+	tu := prepSyncTest(t, H)
+
+	base := tu.g.CurTipset
+
+	// Produce a message from the banker with a bad nonce
+	makeBadMsg := func() *types.SignedMessage {
+
+		ba, err := tu.nds[0].StateGetActor(context.TODO(), tu.g.Banker(), base.TipSet().Key())
+		require.NoError(t, err)
+		msg := types.Message{
+			To:   tu.g.Banker(),
+			From: tu.g.Banker(),
+
+			Nonce: ba.Nonce + 5,
+
+			Value: types.NewInt(1),
+
+			Method: 0,
+
+			GasLimit:   100_000_000,
+			GasFeeCap:  types.NewInt(0),
+			GasPremium: types.NewInt(0),
+		}
+
+		sig, err := tu.g.Wallet().Sign(context.TODO(), tu.g.Banker(), msg.Cid().Bytes())
+		require.NoError(t, err)
+
+		return &types.SignedMessage{
+			Message:   msg,
+			Signature: *sig,
+		}
+	}
+
+	msgs := make([][]*types.SignedMessage, 1)
+	msgs[0] = []*types.SignedMessage{makeBadMsg()}
+
+	tu.mineOnBlock(base, 0, []int{0}, true, true, msgs)
+}
+
 func BenchmarkSyncBasic(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		runSyncBenchLength(b, 100)

@@ -68,6 +68,8 @@ func (m *Sealing) tryUpgradeSector(ctx context.Context, params *miner.SectorPreC
 		params.ReplaceSectorDeadline = loc.Deadline
 		params.ReplaceSectorPartition = loc.Partition
 
+		log.Infof("replacing sector %d with %d", *replace, params.SectorNumber)
+
 		ri, err := m.api.StateSectorGetInfo(ctx, m.maddr, *replace, nil)
 		if err != nil {
 			log.Errorf("error calling StateSectorGetInfo for replaced sector: %+v", err)

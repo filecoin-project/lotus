@@ -12,6 +12,8 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+
 	tm "github.com/buger/goterm"
 	"github.com/docker/go-units"
 	"github.com/fatih/color"
@@ -524,6 +526,11 @@ func interactiveDeal(cctx *cli.Context) error {
 			_, err := fmt.Scan(&days)
 			if err != nil {
 				printErr(xerrors.Errorf("parsing duration: %w", err))
+				continue
+			}
+
+			if days < int(build.MinDealDuration/builtin.EpochsInDay) {
+				printErr(xerrors.Errorf("minimum duration is %d days", int(build.MinDealDuration/builtin.EpochsInDay)))
 				continue
 			}
 

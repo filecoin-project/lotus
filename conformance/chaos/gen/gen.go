@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	if err := gen.WriteTupleEncodersToFile("../cbor_gen.go", "chaos",
+	if err := gen.WriteTupleEncodersToFile("./cbor_gen.go", "chaos",
 		chaos.State{},
 		chaos.CreateActorArgs{},
 		chaos.ResolveAddressResponse{},
@@ -15,6 +15,7 @@ func main() {
 		chaos.SendReturn{},
 		chaos.MutateStateArgs{},
 		chaos.AbortWithArgs{},
+		chaos.InspectRuntimeReturn{},
 	); err != nil {
 		panic(err)
 	}

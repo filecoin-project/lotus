@@ -208,6 +208,11 @@ func (s *v0State) NumDeadlines() (uint64, error) {
 	return v0miner.WPoStPeriodDeadlines, nil
 }
 
+// Max sectors per PoSt
+func (s *v0State) MaxAddressedSectors() (uint64, error) {
+	return v0miner.AddressedSectorsMax, nil
+}
+
 func (s *v0State) DeadlinesChanged(other State) bool {
 	v0other, ok := other.(*v0State)
 	if !ok {

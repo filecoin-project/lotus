@@ -52,6 +52,7 @@ var RepublishInterval = time.Duration(10*build.BlockDelaySecs+build.PropagationD
 
 var minimumBaseFee = types.NewInt(uint64(build.MinimumBaseFee))
 var baseFeeLowerBoundFactor = types.NewInt(10)
+var baseFeeLowerBoundFactorConservative = types.NewInt(100)
 
 var MaxActorPendingMessages = 1000
 
@@ -103,10 +104,6 @@ type MessagePoolEvtMessage struct {
 
 	CID cid.Cid
 }
-
-// this is *temporary* mutilation until we have implemented uncapped miner penalties -- it will go
-// away in the next fork.
-var strictBaseFeeValidation = false
 
 func init() {
 	// if the republish interval is too short compared to the pubsub timecache, adjust it
@@ -444,18 +441,27 @@ func (mp *MessagePool) verifyMsgBeforeAdd(m *types.SignedMessage, curTs *types.T
 	// Note that for local messages, we always add them so that they can be accepted and republished
 	// automatically.
 	publish := local
-	if strictBaseFeeValidation && len(curTs.Blocks()) > 0 {
-		baseFee := curTs.Blocks()[0].ParentBaseFee
-		baseFeeLowerBound := getBaseFeeLowerBound(baseFee)
-		if m.Message.GasFeeCap.LessThan(baseFeeLowerBound) {
-			if local {
-				log.Warnf("local message will not be immediately published because GasFeeCap doesn't meet the lower bound for inclusion in the next 20 blocks (GasFeeCap: %s, baseFeeLowerBound: %s)",
-					m.Message.GasFeeCap, baseFeeLowerBound)
-				publish = false
-			} else {
-				return false, xerrors.Errorf("GasFeeCap doesn't meet base fee lower bound for inclusion in the next 20 blocks (GasFeeCap: %s, baseFeeLowerBound: %s): %w",
-					m.Message.GasFeeCap, baseFeeLowerBound, ErrSoftValidationFailure)
-			}
+
+	var baseFee big.Int
+	if len(curTs.Blocks()) > 0 {
+		baseFee = curTs.Blocks()[0].ParentBaseFee
+	} else {
+		var err error
+		baseFee, err = mp.api.ChainComputeBaseFee(context.TODO(), curTs)
+		if err != nil {
+			return false, xerrors.Errorf("computing basefee: %w", err)
+		}
+	}
+
+	baseFeeLowerBound := getBaseFeeLowerBound(baseFee, baseFeeLowerBoundFactorConservative)
+	if m.Message.GasFeeCap.LessThan(baseFeeLowerBound) {
+		if local {
+			log.Warnf("local message will not be immediately published because GasFeeCap doesn't meet the lower bound for inclusion in the next 20 blocks (GasFeeCap: %s, baseFeeLowerBound: %s)",
+				m.Message.GasFeeCap, baseFeeLowerBound)
+			publish = false
+		} else {
+			return false, xerrors.Errorf("GasFeeCap doesn't meet base fee lower bound for inclusion in the next 20 blocks (GasFeeCap: %s, baseFeeLowerBound: %s): %w",
+				m.Message.GasFeeCap, baseFeeLowerBound, ErrSoftValidationFailure)
 		}
 	}
 
@@ -1344,8 +1350,8 @@ func (mp *MessagePool) Clear(local bool) {
 	}
 }
 
-func getBaseFeeLowerBound(baseFee types.BigInt) types.BigInt {
-	baseFeeLowerBound := types.BigDiv(baseFee, baseFeeLowerBoundFactor)
+func getBaseFeeLowerBound(baseFee, factor types.BigInt) types.BigInt {
+	baseFeeLowerBound := types.BigDiv(baseFee, factor)
 	if baseFeeLowerBound.LessThan(minimumBaseFee) {
 		baseFeeLowerBound = minimumBaseFee
 	}

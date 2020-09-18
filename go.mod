@@ -25,7 +25,7 @@ require (
 	github.com/filecoin-project/go-bitfield v0.2.0
 	github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
-	github.com/filecoin-project/go-data-transfer v0.6.3
+	github.com/filecoin-project/go-data-transfer v0.6.4
 	github.com/filecoin-project/go-fil-commcid v0.0.0-20200716160307-8f644712406f
 	github.com/filecoin-project/go-fil-markets v0.6.1-0.20200917052354-ee0af754c6e9
 	github.com/filecoin-project/go-jsonrpc v0.1.2-0.20200822201400-474f4fdccc52

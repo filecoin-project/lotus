@@ -18,7 +18,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/journal"
 	bstore "github.com/filecoin-project/lotus/lib/blockstore"
@@ -767,33 +766,16 @@ type BlockMessages struct {
 func (cs *ChainStore) BlockMsgsForTipset(ts *types.TipSet) ([]BlockMessages, error) {
 	applied := make(map[address.Address]uint64)
 
-	cst := cbor.NewCborStore(cs.bs)
-
-	st, err := state.LoadStateTree(cst, ts.Blocks()[0].ParentStateRoot)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to load state tree")
-	}
-
-	preloadAddr := func(a address.Address) error {
-		if _, ok := applied[a]; !ok {
-			act, err := st.GetActor(a)
-			if err != nil {
-				return err
-			}
-
-			applied[a] = act.Nonce
-		}
-		return nil
-	}
-
 	selectMsg := func(m *types.Message) (bool, error) {
-		if err := preloadAddr(m.From); err != nil {
-			return false, err
+		// The first match for a sender is guaranteed to have correct nonce -- the block isn't valid otherwise
+		if _, ok := applied[m.From]; !ok {
+			applied[m.From] = m.Nonce
 		}
 
 		if applied[m.From] != m.Nonce {
 			return false, nil
 		}
+
 		applied[m.From]++
 
 		return true, nil
