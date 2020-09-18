@@ -17,7 +17,9 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
+
 	lcli "github.com/filecoin-project/lotus/cli"
+	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 )
 
 var sectorsCmd = &cli.Command{
@@ -418,6 +420,10 @@ var sectorsUpdateCmd = &cli.Command{
 		id, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
 		if err != nil {
 			return xerrors.Errorf("could not parse sector number: %w", err)
+		}
+
+		if _, ok := sealing.ExistSectorStateList[sealing.SectorState(cctx.Args().Get(1))]; !ok {
+			return xerrors.Errorf("Not existing sector state")
 		}
 
 		return nodeApi.SectorsUpdate(ctx, abi.SectorNumber(id), api.SectorState(cctx.Args().Get(1)))
