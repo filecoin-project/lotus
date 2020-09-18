@@ -274,7 +274,7 @@ func (p *Processor) persistMiners(ctx context.Context, miners []minerActorInfo) 
 	dealEvents := make(chan *SectorDealEvent, 8)
 
 	grp.Go(func() error {
-		return p.storePreCommitDealInfo(dealEvents)
+		return p.storePreCommitDealInfo(ctx, dealEvents)
 	})
 
 	grp.Go(func() error {
@@ -303,6 +303,9 @@ func (p *Processor) persistMiners(ctx context.Context, miners []minerActorInfo) 
 }
 
 func (p *Processor) storeMinerPreCommitInfo(ctx context.Context, miners []minerActorInfo, sectorEvents chan<- *MinerSectorsEvent, sectorDeals chan<- *SectorDealEvent) error {
+	start := time.Now()
+	defer log.Debugw("Stored Miner PreCommit Info", "duration", time.Since(start).String())
+
 	tx, err := p.db.Begin()
 	if err != nil {
 		return err
@@ -436,6 +439,9 @@ func (p *Processor) storeMinerPreCommitInfo(ctx context.Context, miners []minerA
 }
 
 func (p *Processor) storeMinerSectorInfo(ctx context.Context, miners []minerActorInfo, events chan<- *MinerSectorsEvent) error {
+	start := time.Now()
+	defer log.Debugw("Stored Miner Sector Info", "duration", time.Since(start).String())
+
 	tx, err := p.db.Begin()
 	if err != nil {
 		return err
@@ -537,6 +543,9 @@ func (p *Processor) storeMinerSectorInfo(ctx context.Context, miners []minerActo
 }
 
 func (p *Processor) getMinerPartitionsDifferences(ctx context.Context, miners []minerActorInfo, events chan<- *MinerSectorsEvent) error {
+	start := time.Now()
+	defer log.Debugw("Got Miner Partitions Differences", "duration", time.Since(start).String())
+
 	grp, ctx := errgroup.WithContext(ctx)
 	for _, m := range miners {
 		m := m
@@ -554,6 +563,9 @@ func (p *Processor) getMinerPartitionsDifferences(ctx context.Context, miners []
 }
 
 func (p *Processor) storeMinerSectorEvents(ctx context.Context, sectorEvents, preCommitEvents, partitionEvents <-chan *MinerSectorsEvent) error {
+	start := time.Now()
+	defer log.Debugw("Stored Miner Sector Events", "duration", time.Since(start).String())
+
 	tx, err := p.db.Begin()
 	if err != nil {
 		return err
@@ -930,7 +942,10 @@ func (p *Processor) storeMinersActorInfoState(ctx context.Context, miners []mine
 	return tx.Commit()
 }
 
-func (p *Processor) storePreCommitDealInfo(dealEvents <-chan *SectorDealEvent) error {
+func (p *Processor) storePreCommitDealInfo(ctx context.Context, dealEvents <-chan *SectorDealEvent) error {
+	start := time.Now()
+	defer log.Debugw("Stored PreCommit Deal Info", "duration", time.Since(start).String())
+
 	tx, err := p.db.Begin()
 	if err != nil {
 		return err
@@ -945,16 +960,25 @@ func (p *Processor) storePreCommitDealInfo(dealEvents <-chan *SectorDealEvent) e
 		return xerrors.Errorf("Failed to prepare minerid_dealid_sectorid statement: %w", err)
 	}
 
+	grp, _ := errgroup.WithContext(ctx)
 	for sde := range dealEvents {
-		for _, did := range sde.DealIDs {
-			if _, err := stmt.Exec(
-				uint64(did),
-				sde.MinerID.String(),
-				sde.SectorID,
-			); err != nil {
-				return err
+		sde := sde
+		grp.Go(func() error{
+			for _, did := range sde.DealIDs {
+				if _, err := stmt.Exec(
+					uint64(did),
+					sde.MinerID.String(),
+					sde.SectorID,
+				); err != nil {
+					return err
+				}
 			}
-		}
+			return nil
+		})
+	}
+
+	if err := grp.Wait(); err != nil {
+		return err
 	}
 
 	if err := stmt.Close(); err != nil {
