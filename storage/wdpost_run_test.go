@@ -7,8 +7,6 @@ import (
 
 	"github.com/filecoin-project/go-state-types/dline"
 
-	"golang.org/x/xerrors"
-
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
@@ -17,17 +15,20 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
-
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	v0builtin "github.com/filecoin-project/specs-actors/actors/builtin"
+	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	tutils "github.com/filecoin-project/specs-actors/support/testing"
+
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 )
 
 type mockStorageMinerAPI struct {
-	partitions     []*miner.Partition
+	partitions     []api.Partition
 	pushedMessages chan *types.Message
 }
 
@@ -35,6 +36,14 @@ func newMockStorageMinerAPI() *mockStorageMinerAPI {
 	return &mockStorageMinerAPI{
 		pushedMessages: make(chan *types.Message),
 	}
+}
+
+func (m *mockStorageMinerAPI) StateMinerInfo(ctx context.Context, a address.Address, key types.TipSetKey) (miner.MinerInfo, error) {
+	panic("implement me")
+}
+
+func (m *mockStorageMinerAPI) StateNetworkVersion(ctx context.Context, key types.TipSetKey) (network.Version, error) {
+	panic("implement me")
 }
 
 func (m *mockStorageMinerAPI) ChainGetRandomnessFromTickets(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
@@ -45,18 +54,18 @@ func (m *mockStorageMinerAPI) ChainGetRandomnessFromBeacon(ctx context.Context, 
 	return abi.Randomness("beacon rand"), nil
 }
 
-func (m *mockStorageMinerAPI) setPartitions(ps []*miner.Partition) {
+func (m *mockStorageMinerAPI) setPartitions(ps []api.Partition) {
 	m.partitions = append(m.partitions, ps...)
 }
 
-func (m *mockStorageMinerAPI) StateMinerPartitions(ctx context.Context, address address.Address, u uint64, key types.TipSetKey) ([]*miner.Partition, error) {
+func (m *mockStorageMinerAPI) StateMinerPartitions(ctx context.Context, a address.Address, dlIdx uint64, tsk types.TipSetKey) ([]api.Partition, error) {
 	return m.partitions, nil
 }
 
-func (m *mockStorageMinerAPI) StateMinerSectors(ctx context.Context, address address.Address, field *bitfield.BitField, b bool, key types.TipSetKey) ([]*api.ChainSectorInfo, error) {
-	var sis []*api.ChainSectorInfo
+func (m *mockStorageMinerAPI) StateMinerSectors(ctx context.Context, address address.Address, field *bitfield.BitField, b bool, key types.TipSetKey) ([]*miner.ChainSectorInfo, error) {
+	var sis []*miner.ChainSectorInfo
 	_ = field.ForEach(func(i uint64) error {
-		sis = append(sis, &api.ChainSectorInfo{
+		sis = append(sis, &miner.ChainSectorInfo{
 			Info: miner.SectorOnChainInfo{
 				SectorNumber: abi.SectorNumber(i),
 			},
@@ -65,10 +74,6 @@ func (m *mockStorageMinerAPI) StateMinerSectors(ctx context.Context, address add
 		return nil
 	})
 	return sis, nil
-}
-
-func (m *mockStorageMinerAPI) StateMinerInfo(ctx context.Context, address address.Address, key types.TipSetKey) (api.MinerInfo, error) {
-	return api.MinerInfo{}, xerrors.Errorf("err")
 }
 
 func (m *mockStorageMinerAPI) MpoolPushMessage(ctx context.Context, message *types.Message, spec *api.MessageSendSpec) (*types.SignedMessage, error) {
@@ -127,21 +132,27 @@ func TestWDPostDoPost(t *testing.T) {
 	require.NoError(t, err)
 	// Work out the number of partitions that can be included in a message
 	// without exceeding the message sector limit
-	partitionsPerMsg := int(miner.AddressedSectorsMax / sectorsPerPartition)
+
+	require.NoError(t, err)
+	partitionsPerMsg := int(v0miner.AddressedSectorsMax / sectorsPerPartition)
 
 	// Enough partitions to fill expectedMsgCount-1 messages
 	partitionCount := (expectedMsgCount - 1) * partitionsPerMsg
 	// Add an extra partition that should be included in the last message
 	partitionCount++
 
-	var partitions []*miner.Partition
+	var partitions []api.Partition
 	for p := 0; p < partitionCount; p++ {
 		sectors := bitfield.New()
 		for s := uint64(0); s < sectorsPerPartition; s++ {
 			sectors.Set(s)
 		}
-		partitions = append(partitions, &miner.Partition{
-			Sectors: sectors,
+		partitions = append(partitions, api.Partition{
+			AllSectors:        sectors,
+			FaultySectors:     bitfield.New(),
+			RecoveringSectors: bitfield.New(),
+			LiveSectors:       sectors,
+			ActiveSectors:     sectors,
 		})
 	}
 	mockStgMinerAPI.setPartitions(partitions)
@@ -204,7 +215,7 @@ func (m *mockStorageMinerAPI) StateCall(ctx context.Context, message *types.Mess
 	panic("implement me")
 }
 
-func (m *mockStorageMinerAPI) StateMinerDeadlines(ctx context.Context, maddr address.Address, tok types.TipSetKey) ([]*miner.Deadline, error) {
+func (m *mockStorageMinerAPI) StateMinerDeadlines(ctx context.Context, maddr address.Address, tok types.TipSetKey) ([]api.Deadline, error) {
 	panic("implement me")
 }
 
@@ -216,7 +227,7 @@ func (m *mockStorageMinerAPI) StateSectorGetInfo(ctx context.Context, address ad
 	panic("implement me")
 }
 
-func (m *mockStorageMinerAPI) StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok types.TipSetKey) (*api.SectorLocation, error) {
+func (m *mockStorageMinerAPI) StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok types.TipSetKey) (*miner.SectorLocation, error) {
 	panic("implement me")
 }
 
@@ -237,7 +248,9 @@ func (m *mockStorageMinerAPI) StateSearchMsg(ctx context.Context, cid cid.Cid) (
 }
 
 func (m *mockStorageMinerAPI) StateGetActor(ctx context.Context, actor address.Address, ts types.TipSetKey) (*types.Actor, error) {
-	panic("implement me")
+	return &types.Actor{
+		Code: v0builtin.StorageMinerActorCodeID,
+	}, nil
 }
 
 func (m *mockStorageMinerAPI) StateGetReceipt(ctx context.Context, cid cid.Cid, key types.TipSetKey) (*types.MessageReceipt, error) {
@@ -303,3 +316,5 @@ func (m *mockStorageMinerAPI) WalletBalance(ctx context.Context, address address
 func (m *mockStorageMinerAPI) WalletHas(ctx context.Context, address address.Address) (bool, error) {
 	panic("implement me")
 }
+
+var _ storageMinerApi = &mockStorageMinerAPI{}
