@@ -31,9 +31,10 @@ import (
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/market"
-	miner2 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+
+	v0builtin "github.com/filecoin-project/specs-actors/actors/builtin"
+	v0market "github.com/filecoin-project/specs-actors/actors/builtin/market"
+	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	v0power "github.com/filecoin-project/specs-actors/actors/builtin/power"
 
 	lapi "github.com/filecoin-project/lotus/api"
@@ -372,7 +373,7 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, metadata string,
 	return mds.Put(datastore.NewKey(modules.StorageCounterDSPrefix), buf[:size])
 }
 
-func findMarketDealID(ctx context.Context, api lapi.FullNode, deal market.DealProposal) (abi.DealID, error) {
+func findMarketDealID(ctx context.Context, api lapi.FullNode, deal v0market.DealProposal) (abi.DealID, error) {
 	// TODO: find a better way
 	//  (this is only used by genesis miners)
 
@@ -566,7 +567,7 @@ func configureStorageMiner(ctx context.Context, api lapi.FullNode, addr address.
 		return xerrors.Errorf("getWorkerAddr returned bad address: %w", err)
 	}
 
-	enc, err := actors.SerializeParams(&miner2.ChangePeerIDParams{NewID: abi.PeerID(peerid)})
+	enc, err := actors.SerializeParams(&v0miner.ChangePeerIDParams{NewID: abi.PeerID(peerid)})
 	if err != nil {
 		return err
 	}
@@ -574,7 +575,7 @@ func configureStorageMiner(ctx context.Context, api lapi.FullNode, addr address.
 	msg := &types.Message{
 		To:         addr,
 		From:       mi.Worker,
-		Method:     builtin.MethodsMiner.ChangePeerID,
+		Method:     v0builtin.MethodsMiner.ChangePeerID,
 		Params:     enc,
 		Value:      types.NewInt(0),
 		GasPremium: gasPrice,
@@ -653,11 +654,11 @@ func createStorageMiner(ctx context.Context, api lapi.FullNode, peerid peer.ID, 
 	}
 
 	createStorageMinerMsg := &types.Message{
-		To:    builtin.StoragePowerActorAddr,
+		To:    v0builtin.StoragePowerActorAddr,
 		From:  sender,
 		Value: big.Zero(),
 
-		Method: builtin.MethodsPower.CreateMiner,
+		Method: v0builtin.MethodsPower.CreateMiner,
 		Params: params,
 
 		GasLimit:   0,
