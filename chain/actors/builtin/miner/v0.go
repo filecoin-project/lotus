@@ -65,7 +65,7 @@ func (s *v0State) FindSector(num abi.SectorNumber) (*SectorLocation, error) {
 // If the sector isn't found or has already been terminated, this method returns
 // nil and no error. If the sector does not expire early, the Early expiration
 // field is 0.
-func (s *v0State) GetSectorExpiration(num abi.SectorNumber) (out *SectorExpiration, err error) {
+func (s *v0State) GetSectorExpiration(num abi.SectorNumber) (*SectorExpiration, error) {
 	dls, err := s.State.LoadDeadlines(s.store)
 	if err != nil {
 		return nil, err
@@ -77,6 +77,7 @@ func (s *v0State) GetSectorExpiration(num abi.SectorNumber) (out *SectorExpirati
 	// 2. If it's faulty, it will expire early within the first 14 entries
 	// of the expiration queue.
 	stopErr := errors.New("stop")
+	out := SectorExpiration{}
 	err = dls.ForEach(s.store, func(dlIdx uint64, dl *v0miner.Deadline) error {
 		partitions, err := dl.PartitionsArray(s.store)
 		if err != nil {
@@ -97,7 +98,7 @@ func (s *v0State) GetSectorExpiration(num abi.SectorNumber) (out *SectorExpirati
 				return stopErr
 			}
 
-			q, err := v0miner.LoadExpirationQueue(s.store, part.EarlyTerminated, quant)
+			q, err := v0miner.LoadExpirationQueue(s.store, part.ExpirationsEpochs, quant)
 			if err != nil {
 				return err
 			}
@@ -128,7 +129,7 @@ func (s *v0State) GetSectorExpiration(num abi.SectorNumber) (out *SectorExpirati
 	if out.Early == 0 && out.OnTime == 0 {
 		return nil, nil
 	}
-	return out, nil
+	return &out, nil
 }
 
 func (s *v0State) GetPrecommittedSector(num abi.SectorNumber) (*SectorPreCommitOnChainInfo, error) {
@@ -294,14 +295,14 @@ func (d *v0Deadline) ForEachPartition(cb func(uint64, Partition) error) error {
 	})
 }
 
-func (s *v0Deadline) PartitionsChanged(other Deadline) bool {
+func (d *v0Deadline) PartitionsChanged(other Deadline) bool {
 	v0other, ok := other.(*v0Deadline)
 	if !ok {
 		// treat an upgrade as a change, always
 		return true
 	}
 
-	return s.Deadline.Partitions.Equals(v0other.Deadline.Partitions)
+	return d.Deadline.Partitions.Equals(v0other.Deadline.Partitions)
 }
 
 func (d *v0Deadline) PostSubmissions() (bitfield.BitField, error) {

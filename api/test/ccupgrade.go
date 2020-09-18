@@ -85,6 +85,7 @@ func TestCCUpgrade(t *testing.T, b APIBuilder, blocktime time.Duration) {
 	{
 		exp, err := client.StateSectorExpiration(ctx, maddr, CC, types.EmptyTSK)
 		require.NoError(t, err)
+		require.NotNil(t, exp)
 		require.Greater(t, 50000, int(exp.OnTime))
 	}
 	{

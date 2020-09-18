@@ -398,8 +398,8 @@ func TestMinerSectorChange(t *testing.T) {
 	require.NoError(t, err)
 
 	api := newMockAPI(bs)
-	api.setActor(oldState.Key(), &types.Actor{Head: oldMinerC})
-	api.setActor(newState.Key(), &types.Actor{Head: newMinerC})
+	api.setActor(oldState.Key(), &types.Actor{Head: oldMinerC, Code: v0builtin.StorageMinerActorCodeID})
+	api.setActor(newState.Key(), &types.Actor{Head: newMinerC, Code: v0builtin.StorageMinerActorCodeID})
 
 	preds := NewStatePredicates(api)
 
