@@ -12,13 +12,13 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
+	"golang.org/x/xerrors"
 
 	cbg "github.com/whyrusleeping/cbor-gen"
 
@@ -242,7 +242,7 @@ func RecordTipsetStatePoints(ctx context.Context, api api.FullNode, pl *PointLis
 	//p := NewPoint("chain.pledge_collateral", pcFilFloat)
 	//pl.AddPoint(p)
 
-	netBal, err := api.WalletBalance(ctx, builtin.RewardActorAddr)
+	netBal, err := api.WalletBalance(ctx, reward.Address)
 	if err != nil {
 		return err
 	}
