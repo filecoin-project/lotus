@@ -163,8 +163,10 @@ var runCmd = &cli.Command{
 		sigChan := make(chan os.Signal, 2)
 		go func() {
 			select {
-			case <-sigChan:
+			case sig := <-sigChan:
+				log.Warnw("received shutdown", "signal", sig)
 			case <-shutdownChan:
+				log.Warn("received shutdown")
 			}
 
 			log.Warn("Shutting down...")
