@@ -30,8 +30,15 @@ func Load(store adt.Store, act *types.Actor) (st State, err error) {
 type State interface {
 	cbor.Er
 
-	RewardSmoothed() (builtin.FilterEstimate, error)
-	EffectiveBaselinePower() (abi.StoragePower, error)
 	ThisEpochBaselinePower() (abi.StoragePower, error)
+	ThisEpochReward() (abi.StoragePower, error)
+	ThisEpochRewardSmoothed() (builtin.FilterEstimate, error)
+
+	EffectiveBaselinePower() (abi.StoragePower, error)
+	EffectiveNetworkTime() (abi.ChainEpoch, error)
+
 	TotalStoragePowerReward() (abi.TokenAmount, error)
+
+	CumsumBaseline() (abi.StoragePower, error)
+	CumsumRealized() (abi.StoragePower, error)
 }

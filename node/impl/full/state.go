@@ -940,7 +940,7 @@ func (a *StateAPI) StateMinerPreCommitDepositForPower(ctx context.Context, maddr
 		return types.EmptyInt, xerrors.Errorf("loading miner actor: %w", err)
 	} else if s, err := reward.Load(store, act); err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading reward actor state: %w", err)
-	} else if r, err := s.RewardSmoothed(); err != nil {
+	} else if r, err := s.ThisEpochRewardSmoothed(); err != nil {
 		return types.EmptyInt, xerrors.Errorf("failed to determine total reward: %w", err)
 	} else {
 		rewardSmoothed = r
@@ -1011,7 +1011,7 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 		return types.EmptyInt, xerrors.Errorf("loading miner actor: %w", err)
 	} else if s, err := reward.Load(store, act); err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading reward actor state: %w", err)
-	} else if r, err := s.RewardSmoothed(); err != nil {
+	} else if r, err := s.ThisEpochRewardSmoothed(); err != nil {
 		return types.EmptyInt, xerrors.Errorf("failed to determine total reward: %w", err)
 	} else if p, err := s.ThisEpochBaselinePower(); err != nil {
 		return types.EmptyInt, xerrors.Errorf("failed to determine baseline power: %w", err)

@@ -24,6 +24,14 @@ func (s *v0State) TotalPower() (Claim, error) {
 	}, nil
 }
 
+// Committed power to the network. Includes miners below the minimum threshold.
+func (s *v0State) TotalCommitted() (Claim, error) {
+	return Claim{
+		RawBytePower:    s.TotalBytesCommitted,
+		QualityAdjPower: s.TotalQABytesCommitted,
+	}, nil
+}
+
 func (s *v0State) MinerPower(addr address.Address) (Claim, bool, error) {
 	claims, err := adt.AsMap(s.store, s.Claims)
 	if err != nil {
@@ -46,6 +54,10 @@ func (s *v0State) MinerNominalPowerMeetsConsensusMinimum(a address.Address) (boo
 
 func (s *v0State) TotalPowerSmoothed() (builtin.FilterEstimate, error) {
 	return *s.State.ThisEpochQAPowerSmoothed, nil
+}
+
+func (s *v0State) MinerCounts() (uint64, uint64, error) {
+	return uint64(s.State.MinerAboveMinPowerCount), uint64(s.State.MinerCount), nil
 }
 
 func (s *v0State) ListAllMiners() ([]address.Address, error) {

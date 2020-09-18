@@ -1,7 +1,6 @@
 package processor
 
 import (
-	"bytes"
 	"context"
 	"time"
 
@@ -9,14 +8,13 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	_init "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/events/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	cw_util "github.com/filecoin-project/lotus/cmd/lotus-chainwatch/util"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	_init "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
-	typegen "github.com/whyrusleeping/cbor-gen"
 )
 
 func (p *Processor) setupCommonActors() error {
@@ -150,32 +148,17 @@ func (p Processor) storeActorAddresses(ctx context.Context, actors map[cid.Cid]A
 		return err
 	}
 
-	initActorRaw, err := p.node.ChainReadObj(ctx, initActor.Head)
-	if err != nil {
-		return err
-	}
-
-	var initActorState _init.State
-	if err := initActorState.UnmarshalCBOR(bytes.NewReader(initActorRaw)); err != nil {
-		return err
-	}
-	ctxStore := cw_util.NewAPIIpldStore(ctx, p.node)
-	addrMap, err := adt.AsMap(ctxStore, initActorState.AddressMap)
+	initActorState, err := _init.Load(cw_util.NewAPIIpldStore(ctx, p.node), initActor)
 	if err != nil {
 		return err
 	}
 	// gross..
-	var actorID typegen.CborInt
-	if err := addrMap.ForEach(&actorID, func(key string) error {
-		longAddr, err := address.NewFromBytes([]byte(key))
+	if err := initActorState.ForEachActor(func(id abi.ActorID, addr address.Address) error {
+		idAddr, err := address.NewIDAddress(uint64(id))
 		if err != nil {
 			return err
 		}
-		shortAddr, err := address.NewIDAddress(uint64(actorID))
-		if err != nil {
-			return err
-		}
-		addressToID[longAddr] = shortAddr
+		addressToID[addr] = idAddr
 		return nil
 	}); err != nil {
 		return err

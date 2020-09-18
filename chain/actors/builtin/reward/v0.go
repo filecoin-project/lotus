@@ -12,8 +12,16 @@ type v0State struct {
 	store adt.Store
 }
 
-func (s *v0State) RewardSmoothed() (builtin.FilterEstimate, error) {
+func (s *v0State) ThisEpochReward() (abi.StoragePower, error) {
+	return s.State.ThisEpochReward, nil
+}
+
+func (s *v0State) ThisEpochRewardSmoothed() (builtin.FilterEstimate, error) {
 	return *s.State.ThisEpochRewardSmoothed, nil
+}
+
+func (s *v0State) ThisEpochBaselinePower() (abi.StoragePower, error) {
+	return s.State.ThisEpochBaselinePower, nil
 }
 
 func (s *v0State) TotalStoragePowerReward() (abi.TokenAmount, error) {
@@ -24,6 +32,14 @@ func (s *v0State) EffectiveBaselinePower() (abi.StoragePower, error) {
 	return s.State.EffectiveBaselinePower, nil
 }
 
-func (s *v0State) ThisEpochBaselinePower() (abi.StoragePower, error) {
-	return s.State.ThisEpochBaselinePower, nil
+func (s *v0State) EffectiveNetworkTime() (abi.ChainEpoch, error) {
+	return s.State.EffectiveNetworkTime, nil
+}
+
+func (s *v0State) CumsumBaseline() (abi.StoragePower, error) {
+	return s.State.CumsumBaseline, nil
+}
+
+func (s *v0State) CumsumRealized() (abi.StoragePower, error) {
+	return s.State.CumsumBaseline, nil
 }

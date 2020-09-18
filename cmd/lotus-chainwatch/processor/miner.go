@@ -1,9 +1,7 @@
 package processor
 
 import (
-	"bytes"
 	"context"
-	"fmt"
 	"strings"
 	"time"
 
@@ -15,13 +13,11 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/apibstore"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/events/state"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -212,7 +208,7 @@ func (p *Processor) processMiners(ctx context.Context, minerTips map[types.TipSe
 	// TODO add parallel calls if this becomes slow
 	for tipset, miners := range minerTips {
 		// get the power actors claims map
-		minersClaims, err := getPowerActorClaimsMap(ctx, p.node, tipset)
+		powerState, err := getPowerActorState(ctx, p.node, tipset)
 		if err != nil {
 			return nil, err
 		}
@@ -222,10 +218,9 @@ func (p *Processor) processMiners(ctx context.Context, minerTips map[types.TipSe
 			var mi minerActorInfo
 			mi.common = act
 
-			var claim power.Claim
 			// get miner claim from power actors claim map and store if found, else the miner had no claim at
 			// this tipset
-			found, err := minersClaims.Get(abi.AddrKey(act.addr), &claim)
+			claim, found, err := powerState.MinerPower(act.addr)
 			if err != nil {
 				return nil, err
 			}
@@ -1027,22 +1022,10 @@ func (p *Processor) storeMinersPower(miners []minerActorInfo) error {
 }
 
 // load the power actor state clam as an adt.Map at the tipset `ts`.
-func getPowerActorClaimsMap(ctx context.Context, api api.FullNode, ts types.TipSetKey) (*adt.Map, error) {
-	powerActor, err := api.StateGetActor(ctx, builtin.StoragePowerActorAddr, ts)
+func getPowerActorState(ctx context.Context, api api.FullNode, ts types.TipSetKey) (power.State, error) {
+	powerActor, err := api.StateGetActor(ctx, power.Address, ts)
 	if err != nil {
 		return nil, err
 	}
-
-	powerRaw, err := api.ChainReadObj(ctx, powerActor.Head)
-	if err != nil {
-		return nil, err
-	}
-
-	var powerActorState power.State
-	if err := powerActorState.UnmarshalCBOR(bytes.NewReader(powerRaw)); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal power actor state: %w", err)
-	}
-
-	s := cw_util.NewAPIIpldStore(ctx, api)
-	return adt.AsMap(s, powerActorState.Claims)
+	return power.Load(cw_util.NewAPIIpldStore(ctx, api), powerActor)
 }

@@ -1,16 +1,14 @@
 package processor
 
 import (
-	"bytes"
 	"context"
 	"time"
 
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
-	"github.com/filecoin-project/specs-actors/actors/util/smoothing"
+
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 )
 
 type powerActorInfo struct {
@@ -22,10 +20,7 @@ type powerActorInfo struct {
 	totalQualityAdjustedBytesCommitted big.Int
 	totalPledgeCollateral              big.Int
 
-	newRawBytes             big.Int
-	newQualityAdjustedBytes big.Int
-	newPledgeCollateral     big.Int
-	newQAPowerSmoothed      *smoothing.FilterEstimate
+	qaPowerSmoothed builtin.FilterEstimate
 
 	minerCount                  int64
 	minerCountAboveMinimumPower int64
@@ -43,10 +38,6 @@ create table if not exists chain_power
 	state_root text not null
 		constraint power_smoothing_estimates_pk
 			primary key,
-
-	new_raw_bytes_power text not null,
-	new_qa_bytes_power text not null,
-	new_pledge_collateral text not null,
 
 	total_raw_bytes_power text not null,
 	total_raw_bytes_committed text not null,
@@ -92,35 +83,49 @@ func (p *Processor) processPowerActors(ctx context.Context, powerTips ActorTips)
 			var pw powerActorInfo
 			pw.common = act
 
-			powerActor, err := p.node.StateGetActor(ctx, builtin.StoragePowerActorAddr, tipset)
+			powerActorState, err := getPowerActorState(ctx, p.node, tipset)
 			if err != nil {
 				return nil, xerrors.Errorf("get power state (@ %s): %w", pw.common.stateroot.String(), err)
 			}
 
-			powerStateRaw, err := p.node.ChainReadObj(ctx, powerActor.Head)
-			if err != nil {
-				return nil, xerrors.Errorf("read state obj (@ %s): %w", pw.common.stateroot.String(), err)
+			if totalPower, err := powerActorState.TotalPower(); err != nil {
+				return nil, xerrors.Errorf("failed to compute total power: %w", err)
+			} else {
+				pw.totalRawBytes = totalPower.RawBytePower
+				pw.totalQualityAdjustedBytes = totalPower.QualityAdjPower
 			}
 
-			var powerActorState power.State
-			if err := powerActorState.UnmarshalCBOR(bytes.NewReader(powerStateRaw)); err != nil {
-				return nil, xerrors.Errorf("unmarshal state (@ %s): %w", pw.common.stateroot.String(), err)
+			if totalCommitted, err := powerActorState.TotalCommitted(); err != nil {
+				return nil, xerrors.Errorf("failed to compute total committed: %w", err)
+			} else {
+				pw.totalRawBytesCommitted = totalCommitted.RawBytePower
+				pw.totalQualityAdjustedBytesCommitted = totalCommitted.QualityAdjPower
 			}
 
-			pw.totalRawBytes = powerActorState.TotalRawBytePower
-			pw.totalRawBytesCommitted = powerActorState.TotalBytesCommitted
-			pw.totalQualityAdjustedBytes = powerActorState.TotalQualityAdjPower
-			pw.totalQualityAdjustedBytesCommitted = powerActorState.TotalQABytesCommitted
-			pw.totalPledgeCollateral = powerActorState.TotalPledgeCollateral
+			if totalLocked, err := powerActorState.TotalLocked(); err != nil {
+				return nil, xerrors.Errorf("failed to compute total locked: %w", err)
+			} else {
+				pw.totalPledgeCollateral = totalLocked
+			}
 
-			pw.newRawBytes = powerActorState.ThisEpochRawBytePower
-			pw.newQualityAdjustedBytes = powerActorState.ThisEpochQualityAdjPower
-			pw.newPledgeCollateral = powerActorState.ThisEpochPledgeCollateral
-			pw.newQAPowerSmoothed = powerActorState.ThisEpochQAPowerSmoothed
+			if powerSmoothed, err := powerActorState.TotalPowerSmoothed(); err != nil {
+				return nil, xerrors.Errorf("failed to determine smoothed power: %w", err)
+			} else {
+				pw.qaPowerSmoothed = powerSmoothed
+			}
 
-			pw.minerCount = powerActorState.MinerCount
-			pw.minerCountAboveMinimumPower = powerActorState.MinerAboveMinPowerCount
-			out = append(out, pw)
+			// NOTE: this doesn't set new* fields. Previously, we
+			// filled these using ThisEpoch* fields from the actor
+			// state, but these fields are effectively internal
+			// state and don't represent "new" power, as was
+			// assumed.
+
+			if participating, total, err := powerActorState.MinerCounts(); err != nil {
+				return nil, xerrors.Errorf("failed to count miners: %w", err)
+			} else {
+				pw.minerCountAboveMinimumPower = int64(participating)
+				pw.minerCount = int64(total)
+			}
 		}
 	}
 
@@ -142,7 +147,7 @@ func (p *Processor) storePowerSmoothingEstimates(powerStates []powerActorInfo) e
 		return xerrors.Errorf("prep chain_power: %w", err)
 	}
 
-	stmt, err := tx.Prepare(`copy cp (state_root, new_raw_bytes_power, new_qa_bytes_power, new_pledge_collateral, total_raw_bytes_power, total_raw_bytes_committed, total_qa_bytes_power, total_qa_bytes_committed, total_pledge_collateral, qa_smoothed_position_estimate, qa_smoothed_velocity_estimate, miner_count, minimum_consensus_miner_count) from stdin;`)
+	stmt, err := tx.Prepare(`copy cp (state_root, total_raw_bytes_power, total_raw_bytes_committed, total_qa_bytes_power, total_qa_bytes_committed, total_pledge_collateral, qa_smoothed_position_estimate, qa_smoothed_velocity_estimate, miner_count, minimum_consensus_miner_count) from stdin;`)
 	if err != nil {
 		return xerrors.Errorf("prepare tmp chain_power: %w", err)
 	}
@@ -150,9 +155,6 @@ func (p *Processor) storePowerSmoothingEstimates(powerStates []powerActorInfo) e
 	for _, ps := range powerStates {
 		if _, err := stmt.Exec(
 			ps.common.stateroot.String(),
-			ps.newRawBytes.String(),
-			ps.newQualityAdjustedBytes.String(),
-			ps.newPledgeCollateral.String(),
 
 			ps.totalRawBytes.String(),
 			ps.totalRawBytesCommitted.String(),
@@ -160,8 +162,8 @@ func (p *Processor) storePowerSmoothingEstimates(powerStates []powerActorInfo) e
 			ps.totalQualityAdjustedBytesCommitted.String(),
 			ps.totalPledgeCollateral.String(),
 
-			ps.newQAPowerSmoothed.PositionEstimate.String(),
-			ps.newQAPowerSmoothed.VelocityEstimate.String(),
+			ps.qaPowerSmoothed.PositionEstimate.String(),
+			ps.qaPowerSmoothed.VelocityEstimate.String(),
 
 			ps.minerCount,
 			ps.minerCountAboveMinimumPower,
