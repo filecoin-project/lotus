@@ -19,8 +19,8 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	v0builtin "github.com/filecoin-project/specs-actors/actors/builtin"
-	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	tutils "github.com/filecoin-project/specs-actors/support/testing"
 
@@ -134,7 +134,7 @@ func TestWDPostDoPost(t *testing.T) {
 	// without exceeding the message sector limit
 
 	require.NoError(t, err)
-	partitionsPerMsg := int(v0miner.AddressedSectorsMax / sectorsPerPartition)
+	partitionsPerMsg := int(miner0.AddressedSectorsMax / sectorsPerPartition)
 
 	// Enough partitions to fill expectedMsgCount-1 messages
 	partitionCount := (expectedMsgCount - 1) * partitionsPerMsg
@@ -249,7 +249,7 @@ func (m *mockStorageMinerAPI) StateSearchMsg(ctx context.Context, cid cid.Cid) (
 
 func (m *mockStorageMinerAPI) StateGetActor(ctx context.Context, actor address.Address, ts types.TipSetKey) (*types.Actor, error) {
 	return &types.Actor{
-		Code: v0builtin.StorageMinerActorCodeID,
+		Code: builtin0.StorageMinerActorCodeID,
 	}, nil
 }
 

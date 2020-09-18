@@ -6,7 +6,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/cbor"
-	v0builtin "github.com/filecoin-project/specs-actors/actors/builtin"
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
@@ -14,12 +14,12 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-var Address = v0builtin.StorageMarketActorAddr
+var Address = builtin0.StorageMarketActorAddr
 
 func Load(store adt.Store, act *types.Actor) (st State, err error) {
 	switch act.Code {
-	case v0builtin.StorageMarketActorCodeID:
-		out := v0State{store: store}
+	case builtin0.StorageMarketActorCodeID:
+		out := state0{store: store}
 		err := store.Get(store.Context(), act.Head, &out)
 		if err != nil {
 			return nil, err

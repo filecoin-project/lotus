@@ -13,7 +13,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
-	v0adt "github.com/filecoin-project/specs-actors/actors/util/adt"
+	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 )
@@ -22,8 +22,8 @@ func TestDiffAdtArray(t *testing.T) {
 	ctxstoreA := newContextStore()
 	ctxstoreB := newContextStore()
 
-	arrA := v0adt.MakeEmptyArray(ctxstoreA)
-	arrB := v0adt.MakeEmptyArray(ctxstoreB)
+	arrA := adt0.MakeEmptyArray(ctxstoreA)
+	arrB := adt0.MakeEmptyArray(ctxstoreB)
 
 	require.NoError(t, arrA.Set(0, runtime.CBORBytes([]byte{0}))) // delete
 
@@ -76,8 +76,8 @@ func TestDiffAdtMap(t *testing.T) {
 	ctxstoreA := newContextStore()
 	ctxstoreB := newContextStore()
 
-	mapA := v0adt.MakeEmptyMap(ctxstoreA)
-	mapB := v0adt.MakeEmptyMap(ctxstoreB)
+	mapA := adt0.MakeEmptyMap(ctxstoreA)
+	mapB := adt0.MakeEmptyMap(ctxstoreB)
 
 	require.NoError(t, mapA.Put(abi.UIntKey(0), runtime.CBORBytes([]byte{0}))) // delete
 

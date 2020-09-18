@@ -5,9 +5,9 @@ import (
 	"context"
 
 	"github.com/filecoin-project/lotus/build"
-	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
-	v0proof "github.com/filecoin-project/specs-actors/actors/runtime/proof"
+	proof0 "github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
 	"golang.org/x/xerrors"
 
@@ -102,7 +102,7 @@ func checkPrecommit(ctx context.Context, maddr address.Address, si SectorInfo, t
 
 	var msd abi.ChainEpoch
 	if nv < build.ActorUpgradeNetworkVersion {
-		msd = v0miner.MaxSealDuration[si.SectorType]
+		msd = miner0.MaxSealDuration[si.SectorType]
 	} else {
 		// TODO: ActorUpgrade
 		msd = 0
@@ -190,7 +190,7 @@ func (m *Sealing) checkCommit(ctx context.Context, si SectorInfo, proof []byte, 
 		log.Warn("on-chain sealed CID doesn't match!")
 	}
 
-	ok, err := m.verif.VerifySeal(v0proof.SealVerifyInfo{
+	ok, err := m.verif.VerifySeal(proof0.SealVerifyInfo{
 		SectorID:              m.minerSector(si.SectorNumber),
 		SealedCID:             pci.Info.SealedCID,
 		SealProof:             spt,

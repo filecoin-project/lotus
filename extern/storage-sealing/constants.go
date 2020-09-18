@@ -1,11 +1,11 @@
 package sealing
 
 import (
-	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 )
 
 // Epochs
-const SealRandomnessLookback = v0miner.ChainFinality
+const SealRandomnessLookback = miner0.ChainFinality
 
 // Epochs
 const InteractivePoRepConfidence = 6

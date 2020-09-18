@@ -509,12 +509,12 @@ func (sp *StatePredicates) OnAddressMapChange() DiffInitActorStateFunc {
 			return false, nil, nil
 		}
 
-		oldAddrs, err := v0adt.AsMap(ctxStore, oldState.AddressMap)
+		oldAddrs, err := adt0.AsMap(ctxStore, oldState.AddressMap)
 		if err != nil {
 			return false, nil, err
 		}
 
-		newAddrs, err := v0adt.AsMap(ctxStore, newState.AddressMap)
+		newAddrs, err := adt0.AsMap(ctxStore, newState.AddressMap)
 		if err != nil {
 			return false, nil, err
 		}

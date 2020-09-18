@@ -17,7 +17,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	v0msig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
+	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	cid "github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/urfave/cli/v2"
@@ -199,7 +199,7 @@ var msigInspectCmd = &cli.Command{
 			return err
 		}
 
-		var mstate v0msig.State
+		var mstate msig0.State
 		if err := mstate.UnmarshalCBOR(bytes.NewReader(obj)); err != nil {
 			return err
 		}
@@ -251,7 +251,7 @@ var msigInspectCmd = &cli.Command{
 	},
 }
 
-func GetMultisigPending(ctx context.Context, lapi api.FullNode, hroot cid.Cid) (map[int64]*v0msig.Transaction, error) {
+func GetMultisigPending(ctx context.Context, lapi api.FullNode, hroot cid.Cid) (map[int64]*msig0.Transaction, error) {
 	bs := apibstore.NewAPIBlockstore(lapi)
 	store := adt.WrapStore(ctx, cbor.NewCborStore(bs))
 
@@ -260,8 +260,8 @@ func GetMultisigPending(ctx context.Context, lapi api.FullNode, hroot cid.Cid) (
 		return nil, err
 	}
 
-	txs := make(map[int64]*v0msig.Transaction)
-	var tx v0msig.Transaction
+	txs := make(map[int64]*msig0.Transaction)
+	var tx msig0.Transaction
 	err = nd.ForEach(&tx, func(k string) error {
 		txid, _ := binary.Varint([]byte(k))
 
@@ -276,7 +276,7 @@ func GetMultisigPending(ctx context.Context, lapi api.FullNode, hroot cid.Cid) (
 	return txs, nil
 }
 
-func state(tx *v0msig.Transaction) string {
+func state(tx *msig0.Transaction) string {
 	/* // TODO(why): I strongly disagree with not having these... but i need to move forward
 	if tx.Complete {
 		return "done"
@@ -385,7 +385,7 @@ var msigProposeCmd = &cli.Command{
 			return fmt.Errorf("proposal returned exit %d", wait.Receipt.ExitCode)
 		}
 
-		var retval v0msig.ProposeReturn
+		var retval msig0.ProposeReturn
 		if err := retval.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return)); err != nil {
 			return fmt.Errorf("failed to unmarshal propose return value: %w", err)
 		}

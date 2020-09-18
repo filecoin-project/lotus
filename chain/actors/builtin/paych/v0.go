@@ -6,42 +6,42 @@ import (
 	big "github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
-	v0adt "github.com/filecoin-project/specs-actors/actors/util/adt"
+	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
 )
 
-type v0State struct {
+type state0 struct {
 	paych.State
 	store adt.Store
-	lsAmt *v0adt.Array
+	lsAmt *adt0.Array
 }
 
 // Channel owner, who has funded the actor
-func (s *v0State) From() address.Address {
+func (s *state0) From() address.Address {
 	return s.State.From
 }
 
 // Recipient of payouts from channel
-func (s *v0State) To() address.Address {
+func (s *state0) To() address.Address {
 	return s.State.To
 }
 
 // Height at which the channel can be `Collected`
-func (s *v0State) SettlingAt() abi.ChainEpoch {
+func (s *state0) SettlingAt() abi.ChainEpoch {
 	return s.State.SettlingAt
 }
 
 // Amount successfully redeemed through the payment channel, paid out on `Collect()`
-func (s *v0State) ToSend() abi.TokenAmount {
+func (s *state0) ToSend() abi.TokenAmount {
 	return s.State.ToSend
 }
 
-func (s *v0State) getOrLoadLsAmt() (*v0adt.Array, error) {
+func (s *state0) getOrLoadLsAmt() (*adt0.Array, error) {
 	if s.lsAmt != nil {
 		return s.lsAmt, nil
 	}
 
 	// Get the lane state from the chain
-	lsamt, err := v0adt.AsArray(s.store, s.State.LaneStates)
+	lsamt, err := adt0.AsArray(s.store, s.State.LaneStates)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +51,7 @@ func (s *v0State) getOrLoadLsAmt() (*v0adt.Array, error) {
 }
 
 // Get total number of lanes
-func (s *v0State) LaneCount() (uint64, error) {
+func (s *state0) LaneCount() (uint64, error) {
 	lsamt, err := s.getOrLoadLsAmt()
 	if err != nil {
 		return 0, err
@@ -60,7 +60,7 @@ func (s *v0State) LaneCount() (uint64, error) {
 }
 
 // Iterate lane states
-func (s *v0State) ForEachLaneState(cb func(idx uint64, dl LaneState) error) error {
+func (s *state0) ForEachLaneState(cb func(idx uint64, dl LaneState) error) error {
 	// Get the lane state from the chain
 	lsamt, err := s.getOrLoadLsAmt()
 	if err != nil {
@@ -72,18 +72,18 @@ func (s *v0State) ForEachLaneState(cb func(idx uint64, dl LaneState) error) erro
 	// very large index.
 	var ls paych.LaneState
 	return lsamt.ForEach(&ls, func(i int64) error {
-		return cb(uint64(i), &v0LaneState{ls})
+		return cb(uint64(i), &laneState0{ls})
 	})
 }
 
-type v0LaneState struct {
+type laneState0 struct {
 	paych.LaneState
 }
 
-func (ls *v0LaneState) Redeemed() big.Int {
+func (ls *laneState0) Redeemed() big.Int {
 	return ls.LaneState.Redeemed
 }
 
-func (ls *v0LaneState) Nonce() uint64 {
+func (ls *laneState0) Nonce() uint64 {
 	return ls.LaneState.Nonce
 }

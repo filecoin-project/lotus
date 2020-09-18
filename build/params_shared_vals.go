@@ -9,7 +9,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 )
 
 // /////
@@ -32,7 +32,7 @@ const ForkLengthThreshold = Finality
 var BlocksPerEpoch = uint64(builtin.ExpectedLeadersPerEpoch)
 
 // Epochs
-const Finality = v0miner.ChainFinality
+const Finality = miner0.ChainFinality
 const MessageConfidence = uint64(5)
 
 // constants for Weight calculation

@@ -37,7 +37,7 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage/mockstorage"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -83,7 +83,7 @@ func CreateTestStorageNode(ctx context.Context, t *testing.T, waddr address.Addr
 	peerid, err := peer.IDFromPrivateKey(pk)
 	require.NoError(t, err)
 
-	enc, err := actors.SerializeParams(&v0miner.ChangePeerIDParams{NewID: abi.PeerID(peerid)})
+	enc, err := actors.SerializeParams(&miner0.ChangePeerIDParams{NewID: abi.PeerID(peerid)})
 	require.NoError(t, err)
 
 	msg := &types.Message{

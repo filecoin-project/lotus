@@ -10,24 +10,24 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 
-	v0adt "github.com/filecoin-project/specs-actors/actors/util/adt"
+	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
 )
 
-type v0State struct {
+type state0 struct {
 	init_.State
 	store adt.Store
 }
 
-func (s *v0State) ResolveAddress(address address.Address) (address.Address, bool, error) {
+func (s *state0) ResolveAddress(address address.Address) (address.Address, bool, error) {
 	return s.State.ResolveAddress(s.store, address)
 }
 
-func (s *v0State) MapAddressToNewID(address address.Address) (address.Address, error) {
+func (s *state0) MapAddressToNewID(address address.Address) (address.Address, error) {
 	return s.State.MapAddressToNewID(s.store, address)
 }
 
-func (s *v0State) ForEachActor(cb func(id abi.ActorID, address address.Address) error) error {
-	addrs, err := v0adt.AsMap(s.store, s.State.AddressMap)
+func (s *state0) ForEachActor(cb func(id abi.ActorID, address address.Address) error) error {
+	addrs, err := adt0.AsMap(s.store, s.State.AddressMap)
 	if err != nil {
 		return err
 	}
@@ -41,6 +41,6 @@ func (s *v0State) ForEachActor(cb func(id abi.ActorID, address address.Address) 
 	})
 }
 
-func (s *v0State) NetworkName() (dtypes.NetworkName, error) {
+func (s *state0) NetworkName() (dtypes.NetworkName, error) {
 	return dtypes.NetworkName(s.State.NetworkName), nil
 }

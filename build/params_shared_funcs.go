@@ -6,14 +6,14 @@ import (
 	"github.com/libp2p/go-libp2p-core/protocol"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
 func DefaultSectorSize() abi.SectorSize {
-	szs := make([]abi.SectorSize, 0, len(v0miner.SupportedProofTypes))
-	for spt := range v0miner.SupportedProofTypes {
+	szs := make([]abi.SectorSize, 0, len(miner0.SupportedProofTypes))
+	for spt := range miner0.SupportedProofTypes {
 		ss, err := spt.SectorSize()
 		if err != nil {
 			panic(err)

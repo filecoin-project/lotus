@@ -5,7 +5,7 @@ import (
 	"context"
 	"strconv"
 
-	v0market "github.com/filecoin-project/specs-actors/actors/builtin/market"
+	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 
@@ -24,7 +24,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/filecoin-project/specs-actors/actors/util/smoothing"
 
@@ -921,7 +921,7 @@ func (a *StateAPI) StateMinerPreCommitDepositForPower(ctx context.Context, maddr
 		duration := pci.Expiration - ts.Height()
 
 		// TODO: ActorUpgrade
-		sectorWeight = v0miner.QAPowerForWeight(ssize, duration, w, vw)
+		sectorWeight = miner0.QAPowerForWeight(ssize, duration, w, vw)
 	}
 
 	var powerSmoothed smoothing.FilterEstimate
@@ -947,7 +947,7 @@ func (a *StateAPI) StateMinerPreCommitDepositForPower(ctx context.Context, maddr
 	}
 
 	// TODO: ActorUpgrade
-	deposit := v0miner.PreCommitDepositForPower(&rewardSmoothed, &powerSmoothed, sectorWeight)
+	deposit := miner0.PreCommitDepositForPower(&rewardSmoothed, &powerSmoothed, sectorWeight)
 
 	return types.BigDiv(types.BigMul(deposit, initialPledgeNum), initialPledgeDen), nil
 }
@@ -983,7 +983,7 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 		duration := pci.Expiration - ts.Height()
 
 		// TODO: handle changes to this function across actor upgrades.
-		sectorWeight = v0miner.QAPowerForWeight(ssize, duration, w, vw)
+		sectorWeight = miner0.QAPowerForWeight(ssize, duration, w, vw)
 	}
 
 	var (
@@ -1027,7 +1027,7 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 
 	// TODO: ActorUpgrade
 
-	initialPledge := v0miner.InitialPledgeForPower(
+	initialPledge := miner0.InitialPledgeForPower(
 		sectorWeight,
 		baselinePower,
 		pledgeCollateral,
@@ -1145,7 +1145,7 @@ func (a *StateAPI) StateDealProviderCollateralBounds(ctx context.Context, size a
 		return api.DealCollateralBounds{}, xerrors.Errorf("getting reward baseline power: %w", err)
 	}
 
-	min, max := v0market.DealProviderCollateralBounds(size,
+	min, max := market0.DealProviderCollateralBounds(size,
 		verified,
 		powClaim.RawBytePower,
 		powClaim.QualityAdjPower,

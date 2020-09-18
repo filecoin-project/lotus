@@ -10,18 +10,18 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
-	v0builtin "github.com/filecoin-project/specs-actors/actors/builtin"
-	v0account "github.com/filecoin-project/specs-actors/actors/builtin/account"
-	v0cron "github.com/filecoin-project/specs-actors/actors/builtin/cron"
-	v0init "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	v0market "github.com/filecoin-project/specs-actors/actors/builtin/market"
-	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	v0msig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
-	v0paych "github.com/filecoin-project/specs-actors/actors/builtin/paych"
-	v0power "github.com/filecoin-project/specs-actors/actors/builtin/power"
-	v0reward "github.com/filecoin-project/specs-actors/actors/builtin/reward"
-	v0system "github.com/filecoin-project/specs-actors/actors/builtin/system"
-	v0verifreg "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+	account0 "github.com/filecoin-project/specs-actors/actors/builtin/account"
+	cron0 "github.com/filecoin-project/specs-actors/actors/builtin/cron"
+	init0 "github.com/filecoin-project/specs-actors/actors/builtin/init"
+	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
+	paych0 "github.com/filecoin-project/specs-actors/actors/builtin/paych"
+	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
+	reward0 "github.com/filecoin-project/specs-actors/actors/builtin/reward"
+	system0 "github.com/filecoin-project/specs-actors/actors/builtin/system"
+	verifreg0 "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	vmr "github.com/filecoin-project/specs-actors/actors/runtime"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -46,17 +46,17 @@ func NewInvoker() *Invoker {
 
 	// add builtInCode using: register(cid, singleton)
 	// NETUPGRADE: register code IDs for v2, etc.
-	inv.Register(v0builtin.SystemActorCodeID, v0system.Actor{}, abi.EmptyValue{})
-	inv.Register(v0builtin.InitActorCodeID, v0init.Actor{}, v0init.State{})
-	inv.Register(v0builtin.RewardActorCodeID, v0reward.Actor{}, v0reward.State{})
-	inv.Register(v0builtin.CronActorCodeID, v0cron.Actor{}, v0cron.State{})
-	inv.Register(v0builtin.StoragePowerActorCodeID, v0power.Actor{}, v0power.State{})
-	inv.Register(v0builtin.StorageMarketActorCodeID, v0market.Actor{}, v0market.State{})
-	inv.Register(v0builtin.StorageMinerActorCodeID, v0miner.Actor{}, v0miner.State{})
-	inv.Register(v0builtin.MultisigActorCodeID, v0msig.Actor{}, v0msig.State{})
-	inv.Register(v0builtin.PaymentChannelActorCodeID, v0paych.Actor{}, v0paych.State{})
-	inv.Register(v0builtin.VerifiedRegistryActorCodeID, v0verifreg.Actor{}, v0verifreg.State{})
-	inv.Register(v0builtin.AccountActorCodeID, v0account.Actor{}, v0account.State{})
+	inv.Register(builtin0.SystemActorCodeID, system0.Actor{}, abi.EmptyValue{})
+	inv.Register(builtin0.InitActorCodeID, init0.Actor{}, init0.State{})
+	inv.Register(builtin0.RewardActorCodeID, reward0.Actor{}, reward0.State{})
+	inv.Register(builtin0.CronActorCodeID, cron0.Actor{}, cron0.State{})
+	inv.Register(builtin0.StoragePowerActorCodeID, power0.Actor{}, power0.State{})
+	inv.Register(builtin0.StorageMarketActorCodeID, market0.Actor{}, market0.State{})
+	inv.Register(builtin0.StorageMinerActorCodeID, miner0.Actor{}, miner0.State{})
+	inv.Register(builtin0.MultisigActorCodeID, msig0.Actor{}, msig0.State{})
+	inv.Register(builtin0.PaymentChannelActorCodeID, paych0.Actor{}, paych0.State{})
+	inv.Register(builtin0.VerifiedRegistryActorCodeID, verifreg0.Actor{}, verifreg0.State{})
+	inv.Register(builtin0.AccountActorCodeID, account0.Actor{}, account0.State{})
 
 	return inv
 }
@@ -177,7 +177,7 @@ func DecodeParams(b []byte, out interface{}) error {
 }
 
 func DumpActorState(code cid.Cid, b []byte) (interface{}, error) {
-	if code == v0builtin.AccountActorCodeID { // Account code special case
+	if code == builtin0.AccountActorCodeID { // Account code special case
 		return nil, nil
 	}
 

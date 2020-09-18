@@ -10,9 +10,9 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
-	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	v0power "github.com/filecoin-project/specs-actors/actors/builtin/power"
-	v0verifreg "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
+	verifreg0 "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/lotus/api/test"
@@ -21,11 +21,11 @@ import (
 func init() {
 	_ = logging.SetLogLevel("*", "INFO")
 
-	v0power.ConsensusMinerMinPower = big.NewInt(2048)
-	v0miner.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
+	power0.ConsensusMinerMinPower = big.NewInt(2048)
+	miner0.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
 		abi.RegisteredSealProof_StackedDrg2KiBV1: {},
 	}
-	v0verifreg.MinVerifiedDealSize = big.NewInt(256)
+	verifreg0.MinVerifiedDealSize = big.NewInt(256)
 }
 
 func TestAPI(t *testing.T) {
@@ -68,7 +68,7 @@ func TestAPIDealFlowReal(t *testing.T) {
 	logging.SetLogLevel("sub", "ERROR")
 	logging.SetLogLevel("storageminer", "ERROR")
 
-	v0miner.PreCommitChallengeDelay = 5
+	miner0.PreCommitChallengeDelay = 5
 
 	t.Run("basic", func(t *testing.T) {
 		test.TestDealFlow(t, builder.Builder, time.Second, false, false)

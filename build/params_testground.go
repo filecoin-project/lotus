@@ -13,7 +13,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 )
 
 var (
@@ -32,7 +32,7 @@ var (
 
 	AllowableClockDriftSecs = uint64(1)
 
-	Finality            = v0miner.ChainFinality
+	Finality            = miner0.ChainFinality
 	ForkLengthThreshold = Finality
 
 	SlashablePowerDelay        = 20

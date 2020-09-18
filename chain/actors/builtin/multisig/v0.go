@@ -6,23 +6,23 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 )
 
-type v0State struct {
+type state0 struct {
 	multisig.State
 	store adt.Store
 }
 
-func (s *v0State) LockedBalance(currEpoch abi.ChainEpoch) (abi.TokenAmount, error) {
+func (s *state0) LockedBalance(currEpoch abi.ChainEpoch) (abi.TokenAmount, error) {
 	return s.State.AmountLocked(currEpoch - s.State.StartEpoch), nil
 }
 
-func (s *v0State) StartEpoch() abi.ChainEpoch {
+func (s *state0) StartEpoch() abi.ChainEpoch {
 	return s.State.StartEpoch
 }
 
-func (s *v0State) UnlockDuration() abi.ChainEpoch {
+func (s *state0) UnlockDuration() abi.ChainEpoch {
 	return s.State.UnlockDuration
 }
 
-func (s *v0State) InitialBalance() abi.TokenAmount {
+func (s *state0) InitialBalance() abi.TokenAmount {
 	return s.State.InitialBalance
 }

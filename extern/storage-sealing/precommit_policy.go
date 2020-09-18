@@ -7,7 +7,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 )
 
 type PreCommitPolicy interface {
@@ -87,7 +87,7 @@ func (p *BasicPreCommitPolicy) Expiration(ctx context.Context, ps ...Piece) (abi
 
 	var wpp abi.ChainEpoch
 	if nv < build.ActorUpgradeNetworkVersion {
-		wpp = v0miner.WPoStProvingPeriod
+		wpp = miner0.WPoStProvingPeriod
 	} else {
 		// TODO: ActorUpgrade
 		wpp = 0

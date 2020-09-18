@@ -14,7 +14,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	v0paych "github.com/filecoin-project/specs-actors/actors/builtin/paych"
+	paych0 "github.com/filecoin-project/specs-actors/actors/builtin/paych"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -382,7 +382,7 @@ func (ca *channelAccessor) processTask(ctx context.Context, amt types.BigInt) *p
 
 // createPaych sends a message to create the channel and returns the message cid
 func (ca *channelAccessor) createPaych(ctx context.Context, amt types.BigInt) (cid.Cid, error) {
-	params, aerr := actors.SerializeParams(&v0paych.ConstructorParams{From: ca.from, To: ca.to})
+	params, aerr := actors.SerializeParams(&paych0.ConstructorParams{From: ca.from, To: ca.to})
 	if aerr != nil {
 		return cid.Undef, aerr
 	}

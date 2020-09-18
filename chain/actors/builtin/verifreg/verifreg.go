@@ -6,18 +6,18 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/cbor"
-	v0builtin "github.com/filecoin-project/specs-actors/actors/builtin"
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-var Address = v0builtin.VerifiedRegistryActorAddr
+var Address = builtin0.VerifiedRegistryActorAddr
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	switch act.Code {
-	case v0builtin.VerifiedRegistryActorCodeID:
-		out := v0State{store: store}
+	case builtin0.VerifiedRegistryActorCodeID:
+		out := state0{store: store}
 		err := store.Get(store.Context(), act.Head, &out)
 		if err != nil {
 			return nil, err

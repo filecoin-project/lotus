@@ -6,7 +6,7 @@ import (
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
-	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"golang.org/x/xerrors"
 
@@ -191,8 +191,8 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 	var msd abi.ChainEpoch
 	var mse abi.ChainEpoch
 	if nv < build.ActorUpgradeNetworkVersion {
-		msd = v0miner.MaxSealDuration[sector.SectorType]
-		mse = v0miner.MinSectorExpiration
+		msd = miner0.MaxSealDuration[sector.SectorType]
+		mse = miner0.MinSectorExpiration
 	} else {
 		// TODO: ActorUpgrade
 		msd = 0
@@ -387,7 +387,7 @@ func (m *Sealing) handleSubmitCommit(ctx statemachine.Context, sector SectorInfo
 
 	enc := new(bytes.Buffer)
 	if nv < build.ActorUpgradeNetworkVersion {
-		params := &v0miner.ProveCommitSectorParams{
+		params := &miner0.ProveCommitSectorParams{
 			SectorNumber: sector.SectorNumber,
 			Proof:        sector.Proof,
 		}

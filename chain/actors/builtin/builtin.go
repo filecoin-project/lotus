@@ -5,7 +5,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/network"
 
-	v0smoothing "github.com/filecoin-project/specs-actors/actors/util/smoothing"
+	smoothing0 "github.com/filecoin-project/specs-actors/actors/util/smoothing"
 )
 
 type Version int
@@ -25,4 +25,4 @@ func VersionForNetwork(version network.Version) Version {
 }
 
 // TODO: find some way to abstract over this.
-type FilterEstimate = v0smoothing.FilterEstimate
+type FilterEstimate = smoothing0.FilterEstimate

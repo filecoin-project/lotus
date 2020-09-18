@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/filecoin-project/go-state-types/network"
 
@@ -146,7 +146,7 @@ func (m *Miner) Run(ctx context.Context) error {
 	evts := events.NewEvents(ctx, m.api)
 	adaptedAPI := NewSealingAPIAdapter(m.api)
 	// TODO: Maybe we update this policy after actor upgrades?
-	pcp := sealing.NewBasicPreCommitPolicy(adaptedAPI, v0miner.MaxSectorExpirationExtension-(v0miner.WPoStProvingPeriod*2), md.PeriodStart%v0miner.WPoStProvingPeriod)
+	pcp := sealing.NewBasicPreCommitPolicy(adaptedAPI, miner0.MaxSectorExpirationExtension-(miner0.WPoStProvingPeriod*2), md.PeriodStart%miner0.WPoStProvingPeriod)
 	m.sealing = sealing.New(adaptedAPI, fc, NewEventsAdapter(evts), m.maddr, m.ds, m.sealer, m.sc, m.verif, &pcp, sealing.GetSealingConfigFunc(m.getSealConfig), m.handleSealingNotifications)
 
 	go m.sealing.Run(ctx) //nolint:errcheck // logged intside the function

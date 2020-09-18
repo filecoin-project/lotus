@@ -14,7 +14,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
-	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
@@ -121,7 +121,7 @@ var DefaultRemainderAccountActor = genesis.Actor{
 }
 
 func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
-	v0miner.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
+	miner0.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
 		abi.RegisteredSealProof_StackedDrg2KiBV1: {},
 	}
 

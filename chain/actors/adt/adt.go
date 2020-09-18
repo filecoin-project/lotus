@@ -8,7 +8,7 @@ import (
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
-	v0adt "github.com/filecoin-project/specs-actors/actors/util/adt"
+	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
 )
 
 type Map interface {
@@ -24,7 +24,7 @@ type Map interface {
 func AsMap(store Store, root cid.Cid, version builtin.Version) (Map, error) {
 	switch version {
 	case builtin.Version0:
-		return v0adt.AsMap(store, root)
+		return adt0.AsMap(store, root)
 	}
 	return nil, xerrors.Errorf("unknown network version: %d", version)
 }
@@ -32,7 +32,7 @@ func AsMap(store Store, root cid.Cid, version builtin.Version) (Map, error) {
 func NewMap(store Store, version builtin.Version) (Map, error) {
 	switch version {
 	case builtin.Version0:
-		return v0adt.MakeEmptyMap(store), nil
+		return adt0.MakeEmptyMap(store), nil
 	}
 	return nil, xerrors.Errorf("unknown network version: %d", version)
 }
@@ -51,7 +51,7 @@ type Array interface {
 func AsArray(store Store, root cid.Cid, version network.Version) (Array, error) {
 	switch builtin.VersionForNetwork(version) {
 	case builtin.Version0:
-		return v0adt.AsArray(store, root)
+		return adt0.AsArray(store, root)
 	}
 	return nil, xerrors.Errorf("unknown network version: %d", version)
 }

@@ -8,95 +8,95 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
-	v0adt "github.com/filecoin-project/specs-actors/actors/util/adt"
+	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
 	cbg "github.com/whyrusleeping/cbor-gen"
 )
 
-type v0State struct {
+type state0 struct {
 	market.State
 	store adt.Store
 }
 
-func (s *v0State) TotalLocked() (abi.TokenAmount, error) {
+func (s *state0) TotalLocked() (abi.TokenAmount, error) {
 	fml := types.BigAdd(s.TotalClientLockedCollateral, s.TotalProviderLockedCollateral)
 	fml = types.BigAdd(fml, s.TotalClientStorageFee)
 	return fml, nil
 }
 
-func (s *v0State) BalancesChanged(otherState State) bool {
-	v0otherState, ok := otherState.(*v0State)
+func (s *state0) BalancesChanged(otherState State) bool {
+	otherState0, ok := otherState.(*state0)
 	if !ok {
 		// there's no way to compare differnt versions of the state, so let's
 		// just say that means the state of balances has changed
 		return true
 	}
-	return !s.State.EscrowTable.Equals(v0otherState.State.EscrowTable) || !s.State.LockedTable.Equals(v0otherState.State.LockedTable)
+	return !s.State.EscrowTable.Equals(otherState0.State.EscrowTable) || !s.State.LockedTable.Equals(otherState0.State.LockedTable)
 }
 
-func (s *v0State) StatesChanged(otherState State) bool {
-	v0otherState, ok := otherState.(*v0State)
+func (s *state0) StatesChanged(otherState State) bool {
+	otherState0, ok := otherState.(*state0)
 	if !ok {
 		// there's no way to compare differnt versions of the state, so let's
 		// just say that means the state of balances has changed
 		return true
 	}
-	return !s.State.States.Equals(v0otherState.State.States)
+	return !s.State.States.Equals(otherState0.State.States)
 }
 
-func (s *v0State) States() (DealStates, error) {
-	stateArray, err := v0adt.AsArray(s.store, s.State.States)
+func (s *state0) States() (DealStates, error) {
+	stateArray, err := adt0.AsArray(s.store, s.State.States)
 	if err != nil {
 		return nil, err
 	}
-	return &v0DealStates{stateArray}, nil
+	return &dealStates0{stateArray}, nil
 }
 
-func (s *v0State) ProposalsChanged(otherState State) bool {
-	v0otherState, ok := otherState.(*v0State)
+func (s *state0) ProposalsChanged(otherState State) bool {
+	otherState0, ok := otherState.(*state0)
 	if !ok {
 		// there's no way to compare differnt versions of the state, so let's
 		// just say that means the state of balances has changed
 		return true
 	}
-	return !s.State.Proposals.Equals(v0otherState.State.Proposals)
+	return !s.State.Proposals.Equals(otherState0.State.Proposals)
 }
 
-func (s *v0State) Proposals() (DealProposals, error) {
-	proposalArray, err := v0adt.AsArray(s.store, s.State.Proposals)
+func (s *state0) Proposals() (DealProposals, error) {
+	proposalArray, err := adt0.AsArray(s.store, s.State.Proposals)
 	if err != nil {
 		return nil, err
 	}
-	return &v0DealProposals{proposalArray}, nil
+	return &dealProposals0{proposalArray}, nil
 }
 
-func (s *v0State) EscrowTable() (BalanceTable, error) {
-	bt, err := v0adt.AsBalanceTable(s.store, s.State.EscrowTable)
+func (s *state0) EscrowTable() (BalanceTable, error) {
+	bt, err := adt0.AsBalanceTable(s.store, s.State.EscrowTable)
 	if err != nil {
 		return nil, err
 	}
-	return &v0BalanceTable{bt}, nil
+	return &balanceTable0{bt}, nil
 }
 
-func (s *v0State) LockedTable() (BalanceTable, error) {
-	bt, err := v0adt.AsBalanceTable(s.store, s.State.LockedTable)
+func (s *state0) LockedTable() (BalanceTable, error) {
+	bt, err := adt0.AsBalanceTable(s.store, s.State.LockedTable)
 	if err != nil {
 		return nil, err
 	}
-	return &v0BalanceTable{bt}, nil
+	return &balanceTable0{bt}, nil
 }
 
-func (s *v0State) VerifyDealsForActivation(
+func (s *state0) VerifyDealsForActivation(
 	minerAddr address.Address, deals []abi.DealID, currEpoch, sectorExpiry abi.ChainEpoch,
 ) (weight, verifiedWeight abi.DealWeight, err error) {
 	return market.ValidateDealsForActivation(&s.State, s.store, deals, minerAddr, sectorExpiry, currEpoch)
 }
 
-type v0BalanceTable struct {
-	*v0adt.BalanceTable
+type balanceTable0 struct {
+	*adt0.BalanceTable
 }
 
-func (bt *v0BalanceTable) ForEach(cb func(address.Address, abi.TokenAmount) error) error {
-	asMap := (*v0adt.Map)(bt.BalanceTable)
+func (bt *balanceTable0) ForEach(cb func(address.Address, abi.TokenAmount) error) error {
+	asMap := (*adt0.Map)(bt.BalanceTable)
 	var ta abi.TokenAmount
 	return asMap.ForEach(&ta, func(key string) error {
 		a, err := address.NewFromBytes([]byte(key))
@@ -107,33 +107,33 @@ func (bt *v0BalanceTable) ForEach(cb func(address.Address, abi.TokenAmount) erro
 	})
 }
 
-type v0DealStates struct {
+type dealStates0 struct {
 	adt.Array
 }
 
-func (s *v0DealStates) Get(dealID abi.DealID) (*DealState, bool, error) {
-	var v0deal market.DealState
-	found, err := s.Array.Get(uint64(dealID), &v0deal)
+func (s *dealStates0) Get(dealID abi.DealID) (*DealState, bool, error) {
+	var deal0 market.DealState
+	found, err := s.Array.Get(uint64(dealID), &deal0)
 	if err != nil {
 		return nil, false, err
 	}
 	if !found {
 		return nil, false, nil
 	}
-	deal := fromV0DealState(v0deal)
+	deal := fromV0DealState(deal0)
 	return &deal, true, nil
 }
 
-func (s *v0DealStates) decode(val *cbg.Deferred) (*DealState, error) {
-	var v0ds market.DealState
-	if err := v0ds.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
+func (s *dealStates0) decode(val *cbg.Deferred) (*DealState, error) {
+	var ds0 market.DealState
+	if err := ds0.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
 		return nil, err
 	}
-	ds := fromV0DealState(v0ds)
+	ds := fromV0DealState(ds0)
 	return &ds, nil
 }
 
-func (s *v0DealStates) array() adt.Array {
+func (s *dealStates0) array() adt.Array {
 	return s.Array
 }
 
@@ -141,40 +141,40 @@ func fromV0DealState(v0 market.DealState) DealState {
 	return (DealState)(v0)
 }
 
-type v0DealProposals struct {
+type dealProposals0 struct {
 	adt.Array
 }
 
-func (s *v0DealProposals) Get(dealID abi.DealID) (*DealProposal, bool, error) {
-	var v0proposal market.DealProposal
-	found, err := s.Array.Get(uint64(dealID), &v0proposal)
+func (s *dealProposals0) Get(dealID abi.DealID) (*DealProposal, bool, error) {
+	var proposal0 market.DealProposal
+	found, err := s.Array.Get(uint64(dealID), &proposal0)
 	if err != nil {
 		return nil, false, err
 	}
 	if !found {
 		return nil, false, nil
 	}
-	proposal := fromV0DealProposal(v0proposal)
+	proposal := fromV0DealProposal(proposal0)
 	return &proposal, true, nil
 }
 
-func (s *v0DealProposals) ForEach(cb func(dealID abi.DealID, dp DealProposal) error) error {
-	var v0dp market.DealProposal
-	return s.Array.ForEach(&v0dp, func(idx int64) error {
-		return cb(abi.DealID(idx), fromV0DealProposal(v0dp))
+func (s *dealProposals0) ForEach(cb func(dealID abi.DealID, dp DealProposal) error) error {
+	var dp0 market.DealProposal
+	return s.Array.ForEach(&dp0, func(idx int64) error {
+		return cb(abi.DealID(idx), fromV0DealProposal(dp0))
 	})
 }
 
-func (s *v0DealProposals) decode(val *cbg.Deferred) (*DealProposal, error) {
-	var v0dp market.DealProposal
-	if err := v0dp.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
+func (s *dealProposals0) decode(val *cbg.Deferred) (*DealProposal, error) {
+	var dp0 market.DealProposal
+	if err := dp0.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
 		return nil, err
 	}
-	dp := fromV0DealProposal(v0dp)
+	dp := fromV0DealProposal(dp0)
 	return &dp, nil
 }
 
-func (s *v0DealProposals) array() adt.Array {
+func (s *dealProposals0) array() adt.Array {
 	return s.Array
 }
 

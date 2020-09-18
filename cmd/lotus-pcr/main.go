@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"time"
 
-	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -403,7 +403,7 @@ func (r *refunder) ProcessTipset(ctx context.Context, tipset *types.TipSet, refu
 			}
 
 			if nv < build.ActorUpgradeNetworkVersion {
-				var proveCommitSector v0miner.ProveCommitSectorParams
+				var proveCommitSector miner0.ProveCommitSectorParams
 				if err := proveCommitSector.UnmarshalCBOR(bytes.NewBuffer(m.Params)); err != nil {
 					log.Warnw("failed to decode provecommit params", "err", err, "method", messageMethod, "cid", msg.Cid, "miner", m.To)
 					continue

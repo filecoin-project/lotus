@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/lotus/build"
-	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/ipfs/go-cid"
@@ -430,7 +430,7 @@ func (m *Sealing) getPreCommitChallengeDelay(ctx context.Context, tok TipSetToke
 	}
 
 	if nv < build.ActorUpgradeNetworkVersion {
-		return v0miner.PreCommitChallengeDelay, nil
+		return miner0.PreCommitChallengeDelay, nil
 	}
 
 	// TODO: ActorUpgrade

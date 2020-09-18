@@ -10,19 +10,19 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/cbor"
-	v0builtin "github.com/filecoin-project/specs-actors/actors/builtin"
-	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-var Address = v0builtin.InitActorAddr
+var Address = builtin0.InitActorAddr
 
 func Load(store adt.Store, act *types.Actor) (st State, err error) {
 	switch act.Code {
-	case v0builtin.StorageMinerActorCodeID:
-		out := v0State{store: store}
+	case builtin0.StorageMinerActorCodeID:
+		out := state0{store: store}
 		err := store.Get(store.Context(), act.Head, &out)
 		if err != nil {
 			return nil, err
@@ -83,18 +83,18 @@ type Partition interface {
 	ActiveSectors() (bitfield.BitField, error)
 }
 
-type SectorOnChainInfo = v0miner.SectorOnChainInfo
-type SectorPreCommitInfo = v0miner.SectorPreCommitInfo
-type SectorPreCommitOnChainInfo = v0miner.SectorPreCommitOnChainInfo
-type PoStPartition = v0miner.PoStPartition
-type RecoveryDeclaration = v0miner.RecoveryDeclaration
-type FaultDeclaration = v0miner.FaultDeclaration
+type SectorOnChainInfo = miner0.SectorOnChainInfo
+type SectorPreCommitInfo = miner0.SectorPreCommitInfo
+type SectorPreCommitOnChainInfo = miner0.SectorPreCommitOnChainInfo
+type PoStPartition = miner0.PoStPartition
+type RecoveryDeclaration = miner0.RecoveryDeclaration
+type FaultDeclaration = miner0.FaultDeclaration
 
 // Params
-type DeclareFaultsParams = v0miner.DeclareFaultsParams
-type DeclareFaultsRecoveredParams = v0miner.DeclareFaultsRecoveredParams
-type SubmitWindowedPoStParams = v0miner.SubmitWindowedPoStParams
-type ProveCommitSectorParams = v0miner.ProveCommitSectorParams
+type DeclareFaultsParams = miner0.DeclareFaultsParams
+type DeclareFaultsRecoveredParams = miner0.DeclareFaultsRecoveredParams
+type SubmitWindowedPoStParams = miner0.SubmitWindowedPoStParams
+type ProveCommitSectorParams = miner0.ProveCommitSectorParams
 
 type MinerInfo struct {
 	Owner                      address.Address   // Must be an ID-address.

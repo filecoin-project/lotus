@@ -13,7 +13,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
-	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -380,7 +380,7 @@ var sectorsCapacityCollateralCmd = &cli.Command{
 			Expiration: abi.ChainEpoch(cctx.Uint64("expiration")),
 		}
 		if pci.Expiration == 0 {
-			pci.Expiration = v0miner.MaxSectorExpirationExtension
+			pci.Expiration = miner0.MaxSectorExpirationExtension
 		}
 		pc, err := nApi.StateMinerInitialPledgeCollateral(ctx, maddr, pci, types.EmptyTSK)
 		if err != nil {

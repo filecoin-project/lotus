@@ -32,10 +32,10 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 
-	v0builtin "github.com/filecoin-project/specs-actors/actors/builtin"
-	v0market "github.com/filecoin-project/specs-actors/actors/builtin/market"
-	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	v0power "github.com/filecoin-project/specs-actors/actors/builtin/power"
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -373,7 +373,7 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, metadata string,
 	return mds.Put(datastore.NewKey(modules.StorageCounterDSPrefix), buf[:size])
 }
 
-func findMarketDealID(ctx context.Context, api lapi.FullNode, deal v0market.DealProposal) (abi.DealID, error) {
+func findMarketDealID(ctx context.Context, api lapi.FullNode, deal market0.DealProposal) (abi.DealID, error) {
 	// TODO: find a better way
 	//  (this is only used by genesis miners)
 
@@ -567,7 +567,7 @@ func configureStorageMiner(ctx context.Context, api lapi.FullNode, addr address.
 		return xerrors.Errorf("getWorkerAddr returned bad address: %w", err)
 	}
 
-	enc, err := actors.SerializeParams(&v0miner.ChangePeerIDParams{NewID: abi.PeerID(peerid)})
+	enc, err := actors.SerializeParams(&miner0.ChangePeerIDParams{NewID: abi.PeerID(peerid)})
 	if err != nil {
 		return err
 	}
@@ -575,7 +575,7 @@ func configureStorageMiner(ctx context.Context, api lapi.FullNode, addr address.
 	msg := &types.Message{
 		To:         addr,
 		From:       mi.Worker,
-		Method:     v0builtin.MethodsMiner.ChangePeerID,
+		Method:     builtin0.MethodsMiner.ChangePeerID,
 		Params:     enc,
 		Value:      types.NewInt(0),
 		GasPremium: gasPrice,
@@ -634,7 +634,7 @@ func createStorageMiner(ctx context.Context, api lapi.FullNode, peerid peer.ID, 
 		return address.Undef, err
 	}
 
-	params, err := actors.SerializeParams(&v0power.CreateMinerParams{
+	params, err := actors.SerializeParams(&power0.CreateMinerParams{
 		Owner:         owner,
 		Worker:        worker,
 		SealProofType: spt,
@@ -654,11 +654,11 @@ func createStorageMiner(ctx context.Context, api lapi.FullNode, peerid peer.ID, 
 	}
 
 	createStorageMinerMsg := &types.Message{
-		To:    v0builtin.StoragePowerActorAddr,
+		To:    builtin0.StoragePowerActorAddr,
 		From:  sender,
 		Value: big.Zero(),
 
-		Method: v0builtin.MethodsPower.CreateMiner,
+		Method: builtin0.MethodsPower.CreateMiner,
 		Params: params,
 
 		GasLimit:   0,
@@ -682,7 +682,7 @@ func createStorageMiner(ctx context.Context, api lapi.FullNode, peerid peer.ID, 
 		return address.Undef, xerrors.Errorf("create miner failed: exit code %d", mw.Receipt.ExitCode)
 	}
 
-	var retval v0power.CreateMinerReturn
+	var retval power0.CreateMinerReturn
 	if err := retval.UnmarshalCBOR(bytes.NewReader(mw.Receipt.Return)); err != nil {
 		return address.Undef, err
 	}

@@ -9,11 +9,11 @@ import (
 	"runtime"
 	"strings"
 
-	v0init "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	v0market "github.com/filecoin-project/specs-actors/actors/builtin/market"
-	v0power "github.com/filecoin-project/specs-actors/actors/builtin/power"
+	init0 "github.com/filecoin-project/specs-actors/actors/builtin/init"
+	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
+	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
 
-	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	saruntime "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
@@ -31,10 +31,10 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	"github.com/filecoin-project/specs-actors/actors/builtin/cron"
-	v0msig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
+	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
-	v0reward "github.com/filecoin-project/specs-actors/actors/builtin/reward"
-	v0verifreg "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
+	reward0 "github.com/filecoin-project/specs-actors/actors/builtin/reward"
+	verifreg0 "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -169,7 +169,7 @@ func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, 
 	var sset []*miner.ChainSectorInfo
 	var v cbg.Deferred
 	if err := sectors.ForEach(&v, func(i int64) error {
-		var oci v0miner.SectorOnChainInfo
+		var oci miner0.SectorOnChainInfo
 		if err := oci.UnmarshalCBOR(bytes.NewReader(v.Raw)); err != nil {
 			return err
 		}
@@ -555,16 +555,16 @@ var MethodsMap = map[cid.Cid]map[abi.MethodNum]MethodMeta{}
 func init() {
 	cidToMethods := map[cid.Cid][2]interface{}{
 		// builtin.SystemActorCodeID:        {builtin.MethodsSystem, system.Actor{} }- apparently it doesn't have methods
-		builtin.InitActorCodeID:             {builtin.MethodsInit, v0init.Actor{}},
+		builtin.InitActorCodeID:             {builtin.MethodsInit, init0.Actor{}},
 		builtin.CronActorCodeID:             {builtin.MethodsCron, cron.Actor{}},
 		builtin.AccountActorCodeID:          {builtin.MethodsAccount, account.Actor{}},
-		builtin.StoragePowerActorCodeID:     {builtin.MethodsPower, v0power.Actor{}},
-		builtin.StorageMinerActorCodeID:     {builtin.MethodsMiner, v0miner.Actor{}},
-		builtin.StorageMarketActorCodeID:    {builtin.MethodsMarket, v0market.Actor{}},
+		builtin.StoragePowerActorCodeID:     {builtin.MethodsPower, power0.Actor{}},
+		builtin.StorageMinerActorCodeID:     {builtin.MethodsMiner, miner0.Actor{}},
+		builtin.StorageMarketActorCodeID:    {builtin.MethodsMarket, market0.Actor{}},
 		builtin.PaymentChannelActorCodeID:   {builtin.MethodsPaych, paych.Actor{}},
-		builtin.MultisigActorCodeID:         {builtin.MethodsMultisig, v0msig.Actor{}},
-		builtin.RewardActorCodeID:           {builtin.MethodsReward, v0reward.Actor{}},
-		builtin.VerifiedRegistryActorCodeID: {builtin.MethodsVerifiedRegistry, v0verifreg.Actor{}},
+		builtin.MultisigActorCodeID:         {builtin.MethodsMultisig, msig0.Actor{}},
+		builtin.RewardActorCodeID:           {builtin.MethodsReward, reward0.Actor{}},
+		builtin.VerifiedRegistryActorCodeID: {builtin.MethodsVerifiedRegistry, verifreg0.Actor{}},
 	}
 
 	for c, m := range cidToMethods {

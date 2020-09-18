@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sync"
 
-	v0msig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
+	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
 
@@ -23,7 +23,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	v0reward "github.com/filecoin-project/specs-actors/actors/builtin/reward"
+	reward0 "github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/api"
@@ -251,7 +251,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 
 		nv := sm.GetNtwkVersion(ctx, epoch)
 		if nv < build.ActorUpgradeNetworkVersion {
-			params, err = actors.SerializeParams(&v0reward.AwardBlockRewardParams{
+			params, err = actors.SerializeParams(&reward0.AwardBlockRewardParams{
 				Miner:     b.Miner,
 				Penalty:   penalty,
 				GasReward: gasReward,
@@ -797,7 +797,7 @@ func (sm *StateManager) SetVMConstructor(nvm func(context.Context, *vm.VMOpts) (
 }
 
 type genesisInfo struct {
-	genesisMsigs []v0msig.State
+	genesisMsigs []msig0.State
 	// info about the Accounts in the genesis state
 	genesisActors      []genesisActor
 	genesisPledge      abi.TokenAmount
@@ -898,9 +898,9 @@ func (sm *StateManager) setupGenesisActors(ctx context.Context) error {
 		return xerrors.Errorf("error setting up genesis infos: %w", err)
 	}
 
-	gi.genesisMsigs = make([]v0msig.State, 0, len(totalsByEpoch))
+	gi.genesisMsigs = make([]msig0.State, 0, len(totalsByEpoch))
 	for k, v := range totalsByEpoch {
-		ns := v0msig.State{
+		ns := msig0.State{
 			InitialBalance: v,
 			UnlockDuration: k,
 			PendingTxns:    cid.Undef,
@@ -975,9 +975,9 @@ func (sm *StateManager) setupGenesisActorsTestnet(ctx context.Context) error {
 	totalsByEpoch[sixYears] = big.NewInt(100_000_000)
 	totalsByEpoch[sixYears] = big.Add(totalsByEpoch[sixYears], big.NewInt(300_000_000))
 
-	gi.genesisMsigs = make([]v0msig.State, 0, len(totalsByEpoch))
+	gi.genesisMsigs = make([]msig0.State, 0, len(totalsByEpoch))
 	for k, v := range totalsByEpoch {
-		ns := v0msig.State{
+		ns := msig0.State{
 			InitialBalance: v,
 			UnlockDuration: k,
 			PendingTxns:    cid.Undef,

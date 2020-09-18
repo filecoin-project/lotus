@@ -9,8 +9,8 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	v0miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	v0power "github.com/filecoin-project/specs-actors/actors/builtin/power"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"golang.org/x/xerrors"
@@ -135,7 +135,7 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, tree types
 				})
 			}
 		case builtin.StorageMinerActorCodeID:
-			var st v0miner.State
+			var st miner0.State
 			if err := sm.ChainStore().Store(ctx).Get(ctx, act.Head, &st); err != nil {
 				return xerrors.Errorf("failed to load miner state: %w", err)
 			}
@@ -172,7 +172,7 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, tree types
 	}
 
 	// pull up power table to give miners back some funds proportional to their power
-	var ps v0power.State
+	var ps power0.State
 	powAct, err := tree.GetActor(builtin.StoragePowerActorAddr)
 	if err != nil {
 		return xerrors.Errorf("failed to load power actor: %w", err)
@@ -211,12 +211,12 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, tree types
 				})
 			}
 		case builtin.StorageMinerActorCodeID:
-			var st v0miner.State
+			var st miner0.State
 			if err := sm.ChainStore().Store(ctx).Get(ctx, act.Head, &st); err != nil {
 				return xerrors.Errorf("failed to load miner state: %w", err)
 			}
 
-			var minfo v0miner.MinerInfo
+			var minfo miner0.MinerInfo
 			if err := cst.Get(ctx, st.Info, &minfo); err != nil {
 				return xerrors.Errorf("failed to get miner info: %w", err)
 			}
@@ -240,7 +240,7 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, tree types
 			// Now make sure to give each miner who had power at the lookback some FIL
 			lbact, err := lbtree.GetActor(addr)
 			if err == nil {
-				var lbst v0miner.State
+				var lbst miner0.State
 				if err := sm.ChainStore().Store(ctx).Get(ctx, lbact.Head, &lbst); err != nil {
 					return xerrors.Errorf("failed to load miner state: %w", err)
 				}
