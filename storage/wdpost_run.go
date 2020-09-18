@@ -431,7 +431,9 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *ty
 		postSkipped := bitfield.New()
 		var postOut []proof.PoStProof
 		somethingToProve := true
+
 		for retries := 0; retries < 5; retries++ {
+			var partitions []miner.PoStPartition
 			var sinfos []proof.SectorInfo
 			for partIdx, partition := range batch {
 				// TODO: Can do this in parallel
@@ -477,7 +479,7 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *ty
 				}
 
 				sinfos = append(sinfos, ssi...)
-				params.Partitions = append(params.Partitions, miner.PoStPartition{
+				partitions = append(partitions, miner.PoStPartition{
 					Index:   uint64(batchPartitionStartIdx + partIdx),
 					Skipped: skipped,
 				})
@@ -511,6 +513,8 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *ty
 
 			if err == nil {
 				// Proof generation successful, stop retrying
+				params.Partitions = append(params.Partitions, partitions...)
+
 				break
 			}
 
