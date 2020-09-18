@@ -29,8 +29,10 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 
+	bdg "github.com/dgraph-io/badger/v2"
 	"github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger2"
+
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 )
@@ -108,10 +110,10 @@ var importBenchCmd = &cli.Command{
 
 		bdgOpt := badger.DefaultOptions
 		bdgOpt.GcInterval = 0
+		bdgOpt.Options = bdg.DefaultOptions("")
 		bdgOpt.Options.SyncWrites = false
 		bdgOpt.Options.Truncate = true
 		bdgOpt.Options.DetectConflicts = false
-		bdgOpt.Options.MaxTableSize = 64 << 20
 
 		bds, err := badger.NewDatastore(tdir, &bdgOpt)
 		if err != nil {
