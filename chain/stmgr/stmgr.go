@@ -1183,9 +1183,7 @@ func (sm *StateManager) GetMarketState(ctx context.Context, ts *types.TipSet) (m
 		return nil, err
 	}
 
-	// TODO maybe there needs to be code here to differentiate address based on ts height?
-	addr := builtin.StorageMarketActorAddr
-	act, err := st.GetActor(addr)
+	act, err := st.GetActor(market.Address)
 	if err != nil {
 		return nil, err
 	}
