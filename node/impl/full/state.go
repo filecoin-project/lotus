@@ -3,7 +3,6 @@ package full
 import (
 	"bytes"
 	"context"
-	"errors"
 	"strconv"
 
 	v0market "github.com/filecoin-project/specs-actors/actors/builtin/market"
@@ -46,8 +45,6 @@ import (
 	"github.com/filecoin-project/lotus/lib/bufbstore"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
-
-var errBreakForeach = errors.New("break")
 
 type StateAPI struct {
 	fx.In

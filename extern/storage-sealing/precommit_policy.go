@@ -90,6 +90,7 @@ func (p *BasicPreCommitPolicy) Expiration(ctx context.Context, ps ...Piece) (abi
 		wpp = v0miner.WPoStProvingPeriod
 	} else {
 		// TODO: ActorUpgrade
+		wpp = 0
 	}
 
 	*end += wpp - (*end % wpp) + p.provingBoundary - 1

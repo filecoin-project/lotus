@@ -195,6 +195,8 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 		mse = v0miner.MinSectorExpiration
 	} else {
 		// TODO: ActorUpgrade
+		msd = 0
+		mse = 0
 	}
 
 	if minExpiration := height + msd + mse + 10; expiration < minExpiration {
@@ -395,6 +397,7 @@ func (m *Sealing) handleSubmitCommit(ctx statemachine.Context, sector SectorInfo
 		}
 	} else {
 		// TODO: ActorUpgrade
+		enc = nil
 	}
 
 	waddr, err := m.api.StateMinerWorkerAddress(ctx.Context(), m.maddr, tok)

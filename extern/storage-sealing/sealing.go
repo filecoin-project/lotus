@@ -431,9 +431,8 @@ func (m *Sealing) getPreCommitChallengeDelay(ctx context.Context, tok TipSetToke
 
 	if nv < build.ActorUpgradeNetworkVersion {
 		return v0miner.PreCommitChallengeDelay, nil
-	} else {
-		// TODO: ActorUpgrade
-		return -1, nil
 	}
 
+	// TODO: ActorUpgrade
+	return -1, nil
 }

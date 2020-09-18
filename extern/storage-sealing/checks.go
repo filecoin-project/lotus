@@ -105,6 +105,7 @@ func checkPrecommit(ctx context.Context, maddr address.Address, si SectorInfo, t
 		msd = v0miner.MaxSealDuration[si.SectorType]
 	} else {
 		// TODO: ActorUpgrade
+		msd = 0
 	}
 
 	if height-(si.TicketEpoch+SealRandomnessLookback) > msd {
