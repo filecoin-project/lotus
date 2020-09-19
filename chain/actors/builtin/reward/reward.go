@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/cbor"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+	builtin1 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
@@ -19,6 +20,13 @@ func Load(store adt.Store, act *types.Actor) (st State, err error) {
 	switch act.Code {
 	case builtin0.RewardActorCodeID:
 		out := state0{store: store}
+		err := store.Get(store.Context(), act.Head, &out)
+		if err != nil {
+			return nil, err
+		}
+		return &out, nil
+	case builtin1.RewardActorCodeID:
+		out := state1{store: store}
 		err := store.Get(store.Context(), act.Head, &out)
 		if err != nil {
 			return nil, err

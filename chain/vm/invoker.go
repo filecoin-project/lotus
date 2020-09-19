@@ -22,7 +22,20 @@ import (
 	reward0 "github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	system0 "github.com/filecoin-project/specs-actors/actors/builtin/system"
 	verifreg0 "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
+
 	vmr "github.com/filecoin-project/specs-actors/actors/runtime"
+	builtin1 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+	account1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/account"
+	cron1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/cron"
+	init1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
+	market1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
+	miner1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
+	msig1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
+	paych1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/paych"
+	power1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/power"
+	reward1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/reward"
+	system1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/system"
+	verifreg1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/verifreg"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/exitcode"
@@ -45,7 +58,6 @@ func NewInvoker() *Invoker {
 	}
 
 	// add builtInCode using: register(cid, singleton)
-	// NETUPGRADE: register code IDs for v2, etc.
 	inv.Register(builtin0.SystemActorCodeID, system0.Actor{}, abi.EmptyValue{})
 	inv.Register(builtin0.InitActorCodeID, init0.Actor{}, init0.State{})
 	inv.Register(builtin0.RewardActorCodeID, reward0.Actor{}, reward0.State{})
@@ -57,6 +69,18 @@ func NewInvoker() *Invoker {
 	inv.Register(builtin0.PaymentChannelActorCodeID, paych0.Actor{}, paych0.State{})
 	inv.Register(builtin0.VerifiedRegistryActorCodeID, verifreg0.Actor{}, verifreg0.State{})
 	inv.Register(builtin0.AccountActorCodeID, account0.Actor{}, account0.State{})
+
+	inv.Register(builtin1.SystemActorCodeID, system1.Actor{}, abi.EmptyValue{})
+	inv.Register(builtin1.InitActorCodeID, init1.Actor{}, init1.State{})
+	inv.Register(builtin1.RewardActorCodeID, reward1.Actor{}, reward1.State{})
+	inv.Register(builtin1.CronActorCodeID, cron1.Actor{}, cron1.State{})
+	inv.Register(builtin1.StoragePowerActorCodeID, power1.Actor{}, power1.State{})
+	inv.Register(builtin1.StorageMarketActorCodeID, market1.Actor{}, market1.State{})
+	inv.Register(builtin1.StorageMinerActorCodeID, miner1.Actor{}, miner1.State{})
+	inv.Register(builtin1.MultisigActorCodeID, msig1.Actor{}, msig1.State{})
+	inv.Register(builtin1.PaymentChannelActorCodeID, paych1.Actor{}, paych1.State{})
+	inv.Register(builtin1.VerifiedRegistryActorCodeID, verifreg1.Actor{}, verifreg1.State{})
+	inv.Register(builtin1.AccountActorCodeID, account1.Actor{}, account1.State{})
 
 	return inv
 }

@@ -8,6 +8,7 @@ import (
 	proof0 "github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
 	smoothing0 "github.com/filecoin-project/specs-actors/actors/util/smoothing"
+	smoothing1 "github.com/filecoin-project/specs-actors/v2/actors/util/smoothing"
 
 	"github.com/filecoin-project/go-state-types/network"
 )
@@ -40,4 +41,8 @@ func FromV0FilterEstimate(v0 smoothing0.FilterEstimate) FilterEstimate {
 // Doesn't change between actors v0 and v1
 func QAPowerForWeight(size abi.SectorSize, duration abi.ChainEpoch, dealWeight, verifiedWeight abi.DealWeight) abi.StoragePower {
 	return miner0.QAPowerForWeight(size, duration, dealWeight, verifiedWeight)
+}
+
+func FromV1FilterEstimate(v1 smoothing1.FilterEstimate) FilterEstimate {
+	return (FilterEstimate)(v1)
 }

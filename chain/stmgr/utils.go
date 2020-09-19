@@ -31,6 +31,17 @@ import (
 	verifreg0 "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	proof0 "github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
+	builtin1 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+	account1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/account"
+	init1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
+	market1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
+	miner1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
+	msig1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
+	paych1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/paych"
+	power1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/power"
+	reward1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/reward"
+	verifreg1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/verifreg"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
@@ -545,6 +556,18 @@ func init() {
 		builtin0.MultisigActorCodeID:         {builtin0.MethodsMultisig, msig0.Actor{}},
 		builtin0.RewardActorCodeID:           {builtin0.MethodsReward, reward0.Actor{}},
 		builtin0.VerifiedRegistryActorCodeID: {builtin0.MethodsVerifiedRegistry, verifreg0.Actor{}},
+
+		// builtin1.SystemActorCodeID:        {builtin1.MethodsSystem, system.Actor{} }- apparently it doesn't have methods
+		builtin1.InitActorCodeID:             {builtin1.MethodsInit, init1.Actor{}},
+		builtin1.CronActorCodeID:             {builtin1.MethodsCron, cron.Actor{}},
+		builtin1.AccountActorCodeID:          {builtin1.MethodsAccount, account1.Actor{}},
+		builtin1.StoragePowerActorCodeID:     {builtin1.MethodsPower, power1.Actor{}},
+		builtin1.StorageMinerActorCodeID:     {builtin1.MethodsMiner, miner1.Actor{}},
+		builtin1.StorageMarketActorCodeID:    {builtin1.MethodsMarket, market1.Actor{}},
+		builtin1.PaymentChannelActorCodeID:   {builtin1.MethodsPaych, paych1.Actor{}},
+		builtin1.MultisigActorCodeID:         {builtin1.MethodsMultisig, msig1.Actor{}},
+		builtin1.RewardActorCodeID:           {builtin1.MethodsReward, reward1.Actor{}},
+		builtin1.VerifiedRegistryActorCodeID: {builtin1.MethodsVerifiedRegistry, verifreg1.Actor{}},
 	}
 
 	for c, m := range cidToMethods {
@@ -552,6 +575,7 @@ func init() {
 		methods := make(map[abi.MethodNum]MethodMeta, len(exports))
 
 		// Explicitly add send, it's special.
+		// Note that builtin1.MethodSend = builtin0.MethodSend = 0.
 		methods[builtin0.MethodSend] = MethodMeta{
 			Name:   "Send",
 			Params: reflect.TypeOf(new(abi.EmptyValue)),
@@ -592,8 +616,10 @@ func init() {
 			}
 
 			switch abi.MethodNum(number) {
+			// Note that builtin1.MethodSend = builtin0.MethodSend = 0.
 			case builtin0.MethodSend:
 				panic("method 0 is reserved for Send")
+				// Note that builtin1.MethodConstructor = builtin0.MethodConstructor = 1.
 			case builtin0.MethodConstructor:
 				if fnName != "Constructor" {
 					panic("method 1 is reserved for Constructor")
