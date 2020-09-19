@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	gruntime "runtime"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -493,7 +492,8 @@ func (rt *Runtime) chargeGasFunc(skip int) func(GasCharge) {
 func (rt *Runtime) chargeGasInternal(gas GasCharge, skip int) aerrors.ActorError {
 	toUse := gas.Total()
 	var callers [10]uintptr
-	cout := gruntime.Callers(2+skip, callers[:])
+
+	cout := 0 //gruntime.Callers(2+skip, callers[:])
 
 	now := build.Clock.Now()
 	if rt.lastGasCharge != nil {
