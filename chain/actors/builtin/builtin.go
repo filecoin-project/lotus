@@ -3,9 +3,9 @@ package builtin
 import (
 	"fmt"
 
-	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/go-state-types/big"
 
-	smoothing0 "github.com/filecoin-project/specs-actors/actors/util/smoothing"
+	"github.com/filecoin-project/go-state-types/network"
 )
 
 type Version int
@@ -24,5 +24,8 @@ func VersionForNetwork(version network.Version) Version {
 	}
 }
 
-// TODO: find some way to abstract over this.
-type FilterEstimate = smoothing0.FilterEstimate
+// TODO: Why does actors have 2 different versions of this?
+type FilterEstimate struct {
+	PositionEstimate big.Int
+	VelocityEstimate big.Int
+}

@@ -5,6 +5,8 @@ import (
 	"context"
 	"strconv"
 
+	builtin2 "github.com/filecoin-project/lotus/chain/actors/builtin"
+
 	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
@@ -26,7 +28,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
-	"github.com/filecoin-project/specs-actors/actors/util/smoothing"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
@@ -924,7 +925,7 @@ func (a *StateAPI) StateMinerPreCommitDepositForPower(ctx context.Context, maddr
 		sectorWeight = miner0.QAPowerForWeight(ssize, duration, w, vw)
 	}
 
-	var powerSmoothed smoothing.FilterEstimate
+	var powerSmoothed builtin2.FilterEstimate
 	if act, err := state.GetActor(power.Address); err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading miner actor: %w", err)
 	} else if s, err := power.Load(store, act); err != nil {
@@ -935,19 +936,20 @@ func (a *StateAPI) StateMinerPreCommitDepositForPower(ctx context.Context, maddr
 		powerSmoothed = p
 	}
 
-	var rewardSmoothed smoothing.FilterEstimate
-	if act, err := state.GetActor(reward.Address); err != nil {
+	rewardActor, err := state.GetActor(reward.Address)
+	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading miner actor: %w", err)
-	} else if s, err := reward.Load(store, act); err != nil {
-		return types.EmptyInt, xerrors.Errorf("loading reward actor state: %w", err)
-	} else if r, err := s.ThisEpochRewardSmoothed(); err != nil {
-		return types.EmptyInt, xerrors.Errorf("failed to determine total reward: %w", err)
-	} else {
-		rewardSmoothed = r
 	}
 
-	// TODO: ActorUpgrade
-	deposit := miner0.PreCommitDepositForPower(&rewardSmoothed, &powerSmoothed, sectorWeight)
+	rewardState, err := reward.Load(store, rewardActor)
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("loading reward actor state: %w", err)
+	}
+
+	deposit, err := rewardState.PreCommitDepositForPower(powerSmoothed, sectorWeight)
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("calculating precommit deposit: %w", err)
+	}
 
 	return types.BigDiv(types.BigMul(deposit, initialPledgeNum), initialPledgeDen), nil
 }
@@ -982,12 +984,12 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 		// NB: not exactly accurate, but should always lead us to *over* estimate, not under
 		duration := pci.Expiration - ts.Height()
 
-		// TODO: handle changes to this function across actor upgrades.
+		// TODO: ActorUpgrade
 		sectorWeight = miner0.QAPowerForWeight(ssize, duration, w, vw)
 	}
 
 	var (
-		powerSmoothed    smoothing.FilterEstimate
+		powerSmoothed    builtin2.FilterEstimate
 		pledgeCollateral abi.TokenAmount
 	)
 	if act, err := state.GetActor(power.Address); err != nil {
@@ -1003,21 +1005,14 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 		pledgeCollateral = c
 	}
 
-	var (
-		rewardSmoothed smoothing.FilterEstimate
-		baselinePower  abi.StoragePower
-	)
-	if act, err := state.GetActor(reward.Address); err != nil {
+	rewardActor, err := state.GetActor(reward.Address)
+	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading miner actor: %w", err)
-	} else if s, err := reward.Load(store, act); err != nil {
+	}
+
+	rewardState, err := reward.Load(store, rewardActor)
+	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading reward actor state: %w", err)
-	} else if r, err := s.ThisEpochRewardSmoothed(); err != nil {
-		return types.EmptyInt, xerrors.Errorf("failed to determine total reward: %w", err)
-	} else if p, err := s.ThisEpochBaselinePower(); err != nil {
-		return types.EmptyInt, xerrors.Errorf("failed to determine baseline power: %w", err)
-	} else {
-		rewardSmoothed = r
-		baselinePower = p
 	}
 
 	circSupply, err := a.StateCirculatingSupply(ctx, ts.Key())
@@ -1025,16 +1020,15 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 		return big.Zero(), xerrors.Errorf("getting circulating supply: %w", err)
 	}
 
-	// TODO: ActorUpgrade
-
-	initialPledge := miner0.InitialPledgeForPower(
+	initialPledge, err := rewardState.InitialPledgeForPower(
 		sectorWeight,
-		baselinePower,
 		pledgeCollateral,
-		&rewardSmoothed,
 		&powerSmoothed,
 		circSupply.FilCirculating,
 	)
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("calculating initial pledge: %w", err)
+	}
 
 	return types.BigDiv(types.BigMul(initialPledge, initialPledgeNum), initialPledgeDen), nil
 }

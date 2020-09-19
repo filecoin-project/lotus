@@ -41,4 +41,7 @@ type State interface {
 
 	CumsumBaseline() (abi.StoragePower, error)
 	CumsumRealized() (abi.StoragePower, error)
+
+	InitialPledgeForPower(abi.StoragePower, abi.TokenAmount, *builtin.FilterEstimate, abi.TokenAmount) (abi.TokenAmount, error)
+	PreCommitDepositForPower(builtin.FilterEstimate, abi.StoragePower) (abi.TokenAmount, error)
 }
