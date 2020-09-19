@@ -28,6 +28,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/statediff"
 
 	bdg "github.com/dgraph-io/badger/v2"
 	"github.com/ipfs/go-datastore"
@@ -78,6 +79,9 @@ var importBenchCmd = &cli.Command{
 		},
 		&cli.BoolFlag{
 			Name: "only-gc",
+		},
+		&cli.Int64Flag{
+			Name: "start-at",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -194,6 +198,20 @@ var importBenchCmd = &cli.Command{
 			return err
 		}
 
+		startEpoch := abi.ChainEpoch(1)
+		if cctx.IsSet("start-at") {
+			startEpoch = abi.ChainEpoch(cctx.Int64("start-at"))
+			start, err := cs.GetTipsetByHeight(context.TODO(), abi.ChainEpoch(cctx.Int64("start-at")), head, true)
+			if err != nil {
+				return err
+			}
+
+			err = cs.SetHead(start)
+			if err != nil {
+				return err
+			}
+		}
+
 		if h := cctx.Int64("height"); h != 0 {
 			tsh, err := cs.GetTipsetByHeight(context.TODO(), abi.ChainEpoch(h), head, true)
 			if err != nil {
@@ -204,7 +222,7 @@ var importBenchCmd = &cli.Command{
 
 		ts := head
 		tschain := []*types.TipSet{ts}
-		for ts.Height() != 0 {
+		for ts.Height() > startEpoch {
 			next, err := cs.LoadTipSet(ts.Parents())
 			if err != nil {
 				return err
@@ -225,41 +243,38 @@ var importBenchCmd = &cli.Command{
 			enc = json.NewEncoder(ibj)
 		}
 
-		var lastTse *TipSetExec
-
-		lastState := tschain[len(tschain)-1].ParentState()
-		for i := len(tschain) - 2; i >= 0; i-- {
+		for i := len(tschain) - 1; i >= 1; i-- {
 			cur := tschain[i]
+			start := time.Now()
 			log.Infof("computing state (height: %d, ts=%s)", cur.Height(), cur.Cids())
-			if cur.ParentState() != lastState {
-				stripCallers(lastTse.Trace)
-				lastTrace := lastTse.Trace
+			st, trace, err := stm.ExecutionTrace(context.TODO(), cur)
+			if err != nil {
+				return err
+			}
+			tse := &TipSetExec{
+				TipSet:   cur.Key(),
+				Trace:    trace,
+				Duration: time.Since(start),
+			}
+			if enc != nil {
+				stripCallers(tse.Trace)
+
+				if err := enc.Encode(tse); err != nil {
+					return xerrors.Errorf("failed to write out tipsetexec: %w", err)
+				}
+			}
+			if tschain[i-1].ParentState() != st {
+				stripCallers(tse.Trace)
+				lastTrace := tse.Trace
 				d, err := json.MarshalIndent(lastTrace, "", "  ")
 				if err != nil {
 					panic(err)
 				}
 				fmt.Println("TRACE")
 				fmt.Println(string(d))
-				return xerrors.Errorf("tipset chain had state mismatch at height %d (%s != %s)", cur.Height(), cur.ParentState(), lastState)
+				fmt.Println(statediff.Diff(context.Background(), bs, tschain[i-1].ParentState(), st, statediff.ExpandActors))
+				return xerrors.Errorf("tipset chain had state mismatch at height %d (%s != %s)", cur.Height(), cur.ParentState(), st)
 			}
-			start := time.Now()
-			st, trace, err := stm.ExecutionTrace(context.TODO(), cur)
-			if err != nil {
-				return err
-			}
-			lastTse = &TipSetExec{
-				TipSet:   cur.Key(),
-				Trace:    trace,
-				Duration: time.Since(start),
-			}
-			if enc != nil {
-				stripCallers(lastTse.Trace)
-
-				if err := enc.Encode(lastTse); err != nil {
-					return xerrors.Errorf("failed to write out tipsetexec: %w", err)
-				}
-			}
-			lastState = st
 		}
 
 		pprof.StopCPUProfile()
