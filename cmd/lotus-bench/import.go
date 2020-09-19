@@ -80,6 +80,10 @@ var importBenchCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name: "only-gc",
 		},
+		&cli.BoolFlag{
+			Name:  "global-profile",
+			Value: true,
+		},
 		&cli.Int64Flag{
 			Name: "start-at",
 		},
@@ -161,14 +165,16 @@ var importBenchCmd = &cli.Command{
 		cs := store.NewChainStore(bs, ds, vm.Syscalls(verifier))
 		stm := stmgr.NewStateManager(cs)
 
-		prof, err := os.Create("import-bench.prof")
-		if err != nil {
-			return err
-		}
-		defer prof.Close() //nolint:errcheck
+		if cctx.Bool("global-profile") {
+			prof, err := os.Create("import-bench.prof")
+			if err != nil {
+				return err
+			}
+			defer prof.Close() //nolint:errcheck
 
-		if err := pprof.StartCPUProfile(prof); err != nil {
-			return err
+			if err := pprof.StartCPUProfile(prof); err != nil {
+				return err
+			}
 		}
 
 		var head *types.TipSet
