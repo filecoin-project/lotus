@@ -7,7 +7,6 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io/ioutil"
-	"math"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -213,15 +212,27 @@ var recoverMinersCmd = &cli.Command{
 			Usage:   "do not send any messages",
 			Value:   false,
 		},
-		&cli.IntFlag{
-			Name:    "threshold",
-			EnvVars: []string{"LOTUS_PCR_THRESHOLD"},
-			Usage:   "total filecoin across all accounts that should be met, if the miner balance drops below zero",
-			Value:   0,
-		},
 		&cli.StringFlag{
 			Name:  "output",
 			Usage: "dump data as a csv format to this file",
+		},
+		&cli.IntFlag{
+			Name:    "miner-recovery-cutoff",
+			EnvVars: []string{"LOTUS_PCR_MINER_RECOVERY_CUTOFF"},
+			Usage:   "maximum amount of FIL that can be sent to any one miner before refund percent is applied",
+			Value:   3000,
+		},
+		&cli.IntFlag{
+			Name:    "miner-recovery-bonus",
+			EnvVars: []string{"LOTUS_PCR_MINER_RECOVERY_BONUS"},
+			Usage:   "additional FIL to send to each miner",
+			Value:   5,
+		},
+		&cli.IntFlag{
+			Name:    "miner-recovery-refund-percent",
+			EnvVars: []string{"LOTUS_PCR_MINER_RECOVERY_REFUND_PERCENT"},
+			Usage:   "percent of refund to issue",
+			Value:   110,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -244,13 +255,17 @@ var recoverMinersCmd = &cli.Command{
 		}
 
 		dryRun := cctx.Bool("dry-run")
-		threshold := uint64(cctx.Int("threshold"))
+		minerRecoveryRefundPercent := cctx.Int("miner-recovery-refund-percent")
+		minerRecoveryCutoff := uint64(cctx.Int("miner-recovery-cutoff"))
+		minerRecoveryBonus := uint64(cctx.Int("miner-recovery-bonus"))
 
 		rf := &refunder{
-			api:       api,
-			wallet:    from,
-			dryRun:    dryRun,
-			threshold: types.FromFil(threshold),
+			api:                        api,
+			wallet:                     from,
+			dryRun:                     dryRun,
+			minerRecoveryRefundPercent: minerRecoveryRefundPercent,
+			minerRecoveryCutoff:        types.FromFil(minerRecoveryCutoff),
+			minerRecoveryBonus:         types.FromFil(minerRecoveryBonus),
 		}
 
 		refundTipset, err := api.ChainHead(ctx)
@@ -286,10 +301,10 @@ var runCmd = &cli.Command{
 			Usage:   "do not wait for chain sync to complete",
 		},
 		&cli.IntFlag{
-			Name:    "percent-extra",
-			EnvVars: []string{"LOTUS_PCR_PERCENT_EXTRA"},
-			Usage:   "extra funds to send above the refund",
-			Value:   3,
+			Name:    "refund-percent",
+			EnvVars: []string{"LOTUS_PCR_REFUND_PERCENT"},
+			Usage:   "percent of refund to issue",
+			Value:   103,
 		},
 		&cli.IntFlag{
 			Name:    "max-message-queue",
@@ -326,6 +341,36 @@ var runCmd = &cli.Command{
 			EnvVars: []string{"LOTUS_PCR_HEAD_DELAY"},
 			Usage:   "the number of tipsets to delay message processing to smooth chain reorgs",
 			Value:   int(build.MessageConfidence),
+		},
+		&cli.BoolFlag{
+			Name:    "miner-recovery",
+			EnvVars: []string{"LOTUS_PCR_MINER_RECOVERY"},
+			Usage:   "run the miner recovery job",
+			Value:   false,
+		},
+		&cli.IntFlag{
+			Name:    "miner-recovery-period",
+			EnvVars: []string{"LOTUS_PCR_MINER_RECOVERY_PERIOD"},
+			Usage:   "interval between running miner recovery",
+			Value:   2880,
+		},
+		&cli.IntFlag{
+			Name:    "miner-recovery-cutoff",
+			EnvVars: []string{"LOTUS_PCR_MINER_RECOVERY_CUTOFF"},
+			Usage:   "maximum amount of FIL that can be sent to any one miner before refund percent is applied",
+			Value:   3000,
+		},
+		&cli.IntFlag{
+			Name:    "miner-recovery-bonus",
+			EnvVars: []string{"LOTUS_PCR_MINER_RECOVERY_BONUS"},
+			Usage:   "additional FIL to send to each miner",
+			Value:   5,
+		},
+		&cli.IntFlag{
+			Name:    "miner-recovery-refund-percent",
+			EnvVars: []string{"LOTUS_PCR_MINER_RECOVERY_REFUND_PERCENT"},
+			Usage:   "percent of refund to issue",
+			Value:   110,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -365,24 +410,33 @@ var runCmd = &cli.Command{
 			log.Fatal(err)
 		}
 
-		percentExtra := cctx.Int("percent-extra")
+		refundPercent := cctx.Int("refund-percent")
 		maxMessageQueue := cctx.Int("max-message-queue")
 		dryRun := cctx.Bool("dry-run")
 		preCommitEnabled := cctx.Bool("pre-commit")
 		proveCommitEnabled := cctx.Bool("prove-commit")
 		aggregateTipsets := cctx.Int("aggregate-tipsets")
+		minerRecoveryEnabled := cctx.Bool("miner-recovery")
+		minerRecoveryPeriod := abi.ChainEpoch(int64(cctx.Int("miner-recovery-period")))
+		minerRecoveryRefundPercent := cctx.Int("miner-recovery-refund-percent")
+		minerRecoveryCutoff := uint64(cctx.Int("miner-recovery-cutoff"))
+		minerRecoveryBonus := uint64(cctx.Int("miner-recovery-bonus"))
 
 		rf := &refunder{
-			api:                api,
-			wallet:             from,
-			percentExtra:       percentExtra,
-			dryRun:             dryRun,
-			preCommitEnabled:   preCommitEnabled,
-			proveCommitEnabled: proveCommitEnabled,
+			api:                        api,
+			wallet:                     from,
+			refundPercent:              refundPercent,
+			minerRecoveryRefundPercent: minerRecoveryRefundPercent,
+			minerRecoveryCutoff:        types.FromFil(minerRecoveryCutoff),
+			minerRecoveryBonus:         types.FromFil(minerRecoveryBonus),
+			dryRun:                     dryRun,
+			preCommitEnabled:           preCommitEnabled,
+			proveCommitEnabled:         proveCommitEnabled,
 		}
 
 		var refunds *MinersRefund = NewMinersRefund()
 		var rounds int = 0
+		nextMinerRecovery := r.MinerRecoveryHeight() + minerRecoveryPeriod
 
 		for tipset := range tipsetsCh {
 			refunds, err = rf.ProcessTipset(ctx, tipset, refunds)
@@ -390,14 +444,31 @@ var runCmd = &cli.Command{
 				return err
 			}
 
-			rounds = rounds + 1
-			if rounds < aggregateTipsets {
-				continue
-			}
-
 			refundTipset, err := api.ChainHead(ctx)
 			if err != nil {
 				return err
+			}
+
+			if minerRecoveryEnabled && refundTipset.Height() >= nextMinerRecovery {
+				recoveryRefund, err := rf.EnsureMinerMinimums(ctx, refundTipset, NewMinersRefund(), "")
+				if err != nil {
+					return err
+				}
+
+				if err := rf.Refund(ctx, "refund to recover miners", refundTipset, recoveryRefund, 0); err != nil {
+					return err
+				}
+
+				if err := r.SetMinerRecoveryHeight(tipset.Height()); err != nil {
+					return err
+				}
+
+				nextMinerRecovery = r.MinerRecoveryHeight() + minerRecoveryPeriod
+			}
+
+			rounds = rounds + 1
+			if rounds < aggregateTipsets {
+				continue
 			}
 
 			if err := rf.Refund(ctx, "refund stats", refundTipset, refunds, rounds); err != nil {
@@ -502,13 +573,16 @@ type refunderNodeApi interface {
 }
 
 type refunder struct {
-	api                refunderNodeApi
-	wallet             address.Address
-	percentExtra       int
-	dryRun             bool
-	preCommitEnabled   bool
-	proveCommitEnabled bool
-	threshold          big.Int
+	api                        refunderNodeApi
+	wallet                     address.Address
+	refundPercent              int
+	minerRecoveryRefundPercent int
+	minerRecoveryCutoff        big.Int
+	minerRecoveryBonus         big.Int
+	dryRun                     bool
+	preCommitEnabled           bool
+	proveCommitEnabled         bool
+	threshold                  big.Int
 }
 
 func (r *refunder) FindMiners(ctx context.Context, tipset *types.TipSet, refunds *MinersRefund, owner, worker, control bool) (*MinersRefund, error) {
@@ -601,7 +675,7 @@ func (r *refunder) EnsureMinerMinimums(ctx context.Context, tipset *types.TipSet
 
 	csvOut := csv.NewWriter(w)
 	defer csvOut.Flush()
-	if err := csvOut.Write([]string{"MinerID", "Sectors", "CombinedBalance", "ProposedSend"}); err != nil {
+	if err := csvOut.Write([]string{"MinerID", "FaultedSectors", "AvailableBalance", "ProposedRefund"}); err != nil {
 		return nil, err
 	}
 
@@ -644,37 +718,85 @@ func (r *refunder) EnsureMinerMinimums(ctx context.Context, tipset *types.TipSet
 			}
 		}
 
-		sectorInfo, err := r.api.StateMinerSectors(ctx, maddr, nil, false, tipset.Key())
+		faults, err := r.api.StateMinerFaults(ctx, maddr, tipset.Key())
 		if err != nil {
-			log.Errorw("failed to look up miner sectors", "err", err, "height", tipset.Height(), "key", tipset.Key(), "miner", maddr)
+			log.Errorw("failed to look up miner faults", "err", err, "height", tipset.Height(), "key", tipset.Key(), "miner", maddr)
 			continue
 		}
 
-		if len(sectorInfo) == 0 {
-			log.Debugw("skipping miner with zero sectors", "height", tipset.Height(), "key", tipset.Key(), "miner", maddr)
+		faultsCount, err := faults.Count()
+		if err != nil {
+			log.Errorw("failed to get count of faults", "err", err, "height", tipset.Height(), "key", tipset.Key(), "miner", maddr)
+			continue
+		}
+
+		if faultsCount == 0 {
+			log.Debugw("skipping miner with zero faults", "height", tipset.Height(), "key", tipset.Key(), "miner", maddr)
 			continue
 		}
 
 		totalAvailableBalance := big.Add(addrSum, minerAvailableBalance)
+		balanceCutoff := big.Mul(big.Div(big.NewIntUnsigned(faultsCount), big.NewInt(10)), big.NewIntUnsigned(build.FilecoinPrecision))
 
-		numSectorInfo := float64(len(sectorInfo))
-		filAmount := uint64(math.Ceil(math.Max(math.Log(numSectorInfo)*math.Sqrt(numSectorInfo)/4, 20)))
-		attoFilAmount := big.Mul(big.NewIntUnsigned(filAmount), big.NewIntUnsigned(build.FilecoinPrecision))
-
-		if totalAvailableBalance.GreaterThanEqual(attoFilAmount) {
-			log.Debugw("skipping over miner with total available balance larger than refund", "height", tipset.Height(), "key", tipset.Key(), "miner", maddr, "available_balance", totalAvailableBalance, "possible_refund", attoFilAmount)
+		if totalAvailableBalance.GreaterThan(balanceCutoff) {
+			log.Debugw(
+				"skipping over miner with total available balance larger than refund",
+				"height", tipset.Height(),
+				"key", tipset.Key(),
+				"miner", maddr,
+				"available_balance", totalAvailableBalance,
+				"balance_cutoff", balanceCutoff,
+				"faults_count", faultsCount,
+				"available_balance_fil", big.Div(totalAvailableBalance, big.NewIntUnsigned(build.FilecoinPrecision)).Int64(),
+				"balance_cutoff_fil", big.Div(balanceCutoff, big.NewIntUnsigned(build.FilecoinPrecision)).Int64(),
+			)
 			continue
 		}
 
-		refundValue := big.Sub(attoFilAmount, totalAvailableBalance)
+		refundValue := big.Sub(balanceCutoff, totalAvailableBalance)
+		if r.minerRecoveryRefundPercent > 0 {
+			refundValue = types.BigMul(types.BigDiv(refundValue, types.NewInt(100)), types.NewInt(uint64(r.minerRecoveryRefundPercent)))
+		}
+
+		refundValue = big.Add(refundValue, r.minerRecoveryBonus)
+
+		if refundValue.GreaterThan(r.minerRecoveryCutoff) {
+			log.Infow(
+				"skipping over miner with refund greater than refund cutoff",
+				"height", tipset.Height(),
+				"key", tipset.Key(),
+				"miner", maddr,
+				"available_balance", totalAvailableBalance,
+				"balance_cutoff", balanceCutoff,
+				"faults_count", faultsCount,
+				"refund", refundValue,
+				"available_balance_fil", big.Div(totalAvailableBalance, big.NewIntUnsigned(build.FilecoinPrecision)).Int64(),
+				"balance_cutoff_fil", big.Div(balanceCutoff, big.NewIntUnsigned(build.FilecoinPrecision)).Int64(),
+				"refund_fil", big.Div(refundValue, big.NewIntUnsigned(build.FilecoinPrecision)).Int64(),
+			)
+			continue
+		}
 
 		refunds.Track(maddr, refundValue)
-		record := []string{maddr.String(), fmt.Sprintf("%d", len(sectorInfo)), totalAvailableBalance.String(), refundValue.String()}
+		record := []string{
+			maddr.String(),
+			fmt.Sprintf("%d", faultsCount),
+			big.Div(totalAvailableBalance, big.NewIntUnsigned(build.FilecoinPrecision)).String(),
+			big.Div(refundValue, big.NewIntUnsigned(build.FilecoinPrecision)).String(),
+		}
 		if err := csvOut.Write(record); err != nil {
 			return nil, err
 		}
 
-		log.Debugw("processing miner", "miner", maddr, "sectors", len(sectorInfo), "available_balance", totalAvailableBalance, "refund", refundValue)
+		log.Debugw(
+			"processing miner",
+			"miner", maddr,
+			"faults_count", faultsCount,
+			"available_balance", totalAvailableBalance,
+			"refund", refundValue,
+			"available_balance_fil", big.Div(totalAvailableBalance, big.NewIntUnsigned(build.FilecoinPrecision)).Int64(),
+			"refund_fil", big.Div(refundValue, big.NewIntUnsigned(build.FilecoinPrecision)).Int64(),
+		)
 	}
 
 	return refunds, nil
@@ -794,17 +916,36 @@ func (r *refunder) ProcessTipset(ctx context.Context, tipset *types.TipSet, refu
 			continue
 		}
 
-		if r.percentExtra > 0 {
-			refundValue = types.BigAdd(refundValue, types.BigMul(types.BigDiv(refundValue, types.NewInt(100)), types.NewInt(uint64(r.percentExtra))))
+		if r.refundPercent > 0 {
+			refundValue = types.BigMul(types.BigDiv(refundValue, types.NewInt(100)), types.NewInt(uint64(r.refundPercent)))
 		}
 
-		log.Debugw("processing message", "method", messageMethod, "cid", msg.Cid, "from", m.From, "to", m.To, "value", m.Value, "gas_fee_cap", m.GasFeeCap, "gas_premium", m.GasPremium, "gas_used", recps[i].GasUsed, "refund", refundValue)
+		log.Debugw(
+			"processing message",
+			"method", messageMethod,
+			"cid", msg.Cid,
+			"from", m.From,
+			"to", m.To,
+			"value", m.Value,
+			"gas_fee_cap", m.GasFeeCap,
+			"gas_premium", m.GasPremium,
+			"gas_used", recps[i].GasUsed,
+			"refund", refundValue,
+			"refund_fil", big.Div(refundValue, big.NewIntUnsigned(build.FilecoinPrecision)).Int64(),
+		)
 
 		refunds.Track(m.From, refundValue)
 		tipsetRefunds.Track(m.From, refundValue)
 	}
 
-	log.Infow("tipset stats", "height", tipset.Height(), "key", tipset.Key(), "total_refunds", tipsetRefunds.TotalRefunds(), "messages_processed", tipsetRefunds.Count())
+	log.Infow(
+		"tipset stats",
+		"height", tipset.Height(),
+		"key", tipset.Key(),
+		"total_refunds", tipsetRefunds.TotalRefunds(),
+		"total_refunds_fil", big.Div(tipsetRefunds.TotalRefunds(), big.NewIntUnsigned(build.FilecoinPrecision)).Int64(),
+		"messages_processed", tipsetRefunds.Count(),
+	)
 
 	return refunds, nil
 }
@@ -867,13 +1008,24 @@ func (r *refunder) Refund(ctx context.Context, name string, tipset *types.TipSet
 		refundSum = types.BigAdd(refundSum, msg.Value)
 	}
 
-	log.Infow(name, "tipsets_processed", rounds, "height", tipset.Height(), "key", tipset.Key(), "messages_sent", len(messages)-failures, "refund_sum", refundSum, "messages_failures", failures, "messages_processed", refunds.Count())
+	log.Infow(
+		name,
+		"tipsets_processed", rounds,
+		"height", tipset.Height(),
+		"key", tipset.Key(),
+		"messages_sent", len(messages)-failures,
+		"refund_sum", refundSum,
+		"refund_sum_fil", big.Div(refundSum, big.NewIntUnsigned(build.FilecoinPrecision)).Int64(),
+		"messages_failures", failures,
+		"messages_processed", refunds.Count(),
+	)
 	return nil
 }
 
 type Repo struct {
-	last abi.ChainEpoch
-	path string
+	lastHeight              abi.ChainEpoch
+	lastMinerRecoveryHeight abi.ChainEpoch
+	path                    string
 }
 
 func NewRepo(path string) (*Repo, error) {
@@ -883,8 +1035,9 @@ func NewRepo(path string) (*Repo, error) {
 	}
 
 	return &Repo{
-		last: 0,
-		path: path,
+		lastHeight:              0,
+		lastMinerRecoveryHeight: 0,
+		path:                    path,
 	}, nil
 }
 
@@ -915,43 +1068,66 @@ func (r *Repo) init() error {
 	return nil
 }
 
-func (r *Repo) Open() (err error) {
-	if err = r.init(); err != nil {
-		return
+func (r *Repo) Open() error {
+	if err := r.init(); err != nil {
+		return err
 	}
 
-	var f *os.File
+	if err := r.loadHeight(); err != nil {
+		return err
+	}
 
-	f, err = os.OpenFile(filepath.Join(r.path, "height"), os.O_RDWR|os.O_CREATE, 0644)
+	if err := r.loadMinerRecoveryHeight(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func loadChainEpoch(fn string) (abi.ChainEpoch, error) {
+	f, err := os.OpenFile(fn, os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
-		return
+		return 0, err
 	}
 	defer func() {
 		err = f.Close()
 	}()
 
-	var raw []byte
-
-	raw, err = ioutil.ReadAll(f)
+	raw, err := ioutil.ReadAll(f)
 	if err != nil {
-		return
+		return 0, err
 	}
 
 	height, err := strconv.Atoi(string(bytes.TrimSpace(raw)))
 	if err != nil {
-		return
+		return 0, err
 	}
 
-	r.last = abi.ChainEpoch(height)
-	return
+	return abi.ChainEpoch(height), nil
+}
+
+func (r *Repo) loadHeight() error {
+	var err error
+	r.lastHeight, err = loadChainEpoch(filepath.Join(r.path, "height"))
+	return err
+}
+
+func (r *Repo) loadMinerRecoveryHeight() error {
+	var err error
+	r.lastMinerRecoveryHeight, err = loadChainEpoch(filepath.Join(r.path, "miner_recovery_height"))
+	return err
 }
 
 func (r *Repo) Height() abi.ChainEpoch {
-	return r.last
+	return r.lastHeight
+}
+
+func (r *Repo) MinerRecoveryHeight() abi.ChainEpoch {
+	return r.lastMinerRecoveryHeight
 }
 
 func (r *Repo) SetHeight(last abi.ChainEpoch) (err error) {
-	r.last = last
+	r.lastHeight = last
 	var f *os.File
 	f, err = os.OpenFile(filepath.Join(r.path, "height"), os.O_RDWR, 0644)
 	if err != nil {
@@ -962,7 +1138,26 @@ func (r *Repo) SetHeight(last abi.ChainEpoch) (err error) {
 		err = f.Close()
 	}()
 
-	if _, err = fmt.Fprintf(f, "%d", r.last); err != nil {
+	if _, err = fmt.Fprintf(f, "%d", r.lastHeight); err != nil {
+		return
+	}
+
+	return
+}
+
+func (r *Repo) SetMinerRecoveryHeight(last abi.ChainEpoch) (err error) {
+	r.lastMinerRecoveryHeight = last
+	var f *os.File
+	f, err = os.OpenFile(filepath.Join(r.path, "miner_recovery_height"), os.O_RDWR, 0644)
+	if err != nil {
+		return
+	}
+
+	defer func() {
+		err = f.Close()
+	}()
+
+	if _, err = fmt.Fprintf(f, "%d", r.lastMinerRecoveryHeight); err != nil {
 		return
 	}
 
