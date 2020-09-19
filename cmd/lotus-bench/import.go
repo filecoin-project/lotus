@@ -134,6 +134,9 @@ var importBenchCmd = &cli.Command{
 			log.Info("done calling CollectGarbage on main ds")
 		}
 		bs := blockstore.NewBlockstore(bds)
+		cacheOpts := blockstore.DefaultCacheOpts()
+		cacheOpts.HasBloomFilterSize = 0
+
 		cbs, err := blockstore.CachedBlockstore(context.TODO(), bs, blockstore.DefaultCacheOpts())
 		if err != nil {
 			return err
