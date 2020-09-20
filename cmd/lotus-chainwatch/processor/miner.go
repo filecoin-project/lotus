@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -166,44 +167,69 @@ func (p *Processor) processMiners(ctx context.Context, minerTips map[types.TipSe
 	}()
 
 	var out []minerActorInfo
-	// TODO add parallel calls if this becomes slow
+	grp, _ := errgroup.WithContext(ctx)
+	var lk sync.Mutex
+
 	for tipset, miners := range minerTips {
-		// get the power actors claims map
-		minersClaims, err := getPowerActorClaimsMap(ctx, p.node, tipset)
-		if err != nil {
-			return nil, err
-		}
+		tipset := tipset
+		miners := miners
 
-		// Get miner raw and quality power
-		for _, act := range miners {
-			var mi minerActorInfo
-			mi.common = act
-
-			var claim power.Claim
-			// get miner claim from power actors claim map and store if found, else the miner had no claim at
-			// this tipset
-			found, err := minersClaims.Get(abi.AddrKey(act.addr), &claim)
+		grp.Go(func() error {
+			// get the power actors claims map
+			minersClaims, err := getPowerActorClaimsMap(ctx, p.node, tipset)
 			if err != nil {
-				return nil, err
-			}
-			if found {
-				mi.qalPower = claim.QualityAdjPower
-				mi.rawPower = claim.RawBytePower
+				//return nil, err
+				return err
 			}
 
-			// Get the miner state info
-			astb, err := p.node.ChainReadObj(ctx, act.act.Head)
-			if err != nil {
-				log.Warnw("failed to find miner actor state", "address", act.addr, "error", err)
-				continue
+			innerGrp, _ := errgroup.WithContext(ctx)
+			// Get miner raw and quality power
+			for _, act := range miners {
+				act := act
+
+				innerGrp.Go(func() error {
+					var mi minerActorInfo
+					mi.common = act
+
+					var claim power.Claim
+					// get miner claim from power actors claim map and store if found, else the miner had no claim at
+					// this tipset
+					found, err := minersClaims.Get(abi.AddrKey(act.addr), &claim)
+					if err != nil {
+						//return nil, err
+						return err
+					}
+					if found {
+						mi.qalPower = claim.QualityAdjPower
+						mi.rawPower = claim.RawBytePower
+					}
+
+					// Get the miner state info
+					astb, err := p.node.ChainReadObj(ctx, act.act.Head)
+					if err != nil {
+						log.Warnw("failed to find miner actor state", "address", act.addr, "error", err)
+						//continue
+						return nil
+					}
+					if err := mi.state.UnmarshalCBOR(bytes.NewReader(astb)); err != nil {
+						//return nil, err
+						return err
+					}
+
+					lk.Lock()
+					out = append(out, mi)
+					lk.Unlock()
+
+					return nil
+				})
 			}
-			if err := mi.state.UnmarshalCBOR(bytes.NewReader(astb)); err != nil {
-				return nil, err
-			}
-			out = append(out, mi)
-		}
+
+			return innerGrp.Wait()
+		})
 	}
-	return out, nil
+
+	//return out, nil
+	return out, grp.Wait()
 }
 
 func (p *Processor) persistMiners(ctx context.Context, miners []minerActorInfo) error {
