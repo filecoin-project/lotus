@@ -163,9 +163,9 @@ func (s *state0) LoadSectorsFromSet(filter *bitfield.BitField, filterOut bool) (
 		return nil, err
 	}
 
-	var v cbg.Deferred
-	if err := a.ForEach(&v, func(i int64) error {
-		if filter != nil {
+	if filter != nil {
+		var v cbg.Deferred
+		if err := a.ForEach(&v, func(i int64) error {
 			set, err := filter.IsSet(uint64(i))
 			if err != nil {
 				return xerrors.Errorf("filter check error: %w", err)
@@ -176,10 +176,10 @@ func (s *state0) LoadSectorsFromSet(filter *bitfield.BitField, filterOut bool) (
 					return xerrors.Errorf("filtering error: %w", err)
 				}
 			}
+			return nil
+		}); err != nil {
+			return nil, err
 		}
-		return nil
-	}); err != nil {
-		return nil, err
 	}
 
 	return a, nil

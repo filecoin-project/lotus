@@ -197,12 +197,21 @@ func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *S
 		return nil, xerrors.Errorf("failed to load miner actor state: %w", err)
 	}
 
-	// TODO (!!): This was partition.Sectors-partition.Faults originally, which was likely very wrong, and will need to be an upgrade
-	//  ^ THE CURRENT THING HERE WON'T SYNC v
+	// TODO (!!): Actor Update: Make this active sectors
 
-	provingSectors, err := miner.AllPartSectors(mas, miner.Partition.ActiveSectors)
+	allSectors, err := miner.AllPartSectors(mas, miner.Partition.AllSectors)
 	if err != nil {
-		return nil, xerrors.Errorf("merge partition proving sets: %w", err)
+		return nil, xerrors.Errorf("get all sectors: %w", err)
+	}
+
+	faultySectors, err := miner.AllPartSectors(mas, miner.Partition.FaultySectors)
+	if err != nil {
+		return nil, xerrors.Errorf("get faulty sectors: %w", err)
+	}
+
+	provingSectors, err := bitfield.SubtractBitField(allSectors, faultySectors) // TODO: This is wrong, as it can contain faaults, change to just ActiveSectors in an upgrade
+	if err != nil {
+		return nil, xerrors.Errorf("calc proving sectors: %w", err)
 	}
 
 	numProvSect, err := provingSectors.Count()
@@ -240,7 +249,8 @@ func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *S
 		return nil, xerrors.Errorf("generating winning post challenges: %w", err)
 	}
 
-	sectors, err := mas.LoadSectorsFromSet(&provingSectors, false)
+	// we don't need to filter here (and it's **very** slow)
+	sectors, err := mas.LoadSectorsFromSet(nil, false)
 	if err != nil {
 		return nil, xerrors.Errorf("loading proving sectors: %w", err)
 	}
