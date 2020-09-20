@@ -2,6 +2,7 @@ package miner
 
 import (
 	"github.com/filecoin-project/go-state-types/dline"
+	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
@@ -81,9 +82,30 @@ type Partition interface {
 	ActiveSectors() (bitfield.BitField, error)
 }
 
-type SectorOnChainInfo = miner0.SectorOnChainInfo
+type SectorOnChainInfo struct {
+	SectorNumber          abi.SectorNumber
+	SealProof             abi.RegisteredSealProof
+	SealedCID             cid.Cid
+	DealIDs               []abi.DealID
+	Activation            abi.ChainEpoch
+	Expiration            abi.ChainEpoch
+	DealWeight            abi.DealWeight
+	VerifiedDealWeight    abi.DealWeight
+	InitialPledge         abi.TokenAmount
+	ExpectedDayReward     abi.TokenAmount
+	ExpectedStoragePledge abi.TokenAmount
+}
+
 type SectorPreCommitInfo = miner0.SectorPreCommitInfo
-type SectorPreCommitOnChainInfo = miner0.SectorPreCommitOnChainInfo
+
+type SectorPreCommitOnChainInfo struct {
+	Info               SectorPreCommitInfo
+	PreCommitDeposit   abi.TokenAmount
+	PreCommitEpoch     abi.ChainEpoch
+	DealWeight         abi.DealWeight
+	VerifiedDealWeight abi.DealWeight
+}
+
 type PoStPartition = miner0.PoStPartition
 type RecoveryDeclaration = miner0.RecoveryDeclaration
 type FaultDeclaration = miner0.FaultDeclaration

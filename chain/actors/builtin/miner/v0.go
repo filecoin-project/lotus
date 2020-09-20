@@ -62,7 +62,8 @@ func (s *state0) GetSector(num abi.SectorNumber) (*SectorOnChainInfo, error) {
 		return nil, err
 	}
 
-	return info, nil
+	ret := fromV0SectorOnChainInfo(*info)
+	return &ret, nil
 }
 
 func (s *state0) FindSector(num abi.SectorNumber) (*SectorLocation, error) {
@@ -154,7 +155,8 @@ func (s *state0) GetPrecommittedSector(num abi.SectorNumber) (*SectorPreCommitOn
 		return nil, err
 	}
 
-	return info, nil
+	ret := fromV0SectorPreCommitOnChainInfo(*info)
+	return &ret, nil
 }
 
 func (s *state0) LoadSectorsFromSet(filter *bitfield.BitField, filterOut bool) (adt.Array, error) {
@@ -279,7 +281,11 @@ func (s *state0) sectors() (adt.Array, error) {
 func (s *state0) decodeSectorOnChainInfo(val *cbg.Deferred) (SectorOnChainInfo, error) {
 	var si miner0.SectorOnChainInfo
 	err := si.UnmarshalCBOR(bytes.NewReader(val.Raw))
-	return si, err
+	if err != nil {
+		return SectorOnChainInfo{}, err
+	}
+
+	return fromV0SectorOnChainInfo(si), nil
 }
 
 func (s *state0) precommits() (adt.Map, error) {
@@ -289,7 +295,11 @@ func (s *state0) precommits() (adt.Map, error) {
 func (s *state0) decodeSectorPreCommitOnChainInfo(val *cbg.Deferred) (SectorPreCommitOnChainInfo, error) {
 	var sp miner0.SectorPreCommitOnChainInfo
 	err := sp.UnmarshalCBOR(bytes.NewReader(val.Raw))
-	return sp, err
+	if err != nil {
+		return SectorPreCommitOnChainInfo{}, err
+	}
+
+	return fromV0SectorPreCommitOnChainInfo(sp), nil
 }
 
 func (d *deadline0) LoadPartition(idx uint64) (Partition, error) {
@@ -335,4 +345,12 @@ func (p *partition0) FaultySectors() (bitfield.BitField, error) {
 
 func (p *partition0) RecoveringSectors() (bitfield.BitField, error) {
 	return p.Partition.Recoveries, nil
+}
+
+func fromV0SectorOnChainInfo(v0 miner0.SectorOnChainInfo) SectorOnChainInfo {
+	return (SectorOnChainInfo)(v0)
+}
+
+func fromV0SectorPreCommitOnChainInfo(v0 miner0.SectorPreCommitOnChainInfo) SectorPreCommitOnChainInfo {
+	return (SectorPreCommitOnChainInfo)(v0)
 }

@@ -26,7 +26,7 @@ func (s *state0) TotalLocked() (abi.TokenAmount, error) {
 func (s *state0) BalancesChanged(otherState State) bool {
 	otherState0, ok := otherState.(*state0)
 	if !ok {
-		// there's no way to compare differnt versions of the state, so let's
+		// there's no way to compare different versions of the state, so let's
 		// just say that means the state of balances has changed
 		return true
 	}
@@ -36,7 +36,7 @@ func (s *state0) BalancesChanged(otherState State) bool {
 func (s *state0) StatesChanged(otherState State) bool {
 	otherState0, ok := otherState.(*state0)
 	if !ok {
-		// there's no way to compare differnt versions of the state, so let's
+		// there's no way to compare different versions of the state, so let's
 		// just say that means the state of balances has changed
 		return true
 	}
@@ -54,7 +54,7 @@ func (s *state0) States() (DealStates, error) {
 func (s *state0) ProposalsChanged(otherState State) bool {
 	otherState0, ok := otherState.(*state0)
 	if !ok {
-		// there's no way to compare differnt versions of the state, so let's
+		// there's no way to compare different versions of the state, so let's
 		// just say that means the state of balances has changed
 		return true
 	}
