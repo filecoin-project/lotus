@@ -31,4 +31,7 @@ type State interface {
 	cbor.Marshaler
 
 	VerifiedClientDataCap(address.Address) (bool, abi.StoragePower, error)
+	VerifierDataCap(address.Address) (bool, abi.StoragePower, error)
+	ForEachVerifier(func(addr address.Address, dcap abi.StoragePower) error) error
+	ForEachClient(func(addr address.Address, dcap abi.StoragePower) error) error
 }
