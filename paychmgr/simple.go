@@ -13,7 +13,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
+	init0 "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	paych0 "github.com/filecoin-project/specs-actors/actors/builtin/paych"
 
 	"github.com/filecoin-project/lotus/api"
@@ -387,7 +387,7 @@ func (ca *channelAccessor) createPaych(ctx context.Context, amt types.BigInt) (c
 		return cid.Undef, aerr
 	}
 
-	enc, aerr := actors.SerializeParams(&init_.ExecParams{
+	enc, aerr := actors.SerializeParams(&init0.ExecParams{
 		CodeCID:           builtin.PaymentChannelActorCodeID,
 		ConstructorParams: params,
 	})
@@ -452,7 +452,7 @@ func (ca *channelAccessor) waitPaychCreateMsg(channelID string, mcid cid.Cid) er
 		return err
 	}
 
-	var decodedReturn init_.ExecReturn
+	var decodedReturn init0.ExecReturn
 	err = decodedReturn.UnmarshalCBOR(bytes.NewReader(mwait.Receipt.Return))
 	if err != nil {
 		log.Error(err)

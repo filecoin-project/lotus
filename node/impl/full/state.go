@@ -7,7 +7,9 @@ import (
 
 	builtin2 "github.com/filecoin-project/lotus/chain/actors/builtin"
 
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 
@@ -24,8 +26,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
@@ -1025,7 +1025,7 @@ func (a *StateAPI) StateMinerAvailableBalance(ctx context.Context, maddr address
 // Returns zero if there is no entry in the data cap table for the
 // address.
 func (a *StateAPI) StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error) {
-	act, err := a.StateGetActor(ctx, builtin.VerifiedRegistryActorAddr, tsk)
+	act, err := a.StateGetActor(ctx, builtin0.VerifiedRegistryActorAddr, tsk)
 	if err != nil {
 		return nil, err
 	}
@@ -1063,12 +1063,12 @@ func (a *StateAPI) StateDealProviderCollateralBounds(ctx context.Context, size a
 		return api.DealCollateralBounds{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	pact, err := a.StateGetActor(ctx, builtin.StoragePowerActorAddr, tsk)
+	pact, err := a.StateGetActor(ctx, builtin0.StoragePowerActorAddr, tsk)
 	if err != nil {
 		return api.DealCollateralBounds{}, xerrors.Errorf("failed to load power actor: %w", err)
 	}
 
-	ract, err := a.StateGetActor(ctx, builtin.RewardActorAddr, tsk)
+	ract, err := a.StateGetActor(ctx, builtin0.RewardActorAddr, tsk)
 	if err != nil {
 		return api.DealCollateralBounds{}, xerrors.Errorf("failed to load reward actor: %w", err)
 	}

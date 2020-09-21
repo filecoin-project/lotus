@@ -13,8 +13,9 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
+
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+	paych0 "github.com/filecoin-project/specs-actors/actors/builtin/paych"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -38,9 +39,9 @@ type API struct {
 type settlerAPI interface {
 	PaychList(context.Context) ([]address.Address, error)
 	PaychStatus(context.Context, address.Address) (*api.PaychStatus, error)
-	PaychVoucherCheckSpendable(context.Context, address.Address, *paych.SignedVoucher, []byte, []byte) (bool, error)
-	PaychVoucherList(context.Context, address.Address) ([]*paych.SignedVoucher, error)
-	PaychVoucherSubmit(context.Context, address.Address, *paych.SignedVoucher, []byte, []byte) (cid.Cid, error)
+	PaychVoucherCheckSpendable(context.Context, address.Address, *paych0.SignedVoucher, []byte, []byte) (bool, error)
+	PaychVoucherList(context.Context, address.Address) ([]*paych0.SignedVoucher, error)
+	PaychVoucherSubmit(context.Context, address.Address, *paych0.SignedVoucher, []byte, []byte) (cid.Cid, error)
 	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64) (*api.MsgLookup, error)
 }
 
@@ -85,7 +86,7 @@ func (pcs *paymentChannelSettler) messageHandler(msg *types.Message, rec *types.
 		if err != nil {
 			return true, err
 		}
-		go func(voucher *paych.SignedVoucher, submitMessageCID cid.Cid) {
+		go func(voucher *paych0.SignedVoucher, submitMessageCID cid.Cid) {
 			defer wg.Done()
 			msgLookup, err := pcs.api.StateWaitMsg(pcs.ctx, submitMessageCID, build.MessageConfidence)
 			if err != nil {
@@ -106,7 +107,7 @@ func (pcs *paymentChannelSettler) revertHandler(ctx context.Context, ts *types.T
 
 func (pcs *paymentChannelSettler) matcher(msg *types.Message) (matchOnce bool, matched bool, err error) {
 	// Check if this is a settle payment channel message
-	if msg.Method != builtin.MethodsPaych.Settle {
+	if msg.Method != builtin0.MethodsPaych.Settle {
 		return false, false, nil
 	}
 	// Check if this payment channel is of concern to this node (i.e. tracked in payment channel store),

@@ -29,3 +29,7 @@ func (a *Actor) IsStorageMinerActor() bool {
 func (a *Actor) IsMultisigActor() bool {
 	return a.Code == builtin0.MultisigActorCodeID
 }
+
+func (a *Actor) IsPaymentChannelActor() bool {
+	return a.Code == builtin0.PaymentChannelActorCodeID
+}

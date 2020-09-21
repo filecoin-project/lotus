@@ -9,7 +9,8 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
+
+	paych0 "github.com/filecoin-project/specs-actors/actors/builtin/paych"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -70,10 +71,10 @@ func (a *PaychAPI) PaychNewPayment(ctx context.Context, from, to address.Address
 		return nil, err
 	}
 
-	svs := make([]*paych.SignedVoucher, len(vouchers))
+	svs := make([]*paych0.SignedVoucher, len(vouchers))
 
 	for i, v := range vouchers {
-		sv, err := a.PaychMgr.CreateVoucher(ctx, ch.Channel, paych.SignedVoucher{
+		sv, err := a.PaychMgr.CreateVoucher(ctx, ch.Channel, paych0.SignedVoucher{
 			Amount: v.Amount,
 			Lane:   lane,
 
@@ -122,15 +123,15 @@ func (a *PaychAPI) PaychCollect(ctx context.Context, addr address.Address) (cid.
 	return a.PaychMgr.Collect(ctx, addr)
 }
 
-func (a *PaychAPI) PaychVoucherCheckValid(ctx context.Context, ch address.Address, sv *paych.SignedVoucher) error {
+func (a *PaychAPI) PaychVoucherCheckValid(ctx context.Context, ch address.Address, sv *paych0.SignedVoucher) error {
 	return a.PaychMgr.CheckVoucherValid(ctx, ch, sv)
 }
 
-func (a *PaychAPI) PaychVoucherCheckSpendable(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (bool, error) {
+func (a *PaychAPI) PaychVoucherCheckSpendable(ctx context.Context, ch address.Address, sv *paych0.SignedVoucher, secret []byte, proof []byte) (bool, error) {
 	return a.PaychMgr.CheckVoucherSpendable(ctx, ch, sv, secret, proof)
 }
 
-func (a *PaychAPI) PaychVoucherAdd(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, proof []byte, minDelta types.BigInt) (types.BigInt, error) {
+func (a *PaychAPI) PaychVoucherAdd(ctx context.Context, ch address.Address, sv *paych0.SignedVoucher, proof []byte, minDelta types.BigInt) (types.BigInt, error) {
 	return a.PaychMgr.AddVoucherInbound(ctx, ch, sv, proof, minDelta)
 }
 
@@ -142,16 +143,16 @@ func (a *PaychAPI) PaychVoucherAdd(ctx context.Context, ch address.Address, sv *
 // If there are insufficient funds in the channel to create the voucher,
 // returns a nil voucher and the shortfall.
 func (a *PaychAPI) PaychVoucherCreate(ctx context.Context, pch address.Address, amt types.BigInt, lane uint64) (*api.VoucherCreateResult, error) {
-	return a.PaychMgr.CreateVoucher(ctx, pch, paych.SignedVoucher{Amount: amt, Lane: lane})
+	return a.PaychMgr.CreateVoucher(ctx, pch, paych0.SignedVoucher{Amount: amt, Lane: lane})
 }
 
-func (a *PaychAPI) PaychVoucherList(ctx context.Context, pch address.Address) ([]*paych.SignedVoucher, error) {
+func (a *PaychAPI) PaychVoucherList(ctx context.Context, pch address.Address) ([]*paych0.SignedVoucher, error) {
 	vi, err := a.PaychMgr.ListVouchers(ctx, pch)
 	if err != nil {
 		return nil, err
 	}
 
-	out := make([]*paych.SignedVoucher, len(vi))
+	out := make([]*paych0.SignedVoucher, len(vi))
 	for k, v := range vi {
 		out[k] = v.Voucher
 	}
@@ -159,6 +160,6 @@ func (a *PaychAPI) PaychVoucherList(ctx context.Context, pch address.Address) ([
 	return out, nil
 }
 
-func (a *PaychAPI) PaychVoucherSubmit(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (cid.Cid, error) {
+func (a *PaychAPI) PaychVoucherSubmit(ctx context.Context, ch address.Address, sv *paych0.SignedVoucher, secret []byte, proof []byte) (cid.Cid, error) {
 	return a.PaychMgr.SubmitVoucher(ctx, ch, sv, secret, proof)
 }
