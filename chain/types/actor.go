@@ -5,7 +5,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin"
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 )
 
 var ErrActorNotFound = errors.New("actor not found")
@@ -19,5 +19,13 @@ type Actor struct {
 }
 
 func (a *Actor) IsAccountActor() bool {
-	return a.Code == builtin.AccountActorCodeID
+	return a.Code == builtin0.AccountActorCodeID
+}
+
+func (a *Actor) IsStorageMinerActor() bool {
+	return a.Code == builtin0.StorageMinerActorCodeID
+}
+
+func (a *Actor) IsMultisigActor() bool {
+	return a.Code == builtin0.MultisigActorCodeID
 }

@@ -89,7 +89,7 @@ var chainBalanceCmd = &cli.Command{
 				Type:    string(act.Code.Hash()[2:]),
 			}
 
-			if miner.Is(act.Code) {
+			if act.IsStorageMinerActor() {
 				pow, err := api.StateMinerPower(ctx, addr, tsk)
 				if err != nil {
 					return xerrors.Errorf("failed to get power: %w", err)
@@ -191,7 +191,7 @@ var chainBalanceStateCmd = &cli.Command{
 				PreCommits:    types.FIL(big.NewInt(0)),
 			}
 
-			if minerInfo && miner.Is(act.Code) {
+			if minerInfo && act.IsStorageMinerActor() {
 				pow, _, _, err := stmgr.GetPowerRaw(ctx, sm, sroot, addr)
 				if err != nil {
 					return xerrors.Errorf("failed to get power: %w", err)

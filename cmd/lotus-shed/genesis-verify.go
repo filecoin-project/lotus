@@ -14,16 +14,17 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
+
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/account"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/blockstore"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	saacc "github.com/filecoin-project/specs-actors/actors/builtin/account"
-	saminer "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	samsig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 )
 
 type addrInfo struct {
@@ -90,36 +91,41 @@ var genesisVerifyCmd = &cli.Command{
 		kminers := make(map[address.Address]minerInfo)
 
 		ctx := context.TODO()
+		store := adt.WrapStore(ctx, cst)
 
 		if err := stree.ForEach(func(addr address.Address, act *types.Actor) error {
-			switch act.Code {
-			case builtin.StorageMinerActorCodeID:
-				var st saminer.State
-				if err := cst.Get(ctx, act.Head, &st); err != nil {
-					return err
+			switch {
+			case act.IsStorageMinerActor():
+				_, err := miner.Load(store, act)
+				if err != nil {
+					return xerrors.Errorf("miner actor: %w", err)
 				}
-
+				// TODO: actually verify something here?
 				kminers[addr] = minerInfo{}
-			case builtin.MultisigActorCodeID:
-				var st samsig.State
-				if err := cst.Get(ctx, act.Head, &st); err != nil {
+			case act.IsMultisigActor():
+				st, err := multisig.Load(store, act)
+				if err != nil {
 					return xerrors.Errorf("multisig actor: %w", err)
 				}
 
 				kmultisigs[addr] = msigInfo{
 					Balance:   types.FIL(act.Balance),
-					Signers:   st.Signers,
-					Threshold: st.NumApprovalsThreshold,
+					Signers:   st.Signers(),
+					Threshold: st.Threshold(),
 				}
 				msigAddrs = append(msigAddrs, addr)
-			case builtin.AccountActorCodeID:
-				var st saacc.State
-				if err := cst.Get(ctx, act.Head, &st); err != nil {
-					log.Warn(xerrors.Errorf("account actor %s: %w", addr, err))
+			case act.IsAccountActor():
+				st, err := account.Load(store, act)
+				if err != nil {
+					// TODO: magik6k: this _used_ to log instead of failing, why?
+					return xerrors.Errorf("account actor %s: %w", addr, err)
 				}
-
+				pkaddr, err := st.PubkeyAddress()
+				if err != nil {
+					return xerrors.Errorf("failed to get actor pk address %s: %w", addr, err)
+				}
 				kaccounts[addr] = addrInfo{
-					Key:     st.Address,
+					Key:     pkaddr,
 					Balance: types.FIL(act.Balance.Copy()),
 				}
 				accAddrs = append(accAddrs, addr)

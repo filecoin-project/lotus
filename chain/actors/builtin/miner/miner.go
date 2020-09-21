@@ -18,15 +18,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-// Returns true if the specified actor code ID is a miner actor.
-func Is(code cid.Cid) bool {
-	switch code {
-	case builtin0.StorageMinerActorCodeID:
-		return true
-	}
-	return false
-}
-
 func Load(store adt.Store, act *types.Actor) (st State, err error) {
 	switch act.Code {
 	case builtin0.StorageMinerActorCodeID:
