@@ -5,8 +5,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
-
 	"github.com/filecoin-project/go-bitfield"
 
 	"github.com/filecoin-project/go-address"
@@ -14,11 +12,14 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/ipfs/go-cid"
 
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
+
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -26,8 +27,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/journal"
-
-	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 )
 
 func (s *WindowPoStScheduler) failPost(err error, deadline *dline.Info) {
@@ -219,7 +218,7 @@ func (s *WindowPoStScheduler) checkNextRecoveries(ctx context.Context, dlIdx uin
 	msg := &types.Message{
 		To:     s.actor,
 		From:   s.worker,
-		Method: builtin.MethodsMiner.DeclareFaultsRecovered,
+		Method: builtin0.MethodsMiner.DeclareFaultsRecovered,
 		Params: enc,
 		Value:  types.NewInt(0),
 	}
@@ -298,7 +297,7 @@ func (s *WindowPoStScheduler) checkNextFaults(ctx context.Context, dlIdx uint64,
 	msg := &types.Message{
 		To:     s.actor,
 		From:   s.worker,
-		Method: builtin.MethodsMiner.DeclareFaults,
+		Method: builtin0.MethodsMiner.DeclareFaults,
 		Params: enc,
 		Value:  types.NewInt(0), // TODO: Is there a fee?
 	}
@@ -555,7 +554,7 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *ty
 
 func (s *WindowPoStScheduler) batchPartitions(partitions []api.Partition) ([][]api.Partition, error) {
 	// Get the number of sectors allowed in a partition, for this proof size
-	sectorsPerPartition, err := builtin.PoStProofWindowPoStPartitionSectors(s.proofType)
+	sectorsPerPartition, err := builtin0.PoStProofWindowPoStPartitionSectors(s.proofType)
 	if err != nil {
 		return nil, xerrors.Errorf("getting sectors per partition: %w", err)
 	}
@@ -647,7 +646,7 @@ func (s *WindowPoStScheduler) submitPost(ctx context.Context, proof *miner.Submi
 	msg := &types.Message{
 		To:     s.actor,
 		From:   s.worker,
-		Method: builtin.MethodsMiner.SubmitWindowedPoSt,
+		Method: builtin0.MethodsMiner.SubmitWindowedPoSt,
 		Params: enc,
 		Value:  types.NewInt(0),
 	}

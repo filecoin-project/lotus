@@ -6,13 +6,13 @@ import (
 	"time"
 
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	proof0 "github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/go-state-types/dline"
 
 	"github.com/filecoin-project/go-bitfield"
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -235,9 +235,9 @@ func (wpp *StorageWpp) GenerateCandidates(ctx context.Context, randomness abi.Po
 	return cds, nil
 }
 
-func (wpp *StorageWpp) ComputeProof(ctx context.Context, ssi []proof.SectorInfo, rand abi.PoStRandomness) ([]proof.PoStProof, error) {
+func (wpp *StorageWpp) ComputeProof(ctx context.Context, ssi []proof0.SectorInfo, rand abi.PoStRandomness) ([]proof0.PoStProof, error) {
 	if build.InsecurePoStValidation {
-		return []proof.PoStProof{{ProofBytes: []byte("valid proof")}}, nil
+		return []proof0.PoStProof{{ProofBytes: []byte("valid proof")}}, nil
 	}
 
 	log.Infof("Computing WinningPoSt ;%+v; %v", ssi, rand)

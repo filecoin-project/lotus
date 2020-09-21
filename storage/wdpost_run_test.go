@@ -16,10 +16,9 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
+	proof0 "github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	tutils "github.com/filecoin-project/specs-actors/support/testing"
 
 	"github.com/filecoin-project/lotus/api"
@@ -97,12 +96,12 @@ func (m *mockStorageMinerAPI) StateWaitMsg(ctx context.Context, cid cid.Cid, con
 type mockProver struct {
 }
 
-func (m *mockProver) GenerateWinningPoSt(context.Context, abi.ActorID, []proof.SectorInfo, abi.PoStRandomness) ([]proof.PoStProof, error) {
+func (m *mockProver) GenerateWinningPoSt(context.Context, abi.ActorID, []proof0.SectorInfo, abi.PoStRandomness) ([]proof0.PoStProof, error) {
 	panic("implement me")
 }
 
-func (m *mockProver) GenerateWindowPoSt(ctx context.Context, aid abi.ActorID, sis []proof.SectorInfo, pr abi.PoStRandomness) ([]proof.PoStProof, []abi.SectorID, error) {
-	return []proof.PoStProof{
+func (m *mockProver) GenerateWindowPoSt(ctx context.Context, aid abi.ActorID, sis []proof0.SectorInfo, pr abi.PoStRandomness) ([]proof0.PoStProof, []abi.SectorID, error) {
+	return []proof0.PoStProof{
 		{
 			PoStProof:  abi.RegisteredPoStProof_StackedDrgWindow2KiBV1,
 			ProofBytes: []byte("post-proof"),
@@ -131,7 +130,7 @@ func TestWDPostDoPost(t *testing.T) {
 	mockStgMinerAPI := newMockStorageMinerAPI()
 
 	// Get the number of sectors allowed in a partition for this proof type
-	sectorsPerPartition, err := builtin.PoStProofWindowPoStPartitionSectors(proofType)
+	sectorsPerPartition, err := builtin0.PoStProofWindowPoStPartitionSectors(proofType)
 	require.NoError(t, err)
 	// Work out the number of partitions that can be included in a message
 	// without exceeding the message sector limit
@@ -183,7 +182,7 @@ func TestWDPostDoPost(t *testing.T) {
 	// Read the window PoST messages
 	for i := 0; i < expectedMsgCount; i++ {
 		msg := <-mockStgMinerAPI.pushedMessages
-		require.Equal(t, builtin.MethodsMiner.SubmitWindowedPoSt, msg.Method)
+		require.Equal(t, builtin0.MethodsMiner.SubmitWindowedPoSt, msg.Method)
 		var params miner.SubmitWindowedPoStParams
 		err := params.UnmarshalCBOR(bytes.NewReader(msg.Params))
 		require.NoError(t, err)

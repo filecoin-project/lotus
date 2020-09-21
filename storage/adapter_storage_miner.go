@@ -14,7 +14,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
+
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
 
 	"github.com/filecoin-project/lotus/api"
@@ -146,10 +147,10 @@ func (s SealingAPIAdapter) StateComputeDataCommitment(ctx context.Context, maddr
 	}
 
 	ccmt := &types.Message{
-		To:     builtin.StorageMarketActorAddr,
+		To:     market.Address,
 		From:   maddr,
 		Value:  types.NewInt(0),
-		Method: builtin.MethodsMarket.ComputeDataCommitment,
+		Method: builtin0.MethodsMarket.ComputeDataCommitment,
 		Params: ccparams,
 	}
 	r, err := s.delegate.StateCall(ctx, ccmt, tsk)
