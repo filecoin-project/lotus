@@ -2,8 +2,6 @@ package cli
 
 import (
 	"bytes"
-	"context"
-	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"os"
@@ -12,21 +10,21 @@ import (
 	"text/tabwriter"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/go-address"
-	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
-	cid "github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	init0 "github.com/filecoin-project/specs-actors/actors/builtin/init"
+	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
+
 	"github.com/filecoin-project/lotus/api/apibstore"
 	"github.com/filecoin-project/lotus/build"
-	types "github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 var multisigCmd = &cli.Command{
@@ -146,7 +144,7 @@ var msigCreateCmd = &cli.Command{
 
 		// get address of newly created miner
 
-		var execreturn init_.ExecReturn
+		var execreturn init0.ExecReturn
 		if err := execreturn.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return)); err != nil {
 			return err
 		}
@@ -179,17 +177,9 @@ var msigInspectCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
+		store := adt.WrapStore(ctx, cbor.NewCborStore(apibstore.NewAPIBlockstore(api)))
+
 		maddr, err := address.NewFromString(cctx.Args().First())
-		if err != nil {
-			return err
-		}
-
-		act, err := api.StateGetActor(ctx, maddr, types.EmptyTSK)
-		if err != nil {
-			return err
-		}
-
-		obj, err := api.ChainReadObj(ctx, act.Head)
 		if err != nil {
 			return err
 		}
@@ -199,30 +189,42 @@ var msigInspectCmd = &cli.Command{
 			return err
 		}
 
-		var mstate msig0.State
-		if err := mstate.UnmarshalCBOR(bytes.NewReader(obj)); err != nil {
+		act, err := api.StateGetActor(ctx, maddr, head.Key())
+		if err != nil {
 			return err
 		}
 
-		locked := mstate.AmountLocked(head.Height() - mstate.StartEpoch)
+		mstate, err := multisig.Load(store, act)
+		if err != nil {
+			return err
+		}
+		locked, err := mstate.LockedBalance(head.Height())
+		if err != nil {
+			return err
+		}
+
 		fmt.Printf("Balance: %s\n", types.FIL(act.Balance))
 		fmt.Printf("Spendable: %s\n", types.FIL(types.BigSub(act.Balance, locked)))
 
 		if cctx.Bool("vesting") {
-			fmt.Printf("InitialBalance: %s\n", types.FIL(mstate.InitialBalance))
-			fmt.Printf("StartEpoch: %d\n", mstate.StartEpoch)
-			fmt.Printf("UnlockDuration: %d\n", mstate.UnlockDuration)
+			fmt.Printf("InitialBalance: %s\n", types.FIL(mstate.InitialBalance()))
+			fmt.Printf("StartEpoch: %d\n", mstate.StartEpoch())
+			fmt.Printf("UnlockDuration: %d\n", mstate.UnlockDuration())
 		}
 
-		fmt.Printf("Threshold: %d / %d\n", mstate.NumApprovalsThreshold, len(mstate.Signers))
+		signers := mstate.Signers()
+		fmt.Printf("Threshold: %d / %d\n", mstate.Threshold(), len(signers))
 		fmt.Println("Signers:")
-		for _, s := range mstate.Signers {
+		for _, s := range signers {
 			fmt.Printf("\t%s\n", s)
 		}
 
-		pending, err := GetMultisigPending(ctx, api, mstate.PendingTxns)
-		if err != nil {
-			return fmt.Errorf("reading pending transactions: %w", err)
+		pending := make(map[int64]multisig.Transaction)
+		if err := mstate.ForEachPendingTxn(func(id int64, txn multisig.Transaction) error {
+			pending[id] = txn
+			return nil
+		}); err != nil {
+			return xerrors.Errorf("reading pending transactions: %w", err)
 		}
 
 		fmt.Println("Transactions: ", len(pending))
@@ -239,7 +241,7 @@ var msigInspectCmd = &cli.Command{
 			fmt.Fprintf(w, "ID\tState\tApprovals\tTo\tValue\tMethod\tParams\n")
 			for _, txid := range txids {
 				tx := pending[txid]
-				fmt.Fprintf(w, "%d\t%s\t%d\t%s\t%s\t%d\t%x\n", txid, state(tx), len(tx.Approved), tx.To, types.FIL(tx.Value), tx.Method, tx.Params)
+				fmt.Fprintf(w, "%d\t%s\t%d\t%s\t%s\t%d\t%x\n", txid, "pending", len(tx.Approved), tx.To, types.FIL(tx.Value), tx.Method, tx.Params)
 			}
 			if err := w.Flush(); err != nil {
 				return xerrors.Errorf("flushing output: %+v", err)
@@ -249,43 +251,6 @@ var msigInspectCmd = &cli.Command{
 
 		return nil
 	},
-}
-
-func GetMultisigPending(ctx context.Context, lapi api.FullNode, hroot cid.Cid) (map[int64]*msig0.Transaction, error) {
-	bs := apibstore.NewAPIBlockstore(lapi)
-	store := adt.WrapStore(ctx, cbor.NewCborStore(bs))
-
-	nd, err := adt.AsMap(store, hroot)
-	if err != nil {
-		return nil, err
-	}
-
-	txs := make(map[int64]*msig0.Transaction)
-	var tx msig0.Transaction
-	err = nd.ForEach(&tx, func(k string) error {
-		txid, _ := binary.Varint([]byte(k))
-
-		cpy := tx // copy so we don't clobber on future iterations.
-		txs[txid] = &cpy
-		return nil
-	})
-	if err != nil {
-		return nil, xerrors.Errorf("failed to iterate transactions hamt: %w", err)
-	}
-
-	return txs, nil
-}
-
-func state(tx *msig0.Transaction) string {
-	/* // TODO(why): I strongly disagree with not having these... but i need to move forward
-	if tx.Complete {
-		return "done"
-	}
-	if tx.Canceled {
-		return "canceled"
-	}
-	*/
-	return "pending"
 }
 
 var msigProposeCmd = &cli.Command{
