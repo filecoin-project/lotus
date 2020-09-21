@@ -197,13 +197,12 @@ func (s *Syncer) Start(ctx context.Context) {
 					grp := sync.WaitGroup{}
 
 					grp.Add(1)
-					go func() error {
+					go func() {
 						change := change
 						defer grp.Done()
 						if err := s.storeCirculatingSupply(ctx, change.Val); err != nil {
 							log.Errorw("failed to store circulating supply", "error", err)
 						}
-						return nil
 					}()
 
 					unsynced, err := s.unsyncedBlocks(ctx, change.Val, sinceEpoch)
@@ -217,14 +216,13 @@ func (s *Syncer) Start(ctx context.Context) {
 					}
 
 					grp.Add(1)
-					go func() error {
+					go func() {
 						defer grp.Done()
 						if err := s.storeHeaders(unsynced, true, time.Now()); err != nil {
 							// so this is pretty bad, need some kind of retry..
 							// for now just log an error and the blocks will be attempted again on next notifi
 							log.Errorw("failed to store unsynced blocks", "error", err)
 						}
-						return nil
 					}()
 
 					grp.Wait()
