@@ -90,6 +90,9 @@ var importBenchCmd = &cli.Command{
 		&cli.Int64Flag{
 			Name: "start-at",
 		},
+		&cli.BoolFlag{
+			Name: "only-import",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		vm.BatchSealVerifyParallelism = cctx.Int("batch-seal-verify-threads")
@@ -119,6 +122,13 @@ var importBenchCmd = &cli.Command{
 			tdir = tmp
 		}
 
+		bdgOpt := badger.DefaultOptions
+		bdgOpt.GcInterval = 0
+		bdgOpt.Options = bdg.DefaultOptions("")
+		bdgOpt.Options.SyncWrites = false
+		bdgOpt.Options.Truncate = true
+		bdgOpt.Options.DetectConflicts = false
+
 		var bds datastore.Batching
 		if false {
 			cache := 512
@@ -142,17 +152,12 @@ var importBenchCmd = &cli.Command{
 				Logger: log,
 			})
 		} else {
-			bdgOpt := badger.DefaultOptions
-			bdgOpt.GcInterval = 0
-			bdgOpt.Options = bdg.DefaultOptions("")
-			bdgOpt.Options.SyncWrites = false
-			bdgOpt.Options.Truncate = true
-			bdgOpt.Options.DetectConflicts = false
 			bds, err = badger.NewDatastore(tdir, &bdgOpt)
 		}
 		if err != nil {
 			return err
 		}
+		defer bds.Close()
 
 		if cctx.Bool("only-gc") {
 			log.Info("calling CollectGarbage on main ds")
@@ -176,6 +181,7 @@ var importBenchCmd = &cli.Command{
 			if err != nil {
 				return xerrors.Errorf("opening syscall-cache datastore: %w", err)
 			}
+			defer scds.Close()
 
 			if cctx.Bool("only-gc") {
 				log.Info("calling CollectGarbage on syscall ds")
@@ -221,6 +227,10 @@ var importBenchCmd = &cli.Command{
 			if err != nil {
 				return err
 			}
+		}
+
+		if cctx.Bool("only-import") {
+			return nil
 		}
 
 		gb, err := cs.GetTipsetByHeight(context.TODO(), 0, head, true)
