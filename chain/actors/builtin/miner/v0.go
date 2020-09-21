@@ -17,6 +17,8 @@ import (
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 )
 
+var _ State = (*state0)(nil)
+
 type state0 struct {
 	miner0.State
 	store adt.Store

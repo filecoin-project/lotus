@@ -6,6 +6,8 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 )
 
+var _ State = (*state0)(nil)
+
 type state0 struct {
 	account.State
 	store adt.Store

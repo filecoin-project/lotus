@@ -12,6 +12,8 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 )
 
+var _ State = (*state0)(nil)
+
 type state0 struct {
 	market.State
 	store adt.Store

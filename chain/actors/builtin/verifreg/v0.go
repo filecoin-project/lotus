@@ -11,6 +11,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 )
 
+var _ State = (*state0)(nil)
+
 type state0 struct {
 	verifreg0.State
 	store adt.Store

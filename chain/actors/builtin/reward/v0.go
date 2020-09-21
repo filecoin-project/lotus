@@ -9,6 +9,8 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/util/smoothing"
 )
 
+var _ State = (*state0)(nil)
+
 type state0 struct {
 	reward.State
 	store adt.Store

@@ -8,6 +8,8 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 )
 
+var _ State = (*state0)(nil)
+
 type state0 struct {
 	power0.State
 	store adt.Store
