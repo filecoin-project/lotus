@@ -241,7 +241,7 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 
 	if parent != nil {
 		defer func() {
-			parent.gasUsed += rt.gasUsed
+			parent.gasUsed = rt.gasUsed
 		}()
 	}
 	if gasCharge != nil {

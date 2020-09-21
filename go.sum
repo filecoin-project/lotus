@@ -524,8 +524,8 @@ github.com/ipfs/go-ds-leveldb v0.4.2 h1:QmQoAJ9WkPMUfBLnu1sBVy0xWWlJPg0m4kRAiJL9
 github.com/ipfs/go-ds-leveldb v0.4.2/go.mod h1:jpbku/YqBSsBc1qgME8BkWS4AxzF2cEu1Ii2r79Hh9s=
 github.com/ipfs/go-ds-measure v0.1.0 h1:vE4TyY4aeLeVgnnPBC5QzKIjKrqzha0NCujTfgvVbVQ=
 github.com/ipfs/go-ds-measure v0.1.0/go.mod h1:1nDiFrhLlwArTME1Ees2XaBOl49OoCgd2A3f8EchMSY=
-github.com/ipfs/go-ds-pebble v0.0.2-0.20200921211847-f1ffb3128b61 h1:2wNNdpETSZgnsgy7wx7O6ueu+LCSZRedWrAsIPiOeFE=
-github.com/ipfs/go-ds-pebble v0.0.2-0.20200921211847-f1ffb3128b61/go.mod h1:oh4liWHulKcDKVhCska5NLelE3MatWl+1FwSz3tY91g=
+github.com/ipfs/go-ds-pebble v0.0.2-0.20200921225637-ce220f8ac459 h1:W3YMLEvOXqdW+sYMiguhWP6txJwQvIQqhvpU8yAMGQs=
+github.com/ipfs/go-ds-pebble v0.0.2-0.20200921225637-ce220f8ac459/go.mod h1:oh4liWHulKcDKVhCska5NLelE3MatWl+1FwSz3tY91g=
 github.com/ipfs/go-filestore v1.0.0 h1:QR7ekKH+q2AGiWDc7W2Q0qHuYSRZGUJqUn0GsegEPb0=
 github.com/ipfs/go-filestore v1.0.0/go.mod h1:/XOCuNtIe2f1YPbiXdYvD0BKLA0JR1MgPiFOdcuu9SM=
 github.com/ipfs/go-fs-lock v0.0.6 h1:sn3TWwNVQqSeNjlWy6zQ1uUGAZrV3hPOyEA6y1/N2a0=
