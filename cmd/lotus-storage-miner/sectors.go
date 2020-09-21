@@ -138,6 +138,12 @@ var sectorsStatusCmd = &cli.Command{
 var sectorsListCmd = &cli.Command{
 	Name:  "list",
 	Usage: "List sectors",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "show-removed",
+			Usage: "show removed sectors",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
@@ -194,19 +200,21 @@ var sectorsListCmd = &cli.Command{
 				continue
 			}
 
-			_, inSSet := commitedIDs[s]
-			_, inASet := activeIDs[s]
+			if cctx.Bool("show-removed") || st.State != api.SectorState(sealing.Removed) {
+				_, inSSet := commitedIDs[s]
+				_, inASet := activeIDs[s]
 
-			fmt.Fprintf(w, "%d: %s\tsSet: %s\tactive: %s\ttktH: %d\tseedH: %d\tdeals: %v\t toUpgrade:%t\n",
-				s,
-				st.State,
-				yesno(inSSet),
-				yesno(inASet),
-				st.Ticket.Epoch,
-				st.Seed.Epoch,
-				st.Deals,
-				st.ToUpgrade,
-			)
+				_, _ = fmt.Fprintf(w, "%d: %s\tsSet: %s\tactive: %s\ttktH: %d\tseedH: %d\tdeals: %v\t toUpgrade:%t\n",
+					s,
+					st.State,
+					yesno(inSSet),
+					yesno(inASet),
+					st.Ticket.Epoch,
+					st.Seed.Epoch,
+					st.Deals,
+					st.ToUpgrade,
+				)
+			}
 		}
 
 		return w.Flush()
