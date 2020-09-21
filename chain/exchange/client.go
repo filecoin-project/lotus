@@ -215,6 +215,22 @@ func (c *client) processResponse(req *Request, res *Response) (*validatedRespons
 				return nil, err
 			}
 		}
+
+		if options.ValidateMessages {
+			chain := make([]*BSTipSet, 0, resLength)
+			for i, resChain := range res.Chain {
+				next := &BSTipSet{
+					Blocks:   req.TipSets[i].Blocks(),
+					Messages: resChain.Messages,
+				}
+				chain = append(chain, next)
+			}
+
+			err := c.validateCompressedIndices(chain)
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	return validRes, nil

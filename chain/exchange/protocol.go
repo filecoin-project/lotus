@@ -57,6 +57,8 @@ type Request struct {
 	// Request options, see `Options` type for more details. Compressed
 	// in a single `uint64` to save space.
 	Options uint64
+	// Request tipsets for validation
+	TipSets []*types.TipSet
 }
 
 // `Request` processed and validated to query the tipsets needed.
@@ -71,13 +73,15 @@ type validatedRequest struct {
 const (
 	Headers = 1 << iota
 	Messages
+	Validate
 )
 
 // Decompressed options into separate struct members for easy access
 // during internal processing..
 type parsedOptions struct {
-	IncludeHeaders  bool
-	IncludeMessages bool
+	IncludeHeaders   bool
+	IncludeMessages  bool
+	ValidateMessages bool
 }
 
 func (options *parsedOptions) noOptionsSet() bool {
@@ -87,8 +91,9 @@ func (options *parsedOptions) noOptionsSet() bool {
 
 func parseOptions(optfield uint64) *parsedOptions {
 	return &parsedOptions{
-		IncludeHeaders:  optfield&(uint64(Headers)) != 0,
-		IncludeMessages: optfield&(uint64(Messages)) != 0,
+		IncludeHeaders:   optfield&(uint64(Headers)) != 0,
+		IncludeMessages:  optfield&(uint64(Messages)) != 0,
+		ValidateMessages: optfield&(uint64(Validate)) != 0,
 	}
 }
 
