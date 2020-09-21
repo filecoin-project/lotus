@@ -79,6 +79,21 @@ func (s *state0) FindSector(num abi.SectorNumber) (*SectorLocation, error) {
 	}, nil
 }
 
+func (s *state0) NumLiveSectors() (uint64, error) {
+	dls, err := s.State.LoadDeadlines(s.store)
+	if err != nil {
+		return 0, err
+	}
+	var total uint64
+	if err := dls.ForEach(s.store, func(dlIdx uint64, dl *miner0.Deadline) error {
+		total += dl.LiveSectors
+		return nil
+	}); err != nil {
+		return 0, err
+	}
+	return total, nil
+}
+
 // GetSectorExpiration returns the effective expiration of the given sector.
 //
 // If the sector isn't found or has already been terminated, this method returns

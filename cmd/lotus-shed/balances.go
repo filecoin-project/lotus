@@ -12,6 +12,8 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -21,9 +23,6 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
 )
 
 type accountInfo struct {
@@ -90,7 +89,7 @@ var chainBalanceCmd = &cli.Command{
 				Type:    string(act.Code.Hash()[2:]),
 			}
 
-			if act.Code == builtin.StorageMinerActorCodeID {
+			if miner.Is(act.Code) {
 				pow, err := api.StateMinerPower(ctx, addr, tsk)
 				if err != nil {
 					return xerrors.Errorf("failed to get power: %w", err)
@@ -167,6 +166,7 @@ var chainBalanceStateCmd = &cli.Command{
 		cs := store.NewChainStore(bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier))
 
 		cst := cbor.NewCborStore(bs)
+		store := adt.WrapStore(ctx, cst)
 
 		sm := stmgr.NewStateManager(cs)
 
@@ -191,7 +191,7 @@ var chainBalanceStateCmd = &cli.Command{
 				PreCommits:    types.FIL(big.NewInt(0)),
 			}
 
-			if act.Code == builtin.StorageMinerActorCodeID && minerInfo {
+			if minerInfo && miner.Is(act.Code) {
 				pow, _, _, err := stmgr.GetPowerRaw(ctx, sm, sroot, addr)
 				if err != nil {
 					return xerrors.Errorf("failed to get power: %w", err)
@@ -199,24 +199,29 @@ var chainBalanceStateCmd = &cli.Command{
 
 				ai.Power = pow.RawBytePower
 
-				var st miner.State
-				if err := cst.Get(ctx, act.Head, &st); err != nil {
+				st, err := miner.Load(store, act)
+				if err != nil {
 					return xerrors.Errorf("failed to read miner state: %w", err)
 				}
 
-				sectors, err := adt.AsArray(cs.Store(ctx), st.Sectors)
+				liveSectorCount, err := st.NumLiveSectors()
 				if err != nil {
-					return xerrors.Errorf("failed to load sector set: %w", err)
+					return xerrors.Errorf("failed to compute live sector count: %w", err)
 				}
 
-				ai.InitialPledge = types.FIL(st.InitialPledgeRequirement)
-				ai.LockedFunds = types.FIL(st.LockedFunds)
-				ai.PreCommits = types.FIL(st.PreCommitDeposits)
-				ai.Sectors = sectors.Length()
+				lockedFunds, err := st.LockedFunds()
+				if err != nil {
+					return xerrors.Errorf("failed to compute locked funds: %w", err)
+				}
 
-				var minfo miner.MinerInfo
-				if err := cst.Get(ctx, st.Info, &minfo); err != nil {
-					return xerrors.Errorf("failed to read miner info: %w", err)
+				ai.InitialPledge = types.FIL(lockedFunds.InitialPledgeRequirement)
+				ai.LockedFunds = types.FIL(lockedFunds.VestingFunds)
+				ai.PreCommits = types.FIL(lockedFunds.PreCommitDeposits)
+				ai.Sectors = liveSectorCount
+
+				minfo, err := st.Info()
+				if err != nil {
+					return xerrors.Errorf("failed to get miner info: %w", err)
 				}
 
 				ai.Worker = minfo.Worker
