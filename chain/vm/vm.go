@@ -227,14 +227,21 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 	}
 
 	rt := vm.makeRuntime(ctx, msg, origin, on, gasUsed, nac)
-	rt.lastGasChargeTime = start
+	if enableTracing {
+		rt.lastGasChargeTime = start
+		if parent != nil {
+			rt.lastGasChargeTime = parent.lastGasChargeTime
+			rt.lastGasCharge = parent.lastGasCharge
+			defer func() {
+				parent.lastGasChargeTime = rt.lastGasChargeTime
+				parent.lastGasCharge = rt.lastGasCharge
+			}()
+		}
+	}
+
 	if parent != nil {
-		rt.lastGasChargeTime = parent.lastGasChargeTime
-		rt.lastGasCharge = parent.lastGasCharge
 		defer func() {
-			parent.gasUsed = rt.gasUsed
-			parent.lastGasChargeTime = rt.lastGasChargeTime
-			parent.lastGasCharge = rt.lastGasCharge
+			parent.gasUsed += rt.gasUsed
 		}()
 	}
 	if gasCharge != nil {

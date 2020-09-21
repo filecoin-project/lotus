@@ -119,33 +119,37 @@ var importBenchCmd = &cli.Command{
 			tdir = tmp
 		}
 
-		bdgOpt := badger.DefaultOptions
-		bdgOpt.GcInterval = 0
-		bdgOpt.Options = bdg.DefaultOptions("")
-		bdgOpt.Options.SyncWrites = false
-		bdgOpt.Options.Truncate = true
-		bdgOpt.Options.DetectConflicts = false
-
-		cache := 512
-		bds, err := pebbleds.NewDatastore(tdir, &pebble.Options{
-			// Pebble has a single combined cache area and the write
-			// buffers are taken from this too. Assign all available
-			// memory allowance for cache.
-			Cache: pebble.NewCache(int64(cache * 1024 * 1024)),
-			// The size of memory table(as well as the write buffer).
-			// Note, there may have more than two memory tables in the system.
-			// MemTableStopWritesThreshold can be configured to avoid the memory abuse.
-			MemTableSize: cache * 1024 * 1024 / 4,
-			// The default compaction concurrency(1 thread),
-			// Here use all available CPUs for faster compaction.
-			MaxConcurrentCompactions: runtime.NumCPU(),
-			// Per-level options. Options for at least one level must be specified. The
-			// options for the last level are used for all subsequent levels.
-			Levels: []pebble.LevelOptions{
-				{TargetFileSize: 2 * 1024 * 1024, FilterPolicy: bloom.FilterPolicy(10)},
-			},
-			Logger: log,
-		})
+		var bds datastore.Batching
+		if false {
+			cache := 512
+			bds, err = pebbleds.NewDatastore(tdir, &pebble.Options{
+				// Pebble has a single combined cache area and the write
+				// buffers are taken from this too. Assign all available
+				// memory allowance for cache.
+				Cache: pebble.NewCache(int64(cache * 1024 * 1024)),
+				// The size of memory table(as well as the write buffer).
+				// Note, there may have more than two memory tables in the system.
+				// MemTableStopWritesThreshold can be configured to avoid the memory abuse.
+				MemTableSize: cache * 1024 * 1024 / 4,
+				// The default compaction concurrency(1 thread),
+				// Here use all available CPUs for faster compaction.
+				MaxConcurrentCompactions: runtime.NumCPU(),
+				// Per-level options. Options for at least one level must be specified. The
+				// options for the last level are used for all subsequent levels.
+				Levels: []pebble.LevelOptions{
+					{TargetFileSize: 2 * 1024 * 1024, FilterPolicy: bloom.FilterPolicy(10)},
+				},
+				Logger: log,
+			})
+		} else {
+			bdgOpt := badger.DefaultOptions
+			bdgOpt.GcInterval = 0
+			bdgOpt.Options = bdg.DefaultOptions("")
+			bdgOpt.Options.SyncWrites = false
+			bdgOpt.Options.Truncate = true
+			bdgOpt.Options.DetectConflicts = false
+			bds, err = badger.NewDatastore(tdir, &bdgOpt)
+		}
 		if err != nil {
 			return err
 		}
